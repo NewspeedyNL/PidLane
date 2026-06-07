@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=0.9, minimum-scale=0.4, maximum-scale=2.0, user-scalable=yes">
+<title>PidLane — Your car talks. We translate.</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- CSS — gesplitst per verantwoordelijkheid -->
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/dashboard.css">
+
+<!-- Capacitor core (werkt alleen in APK, genegeerd in browser) -->
+<script src="capacitor.js" onerror="console.log('Geen Capacitor — browser modus')"></script>
+</head>
+<body>
+
+<!-- ══ CONNECT MODAL ══ -->
+<div class="ov" id="connOv">
+  <div class="modal">
+    <div class="modal-scroll">
+      <div id="step1">
+        <div class="mh">
+          <div class="mlogo">🔌</div>
+          <div class="mttl">PidLane</div>
+          <div class="msub">Your car talks. We translate.</div>
+        </div>
+        <div style="padding:0 20px 10px">
+          <div class="api-lbl">🤖 API Key (optioneel) <a href="https://console.anthropic.com/settings/keys" target="_blank">Aanmaken →</a></div>
+          <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-..." autocomplete="off">
+        </div>
+        <div class="msteps">
+          <div class="mstep"><div class="sn">1</div>Steek OBD2 Bluetooth adapter in OBD-poort (onder dashboard, links)</div>
+          <div class="mstep"><div class="sn">2</div>Zet contact aan of start de motor</div>
+          <div class="mstep"><div class="sn">3</div>Klik Verbinden — adapter verschijnt in de lijst</div>
+        </div>
+      </div>
+      <div id="step2" style="display:none">
+        <div class="mh">
+          <div class="mlogo">📡</div>
+          <div class="mttl" id="step2Title">Netwerken scannen...</div>
+          <div class="msub" id="step2Sub">Even geduld</div>
+        </div>
+        <div style="padding:0 20px 14px"><div id="networkList"></div></div>
+      </div>
+      <div id="step3" style="display:none">
+        <div class="mh">
+          <div class="mlogo">🔍</div>
+          <div class="mttl">PIDs ophalen...</div>
+          <div class="msub" id="step3Sub">Beschikbare sensoren worden uitgelezen</div>
+        </div>
+        <div style="padding:0 20px 14px">
+          <div class="ai-ld" style="justify-content:center"><div class="spin"></div> <span id="step3Msg">Verbonden...</span></div>
+          <div id="step3Progress" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--tx3);"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mact" id="connActions">
+      <button class="mbtn p" id="btnConnect">📡 Verbinden via Bluetooth</button>
+      <button class="mbtn s" id="btnDemo">▷ Demo modus (zonder adapter)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WELCOME SCREEN ══ -->
+<div id="welcomeScreen" class="hidden">
+  <div class="welcome-header">
+    <div>
+      <div class="welcome-title" id="welcomeTitle">Verbonden — wat wil je doen?</div>
+      <div style="font-size:10px;color:var(--tx3)" id="welcomeSub">Kies een startoptie</div>
+    </div>
+    <div class="welcome-vin" id="welcomeVin" style="display:none">✅ VIN herkend</div>
+  </div>
+  <div class="welcome-scroll">
+    <div class="welcome-choices">
+      <div class="choice-card hl" id="wc-diag">
+        <span class="choice-icon">🧠</span>
+        <div class="choice-title w">Diagnose op probleem</div>
+        <div class="choice-desc w">AI vindt meest voorkomende oorzaak en bewijst dit via live PIDs.</div>
+        <span class="choice-tag">⭐ Aanbevolen</span>
+      </div>
+      <div class="choice-card" id="wc-check">
+        <span class="choice-icon">🚦</span>
+        <div class="choice-title">Algemene voertuigcheck</div>
+        <div class="choice-desc">7 vragen + live data → groen/oranje/rood per systeem.</div>
+      </div>
+      <div class="choice-card" id="wc-live">
+        <span class="choice-icon">📊</span>
+        <div class="choice-title">Specifieke PID data</div>
+        <div class="choice-desc">Kies sensoren, live waarden en grafieken.</div>
+      </div>
+      <div class="choice-card" id="wc-dtc">
+        <span class="choice-icon">🔴</span>
+        <div class="choice-title">Foutcodes scannen</div>
+        <div class="choice-desc">Alle DTC codes uitlezen met uitleg.</div>
+      </div>
+      <div class="choice-card full" id="wc-rit" style="border-color:rgba(0,245,255,.3);background:linear-gradient(135deg,rgba(0,245,255,.05),rgba(167,139,250,.05))">
+        <span class="choice-icon">🚗</span>
+        <div class="choice-title" style="color:#00f5ff">Rit Analyse (10 min)</div>
+        <div class="choice-desc">Rij 10 minuten — app analyseert 6 fases automatisch en genereert een volledig rapport.</div>
+      </div>
+      <div class="choice-card full" id="wc-report">
+        <span class="choice-icon">📋</span>
+        <div class="choice-title">Snel AI rapport</div>
+        <div class="choice-desc">Direct een volledig voertuigrapport zonder verdere vragen.</div>
+      </div>
+      <div class="choice-card full" id="wc-fuel" style="border-color:var(--or);background:linear-gradient(135deg,#fff7ed,#fff3e0)">
+        <span class="choice-icon">⛽</span>
+        <div class="choice-title" style="color:var(--or)">Brandstofbesparing</div>
+        <div class="choice-desc">Meet of jouw auto optimaal rijdt. AI berekent besparing per jaar.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ API KEY DIALOG ══ -->
+<div class="api-dialog-ov" id="apiDialog" onclick="closeApiDialog()">
+  <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
+    <div class="modal-scroll">
+      <div class="mh">
+        <div class="mlogo" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">🤖</div>
+        <div class="mttl">Anthropic API Key</div>
+        <div class="msub">Optioneel — voor onbeperkt AI gebruik</div>
+      </div>
+      <div style="padding:0 20px 14px">
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..."
+          style="width:100%;padding:10px 12px;background:var(--sur2);border:1.5px solid var(--bd2);border-radius:8px;font-family:var(--m);font-size:12px;color:var(--tx);outline:none;margin-bottom:8px;">
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:8px;line-height:1.5">
+          Via <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--bl)">console.anthropic.com</a> ($5 gratis).
+        </div>
+        <div id="apiStatus" style="font-size:11px;min-height:16px;"></div>
+      </div>
+    </div>
+    <div class="mact">
+      <button class="mbtn p" onclick="saveApiKey()">✓ Opslaan</button>
+      <button class="mbtn s" onclick="clearApiKey()" style="color:var(--rd)">🗑 Verwijderen</button>
+      <button class="mbtn s" onclick="closeApiDialog()">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="appScale">
+<div class="topbar">
+  <div class="logo"><div class="logo-i">⚡</div>Pid<em>Lane</em></div>
+  <div class="tpr">
+    <div id="vtag"></div>
+    <div class="pill"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
+    <button class="api-pill unset" id="apiPill" onclick="openApiDialog()">🤖 AI</button>
+    <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
+  </div>
+</div>
+
+<div class="app" id="appGrid">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sl" id="slPanel">
+    <button class="sl-toggle" id="slToggle" onclick="toggleSL()">◀</button>
+    <div class="sl-col-label" onclick="toggleSL()">🚗 Voertuig & Sensoren</div>
+    <div class="sl-inner">
+      <div class="slsec" id="vehicleSection">
+        <div class="slttl">Voertuig</div>
+        <div id="vehicleCard" style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--tx3);text-align:center;padding:4px 0">Verbind OBD2 adapter<br>voor automatische herkenning</div>
+        </div>
+      </div>
+      <div class="slsec">
+        <div class="slttl">Beschikbare PIDs <span class="cnt" id="pidCnt">0</span></div>
+        <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek PID..." oninput="filterPIDs(this.value)" id="psrch"></div>
+        <div style="font-size:9px;color:var(--tx3);padding:4px 2px 0">Vink aan om te monitoren</div>
+      </div>
+      <div class="pscr" id="pidList">
+        <div style="padding:16px;text-align:center;color:var(--tx3);font-size:11px">Verbind adapter om PIDs te laden</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="cc">
+    <div class="tabs">
+      <button class="tab active" onclick="sw('live',this)">📊 Live</button>
+      <button class="tab" onclick="sw('check',this)">🚦 Check</button>
+      <button class="tab" onclick="sw('diag',this)">🧠 Diagnose</button>
+      <button class="tab" onclick="sw('graph',this)">📈 Grafiek</button>
+      <button class="tab" onclick="sw('dtc',this)">🔴 DTC</button>
+      <button class="tab" onclick="sw('fuel',this)" style="color:var(--or);font-weight:700;">⛽ Besparing</button>
+    </div>
+    <div class="tb">
+
+      <!-- LIVE DATA -->
+      <div class="pane active" id="pane-live">
+        <div class="gg" id="gGrid">
+          <div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>
+        </div>
+      </div>
+
+      <!-- TOTAALCHECK -->
+      <div class="pane" id="pane-check">
+        <div class="chk-intro"><h3>🚦 Voertuig Totaalcheck</h3><p>Beantwoord de vragen voor een gerichte check.</p></div>
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:12px;box-shadow:var(--ss)">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:8px">Beantwoord voor nauwkeurigere check:</div>
+          <div class="chk-qrow"><label>Goede koude start?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'start','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'start','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'start','nee')">Nee</div></div></div>
+          <div class="chk-qrow"><label>Rijdt goed op snelweg?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'highway','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'highway','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'highway','nee')">Nee</div></div></div>
+          <div class="chk-qrow"><label>Brandstofverbruik normaal?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'fuel','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'fuel','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'fuel','nee')">Nee</div></div></div>
+          <div class="chk-qrow"><label>Olie niveau OK?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'oil','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'oil','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'oil','nee')">Nee</div></div></div>
+          <div class="chk-qrow"><label>Koelwater stabiel?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'cool','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'cool','soms')">Daalt</div><div class="chk-opt" onclick="setQ(this,'cool','nee')">Verlies</div></div></div>
+          <div class="chk-qrow"><label>Geen vreemde geluiden?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'noise','ja')">Geen</div><div class="chk-opt" onclick="setQ(this,'noise','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'noise','nee')">Ja</div></div></div>
+          <div class="chk-qrow"><label>Geen dashboardlampen?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'warn','ja')">Geen</div><div class="chk-opt" onclick="setQ(this,'warn','soms')">1-2</div><div class="chk-opt" onclick="setQ(this,'warn','nee')">Meerdere</div></div></div>
+        </div>
+        <div class="toolbar">
+          <button class="btn pri" onclick="runTotalCheck()" id="btnChk">🚦 Start totaalcheck</button>
+          <button class="btn" onclick="exportCheckReport()">💾 Exporteer</button>
+        </div>
+        <div id="chkSummary" style="display:none" class="chk-summary">
+          <div class="chk-sum"><div class="chk-sum-num ok" id="csOk">0</div><div class="chk-sum-lbl">✅ Goed</div></div>
+          <div class="chk-sum"><div class="chk-sum-num warn" id="csWarn">0</div><div class="chk-sum-lbl">⚠️ Let op</div></div>
+          <div class="chk-sum"><div class="chk-sum-num bad" id="csBad">0</div><div class="chk-sum-lbl">🔴 Probleem</div></div>
+        </div>
+        <div class="chk-results" id="chkResults"></div>
+      </div>
+
+      <!-- DIAGNOSE -->
+      <div class="pane" id="pane-diag">
+        <div class="diag-pad">
+          <div class="diag-step" id="dstep1">
+            <div class="diag-step-h"><div class="dsn active" id="dsn1">1</div><div><div class="dsh-title">Beschrijf het probleem</div><div class="dsh-sub">Wat is er precies mis?</div></div></div>
+            <textarea class="diag-ta" id="diagDesc" placeholder="Bijv: Motor stottert bij koud opstarten..."></textarea>
+            <div class="chips" id="diagChips">
+              <div class="chip" onclick="tc(this)">Motor stottert</div>
+              <div class="chip" onclick="tc(this)">Ruw stationair</div>
+              <div class="chip" onclick="tc(this)">Moeilijk starten</div>
+              <div class="chip" onclick="tc(this)">Meer brandstof</div>
+              <div class="chip" onclick="tc(this)">Minder vermogen</div>
+              <div class="chip" onclick="tc(this)">Rook uitlaat</div>
+              <div class="chip" onclick="tc(this)">Olie verlies</div>
+              <div class="chip" onclick="tc(this)">Oververhitting</div>
+              <div class="chip" onclick="tc(this)">Trillingen</div>
+              <div class="chip" onclick="tc(this)">Tik geluid</div>
+              <div class="chip" onclick="tc(this)">Motor lamp aan</div>
+              <div class="chip" onclick="tc(this)">ABS lamp aan</div>
+            </div>
+            <div style="margin-top:8px;font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px">Wanneer?</div>
+            <div class="chips" style="margin-top:5px">
+              <div class="chip" onclick="tc(this)">Bij koud starten</div>
+              <div class="chip" onclick="tc(this)">Na opwarming</div>
+              <div class="chip" onclick="tc(this)">Bij versnellen</div>
+              <div class="chip" onclick="tc(this)">Altijd</div>
+              <div class="chip" onclick="tc(this)">Soms</div>
+            </div>
+            <div style="margin-top:12px"><button class="btn pri" id="btnFindCauses" onclick="findCauses()">🔍 Zoek meest voorkomende oorzaken →</button></div>
+          </div>
+          <div class="diag-step" id="dstep2" style="display:none">
+            <div class="diag-step-h"><div class="dsn wait" id="dsn2">2</div><div><div class="dsh-title">Meest voorkomende oorzaken</div><div class="dsh-sub">Klik om te verifiëren via live PIDs</div></div></div>
+            <div id="causesBox"></div>
+          </div>
+          <div class="diag-step" id="dstep3" style="display:none">
+            <div class="diag-step-h"><div class="dsn wait" id="dsn3">3</div><div><div class="dsh-title">PID Verificatie</div><div class="dsh-sub">Live sensorwaarden bewijzen of sluiten oorzaak uit</div></div></div>
+            <div id="pidCheckBox"></div>
+            <div id="verdictBox"></div>
+            <div id="nextCauseBox"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRAFIEK -->
+      <div class="pane" id="pane-graph">
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);width:100%;margin-bottom:2px;">Groepstrends</div>
+          <button class="trend-group-btn" onclick="selectTrendGroup('fuel')">⛽ Brandstof</button>
+          <button class="trend-group-btn" onclick="selectTrendGroup('power')">⚡ Vermogen</button>
+          <button class="trend-group-btn" onclick="selectTrendGroup('accu')">🔋 Accu</button>
+          <button class="trend-group-btn" onclick="selectTrendGroup('temp')">🌡️ Temperatuur</button>
+          <button class="trend-group-btn" onclick="selectTrendGroup('none')">✕ Wis</button>
+          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="margin-left:auto;background:linear-gradient(135deg,#0d0d1a,#1a0a3a);color:#a78bfa;border-color:#7c3aed;font-weight:700" disabled>🖥 Dashboard</button>
+          <button class="trend-group-btn" onclick="openRitAnalyse()" style="background:linear-gradient(135deg,#020c14,#001a2e);color:#00f5ff;border-color:#00f5ff55;font-weight:700">🚗 Rit Analyse</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+          <select class="fsel" id="gsel" onchange="changeGraph(this.value)" style="flex:1;min-width:150px"><option value="">— Of kies individuele sensor —</option></select>
+          <div style="font-size:10px;color:var(--tx3)">Rood = buiten normaal bereik</div>
+        </div>
+        <div id="activeTrendPIDs" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>
+        <canvas id="graphCanvas" height="280"></canvas>
+        <div id="graphLegend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;padding:8px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);"></div>
+      </div>
+
+      <!-- DTC -->
+      <div class="pane" id="pane-dtc">
+        <div class="toolbar">
+          <button class="btn pri" onclick="scanDTC()" id="bscan">🔍 Scan foutcodes</button>
+          <button class="btn danger" onclick="clearDTC()" id="bclr" disabled>🗑 Wis codes</button>
+          <button class="btn" onclick="exportReport()">💾 Exporteer</button>
+        </div>
+        <div class="dtc-list" id="dtcList">
+          <div class="emp"><div class="ei">🔎</div><h3>Nog geen scan</h3><p>Klik "Scan foutcodes"</p></div>
+        </div>
+      </div>
+
+      <!-- BRANDSTOFBESPARING -->
+      <div class="pane" id="pane-fuel">
+        <div style="background:linear-gradient(135deg,#fff7ed,#fff3e0);border:1px solid #fed7aa;border-radius:var(--r);padding:12px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:24px;flex-shrink:0">⛽</div>
+          <div><div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:2px">Brandstofbesparing Analyse</div>
+          <div style="font-size:11px;color:var(--tx2);line-height:1.5">Meet live of de motor optimaal rijdt. Goed onderhoud kan 5–20% besparen.</div></div>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:10px;margin-bottom:10px;box-shadow:var(--ss)">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Brandstofprijs & gebruik</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--tx2)">€</span><input id="fuelPrice" class="fuel-inp" type="number" step="0.01" value="2.05" min="0.5" max="5"><span style="font-size:11px;color:var(--tx2)">/liter</span></div>
+            <div style="display:flex;align-items:center;gap:4px"><input id="yearKm" class="fuel-inp" style="width:80px" type="number" step="1000" value="15000" min="1000" max="100000"><span style="font-size:11px;color:var(--tx2)">km/jaar</span></div>
+          </div>
+        </div>
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Live brandstof-gerelateerde metingen</div>
+        <div class="fuel-gauge-grid" id="fuelGauges">
+          <div class="emp" style="grid-column:1/-1;padding:16px"><div class="ei" style="font-size:24px">📡</div><p style="font-size:10px">Verbind OBD2 voor live metingen</p></div>
+        </div>
+        <button class="btn pri" style="width:100%;padding:11px;margin-bottom:12px;font-size:12px" onclick="runFuelAnalysis()" id="btnFuel">⛽ Analyseer brandstofbesparing</button>
+        <div id="fuelResults"></div>
+      </div>
+
+    </div><!-- tb -->
+    <div class="logbar" id="logbar"></div>
+    <div style="display:flex;justify-content:flex-end;padding:3px 8px;background:var(--sur2);border-top:1px solid var(--bd)">
+      <button onclick="downloadLog()" style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--bd);background:transparent;color:var(--tx3);cursor:pointer">💾 Log downloaden</button>
+    </div>
+  </div><!-- cc -->
+
+  <!-- RIGHT SIDEBAR — AI -->
+  <div class="sr" id="srPanel">
+    <button class="sr-toggle" id="srToggle" onclick="toggleSR()">▶</button>
+    <div class="sr-col-label" onclick="toggleSR()">🤖 AI Diagnose</div>
+    <div class="sr-inner">
+      <div class="ai-head">
+        <div class="ai-ttl">AI Diagnose <span class="ai-bdg">AI</span></div>
+        <div class="ai-sub">Combineert sensordata, DTC-codes en beschrijving</div>
+      </div>
+      <button class="ai-run" onclick="runQuickAI()" id="aiBtn">🔬 Snelle AI analyse</button>
+      <button onclick="startDatalog()" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px" id="datalogBtn">📊 AI Datalog (20 sec)</button>
+      <button onclick="openRitAnalyse()" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,245,255,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,245,255,.05);color:#00b4cc;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🚗 Rit Evaluatie</button>
+      <div class="ai-note">Datalog = betrouwbaarder dan momentopname.</div>
+      <div class="ai-scr" id="aiContent">
+        <div class="ai-ph"><div class="pi">🔬</div><p>Verbind de OBD2 adapter en kies een startoptie.</p></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- app -->
+</div><!-- appScale -->
+
+<!-- ══ CONTROL BAR ══ -->
+<div class="ctrl-bar">
+  <button class="zbtn" id="themeBtn" onclick="toggleTheme()" title="Donker/Licht">🌙</button>
+  <div class="zdiv"></div>
+  <button class="zbtn" onclick="fontSize(-1)">A−</button>
+  <div class="zlbl" id="fontLbl">13</div>
+  <button class="zbtn" onclick="fontSize(1)">A+</button>
+  <div class="zdiv"></div>
+  <button class="zbtn" onclick="zoom(-0.1)">−</button>
+  <div class="zlbl" id="zoomLbl">100%</div>
+  <button class="zbtn" onclick="zoom(0.1)">+</button>
+  <button class="zbtn" onclick="zoomReset()" style="font-size:10px">↺</button>
+</div>
+
+<!-- Neon dashboard en rit analyse overlays worden door ui.js ingeladen -->
+<div id="neonDash" style="display:none"></div>
+<div id="ritDash" style="display:none"></div>
+
+<!-- JS — laden in correcte volgorde -->
+<script src="js/config.js"></script>
+<script src="js/logging.js"></script>
+<script src="js/data.js"></script>
+<script src="js/bluetooth.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/diagnosis.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
