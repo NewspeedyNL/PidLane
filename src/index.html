@@ -1939,6 +1939,10 @@ const ALL_PID_DEFS={
 const BLE_SERVICE  = '0000fff0-0000-1000-8000-00805f9b34fb';
 const BLE_WRITE    = '0000fff2-0000-1000-8000-00805f9b34fb';
 const BLE_NOTIFY   = '0000fff1-0000-1000-8000-00805f9b34fb';
+// OBDLink MX+ BLE UUIDs (andere UUID set)
+const BLE_SERVICE2 = 'e7810a71-73ae-499d-8c15-faa9aef0c3f2';
+const BLE_WRITE2   = 'be781a75-5f82-4b2b-b5e3-c3e2b6b82da0';
+const BLE_NOTIFY2  = 'be781a75-5f82-4b2b-b5e3-c3e2b6b82da0';
 
 // Detecteer of Capacitor BLE beschikbaar is (APK modus)
 function getCapacitorBLE(){
@@ -1981,36 +1985,58 @@ async function connectCapacitorBLE(ble){
     let foundId=null, foundName='';
 
     // Scan voor Vgate MX+ en andere ELM327 BLE adapters
+    // Strategie 1: scan op bekende OBD2 service UUIDs
+    log('Scannen op OBD2 service UUID...','info');
     await ble.requestLEScan({
-      services:[BLE_SERVICE],
+      services:[BLE_SERVICE,'0000ffe0-0000-1000-8000-00805f9b34fb'],
       allowDuplicates:false
     },(result)=>{
       if(!foundId){
         foundId=result.device.deviceId;
         foundName=result.device.name||result.device.deviceId;
-        log('Adapter gevonden: '+foundName,'ok');
+        log('Adapter gevonden (UUID): '+foundName,'ok');
       }
     });
 
-    // Wacht max 15 seconden op adapter (was 8s — te kort voor trage adapters)
     await new Promise((resolve)=>{
       const check=setInterval(()=>{if(foundId){clearInterval(check);resolve();}},200);
-      setTimeout(()=>{clearInterval(check);resolve();},15000);
+      setTimeout(()=>{clearInterval(check);resolve();},10000);
     });
-
     await ble.stopLEScan().catch(()=>{});
 
+    // Strategie 2: scan alle apparaten, filter op naam (OBDLink MX+, ELM327 etc.)
     if(!foundId){
-      log('Scan leeg — handmatig selecteren...','info');
+      log('Naam-scan starten (OBDLink/ELM327)...','info');
+      await ble.requestLEScan({allowDuplicates:false},(result)=>{
+        const name=(result.device.name||'').toLowerCase();
+        if(!foundId&&(
+          name.includes('obd')||name.includes('elm')||name.includes('vgate')||
+          name.includes('icar')||name.includes('mx+')||name.includes('eobd')||
+          name.includes('scan')||name.includes('link')
+        )){
+          foundId=result.device.deviceId;
+          foundName=result.device.name||result.device.deviceId;
+          log('Adapter gevonden (naam): '+foundName,'ok');
+        }
+      });
+      await new Promise((resolve)=>{
+        const check=setInterval(()=>{if(foundId){clearInterval(check);resolve();}},200);
+        setTimeout(()=>{clearInterval(check);resolve();},10000);
+      });
+      await ble.stopLEScan().catch(()=>{});
+    }
+
+    // Strategie 3: handmatig kiezen uit lijst
+    if(!foundId){
+      log('Handmatig selecteren...','info');
       try{
         const dev=await ble.requestDevice({
-          services:[BLE_SERVICE],
-          optionalServices:['0000ffe0-0000-1000-8000-00805f9b34fb']
+          services:[BLE_SERVICE,'0000ffe0-0000-1000-8000-00805f9b34fb'],
         });
         foundId=dev.deviceId;
         foundName=dev.name||dev.deviceId;
       }catch(e2){
-        throw new Error('Geen OBD2 adapter gevonden.\n\nControleer:\n• Adapter in OBD poort gestoken?\n• Contact van auto aan?\n• Adapter heeft stroom (lampje brandt)?');
+        throw new Error('Geen OBD2 adapter gevonden.\n\nControleer:\n• Adapter in OBD poort gestoken?\n• Contact van auto aan?\n• Lampje op adapter brandt?\n• Adapter al eerder gekoppeld in Bluetooth instellingen?');
       }
     }
 
@@ -2024,19 +2050,25 @@ async function connectCapacitorBLE(ble){
 
     log('Verbonden! Notificaties starten...','ok');
 
-    // Ontvang data via notify karakteristiek
-    await ble.startNotifications(foundId,BLE_SERVICE,BLE_NOTIFY,(value)=>{
-      const text=new TextDecoder().decode(value.value);
-      btBuffer+=text;
-    });
-
-    // Sla deviceId op voor schrijven
-    btChar={
-      _capacitor:true,
-      _ble:ble,
-      _deviceId:foundId,
-      _name:foundName
-    };
+    // Probeer beide service UUIDs (Vgate en OBDLink)
+    let notifyStarted=false;
+    for(const [svc,notify,write] of [
+      [BLE_SERVICE, BLE_NOTIFY, BLE_WRITE],
+      [BLE_SERVICE2,BLE_NOTIFY2,BLE_WRITE2],
+      ['0000ffe0-0000-1000-8000-00805f9b34fb','0000ffe1-0000-1000-8000-00805f9b34fb','0000ffe1-0000-1000-8000-00805f9b34fb']
+    ]){
+      try{
+        await ble.startNotifications(foundId,svc,notify,(value)=>{
+          btBuffer+=new TextDecoder().decode(value.value);
+        });
+        // Sla actieve UUIDs op voor schrijven
+        btChar={_capacitor:true,_ble:ble,_deviceId:foundId,_name:foundName,_svc:svc,_write:write};
+        notifyStarted=true;
+        log('Notificaties actief op: '+svc.slice(4,8),'ok');
+        break;
+      }catch(e){ /* Probeer volgende */ }
+    }
+    if(!notifyStarted) throw new Error('Kon geen communicatiekanaal openen met de adapter.');
 
     connected=true; demoMode=false;
     log('Klaar — ELM327 initialiseren...','ok');
@@ -2136,8 +2168,10 @@ async function sendBT(cmd){
   const data=new TextEncoder().encode(cmd+'\r');
   try{
     if(btChar._capacitor){
-      // Native APK via Capacitor BLE
-      await btChar._ble.write(btChar._deviceId,BLE_SERVICE,BLE_WRITE,new DataView(data.buffer));
+      // Native APK via Capacitor BLE — gebruik de UUID die werkte bij verbinden
+      const svc=btChar._svc||BLE_SERVICE;
+      const write=btChar._write||BLE_WRITE;
+      await btChar._ble.write(btChar._deviceId,svc,write,new DataView(data.buffer));
     } else {
       // Web Bluetooth browser fallback
       const ch=btChar._webChar;
