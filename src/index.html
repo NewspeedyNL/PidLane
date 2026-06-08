@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=0.9, minimum-scale=0.4, maximum-scale=2.0, user-scalable=yes">
 <title>PidLane</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- Capacitor runtime — alleen actief in APK, genegeerd in browser -->
-<script src="capacitor.js" onerror="console.log('Browser modus — geen Capacitor')"></script>
+<!-- Capacitor — actief in APK, genegeerd in browser -->
+<script src="capacitor.js" onerror="void 0"></script>
 <style>
 /* ══ LIGHT THEME (default) ══ */
 :root {
@@ -747,6 +747,56 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   <button class="zbtn" onclick="zoomReset()" title="Reset" style="font-size:10px">↺</button>
 </div>
 
+<!-- ══ NEON DASHBOARD OVERLAY ══ -->
+<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:#020408;overflow:hidden;font-family:'DM Sans',sans-serif;">
+  <canvas id="neonBg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.05);z-index:9020">
+    <div style="font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(0,255,200,.5)">PIDLANE // LIVE DASHBOARD</div>
+    <div id="neonGroupName" style="font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.8)"></div>
+    <button onclick="closeNeonDashboard()" style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
+  <div id="neonGaugeGrid" style="position:absolute;top:44px;bottom:80px;left:0;right:0;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:16px;padding:16px;overflow:hidden;z-index:9010;"></div>
+  <div id="neonStatusBar" style="position:absolute;bottom:0;left:0;right:0;height:80px;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;gap:24px;padding:0 20px;z-index:9020;flex-wrap:wrap;overflow:hidden;"></div>
+</div>
+
+<!-- ══ RIT ANALYSE OVERLAY ══ -->
+<div id="ritDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:9000">
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;max-width:700px;margin:0 auto;padding:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:2px">🚗 Rit Analyse</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)" id="ritStatus">Start rijden — minimaal 10 minuten</div>
+      </div>
+      <button onclick="closeRitAnalyse()" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer">✕ Sluiten</button>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:14px;flex-shrink:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1px">VOORTGANG</div>
+        <div id="ritTimer" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:#00f5ff">0:00</div>
+      </div>
+      <div style="background:rgba(255,255,255,.08);border-radius:4px;height:6px;overflow:hidden">
+        <div id="ritProgress" style="height:100%;background:linear-gradient(90deg,#00f5ff,#a78bfa);border-radius:4px;width:0%;transition:width .5s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:9px;color:rgba(255,255,255,.3)">
+        <span>0 min</span><span>2 min</span><span>4 min</span><span>6 min</span><span>8 min</span><span>10 min</span>
+      </div>
+    </div>
+    <div id="ritCurrentPhase" style="background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;flex-shrink:0">
+      <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(0,245,255,.6);margin-bottom:4px">HUIDIGE FASE</div>
+      <div id="ritPhaseName" style="font-size:13px;font-weight:700;color:#fff">Wachten op start...</div>
+      <div id="ritPhaseDesc" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px"></div>
+    </div>
+    <div style="flex:1;overflow-y:auto" id="ritResults">
+      <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:8px">FASE RESULTATEN</div>
+      <div id="ritPhaseResults" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-shrink:0">
+      <button id="ritStartBtn" onclick="startRitAnalyse()" style="flex:1;padding:12px;border-radius:9px;border:none;background:linear-gradient(135deg,#00f5ff,#a78bfa);color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer">🚗 Start Rit Analyse</button>
+      <button id="ritStopBtn" onclick="stopRitAnalyse()" style="display:none;flex:1;padding:12px;border-radius:9px;border:1px solid rgba(255,100,100,.4);background:rgba(255,0,0,.1);color:#ff6464;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer">⏹ Stop & Analyseer</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════
 // ⚙️ CONFIGURATIE — PLAK HIER JE API KEY
@@ -797,18 +847,67 @@ const MOTORS=['1.0 TSI/EcoBoost','1.2 TDI','1.4 TDI','1.5 TDI','1.5 TSI','1.6 TD
 const YEARS=Array.from({length:22},(_,i)=>(2024-i).toString());
 
 const DTCDB={
-  P0171:{desc:'Systeem te mager (bank 1)',body:'Vacuümlek, MAF sensor, brandstofpomp of injector.',sev:'med'},
-  P0172:{desc:'Systeem te rijk (bank 1)',body:'Lekkende injector, defecte O2 sensor of hoge brandstofdruk.',sev:'med'},
-  P0300:{desc:'Willekeurige ontsteking gemist',body:'Bougies, bobines en brandstofdruk controleren.',sev:'high'},
-  P0301:{desc:'Cilinder 1 ontsteking gemist',body:'Bougie, bobine of injector cilinder 1.',sev:'high'},
-  P0420:{desc:'Katalysator efficiëntie laag',body:'Versleten kat, defecte O2 sensor na-kat.',sev:'med'},
-  P0011:{desc:'Nokkenas te vroeg (intake B1)',body:'VVT solenoïde, oliepeil, kettingspanning.',sev:'high'},
-  P0087:{desc:'Brandstofdruk te laag',body:'Brandstofpomp, filter of drukregelaar.',sev:'high'},
-  P0101:{desc:'MAF circuit buiten bereik',body:'Vuile/defecte MAF, luchtfilter of vacuümlek.',sev:'med'},
-  P0128:{desc:'Koelant temp te laag',body:'Thermostaat vast open of defect.',sev:'low'},
-  P0217:{desc:'Motor oververhitting',body:'Waterpomp, thermostaat of radiateur.',sev:'high'},
-  B1318:{desc:'Accu spanning laag',body:'Accu, alternator of lekstroom.',sev:'med'},
-  U0100:{desc:'Communicatie PCM verloren',body:'CAN-bus bedrading of PCM voeding.',sev:'high'},
+  // Brandstof & Lucht
+  P0087:{desc:'Brandstofdruk te laag',            body:'Brandstofpomp, filter of drukregelaar defect.',               sev:'high'},
+  P0088:{desc:'Brandstofdruk te hoog',            body:'Drukregelaar defect of retourleiding geblokkeerd.',           sev:'high'},
+  P0171:{desc:'Systeem te mager (bank 1)',         body:'Vacuümlek, MAF vuil, brandstofpomp zwak of injector verstopt.',sev:'med'},
+  P0172:{desc:'Systeem te rijk (bank 1)',          body:'Lekkende injector, defecte O2 sensor of hoge brandstofdruk.',sev:'med'},
+  P0174:{desc:'Systeem te mager (bank 2)',         body:'Zelfde als P0171 maar bank 2.',                              sev:'med'},
+  P0175:{desc:'Systeem te rijk (bank 2)',          body:'Zelfde als P0172 maar bank 2.',                              sev:'med'},
+  // Ontsteking
+  P0300:{desc:'Willekeurige ontsteking gemist',   body:'Bougies, bobines, brandstofdruk of compressie controleren.',  sev:'high'},
+  P0301:{desc:'Cilinder 1 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 1.',                     sev:'high'},
+  P0302:{desc:'Cilinder 2 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 2.',                     sev:'high'},
+  P0303:{desc:'Cilinder 3 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 3.',                     sev:'high'},
+  P0304:{desc:'Cilinder 4 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 4.',                     sev:'high'},
+  P0305:{desc:'Cilinder 5 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 5.',                     sev:'high'},
+  P0306:{desc:'Cilinder 6 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 6.',                     sev:'high'},
+  // MAF & Luchtinlaat
+  P0100:{desc:'MAF sensor circuit probleem',      body:'MAF sensor defect of verbindingsprobleem.',                  sev:'med'},
+  P0101:{desc:'MAF circuit buiten bereik',        body:'Vuile MAF, luchtfilter verstopt of vacuümlek.',              sev:'med'},
+  P0102:{desc:'MAF circuit laag signaal',         body:'MAF sensor of bedrading defect.',                            sev:'med'},
+  P0103:{desc:'MAF circuit hoog signaal',         body:'MAF sensor of bedrading defect.',                            sev:'med'},
+  // Temperatuursensoren
+  P0110:{desc:'Inlaatlucht temp sensor',          body:'IAT sensor of bedrading defect.',                            sev:'low'},
+  P0115:{desc:'Koelwater temp sensor circuit',    body:'ECT sensor of bedrading defect.',                            sev:'med'},
+  P0116:{desc:'Koelwater temp buiten bereik',     body:'ECT sensor of thermostaat probleem.',                        sev:'med'},
+  P0128:{desc:'Koelant temp te laag',             body:'Thermostaat vast open of defect.',                           sev:'low'},
+  P0217:{desc:'Motor oververhitting',             body:'Koelvloeistofpeil, waterpomp, thermostaat of radiateur.',    sev:'high'},
+  // O2 Sensoren
+  P0130:{desc:'O2 sensor circuit B1S1',           body:'Lambda sensor voor-kat defect.',                             sev:'med'},
+  P0131:{desc:'O2 sensor laag voltage B1S1',      body:'Lambda sensor of vacuümlek.',                                sev:'med'},
+  P0132:{desc:'O2 sensor hoog voltage B1S1',      body:'Lambda sensor of rijk mengsel.',                             sev:'med'},
+  P0133:{desc:'O2 sensor traag B1S1',             body:'Lambda sensor versleten of vergiftigd.',                     sev:'med'},
+  P0136:{desc:'O2 sensor circuit B1S2',           body:'Lambda sensor na-kat defect.',                               sev:'med'},
+  P0141:{desc:'O2 sensor verwarming B1S2',        body:'Verwarmingselement lambda sensor defect.',                   sev:'med'},
+  // Nokkenas & Timing
+  P0010:{desc:'Nokkenas actuator circuit',        body:'VVT solenoïde of bedrading defect.',                         sev:'high'},
+  P0011:{desc:'Nokkenas te vroeg (intake B1)',    body:'VVT solenoïde, oliepeil of kettingspanning.',                sev:'high'},
+  P0012:{desc:'Nokkenas te laat (intake B1)',     body:'VVT solenoïde of camshaft positie sensor.',                  sev:'high'},
+  P0016:{desc:'Krukas/nokkenas verhouding fout',  body:'Kettingrek, timing of sensor defect.',                       sev:'high'},
+  P0340:{desc:'Nokkenas positie sensor circuit',  body:'CMP sensor of toonwiel defect.',                             sev:'high'},
+  // Emissie
+  P0400:{desc:'EGR stroom probleem',              body:'EGR klep of leiding verstopt.',                              sev:'med'},
+  P0401:{desc:'EGR stroom te laag',               body:'EGR klep verstopt of defect.',                               sev:'med'},
+  P0420:{desc:'Katalysator efficiëntie laag B1',  body:'Versleten kat of defecte O2 sensor na-kat.',                 sev:'med'},
+  P0430:{desc:'Katalysator efficiëntie laag B2',  body:'Zelfde als P0420 maar bank 2.',                              sev:'med'},
+  P0440:{desc:'Verdampingssysteem lek',           body:'Tankdop, EVAP systeem of leiding lek.',                      sev:'low'},
+  P0442:{desc:'EVAP systeem klein lek',           body:'Tankdop of EVAP leiding lek.',                               sev:'low'},
+  P0455:{desc:'EVAP systeem groot lek',           body:'Tankdop los, slang af of purge klep defect.',                sev:'low'},
+  // Accu & Laden
+  P0560:{desc:'Systeemspanning probleem',         body:'Accu of alternator probleem.',                               sev:'med'},
+  P0562:{desc:'Systeemspanning te laag',          body:'Accu zwak of alternator ladt niet.',                         sev:'high'},
+  P0563:{desc:'Systeemspanning te hoog',          body:'Spanningsregelaar in alternator defect.',                    sev:'high'},
+  // Transmissie
+  P0700:{desc:'Transmissie besturing fout',       body:'TCM fout — zie ook transmissie codes.',                      sev:'high'},
+  P0715:{desc:'Ingangs/turbine speed sensor',     body:'Speed sensor of bedrading defect.',                          sev:'med'},
+  P0720:{desc:'Uitgangs speed sensor',            body:'Speed sensor of bedrading defect.',                          sev:'med'},
+  // Communicatie
+  U0001:{desc:'CAN bus communicatie fout',        body:'CAN bus bedrading of module defect.',                        sev:'high'},
+  U0100:{desc:'Communicatie PCM verloren',        body:'PCM voeding of CAN bus probleem.',                           sev:'high'},
+  U0101:{desc:'Communicatie TCM verloren',        body:'TCM of CAN bus probleem.',                                   sev:'high'},
+  // B-codes
+  B1318:{desc:'Accu spanning laag',               body:'Accu, alternator of lekstroom.',                             sev:'med'},
 };
 
 // ════════════════════════════════════════
@@ -1485,16 +1584,16 @@ function selectTrendGroup(group){
   document.querySelectorAll('.trend-group-btn').forEach(b=>b.classList.remove('active'));
   if(group==='none'||group===activeTrendGroup){
     activeTrendGroup=null; trendPIDs=[];
+    const btn=document.getElementById('dashBtn'); if(btn) btn.disabled=true;
     updateTrendChips(); drawGraph(); return;
   }
   activeTrendGroup=group;
   const grp=TREND_GROUPS[group];
-  // Alleen PIDs tonen die ook data hebben
   trendPIDs=grp.pids.filter(pid=>pidHist[pid]?.length||discoveredPIDDefs.find(d=>d.pid===pid));
   document.getElementById('gsel').value=''; graphPID=null;
-  // Markeer actieve knop
   const idx={fuel:0,power:1,accu:2,temp:3}[group];
   document.querySelectorAll('.trend-group-btn')[idx]?.classList.add('active');
+  const btn=document.getElementById('dashBtn'); if(btn) btn.disabled=false;
   updateTrendChips(); drawGraph();
   log(`Groepstrend: ${grp.name}`,'info');
 }
@@ -1834,7 +1933,18 @@ const ALL_PID_DEFS={
   '012D':{name:'EGR fout',             unit:'%',   cat:'Emissie',    min:-100,max:100,                     parse:b=>(b[0]/1.28-100)},
 };
 
-// ── STAP 1: Verbinden via Bluetooth ──
+// ── STAP 1: Verbinden — Capacitor BLE (APK) of Web Bluetooth (browser) ──
+
+// Vgate MX+ BLE UUIDs
+const BLE_SERVICE  = '0000fff0-0000-1000-8000-00805f9b34fb';
+const BLE_WRITE    = '0000fff2-0000-1000-8000-00805f9b34fb';
+const BLE_NOTIFY   = '0000fff1-0000-1000-8000-00805f9b34fb';
+
+// Detecteer of Capacitor BLE beschikbaar is (APK modus)
+function getCapacitorBLE(){
+  return window.Capacitor?.Plugins?.BluetoothLe || null;
+}
+
 async function connectSerial(){
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal&&apiVal.startsWith('sk-ant-')){
@@ -1843,107 +1953,164 @@ async function connectSerial(){
     updateApiPill();
   }
 
-  if(!('bluetooth' in navigator)){
-    alert('Web Bluetooth niet beschikbaar.\n\nGebruik Chrome op Android.\nOf start Demo modus.');
-    return;
-  }
-
   document.getElementById('btnConnect').disabled=true;
   document.getElementById('btnConnect').textContent='📡 Verbinden...';
 
-  try{
-    log('Bluetooth adapter zoeken...','info');
+  const ble=getCapacitorBLE();
 
-    // Vgate MX+ en andere ELM327 BLE adapters
-    btDevice=await navigator.bluetooth.requestDevice({
-      filters:[
-        {services:['0000fff0-0000-1000-8000-00805f9b34fb']}, // Vgate MX+, iCar Pro
-        {services:['e7810a71-73ae-499d-8c15-faa9aef0c3f2']}, // OBDLink
-        {namePrefix:'OBDII'},{namePrefix:'OBD2'},{namePrefix:'ELM327'},
-        {namePrefix:'Vgate'},{namePrefix:'MX+'},{namePrefix:'iCar'},
-        {namePrefix:'EOBD'},{namePrefix:'OBD'},
-      ],
-      optionalServices:[
-        '0000fff0-0000-1000-8000-00805f9b34fb',
-        'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-        '0000ffe0-0000-1000-8000-00805f9b34fb',
-        'be781a75-5f82-4b2b-b5e3-c3e2b6b82da0',
-      ]
+  if(ble){
+    // ── APK MODUS: Capacitor BLE (native Android) ──
+    await connectCapacitorBLE(ble);
+  } else if('bluetooth' in navigator){
+    // ── BROWSER MODUS: Web Bluetooth ──
+    await connectWebBluetooth();
+  } else {
+    document.getElementById('btnConnect').disabled=false;
+    document.getElementById('btnConnect').textContent='📡 Verbinden via Bluetooth';
+    showConnError('Bluetooth niet beschikbaar in deze omgeving. Gebruik de PidLane APK op Android.');
+  }
+}
+
+// ══ CAPACITOR BLE — Native Android APK ══
+async function connectCapacitorBLE(ble){
+  try{
+    log('Bluetooth initialiseren (native)...','info');
+    await ble.initialize();
+
+    log('Zoeken naar OBD2 adapter...','info');
+    let foundId=null, foundName='';
+
+    // Scan voor Vgate MX+ en andere ELM327 BLE adapters
+    await ble.requestLEScan({
+      services:[BLE_SERVICE],
+      allowDuplicates:false
+    },(result)=>{
+      if(!foundId){
+        foundId=result.device.deviceId;
+        foundName=result.device.name||result.device.deviceId;
+        log('Adapter gevonden: '+foundName,'ok');
+      }
     });
 
-    log('Apparaat gevonden: '+btDevice.name,'ok');
-    const server=await btDevice.gatt.connect();
-    log('GATT verbonden','ok');
+    // Wacht max 15 seconden op adapter (was 8s — te kort voor trage adapters)
+    await new Promise((resolve)=>{
+      const check=setInterval(()=>{if(foundId){clearInterval(check);resolve();}},200);
+      setTimeout(()=>{clearInterval(check);resolve();},15000);
+    });
 
-    // Zoek de juiste service en karakteristieken
-    btChar=null;
-    let notifyChar=null;
+    await ble.stopLEScan().catch(()=>{});
 
-    const services=await server.getPrimaryServices();
-    log(`${services.length} services gevonden`,'info');
-
-    for(const svc of services){
-      const svcId=svc.uuid;
-      log(`Service: ${svcId}`,'info');
-      const chars=await svc.getCharacteristics();
-
-      for(const ch of chars){
-        const props=ch.properties;
-        log(`Char: ${ch.uuid} write=${props.write||props.writeWithoutResponse} notify=${props.notify}`,'info');
-
-        // Vgate MX+: fff2 = write, fff1 = notify
-        if(ch.uuid.includes('fff2')||ch.uuid.includes('ffe2')){
-          btChar=ch;
-          log('Write char gevonden: '+ch.uuid,'ok');
-        }
-        if(ch.uuid.includes('fff1')||ch.uuid.includes('ffe1')){
-          notifyChar=ch;
-          log('Notify char gevonden: '+ch.uuid,'ok');
-        }
-        // Fallback: eerste schrijfbare char
-        if(!btChar&&(props.write||props.writeWithoutResponse)){
-          btChar=ch;
-          log('Fallback write char: '+ch.uuid,'ok');
-        }
-        if(!notifyChar&&(props.notify||props.indicate)){
-          notifyChar=ch;
-        }
+    if(!foundId){
+      log('Scan leeg — handmatig selecteren...','info');
+      try{
+        const dev=await ble.requestDevice({
+          services:[BLE_SERVICE],
+          optionalServices:['0000ffe0-0000-1000-8000-00805f9b34fb']
+        });
+        foundId=dev.deviceId;
+        foundName=dev.name||dev.deviceId;
+      }catch(e2){
+        throw new Error('Geen OBD2 adapter gevonden.\n\nControleer:\n• Adapter in OBD poort gestoken?\n• Contact van auto aan?\n• Adapter heeft stroom (lampje brandt)?');
       }
-      if(btChar) break;
     }
 
-    if(!btChar) throw new Error('Geen write karakteristiek gevonden. Controleer of de adapter aan staat.');
-
-    // Subscribe op notificaties voor inkomende data
-    if(notifyChar){
-      await notifyChar.startNotifications();
-      notifyChar.addEventListener('characteristicvaluechanged',e=>{
-        const val=new TextDecoder().decode(e.target.value);
-        btBuffer+=val;
-      });
-      log('Notificaties actief','ok');
-    } else if(btChar.properties.notify){
-      await btChar.startNotifications();
-      btChar.addEventListener('characteristicvaluechanged',e=>{
-        btBuffer+=new TextDecoder().decode(e.target.value);
-      });
-    }
-
-    btDevice.addEventListener('gattserverdisconnected',()=>{
+    // Verbinden
+    log(`Verbinden met ${foundName}...`,'info');
+    await ble.connect(foundId,()=>{
       connected=false; setConn(false);
       document.getElementById('vtag').style.display='none';
-      log('Bluetooth verbroken — klik Verbinden om opnieuw te verbinden','warn');
+      log('Bluetooth verbroken','warn');
     });
 
-    connected=true; demoMode=false;
-    log('Verbonden met '+btDevice.name,'ok');
+    log('Verbonden! Notificaties starten...','ok');
 
-    log('ELM327 initialiseren...','info');
+    // Ontvang data via notify karakteristiek
+    await ble.startNotifications(foundId,BLE_SERVICE,BLE_NOTIFY,(value)=>{
+      const text=new TextDecoder().decode(value.value);
+      btBuffer+=text;
+    });
+
+    // Sla deviceId op voor schrijven
+    btChar={
+      _capacitor:true,
+      _ble:ble,
+      _deviceId:foundId,
+      _name:foundName
+    };
+
+    connected=true; demoMode=false;
+    log('Klaar — ELM327 initialiseren...','ok');
     await initELM327();
     await scanNetworks();
 
   }catch(e){
-    log('Verbinding mislukt: '+e.message,'err');
+    log('Capacitor BLE fout: '+e.message,'err');
+    document.getElementById('btnConnect').disabled=false;
+    document.getElementById('btnConnect').textContent='📡 Verbinden via Bluetooth';
+    showConnError(e.message);
+  }
+}
+
+// ══ WEB BLUETOOTH — Browser fallback ══
+async function connectWebBluetooth(){
+  try{
+    log('Web Bluetooth zoeken...','info');
+    const device=await navigator.bluetooth.requestDevice({
+      filters:[
+        {services:[BLE_SERVICE]},
+        {services:['e7810a71-73ae-499d-8c15-faa9aef0c3f2']},
+        {namePrefix:'OBDII'},{namePrefix:'OBD2'},{namePrefix:'ELM327'},
+        {namePrefix:'Vgate'},{namePrefix:'MX+'},{namePrefix:'iCar'},
+      ],
+      optionalServices:[BLE_SERVICE,'0000ffe0-0000-1000-8000-00805f9b34fb']
+    });
+
+    log('Apparaat: '+device.name,'ok');
+    const server=await device.gatt.connect();
+    log('GATT verbonden','ok');
+
+    let writeChar=null, notifyChar=null;
+    const services=await server.getPrimaryServices();
+    for(const svc of services){
+      const chars=await svc.getCharacteristics();
+      for(const ch of chars){
+        if(ch.uuid.includes('fff2')||ch.uuid.includes('ffe2')) writeChar=ch;
+        if(ch.uuid.includes('fff1')||ch.uuid.includes('ffe1')) notifyChar=ch;
+        if(!writeChar&&(ch.properties.write||ch.properties.writeWithoutResponse)) writeChar=ch;
+        if(!notifyChar&&(ch.properties.notify||ch.properties.indicate)) notifyChar=ch;
+      }
+      if(writeChar) break;
+    }
+
+    if(!writeChar) throw new Error('Geen write karakteristiek gevonden op adapter.');
+
+    if(notifyChar){
+      await notifyChar.startNotifications();
+      notifyChar.addEventListener('characteristicvaluechanged',e=>{
+        btBuffer+=new TextDecoder().decode(e.target.value);
+      });
+      log('Notificaties actief','ok');
+    }
+
+    btChar={
+      _capacitor:false,
+      _webChar:writeChar,
+      _name:device.name
+    };
+
+    device.addEventListener('gattserverdisconnected',()=>{
+      connected=false; setConn(false);
+      document.getElementById('vtag').style.display='none';
+      log('Bluetooth verbroken','warn');
+    });
+
+    connected=true; demoMode=false;
+    log('Verbonden met '+device.name,'ok');
+    await initELM327();
+    await scanNetworks();
+
+  }catch(e){
+    log('Web BT fout: '+e.message,'err');
     document.getElementById('btnConnect').disabled=false;
     document.getElementById('btnConnect').textContent='📡 Verbinden via Bluetooth';
     showConnError(e.message);
@@ -1966,25 +2133,25 @@ function showConnError(msg){
 async function sendBT(cmd){
   if(!btChar) return '';
   btBuffer='';
-  const enc=new TextEncoder();
-  const data=enc.encode(cmd+'\r');
+  const data=new TextEncoder().encode(cmd+'\r');
   try{
-    // MX+ gebruikt writeValueWithoutResponse op fff2
-    if(btChar.properties.writeWithoutResponse){
-      await btChar.writeValueWithoutResponse(data);
+    if(btChar._capacitor){
+      // Native APK via Capacitor BLE
+      await btChar._ble.write(btChar._deviceId,BLE_SERVICE,BLE_WRITE,new DataView(data.buffer));
     } else {
-      await btChar.writeValue(data);
+      // Web Bluetooth browser fallback
+      const ch=btChar._webChar;
+      if(ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(data);
+      else await ch.writeValue(data);
     }
   }catch(e){
     log('BT write fout: '+e.message,'err'); return '';
   }
-  // Wacht op response (max 3 seconden, check elke 50ms)
   const start=Date.now();
   while(Date.now()-start<3000){
     await delay(50);
     if(btBuffer.includes('>')) break;
-    // Sommige adapters eindigen op \r\n zonder >
-    if(btBuffer.length>0&&Date.now()-start>500) break;
+    if(btBuffer.length>0&&Date.now()-start>800) break;
   }
   return btBuffer.trim();
 }
@@ -2249,7 +2416,7 @@ function getVehicle(){
 // ── VIN UITLEZEN EN DECODEREN ──
 async function tryReadVIN(){
   try{
-    await sendCmd('ATH1'); // headers aan voor multi-frame response
+    await sendCmd('ATH1');
     const r=await sendCmd('0902');
     await sendCmd('ATH0');
     if(!r||r.includes('NO DATA')||r.includes('ERROR')) return null;
@@ -2262,7 +2429,24 @@ async function tryReadVIN(){
     vin=vin.replace(/[^A-HJ-NPR-Z0-9]/gi,'').slice(-17);
     if(vin.length<5) return null;
     log('VIN: '+vin,'ok');
-    return decodeVIN(vin);
+    const info=decodeVIN(vin);
+    // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken
+    if(!info.merk||info.merk==='Onbekend merk'){
+      try{
+        const resp=await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`);
+        if(resp.ok){
+          const data=await resp.json();
+          const get=v=>(data.Results||[]).find(r=>r.Variable===v)?.Value||'';
+          const make=get('Make'),model=get('Model'),year=get('Model Year');
+          if(make&&make!=='Not Applicable'){
+            info.merk=make.charAt(0)+make.slice(1).toLowerCase();
+            info.model=model||''; info.year=year||info.year;
+            log(`NHTSA: ${info.merk} ${info.model} ${info.year}`,'ok');
+          }
+        }
+      }catch(e){ log('NHTSA API offline — lokale VIN database gebruikt','info'); }
+    }
+    return info;
   }catch(e){ log('VIN fout: '+e.message,'warn'); return null; }
 }
 
@@ -2494,104 +2678,41 @@ function zoom(delta){currentZoom=Math.min(1.5,Math.max(0.5,currentZoom+delta));a
 function zoomReset(){currentZoom=1.0;applyZoom();}
 
 // ════════════════════════════════════════
-// WELCOME CARD CLICKS
+// INIT — alles in DOMContentLoaded zodat HTML zeker geladen is
 // ════════════════════════════════════════
-document.getElementById('wc-diag').onclick=()=>startChoice('diag');
-document.getElementById('wc-check').onclick=()=>startChoice('check');
-document.getElementById('wc-live').onclick=()=>startChoice('live');
-document.getElementById('wc-dtc').onclick=()=>startChoice('dtc');
-document.getElementById('wc-report').onclick=()=>startChoice('report');
-document.getElementById('wc-fuel').onclick=()=>startChoice('fuel');
-document.getElementById('btnConnect').onclick=()=>connectSerial();
-document.getElementById('btnDemo').onclick=()=>startDemo();
+document.addEventListener('DOMContentLoaded', function(){
 
-// ════════════════════════════════════════
-// INIT — alles hier, helemaal onderaan
-// ════════════════════════════════════════
-(function init(){
+  // Welcome card klikkers
+  document.getElementById('wc-diag').onclick=()=>startChoice('diag');
+  document.getElementById('wc-check').onclick=()=>startChoice('check');
+  document.getElementById('wc-live').onclick=()=>startChoice('live');
+  document.getElementById('wc-dtc').onclick=()=>startChoice('dtc');
+  document.getElementById('wc-report').onclick=()=>startChoice('report');
+  document.getElementById('wc-fuel').onclick=()=>startChoice('fuel');
+  document.getElementById('btnConnect').onclick=()=>connectSerial();
+  document.getElementById('btnDemo').onclick=()=>startDemo();
+
   buildPIDList();
   loadApiKey();
-  // Restore saved preferences
+
+  // Restore opgeslagen voorkeuren
   try{
     if(localStorage.getItem('ns_theme')==='dark') toggleTheme();
-    const sf=localStorage.getItem('ns_font');if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';document.getElementById('fontLbl').textContent=currentFont;}
-    const sz=localStorage.getItem('ns_zoom');if(sz){currentZoom=parseFloat(sz)||1.0;applyZoom();}
+    const sf=localStorage.getItem('ns_font');
+    if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';document.getElementById('fontLbl').textContent=currentFont;}
+    const sz=localStorage.getItem('ns_zoom');
+    if(sz){currentZoom=parseFloat(sz)||1.0;applyZoom();}
     if(localStorage.getItem('ns_sl')==='true') toggleSL();
     if(localStorage.getItem('ns_sr')==='true') toggleSR();
   }catch(e){}
+
   window.addEventListener('resize',()=>{ if(graphPID||trendPIDs.length) drawGraph(); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNeonDashboard?.(); closeRitAnalyse?.(); }});
+
   log('PidLane geladen.','info');
   log('Klik "Verbinden" of "Demo modus" om te starten.','info');
-})();
-</script>
-<!-- ══ NEON DASHBOARD OVERLAY ══ -->
-<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:#020408;overflow:hidden;font-family:'DM Sans',sans-serif;">
+});
 
-  <!-- Animated background canvas -->
-  <canvas id="neonBg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-
-  <!-- Top bar -->
-  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.05);z-index:9020">
-    <div style="font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(0,255,200,.5)">PIDLANE // LIVE DASHBOARD</div>
-    <div id="neonGroupName" style="font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.8)"></div>
-    <button onclick="closeNeonDashboard()" style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.background='rgba(255,0,100,.2)';this.style.borderColor='rgba(255,0,100,.4)'" onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.borderColor='rgba(255,255,255,.15)'">✕</button>
-  </div>
-
-  <!-- Gauge grid -->
-  <div id="neonGaugeGrid" style="position:absolute;top:44px;bottom:80px;left:0;right:0;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:16px;padding:16px;overflow:hidden;z-index:9010;"></div>
-
-  <!-- Bottom status bar -->
-  <div id="neonStatusBar" style="position:absolute;bottom:0;left:0;right:0;height:80px;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;gap:24px;padding:0 20px;z-index:9020;flex-wrap:wrap;overflow:hidden;"></div>
-</div>
-
-<!-- ══ RIT ANALYSE OVERLAY ══ -->
-<div id="ritDash" style="display:none;position:fixed;inset:0;z-index:8900;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:9000">
-  <div style="position:absolute;inset:0;display:flex;flex-direction:column;max-width:700px;margin:0 auto;padding:20px;">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0">
-      <div>
-        <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:2px">🚗 Rit Analyse</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4)" id="ritStatus">Start rijden — minimaal 10 minuten</div>
-      </div>
-      <button onclick="closeRitAnalyse()" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer">✕ Sluiten</button>
-    </div>
-
-    <!-- Progress -->
-    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:14px;flex-shrink:0">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1px">VOORTGANG</div>
-        <div id="ritTimer" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:#00f5ff">0:00</div>
-      </div>
-      <div style="background:rgba(255,255,255,.08);border-radius:4px;height:6px;overflow:hidden">
-        <div id="ritProgress" style="height:100%;background:linear-gradient(90deg,#00f5ff,#a78bfa);border-radius:4px;width:0%;transition:width .5s ease"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:9px;color:rgba(255,255,255,.3)">
-        <span>0 min</span><span>2 min</span><span>4 min</span><span>6 min</span><span>8 min</span><span>10 min</span>
-      </div>
-    </div>
-
-    <!-- Huidige fase -->
-    <div id="ritCurrentPhase" style="background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;flex-shrink:0">
-      <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(0,245,255,.6);margin-bottom:4px">HUIDIGE FASE</div>
-      <div id="ritPhaseName" style="font-size:13px;font-weight:700;color:#fff">Wachten op start...</div>
-      <div id="ritPhaseDesc" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px"></div>
-    </div>
-
-    <!-- Fase resultaten -->
-    <div style="flex:1;overflow-y:auto" id="ritResults">
-      <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:8px">FASE RESULTATEN</div>
-      <div id="ritPhaseResults" style="display:flex;flex-direction:column;gap:8px"></div>
-    </div>
-
-    <!-- Acties -->
-    <div style="display:flex;gap:8px;margin-top:14px;flex-shrink:0" id="ritActions">
-      <button id="ritStartBtn" onclick="startRitAnalyse()" style="flex:1;padding:12px;border-radius:9px;border:none;background:linear-gradient(135deg,#00f5ff,#a78bfa);color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer">🚗 Start Rit Analyse</button>
-      <button id="ritStopBtn" onclick="stopRitAnalyse()" style="display:none;flex:1;padding:12px;border-radius:9px;border:1px solid rgba(255,100,100,.4);background:rgba(255,0,0,.1);color:#ff6464;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer">⏹ Stop & Analyseer</button>
-    </div>
-  </div>
-</div>
-
-<script>
 // ════════════════════════════════════════
 // NEON DASHBOARD — RONDE METERS
 // ════════════════════════════════════════
@@ -2785,13 +2906,7 @@ function renderNeonGauges(){
   });
 }
 
-// Enable dashboard button when group selected
-const _origSelectTrendGroup=selectTrendGroup;
-window.selectTrendGroup=function(group){
-  _origSelectTrendGroup(group);
-  const btn=document.getElementById('dashBtn');
-  if(btn) btn.disabled=!activeTrendGroup;
-};
+// Dashboard button wordt enabled/disabled via selectTrendGroup functie hierboven
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ closeNeonDashboard(); closeRitAnalyse(); }
 });
@@ -2993,14 +3108,50 @@ async function generateRitRapport(){
     lines.push(totalAnalysis);
     document.getElementById('ritStatus').textContent=`✅ Rit rapport klaar — ${mins}:${secs.toString().padStart(2,'0')} min geanalyseerd`;
 
-    // Toon in AI paneel
+    // Toon in rechter AI paneel als Rit Evaluatie
     closeRitAnalyse();
-    renderAIText(totalAnalysis,document.getElementById('aiContent'));
+
+    // Bouw rit evaluatie weergave in AI paneel
+    const aiContent=document.getElementById('aiContent');
+    aiContent.innerHTML='';
+
+    // Header kaart
+    const header=document.createElement('div');
+    header.style.cssText='background:linear-gradient(135deg,rgba(0,245,255,.1),rgba(167,139,250,.1));border:1px solid rgba(0,245,255,.2);border-radius:8px;padding:10px 12px;margin-bottom:10px;';
+    const ht=document.createElement('div'); ht.style.cssText='font-size:12px;font-weight:700;margin-bottom:3px;'; ht.textContent='🚗 Rit Evaluatie';
+    const hs=document.createElement('div'); hs.style.cssText='font-size:10px;color:var(--tx3);'; hs.textContent=`${ritLogs.length} fases — ${mins}:${secs.toString().padStart(2,'0')} minuten`;
+    header.appendChild(ht); header.appendChild(hs); aiContent.appendChild(header);
+
+    // Fase samenvatting chips
+    const chips=document.createElement('div'); chips.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;';
+    ritLogs.forEach(l=>{
+      const hasProbleem=Object.values(l.stats||{}).some(s=>!s.ok);
+      const chip=document.createElement('div');
+      chip.style.cssText=`font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;background:${hasProbleem?'var(--rds)':'var(--gns)'};color:${hasProbleem?'var(--rd)':'var(--gn)'}`;
+      chip.textContent=`${l.fase} ${hasProbleem?'⚠':'✅'}`;
+      chips.appendChild(chip);
+    });
+    aiContent.appendChild(chips);
+
+    // AI totaalanalyse
+    const aiDiv=document.createElement('div');
+    renderAIText(totalAnalysis,aiDiv);
+    aiContent.appendChild(aiDiv);
+
+    // Download knop
+    const dlBtn=document.createElement('button');
+    dlBtn.className='btn'; dlBtn.style.cssText='width:100%;justify-content:center;margin-top:8px;';
+    dlBtn.textContent='💾 Download rit rapport';
+    dlBtn.onclick=()=>download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
+    aiContent.appendChild(dlBtn);
+
   }catch(e){
-    document.getElementById('ritStatus').textContent='Rapport klaar (geen AI beschikbaar)';
+    const el=document.getElementById('ritStatus');
+    if(el) el.textContent='Rapport klaar (geen AI beschikbaar)';
+    closeRitAnalyse();
   }
 
-  // Download rapport
+  // Auto download rapport
   download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
   log('🚗 Rit rapport gedownload','ok');
 }
