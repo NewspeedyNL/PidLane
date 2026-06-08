@@ -1,7 +1,7 @@
 {
   "name": "pidlane",
   "version": "2.0.0",
-  "description": "PidLane - Android App",
+  "description": "PidLane - AI Car Diagnostics",
   "main": "src/index.html",
   "scripts": {
     "build": "echo 'No build step needed'",
