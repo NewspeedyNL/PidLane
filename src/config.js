@@ -4,7 +4,7 @@
 // Dit is het ENIGE bestand dat je hoeft aan te passen.
 // index.html nooit meer aanraken voor credentials.
 // ════════════════════════════════════════
-
+const OBDLINK_ADDRESS = '00:04:3E:8B:7B:32';
 // ── LOGIN ACCOUNTS ──
 const USERS = {
   'Admin': {
