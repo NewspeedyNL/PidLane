@@ -2200,21 +2200,29 @@ async function connectSerial(){
 
 // ════════════════════════════════════════
 // MODUS 1 — Bluetooth Classic SPP (OBDLink MX+)
+// Correcte API: scan(), connect({address}), write({address,value}),
+//               startNotifications({address}), addListener('dataReceived')
 // ════════════════════════════════════════
 async function connectSPP(spp){
   try{
     btDiag('Bluetooth Classic SPP starten...','info');
 
-    // Correcte methode: getPairedDevices
-    const result=await spp.getPairedDevices();
-    const devices=result?.devices||[];
-    btDiag(`${devices.length} gekoppelde apparaten gevonden`,'info');
+    // Stap 1: check of Bluetooth aan is
+    const enabled=await spp.isEnabled().catch(()=>({enabled:true}));
+    btDiag(`Bluetooth: ${enabled.enabled?'AAN ✓':'UIT ✗'}`,'info');
+
+    // Stap 2: scan naar apparaten in de buurt (inclusief al-gekoppelde)
+    btDiag('Scannen naar apparaten (10 sec)...','info');
+    const scanResult=await spp.scan();
+    const devices=scanResult?.devices||[];
+    btDiag(`${devices.length} apparaten gevonden`,'info');
 
     devices.forEach(dev=>{
       btDiagDevice(dev.name||dev.Name, dev.address||dev.id, null);
     });
 
-    const OBD_NAMES=['obdlink','obd','elm','vgate','icar','eobd','scan'];
+    // Zoek OBD2 adapter op naam
+    const OBD_NAMES=['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
     let target=null;
     for(const dev of devices){
       const name=(dev.name||dev.Name||'').toLowerCase();
@@ -2223,26 +2231,32 @@ async function connectSPP(spp){
 
     if(!target){
       const names=devices.map(d=>d.name||d.Name||d.address||d.id||'?').join(', ');
-      btDiag(`Geen OBD2 adapter in: ${names||'(leeg)'}`, 'err');
-      throw new Error(`Geen OBD2 adapter gevonden.\n\nGekoppelde apparaten:\n${names||'(geen)'}\n\nKoppel de OBDLink MX+ eerst via Android Bluetooth instellingen.`);
+      btDiag(`Geen OBD2 adapter gevonden. Gevonden: ${names||'(niets)'}`, 'err');
+      throw new Error(
+        `Geen OBD2 adapter gevonden.\n\n`+
+        `Gevonden apparaten:\n${names||'(geen)'}\n\n`+
+        `Controleer:\n• Adapter in OBD-poort?\n• Contact aan?\n• Adapter eerder gekoppeld in Bluetooth instellingen?`
+      );
     }
 
     const address=target.address||target.id;
     const name=target.name||target.Name;
-    btDiag(`OBD2 adapter: ${name} (${address})`,'ok');
-    btDiag('SPP RFCOMM verbinden...','info');
-    await spp.connect({address});
-    btDiag('SPP verbonden ✓','ok');
+    btDiag(`OBD2 adapter gevonden: ${name} (${address})`,'ok');
+    btDiag('Verbinden via SPP RFCOMM...','info');
 
-    // Start notificaties voor inkomende data
+    // Stap 3: verbinden
+    await spp.connect({address});
+    btDiag('Verbonden ✓','ok');
+
+    // Stap 4: notificaties starten voor inkomende data
     await spp.startNotifications({address});
-    await spp.addListener('dataReceived',(data)=>{
-      btBuffer+=(data?.data||data?.value||'');
+    const listener=await spp.addListener('dataReceived',(data)=>{
+      btBuffer+=(data?.data||data?.value||data?.text||'');
     });
 
-    window._sppConn={spp,address,name};
+    window._sppConn={spp, address, name, listener};
     connected=true; demoMode=false;
-    btDiag(`Verbonden met ${name}`,'ok');
+    btDiag(`SPP actief: ${name}`,'ok');
     log(`SPP verbonden: ${name}`,'ok');
     logToSheets('connect',`SPP verbonden: ${name}`,{address});
     await initELM327();
@@ -2981,10 +2995,16 @@ function setConn(on){
   else{dot.className='dot';txt.textContent='Niet verbonden';btn.textContent='Verbinden';btn.className='btn-t';}
 }
 function showVtag(t){const el=document.getElementById('vtag');el.textContent=t;el.style.display='block';}
-function handleConnect(){
+async function handleConnect(){
   if(connected){
     connected=false; demoMode=false; clearInterval(pollTimer);
-    try{window._sppConn?.spp?.disconnect?.();}catch(e){}
+    try{
+      if(window._sppConn){
+        window._sppConn.listener?.remove?.();
+        await window._sppConn.spp.stopNotifications({address:window._sppConn.address}).catch(()=>{});
+        await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
+      }
+    }catch(e){}
     try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){}
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false); document.getElementById('vtag').style.display='none';
