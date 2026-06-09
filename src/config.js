@@ -12,7 +12,7 @@ const OBDLINK_NAME    = 'OBDLink MX+ 90011';
 const USERS = {
   'Admin': {
     password: '1029384756',
-    apiKey:   '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',  // ← Vervang door sk-ant-api03-...
+    apiKey:   'sl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',  // ← Vervang door sk-ant-api03-...
     role:     'admin',
     label:    'Admin'
   },
