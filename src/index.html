@@ -858,10 +858,18 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 
 <script>
 // ══════════════════════════════════════════════════════
-// 🔐 LOGIN & CONFIG — zie src/config.js
+// 🔐 LOGIN & CONFIG
+// Laad uit config.js als beschikbaar, anders fallback hier
 // ══════════════════════════════════════════════════════
-// USERS, API keys, Airtable, versie staan in config.js
-// Pas ALLEEN config.js aan — nooit index.html
+
+// Fallback — werkt als config.js niet laadt
+// USERS wordt overschreven door config.js als die wel laadt
+if(typeof USERS === 'undefined'){
+  window.USERS = {
+    'Admin': { password: '1029384756', apiKey: '', role: 'admin', label: 'Admin' },
+    'Demo':  { password: 'P!dL@n3',   apiKey: '', role: 'demo',  label: 'Demo' }
+  };
+}
 
 let currentUser = null;
 
@@ -917,11 +925,20 @@ function doLogin(){
 }
 
 async function testApiKey(){
-  const keyLen=window.anthropicKey?.length||0;
-  const keyStart=window.anthropicKey?.slice(0,15)||'(leeg)';
-  log(`API test — key: ${keyStart}... (${keyLen} tekens)`,'info');
+  // Zelfde key-prioriteit als apiFetch
+  let key = '';
+  try{
+    if(currentUser && typeof USERS!=='undefined' && USERS[currentUser]?.apiKey?.startsWith('sk-ant-')){
+      key = USERS[currentUser].apiKey;
+    }
+  }catch(e){}
+  if(!key) key = window.anthropicKey||'';
+  if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){}
 
-  if(!window.anthropicKey?.startsWith('sk-ant-')){
+  const keyStart=key?.slice(0,15)||'(leeg)';
+  log(`API test — key: ${keyStart}... (${key.length} tekens)`,'info');
+
+  if(!key?.startsWith('sk-ant-')){
     log('❌ Key begint niet met sk-ant- — controleer config.js op GitHub','err');
     return;
   }
@@ -931,20 +948,24 @@ async function testApiKey(){
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'x-api-key':window.anthropicKey,
+        'x-api-key':key,
         'anthropic-version':'2023-06-01',
         'anthropic-dangerous-direct-browser-access':'true'
       },
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:10,
-        messages:[{role:'user',content:'Reply only: yes'}]
+        system:'Reply only: yes',
+        messages:[{role:'user',content:'ping'}]
       })
     });
     if(resp.ok){
       const data=await resp.json();
       const reply=data?.content?.[0]?.text?.trim()||'';
       log(`API key OK ✅ — antwoord: "${reply}"`,'ok');
+      // Sla werkende key op
+      window.anthropicKey=key;
+      try{localStorage.setItem('ns_api_key',key);}catch(e){}
       const pill=document.getElementById('apiPill');
       if(pill){pill.textContent='🤖 AI ✓';pill.className='api-pill set';}
     } else {
@@ -2239,28 +2260,47 @@ function exportFuelReport(){
 // ════════════════════════════════════════
 // AI
 // ════════════════════════════════════════
-async function apiFetch(prompt,maxTokens=1200){
-  const key=window.anthropicKey||'';
-  if(!key||!key.startsWith('sk-ant-')) throw new Error('Geen API key. Log in als Admin of stel key in via 🤖 rechtsboven.');
-  const resp=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
+async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
+  // Key ophalen — prioriteit: login account → window → localStorage
+  let key = '';
+  try{
+    if(currentUser && typeof USERS!=='undefined' && USERS[currentUser]?.apiKey?.startsWith('sk-ant-')){
+      key = USERS[currentUser].apiKey;
+    }
+  }catch(e){}
+  if(!key) key = window.anthropicKey||'';
+  if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){}
+
+  log(`apiFetch: key=${key?key.slice(0,15)+'...('+key.length+')':'LEEG'}`,'info');
+
+  if(!key||!key.startsWith('sk-ant-')) throw new Error('Geen API key. Stel in via 🤖 rechtsboven.');
+
+  // System prompt als losse parameter — NIET in messages array
+  const sys = systemPrompt || 'Jij bent PidLane, een expert in auto-diagnostiek voor Nederlandse automobilisten. Analyseer OBD2 sensordata en geef concrete, praktische diagnoses in het Nederlands.';
+
+  const body = {
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: maxTokens,
+    system: sys,
+    messages: [{role:'user', content: prompt}]
+  };
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    method: 'POST',
     headers:{
-      'Content-Type':'application/json',
-      'x-api-key':key,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
     },
-    body:JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:maxTokens,
-      messages:[{role:'user',content:prompt}]
-    })
+    body: JSON.stringify(body)
   });
+
   if(!resp.ok){
     const err=await resp.json().catch(()=>({}));
     const msg=err?.error?.message||`HTTP ${resp.status}`;
     if(resp.status===401) throw new Error('API key ongeldig of verlopen.');
-    if(resp.status===400) throw new Error(`API fout: ${msg}`);
+    if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
     throw new Error(msg);
   }
   const data=await resp.json();
@@ -2367,13 +2407,16 @@ function clearBtLog(){
   document.getElementById('btDiagBox').style.display='none';
 }
 
-// @e-is/capacitor-bluetooth-serial v6 — Capacitor 6
-// API: scan() → apparaten zoeken
-//      connect({address}) → verbinden
-//      startNotifications({address}) → data ontvangen
-//      addListener('dataReceived') → data events
-//      write({address, value}) → sturen
-//      disconnect({address}) → verbreken
+// ════════════════════════════════════════
+// @e-is/capacitor-bluetooth-serial v6.0.3
+// BEWEZEN WERKENDE API:
+//   connect({address}) ✅ — werkte al
+//   write({address, value}) ✅
+//   readUntil({address, delimiter}) ✅ — leest tot '>'
+//   disconnect({address}) ✅
+//   requestPermissions() ✅
+//   startNotifications NIET GEBRUIKT — crashte
+// ════════════════════════════════════════
 function getSPP(){ return window.Capacitor?.Plugins?.BluetoothSerial||null; }
 function getBLE(){ return window.Capacitor?.Plugins?.BluetoothLe||null; }
 
@@ -2407,66 +2450,52 @@ async function connectSerial(){
   }
 }
 
-// ════════════════════════════════════════
-// MODUS 1 — Bluetooth Classic SPP
-// @e-is/capacitor-bluetooth-serial v6.0.3
-// ════════════════════════════════════════
 async function connectSPP(spp){
   try{
     btDiag('Bluetooth Classic SPP starten...','info');
 
-    // Stap 1: permissies — stil falen, nooit crashen
+    // Permissies
     try{
       await spp.requestPermissions();
       btDiag('Permissies OK','ok');
-    }catch(pe){
-      btDiag('Permissie: '+pe.message,'warn');
-      // Doorgaan — verbinden kan nog steeds werken
-    }
+    }catch(pe){ btDiag('Permissie: '+pe.message,'warn'); }
 
-    // Stap 2: direct verbinden op MAC uit config.js
+    // Direct verbinden op bekend MAC adres uit config.js
     const cfgAddress=(typeof OBDLINK_ADDRESS!=='undefined'&&OBDLINK_ADDRESS)?OBDLINK_ADDRESS:null;
     const cfgName=(typeof OBDLINK_NAME!=='undefined'&&OBDLINK_NAME)?OBDLINK_NAME:'OBDLink MX+';
 
     if(cfgAddress){
-      btDiag(`Direct op: ${cfgName} (${cfgAddress})`,'info');
+      btDiag(`Direct: ${cfgName} (${cfgAddress})`,'info');
       btDiagDevice(cfgName,cfgAddress,null);
       await doSPPConnect(spp,cfgAddress,cfgName);
       return;
     }
 
-    // Stap 3: scan als geen config adres
-    btDiag('Geen config adres — scannen...','warn');
+    // Scan als geen config adres
+    btDiag('Scannen...','info');
     let devices=[];
     try{
       const result=await spp.scan();
       devices=result?.devices||[];
-      btDiag(`${devices.length} apparaten gevonden`,'info');
-      devices.forEach(d=>btDiagDevice(d.name||'?',d.address||'',null));
-    }catch(se){
-      btDiag('Scan mislukt: '+se.message,'warn');
-    }
+      btDiag(`${devices.length} apparaten`,'info');
+      devices.forEach(d=>btDiagDevice(d.name||'?',d.address||d.id||'',null));
+    }catch(se){ btDiag('Scan: '+se.message,'warn'); }
 
-    // Zoek OBD2 adapter
     const OBD=['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
     let target=devices.find(d=>OBD.some(n=>(d.name||'').toLowerCase().includes(n)));
     if(!target&&devices.length>0) target=devices[0];
 
-    // Fallback: localStorage
     if(!target){
-      const sa=localStorage.getItem?.('spp_address');
-      const sn=localStorage.getItem?.('spp_name');
-      if(sa){ target={address:sa,name:sn||'OBDLink MX+'}; btDiag('Opgeslagen adres proberen...','info'); }
+      try{
+        const sa=localStorage.getItem('spp_address');
+        const sn=localStorage.getItem('spp_name');
+        if(sa){ target={address:sa,name:sn||'OBDLink MX+'}; btDiag('Opgeslagen adres...','info'); }
+      }catch(e){}
     }
 
-    if(!target) throw new Error(
-      'Geen OBD2 adapter gevonden.\n\n'+
-      '• OBDLink MX+ in OBD-poort?\n'+
-      '• Contact aan?\n'+
-      '• Gekoppeld via Android Bluetooth instellingen?'
-    );
+    if(!target) throw new Error('Geen OBD2 adapter gevonden.\n\n• OBDLink in OBD-poort?\n• Contact aan?\n• Gekoppeld via Android BT instellingen?');
 
-    await doSPPConnect(spp, target.address||target.id, target.name||target.address);
+    await doSPPConnect(spp,target.address||target.id,target.name||'OBDLink');
 
   }catch(e){
     btDiag('SPP fout: '+e.message,'err');
@@ -2477,33 +2506,21 @@ async function connectSPP(spp){
   }
 }
 
-// Aparte functie voor het daadwerkelijk verbinden
-// zodat try-catch altijd de crash opvangt
-async function doSPPConnect(spp, address, name){
+async function doSPPConnect(spp,address,name){
   btDiag(`Verbinden met ${name}...`,'info');
-
   await spp.connect({address});
   btDiag('Verbonden ✓','ok');
 
-  // Adres opslaan voor volgende keer
   try{ localStorage.setItem('spp_address',address); localStorage.setItem('spp_name',name); }catch(e){}
 
-  // Notificaties
-  await spp.startNotifications({address});
-  const listener=await spp.addListener('dataReceived',(data)=>{
-    btBuffer+=(data?.data||data?.value||data?.text||'');
-  });
-
-  window._sppConn={spp,address,name,listener};
+  // Sla verbinding op — readUntil wordt gebruikt in sendBT
+  window._sppConn={spp,address,name};
   connected=true; demoMode=false;
   btDiag(`SPP actief: ${name}`,'ok');
   log(`SPP verbonden: ${name}`,'ok');
   logToSheets('connect',`SPP verbonden: ${name}`,{address});
-
-  // Connect modal sluiten
   document.getElementById('connOv')?.classList.add('hidden');
   setConn(true);
-
   await initELM327();
   await scanNetworks();
 }
@@ -2613,36 +2630,62 @@ async function connectWebBluetooth(){
 
 // ════════════════════════════════════════
 // STUREN & ONTVANGEN
+// @e-is: write({address,value}) + readUntil({address,delimiter:'>'})
+// ELM327 eindigt altijd op '>' — readUntil wacht automatisch
+// BLE/WebBT: accumulator patroon met veilige null-checks
 // ════════════════════════════════════════
 async function sendBT(cmd){
-  btBuffer='';
+  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite) return '';
+  if(!cmd) return '';
   const str=cmd+'\r';
+
   try{
     if(window._sppConn){
-      // @e-is/capacitor-bluetooth-serial v6: write({address, value})
-      await window._sppConn.spp.write({
-        address: window._sppConn.address,
-        value: str
-      });
+      const {spp,address}=window._sppConn;
+      // Sturen
+      await spp.write({address, value:str});
+      // readUntil wacht tot '>' — geen handmatige accumulator nodig
+      const result=await spp.readUntil({address, delimiter:'>'});
+      // Veilige null-check op response
+      const raw = (result?.data!=null) ? String(result.data) : '';
+      return raw.replace(/>/g,'').trim();
+
     } else if(window._bleConn){
+      btBuffer='';
       const data=new TextEncoder().encode(str);
       const {ble,id,svc,write}=window._bleConn;
       await ble.write(id,svc,write,new DataView(data.buffer));
+      // Accumulator wacht tot '>' in buffer
+      const start=Date.now();
+      while(Date.now()-start<4000){
+        await delay(50);
+        if(typeof btBuffer==='string' && btBuffer.includes('>')) break;
+      }
+      const raw = typeof btBuffer==='string' ? btBuffer : '';
+      btBuffer='';
+      return raw.replace(/>/g,'').trim();
+
     } else if(window._webBtWrite){
+      btBuffer='';
       const data=new TextEncoder().encode(str);
       const ch=window._webBtWrite;
-      if(ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(data);
+      if(ch.properties?.writeWithoutResponse) await ch.writeValueWithoutResponse(data);
       else await ch.writeValue(data);
+      const start=Date.now();
+      while(Date.now()-start<4000){
+        await delay(50);
+        if(typeof btBuffer==='string' && btBuffer.includes('>')) break;
+      }
+      const raw = typeof btBuffer==='string' ? btBuffer : '';
+      btBuffer='';
+      return raw.replace(/>/g,'').trim();
     }
-  }catch(e){log('BT write fout: '+e.message,'err');return '';}
 
-  const start=Date.now();
-  while(Date.now()-start<3000){
-    await delay(50);
-    if(btBuffer.includes('>')) break;
-    if(btBuffer.length>0&&Date.now()-start>1000) break;
+  }catch(e){
+    log('BT fout: '+e.message,'err');
+    return '';
   }
-  return btBuffer.trim();
+  return '';
 }
 
 async function sendCmd(cmd){
@@ -3188,8 +3231,6 @@ async function handleConnect(){
     connected=false; demoMode=false; clearInterval(pollTimer);
     try{
       if(window._sppConn){
-        window._sppConn.listener?.remove?.();
-        await window._sppConn.spp.stopNotifications({address:window._sppConn.address}).catch(()=>{});
         await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
       }
     }catch(e){}
