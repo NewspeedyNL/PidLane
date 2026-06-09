@@ -2412,9 +2412,10 @@ function clearBtLog(){
 // BEWEZEN WERKENDE API:
 //   connect({address}) ✅ — werkte al
 //   write({address, value}) ✅
-//   readUntil({address, delimiter}) ✅ — leest tot '>'
+//   read({address}) polling elke 50ms ✅ — ENIGE werkende leesmethode
 //   disconnect({address}) ✅
 //   requestPermissions() ✅
+//   readUntil NIET GEBRUIKT — gaf lege responses
 //   startNotifications NIET GEBRUIKT — crashte
 // ════════════════════════════════════════
 function getSPP(){ return window.Capacitor?.Plugins?.BluetoothSerial||null; }
@@ -2513,7 +2514,7 @@ async function doSPPConnect(spp,address,name){
 
   try{ localStorage.setItem('spp_address',address); localStorage.setItem('spp_name',name); }catch(e){}
 
-  // Sla verbinding op — readUntil wordt gebruikt in sendBT
+  // Sla verbinding op — read() polling wordt gebruikt in sendBT
   window._sppConn={spp,address,name};
   connected=true; demoMode=false;
   btDiag(`SPP actief: ${name}`,'ok');
@@ -2630,30 +2631,53 @@ async function connectWebBluetooth(){
 
 // ════════════════════════════════════════
 // STUREN & ONTVANGEN
-// @e-is: write({address,value}) + readUntil({address,delimiter:'>'})
-// ELM327 eindigt altijd op '>' — readUntil wacht automatisch
+// @e-is: write({address,value}) + read({address}) polling elke 50ms
+// readUntil gaf lege responses — read() polling is de enige werkende methode
+// Promise.race timeouts annuleren readUntil NIET → hangende reads aten responses op
 // BLE/WebBT: accumulator patroon met veilige null-checks
 // ════════════════════════════════════════
-async function sendBT(cmd){
+async function sendBT(cmd, timeoutMs){
   if(!window._sppConn&&!window._bleConn&&!window._webBtWrite) return '';
   if(!cmd) return '';
   const str=cmd+'\r';
+  const TIMEOUT=timeoutMs||6000;
 
   try{
     if(window._sppConn){
       const {spp,address}=window._sppConn;
+
+      // Oude data wegspoelen zodat vorige (late) responses niet meegelezen worden
+      try{
+        const stale=await spp.read({address});
+        if(stale?.data) btDiag(`RX flush: "${String(stale.data).slice(0,40)}"`,'warn');
+      }catch(e){}
+
       await spp.write({address, value:str});
-      // readUntil met timeout — anders hangt het eeuwig als auto niet reageert
-      const TIMEOUT=5000;
-      const result = await Promise.race([
-        spp.readUntil({address, delimiter:'>'}),
-        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),TIMEOUT))
-      ]).catch(e=>{
-        if(e.message==='timeout') return {data:''};
-        throw e;
-      });
-      const raw=(result?.data!=null)?String(result.data):'';
-      return raw.replace(/>/g,'').trim();
+
+      // Polling: elke 50ms read() tot '>' prompt of timeout
+      let buf='';
+      const start=Date.now();
+      while(Date.now()-start<TIMEOUT){
+        await delay(50);
+        try{
+          const r=await spp.read({address});
+          if(r?.data!=null&&String(r.data).length>0){
+            buf+=String(r.data);
+            btDiag(`RX chunk: "${String(r.data).slice(0,60)}"`,'info');
+          }
+        }catch(re){
+          btDiag('RX fout: '+re.message,'err');
+          break;
+        }
+        if(buf.includes('>')) break;
+      }
+
+      // Reconnect-guard: lege buffer kan stille socket-dood betekenen
+      if(!buf){
+        await sppReconnectGuard(spp,address,cmd);
+      }
+
+      return buf.replace(/>/g,'').trim();
 
     } else if(window._bleConn){
       btBuffer='';
@@ -2693,9 +2717,36 @@ async function sendBT(cmd){
   return '';
 }
 
-async function sendCmd(cmd){
+// Reconnect-guard: na lege response checken of de SPP socket nog leeft.
+// Max 1 herverbindpoging per 10 sec om loops te voorkomen.
+async function sppReconnectGuard(spp,address,cmd){
+  try{
+    const now=Date.now();
+    if(window._lastSppReconnect&&now-window._lastSppReconnect<10000) return;
+
+    let alive=true;
+    try{
+      const c=await spp.isConnected({address});
+      alive=(c?.isConnected!==false&&c?.connected!==false&&c!==false);
+    }catch(e){ alive=false; }
+
+    if(!alive){
+      window._lastSppReconnect=now;
+      btDiag(`Socket dood na "${cmd}" — herverbinden...`,'warn');
+      try{ await spp.disconnect({address}); }catch(e){}
+      await delay(500);
+      await spp.connect({address});
+      btDiag('Herverbonden ✓','ok');
+      log('SPP automatisch herverbonden','warn');
+    }
+  }catch(e){
+    btDiag('Herverbinden mislukt: '+e.message,'err');
+  }
+}
+
+async function sendCmd(cmd, timeoutMs){
   if(demoMode) return '';
-  return await sendBT(cmd);
+  return await sendBT(cmd, timeoutMs);
 }
 
 // Complete OBD2 PID definitiedatabase met parse functies
@@ -2749,10 +2800,13 @@ function showConnError(msg){
 async function initELM327(){
   btDiag('ELM327 initialiseren...','proto');
 
-  // Stap 1: Reset — wacht 1 seconde na ATZ
-  await sendCmd('ATZ');
+  // Stap 1: Warm start — ATWS ipv ATZ!
+  // ATZ is een volledige hardware reset die op OBDLink (STN chip) ook de
+  // Bluetooth module reset → SPP socket sterft stil. ATWS reset alleen de
+  // ELM327 interpreter en houdt de BT verbinding in leven.
+  await sendCmd('ATWS');
   await delay(1000); // ELM327 heeft tijd nodig na reset
-  btDiag('ATZ reset OK','ok');
+  btDiag('ATWS warm start OK','ok');
 
   // Stap 2: Basisinstellingen
   await sendCmd('ATE0');  // Echo uit
@@ -2799,21 +2853,11 @@ async function scanNetworks(){
   await sendCmd('ATSP0');
   await delay(300);
 
-  // Stuur 0100 met extra lange timeout
+  // Stuur 0100 met extra lange timeout (12 sec) via de normale sendCmd —
+  // geen aparte readUntil meer, die gaf lege responses
   let autoResp='';
   try{
-    const {spp,address}=window._sppConn||{};
-    if(spp&&address){
-      await spp.write({address, value:'0100\r'});
-      // Wacht tot 12 seconden op response (protocol search duurt 3-8 sec)
-      const result=await Promise.race([
-        spp.readUntil({address, delimiter:'>'}),
-        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),12000))
-      ]).catch(()=>({data:''}));
-      autoResp=(result?.data!=null)?String(result.data).replace(/>/g,'').trim():'';
-    } else {
-      autoResp=await sendCmd('0100');
-    }
+    autoResp=await sendCmd('0100', 12000);
   }catch(e){ autoResp=''; }
 
   btDiag(`0100 response: "${autoResp||'(geen)'}"`, 'info');
