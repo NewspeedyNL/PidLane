@@ -3,7 +3,9 @@
   "appName": "PidLane",
   "webDir": "src",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "url": "https://newspeedynl.github.io/PidLane/index.html",
+    "cleartext": false
   },
   "plugins": {
     "BluetoothLe": {
