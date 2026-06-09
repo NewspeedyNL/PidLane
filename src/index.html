@@ -1235,37 +1235,46 @@ async function checkForUpdate(manual=false){
   try{
     const resp=await fetch(VERSION_URL+'?t='+Date.now());
     if(!resp.ok){
-      // 404 = GitHub Pages niet actief — stil falen bij automatische check
       if(resp.status===404 && !manual){ if(pill) pill.textContent='🔄 Update'; return; }
       const msg=`Update check mislukt: HTTP ${resp.status}`;
       log(msg,'warn');
       if(pill) pill.textContent='🔄 Update';
-      if(manual) alert(msg+'\n\nControleer of GitHub Pages actief is:\nRepo → Settings → Pages → Source: main / src');
+      if(manual) showToast(`❌ ${msg}\n\nActiveer GitHub Pages:\nRepo → Settings → Pages → main / (root)`, 6000);
       return;
     }
     const data=await resp.json();
     const latest=data?.version||'';
     if(!latest){
-      if(manual) alert('version.json leeg.\nInhoud moet zijn: {"version":"2.1"}');
+      if(manual) showToast('⚠️ version.json leeg — inhoud: {"version":"2.1"}', 4000);
       if(pill) pill.textContent='🔄 Update';
       return;
     }
     if(latest===APP_VERSION){
-      log(`App is up-to-date (v${APP_VERSION})`,'ok');
+      log(`Up-to-date (v${APP_VERSION})`,'ok');
       if(pill) pill.textContent='✅ v'+APP_VERSION;
-      if(manual) alert(`✅ Je hebt de nieuwste versie (v${APP_VERSION})`);
-      setTimeout(()=>{if(pill) pill.textContent='🔄 Update';},3000);
+      if(manual) showToast(`✅ Nieuwste versie (v${APP_VERSION})`, 3000);
+      setTimeout(()=>{ if(pill) pill.textContent='🔄 Update'; }, 3000);
       return;
     }
     log(`Update beschikbaar: v${latest} (huidig: v${APP_VERSION})`,'warn');
-    if(pill){pill.textContent=`⬆️ v${latest}`;pill.style.background='var(--or)';pill.style.color='#fff';}
+    if(pill){ pill.textContent=`⬆️ v${latest}`; pill.style.background='var(--or)'; pill.style.color='#fff'; }
     showUpdateBanner(latest);
   }catch(e){
     const msg='Update check fout: '+e.message;
     log(msg,'warn');
     if(pill) pill.textContent='🔄 Update';
-    if(manual) alert(msg+'\n\nMogelijke oorzaken:\n• Geen internet\n• GitHub Pages niet actief\n• VERSION_URL onjuist in config.js');
+    if(manual) showToast(`❌ ${msg}`, 4000);
   }
+}
+
+function showToast(msg, duration=3000){
+  document.getElementById('pidToast')?.remove();
+  const t=document.createElement('div');
+  t.id='pidToast';
+  t.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:12px 20px;border-radius:10px;font-family:var(--f);font-size:12px;z-index:9999;max-width:80%;text-align:center;white-space:pre-line;box-shadow:0 4px 20px rgba(0,0,0,.3);';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), duration);
 }
 
 function showUpdateBanner(newVersion){
@@ -1596,7 +1605,7 @@ function clearApiKey(){
 function openApiDialog(){
   // Als ingelogd als admin met geldige key — toon info ipv edit dialog
   if(currentUser?.role==='admin' && window.anthropicKey?.startsWith('sk-ant-')){
-    alert(`🤖 AI ✓ Actief\n\nKey: ${window.anthropicKey.slice(0,20)}...\nGebruiker: ${currentUser.name}\n\nKey beheren via src/config.js`);
+    showToast(`🤖 AI ✓ Actief\n\nKey: ${window.anthropicKey.slice(0,20)}...\nGebruiker: ${currentUser.name}\n\nKey beheren via src/config.js`);
     return;
   }
   const hasKey=window.anthropicKey?.startsWith('sk-ant-');
@@ -1762,7 +1771,7 @@ function tc(el){el.classList.toggle('on');}
 async function findCauses(){
   const desc=document.getElementById('diagDesc').value.trim();
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent);
-  if(!desc&&!chips.length){alert('Beschrijf het probleem of selecteer symptomen.');return;}
+  if(!desc&&!chips.length){showToast('Beschrijf het probleem of selecteer symptomen.', 3000);return;}
 
   document.getElementById('dstep2').style.display='block';
   document.getElementById('dsn1').className='dsn done'; document.getElementById('dsn1').textContent='✓';
