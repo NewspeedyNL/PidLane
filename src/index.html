@@ -574,6 +574,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
     <div id="userLabel" style="font-size:10px;font-weight:600;color:var(--tx3);padding:2px 8px;background:var(--sur2);border:1px solid var(--bd);border-radius:999px;display:none"></div>
     <div class="pill"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
     <button class="api-pill unset" id="apiPill" onclick="openApiDialog()">🤖 AI</button>
+    <button onclick="openBtLogModal()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Bluetooth log">📡 Log</button>
     <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
     <button onclick="logout()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Uitloggen">⏏ Uit</button>
     <button id="updatePill" onclick="checkForUpdate(true)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Check for update">🔄 Update</button>
@@ -2403,6 +2404,56 @@ function btDiag(msg, type='info'){
   while(row.children.length>6) row.removeChild(row.firstChild);
 }
 
+// ── BT LOG MODAL — altijd bereikbaar via topbar, ook ná verbinden ──
+function openBtLogModal(){
+  let ov=document.getElementById('btLogModal');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='btLogModal';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:12px;max-width:680px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd)">
+          <strong style="font-size:13px">📡 Bluetooth log</strong>
+          <div style="display:flex;gap:6px">
+            <button onclick="copyBtLog(this)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer">📋 Kopieer</button>
+            <button onclick="document.getElementById('btLogModal').style.display='none'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer">✕ Sluit</button>
+          </div>
+        </div>
+        <div id="btLogModalBody" style="overflow-y:auto;padding:10px 14px;font-family:monospace;font-size:10px;line-height:1.6;white-space:pre-wrap"></div>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+  const body=document.getElementById('btLogModalBody');
+  const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
+  const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
+  body.innerHTML='';
+  (_btLog||[]).forEach(e=>{
+    const d=document.createElement('div');
+    d.style.color=colors[e.type]||'var(--tx2)';
+    d.textContent=`${e.ts} ${icons[e.type]||'·'} ${e.msg}`;
+    body.appendChild(d);
+  });
+  if(!_btLog||!_btLog.length) body.textContent='(nog geen logregels)';
+  ov.style.display='flex';
+  body.scrollTop=body.scrollHeight;
+}
+
+function copyBtLog(btn){
+  const txt=(_btLog||[]).map(e=>`${e.ts} [${e.type}] ${e.msg}`).join('\n');
+  const done=()=>{ if(btn){btn.textContent='✓ Gekopieerd'; setTimeout(()=>btn.textContent='📋 Kopieer',1500);} };
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopyBtLog(txt,done));
+  } else fallbackCopyBtLog(txt,done);
+}
+function fallbackCopyBtLog(txt,done){
+  const ta=document.createElement('textarea');
+  ta.value=txt; ta.style.cssText='position:fixed;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  try{document.execCommand('copy');}catch(e){}
+  ta.remove(); done();
+}
+
 function btDiagDevice(name, address, rssi){
   const devEl=document.getElementById('btDevices');
   const listEl=document.getElementById('btDeviceList');
@@ -2449,6 +2500,7 @@ async function connectSerial(){
   clearInterval(pollTimer);
   window._pollBusy=false;
   connected=false;
+  window._btGen=(window._btGen||0)+1; // oude lopende commando's ongeldig maken
   _btQueue=Promise.resolve(); // commandowachtrij leegmaken
 
   const apiVal=document.getElementById('startApiKey').value.trim();
@@ -2688,8 +2740,12 @@ async function _sendBTRaw(cmd, timeoutMs){
 }
 
 async function _sendBTOnce(cmd, timeoutMs){
-  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite) return '';
+  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite){
+    btDiag(`sendBT "${cmd}" geblokkeerd: GEEN actieve verbinding (spp=${!!window._sppConn} ble=${!!window._bleConn} web=${!!window._webBtWrite})`,'err');
+    return '';
+  }
   if(!cmd) return '';
+  const myGen=window._btGen||0;
   const str=cmd+'\r';
   const TIMEOUT=timeoutMs||6000;
 
@@ -2724,6 +2780,12 @@ async function _sendBTOnce(cmd, timeoutMs){
       while(Date.now()<deadline){
         await delay(50);
         pollCount++;
+        // Verouderd commando uit vorige sessie? Direct stoppen — en vooral
+        // NIET de reconnect-guard draaien (die zou de nieuwe socket slopen)
+        if((window._btGen||0)!==myGen){
+          btDiag(`"${cmd}" afgebroken: nieuwe verbindsessie gestart`,'warn');
+          return '';
+        }
         try{
           const r=await spp.read({address});
           if(pollCount===1) btDiag(`read() #1 → ${JSON.stringify(r).slice(0,80)}`,'info');
@@ -2824,7 +2886,7 @@ async function sppReconnectGuard(spp,address,cmd){
 }
 
 async function sendCmd(cmd, timeoutMs){
-  if(demoMode) return '';
+  if(demoMode){ btDiag(`sendCmd "${cmd}" geblokkeerd: demoMode staat AAN`,'warn'); return ''; }
   return await sendBT(cmd, timeoutMs);
 }
 
@@ -3029,6 +3091,7 @@ function resetToStep1(){
 // ── STAP 3: PID DISCOVERY + VIN ──
 async function startDiscovery(){
   const net=selectedNetwork;
+  btDiag(`Discovery start — spp=${!!window._sppConn} demo=${demoMode} connected=${connected} net=${net?.id}`,'info');
   document.getElementById('step1').style.display='none';
   document.getElementById('step2').style.display='none';
   document.getElementById('step3').style.display='';
@@ -3462,7 +3525,6 @@ async function handleConnect(){
     }catch(e){}
     try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){}
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
-    window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false); document.getElementById('vtag').style.display='none';
     pidVals={}; pidHist={}; pidSmooth={}; stabilityCount={}; dataStable=false;
     log('Verbinding verbroken','warn');
@@ -3470,6 +3532,12 @@ async function handleConnect(){
     document.getElementById('connOv').classList.remove('hidden');
   }
 }
+
+// BT-socket netjes loslaten als de app sluit of naar de achtergrond gaat —
+// anders blijft de SPP-verbinding (en het blauwe lampje op de adapter) hangen
+window.addEventListener('pagehide',()=>{
+  try{ if(window._sppConn) window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{}); }catch(e){}
+});
 function sw(name,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
