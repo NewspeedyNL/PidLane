@@ -1,6 +1,6 @@
 {
   "name": "pidlane",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "PidLane - AI Car Diagnostics",
   "main": "src/index.html",
   "scripts": {
@@ -12,7 +12,7 @@
     "@capacitor/core": "6.1.2",
     "@capacitor/android": "6.1.2",
     "@capacitor-community/bluetooth-le": "6.1.0",
-    "@e-is/capacitor-bluetooth-serial": "6.0.3"
+    "bluetooth-serial": "^1.1.7"
   },
   "devDependencies": {
     "@capacitor/cli": "6.1.2"
