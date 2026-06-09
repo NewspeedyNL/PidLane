@@ -1,21 +1,19 @@
 // ════════════════════════════════════════
 // PidLane — config.js
+// DIT IS HET ENIGE BESTAND DAT JE AANPAST
 // ════════════════════════════════════════
-// Dit is het ENIGE bestand dat je hoeft aan te passen.
-// index.html nooit meer aanraken voor credentials.
-// ════════════════════════════════════════
-const OBDLINK_ADDRESS = '00:04:3E:8B:7B:32';
+
 // ── LOGIN ACCOUNTS ──
 const USERS = {
   'Admin': {
     password: '1029384756',
-    apiKey:   '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',  // ← Vervang door sk-ant-api03-...
+    apiKey:   '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',  // ← Vervang door sk-ant-api03-...
     role:     'admin',
     label:    'Admin'
   },
   'Demo': {
     password: 'P!dL@n3',
-    apiKey:   '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',   // ← Optioneel: aparte demo API key
+    apiKey:   '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',   // ← Optioneel aparte demo API key
     role:     'demo',
     label:    'Demo gebruiker'
   }
