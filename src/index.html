@@ -2642,12 +2642,17 @@ async function sendBT(cmd){
   try{
     if(window._sppConn){
       const {spp,address}=window._sppConn;
-      // Sturen
       await spp.write({address, value:str});
-      // readUntil wacht tot '>' — geen handmatige accumulator nodig
-      const result=await spp.readUntil({address, delimiter:'>'});
-      // Veilige null-check op response
-      const raw = (result?.data!=null) ? String(result.data) : '';
+      // readUntil met timeout — anders hangt het eeuwig als auto niet reageert
+      const TIMEOUT=5000;
+      const result = await Promise.race([
+        spp.readUntil({address, delimiter:'>'}),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),TIMEOUT))
+      ]).catch(e=>{
+        if(e.message==='timeout') return {data:''};
+        throw e;
+      });
+      const raw=(result?.data!=null)?String(result.data):'';
       return raw.replace(/>/g,'').trim();
 
     } else if(window._bleConn){
@@ -2742,75 +2747,95 @@ function showConnError(msg){
 
 // ── BLUETOOTH SEND/RECEIVE ──
 async function initELM327(){
-  btDiag('ELM327: ATZ reset...','proto');
-  await sendCmd('ATZ'); await delay(600);
-  await sendCmd('ATE0');
-  await sendCmd('ATL0');
-  await sendCmd('ATS0');
-  await sendCmd('ATH0');
-  btDiag('ELM327: adaptive timing instellen...','proto');
-  await sendCmd('ATAT1');
-  await sendCmd('ATST64'); // 400ms timeout — betrouwbaarder bij eerste verbinding
-  await sendCmd('ATD');
-  const spResp=await sendCmd('ATSP0');
-  btDiag('ELM327 klaar — auto protocol actief','ok');
-  log('ELM327 klaar (adaptive timing actief)','ok');
+  btDiag('ELM327 initialiseren...','proto');
+
+  // Stap 1: Reset — wacht 1 seconde na ATZ
+  await sendCmd('ATZ');
+  await delay(1000); // ELM327 heeft tijd nodig na reset
+  btDiag('ATZ reset OK','ok');
+
+  // Stap 2: Basisinstellingen
+  await sendCmd('ATE0');  // Echo uit
+  await sendCmd('ATL0');  // Linefeeds uit
+  await sendCmd('ATS0');  // Spaties uit
+  await sendCmd('ATH0');  // Headers uit (standaard)
+  await sendCmd('ATAT1'); // Adaptive timing
+  await sendCmd('ATST64');// 400ms timeout per commando
+
+  // Stap 3: Protocol op auto
+  await sendCmd('ATSP0');
+  await delay(200);
+
+  btDiag('ELM327 klaar — klaar voor protocol detectie','ok');
+  log('ELM327 initialisatie klaar','ok');
 }
 
 // ── STAP 2: NETWERK SCAN ──
 const PROTOCOLS=[
-  {id:'6',name:'CAN 11-bit (ISO 15765)',  icon:'📡',desc:'Meeste auto\'s 2008+'},
-  {id:'7',name:'CAN 29-bit (ISO 15765)',  icon:'📡',desc:'Sommige CAN varianten'},
-  {id:'3',name:'ISO 9141-2',              icon:'📟',desc:'Oudere Europese auto\'s'},
-  {id:'4',name:'ISO 14230 KWP (5baud)',   icon:'🔧',desc:'K-Line langzame init'},
-  {id:'5',name:'ISO 14230 KWP (fast)',    icon:'🔧',desc:'K-Line snelle init'},
-  {id:'1',name:'SAE J1850 PWM',           icon:'🔌',desc:'Oudere Ford modellen'},
-  {id:'2',name:'SAE J1850 VPW',           icon:'🔌',desc:'Oudere GM modellen'},
+  {id:'6',name:'CAN 11-bit 500k (ISO 15765)',icon:'📡',desc:'Meeste auto\'s 2008+'},
+  {id:'7',name:'CAN 29-bit 500k (ISO 15765)',icon:'📡',desc:'Sommige CAN varianten'},
+  {id:'8',name:'CAN 11-bit 250k (ISO 15765)',icon:'📡',desc:'Langzame CAN'},
+  {id:'9',name:'CAN 29-bit 250k (ISO 15765)',icon:'📡',desc:'Langzame CAN varianten'},
+  {id:'3',name:'ISO 9141-2',                 icon:'📟',desc:'Oudere Europese auto\'s'},
+  {id:'4',name:'ISO 14230 KWP (5baud)',       icon:'🔧',desc:'K-Line langzame init'},
+  {id:'5',name:'ISO 14230 KWP (fast)',        icon:'🔧',desc:'K-Line snelle init'},
+  {id:'1',name:'SAE J1850 PWM',              icon:'🔌',desc:'Oudere Ford modellen'},
+  {id:'2',name:'SAE J1850 VPW',              icon:'🔌',desc:'Oudere GM modellen'},
 ];
 
 async function scanNetworks(){
-  // Toon stap 2
   document.getElementById('step1').style.display='none';
   document.getElementById('step2').style.display='';
   document.getElementById('step3').style.display='none';
-  document.getElementById('step2Title').textContent='Netwerken scannen...';
-  document.getElementById('step2Sub').textContent='Even geduld — protocollen worden getest';
-  document.getElementById('networkList').innerHTML='<div class="ai-ld" style="justify-content:center"><div class="spin"></div> Netwerken scannen...</div>';
+  document.getElementById('step2Title').textContent='Protocol detecteren...';
+  document.getElementById('step2Sub').textContent='Zet contact aan — even geduld (max 15 sec)';
+  document.getElementById('networkList').innerHTML='<div class="ai-ld" style="justify-content:center"><div class="spin"></div> Protocol zoeken...</div>';
   document.getElementById('connActions').innerHTML=`<button class="mbtn s" onclick="resetToStep1()">↺ Opnieuw beginnen</button>`;
-
   discoveredNetworks=[];
 
-  // Test auto detect eerst
+  // 0100 triggert automatische protocol detectie — kan 3-8 seconden duren
+  // Verhoog sendBT timeout tijdelijk naar 12 seconden voor deze stap
+  btDiag('Protocol detectie — 0100 sturen (wacht max 12 sec)...','info');
   await sendCmd('ATSP0');
-  await delay(400);
-  const autoResp=await sendCmd('0100');
+  await delay(300);
 
-  if(autoResp&&!autoResp.includes('NO DATA')&&!autoResp.includes('UNABLE')&&!autoResp.includes('ERROR')){
-    const protoResp=await sendCmd('ATDPN');
-    const protoId=protoResp.replace(/[^0-9A-Fa-f]/g,'').trim()||'?';
-    const protoName=(await sendCmd('ATDP')).replace(/[>\r\n]/g,'').trim();
+  // Stuur 0100 met extra lange timeout
+  let autoResp='';
+  try{
+    const {spp,address}=window._sppConn||{};
+    if(spp&&address){
+      await spp.write({address, value:'0100\r'});
+      // Wacht tot 12 seconden op response (protocol search duurt 3-8 sec)
+      const result=await Promise.race([
+        spp.readUntil({address, delimiter:'>'}),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),12000))
+      ]).catch(()=>({data:''}));
+      autoResp=(result?.data!=null)?String(result.data).replace(/>/g,'').trim():'';
+    } else {
+      autoResp=await sendCmd('0100');
+    }
+  }catch(e){ autoResp=''; }
+
+  btDiag(`0100 response: "${autoResp||'(geen)'}"`, 'info');
+
+  if(autoResp && !autoResp.includes('UNABLE') && !autoResp.includes('NO DATA') && !autoResp.includes('ERROR') && autoResp.includes('41')){
+    // Succesvol — protocol gevonden
+    const protoResp=(await sendCmd('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim()||'6';
+    const protoName=(await sendCmd('ATDP')).replace(/[>\r\n]/g,'').trim()||'Auto-detected';
     discoveredNetworks.push({
-      id:protoId, name:protoName||'Auto-detected', icon:'✅',
+      id:protoResp, name:protoName, icon:'✅',
       desc:'Automatisch herkend door ELM327', auto:true
     });
-    log(`Auto-detect: ${protoName||protoId}`,'ok');
-  }
-
-  // Scan overige protocollen
-  for(const p of PROTOCOLS){
-    if(discoveredNetworks.find(n=>n.id===p.id)) continue;
-    await sendCmd('ATSP'+p.id);
-    await delay(300);
-    const r=await sendCmd('0100');
-    if(r&&r.includes('41')&&!r.includes('UNABLE')&&!r.includes('NO DATA')){
-      discoveredNetworks.push({...p});
-      log(`Protocol gevonden: ${p.name}`,'ok');
+    log(`Protocol: ${protoName} (${protoResp})`,'ok');
+    btDiag(`Protocol gevonden: ${protoName}`,'ok');
+  } else {
+    // Geen auto-detect — geen contact of auto reageert niet
+    btDiag('Geen auto-detect response — contact aan?','warn');
+    if(!autoResp||autoResp.length===0){
+      document.getElementById('step2Sub').textContent='Zet contact aan en probeer opnieuw';
     }
   }
 
-  await sendCmd('ATSP0'); // reset naar auto
-
-  // Render netwerk kaarten
   renderNetworkCards();
 }
 
@@ -2913,52 +2938,32 @@ async function startDiscovery(){
     addProg('⚠️','VIN niet beschikbaar (wordt overgeslagen)');
   }
 
-  // PID discovery
-  addProg('🔍','Beschikbare PIDs ophalen...');
+  // ── PID DISCOVERY met fallback strategie ──
+  // Gebaseerd op PiOBDII aanpak: per lijn strippen, chained discovery
+  addProg('🔍','PIDs ophalen (0100, 0120, 0140...)');
   supportedPIDs=new Set();
   discoveredPIDDefs=[];
 
-  for(const rangeCmd of['0100','0120','0140','0160','0180','01A0']){
-    const resp=await sendCmd(rangeCmd);
-    if(!resp||resp.includes('NO DATA')||resp.includes('ERROR')||resp.includes('UNABLE')) continue;
+  // Stap 1: probeer discovery via bitmap methode
+  await discoverPIDsBitmap();
 
-    // Strip alles wat geen hex is, dan zoek de response bytes
-    const hex=resp.replace(/[\r\n\s:]/g,'').toUpperCase();
-    if(hex.length<8) continue;
-
-    // Verwacht antwoord: 41 XX YY YY YY YY
-    // waarbij XX = rangeCmd bytes 2-3 en YY = 4 bitmap bytes
-    const expectedMode='41'+rangeCmd.slice(2).toUpperCase();
-    let bitmapHex='';
-
-    const idx=hex.indexOf(expectedMode);
-    if(idx>=0){
-      bitmapHex=hex.slice(idx+expectedMode.length, idx+expectedMode.length+8);
-    } else {
-      // Fallback: zoek '41' patroon
-      const alt=hex.indexOf('41');
-      if(alt>=0) bitmapHex=hex.slice(alt+4, alt+12);
-    }
-
-    if(bitmapHex.length<8) continue;
-    const bitmap=parseInt(bitmapHex,16);
-    if(isNaN(bitmap)) continue;
-
-    const base=parseInt(rangeCmd.slice(2),16);
-    for(let i=0;i<32;i++){
-      if(bitmap&(0x80000000>>>i)){
-        const pn=base+i+1;
-        supportedPIDs.add('01'+pn.toString(16).toUpperCase().padStart(2,'0'));
-      }
-    }
-    btDiag(`PID range ${rangeCmd}: bitmap=${bitmapHex} → ${supportedPIDs.size} PIDs`,'info');
+  // Stap 2: als geen PIDs gevonden → probeer directe PID polling (fallback)
+  if(supportedPIDs.size===0){
+    addProg('⚠️','Bitmap methode gaf 0 PIDs — directe poll fallback');
+    btDiag('PID bitmap leeg — directe poll proberen','warn');
+    await discoverPIDsDirect();
   }
 
-  addProg('✅',`${supportedPIDs.size} PIDs gevonden op dit voertuig`);
+  // Stap 3: als nog steeds leeg → gebruik ingebouwde standaard set
+  if(supportedPIDs.size===0){
+    addProg('⚠️','Geen PIDs via polling — standaard set laden');
+    btDiag('Geen PIDs gevonden — standaard set gebruiken','warn');
+    loadDefaultPIDs();
+  }
 
-  // Bouw PID definitielijst
+  addProg('✅',`${supportedPIDs.size} PIDs gevonden`);
   buildDiscoveredPIDList();
-  addProg('✅',`PID lijst klaar — ${discoveredPIDDefs.length} sensoren beschikbaar`);
+  addProg('✅',`${discoveredPIDDefs.length} sensoren beschikbaar`);
 
   // Update voertuigkaart links
   updateVehicleCard(vinInfo);
@@ -3067,6 +3072,79 @@ function decodeVIN(vin){
 }
 
 // ── PID DEFINITIELIJST BOUWEN NA DISCOVERY ──
+// ════════════════════════════════════════
+// PID DISCOVERY — 3 methoden met fallback
+// ════════════════════════════════════════
+
+// Methode 1: Bitmap — vraag 0100/0120/0140 etc.
+async function discoverPIDsBitmap(){
+  const ranges=['0100','0120','0140','0160','0180','01A0'];
+  for(const rangeCmd of ranges){
+    const resp=await sendCmd(rangeCmd);
+    if(!resp||resp.includes('NO DATA')||resp.includes('UNABLE')||resp.includes('ERROR')) continue;
+
+    // Per lijn strippen zoals PiOBDII doet
+    // Zoek '41 XX' patroon in elke lijn
+    const lines=resp.split(/[\r\n]+/).filter(l=>l.trim().length>0);
+    let bitmapHex='';
+
+    for(const line of lines){
+      const hex=line.replace(/[\s:]/g,'').toUpperCase();
+      const expected='41'+rangeCmd.slice(2).toUpperCase();
+      const idx=hex.indexOf(expected);
+      if(idx>=0){
+        bitmapHex=hex.slice(idx+expected.length, idx+expected.length+8);
+        break;
+      }
+      // Fallback: zoek gewoon 41xx
+      const alt=hex.match(/41[0-9A-F]{2}([0-9A-F]{8})/);
+      if(alt){ bitmapHex=alt[1]; break; }
+    }
+
+    if(!bitmapHex||bitmapHex.length<8) continue;
+    const bitmap=parseInt(bitmapHex,16);
+    if(isNaN(bitmap)||bitmap===0) continue;
+
+    const base=parseInt(rangeCmd.slice(2),16);
+    let found=0;
+    for(let i=0;i<32;i++){
+      if(bitmap&(0x80000000>>>i)){
+        const pn=base+i+1;
+        supportedPIDs.add('01'+pn.toString(16).toUpperCase().padStart(2,'0'));
+        found++;
+      }
+    }
+    btDiag(`${rangeCmd}: ${bitmapHex} → +${found} PIDs (totaal ${supportedPIDs.size})`,'info');
+
+    // Alleen doorgaan naar volgende range als bit 0 gezet is (PID X+20 supported)
+    const lastBitSet=bitmap&0x01;
+    if(!lastBitSet) break;
+  }
+}
+
+// Methode 2: Directe poll — probeer bekende PIDs één voor één
+async function discoverPIDsDirect(){
+  const testPIDs=['010C','010D','0105','010B','010F','0111','0104','0146','0142','015C'];
+  let found=0;
+  for(const pid of testPIDs){
+    const resp=await sendCmd(pid);
+    if(resp&&!resp.includes('NO DATA')&&!resp.includes('ERROR')&&!resp.includes('UNABLE')&&resp.includes('41')){
+      supportedPIDs.add(pid);
+      found++;
+      btDiag(`Direct poll: ${pid} werkt ✓`,'ok');
+    }
+    await delay(50);
+  }
+  btDiag(`Directe poll: ${found} PIDs gevonden`,'info');
+}
+
+// Methode 3: Standaard set — altijd beschikbaar als fallback
+function loadDefaultPIDs(){
+  const defaults=['010C','010D','0105','010B','010F','0111','0104','0146','0142','0143','0114','0115'];
+  defaults.forEach(p=>supportedPIDs.add(p));
+  btDiag(`Standaard set geladen: ${defaults.length} PIDs`,'info');
+}
+
 function buildDiscoveredPIDList(){
   discoveredPIDDefs=[];
   const catOrder={Motor:0,Temp:1,Brandstof:2,Rijden:3,Electrisch:4,Emissie:5,Overig:9};
