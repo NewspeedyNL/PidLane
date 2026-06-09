@@ -2650,27 +2650,39 @@ async function sendBT(cmd, timeoutMs){
       try{
         const stale=await spp.read({address});
         if(stale?.data) btDiag(`RX flush: "${String(stale.data).slice(0,40)}"`,'warn');
-      }catch(e){}
+      }catch(e){ btDiag(`flush read() fout: ${e.message}`,'warn'); }
 
-      await spp.write({address, value:str});
+      btDiag(`TX: ${cmd}`,'info');
+      const start=Date.now();
+      try{
+        await spp.write({address, value:str});
+      }catch(we){
+        btDiag(`write() fout na ${Date.now()-start}ms: ${we.message}`,'err');
+        await sppReconnectGuard(spp,address,cmd);
+        return '';
+      }
 
       // Polling: elke 50ms read() tot '>' prompt of timeout
       let buf='';
-      const start=Date.now();
+      let pollCount=0;
       while(Date.now()-start<TIMEOUT){
         await delay(50);
+        pollCount++;
         try{
           const r=await spp.read({address});
+          if(pollCount===1) btDiag(`read() #1 → ${JSON.stringify(r).slice(0,80)}`,'info');
           if(r?.data!=null&&String(r.data).length>0){
             buf+=String(r.data);
             btDiag(`RX chunk: "${String(r.data).slice(0,60)}"`,'info');
           }
         }catch(re){
-          btDiag('RX fout: '+re.message,'err');
+          btDiag(`read() fout (poll #${pollCount}): ${re.message}`,'err');
           break;
         }
         if(buf.includes('>')) break;
       }
+
+      btDiag(`${cmd} klaar: ${Date.now()-start}ms, ${buf.length} tekens, ${pollCount} polls`,'info');
 
       // Reconnect-guard: lege buffer kan stille socket-dood betekenen
       if(!buf){
@@ -2712,6 +2724,7 @@ async function sendBT(cmd, timeoutMs){
 
   }catch(e){
     log('BT fout: '+e.message,'err');
+    btDiag('BT fout: '+e.message,'err');
     return '';
   }
   return '';
