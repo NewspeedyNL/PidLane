@@ -2444,6 +2444,13 @@ function getSPP(){ return window.Capacitor?.Plugins?.BluetoothSerial||null; }
 function getBLE(){ return window.Capacitor?.Plugins?.BluetoothLe||null; }
 
 async function connectSerial(){
+  // Zombie poll-loop van vorige sessie stoppen — anders schieten oude
+  // PID-queries dwars door de nieuwe init en protocol-search heen
+  clearInterval(pollTimer);
+  window._pollBusy=false;
+  connected=false;
+  _btQueue=Promise.resolve(); // commandowachtrij leegmaken
+
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal?.startsWith('sk-ant-')){
     window.anthropicKey=apiVal;
@@ -2669,6 +2676,18 @@ async function sendBT(cmd, timeoutMs){
 }
 
 async function _sendBTRaw(cmd, timeoutMs){
+  let res=await _sendBTOnce(cmd,timeoutMs);
+  // STOPPED = ons commando onderbrak een lopende protocol search.
+  // Even wachten en één keer opnieuw — de search is dan afgebroken.
+  if(res==='STOPPED'){
+    btDiag(`"${cmd}" → STOPPED (search onderbroken) — retry`,'warn');
+    await delay(300);
+    res=await _sendBTOnce(cmd,timeoutMs);
+  }
+  return res;
+}
+
+async function _sendBTOnce(cmd, timeoutMs){
   if(!window._sppConn&&!window._bleConn&&!window._webBtWrite) return '';
   if(!cmd) return '';
   const str=cmd+'\r';
@@ -2700,7 +2719,9 @@ async function _sendBTRaw(cmd, timeoutMs){
       // Dit was maandenlang de oorzaak van "lege" responses.
       let buf='';
       let pollCount=0;
-      while(Date.now()-start<TIMEOUT){
+      let deadline=start+TIMEOUT;
+      let searchExtended=false;
+      while(Date.now()<deadline){
         await delay(50);
         pollCount++;
         try{
@@ -2710,6 +2731,12 @@ async function _sendBTRaw(cmd, timeoutMs){
           if(chunk.length>0){
             buf+=chunk;
             btDiag(`RX chunk: "${chunk.slice(0,60)}"`,'info');
+            // Protocol search bezig? NIET onderbreken — volgende commando
+            // zou STOPPED veroorzaken. Deadline verlengen tot search klaar is.
+            if(!searchExtended&&buf.includes('SEARCHING')){
+              searchExtended=true;
+              deadline=start+13000;
+            }
           }
         }catch(re){
           btDiag(`read() fout (poll #${pollCount}): ${re.message}`,'err');
@@ -3326,9 +3353,11 @@ function startPoll(){
     try{
       // Sequentieel lezen — één SPP socket = één commando tegelijk.
       // (Parallel via Promise.all liet leesloops elkaars data stelen.)
+      // Suffix '1' = verwacht 1 responsregel → ELM keert direct terug
+      // ipv de ST-timeout af te wachten (ELMduino patroon, sneller pollen)
       for(const pid of [...activePIDs]){
         if(!connected) break;
-        const resp=demoMode?demo(pid):parsePID(pid,await sendCmd('01'+pid.slice(2),2500));
+        const resp=demoMode?demo(pid):parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
         if(resp!==null&&resp!==undefined){
           updPID(pid,resp);
           checkStability(pid,resp);
