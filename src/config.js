@@ -3,6 +3,12 @@
 // DIT IS HET ENIGE BESTAND DAT JE AANPAST
 // ════════════════════════════════════════
 
+// ── BLUETOOTH ADAPTER (optioneel maar aanbevolen) ──
+// Vul het MAC adres in voor directe verbinding zonder scan
+const OBDLINK_ADDRESS = '00:04:3E:8B:7B:32';  // OBDLink MX+ 90011
+const OBDLINK_NAME    = 'OBDLink MX+ 90011';
+
+
 // ── LOGIN ACCOUNTS ──
 const USERS = {
   'Admin': {
