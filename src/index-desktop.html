@@ -437,8 +437,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <div class="msteps">
           <div class="mstep"><div class="sn">1</div>Steek OBDLink MX+ adapter in OBD-poort (onder dashboard, links)</div>
           <div class="mstep"><div class="sn">2</div>Zet contact aan — adapter start automatisch op</div>
-          <div class="mstep"><div class="sn">3</div><strong>Eenmalig:</strong> koppel via Android Bluetooth instellingen</div>
-          <div class="mstep"><div class="sn">4</div>Klik Verbinden — PidLane verbindt automatisch</div>
+          <div class="mstep"><div class="sn">3</div><strong>Eenmalig:</strong> koppel via Windows/Mac Bluetooth instellingen</div>
+          <div class="mstep"><div class="sn">4</div>Klik Verbinden → selecteer OBDLink MX+ in de Chrome popup</div>
         </div>
 
         <!-- BT DIAGNOSTIEK LOG -->
@@ -2177,10 +2177,14 @@ function clearBtLog(){
 }
 
 // Glavotaner bluetooth-serial plugin
-function getSPP(){ return window.Capacitor?.Plugins?.BluetoothSerial||null; }
-function getBLE(){ return window.Capacitor?.Plugins?.BluetoothLe||null; }
+// ════════════════════════════════════════
+// DESKTOP VERSIE — Web Serial API
+// Chrome 117+ — Bluetooth Classic SPP via RFCOMM
+// OBDLink MX+ moet gekoppeld zijn via OS Bluetooth
+// ════════════════════════════════════════
 
-// ── VERBINDEN ──
+let _serialPort=null, _serialReader=null, _serialWriter=null;
+
 async function connectSerial(){
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal?.startsWith('sk-ant-')){
@@ -2191,194 +2195,120 @@ async function connectSerial(){
   document.getElementById('btnConnect').disabled=true;
   document.getElementById('btnConnect').textContent='📡 Verbinden...';
 
-  const spp=getSPP();
-  const ble=getBLE();
-
-  if(spp){
-    btDiag('Modus: Bluetooth Classic SPP (OBDLink MX+)','proto');
-    await connectSPP(spp);
-  } else if(ble){
-    btDiag('Modus: BLE via Capacitor','proto');
-    await connectBLE(ble);
+  if('serial' in navigator){
+    btDiag('Modus: Web Serial API (Chrome desktop)','proto');
+    await connectWebSerial();
   } else if('bluetooth' in navigator){
-    btDiag('Modus: Web Bluetooth (browser)','proto');
+    btDiag('Modus: Web Bluetooth BLE (fallback)','proto');
     await connectWebBluetooth();
   } else {
-    btDiag('Bluetooth niet beschikbaar','err');
+    btDiag('Geen Bluetooth API beschikbaar','err');
     document.getElementById('btnConnect').disabled=false;
     document.getElementById('btnConnect').textContent='📡 Verbinden via Bluetooth';
-    showConnError('Bluetooth niet beschikbaar.\nGebruik de PidLane APK op Android.');
+    showConnError('Gebruik Chrome 117+ op desktop.\nZorg dat OBDLink MX+ gekoppeld is via Windows/Mac Bluetooth instellingen.');
   }
 }
 
 // ════════════════════════════════════════
-// MODUS 1 — Bluetooth Classic SPP
-// Gebruikt Glavotaner/bluetooth-serial plugin
-// API: list() → gekoppelde apparaten
-//      connect({address}) → verbinden
-//      write({data}) → sturen
-//      read() → lezen via polling
-//      addListener('connectionChange') → status
+// MODUS 1 — Web Serial API (Chrome 117+ desktop)
+// Werkt met OBDLink MX+ via Bluetooth Classic SPP/RFCOMM
+// Vereiste: OBDLink MX+ gekoppeld in Windows/Mac Bluetooth instellingen
 // ════════════════════════════════════════
-async function connectSPP(spp){
+async function connectWebSerial(){
   try{
-    btDiag('Bluetooth Classic SPP starten...','info');
+    btDiag('Web Serial API starten...','info');
+    btDiag('Selecteer OBDLink MX+ in de popup...','info');
 
-    // Stap 1: permissies checken/vragen
-    try{
-      const perms=await spp.checkPermissions();
-      btDiag(`Permissies: ${JSON.stringify(perms)}`,'info');
-      const needed=Object.values(perms).some(v=>v!=='granted');
-      if(needed){
-        btDiag('Permissies aanvragen...','warn');
-        await spp.requestPermissions({permissions:['connect','scan']});
-      }
-    }catch(e){ btDiag('Permissie check overgeslagen','info'); }
-
-    // Stap 2: lijst van al-gekoppelde apparaten (bonded devices)
-    btDiag('Gekoppelde apparaten ophalen...','info');
-    const result=await spp.list();
-    const devices=result?.devices||[];
-    btDiag(`${devices.length} gekoppelde apparaten gevonden`,'info');
-    devices.forEach(d=>btDiagDevice(d.name, d.address, null));
-
-    // Zoek OBD2 adapter op naam
-    const OBD=['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
-    let target=devices.find(d=>OBD.some(n=>(d.name||'').toLowerCase().includes(n)));
-
-    if(!target && devices.length>0){
-      // Toon alle apparaten en vraag gebruiker
-      const names=devices.map(d=>`${d.name} (${d.address})`).join('\n');
-      btDiag('Geen OBD2 naam herkend — eerste apparaat proberen','warn');
-      // Probeer eerste apparaat als fallback
-      target=devices[0];
-    }
-
-    if(!target){
-      // Geen gekoppelde apparaten — ontdek nieuwe
-      btDiag('Geen gekoppelde apparaten — nieuwe zoeken...','warn');
-      const disc=await spp.discoverUnpaired();
-      const newDevices=disc?.devices||[];
-      btDiag(`${newDevices.length} nieuwe apparaten gevonden`,'info');
-      newDevices.forEach(d=>btDiagDevice(d.name,d.address,null));
-      target=newDevices.find(d=>OBD.some(n=>(d.name||'').toLowerCase().includes(n)));
-      if(!target){
-        const names=[...devices,...newDevices].map(d=>d.name||d.address||'?').join(', ');
-        throw new Error(`Geen OBD2 adapter gevonden.\n\nGevonden: ${names||'(geen)'}\n\nKoppel de OBDLink MX+ eerst via Android Bluetooth instellingen.`);
-      }
-    }
-
-    btDiag(`OBD2 adapter: ${target.name} (${target.address})`,'ok');
-
-    // Stap 3: verbinden
-    btDiag('Verbinden...','info');
-    await spp.connect({address:target.address});
-    btDiag('Verbonden ✓','ok');
-
-    // Stap 4: luister naar verbindingswijzigingen
-    const connListener=await spp.addListener('connectionChange',(e)=>{
-      if(e.state==='NONE'||e.state===0){
-        connected=false; setConn(false);
-        document.getElementById('vtag').style.display='none';
-        btDiag('SPP verbinding verbroken','err');
-        log('SPP verbroken','warn');
-      }
+    // Vraag gebruiker om de poort te selecteren
+    // Bluetooth SPP apparaten verschijnen automatisch als ze gekoppeld zijn
+    _serialPort = await navigator.serial.requestPort({
+      // Laat ook Bluetooth SPP poorten zien
     });
 
-    // Stap 5: start read loop voor inkomende data
-    window._sppConn={spp, address:target.address, name:target.name, connListener};
-    window._sppReadLoop=true;
+    const portInfo = _serialPort.getInfo();
+    btDiag(`Poort geselecteerd${portInfo?.usbVendorId?` (USB ${portInfo.usbVendorId})`:' (Bluetooth SPP)'}`, 'ok');
+
+    // Open de poort — ELM327 standaard baud rate
+    await _serialPort.open({
+      baudRate: 38400,
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'none',
+      flowControl: 'none'
+    });
+    btDiag('Seriële poort geopend (38400 baud)','ok');
+
+    // Reader en writer instellen
+    _serialWriter = _serialPort.writable.getWriter();
+    const decoder = new TextDecoderStream();
+    _serialPort.readable.pipeTo(decoder.writable);
+    _serialReader = decoder.readable.getReader();
+
+    // Start lees loop
+    window._serialReadLoop = true;
     (async()=>{
-      while(window._sppReadLoop && window._sppConn){
-        try{
-          const r=await spp.read();
-          if(r?.data) btBuffer+=r.data;
-        }catch(e){ break; }
-        await delay(30);
+      try{
+        while(window._serialReadLoop){
+          const {value, done} = await _serialReader.read();
+          if(done) break;
+          if(value) btBuffer += value;
+        }
+      }catch(e){
+        if(connected){
+          connected=false; setConn(false);
+          document.getElementById('vtag').style.display='none';
+          btDiag('Seriële verbinding verbroken','err');
+          log('Web Serial verbroken','warn');
+        }
       }
     })();
 
+    // Verbinding succesvol
     connected=true; demoMode=false;
-    btDiag(`SPP actief: ${target.name}`,'ok');
-    log(`SPP verbonden: ${target.name}`,'ok');
-    logToSheets('connect',`SPP verbonden: ${target.name}`,{address:target.address});
+    btDiag('Web Serial verbonden ✓','ok');
+    log('Web Serial verbonden','ok');
     await initELM327();
     await scanNetworks();
 
   }catch(e){
-    btDiag('SPP fout: '+e.message,'err');
-    log('SPP fout: '+e.message,'err');
+    btDiag('Web Serial fout: '+e.message,'err');
+    log('Web Serial fout: '+e.message,'err');
+    // Sluit poort als die open was
+    try{
+      _serialReader?.cancel();
+      _serialWriter?.releaseLock();
+      await _serialPort?.close();
+    }catch(ce){}
+    _serialPort=null; _serialReader=null; _serialWriter=null;
     document.getElementById('btnConnect').disabled=false;
     document.getElementById('btnConnect').textContent='📡 Verbinden via Bluetooth';
-    showConnError(e.message);
+    showConnError(
+      e.message.includes('No port selected')
+        ? 'Geen poort geselecteerd.\n\nTip: Koppel de OBDLink MX+ eerst via Windows Bluetooth instellingen,\ndan verschijnt hij in de lijst.'
+        : e.message
+    );
   }
 }
 
 // ════════════════════════════════════════
-// MODUS 2 — BLE (Vgate MX+ en andere BLE adapters)
+// MODUS 2 — Web Bluetooth BLE (fallback voor BLE adapters)
 // ════════════════════════════════════════
 const BLE_SERVICE ='0000fff0-0000-1000-8000-00805f9b34fb';
 const BLE_WRITE   ='0000fff2-0000-1000-8000-00805f9b34fb';
 const BLE_NOTIFY  ='0000fff1-0000-1000-8000-00805f9b34fb';
-const BLE_SERVICE2='e7810a71-73ae-499d-8c15-faa9aef0c3f2';
 
-async function connectBLE(ble){
-  try{
-    btDiag('BLE initialiseren...','info');
-    await ble.initialize();
-    let foundId=null, foundName='';
-    btDiag('Scan op OBD2 UUID (fff0)...','proto');
-    await ble.requestLEScan({services:[BLE_SERVICE],allowDuplicates:false},(r)=>{
-      btDiagDevice(r.device.name||'?',r.device.deviceId,r.rssi);
-      if(!foundId){foundId=r.device.deviceId;foundName=r.device.name||r.device.deviceId;}
-    });
-    await new Promise(res=>{const c=setInterval(()=>{if(foundId){clearInterval(c);res();}},200);setTimeout(()=>{clearInterval(c);res();},8000);});
-    await ble.stopLEScan().catch(()=>{});
-    if(!foundId){
-      btDiag('UUID scan leeg — naam scan...','warn');
-      await ble.requestLEScan({allowDuplicates:false},(r)=>{
-        btDiagDevice(r.device.name||'?',r.device.deviceId,r.rssi);
-        const n=(r.device.name||'').toLowerCase();
-        if(!foundId&&(n.includes('obd')||n.includes('elm')||n.includes('vgate')||n.includes('mx+'))){foundId=r.device.deviceId;foundName=r.device.name||r.device.deviceId;}
-      });
-      await new Promise(res=>{const c=setInterval(()=>{if(foundId){clearInterval(c);res();}},200);setTimeout(()=>{clearInterval(c);res();},8000);});
-      await ble.stopLEScan().catch(()=>{});
-    }
-    if(!foundId){btDiag('Geen BLE adapter','err');throw new Error('Geen BLE adapter gevonden.');}
-    btDiag(`Verbinden: ${foundName}...`,'info');
-    await ble.connect(foundId,()=>{connected=false;setConn(false);document.getElementById('vtag').style.display='none';btDiag('BLE verbroken','err');});
-    btDiag(`BLE verbonden: ${foundName}`,'ok');
-    let notifyOk=false;
-    for(const [svc,notify,write] of [[BLE_SERVICE,BLE_NOTIFY,BLE_WRITE],[BLE_SERVICE2,BLE_SERVICE2,BLE_SERVICE2]]){
-      try{
-        await ble.startNotifications(foundId,svc,notify,(val)=>{btBuffer+=new TextDecoder().decode(val.value);});
-        window._bleConn={ble,id:foundId,svc,write};
-        notifyOk=true;btDiag(`BLE kanaal: ${svc.slice(4,8)}`,'proto');break;
-      }catch(e){btDiag(`UUID ${svc.slice(4,8)} mislukt`,'warn');}
-    }
-    if(!notifyOk) throw new Error('Geen BLE communicatiekanaal gevonden.');
-    connected=true;demoMode=false;
-    btDiag('BLE klaar','ok');log('BLE verbonden: '+foundName,'ok');
-    await initELM327();await scanNetworks();
-  }catch(e){
-    btDiag('BLE fout: '+e.message,'err');
-    document.getElementById('btnConnect').disabled=false;
-    document.getElementById('btnConnect').textContent='📡 Verbinden via Bluetooth';
-    showConnError(e.message);
-  }
-}
-
-// ════════════════════════════════════════
-// MODUS 3 — Web Bluetooth (browser fallback)
-// ════════════════════════════════════════
 async function connectWebBluetooth(){
   try{
     log('Web Bluetooth zoeken...','info');
     const device=await navigator.bluetooth.requestDevice({
-      filters:[{services:[BLE_SERVICE]},{namePrefix:'OBDII'},{namePrefix:'OBD2'},{namePrefix:'ELM327'},{namePrefix:'Vgate'},{namePrefix:'MX+'},{namePrefix:'iCar'}],
+      filters:[
+        {services:[BLE_SERVICE]},
+        {namePrefix:'OBDII'},{namePrefix:'OBD2'},{namePrefix:'ELM327'},
+        {namePrefix:'Vgate'},{namePrefix:'MX+'},{namePrefix:'iCar'}
+      ],
       optionalServices:[BLE_SERVICE,'0000ffe0-0000-1000-8000-00805f9b34fb']
     });
-    log('Apparaat: '+device.name,'ok');
+    btDiag('Apparaat: '+device.name,'ok');
     const server=await device.gatt.connect();
     let writeChar=null,notifyChar=null;
     const services=await server.getPrimaryServices();
@@ -2397,13 +2327,17 @@ async function connectWebBluetooth(){
       await notifyChar.startNotifications();
       notifyChar.addEventListener('characteristicvaluechanged',e=>{btBuffer+=new TextDecoder().decode(e.target.value);});
     }
-    device.addEventListener('gattserverdisconnected',()=>{connected=false;setConn(false);document.getElementById('vtag').style.display='none';log('Web BT verbroken','warn');});
+    device.addEventListener('gattserverdisconnected',()=>{
+      connected=false;setConn(false);
+      document.getElementById('vtag').style.display='none';
+      btDiag('BLE verbroken','err');
+    });
     window._webBtWrite=writeChar;
     connected=true;demoMode=false;
-    log('Web BT verbonden: '+device.name,'ok');
+    btDiag('BLE verbonden: '+device.name,'ok');
     await initELM327();await scanNetworks();
   }catch(e){
-    log('Web BT fout: '+e.message,'err');
+    btDiag('BLE fout: '+e.message,'err');
     document.getElementById('btnConnect').disabled=false;
     document.getElementById('btnConnect').textContent='📡 Verbinden via Bluetooth';
     showConnError(e.message);
@@ -2417,20 +2351,18 @@ async function sendBT(cmd){
   btBuffer='';
   const str=cmd+'\r';
   try{
-    if(window._sppConn){
-      // Glavotaner bluetooth-serial: write({data: string})
-      await window._sppConn.spp.write({data:str});
-    } else if(window._bleConn){
+    if(_serialWriter){
+      // Web Serial — schrijf als bytes
       const data=new TextEncoder().encode(str);
-      const {ble,id,svc,write}=window._bleConn;
-      await ble.write(id,svc,write,new DataView(data.buffer));
+      await _serialWriter.write(data);
     } else if(window._webBtWrite){
+      // Web Bluetooth BLE fallback
       const data=new TextEncoder().encode(str);
       const ch=window._webBtWrite;
       if(ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(data);
       else await ch.writeValue(data);
     }
-  }catch(e){log('BT write fout: '+e.message,'err');return '';}
+  }catch(e){log('Write fout: '+e.message,'err');return '';}
 
   const start=Date.now();
   while(Date.now()-start<3000){
@@ -2983,14 +2915,10 @@ async function handleConnect(){
   if(connected){
     connected=false; demoMode=false; clearInterval(pollTimer);
     try{
-      if(window._sppConn){
-        window._sppReadLoop=false;
-        window._sppConn.connListener?.remove?.();
-        await window._sppConn.spp.disconnect().catch(()=>{});
-      }
+      if(_serialWriter){ window._serialReadLoop=false; _serialReader?.cancel(); _serialWriter?.releaseLock(); await _serialPort?.close().catch(()=>{}); _serialPort=null; _serialReader=null; _serialWriter=null; }
     }catch(e){}
     try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){}
-    window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
+    window._bleConn=null; window._webBtWrite=null;
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false); document.getElementById('vtag').style.display='none';
     pidVals={}; pidHist={}; pidSmooth={}; stabilityCount={}; dataStable=false;
