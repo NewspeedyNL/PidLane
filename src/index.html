@@ -430,7 +430,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div class="mttl">PidLane</div>
           <div class="msub">Your car talks. We translate.</div>
         </div>
-        <div style="padding:0 20px 10px">
+        <div style="padding:0 20px 10px" id="connApiRow">
           <div class="api-lbl">🤖 API Key (optioneel) <a href="https://console.anthropic.com/settings/keys" target="_blank">Aanmaken →</a></div>
           <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-..." autocomplete="off">
         </div>
@@ -576,6 +576,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
     <button class="api-pill unset" id="apiPill" onclick="openApiDialog()">🤖 AI</button>
     <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
     <button onclick="logout()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Uitloggen">⏏ Uit</button>
+    <button id="updatePill" onclick="checkForUpdate(true)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Check for update">🔄 Update</button>
   </div>
 </div>
 
@@ -895,6 +896,10 @@ function doLogin(){
   document.getElementById('loginOv').classList.add('hidden');
   document.getElementById('connOv').classList.remove('hidden');
 
+  // Verberg API key veld in connect modal — niet nodig na login
+  const apiRow = document.getElementById('connApiRow');
+  if(apiRow) apiRow.style.display = 'none';
+
   // Toon gebruikersnaam in topbar
   const lbl=document.getElementById('userLabel');
   if(lbl){ lbl.textContent=`👤 ${user}`; lbl.style.display='block'; }
@@ -902,6 +907,53 @@ function doLogin(){
   updateApiPill();
   log(`Ingelogd als ${user} (${account.role})`,'ok');
   log('Klik "Verbinden" of "Demo modus" om te starten.','info');
+
+  // Test API key direct na inloggen
+  if(window.anthropicKey?.startsWith('sk-ant-')){
+    testApiKey();
+  } else {
+    log('Geen API key — AI functies niet beschikbaar','warn');
+  }
+}
+
+async function testApiKey(){
+  const el = document.getElementById('loginErr'); // hergebruik voor feedback
+  try{
+    log('API key testen...','info');
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': window.anthropicKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:10,
+        messages:[{role:'user',content:'Reply only: yes'}]
+      })
+    });
+    if(resp.ok){
+      const data = await resp.json();
+      const reply = data?.content?.[0]?.text?.trim()||'';
+      log(`API key OK ✅ — AI antwoord: "${reply}"`,'ok');
+      // Toon groen vinkje bij AI pill
+      const pill = document.getElementById('apiPill');
+      if(pill){ pill.textContent='🤖 AI ✓'; pill.className='api-pill set'; }
+    } else if(resp.status===401){
+      log('API key ongeldig of verlopen ❌','err');
+      const pill = document.getElementById('apiPill');
+      if(pill){ pill.textContent='🤖 API ❌'; pill.className='api-pill unset'; }
+      // Toon fout in connect modal log
+      const btLog = document.getElementById('btLog');
+      if(btLog){ btLog.innerHTML='<span style="color:var(--rd)">❌ API key ongeldig of verlopen — controleer config.js</span>'; }
+    } else {
+      log(`API test fout: HTTP ${resp.status}`,'warn');
+    }
+  }catch(e){
+    log('API test mislukt (netwerk?): '+e.message,'warn');
+  }
 }
 
 function logout(){
@@ -1021,6 +1073,67 @@ const DTCDB={
   U0101:{desc:'Communicatie TCM verloren',        body:'TCM of CAN bus probleem.',                                   sev:'high'},
   // B-codes
   B1318:{desc:'Accu spanning laag',               body:'Accu, alternator of lekstroom.',                             sev:'med'},
+
+  // ── MAZDA SPECIFIEK (CX-5, Mazda3, Mazda6, CX-30) ──
+  P2006:{desc:'Inlaatspruitstuk klep gesloten (bank 1)',  body:'IMRC actuator of bedrading. CX-5 2.0/2.5: vacuümsysteem controleren.',sev:'med'},
+  P2004:{desc:'Inlaatspruitstuk klep vast open',          body:'IMRC klep mechanisch vastgelopen.',                   sev:'med'},
+  P2187:{desc:'Systeem te mager bij stationair (bank 1)', body:'Vacuümlek of brandstofsysteem. Mazda SkyActiv: inlaatgasket controleren.',sev:'med'},
+  P0AA6:{desc:'Hybride accupakket spanning laag',         body:'Mazda M Hybrid: 24V mild-hybrid systeem fout.',       sev:'high'},
+  P1260:{desc:'Diefstalbeveiliging actief',               body:'Immobiliser probleem — contactsleutel of transponder.',sev:'high'},
+  P0A0F:{desc:'Aandrijfsysteem noodloopprogramma',        body:'Mazda M Hybrid: systeem vereist diagnose.',           sev:'high'},
+  C1155:{desc:'ABS linksvoor wielsnelheid sensor',        body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
+  C1165:{desc:'ABS rechtsvoor wielsnelheid sensor',       body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
+
+  // ── VOLKSWAGEN / AUDI / SKODA / SEAT (VAG) ──
+  P0299:{desc:'Turbo/compressor ondervermogen',    body:'Turbo defect, intercooler lek of wastegate probleem.',      sev:'high'},
+  P2015:{desc:'Inlaatspruitstuk positiesensor',    body:'Beroemd VW 2.0 TDI probleem — kleppenvlinder kapot.',      sev:'med'},
+  P0401:{desc:'EGR onvoldoende doorstroom',        body:'EGR klep vastgelopen of vuil. Veel bij VW TDI.',           sev:'med'},
+  P0420:{desc:'Katalysator efficiëntie laag (bank 1)',body:'Katalysator versleten of O2 sensor defect.',            sev:'med'},
+  P0411:{desc:'Secundaire luchtinjectie fout',     body:'Secundaire luchtpomp of klep defect. VW/Audi benzine.',    sev:'med'},
+  P0507:{desc:'Stationair toerental te hoog',      body:'Gasklep of luchtstroom meting fout.',                      sev:'med'},
+  P1296:{desc:'Koelvloeistof temperatuursensor',   body:'CTS wisselt — veel bij VW/Audi 1.8/2.0 TSI.',             sev:'med'},
+
+  // ── TOYOTA / LEXUS ──
+  P3000:{desc:'HV accusysteem fout',              body:'Hybride accupakket of BMS systeem.',                        sev:'high'},
+  P0A80:{desc:'Vervang hybride accu',             body:'Toyota Prius/Auris/Yaris hybride: accu versleten.',         sev:'high'},
+  P0500:{desc:'Voertuigsnelheid sensor',          body:'VSS sensor of bedrading defect.',                          sev:'med'},
+  C1201:{desc:'Motorbesturing systeem fout',      body:'Toyota: ABS lamp + motorlamp samen — vaak MAP/TPS fout.',  sev:'high'},
+  P1120:{desc:'Gasklep positiesensor',            body:'Toyota: TPS sub-sensor buiten bereik.',                    sev:'med'},
+
+  // ── FORD ──
+  P0191:{desc:'Brandstofdruk sensor bereik',      body:'Ford 1.0 EcoBoost: brandstofdruksensor of pomp.',          sev:'med'},
+  P0340:{desc:'Nokkenas positiesensor circuit A', body:'CMP sensor of kettingrek. Ford 1.6 TDCi veel voorkomend.',sev:'high'},
+  P246A:{desc:'Dieselroetfilter te vol',          body:'Ford TDCi: DPF regeneratie mislukt — snelweg rijden.',     sev:'med'},
+  P2263:{desc:'Turbo/supercharger boost sensor',  body:'Ford EcoBoost: boost sensor of inlaatleiding lek.',        sev:'med'},
+
+  // ── OPEL / VAUXHALL ──
+  P0597:{desc:'Thermostaat verwarmingselement',   body:'Thermostaat met elektrische verwarming defect. Veel Opel.', sev:'med'},
+  P0016:{desc:'Krukas/nokkenas koppeling (bank 1 inlaat)',body:'Kettingrek of variabele klepdistributie fout.',     sev:'high'},
+  P0017:{desc:'Krukas/nokkenas koppeling (bank 1 uitlaat)',body:'Kettingrek of VVT magneetventiel.',                sev:'high'},
+
+  // ── BMW / MINI ──
+  P0012:{desc:'A nokkenas timing over-teruggetrokken',body:'BMW: VANOS actuator of oliepeil te laag.',             sev:'high'},
+  P0011:{desc:'A nokkenas timing over-gevorderd',  body:'BMW: VANOS magneetventiel of oliedruk.',                  sev:'high'},
+  P0128:{desc:'Koelwater te laag (thermostaat)',   body:'Thermostaat vast open — veel BMW/Mini.',                  sev:'med'},
+  P1340:{desc:'Ontstekingssysteem krukas sensor',  body:'BMW: CKP sensor of vliegwiel tand.',                      sev:'high'},
+};
+
+// ── UITGEBREIDE STANDAARD OBD2 PID DEFINITIES ──
+// Incl. fabrikant-specifieke PIDs (mode 21/22)
+const PIDS_EXTRA = {
+  // Mazda CX-5 2018 specifieke PIDs (mode 22)
+  '2101':{name:'Motorolie temp',      unit:'°C', min:-40, max:150, cat:'Mazda'},
+  '2102':{name:'Turbodruk actueel',   unit:'kPa',min:0,   max:250, cat:'Mazda'},
+  '210C':{name:'Klep timing inlaat',  unit:'°',  min:-50, max:50,  cat:'Mazda'},
+  '210D':{name:'Klep timing uitlaat', unit:'°',  min:-50, max:50,  cat:'Mazda'},
+  // Algemeen mode 01 extra
+  '0149':{name:'Gaspedaal positie',   unit:'%',  min:0,   max:100, cat:'Rijden'},
+  '015A':{name:'Hybride accu %',      unit:'%',  min:0,   max:100, cat:'Electrisch'},
+  '015B':{name:'Hybride accu temp',   unit:'°C', min:-40, max:80,  cat:'Electrisch'},
+  '0143':{name:'Abs motorbelasting',  unit:'%',  min:0,   max:100, cat:'Motor'},
+  '0146':{name:'Omgevingstemperatuur',unit:'°C', min:-40, max:60,  cat:'Temperatuur'},
+  '015E':{name:'Brandstofverbruik',   unit:'L/h',min:0,   max:20,  cat:'Brandstof'},
+  '015C':{name:'Motorolie temp',      unit:'°C', min:-40, max:150, cat:'Temperatuur'},
 };
 
 // ════════════════════════════════════════
@@ -1032,7 +1145,7 @@ let dtcCodes=[], pollTimer=null, graphPID=null;
 let checkAnswers={}, checkResults=[];
 let diagCauses=[], selectedCause=null;
 let selectedProto='0';
-window.anthropicKey='';
+if(!window.anthropicKey) window.anthropicKey=''; // Niet overschrijven als login al key heeft gezet
 let dataStable=false, stabilityCount={};
 let slCollapsed=false, srCollapsed=false;
 let isDark=false, currentZoom=1.0, currentFont=13;
@@ -1099,67 +1212,73 @@ function demo(pid){
 // ════════════════════════════════════════
 // APP_VERSION, GITHUB_USER, GITHUB_REPO, VERSION_URL, UPDATE_URL → config.js
 
-async function checkForUpdate(){
+async function checkForUpdate(manual=false){
+  const pill=document.getElementById('updatePill');
+  if(pill) pill.textContent='🔄 Checken...';
   try{
     const resp=await fetch(VERSION_URL+'?t='+Date.now());
-    if(!resp.ok) return;
+    if(!resp.ok){
+      const msg=`Update check mislukt: HTTP ${resp.status}`;
+      log(msg,'warn');
+      if(pill) pill.textContent='🔄 Update';
+      if(manual) alert(msg+'\n\nControleer of GitHub Pages actief is:\nRepo → Settings → Pages → Source: main / src');
+      return;
+    }
     const data=await resp.json();
     const latest=data?.version||'';
-    if(!latest||latest===APP_VERSION) return;
+    if(!latest){
+      if(manual) alert('version.json leeg.\nInhoud moet zijn: {"version":"2.1"}');
+      if(pill) pill.textContent='🔄 Update';
+      return;
+    }
+    if(latest===APP_VERSION){
+      log(`App is up-to-date (v${APP_VERSION})`,'ok');
+      if(pill) pill.textContent='✅ v'+APP_VERSION;
+      if(manual) alert(`✅ Je hebt de nieuwste versie (v${APP_VERSION})`);
+      setTimeout(()=>{if(pill) pill.textContent='🔄 Update';},3000);
+      return;
+    }
     log(`Update beschikbaar: v${latest} (huidig: v${APP_VERSION})`,'warn');
+    if(pill){pill.textContent=`⬆️ v${latest}`;pill.style.background='var(--or)';pill.style.color='#fff';}
     showUpdateBanner(latest);
   }catch(e){
-    // Stil falen — geen internet of GitHub Pages niet actief
+    const msg='Update check fout: '+e.message;
+    log(msg,'warn');
+    if(pill) pill.textContent='🔄 Update';
+    if(manual) alert(msg+'\n\nMogelijke oorzaken:\n• Geen internet\n• GitHub Pages niet actief\n• VERSION_URL onjuist in config.js');
   }
 }
 
 function showUpdateBanner(newVersion){
   document.getElementById('updateBanner')?.remove();
-
-  // Detecteer of we in APK of browser zitten
-  const isAPK=!!(window.Capacitor?.isNativePlatform?.());
-
+  const isAPK=!!(window.Capacitor?.isNativePlatform);
   const banner=document.createElement('div');
   banner.id='updateBanner';
   banner.style.cssText='position:fixed;bottom:44px;left:0;right:0;z-index:8000;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(135deg,#1a6fff,#7c3aed);color:#fff;font-family:var(--f);font-size:12px;box-shadow:0 -2px 12px rgba(0,0,0,.2);gap:10px;';
-
   const txt=document.createElement('div');
   txt.style.flex='1';
-  if(isAPK){
-    txt.innerHTML=`🔄 <strong>Update v${newVersion} beschikbaar!</strong><br><small style="opacity:.8">Download nieuwe APK via GitHub Actions</small>`;
-  } else {
-    txt.innerHTML=`🔄 <strong>Update v${newVersion} beschikbaar!</strong> Huidig: v${APP_VERSION}`;
-  }
-
+  txt.innerHTML=isAPK
+    ?`🔄 <strong>Update v${newVersion} beschikbaar!</strong><br><small style="opacity:.8">Download nieuwe APK via GitHub Actions</small>`
+    :`🔄 <strong>Update v${newVersion} beschikbaar!</strong> Nu: v${APP_VERSION}`;
   const btn=document.createElement('button');
   btn.style.cssText='padding:6px 14px;border-radius:6px;border:none;background:#fff;color:#1a6fff;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;';
-
   if(isAPK){
-    // APK — open GitHub releases pagina in externe browser
     btn.textContent='Naar GitHub →';
-    btn.onclick=()=>{
-      const releasesUrl=`https://github.com/${GITHUB_USER}/${GITHUB_REPO}/actions`;
-      window.open(releasesUrl,'_system');
-      banner.remove();
-    };
+    btn.onclick=()=>{window.open(`https://github.com/${GITHUB_USER}/${GITHUB_REPO}/actions`,'_system');banner.remove();};
   } else {
-    // Browser — herlaad pagina met nieuwe versie
     btn.textContent='Nu updaten';
     btn.onclick=()=>applyUpdate();
   }
-
   const close=document.createElement('button');
   close.textContent='✕';
   close.style.cssText='padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;cursor:pointer;font-size:12px;flex-shrink:0;';
   close.onclick=()=>banner.remove();
-
-  banner.appendChild(txt); banner.appendChild(btn); banner.appendChild(close);
+  banner.appendChild(txt);banner.appendChild(btn);banner.appendChild(close);
   document.body.appendChild(banner);
 }
 
 function applyUpdate(){
-  // Browser update — herlaad vanaf GitHub Pages
-  try{ if(window.anthropicKey) localStorage.setItem('ns_api_key',window.anthropicKey); }catch(e){}
+  try{if(window.anthropicKey)localStorage.setItem('ns_api_key',window.anthropicKey);}catch(e){}
   window.location.href=UPDATE_URL+'?v='+Date.now();
 }
 
@@ -1173,24 +1292,26 @@ const _atBuffer=[];
 let _atTimer=null;
 
 async function logToSheets(type, message, extra={}){
+  // Controleer of Airtable geconfigureerd is
+  if(typeof AIRTABLE_TOKEN==='undefined'||!AIRTABLE_TOKEN) return;
+  if(typeof AIRTABLE_URL==='undefined'||!AIRTABLE_URL) return;
   try{
     const v=vehicleInfo||{};
     _atBuffer.push({
       fields:{
-        Timestamp:   new Date().toISOString(),
-        Type:        type||'info',
-        Message:     message||'',
-        Merk:        v.merk||'',
-        Year:        v.year||'',
-        VIN:         v.vin||'',
-        Protocol:    selectedNetwork?.name||'',
-        ActivePIDs:  [...(activePIDs||[])].join(' '),
-        AppVersion:  '2.0',
-        User:        currentUser?.name||'',
-        Role:        currentUser?.role||'',
+        Timestamp:  new Date().toISOString(),
+        Type:       String(type||'info'),
+        Message:    String(message||'').slice(0,500),
+        Merk:       String(v.merk||''),
+        Year:       String(v.year||''),
+        VIN:        String(v.vin||''),
+        Protocol:   String(selectedNetwork?.name||''),
+        ActivePIDs: [...(activePIDs||[])].join(' '),
+        AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'2.1'),
+        User:       String(currentUser?.name||''),
+        Role:       String(currentUser?.role||''),
       }
     });
-    // Stuur na 3 seconden (batching)
     clearTimeout(_atTimer);
     _atTimer=setTimeout(flushAirtable, 3000);
   }catch(e){}
@@ -1198,23 +1319,41 @@ async function logToSheets(type, message, extra={}){
 
 async function flushAirtable(){
   if(!_atBuffer.length) return;
-  const batch=_atBuffer.splice(0,10); // max 10 per request
+  if(typeof AIRTABLE_TOKEN==='undefined'||!AIRTABLE_TOKEN) return;
+  const batch=_atBuffer.splice(0,10);
   try{
-    await fetch(AIRTABLE_URL,{
+    const resp=await fetch(AIRTABLE_URL,{
       method:'POST',
       headers:{
         'Authorization':`Bearer ${AIRTABLE_TOKEN}`,
         'Content-Type':'application/json'
       },
+      // Airtable verwacht: {"records":[{"fields":{...}},{"fields":{...}}]}
       body:JSON.stringify({records:batch})
     });
+    if(!resp.ok){
+      const err=await resp.json().catch(()=>({}));
+      console.warn('Airtable fout:',resp.status,err?.error?.message||'');
+      // Zet terug in buffer bij fout
+      _atBuffer.unshift(...batch);
+    }
   }catch(e){
-    // Stil falen — logging mag app niet breken
+    console.warn('Airtable netwerk fout:',e.message);
   }
 }
 // ════════════════════════════════════════
-// LOG (lokaal + remote)
+// API KEY UI
 // ════════════════════════════════════════
+// ════════════════════════════════════════
+// API KEY UI
+// ════════════════════════════════════════
+function updateApiPill(){
+  const p=document.getElementById('apiPill'); if(!p) return;
+  const hasKey=window.anthropicKey?.startsWith('sk-ant-');
+  p.textContent=hasKey?'🤖 AI ✓':'🤖 AI';
+  p.className='api-pill '+(hasKey?'set':'unset');
+}
+
 const localLog=[];
 function log(msg,type=''){
   const bar=document.getElementById('logbar');
@@ -2351,21 +2490,28 @@ async function connectBLE(ble){
     btDiag('BLE initialiseren...','info');
     await ble.initialize();
     let foundId=null, foundName='';
-    btDiag('Scan op OBD2 UUID (fff0)...','proto');
+    btDiag('Scan op OBD2 UUID (fff0) — 30 sec...','proto');
+    // Aftelling in de log
+    let countdown1=30;
+    const timer1=setInterval(()=>{ countdown1--; if(countdown1>0) btDiag(`Scannen... ${countdown1}s`,'info'); },1000);
     await ble.requestLEScan({services:[BLE_SERVICE],allowDuplicates:false},(r)=>{
       btDiagDevice(r.device.name||'?',r.device.deviceId,r.rssi);
       if(!foundId){foundId=r.device.deviceId;foundName=r.device.name||r.device.deviceId;}
     });
-    await new Promise(res=>{const c=setInterval(()=>{if(foundId){clearInterval(c);res();}},200);setTimeout(()=>{clearInterval(c);res();},8000);});
+    await new Promise(res=>{const c=setInterval(()=>{if(foundId){clearInterval(c);res();}},200);setTimeout(()=>{clearInterval(c);res();},30000);});
+    clearInterval(timer1);
     await ble.stopLEScan().catch(()=>{});
     if(!foundId){
-      btDiag('UUID scan leeg — naam scan...','warn');
+      btDiag('UUID scan leeg — naam scan 30 sec...','warn');
+      let countdown2=30;
+      const timer2=setInterval(()=>{ countdown2--; if(countdown2>0) btDiag(`Naam scan... ${countdown2}s`,'info'); },1000);
       await ble.requestLEScan({allowDuplicates:false},(r)=>{
         btDiagDevice(r.device.name||'?',r.device.deviceId,r.rssi);
         const n=(r.device.name||'').toLowerCase();
         if(!foundId&&(n.includes('obd')||n.includes('elm')||n.includes('vgate')||n.includes('mx+'))){foundId=r.device.deviceId;foundName=r.device.name||r.device.deviceId;}
       });
-      await new Promise(res=>{const c=setInterval(()=>{if(foundId){clearInterval(c);res();}},200);setTimeout(()=>{clearInterval(c);res();},8000);});
+      await new Promise(res=>{const c=setInterval(()=>{if(foundId){clearInterval(c);res();}},200);setTimeout(()=>{clearInterval(c);res();},30000);});
+      clearInterval(timer2);
       await ble.stopLEScan().catch(()=>{});
     }
     if(!foundId){btDiag('Geen BLE adapter','err');throw new Error('Geen BLE adapter gevonden.');}
@@ -2530,7 +2676,7 @@ async function initELM327(){
   await sendCmd('ATH0');
   btDiag('ELM327: adaptive timing instellen...','proto');
   await sendCmd('ATAT1');
-  await sendCmd('ATST32');
+  await sendCmd('ATST64'); // 400ms timeout — betrouwbaarder bij eerste verbinding
   await sendCmd('ATD');
   const spResp=await sendCmd('ATSP0');
   btDiag('ELM327 klaar — auto protocol actief','ok');
