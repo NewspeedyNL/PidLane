@@ -1095,46 +1095,62 @@ function demo(pid){
 // ════════════════════════════════════════
 // GOOGLE SHEETS LOGGING
 // ════════════════════════════════════════
-// ════════════════════════════════════════
 // 🔄 AUTO-UPDATE SYSTEEM
 // ════════════════════════════════════════
 // APP_VERSION, GITHUB_USER, GITHUB_REPO, VERSION_URL, UPDATE_URL → config.js
 
 async function checkForUpdate(){
   try{
-    const resp=await fetch(VERSION_URL+'?t='+Date.now()); // cache bust
+    const resp=await fetch(VERSION_URL+'?t='+Date.now());
     if(!resp.ok) return;
     const data=await resp.json();
     const latest=data?.version||'';
     if(!latest||latest===APP_VERSION) return;
-
-    // Nieuwe versie beschikbaar
     log(`Update beschikbaar: v${latest} (huidig: v${APP_VERSION})`,'warn');
     showUpdateBanner(latest);
   }catch(e){
-    // Stil falen — geen internet of bestand niet gevonden
+    // Stil falen — geen internet of GitHub Pages niet actief
   }
 }
 
 function showUpdateBanner(newVersion){
-  // Verwijder bestaande banner
   document.getElementById('updateBanner')?.remove();
+
+  // Detecteer of we in APK of browser zitten
+  const isAPK=!!(window.Capacitor?.isNativePlatform?.());
 
   const banner=document.createElement('div');
   banner.id='updateBanner';
   banner.style.cssText='position:fixed;bottom:44px;left:0;right:0;z-index:8000;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(135deg,#1a6fff,#7c3aed);color:#fff;font-family:var(--f);font-size:12px;box-shadow:0 -2px 12px rgba(0,0,0,.2);gap:10px;';
 
   const txt=document.createElement('div');
-  txt.innerHTML=`🔄 <strong>Update v${newVersion} beschikbaar!</strong> Huidig: v${APP_VERSION}`;
+  txt.style.flex='1';
+  if(isAPK){
+    txt.innerHTML=`🔄 <strong>Update v${newVersion} beschikbaar!</strong><br><small style="opacity:.8">Download nieuwe APK via GitHub Actions</small>`;
+  } else {
+    txt.innerHTML=`🔄 <strong>Update v${newVersion} beschikbaar!</strong> Huidig: v${APP_VERSION}`;
+  }
 
   const btn=document.createElement('button');
-  btn.textContent='Nu updaten';
-  btn.style.cssText='padding:6px 14px;border-radius:6px;border:none;background:#fff;color:#1a6fff;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;';
-  btn.onclick=()=>applyUpdate();
+  btn.style.cssText='padding:6px 14px;border-radius:6px;border:none;background:#fff;color:#1a6fff;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;';
+
+  if(isAPK){
+    // APK — open GitHub releases pagina in externe browser
+    btn.textContent='Naar GitHub →';
+    btn.onclick=()=>{
+      const releasesUrl=`https://github.com/${GITHUB_USER}/${GITHUB_REPO}/actions`;
+      window.open(releasesUrl,'_system');
+      banner.remove();
+    };
+  } else {
+    // Browser — herlaad pagina met nieuwe versie
+    btn.textContent='Nu updaten';
+    btn.onclick=()=>applyUpdate();
+  }
 
   const close=document.createElement('button');
   close.textContent='✕';
-  close.style.cssText='padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;cursor:pointer;font-size:12px;';
+  close.style.cssText='padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;cursor:pointer;font-size:12px;flex-shrink:0;';
   close.onclick=()=>banner.remove();
 
   banner.appendChild(txt); banner.appendChild(btn); banner.appendChild(close);
@@ -1142,11 +1158,8 @@ function showUpdateBanner(newVersion){
 }
 
 function applyUpdate(){
-  // Sla API key op voor na update
-  try{
-    if(window.anthropicKey) localStorage.setItem('ns_api_key', window.anthropicKey);
-  }catch(e){}
-  // Herlaad de app vanaf GitHub Pages (nieuwste versie)
+  // Browser update — herlaad vanaf GitHub Pages
+  try{ if(window.anthropicKey) localStorage.setItem('ns_api_key',window.anthropicKey); }catch(e){}
   window.location.href=UPDATE_URL+'?v='+Date.now();
 }
 
@@ -1401,7 +1414,7 @@ function loadApiKey(){
   // Fallback: localStorage
   try{
     const saved=localStorage.getItem('ns_api_key');
-    if(saved?.startsWith('sk-ant-')) window.window.anthropicKey=saved;
+    if(saved?.startsWith('sk-ant-')) window.anthropicKey=saved;
   }catch(e){}
   updateApiPill();
 }
@@ -2055,7 +2068,7 @@ function exportFuelReport(){
 // AI
 // ════════════════════════════════════════
 async function apiFetch(prompt,maxTokens=1200){
-  const key=window.anthropicKey||anthropicKey||'';
+  const key=window.anthropicKey||'';
   if(!key||!key.startsWith('sk-ant-')) throw new Error('Geen API key. Log in als Admin of stel key in via 🤖 rechtsboven.');
   const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});
   if(!resp.ok){const err=await resp.json().catch(()=>({}));if(resp.status===401)throw new Error('API key ongeldig of verlopen.');throw new Error(err.error?.message||`HTTP ${resp.status}`);}
@@ -2200,55 +2213,81 @@ async function connectSerial(){
 
 // ════════════════════════════════════════
 // MODUS 1 — Bluetooth Classic SPP (OBDLink MX+)
-// Correcte API: scan(), connect({address}), write({address,value}),
-//               startNotifications({address}), addListener('dataReceived')
+// Strategie: direct verbinden op MAC adres uit config.js
+// Geen scan nodig — adapter moet al gekoppeld zijn in Android BT instellingen
 // ════════════════════════════════════════
 async function connectSPP(spp){
   try{
     btDiag('Bluetooth Classic SPP starten...','info');
 
-    // Stap 1: check of Bluetooth aan is
-    const enabled=await spp.isEnabled().catch(()=>({enabled:true}));
-    btDiag(`Bluetooth: ${enabled.enabled?'AAN ✓':'UIT ✗'}`,'info');
+    // Check Bluetooth status
+    const btState=await spp.isEnabled().catch(()=>({enabled:true}));
+    if(!btState.enabled){
+      throw new Error('Bluetooth is uitgeschakeld. Schakel Bluetooth in en probeer opnieuw.');
+    }
+    btDiag('Bluetooth AAN ✓','ok');
 
-    // Stap 2: scan naar apparaten in de buurt (inclusief al-gekoppelde)
-    btDiag('Scannen naar apparaten (10 sec)...','info');
-    const scanResult=await spp.scan();
-    const devices=scanResult?.devices||[];
-    btDiag(`${devices.length} apparaten gevonden`,'info');
+    // Bepaal te verbinden adres:
+    // 1. Eerst uit config.js (OBDLINK_ADDRESS)
+    // 2. Dan uit localStorage (eerder verbonden)
+    // 3. Dan via scan als laatste optie
+    let address = (typeof OBDLINK_ADDRESS!=='undefined' && OBDLINK_ADDRESS)
+      ? OBDLINK_ADDRESS
+      : null;
+    let name = 'OBDLink MX+';
 
-    devices.forEach(dev=>{
-      btDiagDevice(dev.name||dev.Name, dev.address||dev.id, null);
-    });
-
-    // Zoek OBD2 adapter op naam
-    const OBD_NAMES=['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
-    let target=null;
-    for(const dev of devices){
-      const name=(dev.name||dev.Name||'').toLowerCase();
-      if(OBD_NAMES.some(n=>name.includes(n))){ target=dev; break; }
+    // Probeer eerder opgeslagen adres
+    if(!address){
+      try{ address=localStorage.getItem('spp_last_address'); name=localStorage.getItem('spp_last_name')||name; }catch(e){}
     }
 
-    if(!target){
-      const names=devices.map(d=>d.name||d.Name||d.address||d.id||'?').join(', ');
-      btDiag(`Geen OBD2 adapter gevonden. Gevonden: ${names||'(niets)'}`, 'err');
-      throw new Error(
-        `Geen OBD2 adapter gevonden.\n\n`+
-        `Gevonden apparaten:\n${names||'(geen)'}\n\n`+
-        `Controleer:\n• Adapter in OBD-poort?\n• Contact aan?\n• Adapter eerder gekoppeld in Bluetooth instellingen?`
-      );
+    if(address){
+      btDiag(`Direct verbinden: ${name} (${address})...`,'info');
+      btDiagDevice(name, address, null);
+    } else {
+      // Geen bekend adres — scan als fallback
+      btDiag('Geen bekend adres — scan starten...','warn');
+      btDiag('Scannen (dit kan 10-30 sec duren)...','info');
+
+      let scanResult;
+      try{ scanResult=await spp.scan(); }
+      catch(scanErr){
+        throw new Error(
+          'Scan mislukt: '+scanErr.message+'\n\n'+
+          'Tip: Vul het MAC adres van de OBDLink MX+ in in config.js:\n'+
+          'const OBDLINK_ADDRESS = "XX:XX:XX:XX:XX:XX";'
+        );
+      }
+
+      const devices=scanResult?.devices||[];
+      btDiag(`${devices.length} apparaten gevonden via scan`,'info');
+      devices.forEach(dev=>btDiagDevice(dev.name||dev.Name, dev.address||dev.id, null));
+
+      const OBD_NAMES=['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
+      const target=devices.find(d=>OBD_NAMES.some(n=>(d.name||d.Name||'').toLowerCase().includes(n)));
+      if(!target){
+        const names=devices.map(d=>d.name||d.Name||d.address||'?').join(', ');
+        throw new Error(
+          `Geen OBD2 adapter gevonden.\nGevonden: ${names||'(geen)'}\n\n`+
+          `Oplossing: vul het MAC adres in config.js in:\nconst OBDLINK_ADDRESS = "XX:XX:XX:XX:XX:XX";`
+        );
+      }
+      address=target.address||target.id;
+      name=target.name||target.Name;
     }
 
-    const address=target.address||target.id;
-    const name=target.name||target.Name;
-    btDiag(`OBD2 adapter gevonden: ${name} (${address})`,'ok');
-    btDiag('Verbinden via SPP RFCOMM...','info');
-
-    // Stap 3: verbinden
+    // Verbinden
+    btDiag(`Verbinden met ${name} (${address})...`,'info');
     await spp.connect({address});
-    btDiag('Verbonden ✓','ok');
+    btDiag('SPP verbonden ✓','ok');
 
-    // Stap 4: notificaties starten voor inkomende data
+    // Sla adres op voor volgende keer
+    try{
+      localStorage.setItem('spp_last_address', address);
+      localStorage.setItem('spp_last_name', name);
+    }catch(e){}
+
+    // Notificaties starten
     await spp.startNotifications({address});
     const listener=await spp.addListener('dataReceived',(data)=>{
       btBuffer+=(data?.data||data?.value||data?.text||'');
