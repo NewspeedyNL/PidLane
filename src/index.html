@@ -2176,11 +2176,16 @@ function clearBtLog(){
   document.getElementById('btDiagBox').style.display='none';
 }
 
-// Glavotaner bluetooth-serial plugin
+// @e-is/capacitor-bluetooth-serial v6 — Capacitor 6
+// API: scan() → apparaten zoeken
+//      connect({address}) → verbinden
+//      startNotifications({address}) → data ontvangen
+//      addListener('dataReceived') → data events
+//      write({address, value}) → sturen
+//      disconnect({address}) → verbreken
 function getSPP(){ return window.Capacitor?.Plugins?.BluetoothSerial||null; }
 function getBLE(){ return window.Capacitor?.Plugins?.BluetoothLe||null; }
 
-// ── VERBINDEN ──
 async function connectSerial(){
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal?.startsWith('sk-ant-')){
@@ -2195,7 +2200,7 @@ async function connectSerial(){
   const ble=getBLE();
 
   if(spp){
-    btDiag('Modus: Bluetooth Classic SPP (OBDLink MX+)','proto');
+    btDiag('Modus: Bluetooth Classic SPP (@e-is v6)','proto');
     await connectSPP(spp);
   } else if(ble){
     btDiag('Modus: BLE via Capacitor','proto');
@@ -2213,95 +2218,71 @@ async function connectSerial(){
 
 // ════════════════════════════════════════
 // MODUS 1 — Bluetooth Classic SPP
-// Gebruikt Glavotaner/bluetooth-serial plugin
-// API: list() → gekoppelde apparaten
-//      connect({address}) → verbinden
-//      write({data}) → sturen
-//      read() → lezen via polling
-//      addListener('connectionChange') → status
+// @e-is/capacitor-bluetooth-serial v6.0.3
 // ════════════════════════════════════════
 async function connectSPP(spp){
   try{
     btDiag('Bluetooth Classic SPP starten...','info');
 
-    // Stap 1: permissies checken/vragen
+    // Scan naar apparaten (ook al-gekoppelde zijn zichtbaar)
+    btDiag('Scannen naar apparaten...','info');
+    let scanResult;
     try{
-      const perms=await spp.checkPermissions();
-      btDiag(`Permissies: ${JSON.stringify(perms)}`,'info');
-      const needed=Object.values(perms).some(v=>v!=='granted');
-      if(needed){
-        btDiag('Permissies aanvragen...','warn');
-        await spp.requestPermissions({permissions:['connect','scan']});
-      }
-    }catch(e){ btDiag('Permissie check overgeslagen','info'); }
+      scanResult = await spp.scan();
+    }catch(scanErr){
+      // Scan mislukt — probeer direct verbinden op bekende naam
+      btDiag('Scan mislukt: '+scanErr.message,'warn');
+      btDiag('Direct verbinden proberen...','info');
+      scanResult = {devices:[]};
+    }
 
-    // Stap 2: lijst van al-gekoppelde apparaten (bonded devices)
-    btDiag('Gekoppelde apparaten ophalen...','info');
-    const result=await spp.list();
-    const devices=result?.devices||[];
-    btDiag(`${devices.length} gekoppelde apparaten gevonden`,'info');
-    devices.forEach(d=>btDiagDevice(d.name, d.address, null));
+    const devices = scanResult?.devices || [];
+    btDiag(`${devices.length} apparaten gevonden`,'info');
+    devices.forEach(d => btDiagDevice(d.name||d.Name, d.address||d.id, null));
 
     // Zoek OBD2 adapter op naam
-    const OBD=['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
-    let target=devices.find(d=>OBD.some(n=>(d.name||'').toLowerCase().includes(n)));
+    const OBD = ['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
+    let target = devices.find(d => OBD.some(n => (d.name||d.Name||'').toLowerCase().includes(n)));
 
-    if(!target && devices.length>0){
-      // Toon alle apparaten en vraag gebruiker
-      const names=devices.map(d=>`${d.name} (${d.address})`).join('\n');
+    // Fallback: eerste apparaat
+    if(!target && devices.length > 0){
       btDiag('Geen OBD2 naam herkend — eerste apparaat proberen','warn');
-      // Probeer eerste apparaat als fallback
-      target=devices[0];
+      target = devices[0];
     }
 
     if(!target){
-      // Geen gekoppelde apparaten — ontdek nieuwe
-      btDiag('Geen gekoppelde apparaten — nieuwe zoeken...','warn');
-      const disc=await spp.discoverUnpaired();
-      const newDevices=disc?.devices||[];
-      btDiag(`${newDevices.length} nieuwe apparaten gevonden`,'info');
-      newDevices.forEach(d=>btDiagDevice(d.name,d.address,null));
-      target=newDevices.find(d=>OBD.some(n=>(d.name||'').toLowerCase().includes(n)));
-      if(!target){
-        const names=[...devices,...newDevices].map(d=>d.name||d.address||'?').join(', ');
-        throw new Error(`Geen OBD2 adapter gevonden.\n\nGevonden: ${names||'(geen)'}\n\nKoppel de OBDLink MX+ eerst via Android Bluetooth instellingen.`);
-      }
+      throw new Error(
+        'Geen apparaten gevonden.\n\n'+
+        'Controleer:\n'+
+        '• OBDLink MX+ in OBD-poort?\n'+
+        '• Contact auto aan?\n'+
+        '• OBDLink al gekoppeld via Android Bluetooth instellingen?'
+      );
     }
 
-    btDiag(`OBD2 adapter: ${target.name} (${target.address})`,'ok');
+    const address = target.address || target.id;
+    const name = target.name || target.Name || address;
+    btDiag(`Adapter: ${name} (${address})`,'ok');
 
-    // Stap 3: verbinden
+    // Verbinden
     btDiag('Verbinden...','info');
-    await spp.connect({address:target.address});
+    await spp.connect({address});
     btDiag('Verbonden ✓','ok');
 
-    // Stap 4: luister naar verbindingswijzigingen
-    const connListener=await spp.addListener('connectionChange',(e)=>{
-      if(e.state==='NONE'||e.state===0){
-        connected=false; setConn(false);
-        document.getElementById('vtag').style.display='none';
-        btDiag('SPP verbinding verbroken','err');
-        log('SPP verbroken','warn');
-      }
+    // Start notificaties
+    btDiag('Notificaties starten...','info');
+    await spp.startNotifications({address});
+
+    // Data ontvangen via listener
+    const listener = await spp.addListener('dataReceived',(data)=>{
+      btBuffer += (data?.data || data?.value || data?.text || '');
     });
 
-    // Stap 5: start read loop voor inkomende data
-    window._sppConn={spp, address:target.address, name:target.name, connListener};
-    window._sppReadLoop=true;
-    (async()=>{
-      while(window._sppReadLoop && window._sppConn){
-        try{
-          const r=await spp.read();
-          if(r?.data) btBuffer+=r.data;
-        }catch(e){ break; }
-        await delay(30);
-      }
-    })();
-
-    connected=true; demoMode=false;
-    btDiag(`SPP actief: ${target.name}`,'ok');
-    log(`SPP verbonden: ${target.name}`,'ok');
-    logToSheets('connect',`SPP verbonden: ${target.name}`,{address:target.address});
+    window._sppConn = {spp, address, name, listener};
+    connected = true; demoMode = false;
+    btDiag(`SPP actief: ${name}`,'ok');
+    log(`SPP verbonden: ${name}`,'ok');
+    logToSheets('connect', `SPP verbonden: ${name}`, {address});
     await initELM327();
     await scanNetworks();
 
@@ -2418,8 +2399,11 @@ async function sendBT(cmd){
   const str=cmd+'\r';
   try{
     if(window._sppConn){
-      // Glavotaner bluetooth-serial: write({data: string})
-      await window._sppConn.spp.write({data:str});
+      // @e-is/capacitor-bluetooth-serial v6: write({address, value})
+      await window._sppConn.spp.write({
+        address: window._sppConn.address,
+        value: str
+      });
     } else if(window._bleConn){
       const data=new TextEncoder().encode(str);
       const {ble,id,svc,write}=window._bleConn;
@@ -2984,9 +2968,9 @@ async function handleConnect(){
     connected=false; demoMode=false; clearInterval(pollTimer);
     try{
       if(window._sppConn){
-        window._sppReadLoop=false;
-        window._sppConn.connListener?.remove?.();
-        await window._sppConn.spp.disconnect().catch(()=>{});
+        window._sppConn.listener?.remove?.();
+        await window._sppConn.spp.stopNotifications({address:window._sppConn.address}).catch(()=>{});
+        await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
       }
     }catch(e){}
     try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){}
