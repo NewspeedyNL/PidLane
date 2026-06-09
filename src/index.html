@@ -7,6 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Capacitor — actief in APK, genegeerd in browser -->
 <script src="capacitor.js" onerror="void 0"></script>
+<!-- Config — credentials, login, Airtable, versie -->
+<script src="config.js"></script>
 <style>
 /* ══ LIGHT THEME (default) ══ */
 :root {
@@ -855,22 +857,10 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 
 <script>
 // ══════════════════════════════════════════════════════
-// 🔐 LOGIN SYSTEEM
+// 🔐 LOGIN & CONFIG — zie src/config.js
 // ══════════════════════════════════════════════════════
-const USERS = {
-  'Admin': {
-    password: '1029384756',
-    apiKey:   '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',  // ← Vul hier je sk-ant-api03-... in
-    role:     'admin',
-    label:    'Admin'
-  },
-  'Demo': {
-    password: 'P!dL@n3',
-    apiKey:   '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',   // ← Optioneel: demo API key (beperkte credits)
-    role:     'demo',
-    label:    'Demo gebruiker'
-  }
-};
+// USERS, API keys, Airtable, versie staan in config.js
+// Pas ALLEEN config.js aan — nooit index.html
 
 let currentUser = null;
 
@@ -917,7 +907,6 @@ function doLogin(){
 function logout(){
   currentUser = null;
   window.anthropicKey = '';
-  anthropicKey = '';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
   document.getElementById('loginErr').textContent = '';
@@ -927,10 +916,7 @@ function logout(){
 }
 
 // ══════════════════════════════════════════════════════
-// ⚙️ CONFIGURATIE
-// ══════════════════════════════════════════════════════
-const DEMO_API_KEY = '';  // Wordt beheerd via login systeem
-
+// ⚙️ CONFIGURATIE — zie config.js
 // ════════════════════════════════════════
 // DATA
 // ════════════════════════════════════════
@@ -1046,7 +1032,7 @@ let dtcCodes=[], pollTimer=null, graphPID=null;
 let checkAnswers={}, checkResults=[];
 let diagCauses=[], selectedCause=null;
 let selectedProto='0';
-let anthropicKey='';
+window.anthropicKey='';
 let dataStable=false, stabilityCount={};
 let slCollapsed=false, srCollapsed=false;
 let isDark=false, currentZoom=1.0, currentFont=13;
@@ -1112,13 +1098,7 @@ function demo(pid){
 // ════════════════════════════════════════
 // 🔄 AUTO-UPDATE SYSTEEM
 // ════════════════════════════════════════
-const APP_VERSION = '2.1';
-// Jouw GitHub Pages URL — app checkt hier op nieuwe versie
-const GITHUB_USER  = 'NewspeedyNL';
-const GITHUB_REPO  = 'PidLane';
-// version.json op GitHub Pages bevat {"version":"2.x"}
-const VERSION_URL  = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/version.json`;
-const UPDATE_URL   = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/index.html`;
+// APP_VERSION, GITHUB_USER, GITHUB_REPO, VERSION_URL, UPDATE_URL → config.js
 
 async function checkForUpdate(){
   try{
@@ -1164,7 +1144,7 @@ function showUpdateBanner(newVersion){
 function applyUpdate(){
   // Sla API key op voor na update
   try{
-    if(anthropicKey) localStorage.setItem('ns_api_key', anthropicKey);
+    if(window.anthropicKey) localStorage.setItem('ns_api_key', window.anthropicKey);
   }catch(e){}
   // Herlaad de app vanaf GitHub Pages (nieuwste versie)
   window.location.href=UPDATE_URL+'?v='+Date.now();
@@ -1173,10 +1153,7 @@ function applyUpdate(){
 // ════════════════════════════════════════
 // AIRTABLE LOGGING
 // ════════════════════════════════════════
-const AIRTABLE_TOKEN   = 'patXZNmjzWMK2zTxx.1f347f02fa720e690e7f4be48a65798d992eeefcc69b8eeeabbf461647a80a16';
-const AIRTABLE_BASE    = 'appmj3M4r0AFhObjs';
-const AIRTABLE_TABLE   = 'tbl2AUw6V0Gy5YbRC';
-const AIRTABLE_URL     = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`;
+// AIRTABLE_TOKEN, AIRTABLE_BASE, AIRTABLE_TABLE, AIRTABLE_URL → config.js
 
 // Buffer — stuur in batches van max 10 om rate limit te vermijden
 const _atBuffer=[];
@@ -1419,40 +1396,36 @@ Geef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET 
 // API KEY
 // ════════════════════════════════════════
 function loadApiKey(){
-  // Check hardcoded demo key first
-  if(DEMO_API_KEY&&DEMO_API_KEY.startsWith('sk-ant-')){
-    anthropicKey=DEMO_API_KEY;
-    try{localStorage.setItem('ns_api_key',DEMO_API_KEY);}catch(e){}
-  } else {
-    try{anthropicKey=localStorage.getItem('ns_api_key')||'';}catch(e){}
-  }
+  // Login heeft altijd prioriteit — nooit overschrijven
+  if(window.anthropicKey?.startsWith('sk-ant-')){ updateApiPill(); return; }
+  // Fallback: localStorage
+  try{
+    const saved=localStorage.getItem('ns_api_key');
+    if(saved?.startsWith('sk-ant-')) window.window.anthropicKey=saved;
+  }catch(e){}
   updateApiPill();
 }
 function saveApiKey(){
   let val=document.getElementById('apiKeyInput').value.trim();
-  if(val==='••••••••••••••••') val=anthropicKey;
+  if(val==='••••••••••••••••') val=window.anthropicKey;
   if(val&&!val.startsWith('sk-ant-')){
     document.getElementById('apiStatus').innerHTML='<span style="color:var(--rd)">⚠ Moet beginnen met sk-ant-</span>';
     return;
   }
-  anthropicKey=val;
+  window.anthropicKey=val;
   try{val?localStorage.setItem('ns_api_key',val):localStorage.removeItem('ns_api_key');}catch(e){}
   updateApiPill(); closeApiDialog();
   log(val?'API key opgeslagen':'API key verwijderd',val?'ok':'warn');
 }
 function clearApiKey(){
-  anthropicKey='';
+  window.anthropicKey='';
   try{localStorage.removeItem('ns_api_key');}catch(e){}
   updateApiPill(); closeApiDialog();
 }
-function updateApiPill(){
-  const p=document.getElementById('apiPill'); if(!p) return;
-  p.textContent=anthropicKey?'🤖 AI ✓':'🤖 AI';
-  p.className='api-pill '+(anthropicKey?'set':'unset');
-}
 function openApiDialog(){
-  document.getElementById('apiKeyInput').value=anthropicKey?'••••••••••••••••':'';
-  document.getElementById('apiStatus').innerHTML=anthropicKey?'<span style="color:var(--gn)">✅ Key actief</span>':'<span style="color:var(--or)">Geen key</span>';
+  const hasKey=window.anthropicKey?.startsWith('sk-ant-');
+  document.getElementById('apiKeyInput').value=hasKey?'••••••••••••••••':'';
+  document.getElementById('apiStatus').innerHTML=hasKey?'<span style="color:var(--gn)">✅ Key actief</span>':'<span style="color:var(--or)">Geen key</span>';
   document.getElementById('apiDialog').classList.add('open');
 }
 function closeApiDialog(){document.getElementById('apiDialog').classList.remove('open');}
@@ -2197,7 +2170,7 @@ function getBLE(){  return window.Capacitor?.Plugins?.BluetoothLe      || null; 
 async function connectSerial(){
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal?.startsWith('sk-ant-')){
-    anthropicKey=apiVal;
+    window.anthropicKey=apiVal;
     try{localStorage.setItem('ns_api_key',apiVal);}catch(e){}
     updateApiPill();
   }
@@ -2931,7 +2904,7 @@ function startPoll(){
 // ════════════════════════════════════════
 function startDemo(){
   const apiVal=document.getElementById('startApiKey').value.trim();
-  if(apiVal&&apiVal.startsWith('sk-ant-')){anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){}updateApiPill();}
+  if(apiVal&&apiVal.startsWith('sk-ant-')){window.anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){}updateApiPill();}
   demoMode=true; connected=true; dataStable=true;
   document.getElementById('connOv').classList.add('hidden');
   resetToStep1();
@@ -3092,7 +3065,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     const saved=localStorage.getItem('ns_api_key');
     if(saved&&saved.startsWith('sk-ant-')){
-      anthropicKey=saved; updateApiPill();
+      window.anthropicKey=saved; updateApiPill();
     }
   }catch(e){}
 
