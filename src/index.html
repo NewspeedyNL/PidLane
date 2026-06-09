@@ -2634,7 +2634,7 @@ async function connectWebBluetooth(){
 // ELM327 eindigt altijd op '>' — readUntil wacht automatisch
 // BLE/WebBT: accumulator patroon met veilige null-checks
 // ════════════════════════════════════════
-async function sendBT(cmd){
+async function sendBT(cmd, timeoutMs=6000){
   if(!window._sppConn&&!window._bleConn&&!window._webBtWrite) return '';
   if(!cmd) return '';
   const str=cmd+'\r';
@@ -2642,31 +2642,46 @@ async function sendBT(cmd){
   try{
     if(window._sppConn){
       const {spp,address}=window._sppConn;
+
+      // Sturen
       await spp.write({address, value:str});
-      // readUntil met timeout — anders hangt het eeuwig als auto niet reageert
-      const TIMEOUT=5000;
-      const result = await Promise.race([
-        spp.readUntil({address, delimiter:'>'}),
-        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),TIMEOUT))
-      ]).catch(e=>{
-        if(e.message==='timeout') return {data:''};
-        throw e;
-      });
-      const raw=(result?.data!=null)?String(result.data):'';
-      return raw.replace(/>/g,'').trim();
+
+      // Lezen via read() polling — betrouwbaarder dan readUntil
+      // ELM327 eindigt altijd op '>' maar kan laat komen (SEARCHING = 3-8 sec)
+      let buf='';
+      const start=Date.now();
+      while(Date.now()-start < timeoutMs){
+        try{
+          const r=await Promise.race([
+            spp.read({address}),
+            new Promise((_,rej)=>setTimeout(()=>rej(new Error('rt')),500))
+          ]).catch(()=>null);
+
+          if(r?.data){
+            const chunk=String(r.data);
+            buf+=chunk;
+            btDiag(`RX chunk: "${chunk.replace(/[\r\n]/g,'↵').slice(0,30)}"`, 'info');
+          }
+        }catch(e){ /* read timeout — normaal */ }
+
+        if(buf.includes('>')) break;
+        if(buf.includes('UNABLE')||buf.includes('NO DATA')) break;
+        await delay(50);
+      }
+
+      return buf.replace(/>/g,'').trim();
 
     } else if(window._bleConn){
       btBuffer='';
       const data=new TextEncoder().encode(str);
       const {ble,id,svc,write}=window._bleConn;
       await ble.write(id,svc,write,new DataView(data.buffer));
-      // Accumulator wacht tot '>' in buffer
       const start=Date.now();
-      while(Date.now()-start<4000){
+      while(Date.now()-start<timeoutMs){
         await delay(50);
         if(typeof btBuffer==='string' && btBuffer.includes('>')) break;
       }
-      const raw = typeof btBuffer==='string' ? btBuffer : '';
+      const raw=typeof btBuffer==='string'?btBuffer:'';
       btBuffer='';
       return raw.replace(/>/g,'').trim();
 
@@ -2677,11 +2692,11 @@ async function sendBT(cmd){
       if(ch.properties?.writeWithoutResponse) await ch.writeValueWithoutResponse(data);
       else await ch.writeValue(data);
       const start=Date.now();
-      while(Date.now()-start<4000){
+      while(Date.now()-start<timeoutMs){
         await delay(50);
         if(typeof btBuffer==='string' && btBuffer.includes('>')) break;
       }
-      const raw = typeof btBuffer==='string' ? btBuffer : '';
+      const raw=typeof btBuffer==='string'?btBuffer:'';
       btBuffer='';
       return raw.replace(/>/g,'').trim();
     }
@@ -2794,28 +2809,12 @@ async function scanNetworks(){
   discoveredNetworks=[];
 
   // 0100 triggert automatische protocol detectie — kan 3-8 seconden duren
-  // Verhoog sendBT timeout tijdelijk naar 12 seconden voor deze stap
   btDiag('Protocol detectie — 0100 sturen (wacht max 12 sec)...','info');
   await sendCmd('ATSP0');
   await delay(300);
 
-  // Stuur 0100 met extra lange timeout
-  let autoResp='';
-  try{
-    const {spp,address}=window._sppConn||{};
-    if(spp&&address){
-      await spp.write({address, value:'0100\r'});
-      // Wacht tot 12 seconden op response (protocol search duurt 3-8 sec)
-      const result=await Promise.race([
-        spp.readUntil({address, delimiter:'>'}),
-        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),12000))
-      ]).catch(()=>({data:''}));
-      autoResp=(result?.data!=null)?String(result.data).replace(/>/g,'').trim():'';
-    } else {
-      autoResp=await sendCmd('0100');
-    }
-  }catch(e){ autoResp=''; }
-
+  // Stuur 0100 met 12 sec timeout
+  const autoResp = await sendBT('0100', 12000);
   btDiag(`0100 response: "${autoResp||'(geen)'}"`, 'info');
 
   if(autoResp && !autoResp.includes('UNABLE') && !autoResp.includes('NO DATA') && !autoResp.includes('ERROR') && autoResp.includes('41')){
@@ -2965,17 +2964,30 @@ async function startDiscovery(){
   buildDiscoveredPIDList();
   addProg('✅',`${discoveredPIDDefs.length} sensoren beschikbaar`);
 
-  // Update voertuigkaart links
+  // Update voertuigkaart
   updateVehicleCard(vinInfo);
+  await delay(400);
 
-  await delay(600);
+  // Bij 0 echte PIDs — toon waarschuwing, laat gebruiker kiezen
+  if(supportedPIDs.size<=12 && supportedPIDs.has('010C')){
+    addProg('⚠️','Standaard PIDs geladen — zet contact aan voor volledige data');
+    document.getElementById('step3Msg').textContent='Wacht op gebruiker...';
+    document.getElementById('connActions').innerHTML=`
+      <button class="mbtn p" onclick="finishConnection()">▶ Ga door met standaard PIDs</button>
+      <button class="mbtn s" onclick="startDiscovery()">🔄 Opnieuw proberen (contact aan?)</button>`;
+    return; // Wacht op gebruiker — NIET doorgaan
+  }
 
-  // Sluit modal, start app
+  finishConnection();
+}
+
+function finishConnection(){
   document.getElementById('connOv').classList.add('hidden');
-  resetToStep1(); // reset voor volgende keer
+  resetToStep1();
   setConn(true);
   startPoll();
-  showWelcome(vinInfo);
+  const v=vehicleInfo||{};
+  showWelcome(v);
   log(`Verbinding compleet — ${discoveredPIDDefs.length} PIDs beschikbaar`,'ok');
 }
 
