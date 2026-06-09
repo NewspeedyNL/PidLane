@@ -1,5 +1,5 @@
 // ════════════════════════════════════════
-// PidLane — config.js 
+// PidLane — config.js
 // DIT IS HET ENIGE BESTAND DAT JE AANPAST
 // ════════════════════════════════════════
 
@@ -7,7 +7,6 @@
 // Vul het MAC adres in voor directe verbinding zonder scan
 const OBDLINK_ADDRESS = '00:04:3E:8B:7B:32';  // OBDLink MX+ 90011
 const OBDLINK_NAME    = 'OBDLink MX+ 90011';
-
 
 // ── LOGIN ACCOUNTS ──
 const USERS = {
@@ -35,5 +34,10 @@ const AIRTABLE_URL   = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_
 const APP_VERSION = '2.1';
 const GITHUB_USER = 'NewspeedyNL';
 const GITHUB_REPO = 'PidLane';
+// version.json staat in de ROOT van de repo (niet in /src)
 const VERSION_URL = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/version.json`;
 const UPDATE_URL  = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/index.html`;
+
+
+
+
