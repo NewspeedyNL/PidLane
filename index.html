@@ -2163,8 +2163,30 @@ async function scanDTC(){
 async function realScanDTC(){
   const r=await sendCmd('03');const codes=[];
   if(!r||r.includes('NO DATA')) return codes;
-  const hex=r.replace(/[^0-9A-Fa-f]/g,'');
-  for(let i=2;i<hex.length;i+=4){const w=parseInt(hex.slice(i,i+4),16);if(w===0)continue;const t=['P','C','B','U'][(w>>14)&3];codes.push(t+((w>>12)&3)+((w>>8)&0xF).toString(16).toUpperCase()+('00'+(w&0xFF).toString(16).toUpperCase()).slice(-2));}
+  // Per regel parsen — meerdere ECU's kunnen elk een 43-respons sturen
+  const lines=r.split(/[\r\n]+/).filter(l=>l.trim());
+  for(const line of lines){
+    const hex=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+    const idx=hex.indexOf('43');
+    if(idx<0) continue;
+    let body=hex.slice(idx+2);
+    // CAN (protocol 6-9/A-C): eerste byte na 43 is het AANTAL codes.
+    // K-line/J1850 (protocol 1-5): codes volgen direct, geen count byte.
+    const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||'6'));
+    if(isCAN&&body.length>=2){
+      const cnt=parseInt(body.slice(0,2),16);
+      if(cnt>=0&&cnt<=20&&body.length-2>=cnt*4){
+        body=body.slice(2,2+cnt*4);
+      }
+    }
+    for(let i=0;i+4<=body.length;i+=4){
+      const w=parseInt(body.slice(i,i+4),16);
+      if(w===0||isNaN(w))continue;
+      const t=['P','C','B','U'][(w>>14)&3];
+      const code=t+((w>>12)&3)+((w>>8)&0xF).toString(16).toUpperCase()+('00'+(w&0xFF).toString(16).toUpperCase()).slice(-2);
+      if(!codes.includes(code)) codes.push(code);
+    }
+  }
   return codes;
 }
 function renderDTC(){
@@ -2636,7 +2658,17 @@ async function connectWebBluetooth(){
 // Promise.race timeouts annuleren readUntil NIET → hangende reads aten responses op
 // BLE/WebBT: accumulator patroon met veilige null-checks
 // ════════════════════════════════════════
+// Globale BT mutex — één commando tegelijk op de socket.
+// Parallelle sendBT calls stelen anders elkaars response-chunks.
+let _btQueue=Promise.resolve();
+
 async function sendBT(cmd, timeoutMs){
+  const run=_btQueue.then(()=>_sendBTRaw(cmd,timeoutMs));
+  _btQueue=run.catch(()=>{}); // ketting nooit laten breken
+  return run;
+}
+
+async function _sendBTRaw(cmd, timeoutMs){
   if(!window._sppConn&&!window._bleConn&&!window._webBtWrite) return '';
   if(!cmd) return '';
   const str=cmd+'\r';
@@ -2649,7 +2681,8 @@ async function sendBT(cmd, timeoutMs){
       // Oude data wegspoelen zodat vorige (late) responses niet meegelezen worden
       try{
         const stale=await spp.read({address});
-        if(stale?.data) btDiag(`RX flush: "${String(stale.data).slice(0,40)}"`,'warn');
+        const staleStr=(stale?.value!=null)?String(stale.value):((stale?.data!=null)?String(stale.data):'');
+        if(staleStr) btDiag(`RX flush: "${staleStr.slice(0,40)}"`,'warn');
       }catch(e){ btDiag(`flush read() fout: ${e.message}`,'warn'); }
 
       btDiag(`TX: ${cmd}`,'info');
@@ -2663,6 +2696,8 @@ async function sendBT(cmd, timeoutMs){
       }
 
       // Polling: elke 50ms read() tot '>' prompt of timeout
+      // ⚠ KRITIEK: @e-is read() geeft {value:"..."} terug, NIET {data:"..."}!
+      // Dit was maandenlang de oorzaak van "lege" responses.
       let buf='';
       let pollCount=0;
       while(Date.now()-start<TIMEOUT){
@@ -2671,9 +2706,10 @@ async function sendBT(cmd, timeoutMs){
         try{
           const r=await spp.read({address});
           if(pollCount===1) btDiag(`read() #1 → ${JSON.stringify(r).slice(0,80)}`,'info');
-          if(r?.data!=null&&String(r.data).length>0){
-            buf+=String(r.data);
-            btDiag(`RX chunk: "${String(r.data).slice(0,60)}"`,'info');
+          const chunk=(r?.value!=null)?String(r.value):((r?.data!=null)?String(r.data):'');
+          if(chunk.length>0){
+            buf+=chunk;
+            btDiag(`RX chunk: "${chunk.slice(0,60)}"`,'info');
           }
         }catch(re){
           btDiag(`read() fout (poll #${pollCount}): ${re.message}`,'err');
@@ -2689,7 +2725,10 @@ async function sendBT(cmd, timeoutMs){
         await sppReconnectGuard(spp,address,cmd);
       }
 
-      return buf.replace(/>/g,'').trim();
+      // Echo van eigen commando strippen (adapter echoot tot ATE0 actief is)
+      let out=buf.replace(/>/g,'').trim();
+      if(out.toUpperCase().startsWith(cmd.toUpperCase())) out=out.slice(cmd.length).trim();
+      return out;
 
     } else if(window._bleConn){
       btBuffer='';
@@ -2875,7 +2914,7 @@ async function scanNetworks(){
 
   btDiag(`0100 response: "${autoResp||'(geen)'}"`, 'info');
 
-  if(autoResp && !autoResp.includes('UNABLE') && !autoResp.includes('NO DATA') && !autoResp.includes('ERROR') && autoResp.includes('41')){
+  if(autoResp && !autoResp.includes('UNABLE') && !autoResp.includes('NO DATA') && !autoResp.includes('ERROR') && !autoResp.includes('STOPPED') && autoResp.includes('41')){
     // Succesvol — protocol gevonden
     const protoResp=(await sendCmd('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim()||'6';
     const protoName=(await sendCmd('ATDP')).replace(/[>\r\n]/g,'').trim()||'Auto-detected';
@@ -3281,17 +3320,25 @@ function startPoll(){
 
   pollTimer=setInterval(async()=>{
     if(!connected||!activePIDs.size) return;
-    // Parallel lezen — alle PIDs tegelijk ipv sequentieel
-    const promises=[...activePIDs].map(async pid=>{
-      const raw=demoMode?demo(pid):parsePID(pid,await sendCmd('01'+pid.slice(2)));
-      if(raw!==null&&raw!==undefined){
-        updPID(pid,raw);
-        checkStability(pid,raw);
-        feedDatalog(pid,raw);
+    // Busy-guard: nieuwe ronde pas starten als de vorige klaar is
+    if(window._pollBusy) return;
+    window._pollBusy=true;
+    try{
+      // Sequentieel lezen — één SPP socket = één commando tegelijk.
+      // (Parallel via Promise.all liet leesloops elkaars data stelen.)
+      for(const pid of [...activePIDs]){
+        if(!connected) break;
+        const resp=demoMode?demo(pid):parsePID(pid,await sendCmd('01'+pid.slice(2),2500));
+        if(resp!==null&&resp!==undefined){
+          updPID(pid,resp);
+          checkStability(pid,resp);
+          feedDatalog(pid,resp);
+        }
       }
-    });
-    await Promise.all(promises);
-  },demoMode?150:800);  // 150ms demo, 800ms live (was 600/1500)
+    }finally{
+      window._pollBusy=false;
+    }
+  },demoMode?150:800);  // 150ms demo; live: nieuwe ronde zodra vorige klaar is
 }
 
 // ════════════════════════════════════════
