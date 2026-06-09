@@ -35,6 +35,17 @@ jobs:
       - name: Sync web assets to Android
         run: npx cap sync android
 
+      - name: Add Bluetooth permissions to AndroidManifest
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          # Voeg Bluetooth permissies toe als ze er nog niet in zitten
+          if ! grep -q "BLUETOOTH_ADMIN" "$MANIFEST"; then
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.BLUETOOTH" />\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />|' "$MANIFEST"
+            echo "Bluetooth permissies toegevoegd"
+          else
+            echo "Permissies al aanwezig"
+          fi
+
       - name: Make Gradle wrapper executable
         run: chmod +x android/gradlew
 
