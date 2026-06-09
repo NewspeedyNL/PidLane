@@ -2920,16 +2920,30 @@ async function startDiscovery(){
 
   for(const rangeCmd of['0100','0120','0140','0160','0180','01A0']){
     const resp=await sendCmd(rangeCmd);
-    if(!resp||resp.includes('NO DATA')||resp.includes('ERROR')) continue;
-    const hex=resp.replace(/[^0-9A-Fa-f]/g,'');
-    if(hex.length<12) continue;
-    // Vind de data bytes na de mode+pid echo
-    const mHdr=((parseInt(rangeCmd.slice(0,2),16)+0x40).toString(16).toUpperCase().padStart(2,'0'))+rangeCmd.slice(2).toUpperCase();
-    const idx=hex.toUpperCase().indexOf(mHdr);
-    const ds=idx>=0?idx+mHdr.length:4;
-    const bitmapHex=hex.slice(ds,ds+8);
+    if(!resp||resp.includes('NO DATA')||resp.includes('ERROR')||resp.includes('UNABLE')) continue;
+
+    // Strip alles wat geen hex is, dan zoek de response bytes
+    const hex=resp.replace(/[\r\n\s:]/g,'').toUpperCase();
+    if(hex.length<8) continue;
+
+    // Verwacht antwoord: 41 XX YY YY YY YY
+    // waarbij XX = rangeCmd bytes 2-3 en YY = 4 bitmap bytes
+    const expectedMode='41'+rangeCmd.slice(2).toUpperCase();
+    let bitmapHex='';
+
+    const idx=hex.indexOf(expectedMode);
+    if(idx>=0){
+      bitmapHex=hex.slice(idx+expectedMode.length, idx+expectedMode.length+8);
+    } else {
+      // Fallback: zoek '41' patroon
+      const alt=hex.indexOf('41');
+      if(alt>=0) bitmapHex=hex.slice(alt+4, alt+12);
+    }
+
     if(bitmapHex.length<8) continue;
     const bitmap=parseInt(bitmapHex,16);
+    if(isNaN(bitmap)) continue;
+
     const base=parseInt(rangeCmd.slice(2),16);
     for(let i=0;i<32;i++){
       if(bitmap&(0x80000000>>>i)){
@@ -2937,6 +2951,7 @@ async function startDiscovery(){
         supportedPIDs.add('01'+pn.toString(16).toUpperCase().padStart(2,'0'));
       }
     }
+    btDiag(`PID range ${rangeCmd}: bitmap=${bitmapHex} → ${supportedPIDs.size} PIDs`,'info');
   }
 
   addProg('✅',`${supportedPIDs.size} PIDs gevonden op dit voertuig`);
