@@ -572,7 +572,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   <div class="tpr">
     <div id="vtag"></div>
     <div id="userLabel" style="font-size:10px;font-weight:600;color:var(--tx3);padding:2px 8px;background:var(--sur2);border:1px solid var(--bd);border-radius:999px;display:none"></div>
-    <div class="pill"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
+    <div class="pill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen (zonder te verbreken)"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
     <button class="api-pill unset" id="apiPill" onclick="openApiDialog()">🤖 AI</button>
     <button onclick="openBtLogModal()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Bluetooth log">📡 Log</button>
     <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
@@ -3092,6 +3092,32 @@ function resetToStep1(){
 async function startDiscovery(){
   const net=selectedNetwork;
   btDiag(`Discovery start — spp=${!!window._sppConn} demo=${demoMode} connected=${connected} net=${net?.id}`,'info');
+
+  // Zelfherstel: verbinding weg (bijv. via Verbreken-knop)? Automatisch
+  // herverbinden op het opgeslagen adres en ELM opnieuw initialiseren.
+  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!demoMode){
+    btDiag('Geen actieve verbinding bij discovery — automatisch herverbinden...','warn');
+    const spp=getSPP();
+    const sa=localStorage.getItem('spp_address');
+    if(spp&&sa){
+      try{
+        window._btGen=(window._btGen||0)+1;
+        await spp.connect({address:sa});
+        window._sppConn={spp,address:sa,name:localStorage.getItem('spp_name')||'OBDLink'};
+        connected=true; demoMode=false;
+        setConn(true);
+        btDiag('Herverbonden ✓ — ELM opnieuw initialiseren','ok');
+        await initELM327();
+      }catch(e){
+        btDiag('Automatisch herverbinden mislukt: '+e.message,'err');
+        document.getElementById('step3Msg').textContent='Geen verbinding — verbind opnieuw';
+        return;
+      }
+    } else {
+      btDiag('Geen opgeslagen adapter-adres — verbind eerst opnieuw','err');
+      return;
+    }
+  }
   document.getElementById('step1').style.display='none';
   document.getElementById('step2').style.display='none';
   document.getElementById('step3').style.display='';
