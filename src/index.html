@@ -163,28 +163,23 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .pane { display:none; }
 .pane.active { display:block; }
 
-/* ══ GAUGES ══ */
-.gg { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:10px; }
+/* ══ GAUGES (concept B — kaarten met sparkline) ══ */
+.gg { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
 .gc { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:14px; box-shadow:var(--ss); position:relative; overflow:hidden; transition:border-color .1s; }
 .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--bl); border-radius:var(--r) var(--r) 0 0; transition:background .3s; }
 .gc.warn::before { background:var(--or); }
 .gc.danger::before { background:var(--rd); }
 .gc:hover { box-shadow:var(--sh); transform:translateY(-1px); }
-.gn2 { font-size:9px; font-weight:700; color:var(--tx3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
-.gv { font-family:var(--m); font-size:34px; font-weight:700; color:var(--tx); line-height:1; }
+.gn2 { font-size:9px; font-weight:700; color:var(--tx3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; padding-right:14px; }
+.gv { font-family:var(--m); font-size:32px; font-weight:800; color:var(--tx); line-height:1; letter-spacing:-1px; }
 .gc.warn .gv { color:var(--or); }
 .gc.danger .gv { color:var(--rd); }
-.gc.warn .gv { color:var(--or); }
-.gc.danger .gv { color:var(--rd); }
-.gunit { font-family:var(--m); font-size:11px; color:var(--tx3); margin-top:2px; }
-.gbar { height:6px; background:var(--bd); border-radius:3px; margin-top:10px; overflow:hidden; }
-.gfil { height:100%; border-radius:2px; background:var(--bl); width:0%; transition:background .15s; }
-.gc.warn .gfil { background:var(--or); }
-.gc.danger .gfil { background:var(--rd); }
-.gbdg { position:absolute; top:10px; right:8px; font-size:8px; font-weight:700; padding:2px 5px; border-radius:4px; }
-.gbdg.ok { background:var(--gns); color:var(--gn); }
-.gbdg.warn { background:var(--ors); color:var(--or); }
-.gbdg.danger { background:var(--rds); color:var(--rd); }
+.gunit { font-family:var(--m); font-size:11px; color:var(--tx3); margin-left:3px; font-weight:600; }
+.gspark { margin-top:9px; width:100%; height:28px; display:block; }
+.gspark polyline { fill:none; stroke:var(--bl); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; transition:stroke .3s; }
+.gdot { position:absolute; top:13px; right:12px; width:8px; height:8px; border-radius:50%; background:var(--gn); box-shadow:0 0 7px var(--gn); transition:background .3s,box-shadow .3s; }
+.gdot.warn { background:var(--or); box-shadow:0 0 7px var(--or); }
+.gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
 
 /* ══ EMPTY STATE ══ */
 .emp { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; text-align:center; color:var(--tx3); }
@@ -1453,29 +1448,41 @@ function validateAndSmooth(pid,rawVal){
     markOutlier(pid,rawVal,'limiet'); return null;
   }
 
-  // LAAG 2 — Sprong filter (max 35% van bereik per meting)
+  // LAAG 2+3 — Spike-filter MET herstel. Eén afwijkende meting wordt even
+  // geparkeerd; bevestigt de vólgende meting ongeveer dezelfde waarde, dan is
+  // het een echte verandering (gas geven, warmlopen) en accepteren we direct.
+  // σ-vloer voorkomt dat een stabiel signaal élke fluctuatie tot outlier maakt.
   const prev=pidVals[pid];
+  const range=Math.max(1e-6,(def?.max??255)-(def?.min??0));
+  let suspect=false, reason='';
   if(prev!==undefined&&prev!==null){
-    const range=(def?.max??255)-(def?.min??0);
-    const jumpPct=Math.abs(rawVal-prev)/range*100;
-    if(jumpPct>35){
-      const msg=`${def?.name||pid}: sprong ${fv(prev)}→${fv(rawVal)} (${jumpPct.toFixed(0)}% van bereik)`;
-      log(`⚠ ${msg}`,'warn');
-      logToSheets('outlier',msg,{pid,prev,value:rawVal,jumpPct,reason:'spike'});
-      markOutlier(pid,rawVal,'sprong'); return null;
-    }
+    if(Math.abs(rawVal-prev)/range*100>35){ suspect=true; reason='sprong'; }
   }
-
-  // LAAG 3 — Statistische outlier (>2.5σ van recente history)
-  if(pidHist[pid]&&pidHist[pid].length>=8){
+  if(!suspect&&pidHist[pid]&&pidHist[pid].length>=8){
     const recent=pidHist[pid].slice(-10).map(x=>x.v);
     const mean=recent.reduce((a,b)=>a+b,0)/recent.length;
     const std=Math.sqrt(recent.reduce((a,b)=>a+(b-mean)**2,0)/recent.length);
-    if(std>0.01&&Math.abs(rawVal-mean)>2.5*std){
-      const msg=`${def?.name||pid}: ${fv(rawVal)} is statistisch outlier (gem=${fv(mean)}, σ=${fv(std)})`;
-      log(`⚠ ${msg}`,'warn');
-      logToSheets('outlier',msg,{pid,value:rawVal,mean,std,reason:'statistical'});
-      markOutlier(pid,rawVal,'outlier'); return null;
+    const minStd=range*0.03; // vloer: 3% van het meetbereik
+    if(Math.abs(rawVal-mean)>3.5*Math.max(std,minStd)){ suspect=true; reason='outlier'; }
+  }
+  if(suspect){
+    const p=window._pidPending=window._pidPending||{};
+    const pd=p[pid];
+    if(pd&&Date.now()-pd.t<5000&&Math.abs(rawVal-pd.v)<=range*0.15){
+      // Tweede meting bevestigt — echte verandering: accepteren, stats verversen
+      delete p[pid];
+      if(pidHist[pid]) pidHist[pid]=pidHist[pid].slice(-2);
+      pidSmooth[pid]=[];
+    } else {
+      p[pid]={v:rawVal,t:Date.now()};
+      // Max 1 logregel per PID per 10 sec — geen log-flood meer
+      const lw=window._outlierLogged=window._outlierLogged||{};
+      if(!lw[pid]||Date.now()-lw[pid]>10000){
+        lw[pid]=Date.now();
+        log(`⚠ ${def?.name||pid}: ${fv(rawVal)} wijkt af (${reason}) — wacht op bevestiging`,'warn');
+      }
+      markOutlier(pid,rawVal,reason);
+      return null;
     }
   }
 
@@ -1740,7 +1747,10 @@ function renderGauges(){
   activePIDs.forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     const c=document.createElement('div'); c.className='gc'; c.id='gc-'+pid;
-    c.innerHTML=`<div class="gn2">${d.name}</div><div class="gv" id="gv-${pid}">—</div><div class="gunit">${d.unit}</div><div class="gbar"><div class="gfil" id="gf-${pid}"></div></div>`;
+    c.innerHTML=`<div class="gdot" id="gd-${pid}"></div>
+      <div class="gn2">${d.name}</div>
+      <div><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
+      <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     g.appendChild(c);
     if(pidVals[pid]!==undefined) applyG(pid,pidVals[pid]);
   });
@@ -1749,16 +1759,20 @@ function fv(v){return(v===undefined||v===null)?'—':(Math.abs(v)<10?v.toFixed(2
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
   const card=document.getElementById('gc-'+pid); if(!card) return;
-  const pct=Math.max(0,Math.min(100,((val-d.min)/(d.max-d.min))*100));
   let st='ok';
   if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
   else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
   card.className='gc'+(st!=='ok'?' '+st:'');
-  let bdg=card.querySelector('.gbdg');
-  if(!bdg){bdg=document.createElement('div');bdg.className='gbdg';card.appendChild(bdg);}
-  bdg.className='gbdg '+st; bdg.textContent=st==='ok'?'OK':st==='warn'?'LET OP':'KRITIEK';
+  const dot=document.getElementById('gd-'+pid); if(dot) dot.className='gdot'+(st!=='ok'?' '+st:'');
   const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=fv(val);
-  const gf=document.getElementById('gf-'+pid); if(gf) gf.style.width=pct+'%';
+  // Sparkline uit de laatste ~24 metingen
+  const sl=document.getElementById('gs-'+pid);
+  if(sl&&pidHist[pid]&&pidHist[pid].length>1){
+    const h=pidHist[pid].slice(-24).map(x=>x.v);
+    const mn=Math.min(...h), mx=Math.max(...h), rg=(mx-mn)||1;
+    sl.setAttribute('points',h.map((y,i)=>`${(i/(h.length-1))*100},${26-((y-mn)/rg)*24}`).join(' '));
+    sl.style.stroke=st==='danger'?'var(--rd)':st==='warn'?'var(--or)':'var(--bl)';
+  }
 }
 function updPID(pid,val){
   pidVals[pid]=val;
@@ -2047,6 +2061,20 @@ const TREND_GROUPS={
   accu:{ name:'Accu', icon:'🔋', pids:['0142','0104','010C','015B'], colors:['#1a6fff','#f77f00','#00a86b','#7c3aed'] },
   temp:{ name:'Temperatuur', icon:'🌡️', pids:['0105','015C','010F','0146'], colors:['#e53e3e','#f77f00','#1a6fff','#00a86b'] },
 };
+
+// HUD presets — gedeelde bron met de trendgroepen hierboven.
+// center = grote centrale wijzerplaat, corners = de 4 hoekmeters.
+// Zo gebruiken de meters exact dezelfde PID-verzamelingen als de trends.
+const HUD_PRESETS={
+  rijden:   { name:'Rijden',     center:'010D', corners:['0142','010C','0105','0111'] }, // snelheid + accu/toeren/temp/gasklep
+  vermogen: { name:'Vermogen',   center:'010C', corners:TREND_GROUPS.power.pids.slice(0,4) },
+  brandstof:{ name:'Brandstof',  center:'010C', corners:TREND_GROUPS.fuel.pids.slice(0,4) },
+  accu:     { name:'Accu',       center:'0142', corners:TREND_GROUPS.accu.pids.slice(0,4) },
+  temp:     { name:'Temperatuur',center:'0105', corners:TREND_GROUPS.temp.pids.slice(0,4) },
+};
+let hudPreset='rijden';
+let hudCorners=[...HUD_PRESETS.rijden.corners]; // door gebruiker per hoek aanpasbaar
+let hudCenter=HUD_PRESETS.rijden.center;
 
 let activeTrendGroup=null, trendPIDs=[];
 
@@ -2705,6 +2733,7 @@ async function connectSerial(){
   window._pollBusy=false;
   connected=false;
   window._btGen=(window._btGen||0)+1; // oude lopende commando's ongeldig maken
+  window._batchSupported=undefined; // multi-PID opnieuw testen bij nieuwe auto
   _btQueue=Promise.resolve(); // commandowachtrij leegmaken
 
   const apiVal=document.getElementById('startApiKey').value.trim();
@@ -3468,16 +3497,31 @@ function getVehicle(){
 
 // ── VIN UITLEZEN EN DECODEREN ──
 async function tryReadVIN(){
-  // Hex-payload na een marker omzetten naar gevalideerde 17-teken VIN
+  // Multi-frame ISO-TP respons → VIN. Per REGEL parsen: het CAN-header (7E8)
+  // is 3 hex-tekens (oneven!) waardoor naïef aan elkaar plakken alle
+  // byte-paren laat verschuiven — dát produceerde eerder de garbage-VINs.
   const extractVIN=(raw)=>{
     if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')) return null;
-    const hex=raw.replace(/[^0-9A-Fa-f]/g,'');
     let vin='';
-    for(let i=0;i<hex.length-1;i+=2){
-      const c=parseInt(hex.slice(i,i+2),16);
-      if(c>=32&&c<=126) vin+=String.fromCharCode(c);
+    for(const line of String(raw).split(/[\r\n]+/)){
+      let hex=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+      if(!hex) continue;
+      // CAN-header strippen: 11-bit (7E8/7E9... = 3 tekens) of 29-bit (18DAF1xx = 8)
+      if(/^18DA/.test(hex)) hex=hex.slice(8);
+      else if(/^7E[89A-F]/.test(hex)) hex=hex.slice(3);
+      // ISO-TP PCI strippen: First Frame (1x xx) = 4 tekens, Consecutive (2x) = 2
+      if(/^1[0-9A-F]/.test(hex)) hex=hex.slice(4);
+      else if(/^2[0-9A-F]/.test(hex)) hex=hex.slice(2);
+      // Respons-markers strippen: mode 09 (4902 + telbyte) of UDS (62F190)
+      if(hex.startsWith('4902')) hex=hex.slice(4);
+      if(hex.startsWith('62F190')) hex=hex.slice(6);
+      if(/^0[0-9A-F]/.test(hex)&&vin==='') hex=hex.slice(2); // telbyte na 4902
+      for(let i=0;i+2<=hex.length;i+=2){
+        const c=parseInt(hex.slice(i,i+2),16);
+        if(c>=32&&c<=126) vin+=String.fromCharCode(c);
+      }
     }
-    vin=vin.replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(-17);
+    vin=vin.replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,17);
     return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin)?vin:null;
   };
 
@@ -3550,6 +3594,7 @@ function decodeVIN(vin){
     'W0L':'Opel','W0V':'Opel',
     'JHM':'Honda','JN1':'Nissan','JN8':'Nissan',
     'JT2':'Toyota','JT3':'Toyota','JT4':'Toyota',
+    'JMZ':'Mazda','JM3':'Mazda','JM1':'Mazda','JM7':'Mazda',
     'KNA':'Kia','KMH':'Hyundai',
     'YV1':'Volvo','YV4':'Volvo',
     'ZAR':'Alfa Romeo','ZFA':'Fiat','ZFF':'Ferrari',
@@ -3743,6 +3788,39 @@ function buildPIDList(filter=''){
 }
 
 // ── PID PARSING — gebruikt discoveredPIDDefs parse functies ──
+// Aantal databytes per mode-01 PID (SAE J1979). Nodig om een multi-PID
+// respons (41 0C .. 41 0D .. 41 05 ..) correct in stukken te knippen.
+const PID_BYTE_LEN={
+  '04':1,'05':1,'06':1,'07':1,'08':1,'09':1,'0A':1,'0B':1,'0C':2,'0D':1,
+  '0E':1,'0F':1,'10':2,'11':1,'13':1,'14':2,'15':2,'16':2,'17':2,'18':2,
+  '19':2,'1A':2,'1B':2,'1F':2,'21':2,'22':2,'23':2,'24':4,'25':4,'26':4,
+  '27':4,'28':4,'2C':1,'2D':1,'2E':1,'2F':1,'30':1,'31':2,'32':2,'33':1,
+  '34':4,'3C':2,'3D':2,'3E':2,'3F':2,'42':2,'43':2,'44':2,'45':1,'46':1,
+  '47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'51':1,'52':1,
+  '59':2,'5A':1,'5C':1,'5E':2,'61':1,'62':1,'63':2
+};
+function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
+
+// Knip een multi-PID respons op in losse {pid,bytes}-blokken.
+// Werkt frame-tolerant: zoekt elk '41XX'-blok en leest het juiste aantal bytes.
+function splitBatchResponse(raw){
+  if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')) return {};
+  const hex=raw.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  const out={};
+  let i=0;
+  while(i+4<=hex.length){
+    if(hex.slice(i,i+2)==='41'){
+      const suffix=hex.slice(i+2,i+4);
+      const n=pidByteLen(suffix);
+      const bytes=[];
+      for(let k=0;k<n&&i+4+k*2+2<=hex.length;k++) bytes.push(parseInt(hex.slice(i+4+k*2,i+4+k*2+2),16));
+      if(bytes.length===n){ out['01'+suffix]=bytes; i+=4+n*2; continue; }
+    }
+    i+=2;
+  }
+  return out;
+}
+
 function parsePID(pid,raw){
   if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')||raw.includes('UNABLE')||raw.includes('?')) return null;
   const cleaned=raw.replace(/[^0-9A-Fa-f]/g,'');
@@ -3762,6 +3840,17 @@ function parsePID(pid,raw){
   return validateAndSmooth(pid,rawVal);
 }
 
+// Verwerk al-gesplitste bytes voor één PID (uit een batch-respons)
+function applyParsedBytes(pid,bytes){
+  if(!bytes||!bytes.length) return null;
+  const def=getPidDef(pid);
+  let rawVal=null;
+  if(def?.parse){ try{rawVal=def.parse(bytes);}catch(e){} }
+  else rawVal=bytes[0]??null;
+  if(rawVal===null||rawVal===undefined||isNaN(rawVal)) return null;
+  return validateAndSmooth(pid,rawVal);
+}
+
 // ════════════════════════════════════════
 // POLL LOOP
 // ════════════════════════════════════════
@@ -3772,27 +3861,62 @@ function startPoll(){
 
   pollTimer=setInterval(async()=>{
     if(!connected||!activePIDs.size) return;
-    // Busy-guard: nieuwe ronde pas starten als de vorige klaar is
     if(window._pollBusy) return;
     window._pollBusy=true;
     try{
-      // Sequentieel lezen — één SPP socket = één commando tegelijk.
-      // (Parallel via Promise.all liet leesloops elkaars data stelen.)
-      // Suffix '1' = verwacht 1 responsregel → ELM keert direct terug
-      // ipv de ST-timeout af te wachten (ELMduino patroon, sneller pollen)
-      for(const pid of [...activePIDs]){
-        if(!connected) break;
-        const resp=demoMode?demo(pid):parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
-        if(resp!==null&&resp!==undefined){
-          updPID(pid,resp);
-          checkStability(pid,resp);
-          feedDatalog(pid,resp);
+      if(demoMode){
+        for(const pid of [...activePIDs]){
+          const resp=demo(pid);
+          if(resp!=null){ updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); }
+        }
+        return;
+      }
+
+      const pids=[...activePIDs];
+      // Multi-PID batch alleen op CAN (ISO 15765). Andere protocollen
+      // ondersteunen geen meervoudige PID-requests → sequentieel.
+      const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||''));
+      const canBatch=isCAN&&window._batchSupported!==false;
+
+      if(canBatch&&pids.length>1){
+        // In groepjes van max 6 PIDs, één request per groep
+        for(let g=0;g<pids.length;g+=6){
+          if(!connected) break;
+          const grp=pids.slice(g,g+6);
+          const cmd='01'+grp.map(p=>p.slice(2)).join('');
+          const raw=await sendCmd(cmd,2500);
+          const parsed=splitBatchResponse(raw);
+          const hits=Object.keys(parsed).filter(p=>grp.includes(p)).length;
+          if(hits===0){
+            // Batch niet ondersteund door deze ECU → eenmalig terugvallen
+            window._batchSupported=false;
+            btDiag('Multi-PID niet ondersteund — terug naar sequentieel','warn');
+            for(const pid of grp){
+              if(!connected) break;
+              const r=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+              if(r!=null){ updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); }
+            }
+          } else {
+            for(const pid of grp){
+              if(parsed[pid]){
+                const r=applyParsedBytes(pid,parsed[pid]);
+                if(r!=null){ updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); }
+              }
+            }
+          }
+        }
+      } else {
+        // Sequentieel: één PID per request, '1'-suffix voor snelle terugkeer
+        for(const pid of pids){
+          if(!connected) break;
+          const resp=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+          if(resp!=null){ updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); }
         }
       }
     }finally{
       window._pollBusy=false;
     }
-  },demoMode?150:800);  // 150ms demo; live: nieuwe ronde zodra vorige klaar is
+  },demoMode?150:300);  // sneller pollen mogelijk dankzij batch
 }
 
 // ════════════════════════════════════════
@@ -4074,133 +4198,55 @@ function startNeonBg(){
   bg();
 }
 
-// ── Ronde meters tekenen ──
+// ── Neon golfvorm-grafieken (geen ronde meters meer) ──
 function renderNeonGauges(){
-  const grid=document.getElementById('neonGaugeGrid'); grid.innerHTML='';
+  const grid=document.getElementById('neonGaugeGrid'); 
   const bar=document.getElementById('neonStatusBar'); bar.innerHTML='';
-  const grp=TREND_GROUPS[activeTrendGroup];
-  const nc=NEON_COLORS[activeTrendGroup];
-  const W=window.innerWidth, H=window.innerHeight-44-80;
-  const n=trendPIDs.filter(p=>discoveredPIDDefs.find(d=>d.pid===p)||ALL_PID_DEFS[p]).length;
-  // Gauge size based on screen and count
-  const maxR=Math.min(W/(n*2.4+.5), H/2.6, 140);
-  const R=Math.max(60,maxR);
+  const grp=TREND_GROUPS[activeTrendGroup]; if(!grp) return;
+  const pids=trendPIDs.filter(p=>getPidDef(p));
 
-  trendPIDs.forEach((pid,i)=>{
-    const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid]; if(!def) return;
+  // Grid eenmalig opbouwen, daarna alleen de lijnen verversen (vloeiend)
+  grid.style.cssText='position:absolute;top:44px;bottom:80px;left:0;right:0;display:flex;flex-direction:column;gap:10px;padding:14px;overflow-y:auto;z-index:9010;';
+  if(grid.children.length!==pids.length||grid.dataset.grp!==activeTrendGroup){
+    grid.innerHTML=''; grid.dataset.grp=activeTrendGroup;
+    pids.forEach((pid,i)=>{
+      const def=getPidDef(pid); const color=grp.colors[i%grp.colors.length];
+      const row=document.createElement('div');
+      row.style.cssText=`position:relative;flex:1;min-height:70px;background:rgba(255,255,255,.02);border:1px solid ${color}22;border-radius:12px;padding:10px 12px;overflow:hidden;`;
+      row.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:baseline;position:relative;z-index:2">
+          <span style="font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;color:${color};text-transform:uppercase">${def.name}</span>
+          <span><span id="nv-${pid}" style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff;text-shadow:0 0 14px ${color};line-height:1">—</span><span style="font-family:'DM Mono',monospace;font-size:11px;color:${color}99;margin-left:4px">${def.unit||''}</span></span>
+        </div>
+        <svg id="nsvg-${pid}" style="position:absolute;inset:0;width:100%;height:100%;z-index:1" preserveAspectRatio="none" viewBox="0 0 100 100">
+          <polyline id="nline-${pid}" fill="none" stroke="${color}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 3px ${color})"/>
+          <polyline id="nfill-${pid}" fill="${color}14" stroke="none"/>
+        </svg>`;
+      grid.appendChild(row);
+    });
+  }
+
+  pids.forEach((pid,i)=>{
+    const def=getPidDef(pid); const color=grp.colors[i%grp.colors.length];
     const val=pidVals[pid]; const ok=isPIDOk(pid);
-    const color=ok?grp.colors[i%grp.colors.length]:'#ff006e';
-    const alertColor='#ff006e';
-    // Normalize to 0-1
-    const minV=def.min??0, maxV=def.max??255;
-    const pct=val!==undefined?Math.max(0,Math.min(1,(val-minV)/(maxV-minV))):0;
-
-    // Canvas voor deze meter
-    const size=R*2+20;
-    const wrap=document.createElement('div');
-    wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:0;';
-
-    const cv=document.createElement('canvas');
-    cv.width=size; cv.height=size;
-    const ctx=cv.getContext('2d');
-    const cx=size/2, cy=size/2, r=R;
-
-    // Start/end angles (270° arc, bottom gap)
-    const startA=Math.PI*.75;   // 135°
-    const endA=Math.PI*2.25;    // 405° = 45°
-    const arcSpan=endA-startA;
-    const valA=startA+pct*arcSpan;
-
-    // Track (background arc)
-    ctx.beginPath();
-    ctx.arc(cx,cy,r,startA,endA);
-    ctx.strokeStyle=ok?color+'18':'#ff006e18';
-    ctx.lineWidth=R*.14; ctx.lineCap='round'; ctx.stroke();
-
-    // Tick marks
-    for(let t=0;t<=10;t++){
-      const a=startA+(t/10)*arcSpan;
-      const inner=r-(t%5===0?R*.2:R*.12);
-      const outer=r;
-      const x1=cx+Math.cos(a)*inner, y1=cy+Math.sin(a)*inner;
-      const x2=cx+Math.cos(a)*outer, y2=cy+Math.sin(a)*outer;
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
-      ctx.strokeStyle=t%5===0?color+'55':color+'25';
-      ctx.lineWidth=t%5===0?1.5:.7; ctx.stroke();
+    const nv=document.getElementById('nv-'+pid);
+    if(nv){ nv.textContent=val!==undefined?fv(val):'—'; nv.style.textShadow=`0 0 14px ${ok?color:'#ff006e'}`; nv.style.color=ok?'#fff':'#ff006e'; }
+    const line=document.getElementById('nline-'+pid), fill=document.getElementById('nfill-'+pid);
+    if(line&&pidHist[pid]&&pidHist[pid].length>1){
+      const h=pidHist[pid].slice(-60).map(x=>x.v);
+      const mn=Math.min(...h), mx=Math.max(...h), rg=(mx-mn)||1;
+      const pts=h.map((y,j)=>`${(j/(h.length-1))*100},${90-((y-mn)/rg)*72}`).join(' ');
+      line.setAttribute('points',pts);
+      line.style.stroke=ok?color:'#ff006e'; line.style.filter=`drop-shadow(0 0 3px ${ok?color:'#ff006e'})`;
+      fill.setAttribute('points',`0,100 ${pts} 100,100`);
+      fill.setAttribute('fill',(ok?color:'#ff006e')+'14');
     }
-
-    // Value arc with gradient
-    if(val!==undefined&&pct>0){
-      const grad=ctx.createConicalGradient?.(cx,cy,startA)??null;
-      ctx.beginPath();
-      ctx.arc(cx,cy,r,startA,valA);
-      ctx.strokeStyle=color;
-      ctx.lineWidth=R*.14; ctx.lineCap='round';
-      ctx.shadowColor=color; ctx.shadowBlur=ok?16:24;
-      ctx.stroke(); ctx.shadowBlur=0;
-
-      // Warning zone (last 15%)
-      if(!ok||pct>.85){
-        ctx.beginPath();
-        ctx.arc(cx,cy,r,Math.max(valA-.3,startA+arcSpan*.85),valA);
-        ctx.strokeStyle=alertColor;
-        ctx.lineWidth=R*.14; ctx.lineCap='round';
-        ctx.shadowColor=alertColor; ctx.shadowBlur=20;
-        ctx.stroke(); ctx.shadowBlur=0;
-      }
-    }
-
-    // Needle
-    const needleA=val!==undefined?valA:startA;
-    const nl=r*.75, ns=r*.12;
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(needleA);
-    ctx.beginPath();
-    ctx.moveTo(-ns,0); ctx.lineTo(nl,0); ctx.lineTo(nl*.95,ns*.4); ctx.lineTo(nl*.95,-ns*.4); ctx.closePath();
-    ctx.fillStyle=ok?color:'#ff006e';
-    ctx.shadowColor=ok?color:'#ff006e'; ctx.shadowBlur=12;
-    ctx.fill(); ctx.shadowBlur=0; ctx.restore();
-
-    // Center pivot
-    ctx.beginPath(); ctx.arc(cx,cy,R*.06,0,Math.PI*2);
-    ctx.fillStyle='#0a0a12';
-    ctx.strokeStyle=ok?color:'#ff006e'; ctx.lineWidth=1.5;
-    ctx.fill(); ctx.stroke();
-
-    // Center value (compact — links naast de wijzerplaat)
-    // Sensor naam — boven de meter
-    ctx.font=`bold ${Math.max(8,R*.09)}px DM Mono`;
-    ctx.fillStyle=color+'88'; ctx.textAlign='center';
-    ctx.fillText(def.name.slice(0,14).toUpperCase(),cx,cy-r*.42);
-
-    // Min/max labels
-    ctx.font=`${Math.max(7,R*.07)}px DM Mono`;
-    ctx.fillStyle='rgba(255,255,255,.25)'; ctx.textAlign='center';
-    const minX=cx+Math.cos(startA)*r*.75, minY=cy+Math.sin(startA)*r*.75;
-    const maxX=cx+Math.cos(endA)*r*.75,   maxY=cy+Math.sin(endA)*r*.75;
-    ctx.fillText(fv(minV),minX,minY+4);
-    ctx.fillText(fv(maxV),maxX,maxY+4);
-
-    wrap.appendChild(cv);
-
-    // Kleine waarde display NAAST de wijzerplaat (compact inline)
-    const valRow=document.createElement('div');
-    valRow.style.cssText=`display:flex;align-items:baseline;gap:4px;margin-top:-${R*.1}px;`;
-    valRow.innerHTML=`
-      <span style="font-family:'DM Mono',monospace;font-size:${Math.max(14,R*.18)}px;font-weight:500;color:${ok?color:'#ff006e'};text-shadow:0 0 12px ${ok?color:'#ff006e'};line-height:1">${val!==undefined?fv(val):'—'}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:${Math.max(8,R*.09)}px;color:${color}55">${def.unit||''}</span>
-      ${!ok?`<span style="font-size:${Math.max(7,R*.08)}px;font-weight:700;color:#ff006e;letter-spacing:1px">⚠</span>`:''}
-    `;
-    wrap.appendChild(valRow);
-    grid.appendChild(wrap);
-
-    // Status bar onderaan
+    // Statusbalk onderaan
     const si=document.createElement('div');
     si.style.cssText=`display:flex;align-items:center;gap:6px;padding:6px 10px;background:${ok?color+'0d':'#ff006e0d'};border:1px solid ${ok?color+'22':'#ff006e33'};border-radius:7px;`;
-    si.innerHTML=`
-      <div style="width:6px;height:6px;border-radius:50%;background:${ok?color:'#ff006e'};box-shadow:0 0 8px ${ok?color:'#ff006e'}"></div>
-      <span style="font-size:9px;font-weight:700;color:${ok?color:'#ff006e'};letter-spacing:.5px">${def.name.slice(0,10)}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:10px;color:${ok?color:'#ff006e'}">${val!==undefined?fv(val)+(def.unit||''):'—'}</span>
-    `;
+    si.innerHTML=`<div style="width:6px;height:6px;border-radius:50%;background:${ok?color:'#ff006e'};box-shadow:0 0 8px ${ok?color:'#ff006e'}"></div>
+      <span style="font-size:9px;font-weight:700;color:${ok?color:'#ff006e'};letter-spacing:.5px">${def.name.slice(0,12)}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:10px;color:${ok?color:'#ff006e'}">${val!==undefined?fv(val)+(def.unit||''):'—'}</span>`;
     bar.appendChild(si);
   });
 }
