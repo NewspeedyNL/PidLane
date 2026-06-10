@@ -890,6 +890,7 @@ function doLogin(){
   // Login geslaagd
   currentUser = {name: user, ...account};
   err.textContent = '';
+  try{ localStorage.setItem('pl_session', user); }catch(e){} // sessie onthouden over herlaads heen
 
   // API key instellen — via window zodat het altijd beschikbaar is
   if(account.apiKey && account.apiKey.startsWith('sk-ant-')){
@@ -983,6 +984,7 @@ async function testApiKey(){
 
 function logout(){
   currentUser = null;
+  try{ localStorage.removeItem('pl_session'); }catch(e){}
   window.anthropicKey = '';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
@@ -3653,8 +3655,22 @@ document.addEventListener('DOMContentLoaded', function(){
   window.addEventListener('resize',()=>{ if(graphPID||trendPIDs.length) drawGraph(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNeonDashboard?.(); closeRitAnalyse?.(); }});
 
-  // Focus op login veld
-  setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
+  // Focus op login veld — tenzij er een onthouden sessie is
+  // (Android herlaadt de WebView bij terugkeer uit achtergrond; zonder dit
+  //  moet je elke keer opnieuw inloggen)
+  try{
+    const sess=localStorage.getItem('pl_session');
+    if(sess && typeof USERS!=='undefined' && USERS[sess]){
+      document.getElementById('loginUser').value=sess;
+      document.getElementById('loginPass').value=USERS[sess].password;
+      doLogin();
+      log(`Sessie hersteld: ${sess}`,'ok');
+    } else {
+      setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
+    }
+  }catch(e){
+    setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
+  }
 
   // Check voor updates (stil op achtergrond)
   setTimeout(checkForUpdate, 3000);
