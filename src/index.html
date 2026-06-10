@@ -1024,6 +1024,16 @@ const PIDS = [
   {cat:'Emissie',   pid:'012C',name:'EGR klep positie',      unit:'%',   min:0,   max:100},
 ];
 
+// Centrale PID-definitie lookup: eerst ontdekte PIDs, dan volledige database,
+// dan de klassieke vaste lijst. Vervangt 9 losse PIDS.find() aanroepen die
+// nieuwe PIDs stilletjes lieten vallen in gauges, grafieken en AI-analyses.
+function getPidDef(pid){
+  return (typeof discoveredPIDDefs!=='undefined'&&Array.isArray(discoveredPIDDefs)&&discoveredPIDDefs.find(d=>d.pid===pid))
+      || (typeof ALL_PID_DEFS!=='undefined'&&ALL_PID_DEFS[pid])
+      || PIDS.find(p=>p.pid===pid)
+      || null;
+}
+
 // Harde validatiegrens per PID (buiten = onzin, weggooien)
 const PID_HARD_LIMITS = {
   '010C':{min:0,max:8000},'010D':{min:0,max:280},'0105':{min:-20,max:130},
@@ -1197,7 +1207,7 @@ let isDark=false, currentZoom=1.0, currentFont=13;
 // ════════════════════════════════════════
 const _ds={};
 function demo(pid){
-  const d=window.ALL_PID_DEFS?.[pid]||PIDS.find(p=>p.pid===pid); if(!d) return null;
+  const d=getPidDef(pid); if(!d) return null;
   if(_ds[pid]===undefined) _ds[pid]=(d.min+d.max)/2;
   const r=d.max-d.min;
   _ds[pid]+=(Math.random()-.5)*r*.03;
@@ -1515,6 +1525,7 @@ const DATALOG_DURATION=20000;
 function startDatalog(){
   if(!connected){log('Verbind eerst een adapter','warn');return;}
   if(datalogActive) return;
+  ensurePIDsActive('rit'); // async: zet rit-sensoren aan, buffer vult vanzelf
   if(!activePIDs.size){log('Selecteer eerst sensoren links','warn');return;}
   datalogActive=true; datalogBuffer={}; datalogStart=Date.now();
   activePIDs.forEach(pid=>{datalogBuffer[pid]=[];});
@@ -1682,6 +1693,40 @@ function togglePID(pid){
   renderGauges(); rebuildGSel();
 }
 
+// ── ANALYSE-PROFIELEN: elke analyse zet zelf de benodigde PIDs aan ──
+const ANALYSE_PIDS={
+  basis:     ['010C','0105','0104','0111','010D','0142','010F','010B'],
+  brandstof: ['010C','010D','0104','0106','0107','0110','010B','010F','0144','0124','0115','015E','012F'],
+  emissie:   ['0106','0107','0113','0114','0115','0124','0134','0144','013C','013E','012E','0121'],
+  rit:       ['010C','010D','0104','0111','0105','0110','010B','0106','0107','0149'],
+  totaal:    ['010C','0105','0104','0111','010D','0142','010F','010B','0106','0107','0115','010E','011F']
+};
+
+// Zet de PIDs van een profiel aan (alleen die de auto ondersteunt) en wacht
+// tot er verse data binnen is, zodat de analyse niet met lege waardes draait.
+async function ensurePIDsActive(profile){
+  if(demoMode) return;
+  const wanted=(ANALYSE_PIDS[profile]||[]).filter(pid=>
+    (typeof supportedPIDs!=='undefined'&&supportedPIDs.has&&supportedPIDs.has(pid))||getPidDef(pid));
+  const added=[];
+  wanted.forEach(pid=>{ if(!activePIDs.has(pid)){ activePIDs.add(pid); added.push(pid); } });
+  if(added.length){
+    buildPIDList(document.getElementById('psrch')?.value||'');
+    document.getElementById('pidCnt').textContent=activePIDs.size;
+    renderGauges(); rebuildGSel();
+    log(`Analyse: ${added.length} extra sensoren geactiveerd`,'info');
+    showToast?.(`📡 ${added.length} sensoren automatisch aangezet voor deze analyse`);
+  }
+  // Wachten tot nieuwe PIDs data hebben (max ~8 sec, één à twee pollrondes)
+  if(added.length&&connected){
+    const t0=Date.now();
+    while(Date.now()-t0<8000){
+      if(added.every(pid=>pidVals[pid]!==undefined)) break;
+      await delay(300);
+    }
+  }
+}
+
 // ════════════════════════════════════════
 // GAUGES
 // ════════════════════════════════════════
@@ -1689,7 +1734,7 @@ function renderGauges(){
   const g=document.getElementById('gGrid'); g.innerHTML='';
   if(!activePIDs.size){g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>`;return;}
   activePIDs.forEach(pid=>{
-    const d=PIDS.find(p=>p.pid===pid); if(!d) return;
+    const d=getPidDef(pid); if(!d) return;
     const c=document.createElement('div'); c.className='gc'; c.id='gc-'+pid;
     c.innerHTML=`<div class="gn2">${d.name}</div><div class="gv" id="gv-${pid}">—</div><div class="gunit">${d.unit}</div><div class="gbar"><div class="gfil" id="gf-${pid}"></div></div>`;
     g.appendChild(c);
@@ -1698,7 +1743,7 @@ function renderGauges(){
 }
 function fv(v){return(v===undefined||v===null)?'—':(Math.abs(v)<10?v.toFixed(2):v.toFixed(0));}
 function applyG(pid,val){
-  const d=PIDS.find(p=>p.pid===pid); if(!d) return;
+  const d=getPidDef(pid); if(!d) return;
   const card=document.getElementById('gc-'+pid); if(!card) return;
   const pct=Math.max(0,Math.min(100,((val-d.min)/(d.max-d.min))*100));
   let st='ok';
@@ -1728,6 +1773,7 @@ function setQ(el,key,val){
   el.classList.add('sel-'+val); checkAnswers[key]=val;
 }
 async function runTotalCheck(){
+  await ensurePIDsActive('totaal');
   const btn=document.getElementById('btnChk'); btn.disabled=true;
   document.getElementById('chkSummary').style.display='none';
   document.getElementById('chkResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Systemen controleren...</div>';
@@ -1740,7 +1786,7 @@ async function runTotalCheck(){
 function buildCheckItems(){
   const items=[];
   const pc=(pid,name)=>{
-    const val=pidVals[pid]; const d=PIDS.find(p=>p.pid===pid);
+    const val=pidVals[pid]; const d=getPidDef(pid);
     if(val===undefined) return {name,display:'Geen data',status:'ok',detail:'Niet gemeten.'};
     let status='ok',detail='Normaal.';
     if(d){
@@ -1794,6 +1840,7 @@ function exportCheckReport(){
 function tc(el){el.classList.toggle('on');}
 
 async function findCauses(){
+  await ensurePIDsActive('emissie');
   const desc=document.getElementById('diagDesc').value.trim();
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent);
   if(!desc&&!chips.length){showToast('Beschrijf het probleem of selecteer symptomen.', 3000);return;}
@@ -1907,7 +1954,7 @@ async function verifyCause(idx,cause){
 
   const results=[];
   for(const pid of (cause.check_pids||[])){
-    const def=PIDS.find(p=>p.pid===pid); if(!def) continue;
+    const def=getPidDef(pid); if(!def) continue;
     let val=pidVals[pid];
     if(val===undefined) val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await sendCmd('01'+pid.slice(2))));
     if(val!==null&&val!==undefined) updPID(pid,val);
@@ -1919,7 +1966,7 @@ async function verifyCause(idx,cause){
         if(val>=exp.min&&val<=exp.max){color='bad';verdict=`⚠️ ${fv(val)} ${def.unit} — bevestigt diagnose (${exp.min}–${exp.max})`;}
         else{color='ok';verdict=`✅ ${fv(val)} ${def.unit} — normaal`;}
       } else {
-        const d2=PIDS.find(p=>p.pid===pid);
+        const d2=getPidDef(pid);
         if(d2){
           if((d2.dH&&val>=d2.dH)||(d2.dL&&val<=d2.dL)){color='bad';verdict=`🔴 ${fv(val)} ${def.unit} — kritiek`;}
           else if((d2.wH&&val>=d2.wH)||(d2.wL&&val<=d2.wL)){color='warn';verdict=`⚠️ ${fv(val)} ${def.unit} — afwijkend`;}
@@ -1979,7 +2026,7 @@ async function runDiagAI(causeName){
   const v=getVehicle();
   const desc=document.getElementById('diagDesc').value;
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent).join(', ');
-  const pdata=[...activePIDs].map(pid=>{const d=PIDS.find(p=>p.pid===pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const pdata=[...activePIDs].map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
   const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   await callAI(prompt,document.getElementById('aiContent'));
@@ -2214,7 +2261,7 @@ async function clearDTC(){
 }
 function exportReport(){
   const v=getVehicle();
-  const lines=['PidLane — Rapport',`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'','=== DTC ===',...(dtcCodes.length?dtcCodes.map(c=>{const i=DTCDB[c];return`${c} — ${i?i.desc:'?'}`;}):[' Geen']),'','=== LIVE DATA ===',...[...activePIDs].map(pid=>{const d=PIDS.find(p=>p.pid===pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean)];
+  const lines=['PidLane — Rapport',`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'','=== DTC ===',...(dtcCodes.length?dtcCodes.map(c=>{const i=DTCDB[c];return`${c} — ${i?i.desc:'?'}`;}):[' Geen']),'','=== LIVE DATA ===',...[...activePIDs].map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean)];
   download('rapport.txt',lines.join('\n'));
 }
 
@@ -2231,6 +2278,7 @@ const FUEL_PIDS=[
   {pid:'015E',name:'Live brandstofverbruik',unit:'L/h',ok:null,desc:'Directe verbruiksmeting.'},
 ];
 async function runFuelAnalysis(){
+  await ensurePIDsActive('brandstof');
   const btn=document.getElementById('btnFuel'); btn.disabled=true;
   document.getElementById('fuelResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Brandstofdata analyseren...</div>';
   const measurements=[];
@@ -2360,8 +2408,9 @@ async function callAI(prompt,contentEl){
   }
 }
 async function runQuickAI(){
+  await ensurePIDsActive('basis');
   const v=getVehicle();
-  const liveLines=[...activePIDs].map(pid=>{const d=PIDS.find(p=>p.pid===pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
+  const liveLines=[...activePIDs].map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
   const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nGeef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   await callAI(prompt,document.getElementById('aiContent'));
@@ -3205,6 +3254,8 @@ function updateVehicleCard(vinInfo){
   showVtag(vehicleInfo.vin||vehicleInfo.merk||'Verbonden');
   const card=document.getElementById('vehicleCard');
   const savedKent=localStorage.getItem('pl_kenteken')||'';
+  const vinValid=/^[A-HJ-NPR-Z0-9]{17}$/.test(vehicleInfo.vin||'');
+  if(!vinValid) vehicleInfo.vin='';
   card.innerHTML=`
     <div style="display:flex;flex-direction:column;gap:3px;">
       <div class="vic-row"><span class="vic-label">Merk</span><span class="vic-val" id="vicMerk">${vehicleInfo.merk}${vehicleInfo.model?' '+vehicleInfo.model:''}</span></div>
@@ -3267,8 +3318,9 @@ async function tryReadVIN(){
       const c=parseInt(hex.slice(i,i+2),16);
       if(c>=32&&c<=126) vin+=String.fromCharCode(c);
     }
-    vin=vin.replace(/[^A-HJ-NPR-Z0-9]/gi,'').slice(-17);
-    if(vin.length<5) return null;
+    vin=vin.replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(-17);
+    // Een VIN is exact 17 tekens (hoofdletters/cijfers, geen I/O/Q) — anders is het frame-rommel
+    if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)){ log('Geen geldige VIN ontvangen','info'); return null; }
     log('VIN: '+vin,'ok');
     const info=decodeVIN(vin);
     // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken
@@ -4005,6 +4057,7 @@ function resetRitUI(){
 }
 
 function startRitAnalyse(){
+  ensurePIDsActive('rit');
   if(!connected){log('Verbind eerst een adapter','warn');return;}
   ritActive=true; ritStartTime=Date.now(); ritFaseIdx=0; ritLogs=[]; ritFaseData={};
   document.getElementById('ritStartBtn').style.display='none';
