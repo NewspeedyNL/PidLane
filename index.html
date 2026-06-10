@@ -420,7 +420,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 
 <!-- ══ CONNECT MODAL — MULTI STEP ══ -->
 <div class="ov hidden" id="connOv">
-  <div class="modal">
+  <div class="modal" style="position:relative">
+    <button onclick="document.getElementById('connOv').classList.add('hidden')" title="Sluiten (verbinding blijft actief)" style="position:absolute;top:10px;right:10px;z-index:10;width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:14px;font-weight:700;cursor:pointer;line-height:1">✕</button>
     <div class="modal-scroll">
 
       <!-- STAP 1: Start -->
@@ -2603,7 +2604,7 @@ async function doSPPConnect(spp,address,name){
   btDiag(`SPP actief: ${name}`,'ok');
   log(`SPP verbonden: ${name}`,'ok');
   logToSheets('connect',`SPP verbonden: ${name}`,{address});
-  document.getElementById('connOv')?.classList.add('hidden');
+  // Overlay BEWUST open laten — anders rendert de netwerkkeuze onzichtbaar
   setConn(true);
   await initELM327();
   await scanNetworks();
@@ -3203,13 +3204,50 @@ function updateVehicleCard(vinInfo){
   };
   showVtag(vehicleInfo.vin||vehicleInfo.merk||'Verbonden');
   const card=document.getElementById('vehicleCard');
+  const savedKent=localStorage.getItem('pl_kenteken')||'';
   card.innerHTML=`
     <div style="display:flex;flex-direction:column;gap:3px;">
-      <div class="vic-row"><span class="vic-label">Merk</span><span class="vic-val">${vehicleInfo.merk}</span></div>
+      <div class="vic-row"><span class="vic-label">Merk</span><span class="vic-val" id="vicMerk">${vehicleInfo.merk}${vehicleInfo.model?' '+vehicleInfo.model:''}</span></div>
       ${vehicleInfo.year?`<div class="vic-row"><span class="vic-label">Jaar</span><span class="vic-val">${vehicleInfo.year}</span></div>`:''}
       <div class="vic-row"><span class="vic-label">PIDs</span><span class="vic-val">${supportedPIDs.size} beschikbaar</span></div>
-      ${vehicleInfo.vin?`<div class="vic-vin">VIN: ${vehicleInfo.vin}</div>`:''}
+      ${vehicleInfo.vin?`<div class="vic-vin">VIN: ${vehicleInfo.vin}</div>`:`
+      <div style="display:flex;gap:4px;margin-top:6px;align-items:center">
+        <input id="kentInput" placeholder="Kenteken" value="${savedKent}" maxlength="8"
+          style="flex:1;min-width:0;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:11px;text-transform:uppercase">
+        <button onclick="rdwLookup()" style="padding:5px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">🇳🇱 RDW</button>
+      </div>
+      <div id="kentStatus" style="font-size:10px;color:var(--tx3)"></div>`}
     </div>`;
+  // Opgeslagen kenteken? Direct automatisch opzoeken
+  if(!vehicleInfo.vin && savedKent) rdwLookup();
+}
+
+// RDW open data: voertuiggegevens op Nederlands kenteken (gratis, geen key)
+async function rdwLookup(){
+  const inp=document.getElementById('kentInput');
+  const st=document.getElementById('kentStatus');
+  if(!inp) return;
+  const kent=inp.value.replace(/[\s-]/g,'').toUpperCase();
+  if(kent.length<4){ if(st) st.textContent='Voer een geldig kenteken in'; return; }
+  if(st) st.textContent='RDW opzoeken...';
+  try{
+    const r=await fetch(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`);
+    const data=await r.json();
+    if(!data||!data.length){ if(st) st.textContent='Kenteken niet gevonden bij RDW'; return; }
+    const v=data[0];
+    const jaar=(v.datum_eerste_toelating||'').slice(0,4);
+    vehicleInfo.merk=v.merk||vehicleInfo.merk;
+    vehicleInfo.model=v.handelsbenaming||'';
+    vehicleInfo.year=jaar||vehicleInfo.year;
+    localStorage.setItem('pl_kenteken',kent);
+    const merkEl=document.getElementById('vicMerk');
+    if(merkEl) merkEl.textContent=`${vehicleInfo.merk} ${vehicleInfo.model}`.trim();
+    if(st) st.textContent=`✓ ${vehicleInfo.merk} ${vehicleInfo.model} (${jaar}) — ${v.eerste_kleur||''}`.trim();
+    showVtag(`${vehicleInfo.merk} ${vehicleInfo.model}`.trim());
+    log(`RDW: ${vehicleInfo.merk} ${vehicleInfo.model} ${jaar} (${kent})`,'ok');
+  }catch(e){
+    if(st) st.textContent='RDW niet bereikbaar: '+e.message;
+  }
 }
 
 function getVehicle(){
@@ -3358,6 +3396,56 @@ function loadDefaultPIDs(){
   defaults.forEach(p=>supportedPIDs.add(p));
   btDiag(`Standaard set geladen: ${defaults.length} PIDs`,'info');
 }
+
+// ── UITBREIDING: volledige standaard SAE J1979 mode-01 PID database ──
+// Geeft alle via bitmap ontdekte PIDs een naam, eenheid en correcte formule
+Object.assign(ALL_PID_DEFS,{
+  '0101':{name:'Motorlampje (MIL)',      unit:'aan/uit',cat:'Emissie',  min:0,max:1,    parse:b=>((b[0]&0x80)?1:0)},
+  '0103':{name:'Brandstofsysteem status',unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
+  '0112':{name:'Secundaire lucht status',unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
+  '0114':{name:'Lambda B1S1 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '0116':{name:'Lambda B1S3 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '0118':{name:'Lambda B2S1 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '011A':{name:'Lambda B2S3 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '011B':{name:'Lambda B2S4 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '011C':{name:'OBD norm',               unit:'code',cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '011E':{name:'PTO status',             unit:'code',cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '011F':{name:'Motorlooptijd',          unit:'s',   cat:'Motor',    min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0121':{name:'Afstand met MIL aan',    unit:'km',  cat:'Emissie',  min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0122':{name:'Raildruk (relatief)',    unit:'kPa', cat:'Brandstof',min:0,max:5178, parse:b=>((b[0]*256+b[1])*0.079)},
+  '0123':{name:'Raildruk (direct)',      unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '0124':{name:'Lambda B1S1 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0125':{name:'Lambda B1S2 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0126':{name:'Lambda B1S3 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0128':{name:'Lambda B2S1 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '012E':{name:'EVAP spoelklep',         unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0130':{name:'Warmlopen sinds wissen', unit:'x',   cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '0131':{name:'Afstand sinds wissen',   unit:'km',  cat:'Overig',   min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0132':{name:'EVAP dampdruk',          unit:'Pa',  cat:'Emissie',  min:-8192,max:8192,parse:b=>{const v=(b[0]<<8)|b[1];return (v>32767?v-65536:v)/4;}},
+  '0134':{name:'Lambda B1S1 (stroom)',   unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0135':{name:'Lambda B1S2 (stroom)',   unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0138':{name:'Lambda B2S1 (stroom)',   unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '013C':{name:'Katalysator temp B1S1',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '013D':{name:'Katalysator temp B2S1',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '013E':{name:'Katalysator temp B1S2',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '013F':{name:'Katalysator temp B2S2',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '0141':{name:'Monitors deze rit',      unit:'code',cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '0144':{name:'Lambda doelwaarde',      unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0147':{name:'Absolute gasklep B',     unit:'%',   cat:'Motor',    min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0148':{name:'Absolute gasklep C',     unit:'%',   cat:'Motor',    min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '014A':{name:'Gaspedaal positie D',    unit:'%',   cat:'Rijden',   min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '014B':{name:'Gaspedaal positie E',    unit:'%',   cat:'Rijden',   min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '014D':{name:'Tijd met MIL aan',       unit:'min', cat:'Emissie',  min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '014E':{name:'Tijd sinds wissen',      unit:'min', cat:'Overig',   min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0151':{name:'Brandstoftype',          unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
+  '0152':{name:'Ethanol percentage',     unit:'%',   cat:'Brandstof',min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0159':{name:'Raildruk (absoluut)',    unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '015A':{name:'Relatief gaspedaal',     unit:'%',   cat:'Rijden',   min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '015D':{name:'Injectietiming',         unit:'°',   cat:'Motor',    min:-210,max:302,parse:b=>(((b[0]*256+b[1])-26880)/128)},
+  '0161':{name:'Gevraagd koppel',        unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
+  '0162':{name:'Werkelijk koppel',       unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
+  '0163':{name:'Referentiekoppel',       unit:'Nm',  cat:'Motor',    min:0,max:65535,parse:b=>(b[0]*256+b[1])}
+});
 
 function buildDiscoveredPIDList(){
   discoveredPIDDefs=[];
