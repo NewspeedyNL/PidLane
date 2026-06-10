@@ -181,6 +181,17 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .gdot.warn { background:var(--or); box-shadow:0 0 7px var(--or); }
 .gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
 
+/* ══ HUD hoekmeters ══ */
+.hudMini { position:absolute; width:26%; max-width:170px; aspect-ratio:1; cursor:pointer; transition:transform .1s; }
+.hudMini:active { transform:scale(.94); }
+.hudMini svg { width:100%; height:100%; overflow:visible; }
+.hudMini .mc { position:absolute; top:46%; left:50%; transform:translate(-50%,-50%); text-align:center; width:100%; }
+.hudMini .mv { font-family:var(--m); font-size:clamp(15px,4.4vw,24px); font-weight:700; line-height:1; letter-spacing:-1px; text-shadow:0 0 12px currentColor; }
+.hudMini .ml { font-family:var(--m); font-size:clamp(7px,1.8vw,9px); font-weight:700; letter-spacing:.5px; opacity:.75; margin-top:1px; }
+.hudMini .mu { position:absolute; top:66%; left:50%; transform:translateX(-50%); font-family:var(--m); font-size:clamp(6px,1.5vw,8px); opacity:.5; }
+.hudPresetBtn { padding:5px 9px; border-radius:7px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:#8a94a6; font-family:var(--f); font-size:10px; font-weight:700; cursor:pointer; }
+.hudPresetBtn.active { background:#22d3ee; color:#000; border-color:#22d3ee; }
+
 /* ══ EMPTY STATE ══ */
 .emp { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; text-align:center; color:var(--tx3); }
 .emp .ei { font-size:36px; margin-bottom:10px; opacity:.4; }
@@ -707,7 +718,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <button class="trend-group-btn" onclick="selectTrendGroup('accu')">🔋 Accu</button>
           <button class="trend-group-btn" onclick="selectTrendGroup('temp')">🌡️ Temperatuur</button>
           <button class="trend-group-btn" onclick="selectTrendGroup('none')">✕ Wis</button>
-          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="margin-left:auto;background:linear-gradient(135deg,#0d0d1a,#1a0a3a);color:#a78bfa;border-color:#7c3aed;font-weight:700" disabled>🖥 Dashboard</button>
+          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="margin-left:auto;background:linear-gradient(135deg,#0a1a1f,#0d2a30);color:#22d3ee;border-color:#22d3ee;font-weight:700">🖥 HUD</button>
           <button class="trend-group-btn" onclick="openRitAnalyse()" style="background:linear-gradient(135deg,#020c14,#001a2e);color:#00f5ff;border-color:#00f5ff55;font-weight:700">🚗 Rit Analyse</button>
         </div>
 
@@ -804,15 +815,36 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 </div>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
-<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:#020408;overflow:hidden;font-family:'DM Sans',sans-serif;">
-  <canvas id="neonBg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.05);z-index:9020">
-    <div style="font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(0,255,200,.5)">PIDLANE // LIVE DASHBOARD</div>
-    <div id="neonGroupName" style="font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.8)"></div>
+<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
+  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.05);z-index:9020">
+    <div style="font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(34,211,238,.6)">PIDLANE // HUD</div>
+    <div id="hudPresetRow" style="display:flex;gap:6px"></div>
     <button onclick="closeNeonDashboard()" style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
   </div>
-  <div id="neonGaugeGrid" style="position:absolute;top:44px;bottom:80px;left:0;right:0;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:16px;padding:16px;overflow:hidden;z-index:9010;"></div>
-  <div id="neonStatusBar" style="position:absolute;bottom:0;left:0;right:0;height:80px;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;gap:24px;padding:0 20px;z-index:9020;flex-wrap:wrap;overflow:hidden;"></div>
+  <div id="hudScreen" style="position:absolute;top:44px;bottom:0;left:0;right:0;z-index:9010">
+    <!-- 4 hoekmeters -->
+    <div class="hudMini" data-slot="0" style="top:6%;left:3%"></div>
+    <div class="hudMini" data-slot="1" style="top:6%;right:3%"></div>
+    <div class="hudMini" data-slot="2" style="bottom:6%;left:3%"></div>
+    <div class="hudMini" data-slot="3" style="bottom:6%;right:3%"></div>
+    <!-- centrale wijzerplaat -->
+    <div id="hudDial" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44%;max-width:300px;aspect-ratio:1">
+      <svg viewBox="0 0 200 200" style="width:100%;height:100%;overflow:visible"><g id="hudBigTicks"></g>
+        <circle cx="100" cy="100" r="58" fill="none" stroke="#161d2a" stroke-width="2"/>
+        <path id="hudBigArc" fill="none" stroke="#22d3ee" stroke-width="6" stroke-linecap="round" style="filter:drop-shadow(0 0 7px #22d3ee)"/></svg>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:100%">
+        <div id="hudCenterVal" style="font-family:'DM Mono',monospace;font-size:clamp(36px,9vw,58px);font-weight:700;line-height:.9;letter-spacing:-2px;color:#fff">0</div>
+        <div id="hudCenterUnit" style="font-family:'DM Mono',monospace;font-size:clamp(9px,2vw,12px);font-weight:700;letter-spacing:3px;color:#8a94a6;margin-top:2px">—</div>
+        <div id="hudCenterName" style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:#5f6b7a;margin-top:4px">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="hudPicker" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0c1018;border:1px solid #1c2330;border-radius:16px;max-width:340px;width:100%;max-height:70vh;overflow-y:auto">
+    <h3 style="font-size:14px;padding:14px 16px;border-bottom:1px solid #1c2330;color:#fff;margin:0;position:sticky;top:0;background:#0c1018">Kies sensor voor deze meter</h3>
+    <div id="hudPickerList"></div>
+  </div>
 </div>
 
 <!-- ══ RIT ANALYSE OVERLAY ══ -->
@@ -3451,16 +3483,27 @@ function updateVehicleCard(vinInfo){
       <div class="vic-row"><span class="vic-label">Merk</span><span class="vic-val" id="vicMerk">${vehicleInfo.merk}${vehicleInfo.model?' '+vehicleInfo.model:''}</span></div>
       ${vehicleInfo.year?`<div class="vic-row"><span class="vic-label">Jaar</span><span class="vic-val">${vehicleInfo.year}</span></div>`:''}
       <div class="vic-row"><span class="vic-label">PIDs</span><span class="vic-val">${supportedPIDs.size} beschikbaar</span></div>
-      ${vehicleInfo.vin?`<div class="vic-vin">VIN: ${vehicleInfo.vin}</div>`:`
-      <div style="display:flex;gap:4px;margin-top:6px;align-items:center">
-        <input id="kentInput" placeholder="Kenteken" value="${savedKent}" maxlength="8"
-          style="flex:1;min-width:0;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:11px;text-transform:uppercase">
-        <button onclick="rdwLookup()" style="padding:5px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">🇳🇱 RDW</button>
+      ${vehicleInfo.vin?`<div class="vic-vin" onclick="toggleKentInput()" style="cursor:pointer" title="Tik om kenteken in te vullen">VIN: ${vehicleInfo.vin} <span style="color:var(--bl)">✎</span></div>`:''}
+      <div id="kentWrap" style="display:${vehicleInfo.vin?'none':'block'}">
+        <div style="display:flex;gap:4px;margin-top:6px;align-items:center">
+          <input id="kentInput" placeholder="Kenteken" value="${savedKent}" maxlength="8"
+            style="flex:1;min-width:0;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:11px;text-transform:uppercase">
+          <button onclick="rdwLookup()" style="padding:5px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">🇳🇱 RDW</button>
+        </div>
+        <div id="kentStatus" style="font-size:10px;color:var(--tx3)"></div>
+        ${vehicleInfo.vin?'<div style="font-size:9px;color:var(--tx3);margin-top:2px">Vul kenteken in voor merk, model en bouwjaar via RDW</div>':''}
       </div>
-      <div id="kentStatus" style="font-size:10px;color:var(--tx3)"></div>`}
     </div>`;
-  // Opgeslagen kenteken? Direct automatisch opzoeken
-  if(!vehicleInfo.vin && savedKent) rdwLookup();
+  // Opgeslagen kenteken? Direct automatisch opzoeken (ook bij geldige VIN,
+  // om merk/model/jaar aan te vullen die de VIN-decoder niet kon bepalen)
+  if(savedKent && (!vehicleInfo.vin || !vehicleInfo.model)) rdwLookup();
+}
+
+// VIN-regel aangetikt → kenteken-invoer tonen/verbergen
+function toggleKentInput(){
+  const w=document.getElementById('kentWrap'); if(!w) return;
+  w.style.display = w.style.display==='none' ? 'block' : 'none';
+  if(w.style.display==='block'){ const i=document.getElementById('kentInput'); if(i) i.focus(); }
 }
 
 // RDW open data: voertuiggegevens op Nederlands kenteken (gratis, geen key)
@@ -3802,21 +3845,48 @@ const PID_BYTE_LEN={
 function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
 
 // Knip een multi-PID respons op in losse {pid,bytes}-blokken.
-// Werkt frame-tolerant: zoekt elk '41XX'-blok en leest het juiste aantal bytes.
+// Ondersteunt twee formaten:
+//  A) los: "410C0A98 410D00 410584" (elk PID herhaalt 41)
+//  B) Mazda/ISO-TP multiframe: "00E 0:410C0B95 0469 1:11200B24..." 
+//     één 41, dan per PID: nummer + databytes aaneengeregen
 function splitBatchResponse(raw){
-  if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')) return {};
-  const hex=raw.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')||raw.includes('STOPPED')) return {};
+  // Frame-nummers (0:,1:,2:) en ISO-TP lengte-prefix strippen
+  let hex=String(raw)
+    .replace(/[0-9A-Fa-f]?:/g,'')        // "0:" "1:" frame-headers
+    .replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
+  hex=hex.replace(/^0[0-9A-F]{2}(?=41)/,'');
   const out={};
-  let i=0;
-  while(i+4<=hex.length){
-    if(hex.slice(i,i+2)==='41'){
-      const suffix=hex.slice(i+2,i+4);
-      const n=pidByteLen(suffix);
-      const bytes=[];
-      for(let k=0;k<n&&i+4+k*2+2<=hex.length;k++) bytes.push(parseInt(hex.slice(i+4+k*2,i+4+k*2+2),16));
-      if(bytes.length===n){ out['01'+suffix]=bytes; i+=4+n*2; continue; }
+  const firstMode=hex.indexOf('41');
+  if(firstMode<0) return out;
+
+  // Formaat A: meerdere losse 41XX blokken?
+  const blocks=(hex.match(/41[0-9A-F]{2}/g)||[]).length;
+  if(blocks>1){
+    let i=0;
+    while(i+4<=hex.length){
+      if(hex.slice(i,i+2)==='41'){
+        const suf=hex.slice(i+2,i+4), n=pidByteLen(suf), b=[];
+        for(let k=0;k<n&&i+4+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+4+k*2,i+4+k*2+2),16));
+        if(b.length===n){ out['01'+suf]=b; i+=4+n*2; continue; }
+      }
+      i+=2;
     }
-    i+=2;
+    return out;
+  }
+
+  // Formaat B: één 41, daarna per PID: nummer + databytes
+  let i=firstMode+2;
+  let guard=0;
+  while(i+2<=hex.length&&guard++<20){
+    const suf=hex.slice(i,i+2);
+    if(!PID_BYTE_LEN[suf]) break; // onbekend PID-nummer of padding → stop
+    const n=pidByteLen(suf), b=[];
+    for(let k=0;k<n&&i+2+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+2+k*2,i+2+k*2+2),16));
+    if(b.length<n) break;
+    out['01'+suf]=b;
+    i+=2+n*2;
   }
   return out;
 }
@@ -3879,18 +3949,20 @@ function startPoll(){
       const canBatch=isCAN&&window._batchSupported!==false;
 
       if(canBatch&&pids.length>1){
-        // In groepjes van max 6 PIDs, één request per groep
-        for(let g=0;g<pids.length;g+=6){
+        // In groepjes van max 3 PIDs — meer dan dat dwingt een fragiele
+        // ISO-TP multiframe respons af waar PIDs uit kunnen vallen
+        for(let g=0;g<pids.length;g+=3){
           if(!connected) break;
-          const grp=pids.slice(g,g+6);
+          const grp=pids.slice(g,g+3);
           const cmd='01'+grp.map(p=>p.slice(2)).join('');
           const raw=await sendCmd(cmd,2500);
           const parsed=splitBatchResponse(raw);
-          const hits=Object.keys(parsed).filter(p=>grp.includes(p)).length;
-          if(hits===0){
-            // Batch niet ondersteund door deze ECU → eenmalig terugvallen
+          const hits=grp.filter(p=>parsed[p]).length;
+          if(hits<grp.length){
+            // Niet alle PIDs kwamen terug → deze auto doet multi-PID niet
+            // betrouwbaar. Eenmalig uitschakelen en sequentieel verder.
             window._batchSupported=false;
-            btDiag('Multi-PID niet ondersteund — terug naar sequentieel','warn');
+            btDiag(`Multi-PID onvolledig (${hits}/${grp.length}) — terug naar sequentieel`,'warn');
             for(const pid of grp){
               if(!connected) break;
               const r=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
@@ -4139,124 +4211,156 @@ document.addEventListener('DOMContentLoaded', function(){
 // ════════════════════════════════════════
 // NEON DASHBOARD — RONDE METERS
 // ════════════════════════════════════════
-let neonBgTimer=null, neonGaugeTimer=null, neonFrame=0;
-
-const NEON_COLORS={
-  fuel:  {main:'#00f5ff',glow:'rgba(0,245,255,.5)',  dim:'rgba(0,245,255,.08)',  track:'rgba(0,245,255,.12)'},
-  power: {main:'#aaff00',glow:'rgba(170,255,0,.5)',  dim:'rgba(170,255,0,.08)',  track:'rgba(170,255,0,.12)'},
-  accu:  {main:'#a78bfa',glow:'rgba(167,139,250,.5)',dim:'rgba(167,139,250,.08)',track:'rgba(167,139,250,.12)'},
-  temp:  {main:'#ff6b35',glow:'rgba(255,107,53,.5)', dim:'rgba(255,107,53,.08)', track:'rgba(255,107,53,.12)'},
-};
+let hudTimer=null;
 
 function openNeonDashboard(){
-  if(!activeTrendGroup||!trendPIDs.length){log('Kies eerst een groepstrend','warn');return;}
   document.getElementById('neonDash').style.display='block';
-  document.getElementById('neonGroupName').textContent=
-    TREND_GROUPS[activeTrendGroup].icon+' '+TREND_GROUPS[activeTrendGroup].name.toUpperCase();
-  renderNeonGauges();
-  startNeonBg();
-  neonGaugeTimer=setInterval(()=>{renderNeonGauges();},800);
+  document.getElementById('hudPicker').style.display='none';
+  buildHudTicks();
+  renderHudPresets();
+  applyHudPreset(hudPreset, true);
+  renderHud();
+  clearInterval(hudTimer);
+  hudTimer=setInterval(renderHud, 250);
 }
-
 function closeNeonDashboard(){
   document.getElementById('neonDash').style.display='none';
-  cancelAnimationFrame(neonBgTimer);
-  clearInterval(neonGaugeTimer);
+  clearInterval(hudTimer);
 }
 
-// ── Achtergrond animatie ──
-function startNeonBg(){
-  const canvas=document.getElementById('neonBg');
-  const ctx=canvas.getContext('2d');
-  const nc=NEON_COLORS[activeTrendGroup]||NEON_COLORS.fuel;
-
-  function bg(){
-    canvas.width=window.innerWidth; canvas.height=window.innerHeight;
-    const W=canvas.width,H=canvas.height;
-    ctx.fillStyle='#020408'; ctx.fillRect(0,0,W,H);
-
-    // Radiale glow in center
-    const rg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.6);
-    rg.addColorStop(0,nc.dim); rg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
-
-    // Grid
-    ctx.strokeStyle='rgba(255,255,255,.025)'; ctx.lineWidth=.5;
-    const gs=50;
-    for(let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-    for(let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-
-    // Scan line
-    const sy=((neonFrame*1.5)%H);
-    const sg=ctx.createLinearGradient(0,sy-30,0,sy+30);
-    sg.addColorStop(0,'rgba(0,0,0,0)'); sg.addColorStop(.5,nc.track); sg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=sg; ctx.fillRect(0,sy-30,W,60);
-
-    neonFrame++;
-    neonBgTimer=requestAnimationFrame(bg);
+// Ticks eenmalig tekenen
+let _hudTicksDone=false;
+function buildHudTicks(){
+  if(_hudTicksDone) return; _hudTicksDone=true;
+  const bt=document.getElementById('hudBigTicks');
+  let s='';
+  for(let i=0;i<=40;i++){
+    const a=(-135+(i/40)*270)*Math.PI/180;
+    const r1=i%5===0?68:73, r2=78;
+    const x1=100+Math.cos(a)*r1,y1=100+Math.sin(a)*r1,x2=100+Math.cos(a)*r2,y2=100+Math.sin(a)*r2;
+    s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${i%5===0?'#5a6678':'#2a3340'}" stroke-width="${i%5===0?1.5:.8}"/>`;
+    if(i%5===0){const lx=100+Math.cos(a)*60,ly=100+Math.sin(a)*60;
+      s+=`<text x="${lx}" y="${ly+3}" fill="#7a8696" font-size="9" font-family="monospace" text-anchor="middle">${i/5}</text>`;}
   }
-  bg();
-}
-
-// ── Neon golfvorm-grafieken (geen ronde meters meer) ──
-function renderNeonGauges(){
-  const grid=document.getElementById('neonGaugeGrid'); 
-  const bar=document.getElementById('neonStatusBar'); bar.innerHTML='';
-  const grp=TREND_GROUPS[activeTrendGroup]; if(!grp) return;
-  const pids=trendPIDs.filter(p=>getPidDef(p));
-
-  // Grid eenmalig opbouwen, daarna alleen de lijnen verversen (vloeiend)
-  grid.style.cssText='position:absolute;top:44px;bottom:80px;left:0;right:0;display:flex;flex-direction:column;gap:10px;padding:14px;overflow-y:auto;z-index:9010;';
-  if(grid.children.length!==pids.length||grid.dataset.grp!==activeTrendGroup){
-    grid.innerHTML=''; grid.dataset.grp=activeTrendGroup;
-    pids.forEach((pid,i)=>{
-      const def=getPidDef(pid); const color=grp.colors[i%grp.colors.length];
-      const row=document.createElement('div');
-      row.style.cssText=`position:relative;flex:1;min-height:70px;background:rgba(255,255,255,.02);border:1px solid ${color}22;border-radius:12px;padding:10px 12px;overflow:hidden;`;
-      row.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:baseline;position:relative;z-index:2">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;color:${color};text-transform:uppercase">${def.name}</span>
-          <span><span id="nv-${pid}" style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff;text-shadow:0 0 14px ${color};line-height:1">—</span><span style="font-family:'DM Mono',monospace;font-size:11px;color:${color}99;margin-left:4px">${def.unit||''}</span></span>
-        </div>
-        <svg id="nsvg-${pid}" style="position:absolute;inset:0;width:100%;height:100%;z-index:1" preserveAspectRatio="none" viewBox="0 0 100 100">
-          <polyline id="nline-${pid}" fill="none" stroke="${color}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 3px ${color})"/>
-          <polyline id="nfill-${pid}" fill="${color}14" stroke="none"/>
-        </svg>`;
-      grid.appendChild(row);
-    });
-  }
-
-  pids.forEach((pid,i)=>{
-    const def=getPidDef(pid); const color=grp.colors[i%grp.colors.length];
-    const val=pidVals[pid]; const ok=isPIDOk(pid);
-    const nv=document.getElementById('nv-'+pid);
-    if(nv){ nv.textContent=val!==undefined?fv(val):'—'; nv.style.textShadow=`0 0 14px ${ok?color:'#ff006e'}`; nv.style.color=ok?'#fff':'#ff006e'; }
-    const line=document.getElementById('nline-'+pid), fill=document.getElementById('nfill-'+pid);
-    if(line&&pidHist[pid]&&pidHist[pid].length>1){
-      const h=pidHist[pid].slice(-60).map(x=>x.v);
-      const mn=Math.min(...h), mx=Math.max(...h), rg=(mx-mn)||1;
-      const pts=h.map((y,j)=>`${(j/(h.length-1))*100},${90-((y-mn)/rg)*72}`).join(' ');
-      line.setAttribute('points',pts);
-      line.style.stroke=ok?color:'#ff006e'; line.style.filter=`drop-shadow(0 0 3px ${ok?color:'#ff006e'})`;
-      fill.setAttribute('points',`0,100 ${pts} 100,100`);
-      fill.setAttribute('fill',(ok?color:'#ff006e')+'14');
-    }
-    // Statusbalk onderaan
-    const si=document.createElement('div');
-    si.style.cssText=`display:flex;align-items:center;gap:6px;padding:6px 10px;background:${ok?color+'0d':'#ff006e0d'};border:1px solid ${ok?color+'22':'#ff006e33'};border-radius:7px;`;
-    si.innerHTML=`<div style="width:6px;height:6px;border-radius:50%;background:${ok?color:'#ff006e'};box-shadow:0 0 8px ${ok?color:'#ff006e'}"></div>
-      <span style="font-size:9px;font-weight:700;color:${ok?color:'#ff006e'};letter-spacing:.5px">${def.name.slice(0,12)}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:10px;color:${ok?color:'#ff006e'}">${val!==undefined?fv(val)+(def.unit||''):'—'}</span>`;
-    bar.appendChild(si);
+  bt.innerHTML=s;
+  // mini-meter SVG's opbouwen + klik-handlers
+  document.querySelectorAll('.hudMini').forEach(m=>{
+    let ticks='';
+    for(let i=0;i<=20;i++){const a=(-125+(i/20)*250)*Math.PI/180;
+      const r1=i%5===0?40:43,r2=46;
+      const x1=50+Math.cos(a)*r1,y1=50+Math.sin(a)*r1,x2=50+Math.cos(a)*r2,y2=50+Math.sin(a)*r2;
+      ticks+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${i%5===0?'#3a4454':'#222c3a'}" stroke-width="${i%5===0?1.2:.6}"/>`;}
+    m.innerHTML=`<svg viewBox="0 0 100 100"><g>${ticks}</g><circle cx="50" cy="50" r="38" fill="none" stroke="#141d2a" stroke-width="4"/><path class="hmArc" fill="none" stroke-width="5" stroke-linecap="round"/></svg><div class="mc"><div class="mv">—</div><div class="ml"></div></div><div class="mu"></div>`;
+    m.onclick=()=>openHudPicker(+m.dataset.slot);
   });
 }
 
-// Dashboard button wordt enabled/disabled via selectTrendGroup functie hierboven
+function renderHudPresets(){
+  const row=document.getElementById('hudPresetRow'); if(!row) return;
+  row.innerHTML='';
+  Object.entries(HUD_PRESETS).forEach(([k,p])=>{
+    const b=document.createElement('button');
+    b.className='hudPresetBtn'+(k===hudPreset?' active':'');
+    b.textContent=p.name;
+    b.onclick=()=>{ applyHudPreset(k); renderHudPresets(); };
+    row.appendChild(b);
+  });
+}
+
+function applyHudPreset(key, silent){
+  if(!HUD_PRESETS[key]) return;
+  hudPreset=key;
+  hudCenter=HUD_PRESETS[key].center;
+  hudCorners=[...HUD_PRESETS[key].corners];
+  // labels op de mini-meters zetten
+  document.querySelectorAll('.hudMini').forEach((m,slot)=>{
+    const d=getPidDef(hudCorners[slot]);
+    if(!d) return;
+    const ml=m.querySelector('.ml'), mu=m.querySelector('.mu'), mv=m.querySelector('.mv');
+    const col=hudColor(slot);
+    if(ml){ml.textContent=d.name.slice(0,12).toUpperCase(); ml.style.color=col;}
+    if(mu){mu.textContent=d.unit||''; mu.style.color=col;}
+    if(mv){mv.style.color=col;}
+  });
+  if(!silent) renderHud();
+}
+
+// Vaste kleuren per hoek (consistent met trendgroepen)
+function hudColor(slot){ return ['#fde047','#fb923c','#60a5fa','#4ade80'][slot]||'#22d3ee'; }
+
+function openHudPicker(slot){
+  window._hudPickerSlot=slot;
+  const list=document.getElementById('hudPickerList'); list.innerHTML='';
+  // Alle ondersteunde PIDs aanbieden
+  const pids=[...activePIDs];
+  const all=(typeof supportedPIDs!=='undefined'&&supportedPIDs.size)?[...supportedPIDs]:pids;
+  const seen=new Set();
+  all.concat(pids).forEach(pid=>{
+    if(seen.has(pid)) return; seen.add(pid);
+    const d=getPidDef(pid); if(!d) return;
+    const o=document.createElement('div');
+    o.style.cssText='padding:12px 16px;border-bottom:1px solid #141a26;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;color:#e6edf3';
+    o.innerHTML=`<span>${d.name}</span><span style="font-family:var(--m);font-size:11px;color:#8a94a6">${d.unit||''}</span>`;
+    o.onclick=()=>{
+      hudCorners[window._hudPickerSlot]=pid;
+      const m=document.querySelectorAll('.hudMini')[window._hudPickerSlot];
+      const col=hudColor(window._hudPickerSlot);
+      m.querySelector('.ml').textContent=d.name.slice(0,12).toUpperCase(); m.querySelector('.ml').style.color=col;
+      m.querySelector('.mu').textContent=d.unit||''; m.querySelector('.mu').style.color=col;
+      m.querySelector('.mv').style.color=col;
+      document.getElementById('hudPicker').style.display='none';
+      renderHud();
+    };
+    list.appendChild(o);
+  });
+  document.getElementById('hudPicker').style.display='flex';
+}
+document.getElementById('hudPicker').addEventListener('click',e=>{ if(e.target.id==='hudPicker') e.target.style.display='none'; });
+
+function setMiniArc(m,p,color){
+  const arc=m.querySelector('.hmArc');
+  const a0=-125*Math.PI/180, a1=(-125+p*250)*Math.PI/180, r=38;
+  const x1=50+Math.cos(a0)*r,y1=50+Math.sin(a0)*r,x2=50+Math.cos(a1)*r,y2=50+Math.sin(a1)*r;
+  arc.setAttribute('stroke',color); arc.style.filter=`drop-shadow(0 0 4px ${color})`;
+  arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p>0.5?1:0} 1 ${x2} ${y2}`);
+}
+
+function renderHud(){
+  // centrale wijzerplaat
+  const cd=getPidDef(hudCenter); const cv=pidVals[hudCenter];
+  if(cd){
+    const ok=isPIDOk(hudCenter);
+    const col=ok?'#22d3ee':'#ff006e';
+    document.getElementById('hudCenterVal').textContent=cv!==undefined?fv(cv):'—';
+    document.getElementById('hudCenterVal').style.color=ok?'#fff':'#ff006e';
+    document.getElementById('hudCenterUnit').textContent=(cd.unit||'').toUpperCase();
+    document.getElementById('hudCenterName').textContent=cd.name.toUpperCase();
+    const mn=cd.min??0, mx=cd.max??255;
+    const p=cv!==undefined?Math.max(0,Math.min(1,(cv-mn)/(mx-mn))):0;
+    const a0=-135*Math.PI/180, a1=(-135+p*270)*Math.PI/180, r=58;
+    const x1=100+Math.cos(a0)*r,y1=100+Math.sin(a0)*r,x2=100+Math.cos(a1)*r,y2=100+Math.sin(a1)*r;
+    const arc=document.getElementById('hudBigArc');
+    arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p>0.5?1:0} 1 ${x2} ${y2}`);
+    arc.setAttribute('stroke',col); arc.style.filter=`drop-shadow(0 0 7px ${col})`;
+  }
+  // hoekmeters
+  document.querySelectorAll('.hudMini').forEach((m,slot)=>{
+    const pid=hudCorners[slot]; const d=getPidDef(pid); if(!d) return;
+    const v=pidVals[pid]; const ok=isPIDOk(pid);
+    const col=ok?hudColor(slot):'#ff006e';
+    const mv=m.querySelector('.mv');
+    mv.textContent=v!==undefined?fv(v):'—'; mv.style.color=col;
+    const mn=d.min??0, mx=d.max??255;
+    const p=v!==undefined?Math.max(0,Math.min(1,(v-mn)/(mx-mn))):0;
+    setMiniArc(m,p,col);
+  });
+}
+
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ closeNeonDashboard(); closeRitAnalyse(); }
 });
 window.addEventListener('resize',()=>{
-  if(document.getElementById('neonDash').style.display!=='none') renderNeonGauges();
+  if(document.getElementById('neonDash').style.display!=='none') renderHud();
 });
 
 // ════════════════════════════════════════
