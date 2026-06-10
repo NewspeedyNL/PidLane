@@ -1705,8 +1705,12 @@ const ANALYSE_PIDS={
 // Zet de PIDs van een profiel aan (alleen die de auto ondersteunt) en wacht
 // tot er verse data binnen is, zodat de analyse niet met lege waardes draait.
 async function ensurePIDsActive(profile){
+  return ensurePIDListActive(ANALYSE_PIDS[profile]||[]);
+}
+
+async function ensurePIDListActive(pidList){
   if(demoMode) return;
-  const wanted=(ANALYSE_PIDS[profile]||[]).filter(pid=>
+  const wanted=(pidList||[]).filter(pid=>
     (typeof supportedPIDs!=='undefined'&&supportedPIDs.has&&supportedPIDs.has(pid))||getPidDef(pid));
   const added=[];
   wanted.forEach(pid=>{ if(!activePIDs.has(pid)){ activePIDs.add(pid); added.push(pid); } });
@@ -2055,6 +2059,14 @@ function selectTrendGroup(group){
   }
   activeTrendGroup=group;
   const grp=TREND_GROUPS[group];
+  // Sensoren van deze grafiekgroep automatisch aanzetten — grafiek vult
+  // zichzelf zodra de data binnenkomt
+  ensurePIDListActive(grp.pids).then(()=>{
+    if(activeTrendGroup===group){
+      trendPIDs=grp.pids.filter(pid=>pidHist[pid]?.length||discoveredPIDDefs.find(d=>d.pid===pid));
+      updateTrendChips(); drawGraph();
+    }
+  });
   trendPIDs=grp.pids.filter(pid=>pidHist[pid]?.length||discoveredPIDDefs.find(d=>d.pid===pid));
   document.getElementById('gsel').value=''; graphPID=null;
   const idx={fuel:0,power:1,accu:2,temp:3}[group];
@@ -2101,7 +2113,11 @@ function rebuildGSel(){
 
 function changeGraph(v){
   graphPID=v||null;
-  if(v){ activeTrendGroup=null; trendPIDs=[]; document.querySelectorAll('.trend-group-btn').forEach(b=>b.classList.remove('active')); updateTrendChips(); }
+  if(v){
+    activeTrendGroup=null; trendPIDs=[]; document.querySelectorAll('.trend-group-btn').forEach(b=>b.classList.remove('active')); updateTrendChips();
+    // Gekozen sensor automatisch aanzetten zodat de grafiek data krijgt
+    ensurePIDListActive([v]).then(()=>{ if(graphPID===v) drawGraph(); });
+  }
   drawGraph();
 }
 
