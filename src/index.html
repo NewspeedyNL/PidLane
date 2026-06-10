@@ -2407,6 +2407,136 @@ function renderAIText(text,contentEl){
   html+='</div>';
   contentEl.innerHTML=html;
 }
+// ── PDF RAPPORT EXPORT ──────────────────────────────────────────
+async function loadJsPDF(){
+  if(window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=res; s.onerror=()=>rej(new Error('PDF-bibliotheek laden mislukt — internet nodig'));
+    document.head.appendChild(s);
+  });
+  return window.jspdf.jsPDF;
+}
+
+async function exportAIReportPDF(btn){
+  if(!window._lastAIReport){ showToast?.('Geen rapport beschikbaar'); return; }
+  const orig=btn?btn.textContent:''; if(btn){btn.textContent='⏳ PDF maken...'; btn.disabled=true;}
+  try{
+    const jsPDF=await loadJsPDF();
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    const W=210, M=15, CW=W-2*M;
+    const BLUE=[26,111,255], DARK=[26,32,44], GREY=[113,128,150], LIGHT=[237,242,247];
+    let y=0;
+
+    const clean=t=>String(t).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,'').replace(/\*\*/g,'').trim();
+    const footer=()=>{
+      const n=doc.getNumberOfPages();
+      for(let i=1;i<=n;i++){
+        doc.setPage(i);
+        doc.setDrawColor(...LIGHT); doc.line(M,285,W-M,285);
+        doc.setFontSize(8); doc.setTextColor(...GREY); doc.setFont('helvetica','normal');
+        doc.text(`Gegenereerd door PidLane — ${new Date(window._lastAIReport.ts).toLocaleString('nl-NL')}`,M,290);
+        doc.text(`Pagina ${i} van ${n}`,W-M,290,{align:'right'});
+      }
+    };
+    const pageBreak=need=>{ if(y+need>278){ doc.addPage(); y=M+5; } };
+
+    // ── Kopband ──
+    doc.setFillColor(...BLUE); doc.rect(0,0,W,30,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(20);
+    doc.text('PidLane',M,13);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text('Your car talks. We translate.',M,19);
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text('VOERTUIG DIAGNOSERAPPORT',W-M,13,{align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(new Date(window._lastAIReport.ts).toLocaleString('nl-NL'),W-M,19,{align:'right'});
+    y=38;
+
+    // ── Voertuiggegevens blok ──
+    const kent=localStorage.getItem('pl_kenteken')||'';
+    const meta=[
+      ['Voertuig',`${vehicleInfo.merk||'Onbekend'} ${vehicleInfo.model||''} ${vehicleInfo.year?'('+vehicleInfo.year+')':''}`.trim()],
+      kent?['Kenteken',kent]:null,
+      vehicleInfo.vin?['VIN',vehicleInfo.vin]:null,
+      selectedNetwork?['Protocol',clean(selectedNetwork.name||selectedNetwork.id||'')]:null,
+      ['Sensoren',`${activePIDs.size} actief, ${supportedPIDs.size||discoveredPIDDefs.length} beschikbaar`]
+    ].filter(Boolean);
+    doc.setFillColor(...LIGHT); doc.roundedRect(M,y,CW,8+meta.length*6,2,2,'F');
+    let my=y+7;
+    meta.forEach(([k,v])=>{
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...GREY);
+      doc.text(k.toUpperCase(),M+5,my);
+      doc.setFont('helvetica','normal'); doc.setTextColor(...DARK);
+      doc.text(clean(v),M+45,my); my+=6;
+    });
+    y=my+6;
+
+    // ── Rapportinhoud ──
+    const lines=clean(window._lastAIReport.text).split('\n');
+    for(let raw of lines){
+      const line=raw.trim();
+      if(!line){ y+=2; continue; }
+      if(/^#{1,3}\s/.test(line)){
+        pageBreak(12); y+=4;
+        doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...BLUE);
+        doc.text(line.replace(/^#{1,3}\s*/,''),M,y); y+=2;
+        doc.setDrawColor(...BLUE); doc.setLineWidth(0.4); doc.line(M,y,M+40,y); y+=5;
+      } else if(/^[-•*]\s/.test(line)){
+        const txt=doc.splitTextToSize(line.replace(/^[-•*]\s*/,''),CW-8);
+        pageBreak(txt.length*5+2);
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
+        doc.text('•',M+2,y); doc.text(txt,M+8,y); y+=txt.length*5+1;
+      } else {
+        const txt=doc.splitTextToSize(line,CW);
+        pageBreak(txt.length*5+2);
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
+        doc.text(txt,M,y); y+=txt.length*5+1.5;
+      }
+    }
+
+    // ── Sensorwaarden bijlage ──
+    const snap=[...activePIDs].map(pid=>{
+      const d=getPidDef(pid); const v=pidVals[pid];
+      return d&&v!==undefined?[clean(d.name),`${typeof v==='number'?v.toFixed(d.unit==='V'||d.unit==='λ'?2:0):v} ${d.unit||''}`]:null;
+    }).filter(Boolean);
+    if(snap.length){
+      pageBreak(20); y+=5;
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...BLUE);
+      doc.text('Sensorwaarden (momentopname)',M,y); y+=2;
+      doc.setDrawColor(...BLUE); doc.line(M,y,M+40,y); y+=6;
+      doc.setFontSize(9);
+      const colW=CW/2;
+      snap.forEach((row,i)=>{
+        const col=i%2, x=M+col*colW;
+        if(col===0) pageBreak(6);
+        doc.setFont('helvetica','normal'); doc.setTextColor(...GREY); doc.text(row[0],x,y);
+        doc.setFont('helvetica','bold'); doc.setTextColor(...DARK); doc.text(row[1],x+colW-6,y,{align:'right'});
+        if(col===1||i===snap.length-1) y+=5.5;
+      });
+    }
+
+    footer();
+
+    // ── Delen of opslaan ──
+    const fname=`PidLane-rapport-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.pdf`;
+    const blob=doc.output('blob');
+    const file=new File([blob],fname,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'PidLane rapport'}).catch(()=>doc.save(fname));
+    } else {
+      doc.save(fname);
+    }
+    showToast?.('📄 PDF-rapport klaar');
+  }catch(e){
+    log('PDF export fout: '+e.message,'err');
+    showToast?.('PDF mislukt: '+e.message);
+  }finally{
+    if(btn){btn.textContent=orig; btn.disabled=false;}
+  }
+}
+
 async function callAI(prompt,contentEl){
   contentEl.innerHTML='<div class="ai-ld"><div class="spin"></div> AI analyseert...</div>';
   try{
@@ -2416,6 +2546,12 @@ async function callAI(prompt,contentEl){
     }
     const text=await apiFetch(prompt);
     renderAIText(text,contentEl);
+    // Rapport bewaren voor PDF-export + exportknop toevoegen
+    window._lastAIReport={text, ts:new Date()};
+    const exp=document.createElement('div');
+    exp.style.cssText='margin-top:10px;text-align:right';
+    exp.innerHTML='<button onclick="exportAIReportPDF(this)" style="padding:7px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">📄 Exporteer als PDF</button>';
+    contentEl.appendChild(exp);
     log('AI analyse klaar','ok');
   }catch(e){
     const isAuth=e.message.includes('ongeldig')||e.message.includes('401');
@@ -3095,9 +3231,18 @@ async function scanNetworks(){
 function renderNetworkCards(){
   document.getElementById('step2Title').textContent=
     discoveredNetworks.length===0 ? 'Geen netwerken gevonden' :
-    `${discoveredNetworks.length} netwerk${discoveredNetworks.length!==1?'en':''} gevonden`;
+    discoveredNetworks.length===1 ? '1 netwerk gevonden — automatisch geselecteerd' :
+    `${discoveredNetworks.length} netwerken gevonden`;
   document.getElementById('step2Sub').textContent=
-    discoveredNetworks.length===0 ? 'Controleer verbinding en contact' : 'Selecteer het netwerk voor diagnose';
+    discoveredNetworks.length===0 ? 'Controleer verbinding en contact' :
+    discoveredNetworks.length===1 ? 'Diagnose start automatisch...' : 'Selecteer het netwerk voor diagnose';
+
+  // Eén netwerk? Niet laten kiezen — automatisch selecteren en doorgaan
+  if(discoveredNetworks.length===1&&!window._autoNetStarted){
+    window._autoNetStarted=true;
+    selectedNetwork=discoveredNetworks[0];
+    setTimeout(()=>{ window._autoNetStarted=false; startDiscovery(); },1500);
+  }
 
   const list=document.getElementById('networkList');
   list.innerHTML='';
@@ -3323,20 +3468,53 @@ function getVehicle(){
 
 // ── VIN UITLEZEN EN DECODEREN ──
 async function tryReadVIN(){
-  try{
-    await sendCmd('ATH1');
-    const r=await sendCmd('0902');
-    await sendCmd('ATH0');
-    if(!r||r.includes('NO DATA')||r.includes('ERROR')) return null;
-    const hex=r.replace(/[^0-9A-Fa-f]/g,'');
+  // Hex-payload na een marker omzetten naar gevalideerde 17-teken VIN
+  const extractVIN=(raw)=>{
+    if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')) return null;
+    const hex=raw.replace(/[^0-9A-Fa-f]/g,'');
     let vin='';
     for(let i=0;i<hex.length-1;i+=2){
       const c=parseInt(hex.slice(i,i+2),16);
       if(c>=32&&c<=126) vin+=String.fromCharCode(c);
     }
     vin=vin.replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(-17);
-    // Een VIN is exact 17 tekens (hoofdletters/cijfers, geen I/O/Q) — anders is het frame-rommel
-    if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)){ log('Geen geldige VIN ontvangen','info'); return null; }
+    return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin)?vin:null;
+  };
+
+  let vin=null;
+  try{
+    await sendCmd('ATH1');
+
+    // Poging 1: standaard mode 09 via broadcast (7DF)
+    vin=extractVIN(await sendCmd('0902',4000));
+    if(vin) btDiag('VIN via standaard 0902 ✓','ok');
+
+    // Poging 2: zelfde verzoek maar rechtstreeks aan de motor-ECU (7E0).
+    // Sommige ECU's (o.a. Mazda) vullen de VIN alleen bij fysieke adressering.
+    if(!vin){
+      btDiag('VIN leeg via broadcast — fysiek adres 7E0 proberen','info');
+      await sendCmd('ATSH7E0');
+      vin=extractVIN(await sendCmd('0902',4000));
+      if(vin) btDiag('VIN via 7E0 + 0902 ✓','ok');
+    }
+
+    // Poging 3: UDS 22 F190 (ReadDataByIdentifier VIN) — moderne standaard,
+    // respons begint met 62F190 gevolgd door 17 ASCII-bytes.
+    if(!vin){
+      btDiag('VIN via UDS 22F190 proberen','info');
+      const r=await sendCmd('22F190',4000);
+      if(r&&r.replace(/[^0-9A-Fa-f]/g,'').includes('62F190')){
+        const hex=r.replace(/[^0-9A-Fa-f]/g,'');
+        vin=extractVIN(hex.slice(hex.indexOf('62F190')+6));
+        if(vin) btDiag('VIN via UDS 22F190 ✓','ok');
+      }
+    }
+
+    // Adressering en headers altijd netjes herstellen
+    await sendCmd('ATSH7DF');
+    await sendCmd('ATH0');
+
+    if(!vin){ log('Geen geldige VIN ontvangen (auto geeft hem niet vrij) — gebruik kenteken/RDW','info'); return null; }
     log('VIN: '+vin,'ok');
     const info=decodeVIN(vin);
     // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken
