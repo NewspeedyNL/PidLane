@@ -163,28 +163,34 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .pane { display:none; }
 .pane.active { display:block; }
 
-/* ══ GAUGES ══ */
-.gg { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:10px; }
+/* ══ GAUGES (concept B — kaarten met sparkline) ══ */
+.gg { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
 .gc { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:14px; box-shadow:var(--ss); position:relative; overflow:hidden; transition:border-color .1s; }
 .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--bl); border-radius:var(--r) var(--r) 0 0; transition:background .3s; }
 .gc.warn::before { background:var(--or); }
 .gc.danger::before { background:var(--rd); }
 .gc:hover { box-shadow:var(--sh); transform:translateY(-1px); }
-.gn2 { font-size:9px; font-weight:700; color:var(--tx3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
-.gv { font-family:var(--m); font-size:34px; font-weight:700; color:var(--tx); line-height:1; }
+.gn2 { font-size:9px; font-weight:700; color:var(--tx3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; padding-right:14px; }
+.gv { font-family:var(--m); font-size:32px; font-weight:800; color:var(--tx); line-height:1; letter-spacing:-1px; }
 .gc.warn .gv { color:var(--or); }
 .gc.danger .gv { color:var(--rd); }
-.gc.warn .gv { color:var(--or); }
-.gc.danger .gv { color:var(--rd); }
-.gunit { font-family:var(--m); font-size:11px; color:var(--tx3); margin-top:2px; }
-.gbar { height:6px; background:var(--bd); border-radius:3px; margin-top:10px; overflow:hidden; }
-.gfil { height:100%; border-radius:2px; background:var(--bl); width:0%; transition:background .15s; }
-.gc.warn .gfil { background:var(--or); }
-.gc.danger .gfil { background:var(--rd); }
-.gbdg { position:absolute; top:10px; right:8px; font-size:8px; font-weight:700; padding:2px 5px; border-radius:4px; }
-.gbdg.ok { background:var(--gns); color:var(--gn); }
-.gbdg.warn { background:var(--ors); color:var(--or); }
-.gbdg.danger { background:var(--rds); color:var(--rd); }
+.gunit { font-family:var(--m); font-size:11px; color:var(--tx3); margin-left:3px; font-weight:600; }
+.gspark { margin-top:9px; width:100%; height:28px; display:block; }
+.gspark polyline { fill:none; stroke:var(--bl); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; transition:stroke .3s; }
+.gdot { position:absolute; top:13px; right:12px; width:8px; height:8px; border-radius:50%; background:var(--gn); box-shadow:0 0 7px var(--gn); transition:background .3s,box-shadow .3s; }
+.gdot.warn { background:var(--or); box-shadow:0 0 7px var(--or); }
+.gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
+
+/* ══ HUD hoekmeters ══ */
+.hudMini { position:absolute; width:26%; max-width:170px; aspect-ratio:1; cursor:pointer; transition:transform .1s; }
+.hudMini:active { transform:scale(.94); }
+.hudMini svg { width:100%; height:100%; overflow:visible; }
+.hudMini .mc { position:absolute; top:46%; left:50%; transform:translate(-50%,-50%); text-align:center; width:100%; }
+.hudMini .mv { font-family:var(--m); font-size:clamp(15px,4.4vw,24px); font-weight:700; line-height:1; letter-spacing:-1px; text-shadow:0 0 12px currentColor; }
+.hudMini .ml { font-family:var(--m); font-size:clamp(7px,1.8vw,9px); font-weight:700; letter-spacing:.5px; opacity:.75; margin-top:1px; }
+.hudMini .mu { position:absolute; top:66%; left:50%; transform:translateX(-50%); font-family:var(--m); font-size:clamp(6px,1.5vw,8px); opacity:.5; }
+.hudPresetBtn { padding:5px 9px; border-radius:7px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:#8a94a6; font-family:var(--f); font-size:10px; font-weight:700; cursor:pointer; }
+.hudPresetBtn.active { background:#22d3ee; color:#000; border-color:#22d3ee; }
 
 /* ══ EMPTY STATE ══ */
 .emp { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; text-align:center; color:var(--tx3); }
@@ -712,7 +718,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <button class="trend-group-btn" onclick="selectTrendGroup('accu')">🔋 Accu</button>
           <button class="trend-group-btn" onclick="selectTrendGroup('temp')">🌡️ Temperatuur</button>
           <button class="trend-group-btn" onclick="selectTrendGroup('none')">✕ Wis</button>
-          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="margin-left:auto;background:linear-gradient(135deg,#0d0d1a,#1a0a3a);color:#a78bfa;border-color:#7c3aed;font-weight:700" disabled>🖥 Dashboard</button>
+          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="margin-left:auto;background:linear-gradient(135deg,#0a1a1f,#0d2a30);color:#22d3ee;border-color:#22d3ee;font-weight:700">🖥 HUD</button>
           <button class="trend-group-btn" onclick="openRitAnalyse()" style="background:linear-gradient(135deg,#020c14,#001a2e);color:#00f5ff;border-color:#00f5ff55;font-weight:700">🚗 Rit Analyse</button>
         </div>
 
@@ -809,15 +815,36 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 </div>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
-<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:#020408;overflow:hidden;font-family:'DM Sans',sans-serif;">
-  <canvas id="neonBg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.05);z-index:9020">
-    <div style="font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(0,255,200,.5)">PIDLANE // LIVE DASHBOARD</div>
-    <div id="neonGroupName" style="font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.8)"></div>
+<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
+  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.05);z-index:9020">
+    <div style="font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(34,211,238,.6)">PIDLANE // HUD</div>
+    <div id="hudPresetRow" style="display:flex;gap:6px"></div>
     <button onclick="closeNeonDashboard()" style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
   </div>
-  <div id="neonGaugeGrid" style="position:absolute;top:44px;bottom:80px;left:0;right:0;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:16px;padding:16px;overflow:hidden;z-index:9010;"></div>
-  <div id="neonStatusBar" style="position:absolute;bottom:0;left:0;right:0;height:80px;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;gap:24px;padding:0 20px;z-index:9020;flex-wrap:wrap;overflow:hidden;"></div>
+  <div id="hudScreen" style="position:absolute;top:44px;bottom:0;left:0;right:0;z-index:9010">
+    <!-- 4 hoekmeters -->
+    <div class="hudMini" data-slot="0" style="top:6%;left:3%"></div>
+    <div class="hudMini" data-slot="1" style="top:6%;right:3%"></div>
+    <div class="hudMini" data-slot="2" style="bottom:6%;left:3%"></div>
+    <div class="hudMini" data-slot="3" style="bottom:6%;right:3%"></div>
+    <!-- centrale wijzerplaat -->
+    <div id="hudDial" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44%;max-width:300px;aspect-ratio:1">
+      <svg viewBox="0 0 200 200" style="width:100%;height:100%;overflow:visible"><g id="hudBigTicks"></g>
+        <circle cx="100" cy="100" r="58" fill="none" stroke="#161d2a" stroke-width="2"/>
+        <path id="hudBigArc" fill="none" stroke="#22d3ee" stroke-width="6" stroke-linecap="round" style="filter:drop-shadow(0 0 7px #22d3ee)"/></svg>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:100%">
+        <div id="hudCenterVal" style="font-family:'DM Mono',monospace;font-size:clamp(36px,9vw,58px);font-weight:700;line-height:.9;letter-spacing:-2px;color:#fff">0</div>
+        <div id="hudCenterUnit" style="font-family:'DM Mono',monospace;font-size:clamp(9px,2vw,12px);font-weight:700;letter-spacing:3px;color:#8a94a6;margin-top:2px">—</div>
+        <div id="hudCenterName" style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:#5f6b7a;margin-top:4px">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="hudPicker" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0c1018;border:1px solid #1c2330;border-radius:16px;max-width:340px;width:100%;max-height:70vh;overflow-y:auto">
+    <h3 style="font-size:14px;padding:14px 16px;border-bottom:1px solid #1c2330;color:#fff;margin:0;position:sticky;top:0;background:#0c1018">Kies sensor voor deze meter</h3>
+    <div id="hudPickerList"></div>
+  </div>
 </div>
 
 <!-- ══ RIT ANALYSE OVERLAY ══ -->
@@ -1453,29 +1480,41 @@ function validateAndSmooth(pid,rawVal){
     markOutlier(pid,rawVal,'limiet'); return null;
   }
 
-  // LAAG 2 — Sprong filter (max 35% van bereik per meting)
+  // LAAG 2+3 — Spike-filter MET herstel. Eén afwijkende meting wordt even
+  // geparkeerd; bevestigt de vólgende meting ongeveer dezelfde waarde, dan is
+  // het een echte verandering (gas geven, warmlopen) en accepteren we direct.
+  // σ-vloer voorkomt dat een stabiel signaal élke fluctuatie tot outlier maakt.
   const prev=pidVals[pid];
+  const range=Math.max(1e-6,(def?.max??255)-(def?.min??0));
+  let suspect=false, reason='';
   if(prev!==undefined&&prev!==null){
-    const range=(def?.max??255)-(def?.min??0);
-    const jumpPct=Math.abs(rawVal-prev)/range*100;
-    if(jumpPct>35){
-      const msg=`${def?.name||pid}: sprong ${fv(prev)}→${fv(rawVal)} (${jumpPct.toFixed(0)}% van bereik)`;
-      log(`⚠ ${msg}`,'warn');
-      logToSheets('outlier',msg,{pid,prev,value:rawVal,jumpPct,reason:'spike'});
-      markOutlier(pid,rawVal,'sprong'); return null;
-    }
+    if(Math.abs(rawVal-prev)/range*100>35){ suspect=true; reason='sprong'; }
   }
-
-  // LAAG 3 — Statistische outlier (>2.5σ van recente history)
-  if(pidHist[pid]&&pidHist[pid].length>=8){
+  if(!suspect&&pidHist[pid]&&pidHist[pid].length>=8){
     const recent=pidHist[pid].slice(-10).map(x=>x.v);
     const mean=recent.reduce((a,b)=>a+b,0)/recent.length;
     const std=Math.sqrt(recent.reduce((a,b)=>a+(b-mean)**2,0)/recent.length);
-    if(std>0.01&&Math.abs(rawVal-mean)>2.5*std){
-      const msg=`${def?.name||pid}: ${fv(rawVal)} is statistisch outlier (gem=${fv(mean)}, σ=${fv(std)})`;
-      log(`⚠ ${msg}`,'warn');
-      logToSheets('outlier',msg,{pid,value:rawVal,mean,std,reason:'statistical'});
-      markOutlier(pid,rawVal,'outlier'); return null;
+    const minStd=range*0.03; // vloer: 3% van het meetbereik
+    if(Math.abs(rawVal-mean)>3.5*Math.max(std,minStd)){ suspect=true; reason='outlier'; }
+  }
+  if(suspect){
+    const p=window._pidPending=window._pidPending||{};
+    const pd=p[pid];
+    if(pd&&Date.now()-pd.t<5000&&Math.abs(rawVal-pd.v)<=range*0.15){
+      // Tweede meting bevestigt — echte verandering: accepteren, stats verversen
+      delete p[pid];
+      if(pidHist[pid]) pidHist[pid]=pidHist[pid].slice(-2);
+      pidSmooth[pid]=[];
+    } else {
+      p[pid]={v:rawVal,t:Date.now()};
+      // Max 1 logregel per PID per 10 sec — geen log-flood meer
+      const lw=window._outlierLogged=window._outlierLogged||{};
+      if(!lw[pid]||Date.now()-lw[pid]>10000){
+        lw[pid]=Date.now();
+        log(`⚠ ${def?.name||pid}: ${fv(rawVal)} wijkt af (${reason}) — wacht op bevestiging`,'warn');
+      }
+      markOutlier(pid,rawVal,reason);
+      return null;
     }
   }
 
@@ -1740,7 +1779,10 @@ function renderGauges(){
   activePIDs.forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     const c=document.createElement('div'); c.className='gc'; c.id='gc-'+pid;
-    c.innerHTML=`<div class="gn2">${d.name}</div><div class="gv" id="gv-${pid}">—</div><div class="gunit">${d.unit}</div><div class="gbar"><div class="gfil" id="gf-${pid}"></div></div>`;
+    c.innerHTML=`<div class="gdot" id="gd-${pid}"></div>
+      <div class="gn2">${d.name}</div>
+      <div><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
+      <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     g.appendChild(c);
     if(pidVals[pid]!==undefined) applyG(pid,pidVals[pid]);
   });
@@ -1749,16 +1791,20 @@ function fv(v){return(v===undefined||v===null)?'—':(Math.abs(v)<10?v.toFixed(2
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
   const card=document.getElementById('gc-'+pid); if(!card) return;
-  const pct=Math.max(0,Math.min(100,((val-d.min)/(d.max-d.min))*100));
   let st='ok';
   if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
   else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
   card.className='gc'+(st!=='ok'?' '+st:'');
-  let bdg=card.querySelector('.gbdg');
-  if(!bdg){bdg=document.createElement('div');bdg.className='gbdg';card.appendChild(bdg);}
-  bdg.className='gbdg '+st; bdg.textContent=st==='ok'?'OK':st==='warn'?'LET OP':'KRITIEK';
+  const dot=document.getElementById('gd-'+pid); if(dot) dot.className='gdot'+(st!=='ok'?' '+st:'');
   const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=fv(val);
-  const gf=document.getElementById('gf-'+pid); if(gf) gf.style.width=pct+'%';
+  // Sparkline uit de laatste ~24 metingen
+  const sl=document.getElementById('gs-'+pid);
+  if(sl&&pidHist[pid]&&pidHist[pid].length>1){
+    const h=pidHist[pid].slice(-24).map(x=>x.v);
+    const mn=Math.min(...h), mx=Math.max(...h), rg=(mx-mn)||1;
+    sl.setAttribute('points',h.map((y,i)=>`${(i/(h.length-1))*100},${26-((y-mn)/rg)*24}`).join(' '));
+    sl.style.stroke=st==='danger'?'var(--rd)':st==='warn'?'var(--or)':'var(--bl)';
+  }
 }
 function updPID(pid,val){
   pidVals[pid]=val;
@@ -2047,6 +2093,20 @@ const TREND_GROUPS={
   accu:{ name:'Accu', icon:'🔋', pids:['0142','0104','010C','015B'], colors:['#1a6fff','#f77f00','#00a86b','#7c3aed'] },
   temp:{ name:'Temperatuur', icon:'🌡️', pids:['0105','015C','010F','0146'], colors:['#e53e3e','#f77f00','#1a6fff','#00a86b'] },
 };
+
+// HUD presets — gedeelde bron met de trendgroepen hierboven.
+// center = grote centrale wijzerplaat, corners = de 4 hoekmeters.
+// Zo gebruiken de meters exact dezelfde PID-verzamelingen als de trends.
+const HUD_PRESETS={
+  rijden:   { name:'Rijden',     center:'010D', corners:['0142','010C','0105','0111'] }, // snelheid + accu/toeren/temp/gasklep
+  vermogen: { name:'Vermogen',   center:'010C', corners:TREND_GROUPS.power.pids.slice(0,4) },
+  brandstof:{ name:'Brandstof',  center:'010C', corners:TREND_GROUPS.fuel.pids.slice(0,4) },
+  accu:     { name:'Accu',       center:'0142', corners:TREND_GROUPS.accu.pids.slice(0,4) },
+  temp:     { name:'Temperatuur',center:'0105', corners:TREND_GROUPS.temp.pids.slice(0,4) },
+};
+let hudPreset='rijden';
+let hudCorners=[...HUD_PRESETS.rijden.corners]; // door gebruiker per hoek aanpasbaar
+let hudCenter=HUD_PRESETS.rijden.center;
 
 let activeTrendGroup=null, trendPIDs=[];
 
@@ -2407,6 +2467,184 @@ function renderAIText(text,contentEl){
   html+='</div>';
   contentEl.innerHTML=html;
 }
+// ── PDF RAPPORT EXPORT ──────────────────────────────────────────
+async function loadJsPDF(){
+  if(window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=res; s.onerror=()=>rej(new Error('PDF-bibliotheek laden mislukt — internet nodig'));
+    document.head.appendChild(s);
+  });
+  return window.jspdf.jsPDF;
+}
+
+async function exportAIReportPDF(btn){
+  if(!window._lastAIReport){ showToast?.('Geen rapport beschikbaar'); return; }
+  const orig=btn?btn.textContent:''; if(btn){btn.textContent='⏳ PDF maken...'; btn.disabled=true;}
+  try{
+    const jsPDF=await loadJsPDF();
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    const W=210, M=15, CW=W-2*M;
+    const BLUE=[26,111,255], DARK=[26,32,44], GREY=[113,128,150], LIGHT=[237,242,247];
+    let y=0;
+
+    const clean=t=>String(t).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,'').replace(/\*\*/g,'').trim();
+    const footer=()=>{
+      const n=doc.getNumberOfPages();
+      for(let i=1;i<=n;i++){
+        doc.setPage(i);
+        doc.setDrawColor(...LIGHT); doc.line(M,285,W-M,285);
+        doc.setFontSize(8); doc.setTextColor(...GREY); doc.setFont('helvetica','normal');
+        doc.text(`Gegenereerd door PidLane — ${new Date(window._lastAIReport.ts).toLocaleString('nl-NL')}`,M,290);
+        doc.text(`Pagina ${i} van ${n}`,W-M,290,{align:'right'});
+      }
+    };
+    const pageBreak=need=>{ if(y+need>278){ doc.addPage(); y=M+5; } };
+
+    // ── Kopband ──
+    doc.setFillColor(...BLUE); doc.rect(0,0,W,30,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(20);
+    doc.text('PidLane',M,13);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text('Your car talks. We translate.',M,19);
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text('VOERTUIG DIAGNOSERAPPORT',W-M,13,{align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(new Date(window._lastAIReport.ts).toLocaleString('nl-NL'),W-M,19,{align:'right'});
+    y=38;
+
+    // ── Voertuiggegevens blok ──
+    const kent=localStorage.getItem('pl_kenteken')||'';
+    const meta=[
+      ['Voertuig',`${vehicleInfo.merk||'Onbekend'} ${vehicleInfo.model||''} ${vehicleInfo.year?'('+vehicleInfo.year+')':''}`.trim()],
+      kent?['Kenteken',kent]:null,
+      vehicleInfo.vin?['VIN',vehicleInfo.vin]:null,
+      selectedNetwork?['Protocol',clean(selectedNetwork.name||selectedNetwork.id||'')]:null,
+      ['Sensoren',`${activePIDs.size} actief, ${supportedPIDs.size||discoveredPIDDefs.length} beschikbaar`]
+    ].filter(Boolean);
+    doc.setFillColor(...LIGHT); doc.roundedRect(M,y,CW,8+meta.length*6,2,2,'F');
+    let my=y+7;
+    meta.forEach(([k,v])=>{
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...GREY);
+      doc.text(k.toUpperCase(),M+5,my);
+      doc.setFont('helvetica','normal'); doc.setTextColor(...DARK);
+      doc.text(clean(v),M+45,my); my+=6;
+    });
+    y=my+6;
+
+    // ── Rapportinhoud ──
+    const lines=clean(window._lastAIReport.text).split('\n');
+    for(let raw of lines){
+      const line=raw.trim();
+      if(!line){ y+=2; continue; }
+      if(/^#{1,3}\s/.test(line)){
+        pageBreak(12); y+=4;
+        doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...BLUE);
+        doc.text(line.replace(/^#{1,3}\s*/,''),M,y); y+=2;
+        doc.setDrawColor(...BLUE); doc.setLineWidth(0.4); doc.line(M,y,M+40,y); y+=5;
+      } else if(/^[-•*]\s/.test(line)){
+        const txt=doc.splitTextToSize(line.replace(/^[-•*]\s*/,''),CW-8);
+        pageBreak(txt.length*5+2);
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
+        doc.text('•',M+2,y); doc.text(txt,M+8,y); y+=txt.length*5+1;
+      } else {
+        const txt=doc.splitTextToSize(line,CW);
+        pageBreak(txt.length*5+2);
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
+        doc.text(txt,M,y); y+=txt.length*5+1.5;
+      }
+    }
+
+    // ── Sensorwaarden bijlage ──
+    const snap=[...activePIDs].map(pid=>{
+      const d=getPidDef(pid); const v=pidVals[pid];
+      return d&&v!==undefined?[clean(d.name),`${typeof v==='number'?v.toFixed(d.unit==='V'||d.unit==='λ'?2:0):v} ${d.unit||''}`]:null;
+    }).filter(Boolean);
+    if(snap.length){
+      pageBreak(20); y+=5;
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...BLUE);
+      doc.text('Sensorwaarden (momentopname)',M,y); y+=2;
+      doc.setDrawColor(...BLUE); doc.line(M,y,M+40,y); y+=6;
+      doc.setFontSize(9);
+      const colW=CW/2;
+      snap.forEach((row,i)=>{
+        const col=i%2, x=M+col*colW;
+        if(col===0) pageBreak(6);
+        doc.setFont('helvetica','normal'); doc.setTextColor(...GREY); doc.text(row[0],x,y);
+        doc.setFont('helvetica','bold'); doc.setTextColor(...DARK); doc.text(row[1],x+colW-6,y,{align:'right'});
+        if(col===1||i===snap.length-1) y+=5.5;
+      });
+    }
+
+    footer();
+
+    // ── PDF klaar: dialoog met deel/download-knoppen tonen ──
+    // (navigator.share vereist een VERSE gebruikersactie — direct delen na
+    // het asynchrone genereren wordt door Android stil geweigerd)
+    const fname=`PidLane-rapport-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.pdf`;
+    window._lastPdf={blob:doc.output('blob'), fname};
+    showPdfReadyModal();
+  }catch(e){
+    log('PDF export fout: '+e.message,'err');
+    showToast?.('PDF mislukt: '+e.message);
+  }finally{
+    if(btn){btn.textContent=orig; btn.disabled=false;}
+  }
+}
+
+function showPdfReadyModal(){
+  let m=document.getElementById('pdfReadyModal');
+  if(!m){
+    m=document.createElement('div'); m.id='pdfReadyModal';
+    m.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
+    m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center">
+      <div style="font-size:34px;margin-bottom:8px">📄</div>
+      <div style="font-weight:800;font-size:15px;margin-bottom:4px">PDF-rapport klaar</div>
+      <div id="pdfFname" style="font-size:10px;color:var(--tx3);margin-bottom:14px;word-break:break-all"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="sharePdf()" style="padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">📤 Delen</button>
+        <button onclick="downloadPdf()" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">💾 Downloaden</button>
+        <button onclick="document.getElementById('pdfReadyModal').style.display='none'" style="padding:9px;border-radius:9px;border:none;background:none;color:var(--tx3);font-family:var(--f);font-size:12px;cursor:pointer">Sluiten</button>
+      </div></div>`;
+    m.addEventListener('click',e=>{if(e.target===m)m.style.display='none';});
+    document.body.appendChild(m);
+  }
+  document.getElementById('pdfFname').textContent=window._lastPdf?.fname||'';
+  m.style.display='flex';
+}
+
+async function sharePdf(){
+  if(!window._lastPdf) return;
+  const {blob,fname}=window._lastPdf;
+  try{
+    const file=new File([blob],fname,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'PidLane rapport'});
+      document.getElementById('pdfReadyModal').style.display='none';
+      return;
+    }
+    throw new Error('Delen niet ondersteund');
+  }catch(e){
+    if(e.name!=='AbortError'){ log('Delen mislukt ('+e.message+') — probeer Downloaden','warn'); showToast?.('Delen lukt niet — probeer 💾 Downloaden'); }
+  }
+}
+
+function downloadPdf(){
+  if(!window._lastPdf) return;
+  const {blob,fname}=window._lastPdf;
+  try{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    showToast?.('💾 Download gestart');
+  }catch(e){
+    log('Download mislukt: '+e.message,'err');
+  }
+}
+
 async function callAI(prompt,contentEl){
   contentEl.innerHTML='<div class="ai-ld"><div class="spin"></div> AI analyseert...</div>';
   try{
@@ -2416,6 +2654,12 @@ async function callAI(prompt,contentEl){
     }
     const text=await apiFetch(prompt);
     renderAIText(text,contentEl);
+    // Rapport bewaren voor PDF-export + exportknop toevoegen
+    window._lastAIReport={text, ts:new Date()};
+    const exp=document.createElement('div');
+    exp.style.cssText='margin-top:10px;text-align:right';
+    exp.innerHTML='<button onclick="exportAIReportPDF(this)" style="padding:7px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">📄 Exporteer als PDF</button>';
+    contentEl.appendChild(exp);
     log('AI analyse klaar','ok');
   }catch(e){
     const isAuth=e.message.includes('ongeldig')||e.message.includes('401');
@@ -2473,6 +2717,97 @@ function btDiag(msg, type='info'){
 }
 
 // ── BT LOG MODAL — altijd bereikbaar via topbar, ook ná verbinden ──
+// ── AI VERBINDINGSOPTIMALISATIE ─────────────────────────────────
+// De AI mag ALLEEN kiezen uit deze veilige, omkeerbare ELM-instellingen.
+// Geen vrije commando's richting de auto — uitsluitend adapter-tuning.
+const SAFE_AT=/^AT(ST[0-9A-F]{2}|AT[0-2]|H[01]|S[01]|L[01]|E0|CAF[01]|FCSM[01])$/i;
+const ELM_BASELINE=['ATE0','ATL0','ATS0','ATH0','ATAT1','ATST64']; // bekende goede staat
+
+async function measureLatency(n=3){
+  const times=[];
+  for(let i=0;i<n;i++){
+    const t0=Date.now();
+    const r=await sendCmd('010C1',2500);
+    if(r&&!r.includes('NO DATA')&&!r.includes('ERROR')) times.push(Date.now()-t0);
+  }
+  return times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null;
+}
+
+async function optimizeConnectionAI(btn){
+  if(!connected){ showToast?.('Verbind eerst een adapter'); return; }
+  if(demoMode){ showToast?.('Niet beschikbaar in demo-modus'); return; }
+  const orig=btn?btn.textContent:''; if(btn){btn.textContent='🤖 Bezig...'; btn.disabled=true;}
+  try{
+    log('AI optimalisatie: situatie analyseren...','info');
+    // Nulmeting vóór alles
+    const before=await measureLatency();
+    if(before===null){ log('Geen meting mogelijk — verbinding instabiel','warn'); return; }
+
+    // Context verzamelen: logstaart, fouten, voertuig, instellingen
+    const tail=_btLog.slice(-80).map(l=>`${l.ts} [${l.type}] ${l.msg}`).join('\n');
+    const errs=_btLog.filter(l=>l.type==='err'||l.type==='warn').slice(-15).map(l=>l.msg).join('\n');
+    const ctx={
+      adapter:'OBDLink MX+ (STN-chip, ELM327 v1.4b compatibel)',
+      protocol:String(selectedNetwork?.name||selectedNetwork?.id||'onbekend'),
+      voertuig:`${vehicleInfo.merk||'?'} ${vehicleInfo.model||''} ${vehicleInfo.year||''}`.trim(),
+      vin:vehicleInfo.vin||'onbekend',
+      pids_actief:activePIDs.size, pids_beschikbaar:supportedPIDs.size,
+      batch:window._batchSupported===false?'uitgeschakeld (onbetrouwbaar)':'actief',
+      gemiddelde_responstijd_ms:before
+    };
+    const prompt=`Je bent een ELM327/STN OBD2-verbindingsexpert. Analyseer deze situatie en bepaal of de adapter-instellingen geoptimaliseerd kunnen worden.
+
+CONTEXT: ${JSON.stringify(ctx)}
+
+RECENTE FOUTEN/WAARSCHUWINGEN:
+${errs||'(geen)'}
+
+LOG (laatste regels):
+${tail.slice(-3000)}
+
+Je mag UITSLUITEND deze AT-commando's voorstellen (max 4): ATSTxx (timeout, hex 10-FF), ATAT0/1/2 (adaptive timing), ATH0/1, ATS0/1, ATL0/1, ATCAF0/1, ATFCSM0/1.
+Antwoord met ALLEEN geldige JSON, geen andere tekst:
+{"optimize":true/false,"reason":"korte uitleg in het Nederlands","commands":[{"cmd":"ATxx","why":"reden"}]}
+Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"optimize":false,"reason":"..."}`;
+
+    const raw=await apiFetch(prompt,600);
+    let plan;
+    try{ plan=JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+    catch(e){ log('AI gaf geen geldig antwoord — geen wijzigingen','warn'); return; }
+
+    if(!plan.optimize){
+      log(`🤖 AI: geen optimalisatie nodig — ${plan.reason||'verbinding loopt goed'} (${before}ms gem.)`,'ok');
+      showToast?.('✓ Verbinding is al optimaal');
+      return;
+    }
+
+    // Whitelist-filter: alles buiten de veilige set wordt geweigerd
+    const cmds=(plan.commands||[]).map(c=>String(c.cmd||'').toUpperCase().replace(/\s/g,'')).filter(c=>SAFE_AT.test(c)).slice(0,4);
+    if(!cmds.length){ log('AI stelde geen toegestane commando\'s voor — geen wijzigingen','warn'); return; }
+
+    log(`🤖 AI: ${plan.reason}`,'info');
+    log(`Toepassen: ${cmds.join(', ')}`,'info');
+    for(const c of cmds) await sendCmd(c,1500);
+
+    // Nameting + automatische rollback bij verslechtering
+    const after=await measureLatency();
+    if(after===null||after>before*1.15){
+      log(`Resultaat slechter (${before}→${after??'?'}ms) — instellingen teruggedraaid`,'warn');
+      for(const c of ELM_BASELINE) await sendCmd(c,1500);
+      showToast?.('↩️ Geen verbetering — teruggedraaid');
+    } else {
+      const pct=Math.round((1-after/before)*100);
+      log(`✅ Optimalisatie geslaagd: ${before}ms → ${after}ms (${pct>0?pct+'% sneller':'gelijk'})`,'ok');
+      showToast?.(pct>2?`⚡ Verbinding ${pct}% sneller`:'✓ Instellingen bijgewerkt');
+    }
+  }catch(e){
+    log('Optimalisatie fout: '+e.message+' — baseline hersteld','err');
+    try{ for(const c of ELM_BASELINE) await sendCmd(c,1500); }catch(_){}
+  }finally{
+    if(btn){btn.textContent=orig; btn.disabled=false;}
+  }
+}
+
 function openBtLogModal(){
   let ov=document.getElementById('btLogModal');
   if(!ov){
@@ -2484,6 +2819,7 @@ function openBtLogModal(){
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd)">
           <strong style="font-size:13px">📡 Bluetooth log</strong>
           <div style="display:flex;gap:6px">
+            <button onclick="optimizeConnectionAI(this)" style="padding:5px 10px;border-radius:6px;border:1px solid #7c3aed;background:linear-gradient(135deg,#1a0a3a,#0d0d1a);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer">🤖 Optimaliseer</button>
             <button onclick="copyBtLog(this)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer">📋 Kopieer</button>
             <button onclick="document.getElementById('btLogModal').style.display='none'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer">✕ Sluit</button>
           </div>
@@ -2569,6 +2905,7 @@ async function connectSerial(){
   window._pollBusy=false;
   connected=false;
   window._btGen=(window._btGen||0)+1; // oude lopende commando's ongeldig maken
+  window._batchSupported=undefined; // multi-PID opnieuw testen bij nieuwe auto
   _btQueue=Promise.resolve(); // commandowachtrij leegmaken
 
   const apiVal=document.getElementById('startApiKey').value.trim();
@@ -3095,9 +3432,18 @@ async function scanNetworks(){
 function renderNetworkCards(){
   document.getElementById('step2Title').textContent=
     discoveredNetworks.length===0 ? 'Geen netwerken gevonden' :
-    `${discoveredNetworks.length} netwerk${discoveredNetworks.length!==1?'en':''} gevonden`;
+    discoveredNetworks.length===1 ? '1 netwerk gevonden — automatisch geselecteerd' :
+    `${discoveredNetworks.length} netwerken gevonden`;
   document.getElementById('step2Sub').textContent=
-    discoveredNetworks.length===0 ? 'Controleer verbinding en contact' : 'Selecteer het netwerk voor diagnose';
+    discoveredNetworks.length===0 ? 'Controleer verbinding en contact' :
+    discoveredNetworks.length===1 ? 'Diagnose start automatisch...' : 'Selecteer het netwerk voor diagnose';
+
+  // Eén netwerk? Niet laten kiezen — automatisch selecteren en doorgaan
+  if(discoveredNetworks.length===1&&!window._autoNetStarted){
+    window._autoNetStarted=true;
+    selectedNetwork=discoveredNetworks[0];
+    setTimeout(()=>{ window._autoNetStarted=false; startDiscovery(); },1500);
+  }
 
   const list=document.getElementById('networkList');
   list.innerHTML='';
@@ -3277,16 +3623,27 @@ function updateVehicleCard(vinInfo){
       <div class="vic-row"><span class="vic-label">Merk</span><span class="vic-val" id="vicMerk">${vehicleInfo.merk}${vehicleInfo.model?' '+vehicleInfo.model:''}</span></div>
       ${vehicleInfo.year?`<div class="vic-row"><span class="vic-label">Jaar</span><span class="vic-val">${vehicleInfo.year}</span></div>`:''}
       <div class="vic-row"><span class="vic-label">PIDs</span><span class="vic-val">${supportedPIDs.size} beschikbaar</span></div>
-      ${vehicleInfo.vin?`<div class="vic-vin">VIN: ${vehicleInfo.vin}</div>`:`
-      <div style="display:flex;gap:4px;margin-top:6px;align-items:center">
-        <input id="kentInput" placeholder="Kenteken" value="${savedKent}" maxlength="8"
-          style="flex:1;min-width:0;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:11px;text-transform:uppercase">
-        <button onclick="rdwLookup()" style="padding:5px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">🇳🇱 RDW</button>
+      ${vehicleInfo.vin?`<div class="vic-vin" onclick="toggleKentInput()" style="cursor:pointer" title="Tik om kenteken in te vullen">VIN: ${vehicleInfo.vin} <span style="color:var(--bl)">✎</span></div>`:''}
+      <div id="kentWrap" style="display:${vehicleInfo.vin?'none':'block'}">
+        <div style="display:flex;gap:4px;margin-top:6px;align-items:center">
+          <input id="kentInput" placeholder="Kenteken" value="${savedKent}" maxlength="8"
+            style="flex:1;min-width:0;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:11px;text-transform:uppercase">
+          <button onclick="rdwLookup()" style="padding:5px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">🇳🇱 RDW</button>
+        </div>
+        <div id="kentStatus" style="font-size:10px;color:var(--tx3)"></div>
+        ${vehicleInfo.vin?'<div style="font-size:9px;color:var(--tx3);margin-top:2px">Vul kenteken in voor merk, model en bouwjaar via RDW</div>':''}
       </div>
-      <div id="kentStatus" style="font-size:10px;color:var(--tx3)"></div>`}
     </div>`;
-  // Opgeslagen kenteken? Direct automatisch opzoeken
-  if(!vehicleInfo.vin && savedKent) rdwLookup();
+  // Opgeslagen kenteken? Direct automatisch opzoeken (ook bij geldige VIN,
+  // om merk/model/jaar aan te vullen die de VIN-decoder niet kon bepalen)
+  if(savedKent && (!vehicleInfo.vin || !vehicleInfo.model)) rdwLookup();
+}
+
+// VIN-regel aangetikt → kenteken-invoer tonen/verbergen
+function toggleKentInput(){
+  const w=document.getElementById('kentWrap'); if(!w) return;
+  w.style.display = w.style.display==='none' ? 'block' : 'none';
+  if(w.style.display==='block'){ const i=document.getElementById('kentInput'); if(i) i.focus(); }
 }
 
 // RDW open data: voertuiggegevens op Nederlands kenteken (gratis, geen key)
@@ -3323,20 +3680,68 @@ function getVehicle(){
 
 // ── VIN UITLEZEN EN DECODEREN ──
 async function tryReadVIN(){
+  // Multi-frame ISO-TP respons → VIN. Per REGEL parsen: het CAN-header (7E8)
+  // is 3 hex-tekens (oneven!) waardoor naïef aan elkaar plakken alle
+  // byte-paren laat verschuiven — dát produceerde eerder de garbage-VINs.
+  const extractVIN=(raw)=>{
+    if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')) return null;
+    let vin='';
+    for(const line of String(raw).split(/[\r\n]+/)){
+      let hex=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+      if(!hex) continue;
+      // CAN-header strippen: 11-bit (7E8/7E9... = 3 tekens) of 29-bit (18DAF1xx = 8)
+      if(/^18DA/.test(hex)) hex=hex.slice(8);
+      else if(/^7E[89A-F]/.test(hex)) hex=hex.slice(3);
+      // ISO-TP PCI strippen: First Frame (1x xx) = 4 tekens, Consecutive (2x) = 2
+      if(/^1[0-9A-F]/.test(hex)) hex=hex.slice(4);
+      else if(/^2[0-9A-F]/.test(hex)) hex=hex.slice(2);
+      // Respons-markers strippen: mode 09 (4902 + telbyte) of UDS (62F190)
+      if(hex.startsWith('4902')) hex=hex.slice(4);
+      if(hex.startsWith('62F190')) hex=hex.slice(6);
+      if(/^0[0-9A-F]/.test(hex)&&vin==='') hex=hex.slice(2); // telbyte na 4902
+      for(let i=0;i+2<=hex.length;i+=2){
+        const c=parseInt(hex.slice(i,i+2),16);
+        if(c>=32&&c<=126) vin+=String.fromCharCode(c);
+      }
+    }
+    vin=vin.replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,17);
+    return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin)?vin:null;
+  };
+
+  let vin=null;
   try{
     await sendCmd('ATH1');
-    const r=await sendCmd('0902');
-    await sendCmd('ATH0');
-    if(!r||r.includes('NO DATA')||r.includes('ERROR')) return null;
-    const hex=r.replace(/[^0-9A-Fa-f]/g,'');
-    let vin='';
-    for(let i=0;i<hex.length-1;i+=2){
-      const c=parseInt(hex.slice(i,i+2),16);
-      if(c>=32&&c<=126) vin+=String.fromCharCode(c);
+
+    // Poging 1: standaard mode 09 via broadcast (7DF)
+    vin=extractVIN(await sendCmd('0902',4000));
+    if(vin) btDiag('VIN via standaard 0902 ✓','ok');
+
+    // Poging 2: zelfde verzoek maar rechtstreeks aan de motor-ECU (7E0).
+    // Sommige ECU's (o.a. Mazda) vullen de VIN alleen bij fysieke adressering.
+    if(!vin){
+      btDiag('VIN leeg via broadcast — fysiek adres 7E0 proberen','info');
+      await sendCmd('ATSH7E0');
+      vin=extractVIN(await sendCmd('0902',4000));
+      if(vin) btDiag('VIN via 7E0 + 0902 ✓','ok');
     }
-    vin=vin.replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(-17);
-    // Een VIN is exact 17 tekens (hoofdletters/cijfers, geen I/O/Q) — anders is het frame-rommel
-    if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)){ log('Geen geldige VIN ontvangen','info'); return null; }
+
+    // Poging 3: UDS 22 F190 (ReadDataByIdentifier VIN) — moderne standaard,
+    // respons begint met 62F190 gevolgd door 17 ASCII-bytes.
+    if(!vin){
+      btDiag('VIN via UDS 22F190 proberen','info');
+      const r=await sendCmd('22F190',4000);
+      if(r&&r.replace(/[^0-9A-Fa-f]/g,'').includes('62F190')){
+        const hex=r.replace(/[^0-9A-Fa-f]/g,'');
+        vin=extractVIN(hex.slice(hex.indexOf('62F190')+6));
+        if(vin) btDiag('VIN via UDS 22F190 ✓','ok');
+      }
+    }
+
+    // Adressering en headers altijd netjes herstellen
+    await sendCmd('ATSH7DF');
+    await sendCmd('ATH0');
+
+    if(!vin){ log('Geen geldige VIN ontvangen (auto geeft hem niet vrij) — gebruik kenteken/RDW','info'); return null; }
     log('VIN: '+vin,'ok');
     const info=decodeVIN(vin);
     // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken
@@ -3372,6 +3777,7 @@ function decodeVIN(vin){
     'W0L':'Opel','W0V':'Opel',
     'JHM':'Honda','JN1':'Nissan','JN8':'Nissan',
     'JT2':'Toyota','JT3':'Toyota','JT4':'Toyota',
+    'JMZ':'Mazda','JM3':'Mazda','JM1':'Mazda','JM7':'Mazda',
     'KNA':'Kia','KMH':'Hyundai',
     'YV1':'Volvo','YV4':'Volvo',
     'ZAR':'Alfa Romeo','ZFA':'Fiat','ZFF':'Ferrari',
@@ -3565,6 +3971,66 @@ function buildPIDList(filter=''){
 }
 
 // ── PID PARSING — gebruikt discoveredPIDDefs parse functies ──
+// Aantal databytes per mode-01 PID (SAE J1979). Nodig om een multi-PID
+// respons (41 0C .. 41 0D .. 41 05 ..) correct in stukken te knippen.
+const PID_BYTE_LEN={
+  '04':1,'05':1,'06':1,'07':1,'08':1,'09':1,'0A':1,'0B':1,'0C':2,'0D':1,
+  '0E':1,'0F':1,'10':2,'11':1,'13':1,'14':2,'15':2,'16':2,'17':2,'18':2,
+  '19':2,'1A':2,'1B':2,'1F':2,'21':2,'22':2,'23':2,'24':4,'25':4,'26':4,
+  '27':4,'28':4,'2C':1,'2D':1,'2E':1,'2F':1,'30':1,'31':2,'32':2,'33':1,
+  '34':4,'3C':2,'3D':2,'3E':2,'3F':2,'42':2,'43':2,'44':2,'45':1,'46':1,
+  '47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'51':1,'52':1,
+  '59':2,'5A':1,'5C':1,'5E':2,'61':1,'62':1,'63':2
+};
+function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
+
+// Knip een multi-PID respons op in losse {pid,bytes}-blokken.
+// Ondersteunt twee formaten:
+//  A) los: "410C0A98 410D00 410584" (elk PID herhaalt 41)
+//  B) Mazda/ISO-TP multiframe: "00E 0:410C0B95 0469 1:11200B24..." 
+//     één 41, dan per PID: nummer + databytes aaneengeregen
+function splitBatchResponse(raw){
+  if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')||raw.includes('STOPPED')) return {};
+  // Frame-nummers (0:,1:,2:) en ISO-TP lengte-prefix strippen
+  let hex=String(raw)
+    .replace(/[0-9A-Fa-f]?:/g,'')        // "0:" "1:" frame-headers
+    .replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
+  hex=hex.replace(/^0[0-9A-F]{2}(?=41)/,'');
+  const out={};
+  const firstMode=hex.indexOf('41');
+  if(firstMode<0) return out;
+
+  // Formaat A: meerdere losse 41XX blokken?
+  const blocks=(hex.match(/41[0-9A-F]{2}/g)||[]).length;
+  if(blocks>1){
+    let i=0;
+    while(i+4<=hex.length){
+      if(hex.slice(i,i+2)==='41'){
+        const suf=hex.slice(i+2,i+4), n=pidByteLen(suf), b=[];
+        for(let k=0;k<n&&i+4+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+4+k*2,i+4+k*2+2),16));
+        if(b.length===n){ out['01'+suf]=b; i+=4+n*2; continue; }
+      }
+      i+=2;
+    }
+    return out;
+  }
+
+  // Formaat B: één 41, daarna per PID: nummer + databytes
+  let i=firstMode+2;
+  let guard=0;
+  while(i+2<=hex.length&&guard++<20){
+    const suf=hex.slice(i,i+2);
+    if(!PID_BYTE_LEN[suf]) break; // onbekend PID-nummer of padding → stop
+    const n=pidByteLen(suf), b=[];
+    for(let k=0;k<n&&i+2+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+2+k*2,i+2+k*2+2),16));
+    if(b.length<n) break;
+    out['01'+suf]=b;
+    i+=2+n*2;
+  }
+  return out;
+}
+
 function parsePID(pid,raw){
   if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')||raw.includes('UNABLE')||raw.includes('?')) return null;
   const cleaned=raw.replace(/[^0-9A-Fa-f]/g,'');
@@ -3584,6 +4050,17 @@ function parsePID(pid,raw){
   return validateAndSmooth(pid,rawVal);
 }
 
+// Verwerk al-gesplitste bytes voor één PID (uit een batch-respons)
+function applyParsedBytes(pid,bytes){
+  if(!bytes||!bytes.length) return null;
+  const def=getPidDef(pid);
+  let rawVal=null;
+  if(def?.parse){ try{rawVal=def.parse(bytes);}catch(e){} }
+  else rawVal=bytes[0]??null;
+  if(rawVal===null||rawVal===undefined||isNaN(rawVal)) return null;
+  return validateAndSmooth(pid,rawVal);
+}
+
 // ════════════════════════════════════════
 // POLL LOOP
 // ════════════════════════════════════════
@@ -3594,27 +4071,64 @@ function startPoll(){
 
   pollTimer=setInterval(async()=>{
     if(!connected||!activePIDs.size) return;
-    // Busy-guard: nieuwe ronde pas starten als de vorige klaar is
     if(window._pollBusy) return;
     window._pollBusy=true;
     try{
-      // Sequentieel lezen — één SPP socket = één commando tegelijk.
-      // (Parallel via Promise.all liet leesloops elkaars data stelen.)
-      // Suffix '1' = verwacht 1 responsregel → ELM keert direct terug
-      // ipv de ST-timeout af te wachten (ELMduino patroon, sneller pollen)
-      for(const pid of [...activePIDs]){
-        if(!connected) break;
-        const resp=demoMode?demo(pid):parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
-        if(resp!==null&&resp!==undefined){
-          updPID(pid,resp);
-          checkStability(pid,resp);
-          feedDatalog(pid,resp);
+      if(demoMode){
+        for(const pid of [...activePIDs]){
+          const resp=demo(pid);
+          if(resp!=null){ updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); }
+        }
+        return;
+      }
+
+      const pids=[...activePIDs];
+      // Multi-PID batch alleen op CAN (ISO 15765). Andere protocollen
+      // ondersteunen geen meervoudige PID-requests → sequentieel.
+      const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||''));
+      const canBatch=isCAN&&window._batchSupported!==false;
+
+      if(canBatch&&pids.length>1){
+        // In groepjes van max 3 PIDs — meer dan dat dwingt een fragiele
+        // ISO-TP multiframe respons af waar PIDs uit kunnen vallen
+        for(let g=0;g<pids.length;g+=3){
+          if(!connected) break;
+          const grp=pids.slice(g,g+3);
+          const cmd='01'+grp.map(p=>p.slice(2)).join('');
+          const raw=await sendCmd(cmd,2500);
+          const parsed=splitBatchResponse(raw);
+          const hits=grp.filter(p=>parsed[p]).length;
+          if(hits<grp.length){
+            // Niet alle PIDs kwamen terug → deze auto doet multi-PID niet
+            // betrouwbaar. Eenmalig uitschakelen en sequentieel verder.
+            window._batchSupported=false;
+            btDiag(`Multi-PID onvolledig (${hits}/${grp.length}) — terug naar sequentieel`,'warn');
+            for(const pid of grp){
+              if(!connected) break;
+              const r=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+              if(r!=null){ updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); }
+            }
+          } else {
+            for(const pid of grp){
+              if(parsed[pid]){
+                const r=applyParsedBytes(pid,parsed[pid]);
+                if(r!=null){ updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); }
+              }
+            }
+          }
+        }
+      } else {
+        // Sequentieel: één PID per request, '1'-suffix voor snelle terugkeer
+        for(const pid of pids){
+          if(!connected) break;
+          const resp=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+          if(resp!=null){ updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); }
         }
       }
     }finally{
       window._pollBusy=false;
     }
-  },demoMode?150:800);  // 150ms demo; live: nieuwe ronde zodra vorige klaar is
+  },demoMode?150:300);  // sneller pollen mogelijk dankzij batch
 }
 
 // ════════════════════════════════════════
@@ -3837,202 +4351,156 @@ document.addEventListener('DOMContentLoaded', function(){
 // ════════════════════════════════════════
 // NEON DASHBOARD — RONDE METERS
 // ════════════════════════════════════════
-let neonBgTimer=null, neonGaugeTimer=null, neonFrame=0;
-
-const NEON_COLORS={
-  fuel:  {main:'#00f5ff',glow:'rgba(0,245,255,.5)',  dim:'rgba(0,245,255,.08)',  track:'rgba(0,245,255,.12)'},
-  power: {main:'#aaff00',glow:'rgba(170,255,0,.5)',  dim:'rgba(170,255,0,.08)',  track:'rgba(170,255,0,.12)'},
-  accu:  {main:'#a78bfa',glow:'rgba(167,139,250,.5)',dim:'rgba(167,139,250,.08)',track:'rgba(167,139,250,.12)'},
-  temp:  {main:'#ff6b35',glow:'rgba(255,107,53,.5)', dim:'rgba(255,107,53,.08)', track:'rgba(255,107,53,.12)'},
-};
+let hudTimer=null;
 
 function openNeonDashboard(){
-  if(!activeTrendGroup||!trendPIDs.length){log('Kies eerst een groepstrend','warn');return;}
   document.getElementById('neonDash').style.display='block';
-  document.getElementById('neonGroupName').textContent=
-    TREND_GROUPS[activeTrendGroup].icon+' '+TREND_GROUPS[activeTrendGroup].name.toUpperCase();
-  renderNeonGauges();
-  startNeonBg();
-  neonGaugeTimer=setInterval(()=>{renderNeonGauges();},800);
+  document.getElementById('hudPicker').style.display='none';
+  buildHudTicks();
+  renderHudPresets();
+  applyHudPreset(hudPreset, true);
+  renderHud();
+  clearInterval(hudTimer);
+  hudTimer=setInterval(renderHud, 250);
 }
-
 function closeNeonDashboard(){
   document.getElementById('neonDash').style.display='none';
-  cancelAnimationFrame(neonBgTimer);
-  clearInterval(neonGaugeTimer);
+  clearInterval(hudTimer);
 }
 
-// ── Achtergrond animatie ──
-function startNeonBg(){
-  const canvas=document.getElementById('neonBg');
-  const ctx=canvas.getContext('2d');
-  const nc=NEON_COLORS[activeTrendGroup]||NEON_COLORS.fuel;
-
-  function bg(){
-    canvas.width=window.innerWidth; canvas.height=window.innerHeight;
-    const W=canvas.width,H=canvas.height;
-    ctx.fillStyle='#020408'; ctx.fillRect(0,0,W,H);
-
-    // Radiale glow in center
-    const rg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.6);
-    rg.addColorStop(0,nc.dim); rg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
-
-    // Grid
-    ctx.strokeStyle='rgba(255,255,255,.025)'; ctx.lineWidth=.5;
-    const gs=50;
-    for(let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-    for(let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-
-    // Scan line
-    const sy=((neonFrame*1.5)%H);
-    const sg=ctx.createLinearGradient(0,sy-30,0,sy+30);
-    sg.addColorStop(0,'rgba(0,0,0,0)'); sg.addColorStop(.5,nc.track); sg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=sg; ctx.fillRect(0,sy-30,W,60);
-
-    neonFrame++;
-    neonBgTimer=requestAnimationFrame(bg);
+// Ticks eenmalig tekenen
+let _hudTicksDone=false;
+function buildHudTicks(){
+  if(_hudTicksDone) return; _hudTicksDone=true;
+  const bt=document.getElementById('hudBigTicks');
+  let s='';
+  for(let i=0;i<=40;i++){
+    const a=(-135+(i/40)*270)*Math.PI/180;
+    const r1=i%5===0?68:73, r2=78;
+    const x1=100+Math.cos(a)*r1,y1=100+Math.sin(a)*r1,x2=100+Math.cos(a)*r2,y2=100+Math.sin(a)*r2;
+    s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${i%5===0?'#5a6678':'#2a3340'}" stroke-width="${i%5===0?1.5:.8}"/>`;
+    if(i%5===0){const lx=100+Math.cos(a)*60,ly=100+Math.sin(a)*60;
+      s+=`<text x="${lx}" y="${ly+3}" fill="#7a8696" font-size="9" font-family="monospace" text-anchor="middle">${i/5}</text>`;}
   }
-  bg();
-}
-
-// ── Ronde meters tekenen ──
-function renderNeonGauges(){
-  const grid=document.getElementById('neonGaugeGrid'); grid.innerHTML='';
-  const bar=document.getElementById('neonStatusBar'); bar.innerHTML='';
-  const grp=TREND_GROUPS[activeTrendGroup];
-  const nc=NEON_COLORS[activeTrendGroup];
-  const W=window.innerWidth, H=window.innerHeight-44-80;
-  const n=trendPIDs.filter(p=>discoveredPIDDefs.find(d=>d.pid===p)||ALL_PID_DEFS[p]).length;
-  // Gauge size based on screen and count
-  const maxR=Math.min(W/(n*2.4+.5), H/2.6, 140);
-  const R=Math.max(60,maxR);
-
-  trendPIDs.forEach((pid,i)=>{
-    const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid]; if(!def) return;
-    const val=pidVals[pid]; const ok=isPIDOk(pid);
-    const color=ok?grp.colors[i%grp.colors.length]:'#ff006e';
-    const alertColor='#ff006e';
-    // Normalize to 0-1
-    const minV=def.min??0, maxV=def.max??255;
-    const pct=val!==undefined?Math.max(0,Math.min(1,(val-minV)/(maxV-minV))):0;
-
-    // Canvas voor deze meter
-    const size=R*2+20;
-    const wrap=document.createElement('div');
-    wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:0;';
-
-    const cv=document.createElement('canvas');
-    cv.width=size; cv.height=size;
-    const ctx=cv.getContext('2d');
-    const cx=size/2, cy=size/2, r=R;
-
-    // Start/end angles (270° arc, bottom gap)
-    const startA=Math.PI*.75;   // 135°
-    const endA=Math.PI*2.25;    // 405° = 45°
-    const arcSpan=endA-startA;
-    const valA=startA+pct*arcSpan;
-
-    // Track (background arc)
-    ctx.beginPath();
-    ctx.arc(cx,cy,r,startA,endA);
-    ctx.strokeStyle=ok?color+'18':'#ff006e18';
-    ctx.lineWidth=R*.14; ctx.lineCap='round'; ctx.stroke();
-
-    // Tick marks
-    for(let t=0;t<=10;t++){
-      const a=startA+(t/10)*arcSpan;
-      const inner=r-(t%5===0?R*.2:R*.12);
-      const outer=r;
-      const x1=cx+Math.cos(a)*inner, y1=cy+Math.sin(a)*inner;
-      const x2=cx+Math.cos(a)*outer, y2=cy+Math.sin(a)*outer;
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
-      ctx.strokeStyle=t%5===0?color+'55':color+'25';
-      ctx.lineWidth=t%5===0?1.5:.7; ctx.stroke();
-    }
-
-    // Value arc with gradient
-    if(val!==undefined&&pct>0){
-      const grad=ctx.createConicalGradient?.(cx,cy,startA)??null;
-      ctx.beginPath();
-      ctx.arc(cx,cy,r,startA,valA);
-      ctx.strokeStyle=color;
-      ctx.lineWidth=R*.14; ctx.lineCap='round';
-      ctx.shadowColor=color; ctx.shadowBlur=ok?16:24;
-      ctx.stroke(); ctx.shadowBlur=0;
-
-      // Warning zone (last 15%)
-      if(!ok||pct>.85){
-        ctx.beginPath();
-        ctx.arc(cx,cy,r,Math.max(valA-.3,startA+arcSpan*.85),valA);
-        ctx.strokeStyle=alertColor;
-        ctx.lineWidth=R*.14; ctx.lineCap='round';
-        ctx.shadowColor=alertColor; ctx.shadowBlur=20;
-        ctx.stroke(); ctx.shadowBlur=0;
-      }
-    }
-
-    // Needle
-    const needleA=val!==undefined?valA:startA;
-    const nl=r*.75, ns=r*.12;
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(needleA);
-    ctx.beginPath();
-    ctx.moveTo(-ns,0); ctx.lineTo(nl,0); ctx.lineTo(nl*.95,ns*.4); ctx.lineTo(nl*.95,-ns*.4); ctx.closePath();
-    ctx.fillStyle=ok?color:'#ff006e';
-    ctx.shadowColor=ok?color:'#ff006e'; ctx.shadowBlur=12;
-    ctx.fill(); ctx.shadowBlur=0; ctx.restore();
-
-    // Center pivot
-    ctx.beginPath(); ctx.arc(cx,cy,R*.06,0,Math.PI*2);
-    ctx.fillStyle='#0a0a12';
-    ctx.strokeStyle=ok?color:'#ff006e'; ctx.lineWidth=1.5;
-    ctx.fill(); ctx.stroke();
-
-    // Center value (compact — links naast de wijzerplaat)
-    // Sensor naam — boven de meter
-    ctx.font=`bold ${Math.max(8,R*.09)}px DM Mono`;
-    ctx.fillStyle=color+'88'; ctx.textAlign='center';
-    ctx.fillText(def.name.slice(0,14).toUpperCase(),cx,cy-r*.42);
-
-    // Min/max labels
-    ctx.font=`${Math.max(7,R*.07)}px DM Mono`;
-    ctx.fillStyle='rgba(255,255,255,.25)'; ctx.textAlign='center';
-    const minX=cx+Math.cos(startA)*r*.75, minY=cy+Math.sin(startA)*r*.75;
-    const maxX=cx+Math.cos(endA)*r*.75,   maxY=cy+Math.sin(endA)*r*.75;
-    ctx.fillText(fv(minV),minX,minY+4);
-    ctx.fillText(fv(maxV),maxX,maxY+4);
-
-    wrap.appendChild(cv);
-
-    // Kleine waarde display NAAST de wijzerplaat (compact inline)
-    const valRow=document.createElement('div');
-    valRow.style.cssText=`display:flex;align-items:baseline;gap:4px;margin-top:-${R*.1}px;`;
-    valRow.innerHTML=`
-      <span style="font-family:'DM Mono',monospace;font-size:${Math.max(14,R*.18)}px;font-weight:500;color:${ok?color:'#ff006e'};text-shadow:0 0 12px ${ok?color:'#ff006e'};line-height:1">${val!==undefined?fv(val):'—'}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:${Math.max(8,R*.09)}px;color:${color}55">${def.unit||''}</span>
-      ${!ok?`<span style="font-size:${Math.max(7,R*.08)}px;font-weight:700;color:#ff006e;letter-spacing:1px">⚠</span>`:''}
-    `;
-    wrap.appendChild(valRow);
-    grid.appendChild(wrap);
-
-    // Status bar onderaan
-    const si=document.createElement('div');
-    si.style.cssText=`display:flex;align-items:center;gap:6px;padding:6px 10px;background:${ok?color+'0d':'#ff006e0d'};border:1px solid ${ok?color+'22':'#ff006e33'};border-radius:7px;`;
-    si.innerHTML=`
-      <div style="width:6px;height:6px;border-radius:50%;background:${ok?color:'#ff006e'};box-shadow:0 0 8px ${ok?color:'#ff006e'}"></div>
-      <span style="font-size:9px;font-weight:700;color:${ok?color:'#ff006e'};letter-spacing:.5px">${def.name.slice(0,10)}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:10px;color:${ok?color:'#ff006e'}">${val!==undefined?fv(val)+(def.unit||''):'—'}</span>
-    `;
-    bar.appendChild(si);
+  bt.innerHTML=s;
+  // mini-meter SVG's opbouwen + klik-handlers
+  document.querySelectorAll('.hudMini').forEach(m=>{
+    let ticks='';
+    for(let i=0;i<=20;i++){const a=(-125+(i/20)*250)*Math.PI/180;
+      const r1=i%5===0?40:43,r2=46;
+      const x1=50+Math.cos(a)*r1,y1=50+Math.sin(a)*r1,x2=50+Math.cos(a)*r2,y2=50+Math.sin(a)*r2;
+      ticks+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${i%5===0?'#3a4454':'#222c3a'}" stroke-width="${i%5===0?1.2:.6}"/>`;}
+    m.innerHTML=`<svg viewBox="0 0 100 100"><g>${ticks}</g><circle cx="50" cy="50" r="38" fill="none" stroke="#141d2a" stroke-width="4"/><path class="hmArc" fill="none" stroke-width="5" stroke-linecap="round"/></svg><div class="mc"><div class="mv">—</div><div class="ml"></div></div><div class="mu"></div>`;
+    m.onclick=()=>openHudPicker(+m.dataset.slot);
   });
 }
 
-// Dashboard button wordt enabled/disabled via selectTrendGroup functie hierboven
+function renderHudPresets(){
+  const row=document.getElementById('hudPresetRow'); if(!row) return;
+  row.innerHTML='';
+  Object.entries(HUD_PRESETS).forEach(([k,p])=>{
+    const b=document.createElement('button');
+    b.className='hudPresetBtn'+(k===hudPreset?' active':'');
+    b.textContent=p.name;
+    b.onclick=()=>{ applyHudPreset(k); renderHudPresets(); };
+    row.appendChild(b);
+  });
+}
+
+function applyHudPreset(key, silent){
+  if(!HUD_PRESETS[key]) return;
+  hudPreset=key;
+  hudCenter=HUD_PRESETS[key].center;
+  hudCorners=[...HUD_PRESETS[key].corners];
+  // labels op de mini-meters zetten
+  document.querySelectorAll('.hudMini').forEach((m,slot)=>{
+    const d=getPidDef(hudCorners[slot]);
+    if(!d) return;
+    const ml=m.querySelector('.ml'), mu=m.querySelector('.mu'), mv=m.querySelector('.mv');
+    const col=hudColor(slot);
+    if(ml){ml.textContent=d.name.slice(0,12).toUpperCase(); ml.style.color=col;}
+    if(mu){mu.textContent=d.unit||''; mu.style.color=col;}
+    if(mv){mv.style.color=col;}
+  });
+  if(!silent) renderHud();
+}
+
+// Vaste kleuren per hoek (consistent met trendgroepen)
+function hudColor(slot){ return ['#fde047','#fb923c','#60a5fa','#4ade80'][slot]||'#22d3ee'; }
+
+function openHudPicker(slot){
+  window._hudPickerSlot=slot;
+  const list=document.getElementById('hudPickerList'); list.innerHTML='';
+  // Alle ondersteunde PIDs aanbieden
+  const pids=[...activePIDs];
+  const all=(typeof supportedPIDs!=='undefined'&&supportedPIDs.size)?[...supportedPIDs]:pids;
+  const seen=new Set();
+  all.concat(pids).forEach(pid=>{
+    if(seen.has(pid)) return; seen.add(pid);
+    const d=getPidDef(pid); if(!d) return;
+    const o=document.createElement('div');
+    o.style.cssText='padding:12px 16px;border-bottom:1px solid #141a26;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;color:#e6edf3';
+    o.innerHTML=`<span>${d.name}</span><span style="font-family:var(--m);font-size:11px;color:#8a94a6">${d.unit||''}</span>`;
+    o.onclick=()=>{
+      hudCorners[window._hudPickerSlot]=pid;
+      const m=document.querySelectorAll('.hudMini')[window._hudPickerSlot];
+      const col=hudColor(window._hudPickerSlot);
+      m.querySelector('.ml').textContent=d.name.slice(0,12).toUpperCase(); m.querySelector('.ml').style.color=col;
+      m.querySelector('.mu').textContent=d.unit||''; m.querySelector('.mu').style.color=col;
+      m.querySelector('.mv').style.color=col;
+      document.getElementById('hudPicker').style.display='none';
+      renderHud();
+    };
+    list.appendChild(o);
+  });
+  document.getElementById('hudPicker').style.display='flex';
+}
+document.getElementById('hudPicker').addEventListener('click',e=>{ if(e.target.id==='hudPicker') e.target.style.display='none'; });
+
+function setMiniArc(m,p,color){
+  const arc=m.querySelector('.hmArc');
+  const a0=-125*Math.PI/180, a1=(-125+p*250)*Math.PI/180, r=38;
+  const x1=50+Math.cos(a0)*r,y1=50+Math.sin(a0)*r,x2=50+Math.cos(a1)*r,y2=50+Math.sin(a1)*r;
+  arc.setAttribute('stroke',color); arc.style.filter=`drop-shadow(0 0 4px ${color})`;
+  arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p>0.5?1:0} 1 ${x2} ${y2}`);
+}
+
+function renderHud(){
+  // centrale wijzerplaat
+  const cd=getPidDef(hudCenter); const cv=pidVals[hudCenter];
+  if(cd){
+    const ok=isPIDOk(hudCenter);
+    const col=ok?'#22d3ee':'#ff006e';
+    document.getElementById('hudCenterVal').textContent=cv!==undefined?fv(cv):'—';
+    document.getElementById('hudCenterVal').style.color=ok?'#fff':'#ff006e';
+    document.getElementById('hudCenterUnit').textContent=(cd.unit||'').toUpperCase();
+    document.getElementById('hudCenterName').textContent=cd.name.toUpperCase();
+    const mn=cd.min??0, mx=cd.max??255;
+    const p=cv!==undefined?Math.max(0,Math.min(1,(cv-mn)/(mx-mn))):0;
+    const a0=-135*Math.PI/180, a1=(-135+p*270)*Math.PI/180, r=58;
+    const x1=100+Math.cos(a0)*r,y1=100+Math.sin(a0)*r,x2=100+Math.cos(a1)*r,y2=100+Math.sin(a1)*r;
+    const arc=document.getElementById('hudBigArc');
+    arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p>0.5?1:0} 1 ${x2} ${y2}`);
+    arc.setAttribute('stroke',col); arc.style.filter=`drop-shadow(0 0 7px ${col})`;
+  }
+  // hoekmeters
+  document.querySelectorAll('.hudMini').forEach((m,slot)=>{
+    const pid=hudCorners[slot]; const d=getPidDef(pid); if(!d) return;
+    const v=pidVals[pid]; const ok=isPIDOk(pid);
+    const col=ok?hudColor(slot):'#ff006e';
+    const mv=m.querySelector('.mv');
+    mv.textContent=v!==undefined?fv(v):'—'; mv.style.color=col;
+    const mn=d.min??0, mx=d.max??255;
+    const p=v!==undefined?Math.max(0,Math.min(1,(v-mn)/(mx-mn))):0;
+    setMiniArc(m,p,col);
+  });
+}
+
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ closeNeonDashboard(); closeRitAnalyse(); }
 });
 window.addEventListener('resize',()=>{
-  if(document.getElementById('neonDash').style.display!=='none') renderNeonGauges();
+  if(document.getElementById('neonDash').style.display!=='none') renderHud();
 });
 
 // ════════════════════════════════════════
@@ -4183,20 +4651,46 @@ async function stopRitAnalyse(){
   if(!ritActive) return;
   ritActive=false;
   clearTimeout(ritFaseTimer); clearInterval(ritTotalTimer);
-  document.getElementById('ritStatus').textContent='Analyse klaar — rapport wordt gegenereerd...';
+  document.getElementById('ritStatus').textContent='Analyse klaar — kies rapporttype';
   document.getElementById('ritStopBtn').style.display='none';
-  log('Rit analyse gestopt — rapport genereren','info');
-  await generateRitRapport();
+  log('Rit analyse gestopt — rapporttype kiezen','info');
+  showRitFocusModal();
 }
 
-async function generateRitRapport(){
+// Keuze: voor wie is het rapport? Een garage/ANWB hoeft het rijgedrag
+// niet te zien; de bestuurder wil soms juist alleen rijstijl-feedback.
+function showRitFocusModal(){
+  let m=document.getElementById('ritFocusModal');
+  if(!m){
+    m=document.createElement('div'); m.id='ritFocusModal';
+    m.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:24px';
+    m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:320px;width:100%">
+      <div style="font-weight:800;font-size:15px;margin-bottom:4px;text-align:center">Wat moet in het rapport?</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:14px;text-align:center">Voor een garage of ANWB kies je Techniek — dan blijft je rijgedrag buiten beeld</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="ritFocusChosen('techniek')" style="padding:12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer;text-align:left">🔧 Alleen techniek<div style="font-size:10px;color:var(--tx3);font-weight:400;margin-top:2px">Staat van het voertuig — geschikt voor garage/ANWB</div></button>
+        <button onclick="ritFocusChosen('rijgedrag')" style="padding:12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer;text-align:left">🧍 Alleen rijgedrag<div style="font-size:10px;color:var(--tx3);font-weight:400;margin-top:2px">Rijstijl, efficiëntie en tips — voor jezelf</div></button>
+        <button onclick="ritFocusChosen('beide')" style="padding:12px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer;text-align:left">📋 Beide<div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:400;margin-top:2px">Volledig rapport met techniek én rijgedrag</div></button>
+      </div></div>`;
+    document.body.appendChild(m);
+  }
+  m.style.display='flex';
+}
+async function ritFocusChosen(focus){
+  document.getElementById('ritFocusModal').style.display='none';
+  document.getElementById('ritStatus').textContent='Analyse klaar — rapport wordt gegenereerd...';
+  await generateRitRapport(focus);
+}
+
+async function generateRitRapport(focus='beide'){
   const v=getVehicle();
   const elapsed=Math.floor((Date.now()-ritStartTime)/1000);
   const mins=Math.floor(elapsed/60), secs=elapsed%60;
+  const focusLabel={techniek:'Technisch rapport',rijgedrag:'Rijgedrag rapport',beide:'Volledig rapport'}[focus];
 
   // Bouw rapport tekst
   const lines=[
-    `NEWSPEEDY AI OBD — RIT ANALYSE RAPPORT`,
+    `PIDLANE — RIT ANALYSE: ${focusLabel.toUpperCase()}`,
     `Datum: ${new Date().toLocaleString('nl')}`,
     `Voertuig: ${v.merk||'?'} ${v.year||''} ${v.vin||''}`,
     `Rit duur: ${mins}:${secs.toString().padStart(2,'0')} minuten`,
@@ -4216,18 +4710,33 @@ async function generateRitRapport(){
     lines.push('');
   });
 
-  // Totaalanalyse via AI
+  // Totaalanalyse via AI — opdracht afgestemd op het gekozen publiek
   document.getElementById('ritStatus').textContent='AI totaalanalyse...';
   const allStats=ritLogs.map(l=>`${l.fase}: ${Object.values(l.stats).map(s=>`${s.name}=${fv(s.avg)}${s.unit}${!s.ok?' (!)':''}`).join(', ')}`).join('\n');
 
+  const focusPrompt={
+    techniek:`Schrijf een TECHNISCH conditierapport van het voertuig voor een garage of wegenwacht.
+Beoordeel uitsluitend de technische staat: brandstoftrims, temperaturen, drukken, sensorwaarden, afwijkingen, slijtage-indicaties.
+BELANGRIJK: zeg NIETS over rijstijl, rijgedrag, acceleratiepatronen of de bestuurder — alleen de techniek.
+Geef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), ONDERHOUDSADVIES`,
+    rijgedrag:`Schrijf een RIJGEDRAG-rapport voor de bestuurder zelf.
+Beoordeel uitsluitend de rijstijl: toerentalgebruik, gasklep/pedaalgedrag, acceleratiepatronen, zuinigheid, schakelmomenten.
+BELANGRIJK: zeg NIETS over technische defecten of onderhoudsadvies — alleen rijstijl en concrete bespaartips.
+Geef: SAMENVATTING, RIJSTIJL ANALYSE, BESPAARPOTENTIEEL, TIPS`,
+    beide:`Analyseer deze complete rit volledig: zowel de technische staat van het voertuig als het rijgedrag van de bestuurder.
+Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/🟡/🟢), AANBEVELINGEN`
+  }[focus];
+
   try{
     const totalAnalysis=await apiFetch(
-      `Analyseer deze complete rit van ${mins} minuten voor een ${v.merk||'auto'} in het Nederlands.\n\nFase data:\n${allStats}\n\nGeef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), AANBEVELINGEN`,
+      `${focusPrompt}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}`,
       1200
     );
+    // Rapport beschikbaar maken voor PDF-export
     lines.push('═══════════════════════════════════');
-    lines.push('TOTAAL AI ANALYSE:');
+    lines.push(focus==='techniek'?'TECHNISCHE ANALYSE:':focus==='rijgedrag'?'RIJGEDRAG ANALYSE:':'TOTAAL AI ANALYSE:');
     lines.push(totalAnalysis);
+    window._lastAIReport={text:`## ${focusLabel} — ${v.merk||''} ${v.model||''}\n\n${totalAnalysis}`, ts:new Date()};
     document.getElementById('ritStatus').textContent=`✅ Rit rapport klaar — ${mins}:${secs.toString().padStart(2,'0')} min geanalyseerd`;
 
     // Toon in rechter AI paneel als Rit Evaluatie
@@ -4240,7 +4749,7 @@ async function generateRitRapport(){
     // Header kaart
     const header=document.createElement('div');
     header.style.cssText='background:linear-gradient(135deg,rgba(0,245,255,.1),rgba(167,139,250,.1));border:1px solid rgba(0,245,255,.2);border-radius:8px;padding:10px 12px;margin-bottom:10px;';
-    const ht=document.createElement('div'); ht.style.cssText='font-size:12px;font-weight:700;margin-bottom:3px;'; ht.textContent='🚗 Rit Evaluatie';
+    const ht=document.createElement('div'); ht.style.cssText='font-size:12px;font-weight:700;margin-bottom:3px;'; ht.textContent=`🚗 Rit Evaluatie — ${focusLabel}`;
     const hs=document.createElement('div'); hs.style.cssText='font-size:10px;color:var(--tx3);'; hs.textContent=`${ritLogs.length} fases — ${mins}:${secs.toString().padStart(2,'0')} minuten`;
     header.appendChild(ht); header.appendChild(hs); aiContent.appendChild(header);
 
@@ -4260,12 +4769,19 @@ async function generateRitRapport(){
     renderAIText(totalAnalysis,aiDiv);
     aiContent.appendChild(aiDiv);
 
-    // Download knop
+    // Download + PDF knoppen
+    const btnRow=document.createElement('div');
+    btnRow.style.cssText='display:flex;gap:6px;margin-top:8px;';
     const dlBtn=document.createElement('button');
-    dlBtn.className='btn'; dlBtn.style.cssText='width:100%;justify-content:center;margin-top:8px;';
-    dlBtn.textContent='💾 Download rit rapport';
+    dlBtn.className='btn'; dlBtn.style.cssText='flex:1;justify-content:center;';
+    dlBtn.textContent='💾 Tekst';
     dlBtn.onclick=()=>download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
-    aiContent.appendChild(dlBtn);
+    const pdfBtn=document.createElement('button');
+    pdfBtn.className='btn'; pdfBtn.style.cssText='flex:1;justify-content:center;';
+    pdfBtn.textContent='📄 PDF';
+    pdfBtn.onclick=function(){exportAIReportPDF(this);};
+    btnRow.appendChild(dlBtn); btnRow.appendChild(pdfBtn);
+    aiContent.appendChild(btnRow);
 
   }catch(e){
     const el=document.getElementById('ritStatus');
