@@ -958,8 +958,8 @@ async function testApiKey(){
   // Zelfde key-prioriteit als apiFetch
   let key = '';
   try{
-    if(currentUser && typeof USERS!=='undefined' && USERS[currentUser]?.apiKey?.startsWith('sk-ant-')){
-      key = USERS[currentUser].apiKey;
+    if(currentUser && typeof USERS!=='undefined' && USERS[currentUser?.name||currentUser]?.apiKey?.startsWith('sk-ant-')){
+      key = USERS[currentUser?.name||currentUser].apiKey;
     }
   }catch(e){}
   if(!key) key = window.anthropicKey||'';
@@ -1467,12 +1467,26 @@ function downloadLog(){
 // 3-LAAGS DATA VALIDATIE & FILTERING
 // ════════════════════════════════════════
 let outlierCount={};
+// Alleen TRAGE signalen door de spike-filter. Snelle signalen (EVAP-klep 0↔100%,
+// O2-sensoren die bewust oscilleren, lambda-doel dat naar 2.0 springt bij
+// brandstofafsluiting, gas/pedaal, belasting, toeren) springen van nature —
+// filteren geeft valse meldingen en vertraagt de weergave met één meetcyclus.
+const FILTERED_PIDS=new Set([
+  '05', // koelwatertemperatuur
+  '0F', // inlaatluchttemperatuur
+  '46', // buitentemperatuur
+  '5C', // olietemperatuur
+  '2F', // brandstofpeil
+  '42', // accuspanning (ECU)
+  '33', // barometerdruk
+  '07','09' // brandstoftrim lang B1/B2
+]);
 function validateAndSmooth(pid,rawVal){
   if(rawVal===null||rawVal===undefined||isNaN(rawVal)) return null;
   const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
   const lim=PID_HARD_LIMITS[pid];
 
-  // LAAG 1 — Harde fysieke limieten
+  // LAAG 1 — Harde fysieke limieten (geldt voor álle PIDs)
   if(lim&&(rawVal<lim.min||rawVal>lim.max)){
     const msg=`${def?.name||pid}: ${rawVal}${def?.unit||''} buiten fysiek bereik (${lim.min}–${lim.max})`;
     log(`⚠ ${msg}`,'warn');
@@ -1480,10 +1494,10 @@ function validateAndSmooth(pid,rawVal){
     markOutlier(pid,rawVal,'limiet'); return null;
   }
 
-  // LAAG 2+3 — Spike-filter MET herstel. Eén afwijkende meting wordt even
-  // geparkeerd; bevestigt de vólgende meting ongeveer dezelfde waarde, dan is
-  // het een echte verandering (gas geven, warmlopen) en accepteren we direct.
-  // σ-vloer voorkomt dat een stabiel signaal élke fluctuatie tot outlier maakt.
+  // Snel signaal? Direct doorlaten — geen filter, geen smoothing.
+  if(!FILTERED_PIDS.has(pid)) return Math.round(rawVal*100)/100;
+
+  // LAAG 2+3 — Spike-filter MET herstel, alleen voor trage signalen.
   const prev=pidVals[pid];
   const range=Math.max(1e-6,(def?.max??255)-(def?.min??0));
   let suspect=false, reason='';
@@ -2414,14 +2428,14 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
   try{
-    if(currentUser && typeof USERS!=='undefined' && USERS[currentUser]?.apiKey?.startsWith('sk-ant-')){
-      key = USERS[currentUser].apiKey;
+    if(currentUser && typeof USERS!=='undefined' && USERS[currentUser?.name||currentUser]?.apiKey?.startsWith('sk-ant-')){
+      key = USERS[currentUser?.name||currentUser].apiKey;
     }
   }catch(e){}
   if(!key) key = window.anthropicKey||'';
   if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){}
 
-  log(`apiFetch: key=${key?key.slice(0,15)+'...('+key.length+')':'LEEG'}`,'info');
+  log(`apiFetch: key ${key?'aanwezig ('+key.length+' tekens)':'LEEG'}`,'info');
 
   if(!key||!key.startsWith('sk-ant-')) throw new Error('Geen API key. Stel in via 🤖 rechtsboven.');
 
@@ -2611,12 +2625,28 @@ function showPdfReadyModal(){
     document.body.appendChild(m);
   }
   document.getElementById('pdfFname').textContent=window._lastPdf?.fname||'';
+  // Delen-knop tonen als native plugins óf web file-sharing beschikbaar is
+  try{
+    const native=!!(window.Capacitor?.Plugins?.Filesystem&&window.Capacitor?.Plugins?.Share);
+    const dummy=new File(['x'],'x.pdf',{type:'application/pdf'});
+    const canShare=native||!!(navigator.canShare&&navigator.canShare({files:[dummy]}));
+    const sb=m.querySelector('button[onclick="sharePdf()"]');
+    if(sb) sb.style.display=canShare?'block':'none';
+  }catch(_){
+    const sb=m.querySelector('button[onclick="sharePdf()"]');
+    if(sb) sb.style.display='none';
+  }
   m.style.display='flex';
 }
 
 async function sharePdf(){
   if(!window._lastPdf) return;
   const {blob,fname}=window._lastPdf;
+  // Eerst de native route (Capacitor-plugins) — werkt altijd in de app
+  if(await nativeShareFile(blob,fname)){
+    document.getElementById('pdfReadyModal').style.display='none';
+    return;
+  }
   try{
     const file=new File([blob],fname,{type:'application/pdf'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
@@ -2630,9 +2660,14 @@ async function sharePdf(){
   }
 }
 
-function downloadPdf(){
+async function downloadPdf(){
   if(!window._lastPdf) return;
   const {blob,fname}=window._lastPdf;
+  // Native route: Android-deelmenu bevat ook "Opslaan in Bestanden/Drive"
+  if(await nativeShareFile(blob,fname)){
+    document.getElementById('pdfReadyModal').style.display='none';
+    return;
+  }
   try{
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
@@ -2771,19 +2806,32 @@ Antwoord met ALLEEN geldige JSON, geen andere tekst:
 Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"optimize":false,"reason":"..."}`;
 
     const raw=await apiFetch(prompt,600);
+    // Robuuste JSON-extractie: pak alles tussen eerste { en laatste }
+    // (AI zet er soms tekst of ```fences omheen)
     let plan;
-    try{ plan=JSON.parse(raw.replace(/```json|```/g,'').trim()); }
-    catch(e){ log('AI gaf geen geldig antwoord — geen wijzigingen','warn'); return; }
+    try{
+      const i0=raw.indexOf('{'), i1=raw.lastIndexOf('}');
+      if(i0===-1||i1<=i0) throw new Error('geen JSON');
+      plan=JSON.parse(raw.slice(i0,i1+1));
+    }catch(e){
+      log('AI gaf geen geldig antwoord — geen wijzigingen','warn');
+      showOptResult('🤖 Optimalisatie','De AI gaf geen bruikbaar antwoord terug. Er is niets gewijzigd aan de verbinding. Probeer het later opnieuw.');
+      return;
+    }
 
     if(!plan.optimize){
       log(`🤖 AI: geen optimalisatie nodig — ${plan.reason||'verbinding loopt goed'} (${before}ms gem.)`,'ok');
-      showToast?.('✓ Verbinding is al optimaal');
+      showOptResult('✓ Verbinding is al optimaal',`${plan.reason||'De verbinding loopt goed.'}<br><br>Gemeten responstijd: <b>${before} ms</b> gemiddeld.`);
       return;
     }
 
     // Whitelist-filter: alles buiten de veilige set wordt geweigerd
     const cmds=(plan.commands||[]).map(c=>String(c.cmd||'').toUpperCase().replace(/\s/g,'')).filter(c=>SAFE_AT.test(c)).slice(0,4);
-    if(!cmds.length){ log('AI stelde geen toegestane commando\'s voor — geen wijzigingen','warn'); return; }
+    if(!cmds.length){
+      log('AI stelde geen toegestane commando\'s voor — geen wijzigingen','warn');
+      showOptResult('🤖 Optimalisatie',`De AI adviseerde wijzigingen die buiten de veilige instellingen vallen — die zijn geweigerd. Er is niets aangepast.<br><br><span style="color:var(--tx3);font-size:11px">${plan.reason||''}</span>`);
+      return;
+    }
 
     log(`🤖 AI: ${plan.reason}`,'info');
     log(`Toepassen: ${cmds.join(', ')}`,'info');
@@ -2794,18 +2842,38 @@ Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"o
     if(after===null||after>before*1.15){
       log(`Resultaat slechter (${before}→${after??'?'}ms) — instellingen teruggedraaid`,'warn');
       for(const c of ELM_BASELINE) await sendCmd(c,1500);
-      showToast?.('↩️ Geen verbetering — teruggedraaid');
+      showOptResult('↩️ Teruggedraaid',`De aanpassingen maakten de verbinding niet sneller (${before} → ${after??'?'} ms), dus alles is teruggezet naar de standaardinstellingen.<br><br><span style="color:var(--tx3);font-size:11px">Geprobeerd: ${cmds.join(', ')}</span>`);
     } else {
       const pct=Math.round((1-after/before)*100);
       log(`✅ Optimalisatie geslaagd: ${before}ms → ${after}ms (${pct>0?pct+'% sneller':'gelijk'})`,'ok');
-      showToast?.(pct>2?`⚡ Verbinding ${pct}% sneller`:'✓ Instellingen bijgewerkt');
+      showOptResult(pct>2?`⚡ Verbinding ${pct}% sneller`:'✓ Instellingen bijgewerkt',`<b>${plan.reason}</b><br><br>Responstijd: ${before} ms → <b style="color:var(--gn)">${after} ms</b><br><br><span style="color:var(--tx3);font-size:11px">Toegepast: ${cmds.join(', ')}</span>`);
     }
   }catch(e){
     log('Optimalisatie fout: '+e.message+' — baseline hersteld','err');
+    showOptResult('⚠ Optimalisatie mislukt',`${e.message}<br><br>De standaardinstellingen zijn voor de zekerheid hersteld.`);
     try{ for(const c of ELM_BASELINE) await sendCmd(c,1500); }catch(_){}
   }finally{
     if(btn){btn.textContent=orig; btn.disabled=false;}
   }
+}
+
+// Resultaatvenster — de uitkomst moet áltijd zichtbaar zijn, niet alleen in het log
+function showOptResult(title,html){
+  let m=document.getElementById('optResultModal');
+  if(!m){
+    m=document.createElement('div'); m.id='optResultModal';
+    m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
+    m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:320px;width:100%">
+      <div id="optResTitle" style="font-weight:800;font-size:15px;margin-bottom:10px"></div>
+      <div id="optResBody" style="font-size:13px;color:var(--tx2);line-height:1.55"></div>
+      <button onclick="document.getElementById('optResultModal').style.display='none'" style="margin-top:16px;width:100%;padding:10px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">Sluiten</button>
+    </div>`;
+    m.addEventListener('click',e=>{if(e.target===m)m.style.display='none';});
+    document.body.appendChild(m);
+  }
+  document.getElementById('optResTitle').innerHTML=title;
+  document.getElementById('optResBody').innerHTML=html;
+  m.style.display='flex';
 }
 
 function openBtLogModal(){
@@ -2843,19 +2911,34 @@ function openBtLogModal(){
   body.scrollTop=body.scrollHeight;
 }
 
-function copyBtLog(btn){
+async function copyBtLog(btn){
   const txt=(_btLog||[]).map(e=>`${e.ts} [${e.type}] ${e.msg}`).join('\n');
-  const done=()=>{ if(btn){btn.textContent='✓ Gekopieerd'; setTimeout(()=>btn.textContent='📋 Kopieer',1500);} };
+  const done=ok=>{ if(btn){btn.textContent=ok?'✓ Gekopieerd':'✗ Mislukt'; setTimeout(()=>btn.textContent='📋 Kopieer',1500);} };
+  // 1. Native Android-deelmenu (Capacitor Share) — meest betrouwbaar in de app
+  const SH=window.Capacitor?.Plugins?.Share;
+  if(SH){
+    try{ await SH.share({title:'PidLane BT-log',text:txt}); done(true); return; }
+    catch(e){ if(String(e.message||e).toLowerCase().includes('cancel')){ done(true); return; } }
+  }
+  // 2. Web clipboard API
   if(navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopyBtLog(txt,done));
-  } else fallbackCopyBtLog(txt,done);
+    try{ await navigator.clipboard.writeText(txt); done(true); return; }catch(e){}
+  }
+  // 3. execCommand-fallback met expliciete focus en selectie
+  done(fallbackCopyBtLog(txt));
 }
-function fallbackCopyBtLog(txt,done){
+function fallbackCopyBtLog(txt){
   const ta=document.createElement('textarea');
-  ta.value=txt; ta.style.cssText='position:fixed;opacity:0';
-  document.body.appendChild(ta); ta.select();
-  try{document.execCommand('copy');}catch(e){}
-  ta.remove(); done();
+  ta.value=txt;
+  ta.style.cssText='position:fixed;top:0;left:0;width:2em;height:2em;opacity:0;border:none;padding:0';
+  ta.setAttribute('readonly','');
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try{ ta.setSelectionRange(0,txt.length); }catch(e){}
+  let ok=false;
+  try{ ok=document.execCommand('copy'); }catch(e){}
+  ta.remove();
+  return ok;
 }
 
 function btDiagDevice(name, address, rssi){
@@ -2998,7 +3081,7 @@ async function doSPPConnect(spp,address,name){
   await spp.connect({address});
   btDiag('Verbonden ✓','ok');
 
-  try{ localStorage.setItem('spp_address',address); localStorage.setItem('spp_name',name); }catch(e){}
+  try{ localStorage.setItem('spp_address',address); localStorage.setItem('spp_name',name); localStorage.setItem('pl_autoconn','1'); }catch(e){}
 
   // Sla verbinding op — read() polling wordt gebruikt in sendBT
   window._sppConn={spp,address,name};
@@ -4216,6 +4299,7 @@ function showVtag(t){const el=document.getElementById('vtag');el.textContent=t;e
 async function handleConnect(){
   if(connected){
     connected=false; demoMode=false; clearInterval(pollTimer);
+    try{ localStorage.removeItem('pl_autoconn'); }catch(e){} // bewust verbroken — niet auto-herverbinden
     try{
       if(window._sppConn){
         await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
@@ -4257,8 +4341,34 @@ function toggleSR(){
   btn.textContent=srCollapsed?'◀':'▶';
   try{localStorage.setItem('ns_sr',srCollapsed);}catch(e){}
 }
-function download(name,content){
+// ── Native opslaan/delen via Capacitor (Filesystem + Share plugins) ──
+// De Capacitor WebView heeft géén download-afhandeling: blob-links en
+// navigator.share met bestanden doen daar niets. Het Android-deelmenu
+// (met daarin ook "Opslaan in Bestanden/Drive") is de betrouwbare route.
+async function nativeShareFile(blob,fname){
+  const C=window.Capacitor;
+  const FS=C?.Plugins?.Filesystem, SH=C?.Plugins?.Share;
+  if(!FS||!SH) return false; // plugins niet aanwezig → web-fallback
+  try{
+    const b64=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(',')[1]);
+      r.onerror=()=>rej(new Error('Lezen mislukt'));
+      r.readAsDataURL(blob);
+    });
+    const w=await FS.writeFile({path:fname,data:b64,directory:'CACHE'});
+    await SH.share({title:fname,files:[w.uri]});
+    return true;
+  }catch(e){
+    if(String(e.message||e).toLowerCase().includes('cancel')) return true; // gebruiker sloot deelmenu
+    log('Native delen mislukt: '+(e.message||e),'warn');
+    return false;
+  }
+}
+
+async function download(name,content){
   const blob=new Blob([content],{type:'text/plain'});
+  if(await nativeShareFile(blob,name)) return;
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
 }
 function delay(ms){return new Promise(r=>setTimeout(r,ms));}
@@ -4335,6 +4445,14 @@ document.addEventListener('DOMContentLoaded', function(){
       document.getElementById('loginPass').value=USERS[sess].password;
       doLogin();
       log(`Sessie hersteld: ${sess}`,'ok');
+      // Was er een actieve BT-verbinding vóór Android de app herlaadde?
+      // Dan direct opnieuw verbinden via het opgeslagen MAC-adres.
+      try{
+        if(localStorage.getItem('pl_autoconn')==='1' && getSPP()){
+          log('Automatisch herverbinden...','info');
+          setTimeout(()=>{ if(!connected) connectSerial(); },800);
+        }
+      }catch(e){}
     } else {
       setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
     }
@@ -4498,6 +4616,23 @@ function renderHud(){
 
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ closeNeonDashboard(); closeRitAnalyse(); }
+});
+
+// Terugkeer naar de app zonder volledige herlaad (tab-wissel, ander venster):
+// is de verbinding ondertussen weggevallen, dan automatisch herverbinden.
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible') return;
+  try{
+    if(localStorage.getItem('pl_autoconn')!=='1') return;
+    if(connected||demoMode||window._reconnBusy) return;
+    if(!getSPP()) return;
+    window._reconnBusy=true;
+    log('App weer actief — verbinding controleren...','info');
+    setTimeout(async()=>{
+      try{ if(!connected) await connectSerial(); }
+      finally{ window._reconnBusy=false; }
+    },600);
+  }catch(e){ window._reconnBusy=false; }
 });
 window.addEventListener('resize',()=>{
   if(document.getElementById('neonDash').style.display!=='none') renderHud();
