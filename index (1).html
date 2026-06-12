@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PidLane — Your car talks. We translate.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0A0E1A;--card:#111827;--card2:#161D2E;--blue:#1A6FFF;--cyan:#00D4FF;
+  --orange:#FF6B35;--green:#22C55E;--red:#EF4444;--yellow:#F59E0B;
+  --white:#FFFFFF;--mist:#8892A4;--border:#1E2A3E;
+  --f-display:'Space Grotesk',sans-serif;--f-body:'Inter',sans-serif;--f-mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--white);font-family:var(--f-body);line-height:1.6;overflow-x:hidden}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,14,26,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:var(--f-display);font-weight:700;font-size:20px;display:flex;align-items:center;gap:8px}
+.bolt{color:var(--cyan)}
+.nav-links{display:flex;gap:28px}
+.nav-links a{color:var(--mist);text-decoration:none;font-size:13px;transition:color .2s}
+.nav-links a:hover{color:var(--white)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.lang-switch{display:flex;gap:4px}
+.lang-btn{background:transparent;border:1px solid var(--border);color:var(--mist);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--f-body);transition:all .2s}
+.lang-btn.active,.lang-btn:hover{background:rgba(26,111,255,.15);border-color:var(--blue);color:var(--white)}
+.nav-cta{background:var(--blue);color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;transition:background .2s}
+.nav-cta:hover{background:#0f5ce8}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;align-items:center;padding:120px 48px 80px;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 60% 40%,rgba(26,111,255,.12) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 80% 60%,rgba(0,212,255,.07) 0%,transparent 60%)}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.3}
+.hero-content{position:relative;z-index:1;max-width:580px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(26,111,255,.15);border:1px solid rgba(26,111,255,.3);border-radius:20px;padding:6px 14px;font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:.08em;text-transform:uppercase;margin-bottom:28px}
+.eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+h1{font-family:var(--f-display);font-size:clamp(40px,5vw,66px);font-weight:700;line-height:1.1;margin-bottom:22px;letter-spacing:-.02em}
+h1 span{background:linear-gradient(135deg,var(--blue),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:17px;color:var(--mist);max-width:460px;margin-bottom:36px;line-height:1.7}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap}
+.btn-p{background:var(--blue);color:#fff;padding:13px 30px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-p:hover{background:#0f5ce8;transform:translateY(-1px)}
+.btn-s{background:transparent;color:var(--white);padding:13px 30px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;border:1px solid var(--border);transition:all .2s}
+.btn-s:hover{border-color:var(--blue);color:var(--cyan)}
+.hero-visual{position:absolute;right:48px;top:50%;transform:translateY(-50%);z-index:1}
+
+/* DASHBOARD WIDGET */
+.dash{width:400px;background:var(--card);border-radius:20px;border:1px solid var(--border);overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.5),0 0 0 1px rgba(26,111,255,.1)}
+.dash-bar{background:#0D1424;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.dash-bar-l{display:flex;align-items:center;gap:7px;font-size:10px;font-family:var(--f-mono)}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+.dash-gauges{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
+.gc{background:var(--card);padding:14px 10px;text-align:center}
+.gl{font-size:8px;color:var(--mist);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.gv{font-family:var(--f-mono);font-size:24px;font-weight:500;line-height:1}
+.gv.c{color:var(--cyan)}.gv.w{color:#fff}.gv.g{color:var(--green)}
+.gu{font-size:8px;color:var(--mist);margin-top:3px}
+.gb{height:2px;background:var(--border);border-radius:1px;margin-top:6px;overflow:hidden}
+.gf{height:100%;border-radius:1px;transition:width 1.5s ease}
+.gf.c{background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.gf.w{background:linear-gradient(90deg,#6366f1,#a78bfa)}
+.gf.g{background:var(--green)}
+.dash-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.sc{background:var(--card2);padding:9px 12px}
+.sl{font-size:8px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em}
+.sv{font-family:var(--f-mono);font-size:13px;margin-top:2px}
+.sv.ok{color:var(--green)}.sv.warn{color:var(--orange)}
+.dash-ai{padding:10px 14px;background:rgba(26,111,255,.08);border-top:1px solid rgba(26,111,255,.2);display:flex;align-items:center;gap:8px}
+.ai-i{width:22px;height:22px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.ai-t{font-size:10px;color:var(--mist);font-style:italic}
+.ai-t strong{color:var(--white);font-style:normal}
+
+/* TRIP DASHBOARD MOCKUP */
+.trip-dash{width:400px;background:var(--card);border-radius:20px;border:1px solid rgba(0,212,255,.2);overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.5),0 0 0 1px rgba(0,212,255,.1)}
+.trip-bar{background:#0D1424;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.trip-timer{font-family:var(--f-mono);font-size:11px;color:var(--cyan)}
+.trip-phase{font-size:9px;padding:3px 8px;border-radius:4px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.phase-city{background:rgba(255,107,53,.2);color:var(--orange)}
+.phase-ramp{background:rgba(0,212,255,.15);color:var(--cyan)}
+.phase-hwy{background:rgba(34,197,94,.15);color:var(--green)}
+.trip-chart{padding:12px;background:var(--bg)}
+.chart-label{font-size:8px;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.chart-bars{display:flex;align-items:flex-end;gap:3px;height:52px}
+.chart-bar{flex:1;border-radius:3px 3px 0 0;transition:height .8s ease;min-height:3px}
+.trip-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
+.ts{background:var(--card);padding:10px;text-align:center}
+.ts-l{font-size:8px;color:var(--mist);text-transform:uppercase;letter-spacing:.05em}
+.ts-v{font-family:var(--f-mono);font-size:16px;margin-top:3px}
+.ts-v.good{color:var(--green)}.ts-v.save{color:var(--cyan)}.ts-v.warn{color:var(--orange)}
+.trip-ai{padding:10px 14px;background:rgba(0,212,255,.05);border-top:1px solid rgba(0,212,255,.15);font-size:10px;color:var(--mist);line-height:1.5}
+.trip-ai strong{color:var(--white)}
+
+/* SECTIONS */
+section{padding:90px 48px}
+.section-eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:14px}
+h2{font-family:var(--f-display);font-size:clamp(30px,4vw,46px);font-weight:700;line-height:1.15;letter-spacing:-.02em;margin-bottom:14px}
+.section-sub{font-size:16px;color:var(--mist);max-width:540px;line-height:1.7}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0 48px}
+
+/* HOW */
+.how-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;background:var(--border);border-radius:16px;overflow:hidden;margin-top:56px;border:1px solid var(--border)}
+.hw{background:var(--card);padding:36px 28px}
+.hw:hover{background:var(--card2)}
+.hw-num{font-family:var(--f-mono);font-size:10px;color:var(--blue);font-weight:500;letter-spacing:.1em;margin-bottom:16px}
+.hw-icon{font-size:28px;margin-bottom:14px}
+.hw-title{font-family:var(--f-display);font-size:18px;font-weight:600;margin-bottom:8px}
+.hw-desc{font-size:13px;color:var(--mist);line-height:1.6}
+
+/* ANALYSES */
+.analyses-hdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:52px;flex-wrap:wrap;gap:20px}
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.ac{background:var(--card);border-radius:16px;border:1px solid var(--border);overflow:hidden;transition:border-color .3s,transform .3s}
+.ac:hover{border-color:var(--blue);transform:translateY(-3px)}
+.ac-hdr{padding:22px 22px 0;display:flex;align-items:center;gap:12px}
+.ac-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ic-b{background:rgba(26,111,255,.2)}.ic-c{background:rgba(0,212,255,.15)}.ic-o{background:rgba(255,107,53,.15)}.ic-g{background:rgba(34,197,94,.15)}
+.ac-title{font-family:var(--f-display);font-size:17px;font-weight:600}
+.ac-dur{font-size:11px;color:var(--mist);margin-top:2px}
+.ac-body{padding:18px 22px}
+.ac-desc{font-size:13px;color:var(--mist);line-height:1.65;margin-bottom:16px}
+.mr{background:var(--card2);border-radius:10px;padding:12px;font-size:11px;border:1px solid var(--border)}
+.mr-title{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:8px}
+.rl{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.rl:last-child{border-bottom:none}
+.rl-l{color:var(--mist)}
+.rl-v{font-family:var(--f-mono);font-size:10px}
+.rl-v.ok{color:var(--green)}.rl-v.warn{color:var(--orange)}.rl-v.info{color:var(--cyan)}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.t{padding:3px 7px;border-radius:4px;font-size:9px;font-weight:600}
+.t.g{background:rgba(34,197,94,.15);color:var(--green)}
+.t.o{background:rgba(255,107,53,.15);color:var(--orange)}
+.t.b{background:rgba(26,111,255,.15);color:var(--cyan)}
+.aio{background:rgba(26,111,255,.06);border:1px solid rgba(26,111,255,.2);border-radius:8px;padding:12px;font-size:11px;line-height:1.6;color:var(--mist);margin-top:8px}
+.aio-hdr{display:flex;align-items:center;gap:5px;color:var(--blue);font-weight:600;font-size:10px;margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase}
+.aio strong{color:var(--white)}
+
+/* TRIP SECTION */
+.trip-section{background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.trip-inner{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;max-width:1100px;margin:0 auto}
+
+/* RAPPORT SECTIE */
+.rapport-section{}
+.rapport-tabs{display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap}
+.rtab{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--mist);font-family:var(--f-body);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.rtab.active{color:var(--white);border-color:transparent}
+.rtab.r-green.active{background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.4);color:var(--green)}
+.rtab.r-cyan.active{background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.3);color:var(--cyan)}
+.rtab.r-orange.active{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);color:var(--yellow)}
+.rtab.r-red.active{background:rgba(255,107,53,.15);border-color:rgba(255,107,53,.3);color:var(--orange)}
+.rtab.r-darkred.active{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--red)}
+.rapport-panel{display:none;animation:fadeIn .3s ease}
+.rapport-panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.rp-card{background:var(--card);border-radius:16px;border:1px solid var(--border);overflow:hidden}
+.rp-header{padding:24px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px}
+.rp-status-badge{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.badge-green{background:rgba(34,197,94,.2);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.badge-cyan{background:rgba(0,212,255,.15);color:var(--cyan);border:1px solid rgba(0,212,255,.3)}
+.badge-yellow{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.3)}
+.badge-orange{background:rgba(255,107,53,.15);color:var(--orange);border:1px solid rgba(255,107,53,.3)}
+.badge-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.rp-title{font-family:var(--f-display);font-size:20px;font-weight:600}
+.rp-meta{font-size:12px;color:var(--mist);margin-top:2px}
+.rp-body{padding:24px 28px}
+.rp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.rp-block{background:var(--card2);border-radius:10px;padding:14px;border:1px solid var(--border)}
+.rp-block-title{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mist);margin-bottom:10px}
+.rp-rows{}
+.rp-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.rp-row:last-child{border-bottom:none}
+.rp-row-l{color:var(--mist)}
+.rp-row-v{font-family:var(--f-mono);font-size:11px}
+.rp-row-v.ok{color:var(--green)}.rp-row-v.warn{color:var(--orange)}.rp-row-v.bad{color:var(--red)}.rp-row-v.info{color:var(--cyan)}
+
+/* KOSTEN BOX — key visual */
+.cost-box{background:linear-gradient(135deg,rgba(26,111,255,.12),rgba(0,212,255,.06));border:1px solid rgba(26,111,255,.3);border-radius:12px;padding:20px;margin-bottom:16px}
+.cost-box-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.cost-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.cost-item{text-align:center;padding:12px 8px;background:rgba(10,14,26,.5);border-radius:8px;border:1px solid var(--border)}
+.cost-label{font-size:9px;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.cost-val{font-family:var(--f-display);font-size:20px;font-weight:700}
+.cost-val.green{color:var(--green)}.cost-val.orange{color:var(--orange)}.cost-val.red{color:var(--red)}.cost-val.cyan{color:var(--cyan)}
+.cost-sub{font-size:9px;color:var(--mist);margin-top:3px}
+
+.ai-verdict{background:rgba(26,111,255,.07);border:1px solid rgba(26,111,255,.25);border-radius:10px;padding:16px}
+.av-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.av-icon{width:28px;height:28px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.av-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+.av-text{font-size:12px;color:var(--mist);line-height:1.65}
+.av-text strong{color:var(--white)}
+
+/* USECASES */
+.usecases{background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.uc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;background:var(--border);border-radius:16px;overflow:hidden;margin-top:52px;border:1px solid var(--border)}
+.uc{background:var(--bg);padding:36px 28px}
+.uc:hover{background:var(--card)}
+.uc-tag{display:inline-block;padding:4px 10px;border-radius:6px;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px}
+.uc-tag.c{background:rgba(0,212,255,.12);color:var(--cyan)}
+.uc-tag.f{background:rgba(26,111,255,.15);color:#7cacff}
+.uc-tag.a{background:rgba(255,107,53,.12);color:var(--orange)}
+.uc-title{font-family:var(--f-display);font-size:20px;font-weight:600;margin-bottom:12px}
+.uc-desc{font-size:13px;color:var(--mist);line-height:1.65;margin-bottom:16px}
+.uc-li{list-style:none}
+.uc-li li{font-size:12px;color:var(--mist);padding:4px 0;display:flex;align-items:flex-start;gap:7px}
+.uc-li li::before{content:'→';color:var(--blue);flex-shrink:0}
+
+/* COMPAT */
+.compat{text-align:center}
+.compat h2,.compat .section-sub{margin-left:auto;margin-right:auto}
+.compat .section-sub{margin-bottom:52px}
+.compat-row{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap}
+.ci{display:flex;flex-direction:column;align-items:center;gap:7px;padding:20px 24px;background:var(--card);border-radius:12px;border:1px solid var(--border);min-width:90px}
+.ci-icon{font-size:26px}
+.ci-label{font-size:10px;color:var(--mist)}
+
+/* FOOTER */
+.footer-cta{text-align:center;background:linear-gradient(135deg,rgba(26,111,255,.1),rgba(0,212,255,.05));border-top:1px solid var(--border)}
+.footer-cta h2,.footer-cta .section-sub{margin-left:auto;margin-right:auto}
+.footer-cta .section-sub{margin-bottom:36px}
+.footer-contact a{color:var(--cyan);text-decoration:none;font-size:16px;font-weight:500}
+.footer-bottom{padding:20px 48px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--mist)}
+
+@media(max-width:960px){
+  nav{padding:12px 20px}.nav-links{display:none}
+  .hero{padding:90px 20px 60px;flex-direction:column}
+  .hero-visual{position:relative;right:auto;top:auto;transform:none;margin-top:40px;width:100%}
+  .dash,.trip-dash{width:100%;max-width:400px;margin:0 auto}
+  section{padding:60px 20px}
+  .how-grid,.uc-grid{grid-template-columns:1fr}
+  .ag,.trip-inner,.rp-grid,.cost-grid{grid-template-columns:1fr}
+  .divider{margin:0 20px}
+  .footer-bottom{flex-direction:column;gap:10px;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><svg width="34" height="26" viewBox="0 0 220 180" style="flex-shrink:0"><defs><linearGradient id="nlg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="nls" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect x="12" y="12" width="168" height="118" rx="26" fill="none" stroke="url(#nlg)" stroke-width="13"/><path d="M 36 71 L 66 71 L 80 47 L 100 99 L 116 59 L 126 71 L 158 71" fill="none" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><line x1="96" y1="142" x2="96" y2="158" stroke="#00FF88" stroke-width="10" stroke-linecap="round"/><line x1="96" y1="168" x2="96" y2="178" stroke="#2A3645" stroke-width="9" stroke-linecap="round"/><path d="M 180 -2 C 183 13 188 18 204 22 C 188 26 183 31 180 46 C 177 31 172 26 156 22 C 172 18 177 13 180 -2 Z" fill="url(#nls)"/></svg> <span style="color:#fff">Pid</span><span style="color:#00FF88">Lane</span></div>
+  <div class="nav-links">
+    <a href="#hoe">Hoe het werkt</a>
+    <a href="#analyses">Analyses</a>
+    <a href="#rapporten">Rapporten</a>
+    <a href="#toepassingen">Toepassingen</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <div class="nav-right">
+    <div class="lang-switch">
+      <button class="lang-btn active" onclick="setLang('nl')">NL</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('de')">DE</button>
+      <button class="lang-btn" onclick="setLang('fr')">FR</button>
+    </div>
+    <a href="#contact" class="nav-cta" data-i="demo_btn">Demo aanvragen</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div><div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="eyebrow" data-i="hero_eyebrow">AI-gestuurde voertuigdiagnostiek</div>
+    <h1 data-i="hero_h1">Jouw auto praat.<br><span>Wij vertalen.</span></h1>
+    <p class="hero-sub" data-i="hero_sub">PidLane koppelt via een standaard OBD2-stekker met het boordcomputersysteem van elk voertuig en vertaalt technische rijdata naar begrijpelijk advies — in real-time, aangedreven door AI.</p>
+    <div class="hero-actions">
+      <a href="#analyses" class="btn-p" data-i="btn_analyses">Bekijk de analyses →</a>
+      <a href="#contact" class="btn-s" data-i="btn_demo">Demo aanvragen</a>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="dash">
+      <div class="dash-bar">
+        <div class="dash-bar-l"><div class="sdot"></div><span style="color:var(--green)">VERBONDEN</span><span style="color:var(--mist);margin-left:8px">Mazda CX-5 · CAN 500k</span></div>
+        <span style="font-size:9px;color:var(--mist)">16 PIDs actief</span>
+      </div>
+      <div class="dash-gauges">
+        <div class="gc"><div class="gl">Toerental</div><div class="gv c" id="g-rpm">1644</div><div class="gu">RPM</div><div class="gb"><div class="gf c" id="b-rpm" style="width:22%"></div></div></div>
+        <div class="gc"><div class="gl">Snelheid</div><div class="gv w" id="g-spd">71</div><div class="gu">km/h</div><div class="gb"><div class="gf w" id="b-spd" style="width:28%"></div></div></div>
+        <div class="gc"><div class="gl">Koelwater</div><div class="gv g" id="g-tmp">90</div><div class="gu">°C</div><div class="gb"><div class="gf g" id="b-tmp" style="width:75%"></div></div></div>
+      </div>
+      <div class="dash-stats">
+        <div class="sc"><div class="sl">Brandstof</div><div class="sv ok" id="g-fuel">68%</div></div>
+        <div class="sc"><div class="sl">Motorbelasting</div><div class="sv" id="g-load">42%</div></div>
+        <div class="sc"><div class="sl">MAF sensor</div><div class="sv ok">18 g/s</div></div>
+        <div class="sc"><div class="sl">Lambda B1</div><div class="sv ok">0.98</div></div>
+      </div>
+      <div class="dash-ai"><div class="ai-i">🤖</div><div class="ai-t" id="ai-strip"><strong>AI:</strong> Rijomstandigheden normaal. Lambda sensor in orde.</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW -->
+<section id="hoe">
+  <div class="section-eyebrow" data-i="how_eyebrow">Hoe het werkt</div>
+  <h2 data-i="how_h2">Van OBD2-poort tot inzicht<br>in drie stappen</h2>
+  <p class="section-sub" data-i="how_sub">Elke auto van na 2001 heeft een standaard OBD2-aansluiting. PidLane gebruikt deze als brug tussen de auto en AI.</p>
+  <div class="how-grid">
+    <div class="hw"><div class="hw-num">STAP 01</div><div class="hw-icon">🔌</div><div class="hw-title" data-i="step1_t">Verbinden via OBD2</div><p class="hw-desc" data-i="step1_d">Sluit een standaard OBD2-adapter aan. De app verbindt automatisch via Bluetooth en herkent het communicatieprotocol van de auto.</p></div>
+    <div class="hw"><div class="hw-num">STAP 02</div><div class="hw-icon">📡</div><div class="hw-title" data-i="step2_t">Live data uitlezen</div><p class="hw-desc" data-i="step2_d">PidLane leest continu sensordata — toerental, temperatuur, brandstofverbruik, lambda en tientallen andere parameters. Elke seconde, real-time.</p></div>
+    <div class="hw"><div class="hw-num">STAP 03</div><div class="hw-icon">🤖</div><div class="hw-title" data-i="step3_t">AI vertaalt de data</div><p class="hw-desc" data-i="step3_d">Claude AI analyseert de rijdata en vertaalt technische waarden naar begrijpelijk advies. Problemen worden bevestigd via live sensordata.</p></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ANALYSES -->
+<section id="analyses">
+  <div class="analyses-hdr">
+    <div><div class="section-eyebrow" data-i="ana_eyebrow">De analyses</div><h2 data-i="ana_h2">Vier analysevormen,<br>elk met een eigen doel</h2></div>
+    <p class="section-sub" style="max-width:320px" data-i="ana_sub">Van snelle check tot diepgaande ritanalyse — PidLane kiest de juiste analyse voor het moment.</p>
+  </div>
+  <div class="ag">
+    <div class="ac">
+      <div class="ac-hdr"><div class="ac-icon ic-b">⚡</div><div><div class="ac-title" data-i="a1_t">Data-analyse</div><div class="ac-dur" data-i="a1_d">20 seconden · Direct inzicht</div></div></div>
+      <div class="ac-body">
+        <p class="ac-desc" data-i="a1_desc">Een momentopname van alle live sensorwaarden. De AI beoordeelt elk systeem en signaleert afwijkingen direct — zonder rijden.</p>
+        <div class="mr">
+          <div class="mr-title">📊 Voertuigcheck — 20 sec</div>
+          <div class="rl"><span class="rl-l">Koelsysteem</span><span class="rl-v ok">✓ Normaal (90°C)</span></div>
+          <div class="rl"><span class="rl-l">Brandstofmengsel</span><span class="rl-v ok">✓ Stoichiometrisch</span></div>
+          <div class="rl"><span class="rl-l">Motorbelasting</span><span class="rl-v ok">✓ 42%</span></div>
+          <div class="rl"><span class="rl-l">Accuspanning</span><span class="rl-v warn">⚠ 13.1V (laag)</span></div>
+          <div class="rl"><span class="rl-l">Foutcodes</span><span class="rl-v info">0 actief</span></div>
+          <div class="tags"><span class="t g">4 systemen OK</span><span class="t o">1 aandachtspunt</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ac">
+      <div class="ac-hdr"><div class="ac-icon ic-c">🚗</div><div><div class="ac-title" data-i="a2_t">Rit-analyse</div><div class="ac-dur" data-i="a2_d">10 minuten rijden · Rijgedrag & verbruik</div></div></div>
+      <div class="ac-body">
+        <p class="ac-desc" data-i="a2_desc">Rij 10 minuten. PidLane legt elke rijfase vast en geeft concrete besparingstips op basis van gemeten rijgedrag.</p>
+        <div class="mr">
+          <div class="mr-title">🛣️ Ritanalyse — 10 min · Mazda CX-5</div>
+          <div class="rl"><span class="rl-l">Gem. verbruik</span><span class="rl-v info">6.8 L/100km</span></div>
+          <div class="rl"><span class="rl-l">Harde acceleraties</span><span class="rl-v warn">3× boven 85% gas</span></div>
+          <div class="rl"><span class="rl-l">Optimale zone</span><span class="rl-v ok">1400–2200 RPM</span></div>
+          <div class="rl"><span class="rl-l">Potentiële besparing</span><span class="rl-v ok">↓ 1.1 L/100km</span></div>
+        </div>
+        <div class="aio"><div class="aio-hdr">🤖 AI Advies</div>Bij de drie harde acceleraties piekte het verbruik tot <strong>14.2 L/100km</strong>. Geleidelijker optrekken verlaagt het gemiddeld verbruik met circa <strong>16%</strong>.</div>
+      </div>
+    </div>
+
+    <div class="ac">
+      <div class="ac-hdr"><div class="ac-icon ic-o">🔍</div><div><div class="ac-title" data-i="a3_t">Probleemanalyse</div><div class="ac-dur" data-i="a3_d">Op klachtbasis · Oorzaak bevestigd via data</div></div></div>
+      <div class="ac-body">
+        <p class="ac-desc" data-i="a3_desc">Beschrijf het probleem in eigen woorden. PidLane zoekt oorzaken en verifieert of sluit ze uit via de live sensordata.</p>
+        <div class="mr">
+          <div class="mr-title">🔧 Klacht: "Hoog verbruik en ruw stationair"</div>
+          <div class="rl"><span class="rl-l">Vacuümlek</span><span class="rl-v warn">Mogelijk — STFT +4.2%</span></div>
+          <div class="rl"><span class="rl-l">Vuile injector</span><span class="rl-v ok">Uitgesloten — MAF OK</span></div>
+          <div class="rl"><span class="rl-l">Lambda sensor</span><span class="rl-v warn">Onderzoek — oscillatie</span></div>
+        </div>
+        <div class="aio"><div class="aio-hdr">🤖 AI Conclusie</div>Meest waarschijnlijk: <strong>klein vacuümlek</strong>. STFT van +4.2% bevestigt te mager mengsel. Advies: inlaatslangen controleren.</div>
+      </div>
+    </div>
+
+    <div class="ac">
+      <div class="ac-hdr"><div class="ac-icon ic-g">⚠️</div><div><div class="ac-title" data-i="a4_t">Foutcode uitlezing</div><div class="ac-dur" data-i="a4_d">Directe DTC scan · Uitleg in duidelijke taal</div></div></div>
+      <div class="ac-body">
+        <p class="ac-desc" data-i="a4_desc">Alle opgeslagen DTC-codes uitgelezen en vertaald naar begrijpelijk Nederlands, aangevuld met actuele sensordata.</p>
+        <div class="mr">
+          <div class="mr-title">🔴 DTC Scan — 2 codes gevonden</div>
+          <div class="rl"><span class="rl-l">P0171</span><span class="rl-v warn">Te mager mengsel bank 1</span></div>
+          <div class="rl"><span class="rl-l">P0420</span><span class="rl-v warn">Katalysator laag</span></div>
+          <div class="rl"><span class="rl-l">STFT B1 actueel</span><span class="rl-v warn">+6.3% (bevestigt P0171)</span></div>
+        </div>
+        <div class="aio"><div class="aio-hdr">🤖 AI Uitleg</div><strong>P0171</strong> bevestigd door live STFT. Meest voorkomend: vuile MAF-sensor. Zelf reinigen met MAF-spray — <strong>ca. €8</strong>.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TRIP DASHBOARD SECTION -->
+<section class="trip-section" id="rit">
+  <div class="trip-inner">
+    <div>
+      <div class="section-eyebrow" data-i="trip_eyebrow">Live tijdens de rit</div>
+      <h2 data-i="trip_h2">Het dashboard rijdt mee</h2>
+      <p class="section-sub" style="margin-bottom:28px" data-i="trip_sub">Tijdens de 10-minuten ritanalyse houdt PidLane elk moment bij. Rijfase, verbruik per fase en motorgedrag worden live geregistreerd en visueel weergegeven.</p>
+      <ul class="uc-li" style="margin-top:0">
+        <li data-i="trip_l1">Rijfase herkend: stad, oprit, snelweg, afremmen</li>
+        <li data-i="trip_l2">Verbruiksgrafiek per fase in real-time</li>
+        <li data-i="trip_l3">Optimale toerenbandadviezen direct zichtbaar</li>
+        <li data-i="trip_l4">Na de rit: volledig AI-rapport met besparingspotentieel</li>
+      </ul>
+    </div>
+    <div>
+      <div class="trip-dash">
+        <div class="trip-bar">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="sdot"></div>
+            <span style="font-size:9px;color:var(--mist);font-family:var(--f-mono)">RITANALYSE ACTIEF</span>
+          </div>
+          <div class="trip-timer" id="trip-timer">07:43</div>
+        </div>
+        <div style="padding:10px 12px 6px;background:var(--bg);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:9px;color:var(--mist)">Rijfase:</span>
+          <span class="trip-phase" id="trip-phase-badge">SNELWEG</span>
+        </div>
+        <div class="trip-chart">
+          <div class="chart-label">Brandstofverbruik per fase (L/100km)</div>
+          <div class="chart-bars" id="trip-bars">
+            <div class="chart-bar" style="background:var(--orange);height:78%"></div>
+            <div class="chart-bar" style="background:var(--orange);height:65%"></div>
+            <div class="chart-bar" style="background:var(--yellow);height:45%"></div>
+            <div class="chart-bar" style="background:var(--yellow);height:52%"></div>
+            <div class="chart-bar" style="background:var(--green);height:28%"></div>
+            <div class="chart-bar" style="background:var(--green);height:25%"></div>
+            <div class="chart-bar" style="background:var(--cyan);height:32%"></div>
+            <div class="chart-bar" style="background:var(--cyan);height:30%"></div>
+            <div class="chart-bar" style="background:var(--cyan);height:28%" id="live-bar"></div>
+          </div>
+        </div>
+        <div class="trip-stats">
+          <div class="ts"><div class="ts-l">Gem. verbruik</div><div class="ts-v warn" id="trip-avg">7.2 L</div></div>
+          <div class="ts"><div class="ts-l">Potentiële besparing</div><div class="ts-v save" id="trip-save">↓ 0.9 L</div></div>
+          <div class="ts"><div class="ts-l">Huidige fase</div><div class="ts-v good" id="trip-cur">5.1 L</div></div>
+        </div>
+        <div class="trip-ai">
+          <span id="trip-ai-msg"><strong>AI:</strong> Snelweg — optimale rijzone. Verbruik 5.1 L/100km — laagste fase tot nu toe.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- RAPPORTEN -->
+<section id="rapporten">
+  <div class="section-eyebrow" data-i="rep_eyebrow">Voorbeeldrapporten</div>
+  <h2 data-i="rep_h2">Vijf scenario's — van groen tot garage</h2>
+  <p class="section-sub" style="margin-bottom:36px" data-i="rep_sub">Elk rapport toont de verwachte reparatiekosten en de terugverdientijd. Zo weet de automobilist precies of handelen loont — en wanneer.</p>
+
+  <div class="rapport-tabs">
+    <button class="rtab r-green active" onclick="showRapport('r1',this)">✅ Alles in orde</button>
+    <button class="rtab r-cyan" onclick="showRapport('r2',this)">💡 Besparing mogelijk</button>
+    <button class="rtab r-orange" onclick="showRapport('r3',this)">⚠️ Aandachtspunten</button>
+    <button class="rtab r-red" onclick="showRapport('r4',this)">🔧 Reparatie nodig</button>
+    <button class="rtab r-darkred" onclick="showRapport('r5',this)">🚨 Ga naar garage</button>
+  </div>
+
+  <!-- R1: Alles goed -->
+  <div class="rapport-panel active" id="r1">
+    <div class="rp-card">
+      <div class="rp-header">
+        <span class="rp-status-badge badge-green">✅ Alles in orde</span>
+        <div><div class="rp-title">Volledig voertuigrapport</div><div class="rp-meta">Mazda CX-5 2018 · 87.400 km · Analyseduur: 23 sec</div></div>
+      </div>
+      <div class="rp-body">
+        <div class="rp-grid">
+          <div class="rp-block"><div class="rp-block-title">Motor & Koeling</div>
+            <div class="rp-row"><span class="rp-row-l">Koelwatertemperatuur</span><span class="rp-row-v ok">90°C ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">Motorolie temp.</span><span class="rp-row-v ok">88°C ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">Motorbelasting stationair</span><span class="rp-row-v ok">8% ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">Timing / klopperen</span><span class="rp-row-v ok">Geen ✓</span></div>
+          </div>
+          <div class="rp-block"><div class="rp-block-title">Brandstof & Emissie</div>
+            <div class="rp-row"><span class="rp-row-l">Lambda bank 1</span><span class="rp-row-v ok">0.998 ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">STFT bank 1</span><span class="rp-row-v ok">+0.8% ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">LTFT bank 1</span><span class="rp-row-v ok">+1.2% ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">Foutcodes</span><span class="rp-row-v ok">0 codes ✓</span></div>
+          </div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-box-title">💰 Kosten & terugverdientijd</div>
+          <div class="cost-grid">
+            <div class="cost-item"><div class="cost-label">Reparatiekosten</div><div class="cost-val green">€ 0</div><div class="cost-sub">Geen actie nodig</div></div>
+            <div class="cost-item"><div class="cost-label">Verwacht verbruik</div><div class="cost-val cyan">6.4 L</div><div class="cost-sub">per 100km (normaal)</div></div>
+            <div class="cost-item"><div class="cost-label">Advies</div><div class="cost-val green">✓ OK</div><div class="cost-sub">Volgende check 15.000 km</div></div>
+          </div>
+        </div>
+        <div class="ai-verdict"><div class="av-header"><div class="av-icon">🤖</div><div class="av-label">AI Eindoordeel</div></div><div class="av-text">Alle gemeten systemen functioneren binnen de fabrieksnormen. <strong>Geen actie vereist.</strong> Het voertuig rijdt efficiënt en er zijn geen indicatoren voor nakend onderhoud. Volgende PidLane check aanbevolen bij 102.400 km of over 6 maanden.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R2: Besparing -->
+  <div class="rapport-panel" id="r2">
+    <div class="rp-card">
+      <div class="rp-header">
+        <span class="rp-status-badge badge-cyan">💡 Besparing mogelijk</span>
+        <div><div class="rp-title">Ritanalyse + brandstofbesparing</div><div class="rp-meta">Ford Focus 2019 1.0 EcoBoost · 54.200 km · Rit: 10 min</div></div>
+      </div>
+      <div class="rp-body">
+        <div class="rp-grid">
+          <div class="rp-block"><div class="rp-block-title">Rijgedrag analyse</div>
+            <div class="rp-row"><span class="rp-row-l">Gemiddeld verbruik</span><span class="rp-row-v warn">7.9 L/100km</span></div>
+            <div class="rp-row"><span class="rp-row-l">Harde acceleraties</span><span class="rp-row-v warn">5× boven 80% gas</span></div>
+            <div class="rp-row"><span class="rp-row-l">Optimale RPM-zone</span><span class="rp-row-v ok">1200–2000 RPM</span></div>
+            <div class="rp-row"><span class="rp-row-l">% tijd in optimale zone</span><span class="rp-row-v warn">54% (laag)</span></div>
+          </div>
+          <div class="rp-block"><div class="rp-block-title">Potentieel bij aanpassing</div>
+            <div class="rp-row"><span class="rp-row-l">Verwacht verbruik na advies</span><span class="rp-row-v ok">6.3 L/100km</span></div>
+            <div class="rp-row"><span class="rp-row-l">Besparing per 100km</span><span class="rp-row-v ok">1.6 L (€2.80)</span></div>
+            <div class="rp-row"><span class="rp-row-l">Jaarkilometrage</span><span class="rp-row-v info">15.000 km/jaar</span></div>
+            <div class="rp-row"><span class="rp-row-l">Jaarlijkse besparing</span><span class="rp-row-v ok">€420 per jaar</span></div>
+          </div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-box-title">💰 Kosten & terugverdientijd</div>
+          <div class="cost-grid">
+            <div class="cost-item"><div class="cost-label">Investering</div><div class="cost-val cyan">€ 0</div><div class="cost-sub">Alleen rijstijl aanpassen</div></div>
+            <div class="cost-item"><div class="cost-label">Besparing per jaar</div><div class="cost-val green">€ 420</div><div class="cost-sub">bij 15.000 km/jaar</div></div>
+            <div class="cost-item"><div class="cost-label">Terugverdientijd</div><div class="cost-val green">Direct</div><div class="cost-sub">Eerste tank al merkbaar</div></div>
+          </div>
+        </div>
+        <div class="ai-verdict"><div class="av-header"><div class="av-icon">🤖</div><div class="av-label">AI Eindoordeel</div></div><div class="av-text">Geen technische problemen gevonden. Het besparingspotentieel zit volledig in rijstijl. Door <strong>eerder op te schakelen en gas geleidelijker te doseren</strong> daalt het verbruik van 7.9 naar geschat 6.3 L/100km — een besparing van <strong>€420 per jaar</strong> zonder enige investering.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R3: Aandachtspunten -->
+  <div class="rapport-panel" id="r3">
+    <div class="rp-card">
+      <div class="rp-header">
+        <span class="rp-status-badge badge-yellow">⚠️ Aandachtspunten</span>
+        <div><div class="rp-title">Voertuigcheck met aandachtspunten</div><div class="rp-meta">Volkswagen Golf 2016 1.6 TDI · 112.000 km · Analyseduur: 28 sec</div></div>
+      </div>
+      <div class="rp-body">
+        <div class="rp-grid">
+          <div class="rp-block"><div class="rp-block-title">Gedetecteerde afwijkingen</div>
+            <div class="rp-row"><span class="rp-row-l">Accuspanning (rijdend)</span><span class="rp-row-v warn">13.2V (normaal: 13.8–14.4V)</span></div>
+            <div class="rp-row"><span class="rp-row-l">EGR ventiel positie</span><span class="rp-row-v warn">Afwijking +8% bij stationair</span></div>
+            <div class="rp-row"><span class="rp-row-l">DPF tegendruk</span><span class="rp-row-v warn">Verhoogd (92% vol)</span></div>
+            <div class="rp-row"><span class="rp-row-l">Koelsysteem / thermostaat</span><span class="rp-row-v ok">Normaal ✓</span></div>
+          </div>
+          <div class="rp-block"><div class="rp-block-title">Normale systemen</div>
+            <div class="rp-row"><span class="rp-row-l">Brandstofdruk</span><span class="rp-row-v ok">Normaal ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">Turbodruk</span><span class="rp-row-v ok">Normaal ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">Lambda / emissie</span><span class="rp-row-v ok">Binnen norm ✓</span></div>
+            <div class="rp-row"><span class="rp-row-l">Actieve foutcodes</span><span class="rp-row-v ok">0 codes ✓</span></div>
+          </div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-box-title">💰 Kosten & terugverdientijd</div>
+          <div class="cost-grid">
+            <div class="cost-item"><div class="cost-label">Geschatte kosten</div><div class="cost-val orange">€ 180–320</div><div class="cost-sub">EGR reiniging + accu check</div></div>
+            <div class="cost-item"><div class="cost-label">Besparing na fix</div><div class="cost-val green">€ 280/jaar</div><div class="cost-sub">minder verbruik + DPF</div></div>
+            <div class="cost-item"><div class="cost-label">Terugverdientijd</div><div class="cost-val cyan">8–14 mnd</div><div class="cost-sub">afhankelijk van km/jaar</div></div>
+          </div>
+        </div>
+        <div class="ai-verdict"><div class="av-header"><div class="av-icon">🤖</div><div class="av-label">AI Eindoordeel</div></div><div class="av-text">Drie systemen vragen aandacht maar het voertuig is rijveilig. De <strong>DPF is bijna vol</strong> — een lange autobahnrit van 30 min of een actieve DPF-reiniging (€80–€120) is aanbevolen binnen 2 weken. De EGR-afwijking is een bekend issue bij deze motor; reiniging kost ca. €100–€200 en verbetert het verbruik meetbaar.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R4: Reparatie -->
+  <div class="rapport-panel" id="r4">
+    <div class="rp-card">
+      <div class="rp-header">
+        <span class="rp-status-badge badge-orange">🔧 Reparatie nodig</span>
+        <div><div class="rp-title">Diagnose met foutcodes en oorzaakanalyse</div><div class="rp-meta">Toyota Yaris 2015 1.5 Hybrid · 78.900 km · Analyseduur: 31 sec</div></div>
+      </div>
+      <div class="rp-body">
+        <div class="rp-grid">
+          <div class="rp-block"><div class="rp-block-title">Actieve foutcodes</div>
+            <div class="rp-row"><span class="rp-row-l">P0171</span><span class="rp-row-v warn">Te mager mengsel bank 1</span></div>
+            <div class="rp-row"><span class="rp-row-l">P0101</span><span class="rp-row-v warn">MAF sensor bereikfout</span></div>
+            <div class="rp-row"><span class="rp-row-l">STFT bank 1</span><span class="rp-row-v warn">+9.4% (hoog)</span></div>
+            <div class="rp-row"><span class="rp-row-l">LTFT bank 1</span><span class="rp-row-v warn">+7.8% (hoog)</span></div>
+          </div>
+          <div class="rp-block"><div class="rp-block-title">Oorzaakanalyse (AI)</div>
+            <div class="rp-row"><span class="rp-row-l">Vuile/defecte MAF</span><span class="rp-row-v warn">Waarschijnlijk ✓ bevestigd</span></div>
+            <div class="rp-row"><span class="rp-row-l">Vacuümlek</span><span class="rp-row-v ok">Uitgesloten via MAP</span></div>
+            <div class="rp-row"><span class="rp-row-l">Defecte injector</span><span class="rp-row-v ok">Uitgesloten</span></div>
+            <div class="rp-row"><span class="rp-row-l">Brandstofpomp druk</span><span class="rp-row-v ok">Normaal</span></div>
+          </div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-box-title">💰 Kosten & terugverdientijd</div>
+          <div class="cost-grid">
+            <div class="cost-item"><div class="cost-label">Optie 1: Reinigen</div><div class="cost-val green">€ 8–15</div><div class="cost-sub">MAF-spray, zelf doen</div></div>
+            <div class="cost-item"><div class="cost-label">Optie 2: Vervangen</div><div class="cost-val orange">€ 120–180</div><div class="cost-sub">Nieuwe MAF via garage</div></div>
+            <div class="cost-item"><div class="cost-label">Besparing na fix</div><div class="cost-val green">€ 340/jaar</div><div class="cost-sub">Terugverdient in &lt;1 maand</div></div>
+          </div>
+        </div>
+        <div class="ai-verdict"><div class="av-header"><div class="av-icon">🤖</div><div class="av-label">AI Eindoordeel</div></div><div class="av-text"><strong>Sterk vermoeden: vervuilde MAF-sensor.</strong> Begin met reiniging (MAF-spray €8) — in 60% van de gevallen lost dit P0171 + P0101 volledig op. Meet na 50 km opnieuw met PidLane. Als de STFT-waarden niet dalen onder +3%, is vervanging van de MAF nodig (€120–€180 bij garage). Het huidig extra verbruik kost ca. <strong>€340 per jaar</strong> — terugverdientijd na reparatie: minder dan een maand.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R5: Ga naar garage -->
+  <div class="rapport-panel" id="r5">
+    <div class="rp-card">
+      <div class="rp-header">
+        <span class="rp-status-badge badge-red">🚨 Ga naar garage</span>
+        <div><div class="rp-title">Kritische melding — direct actie vereist</div><div class="rp-meta">BMW 3-serie 2014 2.0d · 163.000 km · Analyseduur: 19 sec</div></div>
+      </div>
+      <div class="rp-body">
+        <div class="rp-grid">
+          <div class="rp-block"><div class="rp-block-title">Kritische codes & waarden</div>
+            <div class="rp-row"><span class="rp-row-l">P0217</span><span class="rp-row-v" style="color:var(--red)">Motor oververhitting</span></div>
+            <div class="rp-row"><span class="rp-row-l">P0128</span><span class="rp-row-v warn">Thermostaat fout</span></div>
+            <div class="rp-row"><span class="rp-row-l">Koelwatertemp.</span><span class="rp-row-v" style="color:var(--red)">108°C (kritisch!)</span></div>
+            <div class="rp-row"><span class="rp-row-l">Motoroliedruk</span><span class="rp-row-v" style="color:var(--red)">1.2 bar (te laag)</span></div>
+          </div>
+          <div class="rp-block"><div class="rp-block-title">Overige bevindingen</div>
+            <div class="rp-row"><span class="rp-row-l">Coolant niveau sensor</span><span class="rp-row-v warn">Signaal afwezig</span></div>
+            <div class="rp-row"><span class="rp-row-l">Turbotemp. uitlaat</span><span class="rp-row-v warn">Verhoogd (615°C)</span></div>
+            <div class="rp-row"><span class="rp-row-l">Rijveiligheid</span><span class="rp-row-v" style="color:var(--red)">NIET rijveilig</span></div>
+            <div class="rp-row"><span class="rp-row-l">Directe actie</span><span class="rp-row-v" style="color:var(--red)">Motor uitzetten</span></div>
+          </div>
+        </div>
+        <div class="cost-box" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)">
+          <div class="cost-box-title" style="color:var(--red)">🚨 Risico & kosten bij doorrijden</div>
+          <div class="cost-grid">
+            <div class="cost-item"><div class="cost-label">Nu stoppen</div><div class="cost-val green">€ 400–800</div><div class="cost-sub">Thermostaat + diagnose</div></div>
+            <div class="cost-item"><div class="cost-label">Doorrijden risico</div><div class="cost-val" style="color:var(--red)">€ 4.000+</div><div class="cost-sub">Motorschade / pakkingfout</div></div>
+            <div class="cost-item"><div class="cost-label">Terugverdientijd</div><div class="cost-val cyan">Direct</div><div class="cost-sub">Nu handelen bespaart €3.600</div></div>
+          </div>
+        </div>
+        <div class="ai-verdict" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06)"><div class="av-header"><div class="av-icon" style="background:var(--red)">🚨</div><div class="av-label" style="color:var(--red)">AI Urgentiemelding</div></div><div class="av-text"><strong style="color:var(--red)">Stop het voertuig op een veilige plek en zet de motor uit.</strong> De koelwatertemperatuur van 108°C in combinatie met lage oliedruk wijst op een defecte thermostaat of koelwaterlek. Doorrijden riskeert <strong>motorpakking- of cilinderkopschade</strong> met reparatiekosten van €4.000–€8.000. Laat het voertuig slepen — bel wegenhulp. Reparatie nu: €400–800.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- USECASES -->
+<section id="toepassingen" class="usecases">
+  <div class="section-eyebrow" data-i="uc_eyebrow">Toepassingen</div>
+  <h2 data-i="uc_h2">Drie manieren om PidLane in te zetten</h2>
+  <p class="section-sub" data-i="uc_sub">Het prijspunt en de uitrol zijn afhankelijk van de toepassing. PidLane past zich aan de context aan.</p>
+  <div class="uc-grid">
+    <div class="uc"><span class="uc-tag c" data-i="uc1_tag">Consument</span><div class="uc-title" data-i="uc1_t">Als service in een abonnement</div><p class="uc-desc" data-i="uc1_d">PidLane als vast onderdeel van een wegenhulp- of autoservice-abonnement. Leden hebben altijd een auto-expert op zak.</p><ul class="uc-li"><li data-i="uc1_l1">Direct inzicht vóór een garagegesprek</li><li data-i="uc1_l2">Vermijdt onnodige diagnostiekkosten</li><li data-i="uc1_l3">Verhoogt de waarde van het abonnement</li><li data-i="uc1_l4">AI-rapport meesturen naar monteur</li></ul></div>
+    <div class="uc"><span class="uc-tag f" data-i="uc2_tag">Fleet</span><div class="uc-title" data-i="uc2_t">Uitrol naar wagenpark</div><p class="uc-desc" data-i="uc2_d">Licentie per voertuig of locatie. Real-time inzicht in het wagenpark — preventief onderhoud en rijgedrag per chauffeur.</p><ul class="uc-li"><li data-i="uc2_l1">Preventief onderhoud op basis van data</li><li data-i="uc2_l2">Rijgedrag per chauffeur inzichtelijk</li><li data-i="uc2_l3">Brandstofbesparing op wagenparkniveau</li><li data-i="uc2_l4">Werkt op elke OBD2-adapter (€20–€80)</li></ul></div>
+    <div class="uc"><span class="uc-tag a" data-i="uc3_tag">Actie</span><div class="uc-title" data-i="uc3_t">Actie bij hoge brandstofprijzen</div><p class="uc-desc" data-i="uc3_d">Gerichte inzet als de brandstofprijs piekt. PidLane helpt automobilisten verbruik analyseren en direct verlagen — meetbaar.</p><ul class="uc-li"><li data-i="uc3_l1">Gemiddeld 10–20% verbruiksbesparing mogelijk</li><li data-i="uc3_l2">Geen installatie — plug-and-play</li><li data-i="uc3_l3">Werkt op vrijwel elke personenauto</li><li data-i="uc3_l4">Sterk communiceerbaar concept</li></ul></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- COMPAT -->
+<section class="compat">
+  <div class="section-eyebrow" data-i="cp_eyebrow">Compatibiliteit</div>
+  <h2 data-i="cp_h2">Werkt op vrijwel elke auto</h2>
+  <p class="section-sub" data-i="cp_sub">Elke personenauto van na 2001 heeft een OBD2-poort. Geen installatie — een standaard Bluetooth-adapter volstaat.</p>
+  <div class="compat-row">
+    <div class="ci"><div class="ci-icon">📱</div><div class="ci-label" data-i="cp1">Android app</div></div>
+    <div class="ci"><div class="ci-icon">🔌</div><div class="ci-label" data-i="cp2">OBD2 standaard</div></div>
+    <div class="ci"><div class="ci-icon">📡</div><div class="ci-label" data-i="cp3">Bluetooth</div></div>
+    <div class="ci"><div class="ci-icon">🚗</div><div class="ci-label" data-i="cp4">Auto's 2001+</div></div>
+    <div class="ci"><div class="ci-icon">🤖</div><div class="ci-label" data-i="cp5">Claude AI</div></div>
+    <div class="ci"><div class="ci-icon">🌍</div><div class="ci-label" data-i="cp6">NL · EN · DE · FR</div></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FOOTER -->
+<section id="contact" class="footer-cta">
+  <div class="section-eyebrow" data-i="ct_eyebrow">Contact</div>
+  <h2 data-i="ct_h2">Interesse in een demo<br>of samenwerking?</h2>
+  <p class="section-sub" data-i="ct_sub">PidLane is in actieve ontwikkeling. Een werkende demo is beschikbaar. Neem contact op voor een demonstratie op locatie.</p>
+  <div class="footer-contact">
+    <a href="mailto:Newspeedy@outlook.com">Newspeedy@outlook.com</a>
+    <span style="color:var(--mist);font-size:12px;margin-top:4px">Nico — PidLane / Newspeedy</span>
+  </div>
+</section>
+
+<div class="footer-bottom">
+  <span>© 2025 PidLane · Newspeedy</span>
+  <span>⚡ <em>Your car talks. We translate.</em></span>
+  <span data-i="footer_status">App in ontwikkeling · Demo beschikbaar</span>
+</div>
+
+<script>
+// ── TALEN ──
+const LANG = {
+  nl:{
+    demo_btn:'Demo aanvragen',hero_eyebrow:'AI-gestuurde voertuigdiagnostiek',
+    hero_h1:'Jouw auto praat.<br><span>Wij vertalen.</span>',
+    hero_sub:'PidLane koppelt via een standaard OBD2-stekker met het boordcomputersysteem van elk voertuig en vertaalt technische rijdata naar begrijpelijk advies — in real-time, aangedreven door AI.',
+    btn_analyses:'Bekijk de analyses →',btn_demo:'Demo aanvragen',
+    how_eyebrow:'Hoe het werkt',how_h2:'Van OBD2-poort tot inzicht<br>in drie stappen',
+    how_sub:'Elke auto van na 2001 heeft een OBD2-poort. PidLane gebruikt deze als brug tussen de auto en AI.',
+    step1_t:'Verbinden via OBD2',step1_d:'Sluit een OBD2-adapter aan. De app verbindt automatisch via Bluetooth en herkent het communicatieprotocol.',
+    step2_t:'Live data uitlezen',step2_d:'PidLane leest continu sensordata in real-time — toerental, temperatuur, brandstof en tientallen andere parameters.',
+    step3_t:'AI vertaalt de data',step3_d:'Claude AI vertaalt technische waarden naar begrijpelijk advies. Problemen worden bevestigd via live sensordata.',
+    ana_eyebrow:'De analyses',ana_h2:'Vier analysevormen,<br>elk met een eigen doel',ana_sub:'Van snelle check tot diepgaande ritanalyse.',
+    a1_t:'Data-analyse',a1_d:'20 seconden · Direct inzicht',a1_desc:'Een momentopname van alle live sensorwaarden. AI beoordeelt elk systeem direct.',
+    a2_t:'Rit-analyse',a2_d:'10 minuten rijden · Rijgedrag & verbruik',a2_desc:'Rij 10 minuten. PidLane legt elke rijfase vast en geeft concrete besparingstips.',
+    a3_t:'Probleemanalyse',a3_d:'Op klachtbasis · Oorzaak bevestigd via data',a3_desc:'Beschrijf het probleem. PidLane zoekt oorzaken en verifieert via live sensordata.',
+    a4_t:'Foutcode uitlezing',a4_d:'Directe DTC scan · Uitleg in duidelijke taal',a4_desc:'Alle DTC-codes uitgelezen en vertaald naar begrijpelijk Nederlands.',
+    trip_eyebrow:'Live tijdens de rit',trip_h2:'Het dashboard rijdt mee',
+    trip_sub:'Tijdens de 10-minuten ritanalyse houdt PidLane elk moment bij. Rijfase, verbruik en motorgedrag worden live geregistreerd.',
+    trip_l1:'Rijfase herkend: stad, oprit, snelweg, afremmen',trip_l2:'Verbruiksgrafiek per fase in real-time',
+    trip_l3:'Optimale toerenbandadviezen direct zichtbaar',trip_l4:'Na de rit: volledig AI-rapport met besparingspotentieel',
+    rep_eyebrow:'Voorbeeldrapporten',rep_h2:'Vijf scenario\'s — van groen tot garage',
+    rep_sub:'Elk rapport toont verwachte reparatiekosten en terugverdientijd. Zo weet de automobilist precies of handelen loont.',
+    uc_eyebrow:'Toepassingen',uc_h2:'Drie manieren om PidLane in te zetten',
+    uc_sub:'Het prijspunt en de uitrol zijn afhankelijk van de toepassing.',
+    uc1_tag:'Consument',uc1_t:'Als service in een abonnement',uc1_d:'PidLane als onderdeel van een wegenhulp-abonnement. Leden hebben altijd een auto-expert op zak.',
+    uc1_l1:'Direct inzicht vóór een garagegesprek',uc1_l2:'Vermijdt onnodige diagnostiekkosten',uc1_l3:'Verhoogt de waarde van het abonnement',uc1_l4:'AI-rapport meesturen naar monteur',
+    uc2_tag:'Fleet',uc2_t:'Uitrol naar wagenpark',uc2_d:'Real-time inzicht in het wagenpark — preventief onderhoud en rijgedrag per chauffeur.',
+    uc2_l1:'Preventief onderhoud op basis van data',uc2_l2:'Rijgedrag per chauffeur inzichtelijk',uc2_l3:'Brandstofbesparing op wagenparkniveau',uc2_l4:'Werkt op elke OBD2-adapter (€20–€80)',
+    uc3_tag:'Actie',uc3_t:'Actie bij hoge brandstofprijzen',uc3_d:'Gerichte inzet als de brandstofprijs piekt. PidLane helpt verbruik analyseren en verlagen.',
+    uc3_l1:'Gemiddeld 10–20% verbruiksbesparing',uc3_l2:'Geen installatie — plug-and-play',uc3_l3:'Werkt op vrijwel elke personenauto',uc3_l4:'Sterk communiceerbaar concept',
+    cp_eyebrow:'Compatibiliteit',cp_h2:'Werkt op vrijwel elke auto',cp_sub:'Elke personenauto van na 2001 heeft een OBD2-poort. Een standaard Bluetooth-adapter volstaat.',
+    cp1:'Android app',cp2:'OBD2 standaard',cp3:'Bluetooth',cp4:'Auto\'s 2001+',cp5:'Claude AI',cp6:'NL · EN · DE · FR',
+    ct_eyebrow:'Contact',ct_h2:'Interesse in een demo<br>of samenwerking?',ct_sub:'PidLane is in actieve ontwikkeling. Een werkende demo is beschikbaar.',
+    footer_status:'App in ontwikkeling · Demo beschikbaar'
+  },
+  en:{
+    demo_btn:'Request demo',hero_eyebrow:'AI-powered vehicle diagnostics',
+    hero_h1:'Your car talks.<br><span>We translate.</span>',
+    hero_sub:'PidLane connects via a standard OBD2 connector to any vehicle\'s ECU and translates technical driving data into clear advice — in real-time, powered by AI.',
+    btn_analyses:'View the analyses →',btn_demo:'Request demo',
+    how_eyebrow:'How it works',how_h2:'From OBD2 port to insight<br>in three steps',
+    how_sub:'Every car made after 2001 has a standard OBD2 port. PidLane uses this as a bridge between the car and AI.',
+    step1_t:'Connect via OBD2',step1_d:'Plug in a standard OBD2 adapter. The app connects automatically via Bluetooth and detects the car\'s communication protocol.',
+    step2_t:'Read live data',step2_d:'PidLane continuously reads sensor data in real-time — RPM, temperature, fuel consumption and dozens of other parameters.',
+    step3_t:'AI translates the data',step3_d:'Claude AI translates technical values into clear advice. Issues are verified or ruled out using live sensor data.',
+    ana_eyebrow:'The analyses',ana_h2:'Four analysis types,<br>each with its own purpose',ana_sub:'From quick check to in-depth trip analysis.',
+    a1_t:'Data analysis',a1_d:'20 seconds · Instant insight',a1_desc:'A snapshot of all live sensor values. AI evaluates every system immediately.',
+    a2_t:'Trip analysis',a2_d:'10 minutes driving · Behaviour & consumption',a2_desc:'Drive 10 minutes. PidLane logs every driving phase and provides concrete fuel-saving tips.',
+    a3_t:'Problem analysis',a3_d:'Based on complaint · Cause confirmed via data',a3_desc:'Describe the problem. PidLane finds causes and verifies them via live sensor data.',
+    a4_t:'Fault code reading',a4_d:'Direct DTC scan · Plain language explanation',a4_desc:'All DTC codes read and translated into plain English with live sensor context.',
+    trip_eyebrow:'Live during the drive',trip_h2:'The dashboard rides along',
+    trip_sub:'During the 10-minute trip analysis, PidLane tracks every moment. Driving phase, consumption per phase and engine behaviour are logged live.',
+    trip_l1:'Driving phase detected: city, ramp, highway, braking',trip_l2:'Real-time fuel consumption graph per phase',
+    trip_l3:'Optimal RPM band advice shown immediately',trip_l4:'After the trip: full AI report with savings potential',
+    rep_eyebrow:'Sample reports',rep_h2:'Five scenarios — from green to garage',
+    rep_sub:'Each report shows estimated repair costs and payback period. So drivers know exactly whether acting is worth it.',
+    uc_eyebrow:'Applications',uc_h2:'Three ways to deploy PidLane',uc_sub:'Pricing and rollout depend on the use case.',
+    uc1_tag:'Consumer',uc1_t:'As a subscription service',uc1_d:'PidLane as part of a roadside assistance or auto service subscription.',
+    uc1_l1:'Instant insight before a garage visit',uc1_l2:'Avoids unnecessary diagnostics costs',uc1_l3:'Increases subscription value',uc1_l4:'Send AI report to mechanic',
+    uc2_tag:'Fleet',uc2_t:'Fleet deployment',uc2_d:'Real-time fleet insight — preventive maintenance and driver behaviour per vehicle.',
+    uc2_l1:'Preventive maintenance based on data',uc2_l2:'Driver behaviour per vehicle',uc2_l3:'Fuel savings at fleet scale',uc2_l4:'Works on any OBD2 adapter (€20–€80)',
+    uc3_tag:'Campaign',uc3_t:'High fuel price campaign',uc3_d:'Targeted deployment when fuel prices spike. PidLane helps drivers analyse and reduce consumption.',
+    uc3_l1:'Average 10–20% fuel savings possible',uc3_l2:'No installation — plug-and-play',uc3_l3:'Works on almost any passenger car',uc3_l4:'Highly communicable concept',
+    cp_eyebrow:'Compatibility',cp_h2:'Works on almost any car',cp_sub:'Every passenger car made after 2001 has an OBD2 port. A standard Bluetooth adapter is all you need.',
+    cp1:'Android app',cp2:'OBD2 standard',cp3:'Bluetooth',cp4:'Cars 2001+',cp5:'Claude AI',cp6:'NL · EN · DE · FR',
+    ct_eyebrow:'Contact',ct_h2:'Interested in a demo<br>or partnership?',ct_sub:'PidLane is in active development. A working demo is available.',
+    footer_status:'App in development · Demo available'
+  },
+  de:{
+    demo_btn:'Demo anfragen',hero_eyebrow:'KI-gestützte Fahrzeugdiagnose',
+    hero_h1:'Dein Auto spricht.<br><span>Wir übersetzen.</span>',
+    hero_sub:'PidLane verbindet sich über einen Standard-OBD2-Stecker mit dem Fahrzeugcomputer und übersetzt technische Fahrdaten in verständliche Empfehlungen — in Echtzeit, mit KI.',
+    btn_analyses:'Analysen ansehen →',btn_demo:'Demo anfragen',
+    how_eyebrow:'So funktioniert es',how_h2:'Vom OBD2-Anschluss zum Einblick<br>in drei Schritten',
+    how_sub:'Jedes Auto ab 2001 hat einen OBD2-Anschluss. PidLane nutzt diesen als Brücke zwischen Auto und KI.',
+    step1_t:'Via OBD2 verbinden',step1_d:'OBD2-Adapter einstecken. Die App verbindet sich automatisch per Bluetooth und erkennt das Kommunikationsprotokoll.',
+    step2_t:'Live-Daten auslesen',step2_d:'PidLane liest kontinuierlich Sensordaten — Drehzahl, Temperatur, Kraftstoffverbrauch und Dutzende weitere Parameter.',
+    step3_t:'KI übersetzt die Daten',step3_d:'Claude KI übersetzt technische Werte in verständliche Empfehlungen. Probleme werden per Live-Sensordaten bestätigt.',
+    ana_eyebrow:'Die Analysen',ana_h2:'Vier Analyseformen,<br>jede mit eigenem Zweck',ana_sub:'Vom Schnellcheck bis zur detaillierten Fahrtanalyse.',
+    a1_t:'Datenanalyse',a1_d:'20 Sekunden · Sofortiger Einblick',a1_desc:'Eine Momentaufnahme aller Live-Sensorwerte. KI bewertet jedes System sofort.',
+    a2_t:'Fahrtanalyse',a2_d:'10 Minuten Fahren · Fahrverhalten & Verbrauch',a2_desc:'10 Minuten fahren. PidLane erfasst jede Fahrphase und gibt konkrete Spartipps.',
+    a3_t:'Problemanalyse',a3_d:'Auf Basis von Beschwerden · Ursache per Daten bestätigt',a3_desc:'Problem beschreiben. PidLane sucht Ursachen und überprüft sie per Live-Sensordaten.',
+    a4_t:'Fehlercode-Auslesen',a4_d:'Direkter DTC-Scan · Erklärung in einfacher Sprache',a4_desc:'Alle DTC-Codes ausgelesen und in verständliches Deutsch übersetzt.',
+    trip_eyebrow:'Live während der Fahrt',trip_h2:'Das Dashboard fährt mit',
+    trip_sub:'Während der 10-minütigen Fahrtanalyse erfasst PidLane jeden Moment live.',
+    trip_l1:'Fahrphase erkannt: Stadt, Auffahrt, Autobahn, Bremsen',trip_l2:'Kraftstoffverbrauchsgrafik je Phase in Echtzeit',
+    trip_l3:'Optimale Drehzahlempfehlungen sofort sichtbar',trip_l4:'Nach der Fahrt: vollständiger KI-Bericht mit Sparpotenzial',
+    rep_eyebrow:'Beispielberichte',rep_h2:'Fünf Szenarien — von grün bis Werkstatt',
+    rep_sub:'Jeder Bericht zeigt Reparaturkosten und Amortisationszeit.',
+    uc_eyebrow:'Anwendungen',uc_h2:'Drei Möglichkeiten für PidLane',uc_sub:'Preis und Einführung hängen vom Anwendungsfall ab.',
+    uc1_tag:'Verbraucher',uc1_t:'Als Abonnement-Service',uc1_d:'PidLane als Teil eines Pannenhilfe-Abonnements.',
+    uc1_l1:'Einblick vor Werkstattgespräch',uc1_l2:'Unnötige Diagnosekosten vermeiden',uc1_l3:'Erhöht den Abonnementwert',uc1_l4:'KI-Bericht an Mechaniker senden',
+    uc2_tag:'Flotte',uc2_t:'Flotteneinführung',uc2_d:'Echtzeit-Flotteneinblick — vorausschauende Wartung und Fahrverhalten.',
+    uc2_l1:'Vorbeugende Wartung auf Datenbasis',uc2_l2:'Fahrverhalten je Fahrer',uc2_l3:'Kraftstoffeinsparungen auf Flottenebene',uc2_l4:'Funktioniert mit jedem OBD2-Adapter',
+    uc3_tag:'Aktion',uc3_t:'Aktion bei hohen Kraftstoffpreisen',uc3_d:'Gezielte Nutzung wenn Kraftstoffpreise steigen.',
+    uc3_l1:'Durchschnittlich 10–20% Kraftstoffeinsparung',uc3_l2:'Keine Installation — Plug-and-Play',uc3_l3:'Funktioniert mit fast jedem PKW',uc3_l4:'Stark kommunizierbares Konzept',
+    cp_eyebrow:'Kompatibilität',cp_h2:'Funktioniert mit fast jedem Auto',cp_sub:'Jeder PKW ab 2001 hat einen OBD2-Anschluss. Ein Standard-Bluetooth-Adapter reicht.',
+    cp1:'Android-App',cp2:'OBD2-Standard',cp3:'Bluetooth',cp4:'Autos 2001+',cp5:'Claude KI',cp6:'NL · EN · DE · FR',
+    ct_eyebrow:'Kontakt',ct_h2:'Interesse an einer Demo<br>oder Partnerschaft?',ct_sub:'PidLane befindet sich in aktiver Entwicklung. Eine Demo ist verfügbar.',
+    footer_status:'App in Entwicklung · Demo verfügbar'
+  },
+  fr:{
+    demo_btn:'Demander une démo',hero_eyebrow:'Diagnostic automobile par IA',
+    hero_h1:'Votre voiture parle.<br><span>Nous traduisons.</span>',
+    hero_sub:'PidLane se connecte via un connecteur OBD2 standard au système du véhicule et traduit les données techniques en conseils clairs — en temps réel, propulsé par l\'IA.',
+    btn_analyses:'Voir les analyses →',btn_demo:'Demander une démo',
+    how_eyebrow:'Comment ça marche',how_h2:'Du port OBD2 à l\'insight<br>en trois étapes',
+    how_sub:'Chaque voiture après 2001 a un port OBD2 standard. PidLane l\'utilise comme pont entre la voiture et l\'IA.',
+    step1_t:'Connexion via OBD2',step1_d:'Branchez un adaptateur OBD2. L\'app se connecte automatiquement en Bluetooth et détecte le protocole.',
+    step2_t:'Lecture des données en direct',step2_d:'PidLane lit en continu les données des capteurs — régime, température, consommation et bien plus.',
+    step3_t:'L\'IA traduit les données',step3_d:'Claude IA traduit les valeurs techniques en conseils clairs. Les problèmes sont confirmés par les données en direct.',
+    ana_eyebrow:'Les analyses',ana_h2:'Quatre types d\'analyse,<br>chacun avec son objectif',ana_sub:'Du contrôle rapide à l\'analyse de trajet approfondie.',
+    a1_t:'Analyse de données',a1_d:'20 secondes · Aperçu immédiat',a1_desc:'Un instantané de tous les capteurs. L\'IA évalue chaque système immédiatement.',
+    a2_t:'Analyse de trajet',a2_d:'10 minutes de conduite · Comportement & consommation',a2_desc:'Conduisez 10 minutes. PidLane enregistre chaque phase et fournit des conseils d\'économie.',
+    a3_t:'Analyse de problème',a3_d:'Sur base de plainte · Cause confirmée par données',a3_desc:'Décrivez le problème. PidLane trouve les causes et les vérifie avec les données en direct.',
+    a4_t:'Lecture des codes défaut',a4_d:'Scan DTC direct · Explication en langage clair',a4_desc:'Tous les codes DTC lus et traduits en français compréhensible.',
+    trip_eyebrow:'En direct pendant le trajet',trip_h2:'Le tableau de bord roule avec vous',
+    trip_sub:'Pendant l\'analyse de 10 minutes, PidLane suit chaque instant en direct.',
+    trip_l1:'Phase de conduite détectée : ville, entrée, autoroute, freinage',trip_l2:'Graphique de consommation par phase en temps réel',
+    trip_l3:'Conseils RPM optimaux visibles immédiatement',trip_l4:'Après le trajet : rapport IA complet avec potentiel d\'économies',
+    rep_eyebrow:'Exemples de rapports',rep_h2:'Cinq scénarios — du vert au garage',
+    rep_sub:'Chaque rapport montre les coûts de réparation estimés et le délai de rentabilité.',
+    uc_eyebrow:'Applications',uc_h2:'Trois façons de déployer PidLane',uc_sub:'Le prix et le déploiement dépendent du cas d\'usage.',
+    uc1_tag:'Consommateur',uc1_t:'En service d\'abonnement',uc1_d:'PidLane comme partie d\'un abonnement d\'assistance routière.',
+    uc1_l1:'Aperçu avant un rendez-vous garage',uc1_l2:'Évite des coûts de diagnostic inutiles',uc1_l3:'Augmente la valeur de l\'abonnement',uc1_l4:'Envoyer le rapport IA au mécanicien',
+    uc2_tag:'Flotte',uc2_t:'Déploiement flotte',uc2_d:'Aperçu flotte en temps réel — maintenance préventive et comportement par conducteur.',
+    uc2_l1:'Maintenance préventive basée sur les données',uc2_l2:'Comportement par conducteur',uc2_l3:'Économies de carburant à l\'échelle de la flotte',uc2_l4:'Fonctionne avec tout adaptateur OBD2',
+    uc3_tag:'Action',uc3_t:'Action prix carburant élevés',uc3_d:'Déploiement ciblé quand les prix du carburant augmentent.',
+    uc3_l1:'10–20% d\'économies de carburant en moyenne',uc3_l2:'Pas d\'installation — plug-and-play',uc3_l3:'Fonctionne sur presque toute voiture',uc3_l4:'Concept fortement communicable',
+    cp_eyebrow:'Compatibilité',cp_h2:'Fonctionne sur presque toute voiture',cp_sub:'Chaque voiture après 2001 a un port OBD2. Un adaptateur Bluetooth standard suffit.',
+    cp1:'Application Android',cp2:'Standard OBD2',cp3:'Bluetooth',cp4:'Voitures 2001+',cp5:'Claude IA',cp6:'NL · EN · DE · FR',
+    ct_eyebrow:'Contact',ct_h2:'Intéressé par une démo<br>ou un partenariat ?',ct_sub:'PidLane est en développement actif. Une démo est disponible.',
+    footer_status:'Application en développement · Démo disponible'
+  }
+};
+
+let currentLang='nl';
+function setLang(lang){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.toLowerCase()===lang));
+  const t=LANG[lang];
+  document.querySelectorAll('[data-i]').forEach(el=>{
+    const k=el.getAttribute('data-i');
+    if(t[k]!==undefined) el.innerHTML=t[k];
+  });
+}
+
+// ── Rapport tabs ──
+function showRapport(id,btn){
+  document.querySelectorAll('.rapport-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Hero dashboard animation ──
+const rpmV=[820,1100,1644,2100,1800,1400,1100,920];
+const spdV=[0,12,71,95,82,60,35,8];
+const tmpV=[45,60,90,93,91,90,90,89];
+const aiM=[
+  '<strong>AI:</strong> Stationair — alle waarden binnen normaal bereik.',
+  '<strong>AI:</strong> Optrekken — toerental en belasting stijgen.',
+  '<strong>AI:</strong> Rijomstandigheden normaal. Lambda sensor in orde.',
+  '<strong>AI:</strong> Hoog toerental — ca. 12 L/100km.',
+  '<strong>AI:</strong> Afremmen — motorrem actief, gunstig voor verbruik.',
+  '<strong>AI:</strong> Cruise — optimale zone 1400–2200 RPM.',
+  '<strong>AI:</strong> Lage snelheid — lager schakelen aanbevolen.',
+  '<strong>AI:</strong> Bijna stationair — systemen normaal.'
+];
+let step=0;
+function animateDash(){
+  const i=step%rpmV.length;
+  document.getElementById('g-rpm').textContent=rpmV[i];
+  document.getElementById('g-spd').textContent=spdV[i];
+  document.getElementById('g-tmp').textContent=tmpV[i];
+  document.getElementById('g-fuel').textContent=(68-Math.floor(step/8))+'%';
+  document.getElementById('g-load').textContent=[8,18,42,68,55,38,22,10][i]+'%';
+  document.getElementById('b-rpm').style.width=(rpmV[i]/7000*100)+'%';
+  document.getElementById('b-spd').style.width=(spdV[i]/200*100)+'%';
+  document.getElementById('b-tmp').style.width=(tmpV[i]/120*100)+'%';
+  document.getElementById('ai-strip').innerHTML=aiM[i];
+  step++;
+}
+animateDash();setInterval(animateDash,2500);
+
+// ── Trip dashboard animation ──
+const tripPhases=[
+  {label:'STAD',cls:'phase-city',timer:'02:15',avg:'9.8 L',save:'↓ 2.7 L',cur:'11.2 L',ai:'<strong>AI:</strong> Stadverkeer — frequent optrekken verhoogt verbruik. Eerder schakelen aanbevolen.'},
+  {label:'OPRIT',cls:'phase-ramp',timer:'04:33',avg:'8.1 L',save:'↓ 1.8 L',cur:'7.4 L',ai:'<strong>AI:</strong> Oprit — geleidelijk optrekken. Verbruik daalt al ten opzichte van stadsfase.'},
+  {label:'SNELWEG',cls:'phase-hwy',timer:'07:43',avg:'7.2 L',save:'↓ 0.9 L',cur:'5.1 L',ai:'<strong>AI:</strong> Snelweg — optimale rijzone. Verbruik 5.1 L/100km — laagste fase tot nu toe.'},
+];
+let tripStep=0;
+function animateTrip(){
+  const p=tripPhases[tripStep%tripPhases.length];
+  document.getElementById('trip-timer').textContent=p.timer;
+  const badge=document.getElementById('trip-phase-badge');
+  badge.textContent=p.label;
+  badge.className='trip-phase '+p.cls;
+  document.getElementById('trip-avg').textContent=p.avg;
+  document.getElementById('trip-save').textContent=p.save;
+  document.getElementById('trip-cur').textContent=p.cur;
+  document.getElementById('trip-ai-msg').innerHTML=p.ai;
+  // animate last bar
+  const lb=document.getElementById('live-bar');
+  if(lb){lb.style.height=(tripStep%3===0?'72%':tripStep%3===1?'48%':'30%');}
+  tripStep++;
+}
+animateTrip();setInterval(animateTrip,3000);
+
+// ── Scroll reveal ──
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});
+},{threshold:.08});
+document.querySelectorAll('.ac,.hw,.uc,.ci,.rp-card').forEach(el=>{
+  el.style.opacity='0';el.style.transform='translateY(16px)';
+  el.style.transition='opacity .5s ease,transform .5s ease';
+  obs.observe(el);
+});
+</script>
+</body>
+</html>
