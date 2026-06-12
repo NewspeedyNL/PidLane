@@ -3076,6 +3076,7 @@ async function connectSerial(){
   window._pollBusy = false;
   connected = false;
   window._btGen = (window._btGen || 0) + 1;   // oude commando's ongeldig maken
+  window._batchSupported = undefined;         // multi-PID opnieuw testen bij nieuwe auto
   _btQueue = Promise.resolve();               // commandowachtrij leegmaken
 
   // API-key uit het startscherm overnemen (ongewijzigd gedrag)
@@ -3273,18 +3274,27 @@ async function connectBLE(ble){
   });
   btDiag(`BLE verbonden: ${best.name}`, 'ok');
 
-  // Kanaal-detectie: probeer bekende service/characteristic-combinaties
+  // Samsung-toestellen (o.a. S22) hebben soms tijd nodig tot GATT service-discovery
+  // klaar is; direct startNotifications kan dan NATIVE crashen. Even laten settelen.
+  await delay(600);
+
+  // Kanaal-detectie: probeer bekende service/characteristic-combinaties, met retry
   let notifyOk = false;
   for (const [svc, notify, write] of BLE_CHANNELS){
-    try {
-      await ble.startNotifications(best.id, svc, notify, (val) => {
-        btBuffer += new TextDecoder().decode(val.value);
-      });
-      window._bleConn = { ble, id: best.id, svc, write };
-      notifyOk = true;
-      btDiag(`BLE kanaal: ${svc.slice(4,8)}`, 'proto');
-      break;
-    } catch(e){ btDiag(`Kanaal ${svc.slice(4,8)} niet beschikbaar`, 'warn'); }
+    for (let attempt = 1; attempt <= 2 && !notifyOk; attempt++){
+      try {
+        await ble.startNotifications(best.id, svc, notify, (val) => {
+          btBuffer += new TextDecoder().decode(val.value);
+        });
+        window._bleConn = { ble, id: best.id, svc, write };
+        notifyOk = true;
+        btDiag(`BLE kanaal: ${svc.slice(4,8)}`, 'proto');
+      } catch(e){
+        btDiag(`Kanaal ${svc.slice(4,8)} poging ${attempt} mislukt`, 'warn');
+        await delay(400);
+      }
+    }
+    if (notifyOk) break;
   }
   if (!notifyOk) throw new Error('BLE verbonden, maar geen communicatiekanaal — onbekende adapter-firmware.');
 
