@@ -1,0 +1,152 @@
+name: Build PidLane APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '24'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4.7.0
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Add Android platform
+        run: npx cap add android || echo "Already added"
+
+      - name: Sync web assets to Android
+        run: npx cap sync android
+
+      - name: Add Bluetooth permissions to AndroidManifest
+        run: |
+          python3 - <<'PY'
+          import re, sys, pathlib
+
+          path = pathlib.Path("android/app/src/main/AndroidManifest.xml")
+          xml = path.read_text()
+
+          print("── Manifest VOOR injectie ──")
+          print(xml)
+
+          # 1. Verwijder bestaande (mogelijk verkeerde) BT/locatie-permissies,
+          #    zodat we altijd de juiste set neerzetten (zelf-corrigerend).
+          xml = re.sub(
+              r'\s*<uses-permission[^>]*android\.permission\.'
+              r'(BLUETOOTH[A-Z_]*|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION)[^>]*/>',
+              '', xml)
+          # Bestaande bluetooth uses-feature regels ook strippen (anders dupliceren ze).
+          xml = re.sub(
+              r'\s*<uses-feature[^>]*android\.hardware\.bluetooth[a-z_]*[^>]*/>',
+              '', xml)
+          # Eerdere injectie-comment ook opruimen.
+          xml = re.sub(r'\s*<!-- PidLane BT permissies.*?-->', '', xml)
+
+          # 2. De correcte permissie-set.
+          #    Android 12+ (31+): SCAN met neverForLocation + CONNECT (geen locatie nodig).
+          #    Android <= 11 (<=30): klassieke BT + FINE_LOCATION, beperkt tot maxSdkVersion 30.
+          perms = (
+              '\n    <!-- PidLane BT permissies (geinjecteerd door CI) -->'
+              '\n    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />'
+              '\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />'
+              '\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />'
+              '\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />'
+              '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />'
+              '\n    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />'
+              '\n    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />'
+          )
+
+          # 3. Injecteer direct na de <manifest ...> open-tag (anker-onafhankelijk).
+          m = re.search(r'<manifest\b[^>]*>', xml)
+          if not m:
+              print("FOUT: <manifest> tag niet gevonden")
+              sys.exit(1)
+          xml = xml[:m.end()] + perms + xml[m.end():]
+
+          path.write_text(xml)
+
+          print("── Manifest NA injectie ──")
+          print(xml)
+
+          # 4. Hard falen als de cruciale permissie er niet in staat.
+          if 'BLUETOOTH_SCAN' not in xml or 'neverForLocation' not in xml:
+              print("FOUT: BT-permissie-injectie mislukt")
+              sys.exit(1)
+          print("OK: Bluetooth-permissies correct geinjecteerd")
+          PY
+
+      - name: Generate app icons from PidLane logo
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick
+          cat > /tmp/pidlane_icon.svg <<'SVG'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#00FF88"/>
+                <stop offset="1" stop-color="#00D4FF"/>
+              </linearGradient>
+            </defs>
+            <rect width="128" height="128" rx="28" fill="#0D1117"/>
+            <rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#g)" stroke-width="8"/>
+            <path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52"
+                  fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/>
+          </svg>
+          SVG
+          rsvg-convert -w 1024 -h 1024 /tmp/pidlane_icon.svg -o /tmp/icon_1024.png
+          RES="android/app/src/main/res"
+          # Launcher-iconen (volledige tegel)
+          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; mkdir -p "$dir"
+            convert /tmp/icon_1024.png -resize ${size}x${size} "$dir/ic_launcher.png"
+            convert /tmp/icon_1024.png -resize ${size}x${size} "$dir/ic_launcher_round.png"
+          done
+          # Adaptive-icon foreground (icoon op ~64% gecentreerd, transparante rand)
+          for d in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
+            dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; inner=$(( size * 64 / 100 ))
+            convert /tmp/icon_1024.png -resize ${inner}x${inner} -background none \
+              -gravity center -extent ${size}x${size} "$dir/ic_launcher_foreground.png"
+          done
+          # Adaptive-achtergrond gelijk aan de tegel-kleur, zodat het naadloos oogt
+          BG="$RES/values/ic_launcher_background.xml"
+          if [ -f "$BG" ]; then
+            sed -i 's|<color name="ic_launcher_background">[^<]*</color>|<color name="ic_launcher_background">#0D1117</color>|' "$BG"
+          else
+            mkdir -p "$RES/values"
+            printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0D1117</color>\n</resources>\n' > "$BG"
+          fi
+          echo "App-iconen gegenereerd:"
+          ls -la $RES/mipmap-xxxhdpi/
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x android/gradlew
+
+      - name: Accept Android licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: PidLane-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
