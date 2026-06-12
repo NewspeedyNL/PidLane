@@ -109,7 +109,9 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .btn-t.off { background:var(--rds); color:var(--rd); border:1px solid #fca5a5; }
 .api-pill { font-size:10px; font-weight:600; padding:3px 8px; border-radius:999px; border:1px solid; cursor:pointer; }
 .api-pill.set { background:var(--gns); color:var(--gn); border-color:#86efac; }
-.api-pill.unset { background:var(--ors); color:var(--or); border-color:#fed7aa; }
+.api-pill.unset { background:var(--ors); color:var(--or); border-color:#fed7aa; animation:softblink 2.6s ease-in-out infinite; }
+@keyframes softblink { 0%,100%{opacity:1} 50%{opacity:.35} }
+.pill.attn { border-color:var(--or)!important; animation:softblink 1.8s ease-in-out infinite; }
 #vtag { font-size:10px; font-weight:600; color:var(--bl); background:var(--bls); padding:2px 7px; border-radius:4px; display:none; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ══ APP LAYOUT ══ */
@@ -407,7 +409,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   <div class="modal" style="max-width:380px">
     <div class="modal-scroll">
       <div class="mh">
-        <div class="mlogo" style="background:linear-gradient(135deg,#1a6fff,#7c3aed);font-size:24px">⚡</div>
+        <div class="mlogo" style="background:transparent;box-shadow:0 6px 18px rgba(0,255,136,.25);width:52px;height:52px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" style="width:100%;height:100%"><defs><linearGradient id="plg1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plg1)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>
         <div class="mttl">Pid<span style="color:var(--bl)">Lane</span></div>
         <div class="msub">Your car talks. We translate.</div>
       </div>
@@ -428,7 +430,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
     <div class="mact">
       <button class="mbtn p" onclick="doLogin()">🔓 Inloggen</button>
       <div style="text-align:center;font-size:10px;color:var(--tx3);padding-top:4px">
-        PidLane v2.0 — AI Car Diagnostics
+        PidLane v2.1 — AI Car Diagnostics<br>
+        <a href="https://www.pidlane.nl" target="_blank" rel="noopener" style="color:#00D4FF;text-decoration:none;font-weight:600">🌐 www.pidlane.nl</a>
       </div>
     </div>
   </div>
@@ -443,7 +446,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <!-- STAP 1: Start -->
       <div id="step1">
         <div class="mh">
-          <div class="mlogo">🔌</div>
+          <div class="mlogo" style="background:transparent;box-shadow:0 6px 18px rgba(0,255,136,.25)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" style="width:100%;height:100%"><defs><linearGradient id="plg2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plg2)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>
           <div class="mttl">PidLane</div>
           <div class="msub">Your car talks. We translate.</div>
         </div>
@@ -462,7 +465,10 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <div id="btDiagBox" style="display:none;margin:0 16px 10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
             <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3)">📡 Bluetooth Diagnostiek</div>
-            <button onclick="clearBtLog()" style="font-size:9px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:2px 6px">wis</button>
+            <div style="display:flex;gap:2px">
+              <button onclick="copyBtLog(this)" style="font-size:9px;color:#00D4FF;background:none;border:none;cursor:pointer;padding:2px 6px;font-weight:600">📋 Kopieer</button>
+              <button onclick="clearBtLog()" style="font-size:9px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:2px 6px">wis</button>
+            </div>
           </div>
           <!-- Status badges -->
           <div id="btStatusRow" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
@@ -585,7 +591,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 <!-- ══ TOPBAR ══ -->
 <div id="appScale">
 <div class="topbar">
-  <div class="logo"><div class="logo-i">⚡</div>Pid<em>Lane</em></div>
+  <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" style="width:26px;height:26px"><defs><linearGradient id="plg3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plg3)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>Pid<em>Lane</em></div>
   <div class="tpr">
     <div id="vtag"></div>
     <div id="userLabel" style="font-size:10px;font-weight:600;color:var(--tx3);padding:2px 8px;background:var(--sur2);border:1px solid var(--bd);border-radius:999px;display:none"></div>
@@ -2749,11 +2755,35 @@ let vehicleInfo={merk:'',model:'',year:'',vin:''};
 // BLUETOOTH DIAGNOSTIEK LOG
 // ════════════════════════════════════════
 const _btLog=[], _btDevices=[];
+// Log van vorige sessie terugzetten (overleeft herladen/demo-overstap)
+function restoreBtLog(){
+  try{
+    const saved=JSON.parse(sessionStorage.getItem('pl_btlog')||'[]');
+    if(!saved.length) return;
+    const logEl=document.getElementById('btLog'); if(!logEl) return;
+    logEl.innerHTML='';
+    const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
+    const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
+    saved.forEach(e=>{
+      _btLog.push(e);
+      const line=document.createElement('div'); line.style.cssText=`color:${colors[e.type]||'var(--tx2)'};display:flex;gap:5px;`;
+      const tsEl=document.createElement('span'); tsEl.style.cssText='color:var(--tx3);flex-shrink:0'; tsEl.textContent=e.ts;
+      const icEl=document.createElement('span'); icEl.style.color=colors[e.type]||'var(--tx2)'; icEl.textContent=icons[e.type]||'·';
+      const msgEl=document.createElement('span'); msgEl.textContent=e.msg;
+      line.appendChild(tsEl); line.appendChild(icEl); line.appendChild(msgEl);
+      logEl.appendChild(line);
+    });
+    logEl.scrollTop=logEl.scrollHeight;
+    const box=document.getElementById('btDiagBox'); if(box) box.style.display='block';
+  }catch(e){}
+}
+document.addEventListener('DOMContentLoaded', restoreBtLog);
 
 function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display='block';
   const ts=new Date().toTimeString().slice(0,8);
   _btLog.push({ts,msg,type});
+  try{ sessionStorage.setItem('pl_btlog', JSON.stringify(_btLog.slice(-300))); }catch(e){}
   const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
   const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
   const logEl=document.getElementById('btLog'); if(!logEl) return;
@@ -3023,6 +3053,7 @@ function btDiagDevice(name, address, rssi){
 
 function clearBtLog(){
   _btLog.length=0; _btDevices.length=0;
+  try{ sessionStorage.removeItem('pl_btlog'); }catch(e){}
   const logEl=document.getElementById('btLog');
   if(logEl) logEl.innerHTML='<span style="color:var(--tx3);font-style:italic">Klik Verbinden om te starten...</span>';
   const row=document.getElementById('btStatusRow'); if(row) row.innerHTML='';
@@ -3532,7 +3563,35 @@ async function sppReconnectGuard(spp,address,cmd){
 
 async function sendCmd(cmd, timeoutMs){
   if(demoMode){ btDiag(`sendCmd "${cmd}" geblokkeerd: demoMode staat AAN`,'warn'); return ''; }
-  return await sendBT(cmd, timeoutMs);
+  const r = await sendBT(cmd, timeoutMs);
+  trackBtQuality(cmd, r);
+  return r;
+}
+
+// ── VERBINDINGSKWALITEIT — knipperende pill bij matige dataverwerking ──
+const _btQual=[]; let _qualWarned=false;
+function trackBtQuality(cmd, r){
+  if(!connected || demoMode) return;
+  if(!/^01[0-9A-F]{2}$/i.test(cmd)) return;            // alleen data-PIDs tellen
+  const bad = !r || !r.trim() || r.includes('NO DATA') || r.includes('ERROR') || r.includes('STOPPED');
+  _btQual.push(bad?1:0); if(_btQual.length>20) _btQual.shift();
+  if(_btQual.length<10) return;
+  const ratio=_btQual.reduce((a,b)=>a+b,0)/_btQual.length;
+  const pill=document.querySelector('.pill');
+  if(ratio>=0.3){
+    if(pill && !pill.classList.contains('attn')){
+      if(!pill.dataset.origTitle) pill.dataset.origTitle=pill.title||'';
+      pill.classList.add('attn');
+      pill.title='Verbinding niet optimaal — open 📡 Log en probeer 🤖 Optimaliseer';
+    }
+    if(!_qualWarned){
+      _qualWarned=true;
+      showToast?.('⚠ Dataverwerking niet optimaal — probeer 🤖 Optimaliseer in de 📡 Log', 5000);
+    }
+  } else if(ratio<=0.1 && pill && pill.classList.contains('attn')){
+    pill.classList.remove('attn');
+    pill.title=pill.dataset.origTitle||'';
+  }
 }
 
 // Complete OBD2 PID definitiedatabase met parse functies
@@ -4449,6 +4508,9 @@ function startDemo(){
 // ════════════════════════════════════════
 function setConn(on){
   const dot=document.getElementById('sdot'),txt=document.getElementById('stxt'),btn=document.getElementById('cbtn');
+  const pill=document.querySelector('.pill');
+  if(pill){ pill.classList.remove('attn'); if(pill.dataset.origTitle) pill.title=pill.dataset.origTitle; }
+  _btQual.length=0; _qualWarned=false;
   if(on){dot.className='dot '+(demoMode?'demo':'on');txt.textContent=demoMode?'Demo modus':'Verbonden';btn.textContent='Verbreken';btn.className='btn-t off';}
   else{dot.className='dot';txt.textContent='Niet verbonden';btn.textContent='Verbinden';btn.className='btn-t';}
 }
