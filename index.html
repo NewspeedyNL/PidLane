@@ -644,6 +644,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <button class="tab" onclick="sw('graph',this)">📈 Grafiek</button>
       <button class="tab" onclick="sw('dtc',this)">🔴 DTC</button>
       <button class="tab" onclick="sw('fuel',this)" style="color:var(--or);font-weight:700;">⛽ Besparing</button>
+      <button class="tab" onclick="sw('koop',this)" style="color:#a78bfa;font-weight:700;">🔍 Koopcheck</button>
     </div>
     <div class="tb">
 
@@ -791,6 +792,96 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <button class="btn pri" style="width:100%;padding:11px;margin-bottom:12px;font-size:12px" onclick="runFuelAnalysis()" id="btnFuel">⛽ Analyseer brandstofbesparing</button>
         <div id="fuelResults"></div>
       </div>
+
+      <!-- ══ KOOPCHECK PANE ══ -->
+      <div class="pane" id="pane-koop">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#1a0a2e,#0f1729);border:1px solid #7c3aed44;border-radius:var(--r);padding:12px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
+          <div style="font-size:24px;flex-shrink:0">🔍</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:2px">Aankoopcheck</div>
+            <div style="font-size:11px;color:var(--tx2);line-height:1.5">Verbind OBD2, voer kenteken in na verbinding. PidLane analyseert voertuighistorie, onderhoudsachterstand en schat de marktwaarde.</div>
+          </div>
+        </div>
+
+        <!-- Stap 1: Kenteken -->
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 1 — Kenteken & RDW data</div>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px">
+            <input id="koopKentInput" class="api-inp" type="text" placeholder="bijv. 01GNR6" maxlength="8"
+              style="flex:1;text-transform:uppercase;letter-spacing:2px;font-weight:700;font-size:13px"
+              oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase()"
+              onkeydown="if(event.key==='Enter')koopRdwLookup()">
+            <button class="btn pri" onclick="koopRdwLookup()" id="koopRdwBtn" style="padding:7px 12px;font-size:11px;white-space:nowrap">🔍 RDW opzoeken</button>
+          </div>
+          <div id="koopRdwStatus" style="font-size:10px;color:var(--tx3);min-height:14px"></div>
+          <!-- RDW data kaarten -->
+          <div id="koopRdwCards" style="display:none;margin-top:10px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="koopRdwGrid"></div>
+            <div id="koopRecallBanner" style="display:none;background:linear-gradient(135deg,#450a0a,#7f1d1d);border:1px solid #ef4444;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:11px;color:#fca5a5;font-weight:700">⚠️ RECALL ACTIEF — Terugroepactie van fabrikant geregistreerd bij RDW</div>
+          </div>
+        </div>
+
+        <!-- Stap 2: Km-stand -->
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 2 — Kilometerstand</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="koopKmInput" class="api-inp" type="number" placeholder="bijv. 87500" min="0" max="999999" style="flex:1;font-size:13px;font-weight:700">
+            <span style="font-size:11px;color:var(--tx2);white-space:nowrap">km</span>
+          </div>
+          <div style="font-size:9px;color:var(--tx3);margin-top:4px" id="koopKmHint">OBD2 km-stand wordt automatisch ingevuld als beschikbaar</div>
+        </div>
+
+        <!-- Stap 3: Servicehistorie -->
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 3 — Servicehistorie (optioneel)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <label style="font-size:10px;color:var(--tx2)">
+              Serviceboekje aanwezig?
+              <select id="koopBoekje" class="api-inp" style="margin-top:3px;font-size:11px">
+                <option value="onbekend">Onbekend</option>
+                <option value="compleet">Ja — volledig bijgehouden</option>
+                <option value="deels">Ja — deels bijgehouden</option>
+                <option value="nee">Nee</option>
+              </select>
+            </label>
+            <label style="font-size:10px;color:var(--tx2)">
+              Laatste beurt bij km
+              <input id="koopLaatsteBeurt" class="api-inp" type="number" placeholder="bijv. 80000" style="margin-top:3px;font-size:11px">
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <label style="font-size:10px;color:var(--tx2)">
+              Aantal sleutels
+              <select id="koopSleutels" class="api-inp" style="margin-top:3px;font-size:11px">
+                <option value="2">2 (normaal)</option>
+                <option value="1">1</option>
+                <option value="3">3+</option>
+              </select>
+            </label>
+            <label style="font-size:10px;color:var(--tx2)">
+              Vraagprijs dealer (€)
+              <input id="koopVraagprijs" class="api-inp" type="number" placeholder="bijv. 14500" style="margin-top:3px;font-size:11px">
+            </label>
+          </div>
+        </div>
+
+        <!-- Analyseer knop -->
+        <button class="btn pri" onclick="runKoopcheck()" id="koopBtn"
+          style="width:100%;padding:13px;font-size:13px;font-weight:700;margin-bottom:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none">
+          🔍 Voer Aankoopcheck uit
+        </button>
+
+        <!-- Resultaten -->
+        <div id="koopResults"></div>
+
+        <!-- Scan log download -->
+        <div style="display:flex;justify-content:flex-end;margin-top:8px">
+          <button onclick="downloadScanLog()" style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--bd);background:transparent;color:var(--tx3);cursor:pointer">💾 Scan log downloaden</button>
+        </div>
+
+      </div><!-- pane-koop -->
 
     </div><!-- tb -->
     <div class="logbar" id="logbar"></div>
@@ -3963,6 +4054,11 @@ async function rdwLookup(){
     vehicleInfo.model=v.handelsbenaming||'';
     vehicleInfo.year=jaar||vehicleInfo.year;
     localStorage.setItem('pl_kenteken',kent);
+    // Sla ook extra RDW velden op voor Koopcheck
+    if(!_koopRdwData) _koopRdwData = { ...v, _kent: kent };
+    // Prefill Koopcheck kenteken input
+    const ki = document.getElementById('koopKentInput');
+    if(ki && !ki.value) ki.value = kent;
     const merkEl=document.getElementById('vicMerk');
     if(merkEl) merkEl.textContent=`${vehicleInfo.merk} ${vehicleInfo.model}`.trim();
     if(st) st.textContent=`✓ ${vehicleInfo.merk} ${vehicleInfo.model} (${jaar}) — ${v.eerste_kleur||''}`.trim();
@@ -5150,10 +5246,338 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     closeRitAnalyse();
   }
 
-  // Auto download rapport
-  download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
-  log('🚗 Rit rapport gedownload','ok');
+// ══════════════════════════════════════════════════════
+// KOOPCHECK MODULE — v1.0  //  Datum: 2026-06-13
+// RDW lookup · Onderhoudcheck · AI prijsschatting · Scan log
+// ══════════════════════════════════════════════════════
+
+// ── Scan Log (lokaal, per sessie) ──────────────────────
+let _scanLog = [];
+function scanLogAdd(entry){
+  _scanLog.push({ ts: new Date().toISOString(), ...entry });
+  try { localStorage.setItem('pl_scanlog', JSON.stringify(_scanLog.slice(-200))); } catch(e){}
 }
+function downloadScanLog(){
+  try { const saved = localStorage.getItem('pl_scanlog'); if(saved) _scanLog = JSON.parse(saved); } catch(e){}
+  if(!_scanLog.length){ alert('Nog geen scan log beschikbaar.'); return; }
+  const lines = [
+    `PidLane Scan Log — Gegenereerd: ${new Date().toLocaleString('nl')}`,
+    '='.repeat(60),
+    ...(_scanLog.map(e => {
+      const ts = e.ts || '';
+      const type = (e.type||'info').toUpperCase().padEnd(8);
+      const msg = e.msg || JSON.stringify(e);
+      return `[${ts}] [${type}] ${msg}`;
+    }))
+  ];
+  download(`pidlane-scanlog-${new Date().toISOString().slice(0,10)}.txt`, lines.join('\n'));
+}
+
+// ── Uitgebreide RDW lookup voor Koopcheck ──────────────
+let _koopRdwData = null;
+async function koopRdwLookup(){
+  const inp = document.getElementById('koopKentInput');
+  const st  = document.getElementById('koopRdwStatus');
+  const cards = document.getElementById('koopRdwCards');
+  const grid  = document.getElementById('koopRdwGrid');
+  if(!inp) return;
+  const kent = inp.value.replace(/[\s-]/g,'').toUpperCase();
+  if(kent.length < 4){ st.textContent = 'Voer een geldig kenteken in (bijv. 01GNR6)'; return; }
+  st.textContent = '⏳ RDW opzoeken...';
+  cards.style.display = 'none';
+  const btn = document.getElementById('koopRdwBtn');
+  btn.disabled = true;
+
+  try {
+    // Hoofddata
+    const r1 = await fetch(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`);
+    const d1 = await r1.json();
+    if(!d1||!d1.length){ st.textContent = '❌ Kenteken niet gevonden bij RDW'; btn.disabled=false; return; }
+    const v = d1[0];
+
+    // APK dataset
+    let apkData = null;
+    try {
+      const r2 = await fetch(`https://opendata.rdw.nl/resource/sgfe-77wx.json?kenteken=${encodeURIComponent(kent)}&$limit=1`);
+      const d2 = await r2.json();
+      if(d2&&d2.length) apkData = d2[0];
+    } catch(e){}
+
+    // Recall check (op merk)
+    let recallActief = false;
+    try {
+      const merk = (v.merk||'').toUpperCase();
+      const r3 = await fetch(`https://opendata.rdw.nl/resource/af5r-44mf.json?$where=upper(merk_type_fabrikant)%20like%20'%25${encodeURIComponent(merk)}%25'&$limit=5`);
+      const d3 = await r3.json();
+      recallActief = d3 && d3.length > 0;
+    } catch(e){}
+
+    _koopRdwData = { ...v, _apk: apkData, _recall: recallActief, _kent: kent };
+    localStorage.setItem('pl_kenteken', kent);
+
+    // Voer ook vehicleInfo bij voor AI
+    vehicleInfo.merk  = v.merk || vehicleInfo.merk;
+    vehicleInfo.model = v.handelsbenaming || vehicleInfo.model;
+    vehicleInfo.year  = (v.datum_eerste_toelating||'').slice(0,4) || vehicleInfo.year;
+
+    // Bereken tenaamstelling info
+    const datTenaam = v.datum_tenaamstelling ? formatRdwDate(v.datum_tenaamstelling) : '?';
+    const datEerste = v.datum_eerste_toelating ? formatRdwDate(v.datum_eerste_toelating) : '?';
+    const datEersteNL = v.datum_eerste_tenaamstelling_in_nederland ? formatRdwDate(v.datum_eerste_tenaamstelling_in_nederland) : '?';
+    const apkVerval = v.vervaldatum_apk ? formatRdwDate(v.vervaldatum_apk) : '?';
+    const maandenTot = v.vervaldatum_apk ? maandenTotAPK(v.vervaldatum_apk) : null;
+    const bpm = v.bruto_bpm ? `€ ${parseInt(v.bruto_bpm).toLocaleString('nl')}` : '?';
+    const import_auto = v.datum_eerste_tenaamstelling_in_nederland && v.datum_eerste_toelating &&
+      v.datum_eerste_tenaamstelling_in_nederland.slice(0,4) !== v.datum_eerste_toelating.slice(0,4);
+
+    // APK kleur
+    let apkKleur = '#6b7280';
+    if(maandenTot !== null){
+      if(maandenTot < 0) apkKleur = '#ef4444';
+      else if(maandenTot < 3) apkKleur = '#f97316';
+      else if(maandenTot < 6) apkKleur = '#eab308';
+      else apkKleur = '#22c55e';
+    }
+
+    // Recall banner
+    document.getElementById('koopRecallBanner').style.display = recallActief ? 'block' : 'none';
+
+    // Render kaarten
+    const kaarten = [
+      { label:'Merk & Model',   val:`${v.merk||'?'} ${v.handelsbenaming||''}`.trim(), ico:'🚗' },
+      { label:'Bouwjaar',       val:(v.datum_eerste_toelating||'????').slice(0,4), ico:'📅' },
+      { label:'Eerste toelating', val:datEerste, ico:'🏭' },
+      { label:'Eerste NL',      val:datEersteNL + (import_auto ? ' ⚠️ Import' : ''), ico:'🇳🇱' },
+      { label:'Huidige eigenaar sinds', val:datTenaam, ico:'👤' },
+      { label:'APK geldig tot', val:`${apkVerval}`, ico:'🔧', kleur:apkKleur },
+      { label:'Kleur',          val:`${v.eerste_kleur||'?'}${v.tweede_kleur?'+'+v.tweede_kleur:''}`, ico:'🎨' },
+      { label:'Cilinderinhoud', val:v.cilinderinhoud ? v.cilinderinhoud+' cc' : '?', ico:'⚙️' },
+      { label:'Bruto BPM',      val:bpm, ico:'💶' },
+      { label:'Recall RDW',     val:recallActief ? '⚠️ JA' : '✅ Geen', ico:'🔔', kleur:recallActief?'#ef4444':'#22c55e' },
+    ];
+    grid.innerHTML = kaarten.map(k=>`
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:7px 9px">
+        <div style="font-size:9px;color:var(--tx3);margin-bottom:2px">${k.ico} ${k.label}</div>
+        <div style="font-size:11px;font-weight:700;color:${k.kleur||'var(--tx)'}">${k.val||'?'}</div>
+      </div>`).join('');
+
+    cards.style.display = 'block';
+    st.textContent = `✅ ${v.merk} ${v.handelsbenaming} (${(v.datum_eerste_toelating||'').slice(0,4)}) — ${v.eerste_kleur||''}`;
+
+    // Prefill km-stand vanuit OBD als beschikbaar
+    const obdKm = getObdKmStand();
+    if(obdKm && !document.getElementById('koopKmInput').value){
+      document.getElementById('koopKmInput').value = obdKm;
+      document.getElementById('koopKmHint').textContent = `✅ OBD2 km-stand automatisch ingevuld: ${obdKm.toLocaleString('nl')} km`;
+    }
+
+    // Log
+    scanLogAdd({ type:'rdw', msg:`Kent:${kent} Merk:${v.merk} Model:${v.handelsbenaming} Jaar:${(v.datum_eerste_toelating||'').slice(0,4)} APK:${apkVerval} Recall:${recallActief} Import:${import_auto}` });
+    log(`🔍 RDW Koopcheck: ${v.merk} ${v.handelsbenaming} — APK tot ${apkVerval}`, 'ok');
+
+  } catch(e) {
+    st.textContent = '❌ RDW niet bereikbaar: ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+function formatRdwDate(s){
+  if(!s||s.length<8) return '?';
+  // format: YYYYMMDD
+  const clean = String(s).replace(/[^0-9]/g,'').slice(0,8);
+  if(clean.length<8) return s;
+  return `${clean.slice(6,8)}-${clean.slice(4,6)}-${clean.slice(0,4)}`;
+}
+
+function maandenTotAPK(s){
+  try {
+    const clean = String(s).replace(/[^0-9]/g,'').slice(0,8);
+    const d = new Date(clean.slice(0,4)+'-'+clean.slice(4,6)+'-'+clean.slice(6,8));
+    const now = new Date();
+    return Math.round((d - now) / (1000*60*60*24*30.4));
+  } catch(e){ return null; }
+}
+
+function getObdKmStand(){
+  // Probeer OBD kilometer uit bestaande PID data (0131 = distance)
+  try {
+    const ds = window._ds || {};
+    if(ds['0131']) return Math.round(ds['0131']);
+    if(ds['01A6']) return Math.round(ds['01A6']);
+  } catch(e){}
+  return null;
+}
+
+// ── Onderhoud bij km-stand (AI) ──────────────────────────
+function buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt){
+  return `Jij bent een senior automonteur. Geef een concreet onderhoudsoordeel.
+
+Voertuig: ${merk} ${model} bouwjaar ${jaar}
+Kilometerstand: ${km.toLocaleString('nl')} km
+Serviceboekje: ${boekje}
+Laatste beurt geregistreerd bij: ${laagsteBeurt ? laagsteBeurt.toLocaleString('nl')+' km' : 'onbekend'}
+
+Geef:
+1. Welke onderhoudsintervals voor dit specifieke merk/model normaal zijn bij deze km-stand (distributieriem, vloeistoffen, remmen, bougies, etc.)
+2. Of er achterstand is op basis van bovenstaande info
+3. Schat de verwachte kosten voor eventuele achterstallig onderhoud in euro's
+
+Antwoord in maximaal 200 woorden, Nederlands, concreet en zonder inleiding. Formaat:
+ONDERHOUDSCHECK: [ok/aandacht/achterstand]
+VERWACHTE KOSTEN: €[bedrag]
+DETAILS: [max 150 woorden]`;
+}
+
+// ── AI prijsschatting prompt ──────────────────────────────
+function buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten){
+  return `Jij bent een Nederlandse automarkt expert. Geef een marktwaardeschatting.
+
+Voertuig: ${merk} ${model} bouwjaar ${jaar}
+Kilometerstand: ${km.toLocaleString('nl')} km
+Kleur: ${kleur||'onbekend'}
+APK nog geldig: ${apkMaanden !== null ? apkMaanden+' maanden' : 'onbekend'}
+Serviceboekje: ${boekje}
+Actieve DTC foutcodes: ${dtcCount}
+Geschatte achterstallig onderhoud: €${onderhoudKosten||0}
+${vraagprijs ? 'Vraagprijs dealer: €'+parseInt(vraagprijs).toLocaleString('nl') : ''}
+
+Geef:
+1. Geschatte marktwaarde range op Marktplaats/AutoTrack NL
+2. Of de vraagprijs reëel is (als opgegeven)
+3. Onderhandelruimte advies in euro's
+
+Antwoord in maximaal 150 woorden, Nederlands. Formaat:
+MARKTWAARDE: €[min] – €[max]
+OORDEEL PRIJS: [te hoog/reëel/koopje] (alleen als vraagprijs opgegeven)
+ONDERHANDELEN: [advies in 1 zin]
+TOELICHTING: [max 100 woorden]`;
+}
+
+// ── Hoofd Koopcheck functie ────────────────────────────────
+async function runKoopcheck(){
+  const btn = document.getElementById('koopBtn');
+  const res = document.getElementById('koopResults');
+  const km  = parseInt(document.getElementById('koopKmInput').value)||0;
+  const boekje = document.getElementById('koopBoekje').value;
+  const laagsteBeurt = parseInt(document.getElementById('koopLaatsteBeurt').value)||0;
+  const vraagprijs = document.getElementById('koopVraagprijs').value;
+
+  // Haal voertuig op
+  const merk  = vehicleInfo.merk  || (_koopRdwData ? _koopRdwData.merk : '');
+  const model = vehicleInfo.model || (_koopRdwData ? _koopRdwData.handelsbenaming : '');
+  const jaar  = vehicleInfo.year  || (_koopRdwData ? (_koopRdwData.datum_eerste_toelating||'').slice(0,4) : '');
+  const kleur = _koopRdwData ? _koopRdwData.eerste_kleur : '';
+  const apkMaanden = _koopRdwData ? maandenTotAPK(_koopRdwData.vervaldatum_apk) : null;
+
+  if(!merk){ res.innerHTML='<div style="color:var(--rd);font-size:11px;padding:8px">❌ Voer eerst het kenteken in en klik RDW opzoeken.</div>'; return; }
+  if(!km){   res.innerHTML='<div style="color:var(--rd);font-size:11px;padding:8px">❌ Voer de kilometerstand in.</div>'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyseren...';
+
+  // DTC count ophalen
+  const dtcCount = window._dtcList ? window._dtcList.length : 0;
+
+  // Scan log entry
+  const scanEntry = {
+    type: 'koopcheck',
+    msg: `${merk} ${model} ${jaar} | ${km} km | boekje:${boekje} | dtc:${dtcCount} | vraagprijs:${vraagprijs||'n.v.t.'}`,
+    kenteken: _koopRdwData?._kent||'',
+    vin: vehicleInfo.vin||'',
+    merk, model, jaar, km, boekje, dtcCount, vraagprijs,
+    rdw_apk_maanden: apkMaanden,
+    rdw_recall: _koopRdwData?._recall||false,
+  };
+
+  res.innerHTML = `
+    <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;color:#a78bfa;margin-bottom:8px">⏳ Onderhoudcheck bezig...</div>
+      <div id="koopOnderhoudRes" style="font-size:11px;color:var(--tx2)">AI analyseert onderhoudshistorie...</div>
+    </div>
+    <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;color:#22d3ee;margin-bottom:8px">⏳ Prijsschatting bezig...</div>
+      <div id="koopPrijsRes" style="font-size:11px;color:var(--tx2)">AI schat marktwaarde...</div>
+    </div>`;
+
+  let onderhoudKosten = 0;
+
+  // ── Onderhoudcheck AI call ──
+  try {
+    const prompt1 = buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt);
+    const resp1 = await apiFetch([{role:'user',content:prompt1}], 800);
+    const text1 = resp1?.content?.[0]?.text || 'Geen reactie';
+    document.getElementById('koopOnderhoudRes').innerHTML = formatKoopAI(text1, 'onderhoud');
+
+    // Kosten uit response extraheren
+    const kostenMatch = text1.match(/VERWACHTE KOSTEN:\s*€?\s*([\d.,]+)/i);
+    if(kostenMatch) onderhoudKosten = parseInt(kostenMatch[1].replace(/[.,]/g,''))||0;
+
+    scanEntry.onderhoud_ai = text1.slice(0,300);
+    scanLogAdd({ type:'koopcheck-onderhoud', msg:`${merk} ${model} ${jaar} ${km}km: ${text1.slice(0,200)}` });
+  } catch(e) {
+    document.getElementById('koopOnderhoudRes').textContent = 'AI niet beschikbaar: ' + e.message;
+  }
+
+  // ── Prijsschatting AI call ──
+  try {
+    const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten);
+    const resp2 = await apiFetch([{role:'user',content:prompt2}], 600);
+    const text2 = resp2?.content?.[0]?.text || 'Geen reactie';
+    document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
+
+    scanEntry.prijs_ai = text2.slice(0,300);
+    scanLogAdd({ type:'koopcheck-prijs', msg:`${merk} ${model} ${jaar} ${km}km: ${text2.slice(0,200)}` });
+  } catch(e) {
+    document.getElementById('koopPrijsRes').textContent = 'AI niet beschikbaar: ' + e.message;
+  }
+
+  // Sla volledige scanEntry op
+  scanLogAdd(scanEntry);
+
+  // Voeg disclaimer toe
+  document.getElementById('koopResults').innerHTML += `
+    <div style="margin-top:12px;padding:8px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px;font-size:9px;color:var(--tx3);line-height:1.5">
+      <strong>⚖️ Disclaimer:</strong> PidLane biedt deze analyse uitsluitend ter informatie. De AI-analyse, RDW-gegevens en prijsschatting zijn indicatief en kunnen fouten bevatten. PidLane, haar ontwikkelaars en medewerkers zijn niet aansprakelijk voor beslissingen genomen op basis van deze analyse, voor verborgen gebreken die niet detecteerbaar zijn via OBD2-uitlezing, noch voor enige directe of indirecte schade voortvloeiend uit gebruik van de Koopcheck. Raadpleeg altijd een erkende BOVAG/RAI-garage voor een complete aankoopkeuring. © PidLane 2026
+    </div>`;
+
+  btn.disabled = false;
+  btn.textContent = '🔍 Voer Aankoopcheck opnieuw uit';
+  log(`🔍 Koopcheck klaar: ${merk} ${model} ${jaar} — ${km.toLocaleString('nl')} km`, 'ok');
+}
+
+function formatKoopAI(text, type){
+  // Maak AI output leesbaar met gekleurde labels
+  const colors = {
+    'ONDERHOUDSCHECK:': '#22c55e',
+    'VERWACHTE KOSTEN:': '#f97316',
+    'DETAILS:': 'var(--tx)',
+    'MARKTWAARDE:': '#22d3ee',
+    'OORDEEL PRIJS:': '#a78bfa',
+    'ONDERHANDELEN:': '#f97316',
+    'TOELICHTING:': 'var(--tx)',
+  };
+  let html = text;
+  Object.entries(colors).forEach(([label, color]) => {
+    html = html.replace(new RegExp(label.replace(':','\\:'), 'gi'),
+      `<span style="font-weight:700;color:${color}">${label}</span>`);
+  });
+  return `<div style="white-space:pre-wrap;line-height:1.6">${html}</div>`;
+}
+
+// ── Auto-prefill kenteken vanuit bestaande vehicleInfo ──
+document.addEventListener('DOMContentLoaded', ()=>{
+  const savedKent = localStorage.getItem('pl_kenteken')||'';
+  if(savedKent){
+    const el = document.getElementById('koopKentInput');
+    if(el) el.value = savedKent;
+  }
+});
+
+// ══ EINDE KOOPCHECK MODULE ══
+
+
+
+-e 
 </script>
 
 
