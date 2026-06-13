@@ -528,6 +528,12 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   </div>
   <div class="welcome-scroll">
     <div class="welcome-choices" style="margin-top:4px">
+      <div class="choice-card full" id="wc-koop" style="border-color:#00b4cc;background:linear-gradient(135deg,#001a1f,#04323b)">
+        <span class="choice-icon">🛒</span>
+        <div class="choice-title" style="color:#5ef3ff">Koopcheck — 2 minuten</div>
+        <div class="choice-desc" style="color:rgba(255,255,255,.85)">Snelle technische check voor aankoop of inruil. In 2 minuten een onderbouwd go/no-go met rapport.</div>
+        <span class="choice-tag" style="background:#00b4cc">⭐ Voor verkoop & inkoop</span>
+      </div>
       <div class="choice-card hl" id="wc-diag">
         <span class="choice-icon">🧠</span>
         <div class="choice-title w">Diagnose op probleem</div>
@@ -644,7 +650,6 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <button class="tab" onclick="sw('graph',this)">📈 Grafiek</button>
       <button class="tab" onclick="sw('dtc',this)">🔴 DTC</button>
       <button class="tab" onclick="sw('fuel',this)" style="color:var(--or);font-weight:700;">⛽ Besparing</button>
-      <button class="tab" onclick="sw('koop',this)" style="color:#a78bfa;font-weight:700;">🔍 Koopcheck</button>
     </div>
     <div class="tb">
 
@@ -793,96 +798,6 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <div id="fuelResults"></div>
       </div>
 
-      <!-- ══ KOOPCHECK PANE ══ -->
-      <div class="pane" id="pane-koop">
-
-        <!-- Header -->
-        <div style="background:linear-gradient(135deg,#1a0a2e,#0f1729);border:1px solid #7c3aed44;border-radius:var(--r);padding:12px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
-          <div style="font-size:24px;flex-shrink:0">🔍</div>
-          <div>
-            <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:2px">Aankoopcheck</div>
-            <div style="font-size:11px;color:var(--tx2);line-height:1.5">Verbind OBD2, voer kenteken in na verbinding. PidLane analyseert voertuighistorie, onderhoudsachterstand en schat de marktwaarde.</div>
-          </div>
-        </div>
-
-        <!-- Stap 1: Kenteken -->
-        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 1 — Kenteken & RDW data</div>
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px">
-            <input id="koopKentInput" class="api-inp" type="text" placeholder="bijv. 01GNR6" maxlength="8"
-              style="flex:1;text-transform:uppercase;letter-spacing:2px;font-weight:700;font-size:13px"
-              oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase()"
-              onkeydown="if(event.key==='Enter')koopRdwLookup()">
-            <button class="btn pri" onclick="koopRdwLookup()" id="koopRdwBtn" style="padding:7px 12px;font-size:11px;white-space:nowrap">🔍 RDW opzoeken</button>
-          </div>
-          <div id="koopRdwStatus" style="font-size:10px;color:var(--tx3);min-height:14px"></div>
-          <!-- RDW data kaarten -->
-          <div id="koopRdwCards" style="display:none;margin-top:10px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="koopRdwGrid"></div>
-            <div id="koopRecallBanner" style="display:none;background:linear-gradient(135deg,#450a0a,#7f1d1d);border:1px solid #ef4444;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:11px;color:#fca5a5;font-weight:700">⚠️ RECALL ACTIEF — Terugroepactie van fabrikant geregistreerd bij RDW</div>
-          </div>
-        </div>
-
-        <!-- Stap 2: Km-stand -->
-        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 2 — Kilometerstand</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input id="koopKmInput" class="api-inp" type="number" placeholder="bijv. 87500" min="0" max="999999" style="flex:1;font-size:13px;font-weight:700">
-            <span style="font-size:11px;color:var(--tx2);white-space:nowrap">km</span>
-          </div>
-          <div style="font-size:9px;color:var(--tx3);margin-top:4px" id="koopKmHint">Voer de kilometerstand van de teller in (OBD2 geeft de echte tellerstand niet vrij)</div>
-        </div>
-
-        <!-- Stap 3: Servicehistorie -->
-        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 3 — Servicehistorie (optioneel)</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <label style="font-size:10px;color:var(--tx2)">
-              Serviceboekje aanwezig?
-              <select id="koopBoekje" class="api-inp" style="margin-top:3px;font-size:11px">
-                <option value="onbekend">Onbekend</option>
-                <option value="compleet">Ja — volledig bijgehouden</option>
-                <option value="deels">Ja — deels bijgehouden</option>
-                <option value="nee">Nee</option>
-              </select>
-            </label>
-            <label style="font-size:10px;color:var(--tx2)">
-              Laatste beurt bij km
-              <input id="koopLaatsteBeurt" class="api-inp" type="number" placeholder="bijv. 80000" style="margin-top:3px;font-size:11px">
-            </label>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-            <label style="font-size:10px;color:var(--tx2)">
-              Aantal sleutels
-              <select id="koopSleutels" class="api-inp" style="margin-top:3px;font-size:11px">
-                <option value="2">2 (normaal)</option>
-                <option value="1">1</option>
-                <option value="3">3+</option>
-              </select>
-            </label>
-            <label style="font-size:10px;color:var(--tx2)">
-              Vraagprijs dealer (€)
-              <input id="koopVraagprijs" class="api-inp" type="number" placeholder="bijv. 14500" style="margin-top:3px;font-size:11px">
-            </label>
-          </div>
-        </div>
-
-        <!-- Analyseer knop -->
-        <button class="btn pri" onclick="runKoopcheck()" id="koopBtn"
-          style="width:100%;padding:13px;font-size:13px;font-weight:700;margin-bottom:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none">
-          🔍 Voer Aankoopcheck uit
-        </button>
-
-        <!-- Resultaten -->
-        <div id="koopResults"></div>
-
-        <!-- Scan log download -->
-        <div style="display:flex;justify-content:flex-end;margin-top:8px">
-          <button onclick="downloadScanLog()" style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--bd);background:transparent;color:var(--tx3);cursor:pointer">💾 Scan log downloaden</button>
-        </div>
-
-      </div><!-- pane-koop -->
-
     </div><!-- tb -->
     <div class="logbar" id="logbar"></div>
     <div style="display:flex;justify-content:flex-end;padding:3px 8px;background:var(--sur2);border-top:1px solid var(--bd)">
@@ -901,7 +816,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       </div>
       <button class="ai-run" onclick="runQuickAI()" id="aiBtn">🔬 Snelle AI analyse</button>
       <button onclick="startDatalog()" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:none;align-items:center;justify-content:center;gap:5px" id="datalogBtn" class="adminOnly">📊 AI Datalog (20 sec)</button>
-      <button onclick="openRitAnalyse()" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,245,255,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,245,255,.05);color:#00b4cc;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🚗 Rit Analyse (10 min)</button>
+      <button onclick="openRitAnalyse('kort')" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,245,255,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,245,255,.05);color:#00b4cc;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🛒 Koopcheck (2 min)</button>
+      <button onclick="openRitAnalyse('vol')" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🚗 Uitgebreide check (10 min)</button>
       <div class="ai-note">Datalog & Rit Analyse = betrouwbaarder dan momentopname.</div>
       <div class="ai-scr" id="aiContent">
         <div class="ai-ph"><div class="pi">🔬</div><p>Verbind de OBD2 adapter en kies een startoptie.<br><br><strong>🧠 Diagnose</strong> zoekt de meest voorkomende oorzaak en bewijst dit via live PIDs.</p></div>
@@ -965,20 +881,20 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0">
       <div>
         <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:2px">🚗 Rit Analyse</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4)" id="ritStatus">Start rijden — minimaal 10 minuten</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)" id="ritStatus">Klaar om te starten</div>
       </div>
       <button onclick="closeRitAnalyse()" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer">✕ Sluiten</button>
     </div>
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:14px;flex-shrink:0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1px">VOORTGANG</div>
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1px">VOORTGANG <span id="ritDurLabel" style="color:#00f5ff;letter-spacing:0;font-weight:600;margin-left:4px"></span></div>
         <div id="ritTimer" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:#00f5ff">0:00</div>
       </div>
       <div style="background:rgba(255,255,255,.08);border-radius:4px;height:6px;overflow:hidden">
         <div id="ritProgress" style="height:100%;background:linear-gradient(90deg,#00f5ff,#a78bfa);border-radius:4px;width:0%;transition:width .5s ease"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:9px;color:rgba(255,255,255,.3)">
-        <span>0 min</span><span>2 min</span><span>4 min</span><span>6 min</span><span>8 min</span><span>10 min</span>
+      <div id="ritBalkLabels" style="display:flex;justify-content:space-between;margin-top:5px;font-size:9px;color:rgba(255,255,255,.3)">
+        <span>0:00</span><span>0:30</span><span>1:00</span><span>1:30</span><span>2:00</span>
       </div>
     </div>
     <div id="ritCurrentPhase" style="background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;flex-shrink:0">
@@ -2913,7 +2829,7 @@ function updateReco(){
   } else if(!window._didTotalCheck&&!window._didDTCScan){
     set('🚦','Start met de Totaalcheck','Aanbevolen eerste stap: complete conditiecheck in 1 minuut',()=>sw('check',document.querySelectorAll('.tab')[1]));
   } else if(!window._didRit){
-    set('🚗','Doe een Rit Analyse','10 minuten rijden voor het volledige beeld — incl. rapport voor de garage',()=>{sw('graph',document.querySelectorAll('.tab')[3]);openRitAnalyse();});
+    set('🛒','Doe een Koopcheck','2 minuten rijden voor een onderbouwd go/no-go — incl. rapport voor de garage',()=>{sw('graph',document.querySelectorAll('.tab')[3]);openRitAnalyse('kort');});
   } else {
     set('✅','Alles gecheckt','Je voertuig is volledig doorgemeten. Bekijk de grafieken of exporteer een rapport',()=>sw('graph',document.querySelectorAll('.tab')[3]));
   }
@@ -4054,11 +3970,6 @@ async function rdwLookup(){
     vehicleInfo.model=v.handelsbenaming||'';
     vehicleInfo.year=jaar||vehicleInfo.year;
     localStorage.setItem('pl_kenteken',kent);
-    // Sla ook extra RDW velden op voor Koopcheck
-    if(!_koopRdwData) _koopRdwData = { ...v, _kent: kent };
-    // Prefill Koopcheck kenteken input
-    const ki = document.getElementById('koopKentInput');
-    if(ki && !ki.value) ki.value = kent;
     const merkEl=document.getElementById('vicMerk');
     if(merkEl) merkEl.textContent=`${vehicleInfo.merk} ${vehicleInfo.model}`.trim();
     if(st) st.textContent=`✓ ${vehicleInfo.merk} ${vehicleInfo.model} (${jaar}) — ${v.eerste_kleur||''}`.trim();
@@ -4719,6 +4630,7 @@ function zoomReset(){currentZoom=1.0;applyZoom();}
 document.addEventListener('DOMContentLoaded', function(){
 
   // Welcome card klikkers
+  document.getElementById('wc-koop').onclick=()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('kort'); };
   document.getElementById('wc-diag').onclick=()=>startChoice('diag');
   document.getElementById('wc-check').onclick=()=>startChoice('check');
   document.getElementById('wc-live').onclick=()=>startChoice('live');
@@ -4962,22 +4874,55 @@ window.addEventListener('resize',()=>{
 // ════════════════════════════════════════
 // RIT ANALYSE
 // ════════════════════════════════════════
-const RIT_FASEN=[
-  {naam:'Motor & Vermogen',    icon:'⚡', duur:120, pids:['010C','0104','0111','010B','010E'], desc:'RPM, belasting, gasklep, inlaatdruk, timing'},
-  {naam:'Brandstof & Emissie', icon:'⛽', duur:120, pids:['0106','0107','0110','0113','0115'], desc:'Brandstoftrim, MAF, O2 sensoren'},
-  {naam:'Temperatuur',         icon:'🌡️', duur:60,  pids:['0105','015C','010F','0146'],       desc:'Koelwater, olie, inlaatlucht, omgevingstemperatuur'},
-  {naam:'Accu & Electrisch',   icon:'🔋', duur:60,  pids:['0142','0104','010C'],              desc:'Spanning, belasting onder belasting'},
-  {naam:'Rijgedrag',           icon:'🚗', duur:120, pids:['010D','0149','010C','0104'],       desc:'Snelheid, gaspedaal, acceleratie patronen'},
-  {naam:'Alles tegelijk',      icon:'📊', duur:120, pids:['010C','010D','0105','0142','0106','0107','0110'], desc:'Combinatie overzicht voor correlaties'},
-];
-const RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0); // 10 minuten
+// Twee check-profielen. 'kort' = Koopcheck (~2 min, door klant verzocht),
+// 'vol' = Uitgebreide check (~10 min, behouden voor diepe analyse).
+const RIT_PROFIELEN={
+  kort:[
+    {naam:'Motor & Vermogen',    icon:'⚡', duur:40, pids:['010C','0104','0111','010B','010E'], desc:'RPM, belasting, gasklep, inlaatdruk, timing'},
+    {naam:'Brandstof & Emissie', icon:'⛽', duur:35, pids:['0106','0107','0110','0113'],        desc:'Brandstoftrim, MAF, O2 sensoren'},
+    {naam:'Temperatuur',         icon:'🌡️', duur:25, pids:['0105','015C','010F'],               desc:'Koelwater, olie, inlaatlucht'},
+    {naam:'Accu & Electrisch',   icon:'🔋', duur:20, pids:['0142','0104','010C'],               desc:'Spanning onder belasting'},
+  ],
+  vol:[
+    {naam:'Motor & Vermogen',    icon:'⚡', duur:120, pids:['010C','0104','0111','010B','010E'], desc:'RPM, belasting, gasklep, inlaatdruk, timing'},
+    {naam:'Brandstof & Emissie', icon:'⛽', duur:120, pids:['0106','0107','0110','0113','0115'], desc:'Brandstoftrim, MAF, O2 sensoren'},
+    {naam:'Temperatuur',         icon:'🌡️', duur:60,  pids:['0105','015C','010F','0146'],       desc:'Koelwater, olie, inlaatlucht, omgevingstemperatuur'},
+    {naam:'Accu & Electrisch',   icon:'🔋', duur:60,  pids:['0142','0104','010C'],              desc:'Spanning, belasting onder belasting'},
+    {naam:'Rijgedrag',           icon:'🚗', duur:120, pids:['010D','0149','010C','0104'],       desc:'Snelheid, gaspedaal, acceleratie patronen'},
+    {naam:'Alles tegelijk',      icon:'📊', duur:120, pids:['010C','010D','0105','0142','0106','0107','0110'], desc:'Combinatie overzicht voor correlaties'},
+  ],
+};
+let ritMode='kort';
+let RIT_FASEN=RIT_PROFIELEN[ritMode];
+let RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0);
+
+// Tijdbalk-labels meeschalen met de gekozen duur (lost "balk te groot" op)
+function renderRitBalk(){
+  const totMin=RIT_TOTAAL/60;
+  const labelRow=document.getElementById('ritBalkLabels');
+  if(labelRow){
+    const steps=4; const out=[];
+    for(let i=0;i<=steps;i++){
+      const sec=Math.round(RIT_TOTAAL*i/steps);
+      const m=Math.floor(sec/60), s=sec%60;
+      out.push(`<span>${m}:${s.toString().padStart(2,'0')}</span>`);
+    }
+    labelRow.innerHTML=out.join('');
+  }
+  const dur=document.getElementById('ritDurLabel');
+  if(dur) dur.textContent=totMin<3?`±${Math.round(totMin)} min — Koopcheck`:`±${Math.round(totMin)} min — Uitgebreid`;
+}
 
 let ritActive=false, ritFaseIdx=0, ritFaseTimer=null, ritTotalTimer=null;
 let ritStartTime=null, ritLogs=[], ritFaseData={};
 
-function openRitAnalyse(){
+function openRitAnalyse(mode){
+  if(mode==='kort'||mode==='vol'){ ritMode=mode; }
+  RIT_FASEN=RIT_PROFIELEN[ritMode];
+  RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0);
   document.getElementById('ritDash').style.display='block';
   resetRitUI();
+  renderRitBalk();
 }
 function closeRitAnalyse(){
   if(ritActive) stopRitAnalyse();
@@ -4987,7 +4932,8 @@ function closeRitAnalyse(){
 function resetRitUI(){
   document.getElementById('ritProgress').style.width='0%';
   document.getElementById('ritTimer').textContent='0:00';
-  document.getElementById('ritStatus').textContent='Start rijden — minimaal 10 minuten';
+  const totMin=Math.max(1,Math.round(RIT_TOTAAL/60));
+  document.getElementById('ritStatus').textContent=`Start rijden — ±${totMin} ${totMin===1?'minuut':'minuten'}`;
   document.getElementById('ritPhaseName').textContent='Wachten op start...';
   document.getElementById('ritPhaseDesc').textContent='';
   document.getElementById('ritPhaseResults').innerHTML='';
@@ -5250,328 +5196,6 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
   download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
   log('🚗 Rit rapport gedownload','ok');
 }
-
-// ══════════════════════════════════════════════════════
-// KOOPCHECK MODULE — v1.0  //  Datum: 2026-06-13
-// RDW lookup · Onderhoudcheck · AI prijsschatting · Scan log
-// ══════════════════════════════════════════════════════
-
-// ── Scan Log (lokaal, per sessie) ──────────────────────
-let _scanLog = [];
-function scanLogAdd(entry){
-  _scanLog.push({ ts: new Date().toISOString(), ...entry });
-  try { localStorage.setItem('pl_scanlog', JSON.stringify(_scanLog.slice(-200))); } catch(e){}
-}
-function downloadScanLog(){
-  try { const saved = localStorage.getItem('pl_scanlog'); if(saved) _scanLog = JSON.parse(saved); } catch(e){}
-  if(!_scanLog.length){ alert('Nog geen scan log beschikbaar.'); return; }
-  const lines = [
-    `PidLane Scan Log — Gegenereerd: ${new Date().toLocaleString('nl')}`,
-    '='.repeat(60),
-    ...(_scanLog.map(e => {
-      const ts = e.ts || '';
-      const type = (e.type||'info').toUpperCase().padEnd(8);
-      const msg = e.msg || JSON.stringify(e);
-      return `[${ts}] [${type}] ${msg}`;
-    }))
-  ];
-  download(`pidlane-scanlog-${new Date().toISOString().slice(0,10)}.txt`, lines.join('\n'));
-}
-
-// ── Uitgebreide RDW lookup voor Koopcheck ──────────────
-let _koopRdwData = null;
-async function koopRdwLookup(){
-  const inp = document.getElementById('koopKentInput');
-  const st  = document.getElementById('koopRdwStatus');
-  const cards = document.getElementById('koopRdwCards');
-  const grid  = document.getElementById('koopRdwGrid');
-  if(!inp) return;
-  const kent = inp.value.replace(/[\s-]/g,'').toUpperCase();
-  if(kent.length < 4){ st.textContent = 'Voer een geldig kenteken in (bijv. 01GNR6)'; return; }
-  st.textContent = '⏳ RDW opzoeken...';
-  cards.style.display = 'none';
-  const btn = document.getElementById('koopRdwBtn');
-  btn.disabled = true;
-
-  try {
-    // Hoofddata
-    const r1 = await fetch(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`);
-    const d1 = await r1.json();
-    if(!d1||!d1.length){ st.textContent = '❌ Kenteken niet gevonden bij RDW'; btn.disabled=false; return; }
-    const v = d1[0];
-
-    // APK dataset
-    let apkData = null;
-    try {
-      const r2 = await fetch(`https://opendata.rdw.nl/resource/sgfe-77wx.json?kenteken=${encodeURIComponent(kent)}&$limit=1`);
-      const d2 = await r2.json();
-      if(d2&&d2.length) apkData = d2[0];
-    } catch(e){}
-
-    // Recall check (op merk)
-    let recallActief = false;
-    try {
-      const merk = (v.merk||'').toUpperCase();
-      const r3 = await fetch(`https://opendata.rdw.nl/resource/af5r-44mf.json?$where=upper(merk_type_fabrikant)%20like%20'%25${encodeURIComponent(merk)}%25'&$limit=5`);
-      const d3 = await r3.json();
-      recallActief = d3 && d3.length > 0;
-    } catch(e){}
-
-    _koopRdwData = { ...v, _apk: apkData, _recall: recallActief, _kent: kent };
-    localStorage.setItem('pl_kenteken', kent);
-
-    // Voer ook vehicleInfo bij voor AI
-    vehicleInfo.merk  = v.merk || vehicleInfo.merk;
-    vehicleInfo.model = v.handelsbenaming || vehicleInfo.model;
-    vehicleInfo.year  = (v.datum_eerste_toelating||'').slice(0,4) || vehicleInfo.year;
-
-    // Bereken tenaamstelling info
-    const datTenaam = v.datum_tenaamstelling ? formatRdwDate(v.datum_tenaamstelling) : '?';
-    const datEerste = v.datum_eerste_toelating ? formatRdwDate(v.datum_eerste_toelating) : '?';
-    const datEersteNL = v.datum_eerste_tenaamstelling_in_nederland ? formatRdwDate(v.datum_eerste_tenaamstelling_in_nederland) : '?';
-    const apkVerval = v.vervaldatum_apk ? formatRdwDate(v.vervaldatum_apk) : '?';
-    const maandenTot = v.vervaldatum_apk ? maandenTotAPK(v.vervaldatum_apk) : null;
-    const bpm = v.bruto_bpm ? `€ ${parseInt(v.bruto_bpm).toLocaleString('nl')}` : '?';
-    const import_auto = v.datum_eerste_tenaamstelling_in_nederland && v.datum_eerste_toelating &&
-      v.datum_eerste_tenaamstelling_in_nederland.slice(0,4) !== v.datum_eerste_toelating.slice(0,4);
-
-    // APK kleur
-    let apkKleur = '#6b7280';
-    if(maandenTot !== null){
-      if(maandenTot < 0) apkKleur = '#ef4444';
-      else if(maandenTot < 3) apkKleur = '#f97316';
-      else if(maandenTot < 6) apkKleur = '#eab308';
-      else apkKleur = '#22c55e';
-    }
-
-    // Recall banner
-    document.getElementById('koopRecallBanner').style.display = recallActief ? 'block' : 'none';
-
-    // Render kaarten
-    const kaarten = [
-      { label:'Merk & Model',   val:`${v.merk||'?'} ${v.handelsbenaming||''}`.trim(), ico:'🚗' },
-      { label:'Bouwjaar',       val:(v.datum_eerste_toelating||'????').slice(0,4), ico:'📅' },
-      { label:'Eerste toelating', val:datEerste, ico:'🏭' },
-      { label:'Eerste NL',      val:datEersteNL + (import_auto ? ' ⚠️ Import' : ''), ico:'🇳🇱' },
-      { label:'Huidige eigenaar sinds', val:datTenaam, ico:'👤' },
-      { label:'APK geldig tot', val:`${apkVerval}`, ico:'🔧', kleur:apkKleur },
-      { label:'Kleur',          val:`${v.eerste_kleur||'?'}${v.tweede_kleur?'+'+v.tweede_kleur:''}`, ico:'🎨' },
-      { label:'Cilinderinhoud', val:v.cilinderinhoud ? v.cilinderinhoud+' cc' : '?', ico:'⚙️' },
-      { label:'Bruto BPM',      val:bpm, ico:'💶' },
-      { label:'Recall RDW',     val:recallActief ? '⚠️ JA' : '✅ Geen', ico:'🔔', kleur:recallActief?'#ef4444':'#22c55e' },
-    ];
-    grid.innerHTML = kaarten.map(k=>`
-      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:7px 9px">
-        <div style="font-size:9px;color:var(--tx3);margin-bottom:2px">${k.ico} ${k.label}</div>
-        <div style="font-size:11px;font-weight:700;color:${k.kleur||'var(--tx)'}">${k.val||'?'}</div>
-      </div>`).join('');
-
-    cards.style.display = 'block';
-    st.textContent = `✅ ${v.merk} ${v.handelsbenaming} (${(v.datum_eerste_toelating||'').slice(0,4)}) — ${v.eerste_kleur||''}`;
-
-    // Log
-    scanLogAdd({ type:'rdw', msg:`Kent:${kent} Merk:${v.merk} Model:${v.handelsbenaming} Jaar:${(v.datum_eerste_toelating||'').slice(0,4)} APK:${apkVerval} Recall:${recallActief} Import:${import_auto}` });
-    log(`🔍 RDW Koopcheck: ${v.merk} ${v.handelsbenaming} — APK tot ${apkVerval}`, 'ok');
-
-  } catch(e) {
-    st.textContent = '❌ RDW niet bereikbaar: ' + e.message;
-  }
-  btn.disabled = false;
-}
-
-function formatRdwDate(s){
-  if(!s||s.length<8) return '?';
-  // format: YYYYMMDD
-  const clean = String(s).replace(/[^0-9]/g,'').slice(0,8);
-  if(clean.length<8) return s;
-  return `${clean.slice(6,8)}-${clean.slice(4,6)}-${clean.slice(0,4)}`;
-}
-
-function maandenTotAPK(s){
-  try {
-    const clean = String(s).replace(/[^0-9]/g,'').slice(0,8);
-    const d = new Date(clean.slice(0,4)+'-'+clean.slice(4,6)+'-'+clean.slice(6,8));
-    const now = new Date();
-    return Math.round((d - now) / (1000*60*60*24*30.4));
-  } catch(e){ return null; }
-}
-
-function getObdKmStand(){
-  // LET OP: standaard OBD2 PIDs geven GEEN echte kilometerstand (odometer).
-  // PID 0131 is enkel "afstand sinds foutcodes gewist" — niet de tellerstand.
-  // De km-stand moet daarom handmatig worden ingevoerd door de gebruiker.
-  return null;
-}
-
-// ── Onderhoud bij km-stand (AI) ──────────────────────────
-function buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt){
-  return `Jij bent een senior automonteur. Geef een concreet onderhoudsoordeel.
-
-Voertuig: ${merk} ${model} bouwjaar ${jaar}
-Kilometerstand: ${km.toLocaleString('nl')} km
-Serviceboekje: ${boekje}
-Laatste beurt geregistreerd bij: ${laagsteBeurt ? laagsteBeurt.toLocaleString('nl')+' km' : 'onbekend'}
-
-Geef:
-1. Welke onderhoudsintervals voor dit specifieke merk/model normaal zijn bij deze km-stand (distributieriem, vloeistoffen, remmen, bougies, etc.)
-2. Of er achterstand is op basis van bovenstaande info
-3. Schat de verwachte kosten voor eventuele achterstallig onderhoud in euro's
-
-Antwoord in maximaal 200 woorden, Nederlands, concreet en zonder inleiding. Formaat:
-ONDERHOUDSCHECK: [ok/aandacht/achterstand]
-VERWACHTE KOSTEN: €[bedrag]
-DETAILS: [max 150 woorden]`;
-}
-
-// ── AI prijsschatting prompt ──────────────────────────────
-function buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten){
-  return `Jij bent een Nederlandse automarkt expert. Geef een marktwaardeschatting.
-
-Voertuig: ${merk} ${model} bouwjaar ${jaar}
-Kilometerstand: ${km.toLocaleString('nl')} km
-Kleur: ${kleur||'onbekend'}
-APK nog geldig: ${apkMaanden !== null ? apkMaanden+' maanden' : 'onbekend'}
-Serviceboekje: ${boekje}
-Actieve DTC foutcodes: ${dtcCount}
-Geschatte achterstallig onderhoud: €${onderhoudKosten||0}
-${vraagprijs ? 'Vraagprijs dealer: €'+parseInt(vraagprijs).toLocaleString('nl') : ''}
-
-Geef:
-1. Geschatte marktwaarde range op Marktplaats/AutoTrack NL
-2. Of de vraagprijs reëel is (als opgegeven)
-3. Onderhandelruimte advies in euro's
-
-Antwoord in maximaal 150 woorden, Nederlands. Formaat:
-MARKTWAARDE: €[min] – €[max]
-OORDEEL PRIJS: [te hoog/reëel/koopje] (alleen als vraagprijs opgegeven)
-ONDERHANDELEN: [advies in 1 zin]
-TOELICHTING: [max 100 woorden]`;
-}
-
-// ── Hoofd Koopcheck functie ────────────────────────────────
-async function runKoopcheck(){
-  const btn = document.getElementById('koopBtn');
-  const res = document.getElementById('koopResults');
-  const km  = parseInt(document.getElementById('koopKmInput').value)||0;
-  const boekje = document.getElementById('koopBoekje').value;
-  const laagsteBeurt = parseInt(document.getElementById('koopLaatsteBeurt').value)||0;
-  const vraagprijs = document.getElementById('koopVraagprijs').value;
-
-  // Haal voertuig op
-  const merk  = vehicleInfo.merk  || (_koopRdwData ? _koopRdwData.merk : '');
-  const model = vehicleInfo.model || (_koopRdwData ? _koopRdwData.handelsbenaming : '');
-  const jaar  = vehicleInfo.year  || (_koopRdwData ? (_koopRdwData.datum_eerste_toelating||'').slice(0,4) : '');
-  const kleur = _koopRdwData ? _koopRdwData.eerste_kleur : '';
-  const apkMaanden = _koopRdwData ? maandenTotAPK(_koopRdwData.vervaldatum_apk) : null;
-
-  if(!merk){ res.innerHTML='<div style="color:var(--rd);font-size:11px;padding:8px">❌ Voer eerst het kenteken in en klik RDW opzoeken.</div>'; return; }
-  if(!km){   res.innerHTML='<div style="color:var(--rd);font-size:11px;padding:8px">❌ Voer de kilometerstand in.</div>'; return; }
-
-  btn.disabled = true;
-  btn.textContent = '⏳ Analyseren...';
-
-  // DTC count ophalen
-  const dtcCount = (typeof dtcCodes !== 'undefined' && dtcCodes) ? dtcCodes.length : 0;
-
-  // Scan log entry
-  const scanEntry = {
-    type: 'koopcheck',
-    msg: `${merk} ${model} ${jaar} | ${km} km | boekje:${boekje} | dtc:${dtcCount} | vraagprijs:${vraagprijs||'n.v.t.'}`,
-    kenteken: _koopRdwData?._kent||'',
-    vin: vehicleInfo.vin||'',
-    merk, model, jaar, km, boekje, dtcCount, vraagprijs,
-    rdw_apk_maanden: apkMaanden,
-    rdw_recall: _koopRdwData?._recall||false,
-  };
-
-  res.innerHTML = `
-    <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:8px">
-      <div style="font-size:10px;font-weight:700;color:#a78bfa;margin-bottom:8px">⏳ Onderhoudcheck bezig...</div>
-      <div id="koopOnderhoudRes" style="font-size:11px;color:var(--tx2)">AI analyseert onderhoudshistorie...</div>
-    </div>
-    <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:8px">
-      <div style="font-size:10px;font-weight:700;color:#22d3ee;margin-bottom:8px">⏳ Prijsschatting bezig...</div>
-      <div id="koopPrijsRes" style="font-size:11px;color:var(--tx2)">AI schat marktwaarde...</div>
-    </div>`;
-
-  let onderhoudKosten = 0;
-
-  // ── Onderhoudcheck AI call ──
-  try {
-    const prompt1 = buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt);
-    const text1 = await apiFetch(prompt1, 800) || 'Geen reactie';
-    document.getElementById('koopOnderhoudRes').innerHTML = formatKoopAI(text1, 'onderhoud');
-
-    // Kosten uit response extraheren
-    const kostenMatch = text1.match(/VERWACHTE KOSTEN:\s*€?\s*([\d.,]+)/i);
-    if(kostenMatch) onderhoudKosten = parseInt(kostenMatch[1].replace(/[.,]/g,''))||0;
-
-    scanEntry.onderhoud_ai = text1.slice(0,300);
-    scanLogAdd({ type:'koopcheck-onderhoud', msg:`${merk} ${model} ${jaar} ${km}km: ${text1.slice(0,200)}` });
-  } catch(e) {
-    document.getElementById('koopOnderhoudRes').textContent = 'AI niet beschikbaar: ' + e.message;
-  }
-
-  // ── Prijsschatting AI call ──
-  try {
-    const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten);
-    const text2 = await apiFetch(prompt2, 600) || 'Geen reactie';
-    document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
-
-    scanEntry.prijs_ai = text2.slice(0,300);
-    scanLogAdd({ type:'koopcheck-prijs', msg:`${merk} ${model} ${jaar} ${km}km: ${text2.slice(0,200)}` });
-  } catch(e) {
-    document.getElementById('koopPrijsRes').textContent = 'AI niet beschikbaar: ' + e.message;
-  }
-
-  // Sla volledige scanEntry op
-  scanLogAdd(scanEntry);
-
-  // Voeg disclaimer toe
-  document.getElementById('koopResults').innerHTML += `
-    <div style="margin-top:12px;padding:8px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px;font-size:9px;color:var(--tx3);line-height:1.5">
-      <strong>⚖️ Disclaimer:</strong> PidLane biedt deze analyse uitsluitend ter informatie. De AI-analyse, RDW-gegevens en prijsschatting zijn indicatief en kunnen fouten bevatten. PidLane, haar ontwikkelaars en medewerkers zijn niet aansprakelijk voor beslissingen genomen op basis van deze analyse, voor verborgen gebreken die niet detecteerbaar zijn via OBD2-uitlezing, noch voor enige directe of indirecte schade voortvloeiend uit gebruik van de Koopcheck. Raadpleeg altijd een erkende BOVAG/RAI-garage voor een complete aankoopkeuring. © PidLane 2026
-    </div>`;
-
-  btn.disabled = false;
-  btn.textContent = '🔍 Voer Aankoopcheck opnieuw uit';
-  log(`🔍 Koopcheck klaar: ${merk} ${model} ${jaar} — ${km.toLocaleString('nl')} km`, 'ok');
-}
-
-function formatKoopAI(text, type){
-  // Maak AI output leesbaar met gekleurde labels
-  const labels = [
-    ['ONDERHOUDSCHECK:', '#22c55e'],
-    ['VERWACHTE KOSTEN:', '#f97316'],
-    ['DETAILS:', 'var(--tx)'],
-    ['MARKTWAARDE:', '#22d3ee'],
-    ['OORDEEL PRIJS:', '#a78bfa'],
-    ['ONDERHANDELEN:', '#f97316'],
-    ['TOELICHTING:', 'var(--tx)'],
-  ];
-  let html = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  labels.forEach(function(pair){
-    var label = pair[0], color = pair[1];
-    var escaped = label.replace(':','\\:');
-    var re = new RegExp(escaped, 'gi');
-    html = html.replace(re, '<span style="font-weight:700;color:'+color+'">'+label+'</span>');
-  });
-  return '<div style="white-space:pre-wrap;line-height:1.6">'+html+'</div>';
-}
-
-// ── Auto-prefill kenteken vanuit bestaande vehicleInfo ──
-document.addEventListener('DOMContentLoaded', ()=>{
-  const savedKent = localStorage.getItem('pl_kenteken')||'';
-  if(savedKent){
-    const el = document.getElementById('koopKentInput');
-    if(el) el.value = savedKent;
-  }
-});
-
-// ══ EINDE KOOPCHECK MODULE ══
-
-
-
 </script>
 
 
