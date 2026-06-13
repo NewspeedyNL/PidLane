@@ -830,7 +830,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
             <input id="koopKmInput" class="api-inp" type="number" placeholder="bijv. 87500" min="0" max="999999" style="flex:1;font-size:13px;font-weight:700">
             <span style="font-size:11px;color:var(--tx2);white-space:nowrap">km</span>
           </div>
-          <div style="font-size:9px;color:var(--tx3);margin-top:4px" id="koopKmHint">OBD2 km-stand wordt automatisch ingevuld als beschikbaar</div>
+          <div style="font-size:9px;color:var(--tx3);margin-top:4px" id="koopKmHint">Voer de kilometerstand van de teller in (OBD2 geeft de echte tellerstand niet vrij)</div>
         </div>
 
         <!-- Stap 3: Servicehistorie -->
@@ -5246,6 +5246,11 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     closeRitAnalyse();
   }
 
+  // Auto download rapport
+  download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
+  log('🚗 Rit rapport gedownload','ok');
+}
+
 // ══════════════════════════════════════════════════════
 // KOOPCHECK MODULE — v1.0  //  Datum: 2026-06-13
 // RDW lookup · Onderhoudcheck · AI prijsschatting · Scan log
@@ -5364,13 +5369,6 @@ async function koopRdwLookup(){
     cards.style.display = 'block';
     st.textContent = `✅ ${v.merk} ${v.handelsbenaming} (${(v.datum_eerste_toelating||'').slice(0,4)}) — ${v.eerste_kleur||''}`;
 
-    // Prefill km-stand vanuit OBD als beschikbaar
-    const obdKm = getObdKmStand();
-    if(obdKm && !document.getElementById('koopKmInput').value){
-      document.getElementById('koopKmInput').value = obdKm;
-      document.getElementById('koopKmHint').textContent = `✅ OBD2 km-stand automatisch ingevuld: ${obdKm.toLocaleString('nl')} km`;
-    }
-
     // Log
     scanLogAdd({ type:'rdw', msg:`Kent:${kent} Merk:${v.merk} Model:${v.handelsbenaming} Jaar:${(v.datum_eerste_toelating||'').slice(0,4)} APK:${apkVerval} Recall:${recallActief} Import:${import_auto}` });
     log(`🔍 RDW Koopcheck: ${v.merk} ${v.handelsbenaming} — APK tot ${apkVerval}`, 'ok');
@@ -5399,12 +5397,9 @@ function maandenTotAPK(s){
 }
 
 function getObdKmStand(){
-  // Probeer OBD kilometer uit bestaande PID data (0131 = distance)
-  try {
-    const ds = window._ds || {};
-    if(ds['0131']) return Math.round(ds['0131']);
-    if(ds['01A6']) return Math.round(ds['01A6']);
-  } catch(e){}
+  // LET OP: standaard OBD2 PIDs geven GEEN echte kilometerstand (odometer).
+  // PID 0131 is enkel "afstand sinds foutcodes gewist" — niet de tellerstand.
+  // De km-stand moet daarom handmatig worden ingevoerd door de gebruiker.
   return null;
 }
 
@@ -5476,7 +5471,7 @@ async function runKoopcheck(){
   btn.textContent = '⏳ Analyseren...';
 
   // DTC count ophalen
-  const dtcCount = window._dtcList ? window._dtcList.length : 0;
+  const dtcCount = (typeof dtcCodes !== 'undefined' && dtcCodes) ? dtcCodes.length : 0;
 
   // Scan log entry
   const scanEntry = {
@@ -5504,8 +5499,7 @@ async function runKoopcheck(){
   // ── Onderhoudcheck AI call ──
   try {
     const prompt1 = buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt);
-    const resp1 = await apiFetch([{role:'user',content:prompt1}], 800);
-    const text1 = resp1?.content?.[0]?.text || 'Geen reactie';
+    const text1 = await apiFetch(prompt1, 800) || 'Geen reactie';
     document.getElementById('koopOnderhoudRes').innerHTML = formatKoopAI(text1, 'onderhoud');
 
     // Kosten uit response extraheren
@@ -5521,8 +5515,7 @@ async function runKoopcheck(){
   // ── Prijsschatting AI call ──
   try {
     const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten);
-    const resp2 = await apiFetch([{role:'user',content:prompt2}], 600);
-    const text2 = resp2?.content?.[0]?.text || 'Geen reactie';
+    const text2 = await apiFetch(prompt2, 600) || 'Geen reactie';
     document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
 
     scanEntry.prijs_ai = text2.slice(0,300);
@@ -5547,21 +5540,23 @@ async function runKoopcheck(){
 
 function formatKoopAI(text, type){
   // Maak AI output leesbaar met gekleurde labels
-  const colors = {
-    'ONDERHOUDSCHECK:': '#22c55e',
-    'VERWACHTE KOSTEN:': '#f97316',
-    'DETAILS:': 'var(--tx)',
-    'MARKTWAARDE:': '#22d3ee',
-    'OORDEEL PRIJS:': '#a78bfa',
-    'ONDERHANDELEN:': '#f97316',
-    'TOELICHTING:': 'var(--tx)',
-  };
-  let html = text;
-  Object.entries(colors).forEach(([label, color]) => {
-    html = html.replace(new RegExp(label.replace(':','\\:'), 'gi'),
-      `<span style="font-weight:700;color:${color}">${label}</span>`);
+  const labels = [
+    ['ONDERHOUDSCHECK:', '#22c55e'],
+    ['VERWACHTE KOSTEN:', '#f97316'],
+    ['DETAILS:', 'var(--tx)'],
+    ['MARKTWAARDE:', '#22d3ee'],
+    ['OORDEEL PRIJS:', '#a78bfa'],
+    ['ONDERHANDELEN:', '#f97316'],
+    ['TOELICHTING:', 'var(--tx)'],
+  ];
+  let html = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  labels.forEach(function(pair){
+    var label = pair[0], color = pair[1];
+    var escaped = label.replace(':','\\:');
+    var re = new RegExp(escaped, 'gi');
+    html = html.replace(re, '<span style="font-weight:700;color:'+color+'">'+label+'</span>');
   });
-  return `<div style="white-space:pre-wrap;line-height:1.6">${html}</div>`;
+  return '<div style="white-space:pre-wrap;line-height:1.6">'+html+'</div>';
 }
 
 // ── Auto-prefill kenteken vanuit bestaande vehicleInfo ──
@@ -5577,7 +5572,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 
 
--e 
 </script>
 
 
