@@ -7,11 +7,17 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TZ: Europe/Amsterdam
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Set timezone to Europe/Amsterdam
+        run: |
+          sudo timedatectl set-timezone Europe/Amsterdam || sudo ln -sf /usr/share/zoneinfo/Europe/Amsterdam /etc/localtime
+          echo "Runner-tijd is nu: $(date)"
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
 
