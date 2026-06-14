@@ -1,7 +1,17 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-14 13:11 (CET)
+     PidLane — build aangepast: 2026-06-14 17:30 (CET)
      Wijzigingen deze build:
+       • Verbind-stappen: "Druk eerst op pair-knop MX+" toegevoegd
+       • 2-min Snelle Technische Check (knop boven 10-min) — alleen
+         technisch, geen rijgedrag, direct technisch rapport
+       • Hybride/EV-waarschuwing vóór analyse: laat verbrandingsmotor meelopen
+       • Start-scherm: Tester-modus knop + API-key aanvraag bij admin +
+         toestemmingsvinkje voor bundelen/bewaren logs
+       • "📦 Exporteer alle logs" knop: BT + app + scan-log in één bestand
+       • PDF-rapport: automatische TXT-fallback als jsPDF faalt
+     Eerdere build (16:45):
+       • RDW bouwjaar robuust parsen + brandstoftype + voertuig-bewuste PID-set
        • BLE: NON-OBD deny-filter (Shelly/buds/watch/tv genegeerd)
        • BLE: ELM327-verificatie + meerdere kandidaten proberen
        • Verbinden: automatische 2e scanronde
@@ -463,14 +473,22 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div class="msub">Your car talks. We translate.</div>
         </div>
         <div style="padding:0 20px 10px" id="connApiRow">
-          <div class="api-lbl">🤖 API Key (optioneel) <a href="https://console.anthropic.com/settings/keys" target="_blank">Aanmaken →</a></div>
-          <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-..." autocomplete="off">
+          <div class="api-lbl">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
+          <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
+          <button class="btn" id="testerBtn" onclick="toggleTesterMode()" style="width:100%;margin-top:8px;padding:9px;font-size:11px;justify-content:center;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:#00D4FF;font-weight:700">🧪 Tester-modus</button>
+          <div id="testerConsentRow" style="display:none;margin-top:8px;padding:9px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">
+            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:10px;color:var(--tx2);line-height:1.5">
+              <input type="checkbox" id="testerConsent" style="margin-top:1px;flex-shrink:0" onchange="saveTesterConsent()">
+              <span>Ik geef toestemming dat PidLane de BT-logs en overige logs bundelt en bewaart voor analyse. Ik kan ze zelf exporteren via de knop "Exporteer alle logs".</span>
+            </label>
+          </div>
         </div>
         <div class="msteps">
           <div class="mstep"><div class="sn">1</div>Steek OBDLink MX+ adapter in OBD-poort (onder dashboard, links)</div>
           <div class="mstep"><div class="sn">2</div>Zet contact aan — adapter start automatisch op</div>
           <div class="mstep"><div class="sn">3</div><strong>Eenmalig:</strong> koppel via Android Bluetooth instellingen</div>
-          <div class="mstep"><div class="sn">4</div>Klik Verbinden — PidLane verbindt automatisch</div>
+          <div class="mstep"><div class="sn">4</div><strong>Druk eerst op de pair-knop op de MX+</strong> (LED gaat knipperen)</div>
+          <div class="mstep"><div class="sn">5</div>Klik daarna Verbinden — PidLane verbindt automatisch</div>
         </div>
 
         <!-- BT DIAGNOSTIEK LOG -->
@@ -479,6 +497,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
             <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3)">📡 Bluetooth Diagnostiek</div>
             <div style="display:flex;gap:2px">
               <button onclick="copyBtLog(this)" style="font-size:9px;color:#00D4FF;background:none;border:none;cursor:pointer;padding:2px 6px;font-weight:600">📋 Kopieer</button>
+              <button onclick="exportAllLogs()" style="font-size:9px;color:#00FF88;background:none;border:none;cursor:pointer;padding:2px 6px;font-weight:600">📦 Exporteer alle logs</button>
               <button onclick="clearBtLog()" style="font-size:9px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:2px 6px">wis</button>
             </div>
           </div>
@@ -913,7 +932,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       </div>
       <button class="ai-run" onclick="runQuickAI()" id="aiBtn">🔬 Snelle AI analyse</button>
       <button onclick="startDatalog()" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:none;align-items:center;justify-content:center;gap:5px" id="datalogBtn" class="adminOnly">📊 AI Datalog (20 sec)</button>
-      <button onclick="openRitAnalyse()" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,245,255,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,245,255,.05);color:#00b4cc;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🚗 Rit Analyse (10 min)</button>
+      <button onclick="openRitAnalyse('2min')" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,255,136,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,255,136,.05);color:#00b478;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">⚡ Snelle Technische Check (2 min)</button>
+      <button onclick="openRitAnalyse('10min')" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,245,255,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,245,255,.05);color:#00b4cc;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🚗 Rit Analyse (10 min)</button>
       <div class="ai-note">Datalog & Rit Analyse = betrouwbaarder dan momentopname.</div>
       <div class="ai-scr" id="aiContent">
         <div class="ai-ph"><div class="pi">🔬</div><p>Verbind de OBD2 adapter en kies een startoptie.<br><br><strong>🧠 Diagnose</strong> zoekt de meest voorkomende oorzaak en bewijst dit via live PIDs.</p></div>
@@ -2627,6 +2647,7 @@ async function exportAIReportPDF(btn){
   const orig=btn?btn.textContent:''; if(btn){btn.textContent='⏳ PDF maken...'; btn.disabled=true;}
   try{
     const jsPDF=await loadJsPDF();
+    if(!jsPDF) throw new Error('jsPDF niet geladen');
     const doc=new jsPDF({unit:'mm',format:'a4'});
     const W=210, M=15, CW=W-2*M;
     const BLUE=[26,111,255], DARK=[26,32,44], GREY=[113,128,150], LIGHT=[237,242,247];
@@ -2729,8 +2750,22 @@ async function exportAIReportPDF(btn){
     window._lastPdf={blob:doc.output('blob'), fname};
     showPdfReadyModal();
   }catch(e){
-    log('PDF export fout: '+e.message,'err');
-    showToast?.('PDF mislukt: '+e.message);
+    log('PDF export fout: '+e.message+' — TXT-fallback','err');
+    showToast?.('PDF mislukt — tekstbestand wordt gedownload');
+    // TXT-fallback zodat de gebruiker altijd het rapport heeft
+    try{
+      const r=window._lastAIReport;
+      const v=vehicleInfo||{};
+      const txt=[
+        'PidLane — Voertuig diagnoserapport',
+        `Gegenereerd: ${new Date(r.ts).toLocaleString('nl-NL')}`,
+        `Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}`.trim(),
+        v.vin?`VIN: ${v.vin}`:'',
+        '='.repeat(50), '',
+        String(r.text).replace(/\*\*/g,'')
+      ].filter(Boolean).join('\n');
+      download(`PidLane-rapport-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.txt`, txt);
+    }catch(_){}
   }finally{
     if(btn){btn.textContent=orig; btn.disabled=false;}
   }
@@ -4142,13 +4177,16 @@ async function rdwLookup(){
     const data=await r.json();
     if(!data||!data.length){ if(st) st.textContent='Kenteken niet gevonden bij RDW'; return; }
     const v=data[0];
-    const jaar=(v.datum_eerste_toelating||'').slice(0,4);
+    // Robuust bouwjaar: strip alles behalve cijfers, neem eerste 4 — werkt ook bij "1998-03-01" of andere notaties
+    const jaar=String(v.datum_eerste_toelating||'').replace(/\D/g,'').slice(0,4);
+    const brandstof=(v.brandstof_omschrijving||'').toLowerCase();
     vehicleInfo.merk=v.merk||vehicleInfo.merk;
     vehicleInfo.model=v.handelsbenaming||'';
     vehicleInfo.year=jaar||vehicleInfo.year;
+    vehicleInfo.brandstof=brandstof;
     localStorage.setItem('pl_kenteken',kent);
     // Sla ook extra RDW velden op voor Koopcheck
-    if(!_koopRdwData) _koopRdwData = { ...v, _kent: kent };
+    _koopRdwData = { ...v, _kent: kent };
     // Prefill Koopcheck kenteken input
     const ki = document.getElementById('koopKentInput');
     if(ki && !ki.value) ki.value = kent;
@@ -4156,7 +4194,9 @@ async function rdwLookup(){
     if(merkEl) merkEl.textContent=`${vehicleInfo.merk} ${vehicleInfo.model}`.trim();
     if(st) st.textContent=`✓ ${vehicleInfo.merk} ${vehicleInfo.model} (${jaar}) — ${v.eerste_kleur||''}`.trim();
     showVtag(`${vehicleInfo.merk} ${vehicleInfo.model}`.trim());
-    log(`RDW: ${vehicleInfo.merk} ${vehicleInfo.model} ${jaar} (${kent})`,'ok');
+    log(`RDW: ${vehicleInfo.merk} ${vehicleInfo.model} ${jaar} brandstof:${brandstof||'?'} (${kent})`,'ok');
+    // Pas voertuig-specifieke PID-preset toe als verbinding al actief is
+    if(connected) applyVehiclePIDPreset(vehicleInfo.merk, brandstof, jaar);
   }catch(e){
     if(st) st.textContent='RDW niet bereikbaar: '+e.message;
   }
@@ -4354,9 +4394,71 @@ async function discoverPIDsDirect(){
 
 // Methode 3: Standaard set — altijd beschikbaar als fallback
 function loadDefaultPIDs(){
-  const defaults=['010C','010D','0105','010B','010F','0111','0104','0146','0142','0143','0114','0115'];
-  defaults.forEach(p=>supportedPIDs.add(p));
-  btDiag(`Standaard set geladen: ${defaults.length} PIDs`,'info');
+  // Gebruik voertuiginfo als beschikbaar, anders generieke benzine-set
+  const merk = vehicleInfo?.merk || '';
+  const brandstof = (vehicleInfo?.brandstof || '').toLowerCase();
+  const jaar = parseInt(vehicleInfo?.year) || 0;
+  applyVehiclePIDPreset(merk, brandstof, jaar);
+}
+
+// ── VOERTUIG-SPECIFIEKE PID PRESET ──────────────────────────────────────────
+// Laadt de juiste PID-set op basis van brandstoftype + bouwjaar + merk.
+// Roep aan na RDW-lookup (als verbonden) of als fallback bij lege discovery.
+function applyVehiclePIDPreset(merk, brandstof, jaar){
+  const b = (brandstof||'').toLowerCase();
+  const y = parseInt(jaar) || 0;
+  const m = (merk||'').toUpperCase();
+
+  // Basis PIDs — altijd aanwezig op elke OBD2 auto (SAE J1979 verplicht)
+  const basis = ['010C','010D','0105','010B','010F','0111','0104','0146','0142'];
+
+  // Benzine-specifiek
+  const benzine = ['0106','0107','0114','0115','010A','010E','012F','015E','012C'];
+
+  // Diesel-specifiek (geen lambda, wel roetfilter en raildruk)
+  const diesel = ['0104','010B','0123','012C','0142','015E'];
+
+  // Hybride/elektrisch extra
+  const hybride = ['0142','0143','015B'];
+
+  // Modern (2010+): uitgebreidere set
+  const modern = ['0143','015C','015A','014A','0133','0121','011F'];
+
+  // Oud (voor 2004): minder PIDs beschikbaar
+  const oud = ['010C','010D','0105','010B','010F','0104'];
+
+  let preset;
+  if(b.includes('elektr')){
+    preset = [...basis, ...hybride, '015B','0142'];
+    btDiag('PID preset: Elektrisch','info');
+  } else if(b.includes('hybr')){
+    preset = [...basis, ...benzine, ...hybride];
+    btDiag('PID preset: Hybride','info');
+  } else if(b.includes('diesel')){
+    preset = [...basis, ...diesel, ...(y>=2010?modern:[])];
+    btDiag(`PID preset: Diesel ${y>=2010?'(modern)':'(oud)'}`, 'info');
+  } else if(y > 0 && y < 2004){
+    preset = oud;
+    btDiag('PID preset: Pre-2004 (beperkte set)','info');
+  } else {
+    // Benzine of onbekend
+    preset = [...basis, ...benzine, ...(y>=2010?modern:[])];
+    btDiag(`PID preset: Benzine ${y>=2010?'(modern)':'(standaard)'}`, 'info');
+  }
+
+  // Merk-specifieke aanvullingen
+  if(m==='BMW'||m==='MINI')         preset.push('015C','0143');
+  if(m==='VOLKSWAGEN'||m==='AUDI'||m==='SKODA'||m==='SEAT') preset.push('0123','015C');
+  if(m==='FORD')                    preset.push('0122','015D');
+  if(m==='MAZDA')                   preset.push('015C','0110');
+  if(m==='TOYOTA'||m==='LEXUS')     preset.push('015B','015C');
+
+  // Dedupliceer en laad
+  const uniq = [...new Set(preset)];
+  uniq.forEach(p => supportedPIDs.add(p));
+  btDiag(`Voertuig-preset geladen: ${uniq.length} PIDs (${m||'onbekend'} ${jaar||'?'} ${b||'benzine'})`, 'ok');
+  log(`🔧 PID preset: ${uniq.length} PIDs voor ${m||'onbekend'} ${b||'benzine'} ${jaar||''}`, 'ok');
+  buildDiscoveredPIDList();
 }
 
 // ── UITBREIDING: volledige standaard SAE J1979 mode-01 PID database ──
@@ -5082,12 +5184,23 @@ const RIT_FASEN=[
   {naam:'Rijgedrag',           icon:'🚗', duur:120, pids:['010D','0149','010C','0104'],       desc:'Snelheid, gaspedaal, acceleratie patronen'},
   {naam:'Alles tegelijk',      icon:'📊', duur:120, pids:['010C','010D','0105','0142','0106','0107','0110'], desc:'Combinatie overzicht voor correlaties'},
 ];
-const RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0); // 10 minuten
+// 2-min snelle technische check — ALLEEN technische staat, GEEN rijgedrag
+const RIT_FASEN_2MIN=[
+  {naam:'Motor & Vermogen',    icon:'⚡', duur:40, pids:['010C','0104','0111','010B','010E'], desc:'RPM, belasting, gasklep, inlaatdruk, timing'},
+  {naam:'Brandstof & Emissie', icon:'⛽', duur:40, pids:['0106','0107','0110','0113','0115'], desc:'Brandstoftrim, MAF, O2 sensoren'},
+  {naam:'Temp & Accu',         icon:'🌡️', duur:40, pids:['0105','015C','010F','0142'],       desc:'Koelwater, olie, inlaatlucht, accuspanning'},
+];
+let ritMode='10min';                          // '2min' | '10min'
+let RIT_FASEN_ACTIEF=RIT_FASEN;
+let RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0); // 10 minuten
 
 let ritActive=false, ritFaseIdx=0, ritFaseTimer=null, ritTotalTimer=null;
 let ritStartTime=null, ritLogs=[], ritFaseData={};
 
-function openRitAnalyse(){
+function openRitAnalyse(mode='10min'){
+  ritMode = mode;
+  RIT_FASEN_ACTIEF = (mode==='2min') ? RIT_FASEN_2MIN : RIT_FASEN;
+  RIT_TOTAAL = RIT_FASEN_ACTIEF.reduce((a,f)=>a+f.duur,0);
   document.getElementById('ritDash').style.display='block';
   resetRitUI();
 }
@@ -5096,15 +5209,31 @@ function closeRitAnalyse(){
   document.getElementById('ritDash').style.display='none';
 }
 
+// Detecteer hybride/EV op basis van RDW-brandstof of merk-indicatie
+function isHybrideOfEV(){
+  const b = (vehicleInfo?.brandstof || '').toLowerCase();
+  return b.includes('hybr') || b.includes('elektr') || b.includes('phev');
+}
+
 function resetRitUI(){
+  const totMin = Math.round(RIT_TOTAAL/60);
   document.getElementById('ritProgress').style.width='0%';
   document.getElementById('ritTimer').textContent='0:00';
-  document.getElementById('ritStatus').textContent='Start rijden — minimaal 10 minuten';
+  document.getElementById('ritStatus').textContent = ritMode==='2min'
+    ? 'Snelle technische check — ca. 2 minuten'
+    : `Start rijden — minimaal ${totMin} minuten`;
   document.getElementById('ritPhaseName').textContent='Wachten op start...';
   document.getElementById('ritPhaseDesc').textContent='';
   document.getElementById('ritPhaseResults').innerHTML='';
   document.getElementById('ritStartBtn').style.display='block';
   document.getElementById('ritStopBtn').style.display='none';
+  // Hybride/EV-waarschuwing: verbrandingsmotor moet meelopen
+  if(isHybrideOfEV()){
+    document.getElementById('ritPhaseResults').innerHTML =
+      `<div style="background:rgba(255,170,0,.12);border:1px solid rgba(255,170,0,.4);border-radius:8px;padding:10px 12px;font-size:11px;color:#ffaa00;line-height:1.5;font-weight:600">
+        ⚠️ Hybride/elektrisch voertuig gedetecteerd. Zorg dat de <strong>verbrandingsmotor meeloopt</strong> tijdens de analyse — anders worden alleen gegevens van de elektrische aandrijving gemeten en niet van de verbrandingsmotor.
+      </div>`;
+  }
   ritLogs=[]; ritFaseData={}; ritFaseIdx=0;
 }
 
@@ -5115,8 +5244,10 @@ function startRitAnalyse(){
   ritActive=true; ritStartTime=Date.now(); ritFaseIdx=0; ritLogs=[]; ritFaseData={};
   document.getElementById('ritStartBtn').style.display='none';
   document.getElementById('ritStopBtn').style.display='block';
-  document.getElementById('ritStatus').textContent='Rit analyse actief — rij normaal';
-  log('🚗 Rit analyse gestart','ok');
+  document.getElementById('ritStatus').textContent = ritMode==='2min'
+    ? 'Technische check actief — laat motor draaien (rijden niet vereist)'
+    : 'Rit analyse actief — rij normaal';
+  log(ritMode==='2min' ? '⚡ Snelle technische check gestart' : '🚗 Rit analyse gestart','ok');
   startRitFase(0);
 
   // Total timer + progress bar
@@ -5131,8 +5262,8 @@ function startRitAnalyse(){
 }
 
 function startRitFase(idx){
-  if(idx>=RIT_FASEN.length){stopRitAnalyse();return;}
-  const fase=RIT_FASEN[idx];
+  if(idx>=RIT_FASEN_ACTIEF.length){stopRitAnalyse();return;}
+  const fase=RIT_FASEN_ACTIEF[idx];
   document.getElementById('ritPhaseName').textContent=`${fase.icon} ${fase.naam}`;
   document.getElementById('ritPhaseDesc').textContent=fase.desc+` — ${fase.duur} seconden`;
   log(`Fase ${idx+1}: ${fase.naam}`,'info');
@@ -5220,8 +5351,15 @@ async function stopRitAnalyse(){
   if(!ritActive) return;
   ritActive=false;
   clearTimeout(ritFaseTimer); clearInterval(ritTotalTimer);
-  document.getElementById('ritStatus').textContent='Analyse klaar — kies rapporttype';
   document.getElementById('ritStopBtn').style.display='none';
+  // 2-min check is altijd technisch (geen rijgedrag) → direct technisch rapport
+  if(ritMode==='2min'){
+    document.getElementById('ritStatus').textContent='Technische check klaar — rapport wordt gegenereerd...';
+    log('Snelle technische check klaar — technisch rapport','info');
+    await generateRitRapport('techniek');
+    return;
+  }
+  document.getElementById('ritStatus').textContent='Analyse klaar — kies rapporttype';
   log('Rit analyse gestopt — rapporttype kiezen','info');
   showRitFocusModal();
 }
@@ -5390,6 +5528,62 @@ function downloadScanLog(){
   download(`pidlane-scanlog-${new Date().toISOString().slice(0,10)}.txt`, lines.join('\n'));
 }
 
+// ── TESTER-MODUS (login/start-scherm) ──────────────────────
+function toggleTesterMode(){
+  const row = document.getElementById('testerConsentRow');
+  const btn = document.getElementById('testerBtn');
+  if(!row) return;
+  const on = row.style.display === 'none';
+  row.style.display = on ? 'block' : 'none';
+  if(btn){
+    btn.style.background = on ? 'rgba(0,212,255,.18)' : 'rgba(0,212,255,.08)';
+    btn.textContent = on ? '🧪 Tester-modus actief' : '🧪 Tester-modus';
+  }
+  // Herstel opgeslagen toestemming
+  try {
+    const c = localStorage.getItem('pl_tester_consent') === '1';
+    const cb = document.getElementById('testerConsent');
+    if(cb) cb.checked = c;
+  } catch(e){}
+}
+function saveTesterConsent(){
+  const cb = document.getElementById('testerConsent');
+  try { localStorage.setItem('pl_tester_consent', cb && cb.checked ? '1':'0'); } catch(e){}
+  if(cb && cb.checked) log('🧪 Tester-toestemming gegeven — logs worden gebundeld bewaard','ok');
+}
+function hasTesterConsent(){
+  try { return localStorage.getItem('pl_tester_consent') === '1'; } catch(e){ return false; }
+}
+
+// ── GEBUNDELDE LOG-EXPORT (BT + scan + app) ────────────────
+// Handmatig, op verzoek van de tester. Eén bestand met alles erin.
+function exportAllLogs(){
+  const v = vehicleInfo || {};
+  const now = new Date();
+  // Herstel uit storage indien arrays leeg
+  try { const s = localStorage.getItem('pl_scanlog'); if(s && !_scanLog.length) _scanLog = JSON.parse(s); } catch(e){}
+  let bt = _btLog || [];
+  try { const sb = sessionStorage.getItem('pl_btlog'); if(sb && !bt.length) bt = JSON.parse(sb); } catch(e){}
+
+  const sep = '='.repeat(60);
+  const lines = [
+    'PidLane — Gebundelde Logexport',
+    `Gegenereerd: ${now.toLocaleString('nl')}`,
+    `Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}`.trim(),
+    `VIN: ${v.vin||'-'}  |  PIDs beschikbaar: ${(typeof supportedPIDs!=='undefined')?supportedPIDs.size:'?'}`,
+    `Tester-toestemming: ${hasTesterConsent()?'JA':'nee'}`,
+    sep, '',
+    '### 1. BLUETOOTH-DIAGNOSTIEK ###',
+    ...(bt.length ? bt.map(e=>`[${e.ts||''}] [${(e.type||'info').toUpperCase()}] ${e.msg||''}`) : ['(geen BT-log)']),
+    '', '### 2. APP-LOG ###',
+    ...((typeof localLog!=='undefined' && localLog.length) ? localLog.map(l=>`[${l.ts}] [${(l.type||'info').toUpperCase()}] ${l.msg}`) : ['(geen app-log)']),
+    '', '### 3. SCAN-LOG (Koopcheck/RDW) ###',
+    ...(_scanLog.length ? _scanLog.map(e=>`[${e.ts||''}] [${(e.type||'info').toUpperCase()}] ${e.msg||JSON.stringify(e)}`) : ['(geen scan-log)']),
+  ];
+  download(`pidlane-alle-logs-${now.toISOString().slice(0,16).replace(/[:T]/g,'-')}.txt`, lines.join('\n'));
+  log('📦 Alle logs geëxporteerd','ok');
+}
+
 // ── Uitgebreide RDW lookup voor Koopcheck ──────────────
 let _koopRdwData = null;
 async function koopRdwLookup(){
@@ -5411,6 +5605,8 @@ async function koopRdwLookup(){
     const d1 = await r1.json();
     if(!d1||!d1.length){ st.textContent = '❌ Kenteken niet gevonden bij RDW'; btn.disabled=false; return; }
     const v = d1[0];
+    // Robuust bouwjaar: strip alles behalve cijfers, neem eerste 4
+    const _jaar = String(v.datum_eerste_toelating||'').replace(/\D/g,'').slice(0,4);
 
     // APK dataset
     let apkData = null;
@@ -5435,7 +5631,8 @@ async function koopRdwLookup(){
     // Voer ook vehicleInfo bij voor AI
     vehicleInfo.merk  = v.merk || vehicleInfo.merk;
     vehicleInfo.model = v.handelsbenaming || vehicleInfo.model;
-    vehicleInfo.year  = (v.datum_eerste_toelating||'').slice(0,4) || vehicleInfo.year;
+    vehicleInfo.year  = _jaar || vehicleInfo.year;
+    vehicleInfo.brandstof = (v.brandstof_omschrijving||'').toLowerCase();
 
     // Bereken tenaamstelling info
     const datTenaam = v.datum_tenaamstelling ? formatRdwDate(v.datum_tenaamstelling) : '?';
@@ -5445,7 +5642,7 @@ async function koopRdwLookup(){
     const maandenTot = v.vervaldatum_apk ? maandenTotAPK(v.vervaldatum_apk) : null;
     const bpm = v.bruto_bpm ? `€ ${parseInt(v.bruto_bpm).toLocaleString('nl')}` : '?';
     const import_auto = v.datum_eerste_tenaamstelling_in_nederland && v.datum_eerste_toelating &&
-      v.datum_eerste_tenaamstelling_in_nederland.slice(0,4) !== v.datum_eerste_toelating.slice(0,4);
+      String(v.datum_eerste_tenaamstelling_in_nederland).replace(/\D/g,'').slice(0,4) !== _jaar;
 
     // APK kleur
     let apkKleur = '#6b7280';
@@ -5462,7 +5659,8 @@ async function koopRdwLookup(){
     // Render kaarten
     const kaarten = [
       { label:'Merk & Model',   val:`${v.merk||'?'} ${v.handelsbenaming||''}`.trim(), ico:'🚗' },
-      { label:'Bouwjaar',       val:(v.datum_eerste_toelating||'????').slice(0,4), ico:'📅' },
+      { label:'Bouwjaar',       val:_jaar||'?', ico:'📅' },
+      { label:'Brandstof',      val:(v.brandstof_omschrijving||'?'), ico:'⛽' },
       { label:'Eerste toelating', val:datEerste, ico:'🏭' },
       { label:'Eerste NL',      val:datEersteNL + (import_auto ? ' ⚠️ Import' : ''), ico:'🇳🇱' },
       { label:'Huidige eigenaar sinds', val:datTenaam, ico:'👤' },
@@ -5475,14 +5673,14 @@ async function koopRdwLookup(){
     grid.innerHTML = kaarten.map(k=>`
       <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:7px 9px">
         <div style="font-size:9px;color:var(--tx3);margin-bottom:2px">${k.ico} ${k.label}</div>
-        <div style="font-size:11px;font-weight:700;color:${k.kleur||'var(--tx)'}">${k.val||'?'}</div>
+        <div style="font-size:11px;font-weight:700;color:${k.kleur||'var(--tx)'}\">${k.val||'?'}</div>
       </div>`).join('');
 
     cards.style.display = 'block';
-    st.textContent = `✅ ${v.merk} ${v.handelsbenaming} (${(v.datum_eerste_toelating||'').slice(0,4)}) — ${v.eerste_kleur||''}`;
+    st.textContent = `✅ ${v.merk} ${v.handelsbenaming} (${_jaar}) — ${v.eerste_kleur||''}`;
 
     // Log
-    scanLogAdd({ type:'rdw', msg:`Kent:${kent} Merk:${v.merk} Model:${v.handelsbenaming} Jaar:${(v.datum_eerste_toelating||'').slice(0,4)} APK:${apkVerval} Recall:${recallActief} Import:${import_auto}` });
+    scanLogAdd({ type:'rdw', msg:`Kent:${kent} Merk:${v.merk} Model:${v.handelsbenaming} Jaar:${_jaar} APK:${apkVerval} Recall:${recallActief} Import:${import_auto}` });
     log(`🔍 RDW Koopcheck: ${v.merk} ${v.handelsbenaming} — APK tot ${apkVerval}`, 'ok');
 
   } catch(e) {
