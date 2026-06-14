@@ -31,7 +31,7 @@ const AIRTABLE_TABLE = 'tbl2AUw6V0Gy5YbRC';
 const AIRTABLE_URL   = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`;
 
 // ── APP VERSIE & AUTO-UPDATE ──
-const APP_VERSION = '2.1';
+const APP_VERSION = '3.5';
 const GITHUB_USER = 'NewspeedyNL';
 const GITHUB_REPO = 'PidLane';
 // version.json staat in de ROOT van de repo (niet in /src)
