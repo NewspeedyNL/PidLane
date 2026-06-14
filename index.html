@@ -1,7 +1,20 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-14 18:10 (CET)
+     PidLane — build aangepast: 2026-06-14 23:20 (CET)
      Wijzigingen deze build:
+       • Totaalcheck-kaart aangescherpt: meerwaarde = symptomen (bestuurder)
+         + sensordata + foutcodes gecombineerd; vangt problemen zonder DTC
+     Eerdere build (23:00):
+       • Landingspagina vernieuwd (NL + uitleg + tijd-badges)
+       • Volledig herzien: NL titels + korte uitleg + "wat je krijgt"-regel
+         + tijd-badge (±min) per kaart
+       • Opties: AI-Monteur (aanbevolen) · Totaalcheck · Koopcheck ·
+         Snelle Technische Check (2 min) · Rit Analyse (10 min) · Foutcodes ·
+         Brandstofbesparing · Snel AI-rapport · Live PID-data
+       • Nieuwe kaarten (koop/2min/10min) gekoppeld aan launcher/rit-analyse
+     Eerdere build (22:15):
+       • Topbar Optie 3 (verborgen statuschip + ⋯ menu)
+     Eerdere build (18:10):
        • Tester-modus nu op BEIDE schermen: login-scherm én verbind-scherm
          (verbind-scherm vanwege auto-login bij terugkerende gebruiker)
        • Tester-vinkje sync tussen beide schermen
@@ -110,6 +123,13 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .choice-desc { font-size:11px; color:var(--tx2); line-height:1.45; }
 .choice-desc.w { color:rgba(255,255,255,.8); }
 .choice-tag { display:inline-block; margin-top:6px; font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; background:rgba(255,255,255,.2); color:#fff; }
+.choice-time { display:inline-flex; align-items:center; gap:3px; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; background:var(--sur2); color:var(--tx3); border:1px solid var(--bd); }
+.choice-time.w { background:rgba(255,255,255,.18); color:#fff; border-color:rgba(255,255,255,.3); }
+.choice-out { font-size:10px; color:var(--tx3); line-height:1.4; margin-top:6px; padding-top:6px; border-top:1px dashed var(--bd); }
+.choice-out.w { color:rgba(255,255,255,.85); border-top-color:rgba(255,255,255,.25); }
+.choice-out b { color:var(--tx2); font-weight:700; }
+.choice-out.w b { color:#fff; }
+.choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
 
 /* ══ TOPBAR ══ */
 .topbar { background:var(--sur); border-bottom:1px solid var(--bd); padding:0 14px; height:46px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:200; box-shadow:var(--ss); }
@@ -131,6 +151,30 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .api-pill.unset { background:var(--ors); color:var(--or); border-color:#fed7aa; animation:softblink 2.6s ease-in-out infinite; }
 @keyframes softblink { 0%,100%{opacity:1} 50%{opacity:.35} }
 .pill.attn { border-color:var(--or)!important; animation:softblink 1.8s ease-in-out infinite; }
+/* ── Optie-3 topbar: statuschip verborgen bij OK, opvallend bij niet-verbonden ── */
+#statusPill { display:none; align-items:center; gap:6px; padding:5px 12px; border-radius:999px;
+  background:#fdecef; border:1px solid #f3c0ca; color:var(--rd); font-weight:800; font-size:11px;
+  animation:softblink 1.8s ease-in-out infinite; }
+#statusPill.show { display:flex; }
+#statusPill .dot { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:none; }
+/* ── ⋯ kebab menu ── */
+.kebab-wrap { position:relative; }
+.kebab-btn { width:32px; height:30px; border-radius:7px; border:1px solid var(--bd); background:var(--sur2);
+  color:var(--tx2); font-size:18px; line-height:1; cursor:pointer; transition:all .15s; }
+.kebab-btn:hover { background:var(--bls); color:var(--bl); border-color:var(--bl); }
+.kebab-menu { position:absolute; right:0; top:38px; min-width:180px; background:var(--sur);
+  border:1px solid var(--bd); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14); padding:6px;
+  display:none; flex-direction:column; gap:2px; z-index:60; }
+.kebab-menu.open { display:flex; }
+.kebab-item { text-align:left; width:100%; padding:8px 10px; border-radius:7px; border:none; background:transparent;
+  color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:600; cursor:pointer; }
+.kebab-item:hover { background:var(--sur2); color:var(--tx); }
+.kebab-item.api-pill { border:none!important; animation:none; }
+.kebab-item.api-pill.unset { color:var(--or); }
+.kebab-item.api-pill.set { color:var(--gn); }
+.kebab-sep { height:1px; background:var(--bd); margin:4px 2px; }
+.kebab-danger { color:var(--rd)!important; }
+.kebab-danger:hover { background:var(--rds)!important; }
 #vtag { font-size:10px; font-weight:600; color:var(--bl); background:var(--bls); padding:2px 7px; border-radius:4px; display:none; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ══ APP LAYOUT ══ */
@@ -185,8 +229,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .pane.active { display:block; }
 
 /* ══ GAUGES (concept B — kaarten met sparkline) ══ */
-.gg { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
-.gc { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:14px; box-shadow:var(--ss); position:relative; overflow:hidden; transition:border-color .1s; }
+.gg { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }.gc { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:14px; box-shadow:var(--ss); position:relative; overflow:hidden; transition:border-color .1s; }
 .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--bl); border-radius:var(--r) var(--r) 0 0; transition:background .3s; }
 .gc.warn::before { background:var(--or); }
 .gc.danger::before { background:var(--rd); }
@@ -200,6 +243,32 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .gspark polyline { fill:none; stroke:var(--bl); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; transition:stroke .3s; }
 .gdot { position:absolute; top:13px; right:12px; width:8px; height:8px; border-radius:50%; background:var(--gn); box-shadow:0 0 7px var(--gn); transition:background .3s,box-shadow .3s; }
 .gdot.warn { background:var(--or); box-shadow:0 0 7px var(--or); }
+/* ── PID weergave-schakelaar + modi ── */
+.pidview-switch { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
+.pidview-lbl { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--tx3); margin-right:2px; }
+.pidview-btn { font-family:var(--f); font-size:10px; font-weight:600; padding:4px 10px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; transition:all .15s; }
+.pidview-btn.active { background:var(--bl); border-color:var(--bl); color:#fff; }
+/* GETALLEN — compacte kaart, geen sparkline */
+.gg.view-numbers { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:7px; }
+.gg.view-numbers .gc { padding:9px 10px; }
+.gg.view-numbers .gspark { display:none; }
+.gg.view-numbers .gv { font-size:22px; }
+.gg.view-numbers .gn2 { font-size:8px; margin-bottom:2px; }
+/* PUNTJES — compacte tegel, kleur = gezondheid */
+.gg.view-dots { grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:3px; }
+.gg.view-dots .gc { padding:3px 5px; display:flex; align-items:center; gap:4px; border-left:3px solid var(--gn); border-radius:5px; background:rgba(0,200,100,.06); box-shadow:none; transition:background .3s,border-color .3s; }
+.gg.view-dots .gc::before { display:none; }
+.gg.view-dots .gc:hover { transform:none; box-shadow:none; }
+.gg.view-dots .gc.warn { border-left-color:var(--or); background:rgba(255,150,0,.08); }
+.gg.view-dots .gc.danger { border-left-color:var(--rd); background:rgba(255,40,40,.1); }
+.gg.view-dots .gc.stale { border-left-color:var(--rd); animation:cardStale 1s ease-in-out infinite; }
+.gg.view-dots .gspark { display:none; }
+.gg.view-dots .gv, .gg.view-dots .gunit { display:none; }
+.gg.view-dots .gn2 { margin:0; padding:0; font-size:7px; line-height:1.1; flex:1; letter-spacing:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gg.view-dots .gdot { position:static; width:7px; height:7px; flex-shrink:0; }
+.gg.view-dots .gdot.flash { animation:dotFlash .5s ease; }
+@keyframes cardStale { 0%,100%{background:rgba(255,40,40,.06);} 50%{background:rgba(255,40,40,.28);} }
+@keyframes dotFlash { 0%{transform:scale(1);box-shadow:0 0 4px var(--gn);} 50%{transform:scale(1.7);box-shadow:0 0 14px var(--gn);} 100%{transform:scale(1);box-shadow:0 0 4px var(--gn);} }
 .gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
 /* Rollen: accounts met role:'user' in config.js zien alleen de basis */
 .role-user .adminOnly { display:none !important; }
@@ -346,6 +415,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .ai-run { margin:8px 12px 0; width:calc(100% - 24px); padding:8px; border-radius:7px; border:none; font-family:var(--f); font-size:11px; font-weight:700; cursor:pointer; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:6px; }
 .ai-run:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(99,102,241,.3); }
 .ai-run:disabled { opacity:.4; transform:none; pointer-events:none; }
+.ai-launch-btn.active { box-shadow:0 0 0 2px var(--bl) inset; }
 .ai-note { padding:5px 12px 0; font-size:9px; color:var(--tx3); line-height:1.4; }
 /* ══ AI SCROLL FIX ══ */
 .ai-scr { flex:1; overflow-y:auto; padding:10px 12px 60px; min-height:0; }
@@ -562,44 +632,105 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 <div id="welcomeScreen" class="hidden">
   <div class="welcome-header">
     <div>
-      <div class="welcome-title" id="welcomeTitle">In the fast lane. What's next?</div>
-      <div style="font-size:10px;color:var(--tx3)" id="welcomeSub">Choose your diagnostic mode</div>
+      <div class="welcome-title" id="welcomeTitle">Verbonden — wat wil je weten?</div>
+      <div style="font-size:10px;color:var(--tx3)" id="welcomeSub">Kies een analyse. Elke optie levert een concreet resultaat.</div>
     </div>
     <div class="welcome-vin" id="welcomeVin" style="display:none">✅ VIN herkend</div>
   </div>
   <div class="welcome-scroll">
     <div class="welcome-choices" style="margin-top:4px">
-      <div class="choice-card hl" id="wc-diag">
-        <span class="choice-icon">🧠</span>
-        <div class="choice-title w">Diagnose op probleem</div>
-        <div class="choice-desc w">Describe the symptom. AI finds the cause. Live data proves it.</div>
+
+      <div class="choice-card hl full" id="wc-diag">
+        <div class="choice-head">
+          <span class="choice-icon">🔧</span>
+          <span class="choice-time w">⏱ ±2 min</span>
+        </div>
+        <div class="choice-title w">AI-Monteur</div>
+        <div class="choice-desc w">Beschrijf de klacht — de AI zoekt de oorzaak en bewijst die met live sensordata.</div>
+        <div class="choice-out w"><b>Je krijgt:</b> de meest waarschijnlijke oorzaak, bevestigd of uitgesloten via PID-metingen, plus reparatie-advies.</div>
         <span class="choice-tag">⭐ Aanbevolen</span>
       </div>
+
       <div class="choice-card" id="wc-check">
-        <span class="choice-icon">🚦</span>
-        <div class="choice-title">Algemene voertuigcheck</div>
-        <div class="choice-desc">Green, orange or red — know exactly where you stand.</div>
+        <div class="choice-head">
+          <span class="choice-icon">🚦</span>
+          <span class="choice-time">⏱ ±1 min</span>
+        </div>
+        <div class="choice-title">Totaalcheck</div>
+        <div class="choice-desc">Combineert wat jij merkt (start, geluiden, verbruik) met wat de sensoren én foutcodes meten.</div>
+        <div class="choice-out"><b>Je krijgt:</b> brede conditiefoto — groen / oranje / rood per systeem. De enige check die symptomen koppelt aan meetdata; vangt problemen die géén foutcode geven.</div>
       </div>
-      <div class="choice-card" id="wc-live">
-        <span class="choice-icon">📊</span>
-        <div class="choice-title">Specifieke PID data</div>
-        <div class="choice-desc">Raw numbers. Real time. Your car, unfiltered.</div>
+
+      <div class="choice-card" id="wc-koop" style="border-color:#a78bfa;background:linear-gradient(135deg,#faf5ff,#f3ebff)">
+        <div class="choice-head">
+          <span class="choice-icon">🔍</span>
+          <span class="choice-time">⏱ ±3 min</span>
+        </div>
+        <div class="choice-title" style="color:#7c3aed">Koopcheck</div>
+        <div class="choice-desc">Kenteken + OBD samen: historie, onderhoud en marktwaarde.</div>
+        <div class="choice-out"><b>Je krijgt:</b> RDW-historie, recall-check, waardeschatting en koopadvies — ideaal vóór inkoop.</div>
       </div>
+
+      <div class="choice-card" id="wc-rit2">
+        <div class="choice-head">
+          <span class="choice-icon">⚡</span>
+          <span class="choice-time">⏱ ±2 min</span>
+        </div>
+        <div class="choice-title" style="color:#00b478">Snelle Technische Check</div>
+        <div class="choice-desc">Motor stationair laten draaien — puur technische staat, geen rijden nodig.</div>
+        <div class="choice-out"><b>Je krijgt:</b> technisch rapport van motor, brandstof, temperatuur en accu.</div>
+      </div>
+
+      <div class="choice-card" id="wc-rit10">
+        <div class="choice-head">
+          <span class="choice-icon">🚗</span>
+          <span class="choice-time">⏱ ±10 min</span>
+        </div>
+        <div class="choice-title" style="color:#00b4cc">Rit Analyse</div>
+        <div class="choice-desc">10 minuten rijden — het meest complete beeld onder echte belasting.</div>
+        <div class="choice-out"><b>Je krijgt:</b> volledig rapport incl. rijgedrag, klaar om mee te geven aan de garage.</div>
+      </div>
+
       <div class="choice-card" id="wc-dtc">
-        <span class="choice-icon">🔴</span>
+        <div class="choice-head">
+          <span class="choice-icon">🔴</span>
+          <span class="choice-time">⏱ ±30 sec</span>
+        </div>
         <div class="choice-title">Foutcodes scannen</div>
-        <div class="choice-desc">That warning light? Let's find out what it's really saying.</div>
+        <div class="choice-desc">Lees opgeslagen storingscodes (DTC) uit het voertuig.</div>
+        <div class="choice-out"><b>Je krijgt:</b> alle codes met uitleg in gewone taal en ernst-inschatting.</div>
       </div>
-      <div class="choice-card full" id="wc-report">
-        <span class="choice-icon">📋</span>
-        <div class="choice-title">Snel AI rapport — 1 klik</div>
-        <div class="choice-desc">One tap. Full picture. No questions asked.</div>
+
+      <div class="choice-card" id="wc-fuel" style="border-color:var(--or);background:linear-gradient(135deg,#fff7ed,#fff3e0)">
+        <div class="choice-head">
+          <span class="choice-icon">⛽</span>
+          <span class="choice-time">⏱ ±2 min</span>
+        </div>
+        <div class="choice-title" style="color:var(--or)">Brandstofbesparing</div>
+        <div class="choice-desc">Analyse van verbruik en rijgedrag op besparingskansen.</div>
+        <div class="choice-out"><b>Je krijgt:</b> concrete tips waar brandstof verloren gaat en hoeveel je kunt besparen.</div>
       </div>
-      <div class="choice-card full" id="wc-fuel" style="border-color:var(--or);background:linear-gradient(135deg,#fff7ed,#fff3e0)">
-        <span class="choice-icon">⛽</span>
-        <div class="choice-title" style="color:var(--or)">Brandstofbesparing analyse</div>
-        <div class="choice-desc">Fuel is expensive. Wasting it is optional.</div>
+
+      <div class="choice-card" id="wc-report">
+        <div class="choice-head">
+          <span class="choice-icon">📋</span>
+          <span class="choice-time">⏱ 1 klik</span>
+        </div>
+        <div class="choice-title">Snel AI-rapport</div>
+        <div class="choice-desc">Eén tik — momentopname van de huidige sensordata.</div>
+        <div class="choice-out"><b>Je krijgt:</b> beknopt AI-overzicht zonder vragen. Snelste eerste indruk.</div>
       </div>
+
+      <div class="choice-card" id="wc-live">
+        <div class="choice-head">
+          <span class="choice-icon">📊</span>
+          <span class="choice-time">⏱ live</span>
+        </div>
+        <div class="choice-title">Live PID-data</div>
+        <div class="choice-desc">Ruwe sensorwaarden in realtime — voor de specialist.</div>
+        <div class="choice-out"><b>Je krijgt:</b> directe meetwaarden, zelf te kiezen en te volgen.</div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -635,13 +766,20 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" style="width:26px;height:26px"><defs><linearGradient id="plg3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plg3)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>Pid<em>Lane</em></div>
   <div class="tpr">
     <div id="vtag"></div>
-    <div id="userLabel" style="font-size:10px;font-weight:600;color:var(--tx3);padding:2px 8px;background:var(--sur2);border:1px solid var(--bd);border-radius:999px;display:none"></div>
-    <div class="pill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen (zonder te verbreken)"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
-    <button class="api-pill unset" id="apiPill" onclick="openApiDialog()">🤖 AI</button>
-    <button onclick="openBtLogModal()" class="adminOnly" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Bluetooth log">📡 Log</button>
+    <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
+    <div class="pill show" id="statusPill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
     <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
-    <button onclick="logout()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Uitloggen">⏏ Uit</button>
-    <button id="updatePill" onclick="checkForUpdate(true)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:10px;font-weight:600;cursor:pointer" title="Check for update">🔄 Update</button>
+    <!-- ⋯ menu met secundaire acties -->
+    <div class="kebab-wrap" id="kebabWrap">
+      <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Meer">⋯</button>
+      <div class="kebab-menu" id="kebabMenu">
+        <button class="api-pill unset kebab-item" id="apiPill" onclick="closeKebab();openApiDialog()">🤖 AI-sleutel</button>
+        <button class="kebab-item adminOnly" onclick="closeKebab();openBtLogModal()">📡 Bluetooth log</button>
+        <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
+        <div class="kebab-sep"></div>
+        <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -664,7 +802,9 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <div class="slsec">
         <div class="slttl">
           Beschikbare PIDs <span class="cnt" id="pidCnt">0</span>
+          <button id="pidRefreshBtn" onclick="deepRefreshPIDs()" title="Dieper zoeken + namen opzoeken" style="margin-left:auto;font-size:9px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00b4cc;cursor:pointer">🔄 Diep zoeken</button>
         </div>
+        <div id="pidRefreshStatus" style="font-size:9px;color:var(--tx3);padding:2px 2px 0;min-height:12px"></div>
         <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek PID..." oninput="filterPIDs(this.value)" id="psrch"></div>
         <div style="font-size:9px;color:var(--tx3);padding:4px 2px 0">Vink aan om te monitoren</div>
       </div>
@@ -680,21 +820,18 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   <div class="cc">
     <div class="tabs">
       <button class="tab active" onclick="sw('live',this)">📊 Live</button>
-      <button class="tab" onclick="sw('check',this)">🚦 Totaalcheck</button>
-      <button class="tab" onclick="sw('diag',this)">🧠 Diagnose</button>
       <button class="tab" onclick="sw('graph',this)">📈 Grafiek</button>
-      <button class="tab" onclick="sw('dtc',this)">🔴 DTC</button>
-      <button class="tab" onclick="sw('fuel',this)" style="color:var(--or);font-weight:700;">⛽ Besparing</button>
-      <button class="tab" onclick="sw('koop',this)" style="color:#a78bfa;font-weight:700;">🔍 Koopcheck</button>
+      <button class="tab" onclick="sw('dtc',this)">🔴 Foutcodes</button>
     </div>
     <div class="tb">
 
       <!-- LIVE -->
       <div class="pane active" id="pane-live">
-        <div class="reco" id="recoCard" onclick="recoAction()" style="display:none">
-          <div class="ri" id="recoIco">🚦</div>
-          <div><div class="rt">Aanbevolen</div><div class="rh" id="recoTitle"></div><div class="rs" id="recoSub"></div></div>
-          <div class="ra">→</div>
+        <div class="pidview-switch" id="pidViewSwitch" style="display:none">
+          <span class="pidview-lbl">Weergave:</span>
+          <button class="pidview-btn active" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
+          <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
+          <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
         </div>
         <div class="gg" id="gGrid">
           <div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>
@@ -934,19 +1071,23 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   <!-- RIGHT -->
   <div class="sr" id="srPanel">
     <button class="sr-toggle" id="srToggle" onclick="toggleSR()">▶</button>
-    <div class="sr-col-label" onclick="toggleSR()">🤖 AI Diagnose</div>
+    <div class="sr-col-label" onclick="toggleSR()">🤖 Analyses</div>
     <div class="sr-inner">
       <div class="ai-head">
-        <div class="ai-ttl">AI Diagnose <span class="ai-bdg">AI</span></div>
-        <div class="ai-sub">Sensor data + fault codes + your description = the real answer.</div>
+        <div class="ai-ttl">Analyses <span class="ai-bdg">AI</span></div>
+        <div class="ai-sub">Kies een analyse — het invulscherm opent in het midden.</div>
       </div>
-      <button class="ai-run" onclick="runQuickAI()" id="aiBtn">🔬 Snelle AI analyse</button>
-      <button onclick="startDatalog()" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:none;align-items:center;justify-content:center;gap:5px" id="datalogBtn" class="adminOnly">📊 AI Datalog (20 sec)</button>
-      <button onclick="openRitAnalyse('2min')" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,255,136,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,255,136,.05);color:#00b478;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">⚡ Snelle Technische Check (2 min)</button>
-      <button onclick="openRitAnalyse('10min')" style="margin:6px 12px 0;padding:7px;border-radius:7px;border:1px solid rgba(0,245,255,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,245,255,.05);color:#00b4cc;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🚗 Rit Analyse (10 min)</button>
-      <div class="ai-note">Datalog & Rit Analyse = betrouwbaarder dan momentopname.</div>
+      <button class="ai-launch-btn active" data-target="diag" onclick="openAnalysis('diag')" style="margin:8px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid rgba(99,102,241,.4);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">🔧 AI-Monteur</button>
+      <button class="ai-launch-btn" data-target="check" onclick="openAnalysis('check')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">🚦 Totaalcheck</button>
+      <button class="ai-launch-btn" data-target="koop" onclick="openAnalysis('koop')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid rgba(167,139,250,.4);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;background:rgba(167,139,250,.08);color:#a78bfa;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">🔍 Koopcheck</button>
+      <button class="ai-launch-btn" data-target="fuel" onclick="openAnalysis('fuel')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid rgba(255,150,0,.4);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;background:rgba(255,150,0,.08);color:var(--or);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">⛽ Besparing</button>
+      <div style="margin:10px 12px 4px;border-top:1px solid var(--bd)"></div>
+      <button onclick="openRitAnalyse('2min')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:8px;border-radius:7px;border:1px solid rgba(0,255,136,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,255,136,.05);color:#00b478;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">⚡ Snelle Technische Check (2 min)</button>
+      <button onclick="openRitAnalyse('10min')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:8px;border-radius:7px;border:1px solid rgba(0,245,255,.3);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:rgba(0,245,255,.05);color:#00b4cc;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px">🚗 Rit Analyse (10 min)</button>
+      <button class="ai-run" onclick="runQuickAI()" id="aiBtn" style="margin-top:10px">🔬 Snelle AI analyse</button>
+      <button onclick="startDatalog()" style="margin:6px 12px 0;width:calc(100% - 24px);padding:7px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:10px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:none;align-items:center;justify-content:center;gap:5px" id="datalogBtn" class="adminOnly">📊 AI Datalog (20 sec)</button>
       <div class="ai-scr" id="aiContent">
-        <div class="ai-ph"><div class="pi">🔬</div><p>Verbind de OBD2 adapter en kies een startoptie.<br><br><strong>🧠 Diagnose</strong> zoekt de meest voorkomende oorzaak en bewijst dit via live PIDs.</p></div>
+        <div class="ai-ph"><div class="pi">🔬</div><p>Verbind de OBD2 adapter en kies een analyse hierboven.<br><br><strong>🔧 AI-Monteur</strong> beschrijft de klacht, vindt de oorzaak en bewijst dit via live PIDs.</p></div>
       </div>
     </div>
   </div>
@@ -1159,13 +1300,13 @@ async function testApiKey(){
       window.anthropicKey=key;
       try{localStorage.setItem('ns_api_key',key);}catch(e){}
       const pill=document.getElementById('apiPill');
-      if(pill){pill.textContent='🤖 AI ✓';pill.className='api-pill set';}
+      if(pill){pill.textContent='🤖 AI-sleutel ✓';pill.className='api-pill kebab-item set';}
     } else {
       const errData=await resp.json().catch(()=>({}));
       const errMsg=errData?.error?.message||`HTTP ${resp.status}`;
       log(`API key fout (${resp.status}): ${errMsg}`,'err');
       const pill=document.getElementById('apiPill');
-      if(pill){pill.textContent='🤖 API ❌';pill.className='api-pill unset';}
+      if(pill){pill.textContent='🤖 AI-sleutel ❌';pill.className='api-pill kebab-item unset';}
     }
   }catch(e){
     log('API netwerk fout: '+e.message,'warn');
@@ -1602,8 +1743,8 @@ async function flushAirtable(){
 function updateApiPill(){
   const p=document.getElementById('apiPill'); if(!p) return;
   const hasKey=window.anthropicKey?.startsWith('sk-ant-');
-  p.textContent=hasKey?'🤖 AI ✓':'🤖 AI';
-  p.className='api-pill '+(hasKey?'set':'unset');
+  p.textContent=hasKey?'🤖 AI-sleutel ✓':'🤖 AI-sleutel';
+  p.className='api-pill kebab-item '+(hasKey?'set':'unset');
 }
 
 const localLog=[];
@@ -1889,9 +2030,17 @@ function showWelcome(vinInfo){
 }
 function startChoice(choice){
   document.getElementById('welcomeScreen').classList.add('hidden');
-  const tabs=document.querySelectorAll('.tab');
-  const map={live:0,check:1,diag:2,graph:3,dtc:4,fuel:5};
-  if(map[choice]!==undefined) sw(choice,tabs[map[choice]]);
+  // Verplaatste analyses openen in het midden via de launcher
+  if(choice==='check'||choice==='diag'||choice==='fuel'||choice==='koop'){
+    openAnalysis(choice);
+  } else if(choice==='report'){
+    openAnalysis('diag');
+  } else {
+    // Overgebleven tabs: live, graph, dtc
+    const tabMap={live:0,graph:1,dtc:2};
+    const tabs=document.querySelectorAll('.tab');
+    if(tabMap[choice]!==undefined) sw(choice,tabs[tabMap[choice]]);
+  }
   if(choice==='dtc') setTimeout(()=>scanDTC(),300);
   if(choice==='report') setTimeout(()=>runQuickAI(),300);
   if(choice==='fuel') setTimeout(()=>runFuelAnalysis(),400);
@@ -1951,7 +2100,12 @@ async function ensurePIDListActive(pidList){
 // ════════════════════════════════════════
 function renderGauges(){
   const g=document.getElementById('gGrid'); g.innerHTML='';
-  if(!activePIDs.size){g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>`;return;}
+  const sw=document.getElementById('pidViewSwitch');
+  if(!activePIDs.size){
+    if(sw) sw.style.display='none';
+    g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>`;return;
+  }
+  if(sw) sw.style.display='flex';
   activePIDs.forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     const c=document.createElement('div'); c.className='gc'; c.id='gc-'+pid;
@@ -1962,8 +2116,39 @@ function renderGauges(){
     g.appendChild(c);
     if(pidVals[pid]!==undefined) applyG(pid,pidVals[pid]);
   });
+  // Herstel actieve weergavemodus op de nieuwe grid
+  if(pidViewMode!=='full'){ g.classList.add('view-'+pidViewMode); }
 }
 function fv(v){return(v===undefined||v===null)?'—':(Math.abs(v)<10?v.toFixed(2):v.toFixed(0));}
+
+// ── PID weergavemodus: 'full' | 'numbers' | 'dots' ──
+let pidViewMode='full';
+let _pidLastUpd={};          // pid -> laatste update-tijd (ms)
+let _staleWatchdog=null;
+const PID_STALE_MS=4000;     // geen verse waarde binnen 4s = "stale"
+function setPidView(mode){
+  pidViewMode=mode;
+  const g=document.getElementById('gGrid');
+  if(g){ g.classList.remove('view-numbers','view-dots'); if(mode!=='full') g.classList.add('view-'+mode); }
+  document.querySelectorAll('.pidview-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+  try{ localStorage.setItem('pl_pidview', mode); }catch(e){}
+  // Stale-watchdog alleen nodig in puntjes-modus
+  if(mode==='dots') startStaleWatchdog(); else stopStaleWatchdog();
+}
+function startStaleWatchdog(){
+  stopStaleWatchdog();
+  _staleWatchdog=setInterval(()=>{
+    if(pidViewMode!=='dots') return;
+    const now=Date.now();
+    activePIDs.forEach(pid=>{
+      const card=document.getElementById('gc-'+pid); if(!card) return;
+      const last=_pidLastUpd[pid]||0;
+      const stale=(now-last)>PID_STALE_MS;
+      card.classList.toggle('stale', stale);
+    });
+  },1000);
+}
+function stopStaleWatchdog(){ if(_staleWatchdog){ clearInterval(_staleWatchdog); _staleWatchdog=null; } }
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
   const card=document.getElementById('gc-'+pid); if(!card) return;
@@ -1971,7 +2156,13 @@ function applyG(pid,val){
   if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
   else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
   card.className='gc'+(st!=='ok'?' '+st:'');
+  // Verse waarde → niet meer stale (puntjes-modus)
+  card.classList.remove('stale');
   const dot=document.getElementById('gd-'+pid); if(dot) dot.className='gdot'+(st!=='ok'?' '+st:'');
+  // Puntjes-modus: laat het puntje knipperen bij elke nieuwe waarde
+  if(pidViewMode==='dots' && dot && st==='ok'){
+    dot.classList.remove('flash'); void dot.offsetWidth; dot.classList.add('flash');
+  }
   const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=fv(val);
   // Sparkline uit de laatste ~24 metingen
   const sl=document.getElementById('gs-'+pid);
@@ -1984,6 +2175,7 @@ function applyG(pid,val){
 }
 function updPID(pid,val){
   pidVals[pid]=val;
+  _pidLastUpd[pid]=Date.now();
   if(!pidHist[pid]) pidHist[pid]=[];
   pidHist[pid].push({t:Date.now(),v:val});
   if(pidHist[pid].length>120) pidHist[pid].shift();
@@ -2962,24 +3154,8 @@ function btDiag(msg, type='info'){
 // ── AANBEVOLEN VOLGENDE STAP (OBDLink-stijl begeleiding) ──────────
 // Eén duidelijke suggestie op het Live-scherm, op basis van de situatie.
 function updateReco(){
-  const c=document.getElementById('recoCard'); if(!c) return;
-  const set=(ico,title,sub,action)=>{
-    document.getElementById('recoIco').textContent=ico;
-    document.getElementById('recoTitle').textContent=title;
-    document.getElementById('recoSub').textContent=sub;
-    window._recoAction=action; c.style.display='flex';
-  };
-  if(!connected&&!demoMode){
-    set('📡','Verbind je adapter','Plug de OBD2-adapter in en tik hier om te verbinden',()=>document.getElementById('connOv')?.classList.remove('hidden'));
-  } else if((window._dtcFound||0)>0){
-    set('🧠','Foutcodes gevonden — start Diagnose','De AI zoekt de meest waarschijnlijke oorzaak bij je foutcodes',()=>sw('diag',document.querySelectorAll('.tab')[2]));
-  } else if(!window._didTotalCheck&&!window._didDTCScan){
-    set('🚦','Start met de Totaalcheck','Aanbevolen eerste stap: complete conditiecheck in 1 minuut',()=>sw('check',document.querySelectorAll('.tab')[1]));
-  } else if(!window._didRit){
-    set('🚗','Doe een Rit Analyse','10 minuten rijden voor het volledige beeld — incl. rapport voor de garage',()=>{sw('graph',document.querySelectorAll('.tab')[3]);openRitAnalyse();});
-  } else {
-    set('✅','Alles gecheckt','Je voertuig is volledig doorgemeten. Bekijk de grafieken of exporteer een rapport',()=>sw('graph',document.querySelectorAll('.tab')[3]));
-  }
+  // Aanbevolen-banner verwijderd op verzoek — altijd verbergen.
+  const c=document.getElementById('recoCard'); if(c) c.style.display='none';
 }
 function recoAction(){ try{ window._recoAction?.(); }catch(e){} }
 setInterval(updateReco,4000);
@@ -4408,6 +4584,67 @@ async function discoverPIDsDirect(){
   btDiag(`Directe poll: ${found} PIDs gevonden`,'info');
 }
 
+// ── DIEP ZOEKEN: hervind PIDs + zoek namen voor naamloze PIDs ──────────
+// Volledige SAE J1979 mode-01 standaardnamen (dekt de "PID XX"-gevallen)
+const SAE_PID_NAMES={
+  '04':'Motorbelasting berekend','05':'Koelvloeistof temp','06':'Korte trim bank1','07':'Lange trim bank1',
+  '08':'Korte trim bank2','09':'Lange trim bank2','0A':'Brandstofdruk','0B':'Inlaatspruitstuk druk',
+  '0C':'Motortoerental','0D':'Voertuigsnelheid','0E':'Ontstekingstiming','0F':'Inlaatlucht temp',
+  '10':'Luchtmassa (MAF)','11':'Gasklep positie','12':'Secundaire lucht status','13':'O2 sensoren aanwezig',
+  '14':'O2 sensor 1','15':'O2 sensor 2','16':'O2 sensor 3','17':'O2 sensor 4','1C':'OBD standaard',
+  '1F':'Looptijd sinds start','21':'Afstand met MIL aan','22':'Brandstofrail druk (rel)','23':'Brandstofrail druk (dir)',
+  '24':'O2 sensor 1 (breed)','2C':'EGR commando','2D':'EGR fout','2E':'Verdamping purge','2F':'Brandstofniveau',
+  '30':'Warm-ups sinds wis','31':'Afstand sinds wis','32':'Verdampingsdruk','33':'Barometrische druk',
+  '34':'O2 sensor 1 (lambda)','3C':'Katalysator temp B1S1','3D':'Katalysator temp B2S1','42':'Boordspanning',
+  '43':'Absolute belasting','44':'Brandstof equivalentie','45':'Relatieve gasklep','46':'Omgevingstemp',
+  '47':'Absolute gasklep B','49':'Gaspedaal positie D','4A':'Gaspedaal positie E','4C':'Commando gasklep',
+  '4D':'Tijd met MIL aan','4E':'Tijd sinds wis','5C':'Motorolie temp','5E':'Brandstofverbruik','5F':'Emissie eis'
+};
+async function deepRefreshPIDs(){
+  const st=document.getElementById('pidRefreshStatus');
+  const btn=document.getElementById('pidRefreshBtn');
+  if(!connected && !demoMode){ if(st) st.textContent='⚠ Eerst verbinden'; return; }
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Zoeken...'; }
+  const before=supportedPIDs.size;
+  try{
+    if(st) st.textContent='Bitmap-ranges opnieuw scannen...';
+    await discoverPIDsBitmap();
+    if(st) st.textContent='Directe poll van bekende PIDs...';
+    await discoverPIDsDirect();
+    // Extra: poll óók range 01 01..60 één voor één
+    if(st) st.textContent='Diepe poll extra PIDs...';
+    const extra=[];
+    for(let n=0x01;n<=0x60;n++){ extra.push('01'+n.toString(16).toUpperCase().padStart(2,'0')); }
+    for(const pid of extra){
+      if(supportedPIDs.has(pid)) continue;
+      const resp=await sendCmd(pid,800);
+      if(resp&&resp.includes('41')&&!/NO DATA|ERROR|UNABLE/.test(resp)){ supportedPIDs.add(pid); }
+      await delay(30);
+    }
+    // Namen invullen voor naamloze PIDs via SAE-tabel
+    if(st) st.textContent='Namen opzoeken...';
+    let named=0;
+    supportedPIDs.forEach(pid=>{
+      if(ALL_PID_DEFS[pid]) return;             // heeft al een naam
+      const suf=pid.slice(2).toUpperCase();
+      if(SAE_PID_NAMES[suf]){
+        ALL_PID_DEFS[pid]={name:SAE_PID_NAMES[suf],unit:'',min:0,max:255,cat:'Overig',parse:b=>b[0]};
+        named++;
+      }
+    });
+    if(typeof rebuildPidDefsCache==='function') rebuildPidDefsCache();
+    buildDiscoveredPIDList();
+    const gained=supportedPIDs.size-before;
+    if(st) st.textContent=`✓ +${gained} PIDs, ${named} namen toegevoegd (totaal ${supportedPIDs.size})`;
+    log(`🔄 Diep zoeken: +${gained} PIDs, ${named} namen, totaal ${supportedPIDs.size}`,'ok');
+  }catch(e){
+    if(st) st.textContent='Fout: '+e.message;
+    log('Diep zoeken fout: '+e.message,'err');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Diep zoeken'; }
+  }
+}
+
 // Methode 3: Standaard set — altijd beschikbaar als fallback
 function loadDefaultPIDs(){
   // Gebruik voertuiginfo als beschikbaar, anders generieke benzine-set
@@ -4839,7 +5076,21 @@ function setConn(on){
   if(btn){ btn.disabled=false; }
   if(on){dot.className='dot '+(demoMode?'demo':'on');txt.textContent=demoMode?'Demo modus':'Verbonden';btn.textContent='Verbreken';btn.className='btn-t off';}
   else{dot.className='dot';txt.textContent='Niet verbonden';btn.textContent='Verbinden';btn.className='btn-t';}
+  // Optie-3: statuschip alleen tonen wanneer NIET verbonden (en niet in demo)
+  const sp=document.getElementById('statusPill');
+  if(sp){ sp.classList.toggle('show', !on); }
 }
+// ── ⋯ kebab menu ──
+function toggleKebab(e){
+  if(e) e.stopPropagation();
+  const m=document.getElementById('kebabMenu');
+  if(m) m.classList.toggle('open');
+}
+function closeKebab(){ const m=document.getElementById('kebabMenu'); if(m) m.classList.remove('open'); }
+document.addEventListener('click',(e)=>{
+  const w=document.getElementById('kebabWrap');
+  if(w && !w.contains(e.target)) closeKebab();
+});
 function showVtag(t){const el=document.getElementById('vtag');el.textContent=t;el.style.display='block';}
 async function handleConnect(){
   if(connected){
@@ -4868,9 +5119,19 @@ window.addEventListener('pagehide',()=>{
 function sw(name,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('pane-'+name).classList.add('active');
+  if(el && el.classList) el.classList.add('active');
+  const pane=document.getElementById('pane-'+name);
+  if(pane) pane.classList.add('active');
   if(name==='graph') setTimeout(drawGraph,50);
+}
+// Launcher vanuit de rechter AI-kolom: opent het invulscherm in het MIDDEN.
+// De bijbehorende tab is verwijderd, dus geen tab-knop om te markeren.
+function openAnalysis(name){
+  sw(name,null);
+  // Zorg dat het middenpaneel zichtbaar is en scroll naar boven
+  const tb=document.querySelector('.tb'); if(tb) tb.scrollTop=0;
+  // Markeer de actieve launcher-knop
+  document.querySelectorAll('.ai-launch-btn').forEach(b=>b.classList.toggle('active', b.dataset.target===name));
 }
 function toggleSL(){
   slCollapsed=!slCollapsed;
@@ -4878,6 +5139,31 @@ function toggleSL(){
   const btn=document.getElementById('slToggle');
   btn.textContent=slCollapsed?'▶':'◀';
   try{localStorage.setItem('ns_sl',slCollapsed);}catch(e){}
+  if(!slCollapsed) armSLAutoHide(); else clearSLAutoHide();
+}
+
+// ── PID-scherm auto-verbergen na 15s inactiviteit ──────────────
+let _slHideTimer=null;
+const SL_HIDE_MS=15000;
+function clearSLAutoHide(){ if(_slHideTimer){ clearTimeout(_slHideTimer); _slHideTimer=null; } }
+function armSLAutoHide(){
+  clearSLAutoHide();
+  if(slCollapsed) return;
+  _slHideTimer=setTimeout(()=>{
+    if(!slCollapsed){
+      slCollapsed=true;
+      document.getElementById('appGrid').classList.add('sl-col');
+      const btn=document.getElementById('slToggle'); if(btn) btn.textContent='▶';
+      try{localStorage.setItem('ns_sl','true');}catch(e){}
+    }
+  }, SL_HIDE_MS);
+}
+// Reset timer bij elke interactie binnen het PID-paneel
+function initSLActivityReset(){
+  const panel=document.getElementById('slPanel');
+  if(!panel) return;
+  ['click','input','scroll','touchstart','mousemove'].forEach(ev=>
+    panel.addEventListener(ev,()=>{ if(!slCollapsed) armSLAutoHide(); }, {passive:true}));
 }
 function toggleSR(){
   srCollapsed=!srCollapsed;
@@ -4949,12 +5235,16 @@ function zoomReset(){currentZoom=1.0;applyZoom();}
 document.addEventListener('DOMContentLoaded', function(){
 
   // Welcome card klikkers
-  document.getElementById('wc-diag').onclick=()=>startChoice('diag');
-  document.getElementById('wc-check').onclick=()=>startChoice('check');
-  document.getElementById('wc-live').onclick=()=>startChoice('live');
-  document.getElementById('wc-dtc').onclick=()=>startChoice('dtc');
-  document.getElementById('wc-report').onclick=()=>startChoice('report');
-  document.getElementById('wc-fuel').onclick=()=>startChoice('fuel');
+  const wcBind=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onclick=fn; };
+  wcBind('wc-diag',()=>startChoice('diag'));
+  wcBind('wc-check',()=>startChoice('check'));
+  wcBind('wc-live',()=>startChoice('live'));
+  wcBind('wc-dtc',()=>startChoice('dtc'));
+  wcBind('wc-report',()=>startChoice('report'));
+  wcBind('wc-fuel',()=>startChoice('fuel'));
+  wcBind('wc-koop',()=>startChoice('koop'));
+  wcBind('wc-rit2',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('2min'); });
+  wcBind('wc-rit10',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('10min'); });
   document.getElementById('btnConnect').onclick=()=>connectSerial();
   document.getElementById('btnDemo').onclick=()=>startDemo();
 
@@ -4974,8 +5264,11 @@ document.addEventListener('DOMContentLoaded', function(){
     if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';document.getElementById('fontLbl').textContent=currentFont;}
     const sz=localStorage.getItem('ns_zoom');
     if(sz){currentZoom=parseFloat(sz)||1.0;applyZoom();}
-    if(localStorage.getItem('ns_sl')==='true') toggleSL();
+    // PID-scherm standaard ingeklapt; opent via uitvouw-knop. Sluit na 15s inactiviteit.
+    if(!slCollapsed){ slCollapsed=true; document.getElementById('appGrid').classList.add('sl-col'); const b=document.getElementById('slToggle'); if(b) b.textContent='▶'; }
     if(localStorage.getItem('ns_sr')==='true') toggleSR();
+    initSLActivityReset();
+    const savedView=localStorage.getItem('pl_pidview'); if(savedView) setPidView(savedView);
   }catch(e){}
 
   window.addEventListener('resize',()=>{ if(graphPID||trendPIDs.length) drawGraph(); });
