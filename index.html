@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-14 17:30 (CET)
+     PidLane — build aangepast: 2026-06-14 18:10 (CET)
      Wijzigingen deze build:
-       • Verbind-stappen: "Druk eerst op pair-knop MX+" toegevoegd
-       • 2-min Snelle Technische Check (knop boven 10-min) — alleen
-         technisch, geen rijgedrag, direct technisch rapport
-       • Hybride/EV-waarschuwing vóór analyse: laat verbrandingsmotor meelopen
-       • Start-scherm: Tester-modus knop + API-key aanvraag bij admin +
-         toestemmingsvinkje voor bundelen/bewaren logs
-       • "📦 Exporteer alle logs" knop: BT + app + scan-log in één bestand
-       • PDF-rapport: automatische TXT-fallback als jsPDF faalt
-     Eerdere build (16:45):
-       • RDW bouwjaar robuust parsen + brandstoftype + voertuig-bewuste PID-set
+       • Tester-modus nu op BEIDE schermen: login-scherm én verbind-scherm
+         (verbind-scherm vanwege auto-login bij terugkerende gebruiker)
+       • Tester-vinkje sync tussen beide schermen
+       • API-key kan handmatig op login-scherm worden ingevoerd
+     Eerdere build (17:30):
+       • Pair-knop instructie, 2-min technische check, hybride-waarschuwing,
+         exporteer-alle-logs knop, PDF TXT-fallback
        • BLE: NON-OBD deny-filter (Shelly/buds/watch/tv genegeerd)
        • BLE: ELM327-verificatie + meerdere kandidaten proberen
        • Verbinden: automatische 2e scanronde
@@ -446,6 +443,17 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <input class="api-inp" id="loginPass" type="password" placeholder="Wachtwoord" autocomplete="current-password"
             onkeydown="if(event.key==='Enter')doLogin()">
         </div>
+        <div>
+          <div class="api-lbl" style="margin-bottom:5px">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
+          <input class="api-inp" id="loginApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
+        </div>
+        <button class="btn" id="loginTesterBtn" onclick="toggleTesterMode('login')" style="width:100%;padding:9px;font-size:11px;justify-content:center;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:#00D4FF;font-weight:700">🧪 Tester-modus</button>
+        <div id="loginTesterConsentRow" style="display:none;padding:9px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:10px;color:var(--tx2);line-height:1.5">
+            <input type="checkbox" id="loginTesterConsent" style="margin-top:1px;flex-shrink:0" onchange="saveTesterConsent('login')">
+            <span>Ik geef toestemming dat PidLane de BT-logs en overige logs bundelt en bewaart voor analyse. Ik kan ze zelf exporteren via de knop "Exporteer alle logs".</span>
+          </label>
+        </div>
         <div id="loginErr" style="font-size:11px;color:var(--rd);min-height:16px;text-align:center"></div>
       </div>
     </div>
@@ -475,10 +483,12 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <div style="padding:0 20px 10px" id="connApiRow">
           <div class="api-lbl">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
           <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
-          <button class="btn" id="testerBtn" onclick="toggleTesterMode()" style="width:100%;margin-top:8px;padding:9px;font-size:11px;justify-content:center;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:#00D4FF;font-weight:700">🧪 Tester-modus</button>
+        </div>
+        <div style="padding:0 20px 10px" id="connTesterRow">
+          <button class="btn" id="testerBtn" onclick="toggleTesterMode('conn')" style="width:100%;padding:9px;font-size:11px;justify-content:center;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:#00D4FF;font-weight:700">🧪 Tester-modus</button>
           <div id="testerConsentRow" style="display:none;margin-top:8px;padding:9px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">
             <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:10px;color:var(--tx2);line-height:1.5">
-              <input type="checkbox" id="testerConsent" style="margin-top:1px;flex-shrink:0" onchange="saveTesterConsent()">
+              <input type="checkbox" id="testerConsent" style="margin-top:1px;flex-shrink:0" onchange="saveTesterConsent('conn')">
               <span>Ik geef toestemming dat PidLane de BT-logs en overige logs bundelt en bewaart voor analyse. Ik kan ze zelf exporteren via de knop "Exporteer alle logs".</span>
             </label>
           </div>
@@ -1067,7 +1077,13 @@ function doLogin(){
   try{ localStorage.setItem('pl_session', user); }catch(e){} // sessie onthouden over herlaads heen
 
   // API key instellen — via window zodat het altijd beschikbaar is
-  if(account.apiKey && account.apiKey.startsWith('sk-ant-')){
+  // Voorrang: handmatig ingevoerde key op login-scherm > account-key
+  const manualKey = (document.getElementById('loginApiKey')?.value || '').trim();
+  if(manualKey && manualKey.startsWith('sk-ant-')){
+    window.anthropicKey = manualKey;
+    try{ localStorage.setItem('ns_api_key', manualKey); }catch(e){}
+    log('API key handmatig ingevoerd voor '+user,'ok');
+  } else if(account.apiKey && account.apiKey.startsWith('sk-ant-')){
     window.anthropicKey = account.apiKey;
     try{ localStorage.setItem('ns_api_key', account.apiKey); }catch(e){}
     log('API key geladen voor '+user,'ok');
@@ -5528,10 +5544,14 @@ function downloadScanLog(){
   download(`pidlane-scanlog-${new Date().toISOString().slice(0,10)}.txt`, lines.join('\n'));
 }
 
-// ── TESTER-MODUS (login/start-scherm) ──────────────────────
-function toggleTesterMode(){
-  const row = document.getElementById('testerConsentRow');
-  const btn = document.getElementById('testerBtn');
+// ── TESTER-MODUS (login- én verbind-scherm) ──────────────────────
+// where: 'login' of 'conn' — bepaalt welke knop/vinkje wordt aangesproken
+function toggleTesterMode(where='conn'){
+  const ids = where==='login'
+    ? { row:'loginTesterConsentRow', btn:'loginTesterBtn', cb:'loginTesterConsent' }
+    : { row:'testerConsentRow',      btn:'testerBtn',      cb:'testerConsent' };
+  const row = document.getElementById(ids.row);
+  const btn = document.getElementById(ids.btn);
   if(!row) return;
   const on = row.style.display === 'none';
   row.style.display = on ? 'block' : 'none';
@@ -5539,17 +5559,23 @@ function toggleTesterMode(){
     btn.style.background = on ? 'rgba(0,212,255,.18)' : 'rgba(0,212,255,.08)';
     btn.textContent = on ? '🧪 Tester-modus actief' : '🧪 Tester-modus';
   }
-  // Herstel opgeslagen toestemming
+  // Herstel opgeslagen toestemming in dit vinkje
   try {
     const c = localStorage.getItem('pl_tester_consent') === '1';
-    const cb = document.getElementById('testerConsent');
+    const cb = document.getElementById(ids.cb);
     if(cb) cb.checked = c;
   } catch(e){}
 }
-function saveTesterConsent(){
-  const cb = document.getElementById('testerConsent');
-  try { localStorage.setItem('pl_tester_consent', cb && cb.checked ? '1':'0'); } catch(e){}
-  if(cb && cb.checked) log('🧪 Tester-toestemming gegeven — logs worden gebundeld bewaard','ok');
+function saveTesterConsent(where='conn'){
+  const cbId = where==='login' ? 'loginTesterConsent' : 'testerConsent';
+  const cb = document.getElementById(cbId);
+  const val = cb && cb.checked;
+  try { localStorage.setItem('pl_tester_consent', val ? '1':'0'); } catch(e){}
+  // Houd het andere scherm in sync
+  const otherId = where==='login' ? 'testerConsent' : 'loginTesterConsent';
+  const other = document.getElementById(otherId);
+  if(other) other.checked = !!val;
+  if(val) log('🧪 Tester-toestemming gegeven — logs worden gebundeld bewaard','ok');
 }
 function hasTesterConsent(){
   try { return localStorage.getItem('pl_tester_consent') === '1'; } catch(e){ return false; }
