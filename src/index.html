@@ -1,6 +1,34 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-16 13:30 (CET)
+     PidLane — build aangepast: 2026-06-16 17:00 (CET)
+     UX: kenteken-invoerveld staat nu ALTIJD direct zichtbaar in de
+       voertuigkaart (ook bij geldige VIN). Klikken op de VIN-regel om
+       het veld te tonen is niet meer nodig. Enter in het veld start
+       de RDW-lookup. VIN-regel is nu enkel info (niet meer klikbaar).
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 16:30):
+     CODE-AUDIT FIXES (stabiliteit vóór demo):
+       • FIX: dubbele pidPollInterval() — de 2e definitie overschreef de 1e
+         via hoisting en MISTE de klacht-focus (_focusPIDs). Nu samengevoegd
+         tot één functie met zowel focus- als motortype-logica.
+       • FIX: no-op _origPidPollInterval verwijderd (verwees naar zichzelf).
+       • FIX: readiness-kaart gebruikt nu de ECHTE analyse-PID-set
+         (ANALYSE_PIDS) i.p.v. een afwijkende lijst — kaart-% klopt nu met
+         wat de analyse daadwerkelijk activeert.
+       • Audit: alle 40+ kern/analyse/demo-functies geverifieerd aanwezig,
+         geen ontbrekende handlers, geen andere dubbele definities.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 15:00):
+     NIEUW: AI-Automonteur agent (apart sheet via topbar 🧠)
+       • Lokale kennisbank AUTO_KENNIS: merk-specifieke zwakke punten +
+         bekende storingen gekoppeld aan PIDs/symptomen (12 merken)
+       • Combineert: voertuiginfo + live PID-data + actieve DTC's +
+         lokale merk-kennis → gespecialiseerde AI-prompt
+       • Snelknoppen: Bekende problemen / Wat zegt mijn live data /
+         Leg foutcodes uit + vrije vraag-invoer
+       • Werkt ook in demo-modus
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 13:30):
      BUGFIXES (Snelle Technische Check liep vast):
        • FIX A: rit-fasen (2min+10min) activeren nu hun eigen volledige
          PID-set via ensurePIDListActive — geen lege fase-data meer
@@ -231,6 +259,29 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .kebab-sep { height:1px; background:var(--bd); margin:4px 2px; }
 .kebab-danger { color:var(--rd)!important; }
 .kebab-danger:hover { background:var(--rds)!important; }
+/* ══ AI-AUTOMONTEUR SHEET ══ */
+.aex-sheet{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+.aex-sheet.hidden{display:none}
+.aex-panel{background:var(--sur);border:1px solid var(--bd);border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;padding:16px;box-shadow:0 -8px 40px rgba(0,0,0,.4)}
+@media(min-width:640px){.aex-sheet{align-items:center}.aex-panel{border-radius:16px;max-height:82vh}}
+.aex-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.aex-title{font-size:16px;font-weight:800}
+.aex-sub{font-size:11px;color:var(--tx3);margin-top:2px}
+.aex-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:14px;cursor:pointer;flex-shrink:0}
+.aex-close:hover{background:var(--rds);color:var(--rd)}
+.aex-know{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.aex-know:empty{display:none}
+.aex-chip{font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--bls);color:var(--bl);border:1px solid var(--bd)}
+.aex-quick{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.aex-qbtn{flex:1;min-width:130px;padding:9px 10px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.aex-qbtn:hover{background:var(--bls);border-color:var(--bl);color:var(--bl)}
+.aex-inp{display:flex;gap:7px;margin-bottom:12px}
+.aex-inp input{flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:12px}
+.aex-inp input:focus{outline:none;border-color:var(--bl)}
+.aex-send{padding:10px 14px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.aex-send:hover{background:var(--bl2)}
+.aex-answer{flex:1;overflow-y:auto;font-size:13px;line-height:1.55;color:var(--tx)}
+.aex-empty{font-size:12px;color:var(--tx3);text-align:center;padding:24px 12px;line-height:1.6}
 #vtag { font-size:10px; font-weight:600; color:var(--bl); background:var(--bls); padding:2px 7px; border-radius:4px; display:none; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ══ APP LAYOUT ══ */
@@ -834,6 +885,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
     <div id="vtag"></div>
     <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
     <div class="pill show" id="statusPill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
+    <button class="btn-t" id="expertBtn" onclick="openAutoExpert()" title="AI-Automonteur" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:5px 9px">🧠 Monteur</button>
     <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
     <!-- ⋯ menu met secundaire acties -->
     <div class="kebab-wrap" id="kebabWrap">
@@ -847,6 +899,30 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══ AI-AUTOMONTEUR SHEET ══ -->
+<div id="autoExpertSheet" class="aex-sheet hidden">
+  <div class="aex-panel">
+    <div class="aex-head">
+      <div>
+        <div class="aex-title">🧠 AI-Automonteur</div>
+        <div class="aex-sub" id="aexVehicle">Geen voertuig herkend</div>
+      </div>
+      <button class="aex-close" onclick="closeAutoExpert()">✕</button>
+    </div>
+    <div id="aexKnowledge" class="aex-know"></div>
+    <div class="aex-quick">
+      <button class="aex-qbtn" onclick="autoExpertAsk('problemen')">⚠️ Bekende problemen</button>
+      <button class="aex-qbtn" onclick="autoExpertAsk('livedata')">📊 Wat zegt mijn live data?</button>
+      <button class="aex-qbtn" onclick="autoExpertAsk('dtc')">🔴 Leg foutcodes uit</button>
+    </div>
+    <div class="aex-inp">
+      <input type="text" id="aexQuestion" placeholder="Stel een vraag, bv. 'waarom rookt deze diesel koud?'" onkeydown="if(event.key==='Enter')autoExpertAsk('vrij')">
+      <button class="aex-send" onclick="autoExpertAsk('vrij')">Vraag →</button>
+    </div>
+    <div id="aexAnswer" class="aex-answer"><div class="aex-empty">Kies een snelknop of typ je vraag. De monteur combineert je voertuig, live sensordata, foutcodes en merk-kennis.</div></div>
   </div>
 </div>
 
@@ -4859,15 +4935,16 @@ function updateVehicleCard(vinInfo){
       <div class="vic-row"><span class="vic-label">Merk</span><span class="vic-val" id="vicMerk">${vehicleInfo.merk}${vehicleInfo.model?' '+vehicleInfo.model:''}</span></div>
       ${vehicleInfo.year?`<div class="vic-row"><span class="vic-label">Jaar</span><span class="vic-val">${vehicleInfo.year}</span></div>`:''}
       <div class="vic-row"><span class="vic-label">PIDs</span><span class="vic-val">${supportedPIDs.size} beschikbaar</span></div>
-      ${vehicleInfo.vin?`<div class="vic-vin" onclick="toggleKentInput()" style="cursor:pointer" title="Tik om kenteken in te vullen">VIN: ${vehicleInfo.vin} <span style="color:var(--bl)">✎</span></div>`:''}
-      <div id="kentWrap" style="display:${vehicleInfo.vin?'none':'block'}">
+      ${vehicleInfo.vin?`<div class="vic-vin" style="opacity:.85">VIN: ${vehicleInfo.vin}</div>`:''}
+      <div id="kentWrap" style="display:block">
         <div style="display:flex;gap:4px;margin-top:6px;align-items:center">
           <input id="kentInput" placeholder="Kenteken" value="${savedKent}" maxlength="8"
+            onkeydown="if(event.key==='Enter')rdwLookup()"
             style="flex:1;min-width:0;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:11px;text-transform:uppercase">
           <button onclick="rdwLookup()" style="padding:5px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">🇳🇱 RDW</button>
         </div>
         <div id="kentStatus" style="font-size:10px;color:var(--tx3)"></div>
-        ${vehicleInfo.vin?'<div style="font-size:9px;color:var(--tx3);margin-top:2px">Vul kenteken in voor merk, model en bouwjaar via RDW</div>':''}
+        <div style="font-size:9px;color:var(--tx3);margin-top:2px">Vul kenteken in voor merk, model en bouwjaar via RDW</div>
       </div>
     </div>`;
   // Opgeslagen kenteken? Direct automatisch opzoeken (ook bij geldige VIN,
@@ -5533,6 +5610,17 @@ function pidPollInterval(pid){
   // Focus-PIDs (klacht-gestuurd, idee 5) altijd op het snelste tempo
   if(_focusPIDs.has(pid)) return 120;
   const suf=pid.slice(2).toUpperCase();
+  // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen
+  if(typeof _evModeActive!=='undefined' && _evModeActive && typeof ICE_PIDS_SUFFIX!=='undefined' && ICE_PIDS_SUFFIX.has(suf)) return 999999;
+  // Motortype-afhankelijke prioriteiten
+  const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
+  if(et==='hybride'||et==='ev'){
+    if(['42','5B','5C','15B'].includes(suf)) return 500; // accu/spanning vaker
+    if(['0C','0D'].includes(suf)) return 150;            // RPM/snelheid altijd snel
+  } else if(et==='diesel'){
+    if(['23','59'].includes(suf)) return 200;            // raildruk snel
+    if(['7A','7B','7C','7D'].includes(suf)) return 5000; // DPF minder snel
+  }
   return PID_POLL_CLASS[suf]||1000;   // default MEDIUM
 }
 // Welke PIDs zijn NU "due" om te pollen?
@@ -5845,7 +5933,13 @@ function renderReadinessCard(elId, profile){
     return;
   }
 
-  const pidList = ANALYSE_PID_SETS[profile] || [];
+  // Gebruik waar mogelijk de ECHTE analyse-PID-set (ANALYSE_PIDS), zodat de
+  // kaart klopt met wat de analyse daadwerkelijk activeert. Voor profielen die
+  // daar niet in staan (monteur/koop/dtc) valt het terug op ANALYSE_PID_SETS.
+  const realMap = { totaal:'totaal', rit:'rit', monteur:'basis', koop:'totaal', dtc:'basis' };
+  const realKey = realMap[profile];
+  const pidList = (typeof ANALYSE_PIDS!=='undefined' && realKey && ANALYSE_PIDS[realKey])
+                  || ANALYSE_PID_SETS[profile] || [];
   const discoveryDone = supportedPIDs && supportedPIDs.size > 0;
   let beschikbaar = 0, ontbreekt = 0;
   pidList.forEach(pid => {
@@ -5926,28 +6020,111 @@ function updateEVMode(){
   }
 }
 
-// Override pidPollInterval voor hybride/diesel/EV
-const _origPidPollInterval = pidPollInterval;
-function pidPollInterval(pid){
-  // EV-modus: ICE-PIDs niet pollen
-  if(_evModeActive){
-    const suf = pid.slice(2).toUpperCase();
-    if(ICE_PIDS_SUFFIX.has(suf)) return 999999; // effectief uitgeschakeld
+// (pidPollInterval met motortype-logica is samengevoegd in de hoofddefinitie hierboven)
+
+// ══════════════════════════════════════════════════════
+// AI-AUTOMONTEUR — lokale kennisbank + AI-interpretatie
+// Combineert voertuiginfo + live PID-data + DTC's + merk-kennis
+// ══════════════════════════════════════════════════════
+// Compacte merk-kennisbank: bekende zwakke punten per merk, gekoppeld aan
+// relevante PIDs en symptomen. Uitbreidbaar. Focus op merken die NL-dealers
+// rond Dordrecht het meest binnenkrijgen.
+const AUTO_KENNIS = {
+  'volkswagen': {zwak:['EGR-klep vervuiling (TDI)','DPF-regeneratie problemen','distributieketting-spanner (1.2/1.4 TSI)','timing chain rek','waterpomp lekkage'],pids:['0106','0107','016B','016D','0105'],let_op:'1.4 TSI tot ±2014: ketting-spanner; TDI: roetfilter + EGR.'},
+  'audi':       {zwak:['olieverbruik (2.0 TFSI EA888)','distributieketting (2.0 TFSI)','DPF/EGR (TDI)','carbon-opbouw inlaatkleppen'],pids:['0106','0107','010B','016B'],let_op:'2.0 TFSI EA888 gen2: berucht olieverbruik via zuigerveren.'},
+  'skoda':      {zwak:['EGR/DPF (TDI)','TSI ketting-spanner','DSG-mechatronic'],pids:['0106','0107','016B'],let_op:'Deelt motoren met VW/Audi — zelfde aandachtspunten.'},
+  'seat':       {zwak:['TSI ketting','DPF (TDI)','DSG'],pids:['0106','0107','016B'],let_op:'VAG-platform, zie VW.'},
+  'bmw':        {zwak:['koelsysteem (waterpomp/thermostaat)','VANOS-magneetkleppen','timing chain (N47 diesel)','DISA-klep','olielekkage kleppendeksel'],pids:['0105','010E','010C','0142'],let_op:'N47 diesel: ketting achterzijde motor, dure reparatie. Controleer koelwatertemp-gedrag.'},
+  'mercedes':   {zwak:['balanceer-as (M272)','roestkettingstrekker','luchtvering','injectoren (CDI diesel)','EGR-koeler'],pids:['0105','0106','0107','016B'],let_op:'CDI diesel: injector-lektest via trims; let op koelwatertemp.'},
+  'toyota':     {zwak:['hybride accu-degradatie','EGR-vervuiling (diesel)','olieverbruik oudere 1.8 VVT-i','inverterkoeling'],pids:['015B','0105','0142','0106'],let_op:'Hybride: check SoC + inverter-temp. Laat verbrandingsmotor meelopen bij meting.'},
+  'mazda':      {zwak:['inlaatklep-vervuiling (SkyActiv-D diesel)','DPF kortritten','roest wielkasten oudere modellen','breedband-lambda B1S1'],pids:['0124','0134','0106','016B'],let_op:'SkyActiv-D: gevoelig voor kortritten/DPF. B1S1 = breedband (0124), niet 0113.'},
+  'ford':       {zwak:['EcoBoost koelvloeistof-verlies (1.0)','DPF (TDCi)','waterpomp intern (1.0 EcoBoost)','versnellingsbak PowerShift'],pids:['0105','0106','016B','0142'],let_op:'1.0 EcoBoost: interne waterpomp kan koelvloeistof in olie brengen.'},
+  'opel':       {zwak:['distributieketting (1.4 Turbo)','thermostaat','waterpomp','EGR (CDTi)'],pids:['0105','010C','0106'],let_op:'1.4 Turbo: ketting-rek geeft P-codes; controleer timing.'},
+  'renault':    {zwak:['injectoren (dCi diesel)','EGR-klep','DPF','turbo-actuator'],pids:['0106','0107','016B','0170'],let_op:'dCi: injector-codering + EGR. PSA/Renault diesel gevoelig voor kortritten.'},
+  'peugeot':    {zwak:['distributieketting (1.2 PureTech)','EGR/DPF (HDi)','AdBlue-systeem','olieslib 1.2 PureTech'],pids:['0106','016B','01A4','0105'],let_op:'1.2 PureTech: ketting met natte riem — controleer olie + timing.'},
+  'citroen':    {zwak:['1.2 PureTech ketting/riem','HDi DPF','AdBlue (BlueHDi)','ophanging'],pids:['0106','016B','01A4'],let_op:'Deelt motoren met Peugeot — zelfde PureTech/HDi aandachtspunten.'},
+  'volvo':      {zwak:['PCV-systeem (oudere 5-cil)','DPF (diesel)','PHEV accu-balancering','turbo'],pids:['0106','016B','015B','0170'],let_op:'PHEV (XC60/XC90): laat verbrandingsmotor meedraaien voor volledige meting.'}
+};
+
+function autoKennisVoorMerk(merk){
+  if(!merk) return null;
+  const m=merk.toLowerCase().trim();
+  // directe match of substring
+  for(const k in AUTO_KENNIS){ if(m===k||m.includes(k)||k.includes(m)) return {merk:k,...AUTO_KENNIS[k]}; }
+  return null;
+}
+
+function openAutoExpert(){
+  const sheet=document.getElementById('autoExpertSheet');
+  sheet.classList.remove('hidden');
+  const v=getVehicle()||{};
+  const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
+  const bf=v.brandstof?` · ${v.brandstof}`:'';
+  document.getElementById('aexVehicle').textContent=
+    merkModel ? merkModel+bf+(demoMode?' (demo)':'') : (demoMode?'Demo-voertuig':'Geen voertuig herkend — verbind of vul kenteken in');
+  // Kennisbank-chips tonen
+  const know=autoKennisVoorMerk(v.merk);
+  const kEl=document.getElementById('aexKnowledge');
+  if(know){
+    kEl.innerHTML=`<span class="aex-chip" style="background:var(--ors);color:var(--or);border-color:var(--or)">⚠️ Bekende ${know.merk}-aandachtspunten</span>`+
+      know.zwak.slice(0,5).map(z=>`<span class="aex-chip">${z}</span>`).join('');
+  } else kEl.innerHTML='';
+}
+function closeAutoExpert(){ document.getElementById('autoExpertSheet').classList.add('hidden'); }
+
+// Bouwt de context-string: voertuig + live PIDs + DTC's + merk-kennis
+function buildAutoExpertContext(){
+  const v=getVehicle()||{};
+  const lines=[];
+  const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
+  lines.push(`VOERTUIG: ${merkModel||'onbekend'}${v.brandstof?' ('+v.brandstof+')':''}${v.vin?' VIN '+v.vin:''}`);
+  // Live PID-waarden
+  const pidLines=[...activePIDs].map(pid=>{
+    const d=getPidDef(pid);
+    if(d && pidVals[pid]!==undefined) return `  ${d.name}: ${fv(pidVals[pid])} ${d.unit||''}`;
+    return null;
+  }).filter(Boolean);
+  if(pidLines.length){ lines.push('LIVE SENSORDATA:'); lines.push(...pidLines); }
+  else lines.push('LIVE SENSORDATA: (nog geen actieve sensoren)');
+  // DTC's
+  if(typeof dtcCodes!=='undefined' && dtcCodes.length){
+    lines.push('ACTIEVE FOUTCODES:');
+    dtcCodes.forEach(c=>{ const i=(typeof DTCDB!=='undefined')?DTCDB[c]:null; lines.push(`  ${c}${i?' — '+i.desc:''}`); });
+  } else lines.push('ACTIEVE FOUTCODES: geen / niet gescand');
+  // Lokale merk-kennis
+  const know=autoKennisVoorMerk(v.merk);
+  if(know){
+    lines.push(`BEKENDE ${know.merk.toUpperCase()}-ZWAKKE PUNTEN: ${know.zwak.join('; ')}`);
+    if(know.let_op) lines.push(`LET OP: ${know.let_op}`);
   }
-  const engineType = detectEngineType();
-  const suf = pid.slice(2).toUpperCase();
-  // Hybride: HV-accu + inverter-gerelateerde PIDs vaker pollen
-  if(engineType === 'hybride' || engineType === 'ev'){
-    if(['42','5B','5C','15B'].includes(suf)) return 500; // accu/spanning vaker
-    if(['0C','0D'].includes(suf)) return 150; // RPM/snelheid altijd snel
+  return lines.join('\n');
+}
+
+async function autoExpertAsk(mode){
+  const ansEl=document.getElementById('aexAnswer');
+  let vraag='';
+  if(mode==='vrij'){
+    vraag=(document.getElementById('aexQuestion').value||'').trim();
+    if(!vraag){ ansEl.innerHTML='<div class="aex-empty">Typ eerst een vraag.</div>'; return; }
+  } else if(mode==='problemen'){
+    vraag='Wat zijn de meest waarschijnlijke en bekende problemen voor dit specifieke merk/model/bouwjaar? Koppel ze waar mogelijk aan de live sensordata.';
+  } else if(mode==='livedata'){
+    vraag='Beoordeel de live sensordata. Wat valt op, wat is normaal, en wat wijst mogelijk op een probleem? Wees concreet over welke waarden afwijken en waarom.';
+  } else if(mode==='dtc'){
+    vraag='Leg de actieve foutcodes uit in begrijpelijke taal, geef per code de waarschijnlijke oorzaak (merk-specifiek waar relevant) en de aanbevolen vervolgstap.';
   }
-  // Diesel: raildruk + roetfilter zijn kritisch
-  if(engineType === 'diesel'){
-    if(['23','59'].includes(suf)) return 200; // raildruk snel
-    if(['7A','7B','7C','7D'].includes(suf)) return 5000; // DPF minder snel
+  ansEl.innerHTML='<div class="ai-ld" style="padding:20px;text-align:center"><div class="spin"></div> Automonteur denkt na...</div>';
+  const context=buildAutoExpertContext();
+  const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde live sensordata, foutcodes en merk-kennis. Wees eerlijk over onzekerheid; verzin geen waarden die niet in de data staan. Geen ECU-acties adviseren (read-only diagnose). Structureer met korte kopjes waar nuttig.';
+  const prompt=`${context}\n\nVRAAG VAN DE DEALER: ${vraag}`;
+  try{
+    const txt=await apiFetch(prompt, 1100, sys);
+    ansEl.innerHTML='';
+    if(typeof renderAIText==='function'){ renderAIText(txt, ansEl); }
+    else ansEl.textContent=txt;
+  }catch(e){
+    ansEl.innerHTML=`<div class="aex-empty" style="color:var(--rd)">⚠️ ${e.message||'Er ging iets mis'}<br><br>Stel je AI-sleutel in via 🤖 rechtsboven.</div>`;
   }
-  // Standaard klasse-lookup
-  return PID_POLL_CLASS[suf] || 1000;
 }
 
 function openAnalysis(name){
