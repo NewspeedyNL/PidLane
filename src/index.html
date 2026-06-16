@@ -1,6 +1,62 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-16 17:00 (CET)
+     PidLane — build aangepast: 2026-06-16 21:00 (CET)
+     CONNECTIE-OPTIMALISATIE + stale-fix:
+       • measureConnSpeed(): meet werkelijke reads/sec + latency + protocol.
+       • suggestStrategy(): stelt Snel/Gebalanceerd/Conservatief voor op basis
+         van snelheid; gebruiker bevestigt via overlay (showStrategyConfirm).
+       • Gekozen strategie past poll-tempo aan (_pollMult op pidPollInterval).
+       • Draait automatisch na verbinden; preAnalysisCheck() doet vóór elke
+         analyse een lichte hercontrole (popup alleen als verbinding merkbaar
+         verslechterd is).
+       • Compacte status in topbar-statusregel: ⚡reads/s · 📡PIDs · 🎯strategie.
+       • Knop "⚡ Meet snelheid" in de log-sheet (naast 🤖 Optimaliseer).
+       • STALE-FIX: puntjes-weergave knippert niet meer rood bij trage PIDs.
+         Stale-drempel is nu per PID = 3× poll-interval (min 5s), en de stale-
+         animatie is mild oranje i.p.v. rood alarm. Trage temp/niveau-sensoren
+         tonen dus gewoon een rustige refresh zolang de verbinding OK is.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 20:00):
+     PID-CONTROLE + GEZONDHEID bij eerste uitlezing:
+       • initialHealthScan(): na discovery wordt elke PID 1x uitgelezen en
+         beoordeeld (assessPidQuality). Resultaat in _pidHealth.
+       • Ongezonde PIDs (onzin/dood/twijfel) worden in de lijst UITGEGRIJSD
+         en niet-selecteerbaar, met een ⚠-markering en uitleg-tooltip.
+       • Knop "👁 Toon alles" maakt uitgegrijsde PIDs alsnog selecteerbaar.
+       • Gezonde kern-PIDs (RPM/temp/trims/accu) worden na discovery
+         automatisch geselecteerd (autoSelectHealthyKern).
+       • Per categorie-kop een "+ Alles"-knop die alle gezonde PIDs van die
+         soort (Motor/Temp/Elektrisch/...) in 1 klik activeert.
+       • Analyses (relevantSupportedPIDs) slaan ongezonde sensoren over.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 19:00):
+     BETROUWBAARHEID — geen klant op kosten door een meetfout:
+       • assessPidQuality(): elke opvallende sensor krijgt voor de AI-analyse
+         een oordeel: ok / onzin (fysiek onmogelijk = parse/schaalfout =
+         uitsluiten) / twijfel (dode-platte sensor, te weinig samples, net
+         over drempel = met waarschuwing).
+       • buildQualityReport(): DATAKWALITEIT-blok in ALLE AI-prompts
+         (Totaalcheck, AI-Monteur agent, Rit-rapport) met de regel: jaag de
+         klant nooit op kosten door een waarschijnlijke meetfout als defect.
+       • Zichtbaar betrouwbaarheids-label per Totaalcheck-bevinding.
+       • Vaste disclaimer onderaan elk AI-rapport (RAPPORT_DISCLAIMER).
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 18:00):
+     SLIM SENSORGEBRUIK — alle analyses benutten nu beschikbare sensoren:
+       • relevantSupportedPIDs(): elke analyse start met basis-profiel +
+         ALLE relevante ondersteunde sensoren (gesneden op supportedPIDs +
+         categorie). Geen vaste smalle lijstjes meer.
+       • Snelle (2-min) analyse: blijft gericht/snel.
+       • Uitgebreide (10-min) analyse: leest bij start ALLE ondersteunde
+         sensoren 1x uit (ritFullSweep) → afwijkingen vastgelegd en
+         meegenomen in AI-rapport. Houdt daarna alle sensoren actief; de
+         poll-scheduler regelt tempo (temp/niveau "heel soms" via TRAAG/
+         ZELDEN-klasse, RPM/lambda snel).
+       • Wachtlus bij analyse-start wacht alleen op SNELLE PIDs (niet op
+         trage temp 10s), scheelt opstarttijd.
+       • Readiness-kaart toont nu de werkelijke slimme set.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 17:00):
      UX: kenteken-invoerveld staat nu ALTIJD direct zichtbaar in de
        voertuigkaart (ook bij geldige VIN). Klikken op de VIN-regel om
        het veld te tonen is niet meer nodig. Enter in het veld start
@@ -321,6 +377,26 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .pn { font-size:11px; font-weight:500; flex:1; }
 .pu2 { font-family:var(--m); font-size:9px; color:var(--tx3); background:var(--sur2); padding:1px 4px; border-radius:3px; }
 .pr.sel .pu2 { background:rgba(26,111,255,.12); color:var(--bl); }
+/* PID-gezondheid: uitgegrijsde (ongezonde) rijen */
+.pr.dim { opacity:.4; cursor:not-allowed; filter:grayscale(.7); }
+.pr.dim:hover { background:transparent; }
+.phealth { font-size:10px; margin:0 2px; }
+.phealth.bad { color:var(--rd); }
+.phealth.warn { color:var(--or); }
+.catadd { font-size:8px; font-weight:700; padding:2px 7px; border-radius:5px; border:1px solid var(--bd); background:var(--sur2); color:var(--bl); cursor:pointer; }
+.catadd:hover { background:var(--bls); border-color:var(--bl); }
+#showAllPidBtn.on { background:rgba(26,111,255,.12); color:var(--bl); border-color:var(--bl); }
+/* Connectie-optimalisatie strategie-overlay */
+.strat-ov{position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.strat-ov.show{display:flex}
+.strat-panel{background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:18px;width:92%;max-width:380px;box-shadow:0 12px 50px rgba(0,0,0,.4)}
+.strat-metrics{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--tx2);background:var(--sur2);border-radius:8px;padding:8px 10px}
+.strat-metrics b{color:var(--tx)}
+.strat-opt{display:flex;align-items:center;gap:11px;width:100%;padding:10px;margin-top:7px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);cursor:pointer;transition:all .15s;font-family:var(--f)}
+.strat-opt:hover{border-color:var(--bl);background:var(--bls)}
+.strat-opt.rec{border-color:var(--bl);background:var(--bls)}
+.strat-emoji{font-size:22px}
+.strat-rec-tag{font-size:9px;background:var(--bl);color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px;vertical-align:middle}
 
 /* ══ CENTER ══ */
 .cc { display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
@@ -368,13 +444,13 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .gg.view-dots .gc:hover { transform:none; box-shadow:none; }
 .gg.view-dots .gc.warn { border-left-color:var(--or); background:rgba(255,150,0,.08); }
 .gg.view-dots .gc.danger { border-left-color:var(--rd); background:rgba(255,40,40,.1); }
-.gg.view-dots .gc.stale { border-left-color:var(--rd); animation:cardStale 1s ease-in-out infinite; }
+.gg.view-dots .gc.stale { border-left-color:var(--or); animation:cardStale 2.5s ease-in-out infinite; }
 .gg.view-dots .gspark { display:none; }
 .gg.view-dots .gv, .gg.view-dots .gunit { display:none; }
 .gg.view-dots .gn2 { margin:0; padding:0; font-size:7px; line-height:1.1; flex:1; letter-spacing:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gg.view-dots .gdot { position:static; width:7px; height:7px; flex-shrink:0; }
 .gg.view-dots .gdot.flash { animation:dotFlash .5s ease; }
-@keyframes cardStale { 0%,100%{background:rgba(255,40,40,.06);} 50%{background:rgba(255,40,40,.28);} }
+@keyframes cardStale { 0%,100%{background:rgba(247,127,0,.04);} 50%{background:rgba(247,127,0,.14);} }
 @keyframes dotFlash { 0%{transform:scale(1);box-shadow:0 0 4px var(--gn);} 50%{transform:scale(1.7);box-shadow:0 0 14px var(--gn);} 100%{transform:scale(1);box-shadow:0 0 4px var(--gn);} }
 .gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
 /* Rollen: accounts met role:'user' in config.js zien alleen de basis */
@@ -945,7 +1021,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <div class="slsec">
         <div class="slttl">
           Beschikbare PIDs <span class="cnt" id="pidCnt">0</span>
-          <button id="pidRefreshBtn" onclick="deepRefreshPIDs()" title="Dieper zoeken + namen opzoeken" style="margin-left:auto;font-size:9px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00b4cc;cursor:pointer">🔄 Diep zoeken</button>
+          <button id="showAllPidBtn" onclick="toggleShowAllPIDs()" title="Ook ongezonde/uitgegrijsde PIDs tonen" style="margin-left:auto;font-size:9px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">👁 Toon alles</button>
+          <button id="pidRefreshBtn" onclick="deepRefreshPIDs()" title="Dieper zoeken + namen opzoeken" style="font-size:9px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00b4cc;cursor:pointer">🔄 Diep zoeken</button>
         </div>
         <div id="pidRefreshStatus" style="font-size:9px;color:var(--tx3);padding:2px 2px 0;min-height:12px"></div>
         <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek PID..." oninput="filterPIDs(this.value)" id="psrch"></div>
@@ -1537,6 +1614,92 @@ const PID_HARD_LIMITS = {
   '0113':{min:0,max:1.3},'0115':{min:0,max:1.3},'012C':{min:0,max:100},
   '0149':{min:0,max:100},'010A':{min:0,max:700},'0146':{min:-40,max:60},
 };
+
+// ══════════════════════════════════════════════════════════════════
+// PLAUSIBILITEITSCHECK — vóór elke AI-analyse / conclusie.
+// Doel: voorkomen dat een meetfout, dode sensor of verkeerde drempel als
+// "defect" wordt gerapporteerd → een klant niet onnodig op kosten jagen.
+// Geeft per opvallende sensor een oordeel:
+//   'ok'      → betrouwbaar gemeten, mag in de diagnose
+//   'onzin'   → fysiek onmogelijk (parse-/schaalfout) → UITSLUITEN
+//   'twijfel' → mogelijk meetfout/sensorprobleem → MÉT waarschuwing
+// ══════════════════════════════════════════════════════════════════
+function assessPidQuality(pid, val){
+  const d=getPidDef(pid);
+  const hist=(typeof pidHist!=='undefined'&&pidHist[pid])?pidHist[pid]:[];
+  const n=hist.length;
+  const name=(d&&d.name)||pid;
+  const unit=(d&&d.unit)||'';
+
+  // 1. HARD ONMOGELIJK → onzin (parse-/schaalfout of dode lijn)
+  const lim=PID_HARD_LIMITS[pid];
+  if(val===null||val===undefined||Number.isNaN(val))
+    return {status:'onzin', reden:'geen geldige meetwaarde', name, val, unit};
+  if(lim && (val<lim.min || val>lim.max))
+    return {status:'onzin', reden:`waarde ${fv(val)} ${unit} buiten fysiek mogelijk bereik (${lim.min}–${lim.max})`, name, val, unit};
+  // Generieke def-grenzen als fysieke check (ruim, alleen echt onmogelijke eruit)
+  if(d && typeof d.min==='number' && typeof d.max==='number'){
+    const marge=(d.max-d.min)*0.5;
+    if(val < d.min-marge || val > d.max+marge)
+      return {status:'onzin', reden:`waarde ${fv(val)} ${unit} ver buiten sensorbereik`, name, val, unit};
+  }
+
+  // 2. PLATTE / BEVROREN SENSOR → twijfel (sensor of verbinding, geen motordefect)
+  if(n>=5){
+    const recent=hist.slice(-Math.min(n,10)).map(h=>typeof h==='object'?h.v:h);
+    const spread=Math.max(...recent)-Math.min(...recent);
+    // Exact nul beweging bij een PID die hoort te variëren = verdacht
+    const dynamisch=['0C','0D','04','11','0B','10','06','07','13','14','24','34'].includes(pid.slice(2).toUpperCase());
+    if(spread===0 && dynamisch)
+      return {status:'twijfel', reden:'sensor staat exact vast (0 variatie) — mogelijk dode sensor of verbindingsfout, niet per se een motordefect', name, val, unit};
+    // Plat op (bijna) nul voor een spanningssensor = verdacht
+    if(dynamisch && Math.abs(val)<0.01 && spread<0.01)
+      return {status:'twijfel', reden:'sensor leest ~0 zonder beweging — controleer sensor/bedrading', name, val, unit};
+  }
+
+  // 3. TE WEINIG METINGEN → twijfel (geen harde conclusie op 1-2 samples)
+  if(n>0 && n<3)
+    return {status:'twijfel', reden:`slechts ${n} meting(en) — te weinig voor een betrouwbare conclusie`, name, val, unit};
+
+  // 4. NET OVER EEN (DOOR ONS INGESTELDE) DREMPEL → twijfel
+  if(d && (typeof d.dH==='number' || typeof d.dL==='number')){
+    const over = (typeof d.dH==='number' && val>=d.dH && val < d.dH*1.05);
+    const onder = (typeof d.dL==='number' && val<=d.dL && val > d.dL*0.95);
+    if(over||onder)
+      return {status:'twijfel', reden:'waarde net over de waarschuwingsgrens — kan binnen meetonzekerheid vallen', name, val, unit};
+  }
+
+  return {status:'ok', name, val, unit};
+}
+
+// Bouwt een betrouwbaarheidsrapport over een set sensoren (pid→val map of array).
+// Retourneert {betrouwbaar[], twijfel[], onzin[], promptBlok, heeftTwijfel}.
+function buildQualityReport(pidValPairs){
+  const betrouwbaar=[], twijfel=[], onzin=[];
+  pidValPairs.forEach(([pid,val])=>{
+    const q=assessPidQuality(pid,val);
+    if(q.status==='onzin') onzin.push(q);
+    else if(q.status==='twijfel') twijfel.push(q);
+    else betrouwbaar.push(q);
+  });
+  let promptBlok='\n\nDATAKWALITEIT (verplicht meenemen vóór je een diagnose stelt):';
+  if(onzin.length){
+    promptBlok+='\nUITGESLOTEN (fysiek onmogelijke waarden — NIET als defect rapporteren, dit is een meet-/parsefout):';
+    onzin.forEach(q=>promptBlok+=`\n- ${q.name}: ${fv(q.val)} ${q.unit} (${q.reden})`);
+  }
+  if(twijfel.length){
+    promptBlok+='\nONZEKER (mogelijk meetfout of sensorprobleem — adviseer EERST de sensor/meting te controleren, NIET meteen een dure reparatie):';
+    twijfel.forEach(q=>promptBlok+=`\n- ${q.name}: ${fv(q.val)} ${q.unit} (${q.reden})`);
+  }
+  if(!onzin.length && !twijfel.length){
+    promptBlok+='\nAlle opvallende sensoren zijn betrouwbaar gemeten (voldoende samples, binnen fysiek bereik).';
+  }
+  promptBlok+='\nREGEL: jaag de klant nooit op kosten door een waarschijnlijke meetfout als defect te presenteren. Bij twijfel: adviseer verifiëren/hermeten.';
+  return {betrouwbaar, twijfel, onzin, promptBlok, heeftTwijfel:(twijfel.length>0||onzin.length>0)};
+}
+
+// Standaard disclaimer onderaan elk rapport
+const RAPPORT_DISCLAIMER='ℹ️ Deze analyse is gebaseerd op live OBD2-sensordata. Sensorwaarden kunnen afwijken door meetfouten, sensorslijtage of verbindingsproblemen. Laat een afwijking altijd door een monteur verifiëren vóór reparatie — voorkom onnodige kosten door een mogelijke meetfout.';
 
 const MODELS={Ford:['Focus','Fiesta','Mondeo','Kuga','Puma','Transit','Ranger'],Volkswagen:['Golf','Polo','Passat','Tiguan','T-Roc','ID.3','ID.4'],BMW:['1 Serie','3 Serie','5 Serie','X1','X3','X5','M3'],Mercedes:['A-Klasse','C-Klasse','E-Klasse','GLA','GLC','GLE'],Audi:['A3','A4','A6','Q3','Q5','Q7'],Opel:['Astra','Corsa','Insignia','Mokka'],Peugeot:['208','308','2008','3008'],Renault:['Clio','Megane','Captur','Zoe'],Toyota:['Yaris','Corolla','RAV4','Prius'],Skoda:['Fabia','Octavia','Superb','Karoq'],Seat:['Ibiza','Leon','Ateca'],Hyundai:['i20','i30','Tucson','Kona'],Kia:['Picanto','Ceed','Sportage','EV6'],Volvo:['V60','XC40','XC60','XC90'],Nissan:['Juke','Qashqai','X-Trail','Leaf'],Citroën:['C3','C4','Berlingo'],Fiat:['500','Panda','Tipo'],Honda:['Jazz','Civic','CR-V']};
 const MOTORS=['1.0 TSI/EcoBoost','1.2 TDI','1.4 TDI','1.5 TDI','1.5 TSI','1.6 TDI/HDI','1.8 TSI','2.0 TDI','2.0 TSI/TFSI','2.0 TDCi','Hybrid','PHEV','Elektrisch'];
@@ -2255,6 +2418,39 @@ const ANALYSE_PIDS={
   totaal:    ['010C','0105','0104','0111','010D','0142','010F','010B','0106','0107','0115','010E','011F']
 };
 
+// ── SLIMME SENSOR-SELECTIE ──────────────────────────────────────────
+// Elke analyse start met een basis-profiel, maar breidt dat uit met ALLE
+// sensoren die de auto daadwerkelijk ondersteunt (supportedPIDs) en die
+// relevant zijn voor dat analysetype. Zo gebruikt elke analyse de volle
+// beschikbare data i.p.v. een vast, smal lijstje.
+//
+// Per analyse: welke PID-categorieën zijn relevant? (cat uit getPidDef)
+const ANALYSE_CATS = {
+  basis:     ['Motor','Temp','Brandstof'],
+  brandstof: ['Motor','Brandstof','Emissie'],
+  emissie:   ['Emissie','Brandstof'],
+  rit:       ['Motor','Brandstof','Temp','Emissie'],
+  totaal:    ['Motor','Temp','Brandstof','Emissie','Overig'],
+};
+
+function relevantSupportedPIDs(profile){
+  const base = ANALYSE_PIDS[profile] || [];
+  // In demo of zonder discovery: gewoon het basisprofiel
+  if(demoMode || typeof supportedPIDs==='undefined' || !supportedPIDs.size) return base;
+  const cats = ANALYSE_CATS[profile] || [];
+  const extra = [];
+  supportedPIDs.forEach(pid=>{
+    if(base.includes(pid)) return;
+    // Sla ongezonde sensoren over (dood/onzin/twijfel) — geen valse analyses
+    const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
+    if(h==='onzin'||h==='twijfel') return;
+    const d = getPidDef(pid);
+    if(d && cats.includes(d.cat)) extra.push(pid);
+  });
+  // Basis eerst (gegarandeerde kern), daarna de relevante gezonde extra
+  return [...base, ...extra];
+}
+
 // ── P7: readiness-rapport — hoeveel van een profiel kan deze auto leveren? ──
 // Geeft {pct, beschikbaar[], ontbrekend[]} terug. supportedPIDs leeg betekent
 // "discovery mislukt" → dat melden we expliciet i.p.v. stilletjes alles toestaan.
@@ -2273,7 +2469,8 @@ function pidReadiness(pidList){
 // Zet de PIDs van een profiel aan (alleen die de auto ondersteunt) en wacht
 // tot er verse data binnen is, zodat de analyse niet met lege waardes draait.
 async function ensurePIDsActive(profile){
-  return ensurePIDListActive(ANALYSE_PIDS[profile]||[]);
+  // Slim: basis-profiel + alle relevante ondersteunde sensoren van de auto
+  return ensurePIDListActive(relevantSupportedPIDs(profile));
 }
 
 // P4 + P1 + P7: zet activePIDs naar precies dit profiel (+ behoud handmatige
@@ -2309,12 +2506,16 @@ async function ensurePIDListActive(pidList){
     showToast?.(`⚠ Deze auto levert ${rd.pct}% van de sensoren voor deze analyse`,4500);
   }
 
-  // Wachten tot nieuwe PIDs data hebben (max ~8 sec) — niet in demo (instant)
+  // Wachten tot nieuwe PIDs data hebben — maar alleen op de SNELLE PIDs.
+  // Trage sensoren (temp 10s, niveau/tellers 30-60s) laten we niet de start
+  // ophouden; die druppelen vanzelf binnen tijdens de analyse.
   if(added.length&&connected&&!demoMode){
+    const snel=added.filter(pid=>pidPollInterval(pid)<=1000);
+    const wachtOp=snel.length?snel:added;
     const t0=Date.now();
-    while(Date.now()-t0<8000){
-      if(added.every(pid=>pidVals[pid]!==undefined)) break;
-      await delay(300);
+    while(Date.now()-t0<5000){
+      if(wachtOp.every(pid=>pidVals[pid]!==undefined)) break;
+      await delay(250);
     }
   }
 }
@@ -2426,7 +2627,12 @@ function startStaleWatchdog(){
     activePIDs.forEach(pid=>{
       const card=document.getElementById('gc-'+pid); if(!card) return;
       const last=_pidLastUpd[pid]||0;
-      const stale=(now-last)>PID_STALE_MS;
+      // Stale-drempel per PID: trage sensoren (temp/niveau, 10-60s interval)
+      // mogen NIET rood knipperen zolang ze binnen hun eigen ritme verversen.
+      // Drempel = 3× het poll-interval, met een ruime ondergrens van 5s.
+      const interval=(typeof pidPollInterval==='function')?pidPollInterval(pid):1000;
+      const drempel=Math.max(interval*3, 5000);
+      const stale=(now-last)>drempel;
       card.classList.toggle('stale', stale);
     });
   },1000);
@@ -2717,6 +2923,7 @@ function setQ(el,key,val){
 }
 async function runTotalCheck(){
   window._didTotalCheck=true;
+  if(!(await preAnalysisCheck())) return;
   await ensurePIDsActive('totaal');
   const btn=document.getElementById('btnChk'); btn.disabled=true;
   document.getElementById('chkSummary').style.display='none';
@@ -2731,13 +2938,13 @@ function buildCheckItems(){
   const items=[];
   const pc=(pid,name)=>{
     const val=pidVals[pid]; const d=getPidDef(pid);
-    if(val===undefined) return {name,display:'Geen data',status:'ok',detail:'Niet gemeten.'};
+    if(val===undefined) return {pid,name,display:'Geen data',status:'ok',detail:'Niet gemeten.'};
     let status='ok',detail='Normaal.';
     if(d){
       if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)){status='bad';detail='Kritieke afwijking!';}
       else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)){status='warn';detail='Buiten aanbevolen bereik.';}
     }
-    return {name,display:`${fv(val)} ${d?.unit||''}`,status,detail};
+    return {pid,name,display:`${fv(val)} ${d?.unit||''}`,status,detail};
   };
   items.push(pc('0105','Koelwater temp'));
   items.push(pc('0142','Accuspanning'));
@@ -2759,15 +2966,25 @@ function renderCheckResults(items){
   [...items].sort((a,b)=>({bad:0,warn:1,ok:2}[a.status]-{bad:0,warn:1,ok:2}[b.status])).forEach(item=>{
     const el=document.createElement('div'); el.className='chk-item';
     const bt=item.status==='ok'?'✅ Goed':item.status==='warn'?'⚠️ Let op':'🔴 Probleem';
-    el.innerHTML=`<div class="chk-dot ${item.status}"></div><div style="flex:1"><div class="chk-name">${item.name}</div><div class="chk-val">${item.display} — ${item.detail}</div></div><div class="chk-bdg ${item.status}">${bt}</div>`;
+    // Betrouwbaarheidslabel: alleen tonen bij afwijkende items met twijfel/onzin
+    let qLabel='';
+    if(item.status!=='ok' && item.pid && typeof pidVals!=='undefined' && pidVals[item.pid]!==undefined){
+      const q=assessPidQuality(item.pid, pidVals[item.pid]);
+      if(q.status==='onzin') qLabel='<div style="font-size:9px;color:var(--rd);margin-top:2px">⚠ Mogelijk meetfout — niet betrouwbaar, controleer sensor/verbinding</div>';
+      else if(q.status==='twijfel') qLabel='<div style="font-size:9px;color:var(--or);margin-top:2px">⚠ Verifieer eerst — kan meetonzekerheid zijn</div>';
+    }
+    el.innerHTML=`<div class="chk-dot ${item.status}"></div><div style="flex:1"><div class="chk-name">${item.name}</div><div class="chk-val">${item.display} — ${item.detail}</div>${qLabel}</div><div class="chk-bdg ${item.status}">${bt}</div>`;
     res.appendChild(el);
   });
 }
 async function runCheckAI(items){
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   const v=getVehicle();
-  const prob=items.filter(i=>i.status!=='ok').map(i=>`• ${i.name}: ${i.display} — ${i.detail}`).join('\n');
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN`;
+  const probItems=items.filter(i=>i.status!=='ok');
+  const prob=probItems.map(i=>`• ${i.name}: ${i.display} — ${i.detail}`).join('\n');
+  const pairs=probItems.filter(i=>i.pid).map(i=>[i.pid, (typeof pidVals!=='undefined'?pidVals[i.pid]:undefined)]);
+  const q=buildQualityReport(pairs);
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
 }
@@ -2822,6 +3039,7 @@ async function findCauses(){
   const desc=document.getElementById('diagDesc').value.trim();
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent);
   if(!desc&&!chips.length){showToast('Beschrijf het probleem of selecteer symptomen.', 3000);return;}
+  if(!(await preAnalysisCheck())) return;
 
   // ── IDEE 5: klacht-gestuurde focus — relevante PIDs op hoog tempo ──
   applyComplaintFocus((desc+' '+chips.join(' ')).toLowerCase());
@@ -3877,6 +4095,7 @@ function openBtLogModal(){
           <strong style="font-size:13px">📡 Bluetooth log</strong>
           <div style="display:flex;gap:6px">
             <button onclick="optimizeConnectionAI(this)" style="padding:5px 10px;border-radius:6px;border:1px solid #7c3aed;background:linear-gradient(135deg,#1a0a3a,#0d0d1a);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer">🤖 Optimaliseer</button>
+            <button onclick="optimizeConnection(false)" title="Meet snelheid + kies poll-strategie" style="padding:5px 10px;border-radius:6px;border:1px solid #1a6fff;background:rgba(26,111,255,.1);color:#1a6fff;font-size:11px;font-weight:700;cursor:pointer">⚡ Meet snelheid</button>
             <button onclick="copyBtLog(this)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer">📋 Kopieer</button>
             <button onclick="document.getElementById('btLogModal').style.display='none'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer">✕ Sluit</button>
           </div>
@@ -4594,6 +4813,134 @@ function trackBtQuality(cmd, r){
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// CONNECTIE-OPTIMALISATIE — meet adaptersnelheid, stelt readiness-
+// strategie voor (Snel/Gebalanceerd/Conservatief), toont compacte status
+// in de topbar. Draait na verbinden + lichte hercontrole vóór elke analyse.
+// ══════════════════════════════════════════════════════════════════
+let _connSpeed=null;        // {readsPerSec, avgMs, protocol, pids, ts}
+let _connStrategy=null;     // 'snel' | 'gebalanceerd' | 'conservatief'
+
+const STRATEGIE_INFO={
+  snel:         {label:'Snel',         emoji:'🚀', mult:0.7, desc:'Agressief pollen — alle sensoren, korte intervallen'},
+  gebalanceerd: {label:'Gebalanceerd', emoji:'⚖️', mult:1.0, desc:'Standaard tempo — goede balans snelheid/stabiliteit'},
+  conservatief: {label:'Conservatief', emoji:'🐢', mult:1.8, desc:'Rustig pollen — voorkomt timeouts op trage adapters'},
+};
+
+// Meet de werkelijke doorvoer: stuur N PID-reads en klok de tijd.
+async function measureConnSpeed(samples=8){
+  if(demoMode){
+    _connSpeed={readsPerSec:25, avgMs:40, protocol:'Demo', pids:supportedPIDs.size, ts:Date.now()};
+    return _connSpeed;
+  }
+  if(!connected) return null;
+  // Kies een bestaande, gezonde PID om mee te testen (RPM of eerste supported)
+  let testPid='010C';
+  if(!supportedPIDs.has(testPid)) testPid=[...supportedPIDs][0]||'010C';
+  let proto='?';
+  try{ const dp=await sendCmd('ATDP',1500); if(dp) proto=dp.replace(/[\r\n>]/g,'').trim(); }catch(e){}
+  const times=[];
+  for(let i=0;i<samples;i++){
+    const t0=performance.now();
+    try{ await sendCmd('01'+testPid.slice(2)+'1',2000); }catch(e){}
+    times.push(performance.now()-t0);
+  }
+  const valid=times.filter(t=>t>0);
+  const avgMs=valid.length?Math.round(valid.reduce((a,b)=>a+b,0)/valid.length):999;
+  const readsPerSec=avgMs>0?+(1000/avgMs).toFixed(1):0;
+  _connSpeed={readsPerSec, avgMs, protocol:proto, pids:supportedPIDs.size, ts:Date.now()};
+  return _connSpeed;
+}
+
+function suggestStrategy(speed){
+  if(!speed) return 'gebalanceerd';
+  if(speed.readsPerSec>=12) return 'snel';
+  if(speed.readsPerSec>=5)  return 'gebalanceerd';
+  return 'conservatief';
+}
+
+// Past de gekozen strategie toe op de poll-intervallen (via globale multiplier)
+let _pollMult=1.0;
+function applyStrategy(strat){
+  _connStrategy=strat;
+  _pollMult=STRATEGIE_INFO[strat]?.mult||1.0;
+  updateConnStatusBar();
+}
+
+// Compacte status in de topbar-statusregel
+function updateConnStatusBar(){
+  const txt=document.getElementById('stxt'); if(!txt) return;
+  if(!connected){ return; }
+  if(_connSpeed && _connStrategy){
+    const s=STRATEGIE_INFO[_connStrategy];
+    txt.innerHTML=`${demoMode?'Demo':'Verbonden'} · ⚡${_connSpeed.readsPerSec}/s · 📡${_connSpeed.pids} · ${s.emoji}${s.label}`;
+  }
+}
+
+// Hoofd-flow: meet → stel voor → laat bevestigen via overlay
+async function optimizeConnection(silent=false){
+  if(!connected && !demoMode){ showToast?.('Verbind eerst een adapter'); return; }
+  const txt=document.getElementById('stxt'); if(txt && !silent) txt.textContent='⏳ Verbinding meten…';
+  const speed=await measureConnSpeed();
+  if(!speed){ if(txt) txt.textContent='Verbonden'; return; }
+  const voorstel=suggestStrategy(speed);
+  if(silent){ applyStrategy(_connStrategy||voorstel); return; }
+  showStrategyConfirm(speed, voorstel);
+}
+
+// Overlay waarin de gebruiker de voorgestelde strategie bevestigt of wijzigt
+function showStrategyConfirm(speed, voorstel){
+  let ov=document.getElementById('stratOverlay');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='stratOverlay'; ov.className='strat-ov';
+    document.body.appendChild(ov);
+  }
+  const opts=Object.keys(STRATEGIE_INFO).map(k=>{
+    const s=STRATEGIE_INFO[k];
+    return `<button class="strat-opt${k===voorstel?' rec':''}" onclick="confirmStrategy('${k}')">
+      <div class="strat-emoji">${s.emoji}</div>
+      <div style="flex:1;text-align:left"><div style="font-weight:700;font-size:13px">${s.label}${k===voorstel?' <span class="strat-rec-tag">aanbevolen</span>':''}</div>
+      <div style="font-size:10px;color:var(--tx3)">${s.desc}</div></div>
+    </button>`;
+  }).join('');
+  ov.innerHTML=`<div class="strat-panel">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px">🎯 Verbinding geoptimaliseerd</div>
+    <div class="strat-metrics">
+      <span>⚡ <b>${speed.readsPerSec}</b> reads/s</span>
+      <span>⏱ <b>${speed.avgMs}</b> ms</span>
+      <span>📡 <b>${speed.pids}</b> PIDs</span>
+      ${speed.protocol&&speed.protocol!=='?'?`<span>🔌 ${speed.protocol}</span>`:''}
+    </div>
+    <div style="font-size:11px;color:var(--tx3);margin:10px 0 6px">Kies een poll-strategie:</div>
+    ${opts}
+  </div>`;
+  ov.classList.add('show');
+}
+function confirmStrategy(k){
+  applyStrategy(k);
+  const ov=document.getElementById('stratOverlay'); if(ov) ov.classList.remove('show');
+  showToast?.(`${STRATEGIE_INFO[k].emoji} Strategie: ${STRATEGIE_INFO[k].label}`);
+}
+
+// Lichte hercontrole vóór een analyse: snelle gezondheids-check zonder popup,
+// tenzij de verbinding merkbaar verslechterd is.
+async function preAnalysisCheck(){
+  if(demoMode) return true;
+  if(!connected){ showToast?.('Verbind eerst een adapter'); return false; }
+  // Nog nooit geoptimaliseerd? Doe het nu (met bevestiging).
+  if(!_connStrategy){ await optimizeConnection(false); return true; }
+  // Snelle 2-reads hercontrole
+  const before=_connSpeed?.readsPerSec||0;
+  const speed=await measureConnSpeed(3);
+  updateConnStatusBar();
+  if(speed && before && speed.readsPerSec < before*0.5 && speed.readsPerSec<5){
+    // Merkbaar trager geworden → vraag of opnieuw optimaliseren
+    showStrategyConfirm(speed, suggestStrategy(speed));
+    return false; // gebruiker kiest eerst
+  }
+  return true;
+}
+
 // Complete OBD2 PID definitiedatabase met parse functies
 const ALL_PID_DEFS={
   '010C':{name:'Motortoerental',       unit:'RPM', cat:'Motor',      min:0,   max:8000, wH:6000,           parse:b=>((b[0]*256+b[1])/4)},
@@ -4897,6 +5244,13 @@ async function startDiscovery(){
   addProg('✅',`${supportedPIDs.size} PIDs gevonden`);
   buildDiscoveredPIDList();
   addProg('✅',`${discoveredPIDDefs.length} sensoren beschikbaar`);
+
+  // Eerste gezondheidsscan: lees elke PID 1x en beoordeel of die gezond/bij
+  // de auto hoort. Ongezonde/dode PIDs worden in de lijst uitgegrijsd.
+  await initialHealthScan();
+
+  // Connectie optimaliseren: meet snelheid en stel readiness-strategie voor.
+  await optimizeConnection(false);
 
   // Update voertuigkaart links
   updateVehicleCard(vinInfo);
@@ -5445,6 +5799,84 @@ Object.assign(ALL_PID_DEFS,{
   '01A6':{name:'Brandstof verbruik abs', unit:'g/s', cat:'Brandstof',min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.03125)}
 });
 
+// ══════════════════════════════════════════════════════════════════
+// PID-GEZONDHEID — bepaalt bij eerste uitlezing welke PIDs gezond zijn,
+// welke twijfelachtig en welke onzin (dood/parsefout/niet bij auto).
+// Ongezonde PIDs worden in de lijst uitgegrijsd (niet selecteerbaar),
+// tenzij de gebruiker "Toon alles" aanzet.
+// ══════════════════════════════════════════════════════════════════
+let _pidHealth={};            // pid -> 'ok' | 'twijfel' | 'onzin'
+let _showAllPIDs=false;       // toggle: ook ongezonde PIDs selecteerbaar tonen
+
+// Kern-PIDs die — als ze gezond zijn — automatisch geselecteerd worden
+const KERN_PIDS=['010C','010D','0105','0104','010B','0106','0107','0142','010F','0111'];
+
+async function initialHealthScan(){
+  _pidHealth={};
+  if(demoMode){
+    // In demo: alles gezond (de demo levert realistische waarden)
+    supportedPIDs.forEach(pid=>_pidHealth[pid]='ok');
+    autoSelectHealthyKern();
+    buildDiscoveredPIDList();
+    return;
+  }
+  if(!connected || !supportedPIDs.size) return;
+  const pids=[...supportedPIDs];
+  btDiag(`🔬 Gezondheidscheck van ${pids.length} sensoren…`,'info');
+  let ok=0, dim=0;
+  for(const pid of pids){
+    try{
+      // Lees 2x kort achter elkaar zodat assessPidQuality variatie kan zien
+      const v1=parsePID(pid, await sendCmd('01'+pid.slice(2)+'1',1500));
+      if(v1!=null){ updPID(pid,v1); }
+      await delay(60);
+      const v2=parsePID(pid, await sendCmd('01'+pid.slice(2)+'1',1500));
+      if(v2!=null){ updPID(pid,v2); }
+      const val=(v2!=null?v2:v1);
+      if(val==null){ _pidHealth[pid]='onzin'; dim++; continue; }
+      const q=assessPidQuality(pid,val);
+      _pidHealth[pid]=q.status;
+      if(q.status==='ok') ok++; else dim++;
+    }catch(e){ _pidHealth[pid]='onzin'; dim++; }
+  }
+  btDiag(`✅ Gezondheidscheck klaar: ${ok} gezond, ${dim} uitgegrijsd`, dim?'warn':'ok');
+  autoSelectHealthyKern();
+  buildDiscoveredPIDList();
+}
+
+// Selecteer automatisch de gezonde kern-PIDs (optie 3 + alleen gezonde)
+function autoSelectHealthyKern(){
+  KERN_PIDS.forEach(pid=>{
+    if(supportedPIDs.has(pid) && (_pidHealth[pid]==='ok' || demoMode)){
+      activePIDs.add(pid);
+    }
+  });
+  const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
+}
+
+// Toggle "Toon alles" — ook ongezonde PIDs selecteerbaar maken
+function toggleShowAllPIDs(){
+  _showAllPIDs=!_showAllPIDs;
+  const b=document.getElementById('showAllPidBtn');
+  if(b){ b.textContent=_showAllPIDs?'👁 Alles getoond':'👁 Toon alles'; b.classList.toggle('on',_showAllPIDs); }
+  buildPIDList(document.getElementById('psrch')?.value||'');
+}
+
+// Activeer alle gezonde PIDs van één categorie in één klik
+function selectCategoryPIDs(cat){
+  let added=0;
+  discoveredPIDDefs.forEach(p=>{
+    if((p.cat||'Overig')===cat){
+      const gezond = demoMode || _pidHealth[p.pid]!=='onzin' && _pidHealth[p.pid]!=='twijfel';
+      if(gezond && !activePIDs.has(p.pid)){ activePIDs.add(p.pid); manualPIDs.add(p.pid); added++; }
+    }
+  });
+  buildPIDList(document.getElementById('psrch')?.value||'');
+  const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
+  if(added) showToast?.(`📡 ${added} ${cat}-sensoren toegevoegd`);
+  renderGauges?.(); rebuildGSel?.();
+}
+
 function buildDiscoveredPIDList(){
   discoveredPIDDefs=[];
   const catOrder={Motor:0,Temp:1,Brandstof:2,Rijden:3,Electrisch:4,Emissie:5,Overig:9};
@@ -5483,12 +5915,30 @@ function buildPIDList(filter=''){
   cats.forEach(cat=>{
     const items=filtered.filter(p=>(p.cat||'Overig')===cat);
     if(!items.length) return;
-    const lbl=document.createElement('div'); lbl.className='clbl'; lbl.textContent=cat; el.appendChild(lbl);
+    // Categorie-kop met "+ Alles" knop die alle gezonde PIDs van deze cat activeert
+    const lbl=document.createElement('div'); lbl.className='clbl';
+    lbl.style.display='flex'; lbl.style.alignItems='center'; lbl.style.justifyContent='space-between';
+    lbl.innerHTML=`<span>${cat}</span>`;
+    const addBtn=document.createElement('button');
+    addBtn.className='catadd'; addBtn.textContent='+ Alles';
+    addBtn.title=`Alle gezonde ${cat}-sensoren selecteren`;
+    addBtn.onclick=(e)=>{ e.stopPropagation(); selectCategoryPIDs(cat); };
+    lbl.appendChild(addBtn);
+    el.appendChild(lbl);
     items.forEach(p=>{
+      const health=_pidHealth[p.pid]||'ok';
+      const ongezond=(health==='onzin'||health==='twijfel');
+      const dim = ongezond && !_showAllPIDs;
       const row=document.createElement('div');
-      row.className='pr'+(activePIDs.has(p.pid)?' sel':'');
-      row.innerHTML=`<div class="pck"><span class="ckm">✓</span></div><span class="pn">${p.name}</span><span class="pu2">${p.unit||p.pid}</span>`;
-      row.onclick=()=>togglePID(p.pid);
+      row.className='pr'+(activePIDs.has(p.pid)?' sel':'')+(dim?' dim':'');
+      const tag = health==='onzin' ? '<span class="phealth bad" title="Mogelijk dood/geen geldige meting">⚠</span>'
+                : health==='twijfel' ? '<span class="phealth warn" title="Twijfelachtige meting — verifieer">⚠</span>' : '';
+      row.innerHTML=`<div class="pck"><span class="ckm">✓</span></div><span class="pn">${p.name}</span>${tag}<span class="pu2">${p.unit||p.pid}</span>`;
+      if(dim){
+        row.title='Lijkt niet gezond of niet bij dit voertuig te horen — zet "Toon alles" aan om toch te kiezen';
+      } else {
+        row.onclick=()=>togglePID(p.pid);
+      }
       el.appendChild(row);
     });
   });
@@ -5621,7 +6071,7 @@ function pidPollInterval(pid){
     if(['23','59'].includes(suf)) return 200;            // raildruk snel
     if(['7A','7B','7C','7D'].includes(suf)) return 5000; // DPF minder snel
   }
-  return PID_POLL_CLASS[suf]||1000;   // default MEDIUM
+  return Math.round((PID_POLL_CLASS[suf]||1000) * (typeof _pollMult!=='undefined'?_pollMult:1));   // default MEDIUM × strategie
 }
 // Welke PIDs zijn NU "due" om te pollen?
 function pidsDueNow(){
@@ -5819,6 +6269,9 @@ function startDemo(){
   document.getElementById('pidCnt').textContent=discoveredPIDDefs.length;
   renderGauges(); rebuildGSel();
   startPoll();
+  // Demo: markeer alles gezond + toon connectie-status (geen popup nodig)
+  initialHealthScan();
+  measureConnSpeed().then(sp=>{ applyStrategy(suggestStrategy(sp)); });
   showWelcome(demoVin);
 }
 
@@ -5850,7 +6303,7 @@ function setConn(on){
   if(mbtn){ mbtn.disabled=false; if(on) mbtn.textContent='✅ Verbonden'; }
   if(btn){ btn.disabled=false; }
   if(on){dot.className='dot '+(demoMode?'demo':'on');txt.textContent=demoMode?'Demo modus':'Verbonden';btn.textContent='Verbreken';btn.className='btn-t off';}
-  else{dot.className='dot';txt.textContent='Niet verbonden';btn.textContent='Verbinden';btn.className='btn-t';}
+  else{dot.className='dot';txt.textContent='Niet verbonden';btn.textContent='Verbinden';btn.className='btn-t';_connSpeed=null;_connStrategy=null;_pollMult=1.0;}
   // Optie-3: statuschip alleen tonen wanneer NIET verbonden (en niet in demo)
   const sp=document.getElementById('statusPill');
   if(sp){ sp.classList.toggle('show', !on); }
@@ -5938,8 +6391,14 @@ function renderReadinessCard(elId, profile){
   // daar niet in staan (monteur/koop/dtc) valt het terug op ANALYSE_PID_SETS.
   const realMap = { totaal:'totaal', rit:'rit', monteur:'basis', koop:'totaal', dtc:'basis' };
   const realKey = realMap[profile];
-  const pidList = (typeof ANALYSE_PIDS!=='undefined' && realKey && ANALYSE_PIDS[realKey])
-                  || ANALYSE_PID_SETS[profile] || [];
+  // Gebruik de slimme set (basis + relevante ondersteunde sensoren) waar mogelijk
+  let pidList;
+  if(realKey && typeof relevantSupportedPIDs==='function'){
+    pidList = relevantSupportedPIDs(realKey);
+  } else {
+    pidList = (typeof ANALYSE_PIDS!=='undefined' && realKey && ANALYSE_PIDS[realKey])
+              || ANALYSE_PID_SETS[profile] || [];
+  }
   const discoveryDone = supportedPIDs && supportedPIDs.size > 0;
   let beschikbaar = 0, ontbreekt = 0;
   pidList.forEach(pid => {
@@ -6097,6 +6556,8 @@ function buildAutoExpertContext(){
     lines.push(`BEKENDE ${know.merk.toUpperCase()}-ZWAKKE PUNTEN: ${know.zwak.join('; ')}`);
     if(know.let_op) lines.push(`LET OP: ${know.let_op}`);
   }
+  const pairsAE=[...activePIDs].filter(pid=>pidVals[pid]!==undefined).map(pid=>[pid,pidVals[pid]]);
+  if(pairsAE.length){ const q=buildQualityReport(pairsAE); lines.push(q.promptBlok); }
   return lines.join('\n');
 }
 
@@ -6115,7 +6576,7 @@ async function autoExpertAsk(mode){
   }
   ansEl.innerHTML='<div class="ai-ld" style="padding:20px;text-align:center"><div class="spin"></div> Automonteur denkt na...</div>';
   const context=buildAutoExpertContext();
-  const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde live sensordata, foutcodes en merk-kennis. Wees eerlijk over onzekerheid; verzin geen waarden die niet in de data staan. Geen ECU-acties adviseren (read-only diagnose). Structureer met korte kopjes waar nuttig.';
+  const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde live sensordata, foutcodes en merk-kennis. Wees eerlijk over onzekerheid; verzin geen waarden die niet in de data staan. Geen ECU-acties adviseren (read-only diagnose). Structureer met korte kopjes waar nuttig. BELANGRIJK: presenteer een waarschijnlijke meetfout, dode sensor of net-over-de-grens waarde NOOIT als hard defect — adviseer bij twijfel eerst de sensor/meting te verifiëren, zodat de klant niet onnodig op kosten wordt gejaagd. Respecteer de meegeleverde DATAKWALITEIT-sectie strikt.';
   const prompt=`${context}\n\nVRAAG VAN DE DEALER: ${vraag}`;
   try{
     const txt=await apiFetch(prompt, 1100, sys);
@@ -6547,13 +7008,57 @@ function resetRitUI(){
   ritLogs=[]; ritFaseData={}; ritFaseIdx=0;
 }
 
-function startRitAnalyse(){
+// 10-min uitgebreide analyse: lees ALLE ondersteunde sensoren één keer uit en
+// leg vast welke buiten hun normaalwaarde vallen. Resultaat wordt meegenomen
+// in het eind-rapport (ritSweepFindings).
+let ritSweepFindings=[];
+async function ritFullSweep(){
+  ritSweepFindings=[];
+  if(demoMode || typeof supportedPIDs==='undefined' || !supportedPIDs.size) return;
+  const pids=[...supportedPIDs];
+  log(`🔍 Volledige sensor-sweep gestart (${pids.length} sensoren)…`,'info');
+  let gelezen=0, afwijkend=0;
+  for(const pid of pids){
+    if(!ritActive && gelezen>0) break;   // gestopt? sweep afbreken
+    try{
+      const resp=parsePID(pid, await sendCmd('01'+pid.slice(2)+'1',2000));
+      if(resp!=null){
+        updPID(pid,resp); gelezen++;
+        const d=getPidDef(pid);
+        if(d && !isPIDOkVal(pid,resp)){
+          afwijkend++;
+          ritSweepFindings.push({pid, name:d.name||pid, val:resp, unit:d.unit||''});
+        }
+      }
+    }catch(e){ /* sensor sloeg over, doorgaan */ }
+  }
+  log(`✅ Sweep klaar: ${gelezen} gelezen, ${afwijkend} afwijkend`, afwijkend?'warn':'ok');
+  if(afwijkend){
+    const lijst=ritSweepFindings.map(f=>`${f.name}: ${fv(f.val)} ${f.unit}`).join(', ');
+    log(`⚠ Opvallende sensoren: ${lijst}`,'warn');
+  }
+}
+
+async function startRitAnalyse(){
   window._didRit=true;
-  // FIX A: activeer de volledige PID-set van ALLE fasen van de actieve modus
-  // (2min of 10min), niet het generieke 'rit'-profiel dat emissie/temp-PIDs miste.
-  const alleFasePids=[...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))];
-  ensurePIDListActive(alleFasePids);
-  if(!connected){log('Verbind eerst een adapter','warn');return;}
+  if(!connected && !demoMode){log('Verbind eerst een adapter','warn');return;}
+  if(!(await preAnalysisCheck())) return;
+  // PID-activering verschilt per modus:
+  if(ritMode==='10min'){
+    // UITGEBREID: activeer ALLE sensoren die de auto ondersteunt. De
+    // poll-scheduler regelt het tempo (snel: RPM/lambda; "heel soms":
+    // temp/niveau/tellers). Vooraf één volledige sweep voor de baseline.
+    const fasePids=[...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))];
+    const alle = (!demoMode && typeof supportedPIDs!=='undefined' && supportedPIDs.size)
+      ? [...new Set([...fasePids, ...supportedPIDs])]
+      : fasePids;
+    ensurePIDListActive(alle);
+    ritFullSweep();   // async, leest alles 1x en legt afwijkingen vast
+  } else {
+    // SNEL (2-min): gerichte, beperkte set — blijft snel.
+    const alleFasePids=[...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))];
+    ensurePIDListActive(alleFasePids);
+  }
   ritActive=true; ritStartTime=Date.now(); ritFaseIdx=0; ritLogs=[]; ritFaseData={};
   document.getElementById('ritStartBtn').style.display='none';
   document.getElementById('ritStopBtn').style.display='block';
@@ -6737,6 +7242,22 @@ async function generateRitRapport(focus='beide'){
     lines.push('');
   });
 
+  // 10-min uitgebreide analyse: volledige sensor-sweep meenemen,
+  // mét plausibiliteitscheck zodat meetfouten niet als defect gelden.
+  let sweepBlok='';
+  if(ritMode==='10min' && ritSweepFindings.length){
+    const sweepPairs=ritSweepFindings.map(f=>[f.pid,f.val]);
+    const sq=buildQualityReport(sweepPairs);
+    sweepBlok=sq.promptBlok;
+    lines.push('═══════════════════════════════════');
+    lines.push('VOLLEDIGE SENSOR-SWEEP — OPVALLENDE WAARDEN:');
+    lines.push('');
+    ritSweepFindings.forEach(f=>lines.push(`  ⚠ ${f.name}: ${fv(f.val)} ${f.unit}`));
+    lines.push('');
+  } else if(ritMode==='10min'){
+    sweepBlok='\n\nVOLLEDIGE SENSOR-SWEEP: alle ondersteunde sensoren 1x uitgelezen, geen waarden buiten norm.';
+  }
+
   // Totaalanalyse via AI — opdracht afgestemd op het gekozen publiek
   document.getElementById('ritStatus').textContent='AI totaalanalyse...';
   const allStats=ritLogs.map(l=>`${l.fase}: ${Object.values(l.stats).map(s=>`${s.name}=${fv(s.avg)}${s.unit}${!s.ok?' (!)':''}`).join(', ')}`).join('\n');
@@ -6756,7 +7277,7 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
 
   try{
     const totalAnalysis=await apiFetch(
-      `${focusPrompt}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}`,
+      `${focusPrompt}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
       1200
     );
     // Rapport beschikbaar maken voor PDF-export
@@ -7125,6 +7646,7 @@ function mailSupport(withDiag){
 async function runKoopcheck(){
   const btn = document.getElementById('koopBtn');
   const res = document.getElementById('koopResults');
+  if(!(await preAnalysisCheck())) return;
   // P2: zorg dat de conditiecheck op de juiste, verse PIDs draait — niet op
   // toevallig-actieve of lege sensoren. (Koopcheck miste eerder een profiel.)
   if(connected||demoMode){ try{ await ensurePIDsActive('totaal'); }catch(e){} }
