@@ -1,6 +1,36 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-17 01:00 (CET)
+     PidLane — build aangepast: 2026-06-17 03:10 (CET)  [opvolger van 02:00]
+     FIXES — CONSISTENTE PID-SELECTIE VOOR ELKE ANALYSE:
+       • Nieuwe centrale helper analysisPidData(profile): single source of
+         truth. Levert per analyse de PIDs + verse waarden die relevant ∩
+         aanwezig ∩ niet-onzin/nodata zijn, plus het kwaliteitsblok voor de
+         AI-prompt. Geen onzin-PIDs, niets relevants overgeslagen.
+       • Brandstofanalyse: niet langer de vaste 7-PID FUEL_PIDS-lijst blind
+         pollen. Gebruikt nu relevantSupportedPIDs('brandstof') ∪ gecureerde
+         fuel-PIDs (mét hun desc-teksten), sluit dummy/onzin uit, en stuurt
+         nu wél een DATAKWALITEIT-blok mee naar de AI (ontbrak volledig).
+       • Totaalcheck (buildCheckItems): pc() sluit nu ook 'onzin' uit (was
+         alleen 'nodata') zodat fysiek-onmogelijke waarden niet meer als
+         probleem in de lijst belanden — gelijk aan de AI-gate. Daarnaast
+         union met relevantSupportedPIDs('totaal'): elke relevante gezonde
+         sensor van de auto wordt nu getoond, niet alleen de vaste kernlijst.
+       • Emissie- en rit-analyse waren al consistent (relevantSupportedPIDs
+         + buildQualityReport) en zijn ongewijzigd gelaten.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-17 02:00):
+     FIXES:
+       • Dubbele popup opgelost: wizard stap 2 gebruikt eigen strategie-UI,
+         roept niet meer showStrategyConfirm() aan (aparte stratOverlay)
+       • Live-scherm leeg bij opstarten: autoSelectHealthyKern selecteert
+         geen PIDs meer automatisch — gebruiker kiest zelf
+       • Wizard stap 6 selecteert STANDAARD_PIDS: uitgebreide maar normale
+         set (Motor/Temp/Brandstof/Emissie) zonder turbo/DPF/AdBlue/NOx
+       • Dummy-value detectie in scanMode: temp-sensoren op exact -40°C
+         en emissie-PIDs op exact 0 worden als 'nodata' gemarkeerd
+         (niet-aanwezige sensor die toch antwoordt met default waarde)
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-17 01:00):
      VERBINDING-WIZARD (6 stappen na protocol-detectie):
        Stap 1: Verbonden — protocol + adapter naam
        Stap 2: Adapter evalueren — snelheid meten + strategie kiezen
@@ -1831,8 +1861,22 @@ function assessPidQuality(pid, val, scanMode=false){
       return {status:'onzin', reden:`waarde ${fv(val)} ${unit} ver buiten sensorbereik`, name, val, unit};
   }
 
-  // In scanMode: alleen harde onmogelijkheden, geen twijfel op basis van history
-  if(scanMode) return {status:'ok', name, val, unit};
+  // In scanMode: alleen harde onmogelijkheden + dummy-waarden detecteren
+  if(scanMode){
+    // Dummy-detectie: als de waarde exact het minimum van de definitie is,
+    // is dat een sterk signaal van een niet-aanwezige sensor die toch antwoordt.
+    // Typisch: turbo-temp = -40°C (0x00), AdBlue = 0, NOx = 0, DPF-druk = 0.
+    if(d && typeof d.min==='number' && val===d.min){
+      // Extra check: is het min ook een "verdacht" getal (typisch default)?
+      const verdacht=[-40,0,0.00].includes(d.min);
+      // Alleen voor sensor-categorieën die niet standaard 0 kunnen zijn
+      const sensorCat=['Temp','Emissie'].includes(d.cat||'');
+      if(verdacht && sensorCat){
+        return {status:'nodata', reden:`waarde gelijk aan sensor-minimum (${d.min} ${unit}) — waarschijnlijk niet aanwezig`, name, val, unit};
+      }
+    }
+    return {status:'ok', name, val, unit};
+  }
 
   // 2. PLATTE / BEVROREN SENSOR → twijfel (alleen bij voldoende history)
   if(n>=8){
@@ -2655,6 +2699,38 @@ function pidReadiness(pidList){
   return {pct, beschikbaar, ontbrekend, discoveryOk};
 }
 
+// ── CENTRALE PID-SELECTIE VOOR ELKE ANALYSE ─────────────────────────
+// Single source of truth: bepaalt welke PIDs + verse waarden een analyse
+// MAG gebruiken, en levert meteen het kwaliteitsblok voor de AI-prompt.
+//   relevant  = relevantSupportedPIDs(profile): basisprofiel + alle gezonde
+//               ondersteunde sensoren in de relevante categorieën
+//   beschikbaar = heeft een verse waarde (pidVals) en is niet 'onzin'/'nodata'
+//   onzin/nodata = fysiek onmogelijk of niet-aanwezige sensor → UITSLUITEN
+//   twijfel    = blijft meedoen, maar buildQualityReport waarschuwt erover
+// Zo gebruikt ELKE analyse precies de beschikbare relevante data — geen
+// onzin-PIDs, niets relevants overgeslagen.
+function analysisPidData(profile, extraPids){
+  // 1. Relevante set voor dit profiel + eventuele analyse-specifieke extra's
+  const relevant = relevantSupportedPIDs(profile) || [];
+  const wens = [...new Set([...relevant, ...(extraPids||[])])];
+  // 2. Alleen wat de auto echt levert: verse waarde + niet onzin/nodata.
+  //    In demo is _pidHealth leeg → daar alles met een waarde toelaten.
+  const pids = wens.filter(pid=>{
+    const val = (typeof pidVals!=='undefined') ? pidVals[pid] : undefined;
+    if(val===undefined || val===null) return false;
+    const h = (typeof _pidHealth!=='undefined') ? _pidHealth[pid] : undefined;
+    if(h==='onzin' || h==='nodata') return false;
+    return true;
+  });
+  const pairs = pids.map(pid=>[pid, pidVals[pid]]);
+  // 3. Kwaliteitsgate: sluit fysiek-onmogelijke uit, waarschuw bij twijfel.
+  const quality = buildQualityReport(pairs);
+  // pairs ontdaan van wat de gate als 'onzin' bestempelt (dubbele zekerheid)
+  const onzinSet = new Set(quality.onzin.map(q=>q.name));
+  const schoon = pairs.filter(([pid])=>{ const d=getPidDef(pid); return !onzinSet.has((d&&d.name)||pid); });
+  return { pids: schoon.map(p=>p[0]), pairs: schoon, quality };
+}
+
 // Zet de PIDs van een profiel aan (alleen die de auto ondersteunt) en wacht
 // tot er verse data binnen is, zodat de analyse niet met lege waardes draait.
 async function ensurePIDsActive(profile){
@@ -3126,10 +3202,12 @@ async function runTotalCheck(){
 function buildCheckItems(){
   const items=[];
   const pc=(pid,name,verplicht=false)=>{
-    // Sla over als de auto dit PID niet ondersteunt (nodata of niet in supportedPIDs)
+    // Sla over als de auto dit PID niet ondersteunt of de waarde fysiek
+    // onmogelijk is (nodata = niet aanwezig, onzin = meet-/parsefout).
+    // Zo ziet de itemlijst exact dezelfde schone set als de AI-prompt.
     if(!verplicht){
       const health=_pidHealth[pid];
-      if(health==='nodata') return null;
+      if(health==='nodata'||health==='onzin') return null;
       if(!demoMode && typeof supportedPIDs!=='undefined' && supportedPIDs.size>0 && !supportedPIDs.has(pid)) return null;
     }
     const val=pidVals[pid]; const d=getPidDef(pid);
@@ -3153,6 +3231,15 @@ function buildCheckItems(){
     ['01A4','AdBlue injectiedruk'],['015B','HV accu SoC'],['0142','Accuspanning'],
   ];
   kernPids.forEach(([pid,name])=>{ const i=pc(pid,name); if(i) items.push(i); });
+  // Vul aan met ELKE relevante gezonde sensor die de auto óók levert maar niet
+  // in de kernlijst staat — zo wordt niets relevants overgeslagen, terwijl de
+  // kernlijst de gegarandeerde basis blijft.
+  const kernSet=new Set(kernPids.map(k=>k[0]));
+  relevantSupportedPIDs('totaal').forEach(pid=>{
+    if(kernSet.has(pid)) return;
+    const d=getPidDef(pid); if(!d) return;
+    const i=pc(pid,d.name||pid); if(i) items.push(i);
+  });
   // DTC altijd
   items.push({name:'DTC Foutcodes',display:dtcCodes.length===0?'Geen codes':dtcCodes.join(', '),status:dtcCodes.length===0?'ok':dtcCodes.some(c=>DTCDB[c]?.sev==='high')?'bad':'warn',detail:dtcCodes.length===0?'Geen actieve foutcodes.':dtcCodes.length+' code(s).'});
   // Bestuurder-vragen
@@ -3713,21 +3800,35 @@ async function runFuelAnalysis(){
   await ensurePIDsActive('brandstof');
   const btn=document.getElementById('btnFuel'); btn.disabled=true;
   document.getElementById('fuelResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Brandstofdata analyseren...</div>';
-  const measurements=[];
-  for(const fp of FUEL_PIDS){
-    let val=pidVals[fp.pid];
-    if(val===undefined){val=demoMode?demo(fp.pid):validateAndSmooth(fp.pid,parsePID(fp.pid,await sendCmd('01'+fp.pid.slice(2))));}
-    if(val!==null&&val!==undefined) updPID(fp.pid,val);
-    let status='unknown';
-    if(val!==null&&val!==undefined) status=fp.ok?(val>=fp.ok[0]&&val<=fp.ok[1]?'ok':'bad'):'ok';
-    measurements.push({...fp,val,status});
+  const curatedFuel=FUEL_PIDS.map(f=>f.pid);
+  const fuelMeta=Object.fromEntries(FUEL_PIDS.map(f=>[f.pid,f]));
+  // Wens = relevante gezonde sensoren v/d auto ∪ gecureerde fuel-PIDs.
+  // Vul ontbrekende verse waarden (demo of live poll) zodat de centrale
+  // selectie ze kan meenemen — niets relevants wordt overgeslagen.
+  const wensFuel=[...new Set([...relevantSupportedPIDs('brandstof'),...curatedFuel])]
+    .filter(pid=>demoMode||(typeof supportedPIDs==='undefined')||!supportedPIDs.size||supportedPIDs.has(pid)||getPidDef(pid));
+  for(const pid of wensFuel){
+    if(pidVals[pid]===undefined){
+      const val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await sendCmd('01'+pid.slice(2))));
+      if(val!==null&&val!==undefined) updPID(pid,val);
+    }
   }
+  // Centrale PID-check: relevant ∩ aanwezig ∩ niet-onzin/nodata + kwaliteitsblok.
+  const fd=analysisPidData('brandstof',curatedFuel);
+  const q=fd.quality;
+  const measurements=fd.pairs.map(([pid,val])=>{
+    const d=getPidDef(pid), meta=fuelMeta[pid];
+    const ok=meta?meta.ok:null;
+    let status='ok';
+    if(ok) status=(val>=ok[0]&&val<=ok[1])?'ok':'bad';
+    return {pid,name:(meta&&meta.name)||(d&&d.name)||pid,unit:(meta&&meta.unit)||(d&&d.unit)||'',desc:(meta&&meta.desc)||'',ok,val,status};
+  });
   renderFuelGauges(measurements);
   const prijs=parseFloat(document.getElementById('fuelPrice').value)||2.05;
   const jaarKm=parseInt(document.getElementById('yearKm').value)||15000;
   const v=getVehicle();
   const mData=measurements.filter(m=>m.val!==null&&m.val!==undefined).map(m=>`• ${m.name}: ${fv(m.val)} ${m.unit} [${m.status.toUpperCase()}] — ${m.desc}`).join('\n');
-  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nLIVE METINGEN:\n${mData||'(geen data)'}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
+  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nLIVE METINGEN:\n${mData||'(geen data)'}${q.promptBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
   try{
     const text=await apiFetch(prompt,1400);
     const secs=[{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'GEVONDEN INEFFICIËNTIES',i:'🔍',c:'orange'},{k:'BESPAARTIPS',i:'💡',c:'green'},{k:'TOTALE BESPARING',i:'💶',c:'purple'},{k:'RIJSTIJL TIPS',i:'🚗',c:'blue'}];
@@ -6058,12 +6159,38 @@ async function initialHealthScan(){
 
 // Selecteer automatisch de gezonde kern-PIDs (optie 3 + alleen gezonde)
 function autoSelectHealthyKern(){
-  KERN_PIDS.forEach(pid=>{
-    if(supportedPIDs.has(pid) && (_pidHealth[pid]==='ok' || demoMode)){
-      activePIDs.add(pid);
-    }
+  // Live-scherm leeg laten bij opstarten — gebruiker kiest zelf of wizard selecteert
+  const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
+}
+
+// Standaard uitgebreide PID-set voor wizard (geen exotische sensoren)
+// Motor + Temp + Brandstof + Emissie — maar geen turbo/DPF/AdBlue/NOx/raildruk/hybride
+const STANDAARD_PIDS=[
+  // Motor
+  '010C','010D','0104','0111','010B','010E','011F','0143',
+  // Temperatuur
+  '0105','015C','010F','0146',
+  // Brandstof
+  '0106','0107','0110','0113','0115','012F','015E','0134','0124',
+  // Emissie & diagnose
+  '0142','0121','012E','013C','0149','014C','0147',
+  // Overig standaard
+  '011C','0151','0133',
+];
+
+function selectStandardSet(){
+  // Selecteer alleen PIDs die de auto ondersteunt, gezond zijn, en in de standaard-set zitten
+  let n=0;
+  STANDAARD_PIDS.forEach(pid=>{
+    if(!supportedPIDs.has(pid)) return;
+    const h=_pidHealth[pid];
+    if(h==='nodata'||h==='onzin') return;  // niet aanwezig of ongeldig
+    activePIDs.add(pid); manualPIDs.add(pid); n++;
   });
   const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
+  log(`📡 Standaard set: ${n} PIDs geselecteerd`,'ok');
+  buildPIDList(); renderGauges?.(); rebuildGSel?.();
+  return n;
 }
 
 // Toggle "Toon alles" — ook ongezonde PIDs selecteerbaar maken
@@ -6861,18 +6988,17 @@ function _wizStep1(){
   setTimeout(()=>wizGo(2), 2000);
 }
 
-// STAP 2 — Adapter evalueren: snelheid meten + strategie kiezen
+// STAP 2 — Adapter evalueren: snelheid meten + strategie kiezen in wizard
 async function _wizStep2(){
   const fill=document.getElementById('wizMeterFill');
   const lbl=document.getElementById('wizMeterLbl');
-  // Animatie tijdens meting
   fill.style.width='15%'; lbl.textContent='Meten...';
+  // Alleen meten, GEEN stratOverlay popup (wizard heeft eigen UI)
   const speed=await measureConnSpeed(demoMode?0:8);
   fill.style.width='100%';
   if(!speed){ wizGo(3); return; }
   const rps=speed.readsPerSec;
   lbl.textContent=`⚡ ${rps} reads/sec · ⏱ ${speed.avgMs}ms`;
-  // Voorstel
   const voorstel=suggestStrategy(speed);
   const strats=document.getElementById('wizStrats');
   strats.style.display='';
@@ -6890,7 +7016,8 @@ async function _wizStep2(){
     b.onclick=()=>{
       document.querySelectorAll('.wiz-strat-btn').forEach(x=>x.classList.remove('chosen'));
       b.classList.add('chosen'); b.classList.remove('rec');
-      confirmStrategy(k);
+      // Strategie toepassen zonder popup
+      applyStrategy(k);
       setTimeout(()=>wizGo(3), 600);
     };
     btns.appendChild(b);
@@ -7014,17 +7141,19 @@ function wizToggleDetail(){
   b.textContent=open?'▲ Verberg detail':'▼ Toon detail';
 }
 
-// STAP 6 — Klaar: samenvatting
+// STAP 6 — Klaar: samenvatting + standaard set selecteren
 function _wizStep6(){
+  // Selecteer standaard uitgebreide set (geen exotica)
+  const n=demoMode?0:selectStandardSet();
   const v=getVehicle()||{};
   const pids=typeof supportedPIDs!=='undefined'?[...supportedPIDs]:[];
   const ok=pids.filter(p=>_pidHealth[p]==='ok').length;
   const strat=typeof _connStrategy!=='undefined'&&_connStrategy?STRATEGIE_INFO[_connStrategy]:null;
   document.getElementById('wizSummary').innerHTML=
     `🚗 <b>${v.merk?v.merk+' '+v.model+(v.year?' '+v.year:''):'Voertuig onbekend'}</b>${v.brandstof?' · '+v.brandstof:''}<br>`+
-    `📡 <b>${ok}</b> sensoren actief<br>`+
+    `📡 <b>${ok}</b> sensoren actief · <b>${n||activePIDs.size}</b> geselecteerd<br>`+
     (strat?`⚡ Poll-strategie: <b>${strat.emoji} ${strat.label}</b><br>`:'')+
-    `✅ Kern-PIDs geselecteerd en klaar voor analyse`;
+    `✅ Standaard set geladen — pas aan via de PID-lijst`;
 }
 
 function openAnalysis(name){
