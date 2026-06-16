@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-16 21:00 (CET)
+     PidLane — build aangepast: 2026-06-16 22:00 (CET)
+     BUGFIX gezondheidscheck (alle PIDs ten onrechte grijs):
+       • assessPidQuality() krijgt scanMode=true tijdens initialHealthScan.
+         In scanMode worden alleen harde fysieke onmogelijkheden als 'onzin'
+         gemarkeerd — "te weinig metingen" en "platte sensor" checks worden
+         NIET toegepast (die vereisen history die er na 2 reads niet is).
+       • NO DATA respons = 'nodata' (niet aanwezig op dit voertuig), grijs
+         maar zonder ⚠-icoon — anders dan 'onzin' (parse/schaalfout).
+       • Veiligheidsfallback: als 0 PIDs ok zijn maar data aanwezig, reset
+         naar alles-ok (voorkomt lege PID-lijst bij een check-storing).
+       • Analyses sluiten 'nodata' uit maar laten 'twijfel' door.
+       • Log toont nu: "X ondersteund, Y niet aanwezig, Z ongeldig".
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 21:00):
      CONNECTIE-OPTIMALISATIE + stale-fix:
        • measureConnSpeed(): meet werkelijke reads/sec + latency + protocol.
        • suggestStrategy(): stelt Snel/Gebalanceerd/Conservatief voor op basis
@@ -1624,7 +1637,10 @@ const PID_HARD_LIMITS = {
 //   'onzin'   → fysiek onmogelijk (parse-/schaalfout) → UITSLUITEN
 //   'twijfel' → mogelijk meetfout/sensorprobleem → MÉT waarschuwing
 // ══════════════════════════════════════════════════════════════════
-function assessPidQuality(pid, val){
+function assessPidQuality(pid, val, scanMode=false){
+  // scanMode=true: wordt aangeroepen vanuit initialHealthScan (2 reads).
+  // In scanMode alleen harde onmogelijkheden eruit; "te weinig metingen" en
+  // "platte sensor" zijn pas relevant na langere monitoring.
   const d=getPidDef(pid);
   const hist=(typeof pidHist!=='undefined'&&pidHist[pid])?pidHist[pid]:[];
   const n=hist.length;
@@ -1644,20 +1660,21 @@ function assessPidQuality(pid, val){
       return {status:'onzin', reden:`waarde ${fv(val)} ${unit} ver buiten sensorbereik`, name, val, unit};
   }
 
-  // 2. PLATTE / BEVROREN SENSOR → twijfel (sensor of verbinding, geen motordefect)
-  if(n>=5){
+  // In scanMode: alleen harde onmogelijkheden, geen twijfel op basis van history
+  if(scanMode) return {status:'ok', name, val, unit};
+
+  // 2. PLATTE / BEVROREN SENSOR → twijfel (alleen bij voldoende history)
+  if(n>=8){
     const recent=hist.slice(-Math.min(n,10)).map(h=>typeof h==='object'?h.v:h);
     const spread=Math.max(...recent)-Math.min(...recent);
-    // Exact nul beweging bij een PID die hoort te variëren = verdacht
     const dynamisch=['0C','0D','04','11','0B','10','06','07','13','14','24','34'].includes(pid.slice(2).toUpperCase());
     if(spread===0 && dynamisch)
       return {status:'twijfel', reden:'sensor staat exact vast (0 variatie) — mogelijk dode sensor of verbindingsfout, niet per se een motordefect', name, val, unit};
-    // Plat op (bijna) nul voor een spanningssensor = verdacht
     if(dynamisch && Math.abs(val)<0.01 && spread<0.01)
       return {status:'twijfel', reden:'sensor leest ~0 zonder beweging — controleer sensor/bedrading', name, val, unit};
   }
 
-  // 3. TE WEINIG METINGEN → twijfel (geen harde conclusie op 1-2 samples)
+  // 3. TE WEINIG METINGEN → twijfel (alleen bij live monitoring, niet bij scan)
   if(n>0 && n<3)
     return {status:'twijfel', reden:`slechts ${n} meting(en) — te weinig voor een betrouwbare conclusie`, name, val, unit};
 
@@ -2441,9 +2458,10 @@ function relevantSupportedPIDs(profile){
   const extra = [];
   supportedPIDs.forEach(pid=>{
     if(base.includes(pid)) return;
-    // Sla ongezonde sensoren over (dood/onzin/twijfel) — geen valse analyses
+    // Sla alleen echte NO DATA-PIDs over (niet aanwezig op dit voertuig)
+    // Twijfel mag wel mee in analyses — de betrouwbaarheidscheck filtert daar verder
     const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
-    if(h==='onzin'||h==='twijfel') return;
+    if(h==='onzin'||h==='nodata') return;
     const d = getPidDef(pid);
     if(d && cats.includes(d.cat)) extra.push(pid);
   });
@@ -5814,7 +5832,6 @@ const KERN_PIDS=['010C','010D','0105','0104','010B','0106','0107','0142','010F',
 async function initialHealthScan(){
   _pidHealth={};
   if(demoMode){
-    // In demo: alles gezond (de demo levert realistische waarden)
     supportedPIDs.forEach(pid=>_pidHealth[pid]='ok');
     autoSelectHealthyKern();
     buildDiscoveredPIDList();
@@ -5823,23 +5840,31 @@ async function initialHealthScan(){
   if(!connected || !supportedPIDs.size) return;
   const pids=[...supportedPIDs];
   btDiag(`🔬 Gezondheidscheck van ${pids.length} sensoren…`,'info');
-  let ok=0, dim=0;
+  let ok=0, geen=0, onzin=0;
   for(const pid of pids){
     try{
-      // Lees 2x kort achter elkaar zodat assessPidQuality variatie kan zien
-      const v1=parsePID(pid, await sendCmd('01'+pid.slice(2)+'1',1500));
-      if(v1!=null){ updPID(pid,v1); }
-      await delay(60);
-      const v2=parsePID(pid, await sendCmd('01'+pid.slice(2)+'1',1500));
-      if(v2!=null){ updPID(pid,v2); }
-      const val=(v2!=null?v2:v1);
-      if(val==null){ _pidHealth[pid]='onzin'; dim++; continue; }
-      const q=assessPidQuality(pid,val);
+      // 1 read per PID in scanMode — history is leeg en irrelevant
+      const raw=await sendCmd('01'+pid.slice(2)+'1',1500);
+      // NO DATA = sensor niet aanwezig op dit voertuig (grijs maar ander label)
+      if(!raw || raw.includes('NO DATA') || raw.includes('UNABLE') || raw.includes('ERROR') || raw.includes('STOPPED')){
+        _pidHealth[pid]='nodata'; geen++; continue;
+      }
+      const val=parsePID(pid, raw);
+      if(val==null){ _pidHealth[pid]='onzin'; onzin++; continue; }
+      updPID(pid,val);
+      // scanMode=true: alleen harde fysieke onmogelijkheden markeren als onzin
+      const q=assessPidQuality(pid,val,true);
       _pidHealth[pid]=q.status;
-      if(q.status==='ok') ok++; else dim++;
-    }catch(e){ _pidHealth[pid]='onzin'; dim++; }
+      if(q.status==='ok') ok++; else onzin++;
+    }catch(e){ _pidHealth[pid]='onzin'; onzin++; }
   }
-  btDiag(`✅ Gezondheidscheck klaar: ${ok} gezond, ${dim} uitgegrijsd`, dim?'warn':'ok');
+  // Veiligheidsfallback: als 0 PIDs ok zijn maar wel data was, check gefaald
+  if(ok===0 && geen<pids.length){
+    btDiag('⚠ Gezondheidscheck: 0 geldig — fallback alles beschikbaar','warn');
+    pids.forEach(pid=>{ if(_pidHealth[pid]==='onzin') _pidHealth[pid]='ok'; });
+    ok=pids.filter(p=>_pidHealth[p]==='ok').length;
+  }
+  btDiag(`✅ Gezondheidscheck: ${ok} ondersteund, ${geen} niet aanwezig, ${onzin} ongeldig`, 'info');
   autoSelectHealthyKern();
   buildDiscoveredPIDList();
 }
@@ -5927,15 +5952,19 @@ function buildPIDList(filter=''){
     el.appendChild(lbl);
     items.forEach(p=>{
       const health=_pidHealth[p.pid]||'ok';
-      const ongezond=(health==='onzin'||health==='twijfel');
+      // nodata = sensor niet aanwezig op dit voertuig (stationair grijs, geen ⚠)
+      // onzin  = waarde ongeldig/parse-fout (oranje ⚠)
+      const ongezond=(health==='onzin'||health==='nodata');
       const dim = ongezond && !_showAllPIDs;
       const row=document.createElement('div');
       row.className='pr'+(activePIDs.has(p.pid)?' sel':'')+(dim?' dim':'');
-      const tag = health==='onzin' ? '<span class="phealth bad" title="Mogelijk dood/geen geldige meting">⚠</span>'
-                : health==='twijfel' ? '<span class="phealth warn" title="Twijfelachtige meting — verifieer">⚠</span>' : '';
+      const tag = health==='onzin' ? '<span class="phealth bad" title="Ongeldige waarde — mogelijke meetfout">⚠</span>'
+                : health==='twijfel' ? '<span class="phealth warn" title="Twijfelachtige meting — verifieer">⚠</span>'
+                : health==='nodata' ? '' : '';   // nodata: geen icoon, gewoon grijs
+      const nodataTip = health==='nodata' ? 'Niet aanwezig op dit voertuig (NO DATA)' : '';
       row.innerHTML=`<div class="pck"><span class="ckm">✓</span></div><span class="pn">${p.name}</span>${tag}<span class="pu2">${p.unit||p.pid}</span>`;
       if(dim){
-        row.title='Lijkt niet gezond of niet bij dit voertuig te horen — zet "Toon alles" aan om toch te kiezen';
+        row.title=health==='nodata'?'Niet beschikbaar op dit voertuig — zet "Toon alles" aan om toch te kiezen':'Twijfelachtige meting — zet "Toon alles" aan om toch te kiezen';
       } else {
         row.onclick=()=>togglePID(p.pid);
       }
