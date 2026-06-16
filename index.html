@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-16 22:00 (CET)
+     PidLane — build aangepast: 2026-06-17 01:00 (CET)
+     VERBINDING-WIZARD (6 stappen na protocol-detectie):
+       Stap 1: Verbonden — protocol + adapter naam
+       Stap 2: Adapter evalueren — snelheid meten + strategie kiezen
+       Stap 3: Sensoren ontdekken — bitmap-scan voortgang
+       Stap 4: Voertuig identificeren — VIN + kenteken + RDW inline
+       Stap 5: Sensorcheck — per PID gezondheid + categorie-samenvatting
+               uitklapbaar detail per categorie
+       Stap 6: Klaar — samenvatting + Start analyse knop
+     BUGFIX 2-min analyse (4 PIDs geselecteerd):
+       fase-PIDs worden gefilterd op gezondheid (_pidHealth),
+       NO DATA PIDs overgeslagen, kern-PIDs altijd als fallback
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 23:00):
+     VOERTUIG-SPECIFIEKE RAPPORTAGE — geen turbo/diesel bij benzine:
+       • buildCheckItems() toont alleen PIDs die de auto ondersteunt.
+         Turbo-, DPF-, AdBlue-, NOx-, raildruk-PIDs verschijnen alleen
+         als supportedPIDs ze bevat en ze geen nodata gaven.
+       • Alle AI-prompts (Totaalcheck, AI-Monteur, Koopcheck) bevatten
+         nu het brandstoftype + expliciete instructie: geen aannames over
+         turbo/diesel/AdBlue/hybride tenzij de data dit aantoont.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 22:00):
      BUGFIX gezondheidscheck (alle PIDs ten onrechte grijs):
        • assessPidQuality() krijgt scanMode=true tijdens initialHealthScan.
          In scanMode worden alleen harde fysieke onmogelijkheden als 'onzin'
@@ -475,6 +497,56 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .rdy-card.warn{border-color:var(--or);background:var(--ors)}
 .rdy-card.bad{border-color:var(--rd);background:var(--rds)}
 .rdy-card.off{border-color:var(--bd);background:var(--sur2);color:var(--tx3)}
+/* ══ VERBINDING-WIZARD ══ */
+.wiz-ov{position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
+.wiz-ov.hidden{display:none}
+@media(min-width:600px){.wiz-ov{align-items:center}}
+.wiz-panel{background:var(--sur);border:1px solid var(--bd);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:20px 18px 28px;max-height:92vh;display:flex;flex-direction:column;gap:14px}
+@media(min-width:600px){.wiz-panel{border-radius:18px;max-height:85vh}}
+.wiz-steps{display:flex;align-items:center;gap:0;justify-content:center}
+.wiz-step{width:28px;height:28px;border-radius:50%;border:2px solid var(--bd);background:var(--sur2);color:var(--tx3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all .3s;flex-shrink:0}
+.wiz-step.active{border-color:var(--bl);background:var(--bl);color:#fff;box-shadow:0 0 0 3px rgba(26,111,255,.25)}
+.wiz-step.done{border-color:var(--gn);background:var(--gn);color:#fff}
+.wiz-step.done::before{content:'✓';font-size:12px}
+.wiz-step.done span{display:none}
+.wiz-line{flex:1;height:2px;background:var(--bd);transition:background .3s}
+.wiz-line.done{background:var(--gn)}
+.wiz-body{flex:1;overflow-y:auto}
+.wiz-s{display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 4px;gap:8px}
+.wiz-s.hidden{display:none}
+.wiz-icon{font-size:42px;line-height:1}
+.wiz-title{font-size:18px;font-weight:800;color:var(--tx)}
+.wiz-sub{font-size:12px;color:var(--tx3);max-width:320px}
+.wiz-info{font-size:11px;color:var(--tx2);background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;width:100%;text-align:left;line-height:1.7}
+.wiz-progbar{width:100%;height:6px;background:var(--bd2);border-radius:3px;overflow:hidden;margin:4px 0}
+.wiz-progfill{height:100%;background:linear-gradient(90deg,var(--bl),var(--gn));border-radius:3px;width:0;transition:width .4s}
+.wiz-pid-count{font-size:13px;font-weight:700;color:var(--tx)}
+.wiz-meter{width:100%;display:flex;flex-direction:column;gap:6px;align-items:center}
+.wiz-meter-bar{width:100%;height:8px;background:var(--bd2);border-radius:4px;overflow:hidden}
+.wiz-meter-fill{height:100%;background:linear-gradient(90deg,#f97316,#22c55e);border-radius:4px;width:0;transition:width 1s}
+.wiz-meter-lbl{font-size:12px;color:var(--tx2);font-weight:600}
+.wiz-strats{width:100%;display:flex;flex-direction:column;gap:7px;text-align:left}
+.wiz-strat-lbl{font-size:11px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.wiz-strat-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);cursor:pointer;transition:all .15s;font-family:var(--f);width:100%;text-align:left}
+.wiz-strat-btn:hover,.wiz-strat-btn.rec{border-color:var(--bl);background:var(--bls)}
+.wiz-strat-btn.chosen{border-color:var(--gn);background:var(--gns)}
+.wiz-strat-emoji{font-size:22px;flex-shrink:0}
+.wiz-strat-info{flex:1}
+.wiz-strat-name{font-size:13px;font-weight:700;color:var(--tx)}
+.wiz-strat-desc{font-size:10px;color:var(--tx3);margin-top:1px}
+.wiz-vin-row{font-size:11px;color:var(--tx3);background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;width:100%;text-align:left}
+.wiz-kent-row{display:flex;gap:7px;width:100%}
+.wiz-rdw-btn{padding:10px 14px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.wiz-kent-status{font-size:11px;color:var(--tx2);min-height:18px;width:100%;text-align:left}
+.wiz-cat-sum{width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:4px}
+.wiz-cat-chip{font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--bd);background:var(--sur2)}
+.wiz-cat-chip.ok{background:var(--gns);border-color:var(--gn);color:var(--gn)}
+.wiz-cat-chip.none{background:var(--sur2);color:var(--tx3)}
+.wiz-pid-detail{width:100%;max-height:160px;overflow-y:auto;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font-size:10px;line-height:1.8;text-align:left}
+.wiz-summary{width:100%;background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.9;text-align:left}
+.wiz-actions{display:flex;gap:8px;width:100%}
+.wiz-btn-pri{flex:1;padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer}
+.wiz-btn-sec{padding:11px 16px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer}
 .rdy-bar{height:4px;border-radius:2px;background:var(--bd2);margin:5px 0 4px;overflow:hidden}
 .rdy-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 .rdy-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
@@ -1012,6 +1084,105 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <button class="aex-send" onclick="autoExpertAsk('vrij')">Vraag →</button>
     </div>
     <div id="aexAnswer" class="aex-answer"><div class="aex-empty">Kies een snelknop of typ je vraag. De monteur combineert je voertuig, live sensordata, foutcodes en merk-kennis.</div></div>
+  </div>
+</div>
+
+<!-- ══ VERBINDING-WIZARD (6 stappen na protocol-detectie) ══ -->
+<div id="wizardOv" class="wiz-ov hidden">
+  <div class="wiz-panel">
+    <!-- Stap-indicator -->
+    <div class="wiz-steps" id="wizStepBar">
+      <div class="wiz-step" data-s="1">1</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-step" data-s="2">2</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-step" data-s="3">3</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-step" data-s="4">4</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-step" data-s="5">5</div>
+      <div class="wiz-line"></div>
+      <div class="wiz-step" data-s="6">6</div>
+    </div>
+
+    <!-- Inhoud per stap -->
+    <div class="wiz-body" id="wizBody">
+
+      <!-- STAP 1: Verbonden -->
+      <div id="wizS1" class="wiz-s hidden">
+        <div class="wiz-icon">✅</div>
+        <div class="wiz-title">Verbonden!</div>
+        <div class="wiz-sub" id="wizS1Proto">Protocol detecteren...</div>
+        <div class="wiz-info" id="wizS1Info"></div>
+      </div>
+
+      <!-- STAP 2: Adapter evalueren -->
+      <div id="wizS2" class="wiz-s hidden">
+        <div class="wiz-icon">⚡</div>
+        <div class="wiz-title">Adapter evalueren</div>
+        <div class="wiz-sub">Snelheid meten...</div>
+        <div class="wiz-meter" id="wizMeter">
+          <div class="wiz-meter-bar"><div class="wiz-meter-fill" id="wizMeterFill"></div></div>
+          <div class="wiz-meter-lbl" id="wizMeterLbl">Meten...</div>
+        </div>
+        <div class="wiz-strats" id="wizStrats" style="display:none">
+          <div class="wiz-strat-lbl">Kies poll-strategie:</div>
+          <div id="wizStratBtns"></div>
+        </div>
+      </div>
+
+      <!-- STAP 3: PIDs ontdekken -->
+      <div id="wizS3" class="wiz-s hidden">
+        <div class="wiz-icon">🔍</div>
+        <div class="wiz-title">Sensoren ontdekken</div>
+        <div class="wiz-sub" id="wizS3Sub">Bitmap-scan loopt...</div>
+        <div class="wiz-progbar"><div class="wiz-progfill" id="wizS3Fill"></div></div>
+        <div class="wiz-pid-count" id="wizS3Count">0 sensoren gevonden</div>
+      </div>
+
+      <!-- STAP 4: Voertuig identificeren -->
+      <div id="wizS4" class="wiz-s hidden">
+        <div class="wiz-icon">🇳🇱</div>
+        <div class="wiz-title">Voertuig identificeren</div>
+        <div id="wizVinRow" class="wiz-vin-row"></div>
+        <div class="wiz-kent-row">
+          <input id="wizKent" type="text" placeholder="Kenteken (bijv. R054XD)" maxlength="8"
+            onkeydown="if(event.key==='Enter')wizRdwLookup()"
+            style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:13px;text-transform:uppercase">
+          <button onclick="wizRdwLookup()" class="wiz-rdw-btn">🔍 RDW</button>
+        </div>
+        <div id="wizKentStatus" class="wiz-kent-status"></div>
+        <div class="wiz-actions" style="margin-top:14px">
+          <button class="wiz-btn-sec" onclick="wizNext(5)">Overslaan</button>
+          <button class="wiz-btn-pri" id="wizS4Next" onclick="wizNext(5)">Volgende →</button>
+        </div>
+      </div>
+
+      <!-- STAP 5: Sensorcheck -->
+      <div id="wizS5" class="wiz-s hidden">
+        <div class="wiz-icon">🔬</div>
+        <div class="wiz-title">Sensorcheck</div>
+        <div class="wiz-sub" id="wizS5Sub">Sensoren testen op aanwezigheid...</div>
+        <div class="wiz-progbar"><div class="wiz-progfill" id="wizS5Fill"></div></div>
+        <div class="wiz-pid-count" id="wizS5Count"></div>
+        <!-- Categorie-samenvatting -->
+        <div id="wizCatSum" class="wiz-cat-sum" style="display:none"></div>
+        <!-- Uitklapbare detail -->
+        <div id="wizDetailToggle" style="display:none;text-align:center;margin-top:6px">
+          <button class="wiz-btn-sec" onclick="wizToggleDetail()" style="font-size:10px;padding:5px 12px">▼ Toon detail</button>
+        </div>
+        <div id="wizPidDetail" class="wiz-pid-detail" style="display:none"></div>
+      </div>
+
+      <!-- STAP 6: Klaar -->
+      <div id="wizS6" class="wiz-s hidden">
+        <div class="wiz-icon" style="font-size:48px">🚀</div>
+        <div class="wiz-title">Klaar voor gebruik!</div>
+        <div class="wiz-summary" id="wizSummary"></div>
+        <button class="wiz-btn-pri" style="width:100%;margin-top:16px;font-size:14px;padding:13px" onclick="wizFinish()">Start analyse →</button>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -2954,9 +3125,15 @@ async function runTotalCheck(){
 }
 function buildCheckItems(){
   const items=[];
-  const pc=(pid,name)=>{
+  const pc=(pid,name,verplicht=false)=>{
+    // Sla over als de auto dit PID niet ondersteunt (nodata of niet in supportedPIDs)
+    if(!verplicht){
+      const health=_pidHealth[pid];
+      if(health==='nodata') return null;
+      if(!demoMode && typeof supportedPIDs!=='undefined' && supportedPIDs.size>0 && !supportedPIDs.has(pid)) return null;
+    }
     const val=pidVals[pid]; const d=getPidDef(pid);
-    if(val===undefined) return {pid,name,display:'Geen data',status:'ok',detail:'Niet gemeten.'};
+    if(val===undefined) return null;  // geen data = niet tonen
     let status='ok',detail='Normaal.';
     if(d){
       if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)){status='bad';detail='Kritieke afwijking!';}
@@ -2964,13 +3141,21 @@ function buildCheckItems(){
     }
     return {pid,name,display:`${fv(val)} ${d?.unit||''}`,status,detail};
   };
-  items.push(pc('0105','Koelwater temp'));
-  items.push(pc('0142','Accuspanning'));
-  items.push(pc('0106','Brandstoftrim kort'));
-  items.push(pc('0107','Brandstoftrim lang'));
-  items.push(pc('0110','MAF luchtmassameter'));
-  items.push(pc('012F','Brandstofpeil'));
+  // Kern-PIDs — alleen als aanwezig op dit voertuig
+  const kernPids=[
+    ['0105','Koelwater temp'],['0142','Accuspanning'],['015C','Motorolie temp'],
+    ['0106','Brandstoftrim kort'],['0107','Brandstoftrim lang'],
+    ['0110','MAF luchtmassameter'],['012F','Brandstofpeil'],
+    ['010C','Motortoerental'],['010D','Voertuigsnelheid'],
+    ['0104','Motorbelasting'],['010B','Inlaatdruk'],['010F','Inlaatlucht temp'],
+    ['013C','Uitlaatgas temp B1S1'],['0159','Raildruk (direct)'],
+    ['016B','DPF delta druk'],['018E','NOx doseerpomp'],
+    ['01A4','AdBlue injectiedruk'],['015B','HV accu SoC'],['0142','Accuspanning'],
+  ];
+  kernPids.forEach(([pid,name])=>{ const i=pc(pid,name); if(i) items.push(i); });
+  // DTC altijd
   items.push({name:'DTC Foutcodes',display:dtcCodes.length===0?'Geen codes':dtcCodes.join(', '),status:dtcCodes.length===0?'ok':dtcCodes.some(c=>DTCDB[c]?.sev==='high')?'bad':'warn',detail:dtcCodes.length===0?'Geen actieve foutcodes.':dtcCodes.length+' code(s).'});
+  // Bestuurder-vragen
   const qa=[['start','Koude start',{nee:'bad',soms:'warn',ja:'ok'}],['oil','Olie niveau',{nee:'bad',soms:'warn',ja:'ok'}],['cool','Koelwater niveau',{nee:'bad',soms:'warn',ja:'ok'}],['noise','Geluidscheck',{nee:'warn',soms:'warn',ja:'ok'}],['warn','Dashboard lampen',{nee:'warn',soms:'warn',ja:'ok'}],['fuel','Brandstofverbruik',{nee:'warn',soms:'warn',ja:'ok'}]];
   qa.forEach(([key,name,smap])=>{const ans=checkAnswers[key];if(ans)items.push({name,display:ans==='ja'?'Normaal':ans==='soms'?'Soms probleem':'Probleem',status:smap[ans]||'ok',detail:'Door bestuurder gerapporteerd.'});});
   return items;
@@ -3002,7 +3187,7 @@ async function runCheckAI(items){
   const prob=probItems.map(i=>`• ${i.name}: ${i.display} — ${i.detail}`).join('\n');
   const pairs=probItems.filter(i=>i.pid).map(i=>[i.pid, (typeof pidVals!=='undefined'?pidVals[i.pid]:undefined)]);
   const q=buildQualityReport(pairs);
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
 }
@@ -3110,7 +3295,8 @@ async function findCauses(){
     </div>`;
   const prompt=`Je bent expert automonteur met 20 jaar ervaring. Geef de 4 meest VOORKOMENDE oorzaken voor dit probleem, gesorteerd op hoe vaak je ze ziet.
 
-Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}
+Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''} ${v.brandstof?'('+v.brandstof+')':''}
+Beoordeel alleen op basis van beschikbare sensordata. Geen aannames over turbo/diesel/AdBlue/hybride tenzij het voertuigtype of de data dit aantoont.
 Beschrijving: ${desc}
 Symptomen: ${chips.join(', ')||'geen'}
 DTC codes: ${dtcCodes.join(', ')||'geen'}
@@ -5280,12 +5466,13 @@ async function startDiscovery(){
 
   await delay(600);
 
-  // Sluit modal, start app
+  // Sluit verbind-modal, open wizard
   document.getElementById('connOv').classList.add('hidden');
-  resetToStep1(); // reset voor volgende keer
+  resetToStep1();
   setConn(true);
   startPoll();
-  showWelcome(vinInfo);
+  // Open de verbinding-wizard (toont stap-voor-stap wat er gevonden is)
+  wizShow();
   log(`Verbinding compleet — ${discoveredPIDDefs.length} PIDs beschikbaar`,'ok');
 }
 
@@ -6617,6 +6804,229 @@ async function autoExpertAsk(mode){
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// VERBINDING-WIZARD — 6 stappen na protocol-detectie
+// Stap 1: Verbonden · 2: Adapter · 3: PIDs · 4: Voertuig · 5: Check · 6: Klaar
+// ══════════════════════════════════════════════════════════════════
+let _wizStep=0;
+
+function wizShow(){
+  document.getElementById('wizardOv').classList.remove('hidden');
+  wizGo(1);
+}
+function wizHide(){
+  document.getElementById('wizardOv').classList.add('hidden');
+}
+function wizFinish(){
+  wizHide();
+  // Zorg dat PID-lijst bijgewerkt is
+  buildPIDList();
+  refreshAllReadiness();
+}
+
+function wizGo(n){
+  _wizStep=n;
+  // Stap-balk bijwerken
+  document.querySelectorAll('.wiz-step').forEach(el=>{
+    const s=+el.dataset.s;
+    el.classList.toggle('active',s===n);
+    el.classList.toggle('done',s<n);
+    el.innerHTML=s<n?'✓':s===n?`<span>${s}</span>`:`<span>${s}</span>`;
+  });
+  document.querySelectorAll('.wiz-line').forEach((el,i)=>el.classList.toggle('done',i<n-1));
+  // Stap-content tonen
+  for(let i=1;i<=6;i++) document.getElementById('wizS'+i)?.classList.add('hidden');
+  const active=document.getElementById('wizS'+n);
+  if(active) active.classList.remove('hidden');
+  // Stap-acties
+  if(n===1) _wizStep1();
+  if(n===2) _wizStep2();
+  if(n===3) _wizStep3();
+  if(n===4) _wizStep4();
+  if(n===5) _wizStep5();
+  if(n===6) _wizStep6();
+}
+
+function wizNext(n){ wizGo(n); }
+
+// STAP 1 — Verbonden: toon protocol + adapter naam
+function _wizStep1(){
+  const net=typeof selectedNetwork!=='undefined'?selectedNetwork:null;
+  const proto=typeof _connSpeed!=='undefined'&&_connSpeed?_connSpeed.protocol:'';
+  const adapterNaam=net?.name||(window._sppConn?.name)||'OBD2 adapter';
+  document.getElementById('wizS1Proto').textContent=
+    `${adapterNaam}${proto&&proto!=='?'?' · '+proto:''}`;
+  const info=document.getElementById('wizS1Info');
+  info.innerHTML=`📡 Adapter: <b>${adapterNaam}</b><br>🔌 Protocol: <b>${proto||'wordt gedetecteerd...'}</b>`;
+  setTimeout(()=>wizGo(2), 2000);
+}
+
+// STAP 2 — Adapter evalueren: snelheid meten + strategie kiezen
+async function _wizStep2(){
+  const fill=document.getElementById('wizMeterFill');
+  const lbl=document.getElementById('wizMeterLbl');
+  // Animatie tijdens meting
+  fill.style.width='15%'; lbl.textContent='Meten...';
+  const speed=await measureConnSpeed(demoMode?0:8);
+  fill.style.width='100%';
+  if(!speed){ wizGo(3); return; }
+  const rps=speed.readsPerSec;
+  lbl.textContent=`⚡ ${rps} reads/sec · ⏱ ${speed.avgMs}ms`;
+  // Voorstel
+  const voorstel=suggestStrategy(speed);
+  const strats=document.getElementById('wizStrats');
+  strats.style.display='';
+  const btns=document.getElementById('wizStratBtns');
+  btns.innerHTML='';
+  Object.keys(STRATEGIE_INFO).forEach(k=>{
+    const s=STRATEGIE_INFO[k];
+    const b=document.createElement('button');
+    b.className='wiz-strat-btn'+(k===voorstel?' rec':'');
+    b.innerHTML=`<span class="wiz-strat-emoji">${s.emoji}</span>
+      <div class="wiz-strat-info">
+        <div class="wiz-strat-name">${s.label}${k===voorstel?' <span style="font-size:9px;background:var(--bl);color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px">aanbevolen</span>':''}</div>
+        <div class="wiz-strat-desc">${s.desc}</div>
+      </div>`;
+    b.onclick=()=>{
+      document.querySelectorAll('.wiz-strat-btn').forEach(x=>x.classList.remove('chosen'));
+      b.classList.add('chosen'); b.classList.remove('rec');
+      confirmStrategy(k);
+      setTimeout(()=>wizGo(3), 600);
+    };
+    btns.appendChild(b);
+  });
+}
+
+// STAP 3 — PIDs ontdekken: discovery loopt al, toon voortgang
+function _wizStep3(){
+  const fill=document.getElementById('wizS3Fill');
+  const count=document.getElementById('wizS3Count');
+  const sub=document.getElementById('wizS3Sub');
+  let pct=0;
+  const t=setInterval(()=>{
+    const n=typeof supportedPIDs!=='undefined'?supportedPIDs.size:0;
+    pct=Math.min(pct+Math.random()*8+2, 95);
+    fill.style.width=pct+'%';
+    count.textContent=n>0?`${n} sensoren gevonden`:'Scannen...';
+    // Als discovery klaar is (supportedPIDs niet meer 0 en buildDiscoveredPIDList al gedraaid)
+    if(n>0 && typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs.length>0 && pct>60){
+      clearInterval(t);
+      fill.style.width='100%';
+      count.textContent=`✅ ${n} sensoren gevonden`;
+      sub.textContent='Discovery voltooid';
+      setTimeout(()=>wizGo(4), 800);
+    }
+  }, 400);
+  // Fallback: na 30s toch door
+  setTimeout(()=>{ clearInterval(t); wizGo(4); }, 30000);
+}
+
+// STAP 4 — Voertuig: VIN + kenteken
+function _wizStep4(){
+  const v=getVehicle()||{};
+  const vinRow=document.getElementById('wizVinRow');
+  vinRow.innerHTML=v.vin
+    ?`🔑 VIN: <b>${v.vin}</b>${v.merk?' &nbsp;·&nbsp; '+v.merk+' '+v.model:''}`
+    :'VIN niet uitgelezen — vul kenteken in voor voertuiggegevens';
+  // Haal bestaand kenteken op
+  const savedKent=localStorage.getItem('pl_kent')||'';
+  document.getElementById('wizKent').value=savedKent;
+  if(v.merk){
+    document.getElementById('wizKentStatus').innerHTML=
+      `✅ ${v.merk} ${v.model||''} ${v.year||''} ${v.brandstof?'· '+v.brandstof:''}`;
+  }
+}
+
+async function wizRdwLookup(){
+  const kent=document.getElementById('wizKent').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const status=document.getElementById('wizKentStatus');
+  if(!kent){ status.textContent='Voer een kenteken in'; return; }
+  status.textContent='⏳ RDW opzoeken...';
+  try{
+    // Hergebruik bestaande rdwLookup functie
+    localStorage.setItem('pl_kent', kent);
+    const kentInput=document.getElementById('kentInput');
+    if(kentInput) kentInput.value=kent;
+    await rdwLookup();
+    const v=getVehicle()||{};
+    if(v.merk){
+      status.innerHTML=`✅ ${v.merk} ${v.model||''} ${v.year||''} ${v.brandstof?'· <b>'+v.brandstof+'</b>':''}`;
+    } else {
+      status.textContent='Niet gevonden — controleer kenteken';
+    }
+  }catch(e){ status.textContent='Fout: '+e.message; }
+}
+
+// STAP 5 — Sensorcheck: initialHealthScan loopt al, toon voortgang
+async function _wizStep5(){
+  const fill=document.getElementById('wizS5Fill');
+  const count=document.getElementById('wizS5Count');
+  const sub=document.getElementById('wizS5Sub');
+  // Health scan loopt al na discovery — wacht tot _pidHealth gevuld is
+  const pids=typeof supportedPIDs!=='undefined'?[...supportedPIDs]:[];
+  let done=0;
+  for(const pid of pids){
+    // Wacht tot pid in _pidHealth zit (scan loopt parallel)
+    let waited=0;
+    while(!_pidHealth[pid] && waited<3000){ await delay(100); waited+=100; }
+    done++;
+    const pct=Math.round((done/pids.length)*100);
+    fill.style.width=pct+'%';
+    count.textContent=`${done} / ${pids.length} gecontroleerd`;
+  }
+  // Render resultaten
+  const ok=pids.filter(p=>_pidHealth[p]==='ok').length;
+  const geen=pids.filter(p=>_pidHealth[p]==='nodata').length;
+  const onzin=pids.filter(p=>_pidHealth[p]==='onzin').length;
+  sub.textContent=`${ok} actief · ${geen} niet aanwezig · ${onzin} ongeldig`;
+  fill.style.width='100%';
+  // Categorie-samenvatting
+  const cats={};
+  pids.forEach(pid=>{
+    if(_pidHealth[pid]!=='ok') return;
+    const d=getPidDef(pid);
+    const cat=(d&&d.cat)||'Overig';
+    cats[cat]=(cats[cat]||0)+1;
+  });
+  const catSum=document.getElementById('wizCatSum');
+  catSum.style.display='';
+  catSum.innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,n])=>
+    `<span class="wiz-cat-chip ok">${c}: ${n}</span>`).join('')+
+    (geen>0?`<span class="wiz-cat-chip none">Niet aanwezig: ${geen}</span>`:'');
+  // Detail: lijst van gezonde PIDs
+  const detail=document.getElementById('wizPidDetail');
+  const gezond=pids.filter(p=>_pidHealth[p]==='ok');
+  detail.innerHTML=gezond.map(p=>{
+    const d=getPidDef(p);
+    return `<span style="color:var(--gn)">✓</span> ${d?d.name:p}`;
+  }).join('<br>')+
+  (geen>0?'<hr style="border-color:var(--bd);margin:6px 0">'+
+    pids.filter(p=>_pidHealth[p]==='nodata').map(p=>{const d=getPidDef(p);return `<span style="color:var(--tx3)">—</span> ${d?d.name:p} <span style="color:var(--tx3);font-size:9px">niet aanwezig</span>`;}).join('<br>'):'');
+  document.getElementById('wizDetailToggle').style.display='';
+  setTimeout(()=>wizGo(6), 1200);
+}
+
+function wizToggleDetail(){
+  const d=document.getElementById('wizPidDetail');
+  const b=document.getElementById('wizDetailToggle').querySelector('button');
+  const open=d.style.display==='none';
+  d.style.display=open?'':'none';
+  b.textContent=open?'▲ Verberg detail':'▼ Toon detail';
+}
+
+// STAP 6 — Klaar: samenvatting
+function _wizStep6(){
+  const v=getVehicle()||{};
+  const pids=typeof supportedPIDs!=='undefined'?[...supportedPIDs]:[];
+  const ok=pids.filter(p=>_pidHealth[p]==='ok').length;
+  const strat=typeof _connStrategy!=='undefined'&&_connStrategy?STRATEGIE_INFO[_connStrategy]:null;
+  document.getElementById('wizSummary').innerHTML=
+    `🚗 <b>${v.merk?v.merk+' '+v.model+(v.year?' '+v.year:''):'Voertuig onbekend'}</b>${v.brandstof?' · '+v.brandstof:''}<br>`+
+    `📡 <b>${ok}</b> sensoren actief<br>`+
+    (strat?`⚡ Poll-strategie: <b>${strat.emoji} ${strat.label}</b><br>`:'')+
+    `✅ Kern-PIDs geselecteerd en klaar voor analyse`;
+}
+
 function openAnalysis(name){
   sw(name,null);
   const tb=document.querySelector('.tb'); if(tb) tb.scrollTop=0;
@@ -7084,9 +7494,21 @@ async function startRitAnalyse(){
     ensurePIDListActive(alle);
     ritFullSweep();   // async, leest alles 1x en legt afwijkingen vast
   } else {
-    // SNEL (2-min): gerichte, beperkte set — blijft snel.
+    // SNEL (2-min): gerichte beperkte set, maar filter op gezonde PIDs.
+    // PIDs die NO DATA geven (nodata) overslaan zodat de analyse niet blokkeert.
     const alleFasePids=[...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))];
-    ensurePIDListActive(alleFasePids);
+    const gezond=alleFasePids.filter(pid=>{
+      const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
+      // Meenemen als: gezond, onbekend (nog niet gecheckt), of in demo
+      return demoMode || !h || h==='ok' || h==='twijfel';
+    });
+    // Altijd minimaal de kern-PIDs meenemen (zijn gegarandeerd aanwezig)
+    const kern=KERN_PIDS.filter(pid=>
+      typeof supportedPIDs==='undefined'||!supportedPIDs.size||supportedPIDs.has(pid)
+    );
+    const actief=[...new Set([...gezond,...kern])];
+    log(`⚡ 2-min analyse: ${actief.length} PIDs geselecteerd (${alleFasePids.length-gezond.length} overgeslagen — NO DATA)`,'info');
+    ensurePIDListActive(actief);
   }
   ritActive=true; ritStartTime=Date.now(); ritFaseIdx=0; ritLogs=[]; ritFaseData={};
   document.getElementById('ritStartBtn').style.display='none';
