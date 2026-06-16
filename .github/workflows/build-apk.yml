@@ -3,7 +3,14 @@ name: Build PidLane APK
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/index.html'
   workflow_dispatch:
+
+# Annuleer lopende builds als er een nieuwe push komt — voorkomt 4x builden
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -52,22 +59,17 @@ jobs:
           print("── Manifest VOOR injectie ──")
           print(xml)
 
-          # 1. Verwijder bestaande (mogelijk verkeerde) BT/locatie-permissies,
-          #    zodat we altijd de juiste set neerzetten (zelf-corrigerend).
+          # 1. Verwijder bestaande (mogelijk verkeerde) BT/locatie-permissies
           xml = re.sub(
               r'\s*<uses-permission[^>]*android\.permission\.'
               r'(BLUETOOTH[A-Z_]*|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION)[^>]*/>',
               '', xml)
-          # Bestaande bluetooth uses-feature regels ook strippen (anders dupliceren ze).
           xml = re.sub(
               r'\s*<uses-feature[^>]*android\.hardware\.bluetooth[a-z_]*[^>]*/>',
               '', xml)
-          # Eerdere injectie-comment ook opruimen.
           xml = re.sub(r'\s*<!-- PidLane BT permissies.*?-->', '', xml)
 
-          # 2. De correcte permissie-set.
-          #    Android 12+ (31+): SCAN met neverForLocation + CONNECT (geen locatie nodig).
-          #    Android <= 11 (<=30): klassieke BT + FINE_LOCATION, beperkt tot maxSdkVersion 30.
+          # 2. De correcte permissie-set
           perms = (
               '\n    <!-- PidLane BT permissies (geinjecteerd door CI) -->'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />'
@@ -79,7 +81,7 @@ jobs:
               '\n    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />'
           )
 
-          # 3. Injecteer direct na de <manifest ...> open-tag (anker-onafhankelijk).
+          # 3. Injecteer direct na de <manifest ...> open-tag
           m = re.search(r'<manifest\b[^>]*>', xml)
           if not m:
               print("FOUT: <manifest> tag niet gevonden")
@@ -91,7 +93,6 @@ jobs:
           print("── Manifest NA injectie ──")
           print(xml)
 
-          # 4. Hard falen als de cruciale permissie er niet in staat.
           if 'BLUETOOTH_SCAN' not in xml or 'neverForLocation' not in xml:
               print("FOUT: BT-permissie-injectie mislukt")
               sys.exit(1)
@@ -118,19 +119,16 @@ jobs:
           SVG
           rsvg-convert -w 1024 -h 1024 /tmp/pidlane_icon.svg -o /tmp/icon_1024.png
           RES="android/app/src/main/res"
-          # Launcher-iconen (volledige tegel)
           for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; mkdir -p "$dir"
             convert /tmp/icon_1024.png -resize ${size}x${size} "$dir/ic_launcher.png"
             convert /tmp/icon_1024.png -resize ${size}x${size} "$dir/ic_launcher_round.png"
           done
-          # Adaptive-icon foreground (icoon op ~64% gecentreerd, transparante rand)
           for d in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
             dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; inner=$(( size * 64 / 100 ))
             convert /tmp/icon_1024.png -resize ${inner}x${inner} -background none \
               -gravity center -extent ${size}x${size} "$dir/ic_launcher_foreground.png"
           done
-          # Adaptive-achtergrond gelijk aan de tegel-kleur, zodat het naadloos oogt
           BG="$RES/values/ic_launcher_background.xml"
           if [ -f "$BG" ]; then
             sed -i 's|<color name="ic_launcher_background">[^<]*</color>|<color name="ic_launcher_background">#0D1117</color>|' "$BG"
