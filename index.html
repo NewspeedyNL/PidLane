@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-15 22:45 (CET)
+     PidLane — build aangepast: 2026-06-16 13:30 (CET)
+     BUGFIXES (Snelle Technische Check liep vast):
+       • FIX A: rit-fasen (2min+10min) activeren nu hun eigen volledige
+         PID-set via ensurePIDListActive — geen lege fase-data meer
+       • FIX B: dataStable wordt nu true bij ≥70% PIDs stabiel OF na 12s
+         timeout (was: ALLE PIDs ≥5 metingen → bleef hangen op "stabiliseert")
+       • FIX C: isPIDOkVal gebruikt nu getPidDef() (herkent ook PIDs 0164+)
+       • FIX D: startRitFase activeert fase-PIDs expliciet per fase
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-16 12:00):
+     UPDATES:
+       • PID-namen uitgebreid: 40+ extra PIDs (0164–01FF) krijgen naam/eenheid
+         i.p.v. "PID 01XX raw" in de PID-lijst
+       • SAE_PID_NAMES uitgebreid met hogere PID-ranges
+       • Readiness-kaartjes: inline status boven elke analyse-startknop
+         (% beschikbare PIDs, balk, motortype-badge)
+       • Poll-scheduler: hybride/benzine/diesel/EV motortype-splitsing
+         (aparte klassen per motortype, EV-modus pauzeert ICE-PIDs)
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-15 22:45):
      FIX — "Kopieer BT-log" liet de app crashen:
        • Clipboard nu eerst (juiste gedrag voor Kopiëren), Share als laatste
        • Share volledig afgeschermd (canShare-check + try/catch) zodat een
@@ -310,6 +329,16 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 /* Rollen: accounts met role:'user' in config.js zien alleen de basis */
 .role-user .adminOnly { display:none !important; }
 #datalogBtn.adminOnly{display:flex}
+/* ══ READINESS KAARTJE (boven analyse-startknop) ══ */
+.rdy-card{border-radius:var(--r);padding:9px 11px;margin-bottom:10px;border:1px solid var(--bd);background:var(--sur);font-size:11px}
+.rdy-card.ok{border-color:var(--gn);background:var(--gns)}
+.rdy-card.warn{border-color:var(--or);background:var(--ors)}
+.rdy-card.bad{border-color:var(--rd);background:var(--rds)}
+.rdy-card.off{border-color:var(--bd);background:var(--sur2);color:var(--tx3)}
+.rdy-bar{height:4px;border-radius:2px;background:var(--bd2);margin:5px 0 4px;overflow:hidden}
+.rdy-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.rdy-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.rdy-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px;background:rgba(0,0,0,.06)}
 /* Aanbevolen-kaart */
 .reco{display:flex;gap:11px;align-items:center;background:linear-gradient(135deg,var(--bls),var(--sur));border:1px solid var(--bl);border-radius:var(--r);padding:12px;margin-bottom:12px;cursor:pointer;box-shadow:var(--ss)}
 .reco .ri{font-size:26px;flex-shrink:0}
@@ -902,6 +931,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div class="chk-qrow"><label>Geen dashboardlampen?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'warn','ja')">Geen</div><div class="chk-opt" onclick="setQ(this,'warn','soms')">1-2</div><div class="chk-opt" onclick="setQ(this,'warn','nee')">Meerdere</div></div></div>
         </div>
         <div class="toolbar">
+          <div id="rdyTotaal" class="rdy-card off">📡 Verbind adapter om sensorstatus te laden</div>
           <button class="btn pri" onclick="runTotalCheck()" id="btnChk">🚦 Start totaalcheck</button>
           <button class="btn" onclick="exportCheckReport()">💾 Exporteer</button>
         </div>
@@ -942,6 +972,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
               <div class="chip" onclick="tc(this)">Altijd</div>
               <div class="chip" onclick="tc(this)">Soms</div>
             </div>
+            <div id="rdyMonteur" class="rdy-card off" style="margin-top:10px">📡 Verbind adapter om sensorstatus te laden</div>
             <div style="margin-top:12px"><button class="btn pri" id="btnFindCauses" onclick="findCauses()">🔍 Zoek meest voorkomende oorzaken →</button></div>
           </div>
           <div class="diag-step" id="dstep2" style="display:none">
@@ -989,6 +1020,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 
       <!-- DTC -->
       <div class="pane" id="pane-dtc">
+        <div id="rdyDtc" class="rdy-card off">📡 Verbind adapter om sensorstatus te laden</div>
         <div class="toolbar">
           <button class="btn pri" onclick="scanDTC()" id="bscan">🔍 Scan foutcodes</button>
           <button class="btn danger" onclick="clearDTC()" id="bclr" disabled>🗑 Wis codes</button>
@@ -1096,6 +1128,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         </div>
 
         <!-- Analyseer knop -->
+        <div id="rdyKoop" class="rdy-card off">📡 Verbind adapter om sensorstatus te laden</div>
         <button class="btn pri" onclick="runKoopcheck()" id="koopBtn"
           style="width:100%;padding:13px;font-size:13px;font-weight:700;margin-bottom:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none">
           🔍 Voer Aankoopcheck uit
@@ -1224,9 +1257,12 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:8px">FASE RESULTATEN</div>
       <div id="ritPhaseResults" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:14px;flex-shrink:0">
+    <div style="display:flex;gap:8px;margin-top:14px;flex-shrink:0;flex-direction:column">
+      <div id="rdyRit" class="rdy-card off" style="margin-bottom:2px">📡 Verbind adapter om sensorstatus te laden</div>
+      <div style="display:flex;gap:8px">
       <button id="ritStartBtn" onclick="startRitAnalyse()" style="flex:1;padding:12px;border-radius:9px;border:none;background:linear-gradient(135deg,#00f5ff,#a78bfa);color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer">🚗 Start Rit Analyse</button>
       <button id="ritStopBtn" onclick="stopRitAnalyse()" style="display:none;flex:1;padding:12px;border-radius:9px;border:1px solid rgba(255,100,100,.4);background:rgba(255,0,0,.1);color:#ff6464;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer">⏹ Stop & Analyseer</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1925,14 +1961,25 @@ function checkStability(pid,val){
   if(!stabilityCount[pid]) stabilityCount[pid]=0;
   stabilityCount[pid]++;
   if(!dataStable){
-    const allOk=[...activePIDs].every(p=>(stabilityCount[p]||0)>=5);
-    if(allOk&&activePIDs.size>0){
-      dataStable=true;
-      document.getElementById('stxt').textContent='Verbonden ✅';
-      log('✅ Data stabiel — AI analyse beschikbaar','ok');
-      logToSheets('info','Data stabiel',{pidCount:activePIDs.size});
-      const c=document.getElementById('aiContent');
-      if(c.querySelector('.ai-ph')) c.innerHTML=`<div class="ai-ph"><div class="pi">✅</div><p>Data stabiel en gevalideerd.<br><br>Druk op <strong>📊 AI Datalog</strong> voor een diepgaande analyse op basis van 20 seconden meting.<br>Of gebruik <strong>Snelle AI analyse</strong> voor directe momentopname.</p></div>`;
+    // FIX B: niet meer "ALLE PIDs ≥5" (bleef hangen op trage temp-PIDs),
+    // maar ≥70% van de actieve PIDs stabiel. Plus harde timeout-fallback
+    // van 12s (_stabilityT0) zodat de UI nooit eeuwig op "stabiliseert" blijft.
+    const act=[...activePIDs];
+    if(act.length){
+      if(!window._stabilityT0) window._stabilityT0=Date.now();
+      const stabielN=act.filter(p=>(stabilityCount[p]||0)>=5).length;
+      const ratio=stabielN/act.length;
+      const timedOut=(Date.now()-window._stabilityT0)>12000;
+      if((ratio>=0.7 || timedOut) && activePIDs.size>0){
+        dataStable=true;
+        const stEl=document.getElementById('stxt'); if(stEl) stEl.textContent='Verbonden ✅';
+        log(timedOut
+          ? `✅ Data stabiel (timeout, ${stabielN}/${act.length} PIDs) — AI analyse beschikbaar`
+          : `✅ Data stabiel (${stabielN}/${act.length} PIDs) — AI analyse beschikbaar`,'ok');
+        logToSheets('info','Data stabiel',{pidCount:activePIDs.size,stabiel:stabielN,timeout:timedOut});
+        const c=document.getElementById('aiContent');
+        if(c&&c.querySelector('.ai-ph')) c.innerHTML=`<div class="ai-ph"><div class="pi">✅</div><p>Data stabiel en gevalideerd.<br><br>Druk op <strong>📊 AI Datalog</strong> voor een diepgaande analyse op basis van 20 seconden meting.<br>Of gebruik <strong>Snelle AI analyse</strong> voor directe momentopname.</p></div>`;
+      }
     }
   }
 }
@@ -5079,7 +5126,15 @@ const SAE_PID_NAMES={
   '34':'O2 sensor 1 (lambda)','3C':'Katalysator temp B1S1','3D':'Katalysator temp B2S1','42':'Boordspanning',
   '43':'Absolute belasting','44':'Brandstof equivalentie','45':'Relatieve gasklep','46':'Omgevingstemp',
   '47':'Absolute gasklep B','49':'Gaspedaal positie D','4A':'Gaspedaal positie E','4C':'Commando gasklep',
-  '4D':'Tijd met MIL aan','4E':'Tijd sinds wis','5C':'Motorolie temp','5E':'Brandstofverbruik','5F':'Emissie eis'
+  '4D':'Tijd met MIL aan','4E':'Tijd sinds wis','5C':'Motorolie temp','5E':'Brandstofverbruik','5F':'Emissie eis',
+  '60':'Beschikbare PIDs 61-80','61':'Rijder koppelwens','62':'Werkelijk koppel','63':'Referentiekoppel',
+  '64':'Motor koppeldata','65':'Hulpinputs','66':'MAF sensor B','67':'Koelwater temp sensor B',
+  '68':'Inlaatlucht temp sensor B','69':'EGR commando B','6A':'EGR fout B','6D':'Turbo laaddruk A',
+  '6E':'Turbo laaddruk B','70':'Boost druk sensor','75':'Turbo A RPM','76':'Turbo B RPM',
+  '78':'Uitlaatgas temp B1S1','79':'Uitlaatgas temp B1S2','7A':'DPF B1','7B':'DPF B2',
+  '7C':'DPF temp B1','7D':'DPF temp B2','80':'Beschikbare PIDs 81-A0',
+  '8D':'Brandstof injectietiming','8E':'Motor koeling status',
+  'A0':'Beschikbare PIDs A1-C0','A6':'Brandstof verbruik absoluut'
 };
 async function deepRefreshPIDs(){
   const st=document.getElementById('pidRefreshStatus');
@@ -5242,7 +5297,75 @@ Object.assign(ALL_PID_DEFS,{
   '015D':{name:'Injectietiming',         unit:'°',   cat:'Motor',    min:-210,max:302,parse:b=>(((b[0]*256+b[1])-26880)/128)},
   '0161':{name:'Gevraagd koppel',        unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
   '0162':{name:'Werkelijk koppel',       unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
-  '0163':{name:'Referentiekoppel',       unit:'Nm',  cat:'Motor',    min:0,max:65535,parse:b=>(b[0]*256+b[1])}
+  '0163':{name:'Referentiekoppel',       unit:'Nm',  cat:'Motor',    min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  // ── Uitgebreide PID-database (PIDs 0164–01FF) — fix voor "PID 01XX raw" ──
+  '0164':{name:'Motorvrijloop koppel',   unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
+  '0165':{name:'Uitlaatgas temp B1S1',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0166':{name:'Uitlaatgas temp B1S2',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0167':{name:'Uitlaatgas temp B2S1',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0168':{name:'Uitlaatgas temp B2S2',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0169':{name:'Dieselroetfilter druk',  unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '016A':{name:'Dieselroetfilter temp',  unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '016B':{name:'DPF delta druk',         unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '016C':{name:'EGR B tempsensor',       unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '016D':{name:'Afgastemp dieselfilter', unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '016E':{name:'Nox sensor A',           unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '016F':{name:'Turbolader inlet druk',  unit:'kPa', cat:'Motor',    min:-350,max:514,parse:b=>(((b[0]*256+b[1])*0.03125)-350)},
+  '0170':{name:'Turbolader A druk',      unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '0171':{name:'Turbolader B druk',      unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '0172':{name:'Turbo compressor outlet',unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '0173':{name:'Turbo luchtinlaat temp', unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '0174':{name:'EGR temperatuur B',      unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '0175':{name:'EGR fout B',             unit:'%',   cat:'Emissie',  min:-100,max:100,parse:b=>((b[0]-128)*100/128)},
+  '0176':{name:'Injectiesysteem rail A', unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '0177':{name:'Injectiesysteem rail B', unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '0178':{name:'Uitlaatgas temp B1S3',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0179':{name:'Uitlaatgas temp B1S4',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017A':{name:'Uitlaatgas temp B2S3',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017B':{name:'Uitlaatgas temp B2S4',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017C':{name:'DPF temp B1',            unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017D':{name:'DPF temp B2',            unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017E':{name:'NOx NTE status',         unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
+  '017F':{name:'PM NTE status',          unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
+  '0180':{name:'Motor looptijd totaal',  unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0181':{name:'MIL looptijd totaal',    unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0182':{name:'Afstand MIL totaal',     unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0183':{name:'Afstand na wissen totaal',unit:'km', cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0184':{name:'Warmlopen totaal',       unit:'x',   cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0185':{name:'Continu MIL teller',     unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0186':{name:'Continu afstand MIL',    unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0187':{name:'NOx sensor B1S1',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0188':{name:'NOx sensor B1S2',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0189':{name:'NOx sensor B2S1',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '018A':{name:'NOx sensor B2S2',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '018B':{name:'Brandstoftype systeem',  unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
+  '018C':{name:'Dieselpartikelmassa',    unit:'mg',  cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '018D':{name:'Motorlooptijd PTO',      unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '018E':{name:'NOx doseerpomp',         unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '018F':{name:'AdBlue tank niveau',     unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0190':{name:'SCR efficiëntie',        unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0191':{name:'NOx reductie',           unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0192':{name:'PM sensor B1',           unit:'mg',  cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '0193':{name:'PM sensor B2',           unit:'mg',  cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '0194':{name:'WWH-OBD teller',         unit:'min', cat:'Overig',   min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0195':{name:'NOx sensor corr. B1S1',  unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0196':{name:'NOx sensor corr. B2S1',  unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0197':{name:'Uitlaatgas stroom',      unit:'kg/h',cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '0198':{name:'Turbo laaddruk A',       unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '0199':{name:'Turbo laaddruk B',       unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '019A':{name:'Turbo RPM A',            unit:'rpm', cat:'Motor',    min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '019B':{name:'Turbo RPM B',            unit:'rpm', cat:'Motor',    min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '019C':{name:'Turbo temp inlaat A',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '019D':{name:'Turbo temp inlaat B',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '019E':{name:'Turbo temp uitlaat A',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '019F':{name:'Turbo temp uitlaat B',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A0':{name:'Tussenkoeler temp A',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A1':{name:'Tussenkoeler temp B',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A2':{name:'EGR koeler temp B1',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A3':{name:'EGR koeler temp B2',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A4':{name:'AdBlue injectiedruk',    unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '01A5':{name:'Compressor inlaat druk', unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '01A6':{name:'Brandstof verbruik abs', unit:'g/s', cat:'Brandstof',min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.03125)}
 });
 
 function buildDiscoveredPIDList(){
@@ -5425,7 +5548,7 @@ function pidsDueNow(){
 
 function startPoll(){
   clearInterval(pollTimer);
-  dataStable=false; stabilityCount={}; pidSmooth={}; outlierCount={};
+  dataStable=false; stabilityCount={}; pidSmooth={}; outlierCount={}; window._stabilityT0=null;
   _pidNextPoll={};
   document.getElementById('aiContent').innerHTML=`<div class="ai-ph"><div class="pi">📡</div><p>Data valideren...<br><br>Even geduld — outliers worden gefilterd voor betrouwbare analyse.</p></div>`;
 
@@ -5447,6 +5570,7 @@ function startPoll(){
           if(resp!=null){ updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
         }
         if(due.length) runCorrelationEngine();
+        if(due.length) updateEVMode();
         return;
       }
 
@@ -5503,6 +5627,7 @@ function startPoll(){
       }
       // Idee 4: na elke pollronde de deterministische correlatie-check draaien
       runCorrelationEngine();
+      updateEVMode();
     }finally{
       window._pollBusy=false;
     }
@@ -5641,6 +5766,8 @@ function setConn(on){
   // Optie-3: statuschip alleen tonen wanneer NIET verbonden (en niet in demo)
   const sp=document.getElementById('statusPill');
   if(sp){ sp.classList.toggle('show', !on); }
+  // Readiness kaartjes bijwerken na verbindingsstatus-wijziging
+  setTimeout(()=>{ if(typeof refreshAllReadiness==='function') refreshAllReadiness(); }, 300);
 }
 // ── ⋯ kebab menu ──
 function toggleKebab(e){
@@ -5667,7 +5794,7 @@ async function handleConnect(){
     try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){}
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false); document.getElementById('vtag').style.display='none';
-    pidVals={}; pidHist={}; pidSmooth={}; stabilityCount={}; dataStable=false;
+    pidVals={}; pidHist={}; pidSmooth={}; stabilityCount={}; dataStable=false; window._stabilityT0=null;
     log('Verbinding verbroken','warn');
   } else {
     document.getElementById('connOv').classList.remove('hidden');
@@ -5690,12 +5817,144 @@ function sw(name,el){
 }
 // Launcher vanuit de rechter AI-kolom: opent het invulscherm in het MIDDEN.
 // De bijbehorende tab is verwijderd, dus geen tab-knop om te markeren.
+// ══════════════════════════════════════════════════════
+// READINESS KAARTJE — inline status boven elke analyse-startknop
+// Toont % beschikbare PIDs, voortgangsbalk, motortype-badge
+// ══════════════════════════════════════════════════════
+// PIDs per analyse — welke wil je idealiter hebben?
+const ANALYSE_PID_SETS = {
+  totaal:  ['010C','010D','0105','015C','0104','010B','010F','0110','0111',
+             '0106','0107','0113','0124','010A','015E','012F','0142'],
+  monteur: ['010C','010D','0105','015C','0104','010B','0110','0106','0107',
+             '0113','0124','010A','010E','012F','0142'],
+  dtc:     ['010C','0105','0104','0142'],
+  koop:    ['010C','010D','0105','015C','0104','010B','0110','0106','0107',
+             '0113','0124','010A','015E','012F','0142','013C'],
+  rit:     ['010C','010D','0105','015C','0104','010B','010F','0110','0111',
+             '0106','0107','0113','0124','010A','015E','012F','0142','010E','012C'],
+};
+
+function renderReadinessCard(elId, profile){
+  const el = document.getElementById(elId);
+  if(!el) return;
+
+  // Niet verbonden
+  if(!connected && !demoMode){
+    el.className = 'rdy-card off';
+    el.innerHTML = '📡 Verbind adapter om sensorstatus te laden';
+    return;
+  }
+
+  const pidList = ANALYSE_PID_SETS[profile] || [];
+  const discoveryDone = supportedPIDs && supportedPIDs.size > 0;
+  let beschikbaar = 0, ontbreekt = 0;
+  pidList.forEach(pid => {
+    if(demoMode || !discoveryDone || supportedPIDs.has(pid)) beschikbaar++;
+    else ontbreekt++;
+  });
+  const pct = pidList.length ? Math.round((beschikbaar / pidList.length) * 100) : 100;
+
+  // Motortype badge
+  const bf = (vehicleInfo?.brandstof || '').toLowerCase();
+  let motorBadge = '';
+  if(bf.includes('hybr')) motorBadge = ' 🔋 hybride';
+  else if(bf.includes('elektr')) motorBadge = ' ⚡ elektrisch';
+  else if(bf.includes('diesel')) motorBadge = ' 🛢 diesel';
+
+  const cls = demoMode ? 'ok' : pct >= 80 ? 'ok' : pct >= 50 ? 'warn' : 'bad';
+  const barColor = cls === 'ok' ? 'var(--gn)' : cls === 'warn' ? 'var(--or)' : 'var(--rd)';
+  const icon = cls === 'ok' ? '✅' : cls === 'warn' ? '⚠️' : '🔴';
+
+  el.className = 'rdy-card ' + cls;
+  el.innerHTML = `
+    <div class="rdy-row">
+      <span style="font-weight:700">${icon} ${demoMode ? 'Demo' : beschikbaar + ' van ' + pidList.length} PIDs beschikbaar${motorBadge}</span>
+      <span class="rdy-badge">${pct}%</span>
+    </div>
+    <div class="rdy-bar"><div class="rdy-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+    ${ontbreekt > 0 && !demoMode ? `<div style="font-size:10px;color:var(--tx2)">⚠ ${ontbreekt} sensor(en) niet gevonden op dit voertuig</div>` : ''}`;
+}
+
+// Roep readiness bij tab-wissel aan
+function refreshAllReadiness(){
+  renderReadinessCard('rdyTotaal',  'totaal');
+  renderReadinessCard('rdyMonteur', 'monteur');
+  renderReadinessCard('rdyDtc',     'dtc');
+  renderReadinessCard('rdyKoop',    'koop');
+  renderReadinessCard('rdyRit',     'rit');
+}
+
+// ══════════════════════════════════════════════════════
+// MOTORTYPE-SPLITSING POLL-SCHEDULER
+// Hybride/EV-auto's hebben andere prioriteiten dan benzine/diesel.
+// EV-modus pauzeert verbrandingsmotor-PIDs als motor uit en rijdend.
+// ══════════════════════════════════════════════════════
+// PIDs die alleen voor een verbrandingsmotor zinvol zijn
+const ICE_PIDS_SUFFIX = new Set([
+  '0C','0B','10','0A','0E','06','07','08','09','13','14','15','2C','12',
+  '3C','3D','3E','3F','34','35','24','25','28','69','6A'
+]);
+let _evModeActive = false;
+
+function detectEngineType(){
+  const bf = (vehicleInfo?.brandstof || '').toLowerCase();
+  const mt = (vehicleInfo?.motortype || '').toLowerCase();
+  if(bf.includes('elektr') || mt.includes('elektr') || mt.includes('ev')) return 'ev';
+  if(bf.includes('hybr')   || mt.includes('hybr')   || mt.includes('phev')) return 'hybride';
+  if(bf.includes('diesel')  || mt.includes('diesel') || mt.includes('tdi') || mt.includes('cdi')) return 'diesel';
+  return 'benzine';
+}
+
+function updateEVMode(){
+  if(!connected || demoMode) return;
+  const engineType = detectEngineType();
+  if(engineType !== 'hybride' && engineType !== 'ev') {
+    _evModeActive = false;
+    return;
+  }
+  const rpm = pidVals['010C'];
+  const spd = pidVals['010D'];
+  const wasEV = _evModeActive;
+  // EV-modus: motor staat stil (RPM < 50) maar auto rijdt (snelheid > 2 km/h)
+  _evModeActive = (rpm !== undefined && rpm < 50) && (spd !== undefined && spd > 2);
+  if(_evModeActive !== wasEV){
+    if(_evModeActive){
+      btDiag('🔋 EV-modus — verbrandingsmotor-PIDs gepauzeerd', 'info');
+    } else {
+      btDiag('🔥 Verbrandingsmotor actief — alle PIDs hervatten', 'info');
+    }
+  }
+}
+
+// Override pidPollInterval voor hybride/diesel/EV
+const _origPidPollInterval = pidPollInterval;
+function pidPollInterval(pid){
+  // EV-modus: ICE-PIDs niet pollen
+  if(_evModeActive){
+    const suf = pid.slice(2).toUpperCase();
+    if(ICE_PIDS_SUFFIX.has(suf)) return 999999; // effectief uitgeschakeld
+  }
+  const engineType = detectEngineType();
+  const suf = pid.slice(2).toUpperCase();
+  // Hybride: HV-accu + inverter-gerelateerde PIDs vaker pollen
+  if(engineType === 'hybride' || engineType === 'ev'){
+    if(['42','5B','5C','15B'].includes(suf)) return 500; // accu/spanning vaker
+    if(['0C','0D'].includes(suf)) return 150; // RPM/snelheid altijd snel
+  }
+  // Diesel: raildruk + roetfilter zijn kritisch
+  if(engineType === 'diesel'){
+    if(['23','59'].includes(suf)) return 200; // raildruk snel
+    if(['7A','7B','7C','7D'].includes(suf)) return 5000; // DPF minder snel
+  }
+  // Standaard klasse-lookup
+  return PID_POLL_CLASS[suf] || 1000;
+}
+
 function openAnalysis(name){
   sw(name,null);
-  // Zorg dat het middenpaneel zichtbaar is en scroll naar boven
   const tb=document.querySelector('.tb'); if(tb) tb.scrollTop=0;
-  // Markeer de actieve launcher-knop
   document.querySelectorAll('.ai-launch-btn').forEach(b=>b.classList.toggle('active', b.dataset.target===name));
+  refreshAllReadiness();
 }
 function toggleSL(){
   slCollapsed=!slCollapsed;
@@ -6113,7 +6372,10 @@ function resetRitUI(){
 
 function startRitAnalyse(){
   window._didRit=true;
-  ensurePIDsActive('rit');
+  // FIX A: activeer de volledige PID-set van ALLE fasen van de actieve modus
+  // (2min of 10min), niet het generieke 'rit'-profiel dat emissie/temp-PIDs miste.
+  const alleFasePids=[...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))];
+  ensurePIDListActive(alleFasePids);
   if(!connected){log('Verbind eerst een adapter','warn');return;}
   ritActive=true; ritStartTime=Date.now(); ritFaseIdx=0; ritLogs=[]; ritFaseData={};
   document.getElementById('ritStartBtn').style.display='none';
@@ -6145,6 +6407,10 @@ function startRitFase(idx){
   // Init data buffer voor deze fase
   ritFaseData[idx]={fase, data:{}, startTime:Date.now()};
   fase.pids.forEach(pid=>{ritFaseData[idx].data[pid]=[];});
+
+  // FIX D: zorg dat de PIDs van DEZE fase actief gepolld worden. Zonder dit
+  // bleven niet-geactiveerde PIDs (bv. 0124/0134/015C) undefined → lege data.
+  ensurePIDListActive([...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))]);
 
   // Verzamel data gedurende de fase
   const collectInterval=setInterval(()=>{
@@ -6215,7 +6481,10 @@ async function analyseRitFase(idx){
 }
 
 function isPIDOkVal(pid,val){
-  const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid]; if(!def) return true;
+  // FIX C: gebruik centrale getPidDef() (dekt discoveredPIDDefs, ALL_PID_DEFS
+  // én de uitgebreide PIDs 0164+) i.p.v. alleen discoveredPIDDefs/ALL_PID_DEFS.
+  const def=(typeof getPidDef==='function'?getPidDef(pid):null)||discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
+  if(!def) return true;
   if(def.dH&&val>=def.dH) return false; if(def.dL&&val<=def.dL) return false;
   if(def.wH&&val>=def.wH) return false; if(def.wL&&val<=def.wL) return false;
   return true;
