@@ -1,6 +1,34 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-17 04:30 (CET)  [opvolger van 04:00]
+     PidLane — build aangepast: 2026-06-17 05:45 (CET)  [opvolger van 05:15]
+     FIX — DODE-PID-SNOEI + BATCH HERSTELD (uit echte Mazda-rit-log):
+       • Oorzaak traagheid + "batch faalt": ~6-8 PIDs gaven elke ronde NO DATA
+         (olietemp/verbruik/omgevingstemp/smalband-O2 die de bitmap onterecht
+         als ondersteund opgaf). Elke NO DATA wacht de timeout uit (~500ms) → 3-4s
+         verspilling per ronde, en zo'n dode PID in een batch maakte 'm "onvolledig"
+         → batchDip → batch uitgeschakeld → eindeloze cyclus.
+       • Snoei: na 4× NO DATA wordt een PID uit de poll gehaald; elke 2 min één
+         herkansing (komt-ie tot leven → keert terug). markPidData/markPidNoData.
+       • Batch dipt nu alleen bij een écht lege/kapotte respons. Kwam er ≥1 PID
+         terug, dan telt dat als succes; ontbrekende PIDs = NO DATA (voeden de
+         snoei) i.p.v. alles sequentieel herhalen. Geen dip-cyclus meer.
+       • BATCH-diag-regel staat er nog in (admin-only BT-log) om op de volgende
+         rit te verifiëren — kan daarna weg.
+     ──────────────────────────────────────────────────────────────
+     PidLane — build 2026-06-17 05:15 (CET)  [opvolger van 04:30]
+     FIX — FANTOOMSENSOREN UIT ALLE RAPPORTEN:
+       • Turbo-/tussenkoeler-temp (atmosferische motor), bank-2 uitlaat/kat
+         (1-bank motor) en dieselfilter (benzine) verschenen nog in de
+         momentopname. Oorzaak: brandstoftype "onbekend" (RDW niet geladen)
+         liet diesel/SCR door, en turbo/tussenkoeler/bank-2 zaten in géén filter.
+       • vehicleFuelType() valt nu terug op live PID 0151 als RDW-data ontbreekt.
+       • Nieuwe _powertrainPhantom(): filtert temp-sensoren met fysiek onmogelijke
+         waarde (turbo/tussenkoeler ≤ -10°C placeholder), koude bank-2 t.o.v. hete
+         bank-1, en uitlaat/kat < 80°C bij warm draaiende motor.
+       • isReportableSensor() ook bedraad in AI-snelanalyse, tekstrapport en
+         live-data export — fantomen bereiken nu ook de AI niet meer.
+     ──────────────────────────────────────────────────────────────
+     PidLane — build 2026-06-17 04:30 (CET)  [opvolger van 04:00]
      FIX — O2 B1S1/B1S2 BLEEF OP ~0.02V + BATCH-DIAGNOSTIEK:
        • Oorzaak O2: de app las PID 0113 als 'O2 sensor B1S1'-spanning, maar
          0x13 is de "O2-sensoren aanwezig"-BITMAP (geen spanning). b[0]/200 van
@@ -1868,14 +1896,53 @@ const PIDS = [
 const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016D','016E','017C','017D','017E','0187','0188','0189','018A','018E','018F','0190','01A4']);
 function vehicleFuelType(){
   const b=((typeof vehicleInfo!=='undefined'&&vehicleInfo&&vehicleInfo.brandstof)||'').toString().toLowerCase();
-  if(!b) return 'onbekend';
-  if(/diesel|gasolie/.test(b)) return 'diesel';
-  if(/benzine|petrol|gasoline|lpg|cng|alcohol|ethanol|waterstof|elektr/.test(b)) return 'benzine';
+  if(b){
+    if(/diesel|gasolie/.test(b)) return 'diesel';
+    if(/benzine|petrol|gasoline|lpg|cng|alcohol|ethanol|waterstof|elektr/.test(b)) return 'benzine';
+  }
+  // Fallback wanneer RDW-data ontbreekt: live OBD brandstoftype (PID 0151).
+  // 4=diesel, 11=bifuel-diesel; 1-3/5-10 = niet-diesel (geen DPF/SCR).
+  const ft=(typeof pidVals!=='undefined')?pidVals['0151']:undefined;
+  if(typeof ft==='number'&&ft>=1){
+    if(ft===4||ft===11) return 'diesel';
+    if(ft<=10) return 'benzine';
+  }
   return 'onbekend';
+}
+// Aandrijflijn-fantomen: sensoren die de ECU wél beantwoordt maar die op dit
+// voertuig fysiek niet bestaan — turbo/tussenkoeler op een atmosferische motor,
+// of een tweede bank op een 1-bank motor. De waarde verraadt ze: onmogelijk
+// koud/negatief, of een koude "bank 2" terwijl bank 1 gloeiend heet is.
+const _B1B2_PAIR={'0167':'0165','0168':'0166','017A':'0178','017B':'0179','013D':'013C','013F':'013E'};
+function _engineWarmRunning(){
+  const c=(typeof pidVals!=='undefined')?pidVals['0105']:undefined;
+  const r=(typeof pidVals!=='undefined')?pidVals['010C']:undefined;
+  return (typeof c==='number'&&c>60)&&(typeof r==='number'&&r>300);
+}
+function _powertrainPhantom(pid){
+  const d=getPidDef(pid); if(!d||d.cat!=='Temp') return false;
+  const v=(typeof pidVals!=='undefined')?pidVals[pid]:undefined;
+  if(typeof v!=='number') return false;
+  const nm=String(d.name||'');
+  const turboIC=/Turbo temp|Tussenkoeler temp/.test(nm);
+  const exhaustCat=/Uitlaatgas temp|Katalysator temp/.test(nm);
+  if(!turboIC&&!exhaustCat) return false;
+  // 1) Fysiek onmogelijk koud voor uitlaat/kat/turbo/tussenkoeler → placeholder
+  if(v<=-10) return true;
+  // 2) Bank-2 koud terwijl bank-1 heet = niet-bestaande tweede bank
+  const b1=_B1B2_PAIR[pid];
+  if(b1!==undefined){
+    const bv=(typeof pidVals!=='undefined')?pidVals[b1]:undefined;
+    if(typeof bv==='number'&&bv>150&&v<bv-120) return true;
+  }
+  // 3) Warm draaiende motor maar uitlaat/kat onder 80°C = geen echte sensor
+  if(exhaustCat&&_engineWarmRunning()&&v<80) return true;
+  return false;
 }
 // true = sensor past bij dit voertuig (of brandstoftype onbekend → toelaten)
 function vehiclePlausiblePid(pid){
   if(vehicleFuelType()==='benzine' && DIESEL_SCR_PIDS.has(pid)) return false;
+  if(_powertrainPhantom(pid)) return false;
   return true;
 }
 
@@ -3691,7 +3758,7 @@ async function runDiagAI(causeName){
   const v=getVehicle();
   const desc=document.getElementById('diagDesc').value;
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent).join(', ');
-  const pdata=[...activePIDs].map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
   const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   await callAI(prompt,document.getElementById('aiContent'));
@@ -3954,7 +4021,7 @@ async function clearDTC(){
 }
 function exportReport(){
   const v=getVehicle();
-  const lines=['PidLane — Rapport',`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'','=== DTC ===',...(dtcCodes.length?dtcCodes.map(c=>{const i=DTCDB[c];return`${c} — ${i?i.desc:'?'}`;}):[' Geen']),'','=== LIVE DATA ===',...[...activePIDs].map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean)];
+  const lines=['PidLane — Rapport',`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'','=== DTC ===',...(dtcCodes.length?dtcCodes.map(c=>{const i=DTCDB[c];return`${c} — ${i?i.desc:'?'}`;}):[' Geen']),'','=== LIVE DATA ===',...[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean)];
   download('rapport.txt',lines.join('\n'));
 }
 
@@ -4340,7 +4407,7 @@ async function callAI(prompt,contentEl){
 async function runQuickAI(){
   await ensurePIDsActive('basis');
   const v=getVehicle();
-  const liveLines=[...activePIDs].map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
+  const liveLines=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
   const corr=correlationLines();
   const corrBlock=corr.length?`\nAutomatische bevindingen (correlatie-engine):\n${corr.join('\n')}`:'';
   const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${dtcCodes.join(', ')||'geen'}${corrBlock}\n\nGeef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN`;
@@ -6617,10 +6684,33 @@ function pidPollInterval(pid){
   return Math.round((PID_POLL_CLASS[suf]||1000) * (typeof _pollMult!=='undefined'?_pollMult:1));   // default MEDIUM × strategie
 }
 // Welke PIDs zijn NU "due" om te pollen?
+// ── DODE-PID-SNOEI ──────────────────────────────────────────────────
+// PIDs die de bitmap als "ondersteund" opgeeft maar die op dit voertuig
+// elke ronde NO DATA geven (bv. olietemp/verbruik/omgevingstemp op deze
+// Mazda). Elke NO DATA-poll wacht de timeout uit (~500ms), dus ze vertragen
+// de hele cyclus én laten batches "onvolledig" lijken. Na een paar lege
+// antwoorden snoeien we ze uit de poll; elke ~2 min krijgt een dode PID één
+// herkansing (komt-ie later tot leven, dan keert-ie vanzelf terug).
+const _noDataStreak={}, _pidDead=new Set(), _pidDeadSince={};
+const PID_DEAD_THRESHOLD=4, PID_REPROBE_MS=120000;
+function markPidData(pid){ _noDataStreak[pid]=0; if(_pidDead.delete(pid)) delete _pidDeadSince[pid]; }
+function markPidNoData(pid){
+  _noDataStreak[pid]=(_noDataStreak[pid]||0)+1;
+  if(_noDataStreak[pid]>=PID_DEAD_THRESHOLD && !_pidDead.has(pid)){
+    _pidDead.add(pid); _pidDeadSince[pid]=Date.now();
+    btDiag(`PID ${pid} ${PID_DEAD_THRESHOLD}× geen data — gesnoeid (herkansing over ${PID_REPROBE_MS/1000}s)`,'info');
+  }
+}
+
 function pidsDueNow(){
   const now=Date.now();
   const due=[];
   for(const pid of activePIDs){
+    if(_pidDead.has(pid)){
+      // Dode PID: alleen elke PID_REPROBE_MS één herkansing toelaten
+      if(now-(_pidDeadSince[pid]||0) < PID_REPROBE_MS) continue;
+      _pidDeadSince[pid]=now;   // herkansing nu — verspreidt re-probes in de tijd
+    }
     const next=_pidNextPoll[pid]||0;
     if(now>=next) due.push(pid);
   }
@@ -6683,26 +6773,25 @@ function startPoll(){
           const cmd='01'+grp.map(p=>p.slice(2)).join('');
           const raw=await sendCmd(cmd,2500);
           const parsed=splitBatchResponse(raw);
-          const hits=grp.filter(p=>parsed[p]).length;
-          if(hits<grp.length){
-            // Niet alle PIDs kwamen terug. P8: niet meteen permanent uit —
-            // markeer een dip en val deze ronde terug op sequentieel. Pas na
-            // meerdere dips achter elkaar schakelen we batch echt uit, en na
-            // een herstelperiode wordt batch eenmalig opnieuw geprobeerd.
+          const got=Object.keys(parsed).length;
+          if(got===0){
+            // Echte mislukking: leeg/NO DATA/kapotte respons → dip. Niet per PID
+            // als NO DATA tellen (kan transiënt zijn) — volgende ronde opnieuw.
             batchDip();
-            btDiag(`Multi-PID onvolledig (${hits}/${grp.length}) TX="${cmd}" RX="${String(raw).replace(/[\r\n]/g,' ').slice(0,70)}" — sequentieel deze ronde`,'warn');
-            for(const pid of grp){
-              if(!connected) break;
-              const r=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
-              if(r!=null){ updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); feedSessionStat(pid,r); }
-            }
-          } else {
-            batchOk();
-            for(const pid of grp){
-              if(parsed[pid]){
-                const r=applyParsedBytes(pid,parsed[pid]);
-                if(r!=null){ updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); feedSessionStat(pid,r); }
-              }
+            btDiag(`Multi-PID leeg TX="${cmd}" RX="${String(raw).replace(/[\r\n]/g,' ').slice(0,60)}" — dip`,'warn');
+            continue;
+          }
+          // ≥1 PID terug = batch wérkt. Verwerk wat binnenkwam; ontbrekende PIDs
+          // zijn op dit voertuig NO DATA → tel mee voor snoei (NIET sequentieel
+          // herhalen — dat was de grote tijdverspilling).
+          batchOk();
+          for(const pid of grp){
+            if(parsed[pid]){
+              const r=applyParsedBytes(pid,parsed[pid]);
+              if(r!=null){ markPidData(pid); updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); feedSessionStat(pid,r); }
+              else markPidNoData(pid);
+            } else {
+              markPidNoData(pid);
             }
           }
         }
@@ -6711,7 +6800,8 @@ function startPoll(){
         for(const pid of due){
           if(!connected) break;
           const resp=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
-          if(resp!=null){ updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
+          if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
+          else markPidNoData(pid);
         }
       }
       // Idee 4: na elke pollronde de deterministische correlatie-check draaien
