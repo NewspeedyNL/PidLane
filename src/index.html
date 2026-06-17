@@ -1,7 +1,37 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-17 03:30 (CET)  [opvolger van 03:10]
-     FIXES — RAPPORT-SCHOONMAAK + VOERTUIGFILTER + ONDERDELEN-KEUZE:
+     PidLane — build aangepast: 2026-06-17 04:30 (CET)  [opvolger van 04:00]
+     FIX — O2 B1S1/B1S2 BLEEF OP ~0.02V + BATCH-DIAGNOSTIEK:
+       • Oorzaak O2: de app las PID 0113 als 'O2 sensor B1S1'-spanning, maar
+         0x13 is de "O2-sensoren aanwezig"-BITMAP (geen spanning). b[0]/200 van
+         die bitmap gaf op veel auto's een vaste ~0.02V. De echte B1S1-spanning
+         is PID 0114 (stond verkeerd gelabeld als 'Lambda B1S1 spanning').
+       • 0113 herdefinieerd als bitmap (unit '', parse b[0]); 0114 = 'O2 sensor
+         B1S1' (de echte spanning). Alle poll-/profiel-lijsten, de check, de
+         demo en b1s1Source() lezen B1S1 nu via 0114 (smalband) of breedband
+         (0124/0134). B1S2 (0115, correct) toegevoegd aan de diagnose-check.
+       • Multi-PID BATCH: parser (splitBatchResponse) los unit-getest — die is
+         correct in alle CAN-formaten. Faalt dus in het runtime-/triggerpad.
+         Tijdelijke diagnostiek toegevoegd in de poll-loop (max 1×/4s): logt
+         proto-id, isCAN, batch-status, due-count en bij onvolledige batch het
+         TX-commando + RX-respons. Eén echte Mazda-rit wijst nu de oorzaak aan.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-17 04:00):
+     FIX — VERBINDING VALT WEG BIJ APP-WISSEL (Android achtergrond)
+       • Oorzaak: Android sluit de SPP-socket stil op de achtergrond, maar
+         'connected' bleef true → reconnect werd nooit getriggerd, poll-loop
+         draaide door op een dode socket.
+       • visibilitychange verifieert nu de socket écht (spp.isConnected) ook
+         als connected nog true is; faalt → setConn(false) → herverbinden.
+         Wake-up delay 600→800ms voor Android-stabiliteit.
+       • sppReconnectGuard re-initialiseert nu de ELM327 ná het herverbinden
+         (ATWS-sequence), buiten de BT-queue gepland om deadlock te vermijden.
+       • Nieuwe stille-socketdood-detectie in trackBtQuality: 6× lege respons
+         achtereen → connected=false + setConn(false) + auto-herverbinden
+         (alleen lege responses tellen; 'NO DATA' betekent dat adapter leeft).
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-17 03:30):
+     RAPPORT-SCHOONMAAK + VOERTUIGFILTER + ONDERDELEN-KEUZE
        • Voertuig-plausibiliteit (vehiclePlausiblePid): diesel/SCR-sensoren
          (DPF, roetfilter, NOx, AdBlue, SCR, afgastemp dieselfilter) vallen
          weg zodra het brandstoftype zeker benzine is. Bedraad in álle paden:
@@ -1823,7 +1853,7 @@ const PIDS = [
   {cat:'Rijden',    pid:'010D',name:'Voertuigsnelheid',      unit:'km/h',min:0,   max:280},
   {cat:'Rijden',    pid:'0149',name:'Gaspedaal positie',     unit:'%',   min:0,   max:100},
   {cat:'Electrisch',pid:'0142',name:'Accuspanning',          unit:'V',   min:8,   max:16,   wL:11.5, dL:10.5},
-  {cat:'Emissie',   pid:'0113',name:'Lambda sensor B1S1',    unit:'V',   min:0,   max:1.3},
+  {cat:'Emissie',   pid:'0114',name:'O2 sensor B1S1',      unit:'V',   min:0,   max:1.3},
   {cat:'Emissie',   pid:'0115',name:'Lambda sensor B1S2',    unit:'V',   min:0,   max:1.3},
   {cat:'Emissie',   pid:'012C',name:'EGR klep positie',      unit:'%',   min:0,   max:100},
 ];
@@ -1882,7 +1912,7 @@ const PID_HARD_LIMITS = {
   '010B':{min:10,max:255},'010F':{min:-40,max:80},'012F':{min:0,max:100},
   '0110':{min:0,max:500},'0142':{min:8,max:16},'0106':{min:-30,max:30},
   '0107':{min:-30,max:30},'015E':{min:0,max:40},'010E':{min:-15,max:60},
-  '0113':{min:0,max:1.3},'0115':{min:0,max:1.3},'012C':{min:0,max:100},
+  '0114':{min:0,max:1.3},'0115':{min:0,max:1.3},'012C':{min:0,max:100},
   '0149':{min:0,max:100},'010A':{min:0,max:700},'0146':{min:-40,max:60},
 };
 
@@ -2197,10 +2227,12 @@ function demo(pid){
   if(pid==='0107') _ds[pid]=1.5+Math.random()*2;                         // LTFT +1.5-3.5%
   if(pid==='010A') _ds[pid]=330+Math.random()*10;                        // brandstofdruk 330 kPa
 
-  // O2 sensoren — moderne auto (Mazda CX-5): B1S1 is BREEDBAND.
-  // Smalband 0113 staat daarom dood/plat (~0.02V); de echte B1S1-waarde komt
-  // van breedband 0124 in lambda. 0115 (B1S2 na-kat) is wél smalband.
-  if(pid==='0113') _ds[pid]=0.015+Math.random()*0.01;                    // dood/plat (breedband-auto)
+  // O2 sensoren — moderne auto (Mazda CX-5): B1S1 upstream is BREEDBAND.
+  // De smalband-spanning B1S1 = PID 0114 staat daarom dood/plat (~0.05V); de
+  // echte B1S1-waarde komt van breedband 0124 in lambda. 0115 (B1S2 na-kat) is
+  // wél smalband. 0113 is GEEN spanning maar de "O2-sensoren aanwezig"-bitmap.
+  if(pid==='0114') _ds[pid]=0.05+Math.random()*0.02;                    // smalband B1S1 upstream afwezig/plat
+  if(pid==='0113') _ds[pid]=51;                                         // bitmap: sensoren aanwezig (0x33)
   if(pid==='0124') _ds[pid]=1.0+Math.sin(t/2500)*0.06+Math.random()*0.01;// breedband B1S1 ~1.00 λ
   if(pid==='0134') _ds[pid]=1.0+Math.sin(t/2500)*0.06;                   // idem (stroom-variant)
   if(pid==='0115') _ds[pid]=0.72+Math.sin(t/4000)*.05;                   // O2 B1S2 stabiel ~0.72V
@@ -2702,7 +2734,7 @@ function togglePID(pid){
 const ANALYSE_PIDS={
   basis:     ['010C','0105','0104','0111','010D','0142','010F','010B'],
   brandstof: ['010C','010D','0104','0106','0107','0110','010B','010F','0144','0124','0115','015E','012F'],
-  emissie:   ['0106','0107','0113','0114','0115','0124','0134','0144','013C','013E','012E','0121'],
+  emissie:   ['0106','0107','0114','0115','0124','0134','0144','013C','013E','012E','0121'],
   rit:       ['010C','010D','0104','0111','0105','0110','010B','0106','0107','0149'],
   totaal:    ['010C','0105','0104','0111','010D','0142','010F','010B','0106','0107','0115','010E','011F']
 };
@@ -3008,16 +3040,18 @@ function _wideAlive(pid){
   const v=pidVals[pid];
   return v!==undefined && v>0.05 && v<3;   // λ ligt realistisch rond 0.7–1.5
 }
-// Staat smalband 0113 "dood"? Vaste, lage, niet-oscillerende waarde over de
+// Staat de smalband B1S1 "dood"? Vaste, lage, niet-oscillerende waarde over de
 // laatste metingen (een gezonde smalband swingt tussen ~0.1 en ~0.9V).
+// LET OP: B1S1-spanning is PID 0114 — NIET 0113. 0113 is de "O2-sensoren
+// aanwezig"-bitmap; die als spanning lezen gaf de beruchte vaste ~0.02V.
 function _narrowB1S1Dead(){
-  const h=pidHist['0113'];
+  const h=pidHist['0114'];
   if(!h||h.length<6) return false;
   const recent=h.slice(-8).map(x=>x.v);
   const mx=Math.max(...recent), mn=Math.min(...recent);
   return mx<0.1 && (mx-mn)<0.03;   // blijft plat onderaan = dood/niet aanwezig
 }
-// Bepaalt de beste B1S1-bron. Voorrang: levende breedband (0124/0134) > 0113.
+// Bepaalt de beste B1S1-bron. Voorrang: levende breedband (0124/0134) > smalband 0114.
 // Geeft {pid, val, unit, isLambda, name} of null als er niets bruikbaars is.
 function b1s1Source(){
   // 1) Breedband heeft voorrang zodra die leeft
@@ -3027,13 +3061,13 @@ function b1s1Source(){
       return {pid:wb, val:pidVals[wb], unit:'λ', isLambda:true, name:'Lambda B1S1 (breedband)', def:d};
     }
   }
-  // 2) Anders smalband 0113 — maar alleen als die niet dood is
-  if(pidVals['0113']!==undefined && !_narrowB1S1Dead()){
-    return {pid:'0113', val:pidVals['0113'], unit:'V', isLambda:false, name:'O2 sensor B1S1', def:getPidDef('0113')};
+  // 2) Anders smalband B1S1 = PID 0114 (de echte spanning), mits niet dood
+  if(pidVals['0114']!==undefined && !_narrowB1S1Dead()){
+    return {pid:'0114', val:pidVals['0114'], unit:'V', isLambda:false, name:'O2 sensor B1S1', def:getPidDef('0114')};
   }
   // 3) Smalband dood én geen levende breedband: meld dat expliciet
-  if(pidVals['0113']!==undefined && _narrowB1S1Dead()){
-    return {pid:'0113', val:pidVals['0113'], unit:'V', isLambda:false, name:'O2 sensor B1S1', def:getPidDef('0113'), dead:true};
+  if(pidVals['0114']!==undefined && _narrowB1S1Dead()){
+    return {pid:'0114', val:pidVals['0114'], unit:'V', isLambda:false, name:'O2 sensor B1S1', def:getPidDef('0114'), dead:true};
   }
   return null;
 }
@@ -3042,12 +3076,12 @@ function b1s1Line(){
   const s=b1s1Source(); if(!s) return null;
   if(s.dead){
     // Smalband dood en geen breedband-data → eerlijk melden i.p.v. "te laag"
-    return `B1S1 lambda: smalband (0113) reageert niet (${fv(s.val)}V vast). `+
+    return `B1S1 lambda: smalband (0114) reageert niet (${fv(s.val)}V vast). `+
            `Mogelijk breedband-sensor — lees 0124/0134 uit; geen betrouwbare smalband-waarde.`;
   }
   return s.isLambda
     ? `B1S1 lambda (breedband ${s.pid}): ${fv(s.val)} λ ${Math.abs(s.val-1)<0.05?'(≈ stoichiometrisch)':s.val>1?'(arm)':'(rijk)'}`
-    : `B1S1 lambda (smalband 0113): ${fv(s.val)} V`;
+    : `B1S1 lambda (smalband 0114): ${fv(s.val)} V`;
 }
 
 // ══════════════════════════════════════════════════════
@@ -3438,9 +3472,9 @@ const COMPLAINT_FOCUS=[
   {kw:['start','aanslaan','starten','opstart'],           pids:['0105','010A','0106','0107','010C']},
   {kw:['stationair','onrustig','schommel','idle'],        pids:['010C','010E','0106','0107','0110']},
   {kw:['accelerat','optrekk','vermogen','trekt','puff'],  pids:['010B','0110','010A','0104','010C']},
-  {kw:['verbruik','benzine','zuinig','dorst'],            pids:['015E','0110','0113','0115','0106','0107']},
+  {kw:['verbruik','benzine','zuinig','dorst'],            pids:['015E','0110','0114','0115','0106','0107']},
   {kw:['oververhit','heet','temperatuur','koel'],         pids:['0105','015C','0104']},
-  {kw:['rook','uitlaat','stink'],                         pids:['0106','0107','0113','012C','0110']},
+  {kw:['rook','uitlaat','stink'],                         pids:['0106','0107','0114','012C','0110']},
   {kw:['accu','start niet','laden','dynamo','spanning'],  pids:['0142','010C','0104']},
   {kw:['trilling','schok','schakel'],                     pids:['010C','0104','010D','0111']},
 ];
@@ -3492,7 +3526,8 @@ async function findCauses(){
     {pid:'0142',name:'Accuspanning',alt:null},
     {pid:'010C',name:'Motortoerental',alt:null},
     {pid:'010A',name:'Brandstofdruk',alt:'0110'},
-    {pid:'0113',name:'O2 sensor B1S1',alt:'0124'},
+    {pid:'0114',name:'O2 sensor B1S1',alt:'0124'},
+    {pid:'0115',name:'O2 sensor B1S2',alt:'0125'},
     {pid:'012C',name:'EGR positie',alt:null},
   ];
   const pidStatus=KEY_DIAG_PIDS.map(p=>({
@@ -5218,6 +5253,15 @@ async function sppReconnectGuard(spp,address,cmd){
       await spp.connect({address});
       btDiag('Herverbonden ✓','ok');
       log('SPP automatisch herverbonden','warn');
+      // Nieuwe socket = ELM327-interpreter is gereset. Opnieuw initialiseren zodat
+      // de gebruiker niets hoeft te doen. BELANGRIJK: buiten de BT-queue plannen
+      // (initELM327 stuurt zelf commando's → in de queue zou dat deadlocken).
+      setTimeout(async()=>{
+        if(window._reinitBusy) return; window._reinitBusy=true;
+        try{ if(connected) await initELM327(); btDiag('ELM327 opnieuw klaar na herverbinden','ok'); }
+        catch(e){ btDiag('Re-init na herverbinden faalde: '+e.message,'warn'); }
+        finally{ window._reinitBusy=false; }
+      },60);
     }
   }catch(e){
     btDiag('Herverbinden mislukt: '+e.message,'err');
@@ -5236,6 +5280,23 @@ const _btQual=[]; let _qualWarned=false;
 function trackBtQuality(cmd, r){
   if(!connected || demoMode) return;
   if(!/^01[0-9A-F]{2}$/i.test(cmd)) return;            // alleen data-PIDs tellen
+  // Stille socketdood: een dode socket geeft NIETS terug (geen bytes), terwijl
+  // 'NO DATA' juist betekent dat de adapter wél leeft. Tel daarom alleen écht
+  // lege responses. Meerdere achter elkaar = verbinding feitelijk weg.
+  const noResponse = !r || !r.trim();
+  if(noResponse){ window._emptyStreak=(window._emptyStreak||0)+1; } else { window._emptyStreak=0; }
+  if(window._emptyStreak>=6 && connected && !demoMode){
+    window._emptyStreak=0;
+    btDiag('6× lege respons achtereen — verbinding lijkt dood','err');
+    log('Verbinding lijkt weggevallen — herverbinden...','warn');
+    connected=false; setConn(false);                   // UI eerlijk bijwerken
+    // Automatisch herverbinden als de gebruiker niet bewust verbroken heeft
+    if(localStorage.getItem('pl_autoconn')==='1' && getSPP() && !window._reconnBusy){
+      window._reconnBusy=true;
+      setTimeout(async()=>{ try{ if(!connected) await connectSerial(); } finally{ window._reconnBusy=false; } },800);
+    }
+    return;
+  }
   const bad = !r || !r.trim() || r.includes('NO DATA') || r.includes('ERROR') || r.includes('STOPPED');
   _btQual.push(bad?1:0); if(_btQual.length>20) _btQual.shift();
   if(_btQual.length<10) return;
@@ -5412,7 +5473,7 @@ const ALL_PID_DEFS={
   '0142':{name:'Accuspanning',         unit:'V',   cat:'Electrisch', min:8,   max:16,   wL:11.5, dL:10.5, parse:b=>((b[0]*256+b[1])/1000)},
   '0143':{name:'Abs. motorbelasting',  unit:'%',   cat:'Electrisch', min:0,   max:100,                     parse:b=>((b[0]*256+b[1])/655.35)},
   '015B':{name:'Hybride accu %',       unit:'%',   cat:'Electrisch', min:0,   max:100,                     parse:b=>(b[0]*100/255)},
-  '0113':{name:'O2 sensor B1S1',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},
+  '0113':{name:'O2-sensoren aanwezig', unit:'',   cat:'Emissie',    min:0,   max:255,  bitmap:true,         parse:b=>b[0]},
   '0115':{name:'O2 sensor B1S2',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},
   '0117':{name:'O2 sensor B2S1',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},
   '0119':{name:'O2 sensor B2S2',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},
@@ -6132,7 +6193,7 @@ Object.assign(ALL_PID_DEFS,{
   '0101':{name:'Motorlampje (MIL)',      unit:'aan/uit',cat:'Emissie',  min:0,max:1,    parse:b=>((b[0]&0x80)?1:0)},
   '0103':{name:'Brandstofsysteem status',unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
   '0112':{name:'Secundaire lucht status',unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
-  '0114':{name:'Lambda B1S1 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '0114':{name:'O2 sensor B1S1',         unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
   '0116':{name:'Lambda B1S3 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
   '0118':{name:'Lambda B2S1 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
   '011A':{name:'Lambda B2S3 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
@@ -6310,7 +6371,7 @@ const STANDAARD_PIDS=[
   // Temperatuur
   '0105','015C','010F','0146',
   // Brandstof
-  '0106','0107','0110','0113','0115','012F','015E','0134','0124',
+  '0106','0107','0110','0114','0115','012F','015E','0134','0124',
   // Emissie & diagnose
   '0142','0121','012E','013C','0149','014C','0147',
   // Overig standaard
@@ -6605,6 +6666,14 @@ function startPoll(){
       const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||''));
       const canBatch=isCAN&&window._batchSupported!==false;
 
+      // ── BATCH-DIAGNOSTIEK (tijdelijk) — onthult waarom multi-PID faalt ──
+      // Max 1×/4s zodat de 📡 BT-log niet volloopt. Toont protocol-id, isCAN,
+      // of batch aanstaat, hoeveel PIDs 'due' zijn en wat er gekozen wordt.
+      if(!window._lastBatchDiag||Date.now()-window._lastBatchDiag>4000){
+        window._lastBatchDiag=Date.now();
+        btDiag(`BATCH-diag: proto-id="${selectedNetwork?.id||'?'}" isCAN=${isCAN} batchAan=${window._batchSupported!==false} due=${due.length} → ${(canBatch&&due.length>1)?'BATCH':'sequentieel'}`,'info');
+      }
+
       if(canBatch&&due.length>1){
         // In groepjes van max 3 PIDs — meer dan dat dwingt een fragiele
         // ISO-TP multiframe respons af waar PIDs uit kunnen vallen
@@ -6621,7 +6690,7 @@ function startPoll(){
             // meerdere dips achter elkaar schakelen we batch echt uit, en na
             // een herstelperiode wordt batch eenmalig opnieuw geprobeerd.
             batchDip();
-            btDiag(`Multi-PID onvolledig (${hits}/${grp.length}) — sequentieel deze ronde`,'warn');
+            btDiag(`Multi-PID onvolledig (${hits}/${grp.length}) TX="${cmd}" RX="${String(raw).replace(/[\r\n]/g,' ').slice(0,70)}" — sequentieel deze ronde`,'warn');
             for(const pid of grp){
               if(!connected) break;
               const r=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
@@ -6717,7 +6786,7 @@ function startDemo(){
     '0107', // LTFT bank 1
     '010A', // Brandstofdruk
     // O2 sensoren
-    '0113', // O2 B1S1 (smalband — dood op breedband-auto)
+    '0114', // O2 B1S1 (smalband — dood op breedband-auto)
     '0124', // Lambda B1S1 breedband (de échte B1S1-bron)
     '0134', // Lambda B1S1 breedband (stroom-variant)
     '0115', // O2 B1S2
@@ -6744,7 +6813,7 @@ function startDemo(){
     '010C','010D','0105','0142',  // Motor essentials
     '012F','015E','0104','0111',  // Brandstof & belasting
     '0106','0107','0110','010F',  // Brandstoftrim & MAF
-    '015C','0113','0124','010B','0146',  // Temp, O2 smalband+breedband, druk
+    '015C','0114','0124','010B','0146',  // Temp, O2 smalband+breedband, druk
   ].forEach(pid=>{ activePIDs.add(pid); manualPIDs.add(pid); });
 
   buildPIDList();
@@ -6847,14 +6916,14 @@ function sw(name,el){
 // PIDs per analyse — welke wil je idealiter hebben?
 const ANALYSE_PID_SETS = {
   totaal:  ['010C','010D','0105','015C','0104','010B','010F','0110','0111',
-             '0106','0107','0113','0124','010A','015E','012F','0142'],
+             '0106','0107','0114','0124','010A','015E','012F','0142'],
   monteur: ['010C','010D','0105','015C','0104','010B','0110','0106','0107',
-             '0113','0124','010A','010E','012F','0142'],
+             '0114','0124','010A','010E','012F','0142'],
   dtc:     ['010C','0105','0104','0142'],
   koop:    ['010C','010D','0105','015C','0104','010B','0110','0106','0107',
-             '0113','0124','010A','015E','012F','0142','013C'],
+             '0114','0124','010A','015E','012F','0142','013C'],
   rit:     ['010C','010D','0105','015C','0104','010B','010F','0110','0111',
-             '0106','0107','0113','0124','010A','015E','012F','0142','010E','012C'],
+             '0106','0107','0114','0124','010A','015E','012F','0142','010E','012C'],
 };
 
 function renderReadinessCard(elId, profile){
@@ -7637,14 +7706,30 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible') return;
   try{
     if(localStorage.getItem('pl_autoconn')!=='1') return;
-    if(connected||demoMode||window._reconnBusy) return;
+    if(demoMode||window._reconnBusy) return;
     if(!getSPP()) return;
     window._reconnBusy=true;
     log('App weer actief — verbinding controleren...','info');
     setTimeout(async()=>{
-      try{ if(!connected) await connectSerial(); }
+      try{
+        // Android sluit de SPP-socket vaak STIL op de achtergrond terwijl
+        // connected nog true is (bv. bij overschakelen naar Outlook). Dan denkt
+        // de app onterecht dat hij nog verbonden is. Daarom eerst echt verifiëren.
+        if(connected && window._sppConn){
+          let alive=false;
+          try{
+            const c=await window._sppConn.spp.isConnected({address:window._sppConn.address});
+            alive=(c?.isConnected!==false&&c?.connected!==false&&c!==false);
+          }catch(e){ alive=false; }
+          if(!alive){
+            log('Verbinding viel weg op de achtergrond — herverbinden...','warn');
+            connected=false; setConn(false);
+          }
+        }
+        if(!connected) await connectSerial();
+      }
       finally{ window._reconnBusy=false; }
-    },600);
+    },800);
   }catch(e){ window._reconnBusy=false; }
 });
 window.addEventListener('resize',()=>{
@@ -7656,7 +7741,7 @@ window.addEventListener('resize',()=>{
 // ════════════════════════════════════════
 const RIT_FASEN=[
   {naam:'Motor & Vermogen',    icon:'⚡', duur:120, pids:['010C','0104','0111','010B','010E'], desc:'RPM, belasting, gasklep, inlaatdruk, timing'},
-  {naam:'Brandstof & Emissie', icon:'⛽', duur:120, pids:['0106','0107','0110','0124','0134','0113','0115'], desc:'Brandstoftrim, MAF, breedband+smalband lambda'},
+  {naam:'Brandstof & Emissie', icon:'⛽', duur:120, pids:['0106','0107','0110','0124','0134','0114','0115'], desc:'Brandstoftrim, MAF, breedband+smalband lambda'},
   {naam:'Temperatuur',         icon:'🌡️', duur:60,  pids:['0105','015C','010F','0146'],       desc:'Koelwater, olie, inlaatlucht, omgevingstemperatuur'},
   {naam:'Accu & Electrisch',   icon:'🔋', duur:60,  pids:['0142','0104','010C'],              desc:'Spanning, belasting onder belasting'},
   {naam:'Rijgedrag',           icon:'🚗', duur:120, pids:['010D','0149','010C','0104'],       desc:'Snelheid, gaspedaal, acceleratie patronen'},
@@ -7665,7 +7750,7 @@ const RIT_FASEN=[
 // 2-min snelle technische check — ALLEEN technische staat, GEEN rijgedrag
 const RIT_FASEN_2MIN=[
   {naam:'Motor & Vermogen',    icon:'⚡', duur:40, pids:['010C','0104','0111','010B','010E'], desc:'RPM, belasting, gasklep, inlaatdruk, timing'},
-  {naam:'Brandstof & Emissie', icon:'⛽', duur:40, pids:['0106','0107','0110','0124','0134','0113','0115'], desc:'Brandstoftrim, MAF, breedband+smalband lambda'},
+  {naam:'Brandstof & Emissie', icon:'⛽', duur:40, pids:['0106','0107','0110','0124','0134','0114','0115'], desc:'Brandstoftrim, MAF, breedband+smalband lambda'},
   {naam:'Temp & Accu',         icon:'🌡️', duur:40, pids:['0105','015C','010F','0142'],       desc:'Koelwater, olie, inlaatlucht, accuspanning'},
 ];
 let ritMode='10min';                          // '2min' | '10min'
