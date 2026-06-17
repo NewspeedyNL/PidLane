@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-17 03:10 (CET)  [opvolger van 02:00]
+     PidLane — build aangepast: 2026-06-17 03:30 (CET)  [opvolger van 03:10]
+     FIXES — RAPPORT-SCHOONMAAK + VOERTUIGFILTER + ONDERDELEN-KEUZE:
+       • Voertuig-plausibiliteit (vehiclePlausiblePid): diesel/SCR-sensoren
+         (DPF, roetfilter, NOx, AdBlue, SCR, afgastemp dieselfilter) vallen
+         weg zodra het brandstoftype zeker benzine is. Bedraad in álle paden:
+         relevantSupportedPIDs (analyses) én buildCheckItems (totaalcheck).
+         Bij onbekend brandstoftype wordt niets verborgen.
+       • Momentopname-export (2× PDF) schoongemaakt via isReportableSensor:
+         naamloze 'raw'-PIDs (PID 01XX zonder parser) eruit, onzin/nodata
+         eruit, diesel/SCR-fantoomsensoren eruit. Loste de troep op de echte
+         Mazda op (dieselfilter/NOx/AdBlue op een benzineauto + raw-PIDs).
+       • PDF-glyph fix: disclaimer begon met 'ℹ️' (U+2139) → rende als '!9'
+         in helvetica. Bron nu 'Let op:'; clean() strookt ook letterlike/
+         technische symbolen als backstop.
+       • Totaalcheck per categorie gegroepeerd (Motor/Temp/Brandstof/Emissie/
+         Electrisch/Rijden/Foutcodes/Bestuurder) met koppen + status per groep.
+       • ONDERDELEN-KEUZE (pickOnderdelen-modal) vóór de langdurige analyses:
+         Totaalcheck (kies categorieën) en Rit Analyse (kies fases). Default
+         = alles aan (compleet in één tik); niet-breekbaar, annuleren mogelijk.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-17 03:10):
      FIXES — CONSISTENTE PID-SELECTIE VOOR ELKE ANALYSE:
        • Nieuwe centrale helper analysisPidData(profile): single source of
          truth. Levert per analyse de PIDs + verse waarden die relevant ∩
@@ -1808,6 +1828,43 @@ const PIDS = [
   {cat:'Emissie',   pid:'012C',name:'EGR klep positie',      unit:'%',   min:0,   max:100},
 ];
 
+// ── VOERTUIG-PLAUSIBILITEIT ─────────────────────────────────────────
+// Aandrijflijn-specifieke sensoren bestaan niet op elk voertuig. Een benzine-
+// auto heeft geen DPF/roetfilter/AdBlue/NOx/SCR — maar de ECU antwoordt soms
+// tóch met een dummy-waarde op die PIDs (zo verschenen 'Afgastemp dieselfilter',
+// 'NOx doseerpomp' en 'AdBlue injectiedruk' op een Mazda SkyActiv-G benzine).
+// We filteren ze ALLEEN weg als we zeker weten dat het voertuig ze niet heeft;
+// bij onbekend brandstoftype verbergen we niets.
+const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016D','016E','017C','017D','017E','0187','0188','0189','018A','018E','018F','0190','01A4']);
+function vehicleFuelType(){
+  const b=((typeof vehicleInfo!=='undefined'&&vehicleInfo&&vehicleInfo.brandstof)||'').toString().toLowerCase();
+  if(!b) return 'onbekend';
+  if(/diesel|gasolie/.test(b)) return 'diesel';
+  if(/benzine|petrol|gasoline|lpg|cng|alcohol|ethanol|waterstof|elektr/.test(b)) return 'benzine';
+  return 'onbekend';
+}
+// true = sensor past bij dit voertuig (of brandstoftype onbekend → toelaten)
+function vehiclePlausiblePid(pid){
+  if(vehicleFuelType()==='benzine' && DIESEL_SCR_PIDS.has(pid)) return false;
+  return true;
+}
+
+// Mag deze sensor in een rapport/momentopname? Filtert naamloze 'raw'-PIDs
+// (PID 01XX zonder parser), fysiek-onmogelijke/niet-aanwezige waarden en
+// aandrijflijn-fantoomsensoren (diesel/SCR op benzine). Zo bevat het rapport
+// alleen sensoren met een echte naam en een betrouwbare waarde.
+function isReportableSensor(pid){
+  const d=getPidDef(pid);
+  if(!d) return false;
+  if(d.unit==='raw') return false;
+  if(typeof d.name==='string' && /^PID\s/i.test(d.name)) return false;
+  if(typeof pidVals!=='undefined' && pidVals[pid]===undefined) return false;
+  const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
+  if(h==='onzin'||h==='nodata') return false;
+  if(!vehiclePlausiblePid(pid)) return false;
+  return true;
+}
+
 // Centrale PID-definitie lookup: eerst ontdekte PIDs, dan volledige database,
 // dan de klassieke vaste lijst. Vervangt 9 losse PIDS.find() aanroepen die
 // nieuwe PIDs stilletjes lieten vallen in gauges, grafieken en AI-analyses.
@@ -1931,7 +1988,7 @@ function buildQualityReport(pidValPairs){
 }
 
 // Standaard disclaimer onderaan elk rapport
-const RAPPORT_DISCLAIMER='ℹ️ Deze analyse is gebaseerd op live OBD2-sensordata. Sensorwaarden kunnen afwijken door meetfouten, sensorslijtage of verbindingsproblemen. Laat een afwijking altijd door een monteur verifiëren vóór reparatie — voorkom onnodige kosten door een mogelijke meetfout.';
+const RAPPORT_DISCLAIMER='Let op: Deze analyse is gebaseerd op live OBD2-sensordata. Sensorwaarden kunnen afwijken door meetfouten, sensorslijtage of verbindingsproblemen. Laat een afwijking altijd door een monteur verifiëren vóór reparatie — voorkom onnodige kosten door een mogelijke meetfout.';
 
 const MODELS={Ford:['Focus','Fiesta','Mondeo','Kuga','Puma','Transit','Ranger'],Volkswagen:['Golf','Polo','Passat','Tiguan','T-Roc','ID.3','ID.4'],BMW:['1 Serie','3 Serie','5 Serie','X1','X3','X5','M3'],Mercedes:['A-Klasse','C-Klasse','E-Klasse','GLA','GLC','GLE'],Audi:['A3','A4','A6','Q3','Q5','Q7'],Opel:['Astra','Corsa','Insignia','Mokka'],Peugeot:['208','308','2008','3008'],Renault:['Clio','Megane','Captur','Zoe'],Toyota:['Yaris','Corolla','RAV4','Prius'],Skoda:['Fabia','Octavia','Superb','Karoq'],Seat:['Ibiza','Leon','Ateca'],Hyundai:['i20','i30','Tucson','Kona'],Kia:['Picanto','Ceed','Sportage','EV6'],Volvo:['V60','XC40','XC60','XC90'],Nissan:['Juke','Qashqai','X-Trail','Leaf'],Citroën:['C3','C4','Berlingo'],Fiat:['500','Panda','Tipo'],Honda:['Jazz','Civic','CR-V']};
 const MOTORS=['1.0 TSI/EcoBoost','1.2 TDI','1.4 TDI','1.5 TDI','1.5 TSI','1.6 TDI/HDI','1.8 TSI','2.0 TDI','2.0 TSI/TFSI','2.0 TDCi','Hybrid','PHEV','Elektrisch'];
@@ -2668,11 +2725,12 @@ const ANALYSE_CATS = {
 function relevantSupportedPIDs(profile){
   const base = ANALYSE_PIDS[profile] || [];
   // In demo of zonder discovery: gewoon het basisprofiel
-  if(demoMode || typeof supportedPIDs==='undefined' || !supportedPIDs.size) return base;
+  if(demoMode || typeof supportedPIDs==='undefined' || !supportedPIDs.size) return base.filter(vehiclePlausiblePid);
   const cats = ANALYSE_CATS[profile] || [];
   const extra = [];
   supportedPIDs.forEach(pid=>{
     if(base.includes(pid)) return;
+    if(!vehiclePlausiblePid(pid)) return; // diesel/SCR-sensor op benzineauto → overslaan
     // Sla alleen echte NO DATA-PIDs over (niet aanwezig op dit voertuig)
     // Twijfel mag wel mee in analyses — de betrouwbaarheidscheck filtert daar verder
     const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
@@ -2681,7 +2739,7 @@ function relevantSupportedPIDs(profile){
     if(d && cats.includes(d.cat)) extra.push(pid);
   });
   // Basis eerst (gegarandeerde kern), daarna de relevante gezonde extra
-  return [...base, ...extra];
+  return [...base, ...extra].filter(vehiclePlausiblePid);
 }
 
 // ── P7: readiness-rapport — hoeveel van een profiel kan deze auto leveren? ──
@@ -3186,6 +3244,60 @@ function setQ(el,key,val){
   el.closest('.chk-opts').querySelectorAll('.chk-opt').forEach(o=>o.className='chk-opt');
   el.classList.add('sel-'+val); checkAnswers[key]=val;
 }
+// ── ONDERDELEN-KEUZE (modal) ────────────────────────────────────────
+// Laat de gebruiker vóór een langdurige analyse kiezen: compleet (alles aan)
+// of een selectie. Belooft de gekozen keys, of null bij annuleren.
+const CHK_CAT_META={Motor:{l:'Motor',i:'⚙️'},Temp:{l:'Temperatuur',i:'🌡️'},Brandstof:{l:'Brandstof',i:'⛽'},Emissie:{l:'Emissie',i:'💨'},Electrisch:{l:'Electrisch',i:'🔋'},Rijden:{l:'Rijden',i:'🚗'},Overig:{l:'Overig',i:'📊'},Foutcodes:{l:'Foutcodes',i:'⚠️'},Bestuurder:{l:'Bestuurder',i:'🧑'}};
+const CHK_CAT_ORDER=['Motor','Temp','Brandstof','Emissie','Electrisch','Rijden','Overig','Foutcodes','Bestuurder'];
+function catsFromItems(items){
+  const cnt={}; items.forEach(i=>{ const c=i.cat||'Overig'; cnt[c]=(cnt[c]||0)+1; });
+  return CHK_CAT_ORDER.filter(c=>cnt[c]).map(c=>{
+    const m=CHK_CAT_META[c]||{l:c,i:'•'};
+    return {key:c, label:m.l, icon:m.i, sub:cnt[c]+(cnt[c]===1?' item':' items')};
+  });
+}
+function pickOnderdelen(title, options){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+    const rows=options.map(o=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--bd);border-radius:9px;margin-bottom:6px;cursor:pointer">
+        <input type="checkbox" data-k="${o.key}" checked style="width:18px;height:18px;accent-color:var(--ac,#4a9eff)">
+        <span style="font-size:18px;width:22px;text-align:center">${o.icon||'•'}</span>
+        <span style="flex:1;font-size:13px;font-weight:600">${o.label}</span>
+        ${o.sub?`<span style="font-size:11px;color:var(--tx3)">${o.sub}</span>`:''}
+      </label>`).join('');
+    ov.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:18px;max-width:360px;width:100%;max-height:86vh;overflow:auto">
+      <div style="font-weight:800;font-size:15px;margin-bottom:4px">${title}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">Laat alles aan voor een complete analyse, of kies zelf de onderdelen.</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button id="poAll" class="mbtn s" style="flex:1;font-size:11px;padding:6px">Alles aan</button>
+        <button id="poNone" class="mbtn s" style="flex:1;font-size:11px;padding:6px">Alles uit</button>
+      </div>
+      <div id="poList">${rows}</div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="poCancel" class="mbtn s" style="flex:1">Annuleren</button>
+        <button id="poRun" class="mbtn p" style="flex:2">▶ Uitvoeren</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    const boxes=()=>[...ov.querySelectorAll('input[type=checkbox]')];
+    const runBtn=ov.querySelector('#poRun');
+    const sync=()=>{ const n=boxes().filter(b=>b.checked).length;
+      runBtn.disabled=(n===0);
+      runBtn.textContent = n===0?'Kies minstens 1' : (n===options.length?'▶ Compleet uitvoeren':`▶ Uitvoeren (${n})`);
+    };
+    boxes().forEach(b=>b.onchange=sync);
+    ov.querySelector('#poAll').onclick=()=>{boxes().forEach(b=>b.checked=true);sync();};
+    ov.querySelector('#poNone').onclick=()=>{boxes().forEach(b=>b.checked=false);sync();};
+    const close=v=>{ ov.remove(); resolve(v); };
+    ov.querySelector('#poCancel').onclick=()=>close(null);
+    runBtn.onclick=()=>close(boxes().filter(b=>b.checked).map(b=>b.dataset.k));
+    ov.onclick=e=>{ if(e.target===ov) close(null); };
+    sync();
+  });
+}
+
 async function runTotalCheck(){
   window._didTotalCheck=true;
   if(!(await preAnalysisCheck())) return;
@@ -3194,9 +3306,21 @@ async function runTotalCheck(){
   document.getElementById('chkSummary').style.display='none';
   document.getElementById('chkResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Systemen controleren...</div>';
   await delay(demoMode?1000:1500);
-  const items=buildCheckItems(); checkResults=items;
-  renderCheckResults(items);
+  const allItems=buildCheckItems(); 
+  // Onderdelen-keuze: compleet of een selectie van categorieën
+  const cats=catsFromItems(allItems);
+  document.getElementById('chkResults').innerHTML='';
   btn.disabled=false;
+  let items=allItems;
+  if(cats.length>1){
+    const sel=await pickOnderdelen('Totaalcheck — welke onderdelen?', cats);
+    if(sel===null) return;                         // geannuleerd
+    if(sel.length && sel.length<cats.length) items=allItems.filter(i=>sel.includes(i.cat||'Overig'));
+  }
+  document.getElementById('chkResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Resultaten opbouwen...</div>';
+  await delay(demoMode?300:400);
+  checkResults=items;
+  renderCheckResults(items);
   runCheckAI(items);
 }
 function buildCheckItems(){
@@ -3208,6 +3332,7 @@ function buildCheckItems(){
     if(!verplicht){
       const health=_pidHealth[pid];
       if(health==='nodata'||health==='onzin') return null;
+      if(!vehiclePlausiblePid(pid)) return null; // diesel/SCR-sensor op benzineauto
       if(!demoMode && typeof supportedPIDs!=='undefined' && supportedPIDs.size>0 && !supportedPIDs.has(pid)) return null;
     }
     const val=pidVals[pid]; const d=getPidDef(pid);
@@ -3217,7 +3342,7 @@ function buildCheckItems(){
       if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)){status='bad';detail='Kritieke afwijking!';}
       else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)){status='warn';detail='Buiten aanbevolen bereik.';}
     }
-    return {pid,name,display:`${fv(val)} ${d?.unit||''}`,status,detail};
+    return {pid,name,display:`${fv(val)} ${d?.unit||''}`,status,detail,cat:(d&&d.cat)||'Overig'};
   };
   // Kern-PIDs — alleen als aanwezig op dit voertuig
   const kernPids=[
@@ -3241,10 +3366,10 @@ function buildCheckItems(){
     const i=pc(pid,d.name||pid); if(i) items.push(i);
   });
   // DTC altijd
-  items.push({name:'DTC Foutcodes',display:dtcCodes.length===0?'Geen codes':dtcCodes.join(', '),status:dtcCodes.length===0?'ok':dtcCodes.some(c=>DTCDB[c]?.sev==='high')?'bad':'warn',detail:dtcCodes.length===0?'Geen actieve foutcodes.':dtcCodes.length+' code(s).'});
+  items.push({name:'DTC Foutcodes',display:dtcCodes.length===0?'Geen codes':dtcCodes.join(', '),status:dtcCodes.length===0?'ok':dtcCodes.some(c=>DTCDB[c]?.sev==='high')?'bad':'warn',detail:dtcCodes.length===0?'Geen actieve foutcodes.':dtcCodes.length+' code(s).',cat:'Foutcodes'});
   // Bestuurder-vragen
   const qa=[['start','Koude start',{nee:'bad',soms:'warn',ja:'ok'}],['oil','Olie niveau',{nee:'bad',soms:'warn',ja:'ok'}],['cool','Koelwater niveau',{nee:'bad',soms:'warn',ja:'ok'}],['noise','Geluidscheck',{nee:'warn',soms:'warn',ja:'ok'}],['warn','Dashboard lampen',{nee:'warn',soms:'warn',ja:'ok'}],['fuel','Brandstofverbruik',{nee:'warn',soms:'warn',ja:'ok'}]];
-  qa.forEach(([key,name,smap])=>{const ans=checkAnswers[key];if(ans)items.push({name,display:ans==='ja'?'Normaal':ans==='soms'?'Soms probleem':'Probleem',status:smap[ans]||'ok',detail:'Door bestuurder gerapporteerd.'});});
+  qa.forEach(([key,name,smap])=>{const ans=checkAnswers[key];if(ans)items.push({name,display:ans==='ja'?'Normaal':ans==='soms'?'Soms probleem':'Probleem',status:smap[ans]||'ok',detail:'Door bestuurder gerapporteerd.',cat:'Bestuurder'});});
   return items;
 }
 function renderCheckResults(items){
@@ -3253,7 +3378,8 @@ function renderCheckResults(items){
   document.getElementById('csWarn').textContent=items.filter(i=>i.status==='warn').length;
   document.getElementById('csBad').textContent=items.filter(i=>i.status==='bad').length;
   const res=document.getElementById('chkResults'); res.innerHTML='';
-  [...items].sort((a,b)=>({bad:0,warn:1,ok:2}[a.status]-{bad:0,warn:1,ok:2}[b.status])).forEach(item=>{
+  const sev={bad:0,warn:1,ok:2};
+  const renderItem=item=>{
     const el=document.createElement('div'); el.className='chk-item';
     const bt=item.status==='ok'?'✅ Goed':item.status==='warn'?'⚠️ Let op':'🔴 Probleem';
     // Betrouwbaarheidslabel: alleen tonen bij afwijkende items met twijfel/onzin
@@ -3265,6 +3391,19 @@ function renderCheckResults(items){
     }
     el.innerHTML=`<div class="chk-dot ${item.status}"></div><div style="flex:1"><div class="chk-name">${item.name}</div><div class="chk-val">${item.display} — ${item.detail}</div>${qLabel}</div><div class="chk-bdg ${item.status}">${bt}</div>`;
     res.appendChild(el);
+  };
+  // Groepeer per categorie (vaste volgorde), met een kop per groep.
+  CHK_CAT_ORDER.forEach(cat=>{
+    const grp=items.filter(i=>(i.cat||'Overig')===cat);
+    if(!grp.length) return;
+    const m=CHK_CAT_META[cat]||{l:cat,i:'•'};
+    const bad=grp.filter(i=>i.status==='bad').length, warn=grp.filter(i=>i.status==='warn').length;
+    const badge=bad?`<span style="color:var(--rd)">${bad} probleem</span>`:warn?`<span style="color:var(--or)">${warn} let op</span>`:`<span style="color:var(--gr,#3fbf6f)">ok</span>`;
+    const hd=document.createElement('div');
+    hd.style.cssText='display:flex;align-items:center;gap:8px;margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tx3)';
+    hd.innerHTML=`<span style="font-size:14px">${m.i}</span><span style="flex:1">${m.l}</span><span style="font-size:10px;font-weight:600;text-transform:none">${badge}</span>`;
+    res.appendChild(hd);
+    grp.sort((a,b)=>sev[a.status]-sev[b.status]).forEach(renderItem);
   });
 }
 async function runCheckAI(items){
@@ -3947,7 +4086,7 @@ async function exportAIReportPDF(btn){
     const BLUE=[26,111,255], DARK=[26,32,44], GREY=[113,128,150], LIGHT=[237,242,247];
     let y=0;
 
-    const clean=t=>String(t).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,'').replace(/\*\*/g,'').trim();
+    const clean=t=>String(t).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2100}-\u{214F}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu,'').replace(/\*\*/g,'').trim();
     const footer=()=>{
       const n=doc.getNumberOfPages();
       for(let i=1;i<=n;i++){
@@ -4015,10 +4154,10 @@ async function exportAIReportPDF(btn){
     }
 
     // ── Sensorwaarden bijlage ──
-    const snap=[...activePIDs].map(pid=>{
+    const snap=[...activePIDs].filter(isReportableSensor).map(pid=>{
       const d=getPidDef(pid); const v=pidVals[pid];
-      return d&&v!==undefined?[clean(d.name),`${typeof v==='number'?v.toFixed(d.unit==='V'||d.unit==='λ'?2:0):v} ${d.unit||''}`]:null;
-    }).filter(Boolean);
+      return [clean(d.name),`${typeof v==='number'?v.toFixed(d.unit==='V'||d.unit==='λ'?2:0):v} ${d.unit||''}`];
+    });
     if(snap.length){
       pageBreak(20); y+=5;
       doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...BLUE);
@@ -7610,6 +7749,14 @@ async function ritFullSweep(){
 async function startRitAnalyse(){
   window._didRit=true;
   if(!connected && !demoMode){log('Verbind eerst een adapter','warn');return;}
+  // Onderdelen-keuze: welke fases draaien? (compleet of een selectie)
+  const fullList=(ritMode==='2min')?RIT_FASEN_2MIN:RIT_FASEN;
+  const faseOpts=fullList.map((f,idx)=>({key:String(idx),label:f.naam,icon:f.icon,sub:(f.duur>=60?Math.round(f.duur/60)+' min':f.duur+'s')}));
+  const sel=await pickOnderdelen(ritMode==='2min'?'Snelle check — welke fases?':'Rit analyse — welke fases?', faseOpts);
+  if(sel===null) return;                              // geannuleerd
+  RIT_FASEN_ACTIEF=(sel.length?sel:fullList.map((_,i)=>String(i))).map(i=>fullList[+i]);
+  RIT_TOTAAL=RIT_FASEN_ACTIEF.reduce((a,f)=>a+f.duur,0);
+  resetRitUI();
   if(!(await preAnalysisCheck())) return;
   // PID-activering verschilt per modus:
   if(ritMode==='10min'){
@@ -8368,7 +8515,7 @@ async function exportVehicleDossier(btn){
     const doc=new jsPDF({unit:'mm',format:'a4'});
     const W=210,M=15,CW=W-2*M, PU=[124,58,237],DARK=[26,32,44],GREY=[113,128,150],LIGHT=[237,242,247];
     let y=0;
-    const clean=t=>String(t).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,'').replace(/\*\*/g,'').trim();
+    const clean=t=>String(t).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2100}-\u{214F}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu,'').replace(/\*\*/g,'').trim();
     const pageBreak=need=>{ if(y+need>278){ doc.addPage(); y=M+5; } };
 
     // Kop
@@ -8426,8 +8573,8 @@ async function exportVehicleDossier(btn){
     y+=2;
 
     // Momentopname
-    const snap=[...activePIDs].map(pid=>{ const d=getPidDef(pid), v=pidVals[pid];
-      return d&&v!==undefined?[clean(d.name),`${fv(v)} ${d.unit||''}`]:null; }).filter(Boolean);
+    const snap=[...activePIDs].filter(isReportableSensor).map(pid=>{ const d=getPidDef(pid), v=pidVals[pid];
+      return [clean(d.name),`${fv(v)} ${d.unit||''}`]; });
     if(snap.length){
       pageBreak(16);
       doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...PU); doc.text('Momentopname sensoren',M,y); y+=2;
