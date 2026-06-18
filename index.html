@@ -1,6 +1,38 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-17 05:45 (CET)  [opvolger van 05:15]
+     PidLane — build aangepast: 2026-06-18e (CET)  [opvolger van 2026-06-18d]
+     PDF-VENSTER BLIJFT NIET HANGEN + BACKKNOP SLUIT APP NIET:
+       • Bij Delen/Downloaden van een PDF wordt het "PDF klaar"-venster nu
+         METEEN gesloten (vóór het Android-deelmenu opent), i.p.v. erna te
+         wachten op de share-promise. Daardoor blijft de donkere overlay niet
+         meer staan als je vanuit "Opslaan in Bestanden" terugkeert.
+       • Nieuwe Android-backknop-handler (closeTopOverlay): de hardware-
+         backknop sluit nu eerst het bovenste open venster (PDF, scenario,
+         BT-log, rit-focus, neon-dashboard, kebab, etc.) i.p.v. de hele app.
+         Rit Analyse wordt geminimaliseerd i.p.v. gestopt. Pas als er niets
+         open staat, gaat de app naar de achtergrond (minimizeApp), niet dicht.
+         NB: vereist de @capacitor/app-plugin in de APK-build; ontbreekt die,
+         dan bindt de handler niet (onschadelijk) en is een rebuild nodig.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18d):
+     RIT ANALYSE MINIMALISEERBAAR: minimaliseren laat de analyse doorlopen;
+     zwevende pill toont voortgang; scenario-waardes tussendoor aanpasbaar.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18c):
+     TEST-SCENARIO (admin/demo): handmatig PID-waarden, DTC's en voertuig
+     instellen om beoordeling/rapport te testen; alles MANUEEL-gelabeld.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18b):
+     RDW-DATA UITGEBREID + DATAVALIDATIE: validateRdwVehicle() weert rotzooi;
+     tellerstandoordeel + betrouwbare recall-indicator; APK via vkij-7mwc;
+     weggelaten velden met reden; prijsprompt weegt teller/recall mee.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18):
+     WIZARD-FLOW + VIN-DATA + RDW-FOUTEN: strategie-popup niet meer
+     automatisch; NHTSA brandstof+motor; VIN-kaart vóór kenteken in wizard;
+     nette RDW-foutmeldingen; stap 5 anti-terugval; pl_kent→pl_kenteken.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-17 05:45):
      FIX — DODE-PID-SNOEI + BATCH HERSTELD (uit echte Mazda-rit-log):
        • Oorzaak traagheid + "batch faalt": ~6-8 PIDs gaven elke ronde NO DATA
          (olietemp/verbruik/omgevingstemp/smalband-O2 die de bitmap onterecht
@@ -556,6 +588,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 
 /* ══ GAUGES (concept B — kaarten met sparkline) ══ */
 .gg { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }.gc { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:14px; box-shadow:var(--ss); position:relative; overflow:hidden; transition:border-color .1s; }
+.gc-manueel { border-color:#7c3aed !important; box-shadow:0 0 0 1px rgba(124,58,237,.3); }
 .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--bl); border-radius:var(--r) var(--r) 0 0; transition:background .3s; }
 .gc.warn::before { background:var(--or); }
 .gc.danger::before { background:var(--rd); }
@@ -643,6 +676,12 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .wiz-strat-name{font-size:13px;font-weight:700;color:var(--tx)}
 .wiz-strat-desc{font-size:10px;color:var(--tx3);margin-top:1px}
 .wiz-vin-row{font-size:11px;color:var(--tx3);background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;width:100%;text-align:left}
+.wiz-vin-known{width:100%;text-align:left;background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(26,111,255,.06));border:1px solid rgba(34,197,94,.35);border-radius:9px;padding:10px 12px;margin-bottom:4px}
+.wiz-vin-known .vk-head{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--gn);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.wiz-vin-known .vk-grid{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12px}
+.wiz-vin-known .vk-k{color:var(--tx3)}
+.wiz-vin-known .vk-v{color:var(--tx);font-weight:600}
+.wiz-kent-hint{font-size:10px;color:var(--tx3);width:100%;text-align:left;margin:2px 0 2px}
 .wiz-kent-row{display:flex;gap:7px;width:100%}
 .wiz-rdw-btn{padding:10px 14px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .wiz-kent-status{font-size:11px;color:var(--tx2);min-height:18px;width:100%;text-align:left}
@@ -1162,6 +1201,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <div class="kebab-menu" id="kebabMenu">
         <button class="api-pill unset kebab-item" id="apiPill" onclick="closeKebab();openApiDialog()">🤖 AI-sleutel</button>
         <button class="kebab-item adminOnly" onclick="closeKebab();openBtLogModal()">📡 Bluetooth log</button>
+        <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
         <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
         <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
         <div class="kebab-sep"></div>
@@ -1252,7 +1292,10 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <div id="wizS4" class="wiz-s hidden">
         <div class="wiz-icon">🇳🇱</div>
         <div class="wiz-title">Voertuig identificeren</div>
+        <!-- Wat al bekend is via de VIN-uitlezing (NHTSA) -->
+        <div id="wizVinKnown" class="wiz-vin-known" style="display:none"></div>
         <div id="wizVinRow" class="wiz-vin-row"></div>
+        <div id="wizKentHint" class="wiz-kent-hint"></div>
         <div class="wiz-kent-row">
           <input id="wizKent" type="text" placeholder="Kenteken (bijv. R054XD)" maxlength="8"
             onkeydown="if(event.key==='Enter')wizRdwLookup()"
@@ -1679,7 +1722,10 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:2px">🚗 Rit Analyse</div>
         <div style="font-size:11px;color:rgba(255,255,255,.4)" id="ritStatus">Start rijden — minimaal 10 minuten</div>
       </div>
-      <button onclick="closeRitAnalyse()" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer">✕ Sluiten</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="minimizeRitAnalyse()" id="ritMinBtn" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(0,245,255,.3);background:rgba(0,245,255,.08);color:#00f5ff;font-size:12px;font-weight:700;cursor:pointer">⎯ Minimaliseer</button>
+        <button onclick="closeRitAnalyse()" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer">✕ Sluiten</button>
+      </div>
     </div>
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:14px;flex-shrink:0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -2258,8 +2304,22 @@ let isDark=false, currentZoom=1.0, currentFont=13;
 // DEMO DATA GENERATOR
 // ════════════════════════════════════════
 const _ds={};
+// Scenario-override (admin-only, demo-modus): handmatig gezette PID-waarden,
+// DTC-codes en voertuiggegevens om de beoordeling/het rapport te testen.
+// Alles wat hier gezet wordt, wordt in de UI als "MANUEEL" gelabeld.
+let _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
 function demo(pid){
   const d=getPidDef(pid); if(!d) return null;
+  // ── SCENARIO-OVERRIDE (admin, demo-modus) ──
+  // Heeft de admin voor deze PID handmatig een waarde gezet? Gebruik die,
+  // met lichte ruis eromheen zodat het realistisch oogt i.p.v. kaarsrecht.
+  if(_scenario.enabled && _scenario.pids[pid]!==undefined){
+    const base=_scenario.pids[pid];
+    const r=(d.max-d.min)||Math.abs(base)||1;
+    let v=base+(Math.random()-.5)*r*0.012;   // ±0.6% ruis
+    v=Math.max(d.min,Math.min(d.max,v));
+    return Math.round(v*100)/100;
+  }
   if(_ds[pid]===undefined) _ds[pid]=(d.min+d.max)/2;
   const r=d.max-d.min;
   _ds[pid]+=(Math.random()-.5)*r*.03;
@@ -2955,9 +3015,11 @@ function renderGauges(){
   if(sw) sw.style.display='flex';
   activePIDs.forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
-    const c=document.createElement('div'); c.className='gc'; c.id='gc-'+pid;
+    const isMan=_scenario.enabled && _scenario.pids[pid]!==undefined;
+    const c=document.createElement('div'); c.className='gc'+(isMan?' gc-manueel':''); c.id='gc-'+pid;
+    const manTag=isMan?' <span style="font-size:7px;font-weight:800;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;vertical-align:middle">MAN</span>':'';
     c.innerHTML=`<div class="gdot" id="gd-${pid}"></div>
-      <div class="gn2">${d.name}</div>
+      <div class="gn2">${d.name}${manTag}</div>
       <div><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     g.appendChild(c);
@@ -3165,6 +3227,7 @@ function saveVinProfile(vin){
       vin, pids:[...supportedPIDs],
       merk:vehicleInfo.merk||'', model:vehicleInfo.model||'',
       year:vehicleInfo.year||'', brandstof:vehicleInfo.brandstof||'',
+      motor:vehicleInfo.motor||'',
       ts:Date.now()
     };
     localStorage.setItem(vinProfileKey(vin), JSON.stringify(prof));
@@ -3181,6 +3244,7 @@ function applyVinProfileIfKnown(vin){
     if(!prof?.pids?.length) return false;
     supportedPIDs=new Set(prof.pids);
     if(prof.brandstof) vehicleInfo.brandstof=prof.brandstof;
+    if(prof.motor) vehicleInfo.motor=prof.motor;
     log(`⚡ Bekend voertuig — ${prof.pids.length} PIDs uit profiel geladen`,'ok');
     return true;
   }catch(e){ return false; }
@@ -3514,7 +3578,17 @@ async function runCheckAI(items){
   const prob=probItems.map(i=>`• ${i.name}: ${i.display} — ${i.detail}`).join('\n');
   const pairs=probItems.filter(i=>i.pid).map(i=>[i.pid, (typeof pidVals!=='undefined'?pidVals[i.pid]:undefined)]);
   const q=buildQualityReport(pairs);
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  // Als een test-scenario actief is: laat de AI weten dat deze data handmatig
+  // is gezet (testdoeleinden), zodat het oordeel daar rekening mee houdt.
+  let scenNote='';
+  if(_scenario.enabled){
+    const mp=Object.keys(_scenario.pids);
+    scenNote=`\n\nLET OP — TESTSCENARIO: de volgende waarden zijn HANDMATIG ingesteld voor testdoeleinden (geen echte meting): `+
+      (mp.length?mp.map(p=>(getPidDef(p)?.name||p)).join(', '):'(geen PIDs)')+
+      (_scenario.dtcs.length?`; handmatige DTC's: ${_scenario.dtcs.join(', ')}`:'')+
+      `. Beoordeel ze normaal, maar weet dat dit een simulatie is.`;
+  }
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}${scenNote}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
 }
@@ -3963,7 +4037,11 @@ async function scanDTC(){
   document.getElementById('bscan').disabled=true;
   document.getElementById('dtcList').innerHTML='<div class="ai-ld"><div class="spin"></div> Foutcodes ophalen...</div>';
   await delay(demoMode?1500:2000);
-  if(demoMode) dtcCodes=Math.random()>.5?['P0171','P0420']:[];
+  if(demoMode){
+    // Scenario-override: gebruik handmatig gezette DTC's als die er zijn.
+    if(_scenario.enabled && _scenario.dtcs.length) dtcCodes=[..._scenario.dtcs];
+    else dtcCodes=Math.random()>.5?['P0171','P0420']:[];
+  }
   else dtcCodes=await realScanDTC();
   renderDTC();
   document.getElementById('bscan').disabled=false;
@@ -4341,16 +4419,16 @@ function showPdfReadyModal(){
 async function sharePdf(){
   if(!window._lastPdf) return;
   const {blob,fname}=window._lastPdf;
+  // Sluit het venster METEEN — anders blijft de donkere overlay hangen als
+  // het Android-deelmenu de promise niet (op tijd) resolvet bij terugkeer.
+  const modal=document.getElementById('pdfReadyModal');
+  if(modal) modal.style.display='none';
   // Eerst de native route (Capacitor-plugins) — werkt altijd in de app
-  if(await nativeShareFile(blob,fname)){
-    document.getElementById('pdfReadyModal').style.display='none';
-    return;
-  }
+  if(await nativeShareFile(blob,fname)) return;
   try{
     const file=new File([blob],fname,{type:'application/pdf'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
       await navigator.share({files:[file],title:'PidLane rapport'});
-      document.getElementById('pdfReadyModal').style.display='none';
       return;
     }
     throw new Error('Delen niet ondersteund');
@@ -4362,11 +4440,12 @@ async function sharePdf(){
 async function downloadPdf(){
   if(!window._lastPdf) return;
   const {blob,fname}=window._lastPdf;
+  // Sluit het venster METEEN — voorkomt dat de donkere overlay blijft staan
+  // wanneer je vanuit "Opslaan in Bestanden" terugkeert naar de app.
+  const modal=document.getElementById('pdfReadyModal');
+  if(modal) modal.style.display='none';
   // Native route: Android-deelmenu bevat ook "Opslaan in Bestanden/Drive"
-  if(await nativeShareFile(blob,fname)){
-    document.getElementById('pdfReadyModal').style.display='none';
-    return;
-  }
+  if(await nativeShareFile(blob,fname)) return;
   // In de Android-app zonder plugins werkt een blob-download NOOIT
   // (WebView krijgt de bytes niet) — wees daar eerlijk over.
   if(window.Capacitor?.isNativePlatform?.()){ showNeedsUpdate(); return; }
@@ -4423,7 +4502,7 @@ let btBuffer='';
 let discoveredNetworks=[], selectedNetwork=null;
 let discoveredPIDDefs=[];
 let supportedPIDs=new Set();
-let vehicleInfo={merk:'',model:'',year:'',vin:''};
+let vehicleInfo={merk:'',model:'',year:'',vin:'',brandstof:'',motor:''};
 
 // ── Detecteer beschikbare Bluetooth plugins ──
 // ════════════════════════════════════════
@@ -4717,6 +4796,162 @@ function fallbackCopyBtLog(txt){
   }catch(e){ ok=false; }
   finally{ try{ if(ta) ta.remove(); }catch(_){} }
   return ok;
+}
+
+// ══════════════════════════════════════════════════════
+// TEST-SCENARIO (admin, demo-modus)
+// Laat de admin PID-waarden, DTC's en voertuiggegevens handmatig zetten om
+// te zien hoe de beoordeling, het rapport, de HUD en aanbevelingen reageren.
+// Alles wat hier gezet wordt, telt als MANUEEL en wordt zo gelabeld.
+// ══════════════════════════════════════════════════════
+function openScenarioModal(){
+  if(currentUser?.role!=='admin'){ showToast?.('Alleen voor admin'); return; }
+  if(!demoMode){ showToast?.('Start eerst de demo-modus om een scenario te testen'); return; }
+  let ov=document.getElementById('scenarioModal');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='scenarioModal';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:14px';
+    ov.innerHTML=`
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:12px;max-width:560px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--bd)">
+          <strong style="font-size:13px">🧪 Test-scenario <span style="font-size:9px;font-weight:700;background:#7c3aed;color:#fff;padding:1px 6px;border-radius:4px;vertical-align:middle">DEMO</span></strong>
+          <button onclick="document.getElementById('scenarioModal').style.display='none'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:11px;font-weight:600;cursor:pointer">✕ Sluit</button>
+        </div>
+        <div style="padding:8px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;cursor:pointer">
+            <input type="checkbox" id="scenEnabled" onchange="scenarioToggle(this.checked)" style="width:16px;height:16px"> Scenario actief
+          </label>
+          <span style="font-size:10px;color:var(--tx3)">overschrijft demo-waarden met jouw invoer</span>
+          <div style="flex:1"></div>
+          <button onclick="scenarioReset()" style="padding:4px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:700;cursor:pointer">↺ Reset alles</button>
+        </div>
+        <div id="scenarioBody" style="overflow-y:auto;padding:12px 14px"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--bd);display:flex;gap:8px">
+          <button onclick="scenarioApply()" style="flex:1;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,#7c3aed,#1a6fff);color:#fff;font-size:12px;font-weight:700;cursor:pointer">✓ Toepassen & beoordelen</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+  scenarioRenderBody();
+  document.getElementById('scenEnabled').checked=_scenario.enabled;
+  ov.style.display='flex';
+}
+
+// Veelgebruikte PIDs die je typisch wilt forceren om beoordeling te testen
+const SCENARIO_PID_SUGGEST=['010C','010D','0105','015C','0104','0142','0106','0107','0110','010B','010F','0114','0115','012F','015E','010A','012C'];
+
+function scenarioRenderBody(){
+  const body=document.getElementById('scenarioBody'); if(!body) return;
+  // ── PIDs ──
+  let pidRows=SCENARIO_PID_SUGGEST.map(pid=>{
+    const d=getPidDef(pid); if(!d) return '';
+    const cur=_scenario.pids[pid];
+    const ph=`${d.min}–${d.max}`;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name||pid}</div>
+        <div style="font-size:9px;color:var(--tx3)">${pid} · ${d.unit||''} · normaal ${ph}</div>
+      </div>
+      <input type="number" step="any" value="${cur!==undefined?cur:''}" placeholder="auto"
+        oninput="scenarioSetPid('${pid}',this.value)"
+        style="width:84px;padding:6px 8px;border-radius:7px;border:1px solid ${cur!==undefined?'#7c3aed':'var(--bd)'};background:var(--sur2);color:var(--tx);font-family:var(--m);font-size:12px;text-align:right">
+      ${cur!==undefined?'<span style="font-size:8px;font-weight:800;background:#7c3aed;color:#fff;padding:2px 5px;border-radius:4px">MAN</span>':'<span style="width:30px"></span>'}
+    </div>`;
+  }).join('');
+
+  // ── DTC's ──
+  const dtcVal=_scenario.dtcs.join(', ');
+
+  // ── Voertuig ──
+  const veh=_scenario.vehicle||{};
+
+  body.innerHTML=`
+    <div style="font-size:11px;font-weight:800;color:#a78bfa;margin-bottom:7px">📡 Sensorwaarden (PIDs)</div>
+    <div style="font-size:9px;color:var(--tx3);margin-bottom:8px">Leeg = automatische demo-waarde. Ingevulde waarden krijgen lichte ruis en worden als MANUEEL geteld.</div>
+    ${pidRows}
+    <div style="height:1px;background:var(--bd);margin:12px 0"></div>
+    <div style="font-size:11px;font-weight:800;color:#f59e0b;margin-bottom:7px">⚠️ Foutcodes (DTC's)</div>
+    <input type="text" value="${dtcVal}" placeholder="bijv. P0171, P0420, P0301"
+      oninput="scenarioSetDtcs(this.value)"
+      style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid ${_scenario.dtcs.length?'#f59e0b':'var(--bd)'};background:var(--sur2);color:var(--tx);font-family:var(--m);font-size:12px;text-transform:uppercase">
+    <div style="font-size:9px;color:var(--tx3);margin-top:4px">Komma-gescheiden. Leeg = geen (of willekeurige demo-codes).</div>
+    <div style="height:1px;background:var(--bd);margin:12px 0"></div>
+    <div style="font-size:11px;font-weight:800;color:#22d3ee;margin-bottom:7px">🚗 Voertuig</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+      <input type="text" value="${veh.merk||''}" placeholder="Merk (bijv. Mazda)" oninput="scenarioSetVeh('merk',this.value)" style="padding:7px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:12px">
+      <input type="text" value="${veh.model||''}" placeholder="Model (bijv. CX-5)" oninput="scenarioSetVeh('model',this.value)" style="padding:7px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:12px">
+      <input type="text" value="${veh.year||''}" placeholder="Bouwjaar" oninput="scenarioSetVeh('year',this.value)" style="padding:7px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:12px">
+      <select onchange="scenarioSetVeh('brandstof',this.value)" style="padding:7px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:12px">
+        <option value="">Brandstof…</option>
+        ${['benzine','diesel','hybride','elektrisch','lpg'].map(b=>`<option value="${b}"${veh.brandstof===b?' selected':''}>${cap(b)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="font-size:9px;color:var(--tx3);margin-top:5px">Leeg = standaard demo-auto (Mazda CX-5 2018).</div>`;
+}
+
+function scenarioSetPid(pid,v){
+  const s=String(v).trim();
+  if(s===''){ delete _scenario.pids[pid]; }
+  else { const n=parseFloat(s); if(!isNaN(n)) _scenario.pids[pid]=n; }
+}
+function scenarioSetDtcs(v){
+  _scenario.dtcs=String(v).toUpperCase().split(',').map(x=>x.trim()).filter(x=>/^[PCBU][0-9A-F]{4}$/.test(x));
+}
+function scenarioSetVeh(key,v){
+  if(!_scenario.vehicle) _scenario.vehicle={};
+  _scenario.vehicle[key]=String(v).trim();
+}
+function scenarioToggle(on){ _scenario.enabled=!!on; }
+function scenarioReset(){
+  _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
+  scenarioRenderBody();
+  const cb=document.getElementById('scenEnabled'); if(cb) cb.checked=false;
+  showToast?.('Scenario gewist');
+}
+
+function scenarioApply(){
+  _scenario.enabled=true;
+  const cb=document.getElementById('scenEnabled'); if(cb) cb.checked=true;
+
+  // Voertuig toepassen (alleen als iets ingevuld)
+  const v=_scenario.vehicle;
+  if(v && (v.merk||v.model||v.year||v.brandstof)){
+    vehicleInfo={
+      merk:v.merk||'Onbekend', model:v.model||'', year:v.year||'',
+      vin:vehicleInfo.vin||'', brandstof:(v.brandstof||'').toLowerCase(),
+      motor:vehicleInfo.motor||'', _manueel:true
+    };
+    try{ updateVehicleCard(vehicleInfo); }catch(e){}
+    try{ showVtag(`${vehicleInfo.merk} ${vehicleInfo.model}`.trim()+' · MANUEEL'); }catch(e){}
+  }
+
+  // DTC's direct toepassen + lijst verversen
+  if(_scenario.dtcs.length){ dtcCodes=[..._scenario.dtcs]; try{ renderDTC(); }catch(e){} }
+
+  // PID-waarden worden automatisch opgepikt door demo() bij de volgende poll.
+  try{ renderGauges(); }catch(e){}
+  const nPid=Object.keys(_scenario.pids).length;
+  log(`🧪 Scenario toegepast — ${nPid} PID(s), ${_scenario.dtcs.length} DTC(s)${v&&v.merk?', voertuig '+v.merk:''} (MANUEEL)`,'warn');
+  try{ updateScenarioBadge(); }catch(e){}
+  document.getElementById('scenarioModal').style.display='none';
+  showToast?.(`Scenario actief — ${nPid} PID(s) + ${_scenario.dtcs.length} DTC(s) gelabeld als MANUEEL`,3500);
+}
+
+// Toon een blijvende MANUEEL-badge in de UI zolang het scenario actief is
+function updateScenarioBadge(){
+  let b=document.getElementById('scenarioBadge');
+  if(_scenario.enabled){
+    if(!b){
+      b=document.createElement('div');
+      b.id='scenarioBadge';
+      b.style.cssText='position:fixed;bottom:10px;left:50%;transform:translateX(-50%);z-index:900;background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:4px 12px;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer;letter-spacing:.3px';
+      b.textContent='🧪 SCENARIO ACTIEF — data is MANUEEL';
+      b.onclick=openScenarioModal;
+      document.body.appendChild(b);
+    }
+    b.style.display='block';
+  } else if(b){ b.style.display='none'; }
 }
 
 function btDiagDevice(name, address, rssi){
@@ -5817,15 +6052,22 @@ async function startDiscovery(){
   buildDiscoveredPIDList();
   addProg('✅',`${discoveredPIDDefs.length} sensoren beschikbaar`);
 
+  // Voertuiggegevens (merk/model/brandstof/motor uit VIN+NHTSA) nu al vastleggen,
+  // zódat de gezondheidsscan hieronder het brandstoftype kent en diesel/SCR- of
+  // turbo-fantoomsensoren correct kan wegfilteren op een benzineauto.
+  updateVehicleCard(vinInfo);
+
   // Eerste gezondheidsscan: lees elke PID 1x en beoordeel of die gezond/bij
   // de auto hoort. Ongezonde/dode PIDs worden in de lijst uitgegrijsd.
   await initialHealthScan();
 
-  // Connectie optimaliseren: meet snelheid en stel readiness-strategie voor.
-  await optimizeConnection(false);
-
-  // Update voertuigkaart links
-  updateVehicleCard(vinInfo);
+  // Connectie-snelheid meten en strategie STIL toepassen (geen popup hier).
+  // De strategie-keuze komt pas later in de wizard (na PID-verbetering),
+  // niet als losse popup vóór de wizard opent.
+  try{
+    const _sp=await measureConnSpeed(demoMode?0:6);
+    if(_sp) applyStrategy(suggestStrategy(_sp));
+  }catch(e){ btDiag('Snelheidsmeting overgeslagen: '+e.message,'warn'); }
 
   // ── IDEE 1: nieuw voertuig met verse discovery? Profiel opslaan ──
   if(knownVin && !usedProfile && supportedPIDs.size>0) saveVinProfile(vinInfo.vin);
@@ -5850,7 +6092,9 @@ function updateVehicleCard(vinInfo){
     merk: vinInfo?.merk||'Onbekend',
     model: vinInfo?.model||'',
     year: vinInfo?.year||'',
-    vin: vinInfo?.vin||''
+    vin: vinInfo?.vin||'',
+    brandstof: vinInfo?.brandstof||'',
+    motor: vinInfo?.motor||''
   };
   showVtag(vehicleInfo.vin||vehicleInfo.merk||'Verbonden');
   const card=document.getElementById('vehicleCard');
@@ -5890,37 +6134,55 @@ function toggleKentInput(){
 async function rdwLookup(){
   const inp=document.getElementById('kentInput');
   const st=document.getElementById('kentStatus');
-  if(!inp) return;
+  if(!inp) return {ok:false,reason:'no-input'};
   const kent=inp.value.replace(/[\s-]/g,'').toUpperCase();
-  if(kent.length<4){ if(st) st.textContent='Voer een geldig kenteken in'; return; }
+  if(kent.length<4){ if(st) st.textContent='Voer een geldig kenteken in (minimaal 4 tekens)'; return {ok:false,reason:'invalid'}; }
   if(st) st.textContent='RDW opzoeken...';
   try{
     const r=await fetch(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`);
+    if(!r.ok){ if(st) st.textContent='RDW antwoordde niet goed — probeer het zo opnieuw'; return {ok:false,reason:'http'}; }
     const data=await r.json();
-    if(!data||!data.length){ if(st) st.textContent='Kenteken niet gevonden bij RDW'; return; }
+    if(!data||!data.length){
+      if(st) st.textContent=`Kenteken "${kent}" niet gevonden bij de RDW — controleer op een typefout`;
+      return {ok:false,reason:'notfound',kent};
+    }
     const v=data[0];
-    // Robuust bouwjaar: strip alles behalve cijfers, neem eerste 4 — werkt ook bij "1998-03-01" of andere notaties
-    const jaar=String(v.datum_eerste_toelating||'').replace(/\D/g,'').slice(0,4);
-    const brandstof=(v.brandstof_omschrijving||'').toLowerCase();
-    vehicleInfo.merk=v.merk||vehicleInfo.merk;
-    vehicleInfo.model=v.handelsbenaming||'';
-    vehicleInfo.year=jaar||vehicleInfo.year;
-    vehicleInfo.brandstof=brandstof;
+    // Valideer alle RDW-velden: onzin (rotzooi-namen, ongeldige data) eruit.
+    const val=validateRdwVehicle(v);
+    const f=val.velden;
+    // Alleen geldige velden overnemen; bestaande VIN/NHTSA-data niet overschrijven met leegte
+    if(f.merk)      vehicleInfo.merk=f.merk;
+    if(f.model!==undefined) vehicleInfo.model=f.model||'';
+    if(f.year)      vehicleInfo.year=f.year;
+    if(f.brandstof) vehicleInfo.brandstof=f.brandstof;
+    const jaar=f.year||vehicleInfo.year||'';
+    const brandstof=f.brandstof||'';
     localStorage.setItem('pl_kenteken',kent);
-    // Sla ook extra RDW velden op voor Koopcheck
-    _koopRdwData = { ...v, _kent: kent };
+    // Sla ook gevalideerde extra RDW velden op voor Koopcheck/rapport
+    _koopRdwData = { ...v, _kent: kent, _val: val };
     // Prefill Koopcheck kenteken input
     const ki = document.getElementById('koopKentInput');
     if(ki && !ki.value) ki.value = kent;
+    const naam=`${vehicleInfo.merk||''} ${vehicleInfo.model||''}`.trim()||'Voertuig';
     const merkEl=document.getElementById('vicMerk');
-    if(merkEl) merkEl.textContent=`${vehicleInfo.merk} ${vehicleInfo.model}`.trim();
-    if(st) st.textContent=`✓ ${vehicleInfo.merk} ${vehicleInfo.model} (${jaar}) — ${v.eerste_kleur||''}`.trim();
-    showVtag(`${vehicleInfo.merk} ${vehicleInfo.model}`.trim());
-    log(`RDW: ${vehicleInfo.merk} ${vehicleInfo.model} ${jaar} brandstof:${brandstof||'?'} (${kent})`,'ok');
+    if(merkEl) merkEl.textContent=naam;
+    // Statusregel + eventuele waarschuwing over weggelaten velden
+    let stTxt=`✓ ${naam}${jaar?' ('+jaar+')':''}${f.kleur?' — '+f.kleur:''}`.trim();
+    if(val.weggelaten.length){
+      stTxt+=`  ·  ⚠️ ${val.weggelaten.length} veld(en) door RDW onbetrouwbaar — weggelaten`;
+    }
+    if(st) st.textContent=stTxt;
+    showVtag(naam);
+    log(`RDW: ${naam} ${jaar} brandstof:${brandstof||'?'} (${kent})`,'ok');
+    if(val.weggelaten.length){
+      val.weggelaten.forEach(w=>log(`RDW weggelaten — ${w.label}: ${w.reden}`,'warn'));
+    }
     // Pas voertuig-specifieke PID-preset toe als verbinding al actief is
-    if(connected) applyVehiclePIDPreset(vehicleInfo.merk, brandstof, jaar);
+    if(connected && vehicleInfo.merk) applyVehiclePIDPreset(vehicleInfo.merk, brandstof, jaar);
+    return {ok:true,kent,v,val};
   }catch(e){
-    if(st) st.textContent='RDW niet bereikbaar: '+e.message;
+    if(st) st.textContent='RDW tijdelijk niet bereikbaar — controleer je internet en probeer opnieuw';
+    return {ok:false,reason:'network',error:e.message};
   }
 }
 
@@ -5994,19 +6256,42 @@ async function tryReadVIN(){
     if(!vin){ log('Geen geldige VIN ontvangen (auto geeft hem niet vrij) — gebruik kenteken/RDW','info'); return null; }
     log('VIN: '+vin,'ok');
     const info=decodeVIN(vin);
-    // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken
+    // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken.
+    // Haalt naast merk/model/jaar ook brandstoftype en motorgegevens op,
+    // zodat PID-filtering en rapporten ook zonder kenteken kloppen.
     if(!info.merk||info.merk==='Onbekend merk'){
       try{
         const resp=await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`);
         if(resp.ok){
           const data=await resp.json();
           const get=v=>(data.Results||[]).find(r=>r.Variable===v)?.Value||'';
+          const ok=s=>s&&s!=='Not Applicable'&&s!=='Not Available'&&s!=='0';
           const make=get('Make'),model=get('Model'),year=get('Model Year');
-          if(make&&make!=='Not Applicable'){
+          if(ok(make)){
             info.merk=make.charAt(0)+make.slice(1).toLowerCase();
             info.model=model||''; info.year=year||info.year;
             log(`NHTSA: ${info.merk} ${info.model} ${info.year}`,'ok');
           }
+          // Brandstoftype → normaliseren naar 'benzine'/'diesel' woordkeus
+          // die vehicleFuelType() herkent. Alleen vullen als nog leeg.
+          const fuel=get('Fuel Type - Primary');
+          if(ok(fuel)&&!info.brandstof){
+            const f=fuel.toLowerCase();
+            if(/diesel/.test(f)) info.brandstof='diesel';
+            else if(/gasoline|petrol|flexible|ethanol|e85/.test(f)) info.brandstof='benzine';
+            else if(/electric/.test(f)) info.brandstof='elektrisch';
+            else info.brandstof=f;
+          }
+          // Motortype samenstellen: cilinders + cilinderinhoud (L)
+          const cyl=get('Engine Number of Cylinders');
+          const disp=get('Displacement (L)');
+          const cfg=get('Engine Configuration');
+          const mp=[];
+          if(ok(disp)) mp.push(parseFloat(disp).toFixed(1)+'L');
+          if(ok(cyl)) mp.push(cyl+'-cil');
+          if(ok(cfg)) mp.push(cfg);
+          if(mp.length&&!info.motor) info.motor=mp.join(' ');
+          if(info.motor) log(`NHTSA motor: ${info.motor}${info.brandstof?' ('+info.brandstof+')':''}`,'ok');
         }
       }catch(e){ log('NHTSA API offline — lokale VIN database gebruikt','info'); }
     }
@@ -6044,7 +6329,7 @@ function decodeVIN(vin){
   const yc=vin[9]?.toUpperCase();
   let year=(yearMap[yc]||'').toString();
   if(!year){const i=yr10.indexOf(yc);if(i>=0)year=(2010+i).toString();}
-  return{merk:merk||'Onbekend merk',model:'',year,vin,wmi};
+  return{merk:merk||'Onbekend merk',model:'',year,vin,wmi,brandstof:'',motor:''};
 }
 
 // ── PID DEFINITIELIJST BOUWEN NA DISCOVERY ──
@@ -6967,6 +7252,9 @@ async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
     connected=false; demoMode=false; clearInterval(pollTimer);
+    // Test-scenario opheffen wanneer demo/verbinding stopt
+    _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
+    try{ updateScenarioBadge(); }catch(e){}
     try{ localStorage.removeItem('pl_autoconn'); }catch(e){} // bewust verbroken — niet auto-herverbinden
     try{
       if(window._sppConn){
@@ -7346,58 +7634,118 @@ function _wizStep3(){
   setTimeout(()=>{ clearInterval(t); wizGo(4); }, 30000);
 }
 
-// STAP 4 — Voertuig: VIN + kenteken
+// STAP 4 — Voertuig: eerst tonen wat de VIN al prijsgaf, dán kenteken optioneel
 function _wizStep4(){
   const v=getVehicle()||{};
+  const known=document.getElementById('wizVinKnown');
   const vinRow=document.getElementById('wizVinRow');
-  vinRow.innerHTML=v.vin
-    ?`🔑 VIN: <b>${v.vin}</b>${v.merk?' &nbsp;·&nbsp; '+v.merk+' '+v.model:''}`
-    :'VIN niet uitgelezen — vul kenteken in voor voertuiggegevens';
-  // Haal bestaand kenteken op
-  const savedKent=localStorage.getItem('pl_kent')||'';
-  document.getElementById('wizKent').value=savedKent;
-  if(v.merk){
-    document.getElementById('wizKentStatus').innerHTML=
-      `✅ ${v.merk} ${v.model||''} ${v.year||''} ${v.brandstof?'· '+v.brandstof:''}`;
+  const hint=document.getElementById('wizKentHint');
+  // Heeft de VIN-uitlezing iets bruikbaars opgeleverd?
+  const heeftMerk=v.merk&&v.merk!=='Onbekend'&&v.merk!=='Onbekend merk';
+  const heeftIets=heeftMerk||v.year||v.brandstof||v.motor;
+
+  if(v.vin&&heeftIets){
+    // Toon kaart met alles wat we al weten uit de VIN (NHTSA)
+    const rows=[];
+    if(heeftMerk) rows.push(['Merk/model',`${v.merk}${v.model?' '+v.model:''}`]);
+    if(v.year)      rows.push(['Bouwjaar', v.year]);
+    if(v.motor)     rows.push(['Motor', v.motor]);
+    if(v.brandstof) rows.push(['Brandstof', cap(v.brandstof)]);
+    known.style.display='';
+    known.innerHTML=`<div class="vk-head">✓ Al bekend via VIN-uitlezing</div>
+      <div class="vk-grid">${rows.map(([k,val])=>`<span class="vk-k">${k}</span><span class="vk-v">${val}</span>`).join('')}</div>`;
+    vinRow.style.display='';
+    vinRow.innerHTML=`🔑 VIN: <b>${v.vin}</b>`;
+    // Kenteken alleen nog nuttig als merk/model/brandstof incompleet zijn
+    const compleet=heeftMerk&&v.model&&v.brandstof;
+    hint.textContent=compleet
+      ? 'Voertuig is compleet herkend. Kenteken invoeren is optioneel (voegt o.a. kleur, APK en historie toe).'
+      : 'Sommige gegevens ontbreken nog. Vul het kenteken in om merk, model en brandstof aan te vullen via de RDW.';
+  } else if(v.vin){
+    // VIN gelezen maar niets te decoderen
+    known.style.display='none';
+    vinRow.style.display='';
+    vinRow.innerHTML=`🔑 VIN: <b>${v.vin}</b> — niet herkend in database`;
+    hint.textContent='De VIN leverde geen voertuiggegevens op. Vul het kenteken in voor merk, model, bouwjaar en brandstof.';
+  } else {
+    // Geen VIN
+    known.style.display='none';
+    vinRow.style.display='';
+    vinRow.innerHTML='VIN niet uitgelezen door de auto.';
+    hint.textContent='Vul het kenteken in voor merk, model, bouwjaar en brandstof via de RDW.';
   }
+
+  // Bestaand kenteken voorvullen
+  const savedKent=localStorage.getItem('pl_kenteken')||'';
+  document.getElementById('wizKent').value=savedKent;
+  document.getElementById('wizKentStatus').innerHTML='';
 }
+
+// Hoofdletter aan begin (brandstof-labels netjes weergeven)
+function cap(s){ s=String(s||''); return s? s.charAt(0).toUpperCase()+s.slice(1) : s; }
 
 async function wizRdwLookup(){
   const kent=document.getElementById('wizKent').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   const status=document.getElementById('wizKentStatus');
-  if(!kent){ status.textContent='Voer een kenteken in'; return; }
+  if(!kent){ status.textContent='Voer eerst een kenteken in'; return; }
+  if(kent.length<4){ status.textContent='Dat kenteken lijkt te kort — controleer de invoer'; return; }
   status.textContent='⏳ RDW opzoeken...';
-  try{
-    // Hergebruik bestaande rdwLookup functie
-    localStorage.setItem('pl_kent', kent);
-    const kentInput=document.getElementById('kentInput');
-    if(kentInput) kentInput.value=kent;
-    await rdwLookup();
+  // Voer de invoer door naar het verborgen hoofdveld dat rdwLookup gebruikt
+  const kentInput=document.getElementById('kentInput');
+  if(kentInput) kentInput.value=kent;
+  const res=await rdwLookup();
+  if(res&&res.ok){
     const v=getVehicle()||{};
-    if(v.merk){
-      status.innerHTML=`✅ ${v.merk} ${v.model||''} ${v.year||''} ${v.brandstof?'· <b>'+v.brandstof+'</b>':''}`;
-    } else {
-      status.textContent='Niet gevonden — controleer kenteken';
-    }
-  }catch(e){ status.textContent='Fout: '+e.message; }
+    status.innerHTML=`✅ ${v.merk} ${v.model||''} ${v.year||''} ${v.brandstof?'· <b>'+cap(v.brandstof)+'</b>':''}`;
+    // VIN-kaart bijwerken zodat aangevulde gegevens direct zichtbaar zijn
+    _wizRefreshKnown();
+  } else if(res&&res.reason==='notfound'){
+    status.innerHTML=`❌ Kenteken <b>${kent}</b> niet gevonden bij de RDW.<br><span style="color:var(--tx3);font-size:10px">Controleer of je je niet hebt vertypt (bijv. 0/O of 1/I).</span>`;
+  } else if(res&&(res.reason==='network'||res.reason==='http')){
+    status.textContent='⚠️ RDW tijdelijk niet bereikbaar — probeer het zo opnieuw.';
+  } else {
+    status.textContent='Kon het kenteken niet opzoeken — controleer de invoer.';
+  }
 }
 
-// STAP 5 — Sensorcheck: initialHealthScan loopt al, toon voortgang
+// Werk de "Al bekend via VIN"-kaart in stap 4 bij na een RDW-aanvulling
+function _wizRefreshKnown(){
+  const v=getVehicle()||{};
+  const known=document.getElementById('wizVinKnown');
+  if(!known) return;
+  const heeftMerk=v.merk&&v.merk!=='Onbekend'&&v.merk!=='Onbekend merk';
+  const rows=[];
+  if(heeftMerk) rows.push(['Merk/model',`${v.merk}${v.model?' '+v.model:''}`]);
+  if(v.year)      rows.push(['Bouwjaar', v.year]);
+  if(v.motor)     rows.push(['Motor', v.motor]);
+  if(v.brandstof) rows.push(['Brandstof', cap(v.brandstof)]);
+  if(!rows.length) return;
+  known.style.display='';
+  known.innerHTML=`<div class="vk-head">✓ Voertuiggegevens</div>
+    <div class="vk-grid">${rows.map(([k,val])=>`<span class="vk-k">${k}</span><span class="vk-v">${val}</span>`).join('')}</div>`;
+}
+
+// STAP 5 — Sensorcheck: initialHealthScan is al klaar (await vóór wizard),
+// dit toont alleen de uitkomst met een korte voortgangsanimatie.
 async function _wizStep5(){
   const fill=document.getElementById('wizS5Fill');
   const count=document.getElementById('wizS5Count');
   const sub=document.getElementById('wizS5Sub');
-  // Health scan loopt al na discovery — wacht tot _pidHealth gevuld is
   const pids=typeof supportedPIDs!=='undefined'?[...supportedPIDs]:[];
+  // Globale veiligheidslimiet: nooit langer dan 4s blijven hangen, ook al
+  // mist er onverhoopt een PID in _pidHealth (voorkomt terugval/blokkade).
+  const deadline=Date.now()+4000;
   let done=0;
   for(const pid of pids){
-    // Wacht tot pid in _pidHealth zit (scan loopt parallel)
-    let waited=0;
-    while(!_pidHealth[pid] && waited<3000){ await delay(100); waited+=100; }
+    // Korte wacht alleen als deze PID nog niet beoordeeld is (zelden);
+    // stopt zodra de globale deadline is bereikt.
+    while(!_pidHealth[pid] && Date.now()<deadline){ await delay(60); }
     done++;
-    const pct=Math.round((done/pids.length)*100);
+    const pct=Math.round((done/Math.max(pids.length,1))*100);
     fill.style.width=pct+'%';
     count.textContent=`${done} / ${pids.length} gecontroleerd`;
+    // Vloeiende animatie zonder de stap traag te maken
+    if(pids.length<=20) await delay(25);
   }
   // Render resultaten
   const ok=pids.filter(p=>_pidHealth[p]==='ok').length;
@@ -7448,7 +7796,8 @@ function _wizStep6(){
   const ok=pids.filter(p=>_pidHealth[p]==='ok').length;
   const strat=typeof _connStrategy!=='undefined'&&_connStrategy?STRATEGIE_INFO[_connStrategy]:null;
   document.getElementById('wizSummary').innerHTML=
-    `🚗 <b>${v.merk?v.merk+' '+v.model+(v.year?' '+v.year:''):'Voertuig onbekend'}</b>${v.brandstof?' · '+v.brandstof:''}<br>`+
+    `🚗 <b>${v.merk&&v.merk!=='Onbekend'?v.merk+' '+v.model+(v.year?' '+v.year:''):'Voertuig onbekend'}</b>${v.brandstof?' · '+cap(v.brandstof):''}<br>`+
+    (v.motor?`🔧 Motor: <b>${v.motor}</b><br>`:'')+
     `📡 <b>${ok}</b> sensoren actief · <b>${n||activePIDs.size}</b> geselecteerd<br>`+
     (strat?`⚡ Poll-strategie: <b>${strat.emoji} ${strat.label}</b><br>`:'')+
     `✅ Standaard set geladen — pas aan via de PID-lijst`;
@@ -7559,7 +7908,49 @@ function zoomReset(){currentZoom=1.0;applyZoom();}
 // ════════════════════════════════════════
 // INIT — alles in DOMContentLoaded zodat HTML zeker geladen is
 // ════════════════════════════════════════
+// Sluit het bovenste open venster/overlay (voor de Android-backknop).
+// Geeft true terug als er iets is gesloten, anders false (dan mag de app
+// naar de achtergrond). Volgorde = van meest-modaal naar minst-modaal.
+function closeTopOverlay(){
+  const vis=el=>el && el.style.display!=='none' && getComputedStyle(el).display!=='none' && !el.classList.contains('hidden');
+  // 1) Losse modals die met display:flex/block worden getoond
+  for(const id of ['pdfReadyModal','needsUpdateModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker']){
+    const el=document.getElementById(id);
+    if(vis(el)){ el.style.display='none'; return true; }
+  }
+  // 2) Onderdelen-/scenario-picker (kan dynamisch andere id's hebben)
+  const picker=document.querySelector('.pick-overlay, .onderdelen-overlay');
+  if(vis(picker)){ picker.style.display='none'; return true; }
+  // 3) Rit Analyse: minimaliseren i.p.v. stoppen (analyse loopt door)
+  const rit=document.getElementById('ritDash');
+  if(vis(rit)){ if(typeof ritActive!=='undefined'&&ritActive){ minimizeRitAnalyse(); } else { closeRitAnalyse(); } return true; }
+  // 4) Neon-dashboard
+  const neon=document.getElementById('neonDash');
+  if(vis(neon)){ try{ closeNeonDashboard(); }catch(_){ neon.style.display='none'; } return true; }
+  // 5) Kebab-menu open?
+  const kebab=document.getElementById('kebabMenu');
+  if(kebab && kebab.classList.contains('open')){ try{ closeKebab(); }catch(_){} return true; }
+  // 6) Verbind-overlay (alleen sluiten als al verbonden/demo — anders laten staan)
+  const connOv=document.getElementById('connOv');
+  if(vis(connOv) && (connected||demoMode)){ connOv.classList.add('hidden'); return true; }
+  return false;
+}
+
 document.addEventListener('DOMContentLoaded', function(){
+
+  // ── Android hardware-backknop ──────────────────────────────
+  // Zonder deze handler sluit de backknop (of een tik naast een venster) de
+  // hele app. Nu sluit hij eerst een open venster/overlay; pas als er niets
+  // open staat, mag de app naar de achtergrond.
+  try{
+    const AppPlugin=window.Capacitor?.Plugins?.App;
+    if(AppPlugin?.addListener){
+      AppPlugin.addListener('backButton',()=>{
+        if(closeTopOverlay()) return;          // er stond iets open → alleen dat sluiten
+        AppPlugin.minimizeApp?.();             // niets open → app naar achtergrond (niet afsluiten)
+      });
+    }
+  }catch(e){}
 
   // Welcome card klikkers
   const wcBind=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onclick=fn; };
@@ -7860,6 +8251,41 @@ function openRitAnalyse(mode='10min'){
 function closeRitAnalyse(){
   if(ritActive) stopRitAnalyse();
   document.getElementById('ritDash').style.display='none';
+  _removeRitPill();
+}
+
+// Minimaliseer de Rit Analyse zónder hem te stoppen: het overlay verdwijnt,
+// de timers en dataverzameling lopen door. Een zwevende pill toont de
+// voortgang en brengt je terug. Zo kun je tussendoor het scenario-venster
+// openen en waardes aanpassen terwijl de analyse doorloopt.
+function minimizeRitAnalyse(){
+  document.getElementById('ritDash').style.display='none';
+  _showRitPill();
+}
+function restoreRitAnalyse(){
+  document.getElementById('ritDash').style.display='block';
+  _removeRitPill();
+}
+function _showRitPill(){
+  let p=document.getElementById('ritPill');
+  if(!p){
+    p=document.createElement('div');
+    p.id='ritPill';
+    p.style.cssText='position:fixed;bottom:48px;left:50%;transform:translateX(-50%);z-index:8500;background:linear-gradient(135deg,#00b4cc,#7c3aed);color:#fff;font-size:11px;font-weight:800;padding:7px 14px;border-radius:16px;box-shadow:0 3px 14px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;gap:8px;letter-spacing:.3px';
+    p.onclick=restoreRitAnalyse;
+    document.body.appendChild(p);
+  }
+  p.style.display='flex';
+  _updateRitPill();
+}
+function _updateRitPill(){
+  const p=document.getElementById('ritPill'); if(!p) return;
+  const t=document.getElementById('ritTimer')?.textContent||'0:00';
+  const fase=document.getElementById('ritPhaseName')?.textContent||'';
+  p.innerHTML=`🚗 Rit loopt · <span style="font-family:var(--m)">${t}</span>${fase&&fase!=='Wachten op start...'?` · ${fase}`:''} <span style="opacity:.7">↑ open</span>`;
+}
+function _removeRitPill(){
+  const p=document.getElementById('ritPill'); if(p) p.style.display='none';
 }
 
 // Detecteer hybride/EV op basis van RDW-brandstof of merk-indicatie
@@ -7977,6 +8403,7 @@ async function startRitAnalyse(){
     document.getElementById('ritTimer').textContent=`${mins}:${secs.toString().padStart(2,'0')}`;
     const pct=Math.min(100,(elapsed/RIT_TOTAAL)*100);
     document.getElementById('ritProgress').style.width=pct+'%';
+    _updateRitPill();   // houd de zwevende pill bij als de rit geminimaliseerd is
     if(elapsed>=RIT_TOTAAL) stopRitAnalyse();
   },1000);
 }
@@ -8078,6 +8505,10 @@ async function stopRitAnalyse(){
   if(!ritActive) return;
   ritActive=false;
   clearTimeout(ritFaseTimer); clearInterval(ritTotalTimer);
+  // Was de rit geminimaliseerd? Toon het overlay weer zodat het rapport
+  // zichtbaar wordt, en verwijder de zwevende pill.
+  _removeRitPill();
+  if(document.getElementById('ritDash')) document.getElementById('ritDash').style.display='block';
   document.getElementById('ritStopBtn').style.display='none';
   // 2-min check is altijd technisch (geen rijgedrag) → direct technisch rapport
   if(ritMode==='2min'){
@@ -8355,46 +8786,49 @@ async function koopRdwLookup(){
   try {
     // Hoofddata
     const r1 = await fetch(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`);
+    if(!r1.ok){ st.textContent='⚠️ RDW antwoordde niet goed — probeer het zo opnieuw'; btn.disabled=false; return; }
     const d1 = await r1.json();
-    if(!d1||!d1.length){ st.textContent = '❌ Kenteken niet gevonden bij RDW'; btn.disabled=false; return; }
+    if(!d1||!d1.length){ st.textContent = `❌ Kenteken "${kent}" niet gevonden bij RDW — controleer op een typefout`; btn.disabled=false; return; }
     const v = d1[0];
-    // Robuust bouwjaar: strip alles behalve cijfers, neem eerste 4
-    const _jaar = String(v.datum_eerste_toelating||'').replace(/\D/g,'').slice(0,4);
 
-    // APK dataset
+    // Valideer: onbetrouwbare/rotzooi-velden eruit met reden
+    const val = validateRdwVehicle(v);
+    const f = val.velden;
+    const _jaar = f.year || '';
+
+    // APK-historie (laatste keuring) — aparte, betrouwbare dataset
     let apkData = null;
     try {
-      const r2 = await fetch(`https://opendata.rdw.nl/resource/sgfe-77wx.json?kenteken=${encodeURIComponent(kent)}&$limit=1`);
+      const r2 = await fetch(`https://opendata.rdw.nl/resource/vkij-7mwc.json?kenteken=${encodeURIComponent(kent)}&$limit=1`);
       const d2 = await r2.json();
       if(d2&&d2.length) apkData = d2[0];
     } catch(e){}
 
-    // Recall check (op merk)
-    let recallActief = false;
-    try {
-      const merk = (v.merk||'').toUpperCase();
-      const r3 = await fetch(`https://opendata.rdw.nl/resource/af5r-44mf.json?$where=upper(merk_type_fabrikant)%20like%20'%25${encodeURIComponent(merk)}%25'&$limit=5`);
-      const d3 = await r3.json();
-      recallActief = d3 && d3.length > 0;
-    } catch(e){}
+    // Recall: gebruik de betrouwbare indicator uit de hoofddata zelf
+    // (de oude merk-naam-match gaf false positives op élke auto van dat merk).
+    const recallActief = String(v.openstaande_terugroepactie_indicator||'').toLowerCase()==='ja'
+      || v.openstaande_terugroepactie_indicator===true;
 
-    _koopRdwData = { ...v, _apk: apkData, _recall: recallActief, _kent: kent };
+    // Tellerstandoordeel (fraudecheck) — alleen erkende RDW-waarden
+    const tellerOordeel = f.tellerstandoordeel || null;
+
+    _koopRdwData = { ...v, _apk: apkData, _recall: recallActief, _teller: tellerOordeel, _kent: kent, _val: val };
     localStorage.setItem('pl_kenteken', kent);
 
-    // Voer ook vehicleInfo bij voor AI
-    vehicleInfo.merk  = v.merk || vehicleInfo.merk;
-    vehicleInfo.model = v.handelsbenaming || vehicleInfo.model;
-    vehicleInfo.year  = _jaar || vehicleInfo.year;
-    vehicleInfo.brandstof = (v.brandstof_omschrijving||'').toLowerCase();
+    // Voer ook vehicleInfo bij voor AI — alleen gevalideerde velden
+    if(f.merk)      vehicleInfo.merk  = f.merk;
+    if(f.model!==undefined) vehicleInfo.model = f.model||'';
+    if(f.year)      vehicleInfo.year  = f.year;
+    if(f.brandstof) vehicleInfo.brandstof = f.brandstof;
 
-    // Bereken tenaamstelling info
-    const datTenaam = v.datum_tenaamstelling ? formatRdwDate(v.datum_tenaamstelling) : '?';
-    const datEerste = v.datum_eerste_toelating ? formatRdwDate(v.datum_eerste_toelating) : '?';
-    const datEersteNL = v.datum_eerste_tenaamstelling_in_nederland ? formatRdwDate(v.datum_eerste_tenaamstelling_in_nederland) : '?';
-    const apkVerval = v.vervaldatum_apk ? formatRdwDate(v.vervaldatum_apk) : '?';
-    const maandenTot = v.vervaldatum_apk ? maandenTotAPK(v.vervaldatum_apk) : null;
-    const bpm = v.bruto_bpm ? `€ ${parseInt(v.bruto_bpm).toLocaleString('nl')}` : '?';
-    const import_auto = v.datum_eerste_tenaamstelling_in_nederland && v.datum_eerste_toelating &&
+    // Datums (gevalideerd weergeven)
+    const datTenaam   = _rdwPlausibleDate(v.datum_tenaamstelling) ? formatRdwDate(v.datum_tenaamstelling) : '?';
+    const datEerste   = _rdwPlausibleDate(v.datum_eerste_toelating) ? formatRdwDate(v.datum_eerste_toelating) : '?';
+    const datEersteNL = _rdwPlausibleDate(v.datum_eerste_tenaamstelling_in_nederland) ? formatRdwDate(v.datum_eerste_tenaamstelling_in_nederland) : '?';
+    const apkVerval   = f.vervaldatum_apk ? formatRdwDate(f.vervaldatum_apk) : '?';
+    const maandenTot  = f.vervaldatum_apk ? maandenTotAPK(f.vervaldatum_apk) : null;
+    const bpm = (v.bruto_bpm && !isNaN(parseInt(v.bruto_bpm))) ? `€ ${parseInt(v.bruto_bpm).toLocaleString('nl')}` : '?';
+    const import_auto = _rdwPlausibleDate(v.datum_eerste_tenaamstelling_in_nederland) && _jaar &&
       String(v.datum_eerste_tenaamstelling_in_nederland).replace(/\D/g,'').slice(0,4) !== _jaar;
 
     // APK kleur
@@ -8409,17 +8843,22 @@ async function koopRdwLookup(){
     // Recall banner
     document.getElementById('koopRecallBanner').style.display = recallActief ? 'block' : 'none';
 
-    // Render kaarten
+    // Tellerstand-kleur
+    const tellerOnlogisch = tellerOordeel && /onlogisch/i.test(tellerOordeel);
+    const tellerKleur = tellerOordeel ? (tellerOnlogisch ? '#ef4444' : '#22c55e') : '#6b7280';
+
+    // Render kaarten — alleen plausibele waarden, anms een nette '?' / weglaten
     const kaarten = [
-      { label:'Merk & Model',   val:`${v.merk||'?'} ${v.handelsbenaming||''}`.trim(), ico:'🚗' },
+      { label:'Merk & Model',   val:`${f.merk||'?'} ${f.model||''}`.trim(), ico:'🚗' },
       { label:'Bouwjaar',       val:_jaar||'?', ico:'📅' },
-      { label:'Brandstof',      val:(v.brandstof_omschrijving||'?'), ico:'⛽' },
+      { label:'Brandstof',      val:(f.brandstof?cap(f.brandstof):'?'), ico:'⛽' },
       { label:'Eerste toelating', val:datEerste, ico:'🏭' },
       { label:'Eerste NL',      val:datEersteNL + (import_auto ? ' ⚠️ Import' : ''), ico:'🇳🇱' },
       { label:'Huidige eigenaar sinds', val:datTenaam, ico:'👤' },
       { label:'APK geldig tot', val:`${apkVerval}`, ico:'🔧', kleur:apkKleur },
-      { label:'Kleur',          val:`${v.eerste_kleur||'?'}${v.tweede_kleur?'+'+v.tweede_kleur:''}`, ico:'🎨' },
-      { label:'Cilinderinhoud', val:v.cilinderinhoud ? v.cilinderinhoud+' cc' : '?', ico:'⚙️' },
+      { label:'Tellerstandoordeel', val: tellerOordeel ? (tellerOnlogisch?'⚠️ '+tellerOordeel:'✅ '+tellerOordeel) : '?', ico:'⏱️', kleur:tellerKleur },
+      { label:'Kleur',          val:`${f.kleur||'?'}${_rdwPlausibleName(v.tweede_kleur)?'+'+v.tweede_kleur:''}`, ico:'🎨' },
+      { label:'Cilinderinhoud', val:f.cilinderinhoud ? f.cilinderinhoud+' cc' : '?', ico:'⚙️' },
       { label:'Bruto BPM',      val:bpm, ico:'💶' },
       { label:'Recall RDW',     val:recallActief ? '⚠️ JA' : '✅ Geen', ico:'🔔', kleur:recallActief?'#ef4444':'#22c55e' },
     ];
@@ -8429,17 +8868,117 @@ async function koopRdwLookup(){
         <div style="font-size:11px;font-weight:700;color:${k.kleur||'var(--tx)'}\">${k.val||'?'}</div>
       </div>`).join('');
 
+    // Melding over door RDW onbetrouwbaar geleverde, weggelaten velden
+    if(val.weggelaten.length){
+      grid.innerHTML += `
+        <div style="grid-column:1/-1;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.4);border-radius:6px;padding:7px 9px;margin-top:4px">
+          <div style="font-size:10px;font-weight:700;color:#eab308;margin-bottom:3px">⚠️ ${val.weggelaten.length} veld(en) weggelaten — RDW-data onbetrouwbaar</div>
+          <div style="font-size:9px;color:var(--tx3);line-height:1.5">${val.weggelaten.map(w=>`• <b>${w.label}</b>: ${w.reden}`).join('<br>')}</div>
+        </div>`;
+    }
+
     cards.style.display = 'block';
-    st.textContent = `✅ ${v.merk} ${v.handelsbenaming} (${_jaar}) — ${v.eerste_kleur||''}`;
+    const naam=`${f.merk||'?'} ${f.model||''}`.trim();
+    st.textContent = `✅ ${naam}${_jaar?' ('+_jaar+')':''}${f.kleur?' — '+f.kleur:''}`
+      + (val.weggelaten.length?`  ·  ⚠️ ${val.weggelaten.length} veld(en) weggelaten`:'');
 
     // Log
-    scanLogAdd({ type:'rdw', msg:`Kent:${kent} Merk:${v.merk} Model:${v.handelsbenaming} Jaar:${_jaar} APK:${apkVerval} Recall:${recallActief} Import:${import_auto}` });
-    log(`🔍 RDW Koopcheck: ${v.merk} ${v.handelsbenaming} — APK tot ${apkVerval}`, 'ok');
+    scanLogAdd({ type:'rdw', msg:`Kent:${kent} Merk:${f.merk||'?'} Model:${f.model||'?'} Jaar:${_jaar||'?'} APK:${apkVerval} Teller:${tellerOordeel||'?'} Recall:${recallActief} Import:${import_auto} Weggelaten:${val.weggelaten.length}` });
+    log(`🔍 RDW Koopcheck: ${naam} — APK tot ${apkVerval}${tellerOordeel?' · teller '+tellerOordeel:''}${recallActief?' · ⚠️ RECALL':''}`, 'ok');
 
   } catch(e) {
-    st.textContent = '❌ RDW niet bereikbaar: ' + e.message;
+    st.textContent = '⚠️ RDW tijdelijk niet bereikbaar — controleer je internet en probeer opnieuw';
   }
   btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════════════
+// RDW-DATAVALIDATIE — rotzooi/onzin-data herkennen en weglaten
+// RDW open data bevat handmatig ingevoerde velden van wisselende
+// kwaliteit (RDW erkent dit zelf). We tonen liever niets + reden,
+// dan een merk "XKJ4" of een bouwjaar "0000".
+// ══════════════════════════════════════════════════════
+
+// Geldige merknaam/handelsbenaming? Weert random letterbrij en codes.
+function _rdwPlausibleName(s){
+  const t=String(s||'').trim();
+  if(!t) return false;
+  if(t.length<2) return false;                       // te kort
+  const letters=(t.match(/[A-Za-z]/g)||[]).length;
+  if(letters<1) return false;                        // moet minstens 1 letter hebben
+  // Modelnamen als "320i","A3","Q5" zijn legitiem (cijfer-zwaar), dus we eisen
+  // niet dat het overwegend letters is. Wel weren we tekenrommel.
+  const symbols=(t.match(/[^A-Za-z0-9\s.\-]/g)||[]).length;
+  const nonSpace=t.replace(/\s/g,'').length;
+  if(nonSpace>0 && symbols/nonSpace > 0.3) return false; // >30% rare tekens = rommel
+  // Klinker aanwezig? Langere echte namen (>4) hebben er vrijwel altijd een.
+  // Korte tokens (BMW, MG, A3, CX-5) zijn legitiem en mogen zonder klinker door —
+  // modelnamen bevatten juist vaak cijfers, dus die laten we staan.
+  if(t.length>4 && !/[aeiouyAEIOUY]/.test(t) && !/[0-9]/.test(t)) return false;
+  // Vijf+ identieke tekens op rij = toetsenbordrommel
+  if(/(.)\1{4,}/.test(t)) return false;
+  return true;
+}
+
+// Geldig bouwjaar? Tussen 1900 en volgend jaar.
+function _rdwPlausibleYear(y){
+  const n=parseInt(String(y||'').replace(/\D/g,'').slice(0,4),10);
+  if(isNaN(n)) return false;
+  return n>=1900 && n<=(new Date().getFullYear()+1);
+}
+
+// Geldige RDW-datum (YYYYMMDD)? Plausibele jaar/maand/dag.
+function _rdwPlausibleDate(s){
+  const c=String(s||'').replace(/\D/g,'').slice(0,8);
+  if(c.length<8) return false;
+  const y=+c.slice(0,4), m=+c.slice(4,6), d=+c.slice(6,8);
+  return y>=1900 && y<=(new Date().getFullYear()+1) && m>=1 && m<=12 && d>=1 && d<=31;
+}
+
+// Centrale RDW-validatie. Geeft schone velden + een lijst van weggelaten
+// velden met reden, zodat de UI kan tonen WAAROM iets ontbreekt.
+function validateRdwVehicle(v){
+  const out={ velden:{}, weggelaten:[] };
+  const drop=(label,reden)=>out.weggelaten.push({label,reden});
+
+  // Merk
+  if(_rdwPlausibleName(v.merk)) out.velden.merk=String(v.merk).trim();
+  else if(v.merk) drop('Merk',`RDW gaf "${String(v.merk).trim()}" — geen geldige merknaam`);
+
+  // Handelsbenaming (model)
+  if(_rdwPlausibleName(v.handelsbenaming)) out.velden.model=String(v.handelsbenaming).trim();
+  else if(v.handelsbenaming) drop('Model',`RDW gaf "${String(v.handelsbenaming).trim()}" — onbetrouwbare modelnaam`);
+
+  // Bouwjaar uit datum_eerste_toelating
+  const jaar=String(v.datum_eerste_toelating||'').replace(/\D/g,'').slice(0,4);
+  if(_rdwPlausibleYear(jaar)) out.velden.year=jaar;
+  else if(v.datum_eerste_toelating) drop('Bouwjaar','ongeldige datum in RDW-registratie');
+
+  // Brandstof
+  const bf=String(v.brandstof_omschrijving||'').trim();
+  if(bf && /[A-Za-z]{3,}/.test(bf)) out.velden.brandstof=bf.toLowerCase();
+  else if(bf) drop('Brandstof','onbruikbare brandstofomschrijving');
+
+  // Kleur
+  if(_rdwPlausibleName(v.eerste_kleur)) out.velden.kleur=String(v.eerste_kleur).trim();
+
+  // Cilinderinhoud (numeriek, plausibel 50–10000 cc)
+  const cc=parseInt(v.cilinderinhoud,10);
+  if(!isNaN(cc)&&cc>=50&&cc<=10000) out.velden.cilinderinhoud=cc;
+  else if(v.cilinderinhoud) drop('Cilinderinhoud','onwaarschijnlijke waarde');
+
+  // APK-vervaldatum
+  if(_rdwPlausibleDate(v.vervaldatum_apk)) out.velden.vervaldatum_apk=v.vervaldatum_apk;
+  else if(v.vervaldatum_apk) drop('APK-datum','ongeldige datum in RDW-registratie');
+
+  // Tellerstandoordeel — alleen de erkende RDW-waarden toelaten
+  const to=String(v.tellerstandoordeel||'').trim();
+  if(to){
+    if(/logisch/i.test(to)) out.velden.tellerstandoordeel=to;  // "Logisch"/"Onlogisch"
+    else drop('Tellerstandoordeel','onbekende RDW-status');
+  }
+
+  return out;
 }
 
 function formatRdwDate(s){
@@ -8487,7 +9026,7 @@ DETAILS: [max 150 woorden]`;
 }
 
 // ── AI prijsschatting prompt ──────────────────────────────
-function buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten){
+function buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten, tellerOordeel, recallActief){
   return `Jij bent een Nederlandse automarkt expert. Geef een marktwaardeschatting.
 
 Voertuig: ${merk} ${model} bouwjaar ${jaar}
@@ -8496,13 +9035,15 @@ Kleur: ${kleur||'onbekend'}
 APK nog geldig: ${apkMaanden !== null ? apkMaanden+' maanden' : 'onbekend'}
 Serviceboekje: ${boekje}
 Actieve DTC foutcodes: ${dtcCount}
+RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerOordeel&&/onlogisch/i.test(tellerOordeel)?' (LET OP: mogelijk teruggedraaide of onlogische km-historie — sterk waardedrukkend en risicovol)':''}
+Openstaande terugroepactie (recall): ${recallActief ? 'JA — nog niet afgehandeld' : 'nee'}
 Geschatte achterstallig onderhoud: €${onderhoudKosten||0}
 ${vraagprijs ? 'Vraagprijs dealer: €'+parseInt(vraagprijs).toLocaleString('nl') : ''}
 
 Geef:
 1. Geschatte marktwaarde range op Marktplaats/AutoTrack NL
 2. Of de vraagprijs reëel is (als opgegeven)
-3. Onderhandelruimte advies in euro's
+3. Onderhandelruimte advies in euro's${tellerOordeel&&/onlogisch/i.test(tellerOordeel)?'\n4. Expliciete waarschuwing over het onlogische tellerstandoordeel':''}
 
 Antwoord in maximaal 150 woorden, Nederlands. Formaat:
 MARKTWAARDE: €[min] – €[max]
@@ -8561,8 +9102,10 @@ async function runKoopcheck(){
   const merk  = vehicleInfo.merk  || (_koopRdwData ? _koopRdwData.merk : '');
   const model = vehicleInfo.model || (_koopRdwData ? _koopRdwData.handelsbenaming : '');
   const jaar  = vehicleInfo.year  || (_koopRdwData ? (_koopRdwData.datum_eerste_toelating||'').slice(0,4) : '');
-  const kleur = _koopRdwData ? _koopRdwData.eerste_kleur : '';
+  const kleur = _koopRdwData ? (_koopRdwData._val?.velden?.kleur||'') : '';
   const apkMaanden = _koopRdwData ? maandenTotAPK(_koopRdwData.vervaldatum_apk) : null;
+  const tellerOordeel = _koopRdwData ? _koopRdwData._teller : null;
+  const recallActief = _koopRdwData ? !!_koopRdwData._recall : false;
 
   if(!merk){ res.innerHTML='<div style="color:var(--rd);font-size:11px;padding:8px">❌ Voer eerst het kenteken in en klik RDW opzoeken.</div>'; return; }
   if(!km){   res.innerHTML='<div style="color:var(--rd);font-size:11px;padding:8px">❌ Voer de kilometerstand in.</div>'; return; }
@@ -8614,7 +9157,7 @@ async function runKoopcheck(){
 
   // ── Prijsschatting AI call ──
   try {
-    const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten);
+    const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten, tellerOordeel, recallActief);
     const text2 = await apiFetch(prompt2, 600) || 'Geen reactie';
     document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
 
