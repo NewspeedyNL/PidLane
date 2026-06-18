@@ -1,18 +1,28 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-18e (CET)  [opvolger van 2026-06-18d]
-     PDF-VENSTER BLIJFT NIET HANGEN + BACKKNOP SLUIT APP NIET:
-       • Bij Delen/Downloaden van een PDF wordt het "PDF klaar"-venster nu
-         METEEN gesloten (vóór het Android-deelmenu opent), i.p.v. erna te
-         wachten op de share-promise. Daardoor blijft de donkere overlay niet
-         meer staan als je vanuit "Opslaan in Bestanden" terugkeert.
-       • Nieuwe Android-backknop-handler (closeTopOverlay): de hardware-
-         backknop sluit nu eerst het bovenste open venster (PDF, scenario,
-         BT-log, rit-focus, neon-dashboard, kebab, etc.) i.p.v. de hele app.
-         Rit Analyse wordt geminimaliseerd i.p.v. gestopt. Pas als er niets
-         open staat, gaat de app naar de achtergrond (minimizeApp), niet dicht.
-         NB: vereist de @capacitor/app-plugin in de APK-build; ontbreekt die,
-         dan bindt de handler niet (onschadelijk) en is een rebuild nodig.
+     PidLane — build aangepast: 2026-06-18g (CET)  [opvolger van 2026-06-18f]
+     RAPPORTEN BRANDSTOF-BEWUST (statische test per brandstoftype):
+       • Statische trace gedaan voor benzine/diesel/elektrisch/hybride/PHEV.
+         Eén gat gevonden en gedicht: inlaatlucht-temp (010F) bleef op een EV
+         staan — nu ook in EV_AFWEZIGE_PIDS (combustion-intake sensor).
+       • Diagnose-rapport: bij elektrisch krijgt de AI nu de expliciete
+         instructie GEEN brandstof/trim/lambda/MAF/EGR/uitlaat te noemen en
+         zich op accu/laden/elektrische aandrijving te richten. Diesel-pad
+         wijst op DPF/AdBlue/NOx.
+       • Brandstofefficiëntie-analyse: volledig geblokkeerd op een EV met nette
+         melding (geen AI-call die over liters/verbruik zou praten).
+       • AI Monteur: context bevat nu een AANDRIJVING-regel (elektrisch =
+         geen verbrandingsonderdelen; diesel = DPF/SCR/NOx).
+       • Rit-eindrapport: EV → praat over kWh/energie i.p.v. brandstof/liters.
+       • Hybride (HEV/PHEV) behoudt bewust trim/lambda (heeft verbrandingsmotor).
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18f):
+     TOKENBESPARING (6 rit-fase-AI-calls → lokale regelduiding) + scenario
+     PID-recheck na voertuig/brandstof-wijziging + elektrisch = trim/lambda uit.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18e):
+     PDF-venster sluit direct (blijft niet hangen) + Android-backknop sluit
+     eerst open vensters i.p.v. de hele app.
      ─────────────────────────────────────────────────────────
      Eerdere build (2026-06-18d):
      RIT ANALYSE MINIMALISEERBAAR: minimaliseren laat de analyse doorlopen;
@@ -1940,11 +1950,26 @@ const PIDS = [
 // We filteren ze ALLEEN weg als we zeker weten dat het voertuig ze niet heeft;
 // bij onbekend brandstoftype verbergen we niets.
 const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016D','016E','017C','017D','017E','0187','0188','0189','018A','018E','018F','0190','01A4']);
+// Verbrandingsmotor-specifieke sensoren: bestaan NIET op een volledig
+// elektrisch voertuig (geen brandstoftrim, lambda/O2, MAF, brandstofdruk/-peil,
+// EGR, inlaatdruk, ontstekingstiming). Bij 'elektrisch' filteren we die weg.
+const EV_AFWEZIGE_PIDS=new Set([
+  '0106','0107','0108','0109', // brandstoftrim kort/lang B1/B2
+  '0114','0115','0116','0117','0118','0119','011A','011B', // O2/lambda sensoren
+  '0124','0125','0126','0127','0128','0129','012A','012B', // breedband lambda
+  '0134','0135','0136','0137','0138','0139','013A','013B', // breedband lambda stroom
+  '010A','010B','010E','010F','0110','0111','012F','015E','012C', // brandstofdruk, inlaatdruk, timing, inlaatlucht-temp, MAF, gasklep, brandstofpeil, verbruik, EGR
+  '0151' // brandstoftype (n.v.t.)
+]);
 function vehicleFuelType(){
   const b=((typeof vehicleInfo!=='undefined'&&vehicleInfo&&vehicleInfo.brandstof)||'').toString().toLowerCase();
   if(b){
+    // Hybride heeft een verbrandingsmotor mét trim/lambda → niet als 'puur
+    // elektrisch' behandelen. Alleen volledig elektrisch zet die sensoren uit.
+    const hybride=/hybr|phev|hev/.test(b);
+    if(!hybride && /elektr|electric|\bev\b|bev/.test(b)) return 'elektrisch';
     if(/diesel|gasolie/.test(b)) return 'diesel';
-    if(/benzine|petrol|gasoline|lpg|cng|alcohol|ethanol|waterstof|elektr/.test(b)) return 'benzine';
+    if(/benzine|petrol|gasoline|lpg|cng|alcohol|ethanol|waterstof|hybr|phev|hev/.test(b)) return 'benzine';
   }
   // Fallback wanneer RDW-data ontbreekt: live OBD brandstoftype (PID 0151).
   // 4=diesel, 11=bifuel-diesel; 1-3/5-10 = niet-diesel (geen DPF/SCR).
@@ -1987,7 +2012,9 @@ function _powertrainPhantom(pid){
 }
 // true = sensor past bij dit voertuig (of brandstoftype onbekend → toelaten)
 function vehiclePlausiblePid(pid){
-  if(vehicleFuelType()==='benzine' && DIESEL_SCR_PIDS.has(pid)) return false;
+  const ft=vehicleFuelType();
+  if(ft==='benzine' && DIESEL_SCR_PIDS.has(pid)) return false;
+  if(ft==='elektrisch' && EV_AFWEZIGE_PIDS.has(pid)) return false; // EV heeft geen trim/lambda/MAF/etc.
   if(_powertrainPhantom(pid)) return false;
   return true;
 }
@@ -3588,7 +3615,16 @@ async function runCheckAI(items){
       (_scenario.dtcs.length?`; handmatige DTC's: ${_scenario.dtcs.join(', ')}`:'')+
       `. Beoordeel ze normaal, maar weet dat dit een simulatie is.`;
   }
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}${scenNote}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  // Brandstof-specifieke instructie zodat het rapport geen onzin vertelt
+  // (bv. brandstoftrim of verbruik op een elektrische auto).
+  const ft=vehicleFuelType();
+  let fuelNote='';
+  if(ft==='elektrisch'){
+    fuelNote=`\nDit is een VOLLEDIG ELEKTRISCH voertuig: er is GEEN verbrandingsmotor, GEEN brandstof, GEEN brandstoftrim, lambda/O2, MAF, EGR of uitlaatsysteem. Noem die zaken niet en geef geen brandstof- of verbruiksadvies in liters. Richt je op accu, laden, elektrische aandrijving en algemene staat.`;
+  } else if(ft==='diesel'){
+    fuelNote=`\nDit is een DIESEL: brandstoftrim-logica wijkt af; let op roetfilter (DPF), AdBlue/SCR en NOx waar relevant.`;
+  }
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}${scenNote}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
 }
@@ -4116,6 +4152,17 @@ const FUEL_PIDS=[
   {pid:'015E',name:'Live brandstofverbruik',unit:'L/h',ok:null,desc:'Directe verbruiksmeting.'},
 ];
 async function runFuelAnalysis(){
+  // Elektrisch voertuig heeft geen brandstof — brandstofefficiëntie-analyse
+  // is niet van toepassing. Toon een passende melding i.p.v. een AI-call die
+  // over benzineverbruik zou praten.
+  if(vehicleFuelType()==='elektrisch'){
+    document.getElementById('fuelResults').innerHTML=
+      `<div style="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.35);border-radius:9px;padding:14px;font-size:12px;color:var(--tx);line-height:1.6">
+        ⚡ <b>Elektrisch voertuig</b> — brandstofefficiëntie-analyse is niet van toepassing.<br>
+        <span style="font-size:11px;color:var(--tx3)">Een EV verbruikt geen brandstof, dus er is geen brandstoftrim, lambda of verbruik in liters te analyseren. Energieverbruik (kWh/100km) en accugezondheid vereisen merk-specifieke data die nog niet in PidLane zit.</span>
+      </div>`;
+    return;
+  }
   await ensurePIDsActive('brandstof');
   const btn=document.getElementById('btnFuel'); btn.disabled=true;
   document.getElementById('fuelResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Brandstofdata analyseren...</div>';
@@ -4843,11 +4890,25 @@ const SCENARIO_PID_SUGGEST=['010C','010D','0105','015C','0104','0142','0106','01
 
 function scenarioRenderBody(){
   const body=document.getElementById('scenarioBody'); if(!body) return;
+  // Welk brandstoftype is nu in het scenario gekozen? (Bepaalt of trim/lambda
+  // relevant zijn.) Elektrisch → verbrandingssensoren tonen we als 'n.v.t.'.
+  const scenFuel=((_scenario.vehicle&&_scenario.vehicle.brandstof)||'').toLowerCase();
+  const isEV=!/hybr|phev|hev/.test(scenFuel) && /elektr|electric|\bev\b|bev/.test(scenFuel);
   // ── PIDs ──
   let pidRows=SCENARIO_PID_SUGGEST.map(pid=>{
     const d=getPidDef(pid); if(!d) return '';
     const cur=_scenario.pids[pid];
     const ph=`${d.min}–${d.max}`;
+    const nvt=isEV && EV_AFWEZIGE_PIDS.has(pid);  // niet van toepassing op EV
+    if(nvt){
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;opacity:.45">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name||pid}</div>
+          <div style="font-size:9px;color:var(--tx3)">${pid} · n.v.t. bij elektrisch</div>
+        </div>
+        <span style="font-size:8px;font-weight:800;background:#475569;color:#fff;padding:2px 5px;border-radius:4px">UIT</span>
+      </div>`;
+    }
     return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name||pid}</div>
@@ -4901,6 +4962,8 @@ function scenarioSetDtcs(v){
 function scenarioSetVeh(key,v){
   if(!_scenario.vehicle) _scenario.vehicle={};
   _scenario.vehicle[key]=String(v).trim();
+  // Brandstof bepaalt of trim/lambda relevant zijn → venster live bijwerken
+  if(key==='brandstof'){ try{ scenarioRenderBody(); }catch(e){} }
 }
 function scenarioToggle(on){ _scenario.enabled=!!on; }
 function scenarioReset(){
@@ -4914,12 +4977,18 @@ function scenarioApply(){
   _scenario.enabled=true;
   const cb=document.getElementById('scenEnabled'); if(cb) cb.checked=true;
 
-  // Voertuig toepassen (alleen als iets ingevuld)
+  // Voertuig toepassen (alleen als iets ingevuld). Onthoud of brandstof/merk
+  // wijzigde, want dan moet de PID-check opnieuw (andere sensoren passen).
   const v=_scenario.vehicle;
+  let voertuigGewijzigd=false;
   if(v && (v.merk||v.model||v.year||v.brandstof)){
+    const oudeBrandstof=(vehicleInfo.brandstof||'').toLowerCase();
+    const nieuweBrandstof=(v.brandstof||'').toLowerCase();
+    voertuigGewijzigd = (nieuweBrandstof && nieuweBrandstof!==oudeBrandstof) ||
+                        (v.merk && v.merk!==vehicleInfo.merk);
     vehicleInfo={
       merk:v.merk||'Onbekend', model:v.model||'', year:v.year||'',
-      vin:vehicleInfo.vin||'', brandstof:(v.brandstof||'').toLowerCase(),
+      vin:vehicleInfo.vin||'', brandstof:nieuweBrandstof,
       motor:vehicleInfo.motor||'', _manueel:true
     };
     try{ updateVehicleCard(vehicleInfo); }catch(e){}
@@ -4929,13 +4998,45 @@ function scenarioApply(){
   // DTC's direct toepassen + lijst verversen
   if(_scenario.dtcs.length){ dtcCodes=[..._scenario.dtcs]; try{ renderDTC(); }catch(e){} }
 
+  // Na een voertuig-/brandstofwijziging: PID-check opnieuw draaien zodat de
+  // sensorlijst klopt met het nieuwe brandstoftype (elektrisch = geen trim/
+  // lambda/MAF; diesel/benzine = eigen filters).
+  if(voertuigGewijzigd){ scenarioRecheckPids(); }
+
   // PID-waarden worden automatisch opgepikt door demo() bij de volgende poll.
   try{ renderGauges(); }catch(e){}
   const nPid=Object.keys(_scenario.pids).length;
-  log(`🧪 Scenario toegepast — ${nPid} PID(s), ${_scenario.dtcs.length} DTC(s)${v&&v.merk?', voertuig '+v.merk:''} (MANUEEL)`,'warn');
+  log(`🧪 Scenario toegepast — ${nPid} PID(s), ${_scenario.dtcs.length} DTC(s)${v&&v.merk?', voertuig '+v.merk:''}${voertuigGewijzigd?' (PID-check opnieuw gedaan)':''} (MANUEEL)`,'warn');
   try{ updateScenarioBadge(); }catch(e){}
   document.getElementById('scenarioModal').style.display='none';
   showToast?.(`Scenario actief — ${nPid} PID(s) + ${_scenario.dtcs.length} DTC(s) gelabeld als MANUEEL`,3500);
+}
+
+// Herhaal de PID-check na een brandstof-/voertuigwijziging in het scenario.
+// Bouwt de sensorlijst opnieuw op (past het brandstoffilter toe) en verwijdert
+// actieve sensoren die niet meer bij het nieuwe brandstoftype passen.
+function scenarioRecheckPids(){
+  const ft=vehicleFuelType();
+  // 1) Sensorlijst opnieuw opbouwen met het nieuwe brandstoffilter
+  try{ buildDiscoveredPIDList(); }catch(e){}
+  // 2) Actieve PID's die nu niet meer plausibel zijn, eruit halen
+  let verwijderd=0;
+  [...activePIDs].forEach(pid=>{
+    if(!vehiclePlausiblePid(pid)){
+      activePIDs.delete(pid); manualPIDs.delete(pid);
+      delete _scenario.pids[pid];   // ook een handmatige waarde vervalt
+      verwijderd++;
+    }
+  });
+  // 3) Bij elektrisch: meld expliciet dat trim/lambda uit staan
+  if(ft==='elektrisch'){
+    log(`⚡ Elektrisch voertuig — brandstoftrim, lambda/O2, MAF en EGR uitgeschakeld (${verwijderd} sensor(en) verwijderd)`,'info');
+  } else if(verwijderd){
+    log(`🔧 PID-check opnieuw: ${verwijderd} sensor(en) verwijderd die niet bij ${ft} passen`,'info');
+  } else {
+    log(`🔧 PID-check opnieuw gedaan voor ${ft}`,'info');
+  }
+  try{ buildPIDList(); renderGauges(); rebuildGSel?.(); }catch(e){}
 }
 
 // Toon een blijvende MANUEEL-badge in de UI zolang het scenario actief is
@@ -7466,6 +7567,10 @@ function buildAutoExpertContext(){
   const lines=[];
   const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
   lines.push(`VOERTUIG: ${merkModel||'onbekend'}${v.brandstof?' ('+v.brandstof+')':''}${v.vin?' VIN '+v.vin:''}`);
+  // Brandstof-context zodat de monteur geen verbrandingsonderdelen aanhaalt bij een EV
+  const _ft=vehicleFuelType();
+  if(_ft==='elektrisch') lines.push('AANDRIJVING: volledig elektrisch — geen verbrandingsmotor, brandstof, trim, lambda of uitlaat. Praat niet over brandstofzaken.');
+  else if(_ft==='diesel') lines.push('AANDRIJVING: diesel — let op DPF/roetfilter, AdBlue/SCR en NOx waar relevant.');
   // Live PID-waarden
   const pidLines=[...activePIDs].map(pid=>{
     const d=getPidDef(pid);
@@ -8473,22 +8578,40 @@ async function analyseRitFase(idx){
           ${s.name}: ${fv(s.avg)} ${s.unit} ${s.trend>5?'↑':s.trend<-5?'↓':'→'}
         </div>`).join('')}
     </div>
-    <div style="font-size:10px;color:rgba(255,255,255,.3);font-style:italic" id="rit-ai-${idx}">AI analyseert...</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.45)" id="rit-ai-${idx}"></div>
   `;
   document.getElementById('ritPhaseResults').prepend(card);
 
-  // AI analyse voor deze fase
-  const v=getVehicle();
-  const statLines=Object.values(stats).map(s=>
-    `• ${s.name}: gem=${fv(s.avg)} ${s.unit}, min=${fv(s.min)}, max=${fv(s.max)}, trend=${s.trend>5?'↑ stijgend':s.trend<-5?'↓ dalend':'stabiel'}`
-  ).join('\n');
+  // ── LOKALE DUIDING (geen AI) ──
+  // Per-fase commentaar wordt nu lokaal berekend uit de statistieken i.p.v.
+  // een AI-call per fase. Bespaart ~6 AI-calls per rit; de AI duidt straks
+  // alleen nog het volledige eindrapport. De afwijkingen voeden dat rapport.
+  const duiding=_faseLokaleDuiding(stats, fase);
+  const el=document.getElementById('rit-ai-'+idx);
+  if(el) el.textContent=duiding;
+  ritLogs[ritLogs.length-1].aiAnalyse=duiding;
+  ritLogs[ritLogs.length-1].lokaal=true;
+}
 
-  try{
-    const text=await apiFetch(`Rit fase analyse — ${fase.naam} (${fase.duur}s)\nVoertuig: ${v.merk||'?'} ${v.year||''}\n\nData:\n${statLines}\n\nGeef in 2-3 zinnen: wat valt op, is er een probleem, wat betekent dit voor de motor?`,400);
-    const el=document.getElementById('rit-ai-'+idx);
-    if(el) el.textContent=text.replace(/\n/g,' ').slice(0,200);
-    ritLogs[ritLogs.length-1].aiAnalyse=text;
-  }catch(e){}
+// Regelgebaseerde fase-duiding zonder AI. Gebruikt de drempels uit de
+// PID-definitie (dH/dL/wH/wL) plus trend; produceert 1-3 korte zinnen NL.
+function _faseLokaleDuiding(stats, fase){
+  const afw=Object.values(stats).filter(s=>!s.ok);
+  const stijgend=Object.values(stats).filter(s=>s.trend>15);
+  if(!Object.keys(stats).length) return 'Geen meetdata in deze fase.';
+  if(!afw.length){
+    let t='Alle gemeten waarden binnen normaal bereik.';
+    if(stijgend.length) t+=` ${stijgend.map(s=>s.name).join(', ')} liep op tijdens de fase — bij een opwarmfase is dat normaal.`;
+    return t;
+  }
+  // Beschrijf de afwijkingen kort en concreet
+  const delen=afw.map(s=>{
+    const def=getPidDef?.(Object.keys(stats).find(p=>stats[p]===s))||null;
+    const richting=(def&&def.dH&&s.avg>=def.dH)||(def&&def.wH&&s.avg>=def.wH)?'te hoog'
+                  :(def&&def.dL&&s.avg<=def.dL)||(def&&def.wL&&s.avg<=def.wL)?'te laag':'afwijkend';
+    return `${s.name} ${richting} (${fv(s.avg)} ${s.unit})`;
+  });
+  return `Afwijking in deze fase: ${delen.join('; ')}. Wordt meegenomen in de eindbeoordeling.`;
 }
 
 function isPIDOkVal(pid,val){
@@ -8609,8 +8732,12 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
   }[focus];
 
   try{
+    const _ftr=vehicleFuelType();
+    const ritFuelNote = _ftr==='elektrisch'
+      ? '\nLET OP: dit is een ELEKTRISCH voertuig — praat over energieverbruik (kWh) en rij-efficiëntie, NIET over brandstof, brandstoftrim, toerental-zuinigheid of liters.'
+      : _ftr==='diesel' ? '\nDit is een diesel — let op DPF/roetfilter en AdBlue/SCR waar relevant.' : '';
     const totalAnalysis=await apiFetch(
-      `${focusPrompt}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
+      `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
       1200
     );
     // Rapport beschikbaar maken voor PDF-export
