@@ -1,6 +1,79 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-18i (CET)  [opvolger van 2026-06-18h]
+     PidLane — build aangepast: 2026-06-19a (CET)  [opvolger van 2026-06-18l]
+     ── 2026-06-19a ──
+       • NIEUWE LOOK + TELEFOON-FIRST (fundering): viewport start nu op
+         schaal 1 (niet meer uitgezoomd); vernieuwd kleur-/vorm-systeem
+         (premium, grotere radius, zachtere diepte, licht+donker). Het vaste
+         3-koloms desktop-grid kantelt op ≤760px naar één gestapelde kolom
+         met het werkscherm bovenaan — niets meer platgedrukt. Panes blijven
+         gemount, dus polling/rit-analyse/AI lopen door (niets cancelt).
+       • AI-STATUSBALK: globale "AI analyseert… (Xs)"-balk over élk scherm
+         zolang een call loopt; meldt expliciet dat het proces doorloopt
+         terwijl je live-data of logs bekijkt. Niets breekt de call af.
+       • AI-VERDICT: stoplicht-oordeel (🟢/🟡/🔴) bovenaan elke AI-uitslag.
+       (Volgende laag: echte on-top lades voor PID-menu + logs in live,
+        home-als-root drill-in routing, en View/Share/Download rapport-sheet.)
+       • UITLOGGEN (admin): inlog-vinkje 'Extra logfunctie' vervallen. Een
+         admin krijgt bij uitloggen nu ALTIJD eerst de vraag of de volledige
+         log (BT + app + scan) bewaard moet worden. OK = opslaan/delen en
+         daarna uitloggen; Annuleren = direct uitloggen zonder opslaan.
+         logout() is async geworden zodat opslaan/delen klaar is vóór de
+         verbinding wordt verbroken en de sessie gewist.
+       • HUD verborgen: 🖥 HUD-knop op het grafiekscherm op display:none.
+       • BOUWJAAR: VIN-jaardecode gebruikt nu positie-7 (letter=2010+, cijfer=
+         1980-2009) om de 30-jaars cyclus te ontwarren + toekomst-guard, zodat
+         een 2013-auto niet meer als 1983 leest. RDW blijft leidend.
+       • FANTOOM MISFIRE: cilinderspecifieke misfire/injector-codes (P030X/
+         P020X) voor een cilindernummer hoger dan het werkelijke aantal
+         cilinders worden als onwaarschijnlijk gemarkeerd (dtcInfo) en in
+         AI-prompts geannoteerd (formatDtcCodes) i.p.v. als echte storing
+         uitgelegd. Cilinderaantal uit motor-string (NHTSA) of RDW.
+       • SESSIE OVERLEEFT WEBVIEW-KILL: bij scherm-uit kan Android het proces
+         afschieten waarna de app kaal herlaadt. Naast login+autoconnect worden
+         nu ook voertuig-identiteit, ontdekte PIDs en DTC-codes bewaard
+         (pl_appstate, opgeslagen bij visibilitychange/pagehide, hersteld bij
+         herladen, verloopt na 6u, gewist bij uitloggen). BT-log wordt
+         gespiegeld naar localStorage zodat hij de proces-kill overleeft
+         (sessionStorage niet). Tip voor op het toestel: zet batterij-
+         optimalisatie uit voor de app om de kill sowieso te beperken.
+     ─────────────────────────────────────────────────────────
+     ALLE MODES ACTIEF (geen "Binnenkort" meer):
+       • 💰 Verkoopcheck: zelfde basis als Koopcheck, maar vanuit verkoper —
+         particuliere prijs, inruilwaarde én dealerbod. Rapport expliciet
+         deelbaar met koper (PDF-knop).
+       • 🚘 Lease Teruggave: km-check tegen contract (+ naheffing-berekening),
+         technische staat en innameprotocol-aandachtspunten (lak, ruiten,
+         banden, accessoires) met kostenrisico. Eigen contractvelden.
+       • 📋 Occasion Rapport: nette, deelbare variant van de Koopcheck.
+       • 🛠️ Onderhoud Plannen: fabrieksinterval + sensordata bepalen of werk
+         nu nodig is of kan wachten; zoekt gebreken; optioneel 2/10 min rit.
+         Benadrukt serviceboekje compleet houden.
+       • 🔋 EV/Hybride Check: stilstaande analyse + optionele 2 min rit, focus
+         op accu/HV-systeem, laden/regeneratie (eerlijk over OBD2-limieten).
+       • 🧳 Lange Rit: technische go/no-go + meeneem-checklist met landspecifieke
+         eisen (FR/DE/AT/CH/BE) — hesjes, driehoek, vignet, winteruitrusting.
+       • setKoopMode nu config-gedreven (KOOP_MODES) voor koop/inkoop/verkoop/
+         lease/occasion. Nieuwe dashboards netjes gekoppeld aan home + Android-back.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18j):
+     AIRCO CHECK + WINTERCHECK (herbruikbare module):
+       • ☀️ Airco Check: meet primair via OBD (compressor-RPM-dip,
+         motorbelasting-delta, inlaatluchttemp als referentie). Optioneel een
+         thermometer (oor-/kinderthermometer) als 2e bron — duidelijk als
+         minder betrouwbaar gelabeld. ΔT-oordeel: >15°C goed, 8–15°C zwak,
+         <8°C probleem. Eigen SVG-handleiding (thermometer in rooster).
+       • ❄️ Wintercheck: volgt koelvloeistof + olie tijdens opwarmen, meet
+         opwarmtijd tot ~90°C (thermostaat-oordeel: OK / traag / opent niet),
+         oliecirculatie en accuspanning koud. Stopt automatisch bij
+         bedrijfstemperatuur.
+       • Module is herbruikbaar: openClimateCheck('airco'|'winter'). Gekoppeld
+         aan de Zomer- en Winter-modes én als optionele stap (4b) in de
+         Koopcheck/Inkoop. Lokaal oordeel werkt ook zonder AI-sleutel; AI geeft
+         aanvullende uitleg + advies. Resultaat gaat naar het logboek.
+       • Android-back en 🏠 home sluiten ook het climate-overlay netjes.
+     ─────────────────────────────────────────────────────────
+     Eerdere build (2026-06-18i):
      NAVIGATIE + LAYOUT:
        • 🏠 Home-knop in de topbar opent het startscherm als navigatiehub
          (overlay over de analyses). Android-backknop gaat ook naar home als
@@ -391,7 +464,7 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=0.9, minimum-scale=0.4, maximum-scale=2.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover">
 <title>PidLane</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Capacitor — actief in APK, genegeerd in browser -->
@@ -399,33 +472,36 @@
 <!-- Config — credentials, login, Airtable, versie -->
 <script src="config.js"></script>
 <style>
-/* ══ LIGHT THEME (default) ══ */
+/* ══ LIGHT THEME (default) — nieuwe look ══ */
 :root {
-  --bg:#f0f2f5; --sur:#fff; --sur2:#f7f8fa;
-  --bd:#e2e6ed; --bd2:#c8d0db;
-  --tx:#1a202c; --tx2:#4a5568; --tx3:#8a97a8;
-  --bl:#1a6fff; --bl2:#155ee0; --bls:#e8f0ff;
-  --gn:#00a86b; --gns:#e6f7f1;
-  --or:#f77f00; --ors:#fff3e6;
-  --rd:#e53e3e; --rds:#fff0f0;
-  --yw:#d4a017; --yws:#fffbea;
-  --pu:#7c3aed; --pus:#f3f0ff;
-  --ss:0 1px 3px rgba(0,0,0,.06);
-  --sh:0 4px 16px rgba(0,0,0,.08);
-  --sl:0 8px 32px rgba(0,0,0,.12);
-  --r:8px; --f:'DM Sans',sans-serif; --m:'DM Mono',monospace;
+  --bg:#eef1f6; --sur:#ffffff; --sur2:#f4f6fb;
+  --bd:#e4e8f0; --bd2:#cfd6e3;
+  --tx:#10151f; --tx2:#475067; --tx3:#8b95a8;
+  --bl:#2563ff; --bl2:#1a4fe0; --bls:#e8efff;
+  --gn:#06b36b; --gns:#e3f8ef;
+  --or:#f2820c; --ors:#fff2e2;
+  --rd:#ef4444; --rds:#fdecec;
+  --yw:#d99e00; --yws:#fff8e6;
+  --pu:#7c4dff; --pus:#f1ecff;
+  --ss:0 1px 2px rgba(16,21,31,.05), 0 1px 3px rgba(16,21,31,.04);
+  --sh:0 6px 20px rgba(16,21,31,.08);
+  --sl:0 16px 48px rgba(16,21,31,.16);
+  --r:12px; --f:'DM Sans',sans-serif; --m:'DM Mono',monospace;
 }
-/* ══ DARK THEME ══ */
+/* ══ DARK THEME — nieuwe look ══ */
 html.dark {
-  --bg:#0d1117; --sur:#161b25; --sur2:#1e2535;
-  --bd:#2a3347; --bd2:#374057;
-  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#4a5568;
-  --bls:rgba(26,111,255,.18); --gns:rgba(0,168,107,.15);
-  --ors:rgba(247,127,0,.15); --rds:rgba(229,62,62,.15);
-  --pus:rgba(124,58,237,.15); --yws:rgba(212,160,23,.15);
-  --ss:0 1px 3px rgba(0,0,0,.3);
-  --sh:0 4px 16px rgba(0,0,0,.4);
-  --sl:0 8px 32px rgba(0,0,0,.5);
+  --bg:#0a0e17; --sur:#131926; --sur2:#1b2333;
+  --bd:#28324a; --bd2:#3a4663;
+  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#5b6783;
+  --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16);
+  --gn:#1fd189; --gns:rgba(31,209,137,.14);
+  --or:#ff9f2e; --ors:rgba(255,159,46,.14);
+  --rd:#ff5a5a; --rds:rgba(255,90,90,.14);
+  --yw:#ecb62a; --yws:rgba(236,182,42,.14);
+  --pu:#9a78ff; --pus:rgba(154,120,255,.16);
+  --ss:0 1px 3px rgba(0,0,0,.35);
+  --sh:0 6px 22px rgba(0,0,0,.45);
+  --sl:0 18px 52px rgba(0,0,0,.6);
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -577,6 +653,31 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .app.sl-col { grid-template-columns:32px 1fr 300px; }
 .app.sr-col { grid-template-columns:230px 1fr 32px; }
 .app.sl-col.sr-col { grid-template-columns:32px 1fr 32px; }
+
+/* ══ TELEFOON-FIRST (≤760px) ══
+   3-koloms desktop-grid → één gestapelde kolom met het werkscherm bovenaan.
+   Panes blijven gemount, dus polling/rit-analyse/AI lopen door (niets cancelt).
+   De zijpanelen schuiven eronder als volle-breedte secties i.p.v. vaste kolommen. */
+@media (max-width:760px){
+  .app{ display:flex; flex-direction:column; height:auto; min-height:calc(100vh - 46px); }
+  .app .cc{ order:1; width:100%; min-width:0; }
+  .app .sl{ order:2; }
+  .app .sr{ order:3; }
+  .app .sl, .app .sr{
+    width:100%; max-width:none; border-radius:0;
+    border-left:0; border-right:0; border-top:1px solid var(--bd);
+  }
+  .app.sl-col .sl, .app.sr-col .sr{ max-height:0; overflow:hidden; padding-top:0; padding-bottom:0; border-top:0; }
+  /* edge-handles werken niet in een gestapelde layout → verbergen */
+  .sl-toggle, .sr-toggle{ display:none; }
+  .sl-col-label{ display:flex; }
+  /* tabs horizontaal scrollbaar i.p.v. afkappen, ruime tap-targets */
+  .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ flex:0 0 auto; }
+  /* welkomstscherm: tegels onder elkaar zodat ze leesbaar blijven */
+  .welcome-choices{ grid-template-columns:1fr; }
+}
 /* Vergrendeld verbergen: smal randje met duidelijke "sensoren tonen"-knop */
 .app.sl-locked.sl-col { grid-template-columns:0px 1fr 300px; }
 .app.sl-locked.sl-col.sr-col { grid-template-columns:0px 1fr 32px; }
@@ -994,6 +1095,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         <div>
           <div class="api-lbl" style="margin-bottom:5px">👤 Gebruikersnaam</div>
           <input class="api-inp" id="loginUser" type="text" placeholder="Gebruikersnaam" autocomplete="username"
+            oninput="refreshAdminLogRow()"
             onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
         </div>
         <div>
@@ -1012,6 +1114,9 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
             <span>Ik geef toestemming dat PidLane de BT-logs en overige logs bundelt en bewaart voor analyse. Ik kan ze zelf exporteren via de knop "Exporteer alle logs".</span>
           </label>
         </div>
+        <!-- Inlog-vinkje 'Extra logfunctie' vervallen: een admin krijgt bij
+             uitloggen nu altijd de vraag of de volledige log bewaard moet
+             worden (zie logout()). -->
         <div id="loginErr" style="font-size:11px;color:var(--rd);min-height:16px;text-align:center"></div>
       </div>
     </div>
@@ -1066,6 +1171,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
             <div style="display:flex;gap:2px">
               <button onclick="copyBtLog(this)" style="font-size:9px;color:#00D4FF;background:none;border:none;cursor:pointer;padding:2px 6px;font-weight:600">📋 Kopieer</button>
               <button onclick="exportAllLogs()" style="font-size:9px;color:#00FF88;background:none;border:none;cursor:pointer;padding:2px 6px;font-weight:600">📦 Exporteer alle logs</button>
+              <button onclick="liveLogShare()" style="font-size:9px;color:#00D4FF;background:none;border:none;cursor:pointer;padding:2px 6px;font-weight:600">📤 Deel live-log</button>
               <button onclick="clearBtLog()" style="font-size:9px;color:var(--tx3);background:none;border:none;cursor:pointer;padding:2px 6px">wis</button>
             </div>
           </div>
@@ -1174,11 +1280,11 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div class="choice-out"><b>Je krijgt:</b> rijgedrag + technisch rapport.</div>
         </div>
 
-        <div class="choice-card soon" id="wc-onderhoud">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">🛠️</span></div>
+        <div class="choice-card" id="wc-onderhoud">
+          <div class="choice-head"><span class="choice-icon">🛠️</span><span class="choice-time">⏱ ±2 min</span></div>
           <div class="choice-title">Onderhoud Plannen</div>
-          <div class="choice-desc">Wanneer moet wat? Op basis van km en sensordata.</div>
+          <div class="choice-desc">Is onderhoud écht nodig? Schema + sensordata, optioneel met rit.</div>
+          <div class="choice-out"><b>Je krijgt:</b> wat nu nodig is, wat kan wachten, en gevonden gebreken.</div>
         </div>
 
         <div class="choice-card" id="wc-fuel">
@@ -1215,11 +1321,11 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div class="choice-out"><b>Je krijgt:</b> technisch rapport, keuze 2 of 10 min.</div>
         </div>
 
-        <div class="choice-card soon" id="wc-verkoop">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">💰</span></div>
-          <div class="choice-title">Mijn Auto Verkopen</div>
+        <div class="choice-card" id="wc-verkoop" style="border-color:#16a34a;background:linear-gradient(135deg,rgba(22,163,74,.08),var(--sur))">
+          <div class="choice-head"><span class="choice-icon">💰</span><span class="choice-time">⏱ ±3 min</span></div>
+          <div class="choice-title" style="color:#16a34a">Mijn Auto Verkopen</div>
           <div class="choice-desc">Weet wat hij waard is voordat de dealer dat doet.</div>
+          <div class="choice-out"><b>Je krijgt:</b> dealerbod, inruilwaarde en particuliere prijs — rapport deelbaar met koper.</div>
         </div>
 
         <div class="choice-card full" id="wc-inkoop" style="border-color:#0891b2;background:linear-gradient(135deg,rgba(8,145,178,.08),var(--sur))">
@@ -1229,11 +1335,11 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div class="choice-out"><b>Je krijgt:</b> opknapkosten-inschatting, marge-advies en veilige max-inkoopprijs.</div>
         </div>
 
-        <div class="choice-card soon" id="wc-occasierapport">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">📋</span></div>
+        <div class="choice-card" id="wc-occasierapport">
+          <div class="choice-head"><span class="choice-icon">📋</span><span class="choice-time">⏱ ±3 min</span></div>
           <div class="choice-title">Occasion Rapport</div>
           <div class="choice-desc">Professioneel inspectierapport, klaar om mee te geven.</div>
+          <div class="choice-out"><b>Je krijgt:</b> nette samenvatting van staat, historie en waarde — deelbaar.</div>
         </div>
 
       </div>
@@ -1243,39 +1349,39 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
     <div class="wm-panel" id="wmp-sit">
       <div class="welcome-choices" style="margin-top:4px">
 
-        <div class="choice-card soon full" id="wc-langerit">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">🧳</span></div>
+        <div class="choice-card full" id="wc-langerit">
+          <div class="choice-head"><span class="choice-icon">🧳</span><span class="choice-time">⏱ ±3 min</span></div>
           <div class="choice-title">Lange Rit Voorbereiden</div>
-          <div class="choice-desc">Is hij klaar voor 1.000 km? Check vóór vertrek.</div>
+          <div class="choice-desc">Is hij klaar voor 1.000 km? Techniek + meeneem-checklist vóór vertrek.</div>
+          <div class="choice-out"><b>Je krijgt:</b> technische go/no-go én een paklijst (veiligheid + buitenland).</div>
         </div>
 
-        <div class="choice-card soon" id="wc-winter">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">❄️</span></div>
+        <div class="choice-card" id="wc-winter">
+          <div class="choice-head"><span class="choice-icon">❄️</span><span class="choice-time">⏱ ±5 min</span></div>
           <div class="choice-title">Wintercheck</div>
-          <div class="choice-desc">Accu, koelvloeistof, remmen — klaar voor de kou.</div>
+          <div class="choice-desc">Thermostaat, opwarming, oliecirculatie en accu — klaar voor de kou.</div>
+          <div class="choice-out"><b>Je krijgt:</b> oordeel thermostaat + opwarmtijd + accuconditie.</div>
         </div>
 
-        <div class="choice-card soon" id="wc-zomer">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">☀️</span></div>
-          <div class="choice-title">Zomercheck / Airco</div>
-          <div class="choice-desc">Airco, koeling, banden — klaar voor de hitte.</div>
+        <div class="choice-card" id="wc-zomer">
+          <div class="choice-head"><span class="choice-icon">☀️</span><span class="choice-time">⏱ ±2 min</span></div>
+          <div class="choice-title">Airco Check</div>
+          <div class="choice-desc">Hoe goed koelt de airco? Sensormeting + optionele thermometer.</div>
+          <div class="choice-out"><b>Je krijgt:</b> compressorwerking, ΔT-koeling en oordeel.</div>
         </div>
 
-        <div class="choice-card soon" id="wc-ev">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">🔋</span></div>
+        <div class="choice-card" id="wc-ev">
+          <div class="choice-head"><span class="choice-icon">🔋</span><span class="choice-time">⏱ ±3 min</span></div>
           <div class="choice-title">EV / Hybride Check</div>
-          <div class="choice-desc">Batterijgezondheid en laadgedrag in beeld.</div>
+          <div class="choice-desc">Verkorte analyse stilstaand + 2 min, focus op accu en systemen.</div>
+          <div class="choice-out"><b>Je krijgt:</b> accuconditie, laadgedrag en oordeel elektrisch systeem.</div>
         </div>
 
-        <div class="choice-card soon" id="wc-lease">
-          <span class="soon-badge">Binnenkort</span>
-          <div class="choice-head"><span class="choice-icon">🚘</span></div>
-          <div class="choice-title">Lease Teruggave</div>
-          <div class="choice-desc">Wat staat je te wachten bij inlevering?</div>
+        <div class="choice-card" id="wc-lease" style="border-color:#ea580c;background:linear-gradient(135deg,rgba(234,88,12,.08),var(--sur))">
+          <div class="choice-head"><span class="choice-icon">🚘</span><span class="choice-time">⏱ ±3 min</span></div>
+          <div class="choice-title" style="color:#ea580c">Lease Teruggave</div>
+          <div class="choice-desc">Wat staat je te wachten bij inlevering? Voorkom naheffingen.</div>
+          <div class="choice-out"><b>Je krijgt:</b> km-check, schade-aandachtspunten en kostenrisico.</div>
         </div>
 
       </div>
@@ -1613,7 +1719,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <button class="trend-group-btn" onclick="selectTrendGroup('accu')">🔋 Accu</button>
           <button class="trend-group-btn" onclick="selectTrendGroup('temp')">🌡️ Temperatuur</button>
           <button class="trend-group-btn" onclick="selectTrendGroup('none')">✕ Wis</button>
-          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="margin-left:auto;background:linear-gradient(135deg,#0a1a1f,#0d2a30);color:#22d3ee;border-color:#22d3ee;font-weight:700">🖥 HUD</button>
+          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="display:none;margin-left:auto;background:linear-gradient(135deg,#0a1a1f,#0d2a30);color:#22d3ee;border-color:#22d3ee;font-weight:700">🖥 HUD</button>
           <button class="trend-group-btn" onclick="openRitAnalyse()" style="background:linear-gradient(135deg,#020c14,#001a2e);color:#00f5ff;border-color:#00f5ff55;font-weight:700">🚗 Rit Analyse</button>
         </div>
 
@@ -1723,6 +1829,31 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div style="font-size:9px;color:var(--tx3);margin-top:6px;line-height:1.4">Laat opknapkosten leeg om PidLane dit te laten schatten op basis van de technische staat.</div>
         </div>
 
+        <!-- Lease: contractgegevens (alleen lease-modus) -->
+        <div id="koopLeaseBlok" style="display:none;background:linear-gradient(135deg,rgba(234,88,12,.08),var(--sur));border:1px solid #ea580c;border-radius:var(--r);padding:11px;margin-bottom:10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#ea580c;margin-bottom:7px">Lease — contractgegevens</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <label style="font-size:10px;color:var(--tx2)">Toegestane km (contract)
+              <input id="leaseKmMax" class="api-inp" type="number" placeholder="bijv. 100000" style="margin-top:3px;font-size:11px">
+            </label>
+            <label style="font-size:10px;color:var(--tx2)">Naheffing per extra km (€)
+              <input id="leaseKmPrijs" class="api-inp" type="number" step="0.01" placeholder="bijv. 0.08" style="margin-top:3px;font-size:11px">
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <label style="font-size:10px;color:var(--tx2)">Type lease
+              <select id="leaseType" class="api-inp" style="margin-top:3px;font-size:11px">
+                <option value="private">Private lease</option>
+                <option value="zakelijk">Zakelijke lease</option>
+              </select>
+            </label>
+            <label style="font-size:10px;color:var(--tx2)">Inleverdatum
+              <input id="leaseDatum" class="api-inp" type="date" style="margin-top:3px;font-size:11px">
+            </label>
+          </div>
+          <div style="font-size:9px;color:var(--tx3);margin-top:6px;line-height:1.4">PidLane checkt de km-stand t.o.v. je contract en let op schade-aandachtspunten uit het innameprotocol (lak, ruiten, banden, interieur, accessoires).</div>
+        </div>
+
         <!-- Stap 1: Kenteken -->
         <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
           <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 1 — Kenteken & RDW data</div>
@@ -1798,6 +1929,13 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
             <option value="twijfel">🟡 Gouden rand net zichtbaar — twijfelachtig</option>
             <option value="slecht">🔴 Gouden gedeelte zichtbaar — vervangen</option>
           </select>
+        </div>
+
+        <!-- Stap 4b: Airco (optioneel) -->
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:10px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:7px">Stap 4b — Airco (optioneel)</div>
+          <div style="font-size:10px;color:var(--tx2);line-height:1.5;margin-bottom:8px">Test het koelvermogen van de airco. Draait als losse meting en het resultaat wordt in het logboek bewaard.</div>
+          <button onclick="openClimateCheck('airco')" style="width:100%;padding:10px;border-radius:8px;border:1px solid #22d3ee55;background:rgba(34,211,238,.08);color:#0891b2;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">❄️ Airco Check starten</button>
         </div>
 
         <!-- Stap 5: Proefrit -->
@@ -2044,6 +2182,15 @@ function doLogin(){
   log(`Ingelogd als ${user} (${account.role})`,'ok');
   log('Klik "Verbinden" of "Demo modus" om te starten.','info');
 
+  // Live-log (her)starten als admin tester-consent + extra logfunctie aan heeft
+  try{
+    if((account.role||'admin')==='admin'
+       && localStorage.getItem('pl_tester_consent')==='1'
+       && localStorage.getItem('pl_admin_logexport')==='1'){
+      liveLogStart({silent:true});
+    }
+  }catch(e){}
+
   // Test API key direct na inloggen
   if(window.anthropicKey?.startsWith('sk-ant-')){
     testApiKey();
@@ -2108,9 +2255,61 @@ async function testApiKey(){
   }
 }
 
-function logout(){
+// ── Extra logfunctie (admin-only) ──────────────────────
+// Vinkje op het inlogscherm: verschijnt alleen als een admin-account
+// is ingetypt. Staat het aan, dan wordt bij uitloggen automatisch de
+// volledige gebundelde log gedownload. Keuze onthouden in localStorage.
+function refreshAdminLogRow(){
+  const row=document.getElementById('loginAdminLogRow');
+  if(!row) return;
+  const typed=(document.getElementById('loginUser')?.value||'').trim().toLowerCase();
+  let isAdminName=false;
+  try{
+    for(const name in USERS){
+      if(name.toLowerCase()===typed && (USERS[name].role||'admin')==='admin'){ isAdminName=true; break; }
+    }
+  }catch(e){}
+  row.style.display = isAdminName ? 'block' : 'none';
+  const cb=document.getElementById('adminLogExport');
+  if(cb){ try{ cb.checked = localStorage.getItem('pl_admin_logexport')==='1'; }catch(e){} }
+}
+function saveAdminLogExport(){
+  const cb=document.getElementById('adminLogExport');
+  try{ localStorage.setItem('pl_admin_logexport', (cb&&cb.checked)?'1':'0'); }catch(e){}
+  if(cb&&cb.checked){ try{ maybeStartLiveLog(); }catch(e){} }
+}
+
+async function logout(){
+  // Admin logt uit → ALTIJD eerst vragen of de volledige log bewaard moet
+  // worden. Pas daarna uitloggen. De vraag wordt gesteld vóór het wissen van
+  // currentUser/voertuigdata zodat de geëxporteerde log compleet is.
+  // (Het oude inlog-vinkje 'Extra logfunctie' is hiermee vervallen.)
+  try{
+    if(currentUser?.role==='admin'){
+      const bewaar = window.confirm(
+        'Uitloggen als admin.\n\n'+
+        'Volledige log (Bluetooth + app + scan) opslaan vóór je uitlogt?\n\n'+
+        'OK = log opslaan/delen, daarna uitloggen\n'+
+        'Annuleren = direct uitloggen zonder opslaan'
+      );
+      if(bewaar){
+        log('🛠 Log wordt bewaard/gedeeld vóór uitloggen','info');
+        // Live-log actief? Stop netjes (flush) en deel dat bestand. Anders een
+        // eenmalige gebundelde export. Await zodat opslaan/delen klaar is vóór
+        // we de verbinding verbreken en de sessie wissen.
+        if(localStorage.getItem('pl_livelog')==='1' || _liveLog.active){
+          await liveLogStop({share:true});
+        } else {
+          exportAllLogs();
+        }
+      } else {
+        log('Uitgelogd zonder log op te slaan','info');
+      }
+    }
+  }catch(e){ try{ log('Log opslaan bij uitloggen mislukt: '+(e.message||e),'warn'); }catch(_){} }
   currentUser = null;
   try{ localStorage.removeItem('pl_session'); }catch(e){}
+  try{ localStorage.removeItem('pl_appstate'); }catch(e){} // sessiestaat niet meenemen naar volgende login
   window.anthropicKey = '';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
@@ -2523,12 +2722,14 @@ window.addEventListener('unhandledrejection', e=>{
   console.error('Unhandled promise rejection:', msg);
   try{ log('App fout: '+msg,'err'); }catch(le){}
   try{ btDiag('Crash: '+msg,'err'); }catch(be){}
+  try{ liveLogFlush(); }catch(fe){}
   e.preventDefault(); // Voorkom app crash
 });
 window.addEventListener('error', e=>{
   const msg = e.message || 'Onbekende fout';
   console.error('Global error:', msg);
   try{ log('Script fout: '+msg,'err'); }catch(le){}
+  try{ liveLogFlush(); }catch(fe){}
 });
 let dataStable=false, stabilityCount={};
 let slCollapsed=false, srCollapsed=false;
@@ -2778,6 +2979,7 @@ function log(msg,type=''){
   bar.appendChild(row); bar.scrollTop=bar.scrollHeight;
   while(bar.children.length>100) bar.removeChild(bar.firstChild);
   localLog.push({ts,type,msg});
+  try{ liveLogWrite(`[${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){}
   if(localLog.length>500) localLog.shift();
   if(type==='err')  logToSheets('error',  msg);
   if(type==='warn'&&msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier')) logToSheets('outlier',msg);
@@ -2979,7 +3181,7 @@ async function runDatalogAI(){
   const prompt=`Je bent expert automonteur. Analyseer deze 20-seconden datalog in het Nederlands.
 
 Voertuig: ${v.merk||'?'} ${v.year||''}
-DTC codes: ${dtcCodes.join(', ')||'geen'}
+DTC codes: ${formatDtcCodes(dtcCodes)}
 
 DATALOG — 20 seconden live meting:
 ${statLines}
@@ -3075,6 +3277,8 @@ function goHome(){
   // Sluit open overlays zodat home schoon bovenop komt
   try{ closeRitAnalyse?.(); }catch(e){}
   try{ closeNeonDashboard?.(); }catch(e){}
+  try{ closeClimateCheck?.(); }catch(e){}
+  ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
   for(const id of ['pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal']){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }
@@ -3122,9 +3326,9 @@ function revealLeftPanel(){
 
 function startChoice(choice){
   document.getElementById('welcomeScreen').classList.add('hidden');
-  // Inkoop hergebruikt de Koopcheck-pane, maar in handelaar-modus
-  if(choice==='inkoop'){
-    setKoopMode('inkoop');
+  // Inkoop/Verkoop/Lease/Occasion hergebruiken de Koopcheck-pane in eigen modus
+  if(choice==='inkoop'||choice==='verkoop'||choice==='lease'||choice==='occasion'){
+    setKoopMode(choice);
     openAnalysis('koop');
     return;
   }
@@ -3831,7 +4035,7 @@ function buildCheckItems(){
     const i=pc(pid,d.name||pid); if(i) items.push(i);
   });
   // DTC altijd
-  items.push({name:'DTC Foutcodes',display:dtcCodes.length===0?'Geen codes':dtcCodes.join(', '),status:dtcCodes.length===0?'ok':dtcCodes.some(c=>DTCDB[c]?.sev==='high')?'bad':'warn',detail:dtcCodes.length===0?'Geen actieve foutcodes.':dtcCodes.length+' code(s).',cat:'Foutcodes'});
+  items.push({name:'DTC Foutcodes',display:dtcCodes.length===0?'Geen codes':dtcCodes.join(', '),status:dtcCodes.length===0?'ok':dtcCodes.some(c=>dtcInfo(c)?.sev==='high')?'bad':'warn',detail:dtcCodes.length===0?'Geen actieve foutcodes.':dtcCodes.length+' code(s).',cat:'Foutcodes'});
   // Bestuurder-vragen
   const qa=[['start','Koude start',{nee:'bad',soms:'warn',ja:'ok'}],['oil','Olie niveau',{nee:'bad',soms:'warn',ja:'ok'}],['cool','Koelwater niveau',{nee:'bad',soms:'warn',ja:'ok'}],['noise','Geluidscheck',{nee:'warn',soms:'warn',ja:'ok'}],['warn','Dashboard lampen',{nee:'warn',soms:'warn',ja:'ok'}],['fuel','Brandstofverbruik',{nee:'warn',soms:'warn',ja:'ok'}]];
   qa.forEach(([key,name,smap])=>{const ans=checkAnswers[key];if(ans)items.push({name,display:ans==='ja'?'Normaal':ans==='soms'?'Soms probleem':'Probleem',status:smap[ans]||'ok',detail:'Door bestuurder gerapporteerd.',cat:'Bestuurder'});});
@@ -3898,7 +4102,7 @@ async function runCheckAI(items){
   } else if(ft==='diesel'){
     fuelNote=`\nDit is een DIESEL: brandstoftrim-logica wijkt af; let op roetfilter (DPF), AdBlue/SCR en NOx waar relevant.`;
   }
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${dtcCodes.join(', ')||'geen'}${q.promptBlok}${scenNote}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${scenNote}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
 }
@@ -4011,7 +4215,7 @@ Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''} ${v.brandst
 Beoordeel alleen op basis van beschikbare sensordata. Geen aannames over turbo/diesel/AdBlue/hybride tenzij het voertuigtype of de data dit aantoont.
 Beschrijving: ${desc}
 Symptomen: ${chips.join(', ')||'geen'}
-DTC codes: ${dtcCodes.join(', ')||'geen'}
+DTC codes: ${formatDtcCodes(dtcCodes)}
 
 Beschikbare diagnose PIDs (${reliability}% dekking):
 ✅ Beschikbaar: ${available.map(p=>p.name).join(', ')||'geen'}
@@ -4143,7 +4347,7 @@ async function runDiagAI(causeName){
   const desc=document.getElementById('diagDesc').value;
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent).join(', ');
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
-  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
+  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${formatDtcCodes(dtcCodes)}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
   const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const diagOut=document.getElementById('aiContentDiag');
   await callAI(prompt,diagOut);
@@ -4394,7 +4598,7 @@ function renderDTC(){
   window._dtcFound=dtcCodes.length;
   if(!dtcCodes.length){el.innerHTML=`<div class="emp"><div class="ei">✅</div><h3>Geen foutcodes</h3><p>Alle systemen OK</p></div>`;return;}
   dtcCodes.forEach(code=>{
-    const info=DTCDB[code]||{desc:'Onbekende code',body:'Raadpleeg fabrikantdocumentatie.',sev:'med'};
+    const info=dtcInfo(code)||{desc:'Onbekende code',body:'Raadpleeg fabrikantdocumentatie.',sev:'med'};
     const card=document.createElement('div');
     card.className=`dtc-card ${info.sev==='med'?'med':info.sev==='low'?'low':''}`;
     const bTxt=info.sev==='high'?'Kritiek':info.sev==='med'?'Matig':'Laag';
@@ -4411,7 +4615,7 @@ async function clearDTC(){
 }
 function exportReport(){
   const v=getVehicle();
-  const lines=['PidLane — Rapport',`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'','=== DTC ===',...(dtcCodes.length?dtcCodes.map(c=>{const i=DTCDB[c];return`${c} — ${i?i.desc:'?'}`;}):[' Geen']),'','=== LIVE DATA ===',...[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean)];
+  const lines=['PidLane — Rapport',`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'','=== DTC ===',...(dtcCodes.length?dtcCodes.map(c=>{const i=dtcInfo(c);return`${c} — ${i?i.desc:'?'}`;}):[' Geen']),'','=== LIVE DATA ===',...[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean)];
   download('rapport.txt',lines.join('\n'));
 }
 
@@ -4471,7 +4675,7 @@ async function runFuelAnalysis(){
   const jaarKm=parseInt(document.getElementById('yearKm').value)||15000;
   const v=getVehicle();
   const mData=measurements.filter(m=>m.val!==null&&m.val!==undefined).map(m=>`• ${m.name}: ${fv(m.val)} ${m.unit} [${m.status.toUpperCase()}] — ${m.desc}`).join('\n');
-  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${dtcCodes.join(', ')||'geen'}\n\nLIVE METINGEN:\n${mData||'(geen data)'}${q.promptBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
+  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${formatDtcCodes(dtcCodes)}\n\nLIVE METINGEN:\n${mData||'(geen data)'}${q.promptBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
   try{
     const text=await apiFetch(prompt,1400);
     const secs=[{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'GEVONDEN INEFFICIËNTIES',i:'🔍',c:'orange'},{k:'BESPAARTIPS',i:'💡',c:'green'},{k:'TOTALE BESPARING',i:'💶',c:'purple'},{k:'RIJSTIJL TIPS',i:'🚗',c:'blue'}];
@@ -4510,6 +4714,38 @@ function exportFuelReport(){
 // ════════════════════════════════════════
 // AI
 // ════════════════════════════════════════
+// ── GLOBALE AI-BEZIG STATUSBALK ──
+// Eén indicator die over élk scherm zichtbaar blijft zolang er een AI-call
+// loopt (ook als je naar live-data of de logs kijkt of tussen live-modes
+// wisselt). Maakt expliciet dat je moet wachten én dat het proces doorloopt.
+// De AI-call wordt nergens afgebroken door navigeren — dit is puur zichtbaarheid.
+let _aiBusy=0, _aiBusyTimer=null, _aiBusyT0=0;
+function aiBusyBegin(){
+  _aiBusy++;
+  if(_aiBusy>1) return;
+  _aiBusyT0=Date.now();
+  let bar=document.getElementById('aiBusyBar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='aiBusyBar';
+    bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9700;display:flex;align-items:center;gap:11px;padding:10px 14px;background:linear-gradient(135deg,#161b2b,#0c111c);border-top:1px solid rgba(167,139,250,.45);color:#cbd5e1;font-family:var(--f);font-size:12px;box-shadow:0 -4px 20px rgba(0,0,0,.4)';
+    bar.innerHTML='<div class="spin" style="flex-shrink:0"></div>'
+      +'<div style="flex:1;min-width:0"><b style="color:#a78bfa">AI analyseert…</b> <span id="aiBusyTime" style="color:var(--tx3)"></span>'
+      +'<div style="font-size:10px;color:var(--tx3);line-height:1.4">Even geduld — dit proces loopt door, ook terwijl je live-data of logs bekijkt.</div></div>';
+    document.body.appendChild(bar);
+  }
+  bar.style.display='flex';
+  const tick=()=>{ const el=document.getElementById('aiBusyTime'); if(el) el.textContent='('+Math.round((Date.now()-_aiBusyT0)/1000)+'s)'; };
+  tick();
+  _aiBusyTimer=setInterval(tick,1000);
+}
+function aiBusyEnd(){
+  _aiBusy=Math.max(0,_aiBusy-1);
+  if(_aiBusy>0) return;
+  if(_aiBusyTimer){ clearInterval(_aiBusyTimer); _aiBusyTimer=null; }
+  const bar=document.getElementById('aiBusyBar'); if(bar) bar.style.display='none';
+}
+
 async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
@@ -4535,33 +4771,45 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
     messages: [{role:'user', content: prompt}]
   };
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages',{
-    method: 'POST',
-    headers:{
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify(body)
-  });
+  aiBusyBegin();
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method: 'POST',
+      headers:{
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
 
-  if(!resp.ok){
-    const err=await resp.json().catch(()=>({}));
-    const msg=err?.error?.message||`HTTP ${resp.status}`;
-    if(resp.status===401) throw new Error('API key ongeldig of verlopen.');
-    if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
-    throw new Error(msg);
+    if(!resp.ok){
+      const err=await resp.json().catch(()=>({}));
+      const msg=err?.error?.message||`HTTP ${resp.status}`;
+      if(resp.status===401) throw new Error('API key ongeldig of verlopen.');
+      if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
+      throw new Error(msg);
+    }
+    const data=await resp.json();
+    return data.content?.[0]?.text||'';
+  } finally {
+    aiBusyEnd();
   }
-  const data=await resp.json();
-  return data.content?.[0]?.text||'';
 }
 function renderAIText(text,contentEl){
   const secs=[{k:'SAMENVATTING',i:'📋',c:'blue'},{k:'BEVINDINGEN',i:'🔍',c:'orange'},{k:'PRIORITEIT ACTIES',i:'⚡',c:'red'},{k:'REPARATIE STAPPEN',i:'🔧',c:'orange'},{k:'KAN IK HET ZELF?',i:'🛠️',c:'green'},{k:'KOSTEN SCHATTING',i:'💶',c:'purple'},{k:'GESCHATTE KOSTEN',i:'💶',c:'purple'},{k:'URGENTIE',i:'🚨',c:'red'},{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'ONDERHOUDSADVIES',i:'🔧',c:'green'}];
   const found=[];
   secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
   found.sort((a,b)=>a.idx-b.idx);
+  // Verdict-balk bovenaan: stoplicht-oordeel zodat je de uitkomst meteen ziet.
+  let vc='green', vi='🟢', vt='Geen urgente problemen gevonden';
+  if(/🔴|niet rijden|kritiek|gevaarlijk|direct naar de garage|onveilig|urgent/i.test(text)){ vc='red'; vi='🔴'; vt='Aandacht vereist — laat dit nakijken'; }
+  else if(/🟡|let op|binnenkort|aanbevolen|aandacht|op termijn/i.test(text)){ vc='amber'; vi='🟡'; vt='Let op — niet direct kritiek'; }
+  const _vClr={green:'var(--gn)',amber:'var(--or)',red:'var(--rd)'}[vc];
+  const _vBg ={green:'var(--gns)',amber:'var(--ors)',red:'var(--rds)'}[vc];
   let html='<div class="ai-res">';
+  html+=`<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;margin-bottom:12px;border-radius:var(--r);background:${_vBg};border:1px solid ${_vClr}55"><span style="font-size:18px;line-height:1">${vi}</span><b style="color:${_vClr};font-size:13px">${vt}</b></div>`;
   found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec"><div class="ai-sh ${s.c}">${s.i} ${s.k}</div><div class="ai-sb">${body.replace(/\n/g,'<br>')}</div></div>`;});
   if(!found.length)html+=`<div class="ai-sec"><div class="ai-sh blue">📋 Analyse</div><div class="ai-sb">${text.replace(/\n/g,'<br>')}</div></div>`;
   html+='</div>';
@@ -4814,7 +5062,7 @@ async function runQuickAI(){
   const liveLines=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
   const corr=correlationLines();
   const corrBlock=corr.length?`\nAutomatische bevindingen (correlatie-engine):\n${corr.join('\n')}`:'';
-  const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${dtcCodes.join(', ')||'geen'}${corrBlock}\n\nGeef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN`;
+  const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}\n\nGeef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
@@ -4834,10 +5082,49 @@ let vehicleInfo={merk:'',model:'',year:'',vin:'',brandstof:'',motor:''};
 // BLUETOOTH DIAGNOSTIEK LOG
 // ════════════════════════════════════════
 const _btLog=[], _btDevices=[];
+
+// ── SESSIESTAAT PERSISTENT (overleeft Android WebView proces-kill bij scherm-uit) ──
+// Android schiet het WebView-proces soms af als het scherm uit gaat; de app
+// herlaadt dan kaal van server.url. Login en autoconnect werden al hersteld;
+// hier bewaren we óók de voertuig-identiteit, ontdekte PIDs en DTC-codes zodat
+// de lopende diagnose niet verdwijnt. Live PID-waarden zijn vluchtig en vullen
+// zich vanzelf weer bij herverbinden.
+function persistAppState(){
+  try{
+    if(!currentUser) return;
+    const st={
+      v:   vehicleInfo,
+      pids:(typeof supportedPIDs!=='undefined')?[...supportedPIDs]:[],
+      dtc: Array.isArray(dtcCodes)?dtcCodes:[],
+      ts:  Date.now()
+    };
+    localStorage.setItem('pl_appstate', JSON.stringify(st));
+  }catch(e){}
+}
+function restoreAppState(){
+  try{
+    const raw=localStorage.getItem('pl_appstate'); if(!raw) return false;
+    const st=JSON.parse(raw);
+    // Ouder dan 6 uur? Dan niet meer relevant — opruimen.
+    if(!st || (Date.now()-(st.ts||0)) > 6*3600*1000){ localStorage.removeItem('pl_appstate'); return false; }
+    if(Array.isArray(st.pids) && st.pids.length) supportedPIDs=new Set(st.pids);
+    if(st.v && (st.v.vin||st.v.merk)){
+      vehicleInfo=Object.assign({merk:'',model:'',year:'',vin:'',brandstof:'',motor:''}, st.v);
+      try{ updateVehicleCard(vehicleInfo); }catch(e){}
+    }
+    if(Array.isArray(st.dtc)){ dtcCodes=st.dtc.slice(); try{ renderDTC(); }catch(e){} }
+    log('Sessiestaat hersteld na herlaad','ok');
+    return true;
+  }catch(e){ return false; }
+}
+
 // Log van vorige sessie terugzetten (overleeft herladen/demo-overstap)
 function restoreBtLog(){
   try{
-    const saved=JSON.parse(sessionStorage.getItem('pl_btlog')||'[]');
+    let saved=JSON.parse(sessionStorage.getItem('pl_btlog')||'[]');
+    // sessionStorage overleeft een Android WebView proces-kill NIET; val dan
+    // terug op de localStorage-spiegel zodat de BT-log toch behouden blijft.
+    if(!saved.length){ try{ saved=JSON.parse(localStorage.getItem('pl_btlog')||'[]'); }catch(e){} }
     if(!saved.length) return;
     const logEl=document.getElementById('btLog'); if(!logEl) return;
     logEl.innerHTML='';
@@ -4862,7 +5149,8 @@ function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display='block';
   const ts=new Date().toTimeString().slice(0,8);
   _btLog.push({ts,msg,type});
-  try{ sessionStorage.setItem('pl_btlog', JSON.stringify(_btLog.slice(-300))); }catch(e){}
+  try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){}
+  try{ const snap=JSON.stringify(_btLog.slice(-300)); sessionStorage.setItem('pl_btlog',snap); localStorage.setItem('pl_btlog',snap); }catch(e){}
   const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
   const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
   const logEl=document.getElementById('btLog'); if(!logEl) return;
@@ -5166,23 +5454,90 @@ function openScenarioModal(){
 // Veelgebruikte PIDs die je typisch wilt forceren om beoordeling te testen
 const SCENARIO_PID_SUGGEST=['010C','010D','0105','015C','0104','0142','0106','0107','0110','010B','010F','0114','0115','012F','015E','010A','012C'];
 
+// ── SNEL-SCENARIO PRESETS (1 klik) — vullen defect-waarden + DTC's ──
+// Per preset: welke PID's + welke waarden + bijbehorende foutcodes. 'fuels'
+// (optioneel) beperkt de preset tot bepaalde brandstoftypes.
+const SCENARIO_PRESETS=[
+  {id:'waterpomp',  label:'💧 Waterpomp / koelcirculatie', desc:'Geen circulatie, koelwater loopt op',  fuels:['benzine','diesel'], pids:{'0105':118,'015C':127,'010C':850,'0104':30}, dtcs:['P0128','P0217']},
+  {id:'thermostaat',label:'🌡️ Thermostaat hangt open',     desc:'Motor wordt niet op temperatuur',       fuels:['benzine','diesel'], pids:{'0105':61,'015C':57}, dtcs:['P0128']},
+  {id:'oververhit', label:'🔥 Oververhitting',              desc:'Koelwater + olie te heet onder last',   fuels:['benzine','diesel'], pids:{'0105':120,'015C':129,'010C':3000,'0104':85}, dtcs:['P0217']},
+  {id:'dynamo',     label:'🔋 Dynamo / laadspanning laag',  desc:'Accuspanning zakt weg, niet laden',                                pids:{'0142':11.7,'010C':1600}, dtcs:['P0562','P0620']},
+  {id:'overspanning',label:'⚡ Spanningsregelaar overlaadt',desc:'Te hoge laadspanning',                                             pids:{'0142':15.7}, dtcs:['P0563']},
+  {id:'arm',        label:'🫧 Mengsel te arm',              desc:'Vacuümlek of MAF — positieve trim',     fuels:['benzine'], pids:{'0106':23,'0107':20,'0124':1.16}, dtcs:['P0171']},
+  {id:'rijk',       label:'⛽ Mengsel te rijk',             desc:'Negatieve trim',                        fuels:['benzine'], pids:{'0106':-22,'0107':-19,'0124':0.84}, dtcs:['P0172']},
+  {id:'misfire',    label:'💥 Ontstekingsfout (misfire)',  desc:'Onregelmatig stationair toerental',     fuels:['benzine'], pids:{'010C':760,'0104':26}, dtcs:['P0300','P0301']},
+  {id:'kat',        label:'♻️ Katalysator rendement laag', desc:'B1S2 volgt B1S1 te veel',               fuels:['benzine'], pids:{'0114':0.6,'0115':0.58}, dtcs:['P0420']},
+  {id:'egr',        label:'🌀 EGR vast / verstopt',         desc:'EGR reageert niet',                     fuels:['diesel','benzine'], pids:{'012C':0,'0105':96}, dtcs:['P0401']},
+];
+
+// Brandstoftype zoals nu in het scenario gekozen (val terug op vehicleInfo/OBD).
+function _scenarioFuelType(){
+  const b=(((_scenario.vehicle&&_scenario.vehicle.brandstof))||(typeof vehicleInfo!=='undefined'&&vehicleInfo.brandstof)||'').toString().toLowerCase();
+  if(/hybr|phev|hev/.test(b)) return 'benzine';            // hybride heeft verbrandingsmotor
+  if(/elektr|electric|\bev\b|bev/.test(b)) return 'elektrisch';
+  if(/diesel|gasolie/.test(b)) return 'diesel';
+  if(/benzine|petrol|gasoline|lpg|cng|ethanol|waterstof/.test(b)) return 'benzine';
+  try{ return vehicleFuelType(); }catch(e){ return 'onbekend'; }
+}
+// Past PID bij dit brandstoftype? (zonder de globale vehicleInfo te gebruiken)
+function _scenarioPlausible(pid,ft){
+  if(ft==='benzine' && DIESEL_SCR_PIDS.has(pid)) return false;
+  if(ft==='elektrisch' && EV_AFWEZIGE_PIDS.has(pid)) return false;
+  return true;
+}
+// PID's van de HUIDIGE scan (supported/discovered) + presets + suggesties,
+// ontdubbeld en gesorteerd op categorie. Dit is wat in het scenario verschijnt.
+function scenarioRelevantPids(ft){
+  const set=new Set();
+  try{ if(typeof supportedPIDs!=='undefined'&&supportedPIDs.size) supportedPIDs.forEach(p=>set.add(p)); }catch(e){}
+  try{ if(Array.isArray(discoveredPIDDefs)) discoveredPIDDefs.forEach(d=>{ if(d&&d.pid) set.add(d.pid); }); }catch(e){}
+  SCENARIO_PID_SUGGEST.forEach(p=>set.add(p));
+  SCENARIO_PRESETS.forEach(s=>Object.keys(s.pids||{}).forEach(p=>set.add(p)));
+  const catOrder={Motor:0,Temp:1,Brandstof:2,Rijden:3,Electrisch:4,Emissie:5,Overig:9};
+  return [...set].filter(p=>getPidDef(p)).sort((a,b)=>{
+    const da=getPidDef(a)||{}, db=getPidDef(b)||{};
+    return (catOrder[da.cat]??9)-(catOrder[db.cat]??9) || String(da.name||a).localeCompare(String(db.name||b));
+  });
+}
+// Eén klik: vul de defect-waarden + DTC's van een preset in.
+function scenarioPreset(id){
+  const s=SCENARIO_PRESETS.find(x=>x.id===id); if(!s) return;
+  Object.entries(s.pids||{}).forEach(([pid,val])=>{ _scenario.pids[pid]=val; });
+  if(s.dtcs&&s.dtcs.length) _scenario.dtcs=[...new Set([...(_scenario.dtcs||[]),...s.dtcs])];
+  scenarioRenderBody();
+  try{ log('🧪 Scenario-preset: '+s.label,'info'); }catch(e){}
+  try{ showToast?.('Preset geladen: '+s.label,2500); }catch(e){}
+}
+function scenarioClearPids(){ _scenario.pids={}; scenarioRenderBody(); try{ showToast?.('PID-waarden leeg'); }catch(e){} }
+// Ververs het scenario-venster als het openstaat (bv. na kenteken-lookup).
+function scenarioRefreshIfOpen(){
+  const ov=document.getElementById('scenarioModal');
+  if(ov && ov.style.display==='flex'){ try{ scenarioRenderBody(); }catch(e){} }
+}
+
 function scenarioRenderBody(){
   const body=document.getElementById('scenarioBody'); if(!body) return;
-  // Welk brandstoftype is nu in het scenario gekozen? (Bepaalt of trim/lambda
-  // relevant zijn.) Elektrisch → verbrandingssensoren tonen we als 'n.v.t.'.
-  const scenFuel=((_scenario.vehicle&&_scenario.vehicle.brandstof)||'').toLowerCase();
-  const isEV=!/hybr|phev|hev/.test(scenFuel) && /elektr|electric|\bev\b|bev/.test(scenFuel);
-  // ── PIDs ──
-  let pidRows=SCENARIO_PID_SUGGEST.map(pid=>{
+  const ft=_scenarioFuelType();
+
+  // ── Snel-scenario presets (1 klik), gefilterd op brandstoftype ──
+  const presets=SCENARIO_PRESETS.filter(s=>!s.fuels || s.fuels.includes(ft) || ft==='onbekend');
+  const presetBtns=presets.map(s=>
+    `<button onclick="scenarioPreset('${s.id}')" title="${String(s.desc||'').replace(/"/g,'&quot;')}"
+       style="text-align:left;padding:7px 9px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:10px;font-weight:600;cursor:pointer;line-height:1.3">
+       ${s.label}${s.dtcs&&s.dtcs.length?`<span style="display:block;font-size:8px;color:var(--tx3);font-weight:500">${s.dtcs.join(', ')}</span>`:''}
+     </button>`).join('');
+
+  // ── PID-rijen uit de HUIDIGE scan + presets, gefilterd op brandstoftype ──
+  const pids=scenarioRelevantPids(ft);
+  let pidRows=pids.map(pid=>{
     const d=getPidDef(pid); if(!d) return '';
     const cur=_scenario.pids[pid];
     const ph=`${d.min}–${d.max}`;
-    const nvt=isEV && EV_AFWEZIGE_PIDS.has(pid);  // niet van toepassing op EV
-    if(nvt){
+    if(!_scenarioPlausible(pid,ft)){
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;opacity:.45">
         <div style="flex:1;min-width:0">
           <div style="font-size:11px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name||pid}</div>
-          <div style="font-size:9px;color:var(--tx3)">${pid} · n.v.t. bij elektrisch</div>
+          <div style="font-size:9px;color:var(--tx3)">${pid} · n.v.t. bij ${ft}</div>
         </div>
         <span style="font-size:8px;font-weight:800;background:#475569;color:#fff;padding:2px 5px;border-radius:4px">UIT</span>
       </div>`;
@@ -5199,15 +5554,17 @@ function scenarioRenderBody(){
     </div>`;
   }).join('');
 
-  // ── DTC's ──
   const dtcVal=_scenario.dtcs.join(', ');
-
-  // ── Voertuig ──
   const veh=_scenario.vehicle||{};
 
   body.innerHTML=`
-    <div style="font-size:11px;font-weight:800;color:#a78bfa;margin-bottom:7px">📡 Sensorwaarden (PIDs)</div>
-    <div style="font-size:9px;color:var(--tx3);margin-bottom:8px">Leeg = automatische demo-waarde. Ingevulde waarden krijgen lichte ruis en worden als MANUEEL geteld.</div>
+    <div style="font-size:11px;font-weight:800;color:#a78bfa;margin-bottom:7px">⚡ Snel-scenario's <span style="font-weight:500;color:var(--tx3)">— 1 klik</span></div>
+    <div style="font-size:9px;color:var(--tx3);margin-bottom:8px">Vult de juiste PID's met defect-waarden + foutcodes. Daarna handmatig bij te stellen.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">${presetBtns||'<div style="font-size:10px;color:var(--tx3)">Geen presets voor dit brandstoftype</div>'}</div>
+    <button onclick="scenarioClearPids()" style="width:100%;padding:6px;border-radius:7px;border:1px solid var(--bd);background:transparent;color:var(--tx3);font-size:10px;font-weight:700;cursor:pointer;margin-bottom:12px">↺ PID-waarden leegmaken</button>
+    <div style="height:1px;background:var(--bd);margin:0 0 12px"></div>
+    <div style="font-size:11px;font-weight:800;color:#a78bfa;margin-bottom:7px">📡 Sensorwaarden — huidige scan (${pids.length})</div>
+    <div style="font-size:9px;color:var(--tx3);margin-bottom:8px">PID's van de actieve scan${ft!=='onbekend'?` voor <b>${ft}</b>`:''}. Leeg = automatische demo-waarde. Ingevuld = MANUEEL (met lichte ruis).</div>
     ${pidRows}
     <div style="height:1px;background:var(--bd);margin:12px 0"></div>
     <div style="font-size:11px;font-weight:800;color:#f59e0b;margin-bottom:7px">⚠️ Foutcodes (DTC's)</div>
@@ -5226,9 +5583,8 @@ function scenarioRenderBody(){
         ${['benzine','diesel','hybride','elektrisch','lpg'].map(b=>`<option value="${b}"${veh.brandstof===b?' selected':''}>${cap(b)}</option>`).join('')}
       </select>
     </div>
-    <div style="font-size:9px;color:var(--tx3);margin-top:5px">Leeg = standaard demo-auto (Mazda CX-5 2018).</div>`;
+    <div style="font-size:9px;color:var(--tx3);margin-top:5px">Brandstof wijzigen ververst de PID-lijst hierboven. Leeg = standaard demo-auto.</div>`;
 }
-
 function scenarioSetPid(pid,v){
   const s=String(v).trim();
   if(s===''){ delete _scenario.pids[pid]; }
@@ -6557,6 +6913,7 @@ async function rdwLookup(){
       val.weggelaten.forEach(w=>log(`RDW weggelaten — ${w.label}: ${w.reden}`,'warn'));
     }
     // Pas voertuig-specifieke PID-preset toe als verbinding al actief is
+    try{ scenarioRefreshIfOpen(); }catch(e){}  // kenteken gewijzigd → scenario-PID's verversen
     if(connected && vehicleInfo.merk) applyVehiclePIDPreset(vehicleInfo.merk, brandstof, jaar);
     return {ok:true,kent,v,val};
   }catch(e){
@@ -6678,6 +7035,50 @@ async function tryReadVIN(){
   }catch(e){ log('VIN fout: '+e.message,'warn'); return null; }
 }
 
+// ── CILINDERAANTAL & FANTOOM-MISFIRE GATE ──
+// Een cilinderspecifieke misfire-code (ontsteking P030X of injector P020X)
+// voor een cilindernummer hoger dan het werkelijke aantal cilinders is fysiek
+// onmogelijk (bv. P0306 'cilinder 6' op een 3-cilinder Ford 1.5 EcoBoost).
+// Net als _powertrainPhantom() markeren we die als onwaarschijnlijk i.p.v.
+// hem als echte storing uit te (laten) leggen.
+function vehicleCylinderCount(){
+  try{
+    const m=String(vehicleInfo?.motor||'').match(/(\d+)\s*-?\s*cil/i);
+    if(m) return parseInt(m[1],10);
+    const rdw=(typeof _koopRdwData!=='undefined'&&_koopRdwData)?_koopRdwData.aantal_cilinders:null;
+    const n=parseInt(rdw,10);
+    if(!isNaN(n)&&n>0&&n<=16) return n;
+  }catch(e){}
+  return 0; // onbekend → geen gate
+}
+function _misfireCylNo(code){
+  const m=String(code||'').toUpperCase().match(/^P0([23])(0[1-9]|1[0-6])$/);
+  return m?parseInt(m[2],10):0;
+}
+function _implausibleMisfire(code){
+  const cyl=_misfireCylNo(code), total=vehicleCylinderCount();
+  return cyl>0 && total>0 && cyl>total;
+}
+function dtcInfo(code){
+  const base=(typeof DTCDB!=='undefined'&&DTCDB[code])
+    ? Object.assign({},DTCDB[code])
+    : {desc:'Onbekende code',body:'Raadpleeg fabrikantdocumentatie.',sev:'med'};
+  if(_implausibleMisfire(code)){
+    const total=vehicleCylinderCount();
+    base.desc=base.desc+` — ⚠️ onwaarschijnlijk (voertuig heeft ${total} cilinder(s))`;
+    base.body=`Cilindernummer hoger dan het aantal cilinders (${total}). Vrijwel zeker een uitlees-/communicatiefout of restcode, geen echte storing op deze cilinder.`;
+    base.sev='warn';
+  }
+  return base;
+}
+function formatDtcCodes(arr){
+  if(!arr||!arr.length) return 'geen';
+  return arr.map(c=>_implausibleMisfire(c)
+    ? `${c} (LET OP: voertuig heeft ${vehicleCylinderCount()} cilinders — onwaarschijnlijk, niet als echte cilinderstoring behandelen)`
+    : c
+  ).join(', ');
+}
+
 function decodeVIN(vin){
   const wmi=vin.slice(0,3).toUpperCase();
   const wmiMap={
@@ -6698,16 +7099,23 @@ function decodeVIN(vin){
     'SAJ':'Jaguar','SAL':'Land Rover',
   };
   const merk=wmiMap[wmi]||null;
-  const yearMap={
-    'A':1980,'B':1981,'C':1982,'D':1983,'E':1984,'F':1985,'G':1986,'H':1987,
-    'J':1988,'K':1989,'L':1990,'M':1991,'N':1992,'P':1993,'R':1994,'S':1995,
-    'T':1996,'V':1997,'W':1998,'X':1999,'Y':2000,'1':2001,'2':2002,'3':2003,
-    '4':2004,'5':2005,'6':2006,'7':2007,'8':2008,'9':2009,
-  };
-  const yr10=['A','B','C','D','E','F','G','H','J','K','L','M','N','P','R'];
+  // Positie-10 jaarcode heeft een 30-jaars cyclus: dezelfde code staat voor
+  // jaar, jaar-30 én jaar+30 (bv. 'D' = 1983, 2013 of 2043). Positie-7
+  // onderscheidt de periode: een LETTER betekent modeljaar 2010+, een CIJFER
+  // betekent 1980-2009. Zo wordt een 2013-auto niet langer als 1983 gelezen.
+  // (RDW/datum eerste toelating blijft de leidende bron en overschrijft dit.)
+  const YR_CYCLE='ABCDEFGHJKLMNPRSTVWXY123456789'; // 30 codes, start 1980/2010
   const yc=vin[9]?.toUpperCase();
-  let year=(yearMap[yc]||'').toString();
-  if(!year){const i=yr10.indexOf(yc);if(i>=0)year=(2010+i).toString();}
+  const ci=YR_CYCLE.indexOf(yc);
+  let year='';
+  if(ci>=0){
+    const p7=vin[6]?.toUpperCase()||'';
+    const modern=/[A-Z]/.test(p7); // letter op positie 7 → 2010+
+    let y=(modern?2010:1980)+ci;
+    const nu=new Date().getFullYear();
+    if(y>nu+1) y-=30; // nooit in de toekomst → vorige cyclus
+    year=y.toString();
+  }
   return{merk:merk||'Onbekend merk',model:'',year,vin,wmi,brandstof:'',motor:''};
 }
 
@@ -7870,7 +8278,7 @@ function buildAutoExpertContext(){
   // DTC's
   if(typeof dtcCodes!=='undefined' && dtcCodes.length){
     lines.push('ACTIEVE FOUTCODES:');
-    dtcCodes.forEach(c=>{ const i=(typeof DTCDB!=='undefined')?DTCDB[c]:null; lines.push(`  ${c}${i?' — '+i.desc:''}`); });
+    dtcCodes.forEach(c=>{ const i=(typeof DTCDB!=='undefined')?dtcInfo(c):null; lines.push(`  ${c}${i?' — '+i.desc:''}`); });
   } else lines.push('ACTIEVE FOUTCODES: geen / niet gescand');
   // Lokale merk-kennis
   const know=autoKennisVoorMerk(v.merk);
@@ -8328,6 +8736,14 @@ function closeTopOverlay(){
   // 4) Neon-dashboard
   const neon=document.getElementById('neonDash');
   if(vis(neon)){ try{ closeNeonDashboard(); }catch(_){ neon.style.display='none'; } return true; }
+  // 4b) Airco/Winter check
+  const clim=document.getElementById('climateDash');
+  if(vis(clim)){ try{ closeClimateCheck(); }catch(_){ clim.style.display='none'; } return true; }
+  // 4c) Onderhoud / EV / Lange rit dashboards
+  for(const id of ['onderhoudDash','evDash','langeRitDash']){
+    const el=document.getElementById(id);
+    if(vis(el)){ el.style.display='none'; return true; }
+  }
   // 5) Kebab-menu open?
   const kebab=document.getElementById('kebabMenu');
   if(kebab && kebab.classList.contains('open')){ try{ closeKebab(); }catch(_){} return true; }
@@ -8371,8 +8787,16 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-rit10',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('10min'); });
   wcBind('wc-proefrit',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openProefritKeuze(); });
   wcBind('wc-inkoop',()=>startChoice('inkoop'));
-  // soon-kaarten: tik geeft korte feedback, geen actie
-  ['wc-onderhoud','wc-verkoop','wc-occasierapport','wc-langerit','wc-winter','wc-zomer','wc-ev','wc-lease'].forEach(id=>{
+  wcBind('wc-verkoop',()=>startChoice('verkoop'));
+  wcBind('wc-lease',()=>startChoice('lease'));
+  wcBind('wc-occasierapport',()=>startChoice('occasion'));
+  wcBind('wc-zomer',()=>openClimateCheck('airco'));
+  wcBind('wc-winter',()=>openClimateCheck('winter'));
+  wcBind('wc-onderhoud',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openOnderhoud(); });
+  wcBind('wc-ev',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openEVCheck(); });
+  wcBind('wc-langerit',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openLangeRit(); });
+  // soon-kaarten: tik geeft korte feedback, geen actie (momenteel geen)
+  [].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('click',()=>{
       el.style.transition='border-color .1s';
@@ -8419,6 +8843,7 @@ document.addEventListener('DOMContentLoaded', function(){
       document.getElementById('loginPass').value=USERS[sess].password;
       doLogin();
       log(`Sessie hersteld: ${sess}`,'ok');
+      try{ restoreAppState(); }catch(e){}
       try{
         const P=window.Capacitor?.Plugins||{};
         if(window.Capacitor?.isNativePlatform?.())
@@ -8440,6 +8865,12 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   // Check voor updates (stil op achtergrond)
+  try{ refreshAdminLogRow(); }catch(e){}
+  // Live-log hervatten als een vorige sessie nog "actief" was (crash/herlaad):
+  // het bestaande bestand wordt voortgezet, vorige regels blijven behouden.
+  try{
+    if(localStorage.getItem('pl_livelog')==='1'){ liveLogStart({silent:true}); liveLogRecoveryCheck(); }
+  }catch(e){}
   setTimeout(checkForUpdate, 3000);
   try{ updateMonitorBtn(); }catch(e){}
 
@@ -9034,6 +9465,22 @@ async function stopRitAnalyse(){
     }catch(e){ koopProefritKlaar('Proefrit voltooid'); }
     return;
   }
+  // Rit gestart vanuit Onderhoud Plannen → terug en analyse draaien
+  if(window._ondPending){
+    window._ondPending=false;
+    try{ closeRitAnalyse?.(); }catch(e){}
+    openOnderhoud();
+    setTimeout(()=>{ setOndRit('geen'); runOnderhoud(); }, 300);
+    return;
+  }
+  // Rit gestart vanuit EV-check → terug en analyse draaien
+  if(window._evPending){
+    window._evPending=false;
+    try{ closeRitAnalyse?.(); }catch(e){}
+    openEVCheck();
+    setTimeout(()=>runEVCheck(), 300);
+    return;
+  }
   // 2-min check is altijd technisch (geen rijgedrag) → direct technisch rapport
   if(ritMode==='2min'){
     document.getElementById('ritStatus').textContent='Technische check klaar — rapport wordt gegenereerd...';
@@ -9264,10 +9711,173 @@ function saveTesterConsent(where='conn'){
   const other = document.getElementById(otherId);
   if(other) other.checked = !!val;
   if(val) log('🧪 Tester-toestemming gegeven — logs worden gebundeld bewaard','ok');
+  if(val){ try{ maybeStartLiveLog(); }catch(e){} }
 }
 function hasTesterConsent(){
   try { return localStorage.getItem('pl_tester_consent') === '1'; } catch(e){ return false; }
 }
+
+// ── LIVE-LOG ENGINE (crash-bestendig) ──────────────────────
+// Schrijft logs continu naar schijf zodat ze bewaard blijven als de app
+// crasht. Native (APK): Capacitor Filesystem (append, CACHE). Desktop-
+// browser: File System Access API als beschikbaar. Universele fallback:
+// localStorage-spiegel. Geactiveerd via tester-consent + extra logfunctie.
+const _liveLog = { active:false, dir:'DATA', path:null, buffer:[], timer:null, handle:null, mode:null, _flushing:false };
+
+function liveLogWrite(line){
+  if(!_liveLog.active) return;
+  _liveLog.buffer.push(line);
+  if(_liveLog.buffer.length>8000) _liveLog.buffer.splice(0,_liveLog.buffer.length-8000);
+}
+
+async function liveLogFlush(){
+  if(!_liveLog.active || _liveLog._flushing || !_liveLog.buffer.length) return;
+  _liveLog._flushing=true;
+  const lines=_liveLog.buffer.splice(0,_liveLog.buffer.length);
+  const chunk=lines.join('\n')+'\n';
+  try{
+    if(_liveLog.mode==='native'){
+      const FS=window.Capacitor?.Plugins?.Filesystem;
+      await FS.appendFile({path:_liveLog.path,data:chunk,directory:_liveLog.dir,encoding:'utf8'});
+    } else if(_liveLog.mode==='fsapi' && _liveLog.handle){
+      const file=await _liveLog.handle.getFile();
+      const w=await _liveLog.handle.createWritable({keepExistingData:true});
+      await w.seek(file.size);
+      await w.write(chunk);
+      await w.close();
+    } else { // localstorage-spiegel
+      let cur=''; try{ cur=localStorage.getItem('pl_livelog_mirror')||''; }catch(e){}
+      cur+=chunk;
+      if(cur.length>1000000) cur=cur.slice(cur.length-1000000);
+      try{ localStorage.setItem('pl_livelog_mirror',cur); }
+      catch(e){ try{ localStorage.setItem('pl_livelog_mirror',chunk.slice(-200000)); }catch(_){} }
+    }
+  }catch(e){
+    // Mislukt — regels terugzetten voor volgende poging (begrensd)
+    _liveLog.buffer.unshift(...lines);
+    if(_liveLog.buffer.length>9000) _liveLog.buffer.splice(0,_liveLog.buffer.length-9000);
+  }finally{ _liveLog._flushing=false; }
+}
+
+async function liveLogStart(opts={}){
+  if(_liveLog.active) return true;
+  const C=window.Capacitor, FS=C?.Plugins?.Filesystem;
+  const native=!!(C?.isNativePlatform?.() && FS);
+  let resuming = (localStorage.getItem('pl_livelog')==='1') && !!localStorage.getItem('pl_livelog_path');
+  const storedMode = localStorage.getItem('pl_livelog_mode');
+  // fsapi-handle overleeft een herlaad niet → niet hervatten, vers beginnen
+  if(resuming && storedMode==='fsapi') resuming=false;
+  let path = resuming ? localStorage.getItem('pl_livelog_path') : null;
+  if(!path){
+    const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    path=`pidlane-livelog-${stamp}.txt`;
+  }
+  let mode = native ? 'native' : 'localstorage';
+  const header=`PidLane — Live-log\nGestart: ${new Date().toLocaleString('nl')}\nOmgeving: ${native?'native APK':'browser'}\n${'='.repeat(50)}\n`;
+  // Desktop-browser: echte "opslaan als"-dialoog (alleen bij vers starten)
+  if(!native && !resuming && typeof window.showSaveFilePicker==='function' && !opts.silent){
+    try{
+      const h=await window.showSaveFilePicker({suggestedName:path,types:[{description:'Logbestand',accept:{'text/plain':['.txt']}}]});
+      const w=await h.createWritable(); await w.write(header); await w.close();
+      _liveLog.handle=h; mode='fsapi';
+    }catch(e){ if(e&&e.name==='AbortError') return false; }
+  }
+  _liveLog.mode=mode; _liveLog.dir='DATA'; _liveLog.path=path;
+  try{
+    if(mode==='native' && !resuming){
+      await FS.writeFile({path,data:header,directory:'DATA',encoding:'utf8',recursive:true});
+    } else if(mode==='localstorage' && !resuming){
+      try{ localStorage.setItem('pl_livelog_mirror',header); }catch(e){}
+    }
+  }catch(e){ try{ log('Live-log aanmaken mislukt: '+(e.message||e),'warn'); }catch(_){} }
+  _liveLog.active=true;
+  try{
+    localStorage.setItem('pl_livelog','1');
+    localStorage.setItem('pl_livelog_path',path);
+    localStorage.setItem('pl_livelog_mode',mode);
+  }catch(e){}
+  if(!_liveLog.timer) _liveLog.timer=setInterval(()=>{ liveLogFlush(); },4000);
+  liveLogWrite('--- live-log '+(resuming?'hervat':'gestart')+' @ '+new Date().toTimeString().slice(0,8)+' ---');
+  return true;
+}
+
+async function liveLogStop(o={}){
+  await liveLogFlush();
+  if(_liveLog.timer){ clearInterval(_liveLog.timer); _liveLog.timer=null; }
+  _liveLog.active=false;
+  try{ localStorage.setItem('pl_livelog','0'); }catch(e){} // sessie afgesloten, pad bewaard voor delen
+  if(o.share) await liveLogShare();
+}
+
+async function liveLogShare(){
+  await liveLogFlush();
+  const mode=_liveLog.mode||localStorage.getItem('pl_livelog_mode');
+  const dir=_liveLog.dir||'DATA';
+  const path=_liveLog.path||localStorage.getItem('pl_livelog_path')||'pidlane-livelog.txt';
+  if(mode==='native'){
+    const FS=window.Capacitor?.Plugins?.Filesystem;
+    if(FS){
+      try{
+        // Lees het persistente DATA-bestand en deel via de bewezen route
+        // (nativeShareFile schrijft een CACHE-kopie en opent het deelmenu —
+        //  DATA is app-privé en niet rechtstreeks deelbaar op Android 7+).
+        const r=await FS.readFile({path,directory:dir,encoding:'utf8'});
+        const txt=(r&&typeof r.data==='string')?r.data:'';
+        const blob=new Blob([txt],{type:'text/plain'});
+        if(await nativeShareFile(blob,path)) return true;
+        download(path,txt); return true;
+      }catch(e){ try{ log('Live-log delen mislukt: '+(e.message||e),'warn'); }catch(_){} }
+    }
+  }
+  // Fallback: spiegel of gebundelde export
+  let txt=''; try{ txt=localStorage.getItem('pl_livelog_mirror')||''; }catch(e){}
+  if(txt){ try{ download(path,txt); return true; }catch(e){} }
+  try{ exportAllLogs(); }catch(e){}
+  return true;
+}
+
+// Crash-herstelmelding bij opstarten: was er een live-log van een vorige
+// (niet net schoon afgesloten) sessie? Meld het één keer per app-start,
+// niet-blokkerend. pl_livelog blijft '1' bij een crash; logout zet het op '0'.
+async function liveLogRecoveryCheck(){
+  try{
+    if(localStorage.getItem('pl_livelog')!=='1') return;          // schoon afgesloten → geen melding
+    if(sessionStorage.getItem('pl_livelog_seen')==='1') return;   // al gemeld in deze WebView-sessie
+    const path=localStorage.getItem('pl_livelog_path');
+    const mode=localStorage.getItem('pl_livelog_mode');
+    if(!path) return;
+    let bytes=0;
+    if(mode==='native'){
+      const FS=window.Capacitor?.Plugins?.Filesystem;
+      if(FS){ try{ const st=await FS.stat({path,directory:'DATA'}); bytes=st?.size||0; }catch(e){ return; } }
+    } else {
+      try{ bytes=(localStorage.getItem('pl_livelog_mirror')||'').length; }catch(e){}
+    }
+    if(bytes<200) return; // alleen header → niets zinnigs om te herstellen
+    try{ sessionStorage.setItem('pl_livelog_seen','1'); }catch(e){}
+    const kb=Math.max(1,Math.round(bytes/1024));
+    try{ log(`🛠 Live-log van vorige sessie hervat (${kb} kB bewaard) — tik 📤 Deel live-log om te exporteren`,'ok'); }catch(e){}
+    try{ showToast?.(`🛠 Vorige live-log bewaard (${kb} kB) — deelbaar via 📤`,5000); }catch(e){}
+  }catch(e){}
+}
+
+// Prompt + start: zodra tester-consent én extra logfunctie aan staan
+async function maybeStartLiveLog(){
+  try{
+    if(_liveLog.active) return;
+    const consent = (typeof hasTesterConsent==='function') ? hasTesterConsent() : (localStorage.getItem('pl_tester_consent')==='1');
+    const extra = !!document.getElementById('adminLogExport')?.checked;
+    if(!(consent && extra)) return;
+    const ok = window.confirm('Live-logbestand aanmaken?\n\nPidLane schrijft vanaf nu alle logs continu naar een bestand, zodat ze bewaard blijven — óók als de app crasht. Je kunt het later delen of exporteren.');
+    if(!ok) return;
+    const started=await liveLogStart();
+    if(started){ try{ log('🛠 Live-log actief — '+_liveLog.path+' ('+_liveLog.mode+')','ok'); }catch(e){} try{ showToast?.('🛠 Live-log actief'); }catch(e){} }
+  }catch(e){}
+}
+
+// Periodieke veiligheids-flush bij backgrounden/sluiten
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'){ liveLogFlush(); persistAppState(); } });
+window.addEventListener('pagehide',()=>{ liveLogFlush(); persistAppState(); });
 
 // ── GEBUNDELDE LOG-EXPORT (BT + scan + app) ────────────────
 // Handmatig, op verzoek van de tester. Eén bestand met alles erin.
@@ -9593,11 +10203,15 @@ RISICO: [belangrijkste risico's in 1 zin, of "geen bijzonderheden"]
 TOELICHTING: [max 80 woorden; noem expliciet of dit op een proefrit of alleen stationair gebaseerd is]`;
 }
 
-function buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten, tellerOordeel, recallActief, bandenLabel, proefritData){
+function buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten, tellerOordeel, recallActief, bandenLabel, proefritData, mode){
   const proefritBlok = proefritData
     ? `\nProefrit uitgevoerd (technische meting onder belasting): ${String(proefritData).slice(0,400)}`
     : `\nProefrit: NIET uitgevoerd — oordeel is gebaseerd op stationaire meting (momentopname, minder zeker over gedrag onder belasting).`;
-  return `Jij bent een Nederlandse automarkt expert. Geef een marktwaardeschatting.
+  const verkoper = (mode==='verkoop'||mode==='occasion');
+  const insteek = verkoper
+    ? `Jij bent een Nederlandse automarkt expert. De EIGENAAR wil deze auto verkopen en wil weten wat hij oplevert via verschillende kanalen.`
+    : `Jij bent een Nederlandse automarkt expert. Geef een marktwaardeschatting voor een koper.`;
+  return `${insteek}
 
 Voertuig: ${merk} ${model} bouwjaar ${jaar}
 Kilometerstand: ${km.toLocaleString('nl')} km
@@ -9609,9 +10223,20 @@ Bandenstaat: ${bandenLabel||'niet gecontroleerd'}
 RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerOordeel&&/onlogisch/i.test(tellerOordeel)?' (LET OP: mogelijk teruggedraaide of onlogische km-historie — sterk waardedrukkend en risicovol)':''}
 Openstaande terugroepactie (recall): ${recallActief ? 'JA — nog niet afgehandeld' : 'nee'}
 Geschatte achterstallig onderhoud: €${onderhoudKosten||0}${proefritBlok}
-${vraagprijs ? 'Vraagprijs dealer: €'+parseInt(vraagprijs).toLocaleString('nl') : ''}
+${vraagprijs ? (verkoper?'Gewenste verkoopprijs eigenaar: €':'Vraagprijs dealer: €')+parseInt(vraagprijs).toLocaleString('nl') : ''}
 
-Geef:
+${verkoper ? `Geef:
+1. Particuliere verkoopprijs (Marktplaats/AutoTrack NL) — wat een privékoper betaalt
+2. Inruilwaarde bij een dealer (bij aankoop andere auto)
+3. Direct dealerbod / opkoop (snelste verkoop, laagste prijs)
+4. Kort advies welk kanaal het beste past (verwerk bandenstaat en proefrit)
+
+Antwoord in maximaal 160 woorden, Nederlands. Formaat:
+PARTICULIER: €[min] – €[max]
+INRUILWAARDE: €[bedrag]
+DEALERBOD: €[bedrag]
+ADVIES: [1-2 zinnen kanaalkeuze]
+TOELICHTING: [max 80 woorden, noem of dit op proefrit of stationair is gebaseerd]` : `Geef:
 1. Geschatte marktwaarde range op Marktplaats/AutoTrack NL
 2. Of de vraagprijs reëel is (als opgegeven)
 3. Onderhandelruimte advies in euro's (verwerk bandenstaat en proefrit-bevindingen)${tellerOordeel&&/onlogisch/i.test(tellerOordeel)?'\n4. Expliciete waarschuwing over het onlogische tellerstandoordeel':''}
@@ -9620,7 +10245,32 @@ Antwoord in maximaal 150 woorden, Nederlands. Formaat:
 MARKTWAARDE: €[min] – €[max]
 OORDEEL PRIJS: [te hoog/reëel/koopje] (alleen als vraagprijs opgegeven)
 ONDERHANDELEN: [advies in 1 zin]
-TOELICHTING: [max 100 woorden, noem expliciet of dit op een proefrit of alleen stationair is gebaseerd]`;
+TOELICHTING: [max 100 woorden, noem expliciet of dit op een proefrit of alleen stationair is gebaseerd]`}`;
+}
+
+function buildLeasePrompt(merk, model, jaar, km, apkMaanden, boekje, dtcCount, bandenLabel, proefritData, lease){
+  const overKm = (lease.kmMax>0) ? (km - lease.kmMax) : null;
+  const kmKost = (overKm!=null && overKm>0 && lease.kmPrijs>0) ? overKm*lease.kmPrijs : 0;
+  return `Jij bent een Nederlandse lease-expert. Beoordeel wat de berijder kan verwachten bij het inleveren van een ${lease.type==='private'?'private':'zakelijke'} leaseauto. Wees concreet over mogelijke naheffingen.
+
+Voertuig: ${merk} ${model} bouwjaar ${jaar}
+Huidige km-stand: ${km.toLocaleString('nl')} km
+Toegestane km (contract): ${lease.kmMax?lease.kmMax.toLocaleString('nl'):'onbekend'}
+${overKm!=null?(overKm>0?`Meer-kilometers: ${overKm.toLocaleString('nl')} km${lease.kmPrijs?` x EUR ${lease.kmPrijs} = ca. EUR ${kmKost.toFixed(0)} naheffing`:''}`:`Binnen de kilometergrens (${Math.abs(overKm).toLocaleString('nl')} km marge)`):'Kilometergrens onbekend'}
+Inleverdatum: ${lease.datum||'onbekend'}
+APK: ${apkMaanden!==null?apkMaanden+' maanden':'onbekend'}
+Serviceboekje: ${boekje}
+Actieve DTC foutcodes: ${dtcCount}
+Bandenstaat: ${bandenLabel||'niet gecontroleerd'}${proefritData?`\nProefrit: ${String(proefritData).slice(0,300)}`:''}
+
+Belangrijk innameprotocol-kader (NL lease): gebruikssporen door normaal gebruik zijn meestal acceptabel (kleine krasjes <10cm, steenslag, lakschade <24mm, max 2 beschadigingen per plaatdeel). NIET acceptabel en doorgaans verhaalbaar: diepe krassen/deuken met lakschade, roest, scheuren in ruiten, gebroken koplampglas, bandenprofiel onder de norm, ontbrekende sleutels/laadpas/documenten, niet-gemelde schade (vaak EUR 300+ eigen risico per schade).
+
+Geef in maximaal 170 woorden, Nederlands. Formaat:
+KM-STATUS: [binnen grens / overschrijding + geschatte naheffing]
+TECHNISCH: [staat o.b.v. sensoren/foutcodes, 1-2 zinnen]
+AANDACHTSPUNTEN: [waar de inspecteur op let - banden, lak, ruiten, accessoires]
+KOSTENRISICO: [inschatting mogelijke naheffing, of "beperkt"]
+ADVIES: [concrete stappen voor inlevering: schade melden, kleine reparatie zelf doen, auto laten reinigen]`;
 }
 
 // ── Support-mail met diagnostische gegevens ───────────────
@@ -9664,28 +10314,36 @@ let _koopRitDuur = '';        // '2min' | '10min'
 let _koopProefritData = null; // resultaat van proefrit, meegenomen in oordeel
 let _koopMode = 'koop';       // 'koop' | 'inkoop'
 
+const KOOP_MODES = {
+  koop:    { icon:'🔍', titel:'Aankoopcheck',     btn:'🔍 Voer Aankoopcheck uit',    grad:'linear-gradient(135deg,#7c3aed,#4f46e5)', bd:'#7c3aed44',
+             desc:'Verbind OBD2, voer kenteken in na verbinding. PidLane analyseert voertuighistorie, onderhoudsachterstand en schat de marktwaarde.' },
+  inkoop:  { icon:'🏢', titel:'Inkoopcontrole',    btn:'🏢 Voer Inkoopcontrole uit',  grad:'linear-gradient(135deg,#0891b2,#0e7490)', bd:'#0891b288',
+             desc:'Voor handelaren: technische staat + zakelijke inkoopcalculatie. Vul de inkoopgegevens in voor een marge-advies en een veilige max-inkoopprijs.' },
+  verkoop: { icon:'💰', titel:'Verkoopcheck',      btn:'💰 Voer Verkoopcheck uit',    grad:'linear-gradient(135deg,#16a34a,#15803d)', bd:'#16a34a66',
+             desc:'Wat levert jouw auto op? PidLane bepaalt de technische staat en schat dealerbod, inruilwaarde en particuliere verkoopprijs. Rapport deelbaar met een koper.' },
+  lease:   { icon:'🚘', titel:'Lease Teruggave',   btn:'🚘 Voer Lease-check uit',     grad:'linear-gradient(135deg,#ea580c,#c2410c)', bd:'#ea580c66',
+             desc:'Voorkom naheffingen bij inlevering. PidLane checkt km-stand t.o.v. contract, technische staat en bandenprofiel, en wijst op aandachtspunten uit het innameprotocol.' },
+  occasion:{ icon:'📋', titel:'Occasion Rapport',  btn:'📋 Genereer Occasion Rapport', grad:'linear-gradient(135deg,#4f46e5,#6366f1)', bd:'#6366f166',
+             desc:'Een net, deelbaar inspectierapport van de occasion: technische staat, historie, onderhoud en waarde-indicatie — klaar om mee te geven.' },
+};
 function setKoopMode(mode){
   _koopMode = mode;
   // Verse start: oude proefrit-data en keuzes wissen
   _koopProefritData = null; _koopRit='nee'; _koopRitDuur='';
   const klaar=document.getElementById('koopRitKlaar'); if(klaar) klaar.style.display='none';
   const duur=document.getElementById('koopRitDuur'); if(duur) duur.style.display='none';
-  const ink = (mode==='inkoop');
+  const cfg = KOOP_MODES[mode] || KOOP_MODES.koop;
   const set=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
   const show=(id,on)=>{ const el=document.getElementById(id); if(el) el.style.display=on?'':'none'; };
-  show('koopInkoopBlok', ink);
-  set('koopHeaderIcon', ink?'🏢':'🔍');
-  set('koopHeaderTitle', ink?'Inkoopcontrole':'Aankoopcheck');
-  set('koopHeaderDesc', ink
-    ? 'Voor handelaren: technische staat + zakelijke inkoopcalculatie. Vul de inkoopgegevens in voor een marge-advies en een veilige max-inkoopprijs.'
-    : 'Verbind OBD2, voer kenteken in na verbinding. PidLane analyseert voertuighistorie, onderhoudsachterstand en schat de marktwaarde.');
+  show('koopInkoopBlok', mode==='inkoop');
+  show('koopLeaseBlok',  mode==='lease');
+  set('koopHeaderIcon', cfg.icon);
+  set('koopHeaderTitle', cfg.titel);
+  set('koopHeaderDesc', cfg.desc);
   const hdr=document.getElementById('koopHeader');
-  if(hdr) hdr.style.borderColor = ink?'#0891b288':'#7c3aed44';
+  if(hdr) hdr.style.borderColor = cfg.bd;
   const btn=document.getElementById('koopBtn');
-  if(btn){
-    btn.textContent = ink?'🏢 Voer Inkoopcontrole uit':'🔍 Voer Aankoopcheck uit';
-    btn.style.background = ink?'linear-gradient(135deg,#0891b2,#0e7490)':'linear-gradient(135deg,#7c3aed,#4f46e5)';
-  }
+  if(btn){ btn.textContent = cfg.btn; btn.style.background = cfg.grad; }
 }
 
 // Losse Proefrit-mode (vanaf welkomstscherm): vraag 2 of 10 min, dan rijden
@@ -9767,6 +10425,623 @@ function showBandenInfo(){
   m.style.display='flex';
 }
 
+// ═══ ONDERHOUD / EV / LANGE RIT MODES ═══
+// ══════════════════════════════════════════════════════════════════
+// ONDERHOUD PLANNEN — schema-advies + sensorcheck of het écht nodig is
+// ══════════════════════════════════════════════════════════════════
+function openOnderhoud(){
+  let ov=document.getElementById('onderhoudDash');
+  if(!ov){ ov=document.createElement('div'); ov.id='onderhoudDash'; document.body.appendChild(ov); }
+  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a1410,#0d1a22);z-index:9000;overflow-y:auto;font-family:var(--f)';
+  const v=getVehicle();
+  ov.innerHTML=`
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#34d399;text-transform:uppercase">Onderhoud Plannen</div>
+      <button onclick="closeExtraDash('onderhoudDash')" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:40px">🛠️</div>
+      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-top:4px">Is onderhoud écht nodig?</div>
+      <div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-top:6px">${v.merk?`${v.merk} ${v.model||''} ${v.year||''}`:'Verbind eerst de adapter'} — PidLane combineert het voorgeschreven schema met de actuele sensordata en zoekt naar gebreken.</div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px;margin-bottom:12px">
+      <label style="font-size:11px;color:#cbd5e1;display:block;margin-bottom:5px">Km sinds laatste grote beurt (optioneel)</label>
+      <input id="ondLaatste" type="number" placeholder="bijv. 12000" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#f1f5f9;font-family:var(--f);font-size:14px;box-sizing:border-box;margin-bottom:10px">
+      <label style="font-size:11px;color:#cbd5e1;display:block;margin-bottom:5px">Optioneel: rit voor betere meting</label>
+      <div style="display:flex;gap:6px">
+        <button class="ondRitOpt" data-r="geen" onclick="setOndRit('geen')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #34d399;background:rgba(52,211,153,.12);color:#34d399;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Geen rit</button>
+        <button class="ondRitOpt" data-r="2min" onclick="setOndRit('2min')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#cbd5e1;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">⚡ 2 min</button>
+        <button class="ondRitOpt" data-r="10min" onclick="setOndRit('10min')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#cbd5e1;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">🚗 10 min</button>
+      </div>
+    </div>
+    <div style="background:rgba(52,211,153,.06);border:1px solid #34d39944;border-radius:10px;padding:10px;margin-bottom:14px;font-size:11px;color:#cbd5e1;line-height:1.5">💡 Houd het serviceboekje altijd compleet — dat behoudt de waarde. PidLane kijkt of werk nu nodig is of veilig kan wachten.</div>
+    <button onclick="runOnderhoud()" style="width:100%;padding:14px;border-radius:11px;border:none;background:#34d399;color:#04130d;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">▶ Analyseer onderhoud</button>
+    <div id="ondResult" style="margin-top:14px"></div>
+  </div>`;
+  ov.style.display='block';
+  window._ondRit='geen';
+}
+function setOndRit(r){
+  window._ondRit=r;
+  document.querySelectorAll('.ondRitOpt').forEach(b=>{
+    const on=b.dataset.r===r;
+    b.style.borderColor=on?'#34d399':'rgba(255,255,255,.15)';
+    b.style.background=on?'rgba(52,211,153,.12)':'rgba(255,255,255,.05)';
+    b.style.color=on?'#34d399':'#cbd5e1';
+  });
+}
+async function runOnderhoud(){
+  const res=document.getElementById('ondResult');
+  const rit=window._ondRit||'geen';
+  if(rit!=='geen'){
+    // Eerst rijden voor data, dan terug naar onderhoud
+    window._ondPending=true;
+    closeExtraDash('onderhoudDash');
+    openRitAnalyse(rit);
+    return;
+  }
+  res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:13px">🧠 AI analyseert het onderhoud…</div>`;
+  try{ await ensurePIDsActive('totaal'); }catch(e){}
+  const v=getVehicle();
+  const laatste=parseInt(document.getElementById('ondLaatste')?.value)||0;
+  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const prompt=`Jij bent een Nederlandse APK-keurmeester/monteur. Bepaal of onderhoud nu nodig is of kan wachten.
+
+Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}
+Km-stand: ${v.km||'onbekend'}
+Km sinds laatste grote beurt: ${laatste||'onbekend'}
+Live sensordata:
+${pdata||'(geen)'}
+Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}
+
+Gebruik de fabrieksintervallen van dit merk/model als referentie (olie, filters, distributieriem/-ketting, remvloeistof, bougies). Beoordeel daarnaast of de sensordata wijst op een actueel gebrek.
+
+Geef in maximaal 160 woorden, Nederlands. Formaat:
+NU NODIG: [wat echt niet kan wachten, of "niets dringends"]
+BINNENKORT: [wat op korte termijn aankomt op basis van interval/km]
+GEVONDEN GEBREKEN: [afwijkingen uit de sensordata, of "geen"]
+ADVIES: [1-2 zinnen; benadruk serviceboekje compleet houden]`;
+  try{
+    const text=await apiFetch(prompt,700)||'Geen reactie';
+    res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:12px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
+    scanLogAdd?.({type:'onderhoud',msg:`${v.merk} ${v.model} ${v.km}km: ${text.slice(0,180)}`});
+  }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:12px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// EV / HYBRIDE CHECK — stilstaand + 2 min, focus op accu en systemen
+// ══════════════════════════════════════════════════════════════════
+function openEVCheck(){
+  let ov=document.getElementById('evDash');
+  if(!ov){ ov=document.createElement('div'); ov.id='evDash'; document.body.appendChild(ov); }
+  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a0f1a,#10182a);z-index:9000;overflow-y:auto;font-family:var(--f)';
+  const v=getVehicle();
+  const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'';
+  const isEV = ft==='elektrisch'||ft==='hybride';
+  ov.innerHTML=`
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#a78bfa;text-transform:uppercase">EV / Hybride Check</div>
+      <button onclick="closeExtraDash('evDash')" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:40px">🔋</div>
+      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-top:4px">Accu & elektrisch systeem</div>
+      <div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-top:6px">${v.merk?`${v.merk} ${v.model||''}`:'Verbind eerst de adapter'} — verkorte analyse stilstaand, daarna een korte rit van 2 minuten met focus op accu en aandrijving.</div>
+    </div>
+    ${!isEV?`<div style="background:rgba(245,158,11,.1);border:1px solid #f59e0b55;border-radius:10px;padding:11px;margin-bottom:12px;font-size:11px;color:#fcd34d;line-height:1.5">⚠️ Deze auto lijkt geen EV/hybride. Veel accu-PID's zijn fabrieksspecifiek en mogelijk niet via standaard OBD2 beschikbaar — de analyse gebruikt wat de auto levert.</div>`:''}
+    <div style="background:rgba(167,139,250,.06);border:1px solid #a78bfa44;border-radius:10px;padding:11px;margin-bottom:14px;font-size:11px;color:#cbd5e1;line-height:1.5">De check kijkt naar accuspanning/HV-systeem, laadgedrag, regeneratie en temperatuur waar beschikbaar. Standaard OBD2 toont beperkte EV-data; merk-specifieke PID's kunnen ontbreken.</div>
+    <button onclick="runEVCheck()" style="width:100%;padding:13px;border-radius:11px;border:none;background:#a78bfa;color:#10081f;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer;margin-bottom:9px">⚡ Stilstaande analyse</button>
+    <button onclick="runEVCheckRit()" style="width:100%;padding:12px;border-radius:11px;border:1px solid #a78bfa55;background:rgba(167,139,250,.12);color:#a78bfa;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">🚗 + 2 min rit erbij</button>
+    <div id="evResult" style="margin-top:14px"></div>
+  </div>`;
+  ov.style.display='block';
+}
+function runEVCheckRit(){
+  window._evPending=true;
+  closeExtraDash('evDash');
+  openRitAnalyse('2min');
+}
+async function runEVCheck(){
+  const res=document.getElementById('evResult');
+  res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:13px">🧠 AI analyseert accu & systemen…</div>`;
+  try{ await ensurePIDsActive('totaal'); }catch(e){}
+  const v=getVehicle();
+  const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
+  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const prompt=`Jij bent een Nederlandse EV/hybride specialist. Beoordeel de elektrische aandrijving en accu.
+
+Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}
+Aandrijving: ${ft}
+Live sensordata:
+${pdata||'(geen)'}
+Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}
+
+Focus op: accu/HV-systeem conditie, laad- en ontlaadgedrag, regeneratie, temperatuurbeheer. Wees eerlijk dat standaard OBD2 beperkte EV-data geeft en dat sommige waarden merk-specifiek zijn en kunnen ontbreken. Verzin geen waarden.
+
+Geef in maximaal 150 woorden, Nederlands. Formaat:
+ACCU/SYSTEEM: [conditie o.b.v. beschikbare data, 1-2 zinnen]
+LADEN/REGENERATIE: [wat zichtbaar is, of "niet uitleesbaar via OBD2"]
+AANDACHTSPUNTEN: [afwijkingen of foutcodes, of "geen"]
+ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
+  try{
+    const text=await apiFetch(prompt,650)||'Geen reactie';
+    res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:12px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
+    scanLogAdd?.({type:'ev-check',msg:`${v.merk} ${v.model} (${ft}): ${text.slice(0,180)}`});
+  }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:12px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LANGE RIT VOORBEREIDEN — techniek go/no-go + meeneem-checklist
+// ══════════════════════════════════════════════════════════════════
+function openLangeRit(){
+  let ov=document.getElementById('langeRitDash');
+  if(!ov){ ov=document.createElement('div'); ov.id='langeRitDash'; document.body.appendChild(ov); }
+  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a1018,#101a26);z-index:9000;overflow-y:auto;font-family:var(--f)';
+  const v=getVehicle();
+  ov.innerHTML=`
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#38bdf8;text-transform:uppercase">Lange Rit Voorbereiden</div>
+      <button onclick="closeExtraDash('langeRitDash')" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:40px">🧳</div>
+      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-top:4px">Klaar voor vertrek?</div>
+      <div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-top:6px">Technische go/no-go op basis van de sensoren, plus een meeneem-checklist voor veiligheid en buitenland.</div>
+    </div>
+    <div style="background:rgba(56,189,248,.06);border:1px solid #38bdf844;border-radius:10px;padding:11px;margin-bottom:12px">
+      <label style="font-size:11px;color:#cbd5e1;display:block;margin-bottom:6px">Bestemming (voor landspecifieke eisen)</label>
+      <select id="langeRitLand" class="api-inp" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#f1f5f9;font-size:13px;box-sizing:border-box">
+        <option value="nl">Nederland / binnenland</option>
+        <option value="fr">Frankrijk</option>
+        <option value="de">Duitsland</option>
+        <option value="at">Oostenrijk</option>
+        <option value="ch">Zwitserland</option>
+        <option value="be">België</option>
+        <option value="other">Ander EU-land</option>
+      </select>
+    </div>
+    <button onclick="runLangeRitTech()" style="width:100%;padding:13px;border-radius:11px;border:none;background:#38bdf8;color:#04121c;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer;margin-bottom:9px">🔧 Technische check</button>
+    <button onclick="renderLangeRitChecklist()" style="width:100%;padding:12px;border-radius:11px;border:1px solid #38bdf855;background:rgba(56,189,248,.12);color:#38bdf8;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">📋 Toon meeneem-checklist</button>
+    <div id="langeRitResult" style="margin-top:14px"></div>
+  </div>`;
+  ov.style.display='block';
+}
+async function runLangeRitTech(){
+  const res=document.getElementById('langeRitResult');
+  res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:13px">🧠 Technische go/no-go…</div>`;
+  try{ await ensurePIDsActive('totaal'); }catch(e){}
+  const v=getVehicle();
+  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const prompt=`Jij bent een Nederlandse monteur. Beoordeel of deze auto klaar is voor een lange rit (1000+ km).
+
+Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}
+Km-stand: ${v.km||'onbekend'}
+Live sensordata:
+${pdata||'(geen)'}
+Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}
+
+Let op zaken die juist op lange afstand kritisch zijn: koelsysteem/thermostaat, oliedruk/-temperatuur, accu/laadspanning, banden (indirect), foutcodes die op afstand verergeren.
+
+Geef in maximaal 140 woorden, Nederlands. Formaat:
+GO / NO-GO: [duidelijk oordeel]
+KRITISCHE PUNTEN: [wat eerst gecheckt/verholpen moet, of "geen"]
+ADVIES: [concrete stappen voor vertrek]`;
+  try{
+    const text=await apiFetch(prompt,600)||'Geen reactie';
+    res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:12px;color:#e2e8f0;line-height:1.6;white-space:pre-line;margin-bottom:12px">${text.replace(/</g,'&lt;')}</div>`+langeRitChecklistHTML();
+    scanLogAdd?.({type:'lange-rit',msg:`${v.merk} ${v.model}: ${text.slice(0,150)}`});
+  }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:12px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`+langeRitChecklistHTML(); }
+}
+function renderLangeRitChecklist(){
+  const res=document.getElementById('langeRitResult');
+  if(res) res.innerHTML=langeRitChecklistHTML();
+}
+function langeRitChecklistHTML(){
+  const land=document.getElementById('langeRitLand')?.value||'nl';
+  const altijd=[
+    ['🛞','Banden incl. reserve/noodset','Profiel ≥3mm, spanning op orde, reservewiel of bandenreparatieset + compressor'],
+    ['🛢️','Vloeistoffen','Olie (+ flesje bijvullen), koelvloeistof, ruitensproeier'],
+    ['🔋','Accu & verlichting','Accu fit, alle lampen werkend, set reservelampjes'],
+    ['🧰','Pech & veiligheid','Gevarendriehoek, startkabels, EHBO, zaklamp'],
+    ['💧','Comfort','Water, dekens, opladers, contant geld kleingeld tol'],
+  ];
+  const perLand={
+    fr:[['🦺','Veiligheidshesjes','Verplicht, binnen handbereik (niet in kofferbak) — voor alle inzittenden aangeraden'],['📐','Gevarendriehoek','Verplicht (ECE R27)'],['🍷','Alcoholtester','Aangeraden (niet meer verplicht sinds 2020); limiet 0,5‰ / 0,2‰ beginner'],['🏷️','Crit\u2019Air milieusticker','Verplicht in veel stadscentra'],['❄️','Winteruitrusting','In bergzones nov–mrt winterbanden of sneeuwkettingen']],
+    de:[['🦺','Veiligheidshesjes','Verplicht, binnen handbereik'],['📐','Gevarendriehoek','Verplicht'],['🩹','Verbanddoos','Verplicht voor Duits kenteken; aangeraden voor NL'],['🏷️','Umweltplakette','Verplicht in Umweltzonen (stadscentra)']],
+    at:[['🦺','Veiligheidshesjes','Verplicht'],['📐','Gevarendriehoek','Verplicht'],['🩹','Verbanddoos','Verplicht voor NL auto\u2019s'],['🛣️','Vignet','Tolvignet verplicht op snelwegen'],['❄️','Winterbanden','1 nov–15 apr bij winterse omstandigheden']],
+    ch:[['🦺','Veiligheidshesjes','Verplicht'],['📐','Gevarendriehoek','Verplicht'],['🩹','Verbanddoos','Aangeraden'],['🛣️','Vignet','Jaarvignet verplicht op snelwegen']],
+    be:[['🦺','Veiligheidshesje','Verplicht voor bestuurder'],['📐','Gevarendriehoek','Verplicht'],['🩹','Verbanddoos','Verplicht'],['🧯','Brandblusser','Verplicht']],
+    other:[['🦺','Veiligheidshesjes','In veel EU-landen verplicht'],['📐','Gevarendriehoek','In de meeste landen verplicht'],['🩹','Verbanddoos','Vaak verplicht — check ANWB Reiswijzer']],
+    nl:[],
+  };
+  const extra=perLand[land]||[];
+  const row=(it)=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="font-size:16px;flex-shrink:0">${it[0]}</span><div><div style="font-size:12px;font-weight:700;color:#e2e8f0">${it[1]}</div><div style="font-size:10px;color:#94a3b8;line-height:1.45">${it[2]}</div></div></div>`;
+  return `
+  <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:6px 14px 12px;margin-bottom:8px">
+    <div style="font-size:11px;font-weight:700;color:#38bdf8;padding:10px 0 4px">📋 Altijd meenemen</div>
+    ${altijd.map(row).join('')}
+    ${extra.length?`<div style="font-size:11px;font-weight:700;color:#fbbf24;padding:12px 0 4px">🌍 Verplicht/aangeraden in dit land</div>${extra.map(row).join('')}<div style="font-size:9px;color:#64748b;padding-top:8px;line-height:1.4">Regels wijzigen; check vóór vertrek de actuele ANWB Reiswijzer voor je bestemming.</div>`:''}
+  </div>`;
+}
+
+// Gedeelde sluit-helper voor de losse dashboards
+function closeExtraDash(id){ const el=document.getElementById(id); if(el) el.style.display='none'; }
+
+
+// ═══ AIRCO & WINTER CHECK MODULE ═══
+function CLIMATE_THERMO_SVG(accent){
+  return `<svg viewBox="0 0 420 240" style="width:100%;height:auto;display:block;border-radius:12px;background:#0a1420;border:1px solid rgba(255,255,255,.08)">
+    <!-- ventilatierooster -->
+    <rect x="24" y="60" width="180" height="120" rx="14" fill="#0d1d2b" stroke="#1e3a4f" stroke-width="2"/>
+    ${[0,1,2,3,4,5,6].map(i=>`<rect x="36" y="${74+i*15}" width="156" height="7" rx="3.5" fill="#16314a"/>`).join('')}
+    <text x="114" y="200" text-anchor="middle" fill="#5b7591" font-family="sans-serif" font-size="13" font-weight="700">Ventilatierooster</text>
+
+    <!-- thermometer -->
+    <g transform="rotate(-22 300 120)">
+      <!-- body -->
+      <rect x="250" y="104" width="120" height="30" rx="15" fill="#fff"/>
+      <rect x="250" y="104" width="120" height="30" rx="15" fill="url(#thg)" opacity=".15"/>
+      <!-- roze tip (de beruchte punt) -->
+      <circle cx="250" cy="119" r="17" fill="#ff8fb3"/>
+      <circle cx="250" cy="119" r="17" fill="#ff6fa0" opacity=".4"/>
+      <!-- scherm -->
+      <rect x="286" y="110" width="50" height="18" rx="4" fill="#06121c"/>
+      <text x="311" y="124" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="13" font-weight="700">7.2\u00b0</text>
+      <!-- knopje -->
+      <circle cx="356" cy="119" r="6" fill="#cbd5e1"/>
+    </g>
+    <!-- pijl tip → rooster -->
+    <path d="M 232 132 Q 215 150 200 138" fill="none" stroke="${accent}" stroke-width="2.5" stroke-dasharray="4 4"/>
+    <polygon points="200,138 207,134 206,143" fill="${accent}"/>
+
+    <defs><linearGradient id="thg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#94a3b8"/></linearGradient></defs>
+  </svg>
+  <div style="font-size:10px;color:#64748b;text-align:center;margin-top:6px;font-style:italic">Ja, die thermometer. Hij is nu een diagnose-instrument. \u{1F605}</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AIRCO & WINTER CHECK — herbruikbare module
+// Meet primair via OBD-sensoren (RPM-dip, motorbelasting, temperaturen).
+// Thermometer (bijv. een kinder-/oorthermometer) is optionele 2e bron,
+// gemarkeerd als minder betrouwbaar. Aanroepbaar vanuit elke mode via
+// openClimateCheck('airco') of openClimateCheck('winter').
+// ══════════════════════════════════════════════════════════════════
+let _climateMode='airco';      // 'airco' | 'winter'
+let _climateTimer=null;
+let _climateData={};
+
+function openClimateCheck(mode='airco'){
+  _climateMode=mode;
+  _climateData={ mode, t0:null, samples:[], thermoT1:null, thermoT2:null };
+  document.getElementById('welcomeScreen')?.classList.add('hidden');
+  let ov=document.getElementById('climateDash');
+  if(!ov){ ov=document.createElement('div'); ov.id='climateDash'; document.body.appendChild(ov); }
+  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#04101a,#0a1622);z-index:9000;overflow-y:auto;font-family:var(--f)';
+  ov.innerHTML=climateIntroHTML(mode);
+  ov.style.display='block';
+}
+function closeClimateCheck(){
+  if(_climateTimer){ clearInterval(_climateTimer); _climateTimer=null; }
+  const ov=document.getElementById('climateDash'); if(ov) ov.style.display='none';
+}
+
+function climateIntroHTML(mode){
+  const airco = mode==='airco';
+  const accent = airco?'#22d3ee':'#60a5fa';
+  const icon = airco?'❄️':'🔥';
+  const titel = airco?'Airco Check':'Wintercheck';
+  const sub = airco
+    ? 'Hoe goed koelt de airco? We meten het koelvermogen via de auto-sensoren, met optioneel een thermometer als tweede check.'
+    : 'Werkt de thermostaat en warmt de motor goed op? We volgen koelvloeistof, olie en accu tijdens het opwarmen.';
+  const stappen = airco ? [
+    ['1','Motor uit, contact aan','Zet het contact aan zonder de motor te starten. We lezen de begintemperatuur.'],
+    ['2','Start motor + airco','Start de motor, zet de airco op het koudste standje en de ventilator laag.'],
+    ['3','60 seconden meten','We meten de RPM-dip van de compressor en de temperatuurdaling.'],
+    ['4','Oordeel','Werkt de airco goed, zwak, of slaat de compressor niet aan?'],
+  ] : [
+    ['1','Koude start','Start de meting met een koude motor (bij voorkeur \u2019s ochtends).'],
+    ['2','Start motor','Start de motor en laat hem stationair draaien. Niet wegrijden.'],
+    ['3','Opwarmen volgen','We volgen koelvloeistof en olie tot bedrijfstemperatuur (~90\u00b0C).'],
+    ['4','Oordeel','Thermostaat, opwarmtijd, oliecirculatie en accuconditie.'],
+  ];
+  return `
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <button onclick="closeClimateCheck()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;padding:4px">\u2039</button>
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:${accent};text-transform:uppercase">PidLane</div>
+      <button onclick="closeClimateCheck()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:4px">\u2715</button>
+    </div>
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:46px;margin-bottom:6px">${icon}</div>
+      <div style="font-size:20px;font-weight:800;color:#f1f5f9">${titel}</div>
+      <div style="font-size:12px;color:#94a3b8;line-height:1.55;margin-top:6px">${sub}</div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-bottom:14px">
+      ${stappen.map(s=>`
+        <div style="display:flex;gap:11px;align-items:flex-start;margin-bottom:11px">
+          <div style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:${accent};color:#04101a;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center">${s[0]}</div>
+          <div><div style="font-size:13px;font-weight:700;color:#e2e8f0">${s[1]}</div><div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-top:1px">${s[2]}</div></div>
+        </div>`).join('')}
+    </div>
+    <div style="background:rgba(34,211,238,.06);border:1px solid ${accent}44;border-radius:12px;padding:11px;margin-bottom:16px;display:flex;gap:9px;align-items:flex-start">
+      <span style="font-size:15px">\u{1F4E1}</span>
+      <div style="font-size:11px;color:#cbd5e1;line-height:1.5">De meting gebruikt vooral de <b style="color:${accent}">auto-sensoren</b>. Een thermometer kun je optioneel toevoegen voor een extra controle \u2014 dat resultaat is minder betrouwbaar.</div>
+    </div>
+    <button onclick="climateStart()" style="width:100%;padding:14px;border-radius:11px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">\u25b6 Start ${titel}</button>
+    <div style="text-align:center;font-size:10px;color:#64748b;margin-top:10px">${(typeof connected!=='undefined'&&connected)||(typeof demoMode!=='undefined'&&demoMode)?'\u2705 Adapter verbonden':'\u26a0\ufe0f Geen adapter \u2014 verbind eerst de OBD2 adapter'}</div>
+  </div>`;
+}
+
+async function climateStart(){
+  const airco = _climateMode==='airco';
+  // Activeer de relevante sensoren
+  const pids = airco ? ['010C','0104','010F','0105','010B'] : ['0105','015C','010C','0142','010F'];
+  try{ await ensurePIDListActive(pids); }catch(e){}
+  // Baseline na korte stabilisatie
+  _climateData.t0 = Date.now();
+  _climateData.samples = [];
+  _climateData.baseline = climateSnapshot();
+  climateRenderLive();
+  const DUUR = airco ? 60 : 600; // airco 60s, winter tot 10 min (of eerder klaar)
+  _climateData.duur = DUUR;
+  if(_climateTimer) clearInterval(_climateTimer);
+  _climateTimer = setInterval(()=>{
+    const snap = climateSnapshot();
+    _climateData.samples.push({ t:(Date.now()-_climateData.t0)/1000, ...snap });
+    climateRenderLive();
+    const elapsed = (Date.now()-_climateData.t0)/1000;
+    // Winter: stop zodra koelvloeistof bedrijfstemp bereikt (>=88) of tijd om
+    const coolant = snap.coolant;
+    if(!airco && coolant!=null && coolant>=88){ climateFinish(); return; }
+    if(elapsed>=DUUR){ climateFinish(); }
+  }, airco?2000:3000);
+}
+
+function climateSnapshot(){
+  const g=pid=> (typeof pidVals!=='undefined' && pidVals[pid]!=null)?pidVals[pid]:null;
+  return {
+    rpm:    g('010C'),
+    load:   g('0104'),
+    iat:    g('010F'),
+    coolant:g('0105'),
+    oil:    g('015C'),
+    volt:   g('0142'),
+    map:    g('010B'),
+  };
+}
+
+function climateRenderLive(){
+  const ov=document.getElementById('climateDash'); if(!ov) return;
+  const airco=_climateMode==='airco';
+  const accent=airco?'#22d3ee':'#60a5fa';
+  const s=climateSnapshot();
+  const b=_climateData.baseline||{};
+  const elapsed=Math.floor((Date.now()-_climateData.t0)/1000);
+  const duur=_climateData.duur||60;
+  const pct=Math.min(100,Math.round(elapsed/duur*100));
+  const rpmDip = (b.rpm!=null && s.rpm!=null) ? (s.rpm-b.rpm) : null;
+  const loadDelta = (b.load!=null && s.load!=null) ? (s.load-b.load) : null;
+  const f=(v,d=0)=> v==null?'\u2014':v.toFixed(d);
+  const row=(lbl,val,unit,hint)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><div style="font-size:12px;color:#e2e8f0;font-weight:600">${lbl}</div>${hint?`<div style="font-size:10px;color:#64748b">${hint}</div>`:''}</div><div style="font-size:16px;font-weight:800;color:${accent};font-variant-numeric:tabular-nums">${val}<span style="font-size:10px;color:#64748b;font-weight:400;margin-left:2px">${unit}</span></div></div>`;
+  ov.innerHTML=`
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:16px;font-weight:800;color:#f1f5f9">${airco?'\u2744\ufe0f Airco meten\u2026':'\u{1F525} Opwarmen volgen\u2026'}</div>
+      <button onclick="climateFinish()" style="padding:6px 12px;border-radius:8px;border:1px solid ${accent}55;background:${accent}18;color:${accent};font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Nu stoppen</button>
+    </div>
+    <div style="height:6px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:${pct}%;background:${accent};transition:width .4s"></div></div>
+    <div style="font-size:10px;color:#64748b;text-align:right;margin-bottom:14px">${elapsed}s / ${duur}s</div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:4px 14px;margin-bottom:14px">
+      ${airco?`
+        ${row('Compressor RPM-dip', rpmDip==null?'\u2014':(rpmDip>0?'+':'')+f(rpmDip), 'RPM', rpmDip!=null&&rpmDip<-30?'compressor belast de motor \u2014 goed teken':'wachten op inschakeling')}
+        ${row('Motorbelasting', f(s.load), '%', loadDelta!=null?`\u0394 ${loadDelta>0?'+':''}${f(loadDelta)}%`:'')}
+        ${row('Inlaatlucht temp', f(s.iat), '\u00b0C', 'referentie omgeving')}
+        ${row('Toerental', f(s.rpm), 'RPM','')}
+      `:`
+        ${row('Koelvloeistof', f(s.coolant), '\u00b0C', s.coolant!=null&&s.coolant>=88?'bedrijfstemperatuur bereikt':'opwarmen\u2026 (doel ~90\u00b0C)')}
+        ${row('Motorolie temp', f(s.oil), '\u00b0C', 'volgt koelvloeistof met vertraging')}
+        ${row('Accuspanning', f(s.volt,1), 'V', s.volt!=null&&s.volt<12?'laag \u2014 koude accu':'')}
+        ${row('Toerental', f(s.rpm), 'RPM', 'koude stationairtoeren liggen hoger')}
+      `}
+    </div>
+    <div style="font-size:10px;color:#64748b;text-align:center">De meting stopt ${airco?'na 60 seconden':'zodra ~90\u00b0C is bereikt'} automatisch.</div>
+  </div>`;
+}
+
+function climateFinish(){
+  if(_climateTimer){ clearInterval(_climateTimer); _climateTimer=null; }
+  _climateData.eind = climateSnapshot();
+  // Vraag optioneel thermometer-meting (alleen airco standaard, winter optioneel)
+  climateRenderThermoPrompt();
+}
+
+function climateRenderThermoPrompt(){
+  const ov=document.getElementById('climateDash'); if(!ov) return;
+  const airco=_climateMode==='airco';
+  const accent=airco?'#22d3ee':'#60a5fa';
+  ov.innerHTML=`
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:38px">\u{1F321}\ufe0f</div>
+      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-top:4px">Thermometer-check?</div>
+      <div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-top:6px">Optioneel: meet met een thermometer (bijv. een oor-/kinderthermometer) voor een extra controle. <b style="color:#fbbf24">Minder betrouwbaar</b> dan de sensormeting, maar leuk als dubbelcheck.</div>
+    </div>
+    <button onclick="climateShowThermoGuide()" style="width:100%;padding:12px;border-radius:11px;border:1px solid ${accent}55;background:${accent}14;color:${accent};font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:9px">\u{1F321}\ufe0f Ja, thermometer toevoegen</button>
+    <button onclick="climateVerdict()" style="width:100%;padding:14px;border-radius:11px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">Sla over \u2192 toon oordeel</button>
+  </div>`;
+}
+
+function climateShowThermoGuide(){
+  const ov=document.getElementById('climateDash'); if(!ov) return;
+  const airco=_climateMode==='airco';
+  const accent=airco?'#22d3ee':'#60a5fa';
+  ov.innerHTML=`
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <button onclick="climateRenderThermoPrompt()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">\u2039</button>
+      <div style="font-size:16px;font-weight:800;color:#f1f5f9">\u{1F321}\ufe0f Zo meet je</div>
+    </div>
+    ${CLIMATE_THERMO_SVG(accent)}
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px;margin:14px 0">
+      <div style="font-size:12px;color:#cbd5e1;line-height:1.6">
+        1. Steek de thermometer in het ${airco?'koudste':'warmste'} ventilatierooster.<br>
+        2. Wacht tot de meting stabiel is (~10\u201315 sec).<br>
+        3. Lees de temperatuur af en voer hem hieronder in.
+      </div>
+    </div>
+    <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:6px">Gemeten uitblaastemperatuur (\u00b0C)</label>
+    <input id="climateThermoInput" type="number" step="0.1" placeholder="bijv. ${airco?'7':'55'}" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#f1f5f9;font-family:var(--f);font-size:15px;margin-bottom:12px;box-sizing:border-box">
+    <button onclick="climateSaveThermo()" style="width:100%;padding:14px;border-radius:11px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">Opslaan \u2192 oordeel</button>
+  </div>`;
+}
+
+function climateSaveThermo(){
+  const v=parseFloat(document.getElementById('climateThermoInput')?.value);
+  if(!isNaN(v)) _climateData.thermoT2=v;
+  climateVerdict();
+}
+
+async function climateVerdict(){
+  const ov=document.getElementById('climateDash'); if(!ov) return;
+  const airco=_climateMode==='airco';
+  const accent=airco?'#22d3ee':'#60a5fa';
+  ov.innerHTML=`<div style="max-width:520px;margin:0 auto;padding:40px 16px;text-align:center">
+    <div style="font-size:38px;margin-bottom:10px">\u{1F9E0}</div>
+    <div style="font-size:14px;color:#cbd5e1">AI beoordeelt de meting\u2026</div>
+  </div>`;
+  // Lokaal oordeel (altijd beschikbaar, ook zonder AI-sleutel)
+  const local = airco ? aircoLocalVerdict() : winterLocalVerdict();
+  let aiText='';
+  try{
+    const prompt = airco ? buildAircoPrompt(local) : buildWinterPrompt(local);
+    aiText = await apiFetch(prompt, 600) || '';
+  }catch(e){ aiText=''; }
+  climateRenderResult(local, aiText);
+}
+
+function aircoLocalVerdict(){
+  const samples=_climateData.samples||[];
+  const b=_climateData.baseline||{}, e=_climateData.eind||{};
+  // RPM-dip: laagste RPM tov baseline tijdens meting
+  let minRpm=b.rpm, maxLoad=b.load;
+  samples.forEach(s=>{ if(s.rpm!=null&&(minRpm==null||s.rpm<minRpm)) minRpm=s.rpm; if(s.load!=null&&(maxLoad==null||s.load>maxLoad)) maxLoad=s.load; });
+  const rpmDip = (b.rpm!=null&&minRpm!=null)? (b.rpm-minRpm):null;     // positief = compressor belast
+  const loadRise = (b.load!=null&&maxLoad!=null)? (maxLoad-b.load):null;
+  const compressorAan = (rpmDip!=null&&Math.abs(rpmDip)>25) || (loadRise!=null&&loadRise>5);
+  // Thermometer delta (T1 omgeving ~ baseline IAT, T2 uitblaas)
+  const t1 = _climateData.thermoT1 ?? b.iat;
+  const t2 = _climateData.thermoT2;
+  const deltaT = (t1!=null&&t2!=null)? (t1-t2):null;
+  let oordeel, kleur;
+  if(deltaT!=null){
+    if(deltaT>=15){ oordeel='Airco werkt goed'; kleur='#22c55e'; }
+    else if(deltaT>=8){ oordeel='Airco zwak \u2014 mogelijk laag koudemiddel'; kleur='#f59e0b'; }
+    else { oordeel='Airco probleem \u2014 check koudemiddel/compressor'; kleur='#ef4444'; }
+  } else if(compressorAan){ oordeel='Compressor slaat aan \u2014 koelvermogen niet gemeten'; kleur='#22c55e'; }
+  else { oordeel='Compressor lijkt niet in te schakelen'; kleur='#ef4444'; }
+  return { type:'airco', rpmDip, loadRise, compressorAan, t1, t2, deltaT, oordeel, kleur };
+}
+
+function winterLocalVerdict(){
+  const samples=_climateData.samples||[];
+  const b=_climateData.baseline||{}, e=_climateData.eind||{};
+  const startCoolant=b.coolant, eindCoolant=e.coolant;
+  // Opwarmtijd tot 88C
+  let tijd88=null;
+  for(const s of samples){ if(s.coolant!=null&&s.coolant>=88){ tijd88=Math.round(s.t); break; } }
+  const bereiktBedrijfstemp = eindCoolant!=null && eindCoolant>=85;
+  const oilFollows = (e.oil!=null&&eindCoolant!=null)? (e.oil>=eindCoolant-30):null;
+  const voltKoud = b.volt;
+  let thermostaat, kleur;
+  if(!bereiktBedrijfstemp){ thermostaat='Bereikt geen bedrijfstemperatuur \u2014 thermostaat mogelijk open vast'; kleur='#ef4444'; }
+  else if(tijd88!=null && tijd88>420){ thermostaat='Warmt traag op \u2014 thermostaat of circulatie controleren'; kleur='#f59e0b'; }
+  else { thermostaat='Thermostaat en opwarming OK'; kleur='#22c55e'; }
+  let accu;
+  if(voltKoud==null) accu='onbekend';
+  else if(voltKoud<11.8) accu='zwak \u2014 koude accu, overweeg test/vervanging';
+  else if(voltKoud<12.2) accu='matig';
+  else accu='goed';
+  return { type:'winter', startCoolant, eindCoolant, tijd88, bereiktBedrijfstemp, oilFollows, voltKoud, accu, oordeel:thermostaat, kleur };
+}
+
+function buildAircoPrompt(v){
+  return `Je bent een Nederlandse autotechnicus. Beoordeel een airco-meting kort.
+RPM-dip bij inschakelen compressor: ${v.rpmDip==null?'onbekend':v.rpmDip.toFixed(0)+' RPM'}
+Stijging motorbelasting: ${v.loadRise==null?'onbekend':v.loadRise.toFixed(0)+'%'}
+Compressor schakelt in: ${v.compressorAan?'ja':'niet gedetecteerd'}
+Thermometer omgeving T1: ${v.t1==null?'n.v.t.':v.t1.toFixed(1)+'\u00b0C'}
+Thermometer uitblaas T2: ${v.t2==null?'n.v.t.':v.t2.toFixed(1)+'\u00b0C'}
+Delta T: ${v.deltaT==null?'niet gemeten (alleen sensoren)':v.deltaT.toFixed(1)+'\u00b0C'}
+Voorlopig oordeel: ${v.oordeel}
+
+Geef max 90 woorden Nederlands:
+OORDEEL: [1 zin]
+UITLEG: [wat de cijfers betekenen, max 50 woorden]
+ADVIES: [concrete vervolgstap]`;
+}
+function buildWinterPrompt(v){
+  return `Je bent een Nederlandse autotechnicus. Beoordeel een winter-/opwarmmeting kort.
+Koelvloeistof start: ${v.startCoolant==null?'?':v.startCoolant.toFixed(0)+'\u00b0C'}
+Koelvloeistof eind: ${v.eindCoolant==null?'?':v.eindCoolant.toFixed(0)+'\u00b0C'}
+Tijd tot 88\u00b0C: ${v.tijd88==null?'niet bereikt':v.tijd88+' sec'}
+Olietemp volgt koelvloeistof: ${v.oilFollows==null?'onbekend':(v.oilFollows?'ja':'achterblijvend')}
+Accuspanning koud: ${v.voltKoud==null?'?':v.voltKoud.toFixed(1)+'V'} (${v.accu})
+Voorlopig oordeel: ${v.oordeel}
+
+Geef max 100 woorden Nederlands:
+OORDEEL: [thermostaat/opwarming, 1 zin]
+ACCU: [1 zin]
+ADVIES: [concrete vervolgstap]`;
+}
+
+function climateRenderResult(v, aiText){
+  const ov=document.getElementById('climateDash'); if(!ov) return;
+  const airco=_climateMode==='airco';
+  const accent=airco?'#22d3ee':'#60a5fa';
+  const f=(x,d=0)=>x==null?'\u2014':x.toFixed(d);
+  const stat = airco ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0">
+      ${climateStatCard('Compressor RPM-dip', v.rpmDip==null?'\u2014':f(v.rpmDip)+' RPM', accent)}
+      ${climateStatCard('Belasting +', v.loadRise==null?'\u2014':'+'+f(v.loadRise)+'%', accent)}
+      ${climateStatCard('Omgeving T1', v.t1==null?'\u2014':f(v.t1,1)+'\u00b0C', accent)}
+      ${climateStatCard('Uitblaas T2', v.t2==null?'niet gemeten':f(v.t2,1)+'\u00b0C', accent)}
+      ${v.deltaT!=null?`<div style="grid-column:1/-1">${climateStatCard('\u0394 Temperatuurdaling', f(v.deltaT,1)+'\u00b0C', v.kleur)}</div>`:''}
+    </div>` : `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0">
+      ${climateStatCard('Koelvloeistof eind', f(v.eindCoolant)+'\u00b0C', accent)}
+      ${climateStatCard('Opwarmtijd', v.tijd88==null?'>tijd':v.tijd88+'s', accent)}
+      ${climateStatCard('Olietemp', f(_climateData.eind?.oil)+'\u00b0C', accent)}
+      ${climateStatCard('Accu (koud)', f(v.voltKoud,1)+'V', accent)}
+    </div>`;
+  ov.innerHTML=`
+  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:${accent};text-transform:uppercase">${airco?'Airco Check':'Wintercheck'} \u2014 resultaat</div>
+      <button onclick="closeClimateCheck()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">\u2715</button>
+    </div>
+    <div style="background:${v.kleur}14;border:1px solid ${v.kleur}55;border-radius:14px;padding:16px;text-align:center;margin-bottom:6px">
+      <div style="font-size:13px;font-weight:800;color:${v.kleur}">${v.oordeel}</div>
+      ${!airco?`<div style="font-size:11px;color:#cbd5e1;margin-top:5px">Accu: ${v.accu}</div>`:''}
+    </div>
+    ${stat}
+    ${v.deltaT==null&&airco?`<div style="font-size:10px;color:#fbbf24;text-align:center;margin-bottom:8px">\u26a0\ufe0f Geen thermometer gebruikt \u2014 oordeel op sensoren (compressorwerking), niet op koelvermogen.</div>`:''}
+    ${aiText?`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px;font-size:12px;color:#cbd5e1;line-height:1.6;white-space:pre-line">${aiText.replace(/</g,'&lt;')}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="openClimateCheck('${_climateMode}')" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#e2e8f0;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">\u21ba Opnieuw</button>
+      <button onclick="closeClimateCheck()" style="flex:1;padding:12px;border-radius:10px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:12px;font-weight:800;cursor:pointer">Klaar</button>
+    </div>
+  </div>`;
+  try{ scanLogAdd?.({ type:_climateMode==='airco'?'aircocheck':'wintercheck', msg:`${v.oordeel}${v.deltaT!=null?' (\u0394T '+v.deltaT.toFixed(1)+'\u00b0C)':''}` }); }catch(e){}
+}
+
+function climateStatCard(lbl,val,col){
+  return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px"><div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${lbl}</div><div style="font-size:16px;font-weight:800;color:${col};font-variant-numeric:tabular-nums">${val}</div></div>`;
+}
+
+
 async function runKoopcheck(){
   const btn = document.getElementById('koopBtn');
   const res = document.getElementById('koopResults');
@@ -9840,16 +11115,41 @@ async function runKoopcheck(){
     document.getElementById('koopOnderhoudRes').textContent = 'AI niet beschikbaar: ' + e.message;
   }
 
-  // ── Prijsschatting AI call ──
+  // ── Prijsschatting AI call (modus-afhankelijke insteek) ──
   try {
-    const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten, tellerOordeel, recallActief, bandenLabel, proefritData);
-    const text2 = await apiFetch(prompt2, 600) || 'Geen reactie';
+    const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten, tellerOordeel, recallActief, bandenLabel, proefritData, _koopMode);
+    const text2 = await apiFetch(prompt2, 650) || 'Geen reactie';
     document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
 
     scanEntry.prijs_ai = text2.slice(0,300);
     scanLogAdd({ type:'koopcheck-prijs', msg:`${merk} ${model} ${jaar} ${km}km: ${text2.slice(0,200)}` });
   } catch(e) {
     document.getElementById('koopPrijsRes').textContent = 'AI niet beschikbaar: ' + e.message;
+  }
+
+  // ── Lease-calculatie (alleen lease-modus) ──
+  if(_koopMode==='lease'){
+    const lease = {
+      kmMax: parseInt(document.getElementById('leaseKmMax')?.value)||0,
+      kmPrijs: parseFloat(document.getElementById('leaseKmPrijs')?.value)||0,
+      type: document.getElementById('leaseType')?.value||'private',
+      datum: document.getElementById('leaseDatum')?.value||'',
+    };
+    scanEntry.lease = lease;
+    document.getElementById('koopResults').innerHTML += `
+      <div style="background:var(--sur);border:1px solid #ea580c;border-radius:var(--r);padding:12px;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;color:#ea580c;margin-bottom:8px">⏳ Lease-inlevercheck bezig...</div>
+        <div id="koopLeaseRes" style="font-size:11px;color:var(--tx2)">AI beoordeelt km-stand en inlever-aandachtspunten...</div>
+      </div>`;
+    try {
+      const prompt3 = buildLeasePrompt(merk, model, jaar, km, apkMaanden, boekje, dtcCount, bandenLabel, proefritData, lease);
+      const text3 = await apiFetch(prompt3, 700) || 'Geen reactie';
+      document.getElementById('koopLeaseRes').innerHTML = formatKoopAI(text3, 'lease');
+      scanEntry.lease_ai = text3.slice(0,300);
+      scanLogAdd({ type:'lease-teruggave', msg:`${merk} ${model} ${km}km / max ${lease.kmMax}: ${text3.slice(0,180)}` });
+    } catch(e) {
+      document.getElementById('koopLeaseRes').textContent = 'AI niet beschikbaar: ' + e.message;
+    }
   }
 
   // ── Inkoop-calculatie (alleen handelaar-modus) ──
@@ -9883,17 +11183,25 @@ async function runKoopcheck(){
   scanLogAdd(scanEntry);
 
   // Voeg disclaimer toe
+  const deelbaar = (_koopMode==='verkoop'||_koopMode==='occasion');
   document.getElementById('koopResults').innerHTML += `
     <div style="margin-top:12px;padding:8px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px;font-size:9px;color:var(--tx3);line-height:1.5">
-      <strong>⚖️ Disclaimer:</strong> PidLane biedt deze analyse uitsluitend ter informatie. De AI-analyse, RDW-gegevens en prijsschatting zijn indicatief en kunnen fouten bevatten. PidLane, haar ontwikkelaars en medewerkers zijn niet aansprakelijk voor beslissingen genomen op basis van deze analyse, voor verborgen gebreken die niet detecteerbaar zijn via OBD2-uitlezing, noch voor enige directe of indirecte schade voortvloeiend uit gebruik van de Koopcheck. Raadpleeg altijd een erkende BOVAG/RAI-garage voor een complete aankoopkeuring. © PidLane 2026
+      <strong>⚖️ Disclaimer:</strong> PidLane biedt deze analyse uitsluitend ter informatie. De AI-analyse, RDW-gegevens en prijsschatting zijn indicatief en kunnen fouten bevatten. PidLane, haar ontwikkelaars en medewerkers zijn niet aansprakelijk voor beslissingen genomen op basis van deze analyse, voor verborgen gebreken die niet detecteerbaar zijn via OBD2-uitlezing, noch voor enige directe of indirecte schade. Raadpleeg altijd een erkende BOVAG/RAI-garage voor een complete keuring. © PidLane 2026
     </div>
+    ${deelbaar?`
+    <div style="margin-top:10px;padding:11px;background:linear-gradient(135deg,rgba(22,163,74,.1),var(--sur));border:1px solid #16a34a55;border-radius:8px">
+      <div style="font-size:11px;font-weight:700;color:#16a34a;margin-bottom:4px">📤 Rapport delen met koper</div>
+      <div style="font-size:10px;color:var(--tx2);line-height:1.5;margin-bottom:8px">Deel dit rapport met een geïnteresseerde koper of dealer als bewijs van de staat en historie.</div>
+      <button onclick="exportVehicleDossier(this)" style="width:100%;padding:9px;border-radius:7px;border:none;background:#16a34a;color:#fff;font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">📁 Deel als PDF-rapport</button>
+    </div>`:''}
     <div style="margin-top:8px;text-align:center">
       <button onclick="mailSupport(true)" style="font-size:10px;font-weight:600;padding:6px 12px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✉ Stuur naar support</button>
     </div>`;
 
   btn.disabled = false;
-  btn.textContent = _koopMode==='inkoop' ? '🏢 Voer Inkoopcontrole opnieuw uit' : '🔍 Voer Aankoopcheck opnieuw uit';
-  log(`${_koopMode==='inkoop'?'🏢 Inkoopcontrole':'🔍 Koopcheck'} klaar: ${merk} ${model} ${jaar} — ${km.toLocaleString('nl')} km`, 'ok');
+  const cfgEnd = KOOP_MODES[_koopMode] || KOOP_MODES.koop;
+  btn.textContent = cfgEnd.btn.replace('Voer','Voer opnieuw').replace('Genereer','Genereer opnieuw');
+  log(`${cfgEnd.icon} ${cfgEnd.titel} klaar: ${merk} ${model} ${jaar} — ${km.toLocaleString('nl')} km`, 'ok');
 }
 
 function formatKoopAI(text, type){
@@ -9911,12 +11219,24 @@ function formatKoopAI(text, type){
     ['MAX-INKOOP:', '#22d3ee'],
     ['INKOOPADVIES:', '#a78bfa'],
     ['RISICO:', '#ef4444'],
+    ['PARTICULIER:', '#22c55e'],
+    ['INRUILWAARDE:', '#f59e0b'],
+    ['DEALERBOD:', '#22d3ee'],
+    ['ADVIES:', '#a78bfa'],
+    ['KM-STATUS:', '#ea580c'],
+    ['TECHNISCH:', 'var(--tx)'],
+    ['AANDACHTSPUNTEN:', '#f59e0b'],
+    ['KOSTENRISICO:', '#ef4444'],
   ];
   let html = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  labels.forEach(function(pair){
+  // Labels staan altijd aan het begin van een regel. Anker daarop (^ multiline)
+  // zodat een korter label (RISICO:, ADVIES:) niet binnen een langer label
+  // (KOSTENRISICO:, INKOOPADVIES:) of binnen een al-ingevoegde span matcht.
+  const sortedLabels = labels.slice().sort((a,b)=>b[0].length-a[0].length);
+  sortedLabels.forEach(function(pair){
     var label = pair[0], color = pair[1];
-    var escaped = label.replace(':','\\:');
-    var re = new RegExp(escaped, 'gi');
+    var escaped = label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    var re = new RegExp('^\\s*'+escaped, 'gim');
     html = html.replace(re, '<span style="font-weight:700;color:'+color+'">'+label+'</span>');
   });
   return '<div style="white-space:pre-wrap;line-height:1.6">'+html+'</div>';
@@ -10003,7 +11323,7 @@ async function exportVehicleDossier(btn){
     doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...PU); doc.text('Foutcodes (huidig)',M,y); y+=2;
     doc.setDrawColor(...PU); doc.line(M,y,M+45,y); y+=6;
     doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
-    if(dtcCodes.length){ dtcCodes.forEach(c=>{ const i=DTCDB[c]; pageBreak(6); doc.text(`${c} — ${clean(i?.desc||'onbekend')}`,M,y); y+=5.5; }); }
+    if(dtcCodes.length){ dtcCodes.forEach(c=>{ const i=dtcInfo(c); pageBreak(6); doc.text(`${c} — ${clean(i?.desc||'onbekend')}`,M,y); y+=5.5; }); }
     else { doc.setTextColor(...GREY); doc.text('Geen actieve foutcodes.',M,y); y+=6; }
     y+=2;
 
