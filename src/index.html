@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-19a (CET)  [opvolger van 2026-06-18l]
+     PidLane — build aangepast: 2026-06-20b (CET)  [opvolger van 2026-06-20a]
+     ── 2026-06-20b ──
+       • FIX Sensoren/PID-lade: opende eerst leeg/half (grid-status
+         sl-col liet .sl-inner op opacity:0) zodat pas een 2e tik het
+         juiste scherm gaf. Lade toont nu de inhoud direct bij openen
+         (scoped op .lade-open) en verbergt het grid-inklaplabel binnenin.
+       • Lade opent voller: 50vh -> 80vh (uitvouwen ⤢ -> 94vh).
+     ── 2026-06-20a ──
+       • LOGO: nieuwe app-huisstijl (v3 FINAL) verwerkt — weg +
+         spraakballon + hartslag + AI-sparkle. Volledige versie in de
+         login- en verbind-modals; vereenvoudigde versie (zonder fijnste
+         weg-dashes en zonder tweede sterretje) in de 26px-topbalk.
+         Unieke gradient-/filter-ID's per plek (SVG-render-conflicten).
      ── 2026-06-19a ──
        • NIEUWE LOOK + TELEFOON-FIRST (fundering): viewport start nu op
          schaal 1 (niet meer uitgezoomd); vernieuwd kleur-/vorm-systeem
@@ -650,13 +662,15 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .app, .app.sl-col, .app.sr-col, .app.sl-col.sr-col { grid-template-columns:1fr; }
 #slPanel, #logLade {
   position:fixed; left:0; right:0; bottom:0; z-index:1150;
-  width:100%; max-width:none; height:auto; max-height:50vh;
+  width:100%; max-width:none; height:auto; max-height:80vh;
   background:var(--sur); border:0; border-top:1px solid var(--bd);
   border-radius:16px 16px 0 0; box-shadow:0 -12px 32px rgba(0,0,0,.34);
   overflow-y:auto; transform:translateY(101%); transition:transform .26s ease;
 }
 #slPanel.lade-open, #logLade.lade-open { transform:translateY(0); }
-#slPanel.lade-tall, #logLade.lade-tall { max-height:90vh; }
+#slPanel.lade-open .sl-inner { opacity:1; pointer-events:auto; }
+#slPanel.lade-open .sl-col-label, #slPanel.lade-open .sl-toggle { display:none; }
+#slPanel.lade-tall, #logLade.lade-tall { max-height:94vh; }
 #logLade > #logbar { max-height:none; height:auto; border:0; }
 .lade-bar { position:sticky; top:0; display:flex; align-items:center; gap:8px; padding:9px 13px; background:var(--sur); border-bottom:1px solid var(--bd); z-index:3; }
 .lade-bar .sp { flex:1; }
@@ -668,41 +682,6 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 body:has(#welcomeScreen:not(.hidden)) .lade-handles,
 body:has(#loginOv:not(.hidden)) .lade-handles,
 body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
-
-/* ══ Prominente, contextuele TERUG-knop (alleen in een mode/sub-view) ══ */
-.back-fab {
-  position:fixed; left:10px; top:54px; z-index:1130;
-  display:none; align-items:center; gap:6px;
-  padding:10px 17px; border-radius:999px; border:none;
-  background:linear-gradient(135deg,#2563ff,#1a4fe0); color:#fff;
-  font-family:var(--f); font-size:13px; font-weight:800;
-  box-shadow:0 6px 18px rgba(37,99,255,.4); cursor:pointer;
-}
-.back-fab:active { transform:scale(.96); }
-body:has(#welcomeScreen.hidden) .back-fab { display:inline-flex; }
-body:has(#loginOv:not(.hidden)) .back-fab,
-body:has(#connOv:not(.hidden)) .back-fab { display:none; }
-
-/* ══ OPSTART-SPLASH ══ */
-#splash {
-  position:fixed; inset:0; z-index:6000;
-  display:flex; align-items:center; justify-content:center;
-  background:radial-gradient(ellipse at 50% 38%, #12233f 0%, #0a0e17 72%);
-  transition:opacity .5s ease; opacity:1;
-}
-#splash.hide { opacity:0; pointer-events:none; }
-.splash-inner { text-align:center; padding:20px; animation:splashIn .7s ease both; }
-.splash-logo { width:96px; height:96px; margin:0 auto 18px; filter:drop-shadow(0 8px 30px rgba(0,255,136,.4)); }
-.splash-logo svg { width:100%; height:100%; }
-.splash-name { font-family:var(--f); font-size:30px; font-weight:800; color:#fff; letter-spacing:.5px; }
-.splash-name em { font-style:normal; background:linear-gradient(90deg,#00FF88,#00D4FF); -webkit-background-clip:text; background-clip:text; color:transparent; }
-.splash-tag { margin-top:8px; font-family:var(--f); font-size:14px; color:#9fb0c8; font-weight:500; }
-.splash-dots { margin-top:28px; display:flex; gap:7px; justify-content:center; }
-.splash-dots span { width:7px; height:7px; border-radius:50%; background:#00FF88; opacity:.4; animation:splashDot 1.2s infinite ease-in-out; }
-.splash-dots span:nth-child(2){ animation-delay:.2s; }
-.splash-dots span:nth-child(3){ animation-delay:.4s; }
-@keyframes splashIn { from{opacity:0; transform:translateY(12px) scale(.96);} to{opacity:1; transform:none;} }
-@keyframes splashDot { 0%,100%{opacity:.35; transform:scale(.8);} 50%{opacity:1; transform:scale(1.15);} }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
 
 /* ══ TOPBAR ══ */
@@ -775,10 +754,10 @@ body:has(#connOv:not(.hidden)) .back-fab { display:none; }
 #vtag { font-size:10px; font-weight:600; color:var(--bl); background:var(--bls); padding:2px 7px; border-radius:4px; display:none; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ══ APP LAYOUT ══ */
-.app { display:grid; grid-template-columns:1fr; height:calc(100vh - 46px); transition:grid-template-columns .25s; }
-.app.sl-col { grid-template-columns:1fr; }
-.app.sr-col { grid-template-columns:1fr; }
-.app.sl-col.sr-col { grid-template-columns:1fr; }
+.app { display:grid; grid-template-columns:230px 1fr; height:calc(100vh - 46px); transition:grid-template-columns .25s; }
+.app.sl-col { grid-template-columns:32px 1fr; }
+.app.sr-col { grid-template-columns:230px 1fr 32px; }
+.app.sl-col.sr-col { grid-template-columns:32px 1fr 32px; }
 
 /* ══ TELEFOON-FIRST (≤760px) ══
    3-koloms desktop-grid → één gestapelde kolom met het werkscherm bovenaan.
@@ -805,8 +784,8 @@ body:has(#connOv:not(.hidden)) .back-fab { display:none; }
   .welcome-choices{ grid-template-columns:1fr; }
 }
 /* Vergrendeld verbergen: smal randje met duidelijke "sensoren tonen"-knop */
-.app.sl-locked.sl-col { grid-template-columns:1fr; }
-.app.sl-locked.sl-col.sr-col { grid-template-columns:1fr; }
+.app.sl-locked.sl-col { grid-template-columns:0px 1fr 300px; }
+.app.sl-locked.sl-col.sr-col { grid-template-columns:0px 1fr 32px; }
 .app.sl-locked .sl-col-label { display:none !important; }
 .app.sl-locked .sl-toggle { right:-30px; width:28px; height:34px; border-radius:0 8px 8px 0; background:var(--bls); color:var(--bl); border-color:var(--bl); font-size:13px; }
 .app.sl-locked .sl-toggle:hover { background:var(--bl); color:#fff; }
@@ -1209,21 +1188,11 @@ body:has(#connOv:not(.hidden)) .back-fab { display:none; }
 <body>
 
 <!-- ══ LOGIN SCHERM ══ -->
-<!-- ══ OPSTART-SPLASH ══ -->
-<div id="splash" onclick="dismissSplash()">
-  <div class="splash-inner">
-    <div class="splash-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="plgS" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plgS)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>
-    <div class="splash-name">Pid<em>Lane</em></div>
-    <div class="splash-tag">Jouw auto praat, wij vertalen.</div>
-    <div class="splash-dots"><span></span><span></span><span></span></div>
-  </div>
-</div>
-
 <div class="ov" id="loginOv">
   <div class="modal" style="max-width:380px">
     <div class="modal-scroll">
       <div class="mh">
-        <div class="mlogo" style="background:transparent;box-shadow:0 6px 18px rgba(0,255,136,.25);width:52px;height:52px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" style="width:100%;height:100%"><defs><linearGradient id="plg1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plg1)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>
+        <div class="mlogo" style="background:transparent;box-shadow:0 6px 18px rgba(0,255,136,.25);width:52px;height:52px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%"><defs><linearGradient id="bgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grA" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="glA" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="sgA" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="url(#bgA)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="442" stroke-width="13"/><line x1="256" y1="422" x2="256" y2="396" stroke-width="11.5"/><line x1="256" y1="380" x2="256" y2="360" stroke-width="10"/><line x1="256" y1="347" x2="256" y2="332" stroke-width="8.5"/><line x1="256" y1="321" x2="256" y2="310" stroke-width="7"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grA)" stroke-width="17" stroke-linejoin="round" filter="url(#glA)"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#sgA)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spA)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></svg></div>
         <div class="mttl">Pid<span style="color:var(--bl)">Lane</span></div>
         <div class="msub">Your car talks. We translate.</div>
       </div>
@@ -1275,7 +1244,7 @@ body:has(#connOv:not(.hidden)) .back-fab { display:none; }
       <!-- STAP 1: Start -->
       <div id="step1">
         <div class="mh">
-          <div class="mlogo" style="background:transparent;box-shadow:0 6px 18px rgba(0,255,136,.25)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" style="width:100%;height:100%"><defs><linearGradient id="plg2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plg2)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>
+          <div class="mlogo" style="background:transparent;box-shadow:0 6px 18px rgba(0,255,136,.25)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%"><defs><linearGradient id="bgB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grB" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="glB" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="sgB" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="url(#bgB)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="442" stroke-width="13"/><line x1="256" y1="422" x2="256" y2="396" stroke-width="11.5"/><line x1="256" y1="380" x2="256" y2="360" stroke-width="10"/><line x1="256" y1="347" x2="256" y2="332" stroke-width="8.5"/><line x1="256" y1="321" x2="256" y2="310" stroke-width="7"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grB)" stroke-width="17" stroke-linejoin="round" filter="url(#glB)"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#sgB)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spB)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></svg></div>
           <div class="mttl">PidLane</div>
           <div class="msub">Your car talks. We translate.</div>
         </div>
@@ -1584,13 +1553,13 @@ body:has(#connOv:not(.hidden)) .back-fab { display:none; }
 <!-- ══ TOPBAR ══ -->
 <div id="appScale">
 <div class="topbar">
-  <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" style="width:26px;height:26px"><defs><linearGradient id="plg3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0D1117"/><rect x="22" y="24" width="84" height="56" rx="16" fill="none" stroke="url(#plg3)" stroke-width="8"/><path d="M 34 52 L 50 52 L 58 36 L 70 66 L 78 52 L 94 52" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/></svg></div>Pid<em>Lane</em></div>
+  <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
   <div class="tpr">
     <div id="vtag"></div>
     <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
     <div class="pill show" id="statusPill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
     <button class="btn-t" id="expertBtn" onclick="openAutoExpert()" title="AI-Automonteur" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:5px 9px">🧠 Monteur</button>
-    <button class="btn-t" id="homeBtn" onclick="goHome()" title="Naar startscherm" style="padding:5px 11px;font-weight:700">🏠 Home</button>
+    <button class="btn-t" id="homeBtn" onclick="goHome()" title="Naar startscherm" style="padding:5px 9px">🏠</button>
     <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
     <!-- ⋯ menu met secundaire acties -->
     <div class="kebab-wrap" id="kebabWrap">
@@ -2219,9 +2188,6 @@ body:has(#connOv:not(.hidden)) .back-fab { display:none; }
   <button class="lade-handle" onclick="toggleLade('slPanel')">🚗 Sensoren</button>
   <button class="lade-handle" onclick="toggleLade('logLade')">📋 Logs</button>
 </div>
-
-<!-- ══ PROMINENTE TERUG-KNOP (contextueel: alleen in een mode/scherm) ══ -->
-<button class="back-fab" onclick="appBack()">← Terug</button>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
 <div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
@@ -3566,14 +3532,6 @@ function closeLades(){ ['slPanel','logLade'].forEach(id=>{ const el=document.get
 function toggleLadeTall(id){ const el=document.getElementById(id); if(el) el.classList.toggle('lade-tall'); }
 function ladeOpen(){ return ['slPanel','logLade'].some(id=>{ const el=document.getElementById(id); return el && el.classList.contains('lade-open'); }); }
 document.addEventListener('DOMContentLoaded', initLades);
-
-// Opstart-splash: na ~2,2s wegfaden naar het inlogscherm; tikken slaat over.
-function dismissSplash(){
-  const s=document.getElementById('splash'); if(!s||s.classList.contains('hide')) return;
-  s.classList.add('hide');
-  setTimeout(()=>{ s.style.display='none'; }, 550);
-}
-document.addEventListener('DOMContentLoaded', ()=>{ setTimeout(dismissSplash, 2200); });
 
 // ── Linkerpaneel (PID-selectie) per analyse vergrendelen ───────────
 // Veel modes hebben geen handmatige PID-keuze nodig. Die verbergen we dan
