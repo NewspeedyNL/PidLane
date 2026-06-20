@@ -14,6 +14,40 @@
        • AI-VERDICT: stoplicht-oordeel (🟢/🟡/🔴) bovenaan elke AI-uitslag.
        (Volgende laag: echte on-top lades voor PID-menu + logs in live,
         home-als-root drill-in routing, en View/Share/Download rapport-sheet.)
+       • DEMO BRUIKBAAR VOOR BRANDSTOF ÉN EV: demo-voertuigkiezer (benzine/
+         diesel/hybride/elektrisch) in het voertuig-paneel die de hele
+         PID-lijst + brandstoftype herbouwt (EV = geen verbrandings-PIDs).
+         Refresh- en Optimaliseer-knop werken nu in demo (gesimuleerd); de
+         "Diep zoeken"-knop ververst in demo de lijst; kenteken invoeren in
+         demo herbouwt de PID-lijst naar het RDW-brandstoftype.
+       • HOME = 4 INTENT-DEUREN (keuzestress weg): de 3 tabs + ~18 vrijwel
+         identieke tegels zijn vervangen door 4 deuren met progressive
+         disclosure — "Wat is er met mijn auto?" / "Kopen of verkopen?" /
+         "Verbruik & besparen" / "Voorbereiden op…". Je ziet eerst 4 keuzes,
+         de varianten verschijnen pas ná het kiezen van een deur (met Terug).
+         Live PID-data als aparte specialist-ingang. Alle mode-logica intact
+         (kaart-ID's behouden).
+       • RECHTERPANEEL VERVALLEN: analyse-launcher zat dubbelop met home →
+         weg; werkscherm is nu 2-koloms. In live view een knop "🔬 Analyseer
+         wat je nu ziet" voor directe AI op de huidige meting.
+       • ANDROID-BACK + BACK-NAVIGATIE: de hardware-back-knop sluit de app niet
+         meer per ongeluk. Back loopt terug: open overlay/sheet → terug;
+         deur-paneel → terug naar de 4 keuzes; in een mode → terug naar home.
+         Op de home-keuze vraagt een tweede tik om écht af te sluiten.
+         (Capacitor backButton in APK, history-trap in de browser.)
+       • AI-OUTPUT → SHEET: AI-resultaat toont inline alleen het verdict +
+         knoppen Bekijk rapport / Deel / Download. Het volledige rapport opent
+         in een nette sheet (✕ om te sluiten). Geen inline-dump meer.
+       • AI-FALLBACK (degraded mode): is de AI niet beschikbaar (geen sleutel /
+         netwerkfout), dan toont de app een regelgebaseerde diagnose
+         (foutcodes-lookup + datakwaliteit) i.p.v. een kale foutmelding.
+       • ON-TOP LADES: het PID-menu (#slPanel) en het logboek (#logbar) zijn nu
+         bottom-sheet lades met handvatten linksonder (🚗 Sensoren / 📋 Logs).
+         Ze schuiven van onder op, blijven boven het werkscherm (polling/
+         analyse lopen door — niets cancelt) en zijn uitvouwbaar naar boven
+         (⤢). Werkscherm is daardoor 1-koloms. Back sluit een open lade eerst.
+       • DONKER/LICHT-TOGGLE VERWIJDERD: de balk met lettergrootte (A−/A+) en
+         zoom (−/+/↺) blijft; app gebruikt standaard het lichte thema.
        • UITLOGGEN (admin): inlog-vinkje 'Extra logfunctie' vervallen. Een
          admin krijgt bij uitloggen nu ALTIJD eerst de vraag of de volledige
          log (BT + app + scan) bewaard moet worden. OK = opslaan/delen en
@@ -577,6 +611,63 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .choice-out.w { color:rgba(255,255,255,.85); border-top-color:rgba(255,255,255,.25); }
 .choice-out b { color:var(--tx2); font-weight:700; }
 .choice-out.w b { color:#fff; }
+
+/* ══ INTENT-DEUREN (4 deuren, progressive disclosure) ══ */
+.wm-doors { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:6px; }
+.wm-door { border-radius:14px; padding:16px 14px; cursor:pointer; color:#fff; box-shadow:var(--sh); transition:transform .15s; }
+.wm-door:active { transform:scale(.97); }
+.dr-diag { background:linear-gradient(135deg,#2563ff,#1a4fe0); }
+.dr-deal { background:linear-gradient(135deg,#7c4dff,#5a32d6); }
+.dr-saving { background:linear-gradient(135deg,#f2820c,#d96b00); }
+.dr-prep { background:linear-gradient(135deg,#06b36b,#04935a); }
+.wm-door-ic { font-size:26px; line-height:1; }
+.wm-door-t { font-weight:800; font-size:14px; margin-top:8px; }
+.wm-door-d { font-size:11px; opacity:.9; margin-top:3px; line-height:1.4; }
+.wm-spec { margin-top:11px; text-align:center; font-size:11px; font-weight:600; color:var(--tx3); border:1px dashed var(--bd); border-radius:10px; padding:10px; cursor:pointer; }
+.wm-spec:active { transform:scale(.98); }
+.wm-back { background:var(--sur2); border:1px solid var(--bd); color:var(--tx2); font-family:var(--f); font-size:11px; font-weight:700; padding:6px 11px; border-radius:8px; cursor:pointer; margin-bottom:4px; }
+.wm-door-h { font-weight:800; font-size:15px; margin:6px 0 2px; }
+@media (max-width:760px){ .wm-doors { grid-template-columns:1fr; } }
+
+/* ══ Rechterpaneel vervallen → 2-koloms werkscherm ══ */
+#srPanel { display:none !important; }
+
+/* ══ AI-OUTPUT: verdict + acties + rapport-sheet ══ */
+.ai-verdict { display:flex; align-items:center; gap:10px; padding:12px 13px; border-radius:var(--r); margin-bottom:12px; }
+.ai-acts { display:flex; gap:8px; flex-wrap:wrap; }
+.ai-act { flex:1; min-width:96px; padding:11px; border-radius:9px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:700; cursor:pointer; transition:transform .12s; }
+.ai-act.pri { border:none; color:#fff; background:linear-gradient(135deg,#6366f1,#8b5cf6); }
+.ai-act:active { transform:scale(.97); }
+.ai-sheet-ov { position:fixed; inset:0; background:rgba(10,14,23,.6); backdrop-filter:blur(6px); z-index:1200; display:none; align-items:flex-end; justify-content:center; }
+.ai-sheet { background:var(--sur); width:100%; max-width:620px; max-height:92vh; border-radius:18px 18px 0 0; display:flex; flex-direction:column; box-shadow:var(--sl); animation:sheetUp .25s ease; }
+@keyframes sheetUp { from{transform:translateY(40px);opacity:.6} to{transform:none;opacity:1} }
+.ai-sheet-h { display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--bd); font-size:14px; }
+.ai-sheet-x { width:30px; height:30px; border-radius:8px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-size:13px; cursor:pointer; }
+.ai-sheet-b { overflow-y:auto; padding:14px 16px; }
+.ai-sheet-f { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--bd); }
+
+/* ══ ON-TOP LADES (PID-menu + logs in live, uitvouwbaar, niets cancelt) ══ */
+.app, .app.sl-col, .app.sr-col, .app.sl-col.sr-col { grid-template-columns:1fr; }
+#slPanel, #logLade {
+  position:fixed; left:0; right:0; bottom:0; z-index:1150;
+  width:100%; max-width:none; height:auto; max-height:50vh;
+  background:var(--sur); border:0; border-top:1px solid var(--bd);
+  border-radius:16px 16px 0 0; box-shadow:0 -12px 32px rgba(0,0,0,.34);
+  overflow-y:auto; transform:translateY(101%); transition:transform .26s ease;
+}
+#slPanel.lade-open, #logLade.lade-open { transform:translateY(0); }
+#slPanel.lade-tall, #logLade.lade-tall { max-height:90vh; }
+#logLade > #logbar { max-height:none; height:auto; border:0; }
+.lade-bar { position:sticky; top:0; display:flex; align-items:center; gap:8px; padding:9px 13px; background:var(--sur); border-bottom:1px solid var(--bd); z-index:3; }
+.lade-bar .sp { flex:1; }
+.lade-x { width:30px; height:30px; border-radius:8px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; font-size:13px; }
+.lade-handles { position:fixed; left:10px; bottom:12px; z-index:1120; display:flex; gap:8px; }
+.lade-handle { padding:9px 14px; border-radius:999px; border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:700; box-shadow:var(--sh); cursor:pointer; }
+.lade-handle:active { transform:scale(.96); }
+/* Handles alleen tonen binnen de app, niet op welkom/login/verbind-overlay */
+body:has(#welcomeScreen:not(.hidden)) .lade-handles,
+body:has(#loginOv:not(.hidden)) .lade-handles,
+body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
 
 /* ══ TOPBAR ══ */
@@ -649,8 +740,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 #vtag { font-size:10px; font-weight:600; color:var(--bl); background:var(--bls); padding:2px 7px; border-radius:4px; display:none; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ══ APP LAYOUT ══ */
-.app { display:grid; grid-template-columns:230px 1fr 300px; height:calc(100vh - 46px); transition:grid-template-columns .25s; }
-.app.sl-col { grid-template-columns:32px 1fr 300px; }
+.app { display:grid; grid-template-columns:230px 1fr; height:calc(100vh - 46px); transition:grid-template-columns .25s; }
+.app.sl-col { grid-template-columns:32px 1fr; }
 .app.sr-col { grid-template-columns:230px 1fr 32px; }
 .app.sl-col.sr-col { grid-template-columns:32px 1fr 32px; }
 
@@ -1232,16 +1323,41 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       </div>
       <div class="welcome-vin" id="welcomeVin" style="display:none">✅ VIN herkend</div>
     </div>
-    <div class="wm-tabs">
-      <div class="wm-tab active" id="wmt-tech" onclick="setWmTab('tech')">🔧 Technisch</div>
-      <div class="wm-tab" id="wmt-deal" onclick="setWmTab('deal')">🚗 Kopen &amp; Verkopen</div>
-      <div class="wm-tab" id="wmt-sit" onclick="setWmTab('sit')">📅 Situatie</div>
-    </div>
+    <!-- 3 tabs vervangen door 4 intent-deuren in de scroll hieronder -->
   </div>
   <div class="welcome-scroll">
 
-    <!-- ═══ TAB: TECHNISCH ═══ -->
-    <div class="wm-panel active" id="wmp-tech">
+    <!-- ═══ 4 INTENT-DEUREN (progressive disclosure) ═══ -->
+    <div id="wmDoors">
+      <div class="wm-doors">
+        <div class="wm-door dr-diag" onclick="openDoor('diag')">
+          <div class="wm-door-ic">🔧</div>
+          <div class="wm-door-t">Wat is er met mijn auto?</div>
+          <div class="wm-door-d">Klacht, foutcodes of gewoon de staat — AI zoekt de oorzaak.</div>
+        </div>
+        <div class="wm-door dr-deal" onclick="openDoor('deal')">
+          <div class="wm-door-ic">🚗</div>
+          <div class="wm-door-t">Kopen of verkopen?</div>
+          <div class="wm-door-d">Koop, verkoop, inruil of inkoop — historie, staat en waarde.</div>
+        </div>
+        <div class="wm-door dr-saving" onclick="openDoor('saving')">
+          <div class="wm-door-ic">⛽</div>
+          <div class="wm-door-t">Verbruik &amp; besparen</div>
+          <div class="wm-door-d">Waar gaat brandstof of energie verloren — en wat kost dat?</div>
+        </div>
+        <div class="wm-door dr-prep" onclick="openDoor('prep')">
+          <div class="wm-door-ic">📅</div>
+          <div class="wm-door-t">Voorbereiden op…</div>
+          <div class="wm-door-d">Winter, airco, lange rit of EV/hybride-specifiek.</div>
+        </div>
+      </div>
+      <div class="wm-spec" id="wc-live">📊 Live PID-data — ruwe sensorwaarden, voor de specialist</div>
+    </div>
+
+    <!-- ═══ DEUR: DIAGNOSE ═══ -->
+    <div class="wm-door-panel" id="dp-diag" style="display:none">
+      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
+      <div class="wm-door-h">🔧 Wat is er met mijn auto?</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card hl full" id="wc-diag">
@@ -1287,24 +1403,27 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
           <div class="choice-out"><b>Je krijgt:</b> wat nu nodig is, wat kan wachten, en gevonden gebreken.</div>
         </div>
 
-        <div class="choice-card" id="wc-fuel">
+      </div>
+    </div><!-- dp-diag -->
+
+    <!-- ═══ DEUR: VERBRUIK & BESPAREN ═══ -->
+    <div class="wm-door-panel" id="dp-saving" style="display:none">
+      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
+      <div class="wm-door-h">⛽ Verbruik &amp; besparen</div>
+      <div class="welcome-choices" style="margin-top:4px">
+        <div class="choice-card full" id="wc-fuel">
           <div class="choice-head"><span class="choice-icon">⛽</span><span class="choice-time">⏱ ±2 min</span></div>
           <div class="choice-title">Verbruik Analyseren</div>
           <div class="choice-desc">Waar gaat brandstof verloren — en hoeveel kost dat?</div>
           <div class="choice-out"><b>Je krijgt:</b> bespaartips in €/jaar.</div>
         </div>
-
-        <div class="choice-card" id="wc-live">
-          <div class="choice-head"><span class="choice-icon">📊</span><span class="choice-time">⏱ live</span></div>
-          <div class="choice-title">Live PID-data</div>
-          <div class="choice-desc">Ruwe sensorwaarden realtime — voor de specialist.</div>
-        </div>
-
       </div>
-    </div>
+    </div><!-- dp-saving -->
 
-    <!-- ═══ TAB: KOPEN & VERKOPEN ═══ -->
-    <div class="wm-panel" id="wmp-deal">
+    <!-- ═══ DEUR: KOPEN OF VERKOPEN ═══ -->
+    <div class="wm-door-panel" id="dp-deal" style="display:none">
+      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
+      <div class="wm-door-h">🚗 Kopen of verkopen?</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card full" id="wc-koop" style="border-color:#a78bfa;background:linear-gradient(135deg,var(--pus),var(--sur))">
@@ -1343,10 +1462,12 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
         </div>
 
       </div>
-    </div>
+    </div><!-- dp-deal -->
 
-    <!-- ═══ TAB: SITUATIE ═══ -->
-    <div class="wm-panel" id="wmp-sit">
+    <!-- ═══ DEUR: VOORBEREIDEN OP… ═══ -->
+    <div class="wm-door-panel" id="dp-prep" style="display:none">
+      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
+      <div class="wm-door-h">📅 Voorbereiden op…</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card full" id="wc-langerit">
@@ -1579,6 +1700,19 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
       <!-- VEHICLE INFO — automatisch ingevuld via VIN/scan -->
       <div class="slsec" id="vehicleSection">
         <div class="slttl">Voertuig</div>
+        <div id="demoBar" style="display:none;margin-bottom:8px;padding:8px;background:var(--pus);border:1px solid var(--pu);border-radius:8px">
+          <div style="font-size:9px;font-weight:700;color:var(--pu);margin-bottom:5px">🧪 DEMO-VOERTUIG — wissel brandstoftype</div>
+          <select id="demoVehSel" onchange="loadDemoVehicle(this.value)" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-size:11px;font-weight:600;margin-bottom:6px">
+            <option value="benzine">⛽ Benzine — Mazda CX-5</option>
+            <option value="diesel">🛢️ Diesel — VW Passat TDI</option>
+            <option value="hybride">🔋 Hybride — Toyota Prius</option>
+            <option value="elektrisch">⚡ Elektrisch — Tesla Model 3</option>
+          </select>
+          <div style="display:flex;gap:6px">
+            <button onclick="demoRefresh()" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:700;cursor:pointer">🔄 Refresh</button>
+            <button onclick="optimizeConnectionAI(this)" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:10px;font-weight:700;cursor:pointer">🛠 Optimaliseer</button>
+          </div>
+        </div>
         <div id="vehicleCard" style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;">
           <div style="font-size:10px;color:var(--tx3);text-align:center;padding:4px 0">Verbind OBD2 adapter<br>voor automatische herkenning</div>
         </div>
@@ -1613,6 +1747,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 
       <!-- LIVE -->
       <div class="pane active" id="pane-live">
+        <button onclick="openAnalysis('diag')" style="width:100%;margin-bottom:8px;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🔬 Analyseer wat je nu ziet</button>
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
           <span class="pidview-lbl">Weergave:</span>
           <button class="pidview-btn active" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
@@ -2024,8 +2159,6 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 
 <!-- ══ CONTROL BAR ══ -->
 <div class="ctrl-bar">
-  <button class="zbtn" id="themeBtn" onclick="toggleTheme()" title="Donker/Licht thema">🌙</button>
-  <div class="zdiv"></div>
   <button class="zbtn" onclick="fontSize(-1)" title="Kleiner">A−</button>
   <div class="zlbl" id="fontLbl">13</div>
   <button class="zbtn" onclick="fontSize(1)" title="Groter">A+</button>
@@ -2034,6 +2167,12 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   <div class="zlbl" id="zoomLbl">100%</div>
   <button class="zbtn" onclick="zoom(0.1)" title="Inzoomen">+</button>
   <button class="zbtn" onclick="zoomReset()" title="Reset" style="font-size:10px">↺</button>
+</div>
+
+<!-- ══ ON-TOP LADE HANDVATTEN ══ -->
+<div class="lade-handles">
+  <button class="lade-handle" onclick="toggleLade('slPanel')">🚗 Sensoren</button>
+  <button class="lade-handle" onclick="toggleLade('logLade')">📋 Logs</button>
 </div>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
@@ -3254,15 +3393,21 @@ function selectProto(el,p){
 // ════════════════════════════════════════
 // WELCOME SCREEN
 // ════════════════════════════════════════
-function setWmTab(tab){
-  ['tech','deal','sit'].forEach(t=>{
-    document.getElementById('wmt-'+t).classList.toggle('active', t===tab);
-    document.getElementById('wmp-'+t).classList.toggle('active', t===tab);
-  });
+function setWmTab(tab){ backToDoors(); }   // 3 tabs vervangen door 4 intent-deuren
+function openDoor(key){
+  const d=document.getElementById('wmDoors'); if(d) d.style.display='none';
+  document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
+  const p=document.getElementById('dp-'+key); if(p) p.style.display='block';
+  try{ document.querySelector('.welcome-scroll')?.scrollTo(0,0); }catch(e){}
+}
+function backToDoors(){
+  document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
+  const d=document.getElementById('wmDoors'); if(d) d.style.display='block';
 }
 function showWelcome(vinInfo){
   const ws=document.getElementById('welcomeScreen');
   ws.classList.remove('hidden');
+  try{ backToDoors(); }catch(e){}  // altijd starten op de 4-deuren-keuze
   if(vinInfo&&vinInfo.merk){
     document.getElementById('welcomeVin').style.display='inline-flex';
     document.getElementById('welcomeTitle').textContent=`${vinInfo.merk} ${vinInfo.model||''} ${vinInfo.year||''} herkend`;
@@ -3284,6 +3429,95 @@ function goHome(){
   }
   showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);
 }
+
+// ── BACK-NAVIGATIE + ANDROID HARDWARE-BACK ──
+// De fysieke Android-back-knop sloot voorheen per ongeluk de app. Nu loopt
+// back netjes terug: open overlay → terug; deur-paneel → terug naar de
+// 4 keuzes; in een mode → terug naar home. Pas op de home-landing (root)
+// vraagt een tweede tik om écht af te sluiten.
+function appBack(){
+  // 0. Open lade (sensoren/logs) eerst sluiten
+  try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){}
+  // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
+  for(const id of ['aiReportSheet','pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal']){
+    const el=document.getElementById(id);
+    if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; return true; }
+  }
+  // 2. Dashboards / sub-overlays met eigen display
+  let closed=false;
+  ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; closed=true; } });
+  if(closed) return true;
+  try{ if(typeof closeRitAnalyse==='function'){ const r=document.getElementById('ritAnalyseOv')||document.getElementById('ritAnalyse'); if(r && getComputedStyle(r).display!=='none'){ closeRitAnalyse(); return true; } } }catch(e){}
+  // 3. Welkomstscherm zichtbaar?
+  const ws=document.getElementById('welcomeScreen');
+  if(ws && !ws.classList.contains('hidden')){
+    const doorOpen=[...document.querySelectorAll('.wm-door-panel')].some(p=>getComputedStyle(p).display!=='none');
+    if(doorOpen){ backToDoors(); return true; }
+    return false; // op de root-keuze → niet automatisch afsluiten
+  }
+  // 4. In een mode/pane → terug naar home
+  try{ goHome(); return true; }catch(e){}
+  return false;
+}
+function _plBackHandler(){
+  let handled=false;
+  try{ handled=appBack(); }catch(e){}
+  if(!handled){
+    // Root bereikt: tweede tik binnen 2s sluit de app pas écht af.
+    if(window._plExitArmed){ try{ window.Capacitor?.Plugins?.App?.exitApp?.(); }catch(e){} }
+    else { window._plExitArmed=true; try{ showToast?.('Tik nogmaals op terug om af te sluiten',2000); }catch(e){} setTimeout(()=>{ window._plExitArmed=false; },2000); }
+  }
+}
+function setupBackButton(){
+  if(window._plBackReady) return; window._plBackReady=true;
+  const A=window.Capacitor?.Plugins?.App;
+  if(A&&A.addListener){
+    // Capacitor (APK): vang de hardware-back op; default (afsluiten) wordt onderdrukt.
+    try{ A.addListener('backButton',()=>{ _plBackHandler(); }); return; }catch(e){}
+  }
+  // Browser/WebView zonder App-plugin: history-trap zodat back niet de pagina verlaat.
+  try{
+    history.pushState({pl:1},'');
+    window.addEventListener('popstate',()=>{ _plBackHandler(); history.pushState({pl:1},''); });
+  }catch(e){}
+}
+document.addEventListener('DOMContentLoaded', setupBackButton);
+
+// ── ON-TOP LADES (sensoren + logs) ──
+// PID-menu (#slPanel) en logboek (#logbar) schuiven als bottom-sheet op,
+// blijven boven het werkscherm (niets cancelt) en zijn uitvouwbaar naar boven.
+function initLades(){
+  const sl=document.getElementById('slPanel');
+  if(sl && !sl.querySelector('.lade-bar')){
+    const bar=document.createElement('div'); bar.className='lade-bar';
+    bar.innerHTML='<b style="font-size:12px">🚗 Sensoren &amp; PIDs</b><div class="sp"></div>'
+      +'<button class="lade-x" title="Vergroten/verkleinen" onclick="toggleLadeTall(\'slPanel\')">⤢</button>'
+      +'<button class="lade-x" title="Sluiten" onclick="closeLades()">✕</button>';
+    sl.insertBefore(bar, sl.firstChild);
+  }
+  // Log-lade: wrap #logbar zodat de balk niet door log()-pruning sneuvelt.
+  const lb=document.getElementById('logbar');
+  if(lb && !document.getElementById('logLade')){
+    const wrap=document.createElement('div'); wrap.id='logLade';
+    const bar=document.createElement('div'); bar.className='lade-bar';
+    bar.innerHTML='<b style="font-size:12px">📋 Logboek</b><div class="sp"></div>'
+      +'<button class="lade-x" title="Vergroten/verkleinen" onclick="toggleLadeTall(\'logLade\')">⤢</button>'
+      +'<button class="lade-x" title="Sluiten" onclick="closeLades()">✕</button>';
+    lb.parentNode.insertBefore(wrap, lb);
+    wrap.appendChild(bar);
+    wrap.appendChild(lb);   // #logbar verhuist mee; ID + log()-target blijven intact
+  }
+}
+function toggleLade(id){
+  const el=document.getElementById(id); if(!el) return;
+  const open=el.classList.contains('lade-open');
+  closeLades();
+  if(!open) el.classList.add('lade-open');
+}
+function closeLades(){ ['slPanel','logLade'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('lade-open'); }); }
+function toggleLadeTall(id){ const el=document.getElementById(id); if(el) el.classList.toggle('lade-tall'); }
+function ladeOpen(){ return ['slPanel','logLade'].some(id=>{ const el=document.getElementById(id); return el && el.classList.contains('lade-open'); }); }
+document.addEventListener('DOMContentLoaded', initLades);
 
 // ── Linkerpaneel (PID-selectie) per analyse vergrendelen ───────────
 // Veel modes hebben geen handmatige PID-keuze nodig. Die verbergen we dan
@@ -4797,23 +5031,59 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
     aiBusyEnd();
   }
 }
-function renderAIText(text,contentEl){
+function aiVerdict(text){
+  let vc='green', vi='🟢', vt='Geen urgente problemen gevonden';
+  if(/🔴|niet rijden|kritiek|gevaarlijk|direct naar de garage|onveilig|urgent/i.test(text)){ vc='red'; vi='🔴'; vt='Aandacht vereist — laat dit nakijken'; }
+  else if(/🟡|let op|binnenkort|aanbevolen|aandacht|op termijn/i.test(text)){ vc='amber'; vi='🟡'; vt='Let op — niet direct kritiek'; }
+  return { vc, vi, vt, clr:{green:'var(--gn)',amber:'var(--or)',red:'var(--rd)'}[vc], bg:{green:'var(--gns)',amber:'var(--ors)',red:'var(--rds)'}[vc] };
+}
+// Volledig gesectioneerd rapport (voor in de sheet).
+function _aiReportHtml(text){
   const secs=[{k:'SAMENVATTING',i:'📋',c:'blue'},{k:'BEVINDINGEN',i:'🔍',c:'orange'},{k:'PRIORITEIT ACTIES',i:'⚡',c:'red'},{k:'REPARATIE STAPPEN',i:'🔧',c:'orange'},{k:'KAN IK HET ZELF?',i:'🛠️',c:'green'},{k:'KOSTEN SCHATTING',i:'💶',c:'purple'},{k:'GESCHATTE KOSTEN',i:'💶',c:'purple'},{k:'URGENTIE',i:'🚨',c:'red'},{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'ONDERHOUDSADVIES',i:'🔧',c:'green'}];
   const found=[];
   secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
   found.sort((a,b)=>a.idx-b.idx);
-  // Verdict-balk bovenaan: stoplicht-oordeel zodat je de uitkomst meteen ziet.
-  let vc='green', vi='🟢', vt='Geen urgente problemen gevonden';
-  if(/🔴|niet rijden|kritiek|gevaarlijk|direct naar de garage|onveilig|urgent/i.test(text)){ vc='red'; vi='🔴'; vt='Aandacht vereist — laat dit nakijken'; }
-  else if(/🟡|let op|binnenkort|aanbevolen|aandacht|op termijn/i.test(text)){ vc='amber'; vi='🟡'; vt='Let op — niet direct kritiek'; }
-  const _vClr={green:'var(--gn)',amber:'var(--or)',red:'var(--rd)'}[vc];
-  const _vBg ={green:'var(--gns)',amber:'var(--ors)',red:'var(--rds)'}[vc];
+  const v=aiVerdict(text);
   let html='<div class="ai-res">';
-  html+=`<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;margin-bottom:12px;border-radius:var(--r);background:${_vBg};border:1px solid ${_vClr}55"><span style="font-size:18px;line-height:1">${vi}</span><b style="color:${_vClr};font-size:13px">${vt}</b></div>`;
+  html+=`<div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><span style="font-size:18px;line-height:1">${v.vi}</span><b style="color:${v.clr};font-size:13px">${v.vt}</b></div>`;
   found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec"><div class="ai-sh ${s.c}">${s.i} ${s.k}</div><div class="ai-sb">${body.replace(/\n/g,'<br>')}</div></div>`;});
   if(!found.length)html+=`<div class="ai-sec"><div class="ai-sh blue">📋 Analyse</div><div class="ai-sb">${text.replace(/\n/g,'<br>')}</div></div>`;
   html+='</div>';
-  contentEl.innerHTML=html;
+  return html;
+}
+// Inline tonen we alleen het verdict + acties; het volledige rapport opent in een sheet.
+function renderAIText(text,contentEl){
+  const fullHtml=_aiReportHtml(text);
+  window._lastAIReport={ text, html:fullHtml, ts:new Date() };
+  const v=aiVerdict(text);
+  contentEl.innerHTML=`<div class="ai-res">
+    <div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><span style="font-size:20px;line-height:1">${v.vi}</span><b style="color:${v.clr};font-size:13px">${v.vt}</b></div>
+    <div class="ai-acts">
+      <button class="ai-act pri" onclick="openAIReportSheet()">📄 Bekijk rapport</button>
+      <button class="ai-act" onclick="shareAIReport()">↗ Deel</button>
+      <button class="ai-act" onclick="exportAIReportPDF(this)">⬇ Download</button>
+    </div>
+  </div>`;
+}
+function openAIReportSheet(){
+  const r=window._lastAIReport; if(!r||!r.html){ showToast?.('Nog geen rapport beschikbaar'); return; }
+  let ov=document.getElementById('aiReportSheet');
+  if(!ov){ ov=document.createElement('div'); ov.id='aiReportSheet'; ov.className='ai-sheet-ov'; document.body.appendChild(ov); }
+  ov.innerHTML=`<div class="ai-sheet">
+    <div class="ai-sheet-h"><b>🔬 AI-rapport</b><button class="ai-sheet-x" onclick="closeAIReportSheet()">✕</button></div>
+    <div class="ai-sheet-b">${r.html}</div>
+    <div class="ai-sheet-f"><button class="ai-act" onclick="shareAIReport()">↗ Deel</button><button class="ai-act pri" onclick="exportAIReportPDF(this)">⬇ Download PDF</button></div>
+  </div>`;
+  ov.style.display='flex';
+}
+function closeAIReportSheet(){ const o=document.getElementById('aiReportSheet'); if(o) o.style.display='none'; }
+function shareAIReport(){
+  const r=window._lastAIReport; const txt=r&&r.text?r.text:''; if(!txt){ showToast?.('Nog geen rapport'); return; }
+  try{
+    if(navigator.share){ navigator.share({title:'PidLane AI-rapport', text:txt}).catch(()=>{}); }
+    else if(navigator.clipboard){ navigator.clipboard.writeText(txt); showToast?.('Rapport naar klembord gekopieerd'); }
+    else { showToast?.('Delen niet ondersteund op dit toestel'); }
+  }catch(e){ showToast?.('Delen mislukt'); }
 }
 // ── PDF RAPPORT EXPORT ──────────────────────────────────────────
 async function loadJsPDF(){
@@ -5033,6 +5303,40 @@ async function downloadPdf(){
   }
 }
 
+// ── AI-FALLBACK (degraded mode) ──
+// Als de AI niet beschikbaar is (geen sleutel / netwerkfout), tóch een
+// bruikbare regelgebaseerde diagnose: foutcodes-lookup, datakwaliteit en
+// een duidelijke melding. Output in hetzelfde sectie-formaat zodat het
+// verdict + de rapport-sheet gewoon werken.
+function buildFallbackReport(err){
+  const L=[];
+  L.push('SAMENVATTING');
+  L.push('⚠️ AI is nu niet beschikbaar ('+((err&&err.message)||'onbekende reden')+'). Hieronder een regelgebaseerde analyse op basis van foutcodes en datakwaliteit. Stel een geldige API-sleutel in (🤖 rechtsboven) voor een volledige AI-uitleg in gewone taal.');
+  L.push('');
+  L.push('BEVINDINGEN');
+  const codes=Array.isArray(dtcCodes)?dtcCodes:[];
+  if(codes.length){
+    codes.forEach(c=>{
+      let info; try{ info=dtcInfo(c); }catch(e){ info={desc:'onbekende code',sev:'med'}; }
+      const mark=/high|bad/.test(info.sev)?'🔴':(/warn|med/.test(info.sev)?'🟡':'🟢');
+      L.push(`${mark} ${c} — ${info.desc}`);
+    });
+  } else {
+    L.push('🟢 Geen actieve foutcodes opgeslagen.');
+  }
+  L.push('');
+  L.push('HUIDIGE SITUATIE');
+  const tot=(typeof supportedPIDs!=='undefined'&&supportedPIDs.size)?supportedPIDs.size:0;
+  const act=(typeof activePIDs!=='undefined'&&activePIDs.size)?activePIDs.size:0;
+  L.push(`Beschikbare sensoren (PIDs): ${tot} · actief gemonitord: ${act}.`);
+  try{ if(window._deadPIDs && window._deadPIDs.size) L.push(`🟡 ${window._deadPIDs.size} PID(s) gaven herhaald geen data — mogelijk niet ondersteund of een sensorprobleem.`); }catch(e){}
+  if(typeof vehicleInfo!=='undefined' && (vehicleInfo.merk||vehicleInfo.brandstof)) L.push(`Voertuig: ${[vehicleInfo.merk,vehicleInfo.model,vehicleInfo.year].filter(Boolean).join(' ')||'onbekend'}${vehicleInfo.brandstof?' ('+vehicleInfo.brandstof+')':''}.`);
+  L.push('');
+  L.push('PRIORITEIT ACTIES');
+  if(codes.length) L.push('Laat de gevonden foutcodes door een monteur bevestigen. Voor uitleg per code in gewone taal + reparatieadvies: stel een API-sleutel in en draai de analyse opnieuw.');
+  else L.push('Geen directe actie op basis van foutcodes. Voor een volledige AI-analyse: stel een API-sleutel in.');
+  return L.join('\n');
+}
 async function callAI(prompt,contentEl){
   contentEl.innerHTML='<div class="ai-ld"><div class="spin"></div> AI analyseert...</div>';
   try{
@@ -5041,17 +5345,16 @@ async function callAI(prompt,contentEl){
       return;
     }
     const text=await apiFetch(prompt);
-    renderAIText(text,contentEl);
-    // Rapport bewaren voor PDF-export + exportknop toevoegen
-    window._lastAIReport={text, ts:new Date()};
-    const exp=document.createElement('div');
-    exp.style.cssText='margin-top:10px;text-align:right';
-    exp.innerHTML='<button onclick="exportAIReportPDF(this)" style="padding:7px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">📄 Exporteer als PDF</button>';
-    contentEl.appendChild(exp);
+    renderAIText(text,contentEl);   // toont verdict + View/Share/Download
     log('AI analyse klaar','ok');
   }catch(e){
-    const isAuth=e.message.includes('ongeldig')||e.message.includes('401');
-    contentEl.innerHTML=`<div class="ai-sec"><div class="ai-sh red">⚠ ${isAuth?'API Key fout':'Verbindingsfout'}</div><div class="ai-sb">${e.message}${isAuth?'<br><br><button onclick="openApiDialog()" style="padding:6px 12px;background:var(--bl);color:#fff;border:none;border-radius:6px;font-family:var(--f);font-size:11px;font-weight:600;cursor:pointer">🔑 Key instellen</button>':''}</div></div>`;
+    // Degraded mode: AI niet beschikbaar → regelgebaseerde fallback i.p.v. kale fout
+    try{
+      renderAIText(buildFallbackReport(e),contentEl);
+      log('AI niet beschikbaar — regelgebaseerde fallback getoond ('+e.message+')','warn');
+      return;
+    }catch(_){}
+    contentEl.innerHTML=`<div class="ai-sec"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">${e.message}</div></div>`;
     log('AI fout: '+e.message,'err');
   }
 }
@@ -5215,7 +5518,12 @@ async function measureLatency(n=3){
 
 async function optimizeConnectionAI(btn){
   if(!connected){ showToast?.('Verbind eerst een adapter'); return; }
-  if(demoMode){ showToast?.('Niet beschikbaar in demo-modus'); return; }
+  if(demoMode){
+    const o=btn?btn.textContent:''; if(btn){ btn.textContent='🤖 Bezig...'; btn.disabled=true; }
+    log('AI-optimalisatie (demo) — gesimuleerd, geen echte adapter','info');
+    setTimeout(()=>{ if(btn){ btn.textContent=o||'🛠 Optimaliseer'; btn.disabled=false; } showToast?.('Demo: verbinding optimaal (gesimuleerd) ✓',3000); }, 1100);
+    return;
+  }
   const orig=btn?btn.textContent:''; if(btn){btn.textContent='🤖 Bezig...'; btn.disabled=true;}
   try{
     log('AI optimalisatie: situatie analyseren...','info');
@@ -6914,7 +7222,22 @@ async function rdwLookup(){
     }
     // Pas voertuig-specifieke PID-preset toe als verbinding al actief is
     try{ scenarioRefreshIfOpen(); }catch(e){}  // kenteken gewijzigd → scenario-PID's verversen
-    if(connected && vehicleInfo.merk) applyVehiclePIDPreset(vehicleInfo.merk, brandstof, jaar);
+    if(demoMode){
+      // In demo: herbouw de PID-lijst naar het RDW-brandstoftype, zodat de
+      // simulatie (verbranding vs EV) klopt met het ingevoerde kenteken.
+      try{
+        const pids=demoPIDsForFuel(brandstof||vehicleInfo.brandstof);
+        supportedPIDs=new Set(pids);
+        activePIDs.clear(); manualPIDs.clear();
+        pids.slice(0,16).forEach(p=>{ activePIDs.add(p); manualPIDs.add(p); });
+        buildDiscoveredPIDList(); buildPIDList();
+        const c=document.getElementById('pidCnt'); if(c) c.textContent=discoveredPIDDefs.length;
+        renderGauges(); rebuildGSel(); startPoll(); initialHealthScan(); renderDemoBar();
+        log('Demo: PID-lijst herbouwd naar '+(brandstof||'?')+' ('+pids.length+' PIDs)','ok');
+      }catch(e){}
+    } else if(connected && vehicleInfo.merk){
+      applyVehiclePIDPreset(vehicleInfo.merk, brandstof, jaar);
+    }
     return {ok:true,kent,v,val};
   }catch(e){
     if(st) st.textContent='RDW tijdelijk niet bereikbaar — controleer je internet en probeer opnieuw';
@@ -7216,6 +7539,7 @@ async function deepRefreshPIDs(){
   const st=document.getElementById('pidRefreshStatus');
   const btn=document.getElementById('pidRefreshBtn');
   if(!connected && !demoMode){ if(st) st.textContent='⚠ Eerst verbinden'; return; }
+  if(demoMode){ if(st) st.textContent='Demo: PID-lijst verversen...'; try{ demoRefresh(); }catch(e){} if(st) st.textContent='✓ Ververst (demo)'; return; }
   if(btn){ btn.disabled=true; btn.textContent='⏳ Zoeken...'; }
   const before=supportedPIDs.size;
   try{
@@ -7913,6 +8237,65 @@ setInterval(()=>{
 // ════════════════════════════════════════
 // DEMO MODE
 // ════════════════════════════════════════
+// ── DEMO-VOERTUIGEN (benzine / diesel / hybride / elektrisch) ──
+// Laat in demo-modus van brandstoftype wisselen zodat de PID-lijst én het
+// gedrag (verbranding vs EV) realistisch meeverandert. Zo kun je brandstof-
+// én EV-flows testen zonder echte adapter.
+function demoPIDsForFuel(brandstof){
+  const b=String(brandstof||'').toLowerCase();
+  const benzine=['010C','010D','0104','0111','0149','010E','010B','010F','0110',
+    '0105','015C','0146','012F','015E','0106','0107','010A',
+    '0114','0124','0134','0115','0142','0143','0133','012C'];
+  if(/elektr|electric|\bev\b|bev/.test(b)){
+    // EV: geen verbrandings-PIDs. Snelheid, temps, 12V-spanning, accupakket.
+    return ['010D','0146','0142','015B','0105','0143','0133'];
+  }
+  if(/hybr|phev|hev/.test(b)) return [...benzine,'015B']; // verbrandingsmotor + accupakket
+  if(/diesel|gasolie/.test(b)) return benzine.filter(p=>!['0114','0124','0134','0115'].includes(p)); // geen breedband-lambda/O2
+  return benzine; // benzine / lpg / cng / default
+}
+const DEMO_VEHICLES={
+  benzine:    {merk:'Mazda',      model:'CX-5',    year:'2018', brandstof:'Benzine',    motor:'2.0 SkyActiv-G 165pk', vin:'JM3KFBCL8J0123456'},
+  diesel:     {merk:'Volkswagen', model:'Passat',  year:'2017', brandstof:'Diesel',     motor:'2.0 TDI 150pk',        vin:'WVWZZZ3CZHE000000'},
+  hybride:    {merk:'Toyota',     model:'Prius',   year:'2019', brandstof:'Hybride',    motor:'1.8 VVT-i Hybrid',     vin:'JTDKB3FUXG3000000'},
+  elektrisch: {merk:'Tesla',      model:'Model 3', year:'2021', brandstof:'Elektrisch', motor:'EV Long Range',        vin:'5YJ3E1EA7MF000000'},
+};
+function loadDemoVehicle(key){
+  const dv=DEMO_VEHICLES[key]||DEMO_VEHICLES.benzine;
+  demoMode=true; connected=true; dataStable=true;
+  const pids=demoPIDsForFuel(dv.brandstof);
+  supportedPIDs=new Set(pids);
+  activePIDs.clear(); manualPIDs.clear();
+  pids.slice(0,16).forEach(p=>{ activePIDs.add(p); manualPIDs.add(p); });
+  buildDiscoveredPIDList();
+  updateVehicleCard({merk:dv.merk,model:dv.model,year:dv.year,vin:dv.vin||''});
+  vehicleInfo.brandstof=dv.brandstof; vehicleInfo.motor=dv.motor||'';
+  buildPIDList();
+  const cntEl=document.getElementById('pidCnt'); if(cntEl) cntEl.textContent=discoveredPIDDefs.length;
+  try{ renderGauges(); rebuildGSel(); }catch(e){}
+  showVtag('DEMO — '+dv.merk+' '+dv.model);
+  log('Demo-voertuig: '+dv.merk+' '+dv.model+' ('+dv.brandstof+') — '+pids.length+' PIDs','warn');
+  startPoll();
+  try{ initialHealthScan(); }catch(e){}
+  renderDemoBar();
+}
+function demoRefresh(){
+  const sel=document.getElementById('demoVehSel');
+  loadDemoVehicle(sel?sel.value:'benzine');
+  showToast?.('PID-lijst ververst (demo) ✓',2200);
+}
+function renderDemoBar(){
+  const bar=document.getElementById('demoBar'); if(!bar) return;
+  bar.style.display=demoMode?'block':'none';
+  const sel=document.getElementById('demoVehSel'); if(!sel) return;
+  const b=String(vehicleInfo.brandstof||'').toLowerCase();
+  let key='benzine';
+  if(/elektr|electric|\bev\b|bev/.test(b)) key='elektrisch';
+  else if(/hybr|phev|hev/.test(b)) key='hybride';
+  else if(/diesel|gasolie/.test(b)) key='diesel';
+  sel.value=key;
+}
+
 function startDemo(){
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal&&apiVal.startsWith('sk-ant-')){window.anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){}updateApiPill();}
@@ -7985,6 +8368,7 @@ function startDemo(){
   // Demo: markeer alles gezond + toon connectie-status (geen popup nodig)
   initialHealthScan();
   measureConnSpeed().then(sp=>{ applyStrategy(suggestStrategy(sp)); });
+  renderDemoBar();
   showWelcome(demoVin);
 }
 
@@ -8818,7 +9202,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // Restore opgeslagen voorkeuren
   try{
-    if(localStorage.getItem('ns_theme')==='dark') toggleTheme();
+    // donker/licht-toggle verwijderd — app gebruikt standaard het lichte thema
     const sf=localStorage.getItem('ns_font');
     if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';document.getElementById('fontLbl').textContent=currentFont;}
     const sz=localStorage.getItem('ns_zoom');
