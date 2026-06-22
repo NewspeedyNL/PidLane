@@ -1,6 +1,38 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-20b (CET)  [opvolger van 2026-06-20a]
+     PidLane — build aangepast: 2026-06-22a (CET)  [opvolger van 2026-06-20g; geconsolideerd t.o.v. 20-juni 2026-06-20b]
+     ── 2026-06-22a ──  (let op: de "2026-06-20x"-stempels hieronder zijn van deze sessie en feitelijk op 22 juni gemaakt)
+       • GECONSOLIDEERD tot EEN bron-van-waarheid. Geverifieerd superset van
+         de 20-juni-build (2026-06-20b): bevat daarvan alles (v3-logo, lade-
+         fix, home-knop) PLUS full-screen login, tablet-grid-fix, centrering
+         en introscherm. Niets uit 20-juni verloren (de enige verschillen
+         waren juist de hier doorgevoerde fixes). De live GitHub-repo bleek
+         ouder (pre-redesign) -> deze versie committen als nieuwe basis.
+       • Home-knop vergroot + label "Start" (was klein/onduidelijk: 11px 🏠).
+     ── 2026-06-20g ──
+       • IN-APP INTRO toegevoegd: kort full-screen logo-scherm (#introOv,
+         donker zoals login) met v3-icoon, "PidLane" + tagline. Logo komt op
+         met 1 hartslag-pulse, fade na ~1.8s naar login. Toont 1x per sessie
+         (sessionStorage) -> in APK 1x per launch, ook zichtbaar in browser.
+     ── 2026-06-20f ──
+       • Centrering op brede schermen (tablet/desktop): werkscherm .cc en de
+         on-top lades cappen nu op 820px en staan gecentreerd, zodat inhoud
+         niet meer over de volle breedte uitloopt. Telefoon blijft full-width.
+     ── 2026-06-20e ──
+       • FIX wit middenscherm op tablet/desktop (>760px): oude grid-regel
+         (.app 230px 1fr) botste met de nieuwe on-top-lade-aanpak. Met het
+         PID-paneel als fixed lade en #srPanel afgeschaft bleef de 1fr-kolom
+         leeg. .app nu 1-koloms op alle breedtes -> werkscherm .cc full-width.
+     ── 2026-06-20d ──
+       • FIX wit startscherm: loginscherm pakte var(--bg), wat in LICHTE
+         modus bijna wit is. Donkere thema-variabelen nu lokaal op #loginOv
+         gezet -> login altijd donker (bg, tekst, invoervelden), passend bij
+         de splash, ongeacht het systeemthema.
+     ── 2026-06-20c ──
+       • LOGINSCHERM full-screen: zwevend kaartje vervangen door een vol
+         scherm met groot icoon (108px) bovenaan en het loginformulier
+         eronder — sluit aan op de native splash. Scoped op #loginOv; alle
+         velden/ID's/handlers (doLogin enz.) ongewijzigd. Safe-area boven/onder.
      ── 2026-06-20b ──
        • FIX Sensoren/PID-lade: opende eerst leeg/half (grid-status
          sl-col liet .sl-inner op opacity:0) zodat pas een 2e tik het
@@ -571,6 +603,30 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .mstep:last-child { border-bottom:none; }
 .sn { width:22px; height:22px; background:var(--bl); color:#fff; border-radius:6px; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
 .mact { padding:10px 20px 16px; display:flex; flex-direction:column; gap:7px; border-top:1px solid var(--bd); background:var(--sur); border-radius:0 0 16px 16px; }
+/* ══ LOGINSCHERM full-screen (icoon boven, login eronder; sluit aan op splash) ══ */
+#loginOv {
+  /* altijd donker (zoals de splash), ongeacht licht/donker thema */
+  --bg:#0a0e17; --sur:#131926; --sur2:#1b2333;
+  --bd:#28324a; --bd2:#3a4663;
+  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#5b6783;
+  --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16); --rd:#ff5a5a;
+  align-items:stretch; justify-content:flex-start; padding:0;
+  background:var(--bg); backdrop-filter:none; overflow-y:auto;
+}
+#loginOv .modal { width:100%; max-width:420px; margin:0 auto; background:transparent; box-shadow:none; border-radius:0; max-height:none; animation:none; }
+#loginOv .mh { padding-top:calc(46px + env(safe-area-inset-top,0px)); padding-bottom:18px; }
+#loginOv .mttl { font-size:26px; }
+#loginOv .msub { font-size:13px; }
+#loginOv .mact { border-top:0; background:transparent; padding-bottom:calc(16px + env(safe-area-inset-bottom,0px)); }
+/* ══ IN-APP INTRO (logo-splash, fade naar login; toont 1x per sessie) ══ */
+#introOv { position:fixed; inset:0; z-index:600; background:#0a0e17; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .45s ease; padding-bottom:6vh; }
+#introOv.gone { opacity:0; pointer-events:none; }
+.intro-logo { width:132px; height:132px; filter:drop-shadow(0 12px 34px rgba(0,255,136,.22)); animation:introPop .6s cubic-bezier(.2,.8,.2,1) both, introPulse 1.5s ease-in-out .55s 1; }
+.intro-ttl { font-family:var(--f); font-weight:800; font-size:30px; color:#eef2fa; letter-spacing:.4px; animation:introPop .6s ease .15s both; }
+.intro-ttl span { color:#4d82ff; }
+.intro-sub { font-family:var(--f); font-size:13px; color:#9aa6bd; animation:introPop .6s ease .28s both; }
+@keyframes introPop { from{opacity:0;transform:translateY(8px) scale(.92)} to{opacity:1;transform:none} }
+@keyframes introPulse { 0%,100%{transform:none} 50%{transform:scale(1.05)} }
 .mbtn { width:100%; padding:12px; border-radius:9px; border:none; font-family:var(--f); font-size:13px; font-weight:700; cursor:pointer; transition:all .15s; }
 .mbtn:active { transform:scale(.98); }
 .mbtn.p { background:var(--bl); color:#fff; }
@@ -662,7 +718,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .app, .app.sl-col, .app.sr-col, .app.sl-col.sr-col { grid-template-columns:1fr; }
 #slPanel, #logLade {
   position:fixed; left:0; right:0; bottom:0; z-index:1150;
-  width:100%; max-width:none; height:auto; max-height:80vh;
+  width:100%; max-width:820px; height:auto; max-height:80vh; margin-inline:auto;
   background:var(--sur); border:0; border-top:1px solid var(--bd);
   border-radius:16px 16px 0 0; box-shadow:0 -12px 32px rgba(0,0,0,.34);
   overflow-y:auto; transform:translateY(101%); transition:transform .26s ease;
@@ -754,10 +810,10 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
 #vtag { font-size:10px; font-weight:600; color:var(--bl); background:var(--bls); padding:2px 7px; border-radius:4px; display:none; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ══ APP LAYOUT ══ */
-.app { display:grid; grid-template-columns:230px 1fr; height:calc(100vh - 46px); transition:grid-template-columns .25s; }
-.app.sl-col { grid-template-columns:32px 1fr; }
-.app.sr-col { grid-template-columns:230px 1fr 32px; }
-.app.sl-col.sr-col { grid-template-columns:32px 1fr 32px; }
+.app { display:grid; grid-template-columns:1fr; height:calc(100vh - 46px); transition:grid-template-columns .25s; }
+.app.sl-col { grid-template-columns:1fr; }
+.app.sr-col { grid-template-columns:1fr; }
+.app.sl-col.sr-col { grid-template-columns:1fr; }
 
 /* ══ TELEFOON-FIRST (≤760px) ══
    3-koloms desktop-grid → één gestapelde kolom met het werkscherm bovenaan.
@@ -784,8 +840,8 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
   .welcome-choices{ grid-template-columns:1fr; }
 }
 /* Vergrendeld verbergen: smal randje met duidelijke "sensoren tonen"-knop */
-.app.sl-locked.sl-col { grid-template-columns:0px 1fr 300px; }
-.app.sl-locked.sl-col.sr-col { grid-template-columns:0px 1fr 32px; }
+.app.sl-locked.sl-col { grid-template-columns:1fr; }
+.app.sl-locked.sl-col.sr-col { grid-template-columns:1fr; }
 .app.sl-locked .sl-col-label { display:none !important; }
 .app.sl-locked .sl-toggle { right:-30px; width:28px; height:34px; border-radius:0 8px 8px 0; background:var(--bls); color:var(--bl); border-color:var(--bl); font-size:13px; }
 .app.sl-locked .sl-toggle:hover { background:var(--bl); color:#fff; }
@@ -843,7 +899,7 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
 .strat-rec-tag{font-size:9px;background:var(--bl);color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px;vertical-align:middle}
 
 /* ══ CENTER ══ */
-.cc { display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+.cc { display:flex; flex-direction:column; overflow:hidden; background:var(--bg); width:min(100%,820px); margin-inline:auto; }
 .tabs { display:flex; gap:1px; padding:7px 12px 0; background:var(--sur); border-bottom:1px solid var(--bd); overflow-x:auto; }
 .tabs::-webkit-scrollbar { height:0; }
 .tab { font-family:var(--f); font-size:11px; font-weight:600; padding:5px 10px; border:none; background:transparent; color:var(--tx2); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; border-radius:5px 5px 0 0; transition:all .15s; white-space:nowrap; }
@@ -1186,13 +1242,18 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
 </style>
 </head>
 <body>
+<div id="introOv" aria-hidden="true">
+  <div class="intro-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%"><defs><linearGradient id="bgI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grI" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="glI" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="sgI" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="url(#bgI)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="442" stroke-width="13"/><line x1="256" y1="422" x2="256" y2="396" stroke-width="11.5"/><line x1="256" y1="380" x2="256" y2="360" stroke-width="10"/><line x1="256" y1="347" x2="256" y2="332" stroke-width="8.5"/><line x1="256" y1="321" x2="256" y2="310" stroke-width="7"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grI)" stroke-width="17" stroke-linejoin="round" filter="url(#glI)"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#sgI)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spI)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></svg></div>
+  <div class="intro-ttl">Pid<span>Lane</span></div>
+  <div class="intro-sub">Your car talks. We translate.</div>
+</div>
 
 <!-- ══ LOGIN SCHERM ══ -->
 <div class="ov" id="loginOv">
   <div class="modal" style="max-width:380px">
     <div class="modal-scroll">
       <div class="mh">
-        <div class="mlogo" style="background:transparent;box-shadow:0 6px 18px rgba(0,255,136,.25);width:52px;height:52px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%"><defs><linearGradient id="bgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grA" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="glA" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="sgA" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="url(#bgA)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="442" stroke-width="13"/><line x1="256" y1="422" x2="256" y2="396" stroke-width="11.5"/><line x1="256" y1="380" x2="256" y2="360" stroke-width="10"/><line x1="256" y1="347" x2="256" y2="332" stroke-width="8.5"/><line x1="256" y1="321" x2="256" y2="310" stroke-width="7"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grA)" stroke-width="17" stroke-linejoin="round" filter="url(#glA)"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#sgA)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spA)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></svg></div>
+        <div class="mlogo" style="background:transparent;box-shadow:0 10px 30px rgba(0,255,136,.32);width:108px;height:108px;border-radius:26px;margin:0 auto 16px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%"><defs><linearGradient id="bgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grA" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="glA" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="sgA" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="url(#bgA)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="442" stroke-width="13"/><line x1="256" y1="422" x2="256" y2="396" stroke-width="11.5"/><line x1="256" y1="380" x2="256" y2="360" stroke-width="10"/><line x1="256" y1="347" x2="256" y2="332" stroke-width="8.5"/><line x1="256" y1="321" x2="256" y2="310" stroke-width="7"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grA)" stroke-width="17" stroke-linejoin="round" filter="url(#glA)"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#sgA)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spA)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></svg></div>
         <div class="mttl">Pid<span style="color:var(--bl)">Lane</span></div>
         <div class="msub">Your car talks. We translate.</div>
       </div>
@@ -1559,7 +1620,7 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
     <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
     <div class="pill show" id="statusPill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
     <button class="btn-t" id="expertBtn" onclick="openAutoExpert()" title="AI-Automonteur" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:5px 9px">🧠 Monteur</button>
-    <button class="btn-t" id="homeBtn" onclick="goHome()" title="Naar startscherm" style="padding:5px 9px">🏠</button>
+    <button class="btn-t" id="homeBtn" onclick="goHome()" title="Naar startscherm" style="padding:6px 12px;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700"><span style="font-size:16px;line-height:1">🏠</span>Start</button>
     <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
     <!-- ⋯ menu met secundaire acties -->
     <div class="kebab-wrap" id="kebabWrap">
@@ -11818,5 +11879,13 @@ function updateMonitorBtn(){
 
 
 
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var iv=document.getElementById('introOv'); if(!iv) return;
+  try{ if(sessionStorage.getItem('pl_intro_seen')){ iv.style.display='none'; return; } sessionStorage.setItem('pl_intro_seen','1'); }catch(e){}
+  setTimeout(function(){ iv.classList.add('gone'); },1800);
+  setTimeout(function(){ iv.style.display='none'; },2300);
+});
+</script>
 </body>
 </html>
