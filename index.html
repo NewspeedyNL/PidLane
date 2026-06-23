@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-23c (CET)  [opvolger van 2026-06-23b]
+     PidLane — build aangepast: 2026-06-23d (CET)  [opvolger van 2026-06-23c]
+     ── 2026-06-23d ──
+       • DESKTOP-LAAG (>=1024px) toegevoegd (zelfde bestand, responsive):
+         bredere centrale inhoud (max 1080px), PID- en log-lade openen als
+         hoog ZIJPANEEL rechts i.p.v. bottom-sheet, rapport/diepe-analyse
+         gecentreerd en breder, ruimere lade-knoppen. Mobiel ongewijzigd.
      ── 2026-06-23c ──
        • VASTE-VENSTER-FIX: .cc gebruikte overflow:hidden binnen een op
          100vh-46px vastgezette .app -> grotere/overlopende inhoud werd
@@ -740,6 +745,29 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .wm-back { background:var(--sur2); border:1px solid var(--bd); color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:700; padding:6px 11px; border-radius:8px; cursor:pointer; margin-bottom:4px; }
 .wm-door-h { font-weight:800; font-size:15px; margin:6px 0 2px; }
 @media (max-width:760px){ .wm-doors { grid-template-columns:1fr; } }
+
+/* ══ DESKTOP-LAAG (≥1024px) — comfortabel testen op een breed scherm ══ */
+@media (min-width:1024px){
+  .cc { max-width:1080px; }
+  .welcome-scroll { padding:30px 26px; }
+  .wm-doors { max-width:860px; margin-inline:auto; }
+  .welcome-choices { max-width:860px; margin-inline:auto; }
+  /* PID- en log-lade als hoog ZIJPANEEL i.p.v. bottom-sheet */
+  #slPanel, #logLade {
+    left:auto; right:0; top:46px; bottom:0;
+    width:430px; max-width:430px; height:auto; max-height:none;
+    border-radius:14px 0 0 14px; border-top:0; border-left:1px solid var(--bd);
+    box-shadow:-14px 0 36px rgba(0,0,0,.34);
+    transform:translateX(103%);
+  }
+  #slPanel.lade-open, #logLade.lade-open { transform:translateX(0); }
+  #slPanel.lade-tall, #logLade.lade-tall { max-height:none; }
+  /* Rapport / diepe analyse: gecentreerd en breder */
+  .ai-sheet-ov { align-items:center; }
+  .ai-sheet { max-width:780px; max-height:88vh; border-radius:16px; }
+  /* Lade-knoppen iets ruimer */
+  .lade-handle { font-size:13px; padding:10px 16px; }
+}
 
 /* ══ Rechterpaneel vervallen → 2-koloms werkscherm ══ */
 #srPanel { display:none !important; }
