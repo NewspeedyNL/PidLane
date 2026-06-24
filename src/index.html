@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-23g (CET)  [opvolger van 2026-06-23f]
+     PidLane — build aangepast: 2026-06-23k (CET)  [opvolger van 2026-06-23j]
+     ── 2026-06-23k ──  [FASE 1 van app-brede zwarte stijl]
+       • App standaard in DONKER (thema-toggle blijft werken; expliciet "licht"
+         wordt onthouden). Startscherm + 4 deuren omgebouwd naar immersieve
+         ZWARTE BLOKKEN (zwart #0a0e17, blok #11151f, subtiele rand, gekleurd
+         accent-streepje per deur). Keuzekaarten in de deur-panelen idem.
+         Top bar blijft staan. Volgende fases: analyses/rapport, lades, login.
+     ── 2026-06-23j ──
+       • DIEPE STORINGSANALYSE: wizard nu VOLLEDIG SCHERMVULLEND, zwart, portret
+         Android-stijl. Groot "1 / 7"-nummer + balk bovenaan, één grote vraag per
+         scherm, grote Volgende-knop onderaan (terug-pijl links), laatste stap =
+         Start analyse. Geen pop-up-kaart meer.
+     ── 2026-06-23i ──
+       • DIEPE STORINGSANALYSE als stap-voor-stap WIZARD (mobiel): 1 vraag per
+         scherm met voortgangsbalk "Stap X van 7", Vorige/Volgende; antwoorden
+         blijven bewaard tussen stappen; laatste stap = "Start analyse".
+     ── 2026-06-23h ──
+       • FIX mobiele lades: Sensoren/Logs openen nu VOLLEDIG schermvullend en
+         ondoorzichtig i.p.v. een bottom-sheet die de onderliggende view liet
+         staan ("verborgen maar niet verborgen"). Inhoud op volle breedte +
+         zichtbaar (geen ingeklapte/gedraaide label-weergave meer), PID-lijst
+         weer in beeld. Desktop (>=1024px) houdt het zijpaneel.
      ── 2026-06-23g ──
        • REAGEER OP RAPPORT: onderaan elk AI-rapport (sheet) een "Herzie"-veld.
          Gebruiker geeft extra context/correctie (bijv. "motor was al warm") en
@@ -764,6 +785,35 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .wm-door-h { font-weight:800; font-size:15px; margin:6px 0 2px; }
 @media (max-width:760px){ .wm-doors { grid-template-columns:1fr; } }
 
+/* ════ FASE 1 — IMMERSIEVE ZWARTE STIJL (startscherm & 4 deuren) ════ */
+#welcomeScreen { background:#0a0e17; }
+.welcome-header { background:#0a0e17; border-bottom:1px solid #1a2030; }
+.welcome-title { color:#fff; font-size:18px; }
+#welcomeSub { color:#8a93a6 !important; }
+.welcome-scroll { padding:16px 16px 28px; }
+.wm-doors { gap:13px; }
+.wm-door { background:#11151f; border:1px solid #232c40; border-radius:16px; padding:20px 16px; color:#fff; box-shadow:none; position:relative; overflow:hidden; }
+.wm-door::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; }
+.wm-door.dr-diag { background:#11151f; }   .wm-door.dr-diag::before { background:#2f6bff; }
+.wm-door.dr-deal { background:#11151f; }   .wm-door.dr-deal::before { background:#7c4dff; }
+.wm-door.dr-saving { background:#11151f; } .wm-door.dr-saving::before { background:#f2820c; }
+.wm-door.dr-prep { background:#11151f; }   .wm-door.dr-prep::before { background:#06b36b; }
+.wm-door-ic { font-size:30px; }
+.wm-door-t { color:#fff; font-size:16px; margin-top:12px; }
+.wm-door-d { color:#8a93a6; opacity:1; font-size:12.5px; margin-top:5px; }
+.wm-door-h { color:#fff; }
+.wm-back { background:#11151f; border:1px solid #232c40; color:#cdd5e5; }
+.wm-spec { color:#8a93a6; border:1px dashed #2a3550; }
+.wm-cat { color:#6b7486; }
+.choice-card { background:#11151f; border:1px solid #232c40; border-radius:14px; box-shadow:none; padding:16px; }
+.choice-card:hover { border-color:#2f6bff; box-shadow:none; }
+.choice-card.hl { background:linear-gradient(135deg,#2f6bff,#1a4fe0); border-color:#2f6bff; }
+.choice-title { color:#fff; }
+.choice-desc { color:#8a93a6; }
+.choice-time { background:#0a0e17; color:#8a93a6; border:1px solid #232c40; }
+.choice-out { color:#8a93a6; border-top:1px dashed #2a3550; }
+.choice-out b { color:#cdd5e5; }
+
 /* ══ DESKTOP-LAAG (≥1024px) — comfortabel testen op een breed scherm ══ */
 @media (min-width:1024px){
   .cc { max-width:1080px; }
@@ -818,6 +868,19 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 #slPanel.lade-open .sl-col-label, #slPanel.lade-open .sl-toggle { display:none; }
 #slPanel.lade-tall, #logLade.lade-tall { max-height:94vh; }
 #slPanel.lade-open{ display:flex; flex-direction:column; }
+
+/* ══ MOBIEL: lade volledig schermvullend & ondoorzichtig (geen bottom-sheet die de log eronder laat staan; geen ingeklapte inhoud) ══ */
+@media (max-width:1023px){
+  #slPanel.lade-open, #logLade.lade-open {
+    position:fixed !important; left:0 !important; right:0 !important; top:0 !important; bottom:0 !important;
+    width:100% !important; max-width:100% !important; height:auto !important; max-height:100% !important;
+    transform:none !important; border-radius:0 !important; z-index:9700 !important;
+    background:var(--bg) !important; display:flex !important; flex-direction:column !important;
+  }
+  #slPanel.lade-open .sl-inner { opacity:1 !important; pointer-events:auto !important; width:100% !important; flex:1 1 auto !important; min-height:0 !important; }
+  #slPanel.lade-open .slsec, #slPanel.lade-open .pscr { width:100% !important; box-sizing:border-box; }
+  #slPanel.lade-open .sl-col-label, #slPanel.lade-open .sl-toggle { display:none !important; }
+}
 #logLade > #logbar { max-height:none; height:auto; border:0; }
 .lade-bar { position:sticky; top:0; display:flex; align-items:center; gap:8px; padding:9px 13px; background:var(--sur); border-bottom:1px solid var(--bd); z-index:3; }
 .lade-bar .sp { flex:1; }
@@ -9369,6 +9432,13 @@ function toggleTheme(){
   document.getElementById('themeBtn').textContent=isDark?'☀️':'🌙';
   try{localStorage.setItem('ns_theme',isDark?'dark':'light');}catch(e){}
 }
+(function initThemeDefault(){
+  var saved=null; try{ saved=localStorage.getItem('ns_theme'); }catch(e){}
+  isDark = (saved!=='light');            // standaard DONKER, tenzij gebruiker expliciet licht koos
+  document.documentElement.classList.toggle('dark',isDark);
+  function setBtn(){ var b=document.getElementById('themeBtn'); if(b) b.textContent=isDark?'☀️':'🌙'; }
+  setBtn(); try{ document.addEventListener('DOMContentLoaded',setBtn); }catch(e){}
+})();
 function fontSize(delta){
   currentFont=Math.min(18,Math.max(10,currentFont+delta));
   document.documentElement.style.fontSize=currentFont+'px';
@@ -11084,36 +11154,63 @@ function openSeizoensCheck(){
 }
 function seizoenStart(mode){ const m=document.getElementById('seizoenKeuzeModal'); if(m) m.style.display='none'; document.getElementById('welcomeScreen')?.classList.add('hidden'); openClimateCheck(mode); }
 // ── Diepe storingsanalyse ──
+var _ddStep=0;
 function openDeepDiag(){
   document.getElementById('welcomeScreen')?.classList.add('hidden');
-  let ov=document.getElementById('deepDiagOv');
-  if(!ov){ ov=document.createElement('div'); ov.id='deepDiagOv'; ov.className='ai-sheet-ov'; document.body.appendChild(ov); }
+  var ov=document.getElementById('deepDiagOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='deepDiagOv'; document.body.appendChild(ov); }
+  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:#0a0e17;display:flex;flex-direction:column';
   var vi=(typeof vehicleInfo!=='undefined'&&vehicleInfo)?vehicleInfo:{};
   var mm=[vi.merk||vi.make||'',vi.model||''].filter(Boolean).join(' ');
-  var ta='width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px;resize:vertical';
-  var lbl='font-size:12px;font-weight:700;color:var(--tx2);margin:12px 0 4px';
-  ov.innerHTML='<div class="ai-sheet" style="max-height:94vh">'+
-    '<div class="ai-sheet-h"><b>🔬 Diepe storingsanalyse</b><button class="ai-sheet-x" onclick="closeDeepDiag()">✕</button></div>'+
-    '<div class="ai-sheet-b">'+
-      '<div style="font-size:12px;color:var(--tx3);line-height:1.5;margin-bottom:4px">Hoe meer je invult, hoe scherper de analyse. Reproduceer het probleem tijdens de datalog.</div>'+
-      '<div style="'+lbl+'">1 · Wat is het probleem? *</div><textarea id="dd_probleem" rows="2" style="'+ta+'" placeholder="bijv. trilt bij optrekken, vermogensverlies bij 3000 tpm"></textarea>'+
-      '<div style="'+lbl+'">2 · Eerdere checks / reparaties</div><textarea id="dd_checks" rows="2" style="'+ta+'" placeholder="bijv. bougies vervangen, geen foutcodes eerder"></textarea>'+
-      '<div style="'+lbl+'">3 · Merk / model</div><input id="dd_merk" value="'+mm.replace(/"/g,'&quot;')+'" style="'+ta+'" placeholder="bijv. Volkswagen Golf 1.4 TSI 2016">'+
-      '<div style="'+lbl+'">4 · Jouw gevoel / vermoeden</div><textarea id="dd_gevoel" rows="2" style="'+ta+'" placeholder="bijv. klinkt als de turbo, voelt brandstof-gerelateerd"></textarea>'+
-      '<div style="'+lbl+'">5 · Datalog — reproduceer het probleem</div>'+
-      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-        '<button id="dd_logstart" onclick="deepLogStart()" style="padding:8px 12px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-family:var(--f);font-weight:700;font-size:13px;cursor:pointer">▶ Start datalog</button>'+
-        '<button id="dd_logstop" onclick="deepLogStop()" disabled style="padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-weight:700;font-size:13px;cursor:pointer">⏹ Stop</button>'+
-        '<span id="dd_logstat"></span>'+
+  var ta='width:100%;box-sizing:border-box;background:#11151f;border:1px solid #232c40;border-radius:12px;color:#fff;font-family:var(--f);font-size:16px;padding:14px;resize:vertical;line-height:1.4';
+  window._ddSteps=[
+    {t:'Wat is het probleem?', sub:'Beschrijf zo concreet mogelijk wat er gebeurt.', req:'dd_probleem', html:'<textarea id="dd_probleem" rows="5" style="'+ta+'" placeholder="bijv. trilt bij optrekken, vermogensverlies bij 3000 tpm"></textarea>'},
+    {t:'Eerdere checks of reparaties?', sub:'Wat is er al gedaan of gecontroleerd?', html:'<textarea id="dd_checks" rows="5" style="'+ta+'" placeholder="bijv. bougies vervangen, geen foutcodes eerder"></textarea>'},
+    {t:'Merk en model', sub:'Voor merk/model-specifieke bekende problemen.', html:'<input id="dd_merk" value="'+mm.replace(/"/g,'&quot;')+'" style="'+ta+'" placeholder="bijv. Mazda CX-5 2.0 2018">'},
+    {t:'Jouw gevoel of vermoeden', sub:'Waar denk jij dat het vandaan komt?', html:'<textarea id="dd_gevoel" rows="5" style="'+ta+'" placeholder="bijv. klinkt als de turbo, voelt brandstof-gerelateerd"></textarea>'},
+    {t:'Datalog \u2014 reproduceer het probleem', sub:'Start de opname, rijd en wek het probleem op, stop daarna.', html:'<div style="display:flex;flex-direction:column;gap:12px"><button id="dd_logstart" onclick="deepLogStart()" style="padding:16px;border-radius:12px;border:none;background:#16a34a;color:#fff;font-family:var(--f);font-weight:800;font-size:17px;cursor:pointer">\u25b6 Start datalog</button><button id="dd_logstop" onclick="deepLogStop()" disabled style="padding:16px;border-radius:12px;border:1px solid #232c40;background:#11151f;color:#cdd5e5;font-family:var(--f);font-weight:700;font-size:16px;cursor:pointer">\u23f9 Stop opname</button><span id="dd_logstat" style="font-size:14px;color:#8a93a6;text-align:center"></span></div>'},
+    {t:'Wat gebeurde er tijdens de datalog?', sub:'Koppel je waarneming aan het moment.', html:'<textarea id="dd_annot" rows="5" style="'+ta+'" placeholder="bijv. bij 2500 tpm begon het trillen, na 30s erger"></textarea>'},
+    {t:'Extra info (optioneel)', sub:'Alles wat kan helpen \u2014 of laat leeg.', html:'<textarea id="dd_extra" rows="5" style="'+ta+'" placeholder="bijv. alleen koud / alleen snelweg"></textarea>'}
+  ];
+  _ddStep=0;
+  ov.innerHTML=
+    '<div style="display:flex;align-items:center;gap:12px;padding:18px 18px 10px;flex-shrink:0">'+
+      '<div id="ddProgRow" style="display:flex;align-items:center;gap:12px;flex:1">'+
+        '<div id="ddProgTxt" style="font-size:15px;font-weight:800;color:#7aa2ff;white-space:nowrap"></div>'+
+        '<div style="flex:1;height:6px;background:#1a2030;border-radius:3px;overflow:hidden"><div id="ddProg" style="height:100%;width:0;background:#2f6bff;transition:width .3s"></div></div>'+
       '</div>'+
-      '<div style="'+lbl+'">6 · Wat gebeurde er tijdens de datalog?</div><textarea id="dd_annot" rows="2" style="'+ta+'" placeholder="bijv. bij 2500 tpm begon het trillen, na 30s erger"></textarea>'+
-      '<div style="'+lbl+'">7 · Extra info (optioneel)</div><textarea id="dd_extra" rows="2" style="'+ta+'" placeholder="bijv. alleen koud / alleen snelweg — langere rit kan nuttig zijn"></textarea>'+
+      '<button id="ddClose" onclick="closeDeepDiag()" style="background:none;border:none;color:#8a93a6;font-size:26px;cursor:pointer;line-height:1;flex-shrink:0;padding:0 4px">\u2715</button>'+
+    '</div>'+
+    '<div style="flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column">'+
+      '<div id="ddStepTitle" style="font-size:25px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:8px"></div>'+
+      '<div id="ddStepSub" style="font-size:14px;color:#8a93a6;margin-bottom:24px;line-height:1.5"></div>'+
+      window._ddSteps.map(function(s,i){ return '<div class="dd-step" data-i="'+i+'" style="display:none">'+s.html+'</div>'; }).join('')+
       '<div id="dd_result" style="display:none;margin-top:14px"></div>'+
     '</div>'+
-    '<div class="ai-sheet-f"><button id="dd_eval" class="ai-act pri" onclick="runDeepDiag()" style="flex:1">▶ Evalueer</button></div>'+
-  '</div>';
+    '<div id="ddFoot" style="display:flex;gap:12px;padding:14px 18px calc(20px + env(safe-area-inset-bottom));flex-shrink:0;border-top:1px solid #1a2030">'+
+      '<button id="ddPrev" onclick="ddPrev()" style="padding:16px 22px;border-radius:12px;border:1px solid #2a3550;background:transparent;color:#cdd5e5;font-family:var(--f);font-size:18px;font-weight:800;cursor:pointer">\u2190</button>'+
+      '<button id="ddNext" onclick="ddNext()" style="flex:1;padding:16px;border-radius:12px;border:none;background:#2f6bff;color:#fff;font-family:var(--f);font-size:17px;font-weight:800;cursor:pointer">Volgende \u2192</button>'+
+    '</div>';
   ov.style.display='flex';
+  ddRender();
 }
+function ddRender(){
+  var steps=window._ddSteps||[], i=_ddStep, s=steps[i]; if(!s) return;
+  var tt=document.getElementById('ddStepTitle'); if(tt) tt.textContent=s.t;
+  var sb=document.getElementById('ddStepSub'); if(sb){ sb.textContent=s.sub||''; sb.style.display=s.sub?'block':'none'; }
+  document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display=(+el.getAttribute('data-i')===i)?'block':'none'; });
+  var pct=Math.round(((i+1)/steps.length)*100);
+  var pr=document.getElementById('ddProg'); if(pr) pr.style.width=pct+'%';
+  var px=document.getElementById('ddProgTxt'); if(px) px.textContent=(i+1)+' / '+steps.length;
+  var pv=document.getElementById('ddPrev'); if(pv) pv.style.visibility=(i===0)?'hidden':'visible';
+  var nx=document.getElementById('ddNext'); if(nx) nx.textContent=(i===steps.length-1)?'\u25b6 Start analyse':'Volgende \u2192';
+}
+function ddNext(){
+  var steps=window._ddSteps||[], s=steps[_ddStep];
+  if(s && s.req){ var v=(document.getElementById(s.req)||{}).value||''; if(!v.trim()){ showToast?.('Vul dit veld eerst in'); return; } }
+  if(_ddStep<steps.length-1){ _ddStep++; ddRender(); var sc=document.querySelector('#deepDiagOv > div:nth-child(2)'); if(sc) sc.scrollTop=0; } else { runDeepDiag(); }
+}
+function ddPrev(){ if(_ddStep>0){ _ddStep--; ddRender(); } }
 function closeDeepDiag(){ var o=document.getElementById('deepDiagOv'); if(o) o.style.display='none'; }
 function setUiScale(s){
   document.body.classList.remove('uiS','uiL');
@@ -11348,6 +11445,7 @@ function _deepPidOverview(){
 async function runDeepDiag(){
   var probleem=(document.getElementById('dd_probleem')||{}).value||'';
   if(!probleem.trim()){ showToast?.('Vul minimaal het probleem in'); return; }
+  try{ ['ddProgRow','ddStepTitle','ddStepSub','ddFoot'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }); document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display='none'; }); }catch(e){}
   var btn=document.getElementById('dd_eval'); if(btn){ btn.disabled=true; btn.textContent='⏳ Evalueren'; }
   var checks=(document.getElementById('dd_checks')||{}).value||'';
   var merk=(document.getElementById('dd_merk')||{}).value||'';
