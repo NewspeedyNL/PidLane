@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-23d (CET)  [opvolger van 2026-06-23c]
+     PidLane — build aangepast: 2026-06-23e (CET)  [opvolger van 2026-06-23d]
+     ── 2026-06-23e ──
+       • HANDMATIGE PID-RECORDER (nieuwe kaart Deur 1): gebruiker kiest zelf
+         sensoren (zoekbaar, Alles/Niets), drukt op opnemen, rijdt en
+         reproduceert het probleem, stopt handmatig. Daarna: 👁 Bekijk
+         (overzicht min/max/gem), ↗ Deel, ⬇ Download CSV, of 🔧 Naar AI-Monteur
+         — die de opgenomen dataset gebruikt om de oorzaak te vinden of te
+         ontkrachten o.b.v. de probleembeschrijving.
      ── 2026-06-23d ──
        • DESKTOP-LAAG (>=1024px) toegevoegd (zelfde bestand, responsive):
          bredere centrale inhoud (max 1080px), PID- en log-lade openen als
@@ -1541,6 +1548,13 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="choice-title">Diepe storingsanalyse</div>
           <div class="choice-desc">Hardnekkig of onduidelijk probleem? Uitgebreide intake + reproduceer met datalog → diepe AI-evaluatie.</div>
           <div class="choice-out"><b>Je krijgt:</b> mogelijke oorzaak, probleem-PID-overzicht, data-oordeel + advies.</div>
+        </div>
+
+        <div class="choice-card full" id="wc-pidrec">
+          <div class="choice-head"><span class="choice-icon">📼</span><span class="choice-time">handmatig</span></div>
+          <div class="choice-title">PID-recorder</div>
+          <div class="choice-desc">Kies zelf sensoren, neem op tijdens het rijden en reproduceer je probleem. Daarna bekijken, delen, downloaden of naar de AI-Monteur.</div>
+          <div class="choice-out"><b>Je krijgt:</b> opname-dataset + optionele AI-analyse die de oorzaak vindt of uitsluit.</div>
         </div>
 
         <div class="choice-card" id="wc-check">
@@ -9387,6 +9401,7 @@ document.addEventListener('DOMContentLoaded', function(){
   const wcBind=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onclick=fn; };
   wcBind('wc-diag',()=>startChoice('diag'));
   wcBind('wc-deepdiag',()=>openDeepDiag());
+  wcBind('wc-pidrec',()=>openPidRecorder());
   wcBind('wc-check',()=>startChoice('check'));
   wcBind('wc-live',()=>startChoice('live'));
   wcBind('wc-dtc',()=>startChoice('dtc'));
@@ -11063,6 +11078,176 @@ function setUiScale(s){
 }
 function applyUiScale(){ var s='m'; try{ s=localStorage.getItem('pl_uiscale')||'m'; }catch(e){} setUiScale(s); }
 try{ applyUiScale(); }catch(e){}
+// ── Handmatige PID-recorder ──
+var _recSel=new Set(), _recActive=false, _recT0=0, _recTimer=null;
+function openPidRecorder(){
+  document.getElementById('welcomeScreen')?.classList.add('hidden');
+  var ov=document.getElementById('pidRecOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='pidRecOv'; ov.className='ai-sheet-ov'; document.body.appendChild(ov); }
+  ov.innerHTML='<div class="ai-sheet" style="max-height:94vh">'+
+    '<div class="ai-sheet-h"><b>📼 PID-recorder</b><button class="ai-sheet-x" onclick="closePidRecorder()">✕</button></div>'+
+    '<div class="ai-sheet-b">'+
+      '<div style="font-size:12px;color:var(--tx3);line-height:1.5;margin-bottom:8px">Kies de sensoren die je wilt opnemen, druk op opnemen, rijd en reproduceer je probleem. Daarna stop je de opname.</div>'+
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'+
+        '<input id="pidRecSearch" oninput="pidRecFilter(this.value)" placeholder="🔎 Zoek sensor" style="flex:1;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:12px;padding:8px 10px">'+
+        '<button onclick="pidRecSelectAll(true)" style="padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Alles</button>'+
+        '<button onclick="pidRecSelectAll(false)" style="padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Niets</button>'+
+      '</div>'+
+      '<div id="pidRecList" style="max-height:38vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;padding:4px"></div>'+
+      '<div id="pidRecCount" style="font-size:11px;color:var(--tx3);margin:8px 0"></div>'+
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+        '<button id="pidRecBtn" onclick="pidRecToggleRec()" style="padding:12px 18px;border-radius:10px;border:none;background:#dc2626;color:#fff;font-family:var(--f);font-weight:800;font-size:14px;cursor:pointer">● Start opname</button>'+
+        '<span id="pidRecStat" style="font-size:12px;color:var(--tx2)"></span>'+
+      '</div>'+
+      '<div id="pidRecResult" style="display:none;margin-top:14px"></div>'+
+    '</div>'+
+  '</div>';
+  buildPidRecList();
+  ov.style.display='flex';
+}
+function closePidRecorder(){ if(_recActive){ if(!confirm('Opname loopt nog — stoppen en sluiten?')) return; pidRecStopRec(); } var o=document.getElementById('pidRecOv'); if(o) o.style.display='none'; }
+function _recPool(){
+  var pool=(typeof supportedPIDs!=='undefined'&&supportedPIDs&&supportedPIDs.size)?[...supportedPIDs]:Object.keys(ALL_PID_DEFS||{});
+  return pool.filter(function(p){ try{ return isReportableSensor(p); }catch(e){ return true; } });
+}
+function buildPidRecList(){
+  var list=document.getElementById('pidRecList'); if(!list) return;
+  if(!_recSel.size){ try{ [...(activePIDs||[])].forEach(function(p){ _recSel.add(p); }); }catch(e){} }
+  var pool=_recPool(), html='';
+  pool.forEach(function(pid){
+    var def=getPidDef(pid)||{}; var name=def.name||pid; var unit=def.unit?(' ('+def.unit+')'):'';
+    var ck=_recSel.has(pid)?'checked':'';
+    html+='<label class="pidrec-row" data-name="'+name.toLowerCase()+'" style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid var(--bd);cursor:pointer;font-size:12px">'+
+      '<input type="checkbox" data-pid="'+pid+'" '+ck+' onchange="pidRecToggle(\''+pid+'\',this.checked)" style="width:16px;height:16px">'+
+      '<span style="color:var(--tx)">'+name+'</span><span style="color:var(--tx3);font-size:10px">'+unit+'</span>'+
+      '<span style="margin-left:auto;color:var(--tx3);font-family:var(--m);font-size:10px">'+pid+'</span>'+
+    '</label>';
+  });
+  list.innerHTML=html||'<div style="padding:10px;color:var(--tx3);font-size:11px">Geen sensoren beschikbaar — verbind eerst of zet demo aan.</div>';
+  pidRecUpdCount();
+}
+function pidRecToggle(pid,on){ if(on) _recSel.add(pid); else _recSel.delete(pid); pidRecUpdCount(); }
+function pidRecSelectAll(on){ document.querySelectorAll('#pidRecList .pidrec-row').forEach(function(r){ if(r.style.display==='none') return; var cb=r.querySelector('input'); var pid=cb.getAttribute('data-pid'); cb.checked=on; if(on)_recSel.add(pid); else _recSel.delete(pid); }); pidRecUpdCount(); }
+function pidRecFilter(q){ q=(q||'').toLowerCase(); document.querySelectorAll('#pidRecList .pidrec-row').forEach(function(r){ r.style.display = r.getAttribute('data-name').indexOf(q)>=0?'flex':'none'; }); }
+function pidRecUpdCount(){ var c=document.getElementById('pidRecCount'); if(c) c.textContent=_recSel.size+' sensor(en) geselecteerd'; }
+function pidRecToggleRec(){ if(_recActive) pidRecStopRec(); else pidRecStartRec(); }
+function pidRecStartRec(){
+  if(!_recSel.size){ showToast?.('Selecteer eerst minstens één sensor'); return; }
+  if(!connected && !demoMode){ showToast?.('Verbind eerst een adapter (of demo)'); return; }
+  try{ ensurePIDListActive([..._recSel]); }catch(e){}
+  datalogActive=true; datalogBuffer={}; _recT0=Date.now();
+  _recSel.forEach(function(p){ datalogBuffer[p]=[]; });
+  _recActive=true;
+  var b=document.getElementById('pidRecBtn'); if(b){ b.textContent='⏹ Stop opname'; b.style.background='#0c1018'; b.style.border='1px solid #dc2626'; }
+  var r=document.getElementById('pidRecResult'); if(r){ r.style.display='none'; r.innerHTML=''; }
+  if(_recTimer) clearInterval(_recTimer);
+  _recTimer=setInterval(function(){ var s=document.getElementById('pidRecStat'); if(!s) return; var sec=Math.round((Date.now()-_recT0)/1000); var n=0; Object.values(datalogBuffer||{}).forEach(function(a){ n+=a.length; }); s.innerHTML='<span class="datalog-badge recording">● '+sec+'s · '+n+' metingen</span>'; },500);
+  showToast?.('Opname gestart — rijd en reproduceer het probleem');
+}
+function pidRecStopRec(){
+  datalogActive=false; _recActive=false;
+  if(_recTimer){ clearInterval(_recTimer); _recTimer=null; }
+  var dur=Math.round((Date.now()-_recT0)/1000);
+  var buf={}; Object.keys(datalogBuffer||{}).forEach(function(p){ buf[p]=(datalogBuffer[p]||[]).slice(); });
+  var n=0; Object.values(buf).forEach(function(a){ n+=a.length; });
+  window._recData={ pids:[..._recSel], buffer:buf, dur:dur, n:n, ts:new Date() };
+  var b=document.getElementById('pidRecBtn'); if(b){ b.textContent='● Start opname'; b.style.background='#dc2626'; b.style.border='none'; }
+  var s=document.getElementById('pidRecStat'); if(s) s.innerHTML='<span class="datalog-badge">✓ '+dur+'s · '+n+' metingen opgenomen</span>';
+  pidRecShowActions();
+}
+function pidRecShowActions(){
+  var r=document.getElementById('pidRecResult'); if(!r) return;
+  r.style.display='block';
+  r.innerHTML='<div style="font-size:12px;font-weight:800;color:var(--tx2);margin-bottom:8px">Wat wil je met de opname doen?</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+      '<button class="ai-act" onclick="pidRecView()">👁 Bekijk</button>'+
+      '<button class="ai-act" onclick="pidRecShare()">↗ Deel</button>'+
+      '<button class="ai-act" onclick="pidRecDownload()">⬇ Download CSV</button>'+
+      '<button class="ai-act pri" onclick="pidRecToAI()">🔧 Naar AI-Monteur</button>'+
+    '</div>'+
+    '<div id="pidRecOut" style="margin-top:12px"></div>';
+}
+function _recStats(){
+  var d=window._recData; if(!d) return [];
+  var rows=[];
+  d.pids.forEach(function(pid){
+    var arr=(d.buffer[pid]||[]).map(function(x){return x.v;}).filter(function(v){return typeof v==='number';});
+    var def=getPidDef(pid)||{}; var name=def.name||pid; var unit=def.unit||'';
+    if(!arr.length){ rows.push({pid:pid,name:name,unit:unit,n:0,mn:null,mx:null,av:null}); return; }
+    var mn=Math.min.apply(null,arr),mx=Math.max.apply(null,arr),av=arr.reduce(function(a,b){return a+b;},0)/arr.length;
+    rows.push({pid:pid,name:name,unit:unit,n:arr.length,mn:mn,mx:mx,av:av});
+  });
+  return rows;
+}
+function pidRecView(){
+  var out=document.getElementById('pidRecOut'); if(!out) return;
+  var rows=_recStats();
+  var html='<table class="pidtab"><tr><th>Sensor</th><th>Metingen</th><th>Min</th><th>Max</th><th>Gem.</th></tr>';
+  rows.forEach(function(r){ html+='<tr><td>'+r.name+'</td><td class="v">'+r.n+'</td><td class="v">'+(r.mn==null?'—':fv(r.mn))+'</td><td class="v">'+(r.mx==null?'—':fv(r.mx))+'</td><td class="v">'+(r.av==null?'—':fv(r.av))+' '+r.unit+'</td></tr>'; });
+  html+='</table>';
+  out.innerHTML='<div class="ai-sec blue"><div class="ai-sh blue">📊 Opname-overzicht ('+window._recData.dur+'s)</div><div class="ai-sb" style="padding:8px 4px">'+html+'</div></div>';
+}
+function pidRecCSV(){
+  var d=window._recData; if(!d) return '';
+  var lines=['tijd_ms,pid,sensor,waarde'];
+  d.pids.forEach(function(pid){
+    var def=getPidDef(pid)||{}; var name=(def.name||pid).replace(/,/g,' ');
+    (d.buffer[pid]||[]).forEach(function(x){ lines.push(x.t+','+pid+','+name+','+x.v); });
+  });
+  return lines.join('\n');
+}
+function pidRecShare(){
+  var rows=_recStats(); var d=window._recData;
+  var txt='PidLane opname '+(d?d.ts.toLocaleString('nl-NL'):'')+' ('+(d?d.dur:0)+'s)\n';
+  rows.forEach(function(r){ txt+=r.name+': '+r.n+' metingen, min '+(r.mn==null?'—':fv(r.mn))+', max '+(r.mx==null?'—':fv(r.mx))+', gem '+(r.av==null?'—':fv(r.av))+' '+r.unit+'\n'; });
+  try{
+    if(navigator.share){ navigator.share({title:'PidLane opname', text:txt}).catch(function(){}); }
+    else if(navigator.clipboard){ navigator.clipboard.writeText(txt); showToast?.('Samenvatting naar klembord'); }
+    else showToast?.('Delen niet ondersteund');
+  }catch(e){ showToast?.('Delen mislukt'); }
+}
+function pidRecDownload(){
+  var csv=pidRecCSV(); if(!csv){ showToast?.('Geen data'); return; }
+  try{
+    var blob=new Blob([csv],{type:'text/csv'}); var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download='pidlane_opname_'+Date.now()+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+    showToast?.('CSV gedownload');
+  }catch(e){ showToast?.('Download mislukt'); }
+}
+function pidRecToAI(){
+  var out=document.getElementById('pidRecOut'); if(!out) return;
+  out.innerHTML='<div class="ai-sec orange"><div class="ai-sh orange">🔧 Naar AI-Monteur</div><div class="ai-sb">'+
+    '<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">Beschrijf je probleem. De AI-Monteur gebruikt je opgenomen data als dataset om de oorzaak te vinden of uit te sluiten.</div>'+
+    '<textarea id="pidRecProb" rows="3" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:12px;padding:8px 10px;resize:vertical" placeholder="bijv. trilt bij optrekken tussen 2000-3000 tpm"></textarea>'+
+    '<button id="pidRecAiBtn" class="ai-act pri" style="margin-top:8px;width:100%" onclick="pidRecRunAI()">▶ Analyseer met opname</button>'+
+    '</div></div><div id="pidRecAiOut" style="margin-top:10px"></div>';
+}
+async function pidRecRunAI(){
+  var prob=(document.getElementById('pidRecProb')||{}).value||'';
+  if(!prob.trim()){ showToast?.('Beschrijf eerst je probleem'); return; }
+  var btn=document.getElementById('pidRecAiBtn'); if(btn){ btn.disabled=true; btn.textContent='⏳ Analyseren'; }
+  var rows=_recStats(); var d=window._recData; var ds='';
+  rows.forEach(function(r){ ds+='- '+r.name+': '+r.n+' metingen, bereik '+(r.mn==null?'—':fv(r.mn))+' t/m '+(r.mx==null?'—':fv(r.mx))+', gemiddeld '+(r.av==null?'—':fv(r.av))+' '+r.unit+'\n'; });
+  var vi=(typeof vehicleInfo!=='undefined'&&vehicleInfo)?vehicleInfo:{};
+  var mm=[vi.merk||vi.make||'',vi.model||''].filter(Boolean).join(' ');
+  var p='Je bent een ervaren AI-automonteur. Een gebruiker heeft tijdens het rijden zelf een dataset opgenomen om een probleem te reproduceren. Gebruik UITSLUITEND deze opgenomen sensordata als bewijs om de mogelijke oorzaak te VINDEN of juist te ONTKRACHTEN.\n\n'+
+    'KLACHT: '+prob+'\n'+(mm?('MERK/MODEL: '+mm+'\n'):'')+
+    'OPNAMEDUUR: '+(d?d.dur:0)+' seconden\n'+
+    'OPGENOMEN SENSORDATA:\n'+ds+'\n'+
+    'Geef je antwoord in EXACT deze secties met deze koppen (hoofdletters):\n'+
+    'MOGELIJKE OORZAAK\nDATA-OORDEEL\nADVIES';
+  var aiout=document.getElementById('pidRecAiOut');
+  if(aiout) aiout.innerHTML='<div class="ai-ld"><span class="spin"></span> AI analyseert je opname</div>';
+  try{
+    var txt=await apiFetch(p,1400);
+    window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
+    var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Bekijk rapport</button><button class="ai-act" onclick="shareAIReport()">↗ Deel</button><button class="ai-act" onclick="exportAIReportPDF(this)">⬇ Download</button></div>';
+    if(aiout) aiout.innerHTML=_aiReportHtml(txt)+acts;
+  }catch(e){ if(aiout) aiout.innerHTML='<div class="ai-sec red"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">'+((e&&e.message)||e)+'</div></div>'; }
+  if(btn){ btn.disabled=false; btn.textContent='▶ Analyseer opnieuw'; }
+}
 function deepLogStart(){
   if(!connected && !demoMode){ showToast?.('Verbind eerst een adapter (of demo)'); return; }
   try{ ensurePIDsActive && ensurePIDsActive('totaal'); }catch(e){}
