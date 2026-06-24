@@ -1,636 +1,39 @@
-<!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-23k (CET)  [opvolger van 2026-06-23j]
-     ── 2026-06-23k ──  [FASE 1 van app-brede zwarte stijl]
-       • App standaard in DONKER (thema-toggle blijft werken; expliciet "licht"
-         wordt onthouden). Startscherm + 4 deuren omgebouwd naar immersieve
-         ZWARTE BLOKKEN (zwart #0a0e17, blok #11151f, subtiele rand, gekleurd
-         accent-streepje per deur). Keuzekaarten in de deur-panelen idem.
-         Top bar blijft staan. Volgende fases: analyses/rapport, lades, login.
-     ── 2026-06-23j ──
-       • DIEPE STORINGSANALYSE: wizard nu VOLLEDIG SCHERMVULLEND, zwart, portret
-         Android-stijl. Groot "1 / 7"-nummer + balk bovenaan, één grote vraag per
-         scherm, grote Volgende-knop onderaan (terug-pijl links), laatste stap =
-         Start analyse. Geen pop-up-kaart meer.
-     ── 2026-06-23i ──
-       • DIEPE STORINGSANALYSE als stap-voor-stap WIZARD (mobiel): 1 vraag per
-         scherm met voortgangsbalk "Stap X van 7", Vorige/Volgende; antwoorden
-         blijven bewaard tussen stappen; laatste stap = "Start analyse".
-     ── 2026-06-23h ──
-       • FIX mobiele lades: Sensoren/Logs openen nu VOLLEDIG schermvullend en
-         ondoorzichtig i.p.v. een bottom-sheet die de onderliggende view liet
-         staan ("verborgen maar niet verborgen"). Inhoud op volle breedte +
-         zichtbaar (geen ingeklapte/gedraaide label-weergave meer), PID-lijst
-         weer in beeld. Desktop (>=1024px) houdt het zijpaneel.
-     ── 2026-06-23g ──
-       • REAGEER OP RAPPORT: onderaan elk AI-rapport (sheet) een "Herzie"-veld.
-         Gebruiker geeft extra context/correctie (bijv. "motor was al warm") en
-         de AI herwaardeert het volledige rapport. Vervolgreacties bouwen door
-         op de herziene versie. Werkt voor elke analyse via "Bekijk rapport".
-     ── 2026-06-23f ──
-       • FIX vals stoplicht: aiVerdict sprong op rood door losse woord-matches
-         (o.a. "urgent" -> raakte ook de kop URGENTIE) en door termen in
-         ontkennende zin ("geen kritieke afwijkingen"). Nu ontkenning-bewust
-         en valse triggers verwijderd, zodat het stoplicht alleen rood toont
-         bij een echt kritieke bevinding.
-     ── 2026-06-23e ──
-       • HANDMATIGE PID-RECORDER (nieuwe kaart Deur 1): gebruiker kiest zelf
-         sensoren (zoekbaar, Alles/Niets), drukt op opnemen, rijdt en
-         reproduceert het probleem, stopt handmatig. Daarna: 👁 Bekijk
-         (overzicht min/max/gem), ↗ Deel, ⬇ Download CSV, of 🔧 Naar AI-Monteur
-         — die de opgenomen dataset gebruikt om de oorzaak te vinden of te
-         ontkrachten o.b.v. de probleembeschrijving.
-     ── 2026-06-23d ──
-       • DESKTOP-LAAG (>=1024px) toegevoegd (zelfde bestand, responsive):
-         bredere centrale inhoud (max 1080px), PID- en log-lade openen als
-         hoog ZIJPANEEL rechts i.p.v. bottom-sheet, rapport/diepe-analyse
-         gecentreerd en breder, ruimere lade-knoppen. Mobiel ongewijzigd.
-     ── 2026-06-23c ──
-       • VASTE-VENSTER-FIX: .cc gebruikte overflow:hidden binnen een op
-         100vh-46px vastgezette .app -> grotere/overlopende inhoud werd
-         AFGEKNIPT. Nu overflow-y:auto, dus inhoud scrollt i.p.v. clippen.
-       • LEESBAARHEID (A): globale opschaling van alle mini-teksten in één
-         pass (8->10, 9->11, 10->12, 11->12, 12->13, 13->14px, incl. basis).
-       • LEESBAARHEID (B): tekstgrootte S/M/L in het kebab-menu (zoom 0.9 / 1.0
-         / 1.13), onthouden via localStorage. M = nieuwe grotere standaard.
-       • PID-LADE: opent nu op volle hoogte (lade-tall) + compactere top, zodat
-         de PID-lijst altijd ruim zichtbaar en scrollbaar is.
-     ── 2026-06-23b ──
-       • MOOIERE RAPPORTEN: rapport-renderer opgewaardeerd — secties als kaarten
-         met gekleurde headers, "label: waarde" in nette kolommen, status-bullets
-         en €-accenten i.p.v. kladblok-tekst. Geldt voor alle AI-rapporten.
-       • DIEPE STORINGSANALYSE (nieuwe kaart Deur 1): geleide intake (probleem,
-         eerdere checks, merk/model, gevoel) → datalog start/stop om het probleem
-         te reproduceren → annotatie → AI-evaluatie met MOGELIJKE OORZAAK,
-         DATA-OORDEEL, BEVINDINGEN, ADVIES + GESCHATTE KOSTEN, voorafgegaan door
-         een probleem-PID-overzicht (afwijkende sensoren met min/max/gem + status).
-     ── 2026-06-23a ──
-       • PID-LIJST SCROLL-FIX: #slPanel als flex-kolom + min-height:0 op
-         .sl-inner/.pscr — PID-lijst is nu altijd bereikbaar/scrollbaar.
-       • TOKEN-/KOSTENTELLER (admin): pill licht op bij elke AI-call, telt
-         tokens + kosten per sessie (Haiku 4.5-prijs, instelbaar). Tik = detail.
-       • APARTE CONNECTIE-CHECK: "🔌 Check connectie"-knop; optimalisatie-popup
-         springt niet meer vanzelf in een analyse. Analyse pas na geslaagde check
-         (_connReady). Demo slaat het over.
-     ── 2026-06-22c ──
-       • DEUREN GECONSOLIDEERD 17->11 kaarten. Deur1: AI-Monteur/Conditiecheck
-         /Rijtest/Onderhoud (Storing+Snelle samengevoegd in Conditiecheck).
-         Deur2: 1 Koop/Verkoop-check met rolkiezer (openKoopKeuze: koop/verkoop
-         /inkoop/lease/occasion) + Proefrit. Deur3: Verbruik + Rijtest. Deur4:
-         Seizoenscheck (openSeizoensCheck: winter/airco) + EV + Lange rit; Lease
-         naar deur2. Analyse-functies ONgewijzigd, alleen routing.
-       • ADMIN-LOG: admin krijgt altijd automatisch de crash-vaste live-log.
-       • FIX: openRitAnalyse verbergt nu zelf het keuzescherm (proefrit-launch
-         na de welcome z-index 9500-wijziging).
-     ── 2026-06-22b ──  ← NIEUW STARTPUNT / bron-van-waarheid voor volgende sessies
-       • FIX home-knop bij lopende analyse: keuzescherm had z-index 400 maar
-         de analyse-dashboards 9000 -> keuzescherm kwam erachter (leek of home
-         niets deed). Welkomstscherm nu z-index 9500 = altijd bovenop.
-       • goHome stopt de analyse niet meer: lopende analyses blijven draaien
-         onder de hub (alleen transiente popups sluiten). "Stopt niets."
-       • Lelijk terug-knopje in live view bewust ONgemoeid gelaten.
-     ── 2026-06-22a ──  (let op: de "2026-06-20x"-stempels hieronder zijn van deze sessie en feitelijk op 22 juni gemaakt)
-       • GECONSOLIDEERD tot EEN bron-van-waarheid. Geverifieerd superset van
-         de 20-juni-build (2026-06-20b): bevat daarvan alles (v3-logo, lade-
-         fix, home-knop) PLUS full-screen login, tablet-grid-fix, centrering
-         en introscherm. Niets uit 20-juni verloren (de enige verschillen
-         waren juist de hier doorgevoerde fixes). De live GitHub-repo bleek
-         ouder (pre-redesign) -> deze versie committen als nieuwe basis.
-       • Home-knop vergroot + label "Start" (was klein/onduidelijk: 11px 🏠).
-     ── 2026-06-20g ──
-       • IN-APP INTRO toegevoegd: kort full-screen logo-scherm (#introOv,
-         donker zoals login) met v3-icoon, "PidLane" + tagline. Logo komt op
-         met 1 hartslag-pulse, fade na ~1.8s naar login. Toont 1x per sessie
-         (sessionStorage) -> in APK 1x per launch, ook zichtbaar in browser.
-     ── 2026-06-20f ──
-       • Centrering op brede schermen (tablet/desktop): werkscherm .cc en de
-         on-top lades cappen nu op 820px en staan gecentreerd, zodat inhoud
-         niet meer over de volle breedte uitloopt. Telefoon blijft full-width.
-     ── 2026-06-20e ──
-       • FIX wit middenscherm op tablet/desktop (>760px): oude grid-regel
-         (.app 230px 1fr) botste met de nieuwe on-top-lade-aanpak. Met het
-         PID-paneel als fixed lade en #srPanel afgeschaft bleef de 1fr-kolom
-         leeg. .app nu 1-koloms op alle breedtes -> werkscherm .cc full-width.
-     ── 2026-06-20d ──
-       • FIX wit startscherm: loginscherm pakte var(--bg), wat in LICHTE
-         modus bijna wit is. Donkere thema-variabelen nu lokaal op #loginOv
-         gezet -> login altijd donker (bg, tekst, invoervelden), passend bij
-         de splash, ongeacht het systeemthema.
-     ── 2026-06-20c ──
-       • LOGINSCHERM full-screen: zwevend kaartje vervangen door een vol
-         scherm met groot icoon (108px) bovenaan en het loginformulier
-         eronder — sluit aan op de native splash. Scoped op #loginOv; alle
-         velden/ID's/handlers (doLogin enz.) ongewijzigd. Safe-area boven/onder.
-     ── 2026-06-20b ──
-       • FIX Sensoren/PID-lade: opende eerst leeg/half (grid-status
-         sl-col liet .sl-inner op opacity:0) zodat pas een 2e tik het
-         juiste scherm gaf. Lade toont nu de inhoud direct bij openen
-         (scoped op .lade-open) en verbergt het grid-inklaplabel binnenin.
-       • Lade opent voller: 50vh -> 80vh (uitvouwen ⤢ -> 94vh).
-     ── 2026-06-20a ──
-       • LOGO: nieuwe app-huisstijl (v3 FINAL) verwerkt — weg +
-         spraakballon + hartslag + AI-sparkle. Volledige versie in de
-         login- en verbind-modals; vereenvoudigde versie (zonder fijnste
-         weg-dashes en zonder tweede sterretje) in de 26px-topbalk.
-         Unieke gradient-/filter-ID's per plek (SVG-render-conflicten).
-     ── 2026-06-19a ──
-       • NIEUWE LOOK + TELEFOON-FIRST (fundering): viewport start nu op
-         schaal 1 (niet meer uitgezoomd); vernieuwd kleur-/vorm-systeem
-         (premium, grotere radius, zachtere diepte, licht+donker). Het vaste
-         3-koloms desktop-grid kantelt op ≤760px naar één gestapelde kolom
-         met het werkscherm bovenaan — niets meer platgedrukt. Panes blijven
-         gemount, dus polling/rit-analyse/AI lopen door (niets cancelt).
-       • AI-STATUSBALK: globale "AI analyseert… (Xs)"-balk over élk scherm
-         zolang een call loopt; meldt expliciet dat het proces doorloopt
-         terwijl je live-data of logs bekijkt. Niets breekt de call af.
-       • AI-VERDICT: stoplicht-oordeel (🟢/🟡/🔴) bovenaan elke AI-uitslag.
-       (Volgende laag: echte on-top lades voor PID-menu + logs in live,
-        home-als-root drill-in routing, en View/Share/Download rapport-sheet.)
-       • DEMO BRUIKBAAR VOOR BRANDSTOF ÉN EV: demo-voertuigkiezer (benzine/
-         diesel/hybride/elektrisch) in het voertuig-paneel die de hele
-         PID-lijst + brandstoftype herbouwt (EV = geen verbrandings-PIDs).
-         Refresh- en Optimaliseer-knop werken nu in demo (gesimuleerd); de
-         "Diep zoeken"-knop ververst in demo de lijst; kenteken invoeren in
-         demo herbouwt de PID-lijst naar het RDW-brandstoftype.
-       • HOME = 4 INTENT-DEUREN (keuzestress weg): de 3 tabs + ~18 vrijwel
-         identieke tegels zijn vervangen door 4 deuren met progressive
-         disclosure — "Wat is er met mijn auto?" / "Kopen of verkopen?" /
-         "Verbruik & besparen" / "Voorbereiden op…". Je ziet eerst 4 keuzes,
-         de varianten verschijnen pas ná het kiezen van een deur (met Terug).
-         Live PID-data als aparte specialist-ingang. Alle mode-logica intact
-         (kaart-ID's behouden).
-       • RECHTERPANEEL VERVALLEN: analyse-launcher zat dubbelop met home →
-         weg; werkscherm is nu 2-koloms. In live view een knop "🔬 Analyseer
-         wat je nu ziet" voor directe AI op de huidige meting.
-       • ANDROID-BACK + BACK-NAVIGATIE: de hardware-back-knop sluit de app niet
-         meer per ongeluk. Back loopt terug: open overlay/sheet → terug;
-         deur-paneel → terug naar de 4 keuzes; in een mode → terug naar home.
-         Op de home-keuze vraagt een tweede tik om écht af te sluiten.
-         (Capacitor backButton in APK, history-trap in de browser.)
-       • AI-OUTPUT → SHEET: AI-resultaat toont inline alleen het verdict +
-         knoppen Bekijk rapport / Deel / Download. Het volledige rapport opent
-         in een nette sheet (✕ om te sluiten). Geen inline-dump meer.
-       • AI-FALLBACK (degraded mode): is de AI niet beschikbaar (geen sleutel /
-         netwerkfout), dan toont de app een regelgebaseerde diagnose
-         (foutcodes-lookup + datakwaliteit) i.p.v. een kale foutmelding.
-       • ON-TOP LADES: het PID-menu (#slPanel) en het logboek (#logbar) zijn nu
-         bottom-sheet lades met handvatten linksonder (🚗 Sensoren / 📋 Logs).
-         Ze schuiven van onder op, blijven boven het werkscherm (polling/
-         analyse lopen door — niets cancelt) en zijn uitvouwbaar naar boven
-         (⤢). Werkscherm is daardoor 1-koloms. Back sluit een open lade eerst.
-       • DONKER/LICHT-TOGGLE VERWIJDERD: de balk met lettergrootte (A−/A+) en
-         zoom (−/+/↺) blijft; app gebruikt standaard het lichte thema.
-       • UITLOGGEN (admin): inlog-vinkje 'Extra logfunctie' vervallen. Een
-         admin krijgt bij uitloggen nu ALTIJD eerst de vraag of de volledige
-         log (BT + app + scan) bewaard moet worden. OK = opslaan/delen en
-         daarna uitloggen; Annuleren = direct uitloggen zonder opslaan.
-         logout() is async geworden zodat opslaan/delen klaar is vóór de
-         verbinding wordt verbroken en de sessie gewist.
-       • HUD verborgen: 🖥 HUD-knop op het grafiekscherm op display:none.
-       • BOUWJAAR: VIN-jaardecode gebruikt nu positie-7 (letter=2010+, cijfer=
-         1980-2009) om de 30-jaars cyclus te ontwarren + toekomst-guard, zodat
-         een 2013-auto niet meer als 1983 leest. RDW blijft leidend.
-       • FANTOOM MISFIRE: cilinderspecifieke misfire/injector-codes (P030X/
-         P020X) voor een cilindernummer hoger dan het werkelijke aantal
-         cilinders worden als onwaarschijnlijk gemarkeerd (dtcInfo) en in
-         AI-prompts geannoteerd (formatDtcCodes) i.p.v. als echte storing
-         uitgelegd. Cilinderaantal uit motor-string (NHTSA) of RDW.
-       • SESSIE OVERLEEFT WEBVIEW-KILL: bij scherm-uit kan Android het proces
-         afschieten waarna de app kaal herlaadt. Naast login+autoconnect worden
-         nu ook voertuig-identiteit, ontdekte PIDs en DTC-codes bewaard
-         (pl_appstate, opgeslagen bij visibilitychange/pagehide, hersteld bij
-         herladen, verloopt na 6u, gewist bij uitloggen). BT-log wordt
-         gespiegeld naar localStorage zodat hij de proces-kill overleeft
-         (sessionStorage niet). Tip voor op het toestel: zet batterij-
-         optimalisatie uit voor de app om de kill sowieso te beperken.
-     ─────────────────────────────────────────────────────────
-     ALLE MODES ACTIEF (geen "Binnenkort" meer):
-       • 💰 Verkoopcheck: zelfde basis als Koopcheck, maar vanuit verkoper —
-         particuliere prijs, inruilwaarde én dealerbod. Rapport expliciet
-         deelbaar met koper (PDF-knop).
-       • 🚘 Lease Teruggave: km-check tegen contract (+ naheffing-berekening),
-         technische staat en innameprotocol-aandachtspunten (lak, ruiten,
-         banden, accessoires) met kostenrisico. Eigen contractvelden.
-       • 📋 Occasion Rapport: nette, deelbare variant van de Koopcheck.
-       • 🛠️ Onderhoud Plannen: fabrieksinterval + sensordata bepalen of werk
-         nu nodig is of kan wachten; zoekt gebreken; optioneel 2/10 min rit.
-         Benadrukt serviceboekje compleet houden.
-       • 🔋 EV/Hybride Check: stilstaande analyse + optionele 2 min rit, focus
-         op accu/HV-systeem, laden/regeneratie (eerlijk over OBD2-limieten).
-       • 🧳 Lange Rit: technische go/no-go + meeneem-checklist met landspecifieke
-         eisen (FR/DE/AT/CH/BE) — hesjes, driehoek, vignet, winteruitrusting.
-       • setKoopMode nu config-gedreven (KOOP_MODES) voor koop/inkoop/verkoop/
-         lease/occasion. Nieuwe dashboards netjes gekoppeld aan home + Android-back.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18j):
-     AIRCO CHECK + WINTERCHECK (herbruikbare module):
-       • ☀️ Airco Check: meet primair via OBD (compressor-RPM-dip,
-         motorbelasting-delta, inlaatluchttemp als referentie). Optioneel een
-         thermometer (oor-/kinderthermometer) als 2e bron — duidelijk als
-         minder betrouwbaar gelabeld. ΔT-oordeel: >15°C goed, 8–15°C zwak,
-         <8°C probleem. Eigen SVG-handleiding (thermometer in rooster).
-       • ❄️ Wintercheck: volgt koelvloeistof + olie tijdens opwarmen, meet
-         opwarmtijd tot ~90°C (thermostaat-oordeel: OK / traag / opent niet),
-         oliecirculatie en accuspanning koud. Stopt automatisch bij
-         bedrijfstemperatuur.
-       • Module is herbruikbaar: openClimateCheck('airco'|'winter'). Gekoppeld
-         aan de Zomer- en Winter-modes én als optionele stap (4b) in de
-         Koopcheck/Inkoop. Lokaal oordeel werkt ook zonder AI-sleutel; AI geeft
-         aanvullende uitleg + advies. Resultaat gaat naar het logboek.
-       • Android-back en 🏠 home sluiten ook het climate-overlay netjes.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18i):
-     NAVIGATIE + LAYOUT:
-       • 🏠 Home-knop in de topbar opent het startscherm als navigatiehub
-         (overlay over de analyses). Android-backknop gaat ook naar home als
-         er geen venster open staat.
-       • Alle AI-rapportages renderen nu consistent in het BREDE MIDDEN
-         (nieuw pane-ai + aiContentDiag in de diagnose). Rechterkolom is puur
-         de analyse-launcher; toont een hint dat het resultaat in het midden komt.
-       • Linkerpaneel (PID-selectie) wordt per analyse vergrendeld verborgen:
-         alleen Live en Grafiek hebben handmatige PID-keuze nodig. Bij andere
-         modes klapt het paneel dicht (0px) met een duidelijke 📡-knop om de
-         sensoren desgewenst toch te tonen (revealLeftPanel).
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18h):
-     WELKOMSTSCHERM + KOOPCHECK v2 + INKOOP + HUD-LABELS:
-       • Nieuw welkomstscherm met 3 mode-tabs (Technisch / Kopen & Verkopen /
-         Situatie). Bestaande analyses gekoppeld; toekomstige modes met
-         "Binnenkort"-badge (onderhoud, verkopen, occasion-rapport, lange rit,
-         winter/zomer/EV/lease).
-       • Proefrit-mode (welkomstscherm): keuze 2 of 10 min technische rit.
-       • Koopcheck v2: bandencheck met 1-euro-test (ingesloten illustratie via
-         ⓘ-knop), proefrit ja/nee + 2/10 min (technisch, geen rijgedrag),
-         prominente momentopname-waarschuwing, banden+proefrit wegen mee in de
-         prijs-/eindoordeel-prompt.
-       • Inkoopcontrole (handelaar): hergebruikt de Koopcheck-pane in
-         inkoop-modus met zakelijke velden (inkoop/verkoopprijs, kanaal,
-         BTW/marge, import, opknapkosten). Eigen AI-call → OPKNAPKOSTEN,
-         VERWACHTE MARGE, MAX-INKOOP, INKOOPADVIES, RISICO.
-       • HUD-hoekmeters: slimme korte labels (hudShortLabel + woordenboek) i.p.v.
-         brute afkapping; volledige naam als tooltip. "BRANDSTOFTRI" → "B.TRIM K1".
-       • Multi-PID batch op CAN was al actief (groepjes van 3, per-PID
-         byte-length parser, dip/herstel) — geverifieerd, geen wijziging nodig.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18g):
-     RAPPORTEN BRANDSTOF-BEWUST (statische test per brandstoftype):
-       • Statische trace gedaan voor benzine/diesel/elektrisch/hybride/PHEV.
-         Eén gat gevonden en gedicht: inlaatlucht-temp (010F) bleef op een EV
-         staan — nu ook in EV_AFWEZIGE_PIDS (combustion-intake sensor).
-       • Diagnose-rapport: bij elektrisch krijgt de AI nu de expliciete
-         instructie GEEN brandstof/trim/lambda/MAF/EGR/uitlaat te noemen en
-         zich op accu/laden/elektrische aandrijving te richten. Diesel-pad
-         wijst op DPF/AdBlue/NOx.
-       • Brandstofefficiëntie-analyse: volledig geblokkeerd op een EV met nette
-         melding (geen AI-call die over liters/verbruik zou praten).
-       • AI Monteur: context bevat nu een AANDRIJVING-regel (elektrisch =
-         geen verbrandingsonderdelen; diesel = DPF/SCR/NOx).
-       • Rit-eindrapport: EV → praat over kWh/energie i.p.v. brandstof/liters.
-       • Hybride (HEV/PHEV) behoudt bewust trim/lambda (heeft verbrandingsmotor).
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18f):
-     TOKENBESPARING (6 rit-fase-AI-calls → lokale regelduiding) + scenario
-     PID-recheck na voertuig/brandstof-wijziging + elektrisch = trim/lambda uit.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18e):
-     PDF-venster sluit direct (blijft niet hangen) + Android-backknop sluit
-     eerst open vensters i.p.v. de hele app.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18d):
-     RIT ANALYSE MINIMALISEERBAAR: minimaliseren laat de analyse doorlopen;
-     zwevende pill toont voortgang; scenario-waardes tussendoor aanpasbaar.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18c):
-     TEST-SCENARIO (admin/demo): handmatig PID-waarden, DTC's en voertuig
-     instellen om beoordeling/rapport te testen; alles MANUEEL-gelabeld.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18b):
-     RDW-DATA UITGEBREID + DATAVALIDATIE: validateRdwVehicle() weert rotzooi;
-     tellerstandoordeel + betrouwbare recall-indicator; APK via vkij-7mwc;
-     weggelaten velden met reden; prijsprompt weegt teller/recall mee.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-18):
-     WIZARD-FLOW + VIN-DATA + RDW-FOUTEN: strategie-popup niet meer
-     automatisch; NHTSA brandstof+motor; VIN-kaart vóór kenteken in wizard;
-     nette RDW-foutmeldingen; stap 5 anti-terugval; pl_kent→pl_kenteken.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-17 05:45):
-     FIX — DODE-PID-SNOEI + BATCH HERSTELD (uit echte Mazda-rit-log):
-       • Oorzaak traagheid + "batch faalt": ~6-8 PIDs gaven elke ronde NO DATA
-         (olietemp/verbruik/omgevingstemp/smalband-O2 die de bitmap onterecht
-         als ondersteund opgaf). Elke NO DATA wacht de timeout uit (~500ms) → 3-4s
-         verspilling per ronde, en zo'n dode PID in een batch maakte 'm "onvolledig"
-         → batchDip → batch uitgeschakeld → eindeloze cyclus.
-       • Snoei: na 4× NO DATA wordt een PID uit de poll gehaald; elke 2 min één
-         herkansing (komt-ie tot leven → keert terug). markPidData/markPidNoData.
-       • Batch dipt nu alleen bij een écht lege/kapotte respons. Kwam er ≥1 PID
-         terug, dan telt dat als succes; ontbrekende PIDs = NO DATA (voeden de
-         snoei) i.p.v. alles sequentieel herhalen. Geen dip-cyclus meer.
-       • BATCH-diag-regel staat er nog in (admin-only BT-log) om op de volgende
-         rit te verifiëren — kan daarna weg.
-     ──────────────────────────────────────────────────────────────
-     PidLane — build 2026-06-17 05:15 (CET)  [opvolger van 04:30]
-     FIX — FANTOOMSENSOREN UIT ALLE RAPPORTEN:
-       • Turbo-/tussenkoeler-temp (atmosferische motor), bank-2 uitlaat/kat
-         (1-bank motor) en dieselfilter (benzine) verschenen nog in de
-         momentopname. Oorzaak: brandstoftype "onbekend" (RDW niet geladen)
-         liet diesel/SCR door, en turbo/tussenkoeler/bank-2 zaten in géén filter.
-       • vehicleFuelType() valt nu terug op live PID 0151 als RDW-data ontbreekt.
-       • Nieuwe _powertrainPhantom(): filtert temp-sensoren met fysiek onmogelijke
-         waarde (turbo/tussenkoeler ≤ -10°C placeholder), koude bank-2 t.o.v. hete
-         bank-1, en uitlaat/kat < 80°C bij warm draaiende motor.
-       • isReportableSensor() ook bedraad in AI-snelanalyse, tekstrapport en
-         live-data export — fantomen bereiken nu ook de AI niet meer.
-     ──────────────────────────────────────────────────────────────
-     PidLane — build 2026-06-17 04:30 (CET)  [opvolger van 04:00]
-     FIX — O2 B1S1/B1S2 BLEEF OP ~0.02V + BATCH-DIAGNOSTIEK:
-       • Oorzaak O2: de app las PID 0113 als 'O2 sensor B1S1'-spanning, maar
-         0x13 is de "O2-sensoren aanwezig"-BITMAP (geen spanning). b[0]/200 van
-         die bitmap gaf op veel auto's een vaste ~0.02V. De echte B1S1-spanning
-         is PID 0114 (stond verkeerd gelabeld als 'Lambda B1S1 spanning').
-       • 0113 herdefinieerd als bitmap (unit '', parse b[0]); 0114 = 'O2 sensor
-         B1S1' (de echte spanning). Alle poll-/profiel-lijsten, de check, de
-         demo en b1s1Source() lezen B1S1 nu via 0114 (smalband) of breedband
-         (0124/0134). B1S2 (0115, correct) toegevoegd aan de diagnose-check.
-       • Multi-PID BATCH: parser (splitBatchResponse) los unit-getest — die is
-         correct in alle CAN-formaten. Faalt dus in het runtime-/triggerpad.
-         Tijdelijke diagnostiek toegevoegd in de poll-loop (max 1×/4s): logt
-         proto-id, isCAN, batch-status, due-count en bij onvolledige batch het
-         TX-commando + RX-respons. Eén echte Mazda-rit wijst nu de oorzaak aan.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-17 04:00):
-     FIX — VERBINDING VALT WEG BIJ APP-WISSEL (Android achtergrond)
-       • Oorzaak: Android sluit de SPP-socket stil op de achtergrond, maar
-         'connected' bleef true → reconnect werd nooit getriggerd, poll-loop
-         draaide door op een dode socket.
-       • visibilitychange verifieert nu de socket écht (spp.isConnected) ook
-         als connected nog true is; faalt → setConn(false) → herverbinden.
-         Wake-up delay 600→800ms voor Android-stabiliteit.
-       • sppReconnectGuard re-initialiseert nu de ELM327 ná het herverbinden
-         (ATWS-sequence), buiten de BT-queue gepland om deadlock te vermijden.
-       • Nieuwe stille-socketdood-detectie in trackBtQuality: 6× lege respons
-         achtereen → connected=false + setConn(false) + auto-herverbinden
-         (alleen lege responses tellen; 'NO DATA' betekent dat adapter leeft).
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-17 03:30):
-     RAPPORT-SCHOONMAAK + VOERTUIGFILTER + ONDERDELEN-KEUZE
-       • Voertuig-plausibiliteit (vehiclePlausiblePid): diesel/SCR-sensoren
-         (DPF, roetfilter, NOx, AdBlue, SCR, afgastemp dieselfilter) vallen
-         weg zodra het brandstoftype zeker benzine is. Bedraad in álle paden:
-         relevantSupportedPIDs (analyses) én buildCheckItems (totaalcheck).
-         Bij onbekend brandstoftype wordt niets verborgen.
-       • Momentopname-export (2× PDF) schoongemaakt via isReportableSensor:
-         naamloze 'raw'-PIDs (PID 01XX zonder parser) eruit, onzin/nodata
-         eruit, diesel/SCR-fantoomsensoren eruit. Loste de troep op de echte
-         Mazda op (dieselfilter/NOx/AdBlue op een benzineauto + raw-PIDs).
-       • PDF-glyph fix: disclaimer begon met 'ℹ️' (U+2139) → rende als '!9'
-         in helvetica. Bron nu 'Let op:'; clean() strookt ook letterlike/
-         technische symbolen als backstop.
-       • Totaalcheck per categorie gegroepeerd (Motor/Temp/Brandstof/Emissie/
-         Electrisch/Rijden/Foutcodes/Bestuurder) met koppen + status per groep.
-       • ONDERDELEN-KEUZE (pickOnderdelen-modal) vóór de langdurige analyses:
-         Totaalcheck (kies categorieën) en Rit Analyse (kies fases). Default
-         = alles aan (compleet in één tik); niet-breekbaar, annuleren mogelijk.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-17 03:10):
-     FIXES — CONSISTENTE PID-SELECTIE VOOR ELKE ANALYSE:
-       • Nieuwe centrale helper analysisPidData(profile): single source of
-         truth. Levert per analyse de PIDs + verse waarden die relevant ∩
-         aanwezig ∩ niet-onzin/nodata zijn, plus het kwaliteitsblok voor de
-         AI-prompt. Geen onzin-PIDs, niets relevants overgeslagen.
-       • Brandstofanalyse: niet langer de vaste 7-PID FUEL_PIDS-lijst blind
-         pollen. Gebruikt nu relevantSupportedPIDs('brandstof') ∪ gecureerde
-         fuel-PIDs (mét hun desc-teksten), sluit dummy/onzin uit, en stuurt
-         nu wél een DATAKWALITEIT-blok mee naar de AI (ontbrak volledig).
-       • Totaalcheck (buildCheckItems): pc() sluit nu ook 'onzin' uit (was
-         alleen 'nodata') zodat fysiek-onmogelijke waarden niet meer als
-         probleem in de lijst belanden — gelijk aan de AI-gate. Daarnaast
-         union met relevantSupportedPIDs('totaal'): elke relevante gezonde
-         sensor van de auto wordt nu getoond, niet alleen de vaste kernlijst.
-       • Emissie- en rit-analyse waren al consistent (relevantSupportedPIDs
-         + buildQualityReport) en zijn ongewijzigd gelaten.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-17 02:00):
-     FIXES:
-       • Dubbele popup opgelost: wizard stap 2 gebruikt eigen strategie-UI,
-         roept niet meer showStrategyConfirm() aan (aparte stratOverlay)
-       • Live-scherm leeg bij opstarten: autoSelectHealthyKern selecteert
-         geen PIDs meer automatisch — gebruiker kiest zelf
-       • Wizard stap 6 selecteert STANDAARD_PIDS: uitgebreide maar normale
-         set (Motor/Temp/Brandstof/Emissie) zonder turbo/DPF/AdBlue/NOx
-       • Dummy-value detectie in scanMode: temp-sensoren op exact -40°C
-         en emissie-PIDs op exact 0 worden als 'nodata' gemarkeerd
-         (niet-aanwezige sensor die toch antwoordt met default waarde)
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-17 01:00):
-     VERBINDING-WIZARD (6 stappen na protocol-detectie):
-       Stap 1: Verbonden — protocol + adapter naam
-       Stap 2: Adapter evalueren — snelheid meten + strategie kiezen
-       Stap 3: Sensoren ontdekken — bitmap-scan voortgang
-       Stap 4: Voertuig identificeren — VIN + kenteken + RDW inline
-       Stap 5: Sensorcheck — per PID gezondheid + categorie-samenvatting
-               uitklapbaar detail per categorie
-       Stap 6: Klaar — samenvatting + Start analyse knop
-     BUGFIX 2-min analyse (4 PIDs geselecteerd):
-       fase-PIDs worden gefilterd op gezondheid (_pidHealth),
-       NO DATA PIDs overgeslagen, kern-PIDs altijd als fallback
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 23:00):
-     VOERTUIG-SPECIFIEKE RAPPORTAGE — geen turbo/diesel bij benzine:
-       • buildCheckItems() toont alleen PIDs die de auto ondersteunt.
-         Turbo-, DPF-, AdBlue-, NOx-, raildruk-PIDs verschijnen alleen
-         als supportedPIDs ze bevat en ze geen nodata gaven.
-       • Alle AI-prompts (Totaalcheck, AI-Monteur, Koopcheck) bevatten
-         nu het brandstoftype + expliciete instructie: geen aannames over
-         turbo/diesel/AdBlue/hybride tenzij de data dit aantoont.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 22:00):
-     BUGFIX gezondheidscheck (alle PIDs ten onrechte grijs):
-       • assessPidQuality() krijgt scanMode=true tijdens initialHealthScan.
-         In scanMode worden alleen harde fysieke onmogelijkheden als 'onzin'
-         gemarkeerd — "te weinig metingen" en "platte sensor" checks worden
-         NIET toegepast (die vereisen history die er na 2 reads niet is).
-       • NO DATA respons = 'nodata' (niet aanwezig op dit voertuig), grijs
-         maar zonder ⚠-icoon — anders dan 'onzin' (parse/schaalfout).
-       • Veiligheidsfallback: als 0 PIDs ok zijn maar data aanwezig, reset
-         naar alles-ok (voorkomt lege PID-lijst bij een check-storing).
-       • Analyses sluiten 'nodata' uit maar laten 'twijfel' door.
-       • Log toont nu: "X ondersteund, Y niet aanwezig, Z ongeldig".
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 21:00):
-     CONNECTIE-OPTIMALISATIE + stale-fix:
-       • measureConnSpeed(): meet werkelijke reads/sec + latency + protocol.
-       • suggestStrategy(): stelt Snel/Gebalanceerd/Conservatief voor op basis
-         van snelheid; gebruiker bevestigt via overlay (showStrategyConfirm).
-       • Gekozen strategie past poll-tempo aan (_pollMult op pidPollInterval).
-       • Draait automatisch na verbinden; preAnalysisCheck() doet vóór elke
-         analyse een lichte hercontrole (popup alleen als verbinding merkbaar
-         verslechterd is).
-       • Compacte status in topbar-statusregel: ⚡reads/s · 📡PIDs · 🎯strategie.
-       • Knop "⚡ Meet snelheid" in de log-sheet (naast 🤖 Optimaliseer).
-       • STALE-FIX: puntjes-weergave knippert niet meer rood bij trage PIDs.
-         Stale-drempel is nu per PID = 3× poll-interval (min 5s), en de stale-
-         animatie is mild oranje i.p.v. rood alarm. Trage temp/niveau-sensoren
-         tonen dus gewoon een rustige refresh zolang de verbinding OK is.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 20:00):
-     PID-CONTROLE + GEZONDHEID bij eerste uitlezing:
-       • initialHealthScan(): na discovery wordt elke PID 1x uitgelezen en
-         beoordeeld (assessPidQuality). Resultaat in _pidHealth.
-       • Ongezonde PIDs (onzin/dood/twijfel) worden in de lijst UITGEGRIJSD
-         en niet-selecteerbaar, met een ⚠-markering en uitleg-tooltip.
-       • Knop "👁 Toon alles" maakt uitgegrijsde PIDs alsnog selecteerbaar.
-       • Gezonde kern-PIDs (RPM/temp/trims/accu) worden na discovery
-         automatisch geselecteerd (autoSelectHealthyKern).
-       • Per categorie-kop een "+ Alles"-knop die alle gezonde PIDs van die
-         soort (Motor/Temp/Elektrisch/...) in 1 klik activeert.
-       • Analyses (relevantSupportedPIDs) slaan ongezonde sensoren over.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 19:00):
-     BETROUWBAARHEID — geen klant op kosten door een meetfout:
-       • assessPidQuality(): elke opvallende sensor krijgt voor de AI-analyse
-         een oordeel: ok / onzin (fysiek onmogelijk = parse/schaalfout =
-         uitsluiten) / twijfel (dode-platte sensor, te weinig samples, net
-         over drempel = met waarschuwing).
-       • buildQualityReport(): DATAKWALITEIT-blok in ALLE AI-prompts
-         (Totaalcheck, AI-Monteur agent, Rit-rapport) met de regel: jaag de
-         klant nooit op kosten door een waarschijnlijke meetfout als defect.
-       • Zichtbaar betrouwbaarheids-label per Totaalcheck-bevinding.
-       • Vaste disclaimer onderaan elk AI-rapport (RAPPORT_DISCLAIMER).
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 18:00):
-     SLIM SENSORGEBRUIK — alle analyses benutten nu beschikbare sensoren:
-       • relevantSupportedPIDs(): elke analyse start met basis-profiel +
-         ALLE relevante ondersteunde sensoren (gesneden op supportedPIDs +
-         categorie). Geen vaste smalle lijstjes meer.
-       • Snelle (2-min) analyse: blijft gericht/snel.
-       • Uitgebreide (10-min) analyse: leest bij start ALLE ondersteunde
-         sensoren 1x uit (ritFullSweep) → afwijkingen vastgelegd en
-         meegenomen in AI-rapport. Houdt daarna alle sensoren actief; de
-         poll-scheduler regelt tempo (temp/niveau "heel soms" via TRAAG/
-         ZELDEN-klasse, RPM/lambda snel).
-       • Wachtlus bij analyse-start wacht alleen op SNELLE PIDs (niet op
-         trage temp 10s), scheelt opstarttijd.
-       • Readiness-kaart toont nu de werkelijke slimme set.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 17:00):
-     UX: kenteken-invoerveld staat nu ALTIJD direct zichtbaar in de
-       voertuigkaart (ook bij geldige VIN). Klikken op de VIN-regel om
-       het veld te tonen is niet meer nodig. Enter in het veld start
-       de RDW-lookup. VIN-regel is nu enkel info (niet meer klikbaar).
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 16:30):
-     CODE-AUDIT FIXES (stabiliteit vóór demo):
-       • FIX: dubbele pidPollInterval() — de 2e definitie overschreef de 1e
-         via hoisting en MISTE de klacht-focus (_focusPIDs). Nu samengevoegd
-         tot één functie met zowel focus- als motortype-logica.
-       • FIX: no-op _origPidPollInterval verwijderd (verwees naar zichzelf).
-       • FIX: readiness-kaart gebruikt nu de ECHTE analyse-PID-set
-         (ANALYSE_PIDS) i.p.v. een afwijkende lijst — kaart-% klopt nu met
-         wat de analyse daadwerkelijk activeert.
-       • Audit: alle 40+ kern/analyse/demo-functies geverifieerd aanwezig,
-         geen ontbrekende handlers, geen andere dubbele definities.
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 15:00):
-     NIEUW: AI-Automonteur agent (apart sheet via topbar 🧠)
-       • Lokale kennisbank AUTO_KENNIS: merk-specifieke zwakke punten +
-         bekende storingen gekoppeld aan PIDs/symptomen (12 merken)
-       • Combineert: voertuiginfo + live PID-data + actieve DTC's +
-         lokale merk-kennis → gespecialiseerde AI-prompt
-       • Snelknoppen: Bekende problemen / Wat zegt mijn live data /
-         Leg foutcodes uit + vrije vraag-invoer
-       • Werkt ook in demo-modus
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 13:30):
-     BUGFIXES (Snelle Technische Check liep vast):
-       • FIX A: rit-fasen (2min+10min) activeren nu hun eigen volledige
-         PID-set via ensurePIDListActive — geen lege fase-data meer
-       • FIX B: dataStable wordt nu true bij ≥70% PIDs stabiel OF na 12s
-         timeout (was: ALLE PIDs ≥5 metingen → bleef hangen op "stabiliseert")
-       • FIX C: isPIDOkVal gebruikt nu getPidDef() (herkent ook PIDs 0164+)
-       • FIX D: startRitFase activeert fase-PIDs expliciet per fase
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-16 12:00):
-     UPDATES:
-       • PID-namen uitgebreid: 40+ extra PIDs (0164–01FF) krijgen naam/eenheid
-         i.p.v. "PID 01XX raw" in de PID-lijst
-       • SAE_PID_NAMES uitgebreid met hogere PID-ranges
-       • Readiness-kaartjes: inline status boven elke analyse-startknop
-         (% beschikbare PIDs, balk, motortype-badge)
-       • Poll-scheduler: hybride/benzine/diesel/EV motortype-splitsing
-         (aparte klassen per motortype, EV-modus pauzeert ICE-PIDs)
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-15 22:45):
-     FIX — "Kopieer BT-log" liet de app crashen:
-       • Clipboard nu eerst (juiste gedrag voor Kopiëren), Share als laatste
-       • Share volledig afgeschermd (canShare-check + try/catch) zodat een
-         afgewezen/onbruikbare plugin de app niet meer kan omleggen
-       • Alle stappen defensief afgevangen; nette toast als niets werkt
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-15 22:35):
-     B1S1 BREEDBAND-LAMBDA FIX:
-       • Bronselectie b1s1Source(): breedband (0124/0134, in λ) krijgt voorrang
-         boven smalband 0113; dode/platte 0113 wordt herkend en niet als
-         "B1S1 te laag" gerapporteerd
-       • AI-prompts & rapporten krijgen de juiste lambda-bron via b1s1Line()
-       • Rit-fase "Brandstof & Emissie" meet nu breedband + smalband
-       • findCauses: B1S1 met 0124 als alternatief
-       • Demo (moderne auto): 0113 dood/plat, 0124 breedband ~1.00 λ
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-15 22:10):
-     GROTE UPDATE — Audit-fixes P4–P8 + Strategische ideeën 1–8
-     ─────────────────────────────────────────────────────────
-     AUDIT-FIXES (stabiliteit richting uitrol):
-       • P4: elke analyse reset activePIDs naar zijn eigen profiel +
-         behoudt handmatige keuzes van de gebruiker (geen onbeperkte groei)
-       • P5: poll-differentiatie — snelle PIDs (RPM/snelheid) vaker dan
-         trage (temp/peil) via per-PID klasse-scheduler
-       • P6: bitmap-discovery pollt nu ALLE ranges (geen vroege break)
-       • P7: readiness-waarschuwing + dekking-% wanneer discovery faalt
-       • P8: multi-PID batch wordt eenmalig herprobeerd na herstel
-     STRATEGISCHE IDEEËN:
-       • 1: Adaptief VIN-profiel — onthoudt PIDs per voertuig (snelle herverbind)
-       • 2: Sessiegeheugen + trendanalyse over ritten (per VIN)
-       • 3: Leren-van-normaal — drempels op basis van eerdere sessies
-       • 4: Deterministische PID-correlatie-engine (alternator/vacuümlek/MAF/thermostaat)
-       • 5: Klacht-gestuurde PID-focus (symptoom → relevante sensors hoog tempo)
-       • 6: Live correlatie-dashboard (XY-scatter weergavemodus)
-       • 7: Achtergrond-monitoring met drempel-alerts (vereist nieuwe APK + plugin)
-       • 8: Voertuigdossier-export (volledig PDF: sessies, trends, DTC, waarschuwingen)
-     ─────────────────────────────────────────────────────────
-     Eerdere build (2026-06-14 23:20):
-       • Totaalcheck-kaart aangescherpt: meerwaarde = symptomen (bestuurder)
-         + sensordata + foutcodes gecombineerd; vangt problemen zonder DTC
-     Eerdere build (23:00):
-       • Landingspagina vernieuwd (NL + uitleg + tijd-badges)
-       • Volledig herzien: NL titels + korte uitleg + "wat je krijgt"-regel
-         + tijd-badge (±min) per kaart
-       • Opties: AI-Monteur (aanbevolen) · Totaalcheck · Koopcheck ·
-         Snelle Technische Check (2 min) · Rit Analyse (10 min) · Foutcodes ·
-         Brandstofbesparing · Snel AI-rapport · Live PID-data
-       • Nieuwe kaarten (koop/2min/10min) gekoppeld aan launcher/rit-analyse
-     Eerdere build (22:15):
-       • Topbar Optie 3 (verborgen statuschip + ⋯ menu)
-     Eerdere build (18:10):
-       • Tester-modus nu op BEIDE schermen: login-scherm én verbind-scherm
-         (verbind-scherm vanwege auto-login bij terugkerende gebruiker)
-       • Tester-vinkje sync tussen beide schermen
-       • API-key kan handmatig op login-scherm worden ingevoerd
-     Eerdere build (17:30):
-       • Pair-knop instructie, 2-min technische check, hybride-waarschuwing,
-         exporteer-alle-logs knop, PDF TXT-fallback
-       • BLE: NON-OBD deny-filter (Shelly/buds/watch/tv genegeerd)
-       • BLE: ELM327-verificatie + meerdere kandidaten proberen
-       • Verbinden: automatische 2e scanronde
-       • SPP: permissie-melding grijs i.p.v. oranje tenzij echte weigering
-       • Koopcheck: "Stuur naar support"-knop (mailto support@pidlane.nl)
-       • Verbinden-knop: tijdens scan disabled + oranje "⏳ Verbinden…",
-         toont "✅ Verbonden" bij succes (voorkomt herhaald klikken)
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-06-23r (CET)
+
+     STAAT (kort):
+       • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
+         GitHub Pages. Backend: Anthropic Claude API (apiFetch).
+       • Donker thema standaard. Top app bar (logo->Start · voertuig/VIN ·
+         verbindingsstatus · ⋯-menu) + bottom-navigatie (Start · Live data[Pro]
+         · Rapport). Hub met 4 deuren = basis; live view = Pro, start in puntjes.
+       • Analyses leveren AI-rapporten (stoplicht + secties); "Reageer op
+         rapport" herwaardeert. Diepe storingsanalyse = schermvullende
+         stap-voor-stap wizard. Handmatige PID-recorder. Demo-modus.
+
+     RECENT (sessie van 23 juni):
+       • IA-herontwerp: top bar opgeschoond + bottom-nav; log->⋯-menu,
+         PID-selectie->Live data; ⋯-menu geport naar body (altijd bovenop).
+       • App-brede zwarte stijl (fase 1): startscherm + 4 deuren als zwarte
+         blokken; dark default.
+       • Robuustheid (code-review): timer-lekken gedicht (datalog/rit),
+         AI-busy fail-safe 5 min, live-log cap 500 KB, viewport zonder zoom.
+       • UX: vals stoplicht gefixt, mobiele lades schermvullend, rapport-
+         renderer mooier, reageer-op-rapport.
+
+     Bewuste override-secties (NIET losse patches; zo bedoeld):
+       • "FASE 1 — immersieve zwarte stijl" : zwarte blokken voor welcome/deuren.
+       • "@media (max-width:1023px)" lade-fullscreen (!important) : vecht bewust
+         met de dual-role van #slPanel (zijbalk vs sheet) op mobiel.
+       • "FASE 2b — bottom-navigatie" : nav + verbergregels + content-padding.
+
+     Volledige historie + architectuur: zie README.md.
      ════════════════════════════════════════════════════════════ -->
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PidLane</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Capacitor — actief in APK, genegeerd in browser -->
@@ -729,7 +132,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .api-inp:focus { border-color:var(--bl); }
 
 /* ══ WELCOME SCREEN ══ */
-#welcomeScreen { position:fixed; inset:0; background:var(--bg); z-index:9500; display:flex; flex-direction:column; }
+#welcomeScreen { position:fixed; top:46px; left:0; right:0; bottom:0; background:#0a0e17; z-index:9500; display:flex; flex-direction:column; }
 #welcomeScreen.hidden { display:none; }
 .welcome-header { padding:12px 16px 10px; border-bottom:1px solid var(--bd); background:var(--sur); flex-shrink:0; }
 .welcome-header-row { display:flex; align-items:center; justify-content:space-between; }
@@ -786,7 +189,6 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 @media (max-width:760px){ .wm-doors { grid-template-columns:1fr; } }
 
 /* ════ FASE 1 — IMMERSIEVE ZWARTE STIJL (startscherm & 4 deuren) ════ */
-#welcomeScreen { background:#0a0e17; }
 .welcome-header { background:#0a0e17; border-bottom:1px solid #1a2030; }
 .welcome-title { color:#fff; font-size:18px; }
 #welcomeSub { color:#8a93a6 !important; }
@@ -892,10 +294,20 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 body:has(#welcomeScreen:not(.hidden)) .lade-handles,
 body:has(#loginOv:not(.hidden)) .lade-handles,
 body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
+
+/* ════ FASE 2b — BOTTOM-NAVIGATIE (hoofdsecties) ════ */
+.lade-handles { display:none !important; }
+#bottomNav { position:fixed; left:0; right:0; bottom:0; z-index:9550; display:flex; background:#11151f; border-top:1px solid #232c40; padding-bottom:env(safe-area-inset-bottom); }
+#bottomNav button { flex:1; background:none; border:none; color:#8a93a6; font-family:var(--f); font-size:11px; font-weight:700; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:8px 0 10px; cursor:pointer; }
+#bottomNav .bn-ic { font-size:20px; line-height:1; }
+#bottomNav button:active { color:#cdd5e5; }
+body:has(#loginOv:not(.hidden)) #bottomNav, body:has(#connOv:not(.hidden)) #bottomNav { display:none; }
+.cc { padding-bottom:74px; }
+#welcomeScreen .welcome-scroll { padding-bottom:86px; }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
 
 /* ══ TOPBAR ══ */
-.topbar { background:var(--sur); border-bottom:1px solid var(--bd); padding:0 14px; height:46px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:200; box-shadow:var(--ss); }
+.topbar { background:var(--sur); border-bottom:1px solid var(--bd); padding:0 14px; height:46px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:9550; box-shadow:var(--ss); }
 .logo { display:flex; align-items:center; gap:7px; font-weight:700; font-size:14px; }
 .logo-i { width:26px; height:26px; background:var(--bl); border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:14px; }
 .logo em { color:var(--bl); font-style:normal; }
@@ -1774,19 +1186,22 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 <!-- ══ TOPBAR ══ -->
 <div id="appScale">
 <div class="topbar">
-  <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
+  <div class="logo" onclick="goHome()" style="cursor:pointer"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
   <div class="tpr">
     <div id="vtag"></div>
     <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
     <div class="pill show" id="statusPill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
-    <button class="btn-t" id="expertBtn" onclick="openAutoExpert()" title="AI-Automonteur" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:5px 9px">🧠 Monteur</button>
-    <button class="btn-t" id="homeBtn" onclick="goHome()" title="Naar startscherm" style="padding:6px 12px;display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:700"><span style="font-size:16px;line-height:1">🏠</span>Start</button>
-    <button class="btn-t" id="cbtn" onclick="handleConnect()">Verbinden</button>
+    
+    
+    
     <!-- ⋯ menu met secundaire acties -->
     <div class="kebab-wrap" id="kebabWrap">
       <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Meer">⋯</button>
       <div class="kebab-menu" id="kebabMenu">
         <button class="api-pill unset kebab-item" id="apiPill" onclick="closeKebab();openApiDialog()">🤖 AI-sleutel</button>
+        <button class="kebab-item" onclick="closeKebab();handleConnect()">🔌 Verbinden</button>
+        <button class="kebab-item" onclick="closeKebab();toggleLade('logLade')">📋 Log bekijken</button>
+        <button class="kebab-item" onclick="closeKebab();toggleTheme()">🌗 Licht / donker</button>
         <button class="kebab-item adminOnly" onclick="closeKebab();openBtLogModal()">📡 Bluetooth log</button>
         <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
         <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
@@ -2406,13 +1821,18 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 </div>
 
 <!-- ══ ON-TOP LADE HANDVATTEN ══ -->
+<nav id="bottomNav">
+  <button onclick="goHome()"><span class="bn-ic">🏠</span>Start</button>
+  <button id="bnLive" class="adminOnly" onclick="openLiveData()"><span class="bn-ic">📊</span>Live data</button>
+  <button onclick="reportNav()"><span class="bn-ic">📄</span>Rapport</button>
+</nav>
 <div class="lade-handles">
   <button class="lade-handle" onclick="toggleLade('slPanel')">🚗 Sensoren</button>
   <button class="lade-handle" onclick="toggleLade('logLade')">📋 Logs</button>
 </div>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
-<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
+<div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9600;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
   <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.05);z-index:9020">
     <div style="font-size:11px;font-weight:700;letter-spacing:3px;color:rgba(34,211,238,.6)">PIDLANE // HUD</div>
     <div id="hudPresetRow" style="display:flex;gap:6px"></div>
@@ -2445,7 +1865,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 </div>
 
 <!-- ══ RIT ANALYSE OVERLAY ══ -->
-<div id="ritDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:9000">
+<div id="ritDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:9600">
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;max-width:700px;margin:0 auto;padding:20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0">
       <div>
@@ -3486,6 +2906,7 @@ function checkStability(pid,val){
 // ════════════════════════════════════════
 let datalogActive=false,datalogBuffer={},datalogStart=null;
 const DATALOG_DURATION=20000;
+let datalogCountdownTimer=null, datalogStopTimer=null;
 
 function startDatalog(){
   if(!connected){log('Verbind eerst een adapter','warn');return;}
@@ -3500,13 +2921,15 @@ function startDatalog(){
   btn.style.background='linear-gradient(135deg,#e53e3e,#c53030)';
   // Countdown
   let sec=20;
-  const countdown=setInterval(()=>{
+  if(datalogCountdownTimer) clearInterval(datalogCountdownTimer);
+  datalogCountdownTimer=setInterval(()=>{
     sec--;
-    if(sec<=0){clearInterval(countdown);return;}
+    if(sec<=0){clearInterval(datalogCountdownTimer);datalogCountdownTimer=null;return;}
     const b=document.getElementById('aiBtn');
     if(b) b.textContent=`⏺ Opnemen... ${sec}s`;
   },1000);
-  setTimeout(()=>{clearInterval(countdown);stopDatalog();},DATALOG_DURATION);
+  if(datalogStopTimer) clearTimeout(datalogStopTimer);
+  datalogStopTimer=setTimeout(()=>{datalogStopTimer=null;if(datalogCountdownTimer){clearInterval(datalogCountdownTimer);datalogCountdownTimer=null;}stopDatalog();},DATALOG_DURATION);
 }
 
 function feedDatalog(pid,val){
@@ -3516,6 +2939,8 @@ function feedDatalog(pid,val){
 
 function stopDatalog(){
   datalogActive=false;
+  if(datalogCountdownTimer){ clearInterval(datalogCountdownTimer); datalogCountdownTimer=null; }
+  if(datalogStopTimer){ clearTimeout(datalogStopTimer); datalogStopTimer=null; }
   const btn=document.getElementById('aiBtn');
   btn.textContent='🔬 Snelle AI analyse';
   btn.style.background='';
@@ -3661,6 +3086,15 @@ function goHome(){
   }
   showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);
 }
+function openLiveData(){
+  var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
+  var el=document.getElementById('slPanel');
+  if(el && !el.classList.contains('lade-open')){ try{ toggleLade('slPanel'); }catch(e){} }
+}
+function reportNav(){
+  if(window._lastAIReport && window._lastAIReport.text){ try{ openAIReportSheet(); }catch(e){} }
+  else { try{ showToast('Nog geen rapport — start eerst een analyse'); }catch(e){} }
+}
 
 // ── BACK-NAVIGATIE + ANDROID HARDWARE-BACK ──
 // De fysieke Android-back-knop sloot voorheen per ongeluk de app. Nu loopt
@@ -3744,7 +3178,7 @@ function toggleLade(id){
   const el=document.getElementById(id); if(!el) return;
   const open=el.classList.contains('lade-open');
   closeLades();
-  if(!open){ el.classList.add('lade-open'); if(id==='slPanel') el.classList.add('lade-tall'); }
+  if(!open){ el.classList.add('lade-open'); if(id==='slPanel'){ el.classList.add('lade-tall'); try{ setPidView('dots'); }catch(e){} } }
 }
 function closeLades(){ ['slPanel','logLade'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('lade-open'); }); }
 function toggleLadeTall(id){ const el=document.getElementById(id); if(el) el.classList.toggle('lade-tall'); }
@@ -4001,7 +3435,7 @@ function renderGauges(){
 function fv(v){return(v===undefined||v===null)?'—':(Math.abs(v)<10?v.toFixed(2):v.toFixed(0));}
 
 // ── PID weergavemodus: 'full' | 'numbers' | 'dots' ──
-let pidViewMode='full';
+let pidViewMode='dots';  // live view start altijd in puntjes-weergave
 let _pidLastUpd={};          // pid -> laatste update-tijd (ms)
 let _staleWatchdog=null;
 const PID_STALE_MS=4000;     // geen verse waarde binnen 4s = "stale"
@@ -5185,7 +4619,7 @@ function exportFuelReport(){
 // loopt (ook als je naar live-data of de logs kijkt of tussen live-modes
 // wisselt). Maakt expliciet dat je moet wachten én dat het proces doorloopt.
 // De AI-call wordt nergens afgebroken door navigeren — dit is puur zichtbaarheid.
-let _aiBusy=0, _aiBusyTimer=null, _aiBusyT0=0;
+let _aiBusy=0, _aiBusyTimer=null, _aiBusyT0=0, _aiBusySafety=null;
 function aiBusyBegin(){
   _aiBusy++;
   if(_aiBusy>1) return;
@@ -5204,11 +4638,14 @@ function aiBusyBegin(){
   const tick=()=>{ const el=document.getElementById('aiBusyTime'); if(el) el.textContent='('+Math.round((Date.now()-_aiBusyT0)/1000)+'s)'; };
   tick();
   _aiBusyTimer=setInterval(tick,1000);
+  if(_aiBusySafety) clearTimeout(_aiBusySafety);
+  _aiBusySafety=setTimeout(function(){ _aiBusy=0; aiBusyEnd(); },300000); // fail-safe: nooit langer dan 5 min blijven hangen
 }
 function aiBusyEnd(){
   _aiBusy=Math.max(0,_aiBusy-1);
   if(_aiBusy>0) return;
   if(_aiBusyTimer){ clearInterval(_aiBusyTimer); _aiBusyTimer=null; }
+  if(_aiBusySafety){ clearTimeout(_aiBusySafety); _aiBusySafety=null; }
   const bar=document.getElementById('aiBusyBar'); if(bar) bar.style.display='none';
 }
 
@@ -5227,7 +4664,7 @@ function updateTokenPill(flash){
   let p=document.getElementById('tokPill');
   if(!p){
     p=document.createElement('div'); p.id='tokPill';
-    p.style.cssText='position:fixed;left:8px;bottom:8px;z-index:9400;background:var(--sur2,#1a1f2e);border:1px solid var(--bd,#2a3142);color:var(--tx2,#cbd5e1);font:700 10px/1 var(--f,sans-serif);padding:6px 9px;border-radius:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:background .25s,border-color .25s';
+    p.style.cssText='position:fixed;left:8px;bottom:72px;z-index:9400;background:var(--sur2,#1a1f2e);border:1px solid var(--bd,#2a3142);color:var(--tx2,#cbd5e1);font:700 10px/1 var(--f,sans-serif);padding:6px 9px;border-radius:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:background .25s,border-color .25s';
     p.onclick=showTokenDetail; document.body.appendChild(p);
   }
   const tot=_sessTokIn+_sessTokOut;
@@ -7125,7 +6562,7 @@ function updateConnGate(){
   if(!g){
     if(!need) return;
     g=document.createElement('div'); g.id='connGate';
-    g.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:9450;background:#1a6fff;color:#fff;font:800 13px/1 var(--f,sans-serif);padding:11px 16px;border-radius:24px;cursor:pointer;box-shadow:0 4px 16px rgba(26,111,255,.45);border:none;transition:transform .15s';
+    g.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:80px;z-index:9450;background:#1a6fff;color:#fff;font:800 13px/1 var(--f,sans-serif);padding:11px 16px;border-radius:24px;cursor:pointer;box-shadow:0 4px 16px rgba(26,111,255,.45);border:none;transition:transform .15s';
     g.textContent='\ud83d\udd0c Check connectie';
     g.onclick=async()=>{ g.textContent='\u23f3 Checken\u2026'; const ok=await runConnectionCheck(); if(ok){ showToast?.('\u2705 Klaar voor analyse'); } else { g.textContent='\ud83d\udd0c Check connectie'; } };
     document.body.appendChild(g);
@@ -8747,8 +8184,8 @@ function setConn(on){
   const mbtn=document.getElementById('btnConnect');
   if(mbtn){ mbtn.disabled=false; if(on) mbtn.textContent='✅ Verbonden'; }
   if(btn){ btn.disabled=false; }
-  if(on){dot.className='dot '+(demoMode?'demo':'on');txt.textContent=demoMode?'Demo modus':'Verbonden';btn.textContent='Verbreken';btn.className='btn-t off';}
-  else{dot.className='dot';txt.textContent='Niet verbonden';btn.textContent='Verbinden';btn.className='btn-t';_connSpeed=null;_connStrategy=null;_pollMult=1.0;window._connReady=false;}
+  if(on){dot.className='dot '+(demoMode?'demo':'on');txt.textContent=demoMode?'Demo modus':'Verbonden';if(btn){btn.textContent='Verbreken';btn.className='btn-t off';}}
+  else{dot.className='dot';txt.textContent='Niet verbonden';if(btn){btn.textContent='Verbinden';btn.className='btn-t';}_connSpeed=null;_connStrategy=null;_pollMult=1.0;window._connReady=false;}
   // Optie-3: statuschip alleen tonen wanneer NIET verbonden (en niet in demo)
   const sp=document.getElementById('statusPill');
   if(sp){ sp.classList.toggle('show', !on); }
@@ -8760,7 +8197,19 @@ function setConn(on){
 function toggleKebab(e){
   if(e) e.stopPropagation();
   const m=document.getElementById('kebabMenu');
-  if(m) m.classList.toggle('open');
+  if(!m) return;
+  if(m.classList.contains('open')){ m.classList.remove('open'); return; }
+  // Port het menu naar <body> en plaats het fixed onder de knop -> altijd bovenop,
+  // ook boven het keuzescherm (voorheen viel het in een lagere stapelcontext).
+  const btn=document.getElementById('kebabBtn');
+  const r=btn?btn.getBoundingClientRect():null;
+  if(m.parentElement!==document.body) document.body.appendChild(m);
+  m.style.position='fixed';
+  m.style.top=((r?r.bottom:46)+6)+'px';
+  m.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
+  m.style.left='auto';
+  m.style.zIndex='9999';
+  m.classList.add('open');
 }
 function closeKebab(){ const m=document.getElementById('kebabMenu'); if(m) m.classList.remove('open'); }
 document.addEventListener('click',(e)=>{
@@ -9571,7 +9020,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!slCollapsed){ slCollapsed=true; document.getElementById('appGrid').classList.add('sl-col'); const b=document.getElementById('slToggle'); if(b) b.textContent='▶'; }
     if(localStorage.getItem('ns_sr')==='true') toggleSR();
     initSLActivityReset();
-    const savedView=localStorage.getItem('pl_pidview'); if(savedView) setPidView(savedView);
+    setPidView('dots'); // live view start altijd in puntjes-weergave (genegeerde voorkeur)
   }catch(e){}
 
   window.addEventListener('resize',()=>{ if(graphPID||trendPIDs.length) drawGraph(); });
@@ -9907,7 +9356,7 @@ let ritMode='10min';                          // '2min' | '10min'
 let RIT_FASEN_ACTIEF=RIT_FASEN;
 let RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0); // 10 minuten
 
-let ritActive=false, ritFaseIdx=0, ritFaseTimer=null, ritTotalTimer=null;
+let ritActive=false, ritFaseIdx=0, ritFaseTimer=null, ritTotalTimer=null, ritCollectInterval=null;
 let ritStartTime=null, ritLogs=[], ritFaseData={};
 
 function openRitAnalyse(mode='10min'){
@@ -10094,8 +9543,9 @@ function startRitFase(idx){
   ensurePIDListActive([...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))]);
 
   // Verzamel data gedurende de fase
-  const collectInterval=setInterval(()=>{
-    if(!ritActive){clearInterval(collectInterval);return;}
+  if(ritCollectInterval){clearInterval(ritCollectInterval);}
+  ritCollectInterval=setInterval(()=>{
+    if(!ritActive){clearInterval(ritCollectInterval);ritCollectInterval=null;return;}
     fase.pids.forEach(pid=>{
       if(pidVals[pid]!==undefined) ritFaseData[idx].data[pid].push({t:Date.now(),v:pidVals[pid]});
     });
@@ -10103,7 +9553,7 @@ function startRitFase(idx){
 
   // Fase timer
   ritFaseTimer=setTimeout(async()=>{
-    clearInterval(collectInterval);
+    clearInterval(ritCollectInterval);ritCollectInterval=null;
     await analyseRitFase(idx);
     if(ritActive) startRitFase(idx+1);
   },fase.duur*1000);
@@ -10193,6 +9643,7 @@ async function stopRitAnalyse(){
   if(!ritActive) return;
   ritActive=false;
   clearTimeout(ritFaseTimer); clearInterval(ritTotalTimer);
+  if(ritCollectInterval){ clearInterval(ritCollectInterval); ritCollectInterval=null; }
   // Was de rit geminimaliseerd? Toon het overlay weer zodat het rapport
   // zichtbaar wordt, en verwijder de zwevende pill.
   _removeRitPill();
@@ -10493,7 +9944,7 @@ async function liveLogFlush(){
     } else { // localstorage-spiegel
       let cur=''; try{ cur=localStorage.getItem('pl_livelog_mirror')||''; }catch(e){}
       cur+=chunk;
-      if(cur.length>1000000) cur=cur.slice(cur.length-1000000);
+      if(cur.length>500000) cur=cur.slice(cur.length-500000);
       try{ localStorage.setItem('pl_livelog_mirror',cur); }
       catch(e){ try{ localStorage.setItem('pl_livelog_mirror',chunk.slice(-200000)); }catch(_){} }
     }
@@ -11539,7 +10990,7 @@ function showBandenInfo(){
 function openOnderhoud(){
   let ov=document.getElementById('onderhoudDash');
   if(!ov){ ov=document.createElement('div'); ov.id='onderhoudDash'; document.body.appendChild(ov); }
-  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a1410,#0d1a22);z-index:9000;overflow-y:auto;font-family:var(--f)';
+  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a1410,#0d1a22);z-index:9600;overflow-y:auto;font-family:var(--f)';
   const v=getVehicle();
   ov.innerHTML=`
   <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
