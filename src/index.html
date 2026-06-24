@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — build aangepast: 2026-06-23e (CET)  [opvolger van 2026-06-23d]
+     PidLane — build aangepast: 2026-06-23g (CET)  [opvolger van 2026-06-23f]
+     ── 2026-06-23g ──
+       • REAGEER OP RAPPORT: onderaan elk AI-rapport (sheet) een "Herzie"-veld.
+         Gebruiker geeft extra context/correctie (bijv. "motor was al warm") en
+         de AI herwaardeert het volledige rapport. Vervolgreacties bouwen door
+         op de herziene versie. Werkt voor elke analyse via "Bekijk rapport".
+     ── 2026-06-23f ──
+       • FIX vals stoplicht: aiVerdict sprong op rood door losse woord-matches
+         (o.a. "urgent" -> raakte ook de kop URGENTIE) en door termen in
+         ontkennende zin ("geen kritieke afwijkingen"). Nu ontkenning-bewust
+         en valse triggers verwijderd, zodat het stoplicht alleen rood toont
+         bij een echt kritieke bevinding.
      ── 2026-06-23e ──
        • HANDMATIGE PID-RECORDER (nieuwe kaart Deur 1): gebruiker kiest zelf
          sensoren (zoekbaar, Alles/Niets), drukt op opnemen, rijdt en
@@ -5216,9 +5227,19 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
   }
 }
 function aiVerdict(text){
+  var scan=String(text);
+  function hit(words){
+    var rx=new RegExp(words,'gi'), m;
+    while((m=rx.exec(scan))!==null){
+      var before=scan.slice(Math.max(0,m.index-26), m.index).toLowerCase();
+      if(/\b(geen|niet|zonder|nergens|niets)\b[^.!?\n]*$/.test(before)) continue; // ontkend in dezelfde zin -> negeren
+      return true;
+    }
+    return false;
+  }
   let vc='green', vi='🟢', vt='Geen urgente problemen gevonden';
-  if(/🔴|niet rijden|kritiek|gevaarlijk|direct naar de garage|onveilig|urgent/i.test(text)){ vc='red'; vi='🔴'; vt='Aandacht vereist — laat dit nakijken'; }
-  else if(/🟡|let op|binnenkort|aanbevolen|aandacht|op termijn/i.test(text)){ vc='amber'; vi='🟡'; vt='Let op — niet direct kritiek'; }
+  if(hit('🔴|niet rijden|kritiek|gevaarlijk|direct naar de garage|onveilig|levensgevaar')){ vc='red'; vi='🔴'; vt='Aandacht vereist — laat dit nakijken'; }
+  else if(hit('🟡|let op|binnenkort|aanbevolen|op termijn|aandacht')){ vc='amber'; vi='🟡'; vt='Let op — niet direct kritiek'; }
   return { vc, vi, vt, clr:{green:'var(--gn)',amber:'var(--or)',red:'var(--rd)'}[vc], bg:{green:'var(--gns)',amber:'var(--ors)',red:'var(--rds)'}[vc] };
 }
 // Volledig gesectioneerd rapport (voor in de sheet).
@@ -5282,12 +5303,38 @@ function openAIReportSheet(){
   if(!ov){ ov=document.createElement('div'); ov.id='aiReportSheet'; ov.className='ai-sheet-ov'; document.body.appendChild(ov); }
   ov.innerHTML=`<div class="ai-sheet">
     <div class="ai-sheet-h"><b>🔬 AI-rapport</b><button class="ai-sheet-x" onclick="closeAIReportSheet()">✕</button></div>
-    <div class="ai-sheet-b">${r.html}</div>
+    <div class="ai-sheet-b">${r.html}${_aiReplyBox()}</div>
     <div class="ai-sheet-f"><button class="ai-act" onclick="shareAIReport()">↗ Deel</button><button class="ai-act pri" onclick="exportAIReportPDF(this)">⬇ Download PDF</button></div>
   </div>`;
   ov.style.display='flex';
 }
 function closeAIReportSheet(){ const o=document.getElementById('aiReportSheet'); if(o) o.style.display='none'; }
+function _aiReplyBox(){
+  return '<div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">'+
+    '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:4px">💬 Reageer op dit rapport</div>'+
+    '<div style="font-size:10px;color:var(--tx3);margin-bottom:6px">Geef extra context of een correctie (bijv. \'motor was al op temperatuur\'). De AI herziet het rapport.</div>'+
+    '<textarea id="aiReplyTxt" rows="2" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:12px;padding:8px 10px;resize:vertical" placeholder="Typ je aanvulling of correctie"></textarea>'+
+    '<button id="aiReplyBtn" class="ai-act pri" style="margin-top:8px;width:100%" onclick="aiReplyRevise()">🔄 Herzie rapport</button>'+
+  '</div>';
+}
+async function aiReplyRevise(){
+  var r=window._lastAIReport; if(!r||!r.text){ showToast?.('Geen rapport'); return; }
+  var reply=(document.getElementById('aiReplyTxt')||{}).value||'';
+  if(!reply.trim()){ showToast?.('Typ eerst je aanvulling'); return; }
+  var btn=document.getElementById('aiReplyBtn'); if(btn){ btn.disabled=true; btn.textContent='⏳ Herzien'; }
+  var p='Hieronder staat een eerder AI-rapport over een voertuig. De gebruiker geeft aanvullende informatie of een correctie. Herzie het rapport en houd rekening met deze nieuwe input. Behoud dezelfde sectiekoppen en stijl als het origineel; pas alleen de inhoud aan waar de nieuwe info dat rechtvaardigt.\n\nEERDER RAPPORT:\n'+r.text+'\n\nAANVULLING/CORRECTIE VAN GEBRUIKER:\n'+reply+'\n\nGeef het volledige herziene rapport.';
+  var body=document.querySelector('#aiReportSheet .ai-sheet-b');
+  if(body) body.innerHTML='<div class="ai-ld"><span class="spin"></span> Rapport wordt herzien op basis van je input</div>';
+  try{
+    var txt=await apiFetch(p,1600);
+    window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
+    openAIReportSheet();
+    showToast?.('Rapport herzien');
+  }catch(e){
+    if(body) body.innerHTML='<div class="ai-sec red"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">'+((e&&e.message)||e)+'</div></div>';
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Herzie rapport'; }
+  }
+}
 function shareAIReport(){
   const r=window._lastAIReport; const txt=r&&r.text?r.text:''; if(!txt){ showToast?.('Nog geen rapport'); return; }
   try{
