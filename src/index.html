@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-23r (CET)
+     Build: 2026-06-23u (CET)
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -21,6 +21,16 @@
          AI-busy fail-safe 5 min, live-log cap 500 KB, viewport zonder zoom.
        • UX: vals stoplicht gefixt, mobiele lades schermvullend, rapport-
          renderer mooier, reageer-op-rapport.
+       • FIX z-lagen: opgeroepen overlays (verbinden/login z-500, AI-sleutel
+         z-600, rapport-sheet z-1200) vielen onder het keuzescherm -> nu boven
+         hub + nav (9600/9650). Twee modals 9500->9600.
+       • Landing = hub: na verbinden toont de app nu de hub i.p.v. live view.
+       • Log-weergave weg uit de live view (#logbar verborgen); log blijft
+         bereikbaar via ⋯-menu (log-lade) + export/verzenden.
+       • Z-audit (grondig): nog 3 menu-modals lagen onder de hub —
+         btLogModal (z-999), scenarioModal (z-1000), hudPicker (z-9100) ->
+         nu 9650 (boven hub + nav). Immersieve HUD's (9000) verbergen de hub
+         bij openen; #introOv (splash) verschijnt vóór de hub.
 
      Bewuste override-secties (NIET losse patches; zo bedoeld):
        • "FASE 1 — immersieve zwarte stijl" : zwarte blokken voor welcome/deuren.
@@ -78,7 +88,7 @@ html { font-size:14px; }
 body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:100vh; display:flex; flex-direction:column; transition:background .2s, color .2s; }
 
 /* ══ OVERLAYS ══ */
-.ov { position:fixed; inset:0; background:rgba(15,20,35,.6); backdrop-filter:blur(8px); z-index:500; display:flex; align-items:center; justify-content:center; padding:12px; }
+.ov { position:fixed; inset:0; background:rgba(15,20,35,.6); backdrop-filter:blur(8px); z-index:9600; display:flex; align-items:center; justify-content:center; padding:12px; }
 .ov.hidden { display:none; }
 .modal { background:var(--sur); border-radius:16px; box-shadow:var(--sl); width:100%; max-width:460px; display:flex; flex-direction:column; max-height:calc(100vh - 24px); animation:popIn .25s ease; }
 @keyframes popIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:none} }
@@ -248,7 +258,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .ai-act { flex:1; min-width:96px; padding:11px; border-radius:9px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:13px; font-weight:700; cursor:pointer; transition:transform .12s; }
 .ai-act.pri { border:none; color:#fff; background:linear-gradient(135deg,#6366f1,#8b5cf6); }
 .ai-act:active { transform:scale(.97); }
-.ai-sheet-ov { position:fixed; inset:0; background:rgba(10,14,23,.6); backdrop-filter:blur(6px); z-index:1200; display:none; align-items:flex-end; justify-content:center; }
+.ai-sheet-ov { position:fixed; inset:0; background:rgba(10,14,23,.6); backdrop-filter:blur(6px); z-index:9650; display:none; align-items:flex-end; justify-content:center; }
 .ai-sheet { background:var(--sur); width:100%; max-width:620px; max-height:92vh; border-radius:18px 18px 0 0; display:flex; flex-direction:column; box-shadow:var(--sl); animation:sheetUp .25s ease; }
 @keyframes sheetUp { from{transform:translateY(40px);opacity:.6} to{transform:none;opacity:1} }
 .ai-sheet-h { display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--bd); font-size:14px; }
@@ -283,7 +293,8 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   #slPanel.lade-open .slsec, #slPanel.lade-open .pscr { width:100% !important; box-sizing:border-box; }
   #slPanel.lade-open .sl-col-label, #slPanel.lade-open .sl-toggle { display:none !important; }
 }
-#logLade > #logbar { max-height:none; height:auto; border:0; }
+#logbar { display:none; }                       /* log niet in de live view; logs via ⋯-menu + export */
+#logLade > #logbar { display:block; max-height:none; height:auto; border:0; }
 .lade-bar { position:sticky; top:0; display:flex; align-items:center; gap:8px; padding:9px 13px; background:var(--sur); border-bottom:1px solid var(--bd); z-index:3; }
 .lade-bar .sp { flex:1; }
 .lade-x { width:30px; height:30px; border-radius:8px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; font-size:14px; }
@@ -792,7 +803,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .zdiv { width:1px; background:var(--bd); height:16px; margin:0 2px; }
 
 /* ══ API DIALOG ══ */
-.api-dialog-ov { position:fixed; inset:0; background:rgba(15,20,35,.5); backdrop-filter:blur(6px); z-index:600; display:none; align-items:center; justify-content:center; padding:20px; }
+.api-dialog-ov { position:fixed; inset:0; background:rgba(15,20,35,.5); backdrop-filter:blur(6px); z-index:9600; display:none; align-items:center; justify-content:center; padding:20px; }
 .api-dialog-ov.open { display:flex; }
 /* ══ NETWORK CARDS ══ */
 .network-card{background:var(--sur2);border:1.5px solid var(--bd);border-radius:9px;padding:11px 13px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;margin-bottom:1px;}
@@ -1857,7 +1868,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
     </div>
   </div>
 </div>
-<div id="hudPicker" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px">
+<div id="hudPicker" style="display:none;position:fixed;inset:0;z-index:9650;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px">
   <div style="background:#0c1018;border:1px solid #1c2330;border-radius:16px;max-width:340px;width:100%;max-height:70vh;overflow-y:auto">
     <h3 style="font-size:14px;padding:14px 16px;border-bottom:1px solid #1c2330;color:#fff;margin:0;position:sticky;top:0;background:#0c1018">Kies sensor voor deze meter</h3>
     <div id="hudPickerList"></div>
@@ -4988,7 +4999,7 @@ function showPdfReadyModal(){
   let m=document.getElementById('pdfReadyModal');
   if(!m){
     m=document.createElement('div'); m.id='pdfReadyModal';
-    m.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
+    m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
     m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center">
       <div style="font-size:34px;margin-bottom:8px">📄</div>
       <div style="font-weight:800;font-size:15px;margin-bottom:4px">PDF-rapport klaar</div>
@@ -5392,7 +5403,7 @@ function openBtLogModal(){
   if(!ov){
     ov=document.createElement('div');
     ov.id='btLogModal';
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9650;display:flex;align-items:center;justify-content:center;padding:16px';
     ov.innerHTML=`
       <div style="background:var(--sur);border:1px solid var(--bd);border-radius:12px;max-width:680px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd)">
@@ -5490,7 +5501,7 @@ function openScenarioModal(){
   if(!ov){
     ov=document.createElement('div');
     ov.id='scenarioModal';
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:14px';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9650;display:flex;align-items:center;justify-content:center;padding:14px';
     ov.innerHTML=`
       <div style="background:var(--sur);border:1px solid var(--bd);border-radius:12px;max-width:560px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--bd)">
@@ -6912,6 +6923,7 @@ async function startDiscovery(){
   // Open de verbinding-wizard (toont stap-voor-stap wat er gevonden is)
   wizShow();
   log(`Verbinding compleet — ${discoveredPIDDefs.length} PIDs beschikbaar`,'ok');
+  showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);  // land op de hub, niet op live view
 }
 
 // ── VOERTUIGKAART LINKS BOVENIN ──
@@ -9695,7 +9707,7 @@ function showRitFocusModal(){
   let m=document.getElementById('ritFocusModal');
   if(!m){
     m=document.createElement('div'); m.id='ritFocusModal';
-    m.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:24px';
+    m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:24px';
     m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:320px;width:100%">
       <div style="font-weight:800;font-size:15px;margin-bottom:4px;text-align:center">Wat moet in het rapport?</div>
       <div style="font-size:12px;color:var(--tx3);margin-bottom:14px;text-align:center">Voor een garage of ANWB kies je Techniek — dan blijft je rijgedrag buiten beeld</div>
