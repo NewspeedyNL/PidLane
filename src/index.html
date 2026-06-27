@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-23u (CET)
+     Build: 2026-06-27a (CET) — proxy beschermlaag actief
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -2018,19 +2018,14 @@ async function testApiKey(){
   const keyStart=key?.slice(0,15)||'(leeg)';
   log(`API test — key: ${keyStart}... (${key.length} tekens)`,'info');
 
-  if(!key?.startsWith('sk-ant-')){
-    log('❌ Key begint niet met sk-ant- — controleer config.js op GitHub','err');
-    return;
-  }
+  // Proxy-modus: geen sk-ant- sleutel meer nodig in de app — de Worker houdt 'm server-side.
 
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const resp=await fetch(PROXY_URL+'/v1/messages',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'x-api-key':key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
+        'X-App-Token':APP_TOKEN
       },
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
@@ -2746,7 +2741,7 @@ async function flushAirtable(){
     const resp=await fetch(AIRTABLE_URL,{
       method:'POST',
       headers:{
-        'Authorization':`Bearer ${AIRTABLE_TOKEN}`,
+        'X-App-Token':APP_TOKEN,
         'Content-Type':'application/json'
       },
       // Airtable verwacht: {"records":[{"fields":{...}},{"fields":{...}}]}
@@ -4698,7 +4693,7 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
 
   log(`apiFetch: key ${key?'aanwezig ('+key.length+' tekens)':'LEEG'}`,'info');
 
-  if(!key||!key.startsWith('sk-ant-')) throw new Error('Geen API key. Stel in via 🤖 rechtsboven.');
+  // Proxy-modus: de Worker levert de sleutel server-side, dus geen sk-ant- in de app nodig.
 
   // System prompt als losse parameter — NIET in messages array
   const sys = systemPrompt || 'Jij bent PidLane, een expert in auto-diagnostiek voor Nederlandse automobilisten. Analyseer OBD2 sensordata en geef concrete, praktische diagnoses in het Nederlands.';
@@ -4712,13 +4707,11 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
 
   aiBusyBegin();
   try{
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    const resp = await fetch(PROXY_URL+'/v1/messages',{
       method: 'POST',
       headers:{
         'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'X-App-Token': APP_TOKEN
       },
       body: JSON.stringify(body)
     });
