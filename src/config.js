@@ -1,40 +1,42 @@
-// ════════════════════════════════════════
-// PidLane — config.js
-// DIT IS HET ENIGE BESTAND DAT JE AANPAST
-// ════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  PidLane config.js  —  SECRET-VRIJE VERSIE
+//  Veilig om in een publieke repo te hebben: bevat GEEN Anthropic
+//  key en GEEN Airtable-token meer. Die zitten nu in de Worker.
+// ════════════════════════════════════════════════════════════
 
-// ── BLUETOOTH ADAPTER (optioneel maar aanbevolen) ──
-// Vul het MAC adres in voor directe verbinding zonder scan
-const OBDLINK_ADDRESS = '00:04:3E:8B:7B:32';  // OBDLink MX+ 90011
-const OBDLINK_NAME    = 'OBDLink MX+ 90011';
+// ── Beschermlaag (Cloudflare Worker) ─────────────────────────
+// Alle AI- en Airtable-calls lopen hierlangs.
+const PROXY_URL = 'https://pidlane-proxy.newspeedynl.workers.dev';
 
-// ── LOGIN ACCOUNTS ──
+// Publiek gate-token dat de app meestuurt (header X-App-Token).
+// Geen waardevolle sleutel; in de Worker intrekbaar.
+const APP_TOKEN = 'pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b';
+
+// Standaard model — hier bumpen i.p.v. in index.html.
+const MODEL = 'claude-haiku-4-5-20251001';
+
+// ── Login ────────────────────────────────────────────────────
+// LET OP: geen apiKey-velden meer. Wachtwoorden zijn nu alleen nog
+// een login-gate. Heb je in je huidige config.js MEER gebruikers
+// dan Admin/Demo? Voeg die hier dan ook toe (zonder apiKey-veld).
 const USERS = {
-  'Admin': {
-    password: '1029384756',
-    apiKey:   'sl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',  // ← Vervang door sk-ant-api03-...
-    role:     'admin',
-    label:    'Admin'
-  },
-  'Demo': {
-    password: 'P!dL@n3',
-    apiKey:   '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',   // ← Optioneel aparte demo API key
-    role:     'demo',
-    label:    'Demo gebruiker'
-  }
+  'Admin': { password: '1029384756', role: 'admin', label: 'Admin' },
+  'Demo':  { password: 'P!dL@n3',    role: 'demo',  label: 'Demo'  }
 };
 
-// ── AIRTABLE LOGGING ──
-const AIRTABLE_TOKEN = 'patXZNmjzWMK2zTxx.1f347f02fa720e690e7f4be48a65798d992eeefcc69b8eeeabbf461647a80a16';
-const AIRTABLE_BASE  = 'appmj3M4r0AFhObjs';
-const AIRTABLE_TABLE = 'tbl2AUw6V0Gy5YbRC';
-const AIRTABLE_URL   = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${AIRTABLE_TABLE}`;
+// ── Airtable (via proxy) ─────────────────────────────────────
+// Geen token hier. De app post naar de Worker; die plakt de echte
+// Authorization-header erop. AIRTABLE_TOKEN op een niet-lege
+// placeholder zodat de bestaande "is geconfigureerd"-check slaagt.
+const AIRTABLE_TOKEN = 'via-proxy';
+const AIRTABLE_URL   = PROXY_URL + '/airtable/log';
 
-// ── APP VERSIE & AUTO-UPDATE ──
-const APP_VERSION = '3.5';
-const GITHUB_USER = 'NewspeedyNL';
+// ── Auto-update (GitHub Pages) ───────────────────────────────
+const APP_VERSION = '2.1';
+const GITHUB_USER = 'newspeedynl';
 const GITHUB_REPO = 'PidLane';
-// version.json staat in de ROOT van de repo (niet in /src)
+const VERSION_URL = 'https://newspeedynl.github.io/PidLane/version.json';
+const UPDATE_URL  = 'https://newspeedynl.github.io/PidLane/index.html';// version.json staat in de ROOT van de repo (niet in /src)
 const VERSION_URL = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/version.json`;
 const UPDATE_URL  = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/index.html`;
 
