@@ -21,7 +21,8 @@ const MODEL = 'claude-haiku-4-5-20251001';
 // dan Admin/Demo? Voeg die hier dan ook toe (zonder apiKey-veld).
 const USERS = {
   'Admin': { password: '1029384756', role: 'admin', label: 'Admin' },
-  'Demo':  { password: 'P!dL@n3',    role: 'demo',  label: 'Demo'  }
+  'Demo':  { password: 'P!dL@n3',    role: 'demo',  label: 'Demo'  },
+  'Sabrina': { password: 'sapje357', role: 'admin', label: 'Sabrina' }
 };
 
 // ── Airtable (via proxy) ─────────────────────────────────────
