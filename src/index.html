@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-27b (CET) — proxy + vangnet + versie-fix
+     Build: 2026-06-27c (CET) — proxy-modus AI-status
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -1977,7 +1977,7 @@ function doLogin(){
     log('API key geladen voor '+user,'ok');
   } else {
     window.anthropicKey = '';
-    log('Geen API key voor '+user+' — AI functies niet beschikbaar','warn');
+    log('AI via proxy actief — sleutel staat veilig server-side','ok');
   }
 
   // Login scherm sluiten, connect modal openen
@@ -2004,12 +2004,8 @@ function doLogin(){
     }
   }catch(e){}
 
-  // Test API key direct na inloggen
-  if(window.anthropicKey?.startsWith('sk-ant-')){
-    testApiKey();
-  } else {
-    log('Geen API key — AI functies niet beschikbaar','warn');
-  }
+  // Proxy-modus: test de AI-keten via de proxy (sleutel staat server-side)
+  testApiKey();
 }
 
 async function testApiKey(){
@@ -2773,6 +2769,12 @@ async function flushAirtable(){
 // ════════════════════════════════════════
 function updateApiPill(){
   const p=document.getElementById('apiPill'); if(!p) return;
+  // Proxy-modus: AI loopt via de Worker (sleutel server-side) -> altijd beschikbaar.
+  if(typeof PROXY_URL!=='undefined' && PROXY_URL){
+    p.textContent='🤖 AI ✓ (proxy)';
+    p.className='api-pill kebab-item set';
+    return;
+  }
   const hasKey=window.anthropicKey?.startsWith('sk-ant-');
   p.textContent=hasKey?'🤖 AI-sleutel ✓':'🤖 AI-sleutel';
   p.className='api-pill kebab-item '+(hasKey?'set':'unset');
@@ -3044,6 +3046,10 @@ function clearApiKey(){
   updateApiPill(); closeApiDialog();
 }
 function openApiDialog(){
+  if(typeof PROXY_URL!=='undefined' && PROXY_URL){
+    showToast('🤖 AI ✓ Actief via proxy\n\nDe sleutel staat veilig server-side in de Cloudflare Worker.');
+    return;
+  }
   // Als ingelogd als admin met geldige key — toon info ipv edit dialog
   if(currentUser?.role==='admin' && window.anthropicKey?.startsWith('sk-ant-')){
     showToast(`🤖 AI ✓ Actief\n\nKey: ${window.anthropicKey.slice(0,20)}...\nGebruiker: ${currentUser.name}\n\nKey beheren via src/config.js`);
