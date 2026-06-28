@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-27a (CET) — proxy beschermlaag actief
+     Build: 2026-06-27b (CET) — proxy + vangnet + versie-fix
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -50,6 +50,13 @@
 <script src="capacitor.js" onerror="void 0"></script>
 <!-- Config — credentials, login, Airtable, versie -->
 <script src="config.js"></script>
+<script>
+  /* Vangnet: als config.js achterloopt of niet laadt, val terug op het juiste
+     proxy-adres en token (geen geheimen). Voorkomt "PROXY_URL not defined". */
+  try{ if(typeof PROXY_URL==='undefined') window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }catch(e){ window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }
+  try{ if(typeof APP_TOKEN==='undefined') window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }catch(e){ window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }
+  try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){}
+</script>
 <style>
 /* ══ LIGHT THEME (default) — nieuwe look ══ */
 :root {
@@ -886,10 +893,11 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
     <div class="mact">
       <button class="mbtn p" onclick="doLogin()">🔓 Inloggen</button>
       <div style="text-align:center;font-size:12px;color:var(--tx3);padding-top:4px">
-        PidLane v2.1 — AI Car Diagnostics<br>
+        PidLane <span id="loginVer">v2.1</span> — AI Car Diagnostics<br>
         <a href="https://www.pidlane.nl" target="_blank" rel="noopener" style="color:#00D4FF;text-decoration:none;font-weight:600">🌐 www.pidlane.nl</a>
       </div>
     </div>
+    <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'2.1');}catch(e){}</script>
   </div>
 </div>
 
