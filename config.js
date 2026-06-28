@@ -32,13 +32,8 @@ const AIRTABLE_TOKEN = 'via-proxy';
 const AIRTABLE_URL   = PROXY_URL + '/airtable/log';
 
 // ── Auto-update (GitHub Pages) ───────────────────────────────
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 const GITHUB_USER = 'newspeedynl';
 const GITHUB_REPO = 'PidLane';
 const VERSION_URL = 'https://newspeedynl.github.io/PidLane/version.json';
 const UPDATE_URL  = 'https://newspeedynl.github.io/PidLane/index.html';
-const GITHUB_REPO = 'PidLane';
-const VERSION_URL = 'https://newspeedynl.github.io/PidLane/version.json';
-const UPDATE_URL  = 'https://newspeedynl.github.io/PidLane/index.html';// version.json staat in de ROOT van de repo (niet in /src)
-const VERSION_URL = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/version.json`;
-const UPDATE_URL  = `https://${GITHUB_USER}.github.io/${GITHUB_REPO}/index.html`; 
