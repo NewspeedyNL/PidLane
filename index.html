@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-27d (CET) — alles via proxy + opgeruimd
+     Build: 2026-06-29a (CET) — bugmelder + typecast-fix
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -1226,6 +1226,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
         <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
         <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
+        <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
         <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
         <div class="kebab-sep"></div>
         <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
@@ -2750,7 +2751,7 @@ async function flushAirtable(){
         'Content-Type':'application/json'
       },
       // Airtable verwacht: {"records":[{"fields":{...}},{"fields":{...}}]}
-      body:JSON.stringify({records:batch})
+      body:JSON.stringify({records:batch,typecast:true})
     });
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
@@ -2762,6 +2763,120 @@ async function flushAirtable(){
     console.warn('Airtable netwerk fout:',e.message);
   }
 }
+
+// ════════════════════════════════════════
+//  BUGMELDER — Airtable (Type=bug) + e-mail-fallback
+// ════════════════════════════════════════
+function _bugDiag(){
+  let android='?', plat='web', native=false;
+  try{ const c=window.Capacitor; native=!!c?.isNativePlatform?.(); plat=c?.getPlatform?.()||'web';
+    const m=navigator.userAgent.match(/Android\s+([\d.]+)/); if(m) android=m[1]; }catch(e){}
+  const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
+  let conn='onbekend';
+  try{ if(typeof isConnected!=='undefined') conn=isConnected?'verbonden':'niet verbonden'; }catch(e){}
+  let lastErr='';
+  try{ lastErr=(_btLog||[]).filter(l=>l.type==='err'||l.type==='warn').slice(-3).map(l=>l.msg).join(' | '); }catch(e){}
+  return {
+    device:`${plat}${native?' APK':' browser'} · Android ${android}`,
+    app:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
+    user:String((typeof currentUser!=='undefined'&&currentUser?.name)||''),
+    role:String((typeof currentUser!=='undefined'&&currentUser?.role)||''),
+    merk:String(v.merk||''), model:String(v.model||''), year:String(v.year||''), vin:String(v.vin||''),
+    voertuig:[v.merk,v.model,v.year].filter(Boolean).join(' ')||'—',
+    protocol:String((typeof selectedNetwork!=='undefined'&&selectedNetwork?.name)||'—'),
+    conn, lastErr
+  };
+}
+
+function openBugReport(){
+  try{ const m=document.getElementById('btLogModal'); if(m) m.style.display='none'; }catch(e){}
+  try{ if(typeof closeKebab==='function') closeKebab(); }catch(e){}
+  const d=_bugDiag();
+  let ov=document.getElementById('bugModal');
+  if(!ov){ ov=document.createElement('div'); ov.id='bugModal';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px';
+    document.body.appendChild(ov); }
+  ov.innerHTML=`
+    <div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;max-width:520px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bd)">
+        <strong style="font-size:15px">🐞 Meld een bug</strong>
+        <button onclick="document.getElementById('bugModal').style.display='none'" style="border:none;background:none;color:var(--tx3);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:12px;color:var(--tx3);line-height:1.5;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px">
+          📎 Automatisch meegestuurd: ${d.device} · app ${d.app} · ${d.voertuig} · ${d.protocol} · ${d.conn}
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:700;display:block;margin-bottom:5px">Wat ging er mis? *</label>
+          <textarea id="bugDesc" rows="3" placeholder="Beschrijf de bug…" style="width:100%;padding:10px;background:var(--sur2);border:1.5px solid var(--bd2);border-radius:8px;font-size:13px;color:var(--tx);outline:none;resize:vertical;box-sizing:border-box"></textarea>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:700;display:block;margin-bottom:5px">Hoe kunnen we het nadoen?</label>
+          <textarea id="bugRepro" rows="3" placeholder="Stap 1… Stap 2… Wat gebeurde er, en wat verwachtte je?" style="width:100%;padding:10px;background:var(--sur2);border:1.5px solid var(--bd2);border-radius:8px;font-size:13px;color:var(--tx);outline:none;resize:vertical;box-sizing:border-box"></textarea>
+        </div>
+        <div id="bugMsg" style="font-size:12px;min-height:16px"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="submitBugReport(this)" style="flex:1;padding:11px;border-radius:9px;border:none;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-size:14px;font-weight:800;cursor:pointer">Verstuur</button>
+          <button onclick="bugEmailFallback()" title="Open je e-mail naar support" style="padding:11px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:13px;font-weight:700;cursor:pointer">✉ E-mail</button>
+        </div>
+      </div>
+    </div>`;
+  ov.style.display='flex';
+  setTimeout(()=>{ try{ document.getElementById('bugDesc').focus(); }catch(e){} },50);
+}
+
+async function submitBugReport(btn){
+  const desc=(document.getElementById('bugDesc')?.value||'').trim();
+  const repro=(document.getElementById('bugRepro')?.value||'').trim();
+  const msgEl=document.getElementById('bugMsg');
+  if(!desc){ if(msgEl){ msgEl.style.color='var(--rd)'; msgEl.textContent='Vul eerst een korte beschrijving in.'; } return; }
+  const d=_bugDiag();
+  if(btn){ btn.disabled=true; btn.textContent='Versturen…'; }
+  const rec={ fields:{
+    Timestamp:new Date().toISOString(), Type:'bug', Message:desc.slice(0,500),
+    Repro:repro.slice(0,2000), Device:d.device, AppVersion:d.app,
+    User:d.user, Role:d.role, Merk:d.merk, Model:d.model, Year:d.year, VIN:d.vin,
+    Protocol:d.protocol, DTC:(d.lastErr||'').slice(0,500)
+  }};
+  let ok=false;
+  try{
+    if(typeof AIRTABLE_URL!=='undefined' && AIRTABLE_URL){
+      const resp=await fetch(AIRTABLE_URL,{ method:'POST',
+        headers:{'X-App-Token':(typeof APP_TOKEN!=='undefined'?APP_TOKEN:''),'Content-Type':'application/json'},
+        body:JSON.stringify({records:[rec],typecast:true}) });
+      ok=resp.ok;
+    }
+  }catch(e){ ok=false; }
+  if(ok){
+    if(msgEl){ msgEl.style.color='var(--gn)'; msgEl.textContent='✓ Bug gemeld — bedankt!'; }
+    try{ if(typeof showToast==='function') showToast('🐞 Bug gemeld, bedankt!',3000); }catch(e){}
+    setTimeout(()=>{ try{ document.getElementById('bugModal').style.display='none'; }catch(e){} },1200);
+  }else{
+    if(msgEl){ msgEl.style.color='var(--or)'; msgEl.innerHTML='Verzenden lukte niet. Gebruik de <b>✉ E-mail</b>-knop om het naar support te sturen.'; }
+    if(btn){ btn.disabled=false; btn.textContent='Opnieuw'; }
+  }
+}
+
+function bugEmailFallback(){
+  const desc=(document.getElementById('bugDesc')?.value||'').trim();
+  const repro=(document.getElementById('bugRepro')?.value||'').trim();
+  const d=_bugDiag();
+  const body=
+'-- Bugmelding PidLane --\n\n'+
+'Wat ging er mis:\n'+(desc||'(niet ingevuld)')+'\n\n'+
+'Hoe na te doen:\n'+(repro||'(niet ingevuld)')+'\n\n'+
+'-- Automatische info --\n'+
+'App: '+d.app+'\n'+
+'Toestel: '+d.device+'\n'+
+'Gebruiker: '+d.user+' ('+d.role+')\n'+
+'Voertuig: '+d.voertuig+'\n'+
+'Protocol: '+d.protocol+'\n'+
+'Verbinding: '+d.conn+'\n'+
+'Laatste fouten: '+(d.lastErr||'—');
+  const url='mailto:support@pidlane.nl?subject='+encodeURIComponent('PidLane bug - '+(desc.slice(0,50)||'melding'))+'&body='+encodeURIComponent(body);
+  try{ window.location.href=url; }catch(e){ try{ window.open(url,'_blank'); }catch(_){} }
+}
+
 // ════════════════════════════════════════
 // API KEY UI
 // ════════════════════════════════════════
@@ -5420,6 +5535,7 @@ function openBtLogModal(){
             <button onclick="optimizeConnectionAI(this)" style="padding:5px 10px;border-radius:6px;border:1px solid #7c3aed;background:linear-gradient(135deg,#1a0a3a,#0d0d1a);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer">🤖 Optimaliseer</button>
             <button onclick="optimizeConnection(false)" title="Meet snelheid + kies poll-strategie" style="padding:5px 10px;border-radius:6px;border:1px solid #1a6fff;background:rgba(26,111,255,.1);color:#1a6fff;font-size:12px;font-weight:700;cursor:pointer">⚡ Meet snelheid</button>
             <button onclick="copyBtLog(this)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer">📋 Kopieer</button>
+            <button onclick="openBugReport()" style="padding:5px 10px;border-radius:6px;border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer">🐞 Meld bug</button>
             <button onclick="document.getElementById('btLogModal').style.display='none'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer">✕ Sluit</button>
           </div>
         </div>
