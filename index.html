@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-29c (CET) — oorzaak-parser robuust + PID-koppeling
+     Build: 2026-06-29d (CET) — Deur 1: Wanneer-chips + meer symptomen + cache/historie
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -1489,12 +1489,33 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
               <div class="chip" onclick="tc(this)">Klik geluid</div>
               <div class="chip" onclick="tc(this)">Motor lamp aan</div>
               <div class="chip" onclick="tc(this)">ABS lamp aan</div>
+              <div class="chip" onclick="tc(this)">Inhouden / aarzelt</div>
+              <div class="chip" onclick="tc(this)">Slaat af</div>
+              <div class="chip" onclick="tc(this)">Start niet</div>
+              <div class="chip" onclick="tc(this)">Schakelt schokkerig</div>
+              <div class="chip" onclick="tc(this)">Slipt</div>
+              <div class="chip" onclick="tc(this)">Piepend geluid</div>
+              <div class="chip" onclick="tc(this)">Fluitend geluid</div>
+              <div class="chip" onclick="tc(this)">Stuur zwaar</div>
+              <div class="chip" onclick="tc(this)">Rem zacht / spons</div>
+              <div class="chip" onclick="tc(this)">Airco koelt niet</div>
+              <div class="chip" onclick="tc(this)">Benzinelucht</div>
+              <div class="chip" onclick="tc(this)">Koelvloeistof verlies</div>
+              <div class="chip" onclick="tc(this)">Zwarte rook</div>
+              <div class="chip" onclick="tc(this)">Blauwe rook</div>
+              <div class="chip" onclick="tc(this)">Witte rook</div>
             </div>
             <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px">Wanneer?</div>
-            <div class="chips" style="margin-top:5px">
+            <div class="chips" id="diagWhen" style="margin-top:5px">
               <div class="chip" onclick="tc(this)">Bij koud starten</div>
+              <div class="chip" onclick="tc(this)">Direct na start</div>
               <div class="chip" onclick="tc(this)">Na opwarming</div>
+              <div class="chip" onclick="tc(this)">Bij stationair</div>
               <div class="chip" onclick="tc(this)">Bij versnellen</div>
+              <div class="chip" onclick="tc(this)">Onder belasting</div>
+              <div class="chip" onclick="tc(this)">Bij remmen</div>
+              <div class="chip" onclick="tc(this)">Bij sturen</div>
+              <div class="chip" onclick="tc(this)">Na lang rijden</div>
               <div class="chip" onclick="tc(this)">Altijd</div>
               <div class="chip" onclick="tc(this)">Soms</div>
             </div>
@@ -4189,10 +4210,45 @@ function applyComplaintFocus(text){
   log(`🎯 Klacht-focus: ${_focusPIDs.size} sensoren op hoog tempo`,'info');
 }
 
-async function findCauses(){
+// ── Deur 1: efficiente opslag/ophalen van diagnose-resultaten (cache + historie) ──
+function _diagNorm(s){ return String(s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function _diagSig(v, desc, chips, whenChips, dtc){
+  return JSON.stringify({
+    m:_diagNorm(v&&v.merk), mo:_diagNorm(v&&v.model), y:_diagNorm(v&&v.year), b:_diagNorm(v&&v.brandstof),
+    d:_diagNorm(desc),
+    s:(chips||[]).map(_diagNorm).sort(),
+    w:(whenChips||[]).map(_diagNorm).sort(),
+    t:(dtc||[]).map(_diagNorm).sort()
+  });
+}
+function _diagKey(sig){ let h=0; for(let i=0;i<sig.length;i++){ h=(h*31+sig.charCodeAt(i))|0; } return 'pl_diag_'+(h>>>0).toString(36); }
+const DIAG_CACHE_TTL=1000*60*60*24*14; // 14 dagen
+function diagCacheGet(sig){
+  try{ const raw=localStorage.getItem(_diagKey(sig)); if(!raw) return null;
+    const o=JSON.parse(raw); if(!o||o.sig!==sig) return null;
+    if(Date.now()-(o.ts||0)>DIAG_CACHE_TTL) return null;
+    return Array.isArray(o.causes)?o.causes:null;
+  }catch(e){ return null; }
+}
+function diagCacheSet(sig, causes){
+  try{ localStorage.setItem(_diagKey(sig), JSON.stringify({sig, ts:Date.now(), causes})); }catch(e){}
+}
+function diagHistoryAdd(v, desc, causes){
+  try{
+    const id=_diagNorm((v&&(v.vin||v.merk))||'algemeen').replace(/\s+/g,'');
+    const key='pl_diaghist_'+id;
+    const arr=JSON.parse(localStorage.getItem(key)||'[]');
+    arr.unshift({ ts:Date.now(), desc:String(desc||'').slice(0,120),
+      top:(causes||[]).slice(0,3).map(c=>({ n:String(c.naam||'').slice(0,60), k:c.kans||'' })) });
+    localStorage.setItem(key, JSON.stringify(arr.slice(0,25)));
+  }catch(e){}
+}
+async function findCauses(force){
   const desc=document.getElementById('diagDesc').value.trim();
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent);
-  if(!desc&&!chips.length){showToast('Beschrijf het probleem of selecteer symptomen.', 3000);return;}
+  const whenChips=[...document.querySelectorAll('#diagWhen .chip.on')].map(c=>c.textContent);
+  const whenLine=whenChips.length?('\nWanneer: '+whenChips.join(', ')):'';
+  if(!desc&&!chips.length&&!whenChips.length){showToast('Beschrijf het probleem of selecteer symptomen.', 3000);return;}
   if(!(await preAnalysisCheck())) return;
 
   // ── IDEE 5: klacht-gestuurde focus — relevante PIDs op hoog tempo ──
@@ -4250,7 +4306,7 @@ async function findCauses(){
 Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''} ${v.brandstof?'('+v.brandstof+')':''}
 Beoordeel alleen op basis van beschikbare sensordata. Geen aannames over turbo/diesel/AdBlue/hybride tenzij het voertuigtype of de data dit aantoont.
 Beschrijving: ${desc}
-Symptomen: ${chips.join(', ')||'geen'}
+Symptomen: ${chips.join(', ')||'geen'}${whenLine}
 DTC codes: ${formatDtcCodes(dtcCodes)}
 
 Beschikbare diagnose PIDs (${reliability}% dekking):
@@ -4265,17 +4321,23 @@ Formaat (exact deze sleutels):
 [{"naam":"Naam","kans":"hoog|med|laag","frequentie":"65% van gevallen","uitleg":"Waarom","check_pids":["0106","0107"],"check_uitleg":"Wat te zien","check_waarden":{"0106":{"min":10,"max":30,"beschrijving":"STFT hoog"}},"bewijs_logica":"Als X dan Y"}]`;
 
   try{
-    const text=await apiFetch(prompt,2200);
-    let causes=parseCausesJSON(text);
-    if(!causes.length){ causes=[{naam:'Analyse',kans:'med',frequentie:'',uitleg:String(text).replace(/```json|```/g,'').trim().slice(0,300),check_pids:[],check_uitleg:'',check_waarden:{},bewijs_logica:''}]; }
-    try{ fillCausePids(causes, (available||[]).map(p=>p.pid).concat((withAlt||[]).map(p=>p.alt))); }catch(e){}
+    const _sig=_diagSig(v, desc, chips, whenChips, dtcCodes);
+    let causes=null, fromCache=false;
+    if(!force){ const c=diagCacheGet(_sig); if(c&&c.length){ causes=c; fromCache=true; } }
+    if(!causes){
+      const text=await apiFetch(prompt,2200);
+      causes=parseCausesJSON(text);
+      if(!causes.length){ causes=[{naam:'Analyse',kans:'med',frequentie:'',uitleg:String(text).replace(/```json|```/g,'').trim().slice(0,300),check_pids:[],check_uitleg:'',check_waarden:{},bewijs_logica:''}]; }
+      try{ fillCausePids(causes, (available||[]).map(p=>p.pid).concat((withAlt||[]).map(p=>p.alt))); }catch(e){}
+      diagCacheSet(_sig, causes);
+      diagHistoryAdd(v, desc, causes);
+    }
     diagCauses=causes;
-    // Toon PID info + oorzaken
-    document.getElementById('causesBox').innerHTML=pidInfoHtml;
+    document.getElementById('causesBox').innerHTML=pidInfoHtml + (fromCache?'<div style="font-size:11px;color:var(--tx3);padding:5px 2px">⚡ Uit geheugen (zelfde voertuig + symptomen) — <a href="#" onclick="findCauses(true);return false" style="color:var(--bl);font-weight:700">opnieuw analyseren</a></div>':'');
     const causesEl=document.createElement('div');
     document.getElementById('causesBox').appendChild(causesEl);
     renderCauses(causes,causesEl);
-    log(`${causes.length} oorzaken gevonden (${reliability}% PID dekking)`,'ok');
+    log(`${causes.length} oorzaken ${fromCache?'(uit geheugen)':'gevonden'} (${reliability}% PID dekking)`,'ok');
   }catch(e){
     document.getElementById('causesBox').innerHTML=pidInfoHtml+`<div style="padding:10px;background:var(--rds);border-radius:8px;font-size:13px;color:var(--rd)">Fout: ${e.message}</div>`;
   }
