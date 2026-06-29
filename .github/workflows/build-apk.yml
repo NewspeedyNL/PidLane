@@ -1,10 +1,17 @@
+# ════════════════════════════════════════════════════════════
+#  PidLane APK-build workflow
+#  Bijgewerkt: 2026-06-29 (CET)
+#  Wijziging: src/ verwijderd. App = root/index.html (live via Pages).
+#             webDir = www (stub, hieronder aangemaakt). Trigger op root.
+# ════════════════════════════════════════════════════════════
 name: Build PidLane APK
 
 on:
   push:
     branches: [main]
     paths:
-      - 'src/index.html'
+      - 'index.html'
+      - 'capacitor.config.json'
   workflow_dispatch:
 
 # Annuleer lopende builds als er een nieuwe push komt — voorkomt 4x builden
@@ -27,6 +34,20 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4.2.2
+
+      - name: Create www stub (webDir)
+        run: |
+          # De echte app laadt live via server.url (GitHub Pages).
+          # Capacitor heeft alleen een bestaande webDir nodig om te kunnen syncen.
+          mkdir -p www
+          cat > www/index.html <<'HTML'
+          <!doctype html><html lang="nl"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>PidLane</title></head>
+          <body style="background:#0D1117;color:#fff;font-family:sans-serif;text-align:center;padding-top:40vh">
+          PidLane laadt live via GitHub Pages…</body></html>
+          HTML
+          echo "www/index.html aangemaakt"
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4.4.0
