@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-27c (CET) — proxy-modus AI-status
+     Build: 2026-06-27d (CET) — alles via proxy + opgeruimd
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -56,6 +56,7 @@
   try{ if(typeof PROXY_URL==='undefined') window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }catch(e){ window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }
   try{ if(typeof APP_TOKEN==='undefined') window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }catch(e){ window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }
   try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){}
+  try{ if(typeof VERSION_URL==='undefined') window.VERSION_URL='https://newspeedynl.github.io/PidLane/version.json'; }catch(e){}
 </script>
 <style>
 /* ══ LIGHT THEME (default) — nieuwe look ══ */
@@ -873,7 +874,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <input class="api-inp" id="loginPass" type="password" placeholder="Wachtwoord" autocomplete="current-password"
             onkeydown="if(event.key==='Enter')doLogin()">
         </div>
-        <div>
+        <div style="display:none">
           <div class="api-lbl" style="margin-bottom:5px">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
           <input class="api-inp" id="loginApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
         </div>
@@ -914,7 +915,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="mttl">PidLane</div>
           <div class="msub">Your car talks. We translate.</div>
         </div>
-        <div style="padding:0 20px 10px" id="connApiRow">
+        <div style="padding:0 20px 10px;display:none" id="connApiRow">
           <div class="api-lbl">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
           <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
         </div>
@@ -6986,7 +6987,7 @@ async function rdwLookup(){
   if(kent.length<4){ if(st) st.textContent='Voer een geldig kenteken in (minimaal 4 tekens)'; return {ok:false,reason:'invalid'}; }
   if(st) st.textContent='RDW opzoeken...';
   try{
-    const r=await fetch(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`);
+    const r=await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`),{headers:{'X-App-Token':APP_TOKEN}});
     if(!r.ok){ if(st) st.textContent='RDW antwoordde niet goed — probeer het zo opnieuw'; return {ok:false,reason:'http'}; }
     const data=await r.json();
     if(!data||!data.length){
@@ -7124,7 +7125,7 @@ async function tryReadVIN(){
     // zodat PID-filtering en rapporten ook zonder kenteken kloppen.
     if(!info.merk||info.merk==='Onbekend merk'){
       try{
-        const resp=await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`);
+        const resp=await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`),{headers:{'X-App-Token':APP_TOKEN}});
         if(resp.ok){
           const data=await resp.json();
           const get=v=>(data.Results||[]).find(r=>r.Variable===v)?.Value||'';
@@ -10140,7 +10141,7 @@ async function koopRdwLookup(){
 
   try {
     // Hoofddata
-    const r1 = await fetch(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`);
+    const r1 = await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`),{headers:{'X-App-Token':APP_TOKEN}});
     if(!r1.ok){ st.textContent='⚠️ RDW antwoordde niet goed — probeer het zo opnieuw'; btn.disabled=false; return; }
     const d1 = await r1.json();
     if(!d1||!d1.length){ st.textContent = `❌ Kenteken "${kent}" niet gevonden bij RDW — controleer op een typefout`; btn.disabled=false; return; }
@@ -10154,7 +10155,7 @@ async function koopRdwLookup(){
     // APK-historie (laatste keuring) — aparte, betrouwbare dataset
     let apkData = null;
     try {
-      const r2 = await fetch(`https://opendata.rdw.nl/resource/vkij-7mwc.json?kenteken=${encodeURIComponent(kent)}&$limit=1`);
+      const r2 = await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/vkij-7mwc.json?kenteken=${encodeURIComponent(kent)}&$limit=1`),{headers:{'X-App-Token':APP_TOKEN}});
       const d2 = await r2.json();
       if(d2&&d2.length) apkData = d2[0];
     } catch(e){}
