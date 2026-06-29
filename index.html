@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-29b (CET) — RDW-brandstof + diepere AI + modelkeuze
+     Build: 2026-06-29c (CET) — oorzaak-parser robuust + PID-koppeling
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -4260,13 +4260,15 @@ Beschikbare diagnose PIDs (${reliability}% dekking):
 
 Pas je check_pids aan op basis van wat beschikbaar is. Gebruik alternatieven waar nodig.
 
-Geef EXACT dit JSON formaat (puur JSON, geen markdown):
+Antwoord met UITSLUITEND een geldige JSON-array — geen inleiding, geen tekst eromheen, geen markdown of backticks. Houd 'uitleg' kort (max 25 woorden). Gebruik in check_pids ALLEEN hex-PID-codes uit de beschikbare lijst hierboven.
+Formaat (exact deze sleutels):
 [{"naam":"Naam","kans":"hoog|med|laag","frequentie":"65% van gevallen","uitleg":"Waarom","check_pids":["0106","0107"],"check_uitleg":"Wat te zien","check_waarden":{"0106":{"min":10,"max":30,"beschrijving":"STFT hoog"}},"bewijs_logica":"Als X dan Y"}]`;
 
   try{
-    const text=await apiFetch(prompt,1500);
-    let causes=[];
-    try{causes=JSON.parse(text.replace(/```json|```/g,'').trim());}catch(e){causes=[{naam:'Analyse',kans:'med',frequentie:'',uitleg:text.slice(0,300),check_pids:[],check_uitleg:'',check_waarden:{},bewijs_logica:''}];}
+    const text=await apiFetch(prompt,2200);
+    let causes=parseCausesJSON(text);
+    if(!causes.length){ causes=[{naam:'Analyse',kans:'med',frequentie:'',uitleg:String(text).replace(/```json|```/g,'').trim().slice(0,300),check_pids:[],check_uitleg:'',check_waarden:{},bewijs_logica:''}]; }
+    try{ fillCausePids(causes, (available||[]).map(p=>p.pid).concat((withAlt||[]).map(p=>p.alt))); }catch(e){}
     diagCauses=causes;
     // Toon PID info + oorzaken
     document.getElementById('causesBox').innerHTML=pidInfoHtml;
@@ -4280,6 +4282,48 @@ Geef EXACT dit JSON formaat (puur JSON, geen markdown):
   document.getElementById('btnFindCauses').disabled=false;
 }
 
+// ── Robuuste JSON-parser voor AI-oorzaken (vangt markdown-fences + afkapping op) ──
+function parseCausesJSON(text){
+  if(!text) return [];
+  let t=String(text).replace(/```json/gi,'').replace(/```/g,'').trim();
+  const a=t.indexOf('['); if(a>=0) t=t.slice(a);
+  try{ const r=JSON.parse(t); if(Array.isArray(r)) return r; }catch(e){}
+  // afkap-reparatie: knip tot laatste volledige object en sluit de array
+  try{ const lb=t.lastIndexOf('}'); if(lb>0){ const r=JSON.parse(t.slice(0,lb+1)+']'); if(Array.isArray(r)) return r; } }catch(e){}
+  // laatste redmiddel: losse objecten eruit vissen
+  try{ const objs=t.match(/\{[^{}]*\}/g)||[]; const r=objs.map(o=>{try{return JSON.parse(o);}catch(_){return null;}}).filter(Boolean); if(r.length) return r; }catch(e){}
+  return [];
+}
+// ── Leid relevante PIDs af uit oorzaak-tekst (alleen wat de auto echt levert) ──
+function _pidKeywordCandidates(txt){
+  txt=(txt||'').toLowerCase(); const m=[]; const add=(...c)=>c.forEach(x=>{ if(!m.includes(x)) m.push(x); });
+  if(/trim|mengsel|lambda|injector|rijk|arm|brandstofverhouding|sproei|spuitpat/.test(txt)) add('0106','0107','0108','0109','0134','0114');
+  if(/misfire|ontsteking|bougie|stotter|hapert|overslaan|cilinder/.test(txt)) add('010C','0104','0111','0106');
+  if(/maf|luchtmassa|lucht|inlaat|luchtfilter/.test(txt)) add('0110','010B','010F');
+  if(/egr/.test(txt)) add('012C','0105');
+  if(/koel|oververhit|temperat|thermostaat/.test(txt)) add('0105');
+  if(/druk|pomp|toevoer/.test(txt)) add('010A','010B');
+  if(/turbo|laaddruk|boost/.test(txt)) add('010B','0170');
+  if(/accu|spanning|dynamo|alternator|start/.test(txt)) add('0142');
+  if(/gasklep|throttle|vermogen/.test(txt)) add('0111','0104','010C');
+  if(/toerental|stationair|idle|rpm/.test(txt)) add('010C','0104');
+  return m;
+}
+function fillCausePids(causes, availCodes){
+  const avail=(availCodes||[]).map(String).filter(Boolean); const availSet=new Set(avail);
+  (causes||[]).forEach(c=>{
+    let pids=Array.isArray(c.check_pids)?c.check_pids.map(String):[];
+    if(availSet.size) pids=pids.filter(p=>availSet.has(p));            // alleen leverbare PIDs
+    if(!pids.length){
+      let cand=_pidKeywordCandidates((c.naam||'')+' '+(c.uitleg||''));
+      if(availSet.size) cand=cand.filter(p=>availSet.has(p));
+      if(!cand.length && avail.length) cand=avail.slice(0,4);          // fallback: kern-PIDs van deze auto
+      pids=cand;
+    }
+    c.check_pids=pids.slice(0,6);
+  });
+  return causes;
+}
 function renderCauses(causes, container){
   const box=container||document.getElementById('causesBox'); box.innerHTML='';
   if(!causes.length){box.innerHTML='<p style="color:var(--tx3);font-size:13px;padding:8px">Geen oorzaken gevonden. Probeer uitgebreider te beschrijven.</p>';return;}
