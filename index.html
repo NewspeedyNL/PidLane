@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-29a (CET) — bugmelder + typecast-fix
+     Build: 2026-06-29b (CET) — RDW-brandstof + diepere AI + modelkeuze
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -4810,7 +4810,7 @@ function updateTokenPill(flash){
 function showTokenDetail(){
   showToast?.('\ud83e\ude99 Sessie: '+_sessCalls+' AI-calls \u00b7 '+_sessTokIn.toLocaleString('nl')+' in / '+_sessTokOut.toLocaleString('nl')+' uit \u00b7 \u20ac'+_sessCostEur.toFixed(3));
 }
-async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
+async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
   try{
@@ -4826,10 +4826,32 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null){
   // Proxy-modus: de Worker levert de sleutel server-side, dus geen sk-ant- in de app nodig.
 
   // System prompt als losse parameter — NIET in messages array
-  const sys = systemPrompt || 'Jij bent PidLane, een expert in auto-diagnostiek voor Nederlandse automobilisten. Analyseer OBD2 sensordata en geef concrete, praktische diagnoses in het Nederlands.';
+  // Sterke, dynamische monteur-instructie. Injecteert het bevestigde brandstoftype
+  // zodat de AI geen diesel/AdBlue/turbo verzint op een benzineauto, en dwingt
+  // onderbouwing met gemeten waarden + onderscheid koud/warm af.
+  let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){}
+  const _vTxt=[_vi.merk,_vi.model,_vi.year,_vi.motor].filter(Boolean).join(' ')||'onbekend voertuig';
+  const _bf=(_vi.brandstof||'').toString().toLowerCase();
+  let _bfRegel;
+  if(/diesel/.test(_bf)) _bfRegel='Dit is een DIESEL: roetfilter (DPF), AdBlue/SCR en NOx zijn relevant; brandstoftrim-logica wijkt af.';
+  else if(/benzine|petrol/.test(_bf)) _bfRegel='Dit is een BENZINEauto: noem GEEN diesel-, DPF/roetfilter-, AdBlue/SCR- of NOx-onderwerpen.';
+  else if(/hybr/.test(_bf)) _bfRegel='Dit is een HYBRIDE: combineer verbrandings- en elektrische logica; geen diesel/DPF tenzij expliciet diesel-hybride.';
+  else if(/elektr/.test(_bf)) _bfRegel='Dit is VOLLEDIG ELEKTRISCH: geen brandstoftrim, lambda/O2, MAF of uitlaat; richt je op accu en aandrijving.';
+  else _bfRegel='Brandstoftype is ONBEKEND: doe GEEN aannames over diesel, turbo, hybride of uitlaatnabehandeling.';
+  const _defaultSys =
+    'Jij bent PidLane AI-Monteur: een ervaren, kritische autotechnicus die OBD2-sensordata interpreteert voor Nederlandse autobedrijven.\n'+
+    'VOERTUIG: '+_vTxt+(_bf?(' \u2014 brandstof: '+_bf):'')+'.\n'+
+    _bfRegel+'\n'+
+    'HARDE REGELS:\n'+
+    '1. Onderbouw ELKE bevinding met de concrete gemeten waarde (met eenheid). Geen standaardriedels: noem niet automatisch "controleer O2-sensor" tenzij de gemeten lambda/trim dat echt aantoont.\n'+
+    '2. Houd rekening met de toestand. Bij een KOUDE start zijn een hoge korte-termijn brandstoftrim, langzame opwarming, hoger stationair toerental en een rijker mengsel NORMAAL. Markeer dat alleen als probleem wanneer de data laat zien dat het bij bedrijfstemperatuur aanhoudt. Benoem expliciet wanneer iets normaal is voor deze situatie.\n'+
+    '3. Geef per bevinding een zekerheid: zeker / waarschijnlijk / mogelijk. Speculatie benoem je als speculatie.\n'+
+    '4. Gebruik merk/model/bouwjaar-specifieke kennis (bekende zwakke punten) als aandachtspunt, niet als vaststaand feit.\n'+
+    '5. Liever \u00e9\u00e9n scherpe, juiste conclusie dan vijf vage. Schrijf bondig en concreet in helder Nederlands voor een autoverkoper.';
+  const sys = systemPrompt || _defaultSys;
 
   const body = {
-    model: 'claude-haiku-4-5-20251001',
+    model: model || 'claude-haiku-4-5-20251001',
     max_tokens: maxTokens,
     system: sys,
     messages: [{role:'user', content: prompt}]
@@ -4948,8 +4970,24 @@ function _aiReplyBox(){
     '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:4px">💬 Reageer op dit rapport</div>'+
     '<div style="font-size:10px;color:var(--tx3);margin-bottom:6px">Geef extra context of een correctie (bijv. \'motor was al op temperatuur\'). De AI herziet het rapport.</div>'+
     '<textarea id="aiReplyTxt" rows="2" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:12px;padding:8px 10px;resize:vertical" placeholder="Typ je aanvulling of correctie"></textarea>'+
+    '<div style="display:flex;gap:6px;margin-top:8px">'+
+      '<button type="button" id="aiMdlFast" onclick="setAiReplyModel(\'fast\')" style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--bl);background:rgba(26,111,255,.12);color:var(--bl);font-size:11px;font-weight:800;cursor:pointer">⚡ Snel</button>'+
+      '<button type="button" id="aiMdlDeep" onclick="setAiReplyModel(\'deep\')" style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-size:11px;font-weight:800;cursor:pointer">🔬 Diep (grondiger)</button>'+
+    '</div>'+
+    '<div style="font-size:10px;color:var(--tx3);margin:4px 0 0">Snel = direct antwoord. Diep = grondiger model, iets trager.</div>'+
     '<button id="aiReplyBtn" class="ai-act pri" style="margin-top:8px;width:100%" onclick="aiReplyRevise()">🔄 Herzie rapport</button>'+
   '</div>';
+}
+window._aiReplyModel='fast';
+function setAiReplyModel(m){
+  window._aiReplyModel=(m==='deep')?'deep':'fast';
+  var f=document.getElementById('aiMdlFast'), d=document.getElementById('aiMdlDeep');
+  if(f&&d){
+    var on='flex:1;padding:7px;border-radius:8px;border:1px solid var(--bl);background:rgba(26,111,255,.12);color:var(--bl);font-size:11px;font-weight:800;cursor:pointer';
+    var off='flex:1;padding:7px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-size:11px;font-weight:800;cursor:pointer';
+    f.style.cssText=(window._aiReplyModel==='fast')?on:off;
+    d.style.cssText=(window._aiReplyModel==='deep')?on:off;
+  }
 }
 async function aiReplyRevise(){
   var r=window._lastAIReport; if(!r||!r.text){ showToast?.('Geen rapport'); return; }
@@ -4960,7 +4998,8 @@ async function aiReplyRevise(){
   var body=document.querySelector('#aiReportSheet .ai-sheet-b');
   if(body) body.innerHTML='<div class="ai-ld"><span class="spin"></span> Rapport wordt herzien op basis van je input</div>';
   try{
-    var txt=await apiFetch(p,1600);
+    var _mdl=(window._aiReplyModel==='deep')?'claude-sonnet-4-6':null;
+    var txt=await apiFetch(p,1600,null,_mdl);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     openAIReportSheet();
     showToast?.('Rapport herzien');
@@ -7119,6 +7158,28 @@ async function rdwLookup(){
     if(f.model!==undefined) vehicleInfo.model=f.model||'';
     if(f.year)      vehicleInfo.year=f.year;
     if(f.brandstof) vehicleInfo.brandstof=f.brandstof;
+    // Brandstof staat in een APARTE RDW-tabel (8ys7-d773), niet in m9d7-ebf2.
+    // Zonder deze call blijft brandstof leeg -> 'diesel bij benzine' + verkeerde kenteken-info.
+    try{
+      const rb=await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/8ys7-d773.json?kenteken=${encodeURIComponent(kent)}`),{headers:{'X-App-Token':APP_TOKEN}});
+      if(rb.ok){
+        const bd=await rb.json();
+        if(Array.isArray(bd)&&bd.length){
+          const oms=bd.map(x=>String(x.brandstof_omschrijving||'').trim()).filter(Boolean);
+          if(oms.length){
+            const low=oms.join('+').toLowerCase();
+            let bf='';
+            if(oms.length>1 && /elektric/.test(low) && /(benzine|diesel)/.test(low)) bf='hybride';
+            else if(/diesel/.test(low)) bf='diesel';
+            else if(/benzine/.test(low)) bf='benzine';
+            else if(/elektric/.test(low)) bf='elektrisch';
+            else if(/lpg|cng|aardgas|waterstof/.test(low)) bf='lpg';
+            else bf=oms[0].toLowerCase();
+            if(bf){ vehicleInfo.brandstof=bf; try{ log('RDW brandstof: '+bf,'info'); }catch(_){} }
+          }
+        }
+      }
+    }catch(e){ try{ log('RDW brandstof-ophalen mislukt: '+(e.message||e),'warn'); }catch(_){} }
     const jaar=f.year||vehicleInfo.year||'';
     const brandstof=f.brandstof||'';
     localStorage.setItem('pl_kenteken',kent);
