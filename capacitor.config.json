@@ -1,7 +1,7 @@
 {
   "appId": "app.pidlane.obd",
   "appName": "PidLane",
-  "webDir": "src",
+  "webDir": "www",
   "server": {
     "androidScheme": "https",
     "url": "https://newspeedynl.github.io/PidLane/index.html",
