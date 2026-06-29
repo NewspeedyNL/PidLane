@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-29d (CET) — Deur 1: Wanneer-chips + meer symptomen + cache/historie
+     Build: 2026-06-29e (CET) — professioneel rapport: score + tabellen + systeembalken
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -780,6 +780,35 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .ai-sh.purple{background:var(--pus);color:var(--pu);}
 .ai-sb { padding:10px 12px; font-size:11.5px; line-height:1.55; color:var(--tx); display:flex; flex-direction:column; gap:5px; }
 .ai-sb p { margin:0; color:var(--tx2); }
+/* ── Professioneel rapport (score, systeembalken, tabellen, status) ── */
+.ai-sh { text-transform:none !important; letter-spacing:0 !important; }
+.sc-card { background:var(--sur); border:1px solid var(--bd); border-left:3px solid var(--bl); border-radius:10px; padding:12px 14px; box-shadow:var(--ss); }
+.sc-h { font-size:12px; font-weight:800; color:var(--tx2); margin-bottom:8px; }
+.sc-bar { height:7px; border-radius:5px; background:var(--sur2); overflow:hidden; margin-bottom:10px; }
+.sc-bar span { display:block; height:100%; border-radius:5px; }
+.sc-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(86px,1fr)); gap:8px; }
+.sc-cell { background:var(--sur2); border:1px solid var(--bd); border-radius:8px; padding:8px 10px; }
+.sc-val { font-size:19px; font-weight:800; color:var(--tx); }
+.sc-val small { font-size:11px; font-weight:700; color:var(--tx3); margin-left:1px; }
+.sc-lbl { font-size:10.5px; color:var(--tx3); margin-top:2px; }
+.sysb-wrap { display:flex; flex-direction:column; gap:7px; }
+.sysb { display:flex; align-items:center; gap:9px; }
+.sysb-n { flex:0 0 40%; font-size:12px; color:var(--tx2); }
+.sysb-t { flex:1; height:7px; border-radius:5px; background:var(--sur2); overflow:hidden; }
+.sysb-t span { display:block; height:100%; border-radius:5px; }
+.sysb-v { flex:0 0 36px; text-align:right; font-size:11.5px; font-weight:700; color:var(--tx2); }
+.ai-tbl { width:100%; border-collapse:collapse; font-size:11.5px; margin:2px 0 4px; }
+.ai-tbl th { text-align:left; font-weight:700; color:var(--tx3); border-bottom:1px solid var(--bd2); padding:6px 8px; font-size:10px; text-transform:uppercase; letter-spacing:.4px; }
+.ai-tbl td { padding:7px 8px; border-bottom:1px solid var(--bd); color:var(--tx2); vertical-align:top; }
+.ai-tbl td.st { font-weight:700; border-left:3px solid var(--bd2); }
+.ai-tbl td.st.g { color:var(--gn); border-left-color:var(--gn); }
+.ai-tbl td.st.y { color:var(--or); border-left-color:var(--or); }
+.ai-tbl td.st.r { color:var(--rd); border-left-color:var(--rd); }
+.ai-row { display:flex; justify-content:space-between; gap:10px; padding:6px 8px; border-left:3px solid var(--bd2); background:var(--sur2); border-radius:6px; }
+.ai-row .k { color:var(--tx3); font-size:11.5px; } .ai-row .v { color:var(--tx); font-weight:600; font-size:11.5px; text-align:right; }
+.ai-row.g { border-left-color:var(--gn); } .ai-row.y { border-left-color:var(--or); } .ai-row.r { border-left-color:var(--rd); }
+.ai-li { padding:3px 0 3px 13px; position:relative; color:var(--tx2); font-size:11.5px; }
+.ai-li::before { content:''; position:absolute; left:2px; top:9px; width:4px; height:4px; border-radius:50%; background:var(--tx3); }
 .ai-kv { display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:4px 0; border-bottom:1px dashed var(--bd); }
 .ai-kv:last-child{ border-bottom:none; }
 .ai-kv .k { color:var(--tx2); font-size:12px; }
@@ -3144,7 +3173,45 @@ Let specifiek op:
 - Temperatuur trends
 - Afwijkingen van normale waarden
 
-Geef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN`;
+Geef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+
+Voertuigscore: <0-100>/100
+Diagnosebetrouwbaarheid: <0-100>%
+Actieve storingen: <aantal>
+Aandachtspunten: <aantal>
+
+Systeemgezondheid:
+Motor: <0-100>
+Brandstofsysteem: <0-100>
+Ontsteking: <0-100>
+Emissies: <0-100>
+Koeling: <0-100>
+Elektrisch systeem: <0-100>
+Transmissie: <0-100>
+
+VOERTUIGGEGEVENS
+Merk, model, bouwjaar, brandstof en motor — kort.
+
+SYSTEEMSTATUS
+Een of twee regels over de algehele staat op dit moment.
+
+FOUTCODES
+De actieve DTC-codes met korte uitleg, of: Geen actieve foutcodes.
+
+SENSORANALYSE
+Een tabel met exact deze kolommen: Sensor | Waarde | Referentie | Status. Status is precies een van: Normaal, Controle aanbevolen, Direct aandacht. Neem alleen sensoren op waarvoor meetdata beschikbaar is.
+
+BEVINDINGEN
+Korte, feitelijke punten; koppel elk punt aan een gemeten waarde.
+
+WAARSCHIJNLIJKE OORZAAK
+Een tabel met kolommen: Diagnose | Kans | Vertrouwen. Kans is Hoog, Gemiddeld of Laag; Vertrouwen is een percentage. Daarna een korte alinea van maximaal vier zinnen met de meest waarschijnlijke oorzaak en of er aanwijzingen voor ernstige schade zijn.
+
+KOSTENINDICATIE
+Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbereik in euro.
+
+AANBEVOLEN VERVOLGONDERZOEK
+Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.`;
 
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   await callAI(prompt,document.getElementById('aiContent'));
@@ -4159,7 +4226,45 @@ async function runCheckAI(items){
   } else if(ft==='diesel'){
     fuelNote=`\nDit is een DIESEL: brandstoftrim-logica wijkt af; let op roetfilter (DPF), AdBlue/SCR en NOx waar relevant.`;
   }
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${scenNote}\n\nGeef: SAMENVATTING, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+
+Voertuigscore: <0-100>/100
+Diagnosebetrouwbaarheid: <0-100>%
+Actieve storingen: <aantal>
+Aandachtspunten: <aantal>
+
+Systeemgezondheid:
+Motor: <0-100>
+Brandstofsysteem: <0-100>
+Ontsteking: <0-100>
+Emissies: <0-100>
+Koeling: <0-100>
+Elektrisch systeem: <0-100>
+Transmissie: <0-100>
+
+VOERTUIGGEGEVENS
+Merk, model, bouwjaar, brandstof en motor — kort.
+
+SYSTEEMSTATUS
+Een of twee regels over de algehele staat op dit moment.
+
+FOUTCODES
+De actieve DTC-codes met korte uitleg, of: Geen actieve foutcodes.
+
+SENSORANALYSE
+Een tabel met exact deze kolommen: Sensor | Waarde | Referentie | Status. Status is precies een van: Normaal, Controle aanbevolen, Direct aandacht. Neem alleen sensoren op waarvoor meetdata beschikbaar is.
+
+BEVINDINGEN
+Korte, feitelijke punten; koppel elk punt aan een gemeten waarde.
+
+WAARSCHIJNLIJKE OORZAAK
+Een tabel met kolommen: Diagnose | Kans | Vertrouwen. Kans is Hoog, Gemiddeld of Laag; Vertrouwen is een percentage. Daarna een korte alinea van maximaal vier zinnen met de meest waarschijnlijke oorzaak en of er aanwijzingen voor ernstige schade zijn.
+
+KOSTENINDICATIE
+Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbereik in euro.
+
+AANBEVOLEN VERVOLGONDERZOEK
+Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen..\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
 }
@@ -4825,7 +4930,7 @@ async function runFuelAnalysis(){
     secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
     found.sort((a,b)=>a.idx-b.idx);
     let html='<div class="ai-res">';
-    found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${s.i} ${s.k}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
+    found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
     if(!found.length)html+=`<div class="ai-sec blue"><div class="ai-sh blue">💡 Analyse</div><div class="ai-sb">${_fmtReportBody(text)}</div></div>`;
     html+=`<div style="margin-top:8px"><button class="btn" onclick="exportFuelReport()" style="width:100%;justify-content:center">💾 Exporteer rapport</button></div></div>`;
     document.getElementById('fuelResults').innerHTML=html;
@@ -5008,39 +5113,97 @@ function aiVerdict(text){
 function _fmtReportBody(body){
   var esc=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
   var euro=function(s){return s.replace(/(€\s?\d[\d.,]*)/g,'<span class="ai-cost">$1</span>');};
-  var lines=String(body).split('\n').map(function(l){return l.trim();}).filter(Boolean);
-  var out='';
-  for(var idx=0;idx<lines.length;idx++){
-    var raw=lines[idx];
-    var sm=raw.match(/^(🔴|🟡|🟢)/);
-    if(sm){
-      var cls=sm[1]==='🔴'?'r':(sm[1]==='🟡'?'y':'g');
-      out+='<div class="ai-bul '+cls+'"><span class="d"></span><span>'+euro(esc(raw.replace(/^(🔴|🟡|🟢)\s*/,'')))+'</span></div>';
+  var clean=function(s){return String(s).replace(/\*\*/g,'').replace(/[\u2705\u274C\u26A0\uFE0F\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'').replace(/^#{1,6}\s*/,'').trim();};
+  var statusCls=function(t){t=String(t).toLowerCase();
+    if(/(direct|kritiek|defect|vervang|ernstig|gevaar|onveilig)/.test(t))return 'r';
+    if(/(controle|aanbevolen|let op|afwijk|verhoogd|te (hoog|laag)|aandacht|mogelijk)/.test(t))return 'y';
+    if(/(normaal|correct|goed|prima|binnen|\bok\b)/.test(t))return 'g';
+    return '';};
+  var raw=String(body).split('\n');
+  var out=''; var i=0;
+  while(i<raw.length){
+    var line=clean(raw[i]);
+    if(!line){ i++; continue; }
+    if(line.indexOf('|')>=0){
+      var rows=[];
+      while(i<raw.length){
+        var lr=clean(raw[i]);
+        if(!lr||lr.indexOf('|')<0) break;
+        if(/^[\s:|-]+$/.test(lr)&&/--/.test(lr)){ i++; continue; }
+        rows.push(lr.replace(/^\||\|$/g,'').split('|').map(function(c){return c.trim();}));
+        i++;
+      }
+      if(rows.length){
+        var head=rows[0], bd=rows.slice(1);
+        var scol=-1; head.forEach(function(c,ci){ if(/status/i.test(c)) scol=ci; });
+        out+='<table class="ai-tbl"><thead><tr>';
+        head.forEach(function(c){ out+='<th>'+euro(esc(c))+'</th>'; });
+        out+='</tr></thead><tbody>';
+        bd.forEach(function(r){
+          var sc=scol>=0&&r[scol]?statusCls(r[scol]):'';
+          out+='<tr>';
+          r.forEach(function(c,ci){
+            var cc=(ci===scol&&sc)?(' class="st '+sc+'"'):'';
+            out+='<td'+cc+'>'+euro(esc(c))+'</td>';
+          });
+          out+='</tr>';
+        });
+        out+='</tbody></table>';
+      }
       continue;
     }
-    var lm=raw.replace(/^[-•*]\s*/,'');
-    var kv=lm.match(/^([^:]{2,42}):\s+(.{1,90})$/);
+    var lm=line.replace(/^[-•*]\s*/,'');
+    var kv=lm.match(/^([^:]{2,46}):\s+(.{1,120})$/);
     if(kv && !/[.!?]$/.test(kv[1])){
-      out+='<div class="ai-kv"><span class="k">'+esc(kv[1])+'</span><span class="v">'+euro(esc(kv[2]))+'</span></div>';
-      continue;
+      var sc2=statusCls(kv[2]);
+      out+='<div class="ai-row'+(sc2?' '+sc2:'')+'"><span class="k">'+esc(kv[1])+'</span><span class="v">'+euro(esc(kv[2]))+'</span></div>';
+      i++; continue;
     }
-    if(/^[-•*]\s+/.test(raw)){
-      out+='<div class="ai-bul"><span class="d"></span><span>'+euro(esc(lm))+'</span></div>';
-      continue;
+    if(/^[-•*]\s+/.test(clean(raw[i]))){
+      out+='<div class="ai-li">'+euro(esc(lm))+'</div>'; i++; continue;
     }
-    out+='<p>'+euro(esc(raw))+'</p>';
+    out+='<p>'+euro(esc(lm))+'</p>'; i++;
   }
   return out;
 }
+function _titleCase(k){ var s=String(k).toLowerCase(); return s.charAt(0).toUpperCase()+s.slice(1); }
+function _scoreHeader(text){
+  var g=function(re){ var m=String(text).match(re); return m?m[1]:null; };
+  var score=g(/voertuigscore[:\s]+(\d{1,3})/i), conf=g(/betrouwbaarheid[:\s]+(\d{1,3})/i);
+  var stor=g(/actieve\s+storingen[:\s]+(\d{1,3})/i), att=g(/aandachtspunten[:\s]+(\d{1,3})/i);
+  if(!score&&!conf&&stor==null&&att==null) return '';
+  var cells='';
+  function c(l,v,s){ return '<div class="sc-cell"><div class="sc-val">'+v+(s?'<small>'+s+'</small>':'')+'</div><div class="sc-lbl">'+l+'</div></div>'; }
+  if(score) cells+=c('Voertuigscore',score,'/100');
+  if(conf) cells+=c('Betrouwbaarheid',conf,'%');
+  if(stor!=null) cells+=c('Actieve storingen',stor,'');
+  if(att!=null) cells+=c('Aandachtspunten',att,'');
+  var bar='';
+  if(score){ var n=Math.max(3,Math.min(100,parseInt(score,10))); var col=n>=80?'var(--gn)':n>=60?'var(--or)':'var(--rd)'; bar='<div class="sc-bar"><span style="width:'+n+'%;background:'+col+'"></span></div>'; }
+  return '<div class="sc-card"><div class="sc-h">Technische voertuigstatus</div>'+bar+'<div class="sc-grid">'+cells+'</div></div>';
+}
+function _systemBars(text){
+  var m=String(text).match(/systeem(?:gezondheid|scores|overzicht)[:\s]*\n([\s\S]*?)(?:\n\s*\n|\n[A-Z]{4,}|$)/i);
+  if(!m) return '';
+  var bars=''; var any=false;
+  m[1].split('\n').forEach(function(l){
+    var mm=l.replace(/^[\s\-•*]+/,'').replace(/\*\*/g,'').match(/^([A-Za-zÀ-ÿ\/ ]{3,28}?)[:\s]+(\d{1,3})\s*%?\s*$/);
+    if(!mm) return; any=true;
+    var n=Math.max(0,Math.min(100,parseInt(mm[2],10)));
+    var col=n>=80?'var(--gn)':n>=60?'var(--or)':'var(--rd)';
+    bars+='<div class="sysb"><span class="sysb-n">'+mm[1].trim()+'</span><div class="sysb-t"><span style="width:'+n+'%;background:'+col+'"></span></div><span class="sysb-v">'+n+'%</span></div>';
+  });
+  return any?('<div class="ai-sec sys"><div class="ai-sh">AI Diagnose-overzicht</div><div class="ai-sb"><div class="sysb-wrap">'+bars+'</div></div></div>'):'';
+}
 function _aiReportHtml(text){
-  const secs=[{k:'SAMENVATTING',i:'📋',c:'blue'},{k:'BEVINDINGEN',i:'🔍',c:'orange'},{k:'PRIORITEIT ACTIES',i:'⚡',c:'red'},{k:'REPARATIE STAPPEN',i:'🔧',c:'orange'},{k:'KAN IK HET ZELF?',i:'🛠️',c:'green'},{k:'KOSTEN SCHATTING',i:'💶',c:'purple'},{k:'GESCHATTE KOSTEN',i:'💶',c:'purple'},{k:'URGENTIE',i:'🚨',c:'red'},{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'ONDERHOUDSADVIES',i:'🔧',c:'green'},{k:'MOGELIJKE OORZAAK',i:'🎯',c:'red'},{k:'DATA-OORDEEL',i:'📊',c:'blue'},{k:'ADVIES',i:'💡',c:'green'},{k:'REPRODUCEER',i:'🔁',c:'orange'}];
+  const secs=[{k:'VOERTUIGGEGEVENS',i:'',c:'blue'},{k:'SYSTEEMSTATUS',i:'',c:'blue'},{k:'FOUTCODES',i:'',c:'orange'},{k:'SENSORANALYSE',i:'',c:'blue'},{k:'WAARSCHIJNLIJKE OORZAAK',i:'',c:'red'},{k:'KOSTENINDICATIE',i:'',c:'purple'},{k:'AANBEVOLEN VERVOLGONDERZOEK',i:'',c:'green'},{k:'SAMENVATTING',i:'📋',c:'blue'},{k:'BEVINDINGEN',i:'🔍',c:'orange'},{k:'PRIORITEIT ACTIES',i:'⚡',c:'red'},{k:'REPARATIE STAPPEN',i:'🔧',c:'orange'},{k:'KAN IK HET ZELF?',i:'🛠️',c:'green'},{k:'KOSTEN SCHATTING',i:'💶',c:'purple'},{k:'GESCHATTE KOSTEN',i:'💶',c:'purple'},{k:'URGENTIE',i:'🚨',c:'red'},{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'ONDERHOUDSADVIES',i:'🔧',c:'green'},{k:'MOGELIJKE OORZAAK',i:'🎯',c:'red'},{k:'DATA-OORDEEL',i:'📊',c:'blue'},{k:'ADVIES',i:'💡',c:'green'},{k:'REPRODUCEER',i:'🔁',c:'orange'}];
   const found=[];
   secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
   found.sort((a,b)=>a.idx-b.idx);
   const v=aiVerdict(text);
-  let html='<div class="ai-res">';
-  html+=`<div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><span style="font-size:18px;line-height:1">${v.vi}</span><b style="color:${v.clr};font-size:14px">${v.vt}</b></div>`;
-  found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${s.i} ${s.k}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
+  let html='<div class="ai-res">';html+=_scoreHeader(text)+_systemBars(text);
+  html+=`<div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><b style="color:${v.clr};font-size:14px">${v.vt}</b></div>`;
+  found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
   if(!found.length)html+=`<div class="ai-sec blue"><div class="ai-sh blue">📋 Analyse</div><div class="ai-sb">${_fmtReportBody(text)}</div></div>`;
   html+='</div>';
   return html;
@@ -5402,7 +5565,45 @@ async function runQuickAI(){
   const liveLines=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
   const corr=correlationLines();
   const corrBlock=corr.length?`\nAutomatische bevindingen (correlatie-engine):\n${corr.join('\n')}`:'';
-  const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}\n\nGeef: SAMENVATTING, BEVINDINGEN, PRIORITEIT ACTIES (🔴/🟡/🟢), KAN IK HET ZELF?, GESCHATTE KOSTEN`;
+  const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+
+Voertuigscore: <0-100>/100
+Diagnosebetrouwbaarheid: <0-100>%
+Actieve storingen: <aantal>
+Aandachtspunten: <aantal>
+
+Systeemgezondheid:
+Motor: <0-100>
+Brandstofsysteem: <0-100>
+Ontsteking: <0-100>
+Emissies: <0-100>
+Koeling: <0-100>
+Elektrisch systeem: <0-100>
+Transmissie: <0-100>
+
+VOERTUIGGEGEVENS
+Merk, model, bouwjaar, brandstof en motor — kort.
+
+SYSTEEMSTATUS
+Een of twee regels over de algehele staat op dit moment.
+
+FOUTCODES
+De actieve DTC-codes met korte uitleg, of: Geen actieve foutcodes.
+
+SENSORANALYSE
+Een tabel met exact deze kolommen: Sensor | Waarde | Referentie | Status. Status is precies een van: Normaal, Controle aanbevolen, Direct aandacht. Neem alleen sensoren op waarvoor meetdata beschikbaar is.
+
+BEVINDINGEN
+Korte, feitelijke punten; koppel elk punt aan een gemeten waarde.
+
+WAARSCHIJNLIJKE OORZAAK
+Een tabel met kolommen: Diagnose | Kans | Vertrouwen. Kans is Hoog, Gemiddeld of Laag; Vertrouwen is een percentage. Daarna een korte alinea van maximaal vier zinnen met de meest waarschijnlijke oorzaak en of er aanwijzingen voor ernstige schade zijn.
+
+KOSTENINDICATIE
+Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbereik in euro.
+
+AANBEVOLEN VERVOLGONDERZOEK
+Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   await callAI(prompt,document.getElementById('aiContent'));
   btn.disabled=false;
