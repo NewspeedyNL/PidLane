@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-29e (CET) — professioneel rapport: score + tabellen + systeembalken
+     Build: 2026-06-29h (CET) — vloeiende stap-overgangen (login -> verbinden -> 4 deuren)
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -128,7 +128,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 #loginOv .msub { font-size:14px; }
 #loginOv .mact { border-top:0; background:transparent; padding-bottom:calc(16px + env(safe-area-inset-bottom,0px)); }
 /* ══ IN-APP INTRO (logo-splash, fade naar login; toont 1x per sessie) ══ */
-#introOv { position:fixed; inset:0; z-index:600; background:#0a0e17; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .45s ease; padding-bottom:6vh; }
+#introOv { position:fixed; inset:0; z-index:9700; background:#0a0e17; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .45s ease; padding-bottom:6vh; }
 #introOv.gone { opacity:0; pointer-events:none; }
 .intro-logo { width:132px; height:132px; filter:drop-shadow(0 12px 34px rgba(0,255,136,.22)); animation:introPop .6s cubic-bezier(.2,.8,.2,1) both, introPulse 1.5s ease-in-out .55s 1; }
 .intro-ttl { font-family:var(--f); font-weight:800; font-size:30px; color:#eef2fa; letter-spacing:.4px; animation:introPop .6s ease .15s both; }
@@ -136,6 +136,20 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .intro-sub { font-family:var(--f); font-size:14px; color:#9aa6bd; animation:introPop .6s ease .28s both; }
 @keyframes introPop { from{opacity:0;transform:translateY(8px) scale(.92)} to{opacity:1;transform:none} }
 @keyframes introPulse { 0%,100%{transform:none} 50%{transform:scale(1.05)} }
+/* ── Vloeiende stap-overgangen door de hele flow (login -> verbinden -> hub) ── */
+@keyframes pidFade { from{opacity:0} to{opacity:1} }
+@keyframes pidFadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+.ov { animation: pidFade .3s ease both; }
+#step1, #step2, #step3, #step4 { animation: pidFadeUp .42s cubic-bezier(.2,.8,.2,1) both; }
+#welcomeScreen:not(.hidden) { animation: pidFadeUp .45s cubic-bezier(.2,.8,.2,1) both; }
+.welcome-choices .choice-card { animation: pidFadeUp .45s cubic-bezier(.2,.8,.2,1) both; }
+.welcome-choices .choice-card:nth-child(1){ animation-delay:.04s }
+.welcome-choices .choice-card:nth-child(2){ animation-delay:.12s }
+.welcome-choices .choice-card:nth-child(3){ animation-delay:.20s }
+.welcome-choices .choice-card:nth-child(4){ animation-delay:.28s }
+.welcome-choices .choice-card:nth-child(5){ animation-delay:.36s }
+.welcome-choices .choice-card:nth-child(6){ animation-delay:.44s }
+@media (prefers-reduced-motion: reduce){ .ov,#step1,#step2,#step3,#step4,#welcomeScreen:not(.hidden),.welcome-choices .choice-card{ animation:none !important } }
 .mbtn { width:100%; padding:12px; border-radius:9px; border:none; font-family:var(--f); font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; }
 .mbtn:active { transform:scale(.98); }
 .mbtn.p { background:var(--bl); color:#fff; }
@@ -965,6 +979,9 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="mstep"><div class="sn">5</div>Klik daarna Verbinden — PidLane verbindt automatisch</div>
         </div>
 
+        <div style="padding:0 16px 10px">
+          <button id="connDetailsBtn" onclick="toggleConnDetails()" style="width:100%;padding:9px;font-size:12px;font-weight:700;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">📡 Verbindingsdetails tonen</button>
+        </div>
         <!-- BT DIAGNOSTIEK LOG -->
         <div id="btDiagBox" style="display:none;margin:0 16px 10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
@@ -1250,7 +1267,6 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <button class="api-pill unset kebab-item" id="apiPill" onclick="closeKebab();openApiDialog()">🤖 AI-sleutel</button>
         <button class="kebab-item" onclick="closeKebab();handleConnect()">🔌 Verbinden</button>
         <button class="kebab-item" onclick="closeKebab();toggleLade('logLade')">📋 Log bekijken</button>
-        <button class="kebab-item" onclick="closeKebab();toggleTheme()">🌗 Licht / donker</button>
         <button class="kebab-item adminOnly" onclick="closeKebab();openBtLogModal()">📡 Bluetooth log</button>
         <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
         <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
@@ -5216,9 +5232,7 @@ function renderAIText(text,contentEl){
   contentEl.innerHTML=`<div class="ai-res">
     <div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><span style="font-size:20px;line-height:1">${v.vi}</span><b style="color:${v.clr};font-size:14px">${v.vt}</b></div>
     <div class="ai-acts">
-      <button class="ai-act pri" onclick="openAIReportSheet()">📄 Bekijk rapport</button>
-      <button class="ai-act" onclick="shareAIReport()">↗ Deel</button>
-      <button class="ai-act" onclick="exportAIReportPDF(this)">⬇ Download</button>
+      <button class="ai-act pri" onclick="openAIReportSheet()">📄 Open rapport — bekijk, deel &amp; download</button>
     </div>
   </div>`;
 }
@@ -5248,6 +5262,13 @@ function _aiReplyBox(){
   '</div>';
 }
 window._aiReplyModel='fast';
+window._connDetails=false;
+function toggleConnDetails(){
+  var b=document.getElementById('btDiagBox'), btn=document.getElementById('connDetailsBtn');
+  window._connDetails=!window._connDetails;
+  if(b) b.style.display=window._connDetails?'block':'none';
+  if(btn) btn.textContent=window._connDetails?'📡 Verbindingsdetails verbergen':'📡 Verbindingsdetails tonen';
+}
 function setAiReplyModel(m){
   window._aiReplyModel=(m==='deep')?'deep':'fast';
   var f=document.getElementById('aiMdlFast'), d=document.getElementById('aiMdlDeep');
@@ -5681,13 +5702,13 @@ function restoreBtLog(){
       logEl.appendChild(line);
     });
     logEl.scrollTop=logEl.scrollHeight;
-    const box=document.getElementById('btDiagBox'); if(box) box.style.display='block';
+    const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   }catch(e){}
 }
 document.addEventListener('DOMContentLoaded', restoreBtLog);
 
 function btDiag(msg, type='info'){
-  const box=document.getElementById('btDiagBox'); if(box) box.style.display='block';
+  const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   const ts=new Date().toTimeString().slice(0,8);
   _btLog.push({ts,msg,type});
   try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){}
@@ -6331,8 +6352,8 @@ async function connectSerial(){
 
   // Volgorde: bekend MAC → SPP-direct eerst (geen scan/locatie). Anders BLE eerst.
   const chain = [];
-  if (spp && haveCfgMac) chain.push(['SPP (Classic · direct MAC)', () => connectSPP(spp)]);
   if (ble)               chain.push(['BLE',                         () => connectBLE(ble)]);
+  if (spp && haveCfgMac) chain.push(['SPP (Classic · direct MAC)', () => connectSPP(spp)]);
   if (spp && !haveCfgMac) chain.push(['SPP (Classic · scan)',       () => connectSPP(spp)]);
   if (('bluetooth' in navigator) && !env.native)
                           chain.push(['Web Bluetooth',              () => connectWebBluetooth()]);
@@ -9387,10 +9408,20 @@ function toggleTheme(){
 }
 (function initThemeDefault(){
   var saved=null; try{ saved=localStorage.getItem('ns_theme'); }catch(e){}
-  isDark = (saved!=='light');            // standaard DONKER, tenzij gebruiker expliciet licht koos
+  isDark = true;            // thema-knop verwijderd: altijd donker thema
   document.documentElement.classList.toggle('dark',isDark);
   function setBtn(){ var b=document.getElementById('themeBtn'); if(b) b.textContent=isDark?'☀️':'🌙'; }
   setBtn(); try{ document.addEventListener('DOMContentLoaded',setBtn); }catch(e){}
+})();
+// ── INTRO: logo-splash -> fade naar login (1x per sessie, tik = overslaan) ──
+(function introSequence(){
+  function go(){
+    var ov=document.getElementById('introOv'); if(!ov) return;
+    try{ if(sessionStorage.getItem('pl_introShown')){ ov.classList.add('gone'); return; } sessionStorage.setItem('pl_introShown','1'); }catch(e){}
+    ov.addEventListener('click',function(){ ov.classList.add('gone'); });
+    setTimeout(function(){ ov.classList.add('gone'); }, 1600);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
 })();
 function fontSize(delta){
   currentFont=Math.min(18,Math.max(10,currentFont+delta));
@@ -11342,7 +11373,7 @@ async function pidRecRunAI(){
   try{
     var txt=await apiFetch(p,1400);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
-    var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Bekijk rapport</button><button class="ai-act" onclick="shareAIReport()">↗ Deel</button><button class="ai-act" onclick="exportAIReportPDF(this)">⬇ Download</button></div>';
+    var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Open rapport — bekijk, deel &amp; download</button></div>';
     if(aiout) aiout.innerHTML=_aiReportHtml(txt)+acts;
   }catch(e){ if(aiout) aiout.innerHTML='<div class="ai-sec red"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">'+((e&&e.message)||e)+'</div></div>'; }
   if(btn){ btn.disabled=false; btn.textContent='▶ Analyseer opnieuw'; }
@@ -11424,7 +11455,7 @@ async function runDeepDiag(){
     var txt=await apiFetch(p,1600);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     var head='<div class="ai-res"><div class="ai-sec orange"><div class="ai-sh orange">🔁 Probleem-PID-overzicht ('+(ov.useLog?'datalog':'momentopname')+')</div><div class="ai-sb" style="padding:8px 4px">'+ov.html+'</div></div></div>';
-    var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Bekijk rapport</button><button class="ai-act" onclick="shareAIReport()">↗ Deel</button><button class="ai-act" onclick="exportAIReportPDF(this)">⬇ Download</button></div>';
+    var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Open rapport — bekijk, deel &amp; download</button></div>';
     if(res) res.innerHTML=head+_aiReportHtml(txt)+acts;
   }catch(e){
     if(res) res.innerHTML='<div class="ai-sec red"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">'+((e&&e.message)||e)+'</div></div>';
