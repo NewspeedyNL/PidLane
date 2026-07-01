@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-30e (CET) — voertuigdata-merge (VIN+RDW) met bronprioriteit + brandstof-fix
+     Build: 2026-06-30f (CET) — "Opslaan in map" (Documents/PidLane) + nette bestandsnamen
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -5558,7 +5558,7 @@ async function exportAIReportPDF(btn){
     // ── PDF klaar: dialoog met deel/download-knoppen tonen ──
     // (navigator.share vereist een VERSE gebruikersactie — direct delen na
     // het asynchrone genereren wordt door Android stil geweigerd)
-    const fname=`PidLane-rapport-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.pdf`;
+    const fname=_niceReportName('pdf');
     window._lastPdf={blob:doc.output('blob'), fname};
     showPdfReadyModal();
   }catch(e){
@@ -5594,7 +5594,8 @@ function showPdfReadyModal(){
       <div id="pdfFname" style="font-size:12px;color:var(--tx3);margin-bottom:14px;word-break:break-all"></div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button onclick="sharePdf()" style="padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">📤 Delen</button>
-        <button onclick="downloadPdf()" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">💾 Downloaden</button>
+        <button onclick="downloadPdf()" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">💾 Delen / Downloaden</button>
+        <button onclick="savePdfToFolder(this)" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">📁 Opslaan in map</button>
         <button onclick="document.getElementById('pdfReadyModal').style.display='none'" style="padding:9px;border-radius:9px;border:none;background:none;color:var(--tx3);font-family:var(--f);font-size:13px;cursor:pointer">Sluiten</button>
       </div></div>`;
     m.addEventListener('click',e=>{if(e.target===m)m.style.display='none';});
@@ -5613,6 +5614,53 @@ function showPdfReadyModal(){
     if(sb) sb.style.display='none';
   }
   m.style.display='flex';
+}
+
+// Nette bestandsnaam: PidLane_Mazda-CX5_2026-07-01.pdf i.p.v. UUID.
+function _niceReportName(ext){
+  const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)?vehicleInfo:{};
+  const parts=[v.merk,v.model].filter(Boolean).join('-').replace(/[^A-Za-z0-9-]/g,'') || 'rapport';
+  const d=new Date().toISOString().slice(0,10);
+  return `PidLane_${parts}_${d}.${ext}`;
+}
+
+// Slaat de PDF rechtstreeks op in Documents/PidLane/ — vindbaar in de
+// bestandsbeheerder, zonder deelmenu of e-mail. Valt terug op het deelmenu
+// als de Filesystem-plugin ontbreekt of het schrijven faalt.
+async function savePdfToFolder(btn){
+  if(!window._lastPdf){ showToast?.('Geen rapport beschikbaar'); return; }
+  const {blob}=window._lastPdf;
+  const fname=_niceReportName('pdf');
+  const orig=btn?btn.textContent:''; if(btn){ btn.textContent='⏳ Opslaan...'; btn.disabled=true; }
+  const restore=()=>{ if(btn){ btn.textContent=orig; btn.disabled=false; } };
+  const FS=window.Capacitor?.Plugins?.Filesystem;
+  if(!FS){
+    // Geen plugin → gebruik de bestaande (werkende) deel/download-route
+    restore();
+    const m=document.getElementById('pdfReadyModal'); if(m) m.style.display='none';
+    showToast?.('Opslaan-in-map vereist de app — deelmenu geopend');
+    return downloadPdf();
+  }
+  try{
+    const b64=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(String(r.result).split(',')[1]);
+      r.onerror=()=>rej(new Error('Lezen mislukt'));
+      r.readAsDataURL(blob);
+    });
+    // recursive:true maakt de map PidLane aan als die nog niet bestaat
+    await FS.writeFile({ path:`PidLane/${fname}`, data:b64, directory:'DOCUMENTS', recursive:true });
+    restore();
+    const m=document.getElementById('pdfReadyModal'); if(m) m.style.display='none';
+    showToast?.(`✅ Opgeslagen in Documenten/PidLane/\n${fname}`);
+    try{ log(`Rapport opgeslagen: Documents/PidLane/${fname}`,'ok'); }catch(_){}
+  }catch(e){
+    restore();
+    // Val terug op het deelmenu (met "Opslaan in Bestanden") als schrijven faalt
+    log('Opslaan in map mislukt ('+(e.message||e)+') — deelmenu als terugval','warn');
+    showToast?.('Direct opslaan lukt niet — deelmenu geopend');
+    return downloadPdf();
+  }
 }
 
 async function sharePdf(){
