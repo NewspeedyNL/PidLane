@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-30b (CET) — remote config (admin-dashboard) + AI-kwaliteit + usage-tracking
+     Build: 2026-06-30c (CET) — AI-model naar Claude Sonnet 5 (alle calls)
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -2141,7 +2141,7 @@ async function testApiKey(){
         'X-App-Token':APP_TOKEN
       },
       body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
+        model:'claude-sonnet-5',
         max_tokens:10,
         system:'Reply only: yes',
         messages:[{role:'user',content:'ping'}]
@@ -5197,7 +5197,7 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
   const sys = systemPrompt || (_override || _defaultSys);
 
   const body = {
-    model: model || 'claude-haiku-4-5-20251001',
+    model: model || 'claude-sonnet-5',
     max_tokens: maxTokens,
     system: sys,
     messages: [{role:'user', content: prompt}]
@@ -5407,7 +5407,7 @@ async function aiReplyRevise(){
   var body=document.querySelector('#aiReportSheet .ai-sheet-b');
   if(body) body.innerHTML='<div class="ai-ld"><span class="spin"></span> Rapport wordt herzien op basis van je input</div>';
   try{
-    var _mdl=(window._aiReplyModel==='deep')?'claude-sonnet-4-6':null;
+    var _mdl=(window._aiReplyModel==='deep')?'claude-sonnet-5':null;
     var txt=await apiFetch(p,1600,null,_mdl);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     openAIReportSheet();
