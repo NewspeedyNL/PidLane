@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-30d (CET) — Sonnet 5 compat: thinking uit + robuuste content-parsing
+     Build: 2026-06-30e (CET) — voertuigdata-merge (VIN+RDW) met bronprioriteit + brandstof-fix
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -7557,14 +7557,15 @@ async function startDiscovery(){
 
 // ── VOERTUIGKAART LINKS BOVENIN ──
 function updateVehicleCard(vinInfo){
-  vehicleInfo={
-    merk: vinInfo?.merk||'Onbekend',
-    model: vinInfo?.model||'',
-    year: vinInfo?.year||'',
-    vin: vinInfo?.vin||'',
-    brandstof: vinInfo?.brandstof||'',
-    motor: vinInfo?.motor||''
+  // Basis-object; velden worden via de merge-laag (bronprioriteit) gevuld,
+  // zodat een latere RDW-lookup ze netjes kan verrijken i.p.v. botsen.
+  vehicleInfo = vehicleInfo && vehicleInfo.vin===(vinInfo?.vin||'') ? vehicleInfo : {
+    merk: 'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:''
   };
+  vehicleInfo.vin = vinInfo?.vin || vehicleInfo.vin || '';
+  // vinInfo bevat reeds ge-merancte data uit tryReadVIN; hier alleen aanvullen
+  // voor het geval updateVehicleCard los wordt aangeroepen.
+  if(vinInfo){ mergeVehicleData('vin', vinInfo); }
   showVtag(vehicleInfo.vin||vehicleInfo.merk||'Verbonden');
   const card=document.getElementById('vehicleCard');
   const savedKent=localStorage.getItem('pl_kenteken')||'';
@@ -7620,11 +7621,9 @@ async function rdwLookup(){
     // Valideer alle RDW-velden: onzin (rotzooi-namen, ongeldige data) eruit.
     const val=validateRdwVehicle(v);
     const f=val.velden;
-    // Alleen geldige velden overnemen; bestaande VIN/NHTSA-data niet overschrijven met leegte
-    if(f.merk)      vehicleInfo.merk=f.merk;
-    if(f.model!==undefined) vehicleInfo.model=f.model||'';
-    if(f.year)      vehicleInfo.year=f.year;
-    if(f.brandstof) vehicleInfo.brandstof=f.brandstof;
+    // Via centrale merge: RDW heeft hoogste prioriteit voor merk/jaar, maar
+    // overschrijft nooit met leegte en normaliseert (MAZDA -> Mazda).
+    mergeVehicleData('rdw', { merk:f.merk, model:f.model, year:f.year });
     // Brandstof staat in een APARTE RDW-tabel (8ys7-d773), niet in m9d7-ebf2.
     // Zonder deze call blijft brandstof leeg -> 'diesel bij benzine' + verkeerde kenteken-info.
     try{
@@ -7642,7 +7641,7 @@ async function rdwLookup(){
             else if(/elektric/.test(low)) bf='elektrisch';
             else if(/lpg|cng|aardgas|waterstof/.test(low)) bf='lpg';
             else bf=oms[0].toLowerCase();
-            if(bf){ vehicleInfo.brandstof=bf; try{ log('RDW brandstof: '+bf,'info'); }catch(_){} }
+            if(bf){ mergeVehicleData('rdw', { brandstof:bf }); try{ log('RDW brandstof: '+vehicleInfo.brandstof,'info'); }catch(_){} }
           }
         }
       }
@@ -7765,7 +7764,9 @@ async function tryReadVIN(){
 
     if(!vin){ log('Geen geldige VIN ontvangen (auto geeft hem niet vrij) — gebruik kenteken/RDW','info'); return null; }
     log('VIN: '+vin,'ok');
+    resetVehicleSources();               // nieuwe VIN → bron-tracking resetten
     const info=decodeVIN(vin);
+    mergeVehicleData('vin', info);       // WMI-merk/jaar als basis
     // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken.
     // Haalt naast merk/model/jaar ook brandstoftype en motorgegevens op,
     // zodat PID-filtering en rapporten ook zonder kenteken kloppen.
@@ -7780,6 +7781,7 @@ async function tryReadVIN(){
           if(ok(make)){
             info.merk=make.charAt(0)+make.slice(1).toLowerCase();
             info.model=model||''; info.year=year||info.year;
+            mergeVehicleData('nhtsa', { merk:info.merk, model:info.model, year:info.year });
             log(`NHTSA: ${info.merk} ${info.model} ${info.year}`,'ok');
           }
           // Brandstoftype → normaliseren naar 'benzine'/'diesel' woordkeus
@@ -7791,6 +7793,7 @@ async function tryReadVIN(){
             else if(/gasoline|petrol|flexible|ethanol|e85/.test(f)) info.brandstof='benzine';
             else if(/electric/.test(f)) info.brandstof='elektrisch';
             else info.brandstof=f;
+            mergeVehicleData('nhtsa', { brandstof:info.brandstof });
           }
           // Motortype samenstellen: cilinders + cilinderinhoud (L)
           const cyl=get('Engine Number of Cylinders');
@@ -7800,7 +7803,7 @@ async function tryReadVIN(){
           if(ok(disp)) mp.push(parseFloat(disp).toFixed(1)+'L');
           if(ok(cyl)) mp.push(cyl+'-cil');
           if(ok(cfg)) mp.push(cfg);
-          if(mp.length&&!info.motor) info.motor=mp.join(' ');
+          if(mp.length&&!info.motor){ info.motor=mp.join(' '); mergeVehicleData('nhtsa', { motor:info.motor }); }
           if(info.motor) log(`NHTSA motor: ${info.motor}${info.brandstof?' ('+info.brandstof+')':''}`,'ok');
         }
       }catch(e){ log('NHTSA API offline — lokale VIN database gebruikt','info'); }
@@ -7851,6 +7854,96 @@ function formatDtcCodes(arr){
     ? `${c} (LET OP: voertuig heeft ${vehicleCylinderCount()} cilinders — onwaarschijnlijk, niet als echte cilinderstoring behandelen)`
     : c
   ).join(', ');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  CENTRALE VOERTUIGDATA-MERGE (VIN-WMI + NHTSA + RDW)
+//  Eén bron van waarheid. Elke bron schrijft via mergeVehicleData() i.p.v.
+//  blind in vehicleInfo. Prioriteit per veld + normalisatie voorkomt dat
+//  bronnen elkaar tegenwerken (bv. RDW 'MAZDA' die NHTSA 'Mazda' overschrijft,
+//  of een lege brandstof die een goede waarde wist).
+//  Bronrangorde per veld (hoog wint):
+//    merk:      rdw > nhtsa > vin
+//    model:     nhtsa > rdw
+//    year:      rdw > nhtsa > vin
+//    brandstof: rdw > nhtsa > vin
+//    motor:     nhtsa > rdw
+// ════════════════════════════════════════════════════════════════
+const _SRC_RANK = { vin:1, nhtsa:2, rdw:3 };
+const _FIELD_SRC_PREF = {
+  merk:      { vin:1, nhtsa:2, rdw:3 },
+  model:     { rdw:1, nhtsa:2 },
+  year:      { vin:1, nhtsa:2, rdw:3 },
+  brandstof: { vin:1, nhtsa:2, rdw:3 },
+  motor:     { rdw:1, nhtsa:2 }
+};
+// Onthoudt met welke bron-rang elk veld is gevuld, zodat een zwakkere bron
+// een sterkere niet overschrijft (per VIN/sessie).
+let _vehSrc = {};
+function resetVehicleSources(){ _vehSrc = {}; }
+
+// Merknaam netjes: 'MAZDA' -> 'Mazda', 'MERCEDES-BENZ' -> 'Mercedes-Benz',
+// 'BMW'/'MG'/'CX-5' blijven zoals gangbaar. Woord-voor-woord Title Case,
+// maar korte all-caps merken (<=3 letters, bv BMW/MG/DS/KIA) blijven caps.
+function normMerk(s){
+  s = String(s||'').trim();
+  if(!s) return '';
+  return s.split(/\s+/).map(w=>{
+    const letters = w.replace(/[^A-Za-z]/g,'');
+    if(letters.length<=3 && letters===letters.toUpperCase()) return w; // BMW, MG, KIA
+    return w.split('-').map(p=>p? p.charAt(0).toUpperCase()+p.slice(1).toLowerCase() : p).join('-');
+  }).join(' ');
+}
+// Model ontdubbelen t.o.v. merk: "MAZDA CX-5" met merk "Mazda" -> "CX-5".
+function dedupModel(model, merk){
+  let m = String(model||'').trim();
+  const mk = String(merk||'').trim();
+  if(!m || !mk) return m;
+  // strip een leidend merk-woord (case-insensitief) uit het model
+  const re = new RegExp('^'+mk.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+','i');
+  m = m.replace(re,'').trim();
+  return m;
+}
+// Brandstof normaliseren naar de woorden die vehicleFuelType()/filters kennen.
+function normBrandstof(s){
+  const f = String(s||'').toLowerCase().trim();
+  if(!f) return '';
+  // Hybride EERST: combinatie elektrisch + verbrandingsbrandstof (RDW geeft bv.
+  // "Elektriciteit/Benzine"). Anders vangt de benzine/diesel-check 'm onterecht.
+  if(/hybride|hybrid|phev|hev/.test(f)) return 'hybride';
+  if(/(elektr|electric|bev)/.test(f) && /(benzine|diesel|petrol|gasoline)/.test(f)) return 'hybride';
+  if(/waterstof|hydrogen/.test(f)) return 'waterstof';
+  if(/diesel|gasolie/.test(f)) return 'diesel';
+  if(/benzine|petrol|gasoline|euro95|e10|essence/.test(f)) return 'benzine';
+  if(/elektr|electric/.test(f)) return 'elektrisch';
+  if(/lpg|cng|aardgas|gas/.test(f)) return 'lpg';
+  return f;
+}
+
+// Kern: neem een veld over als (a) er een waarde is en (b) de bron minstens
+// even sterk is als wat het veld nu vulde. Lege waarden overschrijven NOOIT.
+function _setField(field, value, src){
+  if(value===undefined || value===null) return;
+  const v = String(value).trim();
+  if(!v) return; // leeg wist nooit
+  const pref = _FIELD_SRC_PREF[field] || _SRC_RANK;
+  const newRank = pref[src] || 0;
+  const curRank = _vehSrc[field] || 0;
+  if(newRank < curRank) return; // zwakkere bron mag sterkere niet overschrijven
+  vehicleInfo[field] = v;
+  _vehSrc[field] = newRank;
+}
+
+// Publieke merge: verwerkt een databron in vehicleInfo met normalisatie.
+function mergeVehicleData(src, data){
+  if(!data) return;
+  if(typeof vehicleInfo==='undefined' || !vehicleInfo) return;
+  if(data.merk!==undefined)      _setField('merk',      normMerk(data.merk), src);
+  if(data.year!==undefined)      _setField('year',      String(data.year||'').replace(/\D/g,'').slice(0,4), src);
+  if(data.brandstof!==undefined) _setField('brandstof', normBrandstof(data.brandstof), src);
+  if(data.motor!==undefined)     _setField('motor',     data.motor, src);
+  // Model NA merk zetten, zodat dedup het (net genormaliseerde) merk kent.
+  if(data.model!==undefined)     _setField('model',     dedupModel(data.model, vehicleInfo.merk), src);
 }
 
 function decodeVIN(vin){
@@ -10985,10 +11078,9 @@ function validateRdwVehicle(v){
   if(_rdwPlausibleYear(jaar)) out.velden.year=jaar;
   else if(v.datum_eerste_toelating) drop('Bouwjaar','ongeldige datum in RDW-registratie');
 
-  // Brandstof
-  const bf=String(v.brandstof_omschrijving||'').trim();
-  if(bf && /[A-Za-z]{3,}/.test(bf)) out.velden.brandstof=bf.toLowerCase();
-  else if(bf) drop('Brandstof','onbruikbare brandstofomschrijving');
+  // Brandstof zit NIET in deze hoofdtabel (m9d7-ebf2) maar in de aparte
+  // dataset 8ys7-d773 — die haalt rdwLookup los op. Hier dus niets valideren
+  // (deed voorheen een check op een veld dat nooit bestaat -> brandstof leeg).
 
   // Kleur
   if(_rdwPlausibleName(v.eerste_kleur)) out.velden.kleur=String(v.eerste_kleur).trim();
