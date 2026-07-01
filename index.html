@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-29h (CET) — vloeiende stap-overgangen (login -> verbinden -> 4 deuren)
+     Build: 2026-06-30b (CET) — remote config (admin-dashboard) + AI-kwaliteit + usage-tracking
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -11,6 +11,22 @@
        • Analyses leveren AI-rapporten (stoplicht + secties); "Reageer op
          rapport" herwaardeert. Diepe storingsanalyse = schermvullende
          stap-voor-stap wizard. Handmatige PID-recorder. Demo-modus.
+
+     RECENT (sessie van 30 juni):
+       • Remote config: app haalt bij start config op via Worker GET /api/config
+         (gecached, localStorage-buffer, hardcoded fallback). applyConfigToUI()
+         kan deuren verbergen, een banner tonen en de AI-system-prompt overriden.
+         Beheerd via los admin.html (niet op publieke Pages). SAFE_AT/geheimen
+         blijven bewust hardcoded, niet remote.
+       • AI-kwaliteit: gedeelde basis-persona/regels (geen losse "Jij bent..."
+         per promptbouwer meer); autoExpertAsk hergebruikt nu de centrale regels
+         i.p.v. eigen sys-string; merkkennis (AUTO_KENNIS) gefilterd op
+         brandstof zodat een benzineauto geen diesel/DPF/AdBlue-punten meer
+         krijgt; token-floor naar 900 voor multi-sectie AI-rapporten.
+       • Usage-tracking: logUsage() stuurt deur-keuzes, AI-rapport-successen,
+         connectie-KPI (latency vóór/na optimalisatie) en RDW-kwaliteit naar
+         Airtable (Type='usage', binnen bestaande kolommen — geen schema-wijziging
+         in Airtable nodig).
 
      RECENT (sessie van 23 juni):
        • IA-herontwerp: top bar opgeschoond + bottom-nav; log->⋯-menu,
@@ -57,6 +73,26 @@
   try{ if(typeof APP_TOKEN==='undefined') window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }catch(e){ window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }
   try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){}
   try{ if(typeof VERSION_URL==='undefined') window.VERSION_URL='https://newspeedynl.github.io/PidLane/version.json'; }catch(e){}
+
+  /* ── REMOTE CONFIG (admin-dashboard) ──────────────────────────────
+     Hardcoded fallback zodat de app ALTIJD werkt, ook zonder internet of
+     als de config nog niet bestaat. Wordt overschreven door de admin-keuzes
+     uit Airtable (via Worker GET /api/config). SAFE_AT en geheimen staan hier
+     BEWUST niet in — die blijven in de app hardcoded. */
+  window.PID_CONFIG = {
+    door_saving_active: true,
+    door_deal_active:   true,
+    door_prep_active:   true,
+    banner_active:      false,
+    banner_text:        '',
+    ai_system_override: ''
+  };
+  // Direct de laatst bekende config uit localStorage toepassen (snelle start),
+  // daarna geruisloos verversen op de achtergrond (zie loadRemoteConfig()).
+  try{
+    const _c=localStorage.getItem('pl_remote_config');
+    if(_c){ const o=JSON.parse(_c); if(o&&typeof o==='object') window.PID_CONFIG={...window.PID_CONFIG,...o}; }
+  }catch(e){}
 </script>
 <style>
 /* ══ LIGHT THEME (default) — nieuwe look ══ */
@@ -1049,6 +1085,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <div style="font-size:12px;color:var(--tx3)" id="welcomeSub">Kies je situatie — de app past zich aan.</div>
       </div>
       <div class="welcome-vin" id="welcomeVin" style="display:none">✅ VIN herkend</div>
+      <button onclick="openPidChoice()" title="PIDs kiezen / optimaliseren" style="margin-left:8px;padding:5px 11px;border-radius:999px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">🔧 PIDs kiezen</button>
     </div>
     <!-- 3 tabs vervangen door 4 intent-deuren in de scroll hieronder -->
   </div>
@@ -1414,6 +1451,10 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
     <button class="sl-toggle" id="slToggle" onclick="toggleSL()">◀</button>
     <div class="sl-col-label" onclick="toggleSL()">🚗 Voertuig & Sensoren</div>
     <div class="sl-inner">
+      <div id="pidChoiceBar" style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--bd);background:var(--sur)">
+        <button onclick="pidChoiceBackHome()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12.5px;font-weight:700;cursor:pointer">← 4 deuren</button>
+        <button onclick="confirmPidLive()" style="flex:1.4;padding:9px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-size:12.5px;font-weight:800;cursor:pointer">✅ Naar Live weergave</button>
+      </div>
       <!-- VEHICLE INFO — automatisch ingevuld via VIN/scan -->
       <div class="slsec" id="vehicleSection">
         <div class="slttl">Voertuig</div>
@@ -2779,6 +2820,12 @@ function applyUpdate(){
 const _atBuffer=[];
 let _atTimer=null;
 
+// Lichte usage-event helper bovenop logToSheets — geen nieuwe Airtable-kolommen
+// nodig, hergebruikt Type='usage' + Message. Best-effort, faalt nooit hardop.
+function logUsage(action, detail){
+  try{ logToSheets('usage', `${action}${detail?': '+detail:''}`); }catch(e){}
+}
+
 async function logToSheets(type, message, extra={}){
   // Controleer of Airtable geconfigureerd is
   if(typeof AIRTABLE_TOKEN==='undefined'||!AIRTABLE_TOKEN) return;
@@ -3299,6 +3346,7 @@ function openDoor(key){
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
   const p=document.getElementById('dp-'+key); if(p) p.style.display='block';
   try{ document.querySelector('.welcome-scroll')?.scrollTo(0,0); }catch(e){}
+  logUsage('deur_open', key);
 }
 function backToDoors(){
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
@@ -3326,6 +3374,18 @@ function goHome(){
   }
   showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);
 }
+function openPidChoice(){
+  var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
+  var el=document.getElementById('slPanel');
+  if(el && !el.classList.contains('lade-open')){ try{ toggleLade('slPanel'); }catch(e){} }
+}
+function confirmPidLive(){
+  try{ closeLades(); }catch(e){}
+}
+function pidChoiceBackHome(){
+  try{ closeLades(); }catch(e){}
+  try{ goHome(); }catch(e){}
+}
 function openLiveData(){
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
   var el=document.getElementById('slPanel');
@@ -3352,7 +3412,7 @@ function appBack(){
   // 2. Dashboards / sub-overlays met eigen display
   let closed=false;
   ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; closed=true; } });
-  if(closed) return true;
+  if(closed){ try{ goHome(); }catch(e){} return true; }
   try{ if(typeof closeRitAnalyse==='function'){ const r=document.getElementById('ritAnalyseOv')||document.getElementById('ritAnalyse'); if(r && getComputedStyle(r).display!=='none'){ closeRitAnalyse(); return true; } } }catch(e){}
   // 3. Welkomstscherm zichtbaar?
   const ws=document.getElementById('welcomeScreen');
@@ -5037,6 +5097,73 @@ function updateTokenPill(flash){
 function showTokenDetail(){
   showToast?.('\ud83e\ude99 Sessie: '+_sessCalls+' AI-calls \u00b7 '+_sessTokIn.toLocaleString('nl')+' in / '+_sessTokOut.toLocaleString('nl')+' uit \u00b7 \u20ac'+_sessCostEur.toFixed(3));
 }
+// ── REMOTE CONFIG: ophalen + toepassen ─────────────────────────────
+// Best-effort: faalt nooit hardop. Bij geen verbinding draait de app op de
+// hardcoded fallback (+ evt. localStorage-cache).
+function _cfgBool(v, def){
+  if(v===undefined||v===null||v==='') return def;
+  return (v===true||v==='true'||v==='1');
+}
+async function loadRemoteConfig(){
+  try{
+    const url=(window.PROXY_URL||'').replace(/\/$/,'')+'/api/config';
+    const r=await fetch(url,{ headers:{ 'X-App-Token':(window.APP_TOKEN||'') } });
+    if(!r.ok) return;
+    const cfg=await r.json();
+    if(cfg&&typeof cfg==='object'){
+      window.PID_CONFIG={...window.PID_CONFIG,...cfg};
+      try{ localStorage.setItem('pl_remote_config',JSON.stringify(window.PID_CONFIG)); }catch(e){}
+      try{ applyConfigToUI(); }catch(e){}
+    }
+  }catch(e){ /* offline / nog geen config → fallback blijft actief */ }
+}
+function applyConfigToUI(){
+  const c=window.PID_CONFIG||{};
+  // Deuren tonen/verbergen op de hub
+  const setDoor=(cls,on)=>{ const el=document.querySelector('.wm-door.'+cls); if(el) el.style.display=on?'':'none'; };
+  setDoor('dr-saving', _cfgBool(c.door_saving_active,true));
+  setDoor('dr-deal',   _cfgBool(c.door_deal_active,true));
+  setDoor('dr-prep',   _cfgBool(c.door_prep_active,true));
+  // Banner bovenin de hub
+  try{
+    let b=document.getElementById('cfgBanner');
+    const show=_cfgBool(c.banner_active,false) && (c.banner_text||'').trim();
+    if(show){
+      if(!b){
+        b=document.createElement('div'); b.id='cfgBanner';
+        b.style.cssText='position:relative;z-index:9560;margin:0 12px 10px;padding:9px 12px;border-radius:10px;background:rgba(242,130,12,.12);border:1px solid rgba(242,130,12,.5);color:#ffd0a0;font-size:12.5px;font-weight:600;line-height:1.4';
+        const host=document.getElementById('wmDoors');
+        if(host&&host.parentNode) host.parentNode.insertBefore(b,host);
+      }
+      b.textContent='📢 '+c.banner_text;
+      b.style.display='';
+    } else if(b){ b.style.display='none'; }
+  }catch(e){}
+}
+
+// ── Gedeelde basisregels voor alle PidLane-AI-rollen ───────────────
+// Eén bron van waarheid voor de harde regels (geen aannames, zekerheid
+// benoemen, brandstof-check, geen ECU-acties). Specialistische prompts
+// (onderhoud/inkoop/prijs/lease/APK/EV/lange-rit/auto-expert) plakken hier
+// hun eigen rol-zin vóór, i.p.v. een losse complete persona te schrijven.
+function pidlaneBasisRegels(){
+  let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){}
+  const _bf=(_vi.brandstof||'').toString().toLowerCase();
+  let _bfRegel;
+  if(/diesel/.test(_bf)) _bfRegel='Dit is een DIESEL: roetfilter (DPF), AdBlue/SCR en NOx zijn relevant; brandstoftrim-logica wijkt af.';
+  else if(/benzine|petrol/.test(_bf)) _bfRegel='Dit is een BENZINEauto: noem GEEN diesel-, DPF/roetfilter-, AdBlue/SCR- of NOx-onderwerpen.';
+  else if(/hybr/.test(_bf)) _bfRegel='Dit is een HYBRIDE: combineer verbrandings- en elektrische logica; geen diesel/DPF tenzij expliciet diesel-hybride.';
+  else if(/elektr/.test(_bf)) _bfRegel='Dit is VOLLEDIG ELEKTRISCH: geen brandstoftrim, lambda/O2, MAF of uitlaat; richt je op accu en aandrijving.';
+  else _bfRegel='Brandstoftype is ONBEKEND: doe GEEN aannames over diesel, turbo, hybride of uitlaatnabehandeling.';
+  return _bfRegel+'\n'+
+    'HARDE REGELS:\n'+
+    '1. Onderbouw bevindingen met concrete gemeten waarden (met eenheid) waar beschikbaar. Geen standaardriedels.\n'+
+    '2. Geef bij twijfel aan dat een meetfout/dode sensor/net-over-de-grens-waarde NOOIT als hard defect mag worden gepresenteerd — adviseer eerst verifiëren, zodat de klant niet onnodig op kosten wordt gejaagd.\n'+
+    '3. Geef per bevinding een zekerheid waar relevant: zeker / waarschijnlijk / mogelijk. Speculatie benoem je als speculatie.\n'+
+    '4. Gebruik merk/model/bouwjaar-specifieke kennis als aandachtspunt, niet als vaststaand feit.\n'+
+    '5. Geen ECU-acties adviseren (read-only diagnose). Schrijf bondig en concreet in helder Nederlands.';
+}
+
 async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
@@ -5059,23 +5186,15 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
   let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){}
   const _vTxt=[_vi.merk,_vi.model,_vi.year,_vi.motor].filter(Boolean).join(' ')||'onbekend voertuig';
   const _bf=(_vi.brandstof||'').toString().toLowerCase();
-  let _bfRegel;
-  if(/diesel/.test(_bf)) _bfRegel='Dit is een DIESEL: roetfilter (DPF), AdBlue/SCR en NOx zijn relevant; brandstoftrim-logica wijkt af.';
-  else if(/benzine|petrol/.test(_bf)) _bfRegel='Dit is een BENZINEauto: noem GEEN diesel-, DPF/roetfilter-, AdBlue/SCR- of NOx-onderwerpen.';
-  else if(/hybr/.test(_bf)) _bfRegel='Dit is een HYBRIDE: combineer verbrandings- en elektrische logica; geen diesel/DPF tenzij expliciet diesel-hybride.';
-  else if(/elektr/.test(_bf)) _bfRegel='Dit is VOLLEDIG ELEKTRISCH: geen brandstoftrim, lambda/O2, MAF of uitlaat; richt je op accu en aandrijving.';
-  else _bfRegel='Brandstoftype is ONBEKEND: doe GEEN aannames over diesel, turbo, hybride of uitlaatnabehandeling.';
   const _defaultSys =
     'Jij bent PidLane AI-Monteur: een ervaren, kritische autotechnicus die OBD2-sensordata interpreteert voor Nederlandse autobedrijven.\n'+
     'VOERTUIG: '+_vTxt+(_bf?(' \u2014 brandstof: '+_bf):'')+'.\n'+
-    _bfRegel+'\n'+
-    'HARDE REGELS:\n'+
-    '1. Onderbouw ELKE bevinding met de concrete gemeten waarde (met eenheid). Geen standaardriedels: noem niet automatisch "controleer O2-sensor" tenzij de gemeten lambda/trim dat echt aantoont.\n'+
-    '2. Houd rekening met de toestand. Bij een KOUDE start zijn een hoge korte-termijn brandstoftrim, langzame opwarming, hoger stationair toerental en een rijker mengsel NORMAAL. Markeer dat alleen als probleem wanneer de data laat zien dat het bij bedrijfstemperatuur aanhoudt. Benoem expliciet wanneer iets normaal is voor deze situatie.\n'+
-    '3. Geef per bevinding een zekerheid: zeker / waarschijnlijk / mogelijk. Speculatie benoem je als speculatie.\n'+
-    '4. Gebruik merk/model/bouwjaar-specifieke kennis (bekende zwakke punten) als aandachtspunt, niet als vaststaand feit.\n'+
-    '5. Liever \u00e9\u00e9n scherpe, juiste conclusie dan vijf vage. Schrijf bondig en concreet in helder Nederlands voor een autoverkoper.';
-  const sys = systemPrompt || _defaultSys;
+    pidlaneBasisRegels()+'\n'+
+    '6. Houd rekening met de toestand. Bij een KOUDE start zijn een hoge korte-termijn brandstoftrim, langzame opwarming, hoger stationair toerental en een rijker mengsel NORMAAL. Markeer dat alleen als probleem wanneer de data laat zien dat het bij bedrijfstemperatuur aanhoudt. Benoem expliciet wanneer iets normaal is voor deze situatie.';
+  // Admin-override (remote config) heeft voorrang als die gezet is en er geen
+  // expliciete per-call systemPrompt is meegegeven.
+  let _override=''; try{ _override=(window.PID_CONFIG&&window.PID_CONFIG.ai_system_override||'').trim(); }catch(e){}
+  const sys = systemPrompt || (_override || _defaultSys);
 
   const body = {
     model: model || 'claude-haiku-4-5-20251001',
@@ -5855,10 +5974,12 @@ Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"o
       log(`Resultaat slechter (${before}→${after??'?'}ms) — instellingen teruggedraaid`,'warn');
       for(const c of ELM_BASELINE) await sendCmd(c,1500);
       showOptResult('↩️ Teruggedraaid',`De aanpassingen maakten de verbinding niet sneller (${before} → ${after??'?'} ms), dus alles is teruggezet naar de standaardinstellingen.<br><br><span style="color:var(--tx3);font-size:12px">Geprobeerd: ${cmds.join(', ')}</span>`);
+      logUsage('connectie_kpi', `protocol=${selectedNetwork?.name||'?'} voor=${before}ms na=${after??'?'}ms toegepast=nee(rollback)`);
     } else {
       const pct=Math.round((1-after/before)*100);
       log(`✅ Optimalisatie geslaagd: ${before}ms → ${after}ms (${pct>0?pct+'% sneller':'gelijk'})`,'ok');
       showOptResult(pct>2?`⚡ Verbinding ${pct}% sneller`:'✓ Instellingen bijgewerkt',`<b>${plan.reason}</b><br><br>Responstijd: ${before} ms → <b style="color:var(--gn)">${after} ms</b><br><br><span style="color:var(--tx3);font-size:12px">Toegepast: ${cmds.join(', ')}</span>`);
+      logUsage('connectie_kpi', `protocol=${selectedNetwork?.name||'?'} voor=${before}ms na=${after}ms verbetering=${pct}% toegepast=ja`);
     }
   }catch(e){
     log('Optimalisatie fout: '+e.message+' — baseline hersteld','err');
@@ -7475,6 +7596,7 @@ async function rdwLookup(){
     const data=await r.json();
     if(!data||!data.length){
       if(st) st.textContent=`Kenteken "${kent}" niet gevonden bij de RDW — controleer op een typefout`;
+      logUsage('rdw_kwaliteit', 'notfound');
       return {ok:false,reason:'notfound',kent};
     }
     const v=data[0];
@@ -7530,6 +7652,8 @@ async function rdwLookup(){
     if(val.weggelaten.length){
       val.weggelaten.forEach(w=>log(`RDW weggelaten — ${w.label}: ${w.reden}`,'warn'));
     }
+    // Geen kenteken/VIN in dit usage-event — alleen geanonimiseerde merk/model-trend (AVG)
+    logUsage('rdw_kwaliteit', `${vehicleInfo.merk||'?'} ${vehicleInfo.model||''} ${jaar||'?'} brandstof=${brandstof||'?'} weggelaten=${val.weggelaten.length}`);
     // Pas voertuig-specifieke PID-preset toe als verbinding al actief is
     try{ scenarioRefreshIfOpen(); }catch(e){}  // kenteken gewijzigd → scenario-PID's verversen
     if(demoMode){
@@ -8922,28 +9046,41 @@ function updateEVMode(){
 // relevante PIDs en symptomen. Uitbreidbaar. Focus op merken die NL-dealers
 // rond Dordrecht het meest binnenkrijgen.
 const AUTO_KENNIS = {
-  'volkswagen': {zwak:['EGR-klep vervuiling (TDI)','DPF-regeneratie problemen','distributieketting-spanner (1.2/1.4 TSI)','timing chain rek','waterpomp lekkage'],pids:['0106','0107','016B','016D','0105'],let_op:'1.4 TSI tot ±2014: ketting-spanner; TDI: roetfilter + EGR.'},
-  'audi':       {zwak:['olieverbruik (2.0 TFSI EA888)','distributieketting (2.0 TFSI)','DPF/EGR (TDI)','carbon-opbouw inlaatkleppen'],pids:['0106','0107','010B','016B'],let_op:'2.0 TFSI EA888 gen2: berucht olieverbruik via zuigerveren.'},
-  'skoda':      {zwak:['EGR/DPF (TDI)','TSI ketting-spanner','DSG-mechatronic'],pids:['0106','0107','016B'],let_op:'Deelt motoren met VW/Audi — zelfde aandachtspunten.'},
-  'seat':       {zwak:['TSI ketting','DPF (TDI)','DSG'],pids:['0106','0107','016B'],let_op:'VAG-platform, zie VW.'},
-  'bmw':        {zwak:['koelsysteem (waterpomp/thermostaat)','VANOS-magneetkleppen','timing chain (N47 diesel)','DISA-klep','olielekkage kleppendeksel'],pids:['0105','010E','010C','0142'],let_op:'N47 diesel: ketting achterzijde motor, dure reparatie. Controleer koelwatertemp-gedrag.'},
-  'mercedes':   {zwak:['balanceer-as (M272)','roestkettingstrekker','luchtvering','injectoren (CDI diesel)','EGR-koeler'],pids:['0105','0106','0107','016B'],let_op:'CDI diesel: injector-lektest via trims; let op koelwatertemp.'},
-  'toyota':     {zwak:['hybride accu-degradatie','EGR-vervuiling (diesel)','olieverbruik oudere 1.8 VVT-i','inverterkoeling'],pids:['015B','0105','0142','0106'],let_op:'Hybride: check SoC + inverter-temp. Laat verbrandingsmotor meelopen bij meting.'},
-  'mazda':      {zwak:['inlaatklep-vervuiling (SkyActiv-D diesel)','DPF kortritten','roest wielkasten oudere modellen','breedband-lambda B1S1'],pids:['0124','0134','0106','016B'],let_op:'SkyActiv-D: gevoelig voor kortritten/DPF. B1S1 = breedband (0124), niet 0113.'},
-  'ford':       {zwak:['EcoBoost koelvloeistof-verlies (1.0)','DPF (TDCi)','waterpomp intern (1.0 EcoBoost)','versnellingsbak PowerShift'],pids:['0105','0106','016B','0142'],let_op:'1.0 EcoBoost: interne waterpomp kan koelvloeistof in olie brengen.'},
-  'opel':       {zwak:['distributieketting (1.4 Turbo)','thermostaat','waterpomp','EGR (CDTi)'],pids:['0105','010C','0106'],let_op:'1.4 Turbo: ketting-rek geeft P-codes; controleer timing.'},
-  'renault':    {zwak:['injectoren (dCi diesel)','EGR-klep','DPF','turbo-actuator'],pids:['0106','0107','016B','0170'],let_op:'dCi: injector-codering + EGR. PSA/Renault diesel gevoelig voor kortritten.'},
-  'peugeot':    {zwak:['distributieketting (1.2 PureTech)','EGR/DPF (HDi)','AdBlue-systeem','olieslib 1.2 PureTech'],pids:['0106','016B','01A4','0105'],let_op:'1.2 PureTech: ketting met natte riem — controleer olie + timing.'},
-  'citroen':    {zwak:['1.2 PureTech ketting/riem','HDi DPF','AdBlue (BlueHDi)','ophanging'],pids:['0106','016B','01A4'],let_op:'Deelt motoren met Peugeot — zelfde PureTech/HDi aandachtspunten.'},
-  'volvo':      {zwak:['PCV-systeem (oudere 5-cil)','DPF (diesel)','PHEV accu-balancering','turbo'],pids:['0106','016B','015B','0170'],let_op:'PHEV (XC60/XC90): laat verbrandingsmotor meedraaien voor volledige meting.'}
+  // Elk zwak-punt: [tekst, brandstof] — brandstof: 'diesel'|'benzine'|null (null = alle/onbekend)
+  'volkswagen': {zwak:[['EGR-klep vervuiling (TDI)','diesel'],['DPF-regeneratie problemen','diesel'],['distributieketting-spanner (1.2/1.4 TSI)','benzine'],['timing chain rek','benzine'],['waterpomp lekkage',null]],pids:['0106','0107','016B','016D','0105'],let_op:'1.4 TSI tot ±2014: ketting-spanner; TDI: roetfilter + EGR.'},
+  'audi':       {zwak:[['olieverbruik (2.0 TFSI EA888)','benzine'],['distributieketting (2.0 TFSI)','benzine'],['DPF/EGR (TDI)','diesel'],['carbon-opbouw inlaatkleppen',null]],pids:['0106','0107','010B','016B'],let_op:'2.0 TFSI EA888 gen2: berucht olieverbruik via zuigerveren.'},
+  'skoda':      {zwak:[['EGR/DPF (TDI)','diesel'],['TSI ketting-spanner','benzine'],['DSG-mechatronic',null]],pids:['0106','0107','016B'],let_op:'Deelt motoren met VW/Audi — zelfde aandachtspunten.'},
+  'seat':       {zwak:[['TSI ketting','benzine'],['DPF (TDI)','diesel'],['DSG',null]],pids:['0106','0107','016B'],let_op:'VAG-platform, zie VW.'},
+  'bmw':        {zwak:[['koelsysteem (waterpomp/thermostaat)',null],['VANOS-magneetkleppen','benzine'],['timing chain (N47 diesel)','diesel'],['DISA-klep','benzine'],['olielekkage kleppendeksel',null]],pids:['0105','010E','010C','0142'],let_op:'N47 diesel: ketting achterzijde motor, dure reparatie. Controleer koelwatertemp-gedrag.'},
+  'mercedes':   {zwak:[['balanceer-as (M272)','benzine'],['roestkettingstrekker',null],['luchtvering',null],['injectoren (CDI diesel)','diesel'],['EGR-koeler','diesel']],pids:['0105','0106','0107','016B'],let_op:'CDI diesel: injector-lektest via trims; let op koelwatertemp.'},
+  'toyota':     {zwak:[['hybride accu-degradatie','hybride'],['EGR-vervuiling (diesel)','diesel'],['olieverbruik oudere 1.8 VVT-i','benzine'],['inverterkoeling','hybride']],pids:['015B','0105','0142','0106'],let_op:'Hybride: check SoC + inverter-temp. Laat verbrandingsmotor meelopen bij meting.'},
+  'mazda':      {zwak:[['inlaatklep-vervuiling (SkyActiv-D diesel)','diesel'],['DPF kortritten','diesel'],['roest wielkasten oudere modellen',null],['breedband-lambda B1S1',null]],pids:['0124','0134','0106','016B'],let_op:'SkyActiv-D: gevoelig voor kortritten/DPF. B1S1 = breedband (0124), niet 0113.'},
+  'ford':       {zwak:[['EcoBoost koelvloeistof-verlies (1.0)','benzine'],['DPF (TDCi)','diesel'],['waterpomp intern (1.0 EcoBoost)','benzine'],['versnellingsbak PowerShift',null]],pids:['0105','0106','016B','0142'],let_op:'1.0 EcoBoost: interne waterpomp kan koelvloeistof in olie brengen.'},
+  'opel':       {zwak:[['distributieketting (1.4 Turbo)','benzine'],['thermostaat',null],['waterpomp',null],['EGR (CDTi)','diesel']],pids:['0105','010C','0106'],let_op:'1.4 Turbo: ketting-rek geeft P-codes; controleer timing.'},
+  'renault':    {zwak:[['injectoren (dCi diesel)','diesel'],['EGR-klep','diesel'],['DPF','diesel'],['turbo-actuator',null]],pids:['0106','0107','016B','0170'],let_op:'dCi: injector-codering + EGR. PSA/Renault diesel gevoelig voor kortritten.'},
+  'peugeot':    {zwak:[['distributieketting (1.2 PureTech)','benzine'],['EGR/DPF (HDi)','diesel'],['AdBlue-systeem','diesel'],['olieslib 1.2 PureTech','benzine']],pids:['0106','016B','01A4','0105'],let_op:'1.2 PureTech: ketting met natte riem — controleer olie + timing.'},
+  'citroen':    {zwak:[['1.2 PureTech ketting/riem','benzine'],['HDi DPF','diesel'],['AdBlue (BlueHDi)','diesel'],['ophanging',null]],pids:['0106','016B','01A4'],let_op:'Deelt motoren met Peugeot — zelfde PureTech/HDi aandachtspunten.'},
+  'volvo':      {zwak:[['PCV-systeem (oudere 5-cil)',null],['DPF (diesel)','diesel'],['PHEV accu-balancering','hybride'],['turbo',null]],pids:['0106','016B','015B','0170'],let_op:'PHEV (XC60/XC90): laat verbrandingsmotor meedraaien voor volledige meting.'}
 };
 
-function autoKennisVoorMerk(merk){
+// merk-lookup + brandstof-filter: laat alleen zwak-punten zien die passen bij
+// de bevestigde brandstof (null=geen tag -> altijd tonen). Onbekende brandstof
+// -> alles tonen (kunnen we niet uitsluiten).
+function autoKennisVoorMerk(merk, brandstof){
   if(!merk) return null;
   const m=merk.toLowerCase().trim();
-  // directe match of substring
-  for(const k in AUTO_KENNIS){ if(m===k||m.includes(k)||k.includes(m)) return {merk:k,...AUTO_KENNIS[k]}; }
-  return null;
+  let hit=null;
+  for(const k in AUTO_KENNIS){ if(m===k||m.includes(k)||k.includes(m)){ hit={merk:k,...AUTO_KENNIS[k]}; break; } }
+  if(!hit) return null;
+  const bf=(brandstof||'').toLowerCase();
+  let fuelClass=null;
+  if(/diesel/.test(bf)) fuelClass='diesel';
+  else if(/benzine|petrol/.test(bf)) fuelClass='benzine';
+  else if(/hybr/.test(bf)) fuelClass='hybride';
+  const zwakGefilterd = hit.zwak
+    .filter(z=>!fuelClass || !z[1] || z[1]===fuelClass)
+    .map(z=>z[0]);
+  return {...hit, zwak: zwakGefilterd.length?zwakGefilterd:hit.zwak.map(z=>z[0])};
 }
 
 function openAutoExpert(){
@@ -8955,7 +9092,7 @@ function openAutoExpert(){
   document.getElementById('aexVehicle').textContent=
     merkModel ? merkModel+bf+(demoMode?' (demo)':'') : (demoMode?'Demo-voertuig':'Geen voertuig herkend — verbind of vul kenteken in');
   // Kennisbank-chips tonen
-  const know=autoKennisVoorMerk(v.merk);
+  const know=autoKennisVoorMerk(v.merk, v.brandstof);
   const kEl=document.getElementById('aexKnowledge');
   if(know){
     kEl.innerHTML=`<span class="aex-chip" style="background:var(--ors);color:var(--or);border-color:var(--or)">⚠️ Bekende ${know.merk}-aandachtspunten</span>`+
@@ -8988,7 +9125,7 @@ function buildAutoExpertContext(){
     dtcCodes.forEach(c=>{ const i=(typeof DTCDB!=='undefined')?dtcInfo(c):null; lines.push(`  ${c}${i?' — '+i.desc:''}`); });
   } else lines.push('ACTIEVE FOUTCODES: geen / niet gescand');
   // Lokale merk-kennis
-  const know=autoKennisVoorMerk(v.merk);
+  const know=autoKennisVoorMerk(v.merk, v.brandstof);
   if(know){
     lines.push(`BEKENDE ${know.merk.toUpperCase()}-ZWAKKE PUNTEN: ${know.zwak.join('; ')}`);
     if(know.let_op) lines.push(`LET OP: ${know.let_op}`);
@@ -9013,13 +9150,14 @@ async function autoExpertAsk(mode){
   }
   ansEl.innerHTML='<div class="ai-ld" style="padding:20px;text-align:center"><div class="spin"></div> Automonteur denkt na...</div>';
   const context=buildAutoExpertContext();
-  const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde live sensordata, foutcodes en merk-kennis. Wees eerlijk over onzekerheid; verzin geen waarden die niet in de data staan. Geen ECU-acties adviseren (read-only diagnose). Structureer met korte kopjes waar nuttig. BELANGRIJK: presenteer een waarschijnlijke meetfout, dode sensor of net-over-de-grens waarde NOOIT als hard defect — adviseer bij twijfel eerst de sensor/meting te verifiëren, zodat de klant niet onnodig op kosten wordt gejaagd. Respecteer de meegeleverde DATAKWALITEIT-sectie strikt.';
+  const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde live sensordata, foutcodes en merk-kennis. Structureer met korte kopjes waar nuttig. Respecteer de meegeleverde DATAKWALITEIT-sectie strikt.\n'+pidlaneBasisRegels();
   const prompt=`${context}\n\nVRAAG VAN DE DEALER: ${vraag}`;
   try{
     const txt=await apiFetch(prompt, 1100, sys);
     ansEl.innerHTML='';
     if(typeof renderAIText==='function'){ renderAIText(txt, ansEl); }
     else ansEl.textContent=txt;
+    logUsage('ai_rapport', 'auto-expert/'+mode);
   }catch(e){
     ansEl.innerHTML=`<div class="aex-empty" style="color:var(--rd)">⚠️ ${e.message||'Er ging iets mis'}<br><br>Stel je AI-sleutel in via 🤖 rechtsboven.</div>`;
   }
@@ -9504,7 +9642,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-deepdiag',()=>openDeepDiag());
   wcBind('wc-pidrec',()=>openPidRecorder());
   wcBind('wc-check',()=>startChoice('check'));
-  wcBind('wc-live',()=>startChoice('live'));
+  wcBind('wc-live',()=>openPidChoice());
   wcBind('wc-dtc',()=>startChoice('dtc'));
   wcBind('wc-report',()=>startChoice('report'));
   wcBind('wc-fuel',()=>startChoice('fuel'));
@@ -9534,6 +9672,10 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   document.getElementById('btnConnect').onclick=()=>connectSerial();
   document.getElementById('btnDemo').onclick=()=>startDemo();
+
+  // Remote config: pas direct de gecachte/fallback-config toe, ververs op achtergrond
+  try{ applyConfigToUI(); }catch(e){}
+  try{ loadRemoteConfig(); }catch(e){}
 
   buildPIDList();
   // Laad API key alleen als al eerder ingelogd
@@ -9906,6 +10048,7 @@ function closeRitAnalyse(){
   if(ritActive) stopRitAnalyse();
   document.getElementById('ritDash').style.display='none';
   _removeRitPill();
+  try{ goHome(); }catch(e){}
 }
 
 // Minimaliseer de Rit Analyse zónder hem te stoppen: het overlay verdwijnt,
@@ -11083,7 +11226,7 @@ function openProefritKeuze(){
   if(!m){
     m=document.createElement('div'); m.id='proefritKeuzeModal';
     m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:24px';
-    m.onclick=(e)=>{ if(e.target.id==='proefritKeuzeModal') m.style.display='none'; };
+    m.onclick=(e)=>{ if(e.target.id==='proefritKeuzeModal'){ m.style.display='none'; try{ goHome(); }catch(err){} } };
     m.innerHTML='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:320px;width:100%">'+
       '<div style="font-weight:800;font-size:15px;margin-bottom:4px;text-align:center">Proefrit Analyse</div>'+
       '<div style="font-size:12px;color:var(--tx3);margin-bottom:14px;text-align:center">Hoe lang wil je rijden? Beide meten puur de techniek onder belasting — geen rijgedrag.</div>'+
@@ -11596,7 +11739,7 @@ BINNENKORT: [wat op korte termijn aankomt op basis van interval/km]
 GEVONDEN GEBREKEN: [afwijkingen uit de sensordata, of "geen"]
 ADVIES: [1-2 zinnen; benadruk serviceboekje compleet houden]`;
   try{
-    const text=await apiFetch(prompt,700)||'Geen reactie';
+    const text=await apiFetch(prompt,900)||'Geen reactie';
     res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'onderhoud',msg:`${v.merk} ${v.model} ${v.km}km: ${text.slice(0,180)}`});
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
@@ -11659,7 +11802,7 @@ LADEN/REGENERATIE: [wat zichtbaar is, of "niet uitleesbaar via OBD2"]
 AANDACHTSPUNTEN: [afwijkingen of foutcodes, of "geen"]
 ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
   try{
-    const text=await apiFetch(prompt,650)||'Geen reactie';
+    const text=await apiFetch(prompt,900)||'Geen reactie';
     res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'ev-check',msg:`${v.merk} ${v.model} (${ft}): ${text.slice(0,180)}`});
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
@@ -11723,7 +11866,7 @@ GO / NO-GO: [duidelijk oordeel]
 KRITISCHE PUNTEN: [wat eerst gecheckt/verholpen moet, of "geen"]
 ADVIES: [concrete stappen voor vertrek]`;
   try{
-    const text=await apiFetch(prompt,600)||'Geen reactie';
+    const text=await apiFetch(prompt,900)||'Geen reactie';
     res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line;margin-bottom:12px">${text.replace(/</g,'&lt;')}</div>`+langeRitChecklistHTML();
     scanLogAdd?.({type:'lange-rit',msg:`${v.merk} ${v.model}: ${text.slice(0,150)}`});
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`+langeRitChecklistHTML(); }
@@ -11761,7 +11904,7 @@ function langeRitChecklistHTML(){
 }
 
 // Gedeelde sluit-helper voor de losse dashboards
-function closeExtraDash(id){ const el=document.getElementById(id); if(el) el.style.display='none'; }
+function closeExtraDash(id){ const el=document.getElementById(id); if(el) el.style.display='none'; try{ goHome(); }catch(e){} }
 
 
 // ═══ AIRCO & WINTER CHECK MODULE ═══
@@ -12195,7 +12338,7 @@ async function runKoopcheck(){
   // ── Onderhoudcheck AI call ──
   try {
     const prompt1 = buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt);
-    const text1 = await apiFetch(prompt1, 800) || 'Geen reactie';
+    const text1 = await apiFetch(prompt1, 900) || 'Geen reactie';
     document.getElementById('koopOnderhoudRes').innerHTML = formatKoopAI(text1, 'onderhoud');
 
     // Kosten uit response extraheren
@@ -12211,7 +12354,7 @@ async function runKoopcheck(){
   // ── Prijsschatting AI call (modus-afhankelijke insteek) ──
   try {
     const prompt2 = buildPrijsPrompt(merk, model, jaar, km, kleur, apkMaanden, boekje, vraagprijs, dtcCount, onderhoudKosten, tellerOordeel, recallActief, bandenLabel, proefritData, _koopMode);
-    const text2 = await apiFetch(prompt2, 650) || 'Geen reactie';
+    const text2 = await apiFetch(prompt2, 900) || 'Geen reactie';
     document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
 
     scanEntry.prijs_ai = text2.slice(0,300);
@@ -12236,7 +12379,7 @@ async function runKoopcheck(){
       </div>`;
     try {
       const prompt3 = buildLeasePrompt(merk, model, jaar, km, apkMaanden, boekje, dtcCount, bandenLabel, proefritData, lease);
-      const text3 = await apiFetch(prompt3, 700) || 'Geen reactie';
+      const text3 = await apiFetch(prompt3, 900) || 'Geen reactie';
       document.getElementById('koopLeaseRes').innerHTML = formatKoopAI(text3, 'lease');
       scanEntry.lease_ai = text3.slice(0,300);
       scanLogAdd({ type:'lease-teruggave', msg:`${merk} ${model} ${km}km / max ${lease.kmMax}: ${text3.slice(0,180)}` });
@@ -12263,7 +12406,7 @@ async function runKoopcheck(){
       </div>`;
     try {
       const prompt3 = buildInkoopPrompt(merk, model, jaar, km, apkMaanden, boekje, dtcCount, onderhoudKosten, tellerOordeel, recallActief, bandenLabel, proefritData, ink);
-      const text3 = await apiFetch(prompt3, 700) || 'Geen reactie';
+      const text3 = await apiFetch(prompt3, 900) || 'Geen reactie';
       document.getElementById('koopInkoopRes').innerHTML = formatKoopAI(text3, 'inkoop');
       scanEntry.inkoop_ai = text3.slice(0,300);
       scanLogAdd({ type:'inkoopcontrole', msg:`${merk} ${model} ${jaar} ${km}km inkoop:€${ink.inkoopprijs}: ${text3.slice(0,200)}` });
