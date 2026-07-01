@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-06-30c (CET) — AI-model naar Claude Sonnet 5 (alle calls)
+     Build: 2026-06-30d (CET) — Sonnet 5 compat: thinking uit + robuuste content-parsing
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -2142,14 +2142,15 @@ async function testApiKey(){
       },
       body:JSON.stringify({
         model:'claude-sonnet-5',
-        max_tokens:10,
+        max_tokens:20,
         system:'Reply only: yes',
-        messages:[{role:'user',content:'ping'}]
+        messages:[{role:'user',content:'ping'}],
+        thinking:{ type:'disabled' }
       })
     });
     if(resp.ok){
       const data=await resp.json();
-      const reply=data?.content?.[0]?.text?.trim()||'';
+      const reply=(extractAIText(data)||'').trim();
       log(`API key OK ✅ — antwoord: "${reply}"`,'ok');
       // Sla werkende key op
       window.anthropicKey=key;
@@ -5164,6 +5165,19 @@ function pidlaneBasisRegels(){
     '5. Geen ECU-acties adviseren (read-only diagnose). Schrijf bondig en concreet in helder Nederlands.';
 }
 
+// Haalt de zichtbare tekst uit een Anthropic-response. Sonnet 5 kan een
+// thinking-block op content[0] zetten; we zoeken daarom het eerste text-block
+// i.p.v. blind content[0] te pakken. Robuust voor alle modellen.
+function extractAIText(data){
+  try{
+    const blocks = (data && data.content) || [];
+    for(const b of blocks){ if(b && b.type==='text' && typeof b.text==='string') return b.text; }
+    // fallback: oud formaat of onverwachte structuur
+    if(blocks[0] && typeof blocks[0].text==='string') return blocks[0].text;
+  }catch(e){}
+  return '';
+}
+
 async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
@@ -5200,7 +5214,10 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
     model: model || 'claude-sonnet-5',
     max_tokens: maxTokens,
     system: sys,
-    messages: [{role:'user', content: prompt}]
+    messages: [{role:'user', content: prompt}],
+    // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
+    // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
+    thinking: { type: 'disabled' }
   };
 
   aiBusyBegin();
@@ -5223,7 +5240,7 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
     }
     const data=await resp.json();
     try{ if(data.usage) trackTokens(data.usage); }catch(e){}
-    return data.content?.[0]?.text||'';
+    return extractAIText(data);
   } finally {
     aiBusyEnd();
   }
