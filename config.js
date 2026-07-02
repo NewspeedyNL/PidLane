@@ -24,7 +24,7 @@ const USERS = {
   'Demo':  { password: 'P!dL@n3',    role: 'demo',  label: 'Demo'  },
 
   // — Test-gebruikers (rol: user) — vervang gerust namen/wachtwoorden —
-  'Garage_Jansen':       { password: 'Test1234!', role: 'user', label: 'Garage Jansen' },
+  'nico':                { password: 'nico',      role: 'user', label: 'nico' },
   'Autobedrijf_Pieters': { password: 'Test1234!', role: 'user', label: 'Autobedrijf Pieters' },
   'Occasions_DeVries':   { password: 'Test1234!', role: 'user', label: 'Occasions De Vries' },
   'AutoCentrum_Bakker':  { password: 'Test1234!', role: 'user', label: 'AutoCentrum Bakker' },
