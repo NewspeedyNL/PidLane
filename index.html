@@ -351,6 +351,18 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
   #slPanel.lade-open .slsec, #slPanel.lade-open .pscr { width:100% !important; box-sizing:border-box; }
   #slPanel.lade-open .sl-col-label, #slPanel.lade-open .sl-toggle { display:none !important; }
 }
+/* ══ LANDSCHAP op telefoon (beperkte hoogte): lade als ZIJPANEEL rechts,
+   zodat de live-meters zichtbaar blijven. Bottom-sheet had hier te weinig
+   verticale ruimte; fullscreen verspilde de brede as. (Optie A) ══ */
+@media (max-width:1023px) and (orientation:landscape) and (max-height:520px){
+  #slPanel.lade-open, #logLade.lade-open {
+    left:auto !important; right:0 !important; top:0 !important; bottom:0 !important;
+    width:min(440px,62vw) !important; max-width:62vw !important;
+    height:auto !important; max-height:100% !important;
+    border-radius:14px 0 0 14px !important; border-left:1px solid var(--bd) !important;
+    box-shadow:-14px 0 36px rgba(0,0,0,.4) !important;
+  }
+}
 #logbar { display:none; }                       /* log niet in de live view; logs via ⋯-menu + export */
 #logLade > #logbar { display:block; max-height:none; height:auto; border:0; }
 .lade-bar { position:sticky; top:0; display:flex; align-items:center; gap:8px; padding:9px 13px; background:var(--sur); border-bottom:1px solid var(--bd); z-index:3; }
@@ -952,6 +964,14 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="api-lbl" style="margin-bottom:5px">🔑 Wachtwoord</div>
           <input class="api-inp" id="loginPass" type="password" placeholder="Wachtwoord" autocomplete="current-password"
             onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <!-- Admin-only: continu live-logbestand (hersteld — JS-keten bestond nog,
+             maar dit element was bij een eerdere refactor verdwenen) -->
+        <div id="loginAdminLogRow" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx2);cursor:pointer">
+            <input type="checkbox" id="adminLogExport" onchange="saveAdminLogExport()" style="accent-color:var(--bl)">
+            🛠 Live-logbestand bijhouden (crash-bestendig, admin)
+          </label>
         </div>
         <div style="display:none">
           <div class="api-lbl" style="margin-bottom:5px">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
@@ -2128,8 +2148,9 @@ async function testApiKey(){
   if(!key) key = window.anthropicKey||'';
   if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){}
 
-  const keyStart=key?.slice(0,15)||'(leeg)';
-  log(`API test — key: ${keyStart}... (${key.length} tekens)`,'info');
+  // ⚠ Nooit key-materiaal in de log: logs zijn exporteerbaar/deelbaar via
+  // bugrapport. Alleen aanwezigheid + lengte vermelden.
+  log(`API test — key ${key?'aanwezig ('+key.length+' tekens)':'(leeg — proxy-modus)'}`,'info');
 
   // Proxy-modus: geen sk-ant- sleutel meer nodig in de app — de Worker houdt 'm server-side.
 
@@ -2142,10 +2163,11 @@ async function testApiKey(){
       },
       body:JSON.stringify({
         model:'claude-sonnet-5',
-        max_tokens:20,
+        max_tokens:200,
         system:'Reply only: yes',
-        messages:[{role:'user',content:'ping'}],
-        thinking:{ type:'disabled' }
+        messages:[{role:'user',content:'ping'}]
+        // Geen thinking-param: Sonnet 5 weigert handmatige thinking-config (400).
+        // max_tokens 200 i.p.v. 20: adaptieve thinking telt mee in het budget.
       })
     });
     if(resp.ok){
@@ -3405,24 +3427,19 @@ function reportNav(){
 function appBack(){
   // 0. Open lade (sensoren/logs) eerst sluiten
   try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){}
-  // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
-  for(const id of ['aiReportSheet','pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal']){
-    const el=document.getElementById(id);
-    if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; return true; }
-  }
-  // 2. Dashboards / sub-overlays met eigen display
-  let closed=false;
-  ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; closed=true; } });
-  if(closed){ try{ goHome(); }catch(e){} return true; }
-  try{ if(typeof closeRitAnalyse==='function'){ const r=document.getElementById('ritAnalyseOv')||document.getElementById('ritAnalyse'); if(r && getComputedStyle(r).display!=='none'){ closeRitAnalyse(); return true; } } }catch(e){}
-  // 3. Welkomstscherm zichtbaar?
+  // 1. ÉÉN bron van waarheid voor alle modals/overlays/dashboards:
+  //    closeTopOverlay() kent ze allemaal (incl. ritDash, HUD, klimaat,
+  //    deep-diag, PID-recorder, kebab). Voorheen stond hier een tweede,
+  //    verouderde kopie van die lijst die o.a. de rit-analyse miste.
+  try{ if(closeTopOverlay()) return true; }catch(e){}
+  // 2. Welkomstscherm zichtbaar?
   const ws=document.getElementById('welcomeScreen');
   if(ws && !ws.classList.contains('hidden')){
     const doorOpen=[...document.querySelectorAll('.wm-door-panel')].some(p=>getComputedStyle(p).display!=='none');
     if(doorOpen){ backToDoors(); return true; }
     return false; // op de root-keuze → niet automatisch afsluiten
   }
-  // 4. In een mode/pane → terug naar home
+  // 3. In een mode/pane → terug naar home
   try{ goHome(); return true; }catch(e){}
   return false;
 }
@@ -5179,19 +5196,9 @@ function extractAIText(data){
 }
 
 async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
-  // Key ophalen — prioriteit: login account → window → localStorage
-  let key = '';
-  try{
-    if(currentUser && typeof USERS!=='undefined' && USERS[currentUser?.name||currentUser]?.apiKey?.startsWith('sk-ant-')){
-      key = USERS[currentUser?.name||currentUser].apiKey;
-    }
-  }catch(e){}
-  if(!key) key = window.anthropicKey||'';
-  if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){}
-
-  log(`apiFetch: key ${key?'aanwezig ('+key.length+' tekens)':'LEEG'}`,'info');
-
-  // Proxy-modus: de Worker levert de sleutel server-side, dus geen sk-ant- in de app nodig.
+  // Proxy-modus: de Worker levert de API-sleutel server-side. Er wordt dus
+  // GEEN sleutel vanuit de app meegestuurd — alleen het app-token.
+  log('apiFetch via proxy ('+String(PROXY_URL).replace(/^https?:\/\//,'').slice(0,40)+')','info');
 
   // System prompt als losse parameter — NIET in messages array
   // Sterke, dynamische monteur-instructie. Injecteert het bevestigde brandstoftype
@@ -5212,31 +5219,47 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
 
   const body = {
     model: model || 'claude-sonnet-5',
-    max_tokens: maxTokens,
+    // Sonnet 5: nieuwe tokenizer (~30% meer tokens) én adaptieve thinking valt
+    // BINNEN max_tokens. Budget daarom ruimer, anders worden rapporten stil
+    // afgekapt midden in een zin. Cap op 8000 houdt de kosten begrensd.
+    max_tokens: Math.min(8000, Math.round(maxTokens*1.5)),
     system: sys,
-    messages: [{role:'user', content: prompt}],
-    // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
-    // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
-    thinking: { type: 'disabled' }
+    messages: [{role:'user', content: prompt}]
+    // ⚠ GEEN thinking:{type:'disabled'} meer meesturen: Sonnet 5 accepteert
+    // handmatige thinking-configuratie niet (400-fout). Het model regelt
+    // thinking zelf adaptief; extractAIText pakt al het eerste text-block.
   };
 
   aiBusyBegin();
   try{
-    const resp = await fetch(PROXY_URL+'/v1/messages',{
+    const doFetch = b => fetch(PROXY_URL+'/v1/messages',{
       method: 'POST',
       headers:{
         'Content-Type': 'application/json',
         'X-App-Token': APP_TOKEN
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(b)
     });
+    let resp = await doFetch(body);
 
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
       const msg=err?.error?.message||`HTTP ${resp.status}`;
-      if(resp.status===401) throw new Error('API key ongeldig of verlopen.');
-      if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
-      throw new Error(msg);
+      // Zelfherstel: 400 over een parameter die dit model niet (meer) kent?
+      // Eén retry met kale body — voorkomt dat een modelwissel de app
+      // stilletjes permanent in fallback-modus duwt.
+      if(resp.status===400 && /thinking|temperature|top_p|top_k|unexpected|not supported|invalid/i.test(msg)){
+        log('API 400 ('+msg.slice(0,80)+') — retry met gesaneerde request','warn');
+        const bare={ model:body.model, max_tokens:body.max_tokens, system:body.system, messages:body.messages };
+        resp = await doFetch(bare);
+      }
+      if(!resp.ok){
+        const err2=await resp.json().catch(()=>({}));
+        const msg2=err2?.error?.message||msg;
+        if(resp.status===401) throw new Error('Toegang geweigerd door proxy (401) — controleer app-token/Worker.');
+        if(resp.status===400) throw new Error(`API fout (400): ${msg2}`);
+        throw new Error(msg2);
+      }
     }
     const data=await resp.json();
     try{ if(data.usage) trackTokens(data.usage); }catch(e){}
@@ -8777,7 +8800,7 @@ function startPoll(){
             if(parsed[pid]){
               const r=applyParsedBytes(pid,parsed[pid]);
               if(r!=null){ markPidData(pid); updPID(pid,r); checkStability(pid,r); feedDatalog(pid,r); feedSessionStat(pid,r); }
-              else markPidNoData(pid);
+              else markPidData(pid);   // bytes ontvangen = PID leeft; null was outlier/parse-filter
             } else {
               markPidNoData(pid);
             }
@@ -8787,9 +8810,20 @@ function startPoll(){
         // Sequentieel: één PID per request, '1'-suffix voor snelle terugkeer
         for(const pid of due){
           if(!connected) break;
-          const resp=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+          const raw=await sendCmd('01'+pid.slice(2)+'1',2500);
+          const resp=parsePID(pid,raw);
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
-          else markPidNoData(pid);
+          else if(raw && /NO DATA/i.test(raw)){
+            // Voertuig zegt expliciet NO DATA → telt mee voor snoei
+            markPidNoData(pid);
+          } else if(raw && /41/.test(String(raw))){
+            // Er kwamen wél bytes terug maar parse/outlier-filter gaf null →
+            // PID leeft; streak resetten zodat een hobbelige sensor niet
+            // als "dood" wordt gesnoeid.
+            markPidData(pid);
+          }
+          // Timeout / lege buffer / garbage: verbindingsprobleem, géén
+          // uitspraak over de PID zelf — NIET meetellen voor snoei.
         }
       }
       // Idee 4: na elke pollronde de deterministische correlatie-check draaien
@@ -9699,7 +9733,8 @@ function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 function toggleTheme(){
   isDark=!isDark;
   document.documentElement.classList.toggle('dark',isDark);
-  document.getElementById('themeBtn').textContent=isDark?'☀️':'🌙';
+  const tb=document.getElementById('themeBtn');       // knop is verwijderd — guard voorkomt crash
+  if(tb) tb.textContent=isDark?'☀️':'🌙';
   try{localStorage.setItem('ns_theme',isDark?'dark':'light');}catch(e){}
 }
 (function initThemeDefault(){
@@ -9742,11 +9777,18 @@ function zoomReset(){currentZoom=1.0;applyZoom();}
 // naar de achtergrond). Volgorde = van meest-modaal naar minst-modaal.
 function closeTopOverlay(){
   const vis=el=>el && el.style.display!=='none' && getComputedStyle(el).display!=='none' && !el.classList.contains('hidden');
+  // 0) PID-recorder: eigen close met opname-bevestiging
+  const rec=document.getElementById('pidRecOv');
+  if(vis(rec)){ try{ closePidRecorder(); }catch(_){ rec.style.display='none'; } return true; }
   // 1) Losse modals die met display:flex/block worden getoond
-  for(const id of ['pdfReadyModal','needsUpdateModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker']){
+  for(const id of ['pdfReadyModal','needsUpdateModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker',
+                   'aiReportSheet','bandenInfoModal','proefritKeuzeModal','koopKeuzeModal','seizoenKeuzeModal','bugModal','deepDiagOv']){
     const el=document.getElementById(id);
     if(vis(el)){ el.style.display='none'; return true; }
   }
+  // 1b) Auto-expert sheet (werkt met .hidden-klasse)
+  const aex=document.getElementById('autoExpertSheet');
+  if(aex && !aex.classList.contains('hidden')){ try{ closeAutoExpert(); }catch(_){ aex.classList.add('hidden'); } return true; }
   // 2) Onderdelen-/scenario-picker (kan dynamisch andere id's hebben)
   const picker=document.querySelector('.pick-overlay, .onderdelen-overlay');
   if(vis(picker)){ picker.style.display='none'; return true; }
@@ -10017,9 +10059,13 @@ function hudShortLabel(name){
       else { rest=rest.slice(1); }   // onbekend teken overslaan
     }
     if(parts.length){
-      const combo=parts.join('.');
+      let combo=parts.join('.');
+      // Te lang? Laat delen aan het EIND weg i.p.v. bot afkappen midden in
+      // een woord ("BRANDST.DRU"). Het eerste deel is vrijwel altijd het
+      // meest onderscheidend.
+      while(combo.length>MAX && parts.length>1){ parts.pop(); combo=parts.join('.'); }
       if(combo.length<=MAX) return combo;
-      return combo.slice(0,MAX);
+      return parts[0].slice(0,MAX);
     }
   }
   // 2) korte verbindingswoorden weglaten
@@ -10093,10 +10139,15 @@ document.getElementById('hudPicker').addEventListener('click',e=>{ if(e.target.i
 
 function setMiniArc(m,p,color){
   const arc=m.querySelector('.hmArc');
+  if(!arc) return;
+  p=Math.max(0,Math.min(1,p||0));
   const a0=-125*Math.PI/180, a1=(-125+p*250)*Math.PI/180, r=38;
   const x1=50+Math.cos(a0)*r,y1=50+Math.sin(a0)*r,x2=50+Math.cos(a1)*r,y2=50+Math.sin(a1)*r;
   arc.setAttribute('stroke',color); arc.style.filter=`drop-shadow(0 0 4px ${color})`;
-  arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p>0.5?1:0} 1 ${x2} ${y2}`);
+  // large-arc-flag pas bij spanne >180° (p*250°>180° → p>0.72). De oude
+  // drempel p>0.5 liet de boog tussen 50% en 72% de verkeerde (lange) kant
+  // om lopen — dwars door de opening van de meter, buiten de wijzerplaat.
+  arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p*250>180?1:0} 1 ${x2} ${y2}`);
 }
 
 function renderHud(){
@@ -10114,7 +10165,8 @@ function renderHud(){
     const a0=-135*Math.PI/180, a1=(-135+p*270)*Math.PI/180, r=58;
     const x1=100+Math.cos(a0)*r,y1=100+Math.sin(a0)*r,x2=100+Math.cos(a1)*r,y2=100+Math.sin(a1)*r;
     const arc=document.getElementById('hudBigArc');
-    arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p>0.5?1:0} 1 ${x2} ${y2}`);
+    // large-arc-flag pas bij spanne >180° (p*270°>180° → p>2/3), niet bij p>0.5
+    arc.setAttribute('d',`M ${x1} ${y1} A ${r} ${r} 0 ${p*270>180?1:0} 1 ${x2} ${y2}`);
     arc.setAttribute('stroke',col); arc.style.filter=`drop-shadow(0 0 7px ${col})`;
   }
   // hoekmeters
@@ -11729,10 +11781,12 @@ function _deepPidOverview(){
   return {html:html, summary:(promptLines.join('; ')||'geen duidelijke afwijkingen in de vastgelegde data'), useLog:useLog};
 }
 async function runDeepDiag(){
+  if(window._ddBusy) return;                 // dubbel tikken = géén tweede AI-call
   var probleem=(document.getElementById('dd_probleem')||{}).value||'';
   if(!probleem.trim()){ showToast?.('Vul minimaal het probleem in'); return; }
+  window._ddBusy=true;
   try{ ['ddProgRow','ddStepTitle','ddStepSub','ddFoot'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }); document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display='none'; }); }catch(e){}
-  var btn=document.getElementById('dd_eval'); if(btn){ btn.disabled=true; btn.textContent='⏳ Evalueren'; }
+  var btn=document.getElementById('ddNext'); if(btn){ btn.disabled=true; btn.textContent='⏳ Evalueren'; }   // was 'dd_eval': bestaat niet
   var checks=(document.getElementById('dd_checks')||{}).value||'';
   var merk=(document.getElementById('dd_merk')||{}).value||'';
   var gevoel=(document.getElementById('dd_gevoel')||{}).value||'';
@@ -11761,6 +11815,7 @@ async function runDeepDiag(){
     if(res) res.innerHTML='<div class="ai-sec red"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">'+((e&&e.message)||e)+'</div></div>';
   }
   if(btn){ btn.disabled=false; btn.textContent='▶ Evalueer opnieuw'; }
+  window._ddBusy=false;
 }
 
 function setKoopRit(v){
