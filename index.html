@@ -935,6 +935,41 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .vic-label{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;min-width:34px;flex-shrink:0;}
 .vic-val{font-size:13px;font-weight:600;color:var(--tx);}
 .vic-vin{font-family:var(--m);font-size:10px;color:var(--tx3);margin-top:3px;word-break:break-all;border-top:1px solid var(--bd);padding-top:4px;}
+/* ── ⚙️ Sensorbeheer bottom-sheet ── */
+#pidMgrOv{position:fixed;inset:0;z-index:9700}
+#pidMgrOv .pm-back{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+#pidMgrOv .pm-sheet{position:absolute;left:0;right:0;bottom:0;max-height:82vh;display:flex;flex-direction:column;background:var(--sur);border:1px solid var(--bd);border-bottom:none;border-radius:18px 18px 0 0;box-shadow:0 -18px 48px rgba(0,0,0,.5)}
+.pm-handle{width:44px;height:5px;border-radius:3px;background:var(--bd2,#334155);margin:10px auto 4px;cursor:pointer;flex-shrink:0}
+.pm-head{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 10px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.pm-head b{font-size:15px}
+.pm-head span{font-size:12px;color:var(--tx3);margin-left:8px}
+.pm-x{background:none;border:none;color:var(--tx3);font-size:18px;cursor:pointer;padding:4px 8px}
+.pm-global{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bd);font-size:12.5px;color:var(--tx3);flex-shrink:0;flex-wrap:wrap}
+.pm-seg{display:flex;border:1px solid var(--bd);border-radius:9px;overflow:hidden}
+.pm-seg button{background:none;border:none;color:var(--tx3);font-size:12px;padding:7px 12px;cursor:pointer;font-family:var(--f)}
+.pm-seg button.on{background:var(--bl,#3b82f6);color:#fff}
+.pm-list{overflow-y:auto;padding:6px 10px;flex:1;min-height:0}
+.pm-row{display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid var(--bd)}
+.pm-row:last-child{border-bottom:none}
+.pm-row.off{opacity:.45}
+.pm-nm{flex:1;min-width:0}
+.pm-nm b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm-nm span{font-size:11px;color:var(--tx3);font-family:var(--fm,monospace)}
+.pm-rate{background:var(--bg,#0d1117);border:1px solid var(--bd);border-radius:8px;color:var(--tx3);font-size:11px;padding:6px 9px;cursor:pointer;white-space:nowrap;font-family:var(--f);min-width:74px;text-align:center}
+.pm-rate.hoog{color:#22d3a5;border-color:rgba(34,211,165,.4)}
+.pm-rate.laag{color:var(--or,#f59e0b);border-color:rgba(245,158,11,.4)}
+.pm-sw{position:relative;width:42px;height:24px;flex-shrink:0;cursor:pointer}
+.pm-sw input{opacity:0;width:0;height:0;position:absolute}
+.pm-sw i{position:absolute;inset:0;border-radius:12px;background:var(--bd2,#334155);transition:background .15s}
+.pm-sw i::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.pm-sw input:checked + i{background:var(--gn,#22c55e)}
+.pm-sw input:checked + i::after{transform:translateX(18px)}
+.pm-foot{padding:10px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--bd);flex-shrink:0}
+.pm-more{width:100%;padding:11px;border-radius:10px;border:1px dashed var(--bd2,#334155);background:none;color:var(--tx2);font-size:13px;cursor:pointer;font-family:var(--f)}
+.pidview-btn.pm-open{margin-left:auto}
+@media (max-width:1023px) and (orientation:landscape) and (max-height:520px){
+  #pidMgrOv .pm-sheet{left:auto;right:0;top:0;bottom:0;width:min(440px,62vw);max-height:none;border-radius:14px 0 0 14px;border-bottom:1px solid var(--bd)}
+}
 </style>
 </head>
 <body>
@@ -1532,6 +1567,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
           <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
           <button class="pidview-btn" data-mode="correlate" onclick="setPidView('correlate')">🔗 Correlatie</button>
+          <button class="pidview-btn pm-open" onclick="openPidMgr()" title="Sensoren aan/uit en verversing">⚙️ Beheer</button>
         </div>
         <div class="gg" id="gGrid">
           <div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>
@@ -1546,6 +1582,30 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           </div>
           <canvas id="scatterCanvas" height="300" style="width:100%;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);display:block;box-shadow:var(--ss)"></canvas>
           <div style="font-size:12px;color:var(--tx3);margin-top:6px">Elke stip = één meetmoment. Zo zie je verbanden, bijv. RPM (X) vs brandstofdruk (Y) — stijgt de druk niet mee, dan is de pomp zwak.</div>
+        </div>
+
+        <!-- ⚙️ SENSORBEHEER: aan/uit + verversing per sensor, vanuit elk weergavescherm -->
+        <div id="pidMgrOv" style="display:none">
+          <div class="pm-back" onclick="closePidMgr()"></div>
+          <div class="pm-sheet">
+            <div class="pm-handle" onclick="closePidMgr()"></div>
+            <div class="pm-head">
+              <div><b>⚙️ Sensoren beheren</b><span id="pmCount"></span></div>
+              <button class="pm-x" onclick="closePidMgr()">✕</button>
+            </div>
+            <div class="pm-global">
+              <span>Verversing alles:</span>
+              <div class="pm-seg" id="pmGlobalSeg">
+                <button data-r="laag" onclick="pmGlobalRate('laag')">🐢 Laag</button>
+                <button data-r="normaal" onclick="pmGlobalRate('normaal')">● Normaal</button>
+                <button data-r="hoog" onclick="pmGlobalRate('hoog')">⚡ Hoog</button>
+              </div>
+            </div>
+            <div class="pm-list" id="pmList"></div>
+            <div class="pm-foot">
+              <button class="pm-more" onclick="closePidMgr();toggleLade('slPanel')">➕ Meer sensoren kiezen</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2165,9 +2225,11 @@ async function testApiKey(){
         model:'claude-sonnet-5',
         max_tokens:200,
         system:'Reply only: yes',
-        messages:[{role:'user',content:'ping'}]
-        // Geen thinking-param: Sonnet 5 weigert handmatige thinking-config (400).
-        // max_tokens 200 i.p.v. 20: adaptieve thinking telt mee in het budget.
+        messages:[{role:'user',content:'ping'}],
+        // Sonnet 5: thinking altijd adaptief aan; effort 'low' laat de ping
+        // zonder denkwerk antwoorden zodat 200 tokens ruim voldoende is.
+        thinking:{ type:'adaptive' },
+        output_config:{ effort:'low' }
       })
     });
     if(resp.ok){
@@ -2291,7 +2353,7 @@ const PIDS = [
 // 'NOx doseerpomp' en 'AdBlue injectiedruk' op een Mazda SkyActiv-G benzine).
 // We filteren ze ALLEEN weg als we zeker weten dat het voertuig ze niet heeft;
 // bij onbekend brandstoftype verbergen we niets.
-const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016D','016E','017C','017D','017E','0187','0188','0189','018A','018E','018F','0190','01A4']);
+const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016D','016E','017C','017D','017E','0185','0187','0188','0189','018A','018E','018F','0190']);   // 0185 = NOx-reagens/AdBlue-systeem (SAE); 01A4 verwijderd — dat is transmissie
 // Verbrandingsmotor-specifieke sensoren: bestaan NIET op een volledig
 // elektrisch voertuig (geen brandstoftrim, lambda/O2, MAF, brandstofdruk/-peil,
 // EGR, inlaatdruk, ontstekingstiming). Bij 'elektrisch' filteren we die weg.
@@ -3579,6 +3641,69 @@ function togglePID(pid){
   renderGauges(); rebuildGSel();
 }
 
+// ════════════════════════════════════════
+// ⚙️ SENSORBEHEER — aan/uit + verversing per sensor, bereikbaar vanuit
+// Trends/Getallen/Puntjes via de Beheer-knop in de weergave-rij.
+// ════════════════════════════════════════
+let _pidRateOvr={};                                  // per-PID: 'hoog' | 'laag' (anders auto)
+try{ _pidRateOvr=JSON.parse(localStorage.getItem('pl_pid_rate_ovr')||'{}')||{}; }catch(e){}
+let _userRate='normaal';                             // globale verversing: laag/normaal/hoog
+try{ _userRate=localStorage.getItem('pl_poll_rate')||'normaal'; }catch(e){}
+const USER_RATE_MULT={ laag:2.5, normaal:1, hoog:0.6 };
+function userPollMult(){ return USER_RATE_MULT[_userRate]||1; }
+
+function openPidMgr(){ const ov=document.getElementById('pidMgrOv'); if(!ov) return; ov.style.display='block'; renderPidMgr(); }
+function closePidMgr(){ const ov=document.getElementById('pidMgrOv'); if(ov) ov.style.display='none'; }
+
+function _rateLabel(pid){
+  const ovr=_pidRateOvr[pid];
+  if(ovr==='hoog') return {cls:'hoog',txt:'⚡ Hoog'};
+  if(ovr==='laag') return {cls:'laag',txt:'🐢 Laag'};
+  const ms=pidPollInterval(pid);
+  return {cls:'',txt:'Auto · '+(ms>=1000?(ms/1000)+'s':ms+'ms')};
+}
+function renderPidMgr(){
+  const list=document.getElementById('pmList'); if(!list) return;
+  // Actieve PIDs bovenaan (op naam), daarna recent uitgezette — zodat je een
+  // per ongeluk uitgezette sensor direct weer kunt aanzetten.
+  const rows=[...activePIDs].concat([..._pmRecentOff].filter(p=>!activePIDs.has(p)))
+    .map(p=>({pid:p,def:getPidDef(p)})).filter(x=>x.def)
+    .sort((a,b)=>(activePIDs.has(b.pid)-activePIDs.has(a.pid))||a.def.name.localeCompare(b.def.name,'nl'));
+  list.innerHTML=rows.map(({pid,def})=>{
+    const on=activePIDs.has(pid), r=_rateLabel(pid);
+    const val=(pidVals[pid]!==undefined)?fv(pidVals[pid])+(def.unit?' '+def.unit:''):'—';
+    return `<div class="pm-row${on?'':' off'}" id="pmr-${pid}">
+      <div class="pm-nm"><b>${def.name}</b><span>${pid} · ${val}</span></div>
+      <button class="pm-rate ${r.cls}" onclick="pmCycleRate('${pid}')" ${on?'':'disabled'} title="Verversing: Auto → Hoog → Laag">${r.txt}</button>
+      <label class="pm-sw"><input type="checkbox" ${on?'checked':''} onchange="pmToggle('${pid}')"><i></i></label>
+    </div>`;
+  }).join('')||'<div style="padding:22px;text-align:center;color:var(--tx3);font-size:13px">Geen sensoren actief — kies er hieronder een paar.</div>';
+  const c=document.getElementById('pmCount'); if(c) c.textContent=activePIDs.size+' actief';
+  document.querySelectorAll('#pmGlobalSeg button').forEach(b=>b.classList.toggle('on',b.dataset.r===_userRate));
+}
+const _pmRecentOff=new Set();                        // in deze sessie uitgezet → blijft zichtbaar in de lijst
+function pmToggle(pid){
+  if(activePIDs.has(pid)) _pmRecentOff.add(pid);
+  togglePID(pid);
+  renderPidMgr();
+}
+function pmCycleRate(pid){
+  const cur=_pidRateOvr[pid];
+  if(!cur) _pidRateOvr[pid]='hoog';
+  else if(cur==='hoog') _pidRateOvr[pid]='laag';
+  else delete _pidRateOvr[pid];
+  try{ localStorage.setItem('pl_pid_rate_ovr',JSON.stringify(_pidRateOvr)); }catch(e){}
+  _pidNextPoll={};                                   // direct toepassen op de scheduler
+  renderPidMgr();
+}
+function pmGlobalRate(r){
+  _userRate=r;
+  try{ localStorage.setItem('pl_poll_rate',r); }catch(e){}
+  _pidNextPoll={};
+  renderPidMgr();
+  showToast?.('Verversing: '+r);
+}
+
 // ── ANALYSE-PROFIELEN: elke analyse zet zelf de benodigde PIDs aan ──
 const ANALYSE_PIDS={
   basis:     ['010C','0105','0104','0111','010D','0142','010F','010B'],
@@ -3737,6 +3862,7 @@ function renderGauges(){
   if(sw) sw.style.display='flex';
   activePIDs.forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
+    if(!vehiclePlausiblePid(pid)) return;  // diesel/SCR op benzine of EV-fantoom → geen tile
     const isMan=_scenario.enabled && _scenario.pids[pid]!==undefined;
     const c=document.createElement('div'); c.className='gc'+(isMan?' gc-manueel':''); c.id='gc-'+pid;
     const manTag=isMan?' <span style="font-size:7px;font-weight:800;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;vertical-align:middle">MAN</span>':'';
@@ -3874,6 +4000,23 @@ function updPID(pid,val){
   if(!pidHist[pid]) pidHist[pid]=[];
   pidHist[pid].push({t:Date.now(),v:val});
   if(pidHist[pid].length>120) pidHist[pid].shift();
+  // Brandstoftype (0151) net binnen → sensorlijst en actieve PIDs éénmalig
+  // opschonen (AdBlue/DPF/NOx verdwijnen van een benzineauto, en andersom).
+  if(pid==='0151' && !window._ftRechecked){
+    window._ftRechecked=true;
+    setTimeout(()=>{ try{ scenarioRecheckPids(); }catch(e){} },80);
+  }
+  // Waarde verraadt een fantoomsensor (turbo/tussenkoeler op -40°C etc.) →
+  // stilletjes deactiveren, éénmalig per PID, met logregel voor transparantie.
+  if(!window._phantomDropped) window._phantomDropped=new Set();
+  if(!window._phantomDropped.has(pid) && typeof _powertrainPhantom==='function' && _powertrainPhantom(pid)){
+    window._phantomDropped.add(pid);
+    activePIDs.delete(pid); manualPIDs.delete(pid);
+    const nm=getPidDef(pid)?.name||pid;
+    try{ log(`🚫 ${nm}: waarde wijst op niet-bestaande sensor (fantoom) — uitgeschakeld`,'info'); }catch(e){}
+    try{ renderGauges(); buildPIDList(document.getElementById('psrch')?.value||''); }catch(e){}
+    return;
+  }
   applyG(pid,val);
   if(graphPID===pid) drawGraph();
   if(pidViewMode==='correlate'){ const xs=document.getElementById('corrX'); if(xs&&(xs.value===pid||document.getElementById('corrY')?.value===pid)) drawScatter(); }
@@ -4240,7 +4383,7 @@ function buildCheckItems(){
     ['0104','Motorbelasting'],['010B','Inlaatdruk'],['010F','Inlaatlucht temp'],
     ['013C','Uitlaatgas temp B1S1'],['0159','Raildruk (direct)'],
     ['016B','DPF delta druk'],['018E','NOx doseerpomp'],
-    ['01A4','AdBlue injectiedruk'],['015B','HV accu SoC'],['0142','Accuspanning'],
+    ['01A4','Versnelling (actueel)'],['015B','HV accu SoC'],['0142','Accuspanning'],
   ];
   kernPids.forEach(([pid,name])=>{ const i=pc(pid,name); if(i) items.push(i); });
   // Vul aan met ELKE relevante gezonde sensor die de auto óók levert maar niet
@@ -5195,7 +5338,7 @@ function extractAIText(data){
   return '';
 }
 
-async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
+async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null, effort=null){
   // Proxy-modus: de Worker levert de API-sleutel server-side. Er wordt dus
   // GEEN sleutel vanuit de app meegestuurd — alleen het app-token.
   log('apiFetch via proxy ('+String(PROXY_URL).replace(/^https?:\/\//,'').slice(0,40)+')','info');
@@ -5224,10 +5367,13 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
     // afgekapt midden in een zin. Cap op 8000 houdt de kosten begrensd.
     max_tokens: Math.min(8000, Math.round(maxTokens*1.5)),
     system: sys,
-    messages: [{role:'user', content: prompt}]
-    // ⚠ GEEN thinking:{type:'disabled'} meer meesturen: Sonnet 5 accepteert
-    // handmatige thinking-configuratie niet (400-fout). Het model regelt
-    // thinking zelf adaptief; extractAIText pakt al het eerste text-block.
+    messages: [{role:'user', content: prompt}],
+    // Sonnet 5: thinking staat ALTIJD aan (adaptief) en kan niet uit — alleen
+    // het effort-niveau is stuurbaar. 'low' laat het model thinking overslaan
+    // bij simpele taken, zodat het budget naar de tékst gaat en JSON-antwoorden
+    // (zoals de verbindings-optimalisatie) niet leeg terugkomen.
+    thinking: { type:'adaptive' },
+    output_config: { effort: effort||'low' }
   };
 
   aiBusyBegin();
@@ -5248,7 +5394,7 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
       // Zelfherstel: 400 over een parameter die dit model niet (meer) kent?
       // Eén retry met kale body — voorkomt dat een modelwissel de app
       // stilletjes permanent in fallback-modus duwt.
-      if(resp.status===400 && /thinking|temperature|top_p|top_k|unexpected|not supported|invalid/i.test(msg)){
+      if(resp.status===400 && /thinking|output_config|effort|temperature|top_p|top_k|unexpected|not supported|invalid/i.test(msg)){
         log('API 400 ('+msg.slice(0,80)+') — retry met gesaneerde request','warn');
         const bare={ model:body.model, max_tokens:body.max_tokens, system:body.system, messages:body.messages };
         resp = await doFetch(bare);
@@ -5263,7 +5409,22 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
     }
     const data=await resp.json();
     try{ if(data.usage) trackTokens(data.usage); }catch(e){}
-    return extractAIText(data);
+    let txt=extractAIText(data);
+    // Vangnet: adaptieve thinking kan bij een krap budget het HELE max_tokens
+    // opeten vóór er een text-block komt (stop_reason=max_tokens, alleen
+    // thinking in content). Eén herkansing met dubbel budget lost dat op —
+    // dit was de "AI gaf geen bruikbaar antwoord"-melding bij Optimalisatie.
+    if(!txt && data && data.stop_reason==='max_tokens'){
+      log('AI-respons bevatte geen tekst (budget op aan thinking) — retry met dubbel budget','warn');
+      const bigger={...body, max_tokens: Math.min(8000, body.max_tokens*2)};
+      const r2=await doFetch(bigger);
+      if(r2.ok){
+        const d2=await r2.json();
+        try{ if(d2.usage) trackTokens(d2.usage); }catch(e){}
+        txt=extractAIText(d2);
+      }
+    }
+    return txt;
   } finally {
     aiBusyEnd();
   }
@@ -5448,7 +5609,8 @@ async function aiReplyRevise(){
   if(body) body.innerHTML='<div class="ai-ld"><span class="spin"></span> Rapport wordt herzien op basis van je input</div>';
   try{
     var _mdl=(window._aiReplyModel==='deep')?'claude-sonnet-5':null;
-    var txt=await apiFetch(p,1600,null,_mdl);
+    // Deep-modus: zelfde model, maar met hoger thinking-effort voor grondiger herzien
+    var txt=await apiFetch(p,1600,null,_mdl,(window._aiReplyModel==='deep')?'high':null);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     openAIReportSheet();
     showToast?.('Rapport herzien');
@@ -6024,7 +6186,7 @@ Antwoord met ALLEEN geldige JSON, geen andere tekst:
 {"optimize":true/false,"reason":"korte uitleg in het Nederlands","commands":[{"cmd":"ATxx","why":"reden"}]}
 Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"optimize":false,"reason":"..."}`;
 
-    const raw=await apiFetch(prompt,600);
+    const raw=await apiFetch(prompt,800);
     // Robuuste JSON-extractie: pak alles tussen eerste { en laatste }
     // (AI zet er soms tekst of ```fences omheen)
     let plan;
@@ -7736,6 +7898,9 @@ async function rdwLookup(){
     if(st) st.textContent=stTxt;
     showVtag(naam);
     log(`RDW: ${naam} ${jaar} brandstof:${brandstof||'?'} (${kent})`,'ok');
+    // Brandstoftype nu bekend → sensorlijst en actieve PIDs herchecken,
+    // óók live (voorheen alleen in demo): AdBlue/DPF verdwijnen direct.
+    try{ scenarioRecheckPids(); }catch(e){}
     if(val.weggelaten.length){
       val.weggelaten.forEach(w=>log(`RDW weggelaten — ${w.label}: ${w.reden}`,'warn'));
     }
@@ -7776,17 +7941,22 @@ async function tryReadVIN(){
   // is 3 hex-tekens (oneven!) waardoor naïef aan elkaar plakken alle
   // byte-paren laat verschuiven — dát produceerde eerder de garbage-VINs.
   const extractVIN=(raw)=>{
-    if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')) return null;
+    if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')||raw.includes('?')) return null;
     let vin='';
-    for(const line of String(raw).split(/[\r\n]+/)){
+    for(let line of String(raw).split(/[\r\n]+/)){
+      line=line.trim();
+      // ELM-segmentformaat (headers UIT): "014" lengteregel + "0:" "1:" frames
+      if(/^[0-9A-Fa-f]{3}$/.test(line)&&vin==='') continue;      // lengteregel overslaan
+      const seg=line.match(/^([0-9A-Fa-f]{1,2}):(.*)$/);
+      if(seg) line=seg[2];                                        // "0:"/"1:"-prefix strippen
       let hex=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
       if(!hex) continue;
       // CAN-header strippen: 11-bit (7E8/7E9... = 3 tekens) of 29-bit (18DAF1xx = 8)
       if(/^18DA/.test(hex)) hex=hex.slice(8);
       else if(/^7E[89A-F]/.test(hex)) hex=hex.slice(3);
       // ISO-TP PCI strippen: First Frame (1x xx) = 4 tekens, Consecutive (2x) = 2
-      if(/^1[0-9A-F]/.test(hex)) hex=hex.slice(4);
-      else if(/^2[0-9A-F]/.test(hex)) hex=hex.slice(2);
+      if(/^1[0-9A-F]/.test(hex)&&hex.length>14) hex=hex.slice(4);
+      else if(/^2[0-9A-F]/.test(hex)&&vin!=='') hex=hex.slice(2);
       // Respons-markers strippen: mode 09 (4902 + telbyte) of UDS (62F190)
       if(hex.startsWith('4902')) hex=hex.slice(4);
       if(hex.startsWith('62F190')) hex=hex.slice(6);
@@ -7799,22 +7969,26 @@ async function tryReadVIN(){
     vin=vin.replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,17);
     return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin)?vin:null;
   };
+  // Bij falen: ruwe respons in de BT-log, zodat de oorzaak zichtbaar is
+  const vinDiag=(label,raw)=>{ try{ btDiag(`VIN ${label} ruw: "${String(raw||'(leeg)').replace(/[\r\n]+/g,' | ').slice(0,140)}"`,'info'); }catch(e){} };
 
   let vin=null;
   try{
     await sendCmd('ATH1');
 
     // Poging 1: standaard mode 09 via broadcast (7DF)
-    vin=extractVIN(await sendCmd('0902',4000));
-    if(vin) btDiag('VIN via standaard 0902 ✓','ok');
+    let _r=await sendCmd('0902',4000);
+    vin=extractVIN(_r);
+    if(vin) btDiag('VIN via standaard 0902 ✓','ok'); else vinDiag('0902/7DF',_r);
 
     // Poging 2: zelfde verzoek maar rechtstreeks aan de motor-ECU (7E0).
     // Sommige ECU's (o.a. Mazda) vullen de VIN alleen bij fysieke adressering.
     if(!vin){
       btDiag('VIN leeg via broadcast — fysiek adres 7E0 proberen','info');
       await sendCmd('ATSH7E0');
-      vin=extractVIN(await sendCmd('0902',4000));
-      if(vin) btDiag('VIN via 7E0 + 0902 ✓','ok');
+      _r=await sendCmd('0902',4000);
+      vin=extractVIN(_r);
+      if(vin) btDiag('VIN via 7E0 + 0902 ✓','ok'); else vinDiag('0902/7E0',_r);
     }
 
     // Poging 3: UDS 22 F190 (ReadDataByIdentifier VIN) — moderne standaard,
@@ -8347,7 +8521,7 @@ Object.assign(ALL_PID_DEFS,{
   '0182':{name:'Afstand MIL totaal',     unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
   '0183':{name:'Afstand na wissen totaal',unit:'km', cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
   '0184':{name:'Warmlopen totaal',       unit:'x',   cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
-  '0185':{name:'Continu MIL teller',     unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0185':{name:'AdBlue niveau',          unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[9]!=null?b[9]/255*100:null)},   // SAE 85 = NOx reagent system; laatste byte = tankniveau. Stond fout als "Continu MIL teller"
   '0186':{name:'Continu afstand MIL',    unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
   '0187':{name:'NOx sensor B1S1',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
   '0188':{name:'NOx sensor B1S2',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
@@ -8378,7 +8552,7 @@ Object.assign(ALL_PID_DEFS,{
   '01A1':{name:'Tussenkoeler temp B',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
   '01A2':{name:'EGR koeler temp B1',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
   '01A3':{name:'EGR koeler temp B2',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
-  '01A4':{name:'AdBlue injectiedruk',    unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '01A4':{name:'Versnelling (actueel)',  unit:'',    cat:'Rijden',   min:0,max:65,   parse:b=>(((b[2]||0)<<8|(b[3]||0))/1000)},   // SAE A4 = transmission actual gear (ratio) — stond fout als "AdBlue injectiedruk"
   '01A5':{name:'Compressor inlaat druk', unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
   '01A6':{name:'Brandstof verbruik abs', unit:'g/s', cat:'Brandstof',min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.03125)}
 });
@@ -8485,7 +8659,7 @@ function selectCategoryPIDs(cat){
   discoveredPIDDefs.forEach(p=>{
     if((p.cat||'Overig')===cat){
       const gezond = demoMode || _pidHealth[p.pid]!=='onzin' && _pidHealth[p.pid]!=='twijfel';
-      if(gezond && !activePIDs.has(p.pid)){ activePIDs.add(p.pid); manualPIDs.add(p.pid); added++; }
+      if(gezond && vehiclePlausiblePid(p.pid) && !activePIDs.has(p.pid)){ activePIDs.add(p.pid); manualPIDs.add(p.pid); added++; }
     }
   });
   buildPIDList(document.getElementById('psrch')?.value||'');
@@ -8526,7 +8700,10 @@ function buildPIDList(filter=''){
   }
 
   const f=filter.toLowerCase();
-  const filtered=f ? source.filter(p=>p.name.toLowerCase().includes(f)||p.pid.includes(filter.toUpperCase())) : source;
+  // Brandstoffilter aan de bron: AdBlue/DPF/NOx op een benzineauto (of
+  // verbrandings-PIDs op een EV) horen niet eens in de keuzelijst.
+  const plausibel=source.filter(p=>vehiclePlausiblePid(p.pid));
+  const filtered=f ? plausibel.filter(p=>p.name.toLowerCase().includes(f)||p.pid.includes(filter.toUpperCase())) : plausibel;
 
   const cats=[...new Set(filtered.map(p=>p.cat||'Overig'))];
   cats.forEach(cat=>{
@@ -8568,14 +8745,29 @@ function buildPIDList(filter=''){
 // ── PID PARSING — gebruikt discoveredPIDDefs parse functies ──
 // Aantal databytes per mode-01 PID (SAE J1979). Nodig om een multi-PID
 // respons (41 0C .. 41 0D .. 41 05 ..) correct in stukken te knippen.
+// Databyte-lengte per mode-01 PID (SAE J1979). VOLLEDIG t/m de uitgebreide
+// range — de oude tabel stopte bij 63, waardoor elk batch-antwoord met een
+// hogere PID (68/9D/9E/A0... zoals de Mazda CX-5 stuurt) als "leeg" werd
+// weggegooid → dips → batch uitgeschakeld → trage sequentiële polling.
 const PID_BYTE_LEN={
+  '00':4,'01':4,'02':2,'03':2,
   '04':1,'05':1,'06':1,'07':1,'08':1,'09':1,'0A':1,'0B':1,'0C':2,'0D':1,
-  '0E':1,'0F':1,'10':2,'11':1,'13':1,'14':2,'15':2,'16':2,'17':2,'18':2,
-  '19':2,'1A':2,'1B':2,'1F':2,'21':2,'22':2,'23':2,'24':4,'25':4,'26':4,
-  '27':4,'28':4,'2C':1,'2D':1,'2E':1,'2F':1,'30':1,'31':2,'32':2,'33':1,
-  '34':4,'3C':2,'3D':2,'3E':2,'3F':2,'42':2,'43':2,'44':2,'45':1,'46':1,
-  '47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'51':1,'52':1,
-  '59':2,'5A':1,'5C':1,'5E':2,'61':1,'62':1,'63':2
+  '0E':1,'0F':1,'10':2,'11':1,'12':1,'13':1,'14':2,'15':2,'16':2,'17':2,'18':2,
+  '19':2,'1A':2,'1B':2,'1C':1,'1D':1,'1E':1,'1F':2,'20':4,'21':2,'22':2,'23':2,
+  '24':4,'25':4,'26':4,'27':4,'28':4,'29':4,'2A':4,'2B':4,
+  '2C':1,'2D':1,'2E':1,'2F':1,'30':1,'31':2,'32':2,'33':1,
+  '34':4,'35':4,'36':4,'37':4,'38':4,'39':4,'3A':4,'3B':4,
+  '3C':2,'3D':2,'3E':2,'3F':2,'40':4,'41':4,'42':2,'43':2,'44':2,'45':1,'46':1,
+  '47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'4F':4,'50':4,
+  '51':1,'52':1,'53':2,'54':2,'55':2,'56':2,'57':2,'58':2,
+  '59':2,'5A':1,'5B':1,'5C':1,'5D':2,'5E':2,'5F':1,
+  '60':4,'61':1,'62':1,'63':2,
+  // Uitgebreide range (J1979 2014+) — o.a. multi-sensor temperaturen
+  '64':5,'65':2,'66':5,'67':3,'68':7,'69':7,'6A':5,'6B':5,'6C':5,
+  '6D':11,'6E':9,'6F':3,'70':9,'71':5,'72':5,'73':5,'74':5,'75':7,'76':7,
+  '77':5,'78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,
+  '80':4,'85':10,'87':5,'8E':1,'9A':6,'9D':4,'9E':2,'9F':9,
+  'A0':4,'A2':2,'A4':4,'A5':1,'A6':4,'C0':4
 };
 function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
 
@@ -8584,17 +8776,21 @@ function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
 //  A) los: "410C0A98 410D00 410584" (elk PID herhaalt 41)
 //  B) Mazda/ISO-TP multiframe: "00E 0:410C0B95 0469 1:11200B24..." 
 //     één 41, dan per PID: nummer + databytes aaneengeregen
-function splitBatchResponse(raw){
+function splitBatchResponse(raw, expectedPids){
   if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')||raw.includes('STOPPED')) return {};
   // Frame-nummers (0:,1:,2:) en ISO-TP lengte-prefix strippen
   let hex=String(raw)
     .replace(/[0-9A-Fa-f]?:/g,'')        // "0:" "1:" frame-headers
     .replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
-  // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
-  hex=hex.replace(/^0[0-9A-F]{2}(?=41)/,'');
+  // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14, "014"=20 bytes) wegknippen
+  hex=hex.replace(/^[0-9A-F]{3}(?=41)/,'');
   const out={};
   const firstMode=hex.indexOf('41');
   if(firstMode<0) return out;
+  // Suffixen die we in de TX vroegen — maakt de parser ZELFHERSTELLEND:
+  // onbekende byte-lengtes worden afgeleid uit de positie van de volgende
+  // verwachte PID i.p.v. de hele respons weg te gooien ("Multi-PID leeg").
+  const exp=new Set((expectedPids||[]).map(p=>String(p).slice(-2).toUpperCase()));
 
   // Formaat A: meerdere losse 41XX blokken?
   const blocks=(hex.match(/41[0-9A-F]{2}/g)||[]).length;
@@ -8611,16 +8807,31 @@ function splitBatchResponse(raw){
     return out;
   }
 
-  // Formaat B: één 41, daarna per PID: nummer + databytes
-  let i=firstMode+2;
-  let guard=0;
-  while(i+2<=hex.length&&guard++<20){
+  // Formaat B: één 41, daarna per PID: nummer + databytes aaneengeregen
+  let i=firstMode+2, guard=0;
+  const remaining=new Set(exp);
+  while(i+2<=hex.length&&guard++<24){
     const suf=hex.slice(i,i+2);
-    if(!PID_BYTE_LEN[suf]) break; // onbekend PID-nummer of padding → stop
-    const n=pidByteLen(suf), b=[];
+    // Alleen doorlopen op suffixen die we verwachten (of, zonder
+    // verwachtingslijst, die we kennen). Padding "00.." stopt hier vanzelf.
+    if(exp.size ? !exp.has(suf) : !PID_BYTE_LEN[suf]) break;
+    remaining.delete(suf);
+    let n=PID_BYTE_LEN[suf]||0;
+    if(!n && remaining.size){
+      // Lengte onbekend → afleiden: databytes lopen tot de volgende verwachte PID
+      for(let j=i+4;j+2<=hex.length;j+=2){
+        if(remaining.has(hex.slice(j,j+2))){ n=(j-(i+2))/2; break; }
+      }
+    }
+    if(!n){
+      // Laatste/enig onbekende PID: rest nemen, achterliggende 00-padding eraf
+      let end=hex.length; while(end-2>i+2 && hex.slice(end-2,end)==='00') end-=2;
+      n=Math.max(1,Math.min(13,(end-(i+2))/2|0));
+    }
+    const b=[];
     for(let k=0;k<n&&i+2+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+2+k*2,i+2+k*2+2),16));
-    if(b.length<n) break;
-    out['01'+suf]=b;
+    if(!b.length) break;
+    out['01'+suf]=b;               // partieel is óók winst — nooit meer alles weggooien
     i+=2+n*2;
   }
   return out;
@@ -8683,16 +8894,24 @@ function pidPollInterval(pid){
   const suf=pid.slice(2).toUpperCase();
   // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen
   if(typeof _evModeActive!=='undefined' && _evModeActive && typeof ICE_PIDS_SUFFIX!=='undefined' && ICE_PIDS_SUFFIX.has(suf)) return 999999;
+  // ⚙️ Handmatige override vanuit Sensorbeheer wint van de automatische klasse
+  const ovr=(typeof _pidRateOvr!=='undefined')?_pidRateOvr[pid]:null;
+  if(ovr==='hoog') return 120;
+  if(ovr==='laag') return 10000;
   // Motortype-afhankelijke prioriteiten
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
+  let base=null;
   if(et==='hybride'||et==='ev'){
-    if(['42','5B','5C','15B'].includes(suf)) return 500; // accu/spanning vaker
-    if(['0C','0D'].includes(suf)) return 150;            // RPM/snelheid altijd snel
+    if(['42','5B','5C','15B'].includes(suf)) base=500;      // accu/spanning vaker
+    else if(['0C','0D'].includes(suf)) base=150;            // RPM/snelheid altijd snel
   } else if(et==='diesel'){
-    if(['23','59'].includes(suf)) return 200;            // raildruk snel
-    if(['7A','7B','7C','7D'].includes(suf)) return 5000; // DPF minder snel
+    if(['23','59'].includes(suf)) base=200;                 // raildruk snel
+    else if(['7A','7B','7C','7D'].includes(suf)) base=5000; // DPF minder snel
   }
-  return Math.round((PID_POLL_CLASS[suf]||1000) * (typeof _pollMult!=='undefined'?_pollMult:1));   // default MEDIUM × strategie
+  if(base==null) base=PID_POLL_CLASS[suf]||1000;            // default MEDIUM
+  // × verbindingsstrategie × globale gebruikersverversing (⚙️ Beheer)
+  const um=(typeof userPollMult==='function')?userPollMult():1;
+  return Math.round(base * (typeof _pollMult!=='undefined'?_pollMult:1) * um);
 }
 // Welke PIDs zijn NU "due" om te pollen?
 // ── DODE-PID-SNOEI ──────────────────────────────────────────────────
@@ -8783,7 +9002,7 @@ function startPoll(){
           const grp=due.slice(g,g+3);
           const cmd='01'+grp.map(p=>p.slice(2)).join('');
           const raw=await sendCmd(cmd,2500);
-          const parsed=splitBatchResponse(raw);
+          const parsed=splitBatchResponse(raw,grp);
           const got=Object.keys(parsed).length;
           if(got===0){
             // Echte mislukking: leeg/NO DATA/kapotte respons → dip. Niet per PID
@@ -9250,8 +9469,8 @@ const AUTO_KENNIS = {
   'ford':       {zwak:[['EcoBoost koelvloeistof-verlies (1.0)','benzine'],['DPF (TDCi)','diesel'],['waterpomp intern (1.0 EcoBoost)','benzine'],['versnellingsbak PowerShift',null]],pids:['0105','0106','016B','0142'],let_op:'1.0 EcoBoost: interne waterpomp kan koelvloeistof in olie brengen.'},
   'opel':       {zwak:[['distributieketting (1.4 Turbo)','benzine'],['thermostaat',null],['waterpomp',null],['EGR (CDTi)','diesel']],pids:['0105','010C','0106'],let_op:'1.4 Turbo: ketting-rek geeft P-codes; controleer timing.'},
   'renault':    {zwak:[['injectoren (dCi diesel)','diesel'],['EGR-klep','diesel'],['DPF','diesel'],['turbo-actuator',null]],pids:['0106','0107','016B','0170'],let_op:'dCi: injector-codering + EGR. PSA/Renault diesel gevoelig voor kortritten.'},
-  'peugeot':    {zwak:[['distributieketting (1.2 PureTech)','benzine'],['EGR/DPF (HDi)','diesel'],['AdBlue-systeem','diesel'],['olieslib 1.2 PureTech','benzine']],pids:['0106','016B','01A4','0105'],let_op:'1.2 PureTech: ketting met natte riem — controleer olie + timing.'},
-  'citroen':    {zwak:[['1.2 PureTech ketting/riem','benzine'],['HDi DPF','diesel'],['AdBlue (BlueHDi)','diesel'],['ophanging',null]],pids:['0106','016B','01A4'],let_op:'Deelt motoren met Peugeot — zelfde PureTech/HDi aandachtspunten.'},
+  'peugeot':    {zwak:[['distributieketting (1.2 PureTech)','benzine'],['EGR/DPF (HDi)','diesel'],['AdBlue-systeem','diesel'],['olieslib 1.2 PureTech','benzine']],pids:['0106','016B','0185','0105'],let_op:'1.2 PureTech: ketting met natte riem — controleer olie + timing.'},
+  'citroen':    {zwak:[['1.2 PureTech ketting/riem','benzine'],['HDi DPF','diesel'],['AdBlue (BlueHDi)','diesel'],['ophanging',null]],pids:['0106','016B','0185'],let_op:'Deelt motoren met Peugeot — zelfde PureTech/HDi aandachtspunten.'},
   'volvo':      {zwak:[['PCV-systeem (oudere 5-cil)',null],['DPF (diesel)','diesel'],['PHEV accu-balancering','hybride'],['turbo',null]],pids:['0106','016B','015B','0170'],let_op:'PHEV (XC60/XC90): laat verbrandingsmotor meedraaien voor volledige meting.'}
 };
 
@@ -9782,7 +10001,7 @@ function closeTopOverlay(){
   if(vis(rec)){ try{ closePidRecorder(); }catch(_){ rec.style.display='none'; } return true; }
   // 1) Losse modals die met display:flex/block worden getoond
   for(const id of ['pdfReadyModal','needsUpdateModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker',
-                   'aiReportSheet','bandenInfoModal','proefritKeuzeModal','koopKeuzeModal','seizoenKeuzeModal','bugModal','deepDiagOv']){
+                   'aiReportSheet','bandenInfoModal','proefritKeuzeModal','koopKeuzeModal','seizoenKeuzeModal','bugModal','deepDiagOv','pidMgrOv']){
     const el=document.getElementById(id);
     if(vis(el)){ el.style.display='none'; return true; }
   }
