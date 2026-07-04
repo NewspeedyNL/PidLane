@@ -1,6 +1,6 @@
-<!-- ═══════════════════════════════════════════════════════════
+<!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-03 16:25 (CET) — rapportknoppen-fix (z-index), dubbeltik PID-uit, datastroom-reset, voertuigoverzicht+% (invoer leidend), log-centrum
+     Build: 2026-07-04 14:40 (CET) — Logboek-lade verwijderd uit live view (logs alleen nog via ⋯-menu → Logs & data)
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -1154,6 +1154,13 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="choice-out"><b>Je krijgt:</b> conditiefoto groen/oranje/rood per systeem.</div>
         </div>
 
+        <div class="choice-card" id="wc-dtc">
+          <div class="choice-head"><span class="choice-icon">🔴</span><span class="choice-time">⏱ ±30 sec</span></div>
+          <div class="choice-title">Foutcodes uitlezen</div>
+          <div class="choice-desc">Lees actieve foutcodes (DTC's) uit met uitleg per code. Wissen kan ook.</div>
+          <div class="choice-out"><b>Je krijgt:</b> codelijst met ernst en betekenis.</div>
+        </div>
+
 
 
 
@@ -1499,7 +1506,6 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
     <div class="tabs">
       <button class="tab active" onclick="sw('live',this)">📊 Live</button>
       <button class="tab" onclick="sw('graph',this)">📈 Grafiek</button>
-      <button class="tab" onclick="sw('dtc',this)">🔴 Foutcodes</button>
     </div>
     <div class="tb">
 
@@ -1947,14 +1953,10 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 
 <!-- ══ ON-TOP LADE HANDVATTEN ══ -->
 <nav id="bottomNav">
-  <button onclick="goHome()"><span class="bn-ic">🏠</span>Start</button>
-  <button id="bnLive" class="adminOnly" onclick="openLiveData()"><span class="bn-ic">📊</span>Live data</button>
+  <button id="bnLive" class="adminOnly" onclick="openLiveData()"><span class="bn-ic">📊</span>Live view</button>
+  <button id="bnPids" class="adminOnly" onclick="openPidChoice()"><span class="bn-ic">🎛️</span>PID-keuze</button>
   <button onclick="reportNav()"><span class="bn-ic">📄</span>Rapport</button>
 </nav>
-<div class="lade-handles">
-  <button class="lade-handle" onclick="toggleLade('slPanel')">🚗 Sensoren</button>
-  <button class="lade-handle" onclick="toggleLade('logLade')">📋 Logs</button>
-</div>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
 <div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9600;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
@@ -3374,8 +3376,7 @@ function goHome(){
 }
 function openPidChoice(){
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
-  var el=document.getElementById('slPanel');
-  if(el && !el.classList.contains('lade-open')){ try{ toggleLade('slPanel'); }catch(e){} }
+  try{ toggleLade('slPanel'); }catch(e){}   // toggle: opent én sluit
 }
 function confirmPidLive(){
   try{ closeLades(); }catch(e){}
@@ -3385,9 +3386,11 @@ function pidChoiceBackHome(){
   try{ goHome(); }catch(e){}
 }
 function openLiveData(){
+  // Alleen naar de live view; het PID-scherm heeft z'n eigen knop in de
+  // onderbalk. Voorheen opende deze knop óók de PID-lade — dat maakte de
+  // bediening verwarrend (nogmaals klikken om te sluiten).
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
-  var el=document.getElementById('slPanel');
-  if(el && !el.classList.contains('lade-open')){ try{ toggleLade('slPanel'); }catch(e){} }
+  try{ closeLades(); }catch(e){}
 }
 function reportNav(){
   if(window._lastAIReport && window._lastAIReport.text){ try{ openAIReportSheet(); }catch(e){} }
@@ -3459,18 +3462,9 @@ function initLades(){
       +'<button class="lade-x" title="Sluiten" onclick="closeLades()">✕</button>';
     sl.insertBefore(bar, sl.firstChild);
   }
-  // Log-lade: wrap #logbar zodat de balk niet door log()-pruning sneuvelt.
-  const lb=document.getElementById('logbar');
-  if(lb && !document.getElementById('logLade')){
-    const wrap=document.createElement('div'); wrap.id='logLade';
-    const bar=document.createElement('div'); bar.className='lade-bar';
-    bar.innerHTML='<b style="font-size:13px">📋 Logboek</b><div class="sp"></div>'
-      +'<button class="lade-x" title="Vergroten/verkleinen" onclick="toggleLadeTall(\'logLade\')">⤢</button>'
-      +'<button class="lade-x" title="Sluiten" onclick="closeLades()">✕</button>';
-    lb.parentNode.insertBefore(wrap, lb);
-    wrap.appendChild(bar);
-    wrap.appendChild(lb);   // #logbar verhuist mee; ID + log()-target blijven intact
-  }
+  // Log-lade bewust NIET meer aanmaken: logs lopen uitsluitend via het
+  // log-centrum (⋯-menu → "📋 Logs & data"). #logbar blijft verborgen bestaan
+  // als schrijfdoel van log(); localLog voedt het log-centrum.
 }
 function toggleLade(id){
   const el=document.getElementById(id); if(!el) return;
@@ -3537,12 +3531,13 @@ function startChoice(choice){
   } else if(choice==='report'){
     openAnalysis('diag');
   } else {
-    // Overgebleven tabs: live, graph, dtc
-    const tabMap={live:0,graph:1,dtc:2};
+    // Overgebleven tabs: live, graph. Foutcodes is een kaart in deur 1
+    // (geen tab meer) — de gebruiker start de scan daar zelf.
+    const tabMap={live:0,graph:1};
     const tabs=document.querySelectorAll('.tab');
     if(tabMap[choice]!==undefined) sw(choice,tabs[tabMap[choice]]);
+    else if(choice==='dtc') sw('dtc',null);
   }
-  if(choice==='dtc') setTimeout(()=>scanDTC(),300);
   if(choice==='report') setTimeout(()=>runQuickAI(),300);
   if(choice==='fuel') setTimeout(()=>runFuelAnalysis(),400);
 }
