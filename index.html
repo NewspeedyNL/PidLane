@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-04 14:40 (CET) — Logboek-lade verwijderd uit live view (logs alleen nog via ⋯-menu → Logs & data)
+     Build: 2026-07-04 18:55 (CET) — PDF-modal 2 knoppen+z-index, Rit-knop uit grafiek, dubbele voertuiginfo weg, Home-knop, Rijtest hernoemd, rit-rapport ruimer, kruisje AI-Monteur
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -593,8 +593,10 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 @keyframes cardStale { 0%,100%{background:rgba(247,127,0,.04);} 50%{background:rgba(247,127,0,.14);} }
 @keyframes dotFlash { 0%{transform:scale(1);box-shadow:0 0 4px var(--gn);} 50%{transform:scale(1.7);box-shadow:0 0 14px var(--gn);} 100%{transform:scale(1);box-shadow:0 0 4px var(--gn);} }
 .gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
-/* Rollen: accounts met role:'user' in config.js zien alleen de basis */
-.role-user .adminOnly { display:none !important; }
+/* Rollen: UI van admin en user is gelijkgetrokken (verzoek 2026-07-04) —
+   role:'user' verbergt NIETS meer. De class .adminOnly blijft op elementen
+   staan zodat gating later per element her-activeerbaar is. */
+.role-user .adminOnly { }
 #datalogBtn.adminOnly{display:flex}
 /* ══ READINESS KAARTJE (boven analyse-startknop) ══ */
 .rdy-card{border-radius:var(--r);padding:9px 11px;margin-bottom:10px;border:1px solid var(--bd);background:var(--sur);font-size:12px}
@@ -1085,8 +1087,6 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <div class="welcome-title" id="welcomeTitle">Wat ga je vandaag doen?</div>
         <div style="font-size:12px;color:var(--tx3)" id="welcomeSub">Kies je situatie — de app past zich aan.</div>
       </div>
-      <div class="welcome-vin" id="welcomeVin" style="display:none">✅ VIN herkend</div>
-      <button onclick="openPidChoice()" title="PIDs kiezen / optimaliseren" style="margin-left:8px;padding:5px 11px;border-radius:999px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">🔧 PIDs kiezen</button>
     </div>
     <!-- 3 tabs vervangen door 4 intent-deuren in de scroll hieronder -->
   </div>
@@ -1167,8 +1167,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 
         <div class="choice-card" id="wc-rit10">
           <div class="choice-head"><span class="choice-icon">🏎️</span><span class="choice-time">⏱ ±10 min</span></div>
-          <div class="choice-title">Rijtest</div>
-          <div class="choice-desc">10 min rijden — volledig beeld onder belasting.</div>
+          <div class="choice-title">Zelf rijden &amp; analyseren</div>
+          <div class="choice-desc">Rij ±10 min je eigen route; de app meet onder echte belasting en levert een volledig technisch rapport.</div>
           <div class="choice-out"><b>Je krijgt:</b> rijgedrag + technisch rapport.</div>
         </div>
 
@@ -1196,8 +1196,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 
         <div class="choice-card" id="wc-rit10b">
           <div class="choice-head"><span class="choice-icon">🏎️</span><span class="choice-time">⏱ ±10 min</span></div>
-          <div class="choice-title">Rijtest</div>
-          <div class="choice-desc">10 min rijden — zie verbruik en rijgedrag onder echte belasting.</div>
+          <div class="choice-title">Zelf rijden &amp; analyseren</div>
+          <div class="choice-desc">Rij ±10 min je eigen route; zie verbruik en rijgedrag onder echte belasting.</div>
           <div class="choice-out"><b>Je krijgt:</b> rijgedrag + technisch rapport.</div>
         </div>
       </div>
@@ -1297,7 +1297,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 <!-- ══ TOPBAR ══ -->
 <div id="appScale">
 <div class="topbar">
-  <div class="logo" onclick="goHome()" style="cursor:pointer"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
+  <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
+  <button onclick="goHome()" title="Home" aria-label="Home" style="margin-left:6px;width:34px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">🏠</button>
   <div class="tpr">
     <div id="vtag"></div>
     <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
@@ -1563,7 +1564,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 
       <!-- DIAGNOSE -->
       <div class="pane" id="pane-diag">
-        <div class="diag-pad">
+        <div class="diag-pad" style="position:relative">
+          <button onclick="goHome()" title="Sluiten" aria-label="Sluiten" style="position:absolute;top:8px;right:10px;width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:15px;cursor:pointer;z-index:5">✕</button>
           <div class="diag-step" id="dstep1">
             <div class="diag-step-h"><div class="dsn active" id="dsn1">1</div><div><div class="dsh-title">Beschrijf het probleem</div><div class="dsh-sub">Wat is er precies mis?</div></div></div>
             <textarea class="diag-ta" id="diagDesc" placeholder="Bijv: Motor stottert bij koud opstarten, tikkend geluid bij lage toerentallen..."></textarea>
@@ -1640,7 +1642,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <button class="trend-group-btn" onclick="selectTrendGroup('temp')">🌡️ Temperatuur</button>
           <button class="trend-group-btn" onclick="selectTrendGroup('none')">✕ Wis</button>
           <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="display:none;margin-left:auto;background:linear-gradient(135deg,#0a1a1f,#0d2a30);color:#22d3ee;border-color:#22d3ee;font-weight:700">🖥 HUD</button>
-          <button class="trend-group-btn" onclick="openRitAnalyse()" style="background:linear-gradient(135deg,#020c14,#001a2e);color:#00f5ff;border-color:#00f5ff55;font-weight:700">🚗 Rit Analyse</button>
+
         </div>
 
         <!-- Individuele sensor selector -->
@@ -2053,11 +2055,20 @@ if(typeof USERS === 'undefined'){
 let currentUser = null;
 
 function doLogin(){
-  const user = document.getElementById('loginUser').value.trim();
+  let user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;
   const err  = document.getElementById('loginErr');
 
-  const account = USERS[user];
+  // Tolerante login: eerst exacte match; anders hoofdletter-ongevoelig op de
+  // sleutel of het label, waarbij spaties en underscores gelijkwaardig zijn.
+  // Zo werken "nico"/"Nico" en "Autobedrijf Pieters"/"Autobedrijf_Pieters"
+  // allebei. Het wachtwoord blijft exact (hoofdlettergevoelig).
+  const _norm=s=>String(s||'').trim().toLowerCase().replace(/[\s_]+/g,'');
+  const _key=Object.keys(USERS).find(k=>k===user)
+         || Object.keys(USERS).find(k=>_norm(k)===_norm(user))
+         || Object.keys(USERS).find(k=>_norm(USERS[k].label||'')===_norm(user));
+  const account = _key ? USERS[_key] : undefined;
+  if(_key) user=_key;   // canonieke sleutel gebruiken voor sessie/logs
   if(!account || account.password !== pass){
     err.textContent = '⚠ Gebruikersnaam of wachtwoord onjuist';
     document.getElementById('loginPass').value = '';
@@ -2102,6 +2113,10 @@ function doLogin(){
 
   updateApiPill();
   log(`Ingelogd als ${user} (${account.role})`,'ok');
+  try{
+    const _v=(typeof APP_VERSION!=='undefined')?APP_VERSION:'?';
+    log('Config geladen: v'+_v+' \u2014 '+Object.keys(USERS).length+' gebruikers','info');
+  }catch(e){}
   log('Klik "Verbinden" of "Demo modus" om te starten.','info');
 
   // Admin krijgt ALTIJD de beste (crash-vaste) live-log — geen drempel.
@@ -5622,15 +5637,14 @@ async function exportAIReportPDF(btn){
 function showPdfReadyModal(){
   let m=document.getElementById('pdfReadyModal');
   if(!m){
-    m=document.createElement('div'); m.id='pdfReadyModal';
+    m=document.createElement('div'); m.id='pdfReadyModal'; m.style.zIndex='9950';
     m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
     m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center">
       <div style="font-size:34px;margin-bottom:8px">📄</div>
       <div style="font-weight:800;font-size:15px;margin-bottom:4px">PDF-rapport klaar</div>
       <div id="pdfFname" style="font-size:12px;color:var(--tx3);margin-bottom:14px;word-break:break-all"></div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="sharePdf()" style="padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">📤 Delen</button>
-        <button onclick="downloadPdf()" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">💾 Delen / Downloaden</button>
+        <button onclick="sharePdf()" style="padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">💾 Delen / Downloaden</button>
         <button onclick="savePdfToFolder(this)" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">📁 Opslaan in map</button>
         <button onclick="document.getElementById('pdfReadyModal').style.display='none'" style="padding:9px;border-radius:9px;border:none;background:none;color:var(--tx3);font-family:var(--f);font-size:13px;cursor:pointer">Sluiten</button>
       </div></div>`;
@@ -10856,7 +10870,7 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
       : _ftr==='diesel' ? '\nDit is een diesel — let op DPF/roetfilter en AdBlue/SCR waar relevant.' : '';
     const totalAnalysis=await apiFetch(
       `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
-      1200
+      3000
     );
     // Rapport beschikbaar maken voor PDF-export
     lines.push('═══════════════════════════════════');
