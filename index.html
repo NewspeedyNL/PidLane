@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-04 19:20 (CET) — AdBlue/diesel-fantoom-fix in weergave: filter in renderGauges, gefilterde auto-add, her-filter zodra brandstof bekend
+     Build: 2026-07-05 04:15 (CET) — feature-flags: alle functies aan/uit via admin (feat_* keys), basis blijft altijd aan
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -1506,7 +1506,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
   <div class="cc">
     <div class="tabs">
       <button class="tab active" onclick="sw('live',this)">📊 Live</button>
-      <button class="tab" onclick="sw('graph',this)">📈 Grafiek</button>
+      <button class="tab" id="tabGraph" onclick="sw('graph',this)">📈 Grafiek</button>
     </div>
     <div class="tb">
 
@@ -3391,7 +3391,6 @@ function showWelcome(vinInfo){
   ws.classList.remove('hidden');
   try{ backToDoors(); }catch(e){}  // altijd starten op de 4-deuren-keuze
   if(vinInfo&&vinInfo.merk){
-    document.getElementById('welcomeVin').style.display='inline-flex';
     document.getElementById('welcomeTitle').textContent=`${vinInfo.merk} ${vinInfo.model||''} ${vinInfo.year||''} herkend`;
   } else if(demoMode){
     document.getElementById('welcomeTitle').textContent='Demo modus — kies een optie';
@@ -3496,6 +3495,12 @@ function initLades(){
       +'<button class="lade-x" title="Sluiten" onclick="closeLades()">✕</button>';
     sl.insertBefore(bar, sl.firstChild);
   }
+  // Portal: #slPanel naar <body>. #appScale krijgt transform:scale() (zoom)
+  // en een transform maakt de voorouder het referentiepunt voor position:fixed-
+  // kinderen — daardoor belandde de lade zwevend/half zichtbaar in de content
+  // (verticale label, lege inhoud). Op <body> is fixed altijd viewport-gebonden
+  // (zelfde bewezen patroon als het ⋯-menu).
+  if(sl && sl.parentNode!==document.body) document.body.appendChild(sl);
   // Log-lade bewust NIET meer aanmaken: logs lopen uitsluitend via het
   // log-centrum (⋯-menu → "📋 Logs & data"). #logbar blijft verborgen bestaan
   // als schrijfdoel van log(); localLog voedt het log-centrum.
@@ -5183,6 +5188,46 @@ async function loadRemoteConfig(){
     }
   }catch(e){ /* offline / nog geen config → fallback blijft actief */ }
 }
+// ════════════════════════════════════════════════════════════════
+//  FEATURE-FLAGS — alle functies op afstand aan/uit via admin.html.
+//  Config-keys (feat_*) komen uit Airtable via de Worker; ontbrekend of
+//  onbekend = AAN. Basisfuncties (login, verbinden, live-tegels, onderbalk-
+//  kern, topbar, deur 1 zelf, log-centrum) hebben bewust GEEN flag.
+// ════════════════════════════════════════════════════════════════
+const FEATURE_TOGGLES = {
+  feat_ai_monteur:   ['#wc-diag'],
+  feat_deepdiag:     ['#wc-deepdiag'],
+  feat_pidrecorder:  ['#wc-pidrec'],
+  feat_conditiecheck:['#wc-check'],
+  feat_foutcodes:    ['#wc-dtc'],
+  feat_rijtest:      ['#wc-rit10','#wc-rit10b'],
+  feat_onderhoud:    ['#wc-onderhoud'],
+  feat_koopcheck:    ['#wc-koop'],
+  feat_proefrit:     ['#wc-proefrit'],
+  feat_verbruik:     ['#wc-fuel'],
+  feat_langerit:     ['#wc-langerit'],
+  feat_seizoen:      ['#wc-seizoen'],
+  feat_ev:           ['#wc-ev'],
+  feat_live_spec:    ['#wc-live'],
+  feat_grafiek:      ['#tabGraph'],
+  feat_pid_keuze:    ['#bnPids'],
+  feat_dossier:      ['#vtagPct','#vehOverview'],
+  feat_pdf:          ['button[onclick^="exportAIReportPDF"]','#pdfReadyModal'],
+  feat_ai_reply:     ['#aiReplyWrap'],
+  feat_demo:         ['[id="btnDemo"]'],
+  feat_tokens:       ['#tokPill']
+};
+function featOn(key){ try{ return _cfgBool((window.PID_CONFIG||{})[key], true); }catch(e){ return true; } }
+function applyFeatureToggles(){
+  let css='';
+  for(const k in FEATURE_TOGGLES){
+    if(!featOn(k)) css += FEATURE_TOGGLES[k].join(',') + '{display:none !important}\n';
+  }
+  let st=document.getElementById('featCss');
+  if(!st){ st=document.createElement('style'); st.id='featCss'; document.head.appendChild(st); }
+  st.textContent=css;
+}
+
 function applyConfigToUI(){
   const c=window.PID_CONFIG||{};
   // Deuren tonen/verbergen op de hub
@@ -5205,7 +5250,10 @@ function applyConfigToUI(){
       b.style.display='';
     } else if(b){ b.style.display='none'; }
   }catch(e){}
+  try{ applyFeatureToggles(); }catch(e){}
 }
+// Ook bij boot toepassen (gecachte config), niet alleen na verse fetch.
+document.addEventListener('DOMContentLoaded', function(){ try{ applyConfigToUI(); }catch(e){} });
 
 // ── Gedeelde basisregels voor alle PidLane-AI-rollen ───────────────
 // Eén bron van waarheid voor de harde regels (geen aannames, zekerheid
@@ -5451,7 +5499,7 @@ function openAIReportSheet(){
 }
 function closeAIReportSheet(){ const o=document.getElementById('aiReportSheet'); if(o) o.style.display='none'; }
 function _aiReplyBox(){
-  return '<div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">'+
+  return '<div id="aiReplyWrap" style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">'+
     '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:4px">💬 Reageer op dit rapport</div>'+
     '<div style="font-size:10px;color:var(--tx3);margin-bottom:6px">Geef extra context of een correctie (bijv. \'motor was al op temperatuur\'). De AI herziet het rapport.</div>'+
     '<textarea id="aiReplyTxt" rows="2" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:12px;padding:8px 10px;resize:vertical" placeholder="Typ je aanvulling of correctie"></textarea>'+
@@ -5529,6 +5577,7 @@ async function loadJsPDF(){
 }
 
 async function exportAIReportPDF(btn){
+  if(!featOn('feat_pdf')){ showToast?.('Functie uitgeschakeld door beheerder'); return; }
   if(!window._lastAIReport){ showToast?.('Geen rapport beschikbaar'); return; }
   const orig=btn?btn.textContent:''; if(btn){btn.textContent='⏳ PDF maken...'; btn.disabled=true;}
   try{
@@ -7380,8 +7429,11 @@ function showConnError(msg){
     <div style="font-size:12px;color:var(--rd);padding:4px 0 8px;text-align:center">⚠ ${msg}</div>
     <button class="mbtn p" id="btnConnect">📡 Opnieuw proberen</button>
     <button class="mbtn s" id="btnDemo">▷ Demo modus</button>`;
-  document.getElementById('btnConnect').onclick=()=>connectSerial();
-  document.getElementById('btnDemo').onclick=()=>startDemo();
+  // Scoped bedraden: er bestaat óók een #btnConnect/#btnDemo op de hub
+  // (dubbele id) — getElementById pakt de eerste en liet deze knoppen dood.
+  const _ca=document.getElementById('connActions');
+  _ca.querySelector('#btnConnect').onclick=()=>connectSerial();
+  _ca.querySelector('#btnDemo').onclick=()=>startDemo();
 }
 
 // ── BLUETOOTH SEND/RECEIVE ──
@@ -7540,8 +7592,11 @@ function resetToStep1(){
   document.getElementById('connActions').innerHTML=`
     <button class="mbtn p" id="btnConnect">📡 Verbinden via Bluetooth</button>
     <button class="mbtn s" id="btnDemo">▷ Demo modus (zonder adapter)</button>`;
-  document.getElementById('btnConnect').onclick=()=>connectSerial();
-  document.getElementById('btnDemo').onclick=()=>startDemo();
+  // Scoped bedraden: er bestaat óók een #btnConnect/#btnDemo op de hub
+  // (dubbele id) — getElementById pakt de eerste en liet deze knoppen dood.
+  const _ca=document.getElementById('connActions');
+  _ca.querySelector('#btnConnect').onclick=()=>connectSerial();
+  _ca.querySelector('#btnDemo').onclick=()=>startDemo();
 }
 
 // ── STAP 3: PID DISCOVERY + VIN ──
@@ -8104,6 +8159,7 @@ function dossierPct(){
   return Math.round(filled/checks.length*100);
 }
 function openVehicleOverview(){
+  if(!featOn('feat_dossier')){ showToast?.('Functie uitgeschakeld door beheerder'); return; }
   loadUserVehicleData();
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
   let m=document.getElementById('vehOverview');
@@ -9165,6 +9221,7 @@ function renderDemoBar(){
 }
 
 function startDemo(){
+  if(!featOn('feat_demo')){ showToast?.('Demo-modus is uitgeschakeld door beheerder'); return; }
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal&&apiVal.startsWith('sk-ant-')){window.anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){}updateApiPill();}
   demoMode=true; connected=true; dataStable=true;
@@ -9219,7 +9276,6 @@ function startDemo(){
 
   // Toon auto info in welcome title
   document.getElementById('welcomeTitle').textContent='Mazda CX-5 2018 herkend ✅';
-  document.getElementById('welcomeVin').style.display='inline-flex';
 
   // Selecteer een uitgebreide standaard set voor directe weergave
   [
@@ -9248,14 +9304,15 @@ function startDemo(){
 // kunnen klikken terwijl het verbindscript al loopt.
 function setConnectingUI(busy){
   const cbtn = document.getElementById('cbtn');
-  const mbtn = document.getElementById('btnConnect');
+  // Álle Verbinden-knoppen (hub + verbind-overlay delen dezelfde id).
+  const mbtns = document.querySelectorAll('[id="btnConnect"]');
   if(busy){
     if(cbtn){ cbtn.textContent='⏳ Verbinden…'; cbtn.className='btn-t busy'; cbtn.disabled=true; }
-    if(mbtn){ mbtn.textContent='⏳ Verbinden… (±12 sec)'; mbtn.disabled=true; }
+    mbtns.forEach(b=>{ b.textContent='⏳ Verbinden… (±12 sec)'; b.disabled=true; });
   } else {
     // Niet-bezig: laat setConn de juiste eindstaat bepalen (verbonden/niet).
     if(cbtn){ cbtn.disabled=false; }
-    if(mbtn){ mbtn.disabled=false; }
+    mbtns.forEach(b=>{ b.disabled=false; });
   }
 }
 function setConn(on){
@@ -9264,8 +9321,7 @@ function setConn(on){
   if(pill){ pill.classList.remove('attn'); if(pill.dataset.origTitle) pill.title=pill.dataset.origTitle; }
   _btQual.length=0; _qualWarned=false;
   // Bezig-staat opheffen — verbinding heeft nu een eindstaat bereikt.
-  const mbtn=document.getElementById('btnConnect');
-  if(mbtn){ mbtn.disabled=false; if(on) mbtn.textContent='✅ Verbonden'; }
+  document.querySelectorAll('[id="btnConnect"]').forEach(b=>{ b.disabled=false; if(on) b.textContent='✅ Verbonden'; });
   if(btn){ btn.disabled=false; }
   if(on){dot.className='dot '+(demoMode?'demo':'on');txt.textContent=demoMode?'Demo modus':'Verbonden';if(btn){btn.textContent='Verbreken';btn.className='btn-t off';}}
   else{dot.className='dot';txt.textContent='Niet verbonden';if(btn){btn.textContent='Verbinden';btn.className='btn-t';}_connSpeed=null;_connStrategy=null;_pollMult=1.0;window._connReady=false;}
@@ -9302,7 +9358,7 @@ document.addEventListener('click',(e)=>{
 function showVtag(t){
   const el=document.getElementById('vtag'); if(!el) return;
   let pct=0; try{ pct=dossierPct(); }catch(e){}
-  el.innerHTML=t+' <span style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>';
+  el.innerHTML=t+' <span id="vtagPct" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>';
   el.style.display='block'; el.style.cursor='pointer'; el.title='Voertuigoverzicht openen';
   el.onclick=function(){ try{ openVehicleOverview(); }catch(e){} };
 }
@@ -9981,7 +10037,7 @@ function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 function toggleTheme(){
   isDark=!isDark;
   document.documentElement.classList.toggle('dark',isDark);
-  document.getElementById('themeBtn').textContent=isDark?'☀️':'🌙';
+  var _tb=document.getElementById('themeBtn'); if(_tb) _tb.textContent=isDark?'☀️':'🌙';
   try{localStorage.setItem('ns_theme',isDark?'dark':'light');}catch(e){}
 }
 (function initThemeDefault(){
@@ -10009,7 +10065,12 @@ function fontSize(delta){
 }
 function applyZoom(){
   const el=document.getElementById('appScale');
-  if(el){el.style.transform=`scale(${currentZoom})`;el.style.width=`${100/currentZoom}%`;el.style.height=`${100/currentZoom}%`;}
+  if(el){
+    // Bij 100% géén transform: transform:scale(1) maakt #appScale anders het
+    // containing block voor fixed elementen (topbar/onderbalk/lades) → geometry-bugs.
+    if(currentZoom===1){ el.style.transform=''; el.style.width=''; el.style.height=''; }
+    else { el.style.transform=`scale(${currentZoom})`; el.style.width=`${100/currentZoom}%`; el.style.height=`${100/currentZoom}%`; }
+  }
   document.getElementById('zoomLbl').textContent=Math.round(currentZoom*100)+'%';
   try{localStorage.setItem('ns_zoom',currentZoom);}catch(e){}
 }
