@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-04 19:20 (CET) — AdBlue/diesel-fantoom-fix in weergave: filter in renderGauges, gefilterde auto-add, her-filter zodra brandstof bekend
+     Build: 2026-07-04 19:35 (CET) — crash-fix: dode welcomeVin-verwijzingen verwijderd (null.style bij VIN-herkenning)
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -3391,7 +3391,6 @@ function showWelcome(vinInfo){
   ws.classList.remove('hidden');
   try{ backToDoors(); }catch(e){}  // altijd starten op de 4-deuren-keuze
   if(vinInfo&&vinInfo.merk){
-    document.getElementById('welcomeVin').style.display='inline-flex';
     document.getElementById('welcomeTitle').textContent=`${vinInfo.merk} ${vinInfo.model||''} ${vinInfo.year||''} herkend`;
   } else if(demoMode){
     document.getElementById('welcomeTitle').textContent='Demo modus — kies een optie';
@@ -9219,7 +9218,6 @@ function startDemo(){
 
   // Toon auto info in welcome title
   document.getElementById('welcomeTitle').textContent='Mazda CX-5 2018 herkend ✅';
-  document.getElementById('welcomeVin').style.display='inline-flex';
 
   // Selecteer een uitgebreide standaard set voor directe weergave
   [
