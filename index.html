@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-05 03:20 (CET) — PID-lade portal naar body + geen scale(1)-transform: fixt zwevend/leeg Sensoren&PIDs-paneel
+     Build: 2026-07-04 19:20 (CET) — AdBlue/diesel-fantoom-fix in weergave: filter in renderGauges, gefilterde auto-add, her-filter zodra brandstof bekend
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -3391,6 +3391,7 @@ function showWelcome(vinInfo){
   ws.classList.remove('hidden');
   try{ backToDoors(); }catch(e){}  // altijd starten op de 4-deuren-keuze
   if(vinInfo&&vinInfo.merk){
+    document.getElementById('welcomeVin').style.display='inline-flex';
     document.getElementById('welcomeTitle').textContent=`${vinInfo.merk} ${vinInfo.model||''} ${vinInfo.year||''} herkend`;
   } else if(demoMode){
     document.getElementById('welcomeTitle').textContent='Demo modus — kies een optie';
@@ -3495,12 +3496,6 @@ function initLades(){
       +'<button class="lade-x" title="Sluiten" onclick="closeLades()">✕</button>';
     sl.insertBefore(bar, sl.firstChild);
   }
-  // Portal: #slPanel naar <body>. #appScale krijgt transform:scale() (zoom)
-  // en een transform maakt de voorouder het referentiepunt voor position:fixed-
-  // kinderen — daardoor belandde de lade zwevend/half zichtbaar in de content
-  // (verticale label, lege inhoud). Op <body> is fixed altijd viewport-gebonden
-  // (zelfde bewezen patroon als het ⋯-menu).
-  if(sl && sl.parentNode!==document.body) document.body.appendChild(sl);
   // Log-lade bewust NIET meer aanmaken: logs lopen uitsluitend via het
   // log-centrum (⋯-menu → "📋 Logs & data"). #logbar blijft verborgen bestaan
   // als schrijfdoel van log(); localLog voedt het log-centrum.
@@ -9224,6 +9219,7 @@ function startDemo(){
 
   // Toon auto info in welcome title
   document.getElementById('welcomeTitle').textContent='Mazda CX-5 2018 herkend ✅';
+  document.getElementById('welcomeVin').style.display='inline-flex';
 
   // Selecteer een uitgebreide standaard set voor directe weergave
   [
@@ -10013,12 +10009,7 @@ function fontSize(delta){
 }
 function applyZoom(){
   const el=document.getElementById('appScale');
-  if(el){
-    // Bij 100% géén transform: transform:scale(1) maakt #appScale anders het
-    // containing block voor fixed elementen (topbar/onderbalk/lades) → geometry-bugs.
-    if(currentZoom===1){ el.style.transform=''; el.style.width=''; el.style.height=''; }
-    else { el.style.transform=`scale(${currentZoom})`; el.style.width=`${100/currentZoom}%`; el.style.height=`${100/currentZoom}%`; }
-  }
+  if(el){el.style.transform=`scale(${currentZoom})`;el.style.width=`${100/currentZoom}%`;el.style.height=`${100/currentZoom}%`;}
   document.getElementById('zoomLbl').textContent=Math.round(currentZoom*100)+'%';
   try{localStorage.setItem('ns_zoom',currentZoom);}catch(e){}
 }
