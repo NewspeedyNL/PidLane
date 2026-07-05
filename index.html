@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-04 18:55 (CET) — PDF-modal 2 knoppen+z-index, Rit-knop uit grafiek, dubbele voertuiginfo weg, Home-knop, Rijtest hernoemd, rit-rapport ruimer, kruisje AI-Monteur
+     Build: 2026-07-04 19:20 (CET) — AdBlue/diesel-fantoom-fix in weergave: filter in renderGauges, gefilterde auto-add, her-filter zodra brandstof bekend
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -2353,6 +2353,25 @@ function vehiclePlausiblePid(pid){
   return true;
 }
 
+// Her-filter: verwijder fantoomsensoren uit de actieve selectie zodra het
+// brandstoftype (alsnog) bekend wordt. Bij verbinden is brandstof vaak nog
+// onbekend → alles toegelaten; RDW levert 'benzine' pas later. Zonder deze
+// purge bleven AdBlue/NOx/DPF-tegels dan gewoon staan.
+function purgeImplausiblePids(){
+  try{
+    if(typeof activePIDs==='undefined') return 0;
+    const weg=[];
+    activePIDs.forEach(pid=>{ if(!vehiclePlausiblePid(pid)) weg.push(pid); });
+    if(!weg.length) return 0;
+    weg.forEach(pid=>{ activePIDs.delete(pid); try{ manualPIDs.delete(pid); }catch(e){} });
+    try{ renderGauges(); }catch(e){}
+    try{ rebuildGSel(); }catch(e){}
+    try{ const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size; }catch(e){}
+    try{ log('🚫 '+weg.length+' sensor(en) verborgen — niet aanwezig op dit brandstoftype ('+vehicleFuelType()+')','info'); }catch(e){}
+  }catch(e){}
+  return 0;
+}
+
 // Mag deze sensor in een rapport/momentopname? Filtert naamloze 'raw'-PIDs
 // (PID 01XX zonder parser), fysiek-onmogelijke/niet-aanwezige waarden en
 // aandrijflijn-fantoomsensoren (diesel/SCR op benzine). Zo bevat het rapport
@@ -3727,6 +3746,10 @@ function renderGauges(){
   if(sw) sw.style.display='flex';
   activePIDs.forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
+    // Weergave-poort: diesel/SCR-sensoren (AdBlue, NOx, DPF) horen niet op een
+    // benzineauto, ook al staat de PID (door timing of oude selectie) in
+    // activePIDs. Filter op het laatste moment — dekt élk toevoegpad.
+    if(!vehiclePlausiblePid(pid)) return;
     const isMan=_scenario.enabled && _scenario.pids[pid]!==undefined;
     const c=document.createElement('div'); c.className='gc'+(isMan?' gc-manueel':''); c.id='gc-'+pid;
     const manTag=isMan?' <span style="font-size:7px;font-weight:800;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;vertical-align:middle">MAN</span>':'';
@@ -8040,7 +8063,13 @@ function mergeVehicleData(src, data){
   if(typeof vehicleInfo==='undefined' || !vehicleInfo) return;
   if(data.merk!==undefined)      _setField('merk',      normMerk(data.merk), src);
   if(data.year!==undefined)      _setField('year',      String(data.year||'').replace(/\D/g,'').slice(0,4), src);
-  if(data.brandstof!==undefined) _setField('brandstof', normBrandstof(data.brandstof), src);
+  if(data.brandstof!==undefined){
+    const _hadB=vehicleInfo.brandstof;
+    _setField('brandstof', normBrandstof(data.brandstof), src);
+    // Brandstof (nieuw) bekend of gewijzigd → actieve selectie her-filteren,
+    // zodat diesel-fantomen (AdBlue/NOx/DPF) van een benzineauto verdwijnen.
+    if(vehicleInfo.brandstof && vehicleInfo.brandstof!==_hadB){ try{ purgeImplausiblePids(); }catch(e){} }
+  }
   if(data.motor!==undefined)     _setField('motor',     data.motor, src);
   // Model NA merk zetten, zodat dedup het (net genormaliseerde) merk kent.
   if(data.model!==undefined)     _setField('model',     dedupModel(data.model, vehicleInfo.merk), src);
@@ -8686,6 +8715,7 @@ function selectStandardSet(){
     if(!supportedPIDs.has(pid)) return;
     const h=_pidHealth[pid];
     if(h==='nodata'||h==='onzin') return;  // niet aanwezig of ongeldig
+    if(!vehiclePlausiblePid(pid)) return;  // fantoom (bv. AdBlue op benzine)
     activePIDs.add(pid); manualPIDs.add(pid); n++;
   });
   const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
@@ -8708,7 +8738,7 @@ function selectCategoryPIDs(cat){
   discoveredPIDDefs.forEach(p=>{
     if((p.cat||'Overig')===cat){
       const gezond = demoMode || _pidHealth[p.pid]!=='onzin' && _pidHealth[p.pid]!=='twijfel';
-      if(gezond && !activePIDs.has(p.pid)){ activePIDs.add(p.pid); manualPIDs.add(p.pid); added++; }
+      if(gezond && !activePIDs.has(p.pid) && vehiclePlausiblePid(p.pid)){ activePIDs.add(p.pid); manualPIDs.add(p.pid); added++; }
     }
   });
   buildPIDList(document.getElementById('psrch')?.value||'');
