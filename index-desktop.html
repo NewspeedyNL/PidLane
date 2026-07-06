@@ -1,7 +1,7 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-07-05 04:15 (CET) — feature-flags: alle functies aan/uit via admin (feat_* keys), basis blijft altijd aan
-     DESKTOP-VARIANT 2026-07-05 05:10 (CET) — Chrome + Web Bluetooth (OBDLink MX+), brede desktop-layout, muis-hover. Basis = mobiele build hierboven.
+     DESKTOP-VARIANT 2026-07-06 15:30 (CET) — Web Serial primair op desktop (OBDLink MX+ via COM-poort), Web Bluetooth-filter uitgebreid (OBDLink-prefix + toon-alle-fallback). Basis = mobiele build hierboven.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -3825,6 +3825,7 @@ function resetDataStream(auto){
     _pidLastUpd={}; pidSmooth={};
     try{ if(typeof window._rxBuf==='string') window._rxBuf=''; }catch(e){}
     try{ if(typeof window._sppBuf==='string') window._sppBuf=''; }catch(e){}
+    try{ if(typeof btBuffer==='string') btBuffer=''; }catch(e){}
     if(!auto) showToast?.('🔄 Datastroom gereset — meting start vers');
     log('Datastroom gereset'+(auto?' (automatisch na analyse)':''),'info');
   }catch(e){}
@@ -6695,6 +6696,10 @@ async function connectSerial(){
   if (ble)               chain.push(['BLE',                         () => connectBLE(ble)]);
   if (spp && haveCfgMac) chain.push(['SPP (Classic · direct MAC)', () => connectSPP(spp)]);
   if (spp && !haveCfgMac) chain.push(['SPP (Classic · scan)',       () => connectSPP(spp)]);
+  // Desktop (Chrome): Web Serial eerst — de OBDLink MX+ verschijnt op Windows
+  // als seriële Bluetooth-COM-poort en werkt daar het betrouwbaarst.
+  if (('serial' in navigator) && !env.native)
+                          chain.push(['Web Serial (COM-poort)',     () => connectWebSerial()]);
   if (('bluetooth' in navigator) && !env.native)
                           chain.push(['Web Bluetooth',              () => connectWebBluetooth()]);
 
@@ -6982,19 +6987,85 @@ async function bleVerifyELM(){
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  MODUS 2b — Web Serial (Chrome desktop, OBDLink MX+ via COM-poort)
+//  De MX+ verschijnt op Windows als seriële Bluetooth-poort. Web Serial geeft
+//  een poortkiezer en een stabiele stroom; de reader vult dezelfde btBuffer
+//  als de andere transports, zodat sendBT/initELM327/scanNetworks meewerken.
+// ════════════════════════════════════════════════════════════════════
+async function connectWebSerial(){
+  log('Web Serial: poort kiezen...', 'info');
+  const port = await navigator.serial.requestPort();   // Chrome-poortkiezer
+  await port.open({ baudRate: 115200 });               // MX+ negeert baud, maar vereist
+  log('Web Serial poort geopend', 'ok');
+
+  // Schrijf-kant
+  const encoder = new TextEncoder();
+  const writer = port.writable.getWriter();
+  window._webSerialWrite = async (str) => { await writer.write(encoder.encode(str)); };
+  window._webSerialPort = port;
+
+  // Lees-kant: continue pump die btBuffer vult (zelfde buffer als BLE/WebBT)
+  const decoder = new TextDecoder();
+  (async () => {
+    try {
+      while (port.readable) {
+        const reader = port.readable.getReader();
+        try {
+          while (true){
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) btBuffer += decoder.decode(value);
+          }
+        } catch(e){ /* lees-onderbreking */ }
+        finally { try{ reader.releaseLock(); }catch(e){} }
+      }
+    } catch(e){ /* poort dicht */ }
+  })();
+
+  port.addEventListener('disconnect', () => {
+    connected = false; setConn(false);
+    window._webSerialWrite = null; window._webSerialPort = null;
+    const vt = document.getElementById('vtag'); if (vt) vt.style.display = 'none';
+    log('Web Serial verbroken', 'warn');
+  });
+
+  connected = true; demoMode = false;
+  log('Web Serial verbonden', 'ok');
+  setConn(true);
+  await initELM327();
+  await scanNetworks();
+}
+
+// ════════════════════════════════════════════════════════════════════
 //  MODUS 3 — Web Bluetooth (browser-fallback)
 //  Gooit een error bij mislukken — de cascade vangt 'm op.
 // ════════════════════════════════════════════════════════════════════
 async function connectWebBluetooth(){
   log('Web Bluetooth zoeken...', 'info');
-  const device = await navigator.bluetooth.requestDevice({
-    filters: [
-      { services: [BLE_SERVICE] },
-      { namePrefix: 'OBDII' }, { namePrefix: 'OBD2' }, { namePrefix: 'ELM327' },
-      { namePrefix: 'Vgate' }, { namePrefix: 'MX+' }, { namePrefix: 'iCar' }
-    ],
-    optionalServices: [BLE_SERVICE, '0000ffe0-0000-1000-8000-00805f9b34fb', BLE_SERVICE2]
-  });
+  // Eerst gefilterd (nette lijst). OBDLink MX+ heet vaak "OBDLink MX+ 9xxxx"
+  // → namePrefix 'OBDLink'/'OBDL' toegevoegd. Vindt de scan niets, dan een
+  // tweede poging met acceptAllDevices zodat élke adapter kiesbaar is.
+  const OPT_SVC = [BLE_SERVICE, '0000ffe0-0000-1000-8000-00805f9b34fb', BLE_SERVICE2];
+  let device;
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      filters: [
+        { services: [BLE_SERVICE] },
+        { namePrefix: 'OBDLink' }, { namePrefix: 'OBDL' },
+        { namePrefix: 'OBDII' }, { namePrefix: 'OBD2' }, { namePrefix: 'ELM327' },
+        { namePrefix: 'Vgate' }, { namePrefix: 'MX+' }, { namePrefix: 'iCar' }
+      ],
+      optionalServices: OPT_SVC
+    });
+  } catch(e) {
+    if (e && e.name === 'NotFoundError') {
+      log('Geen match op filter — toon alle Bluetooth-apparaten...', 'info');
+      device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: OPT_SVC
+      });
+    } else { throw e; }
+  }
   log('Apparaat: ' + device.name, 'ok');
 
   const server = await device.gatt.connect();
@@ -7061,14 +7132,30 @@ async function _sendBTRaw(cmd, timeoutMs){
 }
 
 async function _sendBTOnce(cmd, timeoutMs){
-  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite){
-    btDiag(`sendBT "${cmd}" geblokkeerd: GEEN actieve verbinding (spp=${!!window._sppConn} ble=${!!window._bleConn} web=${!!window._webBtWrite})`,'err');
+  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!window._webSerialWrite){
+    btDiag(`sendBT "${cmd}" geblokkeerd: GEEN actieve verbinding (spp=${!!window._sppConn} ble=${!!window._bleConn} web=${!!window._webBtWrite} serial=${!!window._webSerialWrite})`,'err');
     return '';
   }
   if(!cmd) return '';
   const myGen=window._btGen||0;
   const str=cmd+'\r';
   const TIMEOUT=timeoutMs||6000;
+
+  // Web Serial (desktop): schrijf naar de COM-poort; de pump vult btBuffer.
+  if(window._webSerialWrite){
+    btBuffer='';
+    btDiag(`TX(serial): ${cmd}`,'info');
+    try{ await window._webSerialWrite(str); }
+    catch(we){ btDiag(`serial write fout: ${we.message}`,'err'); return ''; }
+    const start=Date.now(), deadline=start+TIMEOUT;
+    while(Date.now()<deadline){
+      await delay(40);
+      if(btBuffer.includes('>')) break;
+    }
+    let out=btBuffer.replace(/>/g,'').trim();
+    btDiag(`RX(serial): "${out.slice(0,60)}"`, out?'info':'warn');
+    return out;
+  }
 
   try{
     if(window._sppConn){
