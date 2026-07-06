@@ -1,7 +1,7 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-07-05 04:15 (CET) — feature-flags: alle functies aan/uit via admin (feat_* keys), basis blijft altijd aan
-     DESKTOP-VARIANT 2026-07-06 19:10 (CET) — Web Serial NO-DATA-fix: SEARCHING opvangen + deadline verlengen (protocol-lock op 0100), parser niet te vroeg afkappen. Basis = mobiele build hierboven.
+     DESKTOP-VARIANT 2026-07-06 20:05 (CET) — Web Serial herschreven volgens OBDLink-spec: lees-tot-prompt (>) per commando, eigen reader-stream, bewezen ELM327-init (ATZ). Lost hangen na protocoldetectie op. Basis = mobiele build hierboven.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -6992,39 +6992,48 @@ async function bleVerifyELM(){
 //  een poortkiezer en een stabiele stroom; de reader vult dezelfde btBuffer
 //  als de andere transports, zodat sendBT/initELM327/scanNetworks meewerken.
 // ════════════════════════════════════════════════════════════════════
+// Globale Web Serial-staat: poort, writer, en een lopende leesbuffer die de
+// dedicated reader-loop vult. _webSerialSend() leest hieruit tot de '>'-prompt.
+let _wsPort=null, _wsWriter=null, _wsReader=null, _wsBuf='', _wsReadAbort=false;
+
 async function connectWebSerial(){
   log('Web Serial: poort kiezen...', 'info');
-  const port = await navigator.serial.requestPort();   // Chrome-poortkiezer
-  await port.open({ baudRate: 115200 });               // MX+ negeert baud, maar vereist
-  log('Web Serial poort geopend', 'ok');
+  _wsPort = await navigator.serial.requestPort();      // Chrome-poortkiezer
+  // OBDLink MX+ op Windows: standaard 115200. Bij twijfel is 38400 de bewezen
+  // fallback, maar de MX+ COM-poort draait vast op 115200 (fabrikant-default).
+  await _wsPort.open({ baudRate: 115200, bufferSize: 4096 });
+  log('Web Serial poort geopend (115200)', 'ok');
 
-  // Schrijf-kant
   const encoder = new TextEncoder();
-  const writer = port.writable.getWriter();
-  window._webSerialWrite = async (str) => { await writer.write(encoder.encode(str)); };
-  window._webSerialPort = port;
+  _wsWriter = _wsPort.writable.getWriter();
+  _wsBuf=''; _wsReadAbort=false;
 
-  // Lees-kant: continue pump die btBuffer vult (zelfde buffer als BLE/WebBT)
+  // Dedicated reader-loop: vult _wsBuf byte-voor-byte. Losgekoppeld van de
+  // oude btBuffer-polling; _webSerialSend leest synchroon tot de prompt.
   const decoder = new TextDecoder();
   (async () => {
-    try {
-      while (port.readable) {
-        const reader = port.readable.getReader();
-        try {
-          while (true){
-            const { value, done } = await reader.read();
-            if (done) break;
-            if (value) btBuffer += decoder.decode(value);
-          }
-        } catch(e){ /* lees-onderbreking */ }
-        finally { try{ reader.releaseLock(); }catch(e){} }
-      }
-    } catch(e){ /* poort dicht */ }
+    while (_wsPort && _wsPort.readable && !_wsReadAbort) {
+      let reader;
+      try { reader = _wsPort.readable.getReader(); _wsReader = reader; }
+      catch(e){ break; }
+      try {
+        while (true){
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) _wsBuf += decoder.decode(value, {stream:true});
+        }
+      } catch(e){ /* onderbroken */ }
+      finally { try{ reader.releaseLock(); }catch(e){} }
+    }
   })();
 
-  port.addEventListener('disconnect', () => {
-    connected = false; setConn(false);
-    window._webSerialWrite = null; window._webSerialPort = null;
+  // Schrijf-hook (rauw) — het echte protocol loopt via _webSerialSend hieronder.
+  window._webSerialWrite = async (str) => { await _wsWriter.write(encoder.encode(str)); };
+  window._webSerialPort = _wsPort;
+
+  _wsPort.addEventListener('disconnect', () => {
+    connected = false; setConn(false); _wsReadAbort=true;
+    window._webSerialWrite = null; window._webSerialPort = null; _wsPort=null;
     const vt = document.getElementById('vtag'); if (vt) vt.style.display = 'none';
     log('Web Serial verbroken', 'warn');
   });
@@ -7032,8 +7041,55 @@ async function connectWebSerial(){
   connected = true; demoMode = false;
   log('Web Serial verbonden', 'ok');
   setConn(true);
-  await initELM327();
+  await initELM327Serial();   // bewezen ELM327-init voor de COM-poort
   await scanNetworks();
+}
+
+// ── Kern: stuur één commando en lees TOT de '>'-prompt (OBDLink-spec) ──
+// Geen vaste delays; we wachten op wat de adapter zelf als "klaar" signaleert.
+// SEARCHING... wordt netjes overgeslagen; timeout voorkomt eeuwig hangen.
+async function _webSerialSend(cmd, timeoutMs){
+  if(!_wsWriter){ return ''; }
+  const TIMEOUT = timeoutMs || 5000;
+  _wsBuf = '';                                   // buffer leeg vóór verzenden
+  const enc = new TextEncoder();
+  try { await _wsWriter.write(enc.encode(cmd + '\r')); }
+  catch(e){ btDiag('serial write fout: '+(e.message||e),'err'); return ''; }
+  btDiag('TX(serial): '+cmd,'info');
+
+  const start = Date.now();
+  // Lees tot de prompt '>' (0x3E) in de buffer staat, of tot timeout.
+  while (Date.now() - start < TIMEOUT){
+    if (_wsBuf.includes('>')) break;
+    await delay(15);
+  }
+  // Response opschonen: echo, CR/LF, SEARCHING en de prompt eruit.
+  let out = _wsBuf
+    .replace(/\r/g,'\n')
+    .split('\n')
+    .map(s=>s.trim())
+    .filter(s=>s && s!==cmd && !/^SEARCHING/i.test(s) && s!=='>')
+    .join(' ')
+    .replace(/>/g,'')
+    .trim();
+  btDiag('RX(serial): "'+out.slice(0,70)+'"', out?'info':'warn');
+  return out;
+}
+
+// ── Bewezen ELM327-init voor Web Serial (ATZ-patroon) ──
+// Op een COM-poort mag ATZ (volledige reset) — anders dan bij Android-SPP waar
+// ATZ de BT-module sloopt. Volgorde volgt python-OBD/ELMduino/ScanDoc.
+async function initELM327Serial(){
+  btDiag('ELM327 init (serial)...','proto');
+  await _webSerialSend('ATZ', 3000);   // volledige reset
+  await delay(1000);
+  await _webSerialSend('ATE0', 2000);  // echo uit
+  await _webSerialSend('ATL0', 2000);  // linefeeds uit
+  await _webSerialSend('ATS0', 2000);  // spaties uit
+  await _webSerialSend('ATH0', 2000);  // headers uit (standaard OBD)
+  await _webSerialSend('ATSP0', 2000); // protocol auto
+  const v = await _webSerialSend('ATRV', 2000); // accuspanning als levensteken
+  log('ELM327 serial klaar'+(v?(' — accu: '+v):''),'ok');
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -7141,34 +7197,11 @@ async function _sendBTOnce(cmd, timeoutMs){
   const str=cmd+'\r';
   const TIMEOUT=timeoutMs||6000;
 
-  // Web Serial (desktop): schrijf naar de COM-poort; de pump vult btBuffer.
+  // Web Serial (desktop): gebruik de bewezen prompt-gebaseerde transportlaag.
+  // 0100 (protocoldetectie) krijgt automatisch meer tijd voor SEARCHING...
   if(window._webSerialWrite){
-    btBuffer='';
-    btDiag(`TX(serial): ${cmd}`,'info');
-    try{ await window._webSerialWrite(str); }
-    catch(we){ btDiag(`serial write fout: ${we.message}`,'err'); return ''; }
-    const start=Date.now();
-    let deadline=start+TIMEOUT;
-    let searchExtended=false;
-    while(Date.now()<deadline){
-      await delay(40);
-      // Protocol-detectie: ELM327 stuurt 'SEARCHING...' vóór het echte antwoord.
-      // Niet te vroeg afbreken — verleng de deadline één keer zodat het echte
-      // 41-antwoord binnenkomt (anders faalt 0100 → geen protocol → alles NO DATA).
-      if(!searchExtended && btBuffer.includes('SEARCHING')){
-        searchExtended=true; deadline=Date.now()+Math.max(6000, TIMEOUT);
-        btDiag('serial: SEARCHING… deadline verlengd','proto');
-      }
-      // Pas afbreken op de prompt '>' ALS er ook echt inhoud staat (niet enkel
-      // een kale prompt/echo). Zo knippen we het antwoord niet voortijdig af.
-      if(btBuffer.includes('>')){
-        const clean=btBuffer.replace(/[\r\n>]/g,'').replace(/SEARCHING\.*/gi,'').trim();
-        if(clean.length>0) break;
-      }
-    }
-    let out=btBuffer.replace(/SEARCHING\.*/gi,'').replace(/>/g,'').trim();
-    btDiag(`RX(serial): "${out.slice(0,60)}"`, out?'info':'warn');
-    return out;
+    const isSearch = /^01/.test(cmd);
+    return await _webSerialSend(cmd, isSearch ? Math.max(TIMEOUT, 10000) : TIMEOUT);
   }
 
   try{
