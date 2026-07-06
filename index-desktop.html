@@ -1,7 +1,7 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-07-05 04:15 (CET) — feature-flags: alle functies aan/uit via admin (feat_* keys), basis blijft altijd aan
-     DESKTOP-VARIANT 2026-07-06 20:05 (CET) — Web Serial herschreven volgens OBDLink-spec: lees-tot-prompt (>) per commando, eigen reader-stream, bewezen ELM327-init (ATZ). Lost hangen na protocoldetectie op. Basis = mobiele build hierboven.
+     DESKTOP-VARIANT 2026-07-06 22:35 (CET) — discovery erkent Web Serial-verbinding (geen valse "herverbinden" meer); transport-label WebSerial. Basis = mobiele build hierboven.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -7774,7 +7774,7 @@ async function startDiscovery(){
 
   // Zelfherstel: verbinding weg (bijv. via Verbreken-knop)? Automatisch
   // herverbinden op het opgeslagen adres en ELM opnieuw initialiseren.
-  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!demoMode){
+  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!window._webSerialWrite&&!demoMode){
     btDiag('Geen actieve verbinding bij discovery — automatisch herverbinden...','warn');
     const spp=getSPP();
     const sa=localStorage.getItem('spp_address');
@@ -11827,7 +11827,7 @@ function mailSupport(withDiag){
     const plat = window.Capacitor?.getPlatform?.() || 'web';
     const am = navigator.userAgent.match(/Android\s+([\d.]+)/);
     const android = am ? ('Android ' + am[1]) : plat;
-    const transport = window._sppConn ? 'SPP' : window._bleConn ? 'BLE' : window._webBtWrite ? 'WebBT' : 'geen';
+    const transport = window._sppConn ? 'SPP' : window._bleConn ? 'BLE' : window._webBtWrite ? 'WebBT' : window._webSerialWrite ? 'WebSerial' : 'geen';
     const v = (typeof vehicleInfo !== 'undefined') ? vehicleInfo : {};
     const logTail = (typeof _btLog !== 'undefined' && _btLog.length)
       ? _btLog.slice(-40).map(e => `${e.ts} [${e.type}] ${e.msg}`).join('\n')
