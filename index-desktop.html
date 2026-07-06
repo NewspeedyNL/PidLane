@@ -1,7 +1,7 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-07-05 04:15 (CET) — feature-flags: alle functies aan/uit via admin (feat_* keys), basis blijft altijd aan
-     DESKTOP-VARIANT 2026-07-06 15:30 (CET) — Web Serial primair op desktop (OBDLink MX+ via COM-poort), Web Bluetooth-filter uitgebreid (OBDLink-prefix + toon-alle-fallback). Basis = mobiele build hierboven.
+     DESKTOP-VARIANT 2026-07-06 19:10 (CET) — Web Serial NO-DATA-fix: SEARCHING opvangen + deadline verlengen (protocol-lock op 0100), parser niet te vroeg afkappen. Basis = mobiele build hierboven.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -7147,12 +7147,26 @@ async function _sendBTOnce(cmd, timeoutMs){
     btDiag(`TX(serial): ${cmd}`,'info');
     try{ await window._webSerialWrite(str); }
     catch(we){ btDiag(`serial write fout: ${we.message}`,'err'); return ''; }
-    const start=Date.now(), deadline=start+TIMEOUT;
+    const start=Date.now();
+    let deadline=start+TIMEOUT;
+    let searchExtended=false;
     while(Date.now()<deadline){
       await delay(40);
-      if(btBuffer.includes('>')) break;
+      // Protocol-detectie: ELM327 stuurt 'SEARCHING...' vóór het echte antwoord.
+      // Niet te vroeg afbreken — verleng de deadline één keer zodat het echte
+      // 41-antwoord binnenkomt (anders faalt 0100 → geen protocol → alles NO DATA).
+      if(!searchExtended && btBuffer.includes('SEARCHING')){
+        searchExtended=true; deadline=Date.now()+Math.max(6000, TIMEOUT);
+        btDiag('serial: SEARCHING… deadline verlengd','proto');
+      }
+      // Pas afbreken op de prompt '>' ALS er ook echt inhoud staat (niet enkel
+      // een kale prompt/echo). Zo knippen we het antwoord niet voortijdig af.
+      if(btBuffer.includes('>')){
+        const clean=btBuffer.replace(/[\r\n>]/g,'').replace(/SEARCHING\.*/gi,'').trim();
+        if(clean.length>0) break;
+      }
     }
-    let out=btBuffer.replace(/>/g,'').trim();
+    let out=btBuffer.replace(/SEARCHING\.*/gi,'').replace(/>/g,'').trim();
     btDiag(`RX(serial): "${out.slice(0,60)}"`, out?'info':'warn');
     return out;
   }
