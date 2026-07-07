@@ -1,120 +1,226 @@
-# PidLane
+# 🚗 PidLane
 
-**De auto praat. Wij vertalen.**
+<div align="center">
+  <h2><strong>De auto praat. Wij vertalen.</strong></h2>
+  <p>AI-gestuurde OBD2-diagnosetool voor professionele voertuigchecks</p>
 
-PidLane is een AI-gestuurde OBD2-diagnosetool die via de OBD2-poort van een voertuig
-een compleet, begrijpelijk voertuigrapport maakt — bedoeld voor autobedrijven,
-occasionhandel en inkoop/inruil. De app draait als web-app (PWA) en als Android-APK
-(Capacitor), en verbindt met ELM327/STN-adapters via Bluetooth.
-
-🌐 [www.pidlane.nl](https://www.pidlane.nl) · ✉️ info@pidlane.nl
-
----
-
-## Wat het doet
-
-- **Koopcheck (2 min)** — snelle technische check voor aankoop of inruil. In twee
-  minuten rijden een onderbouwd go/no-go met rapport. Dit is de primaire flow voor
-  verkoop en inkoop.
-- **Uitgebreide check (10 min)** — volledige rit-analyse over meer fases voor een diep
-  beeld (motor & vermogen, brandstof & emissie, temperatuur, accu, rijgedrag, correlaties).
-- **AI-diagnose op klacht** — beschrijf het symptoom; de AI zoekt de waarschijnlijke
-  oorzaak en bewijst die met live PID-data.
-- **Algemene voertuigcheck** — groen/oranje/rood conditieoverzicht.
-- **Foutcodes (DTC) scannen** en uitleggen.
-- **Specifieke PID-data** live uitlezen, plus een neon-HUD dashboard.
-- **Brandstofbesparingsanalyse.**
-- **PDF-rapport** dat de klant mee naar huis krijgt (delen/opslaan via Android).
+  [![Website](https://img.shields.io/badge/Website-pidlane.nl-blue?style=for-the-badge)](https://www.pidlane.nl)
+  [![Email](https://img.shields.io/badge/Contact-info%40pidlane.nl-green?style=for-the-badge)](mailto:info@pidlane.nl)
+  [![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Android-orange?style=for-the-badge)](#)
+</div>
 
 ---
 
-## Techniek
+## 📋 Inhoudsopgave
 
-- **Front-end:** één `index.html` (web-app/PWA), plus `index-desktop.html` voor desktop.
-- **Native shell:** [Capacitor](https://capacitorjs.com/) 6 → Android-APK.
-- **Bluetooth (cascade, valt automatisch terug):**
-  1. **SPP / Bluetooth Classic** — `@e-is/capacitor-bluetooth-serial` (o.a. OBDLink MX+)
-  2. **BLE** — `@capacitor-community/bluetooth-le` (ELM327-klonen, Vgate, e.d.)
-  3. **Web Bluetooth** — in de browser
-- **Opslaan/delen:** `@capacitor/filesystem` + `@capacitor/share`.
-- **AI:** Anthropic API (optionele eigen key; lokaal opgeslagen).
-- **Live laden:** de APK laadt de web-app van GitHub Pages
-  (`server.url` in `capacitor.config.json`), zodat front-end-updates verschijnen zonder
-  nieuwe APK. Wijzigingen aan plugins, permissies of icoon vereisen wél een nieuwe build.
+- [Over PidLane](#-over-pidlane)
+- [Functionaliteiten](#-functionaliteiten)
+- [Technische Stack](#-technische-stack)
+- [Projectstructuur](#-projectstructuur)
+- [APK Bouwen](#-apk-bouwen)
+- [Bluetooth & Permissies](#-bluetooth--permissies)
+- [Ondersteunde Adapters](#-ondersteunde-adapters)
+- [Roadmap](#-roadmap)
+- [Licentie](#-licentie)
 
 ---
 
-## Projectstructuur
+## 🎯 Over PidLane
+
+PidLane is een **intelligente OBD2-diagnosetool** speciaal ontworpen voor:
+- 🏪 Autobedrijven
+- 🚙 Occasionhandelaars
+- 📥 Inkoop/Inruil afdelingen
+
+De app draait als **web-app (PWA)** en **Android-APK** en verbindt met ELM327/STN-adapters via Bluetooth Classic en BLE.
+
+**Beschikbaar op:** 🌐 [www.pidlane.nl](https://www.pidlane.nl)
+
+---
+
+## ⚡ Functionaliteiten
+
+### 🚗 Koopcheck (2 minuten)
+Snelle technische check voor aankoop of inruil met:
+- Onderbouwde go/no-go beslissing
+- Professioneel rapport
+- Perfecte primaire flow voor verkoop en inkoop
+
+### 📊 Uitgebreide Check (10 minuten)
+Volledige rit-analyse met diepgaande diagnose:
+- Motor & vermogen
+- Brandstof & emissie
+- Temperatuurgegevens
+- Accu-status
+- Rijgedrag & correlaties
+
+### 🤖 AI-Diagnose op Klacht
+- Beschrijf het symptoom
+- AI analyseert waarschijnlijke oorzaken
+- Bewijsvoering met live PID-data
+
+### 📈 Aanvullende Features
+- ✅ Algemene voertuigcheck (groen/oranje/rood)
+- 📛 Foutcodes (DTC) scannen & uitleggen
+- 📡 Live PID-data uitlezen
+- 🎮 Neon-HUD dashboard
+- ⛽ Brandstofbesparingsanalyse
+- 📄 PDF-rapport (delen/opslaan)
+
+---
+
+## 🛠 Technische Stack
+
+### Frontend
+| Component | Technologie |
+|-----------|------------|
+| Web-App | Single `index.html` (PWA) |
+| Desktop | Aparte `index-desktop.html` |
+| Native Shell | [Capacitor](https://capacitorjs.com/) 6 |
+
+### Connectivity (Cascade met Fallback)
+
+```
+1️⃣ SPP / Bluetooth Classic
+   └─ @e-is/capacitor-bluetooth-serial
+   └─ OBDLink MX+, etc.
+
+2️⃣ BLE (Bluetooth Low Energy)
+   └─ @capacitor-community/bluetooth-le
+   └─ ELM327-klonen, Vgate, etc.
+
+3️⃣ Web Bluetooth
+   └─ Browser-native fallback
+```
+
+### Integraties
+- 💾 **Opslag & Delen:** Capacitor Filesystem + Share API
+- 🤖 **AI:** Anthropic API (optionele eigen key)
+- 🔄 **Live Updates:** GitHub Pages CDN (front-end updates zonder APK-rebuild)
+
+---
+
+## 📁 Projectstructuur
 
 ```
 PidLane/
-├─ index.html                     # web-app die GitHub Pages serveert (door APK geladen)
-├─ src/
-│  ├─ index.html                  # webDir-bundel (Capacitor)
-│  ├─ index-desktop.html          # desktop-variant
-│  ├─ config.js                   # adapterconfig (o.a. bekend MAC-adres)
-│  └─ version.json                # versie voor auto-update-melding
-├─ capacitor.config.json          # appId, webDir, server.url, plugin-strings
-├─ package.json                   # dependencies (Capacitor + plugins)
-├─ version.json
-└─ .github/workflows/build-apk.yml # CI: bouwt de APK + injecteert permissies + icoon
+│
+├── index.html                    # 🌐 Web-app (GitHub Pages)
+├── src/
+│   ├── index.html               # Capacitor webDir
+│   ├── index-desktop.html       # Desktop-variant
+│   ├── config.js                # Adapter-configuratie (MAC-adressen)
+│   └── version.json             # Versie-info voor auto-update
+│
+├── capacitor.config.json        # App-instellingen & plugins
+├── package.json                 # Dependencies & scripts
+├── version.json                 # Versiebestand
+│
+└── .github/workflows/
+    └── build-apk.yml           # 🤖 CI/CD: Automatische APK-build
 ```
 
-> Let op de twee `index.html`-bestanden: de **root** wordt door GitHub Pages geserveerd
-> (en dus door de APK geladen via `server.url`); `src/index.html` is de Capacitor-webDir.
-> Houd ze in sync.
+> ⚠️ **Belangrijk:** De **twee `index.html`-bestanden** moeten gesynchroniseerd blijven:
+> - **Root `index.html`** → GitHub Pages
+> - **`src/index.html`** → Capacitor webDir
 
 ---
 
-## Bouwen (APK)
+## 🔨 APK Bouwen
 
-De APK wordt automatisch gebouwd door GitHub Actions bij elke push naar `main`
-(of handmatig via *workflow_dispatch*). De workflow:
+### Automatische Build
+De APK wordt **automatisch gebouwd** bij elke push naar `main` (of handmatig via `workflow_dispatch`).
 
-1. installeert dependencies (`npm install --legacy-peer-deps`),
-2. voegt het Android-platform toe en synct de web-assets,
-3. **injecteert de Bluetooth-permissies** in `AndroidManifest.xml`
-   (Android 12+: `BLUETOOTH_SCAN` met `neverForLocation` + `BLUETOOTH_CONNECT`;
-   Android ≤ 11: klassieke BT + `ACCESS_FINE_LOCATION`),
-4. **genereert het app-icoon** uit het PidLane-logo (alle dichtheden + adaptive icon),
-5. bouwt de debug-APK en uploadt die als artifact.
+### Build-proces:
 
-De gebouwde APK staat onder *Actions → laatste run → Artifacts → `PidLane-debug`*.
+```mermaid
+graph LR
+    A[Push naar main] --> B[Install Dependencies]
+    B --> C[Add Android Platform]
+    C --> D[Inject BT Permissions]
+    D --> E[Generate App Icons]
+    E --> F[Build Debug APK]
+    F --> G[Upload as Artifact]
+```
 
----
+### Workflow Details:
 
-## Bluetooth & permissies
+1. ✅ `npm install --legacy-peer-deps`
+2. ✅ Android platform toegevoegd
+3. ✅ **Bluetooth-permissies ingevoegd** in AndroidManifest.xml:
+   - **Android 12+:** `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` met `neverForLocation`
+   - **Android ≤11:** Klassieke Bluetooth + `ACCESS_FINE_LOCATION`
+4. ✅ App-icoon gegenereerd (alle densiteiten + adaptive icon)
+5. ✅ Debug-APK gebouwd en uploadd
 
-De BLE-laag initialiseert met `androidNeverForLocation: true`; dat hoort één-op-één bij
-de `neverForLocation`-vlag die de workflow in het manifest zet. Pas je het één aan, pas
-dan ook het ander aan.
-
-Voor SPP/Classic verbindt PidLane bij voorkeur op een **bekend, gekoppeld** MAC-adres
-(`config.js`), zodat geen device-discovery — en dus geen locatie-permissie — nodig is.
-Koppel de adapter daarom eenmalig via de Android Bluetooth-instellingen.
-
-De ingebouwde **📡 Log** (met kopieerknop) dumpt platform, Android-versie en het gekozen
-transport — handig voor diagnose bij verbindingsproblemen.
-
----
-
-## Adapters
-
-Getest met OBDLink MX+ (SPP) en diverse ELM327-BLE-klonen. De BLE-scan herkent zowel
-`fff0`- als `ffe0`-services en kiest de adapter met het sterkste signaal.
+### Download APK:
+```
+Actions → Latest Run → Artifacts → PidLane-debug
+```
 
 ---
 
-## Roadmap
+## 📡 Bluetooth & Permissies
 
-- [ ] Koopcheck prominenter en sneller in beeld in de hoofd-flow.
-- [ ] Demo-rapport (PDF) op maat voor onafhankelijke occasionhandel.
-- [ ] Verbindingsbetrouwbaarheid breder testen op oudere toestellen/tablets.
-- [ ] Uitbreiding naar extra branches na validatie van de beachhead-markt.
+### BLE-initialisatie
+```javascript
+androidNeverForLocation: true  // ↔️ Gesynchroniseerd met workflow
+```
+
+> ⚠️ **Let op:** Als je deze instelling wijzigt, update dan ook `build-apk.yml`!
+
+### SPP / Bluetooth Classic
+- Verbindt op **bekend, gekoppeld MAC-adres** (uit `config.js`)
+- ✅ Geen device-discovery nodig
+- ✅ Geen locatie-permissie vereist
+- 👉 Koppel adapter eenmalig via Android Bluetooth-instellingen
+
+### Debug & Troubleshooting
+Gebruik de ingebouwde **📡 Log-viewer** voor:
+- Platform-info
+- Android-versie
+- Gekozen transport (SPP/BLE/Web)
+- Kopieerbare diagnostische gegevens
 
 ---
 
-## Licentie & eigendom
+## 📱 Ondersteunde Adapters
 
-© PidLane / NewspeedyNL. Alle rechten voorbehouden. Niet voor herdistributie zonder
-toestemming.
+| Adapter | Type | Service | Status |
+|---------|------|---------|--------|
+| **OBDLink MX+** | SPP | Classic | ✅ Getest |
+| **ELM327-BLE** | BLE | fff0/ffe0 | ✅ Getest |
+| **Vgate-Klonen** | BLE | fff0/ffe0 | ✅ Getest |
+
+> 💡 **Smart-selectie:** De BLE-scan kiest automatisch de adapter met het sterkste signaal.
+
+---
+
+## 🗺 Roadmap
+
+- [ ] 🎯 Koopcheck prominenter en sneller in hoofd-flow
+- [ ] 📄 Demo-rapport (PDF) op maat voor onafhankelijke occasionhandelaren
+- [ ] 🧪 Verbindingsbetrouwbaarheid breder testen op oudere toestellen
+- [ ] 🌍 Uitbreiding naar extra branches na validatie
+
+---
+
+## 📜 Licentie & Eigendom
+
+```
+© PidLane / NewspeedyNL
+Alle rechten voorbehouden.
+Niet voor herdistributie zonder expliciete toestemming.
+```
+
+---
+
+<div align="center">
+
+### 🚀 Klaar om te starten?
+
+[🌐 Bezoek PidLane.nl](https://www.pidlane.nl) · [📧 Neem contact op](mailto:info@pidlane.nl)
+
+**Made with ❤️ by NewspeedyNL**
+
+</div>
