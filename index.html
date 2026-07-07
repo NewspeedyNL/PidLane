@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-05 04:15 (CET) — feature-flags: alle functies aan/uit via admin (feat_* keys), basis blijft altijd aan
+     Build: 2026-07-06 23:55 (CET) — VERENIGD: één index.html voor APK + desktop-Chrome (Web Serial/MX+) + telefoon-browser (Web Bluetooth). Omgevingsdetectie i.p.v. desktop-hardcode; desktop-view = mobiele view (brede layout/badge verwijderd). Bevat feature-flags, PID-auto-activering v2, accu-profiel, turbo/boost-onzinfilter, auto-purge na discovery.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -79,6 +79,12 @@
      als de config nog niet bestaat. Wordt overschreven door de admin-keuzes
      uit Airtable (via Worker GET /api/config). SAFE_AT en geheimen staan hier
      BEWUST niet in — die blijven in de app hardcoded. */
+  // Omgevingsdetectie: 'desktop-modus' = een browser met Web Serial én zonder
+  // Capacitor (desktop-Chrome/Edge). In de APK of telefoon-browser = false.
+  // Zo werkt één index.html overal: APK→native plugins, desktop→Web Serial,
+  // telefoon-browser→Web Bluetooth. De verbindingscascade kiest automatisch.
+  window.PIDLANE_DESKTOP = (typeof navigator!=='undefined' && 'serial' in navigator
+                            && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
   window.PID_CONFIG = {
     door_saving_active: true,
     door_deal_active:   true,
@@ -926,6 +932,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .vic-label{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;min-width:34px;flex-shrink:0;}
 .vic-val{font-size:13px;font-weight:600;color:var(--tx);}
 .vic-vin{font-family:var(--m);font-size:10px;color:var(--tx3);margin-top:3px;word-break:break-all;border-top:1px solid var(--bd);padding-top:4px;}
+
 </style>
 </head>
 <body>
@@ -2344,12 +2351,32 @@ function _powertrainPhantom(pid){
   if(exhaustCat&&_engineWarmRunning()&&v<80) return true;
   return false;
 }
+// Boost/laaddruk-PID's die alleen zin hebben op een motor met turbo/compressor.
+const BOOST_PIDS = new Set(['0170','2102','0187']);
+// Houdt de hoogst gemeten inlaatdruk bij → bewijs of er turbo is.
+let _maxMapSeen = 0, _mapSamples = 0;
+function _noteMap(){
+  const m = (typeof pidVals!=='undefined') ? pidVals['010B'] : undefined;
+  if(typeof m==='number' && m>0 && m<300){ _mapSamples++; if(m>_maxMapSeen) _maxMapSeen=m; }
+}
+// Atmosferisch = genoeg MAP-metingen én piek bleef onder ~106 kPa (nooit boost).
+// Onbekend (te weinig data) → niet als atmosferisch bestempelen (geen filter).
+function _isNaturallyAspirated(){
+  if(_mapSamples < 8) return false;      // te weinig bewijs → geen aanname
+  return _maxMapSeen <= 106;             // nooit boven omgevingsdruk → geen turbo
+}
+function _boostPhantom(pid){
+  if(!BOOST_PIDS.has(pid)) return false;
+  return _isNaturallyAspirated();        // boost-sensor op atmosferische motor = onzin
+}
+
 // true = sensor past bij dit voertuig (of brandstoftype onbekend → toelaten)
 function vehiclePlausiblePid(pid){
   const ft=vehicleFuelType();
   if(ft==='benzine' && DIESEL_SCR_PIDS.has(pid)) return false;
   if(ft==='elektrisch' && EV_AFWEZIGE_PIDS.has(pid)) return false; // EV heeft geen trim/lambda/MAF/etc.
   if(_powertrainPhantom(pid)) return false;
+  if(_boostPhantom(pid)) return false;   // turbo/laaddruk op atmosferische motor
   return true;
 }
 
@@ -2359,6 +2386,7 @@ function vehiclePlausiblePid(pid){
 // purge bleven AdBlue/NOx/DPF-tegels dan gewoon staan.
 function purgeImplausiblePids(){
   try{
+    _noteMap();   // MAP-piek bijhouden voor turbo/atmosferisch-detectie
     if(typeof activePIDs==='undefined') return 0;
     const weg=[];
     activePIDs.forEach(pid=>{ if(!vehiclePlausiblePid(pid)) weg.push(pid); });
@@ -3594,12 +3622,19 @@ function togglePID(pid){
 }
 
 // ── ANALYSE-PROFIELEN: elke analyse zet zelf de benodigde PIDs aan ──
+// Vaste basis-set: deze sensoren lopen bij ELKE functie mee, zodat er altijd
+// motorcontext is (toerental, koelwater, belasting, inlaatlucht, accuspanning).
+// Een functie voegt zijn eigen relevante PID's hieroverheen toe; de basis blijft.
+const BASIS_PIDS = ['010C','0105','0104','010F','0142'];
+
 const ANALYSE_PIDS={
   basis:     ['010C','0105','0104','0111','010D','0142','010F','010B'],
   brandstof: ['010C','010D','0104','0106','0107','0110','010B','010F','0144','0124','0115','015E','012F'],
   emissie:   ['0106','0107','0114','0115','0124','0134','0144','013C','013E','012E','0121'],
   rit:       ['010C','010D','0104','0111','0105','0110','010B','0106','0107','0149'],
-  totaal:    ['010C','0105','0104','0111','010D','0142','010F','010B','0106','0107','0115','010E','011F']
+  totaal:    ['010C','0105','0104','0111','010D','0142','010F','010B','0106','0107','0115','010E','011F'],
+  // Accu-check: schakel naar accuspanning + laadcontext; basis blijft meelopen.
+  accu:      ['0142','010C','0104','0105','0146','015B']
 };
 
 // ── SLIMME SENSOR-SELECTIE ──────────────────────────────────────────
@@ -3615,10 +3650,12 @@ const ANALYSE_CATS = {
   emissie:   ['Emissie','Brandstof'],
   rit:       ['Motor','Brandstof','Temp','Emissie'],
   totaal:    ['Motor','Temp','Brandstof','Emissie','Overig'],
+  accu:      ['Motor','Temp'],
 };
 
 function relevantSupportedPIDs(profile){
-  const base = ANALYSE_PIDS[profile] || [];
+  // BASIS_PIDS loopt bij elke functie mee (motorcontext); profiel eroverheen.
+  const base = [...new Set([...BASIS_PIDS, ...(ANALYSE_PIDS[profile] || [])])];
   // In demo of zonder discovery: gewoon het basisprofiel
   if(demoMode || typeof supportedPIDs==='undefined' || !supportedPIDs.size) return base.filter(vehiclePlausiblePid);
   const cats = ANALYSE_CATS[profile] || [];
@@ -3798,6 +3835,7 @@ function resetDataStream(auto){
     _pidLastUpd={}; pidSmooth={};
     try{ if(typeof window._rxBuf==='string') window._rxBuf=''; }catch(e){}
     try{ if(typeof window._sppBuf==='string') window._sppBuf=''; }catch(e){}
+    try{ if(typeof btBuffer==='string') btBuffer=''; }catch(e){}
     if(!auto) showToast?.('🔄 Datastroom gereset — meting start vers');
     log('Datastroom gereset'+(auto?' (automatisch na analyse)':''),'info');
   }catch(e){}
@@ -6635,6 +6673,11 @@ function btEnvDump(){
 //  ENTRY — bouwt de cascade en probeert transports ná elkaar
 // ════════════════════════════════════════════════════════════════════
 async function connectSerial(){
+  // Desktop/Chrome: Web Bluetooth werkt alleen in een secure context.
+  if(window.PIDLANE_DESKTOP && !window.isSecureContext && !/^(localhost|127\.)/.test(location.hostname)){
+    showConnError('Web Bluetooth vereist een beveiligde verbinding.\nOpen PidLane via https:// (GitHub Pages) of via http://localhost.\nEen dubbelgeklikt file://-bestand kan geen Bluetooth gebruiken.');
+    return;
+  }
   // Zombie poll-loop van vorige sessie stoppen
   clearInterval(pollTimer);
   window._pollBusy = false;
@@ -6663,13 +6706,19 @@ async function connectSerial(){
   if (ble)               chain.push(['BLE',                         () => connectBLE(ble)]);
   if (spp && haveCfgMac) chain.push(['SPP (Classic · direct MAC)', () => connectSPP(spp)]);
   if (spp && !haveCfgMac) chain.push(['SPP (Classic · scan)',       () => connectSPP(spp)]);
+  // Desktop (Chrome): Web Serial eerst — de OBDLink MX+ verschijnt op Windows
+  // als seriële Bluetooth-COM-poort en werkt daar het betrouwbaarst.
+  if (('serial' in navigator) && !env.native)
+                          chain.push(['Web Serial (COM-poort)',     () => connectWebSerial()]);
   if (('bluetooth' in navigator) && !env.native)
                           chain.push(['Web Bluetooth',              () => connectWebBluetooth()]);
 
   if (!chain.length){
     btDiag('Geen Bluetooth-transport beschikbaar', 'err');
     resetConnectBtn();
-    showConnError('Bluetooth niet beschikbaar.\nGebruik de PidLane APK op Android.');
+    showConnError(('bluetooth' in navigator)
+      ? 'Kon geen verbinding maken.\nZet de OBDLink MX+ aan, zorg dat hij in bereik is en kies hem in de Chrome-popup.'
+      : 'Web Bluetooth is niet beschikbaar in deze browser.\nGebruik Google Chrome (of Edge) op de desktop, via https.');
     return;
   }
 
@@ -6948,19 +6997,141 @@ async function bleVerifyELM(){
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  MODUS 2b — Web Serial (Chrome desktop, OBDLink MX+ via COM-poort)
+//  De MX+ verschijnt op Windows als seriële Bluetooth-poort. Web Serial geeft
+//  een poortkiezer en een stabiele stroom; de reader vult dezelfde btBuffer
+//  als de andere transports, zodat sendBT/initELM327/scanNetworks meewerken.
+// ════════════════════════════════════════════════════════════════════
+// Globale Web Serial-staat: poort, writer, en een lopende leesbuffer die de
+// dedicated reader-loop vult. _webSerialSend() leest hieruit tot de '>'-prompt.
+let _wsPort=null, _wsWriter=null, _wsReader=null, _wsBuf='', _wsReadAbort=false;
+
+async function connectWebSerial(){
+  log('Web Serial: poort kiezen...', 'info');
+  _wsPort = await navigator.serial.requestPort();      // Chrome-poortkiezer
+  // OBDLink MX+ op Windows: standaard 115200. Bij twijfel is 38400 de bewezen
+  // fallback, maar de MX+ COM-poort draait vast op 115200 (fabrikant-default).
+  await _wsPort.open({ baudRate: 115200, bufferSize: 4096 });
+  log('Web Serial poort geopend (115200)', 'ok');
+
+  const encoder = new TextEncoder();
+  _wsWriter = _wsPort.writable.getWriter();
+  _wsBuf=''; _wsReadAbort=false;
+
+  // Dedicated reader-loop: vult _wsBuf byte-voor-byte. Losgekoppeld van de
+  // oude btBuffer-polling; _webSerialSend leest synchroon tot de prompt.
+  const decoder = new TextDecoder();
+  (async () => {
+    while (_wsPort && _wsPort.readable && !_wsReadAbort) {
+      let reader;
+      try { reader = _wsPort.readable.getReader(); _wsReader = reader; }
+      catch(e){ break; }
+      try {
+        while (true){
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) _wsBuf += decoder.decode(value, {stream:true});
+        }
+      } catch(e){ /* onderbroken */ }
+      finally { try{ reader.releaseLock(); }catch(e){} }
+    }
+  })();
+
+  // Schrijf-hook (rauw) — het echte protocol loopt via _webSerialSend hieronder.
+  window._webSerialWrite = async (str) => { await _wsWriter.write(encoder.encode(str)); };
+  window._webSerialPort = _wsPort;
+
+  _wsPort.addEventListener('disconnect', () => {
+    connected = false; setConn(false); _wsReadAbort=true;
+    window._webSerialWrite = null; window._webSerialPort = null; _wsPort=null;
+    const vt = document.getElementById('vtag'); if (vt) vt.style.display = 'none';
+    log('Web Serial verbroken', 'warn');
+  });
+
+  connected = true; demoMode = false;
+  log('Web Serial verbonden', 'ok');
+  setConn(true);
+  await initELM327Serial();   // bewezen ELM327-init voor de COM-poort
+  await scanNetworks();
+}
+
+// ── Kern: stuur één commando en lees TOT de '>'-prompt (OBDLink-spec) ──
+// Geen vaste delays; we wachten op wat de adapter zelf als "klaar" signaleert.
+// SEARCHING... wordt netjes overgeslagen; timeout voorkomt eeuwig hangen.
+async function _webSerialSend(cmd, timeoutMs){
+  if(!_wsWriter){ return ''; }
+  const TIMEOUT = timeoutMs || 5000;
+  _wsBuf = '';                                   // buffer leeg vóór verzenden
+  const enc = new TextEncoder();
+  try { await _wsWriter.write(enc.encode(cmd + '\r')); }
+  catch(e){ btDiag('serial write fout: '+(e.message||e),'err'); return ''; }
+  btDiag('TX(serial): '+cmd,'info');
+
+  const start = Date.now();
+  // Lees tot de prompt '>' (0x3E) in de buffer staat, of tot timeout.
+  while (Date.now() - start < TIMEOUT){
+    if (_wsBuf.includes('>')) break;
+    await delay(15);
+  }
+  // Response opschonen: echo, CR/LF, SEARCHING en de prompt eruit.
+  let out = _wsBuf
+    .replace(/\r/g,'\n')
+    .split('\n')
+    .map(s=>s.trim())
+    .filter(s=>s && s!==cmd && !/^SEARCHING/i.test(s) && s!=='>')
+    .join(' ')
+    .replace(/>/g,'')
+    .trim();
+  btDiag('RX(serial): "'+out.slice(0,70)+'"', out?'info':'warn');
+  return out;
+}
+
+// ── Bewezen ELM327-init voor Web Serial (ATZ-patroon) ──
+// Op een COM-poort mag ATZ (volledige reset) — anders dan bij Android-SPP waar
+// ATZ de BT-module sloopt. Volgorde volgt python-OBD/ELMduino/ScanDoc.
+async function initELM327Serial(){
+  btDiag('ELM327 init (serial)...','proto');
+  await _webSerialSend('ATZ', 3000);   // volledige reset
+  await delay(1000);
+  await _webSerialSend('ATE0', 2000);  // echo uit
+  await _webSerialSend('ATL0', 2000);  // linefeeds uit
+  await _webSerialSend('ATS0', 2000);  // spaties uit
+  await _webSerialSend('ATH0', 2000);  // headers uit (standaard OBD)
+  await _webSerialSend('ATSP0', 2000); // protocol auto
+  const v = await _webSerialSend('ATRV', 2000); // accuspanning als levensteken
+  log('ELM327 serial klaar'+(v?(' — accu: '+v):''),'ok');
+}
+
+// ════════════════════════════════════════════════════════════════════
 //  MODUS 3 — Web Bluetooth (browser-fallback)
 //  Gooit een error bij mislukken — de cascade vangt 'm op.
 // ════════════════════════════════════════════════════════════════════
 async function connectWebBluetooth(){
   log('Web Bluetooth zoeken...', 'info');
-  const device = await navigator.bluetooth.requestDevice({
-    filters: [
-      { services: [BLE_SERVICE] },
-      { namePrefix: 'OBDII' }, { namePrefix: 'OBD2' }, { namePrefix: 'ELM327' },
-      { namePrefix: 'Vgate' }, { namePrefix: 'MX+' }, { namePrefix: 'iCar' }
-    ],
-    optionalServices: [BLE_SERVICE, '0000ffe0-0000-1000-8000-00805f9b34fb', BLE_SERVICE2]
-  });
+  // Eerst gefilterd (nette lijst). OBDLink MX+ heet vaak "OBDLink MX+ 9xxxx"
+  // → namePrefix 'OBDLink'/'OBDL' toegevoegd. Vindt de scan niets, dan een
+  // tweede poging met acceptAllDevices zodat élke adapter kiesbaar is.
+  const OPT_SVC = [BLE_SERVICE, '0000ffe0-0000-1000-8000-00805f9b34fb', BLE_SERVICE2];
+  let device;
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      filters: [
+        { services: [BLE_SERVICE] },
+        { namePrefix: 'OBDLink' }, { namePrefix: 'OBDL' },
+        { namePrefix: 'OBDII' }, { namePrefix: 'OBD2' }, { namePrefix: 'ELM327' },
+        { namePrefix: 'Vgate' }, { namePrefix: 'MX+' }, { namePrefix: 'iCar' }
+      ],
+      optionalServices: OPT_SVC
+    });
+  } catch(e) {
+    if (e && e.name === 'NotFoundError') {
+      log('Geen match op filter — toon alle Bluetooth-apparaten...', 'info');
+      device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: OPT_SVC
+      });
+    } else { throw e; }
+  }
   log('Apparaat: ' + device.name, 'ok');
 
   const server = await device.gatt.connect();
@@ -7027,14 +7198,21 @@ async function _sendBTRaw(cmd, timeoutMs){
 }
 
 async function _sendBTOnce(cmd, timeoutMs){
-  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite){
-    btDiag(`sendBT "${cmd}" geblokkeerd: GEEN actieve verbinding (spp=${!!window._sppConn} ble=${!!window._bleConn} web=${!!window._webBtWrite})`,'err');
+  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!window._webSerialWrite){
+    btDiag(`sendBT "${cmd}" geblokkeerd: GEEN actieve verbinding (spp=${!!window._sppConn} ble=${!!window._bleConn} web=${!!window._webBtWrite} serial=${!!window._webSerialWrite})`,'err');
     return '';
   }
   if(!cmd) return '';
   const myGen=window._btGen||0;
   const str=cmd+'\r';
   const TIMEOUT=timeoutMs||6000;
+
+  // Web Serial (desktop): gebruik de bewezen prompt-gebaseerde transportlaag.
+  // 0100 (protocoldetectie) krijgt automatisch meer tijd voor SEARCHING...
+  if(window._webSerialWrite){
+    const isSearch = /^01/.test(cmd);
+    return await _webSerialSend(cmd, isSearch ? Math.max(TIMEOUT, 10000) : TIMEOUT);
+  }
 
   try{
     if(window._sppConn){
@@ -7512,6 +7690,8 @@ async function scanNetworks(){
     });
     log(`Protocol: ${protoName} (${protoResp})`,'ok');
     btDiag(`Protocol gevonden: ${protoName}`,'ok');
+    // Inventaris opschonen zodra bekend is wat de auto levert + welk type het is.
+    try{ purgeImplausiblePids(); }catch(e){}
   } else {
     // Geen auto-detect — geen contact of auto reageert niet
     btDiag('Geen auto-detect response — contact aan?','warn');
@@ -7606,7 +7786,7 @@ async function startDiscovery(){
 
   // Zelfherstel: verbinding weg (bijv. via Verbreken-knop)? Automatisch
   // herverbinden op het opgeslagen adres en ELM opnieuw initialiseren.
-  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!demoMode){
+  if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!window._webSerialWrite&&!demoMode){
     btDiag('Geen actieve verbinding bij discovery — automatisch herverbinden...','warn');
     const spp=getSPP();
     const sa=localStorage.getItem('spp_address');
@@ -11659,7 +11839,7 @@ function mailSupport(withDiag){
     const plat = window.Capacitor?.getPlatform?.() || 'web';
     const am = navigator.userAgent.match(/Android\s+([\d.]+)/);
     const android = am ? ('Android ' + am[1]) : plat;
-    const transport = window._sppConn ? 'SPP' : window._bleConn ? 'BLE' : window._webBtWrite ? 'WebBT' : 'geen';
+    const transport = window._sppConn ? 'SPP' : window._bleConn ? 'BLE' : window._webBtWrite ? 'WebBT' : window._webSerialWrite ? 'WebSerial' : 'geen';
     const v = (typeof vehicleInfo !== 'undefined') ? vehicleInfo : {};
     const logTail = (typeof _btLog !== 'undefined' && _btLog.length)
       ? _btLog.slice(-40).map(e => `${e.ts} [${e.type}] ${e.msg}`).join('\n')
@@ -12282,7 +12462,7 @@ function runEVCheckRit(){
 async function runEVCheck(){
   const res=document.getElementById('evResult');
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert accu & systemen…</div>`;
-  try{ await ensurePIDsActive('totaal'); }catch(e){}
+  try{ await ensurePIDsActive('accu'); }catch(e){}
   const v=getVehicle();
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
