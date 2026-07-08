@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PidLane · Sessie-check</title>
+<style>
+:root{
+  --bg:#0e1218;--panel:#182029;--panel2:#1f2a35;--line:#2a3644;--line2:#3a4a5c;
+  --ink:#eaf0f6;--ink2:#9db0c4;--ink3:#6b7d92;
+  --cyan:#2fd0d6;--cyandim:#1c6f74;--green:#3fd07a;--amber:#f5a623;--red:#ff5b5b;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:100vh;padding:16px}
+.wrap{max-width:560px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:.4px;font-size:16px;margin-bottom:4px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+.brand small{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3);font-weight:600}
+.sub{color:var(--ink2);font-size:13px;line-height:1.5;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+label.lab{display:block;font-size:13.5px;font-weight:600;margin-bottom:8px}
+label.lab .req{color:var(--cyan)}
+.hint{font-size:11.5px;color:var(--ink3);margin:-3px 0 8px;line-height:1.4}
+input.txt,textarea.txt{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:11px;color:var(--ink);padding:12px 13px;font-size:15px;font-family:var(--sans)}
+textarea.txt{min-height:70px;resize:vertical;line-height:1.5}
+input.txt:focus,textarea.txt:focus{outline:none;border-color:var(--cyan)}
+.field{margin-bottom:18px}.field:last-child{margin-bottom:0}
+.toggle{display:flex;align-items:center;gap:12px;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:16px}
+.toggle .tx{flex:1}.toggle .tx b{display:block;font-size:14px}.toggle .tx span{font-size:12px;color:var(--ink2)}
+.sw{width:52px;height:30px;border-radius:15px;background:var(--line2);position:relative;transition:.2s;flex:0 0 auto;border:none;cursor:pointer}
+.sw i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--green)}.sw.on i{left:25px}
+.btn{width:100%;border:none;border-radius:13px;padding:16px;font-size:15px;font-weight:700;font-family:var(--sans);cursor:pointer}
+.btn.prim{background:var(--cyan);color:#052225}.btn.prim:active{background:#25b4ba}
+.btn.go{background:linear-gradient(135deg,#22c5cb,#2fd0d6);color:#052225;font-size:16px}
+.btn.ghost{background:var(--panel2);border:1px solid var(--line2);color:var(--ink2)}
+.btn.green{background:var(--green);color:#04220f}
+.row{display:flex;gap:10px}.row .btn{flex:1}.mt{margin-top:12px}
+.step{display:flex;align-items:center;gap:13px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 15px;margin-bottom:9px;cursor:pointer;transition:.12s;font-size:14.5px}
+.step:active{transform:scale(.99)}
+.step .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--line2);flex:0 0 auto;display:grid;place-items:center;transition:.15s}
+.step.on{border-color:var(--cyandim);background:#15302f}.step.on .box{background:var(--green);border-color:var(--green)}
+.step .box svg{opacity:0;transition:.15s}.step.on .box svg{opacity:1}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--ink2);padding:12px 8px;border-radius:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.seg button.on{background:var(--cyandim);border-color:var(--cyan);color:#eafeff}
+.seg button.on.no{background:#3a1414;border-color:var(--red);color:#ffdede}
+.seg button.on.yes{background:#123322;border-color:var(--green);color:#d6ffe6}
+.sec{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cyan);margin:24px 4px 12px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:1px;background:var(--line)}
+.link{display:flex;align-items:center;gap:9px;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;font-family:var(--mono)}
+.link.live{background:#0f2418;border:1px solid #1f4d33;color:#8ff0bb}
+.link.solo{background:#241f0f;border:1px solid #4a3d17;color:var(--amber)}
+.link .d{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.link.live .d{background:var(--green);box-shadow:0 0 10px var(--green)}
+.link.solo .d{background:var(--amber)}
+.rec{display:flex;align-items:center;gap:9px;background:#1a1013;border:1px solid #3a1f22;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12.5px;color:#ffb9b9;font-family:var(--mono)}
+.recdot{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);animation:blink 1.3s infinite}
+@keyframes blink{50%{opacity:.25}}
+.rec .n{margin-left:auto;background:#2a1417;border:1px solid #4a2226;border-radius:20px;padding:2px 9px;color:#ffd3d3}
+.reclog{background:#0a0e13;border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:18px;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--ink2);max-height:110px;overflow-y:auto}
+.reclog .ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reclog .tcat{color:var(--cyan)}.reclog .tfout{color:var(--red)}
+.result{background:#0a0e13;border:1px solid var(--line);border-radius:12px;padding:14px;font-family:var(--mono);font-size:11.5px;line-height:1.6;white-space:pre-wrap;color:#cfe0f0;max-height:360px;overflow-y:auto;margin-bottom:14px}
+.ok-banner{background:#123322;border:1px solid var(--green);color:#d6ffe6;border-radius:12px;padding:14px 16px;font-size:13.5px;margin-bottom:16px;display:flex;gap:10px;align-items:center}
+.warn{background:#2a2413;border:1px solid #4a3d17;color:var(--amber);border-radius:11px;padding:11px 13px;font-size:12.5px;margin-bottom:14px;line-height:1.5}
+.hidden{display:none!important}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(16px);background:var(--panel2);border:1px solid var(--green);color:var(--ink);padding:12px 18px;border-radius:12px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="dot"></span>PidLane · Sessie-check <small id="cnt"></small></div>
+  <div class="sub" id="sub">Laden…</div>
+  <div id="app"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+const DEMO_STANDALONE = true;   // demo-activiteit alleen als dit venster los wordt geopend
+const ADMINS=['albin','admin'];
+const $=id=>document.getElementById(id);
+const app=$('app'), sub=$('sub');
+let user='', testMode=false, data=null, poll=null, liveMode=false, APP=null, lastSnap=null;
+
+/* ---- lokale engine: alleen voor standalone/demo ---- */
+const LocalLog=(function(){let s=null,subs=[];const now=()=>Date.now();
+  function _l(c,m,d){if(!s)return;s.events.push({t:now(),cat:c,msg:m,data:d||null});subs.forEach(f=>{try{f(s)}catch(e){}});}
+  return{get active(){return !!s;},start(id,meta){s={id,tester:(meta&&meta.tester)||'',startedAt:now(),events:[]};_l('sessie','evaluatie gestart');return id;},
+    log:_l,onUpdate(f){subs.push(f);},snapshot(){return s?JSON.parse(JSON.stringify(s)):null;},stop(){const c=this.snapshot();s=null;subs=[];return c;}};
+})();
+
+function detectApp(){ try{ if(window.opener && !window.opener.closed && window.opener.PidLaneEvalLog){ APP=window.opener.PidLaneEvalLog; return true; } }catch(e){} APP=null; return false; }
+function appAlive(){ try{ return !!(window.opener && !window.opener.closed && window.opener.PidLaneEvalLog); }catch(e){ return false; } }
+function activeSnap(){
+  if(liveMode){ try{ if(appAlive()){ const s=APP.snapshot(); if(s) lastSnap=s; } }catch(e){} return lastSnap; }
+  return LocalLog.snapshot();
+}
+
+const STEPS=[
+  'Verbinding met adapter gelukt',
+  'Kenteken & RDW-gegevens opgehaald',
+  'Foutcodes (DTC) uitgelezen',
+  'Live-data bekeken',
+  'AI-rapport gegenereerd',
+  'Rapport delen / exporteren getest',
+];
+const Q=[
+  {k:'kenteken',lab:'Kenteken',type:'text',ph:'bv. XN-421-K',req:true},
+  {k:'auto',lab:'Merk, model & bouwjaar',type:'text',ph:'bv. Mazda CX-5, 2018',req:true},
+  {k:'adapter',lab:'Welke adapter gebruikt?',type:'text',ph:'bv. OBDLink MX+'},
+  {k:'echt',lab:'Wat was er werkelijk mis? (monteur)',hint:'De echte oorzaak — hiermee toetsen we de AI.',type:'area',ph:'bv. Bobine cilinder 3 defect'},
+  {k:'ai',lab:'Was de AI-diagnose correct?',type:'seg',opts:['Ja','Deels','Nee'],req:true},
+  {k:'snelheid',lab:'Hoe voelde de app qua snelheid?',hint:'Leggen we naast de gemeten latency/verbindingstijd.',type:'seg',opts:['Snel','Ok','Traag']},
+  {k:'bugs',lab:'Bugs tegengekomen?',type:'area',ph:'Leeg = geen'},
+  {k:'ux',lab:'Waar liep je vast in de app?',type:'area',ph:'Leeg = nergens'},
+  {k:'b2b',lab:'Zou je dit rapport aan een klant durven tonen?',type:'seg',opts:['Ja','Nee'],req:true},
+  {k:'notitie',lab:'Extra notities',type:'area',ph:'Optioneel'},
+];
+
+async function getCount(){try{if(window.storage){const r=await window.storage.get('pl_sessie_teller');return r?+r.value:0;}}catch(e){}try{return +(localStorage.getItem('pl_sessie_teller')||0);}catch(e){return 0;}}
+async function bumpCount(){const n=(await getCount())+1;try{if(window.storage)await window.storage.set('pl_sessie_teller',String(n));}catch(e){}try{localStorage.setItem('pl_sessie_teller',String(n));}catch(e){}return n;}
+
+/* ================= BOOT ================= */
+function boot(){
+  if(detectApp()){
+    liveMode=true;
+    try{ user=(window.opener.PidLaneEvalTester)||'Albin'; }catch(e){ user='Albin'; }
+    waitForSession();
+  } else {
+    liveMode=false; screenLogin();
+  }
+}
+function waitForSession(){
+  const s=activeSnap();
+  if(s&&s.id){ screenSession(s.id); return; }
+  sub.textContent='Gekoppeld aan het PidLane-venster.';
+  app.innerHTML=`<div class="link live"><span class="d"></span>Verbonden met app — wachten tot de evaluatie start…</div>
+    <div class="warn">Klik in het app-venster op <b>🔬 Evaluatie starten</b> als dat nog niet is gebeurd.</div>`;
+  setTimeout(waitForSession,700);
+}
+
+/* ================= standalone login/menu ================= */
+function screenLogin(){
+  sub.textContent='Los venster (geen app gekoppeld). Log in om standalone te testen.';
+  app.innerHTML=`<div class="card"><div class="field"><label class="lab">Wie ben je?</label>
+    <input class="txt" id="uname" placeholder="Je naam" autocomplete="off"></div>
+    <button class="btn prim" id="login">Inloggen</button></div>`;
+  $('login').onclick=()=>{const v=$('uname').value.trim();if(!v){toast('Vul je naam in');return;}user=v;screenMenu();};
+  $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('login').click();});
+}
+async function screenMenu(){
+  const isAdmin=ADMINS.includes(user.toLowerCase());
+  const n=await getCount();$('cnt').textContent=n>0?n+' / 25':'';
+  sub.innerHTML=`Ingelogd als <b style="color:var(--ink)">${user}</b>${isAdmin?' · beheerder':''}.`;
+  if(!isAdmin){app.innerHTML=`<div class="warn">Alleen beheerders kunnen testsessies starten.</div><button class="btn ghost" id="out">Uitloggen</button>`;$('out').onclick=()=>{user='';screenLogin();};return;}
+  app.innerHTML=`<div class="toggle"><div class="tx"><b>Testsessie</b><span>Standalone demo (geen app gekoppeld)</span></div><button class="sw ${testMode?'on':''}" id="sw"><i></i></button></div>
+    <button class="btn go ${testMode?'':'hidden'}" id="start">▶ Start sessie-check</button>
+    <button class="btn ghost mt" id="out">Uitloggen</button>`;
+  $('sw').onclick=()=>{testMode=!testMode;screenMenu();};
+  const st=$('start');if(st)st.onclick=startStandalone;
+  $('out').onclick=()=>{user='';testMode=false;screenLogin();};
+}
+function startStandalone(){
+  const id='EV-'+Date.now().toString(36).toUpperCase();
+  LocalLog.start(id,{tester:user});
+  if(DEMO_STANDALONE) demoFeed();
+  screenSession(id);
+}
+
+/* ================= sessie ================= */
+function screenSession(id){
+  data={id,steps:STEPS.map(()=>false),answers:{},ai:'',b2b:'',snelheid:''};
+  sub.innerHTML='Loop de stappen langs; de app registreert ondertussen mee.';
+  $('cnt').textContent='';
+  const linkBar = liveMode
+    ? `<div class="link live"><span class="d"></span>Live gekoppeld aan PidLane-venster</div>`
+    : `<div class="link solo"><span class="d"></span>Standalone demo-modus</div>`;
+  const check=`<div class="sec">Controle-stappen</div>`+STEPS.map((s,i)=>`
+    <div class="step" data-step="${i}"><span class="box"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l3.5 3.5L12 3" stroke="#04220f" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>${s}</span></div>`).join('');
+  const questions=`<div class="sec">Vragen</div>`+Q.map(q=>{
+    if(q.type==='seg')return `<div class="card"><div class="field"><label class="lab">${q.lab}${q.req?' <span class="req">*</span>':''}</label>${q.hint?`<div class="hint">${q.hint}</div>`:''}<div class="seg" data-seg="${q.k}">${q.opts.map(o=>`<button data-v="${o}">${o}</button>`).join('')}</div></div></div>`;
+    const inp=q.type==='area'?`<textarea class="txt" data-q="${q.k}" placeholder="${q.ph||''}"></textarea>`:`<input class="txt" data-q="${q.k}" placeholder="${q.ph||''}">`;
+    return `<div class="card"><div class="field"><label class="lab">${q.lab}${q.req?' <span class="req">*</span>':''}</label>${q.hint?`<div class="hint">${q.hint}</div>`:''}${inp}</div></div>`;
+  }).join('');
+  app.innerHTML=`${linkBar}
+    <div class="rec"><span class="recdot"></span> App-log <span class="n" id="recN">0</span></div>
+    <div class="reclog" id="recLog"></div>
+    ${check}${questions}
+    <button class="btn prim mt" id="close" style="margin-top:20px">Sessie sluiten & bestand maken</button>
+    <button class="btn ghost mt" id="cancel">Annuleren</button>`;
+  app.querySelectorAll('[data-step]').forEach(el=>el.onclick=()=>{const i=+el.dataset.step;data.steps[i]=!data.steps[i];el.classList.toggle('on',data.steps[i]);updateClose();});
+  app.querySelectorAll('[data-q]').forEach(el=>el.oninput=()=>{data.answers[el.dataset.q]=el.value;});
+  app.querySelectorAll('[data-seg]').forEach(seg=>{const key=seg.dataset.seg;seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{seg.querySelectorAll('button').forEach(x=>x.className='');const v=b.dataset.v;b.classList.add('on',(v==='Ja'||v==='Snel')?'yes':(v==='Nee'||v==='Traag')?'no':'');data[key]=v;updateClose();});});
+  $('close').onclick=closeSession;
+  $('cancel').onclick=()=>{ if(poll){clearInterval(poll);poll=null;} if(liveMode){ try{appAlive()&&APP.stop();}catch(e){} window.close(); } else { LocalLog.stop(); screenMenu(); } };
+  if(poll){clearInterval(poll);poll=null;}
+  if(liveMode){ poll=setInterval(()=>{ renderRec(activeSnap()); if(!appAlive()){} },700); renderRec(activeSnap()); }
+  else { LocalLog.onUpdate(renderRec); renderRec(LocalLog.snapshot()); }
+  updateClose();
+}
+function renderRec(s){ const rn=$('recN'),rl=$('recLog'); if(!rn||!rl)return; if(!s){rn.textContent='0';return;}
+  rn.textContent=s.events.length;
+  rl.innerHTML=s.events.slice(-6).reverse().map(e=>`<div class="ln"><span class="t${e.cat==='fout'?'fout':'cat'}">[${e.cat}]</span> ${(e.msg||'').replace(/</g,'&lt;')}</div>`).join('');
+}
+function updateClose(){const done=data.steps.filter(Boolean).length,tot=data.steps.length,btn=$('close');if(!btn)return;
+  btn.textContent=done<tot?`Sessie sluiten & bestand maken  (${done}/${tot} stappen)`:'Sessie sluiten & bestand maken ✓';
+  btn.classList.toggle('green',done===tot);}
+
+/* ================= afsluiten ================= */
+async function closeSession(){
+  const a=data.answers;
+  if(!a.kenteken||!a.auto||!data.ai||!data.b2b){toast('Vul de velden met * in');return;}
+  if(poll){clearInterval(poll);poll=null;}
+  let snap;
+  if(liveMode){ snap=activeSnap()||{events:[],startedAt:Date.now()}; try{appAlive()&&APP.stop();}catch(e){} }
+  else { snap=LocalLog.stop()||{events:[],startedAt:Date.now()}; }
+  const events=snap.events||[], g=derive(events);
+  const durMin=Math.max(1,Math.round((Date.now()-(snap.startedAt||Date.now()))/60000));
+  const n=await bumpCount();
+  const now=new Date(),stamp=now.toLocaleString('nl-NL',{dateStyle:'short',timeStyle:'short'});
+  const fileDate=now.toISOString().slice(0,16).replace(/[:T]/g,'-');
+  const yn=v=>(v&&(''+v).trim())||'—';
+  const U={kenteken:a.kenteken,auto:a.auto,adapter:a.adapter,echt:a.echt,ai:data.ai,snelheid:data.snelheid,bugs:a.bugs,ux:a.ux,b2b:data.b2b,notitie:a.notitie};
+  const timeline=events.map(e=>{const t=new Date(e.t).toLocaleTimeString('nl-NL',{hour12:false});const d=e.data?'  '+compact(e.data):'';return `${t}  [${e.cat}] ${(e.msg||'')}${d}`;}).join('\n')||'(geen app-events geregistreerd)';
+  const lat=g.adapter.lat.length?Math.round(g.adapter.lat.reduce((x,y)=>x+y)/g.adapter.lat.length):null;
+
+  const txt=
+`============================================
+ PIDLANE · VOLLEDIGE SESSIE-CHECK
+============================================
+Tester   : ${user}
+Datum    : ${stamp}
+Sessie   : #${n}   (id ${data.id})
+Duur     : ~${durMin} min
+Bron log : ${liveMode?'live uit app-venster':'standalone demo'}
+
+======== DEEL A · JOUW INPUT ========
+--- CONTROLE-STAPPEN ---
+${STEPS.map((s,i)=>`[${data.steps[i]?'x':' '}] ${s}`).join('\n')}
+
+--- VOERTUIG ---
+Kenteken    : ${yn(U.kenteken)}
+Auto        : ${yn(U.auto)}
+Adapter     : ${yn(U.adapter)}
+
+--- DIAGNOSE ---
+Werkelijk mis (monteur) : ${yn(U.echt)}
+AI-diagnose correct?    : ${U.ai}
+App voelde qua snelheid : ${yn(U.snelheid)}
+
+--- UX & BUGS ---
+Bugs             : ${yn(U.bugs)}
+Waar vastgelopen : ${yn(U.ux)}
+
+--- OORDEEL ---
+Rapport klant-klaar? : ${U.b2b}
+Notities             : ${yn(U.notitie)}
+
+======== DEEL B · APP-LOG (automatisch) ========
+--- SAMENVATTING ---
+Adapter     : ${g.adapter.type||'—'} · connect ${g.adapter.connectMs??'?'}ms · latency ~${lat??'?'}ms · ${g.adapter.disconnects} disconnect(s)
+Protocol    : ${g.adapter.protocol||'—'}
+PID's       : ${g.pids.discovered??'?'} ontdekt · gefaald: ${setStr(g.pids.failed)}
+DTC's       : ${g.dtc.codes.join(', ')||'geen'} · freeze-frame: ${g.dtc.freeze?'ja':'nee'}
+AI          : verdict ${g.ai.stoplicht?g.ai.stoplicht.toUpperCase():'—'} · ${g.ai.tokensIn+g.ai.tokensOut} tok · ${(g.ai.latencyMs/1000||0).toFixed(1)}s · fallback: ${g.ai.fallback?'JA':'nee'}
+Navigatie   : deuren [${[...g.nav.doors].join(', ')||'—'}] · live-data ${g.nav.live}x · delen ${g.nav.share}x
+Fouten      : ${g.fouten.length}
+
+--- TIJDLIJN ---
+${timeline}
+
+======== DEEL C · SIGNALEN (kruisverwijzing) ========
+${signals(U,g,lat).map(x=>'• '+x).join('\n')}
+============================================`;
+
+  const fname=`pidlane-sessie-${n}-${(U.kenteken||'auto').replace(/[^a-zA-Z0-9]/g,'')}-${fileDate}.txt`;
+  sub.textContent='Sessie afgerond.';$('cnt').textContent=n+' / 25';
+  app.innerHTML=`
+    <div class="ok-banner">✓ Sessie #${n} klaar — jouw input én de app-log staan gekoppeld.</div>
+    <div class="result">${txt.replace(/</g,'&lt;')}</div>
+    <div class="row"><button class="btn prim" id="dl">📄 Bestand opslaan</button><button class="btn ghost" id="cp">Kopieer</button></div>
+    ${liveMode?'<button class="btn green mt" id="again">Venster sluiten (volgende auto via de app)</button>':'<button class="btn green mt" id="again">Nog een auto testen</button>'}`;
+  $('dl').onclick=()=>saveTxt(fname,txt);
+  $('cp').onclick=()=>navigator.clipboard?.writeText(txt).then(()=>toast('Gekopieerd')).catch(()=>toast('Kopiëren niet gelukt'));
+  $('again').onclick=()=> liveMode ? window.close() : startStandalone();
+}
+
+/* ================= afleiding + signalen ================= */
+function derive(ev){
+  const g={voertuig:{},adapter:{type:'',connectMs:null,disconnects:0,protocol:'',lat:[]},
+    pids:{discovered:null,failed:new Set()},dtc:{codes:[],freeze:false},
+    ai:{stoplicht:'',tokensIn:0,tokensOut:0,latencyMs:0,fallback:false},
+    nav:{doors:new Set(),live:0,share:0},fouten:[]};
+  for(const e of ev){const d=e.data||{};switch(e.cat){
+    case 'voertuig':Object.assign(g.voertuig,d);break;
+    case 'adapter':
+      if(/verbonden|connect/i.test(e.msg)){if(d.type)g.adapter.type=d.type;if(d.connectMs!=null)g.adapter.connectMs=d.connectMs;if(d.protocol)g.adapter.protocol=d.protocol;}
+      if(/disconnect|verbroken/i.test(e.msg))g.adapter.disconnects++;
+      if(/latency/i.test(e.msg)&&d.ms!=null)g.adapter.lat.push(d.ms);break;
+    case 'pid':if(d.aantal!=null)g.pids.discovered=d.aantal;if(/faalt|NO DATA/i.test(e.msg)&&d.pid)g.pids.failed.add(d.pid);break;
+    case 'dtc':if(Array.isArray(d.codes))g.dtc.codes=d.codes;if(d.freeze)g.dtc.freeze=true;break;
+    case 'ai':
+      if(d.stoplicht)g.ai.stoplicht=d.stoplicht;if(d.tokensIn)g.ai.tokensIn+=d.tokensIn;if(d.tokensOut)g.ai.tokensOut+=d.tokensOut;
+      if(d.latencyMs)g.ai.latencyMs=d.latencyMs;if(d.fallback)g.ai.fallback=true;break;
+    case 'nav':if(d.naam)g.nav.doors.add(d.naam);if(/live/i.test(e.msg))g.nav.live++;break;
+    case 'share':g.nav.share++;break;
+    case 'fout':g.fouten.push({t:e.t,msg:e.msg});break;
+  }}
+  return g;
+}
+function signals(U,g,lat){
+  const out=[];
+  if(U.ai&&g.ai.stoplicht){out.push(`AI — jij: "${U.ai}"  |  app-verdict: ${g.ai.stoplicht.toUpperCase()}${g.ai.fallback?' (FALLBACK!)':''}`);
+    if(U.ai==='Nee'&&g.ai.stoplicht==='groen')out.push('⚠ Jij vond de AI fout, maar app gaf GROEN — mogelijke over-confidence.');
+    if(g.ai.fallback)out.push('⚠ AI-fallback actief: rapport kwam niet van de echte AI.');}
+  const shareErr=g.fouten.filter(f=>/share|deel|export/i.test(f.msg)).length;
+  if(shareErr)out.push(`⚠ ${shareErr}x deel/export-fout in app-log — weegt mee in "klant-klaar: ${U.b2b}".`);
+  if((U.bugs||'').trim()===''&&g.fouten.length)out.push(`⚠ Jij meldde geen bugs, maar app logde ${g.fouten.length} fout(en) — bekijk de tijdlijn.`);
+  if((U.ux||'').trim()&&g.fouten.length)out.push(`Jij liep vast; app registreerde ${g.fouten.length} fout(en) in dezelfde sessie.`);
+  if(U.snelheid==='Snel'&&((g.adapter.connectMs>4000)||(lat&&lat>150)))out.push(`⚠ Jij vond 't snel, maar gemeten: connect ${g.adapter.connectMs}ms / latency ${lat}ms.`);
+  if(U.snelheid==='Traag'&&lat&&lat<80&&g.adapter.connectMs&&g.adapter.connectMs<3000)out.push(`Jij vond 't traag terwijl metingen vlot waren — kijk naar UI-gevoel i.p.v. adapter.`);
+  if(g.pids.failed.size)out.push(`Gefaalde PID's: ${[...g.pids.failed].join(', ')} — check of dit met de gemiste sensor te maken heeft.`);
+  if(g.adapter.disconnects)out.push(`${g.adapter.disconnects}x disconnect tijdens sessie.`);
+  if(!out.length)out.push('Geen bijzondere afwijkingen tussen jouw input en de app-werking.');
+  return out;
+}
+const setStr=s=>s.size?[...s].join(', '):'geen';
+function compact(o){try{return Object.entries(o).map(([k,v])=>`${k}=${Array.isArray(v)?v.join('/'):v}`).join(' ');}catch(e){return '';}}
+
+function demoFeed(){[
+  [400,'adapter','verbonden',{type:'OBDLink MX+',connectMs:2140,protocol:'ISO 15765-4 CAN'}],
+  [800,'voertuig','rdw opgehaald',{kenteken:'XN-421-K',merk:'Mazda',model:'CX-5',bouwjaar:2018,brandstof:'Benzine'}],
+  [1200,'nav','deur',{naam:'Wat is er met mijn auto?'}],
+  [1600,'pid','ontdekt',{aantal:41}],[1800,'pid','faalt',{pid:'0113'}],
+  [2200,'dtc','uitgelezen',{codes:['P0300'],freeze:true}],
+  [2500,'nav','live-data geopend'],[2800,'adapter','latency',{ms:48}],
+  [3300,'ai','verdict',{stoplicht:'oranje'}],[3400,'ai','tokens',{tokensIn:2100,tokensOut:1720}],[3500,'ai','api-call',{latencyMs:5100}],
+  [3900,'share','poging'],[4100,'fout','share mislukt: modal z-index'],
+].forEach(([d,c,m,dt])=>setTimeout(()=>LocalLog.log(c,m,dt),d));}
+
+let tT;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400);}
+function saveTxt(name,txt){try{const b=new Blob([txt],{type:'text/plain;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('Opgeslagen: '+name);}catch(e){toast('Kon niet opslaan — gebruik Kopieer');}}
+
+boot();
+})();
+</script>
+</body>
+</html>
