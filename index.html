@@ -974,6 +974,12 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
             <span>Ik geef toestemming dat PidLane de BT-logs en overige logs bundelt en bewaart voor analyse. Ik kan ze zelf exporteren via de knop "Exporteer alle logs".</span>
           </label>
         </div>
+        <div style="padding:9px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2);line-height:1.5">
+            <input type="checkbox" id="loginEvalWindowConfirm" style="margin-top:1px;flex-shrink:0" onchange="try{localStorage.setItem('pl_eval_window_ok',this.checked?'1':'0')}catch(e){}">
+            <span>✔ Bevestiging: het <b>sessie-check venster</b> is geopend en staat klaar naast de app.</span>
+          </label>
+        </div>
         <!-- Inlog-vinkje 'Extra logfunctie' vervallen: een admin krijgt bij
              uitloggen nu altijd de vraag of de volledige log bewaard moet
              worden (zie logout()). -->
@@ -2740,7 +2746,7 @@ function demo(pid){
   const rijcyclus=Math.sin(t/8000);  // langzame rijcyclus
 
   // Motor
-  if(pid==='010C') _ds[pid]=850+rijcyclus*1200+Math.random()*60;        // 850-2050 RPM stadsrit
+  if(pid==='010C') _ds[pid]=800+(rijcyclus*0.5+0.5)*900+Math.random()*40; // 800-1740 RPM — gezonde stadsrit, blijft boven stationair
   if(pid==='010D') _ds[pid]=Math.max(0,45+rijcyclus*35+Math.random()*5); // 10-80 km/h
   if(pid==='0104') _ds[pid]=Math.max(5,22+rijcyclus*28+Math.random()*5); // 5-50% belasting
   if(pid==='0111') _ds[pid]=Math.max(5,18+rijcyclus*22+Math.random()*4); // gasklep 5-40%
@@ -3138,8 +3144,11 @@ function _plEvalCapture(msg,type){
 try{ if(typeof log==='function'){ var _plOrigLog=log; log=function(msg,type){ _plOrigLog(msg,type); _plEvalCapture(msg,type); }; } }catch(e){}
 
 // Start een evaluatie + open het checklist-venster ernaast.
+var _plPidFlagged={};
 window.PidLaneStartEvaluatie=function(tester){
+  try{ if(typeof demoMode!=='undefined' && demoMode){ alert('🚫 Demo-auto is niet toegestaan als testsessie. Verbind eerst met een echte auto en start dan de evaluatie.'); return; } }catch(e){}
   var id='EV-'+Date.now().toString(36).toUpperCase();
+  _plPidFlagged={};
   window.PidLaneEvalTester=tester||'Albin';
   try{ PidLaneEvalLog.start(id,{tester:window.PidLaneEvalTester}); }catch(e){}
   try{ log('🔬 Evaluatie-sessie gestart ('+id+')','ok'); }catch(e){}
@@ -3148,6 +3157,21 @@ window.PidLaneStartEvaluatie=function(tester){
     if(!w) alert('Pop-up geblokkeerd — sta pop-ups toe zodat het checklist-venster kan openen.');
   }catch(e){ alert('Kon checklist-venster niet openen.'); }
 };
+
+// Verdachte PID's opsporen: onbekend (geen naam), onzin-waarde of buiten bereik.
+// Zo bouwen we per merk/type/motor gericht kennis op over rammelende PID's.
+function _plCheckPid(pid,val){
+  try{
+    if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
+    if(_plPidFlagged[pid]) return;                 // max. 1 melding per PID per sessie
+    var def=null; try{ def=(typeof getPidDef==='function')?getPidDef(pid):null; }catch(e){}
+    var reden='';
+    if(!def || !def.name) reden='onbekende PID (geen naam)';
+    else if(typeof val!=='number' || !isFinite(val)) reden='onzin-waarde (geen getal)';
+    else if(def.min!=null && def.max!=null && (val < def.min-0.001 || val > def.max+0.001)) reden='buiten bereik ('+def.min+'…'+def.max+' '+(def.unit||'')+')';
+    if(reden){ _plPidFlagged[pid]=1; PidLaneEvalLog.log('pidq','verdacht',{pid:pid,naam:(def&&def.name)||'',waarde:val,reden:reden}); }
+  }catch(e){}
+}
 
 // Toon de knop rechtsonder zodra: ingelogd als admin  EN  tester-consent aan.
 function _plEnsureEvalBtn(){
@@ -4035,6 +4059,7 @@ function applyG(pid,val){
 }
 function updPID(pid,val){
   pidVals[pid]=val;
+  try{ _plCheckPid(pid,val); }catch(e){}
   _pidLastUpd[pid]=Date.now();
   if(!pidHist[pid]) pidHist[pid]=[];
   pidHist[pid].push({t:Date.now(),v:val});
@@ -9445,6 +9470,7 @@ const DEMO_VEHICLES={
 };
 function loadDemoVehicle(key){
   const dv=DEMO_VEHICLES[key]||DEMO_VEHICLES.benzine;
+  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){}
   demoMode=true; connected=true; dataStable=true;
   const pids=demoPIDsForFuel(dv.brandstof);
   supportedPIDs=new Set(pids);
@@ -9535,6 +9561,7 @@ function startDemoKenteken(){
   _startDemoCore(null, kent);
 }
 function _startDemoCore(car, kent){
+  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){}
   demoMode=true; connected=true; dataStable=true;
   document.getElementById('connOv').classList.add('hidden');
   resetToStep1();
