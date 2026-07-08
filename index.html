@@ -1,6 +1,6 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-06 23:55 (CET) — VERENIGD: één index.html voor APK + desktop-Chrome (Web Serial/MX+) + telefoon-browser (Web Bluetooth). Omgevingsdetectie i.p.v. desktop-hardcode; desktop-view = mobiele view (brede layout/badge verwijderd). Bevat feature-flags, PID-auto-activering v2, accu-profiel, turbo/boost-onzinfilter, auto-purge na discovery.
+     Build: 2026-07-07 00:40 (CET) — demo-garage: keuzelijst gezonde demo-auto's (benzine/hybride/diesel) of eigen kenteken als demo (echte RDW-lookup + PID-selectie werken). Verenigd bestand: APK + desktop-Chrome (Web Serial) + telefoon-browser (Web Bluetooth).
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -3091,6 +3091,80 @@ function downloadLog(){
   download('newspeedy-log.txt',lines.join('\n'));
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   EVALUATIE-SESSIE (kruisverwijzing met los checklist-venster)
+   Zet 'pidlane-sessie-check.html' in DEZELFDE map als dit bestand.
+   Werkt zo: admin + tester-consent → knop rechtsonder → opent checklist-venster
+   dat via window.opener live in deze log meekijkt. Zonder actieve sessie doet
+   de logger niets (0 overhead).
+   ══════════════════════════════════════════════════════════════════════════ */
+window.PidLaneEvalLog = (function(){
+  let s=null, subs=[], bound=false;
+  const now=()=>Date.now();
+  function _log(cat,msg,data){ if(!s) return; s.events.push({t:now(),cat,msg,data:data||null}); subs.forEach(f=>{try{f(s)}catch(e){}}); }
+  function bindCrash(){
+    window.addEventListener('error', ev=>{ if(s) _log('fout','crash: '+(ev.message||'')); });
+    window.addEventListener('unhandledrejection', ev=>{ if(s) _log('fout','promise-fout: '+((ev.reason&&ev.reason.message)||ev.reason||'')); });
+  }
+  return {
+    get active(){ return !!s; },
+    start(id,meta){ s={id, tester:(meta&&meta.tester)||'', startedAt:now(), events:[]}; if(!bound){bindCrash();bound=true;} _log('sessie','evaluatie gestart'); return id; },
+    log:_log,
+    onUpdate(f){ subs.push(f); },
+    snapshot(){ return s? JSON.parse(JSON.stringify(s)) : null; },
+    stop(){ const c=this.snapshot(); s=null; subs=[]; return c; }
+  };
+})();
+
+// Vang elke app-log-regel op en zet 'm in de evaluatie-tijdlijn (gecategoriseerd).
+function _plEvalCapture(msg,type){
+  try{
+    if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
+    var m=String(msg).replace(/<[^>]+>/g,'').trim(); if(!m) return;
+    if(/^apiFetch: key/.test(m)) return;
+    var t=(type||'').toLowerCase(), cat='app';
+    if(t==='err') cat='fout';
+    else if(/verbroken/i.test(m)){ PidLaneEvalLog.log('adapter','disconnect'); return; }
+    else if(/fallback/i.test(m)){ PidLaneEvalLog.log('ai','fallback',{fallback:true}); return; }
+    else if(/verbind|verbonden|connect|adapter|\bSPP\b|\bBLE\b|latency|gekoppeld|ELM|protocol/i.test(m)) cat='adapter';
+    else if(/RDW|kenteken|VIN/i.test(m)) cat='voertuig';
+    else if(/foutcode|\bDTC\b|\bP0|\bP1|gewist|scan/i.test(m)) cat='dtc';
+    else if(/analyse|rapport|monteur|datalog|token|\bAI\b/i.test(m)) cat='ai';
+    else if(/deel|share|export/i.test(m)) cat='share';
+    PidLaneEvalLog.log(cat, m);
+  }catch(e){}
+}
+// Wrap de bestaande log() zodat we niets in de app-code hoeven aan te raken.
+try{ if(typeof log==='function'){ var _plOrigLog=log; log=function(msg,type){ _plOrigLog(msg,type); _plEvalCapture(msg,type); }; } }catch(e){}
+
+// Start een evaluatie + open het checklist-venster ernaast.
+window.PidLaneStartEvaluatie=function(tester){
+  var id='EV-'+Date.now().toString(36).toUpperCase();
+  window.PidLaneEvalTester=tester||'Albin';
+  try{ PidLaneEvalLog.start(id,{tester:window.PidLaneEvalTester}); }catch(e){}
+  try{ log('🔬 Evaluatie-sessie gestart ('+id+')','ok'); }catch(e){}
+  try{
+    var w=window.open('pidlane-sessie-check.html','pidlaneEval','width=540,height=940');
+    if(!w) alert('Pop-up geblokkeerd — sta pop-ups toe zodat het checklist-venster kan openen.');
+  }catch(e){ alert('Kon checklist-venster niet openen.'); }
+};
+
+// Toon de knop rechtsonder zodra: ingelogd als admin  EN  tester-consent aan.
+function _plEnsureEvalBtn(){
+  try{
+    var admin=false; try{ admin=!!(window.currentUser&&currentUser.role==='admin'); }catch(e){}
+    var consent=false; try{ consent=(localStorage.getItem('pl_tester_consent')==='1'); }catch(e){}
+    var on=admin&&consent, b=document.getElementById('plEvalBtn');
+    if(on&&!b){
+      b=document.createElement('button'); b.id='plEvalBtn'; b.textContent='🔬 Evaluatie starten';
+      b.style.cssText='position:fixed;right:12px;bottom:76px;z-index:9500;background:#00D4FF;color:#04222a;border:none;border-radius:22px;padding:11px 16px;font:700 13px/1 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,212,255,.35);cursor:pointer';
+      b.onclick=function(){ var who='Albin'; try{ who=(currentUser&&currentUser.name)||'Albin'; }catch(e){} PidLaneStartEvaluatie(who); };
+      document.body.appendChild(b);
+    } else if(!on&&b){ b.remove(); }
+  }catch(e){}
+}
+setInterval(_plEnsureEvalBtn, 2000);
+
 // ════════════════════════════════════════
 // 3-LAAGS DATA VALIDATIE & FILTERING
 // ════════════════════════════════════════
@@ -3430,7 +3504,7 @@ function showWelcome(vinInfo){
 function goHome(){
   // Home = keuzescherm als overlay BOVENOP; lopende analyses blijven draaien
   // (stopt niets). Alleen transiente popups sluiten.
-  for(const id of ['pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview']){
+  for(const id of ['pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }
   showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);
@@ -3467,7 +3541,7 @@ function appBack(){
   // 0. Open lade (sensoren/logs) eerst sluiten
   try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){}
   // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
-  for(const id of ['aiReportSheet','pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview']){
+  for(const id of ['aiReportSheet','pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
     const el=document.getElementById(id);
     if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; return true; }
   }
@@ -4995,6 +5069,7 @@ async function scanDTC(){
   document.getElementById('bscan').disabled=false;
   document.getElementById('bclr').disabled=!dtcCodes.length;
   log(`Scan: ${dtcCodes.length} code(s)`,dtcCodes.length?'warn':'ok');
+  try{ PidLaneEvalLog.log('dtc','uitgelezen',{codes:[...dtcCodes]}); }catch(e){}
 }
 async function realScanDTC(){
   const r=await sendCmd('03');const codes=[];
@@ -5187,6 +5262,7 @@ const PRICE_OUT_EUR_PER_MTOK = 4.60;  // Haiku 4.5 output (~$5/MTok)
 let _sessTokIn=0,_sessTokOut=0,_sessCalls=0,_sessCostEur=0;
 function trackTokens(u){
   const i=u.input_tokens||0,o=u.output_tokens||0;
+  try{ PidLaneEvalLog.log('ai','tokens',{tokensIn:i,tokensOut:o}); }catch(e){}
   _sessTokIn+=i; _sessTokOut+=o; _sessCalls++;
   _sessCostEur += i/1e6*PRICE_IN_EUR_PER_MTOK + o/1e6*PRICE_OUT_EUR_PER_MTOK;
   updateTokenPill(true);
@@ -5372,6 +5448,7 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
   };
 
   aiBusyBegin();
+  const _plT0=Date.now();
   try{
     const resp = await fetch(PROXY_URL+'/v1/messages',{
       method: 'POST',
@@ -5391,6 +5468,7 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
     }
     const data=await resp.json();
     try{ if(data.usage) trackTokens(data.usage); }catch(e){}
+    try{ PidLaneEvalLog.log('ai','api-call',{model:body.model,latencyMs:Date.now()-_plT0}); }catch(e){}
     return extractAIText(data);
   } finally {
     aiBusyEnd();
@@ -5410,6 +5488,7 @@ function aiVerdict(text){
   let vc='green', vi='🟢', vt='Geen urgente problemen gevonden';
   if(hit('🔴|niet rijden|kritiek|gevaarlijk|direct naar de garage|onveilig|levensgevaar')){ vc='red'; vi='🔴'; vt='Aandacht vereist — laat dit nakijken'; }
   else if(hit('🟡|let op|binnenkort|aanbevolen|op termijn|aandacht')){ vc='amber'; vi='🟡'; vt='Let op — niet direct kritiek'; }
+  try{ if(scan.length>200){ PidLaneEvalLog.log('ai','verdict',{stoplicht:{green:'groen',amber:'oranje',red:'rood'}[vc]}); } }catch(e){}
   return { vc, vi, vt, clr:{green:'var(--gn)',amber:'var(--or)',red:'var(--rd)'}[vc], bg:{green:'var(--gns)',amber:'var(--ors)',red:'var(--rds)'}[vc] };
 }
 // Volledig gesectioneerd rapport (voor in de sheet).
@@ -9400,18 +9479,74 @@ function renderDemoBar(){
   sel.value=key;
 }
 
+// ── Demo-garage: gezonde demo-auto's om uit te kiezen (of eigen kenteken) ──
+const DEMO_CARS=[
+  { merk:'Mazda',      model:'CX-5',  year:'2018', brandstof:'benzine', vin:'JM3KFBCL8J0123456', wmi:'JM3', motortype:'2.0 SkyActiv-G 165pk', icon:'🚙' },
+  { merk:'Volkswagen', model:'Golf',  year:'2017', brandstof:'benzine', vin:'WVWZZZAUZHW123456', wmi:'WVW', motortype:'1.4 TSI 125pk',        icon:'🚗' },
+  { merk:'Toyota',     model:'Yaris', year:'2019', brandstof:'hybride', vin:'VNKKD3D310A123456', wmi:'VNK', motortype:'1.5 Hybrid 100pk',     icon:'🚕' },
+  { merk:'Volvo',      model:'V40',   year:'2016', brandstof:'diesel',  vin:'YV1MV7431G2123456', wmi:'YV1', motortype:'D2 120pk',             icon:'🚘' },
+];
 function startDemo(){
   if(!featOn('feat_demo')){ showToast?.('Demo-modus is uitgeschakeld door beheerder'); return; }
   const apiVal=document.getElementById('startApiKey').value.trim();
   if(apiVal&&apiVal.startsWith('sk-ant-')){window.anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){}updateApiPill();}
+  openDemoCarChooser();   // eerst kiezen — niet automatisch één vaste auto
+}
+function openDemoCarChooser(){
+  let m=document.getElementById('demoCarModal');
+  if(!m){
+    m=document.createElement('div'); m.id='demoCarModal';
+    m.style.cssText='position:fixed;inset:0;z-index:9750;background:rgba(10,14,23,.65);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center';
+    m.addEventListener('click',e=>{ if(e.target===m) m.style.display='none'; });
+    document.body.appendChild(m);
+  }
+  const cards=DEMO_CARS.map((c,i)=>`
+    <button onclick="startDemoCar(${i})" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);cursor:pointer;margin-bottom:8px">
+      <span style="font-size:22px">${c.icon}</span>
+      <span style="flex:1"><b style="font-size:14px">${c.merk} ${c.model} ${c.year}</b><br><span style="font-size:11px;color:var(--tx3)">${c.motortype} · ${c.brandstof} · gezond ✅</span></span>
+      <span style="color:var(--tx3)">›</span>
+    </button>`).join('');
+  m.innerHTML=`<div style="background:var(--sur);width:100%;max-width:560px;max-height:90vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--bd)">
+      <b style="font-size:14px">▷ Demo — kies een auto</b>
+      <button onclick="document.getElementById('demoCarModal').style.display='none'" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>
+    </div>
+    <div style="overflow-y:auto;padding:14px 16px">
+      <div style="font-size:10px;color:var(--tx3);margin-bottom:10px">Alle demo-auto's zijn gezond en in orde. RDW-opzoeking en PID-selectie werken gewoon.</div>
+      ${cards}
+      <div style="border-top:1px solid var(--bd);margin:12px 0 10px"></div>
+      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px">Of gebruik een echt kenteken als demo-auto (RDW)</div>
+      <div style="display:flex;gap:8px">
+        <input id="demoKentInput" placeholder="bv. KF660K" maxlength="8" style="flex:1;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);font-family:var(--f);font-size:14px;padding:10px 12px;text-transform:uppercase">
+        <button onclick="startDemoKenteken()" style="padding:10px 16px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">Start</button>
+      </div>
+    </div>
+  </div>`;
+  m.style.display='flex';
+}
+function startDemoCar(i){
+  const m=document.getElementById('demoCarModal'); if(m) m.style.display='none';
+  _startDemoCore(DEMO_CARS[i]||DEMO_CARS[0], null);
+}
+function startDemoKenteken(){
+  const kent=((document.getElementById('demoKentInput')||{}).value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!kent){ showToast?.('Vul een kenteken in'); return; }
+  const m=document.getElementById('demoCarModal'); if(m) m.style.display='none';
+  _startDemoCore(null, kent);
+}
+function _startDemoCore(car, kent){
   demoMode=true; connected=true; dataStable=true;
   document.getElementById('connOv').classList.add('hidden');
   resetToStep1();
   setConn(true);
 
-  // Mazda CX-5 2018 2.0 SkyActiv-G
-  const demoVin={merk:'Mazda',model:'CX-5',year:'2018',vin:'JM3KFBCL8J0123456',wmi:'JM3',motortype:'2.0 SkyActiv-G 165pk'};
+  const demoVin = car
+    ? { merk:car.merk, model:car.model, year:car.year, vin:car.vin, wmi:car.wmi, motortype:car.motortype, brandstof:car.brandstof }
+    : { merk:'Onbekend', model:'', year:'', vin:'', wmi:'', motortype:'', brandstof:'' };
   vehicleInfo=demoVin;
+  // Merge-laag voeden: normalisatie + fantoomfilter (purge bij brandstof) draaien
+  // direct mee — dus een diesel-demo toont diesel-sensoren, benzine niet, enz.
+  try{ resetVehicleSources(); mergeVehicleData('vin', { merk:demoVin.merk, model:demoVin.model, year:demoVin.year, brandstof:demoVin.brandstof }); }catch(e){}
 
   // Alle PIDs die een Mazda CX-5 2018 typisch ondersteunt
   const demoPIDs=[
@@ -9451,11 +9586,12 @@ function startDemo(){
   buildDiscoveredPIDList();
 
   updateVehicleCard(demoVin);
-  showVtag('DEMO — Mazda CX-5 2018');
-  log('Demo modus — Mazda CX-5 2.0 SkyActiv-G 2018 gesimuleerd','warn');
+  const _dNaam=[demoVin.merk,demoVin.model,demoVin.year].filter(Boolean).join(' ')||'demo-auto';
+  showVtag('DEMO — '+_dNaam);
+  log('Demo modus — '+_dNaam+(demoVin.motortype?(' '+demoVin.motortype):'')+' gesimuleerd','warn');
 
   // Toon auto info in welcome title
-  document.getElementById('welcomeTitle').textContent='Mazda CX-5 2018 herkend ✅';
+  document.getElementById('welcomeTitle').textContent = kent ? ('Demo met kenteken '+kent) : (_dNaam+' herkend ✅');
 
   // Selecteer een uitgebreide standaard set voor directe weergave
   [
@@ -9474,6 +9610,16 @@ function startDemo(){
   measureConnSpeed().then(sp=>{ applyStrategy(suggestStrategy(sp)); });
   renderDemoBar();
   showWelcome(demoVin);
+
+  // Kenteken als demo-auto: echte RDW-opzoeking vult merk/model/brandstof in
+  // en het fantoomfilter draait mee — net als bij een echte verbinding.
+  if(kent){
+    try{ localStorage.setItem('pl_kenteken', kent); }catch(e){}
+    setTimeout(()=>{ try{
+      const i=document.getElementById('kentInput'); if(i) i.value=kent;
+      rdwLookup(false);
+    }catch(e){} }, 300);
+  }
 }
 
 // ════════════════════════════════════════
