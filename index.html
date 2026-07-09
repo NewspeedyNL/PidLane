@@ -11,6 +11,16 @@
      AI — op een gezonde auto kreeg de AI nul meetwaarden ("geen beschikking
      over sensoren"). Nu gaan alle gemeten waarden (max 40) + volledig
      datakwaliteit-blok mee.
+     UI: "🧪 Tester-modus"-knop + consent-vinkje verborgen voor admins
+     (impliciet consent; externe niet-admin tester ziet het nog wel).
+     UI: dood "sessie-check venster is geopend"-vinkje verwijderd (restant
+     van het oude losse-venster-model).
+     UI: "🧪 Tester-modus"-knop + consent-vinkjes volledig verwijderd (dood
+     na Veldlab); hasTesterConsent()+live-log-engine intact.
+     NIEUW (deur 1): "Basic system check" — reeks live autotechniek-tests met
+     tijd/PID-grafiek (verwachte band vs echte meting), auto-advance bij groen.
+     Automatische PID-selectie: catalogus gefilterd op motortype (universeel +
+     benzine/diesel/hybride) en supportedPIDs; ensurePIDListActive zet ze aan.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -731,6 +741,31 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .chk-sum-num.ok{color:var(--gn);} .chk-sum-num.warn{color:var(--or);} .chk-sum-num.bad{color:var(--rd);}
 .chk-sum-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--tx3); }
 .chk-results { display:flex; flex-direction:column; gap:7px; }
+/* ── Basic system check ── */
+.bsc-body{min-height:120px}
+.bsc-empty{font-size:13px;color:var(--tx3);padding:16px;text-align:center;background:var(--sur2);border:1px dashed var(--bd);border-radius:var(--r)}
+.bsc-head{margin-bottom:8px}
+.bsc-cnt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.bsc-grp{color:var(--cy,#2fd0d6)}
+.bsc-name{font-size:16px;font-weight:800;margin-top:2px}
+.bsc-uit{font-size:12.5px;color:var(--tx2);line-height:1.5;margin-top:2px}
+#bscCanvas{width:100%;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);display:block;margin:4px 0 8px}
+.bsc-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.bsc-status{font-size:13px;font-weight:700}
+.bsc-status.ok{color:var(--gn)} .bsc-status.go{color:var(--gn)} .bsc-status.no{color:var(--rd)}
+.bsc-live{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.bsc-unit{font-size:12px;color:var(--tx3);font-weight:600}
+.bsc-prog{height:8px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px;overflow:hidden;margin-bottom:10px}
+.bsc-prog>div{height:100%;background:linear-gradient(90deg,var(--gn),#7ef0ab);transition:width .15s;border-radius:6px}
+.bsc-skip{width:100%}
+.bsc-done .bsc-score{font-size:15px;font-weight:700;margin-bottom:10px}
+.bsc-done .bsc-score b{font-size:22px;color:var(--gn)}
+.bsc-rows{display:flex;flex-direction:column;gap:6px}
+.bsc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;font-size:13px}
+.bsc-row.ok{border-color:var(--gn);background:var(--gns)}
+.bsc-row.warn{border-color:var(--or);background:var(--ors)}
+.bsc-row.mut{color:var(--tx3)}
+.bsc-val{font-variant-numeric:tabular-nums;font-weight:700;color:var(--tx2)}
 .chk-item { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:10px 12px; display:flex; align-items:center; gap:10px; box-shadow:var(--ss); }
 .chk-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .chk-dot.ok{background:var(--gn);} .chk-dot.warn{background:var(--or);} .chk-dot.bad{background:var(--rd);}
@@ -977,19 +1012,6 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="api-lbl" style="margin-bottom:5px">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
           <input class="api-inp" id="loginApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
         </div>
-        <button class="btn" id="loginTesterBtn" onclick="toggleTesterMode('login')" style="width:100%;padding:9px;font-size:12px;justify-content:center;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:#00D4FF;font-weight:700">🧪 Tester-modus</button>
-        <div id="loginTesterConsentRow" style="display:none;padding:9px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">
-          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2);line-height:1.5">
-            <input type="checkbox" id="loginTesterConsent" style="margin-top:1px;flex-shrink:0" onchange="saveTesterConsent('login')">
-            <span>Ik geef toestemming dat PidLane de BT-logs en overige logs bundelt en bewaart voor analyse. Ik kan ze zelf exporteren via de knop "Exporteer alle logs".</span>
-          </label>
-        </div>
-        <div style="padding:9px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">
-          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2);line-height:1.5">
-            <input type="checkbox" id="loginEvalWindowConfirm" style="margin-top:1px;flex-shrink:0" onchange="try{localStorage.setItem('pl_eval_window_ok',this.checked?'1':'0')}catch(e){}">
-            <span>✔ Bevestiging: het <b>sessie-check venster</b> is geopend en staat klaar naast de app.</span>
-          </label>
-        </div>
         <!-- Inlog-vinkje 'Extra logfunctie' vervallen: een admin krijgt bij
              uitloggen nu altijd de vraag of de volledige log bewaard moet
              worden (zie logout()). -->
@@ -1023,15 +1045,6 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <div style="padding:0 20px 10px;display:none" id="connApiRow">
           <div class="api-lbl">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
           <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
-        </div>
-        <div style="padding:0 20px 10px" id="connTesterRow">
-          <button class="btn" id="testerBtn" onclick="toggleTesterMode('conn')" style="width:100%;padding:9px;font-size:12px;justify-content:center;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:#00D4FF;font-weight:700">🧪 Tester-modus</button>
-          <div id="testerConsentRow" style="display:none;margin-top:8px;padding:9px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">
-            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2);line-height:1.5">
-              <input type="checkbox" id="testerConsent" style="margin-top:1px;flex-shrink:0" onchange="saveTesterConsent('conn')">
-              <span>Ik geef toestemming dat PidLane de BT-logs en overige logs bundelt en bewaart voor analyse. Ik kan ze zelf exporteren via de knop "Exporteer alle logs".</span>
-            </label>
-          </div>
         </div>
         <div class="msteps">
           <div class="mstep"><div class="sn">1</div>Steek OBDLink MX+ adapter in OBD-poort (onder dashboard, links)</div>
@@ -1175,6 +1188,13 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="choice-title">Conditiecheck</div>
           <div class="choice-desc">Foutcodes + sensoren in één conditiefoto — groen/oranje/rood per systeem.</div>
           <div class="choice-out"><b>Je krijgt:</b> conditiefoto groen/oranje/rood per systeem.</div>
+        </div>
+
+        <div class="choice-card" id="wc-basiccheck">
+          <div class="choice-head"><span class="choice-icon">📈</span><span class="choice-time">⏱ ±2-4 min</span></div>
+          <div class="choice-title">Basic system check</div>
+          <div class="choice-desc">Reeks live technische tests — verwachte trend vs echte meting per sensor. Groen vinkje → automatisch door naar de volgende.</div>
+          <div class="choice-out"><b>Je krijgt:</b> per systeem een grafiek + geslaagd/twijfel-oordeel. Sensoren worden automatisch gekozen.</div>
         </div>
 
         <div class="choice-card" id="wc-dtc">
@@ -1583,6 +1603,16 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
           <div class="chk-sum"><div class="chk-sum-num bad" id="csBad">0</div><div class="chk-sum-lbl">🔴 Probleem</div></div>
         </div>
         <div class="chk-results" id="chkResults"></div>
+      </div>
+
+      <!-- BASIC SYSTEM CHECK -->
+      <div class="pane" id="pane-basiccheck">
+        <div class="chk-intro"><h3>📈 Basic system check</h3><p>Live technische tests: verwachte trend (grijze band) vs echte OBD-meting (cyaan lijn). Blijft de waarde binnen de band, dan slaagt de test automatisch en gaat de app door.</p></div>
+        <div class="toolbar">
+          <div id="rdyBasic" class="rdy-card off">📡 Verbind adapter om te starten</div>
+          <button class="btn pri" onclick="startBasicCheck()" id="btnBasic">▶ Start basic check</button>
+        </div>
+        <div id="bscBody" class="bsc-body"><div class="bsc-empty">Klik “Start basic check”. De juiste sensoren worden automatisch geselecteerd op basis van je motortype en wat de auto ondersteunt.</div></div>
       </div>
 
       <!-- DIAGNOSE -->
@@ -3911,7 +3941,7 @@ function startChoice(choice){
   }
   if(choice==='koop') setKoopMode('koop');
   // Verplaatste analyses openen in het midden via de launcher
-  if(choice==='check'||choice==='diag'||choice==='fuel'||choice==='koop'){
+  if(choice==='check'||choice==='diag'||choice==='fuel'||choice==='koop'||choice==='basiccheck'){
     openAnalysis(choice);
   } else if(choice==='report'){
     openAnalysis('diag');
@@ -4781,6 +4811,322 @@ function exportCheckReport(){
   const lines=[`PidLane — Totaalcheck`,`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'',''];
   checkResults.forEach(i=>lines.push(`[${i.status.toUpperCase()}] ${i.name}: ${i.display}\n  ${i.detail}\n`));
   download('totaalcheck.txt',lines.join('\n'));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BASIC SYSTEM CHECK (deur 1) — 09-07-2026
+   Reeks korte autotechniek-tests. Per test:
+     • X-as = tijd, Y-as = relevante PID
+     • Verwachte trend/band = referentielijn (grijs vlak)
+     • Werkelijke waarde = live OBD-lijn (cyaan)
+     • Slaagt de live-waarde X sec binnen de band → groen vinkje → volgende test
+   Automatische PID-selectie: catalogus wordt gefilterd op motortype
+   (universeel + benzine/diesel/hybride) én op wat de auto ondersteunt
+   (supportedPIDs); ensurePIDListActive zet precies die PIDs aan.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Elke test: {id, groep, naam, pids:[hoofd-PID...], uitleg, band:{lo,hi} of fn,
+//   hold: seconden binnen band om te slagen, min? (min. sec meten)}
+// band kan statisch zijn {lo,hi} of dynamisch via fn(vals,hist)->{lo,hi,ref?}.
+const BSC_TESTS = [
+  // ── UNIVERSEEL ──────────────────────────────────────────────────
+  {id:'idle_stab', groep:'universeel', naam:'Stationair stabiliteit', pids:['010C'],
+   uitleg:'RPM stabiel binnen ±50 rpm', hold:5,
+   band:(v,h)=>{ const b=bscBaseline(h['010C'],3); return b==null?null:{lo:b-50,hi:b+50,ref:b}; }},
+  {id:'cool_warm', groep:'universeel', naam:'Koelvloeistof opwarmen', pids:['0105'],
+   uitleg:'Geleidelijke stijging naar bedrijfstemperatuur (80–100 °C)', hold:4,
+   band:{lo:70,hi:105}, trend:'stijgend'},
+  {id:'batt_load', groep:'universeel', naam:'Accuspanning', pids:['0142'],
+   uitleg:'Blijft > 13,5 V (laadspanning). Schakel bewust verlichting + blower in.', hold:4,
+   band:{lo:13.3,hi:15.0}},
+  {id:'map_idle', groep:'universeel', naam:'MAP-druk stationair', pids:['010B'],
+   uitleg:'30–40 kPa stationair = geen vacuümlek', hold:4, band:{lo:25,hi:45}},
+  {id:'tps_lin', groep:'universeel', naam:'Gasklep respons', pids:['0111'],
+   uitleg:'Trap gas rustig in: 0→100 % vloeiend', hold:3, band:{lo:0,hi:100}, dynamiek:true},
+  {id:'iat_amb', groep:'universeel', naam:'Inlaatlucht bij koude start', pids:['010F','0146'],
+   uitleg:'IAT ≈ buitentemperatuur bij koude motor', hold:3,
+   band:(v)=>{ const amb=v['0146']; return amb==null?{lo:-10,hi:45}:{lo:amb-8,hi:amb+15,ref:amb}; }},
+  {id:'ltft', groep:'universeel', naam:'Brandstoftrim (LTFT)', pids:['0107'],
+   uitleg:'Lange trim tussen −10 % en +10 %', hold:4, band:{lo:-10,hi:10}},
+  {id:'misfire', groep:'universeel', naam:'Misfire-monitor', pids:['010C','0104'],
+   uitleg:'RPM mag niet plots inzakken onder lichte belasting (indirecte misfire)', hold:5,
+   band:(v,h)=>{ const b=bscBaseline(h['010C'],4); return b==null?null:{lo:b-120,hi:b+400,ref:b}; }},
+  {id:'o2_switch', groep:'universeel', naam:'O2-sensor schakelt', pids:['0114'],
+   uitleg:'Voorste lambda pendelt 0,1–0,9 V meerdere keren/sec', hold:4,
+   band:{lo:0.05,hi:0.95}, oscilleren:true},
+  {id:'spd_rpm', groep:'universeel', naam:'Snelheid vs toerental', pids:['010D','010C'],
+   uitleg:'Rij constant: snelheid en RPM lopen lineair mee (koppeling/automaat OK)', hold:4,
+   band:{lo:0,hi:280}},
+  {id:'fuel_flow', groep:'universeel', naam:'Verbruik bij constante snelheid', pids:['015E'],
+   uitleg:'Verbruik stabiel bij gelijkmatig rijden', hold:4, band:{lo:0,hi:50}},
+  {id:'fan_act', groep:'universeel', naam:'Koelventilator-venster', pids:['0105'],
+   uitleg:'Bij 95–105 °C hoort de fan te schakelen', hold:3, band:{lo:60,hi:115}, ref:100},
+
+  // ── BENZINE ─────────────────────────────────────────────────────
+  {id:'maf_curve', groep:'benzine', naam:'MAF luchtflow', pids:['0110','010C'],
+   uitleg:'MAF stijgt vloeiend met RPM', hold:4, band:{lo:1,hi:500}},
+  {id:'ign_time', groep:'benzine', naam:'Ontstekingstiming', pids:['010E'],
+   uitleg:'Timing verandert bij accelereren', hold:3, band:{lo:-15,hi:50}, dynamiek:true},
+  {id:'stft_resp', groep:'benzine', naam:'STFT op gasstoot', pids:['0106'],
+   uitleg:'Korte positieve piek, daarna terug naar ~0 %', hold:3, band:{lo:-15,hi:20}, dynamiek:true},
+  {id:'cat_eff', groep:'benzine', naam:'Katalysator-efficiëntie', pids:['0115'],
+   uitleg:'Achterste O2 stabiel rond 0,6–0,8 V', hold:5, band:{lo:0.5,hi:0.85}},
+  {id:'fuel_lvl', groep:'benzine', naam:'Tankniveau plausibel', pids:['012F'],
+   uitleg:'Geen abrupte sprongen in tankniveau', hold:4, band:{lo:0,hi:100}, stabiel:true},
+
+  // ── DIESEL ──────────────────────────────────────────────────────
+  {id:'rail_stab', groep:'diesel', naam:'Raildruk stabiliteit', pids:['0159','0123'],
+   uitleg:'Stationair stabiel, stijgt netjes bij gas', hold:4, band:{lo:200,hi:2200}},
+  {id:'egr_flow', groep:'diesel', naam:'EGR-flow', pids:['012C'],
+   uitleg:'EGR-positie verandert bij lichte belasting', hold:3, band:{lo:0,hi:100}, dynamiek:true},
+  {id:'boost', groep:'diesel', naam:'Turbo-boost curve', pids:['0170','010B'],
+   uitleg:'Boost stijgt vloeiend, geen pieken', hold:4, band:{lo:0,hi:300}},
+  {id:'dpf_soot', groep:'diesel', naam:'DPF roetlast', pids:['017C','016B'],
+   uitleg:'Roetlast binnen normale band (0–45 %)', hold:3, band:{lo:0,hi:45}},
+  {id:'nox_plaus', groep:'diesel', naam:'NOx plausibiliteit', pids:['0183','018E'],
+   uitleg:'NOx-waarden stijgen bij accelereren', hold:3, band:{lo:0,hi:2000}, dynamiek:true},
+
+  // ── HYBRIDE ─────────────────────────────────────────────────────
+  {id:'hv_soc', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'],
+   uitleg:'SOC blijft binnen 30–80 %', hold:4, band:{lo:25,hi:85}},
+  {id:'ev_ice', groep:'hybride', naam:'EV ↔ ICE overgang', pids:['010C'],
+   uitleg:'RPM springt vloeiend in/uit (motor start/stopt netjes)', hold:4, band:{lo:0,hi:6000}},
+  {id:'regen', groep:'hybride', naam:'Regeneratie laadstroom', pids:['0142','015B'],
+   uitleg:'Spanning/laden stijgt bij remmen', hold:3, band:{lo:12,hi:15.5}, dynamiek:true},
+];
+
+// Baseline = mediaan van laatste n sec metingen (voor stabiliteitsbanden)
+function bscBaseline(hist, sec){
+  if(!Array.isArray(hist)||!hist.length) return null;
+  const t0=Date.now()-sec*1000;
+  const vals=hist.filter(x=>x.t>=t0).map(x=>x.v).sort((a,b)=>a-b);
+  if(vals.length<3) return null;
+  return vals[Math.floor(vals.length/2)];
+}
+
+let _bscState=null; // {list, idx, results:[], testT0, holdStart, raf}
+
+// Filter de catalogus op motortype + welke PIDs de auto levert.
+function bscBuildList(){
+  const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
+  const groepen=new Set(['universeel', et]); // ev valt terug op universeel
+  const heeft=pid=> demoMode || (typeof supportedPIDs==='undefined') || !supportedPIDs.size || supportedPIDs.has(pid) || !!getPidDef(pid);
+  const list=[];
+  for(const t of BSC_TESTS){
+    if(!groepen.has(t.groep)) continue;
+    // Kies de eerste ondersteunde PID uit t.pids als hoofdmeter; test vervalt
+    // als de auto geen enkele bijbehorende PID levert.
+    const bruik=t.pids.filter(heeft);
+    if(!bruik.length){ continue; }
+    list.push({...t, pid:bruik[0], usePids:bruik});
+  }
+  return list;
+}
+
+async function startBasicCheck(){
+  if(!(await preAnalysisCheck())) return;
+  const list=bscBuildList();
+  if(!list.length){ bscRender(`<div class="bsc-empty">Geen geschikte sensoren gevonden voor deze auto. Verbind en voer eerst een PID-scan uit.</div>`); return; }
+  // Automatische PID-selectie: alle hoofd- en hulp-PIDs van de reeks aanzetten.
+  const allPids=[...new Set(list.flatMap(t=>t.usePids))];
+  try{ await ensurePIDListActive(allPids); }catch(e){}
+  _bscState={list, idx:0, results:[], testT0:0, holdStart:0, raf:null};
+  const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
+  bscToast(`${list.length} tests geselecteerd voor ${et} · ${allPids.length} sensoren aangezet`);
+  bscNextTest();
+}
+
+function bscNextTest(){
+  if(!_bscState) return;
+  if(_bscState.raf){ cancelAnimationFrame(_bscState.raf); _bscState.raf=null; }
+  if(_bscState.idx>=_bscState.list.length){ bscFinish(); return; }
+  _bscState.testT0=Date.now();
+  _bscState.holdStart=0;
+  bscDrawFrame(); // start de live-loop
+}
+
+function bscCurrentBand(t){
+  try{
+    if(typeof t.band==='function') return t.band(pidVals, pidHist)||null;
+    return t.band||null;
+  }catch(e){ return null; }
+}
+
+// Slaag-logica per frame. Retourneert {inBand, extra} en beheert hold-timer.
+function bscEvaluate(t, band){
+  const v=pidVals[t.pid];
+  if(v===undefined || band==null) return {v, inBand:false, wacht:true};
+  let inBand = v>=band.lo && v<=band.hi;
+  // Oscillatie-eis (O2): binnen X sec zowel < 0,3 als > 0,6 gezien
+  if(t.oscilleren){
+    const h=(pidHist[t.pid]||[]).slice(-40).map(x=>x.v);
+    inBand = inBand && h.some(x=>x<0.3) && h.some(x=>x>0.6);
+  }
+  // Dynamiek-eis: er moet beweging zijn (spreiding > 5% van bereik)
+  if(t.dynamiek){
+    const h=(pidHist[t.pid]||[]).slice(-30).map(x=>x.v);
+    if(h.length>4){ const sp=Math.max(...h)-Math.min(...h); inBand = inBand && sp>Math.max(2,(band.hi-band.lo)*0.05); }
+  }
+  return {v, inBand, wacht:false};
+}
+
+function bscDrawFrame(){
+  if(!_bscState) return;
+  const t=_bscState.list[_bscState.idx];
+  const band=bscCurrentBand(t);
+  const {v, inBand, wacht}=bscEvaluate(t, band);
+  const now=Date.now();
+  // hold-timer: aaneengesloten tijd binnen band
+  if(inBand){ if(!_bscState.holdStart) _bscState.holdStart=now; }
+  else { _bscState.holdStart=0; }
+  const held=_bscState.holdStart? (now-_bscState.holdStart)/1000 : 0;
+  const geslaagd = held>=(t.hold||4);
+
+  bscPaint(t, band, v, held, geslaagd, wacht);
+
+  if(geslaagd){
+    _bscState.results.push({id:t.id, naam:t.naam, status:'ok', waarde:v, unit:(getPidDef(t.pid)?.unit||'')});
+    _bscState.idx++;
+    setTimeout(bscNextTest, 650); // even groen tonen, dan door
+    return;
+  }
+  // timeout per test: 30s → markeer als "niet bevestigd" en ga door
+  if(now-_bscState.testT0>30000){
+    _bscState.results.push({id:t.id, naam:t.naam, status:v===undefined?'geen':'twijfel', waarde:v, unit:(getPidDef(t.pid)?.unit||'')});
+    _bscState.idx++;
+    setTimeout(bscNextTest, 300);
+    return;
+  }
+  _bscState.raf=requestAnimationFrame(bscDrawFrame);
+}
+
+function bscFinish(){
+  if(_bscState&&_bscState.raf) cancelAnimationFrame(_bscState.raf);
+  const R=_bscState?_bscState.results:[];
+  const ok=R.filter(r=>r.status==='ok').length;
+  const tw=R.filter(r=>r.status==='twijfel').length;
+  const gn=R.filter(r=>r.status==='geen').length;
+  const rows=R.map(r=>{
+    const ic=r.status==='ok'?'✅':r.status==='twijfel'?'⚠️':'⚪';
+    const kl=r.status==='ok'?'ok':r.status==='twijfel'?'warn':'mut';
+    const val=r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde):r.waarde} ${r.unit}`:'geen data';
+    return `<div class="bsc-row ${kl}"><span>${ic} ${r.naam}</span><span class="bsc-val">${val}</span></div>`;
+  }).join('');
+  bscRender(
+    `<div class="bsc-done">
+       <div class="bsc-score"><b>${ok}</b>/${R.length} tests groen${tw?` · ${tw} twijfel`:''}${gn?` · ${gn} geen data`:''}</div>
+       <div class="bsc-rows">${rows||'<div class="bsc-empty">Geen resultaten.</div>'}</div>
+       <div class="toolbar" style="margin-top:12px">
+         <button class="btn pri" onclick="startBasicCheck()">🔄 Opnieuw</button>
+         <button class="btn" onclick="bscExport()">💾 Exporteer</button>
+       </div>
+     </div>`);
+  try{ scanLogAdd?.({type:'basischeck', msg:`${ok}/${R.length} groen (${tw} twijfel, ${gn} geen data)`}); }catch(e){}
+  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) PidLaneEvalLog.log('app','basischeck: '+ok+'/'+R.length+' groen'); }catch(e){}
+  _bscState=null;
+}
+
+function bscExport(){
+  const R=(_bscState&&_bscState.results)||window._bscLast||[];
+  const v=(typeof getVehicle==='function')?getVehicle():{};
+  const lines=['PidLane — Basic System Check', 'Datum: '+new Date().toLocaleString('nl'),
+    v.merk?`Voertuig: ${v.merk} ${v.model||''} ${v.year||''}`:'',''];
+  R.forEach(r=>lines.push(`[${(r.status||'').toUpperCase()}] ${r.naam}: ${r.waarde!==undefined?r.waarde+' '+r.unit:'geen data'}`));
+  try{ download('basic-system-check.txt', lines.join('\n')); }catch(e){}
+}
+
+/* ---- weergave ---- */
+function bscRender(html){ const el=document.getElementById('bscBody'); if(el) el.innerHTML=html; }
+function bscToast(m){ try{ showToast?.(m,2600); }catch(e){} }
+
+// Live-scherm van de lopende test (progress + canvas).
+function bscPaint(t, band, v, held, geslaagd, wacht){
+  const el=document.getElementById('bscBody'); if(!el) return;
+  const idx=_bscState.idx+1, tot=_bscState.list.length;
+  const d=getPidDef(t.pid)||{}; const unit=d.unit||'';
+  const pct=Math.min(100, Math.round(held/(t.hold||4)*100));
+  const statusTxt = geslaagd?'✅ Geslaagd' : wacht?'⏳ Wachten op sensordata…' : (held>0?`🟢 Binnen band — ${pct}%`:'🔴 Buiten band');
+  if(!document.getElementById('bscCanvas') || el.dataset.test!==t.id){
+    el.dataset.test=t.id;
+    el.innerHTML=
+      `<div class="bsc-head">
+         <div class="bsc-cnt">Test ${idx}/${tot} · <span class="bsc-grp">${t.groep}</span></div>
+         <div class="bsc-name">${t.naam}</div>
+         <div class="bsc-uit">${t.uitleg}</div>
+       </div>
+       <canvas id="bscCanvas" height="200"></canvas>
+       <div class="bsc-meta">
+         <div id="bscStatus" class="bsc-status">${statusTxt}</div>
+         <div class="bsc-live"><span id="bscVal">${v!==undefined?((typeof fv==='function')?fv(v):v):'—'}</span> <span class="bsc-unit">${unit}</span></div>
+       </div>
+       <div class="bsc-prog"><div id="bscBar" style="width:${pct}%"></div></div>
+       <button class="btn bsc-skip" onclick="bscSkip()">Overslaan →</button>`;
+  } else {
+    const st=document.getElementById('bscStatus'); if(st){ st.textContent=statusTxt; st.className='bsc-status '+(geslaagd?'ok':held>0?'go':'no'); }
+    const vv=document.getElementById('bscVal'); if(vv) vv.textContent=v!==undefined?((typeof fv==='function')?fv(v):v):'—';
+    const bar=document.getElementById('bscBar'); if(bar) bar.style.width=pct+'%';
+  }
+  bscDrawCanvas(t, band, unit);
+}
+
+function bscSkip(){
+  if(!_bscState) return;
+  const t=_bscState.list[_bscState.idx];
+  _bscState.results.push({id:t.id, naam:t.naam, status:'twijfel', waarde:pidVals[t.pid], unit:(getPidDef(t.pid)?.unit||'')});
+  _bscState.idx++;
+  bscNextTest();
+}
+
+// Canvas: tijd op X, PID op Y, referentieband als grijs vlak, live lijn cyaan.
+function bscDrawCanvas(t, band, unit){
+  const c=document.getElementById('bscCanvas'); if(!c) return;
+  const dpr=window.devicePixelRatio||1;
+  const w=c.clientWidth||c.parentElement.clientWidth||320, h=200;
+  if(c.width!==Math.round(w*dpr)){ c.width=Math.round(w*dpr); c.height=Math.round(h*dpr); }
+  const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const css=getComputedStyle(document.documentElement);
+  const col={bg:(css.getPropertyValue('--sur')||'#141b23').trim(), line:(css.getPropertyValue('--bd')||'#2a3644').trim(),
+    ink:(css.getPropertyValue('--tx2')||'#9db0c4').trim(), cy:'#2fd0d6', gn:'#3fd07a'};
+  const padL=40, padR=10, padT=10, padB=18, plotW=w-padL-padR, plotH=h-padT-padB;
+
+  const hist=(pidHist[t.pid]||[]).slice(-60);
+  // Y-bereik: band + data, met marge
+  let ylo=band?band.lo:(d=>d.min)(getPidDef(t.pid)||{min:0}), yhi=band?band.hi:(getPidDef(t.pid)?.max||100);
+  const vals=hist.map(x=>x.v);
+  if(vals.length){ ylo=Math.min(ylo, Math.min(...vals)); yhi=Math.max(yhi, Math.max(...vals)); }
+  if(yhi<=ylo) yhi=ylo+1;
+  const mrg=(yhi-ylo)*0.12; ylo-=mrg; yhi+=mrg;
+  const Y=val=>padT+plotH-((val-ylo)/(yhi-ylo))*plotH;
+  const X=i=>padL+(i/Math.max(1,59))*plotW;
+
+  // referentieband
+  if(band){
+    g.fillStyle='rgba(63,208,122,.12)';
+    const y1=Y(band.hi), y2=Y(band.lo);
+    g.fillRect(padL, Math.min(y1,y2), plotW, Math.abs(y2-y1));
+    g.strokeStyle='rgba(63,208,122,.5)'; g.setLineDash([4,4]); g.lineWidth=1;
+    g.beginPath(); g.moveTo(padL,y1); g.lineTo(padL+plotW,y1); g.moveTo(padL,y2); g.lineTo(padL+plotW,y2); g.stroke();
+    g.setLineDash([]);
+    if(band.ref!=null){ g.strokeStyle='rgba(159,176,196,.55)'; g.beginPath(); g.moveTo(padL,Y(band.ref)); g.lineTo(padL+plotW,Y(band.ref)); g.stroke(); }
+  }
+  // assen
+  g.strokeStyle=col.line; g.lineWidth=1; g.beginPath();
+  g.moveTo(padL,padT); g.lineTo(padL,padT+plotH); g.lineTo(padL+plotW,padT+plotH); g.stroke();
+  g.fillStyle=col.ink; g.font='10px system-ui'; g.textAlign='right';
+  g.fillText(((typeof fv==='function')?fv(yhi):yhi.toFixed(0)), padL-4, padT+8);
+  g.fillText(((typeof fv==='function')?fv(ylo):ylo.toFixed(0)), padL-4, padT+plotH);
+  g.textAlign='left'; g.fillText('tijd →', padL+2, padT+plotH+14);
+
+  // live lijn
+  if(hist.length>1){
+    const n=hist.length; const off=60-n;
+    g.strokeStyle=col.cy; g.lineWidth=2; g.beginPath();
+    hist.forEach((p,i)=>{ const x=X(off+i), y=Y(p.v); i?g.lineTo(x,y):g.moveTo(x,y); });
+    g.stroke();
+    // laatste punt
+    const last=hist[hist.length-1]; const inB=band && last.v>=band.lo && last.v<=band.hi;
+    g.fillStyle=inB?col.gn:col.cy; g.beginPath(); g.arc(X(off+n-1),Y(last.v),3.5,0,7); g.fill();
+  }
 }
 
 // ════════════════════════════════════════
@@ -10065,6 +10411,17 @@ function refreshAllReadiness(){
   renderReadinessCard('rdyDtc',     'dtc');
   renderReadinessCard('rdyKoop',    'koop');
   renderReadinessCard('rdyRit',     'rit');
+  try{ renderBasicReadiness(); }catch(e){}
+}
+// Basic system check: toon hoeveel tests er voor deze auto beschikbaar zijn.
+function renderBasicReadiness(){
+  const el=document.getElementById('rdyBasic'); if(!el) return;
+  if(!connected && !demoMode){ el.className='rdy-card off'; el.innerHTML='📡 Verbind adapter om te starten'; return; }
+  let list=[]; try{ list=bscBuildList(); }catch(e){}
+  const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
+  if(!list.length){ el.className='rdy-card warn'; el.innerHTML='⚠ Geen geschikte sensoren gevonden — voer eerst een PID-scan uit'; return; }
+  el.className='rdy-card ok';
+  el.innerHTML=`✅ ${list.length} tests klaar voor <b>${et}</b> — sensoren worden automatisch gekozen`;
 }
 
 // ══════════════════════════════════════════════════════
@@ -10720,6 +11077,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-deepdiag',()=>openDeepDiag());
   wcBind('wc-pidrec',()=>openPidRecorder());
   wcBind('wc-check',()=>startChoice('check'));
+  wcBind('wc-basiccheck',()=>startChoice('basiccheck'));
   wcBind('wc-live',()=>openPidChoice());
   wcBind('wc-dtc',()=>startChoice('dtc'));
   wcBind('wc-report',()=>startChoice('report'));
@@ -11631,41 +11989,13 @@ function downloadScanLog(){
   download(`pidlane-scanlog-${new Date().toISOString().slice(0,10)}.txt`, lines.join('\n'));
 }
 
-// ── TESTER-MODUS (login- én verbind-scherm) ──────────────────────
-// where: 'login' of 'conn' — bepaalt welke knop/vinkje wordt aangesproken
-function toggleTesterMode(where='conn'){
-  const ids = where==='login'
-    ? { row:'loginTesterConsentRow', btn:'loginTesterBtn', cb:'loginTesterConsent' }
-    : { row:'testerConsentRow',      btn:'testerBtn',      cb:'testerConsent' };
-  const row = document.getElementById(ids.row);
-  const btn = document.getElementById(ids.btn);
-  if(!row) return;
-  const on = row.style.display === 'none';
-  row.style.display = on ? 'block' : 'none';
-  if(btn){
-    btn.style.background = on ? 'rgba(0,212,255,.18)' : 'rgba(0,212,255,.08)';
-    btn.textContent = on ? '🧪 Tester-modus actief' : '🧪 Tester-modus';
-  }
-  // Herstel opgeslagen toestemming in dit vinkje
-  try {
-    const c = localStorage.getItem('pl_tester_consent') === '1';
-    const cb = document.getElementById(ids.cb);
-    if(cb) cb.checked = c;
-  } catch(e){}
-}
-function saveTesterConsent(where='conn'){
-  const cbId = where==='login' ? 'loginTesterConsent' : 'testerConsent';
-  const cb = document.getElementById(cbId);
-  const val = cb && cb.checked;
-  try { localStorage.setItem('pl_tester_consent', val ? '1':'0'); } catch(e){}
-  // Houd het andere scherm in sync
-  const otherId = where==='login' ? 'testerConsent' : 'loginTesterConsent';
-  const other = document.getElementById(otherId);
-  if(other) other.checked = !!val;
-  if(val) log('🧪 Tester-toestemming gegeven — logs worden gebundeld bewaard','ok');
-  if(val){ try{ maybeStartLiveLog(); }catch(e){} }
-}
+// ── TESTER-CONSENT ──────────────────────────────────────────────
+// De "🧪 Tester-modus"-knop + consent-vinkjes zijn verwijderd: het Veldlab
+// legt elke echte sessie automatisch vast en admins geven impliciet consent.
+// Deze helper blijft omdat de crash-bestendige live-log erop leunt.
 function hasTesterConsent(){
+  // Admins zijn de bouwer/tester zelf → impliciet consent, geen vinkje nodig.
+  try { if(window.currentUser && currentUser.role==='admin') return true; } catch(e){}
   try { return localStorage.getItem('pl_tester_consent') === '1'; } catch(e){ return false; }
 }
 
