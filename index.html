@@ -1,6 +1,12 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-07 00:40 (CET) — demo-garage: keuzelijst gezonde demo-auto's (benzine/hybride/diesel) of eigen kenteken als demo (echte RDW-lookup + PID-selectie werken). Verenigd bestand: APK + desktop-Chrome (Web Serial) + telefoon-browser (Web Bluetooth).
+     Build: 2026-07-09 (CET) — VELDLAB vervangt 25-sessies checklist: elke echte
+     verbinding = automatische meetsessie (0 handelingen); adaptieve micro-check
+     (max 3 vragen, alléén bij nieuw terrein/merk of anomalie); cumulatieve
+     opslag (localStorage pl_veldlab_v1) + in-app dashboard (🧪, admin) met
+     dekkingsmatrix, AI-scorebord, structurele verbeterpunten, testadvies en
+     verzadigingssignaal; JSON-export voor pidlane-veldlab.html/Claude.
+     Oude sessie-check-venster + 25-teller verwijderd.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -3098,39 +3104,137 @@ function downloadLog(){
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   EVALUATIE-SESSIE (kruisverwijzing met los checklist-venster)
-   Zet 'pidlane-sessie-check.html' in DEZELFDE map als dit bestand.
-   Werkt zo: admin + tester-consent → knop rechtsonder → opent checklist-venster
-   dat via window.opener live in deze log meekijkt. Zonder actieve sessie doet
-   de logger niets (0 overhead).
+   VELDLAB (vervangt de 25-sessies checklist)
+   Principe: elke ECHTE adapterverbinding is automatisch een meetsessie —
+   0 handelingen, geen los venster, geen teller. Vragen worden alléén gesteld
+   als de auto iets NIEUWS oplevert (nieuwe dekkingscel, nieuw merk of een
+   anomalie) — max 3 taps in een bottom sheet. Alles wordt cumulatief lokaal
+   opgeslagen; het 🧪 Veldlab-dashboard (admin) destilleert er structurele
+   verbeterpunten uit: PID-faal-heatmap per merk, AI-scorebord (verdict vs
+   monteur), dekkingsmatrix brandstof×leeftijd, testadvies ("welke auto levert
+   nu het meeste op") en een verzadigingssignaal ("stoppen mag").
+   Export: JSON voor pidlane-veldlab.html (desktop-analyse) of voor Claude.
    ══════════════════════════════════════════════════════════════════════════ */
 window.PidLaneEvalLog = (function(){
   let s=null, subs=[], bound=false;
   const now=()=>Date.now();
-  function _log(cat,msg,data){ if(!s) return; s.events.push({t:now(),cat,msg,data:data||null}); subs.forEach(f=>{try{f(s)}catch(e){}}); }
+  function _log(cat,msg,data){
+    if(!s) return;
+    s.events.push({t:now(),cat,msg,data:data||null});
+    if(s.events.length>800) s.events.splice(0,100);
+    subs.forEach(f=>{try{f(s)}catch(e){}});
+    if(cat==='ai' && data && data.stoplicht){ try{ setTimeout(function(){ try{ vlMicroCheck(); }catch(e){} }, 1200); }catch(e){} }
+  }
   function bindCrash(){
     window.addEventListener('error', ev=>{ if(s) _log('fout','crash: '+(ev.message||'')); });
     window.addEventListener('unhandledrejection', ev=>{ if(s) _log('fout','promise-fout: '+((ev.reason&&ev.reason.message)||ev.reason||'')); });
   }
   return {
     get active(){ return !!s; },
-    start(id,meta){ s={id, tester:(meta&&meta.tester)||'', startedAt:now(), events:[]}; if(!bound){bindCrash();bound=true;} _log('sessie','evaluatie gestart'); return id; },
+    start(id,meta){ s={id, tester:(meta&&meta.tester)||'', startedAt:now(), events:[], invalid:false, human:{}, asked:false}; if(!bound){bindCrash();bound=true;} _log('sessie','veldsessie gestart'); return id; },
     log:_log,
     onUpdate(f){ subs.push(f); },
     snapshot(){ return s? JSON.parse(JSON.stringify(s)) : null; },
+    markInvalid(){ if(s) s.invalid=true; },
+    setHuman(k,v){ if(s) s.human[k]=v; },
+    setAsked(){ if(s) s.asked=true; },
+    get asked(){ return !!(s&&s.asked); },
     stop(){ const c=this.snapshot(); s=null; subs=[]; return c; }
   };
 })();
 
-// Vang elke app-log-regel op en zet 'm in de evaluatie-tijdlijn (gecategoriseerd).
+/* ---- opslag & signatuur ---- */
+const VL_KEY='pl_veldlab_v1';
+function vlLoad(){ try{ const r=JSON.parse(localStorage.getItem(VL_KEY)||'null'); if(r&&Array.isArray(r.sessies)) return r; }catch(e){} return {sessies:[]}; }
+function vlSave(st){ try{ while(JSON.stringify(st).length>450000 && st.sessies.length>20) st.sessies.splice(0,10); localStorage.setItem(VL_KEY,JSON.stringify(st)); }catch(e){} }
+function vlCaptureOn(){ try{ return localStorage.getItem('pl_veldlab_uit')!=='1'; }catch(e){ return true; } }
+function vlAgeBand(y){ y=parseInt(y,10)||0; if(!y) return '?'; return y<2008?'<2008' : y<2016?'2008-15' : y<2021?'2016-20' : '2021+'; }
+function vlFuel(b){ b=(b||'').toString().toLowerCase(); if(/benz/.test(b))return 'benzine'; if(/dies/.test(b))return 'diesel'; if(/hybr/.test(b))return 'hybride'; if(/elek|electr|\bev\b/.test(b))return 'ev'; return b?'anders':'?'; }
+function vlProtoClass(p){ p=p||''; return /15765|CAN/i.test(p)?'can':(p?'legacy':'?'); }
+
+/* ---- events -> compacte afgeleide (zelfde categorieën als voorheen) ---- */
+function vlDerive(ev){
+  const g={voertuig:{},adapter:{type:'',connectMs:null,disconnects:0,protocol:'',lat:[]},
+    pids:{discovered:null,failed:{}},dtc:{codes:[],freeze:false},
+    ai:{stoplicht:'',tokensIn:0,tokensOut:0,latencyMs:0,fallback:false},
+    nav:{doors:{},live:0,share:0},pidq:[],fouten:[]};
+  for(const e of ev){ const d=e.data||{}; switch(e.cat){
+    case 'voertuig': Object.assign(g.voertuig,d); break;
+    case 'adapter':
+      if(/verbonden|connect/i.test(e.msg)){ if(d.type)g.adapter.type=d.type; if(d.connectMs!=null)g.adapter.connectMs=d.connectMs; if(d.protocol)g.adapter.protocol=d.protocol; }
+      if(/disconnect|verbroken/i.test(e.msg)) g.adapter.disconnects++;
+      if(/latency/i.test(e.msg)&&d.ms!=null) g.adapter.lat.push(d.ms);
+      if(!g.adapter.protocol&&/15765|CAN|ISO|KWP|9141/i.test(e.msg)) g.adapter.protocol=e.msg.slice(0,60);
+      break;
+    case 'pid': if(d.aantal!=null)g.pids.discovered=d.aantal; if(/faalt|NO DATA/i.test(e.msg)&&d.pid)g.pids.failed[d.pid]=1; break;
+    case 'dtc': if(Array.isArray(d.codes))g.dtc.codes=d.codes; if(d.freeze)g.dtc.freeze=true; break;
+    case 'ai':
+      if(d.stoplicht)g.ai.stoplicht=d.stoplicht; if(d.tokensIn)g.ai.tokensIn+=d.tokensIn; if(d.tokensOut)g.ai.tokensOut+=d.tokensOut;
+      if(d.latencyMs)g.ai.latencyMs=d.latencyMs; if(d.fallback)g.ai.fallback=true; break;
+    case 'nav': if(d.naam)g.nav.doors[d.naam]=1; if(/live/i.test(e.msg))g.nav.live++; break;
+    case 'share': g.nav.share++; break;
+    case 'fout': g.fouten.push({t:e.t,msg:e.msg}); break;
+    case 'pidq': g.pidq.push(d); break;
+  }}
+  return g;
+}
+
+/* ---- nieuwswaarde t.o.v. wat al verzameld is ---- */
+function vlNovelty(g){
+  const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
+  const fuel=vlFuel(v.brandstof||g.voertuig.brandstof), band=vlAgeBand(v.year||g.voertuig.bouwjaar), pc=vlProtoClass(g.adapter.protocol);
+  const cell=fuel+'|'+band+'|'+pc, merk=((v.merk||g.voertuig.merk||'')+'').toLowerCase();
+  const st=vlLoad();
+  const newCell=!st.sessies.some(x=>x.cell===cell);
+  const newMerk=!!merk && !st.sessies.some(x=>x.merk===merk);
+  const anomaly=g.ai.fallback || g.fouten.length>0 || g.pidq.length>0 || g.ai.stoplicht==='rood';
+  return { cell, merk, fuel, band, pc, newCell, newMerk, anomaly,
+    score: newCell?1 : (newMerk?0.6 : (anomaly?0.3 : 0.05)) };
+}
+
+/* ---- afsluiten & opslaan (automatisch bij disconnect / app-sluiten) ---- */
+function vlFinalize(){
+  if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
+  const snap=PidLaneEvalLog.stop(); if(!snap) return;
+  try{ const el=document.getElementById('vlSheet'); if(el) el.remove(); }catch(e){}
+  if(snap.invalid){ try{ log('🧪 Veldlab: sessie ongeldig (demo actief) — niet opgeslagen','warn'); }catch(e){} return; }
+  if((snap.events||[]).length<4) return; // te weinig gebeurd om iets van te leren
+  const g=vlDerive(snap.events||[]);
+  const nv=vlNovelty(g);
+  const lat=g.adapter.lat.length? Math.round(g.adapter.lat.reduce((a,b)=>a+b,0)/g.adapter.lat.length) : null;
+  const rec={ id:snap.id, t:snap.startedAt, dur:Math.max(1,Math.round((Date.now()-snap.startedAt)/60000)), tester:snap.tester||'',
+    merk:nv.merk, cell:nv.cell, fuel:nv.fuel, band:nv.band, pc:nv.pc,
+    veh:{merk:(typeof vehicleInfo!=='undefined'&&vehicleInfo.merk)||'', model:(typeof vehicleInfo!=='undefined'&&vehicleInfo.model)||'', jaar:(typeof vehicleInfo!=='undefined'&&vehicleInfo.year)||''},
+    adp:{type:g.adapter.type, connectMs:g.adapter.connectMs, lat:lat, disc:g.adapter.disconnects, proto:g.adapter.protocol},
+    pids:{n:g.pids.discovered, fail:Object.keys(g.pids.failed), q:g.pidq.slice(0,12)},
+    dtc:g.dtc.codes, ai:{verdict:g.ai.stoplicht, ms:g.ai.latencyMs, fb:g.ai.fallback, tok:(g.ai.tokensIn+g.ai.tokensOut)},
+    nav:{doors:Object.keys(g.nav.doors), live:g.nav.live, share:g.nav.share},
+    errs:g.fouten.slice(0,10).map(f=>String(f.msg||'').slice(0,140)),
+    human:snap.human||{}, novel:nv.score };
+  const st=vlLoad(); st.sessies.push(rec); vlSave(st);
+  try{ log('🧪 Veldlab: sessie #'+st.sessies.length+' vastgelegd ('+nv.cell+(nv.newCell?' — NIEUW terrein':nv.newMerk?' — nieuw merk':'')+')','ok'); }catch(e){}
+  vlEnsureBtn(true);
+}
+window.addEventListener('pagehide', function(){ try{ vlFinalize(); }catch(e){} });
+
+/* ---- logvanger: auto-start bij echte verbinding, auto-stop bij verbroken ---- */
+var _plPidFlagged={};
 function _plEvalCapture(msg,type){
   try{
-    if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
     var m=String(msg).replace(/<[^>]+>/g,'').trim(); if(!m) return;
     if(/^apiFetch: key/.test(m)) return;
-    var t=(type||'').toLowerCase(), cat='app';
+    var t=(type||'').toLowerCase();
+    if(!PidLaneEvalLog.active && vlCaptureOn() && t==='ok' && /verbonden/i.test(m) && !(typeof demoMode!=='undefined'&&demoMode)){
+      _plPidFlagged={};
+      var who=''; try{ who=(window.currentUser&&currentUser.name)||''; }catch(e){}
+      PidLaneEvalLog.start('VL-'+Date.now().toString(36).toUpperCase(),{tester:who});
+    }
+    if(!PidLaneEvalLog.active) return;
+    if(/demo geactiveerd|🚫 DEMO/i.test(m)) PidLaneEvalLog.markInvalid();
+    var cat='app';
     if(t==='err') cat='fout';
-    else if(/verbroken/i.test(m)){ PidLaneEvalLog.log('adapter','disconnect'); return; }
+    else if(/verbroken/i.test(m)){ PidLaneEvalLog.log('adapter','disconnect');
+      setTimeout(function(){ try{ if(typeof connected==='undefined'||!connected) vlFinalize(); }catch(e){} }, 2500); return; }
     else if(/fallback/i.test(m)){ PidLaneEvalLog.log('ai','fallback',{fallback:true}); return; }
     else if(/verbind|verbonden|connect|adapter|\bSPP\b|\bBLE\b|latency|gekoppeld|ELM|protocol/i.test(m)) cat='adapter';
     else if(/RDW|kenteken|VIN/i.test(m)) cat='voertuig';
@@ -3140,30 +3244,13 @@ function _plEvalCapture(msg,type){
     PidLaneEvalLog.log(cat, m);
   }catch(e){}
 }
-// Wrap de bestaande log() zodat we niets in de app-code hoeven aan te raken.
 try{ if(typeof log==='function'){ var _plOrigLog=log; log=function(msg,type){ _plOrigLog(msg,type); _plEvalCapture(msg,type); }; } }catch(e){}
 
-// Start een evaluatie + open het checklist-venster ernaast.
-var _plPidFlagged={};
-window.PidLaneStartEvaluatie=function(tester){
-  try{ if(typeof demoMode!=='undefined' && demoMode){ alert('🚫 Demo-auto is niet toegestaan als testsessie. Verbind eerst met een echte auto en start dan de evaluatie.'); return; } }catch(e){}
-  var id='EV-'+Date.now().toString(36).toUpperCase();
-  _plPidFlagged={};
-  window.PidLaneEvalTester=tester||'Albin';
-  try{ PidLaneEvalLog.start(id,{tester:window.PidLaneEvalTester}); }catch(e){}
-  try{ log('🔬 Evaluatie-sessie gestart ('+id+')','ok'); }catch(e){}
-  try{
-    var w=window.open('pidlane-sessie-check.html','pidlaneEval','width=540,height=940');
-    if(!w) alert('Pop-up geblokkeerd — sta pop-ups toe zodat het checklist-venster kan openen.');
-  }catch(e){ alert('Kon checklist-venster niet openen.'); }
-};
-
-// Verdachte PID's opsporen: onbekend (geen naam), onzin-waarde of buiten bereik.
-// Zo bouwen we per merk/type/motor gericht kennis op over rammelende PID's.
+/* ---- verdachte PID's blijven gemeld (kennisbank-kandidaten) ---- */
 function _plCheckPid(pid,val){
   try{
     if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
-    if(_plPidFlagged[pid]) return;                 // max. 1 melding per PID per sessie
+    if(_plPidFlagged[pid]) return;
     var def=null; try{ def=(typeof getPidDef==='function')?getPidDef(pid):null; }catch(e){}
     var reden='';
     if(!def || !def.name) reden='onbekende PID (geen naam)';
@@ -3173,21 +3260,150 @@ function _plCheckPid(pid,val){
   }catch(e){}
 }
 
-// Toon de knop rechtsonder zodra: ingelogd als admin  EN  tester-consent aan.
-function _plEnsureEvalBtn(){
+/* ---- adaptieve micro-check: alleen vragen als er iets te leren valt ---- */
+function vlMicroCheck(){
+  if(!PidLaneEvalLog.active || PidLaneEvalLog.asked) return;
+  const snap=PidLaneEvalLog.snapshot(); if(!snap||snap.invalid) return;
+  const g=vlDerive(snap.events||[]);
+  const nv=vlNovelty(g);
+  if(!(nv.newCell||nv.newMerk||nv.anomaly)) { try{ log('🧪 Veldlab: bekend terrein — geen vragen nodig','info'); }catch(e){} PidLaneEvalLog.setAsked(); return; }
+  PidLaneEvalLog.setAsked();
+  const why = nv.newCell?'Nieuw terrein: '+nv.fuel+' · '+nv.band+' · '+nv.pc : nv.newMerk?'Nieuw merk: '+(nv.merk||'?') : 'Afwijking gezien (fout/fallback/verdachte PID)';
+  let el=document.getElementById('vlSheet'); if(el) el.remove();
+  el=document.createElement('div'); el.id='vlSheet';
+  el.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9600;background:#141b23;border-top:1px solid #2a3644;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.55);font-family:system-ui,sans-serif;color:#eaf0f6;max-height:70vh;overflow-y:auto';
+  el.innerHTML=
+    '<div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px">🧪 Veldlab — 20 seconden <span style="margin-left:auto;font-weight:600;font-size:11px;color:#6b7d92">'+why.replace(/</g,'&lt;')+'</span></div>'+
+    '<div style="font-size:12.5px;color:#9db0c4;margin:4px 0 12px">Alleen deze auto levert nieuwe kennis op — daarom nu wél 3 korte vragen.</div>'+
+    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Klopte het AI-oordeel'+(g.ai.stoplicht?' ('+g.ai.stoplicht.toUpperCase()+')':'')+'?</div>'+
+    '<div id="vlSeg" style="display:flex;gap:8px;margin-bottom:12px">'+['Ja','Deels','Nee'].map(function(o){return '<button data-v="'+o+'" style="flex:1;background:#1f2a35;border:1px solid #2a3644;color:#9db0c4;padding:11px 6px;border-radius:10px;font:600 14px system-ui;cursor:pointer">'+o+'</button>';}).join('')+'</div>'+
+    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Wat was er werkelijk mis? (monteur — mag leeg)</div>'+
+    '<textarea id="vlEcht" placeholder="bv. bobine cilinder 3" style="width:100%;box-sizing:border-box;background:#1f2a35;border:1px solid #2a3644;border-radius:10px;color:#eaf0f6;padding:10px;font:14px system-ui;min-height:52px;margin-bottom:12px"></textarea>'+
+    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Liep je ergens op vast? (mag leeg)</div>'+
+    '<textarea id="vlBlok" placeholder="bv. delen-knop deed niets" style="width:100%;box-sizing:border-box;background:#1f2a35;border:1px solid #2a3644;border-radius:10px;color:#eaf0f6;padding:10px;font:14px system-ui;min-height:44px;margin-bottom:14px"></textarea>'+
+    '<div style="display:flex;gap:10px"><button id="vlOk" style="flex:2;background:#2fd0d6;color:#052225;border:none;border-radius:11px;padding:13px;font:700 14px system-ui;cursor:pointer">Klaar</button>'+
+    '<button id="vlSkip" style="flex:1;background:#1f2a35;border:1px solid #2a3644;color:#9db0c4;border-radius:11px;padding:13px;font:600 14px system-ui;cursor:pointer">Overslaan</button></div>';
+  document.body.appendChild(el);
+  el.querySelectorAll('#vlSeg button').forEach(function(b){ b.onclick=function(){
+    el.querySelectorAll('#vlSeg button').forEach(function(x){ x.style.background='#1f2a35'; x.style.borderColor='#2a3644'; x.style.color='#9db0c4'; });
+    var v=b.dataset.v;
+    b.style.background = v==='Ja'?'#123322' : v==='Nee'?'#3a1414' : '#1c6f74';
+    b.style.borderColor = v==='Ja'?'#3fd07a' : v==='Nee'?'#ff5b5b' : '#2fd0d6';
+    b.style.color='#eaf0f6';
+    PidLaneEvalLog.setHuman('correct', v);
+  };});
+  document.getElementById('vlOk').onclick=function(){
+    PidLaneEvalLog.setHuman('echt', (document.getElementById('vlEcht').value||'').trim());
+    PidLaneEvalLog.setHuman('blocker', (document.getElementById('vlBlok').value||'').trim());
+    el.remove();
+    try{ log('🧪 Veldlab: monteur-input vastgelegd','ok'); }catch(e){}
+  };
+  document.getElementById('vlSkip').onclick=function(){ el.remove(); };
+}
+
+/* ---- structurele analyse over ALLE sessies ---- */
+function vlAnalyse(st){
+  const S=st.sessies, out={findings:[], advies:[], sat:''};
+  if(!S.length) return out;
+  const cnt=function(map,k,item){ (map[k]=map[k]||{n:0,items:[]}).n++; if(item&&map[k].items.length<6&&map[k].items.indexOf(item)<0) map[k].items.push(item); };
+  const pidFail={}, pidQ={}, errNorm={}, shareErr={n:0}; let fbN=0, overConf=0, humanJa=0, humanDeels=0, humanNee=0, humanTot=0, slowConn=0, connN=0; const lats=[];
+  for(const s of S){
+    (s.pids&&s.pids.fail||[]).forEach(function(p){ cnt(pidFail,p,s.merk||'?'); });
+    (s.pids&&s.pids.q||[]).forEach(function(q){ cnt(pidQ,(q.pid||'?')+' '+(q.reden||''),s.merk||'?'); });
+    (s.errs||[]).forEach(function(m){ var k=String(m).toLowerCase().replace(/\d+/g,'#').slice(0,80); cnt(errNorm,k,s.merk||'?'); if(/share|deel|export/.test(k)) shareErr.n++; });
+    if(s.ai&&s.ai.fb) fbN++;
+    var hc=s.human&&s.human.correct;
+    if(hc){ humanTot++; if(hc==='Ja')humanJa++; else if(hc==='Deels')humanDeels++; else humanNee++;
+      if(hc==='Nee'&&s.ai&&s.ai.verdict==='groen') overConf++; }
+    if(s.adp){ if(s.adp.connectMs!=null){ connN++; if(s.adp.connectMs>4000) slowConn++; } if(s.adp.lat!=null) lats.push(s.adp.lat); }
+  }
+  const top=function(map){ return Object.entries(map).sort(function(a,b){return b[1].n-a[1].n;}); };
+  top(pidFail).forEach(function(kv){ if(kv[1].n>=2) out.findings.push({p:kv[1].n*3,txt:'PID '+kv[0]+' faalt in '+kv[1].n+' sessies ('+kv[1].items.join(', ')+') → kandidaat voor profiel-filter / dead-PID-lijst.'}); });
+  top(pidQ).forEach(function(kv){ out.findings.push({p:kv[1].n*2+1,txt:'Verdachte PID: '+kv[0]+' bij '+kv[1].items.join(', ')+' ('+kv[1].n+'×) → kennisbank/PID-definitie bijwerken.'}); });
+  top(errNorm).forEach(function(kv){ if(kv[1].n>=2) out.findings.push({p:kv[1].n*4,txt:'Terugkerende fout ('+kv[1].n+'×): "'+kv[0]+'" → structurele bug, niet incidenteel.'}); });
+  if(shareErr.n) out.findings.push({p:shareErr.n*4,txt:shareErr.n+'× deel/export-fout → raakt direct "klant-klaar" (B2B-kern).'});
+  if(fbN) out.findings.push({p:fbN*5,txt:fbN+'× AI-fallback → rapport kwam niet van de echte AI; proxy/quota controleren.'});
+  if(overConf) out.findings.push({p:overConf*6,txt:overConf+'× monteur zei NEE terwijl app GROEN gaf → over-confidence, prompt/verdict-drempels aanscherpen.'});
+  if(connN && slowConn/connN>0.3) out.findings.push({p:4,txt:Math.round(100*slowConn/connN)+'% van verbindingen >4s → connect-flow optimaliseren.'});
+  if(lats.length>=3){ var sr=lats.slice().sort(function(a,b){return a-b;}); var p90=sr[Math.min(sr.length-1,Math.floor(sr.length*0.9))]; if(p90>150) out.findings.push({p:3,txt:'Latency p90 = '+p90+'ms → pollingdruk of adapterkeuze bekijken.'}); }
+  out.findings.sort(function(a,b){return b.p-a.p;});
+  out.ai={tot:humanTot,ja:humanJa,deels:humanDeels,nee:humanNee};
+  /* dekkingsadvies */
+  const fuels=['benzine','diesel','hybride','ev'], bands=['<2008','2008-15','2016-20','2021+'];
+  const have={}; S.forEach(function(s){ have[s.fuel+'|'+s.band]=(have[s.fuel+'|'+s.band]||0)+1; });
+  const prio={'diesel|<2008':9,'benzine|<2008':8,'ev|2021+':8,'ev|2016-20':7,'hybride|2008-15':6,'hybride|2016-20':6,'diesel|2008-15':5};
+  const missing=[];
+  fuels.forEach(function(f){ bands.forEach(function(b){ if(!have[f+'|'+b]) missing.push({k:f+' · '+b,p:prio[f+'|'+b]||3}); }); });
+  missing.sort(function(a,b){return b.p-a.p;});
+  out.advies=missing.slice(0,5).map(function(m){ return m.k + (m.p>=8?'  ← grootste kennissprong':''); });
+  out.have=have; out.fuels=fuels; out.bands=bands;
+  /* verzadiging */
+  const last=S.slice(-5), mean=last.reduce(function(a,s){return a+(s.novel||0);},0)/last.length;
+  out.sat = S.length>=5 && mean<0.15
+    ? '📉 Laatste 5 sessies leverden vrijwel niets nieuws (novelty '+mean.toFixed(2)+'). Zelfde soort auto\'s inpluggen is tijdverspilling — pak gericht een auto uit het advies, of stop: dekking is nu de bottleneck, niet aantal.'
+    : '📈 Nieuwe sessies leveren nog kennis op (novelty laatste 5: '+(S.length?mean.toFixed(2):'—')+').';
+  return out;
+}
+
+/* ---- dashboard (in-app, admin) ---- */
+function vlOpenDash(){
+  const st=vlLoad(), A=vlAnalyse(st), S=st.sessies;
+  let ov=document.getElementById('vlDash'); if(ov) ov.remove();
+  ov=document.createElement('div'); ov.id='vlDash';
+  ov.style.cssText='position:fixed;inset:0;z-index:9550;background:#0e1218;color:#eaf0f6;font-family:system-ui,sans-serif;overflow-y:auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom))';
+  const esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
+  const uniqMerk={}; S.forEach(function(s){ if(s.merk) uniqMerk[s.merk]=1; });
+  const cells=Object.keys(A.have||{}).length;
+  let matrix='';
+  if(S.length){
+    matrix='<table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:8px 0 4px"><tr><td></td>'+A.bands.map(function(b){return '<td style="padding:4px;color:#6b7d92;text-align:center">'+b+'</td>';}).join('')+'</tr>'+
+      A.fuels.map(function(f){ return '<tr><td style="padding:4px;color:#6b7d92">'+f+'</td>'+A.bands.map(function(b){ var n=(A.have[f+'|'+b]||0);
+        return '<td style="padding:4px;text-align:center"><span style="display:inline-block;min-width:30px;padding:5px 0;border-radius:7px;font-weight:700;background:'+(n?'#123322':'#1a222c')+';color:'+(n?'#3fd07a':'#3a4a5c')+';border:1px solid '+(n?'#1f4d33':'#242f3b')+'">'+(n||'·')+'</span></td>'; }).join('')+'</tr>'; }).join('')+'</table>';
+  }
+  ov.innerHTML=
+    '<div style="max-width:640px;margin:0 auto">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><b style="font-size:17px">🧪 Veldlab</b><span style="font:600 11px ui-monospace,monospace;color:#6b7d92">'+S.length+' sessies · '+Object.keys(uniqMerk).length+' merken · '+cells+'/16 cellen</span><button id="vlX" style="margin-left:auto;background:#1f2a35;border:1px solid #2a3644;color:#9db0c4;border-radius:9px;padding:7px 13px;font:700 13px system-ui;cursor:pointer">Sluiten</button></div>'+
+    '<div style="font-size:12.5px;color:#9db0c4;margin-bottom:14px">Elke echte verbinding wordt automatisch vastgelegd. Hieronder wat álle sessies samen zeggen.</div>'+
+    (S.length? '' : '<div style="background:#241f0f;border:1px solid #4a3d17;color:#f5a623;border-radius:11px;padding:12px;font-size:13px">Nog geen sessies. Verbind met een echte auto — vastleggen gaat vanzelf.</div>')+
+    (S.length? '<div style="font:600 11px ui-monospace,monospace;letter-spacing:1.5px;color:#2fd0d6;margin:16px 0 4px">DEKKING (brandstof × leeftijd)</div>'+matrix : '')+
+    (S.length? '<div style="font-size:11.5px;color:#6b7d92;margin-bottom:12px">Test-advies (grootste kennissprong eerst): '+(A.advies.length? esc(A.advies.join('  ·  ')) : 'alle hoofdcellen gedekt ✓')+'</div>' : '')+
+    (S.length? '<div style="background:'+(A.sat.indexOf('📉')===0?'#241f0f':'#0f2418')+';border:1px solid '+(A.sat.indexOf('📉')===0?'#4a3d17':'#1f4d33')+';border-radius:11px;padding:11px 13px;font-size:12.5px;line-height:1.5;margin-bottom:14px">'+esc(A.sat)+'</div>' : '')+
+    (A.ai&&A.ai.tot? '<div style="font:600 11px ui-monospace,monospace;letter-spacing:1.5px;color:#2fd0d6;margin:14px 0 6px">AI-SCOREBORD (monteur-oordeel, n='+A.ai.tot+')</div><div style="display:flex;gap:8px;margin-bottom:14px">'+
+      [['Ja',A.ai.ja,'#3fd07a'],['Deels',A.ai.deels,'#f5a623'],['Nee',A.ai.nee,'#ff5b5b']].map(function(x){return '<div style="flex:1;background:#182029;border:1px solid #2a3644;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:'+x[2]+'">'+x[1]+'</div><div style="font-size:11px;color:#6b7d92">'+x[0]+'</div></div>';}).join('')+'</div>' : '')+
+    (S.length? '<div style="font:600 11px ui-monospace,monospace;letter-spacing:1.5px;color:#2fd0d6;margin:14px 0 6px">STRUCTURELE VERBETERPUNTEN</div>'+
+      (A.findings.length? A.findings.slice(0,10).map(function(f){return '<div style="background:#182029;border:1px solid #2a3644;border-radius:11px;padding:10px 13px;font-size:12.5px;line-height:1.5;margin-bottom:8px">'+esc(f.txt)+'</div>';}).join('') : '<div style="font-size:12.5px;color:#6b7d92">Nog geen terugkerende patronen — dat komt vanzelf met meer variatie.</div>') : '')+
+    '<div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">'+
+    '<button id="vlExp" style="flex:1;min-width:150px;background:#2fd0d6;color:#052225;border:none;border-radius:11px;padding:13px;font:700 13.5px system-ui;cursor:pointer">📄 Export JSON (analyse)</button>'+
+    '<button id="vlTgl" style="flex:1;min-width:150px;background:#1f2a35;border:1px solid #2a3644;color:#9db0c4;border-radius:11px;padding:13px;font:600 13.5px system-ui;cursor:pointer">'+(vlCaptureOn()?'⏸ Vastleggen uitzetten':'▶ Vastleggen aanzetten')+'</button>'+
+    '<button id="vlDel" style="flex:0 0 auto;background:#2a1417;border:1px solid #4a2226;color:#ffb9b9;border-radius:11px;padding:13px;font:600 13.5px system-ui;cursor:pointer">Wissen</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  document.getElementById('vlX').onclick=function(){ ov.remove(); };
+  document.getElementById('vlExp').onclick=function(){
+    var name='pidlane-veldlab-export-'+new Date().toISOString().slice(0,10)+'.json';
+    var body=JSON.stringify({export:'pidlane-veldlab',v:1,t:Date.now(),sessies:S},null,1);
+    try{ if(typeof download==='function'){ download(name,body); return; } }catch(e){}
+    try{ var b=new Blob([body],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},2000);}catch(e){}
+  };
+  document.getElementById('vlTgl').onclick=function(){ try{ localStorage.setItem('pl_veldlab_uit', vlCaptureOn()?'1':'0'); }catch(e){} vlOpenDash(); };
+  document.getElementById('vlDel').onclick=function(){ if(confirm('Alle veldlab-sessies wissen?')){ try{ localStorage.removeItem(VL_KEY); }catch(e){} vlOpenDash(); } };
+}
+
+/* ---- knop rechtsonder (alleen admin) ---- */
+function vlEnsureBtn(force){
   try{
     var admin=false; try{ admin=!!(window.currentUser&&currentUser.role==='admin'); }catch(e){}
-    var consent=false; try{ consent=(localStorage.getItem('pl_tester_consent')==='1'); }catch(e){}
-    var on=admin&&consent, b=document.getElementById('plEvalBtn');
-    if(on&&!b){
-      b=document.createElement('button'); b.id='plEvalBtn'; b.textContent='🔬 Evaluatie starten';
-      b.style.cssText='position:fixed;right:12px;bottom:76px;z-index:9500;background:#00D4FF;color:#04222a;border:none;border-radius:22px;padding:11px 16px;font:700 13px/1 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,212,255,.35);cursor:pointer';
-      b.onclick=function(){ var who='Albin'; try{ who=(currentUser&&currentUser.name)||'Albin'; }catch(e){} PidLaneStartEvaluatie(who); };
-      document.body.appendChild(b);
-    } else if(!on&&b){ b.remove(); }
+    var b=document.getElementById('plEvalBtn');
+    if(admin){
+      var n=vlLoad().sessies.length, lbl='🧪 Veldlab'+(n?' ('+n+')':'');
+      if(!b){ b=document.createElement('button'); b.id='plEvalBtn';
+        b.style.cssText='position:fixed;right:12px;bottom:76px;z-index:9500;background:#00D4FF;color:#04222a;border:none;border-radius:22px;padding:11px 16px;font:700 13px/1 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,212,255,.35);cursor:pointer';
+        b.onclick=vlOpenDash; document.body.appendChild(b); }
+      if(b.textContent!==lbl) b.textContent=lbl;
+    } else if(b){ b.remove(); }
   }catch(e){}
 }
-setInterval(_plEnsureEvalBtn, 2000);
+setInterval(vlEnsureBtn, 2000);
 
 // ════════════════════════════════════════
 // 3-LAAGS DATA VALIDATIE & FILTERING

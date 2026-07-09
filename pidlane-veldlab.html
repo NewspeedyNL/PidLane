@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PidLane · Veldlab-analyse</title>
+<!-- ════════════════════════════════════════════════════════════
+     PidLane Veldlab-analyse (desktop) — vervangt de oude sessie-check.
+     Gebruik: in de app (admin) 🧪 Veldlab → "Export JSON" → dat bestand
+     hier slepen of plakken. Toont alles wat de sessies SAMEN zeggen:
+     dekkingsmatrix, AI-scorebord, structurele verbeterpunten, trend,
+     sessietabel. Geen invoer per auto meer — dat doet de app zelf.
+     Build: 2026-07-09
+     ════════════════════════════════════════════════════════════ -->
+<style>
+:root{--bg:#0e1218;--panel:#182029;--panel2:#1f2a35;--line:#2a3644;--ink:#eaf0f6;--ink2:#9db0c4;--ink3:#6b7d92;
+--cyan:#2fd0d6;--green:#3fd07a;--amber:#f5a623;--red:#ff5b5b;--mono:ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100vh;padding:20px}
+.wrap{max-width:860px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;margin-bottom:4px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+.brand small{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink3);font-weight:600}
+.sub{color:var(--ink2);font-size:13px;line-height:1.5;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.sec{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cyan);margin:22px 4px 10px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:1px;background:var(--line)}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:26px;text-align:center;color:var(--ink2);font-size:13.5px;cursor:pointer;transition:.15s}
+.drop.hot{border-color:var(--cyan);color:var(--cyan)}
+textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:11px;color:var(--ink);padding:11px;font:12px var(--mono);min-height:70px;margin-top:10px}
+textarea:focus{outline:none;border-color:var(--cyan)}
+.kpis{display:flex;gap:10px;flex-wrap:wrap}
+.kpi{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center}
+.kpi b{display:block;font-size:22px;font-weight:800}
+.kpi span{font-size:11px;color:var(--ink3)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+td,th{padding:6px 7px;text-align:left}
+th{color:var(--ink3);font-weight:600;font-size:11px;border-bottom:1px solid var(--line)}
+tr+tr td{border-top:1px solid #1a222c}
+.cell{display:inline-block;min-width:34px;padding:6px 0;border-radius:7px;font-weight:700;text-align:center;background:#1a222c;color:#3a4a5c;border:1px solid #242f3b}
+.cell.on{background:#123322;color:var(--green);border-color:#1f4d33}
+.find{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:11px;padding:11px 14px;font-size:13px;line-height:1.5;margin-bottom:9px}
+.find.hi{border-left-color:var(--red)}
+.banner{border-radius:12px;padding:12px 15px;font-size:13px;line-height:1.55;margin-bottom:14px}
+.banner.ok{background:#0f2418;border:1px solid #1f4d33;color:#8ff0bb}
+.banner.warn{background:#241f0f;border:1px solid #4a3d17;color:var(--amber)}
+.tag{display:inline-block;font:600 10.5px var(--mono);padding:2px 8px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);color:var(--ink2);margin:0 4px 4px 0}
+.spark{display:flex;align-items:flex-end;gap:3px;height:44px;margin:6px 0 2px}
+.spark i{flex:1;background:var(--cyan);border-radius:2px 2px 0 0;min-width:5px;opacity:.85}
+.hidden{display:none!important}
+.mut{color:var(--ink3)}
+.v-groen{color:var(--green)}.v-oranje{color:var(--amber)}.v-rood{color:var(--red)}
+button.btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink2);border-radius:10px;padding:9px 14px;font:600 13px system-ui;cursor:pointer;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="dot"></span>PidLane · Veldlab-analyse <small id="meta"></small></div>
+  <div class="sub">Structurele analyse over alle automatisch vastgelegde veldsessies. Exporteer in de app via <b>🧪 Veldlab → Export JSON</b> en laad dat bestand hier.</div>
+
+  <div id="loader">
+    <div class="drop" id="drop">📄 Sleep de JSON-export hierheen, of klik om te kiezen
+      <input type="file" id="file" accept=".json,application/json" class="hidden">
+    </div>
+    <textarea id="paste" placeholder='…of plak hier de JSON-inhoud en druk op Enter'></textarea>
+  </div>
+
+  <div id="report" class="hidden"></div>
+</div>
+
+<script>
+"use strict";
+(function(){
+const $=id=>document.getElementById(id);
+const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ---------- inladen ---------- */
+const drop=$('drop');
+drop.onclick=()=>$('file').click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('hot');};
+drop.ondragleave=()=>drop.classList.remove('hot');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('hot');const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)readFile(f);};
+$('file').onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)readFile(f);};
+$('paste').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();parse($('paste').value);}});
+function readFile(f){const r=new FileReader();r.onload=()=>parse(r.result);r.readAsText(f);}
+function parse(txt){
+  let d=null;
+  try{ d=JSON.parse(txt); }catch(e){ alert('Geen geldige JSON.'); return; }
+  const S=Array.isArray(d)?d:(d.sessies||[]);
+  if(!S.length){ alert('Geen sessies gevonden in dit bestand.'); return; }
+  render(S);
+}
+
+/* ---------- analyse (zelfde regels als in de app) ---------- */
+function analyse(S){
+  const out={findings:[],advies:[],sat:''};
+  const cnt=(map,k,item)=>{ (map[k]=map[k]||{n:0,items:[]}).n++; if(item&&map[k].items.length<6&&map[k].items.indexOf(item)<0)map[k].items.push(item); };
+  const pidFail={},pidQ={},errNorm={};let shareErr=0,fbN=0,overConf=0,ja=0,deels=0,nee=0,tot=0,slow=0,connN=0;const lats=[];
+  for(const s of S){
+    (s.pids&&s.pids.fail||[]).forEach(p=>cnt(pidFail,p,s.merk||'?'));
+    (s.pids&&s.pids.q||[]).forEach(q=>cnt(pidQ,(q.pid||'?')+' — '+(q.reden||''),s.merk||'?'));
+    (s.errs||[]).forEach(m=>{const k=String(m).toLowerCase().replace(/\d+/g,'#').slice(0,80);cnt(errNorm,k,s.merk||'?');if(/share|deel|export/.test(k))shareErr++;});
+    if(s.ai&&s.ai.fb)fbN++;
+    const hc=s.human&&s.human.correct;
+    if(hc){tot++;if(hc==='Ja')ja++;else if(hc==='Deels')deels++;else nee++;
+      if(hc==='Nee'&&s.ai&&s.ai.verdict==='groen')overConf++;}
+    if(s.adp){if(s.adp.connectMs!=null){connN++;if(s.adp.connectMs>4000)slow++;}if(s.adp.lat!=null)lats.push(s.adp.lat);}
+  }
+  const top=m=>Object.entries(m).sort((a,b)=>b[1].n-a[1].n);
+  top(pidFail).forEach(kv=>{if(kv[1].n>=2)out.findings.push({p:kv[1].n*3,txt:'PID '+kv[0]+' faalt in '+kv[1].n+' sessies ('+kv[1].items.join(', ')+') → kandidaat voor profiel-filter / dead-PID-lijst.'});});
+  top(pidQ).forEach(kv=>out.findings.push({p:kv[1].n*2+1,txt:'Verdachte PID: '+kv[0]+' bij '+kv[1].items.join(', ')+' ('+kv[1].n+'×) → kennisbank/PID-definitie bijwerken.'}));
+  top(errNorm).forEach(kv=>{if(kv[1].n>=2)out.findings.push({p:kv[1].n*4,txt:'Terugkerende fout ('+kv[1].n+'×): "'+kv[0]+'" → structurele bug, niet incidenteel.'});});
+  if(shareErr)out.findings.push({p:shareErr*4,txt:shareErr+'× deel/export-fout → raakt direct "klant-klaar" (B2B-kern).'});
+  if(fbN)out.findings.push({p:fbN*5,txt:fbN+'× AI-fallback → rapport kwam niet van de echte AI; proxy/quota controleren.'});
+  if(overConf)out.findings.push({p:overConf*6,txt:overConf+'× monteur zei NEE terwijl app GROEN gaf → over-confidence, verdict-drempels/prompt aanscherpen.'});
+  if(connN&&slow/connN>0.3)out.findings.push({p:4,txt:Math.round(100*slow/connN)+'% van verbindingen >4s → connect-flow optimaliseren.'});
+  if(lats.length>=3){const sr=lats.slice().sort((a,b)=>a-b);const p90=sr[Math.min(sr.length-1,Math.floor(sr.length*.9))];if(p90>150)out.findings.push({p:3,txt:'Latency p90 = '+p90+'ms → pollingdruk of adapterkeuze bekijken.'});}
+  out.findings.sort((a,b)=>b.p-a.p);
+  out.ai={tot,ja,deels,nee};
+  const fuels=['benzine','diesel','hybride','ev'],bands=['<2008','2008-15','2016-20','2021+'];
+  const have={};S.forEach(s=>{have[s.fuel+'|'+s.band]=(have[s.fuel+'|'+s.band]||0)+1;});
+  const prio={'diesel|<2008':9,'benzine|<2008':8,'ev|2021+':8,'ev|2016-20':7,'hybride|2008-15':6,'hybride|2016-20':6,'diesel|2008-15':5};
+  const missing=[];fuels.forEach(f=>bands.forEach(b=>{if(!have[f+'|'+b])missing.push({k:f+' · '+b,p:prio[f+'|'+b]||3});}));
+  missing.sort((a,b)=>b.p-a.p);
+  out.advies=missing.slice(0,5).map(m=>m.k+(m.p>=8?'  ← grootste kennissprong':''));
+  out.have=have;out.fuels=fuels;out.bands=bands;
+  const last=S.slice(-5),mean=last.reduce((a,s)=>a+(s.novel||0),0)/last.length;
+  out.satLow=S.length>=5&&mean<0.15;out.satMean=mean;
+  return out;
+}
+
+/* ---------- weergave ---------- */
+function render(S){
+  S=S.slice().sort((a,b)=>(a.t||0)-(b.t||0));
+  const A=analyse(S);
+  $('loader').classList.add('hidden');
+  const R=$('report');R.classList.remove('hidden');
+  const merken={};S.forEach(s=>{if(s.merk)merken[s.merk]=1;});
+  const cells=Object.keys(A.have).length;
+  $('meta').textContent=S.length+' sessies';
+
+  const matrix='<table><tr><th></th>'+A.bands.map(b=>'<th style="text-align:center">'+b+'</th>').join('')+'</tr>'+
+    A.fuels.map(f=>'<tr><td class="mut">'+f+'</td>'+A.bands.map(b=>{const n=A.have[f+'|'+b]||0;
+      return '<td style="text-align:center"><span class="cell'+(n?' on':'')+'">'+(n||'·')+'</span></td>';}).join('')+'</tr>').join('')+'</table>';
+
+  const spark='<div class="spark">'+S.slice(-30).map(s=>'<i style="height:'+Math.max(6,Math.round((s.novel||0)*100))+'%" title="'+((s.novel||0).toFixed(2))+'"></i>').join('')+'</div>'+
+    '<div style="font-size:11px" class="mut">Nieuwswaarde per sessie (laatste 30). Hoog = nieuw terrein/merk; laag = herhaling.</div>';
+
+  const rows=S.slice().reverse().map(s=>{
+    const d=s.t?new Date(s.t).toLocaleString('nl-NL',{dateStyle:'short',timeStyle:'short'}):'—';
+    const auto=[s.veh&&s.veh.merk,s.veh&&s.veh.model,s.veh&&s.veh.jaar].filter(Boolean).join(' ')||'—';
+    const hv=s.human&&s.human.correct?s.human.correct:'—';
+    return '<tr><td class="mut">'+esc(d)+'</td><td>'+esc(auto)+'</td><td class="mut">'+esc(s.cell||'')+'</td>'+
+      '<td class="v-'+esc(s.ai&&s.ai.verdict||'')+'">'+esc((s.ai&&s.ai.verdict)||'—')+(s.ai&&s.ai.fb?' <span class="mut">(fb)</span>':'')+'</td>'+
+      '<td>'+esc(hv)+'</td><td>'+((s.errs||[]).length||'')+'</td><td>'+((s.pids&&s.pids.fail||[]).length||'')+'</td>'+
+      '<td class="mut">'+((s.novel||0).toFixed(2))+'</td></tr>';
+  }).join('');
+
+  R.innerHTML=
+    '<div class="kpis">'+
+    '<div class="kpi"><b>'+S.length+'</b><span>sessies</span></div>'+
+    '<div class="kpi"><b>'+Object.keys(merken).length+'</b><span>merken</span></div>'+
+    '<div class="kpi"><b>'+cells+'/16</b><span>dekking</span></div>'+
+    '<div class="kpi"><b>'+(A.ai.tot?Math.round(100*A.ai.ja/A.ai.tot)+'%':'—')+'</b><span>AI correct (n='+A.ai.tot+')</span></div>'+
+    '</div>'+
+    '<div class="banner '+(A.satLow?'warn':'ok')+'" style="margin-top:14px">'+
+      (A.satLow
+        ?'📉 Laatste 5 sessies leverden vrijwel niets nieuws (gem. nieuwswaarde '+A.satMean.toFixed(2)+'). Meer van hetzelfde inpluggen is tijdverspilling — pak gericht een auto uit het testadvies, of stop.'
+        :'📈 Nieuwe sessies leveren nog kennis op (gem. nieuwswaarde laatste 5: '+A.satMean.toFixed(2)+').')+'</div>'+
+    '<div class="sec">Dekking (brandstof × leeftijd)</div><div class="card">'+matrix+
+      '<div style="font-size:12px;margin-top:10px" class="mut">Testadvies: '+(A.advies.length?esc(A.advies.join('  ·  ')):'alle hoofdcellen gedekt ✓')+'</div></div>'+
+    '<div class="sec">Nieuwswaarde-trend</div><div class="card">'+spark+'</div>'+
+    (A.ai.tot?'<div class="sec">AI-scorebord (monteur-oordeel)</div><div class="kpis">'+
+      [['Ja',A.ai.ja,'var(--green)'],['Deels',A.ai.deels,'var(--amber)'],['Nee',A.ai.nee,'var(--red)']]
+      .map(x=>'<div class="kpi"><b style="color:'+x[2]+'">'+x[1]+'</b><span>'+x[0]+'</span></div>').join('')+'</div>':'')+
+    '<div class="sec">Structurele verbeterpunten (gerangschikt)</div>'+
+    (A.findings.length?A.findings.map((f,i)=>'<div class="find'+(i<3?' hi':'')+'">'+esc(f.txt)+'</div>').join('')
+      :'<div class="card mut" style="font-size:13px">Nog geen terugkerende patronen. Meer variatie in auto\'s (zie testadvies) levert die het snelst op.</div>')+
+    '<div class="sec">Alle sessies</div><div class="card" style="overflow-x:auto"><table>'+
+    '<tr><th>Datum</th><th>Auto</th><th>Cel</th><th>Verdict</th><th>Monteur</th><th>Fouten</th><th>PID-fail</th><th>Nieuw</th></tr>'+rows+'</table></div>'+
+    '<button class="btn" onclick="location.reload()">Ander bestand laden</button>';
+}
+})();
+</script>
+</body>
+</html>
