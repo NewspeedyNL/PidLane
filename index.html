@@ -1,6 +1,20 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-09 (CET) — VELDLAB vervangt 25-sessies checklist: elke echte
+     Build: 2026-07-09b (CET) — 3 WIJZIGINGEN:
+     0) FULL VELDLAB SURVEY (⋯-menu, adminOnly): één klik op aangesloten
+        auto → geautomatiseerde diepe meting: adapter-info (ATI/ATRV/ATDPN),
+        sweep over ALLE supportedPIDs (waarde+responstijd+kwaliteit),
+        multi-PID batchtest (CAN), DTC 03+07, timing-profiel 010C×5.
+        Gaat als rijke sessie (novel 0.8, survey-veld) de veldlab-store in
+        én wordt direct als pidlane-survey-[datum].json gedownload.
+        Voortgangs-overlay met afbreekknop; normale werkwijze onveranderd.
+     1) WEB SERIAL (Windows): COM-poort kiezen gaf bij annuleren/openfout een
+        LEEG connect-scherm (viel door naar Web Bluetooth-kiezer). Nu terminal:
+        annuleren = stil stoppen; openfout = gerichte melding + opnieuw-knop.
+     2) VELDLAB bereikbaarheid: 🧪 Veldlab nu óók in ⋯-menu (adminOnly); knop
+        z-index 9500→9950 (zat onder overlays); admin-check hoofdletter-
+        ongevoelig; startup-log "🧪 Veldlab actief"; vlOpenDash admin-guard.
+     Vorige build 2026-07-09 — VELDLAB vervangt 25-sessies checklist: elke echte
      verbinding = automatische meetsessie (0 handelingen); adaptieve micro-check
      (max 3 vragen, alléén bij nieuw terrein/merk of anomalie); cumulatieve
      opslag (localStorage pl_veldlab_v1) + in-app dashboard (🧪, admin) met
@@ -1358,6 +1372,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
         <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
         <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
+        <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
         <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
         <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
         <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
@@ -3252,6 +3267,111 @@ function vlFinalize(){
 }
 window.addEventListener('pagehide', function(){ try{ vlFinalize(); }catch(e){} });
 
+/* ════════════════════════════════════════
+   FULL VELDLAB SURVEY (admin, ⋯-menu)
+   Eén klik op een aangesloten auto → geautomatiseerde diepe meting van
+   alles wat handmatig niet te testen valt: adapter-info, ALLE ondersteunde
+   PIDs (waarde + responstijd + kwaliteitsoordeel), multi-PID batchtest,
+   DTC actief+pending, en timing-profiel. Resultaat gaat als rijke sessie
+   de veldlab-database in (JSON-export pikt hem automatisch mee) én wordt
+   direct als los survey-JSON gedownload. Normale werkwijze blijft intact.
+   ════════════════════════════════════════ */
+let _vlSvBusy=false, _vlSvAbort=false;
+function _vlSvUI(msg, done){
+  let ov=document.getElementById('vlSvOv');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='vlSvOv';
+    ov.style.cssText='position:fixed;inset:0;z-index:9960;background:rgba(10,14,20,.92);color:#eaf0f6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font:600 15px system-ui;padding:24px;text-align:center';
+    ov.innerHTML='<div style="font-size:28px">📋</div><div id="vlSvMsg"></div><button id="vlSvBtn" style="background:#1b2735;color:#eaf0f6;border:1px solid #33475c;border-radius:10px;padding:10px 18px;font:600 14px system-ui;cursor:pointer">Afbreken</button>';
+    document.body.appendChild(ov);
+    document.getElementById('vlSvBtn').onclick=()=>{ if(_vlSvBusy){ _vlSvAbort=true; } else ov.remove(); };
+  }
+  document.getElementById('vlSvMsg').innerHTML=msg;
+  document.getElementById('vlSvBtn').textContent=done?'Sluiten':'Afbreken';
+}
+async function vlFullSurvey(){
+  try{ if(!(window.currentUser&&String(currentUser.role||'').toLowerCase()==='admin')){ showToast('Alleen voor admin'); return; } }catch(e){ return; }
+  if(!connected || demoMode){ showToast('Eerst verbinden met een echte auto (geen demo)'); return; }
+  if(_vlSvBusy) return;
+  _vlSvBusy=true; _vlSvAbort=false;
+  const clean=s=>String(s||'').replace(/[\r\n>]+/g,' ').replace(/\s+/g,' ').trim();
+  const t0=Date.now();
+  const sv={type:'survey', t:t0, tester:(window.currentUser&&currentUser.name)||''};
+  try{
+    _vlSvUI('Adapter-info uitlezen…');
+    sv.adapter={ id:clean(await sendCmd('ATI',1500)), volt:clean(await sendCmd('ATRV',1500)),
+      protoNum:clean(await sendCmd('ATDPN',1500)),
+      proto:(selectedNetwork&&(selectedNetwork.name||selectedNetwork.desc||selectedNetwork.id))||'' };
+    sv.veh={merk:vehicleInfo.merk||'',model:vehicleInfo.model||'',jaar:vehicleInfo.year||'',vin:vehicleInfo.vin||'',brandstof:vehicleInfo.brandstof||''};
+
+    const pids=[...supportedPIDs];
+    sv.pids={total:pids.length, ok:0, nodata:0, invalid:0, detail:[]};
+    for(let i=0;i<pids.length;i++){
+      if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+      const pid=pids[i];
+      _vlSvUI('PID-sweep '+(i+1)+'/'+pids.length+'<br><span style="font-weight:400;font-size:13px;opacity:.8">'+pid+'</span>');
+      const s0=performance.now();
+      let raw=''; try{ raw=await sendCmd('01'+pid.slice(2)+'1',1800); }catch(e){}
+      const ms=Math.round(performance.now()-s0);
+      const def=getPidDef(pid)||{};
+      let st='nodata', val=null, q='';
+      if(raw && !/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw)){
+        val=parsePID(pid,raw);
+        if(val==null){ st='invalid'; }
+        else{ try{ q=assessPidQuality(pid,val,true).status; }catch(e){ q='ok'; } st=(q==='ok')?'ok':'invalid'; }
+      }
+      sv.pids[st]++;
+      sv.pids.detail.push({pid, naam:(def.name||def.naam||'').slice(0,40), val, unit:def.unit||'', ms, st, q});
+    }
+
+    _vlSvUI('Multi-PID batchtest…');
+    const isCAN=/^[6-9A-C]/i.test(String(selectedNetwork?.id||''));
+    if(isCAN){
+      let braw=''; try{ braw=await sendCmd('010C0D05',2500); }catch(e){}
+      sv.batch={req:'010C0D05', ok: !!braw && /41/i.test(braw) && !/NO DATA|ERROR/i.test(braw), raw:clean(braw).slice(0,140)};
+    } else sv.batch={ok:false, reden:'geen CAN-protocol'};
+
+    _vlSvUI('DTC uitlezen (actief + pending)…');
+    let d03=[]; try{ d03=await realScanDTC()||[]; }catch(e){}
+    let d07=''; try{ d07=clean(await sendCmd('07',2500)); }catch(e){}
+    sv.dtc={actief:d03, pendingRaw:d07.slice(0,120)};
+
+    _vlSvUI('Timing-profiel (010C ×5)…');
+    const times=[];
+    for(let k=0;k<5 && !_vlSvAbort;k++){
+      const a=performance.now(); try{ await sendCmd('010C1',1500); }catch(e){}
+      times.push(Math.round(performance.now()-a));
+    }
+    sv.timing={rpm5:times, avgMs:times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null};
+    sv.durS=Math.round((Date.now()-t0)/1000);
+
+    // → veldlab-database (JSON-export pikt survey automatisch mee)
+    const fuel=vlFuel(sv.veh.brandstof), band=vlAgeBand(sv.veh.jaar), pc=vlProtoClass(sv.adapter.proto);
+    const st2=vlLoad();
+    st2.sessies.push({ id:'survey-'+t0, t:t0, dur:Math.max(1,Math.round(sv.durS/60)), tester:sv.tester,
+      merk:(sv.veh.merk||'').toLowerCase(), cell:fuel+'|'+band+'|'+pc, fuel, band, pc,
+      veh:{merk:sv.veh.merk,model:sv.veh.model,jaar:sv.veh.jaar},
+      adp:{type:'📋 survey', proto:sv.adapter.proto, lat:sv.timing.avgMs},
+      pids:{n:sv.pids.total, fail:sv.pids.detail.filter(x=>x.st!=='ok').map(x=>x.pid).slice(0,40)},
+      dtc:sv.dtc.actief, ai:{}, nav:{doors:['survey']}, errs:[], human:{}, novel:0.8, survey:sv });
+    vlSave(st2); try{ vlEnsureBtn(true); }catch(e){}
+
+    // → direct los survey-JSON downloaden
+    try{
+      const blob=new Blob([JSON.stringify(sv,null,2)],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    }catch(e){}
+
+    try{ log('📋 Full survey: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig · gem. '+sv.timing.avgMs+'ms · '+sv.dtc.actief.length+' DTC — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){}
+    _vlSvUI('✅ Survey klaar in '+sv.durS+'s<br><span style="font-weight:400;font-size:13px;opacity:.85">'+sv.pids.ok+' PIDs ok · '+sv.pids.nodata+' niet aanwezig · '+sv.pids.invalid+' ongeldig<br>Gem. responstijd '+sv.timing.avgMs+' ms · batch '+(sv.batch.ok?'✓':'✗')+' · '+sv.dtc.actief.length+' DTC<br>Opgeslagen in Veldlab + JSON gedownload</span>', true);
+  }catch(e){
+    _vlSvUI('⏹ Survey gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
+  }finally{ _vlSvBusy=false; }
+}
+
 /* ---- logvanger: auto-start bij echte verbinding, auto-stop bij verbroken ---- */
 var _plPidFlagged={};
 function _plEvalCapture(msg,type){
@@ -3382,6 +3502,7 @@ function vlAnalyse(st){
 
 /* ---- dashboard (in-app, admin) ---- */
 function vlOpenDash(){
+  try{ if(!(window.currentUser&&String(currentUser.role||'').toLowerCase()==='admin')){ showToast?.('Alleen voor admin'); return; } }catch(e){ return; }
   const st=vlLoad(), A=vlAnalyse(st), S=st.sessies;
   let ov=document.getElementById('vlDash'); if(ov) ov.remove();
   ov=document.createElement('div'); ov.id='vlDash';
@@ -3427,13 +3548,14 @@ function vlOpenDash(){
 /* ---- knop rechtsonder (alleen admin) ---- */
 function vlEnsureBtn(force){
   try{
-    var admin=false; try{ admin=!!(window.currentUser&&currentUser.role==='admin'); }catch(e){}
+    var admin=false; try{ admin=!!(window.currentUser&&String(currentUser.role||'').toLowerCase()==='admin'); }catch(e){}
     var b=document.getElementById('plEvalBtn');
     if(admin){
       var n=vlLoad().sessies.length, lbl='🧪 Veldlab'+(n?' ('+n+')':'');
       if(!b){ b=document.createElement('button'); b.id='plEvalBtn';
-        b.style.cssText='position:fixed;right:12px;bottom:76px;z-index:9500;background:#00D4FF;color:#04222a;border:none;border-radius:22px;padding:11px 16px;font:700 13px/1 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,212,255,.35);cursor:pointer';
-        b.onclick=vlOpenDash; document.body.appendChild(b); }
+        b.style.cssText='position:fixed;right:12px;bottom:76px;z-index:9950;background:#00D4FF;color:#04222a;border:none;border-radius:22px;padding:11px 16px;font:700 13px/1 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,212,255,.35);cursor:pointer';
+        b.onclick=vlOpenDash; document.body.appendChild(b);
+        try{ log('🧪 Veldlab actief — knop rechtsonder + ⋯-menu','ok'); }catch(e){} }
       if(b.textContent!==lbl) b.textContent=lbl;
     } else if(b){ b.remove(); }
   }catch(e){}
