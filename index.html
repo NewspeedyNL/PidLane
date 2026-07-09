@@ -1357,6 +1357,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <button class="kebab-item" onclick="closeKebab();handleConnect()">🔌 Verbinden</button>
         <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
         <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
+        <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
         <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
         <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
         <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
@@ -7412,6 +7413,20 @@ async function connectSerial(){
       } catch(e){
         lastErr = e;
         btDiag(`✗ ${label}: ${e.message}`, 'err');
+        // Gebruiker annuleerde de poortkiezer → stil stoppen, geen tweede
+        // (lege) kiezer openen en geen foutmelding.
+        if (e.__plCancel){
+          btDiag('Poortkeuze geannuleerd — cascade gestopt', 'warn');
+          resetConnectBtn();
+          return;
+        }
+        // COM-poort geselecteerd maar openen mislukte → dit is de bedoelde
+        // route; NIET doorvallen naar de Web Bluetooth-kiezer.
+        if (e.__plTerminal){
+          btDiag('COM-poort openen mislukt — cascade gestopt', 'warn');
+          permissionBlocked = true;   // hergebruikt: stopt beide lussen
+          break;
+        }
         // Permissie permanent geweigerd → doorgaan is zinloos
         if (/denied|permission|toestemming|geweigerd/i.test(e.message || '')){
           btDiag('Permissie-blokkade gedetecteerd — cascade gestopt', 'warn');
@@ -7682,10 +7697,24 @@ let _wsPort=null, _wsWriter=null, _wsReader=null, _wsBuf='', _wsReadAbort=false;
 
 async function connectWebSerial(){
   log('Web Serial: poort kiezen...', 'info');
-  _wsPort = await navigator.serial.requestPort();      // Chrome-poortkiezer
+  // Poortkiezer. Annuleren (NotFoundError) mag NIET doorvallen naar de
+  // Web Bluetooth-kiezer — dat gaf het "lege connect-scherm". Markeer als
+  // gebruikersannulering zodat de cascade stopt.
+  try{
+    _wsPort = await navigator.serial.requestPort();      // Chrome-poortkiezer
+  }catch(e){ e.__plCancel = true; throw e; }
   // OBDLink MX+ op Windows: standaard 115200. Bij twijfel is 38400 de bewezen
   // fallback, maar de MX+ COM-poort draait vast op 115200 (fabrikant-default).
-  await _wsPort.open({ baudRate: 115200, bufferSize: 4096 });
+  // Openen kan op Windows falen als de COM-poort nog bezet is (vorige sessie /
+  // ander programma). Dan is de COM-poort de bedoelde route — NIET doorvallen
+  // naar een lege Bluetooth-kiezer; toon een gerichte fout met opnieuw-knop.
+  try{
+    await _wsPort.open({ baudRate: 115200, bufferSize: 4096 });
+  }catch(e){
+    e.__plTerminal = true;
+    e.message = 'COM-poort kon niet worden geopend.\nSluit andere programma\'s die de poort gebruiken (of trek de adapter kort los) en probeer opnieuw.\n\nDetail: ' + (e.message || e);
+    throw e;
+  }
   log('Web Serial poort geopend (115200)', 'ok');
 
   const encoder = new TextEncoder();
