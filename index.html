@@ -7,6 +7,10 @@
      dekkingsmatrix, AI-scorebord, structurele verbeterpunten, testadvies en
      verzadigingssignaal; JSON-export voor pidlane-veldlab.html/Claude.
      Oude sessie-check-venster + 25-teller verwijderd.
+     FIX: Totaalcheck/Conditiecheck stuurde alleen AFWIJKENDE sensoren naar de
+     AI — op een gezonde auto kreeg de AI nul meetwaarden ("geen beschikking
+     over sensoren"). Nu gaan alle gemeten waarden (max 40) + volledig
+     datakwaliteit-blok mee.
 
      STAAT (kort):
        • Single-file web-app (HTML+CSS+JS), Capacitor 6 Android-APK + PWA,
@@ -4705,7 +4709,11 @@ async function runCheckAI(items){
   const v=getVehicle();
   const probItems=items.filter(i=>i.status!=='ok');
   const prob=probItems.map(i=>`• ${i.name}: ${i.display} — ${i.detail}`).join('\n');
-  const pairs=probItems.filter(i=>i.pid).map(i=>[i.pid, (typeof pidVals!=='undefined'?pidVals[i.pid]:undefined)]);
+  // FIX 09-07: stuur ALLE gemeten waarden mee, niet alleen afwijkingen. Op een
+  // gezonde auto was prob leeg → de AI kreeg nul sensordata en schreef terecht
+  // "geen beschikking over sensoren", terwijl de tegels wél waarden toonden.
+  const meet=items.filter(i=>i.pid).slice(0,40).map(i=>`• ${i.name}: ${i.display}${i.status!=='ok'?'  ⚠ '+i.detail:''}`).join('\n');
+  const pairs=items.filter(i=>i.pid).map(i=>[i.pid, (typeof pidVals!=='undefined'?pidVals[i.pid]:undefined)]);
   const q=buildQualityReport(pairs);
   // Als een test-scenario actief is: laat de AI weten dat deze data handmatig
   // is gezet (testdoeleinden), zodat het oordeel daar rekening mee houdt.
@@ -4726,7 +4734,7 @@ async function runCheckAI(items){
   } else if(ft==='diesel'){
     fuelNote=`\nDit is een DIESEL: brandstoftrim-logica wijkt af; let op roetfilter (DPF), AdBlue/SCR en NOx waar relevant.`;
   }
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nProblemen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nGemeten sensordata (${items.length} sensoren):\n${meet||'(geen meetdata — sensoren leverden nog geen waarden; zeg dit eerlijk in het rapport)'}\nAfwijkingen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%
