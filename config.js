@@ -6,6 +6,7 @@
 
 // ── Beschermlaag (Cloudflare Worker) ─────────────────────────
 const PROXY_URL = 'https://pidlane-proxy.newspeedynl.workers.dev';
+const VELDLAB_ENDPOINT = 'https://pidlane-veldlab.newspeedynl.workers.dev';
 const APP_TOKEN = 'pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b';
 const MODEL     = 'claude-haiku-4-5-20251001';
 
