@@ -1,6 +1,12 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-07-09b (CET) — 3 WIJZIGINGEN:
+     0a) AIRTABLE CLOUD-SYNC: elke veldlab-sessie én survey gaat na lokaal
+         opslaan óók naar Airtable-base "PidLane Veldlab" (apphsUwG4WAeWjEwH /
+         tblwbyWN1L6AKwgoy) — centrale opslag over telefoon/tablet/laptop.
+         Offline-wachtrij (pl_veldlab_atq, max 60) flusht bij online/opstart.
+         Token: const AIRTABLE_TOKEN in config.js of localStorage
+         'pl_at_token'. Geen token = stil overslaan, lokaal blijft leidend.
      0) FULL VELDLAB SURVEY (⋯-menu, adminOnly): één klik op aangesloten
         auto → geautomatiseerde diepe meting: adapter-info (ATI/ATRV/ATDPN),
         sweep over ALLE supportedPIDs (waarde+responstijd+kwaliteit),
@@ -3262,10 +3268,61 @@ function vlFinalize(){
     errs:g.fouten.slice(0,10).map(f=>String(f.msg||'').slice(0,140)),
     human:snap.human||{}, novel:nv.score };
   const st=vlLoad(); st.sessies.push(rec); vlSave(st);
+  try{ vlAtPush(rec); }catch(e){}
   try{ log('🧪 Veldlab: sessie #'+st.sessies.length+' vastgelegd ('+nv.cell+(nv.newCell?' — NIEUW terrein':nv.newMerk?' — nieuw merk':'')+')','ok'); }catch(e){}
   vlEnsureBtn(true);
 }
 window.addEventListener('pagehide', function(){ try{ vlFinalize(); }catch(e){} });
+
+/* ════════════════════════════════════════
+   VELDLAB → AIRTABLE CLOUD-SYNC
+   Centrale opslag over alle testdevices (telefoon/tablet/laptop).
+   Elke veldlab-sessie en survey wordt na lokaal opslaan óók naar de
+   Airtable-base "PidLane Veldlab" geschreven. Zonder bereik → offline-
+   wachtrij in localStorage, automatisch geflusht bij online/opstarten.
+   Token: const AIRTABLE_TOKEN in config.js (PAT, alleen data.records:write
+   op deze base) óf localStorage 'pl_at_token'. Geen token = stil overslaan.
+   ════════════════════════════════════════ */
+const VL_AT={base:'apphsUwG4WAeWjEwH', table:'tblwbyWN1L6AKwgoy', qKey:'pl_veldlab_atq'};
+function vlAtToken(){ try{ return (typeof AIRTABLE_TOKEN!=='undefined'&&AIRTABLE_TOKEN)||localStorage.getItem('pl_at_token')||''; }catch(e){ return ''; } }
+function vlAtQueue(f){ try{ const q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); q.push(f); while(q.length>60)q.shift(); localStorage.setItem(VL_AT.qKey,JSON.stringify(q)); }catch(e){} }
+let _vlAtBusy=false;
+async function vlAtFlush(){
+  if(_vlAtBusy) return; const tok=vlAtToken(); if(!tok) return;
+  let q=[]; try{ q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){}
+  if(!q.length) return;
+  _vlAtBusy=true;
+  try{
+    while(q.length){
+      const batch=q.slice(0,10);
+      const res=await fetch('https://api.airtable.com/v0/'+VL_AT.base+'/'+VL_AT.table,{
+        method:'POST', headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+        body:JSON.stringify({records:batch.map(f=>({fields:f})), typecast:true})});
+      if(!res.ok) throw new Error('Airtable HTTP '+res.status);
+      q=q.slice(batch.length);
+      localStorage.setItem(VL_AT.qKey, JSON.stringify(q));
+    }
+    try{ log('☁ Veldlab → Airtable gesynchroniseerd','ok'); }catch(e){}
+  }catch(e){ try{ btDiag('☁ Airtable-sync wacht ('+(e.message||e)+') — blijft in wachtrij','warn'); }catch(_){} }
+  finally{ _vlAtBusy=false; }
+}
+function vlAtPush(rec){
+  const ua=navigator.userAgent||'';
+  const dev=/Android.*Mobile|iPhone/i.test(ua)?'telefoon':(/Android|iPad|Tablet/i.test(ua)?'tablet':'laptop');
+  vlAtQueue({ 'SessieID':String(rec.id||('s-'+(rec.t||Date.now()))),
+    'Datum':new Date(rec.t||Date.now()).toISOString(),
+    'Type':rec.survey?'survey':'sessie', 'Tester':rec.tester||'', 'Device':dev,
+    'Merk':(rec.veh&&rec.veh.merk)||'', 'Model':(rec.veh&&rec.veh.model)||'', 'Jaar':String((rec.veh&&rec.veh.jaar)||''),
+    'Cell':rec.cell||'', 'Verdict':(rec.ai&&rec.ai.verdict)||'',
+    'PidsOk':(rec.survey&&rec.survey.pids&&rec.survey.pids.ok)||((rec.pids&&rec.pids.n)||0),
+    'PidsFail':(rec.pids&&rec.pids.fail&&rec.pids.fail.length)||0,
+    'AvgMs':(rec.adp&&rec.adp.lat)||0,
+    'DTC':(rec.dtc||[]).slice(0,8).join(' '),
+    'JSON':JSON.stringify(rec).slice(0,95000) });
+  vlAtFlush();
+}
+window.addEventListener('online', function(){ try{ vlAtFlush(); }catch(e){} });
+setTimeout(function(){ try{ vlAtFlush(); }catch(e){} }, 6000);
 
 /* ════════════════════════════════════════
    FULL VELDLAB SURVEY (admin, ⋯-menu)
@@ -3355,6 +3412,7 @@ async function vlFullSurvey(){
       pids:{n:sv.pids.total, fail:sv.pids.detail.filter(x=>x.st!=='ok').map(x=>x.pid).slice(0,40)},
       dtc:sv.dtc.actief, ai:{}, nav:{doors:['survey']}, errs:[], human:{}, novel:0.8, survey:sv });
     vlSave(st2); try{ vlEnsureBtn(true); }catch(e){}
+    try{ vlAtPush(st2.sessies[st2.sessies.length-1]); }catch(e){}
 
     // → direct los survey-JSON downloaden
     try{
