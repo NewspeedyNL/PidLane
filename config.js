@@ -9,6 +9,11 @@ const PROXY_URL = 'https://pidlane-proxy.newspeedynl.workers.dev';
 const APP_TOKEN = 'pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b';
 const MODEL     = 'claude-haiku-4-5-20251001';
 
+// ── Veldlab cloud-sync (route op de bestaande pidlane-proxy) ─
+// Vereist de bijgewerkte Worker-code (pidlane-proxy-worker.js) met
+// endpoint POST /airtable/veldlab. Token blijft secret in de Worker.
+const VELDLAB_ENDPOINT = PROXY_URL + '/airtable/veldlab';
+
 // ── Gebruikers ───────────────────────────────────────────────
 // Uitleg per veld:
 //   'Inlognaam'  = wat de gebruiker typt om in te loggen (UNIEK, geen spaties → gebruik _)
@@ -24,7 +29,7 @@ const USERS = {
   'Demo':  { password: 'P!dL@n3',    role: 'demo',  label: 'Demo'  },
 
   // — Test-gebruikers (rol: user) — vervang gerust namen/wachtwoorden —
-  'nico':                { password: 'nico',      role: 'user', label: 'nico' },
+  'Garage_Jansen':       { password: 'Test1234!', role: 'user', label: 'Garage Jansen' },
   'Autobedrijf_Pieters': { password: 'Test1234!', role: 'user', label: 'Autobedrijf Pieters' },
   'Occasions_DeVries':   { password: 'Test1234!', role: 'user', label: 'Occasions De Vries' },
   'AutoCentrum_Bakker':  { password: 'Test1234!', role: 'user', label: 'AutoCentrum Bakker' },
@@ -35,6 +40,18 @@ const USERS = {
   'Occasions_Dijkstra':  { password: 'Test1234!', role: 'user', label: 'Occasions Dijkstra' },
   'AutoPlaza_Hendriks':  { password: 'Test1234!', role: 'user', label: 'AutoPlaza Hendriks' }
 };
+
+// ── Airtable (via proxy) ─────────────────────────────────────
+const AIRTABLE_TOKEN = 'via-proxy';
+const AIRTABLE_URL   = PROXY_URL + '/airtable/log';
+
+// ── Auto-update (GitHub Pages) ───────────────────────────────
+const APP_VERSION = '2.2';
+const GITHUB_USER = 'newspeedynl';
+const GITHUB_REPO = 'PidLane';
+const VERSION_URL = 'https://newspeedynl.github.io/PidLane/version.json';
+const UPDATE_URL  = 'https://newspeedynl.github.io/PidLane/index.html';
+ 
 
 // ── Airtable (via proxy) ─────────────────────────────────────
 const AIRTABLE_TOKEN = 'via-proxy';
