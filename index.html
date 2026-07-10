@@ -2131,6 +2131,18 @@ if(typeof USERS === 'undefined'){
 
 let currentUser = null;
 
+// Centrale admin-check. LET OP: `let currentUser` maakt GEEN window.currentUser
+// aan — daarom faalden alle checks op `window.currentUser` altijd ("Alleen voor
+// admin" ondanks admin-login). doLogin/logout zetten window.currentUser nu
+// expliciet, en élke admin-check loopt via deze ene helper (hoofdletter-ongevoelig).
+function isAdmin(){
+  try{
+    const u = window.currentUser || currentUser;
+    return !!(u && String(u.role||'').toLowerCase()==='admin');
+  }catch(e){ return false; }
+}
+window.isAdmin = isAdmin;
+
 function doLogin(){
   let user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -2155,6 +2167,7 @@ function doLogin(){
 
   // Login geslaagd
   currentUser = {name: user, ...account};
+  window.currentUser = currentUser; // expliciet — `let` maakt geen window-property aan
   err.textContent = '';
   // Rol: 'user' = alleen basisfuncties; 'admin' (default) = alles
   document.body.classList.toggle('role-user',(account.role||'admin')==='user');
@@ -2313,6 +2326,7 @@ async function logout(){
     }
   }catch(e){ try{ log('Log opslaan bij uitloggen mislukt: '+(e.message||e),'warn'); }catch(_){} }
   currentUser = null;
+  window.currentUser = null;
   try{ localStorage.removeItem('pl_session'); }catch(e){}
   try{ localStorage.removeItem('pl_appstate'); }catch(e){} // sessiestaat niet meenemen naar volgende login
   window.anthropicKey = '';
@@ -3356,7 +3370,7 @@ function _vlSvUI(msg, done){
   document.getElementById('vlSvBtn').textContent=done?'Sluiten':'Afbreken';
 }
 async function vlFullSurvey(){
-  try{ if(!(window.currentUser&&String(currentUser.role||'').toLowerCase()==='admin')){ showToast('Alleen voor admin'); return; } }catch(e){ return; }
+  if(!isAdmin()){ showToast('Alleen voor admin'); return; }
   if(!connected || demoMode){ showToast('Eerst verbinden met een echte auto (geen demo)'); return; }
   if(_vlSvBusy) return;
   _vlSvBusy=true; _vlSvAbort=false;
@@ -3569,7 +3583,7 @@ function vlAnalyse(st){
 
 /* ---- dashboard (in-app, admin) ---- */
 function vlOpenDash(){
-  try{ if(!(window.currentUser&&String(currentUser.role||'').toLowerCase()==='admin')){ showToast?.('Alleen voor admin'); return; } }catch(e){ return; }
+  if(!isAdmin()){ showToast?.('Alleen voor admin'); return; }
   const st=vlLoad(), A=vlAnalyse(st), S=st.sessies;
   let ov=document.getElementById('vlDash'); if(ov) ov.remove();
   ov=document.createElement('div'); ov.id='vlDash';
@@ -3615,7 +3629,7 @@ function vlOpenDash(){
 /* ---- knop rechtsonder (alleen admin) ---- */
 function vlEnsureBtn(force){
   try{
-    var admin=false; try{ admin=!!(window.currentUser&&String(currentUser.role||'').toLowerCase()==='admin'); }catch(e){}
+    var admin=isAdmin();
     var b=document.getElementById('plEvalBtn');
     if(admin){
       var n=vlLoad().sessies.length, lbl='🧪 Veldlab'+(n?' ('+n+')':'');
@@ -6053,7 +6067,7 @@ function trackTokens(u){
   updateTokenPill(true);
 }
 function updateTokenPill(flash){
-  try{ if(!(currentUser&&currentUser.role==='admin')) return; }catch(e){ return; }
+  if(!isAdmin()) return;
   let p=document.getElementById('tokPill');
   if(!p){
     p=document.createElement('div'); p.id='tokPill';
@@ -6190,7 +6204,7 @@ function extractAIText(data){
   return '';
 }
 
-async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
+async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
   try{
@@ -6222,39 +6236,66 @@ async function apiFetch(prompt, maxTokens=1200, systemPrompt=null, model=null){
   let _override=''; try{ _override=(window.PID_CONFIG&&window.PID_CONFIG.ai_system_override||'').trim(); }catch(e){}
   const sys = systemPrompt || (_override || _defaultSys);
 
-  const body = {
-    model: model || 'claude-sonnet-5',
-    max_tokens: maxTokens,
-    system: sys,
-    messages: [{role:'user', content: prompt}],
-    // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
-    // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
-    thinking: { type: 'disabled' }
-  };
+  const mdl = model || 'claude-sonnet-5';
 
   aiBusyBegin();
   const _plT0=Date.now();
   try{
-    const resp = await fetch(PROXY_URL+'/v1/messages',{
-      method: 'POST',
-      headers:{
-        'Content-Type': 'application/json',
-        'X-App-Token': APP_TOKEN
-      },
-      body: JSON.stringify(body)
-    });
+    // Rapport in delen ophalen als het tegen het tokenplafond loopt
+    // (stop_reason 'max_tokens'). Voorheen werd een half rapport stilletjes
+    // getoond, midden in een woord afgekapt. Nu: max 2 vervolgcalls met
+    // "ga verder", daarna nette melding in de tekst zelf.
+    let msgs=[{role:'user', content: prompt}];
+    let full='';
+    for(let part=0; part<3; part++){
+      const body = {
+        model: mdl,
+        max_tokens: maxTokens,
+        system: sys,
+        messages: msgs,
+        // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
+        // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
+        thinking: { type: 'disabled' }
+      };
+      const resp = await fetch(PROXY_URL+'/v1/messages',{
+        method: 'POST',
+        headers:{
+          'Content-Type': 'application/json',
+          'X-App-Token': APP_TOKEN
+        },
+        body: JSON.stringify(body)
+      });
 
-    if(!resp.ok){
-      const err=await resp.json().catch(()=>({}));
-      const msg=err?.error?.message||`HTTP ${resp.status}`;
-      if(resp.status===401) throw new Error('API key ongeldig of verlopen.');
-      if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
-      throw new Error(msg);
+      if(!resp.ok){
+        const err=await resp.json().catch(()=>({}));
+        const msg=err?.error?.message||`HTTP ${resp.status}`;
+        if(resp.status===401) throw new Error('API key ongeldig of verlopen.');
+        if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
+        throw new Error(msg);
+      }
+      const data=await resp.json();
+      try{ if(data.usage) trackTokens(data.usage); }catch(e){}
+      try{ PidLaneEvalLog.log('ai','api-call',{model:mdl,latencyMs:Date.now()-_plT0,part:part+1,stop:data.stop_reason||''}); }catch(e){}
+
+      const txt=extractAIText(data)||'';
+      full+=txt;
+
+      if(data.stop_reason!=='max_tokens') return full;      // klaar (end_turn e.d.)
+      if(!txt.trim()) return full;                          // niets nieuws — stop veilig
+
+      if(part===2){
+        // Nog steeds afgekapt na 2 vervolgcalls — eerlijk melden in het rapport
+        log('AI-rapport na 3 delen nog niet compleet (max_tokens)','warn');
+        return full+'\n\n[Rapport ingekort — de analyse was langer dan het maximum. Vraag desnoods een beknoptere versie.]';
+      }
+      log('AI-antwoord raakte tokenplafond — vervolg wordt opgehaald (deel '+(part+2)+')','warn');
+      // Let op: assistant-content mag niet eindigen op witruimte (API-eis)
+      msgs=[...msgs,
+        {role:'assistant', content: txt.replace(/\s+$/,'')},
+        {role:'user', content:'Ga exact verder waar je stopte. Herhaal niets van wat er al staat en begin niet opnieuw met een inleiding of sectiekop die al af is.'}
+      ];
     }
-    const data=await resp.json();
-    try{ if(data.usage) trackTokens(data.usage); }catch(e){}
-    try{ PidLaneEvalLog.log('ai','api-call',{model:body.model,latencyMs:Date.now()-_plT0}); }catch(e){}
-    return extractAIText(data);
+    return full;
   } finally {
     aiBusyEnd();
   }
@@ -7196,7 +7237,7 @@ function fallbackCopyBtLog(txt){
 // Alles wat hier gezet wordt, telt als MANUEEL en wordt zo gelabeld.
 // ══════════════════════════════════════════════════════
 function openScenarioModal(){
-  if(currentUser?.role!=='admin'){ showToast?.('Alleen voor admin'); return; }
+  if(!isAdmin()){ showToast?.('Alleen voor admin'); return; }
   if(!demoMode){ showToast?.('Start eerst de demo-modus om een scenario te testen'); return; }
   let ov=document.getElementById('scenarioModal');
   if(!ov){
@@ -12213,7 +12254,7 @@ function downloadScanLog(){
 // Deze helper blijft omdat de crash-bestendige live-log erop leunt.
 function hasTesterConsent(){
   // Admins zijn de bouwer/tester zelf → impliciet consent, geen vinkje nodig.
-  try { if(window.currentUser && currentUser.role==='admin') return true; } catch(e){}
+  if(isAdmin()) return true;
   try { return localStorage.getItem('pl_tester_consent') === '1'; } catch(e){ return false; }
 }
 
