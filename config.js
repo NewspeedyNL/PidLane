@@ -7,7 +7,7 @@
 
 // ── Cloudflare Worker ──────────────────────────────────────
 const PROXY_URL = 'https://pidlane-proxy.newspeedynl.workers.dev';
-const APP_TOKEN = 'pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b';
+const APP_TOKEN = 'kq!kcAMmP3q3Rvy8^KDP%nwitC$KPp24S@o7Y4L*3y6nNDS!3rwCR6QhcPhL!SPhr7BMimCE$G$UyvL4MWPu*QAy8cu&gvLq34e8eE@aFjS7AN@3vL2Ayqho9V6priyp';
 
 // Claude model
 const MODEL = 'claude-haiku-4-5-20251001';
