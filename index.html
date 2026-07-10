@@ -3283,12 +3283,17 @@ window.addEventListener('pagehide', function(){ try{ vlFinalize(); }catch(e){} }
    (pidlane-veldlab-worker.js) die het token als secret bewaart en
    doorstuurt naar base "PidLane Veldlab". Zonder bereik → offline-
    wachtrij in localStorage, automatisch geflusht bij online/opstarten.
-   Endpoint: const VELDLAB_ENDPOINT in config.js
-   (bijv. https://pidlane-veldlab.<subdomein>.workers.dev).
+   Endpoint: PROXY_URL + '/airtable/veldlab' (bestaande pidlane-proxy),
+   met X-App-Token; overschrijfbaar via const VELDLAB_ENDPOINT in config.js.
    Geen endpoint geconfigureerd = stil overslaan, lokaal blijft leidend.
    ════════════════════════════════════════ */
 const VL_AT={qKey:'pl_veldlab_atq'};
-function vlAtEndpoint(){ try{ return (typeof VELDLAB_ENDPOINT!=='undefined'&&VELDLAB_ENDPOINT)||localStorage.getItem('pl_vl_endpoint')||''; }catch(e){ return ''; } }
+function vlAtEndpoint(){ try{
+  if(typeof VELDLAB_ENDPOINT!=='undefined'&&VELDLAB_ENDPOINT) return VELDLAB_ENDPOINT;
+  const ls=localStorage.getItem('pl_vl_endpoint'); if(ls) return ls;
+  if(typeof PROXY_URL!=='undefined'&&PROXY_URL) return PROXY_URL.replace(/\/$/,'')+'/airtable/veldlab';
+  return '';
+}catch(e){ return ''; } }
 function vlAtQueue(f){ try{ const q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); q.push(f); while(q.length>60)q.shift(); localStorage.setItem(VL_AT.qKey,JSON.stringify(q)); }catch(e){} }
 let _vlAtBusy=false;
 async function vlAtFlush(){
@@ -3300,7 +3305,7 @@ async function vlAtFlush(){
     while(q.length){
       const batch=q.slice(0,10);
       const res=await fetch(ep,{
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST', headers:{'Content-Type':'application/json','X-App-Token':(typeof APP_TOKEN!=='undefined'&&APP_TOKEN)||''},
         body:JSON.stringify({records:batch.map(f=>({fields:f}))})});
       if(!res.ok) throw new Error('sync HTTP '+res.status);
       q=q.slice(batch.length);
