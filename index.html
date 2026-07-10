@@ -2122,11 +2122,19 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 
 // Fallback — werkt als config.js niet laadt
 // USERS wordt overschreven door config.js als die wel laadt
+// Wachtwoorden staan als SHA-256-hash (passHash), nooit meer plaintext.
 if(typeof USERS === 'undefined'){
   window.USERS = {
-    'Admin': { password: '1029384756', apiKey: '', role: 'admin', label: 'Admin' },
-    'Demo':  { password: 'P!dL@n3',   apiKey: '', role: 'demo',  label: 'Demo' }
+    'Admin': { passHash: '0233647d3a3a140068f7b11705873d7aaf29bed66724250e279d78f8f0d5ae6c', apiKey: '', role: 'admin', label: 'Admin' },
+    'Demo':  { passHash: '', apiKey: '', role: 'demo', label: 'Demo' } // hash nog aanmaken
   };
+}
+
+// SHA-256 van een string als hex. Vereist secure context (https / capacitor) —
+// dat zijn GitHub Pages én de APK-WebView allebei.
+async function sha256hex(s){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 
 let currentUser = null;
@@ -2143,7 +2151,7 @@ function isAdmin(){
 }
 window.isAdmin = isAdmin;
 
-function doLogin(){
+async function doLogin(){
   let user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;
   const err  = document.getElementById('loginErr');
@@ -2158,17 +2166,40 @@ function doLogin(){
          || Object.keys(USERS).find(k=>_norm(USERS[k].label||'')===_norm(user));
   const account = _key ? USERS[_key] : undefined;
   if(_key) user=_key;   // canonieke sleutel gebruiken voor sessie/logs
-  if(!account || account.password !== pass){
+
+  // Wachtwoordcontrole: passHash (SHA-256, nieuw) heeft voorrang; accounts die
+  // nog niet gemigreerd zijn vallen terug op het oude plaintext password-veld.
+  let passOk = false;
+  try{
+    if(account){
+      if(account.passHash){
+        passOk = (await sha256hex(pass)) === String(account.passHash).trim().toLowerCase();
+      } else if(account.password){
+        passOk = (account.password === pass);
+      }
+    }
+  }catch(e){
+    err.textContent = '⚠ Login-fout: '+(e?.message||e);
+    return;
+  }
+  if(!account || !passOk){
     err.textContent = '⚠ Gebruikersnaam of wachtwoord onjuist';
     document.getElementById('loginPass').value = '';
     document.getElementById('loginPass').focus();
     return;
   }
+  err.textContent = '';
+  finishLogin(user, account);
+}
 
+// Alles ná geslaagde wachtwoordcontrole. Apart zodat het sessieherstel dit
+// direct kan aanroepen zonder wachtwoord (de gebruiker is op dit apparaat
+// al eens geverifieerd) — met hashes kán het wachtwoord niet meer worden
+// teruggelezen uit USERS.
+function finishLogin(user, account){
   // Login geslaagd
   currentUser = {name: user, ...account};
   window.currentUser = currentUser; // expliciet — `let` maakt geen window-property aan
-  err.textContent = '';
   // Rol: 'user' = alleen basisfuncties; 'admin' (default) = alles
   document.body.classList.toggle('role-user',(account.role||'admin')==='user');
   try{ localStorage.setItem('pl_session', user); }catch(e){} // sessie onthouden over herlaads heen
@@ -11405,8 +11436,10 @@ document.addEventListener('DOMContentLoaded', function(){
     const sess=localStorage.getItem('pl_session');
     if(sess && typeof USERS!=='undefined' && USERS[sess]){
       document.getElementById('loginUser').value=sess;
-      document.getElementById('loginPass').value=USERS[sess].password;
-      doLogin();
+      // Geen wachtwoord meer invullen/heruitvoeren: met passHash is het
+      // plaintext wachtwoord niet meer beschikbaar. De gebruiker is op dit
+      // apparaat al geverifieerd — herstel de sessie direct.
+      finishLogin(sess, USERS[sess]);
       log(`Sessie hersteld: ${sess}`,'ok');
       try{ restoreAppState(); }catch(e){}
       try{
