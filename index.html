@@ -21,6 +21,7 @@
         keuzesheet Ja/Nee + "onthoud voor deze sessie" bij de eerste analyse;
         stand aanpasbaar (Vragen/Altijd/Nooit) in het Rapporten-overzicht.
      Vorige build 2026-07-09b — 3 wijzigingen:
+
      0a) AIRTABLE CLOUD-SYNC via Cloudflare Worker: elke veldlab-sessie én
          survey gaat na lokaal opslaan óók naar Airtable-base "PidLane
          Veldlab" — centrale opslag over telefoon/tablet/laptop. GEEN token
@@ -464,12 +465,27 @@ body:has(#loginOv:not(.hidden)) #bottomNav, body:has(#connOv:not(.hidden)) #bott
 .api-pill.unset { background:var(--ors); color:var(--or); border-color:#fed7aa; animation:softblink 2.6s ease-in-out infinite; }
 @keyframes softblink { 0%,100%{opacity:1} 50%{opacity:.35} }
 .pill.attn { border-color:var(--or)!important; animation:softblink 1.8s ease-in-out infinite; }
-/* ── Optie-3 topbar: statuschip verborgen bij OK, opvallend bij niet-verbonden ── */
-#statusPill { display:none; align-items:center; gap:6px; padding:5px 12px; border-radius:999px;
-  background:#fdecef; border:1px solid #f3c0ca; color:var(--rd); font-weight:800; font-size:12px;
-  animation:softblink 1.8s ease-in-out infinite; }
-#statusPill.show { display:flex; }
-#statusPill .dot { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:none; }
+/* ── Topbar statuschips: 🚗 voertuig / 📡 OBD-snelheid / 🤖 AI ── */
+.tchip { display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--bd);
+  font-size:12px; font-weight:700; color:var(--tx2); background:var(--sur2); cursor:pointer; user-select:none; white-space:nowrap; }
+.tchip:active { border-color:var(--bl); }
+.tdot { width:9px; height:9px; border-radius:50%; background:var(--tx3); transition:all .3s; flex-shrink:0; }
+.tdot.g { background:var(--gn); box-shadow:0 0 0 2px rgba(0,168,107,.2); }
+.tdot.o { background:var(--or); box-shadow:0 0 0 2px rgba(247,127,0,.2); animation:softblink 2.6s ease-in-out infinite; }
+.tdot.r { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:softblink 1.8s ease-in-out infinite; }
+#obdChip .dot { width:9px; height:9px; flex-shrink:0; }
+/* Niet verbonden = rood (i.p.v. grijs), traag = oranje */
+#obdChip .dot:not(.on):not(.demo):not(.slow) { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:softblink 1.8s ease-in-out infinite; }
+.dot.slow { background:var(--or); box-shadow:0 0 0 2px rgba(247,127,0,.2); animation:blink 2s infinite; }
+#vchip #vtag { background:transparent; padding:0; max-width:130px; }
+/* Smalle schermen: logo-tekst weg, chips compacter, autonaam korter */
+@media (max-width:480px){
+  .topbar{ padding:0 8px; }
+  .logo{ font-size:0; gap:0; }
+  .tpr{ gap:5px; }
+  .tchip{ padding:4px 8px; gap:5px; }
+  #vchip #vtag{ max-width:80px; }
+}
 /* ── ⋯ kebab menu ── */
 .kebab-wrap { position:relative; }
 .kebab-btn { width:32px; height:30px; border-radius:7px; border:1px solid var(--bd); background:var(--sur2);
@@ -1382,32 +1398,36 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 <!-- ══ TOPBAR ══ -->
 <div id="appScale">
 <div class="topbar">
+  <!-- ☰ menu links -->
+  <div class="kebab-wrap" id="kebabWrap">
+    <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Menu" aria-label="Menu">☰</button>
+    <div class="kebab-menu" id="kebabMenu">
+      <button class="kebab-item" onclick="closeKebab();goHome()">🏠 Home</button>
+      <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
+      <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
+      <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
+      <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
+      <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
+      <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
+      <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
+      <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
+      <div class="kebab-sep"></div>
+      <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
+    </div>
+  </div>
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
-  <button onclick="goHome()" title="Home" aria-label="Home" style="margin-left:6px;width:34px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">🏠</button>
   <div class="tpr">
-    <div id="vtag"></div>
-    <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
-    <div class="pill show" id="statusPill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
-    
-    
-    
-    <!-- ⋯ menu met secundaire acties -->
-    <div class="kebab-wrap" id="kebabWrap">
-      <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Meer">⋯</button>
-      <div class="kebab-menu" id="kebabMenu">
-        <button class="api-pill unset kebab-item" id="apiPill" onclick="closeKebab();openApiDialog()">🤖 AI-sleutel</button>
-        <button class="kebab-item" onclick="closeKebab();handleConnect()">🔌 Verbinden</button>
-        <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
-        <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
-        <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
-        <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
-        <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
-        <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
-        <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
-        <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
-        <div class="kebab-sep"></div>
-        <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
-      </div>
+    <!-- 1️⃣ Voertuig-chip: dot (rood=geen auto, oranje=dossier onvolledig, groen=compleet) + naam -->
+    <div class="tchip" id="vchip" onclick="try{openVehicleOverview()}catch(e){}" title="Voertuig &amp; gevonden informatie">
+      <div class="tdot r" id="vdot"></div><span id="vchipLbl">Auto</span><div id="vtag"></div>
+    </div>
+    <!-- 2️⃣ OBD-chip: dot (rood=niet verbonden, oranje=traag/demo, groen=snel) -->
+    <div class="tchip pill" id="obdChip" onclick="obdChipTap()" title="OBD-verbinding">
+      <div class="dot" id="sdot"></div><span>OBD</span><span id="stxt" style="display:none">Niet verbonden</span>
+    </div>
+    <!-- 3️⃣ AI-chip: dot (groen=AI bereikbaar, rood=geen AI) -->
+    <div class="tchip" id="aiChip" onclick="try{openApiDialog()}catch(e){}" title="AI-verbinding">
+      <div class="tdot r" id="adot"></div><span>AI</span>
     </div>
   </div>
 </div>
@@ -11098,8 +11118,14 @@ function toggleKebab(e){
   if(m.parentElement!==document.body) document.body.appendChild(m);
   m.style.position='fixed';
   m.style.top=((r?r.bottom:46)+6)+'px';
-  m.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
-  m.style.left='auto';
+  // Knop zit nu links in de topbar → menu links uitlijnen; anders rechts (fallback)
+  if(r && r.left < window.innerWidth/2){
+    m.style.left=Math.max(6,r.left)+'px';
+    m.style.right='auto';
+  } else {
+    m.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
+    m.style.left='auto';
+  }
   m.style.zIndex='9999';
   m.classList.add('open');
 }
@@ -11112,9 +11138,71 @@ function showVtag(t){
   const el=document.getElementById('vtag'); if(!el) return;
   let pct=0; try{ pct=dossierPct(); }catch(e){}
   el.innerHTML=t+' <span id="vtagPct" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>';
-  el.style.display='block'; el.style.cursor='pointer'; el.title='Voertuigoverzicht openen';
-  el.onclick=function(){ try{ openVehicleOverview(); }catch(e){} };
+  el.style.display='block';
+  // Klik loopt via de omliggende voertuig-chip (#vchip) — geen eigen onclick meer,
+  // anders opent het voertuigoverzicht dubbel (event bubbelt naar de chip).
+  try{ updateTopbarStatus(); }catch(e){}
 }
+
+// ══════════════════════════════════════════════════════════════════
+// TOPBAR STATUSDOTS — drie balletjes rechts in de bovenbalk:
+//   1️⃣ Voertuig : rood=geen auto herkend · oranje=dossier onvolledig · groen=dossier ≥80%
+//   2️⃣ OBD      : rood=niet verbonden · oranje=demo of traag (<12 reads/s) · groen=snel verbonden
+//   3️⃣ AI       : groen=proxy bereikbaar of geldige sleutel · rood=geen AI beschikbaar
+// Vervangt de oude statusPill + de menu-items "AI-sleutel" en "Verbinden":
+// tik op de OBD-dot = verbinden/verbreken, tik op de AI-dot = AI-dialoog.
+// ══════════════════════════════════════════════════════════════════
+let _aiReach=null;   // null=nog niet gemeten, true/false=laatste proxy-check
+function updateTopbarStatus(){
+  // 1️⃣ Voertuig-dot + label
+  const vt=document.getElementById('vtag'), vd=document.getElementById('vdot'), vl=document.getElementById('vchipLbl');
+  const known=!!(vt && vt.style.display!=='none' && vt.textContent.trim());
+  let pct=0; try{ pct=dossierPct(); }catch(e){}
+  if(vd) vd.className='tdot '+(known ? (pct>=80?'g':'o') : 'r');
+  if(vl) vl.style.display=known?'none':'inline';
+  const vc=document.getElementById('vchip');
+  if(vc) vc.title=known?('Voertuigdossier '+pct+'% — tik voor overzicht'):'Nog geen voertuig herkend — verbind eerst';
+  // 2️⃣ OBD-dot: kleur op basis van verbinding + gemeten snelheid
+  const sd=document.getElementById('sdot');
+  if(sd){
+    if(!connected && !demoMode){ sd.className='dot'; }
+    else if(demoMode){ sd.className='dot demo'; }
+    else if(_connSpeed && _connSpeed.readsPerSec<12){ sd.className='dot slow'; }
+    else { sd.className='dot on'; }
+  }
+  // Tooltip = de bestaande (verborgen) statusregel, zolang er geen kwaliteitswaarschuwing actief is
+  const oc=document.getElementById('obdChip'), st=document.getElementById('stxt');
+  if(oc && st && !oc.classList.contains('attn')) oc.title=st.textContent||'OBD-verbinding';
+  // 3️⃣ AI-dot
+  const ad=document.getElementById('adot');
+  if(ad){
+    const hasProxy=(typeof PROXY_URL!=='undefined' && !!PROXY_URL);
+    const hasKey=!!(window.anthropicKey && String(window.anthropicKey).startsWith('sk-ant-'));
+    const ok=hasProxy ? (_aiReach!==false) : hasKey;
+    ad.className='tdot '+(ok?'g':'r');
+    const ac=document.getElementById('aiChip');
+    if(ac) ac.title=ok?'AI-verbinding actief':'Geen AI-verbinding — tik voor instellingen';
+  }
+}
+// Lichte bereikbaarheidscheck van de proxy (no-cors: elke netwerkrespons telt als bereikbaar)
+async function checkAiReachable(){
+  if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; try{updateTopbarStatus();}catch(e){} return; }
+  try{ await fetch(PROXY_URL,{method:'GET',mode:'no-cors',cache:'no-store'}); _aiReach=true; }
+  catch(e){ _aiReach=false; }
+  try{ updateTopbarStatus(); }catch(e){}
+}
+// Tik op OBD-dot: niet verbonden → verbindscherm; verbonden → verbreken bevestigen
+function obdChipTap(){
+  if(connected||demoMode){
+    const info=_connSpeed?('⚡ '+_connSpeed.readsPerSec+' reads/s · 📡 '+_connSpeed.pids+' PIDs\n\n'):'';
+    if(confirm(info+(demoMode?'Demo modus stoppen?':'OBD-verbinding verbreken?'))) handleConnect();
+  } else {
+    document.getElementById('connOv').classList.remove('hidden');
+  }
+}
+setInterval(()=>{ try{updateTopbarStatus();}catch(e){} },2000);          // dots actueel houden
+setInterval(()=>{ try{checkAiReachable();}catch(e){} },300000);          // proxy elke 5 min pingen
+setTimeout(()=>{ try{checkAiReachable();}catch(e){} },1500);             // eerste check na opstart
 async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
@@ -14825,6 +14913,7 @@ async function exportVehicleDossier(btn){
 
     const fname=`PidLane-voertuigdossier-${(kent||vin||'auto')}-${new Date().toISOString().slice(0,10)}.pdf`;
     window._lastPdf={blob:doc.output('blob'), fname};
+    try{ registerSessionReport({type:'pdf', title:fname, text:'', blob:window._lastPdf.blob, fname}); }catch(e){}
     showPdfReadyModal();
   }catch(e){
     log('Dossier PDF fout: '+e.message,'err');
