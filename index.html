@@ -1,6 +1,26 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-09b (CET) — 3 WIJZIGINGEN:
+     Build: 2026-07-11 (CET) — 2 WIJZIGINGEN:
+     0) FULL SURVEY v2 (schema 2): survey uitgebreid met STI (echte STN-
+        identiteit — MX+ meldt zich via ATI als "ELM327 v1.4b"), CALID 0904
+        + CVN 0906 (tuning-detectie), permanente DTC's mode 0A (schoonpoets-
+        detector), volledig gedecodeerde readiness-monitors 0101 (benzine/
+        diesel-set), ruwe supported-bitmaps 0100-0180 (dekkings-vingerafdruk),
+        batchtrap 2→4→6 PIDs (maxPids per voertuigcel), multi-ECU detectie
+        via ATH1 (7E8/7E9/18DAF1xx), nodata-herkansing met flaky-vlag (retry
+        vs pruning), variantie-sampling 4× op load/rpm/O2/MAP (EWMA-voeding),
+        brandstoftype volgens ECU (0151, kruischeck RDW) en OBD-odometer
+        (01A6, 2019+). Nul-geldig whitelist fixt 0101/0121/014D die bij
+        waarde 0 onterecht als invalid telden. Schema-versie + app-build in
+        JSON. Eindscherm toont batch-max, ECU's, DTC-drieluik en readiness.
+     1) SESSIE-RAPPORTARCHIEF: 📄 Rapporten-knop (onderbalk, met teller)
+        opent overzicht van alle rapporten deze sessie — AI-rapporten (via
+        setter-hook op _lastAIReport), foutcode-uitlezingen, TXT-exports en
+        PDF's (blob herbruikbaar). In-memory, weg bij app-sluiten. AI krijgt
+        eerdere rapporten als context mee (max 4, ~6000 tekens) — met
+        keuzesheet Ja/Nee + "onthoud voor deze sessie" bij de eerste analyse;
+        stand aanpasbaar (Vragen/Altijd/Nooit) in het Rapporten-overzicht.
+     Vorige build 2026-07-09b — 3 wijzigingen:
      0a) AIRTABLE CLOUD-SYNC via Cloudflare Worker: elke veldlab-sessie én
          survey gaat na lokaal opslaan óók naar Airtable-base "PidLane
          Veldlab" — centrale opslag over telefoon/tablet/laptop. GEEN token
@@ -444,27 +464,12 @@ body:has(#loginOv:not(.hidden)) #bottomNav, body:has(#connOv:not(.hidden)) #bott
 .api-pill.unset { background:var(--ors); color:var(--or); border-color:#fed7aa; animation:softblink 2.6s ease-in-out infinite; }
 @keyframes softblink { 0%,100%{opacity:1} 50%{opacity:.35} }
 .pill.attn { border-color:var(--or)!important; animation:softblink 1.8s ease-in-out infinite; }
-/* ── Topbar statuschips: 🚗 voertuig / 📡 OBD-snelheid / 🤖 AI ── */
-.tchip { display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--bd);
-  font-size:12px; font-weight:700; color:var(--tx2); background:var(--sur2); cursor:pointer; user-select:none; white-space:nowrap; }
-.tchip:active { border-color:var(--bl); }
-.tdot { width:9px; height:9px; border-radius:50%; background:var(--tx3); transition:all .3s; flex-shrink:0; }
-.tdot.g { background:var(--gn); box-shadow:0 0 0 2px rgba(0,168,107,.2); }
-.tdot.o { background:var(--or); box-shadow:0 0 0 2px rgba(247,127,0,.2); animation:softblink 2.6s ease-in-out infinite; }
-.tdot.r { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:softblink 1.8s ease-in-out infinite; }
-#obdChip .dot { width:9px; height:9px; flex-shrink:0; }
-/* Niet verbonden = rood (i.p.v. grijs), traag = oranje */
-#obdChip .dot:not(.on):not(.demo):not(.slow) { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:softblink 1.8s ease-in-out infinite; }
-.dot.slow { background:var(--or); box-shadow:0 0 0 2px rgba(247,127,0,.2); animation:blink 2s infinite; }
-#vchip #vtag { background:transparent; padding:0; max-width:130px; }
-/* Smalle schermen: logo-tekst weg, chips compacter, autonaam korter */
-@media (max-width:480px){
-  .topbar{ padding:0 8px; }
-  .logo{ font-size:0; gap:0; }
-  .tpr{ gap:5px; }
-  .tchip{ padding:4px 8px; gap:5px; }
-  #vchip #vtag{ max-width:80px; }
-}
+/* ── Optie-3 topbar: statuschip verborgen bij OK, opvallend bij niet-verbonden ── */
+#statusPill { display:none; align-items:center; gap:6px; padding:5px 12px; border-radius:999px;
+  background:#fdecef; border:1px solid #f3c0ca; color:var(--rd); font-weight:800; font-size:12px;
+  animation:softblink 1.8s ease-in-out infinite; }
+#statusPill.show { display:flex; }
+#statusPill .dot { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:none; }
 /* ── ⋯ kebab menu ── */
 .kebab-wrap { position:relative; }
 .kebab-btn { width:32px; height:30px; border-radius:7px; border:1px solid var(--bd); background:var(--sur2);
@@ -1377,36 +1382,32 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 <!-- ══ TOPBAR ══ -->
 <div id="appScale">
 <div class="topbar">
-  <!-- ☰ menu links -->
-  <div class="kebab-wrap" id="kebabWrap">
-    <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Menu" aria-label="Menu">☰</button>
-    <div class="kebab-menu" id="kebabMenu">
-      <button class="kebab-item" onclick="closeKebab();goHome()">🏠 Home</button>
-      <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
-      <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
-      <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
-      <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
-      <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
-      <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
-      <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
-      <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
-      <div class="kebab-sep"></div>
-      <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
-    </div>
-  </div>
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
+  <button onclick="goHome()" title="Home" aria-label="Home" style="margin-left:6px;width:34px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">🏠</button>
   <div class="tpr">
-    <!-- 1️⃣ Voertuig-chip: dot (rood=geen auto, oranje=dossier onvolledig, groen=compleet) + naam -->
-    <div class="tchip" id="vchip" onclick="try{openVehicleOverview()}catch(e){}" title="Voertuig &amp; gevonden informatie">
-      <div class="tdot r" id="vdot"></div><span id="vchipLbl">Auto</span><div id="vtag"></div>
-    </div>
-    <!-- 2️⃣ OBD-chip: dot (rood=niet verbonden, oranje=traag/demo, groen=snel) -->
-    <div class="tchip pill" id="obdChip" onclick="obdChipTap()" title="OBD-verbinding">
-      <div class="dot" id="sdot"></div><span>OBD</span><span id="stxt" style="display:none">Niet verbonden</span>
-    </div>
-    <!-- 3️⃣ AI-chip: dot (groen=AI bereikbaar, rood=geen AI) -->
-    <div class="tchip" id="aiChip" onclick="try{openApiDialog()}catch(e){}" title="AI-verbinding">
-      <div class="tdot r" id="adot"></div><span>AI</span>
+    <div id="vtag"></div>
+    <!-- Statuschip: verborgen bij OK (verbonden), verschijnt opvallend bij niet-verbonden -->
+    <div class="pill show" id="statusPill" onclick="document.getElementById('connOv').classList.remove('hidden')" style="cursor:pointer" title="Verbindscherm openen"><div class="dot" id="sdot"></div><span id="stxt">Niet verbonden</span></div>
+    
+    
+    
+    <!-- ⋯ menu met secundaire acties -->
+    <div class="kebab-wrap" id="kebabWrap">
+      <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Meer">⋯</button>
+      <div class="kebab-menu" id="kebabMenu">
+        <button class="api-pill unset kebab-item" id="apiPill" onclick="closeKebab();openApiDialog()">🤖 AI-sleutel</button>
+        <button class="kebab-item" onclick="closeKebab();handleConnect()">🔌 Verbinden</button>
+        <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
+        <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
+        <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
+        <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
+        <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
+        <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
+        <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
+        <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
+        <div class="kebab-sep"></div>
+        <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2053,7 +2054,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 <nav id="bottomNav">
   <button id="bnLive" class="adminOnly" onclick="openLiveData()"><span class="bn-ic">📊</span>Live view</button>
   <button id="bnPids" class="adminOnly" onclick="openPidChoice()"><span class="bn-ic">🎛️</span>PID-keuze</button>
-  <button onclick="reportNav()"><span class="bn-ic">📄</span>Rapport</button>
+  <button id="bnReports" onclick="reportNav()" style="position:relative"><span class="bn-ic">📄</span>Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:2px;right:14%;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:15px;text-align:center"></span></button>
 </nav>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
@@ -3406,6 +3407,109 @@ setTimeout(function(){ try{ vlAtFlush(); }catch(e){} }, 6000);
    de veldlab-database in (JSON-export pikt hem automatisch mee) én wordt
    direct als los survey-JSON gedownload. Normale werkwijze blijft intact.
    ════════════════════════════════════════ */
+/* ── Survey v2 parsing-helpers ──
+   Delen dezelfde normalisatie-aanpak als extractVIN: per regel CAN-headers
+   (7E8/18DAxx) en ISO-TP PCI-bytes strippen, daarna markers zoeken. */
+function _svNormHex(raw){
+  let out='';
+  for(let line of String(raw||'').split(/[\r\n]+/)){
+    line=line.trim();
+    // ELM multi-frame formattering "0:", "1:" — headers/PCI zijn dan al
+    // door de ELM verwerkt, dus NIET nogmaals strippen (byte 0x34 = '4'
+    // zou anders als Consecutive-Frame PCI worden aangezien).
+    const numbered=/^\d+:\s*/.test(line);
+    line=line.replace(/^\d+:\s*/,'');
+    let hex=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+    if(!hex || (!numbered && hex.length<=3)) continue;   // leeg of losse lengte "008"
+    if(!numbered){
+      if(/^18DA/.test(hex)) hex=hex.slice(8);             // 29-bit CAN header
+      else if(/^7E[89A-F]/.test(hex)) hex=hex.slice(3);   // 11-bit CAN header
+      if(/^1[0-9A-F]/.test(hex)) hex=hex.slice(4);        // ISO-TP First Frame
+      else if(/^[23][0-9A-F]/.test(hex)) hex=hex.slice(2);// Consecutive/Flow
+    }
+    out+=hex;
+  }
+  return out;
+}
+// ASCII na een mode-09 marker (bv. '4904' → Calibration ID)
+function _svAsciiAfter(raw, marker){
+  try{
+    const h=_svNormHex(raw); const i=h.indexOf(marker);
+    if(i===-1) return '';
+    let body=h.slice(i+marker.length);
+    if(/^0[0-9A-F]/.test(body)) body=body.slice(2);     // telbyte (aantal records)
+    let s='';
+    for(let k=0;k+2<=body.length && s.length<64;k+=2){
+      const c=parseInt(body.slice(k,k+2),16);
+      if(c>=32&&c<=126) s+=String.fromCharCode(c);
+    }
+    return s.replace(/\s+/g,' ').trim();
+  }catch(e){ return ''; }
+}
+// Hex-records na een mode-09 marker (bv. '4906' → CVN, 4 bytes per record)
+function _svHexRecs(raw, marker, recLen){
+  try{
+    const h=_svNormHex(raw); const i=h.indexOf(marker);
+    if(i===-1) return [];
+    let body=h.slice(i+marker.length);
+    if(/^0[0-9A-F]/.test(body)) body=body.slice(2);     // telbyte
+    const recs=[];
+    for(let k=0;k+recLen<=body.length && recs.length<4;k+=recLen) recs.push(body.slice(k,k+recLen));
+    return recs;
+  }catch(e){ return []; }
+}
+// DTC-codes uit een mode 07/0A respons (hdr '47' of '4A')
+function _svDtc(raw, hdr){
+  const codes=[];
+  try{
+    const h=_svNormHex(raw);
+    let i=h.indexOf(hdr);
+    while(i!==-1 && codes.length<16){
+      let body=h.slice(i+2);
+      const cnt=parseInt(body.slice(0,2),16);
+      if(!isNaN(cnt)&&cnt>=0&&cnt<=10&&body.length>=2+cnt*4) body=body.slice(2,2+cnt*4);
+      for(let k=0;k+4<=body.length&&k<40;k+=4){
+        const w=parseInt(body.slice(k,k+4),16);
+        if(!w||isNaN(w)) continue;
+        const t=['P','C','B','U'][(w>>14)&3];
+        const c=t+((w>>12)&3)+((w>>8)&0xF).toString(16).toUpperCase()+('00'+(w&0xFF).toString(16).toUpperCase()).slice(-2);
+        if(!codes.includes(c)) codes.push(c);
+      }
+      i=h.indexOf(hdr,i+2);
+    }
+  }catch(e){}
+  return codes;
+}
+// Readiness-monitors decoderen uit een ruwe 0101-respons (J1979 bytes A-D)
+function _svReadiness(raw){
+  try{
+    const h=_svNormHex(raw); const i=h.indexOf('4101');
+    if(i===-1||h.length<i+12) return null;
+    const A=parseInt(h.slice(i+4,i+6),16), B=parseInt(h.slice(i+6,i+8),16),
+          C=parseInt(h.slice(i+8,i+10),16), D=parseInt(h.slice(i+10,i+12),16);
+    if([A,B,C,D].some(isNaN)) return null;
+    const diesel=!!(B&0x08);
+    const mons=[];
+    [['Misfire',0],['Brandstofsysteem',1],['Componenten',2]].forEach(([n,b])=>{
+      if(B&(1<<b)) mons.push({monitor:n, gereed:!(B&(1<<(b+4)))});
+    });
+    const N=diesel
+      ?['NMHC-katalysator','NOx/SCR','','Boostdruk','','Roetfilter (DPF)','Uitlaatgassensor','EGR/VVT']
+      :['Katalysator','Katalysator (verwarmd)','EVAP','Secundaire lucht','Airco','O2-sensor','O2-verwarming','EGR/VVT'];
+    for(let b=0;b<8;b++){
+      if(!N[b] || !(C&(1<<b))) continue;
+      mons.push({monitor:N[b], gereed:!(D&(1<<b))});
+    }
+    return { mil:!!(A&0x80), dtcCount:A&0x7F,
+      ontsteking:diesel?'compressie (diesel)':'vonk (benzine)',
+      monitors:mons, nietGereed:mons.filter(m=>!m.gereed).map(m=>m.monitor) };
+  }catch(e){ return null; }
+}
+// Brandstoftype-codes volgens SAE J1979 PID 0151
+const _SV_FUELTYPES={1:'benzine',2:'methanol',3:'ethanol',4:'diesel',5:'LPG',6:'CNG',7:'propaan',8:'elektrisch',9:'benzine/E85 (flex)',17:'hybride benzine',18:'hybride E85',19:'hybride diesel',20:'hybride elektrisch',21:'hybride verbrandingsmotor',22:'hybride regeneratief',23:'plug-in hybride benzine',24:'plug-in hybride diesel'};
+// PIDs waar 0 een volkomen geldige waarde is (MIL uit, 0 km met MIL, etc.) —
+// de nul-als-dummy heuristiek van assessPidQuality geldt hier niet.
+const _SV_NUL_GELDIG=new Set(['0101','0102','011E','011F','0121','0130','0131','014D','014E','0161']);
 let _vlSvBusy=false, _vlSvAbort=false;
 function _vlSvUI(msg, done){
   let ov=document.getElementById('vlSvOv');
@@ -3429,10 +3533,34 @@ async function vlFullSurvey(){
   const sv={type:'survey', t:t0, tester:(window.currentUser&&currentUser.name)||''};
   try{
     _vlSvUI('Adapter-info uitlezen…');
+    sv.schema=2;                                             // survey-formaat versie
+    sv.app=(typeof APP_VERSION!=='undefined')?String(APP_VERSION):'?';
     sv.adapter={ id:clean(await sendCmd('ATI',1500)), volt:clean(await sendCmd('ATRV',1500)),
       protoNum:clean(await sendCmd('ATDPN',1500)),
       proto:(selectedNetwork&&(selectedNetwork.name||selectedNetwork.desc||selectedNetwork.id))||'' };
+    // STI: echte STN-chip identiteit (OBDLink e.d.); kloon-ELM antwoordt '?'
+    try{ sv.adapter.sti=clean(await sendCmd('STI',1500)); }catch(e){ sv.adapter.sti=''; }
+    sv.adapter.stn=/STN[0-9]/i.test(sv.adapter.sti||'');
     sv.veh={merk:vehicleInfo.merk||'',model:vehicleInfo.model||'',jaar:vehicleInfo.year||'',vin:vehicleInfo.vin||'',brandstof:vehicleInfo.brandstof||''};
+
+    // ── ECU-software identiteit: CALID (0904) + CVN (0906) ──
+    // CVN = checksum van de kalibratie → afwijkende CVN t.o.v. eerdere survey
+    // van hetzelfde CALID duidt op chiptuning/remap. Goud voor de Koopcheck.
+    _vlSvUI('ECU-software (CALID/CVN)…');
+    try{ const r=await sendCmd('0904',4000); sv.calid={ascii:_svAsciiAfter(r,'4904'), raw:clean(r).slice(0,160)}; }catch(e){ sv.calid=null; }
+    try{ const r=await sendCmd('0906',4000); sv.cvn={hex:_svHexRecs(r,'4906',8), raw:clean(r).slice(0,160)}; }catch(e){ sv.cvn=null; }
+
+    // ── Readiness-monitors (0101, volledig gedecodeerd) ──
+    _vlSvUI('Readiness-monitors (0101)…');
+    try{ sv.readiness=_svReadiness(await sendCmd('01011',2000)); }catch(e){ sv.readiness=null; }
+
+    // ── Ruwe supported-PID bitmaps: exacte dekkings-vingerafdruk ──
+    _vlSvUI('Supported-PID bitmaps…');
+    sv.bitmaps={};
+    for(const bp of ['0100','0120','0140','0160','0180']){
+      if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+      try{ const r=await sendCmd(bp,2000); if(r&&!/NO DATA|ERROR|UNABLE/i.test(r)) sv.bitmaps[bp]=clean(r).slice(0,120); }catch(e){}
+    }
 
     const pids=[...supportedPIDs];
     sv.pids={total:pids.length, ok:0, nodata:0, invalid:0, detail:[]};
@@ -3444,27 +3572,108 @@ async function vlFullSurvey(){
       let raw=''; try{ raw=await sendCmd('01'+pid.slice(2)+'1',1800); }catch(e){}
       const ms=Math.round(performance.now()-s0);
       const def=getPidDef(pid)||{};
-      let st='nodata', val=null, q='';
+      let st='nodata', val=null, q='', flaky=false;
       if(raw && !/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw)){
         val=parsePID(pid,raw);
         if(val==null){ st='invalid'; }
         else{ try{ q=assessPidQuality(pid,val,true).status; }catch(e){ q='ok'; } st=(q==='ok')?'ok':'invalid'; }
+        // Nul-geldig whitelist: bij status/teller-PIDs (MIL uit, 0 km met MIL
+        // aan, etc.) is 0 een correcte waarde — geen dummy-detectie toepassen.
+        if(st==='invalid' && val!==null && _SV_NUL_GELDIG.has(pid)){ st='ok'; q='ok'; }
+      }
+      // Flaky vs. echt afwezig: nodata krijgt één herkansing na korte pauze.
+      // Slaagt die, dan telt de PID als ok maar met flaky-vlag → het veldlab
+      // weet dan dat deze PID een retry-strategie nodig heeft i.p.v. pruning.
+      if(st==='nodata' && !_vlSvAbort){
+        await delay(150);
+        let raw2=''; try{ raw2=await sendCmd('01'+pid.slice(2)+'1',1800); }catch(e){}
+        if(raw2 && !/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw2)){
+          const v2=parsePID(pid,raw2);
+          if(v2!=null){ val=v2; st='ok'; q='ok'; flaky=true; }
+        }
       }
       sv.pids[st]++;
-      sv.pids.detail.push({pid, naam:(def.name||def.naam||'').slice(0,40), val, unit:def.unit||'', ms, st, q});
+      const _d={pid, naam:(def.name||def.naam||'').slice(0,40), val, unit:def.unit||'', ms, st, q};
+      if(flaky) _d.flaky=true;
+      sv.pids.detail.push(_d);
     }
 
-    _vlSvUI('Multi-PID batchtest…');
+    _vlSvUI('Multi-PID batchtrap (2→4→6)…');
     const isCAN=/^[6-9A-C]/i.test(String(selectedNetwork?.id||''));
     if(isCAN){
-      let braw=''; try{ braw=await sendCmd('010C0D05',2500); }catch(e){}
-      sv.batch={req:'010C0D05', ok: !!braw && /41/i.test(braw) && !/NO DATA|ERROR/i.test(braw), raw:clean(braw).slice(0,140)};
+      // Oplopend testen hoeveel PIDs deze auto per request aankan — voedt de
+      // startwaarde van de adaptieve batch sizing per voertuigcel.
+      const cand=['010C','010D','0105','0104','010B','010F','0111','010E'].filter(p=>pids.includes(p));
+      sv.batch={ladder:[], maxPids:0, ok:false, req:''};
+      for(const n of [2,4,6]){
+        if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+        if(cand.length<n) break;
+        const req='01'+cand.slice(0,n).map(p=>p.slice(2)).join('');
+        let braw=''; try{ braw=await sendCmd(req,3000); }catch(e){}
+        const ok=!!braw && /41/i.test(braw) && !/NO DATA|ERROR|UNABLE/i.test(braw);
+        sv.batch.ladder.push({n, req, ok, raw:clean(braw).slice(0,140)});
+        if(ok){ sv.batch.maxPids=n; sv.batch.ok=true; sv.batch.req=req; }
+        else break;
+      }
     } else sv.batch={ok:false, reden:'geen CAN-protocol'};
 
-    _vlSvUI('DTC uitlezen (actief + pending)…');
+    // ── Multi-ECU detectie: welke modules antwoorden op de bus? ──
+    // Headers tijdelijk aan; 7E8 = motor-ECU, 7E9 = vaak transmissie, etc.
+    // Onthult of er een TCU meeluistert — relevant voor Service $22 later.
+    _vlSvUI('ECU-detectie (headers)…');
+    sv.ecus={n:0, headers:[]};
+    try{
+      await sendCmd('ATH1',1500);
+      const hr=await sendCmd('0100',3000);
+      const hset=new Set();
+      String(hr||'').split(/[\r\n]+/).forEach(l=>{
+        const m=l.trim().replace(/\s+/g,'').toUpperCase().match(/^(18DAF1[0-9A-F]{2}|7E[89A-F])/);
+        if(m) hset.add(m[1]);
+      });
+      sv.ecus={n:hset.size, headers:[...hset]};
+    }catch(e){}
+    finally{ try{ await sendCmd('ATH0',1500); }catch(e){} }
+
+    _vlSvUI('DTC uitlezen (actief + pending + permanent)…');
     let d03=[]; try{ d03=await realScanDTC()||[]; }catch(e){}
     let d07=''; try{ d07=clean(await sendCmd('07',2500)); }catch(e){}
-    sv.dtc={actief:d03, pendingRaw:d07.slice(0,120)};
+    // Mode 0A: permanente DTC's — NIET wisbaar, blijven staan tot de monitor
+    // zelf opnieuw slaagt. Dé schoonpoets-detector voor de Koopcheck:
+    // 0 km sinds wissen + permanente code = rode vlag.
+    let d0A=''; try{ d0A=clean(await sendCmd('0A',2500)); }catch(e){}
+    sv.dtc={ actief:d03,
+      pending:_svDtc(d07,'47'),   pendingRaw:d07.slice(0,120),
+      permanent:_svDtc(d0A,'4A'), permanentRaw:d0A.slice(0,120) };
+
+    // ── Extra identiteits-PIDs (buiten supportedPIDs om proberen) ──
+    _vlSvUI('Extra PIDs (brandstoftype, odometer)…');
+    // 0151: brandstoftype volgens de ECU zelf — kruischeck tegen RDW/gebruiker
+    try{
+      const r=await sendCmd('01511',2000); const h=_svNormHex(r); const i=h.indexOf('4151');
+      if(i!==-1&&h.length>=i+6){ const c=parseInt(h.slice(i+4,i+6),16); if(!isNaN(c)) sv.ecuFuel={code:c, naam:_SV_FUELTYPES[c]||'onbekend ('+c+')'}; }
+    }catch(e){}
+    // 01A6: echte odometer via OBD (veel voertuigen 2019+; oudere geven NO DATA)
+    try{
+      const r=await sendCmd('01A61',2500); const h=_svNormHex(r); const i=h.indexOf('41A6');
+      if(i!==-1&&h.length>=i+12){ const v=parseInt(h.slice(i+4,i+12),16); if(!isNaN(v)&&v>0) sv.odoKm=Math.round(v/10); }
+    }catch(e){}
+
+    // ── Variantie-sampling: ruisprofiel van dynamische sensoren ──
+    // 4 snelle herhaalmetingen per PID → spreiding voedt de EWMA-tuning en
+    // laat zien hoe "levendig" O2/load op dit voertuig zijn bij stationair.
+    _vlSvUI('Variantie-sampling…');
+    sv.variantie={};
+    for(const vp of ['0104','010C','0114','010B'].filter(p=>pids.includes(p)).slice(0,4)){
+      if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+      const vals=[];
+      for(let k=0;k<4;k++){
+        try{ const r=await sendCmd('01'+vp.slice(2)+'1',1500); const v=parsePID(vp,r); if(v!=null&&!isNaN(v)) vals.push(v); }catch(e){}
+      }
+      if(vals.length>=2){
+        const mn=Math.min(...vals), mx=Math.max(...vals);
+        sv.variantie[vp]={n:vals.length, vals:vals.map(v=>+(+v).toFixed(2)), min:+mn.toFixed(2), max:+mx.toFixed(2), spreiding:+(mx-mn).toFixed(2)};
+      }
+    }
 
     _vlSvUI('Timing-profiel (010C ×5)…');
     const times=[];
@@ -3496,8 +3705,15 @@ async function vlFullSurvey(){
       setTimeout(()=>URL.revokeObjectURL(a.href),2000);
     }catch(e){}
 
-    try{ log('📋 Full survey: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig · gem. '+sv.timing.avgMs+'ms · '+sv.dtc.actief.length+' DTC — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){}
-    _vlSvUI('✅ Survey klaar in '+sv.durS+'s<br><span style="font-weight:400;font-size:13px;opacity:.85">'+sv.pids.ok+' PIDs ok · '+sv.pids.nodata+' niet aanwezig · '+sv.pids.invalid+' ongeldig<br>Gem. responstijd '+sv.timing.avgMs+' ms · batch '+(sv.batch.ok?'✓':'✗')+' · '+sv.dtc.actief.length+' DTC<br>Opgeslagen in Veldlab + JSON gedownload</span>', true);
+    try{ log('📋 Full survey v2: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){}
+    const _flaky=sv.pids.detail.filter(x=>x.flaky).length;
+    const _rdy=sv.readiness?(sv.readiness.nietGereed.length?sv.readiness.nietGereed.length+' monitor(s) niet gereed':'alle monitors gereed'):'readiness onbekend';
+    _vlSvUI('✅ Survey klaar in '+sv.durS+'s<br><span style="font-weight:400;font-size:13px;opacity:.85">'+
+      sv.pids.ok+' PIDs ok ('+_flaky+' flaky) · '+sv.pids.nodata+' niet aanwezig · '+sv.pids.invalid+' ongeldig<br>'+
+      'Gem. '+sv.timing.avgMs+' ms · batch max '+(sv.batch.maxPids||0)+' PIDs · '+(sv.ecus?sv.ecus.n:0)+' ECU(s)<br>'+
+      'DTC: '+sv.dtc.actief.length+' actief · '+(sv.dtc.pending||[]).length+' pending · '+(sv.dtc.permanent||[]).length+' permanent · '+_rdy+'<br>'+
+      'CALID '+(sv.calid&&sv.calid.ascii?'✓':'—')+' · CVN '+(sv.cvn&&sv.cvn.hex&&sv.cvn.hex.length?'✓':'—')+' · odometer '+(sv.odoKm?sv.odoKm+' km':'—')+'<br>'+
+      'Opgeslagen in Veldlab + JSON gedownload</span>', true);
   }catch(e){
     _vlSvUI('⏹ Survey gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
   }finally{ _vlSvBusy=false; }
@@ -4056,8 +4272,294 @@ function openLiveData(){
   try{ closeLades(); }catch(e){}
 }
 function reportNav(){
-  if(window._lastAIReport && window._lastAIReport.text){ try{ openAIReportSheet(); }catch(e){} }
+  // Rapporten-knop opent nu altijd het sessie-overzicht (alle rapporten van
+  // deze sessie). Zonder rapporten: dezelfde vriendelijke melding als voorheen.
+  if((window._sessionReports||[]).length){ try{ openReportsOverview(); }catch(e){} }
   else { try{ showToast('Nog geen rapport — start eerst een analyse'); }catch(e){} }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SESSIE-RAPPORTARCHIEF
+//  Alle rapporten van deze sessie blijven in het geheugen bewaard tot de
+//  app wordt gesloten (bewust GEEN localStorage — sessie-gebonden):
+//   • AI-rapporten     — via setter-hook op window._lastAIReport
+//   • Foutcode-scans   — via registratie in scanDTC()
+//   • TXT-exports      — via wrapper om download() (on load)
+//   • PDF-rapporten    — via registratie na window._lastPdf in exportAIReportPDF
+//  De AI krijgt eerdere rapporten automatisch als context mee: apiFetch()
+//  plakt _sessionReportsPromptBlock() achter de system prompt, zodat een
+//  volgende prompt kan voortbouwen op wat er al geconcludeerd is.
+// ════════════════════════════════════════════════════════════════
+window._sessionReports = window._sessionReports || [];
+window._srSilent = false;   // true = _lastAIReport-set NIET archiveren (bv. bij terugkijken)
+let _srSeq = 0;
+
+function _srTypeMeta(type){
+  return {
+    ai:  {ic:'🔬', lbl:'AI-rapport'},
+    dtc: {ic:'🔴', lbl:'Foutcode-uitlezing'},
+    txt: {ic:'📝', lbl:'TXT-rapport'},
+    pdf: {ic:'📄', lbl:'PDF-rapport'}
+  }[type] || {ic:'📄', lbl:'Rapport'};
+}
+function _srAutoTitle(entry){
+  try{
+    const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)?vehicleInfo:{};
+    const veh=[v.merk,v.model].filter(Boolean).join(' ');
+    // Eerste betekenisvolle regel van de tekst als titel (zonder markdown-ruis)
+    const first=String(entry.text||'').split('\n').map(s=>s.replace(/[#*]/g,'').trim()).find(s=>s.length>3)||'';
+    const base=first.slice(0,58)||_srTypeMeta(entry.type).lbl;
+    return veh?base+(base.toLowerCase().includes((v.merk||'').toLowerCase())?'':' — '+veh):base;
+  }catch(e){ return _srTypeMeta(entry.type).lbl; }
+}
+function registerSessionReport(entry){
+  try{
+    const list=window._sessionReports;
+    const txt=String(entry.text||'').trim();
+    if(!txt && entry.type!=='pdf') return null;
+    // Dedupe: identieke tekst als de laatste entry van hetzelfde type → niet dubbel archiveren
+    // (vangt o.a. TXT-download van een rapport dat al via de setter is gearchiveerd,
+    //  en herhaald openen/opnieuw zetten van hetzelfde rapport)
+    for(let i=list.length-1;i>=0;i--){
+      if(list[i].type===entry.type){
+        if(entry.type!=='pdf' && list[i].text===txt) return list[i];
+        break;
+      }
+    }
+    const rec={
+      id:'sr'+(++_srSeq)+'_'+Date.now(),
+      type:entry.type||'ai',
+      title:entry.title||_srAutoTitle(entry),
+      text:txt,
+      html:entry.html||null,
+      blob:entry.blob||null,
+      fname:entry.fname||null,
+      ts:(entry.ts instanceof Date && !isNaN(entry.ts))?entry.ts:new Date()
+    };
+    list.push(rec);
+    _srUpdateBadge();
+    try{ logUsage?.('sessie_rapport','type='+rec.type+';n='+list.length); }catch(e){}
+    return rec;
+  }catch(e){ return null; }
+}
+function _srUpdateBadge(){
+  try{
+    const b=document.getElementById('bnRepCnt'); if(!b) return;
+    const n=(window._sessionReports||[]).length;
+    b.textContent=n>9?'9+':String(n);
+    b.style.display=n?'block':'none';
+  }catch(e){}
+}
+// Setter-hook: elke bestaande (en toekomstige) toewijzing aan window._lastAIReport
+// archiveert automatisch — geen 5+ losse callsites aanpassen.
+(function _srHookLastAIReport(){
+  let _val = window._lastAIReport || null;
+  try{
+    Object.defineProperty(window,'_lastAIReport',{
+      configurable:true,
+      get(){ return _val; },
+      set(v){
+        _val=v;
+        try{
+          if(v && v.text && !window._srSilent){
+            registerSessionReport({type:'ai', text:v.text, html:v.html||null, ts:v.ts});
+          }
+        }catch(e){}
+      }
+    });
+  }catch(e){ /* defineProperty geweigerd → archief werkt dan alleen via expliciete hooks */ }
+})();
+// TXT-download hook: pas na window-load wrappen zodat download() zeker bestaat.
+window.addEventListener('load',function(){
+  try{
+    if(typeof window.download==='function' && !window.download._srWrapped){
+      const _orig=window.download;
+      const wrapped=async function(name,content){
+        try{
+          if(/\.txt$/i.test(String(name||'')) && typeof content==='string' && content.trim()){
+            registerSessionReport({type:'txt', title:String(name), text:content, fname:String(name)});
+          }
+        }catch(e){}
+        return _orig.apply(this,arguments);
+      };
+      wrapped._srWrapped=true;
+      window.download=wrapped;
+    }
+  }catch(e){}
+  _srUpdateBadge();
+});
+// Leesbare tekst van de huidige foutcode-stand (voor archief + AI-context)
+function _srDtcText(){
+  try{
+    const v=(typeof getVehicle==='function')?getVehicle():{};
+    const L=['Foutcode-uitlezing — '+new Date().toLocaleString('nl-NL')];
+    if(v.merk) L.push('Voertuig: '+[v.merk,v.model,v.year].filter(Boolean).join(' '));
+    if(!dtcCodes.length){ L.push('Geen actieve foutcodes — alle systemen OK.'); }
+    else dtcCodes.forEach(c=>{ const i=(typeof dtcInfo==='function')?dtcInfo(c):null; L.push(c+' — '+(i?i.desc:'Onbekende code')+(i&&i.sev?' [ernst: '+i.sev+']':'')); });
+    return L.join('\n');
+  }catch(e){ return 'Foutcode-uitlezing: '+(Array.isArray(dtcCodes)?dtcCodes.join(', ')||'geen codes':'?'); }
+}
+// ── Keuze: eerdere rapporten meenemen in een nieuwe analyse? ──
+// null = nog niet gekozen → vraag tonen bij de eerstvolgende analyse;
+// true/false = onthouden sessiekeuze (aanpasbaar in het Rapporten-overzicht).
+window._srUseContext = null;
+let _srAskPending = null;
+function _srAskUseContext(){
+  if(_srAskPending) return _srAskPending;
+  _srAskPending = new Promise(res=>{
+    let ov=document.getElementById('srCtxAsk');
+    if(!ov){ ov=document.createElement('div'); ov.id='srCtxAsk'; ov.className='ai-sheet-ov'; ov.style.zIndex='9920'; document.body.appendChild(ov); }
+    const n=(window._sessionReports||[]).filter(r=>r.text&&r.type!=='pdf').length;
+    ov.innerHTML='<div class="ai-sheet" style="max-width:420px">'+
+      '<div class="ai-sheet-h"><b>📄 Eerdere rapporten meenemen?</b></div>'+
+      '<div class="ai-sheet-b">'+
+        '<div style="font-size:12px;color:var(--tx2);line-height:1.5">Er '+(n===1?'is 1 eerder rapport':'zijn '+n+' eerdere rapporten')+' in deze sessie. Wil je dat de AI die als context gebruikt bij deze analyse — bijvoorbeeld om te melden of een eerdere bevinding is verbeterd of verslechterd?</div>'+
+        '<label style="display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11px;color:var(--tx3);cursor:pointer"><input type="checkbox" id="srCtxRemember" checked style="accent-color:var(--bl)"> Onthoud mijn keuze voor deze sessie</label>'+
+      '</div>'+
+      '<div class="ai-sheet-f"><button class="ai-act" id="srCtxNo">Nee, alleen deze meting</button><button class="ai-act pri" id="srCtxYes">Ja, neem mee</button></div>'+
+    '</div>';
+    const done=(v,remember)=>{
+      if(remember) window._srUseContext=v;
+      ov.style.display='none'; _srAskPending=null; window._srCtxDismiss=null; res(v);
+    };
+    ov.querySelector('#srCtxYes').onclick=()=>done(true, !!document.getElementById('srCtxRemember')?.checked);
+    ov.querySelector('#srCtxNo').onclick =()=>done(false, !!document.getElementById('srCtxRemember')?.checked);
+    // Wegklikken / hardware-back = deze keer niet meenemen, keuze NIET onthouden
+    window._srCtxDismiss=()=>done(false,false);
+    ov.onclick=e=>{ if(e.target===ov) window._srCtxDismiss?.(); };
+    ov.style.display='flex';
+  });
+  return _srAskPending;
+}
+function srSetCtxMode(m){
+  window._srUseContext = m==='on' ? true : m==='off' ? false : null;
+  try{ openReportsOverview(); }catch(e){}   // overzicht verversen met nieuwe stand
+}
+// Contextblok met eerdere sessie-rapporten voor AI-prompts.
+// Compact gehouden (tokenbudget): max 4 rapporten, nieuwste eerst gekozen maar
+// chronologisch gepresenteerd, per rapport ingekort, totaal ~6000 tekens.
+function _sessionReportsPromptBlock(currentPrompt){
+  try{
+    const list=(window._sessionReports||[]).filter(r=>r.text && r.type!=='pdf');
+    if(!list.length) return '';
+    const cur=String(currentPrompt||'');
+    const picked=[]; const seen=[];
+    for(let i=list.length-1;i>=0 && picked.length<4;i--){
+      const t=list[i].text.trim(); if(!t) continue;
+      // Al (deels) in de huidige prompt (bv. bij "herzie rapport")? → overslaan
+      if(cur && t.length>80 && cur.indexOf(t.slice(0,200))!==-1) continue;
+      // Duplicaat/deelverzameling van al gekozen tekst? → overslaan
+      if(seen.some(s=>s===t||s.indexOf(t)!==-1||t.indexOf(s)!==-1)) continue;
+      seen.push(t); picked.unshift(list[i]);
+    }
+    if(!picked.length) return '';
+    let out='\n\nEERDERE RAPPORTEN DEZE SESSIE (zelfde meetsessie — gebruik als context en verwijs ernaar waar relevant, bv. of een eerdere bevinding is verbeterd/verslechterd; herhaal ze niet integraal):';
+    let budget=6000;
+    picked.forEach((r,i)=>{
+      let t=r.text.replace(/[ \t]+\n/g,'\n').trim();
+      const cap=Math.max(400,Math.min(1800,budget));
+      if(t.length>cap) t=t.slice(0,cap)+'\n[...rapport ingekort voor context...]';
+      budget-=t.length;
+      out+='\n--- Rapport '+(i+1)+' ('+_srTypeMeta(r.type).lbl+', '+r.ts.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+') ---\n'+t;
+    });
+    return out;
+  }catch(e){ return ''; }
+}
+// ── Overzicht-UI ──
+function openReportsOverview(){
+  let ov=document.getElementById('reportsOverviewSheet');
+  if(!ov){ ov=document.createElement('div'); ov.id='reportsOverviewSheet'; ov.className='ai-sheet-ov'; ov.style.zIndex='9890'; document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{ if(e.target===ov) closeReportsOverview(); });
+  }
+  const list=[...(window._sessionReports||[])].reverse(); // nieuwste boven
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let rows='';
+  if(!list.length){
+    rows='<div class="emp" style="padding:26px 0"><div class="ei">📄</div><h3>Nog geen rapporten</h3><p>Start een analyse of scan foutcodes — alles verschijnt hier.</p></div>';
+  }else{
+    rows=list.map(r=>{
+      const m=_srTypeMeta(r.type);
+      const tijd=r.ts.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+      let acts='';
+      if(r.type==='pdf'){ acts='<button class="ai-act pri" style="padding:6px 12px;font-size:11px" onclick="srShare(\''+r.id+'\')">💾 Delen / Download</button>'; }
+      else { acts='<button class="ai-act pri" style="padding:6px 12px;font-size:11px" onclick="srOpen(\''+r.id+'\')">👁 Bekijk</button>'+
+                  '<button class="ai-act" style="padding:6px 12px;font-size:11px" onclick="srShare(\''+r.id+'\')">↗ Deel</button>'; }
+      return '<div style="display:flex;gap:10px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--bd)">'+
+        '<div style="font-size:20px;flex:none">'+m.ic+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:12px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.title)+'</div>'+
+          '<div style="font-size:10px;color:var(--tx3)">'+m.lbl+' · '+tijd+(r.fname?' · '+esc(r.fname):'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:5px;flex:none">'+acts+'</div>'+
+      '</div>';
+    }).join('');
+  }
+  const mode=window._srUseContext===true?'on':window._srUseContext===false?'off':'ask';
+  const seg=(id,lbl)=>{const act=mode===id;return '<button onclick="srSetCtxMode(\''+id+'\')" style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid '+(act?'var(--bl)':'var(--bd)')+';background:'+(act?'rgba(26,111,255,.12)':'var(--sur2)')+';color:'+(act?'var(--bl)':'var(--tx3)')+';font-size:10px;font-weight:800;cursor:pointer;font-family:var(--f)">'+lbl+'</button>';};
+  ov.innerHTML='<div class="ai-sheet">'+
+    '<div class="ai-sheet-h"><b>📄 Rapporten deze sessie ('+list.length+')</b><button class="ai-sheet-x" onclick="closeReportsOverview()">✕</button></div>'+
+    '<div class="ai-sheet-b">'+
+      '<div style="font-size:10px;color:var(--tx3);margin-bottom:6px">Bewaard tot de app wordt gesloten.</div>'+
+      '<div style="border:1px solid var(--bd);border-radius:10px;padding:9px 10px;margin-bottom:10px;background:var(--sur2)">'+
+        '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:2px">🤖 Meenemen in nieuwe analyse</div>'+
+        '<div style="font-size:10px;color:var(--tx3);margin-bottom:7px">Gebruikt de AI eerdere rapporten als context bij een volgende analyse?</div>'+
+        '<div style="display:flex;gap:5px">'+seg('ask','❓ Vragen')+seg('on','✅ Altijd')+seg('off','🚫 Nooit')+'</div>'+
+      '</div>'+
+      rows+
+    '</div>'+
+  '</div>';
+  ov.style.display='flex';
+}
+function closeReportsOverview(){ const o=document.getElementById('reportsOverviewSheet'); if(o) o.style.display='none'; }
+function srOpen(id){
+  const r=(window._sessionReports||[]).find(x=>x.id===id); if(!r) return;
+  if(r.type==='ai'){
+    // Rapport terugzetten als "actief" rapport zodat Deel/PDF/Herzie erop werken.
+    // _srSilent voorkomt dat het terugkijken een duplicaat in het archief zet.
+    window._srSilent=true;
+    try{ window._lastAIReport={text:r.text, html:r.html||_aiReportHtml(r.text), ts:r.ts}; }
+    finally{ window._srSilent=false; }
+    closeReportsOverview();
+    try{ openAIReportSheet(); }catch(e){}
+    return;
+  }
+  if(r.type==='pdf'){ srShare(id); return; }
+  // dtc / txt: eenvoudige tekstweergave
+  let ov=document.getElementById('srTextSheet');
+  if(!ov){ ov=document.createElement('div'); ov.id='srTextSheet'; ov.className='ai-sheet-ov'; ov.style.zIndex='9910'; document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{ if(e.target===ov) ov.style.display='none'; });
+  }
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const m=_srTypeMeta(r.type);
+  ov.innerHTML='<div class="ai-sheet">'+
+    '<div class="ai-sheet-h"><b>'+m.ic+' '+esc(r.title)+'</b><button class="ai-sheet-x" onclick="document.getElementById(\'srTextSheet\').style.display=\'none\'">✕</button></div>'+
+    '<div class="ai-sheet-b"><div style="white-space:pre-wrap;font-size:12px;line-height:1.55;color:var(--tx)">'+esc(r.text)+'</div></div>'+
+    '<div class="ai-sheet-f"><button class="ai-act" onclick="srShare(\''+r.id+'\')">↗ Deel</button><button class="ai-act pri" onclick="srDownloadTxt(\''+r.id+'\')">⬇ Download .txt</button></div>'+
+  '</div>';
+  ov.style.display='flex';
+}
+async function srShare(id){
+  const r=(window._sessionReports||[]).find(x=>x.id===id); if(!r) return;
+  if(r.type==='pdf'){
+    if(!r.blob){ showToast?.('PDF niet meer beschikbaar — genereer opnieuw'); return; }
+    window._lastPdf={blob:r.blob, fname:r.fname||'PidLane-rapport.pdf'};
+    try{ showPdfReadyModal(); }catch(e){}
+    return;
+  }
+  try{
+    const blob=new Blob([r.text],{type:'text/plain'});
+    const fname=r.fname||((typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport.txt');
+    if(await nativeShareFile(blob,fname)) return;
+  }catch(e){}
+  try{
+    if(navigator.share){ await navigator.share({title:r.title, text:r.text}); }
+    else if(navigator.clipboard){ await navigator.clipboard.writeText(r.text); showToast?.('Rapport naar klembord gekopieerd'); }
+  }catch(e){}
+}
+async function srDownloadTxt(id){
+  const r=(window._sessionReports||[]).find(x=>x.id===id); if(!r||!r.text) return;
+  const fname=r.fname||((typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport.txt');
+  try{ await download(fname, r.text); }catch(e){}
 }
 
 // ── BACK-NAVIGATIE + ANDROID HARDWARE-BACK ──
@@ -4068,8 +4570,10 @@ function reportNav(){
 function appBack(){
   // 0. Open lade (sensoren/logs) eerst sluiten
   try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){}
+  // 0b. Context-keuzesheet open? Netjes afwijzen (promise resolven, niet hangen)
+  try{ const c=document.getElementById('srCtxAsk'); if(c && getComputedStyle(c).display!=='none'){ window._srCtxDismiss?.(); return true; } }catch(e){}
   // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
-  for(const id of ['aiReportSheet','pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
+  for(const id of ['srTextSheet','aiReportSheet','pdfReadyModal','reportsOverviewSheet','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
     const el=document.getElementById(id);
     if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; return true; }
   }
@@ -5919,6 +6423,8 @@ async function scanDTC(){
   document.getElementById('bclr').disabled=!dtcCodes.length;
   log(`Scan: ${dtcCodes.length} code(s)`,dtcCodes.length?'warn':'ok');
   try{ PidLaneEvalLog.log('dtc','uitgelezen',{codes:[...dtcCodes]}); }catch(e){}
+  // Uitlezing bewaren in het sessie-rapportarchief (📄 Rapporten-knop + AI-context)
+  try{ registerSessionReport({type:'dtc', title:'Foutcode-uitlezing — '+(dtcCodes.length?dtcCodes.length+' code'+(dtcCodes.length===1?'':'s'):'geen codes'), text:_srDtcText()}); }catch(e){}
 }
 async function realScanDTC(){
   const r=await sendCmd('03');const codes=[];
@@ -6284,7 +6790,19 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
   // Admin-override (remote config) heeft voorrang als die gezet is en er geen
   // expliciete per-call systemPrompt is meegegeven.
   let _override=''; try{ _override=(window.PID_CONFIG&&window.PID_CONFIG.ai_system_override||'').trim(); }catch(e){}
-  const sys = systemPrompt || (_override || _defaultSys);
+  let sys = systemPrompt || (_override || _defaultSys);
+  // Sessie-context: eerdere rapporten alleen meesturen als de gebruiker dat
+  // wil. Bij de eerste analyse met beschikbare rapporten verschijnt een
+  // keuzesheet (Ja/Nee + "onthoud voor deze sessie"); daarna geldt de keuze
+  // uit window._srUseContext, aanpasbaar via het 📄 Rapporten-overzicht.
+  try{
+    const _srBlok=_sessionReportsPromptBlock(String(prompt||''));
+    if(_srBlok){
+      let _use=window._srUseContext;
+      if(_use===null) _use=await _srAskUseContext();
+      if(_use) sys += _srBlok;
+    }
+  }catch(e){}
 
   const mdl = model || 'claude-sonnet-5';
 
@@ -6676,6 +7194,9 @@ async function exportAIReportPDF(btn){
     // het asynchrone genereren wordt door Android stil geweigerd)
     const fname=_niceReportName('pdf');
     window._lastPdf={blob:doc.output('blob'), fname};
+    // PDF bewaren in het sessie-rapportarchief zodat hij later opnieuw
+    // gedeeld/gedownload kan worden zonder opnieuw te genereren.
+    try{ registerSessionReport({type:'pdf', title:fname, text:(window._lastAIReport&&window._lastAIReport.text)||'', blob:window._lastPdf.blob, fname}); }catch(e){}
     showPdfReadyModal();
   }catch(e){
     log('PDF export fout: '+e.message+' — TXT-fallback','err');
@@ -10577,14 +11098,8 @@ function toggleKebab(e){
   if(m.parentElement!==document.body) document.body.appendChild(m);
   m.style.position='fixed';
   m.style.top=((r?r.bottom:46)+6)+'px';
-  // Knop zit nu links in de topbar → menu links uitlijnen; anders rechts (fallback)
-  if(r && r.left < window.innerWidth/2){
-    m.style.left=Math.max(6,r.left)+'px';
-    m.style.right='auto';
-  } else {
-    m.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
-    m.style.left='auto';
-  }
+  m.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
+  m.style.left='auto';
   m.style.zIndex='9999';
   m.classList.add('open');
 }
@@ -10597,71 +11112,9 @@ function showVtag(t){
   const el=document.getElementById('vtag'); if(!el) return;
   let pct=0; try{ pct=dossierPct(); }catch(e){}
   el.innerHTML=t+' <span id="vtagPct" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>';
-  el.style.display='block';
-  // Klik loopt via de omliggende voertuig-chip (#vchip) — geen eigen onclick meer,
-  // anders opent het voertuigoverzicht dubbel (event bubbelt naar de chip).
-  try{ updateTopbarStatus(); }catch(e){}
+  el.style.display='block'; el.style.cursor='pointer'; el.title='Voertuigoverzicht openen';
+  el.onclick=function(){ try{ openVehicleOverview(); }catch(e){} };
 }
-
-// ══════════════════════════════════════════════════════════════════
-// TOPBAR STATUSDOTS — drie balletjes rechts in de bovenbalk:
-//   1️⃣ Voertuig : rood=geen auto herkend · oranje=dossier onvolledig · groen=dossier ≥80%
-//   2️⃣ OBD      : rood=niet verbonden · oranje=demo of traag (<12 reads/s) · groen=snel verbonden
-//   3️⃣ AI       : groen=proxy bereikbaar of geldige sleutel · rood=geen AI beschikbaar
-// Vervangt de oude statusPill + de menu-items "AI-sleutel" en "Verbinden":
-// tik op de OBD-dot = verbinden/verbreken, tik op de AI-dot = AI-dialoog.
-// ══════════════════════════════════════════════════════════════════
-let _aiReach=null;   // null=nog niet gemeten, true/false=laatste proxy-check
-function updateTopbarStatus(){
-  // 1️⃣ Voertuig-dot + label
-  const vt=document.getElementById('vtag'), vd=document.getElementById('vdot'), vl=document.getElementById('vchipLbl');
-  const known=!!(vt && vt.style.display!=='none' && vt.textContent.trim());
-  let pct=0; try{ pct=dossierPct(); }catch(e){}
-  if(vd) vd.className='tdot '+(known ? (pct>=80?'g':'o') : 'r');
-  if(vl) vl.style.display=known?'none':'inline';
-  const vc=document.getElementById('vchip');
-  if(vc) vc.title=known?('Voertuigdossier '+pct+'% — tik voor overzicht'):'Nog geen voertuig herkend — verbind eerst';
-  // 2️⃣ OBD-dot: kleur op basis van verbinding + gemeten snelheid
-  const sd=document.getElementById('sdot');
-  if(sd){
-    if(!connected && !demoMode){ sd.className='dot'; }
-    else if(demoMode){ sd.className='dot demo'; }
-    else if(_connSpeed && _connSpeed.readsPerSec<12){ sd.className='dot slow'; }
-    else { sd.className='dot on'; }
-  }
-  // Tooltip = de bestaande (verborgen) statusregel, zolang er geen kwaliteitswaarschuwing actief is
-  const oc=document.getElementById('obdChip'), st=document.getElementById('stxt');
-  if(oc && st && !oc.classList.contains('attn')) oc.title=st.textContent||'OBD-verbinding';
-  // 3️⃣ AI-dot
-  const ad=document.getElementById('adot');
-  if(ad){
-    const hasProxy=(typeof PROXY_URL!=='undefined' && !!PROXY_URL);
-    const hasKey=!!(window.anthropicKey && String(window.anthropicKey).startsWith('sk-ant-'));
-    const ok=hasProxy ? (_aiReach!==false) : hasKey;
-    ad.className='tdot '+(ok?'g':'r');
-    const ac=document.getElementById('aiChip');
-    if(ac) ac.title=ok?'AI-verbinding actief':'Geen AI-verbinding — tik voor instellingen';
-  }
-}
-// Lichte bereikbaarheidscheck van de proxy (no-cors: elke netwerkrespons telt als bereikbaar)
-async function checkAiReachable(){
-  if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; try{updateTopbarStatus();}catch(e){} return; }
-  try{ await fetch(PROXY_URL,{method:'GET',mode:'no-cors',cache:'no-store'}); _aiReach=true; }
-  catch(e){ _aiReach=false; }
-  try{ updateTopbarStatus(); }catch(e){}
-}
-// Tik op OBD-dot: niet verbonden → verbindscherm; verbonden → verbreken bevestigen
-function obdChipTap(){
-  if(connected||demoMode){
-    const info=_connSpeed?('⚡ '+_connSpeed.readsPerSec+' reads/s · 📡 '+_connSpeed.pids+' PIDs\n\n'):'';
-    if(confirm(info+(demoMode?'Demo modus stoppen?':'OBD-verbinding verbreken?'))) handleConnect();
-  } else {
-    document.getElementById('connOv').classList.remove('hidden');
-  }
-}
-setInterval(()=>{ try{updateTopbarStatus();}catch(e){} },2000);          // dots actueel houden
-setInterval(()=>{ try{checkAiReachable();}catch(e){} },300000);          // proxy elke 5 min pingen
-setTimeout(()=>{ try{checkAiReachable();}catch(e){} },1500);             // eerste check na opstart
 async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
