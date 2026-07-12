@@ -437,15 +437,12 @@ body:has(#welcomeScreen:not(.hidden)) .lade-handles,
 body:has(#loginOv:not(.hidden)) .lade-handles,
 body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
 
-/* ════ FASE 2b — BOTTOM-NAVIGATIE (hoofdsecties) ════ */
+/* ════ FASE 2b — onderbalk VERWIJDERD (dubbelop met Live/Grafiek-balk).
+   Navigatie: ☰-menu (Rapporten), 4 deuren (Live view) en tabs (PID-keuze). ════ */
 .lade-handles { display:none !important; }
-#bottomNav { position:fixed; left:0; right:0; bottom:0; z-index:9550; display:flex; background:#11151f; border-top:1px solid #232c40; padding-bottom:env(safe-area-inset-bottom); }
-#bottomNav button { flex:1; background:none; border:none; color:#8a93a6; font-family:var(--f); font-size:11px; font-weight:700; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:8px 0 10px; cursor:pointer; }
-#bottomNav .bn-ic { font-size:20px; line-height:1; }
-#bottomNav button:active { color:#cdd5e5; }
-body:has(#loginOv:not(.hidden)) #bottomNav, body:has(#connOv:not(.hidden)) #bottomNav { display:none; }
-.cc { padding-bottom:74px; }
-#welcomeScreen .welcome-scroll { padding-bottom:86px; }
+.tabs .tab-action { flex:0 0 auto; margin-left:auto; }
+.cc { padding-bottom:16px; }
+#welcomeScreen .welcome-scroll { padding-bottom:24px; }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
 
 /* ══ TOPBAR ══ */
@@ -1406,6 +1403,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
     <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Menu" aria-label="Menu">☰</button>
     <div class="kebab-menu" id="kebabMenu">
       <button class="kebab-item" onclick="closeKebab();goHome()">🏠 Home</button>
+      <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
+      <button class="kebab-item" onclick="closeKebab();reportNav()" style="position:relative">📄 Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:50%;transform:translateY(-50%);right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:16px;text-align:center"></span></button>
       <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
       <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
@@ -1617,6 +1616,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
     <div class="tabs">
       <button class="tab active" onclick="sw('live',this)">📊 Live</button>
       <button class="tab" id="tabGraph" onclick="sw('graph',this)">📈 Grafiek</button>
+      <button class="tab tab-action" onclick="openPidChoice()" title="Sensoren kiezen">🎛️ PID-keuze</button>
     </div>
     <div class="tb">
 
@@ -2073,12 +2073,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
   <button class="zbtn" onclick="zoomReset()" title="Reset" style="font-size:12px">↺</button>
 </div>
 
-<!-- ══ ON-TOP LADE HANDVATTEN ══ -->
-<nav id="bottomNav">
-  <button id="bnLive" class="adminOnly" onclick="openLiveData()"><span class="bn-ic">📊</span>Live view</button>
-  <button id="bnPids" class="adminOnly" onclick="openPidChoice()"><span class="bn-ic">🎛️</span>PID-keuze</button>
-  <button id="bnReports" onclick="reportNav()" style="position:relative"><span class="bn-ic">📄</span>Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:2px;right:14%;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:15px;text-align:center"></span></button>
-</nav>
+<!-- ══ (Onderbalk verwijderd — navigatie loopt nu via ☰-menu, de 4 deuren
+     en de Live/Grafiek-balk met PID-keuze. Zie openLiveView().) ══ -->
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
 <div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9600;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
@@ -4315,12 +4311,40 @@ function pidChoiceBackHome(){
   try{ goHome(); }catch(e){}
 }
 function openLiveData(){
-  // Alleen naar de live view; het PID-scherm heeft z'n eigen knop in de
-  // onderbalk. Voorheen opende deze knop óók de PID-lade — dat maakte de
-  // bediening verwarrend (nogmaals klikken om te sluiten).
+  // Compat: oude callers (o.a. voorheen de onderbalk) → nieuwe route
+  openLiveView();
+}
+function openLiveView(){
+  // Eén betrouwbare route naar de live view — óók vanuit een analysepaneel
+  // (Conditiecheck e.d.). Voorheen bleef de live view "achteraan": deze
+  // functie verborg alleen het welkomstscherm en liet zowel de actieve
+  // analyse-pane als alle modus-overlays gewoon bovenop staan.
+  // Metingen blijven lopen: Rit Analyse wordt GEMINIMALISEERD (pill) i.p.v.
+  // gestopt; een lopende PID-opname loopt door (overlay heropenen via deur 1).
+  // 1) Transiente popups dicht (zelfde set als goHome)
+  for(const id of ['pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  }
+  // 2) Modus-dashboards opzij — nette close-functies waar die bestaan
+  try{ closeDeepDiag(); }catch(e){}
+  try{ closeClimateCheck(); }catch(e){}          // ruimt óók z'n timer op
+  try{ closeNeonDashboard(); }catch(e){}         // ruimt hudTimer op
+  try{
+    const rd=document.getElementById('ritDash');
+    if(rd && rd.style.display!=='none'){
+      if(typeof ritActive!=='undefined' && ritActive) minimizeRitAnalyse();  // meting loopt door + pill
+      else rd.style.display='none';
+    }
+  }catch(e){}
+  for(const id of ['pidRecOv','onderhoudDash','evDash','langeRitDash','vlDash','vlSheet','vlSvOv','reportsOverviewSheet','aiReportSheet','srTextSheet']){
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  }
+  // 3) Welkomstscherm en lades weg, en het midden ECHT naar de Live-tab
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
   try{ closeLades(); }catch(e){}
+  try{ sw('live', document.querySelector('.tabs .tab')); }catch(e){}
 }
+window.openLiveView=openLiveView;
 function reportNav(){
   // Rapporten-knop opent nu altijd het sessie-overzicht (alle rapporten van
   // deze sessie). Zonder rapporten: dezelfde vriendelijke melding als voorheen.
@@ -6729,7 +6753,7 @@ const FEATURE_TOGGLES = {
   feat_ev:           ['#wc-ev'],
   feat_live_spec:    ['#wc-live'],
   feat_grafiek:      ['#tabGraph'],
-  feat_pid_keuze:    ['#bnPids'],
+  feat_pid_keuze:    ['.tabs .tab-action'],   // was '#bnPids' (onderbalk verwijderd)
   feat_dossier:      ['#vtagPct','#vehOverview'],
   feat_pdf:          ['button[onclick^="exportAIReportPDF"]','#pdfReadyModal'],
   feat_ai_reply:     ['#aiReplyWrap'],
@@ -7033,7 +7057,7 @@ function _aiReportHtml(text){
   const _reEsc=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   let html='<div class="ai-res">';html+=_scoreHeader(text)+_systemBars(text);
   html+=`<div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><b style="color:${v.clr};font-size:14px">${v.vt}</b></div>`;
-  found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${_reEsc(s.k)}\\s*([\\s\\S]*?)${next?`(?=${_reEsc(next.k)})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
+  found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${_reEsc(s.k)}\\s*([\\s\\S]*?)${next?`(?=${_reEsc(next.k)})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].replace(/^\s*:\s*/,'').trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
   if(!found.length)html+=`<div class="ai-sec blue"><div class="ai-sh blue">📋 Analyse</div><div class="ai-sb">${_fmtReportBody(text)}</div></div>`;
   html+='</div>';
   return html;
@@ -7277,8 +7301,11 @@ async function exportAIReportPDF(btn){
 function showPdfReadyModal(){
   let m=document.getElementById('pdfReadyModal');
   if(!m){
-    m=document.createElement('div'); m.id='pdfReadyModal'; m.style.zIndex='9950';
-    m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
+    // FIX: z-index MOET in de cssText zelf — cssText overschrijft alle eerder
+    // gezette inline styles, dus een losse m.style.zIndex vooraf ging verloren
+    // en de modal (9600) verdween achter de AI-rapport-sheet (.ai-sheet-ov, 9900).
+    m=document.createElement('div'); m.id='pdfReadyModal';
+    m.style.cssText='position:fixed;inset:0;z-index:9950;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
     m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center">
       <div style="font-size:34px;margin-bottom:8px">📄</div>
       <div style="font-weight:800;font-size:15px;margin-bottom:4px">PDF-rapport klaar</div>
@@ -12050,7 +12077,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-pidrec',()=>openPidRecorder());
   wcBind('wc-check',()=>startChoice('check'));
   wcBind('wc-basiccheck',()=>startChoice('basiccheck'));
-  wcBind('wc-live',()=>openPidChoice());
+  wcBind('wc-live',()=>openLiveView());   // opent de live view zelf; PID-keuze zit nu als knop in de Live/Grafiek-balk
   wcBind('wc-dtc',()=>startChoice('dtc'));
   wcBind('wc-report',()=>startChoice('report'));
   wcBind('wc-fuel',()=>startChoice('fuel'));
