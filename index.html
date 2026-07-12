@@ -133,7 +133,10 @@
   /* Vangnet: als config.js achterloopt of niet laadt, val terug op het juiste
      proxy-adres en token (geen geheimen). Voorkomt "PROXY_URL not defined". */
   try{ if(typeof PROXY_URL==='undefined') window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }catch(e){ window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }
-  try{ if(typeof APP_TOKEN==='undefined') window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }catch(e){ window.APP_TOKEN='pl_app_58a5a5966c3a5f9585c9f70111decfe22a40b55b'; }
+  /* SECURITY: het APP_TOKEN staat NIET meer hardcoded in index.html — het is
+     hét geheim dat de proxy (AI-tegoed + Airtable) beschermt en index.html is
+     publiek. config.js (privé, buiten de repo) is nu de enige bron. */
+  try{ if(typeof APP_TOKEN==='undefined'){ window.APP_TOKEN=''; console.warn('PidLane: APP_TOKEN ontbreekt — config.js niet geladen? AI/Airtable werken niet.'); } }catch(e){ window.APP_TOKEN=''; }
   try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){}
   try{ if(typeof VERSION_URL==='undefined') window.VERSION_URL='https://newspeedynl.github.io/PidLane/version.json'; }catch(e){}
 
@@ -2164,9 +2167,11 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 // USERS wordt overschreven door config.js als die wel laadt
 // Wachtwoorden staan als SHA-256-hash (passHash), nooit meer plaintext.
 if(typeof USERS === 'undefined'){
+  // SECURITY: geen admin-hash meer in de publieke index.html — een ongezouten
+  // SHA-256 van het echte wachtwoord is offline te kraken. Admin-accounts
+  // komen uitsluitend uit config.js (privé). Fallback = alleen Demo.
   window.USERS = {
-    'Admin': { passHash: '0233647d3a3a140068f7b11705873d7aaf29bed66724250e279d78f8f0d5ae6c', apiKey: '', role: 'admin', label: 'Admin' },
-    'Demo':  { passHash: '', apiKey: '', role: 'demo', label: 'Demo' } // hash nog aanmaken
+    'Demo':  { passHash: '2a97516c354b68848cdbd8f54a226a0a55b21ed138e207ad6c5cbb9c00aa5aea', apiKey: '', role: 'demo', label: 'Demo' } // wachtwoord: demo
   };
 }
 
@@ -3044,8 +3049,10 @@ function logUsage(action, detail){
 }
 
 async function logToSheets(type, message, extra={}){
-  // Controleer of Airtable geconfigureerd is
-  if(typeof AIRTABLE_TOKEN==='undefined'||!AIRTABLE_TOKEN) return;
+  // Controleer of Airtable geconfigureerd is. NB: verzending loopt via de
+  // Worker (X-App-Token) — de Airtable-token hoort server-side en de client
+  // gate op AIRTABLE_TOKEN is vervallen (die schakelde logging stil uit
+  // zodra config.js geen token meer bevat — wat juist de bedoeling is).
   if(typeof AIRTABLE_URL==='undefined'||!AIRTABLE_URL) return;
   try{
     const v=vehicleInfo||{};
@@ -3071,7 +3078,7 @@ async function logToSheets(type, message, extra={}){
 
 async function flushAirtable(){
   if(!_atBuffer.length) return;
-  if(typeof AIRTABLE_TOKEN==='undefined'||!AIRTABLE_TOKEN) return;
+  if(typeof AIRTABLE_URL==='undefined'||!AIRTABLE_URL) return;
   const batch=_atBuffer.splice(0,10);
   try{
     const resp=await fetch(AIRTABLE_URL,{
@@ -3091,7 +3098,14 @@ async function flushAirtable(){
     }
   }catch(e){
     console.warn('Airtable netwerk fout:',e.message);
+    // Netwerkfout: batch niet weggooien maar terugzetten (was: stil verlies)
+    _atBuffer.unshift(...batch);
   }
+  // FIX: cap tegen onbegrensde groei als Airtable lang onbereikbaar is
+  while(_atBuffer.length>200) _atBuffer.shift();
+  // FIX: opnieuw inplannen — voorheen bleef een mislukte/resterende batch
+  // hangen tot de vólgende log-event; nu wordt er vanzelf opnieuw geprobeerd.
+  if(_atBuffer.length){ clearTimeout(_atTimer); _atTimer=setTimeout(flushAirtable, 15000); }
 }
 
 // ════════════════════════════════════════
@@ -3379,24 +3393,40 @@ function vlAtEndpoint(){ try{
   if(typeof PROXY_URL!=='undefined'&&PROXY_URL) return PROXY_URL.replace(/\/$/,'')+'/airtable/veldlab';
   return '';
 }catch(e){ return ''; } }
-function vlAtQueue(f){ try{ const q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); q.push(f); while(q.length>60)q.shift(); localStorage.setItem(VL_AT.qKey,JSON.stringify(q)); }catch(e){} }
+function vlAtQueue(f){ try{
+  const q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); q.push(f);
+  while(q.length>60)q.shift();
+  // Byte-cap: 60 records × max 95KB JSON kon de ~5MB localStorage-quota
+  // overschrijden → stille QuotaExceeded → onzichtbaar dataverlies. Oudste
+  // records eruit tot de wachtrij onder ~2MB blijft.
+  let s=JSON.stringify(q);
+  while(s.length>2000000 && q.length>1){ q.shift(); s=JSON.stringify(q); }
+  localStorage.setItem(VL_AT.qKey,s);
+}catch(e){} }
+// Identiteit van een queue-record (voor veilig verwijderen na verzenden)
+function _vlAtRecId(f){ return String((f&&f.SessieID)||'')+'|'+String((f&&f.Datum)||''); }
 let _vlAtBusy=false;
 async function vlAtFlush(){
   if(_vlAtBusy) return; const ep=vlAtEndpoint(); if(!ep) return;
-  let q=[]; try{ q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){}
-  if(!q.length) return;
   _vlAtBusy=true;
   try{
-    while(q.length){
+    // RACE-FIX: niet een in-memory snapshot terugschrijven (dat overschreef
+    // records die tíjdens de flush via vlAtQueue binnenkwamen), maar per batch
+    // de wachtrij VERS herlezen en alleen de zojuist verzonden records eruit
+    // filteren op identiteit.
+    for(let guard=0; guard<20; guard++){
+      let q=[]; try{ q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){}
+      if(!q.length){ if(guard>0){ try{ log('☁ Veldlab → Airtable gesynchroniseerd','ok'); }catch(e){} } return; }
       const batch=q.slice(0,10);
       const res=await fetch(ep,{
         method:'POST', headers:{'Content-Type':'application/json','X-App-Token':(typeof APP_TOKEN!=='undefined'&&APP_TOKEN)||''},
         body:JSON.stringify({records:batch.map(f=>({fields:f}))})});
       if(!res.ok) throw new Error('sync HTTP '+res.status);
-      q=q.slice(batch.length);
-      localStorage.setItem(VL_AT.qKey, JSON.stringify(q));
+      const sent=new Set(batch.map(_vlAtRecId));
+      let fresh=[]; try{ fresh=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){}
+      const remaining=fresh.filter(f=>{ const id=_vlAtRecId(f); if(sent.has(id)){ sent.delete(id); return false; } return true; });
+      localStorage.setItem(VL_AT.qKey, JSON.stringify(remaining));
     }
-    try{ log('☁ Veldlab → Airtable gesynchroniseerd','ok'); }catch(e){}
   }catch(e){ try{ btDiag('☁ Veldlab-sync wacht ('+(e.message||e)+') — blijft in wachtrij','warn'); }catch(_){} }
   finally{ _vlAtBusy=false; }
 }
@@ -6857,7 +6887,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
       if(!resp.ok){
         const err=await resp.json().catch(()=>({}));
         const msg=err?.error?.message||`HTTP ${resp.status}`;
-        if(resp.status===401) throw new Error('API key ongeldig of verlopen.');
+        if(resp.status===401) throw new Error('Proxy weigert (401): APP_TOKEN ontbreekt, is fout of is geroteerd — controleer config.js.');
         if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
         throw new Error(msg);
       }
@@ -6997,9 +7027,13 @@ function _aiReportHtml(text){
   secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
   found.sort((a,b)=>a.idx-b.idx);
   const v=aiVerdict(text);
+  // Sectie-keys regex-escapen: 'KAN IK HET ZELF?' bevat een regex-metateken
+  // ('?'); zonder escapen matcht dat verkeerd en een key met '(' zou zelfs
+  // een exception gooien waardoor het hele rapport niet rendert.
+  const _reEsc=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   let html='<div class="ai-res">';html+=_scoreHeader(text)+_systemBars(text);
   html+=`<div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><b style="color:${v.clr};font-size:14px">${v.vt}</b></div>`;
-  found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
+  found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${_reEsc(s.k)}\\s*([\\s\\S]*?)${next?`(?=${_reEsc(next.k)})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
   if(!found.length)html+=`<div class="ai-sec blue"><div class="ai-sh blue">📋 Analyse</div><div class="ai-sb">${_fmtReportBody(text)}</div></div>`;
   html+='</div>';
   return html;
@@ -7547,12 +7581,23 @@ function restoreBtLog(){
 }
 document.addEventListener('DOMContentLoaded', restoreBtLog);
 
+// PERF-FIX: voorheen deed élke btDiag-regel synchroon 2× JSON.stringify van
+// 300 entries naar sessionStorage én localStorage — tijdens polling meerdere
+// keren per seconde op de main thread van een telefoon. Nu gedebounced (2s);
+// pagehide flusht direct zodat een WebView proces-kill niets verliest.
+let _btPersistT=null;
+function _btPersistNow(){
+  _btPersistT=null;
+  try{ const snap=JSON.stringify(_btLog.slice(-300)); sessionStorage.setItem('pl_btlog',snap); localStorage.setItem('pl_btlog',snap); }catch(e){}
+}
+try{ window.addEventListener('pagehide',_btPersistNow); document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') _btPersistNow(); }); }catch(e){}
 function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   const ts=new Date().toTimeString().slice(0,8);
   _btLog.push({ts,msg,type});
+  if(_btLog.length>600) _btLog.splice(0,_btLog.length-400);   // geheugen-cap
   try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){}
-  try{ const snap=JSON.stringify(_btLog.slice(-300)); sessionStorage.setItem('pl_btlog',snap); localStorage.setItem('pl_btlog',snap); }catch(e){}
+  if(!_btPersistT) _btPersistT=setTimeout(_btPersistNow,2000);
   const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
   const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
   const logEl=document.getElementById('btLog'); if(!logEl) return;
@@ -8894,7 +8939,10 @@ async function sendCmd(cmd, timeoutMs){
 const _btQual=[]; let _qualWarned=false;
 function trackBtQuality(cmd, r){
   if(!connected || demoMode) return;
-  if(!/^01[0-9A-F]{2}$/i.test(cmd)) return;            // alleen data-PIDs tellen
+  // Alleen data-PIDs tellen. LET OP: echte polls zijn '010C1' ('1'-suffix voor
+  // snelle terugkeer) en batches '010C0D05...' — de oude regex /^01XX$/ matchte
+  // die nooit, waardoor kwaliteitspill én dode-socket-detectie nooit draaiden.
+  if(!/^01([0-9A-F]{2})+1?$/i.test(cmd)) return;
   // Stille socketdood: een dode socket geeft NIETS terug (geen bytes), terwijl
   // 'NO DATA' juist betekent dat de adapter wél leeft. Tel daarom alleen écht
   // lege responses. Meerdere achter elkaar = verbinding feitelijk weg.
@@ -10599,37 +10647,38 @@ function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
 //     één 41, dan per PID: nummer + databytes aaneengeregen
 function splitBatchResponse(raw){
   if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')||raw.includes('STOPPED')) return {};
-  // Frame-nummers (0:,1:,2:) en ISO-TP lengte-prefix strippen
-  let hex=String(raw)
-    .replace(/[0-9A-Fa-f]?:/g,'')        // "0:" "1:" frame-headers
-    .replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  // Per regel opschonen: "0:"/"1:" frame-nummers, CAN-headers (7E8/18DAxx —
+  // alleen als headers aanstaan) en losse First-Frame lengteregels ("00E").
+  // De oude aanpak plakte alles plat en scande daarna vrij op "41" — waardoor
+  // een DATABYTE 0x41 (bv. 65 km/h of 25°C koelwater) als nieuw PID-blok kon
+  // worden gelezen → verkeerde waarden. Nu: strikt sequentieel parsen.
+  let hex='';
+  for(let line of String(raw).split(/[\r\n]+/)){
+    const numbered=/^\s*[0-9A-Fa-f]\s*:/.test(line);
+    line=line.replace(/^\s*[0-9A-Fa-f]\s*:\s*/,'');
+    let h=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+    if(!h) continue;
+    if(!numbered){
+      if(/^18DA/.test(h)) h=h.slice(8);              // 29-bit CAN header
+      else if(/^7E[89A-F]/.test(h)) h=h.slice(3);    // 11-bit CAN header
+      if(!/41/.test(h)&&h.length<=4) continue;       // losse lengte-regel "00E"
+    }
+    hex+=h;
+  }
   // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
   hex=hex.replace(/^0[0-9A-F]{2}(?=41)/,'');
   const out={};
-  const firstMode=hex.indexOf('41');
-  if(firstMode<0) return out;
-
-  // Formaat A: meerdere losse 41XX blokken?
-  const blocks=(hex.match(/41[0-9A-F]{2}/g)||[]).length;
-  if(blocks>1){
-    let i=0;
-    while(i+4<=hex.length){
-      if(hex.slice(i,i+2)==='41'){
-        const suf=hex.slice(i+2,i+4), n=pidByteLen(suf), b=[];
-        for(let k=0;k<n&&i+4+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+4+k*2,i+4+k*2+2),16));
-        if(b.length===n){ out['01'+suf]=b; i+=4+n*2; continue; }
-      }
-      i+=2;
-    }
-    return out;
-  }
-
-  // Formaat B: één 41, daarna per PID: nummer + databytes
-  let i=firstMode+2;
+  let i=hex.indexOf('41');
+  if(i<0) return out;
+  // Eén sequentiële parser voor beide formaten: na elke "41" volgt
+  // PID-nummer + databytes; daarna óf direct het volgende PID-nummer
+  // (formaat B: één 41-echo) óf een nieuwe "41" (formaat A: los blok per PID).
+  i+=2;
   let guard=0;
-  while(i+2<=hex.length&&guard++<20){
+  while(i+2<=hex.length&&guard++<24){
+    if(hex.slice(i,i+2)==='41'&&PID_BYTE_LEN[hex.slice(i+2,i+4)]){ i+=2; }  // formaat A: blok-echo overslaan
     const suf=hex.slice(i,i+2);
-    if(!PID_BYTE_LEN[suf]) break; // onbekend PID-nummer of padding → stop
+    if(!PID_BYTE_LEN[suf]) break;                    // onbekend PID-nummer of padding → stop
     const n=pidByteLen(suf), b=[];
     for(let k=0;k<n&&i+2+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+2+k*2,i+2+k*2+2),16));
     if(b.length<n) break;
@@ -11610,6 +11659,11 @@ function _wizStep3(){
   const count=document.getElementById('wizS3Count');
   const sub=document.getElementById('wizS3Sub');
   let pct=0;
+  // FIX: de 30s-fallback vuurde ALTIJD — ook als discovery allang klaar was en
+  // de gebruiker al op stap 5/6 zat → hard teruggeschoten naar stap 4.
+  // Nu: handle bewaren, cancelen bij succes, en guard op _wizStep===3.
+  let fb=null;
+  const finish=()=>{ if(fb){ clearTimeout(fb); fb=null; } };
   const t=setInterval(()=>{
     const n=typeof supportedPIDs!=='undefined'?supportedPIDs.size:0;
     pct=Math.min(pct+Math.random()*8+2, 95);
@@ -11617,15 +11671,15 @@ function _wizStep3(){
     count.textContent=n>0?`${n} sensoren gevonden`:'Scannen...';
     // Als discovery klaar is (supportedPIDs niet meer 0 en buildDiscoveredPIDList al gedraaid)
     if(n>0 && typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs.length>0 && pct>60){
-      clearInterval(t);
+      clearInterval(t); finish();
       fill.style.width='100%';
       count.textContent=`✅ ${n} sensoren gevonden`;
       sub.textContent='Discovery voltooid';
-      setTimeout(()=>wizGo(4), 800);
+      setTimeout(()=>{ if(_wizStep===3) wizGo(4); }, 800);
     }
   }, 400);
-  // Fallback: na 30s toch door
-  setTimeout(()=>{ clearInterval(t); wizGo(4); }, 30000);
+  // Fallback: na 30s toch door — maar alleen als we nog écht op stap 3 staan
+  fb=setTimeout(()=>{ fb=null; clearInterval(t); if(_wizStep===3) wizGo(4); }, 30000);
 }
 
 // STAP 4 — Voertuig: eerst tonen wat de VIN al prijsgaf, dán kenteken optioneel
@@ -13138,13 +13192,10 @@ async function koopRdwLookup(){
     const f = val.velden;
     const _jaar = f.year || '';
 
-    // APK-historie (laatste keuring) — aparte, betrouwbare dataset
-    let apkData = null;
-    try {
-      const r2 = await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/vkij-7mwc.json?kenteken=${encodeURIComponent(kent)}&$limit=1`),{headers:{'X-App-Token':APP_TOKEN}});
-      const d2 = await r2.json();
-      if(d2&&d2.length) apkData = d2[0];
-    } catch(e){}
+    // (Verwijderd: extra fetch naar vkij-7mwc/Keuringen. Het resultaat werd
+    //  in _koopRdwData._apk gezet maar nérgens gelezen — de getoonde APK-
+    //  vervaldatum komt uit vervaldatum_apk in de hoofddataset. Scheelt één
+    //  proxy-call per kentekenopzoek.)
 
     // Recall: gebruik de betrouwbare indicator uit de hoofddata zelf
     // (de oude merk-naam-match gaf false positives op élke auto van dat merk).
@@ -13154,7 +13205,7 @@ async function koopRdwLookup(){
     // Tellerstandoordeel (fraudecheck) — alleen erkende RDW-waarden
     const tellerOordeel = f.tellerstandoordeel || null;
 
-    _koopRdwData = { ...v, _apk: apkData, _recall: recallActief, _teller: tellerOordeel, _kent: kent, _val: val };
+    _koopRdwData = { ...v, _recall: recallActief, _teller: tellerOordeel, _kent: kent, _val: val };
     localStorage.setItem('pl_kenteken', kent);
 
     // Voer ook vehicleInfo bij voor AI — alleen gevalideerde velden
