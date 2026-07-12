@@ -589,7 +589,9 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .pscr { flex:1; min-height:0; overflow-y:auto; padding:4px 0 8px; }
 .pscr::-webkit-scrollbar { width:3px; }
 .pscr::-webkit-scrollbar-thumb { background:var(--bd2); border-radius:3px; }
-.clbl { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--bl); padding:6px 10px 2px; }
+.clbl { font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--tx); background:var(--sur2); border:1px solid var(--bd); border-radius:8px; padding:8px 10px; margin:8px 2px 4px; cursor:pointer; user-select:none; }
+.clbl .ccnt { font-size:10px; font-weight:800; color:var(--tx3); background:var(--sur); border:1px solid var(--bd); border-radius:8px; padding:1px 7px; margin-left:7px; }
+.clbl .cchev { color:var(--tx3); font-size:10px; margin-right:6px; display:inline-block; width:12px; }
 .pr { display:flex; align-items:center; padding:4px 10px; cursor:pointer; border-left:2px solid transparent; transition:all .12s; gap:7px; }
 .pr:hover { background:var(--sur2); }
 .pr.sel { border-left-color:var(--bl); background:var(--bls); }
@@ -995,7 +997,6 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .lm.ok{color:var(--gn);} .lm.err{color:var(--rd);} .lm.warn{color:var(--or);} .lm.info{color:var(--bl);}
 
 /* ══ CONTROL BAR ══ */
-.ctrl-bar { position:fixed; bottom:14px; right:14px; z-index:999; display:flex; gap:2px; background:var(--sur); border:1px solid var(--bd); border-radius:10px; padding:4px; box-shadow:var(--sh); align-items:center; }
 .zbtn { width:26px; height:26px; border:none; background:transparent; cursor:pointer; border-radius:5px; font-size:13px; display:flex; align-items:center; justify-content:center; color:var(--tx2); transition:all .15s; font-weight:700; }
 .zbtn:hover { background:var(--sur2); color:var(--bl); }
 .zlbl { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--tx3); padding:0 2px; min-width:26px; font-family:var(--m); }
@@ -2053,16 +2054,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 </div><!-- appScale -->
 
 <!-- ══ CONTROL BAR ══ -->
-<div class="ctrl-bar">
-  <button class="zbtn" onclick="fontSize(-1)" title="Kleiner">A−</button>
-  <div class="zlbl" id="fontLbl">13</div>
-  <button class="zbtn" onclick="fontSize(1)" title="Groter">A+</button>
-  <div class="zdiv"></div>
-  <button class="zbtn" onclick="zoom(-0.1)" title="Uitzoomen">−</button>
-  <div class="zlbl" id="zoomLbl">100%</div>
-  <button class="zbtn" onclick="zoom(0.1)" title="Inzoomen">+</button>
-  <button class="zbtn" onclick="zoomReset()" title="Reset" style="font-size:12px">↺</button>
-</div>
+<!-- (Zwevende zoom/tekstgrootte-balk verwijderd op verzoek — tekstgrootte S/M/L zit in het ☰-menu) -->
 
 <!-- ══ (Onderbalk verwijderd — navigatie loopt nu via ☰-menu, de 4 deuren
      en de Live/Grafiek-balk met PID-keuze. Zie openLiveView().) ══ -->
@@ -4949,7 +4941,11 @@ function renderGauges(){
     g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>`;return;
   }
   if(sw) sw.style.display='flex';
-  activePIDs.forEach(pid=>{
+  // Zelfde volgorde als de PID-keuzelijst: per motoronderdeel (Motor → Temp →
+  // Brandstof → ... → Overig). discoveredPIDDefs is al zo gesorteerd; PIDs
+  // die daar niet in staan komen achteraan. Voorheen: Set-invoegvolgorde.
+  const _ord={}; (discoveredPIDDefs||[]).forEach((d,i)=>{ _ord[d.pid]=i; });
+  [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     // Weergave-poort: diesel/SCR-sensoren (AdBlue, NOx, DPF) horen niet op een
     // benzineauto, ook al staat de PID (door timing of oude selectie) in
@@ -10522,7 +10518,11 @@ function buildDiscoveredPIDList(){
     }
   });
 
-  discoveredPIDDefs.sort((a,b)=>(catOrder[a.cat]??9)-(catOrder[b.cat]??9)||(a.name>b.name?1:-1));
+  // Sorteer: eerst per onderdeel (Motor voorop, Overig achteraan), daarbinnen
+  // in de samengestelde volgorde van ALL_PID_DEFS (toerental eerst) i.p.v.
+  // alfabetisch — dat is de volgorde die een monteur verwacht.
+  const defIdx={}; Object.keys(ALL_PID_DEFS).forEach((pid,i)=>{ defIdx[pid]=i; });
+  discoveredPIDDefs.sort((a,b)=>(catOrder[a.cat]??9)-(catOrder[b.cat]??9)||(defIdx[a.pid]??999)-(defIdx[b.pid]??999)||(a.pid>b.pid?1:-1));
   buildPIDList();
   document.getElementById('pidCnt').textContent=discoveredPIDDefs.length;
 }
@@ -10543,20 +10543,28 @@ function buildPIDList(filter=''){
   const f=filter.toLowerCase();
   const filtered=f ? source.filter(p=>p.name.toLowerCase().includes(f)||p.pid.includes(filter.toUpperCase())) : source;
 
-  const cats=[...new Set(filtered.map(p=>p.cat||'Overig'))];
+  // Vaste volgorde per motoronderdeel; onbekende PIDs als laatste onder 'Overig'.
+  const CAT_ORDER=['Motor','Temp','Brandstof','Rijden','Electrisch','Emissie','Overig'];
+  window._pidCatCollapsed=window._pidCatCollapsed||new Set();
+  const present=[...new Set(filtered.map(p=>p.cat||'Overig'))];
+  const cats=[...CAT_ORDER.filter(c=>present.includes(c)), ...present.filter(c=>!CAT_ORDER.includes(c))];
   cats.forEach(cat=>{
     const items=filtered.filter(p=>(p.cat||'Overig')===cat);
     if(!items.length) return;
-    // Categorie-kop met "+ Alles" knop die alle gezonde PIDs van deze cat activeert
+    const collapsed=window._pidCatCollapsed.has(cat) && !f;   // bij zoeken alles tonen
+    // Categorie-BALK: tikken klapt in/uit; '+ Alles' activeert alle gezonde PIDs
     const lbl=document.createElement('div'); lbl.className='clbl';
     lbl.style.display='flex'; lbl.style.alignItems='center'; lbl.style.justifyContent='space-between';
-    lbl.innerHTML=`<span>${cat}</span>`;
+    const nSel=items.filter(p=>activePIDs.has(p.pid)).length;
+    lbl.innerHTML=`<span><span class="cchev">${collapsed?'▶':'▼'}</span>${cat}<span class="ccnt">${nSel?nSel+'/':''}${items.length}</span></span>`;
+    lbl.onclick=()=>{ if(window._pidCatCollapsed.has(cat)) window._pidCatCollapsed.delete(cat); else window._pidCatCollapsed.add(cat); buildPIDList(filter); };
     const addBtn=document.createElement('button');
     addBtn.className='catadd'; addBtn.textContent='+ Alles';
     addBtn.title=`Alle gezonde ${cat}-sensoren selecteren`;
     addBtn.onclick=(e)=>{ e.stopPropagation(); selectCategoryPIDs(cat); };
     lbl.appendChild(addBtn);
     el.appendChild(lbl);
+    if(collapsed) return;
     items.forEach(p=>{
       const health=_pidHealth[p.pid]||'ok';
       // nodata = sensor niet aanwezig op dit voertuig (stationair grijs, geen ⚠)
@@ -11920,7 +11928,7 @@ function toggleTheme(){
 function fontSize(delta){
   currentFont=Math.min(18,Math.max(10,currentFont+delta));
   document.documentElement.style.fontSize=currentFont+'px';
-  document.getElementById('fontLbl').textContent=currentFont;
+  const fl=document.getElementById('fontLbl'); if(fl) fl.textContent=currentFont;   // ctrl-bar verwijderd — label optioneel
   try{localStorage.setItem('ns_font',currentFont);}catch(e){}
 }
 function applyZoom(){
@@ -11931,7 +11939,7 @@ function applyZoom(){
     if(currentZoom===1){ el.style.transform=''; el.style.width=''; el.style.height=''; }
     else { el.style.transform=`scale(${currentZoom})`; el.style.width=`${100/currentZoom}%`; el.style.height=`${100/currentZoom}%`; }
   }
-  document.getElementById('zoomLbl').textContent=Math.round(currentZoom*100)+'%';
+  const zl=document.getElementById('zoomLbl'); if(zl) zl.textContent=Math.round(currentZoom*100)+'%';   // ctrl-bar verwijderd — label optioneel
   try{localStorage.setItem('ns_zoom',currentZoom);}catch(e){}
 }
 function zoom(delta){currentZoom=Math.min(1.5,Math.max(0.5,currentZoom+delta));applyZoom();}
@@ -12052,7 +12060,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     // donker/licht-toggle verwijderd — app gebruikt standaard het lichte thema
     const sf=localStorage.getItem('ns_font');
-    if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';document.getElementById('fontLbl').textContent=currentFont;}
+    if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';const _fl=document.getElementById('fontLbl');if(_fl)_fl.textContent=currentFont;}
     const sz=localStorage.getItem('ns_zoom');
     if(sz){currentZoom=parseFloat(sz)||1.0;applyZoom();}
     // PID-scherm standaard ingeklapt; opent via uitvouw-knop. Sluit na 15s inactiviteit.
