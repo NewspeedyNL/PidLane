@@ -1399,11 +1399,11 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 <div id="appScale">
 <div class="topbar">
   <!-- ☰ menu links -->
-  <div class="kebab-wrap" id="kebabWrap">
-    <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Menu" aria-label="Menu">☰</button>
-    <div class="kebab-menu" id="kebabMenu">
-      <button class="kebab-item" onclick="closeKebab();goHome()">🏠 Home</button>
-      <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div class="kebab-wrap" id="kebabWrap">
+      <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Menu" aria-label="Menu">☰</button>
+      <div class="kebab-menu" id="kebabMenu">
+        <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
       <button class="kebab-item" onclick="closeKebab();reportNav()" style="position:relative">📄 Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:50%;transform:translateY(-50%);right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:16px;text-align:center"></span></button>
       <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
@@ -1415,7 +1415,9 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
       <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
       <div class="kebab-sep"></div>
       <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
+      </div>
     </div>
+    <button class="kebab-btn" onclick="goHome()" title="Home" aria-label="Home">🏠</button>
   </div>
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
   <div class="tpr">
@@ -1622,28 +1624,17 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 
       <!-- LIVE -->
       <div class="pane active" id="pane-live">
-        <button onclick="openAnalysis('diag')" style="width:100%;margin-bottom:8px;padding:10px;border-radius:9px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">🔬 Analyseer wat je nu ziet</button>
+        <!-- ("Analyseer wat je nu ziet"-balk verwijderd op verzoek — analyse start via de deuren) -->
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
           <span class="pidview-lbl">Weergave:</span>
           <button class="pidview-btn active" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
           <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
           <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
-          <button class="pidview-btn" data-mode="correlate" onclick="setPidView('correlate')">🔗 Correlatie</button>
         </div>
         <div class="gg" id="gGrid">
           <div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>
         </div>
-        <!-- Idee 6: live correlatie-dashboard (XY-scatter) -->
-        <div id="correlatePanel" style="display:none">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)">X-as</span>
-            <select class="fsel" id="corrX" onchange="drawScatter()" style="min-width:140px"></select>
-            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)">Y-as</span>
-            <select class="fsel" id="corrY" onchange="drawScatter()" style="min-width:140px"></select>
-          </div>
-          <canvas id="scatterCanvas" height="300" style="width:100%;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);display:block;box-shadow:var(--ss)"></canvas>
-          <div style="font-size:12px;color:var(--tx3);margin-top:6px">Elke stip = één meetmoment. Zo zie je verbanden, bijv. RPM (X) vs brandstofdruk (Y) — stijgt de druk niet mee, dan is de pomp zwak.</div>
-        </div>
+        <!-- (Correlatie-weergave verwijderd op verzoek; de correlatie-ENGINE voor AI-bevindingen blijft bestaan) -->
       </div>
 
       <!-- CHECK -->
@@ -3940,20 +3931,12 @@ function vlOpenDash(){
 
 /* ---- knop rechtsonder (alleen admin) ---- */
 function vlEnsureBtn(force){
-  try{
-    var admin=isAdmin();
-    var b=document.getElementById('plEvalBtn');
-    if(admin){
-      var n=vlLoad().sessies.length, lbl='🧪 Veldlab'+(n?' ('+n+')':'');
-      if(!b){ b=document.createElement('button'); b.id='plEvalBtn';
-        b.style.cssText='position:fixed;right:12px;bottom:76px;z-index:9950;background:#00D4FF;color:#04222a;border:none;border-radius:22px;padding:11px 16px;font:700 13px/1 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,212,255,.35);cursor:pointer';
-        b.onclick=vlOpenDash; document.body.appendChild(b);
-        try{ log('🧪 Veldlab actief — knop rechtsonder + ⋯-menu','ok'); }catch(e){} }
-      if(b.textContent!==lbl) b.textContent=lbl;
-    } else if(b){ b.remove(); }
-  }catch(e){}
+  // Zwevende Veldlab-knop UITGEZET op verzoek — hij hing over de content heen.
+  // Veldlab blijft bereikbaar via ☰-menu → 🧪 Veldlab. Deze functie ruimt nu
+  // alleen een eventueel nog bestaande knop op (en blijft aanroepbaar voor
+  // bestaande callsites).
+  try{ var b=document.getElementById('plEvalBtn'); if(b) b.remove(); }catch(e){}
 }
-setInterval(vlEnsureBtn, 2000);
 
 // ════════════════════════════════════════
 // 3-LAAGS DATA VALIDATIE & FILTERING
@@ -5029,73 +5012,18 @@ let _pidLastUpd={};          // pid -> laatste update-tijd (ms)
 let _staleWatchdog=null;
 const PID_STALE_MS=4000;     // geen verse waarde binnen 4s = "stale"
 function setPidView(mode){
+  if(mode==='correlate') mode='dots';   // correlatie-weergave verwijderd; oude opgeslagen voorkeur netjes opvangen
   pidViewMode=mode;
   const g=document.getElementById('gGrid');
-  const cp=document.getElementById('correlatePanel');
-  // Correlatie-modus: verberg het gauge-grid, toon het scatter-paneel
-  if(mode==='correlate'){
-    if(g) g.style.display='none';
-    if(cp){ cp.style.display='block'; }
-    document.querySelectorAll('.pidview-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
-    buildScatterSelectors();
-    stopStaleWatchdog();
-    try{ localStorage.setItem('pl_pidview', mode); }catch(e){}
-    return;
-  }
   if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots'); if(mode!=='full') g.classList.add('view-'+mode); }
-  if(cp) cp.style.display='none';
   document.querySelectorAll('.pidview-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
   try{ localStorage.setItem('pl_pidview', mode); }catch(e){}
   // Stale-watchdog alleen nodig in puntjes-modus
   if(mode==='dots') startStaleWatchdog(); else stopStaleWatchdog();
 }
 
-// ── IDEE 6: XY-scatter van twee PIDs over de gemeten historie ──
-function buildScatterSelectors(){
-  const xs=document.getElementById('corrX'), ys=document.getElementById('corrY');
-  if(!xs||!ys) return;
-  const src=[...activePIDs].map(p=>getPidDef(p)?{pid:p,name:getPidDef(p).name,unit:getPidDef(p).unit}:null).filter(Boolean);
-  const opts=src.map(d=>`<option value="${d.pid}">${d.name}${d.unit?' ('+d.unit+')':''}</option>`).join('');
-  const curX=xs.value, curY=ys.value;
-  xs.innerHTML=opts; ys.innerHTML=opts;
-  // Zinvolle defaults: RPM op X, brandstofdruk/MAF op Y indien aanwezig
-  xs.value=curX||(src.find(d=>d.pid==='010C')?.pid)||src[0]?.pid||'';
-  ys.value=curY||(src.find(d=>['010A','0110','0142','0105'].includes(d.pid))?.pid)||src[1]?.pid||src[0]?.pid||'';
-  drawScatter();
-}
-function drawScatter(){
-  const cv=document.getElementById('scatterCanvas'); if(!cv) return;
-  const ctx=cv.getContext('2d');
-  const W=cv.offsetWidth||560, H=300; cv.width=W; cv.height=H;
-  ctx.fillStyle=isDark?'#161b25':'#fff'; ctx.fillRect(0,0,W,H);
-  const px=document.getElementById('corrX')?.value, py=document.getElementById('corrY')?.value;
-  const pad={t:16,r:16,b:34,l:48}, gW=W-pad.l-pad.r, gH=H-pad.t-pad.b;
-  const hx=pidHist[px]||[], hy=pidHist[py]||[];
-  if(!px||!py||hx.length<2||hy.length<2){
-    ctx.fillStyle='#8a97a8'; ctx.font='12px DM Sans'; ctx.textAlign='center';
-    ctx.fillText('Kies twee sensoren met data om correlatie te zien',W/2,H/2); return;
-  }
-  // Koppel op gelijke index (beide arrays groeien synchroon per pollronde)
-  const n=Math.min(hx.length,hy.length);
-  const pts=[]; for(let i=0;i<n;i++) pts.push({x:hx[hx.length-n+i].v, y:hy[hy.length-n+i].v});
-  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
-  const xmin=Math.min(...xs), xmax=Math.max(...xs)+1e-6, ymin=Math.min(...ys), ymax=Math.max(...ys)+1e-6;
-  const gridC=isDark?'#2a3347':'#e2e6ed';
-  for(let i=0;i<=4;i++){ const y=pad.t+(i/4)*gH; ctx.strokeStyle=gridC; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
-    const val=ymax-(i/4)*(ymax-ymin); ctx.fillStyle='#8a97a8'; ctx.font='9px DM Mono'; ctx.textAlign='right'; ctx.fillText(fv(val),pad.l-3,y+3); }
-  // Stippen (ouder = lichter, nieuwer = vol)
-  pts.forEach((p,i)=>{
-    const cx=pad.l+((p.x-xmin)/(xmax-xmin))*gW;
-    const cy=pad.t+gH-((p.y-ymin)/(ymax-ymin))*gH;
-    const a=0.25+0.75*(i/n);
-    ctx.fillStyle=`rgba(26,111,255,${a.toFixed(2)})`;
-    ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill();
-  });
-  const dx=getPidDef(px), dy=getPidDef(py);
-  ctx.fillStyle='#8a97a8'; ctx.font='10px DM Sans'; ctx.textAlign='center';
-  ctx.fillText(`${dx?.name||px}${dx?.unit?' ('+dx.unit+')':''} →`,W/2,H-6);
-  ctx.save(); ctx.translate(12,H/2); ctx.rotate(-Math.PI/2); ctx.fillText(`${dy?.name||py}${dy?.unit?' ('+dy.unit+')':''} →`,0,0); ctx.restore();
-}
+// (Correlatie-weergave verwijderd; de deterministische correlatie-ENGINE
+//  — runCorrelationEngine/correlationLines voor AI-bevindingen — blijft.)
 function startStaleWatchdog(){
   stopStaleWatchdog();
   _staleWatchdog=setInterval(()=>{
@@ -5148,7 +5076,6 @@ function updPID(pid,val){
   if(pidHist[pid].length>120) pidHist[pid].shift();
   applyG(pid,val);
   if(graphPID===pid) drawGraph();
-  if(pidViewMode==='correlate'){ const xs=document.getElementById('corrX'); if(xs&&(xs.value===pid||document.getElementById('corrY')?.value===pid)) drawScatter(); }
 }
 
 // ══════════════════════════════════════════════════════
