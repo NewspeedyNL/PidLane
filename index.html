@@ -1,6 +1,15 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-11 (CET) — 2 WIJZIGINGEN:
+     Build: 2026-07-13 (CET) — SECURITY: SERVER-LOGIN
+     Geen APP_TOKEN en geen wachtwoord-hashes meer in de client. Bij login
+     post de app {user,pass} naar de Worker (POST /auth/login); die controleert
+     tegen zijn eigen secrets en geeft een HMAC-ondertekend sessietoken terug
+     (standaard 12u geldig). Dat token vervangt het oude vaste APP_TOKEN als
+     X-App-Token op /v1/messages, /proxy en /airtable/*. config.js bevat nu
+     alleen publieke instellingen en mag gewoon in de repo. Sessieherstel
+     gebruikt het token (verlopen = opnieuw inloggen); logout wist het.
+     Offline/onbereikbare Worker → alleen het lokale Demo-account werkt.
+     Vorige build 2026-07-11 (CET) — 2 WIJZIGINGEN:
      0) FULL SURVEY v2 (schema 2): survey uitgebreid met STI (echte STN-
         identiteit — MX+ meldt zich via ATI als "ELM327 v1.4b"), CALID 0904
         + CVN 0906 (tuning-detectie), permanente DTC's mode 0A (schoonpoets-
@@ -133,10 +142,11 @@
   /* Vangnet: als config.js achterloopt of niet laadt, val terug op het juiste
      proxy-adres en token (geen geheimen). Voorkomt "PROXY_URL not defined". */
   try{ if(typeof PROXY_URL==='undefined') window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }catch(e){ window.PROXY_URL='https://pidlane-proxy.newspeedynl.workers.dev'; }
-  /* SECURITY: het APP_TOKEN staat NIET meer hardcoded in index.html — het is
-     hét geheim dat de proxy (AI-tegoed + Airtable) beschermt en index.html is
-     publiek. config.js (privé, buiten de repo) is nu de enige bron. */
-  try{ if(typeof APP_TOKEN==='undefined'){ window.APP_TOKEN=''; console.warn('PidLane: APP_TOKEN ontbreekt — config.js niet geladen? AI/Airtable werken niet.'); } }catch(e){ window.APP_TOKEN=''; }
+  /* SECURITY v2: er staat GÉÉN vast APP_TOKEN meer in de app of in config.js.
+     Bij login geeft de Worker een ondertekend, tijdelijk sessietoken terug;
+     dat wordt in window.APP_TOKEN gezet en als X-App-Token meegestuurd naar
+     alle proxy-routes. Vóór login is het token leeg — dat hoort zo. */
+  try{ window.APP_TOKEN = window.APP_TOKEN || ''; }catch(e){ window.APP_TOKEN=''; }
   try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){}
   try{ if(typeof VERSION_URL==='undefined') window.VERSION_URL='https://newspeedynl.github.io/PidLane/version.json'; }catch(e){}
 
@@ -2146,9 +2156,10 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 // USERS wordt overschreven door config.js als die wel laadt
 // Wachtwoorden staan als SHA-256-hash (passHash), nooit meer plaintext.
 if(typeof USERS === 'undefined'){
-  // SECURITY: geen admin-hash meer in de publieke index.html — een ongezouten
-  // SHA-256 van het echte wachtwoord is offline te kraken. Admin-accounts
-  // komen uitsluitend uit config.js (privé). Fallback = alleen Demo.
+  // SECURITY: geen admin-hash in de client — niet in index.html én niet in
+  // config.js. Echte accounts leven uitsluitend in de Worker (secret USERS_JSON)
+  // en worden via POST /auth/login gecontroleerd. Deze lokale tabel is puur een
+  // offline-vangnet en bevat alleen Demo.
   window.USERS = {
     'Demo':  { passHash: '2a97516c354b68848cdbd8f54a226a0a55b21ed138e207ad6c5cbb9c00aa5aea', apiKey: '', role: 'demo', label: 'Demo' } // wachtwoord: demo
   };
@@ -2159,6 +2170,52 @@ if(typeof USERS === 'undefined'){
 async function sha256hex(s){
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🔑 SERVER-LOGIN (Cloudflare Worker)
+// Wachtwoord-hashes staan NIET meer in de client. De Worker controleert het
+// wachtwoord tegen zijn eigen secrets en geeft een ONDERTEKEND, tijdelijk
+// sessietoken terug. Dat token gaat als X-App-Token mee naar élke proxy-route
+// (AI, RDW, Airtable) en verloopt vanzelf. Een gestolen token is dus beperkt
+// geldig en er staat niets geheims meer in config.js of index.html.
+// ══════════════════════════════════════════════════════════════════
+const TOK_KEY='pl_tok';
+
+function tokLoad(){
+  try{
+    const t=JSON.parse(localStorage.getItem(TOK_KEY)||'null');
+    if(!t||!t.token||!t.exp) return null;
+    if(Date.now() >= t.exp*1000){ localStorage.removeItem(TOK_KEY); return null; }
+    return t;
+  }catch(e){ return null; }
+}
+function tokSave(t){
+  try{ localStorage.setItem(TOK_KEY, JSON.stringify(t)); }catch(e){}
+  window.APP_TOKEN = t.token;
+}
+function tokClear(){
+  try{ localStorage.removeItem(TOK_KEY); }catch(e){}
+  window.APP_TOKEN = '';
+}
+
+// Vraagt de Worker om een sessietoken. Retourneert:
+//   object  = gelukt   ({token, exp, user, role, label})
+//   null    = verkeerde gebruikersnaam/wachtwoord
+//   throw   = server/netwerk onbereikbaar (→ lokale fallback)
+async function serverLogin(user, pass){
+  const base = (typeof PROXY_URL!=='undefined' && PROXY_URL) ? String(PROXY_URL).replace(/\/$/,'') : '';
+  if(!base) throw new Error('PROXY_URL ontbreekt');
+  const r = await fetch(base+'/auth/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user:String(user||''), pass:String(pass||'')})
+  });
+  if(r.status===401) return null;
+  if(!r.ok) throw new Error('login-server gaf '+r.status);
+  const j = await r.json();
+  if(!j || !j.token) throw new Error('ongeldig antwoord van login-server');
+  return j;
 }
 
 let currentUser = null;
@@ -2180,6 +2237,30 @@ async function doLogin(){
   const pass = document.getElementById('loginPass').value;
   const err  = document.getElementById('loginErr');
 
+  // ── STAP 1: server-login (Worker) ──────────────────────────────
+  // Dit is de normale weg. Alleen als de Worker onbereikbaar is vallen we
+  // terug op de lokale USERS-tabel — die bevat uitsluitend het Demo-account.
+  err.textContent = '…';
+  try{
+    const s = await serverLogin(user, pass);
+    if(s === null){
+      err.textContent = '⚠ Gebruikersnaam of wachtwoord onjuist';
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginPass').focus();
+      return;
+    }
+    tokSave(s);
+    err.textContent = '';
+    finishLogin(s.user || user, { role: s.role || 'user', label: s.label || s.user || user, apiKey: '' });
+    try{ log('Server-login ok — sessie geldig tot '+new Date(s.exp*1000).toLocaleString('nl-NL'),'ok'); }catch(e){}
+    return;
+  }catch(e){
+    // Geen verbinding met de login-server → door naar lokale fallback (Demo).
+    try{ log('Login-server onbereikbaar ('+(e?.message||e)+') — alleen lokale accounts','warn'); }catch(_){}
+  }
+  err.textContent = '';
+
+  // ── STAP 2: lokale fallback (offline / Demo) ───────────────────
   // Tolerante login: eerst exacte match; anders hoofdletter-ongevoelig op de
   // sleutel of het label, waarbij spaties en underscores gelijkwaardig zijn.
   // Zo werken "nico"/"Nico" en "Autobedrijf Pieters"/"Autobedrijf_Pieters"
@@ -2382,6 +2463,7 @@ async function logout(){
   }catch(e){ try{ log('Log opslaan bij uitloggen mislukt: '+(e.message||e),'warn'); }catch(_){} }
   currentUser = null;
   window.currentUser = null;
+  tokClear();                                       // sessietoken ongeldig maken
   try{ localStorage.removeItem('pl_session'); }catch(e){}
   try{ localStorage.removeItem('pl_appstate'); }catch(e){} // sessiestaat niet meenemen naar volgende login
   window.anthropicKey = '';
@@ -12078,13 +12160,19 @@ document.addEventListener('DOMContentLoaded', function(){
   //  moet je elke keer opnieuw inloggen)
   try{
     const sess=localStorage.getItem('pl_session');
-    if(sess && typeof USERS!=='undefined' && USERS[sess]){
-      document.getElementById('loginUser').value=sess;
-      // Geen wachtwoord meer invullen/heruitvoeren: met passHash is het
-      // plaintext wachtwoord niet meer beschikbaar. De gebruiker is op dit
-      // apparaat al geverifieerd — herstel de sessie direct.
-      finishLogin(sess, USERS[sess]);
-      log(`Sessie hersteld: ${sess}`,'ok');
+    const _tok=tokLoad();                       // nog geldig, niet verlopen?
+    const _acc=(_tok && _tok.user)
+      ? { role:_tok.role||'user', label:_tok.label||_tok.user, apiKey:'' }
+      : ((sess && typeof USERS!=='undefined' && USERS[sess]) ? USERS[sess] : null);
+    const _name=(_tok && _tok.user) ? _tok.user : sess;
+    if(_acc && _name){
+      document.getElementById('loginUser').value=_name;
+      // Geen wachtwoord meer nodig: het sessietoken (server-ondertekend, met
+      // vervaldatum) bewijst dat dit apparaat al geverifieerd is. Verlopen
+      // token → tokLoad() geeft null en het loginscherm blijft staan.
+      if(_tok) window.APP_TOKEN=_tok.token;
+      finishLogin(_name, _acc);
+      log(`Sessie hersteld: ${_name}`,'ok');
       try{ restoreAppState(); }catch(e){}
       try{
         const P=window.Capacitor?.Plugins||{};
