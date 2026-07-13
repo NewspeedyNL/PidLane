@@ -1,31 +1,54 @@
-// ══════════════════════════════════════════════════════
-// PidLane config — GEEN plaintext wachtwoorden meer.
-// Wachtwoorden staan als SHA-256-hash (passHash).
-// Nieuwe hash maken (browser-console):
-//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('WACHTWOORD'))
-//     .then(b => console.log([...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('')));
-// ══════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════════
+   PidLane — config.js  (PUBLIEK — mag gewoon in de GitHub-repo)
 
-const APP_VERSION = '2.2';
+   Hier staat GEEN enkel geheim meer:
+   • geen APP_TOKEN      → komt bij login van de Worker (sessietoken)
+   • geen wachtwoorden   → Worker-secret USERS_JSON
+   • geen wachtwoordhash → idem
+   • geen Anthropic-key  → Worker-secret ANTHROPIC_API_KEY
+   • geen Airtable-token → Worker-secret AIRTABLE_TOKEN
 
-// LET OP: roteer dit token in Cloudflare (Worker → Settings → Variables and
-// Secrets → APP_TOKEN) en zet hier exact dezelfde nieuwe waarde. Het oude
-// token stond publiek en moet als gelekt worden beschouwd.
-const APP_TOKEN = 'kq!kcAMmP3q3Rvy8^KDP%nwitC$KPp24S@o7Y4L*3y6nNDS!3rwCR6QhcPhL!SPhr7BMimCE$G$UyvL4MWPu*QAy8cu&gvLq34e8eE@aFjS7AN@3vL2Ayqho9V6priyp';
+   Alles hieronder is informatie die de browser toch al prijsgeeft
+   (endpoints, versienummer, reponaam). Publiek = geen probleem.
+   ══════════════════════════════════════════════════════════════════ */
 
+/* ── Versie & updates ────────────────────────────────────────────── */
+const APP_VERSION = '2.7.0';
+const GITHUB_USER = 'newspeedynl';
+const GITHUB_REPO = 'PidLane';
+const VERSION_URL = 'https://newspeedynl.github.io/PidLane/version.json';
+const UPDATE_URL  = 'https://newspeedynl.github.io/PidLane/';
+
+/* ── Cloudflare Worker proxy ─────────────────────────────────────── */
+/* Alle geheimen zitten server-side in deze Worker.                   */
 const PROXY_URL = 'https://pidlane-proxy.newspeedynl.workers.dev';
 
-window.USERS = {
-  'Admin': {
-    passHash: '0233647d3a3a140068f7b11705873d7aaf29bed66724250e279d78f8f0d5ae6c',
-    apiKey: '', role: 'admin', label: 'Admin'
-  },
+/* Afgeleide routes — laat staan, ze volgen automatisch de PROXY_URL. */
+const AIRTABLE_URL      = PROXY_URL + '/airtable/log';
+const VELDLAB_ENDPOINT  = PROXY_URL + '/airtable/veldlab';
+
+/* ── Lokaal noodaccount ──────────────────────────────────────────── */
+/* Werkt alleen offline / als de Worker onbereikbaar is. Demo heeft geen
+   toegang tot AI, RDW of Airtable (die lopen allemaal via de Worker en
+   vereisen een geldig sessietoken). Wachtwoord: demo                   */
+const USERS = {
   'Demo': {
-    // Nog te doen: nieuw Demo-wachtwoord kiezen en de hash hier plakken.
-    // Zolang passHash leeg is, kan Demo niet inloggen (bewust veilig default).
-    passHash: '',
-    apiKey: '', role: 'demo', label: 'Demo'
+    passHash: '2a97516c354b68848cdbd8f54a226a0a55b21ed138e207ad6c5cbb9c00aa5aea',
+    apiKey  : '',
+    role    : 'demo',
+    label   : 'Demo'
   }
-  // Testaccounts (bv. Van Meel) op dezelfde manier: alleen passHash, geen password.
 };
- 
+
+/* Beschikbaar maken voor index.html (die leest window.*). */
+try{
+  window.APP_VERSION      = APP_VERSION;
+  window.GITHUB_USER      = GITHUB_USER;
+  window.GITHUB_REPO      = GITHUB_REPO;
+  window.VERSION_URL      = VERSION_URL;
+  window.UPDATE_URL       = UPDATE_URL;
+  window.PROXY_URL        = PROXY_URL;
+  window.AIRTABLE_URL     = AIRTABLE_URL;
+  window.VELDLAB_ENDPOINT = VELDLAB_ENDPOINT;
+  window.USERS            = USERS;
+}catch(e){}
