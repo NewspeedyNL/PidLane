@@ -8482,11 +8482,29 @@ async function connectSerial(){
   if (spp && savedAddr && lastTransport !== 'ble' && !haveCfgMac)
                           chain.push(['SPP (laatst gebruikte adapter)', async () => {
                             btDiag(`Direct herverbinden: ${savedName} (${savedAddr})`, 'info');
-                            await doSPPConnect(spp, savedAddr, savedName);
+                            try { await doSPPConnect(spp, savedAddr, savedName); }
+                            catch(e){
+                              // Vlak na een app-herstart/socket-dood houdt de
+                              // adapter de oude socket soms nog vast — één keer
+                              // kort wachten en nogmaals direct proberen.
+                              btDiag(`Directe poging mislukt (${e.message}) — 1,5s wachten, nogmaals...`, 'warn');
+                              await delay(1500);
+                              await doSPPConnect(spp, savedAddr, savedName);
+                            }
                           }]);
-  if (ble)               chain.push(['BLE',                         () => connectBLE(ble)]);
-  if (spp && haveCfgMac) chain.push(['SPP (Classic · direct MAC)', () => connectSPP(spp)]);
-  if (spp && !haveCfgMac) chain.push(['SPP (Classic · scan)',       () => connectSPP(spp)]);
+  // Volgorde afhankelijk van het laatst gebruikte transport: was dat SPP,
+  // dan SPP-routes vóór BLE — zo blokkeert de 12s BLE-scan een herverbinding
+  // met een bekende Classic-adapter (OBDLink MX+) niet.
+  const sppEntries = [];
+  if (spp && haveCfgMac)  sppEntries.push(['SPP (Classic · direct MAC)', () => connectSPP(spp)]);
+  if (spp && !haveCfgMac) sppEntries.push(['SPP (Classic · scan)',       () => connectSPP(spp)]);
+  if (spp && lastTransport === 'spp'){
+    chain.push(...sppEntries);
+    if (ble) chain.push(['BLE', () => connectBLE(ble)]);
+  } else {
+    if (ble) chain.push(['BLE', () => connectBLE(ble)]);
+    chain.push(...sppEntries);
+  }
   // Desktop (Chrome): Web Serial eerst — de OBDLink MX+ verschijnt op Windows
   // als seriële Bluetooth-COM-poort en werkt daar het betrouwbaarst.
   if (('serial' in navigator) && !env.native)
@@ -9046,7 +9064,7 @@ async function _sendBTOnce(cmd, timeoutMs){
         await spp.write({address, value:str});
       }catch(we){
         btDiag(`write() fout na ${Date.now()-start}ms: ${we.message}`,'err');
-        await sppReconnectGuard(spp,address,cmd);
+        await sppReconnectGuard(spp,address,cmd,true);
         return '';
       }
 
@@ -9140,23 +9158,39 @@ async function _sendBTOnce(cmd, timeoutMs){
 
 // Reconnect-guard: na lege response checken of de SPP socket nog leeft.
 // Max 1 herverbindpoging per 10 sec om loops te voorkomen.
-async function sppReconnectGuard(spp,address,cmd){
+async function sppReconnectGuard(spp,address,cmd,force){
   try{
     const now=Date.now();
     if(window._lastSppReconnect&&now-window._lastSppReconnect<10000) return;
 
-    let alive=true;
-    try{
-      const c=await spp.isConnected({address});
-      alive=(c?.isConnected!==false&&c?.connected!==false&&c!==false);
-    }catch(e){ alive=false; }
+    // force=true (bv. na een write()-fout): socket is zéker kapot — de
+    // isConnected-check overslaan, die rapporteert dan soms nog "verbonden".
+    let alive=!force;
+    if(!force){
+      try{
+        const c=await spp.isConnected({address});
+        alive=(c?.isConnected!==false&&c?.connected!==false&&c!==false);
+      }catch(e){ alive=false; }
+    }
 
     if(!alive){
       window._lastSppReconnect=now;
       btDiag(`Socket dood na "${cmd}" — herverbinden...`,'warn');
       try{ await spp.disconnect({address}); }catch(e){}
-      await delay(500);
-      await spp.connect({address});
+      // Direct herverbinden op hetzelfde (gebonde) adres: 3 pogingen met
+      // oplopende pauze. Vlak na een socket-dood houdt de adapter de oude
+      // socket vaak nog even vast — even wachten en opnieuw proberen slaagt
+      // vrijwel altijd, en voorkomt de trage volledige cascade (12s BLE-scan,
+      // discovery, verkeerde apparaten). De pair-knop is hierbij NOOIT nodig:
+      // een gebonded adapter accepteert een directe connect zonder discoverable
+      // te zijn.
+      let _rcOk=false,_rcErr=null;
+      for(let _a=1;_a<=3&&!_rcOk;_a++){
+        await delay(_a===1?500:1500);
+        try{ await spp.connect({address}); _rcOk=true; }
+        catch(_e){ _rcErr=_e; btDiag(`Herverbindpoging ${_a}/3 mislukt: ${_e.message}`,'warn'); }
+      }
+      if(!_rcOk) throw (_rcErr||new Error('herverbinden mislukt'));
       btDiag('Herverbonden ✓','ok');
       log('SPP automatisch herverbonden','warn');
       // Nieuwe socket = ELM327-interpreter is gereset. Opnieuw initialiseren zodat
@@ -10888,13 +10922,25 @@ function buildPIDList(filter=''){
 // Aantal databytes per mode-01 PID (SAE J1979). Nodig om een multi-PID
 // respons (41 0C .. 41 0D .. 41 05 ..) correct in stukken te knippen.
 const PID_BYTE_LEN={
-  '04':1,'05':1,'06':1,'07':1,'08':1,'09':1,'0A':1,'0B':1,'0C':2,'0D':1,
-  '0E':1,'0F':1,'10':2,'11':1,'13':1,'14':2,'15':2,'16':2,'17':2,'18':2,
-  '19':2,'1A':2,'1B':2,'1F':2,'21':2,'22':2,'23':2,'24':4,'25':4,'26':4,
-  '27':4,'28':4,'2C':1,'2D':1,'2E':1,'2F':1,'30':1,'31':2,'32':2,'33':1,
-  '34':4,'3C':2,'3D':2,'3E':2,'3F':2,'42':2,'43':2,'44':2,'45':1,'46':1,
-  '47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'51':1,'52':1,
-  '59':2,'5A':1,'5C':1,'5E':2,'61':1,'62':1,'63':2
+  // Volledige SAE J1979 mode-01 bytelengtes (00–80 + hogere bitmaps).
+  // BELANGRIJK: ook bitmaps (00/20/40/60/80), status-PIDs (01/41) en de
+  // O2-trim PIDs (53–58) horen erin. De batch-parser brak vroeger af op het
+  // eerste ONBEKENDE PID-nummer en gooide dan de complete respons weg —
+  // dat gaf valse "dips" (bv. 01414445, 01555659) die multi-PID onterecht
+  // uitschakelden terwijl de data gewoon geldig binnenkwam.
+  '00':4,'01':4,'02':2,'03':2,'04':1,'05':1,'06':1,'07':1,'08':1,'09':1,
+  '0A':1,'0B':1,'0C':2,'0D':1,'0E':1,'0F':1,'10':2,'11':1,'12':1,'13':1,
+  '14':2,'15':2,'16':2,'17':2,'18':2,'19':2,'1A':2,'1B':2,'1C':1,'1D':1,
+  '1E':1,'1F':2,'20':4,'21':2,'22':2,'23':2,'24':4,'25':4,'26':4,'27':4,
+  '28':4,'29':4,'2A':4,'2B':4,'2C':1,'2D':1,'2E':1,'2F':1,'30':1,'31':2,
+  '32':2,'33':1,'34':4,'35':4,'36':4,'37':4,'38':4,'39':4,'3A':4,'3B':4,
+  '3C':2,'3D':2,'3E':2,'3F':2,'40':4,'41':4,'42':2,'43':2,'44':2,'45':1,
+  '46':1,'47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'4F':4,
+  '50':4,'51':1,'52':1,'53':2,'54':2,'55':2,'56':2,'57':2,'58':2,'59':2,
+  '5A':1,'5B':1,'5C':1,'5D':2,'5E':2,'5F':1,'60':4,'61':1,'62':1,'63':2,
+  '64':5,'65':2,'66':5,'67':3,'68':7,'69':7,'6A':5,'6B':5,'6C':5,'6D':6,
+  '6E':5,'6F':3,'70':9,'71':5,'72':5,'73':5,'74':5,'75':7,'76':7,'77':5,
+  '78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,'80':4,'A0':4,'C0':4
 };
 function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
 
@@ -10903,8 +10949,12 @@ function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
 //  A) los: "410C0A98 410D00 410584" (elk PID herhaalt 41)
 //  B) Mazda/ISO-TP multiframe: "00E 0:410C0B95 0469 1:11200B24..." 
 //     één 41, dan per PID: nummer + databytes aaneengeregen
-function splitBatchResponse(raw){
+function splitBatchResponse(raw, expectPids){
   if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')||raw.includes('STOPPED')) return {};
+  // Optioneel: de PIDs die in deze batch gevráágd zijn (bv. ['0141','0144','0145']).
+  // Daarmee kan de parser "41" ondubbelzinnig duiden: is het een blok-echo
+  // (formaat A) of PID 0x41 zelf? En stopt hij netjes op ISO-TP padding.
+  const expect=new Set((expectPids||[]).map(p=>String(p).slice(2).toUpperCase()));
   // Per regel opschonen: "0:"/"1:" frame-nummers, CAN-headers (7E8/18DAxx —
   // alleen als headers aanstaan) en losse First-Frame lengteregels ("00E").
   // De oude aanpak plakte alles plat en scande daarna vrij op "41" — waardoor
@@ -10925,17 +10975,64 @@ function splitBatchResponse(raw){
   }
   // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
   hex=hex.replace(/^0[0-9A-F]{2}(?=41)/,'');
-  const out={};
   let i=hex.indexOf('41');
-  if(i<0) return out;
-  // Eén sequentiële parser voor beide formaten: na elke "41" volgt
-  // PID-nummer + databytes; daarna óf direct het volgende PID-nummer
-  // (formaat B: één 41-echo) óf een nieuwe "41" (formaat A: los blok per PID).
+  if(i<0) return {};
   i+=2;
+
+  // ── Route 1: verwachte PID-lijst bekend → adaptieve backtracking-parser ──
+  // Voertuigen wijken af van de J1979-bytelengtes: op de Mazda SkyActiv zijn
+  // PID 55/56 bv. 1 byte i.p.v. de standaard 2. Een vaste tabel knipt dan
+  // verkeerd en de rest van de batch gaat verloren. Omdat we wéten welke PIDs
+  // gevraagd zijn, proberen we per PID meerdere plausibele lengtes
+  // (tabelwaarde eerst, dan 1/2/4) en kiezen de segmentatie die de meeste
+  // gevraagde PIDs verklaart — met voorkeur voor een parse die netjes eindigt
+  // op padding of het einde van de respons. Max 3 PIDs per batch → hoogut
+  // enkele tientallen paden, verwaarloosbaar qua rekenwerk.
+  if(expect.size){
+    let best=null;
+    const consider=(acc,clean)=>{
+      const score=Object.keys(acc).length;
+      if(!best||score>best.score||(score===best.score&&clean&&!best.clean))
+        best={out:{...acc},score,clean};
+    };
+    const rec=(pos,remaining,acc,depth)=>{
+      if(depth>16) return;
+      const rest=hex.slice(pos);
+      if(!remaining.length||!rest||/^0+$/.test(rest)||rest.length<2){
+        consider(acc,true);                      // alles gevonden of nette padding/einde
+        return;
+      }
+      const suf=rest.slice(0,2);
+      // Blok-echo "41" (formaat A) overslaan — behalve als "41" hier als
+      // PID zelf verwacht wordt (die tak wordt hieronder ook geprobeerd).
+      if(suf==='41'&&!remaining.includes('41')){
+        rec(pos+2,remaining,acc,depth+1);
+      }
+      if(remaining.includes(suf)){
+        const tbl=pidByteLen(suf);
+        for(const n of [...new Set([tbl,1,2,4])]){
+          const end=pos+2+n*2;
+          if(end>hex.length) continue;
+          const b=[];
+          for(let k=0;k<n;k++) b.push(parseInt(hex.slice(pos+2+k*2,pos+2+k*2+2),16));
+          rec(end,remaining.filter(x=>x!==suf),Object.assign({},acc,{['01'+suf]:b}),depth+1);
+        }
+      }
+      consider(acc,false);                       // doodlopend pad → partial vastleggen
+    };
+    rec(i,[...expect],{},0);
+    return best?best.out:{};
+  }
+
+  // ── Route 2 (fallback, geen verwachting): sequentieel op tabelwaardes ──
+  // Eén parser voor beide formaten: na elke "41" volgt PID-nummer + databytes;
+  // daarna óf direct het volgende PID-nummer (formaat B: één 41-echo) óf een
+  // nieuwe "41" (formaat A: los blok per PID).
+  const out={};
   let guard=0;
   while(i+2<=hex.length&&guard++<24){
-    if(hex.slice(i,i+2)==='41'&&PID_BYTE_LEN[hex.slice(i+2,i+4)]){ i+=2; }  // formaat A: blok-echo overslaan
-    const suf=hex.slice(i,i+2);
+    let suf=hex.slice(i,i+2);
+    if(suf==='41'&&PID_BYTE_LEN[hex.slice(i+2,i+4)]){ i+=2; suf=hex.slice(i,i+2); }  // blok-echo
     if(!PID_BYTE_LEN[suf]) break;                    // onbekend PID-nummer of padding → stop
     const n=pidByteLen(suf), b=[];
     for(let k=0;k<n&&i+2+k*2+2<=hex.length;k++) b.push(parseInt(hex.slice(i+2+k*2,i+2+k*2+2),16));
@@ -11096,20 +11193,33 @@ function startPoll(){
       }
 
       if(canBatch&&due.length>1){
+        // Bitmap-PIDs (0100/0120/.../0180) NIET batchen: in de praktijk (o.a.
+        // Mazda SkyActiv) antwoordt de ECU NO DATA op élke multi-PID request
+        // die een bitmap bevat — batches zónder bitmap werkten in dezelfde
+        // sessie prima. Dát waren de echte dips. Data-PIDs batchen, bitmaps
+        // sequentieel achteraan.
+        const isBitmapPid=p=>/^01(00|20|40|60|80|A0|C0)$/i.test(p);
+        const soloPids=due.filter(isBitmapPid);
+        const batchable=due.filter(p=>!isBitmapPid(p));
         // In groepjes van max 3 PIDs — meer dan dat dwingt een fragiele
         // ISO-TP multiframe respons af waar PIDs uit kunnen vallen
-        for(let g=0;g<due.length;g+=3){
+        for(let g=0;g<batchable.length;g+=3){
           if(!connected) break;
-          const grp=due.slice(g,g+3);
+          const grp=batchable.slice(g,g+3);
           const cmd='01'+grp.map(p=>p.slice(2)).join('');
           const raw=await sendCmd(cmd,2500);
-          const parsed=splitBatchResponse(raw);
+          const parsed=splitBatchResponse(raw,grp);
           const got=Object.keys(parsed).length;
           if(got===0){
-            // Echte mislukking: leeg/NO DATA/kapotte respons → dip. Niet per PID
-            // als NO DATA tellen (kan transiënt zijn) — volgende ronde opnieuw.
-            batchDip();
-            btDiag(`Multi-PID leeg TX="${cmd}" RX="${String(raw).replace(/[\r\n]/g,' ').slice(0,60)}" — dip`,'warn');
+            // Zit er wél een 41-payload in de respons? Dan kwam de data goed
+            // binnen en is dit een parse-probleem aan ónze kant — batch niet
+            // uitschakelen, alleen loggen. Alleen leeg/NO DATA telt als dip.
+            if(/41[0-9A-F]{2}/i.test(String(raw||''))){
+              btDiag(`Multi-PID parse-fout TX="${cmd}" RX="${String(raw).replace(/[\r\n]/g,' ').slice(0,60)}" — geen dip`,'warn');
+            } else {
+              batchDip();
+              btDiag(`Multi-PID leeg TX="${cmd}" RX="${String(raw).replace(/[\r\n]/g,' ').slice(0,60)}" — dip`,'warn');
+            }
             continue;
           }
           // ≥1 PID terug = batch wérkt. Verwerk wat binnenkwam; ontbrekende PIDs
@@ -11125,6 +11235,14 @@ function startPoll(){
               markPidNoData(pid);
             }
           }
+        }
+        // Bitmap-PIDs één voor één ('1'-suffix voor snelle terugkeer) —
+        // deze weigeren batches maar antwoorden solo prima.
+        for(const pid of soloPids){
+          if(!connected) break;
+          const resp=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+          if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
+          else markPidNoData(pid);
         }
       } else {
         // Sequentieel: één PID per request, '1'-suffix voor snelle terugkeer
