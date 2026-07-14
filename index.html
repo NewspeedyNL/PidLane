@@ -338,6 +338,58 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .wm-door-h { font-weight:800; font-size:15px; margin:6px 0 2px; }
 @media (max-width:760px){ .wm-doors { grid-template-columns:1fr; } }
 
+/* ════ AMBIENT BACKGROUND — OBD-hartslag + toerenteller (welcome screen) ════ */
+#plAmbient { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+#welcomeScreen > .welcome-header, #welcomeScreen > .welcome-scroll { position:relative; z-index:1; }
+/* blauwdruk-grid, vervaagt naar de randen */
+#plAmbient .pl-grid { position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(79,124,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,124,255,.045) 1px, transparent 1px),
+    linear-gradient(rgba(79,124,255,.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,124,255,.09) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 30%, transparent 100%);
+}
+/* AI-glow die langzaam ademt */
+#plAmbient .pl-glow { position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 38%, rgba(79,124,255,.10), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 78% 85%, rgba(139,92,246,.07), transparent 70%),
+    radial-gradient(ellipse 35% 30% at 15% 90%, rgba(34,197,94,.05), transparent 70%);
+  animation: plBreathe 9s ease-in-out infinite;
+}
+@keyframes plBreathe { 0%,100%{opacity:.75} 50%{opacity:1} }
+#plAmbient svg { position:absolute; inset:0; width:100%; height:100%; }
+/* hartslag tekent zichzelf als live datastream */
+#plAmbient .pl-pulse { fill:none; stroke:rgba(79,124,255,.55); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+  filter:drop-shadow(0 0 6px rgba(79,124,255,.45)); stroke-dasharray:260 1740; animation:plPulseTravel 8s linear infinite; }
+#plAmbient .pl-pulse-echo { fill:none; stroke:rgba(79,124,255,.10); stroke-width:2; }
+@keyframes plPulseTravel { from{stroke-dashoffset:2000} to{stroke-dashoffset:0} }
+/* toerenteller: gekleurde zones + sweeperende naald */
+#plAmbient .pl-tacho    { stroke:rgba(139,92,246,.14); fill:none; }
+#plAmbient .pl-zone-g   { stroke:rgba(34,197,94,.30);  fill:none; }
+#plAmbient .pl-zone-a   { stroke:rgba(245,158,11,.34); fill:none; }
+#plAmbient .pl-zone-r   { stroke:rgba(239,68,68,.42);  fill:none; }
+#plAmbient .pl-tick     { stroke:rgba(139,92,246,.30); }
+#plAmbient .pl-needle   { stroke:rgba(245,158,11,.55); filter:drop-shadow(0 0 5px rgba(245,158,11,.4)); }
+#plAmbient .pl-hub      { fill:rgba(245,158,11,.45); }
+#plAmbient .pl-needle-g { transform-origin:1190px 900px; animation:plRev 7s ease-in-out infinite; }
+@keyframes plRev { 0%{transform:rotate(6deg)} 30%{transform:rotate(88deg)} 45%{transform:rotate(62deg)}
+  65%{transform:rotate(102deg)} 80%{transform:rotate(40deg)} 100%{transform:rotate(6deg)} }
+/* CAN-traces, hex-frames, OBD-connector */
+#plAmbient .pl-trace   { stroke:rgba(79,124,255,.10); fill:none; stroke-width:1.5; }
+#plAmbient .pl-node    { fill:rgba(79,124,255,.28); }
+#plAmbient .pl-hex     { font-family:ui-monospace,'Roboto Mono',monospace; font-size:13px; letter-spacing:2px; fill:rgba(139,148,167,.16); }
+#plAmbient .pl-hex-hot { fill:rgba(79,124,255,.22); }
+#plAmbient .pl-obd     { stroke:rgba(139,148,167,.14); fill:none; stroke-width:1.5; }
+#plAmbient .pl-obd-pin { fill:rgba(139,148,167,.14); }
+@media (prefers-reduced-motion: reduce){
+  #plAmbient .pl-pulse { animation:none; stroke-dasharray:none; }
+  #plAmbient .pl-glow, #plAmbient .pl-needle-g { animation:none; }
+}
+
 /* ════ FASE 1 — IMMERSIEVE ZWARTE STIJL (startscherm & 4 deuren) ════ */
 .welcome-header { background:#0a0e17; border-bottom:1px solid #1a2030; }
 .welcome-title { color:#fff; font-size:18px; }
@@ -1241,6 +1293,71 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 
 <!-- ══ WELCOME SCREEN ══ -->
 <div id="welcomeScreen" class="hidden">
+
+  <!-- ── Ambient background: OBD-hartslag, toerenteller, CAN-bus ── -->
+  <div id="plAmbient" aria-hidden="true">
+    <div class="pl-grid"></div>
+    <div class="pl-glow"></div>
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice">
+
+      <!-- Toerenteller rechtsonder: gekleurde zones + redline -->
+      <g transform="translate(1190, 900)">
+        <path class="pl-zone-g" stroke-width="6" d="M -340 0 A 340 340 0 0 1 0 -340"/>
+        <path class="pl-zone-a" stroke-width="6" d="M 0 -340 A 340 340 0 0 1 260.5 -218.6"/>
+        <path class="pl-zone-r" stroke-width="6" d="M 260.5 -218.6 A 340 340 0 0 1 340 0"/>
+        <path class="pl-tacho" stroke-width="1" d="M -270 0 A 270 270 0 0 1 270 0"/>
+        <g class="pl-tacho pl-tick" stroke-width="2">
+          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(15)"/>
+          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(45)"/>
+          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(75)"/>
+          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(105)"/>
+          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(135)"/>
+          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(165)"/>
+        </g>
+      </g>
+      <!-- Naald sweept mee met de toeren (transform-origin via CSS) -->
+      <g class="pl-needle-g">
+        <line class="pl-needle" x1="1190" y1="900" x2="930" y2="750" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <circle class="pl-hub" cx="1190" cy="900" r="8"/>
+
+      <!-- OBD2-connector silhouet linksonder (2x8 pinnen) -->
+      <g transform="translate(90, 790)">
+        <path class="pl-obd" d="M 0 0 L 220 0 L 200 64 L 20 64 Z" stroke-width="2"/>
+        <g class="pl-obd-pin">
+          <rect x="26"  y="14" width="14" height="10" rx="2"/><rect x="49"  y="14" width="14" height="10" rx="2"/>
+          <rect x="72"  y="14" width="14" height="10" rx="2"/><rect x="95"  y="14" width="14" height="10" rx="2"/>
+          <rect x="118" y="14" width="14" height="10" rx="2"/><rect x="141" y="14" width="14" height="10" rx="2"/>
+          <rect x="164" y="14" width="14" height="10" rx="2"/><rect x="187" y="14" width="14" height="10" rx="2"/>
+          <rect x="32"  y="38" width="14" height="10" rx="2"/><rect x="55"  y="38" width="14" height="10" rx="2"/>
+          <rect x="78"  y="38" width="14" height="10" rx="2"/><rect x="101" y="38" width="14" height="10" rx="2"/>
+          <rect x="124" y="38" width="14" height="10" rx="2"/><rect x="147" y="38" width="14" height="10" rx="2"/>
+          <rect x="170" y="38" width="14" height="10" rx="2"/><rect x="193" y="38" width="14" height="10" rx="2"/>
+        </g>
+      </g>
+
+      <!-- CAN-bus traces met knooppunten -->
+      <path class="pl-trace" d="M 200 790 L 200 700 L 420 700 L 420 620"/>
+      <path class="pl-trace" d="M 240 790 L 240 660 L 640 660"/>
+      <path class="pl-trace" d="M 1250 620 L 1250 520 L 1050 520"/>
+      <circle class="pl-node" cx="420" cy="620" r="4"/>
+      <circle class="pl-node" cx="640" cy="660" r="4"/>
+      <circle class="pl-node" cx="1050" cy="520" r="4"/>
+
+      <!-- Zwevende hex-frames: request → response -->
+      <text class="pl-hex" x="120" y="620">01 0C 0D 05 04</text>
+      <text class="pl-hex pl-hex-hot" x="120" y="648">41 0C 1A F8 0D 3C</text>
+      <text class="pl-hex" x="1010" y="480">09 02 · VIN</text>
+      <text class="pl-hex" x="660" y="720">7E8 06 41 05 6E</text>
+      <text class="pl-hex pl-hex-hot" x="1120" y="440">P0000 — geen fouten</text>
+
+      <!-- De hartslag: idle-lijn met QRS-pieken -->
+      <path class="pl-pulse-echo" d="M -20 560 L 260 560 L 300 548 L 340 560 L 560 560 L 585 560 L 600 505 L 618 610 L 636 560 L 900 560 L 940 550 L 980 560 L 1160 560 L 1180 560 L 1196 515 L 1214 600 L 1232 560 L 1460 560"/>
+      <path class="pl-pulse" pathLength="2000" d="M -20 560 L 260 560 L 300 548 L 340 560 L 560 560 L 585 560 L 600 505 L 618 610 L 636 560 L 900 560 L 940 550 L 980 560 L 1160 560 L 1180 560 L 1196 515 L 1214 600 L 1232 560 L 1460 560"/>
+
+    </svg>
+  </div>
+
   <div class="welcome-header">
     <div class="welcome-header-row">
       <div>
