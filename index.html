@@ -8468,7 +8468,22 @@ async function connectSerial(){
   const haveCfgMac = (typeof OBDLINK_ADDRESS !== 'undefined' && OBDLINK_ADDRESS);
 
   // Volgorde: bekend MAC → SPP-direct eerst (geen scan/locatie). Anders BLE eerst.
+  // FAST LANE: is er eerder succesvol via SPP verbonden (opgeslagen adres) en
+  // was SPP het laatst gebruikte transport, dan proberen we dát adres direct —
+  // zonder BLE-scan (12s) en zonder SPP-discovery. Dit maakt herverbinden na
+  // een app-herstart vrijwel direct: Android houdt de bond vast en een directe
+  // connect op een gekoppeld adres slaagt binnen enkele seconden. Mislukt de
+  // directe poging (adapter weg/andere auto), dan valt de cascade gewoon
+  // terug op de normale volgorde.
+  const savedAddr = (()=>{ try{ return localStorage.getItem('spp_address'); }catch(e){ return null; } })();
+  const savedName = (()=>{ try{ return localStorage.getItem('spp_name'); }catch(e){ return null; } })() || 'OBDLink';
+  const lastTransport = (()=>{ try{ return localStorage.getItem('pl_lastTransport'); }catch(e){ return null; } })();
   const chain = [];
+  if (spp && savedAddr && lastTransport !== 'ble' && !haveCfgMac)
+                          chain.push(['SPP (laatst gebruikte adapter)', async () => {
+                            btDiag(`Direct herverbinden: ${savedName} (${savedAddr})`, 'info');
+                            await doSPPConnect(spp, savedAddr, savedName);
+                          }]);
   if (ble)               chain.push(['BLE',                         () => connectBLE(ble)]);
   if (spp && haveCfgMac) chain.push(['SPP (Classic · direct MAC)', () => connectSPP(spp)]);
   if (spp && !haveCfgMac) chain.push(['SPP (Classic · scan)',       () => connectSPP(spp)]);
@@ -8587,14 +8602,19 @@ async function connectSPP(spp){
   } catch(se){ btDiag('SPP scan: ' + se.message, 'warn'); }
 
   const OBD = ['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
-  let target = devices.find(d => OBD.some(n => (d.name || '').toLowerCase().includes(n)))
-            || (devices.length > 0 ? devices[0] : null);
+  // Bekende niet-OBD apparaten (Shelly, watches, buds...) nooit als kandidaat.
+  const usable = devices.filter(d => !NON_OBD_RX.test(d.name || ''));
+  // ALLEEN verbinden met iets dat op een OBD2-adapter lijkt. De oude fallback
+  // "pak dan maar het eerste apparaat" verbond met Shelly's en smartwatches —
+  // en de echte adapter ontbreekt vaak juist in de scan omdat de OS-verbinding
+  // nog bestaat. Daarom: naam-match → opgeslagen adres → anders eerlijk falen.
+  let target = usable.find(d => OBD.some(n => (d.name || '').toLowerCase().includes(n)));
 
   if (!target){
     try {
       const sa = localStorage.getItem('spp_address');
       const sn = localStorage.getItem('spp_name');
-      if (sa){ target = { address: sa, name: sn || 'OBDLink MX+' }; btDiag('Opgeslagen adres...', 'info'); }
+      if (sa){ target = { address: sa, name: sn || 'OBDLink MX+' }; btDiag('Geen OBD2-naam in scan — opgeslagen adres proberen...', 'info'); }
     } catch(e){}
   }
 
@@ -8610,7 +8630,7 @@ async function doSPPConnect(spp, address, name){
   await spp.connect({ address });               // gooit bij fout
   btDiag('Verbonden ✓', 'ok');
 
-  try { localStorage.setItem('spp_address', address); localStorage.setItem('spp_name', name); } catch(e){}
+  try { localStorage.setItem('spp_address', address); localStorage.setItem('spp_name', name); localStorage.setItem('pl_lastTransport', 'spp'); } catch(e){}
 
   window._sppConn = { spp, address, name };     // read()-polling gebruikt dit in sendBT
   connected = true; demoMode = false;
@@ -8733,6 +8753,7 @@ async function connectBLE(ble){
       // Bevestigd!
       btDiag(`✓ ELM327 bevestigd: ${cand.name}`, 'ok');
       log('BLE verbonden: ' + cand.name, 'ok');
+      try { localStorage.setItem('pl_lastTransport', 'ble'); } catch(e){}
       setConn(true);
       await initELM327();
       await scanNetworks();
