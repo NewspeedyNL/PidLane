@@ -212,6 +212,15 @@ html.dark {
 * { margin:0; padding:0; box-sizing:border-box; }
 html { font-size:14px; }
 body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:100vh; display:flex; flex-direction:column; transition:background .2s, color .2s; }
+/* TABLET-FIX (build 2026-07-15): een oud opgeslagen ns_zoom paste
+   transform:scale() toe op #appScale ZONDER transform-origin — bij zoom<1
+   werd het element breder dan de viewport en schaalde het om zijn middelpunt:
+   alles schoof naar rechts en de topbalk stak voorbij het scherm ("heel lang").
+   transform-origin:0 0 maakt width:100/z% × scale(z) weer exact 100% breed;
+   overflow-x:clip vangt elke resterende horizontale uitloop af zonder
+   position:sticky (topbar) te breken — clip maakt géén scroll-container. */
+html, body { overflow-x:clip; }
+#appScale { transform-origin:0 0; }
 
 /* ══ OVERLAYS ══ */
 .ov { position:fixed; inset:0; background:rgba(15,20,35,.6); backdrop-filter:blur(8px); z-index:9600; display:flex; align-items:center; justify-content:center; padding:12px; }
@@ -298,7 +307,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .wm-panel.active { display:block; }
 /* category label */
 .wm-cat { font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--tx3); margin:14px 0 7px; }
-.welcome-choices { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.welcome-choices { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:10px; } /* fluid; ≤760 → 1 kolom (media query) */
 .choice-card { background:var(--sur); border:1.5px solid var(--bd); border-radius:12px; padding:14px; cursor:pointer; transition:all .2s; box-shadow:var(--ss); position:relative; }
 .choice-card:hover { border-color:var(--bl); box-shadow:var(--sh); }
 .choice-card:active { transform:scale(.97); }
@@ -322,7 +331,7 @@ body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:1
 .choice-out.w b { color:#fff; }
 
 /* ══ INTENT-DEUREN (4 deuren, progressive disclosure) ══ */
-.wm-doors { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:6px; }
+.wm-doors { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:11px; margin-top:6px; } /* fluid: 4-op-rij op breed, 2 op tablet, 1 ≤760 (override hieronder) */
 .wm-door { border-radius:14px; padding:16px 14px; cursor:pointer; color:#fff; box-shadow:var(--sh); transition:transform .15s; }
 .wm-door:active { transform:scale(.97); }
 .dr-diag { background:linear-gradient(135deg,#2563ff,#1a4fe0); }
@@ -473,10 +482,13 @@ body:has(#welcomeScreen:not(.hidden)) .dm-topbar { display:block; }
 
 /* ══ DESKTOP-LAAG (≥1024px) — comfortabel testen op een breed scherm ══ */
 @media (min-width:1024px){
-  .cc { max-width:1080px; }
-  .welcome-scroll { padding:30px 26px; }
-  .wm-doors { max-width:860px; margin-inline:auto; }
-  .welcome-choices { max-width:860px; margin-inline:auto; }
+  /* 2026-07-15: caps verruimd — tablet/desktop gebruikt de volle breedte.
+     Alleen wat extra zijpadding zodat content niet tegen de rand plakt. */
+  .cc { max-width:none; }
+  .tb { padding:16px 26px; }
+  .welcome-scroll { padding:30px 34px; }
+  .wm-doors { max-width:1240px; margin-inline:auto; }
+  .welcome-choices { max-width:1240px; margin-inline:auto; }
   /* PID- en log-lade als hoog ZIJPANEEL i.p.v. bottom-sheet */
   #slPanel, #logLade {
     left:auto; right:0; top:46px; bottom:0;
@@ -658,6 +670,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
    Panes blijven gemount, dus polling/rit-analyse/AI lopen door (niets cancelt).
    De zijpanelen schuiven eronder als volle-breedte secties i.p.v. vaste kolommen. */
 @media (max-width:760px){
+  /* topbalk past altijd: logo-tekst weg (icoon blijft), chips krijgen ruimte */
+  .logo{ font-size:0; gap:2px; }
   .app{ display:flex; flex-direction:column; height:auto; min-height:calc(100vh - 46px); }
   .app .cc{ order:1; width:100%; min-width:0; }
   .app .sl{ order:2; }
@@ -739,7 +753,10 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .strat-rec-tag{font-size:11px;background:var(--bl);color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px;vertical-align:middle}
 
 /* ══ CENTER ══ */
-.cc { display:flex; flex-direction:column; overflow-y:auto; background:var(--bg); width:min(100%,820px); margin-inline:auto; }
+/* Volle breedte (2026-07-15): de 820px-cap centreerde het werkscherm met
+   brede lege stroken op tablet/desktop. Gauges-grid en tabellen zijn fluid
+   (auto-fill), dus het scherm mag gewoon de hele ruimte gebruiken. */
+.cc { display:flex; flex-direction:column; overflow-y:auto; background:var(--bg); width:100%; }
 .tabs { display:flex; gap:1px; padding:7px 12px 0; background:var(--sur); border-bottom:1px solid var(--bd); overflow-x:auto; }
 .tabs::-webkit-scrollbar { height:0; }
 .tab { font-family:var(--f); font-size:12px; font-weight:600; padding:5px 10px; border:none; background:transparent; color:var(--tx2); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; border-radius:5px 5px 0 0; transition:all .15s; white-space:nowrap; }
@@ -2952,8 +2969,35 @@ function buildQualityReport(pidValPairs){
   return {betrouwbaar, twijfel, onzin, promptBlok, heeftTwijfel:(twijfel.length>0||onzin.length>0)};
 }
 
+// Kwaliteitsblok voor een losse PID-lijst (2026-07-15). Meerdere AI-paden
+// (Snelle analyse, Datalog, Diepe storings-check, Onderhoud/EV/Lange rit)
+// stuurden hun sensordata ZONDER het DATAKWALITEIT-blok mee — alleen
+// Totaalcheck/Brandstof/AI-monteur/Rit hadden het. Deze helper geeft elk
+// pad hetzelfde blok over precies de PIDs die dat pad zelf al selecteerde
+// (selectie blijft ongewijzigd; alleen de kwaliteitscontext komt erbij).
+function _qualityBlokFor(pids){
+  try{
+    const pairs=(pids||[])
+      .filter(p=>typeof pidVals!=='undefined' && pidVals[p]!==undefined && pidVals[p]!==null)
+      .map(p=>[p,pidVals[p]]);
+    if(!pairs.length) return '';
+    return buildQualityReport(pairs).promptBlok;
+  }catch(e){ return ''; }
+}
+
 // Standaard disclaimer onderaan elk rapport
 const RAPPORT_DISCLAIMER='Let op: Deze analyse is gebaseerd op live OBD2-sensordata. Sensorwaarden kunnen afwijken door meetfouten, sensorslijtage of verbindingsproblemen. Laat een afwijking altijd door een monteur verifiëren vóór reparatie — voorkom onnodige kosten door een mogelijke meetfout.';
+// Garandeert de disclaimer op ELK rapport (2026-07-15). Voorheen stond hij
+// alleen in 2 van de ~10 rapport-prompts (Totaalcheck en Rit) en dan nog
+// afhankelijk van of het model de zin netjes echode. Nu centraal toegevoegd
+// bij deel/PDF/weergave; dubbel plakken wordt voorkomen via de vaste
+// kernzin als herkenning.
+function _withDisclaimer(t){
+  const s=String(t||'');
+  if(!s.trim()) return s;
+  if(/mogelijke meetfout/i.test(s)) return s;   // zit er al in (prompt-echo)
+  return s+'\n\n'+RAPPORT_DISCLAIMER;
+}
 
 const MODELS={Ford:['Focus','Fiesta','Mondeo','Kuga','Puma','Transit','Ranger'],Volkswagen:['Golf','Polo','Passat','Tiguan','T-Roc','ID.3','ID.4'],BMW:['1 Serie','3 Serie','5 Serie','X1','X3','X5','M3'],Mercedes:['A-Klasse','C-Klasse','E-Klasse','GLA','GLC','GLE'],Audi:['A3','A4','A6','Q3','Q5','Q7'],Opel:['Astra','Corsa','Insignia','Mokka'],Peugeot:['208','308','2008','3008'],Renault:['Clio','Megane','Captur','Zoe'],Toyota:['Yaris','Corolla','RAV4','Prius'],Skoda:['Fabia','Octavia','Superb','Karoq'],Seat:['Ibiza','Leon','Ateca'],Hyundai:['i20','i30','Tucson','Kona'],Kia:['Picanto','Ceed','Sportage','EV6'],Volvo:['V60','XC40','XC60','XC90'],Nissan:['Juke','Qashqai','X-Trail','Leaf'],Citroën:['C3','C4','Berlingo'],Fiat:['500','Panda','Tipo'],Honda:['Jazz','Civic','CR-V']};
 const MOTORS=['1.0 TSI/EcoBoost','1.2 TDI','1.4 TDI','1.5 TDI','1.5 TSI','1.6 TDI/HDI','1.8 TSI','2.0 TDI','2.0 TSI/TFSI','2.0 TDCi','Hybrid','PHEV','Elektrisch'];
@@ -4225,7 +4269,10 @@ const FILTERED_PIDS=new Set([
 ]);
 function validateAndSmooth(pid,rawVal){
   if(rawVal===null||rawVal===undefined||isNaN(rawVal)) return null;
-  const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
+  // Fix 15-07: centrale getPidDef() (dekt ook PIDS-lijst en 0164+) — zelfde
+  // uniformering als isPIDOk/isPIDOkVal, zodat het spike-filter en de
+  // bereik-check voor élke PID dezelfde definitie zien.
+  const def=(typeof getPidDef==='function'?getPidDef(pid):null)||discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
   const lim=PID_HARD_LIMITS[pid];
 
   // LAAG 1 — Harde fysieke limieten (geldt voor álle PIDs)
@@ -4398,13 +4445,17 @@ async function runDatalogAI(){
   const statLines=Object.values(stats).map(s=>
     `• ${s.name}: gem=${fv(s.avg)} ${s.unit}, min=${fv(s.min)}, max=${fv(s.max)}, trend=${s.trend} (${s.count} metingen)`
   ).join('\n');
+  // Datalog is al 3-laags gefilterd (validateAndSmooth vult de buffer),
+  // maar 'twijfel'-vlaggen (bevroren sensor, net-over-drempel) horen er
+  // óók bij — zelfde kwaliteitscontext als de andere analyses.
+  const qBlok=_qualityBlokFor(Object.keys(stats));
   const prompt=`Je bent expert automonteur. Analyseer deze 20-seconden datalog in het Nederlands.
 
 Voertuig: ${v.merk||'?'} ${v.year||''}
 DTC codes: ${formatDtcCodes(dtcCodes)}
 
 DATALOG — 20 seconden live meting:
-${statLines}
+${statLines}${qBlok}
 
 Let specifiek op:
 - Correlaties (spanning daalt als RPM stijgt = alternator)
@@ -6478,7 +6529,8 @@ async function runDiagAI(causeName){
   const desc=document.getElementById('diagDesc').value;
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent).join(', ');
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
-  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${formatDtcCodes(dtcCodes)}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
+  const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
+  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${formatDtcCodes(dtcCodes)}${qBlok}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
   const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const diagOut=document.getElementById('aiContentDiag');
   await callAI(prompt,diagOut);
@@ -6556,7 +6608,9 @@ function updateTrendChips(){
 
 function isPIDOk(pid){
   const val=pidVals[pid]; if(val===undefined) return true;
-  const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid]; if(!def) return true;
+  // Fix 15-07 (zelfde als FIX C in isPIDOkVal): centrale getPidDef() zodat ook
+  // PIDs 0164+ en de klassieke PIDS-lijst dezelfde drempels krijgen.
+  const def=(typeof getPidDef==='function'?getPidDef(pid):null)||discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid]; if(!def) return true;
   if(def.dH&&val>=def.dH) return false; if(def.dL&&val<=def.dL) return false;
   if(def.wH&&val>=def.wH) return false; if(def.wL&&val<=def.wL) return false;
   return true;
@@ -6884,14 +6938,26 @@ function aiBusyEnd(){
 }
 
 // ── Token-/kostenteller per sessie (admin) ──
-const PRICE_IN_EUR_PER_MTOK = 0.92;   // Haiku 4.5 input  (~$1/MTok) — pas aan bij prijswijziging
-const PRICE_OUT_EUR_PER_MTOK = 4.60;  // Haiku 4.5 output (~$5/MTok)
+// Prijzen per model (EUR/MTok, koers ~0,92 €/$). Fix 15-07: de teller rekende
+// altijd Haiku-tarief terwijl standaard Sonnet 5 draait → kosten ~3x te laag.
+// Sonnet 5: introprijs $2/$10 t/m 31-08-2026, daarna $3/$15 (geverifieerd
+// 15-07-2026, platform.claude.com). NB: Sonnet 5 heeft een nieuwe tokenizer
+// (~30% meer tokens voor dezelfde tekst) — usage-velden zijn dus hoger dan
+// bij Sonnet 4.6, de prijs per token is gelijk.
+function _modelPriceEur(mdl){
+  const m=String(mdl||'').toLowerCase();
+  if(m.includes('haiku'))  return {inp:0.92,  out:4.60 };            // Haiku 4.5  $1/$5
+  if(m.includes('opus'))   return {inp:13.80, out:69.00};            // Opus       $15/$75
+  const intro = Date.now() < Date.parse('2026-09-01T00:00:00Z');     // Sonnet 5 intro t/m 31-08-2026
+  return intro ? {inp:1.84, out:9.20} : {inp:2.76, out:13.80};       // $2/$10 → $3/$15
+}
 let _sessTokIn=0,_sessTokOut=0,_sessCalls=0,_sessCostEur=0;
-function trackTokens(u){
+function trackTokens(u, mdl){
   const i=u.input_tokens||0,o=u.output_tokens||0;
   try{ PidLaneEvalLog.log('ai','tokens',{tokensIn:i,tokensOut:o}); }catch(e){}
+  const P=_modelPriceEur(mdl);
   _sessTokIn+=i; _sessTokOut+=o; _sessCalls++;
-  _sessCostEur += i/1e6*PRICE_IN_EUR_PER_MTOK + o/1e6*PRICE_OUT_EUR_PER_MTOK;
+  _sessCostEur += i/1e6*P.inp + o/1e6*P.out;
   updateTokenPill(true);
 }
 function updateTokenPill(flash){
@@ -7092,11 +7158,15 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
         model: mdl,
         max_tokens: maxTokens,
         system: sys,
-        messages: msgs,
-        // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
-        // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
-        thinking: { type: 'disabled' }
+        messages: msgs
       };
+      // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
+      // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
+      // thinking:{type:'disabled'} is geldig op Sonnet 5 (geverifieerd 15-07-2026
+      // op platform.claude.com; alleen type:'enabled'+budget_tokens geeft 400).
+      // Haiku 4.5 kent het type 'disabled' niet → daar het veld weglaten
+      // (zonder thinking-veld draait Haiku sowieso zonder thinking).
+      if(!/haiku/i.test(mdl)) body.thinking = { type: 'disabled' };
       const resp = await fetch(PROXY_URL+'/v1/messages',{
         method: 'POST',
         headers:{
@@ -7109,12 +7179,12 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
       if(!resp.ok){
         const err=await resp.json().catch(()=>({}));
         const msg=err?.error?.message||`HTTP ${resp.status}`;
-        if(resp.status===401) throw new Error('Proxy weigert (401): APP_TOKEN ontbreekt, is fout of is geroteerd — controleer config.js.');
+        if(resp.status===401) throw new Error('Proxy weigert (401): sessie verlopen of ongeldig — log uit en opnieuw in.');
         if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
         throw new Error(msg);
       }
       const data=await resp.json();
-      try{ if(data.usage) trackTokens(data.usage); }catch(e){}
+      try{ if(data.usage) trackTokens(data.usage, mdl); }catch(e){}
       try{ PidLaneEvalLog.log('ai','api-call',{model:mdl,latencyMs:Date.now()-_plT0,part:part+1,stop:data.stop_reason||''}); }catch(e){}
 
       const txt=extractAIText(data)||'';
@@ -7262,6 +7332,7 @@ function _aiReportHtml(text){
 }
 // Inline tonen we alleen het verdict + acties; het volledige rapport opent in een sheet.
 function renderAIText(text,contentEl){
+  text=_withDisclaimer(text);   // garantie: disclaimer op elk getoond/gedeeld/geëxporteerd rapport (fix 15-07: _withDisclaimer werd nergens aangeroepen)
   const fullHtml=_aiReportHtml(text);
   window._lastAIReport={ text, html:fullHtml, ts:new Date() };
   const v=aiVerdict(text);
@@ -7325,8 +7396,11 @@ async function aiReplyRevise(){
   var body=document.querySelector('#aiReportSheet .ai-sheet-b');
   if(body) body.innerHTML='<div class="ai-ld"><span class="spin"></span> Rapport wordt herzien op basis van je input</div>';
   try{
-    var _mdl=(window._aiReplyModel==='deep')?'claude-sonnet-5':null;
+    // Snel = Haiku 4.5 (vlot/goedkoop), Diep = standaardmodel (Sonnet 5).
+    // Fix 15-07: voorheen wezen béide knoppen naar hetzelfde model — de keuze deed niets.
+    var _mdl=(window._aiReplyModel==='deep')?null:'claude-haiku-4-5-20251001';
     var txt=await apiFetch(p,1600,null,_mdl);
+    txt=_withDisclaimer(txt);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     openAIReportSheet();
     showToast?.('Rapport herzien');
@@ -7685,7 +7759,8 @@ async function runQuickAI(){
   const liveLines=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
   const corr=correlationLines();
   const corrBlock=corr.length?`\nAutomatische bevindingen (correlatie-engine):\n${corr.join('\n')}`:'';
-  const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor)); // zelfde gate als Totaalcheck
+  const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}${qBlok}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%
@@ -12345,19 +12420,20 @@ function fontSize(delta){
   const fl=document.getElementById('fontLbl'); if(fl) fl.textContent=currentFont;   // ctrl-bar verwijderd — label optioneel
   try{localStorage.setItem('ns_font',currentFont);}catch(e){}
 }
+// TABLET-HARDENING (2026-07-15): het transform-zoom mechanisme is VOLLEDIG
+// uitgeschakeld. Er is geen UI meer die zoom() aanroept, en een scale() op
+// #appScale was de bron van de "alles staat rechts / topbalk te lang"-bug
+// op tablets (en maakt #appScale bovendien containing block voor fixed
+// overlays). applyZoom() WIST nu uitsluitend elke eventueel achtergebleven
+// inline transform en ruimt de oude ns_zoom-sleutel op. Tekstgrootte gaat
+// uitsluitend via S/M/L in het ☰-menu (body.uiS/uiL, CSS zoom).
 function applyZoom(){
   const el=document.getElementById('appScale');
-  if(el){
-    // Bij 100% géén transform: transform:scale(1) maakt #appScale anders het
-    // containing block voor fixed elementen (topbar/onderbalk/lades) → geometry-bugs.
-    if(currentZoom===1){ el.style.transform=''; el.style.width=''; el.style.height=''; }
-    else { el.style.transform=`scale(${currentZoom})`; el.style.width=`${100/currentZoom}%`; el.style.height=`${100/currentZoom}%`; }
-  }
-  const zl=document.getElementById('zoomLbl'); if(zl) zl.textContent=Math.round(currentZoom*100)+'%';   // ctrl-bar verwijderd — label optioneel
-  try{localStorage.setItem('ns_zoom',currentZoom);}catch(e){}
+  if(el){ el.style.transform=''; el.style.width=''; el.style.height=''; el.style.transformOrigin=''; }
+  try{ localStorage.removeItem('ns_zoom'); }catch(e){}
 }
-function zoom(delta){currentZoom=Math.min(1.5,Math.max(0.5,currentZoom+delta));applyZoom();}
-function zoomReset(){currentZoom=1.0;applyZoom();}
+function zoom(){ /* verwijderd — transform-zoom bestaat niet meer, zie applyZoom() */ }
+function zoomReset(){ currentZoom=1.0; applyZoom(); }
 
 // ════════════════════════════════════════
 // INIT — alles in DOMContentLoaded zodat HTML zeker geladen is
@@ -12475,8 +12551,13 @@ document.addEventListener('DOMContentLoaded', function(){
     // donker/licht-toggle verwijderd — app gebruikt standaard het lichte thema
     const sf=localStorage.getItem('ns_font');
     if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';const _fl=document.getElementById('fontLbl');if(_fl)_fl.textContent=currentFont;}
-    const sz=localStorage.getItem('ns_zoom');
-    if(sz){currentZoom=parseFloat(sz)||1.0;applyZoom();}
+    // ns_zoom NIET meer herstellen (2026-07-15): de zoombalk is verwijderd,
+    // dus een oud opgeslagen zoomniveau was voor de gebruiker onzichtbaar én
+    // onherstelbaar — precies de bron van de "alles staat rechts"-bug op
+    // tablet. Sleutel opruimen en vast op 100% starten (tekstgrootte S/M/L
+    // in het ☰-menu blijft de bedoelde schaalknop).
+    try{ localStorage.removeItem('ns_zoom'); }catch(e){}
+    currentZoom=1.0; applyZoom();
     // PID-scherm standaard ingeklapt; opent via uitvouw-knop. Sluit na 15s inactiviteit.
     if(!slCollapsed){ slCollapsed=true; document.getElementById('appGrid').classList.add('sl-col'); const b=document.getElementById('slToggle'); if(b) b.textContent='▶'; }
     if(localStorage.getItem('ns_sr')==='true') toggleSR();
@@ -13258,7 +13339,9 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     lines.push('═══════════════════════════════════');
     lines.push(focus==='techniek'?'TECHNISCHE ANALYSE:':focus==='rijgedrag'?'RIJGEDRAG ANALYSE:':'TOTAAL AI ANALYSE:');
     lines.push(totalAnalysis);
-    window._lastAIReport={text:`## ${focusLabel} — ${v.merk||''} ${v.model||''}\n\n${totalAnalysis}`, ts:new Date()};
+    // Fix 15-07: _lastAIReport werd hier al gezet én daarna nogmaals door
+    // renderAIText() hieronder (met andere tekst) → twee archief-entries voor
+    // één rit-rapport. renderAIText zet hem nu als enige (incl. html + disclaimer).
     document.getElementById('ritStatus').textContent=`✅ Rit rapport klaar — ${mins}:${secs.toString().padStart(2,'0')} min geanalyseerd`;
 
     // Toon in rechter AI paneel als Rit Evaluatie
@@ -14275,6 +14358,7 @@ async function pidRecRunAI(){
   if(aiout) aiout.innerHTML='<div class="ai-ld"><span class="spin"></span> AI analyseert je opname</div>';
   try{
     var txt=await apiFetch(p,1400);
+    txt=_withDisclaimer(txt);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Open rapport — bekijk, deel &amp; download</button></div>';
     if(aiout) aiout.innerHTML=_aiReportHtml(txt)+acts;
@@ -14356,6 +14440,7 @@ async function runDeepDiag(){
   if(res){ res.style.display='block'; res.innerHTML='<div class="ai-ld"><span class="spin"></span> AI analyseert alle input</div>'; }
   try{
     var txt=await apiFetch(p,1600);
+    txt=_withDisclaimer(txt);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     var head='<div class="ai-res"><div class="ai-sec orange"><div class="ai-sh orange">🔁 Probleem-PID-overzicht ('+(ov.useLog?'datalog':'momentopname')+')</div><div class="ai-sb" style="padding:8px 4px">'+ov.html+'</div></div></div>';
     var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Open rapport — bekijk, deel &amp; download</button></div>';
@@ -14482,6 +14567,7 @@ async function runOnderhoud(){
   const v=getVehicle();
   const laatste=parseInt(document.getElementById('ondLaatste')?.value)||0;
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
   const prompt=`Jij bent een Nederlandse APK-keurmeester/monteur. Bepaal of onderhoud nu nodig is of kan wachten.
 
 Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}
@@ -14489,7 +14575,7 @@ Km-stand: ${v.km||'onbekend'}
 Km sinds laatste grote beurt: ${laatste||'onbekend'}
 Live sensordata:
 ${pdata||'(geen)'}
-Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}
+Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}${qBlok}
 
 Gebruik de fabrieksintervallen van dit merk/model als referentie (olie, filters, distributieriem/-ketting, remvloeistof, bougies). Beoordeel daarnaast of de sensordata wijst op een actueel gebrek.
 
@@ -14502,6 +14588,8 @@ ADVIES: [1-2 zinnen; benadruk serviceboekje compleet houden]`;
     const text=await apiFetch(prompt,900)||'Geen reactie';
     res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'onderhoud',msg:`${v.merk} ${v.model} ${v.km}km: ${text.slice(0,180)}`});
+    // 15-07: óók in het 📄 Rapporten-archief — dit was (met EV/klimaat/koop) het enige AI-pad dat daar niet in kwam
+    try{ registerSessionReport({type:'ai', title:'Onderhoudsadvies — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){}
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
 }
 
@@ -14546,13 +14634,14 @@ async function runEVCheck(){
   const v=getVehicle();
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
   const prompt=`Jij bent een Nederlandse EV/hybride specialist. Beoordeel de elektrische aandrijving en accu.
 
 Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}
 Aandrijving: ${ft}
 Live sensordata:
 ${pdata||'(geen)'}
-Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}
+Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}${qBlok}
 
 Focus op: accu/HV-systeem conditie, laad- en ontlaadgedrag, regeneratie, temperatuurbeheer. Wees eerlijk dat standaard OBD2 beperkte EV-data geeft en dat sommige waarden merk-specifiek zijn en kunnen ontbreken. Verzin geen waarden.
 
@@ -14565,6 +14654,7 @@ ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
     const text=await apiFetch(prompt,900)||'Geen reactie';
     res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'ev-check',msg:`${v.merk} ${v.model} (${ft}): ${text.slice(0,180)}`});
+    try{ registerSessionReport({type:'ai', title:'EV/Hybride check — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){}
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
 }
 
@@ -14611,6 +14701,7 @@ async function runLangeRitTech(){
   try{ await ensurePIDsActive('totaal'); }catch(e){}
   const v=getVehicle();
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
   const prompt=`Jij bent een Nederlandse monteur. Beoordeel of deze auto klaar is voor een lange rit (1000+ km).
 
 Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}
@@ -15031,6 +15122,14 @@ function climateRenderResult(v, aiText){
     </div>
   </div>`;
   try{ scanLogAdd?.({ type:_climateMode==='airco'?'aircocheck':'wintercheck', msg:`${v.oordeel}${v.deltaT!=null?' (\u0394T '+v.deltaT.toFixed(1)+'\u00b0C)':''}` }); }catch(e){}
+  // 15-07: klimaatcheck ook in het 📄 Rapporten-archief (lokaal oordeel + evt. AI-toelichting)
+  try{
+    const _cl=[(airco?'AIRCO CHECK':'WINTERCHECK')+' — lokaal oordeel: '+v.oordeel];
+    if(airco){ if(v.deltaT!=null)_cl.push('Delta T: '+v.deltaT.toFixed(1)+' °C (T1 '+(v.t1==null?'—':v.t1.toFixed(1))+' → T2 '+(v.t2==null?'—':v.t2.toFixed(1))+')'); _cl.push('Compressor schakelt in: '+(v.compressorAan?'ja':'niet gedetecteerd')); }
+    else { _cl.push('Koelvloeistof eind: '+(v.eindCoolant==null?'—':v.eindCoolant.toFixed(0))+' °C · tijd tot 88°C: '+(v.tijd88==null?'niet bereikt':v.tijd88+'s')+' · accu koud: '+(v.voltKoud==null?'—':v.voltKoud.toFixed(1))+' V ('+v.accu+')'); }
+    if(aiText) _cl.push('','AI-TOELICHTING:',aiText);
+    registerSessionReport({type:'ai', title:(airco?'Airco check':'Wintercheck')+' — '+v.oordeel, text:_withDisclaimer(_cl.join('\n'))});
+  }catch(e){}
 }
 
 function climateStatCard(lbl,val,col){
@@ -15094,6 +15193,7 @@ async function runKoopcheck(){
     </div>`;
 
   let onderhoudKosten = 0;
+  const _koopArch = [];   // 15-07: verzamelt de volledige AI-teksten voor het 📄 Rapporten-archief
 
   // ── Onderhoudcheck AI call ──
   try {
@@ -15106,6 +15206,7 @@ async function runKoopcheck(){
     if(kostenMatch) onderhoudKosten = parseInt(kostenMatch[1].replace(/[.,]/g,''))||0;
 
     scanEntry.onderhoud_ai = text1.slice(0,300);
+    _koopArch.push('— ONDERHOUDCHECK —\n'+text1);
     scanLogAdd({ type:'koopcheck-onderhoud', msg:`${merk} ${model} ${jaar} ${km}km: ${text1.slice(0,200)}` });
   } catch(e) {
     document.getElementById('koopOnderhoudRes').textContent = 'AI niet beschikbaar: ' + e.message;
@@ -15118,6 +15219,7 @@ async function runKoopcheck(){
     document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
 
     scanEntry.prijs_ai = text2.slice(0,300);
+    _koopArch.push('— PRIJSSCHATTING —\n'+text2);
     scanLogAdd({ type:'koopcheck-prijs', msg:`${merk} ${model} ${jaar} ${km}km: ${text2.slice(0,200)}` });
   } catch(e) {
     document.getElementById('koopPrijsRes').textContent = 'AI niet beschikbaar: ' + e.message;
@@ -15142,6 +15244,7 @@ async function runKoopcheck(){
       const text3 = await apiFetch(prompt3, 900) || 'Geen reactie';
       document.getElementById('koopLeaseRes').innerHTML = formatKoopAI(text3, 'lease');
       scanEntry.lease_ai = text3.slice(0,300);
+      _koopArch.push('— LEASE-INLEVERCHECK —\n'+text3);
       scanLogAdd({ type:'lease-teruggave', msg:`${merk} ${model} ${km}km / max ${lease.kmMax}: ${text3.slice(0,180)}` });
     } catch(e) {
       document.getElementById('koopLeaseRes').textContent = 'AI niet beschikbaar: ' + e.message;
@@ -15169,6 +15272,7 @@ async function runKoopcheck(){
       const text3 = await apiFetch(prompt3, 900) || 'Geen reactie';
       document.getElementById('koopInkoopRes').innerHTML = formatKoopAI(text3, 'inkoop');
       scanEntry.inkoop_ai = text3.slice(0,300);
+      _koopArch.push('— INKOOPCALCULATIE —\n'+text3);
       scanLogAdd({ type:'inkoopcontrole', msg:`${merk} ${model} ${jaar} ${km}km inkoop:€${ink.inkoopprijs}: ${text3.slice(0,200)}` });
     } catch(e) {
       document.getElementById('koopInkoopRes').textContent = 'AI niet beschikbaar: ' + e.message;
@@ -15177,6 +15281,8 @@ async function runKoopcheck(){
 
   // Sla volledige scanEntry op
   scanLogAdd(scanEntry);
+  // 15-07: gecombineerd koop-/lease-/inkooprapport in het 📄 Rapporten-archief
+  try{ if(_koopArch.length) registerSessionReport({type:'ai', title:((KOOP_MODES[_koopMode]||{}).titel||'Koopcheck')+' — '+[merk,model,jaar].filter(Boolean).join(' '), text:_koopArch.join('\n\n')}); }catch(e){}
 
   // Voeg disclaimer toe
   const deelbaar = (_koopMode==='verkoop'||_koopMode==='occasion');
