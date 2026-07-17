@@ -1606,6 +1606,8 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
         <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
       <button class="kebab-item" onclick="closeKebab();reportNav()" style="position:relative">📄 Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:50%;transform:translateY(-50%);right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:16px;text-align:center"></span></button>
       <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
+      <button class="kebab-item" id="remShareMenuBtn" onclick="closeKebab();PLRemote.openShare()">📡 Diagnose delen</button>
+      <button class="kebab-item" id="remExpertMenuBtn" onclick="closeKebab();PLRemote.openExpert()">🔭 Meekijken (expert)</button>
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
       <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
@@ -15531,5 +15533,361 @@ document.addEventListener('DOMContentLoaded',function(){
   setTimeout(function(){ iv.style.display='none'; },2300);
 });
 </script>
+<!-- ════════════════════════════════════════════════════════════════════
+     REMOTE DIAGNOSE — delen (local) & meekijken (expert)
+     Volledig additieve module. Praat met de pidlane-proxy Worker:
+       POST /session/create  → sessie + joinToken (expert) + localToken (telefoon)
+       WS   /session/connect → local: telemetrie omhoog + read-verzoeken omlaag
+                               expert: live meekijken + PIDs/DTC opvragen
+       POST /session/close   → netjes stoppen
+     Read-only by design: het berichtformaat kán geen schrijfactie dragen.
+     Haakt in op bestaande app-functies via wrappers (updPID, finishLogin) —
+     er wordt niets in de bestaande code gewijzigd.
+     ════════════════════════════════════════════════════════════════════ -->
+<style>
+#remPill{position:fixed;top:52px;right:10px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid var(--bl,#00d4ff);color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer}
+.rem-ov{position:fixed;inset:0;z-index:9700;background:rgba(5,8,12,.72);display:none;align-items:flex-end;justify-content:center}
+.rem-ov.open{display:flex}
+.rem-card{background:var(--sur,#151b24);border:1px solid var(--bd,#26303b);border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:16px 16px 22px;color:var(--tx,#e6e9ef)}
+.rem-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.rem-h h3{margin:0;font-size:16px;flex:1}
+.rem-x{background:none;border:none;color:inherit;font-size:20px;cursor:pointer;padding:2px 8px}
+.rem-row{margin:8px 0}
+.rem-lbl{font-size:11px;opacity:.65;margin-bottom:3px}
+.rem-code{font-family:ui-monospace,monospace;font-size:22px;letter-spacing:2px;font-weight:800}
+.rem-in{width:100%;box-sizing:border-box;padding:9px 11px;border-radius:8px;border:1px solid var(--bd,#26303b);background:rgba(0,0,0,.25);color:inherit;font:inherit;font-size:13px}
+.rem-flex{display:flex;gap:8px}
+.rem-flex .rem-in{flex:1;min-width:0}
+.rem-btn{padding:9px 14px;border-radius:8px;border:1px solid var(--bd,#26303b);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
+.rem-btn.pri{background:var(--bl,#00d4ff);border-color:var(--bl,#00d4ff);color:#04121a}
+.rem-btn.danger{border-color:#e5484d;color:#ff8f92}
+.rem-btn:disabled{opacity:.4;cursor:not-allowed}
+.rem-stat{font-size:12px;opacity:.85;margin:6px 0}
+.rem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;margin:10px 0}
+.rem-tile{border:1px solid var(--bd,#26303b);border-radius:10px;padding:8px}
+.rem-tile .tn{font-size:10px;opacity:.65;line-height:1.2;min-height:24px}
+.rem-tile .tv{font-size:17px;font-weight:800;margin-top:2px}
+.rem-log{background:rgba(0,0,0,.3);border:1px solid var(--bd,#26303b);border-radius:10px;max-height:160px;overflow:auto;font-family:ui-monospace,monospace;font-size:11px}
+.rem-log div{padding:5px 9px;border-bottom:1px solid rgba(255,255,255,.05)}
+.rem-note{font-size:11px;opacity:.6;margin-top:8px}
+</style>
+
+<div id="remPill" onclick="PLRemote.openShare()">📡 delen · 👁 <span id="remPillN">0</span></div>
+
+<div class="rem-ov" id="remShareOv">
+ <div class="rem-card">
+  <div class="rem-h"><h3>📡 Diagnose delen</h3><button class="rem-x" onclick="PLRemote.closeShare()">✕</button></div>
+  <div id="remShareOff">
+    <p style="font-size:13px;opacity:.85;margin:4px 0 12px">Laat een expert live meekijken met je diagnose. De expert ziet je sensordata en kan zelf PID-waarden en foutcodes opvragen — <b>alleen lezen</b>; er kan op afstand niets aan het voertuig veranderd worden.</p>
+    <button class="rem-btn pri" style="width:100%" onclick="PLRemote.shareStart()">Start delen</button>
+    <div class="rem-stat" id="remShareErr"></div>
+  </div>
+  <div id="remShareOn" style="display:none">
+    <div class="rem-stat" id="remShareStat">—</div>
+    <div class="rem-row"><div class="rem-lbl">Sessiecode</div><div class="rem-code" id="remSid">—</div></div>
+    <div class="rem-row"><div class="rem-lbl">Link voor de expert (stuur via WhatsApp of mail)</div>
+      <div class="rem-flex"><input class="rem-in" id="remLink" readonly><button class="rem-btn" onclick="PLRemote.copy('remLink')">Kopieer</button></div></div>
+    <div class="rem-row"><div class="rem-lbl">Of losse code (plakken bij “Meekijken”)</div>
+      <div class="rem-flex"><input class="rem-in" id="remCode" readonly><button class="rem-btn" onclick="PLRemote.copy('remCode')">Kopieer</button></div></div>
+    <div class="rem-stat">👁 <span id="remExpN">0</span> expert(s) kijkt mee</div>
+    <button class="rem-btn danger" style="width:100%;margin-top:8px" onclick="PLRemote.shareStop()">Stop delen</button>
+  </div>
+  <div class="rem-note">Data loopt via de beveiligde PidLane-server. De link verloopt automatisch met de sessie.</div>
+ </div>
+</div>
+
+<div class="rem-ov" id="remExpertOv">
+ <div class="rem-card">
+  <div class="rem-h"><h3>🔭 Meekijken met sessie</h3><button class="rem-x" onclick="PLRemote.expertClose()">✕</button></div>
+  <div id="remExpConn">
+    <div class="rem-lbl">Plak de link of code die je ontving</div>
+    <div class="rem-flex"><input class="rem-in" id="remJoinIn" placeholder="https://…#remote=…  of  a1b2c3~code"><button class="rem-btn pri" onclick="PLRemote.expertConnect()">Verbind</button></div>
+    <div class="rem-stat" id="remExpErr"></div>
+  </div>
+  <div id="remExpLive" style="display:none">
+    <div class="rem-stat" id="remExpStat">—</div>
+    <div class="rem-grid" id="remTiles"></div>
+    <div class="rem-lbl">PID's opvragen (bv. 0C 05 0D)</div>
+    <div class="rem-flex"><input class="rem-in" id="remReqPids" value="0C 05 0D"><button class="rem-btn pri" onclick="PLRemote.reqPids()">Vraag op</button><button class="rem-btn" onclick="PLRemote.reqDtc()">DTC’s</button></div>
+    <div class="rem-log" id="remExpLog" style="margin-top:10px"></div>
+    <button class="rem-btn" style="width:100%;margin-top:10px" onclick="PLRemote.expertDisconnect()">Verbreek</button>
+  </div>
+ </div>
+</div>
+
+<script>
+window.PLRemote=(function(){
+  'use strict';
+  const S={mode:null,ws:null,sess:null,stopFlag:false,dirty:{},flushT:null,recT:null,backoff:1000,exp:0,
+           ews:null,expJoin:null,expStop:false,expClosed:false,backoffE:1000,recTE:null,expMeta:null,vals:{},lastExpN:0};
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function hb(){return String(window.PROXY_URL||'').replace(/\/$/,'');}
+  function wb(){return hb().replace(/^http/i,'ws');}
+  function tok(){return (typeof window.APP_TOKEN==='string'&&window.APP_TOKEN)||'';}
+  function logA(m,c){try{if(typeof log==='function')log(m,c||'info');}catch(_){}}
+  function vehLabel(){
+    try{if(window.rdwData&&rdwData.merk)return (rdwData.merk+' '+(rdwData.handelsbenaming||'')).trim();}catch(_){}
+    try{if(typeof selectedDemoVehicle!=='undefined'&&selectedDemoVehicle&&selectedDemoVehicle.naam)return selectedDemoVehicle.naam;}catch(_){}
+    return null;
+  }
+
+  /* ── LOCAL: delen ─────────────────────────────────────────────── */
+  function openShare(){$('remShareOv').classList.add('open');}
+  function closeShare(){$('remShareOv').classList.remove('open');}
+  function setShareStat(s){$('remShareStat').textContent=s;}
+  function showPill(on){$('remPill').style.display=on?'flex':'none';}
+
+  async function shareStart(){
+    const err=$('remShareErr');err.textContent='';
+    if(!tok()){err.textContent='⚠ Delen vereist een server-login (het lokale demo-account kan niet delen).';return;}
+    err.textContent='Sessie aanmaken…';
+    let j;
+    try{
+      const r=await fetch(hb()+'/session/create',{method:'POST',
+        headers:{'Content-Type':'application/json','X-App-Token':tok()},
+        body:JSON.stringify({ttlMin:240,vehicle:vehLabel()})});
+      j=await r.json();
+      if(!r.ok||!j.sessionId)throw new Error((j&&j.error)||('HTTP '+r.status));
+    }catch(e){err.textContent='⚠ Kon geen sessie starten: '+(e.message||e);return;}
+    err.textContent='';
+    S.sess=j;S.mode='local';S.stopFlag=false;S.backoff=1000;S.exp=j.exp||0;S.lastExpN=0;
+    $('remShareOff').style.display='none';$('remShareOn').style.display='';
+    $('remSid').textContent=j.sessionId;
+    $('remLink').value=shareLink(j.sessionId,j.joinToken);
+    $('remCode').value=j.sessionId+'~'+j.joinToken;
+    $('remExpN').textContent='0';$('remPillN').textContent='0';
+    setShareStat('Verbinden met server…');
+    openLocalWs();
+    logA('📡 Diagnose delen gestart — sessie '+j.sessionId,'ok');
+  }
+  function shareLink(sid,jt){
+    let base='';
+    try{if(location.protocol==='http:'||location.protocol==='https:')base=location.origin+location.pathname;}catch(_){}
+    if(!base&&typeof window.PUBLIC_APP_URL==='string')base=window.PUBLIC_APP_URL;
+    return base+'#remote=1&sid='+sid+'&jt='+encodeURIComponent(jt);
+  }
+  function openLocalWs(){
+    if(!S.sess)return;
+    let ws;
+    try{ws=new WebSocket(wb()+'/session/connect?id='+encodeURIComponent(S.sess.sessionId)+'&jt='+encodeURIComponent(S.sess.localToken));}
+    catch(e){setShareStat('⚠ '+(e.message||e));return;}
+    S.ws=ws;
+    ws.onopen=()=>{S.backoff=1000;setShareStat('✅ Delen actief — alleen-lezen voor de expert');startFlush();showPill(true);};
+    ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(_){return;}handleLocalMsg(m);};
+    ws.onclose=()=>{stopFlush();if(S.mode!=='local'||S.stopFlag)return;
+      setShareStat('⚠ Verbinding weggevallen — opnieuw verbinden…');
+      if(S.exp&&Date.now()/1000>=S.exp){setShareStat('Sessie verlopen.');endShareUi();return;}
+      clearTimeout(S.recT);S.recT=setTimeout(openLocalWs,S.backoff);S.backoff=Math.min(S.backoff*2,15000);};
+    ws.onerror=()=>{};
+  }
+  async function handleLocalMsg(m){
+    if(m.type==='presence'){const n=m.experts|0;
+      $('remExpN').textContent=n;$('remPillN').textContent=n;
+      if(n>S.lastExpN)logA('👁 Expert verbonden — '+n+' kijkt nu mee','info');
+      else if(n<S.lastExpN)logA('👁 Expert weg — nog '+n+' verbonden','info');
+      S.lastExpN=n;return;}
+    if(m.type==='closed'){S.stopFlag=true;setShareStat('Sessie gesloten.');endShareUi();return;}
+    if(m.type==='request-pids'){await answerPids(m);return;}
+    if(m.type==='request-dtc'){await answerDtc(m);return;}
+  }
+  // BT-kanaal delen met de poll-loop: wacht tot de lopende ronde klaar is en
+  // claim daarna kort het kanaal, zodat one-shots en polls elkaar niet storen.
+  async function withBtLock(fn){
+    const t0=Date.now();
+    while(window._pollBusy&&Date.now()-t0<5000){await new Promise(r=>setTimeout(r,60));}
+    window._pollBusy=true;
+    try{return await fn();}finally{window._pollBusy=false;}
+  }
+  async function readSuffix(sfx){
+    const pid='01'+sfx;
+    try{ // verse waarde uit de lopende poll? geen extra buskanaal nodig
+      if(typeof pidVals!=='undefined'&&pidVals[pid]!==undefined&&
+         (Date.now()-((typeof _pidLastUpd!=='undefined'&&_pidLastUpd[pid])||0))<5000)return pidVals[pid];
+    }catch(_){}
+    try{
+      if(typeof demoMode!=='undefined'&&demoMode&&typeof demo==='function'){
+        const v=demo(pid);try{updPID(pid,v);}catch(_){}
+        return (typeof v==='number')?v:null;
+      }
+      if(typeof connected==='undefined'||!connected)return null;
+      return await withBtLock(async()=>{
+        const raw=await sendCmd('01'+sfx+'1',2500);
+        const v=parsePID(pid,raw);
+        if(v!=null){try{updPID(pid,v);}catch(_){}}
+        return (v==null?null:v);
+      });
+    }catch(_){return null;}
+  }
+  async function answerPids(m){
+    const out={};
+    for(const s of (m.pids||[])){const sfx=String(s).toUpperCase();out[sfx]=await readSuffix(sfx);}
+    sendWs({type:'response',reqId:m.reqId,data:{pids:out}});
+    logA('🔭 Expert vroeg PIDs op: '+(m.pids||[]).join(', '),'info');
+  }
+  async function answerDtc(m){
+    let codes=[];
+    try{
+      if(typeof demoMode!=='undefined'&&demoMode){codes=(typeof dtcCodes!=='undefined'&&dtcCodes&&dtcCodes.length)?[...dtcCodes]:[];}
+      else if(typeof connected!=='undefined'&&connected&&typeof realScanDTC==='function'){codes=await withBtLock(()=>realScanDTC());}
+    }catch(_){codes=[];}
+    sendWs({type:'response',reqId:m.reqId,data:{dtc:codes}});
+    logA('🔭 Expert las foutcodes uit ('+codes.length+' code'+(codes.length===1?'':'s')+')','info');
+  }
+  function sendWs(o){try{if(S.ws&&S.ws.readyState===1)S.ws.send(JSON.stringify(o));}catch(_){}}
+  function feed(pid,val){
+    if(S.mode!=='local'||!S.ws||S.ws.readyState!==1)return;
+    if(typeof val!=='number'||!isFinite(val))return;
+    S.dirty[String(pid).slice(2).toUpperCase()]=Math.round(val*100)/100;
+  }
+  function startFlush(){stopFlush();S.flushT=setInterval(()=>{
+    if(S.mode!=='local'||!S.ws||S.ws.readyState!==1)return;
+    const k=Object.keys(S.dirty);if(!k.length)return;
+    const d=S.dirty;S.dirty={};d.t=Date.now();
+    sendWs({type:'telemetry',data:d});
+  },1000);}
+  function stopFlush(){if(S.flushT){clearInterval(S.flushT);S.flushT=null;}}
+  async function shareStop(){
+    S.stopFlag=true;clearTimeout(S.recT);stopFlush();
+    try{if(S.sess)await fetch(hb()+'/session/close',{method:'POST',
+      headers:{'Content-Type':'application/json','X-App-Token':tok()},
+      body:JSON.stringify({sessionId:S.sess.sessionId})});}catch(_){}
+    try{if(S.ws)S.ws.close();}catch(_){}
+    endShareUi();logA('📡 Delen gestopt','info');
+  }
+  function endShareUi(){S.mode=null;S.ws=null;showPill(false);
+    $('remShareOn').style.display='none';$('remShareOff').style.display='';$('remShareErr').textContent='';}
+
+  /* ── EXPERT: meekijken ────────────────────────────────────────── */
+  function openExpert(){$('remExpertOv').classList.add('open');}
+  function expertClose(){$('remExpertOv').classList.remove('open');}
+  function setExpStat(s){$('remExpStat').textContent=s;}
+  function parseJoin(str){
+    str=String(str||'').trim();if(!str)return null;
+    const h=str.indexOf('#');if(h>=0)str=str.slice(h+1);
+    if(/(^|&)sid=/.test(str)){
+      try{const p=new URLSearchParams(str);const sid=p.get('sid'),jt=p.get('jt');
+        if(sid&&jt)return{sid:sid.trim(),jt:jt.trim()};}catch(_){}
+    }
+    const t=str.split('~');
+    if(t.length===2&&t[0].trim()&&t[1].trim())return{sid:t[0].trim(),jt:t[1].trim()};
+    return null;
+  }
+  function expertConnect(pre){
+    const err=$('remExpErr');err.textContent='';
+    const j=(pre&&pre.sid)?pre:parseJoin($('remJoinIn').value);
+    if(!j){err.textContent='⚠ Onherkenbare link of code.';return;}
+    S.expJoin=j;S.expStop=false;S.expClosed=false;S.backoffE=1000;S.vals={};S.expMeta=null;
+    err.textContent='Verbinden…';
+    openExpertWs();
+  }
+  function openExpertWs(){
+    const j=S.expJoin;if(!j)return;
+    let ws;
+    try{ws=new WebSocket(wb()+'/session/connect?id='+encodeURIComponent(j.sid)+'&jt='+encodeURIComponent(j.jt));}
+    catch(e){$('remExpErr').textContent='⚠ '+(e.message||e);return;}
+    S.ews=ws;
+    ws.onopen=()=>{S.backoffE=1000;$('remExpErr').textContent='';
+      $('remExpConn').style.display='none';$('remExpLive').style.display='';
+      setExpStat('✅ Live verbonden — sessie '+j.sid);};
+    ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(_){return;}handleExpMsg(m);};
+    ws.onclose=(ev)=>{
+      if(S.expStop||S.expClosed)return;
+      if(S.expMeta&&S.expMeta.exp&&Date.now()/1000>=S.expMeta.exp){setExpStat('Sessie verlopen.');return;}
+      // 1006 zonder ooit open: waarschijnlijk verlopen/ongeldig token
+      if(!S.expMeta&&$('remExpLive').style.display==='none'){
+        $('remExpErr').textContent='⚠ Verbinden mislukt — code verlopen of onjuist?';return;}
+      setExpStat('⚠ Verbinding weggevallen — opnieuw verbinden…');
+      clearTimeout(S.recTE);S.recTE=setTimeout(openExpertWs,S.backoffE);S.backoffE=Math.min(S.backoffE*2,15000);
+    };
+    ws.onerror=()=>{};
+  }
+  function handleExpMsg(m){
+    if(m.type==='meta'){S.expMeta=m.meta;
+      setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));return;}
+    if(m.type==='backfill'){(m.frames||[]).forEach(f=>mergeVals(f&&f.data));renderTiles();
+      expLog('↺ '+((m.frames||[]).length)+' frame(s) historie ontvangen');return;}
+    if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);renderTiles();return;}
+    if(m.type==='response'){const d=m.data||{};
+      if(d.pids){mergeVals(d.pids);renderTiles();
+        expLog('✔ Antwoord: '+Object.entries(d.pids).map(([k,v])=>k+'='+(v==null?'—':v)).join('  '));}
+      if(d.dtc)expLog(d.dtc.length?('⚠ Foutcodes: '+d.dtc.join(', ')):'✅ Geen foutcodes aanwezig');
+      return;}
+    if(m.type==='request-sent'){expLog('→ verzoek verzonden');return;}
+    if(m.type==='request-rejected'){expLog('✖ geweigerd: '+(m.reason||'onbekend'));return;}
+    if(m.type==='closed'){S.expClosed=true;setExpStat('Sessie is door de deler gestopt.');expLog('■ sessie gesloten');return;}
+  }
+  function mergeVals(d){if(!d||typeof d!=='object')return;
+    for(const k in d){if(k==='t'||k==='reqId')continue;const v=d[k];
+      if(typeof v==='number'&&isFinite(v))S.vals[String(k).toUpperCase()]=v;}}
+  function pidName(sfx){
+    try{const d=(typeof getPidDef==='function')?getPidDef('01'+sfx):null;
+      if(d){const n=d.n||d.name||('PID '+sfx);const u=d.u||d.unit||'';return n+(u?' ('+u+')':'');}}catch(_){}
+    return 'PID '+sfx;
+  }
+  function renderTiles(){
+    const g=$('remTiles');if(!g)return;
+    const keys=Object.keys(S.vals).sort();
+    g.innerHTML=keys.map(k=>'<div class="rem-tile"><div class="tn">'+esc(pidName(k))+'</div><div class="tv">'+esc(S.vals[k])+'</div></div>').join('');
+  }
+  function expLog(s){const el=$('remExpLog');if(!el)return;
+    const d=document.createElement('div');
+    d.textContent=new Date().toLocaleTimeString('nl-NL')+'  '+s;
+    el.prepend(d);while(el.children.length>60)el.removeChild(el.lastChild);}
+  function reqPids(){
+    if(!S.ews||S.ews.readyState!==1)return;
+    const pids=String($('remReqPids').value||'').split(/[\s,;]+/)
+      .map(s=>s.trim().toUpperCase()).filter(s=>/^[0-9A-F]{2}$/.test(s)).slice(0,12);
+    if(!pids.length){expLog('✖ geen geldige PID-codes (2 hex-tekens, bv. 0C)');return;}
+    S.ews.send(JSON.stringify({type:'request-pids',pids,reqId:Math.random().toString(36).slice(2,8)}));
+  }
+  function reqDtc(){if(S.ews&&S.ews.readyState===1)
+    S.ews.send(JSON.stringify({type:'request-dtc',reqId:Math.random().toString(36).slice(2,8)}));}
+  function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);
+    try{if(S.ews)S.ews.close();}catch(_){}
+    S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;
+    $('remExpLive').style.display='none';$('remExpConn').style.display='';
+    $('remExpErr').textContent='';setExpStat('—');}
+
+  /* ── Deep link + wrappers (additief inhaken op de app) ────────── */
+  let pendingJoin=null;
+  try{
+    const h=String(location.hash||'');
+    if(/remote=1/.test(h)||/sid=/.test(h)){
+      const p=parseJoin(h);
+      if(p){pendingJoin=p;
+        try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}}
+    }
+  }catch(_){}
+  function afterLogin(){
+    if(!pendingJoin)return;
+    const p=pendingJoin;pendingJoin=null;
+    openExpert();
+    try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){}
+    expertConnect(p);
+  }
+  try{ // telemetrie-tap: elke live-waarde die de app verwerkt óók (throttled) delen
+    if(typeof updPID==='function'){const _u=updPID;
+      updPID=function(pid,val){_u(pid,val);try{feed(pid,val);}catch(_){}};
+      window.updPID=updPID;}
+  }catch(_){}
+  try{ // na login: eventuele deep-link naar een gedeelde sessie afhandelen
+    if(typeof finishLogin==='function'){const _f=finishLogin;
+      finishLogin=function(u,a){_f(u,a);try{afterLogin();}catch(_){}};
+      window.finishLogin=finishLogin;}
+  }catch(_){}
+
+  function copy(id){
+    const el=$(id);if(!el)return;
+    try{el.select();el.setSelectionRange(0,99999);}catch(_){}
+    try{navigator.clipboard.writeText(el.value);}catch(_){try{document.execCommand('copy');}catch(__){}}
+    logA('Gekopieerd naar klembord','ok');
+  }
+
+  return {openShare,closeShare,shareStart,shareStop,copy,
+          openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc};
+})();
+</script>
+
 </body>
 </html>
