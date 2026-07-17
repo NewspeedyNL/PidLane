@@ -15638,7 +15638,7 @@ window.PLRemote=(function(){
   function openShare(){$('remShareOv').classList.add('open');}
   function closeShare(){$('remShareOv').classList.remove('open');}
   function setShareStat(s){$('remShareStat').textContent=s;}
-  function showPill(on){$('remPill').style.display=on?'flex':'none';}
+  function showPill(on){$('remPill').style.display=on?'flex':'none';try{window.PLWake&&PLWake.sync();}catch(_){}}
 
   async function shareStart(){
     const err=$('remShareErr');err.textContent='';
@@ -15993,6 +15993,54 @@ window.PLRemote=(function(){
 
   return {openShare,closeShare,shareStart,shareStop,copy,
           openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive};
+})();
+</script>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   PLWake — scherm-aan-bewaking (Screen Wake Lock API)
+   Android pauzeert/vertraagt de WebView zodra het scherm dooft → polling
+   en de remote-datastroom vallen stil. Deze module houdt het scherm aan
+   zolang dat nodig is, en laat 'm weer los zodra het niet meer hoeft:
+     nodig = echte BT-verbinding actief, óf diagnose delen actief,
+             óf remote-voertuig-modus (expert) actief.
+   Volledig additief: wikkelt alleen setConn() om en kijkt naar de pills.
+   ════════════════════════════════════════════════════════════════════ */
+window.PLWake=(function(){
+  'use strict';
+  let lock=null;
+  function pillOn(id){try{const p=document.getElementById(id);return !!(p&&p.style.display==='flex');}catch(_){return false;}}
+  function needed(){
+    try{if(typeof connected!=='undefined'&&connected&&!(typeof demoMode!=='undefined'&&demoMode))return true;}catch(_){}
+    if(pillOn('remPill'))return true;        // diagnose delen actief (ook in demo)
+    if(pillOn('remDrivePill'))return true;   // expert draait op remote data
+    return false;
+  }
+  async function acquire(){
+    if(lock)return;
+    if(!('wakeLock' in navigator))return;    // oude WebView → stil overslaan
+    try{
+      lock=await navigator.wakeLock.request('screen');
+      lock.addEventListener('release',()=>{lock=null;});   // OS kan 'm afpakken
+      try{log('🔆 Scherm blijft aan zolang de verbinding/sessie loopt','info');}catch(_){}
+    }catch(_){lock=null;}
+  }
+  function release(){
+    try{if(lock){const l=lock;lock=null;l.release();
+      try{log('🔅 Scherm-aan-bewaking vrijgegeven','info');}catch(_){}
+    }}catch(_){lock=null;}
+  }
+  async function sync(){ if(needed()) await acquire(); else release(); }
+  // Het OS geeft de lock vrij bij app-wissel/schermvergrendeling; bij terugkeer
+  // in beeld meteen opnieuw claimen zodat de sessie doorloopt.
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});
+  setInterval(sync,15000);                   // vangnet: status elke 15s her-evalueren
+  try{ // direct reageren op verbinden/verbreken
+    if(typeof setConn==='function'){const _s=setConn;
+      setConn=function(on){const r=_s.apply(this,arguments);try{sync();}catch(_){}return r;};
+      window.setConn=setConn;}
+  }catch(_){}
+  return {sync};
 })();
 </script>
 
