@@ -15573,6 +15573,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </style>
 
 <div id="remPill" onclick="PLRemote.openShare()">📡 delen · 👁 <span id="remPillN">0</span></div>
+<div id="remDrivePill" onclick="PLRemote.openExpert()" style="position:fixed;top:52px;right:10px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid #9d8cff;color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer">🔭 remote</div>
 
 <div class="rem-ov" id="remShareOv">
  <div class="rem-card">
@@ -15606,6 +15607,7 @@ document.addEventListener('DOMContentLoaded',function(){
   </div>
   <div id="remExpLive" style="display:none">
     <div class="rem-stat" id="remExpStat">—</div>
+    <button class="rem-btn pri" style="width:100%;margin:4px 0 8px" onclick="PLRemote.enterDrive()">🚗 Open in app — deuren, analyses &amp; AI-rapport</button>
     <div class="rem-grid" id="remTiles"></div>
     <div class="rem-lbl">PID's opvragen (bv. 0C 05 0D)</div>
     <div class="rem-flex"><input class="rem-in" id="remReqPids" value="0C 05 0D"><button class="rem-btn pri" onclick="PLRemote.reqPids()">Vraag op</button><button class="rem-btn" onclick="PLRemote.reqDtc()">DTC’s</button></div>
@@ -15619,7 +15621,7 @@ document.addEventListener('DOMContentLoaded',function(){
 window.PLRemote=(function(){
   'use strict';
   const S={mode:null,ws:null,sess:null,stopFlag:false,dirty:{},flushT:null,recT:null,backoff:1000,exp:0,
-           ews:null,expJoin:null,expStop:false,expClosed:false,backoffE:1000,recTE:null,expMeta:null,vals:{},lastExpN:0};
+           ews:null,expJoin:null,expStop:false,expClosed:false,backoffE:1000,recTE:null,expMeta:null,vals:{},lastExpN:0,pending:{}};
   const $=id=>document.getElementById(id);
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   function hb(){return String(window.PROXY_URL||'').replace(/\/$/,'');}
@@ -15690,6 +15692,20 @@ window.PLRemote=(function(){
     if(m.type==='closed'){S.stopFlag=true;setShareStat('Sessie gesloten.');endShareUi();return;}
     if(m.type==='request-pids'){await answerPids(m);return;}
     if(m.type==='request-dtc'){await answerDtc(m);return;}
+    if(m.type==='request-poll'){applyExpertPoll(m);return;}
+  }
+  // Expert wil PIDs (blijvend) volgen → UNIE met de eigen actieve set. De
+  // expert voegt toe, maar haalt nooit lokale keuzes weg — en het is altijd
+  // zichtbaar in de log. Puur lezen: dit bepaalt enkel wát er gepolld wordt.
+  function applyExpertPoll(m){
+    try{
+      const add=(m.pids||[]).map(s=>'01'+String(s).toUpperCase());
+      if(typeof activePIDs!=='undefined'&&typeof ensurePIDListActive==='function'){
+        ensurePIDListActive([...activePIDs,...add]);
+        logA('🔭 Expert volgt nu ook: '+(m.pids||[]).join(', '),'info');
+      }
+    }catch(_){}
+    sendWs({type:'response',reqId:m.reqId,data:{poll:'ok'}});
   }
   // BT-kanaal delen met de poll-loop: wacht tot de lopende ronde klaar is en
   // claim daarna kort het kanaal, zodat one-shots en polls elkaar niet storen.
@@ -15805,17 +15821,49 @@ window.PLRemote=(function(){
   function handleExpMsg(m){
     if(m.type==='meta'){S.expMeta=m.meta;
       setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));return;}
-    if(m.type==='backfill'){(m.frames||[]).forEach(f=>mergeVals(f&&f.data));renderTiles();
+    if(m.type==='backfill'){(m.frames||[]).forEach(f=>{mergeVals(f&&f.data);driveFeed(f&&f.data);});renderTiles();
       expLog('↺ '+((m.frames||[]).length)+' frame(s) historie ontvangen');return;}
-    if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);renderTiles();return;}
+    if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);driveFeed(m.frame&&m.frame.data);renderTiles();return;}
     if(m.type==='response'){const d=m.data||{};
-      if(d.pids){mergeVals(d.pids);renderTiles();
+      if(d.dtc&&m.reqId&&S.pending[m.reqId]){const f=S.pending[m.reqId];delete S.pending[m.reqId];f([...d.dtc]);}
+      if(d.pids){mergeVals(d.pids);driveFeed(d.pids);renderTiles();
         expLog('✔ Antwoord: '+Object.entries(d.pids).map(([k,v])=>k+'='+(v==null?'—':v)).join('  '));}
       if(d.dtc)expLog(d.dtc.length?('⚠ Foutcodes: '+d.dtc.join(', ')):'✅ Geen foutcodes aanwezig');
       return;}
-    if(m.type==='request-sent'){expLog('→ verzoek verzonden');return;}
+    if(m.type==='request-sent'){return;}
     if(m.type==='request-rejected'){expLog('✖ geweigerd: '+(m.reason||'onbekend'));return;}
-    if(m.type==='closed'){S.expClosed=true;setExpStat('Sessie is door de deler gestopt.');expLog('■ sessie gesloten');return;}
+    if(m.type==='closed'){S.expClosed=true;exitDrive();setExpStat('Sessie is door de deler gestopt.');expLog('■ sessie gesloten');return;}
+  }
+  // Remote-voertuig-modus: binnenkomende waarden de gewone app-pijplijn in
+  // voeren (updPID), zodat meters, deuren, analyses en AI-rapporten er lokaal
+  // gewoon mee werken — de sessie IS dan de databron.
+  function driveFeed(d){
+    if(!window._remoteVehicleMode||!d||typeof d!=='object')return;
+    for(const k in d){if(k==='t'||k==='reqId')continue;const v=d[k];
+      if(typeof v==='number'&&isFinite(v)){try{updPID('01'+String(k).toUpperCase(),v);}catch(_){}}}
+  }
+  function enterDrive(){
+    if(!S.ews||S.ews.readyState!==1){expLog('✖ Eerst verbinden met een sessie');return;}
+    try{if(typeof connected!=='undefined'&&connected&&!window._remoteVehicleMode){
+      expLog('✖ Verbreek eerst je eigen Bluetooth-verbinding');return;}}catch(_){}
+    window._remoteVehicleMode=true;
+    try{connected=true;demoMode=false;}catch(_){}
+    try{setConn(true);}catch(_){}
+    try{document.getElementById('connOv').classList.add('hidden');}catch(_){}
+    try{if(typeof goHome==='function')goHome();}catch(_){}
+    expertClose();
+    const p=$('remDrivePill');if(p){p.style.display='flex';
+      p.textContent='🔭 remote · '+((S.expJoin&&S.expJoin.sid)||'');}
+    // Huidige actieve set meteen bij de local laten meepollen → meters vullen
+    try{if(typeof activePIDs!=='undefined'&&activePIDs.size)ensurePIDListActive([...activePIDs]);}catch(_){}
+    logA('🔭 Remote sessie is nu de databron — deuren en analyses bruikbaar (alleen-lezen)','ok');
+  }
+  function exitDrive(){
+    if(!window._remoteVehicleMode)return;
+    window._remoteVehicleMode=false;
+    try{connected=false;}catch(_){}
+    try{setConn(false);}catch(_){}
+    const p=$('remDrivePill');if(p)p.style.display='none';
   }
   function mergeVals(d){if(!d||typeof d!=='object')return;
     for(const k in d){if(k==='t'||k==='reqId')continue;const v=d[k];
@@ -15844,8 +15892,9 @@ window.PLRemote=(function(){
   function reqDtc(){if(S.ews&&S.ews.readyState===1)
     S.ews.send(JSON.stringify({type:'request-dtc',reqId:Math.random().toString(36).slice(2,8)}));}
   function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);
+    exitDrive();
     try{if(S.ews)S.ews.close();}catch(_){}
-    S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;
+    S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};
     $('remExpLive').style.display='none';$('remExpConn').style.display='';
     $('remExpErr').textContent='';setExpStat('—');}
 
@@ -15871,6 +15920,64 @@ window.PLRemote=(function(){
       updPID=function(pid,val){_u(pid,val);try{feed(pid,val);}catch(_){}};
       window.updPID=updPID;}
   }catch(_){}
+  /* ── Remote-voertuig-wrappers (alleen actief als _remoteVehicleMode aan is) ── */
+  try{ // PID-selectie: elke analyse/deur die sensoren activeert → local pollt ze mee
+    if(typeof ensurePIDListActive==='function'){const _e=ensurePIDListActive;
+      ensurePIDListActive=async function(list){
+        const r=await _e(list);
+        try{
+          if(window._remoteVehicleMode&&S.ews&&S.ews.readyState===1){
+            const sfx=[...new Set((list||[]).map(p=>String(p).slice(2).toUpperCase()))]
+              .filter(s=>/^[0-9A-F]{2}$/.test(s)).slice(0,24);
+            if(sfx.length)S.ews.send(JSON.stringify({type:'request-poll',pids:sfx,
+              reqId:Math.random().toString(36).slice(2,8)}));
+          }
+        }catch(_){}
+        return r;
+      }; window.ensurePIDListActive=ensurePIDListActive;}
+  }catch(_){}
+  try{ // polling gebeurt op de telefoon; hier stroomt de data binnen via de sessie
+    if(typeof startPoll==='function'){const _sp=startPoll;
+      startPoll=function(){
+        if(window._remoteVehicleMode){logA('Remote: polling loopt op de telefoon — live data stroomt vanzelf binnen','info');return;}
+        return _sp.apply(this,arguments);
+      }; window.startPoll=startPoll;}
+  }catch(_){}
+  try{ // geen Bluetooth hier: stray one-shots krijgen een lege (NO DATA-achtige) respons
+    if(typeof sendCmd==='function'){const _sc=sendCmd;
+      sendCmd=async function(cmd,t){ if(window._remoteVehicleMode)return ''; return _sc(cmd,t); };
+      window.sendCmd=sendCmd;}
+  }catch(_){}
+  try{ // DTC-deur werkt remote via het read-only verzoek naar de telefoon
+    if(typeof realScanDTC==='function'){const _rd=realScanDTC;
+      realScanDTC=async function(){ if(window._remoteVehicleMode)return remoteDtc(); return _rd(); };
+      window.realScanDTC=realScanDTC;}
+  }catch(_){}
+  try{ // de éne schrijfactie in de app: op afstand hard geblokkeerd
+    if(typeof clearDTC==='function'){const _cd=clearDTC;
+      clearDTC=async function(){
+        if(window._remoteVehicleMode){
+          try{showToast?.('🔒 Foutcodes wissen kan niet op afstand — alleen-lezen');}catch(_){}
+          logA('🔒 Wissen geblokkeerd: remote sessie is alleen-lezen','warn');return;}
+        return _cd.apply(this,arguments);
+      }; window.clearDTC=clearDTC;}
+  }catch(_){}
+  try{ // adapter-survey is per definitie hardware-lokaal
+    if(typeof vlFullSurvey==='function'){const _vs=vlFullSurvey;
+      vlFullSurvey=function(){
+        if(window._remoteVehicleMode){try{showToast?.('Veldlab-survey werkt alleen bij de auto zelf');}catch(_){}return;}
+        return _vs.apply(this,arguments);
+      }; window.vlFullSurvey=vlFullSurvey;}
+  }catch(_){}
+  function remoteDtc(){
+    return new Promise(res=>{
+      if(!S.ews||S.ews.readyState!==1)return res([]);
+      const id=Math.random().toString(36).slice(2,8);
+      S.pending[id]=res;
+      setTimeout(()=>{if(S.pending[id]){delete S.pending[id];res([]);}},15000);
+      S.ews.send(JSON.stringify({type:'request-dtc',reqId:id}));
+    });
+  }
   try{ // na login: eventuele deep-link naar een gedeelde sessie afhandelen
     if(typeof finishLogin==='function'){const _f=finishLogin;
       finishLogin=function(u,a){_f(u,a);try{afterLogin();}catch(_){}};
@@ -15885,7 +15992,7 @@ window.PLRemote=(function(){
   }
 
   return {openShare,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc};
+          openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive};
 })();
 </script>
 
