@@ -1,7 +1,10 @@
 # ════════════════════════════════════════════════════════════
 #  PidLane APK-build workflow
-#  Bijgewerkt: 2026-06-29 (CET)
-#  Wijziging: src/ verwijderd. App = root/index.html (live via Pages).
+#  Bijgewerkt: 2026-07-18 (CET)
+#  Wijziging: CAMERA-permissie + camera-feature toegevoegd aan de
+#             permissie-injectie (nodig voor de in-app QR-scanner /
+#             getUserMedia in de WebView bij het koppelen local ↔ expert).
+#  Eerder:    src/ verwijderd. App = root/index.html (live via Pages).
 #             webDir = www (stub, hieronder aangemaakt). Trigger op root.
 # ════════════════════════════════════════════════════════════
 name: Build PidLane APK
@@ -69,7 +72,7 @@ jobs:
       - name: Sync web assets to Android
         run: npx cap sync android
 
-      - name: Add Bluetooth permissions to AndroidManifest
+      - name: Add Bluetooth + Camera permissions to AndroidManifest
         run: |
           python3 - <<'PY'
           import re, sys, pathlib
@@ -80,26 +83,33 @@ jobs:
           print("── Manifest VOOR injectie ──")
           print(xml)
 
-          # 1. Verwijder bestaande (mogelijk verkeerde) BT/locatie-permissies
+          # 1. Verwijder bestaande (mogelijk verkeerde) BT/locatie/camera-permissies
           xml = re.sub(
               r'\s*<uses-permission[^>]*android\.permission\.'
-              r'(BLUETOOTH[A-Z_]*|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION)[^>]*/>',
+              r'(BLUETOOTH[A-Z_]*|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|CAMERA)[^>]*/>',
               '', xml)
           xml = re.sub(
-              r'\s*<uses-feature[^>]*android\.hardware\.bluetooth[a-z_]*[^>]*/>',
+              r'\s*<uses-feature[^>]*android\.hardware\.(bluetooth[a-z_]*|camera[a-z_.]*)[^>]*/>',
               '', xml)
-          xml = re.sub(r'\s*<!-- PidLane BT permissies.*?-->', '', xml)
+          xml = re.sub(r'\s*<!-- PidLane (BT|BT\+camera) permissies.*?-->', '', xml)
 
           # 2. De correcte permissie-set
+          #    CAMERA: voor de in-app QR-scanner (getUserMedia in de WebView)
+          #    bij het koppelen local ↔ expert. uses-feature required=false
+          #    zodat de app ook installeert op toestellen zonder camera —
+          #    QR-scannen is optioneel, de link-/codeflow werkt altijd.
           perms = (
-              '\n    <!-- PidLane BT permissies (geinjecteerd door CI) -->'
+              '\n    <!-- PidLane BT+camera permissies (geinjecteerd door CI) -->'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />'
               '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />'
+              '\n    <uses-permission android:name="android.permission.CAMERA" />'
               '\n    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />'
               '\n    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />'
+              '\n    <uses-feature android:name="android.hardware.camera" android:required="false" />'
+              '\n    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />'
           )
 
           # 3. Injecteer direct na de <manifest ...> open-tag
@@ -117,7 +127,10 @@ jobs:
           if 'BLUETOOTH_SCAN' not in xml or 'neverForLocation' not in xml:
               print("FOUT: BT-permissie-injectie mislukt")
               sys.exit(1)
-          print("OK: Bluetooth-permissies correct geinjecteerd")
+          if 'android.permission.CAMERA' not in xml:
+              print("FOUT: CAMERA-permissie-injectie mislukt")
+              sys.exit(1)
+          print("OK: Bluetooth- en camera-permissies correct geinjecteerd")
           PY
 
       - name: Generate app icons from PidLane logo
