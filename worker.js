@@ -1,6 +1,16 @@
 /* ════════════════════════════════════════════════════════════════════
    PidLane Worker — VOLLEDIGE code
-   Build: 2026-07-18 (CET) — REMOTE BESTURING: opname & analyse op de local
+   Build: 2026-07-19 (CET) — VOERTUIGPROFIEL (vstate) naar de expert
+
+   NIEUW t.o.v. 2026-07-18 (alleen binnen RemoteSessionDO, alles verder
+   byte-voor-byte gelijk):
+     - de local mag 'vstate' sturen: zijn voertuigprofiel (supported PIDs,
+       voertuiginfo, actieve selectie, sensor-gezondheid, foutcodes).
+       De DO cachet het laatste snapshot (persistent) en fan-out't het live
+       naar de expert(s); een later aanhakende expert krijgt het direct bij
+       de WebSocket-handshake, meteen na de backfill.
+     - sanitizeRequest kent 'request-vstate': de expert vraagt het snapshot
+       opnieuw op. Puur lezen — geen enkel veld raakt de bus.
 
    NIEUW t.o.v. 2026-07-15 (alleen binnen RemoteSessionDO, alles verder
    byte-voor-byte gelijk):
@@ -1139,6 +1149,7 @@ export class RemoteSessionDO {
     this.frames = [];
     this.MAX_FRAMES = 50;      // kleine recente ring — genoeg voor backfill bij join
     this._meta = null;
+    this.vstate = null;        // laatst bekende voertuigprofiel van de local
     // Laad persistente staat bij (her)start, zodat een recycle van de DO
     // transparant is: zowel meta ALS de recente frames overleven eviction.
     // blockConcurrencyWhile houdt inkomende requests tegen tot dit klaar is.
@@ -1146,6 +1157,7 @@ export class RemoteSessionDO {
       this._meta  = (await this.ctx.storage.get('meta'))   || null;
       this.frames = (await this.ctx.storage.get('frames')) || [];
       this.audit  = (await this.ctx.storage.get('audit'))  || [];
+      this.vstate = (await this.ctx.storage.get('vstate')) || null;
     });
   }
 
@@ -1209,9 +1221,11 @@ export class RemoteSessionDO {
       this._meta  = meta;
       this.frames = [];               // verse sessie → oude frames/audit wissen
       this.audit  = [];
+      this.vstate = null;             // en het voertuigprofiel van de vorige sessie
       await this.ctx.storage.put('meta', meta);
       await this.ctx.storage.delete('frames');
       await this.ctx.storage.delete('audit');
+      await this.ctx.storage.delete('vstate');
       return Response.json({ ok: true, meta });
     }
 
@@ -1312,6 +1326,10 @@ export class RemoteSessionDO {
   sanitizeRequest(m) {
     const reqId = (typeof m.reqId === 'string' && m.reqId.slice(0, 40)) || crypto.randomUUID().slice(0, 8);
     if (m.type === 'request-dtc') return { type: 'request-dtc', reqId };
+    // Snapshot van het voertuigprofiel (her)opvragen: supported PIDs, voertuig-
+    // info, actieve set, sensor-gezondheid. Puur lezen — de local stuurt alleen
+    // zijn eigen, al bekende staat terug; er gaat niets richting de bus.
+    if (m.type === 'request-vstate') return { type: 'request-vstate', reqId };
     if (m.type === 'request-pids') {
       if (!Array.isArray(m.pids)) return null;
       const pids = m.pids.filter(p => typeof p === 'string' && /^[0-9A-Fa-f]{2}$/.test(p)).slice(0, 12);
@@ -1363,8 +1381,12 @@ export class RemoteSessionDO {
     // de local is zelf de bron en heeft die niet nodig.
     try {
       server.send(JSON.stringify({ type: 'meta', meta, role }));
-      if (role === 'expert')
+      if (role === 'expert') {
         server.send(JSON.stringify({ type: 'backfill', frames: this.frames, serverTime: Date.now() }));
+        // Voertuigprofiel van de local (indien al bekend) meteen meegeven,
+        // zodat de expert-app zonder wachten een gevulde PID-lijst heeft.
+        if (this.vstate) server.send(JSON.stringify({ type: 'vstate', data: this.vstate, t: Date.now() }));
+      }
     } catch (_) {}
 
     // Presence: de local hoort altijd te weten dat/hoeveel er meegekeken wordt.
@@ -1407,10 +1429,26 @@ export class RemoteSessionDO {
       return;
     }
 
+    // Local stuurt zijn voertuigprofiel (vstate: supported PIDs, voertuiginfo,
+    // actieve set, sensor-gezondheid, foutcodes). Cachen + persist zodat een
+    // later aanhakende expert het bij connect meteen krijgt, en live fan-out.
+    // Grootte-guard: alles boven 32 kB wordt genegeerd (hoort ~2-6 kB te zijn).
+    if (role === 'local' && m.type === 'vstate') {
+      let d = m.data;
+      try { if (!d || typeof d !== 'object' || JSON.stringify(d).length > 32768) d = null; } catch (_) { d = null; }
+      if (d) {
+        this.vstate = d;
+        await this.ctx.storage.put('vstate', d);
+        this.broadcastTo('expert', { type: 'vstate', data: d, t: Date.now() });
+      }
+      return;
+    }
+
     // Expert vraagt reads op → valideren en doorzetten naar de local(s). Alleen
     // leesverzoeken passen in dit formaat; al het andere valt er hier uit.
     if (role === 'expert' && (m.type === 'request-pids' || m.type === 'request-dtc' ||
-        m.type === 'request-poll' || m.type === 'request-record' || m.type === 'request-analyze')) {
+        m.type === 'request-poll' || m.type === 'request-record' || m.type === 'request-analyze' ||
+        m.type === 'request-vstate')) {
       // Lichte rem: max 20 verzoeken per 10s over alle experts samen.
       const now = Date.now();
       this._reqTimes = (this._reqTimes || []).filter(t => now - t < 10_000);

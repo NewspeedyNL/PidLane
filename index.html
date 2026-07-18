@@ -15612,6 +15612,11 @@ document.addEventListener('DOMContentLoaded',function(){
                                expert: live meekijken + PIDs/DTC opvragen
        POST /session/close   → netjes stoppen
      Read-only by design: het berichtformaat kán geen schrijfactie dragen.
+     NIEUW 19-07 — VOERTUIGPROFIEL (vstate): de local deelt supported PIDs,
+     voertuiginfo, actieve set en sensor-gezondheid met de expert. In
+     expert-modus vult dat dezelfde variabelen als een lokale BT-discovery,
+     waardoor PID-keuze, deuren, readiness en analyses volwaardig werken;
+     alle hardware-acties (polling, DTC, opname) blijven op de local.
      Haakt in op bestaande app-functies via wrappers (updPID, finishLogin) —
      er wordt niets in de bestaande code gewijzigd.
      ════════════════════════════════════════════════════════════════════ -->
@@ -15722,7 +15727,7 @@ document.addEventListener('DOMContentLoaded',function(){
 window.PLRemote=(function(){
   'use strict';
   const S={mode:null,ws:null,sess:null,stopFlag:false,dirty:{},flushT:null,recT:null,backoff:1000,exp:0,
-           ews:null,expJoin:null,expStop:false,expClosed:false,backoffE:1000,recTE:null,expMeta:null,vals:{},lastExpN:0,pending:{}};
+           ews:null,expJoin:null,expStop:false,expClosed:false,backoffE:1000,recTE:null,expMeta:null,vals:{},lastExpN:0,pending:{},vstate:null};
   const $=id=>document.getElementById(id);
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   function hb(){return String(window.PROXY_URL||'').replace(/\/$/,'');}
@@ -15831,7 +15836,7 @@ window.PLRemote=(function(){
     try{ws=new WebSocket(wb()+'/session/connect?id='+encodeURIComponent(S.sess.sessionId)+'&jt='+encodeURIComponent(S.sess.localToken));}
     catch(e){setShareStat('⚠ '+(e.message||e));return;}
     S.ws=ws;
-    ws.onopen=()=>{S.backoff=1000;setShareStat('✅ Delen actief — alleen-lezen voor de expert');startFlush();showPill(true);};
+    ws.onopen=()=>{S.backoff=1000;setShareStat('✅ Delen actief — alleen-lezen voor de expert');startFlush();showPill(true);sendVState();};
     ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(_){return;}handleLocalMsg(m);};
     ws.onclose=()=>{stopFlush();if(S.mode!=='local'||S.stopFlag)return;
       setShareStat('⚠ Verbinding weggevallen — opnieuw verbinden…');
@@ -15842,13 +15847,14 @@ window.PLRemote=(function(){
   async function handleLocalMsg(m){
     if(m.type==='presence'){const n=m.experts|0;
       $('remExpN').textContent=n;$('remPillN').textContent=n;
-      if(n>S.lastExpN)logA('👁 Expert verbonden — '+n+' kijkt nu mee','info');
+      if(n>S.lastExpN){logA('👁 Expert verbonden — '+n+' kijkt nu mee','info');sendVStateSoon();}
       else if(n<S.lastExpN)logA('👁 Expert weg — nog '+n+' verbonden','info');
       S.lastExpN=n;return;}
     if(m.type==='closed'){S.stopFlag=true;setShareStat('Sessie gesloten.');endShareUi();return;}
     if(m.type==='request-pids'){await answerPids(m);return;}
     if(m.type==='request-dtc'){await answerDtc(m);return;}
     if(m.type==='request-poll'){applyExpertPoll(m);return;}
+    if(m.type==='request-vstate'){sendVState();return;}
     if(m.type==='request-record'){await answerRecord(m);return;}
     if(m.type==='request-analyze'){await answerAnalyze(m);return;}
   }
@@ -15865,6 +15871,29 @@ window.PLRemote=(function(){
     }catch(_){}
     sendWs({type:'response',reqId:m.reqId,data:{poll:'ok'}});
   }
+  /* ── VOERTUIGPROFIEL (vstate) ─────────────────────────────────────
+     De expert-app is dezelfde app, maar zonder BT-discovery: zijn
+     PID-keuzelijst en deuren zouden leeg blijven. Daarom deelt de local
+     zijn complete voertuigprofiel — supported PIDs, voertuiginfo,
+     actieve selectie, sensor-gezondheid en laatst bekende foutcodes.
+     Verstuurd bij WS-open, bij een nieuw aanhakende expert, op verzoek
+     (request-vstate) en (gedebounced) na elke discovery/RDW-update.
+     De Worker cachet het laatste snapshot voor late joiners. Puur lezen. */
+  function buildVState(){
+    const o={t:Date.now()};
+    try{o.pids=(typeof supportedPIDs!=='undefined')?[...supportedPIDs].slice(0,200):[];}catch(_){o.pids=[];}
+    try{const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
+      o.veh={merk:v.merk||'',model:v.model||'',year:v.year||'',vin:v.vin||'',brandstof:v.brandstof||'',motor:v.motor||''};}catch(_){}
+    try{o.active=(typeof activePIDs!=='undefined')?[...activePIDs].slice(0,60):[];}catch(_){}
+    try{const h={};if(typeof _pidHealth!=='undefined'){for(const k in _pidHealth){if(_pidHealth[k]&&_pidHealth[k]!=='ok')h[k]=_pidHealth[k];}}o.health=h;}catch(_){}
+    try{o.dtc=(typeof dtcCodes!=='undefined'&&Array.isArray(dtcCodes))?dtcCodes.slice(0,40):[];}catch(_){}
+    try{o.demo=(typeof demoMode!=='undefined')&&!!demoMode;}catch(_){}
+    try{o.rps=(typeof _connSpeed!=='undefined'&&_connSpeed&&_connSpeed.readsPerSec)||null;}catch(_){}
+    return o;
+  }
+  let _vstT=null;
+  function sendVState(){ if(S.mode!=='local')return; sendWs({type:'vstate',data:buildVState()}); }
+  function sendVStateSoon(){ if(S.mode!=='local')return; clearTimeout(_vstT); _vstT=setTimeout(sendVState,1200); }
   /* ── EXPERT-BESTURING: opname + AI-analyse draaien op de LOCAL ──
      De expert stuurt alleen commando's; de local (met de echte BT-verbinding,
      volle busfrequentie en het AI-tegoed) doet het werk en stuurt resultaat
@@ -16127,7 +16156,7 @@ window.PLRemote=(function(){
     const err=$('remExpErr');err.textContent='';
     const j=(pre&&pre.sid)?pre:parseJoin($('remJoinIn').value);
     if(!j){err.textContent='⚠ Onherkenbare link of code.';return;}
-    S.expJoin=j;S.expStop=false;S.expClosed=false;S.backoffE=1000;S.vals={};S.expMeta=null;
+    S.expJoin=j;S.expStop=false;S.expClosed=false;S.backoffE=1000;S.vals={};S.expMeta=null;S.vstate=null;
     err.textContent='Verbinden…';
     openExpertWs();
   }
@@ -16158,6 +16187,12 @@ window.PLRemote=(function(){
     if(m.type==='backfill'){(m.frames||[]).forEach(f=>{mergeVals(f&&f.data);driveFeed(f&&f.data,true);});renderTiles();
       expLog('↺ '+((m.frames||[]).length)+' frame(s) historie ontvangen');return;}
     if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);driveFeed(m.frame&&m.frame.data);renderTiles();return;}
+    if(m.type==='vstate'){S.vstate=m.data||null;
+      if(window._remoteVehicleMode)applyVState(S.vstate);
+      const n=((S.vstate&&S.vstate.pids&&S.vstate.pids.length)|0);
+      const vh=(S.vstate&&S.vstate.veh)||{};
+      if(n)expLog('🚗 Voertuigprofiel — '+n+' sensoren'+(vh.merk?(' · '+(vh.merk+' '+(vh.model||'')).trim()):''));
+      return;}
     if(m.type==='record-status'){const d=m.data||{};
       const el=$('remRecStat');
       if(el)el.innerHTML=d.rec?('● REC '+(d.sec|0)+'s · '+(d.n|0)+' metingen op de local'):('✓ opname gestopt · '+(d.n|0)+' metingen');
@@ -16212,6 +16247,54 @@ window.PLRemote=(function(){
       try{updateEVMode();}catch(_){}
     }
   }
+  // Voertuigprofiel van de local toepassen op déze app-instantie: vult
+  // dezelfde variabelen die normaal door een lokale BT-discovery gevuld
+  // worden (supportedPIDs → discoveredPIDDefs, vehicleInfo, _pidHealth,
+  // activePIDs). Daarna werken PID-keuzelijst, deuren, readiness en
+  // analyses volwaardig — met de remote sessie als databron.
+  function applyVState(v){
+    if(!v||typeof v!=='object'||!window._remoteVehicleMode)return;
+    try{
+      if(v.veh&&(v.veh.merk||v.veh.vin)){
+        try{mergeVehicleData('vin',v.veh);}catch(_){}
+        try{if(v.veh.vin)vehicleInfo.vin=v.veh.vin;}catch(_){}
+        try{const lbl=((vehicleInfo.merk||'')+' '+(vehicleInfo.model||'')).trim();
+            showVtag(lbl||vehicleInfo.vin||'Remote voertuig');}catch(_){}
+      }
+      if(v.health&&typeof v.health==='object'){try{for(const k in v.health)_pidHealth[k]=v.health[k];}catch(_){}}
+      if(Array.isArray(v.pids)&&v.pids.length){
+        try{supportedPIDs=new Set(v.pids.filter(p=>typeof p==='string'&&/^01[0-9A-F]{2}$/i.test(p)));}catch(_){}
+        try{buildDiscoveredPIDList();}catch(_){}
+      }
+      if(Array.isArray(v.active)&&v.active.length){
+        try{v.active.forEach(p=>{if(typeof p==='string'&&getPidDef(p))activePIDs.add(p);});}catch(_){}
+      }
+      try{if(Array.isArray(v.dtc)&&v.dtc.length&&!dtcCodes.length)dtcCodes=[...v.dtc];}catch(_){}
+      try{buildPIDList(document.getElementById('psrch')?.value||'');}catch(_){}
+      try{document.getElementById('pidCnt').textContent=activePIDs.size;}catch(_){}
+      try{renderGauges();rebuildGSel();}catch(_){}
+      try{refreshAllReadiness();}catch(_){}
+      window._connReady=true;
+      try{updateConnGate();}catch(_){}
+      logA('🔭 Voertuigprofiel toegepast — '+(((v.pids&&v.pids.length)|0))+' sensoren van de local beschikbaar','ok');
+    }catch(_){}
+  }
+  // Volledige actieve set (gedebounced) naar de local sturen na een handmatige
+  // PID-keuze op de expert. De local doet een UNIE met zijn eigen selectie en
+  // pollt de sensoren mee — hij haalt nooit lokale keuzes weg.
+  let _rpaT=null;
+  function remPollActive(){
+    if(!window._remoteVehicleMode||!S.ews||S.ews.readyState!==1)return;
+    clearTimeout(_rpaT);
+    _rpaT=setTimeout(()=>{
+      try{
+        const sfx=[...new Set([...(activePIDs||[])].map(p=>String(p).slice(2).toUpperCase()))]
+          .filter(s=>/^[0-9A-F]{2}$/.test(s)).slice(0,24);
+        if(sfx.length&&S.ews&&S.ews.readyState===1)
+          S.ews.send(JSON.stringify({type:'request-poll',pids:sfx,reqId:Math.random().toString(36).slice(2,8)}));
+      }catch(_){}
+    },400);
+  }
   function enterDrive(){
     if(!S.ews||S.ews.readyState!==1){expLog('✖ Eerst verbinden met een sessie');return;}
     try{if(typeof connected!=='undefined'&&connected&&!window._remoteVehicleMode){
@@ -16224,6 +16307,14 @@ window.PLRemote=(function(){
     expertClose();
     const p=$('remDrivePill');if(p){p.style.display='flex';
       p.textContent='🔭 remote · '+((S.expJoin&&S.expJoin.sid)||'');}
+    // Remote sessie = analyse-klaar: geen BT-gate ('Check connectie') meer.
+    window._connReady=true;
+    try{updateConnGate();}catch(_){}
+    // Voertuigprofiel van de local toepassen (of alsnog opvragen).
+    if(S.vstate)applyVState(S.vstate);
+    else if(S.ews&&S.ews.readyState===1)S.ews.send(JSON.stringify({type:'request-vstate',reqId:_rid()}));
+    // Laatst ontvangen live-waarden meteen de meters/pijplijn in.
+    try{for(const k in S.vals){const vv=S.vals[k];if(typeof vv==='number')updPID('01'+k,vv);}}catch(_){}
     // Huidige actieve set meteen bij de local laten meepollen → meters vullen
     try{if(typeof activePIDs!=='undefined'&&activePIDs.size)ensurePIDListActive([...activePIDs]);}catch(_){}
     logA('🔭 Remote sessie is nu de databron — deuren en analyses bruikbaar (alleen-lezen)','ok');
@@ -16233,6 +16324,8 @@ window.PLRemote=(function(){
     window._remoteVehicleMode=false;
     try{connected=false;}catch(_){}
     try{setConn(false);}catch(_){}
+    window._connReady=false;
+    try{updateConnGate();}catch(_){}
     const p=$('remDrivePill');if(p)p.style.display='none';
   }
   function mergeVals(d){if(!d||typeof d!=='object')return;
@@ -16303,7 +16396,7 @@ window.PLRemote=(function(){
   function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);
     exitDrive();
     try{if(S.ews)S.ews.close();}catch(_){}
-    S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};
+    S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};S.vstate=null;
     $('remExpLive').style.display='none';$('remExpConn').style.display='';
     $('remExpErr').textContent='';setExpStat('—');}
 
@@ -16365,6 +16458,31 @@ window.PLRemote=(function(){
         return _sp.apply(this,arguments);
       }; window.startPoll=startPoll;}
   }catch(_){}
+  try{ // analyse-gate: een actieve remote sessie telt als gecheckte verbinding
+    if(typeof preAnalysisCheck==='function'){const _pa=preAnalysisCheck;
+      preAnalysisCheck=async function(){ if(window._remoteVehicleMode)return true; return _pa.apply(this,arguments); };
+      window.preAnalysisCheck=preAnalysisCheck;}
+  }catch(_){}
+  try{ // snelheidsmeting leest de bus — remote overslaan (aanroepers vangen null af)
+    if(typeof measureConnSpeed==='function'){const _mc=measureConnSpeed;
+      measureConnSpeed=async function(){ if(window._remoteVehicleMode)return null; return _mc.apply(this,arguments); };
+      window.measureConnSpeed=measureConnSpeed;}
+  }catch(_){}
+  try{ // gezondheidsscan leest de bus — remote komt de gezondheid uit het vstate-snapshot
+    if(typeof initialHealthScan==='function'){const _ih=initialHealthScan;
+      initialHealthScan=async function(){ if(window._remoteVehicleMode)return; return _ih.apply(this,arguments); };
+      window.initialHealthScan=initialHealthScan;}
+  }catch(_){}
+  try{ // handmatige PID-keuze op de expert → local pollt de set mee (uniewerking)
+    if(typeof togglePID==='function'){const _tg=togglePID;
+      togglePID=function(){ const r=_tg.apply(this,arguments); try{remPollActive();}catch(_){} return r; };
+      window.togglePID=togglePID;}
+  }catch(_){}
+  try{ // '+ Alles'-categorieknop idem
+    if(typeof selectCategoryPIDs==='function'){const _sc2=selectCategoryPIDs;
+      selectCategoryPIDs=function(){ const r=_sc2.apply(this,arguments); try{remPollActive();}catch(_){} return r; };
+      window.selectCategoryPIDs=selectCategoryPIDs;}
+  }catch(_){}
   try{ // geen Bluetooth hier: stray one-shots krijgen een lege (NO DATA-achtige) respons
     if(typeof sendCmd==='function'){const _sc=sendCmd;
       sendCmd=async function(cmd,t){ if(window._remoteVehicleMode)return ''; return _sc(cmd,t); };
@@ -16390,6 +16508,16 @@ window.PLRemote=(function(){
         if(window._remoteVehicleMode){try{showToast?.('Veldlab-survey werkt alleen bij de auto zelf');}catch(_){}return;}
         return _vs.apply(this,arguments);
       }; window.vlFullSurvey=vlFullSurvey;}
+  }catch(_){}
+  try{ // local: discovery/verversing van de PID-lijst → snapshot naar de expert
+    if(typeof buildDiscoveredPIDList==='function'){const _bd=buildDiscoveredPIDList;
+      buildDiscoveredPIDList=function(){ const r=_bd.apply(this,arguments); try{sendVStateSoon();}catch(_){} return r; };
+      window.buildDiscoveredPIDList=buildDiscoveredPIDList;}
+  }catch(_){}
+  try{ // local: voertuiginfo (VIN/RDW) bijgewerkt → snapshot verversen
+    if(typeof showVtag==='function'){const _svt=showVtag;
+      showVtag=function(){ const r=_svt.apply(this,arguments); try{sendVStateSoon();}catch(_){} return r; };
+      window.showVtag=showVtag;}
   }catch(_){}
   function remoteDtc(){
     return new Promise(res=>{
