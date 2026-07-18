@@ -1,8 +1,8 @@
 {
   "name": "pidlane",
-  "version": "2.1.0",
+  "version": "2.7.0",
   "description": "PidLane - AI Car Diagnostics",
-  "main": "src/index.html",
+  "main": "index.html",
   "scripts": {
     "build": "echo 'No build step needed'",
     "cap:add": "npx cap add android",
