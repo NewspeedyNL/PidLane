@@ -15569,7 +15569,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </style>
 
 <div id="remPill" onclick="PLRemote.openShare()">📡 delen · 👁 <span id="remPillN">0</span></div>
-<div id="remDrivePill" onclick="PLRemote.openExpert()" style="position:fixed;top:52px;right:10px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid #9d8cff;color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer">🔭 remote</div>
+<div id="remDrivePill" onclick="PLRemote.openExpert()" style="position:fixed;bottom:16px;right:12px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid #9d8cff;color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer">🔭 remote</div>
 
 <div class="rem-ov" id="remShareOv">
  <div class="rem-card">
@@ -15582,6 +15582,11 @@ document.addEventListener('DOMContentLoaded',function(){
   <div id="remShareOn" style="display:none">
     <div class="rem-stat" id="remShareStat">—</div>
     <div class="rem-row"><div class="rem-lbl">Sessiecode</div><div class="rem-code" id="remSid">—</div></div>
+    <div class="rem-row" id="remQrRow" style="text-align:center">
+      <div class="rem-lbl">Scan met de camera van het expert-toestel</div>
+      <div id="remQr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px;margin-top:6px;min-width:180px;min-height:180px"></div>
+      <div class="rem-stat" id="remQrStat"></div>
+    </div>
     <div class="rem-row"><div class="rem-lbl">Link voor de expert (stuur via WhatsApp of mail)</div>
       <div class="rem-flex"><input class="rem-in" id="remLink" readonly><button class="rem-btn" onclick="PLRemote.copy('remLink')">Kopieer</button></div></div>
     <div class="rem-row"><div class="rem-lbl">Of losse code (plakken bij “Meekijken”)</div>
@@ -15599,6 +15604,12 @@ document.addEventListener('DOMContentLoaded',function(){
   <div id="remExpConn">
     <div class="rem-lbl">Plak de link of code die je ontving</div>
     <div class="rem-flex"><input class="rem-in" id="remJoinIn" placeholder="https://…#remote=…  of  a1b2c3~code"><button class="rem-btn pri" onclick="PLRemote.expertConnect()">Verbind</button></div>
+    <div class="rem-lbl" style="margin-top:10px">Of andersom: toon hier een QR en scan die met de telefoon bij de auto</div>
+    <button class="rem-btn" style="width:100%" id="remPairBtn" onclick="PLRemote.pairStart()">📱 Toon koppel-QR</button>
+    <div id="remPairRow" style="display:none;text-align:center;margin-top:8px">
+      <div id="remPairQr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px;min-width:180px;min-height:180px"></div>
+      <div class="rem-stat" id="remPairStat">—</div>
+    </div>
     <div class="rem-stat" id="remExpErr"></div>
   </div>
   <div id="remExpLive" style="display:none">
@@ -15662,12 +15673,54 @@ window.PLRemote=(function(){
     $('remShareOff').style.display='none';$('remShareOn').style.display='';
     $('remSid').textContent=j.sessionId;
     $('remLink').value=shareLink(j.sessionId,j.joinToken);
+    renderShareQr($('remLink').value);
     $('remCode').value=j.sessionId+'~'+j.joinToken;
     $('remExpN').textContent='0';$('remPillN').textContent='0';
     setShareStat('Verbinden met server…');
     openLocalWs();
     logA('📡 Diagnose delen gestart — sessie '+j.sessionId,'ok');
+    // QR-koppeling: sessie-info deponeren zodat de expert-laptop vanzelf verbindt.
+    if(S.pendingClaim){
+      const pp=S.pendingClaim;S.pendingClaim=null;
+      fetch(hb()+'/pair/claim',{method:'POST',
+        headers:{'Content-Type':'application/json','X-App-Token':tok()},
+        body:JSON.stringify({pairId:pp.pid,claimToken:pp.ct,sessionId:j.sessionId,joinToken:j.joinToken})})
+        .then(r=>r.json())
+        .then(cj=>{ if(cj&&cj.ok)logA('🔗 Gekoppeld aan expert via QR','ok');
+                    else logA('⚠ QR-koppeling mislukt: '+((cj&&cj.error)||'onbekend'),'warn'); })
+        .catch(e=>logA('⚠ QR-koppeling mislukt: '+(e.message||e),'warn'));
+    }
   }
+  /* ── QR-koppeling: local toont QR van de deel-link; het expert-toestel
+     scant met de camera → link opent de app → bestaande deep-link-flow
+     (#remote=1&sid&jt → pendingJoin → auto-verbinden na login).
+     De bibliotheek laadt lazy vanaf cdnjs — remote delen vereist toch al
+     internet. Lukt het laden niet, dan verdwijnt alleen het QR-blok en
+     blijven link + losse code gewoon bruikbaar. ── */
+  let _qrLibP=null;
+  function _qrLib(){
+    if(window.QRCode)return Promise.resolve();
+    if(_qrLibP)return _qrLibP;
+    _qrLibP=new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+      s.onload=()=>res();
+      s.onerror=()=>{_qrLibP=null;rej(new Error('QR-bibliotheek niet geladen'));};
+      document.head.appendChild(s);
+    });
+    return _qrLibP;
+  }
+  async function renderQrInto(elId,rowId,link){
+    const el=$(elId),row=$(rowId);if(!el)return false;
+    el.innerHTML='';if(row)row.style.display='';
+    try{
+      await _qrLib();
+      new QRCode(el,{text:String(link||''),width:180,height:180,
+        colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+      return true;
+    }catch(e){ if(row)row.style.display='none'; return false; }
+  }
+  function renderShareQr(link){ return renderQrInto('remQr','remQrRow',link); }
   function shareLink(sid,jt){
     let base='';
     try{if(location.protocol==='http:'||location.protocol==='https:')base=location.origin+location.pathname;}catch(_){}
@@ -15847,12 +15900,57 @@ window.PLRemote=(function(){
     endShareUi();logA('📡 Delen gestopt','info');
   }
   function endShareUi(){S.mode=null;S.ws=null;showPill(false);
-    $('remShareOn').style.display='none';$('remShareOff').style.display='';$('remShareErr').textContent='';}
+    $('remShareOn').style.display='none';$('remShareOff').style.display='';$('remShareErr').textContent='';
+    try{$('remQr').innerHTML='';}catch(_){}}
 
   /* ── EXPERT: meekijken ────────────────────────────────────────── */
   function openExpert(){$('remExpertOv').classList.add('open');}
-  function expertClose(){$('remExpertOv').classList.remove('open');}
+  function expertClose(){$('remExpertOv').classList.remove('open');pairStop();}
   function setExpStat(s){$('remExpStat').textContent=s;}
+  /* ── OMGEKEERDE KOPPELING: expert toont QR, local scant ──
+     Expert maakt bij de Worker een kortlevende pairing (10 min) met twee
+     gescheiden tokens: het CLAIM-token zit in de QR (mag alleen sessie-info
+     deponeren), het POLL-token blijft op dit toestel (mag alleen ophalen).
+     Een foto van de QR geeft dus nooit meekijkrechten. De local scant,
+     start automatisch met delen en deponeert sid+joinToken; wij pollen tot
+     dat er is en verbinden dan vanzelf. ── */
+  async function pairStart(){
+    const err=$('remExpErr');err.textContent='';
+    if(!tok()){err.textContent='⚠ Inloggen vereist om een koppel-QR te maken.';return;}
+    const st=$('remPairStat');
+    try{
+      const r=await fetch(hb()+'/pair/create',{method:'POST',
+        headers:{'Content-Type':'application/json','X-App-Token':tok()},body:'{}'});
+      const j=await r.json();
+      if(!r.ok||!j.pairId)throw new Error((j&&j.error)||('HTTP '+r.status));
+      S.pair=j;
+      let base='';
+      try{if(location.protocol==='http:'||location.protocol==='https:')base=location.origin+location.pathname;}catch(_){}
+      if(!base&&typeof window.PUBLIC_APP_URL==='string')base=window.PUBLIC_APP_URL;
+      const link=base+'#pair=1&pid='+j.pairId+'&ct='+encodeURIComponent(j.claimToken);
+      const ok=await renderQrInto('remPairQr','remPairRow',link);
+      if(!ok){err.textContent='⚠ QR-weergave niet beschikbaar (CDN geblokkeerd?)';return;}
+      if(st)st.textContent='Wacht op scan… (10 min geldig)';
+      clearInterval(S.pairT);
+      S.pairT=setInterval(async()=>{
+        try{
+          const pr=await fetch(hb()+'/pair/poll?id='+encodeURIComponent(j.pairId)+'&pt='+encodeURIComponent(j.pollToken));
+          const pj=await pr.json();
+          if(pj&&pj.status==='ready'&&pj.sessionId&&pj.joinToken){
+            clearInterval(S.pairT);S.pairT=null;
+            if(st)st.textContent='✅ Gescand — verbinden…';
+            try{$('remJoinIn').value=pj.sessionId+'~'+pj.joinToken;}catch(_){}
+            expertConnect({sid:pj.sessionId,jt:pj.joinToken});
+            const row=$('remPairRow');if(row)row.style.display='none';
+          }else if(pj&&pj.status==='expired'){
+            clearInterval(S.pairT);S.pairT=null;
+            if(st)st.textContent='⏰ Verlopen — maak een nieuwe QR.';
+          }
+        }catch(_){}
+      },2000);
+    }catch(e){err.textContent='⚠ Koppel-QR mislukt: '+(e.message||e);}
+  }
+  function pairStop(){clearInterval(S.pairT);S.pairT=null;const row=$('remPairRow');if(row)row.style.display='none';}
   function parseJoin(str){
     str=String(str||'').trim();if(!str)return null;
     const h=str.indexOf('#');if(h>=0)str=str.slice(h+1);
@@ -16049,16 +16147,29 @@ window.PLRemote=(function(){
     $('remExpErr').textContent='';setExpStat('—');}
 
   /* ── Deep link + wrappers (additief inhaken op de app) ────────── */
-  let pendingJoin=null;
+  let pendingJoin=null,pendingPair=null;
   try{
     const h=String(location.hash||'');
-    if(/remote=1/.test(h)||/sid=/.test(h)){
+    if(/pair=1/.test(h)){
+      const pid=(h.match(/[#&]pid=([A-Za-z0-9]+)/)||[])[1]||'';
+      const ct=(h.match(/[#&]ct=([^&]+)/)||[])[1]||'';
+      if(pid&&ct){pendingPair={pid:pid,ct:decodeURIComponent(ct)};
+        try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}}
+    }else if(/remote=1/.test(h)||/sid=/.test(h)){
       const p=parseJoin(h);
       if(p){pendingJoin=p;
         try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}}
     }
   }catch(_){}
   function afterLogin(){
+    if(pendingPair){
+      const pp=pendingPair;pendingPair=null;
+      // Scannen = toestemming om te delen: paneel openen en meteen starten.
+      S.pendingClaim=pp;
+      openShare();
+      shareStart();
+      return;
+    }
     if(!pendingJoin)return;
     const p=pendingJoin;pendingJoin=null;
     openExpert();
@@ -16143,7 +16254,7 @@ window.PLRemote=(function(){
 
   return {openShare,closeShare,shareStart,shareStop,copy,
           openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive,
-          remRecStart,remRecStop,remRecCsv,remAnalyze};
+          remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart};
 })();
 </script>
 
