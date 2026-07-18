@@ -1294,6 +1294,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
     <div class="mact" id="connActions">
       <button class="mbtn p" id="btnConnect" onclick="connectSerial()">⚡ Plug in. Let's go.</button>
       <button class="mbtn s" id="btnDemo" onclick="startDemo()">▷ Try demo — no adapter needed</button>
+      <button class="mbtn s" id="btnExpertJoin" onclick="PLRemote.openExpert()">🔭 Meekijken met sessie (expert)</button>
     </div>
   </div>
 </div>
@@ -14332,10 +14333,9 @@ function pidRecToAI(){
     '<button id="pidRecAiBtn" class="ai-act pri" style="margin-top:8px;width:100%" onclick="pidRecRunAI()">▶ Analyseer met opname</button>'+
     '</div></div><div id="pidRecAiOut" style="margin-top:10px"></div>';
 }
-async function pidRecRunAI(){
-  var prob=(document.getElementById('pidRecProb')||{}).value||'';
-  if(!prob.trim()){ showToast?.('Beschrijf eerst je probleem'); return; }
-  var btn=document.getElementById('pidRecAiBtn'); if(btn){ btn.disabled=true; btn.textContent='⏳ Analyseren'; }
+// Headless AI-analyse van de laatste opname — gedeeld door de recorder-UI
+// én de remote-besturing (expert stuurt commando, LOCAL draait de analyse).
+async function pidRecAiText(prob){
   var rows=_recStats(); var d=window._recData; var ds='';
   rows.forEach(function(r){ ds+='- '+r.name+': '+r.n+' metingen, bereik '+(r.mn==null?'—':fv(r.mn))+' t/m '+(r.mx==null?'—':fv(r.mx))+', gemiddeld '+(r.av==null?'—':fv(r.av))+' '+r.unit+'\n'; });
   var vi=(typeof vehicleInfo!=='undefined'&&vehicleInfo)?vehicleInfo:{};
@@ -14346,11 +14346,17 @@ async function pidRecRunAI(){
     'OPGENOMEN SENSORDATA:\n'+ds+'\n'+
     'Geef je antwoord in EXACT deze secties met deze koppen (hoofdletters):\n'+
     'MOGELIJKE OORZAAK\nDATA-OORDEEL\nADVIES';
+  var txt=await apiFetch(p,1400);
+  return _withDisclaimer(txt);
+}
+async function pidRecRunAI(){
+  var prob=(document.getElementById('pidRecProb')||{}).value||'';
+  if(!prob.trim()){ showToast?.('Beschrijf eerst je probleem'); return; }
+  var btn=document.getElementById('pidRecAiBtn'); if(btn){ btn.disabled=true; btn.textContent='⏳ Analyseren'; }
   var aiout=document.getElementById('pidRecAiOut');
   if(aiout) aiout.innerHTML='<div class="ai-ld"><span class="spin"></span> AI analyseert je opname</div>';
   try{
-    var txt=await apiFetch(p,1400);
-    txt=_withDisclaimer(txt);
+    var txt=await pidRecAiText(prob);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     var acts='<div class="ai-acts" style="margin-top:10px"><button class="ai-act pri" onclick="openAIReportSheet()">📄 Open rapport — bekijk, deel &amp; download</button></div>';
     if(aiout) aiout.innerHTML=_aiReportHtml(txt)+acts;
@@ -15601,6 +15607,15 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="rem-grid" id="remTiles"></div>
     <div class="rem-lbl">PID's opvragen (bv. 0C 05 0D)</div>
     <div class="rem-flex"><input class="rem-in" id="remReqPids" value="0C 05 0D"><button class="rem-btn pri" onclick="PLRemote.reqPids()">Vraag op</button><button class="rem-btn" onclick="PLRemote.reqDtc()">DTC’s</button></div>
+    <div class="rem-lbl" style="margin-top:12px">Opname op de local — volle busfrequentie, verwerking daar</div>
+    <div class="rem-flex">
+      <button class="rem-btn pri" id="remRecStartBtn" onclick="PLRemote.remRecStart()">● Start opname</button>
+      <button class="rem-btn" id="remRecStopBtn" onclick="PLRemote.remRecStop()" disabled>⏹ Stop</button>
+      <button class="rem-btn" id="remRecCsvBtn" onclick="PLRemote.remRecCsv()" disabled>⬇ CSV</button>
+    </div>
+    <div class="rem-stat" id="remRecStat">Gebruikt de PID-codes hierboven; leeg = actieve set van de local</div>
+    <div class="rem-flex" style="margin-top:6px"><input class="rem-in" id="remAnaProb" placeholder="Klacht voor AI-analyse (bv. trilt bij optrekken 2000-3000 tpm)"><button class="rem-btn pri" id="remAnaBtn" onclick="PLRemote.remAnalyze()" disabled>🤖 Analyse</button></div>
+    <div id="remRecOut" style="margin-top:8px"></div>
     <div class="rem-log" id="remExpLog" style="margin-top:10px"></div>
     <button class="rem-btn" style="width:100%;margin-top:10px" onclick="PLRemote.expertDisconnect()">Verbreek</button>
   </div>
@@ -15683,6 +15698,8 @@ window.PLRemote=(function(){
     if(m.type==='request-pids'){await answerPids(m);return;}
     if(m.type==='request-dtc'){await answerDtc(m);return;}
     if(m.type==='request-poll'){applyExpertPoll(m);return;}
+    if(m.type==='request-record'){await answerRecord(m);return;}
+    if(m.type==='request-analyze'){await answerAnalyze(m);return;}
   }
   // Expert wil PIDs (blijvend) volgen → UNIE met de eigen actieve set. De
   // expert voegt toe, maar haalt nooit lokale keuzes weg — en het is altijd
@@ -15696,6 +15713,73 @@ window.PLRemote=(function(){
       }
     }catch(_){}
     sendWs({type:'response',reqId:m.reqId,data:{poll:'ok'}});
+  }
+  /* ── EXPERT-BESTURING: opname + AI-analyse draaien op de LOCAL ──
+     De expert stuurt alleen commando's; de local (met de echte BT-verbinding,
+     volle busfrequentie en het AI-tegoed) doet het werk en stuurt resultaat
+     terug. Alles zichtbaar in de lokale app-log als audit trail. */
+  let _remRecStatT=null;
+  function _remRecStatus(extra){
+    try{
+      const n=Object.values(datalogBuffer||{}).reduce((a,arr)=>a+arr.length,0);
+      const act=(typeof _recActive!=='undefined')&&_recActive;
+      const sec=act?Math.round((Date.now()-_recT0)/1000):0;
+      sendWs({type:'record-status',data:Object.assign({rec:!!act,sec:sec,n:n},extra||{})});
+    }catch(_){}
+  }
+  async function answerRecord(m){
+    const act=String(m.action||'');
+    try{
+      if(act==='start'){
+        if(typeof _recActive!=='undefined'&&_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'al-bezig'}});return;}
+        const sfx=[...new Set((m.pids||[]).map(s=>String(s).toUpperCase()).filter(s=>/^[0-9A-F]{2}$/.test(s)))].slice(0,24);
+        const wens=sfx.length?sfx.map(s=>'01'+s):[...(activePIDs||[])];
+        const bruikbaar=wens.filter(p=>{try{return !!getPidDef(p)||(typeof supportedPIDs!=='undefined'&&supportedPIDs.has&&supportedPIDs.has(p));}catch(_){return true;}});
+        if(!bruikbaar.length){sendWs({type:'response',reqId:m.reqId,data:{record:'geen-pids'}});return;}
+        _recSel.clear();bruikbaar.forEach(p=>_recSel.add(p));
+        pidRecStartRec();   // zelfde machinerie als de recorder-UI — DOM-guarded, headless-veilig
+        if(typeof _recActive==='undefined'||!_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'start-mislukt'}});return;}
+        logA('🔭 Expert startte een opname op dit toestel ('+bruikbaar.length+' sensoren)','warn');
+        clearInterval(_remRecStatT);_remRecStatT=setInterval(()=>_remRecStatus(),1000);
+        sendWs({type:'response',reqId:m.reqId,data:{record:'gestart',pids:bruikbaar}});
+        _remRecStatus();
+        return;
+      }
+      if(act==='stop'){
+        clearInterval(_remRecStatT);_remRecStatT=null;
+        if(typeof _recActive==='undefined'||!_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'niet-actief'}});return;}
+        pidRecStopRec();
+        logA('🔭 Expert stopte de opname','info');
+        const d=window._recData||{};
+        const rows=(typeof _recStats==='function')?_recStats():[];
+        sendWs({type:'response',reqId:m.reqId,data:{record:'gestopt',dur:d.dur||0,n:d.n||0,
+          rows:rows.map(r=>({pid:r.pid,name:r.name,unit:r.unit,n:r.n,mn:r.mn,mx:r.mx,
+            av:r.av==null?null:Math.round(r.av*100)/100}))}});
+        _remRecStatus({rec:false});
+        return;
+      }
+      if(act==='csv'){
+        const csv=(typeof pidRecCSV==='function')?pidRecCSV():'';
+        if(!csv){sendWs({type:'response',reqId:m.reqId,data:{record:'geen-data'}});return;}
+        // WS-frames klein houden: in chunks van ~30 kB versturen
+        const CH=30000;const total=Math.max(1,Math.ceil(csv.length/CH));
+        for(let i=0;i<total;i++)sendWs({type:'response',reqId:m.reqId,
+          data:{csvChunk:csv.slice(i*CH,(i+1)*CH),chunk:i+1,chunks:total}});
+        logA('🔭 Expert downloadde de opname-CSV ('+csv.length+' tekens)','info');
+        return;
+      }
+    }catch(e){sendWs({type:'response',reqId:m.reqId,data:{record:'fout',err:String((e&&e.message)||e)}});}
+  }
+  async function answerAnalyze(m){
+    const prob=String(m.problem||'').slice(0,500);
+    if(!window._recData||!window._recData.n){sendWs({type:'response',reqId:m.reqId,data:{analysis:null,err:'geen opname beschikbaar — eerst opnemen en stoppen'}});return;}
+    logA('🔭 Expert vroeg AI-analyse van de opname (gebruikt AI-tegoed van dit account)','warn');
+    sendWs({type:'response',reqId:m.reqId,data:{analysisBusy:true}});
+    try{
+      const txt=await pidRecAiText(prob||'Algemene beoordeling van de opgenomen sensordata; benoem afwijkingen en waarschijnlijke oorzaken.');
+      window._lastAIReport={text:txt,html:_aiReportHtml(txt),ts:new Date()};
+      sendWs({type:'response',reqId:m.reqId,data:{analysis:txt}});
+    }catch(e){sendWs({type:'response',reqId:m.reqId,data:{analysis:null,err:String((e&&e.message)||e)}});}
   }
   // BT-kanaal delen met de poll-loop: wacht tot de lopende ronde klaar is en
   // claim daarna kort het kanaal, zodat one-shots en polls elkaar niet storen.
@@ -15751,10 +15835,11 @@ window.PLRemote=(function(){
     const k=Object.keys(S.dirty);if(!k.length)return;
     const d=S.dirty;S.dirty={};d.t=Date.now();
     sendWs({type:'telemetry',data:d});
-  },1000);}
+  },250);}
   function stopFlush(){if(S.flushT){clearInterval(S.flushT);S.flushT=null;}}
   async function shareStop(){
     S.stopFlag=true;clearTimeout(S.recT);stopFlush();
+    clearInterval(_remRecStatT);_remRecStatT=null;
     try{if(S.sess)await fetch(hb()+'/session/close',{method:'POST',
       headers:{'Content-Type':'application/json','X-App-Token':tok()},
       body:JSON.stringify({sessionId:S.sess.sessionId})});}catch(_){}
@@ -15811,10 +15896,28 @@ window.PLRemote=(function(){
   function handleExpMsg(m){
     if(m.type==='meta'){S.expMeta=m.meta;
       setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));return;}
-    if(m.type==='backfill'){(m.frames||[]).forEach(f=>{mergeVals(f&&f.data);driveFeed(f&&f.data);});renderTiles();
+    if(m.type==='backfill'){(m.frames||[]).forEach(f=>{mergeVals(f&&f.data);driveFeed(f&&f.data,true);});renderTiles();
       expLog('↺ '+((m.frames||[]).length)+' frame(s) historie ontvangen');return;}
     if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);driveFeed(m.frame&&m.frame.data);renderTiles();return;}
+    if(m.type==='record-status'){const d=m.data||{};
+      const el=$('remRecStat');
+      if(el)el.innerHTML=d.rec?('● REC '+(d.sec|0)+'s · '+(d.n|0)+' metingen op de local'):('✓ opname gestopt · '+(d.n|0)+' metingen');
+      _recBtns(!!d.rec,(d.n|0)>0);
+      return;}
     if(m.type==='response'){const d=m.data||{};
+      if(d.record!==undefined){
+        expLog('📼 '+d.record+(d.err?(' — '+d.err):''));
+        if(d.record==='gestart'){_recBtns(true,false);const o=$('remRecOut');if(o)o.innerHTML='';}
+        if(d.record==='gestopt'){_recBtns(false,(d.n|0)>0);const o=$('remRecOut');if(o)o.innerHTML=_recRowsHtml(d.rows,d.dur|0,d.n|0);}
+        if(d.record==='al-bezig')_recBtns(true,false);
+        if(d.record==='niet-actief'||d.record==='geen-pids'||d.record==='start-mislukt'||d.record==='fout')_recBtns(false,false);
+      }
+      if(d.csvChunk!==undefined){S.csvBuf=(S.csvBuf||'')+d.csvChunk;if((d.chunk|0)===(d.chunks|0))_csvDone();}
+      if(d.analysisBusy){expLog('⏳ Local draait AI-analyse van de opname…');}
+      if(d.analysis){const o=$('remRecOut');
+        if(o)o.innerHTML='<div style="background:#0c1018;border:1px solid #232c40;border-radius:8px;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap;max-height:40vh;overflow-y:auto">'+esc(d.analysis)+'</div>';
+        expLog('🤖 AI-analyse ontvangen van de local');}
+      if(d.analysis===null&&d.err){const o=$('remRecOut');if(o)o.innerHTML='<div class="rem-stat">✖ '+esc(d.err)+'</div>';expLog('✖ analyse: '+d.err);}
       if(d.dtc&&m.reqId&&S.pending[m.reqId]){const f=S.pending[m.reqId];delete S.pending[m.reqId];f([...d.dtc]);}
       if(d.pids){mergeVals(d.pids);driveFeed(d.pids);renderTiles();
         expLog('✔ Antwoord: '+Object.entries(d.pids).map(([k,v])=>k+'='+(v==null?'—':v)).join('  '));}
@@ -15827,10 +15930,28 @@ window.PLRemote=(function(){
   // Remote-voertuig-modus: binnenkomende waarden de gewone app-pijplijn in
   // voeren (updPID), zodat meters, deuren, analyses en AI-rapporten er lokaal
   // gewoon mee werken — de sessie IS dan de databron.
-  function driveFeed(d){
+  function driveFeed(d,isBackfill){
     if(!window._remoteVehicleMode||!d||typeof d!=='object')return;
-    for(const k in d){if(k==='t'||k==='reqId')continue;const v=d[k];
-      if(typeof v==='number'&&isFinite(v)){try{updPID('01'+String(k).toUpperCase(),v);}catch(_){}}}
+    for(const k in d){
+      if(k==='t'||k==='reqId')continue;
+      const v=d[k];
+      if(typeof v!=='number'||!isFinite(v))continue;
+      const pid='01'+String(k).toUpperCase();
+      try{updPID(pid,v);}catch(_){}
+      // Historie-frames (backfill bij verbinden): alleen meters/pidVals vullen,
+      // NIET de opname/stabiliteit in — die frames hebben oude tijdstippen.
+      if(isBackfill)continue;
+      try{checkStability(pid,v);}catch(_){}
+      try{feedDatalog(pid,v);}catch(_){}
+      try{feedSessionStat(pid,v);}catch(_){}
+    }
+    // De poll-loop draait remote niet (polling zit op de telefoon) → de
+    // per-ronde engines hier zelf aftrappen, gethrottled tot ~1×/s.
+    if(!isBackfill&&(!window._remEngT||Date.now()-window._remEngT>900)){
+      window._remEngT=Date.now();
+      try{runCorrelationEngine();}catch(_){}
+      try{updateEVMode();}catch(_){}
+    }
   }
   function enterDrive(){
     if(!S.ews||S.ews.readyState!==1){expLog('✖ Eerst verbinden met een sessie');return;}
@@ -15881,6 +16002,45 @@ window.PLRemote=(function(){
   }
   function reqDtc(){if(S.ews&&S.ews.readyState===1)
     S.ews.send(JSON.stringify({type:'request-dtc',reqId:Math.random().toString(36).slice(2,8)}));}
+  /* ── Opname & analyse op afstand: expert stuurt, LOCAL doet het werk ── */
+  function _rid(){return Math.random().toString(36).slice(2,8);}
+  function remRecStart(){
+    if(!S.ews||S.ews.readyState!==1)return;
+    const pids=String($('remReqPids').value||'').split(/[\s,;]+/)
+      .map(s=>s.trim().toUpperCase()).filter(s=>/^[0-9A-F]{2}$/.test(s)).slice(0,24);
+    S.ews.send(JSON.stringify({type:'request-record',action:'start',pids:pids,reqId:_rid()}));
+    expLog('● Opname-start gestuurd'+(pids.length?(' — '+pids.join(' ')):' — actieve set local'));
+  }
+  function remRecStop(){if(S.ews&&S.ews.readyState===1)S.ews.send(JSON.stringify({type:'request-record',action:'stop',reqId:_rid()}));}
+  function remRecCsv(){S.csvBuf='';if(S.ews&&S.ews.readyState===1)S.ews.send(JSON.stringify({type:'request-record',action:'csv',reqId:_rid()}));}
+  function remAnalyze(){
+    if(!S.ews||S.ews.readyState!==1)return;
+    const prob=String(($('remAnaProb')||{}).value||'').trim();
+    const o=$('remRecOut');if(o)o.innerHTML='<div class="rem-stat">⏳ Local draait AI-analyse…</div>';
+    S.ews.send(JSON.stringify({type:'request-analyze',problem:prob,reqId:_rid()}));
+  }
+  function _recBtns(rec,hasData){
+    const s1=$('remRecStartBtn'),s2=$('remRecStopBtn'),s3=$('remRecCsvBtn'),s4=$('remAnaBtn');
+    if(s1)s1.disabled=!!rec;if(s2)s2.disabled=!rec;
+    if(s3)s3.disabled=rec||!hasData;if(s4)s4.disabled=rec||!hasData;
+  }
+  function _recRowsHtml(rows,dur,n){
+    let h='<div class="rem-stat" style="margin-bottom:4px">✓ '+dur+'s · '+n+' metingen (opgenomen op de local)</div>';
+    h+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+    h+='<tr><th style="text-align:left;padding:3px;border-bottom:1px solid #232c40">Sensor</th><th style="padding:3px;border-bottom:1px solid #232c40">n</th><th style="padding:3px;border-bottom:1px solid #232c40">Min</th><th style="padding:3px;border-bottom:1px solid #232c40">Max</th><th style="padding:3px;border-bottom:1px solid #232c40">Gem.</th></tr>';
+    (rows||[]).forEach(r=>{h+='<tr><td style="padding:3px">'+esc(r.name)+'</td><td style="padding:3px;text-align:center">'+r.n+'</td><td style="padding:3px;text-align:center">'+(r.mn==null?'—':r.mn)+'</td><td style="padding:3px;text-align:center">'+(r.mx==null?'—':r.mx)+'</td><td style="padding:3px;text-align:center">'+(r.av==null?'—':r.av)+' '+esc(r.unit||'')+'</td></tr>';});
+    return h+'</table>';
+  }
+  function _csvDone(){
+    try{
+      const blob=new Blob([S.csvBuf||''],{type:'text/csv'});const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download='pidlane_opname_remote_'+Date.now()+'.csv';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      expLog('⬇ CSV gedownload ('+(S.csvBuf||'').length+' tekens)');
+    }catch(e){expLog('✖ CSV-download mislukt');}
+    S.csvBuf='';
+  }
   function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);
     exitDrive();
     try{if(S.ews)S.ews.close();}catch(_){}
@@ -15982,7 +16142,8 @@ window.PLRemote=(function(){
   }
 
   return {openShare,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive};
+          openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive,
+          remRecStart,remRecStop,remRecCsv,remAnalyze};
 })();
 </script>
 
