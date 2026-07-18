@@ -255,14 +255,38 @@ html, body { overflow-x:clip; }
 #loginOv .msub { font-size:14px; }
 #loginOv .mact { border-top:0; background:transparent; padding-bottom:calc(16px + env(safe-area-inset-bottom,0px)); }
 /* ══ IN-APP INTRO (logo-splash, fade naar login; toont 1x per sessie) ══ */
-#introOv { position:fixed; inset:0; z-index:9700; background:#0a0e17; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .45s ease; padding-bottom:6vh; }
+#introOv { position:fixed; inset:0; z-index:9700; background:radial-gradient(120% 90% at 50% 28%, #101a2e 0%, #0a0e17 55%, #06080f 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .7s ease; padding-bottom:6vh; }
 #introOv.gone { opacity:0; pointer-events:none; }
-.intro-logo { width:132px; height:132px; filter:drop-shadow(0 12px 34px rgba(0,255,136,.22)); animation:introPop .6s cubic-bezier(.2,.8,.2,1) both, introPulse 1.5s ease-in-out .55s 1; }
+/* Uittrede: logo groeit licht en vervaagt — vloeit visueel over in het
+   (identieke, iets kleinere) logo op het loginscherm eronder. */
+#introOv.leave .intro-wrap { animation:introLeave .7s ease both; }
+.intro-wrap { position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center; }
+.intro-ring { position:absolute; inset:-14px; border-radius:44px; padding:2px;
+  background:conic-gradient(from 0deg, rgba(0,255,136,0), #00ff88, #00d4ff, #7b61ff, rgba(0,255,136,0));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  animation:introSpin 2.6s linear infinite; opacity:.85; }
+.intro-logo { width:132px; height:132px; filter:drop-shadow(0 12px 34px rgba(0,255,136,.22)); animation:introPop .6s cubic-bezier(.2,.8,.2,1) both, introPulse 1.6s ease-in-out .55s 2; }
 .intro-ttl { font-family:var(--f); font-weight:800; font-size:30px; color:#eef2fa; letter-spacing:.4px; animation:introPop .6s ease .15s both; }
 .intro-ttl span { color:#4d82ff; }
 .intro-sub { font-family:var(--f); font-size:14px; color:#9aa6bd; animation:introPop .6s ease .28s both; }
+.intro-sub2 { font-family:var(--f); font-size:11px; letter-spacing:2.6px; text-transform:uppercase; color:#5b86ff; animation:introPop .6s ease 1.15s both; }
+.intro-bar { width:184px; height:3px; border-radius:99px; background:#1c2536; overflow:hidden; margin-top:4px; animation:introPop .6s ease .5s both; }
+.intro-bar i { display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,#00ff88,#00d4ff); animation:introLoad 2.7s cubic-bezier(.3,.7,.4,1) .5s forwards; }
 @keyframes introPop { from{opacity:0;transform:translateY(8px) scale(.92)} to{opacity:1;transform:none} }
 @keyframes introPulse { 0%,100%{transform:none} 50%{transform:scale(1.05)} }
+@keyframes introSpin { to{transform:rotate(360deg)} }
+@keyframes introLoad { from{width:0} 60%{width:70%} to{width:100%} }
+@keyframes introLeave { to{transform:scale(1.12);opacity:0} }
+/* ── BUSY-PILL: hoge busactiviteit (eerste minuut na verbinden / survey) ── */
+#busyPill{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:9550;display:none;align-items:center;gap:9px;background:rgba(13,19,32,.94);border:1px solid #24406e;border-radius:999px;padding:7px 14px;font-family:var(--f);font-size:12px;font-weight:600;color:#bcd0f5;box-shadow:0 8px 24px rgba(0,0,0,.45);backdrop-filter:blur(4px);max-width:92vw}
+#busyPill.on{display:flex;animation:pidFadeUp .35s ease both}
+#busyPill .sp{width:14px;height:14px;border-radius:50%;border:2px solid #24406e;border-top-color:#00d4ff;animation:busySpin .8s linear infinite;flex:none}
+#busyPill .bars{display:flex;gap:2px;align-items:flex-end;height:12px;flex:none}
+#busyPill .bars i{width:3px;background:linear-gradient(180deg,#00ff88,#00d4ff);border-radius:2px;animation:busyBar 1s ease-in-out infinite;height:4px}
+#busyPill .bars i:nth-child(2){animation-delay:.15s}#busyPill .bars i:nth-child(3){animation-delay:.3s}#busyPill .bars i:nth-child(4){animation-delay:.45s}
+@keyframes busySpin{to{transform:rotate(360deg)}}
+@keyframes busyBar{0%,100%{height:4px}50%{height:12px}}
 /* ── Vloeiende stap-overgangen door de hele flow (login -> verbinden -> hub) ── */
 @keyframes pidFade { from{opacity:0} to{opacity:1} }
 @keyframes pidFadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
@@ -276,7 +300,7 @@ html, body { overflow-x:clip; }
 .welcome-choices .choice-card:nth-child(4){ animation-delay:.28s }
 .welcome-choices .choice-card:nth-child(5){ animation-delay:.36s }
 .welcome-choices .choice-card:nth-child(6){ animation-delay:.44s }
-@media (prefers-reduced-motion: reduce){ .ov,#step1,#step2,#step3,#step4,#welcomeScreen:not(.hidden),.welcome-choices .choice-card{ animation:none !important } }
+@media (prefers-reduced-motion: reduce){ .ov,#step1,#step2,#step3,#step4,#welcomeScreen:not(.hidden),.welcome-choices .choice-card,.intro-ring,.intro-bar i,#busyPill .sp,#busyPill .bars i{ animation:none !important } }
 .mbtn { width:100%; padding:12px; border-radius:9px; border:none; font-family:var(--f); font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; }
 .mbtn:active { transform:scale(.98); }
 .mbtn.p { background:var(--bl); color:#fff; }
@@ -1162,11 +1186,14 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 </style>
 </head>
 <body>
+<div id="busyPill"><span class="sp"></span><span id="busyPillTxt">Hoge busactiviteit — voertuig in kaart brengen…</span><span class="bars"><i></i><i></i><i></i><i></i></span></div>
+
 <div id="introOv" aria-hidden="true">
-  <div class="intro-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%"><defs><linearGradient id="bgI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grI" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="glI" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="sgI" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="url(#bgI)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="442" stroke-width="13"/><line x1="256" y1="422" x2="256" y2="396" stroke-width="11.5"/><line x1="256" y1="380" x2="256" y2="360" stroke-width="10"/><line x1="256" y1="347" x2="256" y2="332" stroke-width="8.5"/><line x1="256" y1="321" x2="256" y2="310" stroke-width="7"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grI)" stroke-width="17" stroke-linejoin="round" filter="url(#glI)"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#sgI)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spI)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></svg></div>
+  <div class="intro-wrap"><div class="intro-ring"></div><div class="intro-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%"><defs><linearGradient id="bgI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grI" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="glI" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="sgI" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="512" height="512" rx="112" fill="url(#bgI)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="13" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="442" stroke-width="13"/><line x1="256" y1="422" x2="256" y2="396" stroke-width="11.5"/><line x1="256" y1="380" x2="256" y2="360" stroke-width="10"/><line x1="256" y1="347" x2="256" y2="332" stroke-width="8.5"/><line x1="256" y1="321" x2="256" y2="310" stroke-width="7"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grI)" stroke-width="17" stroke-linejoin="round" filter="url(#glI)"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#sgI)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spI)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></svg></div></div>
   <div class="intro-ttl">Pid<span>Lane</span></div>
   <div class="intro-sub">Your car talks. We translate.</div>
-  
+  <div class="intro-bar"><i></i></div>
+  <div class="intro-sub2">AI-diagnose · Live data · Veldlab</div>
 </div>
 
 <!-- ══ LOGIN SCHERM ══ -->
@@ -3869,6 +3896,7 @@ async function vlFullSurvey(){
   if(!connected || demoMode){ showToast('Eerst verbinden met een echte auto (geen demo)'); return; }
   if(_vlSvBusy) return;
   _vlSvBusy=true; _vlSvAbort=false;
+  try{showBusyPill('📋 Full Survey — bus tijdelijk zwaar belast…',15000);}catch(_){}
   const clean=s=>String(s||'').replace(/[\r\n>]+/g,' ').replace(/\s+/g,' ').trim();
   const t0=Date.now();
   const sv={type:'survey', t:t0, tester:(window.currentUser&&currentUser.name)||''};
@@ -4057,7 +4085,20 @@ async function vlFullSurvey(){
       'Opgeslagen in Veldlab + JSON gedownload</span>', true);
   }catch(e){
     _vlSvUI('⏹ Survey gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
-  }finally{ _vlSvBusy=false; }
+  }finally{
+    _vlSvBusy=false;
+    // Bus is weer vrij: BT-strategie HERIJKEN op de echte pid-snelheid, zodat
+    // analyses hierna op de juiste timing draaien. Eerdere metingen (tijdens
+    // of vóór de survey/discovery) kunnen vertekend zijn.
+    if(connected&&!demoMode){
+      setTimeout(()=>{try{
+        measureConnSpeed(6).then(sp=>{
+          if(sp){applyStrategy(suggestStrategy(sp));
+            try{btDiag('BT-strategie herijkt na Full Survey: '+sp.avgMs+'ms/read → '+_connStrategy,'ok');}catch(_){}}
+        });
+      }catch(_){}},1200);
+    }
+  }
 }
 
 /* ---- logvanger: auto-start bij echte verbinding, auto-stop bij verbroken ---- */
@@ -9350,6 +9391,14 @@ async function measureConnSpeed(samples=8){
     return _connSpeed;
   }
   if(!connected) return null;
+  // BT-OPTIMALISATIE-VOLGORDE: nooit snelheid meten terwijl de Full Survey de
+  // bus bezet houdt — dat geeft valse (trage) responstijden en dus een
+  // verkeerde poll-strategie. Wachten tot de bus vrij is (max 2 min);
+  // tijdens discovery/survey doet strategie er toch niet toe.
+  for(let _w=0;_w<120&&typeof _vlSvBusy!=='undefined'&&_vlSvBusy;_w++){
+    await new Promise(r=>setTimeout(r,1000));
+    if(!connected) return null;
+  }
   // Kies een bestaande, gezonde PID om mee te testen (RPM of eerste supported)
   let testPid='010C';
   if(!supportedPIDs.has(testPid)) testPid=[...supportedPIDs][0]||'010C';
@@ -9803,6 +9852,7 @@ async function startDiscovery(){
 
   // Eerste gezondheidsscan: lees elke PID 1x en beoordeel of die gezond/bij
   // de auto hoort. Ongezonde/dode PIDs worden in de lijst uitgegrijsd.
+  try{showBusyPill('⚡ Hoge busactiviteit — sensoren en voertuig in kaart brengen…',60000);}catch(_){}
   await initialHealthScan();
 
   // Connectie-snelheid meten en strategie STIL toepassen (geen popup hier).
@@ -12402,11 +12452,36 @@ function toggleTheme(){
   function go(){
     var ov=document.getElementById('introOv'); if(!ov) return;
     try{ if(sessionStorage.getItem('pl_introShown')){ ov.classList.add('gone'); return; } sessionStorage.setItem('pl_introShown','1'); }catch(e){}
-    ov.addEventListener('click',function(){ ov.classList.add('gone'); });
-    setTimeout(function(){ ov.classList.add('gone'); }, 1600);
+    ov.addEventListener('click',function(){ ov.classList.add('leave'); ov.classList.add('gone'); });
+    // Langer zichtbaar (3.4s) met laadbalk; tik = overslaan. De 'leave'-fase
+    // (logo groeit en vervaagt) loopt visueel over in het loginscherm.
+    setTimeout(function(){ ov.classList.add('leave'); }, 2900);
+    setTimeout(function(){ ov.classList.add('gone'); }, 3400);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
 })();
+
+// ── BUSY-INDICATOR: duidelijke animatie bij hoog busverkeer ──
+// Toont een pill onder de topbar zolang discovery/health-scan/Full Survey de
+// bus zwaar belasten (standaard de eerste minuut na verbinden). Zolang de
+// Full Survey loopt blijft hij automatisch staan, ook voorbij de minuut.
+let _busyPillT=null,_busyPillUntil=0;
+function showBusyPill(txt,ms){
+  const p=document.getElementById('busyPill');if(!p)return;
+  const t=document.getElementById('busyPillTxt');if(t&&txt)t.textContent=txt;
+  p.classList.add('on');
+  _busyPillUntil=Math.max(_busyPillUntil,Date.now()+(ms||60000));
+  if(_busyPillT)return;
+  _busyPillT=setInterval(()=>{
+    if(typeof _vlSvBusy!=='undefined'&&_vlSvBusy)
+      _busyPillUntil=Math.max(_busyPillUntil,Date.now()+4000);   // survey loopt nog
+    if(Date.now()>=_busyPillUntil)hideBusyPill();
+  },1000);
+}
+function hideBusyPill(){
+  const p=document.getElementById('busyPill');if(p)p.classList.remove('on');
+  clearInterval(_busyPillT);_busyPillT=null;_busyPillUntil=0;
+}
 function fontSize(delta){
   currentFont=Math.min(18,Math.max(10,currentFont+delta));
   document.documentElement.style.fontSize=currentFont+'px';
@@ -15577,6 +15652,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <div id="remShareOff">
     <p style="font-size:13px;opacity:.85;margin:4px 0 12px">Laat een expert live meekijken met je diagnose. De expert ziet je sensordata en kan zelf PID-waarden en foutcodes opvragen — <b>alleen lezen</b>; er kan op afstand niets aan het voertuig veranderd worden.</p>
     <button class="rem-btn pri" style="width:100%" onclick="PLRemote.shareStart()">Start delen</button>
+    <button class="rem-btn" style="width:100%;margin-top:8px" onclick="PLRemote.scanForPair()">📷 Scan koppel-QR van de expert</button>
     <div class="rem-stat" id="remShareErr"></div>
   </div>
   <div id="remShareOn" style="display:none">
@@ -15598,14 +15674,23 @@ document.addEventListener('DOMContentLoaded',function(){
  </div>
 </div>
 
+<div id="remScanOv" style="display:none;position:fixed;inset:0;z-index:9800;background:rgba(4,6,12,.96);flex-direction:column;align-items:center;justify-content:center;gap:12px">
+  <div class="rem-lbl" id="remScanHint">Richt de camera op de QR-code</div>
+  <video id="remScanVid" playsinline muted style="width:min(90vw,420px);aspect-ratio:1;object-fit:cover;border-radius:14px;border:2px solid #2c86ff"></video>
+  <button class="rem-btn" onclick="PLRemote.stopQrScan()">Annuleren</button>
+</div>
+
 <div class="rem-ov" id="remExpertOv">
  <div class="rem-card">
   <div class="rem-h"><h3>🔭 Meekijken met sessie</h3><button class="rem-x" onclick="PLRemote.expertClose()">✕</button></div>
   <div id="remExpConn">
     <div class="rem-lbl">Plak de link of code die je ontving</div>
     <div class="rem-flex"><input class="rem-in" id="remJoinIn" placeholder="https://…#remote=…  of  a1b2c3~code"><button class="rem-btn pri" onclick="PLRemote.expertConnect()">Verbind</button></div>
-    <div class="rem-lbl" style="margin-top:10px">Of andersom: toon hier een QR en scan die met de telefoon bij de auto</div>
-    <button class="rem-btn" style="width:100%" id="remPairBtn" onclick="PLRemote.pairStart()">📱 Toon koppel-QR</button>
+    <div class="rem-lbl" style="margin-top:10px">Of via QR — kies welk toestel de camera gebruikt</div>
+    <div class="rem-flex">
+      <button class="rem-btn" style="flex:1" id="remPairBtn" onclick="PLRemote.pairStart()">📱 Toon koppel-QR</button>
+      <button class="rem-btn" style="flex:1" onclick="PLRemote.scanForJoin()">📷 Scan QR</button>
+    </div>
     <div id="remPairRow" style="display:none;text-align:center;margin-top:8px">
       <div id="remPairQr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px;min-width:180px;min-height:180px"></div>
       <div class="rem-stat" id="remPairStat">—</div>
@@ -15679,6 +15764,19 @@ window.PLRemote=(function(){
     setShareStat('Verbinden met server…');
     openLocalWs();
     logA('📡 Diagnose delen gestart — sessie '+j.sessionId,'ok');
+    try{logUsage('remote_share_start',j.sessionId);}catch(_){}
+    // Auto Full Survey: het voertuig meteen documenteren bij de start van een
+    // remote sessie (Veldlab → Airtable), één keer per app-sessie. De bus is
+    // daardoor de eerste ~minuut drukker; daarna volle snelheid voor live.
+    if(connected&&!demoMode&&typeof vlFullSurvey==='function'
+       &&typeof isAdmin==='function'&&isAdmin()&&!window._remAutoSurvey){
+      window._remAutoSurvey=true;
+      setTimeout(()=>{try{
+        if(typeof _vlSvBusy!=='undefined'&&_vlSvBusy)return;
+        logA('📋 Auto Full Survey gestart (remote sessie) — bus is even drukker','info');
+        vlFullSurvey();
+      }catch(_){}},4000);
+    }
     // QR-koppeling: sessie-info deponeren zodat de expert-laptop vanzelf verbindt.
     if(S.pendingClaim){
       const pp=S.pendingClaim;S.pendingClaim=null;
@@ -15686,7 +15784,7 @@ window.PLRemote=(function(){
         headers:{'Content-Type':'application/json','X-App-Token':tok()},
         body:JSON.stringify({pairId:pp.pid,claimToken:pp.ct,sessionId:j.sessionId,joinToken:j.joinToken})})
         .then(r=>r.json())
-        .then(cj=>{ if(cj&&cj.ok)logA('🔗 Gekoppeld aan expert via QR','ok');
+        .then(cj=>{ if(cj&&cj.ok){logA('🔗 Gekoppeld aan expert via QR','ok');try{logUsage('remote_pair_claim',pp.pid);}catch(_){}}
                     else logA('⚠ QR-koppeling mislukt: '+((cj&&cj.error)||'onbekend'),'warn'); })
         .catch(e=>logA('⚠ QR-koppeling mislukt: '+(e.message||e),'warn'));
     }
@@ -15793,6 +15891,7 @@ window.PLRemote=(function(){
         pidRecStartRec();   // zelfde machinerie als de recorder-UI — DOM-guarded, headless-veilig
         if(typeof _recActive==='undefined'||!_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'start-mislukt'}});return;}
         logA('🔭 Expert startte een opname op dit toestel ('+bruikbaar.length+' sensoren)','warn');
+        try{logUsage('remote_record_start',bruikbaar.join(' '));}catch(_){}
         clearInterval(_remRecStatT);_remRecStatT=setInterval(()=>_remRecStatus(),1000);
         sendWs({type:'response',reqId:m.reqId,data:{record:'gestart',pids:bruikbaar}});
         _remRecStatus();
@@ -15803,6 +15902,7 @@ window.PLRemote=(function(){
         if(typeof _recActive==='undefined'||!_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'niet-actief'}});return;}
         pidRecStopRec();
         logA('🔭 Expert stopte de opname','info');
+        try{logUsage('remote_record_stop',((window._recData&&window._recData.dur)||0)+'s');}catch(_){}
         const d=window._recData||{};
         const rows=(typeof _recStats==='function')?_recStats():[];
         sendWs({type:'response',reqId:m.reqId,data:{record:'gestopt',dur:d.dur||0,n:d.n||0,
@@ -15827,6 +15927,7 @@ window.PLRemote=(function(){
     const prob=String(m.problem||'').slice(0,500);
     if(!window._recData||!window._recData.n){sendWs({type:'response',reqId:m.reqId,data:{analysis:null,err:'geen opname beschikbaar — eerst opnemen en stoppen'}});return;}
     logA('🔭 Expert vroeg AI-analyse van de opname (gebruikt AI-tegoed van dit account)','warn');
+    try{logUsage('remote_analyze',prob.slice(0,80));}catch(_){}
     sendWs({type:'response',reqId:m.reqId,data:{analysisBusy:true}});
     try{
       const txt=await pidRecAiText(prob||'Algemene beoordeling van de opgenomen sensordata; benoem afwijkingen en waarschijnlijke oorzaken.');
@@ -15898,6 +15999,7 @@ window.PLRemote=(function(){
       body:JSON.stringify({sessionId:S.sess.sessionId})});}catch(_){}
     try{if(S.ws)S.ws.close();}catch(_){}
     endShareUi();logA('📡 Delen gestopt','info');
+    try{logUsage('remote_share_stop',(S.sess&&S.sess.sessionId)||'');}catch(_){}
   }
   function endShareUi(){S.mode=null;S.ws=null;showPill(false);
     $('remShareOn').style.display='none';$('remShareOff').style.display='';$('remShareErr').textContent='';
@@ -15914,6 +16016,65 @@ window.PLRemote=(function(){
      Een foto van de QR geeft dus nooit meekijkrechten. De local scant,
      start automatisch met delen en deponeert sid+joinToken; wij pollen tot
      dat er is en verbinden dan vanzelf. ── */
+  /* ── IN-APP QR-SCANNER ──
+     BarcodeDetector + getUserMedia: native in Chrome/Edge en de Android
+     WebView — precies onze doelplatforms. Geen bibliotheek nodig. Op
+     browsers zonder BarcodeDetector (Firefox/Safari) fail-soft met de tip
+     om de camera-app te gebruiken; de link-flow werkt daar gewoon. */
+  let _scanStream=null,_scanRun=false;
+  async function startQrScan(onHit,hint){
+    const ov=$('remScanOv');if(!ov)return;
+    if(!('BarcodeDetector' in window)){
+      try{showToast?.('QR-scannen wordt hier niet ondersteund — gebruik de camera-app van je toestel');}catch(_){}
+      return;
+    }
+    $('remScanHint').textContent=hint||'Richt de camera op de QR-code';
+    ov.style.display='flex';
+    try{
+      _scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+      const v=$('remScanVid');v.srcObject=_scanStream;await v.play();
+      const det=new BarcodeDetector({formats:['qr_code']});
+      _scanRun=true;
+      const loop=async()=>{
+        if(!_scanRun)return;
+        try{
+          const codes=await det.detect(v);
+          if(codes&&codes.length){const txt=String(codes[0].rawValue||'');stopQrScan();onHit(txt);return;}
+        }catch(_){}
+        setTimeout(loop,180);
+      };
+      loop();
+    }catch(e){
+      stopQrScan();
+      try{showToast?.('Camera niet beschikbaar: '+(e.message||e));}catch(_){}
+    }
+  }
+  function stopQrScan(){
+    _scanRun=false;
+    try{if(_scanStream)_scanStream.getTracks().forEach(t=>t.stop());}catch(_){}
+    _scanStream=null;
+    const ov=$('remScanOv');if(ov)ov.style.display='none';
+    const v=$('remScanVid');if(v)v.srcObject=null;
+  }
+  // Expert scant de deel-QR van de local (laptop-webcam of tablet).
+  function scanForJoin(){
+    startQrScan(txt=>{
+      const p=parseJoin(txt);
+      if(!p){try{showToast?.('Geen geldige PidLane-QR');}catch(_){}return;}
+      try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){}
+      expertConnect(p);
+    },'Scan de deel-QR op het toestel bij de auto');
+  }
+  // Local scant de koppel-QR op het scherm van de expert.
+  function scanForPair(){
+    startQrScan(txt=>{
+      const pid=(txt.match(/[#&]pid=([A-Za-z0-9]+)/)||[])[1]||'';
+      const ct=(txt.match(/[#&]ct=([^&\s]+)/)||[])[1]||'';
+      if(!pid||!ct){try{showToast?.('Geen geldige koppel-QR');}catch(_){}return;}
+      S.pendingClaim={pid:pid,ct:decodeURIComponent(ct)};
+      shareStart();
+    },'Scan de koppel-QR op het scherm van de expert');
+  }
   async function pairStart(){
     const err=$('remExpErr');err.textContent='';
     if(!tok()){err.textContent='⚠ Inloggen vereist om een koppel-QR te maken.';return;}
@@ -16254,7 +16415,8 @@ window.PLRemote=(function(){
 
   return {openShare,closeShare,shareStart,shareStop,copy,
           openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive,
-          remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart};
+          remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
+          stopQrScan,scanForJoin,scanForPair};
 })();
 </script>
 
