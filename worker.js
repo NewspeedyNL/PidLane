@@ -1,6 +1,15 @@
 /* ════════════════════════════════════════════════════════════════════
    PidLane Worker — VOLLEDIGE code
-   Build: 2026-07-19 (CET) — VOERTUIGPROFIEL (vstate) naar de expert
+   Build: 2026-07-19 (CET) — KORTE MEEKIJK-CODE + VOERTUIGPROFIEL (vstate)
+
+   NIEUW — KORTE SESSIECODE (naast QR en link):
+     - POST /code/create  (account-auth, eigenaar): ruilt {sessionId, joinToken}
+       in voor een 10-cijferige code. De code leeft precies zolang het
+       joinToken/de sessie. Opgeslagen in een DO-instance met 'code:'-naam.
+     - POST /code/resolve (account-auth, per-IP rate-limited): ruilt de code
+       terug in voor {sessionId, joinToken} zodat de expert live kan aansluiten.
+       Meervoudig bruikbaar binnen de looptijd (meerdere experts, één code).
+     De code is nooit een schrijf-credential; de expert blijft alleen-lezen.
 
    NIEUW t.o.v. 2026-07-18 (alleen binnen RemoteSessionDO, alles verder
    byte-voor-byte gelijk):
@@ -53,6 +62,8 @@
      GET  /session/state    → lees metadata + recente frames (verificatie)
      GET  /session/connect  → WebSocket: expert sluit live aan (joinToken)
      POST /session/close    → eigenaar/admin sluit de sessie netjes af
+     POST /code/create      → korte 10-cijferige meekijk-code → {code, exp}
+     POST /code/resolve     → code → {sessionId, joinToken} (voor de expert)
      GET  /proxy?url=…      → doorgeef-proxy RDW/NHTSA (allowlist)
      GET  /api/config       → app haalt remote config op (gecached)
      POST /api/config       → admin.html schrijft config weg (admin-token)
@@ -370,6 +381,18 @@ function adminRateLimited(ip) {
   const arr = (_adminHits.get(ip) || []).filter(t => now - t < windowMs);
   arr.push(now);
   _adminHits.set(ip, arr);
+  return arr.length > maxHits;
+}
+
+// ── Brute-force-rem op /code/resolve (per isolate, per IP) ──
+// Een 10-cijferige code is per definitie kort; deze rem + account-auth +
+// korte looptijd maken blind raden onhaalbaar.
+const _codeHits = new Map();
+function codeResolveLimited(ip) {
+  const now = Date.now(), windowMs = 60_000, maxHits = 20;
+  const arr = (_codeHits.get(ip) || []).filter(t => now - t < windowMs);
+  arr.push(now);
+  _codeHits.set(ip, arr);
   return arr.length > maxHits;
 }
 
@@ -1131,6 +1154,83 @@ async function handlePairPoll(request, env) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  KORTE MEEKIJK-CODE — 10 cijfers, makkelijk voor te lezen/door te bellen.
+//
+//  De local (eigenaar) ruilt zijn {sessionId, joinToken} in voor een korte
+//  code (/code/create). De expert typt de code en ruilt hem terug in voor
+//  het joinToken (/code/resolve), waarna de normale WebSocket-flow start.
+//  Beveiliging: het joinToken wordt server-side geverifieerd tegen de sid
+//  vóór er een code uitgaat; resolve vereist een account-login én is per-IP
+//  gerate-limit; de code vervalt met de sessie. Read-only blijft read-only.
+// ════════════════════════════════════════════════════════════════════
+function codeStub(env, code) {
+  const id = env.REMOTE_SESSION.idFromName('code:' + code);
+  return env.REMOTE_SESSION.get(id);
+}
+// Uniforme cijfers zonder modulo-bias (bytes ≥250 verwerpen: 250 = 25×10).
+function randDigits(n) {
+  let out = '';
+  while (out.length < n) {
+    const b = new Uint8Array(n);
+    crypto.getRandomValues(b);
+    for (let i = 0; i < b.length && out.length < n; i++) if (b[i] < 250) out += (b[i] % 10);
+  }
+  return out;
+}
+
+async function handleCodeCreate(request, env) {
+  const session = await auth(request, env);
+  if (!session) return json({ error: 'unauthorized' }, 401);
+  if (session.r === 'demo') return json({ error: 'forbidden_role', hint: 'demo mag geen sessie delen' }, 403);
+  if (!env.REMOTE_SESSION) return json({ error: 'no_do_binding' }, 500);
+
+  let body = {};
+  try { body = await request.json(); } catch (_) {}
+  const sessionId = String(body.sessionId || '').trim();
+  const joinToken = String(body.joinToken || '').trim();
+  if (!sessionId || !joinToken) return json({ error: 'missing_session' }, 400);
+
+  // Het joinToken moet echt zijn ÉN bij deze sid horen (sessierol expert).
+  // Zo kan niemand een verzonnen code→sessie-mapping parkeren.
+  const p = await verifyJoinToken(env, joinToken);
+  if (!p || p.sid !== sessionId || p.sr !== 'expert') return json({ error: 'bad_join_token' }, 403);
+  const exp = p.exp;   // code leeft precies zolang het joinToken/de sessie
+
+  // 10-cijferige code; de DO weigert een botsende, nog-geldige code (409) →
+  // een paar pogingen, dan opgeven. Botsing is met 10^10 sowieso zeldzaam.
+  let code = '', ok = false;
+  for (let i = 0; i < 5 && !ok; i++) {
+    code = randDigits(10);
+    const r = await codeStub(env, code).fetch('https://do/code-put', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, joinToken, exp, by: session.u }),
+    });
+    if (r.ok) ok = true;
+    else if (r.status !== 409) return json({ error: 'code_create_failed', status: r.status }, 502);
+  }
+  if (!ok) return json({ error: 'code_create_failed', hint: 'botsingen' }, 502);
+  return json({ ok: true, code, exp }, 200);
+}
+
+async function handleCodeResolve(request, env) {
+  const session = await auth(request, env);
+  if (!session) return json({ error: 'unauthorized' }, 401);
+  if (!env.REMOTE_SESSION) return json({ error: 'no_do_binding' }, 500);
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  if (codeResolveLimited(ip)) return json({ error: 'rate_limited' }, 429);
+
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad_json' }, 400); }
+  const code = String(body.code || '').replace(/\D/g, '');   // scheidingstekens weg
+  if (!/^\d{10}$/.test(code)) return json({ error: 'bad_code' }, 400);
+
+  const r = await codeStub(env, code).fetch('https://do/code-get');
+  const text = await r.text();
+  return new Response(text, { status: r.status, headers: { 'Content-Type': 'application/json', ...CORS } });
+}
+
+// ════════════════════════════════════════════════════════════════════
 //  Durable Object: RemoteSessionDO — één instance per sessie.
 //  Houdt de sessie-metadata (persistent in DO-storage) en een ring van
 //  recente telemetrie-frames. Expert-WebSocket(s) krijgen frames meteen
@@ -1200,6 +1300,30 @@ export class RemoteSessionDO {
       // Eénmalig uitleveren en meteen opruimen — daarna is de pairing op.
       await this.ctx.storage.delete('pair');
       return Response.json({ status: 'ready', sessionId: p.sessionId, joinToken: p.joinToken });
+    }
+
+    // ── Korte-code-ops (DO-instances met 'code:'-naam; eigen storage-key) ──
+    if (op === 'code-put') {
+      const b = await request.json();
+      const cur = await this.ctx.storage.get('code');
+      // Nog-geldige code op deze naam? Dan is het een botsing → 409, Worker
+      // probeert een andere code. Een verlopen restant mag wél overschreven.
+      if (cur && Math.floor(Date.now() / 1000) < cur.exp)
+        return Response.json({ error: 'code_in_use' }, { status: 409 });
+      await this.ctx.storage.put('code', {
+        sessionId: b.sessionId, joinToken: b.joinToken, exp: b.exp, by: b.by,
+      });
+      return Response.json({ ok: true });
+    }
+    if (op === 'code-get') {
+      const c = await this.ctx.storage.get('code');
+      if (!c) return Response.json({ error: 'unknown_code' }, { status: 404 });
+      if (Math.floor(Date.now() / 1000) >= c.exp) {
+        await this.ctx.storage.delete('code');
+        return Response.json({ error: 'expired' }, { status: 410 });
+      }
+      // Meervoudig bruikbaar binnen de looptijd (meerdere experts, één code).
+      return Response.json({ ok: true, sessionId: c.sessionId, joinToken: c.joinToken });
     }
 
     if (op === 'create') {
@@ -1547,6 +1671,13 @@ export default {
 
       if (url.pathname === '/pair/poll' && request.method === 'GET')
         return await handlePairPoll(request, env);
+
+      // ── Korte meekijk-code (10 cijfers) ──
+      if (url.pathname === '/code/create' && request.method === 'POST')
+        return await handleCodeCreate(request, env);
+
+      if (url.pathname === '/code/resolve' && request.method === 'POST')
+        return await handleCodeResolve(request, env);
 
       if (url.pathname === '/proxy' && request.method === 'GET')
         return await handleProxy(request, env);
