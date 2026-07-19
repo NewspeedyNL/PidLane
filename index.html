@@ -1,6 +1,27 @@
 <!-- ════════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-19 (CET) — SPLIT: 1 → 9 BESTANDEN
+     Build: 2026-07-19 (CET) — NIEUW: CARAVAN-RITTRACKER (live brandstofcoach)
+     Nieuwe deur onder "Besparen": een live tracker voor lange, zware ritten
+     met caravan/aanhanger door de bergen. De coach kijkt tijdens de rit mee
+     en geeft brandstofgerichte tips onderweg: terugschakelen als de motor
+     zwoegt (hoge belasting + laag toerental), opschakelen bij onnodig hoog
+     toerental, cruise op een zuinig tempo (~limiet−5, bij 100 → 95),
+     rustiger/gelijkmatiger op het gas, en uitrollen op de motor bij
+     afdalingen (overrun = 0 brandstof, remt mee). Daarnaast veiligheids-/
+     thermische bewaking: koelwater dat oploopt, duurbelasting (pauze-advies),
+     lage boordspanning en de ingestelde caravanlimiet. Live-beeld met
+     momentaan L/100km, snelheid, toerental (met schakel-hint), vermogen
+     (gemeten koppel via 0162/0163, anders belasting%), koelwater, spanning
+     en een trip-teller (km/gemiddeld/liters/€). Terrein (klim/afdaling/vlak)
+     wordt op OBD-basis ingeschat — geen GPS. Eindrapport combineert
+     brandstof + techniek + rijgedrag met de gegeven tips als bewijs.
+     Implementatie: losse module pidlane-caravan.js (10e bestand); haakt in
+     via een choice-card, FEATURE_TOGGLES (feat_caravan), wcBind, en
+     minimaliseer-/backknop-integratie in closeTopOverlay en openLiveView.
+     Getest: browser-laadsimulatie (alle functies globaal, 0 alerts) plus
+     functionele coach-tests (elke regel vuurt correct, koppel-kW en
+     verbruiksintegratie kloppen). Werkt direct in demo.
+     Vorige build 2026-07-19 (CET) — SPLIT: 1 → 9 BESTANDEN
      index.html opgesplitst om het hoofdbestand kleiner en veiliger te
      onderhouden te maken (1264 → 535 KB, −58%). Gedrag identiek. Nieuw
      naast index.html — ALLE bestanden verplicht samen mee-deployen
@@ -555,6 +576,13 @@
           <div class="choice-title">Zelf rijden &amp; analyseren</div>
           <div class="choice-desc">Rij ±10 min je eigen route; zie verbruik en rijgedrag onder echte belasting.</div>
           <div class="choice-out"><b>Je krijgt:</b> rijgedrag + technisch rapport.</div>
+        </div>
+
+        <div class="choice-card full" id="wc-caravan">
+          <div class="choice-head"><span class="choice-icon">🚐</span><span class="choice-time">⏱ live, tijdens de rit</span></div>
+          <div class="choice-title">Caravan / Aanhanger Rit</div>
+          <div class="choice-desc">Lange, zware rit door de bergen — de coach kijkt live mee en geeft brandstoftips: terugschakelen, cruise op ~95, zuiniger rijden.</div>
+          <div class="choice-out"><b>Je krijgt:</b> live verbruik &amp; vermogen, tips onderweg en een eindrapport (brandstof + techniek + rijgedrag).</div>
         </div>
       </div>
     </div><!-- dp-saving -->
@@ -1388,6 +1416,103 @@
       <button id="ritStartBtn" onclick="startRitAnalyse()" style="flex:1;padding:12px;border-radius:9px;border:none;background:linear-gradient(135deg,#00f5ff,#a78bfa);color:#000;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer">🚗 Start Rit Analyse</button>
       <button id="ritStopBtn" onclick="stopRitAnalyse()" style="display:none;flex:1;padding:12px;border-radius:9px;border:1px solid rgba(255,100,100,.4);background:rgba(255,0,0,.1);color:#ff6464;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer">⏹ Stop & Analyseer</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CARAVAN / AANHANGER RITTRACKER (live brandstofcoach) ══ -->
+<div id="caravanDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);backdrop-filter:blur(12px);z-index:9600;overflow-y:auto">
+  <div style="max-width:720px;margin:0 auto;padding:18px 16px 28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#fff">🚐 Caravan-rit</div>
+        <div id="carStatus" style="font-size:12px;color:rgba(255,255,255,.45)">Klaar om te starten</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="minimizeCaravanDash()" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(14,159,110,.4);background:rgba(14,159,110,.1);color:#7cf5c0;font-size:13px;font-weight:700;cursor:pointer">⎯ Kleiner</button>
+        <button onclick="closeCaravanDash()" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:13px;cursor:pointer">✕ Sluiten</button>
+      </div>
+    </div>
+
+    <!-- SETUP -->
+    <div id="carSetup">
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:14px">
+        <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.5;margin-bottom:14px">
+          De coach kijkt tijdens de rit live mee en geeft <b>brandstofgerichte tips</b>: terugschakelen als de motor zwoegt, opschakelen bij onnodig hoog toerental, cruise op een zuinig tempo, rustiger op het gas en uitrollen bij afdalingen. Daarnaast bewaakt hij koelwater, belasting en boordspanning. Aan het eind krijg je één rapport (brandstof + techniek + rijgedrag).
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="font-size:12px;color:rgba(255,255,255,.6)">Caravanlimiet</label>
+          <input id="carLimit" type="number" min="50" max="140" step="5" value="100" style="width:74px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);color:#fff;font-size:14px;text-align:center">
+          <span style="font-size:12px;color:rgba(255,255,255,.5)">km/h — cruise-tip mikt ~5 eronder</span>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:8px">Brandstofprijs (uit Verbruik-scherm): <span id="carPriceEcho">€ 2,05/liter</span> · terrein wordt op OBD-basis ingeschat (geen GPS)</div>
+      </div>
+      <button onclick="startCaravan()" style="width:100%;padding:14px;border-radius:10px;border:none;background:linear-gradient(135deg,#0e9f6e,#1a6fff);color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:800;cursor:pointer">🚐 Start rit &amp; coaching</button>
+    </div>
+
+    <!-- LIVE -->
+    <div id="carLive" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div id="carTimer" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:#fff">0:00</div>
+        <div id="carClimb" style="font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:rgba(143,211,255,.13);color:#8fd3ff">➖ Vlak</div>
+      </div>
+
+      <!-- grote verbruik-tegel -->
+      <div style="background:linear-gradient(135deg,rgba(14,159,110,.12),rgba(26,111,255,.10));border:1px solid rgba(14,159,110,.25);border-radius:14px;padding:16px;margin-bottom:12px;text-align:center">
+        <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:rgba(255,255,255,.45)">MOMENTAAN VERBRUIK</div>
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;margin-top:4px">
+          <span id="carLkm" style="font-family:'DM Mono',monospace;font-size:44px;font-weight:600;color:#fff;line-height:1">—</span>
+          <span style="font-size:14px;color:rgba(255,255,255,.5)">L/100km</span>
+        </div>
+        <div id="carLh" style="font-size:13px;color:rgba(255,255,255,.5);margin-top:2px">—</div>
+      </div>
+
+      <!-- tegels -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">SNELHEID</div>
+          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carSpeed">—</span></div>
+          <div id="carCruise" style="font-size:11px;color:rgba(255,255,255,.35)">doel ~95</div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">TOERENTAL</div>
+          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carRpm">—</span></div>
+          <div id="carGear" style="font-size:11px;font-weight:700;color:#7cf5c0">✓ ok</div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">VERMOGEN</div>
+          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carPower">—</span></div>
+          <div id="carPowerLbl" style="font-size:11px;color:rgba(255,255,255,.35)">% belasting</div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">KOELWATER</div>
+          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#7cf5c0"><span id="carCoolant">—</span></div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">SPANNING</div>
+          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#8fd3ff"><span id="carVolt">—</span></div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">GEMIDDELD</div>
+          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carAvg">—</span></div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35)">L/100km</div>
+        </div>
+      </div>
+
+      <!-- trip-balk -->
+      <div style="display:flex;justify-content:space-between;gap:8px;background:rgba(255,255,255,.04);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+        <div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.4);font-weight:800">AFSTAND</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:#fff"><span id="carKm">0.0</span> km</div></div>
+        <div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.4);font-weight:800">VERBRUIKT</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:#fff"><span id="carLiters">0.00</span> L</div></div>
+        <div style="text-align:center"><div style="font-size:10px;color:rgba(255,255,255,.4);font-weight:800">KOSTEN</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:#7cf5c0"><span id="carCost">€ 0.00</span></div></div>
+      </div>
+
+      <!-- coaching-feed -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4);margin-bottom:6px">💬 COACH</div>
+        <div id="carCoach"></div>
+      </div>
+
+      <button onclick="stopCaravan()" style="width:100%;padding:13px;border-radius:10px;border:1px solid rgba(255,100,100,.4);background:rgba(255,0,0,.1);color:#ff6464;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:800;cursor:pointer">⏹ Stop &amp; maak rapport</button>
     </div>
   </div>
 </div>
@@ -2858,6 +2983,13 @@ function openLiveView(){
       else rd.style.display='none';
     }
   }catch(e){}
+  try{
+    const cd=document.getElementById('caravanDash');
+    if(cd && cd.style.display!=='none'){
+      if(typeof caravanActive!=='undefined' && caravanActive) minimizeCaravanDash();  // rit loopt door + pill
+      else cd.style.display='none';
+    }
+  }catch(e){}
   for(const id of ['pidRecOv','onderhoudDash','evDash','langeRitDash','vlDash','vlSheet','vlSvOv','reportsOverviewSheet','aiReportSheet','srTextSheet']){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }
@@ -4271,13 +4403,11 @@ function updateTrendChips(){
 }
 
 function isPIDOk(pid){
+  // Fix 19-07: één bron van waarheid — deze functie toetst simpelweg de
+  // actuele waarde via isPIDOkVal(), zodat de drempellogica (FIX C: centrale
+  // getPidDef, dekt 0164+ en de klassieke PIDS-lijst) maar op één plek staat.
   const val=pidVals[pid]; if(val===undefined) return true;
-  // Fix 15-07 (zelfde als FIX C in isPIDOkVal): centrale getPidDef() zodat ook
-  // PIDs 0164+ en de klassieke PIDS-lijst dezelfde drempels krijgen.
-  const def=(typeof getPidDef==='function'?getPidDef(pid):null)||discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid]; if(!def) return true;
-  if(def.dH&&val>=def.dH) return false; if(def.dL&&val<=def.dL) return false;
-  if(def.wH&&val>=def.wH) return false; if(def.wL&&val<=def.wL) return false;
-  return true;
+  return (typeof isPIDOkVal==='function') ? isPIDOkVal(pid,val) : true;
 }
 
 function rebuildGSel(){
@@ -4668,6 +4798,7 @@ const FEATURE_TOGGLES = {
   feat_koopcheck:    ['#wc-koop'],
   feat_proefrit:     ['#wc-proefrit'],
   feat_verbruik:     ['#wc-fuel'],
+  feat_caravan:      ['#wc-caravan'],
   feat_langerit:     ['#wc-langerit'],
   feat_seizoen:      ['#wc-seizoen'],
   feat_ev:           ['#wc-ev'],
@@ -5582,7 +5713,9 @@ function updateReco(){
   const c=document.getElementById('recoCard'); if(c) c.style.display='none';
 }
 function recoAction(){ try{ window._recoAction?.(); }catch(e){} }
-setInterval(updateReco,4000);
+// Fix 19-07: handle + guard zodat een herstart (bv. na opnieuw verbinden
+// tijdens een lange rit) geen tweede interval bovenop het eerste zet.
+if(!window._recoTimer) window._recoTimer=setInterval(updateReco,4000);
 
 // Eerlijke melding als opslaan native plugins vereist die er nog niet zijn
 function pluginStatus(){
@@ -7154,7 +7287,8 @@ function batchOk(){
 }
 // Periodiek: als batch uit staat en het al een tijd goed gaat, één keer
 // opnieuw proberen. Een eenmalige hapering schakelt batch dan niet voorgoed uit.
-setInterval(()=>{
+// Fix 19-07: handle + guard tegen dubbele intervallen bij herstart.
+if(!window._batchRetryTimer) window._batchRetryTimer=setInterval(()=>{
   if(!connected||demoMode) return;
   if(window._batchSupported===false && _batchOffSince && Date.now()-_batchOffSince>30000){
     window._batchSupported=undefined;   // undefined = opnieuw toegestaan
@@ -7491,8 +7625,10 @@ function obdChipTap(){
     document.getElementById('connOv').classList.remove('hidden');
   }
 }
-setInterval(()=>{ try{updateTopbarStatus();}catch(e){} },2000);          // dots actueel houden
-setInterval(()=>{ try{checkAiReachable();}catch(e){} },300000);          // proxy elke 5 min pingen
+// Fix 19-07: handles + guards zodat deze globale diensten niet stapelen
+// wanneer dit blok bij een herstart nogmaals wordt doorlopen.
+if(!window._topbarTimer) window._topbarTimer=setInterval(()=>{ try{updateTopbarStatus();}catch(e){} },2000);   // dots actueel houden
+if(!window._aiPingTimer) window._aiPingTimer=setInterval(()=>{ try{checkAiReachable();}catch(e){} },300000);   // proxy elke 5 min pingen
 setTimeout(()=>{ try{checkAiReachable();}catch(e){} },1500);             // eerste check na opstart
 async function handleConnect(){
   if(connected){
@@ -8243,6 +8379,7 @@ function closeTopOverlay(){
   if(vis(picker)){ picker.style.display='none'; return true; }
   // 3) Rit Analyse: minimaliseren i.p.v. stoppen (analyse loopt door)
   const rit=document.getElementById('ritDash');
+  if(typeof caravanActive!=='undefined' && document.getElementById('caravanDash')?.style.display!=='none' && document.getElementById('caravanDash')){ if(caravanActive){ minimizeCaravanDash(); } else { closeCaravanDash(); } return true; }
   if(vis(rit)){ if(typeof ritActive!=='undefined'&&ritActive){ minimizeRitAnalyse(); } else { closeRitAnalyse(); } return true; }
   // 4) Neon-dashboard
   const neon=document.getElementById('neonDash');
@@ -8310,6 +8447,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-ev',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openEVCheck(); });
   wcBind('wc-langerit',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openLangeRit(); });
   wcBind('wc-rit10b',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('10min'); });
+  wcBind('wc-caravan',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); if(typeof openCaravan==='function') openCaravan(); });
   wcBind('wc-seizoen',()=>openSeizoensCheck());
   // soon-kaarten: tik geeft korte feedback, geen actie (momenteel geen)
   [].forEach(id=>{
@@ -9117,11 +9255,9 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     // één rit-rapport. renderAIText zet hem nu als enige (incl. html + disclaimer).
     document.getElementById('ritStatus').textContent=`✅ Rit rapport klaar — ${mins}:${secs.toString().padStart(2,'0')} min geanalyseerd`;
 
-    // Toon in rechter AI paneel als Rit Evaluatie
+    // Sluit het rit-overlay en toon de evaluatie in het rechter AI-paneel.
+    // (Fix 19-07: stond hier dubbel — closeRitAnalyse roept zelf al goHome aan.)
     closeRitAnalyse();
-
-    // Bouw rit evaluatie weergave in AI paneel (in het brede midden)
-    try{ closeRitAnalyse?.(); }catch(e){}
     activateAIPane();
     const aiContent=document.getElementById('aiContent');
     aiContent.innerHTML='';
@@ -9477,6 +9613,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </div>
 
 <script src="pidlane-remote.js"></script><!-- remote-module → pidlane-remote.js -->
+<script src="pidlane-caravan.js"></script><!-- caravan-rittracker (live brandstofcoach) -->
 
 <script>
 /* ════════════════════════════════════════════════════════════════════
@@ -9516,7 +9653,8 @@ window.PLWake=(function(){
   // Het OS geeft de lock vrij bij app-wissel/schermvergrendeling; bij terugkeer
   // in beeld meteen opnieuw claimen zodat de sessie doorloopt.
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});
-  setInterval(sync,15000);                   // vangnet: status elke 15s her-evalueren
+  // Fix 19-07: handle + guard tegen dubbele wakelock-sync bij herstart.
+  if(!window._wakeSyncTimer) window._wakeSyncTimer=setInterval(sync,15000);   // vangnet: status elke 15s her-evalueren
   try{ // direct reageren op verbinden/verbreken
     if(typeof setConn==='function'){const _s=setConn;
       setConn=function(on){const r=_s.apply(this,arguments);try{sync();}catch(_){}return r;};
