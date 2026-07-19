@@ -1,0 +1,685 @@
+/* ════════════════════════════════════════════════════════════════════
+   PIDLANE-DATA.JS — statische referentiedata, uitgelicht uit index.html
+   (build 2026-07-19) om het hoofdbestand te verkleinen.
+
+   LAADVOLGORDE: dit bestand MOET vóór de scripts van index.html laden
+   (staat als <script src="pidlane-data.js"> direct na config.js).
+   Alles hangt aan window.* zodat bestaande verwijzingen — bare refs én
+   typeof-guards — ongewijzigd blijven werken. Volgorde van de blokken is
+   de originele volgorde uit index.html (onderlinge verwijzingen intact).
+
+   INHOUD: PIDS · PID_HARD_LIMITS · MODELS/MOTORS · DTCDB · PIDS_EXTRA ·
+   analyse-/checklijsten · BSC_TESTS · scenario-presets · ALL_PID_DEFS
+   (+ uitgebreide set via Object.assign) · SAE_PID_NAMES · PROTOCOLS ·
+   poll-classificatie · demo-voertuigen · AUTO_KENNIS (merk-kennisbank) ·
+   HUD_LABEL_DICT. Gedrag: identiek aan vóór de split.
+   ════════════════════════════════════════════════════════════════════ */
+
+
+// ── PIDS (was index.html regel 2720) ──
+window.PIDS = [
+  {cat:'Motor',     pid:'010C',name:'Motortoerental',        unit:'RPM', min:0,   max:8000, wH:6000},
+  {cat:'Motor',     pid:'0104',name:'Motorbelasting',        unit:'%',   min:0,   max:100,  wH:90},
+  {cat:'Motor',     pid:'0111',name:'Gasklep positie',       unit:'%',   min:0,   max:100},
+  {cat:'Motor',     pid:'010B',name:'Inlaatdruk',            unit:'kPa', min:0,   max:255},
+  {cat:'Motor',     pid:'010F',name:'Inlaatlucht temp',      unit:'°C',  min:-40, max:150,  wH:55},
+  {cat:'Motor',     pid:'010E',name:'Ontstekingstiming',     unit:'°',   min:-64, max:64},
+  {cat:'Motor',     pid:'010A',name:'Brandstofdruk',         unit:'kPa', min:0,   max:765,  wL:200},
+  {cat:'Temp',      pid:'0105',name:'Koelwater temp',        unit:'°C',  min:-40, max:215,  wH:100, dH:110},
+  {cat:'Temp',      pid:'015C',name:'Motorolie temp',        unit:'°C',  min:-40, max:215,  wH:130, dH:150},
+  {cat:'Temp',      pid:'0146',name:'Omgevingstemperatuur',  unit:'°C',  min:-40, max:85},
+  {cat:'Brandstof', pid:'012F',name:'Brandstofpeil',         unit:'%',   min:0,   max:100,  wL:10},
+  {cat:'Brandstof', pid:'015E',name:'Brandstofverbruik',     unit:'L/h', min:0,   max:50},
+  {cat:'Brandstof', pid:'0110',name:'Luchtmassameter (MAF)', unit:'g/s', min:0,   max:500},
+  {cat:'Brandstof', pid:'0106',name:'Brandstoftrim kort B1', unit:'%',   min:-30, max:30,   wH:10, wL:-10},
+  {cat:'Brandstof', pid:'0107',name:'Brandstoftrim lang B1', unit:'%',   min:-30, max:30,   wH:10, wL:-10},
+  {cat:'Rijden',    pid:'010D',name:'Voertuigsnelheid',      unit:'km/h',min:0,   max:280},
+  {cat:'Rijden',    pid:'0149',name:'Gaspedaal positie',     unit:'%',   min:0,   max:100},
+  {cat:'Electrisch',pid:'0142',name:'Accuspanning',          unit:'V',   min:8,   max:16,   wL:11.5, dL:10.5},
+  {cat:'Emissie',   pid:'0114',name:'O2 sensor B1S1',      unit:'V',   min:0,   max:1.3},
+  {cat:'Emissie',   pid:'0115',name:'Lambda sensor B1S2',    unit:'V',   min:0,   max:1.3},
+  {cat:'Emissie',   pid:'012C',name:'EGR klep positie',      unit:'%',   min:0,   max:100},
+];
+
+// ── _B1B2_PAIR (was index.html regel 2786) ──
+window._B1B2_PAIR ={'0167':'0165','0168':'0166','017A':'0178','017B':'0179','013D':'013C','013F':'013E'};
+
+// ── PID_HARD_LIMITS (was index.html regel 2888) ──
+window.PID_HARD_LIMITS = {
+  '010C':{min:0,max:8000},'010D':{min:0,max:280},'0105':{min:-20,max:130},
+  '015C':{min:-20,max:160},'0104':{min:0,max:100},'0111':{min:0,max:100},
+  '010B':{min:10,max:255},'010F':{min:-40,max:80},'012F':{min:0,max:100},
+  '0110':{min:0,max:500},'0142':{min:8,max:16},'0106':{min:-30,max:30},
+  '0107':{min:-30,max:30},'015E':{min:0,max:40},'010E':{min:-15,max:60},
+  '0114':{min:0,max:1.3},'0115':{min:0,max:1.3},'012C':{min:0,max:100},
+  '0149':{min:0,max:100},'010A':{min:0,max:700},'0146':{min:-40,max:60},
+};
+
+// ── MODELS (was index.html regel 3029) ──
+window.MODELS ={Ford:['Focus','Fiesta','Mondeo','Kuga','Puma','Transit','Ranger'],Volkswagen:['Golf','Polo','Passat','Tiguan','T-Roc','ID.3','ID.4'],BMW:['1 Serie','3 Serie','5 Serie','X1','X3','X5','M3'],Mercedes:['A-Klasse','C-Klasse','E-Klasse','GLA','GLC','GLE'],Audi:['A3','A4','A6','Q3','Q5','Q7'],Opel:['Astra','Corsa','Insignia','Mokka'],Peugeot:['208','308','2008','3008'],Renault:['Clio','Megane','Captur','Zoe'],Toyota:['Yaris','Corolla','RAV4','Prius'],Skoda:['Fabia','Octavia','Superb','Karoq'],Seat:['Ibiza','Leon','Ateca'],Hyundai:['i20','i30','Tucson','Kona'],Kia:['Picanto','Ceed','Sportage','EV6'],Volvo:['V60','XC40','XC60','XC90'],Nissan:['Juke','Qashqai','X-Trail','Leaf'],Citroën:['C3','C4','Berlingo'],Fiat:['500','Panda','Tipo'],Honda:['Jazz','Civic','CR-V']};
+
+// ── MOTORS (was index.html regel 3030) ──
+window.MOTORS =['1.0 TSI/EcoBoost','1.2 TDI','1.4 TDI','1.5 TDI','1.5 TSI','1.6 TDI/HDI','1.8 TSI','2.0 TDI','2.0 TSI/TFSI','2.0 TDCi','Hybrid','PHEV','Elektrisch'];
+
+// ── DTCDB (was index.html regel 3033) ──
+window.DTCDB ={
+  // Brandstof & Lucht
+  P0087:{desc:'Brandstofdruk te laag',            body:'Brandstofpomp, filter of drukregelaar defect.',               sev:'high'},
+  P0088:{desc:'Brandstofdruk te hoog',            body:'Drukregelaar defect of retourleiding geblokkeerd.',           sev:'high'},
+  P0171:{desc:'Systeem te mager (bank 1)',         body:'Vacuümlek, MAF vuil, brandstofpomp zwak of injector verstopt.',sev:'med'},
+  P0172:{desc:'Systeem te rijk (bank 1)',          body:'Lekkende injector, defecte O2 sensor of hoge brandstofdruk.',sev:'med'},
+  P0174:{desc:'Systeem te mager (bank 2)',         body:'Zelfde als P0171 maar bank 2.',                              sev:'med'},
+  P0175:{desc:'Systeem te rijk (bank 2)',          body:'Zelfde als P0172 maar bank 2.',                              sev:'med'},
+  // Ontsteking
+  P0300:{desc:'Willekeurige ontsteking gemist',   body:'Bougies, bobines, brandstofdruk of compressie controleren.',  sev:'high'},
+  P0301:{desc:'Cilinder 1 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 1.',                     sev:'high'},
+  P0302:{desc:'Cilinder 2 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 2.',                     sev:'high'},
+  P0303:{desc:'Cilinder 3 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 3.',                     sev:'high'},
+  P0304:{desc:'Cilinder 4 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 4.',                     sev:'high'},
+  P0305:{desc:'Cilinder 5 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 5.',                     sev:'high'},
+  P0306:{desc:'Cilinder 6 ontsteking gemist',     body:'Bougie, bobine of injector cilinder 6.',                     sev:'high'},
+  // MAF & Luchtinlaat
+  P0100:{desc:'MAF sensor circuit probleem',      body:'MAF sensor defect of verbindingsprobleem.',                  sev:'med'},
+  P0101:{desc:'MAF circuit buiten bereik',        body:'Vuile MAF, luchtfilter verstopt of vacuümlek.',              sev:'med'},
+  P0102:{desc:'MAF circuit laag signaal',         body:'MAF sensor of bedrading defect.',                            sev:'med'},
+  P0103:{desc:'MAF circuit hoog signaal',         body:'MAF sensor of bedrading defect.',                            sev:'med'},
+  // Temperatuursensoren
+  P0110:{desc:'Inlaatlucht temp sensor',          body:'IAT sensor of bedrading defect.',                            sev:'low'},
+  P0115:{desc:'Koelwater temp sensor circuit',    body:'ECT sensor of bedrading defect.',                            sev:'med'},
+  P0116:{desc:'Koelwater temp buiten bereik',     body:'ECT sensor of thermostaat probleem.',                        sev:'med'},
+  P0128:{desc:'Koelant temp te laag',             body:'Thermostaat vast open of defect.',                           sev:'low'},
+  P0217:{desc:'Motor oververhitting',             body:'Koelvloeistofpeil, waterpomp, thermostaat of radiateur.',    sev:'high'},
+  // O2 Sensoren
+  P0130:{desc:'O2 sensor circuit B1S1',           body:'Lambda sensor voor-kat defect.',                             sev:'med'},
+  P0131:{desc:'O2 sensor laag voltage B1S1',      body:'Lambda sensor of vacuümlek.',                                sev:'med'},
+  P0132:{desc:'O2 sensor hoog voltage B1S1',      body:'Lambda sensor of rijk mengsel.',                             sev:'med'},
+  P0133:{desc:'O2 sensor traag B1S1',             body:'Lambda sensor versleten of vergiftigd.',                     sev:'med'},
+  P0136:{desc:'O2 sensor circuit B1S2',           body:'Lambda sensor na-kat defect.',                               sev:'med'},
+  P0141:{desc:'O2 sensor verwarming B1S2',        body:'Verwarmingselement lambda sensor defect.',                   sev:'med'},
+  // Nokkenas & Timing
+  P0010:{desc:'Nokkenas actuator circuit',        body:'VVT solenoïde of bedrading defect.',                         sev:'high'},
+  P0011:{desc:'Nokkenas te vroeg (intake B1)',    body:'VVT solenoïde, oliepeil of kettingspanning.',                sev:'high'},
+  P0012:{desc:'Nokkenas te laat (intake B1)',     body:'VVT solenoïde of camshaft positie sensor.',                  sev:'high'},
+  P0016:{desc:'Krukas/nokkenas verhouding fout',  body:'Kettingrek, timing of sensor defect.',                       sev:'high'},
+  P0340:{desc:'Nokkenas positie sensor circuit',  body:'CMP sensor of toonwiel defect.',                             sev:'high'},
+  // Emissie
+  P0400:{desc:'EGR stroom probleem',              body:'EGR klep of leiding verstopt.',                              sev:'med'},
+  P0401:{desc:'EGR stroom te laag',               body:'EGR klep verstopt of defect.',                               sev:'med'},
+  P0420:{desc:'Katalysator efficiëntie laag B1',  body:'Versleten kat of defecte O2 sensor na-kat.',                 sev:'med'},
+  P0430:{desc:'Katalysator efficiëntie laag B2',  body:'Zelfde als P0420 maar bank 2.',                              sev:'med'},
+  P0440:{desc:'Verdampingssysteem lek',           body:'Tankdop, EVAP systeem of leiding lek.',                      sev:'low'},
+  P0442:{desc:'EVAP systeem klein lek',           body:'Tankdop of EVAP leiding lek.',                               sev:'low'},
+  P0455:{desc:'EVAP systeem groot lek',           body:'Tankdop los, slang af of purge klep defect.',                sev:'low'},
+  // Accu & Laden
+  P0560:{desc:'Systeemspanning probleem',         body:'Accu of alternator probleem.',                               sev:'med'},
+  P0562:{desc:'Systeemspanning te laag',          body:'Accu zwak of alternator ladt niet.',                         sev:'high'},
+  P0563:{desc:'Systeemspanning te hoog',          body:'Spanningsregelaar in alternator defect.',                    sev:'high'},
+  // Transmissie
+  P0700:{desc:'Transmissie besturing fout',       body:'TCM fout — zie ook transmissie codes.',                      sev:'high'},
+  P0715:{desc:'Ingangs/turbine speed sensor',     body:'Speed sensor of bedrading defect.',                          sev:'med'},
+  P0720:{desc:'Uitgangs speed sensor',            body:'Speed sensor of bedrading defect.',                          sev:'med'},
+  // Communicatie
+  U0001:{desc:'CAN bus communicatie fout',        body:'CAN bus bedrading of module defect.',                        sev:'high'},
+  U0100:{desc:'Communicatie PCM verloren',        body:'PCM voeding of CAN bus probleem.',                           sev:'high'},
+  U0101:{desc:'Communicatie TCM verloren',        body:'TCM of CAN bus probleem.',                                   sev:'high'},
+  // B-codes
+  B1318:{desc:'Accu spanning laag',               body:'Accu, alternator of lekstroom.',                             sev:'med'},
+
+  // ── MAZDA SPECIFIEK (CX-5, Mazda3, Mazda6, CX-30) ──
+  P2006:{desc:'Inlaatspruitstuk klep gesloten (bank 1)',  body:'IMRC actuator of bedrading. CX-5 2.0/2.5: vacuümsysteem controleren.',sev:'med'},
+  P2004:{desc:'Inlaatspruitstuk klep vast open',          body:'IMRC klep mechanisch vastgelopen.',                   sev:'med'},
+  P2187:{desc:'Systeem te mager bij stationair (bank 1)', body:'Vacuümlek of brandstofsysteem. Mazda SkyActiv: inlaatgasket controleren.',sev:'med'},
+  P0AA6:{desc:'Hybride accupakket spanning laag',         body:'Mazda M Hybrid: 24V mild-hybrid systeem fout.',       sev:'high'},
+  P1260:{desc:'Diefstalbeveiliging actief',               body:'Immobiliser probleem — contactsleutel of transponder.',sev:'high'},
+  P0A0F:{desc:'Aandrijfsysteem noodloopprogramma',        body:'Mazda M Hybrid: systeem vereist diagnose.',           sev:'high'},
+  C1155:{desc:'ABS linksvoor wielsnelheid sensor',        body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
+  C1165:{desc:'ABS rechtsvoor wielsnelheid sensor',       body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
+
+  // ── VOLKSWAGEN / AUDI / SKODA / SEAT (VAG) ──
+  P0299:{desc:'Turbo/compressor ondervermogen',    body:'Turbo defect, intercooler lek of wastegate probleem.',      sev:'high'},
+  P2015:{desc:'Inlaatspruitstuk positiesensor',    body:'Beroemd VW 2.0 TDI probleem — kleppenvlinder kapot.',      sev:'med'},
+  P0401:{desc:'EGR onvoldoende doorstroom',        body:'EGR klep vastgelopen of vuil. Veel bij VW TDI.',           sev:'med'},
+  P0420:{desc:'Katalysator efficiëntie laag (bank 1)',body:'Katalysator versleten of O2 sensor defect.',            sev:'med'},
+  P0411:{desc:'Secundaire luchtinjectie fout',     body:'Secundaire luchtpomp of klep defect. VW/Audi benzine.',    sev:'med'},
+  P0507:{desc:'Stationair toerental te hoog',      body:'Gasklep of luchtstroom meting fout.',                      sev:'med'},
+  P1296:{desc:'Koelvloeistof temperatuursensor',   body:'CTS wisselt — veel bij VW/Audi 1.8/2.0 TSI.',             sev:'med'},
+
+  // ── TOYOTA / LEXUS ──
+  P3000:{desc:'HV accusysteem fout',              body:'Hybride accupakket of BMS systeem.',                        sev:'high'},
+  P0A80:{desc:'Vervang hybride accu',             body:'Toyota Prius/Auris/Yaris hybride: accu versleten.',         sev:'high'},
+  P0500:{desc:'Voertuigsnelheid sensor',          body:'VSS sensor of bedrading defect.',                          sev:'med'},
+  C1201:{desc:'Motorbesturing systeem fout',      body:'Toyota: ABS lamp + motorlamp samen — vaak MAP/TPS fout.',  sev:'high'},
+  P1120:{desc:'Gasklep positiesensor',            body:'Toyota: TPS sub-sensor buiten bereik.',                    sev:'med'},
+
+  // ── FORD ──
+  P0191:{desc:'Brandstofdruk sensor bereik',      body:'Ford 1.0 EcoBoost: brandstofdruksensor of pomp.',          sev:'med'},
+  P0340:{desc:'Nokkenas positiesensor circuit A', body:'CMP sensor of kettingrek. Ford 1.6 TDCi veel voorkomend.',sev:'high'},
+  P246A:{desc:'Dieselroetfilter te vol',          body:'Ford TDCi: DPF regeneratie mislukt — snelweg rijden.',     sev:'med'},
+  P2263:{desc:'Turbo/supercharger boost sensor',  body:'Ford EcoBoost: boost sensor of inlaatleiding lek.',        sev:'med'},
+
+  // ── OPEL / VAUXHALL ──
+  P0597:{desc:'Thermostaat verwarmingselement',   body:'Thermostaat met elektrische verwarming defect. Veel Opel.', sev:'med'},
+  P0016:{desc:'Krukas/nokkenas koppeling (bank 1 inlaat)',body:'Kettingrek of variabele klepdistributie fout.',     sev:'high'},
+  P0017:{desc:'Krukas/nokkenas koppeling (bank 1 uitlaat)',body:'Kettingrek of VVT magneetventiel.',                sev:'high'},
+
+  // ── BMW / MINI ──
+  P0012:{desc:'A nokkenas timing over-teruggetrokken',body:'BMW: VANOS actuator of oliepeil te laag.',             sev:'high'},
+  P0011:{desc:'A nokkenas timing over-gevorderd',  body:'BMW: VANOS magneetventiel of oliedruk.',                  sev:'high'},
+  P0128:{desc:'Koelwater te laag (thermostaat)',   body:'Thermostaat vast open — veel BMW/Mini.',                  sev:'med'},
+  P1340:{desc:'Ontstekingssysteem krukas sensor',  body:'BMW: CKP sensor of vliegwiel tand.',                      sev:'high'},
+};
+
+// ── PIDS_EXTRA (was index.html regel 3142) ──
+window.PIDS_EXTRA = {
+  // Mazda CX-5 2018 specifieke PIDs (mode 22)
+  '2101':{name:'Motorolie temp',      unit:'°C', min:-40, max:150, cat:'Mazda'},
+  '2102':{name:'Turbodruk actueel',   unit:'kPa',min:0,   max:250, cat:'Mazda'},
+  '210C':{name:'Klep timing inlaat',  unit:'°',  min:-50, max:50,  cat:'Mazda'},
+  '210D':{name:'Klep timing uitlaat', unit:'°',  min:-50, max:50,  cat:'Mazda'},
+  // Algemeen mode 01 extra
+  '0149':{name:'Gaspedaal positie',   unit:'%',  min:0,   max:100, cat:'Rijden'},
+  '015A':{name:'Hybride accu %',      unit:'%',  min:0,   max:100, cat:'Electrisch'},
+  '015B':{name:'Hybride accu temp',   unit:'°C', min:-40, max:80,  cat:'Electrisch'},
+  '0143':{name:'Abs motorbelasting',  unit:'%',  min:0,   max:100, cat:'Motor'},
+  '0146':{name:'Omgevingstemperatuur',unit:'°C', min:-40, max:60,  cat:'Temperatuur'},
+  '015E':{name:'Brandstofverbruik',   unit:'L/h',min:0,   max:20,  cat:'Brandstof'},
+  '015C':{name:'Motorolie temp',      unit:'°C', min:-40, max:150, cat:'Temperatuur'},
+};
+
+// ── BASIS_PIDS (was index.html regel 5150) ──
+window.BASIS_PIDS = ['010C','0105','0104','010F','0142'];
+
+// ── ANALYSE_PIDS (was index.html regel 5152) ──
+window.ANALYSE_PIDS ={
+  basis:     ['010C','0105','0104','0111','010D','0142','010F','010B'],
+  brandstof: ['010C','010D','0104','0106','0107','0110','010B','010F','0144','0124','0115','015E','012F'],
+  emissie:   ['0106','0107','0114','0115','0124','0134','0144','013C','013E','012E','0121'],
+  rit:       ['010C','010D','0104','0111','0105','0110','010B','0106','0107','0149'],
+  totaal:    ['010C','0105','0104','0111','010D','0142','010F','010B','0106','0107','0115','010E','011F'],
+  // Accu-check: schakel naar accuspanning + laadcontext; basis blijft meelopen.
+  accu:      ['0142','010C','0104','0105','0146','015B']
+};
+
+// ── ANALYSE_CATS (was index.html regel 5169) ──
+window.ANALYSE_CATS = {
+  basis:     ['Motor','Temp','Brandstof'],
+  brandstof: ['Motor','Brandstof','Emissie'],
+  emissie:   ['Emissie','Brandstof'],
+  rit:       ['Motor','Brandstof','Temp','Emissie'],
+  totaal:    ['Motor','Temp','Brandstof','Emissie','Overig'],
+  accu:      ['Motor','Temp'],
+};
+
+// ── CORRELATION_RULES (was index.html regel 5605) ──
+window.CORRELATION_RULES =[
+  {
+    id:'alternator',
+    naam:'Mogelijk dynamo-/laadprobleem',
+    test:()=>{ const v=pidVals['0142'], rpm=pidVals['010C'];
+      return v!==undefined&&rpm!==undefined&&rpm>1000&&v<13.0; },
+    uitleg:'Accuspanning blijft laag terwijl de motor draait — dynamo laadt mogelijk onvoldoende.'
+  },
+  {
+    id:'vacuumlek',
+    naam:'Mogelijk vacuümlek',
+    test:()=>{ const stft=pidVals['0106'], ltft=pidVals['0107'], tps=pidVals['0111'];
+      return stft!==undefined&&ltft!==undefined&&(stft+ltft)>18&&(tps===undefined||tps<15); },
+    uitleg:'Brandstoftrims staan hoog positief bij gesloten gasklep — wijst op bijgemengde valse lucht (vacuümlek).'
+  },
+  {
+    id:'maf',
+    naam:'Mogelijk vuile MAF / verstopt luchtfilter',
+    test:()=>{ const maf=pidVals['0110'], rpm=pidVals['010C'], load=pidVals['0104'];
+      return maf!==undefined&&rpm!==undefined&&rpm>1500&&load>40&&maf<3; },
+    uitleg:'Luchtmassa blijft laag bij hoog toerental en belasting — mogelijk vervuilde MAF of luchtfilter.'
+  },
+  {
+    id:'thermostaat',
+    naam:'Mogelijk thermostaatprobleem',
+    test:()=>{ const ect=pidVals['0105'];
+      return ect!==undefined&&pidHist['0105']?.length>40&&ect<70; },
+    uitleg:'Koelwater blijft langdurig onder bedrijfstemperatuur — thermostaat mogelijk vast open.'
+  },
+  {
+    id:'oververhitting',
+    naam:'Koelwater loopt op',
+    test:()=>{ const ect=pidVals['0105']; return ect!==undefined&&ect>105; },
+    uitleg:'Koelvloeistoftemperatuur is hoog — controleer koeling vóór doorrijden.'
+  },
+];
+
+// ── CHK_CAT_META (was index.html regel 5699) ──
+window.CHK_CAT_META ={Motor:{l:'Motor',i:'⚙️'},Temp:{l:'Temperatuur',i:'🌡️'},Brandstof:{l:'Brandstof',i:'⛽'},Emissie:{l:'Emissie',i:'💨'},Electrisch:{l:'Electrisch',i:'🔋'},Rijden:{l:'Rijden',i:'🚗'},Overig:{l:'Overig',i:'📊'},Foutcodes:{l:'Foutcodes',i:'⚠️'},Bestuurder:{l:'Bestuurder',i:'🧑'}};
+
+// ── CHK_CAT_ORDER (was index.html regel 5700) ──
+window.CHK_CAT_ORDER =['Motor','Temp','Brandstof','Emissie','Electrisch','Rijden','Overig','Foutcodes','Bestuurder'];
+
+// ── BSC_TESTS (was index.html regel 5953) ──
+window.BSC_TESTS = [
+  // ── UNIVERSEEL ──────────────────────────────────────────────────
+  {id:'idle_stab', groep:'universeel', naam:'Stationair stabiliteit', pids:['010C'],
+   uitleg:'RPM stabiel binnen ±50 rpm', hold:5,
+   band:(v,h)=>{ const b=bscBaseline(h['010C'],3); return b==null?null:{lo:b-50,hi:b+50,ref:b}; }},
+  {id:'cool_warm', groep:'universeel', naam:'Koelvloeistof opwarmen', pids:['0105'],
+   uitleg:'Geleidelijke stijging naar bedrijfstemperatuur (80–100 °C)', hold:4,
+   band:{lo:70,hi:105}, trend:'stijgend'},
+  {id:'batt_load', groep:'universeel', naam:'Accuspanning', pids:['0142'],
+   uitleg:'Blijft > 13,5 V (laadspanning). Schakel bewust verlichting + blower in.', hold:4,
+   band:{lo:13.3,hi:15.0}},
+  {id:'map_idle', groep:'universeel', naam:'MAP-druk stationair', pids:['010B'],
+   uitleg:'30–40 kPa stationair = geen vacuümlek', hold:4, band:{lo:25,hi:45}},
+  {id:'tps_lin', groep:'universeel', naam:'Gasklep respons', pids:['0111'],
+   uitleg:'Trap gas rustig in: 0→100 % vloeiend', hold:3, band:{lo:0,hi:100}, dynamiek:true},
+  {id:'iat_amb', groep:'universeel', naam:'Inlaatlucht bij koude start', pids:['010F','0146'],
+   uitleg:'IAT ≈ buitentemperatuur bij koude motor', hold:3,
+   band:(v)=>{ const amb=v['0146']; return amb==null?{lo:-10,hi:45}:{lo:amb-8,hi:amb+15,ref:amb}; }},
+  {id:'ltft', groep:'universeel', naam:'Brandstoftrim (LTFT)', pids:['0107'],
+   uitleg:'Lange trim tussen −10 % en +10 %', hold:4, band:{lo:-10,hi:10}},
+  {id:'misfire', groep:'universeel', naam:'Misfire-monitor', pids:['010C','0104'],
+   uitleg:'RPM mag niet plots inzakken onder lichte belasting (indirecte misfire)', hold:5,
+   band:(v,h)=>{ const b=bscBaseline(h['010C'],4); return b==null?null:{lo:b-120,hi:b+400,ref:b}; }},
+  {id:'o2_switch', groep:'universeel', naam:'O2-sensor schakelt', pids:['0114'],
+   uitleg:'Voorste lambda pendelt 0,1–0,9 V meerdere keren/sec', hold:4,
+   band:{lo:0.05,hi:0.95}, oscilleren:true},
+  {id:'spd_rpm', groep:'universeel', naam:'Snelheid vs toerental', pids:['010D','010C'],
+   uitleg:'Rij constant: snelheid en RPM lopen lineair mee (koppeling/automaat OK)', hold:4,
+   band:{lo:0,hi:280}},
+  {id:'fuel_flow', groep:'universeel', naam:'Verbruik bij constante snelheid', pids:['015E'],
+   uitleg:'Verbruik stabiel bij gelijkmatig rijden', hold:4, band:{lo:0,hi:50}},
+  {id:'fan_act', groep:'universeel', naam:'Koelventilator-venster', pids:['0105'],
+   uitleg:'Bij 95–105 °C hoort de fan te schakelen', hold:3, band:{lo:60,hi:115}, ref:100},
+
+  // ── BENZINE ─────────────────────────────────────────────────────
+  {id:'maf_curve', groep:'benzine', naam:'MAF luchtflow', pids:['0110','010C'],
+   uitleg:'MAF stijgt vloeiend met RPM', hold:4, band:{lo:1,hi:500}},
+  {id:'ign_time', groep:'benzine', naam:'Ontstekingstiming', pids:['010E'],
+   uitleg:'Timing verandert bij accelereren', hold:3, band:{lo:-15,hi:50}, dynamiek:true},
+  {id:'stft_resp', groep:'benzine', naam:'STFT op gasstoot', pids:['0106'],
+   uitleg:'Korte positieve piek, daarna terug naar ~0 %', hold:3, band:{lo:-15,hi:20}, dynamiek:true},
+  {id:'cat_eff', groep:'benzine', naam:'Katalysator-efficiëntie', pids:['0115'],
+   uitleg:'Achterste O2 stabiel rond 0,6–0,8 V', hold:5, band:{lo:0.5,hi:0.85}},
+  {id:'fuel_lvl', groep:'benzine', naam:'Tankniveau plausibel', pids:['012F'],
+   uitleg:'Geen abrupte sprongen in tankniveau', hold:4, band:{lo:0,hi:100}, stabiel:true},
+
+  // ── DIESEL ──────────────────────────────────────────────────────
+  {id:'rail_stab', groep:'diesel', naam:'Raildruk stabiliteit', pids:['0159','0123'],
+   uitleg:'Stationair stabiel, stijgt netjes bij gas', hold:4, band:{lo:200,hi:2200}},
+  {id:'egr_flow', groep:'diesel', naam:'EGR-flow', pids:['012C'],
+   uitleg:'EGR-positie verandert bij lichte belasting', hold:3, band:{lo:0,hi:100}, dynamiek:true},
+  {id:'boost', groep:'diesel', naam:'Turbo-boost curve', pids:['0170','010B'],
+   uitleg:'Boost stijgt vloeiend, geen pieken', hold:4, band:{lo:0,hi:300}},
+  {id:'dpf_soot', groep:'diesel', naam:'DPF roetlast', pids:['017C','016B'],
+   uitleg:'Roetlast binnen normale band (0–45 %)', hold:3, band:{lo:0,hi:45}},
+  {id:'nox_plaus', groep:'diesel', naam:'NOx plausibiliteit', pids:['0183','018E'],
+   uitleg:'NOx-waarden stijgen bij accelereren', hold:3, band:{lo:0,hi:2000}, dynamiek:true},
+
+  // ── HYBRIDE ─────────────────────────────────────────────────────
+  {id:'hv_soc', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'],
+   uitleg:'SOC blijft binnen 30–80 %', hold:4, band:{lo:25,hi:85}},
+  {id:'ev_ice', groep:'hybride', naam:'EV ↔ ICE overgang', pids:['010C'],
+   uitleg:'RPM springt vloeiend in/uit (motor start/stopt netjes)', hold:4, band:{lo:0,hi:6000}},
+  {id:'regen', groep:'hybride', naam:'Regeneratie laadstroom', pids:['0142','015B'],
+   uitleg:'Spanning/laden stijgt bij remmen', hold:3, band:{lo:12,hi:15.5}, dynamiek:true},
+];
+
+// ── COMPLAINT_FOCUS (was index.html regel 6264) ──
+window.COMPLAINT_FOCUS =[
+  {kw:['start','aanslaan','starten','opstart'],           pids:['0105','010A','0106','0107','010C']},
+  {kw:['stationair','onrustig','schommel','idle'],        pids:['010C','010E','0106','0107','0110']},
+  {kw:['accelerat','optrekk','vermogen','trekt','puff'],  pids:['010B','0110','010A','0104','010C']},
+  {kw:['verbruik','benzine','zuinig','dorst'],            pids:['015E','0110','0114','0115','0106','0107']},
+  {kw:['oververhit','heet','temperatuur','koel'],         pids:['0105','015C','0104']},
+  {kw:['rook','uitlaat','stink'],                         pids:['0106','0107','0114','012C','0110']},
+  {kw:['accu','start niet','laden','dynamo','spanning'],  pids:['0142','010C','0104']},
+  {kw:['trilling','schok','schakel'],                     pids:['010C','0104','010D','0111']},
+];
+
+// ── FUEL_PIDS (was index.html regel 6854) ──
+window.FUEL_PIDS =[
+  {pid:'0106',name:'Brandstoftrim kort B1',unit:'%',ok:[-5,5],desc:'Hoog=vacuümlek/MAF. Laag=injector.'},
+  {pid:'0107',name:'Brandstoftrim lang B1',unit:'%',ok:[-5,5],desc:'Langdurige afwijking=structureel probleem.'},
+  {pid:'0110',name:'MAF Luchtmassameter',unit:'g/s',ok:null,desc:'Te laag=vuile MAF of luchtfilter.'},
+  {pid:'010E',name:'Ontstekingstiming',unit:'°',ok:[5,25],desc:'Afwijking=minder efficiënte verbranding.'},
+  {pid:'0105',name:'Koelwater temp',unit:'°C',ok:[80,100],desc:'Te koud=10-20% meer verbruik.'},
+  {pid:'0142',name:'Accuspanning',unit:'V',ok:[13.5,14.8],desc:'Laag=alternator belasting verhoogd.'},
+  {pid:'015E',name:'Live brandstofverbruik',unit:'L/h',ok:null,desc:'Directe verbruiksmeting.'},
+];
+
+// ── ELM_BASELINE (was index.html regel 7992) ──
+window.ELM_BASELINE =['ATE0','ATL0','ATS0','ATH0','ATAT1','ATST64']; // bekende goede staat
+
+// ── SCENARIO_PID_SUGGEST (was index.html regel 8251) ──
+window.SCENARIO_PID_SUGGEST =['010C','010D','0105','015C','0104','0142','0106','0107','0110','010B','010F','0114','0115','012F','015E','010A','012C'];
+
+// ── SCENARIO_PRESETS (was index.html regel 8256) ──
+window.SCENARIO_PRESETS =[
+  {id:'waterpomp',  label:'💧 Waterpomp / koelcirculatie', desc:'Geen circulatie, koelwater loopt op',  fuels:['benzine','diesel'], pids:{'0105':118,'015C':127,'010C':850,'0104':30}, dtcs:['P0128','P0217']},
+  {id:'thermostaat',label:'🌡️ Thermostaat hangt open',     desc:'Motor wordt niet op temperatuur',       fuels:['benzine','diesel'], pids:{'0105':61,'015C':57}, dtcs:['P0128']},
+  {id:'oververhit', label:'🔥 Oververhitting',              desc:'Koelwater + olie te heet onder last',   fuels:['benzine','diesel'], pids:{'0105':120,'015C':129,'010C':3000,'0104':85}, dtcs:['P0217']},
+  {id:'dynamo',     label:'🔋 Dynamo / laadspanning laag',  desc:'Accuspanning zakt weg, niet laden',                                pids:{'0142':11.7,'010C':1600}, dtcs:['P0562','P0620']},
+  {id:'overspanning',label:'⚡ Spanningsregelaar overlaadt',desc:'Te hoge laadspanning',                                             pids:{'0142':15.7}, dtcs:['P0563']},
+  {id:'arm',        label:'🫧 Mengsel te arm',              desc:'Vacuümlek of MAF — positieve trim',     fuels:['benzine'], pids:{'0106':23,'0107':20,'0124':1.16}, dtcs:['P0171']},
+  {id:'rijk',       label:'⛽ Mengsel te rijk',             desc:'Negatieve trim',                        fuels:['benzine'], pids:{'0106':-22,'0107':-19,'0124':0.84}, dtcs:['P0172']},
+  {id:'misfire',    label:'💥 Ontstekingsfout (misfire)',  desc:'Onregelmatig stationair toerental',     fuels:['benzine'], pids:{'010C':760,'0104':26}, dtcs:['P0300','P0301']},
+  {id:'kat',        label:'♻️ Katalysator rendement laag', desc:'B1S2 volgt B1S1 te veel',               fuels:['benzine'], pids:{'0114':0.6,'0115':0.58}, dtcs:['P0420']},
+  {id:'egr',        label:'🌀 EGR vast / verstopt',         desc:'EGR reageert niet',                     fuels:['diesel','benzine'], pids:{'012C':0,'0105':96}, dtcs:['P0401']},
+];
+
+// ── STRATEGIE_INFO (was index.html regel 9388) ──
+window.STRATEGIE_INFO ={
+  snel:         {label:'Snel',         emoji:'🚀', mult:0.7, desc:'Agressief pollen — alle sensoren, korte intervallen'},
+  gebalanceerd: {label:'Gebalanceerd', emoji:'⚖️', mult:1.0, desc:'Standaard tempo — goede balans snelheid/stabiliteit'},
+  conservatief: {label:'Conservatief', emoji:'🐢', mult:1.8, desc:'Rustig pollen — voorkomt timeouts op trage adapters'},
+};
+
+// ── ALL_PID_DEFS (was index.html regel 9544) ──
+window.ALL_PID_DEFS ={
+  '010C':{name:'Motortoerental',       unit:'RPM', cat:'Motor',      min:0,   max:8000, wH:6000,           parse:b=>((b[0]*256+b[1])/4)},
+  '0104':{name:'Motorbelasting',       unit:'%',   cat:'Motor',      min:0,   max:100,  wH:90,             parse:b=>(b[0]*100/255)},
+  '0111':{name:'Gasklep positie',      unit:'%',   cat:'Motor',      min:0,   max:100,                     parse:b=>(b[0]*100/255)},
+  '010B':{name:'Inlaatdruk',           unit:'kPa', cat:'Motor',      min:0,   max:255,                     parse:b=>b[0]},
+  '010F':{name:'Inlaatlucht temp',     unit:'°C',  cat:'Motor',      min:-40, max:150,  wH:55,             parse:b=>(b[0]-40)},
+  '010E':{name:'Ontstekingstiming',    unit:'°',   cat:'Motor',      min:-64, max:64,                      parse:b=>(b[0]/2-64)},
+  '010A':{name:'Brandstofdruk',        unit:'kPa', cat:'Motor',      min:0,   max:765,                     parse:b=>(b[0]*3)},
+  '0145':{name:'Relatieve gasklep',    unit:'%',   cat:'Motor',      min:0,   max:100,                     parse:b=>(b[0]*100/255)},
+  '014C':{name:'Gasklep B positie',    unit:'%',   cat:'Motor',      min:0,   max:100,                     parse:b=>(b[0]*100/255)},
+  '0105':{name:'Koelwater temp',       unit:'°C',  cat:'Temp',       min:-40, max:215,  wH:100, dH:110,   parse:b=>(b[0]-40)},
+  '015C':{name:'Motorolie temp',       unit:'°C',  cat:'Temp',       min:-40, max:215,  wH:130, dH:150,   parse:b=>(b[0]-40)},
+  '0146':{name:'Omgevingstemperatuur', unit:'°C',  cat:'Temp',       min:-40, max:85,                      parse:b=>(b[0]-40)},
+  '0133':{name:'Barometerdruk',        unit:'kPa', cat:'Temp',       min:0,   max:255,                     parse:b=>b[0]},
+  '012F':{name:'Brandstofpeil',        unit:'%',   cat:'Brandstof',  min:0,   max:100,  wL:10,             parse:b=>(b[0]*100/255)},
+  '015E':{name:'Brandstofverbruik',    unit:'L/h', cat:'Brandstof',  min:0,   max:50,                      parse:b=>((b[0]*256+b[1])/20)},
+  '0110':{name:'MAF luchtmassameter',  unit:'g/s', cat:'Brandstof',  min:0,   max:500,                     parse:b=>((b[0]*256+b[1])/100)},
+  '0106':{name:'Brandstoftrim kort B1',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  '0107':{name:'Brandstoftrim lang B1',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  '0108':{name:'Brandstoftrim kort B2',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  '0109':{name:'Brandstoftrim lang B2',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  '010D':{name:'Voertuigsnelheid',     unit:'km/h',cat:'Rijden',     min:0,   max:280,                     parse:b=>b[0]},
+  '0149':{name:'Gaspedaal positie',    unit:'%',   cat:'Rijden',     min:0,   max:100,                     parse:b=>(b[0]*100/255)},
+  '0142':{name:'Accuspanning',         unit:'V',   cat:'Electrisch', min:8,   max:16,   wL:11.5, dL:10.5, parse:b=>((b[0]*256+b[1])/1000)},
+  '0143':{name:'Abs. motorbelasting',  unit:'%',   cat:'Electrisch', min:0,   max:100,                     parse:b=>((b[0]*256+b[1])/655.35)},
+  '015B':{name:'Hybride accu %',       unit:'%',   cat:'Electrisch', min:0,   max:100,                     parse:b=>(b[0]*100/255)},
+  '0113':{name:'O2-sensoren aanwezig', unit:'',   cat:'Emissie',    min:0,   max:255,  bitmap:true,         parse:b=>b[0]},
+  '0115':{name:'O2 sensor B1S2',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},
+  '0117':{name:'O2 sensor B2S1',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},
+  '0119':{name:'O2 sensor B2S2',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},
+  '012C':{name:'EGR klep positie',     unit:'%',   cat:'Emissie',    min:0,   max:100,                     parse:b=>(b[0]*100/255)},
+  '012D':{name:'EGR fout',             unit:'%',   cat:'Emissie',    min:-100,max:100,                     parse:b=>(b[0]/1.28-100)},
+};
+
+// ── PROTOCOLS (was index.html regel 9622) ──
+window.PROTOCOLS =[
+  {id:'6',name:'CAN 11-bit 500k (ISO 15765)',icon:'📡',desc:'Meeste auto\'s 2008+'},
+  {id:'7',name:'CAN 29-bit 500k (ISO 15765)',icon:'📡',desc:'Sommige CAN varianten'},
+  {id:'8',name:'CAN 11-bit 250k (ISO 15765)',icon:'📡',desc:'Langzame CAN'},
+  {id:'9',name:'CAN 29-bit 250k (ISO 15765)',icon:'📡',desc:'Langzame CAN varianten'},
+  {id:'3',name:'ISO 9141-2',                 icon:'📟',desc:'Oudere Europese auto\'s'},
+  {id:'4',name:'ISO 14230 KWP (5baud)',       icon:'🔧',desc:'K-Line langzame init'},
+  {id:'5',name:'ISO 14230 KWP (fast)',        icon:'🔧',desc:'K-Line snelle init'},
+  {id:'1',name:'SAE J1850 PWM',              icon:'🔌',desc:'Oudere Ford modellen'},
+  {id:'2',name:'SAE J1850 VPW',              icon:'🔌',desc:'Oudere GM modellen'},
+];
+
+// ── SAE_PID_NAMES (was index.html regel 10596) ──
+window.SAE_PID_NAMES ={
+  '04':'Motorbelasting berekend','05':'Koelvloeistof temp','06':'Korte trim bank1','07':'Lange trim bank1',
+  '08':'Korte trim bank2','09':'Lange trim bank2','0A':'Brandstofdruk','0B':'Inlaatspruitstuk druk',
+  '0C':'Motortoerental','0D':'Voertuigsnelheid','0E':'Ontstekingstiming','0F':'Inlaatlucht temp',
+  '10':'Luchtmassa (MAF)','11':'Gasklep positie','12':'Secundaire lucht status','13':'O2 sensoren aanwezig',
+  '14':'O2 sensor 1','15':'O2 sensor 2','16':'O2 sensor 3','17':'O2 sensor 4','1C':'OBD standaard',
+  '1F':'Looptijd sinds start','21':'Afstand met MIL aan','22':'Brandstofrail druk (rel)','23':'Brandstofrail druk (dir)',
+  '24':'O2 sensor 1 (breed)','2C':'EGR commando','2D':'EGR fout','2E':'Verdamping purge','2F':'Brandstofniveau',
+  '30':'Warm-ups sinds wis','31':'Afstand sinds wis','32':'Verdampingsdruk','33':'Barometrische druk',
+  '34':'O2 sensor 1 (lambda)','3C':'Katalysator temp B1S1','3D':'Katalysator temp B2S1','42':'Boordspanning',
+  '43':'Absolute belasting','44':'Brandstof equivalentie','45':'Relatieve gasklep','46':'Omgevingstemp',
+  '47':'Absolute gasklep B','49':'Gaspedaal positie D','4A':'Gaspedaal positie E','4C':'Commando gasklep',
+  '4D':'Tijd met MIL aan','4E':'Tijd sinds wis','5C':'Motorolie temp','5E':'Brandstofverbruik','5F':'Emissie eis',
+  '60':'Beschikbare PIDs 61-80','61':'Rijder koppelwens','62':'Werkelijk koppel','63':'Referentiekoppel',
+  '64':'Motor koppeldata','65':'Hulpinputs','66':'MAF sensor B','67':'Koelwater temp sensor B',
+  '68':'Inlaatlucht temp sensor B','69':'EGR commando B','6A':'EGR fout B','6D':'Turbo laaddruk A',
+  '6E':'Turbo laaddruk B','70':'Boost druk sensor','75':'Turbo A RPM','76':'Turbo B RPM',
+  '78':'Uitlaatgas temp B1S1','79':'Uitlaatgas temp B1S2','7A':'DPF B1','7B':'DPF B2',
+  '7C':'DPF temp B1','7D':'DPF temp B2','80':'Beschikbare PIDs 81-A0',
+  '8D':'Brandstof injectietiming','8E':'Motor koeling status',
+  'A0':'Beschikbare PIDs A1-C0','A6':'Brandstof verbruik absoluut'
+};
+
+// ── ALL_PID_DEFS_EXT (was index.html regel 10735) ──
+Object.assign(ALL_PID_DEFS,{
+  '0101':{name:'Motorlampje (MIL)',      unit:'aan/uit',cat:'Emissie',  min:0,max:1,    parse:b=>((b[0]&0x80)?1:0)},
+  '0103':{name:'Brandstofsysteem status',unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
+  '0112':{name:'Secundaire lucht status',unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
+  '0114':{name:'O2 sensor B1S1',         unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '0116':{name:'Lambda B1S3 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '0118':{name:'Lambda B2S1 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '011A':{name:'Lambda B2S3 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '011B':{name:'Lambda B2S4 spanning',   unit:'V',   cat:'Emissie',  min:0,max:1.3,  parse:b=>(b[0]/200)},
+  '011C':{name:'OBD norm',               unit:'code',cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '011E':{name:'PTO status',             unit:'code',cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '011F':{name:'Motorlooptijd',          unit:'s',   cat:'Motor',    min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0121':{name:'Afstand met MIL aan',    unit:'km',  cat:'Emissie',  min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0122':{name:'Raildruk (relatief)',    unit:'kPa', cat:'Brandstof',min:0,max:5178, parse:b=>((b[0]*256+b[1])*0.079)},
+  '0123':{name:'Raildruk (direct)',      unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '0124':{name:'Lambda B1S1 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0125':{name:'Lambda B1S2 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0126':{name:'Lambda B1S3 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0128':{name:'Lambda B2S1 (breedband)',unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '012E':{name:'EVAP spoelklep',         unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0130':{name:'Warmlopen sinds wissen', unit:'x',   cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '0131':{name:'Afstand sinds wissen',   unit:'km',  cat:'Overig',   min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0132':{name:'EVAP dampdruk',          unit:'Pa',  cat:'Emissie',  min:-8192,max:8192,parse:b=>{const v=(b[0]<<8)|b[1];return (v>32767?v-65536:v)/4;}},
+  '0134':{name:'Lambda B1S1 (stroom)',   unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0135':{name:'Lambda B1S2 (stroom)',   unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0138':{name:'Lambda B2S1 (stroom)',   unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '013C':{name:'Katalysator temp B1S1',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '013D':{name:'Katalysator temp B2S1',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '013E':{name:'Katalysator temp B1S2',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '013F':{name:'Katalysator temp B2S2',  unit:'°C',  cat:'Temp',     min:-40,max:1200,wH:900,parse:b=>((b[0]*256+b[1])/10-40)},
+  '0141':{name:'Monitors deze rit',      unit:'code',cat:'Overig',   min:0,max:255,  parse:b=>b[0]},
+  '0144':{name:'Lambda doelwaarde',      unit:'λ',   cat:'Emissie',  min:0,max:2,    parse:b=>((b[0]*256+b[1])*2/65536)},
+  '0147':{name:'Absolute gasklep B',     unit:'%',   cat:'Motor',    min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0148':{name:'Absolute gasklep C',     unit:'%',   cat:'Motor',    min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '014A':{name:'Gaspedaal positie D',    unit:'%',   cat:'Rijden',   min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '014B':{name:'Gaspedaal positie E',    unit:'%',   cat:'Rijden',   min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '014D':{name:'Tijd met MIL aan',       unit:'min', cat:'Emissie',  min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '014E':{name:'Tijd sinds wissen',      unit:'min', cat:'Overig',   min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0151':{name:'Brandstoftype',          unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
+  '0152':{name:'Ethanol percentage',     unit:'%',   cat:'Brandstof',min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0159':{name:'Raildruk (absoluut)',    unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '015A':{name:'Relatief gaspedaal',     unit:'%',   cat:'Rijden',   min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '015D':{name:'Injectietiming',         unit:'°',   cat:'Motor',    min:-210,max:302,parse:b=>(((b[0]*256+b[1])-26880)/128)},
+  '0161':{name:'Gevraagd koppel',        unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
+  '0162':{name:'Werkelijk koppel',       unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
+  '0163':{name:'Referentiekoppel',       unit:'Nm',  cat:'Motor',    min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  // ── Uitgebreide PID-database (PIDs 0164–01FF) — fix voor "PID 01XX raw" ──
+  '0164':{name:'Motorvrijloop koppel',   unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
+  '0165':{name:'Uitlaatgas temp B1S1',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0166':{name:'Uitlaatgas temp B1S2',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0167':{name:'Uitlaatgas temp B2S1',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0168':{name:'Uitlaatgas temp B2S2',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0169':{name:'Dieselroetfilter druk',  unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '016A':{name:'Dieselroetfilter temp',  unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '016B':{name:'DPF delta druk',         unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '016C':{name:'EGR B tempsensor',       unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '016D':{name:'Afgastemp dieselfilter', unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '016E':{name:'Nox sensor A',           unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '016F':{name:'Turbolader inlet druk',  unit:'kPa', cat:'Motor',    min:-350,max:514,parse:b=>(((b[0]*256+b[1])*0.03125)-350)},
+  '0170':{name:'Turbolader A druk',      unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '0171':{name:'Turbolader B druk',      unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '0172':{name:'Turbo compressor outlet',unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '0173':{name:'Turbo luchtinlaat temp', unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '0174':{name:'EGR temperatuur B',      unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '0175':{name:'EGR fout B',             unit:'%',   cat:'Emissie',  min:-100,max:100,parse:b=>((b[0]-128)*100/128)},
+  '0176':{name:'Injectiesysteem rail A', unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '0177':{name:'Injectiesysteem rail B', unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '0178':{name:'Uitlaatgas temp B1S3',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '0179':{name:'Uitlaatgas temp B1S4',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017A':{name:'Uitlaatgas temp B2S3',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017B':{name:'Uitlaatgas temp B2S4',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017C':{name:'DPF temp B1',            unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017D':{name:'DPF temp B2',            unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  '017E':{name:'NOx NTE status',         unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
+  '017F':{name:'PM NTE status',          unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
+  '0180':{name:'Motor looptijd totaal',  unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0181':{name:'MIL looptijd totaal',    unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0182':{name:'Afstand MIL totaal',     unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0183':{name:'Afstand na wissen totaal',unit:'km', cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0184':{name:'Warmlopen totaal',       unit:'x',   cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0185':{name:'Continu MIL teller',     unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0186':{name:'Continu afstand MIL',    unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0187':{name:'NOx sensor B1S1',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0188':{name:'NOx sensor B1S2',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0189':{name:'NOx sensor B2S1',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '018A':{name:'NOx sensor B2S2',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '018B':{name:'Brandstoftype systeem',  unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
+  '018C':{name:'Dieselpartikelmassa',    unit:'mg',  cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '018D':{name:'Motorlooptijd PTO',      unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '018E':{name:'NOx doseerpomp',         unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '018F':{name:'AdBlue tank niveau',     unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0190':{name:'SCR efficiëntie',        unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0191':{name:'NOx reductie',           unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
+  '0192':{name:'PM sensor B1',           unit:'mg',  cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '0193':{name:'PM sensor B2',           unit:'mg',  cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '0194':{name:'WWH-OBD teller',         unit:'min', cat:'Overig',   min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0195':{name:'NOx sensor corr. B1S1',  unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0196':{name:'NOx sensor corr. B2S1',  unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
+  '0197':{name:'Uitlaatgas stroom',      unit:'kg/h',cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '0198':{name:'Turbo laaddruk A',       unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '0199':{name:'Turbo laaddruk B',       unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '019A':{name:'Turbo RPM A',            unit:'rpm', cat:'Motor',    min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '019B':{name:'Turbo RPM B',            unit:'rpm', cat:'Motor',    min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
+  '019C':{name:'Turbo temp inlaat A',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '019D':{name:'Turbo temp inlaat B',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '019E':{name:'Turbo temp uitlaat A',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '019F':{name:'Turbo temp uitlaat B',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A0':{name:'Tussenkoeler temp A',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A1':{name:'Tussenkoeler temp B',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A2':{name:'EGR koeler temp B1',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A3':{name:'EGR koeler temp B2',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  '01A4':{name:'AdBlue injectiedruk',    unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
+  '01A5':{name:'Compressor inlaat druk', unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
+  '01A6':{name:'Brandstof verbruik abs', unit:'g/s', cat:'Brandstof',min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.03125)}
+});
+
+// ── KERN_PIDS (was index.html regel 10861) ──
+window.KERN_PIDS =['010C','010D','0105','0104','010B','0106','0107','0142','010F','0111'];
+
+// ── STANDAARD_PIDS (was index.html regel 10911) ──
+window.STANDAARD_PIDS =[
+  // Motor
+  '010C','010D','0104','0111','010B','010E','011F','0143',
+  // Temperatuur
+  '0105','015C','010F','0146',
+  // Brandstof
+  '0106','0107','0110','0114','0115','012F','015E','0134','0124',
+  // Emissie & diagnose
+  '0142','0121','012E','013C','0149','014C','0147',
+  // Overig standaard
+  '011C','0151','0133',
+];
+
+// ── PID_BYTE_LEN (was index.html regel 11049) ──
+window.PID_BYTE_LEN ={
+  // Volledige SAE J1979 mode-01 bytelengtes (00–80 + hogere bitmaps).
+  // BELANGRIJK: ook bitmaps (00/20/40/60/80), status-PIDs (01/41) en de
+  // O2-trim PIDs (53–58) horen erin. De batch-parser brak vroeger af op het
+  // eerste ONBEKENDE PID-nummer en gooide dan de complete respons weg —
+  // dat gaf valse "dips" (bv. 01414445, 01555659) die multi-PID onterecht
+  // uitschakelden terwijl de data gewoon geldig binnenkwam.
+  '00':4,'01':4,'02':2,'03':2,'04':1,'05':1,'06':1,'07':1,'08':1,'09':1,
+  '0A':1,'0B':1,'0C':2,'0D':1,'0E':1,'0F':1,'10':2,'11':1,'12':1,'13':1,
+  '14':2,'15':2,'16':2,'17':2,'18':2,'19':2,'1A':2,'1B':2,'1C':1,'1D':1,
+  '1E':1,'1F':2,'20':4,'21':2,'22':2,'23':2,'24':4,'25':4,'26':4,'27':4,
+  '28':4,'29':4,'2A':4,'2B':4,'2C':1,'2D':1,'2E':1,'2F':1,'30':1,'31':2,
+  '32':2,'33':1,'34':4,'35':4,'36':4,'37':4,'38':4,'39':4,'3A':4,'3B':4,
+  '3C':2,'3D':2,'3E':2,'3F':2,'40':4,'41':4,'42':2,'43':2,'44':2,'45':1,
+  '46':1,'47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'4F':4,
+  '50':4,'51':1,'52':1,'53':2,'54':2,'55':2,'56':2,'57':2,'58':2,'59':2,
+  '5A':1,'5B':1,'5C':1,'5D':2,'5E':2,'5F':1,'60':4,'61':1,'62':1,'63':2,
+  '64':5,'65':2,'66':5,'67':3,'68':7,'69':7,'6A':5,'6B':5,'6C':5,'6D':6,
+  '6E':5,'6F':3,'70':9,'71':5,'72':5,'73':5,'74':5,'75':7,'76':7,'77':5,
+  '78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,'80':4,'A0':4,'C0':4
+};
+
+// ── PID_POLL_CLASS (was index.html regel 11209) ──
+window.PID_POLL_CLASS ={
+  // ⚡ SNEL (120ms) — verandert continu, wil je vloeiend zien
+  '0C':120,'0D':120,'11':120,'04':120,'49':120,'45':120,'5A':120,
+  // 🔴 SNEL-MEDIUM (300ms) — druk/lucht/timing
+  '0B':300,'10':300,'0A':300,'0E':300,'22':300,'23':300,'59':300,
+  // 🟠 MEDIUM (1s) — trims, lambda, verbruik
+  '06':1000,'07':1000,'08':1000,'09':1000,'13':1000,'14':1000,'15':1000,
+  '24':1000,'34':1000,'44':1000,'5E':1000,'2C':1000,
+  // 🟡 TRAAG (10s) — temperaturen
+  '05':10000,'0F':10000,'5C':10000,'46':10000,'3C':10000,'3D':10000,'33':10000,
+  // 🟢 ZELDEN (60s) — peil, tellers, spanning(ECU-stabiel)
+  '2F':60000,'42':30000,'31':60000,'21':60000,'30':60000,'1F':30000,
+};
+
+// ── DEMO_VEHICLES (was index.html regel 11435) ──
+window.DEMO_VEHICLES ={
+  benzine:    {merk:'Mazda',      model:'CX-5',    year:'2018', brandstof:'Benzine',    motor:'2.0 SkyActiv-G 165pk', vin:'JM3KFBCL8J0123456'},
+  diesel:     {merk:'Volkswagen', model:'Passat',  year:'2017', brandstof:'Diesel',     motor:'2.0 TDI 150pk',        vin:'WVWZZZ3CZHE000000'},
+  hybride:    {merk:'Toyota',     model:'Prius',   year:'2019', brandstof:'Hybride',    motor:'1.8 VVT-i Hybrid',     vin:'JTDKB3FUXG3000000'},
+  elektrisch: {merk:'Tesla',      model:'Model 3', year:'2021', brandstof:'Elektrisch', motor:'EV Long Range',        vin:'5YJ3E1EA7MF000000'},
+};
+
+// ── DEMO_CARS (was index.html regel 11479) ──
+window.DEMO_CARS =[
+  { merk:'Mazda',      model:'CX-5',  year:'2018', brandstof:'benzine', vin:'JM3KFBCL8J0123456', wmi:'JM3', motortype:'2.0 SkyActiv-G 165pk', icon:'🚙' },
+  { merk:'Volkswagen', model:'Golf',  year:'2017', brandstof:'benzine', vin:'WVWZZZAUZHW123456', wmi:'WVW', motortype:'1.4 TSI 125pk',        icon:'🚗' },
+  { merk:'Toyota',     model:'Yaris', year:'2019', brandstof:'hybride', vin:'VNKKD3D310A123456', wmi:'VNK', motortype:'1.5 Hybrid 100pk',     icon:'🚕' },
+  { merk:'Volvo',      model:'V40',   year:'2016', brandstof:'diesel',  vin:'YV1MV7431G2123456', wmi:'YV1', motortype:'D2 120pk',             icon:'🚘' },
+];
+
+// ── ANALYSE_PID_SETS (was index.html regel 11810) ──
+window.ANALYSE_PID_SETS = {
+  totaal:  ['010C','010D','0105','015C','0104','010B','010F','0110','0111',
+             '0106','0107','0114','0124','010A','015E','012F','0142'],
+  monteur: ['010C','010D','0105','015C','0104','010B','0110','0106','0107',
+             '0114','0124','010A','010E','012F','0142'],
+  dtc:     ['010C','0105','0104','0142'],
+  koop:    ['010C','010D','0105','015C','0104','010B','0110','0106','0107',
+             '0114','0124','010A','015E','012F','0142','013C'],
+  rit:     ['010C','010D','0105','015C','0104','010B','010F','0110','0111',
+             '0106','0107','0114','0124','010A','015E','012F','0142','010E','012C'],
+};
+
+// ── AUTO_KENNIS (was index.html regel 11946) ──
+window.AUTO_KENNIS = {
+  // Elk zwak-punt: [tekst, brandstof] — brandstof: 'diesel'|'benzine'|null (null = alle/onbekend)
+  'volkswagen': {zwak:[['EGR-klep vervuiling (TDI)','diesel'],['DPF-regeneratie problemen','diesel'],['distributieketting-spanner (1.2/1.4 TSI)','benzine'],['timing chain rek','benzine'],['waterpomp lekkage',null]],pids:['0106','0107','016B','016D','0105'],let_op:'1.4 TSI tot ±2014: ketting-spanner; TDI: roetfilter + EGR.'},
+  'audi':       {zwak:[['olieverbruik (2.0 TFSI EA888)','benzine'],['distributieketting (2.0 TFSI)','benzine'],['DPF/EGR (TDI)','diesel'],['carbon-opbouw inlaatkleppen',null]],pids:['0106','0107','010B','016B'],let_op:'2.0 TFSI EA888 gen2: berucht olieverbruik via zuigerveren.'},
+  'skoda':      {zwak:[['EGR/DPF (TDI)','diesel'],['TSI ketting-spanner','benzine'],['DSG-mechatronic',null]],pids:['0106','0107','016B'],let_op:'Deelt motoren met VW/Audi — zelfde aandachtspunten.'},
+  'seat':       {zwak:[['TSI ketting','benzine'],['DPF (TDI)','diesel'],['DSG',null]],pids:['0106','0107','016B'],let_op:'VAG-platform, zie VW.'},
+  'bmw':        {zwak:[['koelsysteem (waterpomp/thermostaat)',null],['VANOS-magneetkleppen','benzine'],['timing chain (N47 diesel)','diesel'],['DISA-klep','benzine'],['olielekkage kleppendeksel',null]],pids:['0105','010E','010C','0142'],let_op:'N47 diesel: ketting achterzijde motor, dure reparatie. Controleer koelwatertemp-gedrag.'},
+  'mercedes':   {zwak:[['balanceer-as (M272)','benzine'],['roestkettingstrekker',null],['luchtvering',null],['injectoren (CDI diesel)','diesel'],['EGR-koeler','diesel']],pids:['0105','0106','0107','016B'],let_op:'CDI diesel: injector-lektest via trims; let op koelwatertemp.'},
+  'toyota':     {zwak:[['hybride accu-degradatie','hybride'],['EGR-vervuiling (diesel)','diesel'],['olieverbruik oudere 1.8 VVT-i','benzine'],['inverterkoeling','hybride']],pids:['015B','0105','0142','0106'],let_op:'Hybride: check SoC + inverter-temp. Laat verbrandingsmotor meelopen bij meting.'},
+  'mazda':      {zwak:[['inlaatklep-vervuiling (SkyActiv-D diesel)','diesel'],['DPF kortritten','diesel'],['roest wielkasten oudere modellen',null],['breedband-lambda B1S1',null]],pids:['0124','0134','0106','016B'],let_op:'SkyActiv-D: gevoelig voor kortritten/DPF. B1S1 = breedband (0124), niet 0113.'},
+  'ford':       {zwak:[['EcoBoost koelvloeistof-verlies (1.0)','benzine'],['DPF (TDCi)','diesel'],['waterpomp intern (1.0 EcoBoost)','benzine'],['versnellingsbak PowerShift',null]],pids:['0105','0106','016B','0142'],let_op:'1.0 EcoBoost: interne waterpomp kan koelvloeistof in olie brengen.'},
+  'opel':       {zwak:[['distributieketting (1.4 Turbo)','benzine'],['thermostaat',null],['waterpomp',null],['EGR (CDTi)','diesel']],pids:['0105','010C','0106'],let_op:'1.4 Turbo: ketting-rek geeft P-codes; controleer timing.'},
+  'renault':    {zwak:[['injectoren (dCi diesel)','diesel'],['EGR-klep','diesel'],['DPF','diesel'],['turbo-actuator',null]],pids:['0106','0107','016B','0170'],let_op:'dCi: injector-codering + EGR. PSA/Renault diesel gevoelig voor kortritten.'},
+  'peugeot':    {zwak:[['distributieketting (1.2 PureTech)','benzine'],['EGR/DPF (HDi)','diesel'],['AdBlue-systeem','diesel'],['olieslib 1.2 PureTech','benzine']],pids:['0106','016B','01A4','0105'],let_op:'1.2 PureTech: ketting met natte riem — controleer olie + timing.'},
+  'citroen':    {zwak:[['1.2 PureTech ketting/riem','benzine'],['HDi DPF','diesel'],['AdBlue (BlueHDi)','diesel'],['ophanging',null]],pids:['0106','016B','01A4'],let_op:'Deelt motoren met Peugeot — zelfde PureTech/HDi aandachtspunten.'},
+  'volvo':      {zwak:[['PCV-systeem (oudere 5-cil)',null],['DPF (diesel)','diesel'],['PHEV accu-balancering','hybride'],['turbo',null]],pids:['0106','016B','015B','0170'],let_op:'PHEV (XC60/XC90): laat verbrandingsmotor meedraaien voor volledige meting.'}
+};
+
+// ── HUD_LABEL_DICT (was index.html regel 12763) ──
+window.HUD_LABEL_DICT ={
+  'brandstoftrim':'B.TRIM','brandstof':'BRANDST','koelvloeistof':'KOELVLST',
+  'koelvloeistoftemp':'KOELTEMP','temperatuur':'TEMP','temp':'TEMP',
+  'inlaatlucht':'INLAAT','inlaat':'INLAAT','aanzuiglucht':'AANZUIG',
+  'absolute':'ABS','absoluut':'ABS','motorbelasting':'MOTORBELAST',
+  'belasting':'BELAST','gasklep':'GASKLEP','gaspedaal':'GASPED',
+  'toerental':'RPM','snelheid':'SNELH','barometerdruk':'BARO',
+  'inlaatdruk':'INL.DRUK','luchtmassa':'MAF','luchtstroom':'MAF',
+  'ontstekingstiming':'TIMING','timing':'TIMING','lambda':'LAMBDA',
+  'breedband':'BREEDB','smalband':'SMALB','zuurstofsensor':'O2-SENS',
+  'accuspanning':'ACCU','spanning':'SPANNING','voltage':'VOLT',
+  'dieselroetfilter':'DPF','dieselpartikel':'DPF','adblue':'ADBLUE',
+  'katalysator':'KAT','uitlaat':'UITLAAT','afgas':'AFGAS',
+  'afgastemp':'AFGASTEMP','olietemp':'OLIETEMP','olie':'OLIE',
+  'verbruik':'VERBR','bank':'B','positie':'POS','niveau':'NIVEAU',
+  'kort':'K','lang':'L','status':'STAT','systeem':'SYS','sensor':'SENS',
+  'druk':'DRUK','motor':'MOTOR','turbo':'TURBO','compressor':'COMPR',
+};
