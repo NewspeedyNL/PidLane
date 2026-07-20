@@ -13,8 +13,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'index.html'
-      - 'capacitor.config.json'
+     - 'public/index.html'
+     - 'capacitor.config.json'
   workflow_dispatch:
 
 # Annuleer lopende builds als er een nieuwe push komt — voorkomt 4x builden
