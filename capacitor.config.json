@@ -1,0 +1,20 @@
+{
+  "appId": "app.pidlane.obd",
+  "appName": "PidLane",
+  "webDir": "src",
+  "server": {
+    "androidScheme": "https",
+    "url": "https://newspeedynl.github.io/PidLane/index.html",
+    "cleartext": false
+  },
+  "plugins": {
+    "BluetoothLe": {
+      "displayStrings": {
+        "scanning": "Zoeken naar OBD2 adapter...",
+        "cancel": "Annuleren",
+        "availableDevices": "Beschikbare adapters",
+        "noDeviceFound": "Geen adapter gevonden"
+      }
+    }
+  }
+}
