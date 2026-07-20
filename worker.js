@@ -1729,6 +1729,14 @@ export default {
       return json({ error: 'not_found', path: url.pathname }, 404);
     } catch (e) {
       return json({ error: 'worker_exception', message: String(e && e.message || e) }, 500);
+       // In worker_default.fetch(), bij de andere routes toevoegen:
+
+      if (url.pathname === "/download/pidlane.apk" && request.method === "GET")
+        return await handleApkDownload(request, env);
+
+      if (url.pathname === "/version.json" && request.method === "GET")
+        return await handleVersionJson(request, env);
+
     }
   },
 };
