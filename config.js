@@ -13,7 +13,7 @@
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── Versie & updates ────────────────────────────────────────────── */
-const APP_VERSION = '2.7.0';
+const APP_VERSION = '2.8.0';
 const GITHUB_USER = 'newspeedynl';
 const GITHUB_REPO = 'PidLane';
 const VERSION_URL = 'https://newspeedynl.github.io/PidLane/version.json';
