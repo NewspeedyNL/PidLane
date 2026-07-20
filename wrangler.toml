@@ -1,0 +1,36 @@
+# ── PidLane — één Worker die zowel de app (static) als de proxy serveert ──
+# Behoudt de bestaande worker-naam zodat secrets + bestaande DO intact blijven.
+name = "pidlane-proxy"
+main = "worker.js"
+compatibility_date = "2026-07-19"   # gelijk aan (of nieuwer dan) je huidige compat-date
+
+# Static app. Cloudflare serveert een bestand als het pad matcht; matcht niets,
+# dan draait worker.js (je API-routes). run_worker_first UIT (default) → de app
+# laadt publiek en login gaat gewoon client-side via /auth/login.
+[assets]
+directory = "./public"
+binding   = "ASSETS"
+
+# ── Durable Object — VERPLICHT, anders breken /session, /pair en /code ──
+[[durable_objects.bindings]]
+name       = "REMOTE_SESSION"
+class_name = "RemoteSessionDO"
+
+# MODERN (aanbevolen, vereist recente wrangler v4). Declaratief: Cloudflare
+# vergelijkt dit met de al-bestaande DO en neemt 'm netjes over, geen tag-gedoe.
+[exports.RemoteSessionDO]
+type    = "durable-object"
+storage = "sqlite"
+
+# LEGACY-ALTERNATIEF — gebruik DIT i.p.v. het [exports]-blok hierboven als je
+# wrangler 'exports' niet herkent. Zet dan het blok hierboven uit en dit aan:
+# [[migrations]]
+# tag = "v1"
+# new_sqlite_classes = ["RemoteSessionDO"]
+
+# ── Optioneel: plain vars (code valt anders terug op DEFAULTS in worker.js) ──
+[vars]
+TOKEN_TTL_HOURS = "12"
+
+[observability]
+enabled = true

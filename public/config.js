@@ -21,7 +21,22 @@ const UPDATE_URL  = 'https://newspeedynl.github.io/PidLane/';
 
 /* ── Cloudflare Worker proxy ─────────────────────────────────────── */
 /* Alle geheimen zitten server-side in deze Worker.                   */
-const PROXY_URL = 'https://pidlane-proxy.newspeedynl.workers.dev';
+/* WORKER_ORIGIN = altijd bereikbare absolute URL. Nodig voor de APK  */
+/* (Capacitor draait op een lokale origin, niet op de Worker), voor   */
+/* GitHub Pages en voor file://. Zodra app.pidlane.nl stabiel is mag   */
+/* je deze desgewenst op 'https://app.pidlane.nl' zetten.             */
+const WORKER_ORIGIN = 'https://pidlane-proxy.newspeedynl.workers.dev';
+
+/* Wordt de app RECHTSTREEKS vanaf de Worker geserveerd (app.pidlane.nl */
+/* of *.workers.dev), dan praten app en proxy same-origin → relatief.  */
+/* In alle andere gevallen (APK, Pages, file://) → absolute Worker-URL. */
+const PROXY_URL = (() => {
+  try {
+    const h = location.hostname;
+    if (h === 'app.pidlane.nl' || h.endsWith('.workers.dev')) return location.origin;
+  } catch (_) {}
+  return WORKER_ORIGIN;
+})();
 
 /* Afgeleide routes — laat staan, ze volgen automatisch de PROXY_URL. */
 const AIRTABLE_URL      = PROXY_URL + '/airtable/log';
