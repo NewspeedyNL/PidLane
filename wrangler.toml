@@ -15,6 +15,11 @@ binding   = "ASSETS"
 [[durable_objects.bindings]]
 name       = "REMOTE_SESSION"
 class_name = "RemoteSessionDO"
+# Toevoegen aan wrangler.toml:
+
+[[r2_buckets]]
+binding     = "FILES"
+bucket_name = "pidlane-files"
 
 # MODERN (aanbevolen, vereist recente wrangler v4). Declaratief: Cloudflare
 # vergelijkt dit met de al-bestaande DO en neemt 'm netjes over, geen tag-gedoe.
@@ -34,3 +39,4 @@ TOKEN_TTL_HOURS = "12"
 
 [observability]
 enabled = true
+
