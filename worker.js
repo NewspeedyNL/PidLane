@@ -193,6 +193,36 @@ async function sha256hex(s) {
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
+// ── R2: bestandsopslag (APK + later rapporten/logs) ───────────────────────
+// Binding "FILES" → bucket "pidlane-files". Keys met prefix: apk/, reports/, logs/.
+
+// Publieke APK-download: app.pidlane.nl/download/pidlane.apk
+async function handleApkDownload(request, env) {
+  if (!env.FILES) return json({ error: "no_r2_binding", hint: "FILES-binding ontbreekt" }, 500);
+  const obj = await env.FILES.get("apk/pidlane.apk");
+  if (!obj || !obj.body) return json({ error: "apk_not_found" }, 404);
+  const headers = new Headers(CORS);
+  obj.writeHttpMetadata(headers);
+  headers.set("Content-Type", "application/vnd.android.package-archive");
+  headers.set("Content-Disposition", 'attachment; filename="pidlane.apk"');
+  headers.set("Cache-Control", "public, max-age=300");
+  if (obj.httpEtag) headers.set("etag", obj.httpEtag);
+  return new Response(obj.body, { headers });
+}
+
+// Optioneel: version.json vanuit R2 serveren (dan bump je 'm met een r2 put,
+// zonder redeploy). app.pidlane.nl/version.json
+async function handleVersionJson(request, env) {
+  if (!env.FILES) return json({ error: "no_r2_binding" }, 500);
+  const obj = await env.FILES.get("apk/version.json");
+  if (!obj || !obj.body) return json({ error: "version_not_found" }, 404);
+  const headers = new Headers(CORS);
+  headers.set("Content-Type", "application/json");
+  headers.set("Cache-Control", "public, max-age=60");
+  return new Response(obj.body, { headers });
+}
+
+
 async function hmacSign(secret, msg) {
   const key = await crypto.subtle.importKey(
     'raw', _enc.encode(String(secret)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
