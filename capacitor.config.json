@@ -1,10 +1,10 @@
 {
   "appId": "app.pidlane.obd",
   "appName": "PidLane",
-  "webDir": "src",
+  "webDir": "public",
   "server": {
     "androidScheme": "https",
-    "url": "https://newspeedynl.github.io/PidLane/index.html",
+    "url": "https://app.pidlane.nl",
     "cleartext": false
   },
   "plugins": {
