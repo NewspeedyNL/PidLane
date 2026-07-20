@@ -474,7 +474,14 @@ async function connectWebSerial(){
   // Web Bluetooth-kiezer — dat gaf het "lege connect-scherm". Markeer als
   // gebruikersannulering zodat de cascade stopt.
   try{
-    _wsPort = await navigator.serial.requestPort();      // Chrome-poortkiezer
+    // Android Chrome ziet Bluetooth-adapters (SPP/RFCOMM) alleen als je het
+    // service-UUID meegeeft. SPP = 00001101-...; hiermee verschijnt de MX+ in
+    // de poortkiezer op de telefoon. Op desktop is dit onschadelijk: er staat
+    // GEEN filter, dus gewone COM-poorten blijven zichtbaar, en oudere browsers
+    // negeren deze optie gewoon.
+    _wsPort = await navigator.serial.requestPort({
+      allowedBluetoothServiceClassIds: ['00001101-0000-1000-8000-00805f9b34fb']
+    });                                                    // Chrome-poortkiezer
   }catch(e){ e.__plCancel = true; throw e; }
   // OBDLink MX+ op Windows: standaard 115200. Bij twijfel is 38400 de bewezen
   // fallback, maar de MX+ COM-poort draait vast op 115200 (fabrikant-default).
