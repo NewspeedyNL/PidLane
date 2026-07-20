@@ -431,8 +431,44 @@ async function bleVerifyELM(){
 // Globale Web Serial-staat: poort, writer, en een lopende leesbuffer die de
 // dedicated reader-loop vult. _webSerialSend() leest hieruit tot de '>'-prompt.
 let _wsPort=null, _wsWriter=null, _wsReader=null, _wsBuf='', _wsReadAbort=false;
+let _wsConnecting=false;   // guard: voorkomt gestapelde connect-pogingen (cascade)
+
+// Volledige, idempotente teardown van de Web Serial-poort. Zonder deze close()
+// bleef de COM-poort na een verbroken sessie open staan -> de volgende connect
+// gaf "The port is already open" en alleen een page-reload hielp. Veilig om
+// dubbel aan te roepen; elke stap is geguard.
+async function disconnectWebSerial(){
+  _wsReadAbort = true;                           // stopt de reader-loop
+  if (_wsReader){
+    try{ await _wsReader.cancel(); }catch(e){}
+    try{ _wsReader.releaseLock(); }catch(e){}
+    _wsReader = null;
+  }
+  if (_wsWriter){
+    try{ await _wsWriter.close(); }catch(e){}
+    try{ _wsWriter.releaseLock(); }catch(e){}
+    _wsWriter = null;
+  }
+  if (_wsPort){
+    try{ await _wsPort.close(); }catch(e){}       // <- dit ontbrak: poort echt sluiten
+    _wsPort = null;
+  }
+  _wsBuf = '';
+  window._webSerialWrite = null;
+  window._webSerialPort = null;
+}
 
 async function connectWebSerial(){
+  // Guard: een automatische tweede scanronde of dubbelklik mag geen tweede
+  // open() stapelen op een poort die nog bezig is — dat voedde de cascade.
+  if (_wsConnecting){ const e=new Error('Web Serial verbinden is al bezig'); e.__plCancel=true; throw e; }
+  _wsConnecting = true;
+  try{
+  // Altijd eerst een eventuele oude poort netjes sluiten, zodat een
+  // herverbinding nooit op een nog-open COM-poort stuit.
+  await disconnectWebSerial();
+  _wsReadAbort = false;
+
   log('Web Serial: poort kiezen...', 'info');
   // Poortkiezer. Annuleren (NotFoundError) mag NIET doorvallen naar de
   // Web Bluetooth-kiezer — dat gaf het "lege connect-scherm". Markeer als
@@ -448,9 +484,22 @@ async function connectWebSerial(){
   try{
     await _wsPort.open({ baudRate: 115200, bufferSize: 4096 });
   }catch(e){
-    e.__plTerminal = true;
-    e.message = 'COM-poort kon niet worden geopend.\nSluit andere programma\'s die de poort gebruiken (of trek de adapter kort los) en probeer opnieuw.\n\nDetail: ' + (e.message || e);
-    throw e;
+    // Poort tóch nog open (restant van een eerdere cascade of ander programma):
+    // forceer één keer sluiten en probeer opnieuw voordat we opgeven.
+    if (/already open/i.test((e && e.message) || '')){
+      try{ await _wsPort.close(); }catch(_){}
+      try{
+        await _wsPort.open({ baudRate: 115200, bufferSize: 4096 });
+      }catch(e2){
+        e2.__plTerminal = true;
+        e2.message = 'COM-poort kon niet worden geopend.\nSluit andere programma\'s die de poort gebruiken (of trek de adapter kort los) en probeer opnieuw.\n\nDetail: ' + (e2.message || e2);
+        throw e2;
+      }
+    } else {
+      e.__plTerminal = true;
+      e.message = 'COM-poort kon niet worden geopend.\nSluit andere programma\'s die de poort gebruiken (of trek de adapter kort los) en probeer opnieuw.\n\nDetail: ' + (e.message || e);
+      throw e;
+    }
   }
   log('Web Serial poort geopend (115200)', 'ok');
 
@@ -482,10 +531,11 @@ async function connectWebSerial(){
   window._webSerialPort = _wsPort;
 
   _wsPort.addEventListener('disconnect', () => {
-    connected = false; setConn(false); _wsReadAbort=true;
-    window._webSerialWrite = null; window._webSerialPort = null; _wsPort=null;
-    const vt = document.getElementById('vtag'); if (vt) vt.style.display = 'none';
     log('Web Serial verbroken', 'warn');
+    connected = false; setConn(false);
+    const vt = document.getElementById('vtag'); if (vt) vt.style.display = 'none';
+    // Volledige teardown (incl. port.close) zodat een reconnect schoon start.
+    disconnectWebSerial();
   });
 
   connected = true; demoMode = false;
@@ -493,6 +543,7 @@ async function connectWebSerial(){
   setConn(true);
   await initELM327Serial();   // bewezen ELM327-init voor de COM-poort
   await scanNetworks();
+  } finally { _wsConnecting = false; }
 }
 
 // ── Kern: stuur één commando en lees TOT de '>'-prompt (OBDLink-spec) ──
