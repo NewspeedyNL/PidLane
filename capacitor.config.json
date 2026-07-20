@@ -1,7 +1,7 @@
 {
   "appId": "app.pidlane.obd",
   "appName": "PidLane",
-  "webDir": "public",
+  "webDir": "www",
   "server": {
     "androidScheme": "https",
     "url": "https://app.pidlane.nl",
