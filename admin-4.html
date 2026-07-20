@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<!-- ════════════════════════════════════════════════════════════
+     PidLane — ADMIN DASHBOARD (losstaand, NIET op publieke Pages zetten!)
+     Build: 2026-07-13 (CET) — 👤 Gebruikersbeheer
+
+     NIEUW: gebruikers aanmaken/wijzigen/verwijderen via de Worker
+     (GET/POST /admin/users, ADMIN_TOKEN vereist). De Worker hasht het
+     wachtwoord zelf en schrijft het naar de Airtable-tabel "Users" in de
+     Config-base. Wachtwoorden zijn nergens uitleesbaar — ook niet hier —
+     alleen te overschrijven.
+
+     De noodingang (USERS_JSON-secret in Cloudflare) staat hier alleen ter
+     info en is bewust NIET bewerkbaar: zo kun je jezelf nooit buitensluiten.
+
+     Draai dit lokaal (dubbelklik) of op een beveiligde, niet-publieke plek.
+     ════════════════════════════════════════════════════════════ -->
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PidLane Admin</title>
+<style>
+  :root{ --bg:#0a0e17; --sur:#131926; --sur2:#1b2333; --bd:#26304a; --tx:#e8edf6; --tx2:#9aa6bd; --bl:#2563ff; --gn:#06b36b; --or:#f2820c; --rd:#ef4444; --r:12px; --f:system-ui,-apple-system,'Segoe UI',sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--f);font-size:14px;line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--tx2);font-size:13px;margin-bottom:20px}
+  .card{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  .card h2{font-size:14px;margin:0 0 12px;color:var(--tx)}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+  input[type=text],input[type=password],textarea,select{width:100%;padding:10px;background:var(--sur2);border:1.5px solid var(--bd);border-radius:8px;color:var(--tx);font-size:13px;font-family:var(--f);outline:none}
+  textarea{resize:vertical;min-height:80px;font-family:'DM Mono',monospace}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)}
+  .row:last-child{border-bottom:none}
+  .row .lbl{font-weight:600}
+  .row .desc{font-size:12px;color:var(--tx2);margin-top:2px}
+  .switch{position:relative;width:46px;height:26px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;inset:0;background:var(--bd);border-radius:26px;transition:.2s}
+  .slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+  .switch input:checked+.slider{background:var(--gn)}
+  .switch input:checked+.slider:before{transform:translateX(20px)}
+  button{padding:10px 16px;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--f)}
+  .btn-pri{background:var(--bl);color:#fff}
+  .btn-sec{background:var(--sur2);color:var(--tx2);border:1px solid var(--bd)}
+  .btn-test{background:var(--or);color:#fff}
+  .btn-del{background:transparent;color:var(--rd);border:1px solid var(--rd);padding:6px 10px;font-size:12px}
+  .btn-sm{padding:6px 10px;font-size:12px}
+  .msg{font-size:13px;min-height:18px;margin-top:8px}
+  .gate{max-width:420px;margin:80px auto;padding:24px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r)}
+  .hidden{display:none}
+  .bar{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+  code{background:var(--sur2);padding:1px 5px;border-radius:4px;font-size:12px}
+  .warn{background:#3a1a0a;border:1px solid var(--or);border-radius:8px;padding:10px;font-size:12px;color:#ffd0a0;margin-bottom:14px}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
+  .p-admin{background:#2a1440;color:#c9a3ff;border:1px solid #6b3fa0}
+  .p-user{background:#0d2a1e;color:#6fe0aa;border:1px solid #1c6b48}
+  .p-demo{background:#2a2410;color:#e0cf6f;border:1px solid #6b5c1c}
+  .p-off{background:#2a1414;color:#ff9a9a;border:1px solid #6b1c1c}
+  .p-lock{background:#141b2a;color:#8fa6d6;border:1px solid #2c3a5c}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr}}
+  .hint{font-size:12px;color:var(--tx2);margin-top:6px}
+</style>
+</head>
+<body>
+
+<!-- ── Toegangspoort: admin-token invoeren ── -->
+<div id="gate" class="gate">
+  <h1>🔒 PidLane Admin</h1>
+  <p class="sub">Voer je admin-token in. Deze wordt naar de Worker gestuurd en niet in deze pagina opgeslagen.</p>
+  <label>Admin-token</label>
+  <input type="password" id="adminTok" placeholder="ADMIN_TOKEN…" autocomplete="off">
+  <label style="margin-top:12px">Worker-URL</label>
+  <input type="text" id="workerUrl" value="https://pidlane-proxy.newspeedynl.workers.dev">
+  <div class="bar">
+    <button class="btn-pri" onclick="enter()">Inloggen</button>
+  </div>
+  <div id="gateMsg" class="msg"></div>
+</div>
+
+<!-- ── Dashboard ── -->
+<div id="dash" class="wrap hidden">
+  <h1>PidLane Admin <span style="font-size:12px;color:var(--tx2)">— live config</span></h1>
+  <p class="sub">Wijzigingen gaan direct live. De klant-app haalt config op bij elke start (gecached ~60s) en valt terug op hardcoded defaults bij geen verbinding.</p>
+
+  <div class="warn">⚠️ Veiligheids­kritische zaken (SAFE_AT-whitelist, API-geheimen) worden bewust NIET hier beheerd. Alleen UI/gedrag en gebruikers.</div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       👤 GEBRUIKERS
+       Schrijft naar de Airtable-tabel "Users" (Config-base) via de Worker.
+       De Worker hasht het wachtwoord; hier gaat het alleen over HTTPS heen
+       en wordt het nergens bewaard.
+       ════════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <h2>👤 Gebruikers</h2>
+    <p class="sub" style="margin:0 0 12px">Deze accounts kunnen inloggen in de app. Een wachtwoord is nooit terug te lezen — alleen te overschrijven.</p>
+
+    <div id="userList"></div>
+
+    <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:14px">
+      <div class="lbl" id="formTitle" style="margin-bottom:10px">➕ Nieuwe gebruiker</div>
+
+      <div class="grid2">
+        <div>
+          <label>Inlognaam</label>
+          <input type="text" id="u_name" placeholder="VanMeel" autocomplete="off">
+        </div>
+        <div>
+          <label>Weergavenaam</label>
+          <input type="text" id="u_label" placeholder="Van Meel" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:10px">
+        <div>
+          <label>Wachtwoord</label>
+          <input type="password" id="u_pass" placeholder="min. 8 tekens" autocomplete="new-password">
+          <div class="hint" id="passHint">Bij bewerken: leeg laten = ongewijzigd.</div>
+        </div>
+        <div>
+          <label>Rol</label>
+          <select id="u_role">
+            <option value="user">user — normale diagnose</option>
+            <option value="admin">admin — alles incl. Veldlab</option>
+            <option value="demo">demo — beperkt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <div><div class="lbl">Actief</div><div class="desc">Uit = account bestaat nog, maar kan niet inloggen</div></div>
+        <label class="switch"><input type="checkbox" id="u_active" checked><span class="slider"></span></label>
+      </div>
+
+      <div class="bar">
+        <button class="btn-pri" onclick="saveUser()">💾 Opslaan</button>
+        <button class="btn-sec" onclick="resetUserForm()">Nieuw / leegmaken</button>
+        <button class="btn-sec" onclick="loadUsers()">↻ Herladen</button>
+      </div>
+      <div id="userMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <!-- Feature toggles -->
+  <div class="card">
+    <h2>🚪 Deuren aan/uit</h2>
+    <div class="row">
+      <div><div class="lbl">Verbruik &amp; besparen</div><div class="desc"><code>door_saving_active</code></div></div>
+      <label class="switch"><input type="checkbox" id="t_door_saving_active"><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div><div class="lbl">Kopen of verkopen</div><div class="desc"><code>door_deal_active</code></div></div>
+      <label class="switch"><input type="checkbox" id="t_door_deal_active"><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div><div class="lbl">Voorbereiden op…</div><div class="desc"><code>door_prep_active</code></div></div>
+      <label class="switch"><input type="checkbox" id="t_door_prep_active"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- Functies aan/uit -->
+  <div class="card">
+    <h2>🧩 Functies aan/uit</h2>
+    <p class="sub" style="margin:0 0 10px">Alles staat standaard <b>aan</b>. Basisfuncties (login, verbinden, live-weergave, rapporten-knop) zijn bewust niet uitschakelbaar.</p>
+    <div id="featGrid"></div>
+  </div>
+
+  <!-- Banner -->
+  <div class="card">
+    <h2>📢 Mededeling / banner</h2>
+    <label>Banner-tekst (leeg = geen banner)</label>
+    <input type="text" id="v_banner_text" placeholder="Bijv. Onderhoud gepland zaterdag 14:00–15:00">
+    <div class="row" style="margin-top:10px">
+      <div><div class="lbl">Banner tonen</div></div>
+      <label class="switch"><input type="checkbox" id="t_banner_active"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- AI-prompt met test -->
+  <div class="card">
+    <h2>🤖 AI-basisinstructie (override)</h2>
+    <label>System-instructie (leeg = app gebruikt z'n ingebouwde instructie)</label>
+    <textarea id="v_ai_system_override" placeholder="Laat leeg om de standaard te gebruiken. Test eerst voor je opslaat!"></textarea>
+    <div class="bar">
+      <button class="btn-test" onclick="testPrompt()">🧪 Test deze prompt</button>
+    </div>
+    <div id="testMsg" class="msg"></div>
+  </div>
+
+  <!-- Opslaan -->
+  <div class="card">
+    <div class="bar">
+      <button class="btn-pri" onclick="saveAll()">💾 Live zetten</button>
+      <button class="btn-sec" onclick="loadConfig()">↻ Herladen</button>
+    </div>
+    <div id="saveMsg" class="msg"></div>
+  </div>
+</div>
+
+<script>
+let TOKEN='', WURL='';
+
+// ── Alle op afstand schakelbare functies (moet 1-op-1 matchen met
+//    FEATURE_TOGGLES in index.html). Ontbrekende key = AAN. ──
+const FEATURES=[
+  ['feat_ai_monteur','AI-Monteur','Deur 1 — klachtdiagnose met live data'],
+  ['feat_deepdiag','Diepe storingsanalyse','Deur 1 — uitgebreide intake + datalog'],
+  ['feat_pidrecorder','PID-recorder','Deur 1 — zelf sensoren opnemen tijdens rijden'],
+  ['feat_conditiecheck','Conditiecheck','Deur 1 — foutcodes + sensoren in één foto'],
+  ['feat_foutcodes','Foutcodes uitlezen','Deur 1 — DTC-lijst met uitleg en wissen'],
+  ['feat_rijtest','Zelf rijden & analyseren','Deur 1 + 3 — ±10 min rijden, volledig rapport'],
+  ['feat_onderhoud','Onderhoud plannen','Deur 1 — onderhoudsschema + sensordata'],
+  ['feat_koopcheck','Koopcheck','Deur 2 — historie, staat en waarde'],
+  ['feat_proefrit','Proefrit-check','Deur 2 — meten tijdens proefrit'],
+  ['feat_verbruik','Verbruiksanalyse','Deur 3 — waar gaat brandstof/energie verloren'],
+  ['feat_langerit','Lange rit-voorbereiding','Deur 4'],
+  ['feat_seizoen','Seizoenscheck (winter/airco)','Deur 4'],
+  ['feat_ev','EV/hybride-check','Deur 4'],
+  ['feat_live_spec','Live PID-data (hub-regel)','Snelkoppeling voor de specialist op de hub'],
+  ['feat_grafiek','Grafiek-tab','Groepstrends en grafieken in Live view'],
+  ['feat_pid_keuze','PID-keuze-knop','Onderbalk — sensorkeuze-paneel'],
+  ['feat_dossier','Voertuigoverzicht & dossier-%','Badge naast voertuignaam + invulscherm'],
+  ['feat_pdf','PDF-export','Download PDF-knop + PDF-venster'],
+  ['feat_ai_reply','Herzie rapport','Reageer-op-rapport-blok onder AI-rapporten'],
+  ['feat_demo','Demo-modus','Demo-knoppen (zonder adapter)'],
+  ['feat_tokens','Token/kosten-teller','Kosten-pil linksonder'],
+];
+function renderFeatures(){
+  const g=document.getElementById('featGrid'); if(!g||g.children.length) return;
+  g.innerHTML=FEATURES.map(f=>
+    `<div class="row">
+      <div><div class="lbl">${f[1]}</div><div class="desc"><code>${f[0]}</code> — ${f[2]}</div></div>
+      <label class="switch"><input type="checkbox" id="t_${f[0]}"><span class="slider"></span></label>
+    </div>`).join('');
+}
+
+// ── Toon een meerregelige melding met kleur ──
+function show(el, kind, title, detail){
+  const c = kind==='ok' ? 'var(--gn)' : kind==='warn' ? 'var(--or)' : 'var(--rd)';
+  el.style.color = c;
+  el.style.whiteSpace = 'pre-wrap';
+  el.textContent = detail ? (title + '\n' + detail) : title;
+}
+
+// ── Kern: vertaal een mislukt verzoek naar duidelijke, actiegerichte tekst ──
+function diagnose(where, status, bodyText){
+  let body={}; try{ body = JSON.parse(bodyText); }catch(e){}
+  const raw = (bodyText||'').toString();
+  const errCode = body?.error || '';
+  const detailStr = (typeof body?.detail==='string' ? body.detail : JSON.stringify(body?.detail||'')) || raw;
+
+  // Users-tabel bestaat nog niet in Airtable
+  if (where==='users' && (/TABLE_NOT_FOUND|NOT_FOUND/i.test(raw) || errCode==='airtable_list_failed')) {
+    return { kind:'err',
+      title:'❌ Airtable kan de tabel "Users" niet vinden (of geen permissie).',
+      detail:
+        'Maak in de base "PidLane Config" een tabel met exact deze naam en velden:\n'+
+        '  User      – Single line text\n'+
+        '  PassHash  – Single line text\n'+
+        '  Role      – Single line text\n'+
+        '  Label     – Single line text\n'+
+        '  Active    – Checkbox\n'+
+        'Zorg dat de AIRTABLE_TOKEN scopes data.records:read én :write heeft.' };
+  }
+  if (/INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND/i.test(raw) || errCode==='airtable_list_failed') {
+    return { kind:'err',
+      title:'❌ Airtable weigert de toegang (geen permissie of tabel niet gevonden).',
+      detail:
+        'De Worker mag niet bij de config-base. Dit los je op in Airtable, niet hier:\n'+
+        '1. Ga naar airtable.com/create/tokens\n'+
+        '2. Open de token die in de Worker-secret AIRTABLE_TOKEN staat\n'+
+        '3. Voeg de base "PidLane Config" toe onder Access\n'+
+        '4. Zorg voor scopes data.records:read én data.records:write\n'+
+        '5. Opslaan en hier opnieuw proberen' };
+  }
+  if (errCode==='locked_user') {
+    return { kind:'err',
+      title:'❌ Deze naam is beschermd.',
+      detail:'Dit account staat in het Worker-secret USERS_JSON (de noodingang) en wordt daar beheerd, niet hier.' };
+  }
+  if (errCode==='pass_required')  return { kind:'err', title:'❌ Wachtwoord verplicht.', detail:'Een nieuwe gebruiker heeft een wachtwoord nodig.' };
+  if (errCode==='pass_too_short') return { kind:'err', title:'❌ Wachtwoord te kort.', detail:'Minimaal 8 tekens.' };
+  if (errCode==='invalid_user')   return { kind:'err', title:'❌ Ongeldige inlognaam.', detail:'2–40 tekens; letters, cijfers, spatie, punt, streepje of underscore.' };
+  if (errCode==='not_found')      return { kind:'err', title:'❌ Gebruiker niet gevonden.', detail:'Waarschijnlijk al verwijderd. Klik op Herladen.' };
+
+  if (status===403 || errCode==='forbidden') {
+    return { kind:'err',
+      title:'❌ Admin-token wordt geweigerd (403).',
+      detail:
+        'De token die je bovenin invulde komt niet exact overeen met de Worker-secret ADMIN_TOKEN.\n'+
+        '• Let op onzichtbare spaties bij het plakken.\n'+
+        '• Of overschrijf ADMIN_TOKEN in Cloudflare met een nieuwe waarde en gebruik die hier.' };
+  }
+  if (status===401 || errCode==='unauthorized') {
+    return { kind:'err',
+      title:'❌ Niet geautoriseerd (401).',
+      detail:
+        (where==='ai'
+          ? 'De Worker vond geen geldige Anthropic-key. Check de secret ANTHROPIC_API_KEY in Cloudflare.'
+          : 'Token niet geaccepteerd voor lezen. Controleer ADMIN_TOKEN in de Worker.') };
+  }
+  if (status===429 || errCode==='rate_limited') {
+    return { kind:'warn', title:'⏳ Te veel pogingen (429).', detail:'Wacht ongeveer een minuut en probeer opnieuw.' };
+  }
+  if (errCode==='invalid_key')   return { kind:'err', title:'❌ Ongeldige sleutelnaam.', detail:'Key "'+(body.key||'?')+'" bevat ongeldige tekens. Alleen letters, cijfers en _ toegestaan.' };
+  if (errCode==='value_too_long')return { kind:'err', title:'❌ Waarde te lang.', detail:'Key "'+(body.key||'?')+'" is groter dan 5000 tekens.' };
+  if (errCode==='no_items')      return { kind:'err', title:'❌ Niets om op te slaan.', detail:'Er werden geen instellingen meegestuurd.' };
+  if (errCode==='bad_json')      return { kind:'err', title:'❌ Ongeldige data verzonden.', detail:raw.slice(0,200) };
+  if (errCode==='no_airtable_token') return { kind:'err', title:'❌ AIRTABLE_TOKEN ontbreekt in de Worker.', detail:'Zet de secret AIRTABLE_TOKEN in Cloudflare → Settings → Variables.' };
+  if (status===404) return { kind:'err', title:'❌ Endpoint niet gevonden (404).', detail:'De Worker kent deze route niet. Is de nieuwste worker.js gedeployed?' };
+  if (status>=500)  return { kind:'err', title:'❌ Worker-fout ('+status+').', detail:detailStr.slice(0,300) };
+
+  return { kind:'err', title:'❌ Onverwachte fout ('+status+').', detail:detailStr.slice(0,300) };
+}
+
+// ── fetch met nette diagnose ──
+async function callWorker(where, path, opts){
+  let r;
+  try{
+    r = await fetch(WURL+path, opts);
+  }catch(networkErr){
+    const err = new Error('network');
+    err.diag = { kind:'err',
+      title:'❌ Geen verbinding met de Worker.',
+      detail:
+        'Het verzoek bereikte de Worker niet. Mogelijke oorzaken:\n'+
+        '• Worker-URL fout: '+WURL+'\n'+
+        '• Geen internet\n'+
+        '• CORS/preflight geblokkeerd (is de nieuwste worker.js gedeployed?)\n'+
+        'Details: '+networkErr.message };
+    throw err;
+  }
+  const text = await r.text();
+  let data={}; try{ data = JSON.parse(text); }catch(e){}
+  if(!r.ok || (data && data.ok===false)){
+    const err = new Error('http');
+    err.diag = diagnose(where, r.status, text);
+    err.status = r.status;
+    throw err;
+  }
+  return { ok:true, data, status:r.status };
+}
+
+function enter(){
+  TOKEN=document.getElementById('adminTok').value.trim();
+  WURL=document.getElementById('workerUrl').value.trim().replace(/\/$/,'');
+  const m=document.getElementById('gateMsg');
+  if(!TOKEN){ show(m,'err','Vul je admin-token in.'); return; }
+  if(!/^https?:\/\//.test(WURL)){ show(m,'err','Worker-URL moet met https:// beginnen.'); return; }
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  renderFeatures();
+  loadConfig();
+  loadUsers();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   👤 GEBRUIKERSBEHEER
+   ════════════════════════════════════════════════════════════════ */
+let EDITING = null;   // null = nieuw; anders de inlognaam die bewerkt wordt
+
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function rolePill(role){
+  const cls = role==='admin' ? 'p-admin' : role==='demo' ? 'p-demo' : 'p-user';
+  return `<span class="pill ${cls}">${esc(role)}</span>`;
+}
+
+async function loadUsers(){
+  const m=document.getElementById('userMsg');
+  const list=document.getElementById('userList');
+  list.innerHTML='<div class="desc">Laden…</div>';
+  try{
+    const { data } = await callWorker('users','/admin/users',{
+      headers:{ 'X-Admin-Token':TOKEN }
+    });
+    const users=data.users||[], locked=data.locked||[];
+
+    let html='';
+
+    // Noodingang (USERS_JSON) — alleen tonen, niet bewerkbaar
+    for(const u of locked){
+      html+=`<div class="row">
+        <div>
+          <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}<span class="pill p-lock">🔒 noodingang</span></div>
+          <div class="desc">Inlognaam <code>${esc(u.user)}</code> — beheerd in Worker-secret USERS_JSON</div>
+        </div>
+      </div>`;
+    }
+
+    // Airtable-gebruikers
+    for(const u of users){
+      html+=`<div class="row">
+        <div>
+          <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}${u.active?'':'<span class="pill p-off">geblokkeerd</span>'}</div>
+          <div class="desc">Inlognaam <code>${esc(u.user)}</code>${u.hasPass?'':' — ⚠ geen wachtwoord ingesteld'}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn-sec btn-sm" onclick="editUser('${esc(u.user)}','${esc(u.label)}','${esc(u.role)}',${u.active})">Bewerk</button>
+          <button class="btn-del" onclick="delUser('${esc(u.user)}')">Wis</button>
+        </div>
+      </div>`;
+    }
+
+    if(!html) html='<div class="desc">Nog geen gebruikers in Airtable. Voeg er hieronder een toe.</div>';
+    list.innerHTML=html;
+    show(m,'ok',`✓ ${users.length} gebruiker(s) geladen${locked.length?` + ${locked.length} noodingang`:''}.`);
+  }catch(e){
+    list.innerHTML='';
+    const d = e.diag || { kind:'err', title:'Laden mislukt.', detail:e.message };
+    show(m, d.kind, d.title, d.detail);
+  }
+}
+
+function editUser(user,label,role,active){
+  EDITING=user;
+  document.getElementById('u_name').value=user;
+  document.getElementById('u_label').value=label||'';
+  document.getElementById('u_role').value=role||'user';
+  document.getElementById('u_active').checked=!!active;
+  document.getElementById('u_pass').value='';
+  document.getElementById('formTitle').textContent='✏️ Bewerken: '+user;
+  document.getElementById('passHint').textContent='Leeg laten = wachtwoord blijft ongewijzigd.';
+  document.getElementById('u_name').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function resetUserForm(){
+  EDITING=null;
+  document.getElementById('u_name').value='';
+  document.getElementById('u_label').value='';
+  document.getElementById('u_pass').value='';
+  document.getElementById('u_role').value='user';
+  document.getElementById('u_active').checked=true;
+  document.getElementById('formTitle').textContent='➕ Nieuwe gebruiker';
+  document.getElementById('passHint').textContent='Verplicht bij een nieuwe gebruiker (min. 8 tekens).';
+  document.getElementById('userMsg').textContent='';
+}
+
+async function saveUser(){
+  const m=document.getElementById('userMsg');
+  const user =document.getElementById('u_name').value.trim();
+  const label=document.getElementById('u_label').value.trim();
+  const pass =document.getElementById('u_pass').value;
+  const role =document.getElementById('u_role').value;
+  const active=document.getElementById('u_active').checked;
+
+  if(!user){ show(m,'err','Vul een inlognaam in.'); return; }
+  if(!EDITING && !pass){ show(m,'err','Nieuwe gebruiker heeft een wachtwoord nodig.'); return; }
+  if(pass && pass.length<8){ show(m,'err','Wachtwoord moet minstens 8 tekens zijn.'); return; }
+
+  show(m,'warn','Opslaan…');
+  try{
+    const { data } = await callWorker('users','/admin/users',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-Admin-Token':TOKEN },
+      body:JSON.stringify({ action:'save', user, pass, role, label, active })
+    });
+    show(m,'ok',
+      data.created ? `✓ Gebruiker "${user}" aangemaakt.` : `✓ Gebruiker "${user}" bijgewerkt.`,
+      data.passChanged ? 'Wachtwoord is gezet. Lopende sessies blijven geldig tot ze verlopen (max 12u).' : '');
+    resetUserForm();
+    loadUsers();
+  }catch(e){
+    const d = e.diag || { kind:'err', title:'Opslaan mislukt.', detail:e.message };
+    show(m, d.kind, d.title, d.detail);
+  }
+}
+
+async function delUser(user){
+  if(!confirm(`Gebruiker "${user}" definitief verwijderen?\n\nWil je alleen tijdelijk blokkeren, gebruik dan Bewerk → Actief uit.`)) return;
+  const m=document.getElementById('userMsg');
+  show(m,'warn','Verwijderen…');
+  try{
+    await callWorker('users','/admin/users',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-Admin-Token':TOKEN },
+      body:JSON.stringify({ action:'delete', user })
+    });
+    show(m,'ok',`✓ "${user}" verwijderd.`,'Een al uitgegeven sessietoken blijft geldig tot het verloopt (max 12u).');
+    if(EDITING===user) resetUserForm();
+    loadUsers();
+  }catch(e){
+    const d = e.diag || { kind:'err', title:'Verwijderen mislukt.', detail:e.message };
+    show(m, d.kind, d.title, d.detail);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CONFIG (ongewijzigd)
+   ════════════════════════════════════════════════════════════════ */
+async function loadConfig(){
+  const m=document.getElementById('saveMsg');
+  show(m,'warn','Config ophalen…');
+  try{
+    const { data:cfg } = await callWorker('read','/api/config',{
+      headers:{ 'X-Admin-Token':TOKEN, 'X-App-Token':TOKEN }
+    });
+    setToggle('t_door_saving_active', cfg.door_saving_active, true);
+    setToggle('t_door_deal_active',   cfg.door_deal_active,   true);
+    setToggle('t_door_prep_active',   cfg.door_prep_active,   true);
+    setToggle('t_banner_active',      cfg.banner_active,      false);
+    FEATURES.forEach(f=>setToggle('t_'+f[0], cfg[f[0]], true));
+    document.getElementById('v_banner_text').value = cfg.banner_text || '';
+    document.getElementById('v_ai_system_override').value = cfg.ai_system_override || '';
+    show(m,'ok','✓ Config geladen.');
+  }catch(e){
+    const d = e.diag || { kind:'err', title:'Laden mislukt.', detail:e.message };
+    show(m, d.kind, d.title, d.detail);
+  }
+}
+function setToggle(id, val, defaultOn){
+  const el=document.getElementById(id); if(!el) return;
+  if(val===undefined||val===null||val==='') el.checked=defaultOn;
+  else el.checked=(val===true||val==='true'||val==='1');
+}
+
+async function saveAll(){
+  const m=document.getElementById('saveMsg');
+  show(m,'warn','Opslaan…');
+  const items=[
+    { Key:'door_saving_active', Value:String(document.getElementById('t_door_saving_active').checked), Description:'Deur Verbruik & besparen aan/uit' },
+    { Key:'door_deal_active',   Value:String(document.getElementById('t_door_deal_active').checked),   Description:'Deur Kopen of verkopen aan/uit' },
+    { Key:'door_prep_active',   Value:String(document.getElementById('t_door_prep_active').checked),   Description:'Deur Voorbereiden op… aan/uit' },
+    { Key:'banner_active',      Value:String(document.getElementById('t_banner_active').checked),      Description:'Banner tonen ja/nee' },
+    { Key:'banner_text',        Value:document.getElementById('v_banner_text').value,                  Description:'Banner-tekst' },
+    { Key:'ai_system_override', Value:document.getElementById('v_ai_system_override').value,           Description:'AI system-instructie override (leeg = standaard)' },
+    ...FEATURES.map(f=>({ Key:f[0], Value:String(document.getElementById('t_'+f[0])?.checked??true), Description:f[1]+' aan/uit' })),
+  ];
+  try{
+    await callWorker('write','/api/config',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-Admin-Token':TOKEN },
+      body:JSON.stringify({ items })
+    });
+    show(m,'ok','✓ Configuratie succesvol live gezet!','De app pakt de wijziging bij de volgende start (of binnen ~60s).');
+  }catch(e){
+    const d = e.diag || { kind:'err', title:'Opslaan mislukt.', detail:e.message };
+    show(m, d.kind, d.title, d.detail);
+  }
+}
+
+// Test de prompt via het Worker /v1/messages endpoint (zelfde als de app).
+async function testPrompt(){
+  const m=document.getElementById('testMsg');
+  const sys=document.getElementById('v_ai_system_override').value.trim();
+  if(!sys){ show(m,'warn','Geen override ingevuld — de app gebruikt z\'n standaard. Niets te testen.'); return; }
+  show(m,'warn','AI-test loopt…');
+  try{
+    const { data } = await callWorker('ai','/v1/messages',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-App-Token':TOKEN },
+      body:JSON.stringify({
+        model:'claude-sonnet-5', max_tokens:200, system:sys,
+        messages:[{ role:'user', content:'Testvraag: vat in 2 zinnen samen hoe jij een OBD2-rapport opstelt.' }],
+        thinking:{ type:'disabled' }
+      })
+    });
+    const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+    if(txt) show(m,'ok','✓ AI antwoordde:', txt.slice(0,500));
+    else    show(m,'warn','AI gaf een leeg antwoord.', JSON.stringify(data).slice(0,300));
+  }catch(e){
+    const d = e.diag || { kind:'err', title:'Test mislukt.', detail:e.message };
+    show(m, d.kind, d.title, d.detail);
+  }
+}
+</script>
+</body>
+</html>
