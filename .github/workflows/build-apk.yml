@@ -1,9 +1,11 @@
 # ════════════════════════════════════════════════════════════
 #  PidLane APK-build workflow
-#  Bijgewerkt: 2026-07-18 (CET)
-#  Wijziging: CAMERA-permissie + camera-feature toegevoegd aan de
-#             permissie-injectie (nodig voor de in-app QR-scanner /
-#             getUserMedia in de WebView bij het koppelen local ↔ expert).
+#  Bijgewerkt: 2026-07-20 (CET)
+#  Wijziging: app-icoon komt nu van het ECHTE logo (icon-512.png in de
+#             repo) i.p.v. de nagetekende SVG — die was "net wat anders".
+#             SVG blijft als vangnet zodat de build nooit breekt.
+#  Eerder:    CAMERA-permissie + camera-feature toegevoegd aan de
+#             permissie-injectie (QR-scanner local ↔ expert).
 #  Eerder:    src/ verwijderd. App = root/index.html (live via Pages).
 #             webDir = www (stub, hieronder aangemaakt). Trigger op root.
 # ════════════════════════════════════════════════════════════
@@ -15,6 +17,8 @@ on:
     paths:
      - 'public/index.html'
      - 'capacitor.config.json'
+     - 'icon-512.png'
+     - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
 # Annuleer lopende builds als er een nieuwe push komt — voorkomt 4x builden
@@ -136,7 +140,16 @@ jobs:
       - name: Generate app icons from PidLane logo
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick
-          cat > /tmp/pidlane_icon.svg <<'SVG'
+          # ── Bron: het ECHTE PidLane-logo uit de repo (naast index.html).
+          #    512px volstaat: grootste mipmap is 432px. Vangnet: nagetekende
+          #    SVG, zodat de build nooit faalt als het bestand ontbreekt.
+          ICON=$(ls icon-512.png public/icon-512.png icon-1024.png 2>/dev/null | head -1)
+          if [ -n "$ICON" ]; then
+            echo "Echt logo gevonden: $ICON"
+            cp "$ICON" /tmp/icon_src.png
+          else
+            echo "WAARSCHUWING: icon-512.png niet gevonden in repo — vangnet-SVG gebruikt (icoon wijkt af van het echte logo!)"
+            cat > /tmp/pidlane_icon.svg <<'SVG'
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
             <defs>
               <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
@@ -151,24 +164,29 @@ jobs:
             <line x1="64" y1="90" x2="64" y2="104" stroke="#00FF88" stroke-width="8" stroke-linecap="round"/>
           </svg>
           SVG
-          rsvg-convert -w 1024 -h 1024 /tmp/pidlane_icon.svg -o /tmp/icon_1024.png
+            rsvg-convert -w 1024 -h 1024 /tmp/pidlane_icon.svg -o /tmp/icon_src.png
+          fi
           RES="android/app/src/main/res"
           for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
             dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; mkdir -p "$dir"
-            convert /tmp/icon_1024.png -resize ${size}x${size} "$dir/ic_launcher.png"
-            convert /tmp/icon_1024.png -resize ${size}x${size} "$dir/ic_launcher_round.png"
+            convert /tmp/icon_src.png -resize ${size}x${size} "$dir/ic_launcher.png"
+            # Ronde variant: cirkelmasker zodat ronde launchers geen hoeken tonen
+            convert /tmp/icon_src.png -resize ${size}x${size} \
+              \( +clone -alpha extract -fill black -colorize 100 -fill white \
+                 -draw "circle $((size/2)),$((size/2)) $((size/2)),0" \) \
+              -alpha off -compose CopyOpacity -composite "$dir/ic_launcher_round.png"
           done
           for d in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
             dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; inner=$(( size * 64 / 100 ))
-            convert /tmp/icon_1024.png -resize ${inner}x${inner} -background none \
+            convert /tmp/icon_src.png -resize ${inner}x${inner} -background none \
               -gravity center -extent ${size}x${size} "$dir/ic_launcher_foreground.png"
           done
           BG="$RES/values/ic_launcher_background.xml"
           if [ -f "$BG" ]; then
-            sed -i 's|<color name="ic_launcher_background">[^<]*</color>|<color name="ic_launcher_background">#0D1117</color>|' "$BG"
+            sed -i 's|<color name="ic_launcher_background">[^<]*</color>|<color name="ic_launcher_background">#0F141A</color>|' "$BG"
           else
             mkdir -p "$RES/values"
-            printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0D1117</color>\n</resources>\n' > "$BG"
+            printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0F141A</color>\n</resources>\n' > "$BG"
           fi
           echo "App-iconen gegenereerd:"
           ls -la $RES/mipmap-xxxhdpi/
