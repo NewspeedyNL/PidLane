@@ -1015,6 +1015,13 @@
         .mon-verif.niet{background:rgba(0,224,138,.15);color:#6fe0aa}
         .mon-verif.meet{background:rgba(242,130,12,.16);color:#ffc07a}
         .mon-leeg{text-align:center;padding:22px 12px;opacity:.75;font-size:13px;line-height:1.6}
+        /* Intro-kaart leesbaar houden: de .chk-intro-basisstijl in pidlane.css
+           loopt naar een lichte gradient waardoor de lange monitor-tekst
+           rechts wegvalt — hier donker afdwingen (specifieker + !important
+           zodat de hoofd-CSS het nooit terugpakt). */
+        #pane-monitor .chk-intro{background:var(--sur2,#151b24) !important;border:1px solid var(--bd,#26303b) !important}
+        #pane-monitor .chk-intro h3{color:var(--tx,#e6e9ef) !important}
+        #pane-monitor .chk-intro p{color:var(--tx2,#aab4c0) !important;opacity:1 !important}
       </style>
       <div class="pane" id="pane-monitor">
         <div class="chk-intro" style="position:relative">
@@ -2961,12 +2968,15 @@ function goHome(){
 }
 function openPidChoice(){
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
+  window._pidLadeUserTs=Date.now();         // bewust geopend — monitor-guard 2 min met rust
   try{ toggleLade('slPanel'); }catch(e){}   // toggle: opent én sluit
 }
 function confirmPidLive(){
+  window._pidLadeUserTs=0;                  // bewust verlaten — guard weer scherp
   try{ closeLades(); }catch(e){}
 }
 function pidChoiceBackHome(){
+  window._pidLadeUserTs=0;                  // bewust verlaten — guard weer scherp
   try{ closeLades(); }catch(e){}
   try{ goHome(); }catch(e){}
 }
@@ -3860,8 +3870,38 @@ function openMonitorView(){
   const pane=document.getElementById('pane-monitor'); if(pane) pane.classList.add('active');
   const tb=document.querySelector('.tb'); if(tb) tb.scrollTop=0;
   if(typeof setLeftPanelForMode==='function') setLeftPanelForMode('monitor');
+  // PID-lade hoort niet op de monitor: setLeftPanelForMode (externe module)
+  // is ouder dan deze pane en kent de modus 'monitor' niet — dus zelf hard
+  // sluiten, plus twee nakomertjes voor alles wat 'm async weer opent.
+  _monSluitPidLade();
+  setTimeout(_monSluitPidLade,350); setTimeout(_monSluitPidLade,1200);
+  _monDemoChip=false;               // demo-testchipje weg zodra de pane open is
   try{ _monTick(); }catch(e){}      // meteen vullen, niet wachten op de 1s-tik
   try{ _monChipTick(); }catch(e){}  // chipje direct weg zodra de pane open is
+}
+// ── PID-lade-bewaking op de monitor ─────────────────────────────
+// Staat het sensorenpaneel (#slPanel: zijbalk op desktop, sheet op mobiel)
+// zichtbaar in beeld? Geometrie-check, want de open/dicht-klasse van de
+// lade leeft in de externe module/pidlane.css.
+function _monPidLadeOpen(){
+  const sl=document.getElementById('slPanel'); if(!sl) return false;
+  const cs=getComputedStyle(sl);
+  if(cs.display==='none'||cs.visibility==='hidden') return false;
+  const r=sl.getBoundingClientRect();
+  return r.width>80 && r.height>80 && r.bottom>0 && r.top<(window.innerHeight-24);
+}
+// Sluit lade + zijbalk. Uitzondering: opende de gebruiker hem net zélf via
+// 🎛️ PID-keuze, dan 2 minuten met rust laten.
+function _monSluitPidLade(){
+  try{
+    if(Date.now()-(window._pidLadeUserTs||0)<120000) return;
+    if(typeof closeLades==='function') closeLades();
+    slCollapsed=true;
+    const g=document.getElementById('appGrid'); if(g) g.classList.add('sl-col');
+    if(typeof updateSLToggleIcon==='function') updateSLToggleIcon();
+    if(typeof clearSLAutoHide==='function') clearSLAutoHide();
+    try{ localStorage.setItem('ns_sl','true'); }catch(e){}
+  }catch(e){}
 }
 // Is de monitor-pane wat de gebruiker NU ziet? Let op: goHome() legt het
 // welkomstscherm als overlay BOVENOP — de pane houdt dan gewoon z'n
@@ -3874,7 +3914,11 @@ function _monPaneZichtbaar(){
   return true;
 }
 // ➖ op de pane: terug naar home; monitor waakt door, chipje neemt het over.
+// In demo slaapt PLMon — dan tonen we het chipje tóch (testbaar zonder rit);
+// vlag gaat weer uit zodra de pane opnieuw opent.
+let _monDemoChip=false;
 function monMinimize(){
+  if(typeof demoMode!=='undefined'&&demoMode) _monDemoChip=true;
   try{ goHome(); }catch(e){}
   try{ _monChipTick(); }catch(e){}
 }
@@ -3888,6 +3932,7 @@ function _monTegel(id, v, warnCls){
 }
 function _monTick(){
   if(!_monPaneZichtbaar()) return;                      // pane niet in beeld: niks doen
+  if(_monPidLadeOpen()) _monSluitPidLade();             // lade sluipt terug? dicht ermee
   const M=window.PLMon;
   const spd=pidVals['010D'], rpm=pidVals['010C'], ect=pidVals['0105'];
   const load=pidVals['0104'], volt=pidVals['0142'], map=pidVals['010B'];
@@ -3964,7 +4009,7 @@ function _monChipMaak(){
 }
 function _monChipTick(){
   const M=window.PLMon;
-  const toon=!!(M&&M.active)&&!_monPaneZichtbaar();
+  const toon=(!!(M&&M.active)||((typeof demoMode!=='undefined')&&demoMode&&_monDemoChip))&&!_monPaneZichtbaar();
   const c=_monChipEl||(toon?_monChipMaak():null);
   if(!c) return;                                        // nog nooit nodig geweest
   c.style.display=toon?'flex':'none';
