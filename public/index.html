@@ -3937,14 +3937,14 @@ function bscDrawFrame(){
   bscPaint(t, band, v, held, geslaagd, wacht);
 
   if(geslaagd){
-    _bscState.results.push({id:t.id, naam:t.naam, status:'ok', waarde:v, unit:(getPidDef(t.pid)?.unit||'')});
+    _bscState.results.push({id:t.id, naam:t.naam, status:'ok', waarde:v, unit:(getPidDef(t.pid)?.unit||''), pid:t.pid});
     _bscState.idx++;
     setTimeout(bscNextTest, 650); // even groen tonen, dan door
     return;
   }
   // timeout per test: 30s → markeer als "niet bevestigd" en ga door
   if(now-_bscState.testT0>30000){
-    _bscState.results.push({id:t.id, naam:t.naam, status:v===undefined?'geen':'twijfel', waarde:v, unit:(getPidDef(t.pid)?.unit||'')});
+    _bscState.results.push({id:t.id, naam:t.naam, status:v===undefined?'geen':'twijfel', waarde:v, unit:(getPidDef(t.pid)?.unit||''), pid:t.pid});
     _bscState.idx++;
     setTimeout(bscNextTest, 300);
     return;
@@ -3965,7 +3965,9 @@ function bscFinish(){
     const val=r.status==='nvt'
       ? ('n.v.t. \u2014 voorwaarde niet voorgekomen'+(r.reden?': '+r.reden:''))
       : (r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde):r.waarde} ${r.unit}`:'geen data');
-    return `<div class="bsc-row ${kl}"><span>${ic} ${r.naam}</span><span class="bsc-val">${val}</span></div>`;
+    const vb=(r.status==='twijfel'&&r.pid&&window.PLVerify&&connected&&!demoMode)
+      ?` <button class="btn" style="padding:4px 9px;font-size:11px" onclick="plVerifyBscRow('${r.id}','${r.pid}',this)">🔍</button>`:'';
+    return `<div class="bsc-row ${kl}"><span>${ic} ${r.naam}${vb}</span><span class="bsc-val">${val}</span></div>`;
   }).join('');
   bscRender(
     `<div class="bsc-done">
@@ -4654,7 +4656,9 @@ function renderDTC(){
     card.className=`dtc-card ${info.sev==='med'?'med':info.sev==='low'?'low':''}`;
     const bTxt=info.sev==='high'?'Kritiek':info.sev==='med'?'Matig':'Laag';
     const bCls=info.sev==='high'?'bh':info.sev==='med'?'bm':'bl2';
-    card.innerHTML=`<div class="dtcc">${code}</div><div><div class="dtcc-desc">${info.desc}</div><div class="dtcc-body">${info.body}</div></div><div class="dtcbdg ${bCls}">${bTxt}</div>`;
+    const vBtn=(info.sev==='high'&&window.PLVerify&&connected&&!demoMode)
+      ?`<button class="btn" style="margin-top:7px;padding:6px 11px;font-size:12px" onclick="plRunVerify(this,{sig:'DTC:${code}',titel:'DTC ${code}',pids:dtcVerifyPids('${code}')})">🔍 Verifieer met focusmeting</button>`:'';
+    card.innerHTML=`<div class="dtcc">${code}</div><div><div class="dtcc-desc">${info.desc}</div><div class="dtcc-body">${info.body}</div>${vBtn}</div><div class="dtcbdg ${bCls}">${bTxt}</div>`;
     el.appendChild(card);
   });
 }
@@ -5603,6 +5607,92 @@ function buildFallbackReport(err){
   else L.push('Geen directe actie op basis van foutcodes. Voor een volledige AI-analyse: stel een API-sleutel in.');
   return L.join('\n');
 }
+/* ── 🔍 VERIFICATIE-KNOPPEN (PLVerify) — app-brede focus-hertest ──
+   Bij ernstige bevindingen (Direct aandacht in AI-rapport, kritieke DTC,
+   twijfel in basic check) verschijnt een knop die alléén de betrokken PIDs
+   kort hermeet en de conclusie bevestigt/ontkracht (pidlane-verify.js). */
+const PL_SENSOR_PIDS=[
+  [/(koelwater|koelvloeistof|coolant)/i,'0105'],
+  [/(accuspanning|laadspanning|boordspanning)/i,'0142'],
+  [/(trim.*kort|korte.*trim|stft)/i,'0106'],
+  [/(trim.*lang|lange.*trim|ltft)/i,'0107'],
+  [/(maf|luchtmassa)/i,'0110'],
+  [/(toerental|\brpm\b)/i,'010C'],
+  [/(motorbelasting|belasting)/i,'0104'],
+  [/(inlaatdruk|\bmap\b)/i,'010B'],
+  [/inlaatlucht/i,'010F'],
+  [/(gasklep|throttle)/i,'0111'],
+  [/(lambda|zuurstof|\bo2\b)/i,'0114']
+];
+function plPidsUitTekst(txt){
+  const out=[];
+  for(const [rx,pid] of PL_SENSOR_PIDS){ if(rx.test(txt)&&!out.includes(pid)) out.push(pid); }
+  return out;
+}
+// DTC-familie → meest relevante PIDs voor de focusmeting (RPM als referentie).
+function dtcVerifyPids(code){
+  const c=String(code).toUpperCase();
+  if(/^P010[0-4]/.test(c)) return ['0110','010C'];          // MAF-circuit
+  if(/^P010[5-9]/.test(c)) return ['010B','010C'];          // MAP-circuit
+  if(/^P011[0-4]/.test(c)) return ['010F','010C'];          // inlaatlucht temp
+  if(/^P011[5-9]|^P0128|^P0217/.test(c)) return ['0105','010C']; // koelwater/thermostaat
+  if(/^P01[3-6]\d/.test(c)) return ['0114','0106','0107'];  // lambdasondes
+  if(/^P017\d/.test(c)) return ['0106','0107','0105'];      // mengsel te arm/rijk
+  if(/^P02/.test(c)) return ['0106','0107','010C'];         // injectie
+  if(/^P030/.test(c)) return ['010C','0104','0105'];        // overslaan
+  if(/^P040/.test(c)) return ['010B','0106','0107'];        // EGR/emissie
+  if(/^P050\d/.test(c)) return ['010D','010C','0111'];      // snelheid/stationairregeling
+  if(/^P056\d|^P06/.test(c)) return ['0142','010C'];        // spanning/ECU
+  return ['010C','0104','0105'];                            // generiek motorbeeld
+}
+// Gedeelde knop-runner: meet, toon uitkomst in de knop + één regel toelichting.
+async function plRunVerify(btn, opts){
+  if(!window.PLVerify){ showToast?.('Verificatiemodule niet geladen'); return; }
+  if(!connected||demoMode){ showToast?.('Verbind eerst met de auto voor een focusmeting'); return; }
+  const oud=btn.textContent; btn.disabled=true; btn.textContent='🔍 meet… (±12s)';
+  try{
+    const res=await window.PLVerify.start(opts);
+    if(!res){ btn.textContent=oud; btn.disabled=false; return; }
+    btn.textContent=(res.status==='bevestigd'?'❗ Bevestigd':res.status==='meetprobleem'?'⚠️ Meetprobleem':'✅ Niet gereproduceerd');
+    const d=document.createElement('div');
+    d.style.cssText='font-size:12px;opacity:.78;margin-top:4px;line-height:1.4';
+    d.textContent=res.tekst;
+    btn.insertAdjacentElement('afterend', d);
+  }catch(e){ btn.textContent=oud; btn.disabled=false; }
+}
+function plVerifyBscRow(id,pid,btn){ plRunVerify(btn,{sig:'TEST:'+id, titel:'Basic check '+id, pids:[pid,'010C']}); }
+// Scan een gerenderd AI-rapport op "Direct aandacht"-regels en hang er knoppen onder.
+function plVerifyAugment(el){
+  try{
+    if(!window.PLVerify||!el||!connected||demoMode) return;
+    if(el.querySelector('.pl-verify-blok')) return;         // niet dubbel
+    const punten=[]; const gezien=new Set();
+    el.querySelectorAll('tr').forEach(tr=>{
+      const txt=tr.textContent||'';
+      if(!/direct aandacht/i.test(txt)) return;
+      const pids=plPidsUitTekst(txt);
+      if(!pids.length) return;
+      const naam=(tr.querySelector('td')?.textContent||pids[0]).trim().slice(0,40);
+      const key=pids.join(',');
+      if(gezien.has(key)) return; gezien.add(key);
+      punten.push({naam, pids});
+    });
+    if(!punten.length) return;
+    const blok=document.createElement('div');
+    blok.className='ai-sec pl-verify-blok';
+    blok.innerHTML=`<div class="ai-sh orange">🔍 Verifiëren</div>
+      <div class="ai-sb">Deze punten kregen "Direct aandacht". Een focusmeting (±12s, alleen deze sensoren) bevestigt of de meting klopt.</div>`;
+    for(const p of punten){
+      const b=document.createElement('button');
+      b.className='btn'; b.style.cssText='margin:6px 6px 0 0;padding:7px 12px;font-size:13px';
+      b.textContent='🔍 '+p.naam;
+      b.onclick=()=>plRunVerify(b,{sig:'RAPPORT:'+p.pids[0], titel:p.naam, pids:[...p.pids,'010C']});
+      blok.appendChild(b);
+    }
+    el.appendChild(blok);
+  }catch(e){}
+}
+
 async function callAI(prompt,contentEl){
   contentEl.innerHTML='<div class="ai-ld"><div class="spin"></div> AI analyseert...</div>';
   try{
@@ -5612,11 +5702,13 @@ async function callAI(prompt,contentEl){
     }
     const text=await apiFetch(prompt);
     renderAIText(text,contentEl);   // toont verdict + View/Share/Download
+    try{ plVerifyAugment(contentEl); }catch(e){}   // 🔍 knoppen bij Direct aandacht
     log('AI analyse klaar','ok');
   }catch(e){
     // Degraded mode: AI niet beschikbaar → regelgebaseerde fallback i.p.v. kale fout
     try{
       renderAIText(buildFallbackReport(e),contentEl);
+      try{ plVerifyAugment(contentEl); }catch(e2){}
       log('AI niet beschikbaar — regelgebaseerde fallback getoond ('+e.message+')','warn');
       return;
     }catch(_){}

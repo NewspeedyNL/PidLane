@@ -267,6 +267,8 @@ const PLMon = {
     if (freezeFrame && !ev.ff) ev.ff=freezeFrame;          // eerste FF is genoeg
     if (!ev.snap){ const s=this._snapshot(); if (s) ev.snap=s; }
     if (meldLuid) this._log(`Monitor: ${code} — ${reden} [${st.fase}/${st.temp}]`,'warn');
+    // Ernstige waarschuwingen automatisch laten verifiëren (focus-hertest).
+    if (meldLuid) try{ if (window.PLVerify) window.PLVerify.consider(sig); }catch(e){}
   },
 
   // ═══════════════ rapportage ═══════════════
@@ -287,6 +289,7 @@ const PLMon = {
       L.push(`  waarnemingen: ${e.redenen.join(' | ')}`);
       L.push(`  rij-status: ${fasen}; motortemp: ${temp}`);
       if (e.ff) L.push(`  freeze frame (ECU): ${Object.entries(e.ff).map(([p,v])=>p+'='+v).join(' ')}`);
+      if (e.verif) L.push(`  verificatie (focus-hertest): ${e.verif.status.toUpperCase()} — ${e.verif.tekst}`);
       if (e.snap) L.push(`  5s-terugkijk: ${Object.entries(e.snap).map(([p,a])=>p+'['+a.slice(-6).join(',')+']').join(' ')}`);
     }
     L.push('','Interpretatie-hint: clustering van herhalingen in één rij-fase (bijv. alleen bij accelereren) wijst op belasting-/trillingsafhankelijk falen: bedrading, connector, of een sensor die onder last wegvalt.');
