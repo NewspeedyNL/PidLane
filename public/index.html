@@ -1,6 +1,27 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-19 (CET) — NIEUW: CARAVAN-RITTRACKER (live brandstofcoach)
+     Build: 2026-07-21 (CET) — UI-OPSCHONING + MINIMALISEERBARE RIT-MONITOR
+     1) RIT-MONITOR MINIMALISEERBAAR: ➖-knop op pane-monitor → terug naar
+        home terwijl de monitor doorwaakt. Zwevend chipje (🛡️ + snelheid +
+        waarschuwingsteller; rand/teller oranje bij bevindingen, rood bij
+        ernstig; tik = openMonitorView). Chip hangt via JS aan document.body
+        (buiten #appScale, dus echt viewport-vast). _monTick gesplitst:
+        _monChipTick draait elke seconde, de pane hertekent alleen als hij
+        écht in beeld is — nieuwe _monPaneZichtbaar() kijkt óók of het
+        welkomstscherm als overlay bovenop ligt (offsetParent alleen was
+        niet genoeg).
+     2) VELDLAB UIT DE UI: ⋯-menu-item "🧪 Veldlab" verwijderd. 📋 Full
+        survey BLIJFT (adminOnly), pidlane-veldlab.js blijft geladen —
+        de achterliggende datalogging (→ Referentie-tabel) loopt door.
+        NB: de zwevende 🧪-knop komt uit pidlane-veldlab.js zelf.
+     3) AUTO-UPDATE-SYSTEEM VERWIJDERD: checkForUpdate, updatebanner,
+        applyUpdate, ⋯-menu-item en stille startup-check weg. Klanten
+        krijgen updates per mail met changelog. APP_VERSION blijft in
+        gebruik (loginscherm + logging); VERSION_URL/UPDATE_URL ongebruikt.
+     4) IDEE 7 (achtergrond-monitoring, drempel-alerts) VERWIJDERD incl.
+        ⋯-menu-item — volledig dubbelop met de 🛡️ Rit-monitor van deur 1
+        (pidlane-monitor.js + pidlane-watchers.js).
+     Vorige build 2026-07-19 (CET) — NIEUW: CARAVAN-RITTRACKER (live brandstofcoach)
      Nieuwe deur onder "Besparen": een live tracker voor lange, zware ritten
      met caravan/aanhanger door de bergen. De coach kijkt tijdens de rit mee
      en geeft brandstofgerichte tips onderweg: terugschakelen als de motor
@@ -219,7 +240,6 @@
      alle proxy-routes. Vóór login is het token leeg — dat hoort zo. */
   try{ window.APP_TOKEN = window.APP_TOKEN || ''; }catch(e){ window.APP_TOKEN=''; }
   try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){}
-  try{ if(typeof VERSION_URL==='undefined') window.VERSION_URL='https://newspeedynl.github.io/PidLane/version.json'; }catch(e){}
 
   /* ── REMOTE CONFIG (admin-dashboard) ──────────────────────────────
      Hardcoded fallback zodat de app ALTIJD werkt, ook zonder internet of
@@ -704,10 +724,7 @@
       <button class="kebab-item" id="remShareMenuBtn" onclick="closeKebab();PLRemote.openShare()">📡 Diagnose delen</button>
       <button class="kebab-item" id="remExpertMenuBtn" onclick="closeKebab();PLRemote.openExpert()">🔭 Meekijken (expert)</button>
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
-      <button class="kebab-item adminOnly" id="veldlabBtn" onclick="closeKebab();vlOpenDash()">🧪 Veldlab</button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
-      <button class="kebab-item" id="updatePill" onclick="closeKebab();checkForUpdate(true)">🔄 Update zoeken</button>
-      <button class="kebab-item" id="monitorBtn" onclick="closeKebab();toggleBackgroundMonitor()">🔔 Achtergrond-monitor</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
       <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
       <div class="kebab-sep"></div>
@@ -1000,7 +1017,9 @@
         .mon-leeg{text-align:center;padding:22px 12px;opacity:.75;font-size:13px;line-height:1.6}
       </style>
       <div class="pane" id="pane-monitor">
-        <div class="chk-intro"><h3>🛡️ Rit-monitor</h3><p>Waakt de hele rit passief mee: leest de eigen foutbuffers van de ECU, bewaakt sensorgedrag en test voorwaardelijk. Bijna geen dataverbruik — en bij een ernstige afwijking volgt automatisch een focus-hermeting ter bevestiging.</p></div>
+        <div class="chk-intro" style="position:relative">
+          <button onclick="monMinimize()" title="Minimaliseer — monitor blijft waken" aria-label="Minimaliseer" style="position:absolute;top:8px;right:10px;width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:15px;cursor:pointer;z-index:5">➖</button>
+          <h3>🛡️ Rit-monitor</h3><p>Waakt de hele rit passief mee: leest de eigen foutbuffers van de ECU, bewaakt sensorgedrag en test voorwaardelijk. Bijna geen dataverbruik — en bij een ernstige afwijking volgt automatisch een focus-hermeting ter bevestiging.</p></div>
         <div id="monStatus" class="mon-status slaap">
           <div class="mon-dot"></div>
           <b id="monStatusTxt">Monitor slaapt — verbind met de auto</b>
@@ -2344,47 +2363,9 @@ function demo(pid){
 // ════════════════════════════════════════
 // GOOGLE SHEETS LOGGING
 // ════════════════════════════════════════
-// 🔄 AUTO-UPDATE SYSTEEM
-// ════════════════════════════════════════
-// APP_VERSION, GITHUB_USER, GITHUB_REPO, VERSION_URL, UPDATE_URL → config.js
-
-async function checkForUpdate(manual=false){
-  const pill=document.getElementById('updatePill');
-  if(pill) pill.textContent='🔄 Checken...';
-  try{
-    const resp=await fetch(VERSION_URL+'?t='+Date.now());
-    if(!resp.ok){
-      if(resp.status===404 && !manual){ if(pill) pill.textContent='🔄 Update'; return; }
-      const msg=`Update check mislukt: HTTP ${resp.status}`;
-      log(msg,'warn');
-      if(pill) pill.textContent='🔄 Update';
-      if(manual) showToast(`❌ ${msg}\n\nActiveer GitHub Pages:\nRepo → Settings → Pages → main / (root)`, 6000);
-      return;
-    }
-    const data=await resp.json();
-    const latest=data?.version||'';
-    if(!latest){
-      if(manual) showToast('⚠️ version.json leeg — inhoud: {"version":"2.1"}', 4000);
-      if(pill) pill.textContent='🔄 Update';
-      return;
-    }
-    if(latest===APP_VERSION){
-      log(`Up-to-date (v${APP_VERSION})`,'ok');
-      if(pill) pill.textContent='✅ v'+APP_VERSION;
-      if(manual) showToast(`✅ Nieuwste versie (v${APP_VERSION})`, 3000);
-      setTimeout(()=>{ if(pill) pill.textContent='🔄 Update'; }, 3000);
-      return;
-    }
-    log(`Update beschikbaar: v${latest} (huidig: v${APP_VERSION})`,'warn');
-    if(pill){ pill.textContent=`⬆️ v${latest}`; pill.style.background='var(--or)'; pill.style.color='#fff'; }
-    showUpdateBanner(latest);
-  }catch(e){
-    const msg='Update check fout: '+e.message;
-    log(msg,'warn');
-    if(pill) pill.textContent='🔄 Update';
-    if(manual) showToast(`❌ ${msg}`, 4000);
-  }
-}
+// 🔄 AUTO-UPDATE SYSTEEM — VERWIJDERD (21-07-2026). Klanten krijgen
+// updates voortaan per mail met changelog; geen banner/versie-check meer.
+// APP_VERSION (config.js) blijft in gebruik voor logging + loginscherm.
 
 function showToast(msg, duration=3000){
   document.getElementById('pidToast')?.remove();
@@ -2394,39 +2375,6 @@ function showToast(msg, duration=3000){
   t.textContent=msg;
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), duration);
-}
-
-function showUpdateBanner(newVersion){
-  document.getElementById('updateBanner')?.remove();
-  const isAPK=!!(window.Capacitor?.isNativePlatform);
-  const banner=document.createElement('div');
-  banner.id='updateBanner';
-  banner.style.cssText='position:fixed;bottom:44px;left:0;right:0;z-index:8000;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(135deg,#1a6fff,#7c3aed);color:#fff;font-family:var(--f);font-size:13px;box-shadow:0 -2px 12px rgba(0,0,0,.2);gap:10px;';
-  const txt=document.createElement('div');
-  txt.style.flex='1';
-  txt.innerHTML=isAPK
-    ?`🔄 <strong>Update v${newVersion} beschikbaar!</strong><br><small style="opacity:.8">Download nieuwe APK via GitHub Actions</small>`
-    :`🔄 <strong>Update v${newVersion} beschikbaar!</strong> Nu: v${APP_VERSION}`;
-  const btn=document.createElement('button');
-  btn.style.cssText='padding:6px 14px;border-radius:6px;border:none;background:#fff;color:#1a6fff;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;';
-  if(isAPK){
-    btn.textContent='Naar GitHub →';
-    btn.onclick=()=>{window.open(`https://github.com/${GITHUB_USER}/${GITHUB_REPO}/actions`,'_system');banner.remove();};
-  } else {
-    btn.textContent='Nu updaten';
-    btn.onclick=()=>applyUpdate();
-  }
-  const close=document.createElement('button');
-  close.textContent='✕';
-  close.style.cssText='padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;cursor:pointer;font-size:13px;flex-shrink:0;';
-  close.onclick=()=>banner.remove();
-  banner.appendChild(txt);banner.appendChild(btn);banner.appendChild(close);
-  document.body.appendChild(banner);
-}
-
-function applyUpdate(){
-  try{if(window.anthropicKey)localStorage.setItem('ns_api_key',window.anthropicKey);}catch(e){}
-  window.location.href=UPDATE_URL+'?v='+Date.now();
 }
 
 // ════════════════════════════════════════
@@ -3912,7 +3860,23 @@ function openMonitorView(){
   const pane=document.getElementById('pane-monitor'); if(pane) pane.classList.add('active');
   const tb=document.querySelector('.tb'); if(tb) tb.scrollTop=0;
   if(typeof setLeftPanelForMode==='function') setLeftPanelForMode('monitor');
-  try{ _monTick(); }catch(e){}   // meteen vullen, niet wachten op de 1s-tik
+  try{ _monTick(); }catch(e){}      // meteen vullen, niet wachten op de 1s-tik
+  try{ _monChipTick(); }catch(e){}  // chipje direct weg zodra de pane open is
+}
+// Is de monitor-pane wat de gebruiker NU ziet? Let op: goHome() legt het
+// welkomstscherm als overlay BOVENOP — de pane houdt dan gewoon z'n
+// offsetParent, dus die check alleen is niet genoeg.
+function _monPaneZichtbaar(){
+  const pane=document.getElementById('pane-monitor');
+  if(!pane||!pane.classList.contains('active')||!pane.offsetParent) return false;
+  const ws=document.getElementById('welcomeScreen');
+  if(ws&&!ws.classList.contains('hidden')) return false;   // home-overlay erboven
+  return true;
+}
+// ➖ op de pane: terug naar home; monitor waakt door, chipje neemt het over.
+function monMinimize(){
+  try{ goHome(); }catch(e){}
+  try{ _monChipTick(); }catch(e){}
 }
 const _MON_ERNSTIG=/^(ECT_HOOG|PIEK:|UITVAL:|THERMOSTAAT|TEST:x_laadspanning)/;
 let _monLaatstGetekend='';
@@ -3923,8 +3887,7 @@ function _monTegel(id, v, warnCls){
   t.className='mon-tile'+(warnCls?' '+warnCls:'');
 }
 function _monTick(){
-  const pane=document.getElementById('pane-monitor');
-  if(!pane||!pane.offsetParent) return;                 // pane niet in beeld: niks doen
+  if(!_monPaneZichtbaar()) return;                      // pane niet in beeld: niks doen
   const M=window.PLMon;
   const spd=pidVals['010D'], rpm=pidVals['010C'], ect=pidVals['0105'];
   const load=pidVals['0104'], volt=pidVals['0142'], map=pidVals['010B'];
@@ -3981,7 +3944,45 @@ function _monTick(){
       +'</div>';
   }).join('');
 }
-setInterval(()=>{ try{ _monTick(); }catch(e){} },1000);
+/* ── 🛡️ Zwevend monitor-chipje: zichtbaar zodra de monitor waakt terwijl de
+   pane niet in beeld is. Toont snelheid + waarschuwingsteller; rand/teller
+   kleuren oranje bij bevindingen en rood bij een ernstige. Tik = pane open.
+   Via JS aan document.body gehangen (buiten #appScale, dus position:fixed
+   blijft echt viewport-vast, net als de toast). ── */
+let _monChipEl=null;
+function _monChipMaak(){
+  if(_monChipEl) return _monChipEl;
+  const c=document.createElement('div');
+  c.id='monChipFab';
+  c.style.cssText='position:fixed;bottom:14px;right:12px;z-index:9500;display:none;align-items:center;gap:7px;background:var(--sur,#151b24);border:1.5px solid var(--bd,#26303b);color:var(--tx,#e6e9ef);border-radius:22px;padding:7px 13px;font-family:var(--f);font-size:13px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.45);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent';
+  c.innerHTML='<span>🛡️</span><span id="monChipSpd">— km/u</span><span id="monChipCnt" style="display:none;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--or,#f2820c);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center"></span>';
+  c.title='Rit-monitor openen';
+  c.onclick=()=>{ try{ openMonitorView(); }catch(e){} };
+  document.body.appendChild(c);
+  _monChipEl=c;
+  return c;
+}
+function _monChipTick(){
+  const M=window.PLMon;
+  const toon=!!(M&&M.active)&&!_monPaneZichtbaar();
+  const c=_monChipEl||(toon?_monChipMaak():null);
+  if(!c) return;                                        // nog nooit nodig geweest
+  c.style.display=toon?'flex':'none';
+  if(!toon) return;
+  const spd=pidVals['010D'];
+  const s=document.getElementById('monChipSpd');
+  if(s) s.textContent=(typeof spd==='number'&&!isNaN(spd))?Math.round(spd)+' km/u':'— km/u';
+  const orde=(M&&M._order)||[];
+  const n=orde.length;
+  const ernstig=orde.some(k=>_MON_ERNSTIG.test(k));
+  const kleur=n?(ernstig?'var(--rd,#e5484d)':'var(--or,#f2820c)'):'var(--bd,#26303b)';
+  const b=document.getElementById('monChipCnt');
+  if(b){ b.style.display=n?'':'none'; b.textContent=n; b.style.background=n?kleur:''; }
+  c.style.borderColor=kleur;
+}
+// Chip élke seconde verversen (ook buiten de pane); pane alleen indien zichtbaar
+// — die guard zit in _monTick zelf.
+setInterval(()=>{ try{ _monChipTick(); }catch(e){} try{ _monTick(); }catch(e){} },1000);
 
 // Filter de catalogus op motortype + welke PIDs de auto levert.
 function bscBuildList(){
@@ -8860,15 +8861,12 @@ document.addEventListener('DOMContentLoaded', function(){
     setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
   }
 
-  // Check voor updates (stil op achtergrond)
   try{ refreshAdminLogRow(); }catch(e){}
   // Live-log hervatten als een vorige sessie nog "actief" was (crash/herlaad):
   // het bestaande bestand wordt voortgezet, vorige regels blijven behouden.
   try{
     if(localStorage.getItem('pl_livelog')==='1'){ liveLogStart({silent:true}); liveLogRecoveryCheck(); }
   }catch(e){}
-  setTimeout(checkForUpdate, 3000);
-  try{ updateMonitorBtn(); }catch(e){}
 
   log('PidLane geladen.','info');
 });
@@ -9744,64 +9742,8 @@ async function exportVehicleDossier(btn){
   }finally{ if(btn){btn.textContent=orig; btn.disabled=false;} }
 }
 
-// ══════════════════════════════════════════════════════
-// IDEE 7 — ACHTERGROND-MONITORING met drempel-alerts
-// Bewaakt kritieke PIDs en stuurt een notificatie bij overschrijding.
-// Gebruikt de Capacitor LocalNotifications-plugin als die in de APK zit
-// (vereist nieuwe APK-build); valt anders terug op een in-app toast.
-// ══════════════════════════════════════════════════════
-const MONITOR_RULES=[
-  {pid:'0105', test:v=>v>=104, msg:'⚠ Koelwater hoog — stop veilig en laat afkoelen'},
-  {pid:'0142', test:v=>v<=11.8, msg:'🔋 Accuspanning laag — controleer dynamo/accu'},
-  {pid:'012F', test:v=>v<=8,   msg:'⛽ Brandstofpeil onder 8%'},
-  {pid:'015C', test:v=>v>=140, msg:'⚠ Olietemperatuur hoog'},
-];
-let _monitorOn=false, _monitorTimer=null, _monitorLastAlert={};
-function getLocalNotif(){ return window.Capacitor?.Plugins?.LocalNotifications||null; }
-
-async function toggleBackgroundMonitor(){
-  if(_monitorOn){ stopBackgroundMonitor(); return; }
-  const LN=getLocalNotif();
-  if(LN){ try{ await LN.requestPermissions(); }catch(e){} }
-  _monitorOn=true; _monitorLastAlert={};
-  _monitorTimer=setInterval(checkMonitorRules, 4000);
-  log('🔔 Achtergrond-monitoring AAN','ok');
-  showToast?.('🔔 Monitoring actief — je krijgt een melding bij kritieke waarden');
-  updateMonitorBtn();
-}
-function stopBackgroundMonitor(){
-  _monitorOn=false; if(_monitorTimer){ clearInterval(_monitorTimer); _monitorTimer=null; }
-  log('🔔 Achtergrond-monitoring UIT','info'); updateMonitorBtn();
-}
-function checkMonitorRules(){
-  if(!_monitorOn||(!connected&&!demoMode)) return;
-  const now=Date.now();
-  for(const r of MONITOR_RULES){
-    const v=pidVals[r.pid]; if(v===undefined) continue;
-    let trip=false; try{ trip=r.test(v); }catch(e){}
-    if(trip && (!_monitorLastAlert[r.pid]||now-_monitorLastAlert[r.pid]>60000)){
-      _monitorLastAlert[r.pid]=now;
-      fireAlert(r.msg);
-    }
-  }
-}
-async function fireAlert(msg){
-  const LN=getLocalNotif();
-  if(LN){
-    try{
-      await LN.schedule({notifications:[{id:Date.now()%100000,title:'PidLane',body:msg,schedule:{at:new Date(Date.now()+200)}}]});
-      log('🔔 Notificatie: '+msg,'warn'); return;
-    }catch(e){}
-  }
-  // Geen plugin → in-app toast (werkt alleen op de voorgrond)
-  showToast?.(msg,6000); log('🔔 '+msg,'warn');
-}
-function updateMonitorBtn(){
-  const b=document.getElementById('monitorBtn'); if(!b) return;
-  b.textContent=_monitorOn?'🔔 Monitoring AAN':'🔔 Achtergrond-monitor';
-  b.style.background=_monitorOn?'rgba(0,168,107,.15)':'var(--sur2)';
-  b.style.color=_monitorOn?'var(--gn)':'var(--tx2)';
-}
+// IDEE 7 (achtergrond-monitoring met drempel-alerts) — VERWIJDERD 21-07-2026.
+// Dubbelop met de 🛡️ Rit-monitor (deur 1, pidlane-monitor.js + watchers).
 
 </script>
 
