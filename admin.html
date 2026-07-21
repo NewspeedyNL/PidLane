@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
      PidLane — ADMIN DASHBOARD (losstaand, NIET op publieke Pages zetten!)
-     Build: 2026-07-13 (CET) — 👤 Gebruikersbeheer
+     Build: 2026-07-20 (CET) — 👤 Gebruikersbeheer + 🩺 status + nieuwe toggles
+
+     App draait op https://app.pidhub.nl (GitHub Pages: newspeedynl.github.io).
+     Worker-URL wordt onthouden in localStorage; standaard de workers.dev-URL.
 
      NIEUW: gebruikers aanmaken/wijzigen/verwijderen via de Worker
      (GET/POST /admin/users, ADMIN_TOKEN vereist). De Worker hasht het
@@ -82,10 +85,17 @@
 
 <!-- ── Dashboard ── -->
 <div id="dash" class="wrap hidden">
-  <h1>PidLane Admin <span style="font-size:12px;color:var(--tx2)">— live config</span></h1>
+  <h1 style="display:flex;justify-content:space-between;align-items:center">PidLane Admin <span style="font-size:12px;color:var(--tx2)">— live config</span><button class="btn-sec btn-sm" onclick="logout()">Uitloggen</button></h1>
   <p class="sub">Wijzigingen gaan direct live. De klant-app haalt config op bij elke start (gecached ~60s) en valt terug op hardcoded defaults bij geen verbinding.</p>
 
   <div class="warn">⚠️ Veiligheids­kritische zaken (SAFE_AT-whitelist, API-geheimen) worden bewust NIET hier beheerd. Alleen UI/gedrag en gebruikers.</div>
+
+  <!-- Statuskaart: is de keten gezond? -->
+  <div class="card">
+    <h2>🩺 Status</h2>
+    <div id="statusGrid"></div>
+    <div class="bar"><button class="btn-sec btn-sm" onclick="checkStatus()">↻ Opnieuw testen</button></div>
+  </div>
 
   <!-- ════════════════════════════════════════════════════════════
        👤 GEBRUIKERS
@@ -215,6 +225,9 @@ const FEATURES=[
   ['feat_koopcheck','Koopcheck','Deur 2 — historie, staat en waarde'],
   ['feat_proefrit','Proefrit-check','Deur 2 — meten tijdens proefrit'],
   ['feat_verbruik','Verbruiksanalyse','Deur 3 — waar gaat brandstof/energie verloren'],
+  ['feat_caravan','Caravan-rittracker','Deur 3/4 — live brandstofcoach tijdens de rit'],
+  ['feat_basiccheck','Basic system check','Deur 1 — live trendtests met slaag-banden'],
+  ['feat_monitor','Passieve foutbewaking','Achtergrond — monitor + watchers tijdens de rit'],
   ['feat_langerit','Lange rit-voorbereiding','Deur 4'],
   ['feat_seizoen','Seizoenscheck (winter/airco)','Deur 4'],
   ['feat_ev','EV/hybride-check','Deur 4'],
@@ -349,11 +362,44 @@ function enter(){
   const m=document.getElementById('gateMsg');
   if(!TOKEN){ show(m,'err','Vul je admin-token in.'); return; }
   if(!/^https?:\/\//.test(WURL)){ show(m,'err','Worker-URL moet met https:// beginnen.'); return; }
+  try{ localStorage.setItem('pl_admin_wurl', WURL); }catch(e){}   // URL onthouden (token bewust niet)
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('dash').classList.remove('hidden');
   renderFeatures();
+  checkStatus();
   loadConfig();
   loadUsers();
+}
+
+function logout(){
+  TOKEN='';
+  document.getElementById('adminTok').value='';
+  document.getElementById('dash').classList.add('hidden');
+  document.getElementById('gate').classList.remove('hidden');
+}
+
+// Laatst gebruikte Worker-URL voorvullen
+try{
+  const w=localStorage.getItem('pl_admin_wurl');
+  if(w) document.getElementById('workerUrl').value=w;
+}catch(e){}
+
+/* ════════════════════════════════════════════════════════════════
+   🩺 STATUS — snelle gezondheidscheck van de keten
+   ════════════════════════════════════════════════════════════════ */
+async function checkStatus(){
+  const el=document.getElementById('statusGrid'); if(!el) return;
+  const items=[
+    { id:'st_worker',  naam:'Worker bereikbaar',      run:()=>callWorker('read','/api/config',{headers:{'X-Admin-Token':TOKEN,'X-App-Token':TOKEN}}) },
+    { id:'st_users',   naam:'Gebruikers (Airtable)',  run:()=>callWorker('users','/admin/users',{headers:{'X-Admin-Token':TOKEN}}) },
+    { id:'st_ai',      naam:'AI-route (Anthropic)',   run:()=>callWorker('ai','/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':TOKEN},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:16,messages:[{role:'user',content:'ping'}],thinking:{type:'disabled'}})}) },
+  ];
+  el.innerHTML=items.map(i=>`<div class="row"><div class="lbl">${i.naam}</div><span class="pill p-demo" id="${i.id}">…test</span></div>`).join('');
+  for(const i of items){
+    const p=document.getElementById(i.id);
+    try{ await i.run(); p.textContent='✓ OK'; p.className='pill p-user'; }
+    catch(e){ p.textContent='✗ fout'; p.className='pill p-off'; p.title=(e.diag&&e.diag.title)||e.message; }
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -552,7 +598,7 @@ async function testPrompt(){
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'X-App-Token':TOKEN },
       body:JSON.stringify({
-        model:'claude-sonnet-5', max_tokens:200, system:sys,
+        model:'claude-sonnet-4-6', max_tokens:200, system:sys,
         messages:[{ role:'user', content:'Testvraag: vat in 2 zinnen samen hoe jij een OBD2-rapport opstelt.' }],
         thinking:{ type:'disabled' }
       })
