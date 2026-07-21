@@ -414,25 +414,30 @@
 <div id="welcomeScreen" class="hidden">
 
   <style>
-    /* 5e deur — Live PID-data: eigen cyan signaal-accent. Alleen ACCENT
-       (kleur/rand/glow), geen layout — de basis .wm-door blijft uit pidlane.css. */
-    .wm-door.dr-live{position:relative;overflow:hidden}
-    .wm-door.dr-live::before{content:"";position:absolute;inset:0;
-      background:radial-gradient(120% 90% at 85% 0%,rgba(0,212,255,.16),transparent 60%);
-      pointer-events:none}
-    .wm-door.dr-live{border-color:rgba(0,212,255,.45) !important;
-      box-shadow:0 0 0 1px rgba(0,212,255,.10) inset,0 6px 22px rgba(0,212,255,.10)}
+    /* ── Deur-accent: de nette look van de PID-deur, nu op ALLE deuren.
+       Alleen accent (rand/gloed/wash + icoon-glow), geen layout — de basis
+       .wm-door komt uit pidlane.css. Elke deur zet z'n eigen kleur via vars. */
+    .wm-door{position:relative;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+    .wm-door::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+      background:radial-gradient(120% 90% at 85% 0%,var(--wash,transparent),transparent 62%)}
+    .wm-door{border-color:var(--edge,var(--bd)) !important;
+      box-shadow:0 0 0 1px var(--edgeIn,transparent) inset,0 8px 22px -8px var(--glow,transparent)}
+    .wm-door:hover{border-color:var(--edgeHi,var(--bd)) !important;
+      box-shadow:0 0 0 1px var(--edgeIn,transparent) inset,0 10px 26px -8px var(--glow,transparent)}
+    .wm-door .wm-door-t,.wm-door .wm-door-d{position:relative}
+    .wm-door .wm-door-ic{filter:drop-shadow(0 0 6px var(--icoGlow,transparent))}
+    /* Per-deur kleurset */
+    .wm-door.dr-live{--wash:rgba(0,212,255,.16);--edge:rgba(0,212,255,.46);--edgeHi:rgba(0,212,255,.8);--edgeIn:rgba(0,212,255,.10);--glow:rgba(0,212,255,.36);--icoGlow:rgba(0,212,255,.55)}
+    .wm-door.dr-diag{--wash:rgba(59,130,246,.15);--edge:rgba(59,130,246,.42);--edgeHi:rgba(59,130,246,.74);--edgeIn:rgba(59,130,246,.09);--glow:rgba(59,130,246,.32);--icoGlow:rgba(59,130,246,.5)}
+    .wm-door.dr-deal{--wash:rgba(34,197,94,.15);--edge:rgba(34,197,94,.42);--edgeHi:rgba(34,197,94,.74);--edgeIn:rgba(34,197,94,.09);--glow:rgba(34,197,94,.3);--icoGlow:rgba(34,197,94,.5)}
+    .wm-door.dr-saving{--wash:rgba(245,158,11,.15);--edge:rgba(245,158,11,.44);--edgeHi:rgba(245,158,11,.78);--edgeIn:rgba(245,158,11,.09);--glow:rgba(245,158,11,.3);--icoGlow:rgba(245,158,11,.5)}
+    .wm-door.dr-prep{--wash:rgba(167,139,250,.16);--edge:rgba(167,139,250,.44);--edgeHi:rgba(167,139,250,.78);--edgeIn:rgba(167,139,250,.10);--glow:rgba(167,139,250,.32);--icoGlow:rgba(167,139,250,.5)}
+    /* PID-deur houdt z'n eigen SVG-icoon + pulse */
     .wm-door.dr-live .wm-door-ic{color:#00d4ff;display:flex;align-items:center;justify-content:center}
     .dr-live-ic{filter:drop-shadow(0 0 6px rgba(0,212,255,.55));animation:drLivePulse 2.4s ease-in-out infinite}
     @keyframes drLivePulse{0%,100%{opacity:.85}50%{opacity:1}}
-    .wm-door.dr-live:hover{border-color:rgba(0,212,255,.75) !important}
 
-    /* ── 6e deur — Mijn favorieten: gouden accent + sterretjes op kaarten ── */
-    .wm-door.dr-fav{border-color:rgba(255,196,0,.42) !important;
-      box-shadow:0 0 0 1px rgba(255,196,0,.10) inset,0 6px 22px rgba(255,196,0,.10)}
-    .wm-door.dr-fav .wm-door-ic{filter:drop-shadow(0 0 6px rgba(255,196,0,.5))}
-    .wm-door.dr-fav:hover{border-color:rgba(255,196,0,.72) !important}
-    /* Sterknop rechtsboven op elke functiekaart (gutter in de kop houdt de tijd vrij) */
+    /* ── ⭐ Sterknop rechtsboven op elke functiekaart (gutter houdt de tijd vrij) ── */
     .choice-card.has-fav{position:relative}
     .choice-card.has-fav .choice-head{padding-right:34px}
     .fav-star{position:absolute;top:6px;right:7px;z-index:6;width:30px;height:30px;
@@ -442,20 +447,24 @@
     .fav-star:hover{background:rgba(0,0,0,.5)}
     .fav-star:active{transform:scale(.85)}
     .fav-star.on{color:#ffc400;text-shadow:0 0 8px rgba(255,196,0,.6)}
-    /* Launch-kaarten in de favorieten-deur */
-    .fav-launch{display:flex;align-items:center;gap:12px;padding:13px 14px;margin-bottom:10px;
-      border-radius:14px;background:var(--sur2,#151b24);border:1px solid var(--bd,#26303b);
-      cursor:pointer;transition:border-color .15s,background .15s}
-    .fav-launch:hover{border-color:rgba(255,196,0,.55);background:var(--sur,#1a212b)}
-    .fav-launch .fl-ic{font-size:24px;flex:0 0 auto;width:34px;text-align:center}
-    .fav-launch .fl-tx{flex:1;min-width:0}
-    .fav-launch .fl-t{font-weight:800;font-size:14.5px;color:var(--tx,#e6e9ef)}
-    .fav-launch .fl-d{font-size:12px;color:var(--tx2,#aab4c0);margin-top:2px;
-      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .fav-launch .fl-un{flex:0 0 auto;border:none;background:none;color:#ffc400;font-size:19px;
-      cursor:pointer;padding:6px;line-height:1;-webkit-tap-highlight-color:transparent}
-    .fav-launch .fl-un:hover{transform:scale(1.12)}
-    .fav-empty{text-align:center;padding:26px 16px;color:var(--tx2,#aab4c0);font-size:13px;line-height:1.65}
+
+    /* ── ⭐ Dun favorieten-balkje onderaan het startscherm (chips = snel starten) ── */
+    #favBar{position:fixed;left:0;right:0;bottom:0;z-index:9450;display:flex;align-items:center;gap:10px;
+      padding:7px 12px;background:var(--sur,#151b24);border-top:1px solid rgba(255,196,0,.28);
+      box-shadow:0 -6px 18px rgba(0,0,0,.3)}
+    #favBar .favbar-lbl{flex:0 0 auto;font-size:11px;font-weight:800;color:#ffc400;letter-spacing:.3px;
+      text-shadow:0 0 8px rgba(255,196,0,.4);white-space:nowrap}
+    .favbar-chips{flex:1;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:1px 0}
+    .favbar-chips::-webkit-scrollbar{display:none}
+    .favchip{flex:0 0 auto;display:flex;align-items:center;gap:6px;max-width:200px;
+      padding:7px 13px;border-radius:20px;border:1px solid rgba(255,196,0,.35);
+      background:var(--sur2,#1a212b);color:var(--tx,#e6e9ef);font-family:var(--f);
+      font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+      -webkit-tap-highlight-color:transparent;transition:border-color .15s,transform .1s,background .15s}
+    .favchip:hover{border-color:rgba(255,196,0,.7);background:var(--sur,#151b24)}
+    .favchip:active{transform:scale(.95)}
+    .favchip .fc-ic{font-size:15px;line-height:1;flex:0 0 auto}
+    .favchip .fc-t{overflow:hidden;text-overflow:ellipsis}
   </style>
 
   <!-- ── Ambient background: OBD-hartslag, toerenteller, CAN-bus ── -->
@@ -533,9 +542,22 @@
   </div>
   <div class="welcome-scroll">
 
-    <!-- ═══ 4 INTENT-DEUREN (progressive disclosure) ═══ -->
+    <!-- ═══ INTENT-DEUREN (progressive disclosure) ═══ -->
     <div id="wmDoors">
       <div class="wm-doors">
+        <div class="wm-door dr-live" onclick="openDoor('live')">
+          <div class="wm-door-ic" aria-hidden="true">
+            <svg class="dr-live-ic" viewBox="0 0 48 48" width="34" height="34" fill="none">
+              <circle cx="24" cy="24" r="4.5" fill="currentColor"/>
+              <path d="M15 33a13 13 0 0 1 0-18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M33 15a13 13 0 0 1 0 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M9 39a21 21 0 0 1 0-30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+              <path d="M39 9a21 21 0 0 1 0 30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+            </svg>
+          </div>
+          <div class="wm-door-t">Live PID-data</div>
+          <div class="wm-door-d">Bekijk je sensoren live, deel ze met iemand op afstand of kijk mee met een sessie.</div>
+        </div>
         <div class="wm-door dr-diag" onclick="openDoor('diag')">
           <div class="wm-door-ic">🔧</div>
           <div class="wm-door-t">Wat is er met mijn auto?</div>
@@ -556,32 +578,7 @@
           <div class="wm-door-t">Voorbereiden op…</div>
           <div class="wm-door-d">Winter, airco, lange rit of EV/hybride-specifiek.</div>
         </div>
-        <div class="wm-door dr-live" onclick="openDoor('live')">
-          <div class="wm-door-ic" aria-hidden="true">
-            <svg class="dr-live-ic" viewBox="0 0 48 48" width="34" height="34" fill="none">
-              <circle cx="24" cy="24" r="4.5" fill="currentColor"/>
-              <path d="M15 33a13 13 0 0 1 0-18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <path d="M33 15a13 13 0 0 1 0 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <path d="M9 39a21 21 0 0 1 0-30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
-              <path d="M39 9a21 21 0 0 1 0 30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
-            </svg>
-          </div>
-          <div class="wm-door-t">Live PID-data</div>
-          <div class="wm-door-d">Bekijk je sensoren live, deel ze met iemand op afstand of kijk mee met een sessie.</div>
-        </div>
-        <div class="wm-door dr-fav" onclick="openDoor('fav')">
-          <div class="wm-door-ic">⭐</div>
-          <div class="wm-door-t">Mijn favorieten</div>
-          <div class="wm-door-d" id="favDoorDesc">Je meest gebruikte functies — met één tik te starten.</div>
-        </div>
       </div>
-    </div>
-
-    <!-- ═══ DEUR: MIJN FAVORIETEN (zelf samengesteld) ═══ -->
-    <div class="wm-door-panel" id="dp-fav" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">⭐ Mijn favorieten</div>
-      <div id="favList" style="margin-top:4px"></div>
     </div>
 
     <!-- ═══ DEUR: LIVE PID-DATA (bekijken · delen · ontvangen) ═══ -->
@@ -983,7 +980,7 @@
     <div class="sl-col-label" onclick="toggleSL()">🚗 Voertuig & Sensoren</div>
     <div class="sl-inner">
       <div id="pidChoiceBar" style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--bd);background:var(--sur)">
-        <button onclick="pidChoiceBackHome()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12.5px;font-weight:700;cursor:pointer">← 4 deuren</button>
+        <button onclick="pidChoiceBackHome()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12.5px;font-weight:700;cursor:pointer">← Startscherm</button>
         <button onclick="confirmPidLive()" style="flex:1.4;padding:9px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-size:12.5px;font-weight:800;cursor:pointer">✅ Naar Live weergave</button>
       </div>
       <!-- VEHICLE INFO — automatisch ingevuld via VIN/scan -->
@@ -3033,7 +3030,6 @@ function selectProto(el,p){
 // ════════════════════════════════════════
 function setWmTab(tab){ backToDoors(); }   // 3 tabs vervangen door 4 intent-deuren
 function openDoor(key){
-  if(key==='fav'){ try{ renderFavList(); }catch(e){} }
   const d=document.getElementById('wmDoors'); if(d) d.style.display='none';
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
   const p=document.getElementById('dp-'+key); if(p) p.style.display='block';
@@ -3047,10 +3043,11 @@ function backToDoors(){
 
 // ══════════════════════════════════════════════════════════════════
 // ⭐ FAVORIETEN — klant markeert functies met het sterretje rechtsboven;
-// ze verschijnen dan in de deur "Mijn favorieten" om snel te starten.
-// Opslag: localStorage 'pl_favorites' = array van kaart-id's (wc-…). De
-// actie wordt NIET gedupliceerd — een favoriet klikt gewoon de originele
-// kaart aan, dus alle bestaande wcBind-handlers blijven de bron.
+// ze verschijnen dan als chips in een dun balkje onderaan het startscherm,
+// om snel te starten. Geen aparte deur. Opslag: localStorage 'pl_favorites'
+// = array van kaart-id's (wc-…). De actie wordt NIET gedupliceerd — een
+// favoriet klikt gewoon de originele kaart aan, dus alle bestaande
+// wcBind-handlers blijven de bron.
 // ══════════════════════════════════════════════════════════════════
 const FAV_KEY='pl_favorites';
 function favGet(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); }catch(e){ return []; } }
@@ -3065,18 +3062,12 @@ function favToggle(id){
   if(st){ const on=i===-1; st.classList.toggle('on',on); st.textContent=on?'★':'☆';
     st.title=on?'Uit favorieten halen':'Aan favorieten toevoegen';
     st.setAttribute('aria-pressed',on?'true':'false'); }
-  favUpdateDoorDesc();
-  // Staat de favorieten-deur open? Meteen hertekenen.
-  const fp=document.getElementById('dp-fav');
-  if(fp && fp.style.display!=='none'){ try{ renderFavList(); }catch(e){} }
+  try{ favBarSync(); }catch(e){}
   try{ logUsage('favoriet_'+(i===-1?'aan':'uit'), id); }catch(e){}
 }
-// Sterknop op elke functiekaart (wc-…) prikken. Idempotent: dubbel draaien
-// voegt niets dubbel toe. Slaat de favorieten-deur zelf over.
+// Sterknop op elke functiekaart (wc-…) prikken. Idempotent.
 function injectFavStars(){
-  const kaarten=document.querySelectorAll('.choice-card[id^="wc-"]');
-  kaarten.forEach(card=>{
-    if(card.closest('#dp-fav')) return;              // geen ster op launch-kaarten
+  document.querySelectorAll('.choice-card[id^="wc-"]').forEach(card=>{
     if(card.querySelector(':scope > .fav-star')) return; // al gedaan
     const id=card.id;
     card.classList.add('has-fav');
@@ -3092,53 +3083,71 @@ function injectFavStars(){
     b.addEventListener('click',ev=>{ ev.preventDefault(); ev.stopPropagation(); favToggle(id); });
     card.appendChild(b);
   });
-  favUpdateDoorDesc();
 }
-// Titel/omschrijving/icoon van een kaart uitlezen voor de launch-weergave.
+// Titel/icoon van een kaart uitlezen voor de chip.
 function _favMeta(id){
   const c=document.getElementById(id); if(!c) return null;
   const t=(c.querySelector('.choice-title')?.textContent||'').trim();
-  const d=(c.querySelector('.choice-desc')?.textContent||'').trim();
   const ic=(c.querySelector('.choice-icon')?.textContent||'⭐').trim();
-  return {t,d,ic};
+  return {t,ic};
 }
-// Favorieten-deur vullen met launch-kaarten (of lege staat).
-function renderFavList(){
-  const host=document.getElementById('favList'); if(!host) return;
-  const ids=favGet().filter(id=>document.getElementById(id));  // dode id's overslaan
-  if(!ids.length){
-    host.innerHTML='<div class="fav-empty">Nog geen favorieten.<br>Tik op het ☆ rechtsboven een functie om \u2019m hier te zetten \u2014 dan start je \u2019m voortaan met \u00e9\u00e9n tik.</div>';
-    return;
-  }
+// ── Dun favorieten-balkje onderaan (fixed, buiten #appScale via body) ──
+let _favBarEl=null;
+function favBarBuild(){
+  if(_favBarEl) return _favBarEl;
+  const bar=document.createElement('div');
+  bar.id='favBar'; bar.style.display='none';
+  bar.innerHTML='<span class="favbar-lbl">⭐ Snel starten</span><div class="favbar-chips" id="favBarChips"></div>';
+  document.body.appendChild(bar);
+  _favBarEl=bar;
+  return bar;
+}
+function favBarRender(){
+  favBarBuild();
+  const host=document.getElementById('favBarChips'); if(!host) return;
+  const ids=favGet().filter(id=>document.getElementById(id));   // dode id's overslaan
   host.innerHTML='';
   ids.forEach(id=>{
     const m=_favMeta(id); if(!m) return;
-    const row=document.createElement('div');
-    row.className='fav-launch';
-    row.innerHTML='<span class="fl-ic">'+m.ic+'</span>'+
-      '<span class="fl-tx"><span class="fl-t"></span><span class="fl-d"></span></span>'+
-      '<button class="fl-un" type="button" title="Uit favorieten halen" aria-label="Uit favorieten halen">\u2605</button>';
-    row.querySelector('.fl-t').textContent=m.t;
-    row.querySelector('.fl-d').textContent=m.d;
-    // Rij = starten via de originele kaart (bron van de actie)
-    row.addEventListener('click',()=>{ const orig=document.getElementById(id); if(orig) orig.click(); });
-    // Ster in de rij = favoriet verwijderen (niet starten)
-    row.querySelector('.fl-un').addEventListener('click',ev=>{ ev.stopPropagation(); favToggle(id); });
-    host.appendChild(row);
+    const chip=document.createElement('button');
+    chip.className='favchip'; chip.type='button';
+    chip.innerHTML='<span class="fc-ic">'+m.ic+'</span><span class="fc-t"></span>';
+    chip.querySelector('.fc-t').textContent=m.t;
+    chip.title=m.t;
+    chip.addEventListener('click',()=>{ const orig=document.getElementById(id); if(orig) orig.click(); });
+    host.appendChild(chip);
   });
 }
-// Omschrijving onder de favorieten-deur met live teller.
-function favUpdateDoorDesc(){
-  const el=document.getElementById('favDoorDesc'); if(!el) return;
-  const n=favGet().filter(id=>document.getElementById(id)).length;
-  el.textContent = n
-    ? (n===1?'1 functie':n+' functies')+' — met \u00e9\u00e9n tik te starten.'
-    : 'Nog leeg — tik op het \u2606 bij een functie om \u2019m hier te zetten.';
+// Balk alleen tonen op het zichtbare startscherm én als er favorieten zijn.
+function favBarSync(){
+  favBarBuild();
+  const ws=document.getElementById('welcomeScreen');
+  const welkomZichtbaar = ws && !ws.classList.contains('hidden');
+  const heeft = favGet().filter(id=>document.getElementById(id)).length>0;
+  const toon = welkomZichtbaar && heeft;
+  if(toon) favBarRender();
+  _favBarEl.style.display = toon ? 'flex' : 'none';
+  // Zorg dat de balk de onderste hub-inhoud niet afdekt
+  try{
+    const sc=document.querySelector('.welcome-scroll');
+    if(sc) sc.style.paddingBottom = toon ? '58px' : '';
+  }catch(e){}
+}
+// Balk volgt automatisch of het startscherm zichtbaar is (veel codepaden
+// zetten .hidden direct op #welcomeScreen) — dus observeren i.p.v. overal
+// aanroepen.
+function favBarInit(){
+  favBarBuild();
+  const ws=document.getElementById('welcomeScreen');
+  if(ws && window.MutationObserver){
+    try{ new MutationObserver(()=>favBarSync()).observe(ws,{attributes:true,attributeFilter:['class']}); }catch(e){}
+  }
+  favBarSync();
 }
 function showWelcome(vinInfo){
   const ws=document.getElementById('welcomeScreen');
   ws.classList.remove('hidden');
-  try{ backToDoors(); }catch(e){}  // altijd starten op de 4-deuren-keuze
+  try{ backToDoors(); }catch(e){}  // altijd starten op het deuren-keuzescherm
   if(vinInfo&&vinInfo.merk){
     document.getElementById('welcomeTitle').textContent=`${vinInfo.merk} ${vinInfo.model||''} ${vinInfo.year||''} herkend`;
   } else if(demoMode){
@@ -9012,7 +9021,8 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-rit10b',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('10min'); });
   wcBind('wc-caravan',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); if(typeof openCaravan==='function') openCaravan(); });
   wcBind('wc-seizoen',()=>openSeizoensCheck());
-  try{ injectFavStars(); }catch(e){}   // ⭐ sterretjes op alle functiekaarten + favorieten-teller
+  try{ injectFavStars(); }catch(e){}   // ⭐ sterretjes op alle functiekaarten
+  try{ favBarInit(); }catch(e){}       // ⭐ dun favorieten-balkje onderaan het startscherm
   // soon-kaarten: tik geeft korte feedback, geen actie (momenteel geen)
   [].forEach(id=>{
     const el=document.getElementById(id);
