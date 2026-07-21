@@ -3792,6 +3792,51 @@ function bscBaseline(hist, sec){
 
 let _bscState=null; // {list, idx, results:[], testT0, holdStart, raf}
 
+// ── Voorwaarde per test (eis): klopt de context niet, dan stapt de check door
+// naar de volgende test met status "n.v.t." i.p.v. 30s wachten op "twijfel".
+// eis: {fase:['constant',...], warm:true, motorDraait:true, minSnelheid:40}
+function bscConditie(t){
+  if(!t.eis) return {ok:true, label:''};
+  const st=(window.PLMon&&window.PLMon._state)?window.PLMon._state():{fase:'onbekend',temp:'onbekend'};
+  const rpm=pidVals['010C'], spd=pidVals['010D'];
+  const mis=[];
+  if(t.eis.fase && !t.eis.fase.includes(st.fase)) mis.push(t.eis.fase.join('/'));
+  if(t.eis.warm && st.temp!=='warm') mis.push('motor bedrijfswarm');
+  if(t.eis.motorDraait && !(typeof rpm==='number'&&rpm>400)) mis.push('motor draaiend');
+  if(t.eis.minSnelheid && !(typeof spd==='number'&&spd>=t.eis.minSnelheid)) mis.push('≥'+t.eis.minSnelheid+' km/u');
+  return mis.length? {ok:false, label:mis.join(' + ')} : {ok:true, label:''};
+}
+
+// ── Uitbreiding van de catalogus: rijdende + voorwaardelijke tests.
+// Toegevoegd vanuit index (BSC_TESTS zelf staat in pidlane-data.js);
+// dubbel-id-guard zodat een latere verhuizing naar data.js niets breekt.
+(function(){
+  if(typeof BSC_TESTS==='undefined'||!Array.isArray(BSC_TESTS)) return;
+  const extra=[
+    {id:'x_rpm_const', groep:'universeel', naam:'Toerental stabiel bij constante snelheid',
+     pids:['010C'], hold:5, eis:{fase:['constant'], minSnelheid:40}, eisWachtMs:15000,
+     uitleg:'Bij constante snelheid hoort het toerental vlak te blijven. Schommelingen wijzen op overslaan of een slippende koppeling/omvormer.',
+     band:(vals,hist)=>{ const m=bscBaseline(hist['010C'],5); return m==null?null:{lo:m-75,hi:m+75}; }},
+    {id:'x_accel_load', groep:'universeel', naam:'Belasting reageert op gas geven',
+     pids:['0104'], hold:2, eis:{fase:['accelereren']}, eisWachtMs:15000,
+     uitleg:'Tijdens accelereren hoort de motorbelasting duidelijk op te lopen. Blijft die laag, dan leest MAF/MAP mogelijk te laag.',
+     band:{lo:35,hi:100}},
+    {id:'x_decel_load', groep:'universeel', naam:'Belasting valt weg bij uitrollen/remmen',
+     pids:['0104'], hold:2, eis:{fase:['remmen']}, eisWachtMs:15000,
+     uitleg:'Bij gas los/remmen hoort de belasting laag te zijn (brandstof-cut). Hoge belasting hier is verdacht.',
+     band:{lo:0,hi:25}},
+    {id:'x_laadspanning', groep:'universeel', naam:'Laadspanning bij draaiende motor',
+     pids:['0142'], hold:4, eis:{motorDraait:true},
+     uitleg:'Met draaiende motor hoort de dynamo 13,2\u201315,2 V te leveren. Daaronder: dynamo/riem/massa. Daarboven: spanningsregelaar.',
+     band:{lo:13.2,hi:15.2}},
+    {id:'x_map_stat', groep:'benzine', naam:'Vacu\u00fcm stationair (inlaatdruk)',
+     pids:['010B'], hold:4, eis:{fase:['stationair'], warm:true},
+     uitleg:'Een warme benzinemotor trekt stationair 20\u201345 kPa. Hogere inlaatdruk wijst op valse lucht of lage compressie.',
+     band:{lo:18,hi:46}}
+  ];
+  for(const n of extra){ if(!BSC_TESTS.some(x=>x.id===n.id)) BSC_TESTS.push(n); }
+})();
+
 // Filter de catalogus op motortype + welke PIDs de auto levert.
 function bscBuildList(){
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
@@ -3828,6 +3873,7 @@ function bscNextTest(){
   if(_bscState.idx>=_bscState.list.length){ bscFinish(); return; }
   _bscState.testT0=Date.now();
   _bscState.holdStart=0;
+  _bscState._eisOk=false;
   bscDrawFrame(); // start de live-loop
 }
 
@@ -3859,9 +3905,29 @@ function bscEvaluate(t, band){
 function bscDrawFrame(){
   if(!_bscState) return;
   const t=_bscState.list[_bscState.idx];
+  const now=Date.now();
+  // ── voorwaarde-poort: eis niet vervuld → even wachten, dan doorstappen ──
+  const eis=bscConditie(t);
+  if(!eis.ok){
+    bscPaint(t, bscCurrentBand(t), undefined, 0, false, true);
+    if(_bscState._eisToast!==t.id){
+      _bscState._eisToast=t.id;
+      bscToast('Wacht op voorwaarde: '+eis.label+' \u2014 anders wordt de test overgeslagen');
+    }
+    if(now-_bscState.testT0>(t.eisWachtMs||12000)){
+      _bscState.results.push({id:t.id, naam:t.naam, status:'nvt', reden:eis.label});
+      _bscState.idx++;
+      setTimeout(bscNextTest, 300);
+      return;
+    }
+    _bscState.raf=requestAnimationFrame(bscDrawFrame);
+    return;
+  }
+  // Eerste keer dat de voorwaarde vervuld raakt: meettimer opnieuw starten,
+  // zodat de test de volle meettijd krijgt en de wachttijd niet meetelt.
+  if(!_bscState._eisOk){ _bscState._eisOk=true; _bscState.testT0=now; }
   const band=bscCurrentBand(t);
   const {v, inBand, wacht}=bscEvaluate(t, band);
-  const now=Date.now();
   // hold-timer: aaneengesloten tijd binnen band
   if(inBand){ if(!_bscState.holdStart) _bscState.holdStart=now; }
   else { _bscState.holdStart=0; }
@@ -3892,22 +3958,25 @@ function bscFinish(){
   const ok=R.filter(r=>r.status==='ok').length;
   const tw=R.filter(r=>r.status==='twijfel').length;
   const gn=R.filter(r=>r.status==='geen').length;
+  const nv=R.filter(r=>r.status==='nvt').length;
   const rows=R.map(r=>{
-    const ic=r.status==='ok'?'✅':r.status==='twijfel'?'⚠️':'⚪';
+    const ic=r.status==='ok'?'✅':r.status==='twijfel'?'⚠️':r.status==='nvt'?'⏭️':'⚪';
     const kl=r.status==='ok'?'ok':r.status==='twijfel'?'warn':'mut';
-    const val=r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde):r.waarde} ${r.unit}`:'geen data';
+    const val=r.status==='nvt'
+      ? ('n.v.t. \u2014 voorwaarde niet voorgekomen'+(r.reden?': '+r.reden:''))
+      : (r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde):r.waarde} ${r.unit}`:'geen data');
     return `<div class="bsc-row ${kl}"><span>${ic} ${r.naam}</span><span class="bsc-val">${val}</span></div>`;
   }).join('');
   bscRender(
     `<div class="bsc-done">
-       <div class="bsc-score"><b>${ok}</b>/${R.length} tests groen${tw?` · ${tw} twijfel`:''}${gn?` · ${gn} geen data`:''}</div>
+       <div class="bsc-score"><b>${ok}</b>/${R.length-nv} tests groen${tw?` · ${tw} twijfel`:''}${gn?` · ${gn} geen data`:''}${nv?` · ${nv} n.v.t.`:''}</div>
        <div class="bsc-rows">${rows||'<div class="bsc-empty">Geen resultaten.</div>'}</div>
        <div class="toolbar" style="margin-top:12px">
          <button class="btn pri" onclick="startBasicCheck()">🔄 Opnieuw</button>
          <button class="btn" onclick="bscExport()">💾 Exporteer</button>
        </div>
      </div>`);
-  try{ scanLogAdd?.({type:'basischeck', msg:`${ok}/${R.length} groen (${tw} twijfel, ${gn} geen data)`}); }catch(e){}
+  try{ scanLogAdd?.({type:'basischeck', msg:`${ok}/${R.length-nv} groen (${tw} twijfel, ${gn} geen data, ${nv} n.v.t.)`}); }catch(e){}
   try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) PidLaneEvalLog.log('app','basischeck: '+ok+'/'+R.length+' groen'); }catch(e){}
   _bscState=null;
 }
@@ -4798,6 +4867,7 @@ const FEATURE_TOGGLES = {
   feat_koopcheck:    ['#wc-koop'],
   feat_proefrit:     ['#wc-proefrit'],
   feat_verbruik:     ['#wc-fuel'],
+  feat_basiccheck:   ['#wc-basiccheck'],
   feat_caravan:      ['#wc-caravan'],
   feat_langerit:     ['#wc-langerit'],
   feat_seizoen:      ['#wc-seizoen'],
@@ -4907,11 +4977,26 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
   let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){}
   const _vTxt=[_vi.merk,_vi.model,_vi.year,_vi.motor].filter(Boolean).join(' ')||'onbekend voertuig';
   const _bf=(_vi.brandstof||'').toString().toLowerCase();
+  // Live toestand meegeven zodat referenties VOORWAARDELIJK beoordeeld worden.
+  // Zonder dit toetste de AI tegen statische banden (bijv. accuspanning 13,0 V
+  // "normaal" tegen 12,6-14,4 V terwijl de motor draaide — dan hoort er
+  // laadspanning 13,5-14,8 V te staan en is 13,0 V juist verdacht).
+  let _stTxt='onbekend';
+  try{
+    const _st=(window.PLMon&&window.PLMon._state)?window.PLMon._state():null;
+    const _rpm=(typeof pidVals!=='undefined')?pidVals['010C']:undefined;
+    const _spd=(typeof pidVals!=='undefined')?pidVals['010D']:undefined;
+    _stTxt=[_st?('rij-fase '+_st.fase+', motor '+_st.temp):null,
+            (typeof _rpm==='number')?(Math.round(_rpm)+' rpm — motor '+(_rpm>400?'DRAAIT':'uit')):null,
+            (typeof _spd==='number')?(Math.round(_spd)+' km/u'):null
+           ].filter(Boolean).join(', ')||'onbekend';
+  }catch(e){}
   const _defaultSys =
     'Jij bent PidLane AI-Monteur: een ervaren, kritische autotechnicus die OBD2-sensordata interpreteert voor Nederlandse autobedrijven.\n'+
     'VOERTUIG: '+_vTxt+(_bf?(' \u2014 brandstof: '+_bf):'')+'.'+_dossierPromptLine()+'\n'+
     pidlaneBasisRegels()+'\n'+
-    '6. Houd rekening met de toestand. Bij een KOUDE start zijn een hoge korte-termijn brandstoftrim, langzame opwarming, hoger stationair toerental en een rijker mengsel NORMAAL. Markeer dat alleen als probleem wanneer de data laat zien dat het bij bedrijfstemperatuur aanhoudt. Benoem expliciet wanneer iets normaal is voor deze situatie.';
+    '6. Houd rekening met de toestand. Bij een KOUDE start zijn een hoge korte-termijn brandstoftrim, langzame opwarming, hoger stationair toerental en een rijker mengsel NORMAAL. Markeer dat alleen als probleem wanneer de data laat zien dat het bij bedrijfstemperatuur aanhoudt. Benoem expliciet wanneer iets normaal is voor deze situatie.\n'+
+    '7. VOORWAARDELIJKE REFERENTIES \u2014 GEMETEN TOESTAND NU: '+_stTxt+'. Toets elke sensorwaarde tegen de referentie die bij deze toestand hoort, niet tegen een statische band. Concreet: accuspanning bij DRAAIENDE motor is laadspanning, referentie 13,5-14,8 V (12,6-14,4 V geldt alleen bij motor uit; 13,0 V bij draaiende motor duidt op een laadprobleem). Het stationair-toerentalbereik geldt alleen bij stilstand. Inlaatdruk 20-35 kPa geldt alleen stationair bij benzine. Uitlaatgastemperatuur beoordeel je naar belasting. Brandstoftrims beoordeel je alleen bedrijfswarm. Kun je de voor een oordeel benodigde toestand niet vaststellen, gebruik dan status "niet beoordeelbaar" \u2014 nooit "normaal" bij een niet-passende referentie.';
   // Admin-override (remote config) heeft voorrang als die gezet is en er geen
   // expliciete per-call systemPrompt is meegegeven.
   let _override=''; try{ _override=(window.PID_CONFIG&&window.PID_CONFIG.ai_system_override||'').trim(); }catch(e){}
