@@ -194,6 +194,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- App-icoon (logo): favicon, iOS-snelkoppeling en PWA-manifest -->
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f141a">
 <title>PidLane</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <!-- Capacitor — actief in APK, genegeerd in browser -->
@@ -529,6 +535,12 @@
           <div class="choice-title">Basic system check</div>
           <div class="choice-desc">Reeks live technische tests — verwachte trend vs echte meting per sensor. Groen vinkje → automatisch door naar de volgende.</div>
           <div class="choice-out"><b>Je krijgt:</b> per systeem een grafiek + geslaagd/twijfel-oordeel. Sensoren worden automatisch gekozen.</div>
+        </div>
+        <div class="choice-card" id="wc-monitor">
+          <div class="choice-head"><span class="choice-icon">🛡️</span><span class="choice-time">⏱ hele rit</span></div>
+          <div class="choice-title">Rit-monitor</div>
+          <div class="choice-desc">Waakt live mee tijdens het rijden. Gebruikt bijna geen data en waarschuwt vóórdat een sluimerend probleem echt een storing wordt.</div>
+          <div class="choice-out"><b>Je krijgt:</b> een live dashboard (snelheid, toeren, temperatuur) + directe waarschuwingen mét onderbouwing en automatische verificatie.</div>
         </div>
 
         <div class="choice-card" id="wc-dtc">
@@ -956,6 +968,59 @@
           <button class="btn pri" onclick="startBasicCheck()" id="btnBasic">▶ Start basic check</button>
         </div>
         <div id="bscBody" class="bsc-body"><div class="bsc-empty">Klik “Start basic check”. De juiste sensoren worden automatisch geselecteerd op basis van je motortype en wat de auto ondersteunt.</div></div>
+      </div>
+
+      <!-- ════ 🛡️ RIT-MONITOR — live dashboard + waarschuwingsfeed ════ -->
+      <style>
+        .mon-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(0,255,136,.08),rgba(0,212,255,.06));border:1px solid rgba(0,255,136,.25);margin-bottom:12px}
+        .mon-status.slaap{background:rgba(128,128,128,.08);border-color:rgba(128,128,128,.3)}
+        .mon-dot{width:12px;height:12px;border-radius:50%;background:#00e08a;box-shadow:0 0 0 0 rgba(0,224,138,.5);animation:monpulse 1.6s infinite}
+        .mon-status.slaap .mon-dot{background:#888;animation:none;box-shadow:none}
+        @keyframes monpulse{0%{box-shadow:0 0 0 0 rgba(0,224,138,.45)}70%{box-shadow:0 0 0 11px rgba(0,224,138,0)}100%{box-shadow:0 0 0 0 rgba(0,224,138,0)}}
+        .mon-chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.09);opacity:.9}
+        .mon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+        .mon-grid2{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+        .mon-tile{border-radius:14px;padding:12px 10px;text-align:center;background:rgba(255,255,255,.045);border:1.5px solid rgba(255,255,255,.1);transition:border-color .3s, background .3s}
+        .mon-tile.warn{border-color:#f2820c;background:rgba(242,130,12,.10)}
+        .mon-tile.alarm{border-color:#ef4444;background:rgba(239,68,68,.12)}
+        .mon-lab{font-size:11px;font-weight:700;opacity:.65;text-transform:uppercase;letter-spacing:.4px}
+        .mon-val{font-size:26px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+        .mon-grid2 .mon-val{font-size:17px}
+        .mon-unit{font-size:11px;opacity:.6;font-weight:600}
+        .mon-warnkop{font-size:13px;font-weight:800;margin:4px 0 8px;display:flex;justify-content:space-between;align-items:center}
+        .mon-ev{border-left:3px solid #f2820c;border-radius:10px;background:rgba(242,130,12,.07);padding:10px 12px;margin-bottom:8px}
+        .mon-ev.ernstig{border-left-color:#ef4444;background:rgba(239,68,68,.08)}
+        .mon-ev-kop{font-weight:800;font-size:13.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .mon-ev-body{font-size:12.5px;opacity:.85;margin-top:4px;line-height:1.45}
+        .mon-ev-meta{font-size:11px;opacity:.6;margin-top:4px}
+        .mon-verif{font-size:11px;font-weight:800;padding:2px 8px;border-radius:12px}
+        .mon-verif.bev{background:rgba(239,68,68,.18);color:#ff8a8a}
+        .mon-verif.niet{background:rgba(0,224,138,.15);color:#6fe0aa}
+        .mon-verif.meet{background:rgba(242,130,12,.16);color:#ffc07a}
+        .mon-leeg{text-align:center;padding:22px 12px;opacity:.75;font-size:13px;line-height:1.6}
+      </style>
+      <div class="pane" id="pane-monitor">
+        <div class="chk-intro"><h3>🛡️ Rit-monitor</h3><p>Waakt de hele rit passief mee: leest de eigen foutbuffers van de ECU, bewaakt sensorgedrag en test voorwaardelijk. Bijna geen dataverbruik — en bij een ernstige afwijking volgt automatisch een focus-hermeting ter bevestiging.</p></div>
+        <div id="monStatus" class="mon-status slaap">
+          <div class="mon-dot"></div>
+          <b id="monStatusTxt">Monitor slaapt — verbind met de auto</b>
+          <span class="mon-chip" id="monChipFase" style="display:none">—</span>
+          <span class="mon-chip" id="monChipTemp" style="display:none">—</span>
+          <span class="mon-chip" id="monChipTijd" style="display:none">—</span>
+        </div>
+        <div class="mon-grid">
+          <div class="mon-tile" id="monT_spd"><div class="mon-lab">Snelheid</div><div class="mon-val" id="monV_spd">—</div><div class="mon-unit">km/u</div></div>
+          <div class="mon-tile" id="monT_rpm"><div class="mon-lab">Toerental</div><div class="mon-val" id="monV_rpm">—</div><div class="mon-unit">rpm</div></div>
+          <div class="mon-tile" id="monT_ect"><div class="mon-lab">Koelwater</div><div class="mon-val" id="monV_ect">—</div><div class="mon-unit">°C</div></div>
+        </div>
+        <div class="mon-grid2">
+          <div class="mon-tile" id="monT_load"><div class="mon-lab">Belasting</div><div class="mon-val" id="monV_load">—</div><div class="mon-unit">%</div></div>
+          <div class="mon-tile" id="monT_volt"><div class="mon-lab">Spanning</div><div class="mon-val" id="monV_volt">—</div><div class="mon-unit">V</div></div>
+          <div class="mon-tile" id="monT_trim"><div class="mon-lab">Trim ∑</div><div class="mon-val" id="monV_trim">—</div><div class="mon-unit">%</div></div>
+          <div class="mon-tile" id="monT_map"><div class="mon-lab">Inlaatdruk</div><div class="mon-val" id="monV_map">—</div><div class="mon-unit">kPa</div></div>
+        </div>
+        <div class="mon-warnkop"><span>⚠️ Waarschuwingen &amp; onderbouwing</span><button class="btn" style="padding:5px 11px;font-size:12px" onclick="try{PLMon.report();showToast?.('Monitorrapport opgeslagen in 📄 Rapporten')}catch(e){}">📄 Rapport nu</button></div>
+        <div id="monWarnLijst"><div class="mon-leeg">✅ Nog geen afwijkingen.<br>De monitor let op: verborgen (pending) foutcodes, sensor-uitval, bevroren waarden, onmogelijke sprongen, scheve brandstoftrim, oververhitting en laadspanning — elk alleen getoetst wanneer de rij-situatie dat toelaat.</div></div>
       </div>
 
       <!-- DIAGNOSE -->
@@ -3837,6 +3902,76 @@ function bscConditie(t){
   for(const n of extra){ if(!BSC_TESTS.some(x=>x.id===n.id)) BSC_TESTS.push(n); }
 })();
 
+/* ── 🛡️ RIT-MONITOR dashboard: 1s-verversing zolang de pane zichtbaar is ── */
+const _MON_ERNSTIG=/^(ECT_HOOG|PIEK:|UITVAL:|THERMOSTAAT|TEST:x_laadspanning)/;
+let _monLaatstGetekend='';
+function _monTegel(id, v, warnCls){
+  const t=document.getElementById('monT_'+id), e=document.getElementById('monV_'+id);
+  if(!t||!e) return;
+  e.textContent=(v===undefined||v===null||isNaN(v))?'—':(typeof fv==='function'?fv(v):v);
+  t.className='mon-tile'+(warnCls?' '+warnCls:'');
+}
+function _monTick(){
+  const pane=document.getElementById('pane-monitor');
+  if(!pane||!pane.offsetParent) return;                 // pane niet in beeld: niks doen
+  const M=window.PLMon;
+  const spd=pidVals['010D'], rpm=pidVals['010C'], ect=pidVals['0105'];
+  const load=pidVals['0104'], volt=pidVals['0142'], map=pidVals['010B'];
+  const st6=pidVals['0106'], lt7=pidVals['0107'];
+  const trim=(typeof st6==='number'&&typeof lt7==='number')?Math.round((st6+lt7)*10)/10:undefined;
+  // Tegels + kleuring op basis van dezelfde grenzen als de watchers
+  _monTegel('spd',spd); _monTegel('rpm',rpm!==undefined?Math.round(rpm):undefined);
+  _monTegel('ect',ect, (typeof ect==='number'&&ect>108)?'alarm':(typeof ect==='number'&&ect>100)?'warn':'');
+  _monTegel('load',load);
+  _monTegel('volt',volt, (typeof volt==='number'&&typeof rpm==='number'&&rpm>500&&(volt<13.2||volt>15.2))?'warn':'');
+  _monTegel('trim',trim, (typeof trim==='number'&&Math.abs(trim)>20&&typeof ect==='number'&&ect>=65)?'warn':'');
+  _monTegel('map',map);
+  // Statusbalk
+  const sEl=document.getElementById('monStatus'), tEl=document.getElementById('monStatusTxt');
+  const actief=!!(M&&M.active);
+  sEl.classList.toggle('slaap',!actief);
+  const chips=['monChipFase','monChipTemp','monChipTijd'].map(i=>document.getElementById(i));
+  if(actief){
+    const st=M._state?M._state():{fase:'onbekend',temp:'onbekend'};
+    const n=M._order.length;
+    tEl.textContent=n?('Monitor waakt — '+n+' bevinding'+(n===1?'':'en')):'Monitor waakt — alles rustig';
+    chips[0].textContent='🚗 '+st.fase; chips[1].textContent='🌡️ motor '+st.temp;
+    chips[2].textContent='⏱ '+Math.max(0,Math.round((Date.now()-(M.startedAt||Date.now()))/60000))+' min mee';
+    chips.forEach(c=>c.style.display='');
+  } else {
+    tEl.textContent=demoMode?'Monitor slaapt — demo-modus (alleen echte ritten)':'Monitor slaapt — verbind met de auto';
+    chips.forEach(c=>c.style.display='none');
+  }
+  // Waarschuwingsfeed alleen hertekenen als er iets veranderde
+  const lijst=document.getElementById('monWarnLijst');
+  const events=(M&&M.events)||{}; const orde=(M&&M._order)||[];
+  const vinger=orde.map(k=>k+':'+events[k].count+':'+(events[k].verif?events[k].verif.status:'')).join('|');
+  if(vinger===_monLaatstGetekend) return;
+  _monLaatstGetekend=vinger;
+  if(!orde.length) return;                              // lege-staat blijft staan
+  const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  lijst.innerHTML=[...orde].reverse().map(sig=>{
+    const e=events[sig];
+    const ernstig=_MON_ERNSTIG.test(sig);
+    const fasen=Object.entries(e.fasen||{}).map(([k,n])=>k+'×'+n).join(', ');
+    const redenen=(e.redenen||[]).slice(-2).map(esc).join('<br>');
+    let verif='';
+    if(e.verif){
+      const cls=e.verif.status==='bevestigd'?'bev':e.verif.status==='meetprobleem'?'meet':'niet';
+      const ic=e.verif.status==='bevestigd'?'❗':e.verif.status==='meetprobleem'?'⚠️':'✅';
+      verif='<span class="mon-verif '+cls+'">'+ic+' '+esc(e.verif.status)+'</span>';
+    } else if(ernstig&&connected&&!demoMode&&window.PLVerify){
+      verif='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="plRunVerify(this,{sig:\''+esc(sig)+'\',titel:\''+esc(e.code)+'\'})">🔍 Verifieer</button>';
+    }
+    return '<div class="mon-ev'+(ernstig?' ernstig':'')+'">'
+      +'<div class="mon-ev-kop"><span>'+(ernstig?'🔴':'🟠')+' '+esc(e.code)+'</span><span style="opacity:.6;font-weight:700">'+e.count+'×</span>'+verif+'</div>'
+      +'<div class="mon-ev-body">'+redenen+(e.verif?'<br><i>'+esc(e.verif.tekst)+'</i>':'')+'</div>'
+      +'<div class="mon-ev-meta">rij-situatie: '+esc(fasen||'onbekend')+' · laatst: '+new Date(e.laatste).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</div>'
+      +'</div>';
+  }).join('');
+}
+setInterval(()=>{ try{ _monTick(); }catch(e){} },1000);
+
 // Filter de catalogus op motortype + welke PIDs de auto levert.
 function bscBuildList(){
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
@@ -4872,6 +5007,7 @@ const FEATURE_TOGGLES = {
   feat_proefrit:     ['#wc-proefrit'],
   feat_verbruik:     ['#wc-fuel'],
   feat_basiccheck:   ['#wc-basiccheck'],
+  feat_monitor:      ['#wc-monitor'],
   feat_caravan:      ['#wc-caravan'],
   feat_langerit:     ['#wc-langerit'],
   feat_seizoen:      ['#wc-seizoen'],
@@ -8606,6 +8742,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-pidrec',()=>openPidRecorder());
   wcBind('wc-check',()=>startChoice('check'));
   wcBind('wc-basiccheck',()=>startChoice('basiccheck'));
+  wcBind('wc-monitor',()=>startChoice('monitor'));
   wcBind('wc-live',()=>openLiveView());   // opent de live view zelf; PID-keuze zit nu als knop in de Live/Grafiek-balk
   wcBind('wc-dtc',()=>startChoice('dtc'));
   wcBind('wc-report',()=>startChoice('report'));
