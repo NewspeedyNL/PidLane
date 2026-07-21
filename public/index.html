@@ -3903,6 +3903,17 @@ function bscConditie(t){
 })();
 
 /* ── 🛡️ RIT-MONITOR dashboard: 1s-verversing zolang de pane zichtbaar is ── */
+// Opener volgens het activateAIPane-patroon: welkomstscherm dicht, alle
+// tabs/panes uit, alleen pane-monitor aan.
+function openMonitorView(){
+  try{ document.getElementById('welcomeScreen').classList.add('hidden'); }catch(e){}
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  const pane=document.getElementById('pane-monitor'); if(pane) pane.classList.add('active');
+  const tb=document.querySelector('.tb'); if(tb) tb.scrollTop=0;
+  if(typeof setLeftPanelForMode==='function') setLeftPanelForMode('monitor');
+  try{ _monTick(); }catch(e){}   // meteen vullen, niet wachten op de 1s-tik
+}
 const _MON_ERNSTIG=/^(ECT_HOOG|PIEK:|UITVAL:|THERMOSTAAT|TEST:x_laadspanning)/;
 let _monLaatstGetekend='';
 function _monTegel(id, v, warnCls){
@@ -8742,7 +8753,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-pidrec',()=>openPidRecorder());
   wcBind('wc-check',()=>startChoice('check'));
   wcBind('wc-basiccheck',()=>startChoice('basiccheck'));
-  wcBind('wc-monitor',()=>startChoice('monitor'));
+  wcBind('wc-monitor',()=>openMonitorView());   // eigen opener: startChoice kent 'monitor' niet en viel terug op live view
   wcBind('wc-live',()=>openLiveView());   // opent de live view zelf; PID-keuze zit nu als knop in de Live/Grafiek-balk
   wcBind('wc-dtc',()=>startChoice('dtc'));
   wcBind('wc-report',()=>startChoice('report'));
