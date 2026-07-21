@@ -413,6 +413,51 @@
 <!-- ══ WELCOME SCREEN ══ -->
 <div id="welcomeScreen" class="hidden">
 
+  <style>
+    /* 5e deur — Live PID-data: eigen cyan signaal-accent. Alleen ACCENT
+       (kleur/rand/glow), geen layout — de basis .wm-door blijft uit pidlane.css. */
+    .wm-door.dr-live{position:relative;overflow:hidden}
+    .wm-door.dr-live::before{content:"";position:absolute;inset:0;
+      background:radial-gradient(120% 90% at 85% 0%,rgba(0,212,255,.16),transparent 60%);
+      pointer-events:none}
+    .wm-door.dr-live{border-color:rgba(0,212,255,.45) !important;
+      box-shadow:0 0 0 1px rgba(0,212,255,.10) inset,0 6px 22px rgba(0,212,255,.10)}
+    .wm-door.dr-live .wm-door-ic{color:#00d4ff;display:flex;align-items:center;justify-content:center}
+    .dr-live-ic{filter:drop-shadow(0 0 6px rgba(0,212,255,.55));animation:drLivePulse 2.4s ease-in-out infinite}
+    @keyframes drLivePulse{0%,100%{opacity:.85}50%{opacity:1}}
+    .wm-door.dr-live:hover{border-color:rgba(0,212,255,.75) !important}
+
+    /* ── 6e deur — Mijn favorieten: gouden accent + sterretjes op kaarten ── */
+    .wm-door.dr-fav{border-color:rgba(255,196,0,.42) !important;
+      box-shadow:0 0 0 1px rgba(255,196,0,.10) inset,0 6px 22px rgba(255,196,0,.10)}
+    .wm-door.dr-fav .wm-door-ic{filter:drop-shadow(0 0 6px rgba(255,196,0,.5))}
+    .wm-door.dr-fav:hover{border-color:rgba(255,196,0,.72) !important}
+    /* Sterknop rechtsboven op elke functiekaart (gutter in de kop houdt de tijd vrij) */
+    .choice-card.has-fav{position:relative}
+    .choice-card.has-fav .choice-head{padding-right:34px}
+    .fav-star{position:absolute;top:6px;right:7px;z-index:6;width:30px;height:30px;
+      display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;
+      background:rgba(0,0,0,.34);color:#8b95a3;font-size:17px;line-height:1;cursor:pointer;
+      -webkit-tap-highlight-color:transparent;transition:color .15s,transform .1s,background .15s}
+    .fav-star:hover{background:rgba(0,0,0,.5)}
+    .fav-star:active{transform:scale(.85)}
+    .fav-star.on{color:#ffc400;text-shadow:0 0 8px rgba(255,196,0,.6)}
+    /* Launch-kaarten in de favorieten-deur */
+    .fav-launch{display:flex;align-items:center;gap:12px;padding:13px 14px;margin-bottom:10px;
+      border-radius:14px;background:var(--sur2,#151b24);border:1px solid var(--bd,#26303b);
+      cursor:pointer;transition:border-color .15s,background .15s}
+    .fav-launch:hover{border-color:rgba(255,196,0,.55);background:var(--sur,#1a212b)}
+    .fav-launch .fl-ic{font-size:24px;flex:0 0 auto;width:34px;text-align:center}
+    .fav-launch .fl-tx{flex:1;min-width:0}
+    .fav-launch .fl-t{font-weight:800;font-size:14.5px;color:var(--tx,#e6e9ef)}
+    .fav-launch .fl-d{font-size:12px;color:var(--tx2,#aab4c0);margin-top:2px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .fav-launch .fl-un{flex:0 0 auto;border:none;background:none;color:#ffc400;font-size:19px;
+      cursor:pointer;padding:6px;line-height:1;-webkit-tap-highlight-color:transparent}
+    .fav-launch .fl-un:hover{transform:scale(1.12)}
+    .fav-empty{text-align:center;padding:26px 16px;color:var(--tx2,#aab4c0);font-size:13px;line-height:1.65}
+  </style>
+
   <!-- ── Ambient background: OBD-hartslag, toerenteller, CAN-bus ── -->
   <div id="plAmbient" aria-hidden="true">
     <div class="pl-grid"></div>
@@ -511,8 +556,63 @@
           <div class="wm-door-t">Voorbereiden op…</div>
           <div class="wm-door-d">Winter, airco, lange rit of EV/hybride-specifiek.</div>
         </div>
+        <div class="wm-door dr-live" onclick="openDoor('live')">
+          <div class="wm-door-ic" aria-hidden="true">
+            <svg class="dr-live-ic" viewBox="0 0 48 48" width="34" height="34" fill="none">
+              <circle cx="24" cy="24" r="4.5" fill="currentColor"/>
+              <path d="M15 33a13 13 0 0 1 0-18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M33 15a13 13 0 0 1 0 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M9 39a21 21 0 0 1 0-30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+              <path d="M39 9a21 21 0 0 1 0 30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+            </svg>
+          </div>
+          <div class="wm-door-t">Live PID-data</div>
+          <div class="wm-door-d">Bekijk je sensoren live, deel ze met iemand op afstand of kijk mee met een sessie.</div>
+        </div>
+        <div class="wm-door dr-fav" onclick="openDoor('fav')">
+          <div class="wm-door-ic">⭐</div>
+          <div class="wm-door-t">Mijn favorieten</div>
+          <div class="wm-door-d" id="favDoorDesc">Je meest gebruikte functies — met één tik te starten.</div>
+        </div>
       </div>
-      <div class="wm-spec" id="wc-live">📊 Live PID-data — ruwe sensorwaarden, voor de specialist</div>
+    </div>
+
+    <!-- ═══ DEUR: MIJN FAVORIETEN (zelf samengesteld) ═══ -->
+    <div class="wm-door-panel" id="dp-fav" style="display:none">
+      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
+      <div class="wm-door-h">⭐ Mijn favorieten</div>
+      <div id="favList" style="margin-top:4px"></div>
+    </div>
+
+    <!-- ═══ DEUR: LIVE PID-DATA (bekijken · delen · ontvangen) ═══ -->
+    <div class="wm-door-panel" id="dp-live" style="display:none">
+      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
+      <div class="wm-door-h">📡 Live PID-data</div>
+      <div class="welcome-choices" style="margin-top:4px">
+
+        <div class="choice-card hl full" id="wc-live">
+          <div class="choice-head"><span class="choice-icon">📊</span><span class="choice-time w">direct</span></div>
+          <div class="choice-title w">Bekijk live weergave</div>
+          <div class="choice-desc w">Open de live view: alle sensoren realtime, met grafiek en zelf te kiezen PID's.</div>
+          <div class="choice-out w"><b>Je krijgt:</b> ruwe sensorwaarden live in beeld — voor de specialist.</div>
+          <span class="choice-tag">⭐ Aanbevolen</span>
+        </div>
+
+        <div class="choice-card full" id="wc-liveshare">
+          <div class="choice-head"><span class="choice-icon">📡</span><span class="choice-time">op afstand</span></div>
+          <div class="choice-title">Deel mijn live data</div>
+          <div class="choice-desc">Stuur je live sensordata naar iemand op afstand — die kijkt realtime mee via een koppelcode of QR.</div>
+          <div class="choice-out"><b>Je krijgt:</b> een koppelcode/QR die je deelt; de ander ziet jouw data live.</div>
+        </div>
+
+        <div class="choice-card full" id="wc-liveexpert">
+          <div class="choice-head"><span class="choice-icon">🔭</span><span class="choice-time">op afstand</span></div>
+          <div class="choice-title">Ontvang data op afstand</div>
+          <div class="choice-desc">Kijk mee met de sessie van iemand anders — vul hun koppelcode in of scan de QR.</div>
+          <div class="choice-out"><b>Je krijgt:</b> hun live data in jouw app, mét deuren, analyses en AI-rapport.</div>
+        </div>
+
+      </div>
     </div>
 
     <!-- ═══ DEUR: DIAGNOSE ═══ -->
@@ -721,8 +821,6 @@
         <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
       <button class="kebab-item" onclick="closeKebab();reportNav()" style="position:relative">📄 Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:50%;transform:translateY(-50%);right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:16px;text-align:center"></span></button>
       <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
-      <button class="kebab-item" id="remShareMenuBtn" onclick="closeKebab();PLRemote.openShare()">📡 Diagnose delen</button>
-      <button class="kebab-item" id="remExpertMenuBtn" onclick="closeKebab();PLRemote.openExpert()">🔭 Meekijken (expert)</button>
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
@@ -2935,6 +3033,7 @@ function selectProto(el,p){
 // ════════════════════════════════════════
 function setWmTab(tab){ backToDoors(); }   // 3 tabs vervangen door 4 intent-deuren
 function openDoor(key){
+  if(key==='fav'){ try{ renderFavList(); }catch(e){} }
   const d=document.getElementById('wmDoors'); if(d) d.style.display='none';
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
   const p=document.getElementById('dp-'+key); if(p) p.style.display='block';
@@ -2944,6 +3043,97 @@ function openDoor(key){
 function backToDoors(){
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
   const d=document.getElementById('wmDoors'); if(d) d.style.display='block';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ⭐ FAVORIETEN — klant markeert functies met het sterretje rechtsboven;
+// ze verschijnen dan in de deur "Mijn favorieten" om snel te starten.
+// Opslag: localStorage 'pl_favorites' = array van kaart-id's (wc-…). De
+// actie wordt NIET gedupliceerd — een favoriet klikt gewoon de originele
+// kaart aan, dus alle bestaande wcBind-handlers blijven de bron.
+// ══════════════════════════════════════════════════════════════════
+const FAV_KEY='pl_favorites';
+function favGet(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); }catch(e){ return []; } }
+function favSet(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a)); }catch(e){} }
+function favHas(id){ return favGet().indexOf(id)!==-1; }
+function favToggle(id){
+  const a=favGet(); const i=a.indexOf(id);
+  if(i===-1) a.push(id); else a.splice(i,1);
+  favSet(a);
+  // Sterretje op de kaart bijwerken
+  const st=document.querySelector('.fav-star[data-fav="'+id+'"]');
+  if(st){ const on=i===-1; st.classList.toggle('on',on); st.textContent=on?'★':'☆';
+    st.title=on?'Uit favorieten halen':'Aan favorieten toevoegen';
+    st.setAttribute('aria-pressed',on?'true':'false'); }
+  favUpdateDoorDesc();
+  // Staat de favorieten-deur open? Meteen hertekenen.
+  const fp=document.getElementById('dp-fav');
+  if(fp && fp.style.display!=='none'){ try{ renderFavList(); }catch(e){} }
+  try{ logUsage('favoriet_'+(i===-1?'aan':'uit'), id); }catch(e){}
+}
+// Sterknop op elke functiekaart (wc-…) prikken. Idempotent: dubbel draaien
+// voegt niets dubbel toe. Slaat de favorieten-deur zelf over.
+function injectFavStars(){
+  const kaarten=document.querySelectorAll('.choice-card[id^="wc-"]');
+  kaarten.forEach(card=>{
+    if(card.closest('#dp-fav')) return;              // geen ster op launch-kaarten
+    if(card.querySelector(':scope > .fav-star')) return; // al gedaan
+    const id=card.id;
+    card.classList.add('has-fav');
+    const on=favHas(id);
+    const b=document.createElement('button');
+    b.className='fav-star'+(on?' on':'');
+    b.dataset.fav=id;
+    b.type='button';
+    b.textContent=on?'★':'☆';
+    b.title=on?'Uit favorieten halen':'Aan favorieten toevoegen';
+    b.setAttribute('aria-label','Favoriet');
+    b.setAttribute('aria-pressed',on?'true':'false');
+    b.addEventListener('click',ev=>{ ev.preventDefault(); ev.stopPropagation(); favToggle(id); });
+    card.appendChild(b);
+  });
+  favUpdateDoorDesc();
+}
+// Titel/omschrijving/icoon van een kaart uitlezen voor de launch-weergave.
+function _favMeta(id){
+  const c=document.getElementById(id); if(!c) return null;
+  const t=(c.querySelector('.choice-title')?.textContent||'').trim();
+  const d=(c.querySelector('.choice-desc')?.textContent||'').trim();
+  const ic=(c.querySelector('.choice-icon')?.textContent||'⭐').trim();
+  return {t,d,ic};
+}
+// Favorieten-deur vullen met launch-kaarten (of lege staat).
+function renderFavList(){
+  const host=document.getElementById('favList'); if(!host) return;
+  const ids=favGet().filter(id=>document.getElementById(id));  // dode id's overslaan
+  if(!ids.length){
+    host.innerHTML='<div class="fav-empty">Nog geen favorieten.<br>Tik op het ☆ rechtsboven een functie om \u2019m hier te zetten \u2014 dan start je \u2019m voortaan met \u00e9\u00e9n tik.</div>';
+    return;
+  }
+  host.innerHTML='';
+  ids.forEach(id=>{
+    const m=_favMeta(id); if(!m) return;
+    const row=document.createElement('div');
+    row.className='fav-launch';
+    row.innerHTML='<span class="fl-ic">'+m.ic+'</span>'+
+      '<span class="fl-tx"><span class="fl-t"></span><span class="fl-d"></span></span>'+
+      '<button class="fl-un" type="button" title="Uit favorieten halen" aria-label="Uit favorieten halen">\u2605</button>';
+    row.querySelector('.fl-t').textContent=m.t;
+    row.querySelector('.fl-d').textContent=m.d;
+    // Rij = starten via de originele kaart (bron van de actie)
+    row.addEventListener('click',()=>{ const orig=document.getElementById(id); if(orig) orig.click(); });
+    // Ster in de rij = favoriet verwijderen (niet starten)
+    row.querySelector('.fl-un').addEventListener('click',ev=>{ ev.stopPropagation(); favToggle(id); });
+    host.appendChild(row);
+  });
+}
+// Omschrijving onder de favorieten-deur met live teller.
+function favUpdateDoorDesc(){
+  const el=document.getElementById('favDoorDesc'); if(!el) return;
+  const n=favGet().filter(id=>document.getElementById(id)).length;
+  el.textContent = n
+    ? (n===1?'1 functie':n+' functies')+' — met \u00e9\u00e9n tik te starten.'
+    : 'Nog leeg — tik op het \u2606 bij een functie om \u2019m hier te zetten.';
 }
 function showWelcome(vinInfo){
   const ws=document.getElementById('welcomeScreen');
@@ -8801,6 +8991,8 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-basiccheck',()=>startChoice('basiccheck'));
   wcBind('wc-monitor',()=>openMonitorView());   // eigen opener: startChoice kent 'monitor' niet en viel terug op live view
   wcBind('wc-live',()=>openLiveView());   // opent de live view zelf; PID-keuze zit nu als knop in de Live/Grafiek-balk
+  wcBind('wc-liveshare',()=>{ try{ PLRemote.openShare(); }catch(e){ alert('Delen is nu niet beschikbaar.'); } });   // deur 5: deel mijn live data
+  wcBind('wc-liveexpert',()=>{ try{ PLRemote.openExpert(); }catch(e){ alert('Meekijken is nu niet beschikbaar.'); } }); // deur 5: ontvang data op afstand
   wcBind('wc-dtc',()=>startChoice('dtc'));
   wcBind('wc-report',()=>startChoice('report'));
   wcBind('wc-fuel',()=>startChoice('fuel'));
@@ -8820,6 +9012,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-rit10b',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('10min'); });
   wcBind('wc-caravan',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); if(typeof openCaravan==='function') openCaravan(); });
   wcBind('wc-seizoen',()=>openSeizoensCheck());
+  try{ injectFavStars(); }catch(e){}   // ⭐ sterretjes op alle functiekaarten + favorieten-teller
   // soon-kaarten: tik geeft korte feedback, geen actie (momenteel geen)
   [].forEach(id=>{
     const el=document.getElementById(id);
