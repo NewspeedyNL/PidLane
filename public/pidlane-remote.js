@@ -275,9 +275,8 @@ window.PLRemote=(function(){
   // claim daarna kort het kanaal, zodat one-shots en polls elkaar niet storen.
   async function withBtLock(fn){
     const t0=Date.now();
-    while(window._pollBusy&&Date.now()-t0<5000){await new Promise(r=>setTimeout(r,60));}
-    window._pollBusy=true;
-    try{return await fn();}finally{window._pollBusy=false;}
+    const tok=await PLBus.wait('remote',5000);
+    try{return await fn();}finally{ if(tok) PLBus.release(tok); }
   }
   async function readSuffix(sfx){
     const pid='01'+sfx;

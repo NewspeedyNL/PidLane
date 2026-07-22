@@ -53,7 +53,8 @@ async function connectSerial(){
   }
   // Zombie poll-loop van vorige sessie stoppen
   clearInterval(pollTimer);
-  window._pollBusy = false;
+  try{ PLBus.breek('nieuwe verbinding'); }catch(e){ window._pollBusy=false; }
+  try{ PLBus.batchReset(); PLBus.resetStats(); }catch(e){}
   connected = false;
   window._btGen = (window._btGen || 0) + 1;   // oude commando's ongeldig maken
   window._batchSupported = undefined;         // multi-PID opnieuw testen bij nieuwe auto
@@ -875,7 +876,14 @@ async function sppReconnectGuard(spp,address,cmd,force){
 
 async function sendCmd(cmd, timeoutMs){
   if(demoMode){ btDiag(`sendCmd "${cmd}" geblokkeerd: demoMode staat AAN`,'warn'); return ''; }
+  const _t0 = Date.now();
   const r = await sendBT(cmd, timeoutMs);
+  // Telemetrie (fase 4): hoe lang duurde dit commando en kwam er iets zinnigs
+  // terug? Voedt het busdiagnose-scherm (polls/sec, gem. ms, ECU-belasting).
+  try{
+    const slecht = !r || !String(r).trim() || /NO DATA|ERROR|UNABLE|STOPPED|BUFFER/i.test(String(r));
+    PLBus.note(cmd, Date.now()-_t0, slecht);
+  }catch(e){}
   trackBtQuality(cmd, r);
   return r;
 }

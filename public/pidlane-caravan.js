@@ -86,6 +86,7 @@ async function startCaravan(){
   // reset meters
   caravanActive=true;
   caravanStartTime=Date.now();
+  try{ setPollProfile('caravan','caravan-rit gestart'); }catch(e){}
   caravanLastTick=Date.now();
   caravanHist={}; caravanCoach=[]; caravanCooldown={};
   caravanKm=0; caravanLiters=0;

@@ -68,23 +68,31 @@ const PLVerify = {
     const t0=Date.now(), data={};
     pids.forEach(p=>data[p]={ pogingen:0, ok:0, waarden:[], tijden:[] });
 
+    let _busTok=0;
     try{
-      // ── Focus-bemonstering: bus geclaimd, alleen deze PIDs, rond-om-rond ──
+      // ── Focus-bemonstering: alleen deze PIDs, rond-om-rond ──
+      // Per ronde claimen en weer vrijgeven: tijdens de sampleGap krijgt de
+      // poll-loop een beurt, zodat de live view blijft lopen. Één claim over
+      // de hele lus zou de tegels seconden bevriezen.
       while (Date.now()-t0 < this.cfg.duurMs){
         if (!(typeof connected!=='undefined'&&connected)) break;
-        window._pollBusy=true;                 // fast-lane slaat z'n ronde over
-        for (const pid of pids){
-          const d=data[pid]; d.pogingen++;
-          try{
-            const r=await sendCmd('01'+pid.slice(2)+'1', 1500);
-            const v=this._decode(pid, r);
-            if (v!==null){ d.ok++; d.waarden.push(v); d.tijden.push(Date.now()); }
-          }catch(e){}
+        _busTok=await PLBus.wait('verificatie',2000);
+        try{
+          for (const pid of pids){
+            const d=data[pid]; d.pogingen++;
+            try{
+              const r=await sendCmd('01'+pid.slice(2)+'1', 1500);
+              const v=this._decode(pid, r);
+              if (v!==null){ d.ok++; d.waarden.push(v); d.tijden.push(Date.now()); }
+            }catch(e){}
+          }
+        } finally {
+          if(_busTok){ PLBus.release(_busTok); _busTok=0; }   // alleen ONS slot teruggeven
         }
         await new Promise(res=>setTimeout(res, this.cfg.sampleGapMs));
       }
     } finally {
-      window._pollBusy=false;                  // bus altijd teruggeven
+      if(_busTok){ PLBus.release(_busTok); _busTok=0; }
     }
 
     // ── Stap 1: datagezondheid per PID ──

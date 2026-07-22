@@ -30,6 +30,11 @@ const PLMon = {
   },
 
   // ── runtime state ──
+  // userOff: de gebruiker heeft de monitor zelf uitgezet. Bewust apart van
+  // de remote feature-flag: die is van de beheerder, deze van de gebruiker.
+  // Blijft bewaard tussen sessies, want wie 'm uitzet wil niet dat hij bij
+  // de volgende verbinding weer vanzelf aanslaat.
+  userOff: (function(){ try{ return localStorage.getItem('pl_monitor_uit')==='1'; }catch(e){ return false; } })(),
   active: false,
   _timer: null,
   _watchdog: null,
@@ -48,7 +53,7 @@ const PLMon = {
     this._watchdog = setInterval(()=>{
       // Remote uitschakelbaar via admin (feat_monitor); ontbrekende key = AAN.
       const featOk = (typeof featOn!=='function') || featOn('feat_monitor');
-      const wil = featOk &&
+      const wil = featOk && !this.userOff &&
                   (typeof connected!=='undefined' && connected) &&
                   !(typeof demoMode!=='undefined' && demoMode);
       if (wil && !this.active) this.start();
@@ -84,9 +89,9 @@ const PLMon = {
   async _cycle(){
     if (!this.active || this._busy) return;
     // Netjes wachten als de fast-lane midden in een pollronde zit.
-    if (window._pollBusy){ return; } // volgende tik proberen we opnieuw
+    const busTok = PLBus.claim('monitor');
+    if (!busTok){ return; }          // bus bezet: volgende tik proberen we opnieuw
     this._busy = true;
-    window._pollBusy = true;         // claim de bus (zoals fast-lane/verify/remote) — anders sturen twee tegelijk naar de ELM327 en valt de verbinding weg
     try{
       const st = await this._readStatus();          // mode 0101
       if (!st) return;                              // NO DATA / storing: overslaan (finally geeft de bus terug)
@@ -110,7 +115,7 @@ const PLMon = {
       }
       this.prev = st;
     }catch(e){ /* bus-hik: stil overslaan, volgende cyclus opnieuw */ }
-    finally{ this._busy = false; window._pollBusy = false; }  // bus ALTIJD teruggeven, ook bij vroege return/fout
+    finally{ this._busy = false; PLBus.release(busTok); }  // ALLEEN ons eigen slot teruggeven
   },
 
   // ── mode 0101: MIL-bit, DTC-teller, readiness ──
@@ -312,5 +317,34 @@ const PLMon = {
 };
 
 window.PLMon = PLMon;
+
+/* ── Gebruikersschakelaar (fase 4) ────────────────────────────────────
+   Tot nu toe startte en stopte de monitor zichzelf en was hij alleen op
+   afstand uit te zetten via de feature-flag. Er was dus geen enkele knop
+   voor de gebruiker. Deze twee functies vullen dat gat; de knop zit in het
+   ☰-menu en toont de actuele stand. */
+window.toggleRitMonitor = function(){
+  PLMon.userOff = !PLMon.userOff;
+  try{ localStorage.setItem('pl_monitor_uit', PLMon.userOff?'1':'0'); }catch(e){}
+  if (PLMon.userOff && PLMon.active) PLMon.stop();
+  try{ if(typeof log==='function') log(PLMon.userOff?'🔔 Rit-monitor door gebruiker UITgezet':'🔔 Rit-monitor door gebruiker AANgezet','info'); }catch(e){}
+  try{ if(typeof showToast==='function') showToast(PLMon.userOff?'🔕 Rit-monitor uit':'🔔 Rit-monitor aan — start zodra je verbonden bent'); }catch(e){}
+  window.updateMonitorBtn();
+};
+window.monitorStatusTekst = function(){
+  if (PLMon.userOff) return 'uit';
+  if (PLMon.active)  return 'actief';
+  if (typeof featOn==='function' && !featOn('feat_monitor')) return 'geblokkeerd';
+  return 'wacht op verbinding';
+};
+window.updateMonitorBtn = function(){
+  const b=document.getElementById('monitorBtn'); if(!b) return;
+  const st=window.monitorStatusTekst();
+  b.innerHTML = (PLMon.userOff?'🔕':'🔔') + ' Rit-monitor'
+    + '<span style="margin-left:auto;font-size:10px;font-weight:700;opacity:.75">'+st+'</span>';
+  b.style.display='flex'; b.style.alignItems='center'; b.style.gap='6px';
+};
+setInterval(()=>{ try{ window.updateMonitorBtn(); }catch(e){} }, 3000);
+
 PLMon.boot();
 })();

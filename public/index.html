@@ -1,6 +1,49 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-22 (CET) — VIER UI-BUGS BIJ DE OORZAAK OPGELOST
+     Build: 2026-07-22 16:40 (CET) — OBD-BUSDISCIPLINE (fase 1 t/m 4)
+     De onstabiele PID-metingen uit de veldlogs kwamen niet van de auto of de
+     OBDLink, maar van onszelf: meerdere lezers duwden tegelijk commando's in
+     dezelfde seriele wachtrij, waardoor de poll-scheduler seconden achterliep
+     en ALLE sensoren tegelijk 'uitvielen' en weer terugkwamen.
+
+     FASE 1 — ECHT BUSSLOT (PLBus, in pidlane-data.js)
+       window._pollBusy was een kale boolean: iedere houder zette 'm in z'n
+       finally op false, dus houder B gaf het slot van houder A vrij. Nu een
+       slot met eigenaar + token; alleen wie het token heeft mag vrijgeven.
+       Noodrem: een houder die >3 min blijft hangen wordt afgebroken.
+       Deze lezers claimen nu netjes: verificatie, brandstofanalyse,
+       latentiemeting, gezondheidscheck, rit-sweep, veldlab full survey,
+       rit-monitor, verify-module, remote-module. Korte lezers claimen per
+       read (eerlijk delen), zware sweeps voor de hele duur.
+       PLBus.pausedTotal() telt bus-pauze door NIET-poll-eigenaren; de
+       stale-watchdog trekt dat eraf, dus de live view kleurt niet meer rood
+       tijdens een sweep die dat zelf veroorzaakt.
+
+     FASE 2 — PRIORITEIT, ADAPTIEVE BATCH, KWALITEITSSCORE
+       • pidsDueNow() sorteert op poll-interval: loopt de bus achter, dan gaan
+         toerental/snelheid/accuspanning eerst en brandstofpeil achteraan.
+       • Multi-PID groepsgrootte is adaptief 3 -> 2 -> 1 en klimt na 25 schone
+         rondes terug, i.p.v. batch in een keer helemaal uitzetten.
+       • Elke PID heeft een kwaliteitsscore 0-100 (pidQuality). Snoeien vereist
+         nu een reeks missers EN een lage score, dus een sensor die af en toe
+         hapert wordt niet meer als dood weggegooid.
+
+     FASE 3 — POLLPROFIELEN PER SITUATIE (POLL_PROFIELEN)
+       Basis / Live view / Expert / Rit-monitor / Caravan / Accucheck / Rustig.
+       Elk profiel heeft een multiplier plus harde per-PID overrides. Analyses
+       kiezen automatisch via ANALYSE2POLL (accu-check -> 0142 elke 500ms,
+       rit -> rustige bus), live view en caravan zetten hun eigen profiel.
+       Handmatig vastzetten kan in het busdiagnose-scherm en blijft bewaard.
+
+     FASE 4 — MONITORKNOP + BUSDIAGNOSE
+       • De rit-monitor was alleen op afstand uit te zetten. Nu een knop in het
+         hamburgermenu met live status (actief / uit / wacht op verbinding);
+         de keuze blijft bewaard tussen sessies.
+       • Nieuw admin-scherm 'Busdiagnose': commando's/sec, responstijd nu en
+         over de sessie, foutpercentage, ECU-belasting, wie het busslot vast-
+         houdt, batchgrootte, traagste sensoren en laagste betrouwbaarheid.
+     ───────────────────────────────────────────────────────────
+     Eerdere build (2026-07-22) — VIER UI-BUGS BIJ DE OORZAAK OPGELOST
      Alle vier waren cascade-/stapelfouten in CSS, niet in de logica. Daarom
      hielpen eerdere patches op de symptomen niet: de oorzaak bleef staan.
      1) ONLEESBARE INTRO-KAART: .chk-intro in pidlane.css liep als gradient
@@ -911,6 +954,8 @@
       <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
+      <button class="kebab-item" id="monitorBtn" onclick="toggleRitMonitor()">🔔 Rit-monitor</button>
+      <button class="kebab-item adminOnly" id="busDiagBtn" onclick="closeKebab();openBusDiag()">🩺 Busdiagnose</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
       <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
       <div class="kebab-sep"></div>
@@ -3289,6 +3334,7 @@ function openLiveData(){
   openLiveView();
 }
 function openLiveView(){
+  try{ setPollProfile('live','live view geopend'); }catch(e){}
   // Eén betrouwbare route naar de live view — óók vanuit een analysepaneel
   // (Conditiecheck e.d.). Voorheen bleef de live view "achteraan": deze
   // functie verborg alleen het welkomstscherm en liet zowel de actieve
@@ -3367,6 +3413,13 @@ function togglePID(pid){
 // → ANALYSE_CATS verplaatst naar pidlane-data.js
 
 function relevantSupportedPIDs(profile){
+  // Elke analyse die z'n PID-set opvraagt, zet meteen het bijpassende
+  // POLLPROFIEL (fase 3). Zo hoeft geen enkele analysefunctie dit apart te
+  // regelen: accu-check gaat vanzelf naar het accuprofiel, rit naar monitor.
+  try{
+    const np=(window.ANALYSE2POLL||{})[profile];
+    if(np) setPollProfile(np, 'analyse '+profile);
+  }catch(e){}
   // BASIS_PIDS loopt bij elke functie mee (motorcontext); profiel eroverheen.
   const base = [...new Set([...BASIS_PIDS, ...(ANALYSE_PIDS[profile] || [])])];
   // In demo of zonder discovery: gewoon het basisprofiel
@@ -3457,7 +3510,7 @@ async function ensurePIDListActive(pidList){
   activePIDs=nieuw;
   // Verwijderde PIDs: schoon hun verouderde waarde op zodat ze nooit meer in
   // een rapport belanden (P3 — geen oude pidVals blijven hangen).
-  removed.forEach(p=>{ delete pidVals[p]; delete _pidLastUpd[p]; });
+  removed.forEach(p=>{ delete pidVals[p]; delete _pidLastUpd[p]; delete _pidLastUpdPause[p]; });
 
   if(added.length||removed.length){
     buildPIDList(document.getElementById('psrch')?.value||'');
@@ -3573,7 +3626,7 @@ function resetDataStream(auto){
   try{
     Object.keys(pidHist||{}).forEach(k=>{ if(Array.isArray(pidHist[k])) pidHist[k]=pidHist[k].slice(-5); });
     stabilityCount={}; outlierCount={}; dataStable=false; window._stabilityT0=null;
-    _pidLastUpd={}; pidSmooth={};
+    _pidLastUpd={}; _pidLastUpdPause={}; pidSmooth={};
     try{ if(typeof window._rxBuf==='string') window._rxBuf=''; }catch(e){}
     try{ if(typeof window._sppBuf==='string') window._sppBuf=''; }catch(e){}
     try{ if(typeof btBuffer==='string') btBuffer=''; }catch(e){}
@@ -3587,6 +3640,7 @@ function fv(v){return(v===undefined||v===null)?'—':(Math.abs(v)<10?v.toFixed(2
 // ── PID weergavemodus: 'full' | 'numbers' | 'dots' ──
 let pidViewMode='dots';  // live view start altijd in puntjes-weergave
 let _pidLastUpd={};          // pid -> laatste update-tijd (ms)
+let _pidLastUpdPause={};     // pid -> PLBus.pausedTotal() ten tijde van die update
 let _staleWatchdog=null;
 const PID_STALE_MS=4000;     // geen verse waarde binnen 4s = "stale"
 function setPidView(mode){
@@ -3615,7 +3669,13 @@ function startStaleWatchdog(){
       // Drempel = 3× het poll-interval, met een ruime ondergrens van 5s.
       const interval=(typeof pidPollInterval==='function')?pidPollInterval(pid):1000;
       const drempel=Math.max(interval*3, 5000);
-      const stale=(now-last)>drempel;
+      // Trek de tijd eraf dat de bus door een ANDERE lezer bezet was
+      // (gezondheidscheck, rit-sweep, veldlab-survey, verificatie, monitor).
+      // Zonder deze correctie kleurde tijdens elke sweep de hele live view
+      // rood, terwijl er niets mis was met de sensoren.
+      let krediet=0;
+      try{ krediet=Math.max(0, PLBus.pausedTotal()-(_pidLastUpdPause[pid]||0)); }catch(e){}
+      const stale=(now-last-krediet)>drempel;
       card.classList.toggle('stale', stale);
     });
   },1000);
@@ -3667,6 +3727,10 @@ function updPID(pid,val){
   pidVals[pid]=val;
   try{ _plCheckPid(pid,val); }catch(e){}
   _pidLastUpd[pid]=Date.now();
+  // Pauzekrediet (fase 1): leg vast hoeveel bus-pauzetijd er tot nu toe was.
+  // De stale-watchdog trekt de pauze die ná deze meting kwam eraf, zodat een
+  // sweep zijn eigen tegels niet rood laat knipperen.
+  try{ _pidLastUpdPause[pid]=PLBus.pausedTotal(); }catch(e){ _pidLastUpdPause[pid]=0; }
   if(!pidHist[pid]) pidHist[pid]=[];
   pidHist[pid].push({t:Date.now(),v:val});
   if(pidHist[pid].length>120) pidHist[pid].shift();
@@ -4875,7 +4939,9 @@ async function verifyCause(idx,cause){
   for(const pid of (cause.check_pids||[])){
     const def=getPidDef(pid); if(!def) continue;
     let val=pidVals[pid];
-    if(val===undefined) val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await sendCmd('01'+pid.slice(2))));
+    // Bus per read claimen (fase 1): korte lezer, dus eerlijk delen met de
+    // poll-loop i.p.v. de hele lus blokkeren.
+    if(val===undefined) val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await withBus('verificatie',()=>sendCmd('01'+pid.slice(2)))));
     if(val!==null&&val!==undefined) updPID(pid,val);
 
     const exp=cause.check_waarden?.[pid];
@@ -5253,7 +5319,7 @@ async function runFuelAnalysis(){
     .filter(pid=>demoMode||(typeof supportedPIDs==='undefined')||!supportedPIDs.size||supportedPIDs.has(pid)||getPidDef(pid));
   for(const pid of wensFuel){
     if(pidVals[pid]===undefined){
-      const val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await sendCmd('01'+pid.slice(2))));
+      const val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await withBus('brandstof',()=>sendCmd('01'+pid.slice(2)))));
       if(val!==null&&val!==undefined) updPID(pid,val);
     }
   }
@@ -6468,13 +6534,17 @@ const SAFE_AT=/^AT(ST[0-9A-F]{2}|AT[0-2]|H[01]|S[01]|L[01]|E0|CAF[01]|FCSM[01])$
 // → ELM_BASELINE verplaatst naar pidlane-data.js
 
 async function measureLatency(n=3){
-  const times=[];
-  for(let i=0;i<n;i++){
-    const t0=Date.now();
-    const r=await sendCmd('010C1',2500);
-    if(r&&!r.includes('NO DATA')&&!r.includes('ERROR')) times.push(Date.now()-t0);
-  }
-  return times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null;
+  // Onder één busslot: anders meet je de wachttijd achter de poll-loop
+  // in plaats van de werkelijke adaptersnelheid.
+  return await withBus('latentiemeting', async()=>{
+    const times=[];
+    for(let i=0;i<n;i++){
+      const t0=Date.now();
+      const r=await sendCmd('010C1',2500);
+      if(r&&!r.includes('NO DATA')&&!r.includes('ERROR')) times.push(Date.now()-t0);
+    }
+    return times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null;
+  }, 6000);
 }
 
 async function optimizeConnectionAI(btn){
@@ -7527,6 +7597,10 @@ async function initialHealthScan(){
   const pids=[...supportedPIDs];
   btDiag(`🔬 Gezondheidscheck van ${pids.length} sensoren…`,'info');
   let ok=0, geen=0, onzin=0;
+  // Zware sweep: de bus is hier van ÓNS. De poll-loop slaat z'n rondes over
+  // en de stale-watchdog krijgt de pauzetijd als krediet, dus de live view
+  // kleurt niet onterecht rood.
+  await withBus('gezondheidscheck', async()=>{
   for(const pid of pids){
     try{
       // 1 read per PID in scanMode — history is leeg en irrelevant
@@ -7544,6 +7618,7 @@ async function initialHealthScan(){
       if(q.status==='ok') ok++; else onzin++;
     }catch(e){ _pidHealth[pid]='onzin'; onzin++; }
   }
+  }, 8000);
   // Veiligheidsfallback: als 0 PIDs ok zijn maar wel data was, check gefaald
   if(ok===0 && geen<pids.length){
     btDiag('⚠ Gezondheidscheck: 0 geldig — fallback alles beschikbaar','warn');
@@ -7831,22 +7906,62 @@ function applyParsedBytes(pid,bytes){
 // vertragen — de kandidaat-oorzaak van "slim filter maakt de app traag".
 // Suffix = PID zonder '01'-prefix. Niet vermeld = MID (default).
 // → PID_POLL_CLASS verplaatst naar pidlane-data.js
+// ── POLLPROFIEL (fase 3) ────────────────────────────────────────────
+// Twee lagen, meer niet:
+//   _pollProfileAuto = wat de situatie vraagt (analyse, live view, caravan)
+//   _pollProfileVast = wat de gebruiker handmatig heeft vastgezet (wint altijd)
+let _pollProfileVast=null, _pollProfileAuto='basis';
+try{ _pollProfileVast=localStorage.getItem('pl_pollprofiel')||null; }catch(e){}
+function actiefPollProfiel(){
+  const naam=_pollProfileVast || _pollProfileAuto;
+  return (window.POLL_PROFIELEN && POLL_PROFIELEN[naam]) ? naam : 'basis';
+}
+function setPollProfile(naam, reden){
+  if(!window.POLL_PROFIELEN || !POLL_PROFIELEN[naam]) return;
+  if(_pollProfileAuto===naam) return;
+  _pollProfileAuto=naam;
+  _pidNextPoll={};                       // nieuw tempo direct laten ingaan
+  if(!_pollProfileVast){
+    const p=POLL_PROFIELEN[naam];
+    try{ btDiag('Pollprofiel: '+p.emoji+' '+p.label+(reden?' ('+reden+')':''),'info'); }catch(e){}
+  }
+  try{ renderBusDiag(); }catch(e){}
+}
+// Handmatig vastzetten vanuit het busdiagnose-scherm (null = weer automatisch)
+function zetPollProfielVast(naam){
+  _pollProfileVast = (naam && window.POLL_PROFIELEN && POLL_PROFIELEN[naam]) ? naam : null;
+  try{ if(_pollProfileVast) localStorage.setItem('pl_pollprofiel',_pollProfileVast);
+       else localStorage.removeItem('pl_pollprofiel'); }catch(e){}
+  _pidNextPoll={};
+  try{ renderBusDiag(); }catch(e){}
+  try{ showToast(_pollProfileVast?('Pollprofiel vast: '+POLL_PROFIELEN[_pollProfileVast].label):'Pollprofiel weer automatisch'); }catch(e){}
+}
+window.setPollProfile=setPollProfile; window.zetPollProfielVast=zetPollProfielVast;
+
 function pidPollInterval(pid){
   // Focus-PIDs (klacht-gestuurd, idee 5) altijd op het snelste tempo
   if(_focusPIDs.has(pid)) return 120;
   const suf=pid.slice(2).toUpperCase();
   // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen
   if(typeof _evModeActive!=='undefined' && _evModeActive && typeof ICE_PIDS_SUFFIX!=='undefined' && ICE_PIDS_SUFFIX.has(suf)) return 999999;
-  // Motortype-afhankelijke prioriteiten
-  const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
-  if(et==='hybride'||et==='ev'){
-    if(['42','5B','5C','15B'].includes(suf)) return 500; // accu/spanning vaker
-    if(['0C','0D'].includes(suf)) return 150;            // RPM/snelheid altijd snel
-  } else if(et==='diesel'){
-    if(['23','59'].includes(suf)) return 200;            // raildruk snel
-    if(['7A','7B','7C','7D'].includes(suf)) return 5000; // DPF minder snel
+  const prof=(window.POLL_PROFIELEN||{})[actiefPollProfiel()]||{mult:1,ovr:{}};
+  let basis=null;
+  // 1) Profiel-override wint: dit ís de reden dat profielen bestaan
+  if(prof.ovr && prof.ovr[suf]!==undefined) basis=prof.ovr[suf];
+  if(basis===null){
+    // 2) Motortype-afhankelijke prioriteiten
+    const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
+    if(et==='hybride'||et==='ev'){
+      if(['42','5B','5C','15B'].includes(suf)) basis=500; // accu/spanning vaker
+      else if(['0C','0D'].includes(suf)) basis=150;       // RPM/snelheid altijd snel
+    } else if(et==='diesel'){
+      if(['23','59'].includes(suf)) basis=200;            // raildruk snel
+      else if(['7A','7B','7C','7D'].includes(suf)) basis=5000; // DPF minder snel
+    }
   }
-  return Math.round((PID_POLL_CLASS[suf]||1000) * (typeof _pollMult!=='undefined'?_pollMult:1));   // default MEDIUM × strategie
+  if(basis===null) basis=PID_POLL_CLASS[suf]||1000;       // 3) default MEDIUM
+  // × profiel × verbindingsstrategie (snel/gebalanceerd/conservatief)
+  return Math.max(80, Math.round(basis * (prof.mult||1) * (typeof _pollMult!=='undefined'?_pollMult:1)));
 }
 // Welke PIDs zijn NU "due" om te pollen?
 // ── DODE-PID-SNOEI ──────────────────────────────────────────────────
@@ -7858,12 +7973,32 @@ function pidPollInterval(pid){
 // herkansing (komt-ie later tot leven, dan keert-ie vanzelf terug).
 const _noDataStreak={}, _pidDead=new Set(), _pidDeadSince={};
 const PID_DEAD_THRESHOLD=4, PID_REPROBE_MS=120000;
-function markPidData(pid){ _noDataStreak[pid]=0; if(_pidDead.delete(pid)) delete _pidDeadSince[pid]; }
+
+// ── PID-KWALITEITSSCORE 0-100 (fase 2) ──────────────────────────────
+// Een enkele misser maakt een sensor niet kapot. We houden per PID een
+// voortschrijdend gemiddelde bij van geslaagde reads. Pas als de score
+// écht laag is én er een reeks missers achter elkaar staat, snoeien we.
+// De score gaat ook mee in rapporten: "MAP 62% betrouwbaar" zegt meer dan
+// een harde aan/uit-vlag.
+const _pidQual={};
+function pidQuality(pid){ return _pidQual[pid]===undefined?100:Math.round(_pidQual[pid]); }
+function _qualBump(pid,goed){
+  const oud=_pidQual[pid]===undefined?100:_pidQual[pid];
+  // Omhoog rustig (+4), omlaag stevig (-12): één misser mag opvallen,
+  // maar herstel moet verdiend worden.
+  _pidQual[pid]=Math.max(0,Math.min(100, oud + (goed?4:-12)));
+}
+window.pidQuality=pidQuality;
+
+function markPidData(pid){ _noDataStreak[pid]=0; _qualBump(pid,true); if(_pidDead.delete(pid)) delete _pidDeadSince[pid]; }
 function markPidNoData(pid){
   _noDataStreak[pid]=(_noDataStreak[pid]||0)+1;
-  if(_noDataStreak[pid]>=PID_DEAD_THRESHOLD && !_pidDead.has(pid)){
+  _qualBump(pid,false);
+  // Snoeien vereist ÉN een reeks missers ÉN een lage score. Een PID die af
+  // en toe hapert (score blijft hoog) blijft gewoon meedraaien.
+  if(_noDataStreak[pid]>=PID_DEAD_THRESHOLD && pidQuality(pid)<35 && !_pidDead.has(pid)){
     _pidDead.add(pid); _pidDeadSince[pid]=Date.now();
-    btDiag(`PID ${pid} ${PID_DEAD_THRESHOLD}× geen data — gesnoeid (herkansing over ${PID_REPROBE_MS/1000}s)`,'info');
+    btDiag(`PID ${pid} ${_noDataStreak[pid]}× geen data (kwaliteit ${pidQuality(pid)}%) — gesnoeid (herkansing over ${PID_REPROBE_MS/1000}s)`,'info');
   }
 }
 
@@ -7879,6 +8014,16 @@ function pidsDueNow(){
     const next=_pidNextPoll[pid]||0;
     if(now>=next) due.push(pid);
   }
+  // PRIORITEIT (fase 2): loopt de bus achter, dan gaan de belangrijke
+  // signalen eerst. Sorteren op poll-interval doet dat vanzelf — toerental
+  // (120ms) en accuspanning in accuprofiel (500ms) staan vooraan, brandstof-
+  // peil (60s) achteraan. Bij gelijk interval: langst wachtende eerst, zodat
+  // niets structureel achteraan blijft hangen.
+  due.sort((a,b)=>{
+    const d=pidPollInterval(a)-pidPollInterval(b);
+    if(d) return d;
+    return (_pidNextPoll[a]||0)-(_pidNextPoll[b]||0);
+  });
   return due;
 }
 
@@ -7893,8 +8038,11 @@ function startPoll(){
   // het kanaal niet onnodig bezet houdt.
   pollTimer=setInterval(async()=>{
     if(!connected||!activePIDs.size) return;
-    if(window._pollBusy) return;
-    window._pollBusy=true;
+    // Echt busslot (fase 1): geen kale boolean meer. Houdt een zware lezer
+    // (sweep/survey/verificatie) de bus vast, dan slaan we deze tik over —
+    // en geven we NOOIT per ongeluk hún slot vrij.
+    const _busTok=PLBus.claim('poll');
+    if(!_busTok) return;
     try{
       if(demoMode){
         // Demo: respecteer dezelfde scheduling zodat het tempo realistisch oogt
@@ -7938,11 +8086,14 @@ function startPoll(){
         const isBitmapPid=p=>/^01(00|20|40|60|80|A0|C0)$/i.test(p);
         const soloPids=due.filter(isBitmapPid);
         const batchable=due.filter(p=>!isBitmapPid(p));
-        // In groepjes van max 3 PIDs — meer dan dat dwingt een fragiele
-        // ISO-TP multiframe respons af waar PIDs uit kunnen vallen
-        for(let g=0;g<batchable.length;g+=3){
+        // Groepsgrootte is nu ADAPTIEF (fase 2): start op 3, zakt bij
+        // herhaalde onvolledige respons naar 2 en dan 1, en klimt na 25
+        // schone rondes weer terug. Beter dan batch volledig uitzetten:
+        // sommige ECU's kunnen prima 2 PIDs aan, maar geen 3.
+        const _grpN=PLBus.batchGroep();
+        for(let g=0;g<batchable.length;g+=_grpN){
           if(!connected) break;
-          const grp=batchable.slice(g,g+3);
+          const grp=batchable.slice(g,g+_grpN);
           const cmd='01'+grp.map(p=>p.slice(2)).join('');
           const raw=await sendCmd(cmd,2500);
           const parsed=splitBatchResponse(raw,grp);
@@ -7994,7 +8145,7 @@ function startPoll(){
       runCorrelationEngine();
       updateEVMode();
     }finally{
-      window._pollBusy=false;
+      PLBus.release(_busTok);
     }
   },100);
 }
@@ -8003,6 +8154,9 @@ function startPoll(){
 let _batchDips=0, _batchOffSince=0;
 function batchDip(){
   _batchDips++;
+  // Eerst een trapje kleiner proberen (3->2->1). Pas als dat óók niet helpt
+  // valt de code hieronder terug op batch helemaal uit.
+  if(_batchDips>=2 && PLBus.batchKleiner()){ _batchDips=0; return; }
   // 3 dips kort na elkaar → batch tijdelijk uit
   if(_batchDips>=3 && window._batchSupported!==false){
     window._batchSupported=false;
@@ -8012,6 +8166,7 @@ function batchDip(){
 }
 function batchOk(){
   if(_batchDips>0) _batchDips--;
+  PLBus.batchGroter();   // 25 schone rondes = een trapje terug omhoog
 }
 // Periodiek: als batch uit staat en het al een tijd goed gaat, één keer
 // opnieuw proberen. Een eenmalige hapering schakelt batch dan niet voorgoed uit.
@@ -8020,10 +8175,137 @@ if(!window._batchRetryTimer) window._batchRetryTimer=setInterval(()=>{
   if(!connected||demoMode) return;
   if(window._batchSupported===false && _batchOffSince && Date.now()-_batchOffSince>30000){
     window._batchSupported=undefined;   // undefined = opnieuw toegestaan
-    _batchDips=0; _batchOffSince=0;
+    _batchDips=0; _batchOffSince=0; PLBus.batchReset();
     btDiag('Multi-PID opnieuw proberen (herstelperiode voorbij)','info');
   }
 },10000);
+
+// ══════════════════════════════════════════════════════════════════
+// BUSDIAGNOSE — live inzicht in wat de OBD-bus doet   (fase 4)
+// ──────────────────────────────────────────────────────────────────
+// Het meest gevraagde stuk: als de responstijd van 25ms naar 180ms
+// springt, wil je dát zien in plaats van te gissen waarom de data
+// onrustig wordt. Toont doorvoer, foutpercentage, ECU-belasting,
+// batchgrootte, wie de bus vasthoudt, de traagste PIDs en de PIDs met
+// de laagste kwaliteitsscore. Plus: pollprofiel handmatig vastzetten.
+// Alleen voor admin — dit is gereedschap, geen gebruikersfunctie.
+// ══════════════════════════════════════════════════════════════════
+let _busDiagTimer=null;
+
+function openBusDiag(){
+  if(!isAdmin()){ showToast?.('Alleen voor admin'); return; }
+  let ov=document.getElementById('busDiagOv');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='busDiagOv';
+    ov.style.cssText='position:fixed;inset:0;z-index:9970;background:rgba(8,11,17,.94);display:flex;flex-direction:column;padding:14px;gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    ov.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">'+
+      '<div style="font-size:16px;font-weight:800;color:var(--tx)">🩺 Busdiagnose</div>'+
+      '<button onclick="PLBus.resetStats();renderBusDiag()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;font:600 12px var(--f);cursor:pointer">Reset</button>'+
+      '<button onclick="closeBusDiag()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:7px 14px;font:600 12px var(--f);cursor:pointer">Sluiten</button>'+
+      '</div><div id="busDiagBody" style="flex:1"></div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display='flex';
+  renderBusDiag();
+  clearInterval(_busDiagTimer);
+  _busDiagTimer=setInterval(renderBusDiag,1000);
+}
+function closeBusDiag(){
+  clearInterval(_busDiagTimer); _busDiagTimer=null;
+  const ov=document.getElementById('busDiagOv'); if(ov) ov.style.display='none';
+}
+window.openBusDiag=openBusDiag; window.closeBusDiag=closeBusDiag;
+
+function _bdKaart(titel, rijen){
+  return '<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:9px">'+
+    '<div style="font-size:11px;font-weight:800;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase;margin-bottom:7px">'+titel+'</div>'+
+    rijen.map(r=>'<div style="display:flex;gap:8px;font-size:13px;line-height:1.9"><span style="color:var(--tx2)">'+r[0]+'</span><span style="margin-left:auto;font-weight:700;color:'+(r[2]||'var(--tx)')+'">'+r[1]+'</span></div>').join('')+
+    '</div>';
+}
+function _bdKleur(waarde, waarschuw, slecht){
+  if(waarde>=slecht) return 'var(--rd)';
+  if(waarde>=waarschuw) return 'var(--or)';
+  return 'var(--gn)';
+}
+
+function renderBusDiag(){
+  const box=document.getElementById('busDiagBody'); if(!box) return;
+  const s=PLBus.stats();
+  const eig=PLBus.owner();
+  const prof=POLL_PROFIELEN[actiefPollProfiel()]||{label:'?',emoji:''};
+
+  let h='';
+
+  // ── verbinding & slot ──
+  h+=_bdKaart('Bus', [
+    ['Status', connected?(demoMode?'demo':'verbonden'):'niet verbonden', connected&&!demoMode?'var(--gn)':'var(--or)'],
+    ['Slot', eig?(eig+' — '+Math.round(PLBus.heldMs())+' ms'):'vrij', eig&&eig!=='poll'?'var(--or)':'var(--tx)'],
+    ['Pauze totaal', Math.round(PLBus.pausedTotal()/100)/10+' s'],
+  ]);
+
+  // ── doorvoer (10s-venster) ──
+  h+=_bdKaart('Doorvoer (laatste 10 s)', [
+    ['Commando/sec', s.perSec],
+    ['Responstijd nu', s.venGemMs+' ms', _bdKleur(s.venGemMs,120,250)],
+    ['Responstijd sessie', s.gemMs+' ms'],
+    ['Foutpercentage', s.foutPct+' %', _bdKleur(s.foutPct,15,35)],
+    ['ECU-belasting', s.belasting+' %', _bdKleur(s.belasting,70,90)],
+    ['Commando totaal', s.totaal+' ('+s.bad+' mis)'],
+  ]);
+
+  // ── polling ──
+  const gesnoeid=_pidDead.size;
+  h+=_bdKaart('Polling', [
+    ['Actieve PIDs', activePIDs.size],
+    ['Gesnoeid (dood)', gesnoeid, gesnoeid?'var(--or)':'var(--gn)'],
+    ['Multi-PID groep', (window._batchSupported===false?'uit':s.batchGroep+' PIDs'), window._batchSupported===false?'var(--or)':'var(--tx)'],
+    ['Strategie', (typeof _connStrategy!=='undefined'&&_connStrategy)?_connStrategy:'—'],
+  ]);
+
+  // ── pollprofiel + handmatig vastzetten ──
+  h+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:9px">'+
+     '<div style="font-size:11px;font-weight:800;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase;margin-bottom:7px">Pollprofiel</div>'+
+     '<div style="font-size:13px;color:var(--tx);font-weight:700;margin-bottom:2px">'+prof.emoji+' '+prof.label+(_pollProfileVast?' (vastgezet)':' (automatisch)')+'</div>'+
+     '<div style="font-size:12px;color:var(--tx2);margin-bottom:9px">'+(prof.desc||'')+'</div>'+
+     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+     Object.keys(POLL_PROFIELEN).filter(k=>k!=='auto').map(k=>{
+       const p=POLL_PROFIELEN[k], aan=(_pollProfileVast===k);
+       return '<button onclick="zetPollProfielVast('+(aan?'null':("'"+k+"'"))+')" style="background:'+(aan?'var(--bl)':'var(--sur2)')+';color:'+(aan?'#fff':'var(--tx2)')+';border:1px solid '+(aan?'var(--bl)':'var(--bd)')+';border-radius:8px;padding:6px 10px;font:700 11px var(--f);cursor:pointer">'+p.emoji+' '+p.label+'</button>';
+     }).join('')+
+     '</div><div style="font-size:11px;color:var(--tx3);margin-top:7px">Nogmaals tikken = weer automatisch (volgt de analyse).</div></div>';
+
+  // ── traagste PIDs ──
+  const perPid=s.perPid||{};
+  const traag=Object.keys(perPid).filter(p=>perPid[p].n>=3)
+    .map(p=>({pid:p, ms:Math.round(perPid[p].msSom/perPid[p].n), n:perPid[p].n, mis:perPid[p].mis}))
+    .sort((a,b)=>b.ms-a.ms).slice(0,6);
+  if(traag.length){
+    h+=_bdKaart('Traagste sensoren', traag.map(x=>{
+      const d=(typeof getPidDef==='function')?getPidDef(x.pid):null;
+      return [((d&&d.name)||x.pid)+' <span style="opacity:.55">'+x.pid+'</span>', x.ms+' ms', _bdKleur(x.ms,150,300)];
+    }));
+  }
+
+  // ── laagste kwaliteitsscore ──
+  const zwak=[...activePIDs].map(p=>({pid:p,q:pidQuality(p)})).filter(x=>x.q<100)
+    .sort((a,b)=>a.q-b.q).slice(0,6);
+  if(zwak.length){
+    h+=_bdKaart('Laagste betrouwbaarheid', zwak.map(x=>{
+      const d=(typeof getPidDef==='function')?getPidDef(x.pid):null;
+      return [((d&&d.name)||x.pid)+' <span style="opacity:.55">'+x.pid+'</span>', x.q+' %', _bdKleur(100-x.q,40,70)];
+    }));
+  } else {
+    h+=_bdKaart('Laagste betrouwbaarheid', [['Alle actieve sensoren','100 %','var(--gn)']]);
+  }
+
+  // ── monitor ──
+  h+=_bdKaart('Rit-monitor', [
+    ['Status', (typeof monitorStatusTekst==='function')?monitorStatusTekst():'—'],
+  ]);
+
+  box.innerHTML=h;
+}
+window.renderBusDiag=renderBusDiag;
 
 // ════════════════════════════════════════
 // DEMO MODE
@@ -9637,6 +9919,7 @@ async function ritFullSweep(){
   const pids=[...supportedPIDs];
   log(`🔍 Volledige sensor-sweep gestart (${pids.length} sensoren)…`,'info');
   let gelezen=0, afwijkend=0;
+  await withBus('rit-sweep', async()=>{
   for(const pid of pids){
     if(!ritActive && gelezen>0) break;   // gestopt? sweep afbreken
     try{
@@ -9651,6 +9934,7 @@ async function ritFullSweep(){
       }
     }catch(e){ /* sensor sloeg over, doorgaan */ }
   }
+  }, 8000);
   log(`✅ Sweep klaar: ${gelezen} gelezen, ${afwijkend} afwijkend`, afwijkend?'warn':'ok');
   if(afwijkend){
     const lijst=ritSweepFindings.map(f=>`${f.name}: ${fv(f.val)} ${f.unit}`).join(', ');

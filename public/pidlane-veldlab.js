@@ -321,6 +321,13 @@ async function vlFullSurvey(){
   if(!connected || demoMode){ showToast('Eerst verbinden met een echte auto (geen demo)'); return; }
   if(_vlSvBusy) return;
   _vlSvBusy=true; _vlSvAbort=false;
+  // De survey leest élke ondersteunde PID (soms 2×) plus bitmaps, DTC-modes en
+  // batchtrappen. Zonder busslot vecht dat de hele tijd met de poll-loop: de
+  // survey duurt dan twee keer zo lang én de live view valt om. Slot pakken,
+  // en pas in de finally weer teruggeven.
+  try{ setPollProfile('expert','full survey'); }catch(e){}
+  let _svBusTok=0;
+  try{ _svBusTok=await PLBus.wait('full-survey', 8000); }catch(_){}
   try{showBusyPill('📋 Full Survey — bus tijdelijk zwaar belast…',15000);}catch(_){}
   const clean=s=>String(s||'').replace(/[\r\n>]+/g,' ').replace(/\s+/g,' ').trim();
   const t0=Date.now();
@@ -512,6 +519,7 @@ async function vlFullSurvey(){
     _vlSvUI('⏹ Survey gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
   }finally{
     _vlSvBusy=false;
+    try{ if(_svBusTok){ PLBus.release(_svBusTok); _svBusTok=0; } }catch(_){}
     // Bus is weer vrij: BT-strategie HERIJKEN op de echte pid-snelheid, zodat
     // analyses hierna op de juiste timing draaien. Eerdere metingen (tijdens
     // of vóór de survey/discovery) kunnen vertekend zijn.

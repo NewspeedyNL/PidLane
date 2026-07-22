@@ -798,3 +798,165 @@ window.HUD_LABEL_DICT ={
     return 'onbekende code ('+n+')';
   };
 })();
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PLBus — ÉÉN SLOT OP DE OBD-BUS   (fase 1)
+   ───────────────────────────────────────────────────────────────────
+   Waarom: de fast-lane poll-loop én een handvol losse lezers (verificatie,
+   gezondheidscheck, rit-sweep, veldlab-survey, monitor, remote) duwden
+   allemaal commando's in dezelfde seriële _btQueue. De scheduler liep dan
+   seconden achter en ÁLLE PIDs werden tegelijk stale — precies het patroon
+   uit de veldlogs. Het oude window._pollBusy was een kale boolean: iedere
+   houder zette 'm in z'n finally op false, dus houder B gaf het slot van
+   houder A vrij.
+   Nu: echt slot met eigenaar + token. Alleen wie het token heeft mag
+   vrijgeven. Een houder die langer dan MAX_HOLD_MS blijft hangen wordt
+   afgebroken (noodrem, geen deadlock). window._pollBusy blijft als spiegel
+   bestaan zodat oude checks blijven werken.
+   Extra: pausedTotal() telt hoeveel ms de bus door NIET-poll-eigenaren
+   bezet was. De stale-watchdog trekt dat eraf, zodat tegels niet rood
+   knipperen tijdens een sweep die ze zelf veroorzaakt.
+   ═══════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+const S={
+  owner:null, token:0, since:0, seq:1,
+  pausedTotal:0, pauseStart:0,
+  tx:0, ok:0, bad:0, msSom:0, msN:0,
+  perPid:Object.create(null),
+  batchGroep:3, batchGoed:0,
+  hist:[]
+};
+const nu=()=>Date.now();
+function diag(m,l){ try{ if(typeof btDiag==='function') btDiag(m,l||'info'); }catch(e){} }
+
+window.PLBus={
+  MAX_HOLD_MS:180000,      // 3 min: daarna geldt een houder als vastgelopen
+
+  claim(naam){
+    if(S.owner){
+      if(nu()-S.since>this.MAX_HOLD_MS){
+        diag('Busslot van "'+S.owner+'" hing '+Math.round((nu()-S.since)/1000)+'s — afgebroken door '+naam,'warn');
+        this._release(S.token,true);
+      } else return 0;
+    }
+    // Legacy-houder die window._pollBusy zelf zette (module die ik gemist heb)
+    if(!S.owner && window._pollBusy===true) return 0;
+    S.owner=naam||'?'; S.token=++S.seq; S.since=nu();
+    if(S.owner!=='poll') S.pauseStart=S.since;
+    window._pollBusy=true;
+    return S.token;
+  },
+
+  release(tok){ return this._release(tok,false); },
+
+  _release(tok,forceer){
+    if(!S.owner) return false;
+    if(!forceer && tok!==S.token) return false;   // niet jouw slot → niet vrijgeven
+    if(S.owner!=='poll' && S.pauseStart) S.pausedTotal += nu()-S.pauseStart;
+    S.pauseStart=0; S.owner=null; S.token=0; S.since=0;
+    window._pollBusy=false;
+    return true;
+  },
+
+  /* Wacht netjes op het slot. Geeft 0 terug als het niet lukt binnen maxMs —
+     de aanroeper gaat dan tóch door (functionaliteit boven discipline). */
+  async wait(naam,maxMs){
+    const t0=nu(), lim=(maxMs===undefined?4000:maxMs);
+    for(;;){
+      const t=this.claim(naam);
+      if(t) return t;
+      if(nu()-t0>lim){ diag('Bus niet vrij voor "'+naam+'" na '+lim+'ms (houder: '+(S.owner||'?')+') — gaat tóch door','warn'); return 0; }
+      await new Promise(r=>setTimeout(r,50));
+    }
+  },
+
+  busy(){ return !!S.owner; },
+  owner(){ return S.owner; },
+  heldMs(){ return S.owner?(nu()-S.since):0; },
+  pausedTotal(){ return S.pausedTotal + (S.pauseStart?(nu()-S.pauseStart):0); },
+  breek(reden){
+    if(S.owner) diag('Busslot geforceerd vrij ('+reden+'), was van "'+S.owner+'"','warn');
+    this._release(0,true); S.pausedTotal=0; S.pauseStart=0;
+  },
+
+  /* ── telemetrie (voedt het busdiagnose-scherm) ── */
+  note(cmd,ms,bad){
+    S.tx++; if(bad) S.bad++; else S.ok++;
+    if(ms>0){ S.msSom+=ms; S.msN++; }
+    S.hist.push({t:nu(),ms:ms||0,bad:!!bad});
+    if(S.hist.length>400) S.hist.splice(0,S.hist.length-400);
+    const m=/^01([0-9A-F]{2})1?$/i.exec(String(cmd||''));
+    if(m){
+      const p='01'+m[1].toUpperCase();
+      const e=S.perPid[p]||(S.perPid[p]={n:0,msSom:0,mis:0});
+      e.n++; e.msSom+=(ms||0); if(bad) e.mis++;
+    }
+  },
+  stats(){
+    const t=nu(), w=S.hist.filter(h=>t-h.t<10000);
+    const n=w.length, badN=w.filter(h=>h.bad).length;
+    const msSom=w.reduce((a,h)=>a+h.ms,0);
+    const bezet=Math.min(100,Math.round(msSom/100));   // 10s venster → % bustijd
+    return {
+      totaal:S.tx, ok:S.ok, bad:S.bad,
+      gemMs: S.msN?Math.round(S.msSom/S.msN):0,
+      venGemMs: n?Math.round(msSom/n):0,
+      perSec: +(n/10).toFixed(1),
+      foutPct: n?Math.round(badN/n*100):0,
+      belasting: bezet,
+      batchGroep:S.batchGroep,
+      perPid:S.perPid
+    };
+  },
+  resetStats(){ S.tx=S.ok=S.bad=S.msSom=S.msN=0; S.perPid=Object.create(null); S.hist=[]; },
+
+  /* ── adaptieve batchgrootte (fase 2) ── */
+  batchGroep(){ return S.batchGroep; },
+  batchKleiner(){
+    S.batchGoed=0;
+    if(S.batchGroep>1){ S.batchGroep--; diag('Multi-PID groep verkleind naar '+S.batchGroep,'warn'); return true; }
+    return false;
+  },
+  batchGroter(){
+    if(S.batchGroep>=3) return false;
+    if(++S.batchGoed<25) return false;
+    S.batchGoed=0; S.batchGroep++; diag('Multi-PID groep terug omhoog naar '+S.batchGroep,'ok'); return true;
+  },
+  batchReset(){ S.batchGroep=3; S.batchGoed=0; }
+};
+
+/* Handige wrapper: alles binnen fn() draait met de bus geclaimd. */
+window.withBus=async function(naam,fn,maxWachtMs){
+  const tok=await window.PLBus.wait(naam,maxWachtMs);
+  try{ return await fn(); }
+  finally{ if(tok) window.PLBus.release(tok); }
+};
+})();
+
+/* ═══════════════════════════════════════════════════════════════════
+   POLL_PROFIELEN — pollstrategie per situatie   (fase 3)
+   ───────────────────────────────────────────────────────────────────
+   Eén universeel tempo werkt niet: de accucheck wil 0142 elke halve
+   seconde, terwijl de rit-monitor juist een rustige bus wil zodat de
+   ECU-buffers gelezen kunnen worden. mult = globale vermenigvuldiger op
+   álle intervallen; ovr = harde override per PID-suffix (ms).
+   ═══════════════════════════════════════════════════════════════════ */
+window.POLL_PROFIELEN={
+  basis:   {label:'Basis',       emoji:'⚖️', mult:1.0,  ovr:{}, desc:'Standaardtempo'},
+  live:    {label:'Live view',   emoji:'📊', mult:0.85, ovr:{'0C':120,'0D':120,'11':120,'04':150},
+            desc:'Vloeiende tegels — toeren/snelheid/gas voorop'},
+  expert:  {label:'Expert',      emoji:'🔬', mult:1.0,  ovr:{}, desc:'Alles bevraagbaar, geen inperking'},
+  monitor: {label:'Rit-monitor', emoji:'🔔', mult:1.4,  ovr:{'0C':250,'0D':250,'05':5000,'42':5000},
+            desc:'Bus rustig houden zodat de ECU-buffers ruimte krijgen'},
+  caravan: {label:'Caravan',     emoji:'🚐', mult:1.1,  ovr:{'0C':200,'0D':200,'04':300,'10':400,'05':5000,'5C':10000},
+            desc:'Belasting/koeling voorop, rest rustig'},
+  accu:    {label:'Accucheck',   emoji:'🔋', mult:1.2,  ovr:{'42':500,'0C':300,'04':1000,'05':10000},
+            desc:'Accuspanning snel, motorcontext traag'},
+  rustig:  {label:'Rustig',      emoji:'🐢', mult:2.2,  ovr:{}, desc:'Voor trage adapters of kieskeurige ECU\u2019s'}
+};
+
+/* Welke analyse kiest automatisch welk pollprofiel? */
+window.ANALYSE2POLL={ basis:'basis', brandstof:'basis', emissie:'basis',
+                      rit:'monitor', totaal:'basis', accu:'accu' };
