@@ -426,12 +426,71 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
    Navigatie: ☰-menu (Rapporten), 4 deuren (Live view) en tabs (PID-keuze). ════ */
 .lade-handles { display:none !important; }
 .tabs .tab-action { flex:0 0 auto; margin-left:auto; }
-/* 2026-07-22: #remPill ("📡 delen · 👁 n") is position:fixed op top:52px/right:10px
-   en landde daarmee precies op de PID-keuze-knop, die via margin-left:auto óók
-   rechts in de tabbalk staat. showPill() in pidlane-remote.js zet nu de klasse
-   .rem-pill-on op <html>; de tabbalk reserveert dan rechts ruimte, zodat beide
-   naast elkaar passen. Marge aanpasbaar via --rempill-gap. */
-html.rem-pill-on .tabs { padding-right:var(--rempill-gap,140px); }
+/* ══ GERESERVEERDE BAAN RECHTSBOVEN ══
+   2026-07-22: #remPill ("📡 delen · 👁 n") staat position:fixed op
+   top:52px/right:10px met z-index 9600 en zweeft dus over álles heen, ook over
+   #welcomeScreen (z-index 9500). Alles wat óók rechtsboven staat, moet daarom
+   opzij wanneer die chip actief is. showPill() in pidlane-remote.js zet de
+   klasse .rem-pill-on op <html>; hieronder wijken de twee bewoners van die hoek:
+     • .tabs  → de PID-keuze-knop (margin-left:auto duwt hem rechts)
+     • .fav-wrap → de ⭐-knop in de welkom-header
+   Eén mechanisme, dus een volgend element dat daar komt heeft genoeg aan één
+   regel erbij. Gemeten op een tablet (DPR 1.5) bezet de chip ~135 CSS px vanaf
+   de rechterrand; 150px geeft marge voor een driecijferige kijkersteller. */
+html.rem-pill-on .tabs { padding-right:var(--rempill-gap,150px); }
+html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
+/* Op smalle schermen liever afbreken dan de titel platdrukken. */
+.welcome-header-row { flex-wrap:wrap; gap:8px; }
+
+/* ══ GERESERVEERDE BAAN RECHTSONDER ══
+   2026-07-22: #monChipFab (geminimaliseerde Rit-monitor) en #remDrivePill
+   (expert draait op remote data) stonden allebei hard op bottom:14-16px /
+   right:12px. Zodra je de monitor minimaliseerde tijdens een expert-sessie
+   lagen ze exact op elkaar. Ze hangen nu in #fabLane, die ze als kolom van
+   onder naar boven stapelt. Chips hebben géén eigen positionering meer, dus
+   een nieuwe chip toevoegen = 'm in #fabLane hangen, klaar. Verbergen blijft
+   display:none, waardoor een chip uit de stapel valt zonder gat achter te
+   laten. pointer-events op de baan staat uit zodat de lege ruimte eromheen
+   niet klikbaar wordt; de chips zelf vangen hun eigen kliks weer op. */
+#fabLane {
+  position:fixed; right:12px; bottom:14px; z-index:9600;
+  display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  pointer-events:none;
+}
+#fabLane > * { pointer-events:auto; }
+
+/* ══ VASTE / CODE-PIDs IN GEWONE WOORDEN ══
+   2026-07-22: PIDs als brandstoftype of OBD-norm zijn geen meetwaarde maar een
+   code. Een trendlijn of een cijfer van 32px is daar verspilde ruimte — en
+   "Brandstoftype 4" zegt niemand iets. Deze PIDs (zie PID_TEKST in
+   pidlane-data.js) komen in dit compacte blok als "Naam · Woord". Twee kolommen
+   op ruime schermen, één op smalle. De weergaveknoppen Trends/Getallen/Puntjes
+   raken dit blok bewust niet: er valt niets te trenden. */
+.vastblok {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:6px 14px;
+  background:var(--sur); border:1px solid var(--bd); border-radius:var(--r);
+  padding:11px 14px; margin-bottom:10px; box-shadow:var(--ss);
+}
+.vast-item {
+  display:flex; align-items:baseline; gap:8px; min-width:0;
+  padding:3px 0; cursor:pointer;
+}
+.vast-lbl {
+  flex:0 0 auto; font-size:11px; font-weight:700; color:var(--tx3);
+  text-transform:uppercase; letter-spacing:.5px;
+}
+.vast-val {
+  flex:1 1 auto; min-width:0; font-size:13.5px; font-weight:700; color:var(--tx);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.vast-item.warn .vast-val { color:var(--or); }
+.vast-item.danger .vast-val { color:var(--rd); }
+/* Wisselende codes (bv. brandstofsysteem) krijgen een stipje zodat je ziet
+   dat het een live status is en geen vast gegeven. */
+.vast-item.live .vast-lbl::after {
+  content:''; display:inline-block; width:5px; height:5px; border-radius:50%;
+  background:var(--gn); margin-left:5px; vertical-align:middle;
+}
 .cc { padding-bottom:16px; }
 #welcomeScreen .welcome-scroll { padding-bottom:24px; }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }

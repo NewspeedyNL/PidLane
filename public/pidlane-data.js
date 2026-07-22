@@ -683,3 +683,118 @@ window.HUD_LABEL_DICT ={
   'kort':'K','lang':'L','status':'STAT','systeem':'SYS','sensor':'SENS',
   'druk':'DRUK','motor':'MOTOR','turbo':'TURBO','compressor':'COMPR',
 };
+
+/* ════════════════════════════════════════════════════════════════════
+   PID_TEKST — PIDs die géén meetwaarde zijn maar een CODE of BITVLAG.
+   (toegevoegd 2026-07-22)
+
+   Een sparkline of een cijfer van 32px is verspilde ruimte bij zulke PIDs:
+   "Brandstoftype 4" zegt niemand iets, "Brandstoftype · Diesel" wel. Deze
+   tabel vertaalt de ruwe code naar gewone woorden; de live view zet ze in
+   een compact tekstblok in plaats van in een tegel.
+
+   vast:true  → verandert niet tijdens een sessie (brandstoftype, OBD-norm)
+   vast:false → wel een code/vlag, maar kan wisselen tijdens het rijden
+                (brandstofsysteem open/gesloten lus, motorlampje)
+   map        → directe code→woord vertaling
+   fn         → decoder voor bitvlaggen/samengestelde waarden
+
+   Bewust ADDITIEF: de bestaande PID-definities blijven ongewijzigd, dit is
+   een aparte opzoektabel. Een PID hier toevoegen is genoeg om hem uit de
+   tegelweergave te halen.
+   ════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+  // SAE J1979 PID 51/8B — brandstoftype
+  const BRANDSTOF = {
+    0:'Niet opgegeven', 1:'Benzine', 2:'Methanol', 3:'Ethanol', 4:'Diesel',
+    5:'LPG', 6:'CNG (aardgas)', 7:'Propaan', 8:'Elektrisch',
+    9:'Bifuel — rijdt op benzine', 10:'Bifuel — rijdt op methanol',
+    11:'Bifuel — rijdt op ethanol', 12:'Bifuel — rijdt op LPG',
+    13:'Bifuel — rijdt op CNG', 14:'Bifuel — rijdt op propaan',
+    15:'Bifuel — rijdt elektrisch', 16:'Bifuel — elektrisch + verbranding',
+    17:'Hybride benzine', 18:'Hybride ethanol', 19:'Hybride diesel',
+    20:'Hybride elektrisch', 21:'Hybride — elektrisch + verbranding',
+    22:'Hybride regeneratief', 23:'Bifuel — rijdt op diesel'
+  };
+  // SAE J1979 PID 1C — welke OBD-norm de auto volgt
+  const OBDNORM = {
+    1:'OBD-II (Californië ARB)', 2:'OBD (federaal EPA)', 3:'OBD en OBD-II',
+    4:'OBD-I', 5:'Niet OBD-compliant', 6:'EOBD (Europa)', 7:'EOBD en OBD-II',
+    8:'EOBD en OBD', 9:'EOBD, OBD en OBD-II', 10:'JOBD (Japan)',
+    11:'JOBD en OBD-II', 12:'JOBD en EOBD', 13:'JOBD, EOBD en OBD-II',
+    17:'EMD', 18:'EMD+', 19:'HD OBD-C (zwaar transport)', 20:'HD OBD',
+    21:'WWH OBD', 23:'HD EOBD-I', 24:'HD EOBD-I N', 25:'HD EOBD-II',
+    26:'HD EOBD-II N', 28:'OBDBr-1 (Brazilië)', 29:'OBDBr-2',
+    30:'KOBD (Korea)', 31:'IOBD I (India)', 32:'IOBD II', 33:'HD EOBD-IV'
+  };
+  // Bitvlaggen → lijstje woorden. Geen enkele vlag gezet = null.
+  function vlaggen(v, tabel){
+    const uit=[];
+    Object.keys(tabel).forEach(bit=>{ if(v & Number(bit)) uit.push(tabel[bit]); });
+    return uit.length ? uit.join(' · ') : null;
+  }
+  // O2-sensoren aanwezig (PID 13): bit 0-3 = bank 1 sensor 1-4, bit 4-7 = bank 2
+  function o2Bank2x4(v){
+    const b1=[],b2=[];
+    for(let i=0;i<4;i++){ if(v&(1<<i)) b1.push(i+1); }
+    for(let i=4;i<8;i++){ if(v&(1<<i)) b2.push(i-3); }
+    const d=[];
+    if(b1.length) d.push('bank 1: sensor '+b1.join(', '));
+    if(b2.length) d.push('bank 2: sensor '+b2.join(', '));
+    return d.length ? d.join(' · ') : null;
+  }
+  // O2-sensoren aanwezig (PID 1D): 2 sensoren per bank, 4 banken
+  function o2Bank4x2(v){
+    const d=[];
+    for(let bank=0;bank<4;bank++){
+      const s=[];
+      if(v&(1<<(bank*2)))   s.push(1);
+      if(v&(1<<(bank*2+1))) s.push(2);
+      if(s.length) d.push('bank '+(bank+1)+': sensor '+s.join(', '));
+    }
+    return d.length ? d.join(' · ') : null;
+  }
+
+  window.PID_TEKST = {
+    // ── Vast: verandert niet tijdens een sessie ──
+    '0151':{ vast:true,  map:BRANDSTOF },
+    '018B':{ vast:true,  map:BRANDSTOF },
+    '011C':{ vast:true,  map:OBDNORM },
+    '0113':{ vast:true,  fn:o2Bank2x4, leeg:'Geen O2-sensoren gemeld' },
+    '011D':{ vast:true,  fn:o2Bank4x2, leeg:'Geen O2-sensoren gemeld' },
+    // ── Code/vlag, maar kan wisselen tijdens het rijden ──
+    '0101':{ vast:false, map:{0:'Uit', 1:'AAN — motorlampje brandt'} },
+    '0103':{ vast:false, leeg:'Geen status gemeld', fn:v=>vlaggen(v,{
+              1:'Open lus — motor nog te koud',
+              2:'Gesloten lus — O2-regeling actief',
+              4:'Open lus — vollast of gas los',
+              8:'Open lus — systeemstoring',
+              16:'Gesloten lus — storing in de regelkring'}) },
+    '0112':{ vast:false, leeg:'Geen status gemeld', fn:v=>vlaggen(v,{
+              1:'Naar uitlaat (upstream)',
+              2:'Na katalysator (downstream)',
+              4:'Uit / naar buitenlucht',
+              8:'Naar inlaat (diagnose)'}) },
+    '011E':{ vast:false, map:{0:'Uit', 1:'Actief'} }
+  };
+
+  /* Staat deze PID in het tekstblok in plaats van in een tegel? */
+  window.pidIsTekst = function(pid){
+    return !!(window.PID_TEKST && window.PID_TEKST[pid]);
+  };
+  /* Ruwe waarde → gewone woorden. Altijd een string, nooit null. */
+  window.pidTekstWaarde = function(pid, val){
+    const t = window.PID_TEKST && window.PID_TEKST[pid];
+    if(!t) return null;
+    if(val===undefined || val===null || (typeof val==='number' && isNaN(val))) return '—';
+    const n = Math.round(Number(val));
+    if(!isFinite(n)) return '—';
+    if(typeof t.fn==='function'){
+      let r=null; try{ r=t.fn(n); }catch(e){}
+      return r || t.leeg || ('code '+n);
+    }
+    if(t.map && t.map[n]!==undefined) return t.map[n];
+    return 'onbekende code ('+n+')';
+  };
+})();

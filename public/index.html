@@ -22,10 +22,39 @@
         de generieke regels. Nu: <1024px echte bottom-sheet, >=1024px echt
         zijpaneel, beide dicht volledig uit beeld.
      3) DEEL-CHIP OVER PID-KEUZE: #remPill is position:fixed op top:52px/
-        right:10px en landde exact op de PID-keuze-knop, die via
-        margin-left:auto ook rechts in .tabs staat. showPill() in
-        pidlane-remote.js zet nu ook .rem-pill-on op <html>; .tabs reserveert
-        dan rechts ruimte (--rempill-gap, standaard 140px).
+        right:10px met z-index 9600 en zweeft dus over álles heen — ook over
+        #welcomeScreen (9500). Hij landde exact op de PID-keuze-knop, die via
+        margin-left:auto ook rechts in .tabs staat. De rechterbovenhoek is nu
+        expliciet een GERESERVEERDE BAAN: showPill() in pidlane-remote.js zet
+        .rem-pill-on op <html>, en in pidlane.css wijken alle bewoners van die
+        hoek (.tabs voor PID-keuze, .fav-wrap voor de ⭐-knop). Eén mechanisme,
+        dus een volgend element daar heeft genoeg aan één regel erbij. Gemeten
+        chipbreedte ~135 CSS px; --rempill-gap staat op 150px voor marge.
+        .welcome-header-row mag daarbij afbreken i.p.v. de titel plat te drukken.
+     5) ZELFDE PROBLEEM RECHTSONDER (preventief opgelost): #monChipFab (de
+        geminimaliseerde Rit-monitor) en #remDrivePill (expert op remote data)
+        stonden allebei hard op bottom:14-16px / right:12px en lagen dus exact
+        op elkaar zodra je de monitor minimaliseerde tijdens een expert-sessie.
+        Nieuwe baan #fabLane stapelt zwevende chips daar als kolom (van onder
+        naar boven, gap 8px). Beide chips hebben hun eigen positionering
+        ingeleverd; een nieuwe chip toevoegen is voortaan 'm in #fabLane hangen.
+        Verbergen blijft display:none, dus een chip valt uit de stapel zonder
+        gat. NB: #ritDash en #caravanDash zitten NIET in deze baan — dat zijn
+        inset:0-overlays, geen hoek-chips.
+     6) VASTE / CODE-PIDs IN GEWONE WOORDEN: PIDs als brandstoftype (0151) of
+        OBD-norm (011C) zijn geen meetwaarde maar een code. Ze kregen tot nu toe
+        dezelfde tegel als toerental en snelheid: een sparkline over een vlakke
+        lijn en een cijfer van 32px — verspilde ruimte, en "Brandstoftype 4"
+        zegt niemand iets. Nieuw: PID_TEKST in pidlane-data.js vertaalt zulke
+        codes naar woorden ("Diesel", "EOBD (Europa)", "Gesloten lus —
+        O2-regeling actief"), en renderGauges() zet ze in een compact
+        tekstblok (#vasteData) boven de tegels i.p.v. in de grid. applyG()
+        heeft een afslag naar boven zodat die regels live blijven bijwerken.
+        vast:true = verandert niet tijdens de sessie; vast:false = wel een code
+        maar kan wisselen (brandstofsysteem, MIL) en krijgt een groen stipje.
+        Opgenomen: 0151, 018B, 011C, 0113, 011D, 0101, 0103, 0112, 011E.
+        Volledig additief: de bestaande PID-definities zijn niet aangeraakt, en
+        een PID hier toevoegen is genoeg om hem uit de tegelweergave te halen.
      4) FAVORIETEN ONZICHTBAAR: #favBar had z-index 9450, #welcomeScreen
         heeft 9500 met ondoorzichtige achtergrond — en favBarSync() toonde de
         balk uitsluitend zolang datzelfde startscherm zichtbaar was. Hij lag
@@ -1102,6 +1131,12 @@
           <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
           <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
         </div>
+        <!-- Vaste/code-PIDs (brandstoftype, OBD-norm, …) in gewone woorden.
+             Een sparkline of 32px-cijfer is zonde van de ruimte bij een waarde
+             die niet beweegt of die eigenlijk een code is. Gevuld door
+             renderGauges(); blijft leeg en verborgen als er geen zulke PIDs
+             geselecteerd zijn. -->
+        <div class="vastblok" id="vasteData" style="display:none"></div>
         <div class="gg" id="gGrid">
           <div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>
         </div>
@@ -3458,6 +3493,8 @@ async function ensurePIDListActive(pidList){
 // ════════════════════════════════════════
 function renderGauges(){
   const g=document.getElementById('gGrid'); g.innerHTML='';
+  const vast=document.getElementById('vasteData');
+  if(vast){ vast.innerHTML=''; vast.style.display='none'; }
   const sw=document.getElementById('pidViewSwitch');
   if(!activePIDs.size){
     if(sw) sw.style.display='none';
@@ -3468,12 +3505,32 @@ function renderGauges(){
   // Brandstof → ... → Overig). discoveredPIDDefs is al zo gesorteerd; PIDs
   // die daar niet in staan komen achteraan. Voorheen: Set-invoegvolgorde.
   const _ord={}; (discoveredPIDDefs||[]).forEach((d,i)=>{ _ord[d.pid]=i; });
+  let vastAantal=0;
   [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     // Weergave-poort: diesel/SCR-sensoren (AdBlue, NOx, DPF) horen niet op een
     // benzineauto, ook al staat de PID (door timing of oude selectie) in
     // activePIDs. Filter op het laatste moment — dekt élk toevoegpad.
     if(!vehiclePlausiblePid(pid)) return;
+
+    // ── Code-/vlag-PIDs: gewone woorden in het compacte blok, geen tegel ──
+    // Brandstoftype, OBD-norm, brandstofsysteem-status enz. hebben geen
+    // meetverloop; een sparkline of 32px-cijfer is daar verspilde ruimte.
+    if(vast && typeof pidIsTekst==='function' && pidIsTekst(pid)){
+      const t=(window.PID_TEKST||{})[pid]||{};
+      const row=document.createElement('div');
+      row.className='vast-item'+(t.vast?'':' live');
+      row.id='vt-'+pid;
+      row.title=(t.vast?'Vast gegeven':'Live status')+' — dubbeltik = sensor uitzetten';
+      const lbl=document.createElement('span'); lbl.className='vast-lbl'; lbl.textContent=d.name;
+      const val=document.createElement('span'); val.className='vast-val'; val.id='vv-'+pid;
+      val.textContent=(pidVals[pid]!==undefined)?pidTekstWaarde(pid,pidVals[pid]):'—';
+      row.appendChild(lbl); row.appendChild(val);
+      row.onclick=function(){ pidTileTap(pid); };
+      vast.appendChild(row); vastAantal++;
+      return;
+    }
+
     const isMan=_scenario.enabled && _scenario.pids[pid]!==undefined;
     const c=document.createElement('div'); c.className='gc'+(isMan?' gc-manueel':''); c.id='gc-'+pid;
     const manTag=isMan?' <span style="font-size:7px;font-weight:800;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;vertical-align:middle">MAN</span>':'';
@@ -3488,6 +3545,8 @@ function renderGauges(){
   });
   // Herstel actieve weergavemodus op de nieuwe grid
   if(pidViewMode!=='full'){ g.classList.add('view-'+pidViewMode); }
+  // Tekstblok alleen tonen als er ook echt code-PIDs geselecteerd zijn
+  if(vast) vast.style.display = vastAantal ? 'grid' : 'none';
 }
 // ── Dubbeltik op een tegel/waarde/puntje = PID uitzetten ──
 // Alleen deselecteren; weer aanzetten gaat via het sensorkeuze-scherm.
@@ -3564,6 +3623,24 @@ function startStaleWatchdog(){
 function stopStaleWatchdog(){ if(_staleWatchdog){ clearInterval(_staleWatchdog); _staleWatchdog=null; } }
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
+  // Code-/vlag-PIDs staan in het tekstblok, niet in een tegel: daar alleen de
+  // vertaalde tekst bijwerken. Zonder deze afslag zou de rest hieronder op een
+  // niet-bestaande #gc-… kaart stuklopen en de waarde nooit updaten.
+  if(typeof pidIsTekst==='function' && pidIsTekst(pid)){
+    const row=document.getElementById('vt-'+pid);
+    const el=document.getElementById('vv-'+pid);
+    if(el) el.textContent=pidTekstWaarde(pid,val);
+    if(row){
+      let st='ok';
+      if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
+      else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
+      // Motorlampje aan is altijd rood, ongeacht drempels
+      if(pid==='0101' && Math.round(val)===1) st='danger';
+      row.classList.toggle('warn', st==='warn');
+      row.classList.toggle('danger', st==='danger');
+    }
+    return;
+  }
   const card=document.getElementById('gc-'+pid); if(!card) return;
   let st='ok';
   if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
@@ -4268,11 +4345,23 @@ function _monChipMaak(){
   if(_monChipEl) return _monChipEl;
   const c=document.createElement('div');
   c.id='monChipFab';
-  c.style.cssText='position:fixed;bottom:14px;right:12px;z-index:9500;display:none;align-items:center;gap:7px;background:var(--sur,#151b24);border:1.5px solid var(--bd,#26303b);color:var(--tx,#e6e9ef);border-radius:22px;padding:7px 13px;font-family:var(--f);font-size:13px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.45);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent';
+  /* Geen eigen bottom/right/z-index meer: de chip hangt in #fabLane (zie
+     pidlane.css), die de stapeling rechtsonder regelt. Zo botst hij niet meer
+     met #remDrivePill wanneer de monitor geminimaliseerd is tijdens een
+     expert-sessie. */
+  c.style.cssText='display:none;align-items:center;gap:7px;background:var(--sur,#151b24);border:1.5px solid var(--bd,#26303b);color:var(--tx,#e6e9ef);border-radius:22px;padding:7px 13px;font-family:var(--f);font-size:13px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.45);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent';
   c.innerHTML='<span>🛡️</span><span id="monChipSpd">— km/u</span><span id="monChipCnt" style="display:none;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--or,#f2820c);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center"></span>';
   c.title='Rit-monitor openen';
   c.onclick=()=>{ try{ openMonitorView(); }catch(e){} };
-  document.body.appendChild(c);
+  const lane=document.getElementById('fabLane');
+  if(lane){ lane.appendChild(c); }
+  else{
+    // Baan nog niet geparsed (praktisch onmogelijk: _monChipTick draait pas na
+    // een timer of gebruikersactie). Dan positioneert de chip zichzelf, zodat
+    // hij nooit als los blok in de body-flow belandt.
+    c.style.position='fixed'; c.style.right='12px'; c.style.bottom='14px'; c.style.zIndex='9600';
+    document.body.appendChild(c);
+  }
   _monChipEl=c;
   return c;
 }
@@ -10120,7 +10209,18 @@ document.addEventListener('DOMContentLoaded',function(){
 </style>
 
 <div id="remPill" onclick="PLRemote.openShare()">📡 delen · 👁 <span id="remPillN">0</span></div>
-<div id="remDrivePill" onclick="PLRemote.openExpert()" style="position:fixed;bottom:16px;right:12px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid #9d8cff;color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer">🔭 remote</div>
+
+<!-- ══ GERESERVEERDE BAAN RECHTSONDER ══
+     Zwevende status-chips stapelen hier automatisch op (kolom, van onder naar
+     boven). Voorheen stonden #monChipFab en #remDrivePill allebei hard op
+     bottom:14-16px/right:12px en lagen ze dus bovenop elkaar zodra de
+     Rit-monitor geminimaliseerd was tijdens een expert-sessie. Chips hebben nu
+     géén eigen positionering meer; nieuwe chips hoeven alleen in #fabLane
+     gehangen te worden. Verbergen blijft display:none, dus ze vallen netjes
+     uit de stapel zonder gat. ══ -->
+<div id="fabLane">
+  <div id="remDrivePill" onclick="PLRemote.openExpert()" style="display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid #9d8cff;color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer">🔭 remote</div>
+</div>
 
 <div class="rem-ov" id="remShareOv">
  <div class="rem-card">
