@@ -1,6 +1,21 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-22 16:40 (CET) — OBD-BUSDISCIPLINE (fase 1 t/m 4)
+     Build: 2026-07-22 21:35 (CET) — REMOTE CONFIG BEREIKT DE APP
+
+     De feature-flags uit admin.html kwamen nooit aan. loadRemoteConfig()
+     draaide alleen in DOMContentLoaded, dus VOOR het sessietoken bestond:
+     window.APP_TOKEN stond op dat moment nog leeg, de Worker gaf 401 op
+     GET /api/config, en de app deed daar stilzwijgend niets mee. Gevolg:
+     pl_remote_config in localStorage bleef leeg, de app draaide permanent
+     op de hardcoded fallback (alles aan) en elke toggle in admin.html
+     landde wel in Airtable maar werd nooit gelezen.
+     Drie reparaties: (1) loadRemoteConfig pakt het token zelf uit tokLoad()
+     als window.APP_TOKEN nog leeg is, (2) hij wordt opnieuw aangeroepen in
+     finishLogin() — dat dekt verse login en sessieherstel, want beide zetten
+     het token voordat finishLogin draait, (3) slagen en falen worden nu
+     gelogd, zodat dit nooit meer stil kan mislukken.
+
+     Vorige build: 2026-07-22 16:40 (CET) — OBD-BUSDISCIPLINE (fase 1 t/m 4)
      De onstabiele PID-metingen uit de veldlogs kwamen niet van de auto of de
      OBDLink, maar van onszelf: meerdere lezers duwden tegelijk commando's in
      dezelfde seriele wachtrij, waardoor de poll-scheduler seconden achterliep
@@ -2060,6 +2075,13 @@ function finishLogin(user, account){
     log('Config geladen: v'+_v+' \u2014 '+Object.keys(USERS).length+' gebruikers','info');
   }catch(e){}
   log('Klik "Verbinden" of "Demo modus" om te starten.','info');
+
+  // Remote config NU pas ophalen. Bij boot bestond het sessietoken nog niet,
+  // dus die eerste poging kon 401 opleveren. Hier is het token gegarandeerd
+  // gezet: zowel de verse login (tokSave -> finishLogin) als het herstel van
+  // een onthouden sessie (window.APP_TOKEN=_tok.token -> finishLogin) zetten
+  // het ervoor. Zonder deze aanroep bereiken de admin-toggles de app nooit.
+  try{ loadRemoteConfig(); }catch(e){}
 
   // Admin krijgt ALTIJD de beste (crash-vaste) live-log — geen drempel.
   try{
@@ -5457,18 +5479,45 @@ function _cfgBool(v, def){
   if(v===undefined||v===null||v==='') return def;
   return (v===true||v==='true'||v==='1');
 }
+// GET /api/config vereist een geldig sessietoken. Deze functie draait op twee
+// momenten: bij boot (DOMContentLoaded) en opnieuw in finishLogin(). Bij boot
+// is window.APP_TOKEN nog leeg — dat wordt pas gezet bij login of bij herstel
+// van een onthouden sessie. Daarom pakken we het token hier desnoods zelf uit
+// tokLoad(): is er een onthouden, nog geldige sessie, dan slaagt de fetch al
+// bij boot. Is die er niet, dan faalt hij netjes en haalt finishLogin() de
+// config alsnog op zodra er wel een token is.
+//
+// LET OP bij toekomstig sleutelwerk: faalt dit stil, dan lijkt admin.html
+// kapot terwijl de config gewoon in Airtable staat. Daarom loggen we hier
+// altijd de uitkomst — zichtbaar in het logcentrum.
 async function loadRemoteConfig(){
+  let _tok='';
+  try{ _tok = window.APP_TOKEN || (tokLoad()?.token) || ''; }catch(e){ _tok = window.APP_TOKEN || ''; }
   try{
     const url=(window.PROXY_URL||'').replace(/\/$/,'')+'/api/config';
-    const r=await fetch(url,{ headers:{ 'X-App-Token':(window.APP_TOKEN||'') } });
-    if(!r.ok) return;
+    if(!_tok){ try{ log('Config: nog geen sessietoken — wordt na login opgehaald','info'); }catch(e){} return false; }
+    const r=await fetch(url,{ headers:{ 'X-App-Token':_tok } });
+    if(!r.ok){
+      try{ log('Config niet geladen — HTTP '+r.status+' (app draait op standaardinstellingen)','warn'); }catch(e){}
+      return false;
+    }
     const cfg=await r.json();
     if(cfg&&typeof cfg==='object'){
       window.PID_CONFIG={...window.PID_CONFIG,...cfg};
       try{ localStorage.setItem('pl_remote_config',JSON.stringify(window.PID_CONFIG)); }catch(e){}
       try{ applyConfigToUI(); }catch(e){}
+      try{
+        const _uit=Object.keys(FEATURE_TOGGLES||{}).filter(k=>!featOn(k));
+        log('Config geladen: '+Object.keys(cfg).length+' sleutels'+(_uit.length?' — uit: '+_uit.join(', '):' — alles aan'),'ok');
+      }catch(e){}
+      return true;
     }
-  }catch(e){ /* offline / nog geen config → fallback blijft actief */ }
+    return false;
+  }catch(e){
+    // offline / Worker onbereikbaar → fallback blijft actief
+    try{ log('Config niet bereikbaar — app draait op standaardinstellingen','warn'); }catch(_e){}
+    return false;
+  }
 }
 // ════════════════════════════════════════════════════════════════
 //  FEATURE-FLAGS — alle functies op afstand aan/uit via admin.html.
