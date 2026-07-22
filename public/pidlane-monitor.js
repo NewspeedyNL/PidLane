@@ -86,16 +86,16 @@ const PLMon = {
     // Netjes wachten als de fast-lane midden in een pollronde zit.
     if (window._pollBusy){ return; } // volgende tik proberen we opnieuw
     this._busy = true;
+    window._pollBusy = true;         // claim de bus (zoals fast-lane/verify/remote) — anders sturen twee tegelijk naar de ELM327 en valt de verbinding weg
     try{
       const st = await this._readStatus();          // mode 0101
-      if (!st){ this._busy=false; return; }         // NO DATA / storing: overslaan
+      if (!st) return;                              // NO DATA / storing: overslaan (finally geeft de bus terug)
 
       if (!this._baselineDone){
         // Nulmeting: bestaande situatie vastleggen zonder events te maken.
         this.prev = st;
         await this._harvest(true);
         this._baselineDone = true;
-        this._busy = false;
         return;
       }
 
@@ -110,7 +110,7 @@ const PLMon = {
       }
       this.prev = st;
     }catch(e){ /* bus-hik: stil overslaan, volgende cyclus opnieuw */ }
-    this._busy = false;
+    finally{ this._busy = false; window._pollBusy = false; }  // bus ALTIJD teruggeven, ook bij vroege return/fout
   },
 
   // ── mode 0101: MIL-bit, DTC-teller, readiness ──
