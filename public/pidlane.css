@@ -333,16 +333,11 @@ html, body { overflow-x:clip; }
   .welcome-scroll { padding:30px 34px; }
   .wm-doors { max-width:1240px; margin-inline:auto; }
   .welcome-choices { max-width:1240px; margin-inline:auto; }
-  /* PID- en log-lade als hoog ZIJPANEEL i.p.v. bottom-sheet */
-  #slPanel, #logLade {
-    left:auto; right:0; top:46px; bottom:0;
-    width:430px; max-width:430px; height:auto; max-height:none;
-    border-radius:14px 0 0 14px; border-top:0; border-left:1px solid var(--bd);
-    box-shadow:-14px 0 36px rgba(0,0,0,.34);
-    transform:translateX(103%);
-  }
-  #slPanel.lade-open, #logLade.lade-open { transform:translateX(0); }
-  #slPanel.lade-tall, #logLade.lade-tall { max-height:none; }
+  /* 2026-07-22: het #slPanel/#logLade-blok stond hier, vóór de generieke
+     lade-regels verderop. Zelfde specificiteit (#id) betekent: de laatste wint,
+     dus deze desktop-variant werd volledig overschreven — behalve top:46px, dat
+     bleef staan en brak de translateY(101%)-verstopping. Verplaatst naar ná de
+     generieke regels; zie "DESKTOP-LADE" onderaan het lade-blok. */
   /* Rapport / diepe analyse: gecentreerd en breder */
   .ai-sheet-ov { align-items:center; }
   .ai-sheet { max-width:780px; max-height:88vh; border-radius:16px; }
@@ -371,7 +366,7 @@ html, body { overflow-x:clip; }
 /* ══ ON-TOP LADES (PID-menu + logs in live, uitvouwbaar, niets cancelt) ══ */
 .app, .app.sl-col, .app.sr-col, .app.sl-col.sr-col { grid-template-columns:1fr; }
 #slPanel, #logLade {
-  position:fixed; left:0; right:0; bottom:0; z-index:1150;
+  position:fixed; left:0; right:0; top:auto; bottom:0; z-index:1150;
   width:100%; max-width:820px; height:auto; max-height:80vh; margin-inline:auto;
   background:var(--sur); border:0; border-top:1px solid var(--bd);
   border-radius:16px 16px 0 0; box-shadow:0 -12px 32px rgba(0,0,0,.34);
@@ -382,6 +377,25 @@ html, body { overflow-x:clip; }
 #slPanel.lade-open .sl-col-label, #slPanel.lade-open .sl-toggle { display:none; }
 #slPanel.lade-tall, #logLade.lade-tall { max-height:94vh; }
 #slPanel.lade-open{ display:flex; flex-direction:column; }
+
+/* ══ DESKTOP-LADE (≥1024px) — PID- en log-lade als hoog ZIJPANEEL ══
+   2026-07-22: dit blok stond eerder bóven de generieke regels hierboven.
+   Omdat beide dezelfde specificiteit hebben (#slPanel), won de generieke
+   bottom-sheet en bleef alleen top:46px hangen. Gevolg: het paneel werd
+   verankerd op top:46px mét height 80vh, waardoor translateY(101%) hem niet
+   meer voorbij de onderrand duwde en er permanent een strook "Sensoren & PIDs"
+   onderin bleef staan. Door het blok hierná te zetten wint het weer. ══ */
+@media (min-width:1024px){
+  #slPanel, #logLade {
+    left:auto; right:0; top:46px; bottom:0;
+    width:430px; max-width:430px; height:auto; max-height:none;
+    border-radius:14px 0 0 14px; border-top:0; border-left:1px solid var(--bd);
+    box-shadow:-14px 0 36px rgba(0,0,0,.34);
+    transform:translateX(103%);
+  }
+  #slPanel.lade-open, #logLade.lade-open { transform:translateX(0); }
+  #slPanel.lade-tall, #logLade.lade-tall { max-height:none; }
+}
 
 /* ══ MOBIEL: lade volledig schermvullend & ondoorzichtig (geen bottom-sheet die de log eronder laat staan; geen ingeklapte inhoud) ══ */
 @media (max-width:1023px){
@@ -412,6 +426,12 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
    Navigatie: ☰-menu (Rapporten), 4 deuren (Live view) en tabs (PID-keuze). ════ */
 .lade-handles { display:none !important; }
 .tabs .tab-action { flex:0 0 auto; margin-left:auto; }
+/* 2026-07-22: #remPill ("📡 delen · 👁 n") is position:fixed op top:52px/right:10px
+   en landde daarmee precies op de PID-keuze-knop, die via margin-left:auto óók
+   rechts in de tabbalk staat. showPill() in pidlane-remote.js zet nu de klasse
+   .rem-pill-on op <html>; de tabbalk reserveert dan rechts ruimte, zodat beide
+   naast elkaar passen. Marge aanpasbaar via --rempill-gap. */
+html.rem-pill-on .tabs { padding-right:var(--rempill-gap,140px); }
 .cc { padding-bottom:16px; }
 #welcomeScreen .welcome-scroll { padding-bottom:24px; }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
@@ -761,7 +781,12 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
 
 /* ══ CHECK ══ */
-.chk-intro { background:linear-gradient(135deg,var(--bls),#f0f7ff); border:1px solid var(--bd); border-radius:var(--r); padding:14px; margin-bottom:12px; }
+/* 2026-07-22 FIX: de tweede kleurstop was #f0f7ff — een overblijfsel uit het
+   light-thema. In dark mode liep de gradient naar bijna-wit, waardoor lichte
+   tekst rechts in de kaart onleesbaar werd (Basic check, Rit-monitor, Koopcheck).
+   Nu themabewust via var(--sur2), dus goed in beide thema's. Deze basisregel is
+   de enige plek die dit hoort te regelen — geen per-pane patches meer. */
+.chk-intro { background:linear-gradient(135deg,var(--bls),var(--sur2)); border:1px solid var(--bd); border-radius:var(--r); padding:14px; margin-bottom:12px; }
 .chk-intro h3 { font-size:14px; font-weight:700; margin-bottom:3px; }
 .chk-intro p { font-size:13px; color:var(--tx2); line-height:1.6; }
 .chk-qrow { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--bd); font-size:13px; }

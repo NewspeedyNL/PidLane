@@ -1,6 +1,41 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-21 (CET) — UI-OPSCHONING + MINIMALISEERBARE RIT-MONITOR
+     Build: 2026-07-22 (CET) — VIER UI-BUGS BIJ DE OORZAAK OPGELOST
+     Alle vier waren cascade-/stapelfouten in CSS, niet in de logica. Daarom
+     hielpen eerdere patches op de symptomen niet: de oorzaak bleef staan.
+     1) ONLEESBARE INTRO-KAART: .chk-intro in pidlane.css liep als gradient
+        naar de hardcoded lichte kleur #f0f7ff (restant uit het light-thema).
+        In dark mode werd de kaart rechts bijna wit en viel de lichte tekst
+        weg — zichtbaar in Basic system check, Rit-monitor en Koopcheck.
+        Tweede kleurstop nu var(--sur2), dus themabewust. De losse override
+        "#pane-monitor .chk-intro" in dit bestand is daarmee overbodig en
+        VERWIJDERD: één basisregel regelt dit nu voor alle intro-kaarten.
+     2) STROOK "SENSOREN & PIDs" ONDERIN (de terugkerende balk): #slPanel
+        stond twee keer in pidlane.css met dezelfde specificiteit (1-0-0).
+        Het desktop-blok (zijpaneel, @media min-width:1024px) stond VÓÓR het
+        generieke bottom-sheet-blok, dus won het generieke blok — op één
+        eigenschap na: top:46px, die het generieke blok niet declareert en
+        die dus bleef hangen. Gevolg: paneel verankerd op top:46px mét
+        height 80vh, waardoor translateY(101%) hem niet voorbij de onderrand
+        duwde en er permanent een strook zichtbaar bleef. Opgelost met
+        top:auto in de generieke regel + het desktop-blok verplaatst naar ná
+        de generieke regels. Nu: <1024px echte bottom-sheet, >=1024px echt
+        zijpaneel, beide dicht volledig uit beeld.
+     3) DEEL-CHIP OVER PID-KEUZE: #remPill is position:fixed op top:52px/
+        right:10px en landde exact op de PID-keuze-knop, die via
+        margin-left:auto ook rechts in .tabs staat. showPill() in
+        pidlane-remote.js zet nu ook .rem-pill-on op <html>; .tabs reserveert
+        dan rechts ruimte (--rempill-gap, standaard 140px).
+     4) FAVORIETEN ONZICHTBAAR: #favBar had z-index 9450, #welcomeScreen
+        heeft 9500 met ondoorzichtige achtergrond — en favBarSync() toonde de
+        balk uitsluitend zolang datzelfde startscherm zichtbaar was. Hij lag
+        dus per definitie eronder: onzichtbaar en onklikbaar. De sterretjes
+        en localStorage werkten wel. Balk vervangen door een ⭐-knop met
+        teller in de welkom-header, met uitklap-paneel binnen #welcomeScreen
+        (geen stapelconflict meer mogelijk). Esc en klik-buiten sluiten het.
+        favBarSync()/favBarInit() houden hun naam, dus bestaande aanroepen
+        blijven werken.
+     Vorige build 2026-07-21 (CET) — UI-OPSCHONING + MINIMALISEERBARE RIT-MONITOR
      1) RIT-MONITOR MINIMALISEERBAAR: ➖-knop op pane-monitor → terug naar
         home terwijl de monitor doorwaakt. Zwevend chipje (🛡️ + snelheid +
         waarschuwingsteller; rand/teller oranje bij bevindingen, rood bij
@@ -448,23 +483,41 @@
     .fav-star:active{transform:scale(.85)}
     .fav-star.on{color:#ffc400;text-shadow:0 0 8px rgba(255,196,0,.6)}
 
-    /* ── ⭐ Dun favorieten-balkje onderaan het startscherm (chips = snel starten) ── */
-    #favBar{position:fixed;left:0;right:0;bottom:0;z-index:9450;display:flex;align-items:center;gap:10px;
-      padding:7px 12px;background:var(--sur,#151b24);border-top:1px solid rgba(255,196,0,.28);
-      box-shadow:0 -6px 18px rgba(0,0,0,.3)}
-    #favBar .favbar-lbl{flex:0 0 auto;font-size:11px;font-weight:800;color:#ffc400;letter-spacing:.3px;
-      text-shadow:0 0 8px rgba(255,196,0,.4);white-space:nowrap}
-    .favbar-chips{flex:1;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:1px 0}
-    .favbar-chips::-webkit-scrollbar{display:none}
-    .favchip{flex:0 0 auto;display:flex;align-items:center;gap:6px;max-width:200px;
-      padding:7px 13px;border-radius:20px;border:1px solid rgba(255,196,0,.35);
+    /* ── ⭐ Favorieten-knop in de welkom-header + uitklap-paneel ──
+       2026-07-22: het oude #favBar (fixed, bottom:0, z-index:9450) lag ónder
+       #welcomeScreen (z-index:9500, ondoorzichtige achtergrond) en werd alleen
+       getoond zolang dat startscherm zichtbaar was — dus hij was per definitie
+       altijd afgedekt en onklikbaar. Nu een knopje ín de header, met een paneel
+       dat binnen #welcomeScreen hangt: geen stapelconflict meer mogelijk. */
+    .fav-wrap{position:relative;flex:0 0 auto;display:none}
+    .fav-wrap.show{display:block}
+    .fav-btn{display:inline-flex;align-items:center;gap:7px;
+      padding:7px 13px;border-radius:20px;border:1px solid rgba(255,196,0,.4);
+      background:var(--sur2,#1a212b);color:#ffc400;font-family:var(--f);
+      font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap;
+      -webkit-tap-highlight-color:transparent;transition:border-color .15s,transform .1s}
+    .fav-btn:hover{border-color:rgba(255,196,0,.85)}
+    .fav-btn:active{transform:scale(.95)}
+    .fav-btn .fb-n{display:inline-flex;align-items:center;justify-content:center;
+      min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+      background:rgba(255,196,0,.18);color:#ffc400;font-size:11px;font-weight:800}
+    .fav-pop{position:absolute;top:calc(100% + 8px);right:0;z-index:40;display:none;
+      flex-direction:column;gap:7px;min-width:230px;max-width:min(330px,86vw);
+      max-height:min(420px,60vh);overflow-y:auto;padding:9px;border-radius:13px;
+      border:1px solid rgba(255,196,0,.32);background:var(--sur,#151b24);
+      box-shadow:0 14px 38px rgba(0,0,0,.5)}
+    .fav-pop.open{display:flex}
+    .fav-pop-lbl{font-size:10.5px;font-weight:800;color:#ffc400;letter-spacing:.4px;
+      text-transform:uppercase;padding:1px 3px 3px}
+    .favchip{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+      padding:9px 12px;border-radius:10px;border:1px solid rgba(255,196,0,.3);
       background:var(--sur2,#1a212b);color:var(--tx,#e6e9ef);font-family:var(--f);
-      font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+      font-size:13px;font-weight:700;cursor:pointer;
       -webkit-tap-highlight-color:transparent;transition:border-color .15s,transform .1s,background .15s}
-    .favchip:hover{border-color:rgba(255,196,0,.7);background:var(--sur,#151b24)}
-    .favchip:active{transform:scale(.95)}
+    .favchip:hover{border-color:rgba(255,196,0,.75);background:var(--sur,#151b24)}
+    .favchip:active{transform:scale(.97)}
     .favchip .fc-ic{font-size:15px;line-height:1;flex:0 0 auto}
-    .favchip .fc-t{overflow:hidden;text-overflow:ellipsis}
+    .favchip .fc-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   </style>
 
   <!-- ── Ambient background: OBD-hartslag, toerenteller, CAN-bus ── -->
@@ -536,6 +589,15 @@
       <div>
         <div class="welcome-title" id="welcomeTitle">Wat ga je vandaag doen?</div>
         <div style="font-size:12px;color:var(--tx3)" id="welcomeSub">Kies je situatie — de app past zich aan.</div>
+      </div>
+      <div class="fav-wrap">
+        <button class="fav-btn" id="favBtn" type="button" aria-expanded="false" aria-controls="favPop" title="Favorieten — snel starten">
+          <span aria-hidden="true">⭐</span><span>Favorieten</span><span class="fb-n" id="favBtnN">0</span>
+        </button>
+        <div class="fav-pop" id="favPop" role="menu">
+          <div class="fav-pop-lbl">Snel starten</div>
+          <div id="favPopList" style="display:flex;flex-direction:column;gap:7px"></div>
+        </div>
       </div>
     </div>
     <!-- 3 tabs vervangen door 4 intent-deuren in de scroll hieronder -->
@@ -1110,13 +1172,9 @@
         .mon-verif.niet{background:rgba(0,224,138,.15);color:#6fe0aa}
         .mon-verif.meet{background:rgba(242,130,12,.16);color:#ffc07a}
         .mon-leeg{text-align:center;padding:22px 12px;opacity:.75;font-size:13px;line-height:1.6}
-        /* Intro-kaart leesbaar houden: de .chk-intro-basisstijl in pidlane.css
-           loopt naar een lichte gradient waardoor de lange monitor-tekst
-           rechts wegvalt — hier donker afdwingen (specifieker + !important
-           zodat de hoofd-CSS het nooit terugpakt). */
-        #pane-monitor .chk-intro{background:var(--sur2,#151b24) !important;border:1px solid var(--bd,#26303b) !important}
-        #pane-monitor .chk-intro h3{color:var(--tx,#e6e9ef) !important}
-        #pane-monitor .chk-intro p{color:var(--tx2,#aab4c0) !important;opacity:1 !important}
+        /* 2026-07-22: de per-pane override op .chk-intro is hier weggehaald.
+           De oorzaak zat in pidlane.css (.chk-intro liep naar #f0f7ff) en is
+           daar opgelost, dus geldt de fix nu voor álle intro-kaarten. */
       </style>
       <div class="pane" id="pane-monitor">
         <div class="chk-intro" style="position:relative">
@@ -3091,56 +3149,68 @@ function _favMeta(id){
   const ic=(c.querySelector('.choice-icon')?.textContent||'⭐').trim();
   return {t,ic};
 }
-// ── Dun favorieten-balkje onderaan (fixed, buiten #appScale via body) ──
-let _favBarEl=null;
-function favBarBuild(){
-  if(_favBarEl) return _favBarEl;
-  const bar=document.createElement('div');
-  bar.id='favBar'; bar.style.display='none';
-  bar.innerHTML='<span class="favbar-lbl">⭐ Snel starten</span><div class="favbar-chips" id="favBarChips"></div>';
-  document.body.appendChild(bar);
-  _favBarEl=bar;
-  return bar;
+// ── ⭐ Favorieten-knop in de welkom-header (vervangt het oude #favBar) ──
+// Het oude balkje stond fixed op bottom:0 met z-index 9450, terwijl
+// #welcomeScreen z-index 9500 heeft en een ondoorzichtige achtergrond. Omdat
+// het balkje uitsluitend zichtbaar was zolang datzelfde startscherm openstond,
+// lag het altijd eronder: onzichtbaar én onklikbaar. Nu een knop in de header
+// met een uitklap-paneel dat binnen #welcomeScreen valt.
+function favPopClose(){
+  const p=document.getElementById('favPop'), b=document.getElementById('favBtn');
+  if(p) p.classList.remove('open');
+  if(b) b.setAttribute('aria-expanded','false');
 }
-function favBarRender(){
-  favBarBuild();
-  const host=document.getElementById('favBarChips'); if(!host) return;
+function favPopRender(){
+  const host=document.getElementById('favPopList'); if(!host) return;
   const ids=favGet().filter(id=>document.getElementById(id));   // dode id's overslaan
   host.innerHTML='';
   ids.forEach(id=>{
     const m=_favMeta(id); if(!m) return;
     const chip=document.createElement('button');
-    chip.className='favchip'; chip.type='button';
-    chip.innerHTML='<span class="fc-ic">'+m.ic+'</span><span class="fc-t"></span>';
+    chip.className='favchip'; chip.type='button'; chip.setAttribute('role','menuitem');
+    chip.innerHTML='<span class="fc-ic"></span><span class="fc-t"></span>';
+    chip.querySelector('.fc-ic').textContent=m.ic;
     chip.querySelector('.fc-t').textContent=m.t;
     chip.title=m.t;
-    chip.addEventListener('click',()=>{ const orig=document.getElementById(id); if(orig) orig.click(); });
+    chip.addEventListener('click',ev=>{
+      ev.preventDefault(); ev.stopPropagation();
+      favPopClose();
+      const orig=document.getElementById(id); if(orig) orig.click();
+    });
     host.appendChild(chip);
   });
 }
-// Balk alleen tonen op het zichtbare startscherm én als er favorieten zijn.
+// Knop tonen/verbergen + teller bijwerken. Heet nog favBarSync() zodat alle
+// bestaande aanroepen (favToggle, observer) blijven werken.
 function favBarSync(){
-  favBarBuild();
-  const ws=document.getElementById('welcomeScreen');
-  const welkomZichtbaar = ws && !ws.classList.contains('hidden');
-  const heeft = favGet().filter(id=>document.getElementById(id)).length>0;
-  const toon = welkomZichtbaar && heeft;
-  if(toon) favBarRender();
-  _favBarEl.style.display = toon ? 'flex' : 'none';
-  // Zorg dat de balk de onderste hub-inhoud niet afdekt
-  try{
-    const sc=document.querySelector('.welcome-scroll');
-    if(sc) sc.style.paddingBottom = toon ? '58px' : '';
-  }catch(e){}
+  const btn=document.getElementById('favBtn'); if(!btn) return;
+  const wrap=btn.closest('.fav-wrap');
+  const n=favGet().filter(id=>document.getElementById(id)).length;
+  const num=document.getElementById('favBtnN'); if(num) num.textContent=n;
+  if(wrap) wrap.classList.toggle('show', n>0);
+  if(n===0) favPopClose(); else favPopRender();
 }
-// Balk volgt automatisch of het startscherm zichtbaar is (veel codepaden
-// zetten .hidden direct op #welcomeScreen) — dus observeren i.p.v. overal
-// aanroepen.
 function favBarInit(){
-  favBarBuild();
+  const btn=document.getElementById('favBtn');
+  if(btn && !btn._plBound){
+    btn._plBound=true;
+    btn.addEventListener('click',ev=>{
+      ev.preventDefault(); ev.stopPropagation();
+      const p=document.getElementById('favPop'); if(!p) return;
+      const open=!p.classList.contains('open');
+      if(open) favPopRender();
+      p.classList.toggle('open',open);
+      btn.setAttribute('aria-expanded',open?'true':'false');
+    });
+    // Buiten de knop/het paneel klikken of Esc sluit het weer
+    document.addEventListener('click',ev=>{
+      if(!ev.target.closest || !ev.target.closest('.fav-wrap')) favPopClose();
+    });
+    document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') favPopClose(); });
+  }
   const ws=document.getElementById('welcomeScreen');
   if(ws && window.MutationObserver){
-    try{ new MutationObserver(()=>favBarSync()).observe(ws,{attributes:true,attributeFilter:['class']}); }catch(e){}
+    try{ new MutationObserver(()=>{ favPopClose(); favBarSync(); }).observe(ws,{attributes:true,attributeFilter:['class']}); }catch(e){}
   }
   favBarSync();
 }
@@ -9022,7 +9092,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-caravan',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); if(typeof openCaravan==='function') openCaravan(); });
   wcBind('wc-seizoen',()=>openSeizoensCheck());
   try{ injectFavStars(); }catch(e){}   // ⭐ sterretjes op alle functiekaarten
-  try{ favBarInit(); }catch(e){}       // ⭐ dun favorieten-balkje onderaan het startscherm
+  try{ favBarInit(); }catch(e){}       // ⭐ favorieten-knop in de welkom-header
   // soon-kaarten: tik geeft korte feedback, geen actie (momenteel geen)
   [].forEach(id=>{
     const el=document.getElementById(id);

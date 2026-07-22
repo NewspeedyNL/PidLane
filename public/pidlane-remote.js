@@ -22,7 +22,12 @@ window.PLRemote=(function(){
   function openShare(){$('remShareOv').classList.add('open');}
   function closeShare(){$('remShareOv').classList.remove('open');}
   function setShareStat(s){$('remShareStat').textContent=s;}
-  function showPill(on){$('remPill').style.display=on?'flex':'none';try{window.PLWake&&PLWake.sync();}catch(_){}}
+  /* 2026-07-22: naast tonen/verbergen zetten we ook .rem-pill-on op <html>.
+     De pill staat position:fixed rechtsboven en dekte anders de PID-keuze-knop
+     in de tabbalk af; met die klasse reserveert .tabs rechts ruimte (pidlane.css). */
+  function showPill(on){$('remPill').style.display=on?'flex':'none';
+    try{document.documentElement.classList.toggle('rem-pill-on',!!on);}catch(_){}
+    try{window.PLWake&&PLWake.sync();}catch(_){}}
 
   async function shareStart(){
     const err=$('remShareErr');err.textContent='';
