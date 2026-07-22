@@ -1,6 +1,33 @@
 /* ════════════════════════════════════════════════════════════════════
    PidLane Worker — VOLLEDIGE code
-   Build: 2026-07-19 (CET) — KORTE MEEKIJK-CODE + VOERTUIGPROFIEL (vstate)
+   Build: 2026-07-22 18:05 (CET) — SECURITY-HARDENING
+
+   ── WAT ER IN DEZE BUILD VERANDERT ──────────────────────────────────
+   1. AUTH IS FAIL-CLOSED. De oude regel "niets ingesteld -> iedereen admin"
+      is weg. Ontbreken de secrets, dan geeft elke beveiligde route 401.
+      Een verkeerde deployment werkt zichtbaar niet, in plaats van ongemerkt
+      volledig open te staan.
+   2. LEGACY APP_TOKEN STAAT UIT. Het oude vaste token wordt alleen nog
+      geaccepteerd als je expliciet ALLOW_LEGACY_APP_TOKEN=true zet.
+      Uitrolvolgorde: deploy -> vlag tijdelijk aan als er nog oude APK's
+      draaien -> alle toestellen bijwerken -> vlag EN APP_TOKEN weggooien.
+   3. DEMO EN LEGACY KRIJGEN GEEN AI. /v1/messages weigert rol 'demo' en
+      gebruiker 'legacy' met 403. Beschermt het Anthropic-tegoed.
+   4. RATE LIMITING PER ACCOUNT EERST. De limiet zit primair op de inlognaam
+      (login) of het ingelogde account (/code/resolve); de IP-limiet staat er
+      ruim overheen. Reden: PidLane draait op 4G achter carrier-NAT en bij
+      dealergroepen achter een enkel kantoor-IP — een strakke IP-limiet
+      blokkeert dan echte gebruikers. Geslaagde logins tellen niet mee.
+      De teller staat in de bestaande Durable Object (persistent, sliding
+      window). Valt die weg, dan zakt hij terug op een lokale rem: login
+      blijft dus werken tijdens een DO-storing.
+   5. PBKDF2-SHA-256 (standaard 120.000 iteraties, instelbaar via
+      PBKDF2_ITERS). Bestaande SHA-256-hashes blijven werken EN worden bij
+      de eerstvolgende geslaagde login stil omgezet naar PBKDF2.
+   6. PAYLOAD- EN BATCHBEGRENZING op /v1/messages en /airtable/log.
+   ─────────────────────────────────────────────────────────────────────
+
+   Vorige build: 2026-07-19 — KORTE MEEKIJK-CODE + VOERTUIGPROFIEL (vstate)
 
    NIEUW — KORTE SESSIECODE (naast QR en link):
      - POST /code/create  (account-auth, eigenaar): ruilt {sessionId, joinToken}
@@ -74,18 +101,32 @@
      SESSION_SECRET       Lange willekeurige string; ondertekent de
                           sessietokens EN de remote joinTokens.  openssl rand -base64 48
      USERS_JSON           De accounts als JSON op één regel:
-                          {"Nico":{"passHash":"<sha256 hex>","role":"admin","label":"Nico"}}
-                          passHash = SHA-256 (hex, lowercase) van het wachtwoord.
+                          {"Nico":{"passHash":"<hash>","role":"admin","label":"Nico"}}
+                          passHash mag twee vormen hebben:
+                            pbkdf2_sha256$<iters>$<salt hex>$<hash hex>   (nieuw)
+                            <64 tekens sha256 hex>                        (oud)
+                          Beide werken. Het noodaccount migreert NIET vanzelf
+                          (het is een secret, geen Airtable-rij) — werk het
+                          zelf bij zodra de gewone accounts aantoonbaar werken.
      ANTHROPIC_KEY        Anthropic API-key (sk-ant-…). Server-side fallback;
                           als de app zelf een key meestuurt, wint die.
      AIRTABLE_TOKEN       Airtable Personal Access Token (pat…). Moet toegang
                           hebben tot ALLE DRIE de bases hieronder.
      ADMIN_TOKEN          Lang, willekeurig admin-geheim. Vereist voor
                           POST /api/config.
-     APP_TOKEN            LEGACY. Blijft tijdens de overgang geaccepteerd zodat
-                          oude APK's niet breken. VERWIJDER dit secret zodra
-                          alle apparaten de nieuwe app draaien — pas dán is het
+     APP_TOKEN            LEGACY. Wordt sinds build 2026-07-22 NIET meer
+                          automatisch geaccepteerd. Alleen samen met de plain
+                          var ALLOW_LEGACY_APP_TOKEN=true. Verwijder daarna
+                          eerst de vlag en dan dit secret — pas dán is het
                           publieke-token-gat echt dicht.
+
+   Plain vars (optioneel, security):
+     ALLOW_LEGACY_APP_TOKEN = true   Alleen aanzetten zolang er nog oude APK's
+                          in omloop zijn. Standaard uit.
+     PBKDF2_ITERS         = 120000   Aantal PBKDF2-iteraties voor NIEUWE
+                          wachtwoorden (toegestaan 50000-600000). Hoger is
+                          veiliger maar kost CPU bij elke login; meet het
+                          effect voordat je dit opschroeft.
 
    ── DURABLE OBJECT BINDING ─────────────────────────────────────────────
      binding name  REMOTE_SESSION   class  RemoteSessionDO
@@ -177,9 +218,14 @@ function json(obj, status = 200, extra = {}) {
 //  OPTIONEEL:
 //    TOKEN_TTL_HOURS  geldigheidsduur, standaard 12
 //
-//  APP_TOKEN blijft tijdens de overgang geaccepteerd (zodat een oude APK niet
-//  meteen breekt). Verwijder dat secret zodra alle apparaten geüpdatet zijn —
-//  dán pas is het gat echt dicht.
+//  APP_TOKEN wordt alleen nog geaccepteerd als ALLOW_LEGACY_APP_TOKEN=true.
+//  Zonder die vlag is het oude vaste token dood, ook als het secret nog in
+//  Cloudflare staat. Zet de vlag alleen aan zolang er echt nog oude APK's
+//  draaien, en gooi daarna vlag én secret weg.
+//
+//  Wachtwoorden staan als PBKDF2-SHA-256 opgeslagen. Oude SHA-256-hashes
+//  blijven werken en worden bij de eerstvolgende geslaagde login stil
+//  omgezet (alleen voor Airtable-accounts; USERS_JSON is een secret).
 // ════════════════════════════════════════════════════════════════════
 const _enc = new TextEncoder();
 
@@ -191,6 +237,81 @@ function b64url(buf) {
 async function sha256hex(s) {
   const b = await crypto.subtle.digest('SHA-256', _enc.encode(String(s)));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   WACHTWOORDEN — PBKDF2-SHA-256 met per-wachtwoord salt
+
+   Kale SHA-256 is voor wachtwoorden te snel: een moderne GPU raast er in
+   hoog tempo doorheen. PBKDF2 maakt elke poging bewust duur.
+
+   Opslagformaat (past in het bestaande PassHash-tekstveld in Airtable):
+     pbkdf2_sha256$<iteraties>$<salt hex>$<hash hex>
+
+   Iteraties: 120.000 standaard. Bewust niet de 310.000 die je voor een
+   gewone server aanhoudt — een Worker heeft een CPU-budget per request en
+   PBKDF2 draait hier bij elke login. WebCrypto doet dit native, dus 120k
+   kost enkele tientallen ms; dat past ruim. Wil je hoger, zet dan de plain
+   var PBKDF2_ITERS (toegestaan 50.000 - 600.000) en meet de logintijd.
+
+   Oude 64-teken SHA-256-hashes blijven geldig, zodat niemand buitengesloten
+   raakt. verifyPassword geeft {legacy:true} bij zo'n hash; handleLogin zet
+   hem daarna stil om naar PBKDF2.
+   ════════════════════════════════════════════════════════════════════ */
+const PBKDF2_ITERS_DEFAULT = 120000;
+
+function bytesToHex(b) {
+  return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function hexToBytes(h) {
+  const s = String(h || '');
+  const out = new Uint8Array(s.length >> 1);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.substr(i * 2, 2), 16);
+  return out;
+}
+function pbkdf2Iters(env) {
+  const n = Number(env && env.PBKDF2_ITERS);
+  return (Number.isFinite(n) && n >= 50000 && n <= 600000) ? Math.floor(n) : PBKDF2_ITERS_DEFAULT;
+}
+
+async function pbkdf2Hex(pass, saltBytes, iters) {
+  const key = await crypto.subtle.importKey(
+    'raw', _enc.encode(String(pass)), 'PBKDF2', false, ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: saltBytes, iterations: iters, hash: 'SHA-256' }, key, 256
+  );
+  return bytesToHex(new Uint8Array(bits));
+}
+
+// Nieuw of gewijzigd wachtwoord -> altijd PBKDF2.
+async function hashPassword(pass, env) {
+  const iters = pbkdf2Iters(env);
+  const salt  = crypto.getRandomValues(new Uint8Array(16));
+  const hex   = await pbkdf2Hex(pass, salt, iters);
+  return 'pbkdf2_sha256$' + iters + '$' + bytesToHex(salt) + '$' + hex;
+}
+
+// -> {ok, legacy}. legacy=true betekent: wachtwoord klopt, maar staat nog in
+//    het oude SHA-256-formaat en mag omgezet worden.
+async function verifyPassword(pass, stored) {
+  const s = String(stored || '').trim();
+  if (!s) return { ok: false, legacy: false };
+
+  const p = s.split('$');
+  if (p.length === 4 && p[0] === 'pbkdf2_sha256') {
+    const iters = Number(p[1]);
+    if (!Number.isFinite(iters) || iters < 1000 || iters > 1000000)
+      return { ok: false, legacy: false };
+    const hex = await pbkdf2Hex(pass, hexToBytes(p[2]), iters);
+    return { ok: safeEqual(hex, String(p[3]).toLowerCase()), legacy: false };
+  }
+
+  const low = s.toLowerCase();
+  if (/^[0-9a-f]{64}$/.test(low))
+    return { ok: safeEqual(await sha256hex(pass), low), legacy: true };
+
+  return { ok: false, legacy: false };
 }
 
 // ── R2: bestandsopslag (APK + later rapporten/logs) ───────────────────────
@@ -286,25 +407,99 @@ async function auth(request, env) {
   const s = await verifyToken(env, appTok);
   if (s) return s;
 
-  // Overgang: oud vast token nog even toestaan zolang het secret bestaat.
-  if (env.APP_TOKEN && appTok && safeEqual(appTok, env.APP_TOKEN))
+  // Legacy: het oude vaste APP_TOKEN. Staat standaard UIT. Alleen als je
+  // bewust ALLOW_LEGACY_APP_TOKEN=true zet, wordt het nog geaccepteerd.
+  // Zo houdt een vergeten APP_TOKEN-secret het oude gat niet ongemerkt open.
+  const legacyEnabled = String(env.ALLOW_LEGACY_APP_TOKEN || '').toLowerCase() === 'true';
+  if (legacyEnabled && env.APP_TOKEN && appTok && safeEqual(appTok, env.APP_TOKEN))
     return { u: 'legacy', r: 'user', l: 'Legacy token' };
 
-  // Niets ingesteld (verse Worker) → check overslaan i.p.v. alles blokkeren.
-  if (!env.SESSION_SECRET && !env.APP_TOKEN && !env.ADMIN_TOKEN)
-    return { u: 'open', r: 'admin', l: 'Geen auth ingesteld' };
-
+  // FAIL-CLOSED. Hier stond ooit: "niets ingesteld -> check overslaan".
+  // Dat betekende dat één vergeten secret in Cloudflare de hele backend
+  // opende met adminrechten: AI, Airtable, config, remote sessies. Een
+  // Worker die zichtbaar niet werkt is veiliger dan een Worker die stilletjes
+  // openstaat. Ontbreken de secrets, dan is er dus simpelweg geen toegang.
   return null;
 }
 
-// ── Brute-force-rem op /auth/login (per isolate, per IP) ──
-const _loginHits = new Map();
-function loginRateLimited(ip) {
-  const now = Date.now(), windowMs = 60_000, maxHits = 8;
-  const arr = (_loginHits.get(ip) || []).filter(t => now - t < windowMs);
-  arr.push(now);
-  _loginHits.set(ip, arr);
-  return arr.length > maxHits;
+/* ════════════════════════════════════════════════════════════════════
+   RATE LIMITING — account eerst, IP ruim erover
+
+   Waarom niet strak per IP? PidLane draait in de praktijk op Android via
+   4G. Bij carrier-NAT delen honderden abonnees hetzelfde uitgaande IP, en
+   een dealergroep zit achter één kantoor-IP. Een limiet van 8 per IP per
+   minuut blokkeert dan echte monteurs terwijl er niets aan de hand is.
+
+   Daarom: de scherpe limiet zit op de identiteit (inlognaam bij login,
+   ingelogd account bij /code/resolve). De IP-limiet staat er ruim
+   overheen en vangt alleen grof geweld vanaf één adres.
+
+   Bij login tellen we bovendien alleen MISLUKTE pogingen. Wie zijn
+   wachtwoord goed intikt raakt de rem nooit, hoe vaak hij ook inlogt.
+
+   Opslag: de bestaande Durable Object (REMOTE_SESSION), met een eigen
+   naamruimte 'ratelimit:<scope>:<hash>'. Persistent en gedeeld over alle
+   isolates en datacenters — een nieuwe browsersessie wist de teller niet.
+   Valt de DO weg, dan zakken we terug op een lokale rem in plaats van
+   alles dicht te gooien. Bewuste keuze: een kapotte DO mag niet betekenen
+   dat niemand meer kan inloggen midden in een demo bij een dealer.
+   ════════════════════════════════════════════════════════════════════ */
+const RL = {
+  loginAccount: { limit: 8,   windowMs: 60_000 },   // per inlognaam, alleen missers
+  loginIp:      { limit: 100, windowMs: 60_000 },   // ruim: carrier-NAT / kantoor-IP
+  adminWrite:   { limit: 20,  windowMs: 60_000 },   // admin.html schrijfacties
+  codeAccount:  { limit: 30,  windowMs: 60_000 },   // meekijk-code per account
+  codeIp:       { limit: 200, windowMs: 60_000 },   // meekijk-code per IP (ruim)
+};
+
+// De identifier gaat door HMAC met SESSION_SECRET, niet door kale SHA-256.
+// Een IPv4-adres heeft maar ~4 miljard mogelijkheden: een kale hash is in
+// seconden terug te rekenen en beschermt dus niets. Met een geheime sleutel
+// erin is dat niet mogelijk zonder het secret.
+async function rlKey(env, scope, id) {
+  const raw = scope + ':' + String(id || 'unknown').toLowerCase();
+  if (env && env.SESSION_SECRET) return (await hmacSign(env.SESSION_SECRET, raw)).replace(/[^A-Za-z0-9]/g, '').slice(0, 32);
+  return (await sha256hex(raw)).slice(0, 32);
+}
+
+// Lokale terugval (per isolate). Niet waterdicht, wel beter dan niets.
+const _rlMem = new Map();
+function rlMem(key, limit, windowMs, record) {
+  const now = Date.now();
+  const arr = (_rlMem.get(key) || []).filter(x => now - x < windowMs);
+  const limited = arr.length >= limit;
+  if (!limited && record) arr.push(now);
+  _rlMem.set(key, arr);
+  if (_rlMem.size > 5000) _rlMem.clear();          // overloopklep
+  return { limited, remaining: Math.max(0, limit - arr.length),
+           retryAfter: limited ? Math.ceil(windowMs / 1000) : 0, local: true };
+}
+
+// record=false -> alleen kijken of de limiet bereikt is (geen poging tellen).
+// record=true  -> kijken én tellen.
+async function rateLimit(env, scope, id, spec, record = true) {
+  const limit = spec.limit, windowMs = spec.windowMs;
+  const key = await rlKey(env, scope, id);
+  const memKey = scope + ':' + key;
+
+  if (!env || !env.REMOTE_SESSION) return rlMem(memKey, limit, windowMs, record);
+
+  try {
+    const stub = env.REMOTE_SESSION.get(env.REMOTE_SESSION.idFromName('ratelimit:' + scope + ':' + key));
+    const r = await stub.fetch('https://do/rate-limit', {
+      method: 'POST',
+      body: JSON.stringify({ limit, windowMs, now: Date.now(), record: !!record }),
+    });
+    if (!r.ok) return rlMem(memKey, limit, windowMs, record);
+    return await r.json();
+  } catch (_) {
+    return rlMem(memKey, limit, windowMs, record);   // DO plat -> lokale rem
+  }
+}
+
+function rateLimitResponse(rl) {
+  const secs = Math.max(1, Number(rl && rl.retryAfter) || 60);
+  return json({ error: 'rate_limited', retryAfter: secs }, 429, { 'Retry-After': String(secs) });
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -320,7 +515,9 @@ function loginRateLimited(ip) {
 //
 //  Tabel "Users" in base AIRTABLE_CONFIG_BASE, velden:
 //    User (single line text)  – inlognaam, uniek
-//    PassHash (single line)   – SHA-256 hex van het wachtwoord
+//    PassHash (single line)   – pbkdf2_sha256$<iters>$<salt>$<hash>, of een
+//                               oude 64-teken SHA-256-hex (blijft werken en
+//                               migreert bij de eerstvolgende login)
 //    Role (single line)       – admin | user | demo
 //    Label (single line)      – weergavenaam
 //    Active (checkbox)        – uit = kan niet inloggen
@@ -364,9 +561,27 @@ async function allUsers(env) {
 // ════════════════════════════════════════════════════════════════════
 //  0) POST /auth/login — wachtwoordcontrole → sessietoken
 // ════════════════════════════════════════════════════════════════════
-async function handleLogin(request, env) {
+// Zet een geslaagde login met een oude SHA-256-hash stil om naar PBKDF2.
+// Alleen mogelijk voor Airtable-accounts (die hebben een record-id). Het
+// noodaccount uit USERS_JSON is een secret en moet je zelf bijwerken.
+// Draait via ctx.waitUntil, dus de gebruiker wacht er niet op.
+async function rehashAirtablePassword(env, recId, pass) {
+  if (!env.AIRTABLE_TOKEN || !recId) return;
+  try {
+    const base  = resolveBase(env, 'AIRTABLE_CONFIG_BASE');
+    const table = cfg(env, 'AIRTABLE_USERS_TABLE');
+    const url   = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`;
+    const PassHash = await hashPassword(pass, env);
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records: [{ id: recId, fields: { PassHash } }], typecast: true }),
+    });
+  } catch (_) { /* migratie mag nooit een geslaagde login breken */ }
+}
+
+async function handleLogin(request, env, ctx) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  if (loginRateLimited(ip)) return json({ error: 'rate_limited' }, 429);
 
   if (!env.SESSION_SECRET) return json({ error: 'no_session_secret' }, 500);
 
@@ -377,21 +592,46 @@ async function handleLogin(request, env) {
   const user = String(body.user || '').trim();
   const pass = String(body.pass || '');
 
+  // Naam normaliseren VOOR de rate limit, anders omzeil je de teller door
+  // afwisselend "Nico", "nico" en "N i c o" te sturen.
+  const norm = s => String(s || '').trim().toLowerCase().replace(/[\s_]+/g, '');
+  const acctId = norm(user) || 'leeg';
+
+  // Alleen kijken, nog niet tellen: een geslaagde login mag de rem niet vullen.
+  const [rlAcc, rlIp] = await Promise.all([
+    rateLimit(env, 'login-account', acctId, RL.loginAccount, false),
+    rateLimit(env, 'login-ip',      ip,     RL.loginIp,      false),
+  ]);
+  if (rlAcc.limited) return rateLimitResponse(rlAcc);
+  if (rlIp.limited)  return rateLimitResponse(rlIp);
+
   const users = await allUsers(env);
 
   // Tolerant op de naam (hoofdletters/spaties/underscores), streng op het wachtwoord.
-  const norm = s => String(s || '').trim().toLowerCase().replace(/[\s_]+/g, '');
   const key = Object.keys(users).find(k => k === user)
            || Object.keys(users).find(k => norm(k) === norm(user))
            || Object.keys(users).find(k => norm(users[k].label || '') === norm(user));
 
-  const acc  = key ? users[key] : null;
-  const hash = acc ? String(acc.passHash || '').trim().toLowerCase() : '';
-  const ok   = acc && hash && safeEqual(await sha256hex(pass), hash);
+  const acc = key ? users[key] : null;
+  const res = acc ? await verifyPassword(pass, acc.passHash) : { ok: false, legacy: false };
 
-  if (!ok) {
+  if (!res.ok) {
+    // Nu pas tellen — alleen missers.
+    await Promise.all([
+      rateLimit(env, 'login-account', acctId, RL.loginAccount, true),
+      rateLimit(env, 'login-ip',      ip,     RL.loginIp,      true),
+    ]);
     await new Promise(r => setTimeout(r, 500)); // rem
     return json({ error: 'invalid_credentials' }, 401);
+  }
+
+  // Geslaagd met een oude SHA-256-hash -> stil omzetten naar PBKDF2.
+  // Dit is het moment waarop we het wachtwoord in platte tekst hebben; later
+  // kan het niet meer. Zonder deze stap blijft een account voor altijd op
+  // SHA-256 staan tenzij iemand handmatig een nieuw wachtwoord instelt.
+  if (res.legacy && acc._id) {
+    const job = rehashAirtablePassword(env, acc._id, pass);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
   }
 
   const t = await makeToken(env, key, acc.role || 'user', acc.label || key);
@@ -404,26 +644,11 @@ async function appTokenOk(request, env) {
   return !!(await auth(request, env));
 }
 
-// ── In-memory rate-limit voor admin-POST (brute-force-rem, per isolate) ──
-const _adminHits = new Map();
-function adminRateLimited(ip) {
-  const now = Date.now(), windowMs = 60_000, maxHits = 10;
-  const arr = (_adminHits.get(ip) || []).filter(t => now - t < windowMs);
-  arr.push(now);
-  _adminHits.set(ip, arr);
-  return arr.length > maxHits;
-}
-
-// ── Brute-force-rem op /code/resolve (per isolate, per IP) ──
-// Een 10-cijferige code is per definitie kort; deze rem + account-auth +
-// korte looptijd maken blind raden onhaalbaar.
-const _codeHits = new Map();
-function codeResolveLimited(ip) {
-  const now = Date.now(), windowMs = 60_000, maxHits = 20;
-  const arr = (_codeHits.get(ip) || []).filter(t => now - t < windowMs);
-  arr.push(now);
-  _codeHits.set(ip, arr);
-  return arr.length > maxHits;
+// ── Rate-limit op admin-schrijfacties (/api/config POST, /admin/users POST) ──
+// Deze routes zitten al achter ADMIN_TOKEN; de rem is een extra laag, geen
+// vervanging van autorisatie. Per IP is hier prima: er is maar één admin.
+async function adminWriteLimited(env, ip) {
+  return await rateLimit(env, 'admin-write', ip, RL.adminWrite, true);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -435,9 +660,29 @@ async function handleMessages(request, env) {
   const session = await auth(request, env);
   if (!session) return json({ error: 'unauthorized' }, 401);
 
+  // Demo- en legacy-accounts mogen de server-side Anthropic-key niet gebruiken.
+  // Het demo-account is bedoeld om de app te laten zien, niet om AI-tegoed op
+  // te maken; en een oud legacy-token hoort helemaal geen nieuwe rechten meer
+  // te krijgen, ook niet zolang ALLOW_LEGACY_APP_TOKEN aan staat.
+  if (session.r === 'demo' || session.u === 'legacy')
+    return json({ error: 'forbidden_role', hint: 'Dit account heeft geen AI-toegang.' }, 403);
+
+  // Grofmazige voorcontrole op de aangekondigde grootte: scheelt het inlezen
+  // van een megabyte JSON voordat we hem toch zouden weigeren.
+  const declared = Number(request.headers.get('Content-Length') || 0);
+  if (declared > 300000) return json({ error: 'payload_too_large' }, 413);
+
   let payload;
   try { payload = await request.json(); }
   catch { return json({ error: 'bad_json' }, 400); }
+
+  // Payloadbegrenzing. Zonder dit kan één verdwaalde of kwaadwillende client
+  // met een gigantische prompt of 200 berichten het AI-tegoed leegtrekken.
+  if (!payload || typeof payload !== 'object' || !Array.isArray(payload.messages))
+    return json({ error: 'bad_payload', hint: 'messages-array ontbreekt' }, 400);
+  if (payload.messages.length > 40) return json({ error: 'too_many_messages' }, 413);
+  if (JSON.stringify(payload).length > 250000) return json({ error: 'payload_too_large' }, 413);
+  payload.max_tokens = Math.min(Math.max(Number(payload.max_tokens) || 2048, 1), 8192);
 
   // Key-prioriteit: door de app meegestuurde key (Authorization/x-api-key) wint;
   // anders de server-side key (onder welke secret-naam dan ook opgeslagen).
@@ -476,6 +721,26 @@ async function handleAirtableLog(request, env) {
   try { payload = await request.json(); }
   catch { return json({ error: 'bad_json' }, 400); }
 
+  // Batchbegrenzing, zoals /airtable/veldlab die al had. Airtable accepteert
+  // zelf maximaal 10 records per request; alles daarboven is toch een fout.
+  // Tekstwaarden worden afgekapt zodat één doorgeschoten log-regel geen
+  // enorme rij in Airtable wordt.
+  const records = Array.isArray(payload.records) ? payload.records.slice(0, 10) : [];
+  if (!records.length) return json({ error: 'no_records' }, 400);
+
+  const clean = records.map(rec => {
+    const f = (rec && typeof rec.fields === 'object' && rec.fields) ? rec.fields : {};
+    const out = {};
+    let n = 0;
+    for (const k of Object.keys(f)) {
+      if (++n > 40) break;                                   // max 40 velden
+      if (String(k).length > 100) continue;                  // rare veldnaam
+      const v = f[k];
+      out[k] = (typeof v === 'string' && v.length > 95000) ? v.slice(0, 95000) : v;
+    }
+    return { fields: out };
+  });
+
   const base  = resolveBase(env, 'AIRTABLE_LOG_BASE', 'AIRTABLE_BASE');
   const table = cfg(env, 'AIRTABLE_LOG_TABLE');
   const url   = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`;
@@ -487,7 +752,7 @@ async function handleAirtableLog(request, env) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      records: payload.records || [],
+      records: clean,
       typecast: payload.typecast !== false, // default true
     }),
   });
@@ -687,7 +952,8 @@ async function handleConfigGet(request, env, ctx) {
 // ════════════════════════════════════════════════════════════════════
 async function handleConfigPost(request, env, ctx) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  if (adminRateLimited(ip)) return json({ error: 'rate_limited' }, 429);
+  const rlCfg = await adminWriteLimited(env, ip);
+  if (rlCfg.limited) return rateLimitResponse(rlCfg);
 
   const adminTok = request.headers.get('X-Admin-Token') || '';
   if (!env.ADMIN_TOKEN || adminTok !== env.ADMIN_TOKEN) return json({ error: 'forbidden' }, 403);
@@ -770,9 +1036,11 @@ async function handleConfigPost(request, env, ctx) {
 //     POST → { action:'save',   user, pass?, role, label, active }
 //            { action:'delete', user }
 //
-//     De Worker hasht het wachtwoord zelf (SHA-256), zodat admin.html geen
-//     crypto hoeft te doen en er nooit een plaintext-wachtwoord in Airtable
-//     belandt. Bestaand wachtwoord ongemoeid laten = pass leeg laten.
+//     De Worker hasht het wachtwoord zelf (PBKDF2-SHA-256 met salt), zodat
+//     admin.html geen crypto hoeft te doen en er nooit een plaintext-
+//     wachtwoord in Airtable belandt. Bestaand wachtwoord ongemoeid laten =
+//     pass leeg laten. admin.html hoeft hiervoor NIET aangepast te worden:
+//     het formaat van het PassHash-veld verandert, de API niet.
 // ════════════════════════════════════════════════════════════════════
 function adminOnly(request, env) {
   const t = request.headers.get('X-Admin-Token') || '';
@@ -819,7 +1087,8 @@ async function handleUsersGet(request, env) {
 
 async function handleUsersPost(request, env) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  if (adminRateLimited(ip))     return json({ error: 'rate_limited' }, 429);
+  const rlUsr = await adminWriteLimited(env, ip);
+  if (rlUsr.limited)            return rateLimitResponse(rlUsr);
   if (!adminOnly(request, env)) return json({ error: 'forbidden' }, 403);
   if (!env.AIRTABLE_TOKEN)      return json({ error: 'no_airtable_token' }, 500);
 
@@ -882,7 +1151,11 @@ async function handleUsersPost(request, env) {
     Label:  String(body.label || user).trim(),
     Active: body.active !== false,
   };
-  if (pass) fields.PassHash = await sha256hex(pass);   // leeg = huidige hash blijft
+  // Nieuw wachtwoord -> altijd PBKDF2. Leeg laten = huidige hash blijft staan.
+  // Zo migreert een account dat je hier bijwerkt meteen naar het nieuwe
+  // formaat; accounts die je niet aanraakt migreren vanzelf bij hun
+  // eerstvolgende geslaagde login (zie handleLogin).
+  if (pass) fields.PassHash = await hashPassword(pass, env);
 
   const r = hit
     ? await fetch(baseUrl, {
@@ -1247,8 +1520,16 @@ async function handleCodeResolve(request, env) {
   if (!session) return json({ error: 'unauthorized' }, 401);
   if (!env.REMOTE_SESSION) return json({ error: 'no_do_binding' }, 500);
 
+  // Twee remmen. Alleen per IP is te weinig bij een botnet of bij iemand die
+  // van 4G naar wifi wisselt; alleen per account is te weinig als één IP met
+  // veel verschillende accounts raadt. Het account is hier de scherpe limiet.
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  if (codeResolveLimited(ip)) return json({ error: 'rate_limited' }, 429);
+  const [rlAcc, rlIp] = await Promise.all([
+    rateLimit(env, 'code-account', session.u || 'onbekend', RL.codeAccount, true),
+    rateLimit(env, 'code-ip',      ip,                      RL.codeIp,      true),
+  ]);
+  if (rlAcc.limited) return rateLimitResponse(rlAcc);
+  if (rlIp.limited)  return rateLimitResponse(rlIp);
 
   let body = {};
   try { body = await request.json(); } catch { return json({ error: 'bad_json' }, 400); }
@@ -1297,6 +1578,53 @@ export class RemoteSessionDO {
 
     const url = new URL(request.url);
     const op  = url.pathname.split('/').pop();
+
+    /* ── Rate-limit-op (DO-instances met 'ratelimit:'-naam) ──────────────
+       Sliding window: we bewaren de tijdstippen van recente pogingen en
+       gooien alles buiten het venster weg. Nauwkeuriger dan een vaste
+       minuutbucket, waarbij je vlak voor en vlak na de minuutgrens twee
+       volledige quota kunt opmaken.
+
+       record=false -> alleen kijken. Gebruikt bij login, zodat een geslaagde
+       login de teller niet vult. We schrijven dan ook niets: een geblokkeerde
+       aanvaller kan de teller dus niet zelf blijven oprekken.
+
+       Cloudflare stuurt alle requests met dezelfde objectnaam naar dezelfde
+       instance, dus deze teller is gedeeld over alle isolates en locaties. */
+    if (op === 'rate-limit') {
+      let b = {};
+      try { b = await request.json(); } catch (_) { return Response.json({ error: 'bad_json' }, { status: 400 }); }
+
+      const limit    = Math.min(Math.max(Number(b.limit)    || 1,     1),    1000);
+      const windowMs = Math.min(Math.max(Number(b.windowMs) || 60000,  1000), 86400000);
+      // Klok van de aanroeper begrenzen, zodat een rare 'now' het venster niet oprekt.
+      const now = Math.min(Math.max(Number(b.now) || Date.now(), Date.now() - 60000), Date.now() + 60000);
+      const record = b.record !== false;
+      const cutoff = now - windowMs;
+
+      let hits = (await this.ctx.storage.get('rateHits')) || [];
+      hits = hits.filter(x => Number.isFinite(x) && x > cutoff);
+
+      const limited = hits.length >= limit;
+      if (!limited && record) hits.push(now);
+
+      if (record || hits.length) {
+        await this.ctx.storage.put('rateHits', hits);
+        await this.ctx.storage.put('rateWindow', windowMs);
+        // Opruim-alarm: zonder dit blijft elke unieke IP/accountsleutel voor
+        // altijd als DO-instance met opslag bestaan.
+        this.ctx.storage.setAlarm(Date.now() + windowMs + 5000);
+      }
+
+      const oldest  = hits.length ? hits[0] : now;
+      const resetAt = oldest + windowMs;
+      return Response.json({
+        limited,
+        remaining:  limited ? 0 : Math.max(0, limit - hits.length),
+        resetAt,
+        retryAfter: limited ? Math.max(1, Math.ceil((resetAt - now) / 1000)) : 0,
+      });
+    }
 
     // ── QR-pairing-ops (DO-instances met 'pair:'-naam; eigen storage-keys) ──
     if (op === 'pair-create') {
@@ -1465,8 +1793,25 @@ export class RemoteSessionDO {
     return { ok: true, n: this.frames.length, t: frame.t };
   }
 
-  // Flush van de throttled frame-ring (gezet in ingestFrame).
+  // Twee soorten alarm:
+  //  a) rate-limit-instance -> verlopen tikken opruimen, en als er niets meer
+  //     over is de hele instance-opslag wissen. Zonder dit groeit het aantal
+  //     rate-limit-objecten met opslag onbeperkt door.
+  //  b) sessie-instance -> flush van de throttled frame-ring (gezet in
+  //     ingestFrame).
   async alarm() {
+    const rl = await this.ctx.storage.get('rateHits');
+    if (rl !== undefined) {
+      const win  = Number(await this.ctx.storage.get('rateWindow')) || 60000;
+      const hits = (rl || []).filter(x => Number.isFinite(x) && Date.now() - x < win);
+      if (hits.length) {
+        await this.ctx.storage.put('rateHits', hits);
+        this.ctx.storage.setAlarm(Date.now() + win + 5000);
+      } else {
+        await this.ctx.storage.deleteAll();
+      }
+      return;
+    }
     this._lastPersist = Date.now();
     await this.ctx.storage.put('frames', this.frames);
   }
@@ -1662,7 +2007,7 @@ export default {
 
     try {
       if (url.pathname === '/auth/login' && request.method === 'POST')
-        return await handleLogin(request, env);
+        return await handleLogin(request, env, ctx);
 
       if (url.pathname === '/v1/messages' && request.method === 'POST')
         return await handleMessages(request, env);
