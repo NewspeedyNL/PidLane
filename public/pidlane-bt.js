@@ -1014,34 +1014,18 @@ async function optimizeConnection(silent=false){
   showStrategyConfirm(speed, voorstel);
 }
 
-// Overlay waarin de gebruiker de voorgestelde strategie bevestigt of wijzigt
+// Vroeger een overlay met drie knoppen ("Kies een poll-strategie"). Sinds
+// PLLoad de busbezetting meet en het pollbudget zelf bijregelt is die vraag
+// zinloos: wat de gebruiker ook koos, de regelkring corrigeerde het binnen
+// ~8 seconden naar dezelfde uitkomst. We passen het gemeten voorstel nu stil
+// toe als startpunt en melden alleen nog de uitkomst.
 function showStrategyConfirm(speed, voorstel){
-  let ov=document.getElementById('stratOverlay');
-  if(!ov){
-    ov=document.createElement('div'); ov.id='stratOverlay'; ov.className='strat-ov';
-    document.body.appendChild(ov);
-  }
-  const opts=Object.keys(STRATEGIE_INFO).map(k=>{
-    const s=STRATEGIE_INFO[k];
-    return `<button class="strat-opt${k===voorstel?' rec':''}" onclick="confirmStrategy('${k}')">
-      <div class="strat-emoji">${s.emoji}</div>
-      <div style="flex:1;text-align:left"><div style="font-weight:700;font-size:14px">${s.label}${k===voorstel?' <span class="strat-rec-tag">aanbevolen</span>':''}</div>
-      <div style="font-size:12px;color:var(--tx3)">${s.desc}</div></div>
-    </button>`;
-  }).join('');
-  ov.innerHTML=`<div class="strat-panel">
-    <div style="font-size:15px;font-weight:800;margin-bottom:4px">🎯 Verbinding geoptimaliseerd</div>
-    <div class="strat-metrics">
-      <span>⚡ <b>${speed.readsPerSec}</b> reads/s</span>
-      <span>⏱ <b>${speed.avgMs}</b> ms</span>
-      <span>📡 <b>${speed.pids}</b> PIDs</span>
-      ${speed.protocol&&speed.protocol!=='?'?`<span>🔌 ${speed.protocol}</span>`:''}
-    </div>
-    <div style="font-size:12px;color:var(--tx3);margin:10px 0 6px">Kies een poll-strategie:</div>
-    ${opts}
-  </div>`;
-  ov.classList.add('show');
+  applyStrategy(voorstel);
+  const s=STRATEGIE_INFO[voorstel];
+  try{ if(typeof showToast==='function') showToast(`⚡ ${speed.readsPerSec} reads/s · ${speed.avgMs}ms — tempo wordt automatisch geregeld`); }catch(e){}
+  try{ btDiag(`Verbinding gemeten: ${speed.readsPerSec} reads/s, ${speed.avgMs}ms → startpunt ${s?s.label:voorstel}; PLLoad regelt vanaf hier`,'ok'); }catch(e){}
 }
+
 function confirmStrategy(k){
   applyStrategy(k);
   const ov=document.getElementById('stratOverlay'); if(ov) ov.classList.remove('show');
@@ -1552,9 +1536,33 @@ async function tryReadVIN(){
   // byte-paren laat verschuiven — dát produceerde eerder de garbage-VINs.
   const extractVIN=(raw)=>{
     if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')) return null;
-    let vin='';
+    // ── Frames scheiden (fase 4-fix) ───────────────────────────────
+    // De vorige versie splitste alleen op regeleindes. Deze adapter levert
+    // een multiframe-respons echter op ÉÉN regel — net als bij de batch-
+    // parser. Gevolg: alleen de EERSTE CAN-header werd gestript en de
+    // headers van frame 2 en 3 bleven midden in de bytestroom staan, wat
+    // een onleesbare VIN opleverde. Beide vormen komen voor:
+    //   "7E8 10 14 4902.. 7E8 21 .. 7E8 22 .."   (headers aan)
+    //   "014 0:4902.. 1:.. 2:.."                 (framemarkers)
+    const frames=[];
     for(const line of String(raw).split(/[\r\n]+/)){
-      let hex=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+      if(!line.trim()) continue;
+      if(/[0-9A-Fa-f]\s*:/.test(line)){          // framemarkers: deel 0 = lengte
+        const d=line.split(/[0-9A-Fa-f]\s*:/);
+        for(let k=1;k<d.length;k++) frames.push(d[k]);
+        continue;
+      }
+      const plat=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+      if(!plat) continue;
+      if((plat.match(/7E[89A-F]/g)||[]).length>1)
+        frames.push(...plat.split(/(?=7E[89A-F])/).filter(Boolean));
+      else if((plat.match(/18DA/g)||[]).length>1)
+        frames.push(...plat.split(/(?=18DA)/).filter(Boolean));
+      else frames.push(plat);
+    }
+    let vin='';
+    for(const frame of frames){
+      let hex=frame.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
       if(!hex) continue;
       // CAN-header strippen: 11-bit (7E8/7E9... = 3 tekens) of 29-bit (18DAF1xx = 8)
       if(/^18DA/.test(hex)) hex=hex.slice(8);

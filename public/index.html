@@ -9231,29 +9231,15 @@ async function _wizStep2(){
   if(!speed){ wizGo(3); return; }
   const rps=speed.readsPerSec;
   lbl.textContent=`⚡ ${rps} reads/sec · ⏱ ${speed.avgMs}ms`;
+  // Geen keuzemenu meer: het pollbudget wordt automatisch geregeld door
+  // PLLoad op basis van gemeten busbezetting. De gemeten snelheid blijft wel
+  // zichtbaar — die zegt iets over de adapter — maar is geen vraag meer.
   const voorstel=suggestStrategy(speed);
+  try{ applyStrategy(voorstel); }catch(e){}
   const strats=document.getElementById('wizStrats');
-  strats.style.display='';
-  const btns=document.getElementById('wizStratBtns');
-  btns.innerHTML='';
-  Object.keys(STRATEGIE_INFO).forEach(k=>{
-    const s=STRATEGIE_INFO[k];
-    const b=document.createElement('button');
-    b.className='wiz-strat-btn'+(k===voorstel?' rec':'');
-    b.innerHTML=`<span class="wiz-strat-emoji">${s.emoji}</span>
-      <div class="wiz-strat-info">
-        <div class="wiz-strat-name">${s.label}${k===voorstel?' <span style="font-size:11px;background:var(--bl);color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px">aanbevolen</span>':''}</div>
-        <div class="wiz-strat-desc">${s.desc}</div>
-      </div>`;
-    b.onclick=()=>{
-      document.querySelectorAll('.wiz-strat-btn').forEach(x=>x.classList.remove('chosen'));
-      b.classList.add('chosen'); b.classList.remove('rec');
-      // Strategie toepassen zonder popup
-      applyStrategy(k);
-      setTimeout(()=>wizGo(3), 600);
-    };
-    btns.appendChild(b);
-  });
+  if(strats) strats.style.display='none';
+  lbl.textContent=`⚡ ${rps} reads/sec · ⏱ ${speed.avgMs}ms — tempo wordt automatisch geregeld`;
+  setTimeout(()=>wizGo(3), 900);
 }
 
 // STAP 3 — PIDs ontdekken: discovery loopt al, toon voortgang

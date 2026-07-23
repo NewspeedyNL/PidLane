@@ -54,18 +54,12 @@ window.PLRemote=(function(){
     requestShortCode(j);   // 10-cijferige meekijk-code ophalen (niet-blokkerend)
     logA('📡 Diagnose delen gestart — sessie '+j.sessionId,'ok');
     try{logUsage('remote_share_start',j.sessionId);}catch(_){}
-    // Auto Full Survey: het voertuig meteen documenteren bij de start van een
-    // remote sessie (Veldlab → Airtable), één keer per app-sessie. De bus is
-    // daardoor de eerste ~minuut drukker; daarna volle snelheid voor live.
-    if(connected&&!demoMode&&typeof vlFullSurvey==='function'
-       &&typeof isAdmin==='function'&&isAdmin()&&!window._remAutoSurvey){
-      window._remAutoSurvey=true;
-      setTimeout(()=>{try{
-        if(typeof _vlSvBusy!=='undefined'&&_vlSvBusy)return;
-        logA('📋 Auto Full Survey gestart (remote sessie) — bus is even drukker','info');
-        vlFullSurvey();
-      }catch(_){}},4000);
-    }
+    // GEEN auto Full Survey meer bij het starten van een remote sessie.
+    // Die legde de bus juist plat op het moment dat de expert begint mee te
+    // kijken: de survey leest élke ondersteunde PID (soms 2x) plus bitmaps en
+    // DTC-modes, waardoor de live view de eerste minuut onbruikbaar was.
+    // De survey blijft beschikbaar via ☰ → 📋 Full survey, op een moment dat
+    // de gebruiker zelf kiest.
     // QR-koppeling: sessie-info deponeren zodat de expert-laptop vanzelf verbindt.
     if(S.pendingClaim){
       const pp=S.pendingClaim;S.pendingClaim=null;

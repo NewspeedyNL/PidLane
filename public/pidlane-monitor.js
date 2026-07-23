@@ -30,11 +30,13 @@ const PLMon = {
   },
 
   // ── runtime state ──
-  // userOff: de gebruiker heeft de monitor zelf uitgezet. Bewust apart van
-  // de remote feature-flag: die is van de beheerder, deze van de gebruiker.
-  // Blijft bewaard tussen sessies, want wie 'm uitzet wil niet dat hij bij
-  // de volgende verbinding weer vanzelf aanslaat.
-  userOff: (function(){ try{ return localStorage.getItem('pl_monitor_uit')==='1'; }catch(e){ return false; } })(),
+  // userAan: de gebruiker heeft de rit-monitor zelf AANgezet.
+  // Bewust omgekeerd t.o.v. de oude userOff-vlag: de monitor start niet meer
+  // vanzelf bij het verbinden. Hij greep tijdens de eerste seconden na een
+  // PID-setwissel naar een bus die nog aan het inregelen was en trok daaruit
+  // conclusies (STAT_RPM, RPM_CONST) die niets met de motor te maken hadden.
+  // Meten is nu een bewuste handeling. Blijft bewaard tussen sessies.
+  userAan: (function(){ try{ return localStorage.getItem('pl_monitor_aan')==='1'; }catch(e){ return false; } })(),
   active: false,
   _timer: null,
   _watchdog: null,
@@ -53,11 +55,13 @@ const PLMon = {
     this._watchdog = setInterval(()=>{
       // Remote uitschakelbaar via admin (feat_monitor); ontbrekende key = AAN.
       const featOk = (typeof featOn!=='function') || featOn('feat_monitor');
-      const wil = featOk && !this.userOff &&
+      // De watchdog START niet meer uit zichzelf: dat doet alleen de gebruiker
+      // via toggleRitMonitor(). Hij bewaakt nog wél het STOPPEN, zodat een
+      // losgekoppelde of demo-sessie geen monitor laat doordraaien.
+      const mag = featOk && this.userAan &&
                   (typeof connected!=='undefined' && connected) &&
                   !(typeof demoMode!=='undefined' && demoMode);
-      if (wil && !this.active) this.start();
-      else if (!wil && this.active) this.stop();
+      if (!mag && this.active) this.stop();
     }, this.cfg.watchdogMs);
   },
 
@@ -324,23 +328,32 @@ window.PLMon = PLMon;
    voor de gebruiker. Deze twee functies vullen dat gat; de knop zit in het
    ☰-menu en toont de actuele stand. */
 window.toggleRitMonitor = function(){
-  PLMon.userOff = !PLMon.userOff;
-  try{ localStorage.setItem('pl_monitor_uit', PLMon.userOff?'1':'0'); }catch(e){}
-  if (PLMon.userOff && PLMon.active) PLMon.stop();
-  try{ if(typeof log==='function') log(PLMon.userOff?'🔔 Rit-monitor door gebruiker UITgezet':'🔔 Rit-monitor door gebruiker AANgezet','info'); }catch(e){}
-  try{ if(typeof showToast==='function') showToast(PLMon.userOff?'🔕 Rit-monitor uit':'🔔 Rit-monitor aan — start zodra je verbonden bent'); }catch(e){}
+  PLMon.userAan = !PLMon.userAan;
+  try{ localStorage.setItem('pl_monitor_aan', PLMon.userAan?'1':'0'); }catch(e){}
+  const verbonden = (typeof connected!=='undefined' && connected) &&
+                    !(typeof demoMode!=='undefined' && demoMode);
+  const featOk = (typeof featOn!=='function') || featOn('feat_monitor');
+  if (!PLMon.userAan){
+    if (PLMon.active) PLMon.stop();
+  } else if (verbonden && featOk && !PLMon.active){
+    PLMon.start();          // meteen starten, niet wachten op de watchdog-tik
+  }
+  try{ if(typeof log==='function') log(PLMon.userAan?'🔔 Rit-monitor door gebruiker AANgezet':'🔕 Rit-monitor door gebruiker UITgezet','info'); }catch(e){}
+  try{ if(typeof showToast==='function') showToast(
+        !PLMon.userAan ? '🔕 Rit-monitor uit'
+        : (verbonden ? '🔔 Rit-monitor gestart' : '🔔 Rit-monitor aan — start zodra je verbonden bent')); }catch(e){}
   window.updateMonitorBtn();
 };
 window.monitorStatusTekst = function(){
-  if (PLMon.userOff) return 'uit';
-  if (PLMon.active)  return 'actief';
+  if (!PLMon.userAan) return 'uit';
+  if (PLMon.active)   return 'actief';
   if (typeof featOn==='function' && !featOn('feat_monitor')) return 'geblokkeerd';
   return 'wacht op verbinding';
 };
 window.updateMonitorBtn = function(){
   const b=document.getElementById('monitorBtn'); if(!b) return;
   const st=window.monitorStatusTekst();
-  b.innerHTML = (PLMon.userOff?'🔕':'🔔') + ' Rit-monitor'
+  b.innerHTML = (PLMon.userAan?'🔔':'🔕') + ' Rit-monitor'
     + '<span style="margin-left:auto;font-size:10px;font-weight:700;opacity:.75">'+st+'</span>';
   b.style.display='flex'; b.style.alignItems='center'; b.style.gap='6px';
 };

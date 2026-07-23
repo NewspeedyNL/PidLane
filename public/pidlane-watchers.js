@@ -19,6 +19,35 @@
 (function(){
 'use strict';
 
+// ── Overbrenging: schakelmoment herkennen (fase 4) ─────────────────
+// De 'constant'-fase kijkt alleen naar de snelheidshelling en ziet een
+// schakelmoment dus niet. Op de i20 gaf een doodnormale terugschakeling bij
+// 25 km/h een toerentalspreiding van 896 rpm en 132% ratiodrift — beide
+// tests sloegen aan op gezond rijgedrag.
+// Bij een vaste versnelling is rpm/snelheid constant, dus daarop normaliseren
+// we. Een schakeling is één STAP naar een nieuwe stabiele waarde; slip is een
+// geleidelijke DRIFT. Die twee scheiden we hier expliciet.
+function _overbrenging(rpm, spd){
+  const n=Math.min(rpm.length, spd.length);
+  if(n<6) return null;
+  const r=rpm.slice(-n), v=spd.slice(-n), rat=[];
+  for(let i=0;i<n;i++){ if(v[i]>=5) rat.push(r[i]/v[i]); }
+  if(rat.length<6) return null;
+  const med=a=>{ const z=a.slice().sort((x,y)=>x-y); return z[Math.floor(z.length/2)]; };
+  // grootste sprong tussen twee opeenvolgende metingen = schakelmoment
+  let stap=0;
+  for(let i=1;i<rat.length;i++)
+    stap=Math.max(stap, Math.abs(rat[i]-rat[i-1])/Math.max(0.001,rat[i-1]));
+  // spreiding via IQR: ongevoelig voor de ene uitschieter van een overgang
+  const q=rat.slice().sort((a,b)=>a-b), m=q.length, mid=med(rat)||1;
+  const spreidPct=(q[Math.floor(3*m/4)]-q[Math.floor(m/4)])/mid*100;
+  // trend: mediaan van het eerste derde deel t.o.v. het laatste derde deel
+  const d=Math.max(2,Math.floor(m/3));
+  const vroeg=med(rat.slice(0,d)), laat=med(rat.slice(-d));
+  const driftPct=(laat-vroeg)/Math.max(0.001,vroeg)*100;
+  return { geschakeld: stap>0.12, spreidPct, driftPct, n:rat.length };
+}
+
 const PLWatch = {
   cfg: {
     tickMs: 2000,
@@ -46,18 +75,27 @@ const PLWatch = {
   tests: [
     { id:'RPM_CONST', naam:'toerentalstabiliteit bij constante snelheid',
       fase:['constant'], warm:null, pids:['010C','010D'], duurMs:5000,
-      check(c){ const r=c.win('010C',5000); if(r.length<6) return null;
-        const sp=Math.max(...r)-Math.min(...r);
-        if(sp>150 && c.val('010D')>30) return `toerental onrustig bij constante snelheid (spreiding ${Math.round(sp)} rpm) — kan wijzen op overslaan of slippende koppeling/omvormer`;
+      // Rauwe max-min op het toerental weet niet dat een hoger toerental bij
+      // een hogere snelheid gewoon klopt: bij 22->29 km/h gaf dat 558 rpm
+      // "onrust" terwijl de overbrenging keurig vlak lag (4%).
+      check(c){
+        const g=_overbrenging(c.win('010C',5000), c.win('010D',5000));
+        if(!g || c.val('010D')<=30) return null;
+        if(g.geschakeld) return null;              // schakelen is geen defect
+        if(g.spreidPct>15) return `toerental onrustig bij constante snelheid (rpm/snelheid varieert ${Math.round(g.spreidPct)}%) — kan wijzen op overslaan of slippende koppeling/omvormer`;
         return null; } },
 
     { id:'RATIO_CONST', naam:'overbrengingsverhouding bij constante snelheid',
       fase:['constant'], warm:null, pids:['010C','010D'], duurMs:6000,
-      check(c){ const rpm=c.win('010C',6000), spd=c.win('010D',6000);
-        if(rpm.length<6||spd.length<6||c.val('010D')<40) return null;
-        const ratios=rpm.slice(-6).map((v,i)=>v/Math.max(1,spd.slice(-6)[i]||1));
-        const mn=Math.min(...ratios), mx=Math.max(...ratios);
-        if(mn>0 && (mx-mn)/mn>0.10) return `rpm/snelheid-verhouding drijft ${Math.round((mx-mn)/mn*100)}% bij constante snelheid — indicatie slip (koppeling/omvormer)`;
+      // Slip = de verhouding DRIJFT geleidelijk weg. Schakelen = één stap naar
+      // een nieuwe stabiele waarde. De oude test kende dat verschil niet en
+      // vuurde op elke schakeling; bovendien was 10% veel te krap — normaal
+      // rijden gaf met de oude max-min-maat al 6-9%.
+      check(c){
+        const g=_overbrenging(c.win('010C',6000), c.win('010D',6000));
+        if(!g || c.val('010D')<40) return null;
+        if(g.geschakeld) return null;
+        if(Math.abs(g.driftPct)>15) return `rpm/snelheid-verhouding drijft ${Math.round(g.driftPct)}% bij constante snelheid zonder schakelmoment — indicatie slip (koppeling/omvormer)`;
         return null; } },
 
     { id:'STAT_RPM', naam:'rustig stationair',
@@ -71,9 +109,14 @@ const PLWatch = {
         if(d.length<2) return null;
         let omk=0; for(let i=1;i<d.length;i++) if(d[i]*d[i-1]<0) omk++;
         const omkPct=omk/(d.length-1);
-        if(omkPct<0.25) return null;   // trend/instelling, geen schommeling
-        const sp=Math.max(...r)-Math.min(...r);
-        if(sp>120) return `ruw stationair: toerental schommelt ${Math.round(sp)} rpm (${Math.round(omkPct*100)}% richtingswisselingen) — denk aan valse lucht, bobine/bougie of stationairregeling`;
+        if(omkPct<0.25) return null;   // monotone trend (fast-idle zakt weg)
+        // OMVANG via IQR, niet via max-min: één losse uitschieter (parse-hik,
+        // opstarttransient) geeft max-min ~380 terwijl de motor rustig loopt.
+        // IQR laat zich daar niet door verstoren: 2 rpm bij een piek in een
+        // vlakke reeks, 160 rpm bij écht ruw stationair.
+        const s2=r.slice().sort((a,b)=>a-b), n=s2.length;
+        const spread=s2[Math.floor(3*n/4)]-s2[Math.floor(n/4)];
+        if(spread>60) return `ruw stationair: toerental schommelt ${Math.round(spread)} rpm (IQR, ${Math.round(omkPct*100)}% richtingswisselingen) — denk aan valse lucht, bobine/bougie of stationairregeling`;
         return null; } },
 
     { id:'STAT_MAP', naam:'inlaatdruk bij stationair (vacuüm)',
