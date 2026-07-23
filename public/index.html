@@ -438,10 +438,50 @@
       <div style="text-align:center;font-size:12px;color:var(--tx3);padding-top:4px">
         PidLane <span id="loginVer">v2.1</span> — AI Car Diagnostics<br>
         <a href="https://www.pidlane.nl" target="_blank" rel="noopener" style="color:#00D4FF;text-decoration:none;font-weight:600">🌐 www.pidlane.nl</a>
-        
+        <div style="padding-top:9px">
+          <button id="plFrisBtn" onclick="plHardReload(this)" style="background:none;border:1px solid var(--bd);color:var(--tx3);font-size:11px;font-weight:600;padding:5px 12px;border-radius:999px;cursor:pointer">🔄 Nieuwste versie laden</button>
+        </div>
       </div>
     </div>
-    <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'2.1');}catch(e){}</script>
+    <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'2.1');}catch(e){}
+
+/* ── Nieuwste versie forceren ────────────────────────────────────────
+   location.reload(true) doet in moderne browsers niets meer, en alléén
+   index.html opnieuw ophalen helpt niet: de losse JS-modules staan
+   dan nog steeds onder dezelfde URL in de HTTP-cache. Vandaar dat een
+   gewone verversing vaak half oude, half nieuwe modules oplevert.
+   Daarom halen we élk asset van deze pagina expliciet op met
+   cache:'reload'. Dat omzeilt de cache én VERVANGT de opgeslagen kopie,
+   zodat de herlaadbeurt daarna gegarandeerd de nieuwe bestanden krijgt.
+   De lijst komt uit de DOM, dus hij blijft vanzelf kloppen als er later
+   modules bijkomen. localStorage blijft bewust ongemoeid: daar staan de
+   sessie, favorieten en instellingen in — dat is geen cache. */
+window.plHardReload = async function(btn){
+  const zet=(t)=>{ try{ if(btn){ btn.textContent=t; btn.disabled=true; } }catch(e){} };
+  zet('⏳ Ophalen…');
+  const urls=new Set([location.pathname]);
+  try{
+    document.querySelectorAll('script[src]').forEach(x=>{ if(x.src) urls.add(x.src); });
+    document.querySelectorAll('link[rel="stylesheet"][href]').forEach(x=>{ if(x.href) urls.add(x.href); });
+  }catch(e){}
+  // Service workers en Cache Storage gebruikt de webversie niet, maar de
+  // Capacitor-WebView kan ze wél hebben. Opruimen kost hier niets.
+  try{ if(navigator.serviceWorker){
+    const rs=await navigator.serviceWorker.getRegistrations();
+    for(const r of rs){ try{ await r.unregister(); }catch(e){} }
+  } }catch(e){}
+  try{ if(window.caches){
+    const ks=await caches.keys();
+    await Promise.all(ks.map(k=>caches.delete(k).catch(()=>{})));
+  } }catch(e){}
+  // Elk bestand vers ophalen. Fouten negeren, zodat één 404 de rest niet blokkeert.
+  try{ await Promise.all([...urls].map(u=>fetch(u,{cache:'reload'}).catch(()=>{}))); }catch(e){}
+  zet('✅ Herladen…');
+  const u=new URL(location.href);
+  u.searchParams.set('fris', Date.now().toString(36));
+  location.replace(u.toString());
+};
+</script>
   </div>
 </div>
 
@@ -969,6 +1009,7 @@
       <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
+      <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
       <button class="kebab-item" id="monitorBtn" onclick="toggleRitMonitor()">🔔 Rit-monitor</button>
       <button class="kebab-item adminOnly" id="busDiagBtn" onclick="closeKebab();openBusDiag()">🩺 Busdiagnose</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
