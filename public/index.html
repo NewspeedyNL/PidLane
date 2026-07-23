@@ -7835,15 +7835,29 @@ function splitBatchResponse(raw, expectPids){
   // worden gelezen → verkeerde waarden. Nu: strikt sequentieel parsen.
   let hex='';
   for(let line of String(raw).split(/[\r\n]+/)){
-    const numbered=/^\s*[0-9A-Fa-f]\s*:/.test(line);
-    line=line.replace(/^\s*[0-9A-Fa-f]\s*:\s*/,'');
+    // ── Framemarkers eerst (fase 4-fix) ────────────────────────────
+    // Een ISO-TP multiframe respons komt op deze adapter op ÉÉN regel binnen:
+    //   "008 0:41430034067F 1:07820000000000"
+    // De oude test keek alleen naar het BEGIN van de regel ("^N:") en zag hier
+    // "008 0:" staan, dus gold de regel als ongenummerd. Gevolg: de lengte-
+    // indicator én de framecijfers 0 en 1 belandden als hexcijfers in de
+    // datastroom. Dat schoof alles op met één nibble en dan gebeurde er één
+    // van twee dingen: de laatste PID van de batch viel weg (0107 werd
+    // "gesnoeid" terwijl de ECU keurig 0x82 teruggaf), of — erger — het
+    // framecijfer vormde toevallig een geldig PID-nummer en er kwam een
+    // plausibele maar VERKEERDE waarde uit (0111 las 0x10 i.p.v. 0x0F).
+    // Daarom nu: splits op élke framemarker, waar hij ook staat, en houd
+    // alleen de payload erna. Deel 0 is de lengte-indicator en vervalt.
+    if(/[0-9A-Fa-f]\s*:/.test(line)){
+      const delen=line.split(/[0-9A-Fa-f]\s*:/);
+      for(let k=1;k<delen.length;k++) hex+=delen[k].replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+      continue;
+    }
     let h=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
     if(!h) continue;
-    if(!numbered){
-      if(/^18DA/.test(h)) h=h.slice(8);              // 29-bit CAN header
-      else if(/^7E[89A-F]/.test(h)) h=h.slice(3);    // 11-bit CAN header
-      if(!/41/.test(h)&&h.length<=4) continue;       // losse lengte-regel "00E"
-    }
+    if(/^18DA/.test(h)) h=h.slice(8);              // 29-bit CAN header
+    else if(/^7E[89A-F]/.test(h)) h=h.slice(3);    // 11-bit CAN header
+    if(!/41/.test(h)&&h.length<=4) continue;       // losse lengte-regel "00E"
     hex+=h;
   }
   // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
