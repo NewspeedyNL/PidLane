@@ -7987,6 +7987,90 @@ function zetPollProfielVast(naam){
 }
 window.setPollProfile=setPollProfile; window.zetPollProfielVast=zetPollProfielVast;
 
+// ══════════════════════════════════════════════════════════════════
+// PLLOAD — automatische busbelasting-regeling (fase 4, AIMD)
+// ──────────────────────────────────────────────────────────────────
+// Tot nu toe koos de gebruiker handmatig "snel/gebalanceerd/conservatief"
+// en stond dat voor de rest van de sessie vast. Maar of de bus het aankan
+// hangt af van ECU, adapter, aantal PIDs en batchgrootte — dat weet niemand
+// vooraf. Gevolg: bij 17 PIDs op deze i20 liep de bus tegen 100% bezetting
+// en werden alle ingestelde intervallen stilzwijgend ~1,4x opgerekt.
+//
+// Daarom regelen we het nu zoals netwerkcongestie: additive increase,
+// multiplicative decrease. Bij ruimte gaan we voorzichtig sneller; bij
+// verzadiging meteen fors rustiger. Zo verlies je tempo in plaats van PIDs,
+// en wordt de ECU nooit overvraagd.
+//
+// _loadMult vermenigvuldigt het pollinterval: 1.0 = volle snelheid,
+// 2.0 = alles half zo vaak. Staat LOS van _pollMult (verbindingsstrategie)
+// zodat een handmatige keuze en de automatiek elkaar niet overschrijven.
+const PLLoad={
+  _mult:1.0, _laatstTick:0, _sinds:0, _staat:'normaal',
+  MIN:1.0, MAX:6.0,
+  cfg:{
+    tickMs:2000,        // niet vaker bijregelen dan dit
+    bezetOp:85,         // % bustijd waarboven we terugschroeven
+    bezetAf:55,         // % waaronder we weer ruimte pakken
+    foutOp:10,          // % mislukte commando's = te hard duwen
+    traagMs:400,        // responstijd die op bufferen wijst
+    doodPct:80,         // vrijwel alles mislukt
+    omhoog:1.35,        // multiplicative decrease van het tempo
+    omlaag:0.05         // additive increase van het tempo
+  },
+
+  mult(){ return this._mult; },
+
+  // Eén regelstap. Wordt aan het eind van elke pollronde aangeroepen en
+  // regelt zichzelf af op cfg.tickMs, dus extra aanroepen zijn onschadelijk.
+  tick(){
+    const nu=Date.now();
+    if(nu-this._laatstTick<this.cfg.tickMs) return;
+    this._laatstTick=nu;
+    if(!connected||demoMode){ this._mult=1.0; this._staat='normaal'; return; }
+    let s=null;
+    try{ s=(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null; }catch(e){}
+    if(!s) return;
+    const druk = s.belasting>=this.cfg.bezetOp || s.foutPct>=this.cfg.foutOp;
+    const ruim = s.belasting<this.cfg.bezetAf && s.foutPct<this.cfg.foutOp;
+    const vorig=this._mult;
+    if(druk)      this._mult=Math.min(this.MAX, this._mult*this.cfg.omhoog);
+    else if(ruim) this._mult=Math.max(this.MIN, this._mult-this.cfg.omlaag);
+    this._mult=Math.round(this._mult*100)/100;
+    // Alleen loggen bij een merkbare stap, anders loopt de BT-log vol.
+    if(Math.abs(this._mult-vorig)>=0.2){
+      btDiag(`Pollbudget ${this._mult>vorig?'verlaagd':'verhoogd'} naar ${(100/this._mult).toFixed(0)}% `+
+             `(bezet ${s.belasting}%, fout ${s.foutPct}%, ${s.venGemMs}ms)`, this._mult>vorig?'warn':'info');
+    }
+    this._staat=this._bepaalStaat(s);
+  },
+
+  _bepaalStaat(s){
+    if(s.foutPct>=this.cfg.doodPct || (s.perSec===0&&connected)) return 'dood';
+    if(s.venGemMs>=this.cfg.traagMs && s.foutPct<20)             return 'bufferend';
+    if(this._mult>=1.5)                                          return 'langzaam';
+    if(this._mult<=1.0 && s.belasting<this.cfg.bezetAf)          return 'snel';
+    return 'normaal';
+  },
+
+  // Voor de UI: één afgeleide toestand met kleur en uitleg. Bewust NIET
+  // instelbaar — het is een meting, geen keuze.
+  staat(){
+    const M={
+      snel:      ['⚡ snel',      'var(--gn)', 'ruimte over, alles op vol tempo'],
+      normaal:   ['✅ normaal',   'var(--gn)', 'haalt de ingestelde intervallen'],
+      langzaam:  ['🐢 langzaam',  'var(--or)', 'teruggeschroefd om de ECU bij te laten benen'],
+      bufferend: ['📦 bufferend', 'var(--or)', 'antwoorden komen traag binnen — adapter loopt achter'],
+      dood:      ['💀 dood',      'var(--rd)', 'vrijwel geen geldige antwoorden meer']
+    };
+    const m=M[this._staat]||M.normaal;
+    return { code:this._staat, label:m[0], kleur:m[1], uitleg:m[2],
+             tempoPct:Math.round(100/this._mult), mult:this._mult };
+  },
+
+  reset(){ this._mult=1.0; this._staat='normaal'; this._laatstTick=0; }
+};
+window.PLLoad=PLLoad;
+
 function pidPollInterval(pid){
   // Focus-PIDs (klacht-gestuurd, idee 5) altijd op het snelste tempo
   if(_focusPIDs.has(pid)) return 120;
@@ -8009,8 +8093,10 @@ function pidPollInterval(pid){
     }
   }
   if(basis===null) basis=PID_POLL_CLASS[suf]||1000;       // 3) default MEDIUM
-  // × profiel × verbindingsstrategie (snel/gebalanceerd/conservatief)
-  return Math.max(80, Math.round(basis * (prof.mult||1) * (typeof _pollMult!=='undefined'?_pollMult:1)));
+  // x profiel x verbindingsstrategie x automatische belastingsregeling.
+  // Focus-PIDs blijven ongemoeid (die returnen hierboven al).
+  const lm=(window.PLLoad&&typeof PLLoad.mult==='function')?PLLoad.mult():1;
+  return Math.max(80, Math.round(basis * (prof.mult||1) * (typeof _pollMult!=='undefined'?_pollMult:1) * lm));
 }
 // Welke PIDs zijn NU "due" om te pollen?
 // ── DODE-PID-SNOEI ──────────────────────────────────────────────────
@@ -8138,6 +8224,7 @@ function startPoll(){
   clearInterval(pollTimer);
   dataStable=false; stabilityCount={}; pidSmooth={}; outlierCount={}; window._stabilityT0=null;
   _pidNextPoll={};
+  try{ PLLoad.reset(); }catch(e){}   // nieuwe PID-set = budget opnieuw ijken
   document.getElementById('aiContent').innerHTML=`<div class="ai-ph"><div class="pi">📡</div><p>Data valideren...<br><br>Even geduld — outliers worden gefilterd voor betrouwbare analyse.</p></div>`;
 
   // Scheduler-tick: 100ms. Per tick worden alleen de PIDs gepolld die volgens
@@ -8168,8 +8255,18 @@ function startPoll(){
       const due=pidsDueNow();
       if(!due.length) return;   // niets aan de beurt deze tick
       const now=Date.now();
-      // Plan elk due-PID meteen opnieuw in (ook als de poll zo faalt — geen storm)
-      due.forEach(pid=>{ _pidNextPoll[pid]=now+pidPollInterval(pid); });
+      // Herplannen vanaf de DEADLINE, niet vanaf nu. 'now' wordt vastgelegd
+      // vóór alle I/O, maar een ronde duurt honderden ms — vanaf now tellen
+      // betekende dus stilzwijgend "ingesteld interval + rondeduur", waardoor
+      // 10s in de praktijk 14s werd. Loopt een PID te ver achter (survey hield
+      // de bus vast), dan ijken we opnieuw vanaf nu in plaats van in te halen:
+      // een inhaalstorm belast de ECU precies op het verkeerde moment.
+      due.forEach(pid=>{
+        const iv=pidPollInterval(pid);
+        const vorige=_pidNextPoll[pid]||0;
+        const vanafDeadline=vorige+iv;
+        _pidNextPoll[pid] = (vorige && vanafDeadline>now) ? vanafDeadline : now+iv;
+      });
 
       // Multi-PID batch alleen op CAN (ISO 15765). Andere protocollen
       // ondersteunen geen meervoudige PID-requests → sequentieel.
@@ -8251,6 +8348,9 @@ function startPoll(){
       // Idee 4: na elke pollronde de deterministische correlatie-check draaien
       runCorrelationEngine();
       updateEVMode();
+      // Regelkring: meet de verzadiging en stel het pollbudget bij (fase 4).
+      // Zelf-afgeregeld op cfg.tickMs, dus elke ronde aanroepen is prima.
+      try{ PLLoad.tick(); }catch(e){}
     }finally{
       PLBus.release(_busTok);
     }
@@ -8342,6 +8442,26 @@ function renderBusDiag(){
   const prof=POLL_PROFIELEN[actiefPollProfiel()]||{label:'?',emoji:''};
 
   let h='';
+
+  // ── BUSTOESTAND: afgeleid, niet gekozen (fase 4) ──
+  // Vervangt het handmatig instellen van "snel/langzaam": dit toont wat de
+  // bus feitelijk doet en op welk percentage van het gevraagde tempo de
+  // regelkring is uitgekomen.
+  try{
+    const L=PLLoad.staat();
+    const vulPct=Math.max(4,Math.min(100,L.tempoPct));
+    h+='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:9px">'+
+       '<div style="font-size:11px;font-weight:800;color:var(--tx3);letter-spacing:.4px;text-transform:uppercase;margin-bottom:7px">Bustoestand</div>'+
+       '<div style="display:flex;align-items:baseline;gap:8px">'+
+         '<span style="font-size:16px;font-weight:800;color:'+L.kleur+'">'+L.label+'</span>'+
+         '<span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--tx)">'+L.tempoPct+'% tempo</span>'+
+       '</div>'+
+       '<div style="height:7px;border-radius:4px;background:var(--sur2);margin:8px 0 6px;overflow:hidden">'+
+         '<div style="height:100%;width:'+vulPct+'%;background:'+L.kleur+';transition:width .4s"></div>'+
+       '</div>'+
+       '<div style="font-size:12px;color:var(--tx2);line-height:1.5">'+L.uitleg+'</div>'+
+       '</div>';
+  }catch(e){}
 
   // ── verbinding & slot ──
   h+=_bdKaart('Bus', [
