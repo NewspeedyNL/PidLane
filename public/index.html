@@ -8023,6 +8023,24 @@ function pidPollInterval(pid){
 const _noDataStreak={}, _pidDead=new Set(), _pidDeadSince={};
 const PID_DEAD_THRESHOLD=4, PID_REPROBE_MS=120000;
 
+// ── CADANS-REGISTER (fase 4) ────────────────────────────────────────
+// Tot nu toe bestond nergens in de app het onderscheid tussen "deze PID is
+// niet gevraagd" en "deze PID is gevraagd en gaf geen antwoord". Watchers
+// lazen alleen pidHist en concludeerden "dood" uit stilte die de scheduler
+// zélf veroorzaakte: de TRAAG-klasse staat op 10s terwijl de watcher uitval
+// uitriep na 8s — een gegarandeerde valse melding, elke ronde opnieuw.
+// Hieronder houden we per PID bij wanneer we het laatst ECHT geprobeerd
+// hebben en wanneer dat lukte; window.PLSched publiceert dat naar buiten.
+const _pidLastTry={}, _pidLastOk={}, _streakSince={};
+
+// Snoeien telde per POGING, terwijl pogingen 83× uit elkaar liggen: 6 missers
+// op een 120ms-PID is 0,7s (busruis), op een 10s-PID een volle minuut.
+// Zelfde regel, totaal andere betekenis. Daarom nu ook een eis in ECHTE tijd:
+// een absolute bodem én een veelvoud van de eigen cadans.
+const PID_DEAD_MIN_SPAN_MS=3000, PID_DEAD_SPAN_FACTOR=3;
+// Is de bus als geheel ziek, dan ligt het niet aan deze ene PID.
+const PID_DEAD_BUS_FOUT_PCT=40;
+
 // ── PID-KWALITEITSSCORE 0-100 (fase 2) ──────────────────────────────
 // Een enkele misser maakt een sensor niet kapot. We houden per PID een
 // voortschrijdend gemiddelde bij van geslaagde reads. Pas als de score
@@ -8039,17 +8057,57 @@ function _qualBump(pid,goed){
 }
 window.pidQuality=pidQuality;
 
-function markPidData(pid){ _noDataStreak[pid]=0; _qualBump(pid,true); if(_pidDead.delete(pid)) delete _pidDeadSince[pid]; }
+function markPidData(pid){
+  const nu=Date.now();
+  _pidLastTry[pid]=nu; _pidLastOk[pid]=nu;
+  _noDataStreak[pid]=0; delete _streakSince[pid];
+  _qualBump(pid,true);
+  if(_pidDead.delete(pid)) delete _pidDeadSince[pid];
+}
 function markPidNoData(pid){
+  const nu=Date.now();
+  _pidLastTry[pid]=nu;
+  if(!_streakSince[pid]) _streakSince[pid]=nu;
   _noDataStreak[pid]=(_noDataStreak[pid]||0)+1;
   _qualBump(pid,false);
-  // Snoeien vereist ÉN een reeks missers ÉN een lage score. Een PID die af
-  // en toe hapert (score blijft hoog) blijft gewoon meedraaien.
-  if(_noDataStreak[pid]>=PID_DEAD_THRESHOLD && pidQuality(pid)<35 && !_pidDead.has(pid)){
-    _pidDead.add(pid); _pidDeadSince[pid]=Date.now();
-    btDiag(`PID ${pid} ${_noDataStreak[pid]}× geen data (kwaliteit ${pidQuality(pid)}%) — gesnoeid (herkansing over ${PID_REPROBE_MS/1000}s)`,'info');
-  }
+  if(_pidDead.has(pid)) return;
+  // Snoeien vereist nu VIER dingen, niet twee:
+  //   1) een reeks missers            2) een lage kwaliteitsscore
+  //   3) die reeks duurt ook in ECHTE tijd lang genoeg voor déze cadans
+  //   4) de bus zelf is gezond (anders straffen we de verkeerde)
+  if(_noDataStreak[pid]<PID_DEAD_THRESHOLD) return;
+  if(pidQuality(pid)>=35) return;
+  const eis=Math.max(PID_DEAD_MIN_SPAN_MS, PID_DEAD_SPAN_FACTOR*pidPollInterval(pid));
+  const duur=nu-(_streakSince[pid]||nu);
+  if(duur<eis) return;
+  try{
+    const s=(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null;
+    if(s && typeof s.foutPct==='number' && s.foutPct>=PID_DEAD_BUS_FOUT_PCT){
+      btDiag(`PID ${pid} zou gesnoeid worden, maar bus zelf is ziek (${s.foutPct}% fout) — uitgesteld`,'warn');
+      return;
+    }
+  }catch(e){}
+  _pidDead.add(pid); _pidDeadSince[pid]=nu;
+  btDiag(`PID ${pid} ${_noDataStreak[pid]}× geen data over ${Math.round(duur/1000)}s (kwaliteit ${pidQuality(pid)}%) — gesnoeid (herkansing over ${PID_REPROBE_MS/1000}s)`,'info');
 }
+
+// ── PLSched: cadans-register naar buiten (fase 4) ───────────────────
+// Iedere afnemer (watchers, monitor, verify, rapport) kan hiermee zien of
+// stilte betekent "nog niet aan de beurt" of "gevraagd en niets terug".
+// Zonder dit onderscheid is elke uitvaldetectie giswerk.
+window.PLSched={
+  interval(pid){ try{ return pidPollInterval(pid); }catch(e){ return 0; } },
+  laatstePoging(pid){ return _pidLastTry[pid]||0; },
+  laatsteSucces(pid){ return _pidLastOk[pid]||0; },
+  dood(pid){ return _pidDead.has(pid); },
+  kwaliteit(pid){ return pidQuality(pid); },
+  actief(){ try{ return Array.from(activePIDs); }catch(e){ return []; } },
+  info(pid){
+    return { pid, interval:this.interval(pid),
+             laatstePoging:this.laatstePoging(pid), laatsteSucces:this.laatsteSucces(pid),
+             dood:this.dood(pid), kwaliteit:this.kwaliteit(pid) };
+  }
+};
 
 function pidsDueNow(){
   const now=Date.now();

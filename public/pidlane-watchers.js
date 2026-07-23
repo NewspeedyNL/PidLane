@@ -6,6 +6,11 @@
 // "toerental stabiel" draait alleen bij CONSTANTE snelheid; bij stilstand
 // stapt hij door en draait dáár de stationair-batterij.
 //   • Leest ALLEEN pidHist/pidVals — nooit zelf I/O op de bus.
+//   • Uitval is CADANS-RELATIEF (fase 4): de drempel volgt het pollinterval
+//     van de PID zelf via window.PLSched. Een vaste 8s-drempel maakte de hele
+//     TRAAG-klasse (10s) gegarandeerd vals en zette de ZELDEN-klasse (60s)
+//     juist permanent buiten beeld. Bovendien telt alleen "gevraagd en niets
+//     terug" als uitval — niet stilte die de scheduler zelf veroorzaakte.
 //   • Edge-triggered met cooldown per test: één melding per voorval.
 //   • Events → PLMon (Laag A): zelfde samenvouwing, rapport en AI-context.
 //   • Dekking wordt bijgehouden: het eindrapport meldt welke tests deze rit
@@ -17,7 +22,10 @@
 const PLWatch = {
   cfg: {
     tickMs: 2000,
-    stilNaMs: 8000, minSamples: 5, busStilFractie: 0.7,
+    // stilNaMs is nog slechts de terugval als PLSched ontbreekt; normaal geldt
+    // max(stilMinMs, stilFactor x eigen pollinterval).
+    stilNaMs: 8000, stilMinMs: 8000, stilFactor: 3, buitenBeeldFactor: 2.5,
+    minSamples: 5, busStilFractie: 0.7,
     flatMinN: 8, flatMinMs: 6000, refVarMin: 40,
     cooldownMs: 60000, testCooldownMs: 120000,
     piekLimiet: { '0105':4, '010F':6, '0146':4, '015C':5, '0142':2 },
@@ -54,9 +62,18 @@ const PLWatch = {
 
     { id:'STAT_RPM', naam:'rustig stationair',
       fase:['stationair'], warm:true, pids:['010C'], duurMs:5000,
-      check(c){ const r=c.win('010C',5000); if(r.length<6) return null;
+      // max-min kan een WEGZAKKEND fast-idle niet onderscheiden van een
+      // schokkend stationair: een monotone daling 1050->660 geeft 392 "schommeling".
+      // Ruw stationair oscilleert (richtingswisselingen ~50-60% van de overgangen),
+      // een fast-idle-daling niet (~0%). Daarom eerst het karakter, dan de omvang.
+      check(c){ const r=c.win('010C',5000); if(r.length<8) return null;
+        const d=[]; for(let i=1;i<r.length;i++) d.push(r[i]-r[i-1]);
+        if(d.length<2) return null;
+        let omk=0; for(let i=1;i<d.length;i++) if(d[i]*d[i-1]<0) omk++;
+        const omkPct=omk/(d.length-1);
+        if(omkPct<0.25) return null;   // trend/instelling, geen schommeling
         const sp=Math.max(...r)-Math.min(...r);
-        if(sp>120) return `ruw stationair: toerental schommelt ${Math.round(sp)} rpm — denk aan valse lucht, bobine/bougie of stationairregeling`;
+        if(sp>120) return `ruw stationair: toerental schommelt ${Math.round(sp)} rpm (${Math.round(omkPct*100)}% richtingswisselingen) — denk aan valse lucht, bobine/bougie of stationairregeling`;
         return null; } },
 
     { id:'STAT_MAP', naam:'inlaatdruk bij stationair (vacuüm)',
@@ -106,6 +123,38 @@ const PLWatch = {
 
   _actief(){ return !!(window.PLMon && window.PLMon.active); },
 
+  // ── cadans uit het scheduler-register (fase 4) ──────────────────────
+  // Geen register (oude index.html) -> null, en we vallen terug op het
+  // oude gedrag. Zo blijft dit bestand los inzetbaar.
+  _verwacht(pid){
+    try{
+      const S=window.PLSched;
+      if(S && typeof S.interval==='function'){
+        const v=S.interval(pid);
+        if(typeof v==='number' && v>0 && v<999999) return v;
+      }
+    }catch(e){}
+    return null;
+  },
+  // Hoe lang mag deze PID stil zijn voordat het opvalt?
+  _stilDrempel(pid){
+    const v=this._verwacht(pid);
+    if(v===null) return this.cfg.stilNaMs;
+    return Math.max(this.cfg.stilMinMs, v*this.cfg.stilFactor);
+  },
+  // Is deze PID ECHT gevraagd en bleef het antwoord uit? Dat is het enige
+  // harde bewijs van uitval. Stilte alleen betekent meestal "nog niet due".
+  _echtGevraagd(pid, drempel){
+    const S=window.PLSched;
+    if(!S || typeof S.laatstePoging!=='function') return true;  // geen register
+    try{
+      if(typeof S.dood==='function' && S.dood(pid)) return false; // gesnoeid: stilte verwacht
+      const pog=S.laatstePoging(pid)||0, ok=S.laatsteSucces(pid)||0;
+      if(!pog) return false;                       // nooit gevraagd -> geen oordeel
+      return (pog-ok) > drempel*0.5;
+    }catch(e){ return true; }
+  },
+
   _tick(){
     if (!this._actief()){ this._seen={}; this._flatCand={}; this._trimSinds=null;
       this._fase='onbekend'; this._faseSinds=0; this._ritStart=0; this._startECT=null;
@@ -125,9 +174,12 @@ const PLWatch = {
     for (const pid of Object.keys(h)){
       const arr=h[pid]; if(!Array.isArray(arr)||!arr.length) continue;
       const lastT=arr[arr.length-1].t;
-      if(nu-lastT>30000) continue;
+      const drempel=this._stilDrempel(pid);
+      // Vast op 30s zette de ZELDEN-klasse (60s) permanent buiten beeld:
+      // een echt dode brandstofmeter viel daardoor nooit op. Nu relatief.
+      if(nu-lastT > drempel*this.cfg.buitenBeeldFactor) continue;
       actieve.push(pid);
-      if(nu-lastT>this.cfg.stilNaMs) stil++;
+      if(nu-lastT>drempel) stil++;
     }
     const busStilNu=actieve.length>=3 && (stil/actieve.length)>=this.cfg.busStilFractie;
     if(busStilNu&&!this._busStil) this._log('Watchers: bus/adapter-hik — meldingen onderdrukt','info');
@@ -145,7 +197,10 @@ const PLWatch = {
         s.lastT=last.t; s.samples++; continue;
       }
       if(s.uitgevallen||this._busStil) continue;
-      if(s.samples>=this.cfg.minSamples && nu-s.lastT>this.cfg.stilNaMs){
+      if(s.samples<this.cfg.minSamples) continue;
+      const drempel=this._stilDrempel(pid);
+      if(!this._echtGevraagd(pid, drempel)) continue;
+      if(nu-s.lastT>drempel){
         s.uitgevallen=true; s.vanaf=s.lastT;
         this._meld('UITVAL:'+pid, `${this._naam(pid)} levert geen data meer terwijl de rest doorloopt`, false);
       }
@@ -153,8 +208,14 @@ const PLWatch = {
     if(this._busStil) return;
 
     // ── watcher 2: bevroren dynamische waarde (RPM als referentie) ──
+    // STILSTANDPOORT: bij stationair IS snelheid 0 correct en staat de
+    // inlaatdruk bij gesloten gasklep terecht stil. Toerentalvariatie tijdens
+    // het wegzakken van fast-idle is geen bewijs dat de rest hoort te bewegen
+    // — dat was de bron van BEVROREN:010D/0111/010B op een stilstaande auto.
+    // Een echt vastzittende MAP bij stationair is werk voor STAT_MAP.
+    const faseDynamisch = (st.fase!=='stationair' && st.fase!=='onbekend');
     const rpmArr=(h['010C']||[]).filter(x=>x.t>nu-this.cfg.flatMinMs).map(x=>x.v);
-    const rpmBeweegt=rpmArr.length>=4 && (Math.max(...rpmArr)-Math.min(...rpmArr))>=this.cfg.refVarMin;
+    const rpmBeweegt=faseDynamisch && rpmArr.length>=4 && (Math.max(...rpmArr)-Math.min(...rpmArr))>=this.cfg.refVarMin;
     for (const pid of this.cfg.dynamisch){
       if(pid==='010C') continue;
       const recent=(h[pid]||[]).filter(x=>x.t>nu-this.cfg.flatMinMs);
