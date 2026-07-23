@@ -922,11 +922,19 @@ function trackBtQuality(cmd, r){
     if(pill && !pill.classList.contains('attn')){
       if(!pill.dataset.origTitle) pill.dataset.origTitle=pill.title||'';
       pill.classList.add('attn');
-      pill.title='Verbinding niet optimaal — open 📡 Log en probeer 🤖 Optimaliseer';
+      pill.title='Veel lege antwoorden van de ECU — PidLane regelt het tempo automatisch bij';
     }
     if(!_qualWarned){
-      _qualWarned=true;
-      showToast?.('⚠ Dataverwerking niet optimaal — probeer 🤖 Optimaliseer in de 📡 Log', 5000);
+      // Tijdens discovery/health-scan/survey levert de ECU van nature veel
+      // NO DATA: we proberen dan juist PIDs uit die de auto níét heeft.
+      // Waarschuwen is dan onzin. En de oude tekst verwees naar "🤖 Optimaliseer",
+      // wat sinds PLLoad geen keuze meer is maar automatisch gebeurt.
+      let scanBezig=false;
+      try{ scanBezig = (typeof _busyPillUntil!=='undefined' && Date.now() < _busyPillUntil); }catch(e){}
+      if(!scanBezig){
+        _qualWarned=true;
+        showToast?.('⚠ Veel lege antwoorden van de ECU — tempo wordt automatisch teruggeschroefd', 5000);
+      }
     }
   } else if(ratio<=0.1 && pill && pill.classList.contains('attn')){
     pill.classList.remove('attn');
@@ -1584,11 +1592,13 @@ async function tryReadVIN(){
   };
 
   let vin=null;
+  const ruw={};        // ruwe antwoorden bewaren voor diagnose bij mislukking
   try{
     await sendCmd('ATH1');
 
     // Poging 1: standaard mode 09 via broadcast (7DF)
-    vin=extractVIN(await sendCmd('0902',4000));
+    ruw['0902 broadcast']=await sendCmd('0902',4000);
+    vin=extractVIN(ruw['0902 broadcast']);
     if(vin) btDiag('VIN via standaard 0902 ✓','ok');
 
     // Poging 2: zelfde verzoek maar rechtstreeks aan de motor-ECU (7E0).
@@ -1596,7 +1606,8 @@ async function tryReadVIN(){
     if(!vin){
       btDiag('VIN leeg via broadcast — fysiek adres 7E0 proberen','info');
       await sendCmd('ATSH7E0');
-      vin=extractVIN(await sendCmd('0902',4000));
+      ruw['0902 via 7E0']=await sendCmd('0902',4000);
+      vin=extractVIN(ruw['0902 via 7E0']);
       if(vin) btDiag('VIN via 7E0 + 0902 ✓','ok');
     }
 
@@ -1605,6 +1616,7 @@ async function tryReadVIN(){
     if(!vin){
       btDiag('VIN via UDS 22F190 proberen','info');
       const r=await sendCmd('22F190',4000);
+      ruw['22F190']=r;
       if(r&&r.replace(/[^0-9A-Fa-f]/g,'').includes('62F190')){
         const hex=r.replace(/[^0-9A-Fa-f]/g,'');
         vin=extractVIN(hex.slice(hex.indexOf('62F190')+6));
@@ -1616,7 +1628,19 @@ async function tryReadVIN(){
     await sendCmd('ATSH7DF');
     await sendCmd('ATH0');
 
-    if(!vin){ log('Geen geldige VIN ontvangen (auto geeft hem niet vrij) — gebruik kenteken/RDW','info'); return null; }
+    if(!vin){
+      log('Geen geldige VIN ontvangen (auto geeft hem niet vrij) — gebruik kenteken/RDW','info');
+      // Ruwe antwoorden in de APP-log, niet de BT-log: die rolt binnen een
+      // minuut om, waardoor de VIN-poging bij exporteren altijd al weg was en
+      // niet te beoordelen viel of de auto zwijgt of de parser faalt.
+      try{
+        Object.keys(ruw).forEach(k=>{
+          const r=String(ruw[k]==null?'':ruw[k]).replace(/\s+/g,' ').trim().slice(0,140);
+          log('   VIN-poging ['+k+'] → '+(r||'(leeg)'),'info');
+        });
+      }catch(e){}
+      return null;
+    }
     log('VIN: '+vin,'ok');
     resetVehicleSources();               // nieuwe VIN → bron-tracking resetten
     const info=decodeVIN(vin);

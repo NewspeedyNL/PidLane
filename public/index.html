@@ -475,7 +475,21 @@ window.plHardReload = async function(btn){
     await Promise.all(ks.map(k=>caches.delete(k).catch(()=>{})));
   } }catch(e){}
   // Elk bestand vers ophalen. Fouten negeren, zodat één 404 de rest niet blokkeert.
-  try{ await Promise.all([...urls].map(u=>fetch(u,{cache:'reload'}).catch(()=>{}))); }catch(e){}
+  // De ETag van elk antwoord gaat de app-log in. Die log overleeft het herladen,
+  // dus je kunt na afloop zien wélk bestand daadwerkelijk veranderd is — precies
+  // wat je anders alleen kunt raden als er half oude, half nieuwe modules draaien.
+  let res=[];
+  try{ res=await Promise.all([...urls].map(u=>fetch(u,{cache:'reload'}).then(r=>[u,r]).catch(()=>null))); }catch(e){}
+  try{
+    if(typeof log==='function'){
+      log('🔄 Verse kopie opgehaald van '+res.filter(Boolean).length+' bestanden:','info');
+      res.filter(Boolean).forEach(([u,r])=>{
+        const naam=(u.split('/').pop()||'').split('?')[0]||'index.html';
+        const stamp=r.headers.get('etag')||r.headers.get('last-modified')||'(geen versiestempel)';
+        log('   '+naam+' → '+stamp,'info');
+      });
+    }
+  }catch(e){}
   zet('✅ Herladen…');
   const u=new URL(location.href);
   u.searchParams.set('fris', Date.now().toString(36));
