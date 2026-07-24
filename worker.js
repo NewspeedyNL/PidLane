@@ -654,6 +654,95 @@ async function adminWriteLimited(env, ip) {
 // ════════════════════════════════════════════════════════════════════
 //  1) POST /v1/messages — Anthropic-proxy
 // ════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════
+//  1b) POST /copilot — admin-only ontwikkelassistent MET projectbriefing
+//      De app stuurt {messages:[...], context:{...}}. Wij plakken er de
+//      systeem-briefing vóór, zodat elke (geheugenloze) modelaanroep weet
+//      wat PidLane is en welke architectuurbesluiten al vastliggen — anders
+//      begint de assistent bij nul en stelt hij dingen voor die we al
+//      verworpen hebben. De briefing staat server-side, zodat hij niet in
+//      de client-bundle zit en zonder app-deploy bij te werken is.
+// ════════════════════════════════════════════════════════════════════
+const COPILOT_BRIEFING = [
+  'Je bent de ingebouwde ontwikkelassistent van PidLane, een OBD2-diagnose-webapp.',
+  'Je praat met de ontwikkelaar (admin) TIJDENS live gebruik in een auto. Antwoord in het Nederlands, kort en concreet.',
+  '',
+  'ARCHITECTUUR (vast):',
+  '- Losse JS-modules geladen vanuit index.html; scheduler, batchparser en snoei zitten in index.html zelf.',
+  '- PLBus = bus-mutex + statistiek (venGemMs, foutPct, belasting, perSec).',
+  '- PLSched = cadans-register per PID (interval, laatstePoging, laatsteSucces, dood, kwaliteit).',
+  '- PLLoad = automatische busbelasting-regeling (AIMD). Handmatige snelheidskeuze bestaat NIET meer.',
+  '- Watchers/monitor/verify zitten achter closures; van buiten NIET te patchen. Scheduler en parser (window.*) wel.',
+  '',
+  'BESLISSINGEN DIE VASTLIGGEN (niet opnieuw voorstellen):',
+  '- Uitvaldetectie is cadans-relatief (3x eigen interval), nooit een vaste drempel.',
+  '- Snoeien vereist reeks missers EN lage score EN verstreken tijd (>=3x interval) EN gezonde bus.',
+  '- Batch-multiframe komt op EEN regel; splits op elke framemarker, niet alleen regelbegin.',
+  '- STAT_RPM/RPM_CONST gebruiken IQR + richtingswisselingen, nooit rauwe max-min.',
+  '- Rit-monitor start alleen handmatig. Full Survey start nooit automatisch.',
+  '',
+  'WERKWIJZE: vraag om de diagnosebundel als je bytes nodig hebt. Lever nooit een fix zonder bewijs uit de data;',
+  'zeg het als je bewijs mist en vraag dan eerst om een meting. Wees zuinig met woorden.'
+].join('\n');
+
+async function handleCopilot(request, env) {
+  const session = await auth(request, env);
+  if (!session) return json({ error: 'unauthorized' }, 401);
+  // Harde admin-eis: de copiloot kan code-suggesties opleveren die live in een
+  // auto draaien. Dat is uitsluitend gereedschap voor de ontwikkelaar.
+  if (session.r !== 'admin')
+    return json({ error: 'forbidden_role', hint: 'Copiloot is alleen voor beheerders.' }, 403);
+
+  const declared = Number(request.headers.get('Content-Length') || 0);
+  if (declared > 400000) return json({ error: 'payload_too_large' }, 413);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'bad_json' }, 400); }
+  if (!body || !Array.isArray(body.messages))
+    return json({ error: 'bad_payload', hint: 'messages-array ontbreekt' }, 400);
+  if (body.messages.length > 40) return json({ error: 'too_many_messages' }, 413);
+
+  // Livecontext (busstaat, PID-cadans, recente log) als leesbaar blok vóór het
+  // gesprek. Apart van de systeem-briefing zodat het model briefing (vast) en
+  // toestand (nu) uit elkaar houdt.
+  let ctxBlok = '';
+  try {
+    if (body.context && typeof body.context === 'object') {
+      const c = JSON.stringify(body.context);
+      ctxBlok = 'HUIDIGE TOESTAND (momentopname uit de app):\n' +
+                (c.length > 60000 ? c.slice(0, 60000) + ' …(afgekapt)' : c);
+    }
+  } catch (_) {}
+
+  const messages = ctxBlok
+    ? [{ role: 'user', content: ctxBlok }, ...body.messages]
+    : body.messages;
+
+  const payload = {
+    model: typeof body.model === 'string' ? body.model : 'claude-sonnet-4-6',
+    max_tokens: Math.min(Math.max(Number(body.max_tokens) || 2048, 1), 8192),
+    system: COPILOT_BRIEFING,
+    messages
+  };
+  if (JSON.stringify(payload).length > 350000) return json({ error: 'payload_too_large' }, 413);
+
+  const apiKey = resolveAnthropicKey(env);
+  if (!apiKey) return json({ error: { message: 'Geen API-key in de Worker' } }, 401);
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type':      'application/json',
+      'x-api-key':         apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(payload),
+  });
+  const text = await r.text();
+  return new Response(text, { status: r.status, headers: { 'Content-Type': 'application/json', ...CORS } });
+}
+
 async function handleMessages(request, env) {
   // Toegang via sessietoken (server-login), admin-token, of — tijdelijk — het
   // oude vaste APP_TOKEN. Zie auth() hierboven.
@@ -2011,6 +2100,9 @@ export default {
 
       if (url.pathname === '/v1/messages' && request.method === 'POST')
         return await handleMessages(request, env);
+
+      if (url.pathname === '/copilot' && request.method === 'POST')
+        return await handleCopilot(request, env);
 
       if (url.pathname === '/airtable/log' && request.method === 'POST')
         return await handleAirtableLog(request, env);
