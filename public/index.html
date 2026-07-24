@@ -1024,6 +1024,8 @@ window.plHardReload = async function(btn){
       <button class="kebab-item adminOnly" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
       <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
+      <button class="kebab-item adminOnly" id="diagBundelBtn" onclick="closeKebab();plDiagBundleSave()">🧪 Diagnosebundel</button>
+      <button class="kebab-item adminOnly" id="copilotBtn" onclick="closeKebab();plCopilotOpen()">🤝 Copiloot</button>
       <button class="kebab-item" id="monitorBtn" onclick="toggleRitMonitor()">🔔 Rit-monitor</button>
       <button class="kebab-item adminOnly" id="busDiagBtn" onclick="closeKebab();openBusDiag()">🩺 Busdiagnose</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
@@ -6580,7 +6582,16 @@ function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   const ts=new Date().toTimeString().slice(0,8);
   _btLog.push({ts,msg,type});
-  if(_btLog.length>600) _btLog.splice(0,_btLog.length-400);   // geheugen-cap
+  // Geheugen-cap MET ANKER: de eerste regels van een sessie (protocol, VIN,
+  // discovery) blijven altijd staan. Die rolden er vroeger binnen een minuut
+  // uit — daardoor was de VIN-poging bij het exporteren telkens al weg en
+  // kostte dezelfde vraag drie extra rondes. De staart rolt gewoon door.
+  if(_btLog.length>1400){
+    const kop=_btLog.slice(0,300), staart=_btLog.slice(-800);
+    const weg=_btLog.length-kop.length-staart.length;
+    _btLog.length=0;
+    _btLog.push(...kop,{ts,msg:`… ${weg} regels weggelaten (geheugen-cap) …`,type:'info'},...staart);
+  }
   try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){}
   if(!_btPersistT) _btPersistT=setTimeout(_btPersistNow,2000);
   const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
@@ -7877,6 +7888,211 @@ function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
 //  A) los: "410C0A98 410D00 410584" (elk PID herhaalt 41)
 //  B) Mazda/ISO-TP multiframe: "00E 0:410C0B95 0469 1:11200B24..." 
 //     één 41, dan per PID: nummer + databytes aaneengeregen
+// ══════════════════════════════════════════════════════════════════
+// COPILOOT — ontwikkelassistent in de app (admin-only)
+// ──────────────────────────────────────────────────────────────────
+// Een chatpaneel dat live meekijkt: elke vraag gaat naar /copilot in de
+// Worker samen met een momentopname (busstaat, PID-cadans, recente log,
+// diagnosebundel). Zo hoeft er geen log meer geëxporteerd en geüpload te
+// worden, en draait dit op de eigen Anthropic-key via de Worker — los van
+// het chatlimiet van de ontwikkelaar.
+//
+// De assistent kan code TONEN in een blok. Toepassen gebeurt nooit vanzelf:
+// de ontwikkelaar drukt op Toepassen, de originele functie wordt eerst
+// bewaard, en Ongedaan maken zet 'm exact terug. Alleen window.*-functies
+// (scheduler, parser) zijn zo te patchen; closures niet.
+const _plCopilotHist=[];              // {role, content}
+const _plPatchBackup={};              // naam -> originele functie, voor undo
+
+function plCopilotContext(){
+  const veilig=f=>{ try{ return f(); }catch(e){ return null; } };
+  return {
+    bus: veilig(()=>PLBus.stats()),
+    belasting: veilig(()=>PLLoad.staat()),
+    pids: veilig(()=>PLSched.actief().map(p=>PLSched.info(p)))||[],
+    applog: veilig(()=>_lcLines('app').slice(-40))||[],
+    btlog: veilig(()=>_lcLines('bt').slice(-40))||[],
+    diag: veilig(()=>JSON.parse(plDiagBundle()).gevallen.slice(-20))||[]
+  };
+}
+
+function plCopilotOpen(){
+  let ov=document.getElementById('plCopilotOverlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='plCopilotOverlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:9998;background:var(--bg);display:flex;flex-direction:column';
+    ov.innerHTML=
+      '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--bd)">'+
+        '<span style="font-size:17px;font-weight:800">🤝 Copiloot</span>'+
+        '<span style="font-size:11px;color:var(--tx3)">kijkt live mee · admin</span>'+
+        '<button id="plCopilotClose" style="margin-left:auto;background:var(--sur2);border:none;color:var(--tx);font-size:15px;padding:6px 12px;border-radius:8px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div id="plCopilotStream" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px"></div>'+
+      '<div style="padding:10px 12px;border-top:1px solid var(--bd);display:flex;gap:8px">'+
+        '<textarea id="plCopilotIn" rows="1" placeholder="Vraag of beschrijf de bug…" style="flex:1;resize:none;background:var(--sur2);border:1px solid var(--bd);color:var(--tx);border-radius:10px;padding:9px 11px;font-size:14px;font-family:inherit"></textarea>'+
+        '<button id="plCopilotSend" onclick="plCopilotSend()" style="background:var(--ac);border:none;color:#fff;font-weight:700;padding:0 16px;border-radius:10px;cursor:pointer">➤</button>'+
+      '</div>';
+    document.body.appendChild(ov);
+    const cl=ov.querySelector('#plCopilotClose'); if(cl) cl.addEventListener('click',()=>{ ov.style.display='none'; });
+    const ta=ov.querySelector('#plCopilotIn');
+    ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); plCopilotSend(); }});
+    if(!_plCopilotHist.length) _plCopilotBubble('assistant','Ik kijk mee met de busstaat, PID-cadans en de laatste logregels. Beschrijf de bug of stel een vraag — vraag me om de diagnosebundel als ik bytes nodig heb.');
+  }
+  ov.style.display='flex';
+}
+
+function _plCopilotBubble(role, tekst){
+  const stream=document.getElementById('plCopilotStream'); if(!stream) return null;
+  const b=document.createElement('div');
+  const mij=role==='user';
+  b.style.cssText='max-width:88%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;'+
+    (mij?'align-self:flex-end;background:var(--ac);color:#fff':'align-self:flex-start;background:var(--sur2);color:var(--tx)');
+  b.textContent=tekst;
+  stream.appendChild(b); stream.scrollTop=stream.scrollHeight;
+  return b;
+}
+
+// Codeblokken uit het antwoord halen en er een Toepassen-knop bij zetten.
+function _plCopilotRenderCode(tekst){
+  const stream=document.getElementById('plCopilotStream'); if(!stream) return;
+  const re=/```(?:js|javascript)?\\n([\\s\\S]*?)```/g; let m;
+  while((m=re.exec(tekst))){
+    const code=m[1].trim();
+    const naam=(code.match(/window\\.([A-Za-z_$][\\w$]*)\\s*=/)||code.match(/function\\s+([A-Za-z_$][\\w$]*)/)||[])[1]||null;
+    const wrap=document.createElement('div');
+    wrap.style.cssText='align-self:flex-start;max-width:95%;background:#0d1117;border:1px solid var(--bd);border-radius:12px;overflow:hidden';
+    const pre=document.createElement('pre');
+    pre.style.cssText='margin:0;padding:10px 12px;overflow-x:auto;font-size:12px;color:#c9d1d9';
+    pre.textContent=code;
+    wrap.appendChild(pre);
+    const bar=document.createElement('div');
+    bar.style.cssText='display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--bd);align-items:center';
+    const info=document.createElement('span');
+    info.style.cssText='font-size:11px;color:var(--tx3);margin-right:auto';
+    info.textContent=naam?('patcht '+naam):'geen window.*-functie herkend';
+    bar.appendChild(info);
+    if(naam){
+      const bT=document.createElement('button');
+      bT.textContent='⚠ Toepassen (test)';
+      bT.style.cssText='background:var(--or);border:none;color:#000;font-weight:700;font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer';
+      bT.onclick=()=>_plApplyPatch(naam, code, bar);
+      bar.appendChild(bT);
+    }
+    wrap.appendChild(bar);
+    stream.appendChild(wrap);
+  }
+  stream.scrollTop=stream.scrollHeight;
+}
+
+function _plApplyPatch(naam, code, bar){
+  try{
+    if(!(naam in _plPatchBackup)) _plPatchBackup[naam]=window[naam];   // origineel bewaren
+    (0,eval)(code);                                                     // in global scope
+    if(typeof window[naam]!=='function') throw new Error(naam+' is na patch geen functie');
+    btDiag('🧪 Live patch toegepast op '+naam+' (test)','warn');
+    bar.querySelectorAll('button').forEach(b=>b.remove());
+    const ok=document.createElement('span'); ok.style.cssText='font-size:12px;color:var(--gn);font-weight:700'; ok.textContent='✓ actief';
+    const un=document.createElement('button');
+    un.textContent='↩ Ongedaan';
+    un.style.cssText='background:var(--sur2);border:1px solid var(--bd);color:var(--tx);font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer';
+    un.onclick=()=>{ window[naam]=_plPatchBackup[naam]; delete _plPatchBackup[naam];
+      btDiag('↩ Patch op '+naam+' teruggedraaid','info'); un.remove(); ok.textContent='✓ origineel terug'; };
+    bar.appendChild(ok); bar.appendChild(un);
+  }catch(e){
+    btDiag('Patch mislukt: '+e.message,'err');
+    showToast?.('Patch mislukt: '+e.message);
+  }
+}
+
+async function plCopilotSend(){
+  const ta=document.getElementById('plCopilotIn'); if(!ta) return;
+  const vraag=ta.value.trim(); if(!vraag) return;
+  ta.value='';
+  _plCopilotBubble('user',vraag);
+  _plCopilotHist.push({role:'user',content:vraag});
+  const btn=document.getElementById('plCopilotSend'); if(btn){ btn.disabled=true; btn.textContent='…'; }
+  const denk=_plCopilotBubble('assistant','…');
+  try{
+    const resp=await fetch(PROXY_URL+'/copilot',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-App-Token':(typeof APP_TOKEN!=='undefined'?APP_TOKEN:'')},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:2048,
+        messages:_plCopilotHist.slice(-16),
+        context: plCopilotContext()
+      })
+    });
+    const data=await resp.json();
+    let txt='';
+    if(Array.isArray(data.content)) txt=data.content.filter(x=>x.type==='text').map(x=>x.text).join('\\n');
+    else if(data.error) txt='⚠ '+(data.error.hint||data.error.message||JSON.stringify(data.error));
+    txt=txt||'(leeg antwoord)';
+    if(denk) denk.textContent=txt;
+    _plCopilotHist.push({role:'assistant',content:txt});
+    _plCopilotRenderCode(txt);
+  }catch(e){
+    if(denk) denk.textContent='⚠ Verbinding mislukt: '+e.message;
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='➤'; }
+  }
+}
+window.plCopilotOpen=plCopilotOpen;
+window.plCopilotSend=plCopilotSend;
+
+// ══════════════════════════════════════════════════════════════════
+// DIAGNOSEBUNDEL — ruwe TX/RX mét wat de parser ervan maakte
+// ──────────────────────────────────────────────────────────────────
+// Een bug in de parser is met een gewoon log niet te bewijzen: je ziet
+// wél wat de ECU stuurde, maar niet wat PidLane erin las. Vandaar dat
+// "0107 gesnoeid terwijl de ECU 0x82 teruggaf" pas na drie rondes boven
+// water kwam. Hier leggen we beide kanten naast elkaar vast, in een vorm
+// die los van de app opnieuw af te spelen is.
+const _diagRing=[];
+function _diagNote(cmd, raw, expect, out){
+  try{
+    const hex=v=>Array.isArray(v)?v.map(b=>Number(b).toString(16).padStart(2,'0').toUpperCase()).join(''):String(v);
+    const gevraagd=Array.from(expect||[]);
+    const gekregen={}; Object.keys(out||{}).forEach(k=>{ gekregen[k]=hex(out[k]); });
+    _diagRing.push({
+      t:new Date().toTimeString().slice(0,8),
+      tx:String(cmd||''),
+      rx:String(raw==null?'':raw).replace(/[\r\n]+/g,' ').trim().slice(0,160),
+      gevraagd,
+      gekregen,
+      mist:gevraagd.filter(p=>!(p in gekregen))
+    });
+    if(_diagRing.length>400) _diagRing.shift();
+  }catch(e){}
+}
+function plDiagBundle(){
+  const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
+  const veilig=f=>{ try{ return f(); }catch(e){ return null; } };
+  return JSON.stringify({
+    gemaakt:new Date().toISOString(),
+    voertuig:[v.merk,v.model,v.year].filter(Boolean).join(' ')||'—',
+    protocol:veilig(()=>typeof _protoId!=='undefined'?_protoId:null),
+    bus:veilig(()=>PLBus.stats()),
+    belasting:veilig(()=>PLLoad.staat()),
+    pids:veilig(()=>PLSched.actief().map(p=>PLSched.info(p)))||[],
+    gevallen:_diagRing.slice()
+  },null,1);
+}
+function plDiagBundleSave(){
+  try{
+    const txt=plDiagBundle();
+    const b=new Blob([txt],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download='PidLane_diag_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} },1500);
+    showToast?.('🧪 Diagnosebundel opgeslagen — '+_diagRing.length+' TX/RX-gevallen');
+  }catch(e){ showToast?.('Bundel mislukt: '+e.message); }
+}
+window.plDiagBundleSave=plDiagBundleSave;
+
 function splitBatchResponse(raw, expectPids){
   if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')||raw.includes('STOPPED')) return {};
   // Optioneel: de PIDs die in deze batch gevráágd zijn (bv. ['0141','0144','0145']).
@@ -8370,6 +8586,7 @@ function startPoll(){
           const cmd='01'+grp.map(p=>p.slice(2)).join('');
           const raw=await sendCmd(cmd,2500);
           const parsed=splitBatchResponse(raw,grp);
+          _diagNote(cmd, raw, grp, parsed);
           const got=Object.keys(parsed).length;
           if(got===0){
             // Zit er wél een 41-payload in de respons? Dan kwam de data goed
