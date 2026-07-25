@@ -1179,3 +1179,17 @@ html:not(.dark) .ov#loginOv .modal{
   text-transform:uppercase; letter-spacing:.6px; font-weight:700;
 }
 .ov#loginOv .mbtn.p:active{ background:rgba(6,179,107,.10); }
+
+/* Invoervelden met icoon ERIN (fase login-redesign, correctie).
+   Eerdere poging veranderde alleen de achtergrond en liet de labels boven
+   de velden staan — daardoor bleef het oude formulier zichtbaar op een
+   nieuwe achtergrond. Hier vervalt het label en staat het icoon rechts
+   in het veld, zoals in het ontwerp. */
+.lg-field{ position:relative; }
+.lg-field .api-inp{ width:100%; padding-right:42px; }
+.lg-field .lg-ico{
+  position:absolute; right:13px; top:50%; transform:translateY(-50%);
+  width:19px; height:19px; color:var(--tx3); pointer-events:none;
+}
+.lg-field .lg-ico svg{ width:100%; height:100%; display:block; }
+.lg-field .api-inp:focus + .lg-ico{ color:var(--bl); }
