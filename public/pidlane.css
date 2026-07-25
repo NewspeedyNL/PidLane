@@ -80,6 +80,25 @@ html, body { overflow-x:clip; }
 /* ══ IN-APP INTRO (logo-splash, fade naar login; toont 1x per sessie) ══ */
 #introOv { position:fixed; inset:0; z-index:9700; background:radial-gradient(120% 90% at 50% 28%, #101a2e 0%, #0a0e17 55%, #06080f 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .7s ease; padding-bottom:6vh; }
 #introOv.gone { opacity:0; pointer-events:none; }
+/* Naadloze overgang naar het loginscherm eronder (fase login-redesign):
+   #introOv ligt qua z-index (9700) boven .ov#loginOv (9600), dus tot de
+   introtimer afloopt (~3.4s) lag het loginscherm met golven er al ONDER,
+   onzichtbaar, om dan pas te verschijnen na de fade — dat gaf een merkbare
+   omslag (kort golven zien bij het laden, dan weg, dan weer terug).
+   Zelfde lintbeeld hier ook, zodat er niets wisselt: alleen het logo/de
+   ring faden weg, de achtergrond staat al de hele tijd stil. */
+#introOv::before{
+  content:"";
+  position:absolute; inset:0;
+  background:url('login-ribbon.webp') no-repeat;
+  background-size:cover;
+  background-position:75% 35%;
+  opacity:.55;
+  pointer-events:none;
+}
+@media (max-height:700px), (max-width:360px){
+  #introOv::before{ background-position:65% 45%; opacity:.4; }
+}
 /* Uittrede: logo groeit licht en vervaagt — vloeit visueel over in het
    (identieke, iets kleinere) logo op het loginscherm eronder. */
 #introOv.leave .intro-wrap { animation:introLeave .7s ease both; }
