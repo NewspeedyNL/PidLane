@@ -1097,3 +1097,66 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .vic-val{font-size:13px;font-weight:600;color:var(--tx);}
 .vic-vin{font-family:var(--m);font-size:10px;color:var(--tx3);margin-top:3px;word-break:break-all;border-top:1px solid var(--bd);padding-top:4px;}
 
+
+/* ══ LOGINSCHERM — glaslook (fase login-redesign) ═════════════════════
+   Scoped onder .ov#loginOv zodat dit ALLEEN het loginscherm raakt en de
+   generieke .ov/.modal-basis voor de rest van de app ongemoeid blijft.
+   Achtergrond is een statisch WebP (geen canvas/animatie): dit scherm kan
+   op een telefoon staan die uren aan blijft tijdens een rit, dus geen
+   GPU-kosten voor iets decoratiefs. */
+.ov#loginOv{
+  background:
+    radial-gradient(120% 90% at 15% 100%, rgba(6,179,107,.10), transparent 55%),
+    radial-gradient(120% 90% at 85% 0%,  rgba(77,130,255,.12), transparent 55%),
+    var(--bg);
+  backdrop-filter:none;
+}
+.ov#loginOv::before{
+  /* Lintbeeld als losse achtergrondlaag i.p.v. inline op de modal, zodat
+     de kaart eroverheen scrollbaar/leesbaar blijft ongeacht schermgrootte. */
+  content:"";
+  position:absolute; inset:0;
+  background:url('login-ribbon.webp') no-repeat;
+  background-size:cover;
+  background-position:75% 35%;
+  opacity:.55;
+  pointer-events:none;
+}
+/* Op smalle/korte schermen (compacte Android-toestellen, spiegelbeeld-modus)
+   zou de crop van 'cover' het lint op een rare plek kunnen afsnijden —
+   hier schuift het contactpunt (het lichtste, meest kenmerkende deel van
+   het lint) meer naar het midden zodat er altijd iets herkenbaars staat. */
+@media (max-height:700px), (max-width:360px){
+  .ov#loginOv::before{ background-position:65% 45%; opacity:.4; }
+}
+.ov#loginOv .modal{
+  position:relative; z-index:1;
+  background:rgba(19,25,38,.62);
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:28px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+}
+html:not(.dark) .ov#loginOv .modal{
+  /* Lichte modus: dezelfde glaslook maar op een lichte ondergrond, anders
+     verdwijnt de tekst in het donkere glas-effect hierboven. */
+  background:rgba(255,255,255,.68);
+  border:1px solid rgba(16,21,31,.08);
+  box-shadow:0 20px 60px rgba(16,21,31,.18), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.ov#loginOv .api-inp{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);
+}
+.ov#loginOv .api-inp:focus{
+  border-color:var(--bl); box-shadow:0 0 0 3px var(--bls);
+}
+.ov#loginOv .mbtn.p{
+  background:transparent;
+  border:1.5px solid var(--gn);
+  color:var(--tx);
+  box-shadow:0 0 24px rgba(6,179,107,.22);
+  text-transform:uppercase; letter-spacing:.6px; font-weight:700;
+}
+.ov#loginOv .mbtn.p:active{ background:rgba(6,179,107,.10); }
