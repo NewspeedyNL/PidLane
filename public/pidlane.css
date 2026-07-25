@@ -1193,3 +1193,29 @@ html:not(.dark) .ov#loginOv .modal{
 }
 .lg-field .lg-ico svg{ width:100%; height:100%; display:block; }
 .lg-field .api-inp:focus + .lg-ico{ color:var(--bl); }
+
+/* CORRECTIE kaartvorm (fase login-redesign).
+   De basis-.modal is gebouwd voor volledige overlays: .modal-scroll{flex:1}
+   groeit tot volle hoogte en .mact heeft een ONDOORZICHTIGE var(--sur)-balk.
+   Op het loginscherm gaf dat een kaart van rand tot rand, waardoor het
+   frosted glass over het hele lint lag (vage veeg i.p.v. lint) en de knop
+   naar de onderkant werd geduwd. Hier krimpt de kaart naar zijn inhoud en
+   is de actiebalk transparant, zodat het lint eromheen zichtbaar blijft. */
+.ov#loginOv .modal{
+  max-height:min(88vh, 640px);
+  height:auto;
+  margin:auto;
+}
+.ov#loginOv .modal-scroll{ flex:0 1 auto; overflow-y:visible; }
+.ov#loginOv .mact{
+  background:transparent;
+  border-top:none;
+  border-radius:0 0 28px 28px;
+  padding:14px 20px 18px;
+}
+/* Lint mag nu sterker: het wordt niet meer door een schermvullende
+   glaslaag afgevlakt. */
+.ov#loginOv::before, #introOv::before{ opacity:.8; }
+@media (max-height:700px), (max-width:360px){
+  .ov#loginOv::before, #introOv::before{ opacity:.65; }
+}
