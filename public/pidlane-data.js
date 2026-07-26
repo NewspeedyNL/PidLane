@@ -612,6 +612,74 @@ window.PID_BYTE_LEN ={
   '78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,'80':4,'A0':4,'C0':4
 };
 
+// ── PLPidLen — zelfcorrigerende bytelengtes (2026-07-26) ──────────────
+// De tabel hierboven is vanaf nu een STARTGOK, geen waarheid. Voertuigen
+// wijken af (Mazda SkyActiv geeft PID 55/56 in 1 byte i.p.v. 2) en de tabel
+// zelf kan fout staan (6D stond op 6, moest 11). Beide gevallen hebben
+// dezelfde oplossing: de ECU vertelt in de ISO-TP lengte-indicator exact
+// hoeveel bytes hij stuurt. splitBatchResponse() gebruikt dat als harde
+// randvoorwaarde en meldt hier wat hij daadwerkelijk gemeten heeft.
+//
+// Betrouwbaarheid van een meting:
+//   'solo'  = één PID gevraagd én lengte bekend → lengte = declared - 2.
+//             Ondubbelzinnig, meteen geldig.
+//   'batch' = afgeleid uit de lengtevergelijking van een batch. Sterk, maar
+//             leunt op de tabelwaarde van de ándere PIDs in die batch →
+//             pas geldig na 2 overeenstemmende waarnemingen.
+// Alles wordt per voertuig bewaard (VIN, anders merk|model|jaar), zodat een
+// andere auto nooit met andermans afwijkingen begint.
+window.PLPidLen = (function(){
+  var LEER={}, AFW={}, SLEUTEL=null;
+  function sleutel(){
+    try{
+      var v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
+      return v.vin || [v.merk,v.model,v.year].filter(Boolean).join('|') || null;
+    }catch(e){ return null; }
+  }
+  function laad(){
+    var k=sleutel(); if(!k||k===SLEUTEL) return;
+    SLEUTEL=k; LEER={};
+    try{ LEER=JSON.parse(localStorage.getItem('pl_pidlen_'+k)||'{}')||{}; }catch(e){ LEER={}; }
+  }
+  function bewaar(){
+    if(!SLEUTEL) return;
+    try{ localStorage.setItem('pl_pidlen_'+SLEUTEL, JSON.stringify(LEER)); }catch(e){}
+  }
+  return {
+    // Gemeten lengte melden. Alleen aanroepen vanuit een parse die volledig
+    // én exact op de opgegeven lengte uitkwam — anders leren we ruis aan.
+    melden: function(suf, n, bron){
+      suf=String(suf).toUpperCase();
+      if(!(n>=1&&n<=64)) return;
+      laad();
+      var tbl=(window.PID_BYTE_LEN||{})[suf];
+      if(tbl!=null && n!==tbl){
+        AFW[suf]=AFW[suf]||{tabel:tbl,gemeten:n,n:0};
+        AFW[suf].gemeten=n; AFW[suf].n++;
+      }
+      var e=LEER[suf];
+      if(!e || e.n!==n) LEER[suf]={n:n, hits:1, bron:bron||'batch'};
+      else { e.hits++; if(bron==='solo') e.bron='solo'; }
+      bewaar();
+    },
+    // Geleerde lengte, of null als er nog te weinig bewijs is.
+    lengte: function(suf){
+      laad();
+      var e=LEER[String(suf).toUpperCase()];
+      if(!e) return null;
+      return (e.bron==='solo' || e.hits>=2) ? e.n : null;
+    },
+    // Voor Busdiagnose: waar wijkt dit voertuig af van de tabel?
+    afwijkingen: function(){
+      return Object.keys(AFW).map(function(s){
+        return {pid:'01'+s, tabel:AFW[s].tabel, gemeten:AFW[s].gemeten, n:AFW[s].n};
+      });
+    },
+    geleerd: function(){ laad(); return JSON.parse(JSON.stringify(LEER)); },
+    wis: function(){ LEER={}; AFW={}; bewaar(); }
+  };
+})();
+
 // ── PID_POLL_CLASS (was index.html regel 11209) ──
 window.PID_POLL_CLASS ={
   // ⚡ SNEL (120ms) — verandert continu, wil je vloeiend zien

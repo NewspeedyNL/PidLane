@@ -8319,7 +8319,13 @@ function buildPIDList(filter=''){
 // Aantal databytes per mode-01 PID (SAE J1979). Nodig om een multi-PID
 // respons (41 0C .. 41 0D .. 41 05 ..) correct in stukken te knippen.
 // → PID_BYTE_LEN verplaatst naar pidlane-data.js
-function pidByteLen(suffix){ return PID_BYTE_LEN[suffix.toUpperCase()]||1; }
+// Opzoekvolgorde sinds 2026-07-26: wat op DIT voertuig gemeten is gaat vóór de
+// J1979-tabel. De tabel is de startgok voor een auto die we nog niet kennen.
+function pidByteLen(suffix){
+  const s=String(suffix).toUpperCase();
+  try{ const g=window.PLPidLen&&window.PLPidLen.lengte(s); if(g) return g; }catch(e){}
+  return PID_BYTE_LEN[s]||1;
+}
 
 // Knip een multi-PID respons op in losse {pid,bytes}-blokken.
 // Ondersteunt twee formaten:
@@ -8513,6 +8519,7 @@ function plDiagBundle(){
     protocol:veilig(()=>typeof _protoId!=='undefined'?_protoId:null),
     bus:veilig(()=>PLBus.stats()),
     belasting:veilig(()=>PLLoad.staat()),
+    bytelengtes:veilig(()=>({geleerd:window.PLPidLen.geleerd(), afwijkend:window.PLPidLen.afwijkingen()})),
     pids:veilig(()=>PLSched.actief().map(p=>PLSched.info(p)))||[],
     gevallen:_diagRing.slice()
   },null,1);
@@ -8542,7 +8549,25 @@ function splitBatchResponse(raw, expectPids){
   // De oude aanpak plakte alles plat en scande daarna vrij op "41" — waardoor
   // een DATABYTE 0x41 (bv. 65 km/h of 25°C koelwater) als nieuw PID-blok kon
   // worden gelezen → verkeerde waarden. Nu: strikt sequentieel parsen.
-  let hex='';
+  //
+  // 2026-07-26 — de lengte-indicator werd hier weggegooid. Dat was precies de
+  // informatie die de parser nodig had: de ECU zegt er exact mee hoeveel bytes
+  // hij stuurt, en daarmee ligt bij een batch de lengte van een onbekend PID
+  // dwingend vast (zie route 1). Hij wordt nu bewaard in `declared`.
+  let hex='', declared=null;
+  // `min` beschermt tegen twee valkuilen. (1) Een losse korte regel kan óók de
+  // PCI-byte van een single frame zijn ("03" = 3 databytes); die is geen
+  // First-Frame lengte en zou de respons te vroeg afkappen. Een echte FF komt
+  // alleen voor bij meer dan 7 bytes, vandaar min 8. (2) Vóór de lengte kan
+  // nog een CAN-header staan ("7E8 015 0:"), dus we nemen de LAATSTE hexgroep,
+  // niet de eerste — anders lazen we 0x7E8 als lengte.
+  const _pakLen=(t,min)=>{
+    if(declared!=null) return;
+    const m=String(t||'').match(/[0-9A-Fa-f]{1,4}/g);
+    if(!m) return;
+    const d=parseInt(m[m.length-1],16);
+    if(d>=(min||2)&&d<=4095) declared=d;
+  };
   for(let line of String(raw).split(/[\r\n]+/)){
     // ── Framemarkers eerst (fase 4-fix) ────────────────────────────
     // Een ISO-TP multiframe respons komt op deze adapter op ÉÉN regel binnen:
@@ -8559,6 +8584,7 @@ function splitBatchResponse(raw, expectPids){
     // alleen de payload erna. Deel 0 is de lengte-indicator en vervalt.
     if(/[0-9A-Fa-f]\s*:/.test(line)){
       const delen=line.split(/[0-9A-Fa-f]\s*:/);
+      _pakLen(delen[0], 2);                        // deel 0 = de lengte-indicator
       for(let k=1;k<delen.length;k++) hex+=delen[k].replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
       continue;
     }
@@ -8566,13 +8592,22 @@ function splitBatchResponse(raw, expectPids){
     if(!h) continue;
     if(/^18DA/.test(h)) h=h.slice(8);              // 29-bit CAN header
     else if(/^7E[89A-F]/.test(h)) h=h.slice(3);    // 11-bit CAN header
-    if(!/41/.test(h)&&h.length<=4) continue;       // losse lengte-regel "00E"
+    if(!/41/.test(h)&&h.length<=4){ _pakLen(h, 8); continue; }   // losse lengte-regel "00E"
     hex+=h;
   }
   // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
-  hex=hex.replace(/^0[0-9A-F]{2}(?=41)/,'');
+  const _mPre=hex.match(/^0[0-9A-F]{2}(?=41)/);
+  if(_mPre){ _pakLen(_mPre[0], 8); hex=hex.slice(3); }
   let i=hex.indexOf('41');
   if(i<0) return {};
+  // Afkappen op de opgegeven lengte: alles daarna is ISO-TP-vulling en heeft
+  // hier niets te zoeken. Daarmee wordt "de parse eindigt precies op het eind"
+  // een bruikbare toets in plaats van een gok over padding.
+  let eind=null;
+  if(declared!=null && (i+declared*2)<=hex.length){
+    hex=hex.slice(0, i+declared*2);
+    eind=hex.length;
+  }
   i+=2;
 
   // ── Route 1: verwachte PID-lijst bekend → adaptieve backtracking-parser ──
@@ -8586,6 +8621,7 @@ function splitBatchResponse(raw, expectPids){
   // enkele tientallen paden, verwaarloosbaar qua rekenwerk.
   if(expect.size){
     let best=null;
+    const exact=(eind!=null);
     const consider=(acc,clean)=>{
       const score=Object.keys(acc).length;
       if(!best||score>best.score||(score===best.score&&clean&&!best.clean))
@@ -8594,8 +8630,9 @@ function splitBatchResponse(raw, expectPids){
     const rec=(pos,remaining,acc,depth)=>{
       if(depth>16) return;
       const rest=hex.slice(pos);
-      if(!remaining.length||!rest||/^0+$/.test(rest)||rest.length<2){
-        consider(acc,true);                      // alles gevonden of nette padding/einde
+      if(!remaining.length||!rest||(!exact&&/^0+$/.test(rest))||rest.length<2){
+        // Met bekende lengte is "netjes" alléén: precies op het eind uitgekomen.
+        consider(acc, exact ? (rest.length===0) : true);
         return;
       }
       const suf=rest.slice(0,2);
@@ -8605,8 +8642,21 @@ function splitBatchResponse(raw, expectPids){
         rec(pos+2,remaining,acc,depth+1);
       }
       if(remaining.includes(suf)){
-        const tbl=pidByteLen(suf);
-        for(const n of [...new Set([tbl,1,2,4])]){
+        const kand=[pidByteLen(suf),1,2,4];
+        // ── De lengtevergelijking ──────────────────────────────────
+        // De ECU gaf het totaal aantal bytes. Nemen we voor de óverige
+        // gevraagde PIDs de bekende lengte aan, dan ligt de lengte van dít
+        // PID vast: hij is wat er overblijft. Dat is geen gok maar rekenwerk,
+        // en precies wat 6D=11 oplost zonder dat de tabel het hoeft te weten.
+        // Faalt de aanname over de anderen, dan is dit gewoon één kandidaat
+        // extra die het niet wordt — de bestaande paden blijven bestaan.
+        if(exact){
+          let anderen=0;
+          for(const j of remaining) if(j!==suf) anderen+=1+pidByteLen(j);
+          const n=(eind-pos)/2-1-anderen;
+          if(n>=1&&n<=64) kand.push(n);
+        }
+        for(const n of [...new Set(kand)]){
           const end=pos+2+n*2;
           if(end>hex.length) continue;
           const b=[];
@@ -8617,6 +8667,17 @@ function splitBatchResponse(raw, expectPids){
       consider(acc,false);                       // doodlopend pad → partial vastleggen
     };
     rec(i,[...expect],{},0);
+    // ── Terugkoppeling naar PLPidLen ───────────────────────────────
+    // Alleen leren van een parse die ALLE gevraagde PIDs verklaart én exact
+    // op de opgegeven lengte eindigt. Anders zouden we ruis vastleggen en
+    // zichzelf laten bevestigen. Eén PID gevraagd + lengte bekend = solo:
+    // die meting is ondubbelzinnig en telt meteen.
+    try{
+      if(best && exact && best.clean && best.score===expect.size && window.PLPidLen){
+        const bron=(expect.size===1)?'solo':'batch';
+        for(const k of Object.keys(best.out)) window.PLPidLen.melden(k.slice(2), best.out[k].length, bron);
+      }
+    }catch(e){}
     return best?best.out:{};
   }
 
@@ -9248,6 +9309,24 @@ function renderBusDiag(){
   } else {
     h+=_bdKaart('Laagste betrouwbaarheid', [['Alle actieve sensoren','100 %','var(--gn)']]);
   }
+
+  // ── bytelengtes: waar wijkt dit voertuig af van de J1979-tabel? ──
+  // Zonder deze kaart is de zelfcorrectie onzichtbaar, en dan is een stille
+  // correctie net zo lastig te vertrouwen als de stille fout die eraan
+  // voorafging. Leeg = de tabel klopt voor dit voertuig.
+  try{
+    const afw=(window.PLPidLen&&window.PLPidLen.afwijkingen())||[];
+    if(afw.length){
+      h+=_bdKaart('Bytelengte — gemeten ≠ tabel', afw.slice(0,8).map(a=>{
+        const d=(typeof getPidDef==='function')?getPidDef(a.pid):null;
+        return [((d&&d.name)||a.pid)+' <span style="opacity:.55">'+a.pid+'</span>',
+                a.tabel+' → '+a.gemeten+' byte'+(a.gemeten===1?'':'s')+' <span style="opacity:.55">('+a.n+'×)</span>',
+                'var(--or)'];
+      }));
+    } else {
+      h+=_bdKaart('Bytelengte — gemeten ≠ tabel', [['Geen afwijkingen gemeten','tabel klopt','var(--gn)']]);
+    }
+  }catch(e){}
 
   // ── monitor ──
   h+=_bdKaart('Rit-monitor', [
