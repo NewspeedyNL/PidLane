@@ -960,3 +960,163 @@ window.POLL_PROFIELEN={
 /* Welke analyse kiest automatisch welk pollprofiel? */
 window.ANALYSE2POLL={ basis:'basis', brandstof:'basis', emissie:'basis',
                       rit:'monitor', totaal:'basis', accu:'accu' };
+
+/* ═══════════════════════════════════════════════════════════════════
+   SITUATIES — rijomstandigheden / bijzonderheden   (build 2026-07-26)
+   ───────────────────────────────────────────────────────────────────
+   Een analyse is alleen bruikbaar als hij de situatie van de auto kent.
+   Veel verbruik met een caravan achter de auto is geen defect maar een
+   natuurwet; koelmarge en laaddruk zijn op dat moment juist wél kritisch.
+   Per situatie leggen we daarom twee dingen vast:
+     verwacht  → verschijnselen die logisch zijn en NIET als defect mogen
+                 worden gepresenteerd (mogen het stoplicht niet verlagen)
+     focus     → waar de AI juist strenger op moet oordelen
+   De gebruiker zet deze vlaggen aan bij de auto-gegevens; ze worden per
+   voertuig bewaard en verlopen automatisch (zie SITUATIE_TTL_MS).
+   ═══════════════════════════════════════════════════════════════════ */
+window.SITUATIE_TTL_MS = 12*60*60*1000;   // 12 uur; daarna automatisch uit
+
+window.SITUATIES = [
+  { id:'caravan', icon:'🚐', label:'Caravan / aanhanger', zwaar:true,
+    veld:{ key:'sitKg', lbl:'Gewicht aanhanger', ph:'bv. 1300 kg' },
+    verwacht:[
+      'fors hoger brandstofverbruik — met caravan/aanhanger ligt l/100 km al snel 40–80% boven normaal',
+      'hoge berekende motorbelasting (60–95%) en langdurig vollastbedrijf, ook op vlak terrein',
+      'hogere inlaatdruk/laaddruk (MAP/boost) en hogere MAF-waarden bij dezelfde snelheid',
+      'hoger toerental: de auto schakelt later op en eerder terug',
+      'hogere koelvloeistof-, olie- en uitlaatgastemperatuur; koelventilator draait vaker of continu',
+      'tragere acceleratie en een lagere gemiddelde snelheid'
+    ],
+    focus:[
+      'koelmarge: blijft de koelvloeistoftemperatuur onder duurbelasting STABIEL, of klimt hij door? Doorklimmen is wél een echte bevinding',
+      'olietemperatuur en, bij een automaat, transmissietemperatuur',
+      'laadspanning onder de extra verbruikers van de aanhanger (verlichting, koelkast)',
+      'bij turbo: houdt de laaddruk zijn waarde vast onder vollast of zakt hij weg (wastegate, lek, verstopte intercooler)?',
+      'bij benzine: terugname van de ontstekingsvervroeging door de klopregeling onder vollast',
+      'bij diesel: roetlading van het DPF en of een regeneratie kan afronden',
+      'beoordeel brandstoftrim op DEELLAST, niet op de vollastmomenten met de aanhanger'
+    ]},
+
+  { id:'beladen', icon:'📦', label:'Zwaar beladen / vol', zwaar:true,
+    veld:{ key:'sitPax', lbl:'Belading', ph:'bv. 5 personen + bagage' },
+    verwacht:[
+      'hoger brandstofverbruik (grofweg 10–30% afhankelijk van gewicht en terrein)',
+      'hogere motorbelasting bij optrekken en op hellingen; langere acceleratietijden',
+      'iets hogere koelvloeistof- en olietemperatuur bij duurbelasting',
+      'lager schakelpunt / hoger toerental bij dezelfde snelheid'
+    ],
+    focus:[
+      'temperatuurgedrag onder duurbelasting: stabiliseren of doorklimmen',
+      'laadspanning wanneer er veel verbruikers aan hangen',
+      'rem- en koelgedrag bij afdalingen (niet volledig via OBD2 meetbaar — benoem dit als handmatige controle)',
+      'bandenspanning en ophanging horen bij deze belading handmatig gecontroleerd te worden; presenteer dat als advies, niet als meting'
+    ]},
+
+  { id:'dakkoffer', icon:'🎿', label:'Dakkoffer / fietsendrager',
+    verwacht:[
+      'boven ± 90 km/u een 10–25% hoger verbruik door luchtweerstand',
+      'hogere motorbelasting op de snelweg bij gelijke snelheid',
+      'meer windgeruis — geen technische klacht'
+    ],
+    focus:[
+      'de verbruiksafwijking hoort SNELHEIDSAFHANKELIJK te zijn. Is het verbruik ook bij lage snelheid of stationair verhoogd, dan ligt de oorzaak in de techniek en niet in de dakbelading — zeg dat expliciet'
+    ]},
+
+  { id:'berg', icon:'⛰️', label:'Bergachtig / veel klimmen', zwaar:true,
+    verwacht:[
+      'lange vollastperiodes met hoge belasting en hoge temperaturen',
+      'momentaan verbruik zeer hoog tijdens klimmen en vrijwel nul tijdens afdalen (overrun-afsluiting)',
+      'op hoogte lagere absolute luchtdruk: lagere MAF- en MAP-waarden en minder vermogen bij atmosferisch aangezogen motoren',
+      'een turbomotor werkt op hoogte harder om dezelfde laaddruk te halen'
+    ],
+    focus:[
+      'koelmarge tijdens de klim en hoe snel de temperatuur daarna herstelt',
+      'motorrem/terugschakelgedrag bij afdaling (remmen zijn niet via OBD2 te meten — benoem als handmatige controle)',
+      'klopregeling en uitlaatgastemperatuur onder langdurige vollast',
+      'laaddrukopbouw op hoogte'
+    ]},
+
+  { id:'snelweg', icon:'🛣️', label:'Lange snelwegrit / hoge snelheid',
+    verwacht:[
+      'constante duurbelasting van grofweg 40–70%',
+      'hoger verbruik boven ± 120 km/u',
+      'stabiel hoge koelvloeistof- en olietemperatuur'
+    ],
+    focus:[
+      'temperatuurstabiliteit over langere tijd, niet één momentopname',
+      'laadspanning en accuconditie tijdens langdurig rijden',
+      'trillings- of geluidsklachten zijn hier snelheidsafhankelijk; koppel ze aan de gemeten snelheid'
+    ]},
+
+  { id:'stad', icon:'🏙️', label:'Stadsverkeer / korte ritten',
+    verwacht:[
+      'hoog verbruik per 100 km en veel stationair-tijd',
+      'de motor komt mogelijk niet of laat op bedrijfstemperatuur',
+      'de accu laadt onvoldoende bij, zeker met veel start-stop'
+    ],
+    focus:[
+      'bij diesel: roetlading van het DPF en niet-afgeronde regeneraties — dit is bij dit rijprofiel de belangrijkste kandidaat',
+      'accuconditie en laadbalans',
+      'stationaire loopkwaliteit en misfire-telling bij stationair',
+      'werking van de koelventilator bij stilstand'
+    ]},
+
+  { id:'koud', icon:'❄️', label:'Koud weer / koude start',
+    verwacht:[
+      'verrijking en afwijkende korte-termijn brandstoftrim tot de motor bedrijfswarm is',
+      'verhoogd stationair toerental en trage opwarming',
+      'hoger verbruik en een lagere accuspanning tijdens het starten'
+    ],
+    focus:[
+      'bereikt de motor überhaupt bedrijfstemperatuur? Blijft hij steken, dan is de thermostaat de eerste verdachte',
+      'de spanningsdip tijdens het starten',
+      'beoordeel brandstoftrim, lambda en emissiegerelateerde waarden pas als de motor aantoonbaar bedrijfswarm is'
+    ]},
+
+  { id:'hitte', icon:'🌡️', label:'Hitte / hoge buitentemperatuur',
+    verwacht:[
+      'hogere koelvloeistof- en inlaatluchttemperatuur',
+      'koelventilator die vaker of continu draait',
+      'de airco belast de motor extra en verhoogt het verbruik'
+    ],
+    focus:[
+      'hoe dicht zit de koelvloeistoftemperatuur bij het ingrijppunt en houdt hij zich daar',
+      'werking en inschakelmoment van de koelventilator',
+      'hoge inlaatluchttemperatuur bij turbo wijst op beperkte intercoolerwerking'
+    ]},
+
+  { id:'airco', icon:'🧊', label:'Airco / verwarming continu aan',
+    verwacht:[
+      '5–10% hoger brandstofverbruik',
+      'hogere stationaire belasting en een licht verhoogd stationair toerental',
+      'sprongen in belasting en toerental doordat de aircocompressor in- en uitschakelt'
+    ],
+    focus:[
+      'die sprongen in belasting/toerental zijn compressorschakelingen — presenteer ze NIET als misfire of als een onrustig stationair toerental',
+      'koelvloeistoftemperatuur bij stilstand met de airco aan'
+    ]},
+
+  { id:'lpg', icon:'⛽', label:'LPG / CNG-installatie',
+    verwacht:[
+      'de brandstoftrim van de benzine-ECU kan tijdens gasbedrijf structureel afwijken (vaak positief)',
+      'verbruikswaarden die uit MAF of injectietijd worden afgeleid kloppen niet in l/100 km tijdens gasbedrijf',
+      'licht afwijkende lambda-regeling'
+    ],
+    focus:[
+      'beoordeel brandstoftrim en lambda alleen als de auto aantoonbaar op benzine loopt; zeg er anders bij dat het oordeel niet betrouwbaar is',
+      'klepspeling en klepslijtage zijn bij LPG een bekend aandachtspunt',
+      'presenteer verbruikscijfers uit de app hier nadrukkelijk niet als hard feit'
+    ]},
+
+  { id:'tuning', icon:'🔧', label:'Chiptuning / softwareaanpassing',
+    verwacht:[
+      'hogere laaddruk dan de fabrieksspecificatie',
+      'afwijkende brandstoftrim en een hogere uitlaatgastemperatuur',
+      'hogere belasting- en koppelwaarden dan standaard'
+    ],
+    focus:[
+      'standaardreferentiewaarden gelden hier niet zonder meer — benoem dat expliciet bij elk oordeel',
+      'klopregeling, uitlaatgastemperatuur en koelmarge onder vollast',
+      'duurzaamheid van koppeling, automaat en turbo bij het verhoogde koppel'
+    ]}
+];

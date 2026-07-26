@@ -1,6 +1,38 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-07-22 21:35 (CET) — REMOTE CONFIG BEREIKT DE APP
+     Build: 2026-07-26 15:10 (CET) — RIJSITUATIE / BIJZONDERHEDEN
+
+     Een analyse was tot nu toe situatieblind. Een auto met 1300 kg caravan
+     erachter meet hoog verbruik, hoge belasting, hoge koelwatertemperatuur
+     en hoge laaddruk — precies wat je verwacht — maar de AI las dat als een
+     zieke auto en kleurde het rapport oranje/rood op de verkeerde punten.
+     Nieuw: de gebruiker geeft bij de auto-gegevens aan wat er NU speelt.
+       • window.SITUATIES in pidlane-data.js — 11 situaties (caravan/aanhanger,
+         zwaar beladen, dakkoffer, bergachtig, snelweg, stadsverkeer, koud,
+         hitte, airco continu, LPG/CNG, chiptuning). Per situatie staat vast
+         wat VERWACHT is (mag het stoplicht niet verlagen) en wat juist EXTRA
+         BELANGRIJK wordt (koelmarge, olietemp, laadspanning, laaddruk, DPF).
+       • Invoer op twee plekken: het voertuigoverzicht (voertuig-chip in de
+         topbar) en een eigen sheet via ☰ → 🎒 Rijsituatie. Caravan heeft een
+         gewichtsveld, belading een omschrijvingsveld, plus een vrij tekstveld.
+       • Opslag per voertuig (VIN/kenteken) met tijdstempel; na 12 uur vallen
+         de vlaggen automatisch weg, zodat een caravanvlag van gisteren de
+         analyse van vandaag niet kleurt. SITUATIE_TTL_MS in pidlane-data.js.
+       • _situatiePromptLine() wordt in apiFetch aan ELKE systemprompt geplakt
+         — ook bij een eigen systemPrompt of admin-override — dus alle deuren
+         (koopcheck, verbruik, rit, conditiecheck, automonteur, caravan) zien
+         hem. Met een harde weegregel: verschijnselen uit de 'verwacht'-lijst
+         mogen het eindoordeel niet verlagen, de 'extra belangrijk'-punten
+         worden juist strenger beoordeeld en de situatie moet in het rapport
+         benoemd worden.
+       • Zichtbaar dat het aan staat: icoontjes-badge naast de voertuignaam in
+         de topbar, naast de bestaande dossier-%.
+       • loadUserVehicleData() begint nu op een schone basis. Voorheen bleven
+         km/onderhoud/bijzonderheden van de vórige auto staan zodra een nieuw
+         voertuig nog geen eigen opslag had.
+       • Nieuwe remote feature-flag feat_situatie (ook in admin.html).
+
+     Vorige build: 2026-07-22 21:35 (CET) — REMOTE CONFIG BEREIKT DE APP
 
      De feature-flags uit admin.html kwamen nooit aan. loadRemoteConfig()
      draaide alleen in DOMContentLoaded, dus VOOR het sessietoken bestond:
@@ -1030,6 +1062,7 @@ window.plHardReload = async function(btn){
       <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
       <button class="kebab-item adminOnly" id="diagBundelBtn" onclick="closeKebab();plDiagBundleSave()">🧪 Diagnosebundel</button>
       <button class="kebab-item adminOnly" id="copilotBtn" onclick="closeKebab();plCopilotOpen()">🤝 Copiloot</button>
+      <button class="kebab-item" id="situatieBtn" onclick="closeKebab();openSituatie()">🎒 Rijsituatie</button>
       <button class="kebab-item" id="monitorBtn" onclick="toggleRitMonitor()">🔔 Rit-monitor</button>
       <button class="kebab-item adminOnly" id="busDiagBtn" onclick="closeKebab();openBusDiag()">🩺 Busdiagnose</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
@@ -5607,6 +5640,7 @@ const FEATURE_TOGGLES = {
   feat_grafiek:      ['#tabGraph'],
   feat_pid_keuze:    ['.tabs .tab-action'],   // was '#bnPids' (onderbalk verwijderd)
   feat_dossier:      ['#vtagPct','#vehOverview'],
+  feat_situatie:     ['#situatieBtn','#sitBlok','#vtagSit','#situatieSheet'],
   feat_pdf:          ['button[onclick^="exportAIReportPDF"]','#pdfReadyModal'],
   feat_ai_reply:     ['#aiReplyWrap'],
   feat_demo:         ['[id="btnDemo"]'],
@@ -5732,6 +5766,10 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
   // expliciete per-call systemPrompt is meegegeven.
   let _override=''; try{ _override=(window.PID_CONFIG&&window.PID_CONFIG.ai_system_override||'').trim(); }catch(e){}
   let sys = systemPrompt || (_override || _defaultSys);
+  // Rijsituatie geldt voor ELKE AI-rol — ook bij een eigen systemPrompt of een
+  // admin-override. Zonder dit beoordeelt de AI een caravanrit als een zieke
+  // auto: hoog verbruik, hoge belasting en warm koelwater zijn dan juist normaal.
+  try{ sys += _situatiePromptLine(); }catch(e){}
   // Sessie-context: eerdere rapporten alleen meesturen als de gebruiker dat
   // wil. Bij de eerste analyse met beschikbare rapporten verschijnt een
   // keuzesheet (Ja/Nee + "onthoud voor deze sessie"); daarna geldt de keuze
@@ -7271,13 +7309,32 @@ function mergeVehicleData(src, data){
 //  Persistent per voertuig (VIN of kenteken). Voedt de AI-prompts en
 //  de volledigheids-% naast de voertuignaam in de topbar.
 // ════════════════════════════════════════════════════════════════
-let userVehicleData={ km:'', beurt:'', distributie:'', bijz:'', merk:'', model:'', year:'', brandstof:'' };
+function _uvdDefault(){
+  return { km:'', beurt:'', distributie:'', bijz:'', merk:'', model:'', year:'', brandstof:'',
+           sit:[], sitExtra:'', sitKg:'', sitPax:'', sitTs:0 };
+}
+let userVehicleData=_uvdDefault();
 function _uvKey(){
   let k=''; try{ k=(vehicleInfo&&vehicleInfo.vin)||localStorage.getItem('pl_kenteken')||''; }catch(e){}
   return 'pl_uvd_'+(k||'onbekend');
 }
 function loadUserVehicleData(){
+  // Altijd vanaf een SCHONE basis. Voorheen werd er over het oude object heen
+  // gemerged: had auto B nog geen eigen opslag, dan bleven km, onderhoud en
+  // bijzonderheden van auto A gewoon staan en gingen die mee de AI-prompt in.
+  userVehicleData=_uvdDefault();
   try{ const s=localStorage.getItem(_uvKey()); if(s) userVehicleData={...userVehicleData,...JSON.parse(s)}; }catch(e){}
+  if(!Array.isArray(userVehicleData.sit)) userVehicleData.sit=[];
+  // Rijsituatie verloopt vanzelf: een caravanvlag van gisteren mag de analyse
+  // van vandaag niet kleuren.
+  try{
+    const ttl=(typeof SITUATIE_TTL_MS!=='undefined'&&SITUATIE_TTL_MS)?SITUATIE_TTL_MS:43200000;
+    if(userVehicleData.sit.length && userVehicleData.sitTs && (Date.now()-userVehicleData.sitTs)>ttl){
+      userVehicleData.sit=[]; userVehicleData.sitTs=0;
+      saveUserVehicleData();
+      try{ log('Rijsituatie verlopen (>'+Math.round(ttl/3600000)+' u) — vlaggen automatisch gewist','info'); }catch(e){}
+    }
+  }catch(e){}
 }
 function saveUserVehicleData(){
   try{ localStorage.setItem(_uvKey(), JSON.stringify(userVehicleData)); }catch(e){}
@@ -7323,6 +7380,8 @@ function openVehicleOverview(){
       </div>
       ${row('VIN (uitgelezen)',`<div style="font-family:monospace;font-size:12px;color:var(--tx2);word-break:break-all">${esc(v.vin)||'—'}</div>`)}
       <div style="border-top:1px solid var(--bd);margin:6px 0 12px"></div>
+      <div id="sitBlok"></div>
+      <div style="border-top:1px solid var(--bd);margin:12px 0"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
         ${row('KM-stand (teller)',inp('uvKm',userVehicleData.km,'bv. 142500'))}
         ${row('Laatste onderhoudsbeurt',inp('uvBeurt',userVehicleData.beurt,'bv. 03-2026 / 135.000 km'))}
@@ -7336,6 +7395,7 @@ function openVehicleOverview(){
     </div>
   </div>`;
   m.style.display='flex';
+  try{ renderSituatie('sitBlok'); }catch(e){}
 }
 function saveVehicleOverview(){
   const g=id=>((document.getElementById(id)||{}).value||'').trim();
@@ -7345,6 +7405,9 @@ function saveVehicleOverview(){
   userVehicleData.year=g('uvYear'); userVehicleData.brandstof=g('uvBrand');
   userVehicleData.km=g('uvKm'); userVehicleData.beurt=g('uvBeurt');
   userVehicleData.distributie=g('uvDistr'); userVehicleData.bijz=g('uvBijz');
+  // De rijsituatie slaat zichzelf al op bij elke tik, maar het vrije tekstveld
+  // pakken we hier nog een keer op zodat er niets verloren gaat bij snel sluiten.
+  try{ const se=document.getElementById('uvSitExtra'); if(se) userVehicleData.sitExtra=String(se.value||'').trim(); }catch(e){}
   saveUserVehicleData();
   try{
     const naam=`${vehicleInfo.merk||''} ${vehicleInfo.model||''}`.trim()||'Voertuig';
@@ -7367,6 +7430,219 @@ function _dossierPromptLine(){
     return '\nDOSSIER (door gebruiker bevestigd, LEIDEND): '+p.join('; ')+'. Weeg km-stand en onderhoudshistorie zwaar mee; goede live-waarden sluiten achterstallig onderhoud of hoge km zonder beurt NIET uit — benoem dat als risico.';
   }catch(e){ return ''; }
 }
+
+// ════════════════════════════════════════════════════════════════
+//  RIJSITUATIE / BIJZONDERHEDEN — de situatie van de auto op dít moment
+//  ---------------------------------------------------------------
+//  Zonder deze context beoordeelt de AI een caravanrit als een zieke auto:
+//  verbruik hoog, belasting hoog, koelwater warm, laaddruk hoog → rood.
+//  Terwijl dat exact is wat je verwacht met 1300 kg achter je. De vlaggen
+//  hieronder vertellen elke analyse twee dingen: wat LOGISCH is bij deze
+//  situatie (mag het eindoordeel niet verlagen) en wat juist EXTRA kritisch
+//  wordt (koelmarge, olietemperatuur, laadspanning, laaddruk, DPF).
+//  Opslag zit in userVehicleData → dus per voertuig (VIN/kenteken) en met
+//  tijdstempel; na SITUATIE_TTL_MS vallen de vlaggen automatisch weg.
+// ════════════════════════════════════════════════════════════════
+function _sitDefs(){ try{ return (window.SITUATIES||[]); }catch(e){ return []; } }
+function _sitDef(id){ return _sitDefs().filter(function(s){return s.id===id;})[0]||null; }
+function situatieActief(){
+  try{
+    const ids=(userVehicleData&&Array.isArray(userVehicleData.sit))?userVehicleData.sit:[];
+    return ids.map(_sitDef).filter(Boolean);
+  }catch(e){ return []; }
+}
+function _sitVeldTxt(s){
+  try{
+    if(!s || !s.veld) return '';
+    const v=String((userVehicleData||{})[s.veld.key]||'').trim();
+    return v?(' — '+v):'';
+  }catch(e){ return ''; }
+}
+// Korte, leesbare samenvatting voor chip, tooltip en logregel.
+function situatieKort(){
+  try{
+    const p=situatieActief().map(function(s){ return s.label+_sitVeldTxt(s); });
+    const extra=String((userVehicleData||{}).sitExtra||'').trim();
+    if(extra) p.push(extra);
+    return p.join(' · ');
+  }catch(e){ return ''; }
+}
+// Badge naast de voertuignaam in de topbar, zodat niemand vergeet dat de
+// analyses op dit moment situatie-gecorrigeerd worden.
+function situatieChipHtml(){
+  try{
+    const act=situatieActief();
+    const extra=String((userVehicleData||{}).sitExtra||'').trim();
+    if(!act.length && !extra) return '';
+    const icons=act.map(function(s){return s.icon;}).join('')||'📝';
+    const ttl=situatieKort().replace(/"/g,'');
+    return ' <span id="vtagSit" title="Rijsituatie: '+ttl+'" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:rgba(94,124,255,.20);color:var(--bl)">'+icons+'</span>';
+  }catch(e){ return ''; }
+}
+function _refreshVtag(){
+  try{
+    const el=document.getElementById('vtag');
+    if(!el || el.style.display==='none') return;
+    const naam=((vehicleInfo&&vehicleInfo.merk)||'')+' '+((vehicleInfo&&vehicleInfo.model)||'');
+    showVtag(naam.trim()||'Voertuig');
+  }catch(e){}
+}
+
+// ── Aan/uit zetten. Slaat direct op: geen "vergeten op te slaan"-risico. ──
+function toggleSituatie(id){
+  try{
+    if(!userVehicleData) return;
+    if(!Array.isArray(userVehicleData.sit)) userVehicleData.sit=[];
+    const i=userVehicleData.sit.indexOf(id);
+    if(i>=0) userVehicleData.sit.splice(i,1); else userVehicleData.sit.push(id);
+    userVehicleData.sitTs = userVehicleData.sit.length ? Date.now() : 0;
+    saveUserVehicleData();
+    renderSituatie('sitBlok'); renderSituatie('sitSheetBody');
+    _refreshVtag();
+    try{ logUsage('situatie', userVehicleData.sit.join(',')||'leeg'); }catch(e){}
+  }catch(e){}
+}
+function sitSetVeld(key,val){
+  try{
+    if(!userVehicleData) return;
+    userVehicleData[key]=String(val||'').trim();
+    if(!userVehicleData.sitTs) userVehicleData.sitTs=Date.now();
+    saveUserVehicleData();
+    if(key==='sitExtra') _refreshVtag();
+  }catch(e){}
+}
+function situatieWis(){
+  try{
+    if(!userVehicleData) return;
+    userVehicleData.sit=[]; userVehicleData.sitExtra='';
+    userVehicleData.sitKg=''; userVehicleData.sitPax=''; userVehicleData.sitTs=0;
+    saveUserVehicleData();
+    renderSituatie('sitBlok'); renderSituatie('sitSheetBody');
+    _refreshVtag();
+    showToast?.('Rijsituatie gewist — analyses rekenen weer met een lege auto');
+  }catch(e){}
+}
+
+// ── Chipraster + velden + voorbeeld van wat de AI ermee doet ──
+function renderSituatie(hostId){
+  const host=document.getElementById(hostId); if(!host) return;
+  const defs=_sitDefs();
+  if(!defs.length){ host.innerHTML='<div style="font-size:11px;color:var(--rd)">Situatielijst niet geladen — controleer pidlane-data.js.</div>'; return; }
+  const u=userVehicleData||{};
+  const aan=function(id){ return Array.isArray(u.sit)&&u.sit.indexOf(id)>=0; };
+  const esc=function(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); };
+
+  const chips=defs.map(function(s){
+    const a=aan(s.id);
+    const st=a
+      ? 'background:rgba(94,124,255,.18);border:1px solid var(--bl);color:var(--tx);box-shadow:0 0 0 1px rgba(94,124,255,.25) inset'
+      : 'background:var(--sur2);border:1px solid var(--bd);color:var(--tx2)';
+    return '<button type="button" onclick="toggleSituatie(\''+s.id+'\')" style="'+st+';border-radius:999px;padding:7px 11px;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;line-height:1.2">'+
+           (a?'✓ ':'')+s.icon+' '+esc(s.label)+'</button>';
+  }).join('');
+
+  // Extra invoervelden alleen tonen bij de situaties die ze nodig hebben.
+  const velden=defs.filter(function(s){ return s.veld && aan(s.id); }).map(function(s){
+    return '<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:3px">'+s.icon+' '+esc(s.veld.lbl)+'</div>'+
+      '<input value="'+esc(u[s.veld.key])+'" placeholder="'+esc(s.veld.ph)+'" oninput="sitSetVeld(\''+s.veld.key+'\',this.value)" '+
+      'style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px"></div>';
+  }).join('');
+
+  // Live voorbeeld: wat gaat de AI hier concreet mee doen?
+  const act=situatieActief();
+  const uniq=function(a){ const o=[]; a.forEach(function(x){ if(o.indexOf(x)<0) o.push(x); }); return o; };
+  let verw=[], foc=[];
+  act.forEach(function(s){ verw=verw.concat(s.verwacht||[]); foc=foc.concat(s.focus||[]); });
+  verw=uniq(verw); foc=uniq(foc);
+  let uitleg='';
+  if(act.length){
+    const li=function(arr,max){ return arr.slice(0,max).map(function(x){ return '<li style="margin:0 0 3px">'+esc(x)+'</li>'; }).join(''); };
+    uitleg='<div style="margin-top:10px;background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:10px">'+
+      '<div style="font-size:10px;font-weight:800;color:var(--gn);margin-bottom:4px">✓ TELT NIET ALS DEFECT (logisch bij deze situatie)</div>'+
+      '<ul style="margin:0 0 8px 15px;padding:0;font-size:11px;color:var(--tx2);line-height:1.45">'+li(verw,4)+
+      (verw.length>4?'<li style="color:var(--tx3)">+ '+(verw.length-4)+' meer</li>':'')+'</ul>'+
+      '<div style="font-size:10px;font-weight:800;color:var(--or);margin-bottom:4px">⚠ WORDT JUIST STRENGER BEOORDEELD</div>'+
+      '<ul style="margin:0 0 0 15px;padding:0;font-size:11px;color:var(--tx2);line-height:1.45">'+li(foc,4)+
+      (foc.length>4?'<li style="color:var(--tx3)">+ '+(foc.length-4)+' meer</li>':'')+'</ul></div>';
+  }
+
+  let sinds='';
+  if(u.sitTs){
+    const d=new Date(u.sitTs);
+    const hh=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    const uren=Math.round(((typeof SITUATIE_TTL_MS!=='undefined'&&SITUATIE_TTL_MS)?SITUATIE_TTL_MS:43200000)/3600000);
+    sinds='<div style="font-size:10px;color:var(--tx3);margin-top:8px">Ingesteld om '+hh+' — vervalt automatisch na '+uren+' uur, zodat een oude vlag geen nieuwe analyse kleurt.</div>';
+  }
+
+  host.innerHTML=
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
+      '<b style="font-size:13px">🎒 Rijsituatie &amp; bijzonderheden</b>'+
+      (act.length?'<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;background:rgba(94,124,255,.18);color:var(--bl)">'+act.length+' actief</span>':'')+
+      '<button type="button" onclick="situatieWis()" style="margin-left:auto;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Wissen</button>'+
+    '</div>'+
+    '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">Tik aan wat er <b>nu</b> speelt. Elke analyse rekent hiermee: wat logisch is bij deze situatie telt niet als defect, en wat juist kritisch wordt (koeling, laaddruk, laden) weegt zwaarder.</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+chips+'</div>'+
+    velden+
+    '<div style="margin-top:9px"><div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:3px">Overige bijzonderheden voor deze meting</div>'+
+      '<textarea id="uvSitExtra" rows="2" oninput="sitSetVeld(\'sitExtra\',this.value)" placeholder="bv. rijdt met winterbanden, dakdragers gemonteerd, net getankt bij onbekende pomp" '+
+      'style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px;resize:vertical">'+esc(u.sitExtra)+'</textarea></div>'+
+    uitleg+sinds;
+}
+
+// ── Eigen sheet, bereikbaar via ☰ → 🎒 Rijsituatie (vlak vóór een analyse) ──
+function openSituatie(){
+  if(!featOn('feat_situatie')){ showToast?.('Functie uitgeschakeld door beheerder'); return; }
+  loadUserVehicleData();
+  let m=document.getElementById('situatieSheet');
+  if(!m){
+    m=document.createElement('div'); m.id='situatieSheet';
+    m.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(10,14,23,.65);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center';
+    m.addEventListener('click',function(e){ if(e.target===m) closeSituatie(); });
+    document.body.appendChild(m);
+  }
+  m.innerHTML='<div style="background:var(--sur);width:100%;max-width:560px;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--bd)">'+
+      '<b style="font-size:14px">🎒 Rijsituatie</b>'+
+      '<button onclick="closeSituatie()" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>'+
+    '</div>'+
+    '<div id="sitSheetBody" style="overflow-y:auto;padding:14px 16px"></div>'+
+    '<div style="padding:12px 16px;border-top:1px solid var(--bd)">'+
+      '<button onclick="closeSituatie()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">Klaar</button>'+
+    '</div></div>';
+  m.style.display='flex';
+  renderSituatie('sitSheetBody');
+}
+function closeSituatie(){ const m=document.getElementById('situatieSheet'); if(m) m.style.display='none'; }
+
+// ── Promptblok: gaat mee met ELKE AI-rol (zie apiFetch) ──
+// Twee lijsten plus één harde weegregel. De weegregel is het belangrijkste:
+// zonder die regel noemt een model het hoge verbruik netjes "verklaarbaar"
+// en zet het rapport daarna alsnog op oranje.
+function _situatiePromptLine(){
+  try{
+    const act=situatieActief();
+    const extra=String((userVehicleData||{}).sitExtra||'').trim();
+    if(!act.length && !extra) return '';
+    const uniq=function(a){ const o=[]; a.forEach(function(x){ if(o.indexOf(x)<0) o.push(x); }); return o; };
+    let verw=[], foc=[];
+    act.forEach(function(s){ verw=verw.concat(s.verwacht||[]); foc=foc.concat(s.focus||[]); });
+    verw=uniq(verw); foc=uniq(foc);
+    let txt='\n\nRIJSITUATIE / BIJZONDERHEDEN — door de gebruiker opgegeven, LEIDEND voor je interpretatie:\n';
+    act.forEach(function(s){ txt+='- '+s.label+_sitVeldTxt(s)+'\n'; });
+    if(extra) txt+='- Overig: '+extra+'\n';
+    if(verw.length) txt+='\nVERWACHT BIJ DEZE SITUATIE — presenteer dit NIET als defect, maar benoem het als logisch gevolg van de situatie:\n'+verw.map(function(x){return '  - '+x;}).join('\n')+'\n';
+    if(foc.length) txt+='\nJUIST EXTRA BELANGRIJK BIJ DEZE SITUATIE — geef dit voorrang en beoordeel het strenger dan normaal:\n'+foc.map(function(x){return '  - '+x;}).join('\n')+'\n';
+    txt+='\nWEEGREGEL (hard): verlaag het eindoordeel/stoplicht NIET op grond van verschijnselen die hierboven onder VERWACHT staan — leg in plaats daarvan uit dat de opgegeven situatie ze verklaart. Verschuif je aandacht naar de punten onder EXTRA BELANGRIJK; daar mag je juist eerder aan de bel trekken. Noem de opgegeven situatie expliciet in je rapport en geef per relevante bevinding aan of die door de situatie wordt verklaard of niet. Zijn er geen meetwaarden voor een van de extra belangrijke punten, zeg dat dan eerlijk in plaats van er een oordeel over te geven.';
+    return txt;
+  }catch(e){ return ''; }
+}
+try{
+  window.situatieActief=situatieActief; window.situatieKort=situatieKort;
+  window.openSituatie=openSituatie;     window.closeSituatie=closeSituatie;
+  window.toggleSituatie=toggleSituatie; window.situatieWis=situatieWis;
+  window.sitSetVeld=sitSetVeld;         window.renderSituatie=renderSituatie;
+  window._situatiePromptLine=_situatiePromptLine;
+}catch(e){}
 
 // ════════════════════════════════════════════════════════════════
 //  LOG-CENTRUM — alle logstromen op één plek (via ⋯-menu)
@@ -9089,7 +9365,8 @@ document.addEventListener('click',(e)=>{
 function showVtag(t){
   const el=document.getElementById('vtag'); if(!el) return;
   let pct=0; try{ pct=dossierPct(); }catch(e){}
-  el.innerHTML=t+' <span id="vtagPct" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>';
+  let sitHtml=''; try{ sitHtml=situatieChipHtml(); }catch(e){}
+  el.innerHTML=t+' <span id="vtagPct" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>'+sitHtml;
   el.style.display='block';
   // Klik loopt via de omliggende voertuig-chip (#vchip) — geen eigen onclick meer,
   // anders opent het voertuigoverzicht dubbel (event bubbelt naar de chip).
@@ -9383,6 +9660,7 @@ function buildAutoExpertContext(){
   const lines=[];
   const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
   lines.push(`VOERTUIG: ${merkModel||'onbekend'}${v.brandstof?' ('+v.brandstof+')':''}${v.vin?' VIN '+v.vin:''}`);
+  try{ const _sit=situatieKort(); if(_sit) lines.push('RIJSITUATIE NU: '+_sit); }catch(e){}
   // Brandstof-context zodat de monteur geen verbrandingsonderdelen aanhaalt bij een EV
   const _ft=vehicleFuelType();
   if(_ft==='elektrisch') lines.push('AANDRIJVING: volledig elektrisch — geen verbrandingsmotor, brandstof, trim, lambda of uitlaat. Praat niet over brandstofzaken.');
