@@ -78,7 +78,7 @@ html, body { overflow-x:clip; }
 #loginOv .msub { font-size:14px; }
 #loginOv .mact { border-top:0; background:transparent; padding-bottom:calc(16px + env(safe-area-inset-bottom,0px)); }
 /* ══ IN-APP INTRO (logo-splash, fade naar login; toont 1x per sessie) ══ */
-#introOv { position:fixed; inset:0; z-index:9700; background:radial-gradient(120% 90% at 50% 28%, #101a2e 0%, #0a0e17 55%, #06080f 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .7s ease; padding-bottom:6vh; }
+#introOv { position:fixed; inset:0; z-index:9700; background:radial-gradient(120% 90% at 50% 28%, rgba(16,26,46,.62) 0%, rgba(10,14,23,.60) 55%, rgba(6,8,15,.74) 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .7s ease; padding-bottom:6vh; }
 #introOv.gone { opacity:0; pointer-events:none; }
 /* Naadloze overgang naar het loginscherm eronder (fase login-redesign):
    #introOv ligt qua z-index (9700) boven .ov#loginOv (9600), dus tot de
@@ -87,18 +87,9 @@ html, body { overflow-x:clip; }
    omslag (kort golven zien bij het laden, dan weg, dan weer terug).
    Zelfde lintbeeld hier ook, zodat er niets wisselt: alleen het logo/de
    ring faden weg, de achtergrond staat al de hele tijd stil. */
-#introOv::before{
-  content:"";
-  position:absolute; inset:0;
-  background:url('login-ribbon.webp') no-repeat;
-  background-size:cover;
-  background-position:75% 35%;
-  opacity:.55;
-  pointer-events:none;
-}
-@media (max-height:700px), (max-width:360px){
-  #introOv::before{ background-position:65% 45%; opacity:.4; }
-}
+/* Het lint zit sinds 26-07-2026 in #lgWaveBg (schaalbare SVG, onder de
+   splash en het loginscherm). De splash is daarom doorzichtig: hij legt
+   alleen een sluier over hetzelfde beeld, dus er wisselt niets bij de fade. */
 /* Uittrede: logo groeit licht en vervaagt — vloeit visueel over in het
    (identieke, iets kleinere) logo op het loginscherm eronder. */
 #introOv.leave .intro-wrap { animation:introLeave .7s ease both; }
@@ -1117,76 +1108,170 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
 .vic-vin{font-family:var(--m);font-size:10px;color:var(--tx3);margin-top:3px;word-break:break-all;border-top:1px solid var(--bd);padding-top:4px;}
 
 
-/* ══ LOGINSCHERM — glaslook (fase login-redesign) ═════════════════════
-   Scoped onder .ov#loginOv zodat dit ALLEEN het loginscherm raakt en de
-   generieke .ov/.modal-basis voor de rest van de app ongemoeid blijft.
-   Achtergrond is een statisch WebP (geen canvas/animatie): dit scherm kan
-   op een telefoon staan die uren aan blijft tijdens een rit, dus geen
-   GPU-kosten voor iets decoratiefs. */
-.ov#loginOv{
-  background:
-    radial-gradient(120% 90% at 15% 100%, rgba(6,179,107,.10), transparent 55%),
-    radial-gradient(120% 90% at 85% 0%,  rgba(77,130,255,.12), transparent 55%),
-    var(--bg);
-  backdrop-filter:none;
-}
-.ov#loginOv::before{
-  /* Lintbeeld als losse achtergrondlaag i.p.v. inline op de modal, zodat
-     de kaart eroverheen scrollbaar/leesbaar blijft ongeacht schermgrootte. */
-  content:"";
-  position:absolute; inset:0;
-  background:url('login-ribbon.webp') no-repeat;
-  background-size:cover;
-  background-position:75% 35%;
-  opacity:.55;
+/* ══ LOGINSCHERM — ronde glaskaart op een schaalbaar lint ═════════════
+   (build 2026-07-26, vervangt de glaslook-rechthoek van de vorige fase)
+
+   WAT ER MIS WAS
+   Het lint was een WebP van 900x1350 (2:3) met background-size:cover. Een
+   telefoon is ongeveer 9:19,5; cover schaalt dan op hoogte en snijdt links
+   en rechts samen zo'n 30% weg — precies de stroken waar de golven liggen.
+   Op het toestel zag je daardoor vooral zwart met een streep in het midden.
+
+   WAT ER NU STAAT
+   Het lint is vectorwerk (#lgWaveBg in index.html) met
+   preserveAspectRatio="none": het rekt exact mee met elke schermverhouding,
+   dus de groene golf komt altijd linksonder binnen en de blauwe verlaat het
+   beeld altijd rechtsboven. vector-effect:non-scaling-stroke houdt de lijnen
+   overal even dun. Statisch beeld — dit scherm kan uren aan blijven staan,
+   dus geen animatie of canvas.
+
+   De kaart is nu een echte cirkel, zoals in het ontwerp. Alle maten hangen
+   aan één variabele (--lgD, de diameter), zodat de inhoud altijd binnen de
+   cirkel valt: de velden staan op 79% van de diameter en zitten op de hoogte
+   waar de cirkel het breedst is. Op korte of erg smalle schermen valt het
+   geheel terug op een afgeronde kaart (zie de media-query onderaan).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── De golflaag zelf: vast op het scherm, onder login (9600) en splash. ── */
+#lgWaveBg{
+  position:fixed; inset:0; z-index:9590; display:block; overflow:hidden;
   pointer-events:none;
+  background:
+    radial-gradient(115% 85% at 10% 100%, rgba(6,179,107,.12), transparent 58%),
+    radial-gradient(115% 85% at 90% 2%,   rgba(47,99,255,.15), transparent 58%),
+    #000;
 }
-/* Op smalle/korte schermen (compacte Android-toestellen, spiegelbeeld-modus)
-   zou de crop van 'cover' het lint op een rare plek kunnen afsnijden —
-   hier schuift het contactpunt (het lichtste, meest kenmerkende deel van
-   het lint) meer naar het midden zodat er altijd iets herkenbaars staat. */
-@media (max-height:700px), (max-width:360px){
-  .ov#loginOv::before{ background-position:65% 45%; opacity:.4; }
+/* Twee onafhankelijke uit-schakelaars, zodat de laag nooit over de app kan
+   blijven hangen: .off wordt in JS gezet bij inloggen (en weggehaald bij
+   uitloggen), en de :has()-regel vangt elk pad af dat het loginscherm op een
+   andere manier verbergt. Zichtbaar maken hoeft geen van beide te doen — de
+   laag staat standaard aan, want vóór het inloggen is dit het enige beeld. */
+#lgWaveBg.off{ display:none; }
+body:has(#loginOv.hidden) #lgWaveBg{ display:none; }
+#lgWaveBg .lg-wave{ position:absolute; inset:0; width:100%; height:100%; }
+
+/* ── Overlay: kaart gecentreerd, footer eronder ── */
+.ov#loginOv{
+  --lgD: min(90vw, 68vh, 470px);
+  background:transparent;
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+  flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(14px + env(safe-area-inset-bottom,0px));
+  overflow-y:auto;
 }
+
+/* ── De cirkel ── */
 .ov#loginOv .modal{
-  position:relative; z-index:1;
-  background:rgba(19,25,38,.62);
-  backdrop-filter:blur(18px) saturate(140%);
-  -webkit-backdrop-filter:blur(18px) saturate(140%);
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:28px;
-  box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  position:relative; z-index:1; flex:0 0 auto;
+  width:var(--lgD); height:var(--lgD);
+  max-width:none; max-height:none; min-height:0;
+  margin:0; padding:0;
+  border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:rgba(19,25,38,.40);
+  backdrop-filter:blur(16px) saturate(135%);
+  -webkit-backdrop-filter:blur(16px) saturate(135%);
+  border:1px solid rgba(255,255,255,.13);
+  box-shadow:0 26px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07);
+  overflow:visible; animation:none;
 }
-html:not(.dark) .ov#loginOv .modal{
-  /* Lichte modus: dezelfde glaslook maar op een lichte ondergrond, anders
-     verdwijnt de tekst in het donkere glas-effect hierboven. */
-  background:rgba(255,255,255,.68);
-  border:1px solid rgba(16,21,31,.08);
-  box-shadow:0 20px 60px rgba(16,21,31,.18), inset 0 1px 0 rgba(255,255,255,.5);
+.ov#loginOv .modal-scroll{
+  flex:0 0 auto; overflow:visible;
+  width:100%; display:flex; flex-direction:column; align-items:center;
+}
+
+/* ── Kop: logo + woordmerk. De ondertitel vervalt binnen de cirkel; die
+      ruimte is nodig voor de velden en staat ook niet in het ontwerp. ── */
+.ov#loginOv .mh{ padding:0 0 calc(var(--lgD)*.030); text-align:center; }
+.ov#loginOv .lg-logo{
+  width:calc(var(--lgD)*.235); height:calc(var(--lgD)*.235);
+  border-radius:calc(var(--lgD)*.056);
+  margin:0 auto calc(var(--lgD)*.030);
+}
+.ov#loginOv .mttl{
+  font-size:calc(var(--lgD)*.080); font-weight:800;
+  line-height:1.12; margin:0; letter-spacing:.2px;
+}
+.ov#loginOv .msub{ display:none; }
+
+/* ── Invoervelden: 79% van de diameter, dus ruim binnen de cirkel ── */
+.ov#loginOv .lg-form{
+  width:calc(var(--lgD)*.79);
+  display:flex; flex-direction:column;
+  gap:calc(var(--lgD)*.026);
+  padding:0;
 }
 .ov#loginOv .api-inp{
-  background:rgba(255,255,255,.06);
+  width:100%;
+  background:rgba(255,255,255,.055);
   border:1px solid rgba(255,255,255,.14);
+  border-radius:calc(var(--lgD)*.031);
+  padding:calc(var(--lgD)*.030) calc(var(--lgD)*.105) calc(var(--lgD)*.030) calc(var(--lgD)*.042);
+  font-family:var(--f);
+  font-size:clamp(13px, calc(var(--lgD)*.034), 17px);
+  line-height:1.2;
+  color:var(--tx);
 }
+.ov#loginOv .api-inp::placeholder{ color:var(--tx3); }
 .ov#loginOv .api-inp:focus{
-  border-color:var(--bl); box-shadow:0 0 0 3px var(--bls);
+  border-color:rgba(77,130,255,.75);
+  box-shadow:0 0 0 3px rgba(77,130,255,.16);
+}
+.ov#loginOv .lg-field{ width:100%; }
+.ov#loginOv .lg-field .lg-ico{
+  right:calc(var(--lgD)*.042);
+  width:calc(var(--lgD)*.044); height:calc(var(--lgD)*.044);
+}
+.ov#loginOv #loginErr{ font-size:clamp(11px, calc(var(--lgD)*.026), 13px); min-height:calc(var(--lgD)*.030); }
+
+/* ── Inlogknop: omlijnd met groen-naar-blauw verloop, zoals in het ontwerp ── */
+.ov#loginOv .mact{
+  width:calc(var(--lgD)*.62);
+  flex:0 0 auto; margin:0;
+  padding:calc(var(--lgD)*.034) 0 0;
+  background:transparent; border:0; border-radius:0;
 }
 .ov#loginOv .mbtn.p{
-  background:transparent;
-  border:1.5px solid var(--gn);
+  width:100%;
+  padding:calc(var(--lgD)*.032) 0;
+  border-radius:calc(var(--lgD)*.032);
+  border:1.6px solid transparent;
+  background:
+    linear-gradient(rgba(255,255,255,.03),rgba(255,255,255,.03)) padding-box,
+    linear-gradient(100deg,#00ff88,#22d3ee 55%,#3b82f6) border-box;
   color:var(--tx);
-  box-shadow:0 0 24px rgba(6,179,107,.22);
-  text-transform:uppercase; letter-spacing:.6px; font-weight:700;
+  font-weight:800; text-transform:uppercase; letter-spacing:1.4px;
+  font-size:clamp(13px, calc(var(--lgD)*.038), 18px);
+  box-shadow:0 0 26px rgba(0,255,136,.14);
 }
-.ov#loginOv .mbtn.p:active{ background:rgba(6,179,107,.10); }
+.ov#loginOv .mbtn.p:hover{
+  background:
+    linear-gradient(rgba(0,255,136,.10),rgba(0,255,136,.10)) padding-box,
+    linear-gradient(100deg,#00ff88,#22d3ee 55%,#3b82f6) border-box;
+}
+.ov#loginOv .mbtn.p:active{ transform:scale(.985); }
 
-/* Invoervelden met icoon ERIN (fase login-redesign, correctie).
-   Eerdere poging veranderde alleen de achtergrond en liet de labels boven
-   de velden staan — daardoor bleef het oude formulier zichtbaar op een
-   nieuwe achtergrond. Hier vervalt het label en staat het icoon rechts
-   in het veld, zoals in het ontwerp. */
+/* ── Footer: los onder de cirkel op de zwarte achtergrond ── */
+.ov#loginOv .lg-foot{
+  position:relative; z-index:1; flex:0 0 auto;
+  margin-top:calc(var(--lgD)*.075);
+  text-align:center; line-height:1.75;
+  font-size:clamp(11px, calc(var(--lgD)*.029), 14px);
+  color:var(--tx3);
+}
+.ov#loginOv .lg-site{ color:#00D4FF; text-decoration:none; font-weight:600; }
+.ov#loginOv .lg-fris{
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.14);
+  color:var(--tx2); font-family:var(--f); font-weight:600;
+  font-size:clamp(11px, calc(var(--lgD)*.028), 13px);
+  padding:7px 16px; border-radius:999px; cursor:pointer;
+}
+
+/* ── Icoon IN het veld (ongewijzigd gedrag, nu schaalgestuurd) ── */
 .lg-field{ position:relative; }
-.lg-field .api-inp{ width:100%; padding-right:42px; }
+.lg-field .api-inp{ width:100%; }
 .lg-field .lg-ico{
   position:absolute; right:13px; top:50%; transform:translateY(-50%);
   width:19px; height:19px; color:var(--tx3); pointer-events:none;
@@ -1194,28 +1279,17 @@ html:not(.dark) .ov#loginOv .modal{
 .lg-field .lg-ico svg{ width:100%; height:100%; display:block; }
 .lg-field .api-inp:focus + .lg-ico{ color:var(--bl); }
 
-/* CORRECTIE kaartvorm (fase login-redesign).
-   De basis-.modal is gebouwd voor volledige overlays: .modal-scroll{flex:1}
-   groeit tot volle hoogte en .mact heeft een ONDOORZICHTIGE var(--sur)-balk.
-   Op het loginscherm gaf dat een kaart van rand tot rand, waardoor het
-   frosted glass over het hele lint lag (vage veeg i.p.v. lint) en de knop
-   naar de onderkant werd geduwd. Hier krimpt de kaart naar zijn inhoud en
-   is de actiebalk transparant, zodat het lint eromheen zichtbaar blijft. */
-.ov#loginOv .modal{
-  max-height:min(88vh, 640px);
-  height:auto;
-  margin:auto;
-}
-.ov#loginOv .modal-scroll{ flex:0 1 auto; overflow-y:visible; }
-.ov#loginOv .mact{
-  background:transparent;
-  border-top:none;
-  border-radius:0 0 28px 28px;
-  padding:14px 20px 18px;
-}
-/* Lint mag nu sterker: het wordt niet meer door een schermvullende
-   glaslaag afgevlakt. */
-.ov#loginOv::before, #introOv::before{ opacity:.8; }
-@media (max-height:700px), (max-width:360px){
-  .ov#loginOv::before, #introOv::before{ opacity:.65; }
+/* ── Terugval voor korte of erg smalle schermen (telefoon in liggend beeld,
+      kleine toestellen): een cirkel wordt daar onleesbaar klein, dus dan
+      een gewone afgeronde kaart met vaste maatvoering. ── */
+@media (max-height:520px), (max-width:320px){
+  .ov#loginOv{ --lgD:330px; justify-content:flex-start; }
+  .ov#loginOv .modal{
+    width:min(94vw,390px); height:auto;
+    border-radius:26px; padding:20px 0 10px; margin:auto;
+  }
+  .ov#loginOv .msub{ display:block; font-size:12px; color:var(--tx2); }
+  .ov#loginOv .lg-form{ width:min(86%,320px); }
+  .ov#loginOv .mact{ width:min(74%,270px); }
+  .ov#loginOv .lg-foot{ margin-top:16px; }
 }
