@@ -581,6 +581,17 @@ window.STANDAARD_PIDS =[
 // ── PID_BYTE_LEN (was index.html regel 11049) ──
 window.PID_BYTE_LEN ={
   // Volledige SAE J1979 mode-01 bytelengtes (00–80 + hogere bitmaps).
+  // 2026-07-26 — CORRECTIE 6D/6E. PID 6D stond op 6 bytes, J1979 zegt 11.
+  // Bewijs uit de eigen diagnosebundel (26-07, Mazda CX-5): op een losse
+  // aanvraag "016D" antwoordt de ECU met ISO-TP lengte 0x00D = 13 bytes =
+  // 1 (0x41) + 1 (0x6D) + 11 databytes. Precies passend. Met 6 verloor de
+  // parser na 6D de synchronisatie en vond hij het VOLGENDE PID in dezelfde
+  // batch niet meer: elke batch waarin 6D niet als laatste stond leverde een
+  // valse "mist" op (4 van de 4 keer, o.a. 0168 zakte daardoor naar
+  // kwaliteit 84 en liep risico als dood gesnoeid te worden). De backtracking
+  // van route 1 kon dit niet repareren: die probeert alleen tabelwaarde, 1, 2
+  // en 4 bytes — 11 zat er nooit bij. 6E is meegenomen (5 -> 9) op dezelfde
+  // spec-grond; die is op dit voertuig niet in gebruik, dus preventief.
   // BELANGRIJK: ook bitmaps (00/20/40/60/80), status-PIDs (01/41) en de
   // O2-trim PIDs (53–58) horen erin. De batch-parser brak vroeger af op het
   // eerste ONBEKENDE PID-nummer en gooide dan de complete respons weg —
@@ -596,8 +607,8 @@ window.PID_BYTE_LEN ={
   '46':1,'47':1,'48':1,'49':1,'4A':1,'4B':1,'4C':1,'4D':2,'4E':2,'4F':4,
   '50':4,'51':1,'52':1,'53':2,'54':2,'55':2,'56':2,'57':2,'58':2,'59':2,
   '5A':1,'5B':1,'5C':1,'5D':2,'5E':2,'5F':1,'60':4,'61':1,'62':1,'63':2,
-  '64':5,'65':2,'66':5,'67':3,'68':7,'69':7,'6A':5,'6B':5,'6C':5,'6D':6,
-  '6E':5,'6F':3,'70':9,'71':5,'72':5,'73':5,'74':5,'75':7,'76':7,'77':5,
+  '64':5,'65':2,'66':5,'67':3,'68':7,'69':7,'6A':5,'6B':5,'6C':5,'6D':11,
+  '6E':9,'6F':3,'70':9,'71':5,'72':5,'73':5,'74':5,'75':7,'76':7,'77':5,
   '78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,'80':4,'A0':4,'C0':4
 };
 
