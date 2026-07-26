@@ -35,8 +35,12 @@ const PLMon = {
   // vanzelf bij het verbinden. Hij greep tijdens de eerste seconden na een
   // PID-setwissel naar een bus die nog aan het inregelen was en trok daaruit
   // conclusies (STAT_RPM, RPM_CONST) die niets met de motor te maken hadden.
-  // Meten is nu een bewuste handeling. Blijft bewaard tussen sessies.
-  userAan: (function(){ try{ return localStorage.getItem('pl_monitor_aan')==='1'; }catch(e){ return false; } })(),
+  // Meten is nu een bewuste handeling.
+  // 2026-07-26: de stand wordt NIET meer hersteld uit localStorage. De monitor
+  // begint elke sessie uit; een vergeten "aan" van weken terug mocht niet
+  // ongemerkt weer gaan meten zodra je verbindt. De schakelaar zit op de
+  // Rit-monitor-pane zelf (deur Live PID-data), niet meer in het ☰-menu.
+  userAan: false,
   active: false,
   _timer: null,
   _watchdog: null,
@@ -325,11 +329,11 @@ window.PLMon = PLMon;
 /* ── Gebruikersschakelaar (fase 4) ────────────────────────────────────
    Tot nu toe startte en stopte de monitor zichzelf en was hij alleen op
    afstand uit te zetten via de feature-flag. Er was dus geen enkele knop
-   voor de gebruiker. Deze twee functies vullen dat gat; de knop zit in het
-   ☰-menu en toont de actuele stand. */
+   voor de gebruiker. Deze twee functies vullen dat gat; de knop zit sinds
+   2026-07-26 op de Rit-monitor-pane zelf (#monPaneToggle) i.p.v. in het
+   ☰-menu, en de stand wordt niet meer bewaard tussen sessies. */
 window.toggleRitMonitor = function(){
   PLMon.userAan = !PLMon.userAan;
-  try{ localStorage.setItem('pl_monitor_aan', PLMon.userAan?'1':'0'); }catch(e){}
   const verbonden = (typeof connected!=='undefined' && connected) &&
                     !(typeof demoMode!=='undefined' && demoMode);
   const featOk = (typeof featOn!=='function') || featOn('feat_monitor');
@@ -351,13 +355,29 @@ window.monitorStatusTekst = function(){
   return 'wacht op verbinding';
 };
 window.updateMonitorBtn = function(){
-  const b=document.getElementById('monitorBtn'); if(!b) return;
   const st=window.monitorStatusTekst();
-  b.innerHTML = (PLMon.userAan?'🔔':'🔕') + ' Rit-monitor'
-    + '<span style="margin-left:auto;font-size:10px;font-weight:700;opacity:.75">'+st+'</span>';
-  b.style.display='flex'; b.style.alignItems='center'; b.style.gap='6px';
+  // Knop op de pane (huidige plek).
+  const p=document.getElementById('monPaneToggle');
+  if(p){
+    const aan=PLMon.userAan;
+    p.innerHTML = (aan?'🔔':'🔕') + ' Rit-monitor ' + (aan?'uitzetten':'aanzetten')
+      + '<span style="font-size:10.5px;font-weight:700;opacity:.75">'+st+'</span>';
+    p.style.borderColor = aan ? 'var(--gn,#00a86b)' : 'var(--bd,#26303b)';
+    p.style.color       = aan ? 'var(--gn,#00a86b)' : 'var(--tx,#e6e9ef)';
+  }
+  // Oud menu-item: alleen nog bijwerken als het er (in een oudere build) is.
+  const b=document.getElementById('monitorBtn');
+  if(b){
+    b.innerHTML = (PLMon.userAan?'🔔':'🔕') + ' Rit-monitor'
+      + '<span style="margin-left:auto;font-size:10px;font-weight:700;opacity:.75">'+st+'</span>';
+    b.style.display='flex'; b.style.alignItems='center'; b.style.gap='6px';
+  }
 };
 setInterval(()=>{ try{ window.updateMonitorBtn(); }catch(e){} }, 3000);
+
+// De oude bewaarde stand wordt niet meer gelezen — sleutel opruimen zodat er
+// niets blijft rondslingeren dat suggereert dat de monitor nog aan zou staan.
+try{ localStorage.removeItem('pl_monitor_aan'); }catch(e){}
 
 PLMon.boot();
 })();
