@@ -8722,6 +8722,10 @@ function parsePID(pid,raw){
 // Verwerk al-gesplitste bytes voor één PID (uit een batch-respons)
 function applyParsedBytes(pid,bytes){
   if(!bytes||!bytes.length) return null;
+  // Structuur meekijken vóór het parsen: PLPidVorm werkt op de RUWE bytes en
+  // merkt zo op dat een PID helemaal geen enkelvoudige sensorwaarde is (zoals
+  // 016D, dat als temperatuur wordt uitgelezen maar een regelblok is).
+  try{ window.PLPidVorm && window.PLPidVorm.zie(pid, bytes); }catch(e){}
   const def=getPidDef(pid);
   let rawVal=null;
   if(def?.parse){ try{rawVal=def.parse(bytes);}catch(e){} }
@@ -8729,6 +8733,19 @@ function applyParsedBytes(pid,bytes){
   if(rawVal===null||rawVal===undefined||isNaN(rawVal)) return null;
   return validateAndSmooth(pid,rawVal);
 }
+
+// Meet de bytelengte van één PID uit een solo-antwoord en geef de ruwe bytes
+// door aan de structuurdetector. De Full Survey vraagt élke ondersteunde PID
+// afzonderlijk op — dat is het ideale ijkmoment — maar die lus gebruikt
+// parsePID() en kwam dus nooit langs splitBatchResponse(), waar het meten
+// gebeurt. Deze functie sluit dat gat; de waarde zelf blijft van parsePID().
+window.plMeetPidLengte=function(pid, raw){
+  try{
+    const out=splitBatchResponse(raw,[pid]);
+    const b=out && out[pid];
+    if(b && b.length) window.PLPidVorm && window.PLPidVorm.zie(pid, b);
+  }catch(e){}
+};
 
 // ════════════════════════════════════════
 // POLL LOOP — P5: per-PID frequentie-scheduler
@@ -9086,6 +9103,10 @@ function startPoll(){
           const raw=await sendCmd(cmd,2500);
           const parsed=splitBatchResponse(raw,grp);
           _diagNote(cmd, raw, grp, parsed);
+          // Per-PID telemetrie: hier weten we exact wat gevraagd is en wat
+          // terugkwam, dus dit is de enige plek waar `mis` betrouwbaar te
+          // tellen valt (zie PLBus.notePids).
+          try{ PLBus.notePids(grp, null, parsed); }catch(e){}
           const got=Object.keys(parsed).length;
           if(got===0){
             // Zit er wél een 41-payload in de respons? Dan kwam de data goed
@@ -9261,6 +9282,11 @@ function renderBusDiag(){
     ['Responstijd nu', s.venGemMs+' ms', _bdKleur(s.venGemMs,120,250)],
     ['Responstijd sessie', s.gemMs+' ms'],
     ['Foutpercentage', s.foutPct+' %', _bdKleur(s.foutPct,15,35)],
+    // 2026-07-26 — nieuw. Foutpercentage telt alleen TRANSPORTfouten; een
+    // respons die netjes binnenkomt maar waarin een gevraagde PID ontbreekt
+    // was tot nu toe volledig onzichtbaar. Precies daardoor kon de 6D-desync
+    // maandenlang doorlopen met een dashboard dat 0 % fouten meldde.
+    ['Onvolledige responsen', (s.onvolPct||0)+' % <span style="opacity:.55">('+(s.reqOnvol||0)+'/'+(s.reqTot||0)+')</span>', _bdKleur(s.onvolPct||0,3,10)],
     ['ECU-belasting', s.belasting+' %', _bdKleur(s.belasting,70,90)],
     ['Commando totaal', s.totaal+' ('+s.bad+' mis)'],
   ]);
@@ -9325,6 +9351,21 @@ function renderBusDiag(){
       }));
     } else {
       h+=_bdKaart('Bytelengte — gemeten ≠ tabel', [['Geen afwijkingen gemeten','tabel klopt','var(--gn)']]);
+    }
+  }catch(e){}
+
+  // ── structuurtwijfel: PID is waarschijnlijk geen enkelvoudige sensor ──
+  // Bewust alleen MELDEN. De waarde wordt niet weggefilterd en het label niet
+  // aangepast: een sensor stilletjes uit een diagnose laten vallen op grond
+  // van een heuristiek is erger dan de fout die we opsporen.
+  try{
+    const vt=(window.PLPidVorm&&window.PLPidVorm.verdacht())||[];
+    if(vt.length){
+      h+=_bdKaart('Structuur wijkt af van definitie', vt.slice(0,6).map(v=>{
+        const d=(typeof getPidDef==='function')?getPidDef(v.pid):null;
+        return [((d&&d.name)||v.pid)+' <span style="opacity:.55">'+v.pid+'</span>',
+                'controleren <span style="opacity:.55">('+v.n+' metingen)</span>', 'var(--or)'];
+      }));
     }
   }catch(e){}
 

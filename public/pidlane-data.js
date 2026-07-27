@@ -42,7 +42,11 @@ window.PIDS = [
 ];
 
 // ── _B1B2_PAIR (was index.html regel 2786) ──
-window._B1B2_PAIR ={'0167':'0165','0168':'0166','017A':'0178','017B':'0179','013D':'013C','013F':'013E'};
+// 2026-07-26: 0167/0168 en 017A/017B eruit. Die koppelingen gingen ervan uit
+// dat 0165-0168 bank1/bank2-uitlaattemperaturen waren; dat bleek onjuist (het
+// zijn aux-I/O, MAF, koelvloeistof en inlaatlucht). De katalysatorparen
+// 013C-013F kloppen wél en blijven staan.
+window._B1B2_PAIR ={'013D':'013C','013F':'013E'};
 
 // ── PID_HARD_LIMITS (was index.html regel 2888) ──
 window.PID_HARD_LIMITS = {
@@ -493,15 +497,37 @@ Object.assign(ALL_PID_DEFS,{
   '0163':{name:'Referentiekoppel',       unit:'Nm',  cat:'Motor',    min:0,max:65535,parse:b=>(b[0]*256+b[1])},
   // ── Uitgebreide PID-database (PIDs 0164–01FF) — fix voor "PID 01XX raw" ──
   '0164':{name:'Motorvrijloop koppel',   unit:'%',   cat:'Motor',    min:-125,max:130,parse:b=>(b[0]-125)},
-  '0165':{name:'Uitlaatgas temp B1S1',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
-  '0166':{name:'Uitlaatgas temp B1S2',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
-  '0167':{name:'Uitlaatgas temp B2S1',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
-  '0168':{name:'Uitlaatgas temp B2S2',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  // ── 2026-07-26 — CORRECTIE 0165-0168 (+ 016D, 0178, 0179 verderop) ──
+  // Deze hele familie stond als "Uitlaatgas temp" met parse b[0]*256+b[1].
+  // Dat klopt voor geen van allen. Het zijn J1979-BLOKKEN die beginnen met een
+  // support-bitmap; de app las die bitmap als hoge databyte en schoof daarmee
+  // alles één byte op. De uitkomst was telkens een geloofwaardig ogend getal,
+  // en juist daarom viel het niemand op. De echte uitlaatgastemperatuur zit op
+  // 0178/0179, niet hier.
+  //
+  // Aangetoond op de diagnosebundel van 26-07 (Mazda CX-5 2018, benzine):
+  //   0165  RX 1040        oud: 376 °C "uitlaatgas"   → is een bitmap, geen sensor
+  //   0167  RX 03 82 7F    oud: 49,8 °C "uitlaatgas"  → koelvloeistof 90 / 87 °C
+  //   0168  RX 03 3D 43 …  oud: 43 °C "uitlaatgas"    → inlaatlucht 21 / 27 °C
+  // 0166/0178/0179 zijn op dit voertuig niet ondersteund en dus NIET met
+  // meetdata bevestigd — die volgen puur de J1979-structuur.
+  //
+  // Byte 0 is overal de bitmap die zegt wélke sensoren bestaan. Staat de bit
+  // uit, dan geven we null terug in plaats van een verzonnen waarde.
+  '0165':{name:'Aux in/uit ondersteund',  unit:'',   cat:'Status',   min:0,max:65535,parse:b=>(b[0]*256+b[1])},
+  '0166':{name:'Massaluchtstroom sens.A', unit:'g/s',cat:'Motor',    min:0,max:2048, parse:b=>((b[0]&1)?((b[1]*256+b[2])/32):((b[0]&2)?((b[3]*256+b[4])/32):null))},
+  '0167':{name:'Koelvloeistoftemp sens.', unit:'°C', cat:'Temp',     min:-40,max:215, parse:b=>((b[0]&1)?(b[1]-40):((b[0]&2)?(b[2]-40):null))},
+  '0168':{name:'Inlaatluchttemp sensor',  unit:'°C', cat:'Temp',     min:-40,max:215, parse:b=>((b[0]&1)?(b[1]-40):((b[0]&2)?(b[2]-40):null))},
   '0169':{name:'Dieselroetfilter druk',  unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
   '016A':{name:'Dieselroetfilter temp',  unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
   '016B':{name:'DPF delta druk',         unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
   '016C':{name:'EGR B tempsensor',       unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
-  '016D':{name:'Afgastemp dieselfilter', unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  // 016D is 11 bytes (zie PID_BYTE_LEN): bitmap + commanded/actual raildruk.
+  // Bevestigd door de meting: b1..b2 en b3..b4 lopen strak parallel
+  // (1000/1002 … 1743/1783), precies wat een gesloten regelkring doet, en
+  // 10 kPa/bit geeft 10,0-17,4 MPa — normaal voor SkyActiv-G directe inspuiting.
+  // Getoond wordt de WERKELIJKE druk; de gevraagde waarde zit in b1..b2.
+  '016D':{name:'Brandstofraildruk',      unit:'MPa', cat:'Motor',    min:0,max:655,  parse:b=>((b[0]&1)?(((b[3]*256+b[4])*10)/1000):null)},
   '016E':{name:'Nox sensor A',           unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
   '016F':{name:'Turbolader inlet druk',  unit:'kPa', cat:'Motor',    min:-350,max:514,parse:b=>(((b[0]*256+b[1])*0.03125)-350)},
   '0170':{name:'Turbolader A druk',      unit:'kPa', cat:'Motor',    min:0,max:500,  parse:b=>((b[0]*256+b[1])*0.03125)},
@@ -512,8 +538,12 @@ Object.assign(ALL_PID_DEFS,{
   '0175':{name:'EGR fout B',             unit:'%',   cat:'Emissie',  min:-100,max:100,parse:b=>((b[0]-128)*100/128)},
   '0176':{name:'Injectiesysteem rail A', unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
   '0177':{name:'Injectiesysteem rail B', unit:'kPa', cat:'Brandstof',min:0,max:655350,parse:b=>((b[0]*256+b[1])*10)},
-  '0178':{name:'Uitlaatgas temp B1S3',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
-  '0179':{name:'Uitlaatgas temp B1S4',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
+  // 0178/0179 zijn de ECHTE uitlaatgastemperaturen (blok van 9 bytes: bitmap +
+  // vier 16-bits waarden op 0,1 °C met -40 offset). 0178 = bank 1, 0179 = bank 2
+  // — niet B1S3/B1S4 zoals hier stond. Op dit voertuig niet ondersteund, dus
+  // niet met meetdata bevestigd.
+  '0178':{name:'Uitlaatgastemp B1S1',    unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>((b[0]&1)?(((b[1]*256+b[2])*0.1)-40):null)},
+  '0179':{name:'Uitlaatgastemp B2S1',    unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>((b[0]&1)?(((b[1]*256+b[2])*0.1)-40):null)},
   '017A':{name:'Uitlaatgas temp B2S3',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
   '017B':{name:'Uitlaatgas temp B2S4',   unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
   '017C':{name:'DPF temp B1',            unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
@@ -658,8 +688,16 @@ window.PLPidLen = (function(){
         AFW[suf].gemeten=n; AFW[suf].n++;
       }
       var e=LEER[suf];
-      if(!e || e.n!==n) LEER[suf]={n:n, hits:1, bron:bron||'batch'};
-      else { e.hits++; if(bron==='solo') e.bron='solo'; }
+      if(!e){ LEER[suf]={n:n, hits:1, bron:bron||'batch', conflict:0}; }
+      else if(e.n===n){ e.hits++; if(bron==='solo') e.bron='solo'; }
+      else {
+        // Tegenspraak met wat we eerder maten. Eerder verving één afwijkende
+        // solo-meting de opgeslagen waarde meteen én werd hij direct
+        // vertrouwd — één verminkte respons vergiftigde die PID dan permanent.
+        // Nu telt de tegenspraak mee en moet de nieuwe waarde opnieuw bevestigd
+        // worden voor hij gebruikt wordt, ongeacht de bron.
+        LEER[suf]={n:n, hits:1, bron:'batch', conflict:(e.conflict||0)+1};
+      }
       bewaar();
     },
     // Geleerde lengte, of null als er nog te weinig bewijs is.
@@ -667,6 +705,8 @@ window.PLPidLen = (function(){
       laad();
       var e=LEER[String(suf).toUpperCase()];
       if(!e) return null;
+      // Na een eerdere tegenspraak nooit meer op één meting vertrouwen.
+      if(e.conflict) return (e.hits>=2) ? e.n : null;
       return (e.bron==='solo' || e.hits>=2) ? e.n : null;
     },
     // Voor Busdiagnose: waar wijkt dit voertuig af van de tabel?
@@ -680,6 +720,82 @@ window.PLPidLen = (function(){
   };
 })();
 
+// ── PLPidVorm — structuurverdenking (2026-07-26) ──────────────────────
+// Bytelengte is objectief af te leiden uit de transportlaag (zie PLPidLen).
+// BETEKENIS niet. 016D staat in deze app als "Afgastemp dieselfilter" met
+// parse b[0]*256+b[1], terwijl de Mazda daar het J1979-regelblok "fuel
+// pressure control system" op teruggeeft. Het resultaat is een geloofwaardig
+// ogend getal (~140 °C) dat nergens op slaat en tóch in AI-rapporten belandt.
+//
+// Zoiets valt niet automatisch te CORRIGEREN, maar wel te WANTROUWEN. Twee
+// goedkope structuursignalen die 016D er direct uitpikken:
+//   A. byte 0 is over alle metingen constant terwijl er verderop wél variatie
+//      zit → dat is een support-bitmap, geen meetwaarde.
+//   B. de 16-bits paren (B,C) en (D,E) lopen strak parallel → commanded-
+//      versus-actual, dus een regelblok en geen enkelvoudige sensor.
+// Verdicht: markeren en melden. NIET automatisch herlabelen of wegfilteren —
+// een sensor stilletjes uit een diagnose laten vallen op grond van een
+// heuristiek is een ergere fout dan de fout die we opsporen.
+window.PLPidVorm = (function(){
+  var S={}, MIN=15, SLEUTEL=null;
+  // Per voertuig, net als PLPidLen. Zonder deze sleutel liepen de byte-
+  // statistieken van twee auto's in één sessie door elkaar heen — in een
+  // werkplaats waar je achter elkaar aankoppelt is dat geen randgeval maar de
+  // normale gang van zaken, en het levert onzinnige oordelen op.
+  function check(){
+    var k=null;
+    try{
+      var v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
+      k=v.vin || [v.merk,v.model,v.year].filter(Boolean).join('|') || null;
+    }catch(e){}
+    if(k && k!==SLEUTEL){ SLEUTEL=k; S={}; }
+  }
+  return {
+    zie: function(pid, bytes){
+      check();
+      if(!bytes || bytes.length<3) return;
+      // Drempel op 3 bytes, niet 5: PID 0167 is een blok van 3 (bitmap + twee
+      // 1-byte temperaturen) en viel er anders doorheen. De 4-bytes lambda-
+      // PIDs zijn wél echte scalars, en dáár staat de hoge byte van een
+      // verhouding rond 1,00 bijna stil — die zouden vals alarm geven en
+      // worden daarom overgeslagen.
+      var nr=parseInt(String(pid).slice(2),16);
+      if(bytes.length===4 && ((nr>=0x24&&nr<=0x2B)||(nr>=0x34&&nr<=0x3B))) return;
+      var k=String(pid).slice(2).toUpperCase();
+      var s=S[k];
+      if(!s){ s=S[k]={n:0, kop:bytes[0], kopVast:true, varieert:false, paar:0, paarN:0, vorig:null}; }
+      s.n++;
+      if(bytes[0]!==s.kop) s.kopVast=false;
+      if(s.vorig){
+        for(var i=1;i<bytes.length && i<s.vorig.length;i++){
+          if(bytes[i]!==s.vorig[i]){ s.varieert=true; break; }
+        }
+      }
+      s.vorig=bytes.slice(0,12);
+      var a=bytes[1]*256+bytes[2], b=bytes[3]*256+bytes[4];
+      if(a>0 && b>0){ s.paarN++; if(Math.abs(a-b) <= 0.15*Math.max(a,b)) s.paar++; }
+    },
+    // Waarom verdacht, of null als er geen bezwaar is.
+    reden: function(pid){
+      var s=S[String(pid).slice(2).toUpperCase()];
+      if(!s || s.n<MIN) return null;
+      if(!(s.kopVast && s.varieert)) return null;
+      var parallel = s.paarN>=MIN && (s.paar/s.paarN)>0.8;
+      return parallel
+        ? 'byte 0 constant (support-bitmap) + parallelle 16-bits paren → regelblok, geen enkelvoudige sensor'
+        : 'byte 0 constant over alle metingen terwijl de rest varieert → waarschijnlijk een support-bitmap';
+    },
+    verdacht: function(){
+      var uit=[], self=this;
+      Object.keys(S).forEach(function(k){
+        var r=self.reden('01'+k);
+        if(r) uit.push({pid:'01'+k, n:S[k].n, reden:r});
+      });
+      return uit;
+    },
+    wis: function(){ S={}; }
+  };
+})();
 // ── PID_POLL_CLASS (was index.html regel 11209) ──
 window.PID_POLL_CLASS ={
   // ⚡ SNEL (120ms) — verandert continu, wil je vloeiend zien
@@ -904,6 +1020,7 @@ const S={
   pausedTotal:0, pauseStart:0,
   tx:0, ok:0, bad:0, msSom:0, msN:0,
   perPid:Object.create(null),
+  reqTot:0, reqOnvol:0,      // requests totaal / met ontbrekende PIDs
   batchGroep:3, batchGoed:0,
   hist:[]
 };
@@ -966,12 +1083,33 @@ window.PLBus={
     if(ms>0){ S.msSom+=ms; S.msN++; }
     S.hist.push({t:nu(),ms:ms||0,bad:!!bad});
     if(S.hist.length>400) S.hist.splice(0,S.hist.length-400);
-    const m=/^01([0-9A-F]{2})1?$/i.exec(String(cmd||''));
-    if(m){
-      const p='01'+m[1].toUpperCase();
+    // Let op: de per-PID boekhouding zat hier met een regex die ALLEEN losse
+    // commando's matchte (/^01xx1?$/). Batches als "016D68" vielen er dus
+    // buiten — en omdat vrijwel alles in batches gaat, telde perPid maar een
+    // fractie mee en bleef `mis` structureel op 0 staan. Dát is de reden dat
+    // de 6D-desync maanden onzichtbaar bleef: hij verscheen in geen enkele
+    // KPI. De boekhouding staat nu in notePids(), die vanuit de pollus wordt
+    // aangeroepen met de volledige gevraagd/gekregen-vergelijking.
+  },
+
+  /* Per-PID telemetrie op basis van wat er GEVRAAGD en GEKREGEN is.
+     `gevraagd` = array PIDs in deze request, `gekregen` = object uit
+     splitBatchResponse. Werkt voor batches én voor groepen van één. */
+  notePids(gevraagd, ms, gekregen){
+    if(!Array.isArray(gevraagd)||!gevraagd.length) return;
+    const per=Math.round((ms||0)/gevraagd.length);
+    let ontbrak=0;
+    for(const p of gevraagd){
       const e=S.perPid[p]||(S.perPid[p]={n:0,msSom:0,mis:0});
-      e.n++; e.msSom+=(ms||0); if(bad) e.mis++;
+      if(gekregen && (p in gekregen)){ e.n++; e.msSom+=per; }
+      else { e.mis++; ontbrak++; }
     }
+    // Een respons waarin gevraagde PIDs ontbreken is niet per se een
+    // TRANSPORTfout (een niet-ondersteunde PID hoort er ook niet in), dus dit
+    // gaat NIET in `bad`/foutPct. Wel in een eigen teller, zodat een
+    // systematische parse-desync zichtbaar wordt zonder de foutgraad te
+    // vervuilen.
+    S.reqTot++; if(ontbrak) S.reqOnvol++;
   },
   stats(){
     const t=nu(), w=S.hist.filter(h=>t-h.t<10000);
@@ -986,10 +1124,20 @@ window.PLBus={
       foutPct: n?Math.round(badN/n*100):0,
       belasting: bezet,
       batchGroep:S.batchGroep,
+      reqTot:S.reqTot, reqOnvol:S.reqOnvol,
+      onvolPct: S.reqTot?Math.round(S.reqOnvol/S.reqTot*100):0,
       perPid:S.perPid
     };
   },
-  resetStats(){ S.tx=S.ok=S.bad=S.msSom=S.msN=0; S.perPid=Object.create(null); S.hist=[]; },
+  resetStats(){
+    S.tx=S.ok=S.bad=S.msSom=S.msN=0; S.reqTot=S.reqOnvol=0;
+    S.perPid=Object.create(null); S.hist=[];
+    // Ook de geleerde bytelengtes en structuurverdenkingen wissen: die horen
+    // bij dít voertuig en deze sessie. Zonder deze weg terug bleef een eenmaal
+    // verkeerd geleerde lengte permanent in localStorage staan.
+    try{ window.PLPidLen && window.PLPidLen.wis(); }catch(e){}
+    try{ window.PLPidVorm && window.PLPidVorm.wis(); }catch(e){}
+  },
 
   /* ── adaptieve batchgrootte (fase 2) ── */
   batchGroep(){ return S.batchGroep; },
