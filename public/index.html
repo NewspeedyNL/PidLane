@@ -1389,6 +1389,14 @@ function closeConnOv(){
           <button id="pidRefreshBtn" onclick="deepRefreshPIDs()" title="Dieper zoeken + namen opzoeken" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00b4cc;cursor:pointer">🔄 Diep zoeken</button>
         </div>
         <div id="pidRefreshStatus" style="font-size:11px;color:var(--tx3);padding:2px 2px 0;min-height:12px"></div>
+        <!-- Voorinstellingen: altijd "basis + focus", nooit een setje van drie
+             sensoren zonder context. Zie PID_PRESETS in pidlane-data.js. -->
+        <div class="pid-preset">
+          <select id="pidPresetSel" onchange="applyPidPreset(this.value)" title="Kies een samenstelling">
+            <option value="">🎚️ Voorinstelling kiezen…</option>
+          </select>
+          <div class="pid-preset-tip" id="pidPresetTip"></div>
+        </div>
         <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek PID..." oninput="filterPIDs(this.value)" id="psrch"></div>
         <div style="font-size:11px;color:var(--tx3);padding:4px 2px 0">Vink aan om te monitoren</div>
       </div>
@@ -3891,8 +3899,12 @@ function renderGauges(){
     const isMan=_scenario.enabled && _scenario.pids[pid]!==undefined;
     const c=document.createElement('div'); c.className='gc'+(isMan?' gc-manueel':''); c.id='gc-'+pid;
     const manTag=isMan?' <span style="font-size:7px;font-weight:800;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;vertical-align:middle">MAN</span>':'';
+    // Zelfde markering als in de keuzelijst: dit PID meet hetzelfde als een
+    // standaard-PID maar komt uit een ander kanaal.
+    const _alt=(window.PID_ALT_KANAAL||{})[pid];
+    const altTag=_alt?` <span class="gc-alt" title="${(window.pidAltKanaalTip?pidAltKanaalTip(pid):'').replace(/"/g,'&quot;')}">⇄ ${_alt}</span>`:'';
     c.innerHTML=`<div class="gdot" id="gd-${pid}"></div>
-      <div class="gn2">${d.name}${manTag}</div>
+      <div class="gn2">${d.name}${manTag}${altTag}</div>
       <div><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     c.style.cursor='pointer'; c.title='Dubbeltik = sensor uitzetten';
@@ -8370,8 +8382,54 @@ function buildDiscoveredPIDList(){
   document.getElementById('pidCnt').textContent=discoveredPIDDefs.length;
 }
 
+// ── VOORINSTELLINGEN VOOR DE PID-KEUZE (27-07-2026) ───────────────────
+// Vult de keuzelijst en past een samenstelling toe. Elke voorinstelling is
+// "kern + focus": de basis blijft altijd staan, zodat je nooit naar een paar
+// losse sensoren zit te kijken zonder de context om ze te beoordelen.
+// PIDs die dit voertuig niet ondersteunt worden er stil uitgefilterd; wat er
+// overblijft wordt gemeld, zodat je weet waaróm je er minder ziet dan verwacht.
+function _pidPresetVulSelect(){
+  const sel=document.getElementById('pidPresetSel');
+  if(!sel || sel._gevuld || !window.PID_PRESETS) return;
+  PID_PRESETS.forEach(pr=>{
+    const o=document.createElement('option');
+    o.value=pr.id; o.textContent=pr.naam; o.title=pr.tip||'';
+    sel.appendChild(o);
+  });
+  sel._gevuld=true;
+}
+function applyPidPreset(id){
+  const tip=document.getElementById('pidPresetTip');
+  if(!id){ if(tip) tip.textContent=''; return; }
+  const pr=(window.PID_PRESETS||[]).find(x=>x.id===id);
+  if(!pr) return;
+  const kern=(window.KERN_PIDS||[]);
+  const gewenst=[...new Set([...kern, ...(pr.extra||[])])];
+  // Alleen wat dit voertuig daadwerkelijk kan leveren.
+  const beschikbaar=new Set((discoveredPIDDefs||[]).map(d=>d.pid));
+  const bruikbaar=gewenst.filter(p=>beschikbaar.has(p));
+  const ontbreekt=gewenst.length-bruikbaar.length;
+  if(!bruikbaar.length){
+    if(tip) tip.textContent='Geen van deze sensoren is op dit voertuig beschikbaar.';
+    return;
+  }
+  // Zelfde route als togglePID() gebruikt, zodat scheduler, tegels en
+  // grafiekkeuze allemaal meegaan.
+  activePIDs.clear(); manualPIDs.clear();
+  bruikbaar.forEach(p=>{ activePIDs.add(p); manualPIDs.add(p); });
+  try{ buildPIDList(document.getElementById('psrch')?.value||''); }catch(e){}
+  try{ document.getElementById('pidCnt').textContent=activePIDs.size; }catch(e){}
+  try{ renderGauges(); rebuildGSel(); }catch(e){}
+  if(tip){
+    tip.textContent=pr.tip+' — '+bruikbaar.length+' sensoren actief'
+      + (ontbreekt?(', '+ontbreekt+' niet beschikbaar op deze auto'):'');
+  }
+  try{ showToast?.('🎚️ '+pr.naam+' — '+bruikbaar.length+' sensoren actief'); }catch(e){}
+}
+
 // ── PID PANEL — nu dynamisch vanuit discovery ──
 function buildPIDList(filter=''){
+  try{ _pidPresetVulSelect(); }catch(e){}
   const el=document.getElementById('pidList');
   el.innerHTML='';
 
@@ -8420,7 +8478,12 @@ function buildPIDList(filter=''){
                 : health==='twijfel' ? '<span class="phealth warn" title="Twijfelachtige meting — verifieer">⚠</span>'
                 : health==='nodata' ? '' : '';   // nodata: geen icoon, gewoon grijs
       const nodataTip = health==='nodata' ? 'Niet aanwezig op dit voertuig (NO DATA)' : '';
-      row.innerHTML=`<div class="pck"><span class="ckm">✓</span></div><span class="pn">${p.name}</span>${tag}<span class="pu2">${p.unit||p.pid}</span>`;
+      // Meet dit PID hetzelfde als een standaard-PID, maar via een ander
+      // kanaal? Dan hoort dat hier te staan — anders lijken twee net
+      // verschillende koelwatertemperaturen op een fout.
+      const altP=(window.PID_ALT_KANAAL||{})[p.pid];
+      const altTag = altP ? `<span class="palt" title="${(window.pidAltKanaalTip?pidAltKanaalTip(p.pid):'').replace(/"/g,'&quot;')}">⇄ ${altP}</span>` : '';
+      row.innerHTML=`<div class="pck"><span class="ckm">✓</span></div><span class="pn">${p.name}</span>${altTag}${tag}<span class="pu2">${p.unit||p.pid}</span>`;
       if(dim){
         row.title=health==='nodata'?'Niet beschikbaar op dit voertuig — zet "Toon alles" aan om toch te kiezen':'Twijfelachtige meting — zet "Toon alles" aan om toch te kiezen';
       } else {
