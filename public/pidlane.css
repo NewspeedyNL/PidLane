@@ -1327,3 +1327,104 @@ body:has(#loginOv.hidden) #lgWaveBg{ display:none; }
   .ov#loginOv .mact{ width:min(74%,270px); }
   .ov#loginOv .lg-foot{ margin-top:16px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   VERBINDSCHERM IN DE VORMTAAL VAN HET INLOGSCHERM (26-07-2026)
+   Het inlogscherm is een glazen kaart op het golflint; het verbindscherm
+   dat er direct op volgt was een gewone donkere modal met een grijze
+   sluier. Daardoor viel de overgang uit elkaar in twee losse schermen.
+   Nu deelt het verbindscherm hetzelfde materiaal (blur + rand + schaduw),
+   dezelfde koptypografie en dezelfde knopstijl. De golfachtergrond blijft
+   staan tot het verbindscherm sluit — dát maakt het één beweging.
+   Geen cirkel: hier moet veel meer in dan twee invoervelden.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Inlogscherm vervaagt in plaats van hard te verdwijnen. */
+.ov#loginOv{ transition:opacity .26s ease, transform .26s ease; }
+.ov#loginOv.lg-leave{ opacity:0; transform:scale(.985); pointer-events:none; }
+
+.ov#connOv{
+  background:transparent;
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+  flex-direction:column; align-items:center; justify-content:center;
+  padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(14px + env(safe-area-inset-bottom,0px));
+  overflow-y:auto;
+}
+.ov#connOv .modal{
+  position:relative; z-index:1; flex:0 0 auto;
+  width:min(94vw,440px); max-width:none;
+  margin:0; border-radius:24px;
+  background:rgba(19,25,38,.40);
+  backdrop-filter:blur(16px) saturate(135%);
+  -webkit-backdrop-filter:blur(16px) saturate(135%);
+  border:1px solid rgba(255,255,255,.13);
+  box-shadow:0 26px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.ov#connOv .mh{ padding:22px 20px 6px; text-align:center; }
+.ov#connOv .lg-logo{ width:74px; height:74px; border-radius:18px; margin:0 auto 12px; }
+.ov#connOv .mttl{ font-size:26px; font-weight:800; line-height:1.12; letter-spacing:.2px; margin:0; }
+.ov#connOv .msub{ font-size:12.5px; color:var(--tx3); margin-top:4px; }
+
+/* Stappen als glazen regels i.p.v. streepjeslijst */
+.ov#connOv .msteps{ padding:4px 18px 12px; display:flex; flex-direction:column; gap:7px; }
+.ov#connOv .mstep{
+  border-bottom:none; align-items:center; gap:11px;
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px; padding:10px 12px;
+  font-size:12.5px; color:var(--tx2); line-height:1.45;
+}
+.ov#connOv .mstep .sn{
+  flex:0 0 auto; width:22px; height:22px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11.5px; font-weight:800; color:#0a0e14;
+  background:linear-gradient(120deg,#00ff88,#00d4ff);
+}
+
+/* Knoppen: dezelfde verloopomlijning als 'Inloggen' */
+.ov#connOv .mact{ background:transparent; border:0; padding:4px 18px 20px; display:flex; flex-direction:column; gap:9px; }
+.ov#connOv .mbtn{
+  width:100%; padding:13px 0; border-radius:14px;
+  font-weight:800; letter-spacing:1.1px; text-transform:uppercase; font-size:13px;
+}
+.ov#connOv .mbtn.p{
+  border:1.6px solid transparent; color:var(--tx);
+  background:
+    linear-gradient(rgba(255,255,255,.03),rgba(255,255,255,.03)) padding-box,
+    linear-gradient(100deg,#00ff88,#22d3ee 55%,#3b82f6) border-box;
+  box-shadow:0 0 26px rgba(0,255,136,.14);
+}
+.ov#connOv .mbtn.s{
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.14);
+  color:var(--tx2); text-transform:none; letter-spacing:.2px; font-weight:700;
+}
+.ov#connOv .mbtn:active{ transform:scale(.985); }
+
+/* Voettekst los onder de kaart, net als bij inloggen */
+.ov#connOv .lg-foot{
+  position:relative; z-index:1; flex:0 0 auto;
+  margin-top:16px; text-align:center; line-height:1.75;
+  font-size:12px; color:var(--tx3);
+}
+.ov#connOv .lg-site{ color:#00D4FF; text-decoration:none; font-weight:600; }
+
+/* ── Rit-monitor: uitleg vervalt, meetwaarden en rijtips komen ervoor terug ── */
+.mon-intro-txt{
+  overflow:hidden; max-height:220px; opacity:1;
+  transition:max-height .5s ease, opacity .35s ease, margin .5s ease;
+}
+.mon-intro-txt.weg{ max-height:0; opacity:0; margin:0; }
+.mon-tips{
+  margin:10px 12px 4px; display:flex; flex-direction:column; gap:7px;
+}
+.mon-tip-live{
+  border-radius:12px; padding:11px 13px; font-size:13px; line-height:1.45; font-weight:700;
+  background:rgba(255,255,255,.045); border:1px solid var(--bd); color:var(--tx2);
+}
+.mon-tip-live.goed{ border-color:rgba(0,168,107,.45); background:rgba(0,168,107,.10); color:var(--tx); }
+.mon-tip-live.let { border-color:rgba(247,127,0,.45);  background:rgba(247,127,0,.10);  color:var(--tx); }
+.mon-tip-alg{
+  border-radius:12px; padding:10px 13px; font-size:12.5px; line-height:1.5;
+  background:var(--sur2); border:1px solid var(--bd); color:var(--tx3);
+}
