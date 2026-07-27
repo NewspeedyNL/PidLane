@@ -1181,7 +1181,11 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
    andere manier verbergt. Zichtbaar maken hoeft geen van beide te doen — de
    laag staat standaard aan, want vóór het inloggen is dit het enige beeld. */
 #lgWaveBg.off{ display:none; }
-body:has(#loginOv.hidden) #lgWaveBg{ display:none; }
+/* 27-07-2026 — deze regel doodde de golflaag zodra het inlogscherm sloot, dus
+   óók tijdens het verbindscherm dat daar direct op volgt. Dat scherm heeft een
+   doorzichtige achtergrond en toonde daardoor de app erachter. De laag mag pas
+   weg als BEIDE schermen dicht zijn. */
+body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 #lgWaveBg .lg-wave{ position:absolute; inset:0; width:100%; height:100%; }
 
 /* ── Overlay: kaart gecentreerd, footer eronder ── */
@@ -1344,8 +1348,12 @@ body:has(#loginOv.hidden) #lgWaveBg{ display:none; }
 .ov#loginOv.lg-leave{ opacity:0; transform:scale(.985); pointer-events:none; }
 
 .ov#connOv{
-  background:transparent;
-  backdrop-filter:none; -webkit-backdrop-filter:none;
+  /* Bewust NIET volledig doorzichtig: het verbindscherm hangt over de app en
+     die mag er niet doorheen schemeren. Deze laag is donker genoeg om alles
+     erachter onleesbaar te maken, en licht genoeg om het golflint eronder nog
+     te laten meespelen — zodat het inlogscherm er vloeiend in overgaat. */
+  background:rgba(6,9,15,.90);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   flex-direction:column; align-items:center; justify-content:center;
   padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(14px + env(safe-area-inset-bottom,0px));
   overflow-y:auto;
@@ -1428,3 +1436,26 @@ body:has(#loginOv.hidden) #lgWaveBg{ display:none; }
   border-radius:12px; padding:10px 13px; font-size:12.5px; line-height:1.5;
   background:var(--sur2); border:1px solid var(--bd); color:var(--tx3);
 }
+
+/* ── "Ander kanaal": dit PID meet hetzelfde als een standaard-PID, maar via
+      een andere sensor of uitleesweg. Zonder deze markering lijken twee net
+      verschillende koelwatertemperaturen op een meetfout. ── */
+.palt{
+  flex:0 0 auto; margin-left:6px; padding:1px 5px; border-radius:4px;
+  font-size:9.5px; font-weight:800; letter-spacing:.2px; white-space:nowrap;
+  background:rgba(124,77,255,.16); border:1px solid rgba(124,77,255,.42); color:#a78bfa;
+}
+.gc-alt{
+  display:inline-block; margin-left:4px; padding:0 4px; border-radius:3px;
+  font-size:8px; font-weight:800; vertical-align:middle; white-space:nowrap;
+  background:rgba(124,77,255,.18); color:#a78bfa;
+}
+
+/* ── Voorinstellingen boven de PID-lijst ── */
+.pid-preset{ padding:6px 2px 2px; display:flex; flex-direction:column; gap:4px; }
+.pid-preset select{
+  width:100%; padding:8px 9px; border-radius:8px;
+  border:1px solid var(--bd); background:var(--sur2); color:var(--tx);
+  font-family:var(--f); font-size:12.5px; font-weight:700; cursor:pointer;
+}
+.pid-preset-tip{ font-size:11px; line-height:1.45; color:var(--tx3); min-height:14px; }

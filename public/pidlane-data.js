@@ -608,6 +608,31 @@ window.STANDAARD_PIDS =[
   '011C','0151','0133',
 ];
 
+// ── PID_ALT_KANAAL — dezelfde grootheid, andere bron (27-07-2026) ──────
+// Een aantal J1979-blokken meet iets wat óók een eigen standaard-PID heeft.
+// Sinds de correctie van 0165-0168/016D leveren die blokken echte waarden op,
+// en dan staan er ineens twee koelwatertemperaturen of twee raildrukken in
+// beeld die net niet gelijk zijn — want het zijn andere sensoren, of dezelfde
+// sensor via een ander kanaal van de ECU. Zonder markering lijkt dat een fout.
+// Sleutel = het alternatieve kanaal, waarde = het standaard-PID ernaast.
+window.PID_ALT_KANAAL = {
+  '0166':'0110',   // massaluchtstroom sensor A  ←→ standaard MAF
+  '0167':'0105',   // koelvloeistof sensorblok   ←→ standaard koelwatertemp
+  '0168':'010F',   // inlaatlucht sensorblok     ←→ standaard inlaatluchttemp
+  '016D':'0123',   // raildruk regelblok         ←→ standaard raildruk
+  '0178':'013C',   // uitlaatgastemp bank 1      ←→ katalysatortemp B1S1
+  '0179':'013D'    // uitlaatgastemp bank 2      ←→ katalysatortemp B2S1
+};
+// Korte omschrijving voor de tooltip.
+window.pidAltKanaalTip = function(pid){
+  try{
+    const alt=(window.PID_ALT_KANAAL||{})[pid]; if(!alt) return '';
+    const d=(window.ALL_PID_DEFS||{})[alt];
+    return 'Ander kanaal: meet hetzelfde als '+alt+(d&&d.name?' ('+d.name+')':'')
+         + '. Afwijkende waarden zijn normaal — het is een andere sensor of een andere uitleesweg.';
+  }catch(e){ return ''; }
+};
+
 // ── PID_BYTE_LEN (was index.html regel 11049) ──
 window.PID_BYTE_LEN ={
   // Volledige SAE J1979 mode-01 bytelengtes (00–80 + hogere bitmaps).
@@ -796,6 +821,31 @@ window.PLPidVorm = (function(){
     wis: function(){ S={}; }
   };
 })();
+// ── PID_PRESETS — voorinstellingen voor de PID-keuze (27-07-2026) ──────
+// Bewust GEEN kleine setjes van drie sensoren: daar heb je in de praktijk
+// niets aan, want je mist dan altijd de context om te zien of iets klopt.
+// Elke voorinstelling is daarom "basis + focus": de tien kern-PIDs blijven
+// altijd staan, en daar komt een blok bovenop dat bij de vraag past.
+// Niet-ondersteunde PIDs worden er bij het toepassen uitgefilterd.
+window.PID_PRESETS = [
+  {id:'basis', naam:'Basis', tip:'De tien kernwaarden die je bij elke rit wilt zien.',
+   extra:[]},
+  {id:'plus', naam:'Basis plus', tip:'Kern plus de meest gebruikte extra sensoren — goed startpunt.',
+   extra:['0110','010E','0143','015C','0146','0133','014C']},
+  {id:'verbruik', naam:'Basis + focus verbruik', tip:'Alles wat meeweegt in brandstofverbruik en rijstijl.',
+   extra:['0110','0166','015E','0123','016D','0162','0163','0145','0149','014C','012F','0131']},
+  {id:'elektrisch', naam:'Basis + focus elektrisch', tip:'Boordnet, accu en aandrijving van EV of hybride.',
+   extra:['0142','015B','015C','0165','015D','0170','018B','018C','0183','019A','019B','019C','019D']},
+  {id:'motor', naam:'Basis + focus motor & belasting', tip:'Vullingsgraad, koppel en belasting onder alle omstandigheden.',
+   extra:['0143','0144','0162','0163','0164','010E','0110','0166','0187','0170','010B','0133']},
+  {id:'temp', naam:'Basis + focus temperatuur', tip:'Alle temperaturen die de app kan uitlezen, in één beeld.',
+   extra:['0105','010F','0146','015C','0167','0168','013C','013D','013E','013F','0178','0179','016B','016A']},
+  {id:'emissie', naam:'Basis + focus emissie & lambda', tip:'Brandstoftrim, lambda en nabehandeling — voor APK en storingzoeken.',
+   extra:['0106','0107','0108','0109','0113','0114','0115','0124','0134','0135','012E','012F','013C','013D','0169','016A','016B','017C']},
+  {id:'diesel', naam:'Basis + focus diesel & roetfilter', tip:'Raildruk, EGR en roetfilter — alleen zinvol op een diesel.',
+   extra:['0123','016D','0169','016A','016B','016C','017C','0178','0179','0187','015E']}
+];
+
 // ── PID_POLL_CLASS (was index.html regel 11209) ──
 window.PID_POLL_CLASS ={
   // ⚡ SNEL (120ms) — verandert continu, wil je vloeiend zien
