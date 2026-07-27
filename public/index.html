@@ -1014,6 +1014,12 @@ function closeConnOv(){
           <span class="choice-tag">⭐ Aanbevolen</span>
         </div>
 
+        <div class="choice-card full" id="wc-onderdeel">
+          <div class="choice-head"><span class="choice-icon">🔩</span><span class="choice-time">direct</span></div>
+          <div class="choice-title">Welk onderdeel is kapot?</div>
+          <div class="choice-desc">Kijkt naar twee dingen: de foutcodes en de meetwaarden van dit moment. Meer niet. Als er een onderdeel aan te wijzen is, staat het er — met de meting waar dat op rust.</div>
+          <div class="choice-out"><b>Je krijgt:</b> een korte lijst verdachte onderdelen op volgorde van zekerheid, plus eerlijk wat er via OBD niet te zien is.</div>
+        </div>
         <div class="choice-card full" id="wc-deepdiag">
           <div class="choice-head"><span class="choice-icon">🔬</span><span class="choice-time">⏱ ±5-10 min</span></div>
           <div class="choice-title">Diepe storingsanalyse</div>
@@ -3956,7 +3962,27 @@ function resetDataStream(auto){
   }catch(e){}
 }
 
-function fv(v){return(v===undefined||v===null)?'—':(Math.abs(v)<10?v.toFixed(2):v.toFixed(0));}
+/* 27-07-2026 — fv() rondde ALLES boven de 10 af op hele eenheden. Voor
+   toerental of temperatuur is dat prima, maar voor accuspanning sloopt het de
+   meting: 12,4 V (leeg) · 13,4 V (laadt) · 14,6 V (laadt hard) · 15,1 V
+   (regelaar stuk) werden op het scherm allemaal 12, 13, 15, 15. De hele
+   diagnostische betekenis van dat PID zit in de tienden.
+   Nu bepaalt de EENHEID het aantal decimalen, met de oude regel als terugval
+   voor alles waar geen eenheid bij bekend is. */
+const _FV_DEC={'V':2,'λ':3,'MPa':2,'bar':2,'A':2,'g/s':2,'L/100':1,'L/uur':1,'L/h':1,'mA':1};
+function fvDec(unit,v){
+  if(unit && _FV_DEC[unit]!=null) return _FV_DEC[unit];
+  return Math.abs(v)<10 ? 2 : 0;
+}
+function fv(v, pidOfDef){
+  if(v===undefined||v===null) return '—';
+  let unit='';
+  try{
+    if(typeof pidOfDef==='string'){ const d=getPidDef(pidOfDef); unit=(d&&d.unit)||''; }
+    else if(pidOfDef && pidOfDef.unit) unit=pidOfDef.unit;
+  }catch(e){}
+  return Number(v).toFixed(fvDec(unit,v));
+}
 
 // ── PID weergavemodus: 'full' | 'numbers' | 'dots' ──
 let pidViewMode='dots';  // live view start altijd in puntjes-weergave
@@ -4557,6 +4583,9 @@ function bscConditie(t){
   if(t.eis.fase && !t.eis.fase.includes(st.fase)) mis.push(t.eis.fase.join('/'));
   if(t.eis.warm && st.temp!=='warm') mis.push('motor bedrijfswarm');
   if(t.eis.motorDraait && !(typeof rpm==='number'&&rpm>400)) mis.push('motor draaiend');
+  // Rustspanning meten kan alleen met de motor uit; contact moet wél aan staan,
+  // anders krijgen we sowieso geen data terug van de ECU.
+  if(t.eis.motorUit && !(typeof rpm==='number'&&rpm<200)) mis.push('motor uit (contact aan)');
   if(t.eis.minSnelheid && !(typeof spd==='number'&&spd>=t.eis.minSnelheid)) mis.push('≥'+t.eis.minSnelheid+' km/u');
   return mis.length? {ok:false, label:mis.join(' + ')} : {ok:true, label:''};
 }
@@ -5004,7 +5033,7 @@ function bscFinish(){
     const kl=r.status==='ok'?'ok':r.status==='twijfel'?'warn':'mut';
     const val=r.status==='nvt'
       ? ('n.v.t. \u2014 voorwaarde niet voorgekomen'+(r.reden?': '+r.reden:''))
-      : (r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde):r.waarde} ${r.unit}`
+      : (r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde, r.pid):r.waarde} ${r.unit}`
                              :('geen data'+(r.reden?' — '+r.reden:'')));
     const vb=(r.status==='twijfel'&&r.pid&&window.PLVerify&&connected&&!demoMode)
       ?` <button class="btn" style="padding:4px 9px;font-size:11px" onclick="plVerifyBscRow('${r.id}','${r.pid}',this)">🔍</button>`:'';
@@ -5060,7 +5089,7 @@ function bscPaint(t, band, v, held, geslaagd, wacht){
        <canvas id="bscCanvas" height="200"></canvas>
        <div class="bsc-meta">
          <div id="bscStatus" class="bsc-status">${statusTxt}</div>
-         <div class="bsc-live"><span id="bscVal">${v!==undefined?((typeof fv==='function')?fv(v):v):'—'}</span> <span class="bsc-unit">${unit}</span></div>
+         <div class="bsc-live"><span id="bscVal">${v!==undefined?((typeof fv==='function')?fv(v,t.pid):v):'—'}</span> <span class="bsc-unit">${unit}</span></div>
        </div>
        <div class="bsc-prog"><div id="bscBar" style="width:${pct}%"></div></div>
        <button class="btn bsc-skip" onclick="bscSkip()">Overslaan →</button>`;
@@ -10737,6 +10766,7 @@ document.addEventListener('DOMContentLoaded', function(){
     el.onclick=function(ev){ try{ plCloseModeOverlays(); }catch(e){} return fn.call(this,ev); };
   };
   wcBind('wc-diag',()=>startChoice('diag'));
+  wcBind('wc-onderdeel', ()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openOnderdeelCheck(); });
   wcBind('wc-deepdiag',()=>openDeepDiag());
   wcBind('wc-pidrec',()=>openPidRecorder());
   wcBind('wc-check',()=>startChoice('check'));
@@ -11869,6 +11899,7 @@ async function exportVehicleDossier(btn){
 <script src="pidlane-remote.js"></script><!-- remote-module → pidlane-remote.js -->
 <script src="pidlane-caravan.js"></script><!-- caravan-rittracker (live brandstofcoach) -->
 <script src="pidlane-wizard.js"></script><!-- wizard: vragenboom → meetplan → modules -->
+<script src="pidlane-onderdeel.js"></script><!-- onderdeelaanwijzer: DTC + live data → component -->
 <script src="pidlane-verify.js"></script><!-- verificatie: focus-hertest (PLVerify) -->
 <script src="pidlane-monitor.js"></script><!-- rit-monitor Laag A (PLMon) — vereist ná caravan -->
 <script src="pidlane-watchers.js"></script><!-- rit-monitor Laag B (PLWatch) — vereist ná monitor -->

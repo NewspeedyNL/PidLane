@@ -187,6 +187,7 @@ var MODULES = {
   conditie:  {n:'Conditie per systeem',  d:'Oordeel per systeem, met de meetwaarde eronder',                run:function(){ startChoice('check'); }},
   verbruik:  {n:'Verbruik & rijgedrag',  d:'Werkelijk verbruik en wat je rijstijl kost',                    run:function(){ startChoice('fuel'); }},
   aimonteur: {n:'AI-monteur',            d:'Analyse van je klacht tegen de gemeten waarden',                run:function(){ startChoice('diag'); }},
+  onderdeel: {n:'Welk onderdeel is kapot?', d:'Foutcodes en meetwaarden samen, teruggebracht tot verdachte onderdelen', run:function(){ openOnderdeelCheck(); }},
   diep:      {n:'Diepe storingsanalyse', d:'Uitgebreide intake plus datalog om het probleem te vangen',     run:function(){ openDeepDiag(); }},
   markt:     {n:'Koop- en verkoopcheck', d:'Staat, historie en onderbouwing van de waarde',
               run:function(j){ veilig(function(){ setKoopMode(j.rol||'koop'); }); openAnalysis('koop'); }},
@@ -219,6 +220,7 @@ function bouwPlan(j){
   voeg('dtc');                              // altijd — kost niets en verklaart vaak alles
 
   if(j.doel==='storing'){
+    voeg('onderdeel');                      // de smalste vraag eerst: is er iets aan te wijzen?
     voeg('systeem'); voeg('conditie'); voeg('aimonteur');
     if(j.meting==='monitor' || j.lampje==='soms') voeg('diep');
   }
