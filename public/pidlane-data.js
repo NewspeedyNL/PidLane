@@ -282,9 +282,29 @@ window.BSC_TESTS = [
   {id:'misfire', groep:'universeel', naam:'Misfire-monitor', pids:['010C','0104'],
    uitleg:'RPM mag niet plots inzakken onder lichte belasting (indirecte misfire)', hold:5,
    band:(v,h)=>{ const b=bscBaseline(h['010C'],4); return b==null?null:{lo:b-120,hi:b+400,ref:b}; }},
-  {id:'o2_switch', groep:'universeel', naam:'O2-sensor schakelt', pids:['0114'],
-   uitleg:'Voorste lambda pendelt 0,1–0,9 V meerdere keren/sec', hold:4,
+  /* ── 27-07-2026 — LAMBDA: twee sensortypen, twee verschillende tests ──
+     Deze test ging uit van één PID: 0114, de klassieke smalband-spanning.
+     Vanaf ongeveer 2012 leveren veel motoren (o.a. Mazda SkyActiv-G) de
+     vóórste sensor helemaal niet als spanning maar als breedband-lambda,
+     via 0124-012B (lambda + spanning) of 0134-013B (lambda + stroom).
+     Op de CX-5 2018 uit de diagnosebundel ontbreekt 0114 volledig; die auto
+     heeft 0134 en 0115. De test wachtte dus op data die nooit kon komen.
+
+     Belangrijker dan alleen het PID: een breedbandsensor SCHAKELT NIET.
+     Een smalbandsensor pendelt tussen 0,1 en 0,9 V; een breedbandsensor
+     houdt in closed loop juist lambda ≈ 1,00 aan met een kleine rimpel.
+     De oscillatie-eis op een gezonde breedbandsensor loslaten zou hem dus
+     ten onrechte laten zakken. Vandaar twee losse tests met eigen criteria.
+     Ze sluiten elkaar vanzelf uit: welke van de twee wordt gekozen hangt af
+     van welke PID de auto daadwerkelijk levert. */
+  {id:'o2_switch', groep:'universeel', naam:'Lambdasensor schakelt (smalband)', pids:['0114'],
+   uitleg:'Motor warm en stationair: de voorste smalbandsensor hoort meerdere keren per seconde tussen 0,1 en 0,9 V te pendelen.',
+   hold:4, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
    band:{lo:0.05,hi:0.95}, oscilleren:true},
+  {id:'o2_wide', groep:'universeel', naam:'Lambdaregeling (breedband)', pids:['0124','0134','0125','0135'],
+   uitleg:'Motor warm en stationair: een breedbandsensor pendelt niet, maar houdt lambda rond 1,00. Blijft de waarde daar netjes omheen, dan regelt het brandstofsysteem goed.',
+   hold:4, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
+   band:{lo:0.97,hi:1.03, ref:1.00}},
   {id:'spd_rpm', groep:'universeel', naam:'Snelheid vs toerental', pids:['010D','010C'],
    uitleg:'Rij constant: snelheid en RPM lopen lineair mee (koppeling/automaat OK)', hold:4,
    band:{lo:0,hi:280}},

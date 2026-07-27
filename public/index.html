@@ -4862,7 +4862,16 @@ setInterval(()=>{ try{ _monChipTick(); }catch(e){} try{ _monTick(); }catch(e){} 
 function bscBuildList(){
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
   const groepen=new Set(['universeel', et]); // ev valt terug op universeel
-  const heeft=pid=> demoMode || (typeof supportedPIDs==='undefined') || !supportedPIDs.size || supportedPIDs.has(pid) || !!getPidDef(pid);
+  // 27-07-2026 — hier zat de oorzaak van "⏳ Wachten op sensordata…" dat nooit
+  // afliep. De laatste voorwaarde (|| !!getPidDef(pid)) maakte deze controle
+  // waardeloos: élk PID dat in ALL_PID_DEFS staat gaf `true`, ook als de auto
+  // hem aantoonbaar niet levert. Op een Mazda CX-5 2018 werd zo de test op
+  // PID 0114 gekozen terwijl die ECU alleen 0134 (breedband) en 0115 (achterste
+  // sensor) ondersteunt — de test wachtte dus eeuwig op data die nooit kwam.
+  // De definitie-terugval geldt nu alleen nog als we ECHT geen scanresultaat
+  // hebben; met een gescande PID-lijst is die lijst leidend.
+  const heeftScan = (typeof supportedPIDs!=='undefined') && supportedPIDs && supportedPIDs.size>0;
+  const heeft = pid => demoMode || !heeftScan || supportedPIDs.has(pid);
   const list=[];
   for(const t of BSC_TESTS){
     if(!groepen.has(t.groep)) continue;
@@ -4963,6 +4972,16 @@ function bscDrawFrame(){
     setTimeout(bscNextTest, 650); // even groen tonen, dan door
     return;
   }
+  // Nooit ook maar één meetwaarde gezien? Dan wachten we op een PID die deze
+  // auto niet levert. Na 12 s stoppen met een eerlijke reden, i.p.v. 30 s lang
+  // "wachten op sensordata" tonen zonder uit te leggen waarom.
+  if(v===undefined && now-_bscState.testT0>12000){
+    _bscState.results.push({id:t.id, naam:t.naam, status:'geen', pid:t.pid,
+      reden:'deze auto levert '+t.pid+' niet'});
+    _bscState.idx++;
+    setTimeout(bscNextTest, 300);
+    return;
+  }
   // timeout per test: 30s → markeer als "niet bevestigd" en ga door
   if(now-_bscState.testT0>30000){
     _bscState.results.push({id:t.id, naam:t.naam, status:v===undefined?'geen':'twijfel', waarde:v, unit:(getPidDef(t.pid)?.unit||''), pid:t.pid});
@@ -4985,7 +5004,8 @@ function bscFinish(){
     const kl=r.status==='ok'?'ok':r.status==='twijfel'?'warn':'mut';
     const val=r.status==='nvt'
       ? ('n.v.t. \u2014 voorwaarde niet voorgekomen'+(r.reden?': '+r.reden:''))
-      : (r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde):r.waarde} ${r.unit}`:'geen data');
+      : (r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde):r.waarde} ${r.unit}`
+                             :('geen data'+(r.reden?' — '+r.reden:'')));
     const vb=(r.status==='twijfel'&&r.pid&&window.PLVerify&&connected&&!demoMode)
       ?` <button class="btn" style="padding:4px 9px;font-size:11px" onclick="plVerifyBscRow('${r.id}','${r.pid}',this)">🔍</button>`:'';
     return `<div class="bsc-row ${kl}"><span>${ic} ${r.naam}${vb}</span><span class="bsc-val">${val}</span></div>`;
@@ -5023,7 +5043,12 @@ function bscPaint(t, band, v, held, geslaagd, wacht){
   const idx=_bscState.idx+1, tot=_bscState.list.length;
   const d=getPidDef(t.pid)||{}; const unit=d.unit||'';
   const pct=Math.min(100, Math.round(held/(t.hold||4)*100));
-  const statusTxt = geslaagd?'✅ Geslaagd' : wacht?'⏳ Wachten op sensordata…' : (held>0?`🟢 Binnen band — ${pct}%`:'🔴 Buiten band');
+  // Toon hoe lang we al wachten. Blijft data helemaal uit, dan stopt bscDrawFrame
+  // de test na 20 s met "geen data" i.p.v. eindeloos te blijven staan.
+  const wachtS = wacht ? Math.round((Date.now()-(_bscState.testT0||Date.now()))/1000) : 0;
+  const statusTxt = geslaagd?'✅ Geslaagd'
+    : wacht?`⏳ Wachten op sensordata… ${wachtS}s`
+    : (held>0?`🟢 Binnen band — ${pct}%`:'🔴 Buiten band');
   if(!document.getElementById('bscCanvas') || el.dataset.test!==t.id){
     el.dataset.test=t.id;
     el.innerHTML=
