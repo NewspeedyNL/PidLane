@@ -1348,6 +1348,12 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .ov#loginOv.lg-leave{ opacity:0; transform:scale(.985); pointer-events:none; }
 
 .ov#connOv{
+  /* Verticaal centreren in een scrollbare flexbox kapt bij te hoge inhoud
+     ZOWEL de boven- als de onderkant af — daardoor viel de voettekst weg.
+     flex-start is de veilige basis; browsers die 'safe center' kennen
+     centreren alsnog zolang het past. */
+  justify-content:flex-start;
+  justify-content:safe center;
   /* Bewust NIET volledig doorzichtig: het verbindscherm hangt over de app en
      die mag er niet doorheen schemeren. Deze laag is donker genoeg om alles
      erachter onleesbaar te maken, en licht genoeg om het golflint eronder nog
@@ -1382,6 +1388,8 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   border-radius:12px; padding:10px 12px;
   font-size:12.5px; color:var(--tx2); line-height:1.45;
 }
+.ov#connOv .mstep > span{ flex:1 1 auto; min-width:0; }
+.ov#connOv .mstep strong{ color:var(--tx); font-weight:800; }
 .ov#connOv .mstep .sn{
   flex:0 0 auto; width:22px; height:22px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;

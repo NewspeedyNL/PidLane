@@ -637,7 +637,7 @@ function closeConnOv(){
 <!-- ══ VERBINDSCHERM — zelfde vormtaal als het inlogscherm ══ -->
 <div class="ov hidden" id="connOv">
   <div class="modal" style="position:relative">
-    <button onclick="closeConnOv()" title="Sluiten (verbinding blijft actief)" style="position:absolute;top:10px;right:10px;z-index:10;width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:14px;font-weight:700;cursor:pointer;line-height:1">✕</button>
+    <button onclick="closeConnOv()" title="Sluiten (verbinding blijft actief)" style="position:absolute;top:12px;right:12px;z-index:10;width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:var(--tx2);font-size:14px;font-weight:700;cursor:pointer;line-height:1">✕</button>
     <div class="modal-scroll">
 
       <!-- STAP 1: Start -->
@@ -652,11 +652,16 @@ function closeConnOv(){
           <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
         </div>
         <div class="msteps">
-          <div class="mstep"><div class="sn">1</div>Steek OBDLink MX+ adapter in OBD-poort (onder dashboard, links)</div>
-          <div class="mstep"><div class="sn">2</div>Zet contact aan — adapter start automatisch op</div>
-          <div class="mstep"><div class="sn">3</div><strong>Eenmalig:</strong> koppel via Android Bluetooth instellingen</div>
-          <div class="mstep"><div class="sn">4</div><strong>Druk eerst op de pair-knop op de MX+</strong> (LED gaat knipperen)</div>
-          <div class="mstep"><div class="sn">5</div>Klik daarna Verbinden — PidLane verbindt automatisch</div>
+          <!-- 27-07-2026 — de tekst zit voortaan in één omhullend span-element.
+               .mstep is een flexbox, en een losse strong werd daardoor een
+               eigen flex-item:
+               "Eenmalig:" en "Druk eerst op de pair-knop" sprongen naar links
+               terwijl de rest van de zin rechts uitlijnde. -->
+          <div class="mstep"><div class="sn">1</div><span>Steek de OBDLink MX+ in de OBD-poort (onder het dashboard, links)</span></div>
+          <div class="mstep"><div class="sn">2</div><span>Zet het contact aan — de adapter start vanzelf op</span></div>
+          <div class="mstep"><div class="sn">3</div><span><strong>Eenmalig:</strong> koppel de adapter via de Bluetooth-instellingen van Android</span></div>
+          <div class="mstep"><div class="sn">4</div><span><strong>Druk eerst op de pair-knop op de MX+</strong> — de LED gaat knipperen</span></div>
+          <div class="mstep"><div class="sn">5</div><span>Klik daarna op Verbinden; PidLane doet de rest</span></div>
         </div>
 
         <div style="padding:0 16px 10px">
