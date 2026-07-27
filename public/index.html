@@ -909,6 +909,18 @@ function closeConnOv(){
   <div class="welcome-scroll">
 
     <!-- ═══ INTENT-DEUREN (progressive disclosure) ═══ -->
+    <!-- 27-07-2026 — de wizard als hoofdingang. De deuren eronder blijven
+         bestaan voor wie precies weet wat hij zoekt; zo kan één fout in de
+         routering de app niet onbruikbaar maken. -->
+    <button class="wz-ingang" onclick="try{PLWizard.open()}catch(e){}">
+      <span class="wz-ingang-ic">🧭</span>
+      <span class="wz-ingang-tx">
+        <span class="wz-ingang-t">Help me kiezen</span>
+        <span class="wz-ingang-d">Een paar vragen, daarna stel ik het onderzoek samen en zet ik alles goed klaar.</span>
+      </span>
+      <span class="wz-ingang-pijl">→</span>
+    </button>
+    <div class="wz-of">of kies zelf</div>
     <div id="wmDoors">
       <div class="wm-doors">
         <div class="wm-door dr-live" onclick="openDoor('live')">
@@ -1041,12 +1053,6 @@ function closeConnOv(){
 
 
 
-        <div class="choice-card" id="wc-rit10">
-          <div class="choice-head"><span class="choice-icon">🏎️</span><span class="choice-time">⏱ ±10 min</span></div>
-          <div class="choice-title">Rijtest — technisch rapport</div>
-          <div class="choice-desc">Rij ±10 minuten je eigen route. De app meet onder echte belasting en levert daarna een volledig technisch rapport.</div>
-          <div class="choice-out"><b>Je krijgt:</b> rijgedrag + technisch rapport.</div>
-        </div>
 
         <div class="choice-card" id="wc-onderhoud">
           <div class="choice-head"><span class="choice-icon">🛠️</span><span class="choice-time">⏱ ±2 min</span></div>
@@ -1070,12 +1076,6 @@ function closeConnOv(){
           <div class="choice-out"><b>Je krijgt:</b> bespaartips in €/jaar.</div>
         </div>
 
-        <div class="choice-card" id="wc-rit10b">
-          <div class="choice-head"><span class="choice-icon">🏎️</span><span class="choice-time">⏱ ±10 min</span></div>
-          <div class="choice-title">Rijtest — verbruik &amp; rijgedrag</div>
-          <div class="choice-desc">Rij ±10 minuten je eigen route en zie wat je rijstijl kost onder echte belasting.</div>
-          <div class="choice-out"><b>Je krijgt:</b> rijgedrag + technisch rapport.</div>
-        </div>
 
         <div class="choice-card full" id="wc-caravan">
           <div class="choice-head"><span class="choice-icon">🚐</span><span class="choice-time">⏱ live, tijdens de rit</span></div>
@@ -1101,8 +1101,8 @@ function closeConnOv(){
 
         <div class="choice-card" id="wc-proefrit">
           <div class="choice-head"><span class="choice-icon">🚗</span><span class="choice-time">⏱ 2 of 10 min</span></div>
-          <div class="choice-title">Proefrit analyseren</div>
-          <div class="choice-desc">Rijd hem uit terwijl de app meeleest onder belasting — juist de dingen die bij stilstand niet opvallen.</div>
+          <div class="choice-title">Rijtest onder belasting</div>
+          <div class="choice-desc">Rijd zelf een rondje terwijl de app meeleest onder belasting — juist de dingen die bij stilstand niet opvallen. Je kiest 2 of 10 minuten.</div>
           <div class="choice-out"><b>Je krijgt:</b> technisch rapport, keuze 2 of 10 min.</div>
         </div>
 
@@ -10721,22 +10721,12 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-liveshare',()=>{ try{ PLRemote.openShare(); }catch(e){ alert('Delen is nu niet beschikbaar.'); } });   // deur 5: deel mijn live data
   wcBind('wc-liveexpert',()=>{ try{ PLRemote.openExpert(); }catch(e){ alert('Meekijken is nu niet beschikbaar.'); } }); // deur 5: ontvang data op afstand
   wcBind('wc-dtc',()=>startChoice('dtc'));
-  wcBind('wc-report',()=>startChoice('report'));
   wcBind('wc-fuel',()=>startChoice('fuel'));
   wcBind('wc-koop',()=>openKoopKeuze());
-  wcBind('wc-rit2',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('2min'); });
-  wcBind('wc-rit10',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('10min'); });
   wcBind('wc-proefrit',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openProefritKeuze(); });
-  wcBind('wc-inkoop',()=>startChoice('inkoop'));
-  wcBind('wc-verkoop',()=>startChoice('verkoop'));
-  wcBind('wc-lease',()=>startChoice('lease'));
-  wcBind('wc-occasierapport',()=>startChoice('occasion'));
-  wcBind('wc-zomer',()=>openClimateCheck('airco'));
-  wcBind('wc-winter',()=>openClimateCheck('winter'));
   wcBind('wc-onderhoud',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openOnderhoud(); });
   wcBind('wc-ev',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openEVCheck(); });
   wcBind('wc-langerit',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openLangeRit(); });
-  wcBind('wc-rit10b',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openRitAnalyse('10min'); });
   wcBind('wc-caravan',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); if(typeof openCaravan==='function') openCaravan(); });
   wcBind('wc-seizoen',()=>openSeizoensCheck());
   try{ injectFavStars(); }catch(e){}   // ⭐ sterretjes op alle functiekaarten
@@ -11853,6 +11843,7 @@ async function exportVehicleDossier(btn){
 
 <script src="pidlane-remote.js"></script><!-- remote-module → pidlane-remote.js -->
 <script src="pidlane-caravan.js"></script><!-- caravan-rittracker (live brandstofcoach) -->
+<script src="pidlane-wizard.js"></script><!-- wizard: vragenboom → meetplan → modules -->
 <script src="pidlane-verify.js"></script><!-- verificatie: focus-hertest (PLVerify) -->
 <script src="pidlane-monitor.js"></script><!-- rit-monitor Laag A (PLMon) — vereist ná caravan -->
 <script src="pidlane-watchers.js"></script><!-- rit-monitor Laag B (PLWatch) — vereist ná monitor -->
