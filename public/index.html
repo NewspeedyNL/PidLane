@@ -2504,7 +2504,13 @@ async function logout(){
 // 'NOx doseerpomp' en 'AdBlue injectiedruk' op een Mazda SkyActiv-G benzine).
 // We filteren ze ALLEEN weg als we zeker weten dat het voertuig ze niet heeft;
 // bij onbekend brandstoftype verbergen we niets.
-const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016D','016E','017C','017D','017E','0187','0188','0189','018A','018E','018F','0190','01A4']);
+/* 27-07-2026 — deze lijst was te kort: op een benzineauto verschenen tóch
+   NOx-sensoren, AdBlue-injectiedruk en roetfilterwaarden. Nu afgeleid uit de
+   definities zelf (alles wat NOx, AdBlue, SCR, DPF, roetfilter of partikel
+   heet), zodat er niets meer doorheen glipt.
+   0186D is er bewust UIT: dat is brandstofraildruk-regeling en die zit óók op
+   benzine met directe inspuiting — jouw CX-5 levert hem gewoon. */
+const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016E','017C','017D','017E','0187','0188','0189','018A','018C','018E','018F','0190','0191','0195','0196','01A4']);
 // Verbrandingsmotor-specifieke sensoren: bestaan NIET op een volledig
 // elektrisch voertuig (geen brandstoftrim, lambda/O2, MAF, brandstofdruk/-peil,
 // EGR, inlaatdruk, ontstekingstiming). Bij 'elektrisch' filteren we die weg.
@@ -3796,6 +3802,7 @@ function analysisPidData(profile, extraPids){
   // 2. Alleen wat de auto echt levert: verse waarde + niet onzin/nodata.
   //    In demo is _pidHealth leeg → daar alles met een waarde toelaten.
   const pids = wens.filter(pid=>{
+    if(typeof vehiclePlausiblePid==='function' && !vehiclePlausiblePid(pid)) return false;
     const val = (typeof pidVals!=='undefined') ? pidVals[pid] : undefined;
     if(val===undefined || val===null) return false;
     const h = (typeof _pidHealth!=='undefined') ? _pidHealth[pid] : undefined;
@@ -8571,7 +8578,8 @@ function applyPidPreset(id){
   const gewenst=[...new Set([...kern, ...(pr.extra||[])])];
   // Alleen wat dit voertuig daadwerkelijk kan leveren.
   const beschikbaar=new Set((discoveredPIDDefs||[]).map(d=>d.pid));
-  const bruikbaar=gewenst.filter(p=>beschikbaar.has(p));
+  const bruikbaar=gewenst.filter(p=>beschikbaar.has(p)
+    && (typeof vehiclePlausiblePid!=='function' || vehiclePlausiblePid(p)));
   const ontbreekt=gewenst.length-bruikbaar.length;
   if(!bruikbaar.length){
     if(tip) tip.textContent='Geen van deze sensoren is op dit voertuig beschikbaar.';
@@ -8594,6 +8602,8 @@ function applyPidPreset(id){
 // ── PID PANEL — nu dynamisch vanuit discovery ──
 function buildPIDList(filter=''){
   try{ _pidPresetVulSelect(); }catch(e){}
+  // Onzin-sensoren horen niet eens in de keuzelijst: een benzineauto met een
+  // AdBlue-regel erin ziet er kapot uit, ook als je hem nooit aanvinkt.
   const el=document.getElementById('pidList');
   el.innerHTML='';
 
