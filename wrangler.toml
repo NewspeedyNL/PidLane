@@ -1,42 +1,45 @@
-# ── PidLane — één Worker die zowel de app (static) als de proxy serveert ──
-# Behoudt de bestaande worker-naam zodat secrets + bestaande DO intact blijven.
 name = "pidlane-proxy"
 main = "worker.js"
-compatibility_date = "2026-07-19"   # gelijk aan (of nieuwer dan) je huidige compat-date
+compatibility_date = "2026-07-24"
 
-# Static app. Cloudflare serveert een bestand als het pad matcht; matcht niets,
-# dan draait worker.js (je API-routes). run_worker_first UIT (default) → de app
-# laadt publiek en login gaat gewoon client-side via /auth/login.
-[assets]
-directory = "./public"
-binding   = "ASSETS"
-
-# ── Durable Object — VERPLICHT, anders breken /session, /pair en /code ──
-[[durable_objects.bindings]]
-name       = "REMOTE_SESSION"
-class_name = "RemoteSessionDO"
-# Toevoegen aan wrangler.toml:
-
+# ── R2-bucket voor de APK en version.json ──
+# Wordt in worker.js aangesproken als env.FILES (handleApkDownload, handleVersionJson).
+# De bucket zelf moet al bestaan (Dashboard → R2 → pidlane-files aanmaken, of
+# eenmalig via `wrangler r2 bucket create pidlane-files` als je ooit lokaal wrangler hebt).
 [[r2_buckets]]
-binding     = "FILES"
+binding = "FILES"
 bucket_name = "pidlane-files"
 
-# MODERN (aanbevolen, vereist recente wrangler v4). Declaratief: Cloudflare
-# vergelijkt dit met de al-bestaande DO en neemt 'm netjes over, geen tag-gedoe.
-[exports.RemoteSessionDO]
-type    = "durable-object"
-storage = "sqlite"
+# ── Durable Object voor remote-sessies (expert-koppeling, pairing, codes) ──
+# Wordt aangesproken als env.REMOTE_SESSION; class zit in hetzelfde worker.js-bestand.
+[[durable_objects.bindings]]
+name = "REMOTE_SESSION"
+class_name = "RemoteSessionDO"
 
-# LEGACY-ALTERNATIEF — gebruik DIT i.p.v. het [exports]-blok hierboven als je
-# wrangler 'exports' niet herkent. Zet dan het blok hierboven uit en dit aan:
-# [[migrations]]
-# tag = "v1"
-# new_sqlite_classes = ["RemoteSessionDO"]
+# Eerste migratie voor een gloednieuwe class. BELANGRIJK: sinds 9 juli 2026 staat
+# Cloudflare geen NIEUWE key-value-backed DO-namespaces meer toe — voor een verse
+# setup moet dit altijd new_sqlite_classes zijn, nooit new_classes. Dit is
+# vermoedelijk waar het eerder misging als de oude/standaard flow new_classes
+# gebruikte.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RemoteSessionDO"]
 
-# ── Optioneel: plain vars (code valt anders terug op DEFAULTS in worker.js) ──
-[vars]
-TOKEN_TTL_HOURS = "12"
+# ── Optionele vars ──
+# Alles hieronder heeft al een werkende fallback in de code (zie DEFAULTS en de
+# losse Number()-checks in worker.js). Alleen invullen als je een waarde wil
+# overschrijven — anders gewoon weglaten.
+# [vars]
+# ALLOW_LEGACY_APP_TOKEN = "false"
+# TOKEN_TTL_HOURS = "12"
+# PBKDF2_ITERS = "120000"
 
-[observability]
-enabled = true
-
+# ── Wat hier NIET in staat, met opzet ──
+# - Secrets (AIRTABLE_TOKEN, ADMIN_TOKEN, SESSION_SECRET, USERS_JSON,
+#   ANTHROPIC_API_KEY, evt. APP_TOKEN): die horen nooit in dit bestand. Zet ze
+#   via Dashboard → Worker → Settings → Variables and Secrets → toevoegen als
+#   "Secret" (niet als gewone var). Bij een git-gekoppelde Workers Build kan dat
+#   niet via de CLI vanaf je werklaptop, dus dit moet via het dashboard.
+# - Het custom domain app.pidlane.nl: dat regel je apart via Dashboard → Worker
+#   → Settings → Domains & Routes. Niet hier toevoegen als route/pattern, anders
+#   loop je het risico dat het botst met de koppeling die er al staat.
