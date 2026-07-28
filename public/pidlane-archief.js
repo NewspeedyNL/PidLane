@@ -306,7 +306,28 @@ function appBack(){
   let closed=false;
   ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; closed=true; } });
   if(closed){ try{ goHome(); }catch(e){} return true; }
-  try{ if(typeof closeRitAnalyse==='function'){ const r=document.getElementById('ritAnalyseOv')||document.getElementById('ritAnalyse'); if(r && getComputedStyle(r).display!=='none'){ closeRitAnalyse(); return true; } } }catch(e){}
+  // 27-07-2026 — hier stonden twee id's die nergens in de app bestaan
+  // ('ritAnalyseOv' en 'ritAnalyse'). Het echte element heet #ritDash. Gevolg:
+  // de Android-terugknop deed tijdens een lopende rit-analyse niets — hij viel
+  // stil door naar de volgende tak. Ook de caravan-dash ontbrak hier.
+  // Een LOPENDE meting wordt geminimaliseerd (loopt door, met pill), een
+  // afgeronde wordt gesloten. Zelfde gedrag als plCloseModeOverlays().
+  try{
+    const rd=document.getElementById('ritDash');
+    if(rd && getComputedStyle(rd).display!=='none'){
+      if(typeof ritActive!=='undefined' && ritActive && typeof minimizeRitAnalyse==='function') minimizeRitAnalyse();
+      else if(typeof closeRitAnalyse==='function') closeRitAnalyse();
+      else rd.style.display='none';
+      return true;
+    }
+    const cd=document.getElementById('caravanDash');
+    if(cd && getComputedStyle(cd).display!=='none'){
+      if(typeof caravanActive!=='undefined' && caravanActive && typeof minimizeCaravanDash==='function') minimizeCaravanDash();
+      else if(typeof closeCaravanDash==='function') closeCaravanDash();
+      else cd.style.display='none';
+      return true;
+    }
+  }catch(e){}
   // 3. Welkomstscherm zichtbaar?
   const ws=document.getElementById('welcomeScreen');
   if(ws && !ws.classList.contains('hidden')){

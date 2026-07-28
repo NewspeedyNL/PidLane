@@ -267,9 +267,16 @@ window.BSC_TESTS = [
   {id:'cool_warm', groep:'universeel', naam:'Koelvloeistof opwarmen', pids:['0105'],
    uitleg:'Geleidelijke stijging naar bedrijfstemperatuur (80–100 °C)', hold:4,
    band:{lo:70,hi:105}, trend:'stijgend'},
-  {id:'batt_load', groep:'universeel', naam:'Accuspanning', pids:['0142'],
-   uitleg:'Blijft > 13,5 V (laadspanning). Schakel bewust verlichting + blower in.', hold:4,
-   band:{lo:13.3,hi:15.0}},
+  /* 27-07-2026 — deze test toetste tegen de LAADband (13,3-15,0 V) maar had
+     geen enkele voorwaarde. Met de motor uit staat een gezonde accu op ~12,5 V
+     en zakte hij dus altijd. De laadspanning wordt al correct getest door
+     x_laadspanning (mét eis motorDraait); deze meet nu waar hij goed in is:
+     de rustspanning, juist mét de motor UIT. Samen dekken ze het hele beeld.
+     12,6 V = vol · 12,4 V = ~75% · onder 12,0 V = diep ontladen. */
+  {id:'batt_rust', groep:'universeel', naam:'Accuspanning in rust', pids:['0142'],
+   uitleg:'Contact aan maar motor uit: een gezonde accu staat op 12,4-12,8 V. Onder 12,2 V is hij half leeg of versleten.',
+   hold:4, eis:{motorUit:true}, eisWachtMs:10000,
+   band:{lo:12.2,hi:12.9, ref:12.6}},
   {id:'map_idle', groep:'universeel', naam:'MAP-druk stationair', pids:['010B'],
    uitleg:'30–40 kPa stationair = geen vacuümlek', hold:4, band:{lo:25,hi:45}},
   {id:'tps_lin', groep:'universeel', naam:'Gasklep respons', pids:['0111'],
@@ -301,6 +308,16 @@ window.BSC_TESTS = [
    uitleg:'Motor warm en stationair: de voorste smalbandsensor hoort meerdere keren per seconde tussen 0,1 en 0,9 V te pendelen.',
    hold:4, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
    band:{lo:0.05,hi:0.95}, oscilleren:true},
+  /* Achterste sensor (ná de katalysator). Die hoort zich juist ANDERS te
+     gedragen dan de voorste: een werkende kat buffert zuurstof, waardoor de
+     achterste sensor traag en vlak rond 0,6-0,8 V blijft hangen. Gaat hij
+     mee schakelen met de voorste, dan is de kat op — een van de sterkste
+     aanwijzingen die je zonder demontage kunt krijgen.
+     Let op: dit is bewust GEEN oscillatietest maar het omgekeerde. */
+  {id:'o2_rear', groep:'universeel', naam:'Katalysator — achterste sensor', pids:['0115','0116'],
+   uitleg:'Motor warm en stationair: achter de katalysator hoort de spanning traag en vlak rond 0,6-0,8 V te blijven staan. Schommelt hij net zo hard als de voorste sensor, dan buffert de kat geen zuurstof meer.',
+   hold:5, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
+   band:{lo:0.55,hi:0.85, ref:0.70}},
   {id:'o2_wide', groep:'universeel', naam:'Lambdaregeling (breedband)', pids:['0124','0134','0125','0135'],
    uitleg:'Motor warm en stationair: een breedbandsensor pendelt niet, maar houdt lambda rond 1,00. Blijft de waarde daar netjes omheen, dan regelt het brandstofsysteem goed.',
    hold:4, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
@@ -570,20 +587,20 @@ Object.assign(ALL_PID_DEFS,{
   '017D':{name:'DPF temp B2',            unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
   '017E':{name:'NOx NTE status',         unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
   '017F':{name:'PM NTE status',          unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
-  '0180':{name:'Motor looptijd totaal',  unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
-  '0181':{name:'MIL looptijd totaal',    unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
-  '0182':{name:'Afstand MIL totaal',     unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
-  '0183':{name:'Afstand na wissen totaal',unit:'km', cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
-  '0184':{name:'Warmlopen totaal',       unit:'x',   cat:'Overig',   min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
-  '0185':{name:'Continu MIL teller',     unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
-  '0186':{name:'Continu afstand MIL',    unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '0180':{name:'Motor looptijd totaal',  unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
+  '0181':{name:'MIL looptijd totaal',    unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
+  '0182':{name:'Afstand MIL totaal',     unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
+  '0183':{name:'Afstand na wissen totaal',unit:'km', cat:'Overig',   min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
+  '0184':{name:'Warmlopen totaal',       unit:'x',   cat:'Overig',   min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
+  '0185':{name:'Continu MIL teller',     unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
+  '0186':{name:'Continu afstand MIL',    unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
   '0187':{name:'NOx sensor B1S1',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
   '0188':{name:'NOx sensor B1S2',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
   '0189':{name:'NOx sensor B2S1',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
   '018A':{name:'NOx sensor B2S2',        unit:'ppm', cat:'Emissie',  min:0,max:3212, parse:b=>((b[0]*256+b[1])*0.05)},
   '018B':{name:'Brandstoftype systeem',  unit:'code',cat:'Brandstof',min:0,max:255,  parse:b=>b[0]},
   '018C':{name:'Dieselpartikelmassa',    unit:'mg',  cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]*256+b[1])*0.01)},
-  '018D':{name:'Motorlooptijd PTO',      unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])},
+  '018D':{name:'Motorlooptijd PTO',      unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
   '018E':{name:'NOx doseerpomp',         unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
   '018F':{name:'AdBlue tank niveau',     unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
   '0190':{name:'SCR efficiëntie',        unit:'%',   cat:'Emissie',  min:0,max:100,  parse:b=>(b[0]*100/255)},
