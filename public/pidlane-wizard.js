@@ -404,10 +404,19 @@ window.PLWizard = {
     this.sluitStil();
     if(meting.start) veilig(function(){ meting.start(); });
     else {
-      // Stilstaand: geen aparte meetstap, meteen door naar de eerste module.
+      // Stilstaand meten kent geen eigen rijscherm, maar wél een meetfase: de
+      // eerste module mag pas draaien als er genoeg monsters binnen zijn.
+      // Zonder die stap sprong de wizard hier direct naar het AI-rapport met
+      // één momentopname — precies de fout die de meetfase-poort afvangt.
       var mods = bouwPlan(job);
       var eerste = mods.filter(function(k){ return k!=='dtc'; })[0] || 'dtc';
-      veilig(function(){ MODULES[eerste].run(job); });
+      if(typeof plVraagMeting==='function'){
+        plVraagMeting('normaal','dit onderzoek').then(function(door){
+          if(door) veilig(function(){ MODULES[eerste].run(job); });
+        });
+      } else {
+        veilig(function(){ MODULES[eerste].run(job); });
+      }
     }
   },
   sluitStil: function(){ var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none'; },

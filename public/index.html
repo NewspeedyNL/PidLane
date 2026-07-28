@@ -3332,6 +3332,7 @@ function getDatalogStats(){
 }
 
 async function runDatalogAI(){
+  if(!(await plVraagMeting('normaal','de datalog-analyse'))) return;
   activateAIPane();
   const stats=getDatalogStats();
   if(!Object.keys(stats).length){
@@ -4357,6 +4358,7 @@ function pickOnderdelen(title, options){
 }
 
 async function runTotalCheck(){
+  if(!(await plVraagMeting('rit','totaalcheck'))) return;
   window._didTotalCheck=true;
   if(!(await preAnalysisCheck())) return;
   await ensurePIDsActive('totaal');
@@ -5756,6 +5758,7 @@ function exportReport(){
 // ════════════════════════════════════════
 // → FUEL_PIDS verplaatst naar pidlane-data.js
 async function runFuelAnalysis(){
+  if(!(await plVraagMeting('rit','de verbruiksanalyse'))) return;
   activateAIPane();
   // Elektrisch voertuig heeft geen brandstof — brandstofefficiëntie-analyse
   // is niet van toepassing. Toon een passende melding i.p.v. een AI-call die
@@ -6826,7 +6829,109 @@ async function callAI(prompt,contentEl){
     log('AI fout: '+e.message,'err');
   }
 }
+/* ══ MEETFASE-POORT (27-07-2026) ══════════════════════════════════════
+   Meerdere analyses sprongen direct naar het AI-rapport. Ze namen daarbij
+   één momentopname van pidVals mee — de waarden van dat ene moment. Voor de
+   AI ziet dat er compleet uit, maar er zit geen tijd in: geen opwarming,
+   geen belasting, geen variatie. Een trim die wegloopt onder belasting of
+   een thermostaat die niet opent is in één momentopname per definitie
+   onzichtbaar, en het rapport klinkt vervolgens even stellig als een
+   rapport dat wél op tien minuten meetdata rust.
+
+   Deze poort staat vóór elke analyse en kijkt naar twee dingen:
+     dekking  — van hoeveel sensoren hebben we genoeg monsters?
+     tijdsduur— over hoeveel seconden lopen die monsters?
+   Is dat te mager, dan vraagt hij eerst om data in plaats van door te gaan.
+   Doorgaan mag altijd, maar dan bewust en met de beperking in het rapport. */
+const MEET_EIS = {
+  snel:  {sec:20,  n:6,  dekking:0.5, naam:'stilstaande momentopname'},
+  normaal:{sec:60, n:15, dekking:0.6, naam:'stilstaande meting'},
+  rit:   {sec:180, n:40, dekking:0.6, naam:'meting onder belasting'}
+};
+function plMeetStatus(){
+  let sensoren=0, genoeg=0, oudste=null, nieuwste=null, maxN=0;
+  try{
+    [...activePIDs].filter(isReportableSensor).forEach(pid=>{
+      const h=(typeof pidHist!=='undefined'&&pidHist[pid])||[];
+      sensoren++;
+      if(h.length>maxN) maxN=h.length;
+      if(h.length>=3) genoeg++;
+      if(h.length){
+        const t0=h[0].t, t1=h[h.length-1].t;
+        if(oudste===null||t0<oudste) oudste=t0;
+        if(nieuwste===null||t1>nieuwste) nieuwste=t1;
+      }
+    });
+  }catch(e){}
+  const sec = (oudste&&nieuwste) ? Math.round((nieuwste-oudste)/1000) : 0;
+  return {sensoren, genoeg, sec, maxN, dekking: sensoren? genoeg/sensoren : 0};
+}
+function plMeetTekort(niveau){
+  const eis = MEET_EIS[niveau] || MEET_EIS.normaal;
+  const st  = plMeetStatus();
+  const tekort=[];
+  if(st.sec < eis.sec)          tekort.push('gemeten over '+st.sec+' s, nodig '+eis.sec+' s');
+  if(st.maxN < eis.n)           tekort.push('hoogstens '+st.maxN+' monsters per sensor, nodig '+eis.n);
+  if(st.dekking < eis.dekking)  tekort.push('slechts '+Math.round(st.dekking*100)+'% van de sensoren heeft data, nodig '+Math.round(eis.dekking*100)+'%');
+  return {ok:!tekort.length, tekort, st, eis};
+}
+/* Toont het meetscherm en geeft een belofte terug: true = doorgaan. */
+function plVraagMeting(niveau, watVoor){
+  return new Promise(resolve=>{
+    const r=plMeetTekort(niveau);
+    if(r.ok){ resolve(true); return; }
+    let ov=document.getElementById('meetGateOv');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='meetGateOv'; ov.className='mg-ov';
+      document.body.appendChild(ov);
+    }
+    const kanRijden = (typeof openRitAnalyse==='function');
+    ov.innerHTML =
+      '<div class="mg-kaart">'+
+        '<div class="mg-t">⏱️ Nog te weinig meetdata</div>'+
+        '<div class="mg-s">Voor '+(watFor(watVoor))+' heb ik '+r.eis.naam+' nodig. Nu heb ik alleen een momentopname, en daar kan ik geen betrouwbaar oordeel op bouwen.</div>'+
+        '<ul class="mg-lijst">'+r.tekort.map(t=>'<li>'+t+'</li>').join('')+'</ul>'+
+        '<div class="mg-knoppen">'+
+          (kanRijden?'<button class="mg-pri" id="mgRit">🚗 Rijtest starten (10 min)</button>':'')+
+          '<button class="mg-sec" id="mgWacht">⏳ Stilstaand meten ('+r.eis.sec+' s)</button>'+
+          '<button class="mg-ter" id="mgToch">Toch doorgaan met wat er is</button>'+
+        '</div>'+
+      '</div>';
+    ov.style.display='flex';
+    const sluit=()=>{ ov.style.display='none'; };
+    const rit=document.getElementById('mgRit');
+    if(rit) rit.onclick=()=>{ sluit(); resolve(false); try{ openRitAnalyse('10min'); }catch(e){} };
+    document.getElementById('mgWacht').onclick=()=>{
+      const eind=Date.now()+r.eis.sec*1000;
+      const knop=document.getElementById('mgWacht');
+      knop.disabled=true;
+      const tik=setInterval(()=>{
+        const over=Math.max(0,Math.round((eind-Date.now())/1000));
+        knop.textContent='⏳ Meten… nog '+over+' s';
+        if(over<=0){ clearInterval(tik); sluit(); resolve(true); }
+      },250);
+    };
+    document.getElementById('mgToch').onclick=()=>{
+      window._meetBeperkt = r.tekort.join('; ');   // gaat mee in de prompt
+      sluit(); resolve(true);
+    };
+  });
+}
+function watFor(w){ return w||'deze analyse'; }
+/* Regel voor in de AI-prompt, zodat het rapport zelf zijn beperking noemt. */
+function plMeetPromptBlok(){
+  const st=plMeetStatus();
+  let s='\n\nMeetdekking: '+st.sec+' s gemeten, tot '+st.maxN+' monsters per sensor, '+
+        Math.round(st.dekking*100)+'% van de sensoren met data.';
+  if(window._meetBeperkt){
+    s+='\nLET OP: de gebruiker is doorgegaan met beperkte data ('+window._meetBeperkt+'). '+
+       'Noem dit expliciet in je conclusie en matig je stelligheid navenant.';
+  }
+  return s;
+}
+
 async function runQuickAI(){
+  if(!(await plVraagMeting('normaal','een AI-rapport'))) return;
   activateAIPane();
   await ensurePIDsActive('basis');
   const v=getVehicle();
@@ -6834,7 +6939,7 @@ async function runQuickAI(){
   const corr=correlationLines();
   const corrBlock=corr.length?`\nAutomatische bevindingen (correlatie-engine):\n${corr.join('\n')}`:'';
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor)); // zelfde gate als Totaalcheck
-  const prompt=`Analyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}${qBlok}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  const prompt=`${plMeetPromptBlok()}\nAnalyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}${qBlok}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%
