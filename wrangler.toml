@@ -2,6 +2,32 @@ name = "pidlane-proxy"
 main = "worker.js"
 compatibility_date = "2026-07-24"
 
+# ── Statische app-bestanden (index.html, pidlane-*.js, pidlane.css, admin.html) ──
+# LET OP: ik gok hier op "./www/" omdat dat de webDir is die je Capacitor-config
+# al gebruikt (dezelfde bestanden die naar de APK gaan, gaan hier ook naartoe).
+# Klopt die map niet, pas "directory" aan naar waar index.html echt staat.
+[assets]
+directory = "./public/"
+binding = "ASSETS"
+run_worker_first = [
+  "/auth/*",
+  "/v1/*",
+  "/copilot",
+  "/airtable/*",
+  "/session/*",
+  "/pair/*",
+  "/code/*",
+  "/proxy",
+  "/api/*",
+  "/admin/*",
+  "/download/*",
+  "/version.json",
+  "/health"
+]
+# Alles wat hier niet in staat (/, /index.html, /pidlane-data.js, /admin.html, ...)
+# wordt rechtstreeks als bestand geserveerd, zonder worker.js te raken — dat is
+# hoe je weer bij de app komt op app.pidlane.nl.
+
 # ── R2-bucket voor de APK en version.json ──
 # Wordt in worker.js aangesproken als env.FILES (handleApkDownload, handleVersionJson).
 # De bucket zelf moet al bestaan (Dashboard → R2 → pidlane-files aanmaken, of
