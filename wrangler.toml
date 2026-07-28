@@ -16,14 +16,15 @@ bucket_name = "pidlane-files"
 name = "REMOTE_SESSION"
 class_name = "RemoteSessionDO"
 
-# Eerste migratie voor een gloednieuwe class. BELANGRIJK: sinds 9 juli 2026 staat
-# Cloudflare geen NIEUWE key-value-backed DO-namespaces meer toe — voor een verse
-# setup moet dit altijd new_sqlite_classes zijn, nooit new_classes. Dit is
-# vermoedelijk waar het eerder misging als de oude/standaard flow new_classes
-# gebruikte.
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["RemoteSessionDO"]
+# Declareert de class zelf en zijn opslagtype. Dit is de nieuwe manier (exports)
+# die de oudere [[migrations]]-array vervangt voor nieuwe Workers — en is precies
+# wat de "Durable Object exports reconciliation failed" / "provisioned_class_missing_from_config"-
+# fout vroeg: er stond al een geprovisioneerde namespace voor RemoteSessionDO
+# (waarschijnlijk aangemaakt door de vorige deploy-poging), maar zonder exports-
+# entry kan Cloudflare niet bevestigen dat die nog steeds bij deze code hoort.
+[exports.RemoteSessionDO]
+type = "durable-object"
+storage = "sqlite"
 
 # ── Optionele vars ──
 # Alles hieronder heeft al een werkende fallback in de code (zie DEFAULTS en de
