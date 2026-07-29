@@ -2143,6 +2143,269 @@ async function handleKlantSaldoMuteer(request, env) {
 }
 __name(handleKlantSaldoMuteer, "handleKlantSaldoMuteer");
 
+// ═══════════════════════════════════════════════════════════════════
+// ADMINBEHEER — klantaccounts en activatiecodes
+// ═══════════════════════════════════════════════════════════════════
+// Voor admin.html. Alles achter X-Admin-Token.
+
+// ── GET /admin/klanten?q=zoekterm ───────────────────────────────────
+async function handleAdminKlantenGet(request, env) {
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const q = String(new URL(request.url).searchParams.get("q") || "").trim().toLowerCase();
+  const { base, table, hdr } = klantTabel(env);
+
+  let url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100` +
+    `&sort%5B0%5D%5Bfield%5D=Aangemaakt&sort%5B0%5D%5Bdirection%5D=desc`;
+  if (q) {
+    const e = q.replace(/'/g, "\\'");
+    url += `&filterByFormula=${encodeURIComponent(
+      `OR(SEARCH('${e}',LOWER({Email})),SEARCH('${e}',LOWER({Naam})))`
+    )}`;
+  }
+
+  try {
+    const r = await fetch(url, { headers: hdr });
+    if (!r.ok) return json({ ok: false, error: "airtable_" + r.status }, 502);
+    const d = await r.json();
+    const klanten = (d.records || []).map((rec) => {
+      const f = rec.fields || {};
+      return {
+        id: rec.id,
+        email: f.Email || "",
+        naam: f.Naam || "",
+        saldo: Number(f.Saldo || 0),
+        totaal: Number(f.TotaalGekocht || 0),
+        status: f.Status || "actief",
+        aangemaakt: f.Aangemaakt || "",
+        laatsteLogin: f.LaatsteLogin || "",
+        heeftReset: !!f.ResetToken
+      };
+    });
+    const totaalSaldo = klanten.reduce((s, k) => s + k.saldo, 0);
+    return json({ ok: true, klanten, stats: { aantal: klanten.length, totaalSaldo } });
+  } catch (e) {
+    return json({ ok: false, error: "Ophalen mislukt." }, 500);
+  }
+}
+__name(handleAdminKlantenGet, "handleAdminKlantenGet");
+
+// ── POST /admin/klanten  { actie, ... } ─────────────────────────────
+async function handleAdminKlantenPost(request, env) {
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  let b = {};
+  try { b = await request.json(); } catch (e) {}
+  const actie = String(b.actie || "");
+  const id = String(b.id || "");
+  if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id." }, 400);
+
+  const { base, table, hdr } = klantTabel(env);
+
+  try {
+    if (actie === "update") {
+      const f = {};
+      if (b.saldo !== undefined) {
+        const s = Math.round(Number(b.saldo));
+        if (!isFinite(s) || s < 0 || s > 1e6) return json({ ok: false, error: "Saldo buiten bereik." }, 400);
+        f.Saldo = s;
+      }
+      if (b.status !== undefined) {
+        if (!["actief", "ongeverifieerd", "geblokkeerd"].includes(String(b.status)))
+          return json({ ok: false, error: "Onbekende status." }, 400);
+        f.Status = String(b.status);
+      }
+      if (b.naam !== undefined) f.Naam = String(b.naam).slice(0, 80);
+      if (b.opmerking !== undefined) f.Opmerking = String(b.opmerking).slice(0, 2000);
+      if (!Object.keys(f).length) return json({ ok: false, error: "Niets om te wijzigen." }, 400);
+      await klantPatch(env, id, f);
+      return json({ ok: true });
+    }
+
+    if (actie === "wachtwoord") {
+      const pass = String(b.pass || "");
+      const probleem = klantWachtwoordProbleem(pass, "");
+      if (probleem) return json({ ok: false, error: probleem }, 400);
+      await klantPatch(env, id, {
+        PassHash: await hashPassword(pass, env),
+        ResetToken: "",
+        ResetVerloopt: null
+      });
+      return json({ ok: true });
+    }
+
+    if (actie === "verwijder") {
+      const r = await fetch(
+        `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
+        { method: "DELETE", headers: hdr }
+      );
+      if (!r.ok) return json({ ok: false, error: "Verwijderen mislukt." }, 502);
+      return json({ ok: true });
+    }
+
+    return json({ ok: false, error: "Onbekende actie." }, 400);
+  } catch (e) {
+    return json({ ok: false, error: "Bewerking mislukt." }, 500);
+  }
+}
+__name(handleAdminKlantenPost, "handleAdminKlantenPost");
+
+// ── GET /admin/codes?status=alle|open|gebruikt ───────────────────────
+async function handleAdminCodesGet(request, env) {
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const sp = new URL(request.url).searchParams;
+  const status = String(sp.get("status") || "alle");
+  const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
+  const table = cfg(env, "AIRTABLE_CODES_TABLE");
+  const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
+
+  let url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100` +
+    `&sort%5B0%5D%5Bfield%5D=Aangemaakt&sort%5B0%5D%5Bdirection%5D=desc`;
+  if (status === "open") url += `&filterByFormula=${encodeURIComponent("NOT({Gebruikt})")}`;
+  if (status === "gebruikt") url += `&filterByFormula=${encodeURIComponent("{Gebruikt}")}`;
+
+  try {
+    const r = await fetch(url, { headers: hdr });
+    if (!r.ok) return json({ ok: false, error: "airtable_" + r.status }, 502);
+    const d = await r.json();
+    const codes = (d.records || []).map((rec) => {
+      const f = rec.fields || {};
+      return {
+        id: rec.id,
+        code: f.Code || "",
+        credits: Number(f.Credits || 0),
+        gebruikt: f.Gebruikt === true,
+        gebruiktOp: f.GebruiktOp || "",
+        gebruiktDoor: f.GebruiktDoor || "",
+        batch: f.Batch || "",
+        waarde: Number(f.Waarde || 0),
+        vervalt: f.Vervalt || ""
+      };
+    });
+    const open = codes.filter((c) => !c.gebruikt);
+    const gebruikt = codes.filter((c) => c.gebruikt);
+    return json({
+      ok: true,
+      codes,
+      stats: {
+        totaal: codes.length,
+        open: open.length,
+        gebruikt: gebruikt.length,
+        openCredits: open.reduce((s, c) => s + c.credits, 0),
+        omzet: gebruikt.reduce((s, c) => s + c.waarde, 0)
+      }
+    });
+  } catch (e) {
+    return json({ ok: false, error: "Ophalen mislukt." }, 500);
+  }
+}
+__name(handleAdminCodesGet, "handleAdminCodesGet");
+
+// Tekenset zonder I, L, O, 0 en 1 — die worden verkeerd overgetypt.
+var CODE_TEKENS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function maakActivatieCode() {
+  const b = crypto.getRandomValues(new Uint8Array(10));
+  let s = "PIDL-";
+  for (let i = 0; i < 10; i++) {
+    if (i === 4) s += "-";
+    s += CODE_TEKENS[b[i] % CODE_TEKENS.length];
+  }
+  return s;
+}
+__name(maakActivatieCode, "maakActivatieCode");
+
+// ── POST /admin/codes  { actie:'genereer'|'verwijder', ... } ─────────
+async function handleAdminCodesPost(request, env) {
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  let b = {};
+  try { b = await request.json(); } catch (e) {}
+  const actie = String(b.actie || "");
+  const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
+  const table = cfg(env, "AIRTABLE_CODES_TABLE");
+  const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
+
+  try {
+    if (actie === "verwijder") {
+      const id = String(b.id || "");
+      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id." }, 400);
+      const r = await fetch(
+        `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
+        { method: "DELETE", headers: hdr }
+      );
+      if (!r.ok) return json({ ok: false, error: "Verwijderen mislukt." }, 502);
+      return json({ ok: true });
+    }
+
+    if (actie === "genereer") {
+      const aantal = Math.round(Number(b.aantal) || 0);
+      const credits = Math.round(Number(b.credits) || 0);
+      const prijs = Number(b.prijs) || 0;
+      const batch = String(b.batch || "").trim().slice(0, 60) ||
+        new Date().toISOString().slice(0, 10) + "-batch";
+      const vervalt = String(b.vervalt || "").trim();
+
+      if (aantal < 1 || aantal > 200) return json({ ok: false, error: "Aantal moet tussen 1 en 200 liggen." }, 400);
+      if (credits < 1 || credits > 100000) return json({ ok: false, error: "Tokens per code buiten bereik." }, 400);
+      if (vervalt && !/^\d{4}-\d{2}-\d{2}$/.test(vervalt))
+        return json({ ok: false, error: "Vervaldatum moet JJJJ-MM-DD zijn." }, 400);
+
+      const nu = new Date().toISOString();
+      const nieuw = [];
+      const gezien = new Set();
+      while (nieuw.length < aantal) {
+        const c = maakActivatieCode();
+        if (gezien.has(c)) continue;
+        gezien.add(c);
+        nieuw.push(c);
+      }
+
+      // Airtable neemt maximaal 10 records per verzoek betrouwbaar aan bij
+      // create; we doen 10 per keer zodat een grote batch niet halverwege
+      // afbreekt op een limiet.
+      const gemaakt = [];
+      for (let i = 0; i < nieuw.length; i += 10) {
+        const deel = nieuw.slice(i, i + 10).map((code) => ({
+          fields: Object.assign(
+            { Code: code, Credits: credits, Gebruikt: false, Batch: batch, Aangemaakt: nu },
+            prijs > 0 ? { Waarde: prijs } : {},
+            vervalt ? { Vervalt: vervalt } : {}
+          )
+        }));
+        const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+          method: "POST",
+          headers: hdr,
+          body: JSON.stringify({ records: deel, typecast: true })
+        });
+        if (!r.ok) {
+          const tekst = await r.text().catch(() => "");
+          return json({
+            ok: false,
+            error: `Aanmaken gestopt na ${gemaakt.length} codes (Airtable ${r.status}). ` +
+              `De al aangemaakte codes zijn geldig.`,
+            codes: gemaakt,
+            detail: tekst.slice(0, 300)
+          }, 502);
+        }
+        const d = await r.json();
+        (d.records || []).forEach((rec) => gemaakt.push((rec.fields || {}).Code));
+      }
+
+      return json({ ok: true, aantal: gemaakt.length, batch, credits, prijs, codes: gemaakt });
+    }
+
+    return json({ ok: false, error: "Onbekende actie." }, 400);
+  } catch (e) {
+    return json({ ok: false, error: "Bewerking mislukt." }, 500);
+  }
+}
+__name(handleAdminCodesPost, "handleAdminCodesPost");
+
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -2183,6 +2446,14 @@ var worker_default = {
         return lockOrigin(request, await handleCodeCreate(request, env));
       if (url.pathname === "/code/resolve" && request.method === "POST")
         return lockOrigin(request, await handleCodeResolve(request, env));
+      if (url.pathname === "/admin/klanten" && request.method === "GET")
+        return lockOrigin(request, await handleAdminKlantenGet(request, env));
+      if (url.pathname === "/admin/klanten" && request.method === "POST")
+        return lockOrigin(request, await handleAdminKlantenPost(request, env));
+      if (url.pathname === "/admin/codes" && request.method === "GET")
+        return lockOrigin(request, await handleAdminCodesGet(request, env));
+      if (url.pathname === "/admin/codes" && request.method === "POST")
+        return lockOrigin(request, await handleAdminCodesPost(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
         return lockOrigin(request, await handleKlantRegistreer(request, env));
       if (url.pathname === "/klant/login" && request.method === "POST")
