@@ -25,6 +25,23 @@
    parameters zet. Elke module houdt voorlopig zijn eigen rapport; één
    samengesteld eindrapport is een herziening van de AI-laag en hoort niet
    in dezelfde ronde thuis.
+
+   RONDE 2 (29-07-2026) — TERUGWEG NAAR HET PLAN
+   Wat er mis was: draai() en start() deden sluitStil() en daarmee was het
+   plan weg. De toestand (job/pad/nu) bleef netjes staan, maar er was geen
+   enkele ingang die hem weer tekende — open() is de enige publieke ingang
+   en die reset juist alles. Eén module openen was dus een eenrichtingsdeur:
+   je kon nooit bij de andere zes komen zonder de hele vragenboom opnieuw
+   te lopen.
+
+   Wat er nu gebeurt:
+     • Het plan is een sessie die loopt tot je 'm sluit (_actief), niet een
+       scherm dat bij de eerste klik verdampt. sluitStil() verbergt alleen.
+     • Zwevende chip in #fabLane zolang de sessie loopt en het plan verborgen
+       is. Tik = terug naar het plan, met alles nog ingevuld.
+     • Afgeronde stappen krijgen een vinkje en de knop heet dan "Opnieuw",
+       zodat je ziet waar je gebleven was.
+   Geen wijziging in de vragenboom, de modules of bouwPlan().
    ═══════════════════════════════════════════════════════════════════════ */
 (function(){
 'use strict';
@@ -253,8 +270,66 @@ function bouwPlan(j){
   return m;
 }
 
-/* ── Toestand ───────────────────────────────────────────────────────────*/
+/* ── Toestand ───────────────────────────────────────────────────────────
+   job/pad/nu = waar je in de vragenboom staat en wat je hebt geantwoord.
+   actief     = er loopt een onderzoek; het plan mag terugkomen. Blijft true
+                zodra er een module of meting is gestart, tot je op ✕ drukt.
+   gedaan     = welke modules je al geopend hebt (voor de vinkjes).          */
 var job = {}, pad = [], nu = 'start';
+var actief = false, gedaan = {}, metingGestart = false;
+
+/* ── Zwevende chip ──────────────────────────────────────────────────────
+   Zolang het onderzoek loopt en het planscherm verborgen is, hangt hier de
+   terugweg. Hij gaat in #fabLane (zie pidlane.css); die baan regelt de
+   stapeling rechtsonder, zodat we niet botsen met de rit-monitorchip of
+   #remDrivePill. Geen baan gevonden → positioneert hij zichzelf.           */
+var chipEl = null;
+
+function chipMaak(){
+  if(chipEl) return chipEl;
+  var c = document.createElement('div');
+  c.id = 'wzChipFab';
+  c.style.cssText = 'display:none;align-items:center;gap:7px;background:var(--sur,#151b24);'+
+    'border:1.5px solid var(--bd,#26303b);color:var(--tx,#e6e9ef);border-radius:22px;'+
+    'padding:7px 13px;font-family:var(--f);font-size:13px;font-weight:800;'+
+    'box-shadow:0 6px 18px rgba(0,0,0,.45);cursor:pointer;user-select:none;'+
+    '-webkit-tap-highlight-color:transparent';
+  c.innerHTML = '<span>🧭</span><span>Mijn plan</span>'+
+    '<span id="wzChipTel" style="display:none;min-width:18px;height:18px;padding:0 5px;'+
+    'border-radius:9px;background:var(--bl,#00d4ff);color:#0b1016;font-size:11px;'+
+    'font-weight:800;line-height:18px;text-align:center"></span>';
+  c.title = 'Terug naar het onderzoeksplan';
+  c.onclick = function(){ window.PLWizard.terugNaarPlan(); };
+  var lane = el('fabLane');
+  if(lane){ lane.appendChild(c); }
+  else{
+    c.style.position='fixed'; c.style.right='12px'; c.style.bottom='14px'; c.style.zIndex='9600';
+    document.body.appendChild(c);
+  }
+  chipEl = c;
+  return c;
+}
+
+function planZichtbaar(){
+  var ov = el('wizardNieuwOv');
+  return !!(ov && ov.style.display !== 'none');
+}
+
+function chipTick(){
+  var toon = actief && !planZichtbaar();
+  var c = chipEl || (toon ? chipMaak() : null);
+  if(!c) return;
+  c.style.display = toon ? 'inline-flex' : 'none';
+  if(!toon) return;
+  // Teller: hoeveel modules staan er nog open. Niets meer open → geen getal,
+  // de chip blijft wel staan zodat je het plan kunt nalopen.
+  var open = bouwPlan(job).filter(function(k){ return !gedaan[k]; }).length;
+  var t = el('wzChipTel');
+  if(t){
+    t.textContent = open;
+    t.style.display = open ? 'inline-block' : 'none';
+  }
+}
 
 /* ── Weergave ───────────────────────────────────────────────────────────*/
 function scherm(){
@@ -322,15 +397,26 @@ function toonPlan(){
   el('wzBalk').style.width='100%';
   el('wzTerug').style.visibility='visible';
 
+  var af = mods.filter(function(k){ return gedaan[k]; }).length;
+  var vink = '<span style="color:var(--gr,#3fbf6f);font-weight:800;margin-right:5px">✓</span>';
+
   var h = '<div class="wz-vraag">Dit ga ik doen</div>'+
-          '<div class="wz-sub">Op basis van je antwoorden. Je kunt hier nog terug.</div>'+
+          '<div class="wz-sub">'+
+            (af ? af+' van de '+mods.length+' klaar. Ga verder waar je gebleven was — je antwoorden staan er nog.'
+                : 'Op basis van je antwoorden. Je kunt hier nog terug.')+
+          '</div>'+
           '<div class="wz-plan-kop">1 · Meten</div>'+
-          '<div class="wz-plan-item"><b>'+meting.n+'</b><span>'+meting.d+' · '+meting.tijd+'</span></div>'+
-          '<div class="wz-plan-kop">2 · Analyseren <span class="wz-tel">'+mods.length+'</span></div>';
+          '<div class="wz-plan-item"><b>'+(metingGestart?vink:'')+meting.n+'</b>'+
+            '<span>'+meting.d+' · '+meting.tijd+'</span></div>'+
+          '<div class="wz-plan-kop">2 · Analyseren <span class="wz-tel">'+
+            (af ? af+'/'+mods.length : mods.length)+'</span></div>';
   mods.forEach(function(k){
-    var M=MODULES[k];
-    h += '<div class="wz-plan-item" id="wzMod_'+k+'"><b>'+M.n+'</b><span>'+M.d+'</span>'+
-         '<button class="wz-mod-run" onclick="PLWizard.draai(\''+k+'\')">Openen</button></div>';
+    var M=MODULES[k], klaar=!!gedaan[k];
+    h += '<div class="wz-plan-item" id="wzMod_'+k+'"'+
+           (klaar?' style="opacity:.72"':'')+'>'+
+         '<b>'+(klaar?vink:'')+M.n+'</b><span>'+M.d+'</span>'+
+         '<button class="wz-mod-run" onclick="PLWizard.draai(\''+k+'\')">'+
+           (klaar?'Nogmaals':'Openen')+'</button></div>';
   });
   if(job.klacht){
     h += '<div class="wz-plan-kop">Jouw omschrijving</div><div class="wz-plan-cite">'+
@@ -339,7 +425,8 @@ function toonPlan(){
   el('wzBody').innerHTML = h;
   el('wzFoot').innerHTML =
     '<button class="wz-sec" onclick="PLWizard.opnieuw()">Opnieuw</button>'+
-    '<button class="wz-pri" onclick="PLWizard.start()">▶ Beginnen</button>';
+    '<button class="wz-pri" onclick="PLWizard.start()">'+
+      (metingGestart ? '▶ Meting nogmaals' : '▶ Beginnen')+'</button>';
 }
 
 /* ── Publiek ────────────────────────────────────────────────────────────*/
@@ -353,15 +440,25 @@ window.PLWizard = {
       document.body.appendChild(ov);
     }
     job={}; pad=[]; nu='start';
+    gedaan={}; metingGestart=false; actief=true;
     ov.style.display='flex';
     veilig(function(){ el('welcomeScreen').classList.add('hidden'); });
     toonVraag();
+    chipTick();
   },
+  // ✕ = het onderzoek is klaar. Pas hier verdwijnt de chip; overal anders
+  // wordt het plan alleen verborgen.
   sluit: function(){
     var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none';
+    actief=false;
+    chipTick();
     veilig(function(){ goHome(); });
   },
-  opnieuw: function(){ job={}; pad=[]; nu='start'; toonVraag(); },
+  opnieuw: function(){
+    job={}; pad=[]; nu='start';
+    gedaan={}; metingGestart=false;
+    toonVraag();
+  },
   terug: function(){
     if(!pad.length) return;
     nu = pad.pop();
@@ -392,8 +489,20 @@ window.PLWizard = {
   },
   draai: function(k){
     var M=MODULES[k]; if(!M) return;
+    actief=true; gedaan[k]=true;
     this.sluitStil();
     veilig(function(){ M.run(job); });
+  },
+  // Terug naar het plan zonder ook maar iets te resetten. Dit is de ingang
+  // die de chip gebruikt; open() blijft de ingang die wél opnieuw begint.
+  terugNaarPlan: function(){
+    var ov = el('wizardNieuwOv');
+    if(!ov){ this.open(); return; }
+    actief=true;
+    ov.style.display='flex';
+    veilig(function(){ el('welcomeScreen').classList.add('hidden'); });
+    if(nu) toonVraag(); else toonPlan();
+    chipTick();
   },
   start: function(){
     var meting = METING[job.meting] || METING.stil;
@@ -401,6 +510,7 @@ window.PLWizard = {
     if(job.klacht) veilig(function(){ window._wizKlacht = job.klacht; });
     if(job.rol)    veilig(function(){ setKoopMode(job.rol); });
     window._wizJob = job;
+    actief=true; metingGestart=true;
     this.sluitStil();
     if(meting.start) veilig(function(){ meting.start(); });
     else {
@@ -410,19 +520,32 @@ window.PLWizard = {
       // één momentopname — precies de fout die de meetfase-poort afvangt.
       var mods = bouwPlan(job);
       var eerste = mods.filter(function(k){ return k!=='dtc'; })[0] || 'dtc';
+      var draaiEerste = function(){
+        gedaan[eerste]=true;
+        veilig(function(){ MODULES[eerste].run(job); });
+        chipTick();
+      };
       if(typeof plVraagMeting==='function'){
         plVraagMeting('normaal','dit onderzoek').then(function(door){
-          if(door) veilig(function(){ MODULES[eerste].run(job); });
+          if(door) draaiEerste();
+          // Meetfase afgebroken: dan is er ook niets gemeten. Plan terug in
+          // beeld, anders sta je met een leeg scherm en een chip te kijken.
+          else { metingGestart=false; window.PLWizard.terugNaarPlan(); }
         });
       } else {
-        veilig(function(){ MODULES[eerste].run(job); });
+        draaiEerste();
       }
     }
   },
-  sluitStil: function(){ var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none'; },
+  sluitStil: function(){
+    var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none';
+    chipTick();
+  },
   // Voor de diagnosebundel en voor testen
   _plan: function(j){ return bouwPlan(j||job); },
   _job:  function(){ return JSON.parse(JSON.stringify(job)); },
+  _actief: function(){ return actief; },
+  _gedaan: function(){ return Object.keys(gedaan); },
   _boom: BOOM, _modules: MODULES
 };
 
