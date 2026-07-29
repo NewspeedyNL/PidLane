@@ -384,6 +384,23 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
 
   const mdl = model || 'claude-sonnet-5';
 
+  // ── Tegoed + kostenpreview (pidlane-credits.js) ────────────────────
+  // Eén haak voor ALLE AI-calls: op dit punt zijn prompt en sys volledig
+  // samengesteld, dus meten we wat er echt over de lijn gaat — inclusief
+  // het contextblok met eerdere rapporten, de dossier- en situatieregel.
+  // De module is fail-open: ontbreekt hij of gaat er iets mis, dan draait
+  // de analyse gewoon door zonder afboeking. Annuleren door de gebruiker
+  // gooit een fout met .plAfgebroken zodat callers dat kunnen herkennen.
+  let _plCred=null;
+  try{
+    if(window.PLCredits && typeof window.PLCredits.preflight==='function'){
+      _plCred = await window.PLCredits.preflight(prompt, sys, maxTokens, mdl);
+    }
+  }catch(e){
+    if(e && e.plAfgebroken) throw e;                 // bewuste keuze van de gebruiker
+    log('Tegoedcontrole overgeslagen: '+(e&&e.message||e),'warn');
+  }
+
   aiBusyBegin();
   const _plT0=Date.now();
   try{
@@ -425,6 +442,10 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
       }
       const data=await resp.json();
       try{ if(data.usage) trackTokens(data.usage, mdl); }catch(e){}
+      // Afboeken op het EERSTE geslaagde antwoord — vervolgdelen bij
+      // max_tokens rekenen niet nog eens. boek() kalibreert meteen de
+      // tekens→tokens-schatting bij op de echte usage.
+      try{ if(_plCred && !_plCred.geboekt) window.PLCredits.boek(_plCred, data.usage); }catch(e){}
       try{ PidLaneEvalLog.log('ai','api-call',{model:mdl,latencyMs:Date.now()-_plT0,part:part+1,stop:data.stop_reason||''}); }catch(e){}
 
       const txt=extractAIText(data)||'';
