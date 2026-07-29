@@ -9,6 +9,10 @@ var DEFAULTS = {
   AIRTABLE_CONFIG_TABLE: "AppConfig",
   AIRTABLE_USERS_TABLE: "Users",
   // gebruikers (Config-base)
+  AIRTABLE_CODES_TABLE: "TokenCodes",
+  // prepaid activatiecodes voor de tegoedmodule (Config-base)
+  AIRTABLE_KLANTEN_TABLE: "Klanten",
+  // consumentenaccounts met tokensaldo (Config-base) — nog niet in gebruik
   AIRTABLE_VL_BASE: "apphsUwG4WAeWjEwH",
   AIRTABLE_VL_TABLE: "tblwbyWN1L6AKwgoy",
   AIRTABLE_REF_TABLE: "tblkfxKcjR6gf0Ahe"
@@ -64,7 +68,7 @@ var ALLOWED_ORIGINS = [
   "https://localhost"
 ];
 function isRestrictedPath(pathname) {
-  return pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname === "/api/config";
+  return pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname === "/api/config";
 }
 __name(isRestrictedPath, "isRestrictedPath");
 function lockOrigin(request, resp) {
@@ -1557,6 +1561,588 @@ var RemoteSessionDO = class {
   async webSocketError(ws, error) {
   }
 };
+// ── Tegoed: activatiecode inwisselen ────────────────────────────────
+// POST /credits/redeem  { code: "PIDL-XXXX-XXXXXX" }
+//   → 200 { ok:true, credits:100 }
+//   → 400/404/409/429 { ok:false, error:"..." }
+//
+// Werkt BEWUST zonder account (stap B van het plan): de gratis proef en de
+// eerste aankopen moeten drempelloos zijn. Zodra de Klanten-tabel in gebruik
+// is, kan hier optioneel een e-mailadres bij om het saldo aan een account te
+// hangen in plaats van aan localStorage.
+//
+// RACE-BEVEILIGING — Airtable kent geen transacties, dus twee gelijktijdige
+// verzoeken met dezelfde code zouden allebei kunnen slagen. Opgelost met een
+// compare-and-set: we schrijven eerst een unieke stempel weg, lezen daarna
+// terug, en boeken ALLEEN bij wanneer onze eigen stempel er nog staat. Bij een
+// race wint precies één verzoek; de ander ziet een vreemde stempel en stopt.
+async function handleCreditsRedeem(request, env) {
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  // Brute-force-rem: een code is kort, dus raden moet duur zijn.
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "credits-redeem", ip, { limit: 12, windowMs: 6e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const code = String(body && body.code || "").trim().toUpperCase();
+  const door = String(body && body.email || "").trim().toLowerCase() || "anoniem";
+
+  if (!/^[A-Z0-9][A-Z0-9-]{5,23}$/.test(code))
+    return json({ ok: false, error: "Ongeldig codeformaat." }, 400);
+
+  const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
+  const table = cfg(env, "AIRTABLE_CODES_TABLE");
+  const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
+  const esc = code.replace(/'/g, "\\'");
+
+  try {
+    // 1. Code opzoeken
+    const zoek = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
+      `?maxRecords=1&filterByFormula=${encodeURIComponent(`UPPER({Code})='${esc}'`)}`;
+    const r1 = await fetch(zoek, { headers: hdr });
+    if (!r1.ok) return json({ ok: false, error: "Controle mislukt, probeer later opnieuw." }, 502);
+    const d1 = await r1.json();
+    const rec = d1 && d1.records && d1.records[0];
+    if (!rec) return json({ ok: false, error: "Code niet gevonden. Controleer de spelling." }, 404);
+
+    const f = rec.fields || {};
+    if (f.Gebruikt === true)
+      return json({ ok: false, error: "Deze code is al gebruikt." }, 409);
+
+    const credits = Number(f.Credits || 0);
+    if (!(credits > 0))
+      return json({ ok: false, error: "Deze code heeft geen waarde." }, 409);
+
+    if (f.Vervalt) {
+      const verval = Date.parse(String(f.Vervalt) + "T23:59:59Z");
+      if (isFinite(verval) && Date.now() > verval)
+        return json({ ok: false, error: "Deze code is verlopen." }, 409);
+    }
+
+    // 2. Claimen met unieke stempel
+    const stempel = new Date().toISOString().replace(/\.\d+Z$/, "") + "." +
+      Math.random().toString(36).slice(2, 8) + "Z";
+    const r2 = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+      method: "PATCH",
+      headers: hdr,
+      body: JSON.stringify({
+        records: [{
+          id: rec.id,
+          fields: {
+            Gebruikt: true,
+            GebruiktOp: stempel,
+            GebruiktDoor: door
+          }
+        }]
+      })
+    });
+    if (!r2.ok) return json({ ok: false, error: "Inwisselen mislukt, probeer later opnieuw." }, 502);
+
+    // 3. Teruglezen — staat onze stempel er nog, dan hebben wij de race gewonnen.
+    const r3 = await fetch(
+      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${rec.id}`,
+      { headers: hdr }
+    );
+    if (r3.ok) {
+      const d3 = await r3.json();
+      const nu = String(d3 && d3.fields && d3.fields.GebruiktOp || "");
+      if (nu && nu.slice(0, 19) !== stempel.slice(0, 19))
+        return json({ ok: false, error: "Deze code is zojuist al gebruikt." }, 409);
+    }
+
+    // 4. Is er een ingelogde klant, dan gaan de tokens naar het account in
+    //    plaats van naar localStorage. Lukt dat bijboeken niet, dan is de
+    //    code al verbruikt — daarom melden we dat expliciet in plaats van
+    //    stilletjes ok:true terug te geven en het tegoed te laten verdampen.
+    let saldo = null;
+    try {
+      const p = await klantAuth(request, env);
+      if (p) {
+        const kr = await klantZoek(env, p.u);
+        if (kr) {
+          const kf = kr.fields || {};
+          saldo = Number(kf.Saldo || 0) + credits;
+          await klantPatch(env, kr.id, {
+            Saldo: saldo,
+            TotaalGekocht: Number(kf.TotaalGekocht || 0) + credits
+          });
+          await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+            method: "PATCH",
+            headers: hdr,
+            body: JSON.stringify({ records: [{ id: rec.id, fields: { GebruiktDoor: kf.Email || door } }] })
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      return json({
+        ok: false,
+        error: "Code is geldig, maar bijboeken op je account is mislukt. Neem contact op — de code is nu verbruikt."
+      }, 500);
+    }
+
+    return json({ ok: true, credits, code, saldo });
+  } catch (e) {
+    return json({ ok: false, error: "Onverwachte fout bij inwisselen." }, 500);
+  }
+}
+__name(handleCreditsRedeem, "handleCreditsRedeem");
+
+// ═══════════════════════════════════════════════════════════════════
+// KLANTACCOUNTS — consumentenzijde van de tegoedmodule
+// ═══════════════════════════════════════════════════════════════════
+// Staat BEWUST los van de tabel Users en van USERS_JSON. Die zijn voor
+// B2B/garage-logins met een vaste userlijst; hier registreert het publiek
+// zichzelf. Twee losse systemen naast elkaar is hier de veilige keuze:
+// een lek of fout aan de consumentenkant raakt de zakelijke accounts niet.
+//
+// WACHTWOORDEN gaan door dezelfde hashPassword/verifyPassword als de rest
+// van de Worker: PBKDF2-SHA256 met een willekeurige salt per account en het
+// aantal iteraties uit PBKDF2_ITERS. De salt zit ingebakken in de PassHash-
+// string, dus het losse Salt-veld in de tabel blijft leeg.
+//
+// SESSIETOKENS hergebruiken makeToken/verifyToken, maar met rol "klant".
+// Daardoor kan een klanttoken nooit doorgaan voor een beheerderstoken.
+
+function klantEmailOk(e) {
+  return /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(String(e || "").trim());
+}
+__name(klantEmailOk, "klantEmailOk");
+
+// Minimale eisen. Lengte weegt zwaarder dan tekensoorten — een lange
+// zin is sterker dan "Wachtw00rd!" en wordt beter onthouden.
+function klantWachtwoordProbleem(pass, email) {
+  const p = String(pass || "");
+  if (p.length < 10) return "Wachtwoord moet minstens 10 tekens zijn.";
+  if (p.length > 200) return "Wachtwoord is te lang.";
+  const e = String(email || "").toLowerCase();
+  if (e && p.toLowerCase().includes(e.split("@")[0])) return "Gebruik je e-mailadres niet in je wachtwoord.";
+  if (/^(.)\1+$/.test(p)) return "Kies een minder voorspelbaar wachtwoord.";
+  return null;
+}
+__name(klantWachtwoordProbleem, "klantWachtwoordProbleem");
+
+function klantTabel(env) {
+  return {
+    base: resolveBase(env, "AIRTABLE_CONFIG_BASE"),
+    table: cfg(env, "AIRTABLE_KLANTEN_TABLE"),
+    hdr: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" }
+  };
+}
+__name(klantTabel, "klantTabel");
+
+async function klantZoek(env, email) {
+  const { base, table, hdr } = klantTabel(env);
+  const e = String(email || "").trim().toLowerCase().replace(/'/g, "\\'");
+  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
+    `?maxRecords=1&filterByFormula=${encodeURIComponent(`LOWER({Email})='${e}'`)}`;
+  const r = await fetch(url, { headers: hdr });
+  if (!r.ok) throw new Error("airtable_zoek_" + r.status);
+  const d = await r.json();
+  return d && d.records && d.records[0] || null;
+}
+__name(klantZoek, "klantZoek");
+
+async function klantPatch(env, id, fields) {
+  const { base, table, hdr } = klantTabel(env);
+  const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+    method: "PATCH",
+    headers: hdr,
+    body: JSON.stringify({ records: [{ id, fields }], typecast: true })
+  });
+  if (!r.ok) throw new Error("airtable_patch_" + r.status);
+  return await r.json();
+}
+__name(klantPatch, "klantPatch");
+
+// Verifieert een klanttoken uit X-App-Token of Authorization: Bearer.
+async function klantAuth(request, env) {
+  const tok = request.headers.get("X-App-Token") ||
+    String(request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!tok) return null;
+  const p = await verifyToken(env, tok);
+  if (!p || p.r !== "klant") return null;
+  return p;
+}
+__name(klantAuth, "klantAuth");
+
+function klantPubliek(rec) {
+  const f = rec && rec.fields || {};
+  return {
+    email: f.Email || "",
+    naam: f.Naam || "",
+    saldo: Number(f.Saldo || 0),
+    status: f.Status || "actief"
+  };
+}
+__name(klantPubliek, "klantPubliek");
+
+// ── POST /klant/registreer  { email, pass, naam? } ──────────────────
+async function handleKlantRegistreer(request, env) {
+  if (!env.SESSION_SECRET) return json({ ok: false, error: "no_session_secret" }, 500);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "klant-registreer", ip, { limit: 5, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const email = String(body.email || "").trim().toLowerCase();
+  const pass = String(body.pass || "");
+  const naam = String(body.naam || "").trim().slice(0, 80);
+
+  if (!klantEmailOk(email)) return json({ ok: false, error: "Vul een geldig e-mailadres in." }, 400);
+  const probleem = klantWachtwoordProbleem(pass, email);
+  if (probleem) return json({ ok: false, error: probleem }, 400);
+
+  try {
+    // Airtable dwingt uniekheid niet af, dus zelf controleren. Er blijft een
+    // minieme race als twee registraties binnen milliseconden binnenkomen;
+    // dat levert een dubbele rij op, geen beveiligingsprobleem. Login pakt
+    // dan de eerste. Opruimen kan handmatig.
+    if (await klantZoek(env, email))
+      return json({ ok: false, error: "Dit e-mailadres is al geregistreerd." }, 409);
+
+    const { base, table, hdr } = klantTabel(env);
+    const nu = new Date().toISOString();
+    const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+      method: "POST",
+      headers: hdr,
+      body: JSON.stringify({
+        records: [{
+          fields: {
+            Email: email,
+            PassHash: await hashPassword(pass, env),
+            Naam: naam,
+            Saldo: Number(env.KLANT_START_SALDO || 0),
+            TotaalGekocht: 0,
+            Status: "actief",
+            Aangemaakt: nu,
+            LaatsteLogin: nu
+          }
+        }],
+        typecast: true
+      })
+    });
+    if (!r.ok) return json({ ok: false, error: "Aanmaken mislukt, probeer later opnieuw." }, 502);
+    const d = await r.json();
+    const rec = d && d.records && d.records[0];
+
+    const t = await makeToken(env, email, "klant", naam || email);
+    return json({ ok: true, ...t, klant: klantPubliek(rec) }, 201);
+  } catch (e) {
+    return json({ ok: false, error: "Registratie mislukt." }, 500);
+  }
+}
+__name(handleKlantRegistreer, "handleKlantRegistreer");
+
+// ── POST /klant/login  { email, pass } ──────────────────────────────
+async function handleKlantLogin(request, env, ctx) {
+  if (!env.SESSION_SECRET) return json({ ok: false, error: "no_session_secret" }, 500);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const email = String(body.email || "").trim().toLowerCase();
+  const pass = String(body.pass || "");
+
+  const [rlA, rlI] = await Promise.all([
+    rateLimit(env, "klant-login-acct", email || "leeg", RL.loginAccount, false),
+    rateLimit(env, "klant-login-ip", ip, RL.loginIp, false)
+  ]);
+  if (rlA.limited) return rateLimitResponse(rlA);
+  if (rlI.limited) return rateLimitResponse(rlI);
+
+  const misser = async () => {
+    await Promise.all([
+      rateLimit(env, "klant-login-acct", email || "leeg", RL.loginAccount, true),
+      rateLimit(env, "klant-login-ip", ip, RL.loginIp, true)
+    ]);
+    // Vertraging houdt het antwoord voor bestaande en niet-bestaande
+    // accounts even traag, zodat de timing niets verraadt.
+    await new Promise((r) => setTimeout(r, 500));
+    return json({ ok: false, error: "E-mailadres of wachtwoord klopt niet." }, 401);
+  };
+
+  try {
+    const rec = email ? await klantZoek(env, email) : null;
+    if (!rec) return await misser();
+
+    const f = rec.fields || {};
+    const res = await verifyPassword(pass, f.PassHash);
+    if (!res.ok) return await misser();
+
+    if (f.Status === "geblokkeerd")
+      return json({ ok: false, error: "Dit account is geblokkeerd." }, 403);
+
+    // Oude hash tegengekomen? Stilletjes omzetten naar PBKDF2.
+    const werk = [];
+    if (res.legacy) werk.push(klantPatch(env, rec.id, { PassHash: await hashPassword(pass, env) }));
+    werk.push(klantPatch(env, rec.id, { LaatsteLogin: new Date().toISOString() }));
+    const job = Promise.all(werk).catch(() => {});
+    if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+
+    const t = await makeToken(env, email, "klant", f.Naam || email);
+    return json({ ok: true, ...t, klant: klantPubliek(rec) });
+  } catch (e) {
+    return json({ ok: false, error: "Inloggen mislukt." }, 500);
+  }
+}
+__name(handleKlantLogin, "handleKlantLogin");
+
+// ── GET /klant/mij ──────────────────────────────────────────────────
+async function handleKlantMij(request, env) {
+  const p = await klantAuth(request, env);
+  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  try {
+    const rec = await klantZoek(env, p.u);
+    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
+    return json({ ok: true, klant: klantPubliek(rec) });
+  } catch (e) {
+    return json({ ok: false, error: "Ophalen mislukt." }, 500);
+  }
+}
+__name(handleKlantMij, "handleKlantMij");
+
+// ── POST /klant/wachtwoord  { huidig, nieuw }  (ingelogd) ───────────
+async function handleKlantWachtwoord(request, env) {
+  const p = await klantAuth(request, env);
+  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "klant-pwwijzig", ip, { limit: 10, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const huidig = String(body.huidig || "");
+  const nieuw = String(body.nieuw || "");
+
+  const probleem = klantWachtwoordProbleem(nieuw, p.u);
+  if (probleem) return json({ ok: false, error: probleem }, 400);
+
+  try {
+    const rec = await klantZoek(env, p.u);
+    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
+    const res = await verifyPassword(huidig, (rec.fields || {}).PassHash);
+    if (!res.ok) {
+      await new Promise((r) => setTimeout(r, 500));
+      return json({ ok: false, error: "Huidig wachtwoord klopt niet." }, 401);
+    }
+    // Openstaand herstelverzoek vervalt bij een geslaagde wijziging.
+    await klantPatch(env, rec.id, {
+      PassHash: await hashPassword(nieuw, env),
+      ResetToken: "",
+      ResetVerloopt: null
+    });
+    return json({ ok: true });
+  } catch (e) {
+    return json({ ok: false, error: "Wijzigen mislukt." }, 500);
+  }
+}
+__name(handleKlantWachtwoord, "handleKlantWachtwoord");
+
+// ── POST /klant/reset-aanvraag  { email } ───────────────────────────
+// Stuurt een herstelmail. In Airtable komt alleen de HASH van het token te
+// staan: lekt de base ooit uit, dan kan niemand daarmee een account kapen.
+async function handleKlantResetAanvraag(request, env) {
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const email = String(body.email || "").trim().toLowerCase();
+
+  const [rlA, rlI] = await Promise.all([
+    rateLimit(env, "klant-reset-acct", email || "leeg", { limit: 3, windowMs: 36e5 }, true),
+    rateLimit(env, "klant-reset-ip", ip, { limit: 10, windowMs: 36e5 }, true)
+  ]);
+  if (rlA.limited) return rateLimitResponse(rlA);
+  if (rlI.limited) return rateLimitResponse(rlI);
+
+  if (!env.MAIL_API_KEY || !env.MAIL_FROM)
+    return json({ ok: false, error: "mail_not_configured" }, 503);
+
+  // Altijd hetzelfde antwoord, ongeacht of het account bestaat — anders is
+  // dit endpoint een gratis controle of iemand klant is.
+  const algemeen = json({ ok: true, bericht: "Als dit adres bij ons bekend is, staat er een herstelmail klaar." });
+  if (!klantEmailOk(email)) return algemeen;
+
+  try {
+    const rec = await klantZoek(env, email);
+    if (!rec) return algemeen;
+
+    const token = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+    const verloopt = new Date(Date.now() + 36e5);   // 1 uur
+    await klantPatch(env, rec.id, {
+      ResetToken: await sha256hex(token),
+      ResetVerloopt: verloopt.toISOString()
+    });
+
+    const basis = String(env.APP_BASE_URL || "https://app.pidlane.nl").replace(/\/+$/, "");
+    const link = `${basis}/?herstel=${token}`;
+    const verstuurd = await klantMailVersturen(env, email, link);
+    if (!verstuurd) return json({ ok: false, error: "mail_send_failed" }, 502);
+    return algemeen;
+  } catch (e) {
+    return algemeen;
+  }
+}
+__name(handleKlantResetAanvraag, "handleKlantResetAanvraag");
+
+// Verstuurt via een REST-mailprovider (standaard Resend-formaat). Instelbaar
+// met MAIL_API_URL, MAIL_API_KEY en MAIL_FROM. Geen provider = geen herstel
+// per mail; gebruik dan /klant/admin-wachtwoord als noodklep.
+async function klantMailVersturen(env, email, link) {
+  try {
+    const url = env.MAIL_API_URL || "https://api.resend.com/emails";
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.MAIL_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: env.MAIL_FROM,
+        to: [email],
+        subject: "Nieuw wachtwoord instellen voor PidLane",
+        text:
+          "Je hebt gevraagd om je PidLane-wachtwoord opnieuw in te stellen.\n\n" +
+          link + "\n\n" +
+          "Deze link verloopt over een uur en werkt eenmalig.\n" +
+          "Heb je dit niet aangevraagd, dan hoef je niets te doen — je huidige " +
+          "wachtwoord blijft gewoon geldig.\n"
+      })
+    });
+    return r.ok;
+  } catch (e) {
+    return false;
+  }
+}
+__name(klantMailVersturen, "klantMailVersturen");
+
+// ── POST /klant/reset-uitvoeren  { token, pass } ────────────────────
+async function handleKlantResetUitvoeren(request, env) {
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "klant-reset-doe", ip, { limit: 10, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const token = String(body.token || "").trim().toLowerCase();
+  const pass = String(body.pass || "");
+
+  if (!/^[0-9a-f]{64}$/.test(token))
+    return json({ ok: false, error: "Herstellink is ongeldig of verlopen." }, 400);
+
+  try {
+    const hash = await sha256hex(token);
+    const { base, table, hdr } = klantTabel(env);
+    const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
+      `?maxRecords=1&filterByFormula=${encodeURIComponent(`{ResetToken}='${hash}'`)}`;
+    const r = await fetch(url, { headers: hdr });
+    if (!r.ok) return json({ ok: false, error: "Controle mislukt." }, 502);
+    const d = await r.json();
+    const rec = d && d.records && d.records[0];
+    if (!rec) return json({ ok: false, error: "Herstellink is ongeldig of verlopen." }, 400);
+
+    const f = rec.fields || {};
+    const verloopt = Date.parse(f.ResetVerloopt || "");
+    if (!isFinite(verloopt) || Date.now() > verloopt) {
+      await klantPatch(env, rec.id, { ResetToken: "", ResetVerloopt: null });
+      return json({ ok: false, error: "Herstellink is verlopen. Vraag een nieuwe aan." }, 400);
+    }
+
+    // Wachtwoordeisen pas hier controleren: eerst moet het token kloppen,
+    // anders is dit endpoint een manier om te testen of een token leeft.
+    const probleem = klantWachtwoordProbleem(pass, f.Email);
+    if (probleem) return json({ ok: false, error: probleem }, 400);
+
+    await klantPatch(env, rec.id, {
+      PassHash: await hashPassword(pass, env),
+      ResetToken: "",
+      ResetVerloopt: null
+    });
+    return json({ ok: true, bericht: "Wachtwoord is aangepast. Je kunt nu inloggen." });
+  } catch (e) {
+    return json({ ok: false, error: "Herstellen mislukt." }, 500);
+  }
+}
+__name(handleKlantResetUitvoeren, "handleKlantResetUitvoeren");
+
+// ── POST /klant/admin-wachtwoord  { email, pass }  (X-Admin-Token) ──
+// Noodklep zolang er geen mailprovider is ingesteld: jij zet handmatig een
+// nieuw wachtwoord en geeft dat door. Ook bruikbaar als een klant vastloopt.
+async function handleKlantAdminWachtwoord(request, env) {
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const email = String(body.email || "").trim().toLowerCase();
+  const pass = String(body.pass || "");
+
+  if (!klantEmailOk(email)) return json({ ok: false, error: "Ongeldig e-mailadres." }, 400);
+  const probleem = klantWachtwoordProbleem(pass, email);
+  if (probleem) return json({ ok: false, error: probleem }, 400);
+
+  try {
+    const rec = await klantZoek(env, email);
+    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
+    await klantPatch(env, rec.id, {
+      PassHash: await hashPassword(pass, env),
+      ResetToken: "",
+      ResetVerloopt: null
+    });
+    return json({ ok: true });
+  } catch (e) {
+    return json({ ok: false, error: "Wijzigen mislukt." }, 500);
+  }
+}
+__name(handleKlantAdminWachtwoord, "handleKlantAdminWachtwoord");
+
+// ── POST /klant/saldo-muteer  { delta, reden }  (ingelogd) ──────────
+// Boekt tokens af of bij op het account. De Worker is hier de baas, niet de
+// client: delta wordt begrensd en het saldo kan nooit onder nul zakken.
+async function handleKlantSaldoMuteer(request, env) {
+  const p = await klantAuth(request, env);
+  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "klant-saldo", ip, { limit: 120, windowMs: 6e4 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const delta = Math.round(Number(body.delta) || 0);
+
+  // Bijboeken mag hier NIET — dat kan alleen via een geldige activatiecode.
+  // Anders kan een klant met zijn eigen token gratis tokens bijschrijven.
+  if (!(delta < 0)) return json({ ok: false, error: "Alleen afboeken toegestaan." }, 400);
+  if (delta < -500) return json({ ok: false, error: "Mutatie te groot." }, 400);
+
+  try {
+    const rec = await klantZoek(env, p.u);
+    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
+    const huidig = Number((rec.fields || {}).Saldo || 0);
+    if (huidig + delta < 0)
+      return json({ ok: false, error: "Onvoldoende tokens.", saldo: huidig }, 402);
+    const nieuw = huidig + delta;
+    await klantPatch(env, rec.id, { Saldo: nieuw });
+    return json({ ok: true, saldo: nieuw });
+  } catch (e) {
+    return json({ ok: false, error: "Mutatie mislukt." }, 500);
+  }
+}
+__name(handleKlantSaldoMuteer, "handleKlantSaldoMuteer");
+
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1597,6 +2183,24 @@ var worker_default = {
         return lockOrigin(request, await handleCodeCreate(request, env));
       if (url.pathname === "/code/resolve" && request.method === "POST")
         return lockOrigin(request, await handleCodeResolve(request, env));
+      if (url.pathname === "/klant/registreer" && request.method === "POST")
+        return lockOrigin(request, await handleKlantRegistreer(request, env));
+      if (url.pathname === "/klant/login" && request.method === "POST")
+        return lockOrigin(request, await handleKlantLogin(request, env, ctx));
+      if (url.pathname === "/klant/mij" && request.method === "GET")
+        return lockOrigin(request, await handleKlantMij(request, env));
+      if (url.pathname === "/klant/wachtwoord" && request.method === "POST")
+        return lockOrigin(request, await handleKlantWachtwoord(request, env));
+      if (url.pathname === "/klant/reset-aanvraag" && request.method === "POST")
+        return lockOrigin(request, await handleKlantResetAanvraag(request, env));
+      if (url.pathname === "/klant/reset-uitvoeren" && request.method === "POST")
+        return lockOrigin(request, await handleKlantResetUitvoeren(request, env));
+      if (url.pathname === "/klant/admin-wachtwoord" && request.method === "POST")
+        return lockOrigin(request, await handleKlantAdminWachtwoord(request, env));
+      if (url.pathname === "/klant/saldo-muteer" && request.method === "POST")
+        return lockOrigin(request, await handleKlantSaldoMuteer(request, env));
+      if (url.pathname === "/credits/redeem" && request.method === "POST")
+        return lockOrigin(request, await handleCreditsRedeem(request, env));
       if (url.pathname === "/proxy" && request.method === "GET")
         return await handleProxy(request, env);
       if (url.pathname === "/api/config") {
