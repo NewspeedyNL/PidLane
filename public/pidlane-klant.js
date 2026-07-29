@@ -66,8 +66,9 @@
     const h = { 'Content-Type': 'application/json' };
     if (metToken && _tok()) h['X-App-Token'] = _tok();
     const r = await fetch(b + pad, { method: 'POST', headers: h, body: JSON.stringify(body || {}) });
-    let d = {}; try { d = await r.json(); } catch (e) {}
-    return { status: r.status, ok: r.ok && d && d.ok !== false, data: d || {} };
+    const ruw = await r.text();
+    let d = {}; try { d = JSON.parse(ruw); } catch (e) {}
+    return { status: r.status, ok: r.ok && d && d.ok !== false, data: d || {}, ruw: ruw };
   }
 
   async function klantLogin(email, pass) {
@@ -181,7 +182,11 @@
       const r = await klantRegistreer(email, p1, naam);
       if (!r.ok) {
         o.querySelector('#regGo').disabled = false;
-        return _zetMelding(err, 'err', r.data.error || 'Aanmaken mislukt.');
+        const uitleg = r.data.error ||
+          (r.ruw ? ('server gaf ' + r.status + ': ' + String(r.ruw).slice(0, 120))
+                 : ('server gaf ' + r.status));
+        _log('Registratie mislukt \u2014 ' + uitleg, 'err');
+        return _zetMelding(err, 'err', uitleg);
       }
       // Meteen inloggen met de sessie die de server teruggaf.
       _zetMelding(err, 'ok', 'Gelukt \u2014 je wordt ingelogd\u2026');
@@ -189,7 +194,9 @@
       _neemSessie(r.data, email);
     } catch (e) {
       o.querySelector('#regGo').disabled = false;
-      _zetMelding(err, 'err', 'Geen verbinding met de server.');
+      const m = 'Geen verbinding met de server (' + (e && e.message || 'onbekend') + ')';
+      _log('Registratie: ' + m, 'err');
+      _zetMelding(err, 'err', m);
     }
   }
 
