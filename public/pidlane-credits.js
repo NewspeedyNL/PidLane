@@ -519,7 +519,9 @@
           '<div id="plKoopMsg" style="font-size:11.5px;margin-top:9px;min-height:16px"></div>' +
           '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd,#2a3142);' +
             'font-size:11px;color:var(--tx3,#94a3b8);line-height:1.6">' +
-            'Nog geen code? Neem contact op via de PidLane-website. ' +
+            'Nog geen code? Vraag er een aan via ' +
+            '<a href="mailto:support@pidlane.nl?subject=Tokens%20voor%20PidLane" ' +
+            'style="color:var(--bl,#6366f1)">support@pidlane.nl</a>. ' +
             'Een code is eenmalig te gebruiken en werkt zonder account.</div>' +
         '</div>' +
         '<div class="ai-sheet-f">' +
