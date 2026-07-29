@@ -127,7 +127,25 @@
 
   // ── Vrijstellingen ───────────────────────────────────────────────────
   // Admin betaalt niet (die beheert de pot), demomodus ook niet.
+  //
+  // TESTMODUS — omdat een beheerder normaal niets van deze module ziet, is
+  // hij als beheerder ook niet te testen. Open de app daarom eenmalig met
+  // ?tokentest=1 erachter, bijvoorbeeld:
+  //     https://app.pidlane.nl/?tokentest=1
+  // Vanaf dat moment doet de app alsof je een gewone klant bent: bolletje,
+  // kostenvenster en afboeken werken allemaal. Dat blijft zo tot je het
+  // tabblad sluit. Uitzetten kan ook meteen met ?tokentest=0.
+  function _testModus() {
+    try {
+      const p = new URLSearchParams(location.search).get('tokentest');
+      if (p === '1') sessionStorage.setItem('pl_credits_test', '1');
+      if (p === '0') sessionStorage.removeItem('pl_credits_test');
+      return sessionStorage.getItem('pl_credits_test') === '1';
+    } catch (e) { return false; }
+  }
+
   function _vrijgesteld() {
+    if (_testModus()) return false;                  // testmodus wint
     try { if (typeof isAdmin === 'function' && isAdmin()) return true; } catch (e) {}
     try { if (window.demoMode === true) return true; } catch (e) {}
     return false;
