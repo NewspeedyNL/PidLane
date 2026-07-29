@@ -153,6 +153,65 @@
     </div>
   </div>
 
+  <!-- ── Klantaccounts (tokentegoed) ── -->
+  <div class="card">
+    <h2>👥 Klanten <span style="font-weight:400;color:var(--tx2);font-size:12px">— tokenaccounts</span></h2>
+    <div class="hint" style="margin-top:0;margin-bottom:10px">
+      Dit zijn de zelf-geregistreerde klanten met tokentegoed. Losstaand van
+      &ldquo;Gebruikers&rdquo; hierboven, dat zijn je eigen B2B-logins.
+    </div>
+    <div class="bar" style="margin-bottom:10px">
+      <input type="text" id="kZoek" placeholder="Zoek op e-mail of naam" style="flex:1;min-width:160px"
+             onkeydown="if(event.key==='Enter')loadKlanten()">
+      <button class="btn-sec btn-sm" onclick="loadKlanten()">Zoek</button>
+    </div>
+    <div id="kStats" class="hint"></div>
+    <div id="kLijst"></div>
+    <div id="kMsg" class="msg"></div>
+  </div>
+
+  <!-- ── Activatiecodes ── -->
+  <div class="card">
+    <h2>🎟️ Activatiecodes</h2>
+    <div class="hint" style="margin-top:0;margin-bottom:10px">
+      Codes komen direct in Airtable te staan en zijn meteen geldig.
+      <b>Genereer ze pas als je ze gaat verkopen</b> — een openstaande code is
+      geld dat iemand kan verzilveren.
+    </div>
+
+    <div class="grid2">
+      <div>
+        <label for="cAantal">Aantal codes</label>
+        <input type="text" id="cAantal" value="10" inputmode="numeric">
+      </div>
+      <div>
+        <label for="cCredits">Tokens per code</label>
+        <input type="text" id="cCredits" value="100" inputmode="numeric">
+      </div>
+      <div>
+        <label for="cPrijs">Verkoopprijs (&euro;, optioneel)</label>
+        <input type="text" id="cPrijs" placeholder="4.99" inputmode="decimal">
+      </div>
+      <div>
+        <label for="cBatch">Batchnaam</label>
+        <input type="text" id="cBatch" placeholder="2026-08-tikkie">
+      </div>
+    </div>
+    <div class="bar">
+      <button class="btn-pri" onclick="genCodes()">Genereer codes</button>
+      <button class="btn-sec" onclick="loadCodes()">↻ Herladen</button>
+      <select id="cFilter" onchange="loadCodes()" style="width:auto">
+        <option value="open">Alleen open</option>
+        <option value="gebruikt">Alleen gebruikt</option>
+        <option value="alle">Alles</option>
+      </select>
+    </div>
+    <div id="cNieuw" class="hidden" style="margin-top:12px"></div>
+    <div id="cStats" class="hint"></div>
+    <div id="cLijst"></div>
+    <div id="cMsg" class="msg"></div>
+  </div>
+
   <!-- Feature toggles -->
   <div class="card">
     <h2>🚪 Deuren aan/uit</h2>
@@ -370,6 +429,8 @@ function enter(){
   checkStatus();
   loadConfig();
   loadUsers();
+  loadKlanten();
+  loadCodes();
 }
 
 function logout(){
@@ -400,6 +461,185 @@ async function checkStatus(){
     const p=document.getElementById(i.id);
     try{ await i.run(); p.textContent='✓ OK'; p.className='pill p-user'; }
     catch(e){ p.textContent='✗ fout'; p.className='pill p-off'; p.title=(e.diag&&e.diag.title)||e.message; }
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   👥 KLANTACCOUNTS (tokentegoed)
+   ════════════════════════════════════════════════════════════════ */
+function dt(s){
+  if(!s) return '—';
+  try{ return new Date(s).toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+  catch(e){ return '—'; }
+}
+
+async function loadKlanten(){
+  const box=document.getElementById('kLijst'), msg=document.getElementById('kMsg');
+  const q=(document.getElementById('kZoek').value||'').trim();
+  box.innerHTML='<div class="hint">Laden…</div>'; msg.textContent='';
+  try{
+    const { data } = await callWorker('users','/admin/klanten'+(q?'?q='+encodeURIComponent(q):''),
+      { headers:{'X-Admin-Token':TOKEN} });
+    const lijst=data.klanten||[];
+    document.getElementById('kStats').textContent =
+      lijst.length ? `${data.stats.aantal} klanten · ${data.stats.totaalSaldo} tokens in omloop` : '';
+    if(!lijst.length){ box.innerHTML='<div class="hint">Nog geen klanten geregistreerd.</div>'; return; }
+    box.innerHTML=lijst.map(k=>{
+      const pil = k.status==='actief' ? 'p-user' : k.status==='geblokkeerd' ? 'p-off' : 'p-demo';
+      return `<div class="row" style="align-items:flex-start">
+        <div style="min-width:0;flex:1">
+          <div class="lbl" style="word-break:break-all">${esc(k.email)}
+            <span class="pill ${pil}">${esc(k.status)}</span>
+            ${k.heeftReset?'<span class="pill p-lock">herstel open</span>':''}</div>
+          <div class="desc">
+            ⚡ <b style="color:var(--tx)">${k.saldo}</b> tokens · ooit gekocht ${k.totaal}
+            ${k.naam?' · '+esc(k.naam):''}<br>
+            aangemeld ${dt(k.aangemaakt)} · laatst ingelogd ${dt(k.laatsteLogin)}
+          </div>
+          <div class="bar" style="margin-top:6px">
+            <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo</button>
+            <button class="btn-sec btn-sm" onclick="kStatus('${k.id}','${k.status}')">Status</button>
+            <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
+            <button class="btn-del" onclick="kVerwijder('${k.id}','${esc(k.email)}')">Verwijder</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML='';
+    if(e.diag) show(msg,e.diag.kind,e.diag.title,e.diag.detail);
+    else show(msg,'err','❌ '+e.message);
+  }
+}
+
+async function kPost(body, gelukt){
+  const msg=document.getElementById('kMsg');
+  try{
+    await callWorker('users','/admin/klanten',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},
+      body:JSON.stringify(body)
+    });
+    show(msg,'ok','✓ '+gelukt);
+    loadKlanten();
+  }catch(e){
+    if(e.diag) show(msg,e.diag.kind,e.diag.title,e.diag.detail);
+    else show(msg,'err','❌ '+e.message);
+  }
+}
+
+function kSaldo(id, huidig){
+  const v=prompt('Nieuw tokensaldo voor deze klant:', huidig);
+  if(v===null) return;
+  const n=parseInt(v,10);
+  if(!isFinite(n)||n<0){ alert('Vul een getal van 0 of hoger in.'); return; }
+  kPost({actie:'update',id,saldo:n},`Saldo op ${n} gezet.`);
+}
+
+function kStatus(id, huidig){
+  const v=prompt('Status — typ: actief, geblokkeerd of ongeverifieerd', huidig);
+  if(v===null) return;
+  const s=v.trim().toLowerCase();
+  if(!['actief','geblokkeerd','ongeverifieerd'].includes(s)){ alert('Onbekende status.'); return; }
+  kPost({actie:'update',id,status:s},`Status is nu ${s}.`);
+}
+
+function kWachtwoord(id, email){
+  const v=prompt('Nieuw wachtwoord voor '+email+'\n(minimaal 10 tekens — geef het daarna zelf door)');
+  if(v===null) return;
+  if(v.length<10){ alert('Minimaal 10 tekens.'); return; }
+  kPost({actie:'wachtwoord',id,pass:v},'Wachtwoord aangepast. Geef het door aan de klant.');
+}
+
+function kVerwijder(id, email){
+  if(!confirm('Klant '+email+' definitief verwijderen?\n\nHet tokensaldo verdwijnt hiermee ook. Dit kan niet ongedaan worden gemaakt.')) return;
+  kPost({actie:'verwijder',id},'Klant verwijderd.');
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🎟️ ACTIVATIECODES
+   ════════════════════════════════════════════════════════════════ */
+async function loadCodes(){
+  const box=document.getElementById('cLijst'), msg=document.getElementById('cMsg');
+  const f=document.getElementById('cFilter').value;
+  box.innerHTML='<div class="hint">Laden…</div>'; msg.textContent='';
+  try{
+    const { data } = await callWorker('users','/admin/codes?status='+encodeURIComponent(f),
+      { headers:{'X-Admin-Token':TOKEN} });
+    const s=data.stats||{};
+    document.getElementById('cStats').textContent =
+      `${s.totaal||0} codes in beeld · ${s.open||0} open (${s.openCredits||0} tokens uitstaand) · ` +
+      `${s.gebruikt||0} gebruikt` + (s.omzet ? ` · €${s.omzet.toFixed(2)} verzilverd` : '');
+    const lijst=data.codes||[];
+    if(!lijst.length){ box.innerHTML='<div class="hint">Geen codes in deze selectie.</div>'; return; }
+    box.innerHTML=lijst.map(c=>`
+      <div class="row" style="align-items:flex-start">
+        <div style="min-width:0;flex:1">
+          <div class="lbl"><code style="font-size:13px">${esc(c.code)}</code>
+            <span class="pill ${c.gebruikt?'p-off':'p-user'}">${c.gebruikt?'gebruikt':'open'}</span></div>
+          <div class="desc">
+            ⚡ ${c.credits} tokens${c.waarde?` · €${c.waarde.toFixed(2)}`:''}${c.batch?` · ${esc(c.batch)}`:''}
+            ${c.vervalt?` · vervalt ${esc(c.vervalt)}`:''}
+            ${c.gebruikt?`<br>ingewisseld ${dt(c.gebruiktOp)} door ${esc(c.gebruiktDoor||'anoniem')}`:''}
+          </div>
+        </div>
+        ${c.gebruikt?'':`<button class="btn-del" onclick="cVerwijder('${c.id}','${esc(c.code)}')">Intrekken</button>`}
+      </div>`).join('');
+  }catch(e){
+    box.innerHTML='';
+    if(e.diag) show(msg,e.diag.kind,e.diag.title,e.diag.detail);
+    else show(msg,'err','❌ '+e.message);
+  }
+}
+
+async function genCodes(){
+  const msg=document.getElementById('cMsg'), out=document.getElementById('cNieuw');
+  const aantal=parseInt(document.getElementById('cAantal').value,10);
+  const credits=parseInt(document.getElementById('cCredits').value,10);
+  const prijs=parseFloat((document.getElementById('cPrijs').value||'0').replace(',','.'))||0;
+  const batch=(document.getElementById('cBatch').value||'').trim();
+
+  if(!isFinite(aantal)||aantal<1||aantal>200){ show(msg,'warn','Aantal moet tussen 1 en 200 liggen.'); return; }
+  if(!isFinite(credits)||credits<1){ show(msg,'warn','Vul in hoeveel tokens één code oplevert.'); return; }
+  if(!confirm(`${aantal} codes van ${credits} tokens aanmaken?\n\nZe zijn daarna direct geldig en inwisselbaar.`)) return;
+
+  show(msg,'ok','Aanmaken…');
+  out.classList.add('hidden');
+  try{
+    const { data } = await callWorker('users','/admin/codes',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},
+      body:JSON.stringify({actie:'genereer',aantal,credits,prijs,batch})
+    });
+    const lijst=data.codes||[];
+    out.classList.remove('hidden');
+    out.innerHTML=
+      `<label>${lijst.length} nieuwe codes — kopieer en bewaar ze veilig</label>`+
+      `<textarea readonly style="min-height:120px" onclick="this.select()">${esc(lijst.join('\n'))}</textarea>`+
+      `<div class="hint">Tik in het vak om alles te selecteren. Deze lijst staat ook in Airtable, `+
+      `dus kwijtraken is niet erg — maar deel hem met niemand.</div>`;
+    show(msg,'ok',`✓ ${lijst.length} codes aangemaakt in batch "${data.batch}".`);
+    loadCodes();
+  }catch(e){
+    if(e.diag) show(msg,e.diag.kind,e.diag.title,e.diag.detail);
+    else show(msg,'err','❌ '+e.message);
+  }
+}
+
+async function cVerwijder(id, code){
+  if(!confirm('Code '+code+' intrekken?\n\nHij is daarna niet meer inwisselbaar. Heb je hem al verkocht, dan kan de koper er niets meer mee.')) return;
+  const msg=document.getElementById('cMsg');
+  try{
+    await callWorker('users','/admin/codes',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},
+      body:JSON.stringify({actie:'verwijder',id})
+    });
+    show(msg,'ok','✓ Code ingetrokken.');
+    loadCodes();
+  }catch(e){
+    if(e.diag) show(msg,e.diag.kind,e.diag.title,e.diag.detail);
+    else show(msg,'err','❌ '+e.message);
   }
 }
 
