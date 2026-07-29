@@ -92,8 +92,49 @@
   // Geheugen-fallback als localStorage geblokkeerd is (privémodus/webview).
   let _memSaldo = null;
 
+  // Saldo van de server (tabel Klanten). Zodra dit gevuld is, is dít de
+  // waarheid en dient localStorage alleen nog als cache voor een snelle
+  // eerste weergave. Zo raakt een klant zijn tokens niet kwijt bij het
+  // wissen van browsergegevens of bij inloggen op een tweede apparaat.
+  let _serverSaldo = null;
+
+  function zetServerSaldo(n) {
+    const v = Number(n);
+    if (n === null || n === undefined || !isFinite(v)) return;
+    _serverSaldo = Math.max(0, Math.round(v));
+    _memSaldo = _serverSaldo;
+    _lsSet(CFG.lsSaldo, String(_serverSaldo));
+    _chipVerversen();
+  }
+
+  function _proxy() {
+    try {
+      if (typeof PROXY_URL !== 'undefined' && PROXY_URL) return String(PROXY_URL).replace(/\/$/, '');
+    } catch (e) {}
+    return '';
+  }
+
+  // Afboeken op de server. Bijboeken kan hier bewust NIET — dat kan alleen
+  // via een geldige activatiecode, anders is gratis tegoed bijschrijven een
+  // kwestie van één verzoek met je eigen token.
+  async function _boekServer(credits) {
+    const b = _proxy(), t = (window.APP_TOKEN || '');
+    if (!b || !t) return false;
+    try {
+      const r = await fetch(b + '/klant/saldo-muteer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-App-Token': t },
+        body: JSON.stringify({ delta: -Math.abs(credits), reden: 'analyse' })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d && typeof d.saldo === 'number') zetServerSaldo(d.saldo);
+      return !!(r.ok && d && d.ok);
+    } catch (e) { return false; }
+  }
+
   // ── Saldo ────────────────────────────────────────────────────────────
   function saldo() {
+    if (_serverSaldo !== null) return _serverSaldo;
     if (_memSaldo !== null) return _memSaldo;
     const raw = _lsGet(CFG.lsSaldo);
     if (raw === null || raw === '') {
@@ -144,9 +185,20 @@
     } catch (e) { return false; }
   }
 
+  // Is de ingelogde gebruiker een zelf-geregistreerde klant? Die betaalt met
+  // tokens. Accounts uit de tabel Users zijn zakelijk (abonnement) en dus vrij.
+  function _isKlant() {
+    try {
+      const u = window.currentUser;
+      return !!(u && String(u.role || '').toLowerCase() === 'klant');
+    } catch (e) { return false; }
+  }
+
   function _vrijgesteld() {
     if (_testModus()) return false;                  // testmodus wint
-    try { if (typeof isAdmin === 'function' && isAdmin()) return true; } catch (e) {}
+    if (_isKlant()) return false;                    // klant betaalt met tokens
+    // Elk ander ingelogd account komt uit de tabel Users → abonnement, vrij.
+    try { if (window.currentUser) return true; } catch (e) {}
     try { if (window.demoMode === true) return true; } catch (e) {}
     return false;
   }
@@ -367,7 +419,12 @@
         c.style.cssText = 'position:fixed;' + CFG.chipPositie + ';z-index:9400;background:var(--sur2,#1a1f2e);' +
           'border:1px solid var(--bd,#2a3142);color:var(--tx2,#cbd5e1);font:700 10px/1 var(--f,sans-serif);' +
           'padding:6px 9px;border-radius:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)';
-        c.onclick = openVerzilver;
+        c.onclick = function () {
+          try {
+            if (window.PLKlant && PLKlant.isKlant && PLKlant.isKlant()) { PLKlant.openMijnTokens(); return; }
+          } catch (e) {}
+          openVerzilver();
+        };
         document.body.appendChild(c);
       }
       const s = saldo();
@@ -561,16 +618,21 @@
     }
     try {
       const basis = (typeof PROXY_URL !== 'undefined' && PROXY_URL) ? PROXY_URL : '';
+      const kop = { 'Content-Type': 'application/json' };
+      try { if (window.APP_TOKEN) kop['X-App-Token'] = window.APP_TOKEN; } catch (e) {}
       const resp = await fetch(basis + CFG.verzilverPad, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: kop,
         body: JSON.stringify({ code: code })
       });
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok || !d.ok) {
         return { ok: false, bericht: d.error || ('Code afgewezen (' + resp.status + ').') };
       }
-      bijboeken(d.credits || 0);
+      // Is het op een account bijgeboekt, dan geeft de server het nieuwe
+      // saldo terug — dat is dan leidend boven onze eigen optelling.
+      if (typeof d.saldo === 'number') zetServerSaldo(d.saldo);
+      else bijboeken(d.credits || 0);
       return { ok: true, bericht: _nl(d.credits) + ' tokens toegevoegd.', credits: d.credits };
     } catch (e) {
       return { ok: false, bericht: 'Geen verbinding \u2014 probeer het later opnieuw.' };
@@ -621,8 +683,19 @@
     try {
       if (!res || res.geboekt) return;
       res.geboekt = true;
-      afboeken(res.credits);
       _kalibreer(res.tekensIn, usage, res.maxTokens);
+
+      if (_serverSaldo !== null) {
+        // Meteen lokaal aftrekken zodat de teller direct klopt; het verzoek
+        // dat daarna terugkomt zet het definitieve getal van de server.
+        zetServerSaldo(Math.max(0, _serverSaldo - res.credits));
+        _boekServer(res.credits).then(function (ok) {
+          if (!ok) _log('Afboeken op de server mislukte — saldo kan afwijken', 'warn');
+        });
+      } else {
+        afboeken(res.credits);
+      }
+
       const s = saldo();
       if (s <= 5) _toast('\u26A1 Nog ' + s + ' tokens over');
       _log('Tegoed afgeboekt: -' + res.credits + ' (saldo ' + s + ')', 'info');
@@ -635,6 +708,9 @@
     bijboeken: bijboeken,
     afboeken: afboeken,
     zetSaldo: _setSaldo,
+    zetServerSaldo: zetServerSaldo,
+    serverModus: function () { return _serverSaldo !== null; },
+    isKlant: _isKlant,
     preflight: preflight,
     boek: boek,
     ontleed: ontleed,

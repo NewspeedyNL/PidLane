@@ -558,6 +558,17 @@
              uitloggen nu altijd de vraag of de volledige log bewaard moet
              worden (zie logout()). -->
         <div id="loginErr" style="font-size:12px;color:var(--rd);min-height:16px;text-align:center"></div>
+        <!-- Tweede deur: bezoekers kunnen zichzelf gratis registreren en
+             krijgen proeftegoed. Zakelijke logins gebruiken gewoon het
+             formulier hierboven. -->
+        <div style="text-align:center;margin-top:2px;line-height:2">
+          <a href="#" onclick="event.preventDefault();PLKlant.openRegistratie()"
+             style="font-size:12.5px;color:var(--bl);text-decoration:none;font-weight:700">
+            Nog geen account? Gratis aanmaken</a><br>
+          <a href="#" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()"
+             style="font-size:11.5px;color:var(--tx3,#7c8aa5);text-decoration:none">
+            Wachtwoord vergeten?</a>
+        </div>
       </div>
     </div>
     <div class="mact">
@@ -1196,6 +1207,7 @@ function closeConnOv(){
              waardoor de dagelijkse items (Rapporten, Bug melden, Tekstgrootte)
              ondersneeuwden. Ze staan nu gegroepeerd; de groep klapt open/dicht
              en onthoudt niets — hij start altijd dicht. -->
+        <button class="kebab-item" id="kbAccount" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account</button>
         <button class="kebab-item kebab-group" id="admGroupBtn" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
           <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
@@ -2294,7 +2306,8 @@ function closeConnOv(){
 <script src="pidlane-onderdeel.js"></script><!-- onderdeelaanwijzer: DTC + live data → component -->
 <script src="pidlane-verify.js"></script><!-- verificatie: focus-hertest (PLVerify) -->
 <script src="pidlane-monitor.js"></script><!-- rit-monitor Laag A (PLMon) — vereist ná caravan -->
-<script src="pidlane-credits.js"></script><!-- tegoed ("tokens") + kostenpreview vóór AI-calls (PLCredits) -->
+<script src="pidlane-credits.js"></script>
+<script src="pidlane-klant.js"></script><!-- klantaccounts: registreren, herstel, tokenscherm (PLKlant) --><!-- tegoed ("tokens") + kostenpreview vóór AI-calls (PLCredits) -->
 <script src="pidlane-watchers.js"></script><!-- rit-monitor Laag B (PLWatch) — vereist ná monitor -->
 
 <script>

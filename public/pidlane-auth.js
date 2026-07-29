@@ -101,6 +101,30 @@ async function doLogin(){
   const pass = document.getElementById('loginPass').value;
   const err  = document.getElementById('loginErr');
 
+  // ── STAP 0: klantaccount (zelf-geregistreerd, tabel Klanten) ────
+  // Alleen bij een e-mailadres. Zakelijke logins uit de tabel Users hebben
+  // een gebruikersnaam zonder @, dus die lopen hieronder exact dezelfde weg
+  // als voorheen — deze stap raakt ze niet. Klopt het wachtwoord niet, of is
+  // de server onbereikbaar, dan valt hij door naar de normale route.
+  if(user.includes('@') && window.PLKlant){
+    err.textContent = '…';
+    try{
+      const k = await PLKlant.login(user, pass);
+      if(k){
+        err.textContent = '';
+        PLKlant.neemSessie(k, user);
+        return;
+      }
+      err.textContent = '⚠ E-mailadres of wachtwoord onjuist';
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginPass').focus();
+      return;
+    }catch(e){
+      if(/geblokkeerd/i.test(e && e.message || '')){ err.textContent = '⚠ '+e.message; return; }
+      try{ log('Klantlogin niet gelukt ('+(e&&e.message||e)+') — normale route proberen','warn'); }catch(_){}
+    }
+  }
+
   // ── STAP 1: server-login (Worker) ──────────────────────────────
   // Dit is de normale weg. Alleen als de Worker onbereikbaar is vallen we
   // terug op de lokale USERS-tabel — die bevat uitsluitend het Demo-account.
