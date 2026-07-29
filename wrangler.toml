@@ -1,14 +1,33 @@
+# ═══════════════════════════════════════════════════════════════════════
+# wrangler.toml — Cloudflare Worker "pidlane-proxy"
+# ───────────────────────────────────────────────────────────────────────
+# Twee deploy-routes, allebei geldig:
+#   1. git push  → Cloudflare Workers Builds bouwt en deployt automatisch
+#   2. npm run deploy → lokaal via wrangler (nu je node op deze PC hebt)
+#
+# Ze bijten elkaar niet, maar draai ze niet door elkaar heen: een lokale
+# deploy overschrijft wat de laatste git-build heeft neergezet. Houd één
+# route aan als "de waarheid" — bij voorkeur git — en gebruik lokaal
+# wrangler vooral voor `dev`, `tail` en `secret put`.
+#
+# Zie SETUP-WRANGLER.md voor de commando's.
+# ═══════════════════════════════════════════════════════════════════════
+
 name = "pidlane-proxy"
 main = "worker.js"
 compatibility_date = "2026-07-24"
 
-# ── Statische app-bestanden (index.html, pidlane-*.js, pidlane.css, admin.html) ──
-# LET OP: ik gok hier op "./www/" omdat dat de webDir is die je Capacitor-config
-# al gebruikt (dezelfde bestanden die naar de APK gaan, gaan hier ook naartoe).
-# Klopt die map niet, pas "directory" aan naar waar index.html echt staat.
+# ── Statische app-bestanden ────────────────────────────────────────────
+# index.html, pidlane-*.js, pidlane.css, admin.html staan in ./public/.
 [assets]
 directory = "./public/"
 binding = "ASSETS"
+
+# LET OP — dit is de belangrijkste lijst in dit bestand.
+# Alles wat hier NIET in staat wordt rechtstreeks als bestand geserveerd en
+# raakt worker.js nooit. Voeg je een endpoint toe aan worker.js maar vergeet
+# je het hier, dan krijg je een 404 die eruitziet als een routingfout in de
+# Worker terwijl de Worker simpelweg niet is aangeroepen.
 run_worker_first = [
   "/auth/*",
   "/v1/*",
@@ -17,6 +36,8 @@ run_worker_first = [
   "/session/*",
   "/pair/*",
   "/code/*",
+  "/klant/*",      # klantaccounts: registreren, inloggen, saldo, wachtwoordherstel
+  "/credits/*",    # activatiecodes inwisselen
   "/proxy",
   "/api/*",
   "/admin/*",
@@ -24,49 +45,65 @@ run_worker_first = [
   "/version.json",
   "/health"
 ]
-# Alles wat hier niet in staat (/, /index.html, /pidlane-data.js, /admin.html, ...)
-# wordt rechtstreeks als bestand geserveerd, zonder worker.js te raken — dat is
-# hoe je weer bij de app komt op app.pidlane.nl.
 
-# ── R2-bucket voor de APK en version.json ──
-# Wordt in worker.js aangesproken als env.FILES (handleApkDownload, handleVersionJson).
-# De bucket zelf moet al bestaan (Dashboard → R2 → pidlane-files aanmaken, of
-# eenmalig via `wrangler r2 bucket create pidlane-files` als je ooit lokaal wrangler hebt).
+# ── R2-bucket voor de APK en version.json ──────────────────────────────
+# Aangesproken als env.FILES (handleApkDownload, handleVersionJson).
+# Bestaat de bucket nog niet: wrangler r2 bucket create pidlane-files
 [[r2_buckets]]
 binding = "FILES"
 bucket_name = "pidlane-files"
 
-# ── Durable Object voor remote-sessies (expert-koppeling, pairing, codes) ──
-# Wordt aangesproken als env.REMOTE_SESSION; class zit in hetzelfde worker.js-bestand.
+# ── Durable Object voor remote-sessies ─────────────────────────────────
+# Aangesproken als env.REMOTE_SESSION; de class zit in worker.js.
+# Wordt ook gebruikt door rateLimit() — zonder deze binding valt die terug
+# op geheugen per isolate, wat per instantie telt in plaats van globaal.
 [[durable_objects.bindings]]
 name = "REMOTE_SESSION"
 class_name = "RemoteSessionDO"
 
-# Declareert de class zelf en zijn opslagtype. Dit is de nieuwe manier (exports)
-# die de oudere [[migrations]]-array vervangt voor nieuwe Workers — en is precies
-# wat de "Durable Object exports reconciliation failed" / "provisioned_class_missing_from_config"-
-# fout vroeg: er stond al een geprovisioneerde namespace voor RemoteSessionDO
-# (waarschijnlijk aangemaakt door de vorige deploy-poging), maar zonder exports-
-# entry kan Cloudflare niet bevestigen dat die nog steeds bij deze code hoort.
 [exports.RemoteSessionDO]
 type = "durable-object"
 storage = "sqlite"
 
-# ── Optionele vars ──
-# Alles hieronder heeft al een werkende fallback in de code (zie DEFAULTS en de
-# losse Number()-checks in worker.js). Alleen invullen als je een waarde wil
-# overschrijven — anders gewoon weglaten.
-# [vars]
-# ALLOW_LEGACY_APP_TOKEN = "false"
-# TOKEN_TTL_HOURS = "12"
-# PBKDF2_ITERS = "120000"
+# ── Logs ───────────────────────────────────────────────────────────────
+# Zet Workers Logs aan, zodat je fouten in de nieuwe klant-endpoints kunt
+# terugzien in het dashboard en met `npm run tail` live kunt meekijken.
+[observability]
+enabled = true
+head_sampling_rate = 1
 
-# ── Wat hier NIET in staat, met opzet ──
-# - Secrets (AIRTABLE_TOKEN, ADMIN_TOKEN, SESSION_SECRET, USERS_JSON,
-#   ANTHROPIC_API_KEY, evt. APP_TOKEN): die horen nooit in dit bestand. Zet ze
-#   via Dashboard → Worker → Settings → Variables and Secrets → toevoegen als
-#   "Secret" (niet als gewone var). Bij een git-gekoppelde Workers Build kan dat
-#   niet via de CLI vanaf je werklaptop, dus dit moet via het dashboard.
-# - Het custom domain app.pidlane.nl: dat regel je apart via Dashboard → Worker
-#   → Settings → Domains & Routes. Niet hier toevoegen als route/pattern, anders
-#   loop je het risico dat het botst met de koppeling die er al staat.
+# ── Vars (geen geheimen) ───────────────────────────────────────────────
+# Alles hieronder heeft een werkende fallback in worker.js. Alleen invullen
+# als je de standaard wilt overschrijven.
+#
+# [vars]
+# ALLOW_LEGACY_APP_TOKEN = "false"   # oude APP_TOKEN accepteren — laat uit
+# TOKEN_TTL_HOURS        = "12"      # geldigheid sessietoken
+# PBKDF2_ITERS           = "210000"  # ~47 ms per login; hoger = trager kraken
+# KLANT_START_SALDO      = "0"       # gratis tokens bij registratie
+# APP_BASE_URL           = "https://app.pidlane.nl"   # basis voor de herstellink
+# MAIL_API_URL           = "https://api.resend.com/emails"  # andere mailprovider
+
+# ── Secrets — NOOIT in dit bestand ─────────────────────────────────────
+# Zet ze met `wrangler secret put NAAM` of via het dashboard onder
+# Settings → Variables and Secrets → type "Secret".
+#
+#   BESTAAND
+#     AIRTABLE_TOKEN      lees/schrijf op de Airtable-bases
+#     ADMIN_TOKEN         beheerderstoegang (admin.html, noodklep klantwachtwoord)
+#     SESSION_SECRET      ondertekent alle sessietokens
+#     USERS_JSON          nood-admin buiten Airtable om
+#     ANTHROPIC_API_KEY   AI-calls via de AI Gateway
+#
+#   NIEUW — nodig voor wachtwoordherstel per mail
+#     MAIL_API_KEY        sleutel van je mailprovider (bv. Resend)
+#     MAIL_FROM           afzender, bv. noreply@pidlane.nl
+#
+# Zonder MAIL_API_KEY en MAIL_FROM antwoordt /klant/reset-aanvraag met
+# "mail_not_configured". Registreren en inloggen werken dan gewoon; alleen
+# wachtwoord-vergeten loopt dan via /klant/admin-wachtwoord.
+
+# ── Custom domain ──────────────────────────────────────────────────────
+# app.pidlane.nl hangt via Dashboard → Worker → Settings → Domains & Routes
+# aan deze Worker. Bewust NIET als route hier: dat botst met de bestaande
+# koppeling en kan het domein tijdelijk offline halen.
