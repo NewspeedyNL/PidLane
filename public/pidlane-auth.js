@@ -269,6 +269,11 @@ function finishLogin(user, account){
     }
   }catch(e){}
 
+  // Menu op de rol zetten: het adminitem hoort alleen bij een beheerder te
+  // staan. Hier, want dit is het enige punt waar zowel een verse login als
+  // het herstel van een onthouden sessie langskomt.
+  try{ if(window.PLKlant && PLKlant.pasMenuAan) PLKlant.pasMenuAan(); }catch(e){}
+
   // Proxy-modus: test de AI-keten via de proxy (sleutel staat server-side)
   testApiKey();
 }
