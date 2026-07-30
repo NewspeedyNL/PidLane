@@ -79,7 +79,7 @@ head_sampling_rate = 1
 # [vars]
 # ALLOW_LEGACY_APP_TOKEN = "false"   # oude APP_TOKEN accepteren — laat uit
 # TOKEN_TTL_HOURS        = "12"      # geldigheid sessietoken
-# PBKDF2_ITERS           = "210000"  # ~47 ms per login; hoger = trager kraken
+# PBKDF2_ITERS           = "100000"  # LET OP: Workers staat niet meer dan 100000 toe
 # KLANT_START_SALDO      = "20"      # gratis proeftegoed bij registratie (= €1 bij €0,05/token)
 # APP_BASE_URL           = "https://app.pidlane.nl"   # basis voor de herstellink
 # MAIL_API_URL           = "https://api.resend.com/emails"  # andere mailprovider

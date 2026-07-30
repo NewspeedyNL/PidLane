@@ -92,7 +92,12 @@ async function sha256hex(s) {
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 __name(sha256hex, "sha256hex");
-var PBKDF2_ITERS_DEFAULT = 12e4;
+// LET OP — Cloudflare Workers ondersteunt maximaal 100.000 PBKDF2-iteraties.
+// Vraag je meer, dan gooit crypto.subtle een fout ("iteration counts above
+// 100000 are not supported") en mislukt élke wachtwoord-hash. Dit is de
+// platformgrens, niet iets wat je kunt verhogen.
+var PBKDF2_MAX = 1e5;
+var PBKDF2_ITERS_DEFAULT = 1e5;
 function bytesToHex(b) {
   return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
@@ -106,7 +111,10 @@ function hexToBytes(h) {
 __name(hexToBytes, "hexToBytes");
 function pbkdf2Iters(env) {
   const n = Number(env && env.PBKDF2_ITERS);
-  return Number.isFinite(n) && n >= 5e4 && n <= 6e5 ? Math.floor(n) : PBKDF2_ITERS_DEFAULT;
+  const gewenst = Number.isFinite(n) && n >= 5e4 ? Math.floor(n) : PBKDF2_ITERS_DEFAULT;
+  // Begrenzen in plaats van weigeren: een te hoge instelling in de omgeving
+  // mag nooit betekenen dat niemand meer kan inloggen of registreren.
+  return Math.min(gewenst, PBKDF2_MAX);
 }
 __name(pbkdf2Iters, "pbkdf2Iters");
 async function pbkdf2Hex(pass, saltBytes, iters) {
@@ -138,6 +146,9 @@ async function verifyPassword(pass, stored) {
   const p = s.split("$");
   if (p.length === 4 && p[0] === "pbkdf2_sha256") {
     const iters = Number(p[1]);
+    // Bij verifiëren de oude bovengrens aanhouden: hashes die elders met meer
+    // iteraties zijn gemaakt moeten leesbaar blijven. Alleen bij het máken
+    // van een nieuwe hash geldt de Workers-limiet van 100.000.
     if (!Number.isFinite(iters) || iters < 1e3 || iters > 1e6)
       return { ok: false, legacy: false };
     const hex = await pbkdf2Hex(pass, hexToBytes(p[2]), iters);
