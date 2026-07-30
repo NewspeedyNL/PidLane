@@ -1983,9 +1983,13 @@ async function handleKlantResetAanvraag(request, env) {
   try { body = await request.json(); } catch (e) {}
   const email = String(body.email || "").trim().toLowerCase();
 
+  // Per adres bewust streng: anders is dit endpoint een manier om iemands
+  // mailbox vol te gooien. Tijdens testen kun je het tijdelijk verhogen met
+  // de Worker-variabele RL_RESET.
+  const rlReset = Math.max(1, Number(env.RL_RESET || 3));
   const [rlA, rlI] = await Promise.all([
-    rateLimit(env, "klant-reset-acct", email || "leeg", { limit: 3, windowMs: 36e5 }, true),
-    rateLimit(env, "klant-reset-ip", ip, { limit: 10, windowMs: 36e5 }, true)
+    rateLimit(env, "klant-reset-acct", email || "leeg", { limit: rlReset, windowMs: 36e5 }, true),
+    rateLimit(env, "klant-reset-ip", ip, { limit: Math.max(10, rlReset * 4), windowMs: 36e5 }, true)
   ]);
   if (rlA.limited) return rateLimitResponse(rlA);
   if (rlI.limited) return rateLimitResponse(rlI);
@@ -2012,7 +2016,13 @@ async function handleKlantResetAanvraag(request, env) {
     const basis = String(env.APP_BASE_URL || "https://app.pidlane.nl").replace(/\/+$/, "");
     const link = `${basis}/?herstel=${token}`;
     const verstuurd = await klantMailVersturen(env, email, link);
-    if (!verstuurd) return json({ ok: false, error: "mail_send_failed" }, 502);
+    if (!verstuurd.ok) {
+      return json({
+        ok: false,
+        error: "Versturen van de herstelmail mislukte.",
+        detail: "mailprovider " + verstuurd.status + ": " + (verstuurd.detail || "geen toelichting")
+      }, 502);
+    }
     return algemeen;
   } catch (e) {
     return algemeen;
@@ -2044,9 +2054,17 @@ async function klantMailVersturen(env, email, link) {
           "wachtwoord blijft gewoon geldig.\n"
       })
     });
-    return r.ok;
+    if (r.ok) return { ok: true };
+    // De reden meenemen. Typische oorzaken: afzenderdomein niet geverifieerd,
+    // sleutel zonder verzendrecht, of een adres dat de provider weigert.
+    // Zonder deze tekst is een mislukte mail niet te diagnosticeren.
+    const tekst = await r.text().catch(() => "");
+    try { console.error("[klant] mail " + r.status + " :: " + tekst.slice(0, 300)); } catch (_) {}
+    return { ok: false, status: r.status, detail: tekst.slice(0, 250) };
   } catch (e) {
-    return false;
+    const det = String(e && e.message || e);
+    try { console.error("[klant] mail netwerkfout :: " + det); } catch (_) {}
+    return { ok: false, status: 0, detail: det };
   }
 }
 __name(klantMailVersturen, "klantMailVersturen");
