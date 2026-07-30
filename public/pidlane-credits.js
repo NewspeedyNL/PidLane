@@ -114,23 +114,13 @@
     return '';
   }
 
-  // Afboeken op de server. Bijboeken kan hier bewust NIET — dat kan alleen
-  // via een geldige activatiecode, anders is gratis tegoed bijschrijven een
-  // kwestie van één verzoek met je eigen token.
-  async function _boekServer(credits) {
-    const b = _proxy(), t = (window.APP_TOKEN || '');
-    if (!b || !t) return false;
-    try {
-      const r = await fetch(b + '/klant/saldo-muteer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-App-Token': t },
-        body: JSON.stringify({ delta: -Math.abs(credits), reden: 'analyse' })
-      });
-      const d = await r.json().catch(() => ({}));
-      if (d && typeof d.saldo === 'number') zetServerSaldo(d.saldo);
-      return !!(r.ok && d && d.ok);
-    } catch (e) { return false; }
-  }
+  // 31-07-2026 — _boekServer() is hier weg. Die riep /klant/saldo-muteer aan om
+  // het verbruik af te boeken, maar afrekenen vanuit de app is een verzoek en
+  // geen controle: wie dat verzoek blokkeert of localStorage wist, gebruikt de
+  // AI gratis. De Worker boekt nu zelf af in handleMessages, op het echte
+  // verbruik uit usage. Deze module doet nog twee dingen — het kostenvenster
+  // vooraf tonen en de teller in beeld bijwerken — en raakt het saldo op de
+  // server niet meer aan. Zou hij dat wél doen, dan betaalt de klant dubbel.
 
   // ── Saldo ────────────────────────────────────────────────────────────
   function saldo() {
@@ -242,6 +232,16 @@
   function _credits(inTok, uitTok) {
     const c = (inTok / 1000) * CFG.creditPer1kIn + (uitTok / 1000) * CFG.creditPer1kOut;
     return Math.max(CFG.minCredits, Math.ceil(c));
+  }
+
+  // Kosten op basis van het ECHTE verbruik uit de API-respons in plaats van de
+  // schatting vooraf. Geeft 0 terug als usage ontbreekt, zodat de aanroeper kan
+  // terugvallen op de schatting.
+  function _kostenUitUsage(usage) {
+    const inTok = Number(usage && usage.input_tokens) || 0;
+    const uitTok = Number(usage && usage.output_tokens) || 0;
+    if (!inTok && !uitTok) return 0;
+    return _credits(inTok, uitTok);
   }
 
   // ── Payload ontleden ─────────────────────────────────────────────────
@@ -685,20 +685,26 @@
       res.geboekt = true;
       _kalibreer(res.tekensIn, usage, res.maxTokens);
 
-      if (_serverSaldo !== null) {
-        // Meteen lokaal aftrekken zodat de teller direct klopt; het verzoek
-        // dat daarna terugkomt zet het definitieve getal van de server.
-        zetServerSaldo(Math.max(0, _serverSaldo - res.credits));
-        _boekServer(res.credits).then(function (ok) {
-          if (!ok) _log('Afboeken op de server mislukte — saldo kan afwijken', 'warn');
-        });
+      // Wat het écht kostte. De Worker rekent met exact dezelfde formule
+      // (tegoedKosten in worker.js), dus dit getal komt overeen met wat er
+      // daar van het saldo af gaat. Ontbreekt usage — bijvoorbeeld omdat de
+      // respons anders was dan verwacht — dan valt hij terug op de schatting
+      // uit het kostenvenster.
+      const kosten = _kostenUitUsage(usage) || res.credits;
+
+      if (_isKlant()) {
+        // De Worker heeft al afgeboekt. Hier alleen de teller bijwerken, nooit
+        // een verzoek sturen: dat zou dubbel tellen. Het definitieve getal komt
+        // bij de volgende verversSaldo() of uit de X-PidLane-Saldo-header.
+        if (_serverSaldo !== null) zetServerSaldo(Math.max(0, _serverSaldo - kosten));
+        else afboeken(kosten);
       } else {
-        afboeken(res.credits);
+        afboeken(kosten);
       }
 
       const s = saldo();
       if (s <= 5) _toast('\u26A1 Nog ' + s + ' tokens over');
-      _log('Tegoed afgeboekt: -' + res.credits + ' (saldo ' + s + ')', 'info');
+      _log('Tegoed afgeboekt: -' + kosten + ' (saldo ' + s + ')', 'info');
     } catch (e) {}
   }
 

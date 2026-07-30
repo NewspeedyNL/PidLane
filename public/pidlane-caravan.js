@@ -238,9 +238,21 @@ function _carAlert(key,msg,level,cooldownMs){
   caravanCoach.push({ t:now, msg, level, key });
   if(caravanCoach.length>60) caravanCoach.splice(0,caravanCoach.length-60);
   _carRenderCoach();
-  // veiligheidswaarschuwing → OS-notificatie (buzz), gewone tip → korte toast.
-  // fireAlert valt zelf al terug op showToast als native notificaties ontbreken.
-  if(level==='warn') fireAlert(msg);
+  // Veiligheidswaarschuwing → langere toast + korte trilling; gewone tip →
+  // korte toast.
+  //
+  // 31-07-2026 — hier stond fireAlert(msg), maar die functie bestaat nergens
+  // in de codebase. Elke warn-melding (koelwater, lang zwaar belast, lage
+  // boordspanning) gooide dus een ReferenceError: de melding kwam wél in de
+  // coachlijst maar nooit in beeld, caravanCheckRules brak halverwege af en
+  // _updateCaravanPill() sloeg over. Juist op een klim met een caravan erachter
+  // is dat precies de melding die je wél wilt zien. navigator.vibrate is een
+  // gewone web-API — werkt in de APK-webview en in Chrome op Android, en is
+  // met de guard onschadelijk waar hij ontbreekt (o.a. iOS).
+  if(level==='warn'){
+    showToast(msg,8000);
+    try{ if(navigator.vibrate) navigator.vibrate([120,80,120]); }catch(e){}
+  }
   else showToast(msg,4500);
 }
 
