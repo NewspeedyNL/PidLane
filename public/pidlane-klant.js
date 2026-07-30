@@ -34,7 +34,17 @@
     // Wat één token kost bij verkoop. Alleen voor de tekst in het scherm —
     // de echte prijs staat op de code in Airtable.
     euroPerToken: 0.05,
-    supportMail: 'support@pidlane.nl'
+    supportMail: 'support@pidlane.nl',
+
+    // Tokenpakket dat je aanbiedt.
+    pakketTokens: 100,
+    pakketPrijs: 4.99,
+
+    // VUL DEZE IN met je eigen Tikkie-links, anders blijven de knoppen weg.
+    // Een persoonlijke Tikkie is een vaste link zonder koppeling met de app:
+    // je ziet de betaling in je Tikkie-app en stuurt daarna zelf een code.
+    tikkieKopen: 'https://tikkie.me/pay/vtvn3r3neuqj16r3429n',      // bv. 'https://tikkie.me/pay/xxxxx'
+    tikkieDonatie: 'https://tikkie.me/pay/sca8f8ilh2pmctedfimv'     // idem, voor een vrijwillige bijdrage
   };
 
   const _esc = (s) => String(s == null ? '' : s)
@@ -231,6 +241,95 @@
       }
     } catch (e) { _log('finishLogin faalde: ' + e.message, 'warn'); }
     _log('Klantlogin ok \u2014 ' + (k.email || email) + ', ' + (k.saldo || 0) + ' tokens', 'ok');
+
+    // Proeftegoed nog niet opgehaald? Dan eerst de akkoorden.
+    if (k.startTegoed !== true) setTimeout(function () { openOnboarding(k.saldo || 0); }, 400);
+    pasMenuAan();
+  }
+
+  // ── Akkoorden + proeftegoed ──────────────────────────────────────────
+  // Verschijnt na registratie, en opnieuw bij inloggen zolang het
+  // proeftegoed nog niet is opgehaald. Bewust géén wegklik-kruisje: zonder
+  // akkoord op het uitlezen en de geanonimiseerde meetdata kan de app zijn
+  // werk niet doen. De nieuwsbrief staat er los onder en is optioneel — een
+  // beloning koppelen aan marketingtoestemming maakt die toestemming
+  // juridisch aanvechtbaar.
+  function openOnboarding(saldoNu) {
+    const gratis = Math.round(1 / CFG.euroPerToken);
+    const o = _ov('klantOnbOv');
+    o.innerHTML =
+      '<div class="modal"><div class="modal-scroll">' +
+        _kop('Nog \u00e9\u00e9n stap', 'Daarna staan je ' + gratis + ' tokens klaar') +
+        '<div class="lg-form">' +
+
+          _vink('onbSurvey', 'Uitlezen van mijn voertuig',
+            'Na het verbinden voert PidLane een volledige uitlezing uit: foutcodes, ' +
+            'sensorwaarden en ECU-gegevens. Daar draait de diagnose op.') +
+
+          _vink('onbAnon', 'Geanonimiseerde meetdata delen',
+            'Meetwaarden zonder kenteken of persoonsgegevens worden gebruikt om ' +
+            'referentiewaarden per merk en model op te bouwen. Daar wordt de ' +
+            'diagnose voor iedereen scherper van \u2014 ook voor jou.') +
+
+          '<div style="height:8px"></div>' +
+          _vink('onbNieuws', 'Updates en nieuws per mail',
+            'Af en toe bericht over nieuwe functies. Optioneel \u2014 je tokens ' +
+            'krijg je hoe dan ook.', true) +
+
+          '<div id="onbErr" style="font-size:12px;min-height:18px;text-align:center;margin-top:8px"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mact"><button class="mbtn p" id="onbGo" style="width:100%">Akkoord \u2014 geef mij mijn tokens</button></div></div>';
+
+    o.querySelector('#onbGo').onclick = _doeOnboarding;
+    o.classList.remove('hidden');
+  }
+
+  // Vinkje met uitleg eronder. `los` = optioneel, visueel afgezonderd.
+  function _vink(id, titel, uitleg, los) {
+    return '<label style="display:flex;gap:10px;align-items:flex-start;padding:11px 12px;margin-bottom:9px;' +
+      'border-radius:9px;cursor:pointer;background:var(--sur2,#1b2333);' +
+      'border:1px solid ' + (los ? 'var(--bd,#28324a)' : 'var(--bd2,#3a4663)') + '">' +
+      '<input type="checkbox" id="' + id + '" style="margin-top:2px;flex:none;width:17px;height:17px;' +
+      'accent-color:var(--bl,#4d82ff)">' +
+      '<span style="min-width:0">' +
+        '<span style="display:block;font-size:13px;font-weight:700;color:var(--tx,#eef2fa)">' + _esc(titel) +
+          (los ? ' <span style="font-weight:400;color:var(--tx3,#5b6783)">(optioneel)</span>' : '') + '</span>' +
+        '<span style="display:block;font-size:11.5px;color:var(--tx2,#9aa6bd);line-height:1.55;margin-top:3px">' +
+          _esc(uitleg) + '</span>' +
+      '</span></label>';
+  }
+
+  async function _doeOnboarding() {
+    const o = document.getElementById('klantOnbOv');
+    const err = o.querySelector('#onbErr');
+    const survey = o.querySelector('#onbSurvey').checked;
+    const anon = o.querySelector('#onbAnon').checked;
+    const nieuwsbrief = o.querySelector('#onbNieuws').checked;
+
+    if (!survey || !anon)
+      return _zetMelding(err, 'warn', 'De eerste twee zijn nodig om PidLane te kunnen gebruiken.');
+
+    _zetMelding(err, 'ok', 'Bezig\u2026');
+    o.querySelector('#onbGo').disabled = true;
+    try {
+      const r = await _post('/klant/onboarding', { survey, anon, nieuwsbrief }, true);
+      if (!r.ok) {
+        o.querySelector('#onbGo').disabled = false;
+        let m = r.data.error || 'Opslaan mislukt.';
+        if (r.data.detail) m += '\n(' + String(r.data.detail).slice(0, 160) + ')';
+        return _zetMelding(err, 'err', m);
+      }
+      try { if (window.PLCredits) PLCredits.zetServerSaldo(r.data.saldo); } catch (e) {}
+      _sluit('klantOnbOv');
+      if (r.data.toegekend > 0) {
+        try { (window.showToast || function () {})('\u26A1 ' + r.data.toegekend + ' tokens toegevoegd'); } catch (e) {}
+      }
+      _log('Akkoorden vastgelegd \u2014 saldo ' + r.data.saldo, 'ok');
+    } catch (e) {
+      o.querySelector('#onbGo').disabled = false;
+      _zetMelding(err, 'err', 'Geen verbinding met de server.');
+    }
   }
 
   // ── Wachtwoord vergeten ──────────────────────────────────────────────
@@ -367,8 +466,18 @@
         : '') +
 
       '<button class="mbtn p" id="mtCode" style="width:100%;margin-bottom:9px">Activatiecode invullen</button>' +
-      '<a class="mbtn" id="mtKoop" style="width:100%;display:block;text-align:center;text-decoration:none;box-sizing:border-box" ' +
-        'href="mailto:' + CFG.supportMail + '?subject=Tokens%20voor%20PidLane">Tokens aanvragen</a>' +
+
+      (CFG.tikkieKopen
+        ? '<button class="mbtn" id="mtKoop" style="width:100%;margin-bottom:9px">' +
+            CFG.pakketTokens + ' tokens kopen \u2014 \u20ac' +
+            CFG.pakketPrijs.toFixed(2).replace('.', ',') + '</button>'
+        : '<a class="mbtn" style="width:100%;display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:9px" ' +
+            'href="mailto:' + CFG.supportMail + '?subject=Tokens%20voor%20PidLane">Tokens aanvragen</a>') +
+
+      (CFG.tikkieDonatie
+        ? '<button class="mbtn" id="mtDonatie" style="width:100%;font-weight:400">' +
+            '\u2615 Ontwikkelaar trakteren</button>'
+        : '') +
 
       '<div style="font-size:11px;color:var(--tx3,#7c8aa5);line-height:1.6;margin-top:14px;' +
         'padding-top:12px;border-top:1px solid var(--bd,#26304a)">' +
@@ -381,6 +490,92 @@
       _sluit('klantTokenOv');
       try { if (window.PLCredits) PLCredits.openVerzilver(); } catch (e) {}
     };
+    const kb = body.querySelector('#mtKoop');
+    if (kb) kb.onclick = () => openKoop(k);
+    const db = body.querySelector('#mtDonatie');
+    if (db) db.onclick = openDonatie;
+  }
+
+  // ── Tokens kopen ─────────────────────────────────────────────────────
+  // Een persoonlijke Tikkie heeft geen koppeling met de app: er komt geen
+  // seintje binnen als iemand betaalt. Daarom is dit bewust een handmatige
+  // route — de klant betaalt en zet zijn e-mailadres in de omschrijving, jij
+  // ziet dat in je Tikkie-app en stuurt een code. Eerlijk zo opgeschreven,
+  // zodat niemand op een automatische levering zit te wachten.
+  function openKoop(k) {
+    const o = _ov('klantKoopOv');
+    const mail = (k && k.email) || '';
+    o.innerHTML =
+      '<div class="modal"><div class="modal-scroll">' +
+        _kop(CFG.pakketTokens + ' tokens', '\u20ac' + CFG.pakketPrijs.toFixed(2).replace('.', ',') +
+          ' \u2014 ongeveer ' + Math.floor(CFG.pakketTokens / 4) + ' analyses') +
+        '<div class="lg-form">' +
+          '<ol style="font-size:12.5px;color:var(--tx2,#9aa6bd);line-height:1.75;padding-left:20px;margin:4px 0 14px">' +
+            '<li>Betaal met Tikkie</li>' +
+            '<li>Zet <b style="color:var(--tx,#eef2fa)">' + _esc(mail || 'je e-mailadres') +
+              '</b> in de omschrijving</li>' +
+            '<li>Je activatiecode komt per mail</li>' +
+          '</ol>' +
+          '<div style="background:var(--sur2,#1b2333);border-left:3px solid var(--bl,#4d82ff);' +
+            'padding:10px 12px;border-radius:8px;font-size:11.5px;color:var(--tx2,#9aa6bd);line-height:1.55">' +
+            'Codes worden met de hand verstuurd, meestal binnen een dag. ' +
+            'Duurt het langer? Mail ' + CFG.supportMail + '.' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mact">' +
+        '<button class="mbtn" id="kpTerug">Terug</button>' +
+        '<a class="mbtn p" href="' + _esc(CFG.tikkieKopen) + '" target="_blank" rel="noopener" ' +
+          'style="text-align:center;text-decoration:none;box-sizing:border-box">Betalen met Tikkie</a>' +
+      '</div></div>';
+    o.querySelector('#kpTerug').onclick = () => _sluit('klantKoopOv');
+    o.classList.remove('hidden');
+  }
+
+  // ── Donatie ──────────────────────────────────────────────────────────
+  function openDonatie() {
+    const o = _ov('klantDonOv');
+    o.innerHTML =
+      '<div class="modal"><div class="modal-scroll">' +
+        _kop('\u2615 Bedankt', 'PidLane wordt in de avonduren gebouwd') +
+        '<div class="lg-form">' +
+          '<div style="font-size:12.5px;color:var(--tx2,#9aa6bd);line-height:1.7">' +
+            'PidLane is een eenmansproject. Heb je er iets aan gehad en wil je ' +
+            'iets terugdoen, dan is een bijdrage welkom \u2014 maar het hoeft ' +
+            'echt niet. Je krijgt er ook geen tokens voor; gebruik daarvoor de ' +
+            'gewone koopknop.' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mact">' +
+        '<button class="mbtn" id="dnTerug">Terug</button>' +
+        '<a class="mbtn p" href="' + _esc(CFG.tikkieDonatie) + '" target="_blank" rel="noopener" ' +
+          'style="text-align:center;text-decoration:none;box-sizing:border-box">Bijdragen</a>' +
+      '</div></div>';
+    o.querySelector('#dnTerug').onclick = () => _sluit('klantDonOv');
+    o.classList.remove('hidden');
+  }
+
+  // ── Menu aanpassen op rol ────────────────────────────────────────────
+  // Het adminitem stond altijd in het kebabmenu, ook voor gewone gebruikers.
+  // Het opende weliswaar niets zonder admin-token, maar het hoort er niet te
+  // staan: het verklapt dat er een beheerdersgedeelte is en nodigt uit tot
+  // proberen. Dit is cosmetisch, geen beveiliging — die zit in de Worker,
+  // die elk beheerverzoek toetst aan X-Admin-Token.
+  function pasMenuAan() {
+    try {
+      let admin = false;
+      try { admin = (typeof isAdmin === 'function') && isAdmin(); } catch (e) {}
+      ['admGroupBtn', 'admGroup'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = admin ? '' : 'none';
+      });
+      // Klap een geopend adminmenu dicht bij het wisselen van gebruiker.
+      if (!admin) {
+        const g = document.getElementById('admGroup');
+        if (g) g.classList.remove('open');
+      }
+    } catch (e) {}
   }
 
   // ── Saldo verversen na het inwisselen van een code ───────────────────
@@ -401,6 +596,10 @@
     openRegistratie: openRegistratie,
     openHerstelAanvraag: openHerstelAanvraag,
     openMijnTokens: openMijnTokens,
+    openOnboarding: openOnboarding,
+    openKoop: openKoop,
+    openDonatie: openDonatie,
+    pasMenuAan: pasMenuAan,
     checkHerstelLink: checkHerstelLink,
     verversSaldo: verversSaldo,
     CFG: CFG
