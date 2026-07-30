@@ -51,6 +51,10 @@ var CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-App-Token, X-Admin-Token, X-Join-Token, Authorization, anthropic-version",
+  // Zonder Expose-Headers mag browser-JS eigen headers niet uitlezen, ook niet
+  // bij een geslaagd verzoek. X-PidLane-Saldo is het saldo NA afboeking van een
+  // AI-call (zie handleMessages).
+  "Access-Control-Expose-Headers": "X-PidLane-Saldo",
   "Access-Control-Max-Age": "86400"
 };
 function json(obj, status = 200, extra = {}) {
@@ -474,6 +478,42 @@ async function handleCopilot(request, env) {
   return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
 }
 __name(handleCopilot, "handleCopilot");
+// ── Tegoed: afrekenen gebeurt HIER, niet in de app ──────────────────
+// De app rekende zichzelf af: pidlane-credits.js schatte de kosten en riep
+// daarna /klant/saldo-muteer aan. Dat is een verzoek, geen controle — wie dat
+// verzoek blokkeert of localStorage wist, gebruikt de AI gratis. De Worker is
+// de enige plek die de klant niet kan omzeilen, dus daar wordt geteld.
+//
+// We rekenen op ECHT verbruik uit usage in de respons, niet op de schatting
+// van de app. Dat is het enige eerlijke getal, en het maakt vervolgcalls bij
+// max_tokens meteen meetelbaar — die waren voorheen gratis omdat de app maar
+// één keer per apiFetch afboekte.
+//
+// De tarieven staan bewust dubbel: CFG in pidlane-credits.js is voor het
+// kostenvenster vóóraf, deze voor de echte afboeking. Wijzig je er één, pas
+// dan de ander aan, of overschrijf ze met Worker-variabelen zodat alleen de
+// schatting nog in de app staat.
+function tegoedTarief(env) {
+  const g = /* @__PURE__ */ __name((naam, standaard) => {
+    const v = Number(env && env[naam]);
+    return Number.isFinite(v) && v >= 0 ? v : standaard;
+  }, "g");
+  return {
+    per1kIn: g("CREDIT_PER_1K_IN", 0.7),
+    per1kUit: g("CREDIT_PER_1K_UIT", 3.5),
+    min: Math.max(1, Math.round(g("CREDIT_MIN", 1)))
+  };
+}
+__name(tegoedTarief, "tegoedTarief");
+// Zelfde formule als _credits() in pidlane-credits.js. Wijken ze uiteen, dan
+// klopt het kostenvenster niet meer met wat er daadwerkelijk afgaat.
+function tegoedKosten(usage, tarief) {
+  const inTok = Number(usage && usage.input_tokens) || 0;
+  const uitTok = Number(usage && usage.output_tokens) || 0;
+  const ruw = inTok / 1e3 * tarief.per1kIn + uitTok / 1e3 * tarief.per1kUit;
+  return Math.max(tarief.min, Math.ceil(ruw));
+}
+__name(tegoedKosten, "tegoedKosten");
 async function handleMessages(request, env) {
   const session = await auth(request, env);
   if (!session) return json({ error: "unauthorized" }, 401);
@@ -495,6 +535,53 @@ async function handleMessages(request, env) {
   const clientKey = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "") || request.headers.get("x-api-key") || "";
   const apiKey = clientKey || resolveAnthropicKey(env);
   if (!apiKey) return json({ error: { message: "Geen API-key beschikbaar in de Worker (check ANTHROPIC_API_KEY secret)" } }, 401);
+
+  // ── Tegoedcontrole vooraf ────────────────────────────────────────
+  // Alleen voor klantaccounts (tabel Klanten). Accounts uit de tabel Users
+  // zijn zakelijk met abonnement en betalen niet per analyse. Brengt de klant
+  // zijn eigen sleutel mee, dan betaalt hij Anthropic al rechtstreeks en
+  // rekenen we hier niets af.
+  const tarief = tegoedTarief(env);
+  let klantRec = null, saldoVoor = 0;
+  if (session.r === "klant" && !clientKey) {
+    if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
+    // De foutvorm hieronder is bewust {error:{message}} en niet de {error:"..."}
+    // van de andere klantroutes: apiFetch in pidlane-fuel.js leest
+    // err?.error?.message uit en toont anders een kaal "HTTP 402". Zo krijgt de
+    // gebruiker een leesbare melding zonder dat fuel.js mee hoeft te wijzigen.
+    // `code` staat ernaast voor als de app er ooit op wil sturen.
+    try {
+      klantRec = await klantZoek(env, session.u);
+    } catch (e) {
+      // Bewust dichtklappen in plaats van doorlaten: een storing bij Airtable
+      // mag geen gratis AI opleveren. Wil je liever dat de app blijft werken
+      // als Airtable hapert, geef hier dan klantRec = null terug in plaats van
+      // een foutmelding — dan gaat de call door zonder afboeking.
+      try {
+        console.error("[tegoed] saldo niet leesbaar voor " + session.u + " :: " + String(e && e.message || e));
+      } catch (_) {
+      }
+      return json({
+        ok: false,
+        code: "tegoed_onbekend",
+        error: { message: "Je tegoed kon even niet gecontroleerd worden. Probeer het zo opnieuw." }
+      }, 503);
+    }
+    if (!klantRec)
+      return json({ ok: false, code: "geen_account", error: { message: "Account niet gevonden." } }, 404);
+    const kf = klantRec.fields || {};
+    if (kf.Status === "geblokkeerd")
+      return json({ ok: false, code: "geblokkeerd", error: { message: "Dit account is geblokkeerd." } }, 403);
+    saldoVoor = Number(kf.Saldo || 0);
+    if (saldoVoor < tarief.min)
+      return json({
+        ok: false,
+        code: "onvoldoende_tegoed",
+        saldo: saldoVoor,
+        error: { message: "Je tokens zijn op. Wissel een activatiecode in om verder te gaan." }
+      }, 402);
+  }
+
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -505,10 +592,45 @@ async function handleMessages(request, env) {
     body: JSON.stringify(payload)
   });
   const text = await r.text();
-  return new Response(text, {
-    status: r.status,
-    headers: { "Content-Type": "application/json", ...CORS }
-  });
+  const kop = { "Content-Type": "application/json", ...CORS };
+
+  // ── Afboeken op echt verbruik ────────────────────────────────────
+  // Alleen bij een geslaagd antwoord: een 429 of 500 van Anthropic levert de
+  // klant niets op en kost hem dus ook niets. De afboeking wordt afgewacht
+  // (niet in waitUntil), zodat vervolgcalls bij max_tokens een saldo zien dat
+  // al is bijgewerkt. Dat kost een paar honderd ms op een call die er toch al
+  // seconden over doet.
+  //
+  // Mislukt de schrijfactie, dan gaat het antwoord alsnog naar de klant: de
+  // call is al betaald bij Anthropic en achterhouden helpt niemand. Het gemis
+  // gaat naar de logs.
+  //
+  // BEKENDE GRENS: Airtable kent geen transacties. Twee gelijktijdige calls
+  // van hetzelfde account (twee apparaten) kunnen elkaars afboeking
+  // overschrijven. Bij normaal gebruik lopen calls netjes achter elkaar; wordt
+  // dit ooit een probleem, dan is de Durable Object de plek om het saldo te
+  // serialiseren.
+  if (klantRec && r.ok) {
+    let kosten = tarief.min;
+    try {
+      const d = JSON.parse(text);
+      kosten = tegoedKosten(d && d.usage, tarief);
+    } catch (_) {
+    }
+    const saldoNa = Math.max(0, saldoVoor - kosten);
+    try {
+      await klantPatch(env, klantRec.id, { Saldo: saldoNa });
+      kop["X-PidLane-Saldo"] = String(saldoNa);
+    } catch (e) {
+      try {
+        console.error("[tegoed] afboeken mislukt voor " + session.u + " (" + kosten + " credits) :: " + String(e && e.message || e));
+      } catch (_) {
+      }
+      kop["X-PidLane-Saldo"] = String(saldoVoor);
+    }
+  }
+
+  return new Response(text, { status: r.status, headers: kop });
 }
 __name(handleMessages, "handleMessages");
 async function handleAirtableLog(request, env) {
