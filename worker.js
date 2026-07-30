@@ -1795,7 +1795,10 @@ function klantPubliek(rec) {
     email: f.Email || "",
     naam: f.Naam || "",
     saldo: Number(f.Saldo || 0),
-    status: f.Status || "actief"
+    status: f.Status || "actief",
+    // Vertelt de app of het scherm met akkoorden nog getoond moet worden.
+    startTegoed: f.StartTegoedGegeven === true,
+    akkoorden: Array.isArray(f.Akkoorden) ? f.Akkoorden.slice() : []
   };
 }
 __name(klantPubliek, "klantPubliek");
@@ -1842,7 +1845,9 @@ async function handleKlantRegistreer(request, env) {
             Email: email,
             PassHash: await hashPassword(pass, env),
             Naam: naam,
-            Saldo: Number(env.KLANT_START_SALDO || 20),
+            // Nog geen tegoed: dat wordt uitgekeerd via /klant/onboarding,
+            // pas nadat de klant de akkoorden heeft gegeven.
+            Saldo: 0,
             TotaalGekocht: 0,
             Status: "actief",
             Aangemaakt: nu,
@@ -2450,6 +2455,66 @@ async function handleAdminCodesPost(request, env) {
 }
 __name(handleAdminCodesPost, "handleAdminCodesPost");
 
+// ── POST /klant/onboarding  { survey, anon, nieuwsbrief } ───────────
+// Legt de akkoorden vast en keert daarna eenmalig het proeftegoed uit.
+//
+// AVG — twee soorten toestemming, bewust uit elkaar gehouden:
+//   survey + anondata → functioneel. Dit is wat PidLane doet: je auto
+//     uitlezen en geanonimiseerde meetwaarden gebruiken om de
+//     referentiedatabase te voeden. Zonder dat is de app zinloos, dus dit
+//     mag voorwaarde zijn.
+//   nieuwsbrief → marketing. Dit mag NOOIT voorwaarde zijn voor het
+//     proeftegoed. Toestemming moet vrij gegeven zijn (AVG art. 7 lid 4);
+//     een beloning eraan koppelen maakt haar aanvechtbaar. De vraag staat
+//     daarom in hetzelfde scherm, maar het vinkje is optioneel en het
+//     tegoed komt er hoe dan ook.
+async function handleKlantOnboarding(request, env) {
+  const p = await klantAuth(request, env);
+  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "klant-onboarding", ip, { limit: 20, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let b = {};
+  try { b = await request.json(); } catch (e) {}
+
+  if (b.survey !== true || b.anon !== true)
+    return json({ ok: false, error: "Akkoord met uitlezen en geanonimiseerde data is nodig om PidLane te gebruiken." }, 400);
+
+  try {
+    const rec = await klantZoek(env, p.u);
+    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
+    const f = rec.fields || {};
+
+    const akkoorden = ["survey", "anondata"];
+    if (b.nieuwsbrief === true) akkoorden.push("nieuwsbrief");
+
+    const alGehad = f.StartTegoedGegeven === true;
+    const bedrag = Math.max(0, Math.round(Number(env.KLANT_START_SALDO || 20)));
+    const huidig = Number(f.Saldo || 0);
+    const nieuw = alGehad ? huidig : huidig + bedrag;
+
+    await klantPatch(env, rec.id, {
+      Akkoorden: akkoorden,
+      AkkoordOp: new Date().toISOString(),
+      StartTegoedGegeven: true,
+      Saldo: nieuw
+    });
+
+    return json({
+      ok: true,
+      saldo: nieuw,
+      toegekend: alGehad ? 0 : bedrag,
+      akkoorden
+    });
+  } catch (e) {
+    return klantFout(e, "Vastleggen van je keuzes mislukte.");
+  }
+}
+__name(handleKlantOnboarding, "handleKlantOnboarding");
+
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -2502,6 +2567,8 @@ var worker_default = {
         return lockOrigin(request, await handleKlantRegistreer(request, env));
       if (url.pathname === "/klant/login" && request.method === "POST")
         return lockOrigin(request, await handleKlantLogin(request, env, ctx));
+      if (url.pathname === "/klant/onboarding" && request.method === "POST")
+        return lockOrigin(request, await handleKlantOnboarding(request, env));
       if (url.pathname === "/klant/mij" && request.method === "GET")
         return lockOrigin(request, await handleKlantMij(request, env));
       if (url.pathname === "/klant/wachtwoord" && request.method === "POST")
