@@ -165,6 +165,7 @@
   function _zetMelding(el, soort, tekst) {
     const kleur = soort === 'ok' ? 'var(--gn,#22c55e)' : soort === 'warn' ? 'var(--or,#f59e0b)' : 'var(--rd,#ef4444)';
     el.style.color = kleur;
+    el.style.whiteSpace = 'pre-wrap';
     el.textContent = tekst;
   }
 
@@ -192,9 +193,11 @@
       }
       if (!r.ok) {
         o.querySelector('#regGo').disabled = false;
-        const uitleg = r.data.error ||
+        let uitleg = r.data.error ||
           (r.ruw ? ('server gaf ' + r.status + ': ' + String(r.ruw).slice(0, 120))
                  : ('server gaf ' + r.status));
+        // De Worker stuurt bij een onverwachte fout de echte oorzaak mee.
+        if (r.data.detail) uitleg += '\n(' + String(r.data.detail).slice(0, 160) + ')';
         _log('Registratie mislukt \u2014 ' + uitleg, 'err');
         return _zetMelding(err, 'err', uitleg);
       }
