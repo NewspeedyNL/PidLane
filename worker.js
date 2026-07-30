@@ -1842,7 +1842,7 @@ async function handleKlantRegistreer(request, env) {
             Email: email,
             PassHash: await hashPassword(pass, env),
             Naam: naam,
-            Saldo: Number(env.KLANT_START_SALDO || 0),
+            Saldo: Number(env.KLANT_START_SALDO || 20),
             TotaalGekocht: 0,
             Status: "actief",
             Aangemaakt: nu,
