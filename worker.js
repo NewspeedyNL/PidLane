@@ -1684,7 +1684,7 @@ async function handleCreditsRedeem(request, env) {
 
     return json({ ok: true, credits, code, saldo });
   } catch (e) {
-    return json({ ok: false, error: "Onverwachte fout bij inwisselen." }, 500);
+    return klantFout(e, "Onverwachte fout bij inwisselen.");
   }
 }
 __name(handleCreditsRedeem, "handleCreditsRedeem");
@@ -1704,6 +1704,17 @@ __name(handleCreditsRedeem, "handleCreditsRedeem");
 //
 // SESSIETOKENS hergebruiken makeToken/verifyToken, maar met rol "klant".
 // Daardoor kan een klanttoken nooit doorgaan voor een beheerderstoken.
+
+// Fouten in de klantroutes niet stil inslikken. De melding voor de gebruiker
+// blijft kort, maar de echte oorzaak gaat mee als `detail` en naar de logs
+// (Workers Logs staat aan in wrangler.toml). Zonder dit is een 500 alleen met
+// gokwerk te diagnosticeren — precies waar dit misging.
+function klantFout(e, bericht, code) {
+  const det = String(e && (e.message || e) || "onbekend").slice(0, 300);
+  try { console.error("[klant] " + bericht + " :: " + det); } catch (_) {}
+  return json({ ok: false, error: bericht, detail: det }, code || 500);
+}
+__name(klantFout, "klantFout");
 
 function klantEmailOk(e) {
   return /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(String(e || "").trim());
@@ -1837,7 +1848,7 @@ async function handleKlantRegistreer(request, env) {
     const t = await makeToken(env, email, "klant", naam || email);
     return json({ ok: true, ...t, klant: klantPubliek(rec) }, 201);
   } catch (e) {
-    return json({ ok: false, error: "Registratie mislukt." }, 500);
+    return klantFout(e, "Registratie mislukt.");
   }
 }
 __name(handleKlantRegistreer, "handleKlantRegistreer");
@@ -1892,7 +1903,7 @@ async function handleKlantLogin(request, env, ctx) {
     const t = await makeToken(env, email, "klant", f.Naam || email);
     return json({ ok: true, ...t, klant: klantPubliek(rec) });
   } catch (e) {
-    return json({ ok: false, error: "Inloggen mislukt." }, 500);
+    return klantFout(e, "Inloggen mislukt.");
   }
 }
 __name(handleKlantLogin, "handleKlantLogin");
@@ -1907,7 +1918,7 @@ async function handleKlantMij(request, env) {
     if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
     return json({ ok: true, klant: klantPubliek(rec) });
   } catch (e) {
-    return json({ ok: false, error: "Ophalen mislukt." }, 500);
+    return klantFout(e, "Ophalen mislukt.");
   }
 }
 __name(handleKlantMij, "handleKlantMij");
@@ -1945,7 +1956,7 @@ async function handleKlantWachtwoord(request, env) {
     });
     return json({ ok: true });
   } catch (e) {
-    return json({ ok: false, error: "Wijzigen mislukt." }, 500);
+    return klantFout(e, "Wijzigen mislukt.");
   }
 }
 __name(handleKlantWachtwoord, "handleKlantWachtwoord");
@@ -2075,7 +2086,7 @@ async function handleKlantResetUitvoeren(request, env) {
     });
     return json({ ok: true, bericht: "Wachtwoord is aangepast. Je kunt nu inloggen." });
   } catch (e) {
-    return json({ ok: false, error: "Herstellen mislukt." }, 500);
+    return klantFout(e, "Herstellen mislukt.");
   }
 }
 __name(handleKlantResetUitvoeren, "handleKlantResetUitvoeren");
@@ -2106,7 +2117,7 @@ async function handleKlantAdminWachtwoord(request, env) {
     });
     return json({ ok: true });
   } catch (e) {
-    return json({ ok: false, error: "Wijzigen mislukt." }, 500);
+    return klantFout(e, "Wijzigen mislukt.");
   }
 }
 __name(handleKlantAdminWachtwoord, "handleKlantAdminWachtwoord");
@@ -2142,7 +2153,7 @@ async function handleKlantSaldoMuteer(request, env) {
     await klantPatch(env, rec.id, { Saldo: nieuw });
     return json({ ok: true, saldo: nieuw });
   } catch (e) {
-    return json({ ok: false, error: "Mutatie mislukt." }, 500);
+    return klantFout(e, "Mutatie mislukt.");
   }
 }
 __name(handleKlantSaldoMuteer, "handleKlantSaldoMuteer");
@@ -2190,7 +2201,7 @@ async function handleAdminKlantenGet(request, env) {
     const totaalSaldo = klanten.reduce((s, k) => s + k.saldo, 0);
     return json({ ok: true, klanten, stats: { aantal: klanten.length, totaalSaldo } });
   } catch (e) {
-    return json({ ok: false, error: "Ophalen mislukt." }, 500);
+    return klantFout(e, "Ophalen mislukt.");
   }
 }
 __name(handleAdminKlantenGet, "handleAdminKlantenGet");
@@ -2251,7 +2262,7 @@ async function handleAdminKlantenPost(request, env) {
 
     return json({ ok: false, error: "Onbekende actie." }, 400);
   } catch (e) {
-    return json({ ok: false, error: "Bewerking mislukt." }, 500);
+    return klantFout(e, "Bewerking mislukt.");
   }
 }
 __name(handleAdminKlantenPost, "handleAdminKlantenPost");
@@ -2304,7 +2315,7 @@ async function handleAdminCodesGet(request, env) {
       }
     });
   } catch (e) {
-    return json({ ok: false, error: "Ophalen mislukt." }, 500);
+    return klantFout(e, "Ophalen mislukt.");
   }
 }
 __name(handleAdminCodesGet, "handleAdminCodesGet");
@@ -2405,7 +2416,7 @@ async function handleAdminCodesPost(request, env) {
 
     return json({ ok: false, error: "Onbekende actie." }, 400);
   } catch (e) {
-    return json({ ok: false, error: "Bewerking mislukt." }, 500);
+    return klantFout(e, "Bewerking mislukt.");
   }
 }
 __name(handleAdminCodesPost, "handleAdminCodesPost");
