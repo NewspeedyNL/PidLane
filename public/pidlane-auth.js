@@ -120,7 +120,7 @@ async function doLogin(){
       document.getElementById('loginPass').focus();
       return;
     }catch(e){
-      if(/geblokkeerd/i.test(e && e.message || '')){ err.textContent = '⚠ '+e.message; return; }
+      if(/geblokkeerd|Te veel/i.test(e && e.message || '')){ err.textContent = '⚠ '+e.message; return; }
       try{ log('Klantlogin niet gelukt ('+(e&&e.message||e)+') — normale route proberen','warn'); }catch(_){}
     }
   }

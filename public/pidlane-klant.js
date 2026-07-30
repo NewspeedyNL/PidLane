@@ -74,6 +74,10 @@
   async function klantLogin(email, pass) {
     const r = await _post('/klant/login', { email, pass });
     if (r.status === 401) return null;                 // verkeerde gegevens
+    if (r.status === 429) {
+      const min = Math.ceil((Number(r.data.retryAfter) || 60) / 60);
+      throw new Error('Te veel inlogpogingen — probeer het over ' + min + ' minuten opnieuw.');
+    }
     if (r.status === 403) throw new Error(r.data.error || 'Account geblokkeerd.');
     if (!r.ok) {
       const e = new Error(r.data.error || ('loginserver gaf ' + r.status));
@@ -180,6 +184,12 @@
     o.querySelector('#regGo').disabled = true;
     try {
       const r = await klantRegistreer(email, p1, naam);
+      if (r.status === 429) {
+        o.querySelector('#regGo').disabled = false;
+        const min = Math.ceil((Number(r.data.retryAfter) || 3600) / 60);
+        return _zetMelding(err, 'warn',
+          'Te veel pogingen vanaf dit netwerk. Probeer het over ' + min + ' minuten opnieuw.');
+      }
       if (!r.ok) {
         o.querySelector('#regGo').disabled = false;
         const uitleg = r.data.error ||
