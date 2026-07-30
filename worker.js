@@ -1784,7 +1784,11 @@ async function handleKlantRegistreer(request, env) {
   if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
-  const rl = await rateLimit(env, "klant-registreer", ip, { limit: 5, windowMs: 36e5 }, true);
+  // Ruim genoeg voor een garage met meerdere medewerkers achter één
+  // internetverbinding, en voor jezelf tijdens testen. Bijstellen kan met de
+  // Worker-variabele RL_REGISTREER zonder de code aan te raken.
+  const rlMax = Math.max(1, Number(env.RL_REGISTREER || 25));
+  const rl = await rateLimit(env, "klant-registreer", ip, { limit: rlMax, windowMs: 36e5 }, true);
   if (rl.limited) return rateLimitResponse(rl);
 
   let body = {};
