@@ -260,7 +260,15 @@
         if (r.data && r.data.error === 'mail_not_configured') {
           return _zetMelding(err, 'warn', 'Herstelmail is nog niet ingeschakeld. Mail ' + CFG.supportMail + '.');
         }
-        if (!r.ok) return _zetMelding(err, 'err', r.data.error || 'Versturen mislukt.');
+        if (r.status === 429) {
+          const min = Math.ceil((Number(r.data.retryAfter) || 3600) / 60);
+          return _zetMelding(err, 'warn', 'Al een paar keer aangevraagd. Wacht ' + min + ' minuten.');
+        }
+        if (!r.ok) {
+          let m = r.data.error || 'Versturen mislukt.';
+          if (r.data.detail) m += '\n(' + String(r.data.detail).slice(0, 160) + ')';
+          return _zetMelding(err, 'err', m);
+        }
         _zetMelding(err, 'ok', r.data.bericht || 'Check je mail.');
       } catch (e) {
         _zetMelding(err, 'err', 'Geen verbinding met de server.');
