@@ -87,7 +87,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 
 | # | Module | KB | Doet |
 |---|---|---|---|
-| 5 | `pidlane-auth.js` | 56 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer |
+| 5 | `pidlane-auth.js` | 57 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer, **`pidGate()` + `vehiclePlausiblePid()` + `getPidDef()`** (zie §15 — die PID-logica hoort hier eigenlijk niet, verplaatsen is een eigen ronde) |
 | 6 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
 | 7 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
 | 8 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export |
@@ -388,6 +388,14 @@ Bijgewerkt 31-07-2026.
    Users-route nooit meer bereiken (klantlogin geeft 401 en `doLogin` stopt daar
    hard); de Tikkie-links staan hardcoded in een publieke repo.
 
+2. **Geen herijking van de bronlijst.** `discoveredPIDDefs` wordt gebouwd
+   tijdens de gezondheidsscan, wanneer het brandstoftype meestal nog onbekend
+   is. Komt RDW later met "benzine", dan haalt `purgeImplausiblePids()` de
+   AdBlue-tegel wel uit `activePIDs`, maar de bronlijst wordt niet herbouwd —
+   dus de sensor staat nog gewoon in de keuzelijst. De gate is geen zuivere
+   functie van de PID maar van (PID, huidige kennis); de bronlijst heeft dus
+   invalidatie nodig. Ronde 5 in §15.
+
 ### Opgelost op 31-07-2026
 
 Voor de historie, zodat je niet opnieuw op zoek gaat:
@@ -470,6 +478,9 @@ motorlampje).
 **Vuistregel:** wat een voertuig niet heeft, hoort niet in de keuzelijst en zeker
 niet in de pollronde.
 
+Deze vuistregel stond vanaf 31-07-2026 op negen plekken in negen varianten. De
+uitwerking tot één ladder staat in §15.
+
 ---
 
 ## 13. Vervolgstappen na de opsplitsing
@@ -519,3 +530,126 @@ een lege string en stap 1 wordt overgeslagen.
 (`BMW||MINI`, `VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`). Dat is
 dezelfde beslissing op een tweede plek en hoort naar `merkGroep()`. Bewust niet
 in dezelfde ronde gedaan; dat is een mechanische wijziging en die gaat apart.
+
+---
+
+## 15. De PID-gate — één ladder, negen aanroepplekken
+
+Besluit van 31-07-2026, na het patroon dat "een fix die faalt door een fix"
+heette: de fix voor fantoomsensoren brak de sensorstatus, de fix daarvoor liet
+de fantomen terugkomen.
+
+### Waarom het jojode
+
+Niet "zes plekken met dezelfde regel", maar **twee bronlijsten en vijf vragen**.
+`supportedPIDs` (rauw uit de bitmaps) en `discoveredPIDDefs` (gefilterd) leefden
+naast elkaar; welke filters je kreeg hing af van welke lijst je toevallig
+aanriep. En "mag deze PID mee" bleek geen enkele vraag maar vijf, die overal in
+een andere combinatie stonden:
+
+1. past hij bij dit voertuig (`vehiclePlausiblePid` — brandstof, turbo, bank 2)
+2. is het een sensor of een ondersteuningsbitmap (`GEEN_SENSOR_PIDS`)
+3. levert hij iets (`_pidHealth`)
+4. heeft hij een echte naam en eenheid (`unit!=='raw'`)
+5. is er nú een verse waarde (`pidVals`)
+
+Eén boolean-gate lost dat niet op. Wat wél werkt: die vijf zijn cumulatief.
+
+### De ladder
+
+`pidGate(pid, niveau, opt)` in `pidlane-auth.js`. Elke trede bevat de vorige,
+dus je kunt niet meer per ongeluk een strengere check op een lager niveau
+zetten — dat was de mechaniek achter het jojo-en.
+
+| Trede | Erbij |
+|---|---|
+| `plausibel` | past bij dit voertuig |
+| `bestaat` | + is een sensor, geen bitmap |
+| `kiesbaar` | + health niet `onzin`/`nodata` |
+| `duidbaar` | + echte naam en eenheid |
+| `meetbaar` | + verse waarde |
+
+"Meldt de auto hem" (`supportedPIDs.has`) zit **bewust niet** in de ladder: dat
+is een orthogonale vraag en maar één aanroepplek stelt hem
+(`selectStandardSet`), met een eigen regel ernaast.
+
+### Wie welke trede krijgt
+
+| Plek | Bestand | Trede |
+|---|---|---|
+| `buildDiscoveredPIDList` | rijsituatie | bouwt de lijst — `bestaat` |
+| `selectStandardSet` | rijsituatie | `kiesbaar` |
+| `selectCategoryPIDs` | rijsituatie | `kiesbaar`, met `force` uit "Toon alles" |
+| `applyPidPreset` | rijsituatie | `plausibel` |
+| `relevantSupportedPIDs` (basis) | pids | `plausibel` |
+| `relevantSupportedPIDs` (lus) | pids | `kiesbaar` |
+| `analysisPidData` | pids | `meetbaar` |
+| `renderGauges` | pids | `plausibel` |
+| `isReportableSensor` | auth | `meetbaar` |
+| `buildPIDList` (dim) | rijsituatie | `kiesbaar` — vraagt de gate, toont tóch |
+| `purgeImplausiblePids` | auth | `plausibel` |
+
+### Wat bewust búiten de gate blijft
+
+`buildPIDList()` en `pidTegelLeeg()` tonen juist wél wat de gate afkeurt —
+uitgegrijsd, met "Toon alles" ernaast. **Weergave is niet de gate.** Zonder deze
+regel past de volgende opruimronde de gate daar behulpzaam ook toe en verdwijnt
+het grijs, dat precies de derde stand uit §12 is.
+
+### Waar de ladder vandaan komt
+
+Niet verzonnen. SAE J1939 codeert dezelfde standen in de byte zelf: 0xFF =
+parameter niet beschikbaar, 0xFE = fout, geldig tot 0xFA. J1939-71 beveelt
+bovendien aan om na inschakelen alle beschikbaarheidsbits op "niet beschikbaar"
+te zetten en met standaardwaarden te werken tot er geldige data binnenkomt.
+J1979 (waar wij op zitten) heeft dat niet, dus reconstrueren we het door te
+meten. Twee gevolgen:
+
+- **Health hoort niet in de bronlijst.** Beschikbaarheid is herzienbaar,
+  capaciteit niet.
+- **`nodata` uit één read is dun bewijs** en moet bij herijking opnieuw
+  getoetst kunnen worden.
+
+`python-OBD` bevestigt de bronlijst-aanpak en levert het model voor de
+noodklep: alles buiten `supported_commands` is standaard "niet ondersteund", en
+je komt er alleen langs met een expliciete `force`. Onze `_showAllPIDs` is dat,
+maar zit nu op de weergavelaag — vandaar `opt.force` als toekomstige
+gate-parameter in plaats van een tweede omweg.
+
+Ter contrast: Torque Pro heeft geen plausibiliteitsfilter en laat de afweging
+(NOx-PID op benzine of diesel) aan de gebruiker. Dat is precies het gedrag dat
+we in §12 hebben weggehaald.
+
+### Rondes
+
+Mechanisch en inhoudelijk strikt gescheiden, één afwijking per commit.
+
+| Ronde | Wat | Zichtbaar effect |
+|---|---|---|
+| 1 ✅ | `pidGate()` erbij, tien plekken erdoorheen | geen (drie aanscherpingen op onbereikbare toestanden) |
+| 2 ✅ | `healthStreng` weg | `twijfel` selecteerbaar, `nodata` niet meer via de categorieknop |
+| 3 ✅ | `ruwToegestaan` weg | geen naamloze raw-PIDs meer richting de AI |
+| 4 ✅ | `force` doorgegeven aan `selectCategoryPIDs` en `buildPIDList` | "Toon alles" werkt ook op `+ Alles`; `dim` komt uit de gate |
+| 5 | herijking: bronlijst herbouwen bij nieuwe voertuigkennis | fantoom verdwijnt óók uit de keuzelijst; pleister in `renderGauges` mag weg |
+
+`test-pidgate.js` (repo-root) is de regressietest: 1600 toestanden × 11
+aanroepplekken, met per plek een `verwacht`-predicaat dat vastlegt wanneer een
+verschil met het gedrag van vóór de gate BEDOELD is. Alles daarbuiten is een
+regressie en de test eindigt met exit 1. Werkwijze per ronde: wijzig de gate,
+draai de test, werk precies één `verwacht` bij. Moet je er twee bijwerken, dan
+heeft je wijziging meer geraakt dan de bedoeling was.
+
+Let op bij het lezen van de aantallen: dat is matrixrekenwerk, geen maat voor
+praktische impact — de helft van de matrix bestaat uit implausibele of
+bitmap-PIDs die in de echte lijst niet voorkomen.
+
+Na ronde 4 is er nog één vlag: `force`. Die is geen schuld maar ontwerp — de
+bewuste noodklep, naar het model van `force=True` in python-OBD. Hij hoort
+alleen bij handmatige selectie en nooit richting analyse of rapport.
+
+### Nog open
+
+`pidGate()` staat in `pidlane-auth.js` omdat `vehiclePlausiblePid()` en
+`getPidDef()` daar al stonden. Volgens §4 is dat de login/adminmodule.
+Verplaatsen naar een eigen module is een mechanische ronde en hoort niet in de
+opruimrondes hierboven gemengd te worden.
