@@ -778,6 +778,13 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 @keyframes cardStale { 0%,100%{background:rgba(247,127,0,.04);} 50%{background:rgba(247,127,0,.14);} }
 @keyframes dotFlash { 0%{transform:scale(1);box-shadow:0 0 4px var(--gn);} 50%{transform:scale(1.7);box-shadow:0 0 14px var(--gn);} 100%{transform:scale(1);box-shadow:0 0 4px var(--gn);} }
 .gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
+/* Sensor die de auto wél als ondersteund meldt maar waar niets uit komt.
+   Bewust grijs en zonder gloed: groen leest als "gemeten en in orde", en dat
+   is precies wat hier niet geldt. */
+.gdot.leeg { background:var(--tx3); box-shadow:none; opacity:.5; }
+.gc.leeg::before { background:var(--tx3); opacity:.35; }
+.gc.leeg .gv, .gc.leeg .gunit { opacity:.4; }
+.gc.leeg .gn2 { opacity:.55; }
 /* Rollen: UI van admin en user is gelijkgetrokken (verzoek 2026-07-04) —
    role:'user' verbergt NIETS meer. De class .adminOnly blijft op elementen
    staan zodat gating later per element her-activeerbaar is. */

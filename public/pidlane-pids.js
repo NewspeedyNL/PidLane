@@ -207,13 +207,14 @@ function renderGauges(){
     }
 
     const isMan=_scenario.enabled && _scenario.pids[pid]!==undefined;
-    const c=document.createElement('div'); c.className='gc'+(isMan?' gc-manueel':''); c.id='gc-'+pid;
+    const leeg=pidTegelLeeg(pid);
+    const c=document.createElement('div'); c.className='gc'+(isMan?' gc-manueel':'')+(leeg?' leeg':''); c.id='gc-'+pid;
     const manTag=isMan?' <span style="font-size:7px;font-weight:800;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;vertical-align:middle">MAN</span>':'';
     // Zelfde markering als in de keuzelijst: dit PID meet hetzelfde als een
     // standaard-PID maar komt uit een ander kanaal.
     const _alt=(window.PID_ALT_KANAAL||{})[pid];
     const altTag=_alt?` <span class="gc-alt" title="${(window.pidAltKanaalTip?pidAltKanaalTip(pid):'').replace(/"/g,'&quot;')}">⇄ ${_alt}</span>`:'';
-    c.innerHTML=`<div class="gdot" id="gd-${pid}"></div>
+    c.innerHTML=`<div class="gdot${leeg?' leeg':''}" id="gd-${pid}"${leeg?` title="${LEEG_TIP}"`:''}></div>
       <div class="gn2">${d.name}${manTag}${altTag}</div>
       <div><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
@@ -327,6 +328,44 @@ function startStaleWatchdog(){
   },1000);
 }
 function stopStaleWatchdog(){ if(_staleWatchdog){ clearInterval(_staleWatchdog); _staleWatchdog=null; } }
+// ── Tegelstand: heeft deze sensor iets te melden? ───────────────────
+// Drie standen, bewust eerlijk over wat we wél en niet weten:
+//   groen   auto meldt ondersteuning én levert een plausibele waarde
+//   grijs   auto meldt ondersteuning maar levert niets of onzin
+//   (weg)   staat niet in de bitmap — komt hier niet eens langs
+//
+// 31-07-2026 — hiervoor was het bolletje groen tenzij een drempel werd
+// overschreden. Een PID die nóóit een waarde gaf bleef dus groen, want applyG
+// draait alleen als er data binnenkomt. Op de CX-5 stonden motorolietemperatuur,
+// omgevingstemperatuur en brandstofverbruik alle drie op groen met een streepje
+// als waarde. Die middelste stand is precies de kennis die de auto je gratis
+// geeft: hij claimt de sensor en zwijgt.
+const LEEG_TIP='Deze auto meldt dat hij deze sensor ondersteunt, maar levert er geen bruikbare waarde voor.';
+
+function pidTegelLeeg(pid){
+  const val=(typeof pidVals!=='undefined')?pidVals[pid]:undefined;
+  if(val===undefined||val===null) return true;
+  const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
+  return h==='nodata'||h==='onzin';
+}
+
+// Loopt de bestaande tegels langs en zet de lege stand bij. Nodig omdat een
+// sensor pas tijdens de gezondheidsscan 'nodata' kan worden, ná het opbouwen
+// van het rooster.
+function refreshLegeTegels(){
+  try{
+    document.querySelectorAll('.gc[id^="gc-"]').forEach(card=>{
+      const pid=card.id.slice(3);
+      const leeg=pidTegelLeeg(pid);
+      card.classList.toggle('leeg', leeg);
+      const dot=document.getElementById('gd-'+pid);
+      if(!dot) return;
+      dot.classList.toggle('leeg', leeg);
+      if(leeg) dot.title=LEEG_TIP; else dot.removeAttribute('title');
+    });
+  }catch(e){}
+}
+
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
   // Code-/vlag-PIDs staan in het tekstblok, niet in een tegel: daar alleen de
@@ -351,10 +390,18 @@ function applyG(pid,val){
   let st='ok';
   if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
   else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
-  card.className='gc'+(st!=='ok'?' '+st:'');
-  // Verse waarde → niet meer stale (puntjes-modus)
-  card.classList.remove('stale');
-  const dot=document.getElementById('gd-'+pid); if(dot) dot.className='gdot'+(st!=='ok'?' '+st:'');
+  // Er is een waarde binnen, dus de lege stand is voorbij. Via classList in
+  // plaats van een className-toewijzing: die overschreef ook gc-manueel,
+  // waardoor de paarse rand van een handmatig gezette sensor bij de eerste
+  // meting stilletjes verdween.
+  card.classList.remove('warn','danger','leeg','stale');
+  if(st!=='ok') card.classList.add(st);
+  const dot=document.getElementById('gd-'+pid);
+  if(dot){
+    dot.classList.remove('warn','danger','leeg');
+    if(st!=='ok') dot.classList.add(st);
+    dot.removeAttribute('title');
+  }
   // Puntjes-modus: laat het puntje knipperen bij elke nieuwe waarde
   if(pidViewMode==='dots' && dot && st==='ok'){
     dot.classList.remove('flash'); void dot.offsetWidth; dot.classList.add('flash');

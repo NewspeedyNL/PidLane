@@ -596,6 +596,9 @@ async function initialHealthScan(){
   btDiag(`✅ Gezondheidscheck: ${ok} ondersteund, ${geen} niet aanwezig, ${onzin} ongeldig`, 'info');
   autoSelectHealthyKern();
   buildDiscoveredPIDList();
+  // Pas hier weten we welke sensoren wél gemeld maar niet geleverd worden.
+  // De tegels zijn op dat moment al opgebouwd, dus even bijwerken.
+  try{ refreshLegeTegels(); }catch(e){}
 }
 
 // Selecteer automatisch de gezonde kern-PIDs (optie 3 + alleen gezonde)
@@ -647,11 +650,29 @@ function selectCategoryPIDs(cat){
   renderGauges?.(); rebuildGSel?.();
 }
 
+// PIDs die een auto wél als "ondersteund" meldt, maar die geen sensor zijn.
+// 0100/0120/0140/0160/0180/01A0/01C0 zijn de ondersteuningsbitmaps: de
+// inhoudsopgave van mode 01, niet de inhoud. 0102 is de freeze frame-DTC.
+// Ze horen thuis in de ontdekkingsroutine hierboven, niet in een lijst waar
+// je ze kunt aanvinken om te monitoren.
+//
+// 31-07-2026 — stonden hier gewoon tussen en verschenen als aankruisbare
+// "PID 0120 · raw" in het sensorkeuzescherm. 0101 blijft er BEWUST uit: dat is
+// de monitorstatus met het motorlampje erin, en die gebruiken we echt.
+const GEEN_SENSOR_PIDS = new Set(['0100','0120','0140','0160','0180','01A0','01C0','0102']);
+
 function buildDiscoveredPIDList(){
   discoveredPIDDefs=[];
   const catOrder={Motor:0,Temp:1,Brandstof:2,Rijden:3,Electrisch:4,Emissie:5,Overig:9};
 
   supportedPIDs.forEach(pid=>{
+    if(GEEN_SENSOR_PIDS.has(pid)) return;
+    // Fantoomsensoren (AdBlue/NOx/SCR op benzine, verbrandingsmotor-PIDs op
+    // een EV) er hier al uit. Dit filter draaide alleen in isReportableSensor
+    // — dus aan de uitvoerkant, bij het rapport. Gevolg: ze stonden in de
+    // keuzelijst, werden gepollt en kostten busbandbreedte die de echte
+    // sensoren nodig hadden. selectStandardSet() hieronder doet dit al goed.
+    if(typeof vehiclePlausiblePid==='function' && !vehiclePlausiblePid(pid)) return;
     const def=ALL_PID_DEFS[pid];
     if(def){
       discoveredPIDDefs.push({pid,...def});
