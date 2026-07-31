@@ -507,6 +507,63 @@ function vehiclePlausiblePid(pid){
   return true;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// PID-GATE — één ladder, vijf treden, één beslisplek
+// ══════════════════════════════════════════════════════════════════
+// "Mag deze PID mee" bleek niet één vraag maar vijf, die verspreid over
+// acht plekken in wisselende combinaties stonden. Dát is de motor achter
+// het jojo-patroon: een fix raakt één plek, de rest valt terug.
+//
+// De treden zijn CUMULATIEF — elke trede bevat de vorige. Daardoor kun je
+// niet meer per ongeluk een strengere check op een lager niveau zetten.
+//
+//   plausibel → past bij dit voertuig (brandstof, turbo, bank 2)
+//   bestaat   → + is een sensor, geen ondersteuningsbitmap
+//   kiesbaar  → + levert iets (health niet 'onzin'/'nodata')
+//   duidbaar  → + echte naam en eenheid, geen rauwe PID
+//   meetbaar  → + heeft nú een verse waarde
+//
+// "Meldt de auto hem" (supportedPIDs) zit BEWUST niet in de ladder: dat is
+// een orthogonale vraag en maar één aanroepplek stelt hem.
+//
+// De vlag in `opt`:
+//   force   bewuste noodklep ("Toon alles"): slaat de health-trede over, zodat
+//           de gebruiker een sensor die niets levert tóch kan kiezen. Hoort
+//           alleen bij handmatige selectie — nooit richting analyse of rapport.
+function pidGate(pid, niveau, opt){
+  opt = opt || {};
+
+  // 1 — plausibel
+  if(!vehiclePlausiblePid(pid)) return false;
+  if(niveau==='plausibel') return true;
+
+  // 2 — bestaat
+  if(typeof GEEN_SENSOR_PIDS!=='undefined' && GEEN_SENSOR_PIDS.has(pid)) return false;
+  if(niveau==='bestaat') return true;
+
+  // 3 — kiesbaar
+  if(!opt.force){
+    // 'twijfel' mag hier BEWUST door: de analyses gebruiken twijfelachtige
+    // sensoren wél, met een waarschuwing uit buildQualityReport. Wat niet
+    // meetelt is een sensor die niets levert ('nodata') of onzin ('onzin').
+    const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
+    if(h==='onzin'||h==='nodata') return false;
+  }
+  if(niveau==='kiesbaar') return true;
+
+  // 4 — duidbaar
+  const d=getPidDef(pid);
+  if(!d) return false;
+  if(d.unit==='raw') return false;
+  if(typeof d.name==='string' && /^PID\s/i.test(d.name)) return false;
+  if(niveau==='duidbaar') return true;
+
+  // 5 — meetbaar
+  const v=(typeof pidVals!=='undefined')?pidVals[pid]:undefined;
+  if(v===undefined||v===null) return false;
+  return true;
+}
+
 // Her-filter: verwijder fantoomsensoren uit de actieve selectie zodra het
 // brandstoftype (alsnog) bekend wordt. Bij verbinden is brandstof vaak nog
 // onbekend → alles toegelaten; RDW levert 'benzine' pas later. Zonder deze
@@ -516,7 +573,7 @@ function purgeImplausiblePids(){
     _noteMap();   // MAP-piek bijhouden voor turbo/atmosferisch-detectie
     if(typeof activePIDs==='undefined') return 0;
     const weg=[];
-    activePIDs.forEach(pid=>{ if(!vehiclePlausiblePid(pid)) weg.push(pid); });
+    activePIDs.forEach(pid=>{ if(!pidGate(pid,'plausibel')) weg.push(pid); });
     if(!weg.length) return 0;
     weg.forEach(pid=>{ activePIDs.delete(pid); try{ manualPIDs.delete(pid); }catch(e){} });
     try{ renderGauges(); }catch(e){}
@@ -532,15 +589,7 @@ function purgeImplausiblePids(){
 // aandrijflijn-fantoomsensoren (diesel/SCR op benzine). Zo bevat het rapport
 // alleen sensoren met een echte naam en een betrouwbare waarde.
 function isReportableSensor(pid){
-  const d=getPidDef(pid);
-  if(!d) return false;
-  if(d.unit==='raw') return false;
-  if(typeof d.name==='string' && /^PID\s/i.test(d.name)) return false;
-  if(typeof pidVals!=='undefined' && pidVals[pid]===undefined) return false;
-  const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
-  if(h==='onzin'||h==='nodata') return false;
-  if(!vehiclePlausiblePid(pid)) return false;
-  return true;
+  return pidGate(pid,'meetbaar');
 }
 
 // Centrale PID-definitie lookup: eerst ontdekte PIDs, dan volledige database,

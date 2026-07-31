@@ -44,21 +44,19 @@ function relevantSupportedPIDs(profile){
   // BASIS_PIDS loopt bij elke functie mee (motorcontext); profiel eroverheen.
   const base = [...new Set([...BASIS_PIDS, ...(ANALYSE_PIDS[profile] || [])])];
   // In demo of zonder discovery: gewoon het basisprofiel
-  if(demoMode || typeof supportedPIDs==='undefined' || !supportedPIDs.size) return base.filter(vehiclePlausiblePid);
+  if(demoMode || typeof supportedPIDs==='undefined' || !supportedPIDs.size) return base.filter(p=>pidGate(p,'plausibel'));
   const cats = ANALYSE_CATS[profile] || [];
   const extra = [];
   supportedPIDs.forEach(pid=>{
     if(base.includes(pid)) return;
-    if(!vehiclePlausiblePid(pid)) return; // diesel/SCR-sensor op benzineauto → overslaan
-    // Sla alleen echte NO DATA-PIDs over (niet aanwezig op dit voertuig)
-    // Twijfel mag wel mee in analyses — de betrouwbaarheidscheck filtert daar verder
-    const h=(typeof _pidHealth!=='undefined')?_pidHealth[pid]:undefined;
-    if(h==='onzin'||h==='nodata') return;
+    // Trede 'kiesbaar': fantoom eruit, NO DATA en onzin eruit. Twijfel mag
+    // wél mee in analyses — de betrouwbaarheidscheck filtert daar verder.
+    if(!pidGate(pid,'kiesbaar')) return;
     const d = getPidDef(pid);
     if(d && cats.includes(d.cat)) extra.push(pid);
   });
   // Basis eerst (gegarandeerde kern), daarna de relevante gezonde extra
-  return [...base, ...extra].filter(vehiclePlausiblePid);
+  return [...base, ...extra].filter(p=>pidGate(p,'plausibel'));
 }
 
 // ── P7: readiness-rapport — hoeveel van een profiel kan deze auto leveren? ──
@@ -92,14 +90,10 @@ function analysisPidData(profile, extraPids){
   const wens = [...new Set([...relevant, ...(extraPids||[])])];
   // 2. Alleen wat de auto echt levert: verse waarde + niet onzin/nodata.
   //    In demo is _pidHealth leeg → daar alles met een waarde toelaten.
-  const pids = wens.filter(pid=>{
-    if(typeof vehiclePlausiblePid==='function' && !vehiclePlausiblePid(pid)) return false;
-    const val = (typeof pidVals!=='undefined') ? pidVals[pid] : undefined;
-    if(val===undefined || val===null) return false;
-    const h = (typeof _pidHealth!=='undefined') ? _pidHealth[pid] : undefined;
-    if(h==='onzin' || h==='nodata') return false;
-    return true;
-  });
+  // Trede 'meetbaar': past bij het voertuig, levert iets, heeft een echte naam
+  // en eenheid, en heeft nú een waarde. Analyse en rapport stellen daarmee
+  // dezelfde eis — wat niet in het rapport mag, hoort ook niet in de prompt.
+  const pids = wens.filter(pid=>pidGate(pid,'meetbaar'));
   const pairs = pids.map(pid=>[pid, pidVals[pid]]);
   // 3. Kwaliteitsgate: sluit fysiek-onmogelijke uit, waarschuw bij twijfel.
   const quality = buildQualityReport(pairs);
@@ -186,7 +180,10 @@ function renderGauges(){
     // Weergave-poort: diesel/SCR-sensoren (AdBlue, NOx, DPF) horen niet op een
     // benzineauto, ook al staat de PID (door timing of oude selectie) in
     // activePIDs. Filter op het laatste moment — dekt élk toevoegpad.
-    if(!vehiclePlausiblePid(pid)) return;
+    // LET OP: dit is een pleister voor het ontbreken van herijking. Zodra de
+    // bronlijst opnieuw wordt gebouwd bij nieuwe voertuigkennis (ronde 5),
+    // kan activePIDs geen implausibele PID meer bevatten en mag deze regel weg.
+    if(!pidGate(pid,'plausibel')) return;
 
     // ── Code-/vlag-PIDs: gewone woorden in het compacte blok, geen tegel ──
     // Brandstoftype, OBD-norm, brandstofsysteem-status enz. hebben geen

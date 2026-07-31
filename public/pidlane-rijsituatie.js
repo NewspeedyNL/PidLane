@@ -615,10 +615,8 @@ function selectStandardSet(){
   // Selecteer alleen PIDs die de auto ondersteunt, gezond zijn, en in de standaard-set zitten
   let n=0;
   STANDAARD_PIDS.forEach(pid=>{
-    if(!supportedPIDs.has(pid)) return;
-    const h=_pidHealth[pid];
-    if(h==='nodata'||h==='onzin') return;  // niet aanwezig of ongeldig
-    if(!vehiclePlausiblePid(pid)) return;  // fantoom (bv. AdBlue op benzine)
+    if(!supportedPIDs.has(pid)) return;     // meldt de auto hem — staat los van de ladder
+    if(!pidGate(pid,'kiesbaar')) return;
     activePIDs.add(pid); manualPIDs.add(pid); n++;
   });
   const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
@@ -640,8 +638,9 @@ function selectCategoryPIDs(cat){
   let added=0;
   discoveredPIDDefs.forEach(p=>{
     if((p.cat||'Overig')===cat){
-      const gezond = demoMode || _pidHealth[p.pid]!=='onzin' && _pidHealth[p.pid]!=='twijfel';
-      if(gezond && !activePIDs.has(p.pid) && vehiclePlausiblePid(p.pid)){ activePIDs.add(p.pid); manualPIDs.add(p.pid); added++; }
+      // force volgt "Toon alles": stond dat aan, dan kon je een dode sensor al
+      // handmatig aanvinken maar sloeg '+ Alles' hem over. Nu consistent.
+      if(!activePIDs.has(p.pid) && pidGate(p.pid,'kiesbaar',{force:_showAllPIDs})){ activePIDs.add(p.pid); manualPIDs.add(p.pid); added++; }
     }
   });
   buildPIDList(document.getElementById('psrch')?.value||'');
@@ -666,13 +665,12 @@ function buildDiscoveredPIDList(){
   const catOrder={Motor:0,Temp:1,Brandstof:2,Rijden:3,Electrisch:4,Emissie:5,Overig:9};
 
   supportedPIDs.forEach(pid=>{
-    if(GEEN_SENSOR_PIDS.has(pid)) return;
+    if(!pidGate(pid,'bestaat')) return;
     // Fantoomsensoren (AdBlue/NOx/SCR op benzine, verbrandingsmotor-PIDs op
     // een EV) er hier al uit. Dit filter draaide alleen in isReportableSensor
     // — dus aan de uitvoerkant, bij het rapport. Gevolg: ze stonden in de
     // keuzelijst, werden gepollt en kostten busbandbreedte die de echte
     // sensoren nodig hadden. selectStandardSet() hieronder doet dit al goed.
-    if(typeof vehiclePlausiblePid==='function' && !vehiclePlausiblePid(pid)) return;
     const def=ALL_PID_DEFS[pid];
     if(def){
       discoveredPIDDefs.push({pid,...def});
@@ -715,8 +713,9 @@ function applyPidPreset(id){
   const gewenst=[...new Set([...kern, ...(pr.extra||[])])];
   // Alleen wat dit voertuig daadwerkelijk kan leveren.
   const beschikbaar=new Set((discoveredPIDDefs||[]).map(d=>d.pid));
-  const bruikbaar=gewenst.filter(p=>beschikbaar.has(p)
-    && (typeof vehiclePlausiblePid!=='function' || vehiclePlausiblePid(p)));
+  // Nog geen health-controle: dat is ronde 3. Trede 'plausibel' houdt het
+  // gedrag exact zoals het was.
+  const bruikbaar=gewenst.filter(p=>beschikbaar.has(p) && pidGate(p,'plausibel'));
   const ontbreekt=gewenst.length-bruikbaar.length;
   if(!bruikbaar.length){
     if(tip) tip.textContent='Geen van deze sensoren is op dit voertuig beschikbaar.';
@@ -772,17 +771,20 @@ function buildPIDList(filter=''){
     lbl.onclick=()=>{ if(window._pidCatCollapsed.has(cat)) window._pidCatCollapsed.delete(cat); else window._pidCatCollapsed.add(cat); buildPIDList(filter); };
     const addBtn=document.createElement('button');
     addBtn.className='catadd'; addBtn.textContent='+ Alles';
-    addBtn.title=`Alle gezonde ${cat}-sensoren selecteren`;
+    addBtn.title=`Alle bruikbare ${cat}-sensoren selecteren`;
     addBtn.onclick=(e)=>{ e.stopPropagation(); selectCategoryPIDs(cat); };
     lbl.appendChild(addBtn);
     el.appendChild(lbl);
     if(collapsed) return;
     items.forEach(p=>{
       const health=_pidHealth[p.pid]||'ok';
-      // nodata = sensor niet aanwezig op dit voertuig (stationair grijs, geen ⚠)
-      // onzin  = waarde ongeldig/parse-fout (oranje ⚠)
-      const ongezond=(health==='onzin'||health==='nodata');
-      const dim = ongezond && !_showAllPIDs;
+      // health stuurt alleen nog het ICOON:
+      //   nodata = sensor niet aanwezig op dit voertuig (grijs, geen ⚠)
+      //   onzin  = waarde ongeldig/parse-fout (oranje ⚠)
+      // Of een regel uitgegrijsd is, vraagt de gate — die is de enige plek waar
+      // "mag deze PID mee" wordt beslist. De lijst kiest vervolgens om hem tóch
+      // te tonen; dat is het verschil tussen weergave en poort (PIDLANE.md §15).
+      const dim = !pidGate(p.pid,'kiesbaar',{force:_showAllPIDs});
       const row=document.createElement('div');
       row.className='pr'+(activePIDs.has(p.pid)?' sel':'')+(dim?' dim':'');
       const tag = health==='onzin' ? '<span class="phealth bad" title="Ongeldige waarde — mogelijke meetfout">⚠</span>'
