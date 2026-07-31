@@ -80,7 +80,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 |---|---|---|---|
 | 1 | `capacitor.js` | — | alleen in APK aanwezig; `onerror` vangt het web-geval af |
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
-| 3 | `pidlane-data.js` | 102 | statische referentiedata: 148 J1979-PID-definities, DTC-tabel, kennisbank, analysesets |
+| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets |
 | 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
 
 ### Fase 2 — kern (in `<body>`, rond regel 2128)
@@ -380,14 +380,7 @@ Zoek in de tabel in §4 — daar staat dit bestand voor.
 
 Bijgewerkt 31-07-2026.
 
-1. **7 dubbele DTC-sleutels in `pidlane-data.js`** — P0401, P0420, P0340, P0016,
-   P0012, P0011, P0128. `DTCDB` is één objectliteraal met eerst een generieke
-   sectie en daarna merksecties; de laatste wint, dus een Mazda krijgt bij P0128
-   de BMW/Mini-tekst en bij P0420 de VAG-tekst. Gaat via `dtcInfo()` ook de
-   AI-prompt in (`pidlane-scheduler.js:120`). Vraagt een keuze: merktekst
-   samenvoegen in de generieke omschrijving, of `DTCDB` opsplitsen in een
-   generiek deel plus een merkdeel met een merkbewuste `dtcInfo()`.
-2. **Restjes.** `rebuildPidDefsCache()` bestaat niet (wel geguard);
+1. **Restjes.** `rebuildPidDefsCache()` bestaat niet (wel geguard);
    15 id's worden opgevraagd die nergens bestaan (`userLabel`, `apiPill`,
    `themeBtn`, `statusPill`, `cbtn`, `plEvalBtn`…); `logout()` wist de
    `pl_credits_*`-sleutels niet, dus een volgende klant op hetzelfde apparaat
@@ -398,6 +391,12 @@ Bijgewerkt 31-07-2026.
 ### Opgelost op 31-07-2026
 
 Voor de historie, zodat je niet opnieuw op zoek gaat:
+
+- 7 dubbele DTC-sleutels (P0011, P0012, P0016, P0128, P0340, P0401, P0420).
+  `DTCDB` was één objectliteraal met eerst een generieke en daarna merksecties;
+  de laatste won, dus een Mazda kreeg bij P0128 de BMW-tekst. Nu gesplitst in
+  `DTCDB` (generiek) plus `DTC_MERK` (zes merkbuckets), met een merkbewuste
+  `dtcInfo()`. Zie §14.
 
 - AI-calls werden serverzijdig niet afgerekend — nu wel, op echt verbruik (§8).
 - Serversaldo ging verloren na herladen; `finishLogin` haalt het nu op.
@@ -480,3 +479,43 @@ niet in de pollronde.
   aparte ronde.
 - Build-changelog (42 KB) kan naar `CHANGELOG.md` → `index.html` ~157 KB.
 - Per module opschonen kan nu goedkoop, één module tegelijk.
+
+---
+
+## 14. DTC-lookup — merkbewust, één beslisplek
+
+Besluit van 31-07-2026. `DTCDB` was één objectliteraal met eerst een generieke
+sectie en daarna zes merksecties. Zeven codes stonden er twee keer in en in een
+objectliteraal wint de laatste, dus élk voertuig kreeg de merktekst van het
+merk dat toevallig onderaan stond. Een Mazda met P0128 las "veel BMW/Mini".
+
+**De opzet nu**, alles in `pidlane-data.js`:
+
+| Global | Inhoud |
+|---|---|
+| `DTCDB` | 50 generieke codes, geen merknamen in de tekst |
+| `DTC_MERK` | 31 codes in zes buckets: `MAZDA`, `VAG`, `TOYOTA`, `FORD`, `OPEL`, `BMW` |
+| `DTC_MERK_LABEL` | leesbaar label per bucket, voor in de tekst |
+| `merkGroep(merk)` | merknaam → bucket, of `''` als het merk onbekend is |
+
+`dtcInfo()` in `pidlane-bt.js` is en blijft de enige beslisplek — acht
+aanroepplekken, één functie. Hij zoekt via `_dtcBron()` in drie stappen:
+
+1. de bucket van dít voertuig (`merkGroep(vehicleInfo.merk)`)
+2. `DTCDB`, de generieke tabel
+3. een willekeurig ander merk dat de code wel kent, met een noot erbij
+   ("tekst van VW/Audi/Skoda/Seat")
+
+Stap 3 bestaat om dekking te houden: codes als P2015 en P0A80 komen alleen in
+één merksectie voor. Zonder die stap zou een Mazda daar "Onbekende code" op
+krijgen, terwijl de oude opzet er wél een tekst voor had. De noot maakt
+zichtbaar dat de tekst geleend is.
+
+Onbekend of leeg merk valt vanzelf terug op generiek — `merkGroep()` geeft dan
+een lege string en stap 1 wordt overgeslagen.
+
+**Let op — openstaande kopie.** `applyVehiclePIDPreset()` in
+`pidlane-rijsituatie.js` heeft nog een eigen, hardcoded merkgroepering
+(`BMW||MINI`, `VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`). Dat is
+dezelfde beslissing op een tweede plek en hoort naar `merkGroep()`. Bewust niet
+in dezelfde ronde gedaan; dat is een mechanische wijziging en die gaat apart.
