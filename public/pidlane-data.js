@@ -127,51 +127,92 @@ window.DTCDB ={
   U0100:{desc:'Communicatie PCM verloren',        body:'PCM voeding of CAN bus probleem.',                           sev:'high'},
   U0101:{desc:'Communicatie TCM verloren',        body:'TCM of CAN bus probleem.',                                   sev:'high'},
   // B-codes
-  B1318:{desc:'Accu spanning laag',               body:'Accu, alternator of lekstroom.',                             sev:'med'},
-
-  // ── MAZDA SPECIFIEK (CX-5, Mazda3, Mazda6, CX-30) ──
-  P2006:{desc:'Inlaatspruitstuk klep gesloten (bank 1)',  body:'IMRC actuator of bedrading. CX-5 2.0/2.5: vacuümsysteem controleren.',sev:'med'},
-  P2004:{desc:'Inlaatspruitstuk klep vast open',          body:'IMRC klep mechanisch vastgelopen.',                   sev:'med'},
-  P2187:{desc:'Systeem te mager bij stationair (bank 1)', body:'Vacuümlek of brandstofsysteem. Mazda SkyActiv: inlaatgasket controleren.',sev:'med'},
-  P0AA6:{desc:'Hybride accupakket spanning laag',         body:'Mazda M Hybrid: 24V mild-hybrid systeem fout.',       sev:'high'},
-  P1260:{desc:'Diefstalbeveiliging actief',               body:'Immobiliser probleem — contactsleutel of transponder.',sev:'high'},
-  P0A0F:{desc:'Aandrijfsysteem noodloopprogramma',        body:'Mazda M Hybrid: systeem vereist diagnose.',           sev:'high'},
-  C1155:{desc:'ABS linksvoor wielsnelheid sensor',        body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
-  C1165:{desc:'ABS rechtsvoor wielsnelheid sensor',       body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
-
-  // ── VOLKSWAGEN / AUDI / SKODA / SEAT (VAG) ──
-  P0299:{desc:'Turbo/compressor ondervermogen',    body:'Turbo defect, intercooler lek of wastegate probleem.',      sev:'high'},
-  P2015:{desc:'Inlaatspruitstuk positiesensor',    body:'Beroemd VW 2.0 TDI probleem — kleppenvlinder kapot.',      sev:'med'},
-  P0401:{desc:'EGR onvoldoende doorstroom',        body:'EGR klep vastgelopen of vuil. Veel bij VW TDI.',           sev:'med'},
-  P0420:{desc:'Katalysator efficiëntie laag (bank 1)',body:'Katalysator versleten of O2 sensor defect.',            sev:'med'},
-  P0411:{desc:'Secundaire luchtinjectie fout',     body:'Secundaire luchtpomp of klep defect. VW/Audi benzine.',    sev:'med'},
-  P0507:{desc:'Stationair toerental te hoog',      body:'Gasklep of luchtstroom meting fout.',                      sev:'med'},
-  P1296:{desc:'Koelvloeistof temperatuursensor',   body:'CTS wisselt — veel bij VW/Audi 1.8/2.0 TSI.',             sev:'med'},
-
-  // ── TOYOTA / LEXUS ──
-  P3000:{desc:'HV accusysteem fout',              body:'Hybride accupakket of BMS systeem.',                        sev:'high'},
-  P0A80:{desc:'Vervang hybride accu',             body:'Toyota Prius/Auris/Yaris hybride: accu versleten.',         sev:'high'},
-  P0500:{desc:'Voertuigsnelheid sensor',          body:'VSS sensor of bedrading defect.',                          sev:'med'},
-  C1201:{desc:'Motorbesturing systeem fout',      body:'Toyota: ABS lamp + motorlamp samen — vaak MAP/TPS fout.',  sev:'high'},
-  P1120:{desc:'Gasklep positiesensor',            body:'Toyota: TPS sub-sensor buiten bereik.',                    sev:'med'},
-
-  // ── FORD ──
-  P0191:{desc:'Brandstofdruk sensor bereik',      body:'Ford 1.0 EcoBoost: brandstofdruksensor of pomp.',          sev:'med'},
-  P0340:{desc:'Nokkenas positiesensor circuit A', body:'CMP sensor of kettingrek. Ford 1.6 TDCi veel voorkomend.',sev:'high'},
-  P246A:{desc:'Dieselroetfilter te vol',          body:'Ford TDCi: DPF regeneratie mislukt — snelweg rijden.',     sev:'med'},
-  P2263:{desc:'Turbo/supercharger boost sensor',  body:'Ford EcoBoost: boost sensor of inlaatleiding lek.',        sev:'med'},
-
-  // ── OPEL / VAUXHALL ──
-  P0597:{desc:'Thermostaat verwarmingselement',   body:'Thermostaat met elektrische verwarming defect. Veel Opel.', sev:'med'},
-  P0016:{desc:'Krukas/nokkenas koppeling (bank 1 inlaat)',body:'Kettingrek of variabele klepdistributie fout.',     sev:'high'},
-  P0017:{desc:'Krukas/nokkenas koppeling (bank 1 uitlaat)',body:'Kettingrek of VVT magneetventiel.',                sev:'high'},
-
-  // ── BMW / MINI ──
-  P0012:{desc:'A nokkenas timing over-teruggetrokken',body:'BMW: VANOS actuator of oliepeil te laag.',             sev:'high'},
-  P0011:{desc:'A nokkenas timing over-gevorderd',  body:'BMW: VANOS magneetventiel of oliedruk.',                  sev:'high'},
-  P0128:{desc:'Koelwater te laag (thermostaat)',   body:'Thermostaat vast open — veel BMW/Mini.',                  sev:'med'},
-  P1340:{desc:'Ontstekingssysteem krukas sensor',  body:'BMW: CKP sensor of vliegwiel tand.',                      sev:'high'},
+  B1318:{desc:'Accu spanning laag',               body:'Accu, alternator of lekstroom.',                             sev:'med'}
 };
+
+// ── DTC_MERK — merkspecifieke codes en teksten ──
+// Gesplitst van DTCDB op 31-07-2026: 7 codes (P0011, P0012, P0016, P0128,
+// P0340, P0401, P0420) stonden zowel generiek als merkspecifiek in één
+// objectliteraal. De laatste won, dus een Mazda kreeg BMW-tekst bij P0128.
+// dtcInfo() in pidlane-bt.js kiest nu op merk en valt terug op generiek.
+window.DTC_MERK = {
+  // ── MAZDA SPECIFIEK (CX-5, Mazda3, Mazda6, CX-30) ──
+  MAZDA: {
+    P2006:{desc:'Inlaatspruitstuk klep gesloten (bank 1)',  body:'IMRC actuator of bedrading. CX-5 2.0/2.5: vacuümsysteem controleren.',sev:'med'},
+    P2004:{desc:'Inlaatspruitstuk klep vast open',          body:'IMRC klep mechanisch vastgelopen.',                   sev:'med'},
+    P2187:{desc:'Systeem te mager bij stationair (bank 1)', body:'Vacuümlek of brandstofsysteem. Mazda SkyActiv: inlaatgasket controleren.',sev:'med'},
+    P0AA6:{desc:'Hybride accupakket spanning laag',         body:'Mazda M Hybrid: 24V mild-hybrid systeem fout.',       sev:'high'},
+    P1260:{desc:'Diefstalbeveiliging actief',               body:'Immobiliser probleem — contactsleutel of transponder.',sev:'high'},
+    P0A0F:{desc:'Aandrijfsysteem noodloopprogramma',        body:'Mazda M Hybrid: systeem vereist diagnose.',           sev:'high'},
+    C1155:{desc:'ABS linksvoor wielsnelheid sensor',        body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
+    C1165:{desc:'ABS rechtsvoor wielsnelheid sensor',       body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
+  },
+  // ── VOLKSWAGEN / AUDI / SKODA / SEAT (VAG) ──
+  VAG: {
+    P0299:{desc:'Turbo/compressor ondervermogen',    body:'Turbo defect, intercooler lek of wastegate probleem.',      sev:'high'},
+    P2015:{desc:'Inlaatspruitstuk positiesensor',    body:'Beroemd VW 2.0 TDI probleem — kleppenvlinder kapot.',      sev:'med'},
+    P0401:{desc:'EGR onvoldoende doorstroom',        body:'EGR klep vastgelopen of vuil. Veel bij VW TDI.',           sev:'med'},
+    P0420:{desc:'Katalysator efficiëntie laag (bank 1)',body:'Katalysator versleten of O2 sensor defect.',            sev:'med'},
+    P0411:{desc:'Secundaire luchtinjectie fout',     body:'Secundaire luchtpomp of klep defect. VW/Audi benzine.',    sev:'med'},
+    P0507:{desc:'Stationair toerental te hoog',      body:'Gasklep of luchtstroom meting fout.',                      sev:'med'},
+    P1296:{desc:'Koelvloeistof temperatuursensor',   body:'CTS wisselt — veel bij VW/Audi 1.8/2.0 TSI.',             sev:'med'},
+  },
+  // ── TOYOTA / LEXUS ──
+  TOYOTA: {
+    P3000:{desc:'HV accusysteem fout',              body:'Hybride accupakket of BMS systeem.',                        sev:'high'},
+    P0A80:{desc:'Vervang hybride accu',             body:'Toyota Prius/Auris/Yaris hybride: accu versleten.',         sev:'high'},
+    P0500:{desc:'Voertuigsnelheid sensor',          body:'VSS sensor of bedrading defect.',                          sev:'med'},
+    C1201:{desc:'Motorbesturing systeem fout',      body:'Toyota: ABS lamp + motorlamp samen — vaak MAP/TPS fout.',  sev:'high'},
+    P1120:{desc:'Gasklep positiesensor',            body:'Toyota: TPS sub-sensor buiten bereik.',                    sev:'med'},
+  },
+  // ── FORD ──
+  FORD: {
+    P0191:{desc:'Brandstofdruk sensor bereik',      body:'Ford 1.0 EcoBoost: brandstofdruksensor of pomp.',          sev:'med'},
+    P0340:{desc:'Nokkenas positiesensor circuit A', body:'CMP sensor of kettingrek. Ford 1.6 TDCi veel voorkomend.',sev:'high'},
+    P246A:{desc:'Dieselroetfilter te vol',          body:'Ford TDCi: DPF regeneratie mislukt — snelweg rijden.',     sev:'med'},
+    P2263:{desc:'Turbo/supercharger boost sensor',  body:'Ford EcoBoost: boost sensor of inlaatleiding lek.',        sev:'med'},
+  },
+  // ── OPEL / VAUXHALL ──
+  OPEL: {
+    P0597:{desc:'Thermostaat verwarmingselement',   body:'Thermostaat met elektrische verwarming defect. Veel Opel.', sev:'med'},
+    P0016:{desc:'Krukas/nokkenas koppeling (bank 1 inlaat)',body:'Kettingrek of variabele klepdistributie fout.',     sev:'high'},
+    P0017:{desc:'Krukas/nokkenas koppeling (bank 1 uitlaat)',body:'Kettingrek of VVT magneetventiel.',                sev:'high'},
+  },
+  // ── BMW / MINI ──
+  BMW: {
+    P0012:{desc:'A nokkenas timing over-teruggetrokken',body:'BMW: VANOS actuator of oliepeil te laag.',             sev:'high'},
+    P0011:{desc:'A nokkenas timing over-gevorderd',  body:'BMW: VANOS magneetventiel of oliedruk.',                  sev:'high'},
+    P0128:{desc:'Koelwater te laag (thermostaat)',   body:'Thermostaat vast open — veel BMW/Mini.',                  sev:'med'},
+    P1340:{desc:'Ontstekingssysteem krukas sensor',  body:'BMW: CKP sensor of vliegwiel tand.',                      sev:'high'},
+  },
+};
+
+// Labels voor in de tekst als een code van een ánder merk wordt geleend.
+window.DTC_MERK_LABEL = {
+  MAZDA: 'Mazda',
+  VAG: 'VW/Audi/Skoda/Seat',
+  TOYOTA: 'Toyota/Lexus',
+  FORD: 'Ford',
+  OPEL: 'Opel/Vauxhall',
+  BMW: 'BMW/Mini',
+};
+
+// ── merkGroep() — één plek waar merknamen op een bucket worden gemapt ──
+// Let op: pidlane-rijsituatie.js (applyVehiclePIDPreset) heeft nog een eigen
+// kopie van deze groepering. Die kan hier later naartoe — aparte ronde.
+window.merkGroep = function merkGroep(merk){
+  const m = String(merk||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                            .toUpperCase().replace(/[^A-Z]/g,'');
+  if(!m) return '';
+  if(m.indexOf('MAZDA')===0) return 'MAZDA';
+  if(m.indexOf('VOLKSWAGEN')===0||m==='VW'||m.indexOf('AUDI')===0||m.indexOf('SKODA')===0||m.indexOf('SEAT')===0||m.indexOf('CUPRA')===0) return 'VAG';
+  if(m.indexOf('TOYOTA')===0||m.indexOf('LEXUS')===0) return 'TOYOTA';
+  if(m.indexOf('FORD')===0) return 'FORD';
+  if(m.indexOf('OPEL')===0||m.indexOf('VAUXHALL')===0) return 'OPEL';
+  if(m==='BMW'||m.indexOf('MINI')===0) return 'BMW';
+  return '';
+};
+
 
 // ── PIDS_EXTRA (was index.html regel 3142) ──
 window.PIDS_EXTRA = {

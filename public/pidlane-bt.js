@@ -1714,10 +1714,33 @@ function _implausibleMisfire(code){
   const cyl=_misfireCylNo(code), total=vehicleCylinderCount();
   return cyl>0 && total>0 && cyl>total;
 }
+// Zoekt de DTC-omschrijving in drie stappen, in deze volgorde:
+//   1. de merkbucket van dít voertuig  (Mazda krijgt Mazda-tekst)
+//   2. de generieke tabel              (Mazda krijgt bij P0128 de neutrale tekst)
+//   3. een willekeurig ander merk      (behoudt dekking van unieke merkcodes
+//      als P2015, met een noot erbij dat de tekst van een ander merk komt)
+function _dtcBron(code){
+  const merk = (typeof vehicleInfo!=='undefined'&&vehicleInfo) ? vehicleInfo.merk : '';
+  const groep = (typeof merkGroep==='function') ? merkGroep(merk) : '';
+  const M = (typeof DTC_MERK!=='undefined') ? DTC_MERK : null;
+  if(groep&&M&&M[groep]&&M[groep][code]) return {rij:M[groep][code],noot:''};
+  if(typeof DTCDB!=='undefined'&&DTCDB[code])   return {rij:DTCDB[code],noot:''};
+  if(M){
+    for(const g of Object.keys(M)){
+      if(M[g][code]){
+        const lab=(typeof DTC_MERK_LABEL!=='undefined'&&DTC_MERK_LABEL[g])?DTC_MERK_LABEL[g]:g;
+        return {rij:M[g][code],noot:` (tekst van ${lab})`};
+      }
+    }
+  }
+  return null;
+}
 function dtcInfo(code){
-  const base=(typeof DTCDB!=='undefined'&&DTCDB[code])
-    ? Object.assign({},DTCDB[code])
+  const bron=_dtcBron(code);
+  const base=bron
+    ? Object.assign({},bron.rij)
     : {desc:'Onbekende code',body:'Raadpleeg fabrikantdocumentatie.',sev:'med'};
+  if(bron&&bron.noot) base.desc=base.desc+bron.noot;
   if(_implausibleMisfire(code)){
     const total=vehicleCylinderCount();
     base.desc=base.desc+` — ⚠️ onwaarschijnlijk (voertuig heeft ${total} cilinder(s))`;
