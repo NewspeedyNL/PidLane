@@ -177,8 +177,7 @@ als een routingfout):
 | `/klant/wachtwoord` | wachtwoord wijzigen (ingelogd) |
 | `/klant/reset-aanvraag`, `/klant/reset-uitvoeren` | wachtwoordherstel per mail (token-hash in Airtable) |
 | `/klant/admin-wachtwoord` | noodklep: admin zet handmatig een klantwachtwoord |
-| `/klant/saldo-muteer` | **ongebruikt sinds 31-07-2026** — de app boekt niet meer zelf af |
-| `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`) |
+| `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot |
 | `/admin/klanten` | klantbeheer voor admin.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
@@ -207,6 +206,26 @@ invullen om te overschrijven):
 | `CREDIT_PER_1K_IN` | 0.70 | credits per 1000 invoertokens |
 | `CREDIT_PER_1K_UIT` | 3.50 | credits per 1000 uitvoertokens |
 | `CREDIT_MIN` | 1 | minimum per AI-call |
+
+### Activatiecodes inwisselen — waarom er een slot omheen zit
+
+Airtable kent geen transacties, dus twee gelijktijdige verzoeken met dezelfde
+code konden allebei slagen. `/credits/redeem` pakt daarom eerst een kortstondig
+slot in een Durable Object met de naam `redeem:<code>` (`redeem-lock` /
+`redeem-unlock` in `RemoteSessionDO`), leest de code binnen dat slot opnieuw en
+stempelt hem pas daarna af.
+
+Het slot is bewust **niet** de administratie van "code is op" — dat blijft het
+veld `Gebruikt` in Airtable. Handmatig uitvinken werkt dus gewoon, en een
+verzoek dat halverwege sneuvelt blokkeert een code niet voorgoed: het slot
+verloopt na 30 seconden.
+
+`GebruiktOp` is een **dateTime**-veld. Er moet dus een geldige ISO-tijd in.
+Tot 31-07-2026 schreef de Worker daar een zelfgemaakte "stempel" met een
+willekeurig staartje in, zonder `typecast` — als datum ongeldig, dus Airtable
+gaf 422 en inwisselen werkte vermoedelijk helemaal niet. `Vervalt` is een
+**date**-veld (`YYYY-MM-DD`); de controle kan sinds 31-07-2026 ook overweg met
+een volledige ISO-tijd, voor als dat veldtype ooit verandert.
 
 **Rollen.** `auth()` levert `{u, r, l}`. `r` is `admin`, `user`, `demo` of
 `klant`. Demo en het oude `legacy`-token hebben geen AI-toegang; `klant` wel,
@@ -325,31 +344,37 @@ Zoek in de tabel in §4 — daar staat dit bestand voor.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Uit de codereview van 31-07-2026. Op volgorde van ernst.
+Bijgewerkt 31-07-2026.
 
-1. **Race in `/credits/redeem`.** De compare-and-set vergelijkt
-   `stempel.slice(0,19)`, en dat kapt juist het willekeurige deel eraf. Twee
-   verzoeken binnen dezelfde seconde boeken allebei de credits bij. Vergelijk de
-   volledige stempel. Let dan op het veldtype van `GebruiktOp`: die PATCH gaat
-   zonder `typecast`, dus bij een datumveld faalt hij sowieso met 422.
-2. **7 dubbele DTC-sleutels in `pidlane-data.js`** — P0401, P0420, P0340, P0016,
-   P0012, P0011, P0128. De merksecties overschrijven de generieke, dus een Mazda
-   krijgt bij P0128 "veel BMW/Mini". Die tekst gaat via `dtcInfo()` ook de
-   AI-prompt in (`pidlane-scheduler.js:120`).
-3. **`handleKlantLogin` valideert het e-mailadres niet** vóór `klantZoek()`. De
-   `\'`-escaping die daar gebruikt wordt kent Airtable niet echt. Zet er een
-   `klantEmailOk`-check voor en val door naar `misser()`.
-4. **`/klant/reset-aanvraag` lekt of een account bestaat**: mislukte mail geeft
-   502 mét detail, een onbekend adres altijd 200.
-5. **Vervalcontrole activatiecodes** — `Date.parse(f.Vervalt + "T23:59:59Z")`
-   breekt zodra dat veld ooit een tijd bevat; de controle valt dan stil weg.
-6. **Restjes.** `rebuildPidDefsCache()` bestaat niet (wel geguard);
+1. **7 dubbele DTC-sleutels in `pidlane-data.js`** — P0401, P0420, P0340, P0016,
+   P0012, P0011, P0128. `DTCDB` is één objectliteraal met eerst een generieke
+   sectie en daarna merksecties; de laatste wint, dus een Mazda krijgt bij P0128
+   de BMW/Mini-tekst en bij P0420 de VAG-tekst. Gaat via `dtcInfo()` ook de
+   AI-prompt in (`pidlane-scheduler.js:120`). Vraagt een keuze: merktekst
+   samenvoegen in de generieke omschrijving, of `DTCDB` opsplitsen in een
+   generiek deel plus een merkdeel met een merkbewuste `dtcInfo()`.
+2. **Restjes.** `rebuildPidDefsCache()` bestaat niet (wel geguard);
    15 id's worden opgevraagd die nergens bestaan (`userLabel`, `apiPill`,
    `themeBtn`, `statusPill`, `cbtn`, `plEvalBtn`…); `logout()` wist de
-   `pl_credits_*`-sleutels niet; een gebruikersnaam mét `@` kan de Users-route
-   nooit meer bereiken (klantlogin geeft 401 en `doLogin` stopt daar hard);
-   `/klant/saldo-muteer` is ongebruikt en kan weg; de Tikkie-links staan
-   hardcoded in een publieke repo.
+   `pl_credits_*`-sleutels niet, dus een volgende klant op hetzelfde apparaat
+   ziet even het saldo van de vorige; een gebruikersnaam mét `@` kan de
+   Users-route nooit meer bereiken (klantlogin geeft 401 en `doLogin` stopt daar
+   hard); de Tikkie-links staan hardcoded in een publieke repo.
+
+### Opgelost op 31-07-2026
+
+Voor de historie, zodat je niet opnieuw op zoek gaat:
+
+- AI-calls werden serverzijdig niet afgerekend — nu wel, op echt verbruik (§8).
+- Serversaldo ging verloren na herladen; `finishLogin` haalt het nu op.
+- `fireAlert()` bestond nergens: elke waarschuwing van de caravancoach gooide
+  een ReferenceError en brak de tick af.
+- `/credits/redeem`: kapotte compare-and-set én een ongeldige datum in een
+  dateTime-veld. Nu een DO-slot en een geldige ISO-tijd.
+- Vervalcontrole activatiecodes brak op een gewijzigd veldtype.
+- `handleKlantLogin` valideerde het e-mailadres niet vóór de Airtable-lookup.
+- `/klant/reset-aanvraag` verklapte via een mislukte mail of een account bestond.
+- `/klant/saldo-muteer` verwijderd — de app boekt niet meer zelf af.
 
 ## 12. Vervolgstappen na de opsplitsing
 

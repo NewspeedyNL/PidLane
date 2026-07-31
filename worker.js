@@ -1215,6 +1215,12 @@ function codeStub(env, code) {
   return env.REMOTE_SESSION.get(id);
 }
 __name(codeStub, "codeStub");
+// Aparte instance-naamruimte voor activatiecodes, zodat een meekijk-sessiecode
+// en een activatiecode elkaar nooit in de weg kunnen zitten.
+function redeemStub(env, code) {
+  return env.REMOTE_SESSION.get(env.REMOTE_SESSION.idFromName("redeem:" + code));
+}
+__name(redeemStub, "redeemStub");
 function randDigits(n) {
   let out = "";
   while (out.length < n) {
@@ -1367,6 +1373,32 @@ var RemoteSessionDO = class {
       if (p.status !== "ready") return Response.json({ status: "waiting" });
       await this.ctx.storage.delete("pair");
       return Response.json({ status: "ready", sessionId: p.sessionId, joinToken: p.joinToken });
+    }
+    // Kortstondig slot rond het inwisselen van één activatiecode. Airtable
+    // kent geen transacties, dus twee gelijktijdige verzoeken met dezelfde
+    // code konden allebei slagen. Eén DO-instance per code (naam
+    // "redeem:<code>") serialiseert dat wél echt.
+    //
+    // Het slot is BEWUST kort en niet de administratie van "code is op": dat
+    // blijft het veld Gebruikt in Airtable. Zo blijft handmatig uitvinken in
+    // Airtable werken zoals je gewend bent, en blokkeert een afgebroken
+    // verzoek een code niet voorgoed.
+    if (op === "redeem-lock") {
+      const nu = Date.now();
+      let gelukt = false;
+      await this.ctx.blockConcurrencyWhile(async () => {
+        const cur = Number(await this.ctx.storage.get("redeemLock")) || 0;
+        // Slot ouder dan 30 s is een restant van een verzoek dat halverwege
+        // is gesneuveld; dat mag verlopen.
+        if (cur && nu - cur < 3e4) return;
+        await this.ctx.storage.put("redeemLock", nu);
+        gelukt = true;
+      });
+      return Response.json({ ok: gelukt }, { status: gelukt ? 200 : 409 });
+    }
+    if (op === "redeem-unlock") {
+      await this.ctx.storage.delete("redeemLock");
+      return Response.json({ ok: true });
     }
     if (op === "code-put") {
       const b = await request.json();
@@ -1730,6 +1762,13 @@ async function handleCreditsRedeem(request, env) {
   const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
   const esc = code.replace(/'/g, "\\'");
 
+  // Zonder Durable Object geen atomair slot, en zonder slot kan dezelfde code
+  // bij twee gelijktijdige verzoeken twee keer worden ingewisseld. Bewust
+  // dichtklappen: bij geld is niets doen beter dan misschien dubbel boeken.
+  if (!env.REMOTE_SESSION)
+    return json({ ok: false, error: "Inwisselen kan nu even niet. Probeer het zo opnieuw." }, 503);
+
+  let slot = null;
   try {
     // 1. Code opzoeken
     const zoek = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
@@ -1748,15 +1787,51 @@ async function handleCreditsRedeem(request, env) {
     if (!(credits > 0))
       return json({ ok: false, error: "Deze code heeft geen waarde." }, 409);
 
+    // Vervalt is in Airtable een date-veld en komt dus binnen als YYYY-MM-DD;
+    // die maken we heel om middernacht. Zet iemand het veld ooit om naar
+    // dateTime, dan komt er een volledige ISO-tijd binnen en zou "+T23:59:59Z"
+    // een onparseerbare string opleveren — waarna de vervalcontrole stilletjes
+    // wegviel en verlopen codes gewoon werkten. Vandaar beide vormen.
     if (f.Vervalt) {
-      const verval = Date.parse(String(f.Vervalt) + "T23:59:59Z");
-      if (isFinite(verval) && Date.now() > verval)
+      const rauw = String(f.Vervalt).trim();
+      const verval = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(rauw) ? rauw + "T23:59:59Z" : rauw);
+      if (!Number.isFinite(verval)) {
+        // Onleesbare datum niet negeren: dan weet je niet of de code geldig is.
+        try { console.error("[credits] onleesbare vervaldatum: " + rauw); } catch (_) {}
+        return json({ ok: false, error: "Deze code kan nu niet gecontroleerd worden." }, 409);
+      }
+      if (Date.now() > verval)
         return json({ ok: false, error: "Deze code is verlopen." }, 409);
     }
 
     // 2. Claimen met unieke stempel
-    const stempel = new Date().toISOString().replace(/\.\d+Z$/, "") + "." +
-      Math.random().toString(36).slice(2, 8) + "Z";
+    slot = redeemStub(env, code);
+    const grendel = await slot.fetch("https://do/redeem-lock", { method: "POST" });
+    if (!grendel.ok) {
+      slot = null;
+      return json({ ok: false, error: "Deze code wordt op dit moment al ingewisseld." }, 409);
+    }
+
+    // 3. Binnen het slot opnieuw lezen. DIT is de eigenlijke race-beveiliging:
+    //    een tweede verzoek komt hier pas als het eerste klaar is en ziet
+    //    Gebruikt dan al aanstaan. De controle bij stap 1 blijft staan omdat
+    //    die de meeste verzoeken al afvangt zonder slot te pakken.
+    const rc = await fetch(
+      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${rec.id}`,
+      { headers: hdr }
+    );
+    if (!rc.ok) return json({ ok: false, error: "Controle mislukt, probeer later opnieuw." }, 502);
+    const dc = await rc.json();
+    if ((dc && dc.fields || {}).Gebruikt === true)
+      return json({ ok: false, error: "Deze code is zojuist al gebruikt." }, 409);
+
+    // 4. Afstempelen. GebruiktOp is een dateTime-veld, dus hier hoort een
+    //    geldige ISO-tijd. Er stond eerder een zelfgemaakte "stempel" met een
+    //    willekeurig staartje in ("…T21:15:00.a1b2c3Z"); dat is als datum
+    //    ongeldig, en omdat deze PATCH zonder typecast ging antwoordde Airtable
+    //    met 422 — inwisselen werkte dus vermoedelijk helemaal niet. typecast
+    //    staat nu aan zodat het ook goed blijft gaan als het veld ooit naar
+    //    tekst wordt omgezet.
     const r2 = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
       method: "PATCH",
       headers: hdr,
@@ -1765,24 +1840,20 @@ async function handleCreditsRedeem(request, env) {
           id: rec.id,
           fields: {
             Gebruikt: true,
-            GebruiktOp: stempel,
+            GebruiktOp: new Date().toISOString(),
             GebruiktDoor: door
           }
-        }]
+        }],
+        typecast: true
       })
     });
-    if (!r2.ok) return json({ ok: false, error: "Inwisselen mislukt, probeer later opnieuw." }, 502);
-
-    // 3. Teruglezen — staat onze stempel er nog, dan hebben wij de race gewonnen.
-    const r3 = await fetch(
-      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${rec.id}`,
-      { headers: hdr }
-    );
-    if (r3.ok) {
-      const d3 = await r3.json();
-      const nu = String(d3 && d3.fields && d3.fields.GebruiktOp || "");
-      if (nu && nu.slice(0, 19) !== stempel.slice(0, 19))
-        return json({ ok: false, error: "Deze code is zojuist al gebruikt." }, 409);
+    if (!r2.ok) {
+      const t2 = await r2.text().catch(() => "");
+      try {
+        console.error("[credits] afstempelen mislukt :: " + r2.status + " " + t2.slice(0, 200));
+      } catch (_) {
+      }
+      return json({ ok: false, error: "Inwisselen mislukt, probeer later opnieuw." }, 502);
     }
 
     // 4. Is er een ingelogde klant, dan gaan de tokens naar het account in
@@ -1818,6 +1889,16 @@ async function handleCreditsRedeem(request, env) {
     return json({ ok: true, credits, code, saldo });
   } catch (e) {
     return klantFout(e, "Onverwachte fout bij inwisselen.");
+  } finally {
+    // Slot hoe dan ook loslaten. Gebeurt dat niet — bijvoorbeeld doordat de
+    // Worker ertussenuit klapt — dan verloopt het vanzelf na 30 s, zodat een
+    // code nooit permanent op slot komt te staan.
+    if (slot) {
+      try {
+        await slot.fetch("https://do/redeem-unlock", { method: "POST" });
+      } catch (_) {
+      }
+    }
   }
 }
 __name(handleCreditsRedeem, "handleCreditsRedeem");
@@ -2021,7 +2102,13 @@ async function handleKlantLogin(request, env, ctx) {
   };
 
   try {
-    const rec = email ? await klantZoek(env, email) : null;
+    // Eerst het formaat controleren, pas daarna zoeken. klantZoek bouwt een
+    // filterByFormula met de invoer erin, en de \'-escaping die daar gebruikt
+    // wordt kent Airtable niet echt: een adres met een apostrof maakte er een
+    // kapotte formule van. Dat gaf een 500 in plaats van een nette afwijzing —
+    // en verraadde meteen dat je invoer iets deed. Nu valt het net als een
+    // onbekend adres door naar misser(), inclusief dezelfde vertraging.
+    const rec = klantEmailOk(email) ? await klantZoek(env, email) : null;
     if (!rec) return await misser();
 
     const f = rec.fields || {};
@@ -2144,11 +2231,24 @@ async function handleKlantResetAanvraag(request, env) {
     const link = `${basis}/?herstel=${token}`;
     const verstuurd = await klantMailVersturen(env, email, link);
     if (!verstuurd.ok) {
-      return json({
-        ok: false,
-        error: "Versturen van de herstelmail mislukte.",
-        detail: "mailprovider " + verstuurd.status + ": " + (verstuurd.detail || "geen toelichting")
-      }, 502);
+      // Naar buiten toe hetzelfde antwoord als bij een onbekend adres. Gaf dit
+      // een 502 mét toelichting, dan was van buitenaf te zien of een adres bij
+      // ons bekend is — een mislukte mail kan immers alleen bij een bestaand
+      // account gebeuren. Dat is precies de gratis klantcontrole die de rest
+      // van deze route juist probeert te voorkomen.
+      //
+      // De oorzaak gaat niet verloren: hij staat in de Workers Logs, en met een
+      // geldig X-Admin-Token krijg je hem hier gewoon te zien.
+      try {
+        console.error("[klant] herstelmail mislukt (" + verstuurd.status + "): " + (verstuurd.detail || "geen toelichting"));
+      } catch (_) {
+      }
+      if (adminOnly(request, env))
+        return json({
+          ok: false,
+          error: "Versturen van de herstelmail mislukte.",
+          detail: "mailprovider " + verstuurd.status + ": " + (verstuurd.detail || "geen toelichting")
+        }, 502);
     }
     return algemeen;
   } catch (e) {
@@ -2278,41 +2378,12 @@ async function handleKlantAdminWachtwoord(request, env) {
 }
 __name(handleKlantAdminWachtwoord, "handleKlantAdminWachtwoord");
 
-// ── POST /klant/saldo-muteer  { delta, reden }  (ingelogd) ──────────
-// Boekt tokens af of bij op het account. De Worker is hier de baas, niet de
-// client: delta wordt begrensd en het saldo kan nooit onder nul zakken.
-async function handleKlantSaldoMuteer(request, env) {
-  const p = await klantAuth(request, env);
-  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
-
-  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
-  const rl = await rateLimit(env, "klant-saldo", ip, { limit: 120, windowMs: 6e4 }, true);
-  if (rl.limited) return rateLimitResponse(rl);
-
-  let body = {};
-  try { body = await request.json(); } catch (e) {}
-  const delta = Math.round(Number(body.delta) || 0);
-
-  // Bijboeken mag hier NIET — dat kan alleen via een geldige activatiecode.
-  // Anders kan een klant met zijn eigen token gratis tokens bijschrijven.
-  if (!(delta < 0)) return json({ ok: false, error: "Alleen afboeken toegestaan." }, 400);
-  if (delta < -500) return json({ ok: false, error: "Mutatie te groot." }, 400);
-
-  try {
-    const rec = await klantZoek(env, p.u);
-    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
-    const huidig = Number((rec.fields || {}).Saldo || 0);
-    if (huidig + delta < 0)
-      return json({ ok: false, error: "Onvoldoende tokens.", saldo: huidig }, 402);
-    const nieuw = huidig + delta;
-    await klantPatch(env, rec.id, { Saldo: nieuw });
-    return json({ ok: true, saldo: nieuw });
-  } catch (e) {
-    return klantFout(e, "Mutatie mislukt.");
-  }
-}
-__name(handleKlantSaldoMuteer, "handleKlantSaldoMuteer");
+// /klant/saldo-muteer is op 31-07-2026 verwijderd. Die route liet de app zelf
+// tokens afboeken, maar afrekenen vanuit de client is een verzoek en geen
+// controle. Sinds handleMessages serverzijdig afboekt op echt verbruik was hij
+// niet alleen overbodig maar ook een risico: een oude, in de cache achtergebleven
+// app-versie zou er dubbel mee boeken. Bijboeken kon er nooit mee — dat kan
+// alleen via een geldige activatiecode op /credits/redeem.
 
 // ═══════════════════════════════════════════════════════════════════
 // ADMINBEHEER — klantaccounts en activatiecodes
@@ -2701,8 +2772,6 @@ var worker_default = {
         return lockOrigin(request, await handleKlantResetUitvoeren(request, env));
       if (url.pathname === "/klant/admin-wachtwoord" && request.method === "POST")
         return lockOrigin(request, await handleKlantAdminWachtwoord(request, env));
-      if (url.pathname === "/klant/saldo-muteer" && request.method === "POST")
-        return lockOrigin(request, await handleKlantSaldoMuteer(request, env));
       if (url.pathname === "/credits/redeem" && request.method === "POST")
         return lockOrigin(request, await handleCreditsRedeem(request, env));
       if (url.pathname === "/proxy" && request.method === "GET")
