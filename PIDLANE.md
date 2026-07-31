@@ -246,7 +246,8 @@ solo-project. Als er ooit echt SQL nodig is: **Cloudflare D1**, niet MariaDB.
 | Logs | `appdRasY8ZVJCMkPJ` |
 
 Tabellen: Referentie `tblkfxKcjR6gf0Ahe`, Sessies `tblwbyWN1L6AKwgoy`,
-en in de Config-base `Users`, `Klanten` en `TokenCodes`.
+en in de Config-base `Users`, `Klanten`, `TokenCodes` en `TokenLog`
+(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026).
 
 **Twee soorten accounts, bewust gescheiden.** `Users` zijn zakelijke logins op
 gebruikersnaam (abonnement, geen tokenverbruik). `Klanten` zijn zelf-
@@ -264,7 +265,10 @@ Referentie-store met p5/p50/p95-bereiken per PID.
 
 ## 8. AI-integratie
 
-- Model: `claude-sonnet-4-6`. `thinking:{type:'disabled'}` is correct voor
+- Model: `claude-sonnet-5` (standaard in `apiFetch`); snelle antwoorden gaan
+  op `claude-haiku-4-5-20251001`. De Worker heeft `claude-sonnet-4-6` als
+  terugval, maar de app stuurt altijd een expliciet model mee.
+  `thinking:{type:'disabled'}` is correct voor
   Sonnet; Haiku laat het veld weg.
 - AI Gateway-route:
   `gateway.ai.cloudflare.com/v1/11390e49dd8b8cd940f262cc35c41b94/pid-lane/anthropic/v1/messages`
@@ -306,6 +310,36 @@ het dat wél doen, dan betaalt de klant dubbel.
 `pidlane-credits.js` voor het venster vooraf, `tegoedKosten()` in `worker.js`
 voor de echte afboeking. Wijzig je er één, pas de ander aan — of zet de tarieven
 via Worker-variabelen zodat alleen de schatting nog in de app staat.
+
+### Kasboek — TokenLog
+
+Elke mutatie op een tokensaldo krijgt een regel in `TokenLog` (Config-base),
+geschreven door `tegoedLog()` in `worker.js`. Vier bronnen: `ai-call`,
+`code-ingewisseld`, `proeftegoed` en `admin-mutatie`.
+
+Velden: `Moment`, `Klant`, `Soort`, `Credits` (negatief bij afboeken),
+`SaldoNa`, `TokensIn`, `TokensUit`, `Model`, `Details`. Lege cel = onbekend;
+bij een adminmutatie blijft `Credits` bewust leeg omdat het oude saldo daar
+niet gelezen wordt.
+
+Twee regels die vastliggen:
+
+- **Het kasboek is administratie, geen bron van waarheid.** Het saldo staat in
+  `Klanten.Saldo`. Een mislukte logregel mag de call nooit laten stranden;
+  daarom zit alles in een try en gaat de schrijfactie via `ctx.waitUntil`.
+- **Een mislukte afboeking krijgt óók een regel**, met `Credits: 0` en een
+  `Details` die dat meldt. Juist dan wil je later kunnen zien dat er AI is
+  verbruikt zonder dat er iets van het saldo af ging.
+
+Aanleiding: op 31-07-2026 verdwenen er tokens zonder analyses. Oorzaak bleek
+`testApiKey()`, die bij élke app-start een echte call deed. Dat was alleen te
+achterhalen door de code te lezen — met een kasboek was het één blik geweest.
+
+**Achtergrondcalls kosten geld.** Sinds de Worker afrekent is élke call naar
+`/v1/messages` billable, ook calls die nooit langs `PLCredits.preflight` gaan
+en die de gebruiker niet als analyse ziet. Voeg je een AI-call toe die vanzelf
+afgaat, bedenk dan eerst wie hem betaalt. `testApiKey()` draait daarom niet
+meer voor klantaccounts.
 
 **Bekende grens:** Airtable kent geen transacties. Twee gelijktijdige calls van
 hetzelfde account (twee apparaten) kunnen elkaars afboeking overschrijven. Bij
@@ -357,7 +391,7 @@ Bijgewerkt 31-07-2026.
    15 id's worden opgevraagd die nergens bestaan (`userLabel`, `apiPill`,
    `themeBtn`, `statusPill`, `cbtn`, `plEvalBtn`…); `logout()` wist de
    `pl_credits_*`-sleutels niet, dus een volgende klant op hetzelfde apparaat
-   ziet even het saldo van de vorige; een gebruikersnaam mét `@` kan de
+   ziet even het saldo van de vorige (de eerste `verversSaldo()` corrigeert het); een gebruikersnaam mét `@` kan de
    Users-route nooit meer bereiken (klantlogin geeft 401 en `doLogin` stopt daar
    hard); de Tikkie-links staan hardcoded in een publieke repo.
 
@@ -375,8 +409,71 @@ Voor de historie, zodat je niet opnieuw op zoek gaat:
 - `handleKlantLogin` valideerde het e-mailadres niet vóór de Airtable-lookup.
 - `/klant/reset-aanvraag` verklapte via een mislukte mail of een account bestond.
 - `/klant/saldo-muteer` verwijderd — de app boekt niet meer zelf af.
+- `testApiKey()` deed bij elke app-start een billable call: 1 token per keer dat
+  een klant de app opende. Draait nu niet meer voor klantaccounts.
+- Kasboek `TokenLog` toegevoegd, zodat saldomutaties navolgbaar zijn.
+- Ondersteuningsbitmaps (`0120`, `0140`, `0160`…) en de freeze frame-DTC stonden
+  als aankruisbare "raw"-sensor in de keuzelijst.
+- Fantoomsensoren (AdBlue, NOx, SCR) werden aangeboden en gepollt op een
+  benzineauto; het filter draaide alleen bij het rapport.
+- Het bolletje op een tegel was groen tenzij een drempel werd overschreden, dus
+  ook bij een sensor die nooit een waarde gaf.
+- `applyG()` overschreef `className` en wiste daarmee `gc-manueel` bij de eerste
+  meting.
 
-## 12. Vervolgstappen na de opsplitsing
+## 12. PID-strategie boven database
+
+Besluit van 31-07-2026, na een ronde waarin er tien dingen tegelijk misgingen
+op een Mazda CX-5.
+
+**Mode 01 is niet merkgebonden.** De J1979-formules zijn identiek op elk merk:
+`010C` is overal `((A*256)+B)/4`. Wat verschilt is *welke* PIDs een ECU
+ondersteunt, en dat vertelt de auto zelf via de bitmaps `0100/0120/0140/…`.
+Daar heb je geen database voor nodig, maar één request. Echt merkgebonden wordt
+het pas bij mode 22 (fabrikantspecifieke adressen met eigen schaling), en daar
+helpt statistiek niet: je hebt het adres nodig, niet een gemiddelde.
+
+**Wat de Referentie-store dus wél oplevert** is niet "kan ik deze PID lezen"
+maar "is deze waarde normaal voor dit blok". Dat is waardevol, maar schaalt met
+het aantal voertuigen per `merk|model|jaar|CALID`-cel. Solo duurt dat jaren, en
+een p50 uit drie auto's is erger dan geen p50 — die ziet er gezaghebbend uit.
+
+**Daarom: strategie eerst, database als bijvangst.** Toon geen bereiken zolang
+een cel te dun gevuld is. Laat de referentiepijplijn draaien, maar laat hem niet
+de architectuur bepalen.
+
+### Drie standen per sensor
+
+De auto geeft je gratis kennis die geen database ooit levert: hij claimt een
+sensor en zwijgt. Dat verdient een eigen stand.
+
+| Stand | Betekenis |
+|---|---|
+| groen | in de bitmap én levert een plausibele waarde |
+| grijs (`.leeg`) | in de bitmap, maar levert niets of onzin |
+| niet getoond | staat niet in de bitmap |
+
+Geïmplementeerd met `pidTegelLeeg()` en `refreshLegeTegels()` in
+`pidlane-pids.js`. Let op: een waarde van **0 is een geldige waarde** en hoort
+groen te blijven — alleen `undefined`/`null` of health `nodata`/`onzin` maken
+een tegel grijs.
+
+### Filter aan de bron, niet aan de uitvoer
+
+`vehiclePlausiblePid()` bestond al, maar draaide alleen in
+`isReportableSensor()` — dus pas bij het rapport. Gevolg: fantoomsensoren
+stonden in de keuzelijst, werden elke ronde gepollt en kostten busbandbreedte
+die de echte sensoren nodig hadden. `buildDiscoveredPIDList()` past het filter
+nu meteen toe, samen met `GEEN_SENSOR_PIDS` (de ondersteuningsbitmaps en de
+freeze frame-DTC — wel `0101` behouden, dat is de monitorstatus met het
+motorlampje).
+
+**Vuistregel:** wat een voertuig niet heeft, hoort niet in de keuzelijst en zeker
+niet in de pollronde.
+
+---
+
+## 13. Vervolgstappen na de opsplitsing
 
 - `index.html` is nu ~203 KB, waarvan 139 KB HTML-markup. Verdere winst is
   mogelijk door paneel-HTML naar templates te verplaatsen, maar dat is een
