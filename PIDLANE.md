@@ -621,7 +621,7 @@ Vaste aanroepplekken daarnaast: `mergeVehicleData()` in
 `pidlane-voertuigdata.js` (brandstoftype wijzigt) en de protocolherkenning in
 `pidlane-bt.js`.
 
-### Turbo-detectie — waarom belasting meetelt en aantal niet
+### Turbo-detectie — waarom het bewijs uit de meting zelf komt
 
 `_isNaturallyAspirated()` besliste op `_mapSamples >= 8`: acht MAP-metingen,
 piek onder 106 kPa, dus geen turbo. Dat klopte niet. Een auto die stationair
@@ -633,45 +633,52 @@ aangeroepen vanuit `purgeImplausiblePids()` zelf, en die draaide twee keer per
 sessie. `_mapSamples` kwam dus nooit boven de 8 en de hele turbo-detectie was
 dode code.
 
-Nu telt `_noteMap()` alleen als **bewijs** wanneer de motor belast wordt
-(toerental > 1200 én belasting ≥ 60% of gasklep ≥ 50%), met een drempel van 12
-zulke metingen. De piek wordt wél altijd bijgehouden. De aanroep zit in
-`updPID()` en staat op `pid === '010B'` — anders telt dezelfde meting één keer
-per PID in de pollronde mee.
+De eerste herstelpoging eiste "belaste" metingen: toerental > 1200 én
+motorbelasting ≥ 60% of gasklep ≥ 50%. Een rit met de CX-5 (01-08-2026, vier
+minuten stadsverkeer) liet zien dat dat niet werkt:
+
+| Gemeten | Uitkomst |
+|---|---|
+| MAP-piek | 100 kPa — de 106-grens klopt |
+| Gasklep | gemiddeld 16%, piek 74,9% |
+| Metingen die het criterium haalden | 1 van de 56 |
+
+Een moderne automaat opent in stadsverkeer de gasklep bijna nooit ver; de motor
+is er groot genoeg voor. Het bewijs kwam dus nooit binnen.
+
+Er zat bovendien een fout in die niets met drempels te maken had. `010B`,
+`0111` en `0104` worden op verschillende intervallen gepolld — op deze rit
+1071, 428 en 3570 ms. `_mapBewijsMoment()` las `pidVals['0111']` op het moment
+dat er een drukmeting binnenkwam, en kreeg dus een gasklepstand van een ander
+moment. Tijdens accelereren verandert die sneller dan het verschil.
+
+**Nu komt het bewijs uit de MAP-waarde zelf.** Een hoge inlaatdruk *betekent*
+dat de gasklep ver open staat; een tweede PID is overbodig. Bij een turbo gaat
+de druk dan boven omgevingsdruk, bij een atmosferische motor nadert hij 100 en
+stopt daar. Eén PID, geen synchronisatieprobleem.
+
+Toerental wordt wel meegelezen, want dat verandert traag genoeg: contact aan met
+stilstaande motor geeft ~101 kPa (geen onderdruk) en zou anders als bewijs voor
+"atmosferisch" tellen.
+
+De drempels staan als benoemde constanten bovenaan het blok in
+`pidlane-auth.js`, juist omdat ze na een rit bijgesteld gaan worden:
+
+```
+MAP_BEWIJS_KPA   85    vanaf deze druk staat de gasklep ver open
+MAP_BEWIJS_MIN   10    zoveel metingen voor een oordeel
+MAP_ATMOSF_MAX  106    piek hieronder = geen turbo
+MAP_MOTOR_RPM   300    daaronder draait de motor niet
+```
+
+De aanroep zit in `updPID()` en staat op `pid === '010B'` — anders telt dezelfde
+meting één keer per PID in de pollronde mee.
 
 Te weinig bewijs → geen oordeel → geen filter. Liever een boost-tegel te veel op
-een atmosferische motor dan een ontbrekende tegel op een turbo.
-
-### Wat bewust búiten de gate blijft
-
-`buildPIDList()` en `pidTegelLeeg()` tonen juist wél wat de gate afkeurt —
-uitgegrijsd, met "Toon alles" ernaast. **Weergave is niet de gate.** Zonder deze
-regel past de volgende opruimronde de gate daar behulpzaam ook toe en verdwijnt
-het grijs, dat precies de derde stand uit §12 is.
-
-### Waar de ladder vandaan komt
-
-Niet verzonnen. SAE J1939 codeert dezelfde standen in de byte zelf: 0xFF =
-parameter niet beschikbaar, 0xFE = fout, geldig tot 0xFA. J1939-71 beveelt
-bovendien aan om na inschakelen alle beschikbaarheidsbits op "niet beschikbaar"
-te zetten en met standaardwaarden te werken tot er geldige data binnenkomt.
-J1979 (waar wij op zitten) heeft dat niet, dus reconstrueren we het door te
-meten. Twee gevolgen:
-
-- **Health hoort niet in de bronlijst.** Beschikbaarheid is herzienbaar,
-  capaciteit niet.
-- **`nodata` uit één read is dun bewijs** en moet bij herijking opnieuw
-  getoetst kunnen worden.
-
-`python-OBD` bevestigt de bronlijst-aanpak en levert het model voor de
-noodklep: alles buiten `supported_commands` is standaard "niet ondersteund", en
-je komt er alleen langs met een expliciete `force`. Onze `_showAllPIDs` is dat,
-maar zit nu op de weergavelaag — vandaar `opt.force` als toekomstige
-gate-parameter in plaats van een tweede omweg.
-
-Ter contrast: Torque Pro heeft geen plausibiliteitsfilter en laat de afweging
-(NOx-PID op benzine of diesel) aan de gebruiker. Dat is precies het gedrag dat
-we in §12 hebben weggehaald.
+een atmosferische motor dan een ontbrekende tegel op een turbo. Op het venster
+uit die rit (56 metingen, 5 bruikbaar) volgt dus géén oordeel; over de hele
+sessie (238 metingen) wel. Beide gevallen staan als scenario in
+`test-herijking.js`, met de echte meetreeks als fixture.
 
 ### Rondes
 
@@ -683,7 +690,7 @@ Mechanisch en inhoudelijk strikt gescheiden, één afwijking per commit.
 | 2 ✅ | `healthStreng` weg | `twijfel` selecteerbaar, `nodata` niet meer via de categorieknop |
 | 3 ✅ | `ruwToegestaan` weg | geen naamloze raw-PIDs meer richting de AI |
 | 4 ✅ | `force` doorgegeven aan `selectCategoryPIDs` en `buildPIDList` | "Toon alles" werkt ook op `+ Alles`; `dim` komt uit de gate |
-| 5a-1 ✅ | turbo-criterium herzien: belast bewijs i.p.v. aantal metingen | geen — `_noteMap()` hing nog in de purge, teller haalde de drempel niet |
+| 5a-1 ✅ | turbo-criterium herzien; na een testrit nogmaals, nu op MAP-waarde | geen — `_noteMap()` hing nog in de purge, teller haalde de drempel niet |
 | 5a-2 ✅ | `_noteMap()` naar `updPID()` | turbo-detectie gaat leven; boost-PIDs verdwijnen op een bewezen atmosferische motor |
 | 5b ✅ | `purgeImplausiblePids()` → `herijkPidGate()`, stempel + tick, `nodata` herzienbaar | fantoom verdwijnt óók uit de keuzelijst; een PID die alsnog data levert komt terug |
 
@@ -703,10 +710,11 @@ wijzig de gate, draai de test, werk precies één `verwacht` bij. Moet je er twe
 bijwerken, dan heeft je wijziging meer geraakt dan de bedoeling was.
 
 `test-herijking.js` (repo-root) toetst of de gate op het juiste **moment** wordt
-gesteld — een andere vraag, die de eerste test niet kan stellen. Acht scenario's
+gesteld — een andere vraag, die de eerste test niet kan stellen. Negen scenario's
 op een tijdlijn: bronlijst bouwen bij onbekende brandstof, kennis laten
 binnendruppelen, en controleren dat de lijst meebeweegt. Inclusief de
-turbo-gevallen (stationair bewijst niets, belast wel) en de eis dat 200 metingen
+turbo-gevallen (lage druk bewijst niets, hoge wel), een echte meetreeks van de
+CX-5 als fixture, en de eis dat 200 metingen
 zonder kennisverandering nul herbouwen opleveren.
 
 Beide tests trekken hun code uit de echte modules in plaats van een kopie bij te
