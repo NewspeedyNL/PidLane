@@ -2,112 +2,97 @@
 
 > Dit is GEEN architectuurdocument. PIDLANE.md blijft de bron van waarheid;
 > de gate staat daar in §15. Dit bestand overbrugt alleen het gat tussen
-> sessies en mag weg zodra ronde 5 klaar is.
+> sessies.
 >
-> Bijgewerkt 01-08-2026, na ronde 4 van de PID-gate.
+> Bijgewerkt 01-08-2026, na ronde 5 van de PID-gate.
 
 ---
 
 ## Waar we staan
 
-De PID-gate is ontworpen én grotendeels gebouwd. Ronde 1 t/m 4 zijn klaar,
-geverifieerd en beschreven in PIDLANE.md §15. **Alleen ronde 5 staat open.**
+**De PID-gate is af.** Ronde 1 t/m 5 zijn klaar, geverifieerd en beschreven in
+PIDLANE.md §15. Er staat geen ronde meer open.
 
 Kern in twee zinnen: "mag deze PID mee" was geen enkele vraag maar vijf, die op
-tien plekken in tien combinaties stonden — dát was de motor achter "een fix die
-faalt door een fix". Die vijf bleken cumulatief, dus het is een ladder geworden:
-`pidGate(pid, niveau, opt)` met `plausibel → bestaat → kiesbaar → duidbaar →
-meetbaar`, waarbij elke trede de vorige bevat.
+elf plekken in wisselende combinaties stonden — dát was de motor achter "een fix
+die faalt door een fix". Die vijf bleken cumulatief, dus het is een ladder
+geworden: `pidGate(pid, niveau, opt)` met `plausibel → bestaat → kiesbaar →
+duidbaar → meetbaar`, waarbij elke trede de vorige bevat. Ronde 5 voegde daar de
+tijd aan toe: `herijkPidGate()` stelt de gate opnieuw zodra de voertuigkennis
+verandert.
 
 ### Bestanden die klaarstaan om te committen
 
 | Bestand | Wat erin veranderde |
 |---|---|
-| `pidlane-auth.js` | `pidGate()` toegevoegd (regel ~505 e.v.), `isReportableSensor` en `purgeImplausiblePids` erdoorheen |
-| `pidlane-rijsituatie.js` | `buildDiscoveredPIDList`, `selectStandardSet`, `selectCategoryPIDs`, `applyPidPreset`, `buildPIDList` |
-| `pidlane-pids.js` | `relevantSupportedPIDs` (2×), `analysisPidData`, `renderGauges` |
-| `test-pidgate.js` | NIEUW, hoort in de repo-root |
-| `PIDLANE.md` | §4, §11, §12 bijgewerkt; §15 nieuw |
+| `public/pidlane-auth.js` | turbo-criterium herzien; `purgeImplausiblePids()` → `herijkPidGate()`; stempel + `plHerijkTick()` + `markeerHerijking()` |
+| `public/pidlane-pids.js` | `updPID()`: `_noteMap()` bij 010B, `nodata`-opwaardering, herijk-tick; commentaar bij de laatste zeef in `renderGauges()` |
+| `public/pidlane-voertuigdata.js` | aanroep hernoemd (1 regel) |
+| `public/pidlane-bt.js` | aanroep hernoemd (1 regel) |
+| `test-herijking.js` | NIEUW, hoort in de repo-root |
+| `test-pidgate.js` | plaknaam `purgeImplausiblePids` → `herijkPidGate` |
+| `PIDLANE.md` | §4 en §15 bijgewerkt; rondetabel afgerond |
 
-Alle drie de modules zijn door `node --check`. `node test-pidgate.js` geeft
-exit 0 met de melding dat alle verschillen verklaard zijn.
+Alle modules zijn door `node --check`. `node test-pidgate.js` geeft exit 0.
+`node test-herijking.js` geeft 24 toetsen, 0 fout.
 
----
+### Wat je op een echte auto moet zien
 
-## Ronde 5 — herijking (de enige openstaande ronde)
+De drempels in de turbo-detectie (1200 tpm, 60% belasting of 50% gasklep, 12
+belaste metingen) zijn beredeneerd, niet gemeten. Op de CX-5:
 
-Dit is de grootste van de vijf, want hij verandert **wanneer** de gate wordt
-gesteld, niet alleen wat hij antwoordt.
+1. Rijd een normaal ritje met wat belasting.
+2. Kijk of de laaddruk-PIDs (`0170`, `2102`, `0187`) verdwijnen. De CX-5 2.0
+   SkyActiv-G is atmosferisch, dus dat hóórt te gebeuren.
+3. Gebeurt het niet, dan is de drempel te streng en blijft de detectie stil —
+   geen schade, wel nutteloos. Verlaag dan het aantal of de belastingseis.
+4. Verdwijnt er een tegel die er wél hoorde te staan: drempel te soepel.
 
-### Het probleem
-
-`discoveredPIDDefs` wordt gebouwd tijdens `initialHealthScan()`, op een moment
-dat het brandstoftype meestal nog onbekend is en `_maxMapSeen` nog leeg. Komt
-RDW later met "benzine", dan haalt `purgeImplausiblePids()` de AdBlue-tegel wel
-uit `activePIDs`, maar de **bronlijst wordt niet herbouwd**. De fantoomsensor
-staat dus nog gewoon in de keuzelijst — sinds ronde 4 uitgegrijsd in plaats van
-normaal, maar hij hoort er helemaal niet te staan.
-
-Onderliggend: de gate is geen zuivere functie van de PID, maar van
-(PID, huidige kennis). Een gefilterde bronlijst zonder invalidatie is daarmee
-per definitie te vroeg gebouwd.
-
-### Wat te bouwen
-
-1. `purgeImplausiblePids()` wordt `herijkPidGate()`: eerst
-   `buildDiscoveredPIDList()` opnieuw draaien, dán pas `activePIDs` filteren,
-   dan `renderGauges()` + `rebuildGSel()`.
-2. Aanroepen op elk moment dat de voertuigkennis verandert: brandstoftype uit
-   RDW binnen, `_maxMapSeen` over de turbo-drempel, VIN-profiel geladen.
-3. `nodata` herzienbaar maken. `initialHealthScan()` doet één read per PID en
-   zet de uitkomst vast. Dat is dun bewijs — J1939-71 beveelt niet voor niets
-   aan om beschikbaarheid op "niet beschikbaar" te laten beginnen en pas op te
-   waarderen bij geldige data. Andersom moet dus ook kunnen.
-4. Daarna mag de pleisterregel in `renderGauges()` weg (`pidlane-pids.js`, staat
-   met een `LET OP`-comment aangegeven).
-
-### Verificatie
-
-`test-pidgate.js` moet worden **uitgebreid**, niet alleen bijgewerkt: hij toetst
-nu of de gate het juiste antwoord geeft, niet of hij op het juiste moment wordt
-gesteld. Voor ronde 5 is een tweede test nodig met een tijdlijn — bronlijst
-bouwen bij onbekende brandstof, daarna brandstof zetten, en controleren dat de
-fantoom uit `discoveredPIDDefs` verdwijnt.
-
-### Modules nodig
-
-`pidlane-auth.js`, `pidlane-rijsituatie.js`, `pidlane-pids.js`, plus
-`test-pidgate.js`. Dat is helaas alle drie — ronde 5 raakt ze alle.
+Op de Clio (2007, ook atmosferisch) geldt hetzelfde. Een turbo om tegen af te
+zetten hebben we niet in de testvloot — dat is de zwakke plek in de verificatie.
 
 ---
 
-## Nog te controleren (klein, één grep)
+## Wat hierna aan de beurt is
 
-`selectStandardSet` loopt over `STANDAARD_PIDS` in `pidlane-data.js`, dat ik
-niet heb gezien. Staat daar per ongeluk een ondersteuningsbitmap in (`0100`,
-`0120`, `0140`, `0160`, `0180`, `01A0`, `01C0`, `0102`), dan valt die er sinds
-ronde 1 uit. Verwachting: staat er niet in, want het is een samengestelde lijst.
-Dit is de enige aanname uit de hele reeks die niet geverifieerd is.
+### 1. Toevoegpaden sluiten (klein, duidelijk afgebakend)
+
+De laatste zeef in `renderGauges()` kan pas weg als deze drie door `pidGate()`
+lopen:
+
+| Plek | Wat |
+|---|---|
+| `pidlane-diagnose.js` (~r31) | focus-PIDs uit Smart Diagnose |
+| `pidlane-remote.js` (~r596) | actieve selectie uit een remote-sessie |
+| `pidlane-pids.js` (~r13) | handmatige klik, bereikbaar via "Toon alles" |
+
+Let op bij de derde: die moet `force` respecteren, anders sloopt hij "Toon
+alles". Modules nodig: die drie.
+
+### 2. `pidGate()` uit `pidlane-auth.js` halen (mechanisch, apart)
+
+Daar staan nu `pidGate`, `herijkPidGate`, `vehiclePlausiblePid`, `getPidDef`,
+`_noteMap`, de stempel en `assessPidQuality`. Volgens §4 is dat de
+login/adminmodule. Eigen module, gedragsneutraal, geverifieerd met beide tests.
+
+### 3. Merkgroepering-kopie (mechanisch, apart)
+
+`applyVehiclePIDPreset()` in `pidlane-rijsituatie.js` heeft nog een hardcoded
+merkgroepering (`BMW||MINI`, `VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`).
+Hoort naar `merkGroep()` in `pidlane-data.js`.
 
 ---
 
-## Losse eindjes die hierna aan de beurt zijn
+## Losse eindjes
 
-- **`pidGate()` staat in `pidlane-auth.js`.** Daar stonden
-  `vehiclePlausiblePid()` en `getPidDef()` al, maar volgens §4 is dat de
-  login/adminmodule. Verplaatsen naar een eigen module: mechanische ronde,
-  apart, niet mengen met ronde 5.
-- **Merkgroepering-kopie.** `applyVehiclePIDPreset()` in
-  `pidlane-rijsituatie.js` heeft nog een hardcoded merkgroepering
-  (`BMW||MINI`, `VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`). Hoort naar
-  `merkGroep()` in `pidlane-data.js`. Mechanisch, apart.
 - **Dode code in `buildPIDList`:** `nodataTip` wordt berekend maar nergens
-  gebruikt. Opgemerkt tijdens ronde 4, bewust niet meegenomen.
+  gebruikt.
+- **`pidCnt` telt twee dingen.** Label zegt "Beschikbare PIDs", zeven van de
+  negen schrijvers zetten er het *geselecteerde* aantal in. Cosmetisch.
 - **Overrun-detectie + tijdstempel per PID.** De AI krijgt een rijtje getallen
   zonder te weten of ze van hetzelfde moment komen, en de rijsituatie komt uit
   een invoerveld in plaats van uit de meting. Overrun is af te leiden uit wat al
   gelezen wordt (gasklep dicht, toerental boven stationair, snelheid > 0).
-  Hoort bij de gate-categorie "AI-aanroepen".
 - **Referentie-store en octrooien.** Een Snap-on-octrooifamilie beschrijft een
   server die uit vlootdata normaalbereiken afleidt en per voertuig + DTC een
   gefilterde PID-lijst uitlevert — sterk lijkend op waar §12 naartoe wil. Geen
@@ -123,7 +108,14 @@ Dit is de enige aanname uit de hele reeks die niet geverifieerd is.
 Connectie, UI-knoppen, vensters, rapporten, AI-aanroepen. `apiFetch()` in
 `pidlane-fuel.js` is het bestaande voorbeeld van zo'n centrale plek.
 
-De les uit deze reeks die daar meegaat: **kijk eerst of het één vraag is of
-meerdere.** Was het er één geweest, dan had één functie volstaan. Het waren er
-vijf, en juist het door elkaar heen lopen van die vijf maakte elke losse fix
-tot de oorzaak van de volgende.
+Twee lessen uit deze reeks die daar meegaan:
+
+**Kijk eerst of het één vraag is of meerdere.** Was het er één geweest, dan had
+één functie volstaan. Het waren er vijf, en juist het door elkaar heen lopen van
+die vijf maakte elke losse fix tot de oorzaak van de volgende.
+
+**Een centrale plek is nog geen antwoord op wanneer.** De gate was na ronde 4
+één beslisplek met het juiste antwoord, en stond nog steeds op het verkeerde
+moment. Dode code kan dat verbergen: de turbo-detectie draaide nooit, dus het
+kapotte criterium viel nooit op. Bij de volgende categorie dus ook vragen: wie
+roept dit eigenlijk aan, en hoe vaak?

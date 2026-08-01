@@ -4,8 +4,8 @@
 > **welk bestand je nodig hebt** zonder de code te lezen. Zet dit in de
 > project-kennisbank. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-07-31, na het serverzijdig maken van de
-> tegoedafrekening. Daarvóór: 2026-07-28, opsplitsronde van `index.html`.
+> Laatst bijgewerkt: 2026-08-01, na ronde 5 van de PID-gate (herijking).
+> Daarvóór: 2026-07-31, serverzijdige tegoedafrekening.
 
 ---
 
@@ -87,7 +87,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 
 | # | Module | KB | Doet |
 |---|---|---|---|
-| 5 | `pidlane-auth.js` | 57 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer, **`pidGate()` + `vehiclePlausiblePid()` + `getPidDef()`** (zie §15 — die PID-logica hoort hier eigenlijk niet, verplaatsen is een eigen ronde) |
+| 5 | `pidlane-auth.js` | 57 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer, **`pidGate()` + `herijkPidGate()` + `vehiclePlausiblePid()` + `getPidDef()`** (zie §15 — die PID-logica hoort hier eigenlijk niet, verplaatsen is een eigen ronde) |
 | 6 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
 | 7 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
 | 8 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export |
@@ -533,7 +533,7 @@ in dezelfde ronde gedaan; dat is een mechanische wijziging en die gaat apart.
 
 ---
 
-## 15. De PID-gate — één ladder, negen aanroepplekken
+## 15. De PID-gate — één ladder, elf aanroepplekken
 
 Besluit van 31-07-2026, na het patroon dat "een fix die faalt door een fix"
 heette: de fix voor fantoomsensoren brak de sensorstatus, de fix daarvoor liet
@@ -584,10 +584,63 @@ is een orthogonale vraag en maar één aanroepplek stelt hem
 | `relevantSupportedPIDs` (basis) | pids | `plausibel` |
 | `relevantSupportedPIDs` (lus) | pids | `kiesbaar` |
 | `analysisPidData` | pids | `meetbaar` |
-| `renderGauges` | pids | `plausibel` |
+| `renderGauges` | pids | `plausibel` — laatste zeef, zie hieronder |
 | `isReportableSensor` | auth | `meetbaar` |
 | `buildPIDList` (dim) | rijsituatie | `kiesbaar` — vraagt de gate, toont tóch |
-| `purgeImplausiblePids` | auth | `plausibel` |
+| `herijkPidGate` | auth | `plausibel` |
+
+### Herijking — wanneer de gate opnieuw wordt gesteld
+
+`pidGate()` is geen zuivere functie van de PID, maar van (PID, huidige kennis).
+Die kennis druppelt binnen: brandstoftype pas als RDW antwoordt, turbo pas na
+genoeg belaste MAP-metingen, uitlaat-fantomen pas als de motor warm is. De
+bronlijst werd één keer gebouwd — tijdens `initialHealthScan()`, toen er nog
+bijna niets bekend was — en daarna nooit meer.
+
+`herijkPidGate(reden)` in `pidlane-auth.js` herbouwt **eerst** de bronlijst en
+filtert **daarna** pas `activePIDs`. Die volgorde is de kern: andersom filter je
+tegen een verouderde lijst en komt het fantoom bij de volgende opbouw terug.
+
+Herijken gebeurt niet bij elke meting — dan bouwt de lijst zich tientallen keren
+per minuut opnieuw op. Wél zodra een invoer van `vehiclePlausiblePid()` wijzigt.
+Die drie invoeren zitten in één stempel:
+
+```
+brandstoftype | atmosferisch-oordeel | ooit-warm-gedraaid
+```
+
+`plHerijkTick()` maakt die stempel bij elke meting (vanuit `updPID()`) en
+vergelijkt hem met de vorige — één stringvergelijking. Alleen bij verschil volgt
+de herbouw. `markeerHerijking()` is de tweede ingang, voor wat niet in de stempel
+zit: een PID die van `nodata` naar `ok` is bijgewerkt.
+
+`ooit-warm-gedraaid` is bewust een **grendel**. Zonder grendel klapt de stempel
+heen en weer bij elke keer dat de motor uitgaat, met een herbouw per keer.
+
+Vaste aanroepplekken daarnaast: `mergeVehicleData()` in
+`pidlane-voertuigdata.js` (brandstoftype wijzigt) en de protocolherkenning in
+`pidlane-bt.js`.
+
+### Turbo-detectie — waarom belasting meetelt en aantal niet
+
+`_isNaturallyAspirated()` besliste op `_mapSamples >= 8`: acht MAP-metingen,
+piek onder 106 kPa, dus geen turbo. Dat klopte niet. Een auto die stationair
+draait heeft een MAP van 30–40 kPa, turbo of niet. Acht metingen is een paar
+seconden stilstaan.
+
+Dat het nooit misging kwam door een tweede fout: `_noteMap()` werd alleen
+aangeroepen vanuit `purgeImplausiblePids()` zelf, en die draaide twee keer per
+sessie. `_mapSamples` kwam dus nooit boven de 8 en de hele turbo-detectie was
+dode code.
+
+Nu telt `_noteMap()` alleen als **bewijs** wanneer de motor belast wordt
+(toerental > 1200 én belasting ≥ 60% of gasklep ≥ 50%), met een drempel van 12
+zulke metingen. De piek wordt wél altijd bijgehouden. De aanroep zit in
+`updPID()` en staat op `pid === '010B'` — anders telt dezelfde meting één keer
+per PID in de pollronde mee.
+
+Te weinig bewijs → geen oordeel → geen filter. Liever een boost-tegel te veel op
+een atmosferische motor dan een ontbrekende tegel op een turbo.
 
 ### Wat bewust búiten de gate blijft
 
@@ -630,18 +683,39 @@ Mechanisch en inhoudelijk strikt gescheiden, één afwijking per commit.
 | 2 ✅ | `healthStreng` weg | `twijfel` selecteerbaar, `nodata` niet meer via de categorieknop |
 | 3 ✅ | `ruwToegestaan` weg | geen naamloze raw-PIDs meer richting de AI |
 | 4 ✅ | `force` doorgegeven aan `selectCategoryPIDs` en `buildPIDList` | "Toon alles" werkt ook op `+ Alles`; `dim` komt uit de gate |
-| 5 | herijking: bronlijst herbouwen bij nieuwe voertuigkennis | fantoom verdwijnt óók uit de keuzelijst; pleister in `renderGauges` mag weg |
+| 5a-1 ✅ | turbo-criterium herzien: belast bewijs i.p.v. aantal metingen | geen — `_noteMap()` hing nog in de purge, teller haalde de drempel niet |
+| 5a-2 ✅ | `_noteMap()` naar `updPID()` | turbo-detectie gaat leven; boost-PIDs verdwijnen op een bewezen atmosferische motor |
+| 5b ✅ | `purgeImplausiblePids()` → `herijkPidGate()`, stempel + tick, `nodata` herzienbaar | fantoom verdwijnt óók uit de keuzelijst; een PID die alsnog data levert komt terug |
 
-`test-pidgate.js` (repo-root) is de regressietest: 1600 toestanden × 11
-aanroepplekken, met per plek een `verwacht`-predicaat dat vastlegt wanneer een
-verschil met het gedrag van vóór de gate BEDOELD is. Alles daarbuiten is een
-regressie en de test eindigt met exit 1. Werkwijze per ronde: wijzig de gate,
-draai de test, werk precies één `verwacht` bij. Moet je er twee bijwerken, dan
-heeft je wijziging meer geraakt dan de bedoeling was.
+De splitsing van ronde 5 in drie stappen was geen planning maar noodzaak.
+5a-2 alléén zou een echte bug hebben geïntroduceerd: een turbomotor die een
+minuut stationair draait, verliest onder het oude criterium zijn boost-tegels.
+Daarom eerst het criterium herzien (5a-1, aantoonbaar gedragsneutraal zolang de
+teller de drempel niet haalt) en pas daarna de meting verplaatsen.
 
-Let op bij het lezen van de aantallen: dat is matrixrekenwerk, geen maat voor
-praktische impact — de helft van de matrix bestaat uit implausibele of
-bitmap-PIDs die in de echte lijst niet voorkomen.
+**Twee tests, twee vragen.**
+
+`test-pidgate.js` (repo-root) toetst of de gate het juiste **antwoord** geeft:
+1600 toestanden × 11 aanroepplekken, met per plek een `verwacht`-predicaat dat
+vastlegt wanneer een verschil met het gedrag van vóór de gate BEDOELD is. Alles
+daarbuiten is een regressie en de test eindigt met exit 1. Werkwijze per ronde:
+wijzig de gate, draai de test, werk precies één `verwacht` bij. Moet je er twee
+bijwerken, dan heeft je wijziging meer geraakt dan de bedoeling was.
+
+`test-herijking.js` (repo-root) toetst of de gate op het juiste **moment** wordt
+gesteld — een andere vraag, die de eerste test niet kan stellen. Acht scenario's
+op een tijdlijn: bronlijst bouwen bij onbekende brandstof, kennis laten
+binnendruppelen, en controleren dat de lijst meebeweegt. Inclusief de
+turbo-gevallen (stationair bewijst niets, belast wel) en de eis dat 200 metingen
+zonder kennisverandering nul herbouwen opleveren.
+
+Beide tests trekken hun code uit de echte modules in plaats van een kopie bij te
+houden. Gaat de module uit de pas lopen, dan valt de test om in plaats van
+stilletjes iets anders te testen dan wat er draait.
+
+Let op bij het lezen van de aantallen in `test-pidgate.js`: dat is
+matrixrekenwerk, geen maat voor praktische impact — de helft van de matrix
+bestaat uit implausibele of bitmap-PIDs die in de echte lijst niet voorkomen.
 
 Na ronde 4 is er nog één vlag: `force`. Die is geen schuld maar ontwerp — de
 bewuste noodklep, naar het model van `force=True` in python-OBD. Hij hoort
@@ -649,7 +723,29 @@ alleen bij handmatige selectie en nooit richting analyse of rapport.
 
 ### Nog open
 
-`pidGate()` staat in `pidlane-auth.js` omdat `vehiclePlausiblePid()` en
+**De pleister in `renderGauges()` kan nog niet weg.** Het plan was dat na de
+herijking geen implausibele PID meer in `activePIDs` kón zitten, waarmee de
+laatste zeef overbodig werd. Dat klopt niet: drie toevoegpaden schrijven
+ongefilterd in `activePIDs` en kunnen dat ná een herijking doen.
+
+| Plek | Wat |
+|---|---|
+| `pidlane-diagnose.js` | focus-PIDs uit Smart Diagnose |
+| `pidlane-remote.js` | actieve selectie uit een remote-sessie |
+| `pidlane-pids.js` (toggle) | handmatige klik, bereikbaar via "Toon alles" |
+
+Die drie door `pidGate()` laten lopen is een eigen ronde. Pas daarna is de
+regel in `renderGauges()` echt overbodig. Tot dan is het geen pleister maar de
+laatste zeef, en dat staat er nu ook zo bij.
+
+**`pidCnt` telt twee dingen.** Het label in `index.html` zegt "Beschikbare
+PIDs", maar zeven van de negen schrijvers zetten er `activePIDs.size` in (het
+aantal *geselecteerde*) en twee `discoveredPIDDefs.length`. `herijkPidGate()`
+houdt de meerderheidskeuze aan. Opruimen is cosmetisch en hoort bij §11.
+
+**`pidGate()` staat in `pidlane-auth.js`** omdat `vehiclePlausiblePid()` en
 `getPidDef()` daar al stonden. Volgens §4 is dat de login/adminmodule.
 Verplaatsen naar een eigen module is een mechanische ronde en hoort niet in de
-opruimrondes hierboven gemengd te worden.
+opruimrondes hierboven gemengd te worden. Inmiddels staat er ook
+`herijkPidGate()`, `plHerijkTick()` en de stempel bij — de module is er niet
+kleiner op geworden.
