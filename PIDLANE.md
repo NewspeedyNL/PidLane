@@ -105,6 +105,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 20 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
 | 21 | `pidlane-copiloot.js` | 9 | in-app ontwikkelassistent (admin-only), praat met `/copilot` |
 | 22 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
+| 22b | `pidlane-busgate.js` | 6 | `PLBusGate` — **de bus-poort**: één ladder `adapter → ecu → betrouwbaar` voor "leeft de bus, mag ik hier een oordeel op bouwen". Vereist `PLBus` uit `pidlane-data.js` |
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
 | 24 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
@@ -143,6 +144,9 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
   top-level declaraties** over alle modules (876 namen).
 - `pidlane-data.js` en `pidlane-assets.js` moeten vóór alles, want ze leveren
   definitietijd-constanten.
+- `pidlane-busgate.js` ná `pidlane-data.js` (heeft `PLBus.stats()` nodig) en vóór
+  `pidlane-watchers.js`, dat hem raadpleegt. Staat in index.html direct vóór
+  `pidlane-plload.js`, bij de rest van het buscluster.
 - `pidlane-verify.js` vóór `pidlane-monitor.js` vóór `pidlane-watchers.js`:
   PLMon roept PLVerify aan, PLWatch routeert events via `PLMon._event`.
 - `pidlane-caravan.js` vóór `pidlane-monitor.js`.
@@ -878,3 +882,124 @@ letterlijk uit `pidlane-pidgate.js`: `test-pidgate.js` matcht op
 Die markering staat er expliciet voor. Verplaats je iets, verplaats dan ook de
 knippaden — anders faalt de test met "niet gevonden" in plaats van met een
 echte regressie.
+
+---
+
+## 16. De categorie "connectie en meten" — ronde 1 t/m 4
+
+Besluit van 02-08-2026, na de logs van 01-08. Vier bevindingen uit één sessie,
+en drie ervan hebben dezelfde vorm als de PID-gate uit §15: één vraag, meerdere
+antwoorden, en de deur die het hardst nodig had geen poort.
+
+### Ronde 1 — de meetfase-poort had maar één deur
+
+`plVraagMeting()` stond op `PLWizard.start()`, maar niet op `PLWizard.draai()`
+— en dat is precies de knop waar het planscherm naar wees, want stap 1
+("Meten") was een kale `<div>` zonder knop terwijl elke analyse eronder wél een
+"Openen"-knop had. Resultaat op 01-08: nul rittests aangevraagd, wel een
+AI-rapport, opgebouwd op elf minuten stilstand.
+
+Er zat nog een tweede gat in. De poort mat alleen HOEVEELHEID (seconden,
+monsters, dekking) en werd aangeroepen met een vaste letterlijke `'normaal'`.
+Elf minuten stationair haalde daarmee moeiteloos ook het zwaarste niveau,
+terwijl `job.meting` op `rit10` stond.
+
+**Nu:**
+- `plMeetNiveau(gevraagd)` leidt het niveau af uit `window._wizJob.meting`
+  (`rit10` → `rit`, `rit2` → `kortrit`) en hoogt alleen op, nooit af.
+- `MEET_EIS` heeft een vierde niveau `kortrit` en per niveau een `rij`-eis in
+  seconden. `plMeetRijSec()` telt aaneengesloten meetdata boven 15 km/h en
+  negeert gaten >5 s, zodat een bevroren tab geen rijtijd oplevert.
+- Geen snelheids-PID → `rijSec` is `null` → de rij-eis blokkeert niet. Geen
+  bewijs is geen oordeel.
+- `PLWizard.draai()` gaat langs de poort. De uitzonderingen staan expliciet in
+  `GEEN_MEETEIS` (`dtc`, `monitor`, `recorder`); die drie oordelen niet over
+  live meetwaarden. Nieuwe module? Standaard achter de poort.
+- Stap 1 in het plan heeft een eigen startknop.
+- `plMeetPromptBlok()` vertelt de AI of er gereden is. Bij <10 s rijdata staat
+  er expliciet dat er geen uitspraken over belasting gedaan mogen worden.
+
+### Ronde 2 — de ritanalyse overleefde de achtergrond niet
+
+Een rit onder belasting vraagt dat je rijdt, en rijden vraagt navigatie —
+precies dan bevriest Android de tab. Het bewijs staat in de log van 01-08: een
+TX om 14:04:19 kreeg antwoord om 14:50:26, 46 minuten later. `pidlane-rit.js`
+had geen enkele `visibilitychange`-afhandeling; fases liepen op `setTimeout`,
+verzamelen op `setInterval(500)`.
+
+Meedraaien in de achtergrond kan een webapp niet afdwingen. Eerlijk zijn wel:
+de rit **pauzeert** nu en gaat verder waar hij was. `ritFaseEind` is
+wandkloktijd (het enige dat een bevroren tab overleeft), pauzetijd telt niet
+mee in balk, teller of rapportduur, wissels <3 s tellen niet als onderbreking,
+en is de verbinding weg na terugkeer dan stopt de rit met wat er is. Het
+rapport noemt het aantal onderbrekingen en de verloren seconden.
+
+Bijvangst: `ritFaseIdx` werd nooit bijgewerkt (stond altijd 0) en
+`window._didRit` werd gezet maar nergens gelezen.
+
+### Ronde 3 — de bus-poort (`pidlane-busgate.js`, nieuw)
+
+"Leeft de bus" werd op zes plekken beantwoord met zes criteria: watchers 0.70,
+bt 6 lege responsen, plload 80% en 40%, verify 60% respons, onderdeel 8%.
+
+Op 01-08 om 20:53:02 viel alles stil (contact uit, alles NO DATA) en negen
+seconden later meldde de watcher veertien sensoren als uitgevallen, met de tekst
+"terwijl de rest doorloopt".
+
+**Let op — eerdere analyse was mis.** Er is beweerd dat die 0.70 op dit voertuig
+onbereikbaar was. Dat klopt niet; `test-busgate.js` rekent het na met de echte
+cadansen. De oude poort sluit wél, maar pas na **13 s** stilte, als ook de
+4200 ms-groep zijn drempel van 12,6 s passeert en de fractie van 0,28 naar 0,78
+springt. Het probleem is dus **naloop**, geen onbereikbaarheid: de melding stond
+er al na 9 s. (Curiositeit: bij 30 s zakt de fractie weer naar 0,69, omdat de
+snelle PIDs dan buiten beeld vallen. Niet-monotoon.)
+
+`PLBusGate` kijkt naar `PLBus.stats()`, dat een venster van 10 s hanteert, en
+hoeft dus niet op de traagste cadans te wachten. In de test sluit hij na 5 s.
+Ladder: `adapter` → `ecu` → `betrouwbaar`. Polariteit als bij de PID-gate: de
+poort beantwoordt "mag ik hier een uitspraak op baseren", dus geen verkeer =
+geen bewijs = dicht. Na herstel geldt 5 s rust, anders glipt er in de eerste
+halve reeksen alsnog een melding door.
+
+De watchers combineren poort en oude fractie met **OF**, niet EN: allebei
+onderdrukken meldingen, dus samen onderdrukken ze strikt meer dan elk apart.
+De oude fractie blijft ook als terugval als de module niet geladen is.
+
+**Nog niet gedaan:** bt, plload, verify en onderdeel hebben nog hun eigen
+antwoord. Die migreren is een eigen ronde, want daar verandert gedrag op
+plekken die nu niet stuk zijn.
+
+### Ronde 4 — de dode zone van PLLoad was een val
+
+Om 14:03:29 ging `_mult` naar 6.0 (MAX, tempo 17%) en daar bleef hij vijf uur
+staan: in de bundel van 20:48 staat mult 6 bij foutPct 0 en belasting 67. Alle
+vier de logregels zeggen "verlaagd", geen enkele "verhoogd".
+
+Tussen `bezetAf` (55%) en `bezetOp` (85%) was `_mult` bevroren — bedoeld als
+demping, in de praktijk een eenrichtingsdeur. De kern: `ruim` was
+**onbereikbaar**. Bezetting is aanvraagtempo × responstijd, en met 40 PIDs à
+~105 ms komt zelfs op MAX niet lager dan ~67%. Wachten op <55% is wachten op
+iets dat niet kan gebeuren — dezelfde vorm als de poort die op 0.70 wachtte.
+
+**Nu** tast de regeling af in plaats van te wachten: is het niet druk en is de
+foutgraad ≤5% en buffert de adapter niet, dan zakt `_mult` met stapjes van 0,03
+tot de bezetting tegen `bezetOp` aan loopt, waar `druk` weer toeslaat. Dat is
+AIMD zoals het hoort. In de test landt hij op mult ~5,0 bij 81% bezetting in
+plaats van op MAX. Bescheiden winst — deze bus kán niet veel sneller met 40
+PIDs — maar hij vindt nu de echte grens. Tegendruk wint nog steeds meteen.
+
+De trage stapjes zouden nooit in de log komen (drempel 0,2), daarom logt hij
+ook vanaf de laatst gelogde stand bij ≥0,5 verschil.
+
+### Tests
+
+`test-meetpoort.js` (16), `test-ritpauze.js` (17), `test-busgate.js` (24),
+`test-plload.js` (17). Alle vier groen, en `test-pidgate.js` en
+`test-herijking.js` blijven groen.
+
+Knippaden, zoals bij §15: `test-meetpoort.js` knipt uit `pidlane-fuel.js`
+tussen `const MEET_EIS = {` en `/* Toont het meetscherm`. `test-ritpauze.js` en
+`test-plload.js` laden hun module in een `vm`-context; omdat top-level `let` in
+een classic script géén eigenschap van het globale object wordt, plakt
+`test-ritpauze.js` een accessor-blok achter de bron om bij de echte variabelen
+te kunnen. Verplaats je die ankers, verplaats dan ook de test.
