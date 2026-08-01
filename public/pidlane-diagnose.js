@@ -28,7 +28,11 @@ function applyComplaintFocus(text){
   // markeren zodat ensurePIDListActive ze niet wegfiltert.
   matched.forEach(p=>{
     if(demoMode || (supportedPIDs.size>0?supportedPIDs.has(p):getPidDef(p))){
-      _focusPIDs.add(p); manualPIDs.add(p); activePIDs.add(p);
+      // Toevoegpoort (§15, ronde 6). De klachtregels zijn generiek — "rook"
+      // trekt roet- en NOx-sensoren aan, ook op een benzineauto. Dat ging
+      // hier ongefilterd naar binnen; de gate zegt nu of het mag.
+      if(!pidToevoegen(p).ok.length) return;
+      _focusPIDs.add(p);
       _pidNextPoll[p]=0; // direct aan de beurt
     }
   });

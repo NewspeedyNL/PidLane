@@ -13,9 +13,9 @@
 //
 const fs = require('fs');
 
-const src = fs.readFileSync(__dirname + '/pidlane-auth.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/pidlane-pidgate.js', 'utf8');
 const m = src.match(/^function pidGate\(pid, niveau, opt\)\{[\s\S]*?^\}/m);
-if (!m) { console.error('pidGate niet gevonden in pidlane-auth.js'); process.exit(1); }
+if (!m) { console.error('pidGate niet gevonden in pidlane-pidgate.js'); process.exit(1); }
 const maakGate = new Function(
   'vehiclePlausiblePid', 'GEEN_SENSOR_PIDS', '_pidHealth', 'demoMode', 'getPidDef', 'pidVals',
   m[0] + '\nreturn pidGate;'
@@ -42,7 +42,7 @@ const TOON     = c => c.toonAlles;     // "Toon alles" bestond niet in het oude 
 const STAAL    = c => !c.plaus;        // verouderde bronlijst: fantoom dat er nog in staat
 
 const PLEKKEN = [
-  { naam: 'purgeImplausiblePids',
+  { naam: 'herijkPidGate',
     oud: c => c.plaus,
     nu:  g => g('01XX', 'plausibel'),
     verwacht: () => false, waarom: 'identiek' },
@@ -91,6 +91,36 @@ const PLEKKEN = [
     oud: c => c.plaus,
     nu:  g => g('01XX', 'plausibel'),
     verwacht: () => false, waarom: 'identiek' },
+
+  // ── Ronde 6: de vier toevoegpaden ──────────────────────────────────
+  // Deze vier schreven ongefilterd in activePIDs: `oud` is letterlijk "alles
+  // mag". Elk verschil is dus per definitie bedoeld — waar het hier om gaat is
+  // dat `verwacht` de gate onafhankelijk naformuleert. Wijkt de gate af van wat
+  // hier staat, dan filtert een deur meer of minder dan afgesproken.
+  { naam: 'togglePID',
+    oud: () => true,
+    nu:  (g, c) => g('01XX', 'kiesbaar', { force: c.toonAlles }),
+    verwacht: c => !c.plaus || c.bitmap
+                   || (!c.toonAlles && (c.h === 'onzin' || c.h === 'nodata')),
+    waarom: 'ronde 6: handmatige klik door de toevoegpoort (de lijst blokkeerde dim al)' },
+
+  { naam: 'ensurePIDListActive',
+    oud: () => true,
+    nu:  g => g('01XX', 'kiesbaar'),
+    verwacht: c => !c.plaus || c.bitmap || c.h === 'onzin' || c.h === 'nodata',
+    waarom: 'ronde 6: analyseprofiel door de toevoegpoort — geen force, dit gaat richting rapport' },
+
+  { naam: 'applyComplaintFocus',
+    oud: () => true,
+    nu:  g => g('01XX', 'kiesbaar'),
+    verwacht: c => !c.plaus || c.bitmap || c.h === 'onzin' || c.h === 'nodata',
+    waarom: 'ronde 6: klacht-focus door de toevoegpoort' },
+
+  { naam: 'applyVState (remote)',
+    oud: () => true,
+    nu:  g => g('01XX', 'kiesbaar'),
+    verwacht: c => !c.plaus || c.bitmap || c.h === 'onzin' || c.h === 'nodata',
+    waarom: 'ronde 6: selectie van de local door de toevoegpoort' },
 
   { naam: 'analysisPidData',
     oud: c => c.plaus && c.val !== undefined && c.val !== null && c.h !== 'onzin' && c.h !== 'nodata',

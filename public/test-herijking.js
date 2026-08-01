@@ -24,7 +24,7 @@ function pak(bestand, van, tot){
   return src.slice(i, j);
 }
 
-const AUTH = pak('pidlane-auth.js', 'function _engineWarmRunning', 'function assessPidQuality');
+const GATE = pak('pidlane-pidgate.js', 'function _engineWarmRunning', '// ── einde gate-blok');
 
 // ── Minimale wereld om die code in te laten draaien ──────────────────
 function maakWereld(){
@@ -54,7 +54,7 @@ function maakWereld(){
     }
   };
   W.vehicleFuelType = () => W.vehicleInfo.brandstof;
-  W.ALL_PID_DEFS = W.DEFS;   // echte getPidDef() uit auth.js kijkt hierin
+  W.ALL_PID_DEFS = W.DEFS;   // echte getPidDef() uit pidlane-pidgate.js kijkt hierin
   W.PIDS = [];
   W.log = () => {}; W.btDiag = () => {};
   W.renderGauges = () => {}; W.rebuildGSel = () => {};
@@ -72,7 +72,7 @@ function maakWereld(){
   };
 
   const namen = Object.keys(W);
-  const fn = new Function(...namen, AUTH + '\nreturn {pidGate,herijkPidGate,plHerijkTick,markeerHerijking,_noteMap,_isNaturallyAspirated,vehiclePlausiblePid};');
+  const fn = new Function(...namen, GATE + '\nreturn {pidGate,herijkPidGate,pidToevoegen,plHerijkTick,markeerHerijking,_noteMap,_isNaturallyAspirated,vehiclePlausiblePid};');
   Object.assign(W, fn(...namen.map(n => W[n])));
 
   // updPID() zoals pidlane-pids.js hem aanroept: waarde wegschrijven, MAP
@@ -243,6 +243,58 @@ console.log('\n9. Echte ritdata — CX-5 2018, stadsverkeer');
   }
   eis('volledige sessie levert wel een oordeel', W2._isNaturallyAspirated() === true);
   eis('en de laaddruk-PID verdwijnt', !W2.activePIDs.has('0170'));
+}
+
+console.log('\n10. Toevoegpoort — wat er niet doorheen komt, komt er niet in');
+{
+  const W = maakWereld();
+  W.vehicleInfo.brandstof = 'benzine';
+  ['010C', '0105', '019A', '0100'].forEach(p => W.supportedPIDs.add(p));
+  W.buildDiscoveredPIDList();
+
+  const r1 = W.pidToevoegen('019A');            // AdBlue op benzine
+  eis('AdBlue wordt geweigerd op een benzineauto', r1.weg.length === 1 && !r1.ok.length);
+  eis('en staat dus niet in activePIDs', !W.activePIDs.has('019A'));
+  eis('en ook niet in manualPIDs', !W.manualPIDs.has('019A'));
+
+  const r2 = W.pidToevoegen(['010C', '0105']);  // gewone sensoren
+  eis('gewone sensoren komen er wel in', r2.ok.length === 2 && W.activePIDs.has('010C'));
+  eis('en gelden als eigen keuze', W.manualPIDs.has('010C'));
+
+  const r3 = W.pidToevoegen('0100');            // ondersteuningsbitmap
+  eis('een bitmap komt er niet in', !r3.ok.length && !W.activePIDs.has('0100'));
+
+  // Health: 'nodata' houdt hem tegen, tenzij "Toon alles" aan staat.
+  W._pidHealth['0105'] = 'nodata'; W.activePIDs.delete('0105'); W.manualPIDs.delete('0105');
+  eis('een dode sensor komt er niet in', !W.pidToevoegen('0105').ok.length);
+  eis('met force wel — dat is de noodklep', W.pidToevoegen('0105', {force: true}).ok.length === 1);
+
+  // handmatig:false — remote zet de keuze van de local, niet die van deze gebruiker.
+  W.pidToevoegen('010B', {handmatig: false});
+  eis('handmatig:false laat manualPIDs met rust', W.activePIDs.has('010B') && !W.manualPIDs.has('010B'));
+}
+
+console.log('\n11. Deur en herijking samen — het gat waar de zeef voor stond');
+{
+  const W = maakWereld();
+  // Brandstof nog onbekend: de deur laat de AdBlue-sensor door, terecht.
+  ['010C', '0105', '019A'].forEach(p => W.supportedPIDs.add(p));
+  W.buildDiscoveredPIDList();
+  eis('AdBlue mag erin zolang de brandstof onbekend is', W.pidToevoegen('019A').ok.length === 1);
+
+  // Motor draait al even: de eerste tick legt alleen de stempel vast.
+  W.updPID('010C', 800);
+
+  // RDW antwoordt: benzine. De eerstvolgende tick moet hem eruit halen.
+  W.vehicleInfo.brandstof = 'benzine';
+  W.updPID('010C', 810);
+  eis('herijking haalt hem alsnog weg', !W.activePIDs.has('019A'));
+
+  // En de deur laat hem daarna niet opnieuw binnen — dít is wat er vóór
+  // ronde 6 misging: herijken hielp niet als een toevoegpad er direct
+  // daarna weer iets in schreef.
+  eis('de deur laat hem niet terugkomen', !W.pidToevoegen('019A').ok.length);
+  eis('ook niet via een analyseprofiel', !W.pidGate('019A', 'kiesbaar'));
 }
 
 console.log(`\n${gedaan} toetsen, ${fouten} fout.`);

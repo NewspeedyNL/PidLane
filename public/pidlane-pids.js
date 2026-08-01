@@ -10,7 +10,18 @@
 function filterPIDs(v){buildPIDList(v);}
 function togglePID(pid){
   if(activePIDs.has(pid)){ activePIDs.delete(pid); manualPIDs.delete(pid); }
-  else { activePIDs.add(pid); manualPIDs.add(pid); }   // door gebruiker zelf gekozen
+  else {
+    // Toevoegpoort (§15, ronde 6). De keuzelijst maakt een afgekeurde regel
+    // niet klikbaar, dus via de UI komt hier normaal niets langs — deze deur
+    // staat er voor alles wat togglePID() buiten de lijst om aanroept.
+    // force volgt "Toon alles", dezelfde noodklep als in selectCategoryPIDs.
+    const r=pidToevoegen(pid,{force:(typeof _showAllPIDs!=='undefined'&&_showAllPIDs)});
+    if(!r.ok.length){
+      const d=getPidDef(pid);
+      showToast?.('⛔ '+((d&&d.name)||pid)+' — niet bruikbaar op dit voertuig; zet "Toon alles" aan om hem tóch te kiezen');
+      return;
+    }
+  }
   buildPIDList(document.getElementById('psrch').value);
   document.getElementById('pidCnt').textContent=activePIDs.size;
   renderGauges(); rebuildGSel();
@@ -113,8 +124,17 @@ async function ensurePIDsActive(profile){
 // P4 + P1 + P7: zet activePIDs naar precies dit profiel (+ behoud handmatige
 // keuzes), werkt óók in demo, en waarschuwt als discovery faalde.
 async function ensurePIDListActive(pidList){
-  const wanted=(pidList||[]).filter(pid=>
+  const kandidaat=(pidList||[]).filter(pid=>
     demoMode || (typeof supportedPIDs!=='undefined'&&supportedPIDs.has&&supportedPIDs.has(pid))||getPidDef(pid));
+
+  // Toevoegpoort (§15, ronde 6). Dit is de drukste deur naar activePIDs:
+  // caravan, grafiek, koopcheck, rit, totaalcheck en remote komen hier alle
+  // zes binnen met een eigen lijst. Die lijsten waren ongefilterd, dus een
+  // analyseprofiel kon een AdBlue-sensor op een benzineauto aanzetten — ook
+  // vlak ná een herijking. 'kiesbaar': hetzelfde niveau dat
+  // relevantSupportedPIDs() zelf al hanteert.
+  const wanted=kandidaat.filter(pid=>pidGate(pid,'kiesbaar'));
+  const geweigerd=kandidaat.length-wanted.length;
 
   // P4: nieuwe set = profiel ∪ handmatige keuzes. Sensoren uit een vórige
   // analyse die de gebruiker niet zelf koos, vallen weg → geen onbeperkte groei,
@@ -134,6 +154,9 @@ async function ensurePIDListActive(pidList){
     renderGauges(); rebuildGSel();
     if(added.length){ log(`Analyse: ${added.length} sensoren aangezet`,'info'); showToast?.(`📡 ${added.length} sensoren voor deze analyse`); }
   }
+  // Stil overslaan zou de vorige bug terugbrengen in omgekeerde vorm: dan
+  // mist een analyse sensoren zonder dat iemand weet waarom.
+  if(geweigerd){ try{ log(`Analyse: ${geweigerd} sensor(en) overgeslagen — niet op dit voertuig of geen data`,'info'); }catch(e){} }
 
   // P7: readiness tonen wanneer de auto (een deel van) het profiel niet heeft
   const rd=pidReadiness(pidList);
@@ -177,13 +200,27 @@ function renderGauges(){
   let vastAantal=0;
   [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
-    // Weergave-poort: diesel/SCR-sensoren (AdBlue, NOx, DPF) horen niet op een
-    // benzineauto, ook al staat de PID (door timing of oude selectie) in
-    // activePIDs. Filter op het laatste moment — dekt élk toevoegpad.
-    // LET OP: dit is een pleister voor het ontbreken van herijking. Zodra de
-    // bronlijst opnieuw wordt gebouwd bij nieuwe voertuigkennis (ronde 5),
-    // kan activePIDs geen implausibele PID meer bevatten en mag deze regel weg.
-    if(!pidGate(pid,'plausibel')) return;
+    // VANGNET, geen poort meer (§15, ronde 6). Sinds alle toevoegpaden door
+    // pidToevoegen() lopen kán hier niets implausibels meer langskomen: de
+    // deuren filteren bij binnenkomst, herijkPidGate() ruimt op als de kennis
+    // verandert. Blijft hij toch iets afvangen, dan staat er ergens een deur
+    // open — en dat wil je wéten in plaats van stil wegfilteren, want precies
+    // dat stille filteren hield de bug drie rondes lang verborgen.
+    // Weg mag hij pas als hij een tijd lang niets meer heeft gemeld.
+    if(!pidGate(pid,'plausibel')){
+      try{
+        // Demo is de bewuste uitzondering: die bouwt zijn eigen sluitende
+        // wereld (demoPIDsForFuel) en schrijft rechtstreeks. Daar zou de
+        // melding alleen maar vals alarm zijn.
+        window._zeefGemeld=window._zeefGemeld||new Set();
+        if(!demoMode && !window._zeefGemeld.has(pid)){
+          window._zeefGemeld.add(pid);
+          const _m='Vangnet renderGauges ving '+pid+' af — er is een toevoegpad dat pidToevoegen() overslaat';
+          try{ btDiag(_m,'warn'); }catch(e){ console.warn(_m); }
+        }
+      }catch(e){}
+      return;
+    }
 
     // ── Code-/vlag-PIDs: gewone woorden in het compacte blok, geen tegel ──
     // Brandstoftype, OBD-norm, brandstofsysteem-status enz. hebben geen

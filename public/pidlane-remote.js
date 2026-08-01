@@ -593,7 +593,15 @@ window.PLRemote=(function(){
         try{buildDiscoveredPIDList();}catch(_){}
       }
       if(Array.isArray(v.active)&&v.active.length){
-        try{v.active.forEach(p=>{if(typeof p==='string'&&getPidDef(p))activePIDs.add(p);});}catch(_){}
+        // Toevoegpoort (§15, ronde 6). Deze regel staat bewust ná supportedPIDs
+        // en _pidHealth hierboven: pas dan kent de gate het voertuig van de
+        // local en kan hij oordelen. handmatig:false — het is de keuze van de
+        // local, niet van deze gebruiker, precies zoals het hiervoor ook ging.
+        try{
+          const _kand=v.active.filter(p=>typeof p==='string'&&getPidDef(p));
+          const _r=pidToevoegen(_kand,{handmatig:false});
+          if(_r.weg.length)logA('🚫 '+_r.weg.length+' sensor(en) uit de remote-selectie overgeslagen — niet bruikbaar op dit voertuig','info');
+        }catch(_){}
       }
       try{if(Array.isArray(v.dtc)&&v.dtc.length&&!dtcCodes.length){dtcCodes=[...v.dtc];try{renderDTC();}catch(_){}}}catch(_){}
       if(v.demo&&!S.demoWarned){S.demoWarned=true;
