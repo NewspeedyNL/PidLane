@@ -60,7 +60,7 @@ PidLane/
    ├─ admin.html           (44 KB)  admin-, gebruikers-, klant- en codebeheer
    ├─ config.js            (3 KB)   PROXY_URL, AIRTABLE_URL, APP_VERSION
    ├─ pidlane.css          (157 KB) hoofdstylesheet
-   └─ pidlane-*.js         (37 modules, zie §4)
+   └─ pidlane-*.js         (38 modules, zie §4)
 ```
 
 `index.html` was 735 KB en is op 2026-07-28 opgesplitst naar ~203 KB.
@@ -72,7 +72,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 ## 4. Modules — laadvolgorde en verantwoordelijkheid
 
 > **De volgorde is functioneel, niet cosmetisch.** Zie §5.
-> 39 script-tags: `capacitor.js`, `config.js` en 37 `pidlane-*.js`-modules.
+> 40 script-tags: `capacitor.js`, `config.js` en 38 `pidlane-*.js`-modules.
 
 ### Fase 1 — data en assets (in `<head>`)
 
@@ -87,46 +87,47 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 
 | # | Module | KB | Doet |
 |---|---|---|---|
-| 5 | `pidlane-auth.js` | 57 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer, **`pidGate()` + `herijkPidGate()` + `vehiclePlausiblePid()` + `getPidDef()`** (zie §15 — die PID-logica hoort hier eigenlijk niet, verplaatsen is een eigen ronde) |
-| 6 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
-| 7 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
-| 8 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export |
-| 9 | `pidlane-pids.js` | 29 | PID-paneel, gauges, breedband-lambdacorrectie B1S1 |
-| 10 | `pidlane-correlatie.js` | 3 | deterministische PID-correlatie-engine |
-| 11 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
-| 12 | `pidlane-diagnose.js` | 20 | Smart Diagnose + klacht-gestuurde PID-focus |
-| 13 | `pidlane-graph.js` | 14 | multi-line groepstrends, DTC-scanstatus |
-| 14 | `pidlane-fuel.js` | 74 | brandstofanalyse, `apiFetch` (alle AI-calls), modelkeuze/kosten |
-| 15 | `pidlane-btflow.js` | 42 | Bluetooth-verbindingsflow (multi-step) + diagnostieklog |
-| 16 | `pidlane-bt.js` | 84 | **transportlaag**: BLE, SPP, Web Serial, batch-polling, protocolinit |
-| 17 | `pidlane-voertuigdata.js` | 15 | voertuigdata-merge: VIN-WMI + NHTSA + RDW |
-| 18 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
-| 19 | `pidlane-copiloot.js` | 9 | in-app ontwikkelassistent (admin-only), praat met `/copilot` |
-| 20 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
-| 21 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
-| 22 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
-| 23 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
-| 24 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
-| 25 | `pidlane-scheduler.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
-| 26 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
-| 27 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
-| 28 | `pidlane-rit.js` | 29 | ritanalyse |
-| 29 | `pidlane-koopcheck.js` | 133 | koopcheck / aankoopkeuring, proefritmodule |
-| 30 | `pidlane-dossier.js` | 7 | export voertuigdossier |
+| 5 | `pidlane-auth.js` | 46 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer |
+| 6 | `pidlane-pidgate.js` | 18 | **de PID-gate**: `pidGate()`, `herijkPidGate()`, `pidToevoegen()`, `vehiclePlausiblePid()`, turbo-detectie, herijkstempel, `getPidDef()`, `isReportableSensor()` — zie §15 |
+| 7 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
+| 8 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
+| 9 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export |
+| 10 | `pidlane-pids.js` | 29 | PID-paneel, gauges, breedband-lambdacorrectie B1S1 |
+| 11 | `pidlane-correlatie.js` | 3 | deterministische PID-correlatie-engine |
+| 12 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
+| 13 | `pidlane-diagnose.js` | 20 | Smart Diagnose + klacht-gestuurde PID-focus |
+| 14 | `pidlane-graph.js` | 14 | multi-line groepstrends, DTC-scanstatus |
+| 15 | `pidlane-fuel.js` | 74 | brandstofanalyse, `apiFetch` (alle AI-calls), modelkeuze/kosten |
+| 16 | `pidlane-btflow.js` | 42 | Bluetooth-verbindingsflow (multi-step) + diagnostieklog |
+| 17 | `pidlane-bt.js` | 84 | **transportlaag**: BLE, SPP, Web Serial, batch-polling, protocolinit |
+| 18 | `pidlane-voertuigdata.js` | 15 | voertuigdata-merge: VIN-WMI + NHTSA + RDW |
+| 19 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
+| 20 | `pidlane-copiloot.js` | 9 | in-app ontwikkelassistent (admin-only), praat met `/copilot` |
+| 21 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
+| 22 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
+| 23 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
+| 24 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
+| 25 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
+| 26 | `pidlane-scheduler.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
+| 27 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
+| 28 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
+| 29 | `pidlane-rit.js` | 29 | ritanalyse |
+| 30 | `pidlane-koopcheck.js` | 133 | koopcheck / aankoopkeuring, proefritmodule |
+| 31 | `pidlane-dossier.js` | 7 | export voertuigdossier |
 
 ### Fase 3 — onderaan de body (regel ~2291)
 
 | # | Module | KB | Doet |
 |---|---|---|---|
-| 31 | `pidlane-remote.js` | 50 | `PLRemote` — remote-expertsessies, Durable Object, WebSocket-fanout, QR-pairing, vstate |
-| 32 | `pidlane-caravan.js` | 30 | caravan-rittracker, live brandstofcoach, 10 coachregels met cooldowns |
-| 33 | `pidlane-wizard.js` | 28 | `PLWizard` — vragenboom → meetplan → modules |
-| 34 | `pidlane-onderdeel.js` | 24 | `PLOnderdeel` — DTC + live data → verdacht component |
-| 35 | `pidlane-verify.js` | 13 | `PLVerify` — Laag C, focusverificatie (claimt bus via `window._pollBusy`) |
-| 36 | `pidlane-monitor.js` | 18 | `PLMon` — Laag A, passieve foutoogst (mode 0101/07/03/0A/02) |
-| 37 | `pidlane-credits.js` | 34 | `PLCredits` — kostenvenster vóór AI, saldoteller, activatiecode inwisselen |
-| 38 | `pidlane-klant.js` | 30 | `PLKlant` — klantregistratie, klantlogin, wachtwoordherstel, "Mijn tokens" |
-| 39 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
+| 32 | `pidlane-remote.js` | 50 | `PLRemote` — remote-expertsessies, Durable Object, WebSocket-fanout, QR-pairing, vstate |
+| 33 | `pidlane-caravan.js` | 30 | caravan-rittracker, live brandstofcoach, 10 coachregels met cooldowns |
+| 34 | `pidlane-wizard.js` | 28 | `PLWizard` — vragenboom → meetplan → modules |
+| 35 | `pidlane-onderdeel.js` | 24 | `PLOnderdeel` — DTC + live data → verdacht component |
+| 36 | `pidlane-verify.js` | 13 | `PLVerify` — Laag C, focusverificatie (claimt bus via `window._pollBusy`) |
+| 37 | `pidlane-monitor.js` | 18 | `PLMon` — Laag A, passieve foutoogst (mode 0101/07/03/0A/02) |
+| 38 | `pidlane-credits.js` | 34 | `PLCredits` — kostenvenster vóór AI, saldoteller, activatiecode inwisselen |
+| 39 | `pidlane-klant.js` | 30 | `PLKlant` — klantregistratie, klantlogin, wachtwoordherstel, "Mijn tokens" |
+| 40 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
 
 ---
 
@@ -144,6 +145,12 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 - `pidlane-verify.js` vóór `pidlane-monitor.js` vóór `pidlane-watchers.js`:
   PLMon roept PLVerify aan, PLWatch routeert events via `PLMon._event`.
 - `pidlane-caravan.js` vóór `pidlane-monitor.js`.
+- `pidlane-pidgate.js` staat direct ná `pidlane-auth.js`. Strikt genomen is die
+  positie vrij — niets in de gate draait op definitietijd — maar `activePIDs`,
+  `manualPIDs`, `pidVals` en `_pidHealth` staan als top-level `let` in
+  `pidlane-auth.js`, en die zijn pas ná uitvoering daarvan uit hun TDZ. Zou er
+  ooit iets in de gate op definitietijd gaan draaien, dan valt het daar om.
+  Laat hem dus staan waar hij staat.
 - `pidlane-credits.js` en `pidlane-klant.js` zitten wél in een IIFE en hangen
   alleen `window.PLCredits` / `window.PLKlant` op. Alle verwijzingen over en
   weer (auth → PLKlant, fuel → PLCredits, klant → PLCredits) zijn runtime, geen
@@ -533,7 +540,7 @@ in dezelfde ronde gedaan; dat is een mechanische wijziging en die gaat apart.
 
 ---
 
-## 15. De PID-gate — één ladder, elf aanroepplekken
+## 15. De PID-gate — één ladder, vijftien aanroepplekken
 
 Besluit van 31-07-2026, na het patroon dat "een fix die faalt door een fix"
 heette: de fix voor fantoomsensoren brak de sensorstatus, de fix daarvoor liet
@@ -557,7 +564,7 @@ Eén boolean-gate lost dat niet op. Wat wél werkt: die vijf zijn cumulatief.
 
 ### De ladder
 
-`pidGate(pid, niveau, opt)` in `pidlane-auth.js`. Elke trede bevat de vorige,
+`pidGate(pid, niveau, opt)` in `pidlane-pidgate.js`. Elke trede bevat de vorige,
 dus je kunt niet meer per ongeluk een strengere check op een lager niveau
 zetten — dat was de mechaniek achter het jojo-en.
 
@@ -585,9 +592,13 @@ is een orthogonale vraag en maar één aanroepplek stelt hem
 | `relevantSupportedPIDs` (lus) | pids | `kiesbaar` |
 | `analysisPidData` | pids | `meetbaar` |
 | `renderGauges` | pids | `plausibel` — laatste zeef, zie hieronder |
-| `isReportableSensor` | auth | `meetbaar` |
+| `isReportableSensor` | pidgate | `meetbaar` |
 | `buildPIDList` (dim) | rijsituatie | `kiesbaar` — vraagt de gate, toont tóch |
-| `herijkPidGate` | auth | `plausibel` |
+| `herijkPidGate` | pidgate | `plausibel` |
+| `togglePID` | pids | `kiesbaar`, met `force` uit "Toon alles" |
+| `ensurePIDListActive` | pids | `kiesbaar` — de drukste deur, zes aanroepers |
+| `applyComplaintFocus` | diagnose | `kiesbaar` |
+| `applyVState` | remote | `kiesbaar` |
 
 ### Herijking — wanneer de gate opnieuw wordt gesteld
 
@@ -597,7 +608,7 @@ genoeg belaste MAP-metingen, uitlaat-fantomen pas als de motor warm is. De
 bronlijst werd één keer gebouwd — tijdens `initialHealthScan()`, toen er nog
 bijna niets bekend was — en daarna nooit meer.
 
-`herijkPidGate(reden)` in `pidlane-auth.js` herbouwt **eerst** de bronlijst en
+`herijkPidGate(reden)` in `pidlane-pidgate.js` herbouwt **eerst** de bronlijst en
 filtert **daarna** pas `activePIDs`. Die volgorde is de kern: andersom filter je
 tegen een verouderde lijst en komt het fantoom bij de volgende opbouw terug.
 
@@ -620,6 +631,45 @@ heen en weer bij elke keer dat de motor uitgaat, met een herbouw per keer.
 Vaste aanroepplekken daarnaast: `mergeVehicleData()` in
 `pidlane-voertuigdata.js` (brandstoftype wijzigt) en de protocolherkenning in
 `pidlane-bt.js`.
+
+### De toevoegpoort — wie mag er eigenlijk schrijven
+
+Ronde 6, 01-08-2026. De gate gaf het juiste **antwoord** (ronde 1-4) en de
+herijking stelde hem op het juiste **moment** (ronde 5). De derde vraag bleef
+staan: wie mag er in `activePIDs` schrijven. Vier plekken deden dat zonder te
+vragen, en konden dat ná een herijking doen — daarom kon de zeef in
+`renderGauges()` niet weg.
+
+`pidToevoegen(pids, opt)` in `pidlane-pidgate.js` is die deur. Het neemt een PID of
+een lijst, toetst elk item met `pidGate()` en geeft `{ok, weg}` terug — `weg`
+bestaat zodat een aanroeper kan uitleggen waarom er niets gebeurde in plaats van
+stil te falen.
+
+| Deur | Bestand | Was |
+|---|---|---|
+| `togglePID` | pids | ongefilterd; de keuzelijst maakte een afgekeurde regel al niet klikbaar |
+| `ensurePIDListActive` | pids | ongefilterd — caravan, grafiek, koopcheck, rit, totaalcheck en remote komen hier binnen |
+| `applyComplaintFocus` | diagnose | ongefilterd; "rook" trekt roet- en NOx-sensoren aan, ook op benzine |
+| `applyVState` | remote | ongefilterd; de selectie van de local |
+
+**`ensurePIDListActive` stond niet in de lijst van drie** waarmee deze ronde
+begon. Die was opgesteld door te zoeken naar `activePIDs.add`, en deze plek
+vervangt de hele set (`activePIDs = nieuw`). Het is wél de drukste van de vier:
+zes modules komen er met een eigen lijst binnen. Wie de deuren telt, moet niet
+op één schrijfvorm zoeken.
+
+**`manualPIDs` wordt bewust niet opnieuw getoetst.** Wat daarin staat is al een
+keer door een deur gekomen, en `herijkPidGate()` haalt het eruit zodra het niet
+meer klopt. Zou elke deur het opnieuw toetsen, dan verdwijnt een sensor die de
+gebruiker met "Toon alles" bewust aanzette bij de eerstvolgende analyse alsnog.
+Regel: **elke deur gate't zijn eigen invoer, niet die van een ander.**
+
+**Demo is de uitzondering.** `loadDemoVehicle()` en `startDemo()` schrijven
+rechtstreeks. Dat is geen vergeten deur: demo bouwt met `demoPIDsForFuel()` zijn
+eigen sluitende wereld, en in `loadDemoVehicle()` staat de PID-selectie vóór het
+zetten van `vehicleInfo.brandstof` — de gate zou daar op de kennis van de vórige
+demo-auto oordelen. Dezelfde wanneer-val als in ronde 5. Het vangnet in
+`renderGauges()` slaat demo daarom over.
 
 ### Turbo-detectie — waarom het bewijs uit de meting zelf komt
 
@@ -662,7 +712,7 @@ stilstaande motor geeft ~101 kPa (geen onderdruk) en zou anders als bewijs voor
 "atmosferisch" tellen.
 
 De drempels staan als benoemde constanten bovenaan het blok in
-`pidlane-auth.js`, juist omdat ze na een rit bijgesteld gaan worden:
+`pidlane-pidgate.js`, juist omdat ze na een rit bijgesteld gaan worden:
 
 ```
 MAP_BEWIJS_KPA   85    vanaf deze druk staat de gasklep ver open
@@ -675,9 +725,32 @@ De aanroep zit in `updPID()` en staat op `pid === '010B'` — anders telt dezelf
 meting één keer per PID in de pollronde mee.
 
 Te weinig bewijs → geen oordeel → geen filter. Liever een boost-tegel te veel op
-een atmosferische motor dan een ontbrekende tegel op een turbo. Op het venster
-uit die rit (56 metingen, 5 bruikbaar) volgt dus géén oordeel; over de hele
-sessie (238 metingen) wel. Beide gevallen staan als scenario in
+een atmosferische motor dan een ontbrekende tegel op een turbo.
+
+**Wat drie ritten met de CX-5 lieten zien (01-08-2026):**
+
+| Rit | MAP-metingen | Piek | Bruikbaar als bewijs |
+|---|---|---|---|
+| 11:18 | 56 (sessie 238) | 100 kPa | 5 |
+| 12:02 | 37 | 42 kPa | 0 |
+| 12:04 | 70 (sessie 128) | 98 kPa | 1 |
+
+De piek bleef alle drie de keren onder de 106-grens, wat klopt voor een
+atmosferische motor. Maar het bewijs komt bij normaal rijden nauwelijks binnen:
+96% van de metingen zit onder 60 kPa. Zonder een bewuste acceleratie valt het
+oordeel niet, en dat is de veilige uitkomst — er verdwijnt dan niets.
+
+Eén meting stond op 96 kPa bij 0 toeren: contact aan, motor uit, dus geen
+onderdruk. Dat bevestigt dat de toerentalcheck nodig is; zonder die check zou
+elke keer contact aanzetten als bewijs voor "atmosferisch" tellen.
+
+**Wat er níet is aangetoond.** In geen van de drie ritten stond een boost-PID in
+de lijst — `0170`, `2102` en `2187` kwamen niet voor, net zomin als de
+diesel-PIDs. `_boostPhantom()` had dus niets te filteren. De detectie is
+opgezet voor een ECU die laaddruk-PIDs meldt terwijl er geen turbo in zit, maar
+dat dát voorkomt is nooit vastgesteld. De code is getest, het probleem niet.
+
+Beide meetgevallen (te weinig bewijs, en genoeg bewijs) staan als scenario in
 `test-herijking.js`, met de echte meetreeks als fixture.
 
 ### Rondes
@@ -693,6 +766,8 @@ Mechanisch en inhoudelijk strikt gescheiden, één afwijking per commit.
 | 5a-1 ✅ | turbo-criterium herzien; na een testrit nogmaals, nu op MAP-waarde | geen — `_noteMap()` hing nog in de purge, teller haalde de drempel niet |
 | 5a-2 ✅ | `_noteMap()` naar `updPID()` | turbo-detectie gaat leven; boost-PIDs verdwijnen op een bewezen atmosferische motor |
 | 5b ✅ | `purgeImplausiblePids()` → `herijkPidGate()`, stempel + tick, `nodata` herzienbaar | fantoom verdwijnt óók uit de keuzelijst; een PID die alsnog data levert komt terug |
+| 6 ✅ | `pidToevoegen()` erbij; vier toevoegpaden erdoorheen; zeef in `renderGauges()` wordt vangnet dat zich meldt | analyseprofiel, klacht-focus en remote-selectie kunnen geen fantoom meer aanzetten |
+| 7 ✅ | mechanisch: gate-blok uit `pidlane-auth.js` naar `pidlane-pidgate.js` | geen — byte-identiek verplaatst, beide tests ongewijzigd groen |
 
 De splitsing van ronde 5 in drie stappen was geen planning maar noodzaak.
 5a-2 alléén zou een echte bug hebben geïntroduceerd: een turbomotor die een
@@ -702,15 +777,18 @@ teller de drempel niet haalt) en pas daarna de meting verplaatsen.
 
 **Twee tests, twee vragen.**
 
-`test-pidgate.js` (repo-root) toetst of de gate het juiste **antwoord** geeft:
-1600 toestanden × 11 aanroepplekken, met per plek een `verwacht`-predicaat dat
+`test-pidgate.js` (`public/`) toetst of de gate het juiste **antwoord** geeft:
+1600 toestanden × 15 aanroepplekken, met per plek een `verwacht`-predicaat dat
 vastlegt wanneer een verschil met het gedrag van vóór de gate BEDOELD is. Alles
 daarbuiten is een regressie en de test eindigt met exit 1. Werkwijze per ronde:
 wijzig de gate, draai de test, werk precies één `verwacht` bij. Moet je er twee
-bijwerken, dan heeft je wijziging meer geraakt dan de bedoeling was.
+bijwerken, dan heeft je wijziging meer geraakt dan de bedoeling was. Een nieuwe
+aanroepplek erbij zetten telt niet mee — ronde 6 voegde er vier toe zonder één
+bestaande `verwacht` aan te raken, en dát is het bewijs dat de deuren alleen
+zichzelf raakten.
 
-`test-herijking.js` (repo-root) toetst of de gate op het juiste **moment** wordt
-gesteld — een andere vraag, die de eerste test niet kan stellen. Negen scenario's
+`test-herijking.js` (`public/`) toetst of de gate op het juiste **moment** wordt
+gesteld — een andere vraag, die de eerste test niet kan stellen. Elf scenario's
 op een tijdlijn: bronlijst bouwen bij onbekende brandstof, kennis laten
 binnendruppelen, en controleren dat de lijst meebeweegt. Inclusief de
 turbo-gevallen (lage druk bewijst niets, hoge wel), een echte meetreeks van de
@@ -731,29 +809,43 @@ alleen bij handmatige selectie en nooit richting analyse of rapport.
 
 ### Nog open
 
-**De pleister in `renderGauges()` kan nog niet weg.** Het plan was dat na de
-herijking geen implausibele PID meer in `activePIDs` kón zitten, waarmee de
-laatste zeef overbodig werd. Dat klopt niet: drie toevoegpaden schrijven
-ongefilterd in `activePIDs` en kunnen dat ná een herijking doen.
+**De zeef in `renderGauges()` is een vangnet geworden, geen poort.** Sinds
+ronde 6 lopen alle toevoegpaden door `pidToevoegen()`, dus er kán daar niets
+implausibels meer langskomen. De regel is blijven staan omdat "er kán niets
+langskomen" een redenering is en geen meting — precies het soort redenering dat
+in ronde 5 niet klopte. Hij filtert nu niet stil, maar meldt zich één keer per
+PID in de diagnosebundel:
 
-| Plek | Wat |
-|---|---|
-| `pidlane-diagnose.js` | focus-PIDs uit Smart Diagnose |
-| `pidlane-remote.js` | actieve selectie uit een remote-sessie |
-| `pidlane-pids.js` (toggle) | handmatige klik, bereikbaar via "Toon alles" |
+```
+Vangnet renderGauges ving 019A af — er is een toevoegpad dat pidToevoegen() overslaat
+```
 
-Die drie door `pidGate()` laten lopen is een eigen ronde. Pas daarna is de
-regel in `renderGauges()` echt overbodig. Tot dan is het geen pleister maar de
-laatste zeef, en dat staat er nu ook zo bij.
+Blijft die melding een tijd uit bij echt gebruik, dan mag de regel weg — dat is
+dan een gedragsneutrale verwijdering met bewijs, in plaats van op hoop. Demo
+wordt overgeslagen (zie hierboven), anders piept hij daar onterecht.
+
+**Wie de deuren telt, moet niet op één schrijfvorm zoeken.** De ronde begon met
+drie paden, gevonden door te zoeken op `activePIDs.add`. De vierde en drukste,
+`ensurePIDListActive()`, vervangt de hele set en stond dus niet in die lijst.
+Bij de volgende categorie (§13) is dat de eerste controlevraag: op welke manieren
+kán deze toestand veranderen, niet welke ervan lijken op elkaar.
 
 **`pidCnt` telt twee dingen.** Het label in `index.html` zegt "Beschikbare
 PIDs", maar zeven van de negen schrijvers zetten er `activePIDs.size` in (het
 aantal *geselecteerde*) en twee `discoveredPIDDefs.length`. `herijkPidGate()`
 houdt de meerderheidskeuze aan. Opruimen is cosmetisch en hoort bij §11.
 
-**`pidGate()` staat in `pidlane-auth.js`** omdat `vehiclePlausiblePid()` en
-`getPidDef()` daar al stonden. Volgens §4 is dat de login/adminmodule.
-Verplaatsen naar een eigen module is een mechanische ronde en hoort niet in de
-opruimrondes hierboven gemengd te worden. Inmiddels staat er ook
-`herijkPidGate()`, `plHerijkTick()` en de stempel bij — de module is er niet
-kleiner op geworden.
+**`assessPidQuality()` is achtergebleven in `pidlane-auth.js`.** Ronde 7 heeft
+alleen het gate-blok verhuisd — plausibiliteit, de ladder, de herijking, de deur.
+De kwaliteitsbeoordeling die `_pidHealth` vult (`assessPidQuality`,
+`buildQualityReport`, `_qualityBlokFor`) is een eigen cluster: de gate *leest*
+`_pidHealth`, hij schrijft het niet. Dat is een aparte mechanische ronde waard,
+niet in dezelfde stap.
+
+**De knippaden van de tests horen bij de module.** Beide tests trekken hun code
+letterlijk uit `pidlane-pidgate.js`: `test-pidgate.js` matcht op
+`function pidGate(pid, niveau, opt){`, `test-herijking.js` pakt alles tussen
+`function _engineWarmRunning` en de sluitmarkering `// ── einde gate-blok`.
+Die markering staat er expliciet voor. Verplaats je iets, verplaats dan ook de
+knippaden — anders faalt de test met "niet gevonden" in plaats van met een
+echte regressie.
