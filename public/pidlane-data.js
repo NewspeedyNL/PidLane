@@ -198,8 +198,8 @@ window.DTC_MERK_LABEL = {
 };
 
 // ── merkGroep() — één plek waar merknamen op een bucket worden gemapt ──
-// Let op: pidlane-rijsituatie.js (applyVehiclePIDPreset) heeft nog een eigen
-// kopie van deze groepering. Die kan hier later naartoe — aparte ronde.
+// Gebruikt door pidlane-bt.js en, sinds ronde 9, door applyVehiclePIDPreset()
+// in pidlane-rijsituatie.js. Nieuwe merkregels horen hier en nergens anders.
 window.merkGroep = function merkGroep(merk){
   const m = String(merk||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                             .toUpperCase().replace(/[^A-Z]/g,'');

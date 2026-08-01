@@ -522,12 +522,22 @@ function applyVehiclePIDPreset(merk, brandstof, jaar){
     btDiag(`PID preset: Benzine ${y>=2010?'(modern)':'(standaard)'}`, 'info');
   }
 
-  // Merk-specifieke aanvullingen
-  if(m==='BMW'||m==='MINI')         preset.push('015C','0143');
-  if(m==='VOLKSWAGEN'||m==='AUDI'||m==='SKODA'||m==='SEAT') preset.push('0123','015C');
-  if(m==='FORD')                    preset.push('0122','015D');
-  if(m==='MAZDA')                   preset.push('015C','0110');
-  if(m==='TOYOTA'||m==='LEXUS')     preset.push('015B','015C');
+  // Merk-specifieke aanvullingen — groepering komt uit merkGroep() in
+  // pidlane-data.js (ronde 9). Hier stond een eigen kopie van dezelfde
+  // groepering; die kende alleen exact gespelde merknamen. merkGroep()
+  // normaliseert (accenten, spaties, streepjes) en matcht op voorvoegsel,
+  // dus 'Volkswagen Golf', 'VW' en Cupra vallen nu ook in de VAG-bak.
+  // De PIDs per bak zijn ongewijzigd. OPEL/VAUXHALL staat er bewust niet
+  // in: de oude kopie had voor Opel ook geen aanvulling.
+  const MERK_EXTRA_PIDS = {
+    BMW:    ['015C','0143'],
+    VAG:    ['0123','015C'],
+    FORD:   ['0122','015D'],
+    MAZDA:  ['015C','0110'],
+    TOYOTA: ['015B','015C'],
+  };
+  const groep = (typeof merkGroep==='function') ? merkGroep(merk) : '';
+  if(groep && MERK_EXTRA_PIDS[groep]) preset.push(...MERK_EXTRA_PIDS[groep]);
 
   // Dedupliceer en laad
   const uniq = [...new Set(preset)];
