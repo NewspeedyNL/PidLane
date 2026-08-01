@@ -28,6 +28,22 @@ let RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0); // 10 minuten
 let ritActive=false, ritFaseIdx=0, ritFaseTimer=null, ritTotalTimer=null, ritCollectInterval=null;
 let ritStartTime=null, ritLogs=[], ritFaseData={};
 
+/* ── ACHTERGROND ────────────────────────────────────────────────────────
+   Een rit onder belasting vraagt dat je rijdt, en rijden vraagt navigatie.
+   Precies dán legt Android de tab stil: setTimeout en setInterval bevriezen.
+   Op 01-08-2026 stond daar het bewijs voor in de log — een TX om 14:04:19
+   kreeg pas om 14:50:26 antwoord, 46 minuten later.
+
+   Meedraaien in de achtergrond kan een webapp niet afdwingen. Wat wél kan is
+   eerlijk zijn: de rit PAUZEERT als het scherm weggaat en gaat verder waar
+   hij was zodra je terug bent. De fase loopt dus niet stilletjes door over
+   tijd waarin niets gemeten is, en het rapport weet achteraf dat er gaten in
+   zaten.
+
+   ritFaseEind is wandkloktijd, niet een resterende duur: dat is het enige wat
+   een bevroren tab overleeft.                                              */
+let ritFaseEind=0, ritPauzeSinds=0, ritPauzeTotaal=0, ritOnderbrekingen=0;
+
 function openRitAnalyse(mode='10min'){
   document.getElementById('welcomeScreen')?.classList.add('hidden');
   ritMode = mode;
@@ -103,6 +119,7 @@ function resetRitUI(){
       </div>`;
   }
   ritLogs=[]; ritFaseData={}; ritFaseIdx=0;
+  ritFaseEind=0; ritPauzeSinds=0; ritPauzeTotaal=0; ritOnderbrekingen=0;
 }
 
 // 10-min uitgebreide analyse: lees ALLE ondersteunde sensoren één keer uit en
@@ -179,6 +196,7 @@ async function startRitAnalyse(){
     ensurePIDListActive(actief);
   }
   ritActive=true; ritStartTime=Date.now(); ritFaseIdx=0; ritLogs=[]; ritFaseData={};
+  ritPauzeSinds=0; ritPauzeTotaal=0; ritOnderbrekingen=0; ritFaseEind=0;
   document.getElementById('ritStartBtn').style.display='none';
   document.getElementById('ritStopBtn').style.display='block';
   document.getElementById('ritStatus').textContent = ritMode==='2min'
@@ -189,7 +207,10 @@ async function startRitAnalyse(){
 
   // Total timer + progress bar
   ritTotalTimer=setInterval(()=>{
-    const elapsed=Math.floor((Date.now()-ritStartTime)/1000);
+    // Pauzetijd telt niet mee: anders loopt de balk vol terwijl de app op de
+    // achtergrond stond en stopt de rit zonder dat er iets gemeten is.
+    const stil=ritPauzeTotaal+(ritPauzeSinds?Date.now()-ritPauzeSinds:0);
+    const elapsed=Math.floor((Date.now()-ritStartTime-stil)/1000);
     const mins=Math.floor(elapsed/60), secs=elapsed%60;
     document.getElementById('ritTimer').textContent=`${mins}:${secs.toString().padStart(2,'0')}`;
     const pct=Math.min(100,(elapsed/RIT_TOTAAL)*100);
@@ -202,6 +223,10 @@ async function startRitAnalyse(){
 function startRitFase(idx){
   if(idx>=RIT_FASEN_ACTIEF.length){stopRitAnalyse();return;}
   const fase=RIT_FASEN_ACTIEF[idx];
+  // Stond hier niet, terwijl ritFaseIdx wel bestond en op 0 bleef staan.
+  // Pauzeren/hervatten moet weten welke fase loopt.
+  ritFaseIdx=idx;
+  ritFaseEind=Date.now()+fase.duur*1000;
   document.getElementById('ritPhaseName').textContent=`${fase.icon} ${fase.naam}`;
   document.getElementById('ritPhaseDesc').textContent=fase.desc+` — ${fase.duur} seconden`;
   log(`Fase ${idx+1}: ${fase.naam}`,'info');
@@ -214,22 +239,74 @@ function startRitFase(idx){
   // bleven niet-geactiveerde PIDs (bv. 0124/0134/015C) undefined → lege data.
   ensurePIDListActive([...new Set(RIT_FASEN_ACTIEF.flatMap(f=>f.pids))]);
 
-  // Verzamel data gedurende de fase
-  if(ritCollectInterval){clearInterval(ritCollectInterval);}
+  _ritStartVerzamelen();
+  _ritPlanFaseTimer();
+}
+
+/* Verzamelen van meetwaarden voor de LOPENDE fase. Apart gezet omdat het na
+   een onderbreking opnieuw moet starten. */
+function _ritStartVerzamelen(){
+  if(ritCollectInterval){clearInterval(ritCollectInterval);ritCollectInterval=null;}
+  const idx=ritFaseIdx, fase=RIT_FASEN_ACTIEF[idx];
+  if(!fase||!ritFaseData[idx]) return;
   ritCollectInterval=setInterval(()=>{
     if(!ritActive){clearInterval(ritCollectInterval);ritCollectInterval=null;return;}
     fase.pids.forEach(pid=>{
       if(pidVals[pid]!==undefined) ritFaseData[idx].data[pid].push({t:Date.now(),v:pidVals[pid]});
     });
   },500);
+}
 
-  // Fase timer
+/* Fasetimer op basis van wandkloktijd. Bij hervatten is ritFaseEind al
+   opgeschoven met de weggevallen tijd, dus dit klopt vanzelf. */
+function _ritPlanFaseTimer(){
+  if(ritFaseTimer) clearTimeout(ritFaseTimer);
+  const idx=ritFaseIdx;
   ritFaseTimer=setTimeout(async()=>{
+    ritFaseTimer=null;
+    if(!ritActive) return;
     clearInterval(ritCollectInterval);ritCollectInterval=null;
     await analyseRitFase(idx);
     if(ritActive) startRitFase(idx+1);
-  },fase.duur*1000);
+  },Math.max(0,ritFaseEind-Date.now()));
 }
+
+/* ── Pauzeren en hervatten ──────────────────────────────────────────── */
+function _ritPauzeer(){
+  if(!ritActive||ritPauzeSinds) return;
+  ritPauzeSinds=Date.now();
+  if(ritFaseTimer){ clearTimeout(ritFaseTimer); ritFaseTimer=null; }
+  if(ritCollectInterval){ clearInterval(ritCollectInterval); ritCollectInterval=null; }
+}
+
+function _ritHervat(){
+  if(!ritActive||!ritPauzeSinds) return;
+  const weg=Date.now()-ritPauzeSinds;
+  ritPauzeSinds=0;
+  // Korte wissels (menu, notificatie) niet als onderbreking tellen: die
+  // kosten geen meetdata van betekenis en zouden het rapport vervuilen.
+  if(weg<3000){ _ritStartVerzamelen(); _ritPlanFaseTimer(); return; }
+  ritPauzeTotaal+=weg;
+  ritOnderbrekingen++;
+  ritFaseEind+=weg;
+  const s=Math.round(weg/1000);
+  log(`⏸ Rit stond ${s>90?Math.round(s/60)+' min':s+' s'} stil — app was op de achtergrond. Fase gaat verder waar hij was.`,'warn');
+  ritLogs.push({t:Date.now(), type:'onderbreking', sec:s});
+  // Terug uit de achtergrond met een dode verbinding heeft geen zin: dan
+  // vult de fase zich met niets en levert het rapport lege grafieken.
+  if(typeof connected!=='undefined' && !connected && !(typeof demoMode!=='undefined'&&demoMode)){
+    log('Verbinding is weg na de onderbreking — rit gestopt met wat er tot nu toe is gemeten.','warn');
+    stopRitAnalyse();
+    return;
+  }
+  _ritStartVerzamelen();
+  _ritPlanFaseTimer();
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(!ritActive) return;
+  if(document.visibilityState==='hidden') _ritPauzeer(); else _ritHervat();
+});
 
 async function analyseRitFase(idx){
   const {fase,data}=ritFaseData[idx];
@@ -313,8 +390,11 @@ function isPIDOkVal(pid,val){
 
 async function stopRitAnalyse(){
   if(!ritActive) return;
+  // Stoppen terwijl de app nog op de achtergrond stond: die laatste pauze
+  // hoort ook van de meettijd af, anders telt hij stilte als meting.
+  if(ritPauzeSinds){ ritPauzeTotaal+=Date.now()-ritPauzeSinds; ritPauzeSinds=0; }
   ritActive=false;
-  clearTimeout(ritFaseTimer); clearInterval(ritTotalTimer);
+  clearTimeout(ritFaseTimer); ritFaseTimer=null; clearInterval(ritTotalTimer);
   if(ritCollectInterval){ clearInterval(ritCollectInterval); ritCollectInterval=null; }
   // Was de rit geminimaliseerd? Toon het overlay weer zodat het rapport
   // zichtbaar wordt, en verwijder de zwevende pill.
@@ -388,7 +468,10 @@ async function ritFocusChosen(focus){
 
 async function generateRitRapport(focus='beide'){
   const v=getVehicle();
-  const elapsed=Math.floor((Date.now()-ritStartTime)/1000);
+  // Werkelijke meettijd, dus zonder de tijd dat de app op de achtergrond lag.
+  // Anders staat er "10:00 minuten" boven een rapport dat op vier minuten data
+  // rust, en dat is precies het soort valse stelligheid dat we willen weren.
+  const elapsed=Math.floor((Date.now()-ritStartTime-ritPauzeTotaal)/1000);
   const mins=Math.floor(elapsed/60), secs=elapsed%60;
   const focusLabel={techniek:'Technisch rapport',rijgedrag:'Rijgedrag rapport',beide:'Volledig rapport'}[focus];
 
@@ -397,7 +480,9 @@ async function generateRitRapport(focus='beide'){
     `PIDLANE — RIT ANALYSE: ${focusLabel.toUpperCase()}`,
     `Datum: ${new Date().toLocaleString('nl')}`,
     `Voertuig: ${v.merk||'?'} ${v.year||''} ${v.vin||''}`,
-    `Rit duur: ${mins}:${secs.toString().padStart(2,'0')} minuten`,
+    `Rit duur: ${mins}:${secs.toString().padStart(2,'0')} minuten (werkelijk gemeten)`,
+    ...(ritOnderbrekingen ? [`LET OP: ${ritOnderbrekingen}× onderbroken doordat de app op de achtergrond stond; ` +
+        `${Math.round(ritPauzeTotaal/1000)} s zonder meetdata. Beoordeel de reeksen met die gaten in gedachten.`] : []),
     `Fases geanalyseerd: ${ritLogs.length}`,
     '',
     '═══════════════════════════════════',

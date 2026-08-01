@@ -1110,16 +1110,31 @@ async function callAI(prompt,contentEl){
    onzichtbaar, en het rapport klinkt vervolgens even stellig als een
    rapport dat wél op tien minuten meetdata rust.
 
-   Deze poort staat vóór elke analyse en kijkt naar twee dingen:
+   Deze poort staat vóór elke analyse en kijkt naar drie dingen:
      dekking  — van hoeveel sensoren hebben we genoeg monsters?
      tijdsduur— over hoeveel seconden lopen die monsters?
+     rijtijd  — hoeveel daarvan is gereden in plaats van stationair?
    Is dat te mager, dan vraagt hij eerst om data in plaats van door te gaan.
-   Doorgaan mag altijd, maar dan bewust en met de beperking in het rapport. */
+   Doorgaan mag altijd, maar dan bewust en met de beperking in het rapport.
+
+   De rij-eis is er bij gekomen omdat de poort anders alleen HOEVEELHEID mat.
+   Elf minuten stationair haalde daarmee moeiteloos het zwaarste niveau, dus
+   een rapport dat om belasting vroeg draaide alsnog op stilstand — precies
+   het geval van 01-08-2026. `rij` is het aantal seconden meetdata mét
+   beweging; 0 betekent dat stilstaand meten volstaat. */
 const MEET_EIS = {
-  snel:  {sec:20,  n:6,  dekking:0.5, naam:'stilstaande momentopname'},
-  normaal:{sec:60, n:15, dekking:0.6, naam:'stilstaande meting'},
-  rit:   {sec:180, n:40, dekking:0.6, naam:'meting onder belasting'}
+  snel:   {sec:20,  n:6,  dekking:0.5, rij:0,  naam:'stilstaande momentopname'},
+  normaal:{sec:60,  n:15, dekking:0.6, rij:0,  naam:'stilstaande meting'},
+  kortrit:{sec:90,  n:25, dekking:0.6, rij:30, naam:'korte rit'},
+  rit:    {sec:180, n:40, dekking:0.6, rij:90, naam:'meting onder belasting'}
 };
+// Snelheid waarboven een monster als "rijdend" telt. Onder deze waarde zit
+// stapvoets manoeuvreren en meetruis van de snelheidssensor.
+const MEET_RIJ_KMH = 15;
+// Gat tussen twee snelheidsmonsters dat nog als aaneengesloten rijtijd telt.
+// Groter gat = de app lag stil (achtergrondtab, verbinding weg); dat mag niet
+// als gereden tijd meetellen.
+const MEET_RIJ_GAT_MS = 5000;
 function plMeetStatus(){
   let sensoren=0, genoeg=0, oudste=null, nieuwste=null, maxN=0;
   try{
@@ -1136,7 +1151,41 @@ function plMeetStatus(){
     });
   }catch(e){}
   const sec = (oudste&&nieuwste) ? Math.round((nieuwste-oudste)/1000) : 0;
-  return {sensoren, genoeg, sec, maxN, dekking: sensoren? genoeg/sensoren : 0};
+  return {sensoren, genoeg, sec, maxN, dekking: sensoren? genoeg/sensoren : 0,
+          rijSec: plMeetRijSec()};
+}
+/* Hoeveel seconden meetdata zijn er MET beweging? Loopt de snelheids-
+   geschiedenis langs en telt alleen aaneengesloten stukken boven de drempel.
+   Geeft null terug als er geen snelheidsgeschiedenis is: geen bewijs is geen
+   oordeel, en dan mag de rij-eis niet blokkeren op een voertuig dat 010D
+   simpelweg niet levert. */
+function plMeetRijSec(){
+  try{
+    const h=(typeof pidHist!=='undefined'&&pidHist['010D'])||null;
+    if(!Array.isArray(h)||!h.length) return null;
+    let ms=0;
+    for(let i=1;i<h.length;i++){
+      const gat=h[i].t-h[i-1].t;
+      if(gat<=0||gat>MEET_RIJ_GAT_MS) continue;
+      if(h[i].v>=MEET_RIJ_KMH && h[i-1].v>=MEET_RIJ_KMH) ms+=gat;
+    }
+    return Math.round(ms/1000);
+  }catch(e){ return null; }
+}
+/* Welk niveau geldt er écht? De aanroeper noemt een ondergrens, maar als de
+   wizard een rit in het plan heeft gezet, wint die. Voorheen stond in elke
+   aanroep een vaste letterlijke ('normaal'), waardoor een plan met "Rit onder
+   belasting, ±10 min" alsnog op stilstaande data werd afgerekend. Alleen
+   OPHOGEN: een aanroeper die zwaarder vraagt dan het plan houdt zijn eis. */
+function plMeetNiveau(gevraagd){
+  const rang={snel:0, normaal:1, kortrit:2, rit:3};
+  let niveau = MEET_EIS[gevraagd] ? gevraagd : 'normaal';
+  try{
+    const m=(window._wizJob||{}).meting;
+    const uitPlan = (m==='rit10') ? 'rit' : ((m==='rit2') ? 'kortrit' : null);
+    if(uitPlan && rang[uitPlan]>rang[niveau]) niveau=uitPlan;
+  }catch(e){}
+  return niveau;
 }
 function plMeetTekort(niveau){
   const eis = MEET_EIS[niveau] || MEET_EIS.normaal;
@@ -1145,35 +1194,54 @@ function plMeetTekort(niveau){
   if(st.sec < eis.sec)          tekort.push('gemeten over '+st.sec+' s, nodig '+eis.sec+' s');
   if(st.maxN < eis.n)           tekort.push('hoogstens '+st.maxN+' monsters per sensor, nodig '+eis.n);
   if(st.dekking < eis.dekking)  tekort.push('slechts '+Math.round(st.dekking*100)+'% van de sensoren heeft data, nodig '+Math.round(eis.dekking*100)+'%');
-  return {ok:!tekort.length, tekort, st, eis};
+  // rijSec===null: dit voertuig levert geen snelheid, dus geen oordeel.
+  const rijTekort = !!(eis.rij && st.rijSec!==null && st.rijSec<eis.rij);
+  if(rijTekort) tekort.push('maar '+st.rijSec+' s gereden boven '+MEET_RIJ_KMH+' km/h, nodig '+eis.rij+' s onder belasting');
+  return {ok:!tekort.length, tekort, st, eis, rijTekort};
 }
 /* Toont het meetscherm en geeft een belofte terug: true = doorgaan. */
 function plVraagMeting(niveau, watVoor){
   return new Promise(resolve=>{
-    const r=plMeetTekort(niveau);
-    if(r.ok){ resolve(true); return; }
+    const r=plMeetTekort(plMeetNiveau(niveau));
+    // Poort schoon gehaald? Dan geldt een eerdere "toch doorgaan" niet meer.
+    // Bleef die staan, dan bleef elk volgend rapport zijn eigen data
+    // diskwalificeren met een beperking die al lang was ingelopen.
+    if(r.ok){ try{ delete window._meetBeperkt; }catch(e){} resolve(true); return; }
     let ov=document.getElementById('meetGateOv');
     if(!ov){
       ov=document.createElement('div'); ov.id='meetGateOv'; ov.className='mg-ov';
       document.body.appendChild(ov);
     }
     const kanRijden = (typeof openRitAnalyse==='function');
+    // Welke rit hoort bij dit niveau? Bij 'kortrit' is tien minuten rijden
+    // meer dan gevraagd; bij 'rit' is twee minuten te weinig.
+    const ritModus = (r.eis===MEET_EIS.kortrit) ? '2min' : '10min';
+    const ritLabel = (ritModus==='2min') ? '🚗 Korte rijtest starten (2 min)'
+                                         : '🚗 Rijtest starten (10 min)';
+    // Stilstaand wachten helpt alleen als het tekort óók stilstaand in te
+    // lopen is. Ontbreekt er rijtijd, dan is die knop een doodlopende weg:
+    // je wacht 180 s uit en de eis staat er daarna nog steeds.
+    const kanWachten = !r.rijTekort;
     ov.innerHTML =
       '<div class="mg-kaart">'+
         '<div class="mg-t">⏱️ Nog te weinig meetdata</div>'+
-        '<div class="mg-s">Voor '+(watFor(watVoor))+' heb ik '+r.eis.naam+' nodig. Nu heb ik alleen een momentopname, en daar kan ik geen betrouwbaar oordeel op bouwen.</div>'+
+        '<div class="mg-s">Voor '+(watFor(watVoor))+' heb ik '+r.eis.naam+' nodig. '+
+          (r.rijTekort ? 'Wat ik nu heb is stilstaand gemeten, en daarin is belasting per definitie onzichtbaar.'
+                       : 'Nu heb ik alleen een momentopname, en daar kan ik geen betrouwbaar oordeel op bouwen.')+
+        '</div>'+
         '<ul class="mg-lijst">'+r.tekort.map(t=>'<li>'+t+'</li>').join('')+'</ul>'+
         '<div class="mg-knoppen">'+
-          (kanRijden?'<button class="mg-pri" id="mgRit">🚗 Rijtest starten (10 min)</button>':'')+
-          '<button class="mg-sec" id="mgWacht">⏳ Stilstaand meten ('+r.eis.sec+' s)</button>'+
+          (kanRijden?'<button class="mg-pri" id="mgRit">'+ritLabel+'</button>':'')+
+          (kanWachten?'<button class="mg-sec" id="mgWacht">⏳ Stilstaand meten ('+r.eis.sec+' s)</button>':'')+
           '<button class="mg-ter" id="mgToch">Toch doorgaan met wat er is</button>'+
         '</div>'+
       '</div>';
     ov.style.display='flex';
     const sluit=()=>{ ov.style.display='none'; };
     const rit=document.getElementById('mgRit');
-    if(rit) rit.onclick=()=>{ sluit(); resolve(false); try{ openRitAnalyse('10min'); }catch(e){} };
-    document.getElementById('mgWacht').onclick=()=>{
+    if(rit) rit.onclick=()=>{ sluit(); resolve(false); try{ openRitAnalyse(ritModus); }catch(e){} };
+    const wacht=document.getElementById('mgWacht');
+    if(wacht) wacht.onclick=()=>{
       const eind=Date.now()+r.eis.sec*1000;
       const knop=document.getElementById('mgWacht');
       knop.disabled=true;
@@ -1195,6 +1263,11 @@ function plMeetPromptBlok(){
   const st=plMeetStatus();
   let s='\n\nMeetdekking: '+st.sec+' s gemeten, tot '+st.maxN+' monsters per sensor, '+
         Math.round(st.dekking*100)+'% van de sensoren met data.';
+  // Zonder dit kan het rapport niet weten dat het over stilstand gaat, en
+  // schrijft het net zo stellig over gedrag onder belasting.
+  if(st.rijSec===null)     s+='\nDit voertuig levert geen snelheid; of er gereden is, is niet vast te stellen.';
+  else if(st.rijSec<10)    s+='\nAlles is STILSTAAND gemeten (geen rijdata). Doe geen uitspraken over gedrag onder belasting, koppeling, overbrenging of verbruik onderweg.';
+  else                     s+='\nWaarvan '+st.rijSec+' s rijdend gemeten (boven 15 km/h).';
   if(window._meetBeperkt){
     s+='\nLET OP: de gebruiker is doorgegaan met beperkte data ('+window._meetBeperkt+'). '+
        'Noem dit expliciet in je conclusie en matig je stelligheid navenant.';

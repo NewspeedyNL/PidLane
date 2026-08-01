@@ -224,8 +224,28 @@ const PLWatch = {
       actieve.push(pid);
       if(nu-lastT>drempel) stil++;
     }
-    const busStilNu=actieve.length>=3 && (stil/actieve.length)>=this.cfg.busStilFractie;
-    if(busStilNu&&!this._busStil) this._log('Watchers: bus/adapter-hik — meldingen onderdrukt','info');
+    // Deze fractie was tot 01-08-2026 het ENIGE oordeel, en kon een rollende
+    // ineenstorting per definitie niet zien: de snelle PIDs vielen buiten
+    // beeld (drempel × buitenBeeldFactor) net vóór de trage groep meetelde.
+    // Op de CX-5 kwam hij niet verder dan 0.69 bij een volledig dode bus,
+    // waarna er veertien valse UITVAL-meldingen uitrolden. Hij blijft staan
+    // als terugval voor als de poortmodule niet geladen is — los inzetbaar
+    // blijven is het uitgangspunt van dit bestand — maar hij beslist niet
+    // meer alleen.
+    const lokaleFractie=actieve.length>=3 && (stil/actieve.length)>=this.cfg.busStilFractie;
+    let poortDicht=false;
+    try{
+      if(window.PLBusGate && typeof PLBusGate.gate==='function') poortDicht=!PLBusGate.gate('ecu');
+    }catch(e){}
+    // OF, niet EN: allebei onderdrukken meldingen, dus samen onderdrukken ze
+    // strikt meer dan elk apart. Een fix die minder afvangt dan de vorige is
+    // hier nooit de bedoeling.
+    const busStilNu=poortDicht||lokaleFractie;
+    if(busStilNu&&!this._busStil){
+      let waarom='cadans-fractie';
+      try{ if(poortDicht && window.PLBusGate) waarom=PLBusGate.status().reden; }catch(e){}
+      this._log('Watchers: bus/adapter-hik ('+waarom+') — meldingen onderdrukt','info');
+    }
     this._busStil=busStilNu;
 
     // ── watcher 1: uitval per PID (met herstelmelding) ──

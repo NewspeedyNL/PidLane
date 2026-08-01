@@ -22,7 +22,7 @@
 // 2.0 = alles half zo vaak. Staat LOS van _pollMult (verbindingsstrategie)
 // zodat een handmatige keuze en de automatiek elkaar niet overschrijven.
 const PLLoad={
-  _mult:1.0, _laatstTick:0, _sinds:0, _staat:'normaal',
+  _mult:1.0, _laatstTick:0, _sinds:0, _staat:'normaal', _gelogdeMult:undefined,
   MIN:1.0, MAX:6.0,
   cfg:{
     tickMs:2000,        // niet vaker bijregelen dan dit
@@ -32,7 +32,14 @@ const PLLoad={
     traagMs:400,        // responstijd die op bufferen wijst
     doodPct:80,         // vrijwel alles mislukt
     omhoog:1.35,        // multiplicative decrease van het tempo
-    omlaag:0.05         // additive increase van het tempo
+    omlaag:0.05,        // additive increase van het tempo (in de ruime zone)
+    // Trage terugloop binnen de dode zone (bezetAf..bezetOp). Zonder deze
+    // stap is de dode zone een VAL in plaats van een demping — zie het blok
+    // hieronder. Klein gehouden zodat hij de hysterese niet ondermijnt: het
+    // is aftasten, geen regelen.
+    omlaagTraag:0.03,
+    // Alleen aftasten als de bus écht rustig is, niet zodra hij niet druk is.
+    kalmFoutPct:5
   },
 
   mult(){ return this._mult; },
@@ -49,14 +56,50 @@ const PLLoad={
     if(!s) return;
     const druk = s.belasting>=this.cfg.bezetOp || s.foutPct>=this.cfg.foutOp;
     const ruim = s.belasting<this.cfg.bezetAf && s.foutPct<this.cfg.foutOp;
+    /* ── DE DODE ZONE WAS EEN VAL ────────────────────────────────────────
+       Tussen bezetAf (55%) en bezetOp (85%) was `_mult` bevroren: niet druk,
+       niet ruim, dus geen enkele stap. Bedoeld als demping, in de praktijk
+       een eenrichtingsdeur.
+
+       Op 01-08-2026 liep dat vast. Om 14:03:29 stond `_mult` op 6.0 (MAX,
+       tempo 17%) en daar bleef hij, vijf uur lang: in de bundel van 20:48
+       staat mult 6 bij foutPct 0 en belasting 67. Alle vier de logregels van
+       die sessie zeggen "verlaagd", geen enkele "verhoogd".
+
+       De kern is dat `ruim` op dit voertuig ONBEREIKBAAR was. Bezetting is
+       aanvraagtempo × responstijd, en met 40 PIDs à ~105 ms komt zelfs op
+       MAX niet lager dan ~67%. Wachten tot de bezetting onder de 55% zakt is
+       dus wachten op iets dat niet kan gebeuren — dezelfde vorm als de
+       bus-poort die op 0.70 wachtte.
+
+       Daarom tasten we nu af in plaats van te wachten: is het niet druk en
+       is de foutgraad écht laag, dan zakt `_mult` met kleine stapjes tot de
+       bezetting tegen bezetOp aan loopt. Daar slaat `druk` toe en gaat hij
+       weer omhoog. Dat is hoe AIMD hoort te werken — voorzichtig omhoog
+       tasten, hard terug bij tegendruk — en het vindt de echte grens van
+       deze bus in plaats van op MAX te blijven staan. */
+    const kalm = !druk && !ruim && s.foutPct<=this.cfg.kalmFoutPct &&
+                 s.venGemMs<this.cfg.traagMs && this._mult>this.MIN;
     const vorig=this._mult;
-    if(druk)      this._mult=Math.min(this.MAX, this._mult*this.cfg.omhoog);
-    else if(ruim) this._mult=Math.max(this.MIN, this._mult-this.cfg.omlaag);
+    if(druk)       this._mult=Math.min(this.MAX, this._mult*this.cfg.omhoog);
+    else if(ruim)  this._mult=Math.max(this.MIN, this._mult-this.cfg.omlaag);
+    else if(kalm)  this._mult=Math.max(this.MIN, this._mult-this.cfg.omlaagTraag);
     this._mult=Math.round(this._mult*100)/100;
-    // Alleen loggen bij een merkbare stap, anders loopt de BT-log vol.
+    // Alleen loggen bij een merkbare stap, anders loopt de BT-log vol. De
+    // trage terugloop zet stapjes van 0,03 en zou zo nooit in de log komen,
+    // terwijl juist die beweging laat zien dát de regeling nog leeft; daarom
+    // wordt hij gemeten vanaf de laatst gelogde stand in plaats van vanaf de
+    // vorige tick.
     if(Math.abs(this._mult-vorig)>=0.2){
       btDiag(`Pollbudget ${this._mult>vorig?'verlaagd':'verhoogd'} naar ${(100/this._mult).toFixed(0)}% `+
              `(bezet ${s.belasting}%, fout ${s.foutPct}%, ${s.venGemMs}ms)`, this._mult>vorig?'warn':'info');
+      this._gelogdeMult=this._mult;
+    } else if(this._gelogdeMult!==undefined && Math.abs(this._mult-this._gelogdeMult)>=0.5){
+      btDiag(`Pollbudget stapsgewijs ${this._mult>this._gelogdeMult?'verlaagd':'verhoogd'} naar `+
+             `${(100/this._mult).toFixed(0)}% (bezet ${s.belasting}%, fout ${s.foutPct}%, ${s.venGemMs}ms)`,'info');
+      this._gelogdeMult=this._mult;
+    } else if(this._gelogdeMult===undefined){
+      this._gelogdeMult=this._mult;
     }
     this._staat=this._bepaalStaat(s);
   },
@@ -84,7 +127,7 @@ const PLLoad={
              tempoPct:Math.round(100/this._mult), mult:this._mult };
   },
 
-  reset(){ this._mult=1.0; this._staat='normaal'; this._laatstTick=0; }
+  reset(){ this._mult=1.0; this._staat='normaal'; this._laatstTick=0; this._gelogdeMult=undefined; }
 };
 window.PLLoad=PLLoad;
 

@@ -219,6 +219,16 @@ var MODULES = {
   recorder:  {n:'Handmatige opname',     d:'Zelf sensoren kiezen en opnemen',                               run:function(){ openPidRecorder(); }}
 };
 
+/* Modules die bewust GEEN meeteis hebben — de uitzonderingen, expliciet en op
+   één plek, zodat ze niet per ongeluk ontstaan:
+     dtc      leest opgeslagen codes; die staan er los van hoe lang je meet.
+     monitor  ís de meting zelf.
+     recorder ís de meting zelf.
+   Al het andere velt een oordeel over live meetwaarden en hoort dus achter de
+   poort. Nieuwe module? Standaard poort; hier alleen bij als je kunt uitleggen
+   waarom meetdata er niet toe doet. */
+var GEEN_MEETEIS = { dtc:1, monitor:1, recorder:1 };
+
 var METING = {
   stil:    {n:'Stilstaand meten',  d:'Contact aan, motor stationair',  tijd:'±2 min'},
   rit2:    {n:'Korte rit',         d:'±2 minuten rijden',              tijd:'±2 min',  start:function(){ openRitAnalyse('2min'); }},
@@ -406,8 +416,14 @@ function toonPlan(){
                 : 'Op basis van je antwoorden. Je kunt hier nog terug.')+
           '</div>'+
           '<div class="wz-plan-kop">1 · Meten</div>'+
-          '<div class="wz-plan-item"><b>'+(metingGestart?vink:'')+meting.n+'</b>'+
-            '<span>'+meting.d+' · '+meting.tijd+'</span></div>'+
+          // Stap 1 had als enige regel in dit scherm géén knop, terwijl elke
+          // analyse eronder er wél een had. Daarmee wees de hele lijst naar de
+          // ongepoorte deur: mensen tikten "Openen" bij een analyse en kregen
+          // een rapport zonder dat er ooit gemeten was.
+          '<div class="wz-plan-item" id="wzMeting"><b>'+(metingGestart?vink:'')+meting.n+'</b>'+
+            '<span>'+meting.d+' · '+meting.tijd+'</span>'+
+            '<button class="wz-mod-run" onclick="PLWizard.start()">'+
+              (metingGestart?'Nogmaals':'Starten')+'</button></div>'+
           '<div class="wz-plan-kop">2 · Analyseren <span class="wz-tel">'+
             (af ? af+'/'+mods.length : mods.length)+'</span></div>';
   mods.forEach(function(k){
@@ -489,9 +505,23 @@ window.PLWizard = {
   },
   draai: function(k){
     var M=MODULES[k]; if(!M) return;
-    actief=true; gedaan[k]=true;
-    this.sluitStil();
-    veilig(function(){ M.run(job); });
+    var self=this;
+    var open=function(){
+      actief=true; gedaan[k]=true;
+      self.sluitStil();
+      veilig(function(){ M.run(job); });
+      chipTick();
+    };
+    // TWEEDE DEUR. start() had de meetfase-poort, deze niet — en dit is de
+    // deur waar de knoppen in het planscherm naartoe wijzen. Zelfde les als
+    // ronde 6 van de PID-gate: een poort op één van de paden is geen poort.
+    // plVraagMeting bepaalt zelf het niveau uit job.meting (plMeetNiveau).
+    if(GEEN_MEETEIS[k] || typeof plVraagMeting!=='function'){ open(); return; }
+    plVraagMeting('normaal', M.n).then(function(door){
+      if(door){ metingGestart=true; open(); }
+      // false = de gebruiker koos een rijtest; die neemt het scherm over.
+      // Het plan blijft staan, de chip brengt hem straks terug.
+    });
   },
   // Terug naar het plan zonder ook maar iets te resetten. Dit is de ingang
   // die de chip gebruikt; open() blijft de ingang die wél opnieuw begint.
