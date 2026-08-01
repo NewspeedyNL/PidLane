@@ -480,17 +480,50 @@ function _powertrainPhantom(pid){
 }
 // Boost/laaddruk-PID's die alleen zin hebben op een motor met turbo/compressor.
 const BOOST_PIDS = new Set(['0170','2102','0187']);
+// ── Turbo-detectie: drempels ──────────────────────────────────────────
+// Bijstellen na een rit; zie PIDLANE.md §15 voor de meetgegevens waarop deze
+// waarden zijn gekozen. Bewust hier bovenaan en niet verstopt in de functie.
+const MAP_BEWIJS_KPA   = 85;    // vanaf deze inlaatdruk staat de gasklep ver open
+const MAP_BEWIJS_MIN   = 10;    // zoveel van zulke metingen voor een oordeel
+const MAP_ATMOSF_MAX   = 106;   // piek hieronder = nooit boost = geen turbo
+const MAP_MOTOR_RPM    = 300;   // daaronder draait de motor niet
+
 // Houdt de hoogst gemeten inlaatdruk bij → bewijs of er turbo is.
 let _maxMapSeen = 0, _mapSamples = 0;
+
+// Zegt deze meting íets over boost? Stationair draaien zegt niets: ook een
+// turbomotor zit dan rond 30-40 kPa, ruim onder omgevingsdruk. Alleen bij een
+// ver geopende gasklep laat een turbo zien dat hij eroverheen gaat.
+//
+// Het bewijs zit in de MAP-waarde zelf: een hoge inlaatdruk BETEKENT dat de
+// gasklep ver open staat. Daar is geen tweede PID voor nodig — en dat is maar
+// goed ook, want 010B, 0111 en 0104 lopen op verschillende intervallen
+// (1071 / 428 / 3570 ms op de CX-5). Kruisverwijzen naar pidVals['0111']
+// leest dan een gasklepstand van een ander moment dan de drukmeting.
+//
+// Toerental wél meelezen, want dat verandert traag genoeg: contact aan met
+// stilstaande motor geeft ~101 kPa (geen onderdruk) en dat zou anders als
+// bewijs voor "atmosferisch" tellen.
+function _mapBewijsMoment(m){
+  if(m < MAP_BEWIJS_KPA) return false;
+  const r = (typeof pidVals!=='undefined') ? pidVals['010C'] : undefined;
+  return typeof r==='number' && r > MAP_MOTOR_RPM;
+}
+
 function _noteMap(){
   const m = (typeof pidVals!=='undefined') ? pidVals['010B'] : undefined;
-  if(typeof m==='number' && m>0 && m<300){ _mapSamples++; if(m>_maxMapSeen) _maxMapSeen=m; }
+  if(typeof m!=='number' || m <= 0 || m >= 300) return;
+  if(m > _maxMapSeen) _maxMapSeen = m;                  // piek: altijd bijhouden
+  if(_mapBewijsMoment(m)) _mapSamples++;                // bewijs: alleen hoge druk
 }
-// Atmosferisch = genoeg MAP-metingen én piek bleef onder ~106 kPa (nooit boost).
-// Onbekend (te weinig data) → niet als atmosferisch bestempelen (geen filter).
+
+// Atmosferisch = genoeg metingen bij ver geopende gasklep én piek bleef onder
+// omgevingsdruk. Te weinig bewijs → geen oordeel, dus geen filter. Veilige
+// kant: liever een boost-tegel te veel op een atmosferische motor dan een
+// ontbrekende tegel op een turbo.
 function _isNaturallyAspirated(){
-  if(_mapSamples < 8) return false;      // te weinig bewijs → geen aanname
-  return _maxMapSeen <= 106;             // nooit boven omgevingsdruk → geen turbo
+  if(_mapSamples < MAP_BEWIJS_MIN) return false;
+  return _maxMapSeen <= MAP_ATMOSF_MAX;
 }
 function _boostPhantom(pid){
   if(!BOOST_PIDS.has(pid)) return false;
@@ -564,24 +597,79 @@ function pidGate(pid, niveau, opt){
   return true;
 }
 
-// Her-filter: verwijder fantoomsensoren uit de actieve selectie zodra het
-// brandstoftype (alsnog) bekend wordt. Bij verbinden is brandstof vaak nog
-// onbekend → alles toegelaten; RDW levert 'benzine' pas later. Zonder deze
-// purge bleven AdBlue/NOx/DPF-tegels dan gewoon staan.
-function purgeImplausiblePids(){
+// ══════════════════════════════════════════════════════════════════
+// HERIJKING — de gate opnieuw stellen zodra de voertuigkennis verandert
+// ══════════════════════════════════════════════════════════════════
+// pidGate() is geen zuivere functie van de PID, maar van (PID, huidige
+// kennis). En die kennis komt binnendruppelen: het brandstoftype pas als RDW
+// antwoordt, turbo pas na genoeg belaste MAP-metingen, uitlaat-fantomen pas
+// als de motor warm genoeg is. De bronlijst werd één keer gebouwd — tijdens
+// initialHealthScan(), op het moment dat er nog bijna niets bekend was — en
+// daarna nooit meer. Gevolg: een AdBlue-tegel op een benzineauto verdween wel
+// uit activePIDs, maar bleef gewoon in de keuzelijst staan.
+//
+// Volgorde is hier de kern: EERST de bronlijst herbouwen, DAN pas de selectie
+// filteren. Andersom filter je de selectie tegen een verouderde lijst en komt
+// het fantoom bij de volgende opbouw gewoon terug.
+function herijkPidGate(reden){
+  const weg=[];
   try{
-    _noteMap();   // MAP-piek bijhouden voor turbo/atmosferisch-detectie
+    // 1 — bronlijst opnieuw bouwen tegen de kennis van nú
+    try{ if(typeof buildDiscoveredPIDList==='function') buildDiscoveredPIDList(); }catch(e){}
+
+    // 2 — pas daarna de actieve selectie opschonen
     if(typeof activePIDs==='undefined') return 0;
-    const weg=[];
     activePIDs.forEach(pid=>{ if(!pidGate(pid,'plausibel')) weg.push(pid); });
-    if(!weg.length) return 0;
     weg.forEach(pid=>{ activePIDs.delete(pid); try{ manualPIDs.delete(pid); }catch(e){} });
+
+    // 3 — beeld bijwerken
     try{ renderGauges(); }catch(e){}
     try{ rebuildGSel(); }catch(e){}
     try{ const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size; }catch(e){}
-    try{ log('🚫 '+weg.length+' sensor(en) verborgen — niet aanwezig op dit brandstoftype ('+vehicleFuelType()+')','info'); }catch(e){}
+    if(weg.length){
+      try{ log('🚫 '+weg.length+' sensor(en) verborgen — niet aanwezig op dit voertuig ('+vehicleFuelType()+')','info'); }catch(e){}
+    }
+    if(reden){ try{ btDiag('Herijking PID-gate: '+reden+(weg.length?` → ${weg.length} weg`:' → geen wijziging'),'info'); }catch(e){} }
   }catch(e){}
-  return 0;
+  return weg.length;
+}
+
+// ── Wanneer moet er herijkt worden? ────────────────────────────────────
+// Niet bij elke meting — dan bouwt de lijst zich tientallen keren per minuut
+// opnieuw op en flikkert het beeld. Wél zodra een van de invoeren van
+// vehiclePlausiblePid() verandert. Die zijn met z'n drieën in één stempel te
+// vangen; verandert de stempel, dan is herijken nodig en anders niet.
+//
+// 'ooitWarm' is bewust een grendel. Zonder grendel klapt de stempel heen en
+// weer bij elke keer dat de motor uitgaat, met een herbouw per keer.
+let _plausStempel='', _ooitWarm=false, _herijkVuil=false;
+
+function _maakPlausStempel(){
+  try{ if(_engineWarmRunning()) _ooitWarm=true; }catch(e){}
+  let ft=''; try{ ft=vehicleFuelType()||''; }catch(e){}
+  let na=false; try{ na=_isNaturallyAspirated(); }catch(e){}
+  return ft+'|'+(na?'atmosferisch':'onbekend')+'|'+(_ooitWarm?'warm':'koud');
+}
+
+// Iets veranderde dat niet in de stempel zit — bijvoorbeeld een PID die van
+// 'nodata' naar 'ok' is bijgewerkt. Zet de vlag; de eerstvolgende tick herijkt.
+function markeerHerijking(){ _herijkVuil=true; }
+
+// Wordt vanuit updPID() aangeroepen, dus bij élke meting. Daarom goedkoop
+// gehouden: één stempel maken en één stringvergelijking. Alleen als er echt
+// iets veranderd is volgt de dure herbouw.
+function plHerijkTick(){
+  try{
+    const s=_maakPlausStempel();
+    if(s===_plausStempel && !_herijkVuil) return false;
+    const eersteKeer=(_plausStempel==='');
+    _plausStempel=s; _herijkVuil=false;
+    // Eerste meting van de sessie: alleen de stempel vastleggen. De bronlijst
+    // wordt vlak daarna toch door initialHealthScan() opgebouwd.
+    if(eersteKeer) return false;
+    herijkPidGate('kennis gewijzigd → '+s);
+    return true;
+  }catch(e){ return false; }
 }
 
 // Mag deze sensor in een rapport/momentopname? Filtert naamloze 'raw'-PIDs
