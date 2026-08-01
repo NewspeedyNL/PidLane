@@ -4,15 +4,15 @@
 > de gate staat daar in §15. Dit bestand overbrugt alleen het gat tussen
 > sessies.
 >
-> Bijgewerkt 01-08-2026, na ronde 7.
+> Bijgewerkt 01-08-2026, na ronde 9.
 
 ---
 
 ## Waar we staan
 
-**De PID-gate is af, inclusief de deuren, en staat in een eigen module.**
-Ronde 1 t/m 7 zijn klaar,
-geverifieerd en beschreven in PIDLANE.md §15. Er staat geen ronde meer open.
+**De PID-gate is af, inclusief de deuren, en `pidlane-auth.js` is weer een
+login-module.** Ronde 1 t/m 9 zijn klaar, geverifieerd en beschreven in
+PIDLANE.md §15. Er staat geen ronde meer open.
 
 Kern in drie zinnen: "mag deze PID mee" was geen enkele vraag maar vijf, die op
 elf plekken in wisselende combinaties stonden — dát was de motor achter "een fix
@@ -29,25 +29,54 @@ Drie vragen, drie rondes: **welk antwoord** (1-4), **op welk moment** (5),
 
 | Bestand | Wat erin veranderde |
 |---|---|
-| `public/pidlane-auth.js` | `pidToevoegen()` erbij (ronde 6); daarna het hele gate-blok eruit (ronde 7) — 62 → 46 KB |
-| `public/pidlane-pids.js` | `togglePID()` en `ensurePIDListActive()` door de poort; zeef in `renderGauges()` → vangnet dat zich meldt |
-| `public/pidlane-diagnose.js` | `applyComplaintFocus()` door de poort |
-| `public/pidlane-remote.js` | `applyVState()` door de poort, met `handmatig:false` |
-| `public/test-pidgate.js` | vier plekken erbij (15 × 1600 = 24000 vergelijkingen); plaknaam `purgeImplausiblePids` → `herijkPidGate` |
-| `public/test-herijking.js` | scenario 10 (de deur) en 11 (deur + herijking samen) erbij — 42 toetsen |
-| `public/pidlane-pidgate.js` | NIEUW (18 KB) — het complete gate-blok, byte-identiek uit `pidlane-auth.js` |
-| `public/index.html` | één regel: script-tag voor `pidlane-pidgate.js`, direct ná auth |
-| `PIDLANE.md` | §3, §4, §5 en §15 bijgewerkt; toevoegpoort beschreven; module 6 erbij, 7 t/m 40 hernummerd |
+| `public/pidlane-kwaliteit.js` | NIEUW (9 KB) — het kwaliteitscluster, byte-identiek uit `pidlane-auth.js` |
+| `public/pidlane-auth.js` | kwaliteitscluster eruit (ronde 8) — 46 → 39 KB; verder byte-identiek op vier regels wijzer-commentaar na |
+| `public/pidlane-rijsituatie.js` | merkgroepering in `applyVehiclePIDPreset()` vervangen door `merkGroep()` (ronde 9) |
+| `public/pidlane-data.js` | alleen het commentaarblok boven `merkGroep()`: de "aparte ronde"-notitie klopte niet meer |
+| `public/index.html` | één regel: script-tag voor `pidlane-kwaliteit.js`, direct ná pidgate |
+| `PIDLANE.md` | §3, §4 (module 7 erbij, 7 t/m 40 hernummerd), §5 en §15 bijgewerkt |
 
-Alle modules zijn door `node --check`. `node test-pidgate.js` geeft exit 0,
-`node test-herijking.js` 42 toetsen 0 fout. De diff is nagelopen: in `auth.js`
-verdween geen enkele regel, in de andere drie precies de regels die vervangen
-zijn.
+Alle 39 modules zijn door `node --check`. `node test-pidgate.js` geeft exit 0,
+`node test-herijking.js` 42 toetsen 0 fout — beide ongewijzigd, want ze knippen
+alleen uit `pidlane-pidgate.js` en dat bestand is niet aangeraakt.
+`index.html`: div-balans 0, 41 script-tags, precies één regel gewijzigd.
 
-> De tests staan in `public/`, niet in de repo-root — eerdere overdrachten
-> zeiden dat verkeerd. Draaien dus vanuit `public/`.
+> De tests staan in `public/`, niet in de repo-root. Draaien dus vanuit `public/`.
 
-### Wat ronde 7 opleverde
+### Wat ronde 8 opleverde
+
+Puur mechanisch en bewijsbaar zo: het verplaatste blok (130 regels, regel 416
+t/m 545 van de oude `pidlane-auth.js`) komt letterlijk voor in
+`pidlane-kwaliteit.js`, komt niet meer voor in `pidlane-auth.js`, en de rest van
+`pidlane-auth.js` is byte-identiek — letterlijk getoetst met
+`origineel.replace(blok, wijzer) == nieuw`.
+
+Keuze die openstond: bij de gate of een eigen module. Eigen module geworden,
+omdat de gate `_pidHealth` *leest* en dit cluster het oordeel levert waarmee het
+gevuld wordt. Dat is de andere kant van dezelfde pijl, geen zelfde taak.
+`_withDisclaimer()` ging mee (stond niet in de lijst van vier), want zonder
+`RAPPORT_DISCLAIMER` slaat het nergens op.
+
+### Wat ronde 9 opleverde — en waar het níét gedragsneutraal is
+
+De PIDs per merkbak zijn ongewijzigd, maar de herkenning is ruimer geworden:
+`merkGroep()` normaliseert accenten en spaties en matcht op voorvoegsel, de oude
+kopie vergeleek exact. 40 merkstrings naast elkaar gelegd: 30 identiek, 10
+anders, allemaal dezelfde kant op — `MINI Cooper`, `VOLKSWAGEN GOLF`, `VW`,
+`AUDI A3`, `Škoda Octavia`, `SEAT Leon`, `Cupra`, `FORD FOCUS`, `MAZDA CX-5` en
+`TOYOTA YARIS` kregen eerst niets en krijgen nu wél hun aanvulling. Niemand
+raakt iets kwijt.
+
+Die extra PIDs komen binnen via `supportedPIDs` en gaan daarna alsnog door de
+gate, dus een implausibele wordt geweerd zoals altijd. Wil je het tóch strikt
+gedragsneutraal, dan is de knop `merkGroep()` zelf — niet deze module.
+
+Oneffenheid die blijft staan, want die is van `merkGroep()`: `MINI` matcht op
+voorvoegsel, `BMW` op gelijkheid. `MINI Cooper` valt dus in de bak en `BMW 320d`
+niet. Rechttrekken raakt óók de DTC-lookup (§14) en is dus inhoudelijk werk in
+een eigen ronde.
+
+### Wat ronde 7 opleverde (vorige sessie)
 
 Puur mechanisch en bewijsbaar zo: het verplaatste blok (327 regels, regel 407
 t/m 733 van de oude `pidlane-auth.js`) komt letterlijk voor in
@@ -56,7 +85,7 @@ t/m 733 van de oude `pidlane-auth.js`) komt letterlijk voor in
 `index.html` is precies één regel veranderd; div-balans 0, 40 script-tags.
 Beide tests draaien ongewijzigd groen tegen de nieuwe module.
 
-### Wat ronde 6 leerde
+### Wat ronde 6 leerde (vorige sessie)
 
 **Het waren geen drie toevoegpaden maar vier.** De lijst van drie was opgesteld
 door te zoeken op `activePIDs.add`. `ensurePIDListActive()` vervangt de hele set
@@ -111,33 +140,28 @@ dan moeten verdwijnen.
 
 ## Wat hierna aan de beurt is
 
-### 1. `assessPidQuality()` c.s. uit `pidlane-auth.js` halen (mechanisch, apart)
-
-Ronde 7 heeft alleen het gate-blok verhuisd. Wat er in `pidlane-auth.js`
-achterbleef is de kwaliteitsbeoordeling die `_pidHealth` vult:
-`assessPidQuality`, `buildQualityReport`, `_qualityBlokFor` en
-`RAPPORT_DISCLAIMER`. De gate *leest* `_pidHealth`, hij schrijft het niet — dus
-dat is een eigen cluster en een eigen ronde. Waarschijnlijk hoort het bij
-`pidlane-pidgate.js` of in een `pidlane-kwaliteit.js`; dat is een keuze, geen
-gegeven.
-
-Let op bij elke verhuizing hier: beide tests knippen hun code letterlijk uit
-`pidlane-pidgate.js`. `test-herijking.js` pakt alles tussen
-`function _engineWarmRunning` en de sluitmarkering `// ── einde gate-blok`, die
-er expliciet voor staat. Knippaden verhuizen mee, anders faalt de test met
-"niet gevonden" in plaats van met een echte regressie.
-
-### 2. Merkgroepering-kopie (mechanisch, apart)
-
-`applyVehiclePIDPreset()` in `pidlane-rijsituatie.js` heeft nog een hardcoded
-merkgroepering (`BMW||MINI`, `VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`).
-Hoort naar `merkGroep()` in `pidlane-data.js`.
-
-### 3. Het vangnet in `renderGauges()` opruimen — pas met bewijs
+### 1. Het vangnet in `renderGauges()` opruimen — pas met bewijs
 
 Blijft de melding "Vangnet renderGauges ving … af" een tijd uit bij echt
 gebruik, dan mag de regel weg. Dat is dan gedragsneutraal mét bewijs in plaats
 van op hoop. Meldt hij zich wél, dan staat er een deur open en is dát de ronde.
+
+Dit is de enige openstaande ronde uit de PID-reeks, en hij wacht op gebruik,
+niet op werk.
+
+### 2. Daarna: de volgende categorie (§13)
+
+Connectie, UI-knoppen, vensters, rapporten, AI-aanroepen. `apiFetch()` in
+`pidlane-fuel.js` is het bestaande voorbeeld van zo'n centrale plek.
+
+### Let op bij elke volgende verhuizing
+
+Beide tests knippen hun code letterlijk uit `pidlane-pidgate.js`.
+`test-herijking.js` pakt alles tussen `function _engineWarmRunning` en de
+sluitmarkering `// ── einde gate-blok`, die er expliciet voor staat. Knippaden
+verhuizen mee, anders faalt de test met "niet gevonden" in plaats van met een
+echte regressie. Bij ronde 8 speelde dat niet: het kwaliteitscluster zat niet in
+het knipbereik.
 
 ---
 

@@ -60,7 +60,7 @@ PidLane/
    ├─ admin.html           (44 KB)  admin-, gebruikers-, klant- en codebeheer
    ├─ config.js            (3 KB)   PROXY_URL, AIRTABLE_URL, APP_VERSION
    ├─ pidlane.css          (157 KB) hoofdstylesheet
-   └─ pidlane-*.js         (38 modules, zie §4)
+   └─ pidlane-*.js         (39 modules, zie §4)
 ```
 
 `index.html` was 735 KB en is op 2026-07-28 opgesplitst naar ~203 KB.
@@ -87,47 +87,48 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 
 | # | Module | KB | Doet |
 |---|---|---|---|
-| 5 | `pidlane-auth.js` | 46 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer |
+| 5 | `pidlane-auth.js` | 39 | login, HMAC-sessietokens, adminpaneel, gebruikersbeheer, API-sleutelbeheer |
 | 6 | `pidlane-pidgate.js` | 18 | **de PID-gate**: `pidGate()`, `herijkPidGate()`, `pidToevoegen()`, `vehiclePlausiblePid()`, turbo-detectie, herijkstempel, `getPidDef()`, `isReportableSensor()` — zie §15 |
-| 7 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
-| 8 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
-| 9 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export |
-| 10 | `pidlane-pids.js` | 29 | PID-paneel, gauges, breedband-lambdacorrectie B1S1 |
-| 11 | `pidlane-correlatie.js` | 3 | deterministische PID-correlatie-engine |
-| 12 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
-| 13 | `pidlane-diagnose.js` | 20 | Smart Diagnose + klacht-gestuurde PID-focus |
-| 14 | `pidlane-graph.js` | 14 | multi-line groepstrends, DTC-scanstatus |
-| 15 | `pidlane-fuel.js` | 74 | brandstofanalyse, `apiFetch` (alle AI-calls), modelkeuze/kosten |
-| 16 | `pidlane-btflow.js` | 42 | Bluetooth-verbindingsflow (multi-step) + diagnostieklog |
-| 17 | `pidlane-bt.js` | 84 | **transportlaag**: BLE, SPP, Web Serial, batch-polling, protocolinit |
-| 18 | `pidlane-voertuigdata.js` | 15 | voertuigdata-merge: VIN-WMI + NHTSA + RDW |
-| 19 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
-| 20 | `pidlane-copiloot.js` | 9 | in-app ontwikkelassistent (admin-only), praat met `/copilot` |
-| 21 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
-| 22 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
-| 23 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
-| 24 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
-| 25 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
-| 26 | `pidlane-scheduler.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
-| 27 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
-| 28 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
-| 29 | `pidlane-rit.js` | 29 | ritanalyse |
-| 30 | `pidlane-koopcheck.js` | 133 | koopcheck / aankoopkeuring, proefritmodule |
-| 31 | `pidlane-dossier.js` | 7 | export voertuigdossier |
+| 7 | `pidlane-kwaliteit.js` | 9 | **datakwaliteit**: `assessPidQuality()` (`ok`/`twijfel`/`onzin`/`nodata`), `buildQualityReport()`, `_qualityBlokFor()`, `RAPPORT_DISCLAIMER` + `_withDisclaimer()` — vult `_pidHealth`, zie §15 |
+| 8 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
+| 9 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
+| 10 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export |
+| 11 | `pidlane-pids.js` | 29 | PID-paneel, gauges, breedband-lambdacorrectie B1S1 |
+| 12 | `pidlane-correlatie.js` | 3 | deterministische PID-correlatie-engine |
+| 13 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
+| 14 | `pidlane-diagnose.js` | 20 | Smart Diagnose + klacht-gestuurde PID-focus |
+| 15 | `pidlane-graph.js` | 14 | multi-line groepstrends, DTC-scanstatus |
+| 16 | `pidlane-fuel.js` | 74 | brandstofanalyse, `apiFetch` (alle AI-calls), modelkeuze/kosten |
+| 17 | `pidlane-btflow.js` | 42 | Bluetooth-verbindingsflow (multi-step) + diagnostieklog |
+| 18 | `pidlane-bt.js` | 84 | **transportlaag**: BLE, SPP, Web Serial, batch-polling, protocolinit |
+| 19 | `pidlane-voertuigdata.js` | 15 | voertuigdata-merge: VIN-WMI + NHTSA + RDW |
+| 20 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
+| 21 | `pidlane-copiloot.js` | 9 | in-app ontwikkelassistent (admin-only), praat met `/copilot` |
+| 22 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
+| 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
+| 24 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
+| 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
+| 26 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
+| 27 | `pidlane-scheduler.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
+| 28 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
+| 29 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
+| 30 | `pidlane-rit.js` | 29 | ritanalyse |
+| 31 | `pidlane-koopcheck.js` | 133 | koopcheck / aankoopkeuring, proefritmodule |
+| 32 | `pidlane-dossier.js` | 7 | export voertuigdossier |
 
 ### Fase 3 — onderaan de body (regel ~2291)
 
 | # | Module | KB | Doet |
 |---|---|---|---|
-| 32 | `pidlane-remote.js` | 50 | `PLRemote` — remote-expertsessies, Durable Object, WebSocket-fanout, QR-pairing, vstate |
-| 33 | `pidlane-caravan.js` | 30 | caravan-rittracker, live brandstofcoach, 10 coachregels met cooldowns |
-| 34 | `pidlane-wizard.js` | 28 | `PLWizard` — vragenboom → meetplan → modules |
-| 35 | `pidlane-onderdeel.js` | 24 | `PLOnderdeel` — DTC + live data → verdacht component |
-| 36 | `pidlane-verify.js` | 13 | `PLVerify` — Laag C, focusverificatie (claimt bus via `window._pollBusy`) |
-| 37 | `pidlane-monitor.js` | 18 | `PLMon` — Laag A, passieve foutoogst (mode 0101/07/03/0A/02) |
-| 38 | `pidlane-credits.js` | 34 | `PLCredits` — kostenvenster vóór AI, saldoteller, activatiecode inwisselen |
-| 39 | `pidlane-klant.js` | 30 | `PLKlant` — klantregistratie, klantlogin, wachtwoordherstel, "Mijn tokens" |
-| 40 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
+| 33 | `pidlane-remote.js` | 50 | `PLRemote` — remote-expertsessies, Durable Object, WebSocket-fanout, QR-pairing, vstate |
+| 34 | `pidlane-caravan.js` | 30 | caravan-rittracker, live brandstofcoach, 10 coachregels met cooldowns |
+| 35 | `pidlane-wizard.js` | 28 | `PLWizard` — vragenboom → meetplan → modules |
+| 36 | `pidlane-onderdeel.js` | 24 | `PLOnderdeel` — DTC + live data → verdacht component |
+| 37 | `pidlane-verify.js` | 13 | `PLVerify` — Laag C, focusverificatie (claimt bus via `window._pollBusy`) |
+| 38 | `pidlane-monitor.js` | 18 | `PLMon` — Laag A, passieve foutoogst (mode 0101/07/03/0A/02) |
+| 39 | `pidlane-credits.js` | 34 | `PLCredits` — kostenvenster vóór AI, saldoteller, activatiecode inwisselen |
+| 40 | `pidlane-klant.js` | 30 | `PLKlant` — klantregistratie, klantlogin, wachtwoordherstel, "Mijn tokens" |
+| 41 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
 
 ---
 
@@ -151,6 +152,11 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
   `pidlane-auth.js`, en die zijn pas ná uitvoering daarvan uit hun TDZ. Zou er
   ooit iets in de gate op definitietijd gaan draaien, dan valt het daar om.
   Laat hem dus staan waar hij staat.
+- `pidlane-kwaliteit.js` staat direct ná `pidlane-pidgate.js`, om dezelfde
+  reden: niets draait daar op definitietijd, maar het leunt op `getPidDef()`
+  uit de gate en op `pidHist`/`pidVals` uit auth. `fv()` komt pas later
+  (`pidlane-pids.js`) en dat mag, want het wordt alleen binnen functies
+  aangeroepen — precies zoals het vóór de afsplitsing ook al ging.
 - `pidlane-credits.js` en `pidlane-klant.js` zitten wél in een IIFE en hangen
   alleen `window.PLCredits` / `window.PLKlant` op. Alle verwijzingen over en
   weer (auth → PLKlant, fuel → PLCredits, klant → PLCredits) zijn runtime, geen
@@ -768,6 +774,8 @@ Mechanisch en inhoudelijk strikt gescheiden, één afwijking per commit.
 | 5b ✅ | `purgeImplausiblePids()` → `herijkPidGate()`, stempel + tick, `nodata` herzienbaar | fantoom verdwijnt óók uit de keuzelijst; een PID die alsnog data levert komt terug |
 | 6 ✅ | `pidToevoegen()` erbij; vier toevoegpaden erdoorheen; zeef in `renderGauges()` wordt vangnet dat zich meldt | analyseprofiel, klacht-focus en remote-selectie kunnen geen fantoom meer aanzetten |
 | 7 ✅ | mechanisch: gate-blok uit `pidlane-auth.js` naar `pidlane-pidgate.js` | geen — byte-identiek verplaatst, beide tests ongewijzigd groen |
+| 8 ✅ | mechanisch: kwaliteitscluster uit `pidlane-auth.js` naar `pidlane-kwaliteit.js` | geen — byte-identiek verplaatst, beide tests ongewijzigd groen |
+| 9 ✅ | merkgroepering in `applyVehiclePIDPreset()` vervangen door `merkGroep()` | merken die vóórdien alleen exact gespeld werden herkend, krijgen nu hun aanvulling (zie hieronder) |
 
 De splitsing van ronde 5 in drie stappen was geen planning maar noodzaak.
 5a-2 alléén zou een echte bug hebben geïntroduceerd: een turbomotor die een
@@ -835,12 +843,33 @@ PIDs", maar zeven van de negen schrijvers zetten er `activePIDs.size` in (het
 aantal *geselecteerde*) en twee `discoveredPIDDefs.length`. `herijkPidGate()`
 houdt de meerderheidskeuze aan. Opruimen is cosmetisch en hoort bij §11.
 
-**`assessPidQuality()` is achtergebleven in `pidlane-auth.js`.** Ronde 7 heeft
-alleen het gate-blok verhuisd — plausibiliteit, de ladder, de herijking, de deur.
+**Het kwaliteitscluster staat sinds ronde 8 in `pidlane-kwaliteit.js`.** Ronde 7
+verhuisde alleen het gate-blok — plausibiliteit, de ladder, de herijking, de deur.
 De kwaliteitsbeoordeling die `_pidHealth` vult (`assessPidQuality`,
-`buildQualityReport`, `_qualityBlokFor`) is een eigen cluster: de gate *leest*
-`_pidHealth`, hij schrijft het niet. Dat is een aparte mechanische ronde waard,
-niet in dezelfde stap.
+`buildQualityReport`, `_qualityBlokFor`, plus `RAPPORT_DISCLAIMER` en
+`_withDisclaimer`) is een eigen cluster: de gate *leest* `_pidHealth`, hij
+schrijft het niet. Vandaar een eigen module en niet erbij in de gate.
+`_withDisclaimer()` ging mee omdat het zonder `RAPPORT_DISCLAIMER` nergens op
+slaat. Beide tests raken dit cluster niet — ze knippen alleen uit
+`pidlane-pidgate.js` — dus ze draaiden ongewijzigd groen.
+
+**Ronde 9: de merkgroepering staat nu ook op één plek.** `applyVehiclePIDPreset()`
+in `pidlane-rijsituatie.js` had een eigen kopie (`BMW||MINI`,
+`VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`) naast `merkGroep()` in
+`pidlane-data.js`. De PIDs per merkbak zijn ongewijzigd, maar dit is **niet
+gedragsneutraal**: de oude kopie vergeleek exact, `merkGroep()` normaliseert en
+matcht op voorvoegsel. 40 merkstrings naast elkaar gelegd: 30 identiek, 10
+anders, en alle tien dezelfde kant op — merken die eerst niets kregen krijgen nu
+wél hun aanvulling (`MINI Cooper`, `VOLKSWAGEN GOLF`, `VW`, `AUDI A3`,
+`Škoda Octavia`, `SEAT Leon`, `Cupra`, `FORD FOCUS`, `MAZDA CX-5`,
+`TOYOTA YARIS`). Niemand raakt iets kwijt. Die extra PIDs komen binnen via
+`supportedPIDs` en gaan daarna alsnog door de gate, dus een implausibele wordt
+gewoon geweerd.
+
+Eén oneffenheid blijft, en die is van `merkGroep()` zelf: `MINI` matcht op
+voorvoegsel maar `BMW` op gelijkheid, dus `MINI Cooper` valt in de bak en
+`BMW 320d` niet. Dat rechttrekken is een inhoudelijke wijziging in de DTC-lookup
+(§14) en hoort dus in een eigen ronde, niet hier.
 
 **De knippaden van de tests horen bij de module.** Beide tests trekken hun code
 letterlijk uit `pidlane-pidgate.js`: `test-pidgate.js` matcht op
