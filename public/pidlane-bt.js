@@ -585,20 +585,38 @@ async function _webSerialSend(cmd, timeoutMs){
   return out;
 }
 
+// ── ELM-INIT BUSSLOT ──
+// De reinit-reeks (ATZ/ATWS...ATSP0) bestaat uit meerdere losse commando's,
+// elk een eigen entry in _btQueue. Zonder een geclaimd slot kan de poll-loop
+// tussen die entries door zijn eigen PID-request queuen — en dat commando
+// landt dan soms vlak ná ATSP0, middenin de protocoldetectie (SEARCHING...,
+// ~10 s foute/rommelige data per keer, op een lange rit soms tientallen
+// keren). withBus() (pidlane-data.js) claimt 'elm-init' als eigenaar zodat
+// de poll-loop's eigen PLBus.claim('poll') tijdelijk faalt en die cyclus
+// overslaat i.p.v. ertussen te kruipen. Fallback op ongated uitvoeren als
+// PLBus/withBus (nog) niet geladen is — zelfde defensieve stijl als de
+// bestaande PLBus-aanroepen elders in dit bestand.
+async function _metElmBus(fn){
+  if(typeof withBus==='function') return await withBus('elm-init', fn, 8000); // 8s: ruimer dan de default 4s, een lopende poll mag uitlopen tot zijn eigen timeout
+  return await fn();
+}
+
 // ── Bewezen ELM327-init voor Web Serial (ATZ-patroon) ──
 // Op een COM-poort mag ATZ (volledige reset) — anders dan bij Android-SPP waar
 // ATZ de BT-module sloopt. Volgorde volgt python-OBD/ELMduino/ScanDoc.
 async function initELM327Serial(){
-  btDiag('ELM327 init (serial)...','proto');
-  await _webSerialSend('ATZ', 3000);   // volledige reset
-  await delay(1000);
-  await _webSerialSend('ATE0', 2000);  // echo uit
-  await _webSerialSend('ATL0', 2000);  // linefeeds uit
-  await _webSerialSend('ATS0', 2000);  // spaties uit
-  await _webSerialSend('ATH0', 2000);  // headers uit (standaard OBD)
-  await _webSerialSend('ATSP0', 2000); // protocol auto
-  const v = await _webSerialSend('ATRV', 2000); // accuspanning als levensteken
-  log('ELM327 serial klaar'+(v?(' — accu: '+v):''),'ok');
+  await _metElmBus(async()=>{
+    btDiag('ELM327 init (serial)...','proto');
+    await _webSerialSend('ATZ', 3000);   // volledige reset
+    await delay(1000);
+    await _webSerialSend('ATE0', 2000);  // echo uit
+    await _webSerialSend('ATL0', 2000);  // linefeeds uit
+    await _webSerialSend('ATS0', 2000);  // spaties uit
+    await _webSerialSend('ATH0', 2000);  // headers uit (standaard OBD)
+    await _webSerialSend('ATSP0', 2000); // protocol auto
+    const v = await _webSerialSend('ATRV', 2000); // accuspanning als levensteken
+    log('ELM327 serial klaar'+(v?(' — accu: '+v):''),'ok');
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1105,30 +1123,32 @@ function showConnError(msg){
 
 // ── BLUETOOTH SEND/RECEIVE ──
 async function initELM327(){
-  btDiag('ELM327 initialiseren...','proto');
+  await _metElmBus(async()=>{
+    btDiag('ELM327 initialiseren...','proto');
 
-  // Stap 1: Warm start — ATWS ipv ATZ!
-  // ATZ is een volledige hardware reset die op OBDLink (STN chip) ook de
-  // Bluetooth module reset → SPP socket sterft stil. ATWS reset alleen de
-  // ELM327 interpreter en houdt de BT verbinding in leven.
-  await sendCmd('ATWS');
-  await delay(1000); // ELM327 heeft tijd nodig na reset
-  btDiag('ATWS warm start OK','ok');
+    // Stap 1: Warm start — ATWS ipv ATZ!
+    // ATZ is een volledige hardware reset die op OBDLink (STN chip) ook de
+    // Bluetooth module reset → SPP socket sterft stil. ATWS reset alleen de
+    // ELM327 interpreter en houdt de BT verbinding in leven.
+    await sendCmd('ATWS');
+    await delay(1000); // ELM327 heeft tijd nodig na reset
+    btDiag('ATWS warm start OK','ok');
 
-  // Stap 2: Basisinstellingen
-  await sendCmd('ATE0');  // Echo uit
-  await sendCmd('ATL0');  // Linefeeds uit
-  await sendCmd('ATS0');  // Spaties uit
-  await sendCmd('ATH0');  // Headers uit (standaard)
-  await sendCmd('ATAT1'); // Adaptive timing
-  await sendCmd('ATST64');// 400ms timeout per commando
+    // Stap 2: Basisinstellingen
+    await sendCmd('ATE0');  // Echo uit
+    await sendCmd('ATL0');  // Linefeeds uit
+    await sendCmd('ATS0');  // Spaties uit
+    await sendCmd('ATH0');  // Headers uit (standaard)
+    await sendCmd('ATAT1'); // Adaptive timing
+    await sendCmd('ATST64');// 400ms timeout per commando
 
-  // Stap 3: Protocol op auto
-  await sendCmd('ATSP0');
-  await delay(200);
+    // Stap 3: Protocol op auto
+    await sendCmd('ATSP0');
+    await delay(200);
 
-  btDiag('ELM327 klaar — klaar voor protocol detectie','ok');
-  log('ELM327 initialisatie klaar','ok');
+    btDiag('ELM327 klaar — klaar voor protocol detectie','ok');
+    log('ELM327 initialisatie klaar','ok');
+  });
 }
 
 // ── STAP 2: NETWERK SCAN ──
