@@ -131,6 +131,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 40 | `pidlane-klant.js` | 30 | `PLKlant` — klantregistratie, klantlogin, wachtwoordherstel, "Mijn tokens" |
 | 41 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
 | 42 | `pidlane-uitgebreid.js` | 8 | `PLUitgebreid` — fabrikant-PIDs buiten mode 01 (mode 21), `pidCmd()`/`isMode01()`, probe na verbinden |
+| 43 | `pidlane-rondgang.js` | 11 | `PLRondgang` — live-weergave 4: categorie-rondgang, 100s per motoronderdeel, basis blijft staan |
 | — | `pidlane-bulk.js` | 27 | `PLBulk` — passieve bulk-datarecorder (IndexedDB). **Nog niet in index.html geladen** |
 
 ---
