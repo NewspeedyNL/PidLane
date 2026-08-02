@@ -563,8 +563,38 @@ let _showAllPIDs=false;       // toggle: ook ongezonde PIDs selecteerbaar tonen
 // Kern-PIDs die — als ze gezond zijn — automatisch geselecteerd worden
 // → KERN_PIDS verplaatst naar pidlane-data.js
 
+// Afbreekvlag voor de gezondheidscheck. Wordt gezet door de ✕ in de
+// busy-pill (zie showBusyPill in pidlane-theme.js). De lus controleert hem
+// per PID, zodat afbreken binnen één request-tijd merkbaar is en niet pas
+// na de volle sweep.
+let _healthAbort=false;
+function healthScanAfbreken(){ _healthAbort=true; }
+window.healthScanAfbreken=healthScanAfbreken;
+
+// Neemt het bewaarde oordeel uit het voertuigprofiel over i.p.v. opnieuw te
+// meten. Alleen aanroepen na expliciete bevestiging van de gebruiker.
+// PIDs die in het profiel ontbreken krijgen 'ok' — een onbekende sensor
+// mag niet stilzwijgend uitgegrijsd raken.
+function healthUitProfiel(health){
+  if(!health || typeof health!=='object') return false;
+  _pidHealth={};
+  let n=0;
+  supportedPIDs.forEach(pid=>{
+    const h=health[pid];
+    _pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';
+    if(health[pid]!==undefined) n++;
+  });
+  btDiag(`⚡ Gezondheid uit profiel overgenomen (${n}/${supportedPIDs.size} bekend) — scan overgeslagen`,'info');
+  autoSelectHealthyKern();
+  buildDiscoveredPIDList();
+  try{ refreshLegeTegels(); }catch(e){}
+  return true;
+}
+window.healthUitProfiel=healthUitProfiel;
+
 async function initialHealthScan(){
   _pidHealth={};
+  _healthAbort=false;
   if(demoMode){
     supportedPIDs.forEach(pid=>_pidHealth[pid]='ok');
     autoSelectHealthyKern();
@@ -580,9 +610,10 @@ async function initialHealthScan(){
   // kleurt niet onterecht rood.
   await withBus('gezondheidscheck', async()=>{
   for(const pid of pids){
+    if(_healthAbort) break;
     try{
       // 1 read per PID in scanMode — history is leeg en irrelevant
-      const raw=await sendCmd('01'+pid.slice(2)+'1',1500);
+      const raw=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1500);
       // NO DATA = sensor niet aanwezig op dit voertuig (grijs maar ander label)
       if(!raw || raw.includes('NO DATA') || raw.includes('UNABLE') || raw.includes('ERROR') || raw.includes('STOPPED')){
         _pidHealth[pid]='nodata'; geen++; continue;
@@ -603,6 +634,14 @@ async function initialHealthScan(){
     pids.forEach(pid=>{ if(_pidHealth[pid]==='onzin') _pidHealth[pid]='ok'; });
     ok=pids.filter(p=>_pidHealth[p]==='ok').length;
   }
+  if(_healthAbort){
+    // Afgebroken: alles wat nog niet beoordeeld is krijgt 'ok'. Anders zou een
+    // sensor die simpelweg niet aan de beurt kwam als kapot worden getoond —
+    // erger dan geen oordeel hebben.
+    pids.forEach(pid=>{ if(_pidHealth[pid]===undefined) _pidHealth[pid]='ok'; });
+    btDiag(`⏹ Gezondheidscheck afgebroken na ${ok+geen+onzin}/${pids.length} sensoren — rest ongefilterd`,'warn');
+    log('⏹ Gezondheidscheck afgebroken — alle sensoren blijven kiesbaar','info');
+  } else
   btDiag(`✅ Gezondheidscheck: ${ok} ondersteund, ${geen} niet aanwezig, ${onzin} ongeldig`, 'info');
   autoSelectHealthyKern();
   buildDiscoveredPIDList();

@@ -136,7 +136,7 @@ async function ritFullSweep(){
   for(const pid of pids){
     if(!ritActive && gelezen>0) break;   // gestopt? sweep afbreken
     try{
-      const resp=parsePID(pid, await sendCmd('01'+pid.slice(2)+'1',2000));
+      const resp=parsePID(pid, await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),2000));
       if(resp!=null){
         updPID(pid,resp); gelezen++;
         const d=getPidDef(pid);

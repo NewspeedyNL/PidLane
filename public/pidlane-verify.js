@@ -81,7 +81,7 @@ const PLVerify = {
           for (const pid of pids){
             const d=data[pid]; d.pogingen++;
             try{
-              const r=await sendCmd('01'+pid.slice(2)+'1', 1500);
+              const r=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'), 1500);
               const v=this._decode(pid, r);
               if (v!==null){ d.ok++; d.waarden.push(v); d.tijden.push(Date.now()); }
             }catch(e){}

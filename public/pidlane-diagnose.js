@@ -249,7 +249,7 @@ async function verifyCause(idx,cause){
     let val=pidVals[pid];
     // Bus per read claimen (fase 1): korte lezer, dus eerlijk delen met de
     // poll-loop i.p.v. de hele lus blokkeren.
-    if(val===undefined) val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await withBus('verificatie',()=>sendCmd('01'+pid.slice(2)))));
+    if(val===undefined) val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await withBus('verificatie',()=>sendCmd((typeof pidCmd==='function')?pidCmd(pid):('01'+pid.slice(2))))));
     if(val!==null&&val!==undefined) updPID(pid,val);
 
     const exp=cause.check_waarden?.[pid];

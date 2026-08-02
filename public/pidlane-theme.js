@@ -24,10 +24,33 @@ function toggleTheme(){
 // Toont een pill onder de topbar zolang discovery/health-scan/Full Survey de
 // bus zwaar belasten (standaard de eerste minuut na verbinden). Zolang de
 // Full Survey loopt blijft hij automatisch staan, ook voorbij de minuut.
-let _busyPillT=null,_busyPillUntil=0;
-function showBusyPill(txt,ms){
+let _busyPillT=null,_busyPillUntil=0,_busyPillAnnuleer=null;
+function showBusyPill(txt,ms,onAnnuleer){
   const p=document.getElementById('busyPill');if(!p)return;
   const t=document.getElementById('busyPillTxt');if(t&&txt)t.textContent=txt;
+  // ── ANNULEERKNOP ──────────────────────────────────────────────────
+  // Een zware scan van 30-60s zonder uitweg is op een telefoon gewoon een
+  // vastloper: de gebruiker weet niet of het hangt of werkt. Wie een
+  // annuleerfunctie meegeeft krijgt een ✕ in de pill; wie dat niet doet
+  // houdt exact het oude gedrag. De knop wordt hier aangemaakt en niet in
+  // index.html gezet, zodat de div-balans van dat bestand ongemoeid blijft.
+  _busyPillAnnuleer = (typeof onAnnuleer==='function') ? onAnnuleer : null;
+  let x=document.getElementById('busyPillX');
+  if(_busyPillAnnuleer){
+    if(!x){
+      x=document.createElement('button');
+      x.id='busyPillX'; x.type='button';
+      x.setAttribute('aria-label','Annuleren');
+      x.textContent='✕';
+      x.onclick=function(){
+        const fn=_busyPillAnnuleer; _busyPillAnnuleer=null;
+        try{ if(fn) fn(); }catch(e){}
+        hideBusyPill();
+      };
+      p.appendChild(x);
+    }
+    x.style.display='';
+  } else if(x){ x.style.display='none'; }
   p.classList.add('on');
   _busyPillUntil=Math.max(_busyPillUntil,Date.now()+(ms||60000));
   if(_busyPillT)return;
@@ -39,8 +62,62 @@ function showBusyPill(txt,ms){
 }
 function hideBusyPill(){
   const p=document.getElementById('busyPill');if(p)p.classList.remove('on');
+  const x=document.getElementById('busyPillX'); if(x) x.style.display='none';
+  _busyPillAnnuleer=null;
   clearInterval(_busyPillT);_busyPillT=null;_busyPillUntil=0;
 }
+
+// ── BEVESTIGING: ja/nee-modaal ────────────────────────────────────────
+// De app had geen eigen bevestigingsdialoog. Native confirm() blokkeert de
+// hele JS-thread — funest terwijl een OBD-poll loopt — en negeert het thema.
+// Deze bouwt zijn eigen DOM (dus geen markup in index.html, geen invloed op
+// de div-balans) en geeft een Promise<boolean> terug.
+//   Esc / klik-buiten / ✕  → false, net als "Nee".
+function plBevestig(vraag, jaTekst, neeTekst, titel){
+  return new Promise(resolve=>{
+    let klaar=false;
+    const af=v=>{ if(klaar)return; klaar=true;
+      try{ document.removeEventListener('keydown',esc); }catch(e){}
+      try{ ov.remove(); }catch(e){}
+      resolve(!!v);
+    };
+    const esc=e=>{ if(e.key==='Escape') af(false); };
+
+    const ov=document.createElement('div');
+    ov.className='plBevestigOv';
+    ov.onclick=e=>{ if(e.target===ov) af(false); };
+
+    const box=document.createElement('div');
+    box.className='plBevestigBox';
+    box.setAttribute('role','dialog');
+    box.setAttribute('aria-modal','true');
+
+    if(titel){
+      const h=document.createElement('div');
+      h.className='plBevestigTitel'; h.textContent=titel; box.appendChild(h);
+    }
+    const p=document.createElement('div');
+    p.className='plBevestigTxt'; p.textContent=String(vraag||'');
+    box.appendChild(p);
+
+    const rij=document.createElement('div');
+    rij.className='plBevestigRij';
+    const nee=document.createElement('button');
+    nee.type='button'; nee.className='plBevestigBtn nee';
+    nee.textContent=neeTekst||'Nee'; nee.onclick=()=>af(false);
+    const ja=document.createElement('button');
+    ja.type='button'; ja.className='plBevestigBtn ja';
+    ja.textContent=jaTekst||'Ja'; ja.onclick=()=>af(true);
+    rij.appendChild(nee); rij.appendChild(ja);
+    box.appendChild(rij);
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    try{ document.addEventListener('keydown',esc); }catch(e){}
+    try{ ja.focus(); }catch(e){}
+  });
+}
+window.plBevestig=plBevestig;
 function fontSize(delta){
   currentFont=Math.min(18,Math.max(10,currentFont+delta));
   document.documentElement.style.fontSize=currentFont+'px';

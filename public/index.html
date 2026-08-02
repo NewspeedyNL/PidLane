@@ -1448,6 +1448,7 @@ function closeConnOv(){
           <button class="pidview-btn active" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
           <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
           <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
+          <button class="pidview-btn" data-mode="rondgang" onclick="setPidView('rondgang')" title="Elke 100s een ander motoronderdeel, met de basis altijd in beeld">🔄 Rondgang</button>
         </div>
         <!-- Vaste/code-PIDs (brandstoftype, OBD-norm, …) in gewone woorden.
              Een sparkline of 32px-cijfer is zonde van de ruimte bij een waarde
@@ -2313,6 +2314,7 @@ function closeConnOv(){
 <script src="pidlane-klant.js"></script><!-- klantaccounts: registreren, herstel, tokenscherm (PLKlant) --><!-- tegoed ("tokens") + kostenpreview vóór AI-calls (PLCredits) -->
 <script src="pidlane-watchers.js"></script><!-- rit-monitor Laag B (PLWatch) — vereist ná monitor -->
 <script src="pidlane-uitgebreid.js"></script><!-- fabrikant-PIDs mode 21 — vereist ná data + pidgate -->
+<script src="pidlane-rondgang.js"></script><!-- live-weergave 4: categorie-rondgang — vereist ná pids + pidgate -->
 
 <script>
 /* ════════════════════════════════════════════════════════════════════

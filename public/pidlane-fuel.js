@@ -34,7 +34,7 @@ async function runFuelAnalysis(){
     .filter(pid=>demoMode||(typeof supportedPIDs==='undefined')||!supportedPIDs.size||supportedPIDs.has(pid)||getPidDef(pid));
   for(const pid of wensFuel){
     if(pidVals[pid]===undefined){
-      const val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await withBus('brandstof',()=>sendCmd('01'+pid.slice(2)))));
+      const val=demoMode?demo(pid):validateAndSmooth(pid,parsePID(pid,await withBus('brandstof',()=>sendCmd((typeof pidCmd==='function')?pidCmd(pid):('01'+pid.slice(2))))));
       if(val!==null&&val!==undefined) updPID(pid,val);
     }
   }

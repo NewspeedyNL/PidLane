@@ -540,12 +540,26 @@ function saveVinProfile(vin){
       merk:vehicleInfo.merk||'', model:vehicleInfo.model||'',
       year:vehicleInfo.year||'', brandstof:vehicleInfo.brandstof||'',
       motor:vehicleInfo.motor||'',
+      // Gezondheidsoordeel meebewaren. Zonder dit moest initialHealthScan()
+      // bij ELKE verbinding opnieuw elke PID aftasten om te weten welke
+      // sensoren de auto echt levert — 30-60s bus, terwijl het antwoord al
+      // bekend was. Met dit veld kan die scan bij een bekend voertuig
+      // worden overgeslagen zonder dat _pidHealth leeg blijft (waar
+      // pidGate('kiesbaar') en autoSelectHealthyKern() aan hangen).
+      health:(typeof _pidHealth!=='undefined'&&_pidHealth)?Object.assign({},_pidHealth):null,
       ts:Date.now()
     };
     localStorage.setItem(vinProfileKey(vin), JSON.stringify(prof));
     log(`💾 Voertuigprofiel opgeslagen (${prof.pids.length} PIDs) voor ${vin}`,'ok');
   }catch(e){}
 }
+
+// Gezondheidsoordeel uit het laatst geladen profiel; null als er geen was.
+// Wordt gezet door applyVinProfileIfKnown() en gelezen door de connectieflow
+// in pidlane-bt.js om de gezondheidscheck te kunnen overslaan.
+let _profielHealth=null;
+function profielHealth(){ return _profielHealth; }
+window.profielHealth=profielHealth;
 
 // Laadt opgeslagen PID-set; geeft true terug als een bruikbaar profiel bestond.
 function applyVinProfileIfKnown(vin){
@@ -557,6 +571,10 @@ function applyVinProfileIfKnown(vin){
     supportedPIDs=new Set(prof.pids);
     if(prof.brandstof) vehicleInfo.brandstof=prof.brandstof;
     if(prof.motor) vehicleInfo.motor=prof.motor;
+    // Health apart parkeren, NIET meteen in _pidHealth zetten: de gebruiker
+    // moet eerst bevestigen dat de scan mag worden overgeslagen. Zegt hij
+    // nee, dan wint de verse meting en blijft dit ongebruikt.
+    _profielHealth = (prof.health && typeof prof.health==='object') ? prof.health : null;
     log(`⚡ Bekend voertuig — ${prof.pids.length} PIDs uit profiel geladen`,'ok');
     return true;
   }catch(e){ return false; }

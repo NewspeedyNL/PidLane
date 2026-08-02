@@ -1382,8 +1382,33 @@ async function startDiscovery(){
 
   // Eerste gezondheidsscan: lees elke PID 1x en beoordeel of die gezond/bij
   // de auto hoort. Ongezonde/dode PIDs worden in de lijst uitgegrijsd.
-  try{showBusyPill('⚡ Hoge busactiviteit — sensoren en voertuig in kaart brengen…',60000);}catch(_){}
-  await initialHealthScan();
+  //
+  // BEKEND VOERTUIG → EERST VRAGEN (2026-08-02)
+  // Bij een profiel-start weten we het antwoord al: het oordeel van de vorige
+  // keer zit in het profiel. De scan opnieuw draaien kost 30-60s zware bus
+  // voor informatie die er al is. Toch niet stilzwijgend overslaan — na een
+  // reparatie of een nieuwe sensor wil je juist wél verse meting. Dus vragen.
+  // Geen profiel-health beschikbaar (oud profiel van vóór deze wijziging) →
+  // gewoon scannen, geen vraag.
+  let _slaScanOver=false;
+  const _ph=(typeof profielHealth==='function')?profielHealth():null;
+  if(usedProfile && _ph && Object.keys(_ph).length && typeof plBevestig==='function' && !demoMode){
+    try{
+      _slaScanOver = await plBevestig(
+        `Dit voertuig is bekend en ${supportedPIDs.size} sensoren zijn al eerder beoordeeld.\n\nDe gezondheidscheck opnieuw draaien duurt ongeveer een halve minuut met zware busbelasting. Overslaan?`,
+        'Overslaan', 'Toch scannen', '⚡ Voertuig bekend');
+    }catch(e){ _slaScanOver=false; }
+  }
+
+  if(_slaScanOver && typeof healthUitProfiel==='function' && healthUitProfiel(_ph)){
+    addProg('⚡','Gezondheidscheck overgeslagen — oordeel uit profiel');
+  } else {
+    // ✕ in de pill breekt de scan af; de flow loopt daarna gewoon door.
+    try{showBusyPill('⚡ Hoge busactiviteit — sensoren en voertuig in kaart brengen…',60000,
+      ()=>{ try{ healthScanAfbreken(); }catch(_){} });}catch(_){}
+    await initialHealthScan();
+    try{hideBusyPill();}catch(_){}
+  }
 
   // Connectie-snelheid meten en strategie STIL toepassen (geen popup hier).
   // De strategie-keuze komt pas later in de wizard (na PID-verbetering),
@@ -1394,7 +1419,11 @@ async function startDiscovery(){
   }catch(e){ btDiag('Snelheidsmeting overgeslagen: '+e.message,'warn'); }
 
   // ── IDEE 1: nieuw voertuig met verse discovery? Profiel opslaan ──
-  if(knownVin && !usedProfile && supportedPIDs.size>0) saveVinProfile(vinInfo.vin);
+  // Ook opslaan als we WEL van een profiel startten maar de gebruiker de
+  // gezondheidscheck toch liet draaien: dan is er een vers oordeel dat het
+  // oude in het profiel hoort te vervangen. Zonder deze tweede voorwaarde
+  // bleef een profiel na de allereerste scan voor altijd bevroren.
+  if(knownVin && supportedPIDs.size>0 && (!usedProfile || !_slaScanOver)) saveVinProfile(vinInfo.vin);
   // Nieuwe sessie-stats beginnen
   _sessionStats={};
 

@@ -370,7 +370,7 @@ async function vlFullSurvey(){
       const pid=pids[i];
       _vlSvUI('PID-sweep '+(i+1)+'/'+pids.length+'<br><span style="font-weight:400;font-size:13px;opacity:.8">'+pid+'</span>');
       const s0=performance.now();
-      let raw=''; try{ raw=await sendCmd('01'+pid.slice(2)+'1',1800); }catch(e){}
+      let raw=''; try{ raw=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }catch(e){}
       const ms=Math.round(performance.now()-s0);
       const def=getPidDef(pid)||{};
       let st='nodata', val=null, q='', flaky=false;
@@ -387,7 +387,7 @@ async function vlFullSurvey(){
       // weet dan dat deze PID een retry-strategie nodig heeft i.p.v. pruning.
       if(st==='nodata' && !_vlSvAbort){
         await delay(150);
-        let raw2=''; try{ raw2=await sendCmd('01'+pid.slice(2)+'1',1800); }catch(e){}
+        let raw2=''; try{ raw2=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }catch(e){}
         if(raw2 && !/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw2)){
           const v2=parsePID(pid,raw2);
           if(v2!=null){ val=v2; st='ok'; q='ok'; flaky=true; }
