@@ -88,6 +88,7 @@
   let _bezig = null;          // pid die nu gelezen wordt
   let _open = false;          // bevindingenlijst uitgeklapt
   let _pin = null;            // aangetikte stip
+  let _rust = '';             // waarom er nu niet gemeten wordt
   let _pinTot = 0;
 
   /* ═══════════════════ HULP ═══════════════════ */
@@ -187,22 +188,25 @@
 
   async function tik() {
     if (!_aan) return;
-    if (!window.connected || window.demoMode) { plan(RONDE_MS); return; }
+    if (window.demoMode)      { _rust = 'demo';    plan(RONDE_MS); teken(); return; }
+    if (!window.connected)    { _rust = 'losgekoppeld'; plan(RONDE_MS); teken(); return; }
 
     // Ronde af? Even rust, dan opnieuw. Zo blijft het een RONDE en geen
     // permanent geroffel op de bus.
     if (_cursor >= _lijst.length) {
       const n = nieuweRonde();
+      _rust = n ? 'pauze' : 'niets';
       teken();
       plan(n ? PAUZE_MS : RONDE_MS * 4);
       return;
     }
 
     // Nooit voordringen: bij druk of een bezet slot gewoon de volgende tik.
-    if (busDrukt()) { plan(RONDE_MS); return; }
+    if (busDrukt()) { _rust = 'druk'; plan(RONDE_MS); teken(); return; }
     let tok = 0;
     try { tok = (window.PLBus && PLBus.claim) ? PLBus.claim('waakronde') : 0; } catch (e) { tok = 0; }
-    if (!tok) { plan(RONDE_MS); return; }
+    if (!tok) { _rust = 'bezet'; plan(RONDE_MS); teken(); return; }
+    _rust = '';
 
     try {
       const groep = _lijst.slice(_cursor, _cursor + BATCH);
@@ -274,6 +278,8 @@
         (bev.length ? ' <em>' + bev.length + '</em>' : '');
       tel.className = bev.length ? 'wkBev' : '';
     }
+    const pols = s.querySelector('#wkPols');
+    if (pols) pols.classList.toggle('wkStil', !!_rust);
     const chev = s.querySelector('#wkChev');
     if (chev) chev.style.transform = _open ? 'rotate(90deg)' : '';
 
@@ -308,10 +314,24 @@
         tekst = l ? naam(l.pid) + ' · ' + toonWaarde(l.waarde, l.pid) + ' ' + eenheid(l.pid) +
                     ' · ' + (l.reden || 'buiten bereik') : '';
         klasse = 'wkLet';
+      } else if (_rust) {
+        // Eerder stond hier altijd "wacht op ruimte op de bus". Dat was in de
+        // meeste gevallen gelogen: in demomodus is er geen bus om op te
+        // wachten, en zonder verbinding evenmin. Een melding die de verkeerde
+        // oorzaak noemt kost meer tijd dan geen melding.
+        const R = {
+          demo:         'niet beschikbaar in demomodus',
+          losgekoppeld: 'geen verbinding met het voertuig',
+          druk:         'bus is druk \u2014 ronde overgeslagen',
+          bezet:        'wacht op het busslot\u2026',
+          pauze:        'ronde ' + (_ronde - 1) + ' klaar \u2014 niets bijzonders',
+          niets:        'alle sensoren staan al in beeld'
+        };
+        tekst = R[_rust] || '';
       } else if (gelezen >= _lijst.length && _lijst.length) {
         tekst = 'ronde ' + _ronde + ' klaar \u2014 niets bijzonders';
       } else {
-        tekst = _lijst.length ? 'wacht op ruimte op de bus\u2026' : 'alle sensoren staan al in beeld';
+        tekst = _lijst.length ? 'ronde start\u2026' : 'alle sensoren staan al in beeld';
       }
       reg.textContent = tekst;
       reg.className = klasse;

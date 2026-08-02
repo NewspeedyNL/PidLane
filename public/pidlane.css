@@ -1692,3 +1692,4 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 @media (prefers-reduced-motion: reduce){
   #wkPols,.wkS.wkNu{animation:none !important}
 }
+#wkPols.wkStil{background:#4a5b7d;animation:none;box-shadow:none}

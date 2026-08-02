@@ -86,5 +86,46 @@ t('niet-kiesbaar eruit', k.includes('0146'), false);
 t('zonder definitie eruit', k.includes('019Z'), false);
 t('rest blijft', k.join(','), '0105,015C');
 
+/* ── statusregel noemt de JUISTE reden ── */
+console.log('\n— reden van stilstand —');
+function regel(rust, ronde){
+  const R={demo:'niet beschikbaar in demomodus',
+           losgekoppeld:'geen verbinding met het voertuig',
+           druk:'bus is druk — ronde overgeslagen',
+           bezet:'wacht op het busslot…',
+           pauze:'ronde '+(ronde-1)+' klaar — niets bijzonders',
+           niets:'alle sensoren staan al in beeld'};
+  return R[rust]||'';
+}
+t('demo noemt demo', regel('demo',1), 'niet beschikbaar in demomodus');
+t('los noemt verbinding', regel('losgekoppeld',1), 'geen verbinding met het voertuig');
+t('druk noemt druk', regel('druk',1), 'bus is druk — ronde overgeslagen');
+t('bezet noemt busslot', regel('bezet',1), 'wacht op het busslot…');
+t('demo zegt NIET bus', regel('demo',1).includes('bus'), false);
+t('los zegt NIET bus', regel('losgekoppeld',1).includes('bus'), false);
+
+/* ── baseline: gelijk met gelijk ── */
+console.log('\n— leren-van-normaal —');
+const MIN_N=30, SIG_MIN=0.02, DREMPEL=3;
+function waarschuw(sessieAvgs, huidig, n){
+  if(sessieAvgs.length<3) return '';
+  const mean=sessieAvgs.reduce((a,b)=>a+b,0)/sessieAvgs.length;
+  const std=Math.sqrt(sessieAvgs.reduce((a,b)=>a+(b-mean)**2,0)/sessieAvgs.length);
+  if(n<MIN_N) return '';
+  const sigma=Math.max(std, Math.abs(mean)*SIG_MIN, 1e-9);
+  const dev=Math.abs(huidig-mean)/sigma;
+  return dev<DREMPEL ? '' : 'afwijking '+dev.toFixed(1);
+}
+const ritten=[1200,1240,1180,1220,1210];   // sessiegemiddelden toerental
+t('momentwaarde telt niet meer mee', waarschuw(ritten,937,5), '');
+t('te weinig metingen -> stil', waarschuw(ritten,1900,10), '');
+t('normale rit -> stil', waarschuw(ritten,1215,200), '');
+t('echt afwijkende rit -> melding', waarschuw(ritten,1900,200)!=='', true);
+t('minder dan 3 ritten -> stil', waarschuw([1200,1240],1900,200), '');
+// variantiebodem: bijna identieke ritten mogen niet alles laten afgaan
+const strak=[90.0,90.1,89.9,90.0,90.05];
+t('sigma-bodem dempt strakke historie', waarschuw(strak,90.6,200), '');
+t('maar echte afwijking komt door', waarschuw(strak,104,200)!=='', true);
+
 console.log(`\n${ok} toetsen, ${fout} fout`);
 process.exit(fout?1:0);

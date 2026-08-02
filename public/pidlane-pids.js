@@ -630,15 +630,57 @@ function vehicleBaseline(pid){
   const std=Math.sqrt(avgs.reduce((a,b)=>a+(b-mean)**2,0)/avgs.length);
   return {mean, std, n:avgs.length};
 }
-// Geeft een waarschuwingstekst als de huidige waarde afwijkt van het geleerde
-// normaal voor dit voertuig (>2.5σ). Anders ''.
+// ── LEREN-VAN-NORMAAL — HERZIEN 02-08-2026 ──────────────────────────
+// De vorige versie vergeleek een MOMENTWAARDE met de spreiding van
+// SESSIEGEMIDDELDEN. Dat is een appels-en-perenfout met een voorspelbaar
+// gevolg: de standaardafwijking van gemiddelden is klein (dat is precies
+// wat middelen doet), terwijl een momentwaarde alle kanten op schiet.
+// Toerental schommelt tussen 700 en 4000, maar het sessiegemiddelde ligt
+// elke rit rond dezelfde 1200. Gevolg: |937-1233| gedeeld door een σ van
+// een paar tientallen gaf moeiteloos 2,5σ, en dus stond ELKE actieve PID
+// als bevinding in de banner. Acht "afwijkingen" waarvan er nul iets
+// betekenden — precies het soort ruis dat een echte bevinding onzichtbaar
+// maakt.
+//
+// Nu wordt gelijk met gelijk vergeleken: het gemiddelde van DEZE rit tegen
+// de gemiddelden van eerdere ritten. Dat is dezelfde grootheid, dus de σ
+// klopt, en de zin "afwijkend t.o.v. normaal voor deze auto" betekent nu
+// werkelijk wat er staat — een uitspraak over de rit, niet over dit
+// moment.
+//
+// Drie remmen tegen terugkerende ruis:
+//  1. MIN_N metingen in deze rit voordat er geoordeeld wordt. Een gemiddelde
+//     over vier metingen is geen gemiddelde.
+//  2. σ krijgt een bodem van 2 % van het normaal. Rijdt een auto elke rit
+//     bijna identiek, dan wordt σ minuscuul en is alles weer 3σ. Deze
+//     variantiebodem is standaardpraktijk en voorkomt precies dat.
+//  3. Drempel op 3σ i.p.v. 2,5σ. Bij tien PIDs levert 2,5σ statistisch al
+//     bijna gegarandeerd een valse melding per rit.
+const BASE_MIN_N   = 30;    // metingen in deze rit voordat we oordelen
+const BASE_SIGMA_MIN = 0.02; // σ-bodem als fractie van het normaal
+const BASE_DREMPEL = 3;     // hoeveel σ voordat het een bevinding is
+
+// Gemiddelde van de LOPENDE rit; null als er nog te weinig gemeten is.
+function huidigSessieGem(pid){
+  const s=_sessionStats&&_sessionStats[pid];
+  if(!s||!s.n||s.n<BASE_MIN_N) return null;
+  return s.sum/s.n;
+}
+
+// Geeft een waarschuwingstekst als het gemiddelde van DEZE rit afwijkt van
+// het geleerde normaal voor dit voertuig. Anders ''.
+// De parameter `val` wordt niet meer gebruikt maar blijft staan zodat
+// bestaande aanroepen (correlatie-engine, rapportregels) ongewijzigd werken.
 function baselineWarning(pid,val){
   const b=vehicleBaseline(pid);
-  if(!b||b.std<1e-6) return '';
-  const dev=Math.abs(val-b.mean)/b.std;
-  if(dev>=2.5){
-    const d=getPidDef(pid);
-    return `${d?.name||pid}: nu ${fv(val)}${d?.unit||''} — afwijkend t.o.v. normaal ${fv(b.mean)}${d?.unit||''} voor deze auto`;
-  }
-  return '';
+  if(!b) return '';
+  const cur=huidigSessieGem(pid);
+  if(cur===null) return '';
+  const sigma=Math.max(b.std, Math.abs(b.mean)*BASE_SIGMA_MIN, 1e-9);
+  const dev=Math.abs(cur-b.mean)/sigma;
+  if(dev<BASE_DREMPEL) return '';
+  const d=getPidDef(pid);
+  const e=d?.unit||'';
+  return `${d?.name||pid}: deze rit gemiddeld ${fv(cur,pid)}${e} — normaal ${fv(b.mean,pid)}${e} `+
+         `voor deze auto (${dev.toFixed(1)}\u03C3 over ${b.n} ritten)`;
 }
