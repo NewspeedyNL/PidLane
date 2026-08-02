@@ -134,6 +134,13 @@ window.PLLoad=PLLoad;
 function pidPollInterval(pid){
   // Focus-PIDs (klacht-gestuurd, idee 5) altijd op het snelste tempo
   if(_focusPIDs.has(pid)) return 120;
+  // Fabrikant-PIDs (mode 21) hebben dezelfde SUFFIX als een mode-01-PID:
+  // '2101' eindigt op '01', net als '0101' (monitorstatus). Alle tabellen
+  // hieronder zijn op suffix gebouwd, dus zonder deze afslag zou een
+  // mode-21-PID de pollklasse én het EV-filter van een wildvreemde
+  // mode-01-PID erven. Ze meten allemaal traag (olietemp, kleptiming),
+  // dus één vaste trage klasse volstaat.
+  if(!/^01/i.test(String(pid))) return 10000;
   const suf=pid.slice(2).toUpperCase();
   // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen
   if(typeof _evModeActive!=='undefined' && _evModeActive && typeof ICE_PIDS_SUFFIX!=='undefined' && ICE_PIDS_SUFFIX.has(suf)) return 999999;
@@ -348,8 +355,13 @@ function startPoll(){
         // sessie prima. Dát waren de echte dips. Data-PIDs batchen, bitmaps
         // sequentieel achteraan.
         const isBitmapPid=p=>/^01(00|20|40|60|80|A0|C0)$/i.test(p);
-        const soloPids=due.filter(isBitmapPid);
-        const batchable=due.filter(p=>!isBitmapPid(p));
+        // Multi-PID batching is een eigenschap van mode 01 op CAN. Mode 21
+        // (fabrikant-PIDs, zie pidlane-uitgebreid.js) kent het niet: die
+        // moeten solo. Zonder deze scheiding zou '2101' in een batch als
+        // '01'+'01' meegaan en stilzwijgend mode 01 PID 01 opleveren.
+        const _m01=p=>(typeof isMode01==='function')?isMode01(p):/^01/i.test(String(p));
+        const soloPids=due.filter(p=>isBitmapPid(p)||!_m01(p));
+        const batchable=due.filter(p=>!isBitmapPid(p)&&_m01(p));
         // Groepsgrootte is nu ADAPTIEF (fase 2): start op 3, zakt bij
         // herhaalde onvolledige respons naar 2 en dan 1, en klimt na 25
         // schone rondes weer terug. Beter dan batch volledig uitzetten:
@@ -358,7 +370,7 @@ function startPoll(){
         for(let g=0;g<batchable.length;g+=_grpN){
           if(!connected) break;
           const grp=batchable.slice(g,g+_grpN);
-          const cmd='01'+grp.map(p=>p.slice(2)).join('');
+          const cmd='01'+grp.map(p=>p.slice(2)).join('');   // grp is nu gegarandeerd mode 01
           const raw=await sendCmd(cmd,2500);
           const parsed=splitBatchResponse(raw,grp);
           _diagNote(cmd, raw, grp, parsed);
@@ -397,7 +409,7 @@ function startPoll(){
         // deze weigeren batches maar antwoorden solo prima.
         for(const pid of soloPids){
           if(!connected) break;
-          const resp=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+          const resp=parsePID(pid,await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),2500));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }
@@ -405,7 +417,7 @@ function startPoll(){
         // Sequentieel: één PID per request, '1'-suffix voor snelle terugkeer
         for(const pid of due){
           if(!connected) break;
-          const resp=parsePID(pid,await sendCmd('01'+pid.slice(2)+'1',2500));
+          const resp=parsePID(pid,await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),2500));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }

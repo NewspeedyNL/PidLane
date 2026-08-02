@@ -65,7 +65,7 @@ var SEG = {
 
 /* ═══════════════════ STAAT ═══════════════════ */
 
-var S = {
+var _blkS = {
   actief    : false,
   gepauzeerd: false,
   sessieId  : null,
@@ -90,7 +90,7 @@ var S = {
 
 /* ═══════════════════ KLEINE HULPJES ═══════════════════ */
 
-function el(id) { try { return document.getElementById(id); } catch (e) { return null; } }
+function _blkEl(id) { try { return document.getElementById(id); } catch (e) { return null; } }
 
 function toast(m) {
   try { if (typeof showToast === 'function') { showToast(m); return; } } catch (e) {}
@@ -107,7 +107,7 @@ function magIk() {
   return false;
 }
 
-function nu() { return Date.now(); }
+function _blkNu() { return Date.now(); }
 
 function tijdKort(ms) {
   var s = Math.max(0, Math.floor(ms / 1000));
@@ -166,15 +166,15 @@ function dbOpen() {
 }
 
 async function dbKlaar() {
-  if (S.db) return S.db;
-  S.db = await dbOpen();
-  return S.db;
+  if (_blkS.db) return _blkS.db;
+  _blkS.db = await dbOpen();
+  return _blkS.db;
 }
 
 function dbSchrijf(blok) {
   return new Promise(function (res, rej) {
     try {
-      var tx = S.db.transaction(STORE, 'readwrite');
+      var tx = _blkS.db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).add(blok);
       tx.oncomplete = function () { res(true); };
       tx.onerror    = function () { rej(tx.error || new Error('schrijffout')); };
@@ -186,7 +186,7 @@ function dbSchrijf(blok) {
 function dbAlles() {
   return new Promise(function (res, rej) {
     try {
-      var tx = S.db.transaction(STORE, 'readonly');
+      var tx = _blkS.db.transaction(STORE, 'readonly');
       var rq = tx.objectStore(STORE).getAll();
       rq.onsuccess = function () { res(rq.result || []); };
       rq.onerror   = function () { rej(rq.error || new Error('leesfout')); };
@@ -197,7 +197,7 @@ function dbAlles() {
 function dbWis() {
   return new Promise(function (res, rej) {
     try {
-      var tx = S.db.transaction(STORE, 'readwrite');
+      var tx = _blkS.db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).clear();
       tx.oncomplete = function () { res(true); };
       tx.onerror    = function () { rej(tx.error || new Error('wisfout')); };
@@ -212,15 +212,15 @@ function dbWis() {
 function gpsStart() {
   try {
     if (!navigator.geolocation) return;
-    S.gpsWatch = navigator.geolocation.watchPosition(function (p) {
+    _blkS.gpsWatch = navigator.geolocation.watchPosition(function (p) {
       try {
-        S.gps = {
+        _blkS.gps = {
           lat: Math.round(p.coords.latitude  * 1e5) / 1e5,
           lon: Math.round(p.coords.longitude * 1e5) / 1e5,
           alt: (p.coords.altitude === null || p.coords.altitude === undefined)
                  ? null : Math.round(p.coords.altitude),
           acc: Math.round(p.coords.accuracy || 0),
-          t  : nu()
+          t  : _blkNu()
         };
       } catch (e) {}
     }, function () { /* geweigerd of geen fix: stil doorgaan */ },
@@ -229,8 +229,8 @@ function gpsStart() {
 }
 
 function gpsStop() {
-  try { if (S.gpsWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(S.gpsWatch); } catch (e) {}
-  S.gpsWatch = null;
+  try { if (_blkS.gpsWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(_blkS.gpsWatch); } catch (e) {}
+  _blkS.gpsWatch = null;
 }
 
 /* ═══════════════════ SEGMENTDETECTIE ═══════════════════ */
@@ -239,7 +239,7 @@ function gpsStop() {
    van klim, klim wint van rijden. */
 
 function bepaalSegment() {
-  var t = nu();
+  var t = _blkNu();
   var kmh = getPid('010D');
   var rpm = getPid('010C');
   var load = getPid('0104');
@@ -248,21 +248,21 @@ function bepaalSegment() {
   var heeftKmh = (typeof kmh === 'number' && isFinite(kmh));
 
   /* motor uit */
-  if (!heeftRpm) { if (!S._motorUit) S._motorUit = t; }
-  else S._motorUit = 0;
-  if (S._motorUit && (t - S._motorUit) / 1000 >= SEG.motorUitSec) return 'motor-uit';
+  if (!heeftRpm) { if (!_blkS._motorUit) _blkS._motorUit = t; }
+  else _blkS._motorUit = 0;
+  if (_blkS._motorUit && (t - _blkS._motorUit) / 1000 >= SEG.motorUitSec) return 'motor-uit';
 
   /* stilstand: file of pauze langs de weg */
-  if (heeftKmh && kmh <= SEG.stilKmh) { if (!S._stilSinds) S._stilSinds = t; }
-  else S._stilSinds = 0;
-  if (S._stilSinds && (t - S._stilSinds) / 1000 >= SEG.stilMinSec) return 'stil';
+  if (heeftKmh && kmh <= SEG.stilKmh) { if (!_blkS._stilSinds) _blkS._stilSinds = t; }
+  else _blkS._stilSinds = 0;
+  if (_blkS._stilSinds && (t - _blkS._stilSinds) / 1000 >= SEG.stilMinSec) return 'stil';
 
   /* klim: hoge belasting die aanhoudt bij reissnelheid */
   var klimNu = (typeof load === 'number' && load >= SEG.klimLoad &&
                 heeftKmh && kmh >= SEG.klimMinKmh);
-  if (klimNu) { if (!S._klimSinds) S._klimSinds = t; }
-  else S._klimSinds = 0;
-  if (S._klimSinds && (t - S._klimSinds) / 1000 >= SEG.klimMinSec) return 'klim';
+  if (klimNu) { if (!_blkS._klimSinds) _blkS._klimSinds = t; }
+  else _blkS._klimSinds = 0;
+  if (_blkS._klimSinds && (t - _blkS._klimSinds) / 1000 >= SEG.klimMinSec) return 'klim';
 
   if (heeftKmh && kmh > SEG.stilKmh) return 'rijden';
   return 'onbekend';
@@ -271,14 +271,14 @@ function bepaalSegment() {
 /* ═══════════════════ DE TICK ═══════════════════ */
 
 function tick() {
-  if (!S.actief || S.gepauzeerd) return;
+  if (!_blkS.actief || _blkS.gepauzeerd) return;
   try {
-    var t = nu();
+    var t = _blkNu();
     var seg = bepaalSegment();
-    if (seg !== S.seg) {
-      logg('segment: ' + S.seg + ' → ' + seg);
-      S.seg = seg;
-      S.segSinds = t;
+    if (seg !== _blkS.seg) {
+      logg('segment: ' + _blkS.seg + ' → ' + seg);
+      _blkS.seg = seg;
+      _blkS.segSinds = t;
     }
 
     var vals = pakPidVals();
@@ -288,49 +288,49 @@ function tick() {
       n   : Object.keys(vals).length,
       v   : vals
     };
-    if (S.gps && (t - S.gps.t) < 30000) regel.g = S.gps;
+    if (_blkS.gps && (t - _blkS.gps.t) < 30000) regel.g = _blkS.gps;
     /* Geen enkele PID-waarde binnen: markeer het gat expliciet, zodat je
        in de export ziet WAAR de adapter of de bus wegviel. */
     if (regel.n === 0) regel.gat = 1;
 
-    S.buf.push(regel);
-    S.nRegels++;
-    S._laatsteTick = t;
+    _blkS.buf.push(regel);
+    _blkS.nRegels++;
+    _blkS._laatsteTick = t;
 
-    if (S.buf.length >= BUF_MAX) flush();
+    if (_blkS.buf.length >= BUF_MAX) flush();
     chipBij();
   } catch (e) {
-    S.fout = String(e && e.message || e);
+    _blkS.fout = String(e && e.message || e);
   }
 }
 
 /* ═══════════════════ FLUSH ═══════════════════ */
 
 async function flush() {
-  if (!S.buf.length) return;
+  if (!_blkS.buf.length) return;
   var blok = {
-    sessie : S.sessieId,
-    van    : S.buf[0].t,
-    tot    : S.buf[S.buf.length - 1].t,
-    regels : S.buf
+    sessie : _blkS.sessieId,
+    van    : _blkS.buf[0].t,
+    tot    : _blkS.buf[_blkS.buf.length - 1].t,
+    regels : _blkS.buf
   };
-  S.buf = [];
+  _blkS.buf = [];
   try {
     await dbKlaar();
     await dbSchrijf(blok);
-    S.nBlokken++;
-    try { S.bytes += JSON.stringify(blok).length; } catch (e) {}
-    if (S.bytes > WAARSCHUW_MB * 1048576) {
-      toast('Bulk-recorder: al ' + mb(S.bytes) + ' MB opgeslagen — exporteer tussendoor');
-      S.bytes = 0;   // niet blijven zeuren
+    _blkS.nBlokken++;
+    try { _blkS.bytes += JSON.stringify(blok).length; } catch (e) {}
+    if (_blkS.bytes > WAARSCHUW_MB * 1048576) {
+      toast('Bulk-recorder: al ' + mb(_blkS.bytes) + ' MB opgeslagen — exporteer tussendoor');
+      _blkS.bytes = 0;   // niet blijven zeuren
     }
     metaBewaar();
   } catch (e) {
     /* Wegschrijven mislukt: regels teruggeven aan de buffer, maar begrensd,
        anders vreet een kapotte DB al het geheugen op. */
-    S.fout = String(e && e.message || e);
-    if (S.buf.length < 2000) S.buf = blok.regels.concat(S.buf);
-    logg('wegschrijven mislukt: ' + S.fout, 'warn');
+    _blkS.fout = String(e && e.message || e);
+    if (_blkS.buf.length < 2000) _blkS.buf = blok.regels.concat(_blkS.buf);
+    logg('wegschrijven mislukt: ' + _blkS.fout, 'warn');
   }
 }
 
@@ -339,13 +339,13 @@ async function flush() {
 function metaBewaar() {
   try {
     localStorage.setItem(META_KEY, JSON.stringify({
-      id      : S.sessieId,
-      gestart : S.gestart,
-      actief  : S.actief,
-      pauze   : S.gepauzeerd,
-      regels  : S.nRegels,
-      blokken : S.nBlokken,
-      seg     : S.seg
+      id      : _blkS.sessieId,
+      gestart : _blkS.gestart,
+      actief  : _blkS.actief,
+      pauze   : _blkS.gepauzeerd,
+      regels  : _blkS.nRegels,
+      blokken : _blkS.nBlokken,
+      seg     : _blkS.seg
     }));
   } catch (e) {}
 }
@@ -362,8 +362,8 @@ function metaWeg() {
 /* Zelfde baan als de wizard-chip en de totalcheck-chip: #fabLane regelt
    positie en stapeling, de chip zelf doet alleen zijn eigen uiterlijk. */
 
-function chipMaak() {
-  var c = el('blkChipFab');
+function _blkChipMaak() {
+  var c = _blkEl('blkChipFab');
   if (c) return c;
   c = document.createElement('div');
   c.id = 'blkChipFab';
@@ -374,24 +374,24 @@ function chipMaak() {
     '-webkit-tap-highlight-color:transparent';
   c.title = 'Bulk-recorder openen';
   c.onclick = function () { openDash(); };
-  var lane = el('fabLane');
+  var lane = _blkEl('fabLane');
   if (lane) lane.appendChild(c); else document.body.appendChild(c);
   return c;
 }
 
 function chipBij() {
-  var c = el('blkChipFab');
+  var c = _blkEl('blkChipFab');
   if (!c) return;
-  if (!S.actief) { c.style.display = 'none'; return; }
+  if (!_blkS.actief) { c.style.display = 'none'; return; }
   c.style.display = 'flex';
-  var bol = S.gepauzeerd ? '⏸️' : '🔴';
-  var tekst = S.gepauzeerd ? 'gepauzeerd' : tijdKort(nu() - S.gestart);
+  var bol = _blkS.gepauzeerd ? '⏸️' : '🔴';
+  var tekst = _blkS.gepauzeerd ? 'gepauzeerd' : tijdKort(_blkNu() - _blkS.gestart);
   c.innerHTML = '<span>' + bol + '</span><span>Recorder ' + tekst + '</span>' +
-    '<span style="opacity:.7;font-weight:600">' + S.nRegels + '</span>';
+    '<span style="opacity:.7;font-weight:600">' + _blkS.nRegels + '</span>';
 }
 
 function chipWeg() {
-  var c = el('blkChipFab');
+  var c = _blkEl('blkChipFab');
   if (c) c.style.display = 'none';
 }
 
@@ -399,69 +399,69 @@ function chipWeg() {
 
 async function start(stil) {
   if (!magIk()) { toast('Alleen voor admin'); return false; }
-  if (S.actief) { toast('Recorder loopt al'); return false; }
+  if (_blkS.actief) { toast('Recorder loopt al'); return false; }
   try { await dbKlaar(); }
   catch (e) { toast('Opslag niet beschikbaar: ' + (e && e.message || e)); return false; }
 
-  S.actief = true;
-  S.gepauzeerd = false;
-  S.sessieId = 'blk-' + new Date().toISOString().replace(/[:.]/g, '-');
-  S.gestart = nu();
-  S.buf = [];
-  S.nRegels = 0;
-  S.nBlokken = 0;
-  S.bytes = 0;
-  S.seg = 'start';
-  S.segSinds = S.gestart;
-  S._stilSinds = S._klimSinds = S._motorUit = 0;
-  S.fout = '';
+  _blkS.actief = true;
+  _blkS.gepauzeerd = false;
+  _blkS.sessieId = 'blk-' + new Date().toISOString().replace(/[:.]/g, '-');
+  _blkS.gestart = _blkNu();
+  _blkS.buf = [];
+  _blkS.nRegels = 0;
+  _blkS.nBlokken = 0;
+  _blkS.bytes = 0;
+  _blkS.seg = 'start';
+  _blkS.segSinds = _blkS.gestart;
+  _blkS._stilSinds = _blkS._klimSinds = _blkS._motorUit = 0;
+  _blkS.fout = '';
 
   gpsStart();
-  S.timer      = setInterval(tick, TICK_MS);
-  S.flushTimer = setInterval(function () { flush(); }, FLUSH_MS);
-  chipMaak(); chipBij();
+  _blkS.timer      = setInterval(tick, TICK_MS);
+  _blkS.flushTimer = setInterval(function () { flush(); }, FLUSH_MS);
+  _blkChipMaak(); chipBij();
   metaBewaar();
-  logg('bulk-recorder gestart (' + S.sessieId + ')', 'ok');
+  logg('bulk-recorder gestart (' + _blkS.sessieId + ')', 'ok');
   if (!stil) toast('Recorder loopt — PidLane blijft gewoon bruikbaar');
   return true;
 }
 
 function pauzeer() {
-  if (!S.actief || S.gepauzeerd) return;
-  S.gepauzeerd = true;
-  S.buf.push({ t: nu(), seg: 'pauze', n: 0, v: {}, mark: 'pauze-start' });
+  if (!_blkS.actief || _blkS.gepauzeerd) return;
+  _blkS.gepauzeerd = true;
+  _blkS.buf.push({ t: _blkNu(), seg: 'pauze', n: 0, v: {}, mark: 'pauze-start' });
   flush();
   metaBewaar(); chipBij(); dashBij();
   logg('gepauzeerd', 'info');
 }
 
 function hervat() {
-  if (!S.actief || !S.gepauzeerd) return;
-  S.gepauzeerd = false;
-  S._stilSinds = S._klimSinds = S._motorUit = 0;   // drempels opnieuw opbouwen
-  S.buf.push({ t: nu(), seg: 'hervat', n: 0, v: {}, mark: 'pauze-eind' });
+  if (!_blkS.actief || !_blkS.gepauzeerd) return;
+  _blkS.gepauzeerd = false;
+  _blkS._stilSinds = _blkS._klimSinds = _blkS._motorUit = 0;   // drempels opnieuw opbouwen
+  _blkS.buf.push({ t: _blkNu(), seg: 'hervat', n: 0, v: {}, mark: 'pauze-eind' });
   metaBewaar(); chipBij(); dashBij();
   logg('hervat', 'ok');
 }
 
 async function stop() {
-  if (!S.actief) return;
-  S.actief = false;
-  S.gepauzeerd = false;
-  if (S.timer)      { clearInterval(S.timer);      S.timer = null; }
-  if (S.flushTimer) { clearInterval(S.flushTimer); S.flushTimer = null; }
+  if (!_blkS.actief) return;
+  _blkS.actief = false;
+  _blkS.gepauzeerd = false;
+  if (_blkS.timer)      { clearInterval(_blkS.timer);      _blkS.timer = null; }
+  if (_blkS.flushTimer) { clearInterval(_blkS.flushTimer); _blkS.flushTimer = null; }
   gpsStop();
   await flush();
   metaWeg();
   chipWeg(); dashBij();
-  logg('gestopt — ' + S.nRegels + ' regels in ' + S.nBlokken + ' blokken', 'ok');
+  logg('gestopt — ' + _blkS.nRegels + ' regels in ' + _blkS.nBlokken + ' blokken', 'ok');
   toast('Recorder gestopt. Vergeet niet te exporteren.');
 }
 
 /* Handmatige markering — één knop, alleen te gebruiken als je stilstaat. */
 function markeer(tekst) {
-  if (!S.actief) return;
-  S.buf.push({ t: nu(), seg: S.seg, n: 0, v: {}, mark: String(tekst || 'markering').slice(0, 60) });
+  if (!_blkS.actief) return;
+  _blkS.buf.push({ t: _blkNu(), seg: _blkS.seg, n: 0, v: {}, mark: String(tekst || 'markering').slice(0, 60) });
   toast('Markering gezet');
   dashBij();
 }
@@ -520,12 +520,12 @@ function bewaarBestand(naam, body) {
 }
 
 async function wisAlles() {
-  if (S.actief) { toast('Stop eerst de recorder'); return; }
+  if (_blkS.actief) { toast('Stop eerst de recorder'); return; }
   if (!confirm('Alle opgenomen bulk-data wissen? Dit kan niet terug.')) return;
   try {
     await dbKlaar();
     await dbWis();
-    S.nRegels = 0; S.nBlokken = 0; S.bytes = 0;
+    _blkS.nRegels = 0; _blkS.nBlokken = 0; _blkS.bytes = 0;
     metaWeg(); dashBij();
     toast('Bulk-opslag gewist');
   } catch (e) { toast('Wissen mislukt'); }
@@ -535,16 +535,16 @@ async function wisAlles() {
 
 function openDash() {
   if (!magIk()) { toast('Alleen voor admin'); return; }
-  var o = el('blkOverlay');
+  var o = _blkEl('blkOverlay');
   if (!o) { o = bouwDash(); }
   o.style.display = 'flex';
   dashBij();
 }
 
 function sluitDash() {
-  var o = el('blkOverlay');
+  var o = _blkEl('blkOverlay');
   if (o) o.style.display = 'none';
-  if (S.actief) { chipMaak(); chipBij(); }
+  if (_blkS.actief) { _blkChipMaak(); chipBij(); }
 }
 
 function bouwDash() {
@@ -588,33 +588,33 @@ function bouwDash() {
   document.body.appendChild(o);
 
   o.addEventListener('click', function (ev) { if (ev.target === o) sluitDash(); });
-  el('blkX').onclick     = sluitDash;
-  el('blkStart').onclick = function () { if (S.actief) stop(); else start(); };
-  el('blkPauze').onclick = function () { if (S.gepauzeerd) hervat(); else pauzeer(); };
-  el('blkMark').onclick  = function () { markeer('handmatig'); };
-  el('blkExp').onclick   = function () { exporteer(); };
-  el('blkWis').onclick   = function () { wisAlles(); };
+  _blkEl('blkX').onclick     = sluitDash;
+  _blkEl('blkStart').onclick = function () { if (_blkS.actief) stop(); else start(); };
+  _blkEl('blkPauze').onclick = function () { if (_blkS.gepauzeerd) hervat(); else pauzeer(); };
+  _blkEl('blkMark').onclick  = function () { markeer('handmatig'); };
+  _blkEl('blkExp').onclick   = function () { exporteer(); };
+  _blkEl('blkWis').onclick   = function () { wisAlles(); };
   return o;
 }
 
 function dashBij() {
-  var st = el('blkStat');
+  var st = _blkEl('blkStat');
   if (st) {
-    var duur = S.actief ? tijdKort(nu() - S.gestart) : '—';
+    var duur = _blkS.actief ? tijdKort(_blkNu() - _blkS.gestart) : '—';
     st.innerHTML =
-      '<div><b>Status</b> · ' + (S.actief ? (S.gepauzeerd ? '⏸️ gepauzeerd' : '🔴 opnemen') : '⚪ gestopt') + '</div>' +
+      '<div><b>Status</b> · ' + (_blkS.actief ? (_blkS.gepauzeerd ? '⏸️ gepauzeerd' : '🔴 opnemen') : '⚪ gestopt') + '</div>' +
       '<div><b>Looptijd</b> · ' + duur + '</div>' +
-      '<div><b>Segment</b> · ' + S.seg + '</div>' +
-      '<div><b>Regels</b> · ' + S.nRegels + ' &nbsp;<span style="opacity:.6">(' + S.nBlokken + ' blokken, buffer ' + S.buf.length + ')</span></div>' +
-      '<div><b>GPS</b> · ' + (S.gps ? (S.gps.alt !== null ? S.gps.alt + ' m hoogte' : 'fix, geen hoogte') : 'geen') + '</div>' +
-      (S.fout ? '<div style="color:#e0a055"><b>Laatste fout</b> · ' + S.fout + '</div>' : '');
+      '<div><b>Segment</b> · ' + _blkS.seg + '</div>' +
+      '<div><b>Regels</b> · ' + _blkS.nRegels + ' &nbsp;<span style="opacity:.6">(' + _blkS.nBlokken + ' blokken, buffer ' + _blkS.buf.length + ')</span></div>' +
+      '<div><b>GPS</b> · ' + (_blkS.gps ? (_blkS.gps.alt !== null ? _blkS.gps.alt + ' m hoogte' : 'fix, geen hoogte') : 'geen') + '</div>' +
+      (_blkS.fout ? '<div style="color:#e0a055"><b>Laatste fout</b> · ' + _blkS.fout + '</div>' : '');
   }
-  var b1 = el('blkStart'); if (b1) b1.textContent = S.actief ? '⏹️ Stop opname' : '▶️ Start opname';
-  var b2 = el('blkPauze');
+  var b1 = _blkEl('blkStart'); if (b1) b1.textContent = _blkS.actief ? '⏹️ Stop opname' : '▶️ Start opname';
+  var b2 = _blkEl('blkPauze');
   if (b2) {
-    b2.textContent = S.gepauzeerd ? '▶️ Hervat' : '⏸️ Pauzeer';
-    b2.disabled = !S.actief;
-    b2.style.opacity = S.actief ? '1' : '.45';
+    b2.textContent = _blkS.gepauzeerd ? '▶️ Hervat' : '⏸️ Pauzeer';
+    b2.disabled = !_blkS.actief;
+    b2.style.opacity = _blkS.actief ? '1' : '.45';
   }
 }
 
@@ -622,8 +622,8 @@ function dashBij() {
    de meet-tick, zodat een trage DOM de meting nooit ophoudt. */
 setInterval(function () {
   try {
-    if (S.actief) chipBij();
-    var o = el('blkOverlay');
+    if (_blkS.actief) chipBij();
+    var o = _blkEl('blkOverlay');
     if (o && o.style.display !== 'none') dashBij();
   } catch (e) {}
 }, 1000);
@@ -637,11 +637,11 @@ setInterval(function () {
 
 function herstelPoging() {
   try {
-    if (S.actief) return;              // handmatig gestart binnen de 3 s: niks doen
+    if (_blkS.actief) return;              // handmatig gestart binnen de 3 s: niks doen
     var m = metaLees();
     if (!m || !m.actief) return;
     if (!magIk()) return;
-    var mins = Math.round((nu() - (m.gestart || nu())) / 60000);
+    var mins = Math.round((_blkNu() - (m.gestart || _blkNu())) / 60000);
     toast('Bulk-recorder liep nog (' + mins + ' min) — hervat');
     logg('sessie hervat na herstart', 'warn');
     start(true);
@@ -656,9 +656,9 @@ try {
 
 /* Laatste kans om de buffer te redden als de pagina weggaat. */
 try {
-  window.addEventListener('pagehide', function () { try { if (S.actief) { metaBewaar(); flush(); } } catch (e) {} });
+  window.addEventListener('pagehide', function () { try { if (_blkS.actief) { metaBewaar(); flush(); } } catch (e) {} });
   document.addEventListener('visibilitychange', function () {
-    try { if (document.visibilityState === 'hidden' && S.actief) flush(); } catch (e) {}
+    try { if (document.visibilityState === 'hidden' && _blkS.actief) flush(); } catch (e) {}
   });
 } catch (e) {}
 
@@ -674,8 +674,8 @@ window.PLBulk = {
   open     : openDash,
   sluit    : sluitDash,
   status   : function () {
-    return { actief: S.actief, gepauzeerd: S.gepauzeerd, regels: S.nRegels,
-             blokken: S.nBlokken, segment: S.seg, sessie: S.sessieId, fout: S.fout };
+    return { actief: _blkS.actief, gepauzeerd: _blkS.gepauzeerd, regels: _blkS.nRegels,
+             blokken: _blkS.nBlokken, segment: _blkS.seg, sessie: _blkS.sessieId, fout: _blkS.fout };
   }
 };
 

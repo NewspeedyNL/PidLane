@@ -1409,6 +1409,11 @@ async function startDiscovery(){
   wizShow();
   log(`Verbinding compleet — ${discoveredPIDDefs.length} PIDs beschikbaar`,'ok');
   showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);  // land op de hub, niet op live view
+  // Fabrikant-PIDs (mode 21) staan niet in de mode-01 bitmap en kunnen dus
+  // alleen gevonden worden door ze te vragen. Bewust NA showWelcome en zonder
+  // await: de probe claimt zelf het busslot en mag de verbindingsflow niet
+  // ophouden. Zie pidlane-uitgebreid.js.
+  try{ if(typeof probeUitgebreid==='function') probeUitgebreid(); }catch(e){}
 }
 
 // ── VOERTUIGKAART LINKS BOVENIN ──

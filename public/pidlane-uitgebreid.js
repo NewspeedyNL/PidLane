@@ -1,0 +1,231 @@
+/* ═══════════════════════════════════════════════════════════════════
+   pidlane-uitgebreid.js — fabrikant-PIDs buiten mode 01 (mode 21/22)
+   ───────────────────────────────────────────────────────────────────
+   WAAROM DIT BESTAAT
+
+   De pollus in pidlane-plload.js bouwde zijn commando als:
+
+       '01' + pid.slice(2)
+
+   Dat is hardcoded mode 01. Een sleutel als '2101' (mode 21, PID 01)
+   werd daardoor stilzwijgend '01' + '01' = '0101' — dus mode 01 PID 01,
+   monitorstatus. Geen foutmelding, geen NO DATA: gewoon het verkeerde
+   antwoord, netjes geparsed en als "motorolie temperatuur" getoond.
+   Dat is de gevaarlijkste soort bug die er is.
+
+   PIDS_EXTRA in pidlane-data.js declareerde al vier Mazda-PIDs "(mode
+   22)" maar werd NERGENS gelezen. Ze zijn dus nooit gevraagd — wat de
+   bug verborgen hield. Ondertussen sneuvelde 015C (motorolie temp,
+   mode 01) op de CX-5 als dood: de bitmap meldt hem, de ECU antwoordt
+   niet. Precies de PID waarvoor 2101 het Mazda-alternatief is.
+
+   DE SLEUTELCONVENTIE — die klopte al
+
+   Een PID-sleutel is mode + identifier, hexadecimaal:
+       '010C' → mode 01, PID 0C   (toerental, J1979 standaard)
+       '2101' → mode 21, PID 01   (Mazda/Ford propriëtair)
+   Het antwoord van de ECU is altijd mode + 0x40:
+       mode 01 → 41 …             mode 21 → 61 …
+   parsePID() in pidlane-diagbundel.js rekende dat AL correct uit
+   ((mode+0x40) als header). Alleen de ZENDkant was hardcoded. Deze
+   module levert de ontbrekende helft.
+
+   WAAROM 21 EN NIET 22
+
+   Mode 22 (UDS ReadDataByIdentifier) gebruikt een identifier van TWEE
+   bytes: '22' + 'F190' = zes tekens. Dat past niet in de vier-tekens-
+   conventie en zou de hele sleutelruimte breken. Mazda's motorblok zit
+   op mode 21 met één byte — dat past wél. UDS-mode-22 blijft dus waar
+   het al zat: los, in pidlane-bt.js (22F190 voor het VIN). Deze module
+   gaat over de pollbare fabrikant-PIDs.
+
+   NIET BATCHEN
+
+   Multi-PID batching ('010C0D11' → drie PIDs in één request) is een
+   eigenschap van mode 01 op CAN. Mode 21 kent dat niet. De pollus
+   filtert daarom op mode 01 vóór het batchen; alles daarbuiten gaat
+   sequentieel. Zie de aanpassing in pidlane-plload.js.
+
+   SCHALING IS ONGEVERIFIEERD — en dat staat er ook bij
+
+   Van 2101 is de −40-offset vrijwel zeker (elke temperatuur-PID in
+   J1979 en in Mazda's eigen blok gebruikt hem). Van 2102/210C/210D is
+   de schaling NIET bevestigd op een echte auto. Die staan daarom als
+   `onzeker:true` en `cat:'Overig'`: ze worden gepollt en gelogd, maar
+   pidGate('duidbaar') houdt ze uit rapporten en AI-analyse tot iemand
+   ze heeft geijkt. De probe logt de rauwe bytes zodat dat ijken één
+   rit kost, geen gokwerk.
+   ═══════════════════════════════════════════════════════════════════ */
+
+(function () {
+  'use strict';
+
+  // ── 1. MODE-BEWUSTE COMMANDOBOUWER ────────────────────────────────
+  // Voor mode 01 is dit een exacte no-op: '01'+'0C' === '010C' === pid.
+  // Daardoor is de vervanging in de pollus risicoloos voor bestaand
+  // gedrag en tegelijk correct voor alles daarbuiten.
+  //
+  // `snel` voegt het ELM327-achtervoegsel '1' toe: "verwacht één frame,
+  // wacht niet op timeout". Dat mag alleen bij een enkelvoudige request.
+  function pidMode(pid) {
+    return String(pid || '').slice(0, 2).toUpperCase();
+  }
+  function pidCmd(pid, snel) {
+    const p = String(pid || '').toUpperCase();
+    return snel ? p + '1' : p;
+  }
+  function isMode01(pid) {
+    return pidMode(pid) === '01';
+  }
+  window.pidMode = pidMode;
+  window.pidCmd = pidCmd;
+  window.isMode01 = isMode01;
+
+  // ── 2. DEFINITIES ─────────────────────────────────────────────────
+  // Vorm gelijk aan ALL_PID_DEFS zodat getPidDef() ze zonder verdere
+  // aanpassing vindt en buildDiscoveredPIDList() ze netjes inschaalt.
+  const UITGEBREID_DEFS = {
+    // Mazda SkyActiv — motorblok, mode 21.
+    '2101': {
+      name: 'Motorolie temp', unit: '°C', cat: 'Temp',
+      min: -40, max: 215, wH: 130, dH: 150,
+      merk: 'MAZDA', vervangt: '015C',
+      parse: b => (b[0] - 40)
+    },
+    '2102': {
+      name: 'Turbodruk (rauw)', unit: 'raw', cat: 'Overig',
+      min: 0, max: 255, merk: 'MAZDA', onzeker: true,
+      parse: b => b[0]
+    },
+    '210C': {
+      name: 'Klep timing inlaat (rauw)', unit: 'raw', cat: 'Overig',
+      min: 0, max: 255, merk: 'MAZDA', onzeker: true,
+      parse: b => b[0]
+    },
+    '210D': {
+      name: 'Klep timing uitlaat (rauw)', unit: 'raw', cat: 'Overig',
+      min: 0, max: 255, merk: 'MAZDA', onzeker: true,
+      parse: b => b[0]
+    }
+  };
+  window.UITGEBREID_DEFS = UITGEBREID_DEFS;
+
+  // Registreren in ALL_PID_DEFS. Bestaande sleutels NOOIT overschrijven:
+  // de standaardtabel is leidend, dit is een aanvulling.
+  try {
+    if (window.ALL_PID_DEFS) {
+      Object.keys(UITGEBREID_DEFS).forEach(pid => {
+        if (!window.ALL_PID_DEFS[pid]) window.ALL_PID_DEFS[pid] = UITGEBREID_DEFS[pid];
+      });
+    }
+  } catch (e) {}
+
+  // ── 3. MERKFILTER ─────────────────────────────────────────────────
+  // Een Mazda-PID op een Volkswagen vragen levert in het gunstigste
+  // geval NO DATA en in het ongunstigste een antwoord dat toevallig
+  // bestaat en iets heel anders betekent. Alleen probes op het merk
+  // waarvoor de PID gedocumenteerd is.
+  function _merkNu() {
+    try {
+      if (typeof merkGroep === 'function') {
+        const m = (window.vehicleInfo && (vehicleInfo.merk || vehicleInfo.make)) ||
+                  (window.selectedModel && selectedModel.merk) || '';
+        return merkGroep(m) || '';
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function kandidaten() {
+    const merk = _merkNu();
+    return Object.keys(UITGEBREID_DEFS).filter(pid => {
+      const d = UITGEBREID_DEFS[pid];
+      if (d.merk && merk && d.merk !== merk) return false;
+      if (d.merk && !merk) return false;      // merk onbekend → niet gokken
+      // Fantoomfilter hergebruiken: BOOST_PIDS bevat 2102 al, dus een
+      // atmosferische motor krijgt de turbo-PID hier vanzelf niet.
+      try { if (typeof pidGate === 'function' && !pidGate(pid, 'plausibel')) return false; } catch (e) {}
+      return true;
+    });
+  }
+
+  // ── 4. PROBE ──────────────────────────────────────────────────────
+  // Eén keer na verbinden. Vraagt elke kandidaat solo op, logt de rauwe
+  // bytes (voor ijking) en zet alleen de PIDs die écht antwoorden in
+  // supportedPIDs. Claimt netjes het busslot zodat de pollus niet door
+  // de probe heen praat — zelfde patroon als vlFullSurvey().
+  let _gedraaid = false;
+
+  async function probeUitgebreid(force) {
+    if (_gedraaid && !force) return { nieuw: 0, overgeslagen: true };
+    if (!window.connected || window.demoMode) return { nieuw: 0, overgeslagen: true };
+
+    const lijst = kandidaten();
+    if (!lijst.length) return { nieuw: 0, overgeslagen: true };
+
+    _gedraaid = true;
+    let tok = null;
+    try { tok = window.PLBus && PLBus.claim ? PLBus.claim('uitgebreid-probe') : null; } catch (e) {}
+
+    let nieuw = 0;
+    try {
+      for (const pid of lijst) {
+        if (!window.connected) break;
+        let raw = '';
+        try { raw = await sendCmd(pidCmd(pid, true), 2000); } catch (e) { continue; }
+
+        const hdr = ((parseInt(pid.slice(0, 2), 16) + 0x40)
+                      .toString(16).toUpperCase().padStart(2, '0')) + pid.slice(2).toUpperCase();
+        const schoon = String(raw || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+        const goed = raw && !/NO DATA|ERROR|UNABLE|STOPPED|\?/i.test(String(raw)) &&
+                     schoon.indexOf(hdr) >= 0;
+
+        if (goed) {
+          try { supportedPIDs.add(pid); } catch (e) {}
+          nieuw++;
+          const d = UITGEBREID_DEFS[pid];
+          const bytes = schoon.slice(schoon.indexOf(hdr) + hdr.length);
+          btDiag(`Uitgebreid ${pid} (${d.name}) ✓ — rauw: ${bytes.slice(0, 12)}`, 'ok');
+          // Ongeverifieerde schaling expliciet benoemen, zodat een rare
+          // waarde in de log niet als sensordefect wordt gelezen.
+          if (d.onzeker) btDiag(`  ${pid}: schaling ONGEVERIFIEERD — waarde is rauwe byte`, 'warn');
+        } else {
+          btDiag(`Uitgebreid ${pid} — geen antwoord`, 'info');
+        }
+        try { await delay(60); } catch (e) {}
+      }
+    } finally {
+      try { if (tok !== null && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+    }
+
+    if (nieuw) {
+      try { buildDiscoveredPIDList(); } catch (e) {}
+      log(`🔎 Fabrikant-PIDs: ${nieuw} van ${lijst.length} beschikbaar`, 'ok');
+      // 015C is op deze auto dood terwijl 2101 het wel doet: dat is geen
+      // sensordefect maar een andere adressering. Één regel die een
+      // monteur een halve zoektocht bespaart.
+      try {
+        if (supportedPIDs.has('2101') && window.PLSched && PLSched.dood('015C')) {
+          log('ℹ️ Motorolie temp zit bij dit voertuig op 2101, niet op 015C', 'info');
+        }
+      } catch (e) {}
+    } else {
+      btDiag(`Uitgebreid: ${lijst.length} kandidaten geprobeerd, geen enkele beschikbaar`, 'info');
+    }
+    return { nieuw, geprobeerd: lijst.length };
+  }
+
+  window.probeUitgebreid = probeUitgebreid;
+  window.PLUitgebreid = {
+    defs: UITGEBREID_DEFS,
+    kandidaten,
+    probe: probeUitgebreid,
+    herstel() { _gedraaid = false; }
+  };
+
+  btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');
+
+  function btDiagSafe(m) {
+    try { if (typeof btDiag === 'function') btDiag(m, 'info'); } catch (e) {}
+  }
+})();

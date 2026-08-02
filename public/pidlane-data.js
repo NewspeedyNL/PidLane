@@ -216,7 +216,10 @@ window.merkGroep = function merkGroep(merk){
 
 // ── PIDS_EXTRA (was index.html regel 3142) ──
 window.PIDS_EXTRA = {
-  // Mazda CX-5 2018 specifieke PIDs (mode 22)
+  // Mazda CX-5 2018 specifieke PIDs (mode 21 — de comment zei ooit 22)
+  // LET OP: dit object wordt NERGENS gelezen. De werkende definities staan
+  // in pidlane-uitgebreid.js (UITGEBREID_DEFS), inclusief parse-functies en
+  // een probe. Hier laten staan als historische referentie; niet uitbreiden.
   '2101':{name:'Motorolie temp',      unit:'°C', min:-40, max:150, cat:'Mazda'},
   '2102':{name:'Turbodruk actueel',   unit:'kPa',min:0,   max:250, cat:'Mazda'},
   '210C':{name:'Klep timing inlaat',  unit:'°',  min:-50, max:50,  cat:'Mazda'},
