@@ -229,6 +229,18 @@ var MODULES = {
    waarom meetdata er niet toe doet. */
 var GEEN_MEETEIS = { dtc:1, monitor:1, recorder:1 };
 
+/* Welke kern-PID-set hoort bij welke module (drie-fasenpoort, §19). Staat hier
+   los van MODULES zodat de moduletabel zelf onaangeraakt blijft — mechanisch
+   en inhoudelijk niet in dezelfde stap. Geen vermelding = geen kernfase; dan
+   valt de poort terug op alleen de hoeveelheid/rijtijd-eis, precies zoals
+   voorheen. Bewust NIET terugvallen op window._laatstProfiel: dat is het
+   profiel van de vórige analyse en zou hier de verkeerde sensoren afdwingen. */
+var MODULE_PROFIEL = {
+  systeem:'basis', conditie:'basis', aimonteur:'basis', diep:'basis',
+  verbruik:'brandstof', onderdeel:'totaal', markt:'totaal', langerit:'totaal',
+  accu:'accu', evaccu:'accu', trekken:'rit', klimaat:'basis', onderhoud:'basis'
+};
+
 var METING = {
   stil:    {n:'Stilstaand meten',  d:'Contact aan, motor stationair',  tijd:'±2 min'},
   rit2:    {n:'Korte rit',         d:'±2 minuten rijden',              tijd:'±2 min',  start:function(){ openRitAnalyse('2min'); }},
@@ -517,7 +529,7 @@ window.PLWizard = {
     // ronde 6 van de PID-gate: een poort op één van de paden is geen poort.
     // plVraagMeting bepaalt zelf het niveau uit job.meting (plMeetNiveau).
     if(GEEN_MEETEIS[k] || typeof plVraagMeting!=='function'){ open(); return; }
-    plVraagMeting('normaal', M.n).then(function(door){
+    plVraagMeting('normaal', M.n, MODULE_PROFIEL[k] || false).then(function(door){
       if(door){ metingGestart=true; open(); }
       // false = de gebruiker koos een rijtest; die neemt het scherm over.
       // Het plan blijft staan, de chip brengt hem straks terug.
@@ -556,7 +568,7 @@ window.PLWizard = {
         chipTick();
       };
       if(typeof plVraagMeting==='function'){
-        plVraagMeting('normaal','dit onderzoek').then(function(door){
+        plVraagMeting('normaal','dit onderzoek', job.profiel || false).then(function(door){
           if(door) draaiEerste();
           // Meetfase afgebroken: dan is er ook niets gemeten. Plan terug in
           // beeld, anders sta je met een leeg scherm en een chip te kijken.

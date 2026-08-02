@@ -9,7 +9,7 @@
 // ════════════════════════════════════════
 // → FUEL_PIDS verplaatst naar pidlane-data.js
 async function runFuelAnalysis(){
-  if(!(await plVraagMeting('rit','de verbruiksanalyse'))) return;
+  if(!(await plVraagMeting('rit','de verbruiksanalyse','brandstof'))) return;
   activateAIPane();
   // Elektrisch voertuig heeft geen brandstof — brandstofefficiëntie-analyse
   // is niet van toepassing. Toon een passende melding i.p.v. een AI-call die
@@ -1199,8 +1199,229 @@ function plMeetTekort(niveau){
   if(rijTekort) tekort.push('maar '+st.rijSec+' s gereden boven '+MEET_RIJ_KMH+' km/h, nodig '+eis.rij+' s onder belasting');
   return {ok:!tekort.length, tekort, st, eis, rijTekort};
 }
+/* ── DE DRIE-FASENPOORT ────────────────────────────────────────────────
+   Besluit van 02-08-2026. De poort vroeg tot nu toe om GENOEG data, niet om
+   de JUISTE data. Twee gaten, allebei zichtbaar in de log van die ochtend:
+
+     08:31:16  Analyse: 12 sensoren aangezet
+     08:31:20  apiFetch                        <- vier seconden later
+
+   ensurePIDListActive() wacht hooguit 5 s en dan alleen op PIDs die sneller
+   dan 1000 ms pollen. Van de 30 sensoren vielen er 8 binnen die grens; de 13
+   op 3318 ms kregen hooguit één monster, de 9 op 33-199 s nul. En plMeetStatus
+   rekent met maxN, het MAXIMUM aantal monsters over alle sensoren, dus één PID
+   die al tien minuten meeloopt haalt de eis in zijn eentje.
+
+   Nu in drie fasen: aanzetten en testen -> registreren -> pas dan analyseren.
+
+   DE EIS HANGT AF VAN DE AARD VAN DE SENSOR. Zou elke kern-PID drie monsters
+   moeten hebben, dan kost dat op de CX-5 300 s en voor profiel 'brandstof'
+   zelfs 600 s — onwerkbaar, en zinloos: drie metingen brandstofpeil zeggen
+   niets meer dan één. Dynamische sensoren hebben een REEKS nodig, trage
+   signalen genoeg aan één geldige waarde. Die traag-lijst bestaat al als
+   FILTERED_PIDS in pidlane-datalog.js; die hergebruiken we in plaats van een
+   tweede kopie aan te leggen. Zo wordt de traagste DYNAMISCHE kern-PID
+   maatgevend: 10 x 3318 ms is ongeveer 33 s.                              */
+const KERN_REEKS_MIN    = 10;      // monsters voor een dynamische sensor
+const KERN_MAX_WACHT_MS = 45000;   // standaard registratievenster
+const KERN_VERLENG_MS   = 30000;   // wat de verlengknop erbij geeft
+const KERN_MIN_PCT      = 0.6;     // onder deze kern-dekking: geen diagnose
+
+/* De ENIGE plek die beoordeelt hoe de kernsensoren ervoor staan. Zowel de
+   registratiefase, de blokkade als het promptblok lezen hieruit — één vraag,
+   één antwoord. */
+function plKernStatus(profile){
+  try{
+    const prof = profile || window._laatstProfiel;
+    if(!prof) return null;
+    // Beide lijsten staan in pidlane-data.js als window.X, maar een classic
+    // script ziet ze ook kaal. Allebei proberen: valt de laadvolgorde ooit
+    // anders uit, dan mist de kernlijst stil de helft — en dan meldt dit blok
+    // "alles gemeten" terwijl de basis er niet eens in zat.
+    const basis=(typeof BASIS_PIDS!=='undefined'&&BASIS_PIDS)||window.BASIS_PIDS||[];
+    const tabel=(typeof ANALYSE_PIDS!=='undefined'&&ANALYSE_PIDS)||window.ANALYSE_PIDS||{};
+    if(!tabel[prof]) return null;
+    const kern=[...new Set([...basis, ...(tabel[prof]||[])])];
+    if(!kern.length) return null;
+    const traagSet=(typeof FILTERED_PIDS!=='undefined')?FILTERED_PIDS:new Set();
+    const demo=(typeof demoMode!=='undefined'&&demoMode);
+    const heeftDiscovery=(typeof supportedPIDs!=='undefined'&&supportedPIDs&&supportedPIDs.size>0);
+
+    const items=kern.map(pid=>{
+      const traag=traagSet.has(pid.slice(2).toUpperCase());
+      const n=((typeof pidHist!=='undefined'&&pidHist[pid])||[]).length;
+      // Zonder discovery weten we niet wat de auto kan; dan niets uitsluiten.
+      const ondersteund = demo || !heeftDiscovery || supportedPIDs.has(pid);
+      const geweerd = (typeof pidGate==='function') ? !pidGate(pid,'kiesbaar') : false;
+      return { pid, naam:((typeof getPidDef==='function'&&getPidDef(pid)?.name)||pid),
+               traag, quota: traag?1:KERN_REEKS_MIN, n,
+               haalbaar: ondersteund && !geweerd, gereed: n>=(traag?1:KERN_REEKS_MIN) };
+    });
+
+    const haalbaar=items.filter(i=>i.haalbaar);
+    const gereed  =items.filter(i=>i.gereed);
+    // "stil" = de auto zou het moeten kunnen, maar er komt niets. Dat is een
+    // bevinding, geen ruis — nu verdween het stilzwijgend uit de prompt.
+    const stil    =haalbaar.filter(i=>i.n===0);
+    const mager   =haalbaar.filter(i=>i.n>0 && !i.gereed);
+    const nvt     =items.filter(i=>!i.haalbaar);
+    return { prof, kern, items, haalbaar, gereed, mager, stil, nvt,
+             totaal:kern.length,
+             // Registratie mikt op wat haalbaar is; de blokkade kijkt naar de
+             // hele kernset, want een ontbrekende sensor maakt de analyse net
+             // zo goed onbruikbaar als een ongemeten sensor.
+             pctHaalbaar: haalbaar.length ? gereed.length/haalbaar.length : 1,
+             pctKern: gereed.length/kern.length,
+             compleet: haalbaar.every(i=>i.gereed) };
+  }catch(e){ return null; }
+}
+
+/* Het promptblok leest dezelfde status, zodat rapport en poort nooit een
+   ander verhaal vertellen. */
+function plKernDekking(profile){
+  const k=plKernStatus(profile);
+  if(!k) return null;
+  const toon=i=>i.naam+' ('+i.n+')';
+  return { prof:k.prof, totaal:k.totaal,
+           goed:k.gereed.map(toon), mager:k.mager.map(toon),
+           stil:[...k.stil, ...k.nvt].map(i=>i.naam) };
+}
+
+/* FASE 2 — registreren. Draait op de bestaande geschiedenis: is die al
+   toereikend, dan is dit meteen klaar en wacht niemand voor niets. */
+function plRegistreer(profiel, watVoor){
+  return new Promise(resolve=>{
+    let k=plKernStatus(profiel);
+    if(!k || k.compleet){ resolve(true); return; }
+
+    let ov=document.getElementById('meetGateOv');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='meetGateOv'; ov.className='mg-ov';
+      document.body.appendChild(ov);
+    }
+    ov.style.display='flex';
+
+    let eind=Date.now()+KERN_MAX_WACHT_MS, weg=0, tik=null, klaar=false;
+    const sluit=(uitkomst)=>{
+      if(klaar) return; klaar=true;
+      if(tik) clearInterval(tik);
+      document.removeEventListener('visibilitychange', zicht);
+      ov.style.display='none'; ov.innerHTML='';
+      resolve(uitkomst);
+    };
+    // Zelfde les als de ritanalyse (§16): een tab op de achtergrond levert
+    // geen data, dus die tijd mag niet van het venster af.
+    const zicht=()=>{
+      if(document.visibilityState==='hidden'){ weg=Date.now(); }
+      else if(weg){ eind+=Date.now()-weg; weg=0; }
+    };
+    document.addEventListener('visibilitychange', zicht);
+
+    const teken=()=>{
+      k=plKernStatus(profiel);
+      if(!k){ sluit(true); return; }
+      const over=Math.max(0,Math.round((eind-Date.now())/1000));
+      const wacht=[...k.mager,...k.stil]
+        .sort((a,b)=>(a.n/a.quota)-(b.n/b.quota)).slice(0,6);
+      ov.innerHTML=
+        '<div class="mg-kaart">'+
+          '<div class="mg-t">📡 Sensoren registreren</div>'+
+          '<div class="mg-s">Voor '+(watFor(watVoor))+' meet ik eerst de sensoren die deze analyse nodig heeft. '+
+            '<b>'+k.gereed.length+' van '+k.haalbaar.length+'</b> zijn klaar'+
+            (over?' — nog '+over+' s':'')+'.</div>'+
+          '<ul class="mg-lijst">'+
+            wacht.map(i=>'<li>'+i.naam+' — '+i.n+'/'+i.quota+(i.n?'':' (nog geen data)')+'</li>').join('')+
+            (k.nvt.length?'<li>'+k.nvt.length+' sensor(en) heeft deze auto niet</li>':'')+
+          '</ul>'+
+          '<div class="mg-knoppen">'+
+            (over?'':'<button class="mg-sec" id="kdVerleng">⏳ Nog '+Math.round(KERN_VERLENG_MS/1000)+' s meten</button>')+
+            '<button class="mg-ter" id="kdNu">Nu analyseren met wat er is</button>'+
+          '</div>'+
+        '</div>';
+      const v=document.getElementById('kdVerleng');
+      if(v) v.onclick=()=>{ eind=Date.now()+KERN_VERLENG_MS; teken(); };
+      const nu=document.getElementById('kdNu');
+      if(nu) nu.onclick=()=>{ window._meetBeperkt='registratie afgebroken'; sluit(true); };
+
+      if(k.compleet){ sluit(true); return; }
+      // Verbinding weg tijdens registreren: doorwachten heeft geen zin, er
+      // komt niets meer binnen.
+      if(typeof connected!=='undefined' && !connected && !(typeof demoMode!=='undefined'&&demoMode)){
+        try{ log('Verbinding weg tijdens registreren — analyse gaat door met wat er is.','warn'); }catch(e){}
+        window._meetBeperkt='verbinding verbroken tijdens registreren';
+        sluit(true);
+      }
+    };
+    teken();
+    tik=setInterval(teken,500);
+  });
+}
+
+/* Blokkade onder KERN_MIN_PCT. Geen harde stop: de gebruiker mag door, maar
+   dan bewust en met de beperking in het rapport. */
+function plKernTeMager(k, watVoor){
+  return new Promise(resolve=>{
+    let ov=document.getElementById('meetGateOv');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='meetGateOv'; ov.className='mg-ov';
+      document.body.appendChild(ov);
+    }
+    ov.style.display='flex';
+    const sluit=(u)=>{ ov.style.display='none'; ov.innerHTML=''; resolve(u); };
+    ov.innerHTML=
+      '<div class="mg-kaart">'+
+        '<div class="mg-t">🔌 Te weinig kernsensoren</div>'+
+        '<div class="mg-s">Voor '+(watFor(watVoor))+' zijn '+k.totaal+' sensoren nodig; '+
+          'daarvan zijn er '+k.gereed.length+' bruikbaar gemeten ('+Math.round(k.pctKern*100)+'%). '+
+          'Een rapport hierop is een gok, geen diagnose.</div>'+
+        '<ul class="mg-lijst">'+
+          (k.stil.length?'<li>Geen data ondanks aanvraag: '+k.stil.map(i=>i.naam).join(', ')+'</li>':'')+
+          (k.nvt.length?'<li>Niet aanwezig op dit voertuig: '+k.nvt.map(i=>i.naam).join(', ')+'</li>':'')+
+          (k.mager.length?'<li>Te weinig monsters: '+k.mager.map(i=>i.naam+' ('+i.n+')').join(', ')+'</li>':'')+
+        '</ul>'+
+        '<div class="mg-knoppen">'+
+          '<button class="mg-pri" id="kmStop">Afbreken</button>'+
+          '<button class="mg-ter" id="kmToch">Toch doorgaan — als indicatie</button>'+
+        '</div>'+
+      '</div>';
+    document.getElementById('kmStop').onclick=()=>sluit(false);
+    document.getElementById('kmToch').onclick=()=>{
+      window._meetBeperkt='slechts '+Math.round(k.pctKern*100)+'% van de kernsensoren gemeten';
+      sluit(true);
+    };
+  });
+}
+
+/* De poort zelf: eerst de juiste sensoren aan en testen, dan registreren, dan
+   pas de hoeveelheid/rijtijd-eis uit §16. Zonder profiel (bijvoorbeeld een
+   wizardmodule die er geen heeft) blijft het gedrag exact als voorheen. */
+async function plVraagMeting(niveau, watVoor, profiel){
+  // profiel === false betekent expliciet "deze aanroep heeft geen kern-set".
+  // Onderscheid dat van "niet meegegeven", want dan mag de laatst gebruikte
+  // set nog dienen; terugvallen op een vórig profiel zou anders de verkeerde
+  // sensoren afdwingen.
+  const prof = (profiel===false) ? null : (profiel || window._laatstProfiel);
+  // FASE 1 — aanzetten en testen
+  if(prof && typeof ensurePIDsActive==='function'){
+    try{ await ensurePIDsActive(prof); }catch(e){}
+  }
+  const k0=plKernStatus(prof);
+  if(k0){
+    // FASE 2 — registreren (slaat zichzelf over als de historie al volstaat)
+    if(!k0.compleet){
+      if(!(await plRegistreer(prof, watVoor))) return false;
+    }
+    const k1=plKernStatus(prof);
+    if(k1 && k1.pctKern < KERN_MIN_PCT){
+      if(!(await plKernTeMager(k1, watVoor))) return false;
+    }
+  }
+  // FASE 3 — de bestaande hoeveelheid- en rijtijd-poort
+  return plMeetPoortVraag(niveau, watVoor);
+}
+
 /* Toont het meetscherm en geeft een belofte terug: true = doorgaan. */
-function plVraagMeting(niveau, watVoor){
+function plMeetPoortVraag(niveau, watVoor){
   return new Promise(resolve=>{
     const r=plMeetTekort(plMeetNiveau(niveau));
     // Poort schoon gehaald? Dan geldt een eerdere "toch doorgaan" niet meer.
@@ -1259,51 +1480,6 @@ function plVraagMeting(niveau, watVoor){
 }
 function watFor(w){ return w||'deze analyse'; }
 /* Regel voor in de AI-prompt, zodat het rapport zelf zijn beperking noemt. */
-/* Welke KERN-sensoren had deze analyse nodig, en hebben we ze ook echt
-   gemeten? Kern = BASIS_PIDS + ANALYSE_PIDS[profiel]: de sensoren waar de
-   analyse omheen ontworpen is. De categorie-extra's uit relevantSupportedPIDs()
-   zijn aanvulling en tellen hier niet mee.
-
-   Waarom dit er is: analysisPidData() filtert kern-sensoren die niets leveren
-   stilzwijgend weg, en het rapport leest daarna als compleet. Op de CX-5 van
-   02-08-2026 miste profiel 'brandstof' vier kern-PIDs (0110, 0124, 0144, 015E)
-   en 'accu' had er één dood (0146) en één afwezig (015B) — nergens zichtbaar.
-
-   Dit blokkeert NIETS en zet niets aan. Het telt alleen wat er is en zegt het
-   hardop. De echte drie-fasenpoort (aanzetten → testen → registreren) is een
-   aparte ronde; dit is het deel dat vandaag zonder risico kan.
-
-   Eis per sensor hangt af van zijn aard: een dynamische sensor heeft een REEKS
-   nodig, een traag signaal genoeg aan één geldige waarde. FILTERED_PIDS in
-   pidlane-datalog.js is precies die traag-lijst, dus die hergebruiken we in
-   plaats van een tweede kopie aan te leggen. */
-const KERN_REEKS_MIN = 10;   // monsters voor een dynamische sensor
-function plKernDekking(profile){
-  try{
-    const prof = profile || window._laatstProfiel;
-    if(!prof) return null;
-    // Beide lijsten staan in pidlane-data.js als window.X, maar een classic
-    // script ziet ze ook kaal. Allebei proberen: valt de laadvolgorde ooit
-    // anders uit, dan mist de kernlijst stil de helft — en dan meldt dit blok
-    // "alles gemeten" terwijl de basis er niet eens in zat.
-    const basis=(typeof BASIS_PIDS!=='undefined'&&BASIS_PIDS)||window.BASIS_PIDS||[];
-    const tabel=(typeof ANALYSE_PIDS!=='undefined'&&ANALYSE_PIDS)||window.ANALYSE_PIDS||{};
-    if(!tabel[prof]) return null;
-    const kern=[...new Set([...basis, ...(tabel[prof]||[])])];
-    if(!kern.length) return null;
-    const traag=(typeof FILTERED_PIDS!=='undefined')?FILTERED_PIDS:new Set();
-    const goed=[], mager=[], stil=[];
-    kern.forEach(pid=>{
-      const n=((typeof pidHist!=='undefined'&&pidHist[pid])||[]).length;
-      const naam=(typeof getPidDef==='function'&&getPidDef(pid)?.name)||pid;
-      if(!n){ stil.push(naam); return; }
-      const eis = traag.has(pid.slice(2).toUpperCase()) ? 1 : KERN_REEKS_MIN;
-      (n>=eis?goed:mager).push(naam+' ('+n+')');
-    });
-    return {prof, totaal:kern.length, goed, mager, stil};
-  }catch(e){ return null; }
-}
-
 function plMeetPromptBlok(){
   const st=plMeetStatus();
   let s='\n\nMeetdekking: '+st.sec+' s gemeten, tot '+st.maxN+' monsters per sensor, '+
@@ -1335,7 +1511,7 @@ function plMeetPromptBlok(){
 }
 
 async function runQuickAI(){
-  if(!(await plVraagMeting('normaal','een AI-rapport'))) return;
+  if(!(await plVraagMeting('normaal','een AI-rapport','basis'))) return;
   activateAIPane();
   await ensurePIDsActive('basis');
   const v=getVehicle();

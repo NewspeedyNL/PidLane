@@ -66,7 +66,7 @@ function pickOnderdelen(title, options){
 }
 
 async function runTotalCheck(){
-  if(!(await plVraagMeting('rit','totaalcheck'))) return;
+  if(!(await plVraagMeting('rit','totaalcheck','totaal'))) return;
   window._didTotalCheck=true;
   if(!(await preAnalysisCheck())) return;
   await ensurePIDsActive('totaal');

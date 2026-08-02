@@ -38,6 +38,32 @@ function validateAndSmooth(pid,rawVal){
     markOutlier(pid,rawVal,'limiet'); return null;
   }
 
+  /* LAAG 1b — OPVALLEND MAAR ECHT.
+     Laag 1 gooit weg; deze laag doet dat juist niet. Waarden die buiten het
+     gebruikelijke bereik vallen maar binnen de natuurkunde blijven, zijn vaak
+     precies de metingen waarvoor je de PID leest — sterke terugregeling van
+     de ontsteking bijvoorbeeld. Die weggooien maakt een gemiddelde mooier dan
+     de motor is. Dus: melden, onthouden, doorlaten. */
+  const letop=(typeof PID_LET_OP!=='undefined')?PID_LET_OP[pid]:null;
+  if(letop&&(rawVal<letop.min||rawVal>letop.max)){
+    const lo=window._pidLetOp=window._pidLetOp||{};
+    const eerder=lo[pid];
+    lo[pid]={laatst:rawVal, t:Date.now(), n:((eerder&&eerder.n)||0)+1,
+             uiterste: eerder ? (Math.abs(rawVal)>Math.abs(eerder.uiterste)?rawVal:eerder.uiterste) : rawVal,
+             waarom: letop.waarom};
+    // Hooguit één regel per PID per 30 s — zelfde aanpak als de spike-melding
+    // hieronder, anders loopt de log vol tijdens een koude start.
+    const lw=window._letOpGelogd=window._letOpGelogd||{};
+    if(!lw[pid]||Date.now()-lw[pid]>30000){
+      lw[pid]=Date.now();
+      const m=`${def?.name||pid}: ${rawVal}${def?.unit||''} buiten het gebruikelijke bereik `+
+              `(${letop.min}–${letop.max}) — ${letop.waarom}. Meting blijft staan.`;
+      log(`ℹ ${m}`,'info');
+      try{ logToSheets('opvallend',m,{pid,value:rawVal,reason:'let_op'}); }catch(e){}
+    }
+    // bewust GEEN markOutlier en GEEN return: de waarde loopt gewoon door.
+  }
+
   // Snel signaal? Direct doorlaten — geen filter, geen smoothing.
   if(!FILTERED_PIDS.has(pid)) return Math.round(rawVal*100)/100;
 
@@ -189,7 +215,7 @@ function getDatalogStats(){
 }
 
 async function runDatalogAI(){
-  if(!(await plVraagMeting('normaal','de datalog-analyse'))) return;
+  if(!(await plVraagMeting('normaal','de datalog-analyse','basis'))) return;
   activateAIPane();
   const stats=getDatalogStats();
   if(!Object.keys(stats).length){
