@@ -1259,6 +1259,51 @@ function plVraagMeting(niveau, watVoor){
 }
 function watFor(w){ return w||'deze analyse'; }
 /* Regel voor in de AI-prompt, zodat het rapport zelf zijn beperking noemt. */
+/* Welke KERN-sensoren had deze analyse nodig, en hebben we ze ook echt
+   gemeten? Kern = BASIS_PIDS + ANALYSE_PIDS[profiel]: de sensoren waar de
+   analyse omheen ontworpen is. De categorie-extra's uit relevantSupportedPIDs()
+   zijn aanvulling en tellen hier niet mee.
+
+   Waarom dit er is: analysisPidData() filtert kern-sensoren die niets leveren
+   stilzwijgend weg, en het rapport leest daarna als compleet. Op de CX-5 van
+   02-08-2026 miste profiel 'brandstof' vier kern-PIDs (0110, 0124, 0144, 015E)
+   en 'accu' had er één dood (0146) en één afwezig (015B) — nergens zichtbaar.
+
+   Dit blokkeert NIETS en zet niets aan. Het telt alleen wat er is en zegt het
+   hardop. De echte drie-fasenpoort (aanzetten → testen → registreren) is een
+   aparte ronde; dit is het deel dat vandaag zonder risico kan.
+
+   Eis per sensor hangt af van zijn aard: een dynamische sensor heeft een REEKS
+   nodig, een traag signaal genoeg aan één geldige waarde. FILTERED_PIDS in
+   pidlane-datalog.js is precies die traag-lijst, dus die hergebruiken we in
+   plaats van een tweede kopie aan te leggen. */
+const KERN_REEKS_MIN = 10;   // monsters voor een dynamische sensor
+function plKernDekking(profile){
+  try{
+    const prof = profile || window._laatstProfiel;
+    if(!prof) return null;
+    // Beide lijsten staan in pidlane-data.js als window.X, maar een classic
+    // script ziet ze ook kaal. Allebei proberen: valt de laadvolgorde ooit
+    // anders uit, dan mist de kernlijst stil de helft — en dan meldt dit blok
+    // "alles gemeten" terwijl de basis er niet eens in zat.
+    const basis=(typeof BASIS_PIDS!=='undefined'&&BASIS_PIDS)||window.BASIS_PIDS||[];
+    const tabel=(typeof ANALYSE_PIDS!=='undefined'&&ANALYSE_PIDS)||window.ANALYSE_PIDS||{};
+    if(!tabel[prof]) return null;
+    const kern=[...new Set([...basis, ...(tabel[prof]||[])])];
+    if(!kern.length) return null;
+    const traag=(typeof FILTERED_PIDS!=='undefined')?FILTERED_PIDS:new Set();
+    const goed=[], mager=[], stil=[];
+    kern.forEach(pid=>{
+      const n=((typeof pidHist!=='undefined'&&pidHist[pid])||[]).length;
+      const naam=(typeof getPidDef==='function'&&getPidDef(pid)?.name)||pid;
+      if(!n){ stil.push(naam); return; }
+      const eis = traag.has(pid.slice(2).toUpperCase()) ? 1 : KERN_REEKS_MIN;
+      (n>=eis?goed:mager).push(naam+' ('+n+')');
+    });
+    return {prof, totaal:kern.length, goed, mager, stil};
+  }catch(e){ return null; }
+}
+
 function plMeetPromptBlok(){
   const st=plMeetStatus();
   let s='\n\nMeetdekking: '+st.sec+' s gemeten, tot '+st.maxN+' monsters per sensor, '+
@@ -1268,6 +1313,20 @@ function plMeetPromptBlok(){
   if(st.rijSec===null)     s+='\nDit voertuig levert geen snelheid; of er gereden is, is niet vast te stellen.';
   else if(st.rijSec<10)    s+='\nAlles is STILSTAAND gemeten (geen rijdata). Doe geen uitspraken over gedrag onder belasting, koppeling, overbrenging of verbruik onderweg.';
   else                     s+='\nWaarvan '+st.rijSec+' s rijdend gemeten (boven 15 km/h).';
+  // Kern-dekking: welke sensoren hoorden bij deze analyse, en hebben we ze?
+  const k=plKernDekking();
+  if(k){
+    s+='\n\nKernsensoren voor analyse "'+k.prof+'" ('+k.totaal+' stuks): '+
+       k.goed.length+' voldoende gemeten.';
+    if(k.mager.length) s+='\nTe weinig monsters (naam + aantal): '+k.mager.join(', ')+
+       '. Gebruik deze hooguit als momentopname, niet voor uitspraken over verloop.';
+    if(k.stil.length)  s+='\nGEVRAAGD MAAR NIETS GELEVERD: '+k.stil.join(', ')+
+       '. Deze auto gaf hierop geen data. Noem dit in je conclusie en doe geen '+
+       'uitspraken over de systemen die deze sensoren afdekken — ook niet impliciet.';
+    if(k.goed.length < Math.ceil(k.totaal*0.6))
+      s+='\nLET OP: minder dan 60% van de kernsensoren is bruikbaar gemeten. '+
+         'Dit rapport is een indicatie, geen diagnose.';
+  }
   if(window._meetBeperkt){
     s+='\nLET OP: de gebruiker is doorgegaan met beperkte data ('+window._meetBeperkt+'). '+
        'Noem dit expliciet in je conclusie en matig je stelligheid navenant.';

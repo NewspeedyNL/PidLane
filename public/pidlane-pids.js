@@ -45,6 +45,10 @@ function togglePID(pid){
 // → ANALYSE_CATS verplaatst naar pidlane-data.js
 
 function relevantSupportedPIDs(profile){
+  // Welk profiel is als laatste opgevraagd? Puur een notitie voor het
+  // meetdekking-blok in het rapport, dat anders niet weet wélke kern-set aan
+  // de orde was. Verandert niets aan het gedrag hieronder.
+  try{ window._laatstProfiel = profile; }catch(e){}
   // Elke analyse die z'n PID-set opvraagt, zet meteen het bijpassende
   // POLLPROFIEL (fase 3). Zo hoeft geen enkele analysefunctie dit apart te
   // regelen: accu-check gaat vanzelf naar het accuprofiel, rit naar monitor.
