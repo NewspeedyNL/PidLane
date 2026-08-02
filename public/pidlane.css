@@ -1638,53 +1638,57 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .plBevestigBtn:hover,.plBevestigBtn:focus-visible{filter:brightness(1.12);outline:none}
 @media (prefers-reduced-motion: reduce){ .plBevestigOv{animation:none !important} }
 
-/* ── Rondgang: vol scherm (pidlane-rondgang.js bouwt de DOM) ─────────── */
-#rgScherm{position:fixed;inset:0;z-index:9600;display:flex;flex-direction:column;
-  background:#080c14;font-family:var(--f);
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+/* ══ Waakronde ═══════════════════════════════════════════════════════
+   Ambient, geen dashboard. De strook mag nooit om aandacht vragen; hij
+   moet er zijn op het moment dat je hem zoekt. Vandaar: lage contrasten,
+   geen animatie behalve de ene stip die nu gelezen wordt, en bevindingen
+   pas in beeld als je erom tikt. */
 
-#rgKop{flex:none;display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid #1b2942}
-#rgTitel{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-size:15px;font-weight:800;color:#e6efff}
-#rgTel{flex:none;font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:700;color:#8fa8d4;
-  padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.06)}
-#rgKop button{flex:none;width:34px;height:34px;padding:0;border-radius:10px;border:1px solid #2c4a7e;
-  background:rgba(255,255,255,.06);color:#cfe0ff;font-family:var(--f);font-size:15px;font-weight:700;
-  line-height:1;cursor:pointer}
-#rgKop button:hover,#rgKop button:focus-visible{background:rgba(255,255,255,.15);outline:none}
-#rgUit{color:#ffb4b4 !important;border-color:#5e2c2c !important}
+.pidview-scheid{display:inline-block;width:1px;height:20px;margin:0 3px;
+  background:linear-gradient(180deg,transparent,#2c4a7e,transparent);vertical-align:middle}
+.pidview-btn.waak{border-color:#24406e;color:#7f93b8}
+.pidview-btn.waak.active{border-color:#2e6f52;color:#8fe3ac;
+  background:linear-gradient(180deg,rgba(79,156,90,.20),rgba(79,156,90,.08))}
 
-/* Basisstrook: context in kleine cijfers, nooit in de grafiek */
-#rgBasis{flex:none;display:flex;flex-wrap:wrap;gap:3px 14px;padding:9px 13px;
-  border-bottom:1px solid #1b2942;background:rgba(255,255,255,.02)}
-.rgB{display:inline-flex;align-items:baseline;gap:3px}
-.rgB b{font-size:17px;font-weight:800;color:#e6efff;font-variant-numeric:tabular-nums;letter-spacing:-.4px}
-.rgB i{font-size:10px;font-style:normal;color:#7f93b8}
-.rgB u{font-size:9.5px;text-decoration:none;color:#5f7196;text-transform:uppercase;
-  letter-spacing:.4px;margin-left:2px;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rgLeeg{font-size:12px;color:#5f7196}
+#wkStrook{margin:0 0 11px;padding:9px 12px 10px;border-radius:13px;
+  border:1px solid #1b2942;background:rgba(255,255,255,.022);font-family:var(--f)}
 
-/* Grafiekvlak vult alles wat over is */
-#rgVlak{flex:1 1 auto;min-height:120px;position:relative;padding:6px 5px}
-#rgCanvas{display:block;width:100%;height:100%}
+#wkKop{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+#wkPols{flex:none;width:7px;height:7px;border-radius:50%;background:#4f9c5a;
+  box-shadow:0 0 0 0 rgba(79,156,90,.5);animation:wkPols 2.8s ease-out infinite}
+@keyframes wkPols{0%{box-shadow:0 0 0 0 rgba(79,156,90,.45)}70%{box-shadow:0 0 0 7px rgba(79,156,90,0)}100%{box-shadow:0 0 0 0 rgba(79,156,90,0)}}
+#wkTitel{flex:1 1 auto;font-size:12px;font-weight:700;letter-spacing:.3px;
+  text-transform:uppercase;color:#7f93b8}
+#wkTel{flex:none;font-size:11.5px;font-variant-numeric:tabular-nums;color:#5f7196}
+#wkTel b{color:#9fb6e0;font-weight:700}
+#wkTel em{font-style:normal;color:#0b0f18;background:#e0972f;font-weight:800;
+  padding:1px 6px;border-radius:999px;margin-left:5px}
+#wkTel.wkBev b{color:#e0972f}
+#wkChev{flex:none;color:#4a5b7d;font-size:14px;transition:transform .18s ease}
 
-/* Waardenlijst met legendakleur */
-#rgWaarden{flex:none;max-height:34vh;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;
-  padding:10px 13px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #1b2942;
-  background:rgba(255,255,255,.02)}
-.rgW{display:inline-flex;align-items:baseline;gap:5px;padding:5px 9px;border-radius:9px;
-  background:rgba(255,255,255,.045);border:1px solid #1e3253}
-.rgW i{flex:none;width:8px;height:8px;border-radius:50%;align-self:center}
-.rgWn{font-size:10.5px;color:#8fa8d4;text-transform:uppercase;letter-spacing:.3px;
-  max-width:108px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rgW b{font-size:15px;font-weight:800;color:#e6efff;font-variant-numeric:tabular-nums}
-.rgW u{font-size:10px;text-decoration:none;color:#7f93b8}
+/* Stippenrij: één stip per sensor. Dit is de hele visualisatie — geen
+   grafiek, geen assen. Je leest er één ding uit en dat is genoeg. */
+#wkStippen{display:flex;flex-wrap:wrap;gap:4px;margin:9px 0 0}
+.wkS{width:9px;height:9px;border-radius:3px;display:block;cursor:pointer;
+  transition:background .35s ease,transform .15s ease}
+.wkS:hover{transform:scale(1.35)}
+.wkS.wkNu{animation:wkNu 1.1s ease-in-out infinite;
+  box-shadow:0 0 0 2px rgba(143,182,224,.35)}
+@keyframes wkNu{0%,100%{opacity:.45}50%{opacity:1}}
 
-/* Liggend scherm: grafiek krijgt voorrang, waardenlijst wordt smaller */
-@media (orientation:landscape) and (max-height:520px){
-  #rgBasis{padding:6px 12px}
-  .rgB b{font-size:15px}
-  #rgWaarden{max-height:26vh;padding:7px 12px}
-  .rgW{padding:3px 7px}
-  .rgW b{font-size:13px}
+#wkRegel{margin-top:9px;font-size:11.5px;color:#5f7196;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#wkRegel.wkLet{color:#e0972f}
+
+#wkLijst{margin-top:9px;border-top:1px solid #1b2942;padding-top:8px}
+.wkRij{display:flex;align-items:baseline;gap:7px;padding:4px 0}
+.wkRij span{flex:1 1 auto;min-width:0;font-size:12px;color:#bcd0f5;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wkRij b{flex:none;font-size:13.5px;font-weight:800;color:#e0972f;font-variant-numeric:tabular-nums}
+.wkRij u{flex:none;font-size:10px;text-decoration:none;color:#7f93b8}
+.wkRij em{flex:none;font-style:normal;font-size:10px;color:#5f7196}
+.wkGeen{font-size:11.5px;color:#5f7196;padding:3px 0}
+
+@media (prefers-reduced-motion: reduce){
+  #wkPols,.wkS.wkNu{animation:none !important}
 }
