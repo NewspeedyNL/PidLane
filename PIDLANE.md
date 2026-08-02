@@ -1003,3 +1003,154 @@ tussen `const MEET_EIS = {` en `/* Toont het meetscherm`. `test-ritpauze.js` en
 een classic script géén eigenschap van het globale object wordt, plakt
 `test-ritpauze.js` een accessor-blok achter de bron om bij de echte variabelen
 te kunnen. Verplaats je die ankers, verplaats dan ook de test.
+
+
+---
+
+## 17. Twee losse fixes uit de log van 02-08-2026
+
+Kleine ronde, twee onafhankelijke ingrepen. De sessie zelf was schoon: foutPct
+0, geen UITVAL, geen seriële fouten. Wat er wél in stond:
+
+**Fix 4 uit §16 is bevestigd op echte data.** Om 08:37:17 staat de nieuwe
+logregel `Pollbudget stapsgewijs verhoogd naar 18% (bezet 65%, fout 0%, 98ms)`
+en de bundel van 08:38:13 geeft mult 4,74 bij bezetting 76%. Dat is 0,82 in
+56 s = 28 ticks x 0,03, precies de ontworpen stap. Het plantmodel uit
+`test-plload.js` klopt ook: 65 x 5,56 = 361 en 76 x 4,74 = 360, dus bezetting
+is inderdaad omgekeerd evenredig met mult. Verwacht eindpunt op deze auto:
+mult ~4,2 bij `bezetOp`, tempo ~24%.
+
+### De ruw-stationair-test had geen gasklep-poort
+
+`fase='stationair'` wordt in `pidlane-monitor.js` gezet zodra `spd<3 &&
+rpm>300`. Geen gasklepcontrole, dus stilstaan en gas geven telt als stationair.
+Op 02-08 om 08:29:05 gaf dat `toerental schommelt 547 rpm (50%
+richtingswisselingen)` terwijl er simpelweg getoerd werd; een echt ruw
+stationair zit eerder op 60-150 rpm.
+
+Buurman `STAT_MAP` had de poort al (`if(c.val('0111')>10) return null`). Hij
+stond alleen niet op deze deur — hetzelfde patroon als §15 en §16.
+
+STAT_RPM kijkt nu over het héle venster van 5 s naar 0111, niet naar één
+monster: na een gasstoot is de klep alweer dicht terwijl de naschommeling nog
+in het venster zit. `0111` staat in `pids`, dus de data-poort van de runner
+slaat de test over op een voertuig zonder gaskleppositie. Geen bewijs, geen
+oordeel.
+
+### PID_LET_OP — opvallend is niet hetzelfde als onmogelijk
+
+`PID_HARD_LIMITS` is een WEGGOOI-filter: buiten bereik betekent dat
+`validateAndSmooth()` null teruggeeft en het monster verdwijnt. Voor
+ontstekingstiming stond daar een aanname in plaats van natuurkunde: ondergrens
+-15 graden, terwijl SAE J1979 voor PID 0E -64..+63,5 definieert (A/2 - 64). Op
+een SkyActiv-G met 13:1 compressie is fors terugregelen normaal, dus -17,5 en
+-19 werden weggegooid.
+
+Het gevaar zat in de eenzijdigheid: alleen de terugregelkant verdween, dus een
+gemiddelde zag er beter uit dan de motor draaide, en juist een klopprobleem
+werd onzichtbaar gemaakt door het filter dat de datakwaliteit moest bewaken.
+
+**Nu:** `010E` staat op het SAE-bereik. De oude grenzen zijn verhuisd naar
+`window.PID_LET_OP` in `pidlane-data.js`, een SIGNAAL-tabel in plaats van een
+filter. Laag 1b in `validateAndSmooth()` logt zulke waarden hooguit eens per
+30 s, telt ze in `window._pidLetOp` (aantal + uiterste), en laat de meting
+gewoon door. Geen `markOutlier`, geen `return null`.
+
+**Kandidaat voor een volgende ronde, bewust niet meegenomen:** `0106`/`0107`
+staan op +/-30% terwijl SAE -100..+99,2% toestaat. Zelfde patroon, maar er is
+geen bewijs uit de logs. Eerst meten, dan verbouwen.
+
+### Tests
+
+`test-statrpm-letop.js` (24 toetsen) dekt beide. Knippaden: de STAT_RPM-helft
+laadt `pidlane-watchers.js` in een `vm` en pakt
+`PLWatch.tests.find(t => t.id === 'STAT_RPM')`. De let-op-helft knipt uit
+`pidlane-datalog.js` vanaf `const FILTERED_PIDS=new Set([` tot de functie ná
+`validateAndSmooth`, en haalt de grenzen uit `pidlane-data.js` tussen
+`window.PID_HARD_LIMITS` en `// -- MODELS`. Verplaats je die ankers, verplaats
+dan ook de test.
+
+Alle zeven tests groen: pidgate, herijking, meetpoort, ritpauze, busgate,
+plload, statrpm-letop.
+
+
+---
+
+## 18. Kern-dekking in het rapport (02-08-2026) — en wat bewust NIET gedaan is
+
+### Het echte probleem is groter dan deze fix
+
+De meetfase-poort uit §16 vraagt om genoeg data, niet om de JUISTE data. Twee
+gaten, allebei bevestigd in de log van 02-08:
+
+1. **Geen registratiefase.** `ensurePIDListActive()` wacht maximaal 5 s en dan
+   alleen op PIDs met `pidPollInterval <= 1000`, met in het commentaar dat trage
+   sensoren "vanzelf binnendruppelen tijdens de analyse". Om 08:31:16 werden 12
+   sensoren aangezet, om 08:31:20 ging het AI-verzoek de deur uit. Vier
+   seconden. Van de 30 PIDs vielen er 8 binnen de wachtgrens; de 13 op 3318 ms
+   kregen hooguit 1 monster, de 9 op 33-199 s kregen er nul.
+
+2. **`plMeetStatus()` meet de verkeerde grootheid.** `maxN` is het MAXIMUM
+   aantal monsters over alle sensoren, dus één PID die al tien minuten meeloopt
+   haalt de eis in zijn eentje. En `dekking` telt over `activePIDs`, niet over
+   wat de analyse nodig heeft.
+
+**De volledige oplossing is een drie-fasenpoort** (aanzetten -> testen ->
+registreren -> pas dan analyse), met de eis per kern-PID in plaats van via
+`maxN`. Dat raakt `ensurePIDListActive()`, en daar komen caravan, grafiek,
+koopcheck, rit, totaalcheck, remote en datalog alle zeven binnen. Bewust
+uitgesteld: te groot om vlak voor 3000 km vakantie in te bouwen zonder
+onderweg te kunnen testen.
+
+Uitgerekend voor als die ronde komt, met de echte intervallen van 02-08
+(mult 4,74). Eis "3 monsters van elke kern-PID": basis/totaal/rit/emissie/accu
+~300 s, brandstof ~600 s. Onwerkbaar. Eis gesplitst naar de AARD van de sensor
+(dynamisch = reeks, traag = één waarde) maakt de traagste dynamische kern-PID
+maatgevend: 10 x 3318 ms = ~33 s. Dat is de route.
+
+De traag-lijst hoeft niet nieuw: `FILTERED_PIDS` in `pidlane-datalog.js` is
+precies die set. En de kern/aanvullend-splitsing bestaat ook al —
+`BASIS_PIDS + ANALYSE_PIDS[profiel]` is de kern, de categorie-extra's uit
+`relevantSupportedPIDs()` zijn aanvulling.
+
+Open besluiten voor die ronde: maximale wachttijd (voorstel 45 s met verleng-
+knop), blokkeren onder 60% kern of alleen melden, en of bestaande historie de
+registratiefase mag overslaan.
+
+### Wat nu wél gebeurd is: melden zonder te blokkeren
+
+`analysisPidData()` filtert kern-sensoren die niets leveren stilzwijgend weg,
+waarna het rapport leest als compleet. Op de CX-5 miste profiel `brandstof`
+vier kern-PIDs (0110, 0124, 0144, 015E) en had `accu` er één dood (0146) en
+één afwezig (015B) — nergens zichtbaar.
+
+`plKernDekking(profiel)` in `pidlane-fuel.js` telt nu per kern-PID hoeveel
+monsters er zijn, met de eis afhankelijk van de aard: `FILTERED_PIDS` -> 1
+geldige waarde, de rest -> `KERN_REEKS_MIN` (10). Uitkomst gaat in
+`plMeetPromptBlok()`:
+
+- hoeveel kernsensoren voldoende gemeten zijn;
+- welke te weinig monsters hebben, met aantal, plus de instructie ze hooguit
+  als momentopname te gebruiken;
+- welke GEVRAAGD MAAR NIETS GELEVERD hebben, met de instructie daar geen
+  uitspraken over te doen, ook niet impliciet;
+- onder 60% bruikbare kern: "indicatie, geen diagnose".
+
+Dit blokkeert niets, zet niets aan en verandert geen enkele poort. Het profiel
+komt uit `window._laatstProfiel`, gezet in `relevantSupportedPIDs()` —
+één regel, puur een notitie.
+
+Let op de robuustheid: de kernlijst leest `BASIS_PIDS` en `ANALYSE_PIDS`
+zowel kaal als via `window`. De eerste versie las alleen `window.BASIS_PIDS`,
+en toen de test dat niet zette meldde het blok doodleuk "alles voldoende
+gemeten" terwijl de hele basisset ontbrak. Precies het soort stille
+half-antwoord dat dit blok moet uitbannen; vandaar beide.
+
+Onbekend of ontbrekend profiel -> `null` -> geen kern-blok, de rest van
+`plMeetPromptBlok()` blijft gewoon staan.
+
+### Tests
+
+`test-kerndekking.js` (20 toetsen), knippad `const KERN_REEKS_MIN` tot
+`async function runQuickAI`. Alle acht tests groen: pidgate, herijking,
+meetpoort, ritpauze, busgate, plload, statrpm-letop, kerndekking.
