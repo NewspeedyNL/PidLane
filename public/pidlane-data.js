@@ -49,14 +49,69 @@ window.PIDS = [
 window._B1B2_PAIR ={'013D':'013C','013F':'013E'};
 
 // ── PID_HARD_LIMITS (was index.html regel 2888) ──
+//
+// WAT HIER HOORT, EN WAT NIET
+//
+// Laag 1 in validateAndSmooth() GOOIT WEG wat hier buiten valt: de waarde
+// wordt null, verdwijnt uit de meter, uit de historie en uit de AI-analyse.
+// Dat is een zwaar middel en het hoort dus maar één ding te betekenen: dit
+// getal kan de motor niet geproduceerd hebben, dus is er iets misgegaan bij
+// het lezen of parsen.
+//
+// Wat het NIET mag betekenen is "dit is ongebruikelijk". Een koelwater van
+// 135 °C is niet onmogelijk, het is een kokende motor — precies de meting
+// waarvoor je het apparaat aansluit. Die weggooien maakt het scherm leeg op
+// het moment dat het iets moet laten zien. Ongebruikelijk-maar-echt gaat naar
+// PID_LET_OP hieronder: gemeld, onthouden, doorgelaten.
+//
+// Aanleiding voor de herziening (rit 4-8, Mazda CX-5): "Ontstekingstiming
+// -17.5° buiten fysiek bereik (-15–60)". De definitie van 010E zegt -64…64
+// (J1979: A/2-64), de harde limiet zei -15. Sterke terugregeling bij
+// katalysator-opwarming is normaal gedrag en werd als storing gemeld. De
+// grenzen hieronder volgen nu de standaard, niet het gebruikelijke gedrag.
 window.PID_HARD_LIMITS = {
-  '010C':{min:0,max:8000},'010D':{min:0,max:280},'0105':{min:-20,max:130},
-  '015C':{min:-20,max:160},'0104':{min:0,max:100},'0111':{min:0,max:100},
-  '010B':{min:10,max:255},'010F':{min:-40,max:80},'012F':{min:0,max:100},
-  '0110':{min:0,max:500},'0142':{min:8,max:16},'0106':{min:-30,max:30},
-  '0107':{min:-30,max:30},'015E':{min:0,max:40},'010E':{min:-15,max:60},
+  '010C':{min:0,max:10000},  // toerental — spec tot 16383,75; ruimte voor hoogtoerige motoren
+  '010D':{min:0,max:255},    // snelheid — één byte, 255 km/h ÍS het maximum
+  '0105':{min:-40,max:215},  // koelwater — spec; een oververhitte motor moet leesbaar blijven
+  '015C':{min:-40,max:215},  // olietemperatuur — idem
+  '0104':{min:0,max:100},'0111':{min:0,max:100},
+  '010B':{min:2,max:255},    // MAP — diep vacuüm bij gas loslaten komt onder de 10 kPa
+  '010F':{min:-40,max:215},  // inlaatlucht — heat-soak onder de kap gaat ruim over 80 °C
+  '012F':{min:0,max:100},
+  '0110':{min:0,max:655},    // MAF — spec 655,35 g/s
+  '0142':{min:4,max:32},     // boordspanning — startmotordip omlaag, 24V-systemen omhoog
+  '0106':{min:-100,max:100}, // korte-termijn trim — spec -100…99,2; de diagnose doet PLWatch
+  '0107':{min:-100,max:100}, // lange-termijn trim — idem
+  '015E':{min:0,max:200},    // brandstofdebiet — grote motor bij vollast haalt de 40 L/h ruim
+  '010E':{min:-40,max:60},   // ontstekingstiming — was -15; koude-startretard valt daaronder
   '0114':{min:0,max:1.3},'0115':{min:0,max:1.3},'012C':{min:0,max:100},
-  '0149':{min:0,max:100},'010A':{min:0,max:700},'0146':{min:-40,max:60},
+  '0149':{min:0,max:100},'010A':{min:0,max:765},  // brandstofdruk — spec 765 kPa
+  '0146':{min:-40,max:80},   // omgevingstemperatuur — sensor in de volle zon
+};
+
+// ── PID_LET_OP — laag 1b: opvallend maar echt ──
+//
+// Deze tabel werd in pidlane-datalog.js regel 47 al uitgelezen maar bestond
+// nergens. `typeof PID_LET_OP !== 'undefined'` was dus altijd onwaar en de
+// hele laag stond uit — inclusief het voorbeeld dat er in het commentaar bij
+// staat ("sterke terugregeling van de ontsteking"). Nu wél gevuld.
+//
+// min/max beschrijven hier het GEBRUIKELIJKE bereik. Valt een meting daar
+// buiten, dan wordt hij gemeld (hooguit één regel per PID per 30 s) en gaat
+// hij gewoon door naar de meter en de historie. Geen markOutlier, geen null.
+// Zo blijft het onderscheid intact: laag 1 = meetfout, laag 1b = bijzonderheid.
+window.PID_LET_OP = {
+  '010E':{min:-10, max:55,  waarom:'sterke terugregeling van de ontsteking — katalysator-opwarming of klopregeling'},
+  '0105':{min:-15, max:110, waarom:'koelwater boven bedrijfstemperatuur'},
+  '015C':{min:-15, max:140, waarom:'olietemperatuur boven normaal'},
+  '010F':{min:-25, max:70,  waarom:'inlaatlucht warm — heat-soak of hoge buitentemperatuur'},
+  '0142':{min:11.5,max:15.2,waarom:'boordspanning buiten het normale laadbereik'},
+  '0106':{min:-25, max:25,  waarom:'korte-termijn brandstoftrim ver buiten neutraal'},
+  '0107':{min:-25, max:25,  waarom:'lange-termijn brandstoftrim ver buiten neutraal'},
+  '010B':{min:15,  max:110, waarom:'inlaatspruitstukdruk buiten het gebruikelijke bereik'},
+  '010C':{min:0,   max:7000,waarom:'toerental boven het gebruikelijke maximum'},
+  '015E':{min:0,   max:60,  waarom:'hoog brandstofdebiet'},
+  '0146':{min:-25, max:45,  waarom:'omgevingstemperatuur buiten het gebruikelijke bereik'},
 };
 
 // ── MODELS (was index.html regel 3029) ──
