@@ -90,6 +90,13 @@
   let _pin = null;            // aangetikte stip
   let _rust = '';             // waarom er nu niet gemeten wordt
   let _pinTot = 0;
+  // Welke bevindingen (pid) zijn al weggetikt door de gebruiker? Zo'n
+  // bevinding blijft anders elke seconde herschrijven — met de volgende
+  // regel tekst uit teken() (nieuwe stip, "meet X…") verdween hij binnen
+  // een paar tellen weer uit #wkRegel, precies het probleem dat dit oplost.
+  // Ze staan nu in hun eigen blok (#wkVind) dat NIET automatisch verandert;
+  // alleen wegtikken via gezien() haalt ze eruit. Reset bij elke nieuwe ronde.
+  let _afgehandeld = {};
 
   /* ═══════════════════ HULP ═══════════════════ */
 
@@ -176,8 +183,13 @@
     _lijst = k.map(pid => ({ pid, staat: 'leeg', waarde: undefined, reden: '', tijd: 0 }));
     _cursor = 0;
     _ronde++;
+    _afgehandeld = {};        // nieuwe ronde = nieuwe kans om iets te melden
     return _lijst.length;
   }
+
+  // Gebruiker tikt ✓ op een bevindingskaartje: verdwijnt uit #wkVind, blijft
+  // gewoon staan in de uitklapbare lijst (#wkLijst) als je die later opent.
+  function gezien(pid) { _afgehandeld[pid] = true; teken(); }
 
   function busDrukt() {
     try {
@@ -255,6 +267,7 @@
         '<span id="wkTel"></span>' +
         '<span id="wkChev">\u203A</span>' +
       '</div>' +
+      '<div id="wkVind"></div>' +
       '<div id="wkStippen"></div>' +
       '<div id="wkRegel"></div>' +
       '<div id="wkLijst"></div>';
@@ -271,6 +284,23 @@
     const s = strook();
     const gelezen = _lijst.filter(r => r.staat !== 'leeg').length;
     const bev = _lijst.filter(r => r.staat === 'let');
+    const open = bev.filter(r => !_afgehandeld[r.pid]);
+
+    // Openstaande bevindingen: eigen kaartje per stuk, blijft staan tot ✓.
+    const vind = s.querySelector('#wkVind');
+    if (vind) {
+      if (!open.length) { vind.innerHTML = ''; vind.style.display = 'none'; }
+      else {
+        vind.style.display = '';
+        vind.innerHTML = open.map(function (r) {
+          return '<div class="wkVindRij"><span class="wkVindTxt"><b>' + esc(naam(r.pid)) + '</b> · ' +
+                 esc(toonWaarde(r.waarde, r.pid)) + ' ' + esc(eenheid(r.pid)) + ' — ' +
+                 esc(r.reden || 'buiten bereik') + '</span>' +
+                 '<button class="wkVindOk" title="Gezien — verbergen" ' +
+                 'onclick="event.stopPropagation();PLWaak.gezien(\'' + r.pid + '\')">\u2713</button></div>';
+        }).join('');
+      }
+    }
 
     const tel = s.querySelector('#wkTel');
     if (tel) {
@@ -408,7 +438,7 @@
   } catch (e) {}
 
   window.PLWaak = {
-    start: start, stop: stop, schakel: schakel,
+    start: start, stop: stop, schakel: schakel, gezien: gezien,
     actief: function () { return _aan; },
     lijst: function () { return _lijst.map(function (r) { return { pid: r.pid, staat: r.staat, waarde: r.waarde }; }); },
     bevindingen: function () { return _lijst.filter(function (r) { return r.staat === 'let'; }).map(function (r) { return r.pid; }); },
