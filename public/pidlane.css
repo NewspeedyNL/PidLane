@@ -150,6 +150,48 @@ html, body { overflow-x:clip; }
 /* ══ WELCOME SCREEN ══ */
 #welcomeScreen { position:fixed; top:46px; left:0; right:0; bottom:0; background:#0a0e17; z-index:9500; display:flex; flex-direction:column; }
 #welcomeScreen.hidden { display:none; }
+
+/* ══ LIVE VIEW SCHEMERT DOOR HET KEUZESCHERM (2026-08-04) ══
+   Symptoom: terug via 🏠 naar het keuzescherm en onderin zie je de
+   live-tegels (snelheid, koelwater + sparklines) door de overlay heen.
+   Niet in de opname maar op het toestel zelf.
+
+   Het is GEEN stapelfout: #welcomeScreen staat op 9500 met een dekkende
+   achtergrond en binnen #appScale komt niets boven z-index 5. De oorzaak
+   zit een laag dieper, en bestaat uit twee dingen die elkaar versterken.
+
+   1) goHome() legt het keuzescherm bewust als overlay bovenop en stopt
+      niets — "lopende analyses blijven draaien". Terecht, maar het
+      betekent dat de tegels eronder blijven hertekenen. Er is dus altijd
+      iets te zien zodra de dekking ook maar één strook mist.
+   2) bottom:0 op een position:fixed element meet tegen de LAYOUT-viewport.
+      Op Android valt die niet samen met wat je ziet: safe-area onderin en
+      een intrekkende systeem-/URL-balk maken de zichtbare viewport hoger.
+      De overlay eindigt dan net boven de echte onderrand — en precies in
+      die strook staan de tegels.
+
+   Vandaar twee lagen, want één is hier niet genoeg:
+
+   A. GEOMETRIE — de overlay loopt door tot voorbij de safe-area en groeit
+      mee met de dynamische viewport (100dvh volgt de systeembalk, 100vh
+      niet). De padding compenseert wat we onderlangs uitsteken, zodat de
+      scroll-inhoud niet achter de safe-area verdwijnt.
+   B. BRONAANPAK — is er niets te zien, dan kan er ook niets doorschemeren.
+      .cc (tabs + alle panes) gaat op visibility:hidden zolang het
+      keuzescherm openstaat. Bewust visibility en niet display: de layout
+      blijft staan, dus canvas-afmetingen van de sparklines overleven het
+      en er is geen sprong bij terugkeer. De browser slaat het schilderen
+      wél over, wat meteen wat rendertijd scheelt tijdens een rit.
+      NB: .topbar is het eerste kind van #appScale en moet zichtbaar
+      blijven (het keuzescherm begint op top:46px, eronder). Daarom .cc
+      als doel en niet #appScale zelf. Zelfde :has()-patroon als de
+      bestaande .lade-handles-regel verderop. */
+#welcomeScreen {
+  min-height: calc(100dvh - 46px);
+  bottom: calc(0px - env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .welcome-header { padding:12px 16px 10px; border-bottom:1px solid var(--bd); background:var(--sur); flex-shrink:0; }
 .welcome-header-row { display:flex; align-items:center; justify-content:space-between; }
 .welcome-title { font-size:14px; font-weight:700; }

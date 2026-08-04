@@ -188,8 +188,8 @@
 
   async function tik() {
     if (!_aan) return;
-    if (window.demoMode)      { _rust = 'demo';    plan(RONDE_MS); teken(); return; }
-    if (!window.connected)    { _rust = 'losgekoppeld'; plan(RONDE_MS); teken(); return; }
+    if (demoMode)      { _rust = 'demo';    plan(RONDE_MS); teken(); return; }
+    if (!connected)    { _rust = 'losgekoppeld'; plan(RONDE_MS); teken(); return; }
 
     // Ronde af? Even rust, dan opnieuw. Zo blijft het een RONDE en geen
     // permanent geroffel op de bus.
@@ -211,7 +211,7 @@
     try {
       const groep = _lijst.slice(_cursor, _cursor + BATCH);
       for (const rij of groep) {
-        if (!_aan || !window.connected) break;
+        if (!_aan || !connected) break;
         _bezig = rij.pid; teken();
         let raw = '';
         try {

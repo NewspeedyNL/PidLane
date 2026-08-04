@@ -189,7 +189,7 @@
     if (_isKlant()) return false;                    // klant betaalt met tokens
     // Elk ander ingelogd account komt uit de tabel Users → abonnement, vrij.
     try { if (window.currentUser) return true; } catch (e) {}
-    try { if (window.demoMode === true) return true; } catch (e) {}
+    try { if (demoMode === true) return true; } catch (e) {}
     return false;
   }
 

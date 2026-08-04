@@ -158,7 +158,7 @@
 
   async function probeUitgebreid(force) {
     if (_gedraaid && !force) return { nieuw: 0, overgeslagen: true };
-    if (!window.connected || window.demoMode) return { nieuw: 0, overgeslagen: true };
+    if (!connected || demoMode) return { nieuw: 0, overgeslagen: true };
 
     const lijst = kandidaten();
     if (!lijst.length) return { nieuw: 0, overgeslagen: true };
@@ -170,7 +170,7 @@
     let nieuw = 0;
     try {
       for (const pid of lijst) {
-        if (!window.connected) break;
+        if (!connected) break;
         let raw = '';
         try { raw = await sendCmd(pidCmd(pid, true), 2000); } catch (e) { continue; }
 
