@@ -90,7 +90,7 @@ function openDemoCarChooser(){
       <button onclick="document.getElementById('demoCarModal').style.display='none'" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>
     </div>
     <div style="overflow-y:auto;padding:14px 16px">
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:10px">Alle demo-auto's zijn gezond en in orde. RDW-opzoeking en PID-selectie werken gewoon.</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Alle demo-auto's zijn gezond en in orde. RDW-opzoeking en PID-selectie werken gewoon.</div>
       ${cards}
       <div style="border-top:1px solid var(--bd);margin:12px 0 10px"></div>
       <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px">Of gebruik een echt kenteken als demo-auto (RDW)</div>

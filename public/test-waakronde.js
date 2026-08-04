@@ -127,5 +127,48 @@ const strak=[90.0,90.1,89.9,90.0,90.05];
 t('sigma-bodem dempt strakke historie', waarschuw(strak,90.6,200), '');
 t('maar echte afwijking komt door', waarschuw(strak,104,200)!=='', true);
 
+/* ── gezien vs. negeer: wat blijft er open? ──
+   Spiegelt de filterlogica uit teken(): `open` = bevindingen minus weggetikt
+   minus genegeerd. Het verschil zit in nieuweRonde(): die wist _afgehandeld
+   wel en _genegeerd niet. */
+function maakWaak(){
+  let afgehandeld={}, genegeerd={};
+  return {
+    gezien: p => { afgehandeld[p]=true; },
+    negeer: p => { genegeerd[p]=true; },
+    herstel: p => { delete afgehandeld[p]; delete genegeerd[p]; },
+    ronde: () => { afgehandeld={}; },                 // nieuweRonde()
+    open: bev => bev.filter(p => !afgehandeld[p] && !genegeerd[p])
+  };
+}
+console.log('\n— gezien vs. negeer —');
+const bev=['0105','0142','010B'];
+
+let w=maakWaak();
+t('niets weggetikt: alles open', w.open(bev).length, 3);
+w.gezien('0142');
+t('gezien haalt hem uit beeld', w.open(bev).join(','), '0105,010B');
+w.ronde();
+t('volgende ronde: gezien vervalt', w.open(bev).length, 3);
+
+w=maakWaak();
+w.negeer('0142');
+t('negeer haalt hem uit beeld', w.open(bev).join(','), '0105,010B');
+w.ronde();
+t('volgende ronde: negeer blijft', w.open(bev).join(','), '0105,010B');
+w.ronde(); w.ronde();
+t('en blijft ook na drie rondes', w.open(bev).join(','), '0105,010B');
+w.herstel('0142');
+t('herstel zet hem terug', w.open(bev).length, 3);
+
+// De statusregel gebruikt dezelfde `open`-lijst als de kaartjes. Stond daar
+// `bev`, dan kwam een weggetikte bevinding een regel lager weer terug.
+w=maakWaak();
+w.gezien('010B');
+const o=w.open(bev);
+t('statusregel pakt laatste OPEN bevinding', o[o.length-1], '0142');
+w.gezien('0105'); w.gezien('0142');
+t('alles weggetikt: geen statusregel', w.open(bev).length, 0);
+
 console.log(`\n${ok} toetsen, ${fout} fout`);
 process.exit(fout?1:0);

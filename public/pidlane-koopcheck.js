@@ -839,8 +839,8 @@ function buildPidRecList(){
     var ck=_recSel.has(pid)?'checked':'';
     html+='<label class="pidrec-row" data-name="'+name.toLowerCase()+'" style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid var(--bd);cursor:pointer;font-size:12px">'+
       '<input type="checkbox" data-pid="'+pid+'" '+ck+' onchange="pidRecToggle(\''+pid+'\',this.checked)" style="width:16px;height:16px">'+
-      '<span style="color:var(--tx)">'+name+'</span><span style="color:var(--tx3);font-size:10px">'+unit+'</span>'+
-      '<span style="margin-left:auto;color:var(--tx3);font-family:var(--m);font-size:10px">'+pid+'</span>'+
+      '<span style="color:var(--tx)">'+name+'</span><span style="color:var(--tx3);font-size:11px">'+unit+'</span>'+
+      '<span style="margin-left:auto;color:var(--tx3);font-family:var(--m);font-size:11px">'+pid+'</span>'+
     '</label>';
   });
   list.innerHTML=html||'<div style="padding:10px;color:var(--tx3);font-size:11px">Geen sensoren beschikbaar — verbind eerst of zet demo aan.</div>';
@@ -1359,7 +1359,7 @@ function langeRitChecklistHTML(){
   <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:6px 14px 12px;margin-bottom:8px">
     <div style="font-size:12px;font-weight:700;color:#38bdf8;padding:10px 0 4px">📋 Altijd meenemen</div>
     ${altijd.map(row).join('')}
-    ${extra.length?`<div style="font-size:12px;font-weight:700;color:#fbbf24;padding:12px 0 4px">🌍 Verplicht/aangeraden in dit land</div>${extra.map(row).join('')}<div style="font-size:11px;color:#64748b;padding-top:8px;line-height:1.4">Regels wijzigen; check vóór vertrek de actuele ANWB Reiswijzer voor je bestemming.</div>`:''}
+    ${extra.length?`<div style="font-size:12px;font-weight:700;color:#fbbf24;padding:12px 0 4px">🌍 Verplicht/aangeraden in dit land</div>${extra.map(row).join('')}<div style="font-size:11px;color:#96a2bb;padding-top:8px;line-height:1.4">Regels wijzigen; check vóór vertrek de actuele ANWB Reiswijzer voor je bestemming.</div>`:''}
   </div>`;
 }
 
@@ -1395,7 +1395,7 @@ function CLIMATE_THERMO_SVG(accent){
 
     <defs><linearGradient id="thg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#94a3b8"/></linearGradient></defs>
   </svg>
-  <div style="font-size:12px;color:#64748b;text-align:center;margin-top:6px;font-style:italic">Ja, die thermometer. Hij is nu een diagnose-instrument. \u{1F605}</div>`;
+  <div style="font-size:12px;color:#96a2bb;text-align:center;margin-top:6px;font-style:italic">Ja, die thermometer. Hij is nu een diagnose-instrument. \u{1F605}</div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1467,7 +1467,7 @@ function climateIntroHTML(mode){
       <div style="font-size:12px;color:#cbd5e1;line-height:1.5">De meting gebruikt vooral de <b style="color:${accent}">auto-sensoren</b>. Een thermometer kun je optioneel toevoegen voor een extra controle \u2014 dat resultaat is minder betrouwbaar.</div>
     </div>
     <button onclick="climateStart()" style="width:100%;padding:14px;border-radius:11px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">\u25b6 Start ${titel}</button>
-    <div style="text-align:center;font-size:12px;color:#64748b;margin-top:10px">${(typeof connected!=='undefined'&&connected)||(typeof demoMode!=='undefined'&&demoMode)?'\u2705 Adapter verbonden':'\u26a0\ufe0f Geen adapter \u2014 verbind eerst de OBD2 adapter'}</div>
+    <div style="text-align:center;font-size:12px;color:#96a2bb;margin-top:10px">${(typeof connected!=='undefined'&&connected)||(typeof demoMode!=='undefined'&&demoMode)?'\u2705 Adapter verbonden':'\u26a0\ufe0f Geen adapter \u2014 verbind eerst de OBD2 adapter'}</div>
   </div>`;
 }
 
@@ -1521,7 +1521,7 @@ function climateRenderLive(){
   const rpmDip = (b.rpm!=null && s.rpm!=null) ? (s.rpm-b.rpm) : null;
   const loadDelta = (b.load!=null && s.load!=null) ? (s.load-b.load) : null;
   const f=(v,d=0)=> v==null?'\u2014':v.toFixed(d);
-  const row=(lbl,val,unit,hint)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><div style="font-size:13px;color:#e2e8f0;font-weight:600">${lbl}</div>${hint?`<div style="font-size:12px;color:#64748b">${hint}</div>`:''}</div><div style="font-size:16px;font-weight:800;color:${accent};font-variant-numeric:tabular-nums">${val}<span style="font-size:12px;color:#64748b;font-weight:400;margin-left:2px">${unit}</span></div></div>`;
+  const row=(lbl,val,unit,hint)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div><div style="font-size:13px;color:#e2e8f0;font-weight:600">${lbl}</div>${hint?`<div style="font-size:12px;color:#96a2bb">${hint}</div>`:''}</div><div style="font-size:16px;font-weight:800;color:${accent};font-variant-numeric:tabular-nums">${val}<span style="font-size:12px;color:#96a2bb;font-weight:400;margin-left:2px">${unit}</span></div></div>`;
   ov.innerHTML=`
   <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1529,7 +1529,7 @@ function climateRenderLive(){
       <button onclick="climateFinish()" style="padding:6px 12px;border-radius:8px;border:1px solid ${accent}55;background:${accent}18;color:${accent};font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">Nu stoppen</button>
     </div>
     <div style="height:6px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:${pct}%;background:${accent};transition:width .4s"></div></div>
-    <div style="font-size:12px;color:#64748b;text-align:right;margin-bottom:14px">${elapsed}s / ${duur}s</div>
+    <div style="font-size:12px;color:#96a2bb;text-align:right;margin-bottom:14px">${elapsed}s / ${duur}s</div>
     <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:4px 14px;margin-bottom:14px">
       ${airco?`
         ${row('Compressor RPM-dip', rpmDip==null?'\u2014':(rpmDip>0?'+':'')+f(rpmDip), 'RPM', rpmDip!=null&&rpmDip<-30?'compressor belast de motor \u2014 goed teken':'wachten op inschakeling')}
@@ -1543,7 +1543,7 @@ function climateRenderLive(){
         ${row('Toerental', f(s.rpm), 'RPM', 'koude stationairtoeren liggen hoger')}
       `}
     </div>
-    <div style="font-size:12px;color:#64748b;text-align:center">De meting stopt ${airco?'na 60 seconden':'zodra ~90\u00b0C is bereikt'} automatisch.</div>
+    <div style="font-size:12px;color:#96a2bb;text-align:center">De meting stopt ${airco?'na 60 seconden':'zodra ~90\u00b0C is bereikt'} automatisch.</div>
   </div>`;
 }
 

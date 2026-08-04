@@ -482,7 +482,7 @@
           '<span style="flex:none;font-size:14px">' + b.icoon + '</span>' +
           '<div style="flex:1;min-width:0">' +
             '<div style="font-size:12px;color:var(--tx,#e2e8f0);font-weight:600">' + _esc(b.naam) + '</div>' +
-            '<div style="font-size:10px;color:var(--tx3,#94a3b8)">' + _nl(b.tokens) + ' tokens \u00b7 ' + Math.round(b.pct) + '%' +
+            '<div style="font-size:11px;color:var(--tx3,#94a3b8)">' + _nl(b.tokens) + ' tokens \u00b7 ' + Math.round(b.pct) + '%' +
               (b.vast ? ' \u00b7 vast' : '') + '</div>' +
           '</div>' +
         '</div>').join('');

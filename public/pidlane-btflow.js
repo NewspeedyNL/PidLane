@@ -302,7 +302,7 @@ function openBtLogModal(){
           <strong style="font-size:14px">📡 Bluetooth log</strong>
           <div style="display:flex;gap:6px">
             <button onclick="optimizeConnectionAI(this)" style="padding:5px 10px;border-radius:6px;border:1px solid #7c3aed;background:linear-gradient(135deg,#1a0a3a,#0d0d1a);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer">🤖 Optimaliseer</button>
-            <button onclick="optimizeConnection(false)" title="Meet snelheid + kies poll-strategie" style="padding:5px 10px;border-radius:6px;border:1px solid #1a6fff;background:rgba(26,111,255,.1);color:#1a6fff;font-size:12px;font-weight:700;cursor:pointer">⚡ Meet snelheid</button>
+            <button onclick="optimizeConnection(false)" title="Meet snelheid + kies poll-strategie" style="padding:5px 10px;border-radius:6px;border:1px solid #1a6fff;background:rgba(26,111,255,.1);color:#4d82ff;font-size:12px;font-weight:700;cursor:pointer">⚡ Meet snelheid</button>
             <button onclick="copyBtLog(this)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer">📋 Kopieer</button>
             <button onclick="openBugReport()" style="padding:5px 10px;border-radius:6px;border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer">🐞 Meld bug</button>
             <button onclick="document.getElementById('btLogModal').style.display='none'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer">✕ Sluit</button>
@@ -483,7 +483,7 @@ function scenarioRenderBody(){
   const presetBtns=presets.map(s=>
     `<button onclick="scenarioPreset('${s.id}')" title="${String(s.desc||'').replace(/"/g,'&quot;')}"
        style="text-align:left;padding:7px 9px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:12px;font-weight:600;cursor:pointer;line-height:1.3">
-       ${s.label}${s.dtcs&&s.dtcs.length?`<span style="display:block;font-size:10px;color:var(--tx3);font-weight:500">${s.dtcs.join(', ')}</span>`:''}
+       ${s.label}${s.dtcs&&s.dtcs.length?`<span style="display:block;font-size:11px;color:var(--tx3);font-weight:500">${s.dtcs.join(', ')}</span>`:''}
      </button>`).join('');
 
   // ── PID-rijen uit de HUIDIGE scan + presets, gefilterd op brandstoftype ──
@@ -498,7 +498,7 @@ function scenarioRenderBody(){
           <div style="font-size:12px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name||pid}</div>
           <div style="font-size:11px;color:var(--tx3)">${pid} · n.v.t. bij ${ft}</div>
         </div>
-        <span style="font-size:10px;font-weight:800;background:#475569;color:#fff;padding:2px 5px;border-radius:4px">UIT</span>
+        <span style="font-size:11px;font-weight:800;background:#475569;color:#fff;padding:2px 5px;border-radius:4px">UIT</span>
       </div>`;
     }
     return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
@@ -509,7 +509,7 @@ function scenarioRenderBody(){
       <input type="number" step="any" value="${cur!==undefined?cur:''}" placeholder="auto"
         oninput="scenarioSetPid('${pid}',this.value)"
         style="width:84px;padding:6px 8px;border-radius:7px;border:1px solid ${cur!==undefined?'#7c3aed':'var(--bd)'};background:var(--sur2);color:var(--tx);font-family:var(--m);font-size:13px;text-align:right">
-      ${cur!==undefined?'<span style="font-size:10px;font-weight:800;background:#7c3aed;color:#fff;padding:2px 5px;border-radius:4px">MAN</span>':'<span style="width:30px"></span>'}
+      ${cur!==undefined?'<span style="font-size:11px;font-weight:800;background:#7c3aed;color:#fff;padding:2px 5px;border-radius:4px">MAN</span>':'<span style="width:30px"></span>'}
     </div>`;
   }).join('');
 
@@ -659,7 +659,7 @@ function btDiagDevice(name, address, rssi){
   const dev=document.createElement('div');
   dev.setAttribute('data-key',key);
   dev.style.cssText=`display:flex;align-items:center;gap:6px;padding:3px 7px;background:var(--bg);border:1px solid ${isOBD?'var(--gn)':'var(--bd)'};border-radius:5px;font-size:12px;`;
-  dev.innerHTML=`<div style="width:7px;height:7px;border-radius:50%;background:${isOBD?'var(--gn)':'var(--tx3)'}"></div><span style="flex:1;font-weight:${isOBD?700:400};color:${isOBD?'var(--gn)':'var(--tx2)'}">${name||'Onbekend'}</span><span style="color:var(--tx3);font-size:11px">${address||''}</span>${rssi?`<span style="color:var(--tx3);font-size:11px">${rssi}dBm</span>`:''} ${isOBD?'<span style="font-size:10px;font-weight:700;background:var(--gns);color:var(--gn);padding:1px 5px;border-radius:3px">OBD2 ✓</span>':''}`;
+  dev.innerHTML=`<div style="width:7px;height:7px;border-radius:50%;background:${isOBD?'var(--gn)':'var(--tx3)'}"></div><span style="flex:1;font-weight:${isOBD?700:400};color:${isOBD?'var(--gn)':'var(--tx2)'}">${name||'Onbekend'}</span><span style="color:var(--tx3);font-size:11px">${address||''}</span>${rssi?`<span style="color:var(--tx3);font-size:11px">${rssi}dBm</span>`:''} ${isOBD?'<span style="font-size:11px;font-weight:700;background:var(--gns);color:var(--gn);padding:1px 5px;border-radius:3px">OBD2 ✓</span>':''}`;
   devEl.appendChild(dev);
   btDiag(`${isOBD?'OBD2 adapter':'Apparaat'}: ${name||address}${rssi?` (${rssi}dBm)`:''}`, isOBD?'device':'info');
 }

@@ -4,7 +4,7 @@
 :root {
   --bg:#eef1f6; --sur:#ffffff; --sur2:#f4f6fb;
   --bd:#e4e8f0; --bd2:#cfd6e3;
-  --tx:#10151f; --tx2:#475067; --tx3:#8b95a8;
+  --tx:#10151f; --tx2:#475067; --tx3:#5f6a7d;
   --bl:#2563ff; --bl2:#1a4fe0; --bls:#e8efff;
   --gn:#06b36b; --gns:#e3f8ef;
   --or:#f2820c; --ors:#fff2e2;
@@ -20,7 +20,7 @@
 html.dark {
   --bg:#0a0e17; --sur:#131926; --sur2:#1b2333;
   --bd:#28324a; --bd2:#3a4663;
-  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#5b6783;
+  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#8b97b2;
   --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16);
   --gn:#1fd189; --gns:rgba(31,209,137,.14);
   --or:#ff9f2e; --ors:rgba(255,159,46,.14);
@@ -67,7 +67,7 @@ html, body { overflow-x:clip; }
   /* altijd donker (zoals de splash), ongeacht licht/donker thema */
   --bg:#0a0e17; --sur:#131926; --sur2:#1b2333;
   --bd:#28324a; --bd2:#3a4663;
-  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#5b6783;
+  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#8b97b2;
   --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16); --rd:#ff5a5a;
   align-items:stretch; justify-content:flex-start; padding:0;
   background:var(--bg); backdrop-filter:none; overflow-y:auto;
@@ -215,7 +215,7 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .choice-card.soon { opacity:.65; cursor:default; }
 .choice-card.soon:hover { border-color:var(--bd); box-shadow:var(--ss); }
 .choice-card.soon:active { transform:none; }
-.soon-badge { position:absolute; top:8px; right:8px; font-size:10px; font-weight:800; letter-spacing:.4px; background:var(--yw); color:#fff; padding:2px 6px; border-radius:999px; text-transform:uppercase; }
+.soon-badge { position:absolute; top:8px; right:8px; font-size:11px; font-weight:800; letter-spacing:.4px; background:var(--yw); color:#fff; padding:2px 6px; border-radius:999px; text-transform:uppercase; }
 .choice-icon { font-size:22px; margin-bottom:6px; display:block; }
 .choice-title { font-size:14px; font-weight:700; margin-bottom:3px; }
 .choice-title.w { color:#fff; }
@@ -366,7 +366,7 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .wm-door-h { color:#fff; }
 .wm-back { background:#11151f; border:1px solid #232c40; color:#cdd5e5; }
 .wm-spec { color:#8a93a6; border:1px dashed #2a3550; }
-.wm-cat { color:#6b7486; }
+.wm-cat { color:#98a3b8; }
 .choice-card { background:#11151f; border:1px solid #232c40; border-radius:14px; box-shadow:none; padding:16px; }
 .choice-card:hover { border-color:#2f6bff; box-shadow:none; }
 .choice-card.hl { background:linear-gradient(135deg,#2f6bff,#1a4fe0); border-color:#2f6bff; }
@@ -728,14 +728,14 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .pscr::-webkit-scrollbar { width:3px; }
 .pscr::-webkit-scrollbar-thumb { background:var(--bd2); border-radius:3px; }
 .clbl { font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--tx); background:var(--sur2); border:1px solid var(--bd); border-radius:8px; padding:8px 10px; margin:8px 2px 4px; cursor:pointer; user-select:none; }
-.clbl .ccnt { font-size:10px; font-weight:800; color:var(--tx3); background:var(--sur); border:1px solid var(--bd); border-radius:8px; padding:1px 7px; margin-left:7px; }
-.clbl .cchev { color:var(--tx3); font-size:10px; margin-right:6px; display:inline-block; width:12px; }
+.clbl .ccnt { font-size:11px; font-weight:800; color:var(--tx3); background:var(--sur); border:1px solid var(--bd); border-radius:8px; padding:1px 7px; margin-left:7px; }
+.clbl .cchev { color:var(--tx3); font-size:11px; margin-right:6px; display:inline-block; width:13px; }
 .pr { display:flex; align-items:center; padding:4px 10px; cursor:pointer; border-left:2px solid transparent; transition:all .12s; gap:7px; }
 .pr:hover { background:var(--sur2); }
 .pr.sel { border-left-color:var(--bl); background:var(--bls); }
 .pck { width:13px; height:13px; border:1.5px solid var(--bd2); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
 .pr.sel .pck { background:var(--bl); border-color:var(--bl); }
-.ckm { display:none; color:#fff; font-size:10px; font-weight:700; }
+.ckm { display:none; color:#fff; font-size:11px; font-weight:700; }
 .pr.sel .ckm { display:block; }
 .pn { font-size:12px; font-weight:500; flex:1; }
 .pu2 { font-family:var(--m); font-size:11px; color:var(--tx3); background:var(--sur2); padding:1px 4px; border-radius:3px; }
@@ -746,7 +746,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .phealth { font-size:12px; margin:0 2px; }
 .phealth.bad { color:var(--rd); }
 .phealth.warn { color:var(--or); }
-.catadd { font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; border:1px solid var(--bd); background:var(--sur2); color:var(--bl); cursor:pointer; }
+.catadd { font-size:11px; font-weight:700; padding:2px 7px; border-radius:5px; border:1px solid var(--bd); background:var(--sur2); color:var(--bl); cursor:pointer; }
 .catadd:hover { background:var(--bls); border-color:var(--bl); }
 #showAllPidBtn.on { background:rgba(26,111,255,.12); color:var(--bl); border-color:var(--bl); }
 /* Connectie-optimalisatie strategie-overlay */
@@ -803,7 +803,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .gg.view-numbers .gc { padding:9px 10px; }
 .gg.view-numbers .gspark { display:none; }
 .gg.view-numbers .gv { font-size:22px; }
-.gg.view-numbers .gn2 { font-size:10px; margin-bottom:2px; }
+.gg.view-numbers .gn2 { font-size:11px; margin-bottom:2px; }
 /* PUNTJES — compacte tegel, kleur = gezondheid */
 .gg.view-dots { grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:3px; }
 .gg.view-dots .gc { padding:3px 5px; display:flex; align-items:center; gap:4px; border-left:3px solid var(--gn); border-radius:5px; background:rgba(0,200,100,.06); box-shadow:none; transition:background .3s,border-color .3s; }
@@ -824,9 +824,9 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
    Bewust grijs en zonder gloed: groen leest als "gemeten en in orde", en dat
    is precies wat hier niet geldt. */
 .gdot.leeg { background:var(--tx3); box-shadow:none; opacity:.5; }
-.gc.leeg::before { background:var(--tx3); opacity:.35; }
-.gc.leeg .gv, .gc.leeg .gunit { opacity:.4; }
-.gc.leeg .gn2 { opacity:.55; }
+.gc.leeg::before { background:var(--tx3); opacity:.5; }
+.gc.leeg .gv, .gc.leeg .gunit { opacity:.6; }
+.gc.leeg .gn2 { opacity:.72; }
 /* Rollen: UI van admin en user is gelijkgetrokken (verzoek 2026-07-04) —
    role:'user' verbergt NIETS meer. De class .adminOnly blijft op elementen
    staan zodat gating later per element her-activeerbaar is. */
@@ -1065,7 +1065,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .app.sr-col .sr-col-label { display:flex; }
 .ai-head { padding:10px 12px 8px; border-bottom:1px solid var(--bd); }
 .ai-ttl { font-size:13px; font-weight:700; margin-bottom:2px; display:flex; align-items:center; gap:6px; }
-.ai-bdg { font-size:10px; font-weight:700; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; padding:2px 5px; border-radius:3px; }
+.ai-bdg { font-size:11px; font-weight:700; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; padding:2px 5px; border-radius:3px; }
 .ai-sub { font-size:12px; color:var(--tx3); line-height:1.4; }
 .ai-run { margin:8px 12px 0; width:calc(100% - 24px); padding:8px; border-radius:7px; border:none; font-family:var(--f); font-size:12px; font-weight:700; cursor:pointer; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:6px; }
 .ai-run:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(99,102,241,.3); }
@@ -1081,7 +1081,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .ai-ph { text-align:center; padding:20px 8px; color:var(--tx3); }
 .ai-ph .pi { font-size:28px; margin-bottom:8px; }
 .ai-ph p { font-size:12px; line-height:1.6; }
-.ai-ld { display:flex; align-items:center; gap:8px; color:#6366f1; font-size:12px; padding:14px 0; }
+.ai-ld { display:flex; align-items:center; gap:8px; color:#8b8ef5; font-size:12px; padding:14px 0; }
 .spin { width:14px; height:14px; border:2px solid #e0e7ff; border-top-color:#6366f1; border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
 @keyframes spin { to{transform:rotate(360deg)} }
 /* Datalog badge */
@@ -1107,7 +1107,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .sc-cell { background:var(--sur2); border:1px solid var(--bd); border-radius:8px; padding:8px 10px; }
 .sc-val { font-size:19px; font-weight:800; color:var(--tx); }
 .sc-val small { font-size:11px; font-weight:700; color:var(--tx3); margin-left:1px; }
-.sc-lbl { font-size:10.5px; color:var(--tx3); margin-top:2px; }
+.sc-lbl { font-size:11px; color:var(--tx3); margin-top:2px; }
 .sysb-wrap { display:flex; flex-direction:column; gap:7px; }
 .sysb { display:flex; align-items:center; gap:9px; }
 .sysb-n { flex:0 0 40%; font-size:12px; color:var(--tx2); }
@@ -1115,7 +1115,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .sysb-t span { display:block; height:100%; border-radius:5px; }
 .sysb-v { flex:0 0 36px; text-align:right; font-size:11.5px; font-weight:700; color:var(--tx2); }
 .ai-tbl { width:100%; border-collapse:collapse; font-size:11.5px; margin:2px 0 4px; }
-.ai-tbl th { text-align:left; font-weight:700; color:var(--tx3); border-bottom:1px solid var(--bd2); padding:6px 8px; font-size:10px; text-transform:uppercase; letter-spacing:.4px; }
+.ai-tbl th { text-align:left; font-weight:700; color:var(--tx3); border-bottom:1px solid var(--bd2); padding:6px 8px; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
 .ai-tbl td { padding:7px 8px; border-bottom:1px solid var(--bd); color:var(--tx2); vertical-align:top; }
 .ai-tbl td.st { font-weight:700; border-left:3px solid var(--bd2); }
 .ai-tbl td.st.g { color:var(--gn); border-left-color:var(--gn); }
@@ -1173,7 +1173,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .vic-row{display:flex;align-items:baseline;gap:6px;padding:1px 0;}
 .vic-label{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;min-width:32px;flex-shrink:0;}
 .vic-val{font-size:13px;font-weight:600;color:var(--tx);}
-.vic-vin{font-family:var(--m);font-size:10px;color:var(--tx3);margin-top:4px;word-break:break-all;border-top:1px solid var(--bd);padding-top:3px;}
+.vic-vin{font-family:var(--m);font-size:11px;color:var(--tx3);margin-top:4px;word-break:break-all;border-top:1px solid var(--bd);padding-top:3px;}
 /* ══ NETWORK CARDS ══ */
 .network-card{background:var(--sur2);border:1.5px solid var(--bd);border-radius:9px;padding:11px 13px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:11px;}
 .network-card:hover{border-color:var(--bl);background:var(--bls);}
@@ -1188,7 +1188,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .vic-row{display:flex;align-items:baseline;gap:6px;padding:2px 0;}
 .vic-label{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;min-width:34px;flex-shrink:0;}
 .vic-val{font-size:13px;font-weight:600;color:var(--tx);}
-.vic-vin{font-family:var(--m);font-size:10px;color:var(--tx3);margin-top:3px;word-break:break-all;border-top:1px solid var(--bd);padding-top:4px;}
+.vic-vin{font-family:var(--m);font-size:11px;color:var(--tx3);margin-top:3px;word-break:break-all;border-top:1px solid var(--bd);padding-top:4px;}
 
 
 /* ══ LOGINSCHERM — ronde glaskaart op een schaalbaar lint ═════════════
@@ -1592,7 +1592,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 }
 .wz-tel{
   background:rgba(34,211,238,.16); color:#22d3ee; border-radius:999px;
-  padding:1px 7px; font-size:10.5px;
+  padding:1px 7px; font-size:11px;
 }
 .wz-plan-item{
   display:flex; flex-direction:column; gap:3px; position:relative;
@@ -1701,12 +1701,12 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 @keyframes wkPols{0%{box-shadow:0 0 0 0 rgba(79,156,90,.45)}70%{box-shadow:0 0 0 7px rgba(79,156,90,0)}100%{box-shadow:0 0 0 0 rgba(79,156,90,0)}}
 #wkTitel{flex:1 1 auto;font-size:12px;font-weight:700;letter-spacing:.3px;
   text-transform:uppercase;color:#7f93b8}
-#wkTel{flex:none;font-size:11.5px;font-variant-numeric:tabular-nums;color:#5f7196}
+#wkTel{flex:none;font-size:11.5px;font-variant-numeric:tabular-nums;color:#8b97b2}
 #wkTel b{color:#9fb6e0;font-weight:700}
 #wkTel em{font-style:normal;color:#0b0f18;background:#e0972f;font-weight:800;
   padding:1px 6px;border-radius:999px;margin-left:5px}
 #wkTel.wkBev b{color:#e0972f}
-#wkChev{flex:none;color:#4a5b7d;font-size:14px;transition:transform .18s ease}
+#wkChev{flex:none;color:#7f93b8;font-size:14px;transition:transform .18s ease}
 
 /* Stippenrij: één stip per sensor. Dit is de hele visualisatie — geen
    grafiek, geen assen. Je leest er één ding uit en dat is genoeg. */
@@ -1718,37 +1718,61 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   box-shadow:0 0 0 2px rgba(143,182,224,.35)}
 @keyframes wkNu{0%,100%{opacity:.45}50%{opacity:1}}
 
-#wkRegel{margin-top:9px;font-size:11.5px;color:#5f7196;
+#wkRegel{margin-top:9px;font-size:11.5px;color:#8b97b2;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #wkRegel.wkLet{color:#e0972f}
 
 /* Openstaande bevindingen: blijven staan tot de gebruiker ✓ tikt — lossen
    het "flitst voorbij" probleem op dat #wkRegel had (die regel schrijft
    elke seconde over met de eerstvolgende status). */
-#wkVind{display:flex;flex-direction:column;gap:6px}
+/* Drie of vier bevindingen tegelijk is realistisch; acht duwt #gGrid van het
+   scherm. Daarom een dak op de stapel met een eigen schuifbalk — de strook
+   blijft een strook. */
+#wkVind{display:flex;flex-direction:column;gap:6px;margin-top:9px;
+  max-height:172px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .wkVindRij{display:flex;align-items:center;gap:8px;padding:7px 9px;
   border-radius:9px;border-left:3px solid #e0972f;background:rgba(224,151,47,.09)}
 .wkVindTxt{flex:1 1 auto;min-width:0;font-size:11.5px;line-height:1.4;color:#e0972f}
 .wkVindTxt b{color:#f2c98a;font-weight:800}
-.wkVindOk{flex:none;width:26px;height:26px;border-radius:8px;
+/* 36px in plaats van 26: dit wordt met een handschoen aan of in een rijdende
+   auto aangetikt. Nog steeds onder de 44px-richtlijn, maar de strook is maar
+   ~11px tekst hoog — hoger maakt van de melding een blok. */
+.wkVindOk{flex:none;width:36px;height:36px;border-radius:10px;
   border:1px solid rgba(224,151,47,.5);background:rgba(224,151,47,.16);
-  color:#f2c98a;font-size:13px;font-weight:800;cursor:pointer;line-height:1;
-  -webkit-tap-highlight-color:transparent}
-.wkVindOk:active{transform:scale(.9)}
+  color:#f2c98a;font-size:15px;font-weight:800;cursor:pointer;line-height:1;
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  transition:background .12s ease,transform .12s ease}
+.wkVindOk:active{transform:scale(.92)}
+/* Ingedrukt houden = negeren. Zonder zichtbare terugkoppeling voelt die halve
+   seconde als een knop die niet reageert, dus de vulling loopt mee met de
+   drempel in LANG_MS (550 ms). */
+.wkVindOk.wkDruk{background:rgba(224,151,47,.55);color:#1a1204;
+  animation:wkDruk .55s linear forwards}
+@keyframes wkDruk{from{box-shadow:inset 0 0 0 0 rgba(224,151,47,.9)}
+                  to{box-shadow:inset 0 -36px 0 0 rgba(224,151,47,.9)}}
+@media (prefers-reduced-motion: reduce){
+  .wkVindOk.wkDruk{animation:none}
+}
 
 #wkLijst{margin-top:9px;border-top:1px solid #1b2942;padding-top:8px}
 .wkRij{display:flex;align-items:baseline;gap:7px;padding:4px 0}
 .wkRij span{flex:1 1 auto;min-width:0;font-size:12px;color:#bcd0f5;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wkRij b{flex:none;font-size:13.5px;font-weight:800;color:#e0972f;font-variant-numeric:tabular-nums}
-.wkRij u{flex:none;font-size:10px;text-decoration:none;color:#7f93b8}
-.wkRij em{flex:none;font-style:normal;font-size:10px;color:#5f7196}
-.wkGeen{font-size:11.5px;color:#5f7196;padding:3px 0}
+.wkRij u{flex:none;font-size:11px;text-decoration:none;color:#7f93b8}
+.wkRij em{flex:none;font-style:normal;font-size:11px;color:#8b97b2}
+.wkGeen{font-size:11.5px;color:#8b97b2;padding:3px 0}
+/* Genegeerd voor deze sessie: gedempt, maar zichtbaar — en aanklikbaar, want
+   negeren mag geen eenrichtingsdeur zijn. */
+.wkRij.wkGen{cursor:pointer;opacity:.62;border-radius:7px;padding:4px 6px;margin:0 -6px}
+.wkRij.wkGen:hover{opacity:.8;background:rgba(255,255,255,.04)}
+.wkRij.wkGen b{color:#7f93b8}
 
 @media (prefers-reduced-motion: reduce){
   #wkPols,.wkS.wkNu{animation:none !important}
 }
-#wkPols.wkStil{background:#4a5b7d;animation:none;box-shadow:none}
+#wkPols.wkStil{background:#7f93b8;animation:none;box-shadow:none}
 
 /* ═══════════════════════════════════════════════════════════════════
    TERUGROEPACTIES (PLRecall) + MONITORTESTS (PLM06)
@@ -1795,7 +1819,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 }
 .pl-m06-tbl td { padding: 5px 8px; border-bottom: 1px solid rgba(148, 163, 184, .12); }
 .pl-m06-tid, .pl-m06-gr { font-family: ui-monospace, monospace; opacity: .7; }
-.pl-m06-ruw { opacity: .45; font-size: 10px; }
+.pl-m06-ruw { opacity: .72; font-size: 11px; }
 .pl-m06-oordeel { font-weight: 700; white-space: nowrap; }
 
 /* Rijkleuring: het probleem moet opvallen zonder de rest te overschreeuwen */
@@ -1804,6 +1828,6 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .pl-m06-krap    { background: rgba(245, 158, 11, .07); }
 .pl-m06-krap    .pl-m06-oordeel { color: #f59e0b; }
 .pl-m06-ok      .pl-m06-oordeel { color: #22c55e; font-weight: 600; }
-.pl-m06-onzeker .pl-m06-oordeel { color: #64748b; font-style: italic; }
+.pl-m06-onzeker .pl-m06-oordeel { color: #96a2bb; font-style: italic; }
 
 .pl-m06-note { margin-top: 6px; padding: 0 2px; font-size: 11px; opacity: .6; }

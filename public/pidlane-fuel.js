@@ -79,7 +79,7 @@ function renderFuelGauges(measurements){
     const c=document.createElement('div');
     c.style.cssText=`background:${bg};border:1px solid var(--bd);border-radius:var(--r);padding:9px 11px;border-left:3px solid ${color}`;
     c.title=m.desc;
-    c.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${m.name}</div><div style="font-family:var(--m);font-size:18px;font-weight:500;color:${color};line-height:1">${hasVal?fv(m.val):'—'} <span style="font-size:11px;color:var(--tx3)">${m.unit}</span></div><div style="font-size:11px;margin-top:3px">${icon} ${m.status==='ok'?'Normaal':m.status==='bad'?'Afwijking':'Geen data'}</div>`;
+    c.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${m.name}</div><div style="font-family:var(--m);font-size:18px;font-weight:500;color:${color};line-height:1">${hasVal?fv(m.val):'—'} <span style="font-size:11px;color:var(--tx3)">${m.unit}</span></div><div style="font-size:11px;margin-top:3px">${icon} ${m.status==='ok'?'Normaal':m.status==='bad'?'Afwijking':'Geen data'}</div>`;
     grid.appendChild(c);
   });
 }
@@ -620,13 +620,13 @@ function closeAIReportSheet(){ const o=document.getElementById('aiReportSheet');
 function _aiReplyBox(){
   return '<div id="aiReplyWrap" style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">'+
     '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:4px">💬 Reageer op dit rapport</div>'+
-    '<div style="font-size:10px;color:var(--tx3);margin-bottom:6px">Geef extra context of een correctie (bijv. \'motor was al op temperatuur\'). De AI herziet het rapport.</div>'+
+    '<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">Geef extra context of een correctie (bijv. \'motor was al op temperatuur\'). De AI herziet het rapport.</div>'+
     '<textarea id="aiReplyTxt" rows="2" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:12px;padding:8px 10px;resize:vertical" placeholder="Typ je aanvulling of correctie"></textarea>'+
     '<div style="display:flex;gap:6px;margin-top:8px">'+
       '<button type="button" id="aiMdlFast" onclick="setAiReplyModel(\'fast\')" style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--bl);background:rgba(26,111,255,.12);color:var(--bl);font-size:11px;font-weight:800;cursor:pointer">⚡ Snel</button>'+
       '<button type="button" id="aiMdlDeep" onclick="setAiReplyModel(\'deep\')" style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-size:11px;font-weight:800;cursor:pointer">🔬 Diep (grondiger)</button>'+
     '</div>'+
-    '<div style="font-size:10px;color:var(--tx3);margin:4px 0 0">Snel = direct antwoord. Diep = grondiger model, iets trager.</div>'+
+    '<div style="font-size:11px;color:var(--tx3);margin:4px 0 0">Snel = direct antwoord. Diep = grondiger model, iets trager.</div>'+
     '<button id="aiReplyBtn" class="ai-act pri" style="margin-top:8px;width:100%" onclick="aiReplyRevise()">🔄 Herzie rapport</button>'+
   '</div>';
 }

@@ -49,7 +49,7 @@ function situatieChipHtml(){
     if(!act.length && !extra) return '';
     const icons=act.map(function(s){return s.icon;}).join('')||'📝';
     const ttl=situatieKort().replace(/"/g,'');
-    return ' <span id="vtagSit" title="Rijsituatie: '+ttl+'" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:rgba(94,124,255,.20);color:var(--bl)">'+icons+'</span>';
+    return ' <span id="vtagSit" title="Rijsituatie: '+ttl+'" style="font-size:11px;font-weight:800;padding:1px 5px;border-radius:3px;background:rgba(94,124,255,.20);color:var(--bl)">'+icons+'</span>';
   }catch(e){ return ''; }
 }
 function _refreshVtag(){
@@ -116,7 +116,7 @@ function renderSituatie(hostId){
 
   // Extra invoervelden alleen tonen bij de situaties die ze nodig hebben.
   const velden=defs.filter(function(s){ return s.veld && aan(s.id); }).map(function(s){
-    return '<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:3px">'+s.icon+' '+esc(s.veld.lbl)+'</div>'+
+    return '<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:3px">'+s.icon+' '+esc(s.veld.lbl)+'</div>'+
       '<input value="'+esc(u[s.veld.key])+'" placeholder="'+esc(s.veld.ph)+'" oninput="sitSetVeld(\''+s.veld.key+'\',this.value)" '+
       'style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px"></div>';
   }).join('');
@@ -131,10 +131,10 @@ function renderSituatie(hostId){
   if(act.length){
     const li=function(arr,max){ return arr.slice(0,max).map(function(x){ return '<li style="margin:0 0 3px">'+esc(x)+'</li>'; }).join(''); };
     uitleg='<div style="margin-top:10px;background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:10px">'+
-      '<div style="font-size:10px;font-weight:800;color:var(--gn);margin-bottom:4px">✓ TELT NIET ALS DEFECT (logisch bij deze situatie)</div>'+
+      '<div style="font-size:11px;font-weight:800;color:var(--gn);margin-bottom:4px">✓ TELT NIET ALS DEFECT (logisch bij deze situatie)</div>'+
       '<ul style="margin:0 0 8px 15px;padding:0;font-size:11px;color:var(--tx2);line-height:1.45">'+li(verw,4)+
       (verw.length>4?'<li style="color:var(--tx3)">+ '+(verw.length-4)+' meer</li>':'')+'</ul>'+
-      '<div style="font-size:10px;font-weight:800;color:var(--or);margin-bottom:4px">⚠ WORDT JUIST STRENGER BEOORDEELD</div>'+
+      '<div style="font-size:11px;font-weight:800;color:var(--or);margin-bottom:4px">⚠ WORDT JUIST STRENGER BEOORDEELD</div>'+
       '<ul style="margin:0 0 0 15px;padding:0;font-size:11px;color:var(--tx2);line-height:1.45">'+li(foc,4)+
       (foc.length>4?'<li style="color:var(--tx3)">+ '+(foc.length-4)+' meer</li>':'')+'</ul></div>';
   }
@@ -144,19 +144,19 @@ function renderSituatie(hostId){
     const d=new Date(u.sitTs);
     const hh=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
     const uren=Math.round(((typeof SITUATIE_TTL_MS!=='undefined'&&SITUATIE_TTL_MS)?SITUATIE_TTL_MS:43200000)/3600000);
-    sinds='<div style="font-size:10px;color:var(--tx3);margin-top:8px">Ingesteld om '+hh+' — vervalt automatisch na '+uren+' uur, zodat een oude vlag geen nieuwe analyse kleurt.</div>';
+    sinds='<div style="font-size:11px;color:var(--tx3);margin-top:8px">Ingesteld om '+hh+' — vervalt automatisch na '+uren+' uur, zodat een oude vlag geen nieuwe analyse kleurt.</div>';
   }
 
   host.innerHTML=
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
       '<b style="font-size:13px">🎒 Rijsituatie &amp; bijzonderheden</b>'+
-      (act.length?'<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;background:rgba(94,124,255,.18);color:var(--bl)">'+act.length+' actief</span>':'')+
+      (act.length?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px;background:rgba(94,124,255,.18);color:var(--bl)">'+act.length+' actief</span>':'')+
       '<button type="button" onclick="situatieWis()" style="margin-left:auto;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Wissen</button>'+
     '</div>'+
-    '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">Tik aan wat er <b>nu</b> speelt. Elke analyse rekent hiermee: wat logisch is bij deze situatie telt niet als defect, en wat juist kritisch wordt (koeling, laaddruk, laden) weegt zwaarder.</div>'+
+    '<div style="font-size:11px;color:var(--tx3);margin-bottom:8px">Tik aan wat er <b>nu</b> speelt. Elke analyse rekent hiermee: wat logisch is bij deze situatie telt niet als defect, en wat juist kritisch wordt (koeling, laaddruk, laden) weegt zwaarder.</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+chips+'</div>'+
     velden+
-    '<div style="margin-top:9px"><div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:3px">Overige bijzonderheden voor deze meting</div>'+
+    '<div style="margin-top:9px"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:3px">Overige bijzonderheden voor deze meting</div>'+
       '<textarea id="uvSitExtra" rows="2" oninput="sitSetVeld(\'sitExtra\',this.value)" placeholder="bv. rijdt met winterbanden, dakdragers gemonteerd, net getankt bij onbekende pomp" '+
       'style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px;resize:vertical">'+esc(u.sitExtra)+'</textarea></div>'+
     uitleg+sinds;

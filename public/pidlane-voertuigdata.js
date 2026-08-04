@@ -160,7 +160,7 @@ function openVehicleOverview(){
   }
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const inp=(id,val,ph)=>`<input id="${id}" value="${esc(val)}" placeholder="${ph||''}" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px">`;
-  const row=(lbl,html)=>`<div style="margin-bottom:9px"><div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:3px">${lbl}</div>${html}</div>`;
+  const row=(lbl,html)=>`<div style="margin-bottom:9px"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:3px">${lbl}</div>${html}</div>`;
   const pct=dossierPct();
   m.innerHTML=`<div style="background:var(--sur);width:100%;max-width:560px;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--bd)">
@@ -169,7 +169,7 @@ function openVehicleOverview(){
       <button onclick="document.getElementById('vehOverview').style.display='none'" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>
     </div>
     <div style="overflow-y:auto;padding:14px 16px">
-      <div style="font-size:10px;color:var(--tx3);margin-bottom:10px">Alle data die de app nu kent (RDW + VIN + eerdere invoer). Pas aan of vul aan — <b>jouw invoer is leidend</b> en weegt mee in elke AI-analyse.</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Alle data die de app nu kent (RDW + VIN + eerdere invoer). Pas aan of vul aan — <b>jouw invoer is leidend</b> en weegt mee in elke AI-analyse.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
         ${row('Merk',inp('uvMerk',v.merk))}${row('Model',inp('uvModel',v.model))}
         ${row('Bouwjaar',inp('uvYear',v.year))}${row('Brandstof',inp('uvBrand',v.brandstof,'benzine / diesel / hybride / elektrisch'))}

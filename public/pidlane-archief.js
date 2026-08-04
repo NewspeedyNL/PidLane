@@ -213,21 +213,21 @@ function openReportsOverview(){
         '<div style="font-size:20px;flex:none">'+m.ic+'</div>'+
         '<div style="flex:1;min-width:0">'+
           '<div style="font-size:12px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.title)+'</div>'+
-          '<div style="font-size:10px;color:var(--tx3)">'+m.lbl+' · '+tijd+(r.fname?' · '+esc(r.fname):'')+'</div>'+
+          '<div style="font-size:11px;color:var(--tx3)">'+m.lbl+' · '+tijd+(r.fname?' · '+esc(r.fname):'')+'</div>'+
         '</div>'+
         '<div style="display:flex;gap:5px;flex:none">'+acts+'</div>'+
       '</div>';
     }).join('');
   }
   const mode=window._srUseContext===true?'on':window._srUseContext===false?'off':'ask';
-  const seg=(id,lbl)=>{const act=mode===id;return '<button onclick="srSetCtxMode(\''+id+'\')" style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid '+(act?'var(--bl)':'var(--bd)')+';background:'+(act?'rgba(26,111,255,.12)':'var(--sur2)')+';color:'+(act?'var(--bl)':'var(--tx3)')+';font-size:10px;font-weight:800;cursor:pointer;font-family:var(--f)">'+lbl+'</button>';};
+  const seg=(id,lbl)=>{const act=mode===id;return '<button onclick="srSetCtxMode(\''+id+'\')" style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid '+(act?'var(--bl)':'var(--bd)')+';background:'+(act?'rgba(26,111,255,.12)':'var(--sur2)')+';color:'+(act?'var(--bl)':'var(--tx3)')+';font-size:11px;font-weight:800;cursor:pointer;font-family:var(--f)">'+lbl+'</button>';};
   ov.innerHTML='<div class="ai-sheet">'+
     '<div class="ai-sheet-h"><b>📄 Rapporten deze sessie ('+list.length+')</b><button class="ai-sheet-x" onclick="closeReportsOverview()">✕</button></div>'+
     '<div class="ai-sheet-b">'+
-      '<div style="font-size:10px;color:var(--tx3);margin-bottom:6px">Bewaard tot de app wordt gesloten.</div>'+
+      '<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">Bewaard tot de app wordt gesloten.</div>'+
       '<div style="border:1px solid var(--bd);border-radius:10px;padding:9px 10px;margin-bottom:10px;background:var(--sur2)">'+
         '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:2px">🤖 Meenemen in nieuwe analyse</div>'+
-        '<div style="font-size:10px;color:var(--tx3);margin-bottom:7px">Gebruikt de AI eerdere rapporten als context bij een volgende analyse?</div>'+
+        '<div style="font-size:11px;color:var(--tx3);margin-bottom:7px">Gebruikt de AI eerdere rapporten als context bij een volgende analyse?</div>'+
         '<div style="display:flex;gap:5px">'+seg('ask','❓ Vragen')+seg('on','✅ Altijd')+seg('off','🚫 Nooit')+'</div>'+
       '</div>'+
       rows+

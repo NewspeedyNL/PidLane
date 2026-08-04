@@ -369,7 +369,7 @@ window.updateMonitorBtn = function(){
   const b=document.getElementById('monitorBtn');
   if(b){
     b.innerHTML = (PLMon.userAan?'🔔':'🔕') + ' Rit-monitor'
-      + '<span style="margin-left:auto;font-size:10px;font-weight:700;opacity:.75">'+st+'</span>';
+      + '<span style="margin-left:auto;font-size:11px;font-weight:700;opacity:.75">'+st+'</span>';
     b.style.display='flex'; b.style.alignItems='center'; b.style.gap='6px';
   }
 };

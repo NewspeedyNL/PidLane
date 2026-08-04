@@ -52,6 +52,16 @@
    moment dat er een stip oranje wordt, weet je precies waar te kijken.
    Tik op de kop en je krijgt alleen de bevindingen, niets anders.
 
+   Een bevinding krijgt een eigen kaartje boven de stippenrij en blijft
+   daar staan — die wordt niet overschreven door de statusregel. Op het
+   kaartje staat één knop met twee betekenissen:
+
+     kort tikken       — gezien; volgende ronde mag hij zich weer melden
+     ingedrukt houden  — negeren; deze sensor zwijgt de rest van de sessie
+
+   Genegeerde sensoren staan met een 🔕 in de uitklaplijst en zijn met één
+   tik weer aan te zetten.
+
    WAT HET BEWUST NIET DOET
 
    Bevroren-waardedetectie en sensoruitval zitten al in PLWatch (Laag B)
@@ -97,6 +107,25 @@
   // Ze staan nu in hun eigen blok (#wkVind) dat NIET automatisch verandert;
   // alleen wegtikken via gezien() haalt ze eruit. Reset bij elke nieuwe ronde.
   let _afgehandeld = {};
+
+  // Twee soorten wegtikken, en het verschil is wezenlijk.
+  //
+  // GEZIEN (kort tikken) hoort bij een momentopname: één rare meting, je hebt
+  // hem gezien, weg ermee. Volgende ronde mag hij zich opnieuw melden — dat is
+  // juist de bedoeling, want een tweede keer dezelfde bevinding zegt iets
+  // anders dan een eerste keer.
+  //
+  // NEGEER (lang indrukken) hoort bij een bekende, aanhoudende afwijking. Een
+  // accu die op 11,8 V blijft hangen meldt zich anders élke ronde opnieuw — bij
+  // dertig sensoren en drie per groepje is dat ruim elke drie minuten. Dan tik
+  // je de hele rit zitten wegtikken en verdwijnt het nut van de melding.
+  // Genegeerde pids blijven de hele sessie stil en overleven nieuweRonde().
+  // Terughalen kan via de uitklaplijst: daar staan ze met een 🔕 en één tik
+  // zet ze weer aan.
+  const LANG_MS = 550;        // indrukduur die "gezien" tot "negeer" maakt
+  let _genegeerd = {};        // pid → true, sessiebreed
+  let _drukTimer = null, _drukPid = null, _drukLang = false, _drukEl = null;
+  let _vangnet = false;       // document-brede pointerup maar één keer aanhaken
 
   /* ═══════════════════ HULP ═══════════════════ */
 
@@ -189,7 +218,24 @@
 
   // Gebruiker tikt ✓ op een bevindingskaartje: verdwijnt uit #wkVind, blijft
   // gewoon staan in de uitklapbare lijst (#wkLijst) als je die later opent.
-  function gezien(pid) { _afgehandeld[pid] = true; teken(); }
+  function gezien(pid) { if (!pid) return; _afgehandeld[pid] = true; teken(); }
+
+  // Lang indrukken: dezelfde sensor zwijgt de rest van de sessie.
+  function negeer(pid) {
+    if (!pid) return;
+    _genegeerd[pid] = true;
+    try { log('\u25CB Waakronde: ' + naam(pid) + ' genegeerd voor deze sessie', 'info'); } catch (e) {}
+    teken();
+  }
+
+  // Terughalen — vanuit de uitklaplijst of programmatisch. Zonder pid: alles.
+  function herstel(pid) {
+    if (pid) { delete _genegeerd[pid]; delete _afgehandeld[pid]; }
+    else { _genegeerd = {}; _afgehandeld = {}; }
+    teken();
+  }
+
+  function stil(pid) { return !!(_afgehandeld[pid] || _genegeerd[pid]); }
 
   function busDrukt() {
     try {
@@ -279,16 +325,80 @@
   }
   function strookWeg() { const s = document.getElementById('wkStrook'); if (s) s.remove(); }
 
+  // Kort tikken versus indrukken op één knop. Bewust via pointer-events op de
+  // container en niet via inline onclick per knop: teken() herschrijft #wkVind
+  // elke seconde, dus handlers moeten aan het blijvende element hangen, niet
+  // aan de kaartjes die telkens vervangen worden.
+  //
+  // Touch geeft impliciete pointer capture: pointerup komt terug bij dezelfde
+  // knop, ook als de vinger een stukje wegglijdt. Daarom is de pid die bij
+  // pointerdown is vastgelegd leidend en niet het doel van pointerup.
+  function drukLos() {
+    if (_drukTimer) { clearTimeout(_drukTimer); _drukTimer = null; }
+    if (_drukEl) { _drukEl.classList.remove('wkDruk'); _drukEl = null; }
+    const pid = _drukPid; _drukPid = null;
+    const was = _drukLang; _drukLang = false;
+    if (pid && !was) gezien(pid);   // lang indrukken heeft al genegeerd
+  }
+
+  function bindVind(vind) {
+    vind.oncontextmenu = function (e) { e.preventDefault(); return false; };
+    vind.onpointerdown = function (e) {
+      const b = (e.target && e.target.closest) ? e.target.closest('.wkVindOk') : null;
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      if (_drukTimer) clearTimeout(_drukTimer);
+      _drukPid = b.getAttribute('data-pid') || null;
+      _drukLang = false;
+      _drukEl = b; b.classList.add('wkDruk');
+      _drukTimer = setTimeout(function () {
+        _drukTimer = null;
+        _drukLang = true;
+        const p = _drukPid;
+        if (_drukEl) { _drukEl.classList.remove('wkDruk'); _drukEl = null; }
+        try { if (navigator.vibrate) navigator.vibrate(18); } catch (e2) {}
+        negeer(p);                  // teken() hertekent; knop verdwijnt
+      }, LANG_MS);
+    };
+    vind.onpointerup     = drukLos;
+    vind.onpointercancel = drukLos;
+    // Vangnet: laat de vinger los buiten de strook, of raakt de knop toch weg,
+    // dan sluit dit de druk alsnog af. drukLos() wist _drukPid meteen, dus de
+    // tweede aanroep is een no-op.
+    if (!_vangnet) {
+      _vangnet = true;
+      try {
+        document.addEventListener('pointerup', drukLos, true);
+        document.addEventListener('pointercancel', drukLos, true);
+      } catch (e) {}
+    }
+    // Muisgebruik: knop verlaten tijdens het indrukken telt als afbreken.
+    // Bij touch komt dit door de impliciete capture niet tussendoor.
+    vind.onpointerleave  = function () {
+      if (_drukTimer) { clearTimeout(_drukTimer); _drukTimer = null; }
+      if (_drukEl) { _drukEl.classList.remove('wkDruk'); _drukEl = null; }
+      _drukPid = null; _drukLang = false;
+    };
+  }
+
   function teken() {
     if (!_aan) return;
     const s = strook();
     const gelezen = _lijst.filter(r => r.staat !== 'leeg').length;
     const bev = _lijst.filter(r => r.staat === 'let');
-    const open = bev.filter(r => !_afgehandeld[r.pid]);
+    const open = bev.filter(r => !stil(r.pid));
 
     // Openstaande bevindingen: eigen kaartje per stuk, blijft staan tot ✓.
+    //
+    // Niet hertekenen zolang er een vinger op een knop staat. teken() loopt
+    // elke seconde; viel dat midden in een druk, dan werd de knop onder de
+    // vinger uit het document gehaald, ging de impliciete pointer capture
+    // verloren en kwam pointerup nooit bij bindVind() aan. Gevolg: de
+    // lang-indrukken-timer liep gewoon door en een korte tik werd alsnog een
+    // negeer. Zeldzaam, maar precies het soort fout dat je niet terugvindt.
     const vind = s.querySelector('#wkVind');
-    if (vind) {
+    if (vind && _drukPid) { /* druk bezig — kaartjes met rust laten */ }
+    else if (vind) {
       if (!open.length) { vind.innerHTML = ''; vind.style.display = 'none'; }
       else {
         vind.style.display = '';
@@ -296,17 +406,24 @@
           return '<div class="wkVindRij"><span class="wkVindTxt"><b>' + esc(naam(r.pid)) + '</b> · ' +
                  esc(toonWaarde(r.waarde, r.pid)) + ' ' + esc(eenheid(r.pid)) + ' — ' +
                  esc(r.reden || 'buiten bereik') + '</span>' +
-                 '<button class="wkVindOk" title="Gezien — verbergen" ' +
-                 'onclick="event.stopPropagation();PLWaak.gezien(\'' + r.pid + '\')">\u2713</button></div>';
+                 '<button class="wkVindOk" data-pid="' + esc(r.pid) + '" ' +
+                 'title="Tik: gezien \u2014 ingedrukt houden: negeer deze sessie">\u2713</button></div>';
         }).join('');
+        bindVind(vind);
       }
     }
 
     const tel = s.querySelector('#wkTel');
     if (tel) {
+      // De badge telt wat er nog OPENSTAAT. Tikte je iets weg, dan hoort de
+      // teller mee te zakken — anders blijft het scherm alarm slaan over iets
+      // dat je net hebt afgehandeld. Het totaal van de ronde blijft leesbaar
+      // in de uitklaplijst en in de tooltip.
       tel.innerHTML = '<b>' + gelezen + '</b>/' + _lijst.length +
-        (bev.length ? ' <em>' + bev.length + '</em>' : '');
-      tel.className = bev.length ? 'wkBev' : '';
+        (open.length ? ' <em>' + open.length + '</em>' : '');
+      tel.className = open.length ? 'wkBev' : '';
+      tel.title = bev.length ? bev.length + ' bevinding' + (bev.length === 1 ? '' : 'en') +
+                              ' in ronde ' + _ronde : '';
     }
     const pols = s.querySelector('#wkPols');
     if (pols) pols.classList.toggle('wkStil', !!_rust);
@@ -339,8 +456,11 @@
         klasse = _pin.staat === 'let' ? 'wkLet' : '';
       } else if (_bezig) {
         tekst = 'meet ' + naam(_bezig) + '\u2026';
-      } else if (bev.length) {
-        const l = bev[bev.length - 1];
+      } else if (open.length) {
+        // Alleen nog OPENSTAANDE bevindingen. Stond hier `bev`, dan kwam een
+        // weggetikte bevinding een regel lager gewoon weer terug zodra de
+        // meting even stillag — het kaartje verdween en de tekst niet.
+        const l = open[open.length - 1];
         tekst = l ? naam(l.pid) + ' · ' + toonWaarde(l.waarde, l.pid) + ' ' + eenheid(l.pid) +
                     ' · ' + (l.reden || 'buiten bereik') : '';
         klasse = 'wkLet';
@@ -360,6 +480,11 @@
         tekst = R[_rust] || '';
       } else if (gelezen >= _lijst.length && _lijst.length) {
         tekst = 'ronde ' + _ronde + ' klaar \u2014 niets bijzonders';
+      } else if (gelezen) {
+        // Tussen twee groepjes in. Stond hier "ronde start…", ook halverwege —
+        // dat viel niet op zolang een bevinding deze regel bezette, maar nu die
+        // netjes naar #wkVind gaat is dit de regel die je het vaakst leest.
+        tekst = 'ronde ' + _ronde + ' \u2014 ' + gelezen + '/' + _lijst.length + ' gelezen';
       } else {
         tekst = _lijst.length ? 'ronde start\u2026' : 'alle sensoren staan al in beeld';
       }
@@ -373,16 +498,42 @@
       if (!_open) { lst.innerHTML = ''; lst.style.display = 'none'; }
       else {
         lst.style.display = '';
-        if (!bev.length) {
-          lst.innerHTML = '<div class="wkGeen">Geen bevindingen in ronde ' + _ronde + '.</div>';
-        } else {
-          lst.innerHTML = bev.map(function (r) {
-            return '<div class="wkRij"><span>' + esc(naam(r.pid)) + '</span>' +
+        // Genegeerde sensoren horen hier ALTIJD te staan, ook wanneer ze deze
+        // ronde netjes binnen bereik lezen en dus niet in `bev` zitten. Anders
+        // is negeren een eenrichtingsdeur: je zet iets stil en kunt het nooit
+        // meer terugvinden om aan te zetten.
+        const genOok = Object.keys(_genegeerd).filter(function (p) {
+          return !bev.some(function (r) { return r.pid === p; });
+        });
+        let html = '';
+        if (bev.length) {
+          html += bev.map(function (r) {
+            const g = _genegeerd[r.pid];
+            return '<div class="wkRij' + (g ? ' wkGen' : '') + '" data-pid="' + esc(r.pid) + '"' +
+                   (g ? ' title="Genegeerd \u2014 tik om weer te melden"' : '') + '>' +
+                   '<span>' + (g ? '\uD83D\uDD15 ' : '') + esc(naam(r.pid)) + '</span>' +
                    '<b>' + esc(toonWaarde(r.waarde, r.pid)) + '</b>' +
                    '<u>' + esc(eenheid(r.pid)) + '</u>' +
                    '<em>' + esc(r.reden || '') + '</em></div>';
           }).join('');
+        } else {
+          html += '<div class="wkGeen">Geen bevindingen in ronde ' + _ronde + '.</div>';
         }
+        if (genOok.length) {
+          html += genOok.map(function (p) {
+            return '<div class="wkRij wkGen" data-pid="' + esc(p) + '" ' +
+                   'title="Genegeerd \u2014 tik om weer te melden">' +
+                   '<span>\uD83D\uDD15 ' + esc(naam(p)) + '</span>' +
+                   '<em>genegeerd</em></div>';
+          }).join('');
+        }
+        lst.innerHTML = html;
+        lst.onclick = function (e) {
+          const rij = (e.target && e.target.closest) ? e.target.closest('.wkGen') : null;
+          if (!rij) return;
+          e.stopPropagation();
+          herstel(rij.getAttribute('data-pid'));
+        };
       }
     }
   }
@@ -407,6 +558,8 @@
     _aan = false;
     if (_timer) { clearTimeout(_timer); _timer = null; }
     if (_pols)  { clearInterval(_pols); _pols = null; }
+    if (_drukTimer) { clearTimeout(_drukTimer); _drukTimer = null; }
+    _drukPid = null; _drukLang = false; _drukEl = null;
     _bezig = null; _pin = null;
     strookWeg();
     try { log('\u25CB Waakronde uit', 'info'); } catch (e) {}
@@ -438,7 +591,9 @@
   } catch (e) {}
 
   window.PLWaak = {
-    start: start, stop: stop, schakel: schakel, gezien: gezien,
+    start: start, stop: stop, schakel: schakel,
+    gezien: gezien, negeer: negeer, herstel: herstel,
+    genegeerd: function () { return Object.keys(_genegeerd); },
     actief: function () { return _aan; },
     lijst: function () { return _lijst.map(function (r) { return { pid: r.pid, staat: r.staat, waarde: r.waarde }; }); },
     bevindingen: function () { return _lijst.filter(function (r) { return r.staat === 'let'; }).map(function (r) { return r.pid; }); },

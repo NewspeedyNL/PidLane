@@ -106,7 +106,7 @@ function showVtag(t){
   // zie je al aan de oranje OBD-stip. In de chip blijft alleen wat kort is:
   // het dossier-percentage en de rijsituatie-iconen.
   el.dataset.naam = t||'';
-  el.innerHTML='<span id="vtagPct" style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>'+sitHtml;
+  el.innerHTML='<span id="vtagPct" style="font-size:11px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>'+sitHtml;
   el.style.display='block';
   // Klik loopt via de omliggende voertuig-chip (#vchip) — geen eigen onclick meer,
   // anders opent het voertuigoverzicht dubbel (event bubbelt naar de chip).
