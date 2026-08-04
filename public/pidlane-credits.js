@@ -251,6 +251,10 @@
   const MRK_RAPPORTEN = '\n\nEERDERE RAPPORTEN DEZE SESSIE';
   const MRK_SITUATIE = '\n\nRIJSITUATIE / BIJZONDERHEDEN';
   const MRK_DOSSIER = '\nDOSSIER (door gebruiker bevestigd';
+  // Mode 06 (pidlane-mode06.js) zet een eigen kop in de prompt. Zonder eigen
+  // blok zou dat stilzwijgend onder "Vraag + opmaakinstructies" vallen en zag
+  // de gebruiker niet dat een monitorscan tokens kost.
+  const MRK_MONITOR = 'Mode 06 monitortests:';
 
   function _knip(S) {
     const iRap = S.indexOf(MRK_RAPPORTEN);
@@ -315,6 +319,17 @@
     const r = _regels(P);
     const k = _kalib();
 
+    // Mode 06-blok apart meten. Het staat in de prompt (niet in sys) en loopt
+    // tot de volgende lege regel; de rest telt dan niet dubbel bij 'vraag'.
+    const _m06 = (function () {
+      const i = P.indexOf(MRK_MONITOR);
+      if (i < 0) return { tekens: 0, n: 0 };
+      let e = P.indexOf('\n\n', i);
+      if (e < 0) e = P.length;
+      const blok = P.slice(i, e);
+      return { tekens: blok.length, n: (blok.match(/^- /gm) || []).length };
+    })();
+
     const blokken = [
       { id: 'instructie', icoon: '🧭', naam: 'AI-instructies (rol + regels)', tekens: d.basis.length, kleur: '#8b5cf6', vast: true },
       { id: 'dossier', icoon: '📋', naam: 'Voertuigdossier', tekens: d.dossier.length, kleur: '#0ea5e9' },
@@ -322,7 +337,8 @@
       { id: 'rapporten', icoon: '📄', naam: 'Eerdere rapporten (context)', tekens: d.rapporten.length, kleur: '#f59e0b' },
       { id: 'meet', icoon: '📡', naam: 'Meetwaarden' + (r.nMeet ? ' (' + r.nMeet + ' regels)' : ''), tekens: r.meetT, kleur: '#22c55e' },
       { id: 'dtc', icoon: '⚠️', naam: 'Foutcodes' + (r.nDtc ? ' (' + r.nDtc + ')' : ''), tekens: r.dtcT, kleur: '#ef4444' },
-      { id: 'vraag', icoon: '❓', naam: 'Vraag + opmaakinstructies', tekens: r.restT, kleur: '#64748b' }
+      { id: 'monitor', icoon: '🔬', naam: 'Monitortests (mode 06)' + (_m06.n ? ' (' + _m06.n + ')' : ''), tekens: _m06.tekens, kleur: '#a855f7' },
+      { id: 'vraag', icoon: '❓', naam: 'Vraag + opmaakinstructies', tekens: Math.max(0, r.restT - _m06.tekens), kleur: '#64748b' }
     ].filter((b) => b.tekens > 0);
 
     const totTekens = P.length + S.length;

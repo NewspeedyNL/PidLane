@@ -274,6 +274,8 @@ async function koopRdwLookup(){
 
     _koopRdwData = { ...v, _recall: recallActief, _teller: tellerOordeel, _kent: kent, _val: val };
     localStorage.setItem('pl_kenteken', kent);
+    // Vlag → detail: PLRecall vult de banner met wélke actie en welk risico.
+    try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){}
 
     // Voer ook vehicleInfo bij voor AI — alleen gevalideerde velden
     if(f.merk)      vehicleInfo.merk  = f.merk;
@@ -500,7 +502,7 @@ Serviceboekje: ${boekje}
 Actieve DTC foutcodes: ${dtcCount}
 Bandenstaat: ${bandenLabel||'niet gecontroleerd'}
 RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerOordeel&&/onlogisch/i.test(tellerOordeel)?' (LET OP: mogelijk teruggedraaide km — sterk risicovol)':''}
-Openstaande recall: ${recallActief ? 'JA' : 'nee'}
+Openstaande recall: ${recallActief ? 'JA' : 'nee'}${(()=>{try{return window._plRecall&&window.PLRecall?'\n'+PLRecall.naarPromptRegel(window._plRecall):'';}catch(e){return '';}})()}
 Import: ${ink.import}
 ${proefritBlok}
 

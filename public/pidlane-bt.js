@@ -882,7 +882,7 @@ async function sppReconnectGuard(spp,address,cmd,force){
       // (initELM327 stuurt zelf commando's → in de queue zou dat deadlocken).
       setTimeout(async()=>{
         if(window._reinitBusy) return; window._reinitBusy=true;
-        try{ if(connected) await initELM327(); btDiag('ELM327 opnieuw klaar na herverbinden','ok'); }
+        try{ if(connected) await initELM327({herstelProtocol:true}); btDiag('ELM327 opnieuw klaar na herverbinden','ok'); }
         catch(e){ btDiag('Re-init na herverbinden faalde: '+e.message,'warn'); }
         finally{ window._reinitBusy=false; }
       },60);
@@ -1121,8 +1121,48 @@ function showConnError(msg){
   _ca.querySelector('#btnDemo').onclick=()=>startDemo();
 }
 
+// ── PROTOCOLGEHEUGEN ──────────────────────────────────────────────────────
+// ATWS reset de interpreter en ATSP0 zet het protocol expliciet terug op AUTO.
+// Bij een koude start is dat precies goed: scanNetworks() detecteert daarna en
+// vergrendelt met ATSP<id>. Maar het herverbindpad (sppReconnectGuard) roept
+// alleen initELM327() aan en gaat NIET door naar scanNetworks(). De adapter
+// bleef daardoor in zoekmodus staan, waarna élk volgend commando opnieuw
+// "SEARCHING..." deed — ~5 seconden per commando, vaak eindigend in
+// UNABLE TO CONNECT. In het veldlog van 4-8 kostte dat 8,8 minuten wachttijd
+// over 101 commando's, plus de vervolgschade (pollbudget naar 17%, multi-PID
+// helemaal uit) omdat de regelkringen een verzadigde bus zágen die er niet was.
+//
+// Oplossing: onthoud het gedetecteerde protocol en vergrendel het na een
+// herverbinding opnieuw, in plaats van terug te vallen op AUTO.
+
+function _onthoudProtocol(id){
+  const v=String(id||'').trim().toUpperCase();
+  if(!v||v==='?'||v==='0') return;          // '0' = AUTO, dat is geen vergrendeling
+  try{ localStorage.setItem('pl_proto_id', v); }catch(e){}
+}
+
+function _bekendProtocolId(){
+  // Voorkeur: de netwerkkeuze van deze sessie. Valt terug op de opgeslagen
+  // waarde, zodat ook een herstart + direct herverbinden meteen goed zit.
+  let v='';
+  try{ v=String(selectedNetwork?.id||'').trim().toUpperCase(); }catch(e){}
+  if(!v||v==='?'||v==='0'){
+    try{ v=String(localStorage.getItem('pl_proto_id')||'').trim().toUpperCase(); }catch(e){ v=''; }
+  }
+  if(!v||v==='?'||v==='0'||v==='A0') return null;
+  // ELM327 kent protocol 1..C. ATDPN zet er een 'A' voor als het protocol
+  // automatisch gevonden is ("A6"), en ATSPA6 is de geldige manier om dat
+  // te vergrendelen. Beide vormen moeten dus door de controle komen.
+  if(!/^A?[0-9A-C]$/.test(v)) return null;
+  return v;
+}
+
 // ── BLUETOOTH SEND/RECEIVE ──
-async function initELM327(){
+// opts.herstelProtocol : vergrendel na de init het eerder gedetecteerde
+//                        protocol i.p.v. ATSP0. Gebruikt door het
+//                        herverbindpad, niet door de eerste verbinding.
+async function initELM327(opts){
+  const _herstel = !!(opts && opts.herstelProtocol);
   await _metElmBus(async()=>{
     btDiag('ELM327 initialiseren...','proto');
 
@@ -1142,11 +1182,43 @@ async function initELM327(){
     await sendCmd('ATAT1'); // Adaptive timing
     await sendCmd('ATST64');// 400ms timeout per commando
 
-    // Stap 3: Protocol op auto
-    await sendCmd('ATSP0');
-    await delay(200);
+    // Stap 3: Protocol instellen
+    const _proto = _herstel ? _bekendProtocolId() : null;
+    if(_proto){
+      // Herverbinding met een bekend protocol: direct vergrendelen. Scheelt de
+      // volledige SEARCHING-cyclus bij élk volgend commando.
+      await sendCmd('ATSP'+_proto);
+      await delay(200);
 
-    btDiag('ELM327 klaar — klaar voor protocol detectie','ok');
+      // Verifiëren dat de adapter de vergrendeling ook echt overnam. ATDPN
+      // kost ~60ms en geeft in het log harde zekerheid i.p.v. een aanname.
+      let _bevestigd='';
+      try{
+        _bevestigd=(await sendCmd('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim().toUpperCase();
+      }catch(e){}
+      if(_bevestigd && _bevestigd.replace(/^A/,'') === _proto.replace(/^A/,'')){
+        btDiag(`Protocol opnieuw vergrendeld: ${_proto} (bevestigd via ATDPN)`,'ok');
+      }else if(_bevestigd){
+        // Adapter zegt iets anders — niet doordrukken, terug naar AUTO zodat
+        // de normale detectie het overneemt.
+        btDiag(`Protocolvergrendeling week af (gevraagd ${_proto}, kreeg ${_bevestigd}) — terug naar AUTO`,'warn');
+        await sendCmd('ATSP0');
+        await delay(200);
+      }else{
+        btDiag(`Protocol ${_proto} gestuurd, ATDPN gaf geen antwoord — voorlopig aangehouden`,'warn');
+      }
+
+      // De regelkringen hebben zich aangepast aan een bus die traag léék.
+      // Nu de oorzaak weg is: budget en multi-PID meteen terugzetten, anders
+      // blijft de app minutenlang onnodig in een lage stand hangen.
+      try{ if(window.PLLoad&&PLLoad.herstelNaProtocolLock) PLLoad.herstelNaProtocolLock(); }catch(e){}
+    }else{
+      // Koude start (of geen bekend protocol): AUTO, scanNetworks() detecteert.
+      await sendCmd('ATSP0');
+      await delay(200);
+    }
+
+    btDiag(_proto?'ELM327 klaar — protocol hersteld':'ELM327 klaar — klaar voor protocol detectie','ok');
     log('ELM327 initialisatie klaar','ok');
   });
 }
@@ -1189,6 +1261,7 @@ async function scanNetworks(){
     });
     log(`Protocol: ${protoName} (${protoResp})`,'ok');
     btDiag(`Protocol gevonden: ${protoName}`,'ok');
+    _onthoudProtocol(protoResp);   // zodat een herverbinding niet terugvalt op AUTO
     // Inventaris opschonen zodra bekend is wat de auto levert + welk type het is.
     try{ purgeImplausiblePids(); }catch(e){}
   } else {
@@ -1328,6 +1401,7 @@ async function startDiscovery(){
   const protoId=net.id==='?'?'0':net.id;
   await sendCmd('ATSP'+protoId);
   await delay(200);
+  _onthoudProtocol(protoId);   // herverbindpad kan hier straks op terugvallen
   addProg('✅',`Protocol ingesteld: ${net.name}`);
 
   // VIN uitlezen
@@ -1539,6 +1613,9 @@ async function rdwLookup(showOverview){
     const jaar=f.year||vehicleInfo.year||'';
     const brandstof=f.brandstof||'';
     localStorage.setItem('pl_kenteken',kent);
+    // PLRecall haakt hierop in en haalt de terugroepdetails op (welke actie,
+    // welk risico, welke status) bovenop de ja/nee-vlag die we al hadden.
+    try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){}
     // Sla ook gevalideerde extra RDW velden op voor Koopcheck/rapport
     _koopRdwData = { ...v, _kent: kent, _val: val };
     // Prefill Koopcheck kenteken input

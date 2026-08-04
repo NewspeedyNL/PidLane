@@ -452,6 +452,24 @@ function batchOk(){
   if(_batchDips>0) _batchDips--;
   PLBus.batchGroter();   // 25 schone rondes = een trapje terug omhoog
 }
+
+// ── Herstel na een opgeloste protocolstoring ──────────────────────────────
+// Als de ELM327 in zoekmodus staat duurt élk commando ~5 seconden. De
+// regelkringen hier meten dat correct als een verzadigde bus en schalen terug:
+// pollbudget omlaag (tot 17%) en multi-PID van 4 naar 2 naar 1 naar uit.
+// Zodra pidlane-bt.js het protocol opnieuw vergrendeld heeft is die oorzaak
+// weg, maar de degradatie bleef staan tot de herstelperiode verliep — in het
+// veldlog van 4-8 één keer ruim tien minuten. Deze functie zet de meting
+// meteen op nul zodat er opnieuw geijkt wordt op de werkelijke bus.
+function _herstelNaProtocolLock(){
+  _batchDips=0;
+  _batchOffSince=0;
+  window._batchSupported=undefined;        // undefined = weer toegestaan
+  try{ PLBus.batchReset(); }catch(e){}
+  try{ PLLoad.reset(); }catch(e){}
+  try{ btDiag('Regelkringen opnieuw geijkt na protocolherstel','ok'); }catch(e){}
+}
+PLLoad.herstelNaProtocolLock=_herstelNaProtocolLock;
 // Periodiek: als batch uit staat en het al een tijd goed gaat, één keer
 // opnieuw proberen. Een eenmalige hapering schakelt batch dan niet voorgoed uit.
 // Fix 19-07: handle + guard tegen dubbele intervallen bij herstart.
