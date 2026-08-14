@@ -100,12 +100,13 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 15 | `pidlane-graph.js` | 14 | multi-line groepstrends, DTC-scanstatus |
 | 16 | `pidlane-fuel.js` | 74 | brandstofanalyse, `apiFetch` (alle AI-calls), modelkeuze/kosten |
 | 17 | `pidlane-btflow.js` | 42 | Bluetooth-verbindingsflow (multi-step) + diagnostieklog |
-| 18 | `pidlane-bt.js` | 84 | **transportlaag**: BLE, SPP, Web Serial, batch-polling, protocolinit |
+| 18 | `pidlane-bt.js` | 84 | **transportlaag**: BLE, SPP, Web Serial, batch-polling, protocolinit. Bevat de **ELM-poort**: tijdens een (her)initialisatie weigeren `sendCmd`/`sendBT` al het overige verkeer — hard, niet adviserend zoals `PLBus`. Zie §11, opgelost 15-08 |
 | 19 | `pidlane-voertuigdata.js` | 15 | voertuigdata-merge: VIN-WMI + NHTSA + RDW |
 | 20 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
 | 21 | `pidlane-copiloot.js` | 9 | in-app ontwikkelassistent (admin-only), praat met `/copilot` |
 | 22 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
 | 22b | `pidlane-busgate.js` | 6 | `PLBusGate` — **de bus-poort**: één ladder `adapter → ecu → betrouwbaar` voor "leeft de bus, mag ik hier een oordeel op bouwen". Vereist `PLBus` uit `pidlane-data.js` |
+| 22c | `pidlane-bedrading.js` | 1 | **bedradingscontrole** — lijst van functies die modules van elkaar verwachten + controle of ze bestaan. **Moet als laatste script geladen worden.** Zie §19 |
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
 | 24 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
@@ -370,6 +371,11 @@ de Durable Object de plek om het saldo te serialiseren.
 
 ## 9. Werkafspraken
 
+**Drie bestanden, drie rollen.** `PIDLANE.md` beschrijft hoe het systeem in
+elkaar zit (bron van waarheid), `OVERDRACHT.md` wat er in één sessie gebeurd is,
+`PLAN.md` wat er nog moet gebeuren en in welke volgorde. Begin een sessie in
+`PLAN.md`, eindig er ook.
+
 - **Nederlandstalige codebase.** Commentaar, changelogs, UI-teksten: Nederlands.
 - **Complete, gevalideerde bestanden** — nooit patch-blokken in de chat.
   Sinds de opsplitsing: complete *module*bestanden, niet complete `index.html`.
@@ -415,6 +421,71 @@ Bijgewerkt 31-07-2026.
    dus de sensor staat nog gewoon in de keuzelijst. De gate is geen zuivere
    functie van de PID maar van (PID, huidige kennis); de bronlijst heeft dus
    invalidatie nodig. Ronde 5 in §15.
+   **15-08-2026:** ronde 5 was al gebouwd om dit op te lossen, maar was nooit
+   bedraad — zie §18. Nu wel. Dit punt geldt daarmee als opgelost, maar is nog
+   niet in de praktijk bevestigd: eerste rit erna nakijken.
+
+### Opgelost op 15-08-2026 — de ELM-poort en drie halve sloten
+
+Aanleiding: het veldlog van 15-08 liet zien dat na een socket-dip de
+ELM-herinitialisatie dwars door de pollus liep — `ATWS`/`ATE0`/`ATSP0`
+afgewisseld met PID-requests, echo nog aan, protocoldetectie weggegooid, per
+dip ~10 s onbruikbare data. Op een lange rit tientallen keren.
+
+De `withBus('elm-init')`-wrapper in `pidlane-bt.js` was er al, maar dekte het
+niet, om drie redenen die op één ding neerkomen: **het busslot is
+adviserend.** Het werkt alleen voor code die eerst `PLBus.claim()` doet.
+
+1. `sppReconnectGuard` plant de re-init met `setTimeout(60)` buiten de queue;
+   in dat gat gaf de pollus zijn slot vrij en kon één vuile batch erdoorheen.
+2. `PLBus.wait()` geeft na de limiet `0` terug en de aanroeper gaat tóch door
+   — bewust, want de guard draait ín de `sendCmd` van de houder en zou anders
+   deadlocken. Duurt een survey langer dan 8 s, dan draait de init ongelokt.
+3. `PLBus.breek()` bij een nieuwe verbinding breekt élke houder open, ook een
+   lopende `elm-init`.
+   Plus de aanroepers die `PLBus` überhaupt niet raken: `03`/`04` in
+   `pidlane-graph.js`, de AT-baseline-rollback in `pidlane-btflow.js`.
+
+**Nu: een tweede, hárde poort naast het slot** (`pidlane-bt.js`,
+`_elmPoortDicht/_elmPoortOpen/_elmSend`). Staat de poort dicht, dan weigeren
+`sendCmd` én `sendBT` alles wat geen eenmalig doorlaatbewijs meebrengt; alleen
+de init-reeks heeft dat. Het bewijs is one-shot en wordt synchroon gezet en
+gewist — een "init loopt"-boolean zou de code die tijdens een `await` van de
+init draait óók doorlaten. De poort gaat dicht op het moment dat de socket
+dood wordt verklaard (niet pas in de `setTimeout`), open in de `finally` van
+`_metElmBus` en ook bij een gefaalde of overgeslagen re-init, en vervalt na
+15 s zodat een vastgelopen init de bus niet gijzelt. Een weigering gaat vóór
+`PLBus.note()` en `trackBtQuality()` langs: telde hij mee, dan haalde
+`_emptyStreak` binnen zes weigeringen de "verbinding dood"-drempel en trok de
+app een herverbinding op gang — een reconnect-lus veroorzaakt door de
+bescherming tegen reconnects. Test: `test-elmpoort.js`.
+
+Drie fixes van dezelfde soort, gevonden bij het nalopen van "waar staat er nog
+een slot dat niemand hoeft te gehoorzamen":
+
+- **`pidlane-uitgebreid.js`** claimde de bus en negeerde de uitslag: bij
+  `tok = 0` zond hij gewoon door een lopende sweep heen. Erger nog stond
+  `_gedraaid = true` vóór de claim, en de probe draait maar één keer — één
+  ongelukkig getimede probe boekte de hele uitgebreide PID-set voorgoed als
+  "geen antwoord". Nu: bezet → overslaan, en `_gedraaid` pas zetten als er
+  echt gemeten wordt.
+- **`PLBus.claim()`** (`pidlane-data.js`) had een legacy-uitgang voor een
+  verweesde `window._pollBusy`. Zonder eigenaar greep de `MAX_HOLD_MS`-noodrem
+  daar niet — de bus kon dus permanent dichtstaan, precies in het geval
+  waarvoor die noodrem bestaat. Nu `LEGACY_MAX_MS` (10 s), met het moment van
+  signaleren als startpunt. Test: `test-busslot.js`.
+- **De ATDPN-mismatchtak in `initELM327`** zette de fix uit het
+  protocolgeheugen terug: week het bevestigde protocol af, dan stuurde hij
+  `ATSP0` en klaar — terwijl het herverbindpad nooit doorgaat naar
+  `scanNetworks()`. Adapter bleef in zoekmodus, `SEARCHING...` per commando
+  (8,8 min over 101 commando's in het log van 04-08), en `pl_proto_id` bleef
+  staan zodat de volgende reconnect hetzelfde foute protocol probeerde. Nu
+  maakt die tak de detectie zelf af (`0100` + `ATDPN`), onthoudt het resultaat
+  en werkt óók `selectedNetwork.id` bij — `_bekendProtocolId()` geeft die
+  namelijk voorrang boven localStorage.
+- **`_btGen`** werd alleen in de SPP-tak van `_sendBTOnce` gecontroleerd. In de
+  BLE-, Web-BT- en Web-Serial-takken kon een commando uit de vorige sessie de
+  buffer van de nieuwe leeglezen. Nu in alle vier.
 
 ### Opgelost op 31-07-2026
 
@@ -1157,3 +1228,83 @@ Onbekend of ontbrekend profiel -> `null` -> geen kern-blok, de rest van
 `test-kerndekking.js` (20 toetsen), knippad `const KERN_REEKS_MIN` tot
 `async function runQuickAI`. Alle acht tests groen: pidgate, herijking,
 meetpoort, ritpauze, busgate, plload, statrpm-letop, kerndekking.
+
+---
+
+## 19. De bedradingssweep van 15-08-2026
+
+Aanleiding: de vraag of we ergens een verkeerde afslag hebben genomen. Antwoord:
+ja, en niet in één module.
+
+### Ronde 5 heeft nooit gedraaid
+
+`PIDLANE.md` had 5a-2 en 5b allebei als ✅ staan, `test-herijking.js` was groen,
+en toch gebeurde er niets. Drie oorzaken, alle drie dezelfde soort:
+
+- **`updPID()` riep `_noteMap()` noch `plHerijkTick()` aan.** De haken stonden in
+  de documentatie als gelegd; de test riep ze zélf aan en zag de ontbrekende
+  bedrading dus niet. Gevolg: `_mapSamples` bleef structureel 0 en de
+  turbo-detectie was nog steeds dode code — precies de fout die 5a-1 had moeten
+  verhelpen, alleen via een andere deur. De "nog te valideren met een geschikt
+  voertuig"-openstaander kon dus nooit slagen, ook niet met de juiste auto.
+- **`purgeImplausiblePids()` bestond niet meer.** Ronde 5b verving hem door
+  `herijkPidGate()`, maar de twee aanroepplekken (`pidlane-bt.js` na
+  protocoldetectie, `pidlane-voertuigdata.js` bij een nieuw brandstoftype)
+  bleven de oude naam gebruiken — binnen een kale `try{ }catch(e){}`, dus de
+  `ReferenceError` verdween geruisloos.
+- **`rebuildPidDefsCache()` in `pidlane-rijsituatie.js` heeft nooit bestaan**,
+  verstopt achter een `typeof`-guard.
+
+Alle vier gerepareerd. **Let op: dit activeert slapend gedrag.** De eerste rit
+hierna kan tegels zien verdwijnen die er altijd stonden — op de CX-5 de
+boost-PIDs, want die is atmosferisch, dus dat is de bedoeling. Aparte commit,
+apart bekijken.
+
+### Het patroon: 626 stille catch-blokken
+
+Op 948 `try`'s gooien er 626 de fout weg zonder spoor. Tweederde van alle
+foutafhandeling in dit project maakt een hernoemde of verwijderde functie
+onzichtbaar. Dat is de verkeerde afslag — niet één module, maar een gewoonte.
+
+Werkregel vanaf nu: **een `catch` mag stil zijn als je de fout verwacht**
+(localStorage vol, DOM-element weg), **nooit rond een aanroep van eigen code.**
+Niet in één keer op te ruimen; wel per module, bij de eerstvolgende keer dat je
+er toch bent.
+
+### De tegenkracht: `pidlane-bedrading.js` + `test-bedrading.js`
+
+Eén lijst met de functies die modules van elkaar verwachten (afgeleid uit élke
+`typeof X === 'function'`-guard in de bron: precies de plekken waar een
+ontbrekende functie stil faalt), en twee controles:
+
+- **runtime**: na het laden wordt gecontroleerd of ze er allemaal zijn; wat
+  ontbreekt gaat luid het log in via `btDiag` én `log`.
+- **statisch** (`test-bedrading.js`): elke naam in `KRITIEK` moet in de bron
+  gedefinieerd zijn, én elke guard in de bron moet in `KRITIEK` staan. Die
+  tweede richting is er zodat de blinde vlek niet gewoon opnieuw uitdijt.
+
+Bewust géén statische analyse van álle aanroepen. Een parser die door
+HTML-in-template-literals met apostrofs en geneste `${}` heen komt, is een eigen
+project met eigen bugs — en dat is exact het soort omweg dat hier al te vaak is
+genomen. Een lijst van zeventig namen is saai en werkt. Bewezen: hernoem
+`herijkPidGate` en de test valt om.
+
+### Opgeruimd
+
+Negentien functies die nergens werden aangeroepen (ook niet vanuit HTML of een
+`onclick` in een template literal) zijn verwijderd: `confirmStrategy`,
+`toggleKentInput`, `openAutoExpert`, `openBtLogModal`, `recoAction`,
+`toggleTheme`, `zoomReset`, `openLiveData`, `selectProto`, `setWmTab`,
+`loadApiKey`, `downloadLog`, `saveAdminLogExport`, `getObdKmStand`, `isDiesel`,
+`_proxy`. Samen 119 regels.
+
+### Nog open uit deze sweep
+
+- `pidlane-scheduler.js` heet scheduler, maar de echte scheduler (`PLSched`,
+  `pidPollInterval`, `pidsDueNow`) zit in `pidlane-plload.js`. Verwarrende naam,
+  geen kapotte code.
+- Elf modules doen hun eigen `fetch` naar de worker; er is geen centrale ingang.
+- Acht modules pakken zelf een `41`-header uit in plaats van
+  `splitBatchResponse()` te gebruiken. Dat is dezelfde soort verspreiding als de
+  PID-filtering vóór de gate.
+
