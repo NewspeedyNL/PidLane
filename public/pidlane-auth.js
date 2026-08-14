@@ -348,11 +348,6 @@ function refreshAdminLogRow(){
   const cb=document.getElementById('adminLogExport');
   if(cb){ try{ cb.checked = localStorage.getItem('pl_admin_logexport')==='1'; }catch(e){} }
 }
-function saveAdminLogExport(){
-  const cb=document.getElementById('adminLogExport');
-  try{ localStorage.setItem('pl_admin_logexport', (cb&&cb.checked)?'1':'0'); }catch(e){}
-  if(cb&&cb.checked){ try{ maybeStartLiveLog(); }catch(e){} }
-}
 
 async function logout(){
   // Admin logt uit → ALTIJD eerst vragen of de volledige log bewaard moet
@@ -780,9 +775,4 @@ function log(msg,type=''){
   if(localLog.length>500) localLog.shift();
   if(type==='err')  logToSheets('error',  msg);
   if(type==='warn'&&msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier')) logToSheets('outlier',msg);
-}
-function downloadLog(){
-  const v=vehicleInfo||{};
-  const lines=[`PidLane — Log`,`Datum: ${new Date().toLocaleString('nl')}`,`Voertuig: ${v.merk||'?'} ${v.year||''} ${v.vin||''}`,'',...localLog.map(l=>`[${l.ts}][${l.type||'info'}] ${l.msg}`)];
-  download('newspeedy-log.txt',lines.join('\n'));
 }

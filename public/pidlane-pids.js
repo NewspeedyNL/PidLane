@@ -457,6 +457,16 @@ function applyG(pid,val){
 function updPID(pid,val){
   pidVals[pid]=val;
   try{ _plCheckPid(pid,val); }catch(e){}
+  // ── De twee haken van ronde 5 (§15) ──────────────────────────────
+  // Deze stonden in PIDLANE.md als gelegd (5a-2 en 5b, beide ✅) en
+  // test-herijking.js toetst ze, maar ze werden nergens aangeroepen: de test
+  // riep ze zelf aan. Gevolg: `_mapSamples` bleef op 0 (turbo-detectie dus
+  // permanent dode code, precies de fout die 5a-1 had moeten verhelpen) en de
+  // herijking draaide nooit (de bronlijst werd nooit herbouwd bij nieuwe
+  // kennis). Beide zijn goedkoop: _noteMap() is twee vergelijkingen,
+  // plHerijkTick() maakt één stempel en vergelijkt één string.
+  try{ if(typeof _noteMap==='function') _noteMap(); }catch(e){}
+  try{ if(typeof plHerijkTick==='function') plHerijkTick(); }catch(e){}
   _pidLastUpd[pid]=Date.now();
   // Pauzekrediet (fase 1): leg vast hoeveel bus-pauzetijd er tot nu toe was.
   // De stale-watchdog trekt de pauze die ná deze meting kwam eraf, zodat een

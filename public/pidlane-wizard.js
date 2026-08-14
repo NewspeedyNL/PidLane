@@ -61,15 +61,6 @@ function isEV(){
   if(/hybride|hybrid|phev/.test(b)) return 'hybride';
   return null;
 }
-function isDiesel(){
-  var f = veilig(function(){ return pidVals['0151']; });
-  if(typeof f==='number') return (f===4||f===5);
-  var b = veilig(function(){
-    var v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
-    return String(v.brandstof||v.fuel||'').toLowerCase();
-  },'');
-  return /diesel|tdi|hdi|dci|cdi|crdi/.test(b);
-}
 
 /* ── De vragenboom ───────────────────────────────────────────────────────
    Elk knooppunt: {v: vraag, sub: toelichting, opt: [keuzes]}.

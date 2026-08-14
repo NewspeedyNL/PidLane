@@ -163,9 +163,23 @@
     const lijst = kandidaten();
     if (!lijst.length) return { nieuw: 0, overgeslagen: true };
 
+    // Bus bezet? NIET doorzenden. De claim stond hier al, maar de uitslag werd
+    // genegeerd: bij tok=0 ging de probe gewoon dwars door een lopende sweep
+    // heen. Monitor en waakronde doen het wél goed (bij 0 → volgende ronde) en
+    // dit volgt nu dat patroon.
+    //
+    // En _gedraaid pas ZETTEN als we ook echt gaan meten. Stond hij vóór de
+    // claim, dan boekte één ongelukkig getimede probe de hele PID-set voorgoed
+    // als "geen antwoord" — hij kwam immers nooit meer terug. Een overgeslagen
+    // probe is geen gedraaide probe.
+    let tok = 0;
+    try { tok = (window.PLBus && PLBus.claim) ? PLBus.claim('uitgebreid-probe') : 0; } catch (e) { tok = 0; }
+    if (window.PLBus && PLBus.claim && !tok) {
+      try { btDiag('Uitgebreide probe uitgesteld — bus bezet door "' + (PLBus.owner ? PLBus.owner() : '?') + '"', 'info'); } catch (e) {}
+      return { nieuw: 0, overgeslagen: true, busBezet: true };
+    }
+
     _gedraaid = true;
-    let tok = null;
-    try { tok = window.PLBus && PLBus.claim ? PLBus.claim('uitgebreid-probe') : null; } catch (e) {}
 
     let nieuw = 0;
     try {
@@ -195,7 +209,7 @@
         try { await delay(60); } catch (e) {}
       }
     } finally {
-      try { if (tok !== null && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
     }
 
     if (nieuw) {

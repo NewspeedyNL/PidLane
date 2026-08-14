@@ -455,7 +455,8 @@ async function deepRefreshPIDs(){
         named++;
       }
     });
-    if(typeof rebuildPidDefsCache==='function') rebuildPidDefsCache();
+    // rebuildPidDefsCache() heeft nooit bestaan; de typeof-guard maakte dat
+    // onzichtbaar. buildDiscoveredPIDList() hieronder doet het echte werk.
     buildDiscoveredPIDList();
     const gained=supportedPIDs.size-before;
     if(st) st.textContent=`✓ +${gained} PIDs, ${named} namen toegevoegd (totaal ${supportedPIDs.size})`;

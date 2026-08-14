@@ -134,7 +134,6 @@ function updateReco(){
   // Aanbevolen-banner verwijderd op verzoek — altijd verbergen.
   const c=document.getElementById('recoCard'); if(c) c.style.display='none';
 }
-function recoAction(){ try{ window._recoAction?.(); }catch(e){} }
 // Fix 19-07: handle + guard zodat een herstart (bv. na opnieuw verbinden
 // tijdens een lange rit) geen tweede interval bovenop het eerste zet.
 if(!window._recoTimer) window._recoTimer=setInterval(updateReco,4000);
@@ -290,42 +289,6 @@ function showOptResult(title,html){
   m.style.display='flex';
 }
 
-function openBtLogModal(){
-  let ov=document.getElementById('btLogModal');
-  if(!ov){
-    ov=document.createElement('div');
-    ov.id='btLogModal';
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9650;display:flex;align-items:center;justify-content:center;padding:16px';
-    ov.innerHTML=`
-      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:12px;max-width:680px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd)">
-          <strong style="font-size:14px">📡 Bluetooth log</strong>
-          <div style="display:flex;gap:6px">
-            <button onclick="optimizeConnectionAI(this)" style="padding:5px 10px;border-radius:6px;border:1px solid #7c3aed;background:linear-gradient(135deg,#1a0a3a,#0d0d1a);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer">🤖 Optimaliseer</button>
-            <button onclick="optimizeConnection(false)" title="Meet snelheid + kies poll-strategie" style="padding:5px 10px;border-radius:6px;border:1px solid #1a6fff;background:rgba(26,111,255,.1);color:#4d82ff;font-size:12px;font-weight:700;cursor:pointer">⚡ Meet snelheid</button>
-            <button onclick="copyBtLog(this)" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer">📋 Kopieer</button>
-            <button onclick="openBugReport()" style="padding:5px 10px;border-radius:6px;border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer">🐞 Meld bug</button>
-            <button onclick="document.getElementById('btLogModal').style.display='none'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer">✕ Sluit</button>
-          </div>
-        </div>
-        <div id="btLogModalBody" style="overflow-y:auto;padding:10px 14px;font-family:monospace;font-size:12px;line-height:1.6;white-space:pre-wrap"></div>
-      </div>`;
-    document.body.appendChild(ov);
-  }
-  const body=document.getElementById('btLogModalBody');
-  const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
-  const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
-  body.innerHTML='';
-  (_btLog||[]).forEach(e=>{
-    const d=document.createElement('div');
-    d.style.color=colors[e.type]||'var(--tx2)';
-    d.textContent=`${e.ts} ${icons[e.type]||'·'} ${e.msg}`;
-    body.appendChild(d);
-  });
-  if(!_btLog||!_btLog.length) body.textContent='(nog geen logregels)';
-  ov.style.display='flex';
-  body.scrollTop=body.scrollHeight;
-}
 
 async function copyBtLog(btn){
   let txt='';

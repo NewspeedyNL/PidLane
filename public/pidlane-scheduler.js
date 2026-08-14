@@ -77,22 +77,6 @@ function autoKennisVoorMerk(merk, brandstof){
   return {...hit, zwak: zwakGefilterd.length?zwakGefilterd:hit.zwak.map(z=>z[0])};
 }
 
-function openAutoExpert(){
-  const sheet=document.getElementById('autoExpertSheet');
-  sheet.classList.remove('hidden');
-  const v=getVehicle()||{};
-  const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
-  const bf=v.brandstof?` · ${v.brandstof}`:'';
-  document.getElementById('aexVehicle').textContent=
-    merkModel ? merkModel+bf+(demoMode?' (demo)':'') : (demoMode?'Demo-voertuig':'Geen voertuig herkend — verbind of vul kenteken in');
-  // Kennisbank-chips tonen
-  const know=autoKennisVoorMerk(v.merk, v.brandstof);
-  const kEl=document.getElementById('aexKnowledge');
-  if(know){
-    kEl.innerHTML=`<span class="aex-chip" style="background:var(--ors);color:var(--or);border-color:var(--or)">⚠️ Bekende ${know.merk}-aandachtspunten</span>`+
-      know.zwak.slice(0,5).map(z=>`<span class="aex-chip">${z}</span>`).join('');
-  } else kEl.innerHTML='';
-}
 function closeAutoExpert(){ document.getElementById('autoExpertSheet').classList.add('hidden'); }
 
 // Bouwt de context-string: voertuig + live PIDs + DTC's + merk-kennis

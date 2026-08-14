@@ -107,12 +107,6 @@
     _chipVerversen();
   }
 
-  function _proxy() {
-    try {
-      if (typeof PROXY_URL !== 'undefined' && PROXY_URL) return String(PROXY_URL).replace(/\/$/, '');
-    } catch (e) {}
-    return '';
-  }
 
   // 31-07-2026 — _boekServer() is hier weg. Die riep /klant/saldo-muteer aan om
   // het verbruik af te boeken, maar afrekenen vanuit de app is een verzoek en

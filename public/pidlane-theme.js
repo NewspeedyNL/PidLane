@@ -7,12 +7,6 @@
 // ════════════════════════════════════════
 // THEME / FONT / ZOOM
 // ════════════════════════════════════════
-function toggleTheme(){
-  isDark=!isDark;
-  document.documentElement.classList.toggle('dark',isDark);
-  var _tb=document.getElementById('themeBtn'); if(_tb) _tb.textContent=isDark?'☀️':'🌙';
-  try{localStorage.setItem('ns_theme',isDark?'dark':'light');}catch(e){}
-}
 (function initThemeDefault(){
   var saved=null; try{ saved=localStorage.getItem('ns_theme'); }catch(e){}
   isDark = true;            // thema-knop verwijderd: altijd donker thema
@@ -137,7 +131,6 @@ function applyZoom(){
   try{ localStorage.removeItem('ns_zoom'); }catch(e){}
 }
 function zoom(){ /* verwijderd — transform-zoom bestaat niet meer, zie applyZoom() */ }
-function zoomReset(){ currentZoom=1.0; applyZoom(); }
 
 // ════════════════════════════════════════
 // INIT — alles in DOMContentLoaded zodat HTML zeker geladen is

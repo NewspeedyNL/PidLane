@@ -294,16 +294,6 @@ Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestig
 // ════════════════════════════════════════
 // API KEY
 // ════════════════════════════════════════
-function loadApiKey(){
-  // Login heeft altijd prioriteit — nooit overschrijven
-  if(window.anthropicKey?.startsWith('sk-ant-')){ updateApiPill(); return; }
-  // Fallback: localStorage
-  try{
-    const saved=localStorage.getItem('ns_api_key');
-    if(saved?.startsWith('sk-ant-')) window.anthropicKey=saved;
-  }catch(e){}
-  updateApiPill();
-}
 function saveApiKey(){
   let val=document.getElementById('apiKeyInput').value.trim();
   if(val==='••••••••••••••••') val=window.anthropicKey;
@@ -341,15 +331,11 @@ function closeApiDialog(){document.getElementById('apiDialog').classList.remove(
 // ════════════════════════════════════════
 // VEHICLE
 // ════════════════════════════════════════
-function selectProto(el,p){
-  document.querySelectorAll('.proto-btn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel'); selectedProto=p;
-}
 
 // ════════════════════════════════════════
 // WELCOME SCREEN
 // ════════════════════════════════════════
-function setWmTab(tab){ backToDoors(); }   // 3 tabs vervangen door 4 intent-deuren
+// 3 tabs vervangen door 4 intent-deuren
 function openDoor(key){
   const d=document.getElementById('wmDoors'); if(d) d.style.display='none';
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
@@ -523,10 +509,6 @@ function pidChoiceBackHome(){
   window._pidLadeUserTs=0;                  // bewust verlaten — guard weer scherp
   try{ closeLades(); }catch(e){}
   try{ goHome(); }catch(e){}
-}
-function openLiveData(){
-  // Compat: oude callers (o.a. voorheen de onderbalk) → nieuwe route
-  openLiveView();
 }
 // ── Alle volledig-schermige modus-overlays opruimen ───────────────────
 // 2026-07-26 — deze logica zat alleen ín openLiveView(). Gevolg: startte je een

@@ -459,12 +459,6 @@ function maandenTotAPK(s){
   } catch(e){ return null; }
 }
 
-function getObdKmStand(){
-  // LET OP: standaard OBD2 PIDs geven GEEN echte kilometerstand (odometer).
-  // PID 0131 is enkel "afstand sinds foutcodes gewist" — niet de tellerstand.
-  // De km-stand moet daarom handmatig worden ingevoerd door de gebruiker.
-  return null;
-}
 
 // ── Onderhoud bij km-stand (AI) ──────────────────────────
 function buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt){

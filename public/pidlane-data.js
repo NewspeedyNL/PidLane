@@ -1203,7 +1203,7 @@ window.HUD_LABEL_DICT ={
 'use strict';
 const S={
   owner:null, token:0, since:0, seq:1,
-  pausedTotal:0, pauseStart:0,
+  pausedTotal:0, pauseStart:0, wildSinds:0,
   tx:0, ok:0, bad:0, msSom:0, msN:0,
   perPid:Object.create(null),
   reqTot:0, reqOnvol:0,      // requests totaal / met ontbrekende PIDs
@@ -1215,6 +1215,7 @@ function diag(m,l){ try{ if(typeof btDiag==='function') btDiag(m,l||'info'); }ca
 
 window.PLBus={
   MAX_HOLD_MS:180000,      // 3 min: daarna geldt een houder als vastgelopen
+  LEGACY_MAX_MS:10000,     // verweesde window._pollBusy: na 10s negeren
 
   claim(naam){
     if(S.owner){
@@ -1223,8 +1224,18 @@ window.PLBus={
         this._release(S.token,true);
       } else return 0;
     }
-    // Legacy-houder die window._pollBusy zelf zette (module die ik gemist heb)
-    if(!S.owner && window._pollBusy===true) return 0;
+    // Legacy-houder die window._pollBusy zelf zette (module die ik gemist heb).
+    // MET noodrem: zonder eigenaar grijpt de MAX_HOLD_MS-check hierboven niet,
+    // dus een verweesde true zou de bus permanent dichtzetten — precies het
+    // geval waarvoor die check bestaat, en juist daar werkte hij niet. Nu
+    // wordt het moment van signaleren onthouden en na LEGACY_MAX_MS de vlag
+    // weggegooid: één module die zich misdraagt mag de hele bus niet gijzelen.
+    if(!S.owner && window._pollBusy===true){
+      if(!S.wildSinds){ S.wildSinds=nu(); diag('window._pollBusy staat aan zonder eigenaar — noodrem loopt','warn'); return 0; }
+      if(nu()-S.wildSinds < this.LEGACY_MAX_MS) return 0;
+      diag('Verweesde _pollBusy stond '+Math.round((nu()-S.wildSinds)/1000)+'s aan — genegeerd door '+naam,'warn');
+      window._pollBusy=false; S.wildSinds=0;
+    } else if(S.wildSinds){ S.wildSinds=0; }
     S.owner=naam||'?'; S.token=++S.seq; S.since=nu();
     if(S.owner!=='poll') S.pauseStart=S.since;
     window._pollBusy=true;

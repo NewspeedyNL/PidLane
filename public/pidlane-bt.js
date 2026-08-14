@@ -54,6 +54,9 @@ async function connectSerial(){
   // Zombie poll-loop van vorige sessie stoppen
   clearInterval(pollTimer);
   try{ PLBus.breek('nieuwe verbinding'); }catch(e){ window._pollBusy=false; }
+  // Een poort uit de vorige sessie zou de init van déze verbinding blokkeren.
+  // Bewust ná PLBus.breek(): dezelfde plek, dezelfde reden.
+  try{ _elmPoortOpen('nieuwe verbinding'); window._reinitBusy=false; }catch(e){}
   try{ PLBus.batchReset(); PLBus.resetStats(); }catch(e){}
   connected = false;
   window._btGen = (window._btGen || 0) + 1;   // oude commando's ongeldig maken
@@ -596,9 +599,69 @@ async function _webSerialSend(cmd, timeoutMs){
 // overslaat i.p.v. ertussen te kruipen. Fallback op ongated uitvoeren als
 // PLBus/withBus (nog) niet geladen is — zelfde defensieve stijl als de
 // bestaande PLBus-aanroepen elders in dit bestand.
+// ── DE ELM-POORT (hard) ──
+// Het busslot hierboven is ADVISEREND: het werkt alleen voor aanroepers die
+// eerst PLBus.claim() doen. Drie gaten bleven daardoor open:
+//   1. sppReconnectGuard plant de re-init met setTimeout(60) buiten de queue —
+//      de poll-loop geeft zijn slot vrij en kan in dat gat één vuile batch op
+//      een net gereset ELM zetten (echo aan, spaties aan, geen protocol).
+//   2. PLBus.wait() geeft na 8s 0 terug en de aanroeper gaat TOCH door. Houdt
+//      een survey/sweep de bus langer vast, dan draait de init ongelokt — het
+//      oorspronkelijke gedrag, alleen zeldzamer.
+//   3. PLBus.breek() (connectSerial) breekt élke houder open, ook een lopende
+//      elm-init.
+// Plus de aanroepers die PLBus überhaupt niet raken (03/04 in graph.js, de
+// AT-baseline-rollback in btflow.js).
+//
+// Daarom een tweede, hárde poort die niet om medewerking vraagt: zolang de
+// poort dicht staat weigert sendCmd/sendBT ALLES wat niet met een eenmalig
+// doorlaatbewijs komt. Alleen de init-reeks zelf heeft dat bewijs (_elmSend).
+//
+// Waarom een one-shot en geen "init loopt"-boolean: de init doet awaits, en
+// tijdens zo'n await draait andere code. Een periode-vlag zou die code óók
+// doorlaten. Het bewijs wordt daarom synchroon gezet vlak vóór de aanroep en
+// synchroon gewist bij binnenkomst — daar zit geen await tussen, dus er kan
+// niets tussen glippen.
+//
+// Vervaltijd: een init die vastloopt mag de bus niet permanent dichtgooien.
+// Na ELM_POORT_MAX_MS gaat de poort vanzelf open, met een melding in het log.
+const ELM_POORT_MAX_MS = 15000;
+let _elmPoortTot = 0;    // 0 = open; anders het tijdstip waarop hij vanzelf opengaat
+let _elmPas      = false; // eenmalig doorlaatbewijs voor de init-reeks zelf
+
+function _elmPoortDicht(reden){
+  _elmPoortTot = Date.now() + ELM_POORT_MAX_MS;
+  btDiag('ELM-poort dicht ('+reden+') — overig busverkeer wordt geweigerd','warn');
+}
+function _elmPoortOpen(reden){
+  if(!_elmPoortTot) return;
+  _elmPoortTot = 0;
+  btDiag('ELM-poort open ('+reden+')','ok');
+}
+function _elmPoortDicht_(){    // interne lezer: regelt ook het vanzelf opengaan
+  if(!_elmPoortTot) return false;
+  if(Date.now() >= _elmPoortTot){
+    _elmPoortTot = 0;
+    btDiag('ELM-poort stond langer dan '+(ELM_POORT_MAX_MS/1000)+'s dicht — vervallen, verkeer weer toegestaan','warn');
+    return false;
+  }
+  return true;
+}
+
+// Zenden mét doorlaatbewijs. Alleen de init-reeks gebruikt dit.
+function _elmSend(cmd, timeoutMs){ _elmPas = true; return sendCmd(cmd, timeoutMs); }
+
 async function _metElmBus(fn){
-  if(typeof withBus==='function') return await withBus('elm-init', fn, 8000); // 8s: ruimer dan de default 4s, een lopende poll mag uitlopen tot zijn eigen timeout
-  return await fn();
+  _elmPoortDicht('elm-init');
+  try{
+    // Het busslot blijft staan: het houdt nette aanroepers netjes buiten, wat
+    // beter is dan ze te laten afketsen op de poort. De poort is het vangnet
+    // voor iedereen die zich er niets van aantrekt.
+    if(typeof withBus==='function') return await withBus('elm-init', fn, 8000); // 8s: ruimer dan de default 4s, een lopende poll mag uitlopen tot zijn eigen timeout
+    return await fn();
+  } finally {
+    _elmPoortOpen('elm-init klaar');
+  }
 }
 
 // ── Bewezen ELM327-init voor Web Serial (ATZ-patroon) ──
@@ -697,6 +760,15 @@ async function connectWebBluetooth(){
 let _btQueue=Promise.resolve();
 
 async function sendBT(cmd, timeoutMs){
+  // Vangnet voor de vier directe sendBT-aanroepen (ATI/ATZ/0100 bij de
+  // BLE-kandidaatcontrole). Die lopen buiten sendCmd om en zouden de poort
+  // anders passeren. sendCmd heeft het bewijs hierboven al gewist, dus deze
+  // check ziet alleen nog écht ongelokt verkeer.
+  const _pas = _elmPas; _elmPas = false;
+  if(!_pas && _elmPoortDicht_()){
+    btDiag(`sendBT "${cmd}" geweigerd: ELM-herinitialisatie bezig`,'warn');
+    return '';
+  }
   const run=_btQueue.then(()=>_sendBTRaw(cmd,timeoutMs));
   _btQueue=run.catch(()=>{}); // ketting nooit laten breken
   return run;
@@ -728,7 +800,14 @@ async function _sendBTOnce(cmd, timeoutMs){
   // 0100 (protocoldetectie) krijgt automatisch meer tijd voor SEARCHING...
   if(window._webSerialWrite){
     const isSearch = /^01/.test(cmd);
-    return await _webSerialSend(cmd, isSearch ? Math.max(TIMEOUT, 10000) : TIMEOUT);
+    const _r = await _webSerialSend(cmd, isSearch ? Math.max(TIMEOUT, 10000) : TIMEOUT);
+    // Antwoord van een commando uit de vorige sessie niet doorgeven: het hoort
+    // bij een andere adapterstaat. Zelfde regel als in de andere drie takken.
+    if((window._btGen||0)!==myGen){
+      btDiag(`"${cmd}" verworpen: nieuwe verbindsessie gestart (serial)`,'warn');
+      return '';
+    }
+    return _r;
   }
 
   try{
@@ -810,6 +889,13 @@ async function _sendBTOnce(cmd, timeoutMs){
       const start=Date.now();
       while(Date.now()-start<4000){
         await delay(50);
+        // Generatiecheck — stond alleen in de SPP-tak. Zonder deze regel leest
+        // een commando uit de vórige sessie hier de buffer van de nieuwe leeg,
+        // en dan is het antwoord van de nieuwe sessie spoorloos.
+        if((window._btGen||0)!==myGen){
+          btDiag(`"${cmd}" afgebroken: nieuwe verbindsessie gestart (BLE)`,'warn');
+          return '';
+        }
         if(typeof btBuffer==='string' && btBuffer.includes('>')) break;
       }
       const raw = typeof btBuffer==='string' ? btBuffer : '';
@@ -825,6 +911,10 @@ async function _sendBTOnce(cmd, timeoutMs){
       const start=Date.now();
       while(Date.now()-start<4000){
         await delay(50);
+        if((window._btGen||0)!==myGen){          // zelfde reden als in de BLE-tak
+          btDiag(`"${cmd}" afgebroken: nieuwe verbindsessie gestart (Web BT)`,'warn');
+          return '';
+        }
         if(typeof btBuffer==='string' && btBuffer.includes('>')) break;
       }
       const raw = typeof btBuffer==='string' ? btBuffer : '';
@@ -859,6 +949,13 @@ async function sppReconnectGuard(spp,address,cmd,force){
 
     if(!alive){
       window._lastSppReconnect=now;
+      // Poort NU dicht, niet pas in de setTimeout hieronder. Vanaf dit moment
+      // is de ELM-interpreter niet meer in de staat die de app denkt: de
+      // nieuwe socket komt met echo aan, spaties aan en zonder vergrendeld
+      // protocol. Alles wat tussen hier en het einde van de re-init de bus op
+      // wil, levert rommel. De vervaltijd dekt het geval dat de herverbinding
+      // faalt en de re-init dus nooit start.
+      _elmPoortDicht('socket dood — herverbinden');
       btDiag(`Socket dood na "${cmd}" — herverbinden...`,'warn');
       try{ await spp.disconnect({address}); }catch(e){}
       // Direct herverbinden op hetzelfde (gebonde) adres: 3 pogingen met
@@ -881,9 +978,17 @@ async function sppReconnectGuard(spp,address,cmd,force){
       // de gebruiker niets hoeft te doen. BELANGRIJK: buiten de BT-queue plannen
       // (initELM327 stuurt zelf commando's → in de queue zou dat deadlocken).
       setTimeout(async()=>{
-        if(window._reinitBusy) return; window._reinitBusy=true;
-        try{ if(connected) await initELM327({herstelProtocol:true}); btDiag('ELM327 opnieuw klaar na herverbinden','ok'); }
-        catch(e){ btDiag('Re-init na herverbinden faalde: '+e.message,'warn'); }
+        // Elke uitgang moet de poort weer opendoen, ook de vroege return:
+        // stond hij dicht en gebeurde er niets meer, dan lag de bus stil tot
+        // de vervaltijd. _metElmBus doet dat zelf voor het normale pad; deze
+        // twee gevallen komen daar niet eens.
+        if(window._reinitBusy){ return; }   // andere init loopt al → die doet de poort
+        window._reinitBusy=true;
+        try{
+          if(connected){ await initELM327({herstelProtocol:true}); btDiag('ELM327 opnieuw klaar na herverbinden','ok'); }
+          else { _elmPoortOpen('geen verbinding meer — re-init overgeslagen'); }
+        }
+        catch(e){ btDiag('Re-init na herverbinden faalde: '+e.message,'warn'); _elmPoortOpen('re-init gefaald'); }
         finally{ window._reinitBusy=false; }
       },60);
     }
@@ -894,7 +999,24 @@ async function sppReconnectGuard(spp,address,cmd,force){
 
 async function sendCmd(cmd, timeoutMs){
   if(demoMode){ btDiag(`sendCmd "${cmd}" geblokkeerd: demoMode staat AAN`,'warn'); return ''; }
+  // Doorlaatbewijs synchroon lezen én wissen: één aanroep, geen await ertussen.
+  const _pas = _elmPas; _elmPas = false;
+  if(!_pas && _elmPoortDicht_()){
+    btDiag(`"${cmd}" geweigerd: ELM-herinitialisatie bezig`,'warn');
+    // BEWUST vóór PLBus.note() en trackBtQuality(): een geweigerd commando is
+    // geen busfout en al helemaal geen lege respons. Zou het wél meetellen,
+    // dan schoot _emptyStreak binnen zes weigeringen naar de "verbinding dood"-
+    // drempel en trok de app een volledige herverbinding op gang — een
+    // reconnect-lus veroorzaakt door de bescherming tegen reconnects.
+    return '';
+  }
   const _t0 = Date.now();
+  // Bewijs doorzetten naar sendBT: dat is de tweede poort, en die weet niet
+  // dat sendCmd het al had. Zonder deze regel weigert de backstop de
+  // init-reeks zelf — de fix die zichzelf sloopt. sendBT wordt hieronder
+  // SYNCHROON aangeroepen (het await geldt de terugkeer, niet de aanroep),
+  // dus er kan niets tussen deze regel en die check glippen.
+  if(_pas) _elmPas = true;
   const r = await sendBT(cmd, timeoutMs);
   // Telemetrie (fase 4): hoe lang duurde dit commando en kwam er iets zinnigs
   // terug? Voedt het busdiagnose-scherm (polls/sec, gem. ms, ECU-belasting).
@@ -1052,11 +1174,6 @@ function showStrategyConfirm(speed, voorstel){
   try{ btDiag(`Verbinding gemeten: ${speed.readsPerSec} reads/s, ${speed.avgMs}ms → startpunt ${s?s.label:voorstel}; PLLoad regelt vanaf hier`,'ok'); }catch(e){}
 }
 
-function confirmStrategy(k){
-  applyStrategy(k);
-  const ov=document.getElementById('stratOverlay'); if(ov) ov.classList.remove('show');
-  showToast?.(`${STRATEGIE_INFO[k].emoji} Strategie: ${STRATEGIE_INFO[k].label}`);
-}
 
 // Lichte hercontrole vóór een analyse: snelle gezondheids-check zonder popup,
 // tenzij de verbinding merkbaar verslechterd is.
@@ -1135,6 +1252,16 @@ function showConnError(msg){
 // Oplossing: onthoud het gedetecteerde protocol en vergrendel het na een
 // herverbinding opnieuw, in plaats van terug te vallen op AUTO.
 
+// Eén plek voor "is dit een bruikbaar ELM-protocol-id". Stond als losse regex
+// in _bekendProtocolId(); nu ook nodig bij de herdetectie na een afwijking.
+// ELM327 kent 1..C, en ATDPN zet er een 'A' voor bij automatisch gevonden
+// ("A6"); ATSPA6 is de geldige manier om dat te vergrendelen.
+function _schoonProtocolId(id){
+  const v=String(id||'').trim().toUpperCase();
+  if(!v||v==='?'||v==='0'||v==='A0') return '';
+  return /^A?[0-9A-C]$/.test(v) ? v : '';
+}
+
 function _onthoudProtocol(id){
   const v=String(id||'').trim().toUpperCase();
   if(!v||v==='?'||v==='0') return;          // '0' = AUTO, dat is geen vergrendeling
@@ -1170,40 +1297,67 @@ async function initELM327(opts){
     // ATZ is een volledige hardware reset die op OBDLink (STN chip) ook de
     // Bluetooth module reset → SPP socket sterft stil. ATWS reset alleen de
     // ELM327 interpreter en houdt de BT verbinding in leven.
-    await sendCmd('ATWS');
+    await _elmSend('ATWS');
     await delay(1000); // ELM327 heeft tijd nodig na reset
     btDiag('ATWS warm start OK','ok');
 
     // Stap 2: Basisinstellingen
-    await sendCmd('ATE0');  // Echo uit
-    await sendCmd('ATL0');  // Linefeeds uit
-    await sendCmd('ATS0');  // Spaties uit
-    await sendCmd('ATH0');  // Headers uit (standaard)
-    await sendCmd('ATAT1'); // Adaptive timing
-    await sendCmd('ATST64');// 400ms timeout per commando
+    await _elmSend('ATE0');  // Echo uit
+    await _elmSend('ATL0');  // Linefeeds uit
+    await _elmSend('ATS0');  // Spaties uit
+    await _elmSend('ATH0');  // Headers uit (standaard)
+    await _elmSend('ATAT1'); // Adaptive timing
+    await _elmSend('ATST64');// 400ms timeout per commando
 
     // Stap 3: Protocol instellen
     const _proto = _herstel ? _bekendProtocolId() : null;
     if(_proto){
       // Herverbinding met een bekend protocol: direct vergrendelen. Scheelt de
       // volledige SEARCHING-cyclus bij élk volgend commando.
-      await sendCmd('ATSP'+_proto);
+      await _elmSend('ATSP'+_proto);
       await delay(200);
 
       // Verifiëren dat de adapter de vergrendeling ook echt overnam. ATDPN
       // kost ~60ms en geeft in het log harde zekerheid i.p.v. een aanname.
       let _bevestigd='';
       try{
-        _bevestigd=(await sendCmd('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim().toUpperCase();
+        _bevestigd=(await _elmSend('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim().toUpperCase();
       }catch(e){}
       if(_bevestigd && _bevestigd.replace(/^A/,'') === _proto.replace(/^A/,'')){
         btDiag(`Protocol opnieuw vergrendeld: ${_proto} (bevestigd via ATDPN)`,'ok');
       }else if(_bevestigd){
-        // Adapter zegt iets anders — niet doordrukken, terug naar AUTO zodat
-        // de normale detectie het overneemt.
+        // Adapter zegt iets anders. Alleen ATSP0 sturen was hier de val: het
+        // herverbindpad gaat NIET door naar scanNetworks(), dus de adapter
+        // bleef in zoekmodus staan en élk volgend commando deed opnieuw
+        // "SEARCHING..." — precies de 8,8 minuten over 101 commando's uit het
+        // veldlog van 4-8, veroorzaakt door de fix die dat moest voorkomen.
+        // Nu: terug naar AUTO én de detectie hier zelf afmaken, zodat de
+        // adapter vergrendeld achterblijft in plaats van zoekend.
         btDiag(`Protocolvergrendeling week af (gevraagd ${_proto}, kreeg ${_bevestigd}) — terug naar AUTO`,'warn');
-        await sendCmd('ATSP0');
+        try{ localStorage.removeItem('pl_proto_id'); }catch(e){}   // fout onthouden protocol niet nóg eens proberen
+        await _elmSend('ATSP0');
         await delay(200);
+        // 0100 dwingt de automatische detectie af; ruime timeout want dit is
+        // precies het commando dat de SEARCHING-cyclus doorloopt.
+        let _det='';
+        try{ _det=await _elmSend('0100', 12000); }catch(e){}
+        if(_det && /41/.test(_det) && !/UNABLE|ERROR|STOPPED|NO DATA/i.test(_det)){
+          let _nieuw='';
+          try{ _nieuw=_schoonProtocolId((await _elmSend('ATDPN')).replace(/[^0-9A-Fa-f]/g,'')); }catch(e){}
+          if(_nieuw){
+            _onthoudProtocol(_nieuw);
+            // ÓÓK selectedNetwork bijwerken: _bekendProtocolId() geeft daar
+            // voorrang aan boven localStorage. Zonder deze regel wist de
+            // opslag het goede id en probeerde de volgende herverbinding
+            // alsnog het foute — de fix die zichzelf overslaat.
+            try{ if(selectedNetwork) selectedNetwork.id=_nieuw; }catch(e){}
+            btDiag(`Protocol opnieuw gedetecteerd na afwijking: ${_nieuw} — vergrendeld`,'ok');
+          }else{
+            btDiag('Detectie gelukt maar ATDPN gaf geen bruikbaar id — AUTO aangehouden','warn');
+          }
+        }else{
+          btDiag('Herdetectie na afwijking gaf geen antwoord — AUTO aangehouden','warn');
+        }
       }else{
         btDiag(`Protocol ${_proto} gestuurd, ATDPN gaf geen antwoord — voorlopig aangehouden`,'warn');
       }
@@ -1214,7 +1368,7 @@ async function initELM327(opts){
       try{ if(window.PLLoad&&PLLoad.herstelNaProtocolLock) PLLoad.herstelNaProtocolLock(); }catch(e){}
     }else{
       // Koude start (of geen bekend protocol): AUTO, scanNetworks() detecteert.
-      await sendCmd('ATSP0');
+      await _elmSend('ATSP0');
       await delay(200);
     }
 
@@ -1263,7 +1417,10 @@ async function scanNetworks(){
     btDiag(`Protocol gevonden: ${protoName}`,'ok');
     _onthoudProtocol(protoResp);   // zodat een herverbinding niet terugvalt op AUTO
     // Inventaris opschonen zodra bekend is wat de auto levert + welk type het is.
-    try{ purgeImplausiblePids(); }catch(e){}
+    // Heette purgeImplausiblePids(); die functie is in ronde 5b vervangen door
+    // herijkPidGate(), maar deze aanroep bleef staan — binnen een stille catch,
+    // dus de ReferenceError verdween en het opschonen gebeurde nooit meer.
+    try{ herijkPidGate('protocol gevonden'); }catch(e){}
   } else {
     // Geen auto-detect — geen contact of auto reageert niet
     btDiag('Geen auto-detect response — contact aan?','warn');
@@ -1558,11 +1715,6 @@ function updateVehicleCard(vinInfo){
 }
 
 // VIN-regel aangetikt → kenteken-invoer tonen/verbergen
-function toggleKentInput(){
-  const w=document.getElementById('kentWrap'); if(!w) return;
-  w.style.display = w.style.display==='none' ? 'block' : 'none';
-  if(w.style.display==='block'){ const i=document.getElementById('kentInput'); if(i) i.focus(); }
-}
 
 // RDW open data: voertuiggegevens op Nederlands kenteken (gratis, geen key)
 async function rdwLookup(showOverview){

@@ -93,7 +93,10 @@ function mergeVehicleData(src, data){
     _setField('brandstof', normBrandstof(data.brandstof), src);
     // Brandstof (nieuw) bekend of gewijzigd → actieve selectie her-filteren,
     // zodat diesel-fantomen (AdBlue/NOx/DPF) van een benzineauto verdwijnen.
-    if(vehicleInfo.brandstof && vehicleInfo.brandstof!==_hadB){ try{ purgeImplausiblePids(); }catch(e){} }
+    // Idem: purgeImplausiblePids() bestaat sinds ronde 5b niet meer. Deze
+    // aanroep faalde stil, waardoor §11-punt 2 ("geen herijking van de
+    // bronlijst") in de praktijk nooit is opgelost — ook al stond 5b als ✅.
+    if(vehicleInfo.brandstof && vehicleInfo.brandstof!==_hadB){ try{ herijkPidGate('brandstoftype bekend: '+vehicleInfo.brandstof); }catch(e){} }
   }
   if(data.motor!==undefined)     _setField('motor',     data.motor, src);
   // Model NA merk zetten, zodat dedup het (net genormaliseerde) merk kent.
