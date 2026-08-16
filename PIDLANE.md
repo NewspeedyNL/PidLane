@@ -107,6 +107,8 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 22 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
 | 22b | `pidlane-busgate.js` | 6 | `PLBusGate` — **de bus-poort**: één ladder `adapter → ecu → betrouwbaar` voor "leeft de bus, mag ik hier een oordeel op bouwen". Vereist `PLBus` uit `pidlane-data.js` |
 | 22c | `pidlane-bedrading.js` | 1 | **bedradingscontrole** — lijst van functies die modules van elkaar verwachten + controle of ze bestaan. **Moet als laatste script geladen worden.** Zie §19 |
+| 22d | `pidlane-zelftest.js` | 1 | **zelftest** — loopt de app in drie fasen na (bedrading, schermen, bus) en levert één tekstbestand op. Alleen admin, uitsluitend lezend. Kebab → 🧪 Zelftest |
+| 22e | `pidlane-claude.js` | 1 | **opdrachtmodule** — plakt een JSON-plan en draait het af (bulk starten, wachten, markeren, zelftest, exporteren). Witte lijst van toegestane stappen, geen enkele schrijfactie naar de ECU. Alleen admin |
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
 | 24 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |

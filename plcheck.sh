@@ -46,13 +46,13 @@ t=0; gefaald=0
 for f in test-*.js; do
   [ -e "$f" ] || continue
   t=$((t+1))
-  if ! node "$f" >${TMPDIR:-/tmp}/plcheck_$$.log 2>&1; then
+  if ! node "$f" >/tmp/plcheck_$$.log 2>&1; then
     echo "${ROOD}  TEST FAALT${UIT}  $f"
-    tail -12 ${TMPDIR:-/tmp}/plcheck_$$.log | sed 's/^/              /'
+    tail -12 /tmp/plcheck_$$.log | sed 's/^/              /'
     gefaald=$((gefaald+1))
   fi
 done
-rm -f ${TMPDIR:-/tmp}/plcheck_$$.log
+rm -f /tmp/plcheck_$$.log
 [ $gefaald -eq 0 ] && echo "${GROEN}  ok${UIT}  tests — $t stuks, allemaal exit 0" || fout=$((fout+gefaald))
 
 # ── 3. div-balans ──

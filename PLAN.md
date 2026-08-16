@@ -18,6 +18,30 @@ bestand wat er nog moet gebeuren en in welke volgorde.
 
 ---
 
+## Rit van 16-08-2026 — uitkomst
+
+- **ELM-poort werkt.** Socket dood om 10:53:27, poort direct dicht, 27 polls
+  geweigerd, schone herinitialisatie, poort open om 10:53:37 en meteen geldige
+  data. Nul vervuilde metingen tegenover ~10 s rommel per dip daarvoor.
+- **Herijking draaide** bij protocoldetectie en meldde terecht "geen wijziging":
+  de boost-PIDs stonden niet in de actieve lijst, dus er viel niets weg te
+  halen. Geen tegels verdwenen.
+- **`brandstof:?` in het log was cosmetisch** — het veld stond wél goed; de
+  logregel las uit de verkeerde RDW-tabel. Gerepareerd.
+- **`_oz` gemeld door de bedradingscontrole**: vals alarm, lokale const in
+  waakronde. In `GEEN_GLOBALE` gezet, mét reden.
+- **Open: vier herverbindingen in twaalf minuten.** Telkens gevolgd door
+  "scherm blijft aan". Vermoeden: Android duwt de WebView naar de achtergrond
+  en neemt de BT-socket mee. Nog niet onderzocht.
+- **Open: ontstekingstiming.** Vijf meldingen tussen −11.5° en −21.5°, maar het
+  BT-log is een rolbuffer van 300 regels en die momenten waren eruit. In de
+  bewaarde vensters ligt 010E tussen −4.5° en +9.5°. Niet te zeggen of dit
+  echte klopregeling/katalysatoropwarming was of een verkeerd gesplitste batch.
+  `parsePID()` bewaart nu de ruwe respons per PID en de let-op-melding zet die
+  erbij — volgende keer staat het antwoord in het log.
+
+---
+
 ## Nu eerst: één rit rijden
 
 **Sessie 1 — verificatierit (geen code)**
@@ -114,9 +138,13 @@ code — maar het kost elke keer dat je erin duikt tien minuten.
 dat de zeef daar nooit meer iets tegenhoudt. Kan pas na een paar ritten met de
 geactiveerde herijking, want die verandert precies wat er langskomt.
 
-**Sessie 11 — bulk-recorder aanhaken.** `pidlane-bulk.js` is af en
-syntax-gevalideerd; er ontbreken twee regels in `index.html` (kebab-knop +
-scripttag ná `pidlane-watchers.js`). Airtable-flushing blijft buiten scope.
+**Sessie 11 — ~~bulk-recorder aanhaken~~ GEDAAN (15-08).** Scripttag en
+kebab-knop staan erin. Bij het aanhaken bleek de module zonder start volledig
+inert: het interval van 1 s doet niets zonder lopende opname, en de
+herstelpoging na 3 s slaat aan op een sessie in `localStorage` die er nooit is
+geweest. Er was dus geen reden om te wachten. Airtable-flushing blijft buiten
+scope. **Nog wél te doen:** een echte opname over een hele rit, om te zien wat
+IndexedDB doet aan groei en wat het met de accu kost.
 
 **Sessie 12 — mode 06 in `pidlane-veldlab.js`** plus de bijbehorende
 `PIDLANE.md`-update. Al een keer uitgesteld.
