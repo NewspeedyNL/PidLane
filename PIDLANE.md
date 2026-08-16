@@ -103,14 +103,11 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 18 | `pidlane-bt.js` | 84 | **transportlaag**: BLE, SPP, Web Serial, batch-polling, protocolinit. Bevat de **ELM-poort**: tijdens een (her)initialisatie weigeren `sendCmd`/`sendBT` al het overige verkeer — hard, niet adviserend zoals `PLBus`. Zie §11, opgelost 15-08 |
 | 19 | `pidlane-voertuigdata.js` | 15 | voertuigdata-merge: VIN-WMI + NHTSA + RDW |
 | 20 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
-| 21 | `pidlane-copiloot.js` | 9 | in-app ontwikkelassistent (admin-only), praat met `/copilot` |
 | 22 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
 | 22b | `pidlane-busgate.js` | 6 | `PLBusGate` — **de bus-poort**: één ladder `adapter → ecu → betrouwbaar` voor "leeft de bus, mag ik hier een oordeel op bouwen". Vereist `PLBus` uit `pidlane-data.js` |
 | 22c | `pidlane-bedrading.js` | 1 | **bedradingscontrole** — lijst van functies die modules van elkaar verwachten + controle of ze bestaan. **Moet als laatste script geladen worden.** Zie §19 |
-| 22d | `pidlane-zelftest.js` | 1 | **zelftest** — loopt de app in drie fasen na (bedrading, schermen, bus) en levert één tekstbestand op. Alleen admin, uitsluitend lezend. Kebab → 🧪 Zelftest |
-| 22e | `pidlane-claude.js` | 1 | **opdrachtmodule** — plakt een JSON-plan en draait het af (bulk starten, wachten, markeren, zelftest, exporteren). Witte lijst van toegestane stappen, geen enkele schrijfactie naar de ECU. Alleen admin |
+| 22f | `pidlane-testrun.js` | 1 | **de testrun** — één admin-knop die de app in vier blokken nameet (bedrading, schermen, PID-sweep over álles, bus en regelkringen) en één logboek oplevert. Overschrijft de PID-selectie tijdelijk en herstelt die in een `finally` én na een crash. Vervangt busdiagnose, zelftest, opdracht, diagnosebundel-UI, logscherm en copiloot |
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
-| 24 | `pidlane-busdiag.js` | 11 | busdiagnose: live responstijden en busgedrag |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
 | 26 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
 | 27 | `pidlane-scheduler.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
@@ -1309,4 +1306,56 @@ Negentien functies die nergens werden aangeroepen (ook niet vanuit HTML of een
 - Acht modules pakken zelf een `41`-header uit in plaats van
   `splitBatchResponse()` te gebruiken. Dat is dezelfde soort verspreiding als de
   PID-filtering vóór de gate.
+
+---
+
+## 20. De testrun vervangt zes losse ingangen (16-08-2026)
+
+Er waren zes kebab-ingangen die allemaal hetzelfde deden — data verzamelen en
+zichtbaar maken — elk met een eigen exportformaat en een eigen half beeld:
+busdiagnose, zelftest, opdracht, diagnosebundel, logscherm en copiloot. Wie een
+probleem wilde natrekken moest ze alle zes langs en zelf de tijdlijnen op elkaar
+leggen. Vandaar de samenvoeging tot `pidlane-testrun.js`: één knop, één rit,
+één logboek.
+
+### Wat wél en niet is samengevoegd
+
+Twee van die "pagina's" waren geen pagina. `pidlane-diagbundel.js` bevat
+`splitBatchResponse()`, `parsePID()` en `applyParsedBytes()` — de parser waar de
+hele app op draait. `pidlane-datalog.js` bevat `validateAndSmooth()`,
+`markOutlier()` en `checkStability()` — laag 1 t/m 3 van de meetketen. Alleen de
+UI is daar weggehaald; de kern staat waar hij stond. `_diagNote()` blijft
+verzamelen en levert via het nieuwe `plDiagGevallen()` aan het logboek.
+`_lcFullText()` blijft ook: dat is het logformaat dat al in gebruik was en dat
+de bugmelder gebruikt.
+
+`verify`, `veldlab`, `waakronde` en `kwaliteit` zijn meetmotoren, geen schermen.
+Die worden door de testrun *aangestuurd*, niet opgeslokt.
+
+Copiloot is bewust vervallen in plaats van ingebouwd: dat was een live AI-chat
+die functies op runtime kon patchen. In een rijdende auto is dat een ander
+risico dan een leesbare meetronde, en het hoort niet achter dezelfde knop.
+
+### De campagne
+
+Onderaan `pidlane-testrun.js` staat `CAMPAGNE`: de vragen die déze versie moet
+beantwoorden. Elke update herschrijft dat blok; de rest van het bestand blijft.
+Het staat bovenaan het logboek, zodat achteraf zichtbaar is welke vraag een run
+moest beantwoorden en of hij dat deed.
+
+### De selectie overschrijven
+
+Blok 3 zet álle ontdekte PIDs actief, leest ze één voor één los uit en zet de
+ruwe respons naast de parser-uitkomst in het log. Dat vraagt om waterdicht
+herstel: een momentopname vooraf, terugzetten in een `finally`, én een kopie in
+`localStorage` zodat een crash of een weggezwiepte app de selectie niet
+permanent wijzigt — bij het laden wordt die rest opgemerkt en teruggezet.
+
+### Bij het bouwen gevangen
+
+`test-bedrading.js` betrapte drie verzinsels van Claude in één sessie: zes
+schermnamen die niet bestaan, een niet-geregistreerde guard, en
+`savePidSelection()` — een functie die nooit heeft bestaan (de PID-selectie
+wordt per sessie opnieuw opgebouwd, niet bewaard). Precies waarvoor die test er
+is.
 

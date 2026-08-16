@@ -44,6 +44,12 @@ bestand wat er nog moet gebeuren en in welke volgorde.
 
 ## Nu eerst: één rit rijden
 
+**Sessie 0 — testrun op de weg (16-08).** De zes losse diagnose-ingangen zijn
+vervangen door één testrun (§20 in `PIDLANE.md`). Eerste gebruik: admin →
+🔬 Testrun → Start, rijden, daarna Logboek opslaan. Let bij het teruglezen op:
+herstelt de PID-selectie netjes, geeft blok 3 ruwe bytes bij 010E, en staat
+`_mapSamples` boven nul.
+
 **Sessie 1 — verificatierit (geen code)**
 
 De bedradingsfix van 15-08 heeft slapend gedrag geactiveerd. Dat moet je zien
