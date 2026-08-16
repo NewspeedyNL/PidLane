@@ -1359,3 +1359,22 @@ schermnamen die niet bestaan, een niet-geregistreerde guard, en
 wordt per sessie opnieuw opgebouwd, niet bewaard). Precies waarvoor die test er
 is.
 
+### Broncode-inspectie werkt hier niet
+
+De eerste testrun controleerde of `updPID` de ronde-5-haken aanroept door
+`String(window.updPID)` te doorzoeken. Dat meldde "ronde 5 staat stil" terwijl
+alles bedraad was: `pidlane-remote.js` vervangt `updPID`, `sendCmd`,
+`ensurePIDListActive`, `selectCategoryPIDs` en `realScanDTC` door wrappers die
+de originelen in een closure houden. Wie de broncode van de globale leest, ziet
+de wrapper.
+
+**Regel: controleer gedrag, niet broncode.** Daarvoor zijn er nu twee uitgangen:
+`PLGate.stats()` (MAP-monsters, herijkingen, ticks) en `PLElm.poortDicht()`.
+Tellers kunnen niet door een wrapper verstopt worden.
+
+Zelfde run, tweede les: `openShare` bestaat als functie maar staat lokaal in de
+IIFE van `pidlane-remote.js`. `test-bedrading.js` vond de definitie in de bron
+en gaf groen; de runtime-controle vond niets op `window`. **Een statische
+definitie is geen globale beschikbaarheid** — de runtime-controle is de
+autoriteit, de statische test is de eerste zeef.
+

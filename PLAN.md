@@ -44,6 +44,29 @@ bestand wat er nog moet gebeuren en in welke volgorde.
 
 ## Nu eerst: één rit rijden
 
+**Testrun 1.0 gedraaid (16-08, 14 s, stationair).** Uitkomst:
+
+- *Drie meldingen waren de test zelf.* `pidlane-remote.js` wrapt `updPID` en
+  `sendCmd` in closures, dus broncode-inspectie op `window.X` leest de wrapper.
+  "Ronde 5 staat stil" en "sendCmd kent de poort niet" waren dus vals alarm.
+  Vervangen door echte tellers: `PLGate.stats()` en `PLElm.poortDicht()`.
+  **Les: in deze codebase is broncode-inspectie onbetrouwbaar — meet gedrag.**
+- *`openShare` bestaat wel maar is lokaal* in de IIFE van remote. De statische
+  test zag de definitie, de runtime-controle niet. Uit `KRITIEK` gehaald.
+- *De sweep liep ongelokt.* Het busslot stond bij "poll" terwijl de sweep
+  draaide — dezelfde klasse fout als de ELM-init. De sweep claimt nu de bus.
+- *Zeven PIDs geven nooit data*, waarvan er in de actieve selectie stonden
+  (o.a. `015C` motorolie en `0114` O2 B1S1). De testrun noemt die nu apart:
+  dat is precies wat de gate had moeten opruimen.
+- *Bytelengte-afwijking:* `0155` en `0156` staan in de tabel als 2 bytes maar
+  leveren er 1. Nog uitzoeken.
+- *Bus onder druk:* 7% fout, 16% onvolledige batches, belasting 100%, tempo
+  teruggeschroefd naar 22%. Stationair, met de sweep erdoorheen.
+- *`010E` gaf `410E8B` = +5.5°* — normaal bij stationair. De negatieve waarden
+  van de vorige rit zijn dus nog niet verklaard; die komen alleen koud voor.
+- *Logboek opslaan werkte niet* op Android. Nu via het deelvenster, hetzelfde
+  pad als de bugmelder.
+
 **Sessie 0 — testrun op de weg (16-08).** De zes losse diagnose-ingangen zijn
 vervangen door één testrun (§20 in `PIDLANE.md`). Eerste gebruik: admin →
 🔬 Testrun → Start, rijden, daarna Logboek opslaan. Let bij het teruglezen op:
