@@ -1763,7 +1763,12 @@ async function rdwLookup(showOverview){
       }
     }catch(e){ try{ log('RDW brandstof-ophalen mislukt: '+(e.message||e),'warn'); }catch(_){} }
     const jaar=f.year||vehicleInfo.year||'';
-    const brandstof=f.brandstof||'';
+    // f komt uit de RDW-tabel m9d7-ebf2 en bevat GEEN brandstof — die staat in
+    // 8ys7-d773 en is hierboven al via mergeVehicleData gezet. f.brandstof was
+    // dus altijd leeg, waardoor het log "brandstof:?" meldde terwijl het veld
+    // wél goed stond. Op de rit van 16-08 leek dat op een niet-gevulde
+    // brandstof; het was alleen de logregel. Nu uit de echte bron lezen.
+    const brandstof=vehicleInfo.brandstof||f.brandstof||'';
     localStorage.setItem('pl_kenteken',kent);
     // PLRecall haakt hierop in en haalt de terugroepdetails op (welke actie,
     // welk risico, welke status) bovenop de ja/nee-vlag die we al hadden.

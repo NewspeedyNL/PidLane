@@ -1210,12 +1210,10 @@ function closeConnOv(){
         <button class="kebab-item" id="kbAccount" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account</button>
         <button class="kebab-item kebab-group" id="admGroupBtn" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
-          <button class="kebab-item" onclick="closeKebab();openLogCenter()">📋 Logs &amp; data</button>
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
-          <button class="kebab-item" id="diagBundelBtn" onclick="closeKebab();plDiagBundleSave()">🧪 Diagnosebundel</button>
-          <button class="kebab-item" id="copilotBtn" onclick="closeKebab();plCopilotOpen()">🤝 Copiloot</button>
-          <button class="kebab-item" id="busDiagBtn" onclick="closeKebab();openBusDiag()">🩺 Busdiagnose</button>
+          <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
+          <button class="kebab-item" id="bulkRecBtn" onclick="closeKebab();openBulkRecorder()">⏺ Bulk-recorder</button>
         </div>
         <div class="kebab-sep"></div>
         <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
@@ -2155,14 +2153,12 @@ function closeConnOv(){
 <script src="pidlane-bt.js"></script><!-- module → pidlane-bt.js -->
 <script src="pidlane-voertuigdata.js"></script>
 <script src="pidlane-rijsituatie.js"></script>
-<script src="pidlane-copiloot.js"></script>
 <script src="pidlane-diagbundel.js"></script>
 <script src="pidlane-busgate.js"></script><!-- bus-poort (PLBusGate) — vereist ná pidlane-data.js (PLBus) -->
 <script src="pidlane-plload.js"></script>
 <script src="pidlane-recall.js"></script><!-- terugroepacties met detail (PLRecall) -->
 <script src="pidlane-gps.js"></script><!-- GPS-ritlogging, opt-in (PLGps) -->
 <script src="pidlane-mode06.js"></script><!-- on-board monitortests (PLM06) — vereist sendCmd + PLBus -->
-<script src="pidlane-busdiag.js"></script>
 <script src="pidlane-demo.js"></script>
 <script src="pidlane-uihelpers.js"></script>
 <script src="pidlane-scheduler.js"></script>
@@ -2318,7 +2314,9 @@ function closeConnOv(){
 <script src="pidlane-klant.js"></script><!-- klantaccounts: registreren, herstel, tokenscherm (PLKlant) --><!-- tegoed ("tokens") + kostenpreview vóór AI-calls (PLCredits) -->
 <script src="pidlane-watchers.js"></script><!-- rit-monitor Laag B (PLWatch) — vereist ná monitor -->
 <script src="pidlane-uitgebreid.js"></script><!-- fabrikant-PIDs mode 21 — vereist ná data + pidgate -->
+<script src="pidlane-bulk.js"></script><!-- passieve bulk-datarecorder (PLBulk) — vereist ná watchers -->
 <script src="pidlane-waakronde.js"></script><!-- stille achtergrondcontrole van niet-gekozen sensoren — vereist ná pids + pidgate + diagbundel -->
+<script src="pidlane-testrun.js"></script><!-- testrun: één knop, één rit, één logboek — vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot -->
 <script src="pidlane-bedrading.js"></script><!-- bedradingscontrole: bestaat alles wat modules van elkaar verwachten — MOET als laatste -->
 
 <script>

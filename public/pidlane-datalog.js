@@ -58,7 +58,14 @@ function validateAndSmooth(pid,rawVal){
       lw[pid]=Date.now();
       const m=`${def?.name||pid}: ${rawVal}${def?.unit||''} buiten het gebruikelijke bereik `+
               `(${letop.min}–${letop.max}) — ${letop.waarom}. Meting blijft staan.`;
-      log(`ℹ ${m}`,'info');
+      // Ruwe bytes erbij als we ze hebben. Op 16-08 meldde de app vijf keer een
+      // diep-negatieve ontstekingstiming, maar het BT-log is een rolbuffer van
+      // 300 regels en die momenten waren er allang uit — niet na te trekken of
+      // het echte klopregeling was of een verkeerd gesplitste batch. Eén woord
+      // extra in deze regel maakt dat verschil voortaan zichtbaar.
+      let ruw='';
+      try{ const r=(window._pidRuw||{})[pid]; if(r) ruw=`  [ruw: ${r}]`; }catch(e){}
+      log(`ℹ ${m}${ruw}`,'info');
       try{ logToSheets('opvallend',m,{pid,value:rawVal,reason:'let_op'}); }catch(e){}
     }
     // bewust GEEN markOutlier en GEEN return: de waarde loopt gewoon door.

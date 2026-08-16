@@ -32,11 +32,10 @@
 // ══════════════════════════════════════════════════════════════════
 (function(){
 'use strict';
-
 // Namen die modules van elkaar verwachten. Afgeleid uit élke plek waar de code
 // `typeof X === 'function'` doet: dat zijn precies de aanroepen die stil falen.
 var KRITIEK = [
-  '_niceReportName','_noteMap','_oz','_recStats',
+  '_niceReportName','_noteMap','_recStats',
   'btDiag','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','download','dtcInfo',
@@ -56,13 +55,29 @@ var KRITIEK = [
   'vehicleFuelType','vlFullSurvey','withBus',
   // Deze twee stonden in PIDLANE.md als bedraad maar waren dat niet. Ze staan
   // hier zodat dat niet nog eens ongemerkt kan gebeuren.
-  'herijkPidGate','pidToevoegen'
+  'herijkPidGate','pidToevoegen',
+  // Schermen die de zelftest in fase 2 opent en weer sluit. Geen aanhalings-
+  // tekens in dit commentaar: de test leest deze lijst met een regex.
+  'openClimateCheck','closeClimateCheck',
+  'openDeepDiag','closeDeepDiag','openPidRecorder','closePidRecorder',
+  'openReportsOverview','closeReportsOverview','openSituatie','closeSituatie',
+  'openNeonDashboard','closeNeonDashboard','closeExtraDash',
+  'openShare','closeShare','openAIReportSheet','closeAIReportSheet',
+  'openBulkRecorder',
+  'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
+  'plDiagGevallen','actiefPollProfiel','setPollProfile',
+  
+  
 ];
-
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.
 var GEEN_GLOBALE = {
-  'onAnnuleer': 'parameter van showBusyPill(), geen globale functie'
+  'onAnnuleer': 'parameter van showBusyPill(), geen globale functie',
+  // Gemeld door de runtime-controle op de rit van 16-08: stond in KRITIEK maar
+  // is een lokale const in pidlane-waakronde.js die window.setConn vasthoudt.
+  // Les: een typeof-guard op een LOKALE naam is geen bedradingspunt. De lijst
+  // is uit alle guards afgeleid, dus zulke uitzonderingen komen er soms in.
+  '_oz': 'lokale const in pidlane-waakronde.js (verwijst naar window.setConn)'
 };
 
 function controleer(){
@@ -83,7 +98,6 @@ function controleer(){
   }
   return ontbreekt;
 }
-
 // Na de laatste module draaien. Een tick uitstel zodat modules die zichzelf in
 // een DOMContentLoaded-haak registreren ook meegeteld zijn.
 try { setTimeout(controleer, 0); } catch(e){}

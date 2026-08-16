@@ -29,33 +29,12 @@ function _diagNote(cmd, raw, expect, out){
     if(_diagRing.length>400) _diagRing.shift();
   }catch(e){}
 }
-function plDiagBundle(){
-  const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
-  const veilig=f=>{ try{ return f(); }catch(e){ return null; } };
-  return JSON.stringify({
-    gemaakt:new Date().toISOString(),
-    voertuig:[v.merk,v.model,v.year].filter(Boolean).join(' ')||'—',
-    protocol:veilig(()=>typeof _protoId!=='undefined'?_protoId:null),
-    bus:veilig(()=>PLBus.stats()),
-    belasting:veilig(()=>PLLoad.staat()),
-    bytelengtes:veilig(()=>({geleerd:window.PLPidLen.geleerd(), afwijkend:window.PLPidLen.afwijkingen()})),
-    pids:veilig(()=>PLSched.actief().map(p=>PLSched.info(p)))||[],
-    gevallen:_diagRing.slice()
-  },null,1);
-}
-function plDiagBundleSave(){
-  try{
-    const txt=plDiagBundle();
-    const b=new Blob([txt],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(b);
-    a.download='PidLane_diag_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
-    document.body.appendChild(a); a.click();
-    setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} },1500);
-    showToast?.('🧪 Diagnosebundel opgeslagen — '+_diagRing.length+' TX/RX-gevallen');
-  }catch(e){ showToast?.('Bundel mislukt: '+e.message); }
-}
-window.plDiagBundleSave=plDiagBundleSave;
+// De exportknop "Diagnosebundel" is vervallen: de testrun (pidlane-testrun.js)
+// zet deze gevallen zelf in zijn logboek, op dezelfde tijdlijn als de rest.
+// Het verzamelen blijft hier, want _diagNote() wordt vanuit de pollus
+// aangeroepen en is geen UI.
+function plDiagGevallen(){ return _diagRing.slice(); }
+window.plDiagGevallen=plDiagGevallen;
 
 function splitBatchResponse(raw, expectPids){
   if(!raw||raw.includes('NO DATA')||raw.includes('UNABLE')||raw.includes('ERROR')||raw.includes('STOPPED')) return {};
@@ -220,6 +199,11 @@ function splitBatchResponse(raw, expectPids){
 }
 
 function parsePID(pid,raw){
+  // Ruwe respons per PID bewaren. Kost niets en maakt een opvallende meting
+  // achteraf naspeurbaar: de let-op-melding in pidlane-datalog.js zet 'm erbij,
+  // zodat je bij een rare waarde de bytes ziet in plaats van te moeten gokken
+  // of het de motor was of de batch-splitsing.
+  try{ (window._pidRuw=window._pidRuw||{})[pid]=String(raw||'').trim().slice(0,40); }catch(e){}
   if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')||raw.includes('UNABLE')||raw.includes('?')) return null;
   const cleaned=raw.replace(/[^0-9A-Fa-f]/g,'');
   if(cleaned.length<4) return null;
@@ -294,7 +278,6 @@ function setPollProfile(naam, reden){
     const p=POLL_PROFIELEN[naam];
     try{ btDiag('Pollprofiel: '+p.emoji+' '+p.label+(reden?' ('+reden+')':''),'info'); }catch(e){}
   }
-  try{ renderBusDiag(); }catch(e){}
 }
 // Handmatig vastzetten vanuit het busdiagnose-scherm (null = weer automatisch)
 function zetPollProfielVast(naam){
@@ -302,7 +285,6 @@ function zetPollProfielVast(naam){
   try{ if(_pollProfileVast) localStorage.setItem('pl_pollprofiel',_pollProfileVast);
        else localStorage.removeItem('pl_pollprofiel'); }catch(e){}
   _pidNextPoll={};
-  try{ renderBusDiag(); }catch(e){}
   try{ showToast(_pollProfileVast?('Pollprofiel vast: '+POLL_PROFIELEN[_pollProfileVast].label):'Pollprofiel weer automatisch'); }catch(e){}
 }
 window.setPollProfile=setPollProfile; window.zetPollProfielVast=zetPollProfielVast;

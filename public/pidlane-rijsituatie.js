@@ -222,63 +222,15 @@ try{
 //  App-log (localLog) + BT/verbindingslog (_btLog), met per-log Wissen,
 //  Opslaan (bestand), Versturen (mail naar support) en Reset datastroom.
 // ════════════════════════════════════════════════════════════════
-let _logCenterTab='app';
-function openLogCenter(){
-  let m=document.getElementById('logCenter');
-  if(!m){
-    m=document.createElement('div'); m.id='logCenter';
-    m.style.cssText='position:fixed;inset:0;z-index:9860;background:rgba(10,14,23,.65);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center';
-    m.addEventListener('click',e=>{ if(e.target===m) m.style.display='none'; });
-    document.body.appendChild(m);
-  }
-  m.innerHTML=`<div style="background:var(--sur);width:100%;max-width:620px;height:86vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bd)">
-      <b style="font-size:14px">📋 Logs &amp; data</b>
-      <button onclick="document.getElementById('logCenter').style.display='none'" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>
-    </div>
-    <div style="display:flex;gap:6px;padding:10px 16px 0">
-      <button id="lcTabApp" onclick="lcTab('app')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-family:var(--f);font-size:12px;font-weight:800;cursor:pointer">🧾 App-log</button>
-      <button id="lcTabBt" onclick="lcTab('bt')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-family:var(--f);font-size:12px;font-weight:800;cursor:pointer">📡 Verbinding (BT)</button>
-    </div>
-    <div id="lcBody" style="flex:1;overflow-y:auto;margin:10px 16px;background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:10px;font-family:monospace;font-size:11px;line-height:1.55;white-space:pre-wrap"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 14px">
-      <button onclick="lcClear()" style="flex:1;min-width:96px;padding:10px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🧹 Wissen</button>
-      <button onclick="resetDataStream(false)" style="flex:1;min-width:130px;padding:10px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🔄 Reset datastroom</button>
-      <button onclick="lcSave(this)" style="flex:1;min-width:96px;padding:10px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">💾 Opslaan</button>
-      <button onclick="lcSend()" style="flex:1;min-width:130px;padding:10px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:12px;font-weight:800;cursor:pointer">✉ Naar support</button>
-    </div>
-  </div>`;
-  m.style.display='flex';
-  lcTab(_logCenterTab);
-}
+// openLogCenter() is vervallen — de testrun bevat het app-log, het BT-log en
+// de TX/RX-gevallen op één tijdlijn. Zie pidlane-testrun.js.
 function _lcLines(kind){
   if(kind==='bt') return (typeof _btLog!=='undefined'?_btLog:[]).map(l=>`[${l.ts}][${(l.type||'info').toUpperCase()}] ${l.msg}`);
   return (typeof localLog!=='undefined'?localLog:[]).map(l=>`[${l.ts}][${(l.type||'info').toUpperCase()}] ${l.msg}`);
 }
-function lcTab(kind){
-  _logCenterTab=kind;
-  const a=document.getElementById('lcTabApp'), b=document.getElementById('lcTabBt');
-  const on=';background:rgba(26,111,255,.14);color:var(--bl);border-color:var(--bl)';
-  const off=';background:var(--sur2);color:var(--tx3);border-color:var(--bd)';
-  if(a) a.style.cssText+=(kind==='app'?on:off);
-  if(b) b.style.cssText+=(kind==='bt'?on:off);
-  const body=document.getElementById('lcBody'); if(!body) return;
-  const lines=_lcLines(kind);
-  body.textContent=lines.length?lines.join('\n'):'(leeg)';
-  body.scrollTop=body.scrollHeight;
-}
-function lcClear(){
-  if(_logCenterTab==='bt'){
-    try{ _btLog.length=0; }catch(e){}
-    try{ sessionStorage.removeItem('pl_btlog'); localStorage.removeItem('pl_btlog'); }catch(e){}
-    try{ const el=document.getElementById('btLog'); if(el) el.innerHTML=''; }catch(e){}
-  } else {
-    try{ localLog.length=0; }catch(e){}
-    try{ const bar=document.getElementById('logbar'); if(bar) bar.innerHTML=''; }catch(e){}
-  }
-  lcTab(_logCenterTab);
-  showToast?.('🧹 Log gewist');
-}
+// lcTab() en lcClear() waren de tabbladen van het oude logscherm en zijn met
+// dat scherm vervallen. _lcFullText() blijft: dat is het logformaat dat je al
+// gewend bent en dat de testrun en de bugmelder allebei gebruiken.
 function _lcFullText(){
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
   let ver='?'; try{ ver=(window.PID_CONFIG&&window.PID_CONFIG.app_version)||(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'); }catch(e){}
