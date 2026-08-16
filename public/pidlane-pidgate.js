@@ -98,6 +98,20 @@ const MAP_MOTOR_RPM    = 300;   // daaronder draait de motor niet
 
 // Houdt de hoogst gemeten inlaatdruk bij → bewijs of er turbo is.
 let _maxMapSeen = 0, _mapSamples = 0;
+let _herijkTeller = 0;      // hoe vaak herijkPidGate() echt gedraaid heeft
+let _tickTeller   = 0;      // hoe vaak plHerijkTick() is aangeroepen
+
+// Naar buiten voor de testrun. Waarom niet gewoon de broncode van updPID
+// inspecteren op de haken: pidlane-remote.js wrapt updPID en sendCmd in een
+// closure, dus window.updPID toont de wrapper en niet het origineel. Op de
+// testrun van 16-08 meldde die controle daardoor "ronde 5 staat stil" terwijl
+// alles gewoon bedraad was. Tellers liegen niet.
+try{ window.PLGate = {
+  stats: function(){
+    return { mapMonsters:_mapSamples, maxMap:_maxMapSeen,
+             herijkingen:_herijkTeller, ticks:_tickTeller };
+  }
+}; }catch(e){}   // de statemachine-tests draaien zonder window
 
 // Zegt deze meting íets over boost? Stationair draaien zegt niets: ook een
 // turbomotor zit dan rond 30-40 kPa, ruim onder omgevingsdruk. Alleen bij een
@@ -220,6 +234,7 @@ function pidGate(pid, niveau, opt){
 // filteren. Andersom filter je de selectie tegen een verouderde lijst en komt
 // het fantoom bij de volgende opbouw gewoon terug.
 function herijkPidGate(reden){
+  _herijkTeller++;
   const weg=[];
   try{
     // 1 — bronlijst opnieuw bouwen tegen de kennis van nú
@@ -309,6 +324,7 @@ function markeerHerijking(){ _herijkVuil=true; }
 // gehouden: één stempel maken en één stringvergelijking. Alleen als er echt
 // iets veranderd is volgt de dure herbouw.
 function plHerijkTick(){
+  _tickTeller++;
   try{
     const s=_maakPlausStempel();
     if(s===_plausStempel && !_herijkVuil) return false;

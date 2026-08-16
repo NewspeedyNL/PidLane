@@ -152,18 +152,22 @@ async function _blok1() {
   });
 
   await _doe(1, 'Herijking bedraad', function () {
-    // De controle die er in augustus 2026 niet was: updPID moet de haken van
-    // ronde 5 aanroepen, anders staat de hele herijking stil zonder dat iets
-    // dat meldt.
-    const bron = String(window.updPID || '');
-    const ok = bron.indexOf('plHerijkTick') > -1 && bron.indexOf('_noteMap') > -1;
-    if (!ok) return { staat: 'FOUT', detail: 'updPID roept de haken niet aan — ronde 5 staat stil' };
-    return 'updPID roept _noteMap en plHerijkTick aan';
+    // NIET via de broncode van updPID: pidlane-remote.js wrapt die functie in
+    // een closure, dus window.updPID toont de wrapper. Op de testrun van 16-08
+    // meldde deze controle daardoor "ronde 5 staat stil" terwijl alles gewoon
+    // bedraad was. Tellers in de gate zelf liegen niet.
+    if (!window.PLGate || !PLGate.stats) return { staat: 'FOUT', detail: 'PLGate ontbreekt — pidgate niet geladen' };
+    const st = PLGate.stats();
+    if (!st.ticks) return { staat: 'FOUT', detail: 'plHerijkTick() is nog nooit aangeroepen — de haak in updPID ontbreekt' };
+    return st.ticks + ' ticks, ' + st.herijkingen + ' herijkingen, ' + st.mapMonsters + ' MAP-monsters (max ' + st.maxMap + ' kPa)';
   });
 
-  await _doe(1, 'ELM-poort aanwezig', function () {
-    if (String(window.sendCmd || '').indexOf('_elmPoort') === -1) return { staat: 'LET OP', detail: 'sendCmd kent de poort niet' };
-    return 'poortcontrole zit in sendCmd';
+  await _doe(1, 'ELM-poort', function () {
+    // Idem: sendCmd is gewrapt, dus de broncode zegt niets. De poort meldt
+    // zichzelf.
+    if (!window.PLElm) return { staat: 'FOUT', detail: 'PLElm ontbreekt — de poort zit niet in deze build' };
+    const dicht = PLElm.poortDicht();
+    return dicht ? { staat: 'LET OP', detail: 'poort staat dicht — er loopt een herinitialisatie' } : 'aanwezig en open';
   });
 
   await _doe(1, 'Opslag', function () {
@@ -200,7 +204,6 @@ const SCHERMEN = [
   ['Rapporten', 'openReportsOverview', 'closeReportsOverview'],
   ['Rijsituatie', 'openSituatie', 'closeSituatie'],
   ['Neon-dashboard', 'openNeonDashboard', 'closeNeonDashboard'],
-  ['Delen', 'openShare', 'closeShare'],
   ['AI-rapport', 'openAIReportSheet', 'closeAIReportSheet'],
   ['Bulk-recorder', 'openBulkRecorder', null]
 ];
@@ -250,6 +253,16 @@ async function _blok3() {
 
   _boek(3, 'PID-sweep', 'bezig', lijst.length + ' PIDs, selectie tijdelijk overschreven', null);
 
+  // Bus claimen voor de duur van de sweep. Zonder dit interleaven de metingen
+  // met de pollus: op de run van 16-08 stond het slot bij "poll" terwijl de
+  // sweep liep, en dat is dezelfde klasse fout als de ELM-init die dwars door
+  // de polls heen ging. Lukt de claim niet, dan meten we alsnog — maar dan
+  // staat in het log dát het ongelokt gebeurde, in plaats van het te verzwijgen.
+  let _busTok = 0;
+  try { _busTok = (window.PLBus && PLBus.claim) ? PLBus.claim('testrun-sweep') : 0; } catch (e) {}
+  if (!_busTok) _boek(3, 'Busslot', 'LET OP', 'kon de bus niet claimen — sweep loopt naast de pollus', null);
+  else _boek(3, 'Busslot', 'ok', 'bus geclaimd voor de sweep', null);
+
   // Selectie verbreden zodat de pollus ze ook echt aanraakt.
   try {
     if (typeof activePIDs !== 'undefined') lijst.forEach(function (p) { activePIDs.add(p); });
@@ -257,6 +270,8 @@ async function _blok3() {
   } catch (e) {}
 
   let gelukt = 0, leeg = 0, fout = 0;
+  const stille = [];
+  const bewaardeSelectie = (_trHerstel && _trHerstel.actief) ? _trHerstel.actief : [];
   for (let i = 0; i < lijst.length; i++) {
     if (_trStop) { _boek(3, 'PID-sweep', 'gestopt', 'afgebroken na ' + i + ' van ' + lijst.length, null); break; }
     const pid = lijst[i];
@@ -273,16 +288,27 @@ async function _blok3() {
     })();
 
     const schoon = String(raw || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 44);
-    if (!raw) { leeg++; _boek(3, pid + ' ' + naam, 'LET OP', 'geen antwoord', ms); }
-    else if (/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw)) { leeg++; _boek(3, pid + ' ' + naam, 'LET OP', schoon, ms); }
+    if (!raw) { leeg++; stille.push(pid); _boek(3, pid + ' ' + naam, 'LET OP', 'geen antwoord', ms); }
+    else if (/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw)) { leeg++; stille.push(pid); _boek(3, pid + ' ' + naam, 'LET OP', schoon, ms); }
     else if (waarde == null) { fout++; _boek(3, pid + ' ' + naam, 'FOUT', 'parser gaf niets terug op "' + schoon + '"', ms); }
     else { gelukt++; _boek(3, pid + ' ' + naam, 'ok', waarde + '   [ruw: ' + schoon + ']', ms); }
 
     await _wacht(60);   // de bus even lucht geven tussen de metingen
   }
 
+  try { if (_busTok && window.PLBus && PLBus.release) PLBus.release(_busTok); } catch (e) {}
+
   _boek(3, 'PID-sweep klaar', gelukt && !fout ? 'ok' : 'LET OP',
     gelukt + ' gelezen, ' + leeg + ' geen data, ' + fout + ' parserprobleem', null);
+
+  // PIDs die nooit antwoorden maar wél in je selectie stonden: dat is precies
+  // waar de gate voor bestaat. Ze hier apart noemen maakt zichtbaar of de
+  // herijking ze had moeten opruimen.
+  if (stille.length) {
+    const inSelectie = stille.filter(function (p) { return bewaardeSelectie.indexOf(p) > -1; });
+    _boek(3, 'Stille PIDs', inSelectie.length ? 'LET OP' : 'ok',
+      stille.length + ' geven nooit data' + (inSelectie.length ? ', waarvan ' + inSelectie.length + ' in je actieve selectie: ' + inSelectie.join(', ') : ''), null);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -310,10 +336,10 @@ async function _blok4() {
            (nAfw ? ': ' + JSON.stringify(afw).slice(0, 200) : '');
   });
   await _doe(4, 'Turbodetectie', function () {
-    const n = (typeof window._mapSamples === 'number') ? window._mapSamples : null;
-    if (n === null) return { staat: 'LET OP', detail: '_mapSamples niet zichtbaar' };
-    if (n === 0) return { staat: 'LET OP', detail: '0 MAP-monsters — motor uit, of de haak in updPID ontbreekt' };
-    return n + ' MAP-monsters';
+    if (!window.PLGate || !PLGate.stats) return { staat: 'LET OP', detail: 'PLGate ontbreekt' };
+    const st = PLGate.stats();
+    if (!st.mapMonsters) return { staat: 'LET OP', detail: '0 MAP-monsters bij max ' + st.maxMap + ' kPa — motor stationair of atmosferisch' };
+    return st.mapMonsters + ' MAP-monsters, max ' + st.maxMap + ' kPa';
   });
   await _doe(4, 'Busslot', function () {
     const e = (window.PLBus && PLBus.owner) ? PLBus.owner() : null;
@@ -456,16 +482,30 @@ function testrunOpslaan() {
   const naam = 'PidLane-testrun-' + d.getFullYear() + '-' +
     String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '_' +
     String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.txt';
-  try {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([tekst], { type: 'text/plain;charset=utf-8' }));
-    a.download = naam;
-    document.body.appendChild(a); a.click();
-    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500);
-    try { showToast('Opgeslagen: ' + naam); } catch (e) {}
-  } catch (e) {
-    try { navigator.clipboard.writeText(tekst); showToast('Download mislukt — naar klembord'); } catch (e2) {}
-  }
+  // In de Android-WebView doet een <a download> vaak niets zichtbaars: het
+  // bestand belandt ergens waar je het niet terugvindt. Daarom eerst het
+  // deelvenster (dat werkt al voor de bugmelder), dan pas de download, en als
+  // laatste redmiddel het klembord.
+  (async function () {
+    const blob = new Blob([tekst], { type: 'text/plain;charset=utf-8' });
+    try {
+      if (typeof nativeShareFile === 'function' && await nativeShareFile(blob, naam)) {
+        try { showToast('Gedeeld: ' + naam); } catch (e) {}
+        return;
+      }
+    } catch (e) {}
+    try {
+      if (typeof download === 'function') { download(naam, tekst); try { showToast('Opgeslagen: ' + naam); } catch (e) {} return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = naam;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500);
+      try { showToast('Opgeslagen: ' + naam); } catch (e) {}
+    } catch (e) {
+      try { navigator.clipboard.writeText(tekst); showToast('Opslaan mislukt — naar klembord gekopieerd'); } catch (e2) {}
+    }
+  })();
 }
 
 // ══════════════════════════════════════════════════════════════════

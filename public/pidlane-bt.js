@@ -648,6 +648,13 @@ function _elmPoortDicht_(){    // interne lezer: regelt ook het vanzelf opengaan
   return true;
 }
 
+// Poortstatus naar buiten voor de testrun. Broncode-inspectie op window.sendCmd
+// werkt hier niet: pidlane-remote.js wrapt sendCmd, dus je leest de wrapper.
+window.PLElm = {
+  poortDicht: function(){ try{ return _elmPoortDicht_(); }catch(e){ return null; } },
+  heeftPoort: true
+};
+
 // Zenden mét doorlaatbewijs. Alleen de init-reeks gebruikt dit.
 function _elmSend(cmd, timeoutMs){ _elmPas = true; return sendCmd(cmd, timeoutMs); }
 

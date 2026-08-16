@@ -62,10 +62,10 @@ var KRITIEK = [
   'openDeepDiag','closeDeepDiag','openPidRecorder','closePidRecorder',
   'openReportsOverview','closeReportsOverview','openSituatie','closeSituatie',
   'openNeonDashboard','closeNeonDashboard','closeExtraDash',
-  'openShare','closeShare','openAIReportSheet','closeAIReportSheet',
+  'openAIReportSheet','closeAIReportSheet',
   'openBulkRecorder',
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
-  'plDiagGevallen','actiefPollProfiel','setPollProfile',
+  'plDiagGevallen','nativeShareFile','actiefPollProfiel','setPollProfile',
   
   
 ];
