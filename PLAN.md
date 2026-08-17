@@ -6,6 +6,12 @@ Dit bestand is het werkplan over sessies heen. `PIDLANE.md` beschrijft hoe het
 systeem in elkaar zit, `OVERDRACHT.md` wat er in één sessie gebeurd is, dit
 bestand wat er nog moet gebeuren en in welke volgorde.
 
+**Bij elke update die je oplevert**
+
+Herschrijf in `pidlane-testrun.js` zowel `CAMPAGNE` (de vraag) als `_blok5()`
+(de controle). Per wijziging twee regels: bestaat het nieuwe en wérkt het, en
+is het oude echt weg. Zie §20 in `PIDLANE.md`.
+
 **Werkwijze per sessie**
 
 1. Kijk hier welke sessie aan de beurt is. Eén sessie = één taak.

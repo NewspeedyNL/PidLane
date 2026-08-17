@@ -1404,3 +1404,28 @@ tekenopdrachten: kopband op élke pagina, één voertuigblok, drie statuskleuren
 afgebroken lange regels, kloppende paginanummers. Daarmee is te controleren wat
 je anders alleen met je ogen op een telefoonscherm kunt zien.
 
+### Blok 5: de update zelf toetsen (17-08-2026)
+
+`CAMPAGNE` was een beschrijving — vijf zinnen die in het logboek belanden.
+Er werd niets van getoetst. De vier meetblokken keken naar de app in het
+algemeen, dus je zag wél dat de app draaide en níét of de wijziging van
+gisteren werkte.
+
+`_blok5()` is de tegenhanger: daar staat de controle, in `CAMPAGNE` de vraag.
+Herschrijf ze samen bij elke update. Twee soorten controles horen er altijd in:
+
+- **TOEGEVOEGD** — bestaat het nieuwe én werkt het. Niet "staat het in de
+  bron": op 17-08 bleek broncode-inspectie waardeloos omdat `pidlane-remote.js`
+  globals wrapt. De PDF-controle maakt daarom écht een PDF van een paar regels;
+  dat is meteen de enige manier om te merken dat jsPDF van een CDN komt en dus
+  internet nodig heeft.
+- **VERWIJDERD** — is het oude echt weg. Dit is de belangrijkste en de
+  makkelijkst te vergeten helft: op 16-08 zijn zes ingangen gesloopt, en een
+  achtergebleven verwijzing merk je pas als een klant erop drukt. Blok 5
+  controleert daarom dat `openBusDiag`, `openZelftest`, `openOpdracht`,
+  `plCopilotOpen`, `openLogCenter` en `plDiagBundle` niet meer bestaan, én
+  loopt élk `onclick` in de DOM na op functies die er niet zijn.
+
+Blok 5 draait als eerste: gaat er iets mis met de update, dan staat dat bovenaan
+en niet onder driehonderd regels sweep.
+
