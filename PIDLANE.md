@@ -107,6 +107,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 22b | `pidlane-busgate.js` | 6 | `PLBusGate` — **de bus-poort**: één ladder `adapter → ecu → betrouwbaar` voor "leeft de bus, mag ik hier een oordeel op bouwen". Vereist `PLBus` uit `pidlane-data.js` |
 | 22c | `pidlane-bedrading.js` | 1 | **bedradingscontrole** — lijst van functies die modules van elkaar verwachten + controle of ze bestaan. **Moet als laatste script geladen worden.** Zie §19 |
 | 22f | `pidlane-testrun.js` | 1 | **de testrun** — één admin-knop die de app in vier blokken nameet (bedrading, schermen, PID-sweep over álles, bus en regelkringen) en één logboek oplevert. Overschrijft de PID-selectie tijdelijk en herstelt die in een `finally` én na een crash. Vervangt busdiagnose, zelftest, opdracht, diagnosebundel-UI, logscherm en copiloot |
+| 22g | `pidlane-export.js` | 1 | **opslaan** — `plOpslaan()` vraagt eerst tekst of PDF en maakt in beide gevallen hetzelfde bestand. De PDF krijgt de huisstijl van het AI-rapport: blauwe kopband op elke pagina, voertuigblok, monospace inhoud met statuskleuren, paginanummers. Gebruikt door testrun, logboek en sessierapporten. Test: `test-export.js` |
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
 | 26 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
@@ -1377,4 +1378,29 @@ IIFE van `pidlane-remote.js`. `test-bedrading.js` vond de definitie in de bron
 en gaf groen; de runtime-controle vond niets op `window`. **Een statische
 definitie is geen globale beschikbaarheid** — de runtime-controle is de
 autoriteit, de statische test is de eerste zeef.
+
+### Opslaan: eerst vragen, dan opmaken (17-08-2026)
+
+Elk logpad had zijn eigen opslaan-knop en zijn eigen formaat. Zodra er iemand
+meekijkt tijdens een test is platte tekst het verkeerde antwoord, en zodra je
+zelf iets moet natrekken is een PDF juist onhandig. Daarom vraagt
+`plOpslaan(basisnaam, tekst, opties)` het nu gewoon, en leveren beide knoppen
+dezelfde inhoud.
+
+De PDF hergebruikt bewust de opmaak van het AI-rapport (jsPDF, blauwe kopband,
+voertuigblok, paginanummers), zodat alles wat de app uitspuugt bij elkaar hoort.
+De inhoud staat in monospace omdat deze logs op uitlijning en ruwe hex leunen;
+statuswoorden krijgen kleur zodat een lezer die het bestand voor het eerst ziet
+weet waar hij moet kijken. Scheidingslijnen worden getekend in plaats van als
+rij streepjes geschreven, en te lange regels (de busstatistiek is één JSON van
+honderden tekens) worden afgebroken in plaats van over de rand geschreven.
+
+Lukt het laden van jsPDF niet — het komt van een CDN, dus internet nodig — dan
+valt de knop terug op tekst mét een melding waarom, in plaats van stil niets te
+doen.
+
+`test-export.js` draait `plMaakPdf()` tegen een nagemaakte jsPDF en toetst de
+tekenopdrachten: kopband op élke pagina, één voertuigblok, drie statuskleuren,
+afgebroken lange regels, kloppende paginanummers. Daarmee is te controleren wat
+je anders alleen met je ogen op een telefoonscherm kunt zien.
 
