@@ -65,7 +65,7 @@ var KRITIEK = [
   'openAIReportSheet','closeAIReportSheet',
   'openBulkRecorder',
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
-  'plDiagGevallen','nativeShareFile','actiefPollProfiel','setPollProfile',
+  'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf','actiefPollProfiel','setPollProfile',
   
   
 ];

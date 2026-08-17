@@ -498,33 +498,23 @@ function testrunTekst() {
 function testrunOpslaan() {
   const tekst = testrunTekst();
   const d = new Date();
-  const naam = 'PidLane-testrun-' + d.getFullYear() + '-' +
+  const basis = 'PidLane-testrun-' + d.getFullYear() + '-' +
     String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '_' +
-    String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.txt';
-  // In de Android-WebView doet een <a download> vaak niets zichtbaars: het
-  // bestand belandt ergens waar je het niet terugvindt. Daarom eerst het
-  // deelvenster (dat werkt al voor de bugmelder), dan pas de download, en als
-  // laatste redmiddel het klembord.
-  (async function () {
-    const blob = new Blob([tekst], { type: 'text/plain;charset=utf-8' });
-    try {
-      if (typeof nativeShareFile === 'function' && await nativeShareFile(blob, naam)) {
-        try { showToast('Gedeeld: ' + naam); } catch (e) {}
-        return;
-      }
-    } catch (e) {}
-    try {
-      if (typeof download === 'function') { download(naam, tekst); try { showToast('Opgeslagen: ' + naam); } catch (e) {} return; }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = naam;
-      document.body.appendChild(a); a.click();
-      setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500);
-      try { showToast('Opgeslagen: ' + naam); } catch (e) {}
-    } catch (e) {
-      try { navigator.clipboard.writeText(tekst); showToast('Opslaan mislukt — naar klembord gekopieerd'); } catch (e2) {}
-    }
-  })();
+    String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+  // Formaatkeuze via pidlane-export.js: tekst voor jezelf, PDF als er iemand
+  // meekijkt. Beide bevatten hetzelfde; alleen de opmaak verschilt.
+  if (typeof plOpslaan === 'function') {
+    plOpslaan(basis, tekst, { titel: 'Testrun ' + TESTRUN_VERSIE, ondertitel: CAMPAGNE.titel });
+    return;
+  }
+  // Terugval als de exportmodule ontbreekt.
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([tekst], { type: 'text/plain;charset=utf-8' }));
+    a.download = basis + '.txt';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500);
+  } catch (e) {}
 }
 
 // ══════════════════════════════════════════════════════════════════

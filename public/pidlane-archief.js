@@ -271,6 +271,15 @@ async function srShare(id){
     try{ showPdfReadyModal(); }catch(e){}
     return;
   }
+  // Ook hier eerst de formaatkeuze: een sessierapport is precies zo'n stuk dat
+  // je aan een klant laat zien, en dan is platte tekst het verkeerde antwoord.
+  try{
+    if(typeof plOpslaan==='function'){
+      const basis=(r.fname||((typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport')).replace(/\.(txt|pdf)$/i,'');
+      plOpslaan(basis, r.text, {titel:r.title||'Sessierapport'});
+      return;
+    }
+  }catch(e){}
   try{
     const blob=new Blob([r.text],{type:'text/plain'});
     const fname=r.fname||((typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport.txt');

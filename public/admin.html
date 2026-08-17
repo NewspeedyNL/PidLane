@@ -79,6 +79,7 @@
   <input type="text" id="workerUrl" value="https://pidlane-proxy.newspeedynl.workers.dev">
   <div class="bar">
     <button class="btn-pri" onclick="enter()">Inloggen</button>
+    <button class="btn-sec" onclick="poortTest()">🔎 Verbinding testen</button>
   </div>
   <div id="gateMsg" class="msg"></div>
 </div>
@@ -359,12 +360,28 @@ function diagnose(where, status, bodyText){
   if (errCode==='not_found')      return { kind:'err', title:'❌ Gebruiker niet gevonden.', detail:'Waarschijnlijk al verwijderd. Klik op Herladen.' };
 
   if (status===403 || errCode==='forbidden') {
+    // De lengte en de eerste/laatste tekens tonen: genoeg om een plakfout te
+    // zien (spatie, afgekapte string, verkeerde token) zonder de sleutel zelf
+    // in beeld te brengen. Zonder deze gegevens is "geweigerd" niet op te
+    // lossen zonder gokken.
+    const t = (typeof TOKEN==='string') ? TOKEN : '';
+    const vorm = t ? (t.length+' tekens, begint met "'+t.slice(0,3)+'…", eindigt op "…'+t.slice(-2)+'"') : 'leeg';
+    const raar = /\s/.test(t) ? '\n⚠ De token bevat een SPATIE of regeleinde — dat is bijna zeker de oorzaak.' : '';
     return { kind:'err',
       title:'❌ Admin-token wordt geweigerd (403).',
       detail:
-        'De token die je bovenin invulde komt niet exact overeen met de Worker-secret ADMIN_TOKEN.\n'+
-        '• Let op onzichtbare spaties bij het plakken.\n'+
-        '• Of overschrijf ADMIN_TOKEN in Cloudflare met een nieuwe waarde en gebruik die hier.' };
+        'De Worker vergelijkt letterlijk; één teken verschil is genoeg.\n'+
+        'Wat je invulde: '+vorm+raar+'\n'+
+        'Endpoint: '+(where||'?')+'\n'+
+        'Herkomst: '+location.origin+'\n\n'+
+        '• Sluit de token niet af met een spatie of Enter.\n'+
+        '• Staat ADMIN_TOKEN wel in Cloudflare → Settings → Variables → Secrets?\n'+
+        '• Is de laatste worker.js gedeployed? Een oude deploy kan een oude secret gebruiken.' };
+  }
+  if (status===429) {
+    return { kind:'err',
+      title:'⏳ Te veel pogingen (429).',
+      detail:'De Worker heeft een snelheidslimiet op admin-schrijfacties. Wacht een minuut en probeer opnieuw.\n'+detailStr.slice(0,200) };
   }
   if (status===401 || errCode==='unauthorized') {
     return { kind:'err',
@@ -401,7 +418,9 @@ async function callWorker(where, path, opts){
         'Het verzoek bereikte de Worker niet. Mogelijke oorzaken:\n'+
         '• Worker-URL fout: '+WURL+'\n'+
         '• Geen internet\n'+
-        '• CORS/preflight geblokkeerd (is de nieuwste worker.js gedeployed?)\n'+
+        '• CORS: de Worker accepteert alleen bekende herkomsten. Deze pagina\n'+
+        '  draait op '+location.origin+' — staat die in ALLOWED_ORIGINS in worker.js?\n'+
+        '  (toegestaan zijn app.pidlane.nl, newspeedynl.github.io, capacitor://localhost en localhost)\n'+
         'Details: '+networkErr.message };
     throw err;
   }
@@ -416,8 +435,59 @@ async function callWorker(where, path, opts){
   return { ok:true, data, status:r.status };
 }
 
+/* ── Poorttest ───────────────────────────────────────────────────
+   Loopt de keten stap voor stap na, zodat "de sleutel weigert" niet één
+   ondeelbaar probleem is maar een rij met precies één rood kruisje:
+     1. is de Worker-URL bereikbaar (los van welke token dan ook)
+     2. accepteert de Worker de herkomst van deze pagina (CORS)
+     3. wordt de token geaccepteerd op een leesroute
+     4. wordt de token geaccepteerd op een schrijfroute
+   Stap 1 en 2 falen anders dan stap 3 — en dat verschil bepaalt of je in
+   Cloudflare naar de secret of naar ALLOWED_ORIGINS moet kijken. */
+async function poortTest(){
+  const m=document.getElementById('gateMsg');
+  const tok=document.getElementById('adminTok').value;
+  const url=document.getElementById('workerUrl').value.trim().replace(/\/$/,'');
+  const r=[];
+  r.push('Herkomst van deze pagina: '+location.origin);
+  r.push('Worker-URL: '+(url||'(leeg)'));
+  if(tok){
+    r.push('Token: '+tok.length+' tekens'+(/\s/.test(tok)?'  ⚠ BEVAT EEN SPATIE OF REGELEINDE':''));
+    if(tok!==tok.trim()) r.push('  ⚠ Er staat witruimte vóór of achter — dat alleen al geeft 403.');
+  } else r.push('Token: leeg');
+  show(m,'info',r.join('\n')+'\n\nBezig met testen…');
+
+  const stap=async(naam,fn)=>{
+    try{ const uit=await fn(); r.push('✅ '+naam+(uit?' — '+uit:'')); }
+    catch(e){ r.push('❌ '+naam+' — '+(e&&e.message||e)); }
+    show(m,'info',r.join('\n'));
+  };
+
+  await stap('Worker bereikbaar (zonder token)', async()=>{
+    const resp=await fetch(url+'/api/config',{method:'GET'});
+    return 'HTTP '+resp.status+(resp.status===200?' — bereikbaar en CORS in orde':'');
+  });
+  await stap('Token op een leesroute', async()=>{
+    const resp=await fetch(url+'/api/config',{headers:{'X-Admin-Token':tok,'X-App-Token':tok}});
+    if(resp.status===403) throw new Error('HTTP 403 — de Worker kent deze token niet. Kijk naar de secret ADMIN_TOKEN in Cloudflare.');
+    return 'HTTP '+resp.status;
+  });
+  await stap('Token op een schrijfroute', async()=>{
+    const resp=await fetch(url+'/admin/users',{headers:{'X-Admin-Token':tok}});
+    if(resp.status===403) throw new Error('HTTP 403 — leesroute mag wel, schrijfroute niet. Dan is ADMIN_TOKEN in de Worker leeg of anders.');
+    if(resp.status===429) throw new Error('HTTP 429 — snelheidslimiet, wacht een minuut.');
+    return 'HTTP '+resp.status;
+  });
+
+  r.push('');
+  r.push('Faalt stap 1 → Worker-URL of deploy. Faalt alleen stap 2 en 3 → de token.');
+  show(m,'info',r.join('\n'));
+}
+
 function enter(){
-  TOKEN=document.getElementById('adminTok').value.trim();
+  // .trim() stond er al, maar plakken uit een wachtwoordmanager levert soms
+  // ook een newline of een non-breaking space op — die haalt trim() niet weg.
+  TOKEN=document.getElementById('adminTok').value.replace(/[\s\u00a0\u200b]+/g,'');
   WURL=document.getElementById('workerUrl').value.trim().replace(/\/$/,'');
   const m=document.getElementById('gateMsg');
   if(!TOKEN){ show(m,'err','Vul je admin-token in.'); return; }
@@ -439,6 +509,29 @@ function logout(){
   document.getElementById('dash').classList.add('hidden');
   document.getElementById('gate').classList.remove('hidden');
 }
+
+/* ── Lokaal geopend? Dan stopt het hier ──────────────────────────
+   Op 17-08 werd deze pagina vanuit Downloads geopend. De herkomst is dan
+   content://downloads (of file://), de browser stuurt Origin: null, en élk
+   verzoek sneuvelt op CORS vóórdat de Worker het ziet. Het foutbeeld is
+   "Failed to fetch" en dat lijkt sprekend op een geweigerde sleutel — terwijl
+   de token nooit is meegekeken. Daarom nu meteen bovenaan, vóór je iets
+   invult. */
+(function(){
+  if (location.protocol === 'http:' || location.protocol === 'https:') return;
+  const g = document.getElementById('gate');
+  if (!g) return;
+  const b = document.createElement('div');
+  b.style.cssText = 'background:#7f1d1d;border:1px solid #ef4444;border-radius:10px;padding:12px 14px;margin:0 0 14px;color:#fecaca;font-size:13px;line-height:1.6';
+  b.innerHTML = '<b>⛔ Deze pagina is lokaal geopend (' + location.protocol + '//)</b><br>' +
+    'Zo werkt hij niet: de browser blokkeert elk verzoek naar de Worker op CORS, ' +
+    'nog vóór je token wordt meegestuurd. Dat ziet eruit als een geweigerde sleutel, maar is het niet.<br><br>' +
+    'Open de pagina via je eigen domein:<br>' +
+    '<a href="https://app.pidlane.nl/admin.html" style="color:#fff;font-weight:700">https://app.pidlane.nl/admin.html</a>';
+  g.insertBefore(b, g.firstChild);
+  const knop = g.querySelector('.btn-pri');
+  if (knop) { knop.disabled = true; knop.style.opacity = '.5'; knop.title = 'Open de pagina eerst via https://'; }
+})();
 
 // Laatst gebruikte Worker-URL voorvullen
 try{

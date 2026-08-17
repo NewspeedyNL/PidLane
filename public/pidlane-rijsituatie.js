@@ -243,13 +243,15 @@ function _lcFullText(){
 }
 async function lcSave(btn){
   const txt=_lcFullText();
-  const fname='PidLane_logs_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.txt';
+  const basis='PidLane_logs_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+  // Formaatkeuze via pidlane-export.js — zie daar waarom.
+  if(typeof plOpslaan==='function'){ plOpslaan(basis, txt, {titel:'Logboek'}); return; }
   const o=btn?btn.textContent:''; if(btn){ btn.textContent='⏳'; btn.disabled=true; }
   try{
     const blob=new Blob([txt],{type:'text/plain'});
-    const ok=await nativeShareFile(blob,fname);
-    if(!ok) download(fname,txt);
-  }catch(e){ try{ download(fname,txt); }catch(_){} }
+    const ok=await nativeShareFile(blob,basis+'.txt');
+    if(!ok) download(basis+'.txt',txt);
+  }catch(e){ try{ download(basis+'.txt',txt); }catch(_){} }
   if(btn){ btn.textContent=o; btn.disabled=false; }
 }
 function lcSend(){
