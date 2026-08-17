@@ -67,6 +67,39 @@ bestand wat er nog moet gebeuren en in welke volgorde.
 - *Logboek opslaan werkte niet* op Android. Nu via het deelvenster, hetzelfde
   pad als de bugmelder.
 
+**Testrun 1.0 tweede run (17-08, warm, stationair): 0 fouten.**
+
+- **Ronde 5 leeft**: 307 ticks, 2 herijkingen. Dat is het bewijs dat de
+  bedrading van 15-08 werkt. 0 MAP-monsters bij max 40 kPa is correct — een
+  atmosferische motor komt nooit boven de 85 kPa-drempel, dus de turbodetectie
+  hoort niets te tellen. Die vraag is daarmee beantwoord.
+- **ELM-poort aanwezig en open.** Geen socket-dip deze run.
+- **`010E` gaf `410E92` = +9°**, en in de TX/RX-gevallen `410B250E9510` =
+  +10,5°. Warm klopt alles. De negatieve waarden blijven dus koud-specifiek.
+- **Bus claimen mislukte**: `claim()` is één poging en de pollus stond er net
+  op. Nu `wait()` met 8 s. (Fix in 1.1.)
+- **`vehicleInfo` was half leeg**: alleen "Mazda", terwijl de run ervoor
+  "Mazda CX-5 2018 benzine" gaf. Een half gevuld `vehicleInfo` stuurt de
+  PID-gate en de presets aan, dus dat is geen detail. De testrun meldt nu
+  welke velden ontbreken. **Waarom het leegliep is nog niet bekend.**
+- **Pollbudget zakte 30% → 22% → 17%** bij `fout 0%`, `124 ms`. De AIMD ziet
+  `belasting 100%` en schroeft terug — maar die 100% komt van de sweep zelf.
+  De dode zone is in een eerdere ronde al gerepareerd; dit is een andere
+  vraag: **is bezetting zonder fouten en zonder oplopende responstijd wel een
+  reden om terug te schroeven?** Zie hieronder.
+- **`0155`/`0156` leveren één byte waar de tabel er twee verwacht**
+  (`4155805680`). `PLPidLen` vangt het op; de tabel volgt de generieke spec.
+- Kop en voet gaven verschillende looptijden (17 s vs 9 s) — de kop telde door
+  tot het opslaan. Bevroren in 1.1.
+
+**Sessie A — het pollbudget bij bezetting zonder fouten.** Bezetting is
+aanvraagtempo × responstijd; bij continu pollen is die per definitie hoog. Nu
+geldt `belasting ≥ 85%` als tegendruk, óók bij 0% fouten en vlakke
+responstijden. Dan throttlet de app zichzelf zonder dat de ECU het vraagt.
+Voorstel: bezetting alleen als tegendruk tellen wanneer de responstijd oploopt
+of er fouten bijkomen. Raakt `pidlane-plload.js` en `test-plload.js`, en het is
+een gedragswijziging — dus apart, met een test die de spiraal reproduceert.
+
 **Sessie 0 — testrun op de weg (16-08).** De zes losse diagnose-ingangen zijn
 vervangen door één testrun (§20 in `PIDLANE.md`). Eerste gebruik: admin →
 🔬 Testrun → Start, rijden, daarna Logboek opslaan. Let bij het teruglezen op:
