@@ -30,7 +30,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '1.1 (17-08-2026)';
+const TESTRUN_VERSIE = '1.2 (17-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -372,12 +372,101 @@ async function _blok4() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// BLOK 5 — WAT ER IN DEZE UPDATE VERANDERD IS
+// ══════════════════════════════════════════════════════════════════
+// Dit blok hoort bij CAMPAGNE onderaan: daar staat de vráag, hier staat de
+// controle. Zonder dit is de testrun een algemene meting en zie je niet of de
+// wijziging van gisteren het ook echt doet — je ziet alleen dat de app nog
+// draait.
+//
+// Herschrijf dit blok bij elke update, samen met CAMPAGNE. Twee soorten
+// controles horen er altijd in:
+//   TOEGEVOEGD  bestaat het nieuwe, en werkt het (niet: staat het in de bron)
+//   VERWIJDERD  is het oude écht weg, of hangt er nog een restant
+// Die tweede is de belangrijkste en het makkelijkst te vergeten: op 16-08 zijn
+// zes ingangen gesloopt, en een achtergebleven verwijzing merk je pas als een
+// klant erop drukt.
+async function _blok5() {
+
+  // ── TOEGEVOEGD 17-08: gedeelde export met formaatkeuze ──
+  await _doe(5, 'Exportmodule geladen', function () {
+    if (typeof plOpslaan !== 'function') return { staat: 'FOUT', detail: 'plOpslaan ontbreekt — pidlane-export.js niet geladen' };
+    if (typeof plMaakPdf !== 'function') return { staat: 'FOUT', detail: 'plMaakPdf ontbreekt' };
+    return 'plOpslaan en plMaakPdf aanwezig';
+  });
+
+  await _doe(5, 'PDF-opbouw werkt', async function () {
+    if (typeof plMaakPdf !== 'function') return { staat: 'FOUT', detail: 'plMaakPdf ontbreekt' };
+    // Echt een PDF maken van een paar regels. Dit is de enige manier om te
+    // weten of jsPDF geladen kan worden op dit toestel — die komt van een CDN,
+    // dus zonder internet faalt hij, en dat wil je hier zien en niet pas als
+    // er een klant meekijkt.
+    try {
+      const blob = await plMaakPdf('proef.pdf', 'PROEF\n----------\n[00:00:00]  ok  regel\n', { titel: 'Proef' });
+      if (!blob || !blob.size) return { staat: 'FOUT', detail: 'plMaakPdf gaf geen bestand terug' };
+      return Math.round(blob.size / 1024) + ' kB PDF gemaakt';
+    } catch (e) {
+      return { staat: 'LET OP', detail: 'PDF lukt niet: ' + (e.message || e) + ' (internet nodig voor jsPDF)' };
+    }
+  });
+
+  // ── TOEGEVOEGD 17-08: meetuitgangen i.p.v. broncode-inspectie ──
+  await _doe(5, 'Meetuitgangen', function () {
+    const weg = [];
+    if (!window.PLGate || typeof PLGate.stats !== 'function') weg.push('PLGate.stats');
+    if (!window.PLElm || typeof PLElm.poortDicht !== 'function') weg.push('PLElm.poortDicht');
+    if (typeof plDiagGevallen !== 'function') weg.push('plDiagGevallen');
+    if (weg.length) return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') };
+    const st = PLGate.stats();
+    const nodig = ['mapMonsters', 'maxMap', 'herijkingen', 'ticks'];
+    const mist = nodig.filter(function (k) { return typeof st[k] !== 'number'; });
+    if (mist.length) return { staat: 'FOUT', detail: 'PLGate.stats mist velden: ' + mist.join(', ') };
+    return 'PLGate, PLElm en plDiagGevallen leveren gegevens';
+  });
+
+  await _doe(5, 'Bus wachten i.p.v. proberen', function () {
+    if (!window.PLBus || typeof PLBus.wait !== 'function') return { staat: 'FOUT', detail: 'PLBus.wait ontbreekt — de sweep valt terug op claim()' };
+    return 'PLBus.wait beschikbaar';
+  });
+
+  // ── VERWIJDERD 16-08: zes losse diagnose-ingangen ──
+  await _doe(5, 'Oude ingangen opgeruimd', function () {
+    const oud = ['openBusDiag', 'openZelftest', 'openOpdracht', 'plCopilotOpen', 'openLogCenter', 'plDiagBundle'];
+    const rest = oud.filter(function (n) { return typeof window[n] === 'function'; });
+    if (rest.length) return { staat: 'FOUT', detail: 'bestaat nog: ' + rest.join(', ') + ' — sloop niet afgemaakt' };
+    return oud.length + ' verwijderde ingangen zijn echt weg';
+  });
+
+  await _doe(5, 'Geen dode knoppen in het menu', function () {
+    // Een kebab-item dat een gesloopte functie aanroept doet niets en meldt
+    // niets — de gebruiker denkt dat de app hapert.
+    const dood = [];
+    document.querySelectorAll('[onclick]').forEach(function (el) {
+      const m = String(el.getAttribute('onclick') || '').match(/([A-Za-z_$][\w$]*)\s*\(/g) || [];
+      m.forEach(function (aanroep) {
+        const naam = aanroep.replace(/\s*\($/, '');
+        if (typeof window[naam] !== 'function' && dood.indexOf(naam) === -1) dood.push(naam);
+      });
+    });
+    if (dood.length) return { staat: 'FOUT', detail: dood.length + ' knop(pen) roepen iets aan dat niet bestaat: ' + dood.join(', ') };
+    return 'elke knop roept een bestaande functie aan';
+  });
+
+  await _doe(5, 'Geen restant van een afgebroken run', function () {
+    let r = null;
+    try { r = localStorage.getItem('pl_testrun_herstel'); } catch (e) {}
+    if (r) return { staat: 'LET OP', detail: 'er staat nog een herstelpunt in de opslag — vorige run eindigde niet netjes' };
+    return 'schoon';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
 // AANSTUREN
 // ══════════════════════════════════════════════════════════════════
 async function startTestrun(blokken) {
   if (_trBezig) { try { showToast('Testrun loopt al'); } catch (e) {} return; }
   if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch (e) {} return; }
-  const b = blokken || { b1: true, b2: true, b3: true, b4: true };
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -386,6 +475,9 @@ async function startTestrun(blokken) {
   _boek(0, 'Selectie bewaard', 'ok', bewaard.actief.length + ' actieve PIDs, profiel ' + (bewaard.profiel || '—'), null);
 
   try {
+    // Blok 5 eerst: als de update zelf niet klopt, wil je dat bovenaan zien
+    // en niet onderaan een log van driehonderd regels.
+    if (b.b5) await _blok5();
     if (b.b1) await _blok1();
     if (b.b2) await _blok2();
     if (b.b3) await _blok3();
@@ -442,7 +534,7 @@ function testrunTekst() {
   for (let i = 0; i < CAMPAGNE.vragen.length; i++) r.push('  ' + (i + 1) + '. ' + CAMPAGNE.vragen[i]);
   r.push('');
 
-  const namen = { 0: 'RUN', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen' };
+  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen' };
   let vorig = -99;
   for (let i = 0; i < _trLog.length; i++) {
     const x = _trLog[i];
@@ -535,7 +627,7 @@ function openTestrun() {
       '</div>' +
       '<div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
         '<button onclick="startTestrun()" style="background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 13px var(--f);cursor:pointer">▶ Start</button>' +
-        '<button onclick="startTestrun({b1:true,b4:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
+        '<button onclick="startTestrun({b5:true,b1:true,b4:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
         '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
       '</div>' +
@@ -584,6 +676,8 @@ function _teken() {
 // Dit is wat déze versie moet uitwijzen. Het staat bovenaan het logboek, zodat
 // achteraf duidelijk is welke vraag een run moest beantwoorden en of hij dat
 // deed. Vervang bij de volgende update de titel én de vragen.
+// Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
+// Herschrijf ze samen.
 const CAMPAGNE = {
   titel: 'Koude start — waar komt de negatieve ontstekingstiming vandaan, en zakt het pollbudget vanzelf terug?',
   vragen: [
