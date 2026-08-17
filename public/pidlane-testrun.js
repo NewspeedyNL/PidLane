@@ -30,13 +30,14 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '1.0 (16-08-2026)';
+const TESTRUN_VERSIE = '1.1 (17-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
 let _trStop = false;
 let _trLog = [];
 let _trStart = 0;
+let _trDuur = 0;      // vastgezet bij het einde, anders telt de kop door tot je opslaat
 let _trHerstel = null;      // momentopname van de selectie vóór de run
 
 function _nu() { return Date.now(); }
@@ -186,8 +187,14 @@ async function _blok1() {
 
   await _doe(1, 'Voertuig', function () {
     const v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) ? vehicleInfo : {};
-    const s = [v.merk, v.model, v.year || v.bouwjaar, v.brandstof].filter(Boolean).join(' ');
+    const velden = { merk: v.merk, model: v.model, bouwjaar: v.year || v.bouwjaar, brandstof: v.brandstof };
+    const leeg = Object.keys(velden).filter(function (k) { return !velden[k]; });
+    const s = Object.keys(velden).map(function (k) { return velden[k]; }).filter(Boolean).join(' ');
     if (!s) return { staat: 'LET OP', detail: 'geen voertuiggegevens' };
+    // Op 17-08 stond hier alleen "Mazda" terwijl de run ervoor het volledige
+    // "Mazda CX-5 2018 benzine" gaf. Een half gevuld vehicleInfo stuurt de
+    // PID-gate en de presets aan, dus dat mag geen groen vinkje krijgen.
+    if (leeg.length) return { staat: 'LET OP', detail: s + ' — mist: ' + leeg.join(', ') };
     return s + (v.vin ? '  VIN ' + String(v.vin).slice(-6) : '');
   });
 }
@@ -230,7 +237,10 @@ async function _blok2() {
 // de ruwe respons gaat mee het log in. Daarmee is achteraf te zien wat de ECU
 // stuurde én wat de parser eruit las — precies het onderscheid dat je met een
 // gewoon log niet kunt maken.
+let _budgetVoor = null;
+
 async function _blok3() {
+  try { _budgetVoor = (window.PLLoad && PLLoad.staat) ? PLLoad.staat().tempoPct : null; } catch (e) {}
   if (typeof connected === 'undefined' || !connected) {
     _boek(3, 'PID-sweep', 'overgeslagen', 'geen verbinding', null);
     return;
@@ -258,9 +268,12 @@ async function _blok3() {
   // sweep liep, en dat is dezelfde klasse fout als de ELM-init die dwars door
   // de polls heen ging. Lukt de claim niet, dan meten we alsnog — maar dan
   // staat in het log dát het ongelokt gebeurde, in plaats van het te verzwijgen.
+  // claim() is één poging: staat de pollus er net op, dan faalt hij meteen —
+  // en dat gebeurde op de run van 17-08. wait() wacht tot de lopende cyclus
+  // klaar is; die duurt een paar honderd ms, dus 8 s is ruim.
   let _busTok = 0;
-  try { _busTok = (window.PLBus && PLBus.claim) ? PLBus.claim('testrun-sweep') : 0; } catch (e) {}
-  if (!_busTok) _boek(3, 'Busslot', 'LET OP', 'kon de bus niet claimen — sweep loopt naast de pollus', null);
+  try { _busTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-sweep', 8000) : 0; } catch (e) {}
+  if (!_busTok) _boek(3, 'Busslot', 'LET OP', 'bus niet vrijgekomen binnen 8 s — sweep loopt naast de pollus', null);
   else _boek(3, 'Busslot', 'ok', 'bus geclaimd voor de sweep', null);
 
   // Selectie verbreden zodat de pollus ze ook echt aanraakt.
@@ -322,7 +335,12 @@ async function _blok4() {
   });
   await _doe(4, 'Busbelasting', function () {
     if (!window.PLLoad || !PLLoad.staat) return { staat: 'LET OP', detail: 'geen PLLoad.staat()' };
-    return JSON.stringify(PLLoad.staat());
+    const st = PLLoad.staat();
+    // De sweep zadelt de bus zelf met 100% bezetting op, dus de regelkring
+    // schroeft terug terwijl er niets mis is. Vóór en ná naast elkaar zetten
+    // maakt zichtbaar hoeveel daarvan door de meting zelf komt.
+    const daling = (_budgetVoor != null) ? ('  [vóór de sweep ' + _budgetVoor + '% → nu ' + st.tempoPct + '%]') : '';
+    return JSON.stringify(st) + daling;
   });
   await _doe(4, 'Pollprofiel', function () {
     return (typeof actiefPollProfiel === 'function') ? String(actiefPollProfiel()) : 'onbekend';
@@ -379,7 +397,8 @@ async function startTestrun(blokken) {
     const r = _herstelSelectie(bewaard);
     _boek(0, 'Selectie hersteld', r.indexOf('MISLUKT') === 0 ? 'FOUT' : 'ok', r, null);
     _trBezig = false;
-    _boek(0, 'Klaar', 'klaar', 'duur ' + Math.round((_nu() - _trStart) / 1000) + ' s', null);
+    _trDuur = Math.round((_nu() - _trStart) / 1000);
+    _boek(0, 'Klaar', 'klaar', 'duur ' + _trDuur + ' s', null);
   }
 }
 
@@ -414,7 +433,7 @@ function testrunTekst() {
   r.push('Verbonden : ' + ((typeof connected !== 'undefined' && connected) ? 'ja' : 'nee') +
     ((typeof demoMode !== 'undefined' && demoMode) ? '  (DEMO)' : ''));
   r.push('Toestel   : ' + navigator.userAgent);
-  r.push('Duur      : ' + Math.round((_nu() - _trStart) / 1000) + ' s');
+  r.push('Duur      : ' + (_trDuur || Math.round((_nu() - _trStart) / 1000)) + ' s');
   r.push('Uitslag   : ' + t.ok + ' ok, ' + t.fout + ' fout, ' + t.letop + ' let op');
   r.push('');
   r.push('WAAR DEZE RUN OVER GAAT');
@@ -576,13 +595,13 @@ function _teken() {
 // achteraf duidelijk is welke vraag een run moest beantwoorden en of hij dat
 // deed. Vervang bij de volgende update de titel én de vragen.
 const CAMPAGNE = {
-  titel: 'Na de bedradingssweep — werkt de herijking, en waar komt de negatieve ontstekingstiming vandaan?',
+  titel: 'Koude start — waar komt de negatieve ontstekingstiming vandaan, en zakt het pollbudget vanzelf terug?',
   vragen: [
-    'Roept updPID de haken van ronde 5 aan, en stijgt _mapSamples tijdens rijden?',
-    'Leest 010E ruwe bytes die passen bij de gemelde graden, of zit er een batch-splitsing scheef?',
-    'Overleeft de PID-selectie een volledige sweep en herstel?',
-    'Hoeveel PIDs geven geen data, en welke geeft de parser niet terug?',
-    'Hoe vaak breekt de BT-socket, en houdt de ELM-poort het verkeer dan tegen?'
+    'Geeft 010E bij een KOUDE motor ruwe bytes die passen bij de gemelde graden? (warm klopte alles: 410E92 = +9°)',
+    'Zakt het pollbudget verder terug tijdens de sweep, en klimt het daarna vanzelf weer? (17-08: 30% → 22% → 17%)',
+    'Is vehicleInfo volledig gevuld op het moment dat de run start? (17-08 stond er alleen "Mazda")',
+    'Komt de bus nu wél vrij voor de sweep, nu er gewacht wordt in plaats van één keer geprobeerd?',
+    'Blijven 0155 en 0156 één byte leveren waar de tabel er twee verwacht?'
   ]
 };
 
