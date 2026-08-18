@@ -30,7 +30,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '1.2 (17-08-2026)';
+const TESTRUN_VERSIE = '1.5 (18-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -372,6 +372,174 @@ async function _blok4() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// BLOK 6 — WAAROM ZWIJGEN DEZE SENSOREN?
+// ══════════════════════════════════════════════════════════════════
+// Vier PIDs staan in de actieve selectie en geven nooit antwoord: 015C
+// (motorolie), 0146 (omgevingstemperatuur), 015E (brandstofverbruik) en 0114
+// (O2 B1S1). De sweep vraagt ze los op en krijgt NO DATA, maar dat sluit niet
+// uit dat het eerder in de keten misgaat. Dit blok loopt de mogelijke oorzaken
+// één voor één langs.
+//
+// DE VRAGEN, IN VOLGORDE VAN WAARSCHIJNLIJKHEID
+//   1. Zégt de ECU eigenlijk dat hij ze ondersteunt? Mode 01 heeft
+//      steunvragen (0100, 0120, 0140, 0160) die per PID één bit zetten. Staat
+//      de bit uit, dan hoort de PID nooit in de lijst te komen en is het een
+//      ontdekkingsfout, geen ECU-eigenaardigheid.
+//   2. Is het wisselvallig? Vijf pogingen achter elkaar laten zien of het
+//      altijd stil is of af en toe.
+//   3. Is de tijd te kort? Eén poging met een ruime timeout.
+//   4. Ligt het aan de groepering? Los, met z'n tweeën en met z'n zessen —
+//      dat is het vermoeden waar dit blok voor gebouwd is.
+//   5. Antwoordt een ander stuurapparaat? Met headers aan is te zien welk
+//      adres reageert; misschien komt het antwoord binnen maar wordt het aan
+//      de verkeerde toegeschreven.
+//
+// DE CONTROLE-PID
+// 010C (toerental) gaat door exact dezelfde molen. Zonder die vergelijking
+// weet je niet of een mislukte batch aan de PID ligt of aan het batchen zelf.
+// Faalt 010C in een groep van zes, dan is de groepering stuk. Doet 010C het
+// overal en de andere vier nergens, dan ligt het aan de PIDs.
+//
+// Kost ongeveer twee minuten. De uitkomst is een tabel per PID.
+const STIL_VERDACHT = ['015C', '0146', '015E', '0114'];
+const STIL_CONTROLE = '010C';
+
+function _bitAan(steunRuw, pid) {
+  // Antwoord op 0100/0120/0140/0160 is vier bytes: 32 bits, hoogste bit eerst,
+  // voor de 32 PIDs die erop volgen.
+  const hex = String(steunRuw || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+  const basis = parseInt(pid.slice(2), 16);
+  const blok = Math.floor((basis - 1) / 32) * 32;
+  const kop = '41' + (blok.toString(16).toUpperCase().padStart(2, '0'));
+  const i = hex.indexOf(kop);
+  if (i < 0) return null;
+  const data = hex.slice(i + 4, i + 12);
+  if (data.length < 8) return null;
+  const bits = parseInt(data, 16);
+  const positie = basis - blok;                 // 1..32
+  return ((bits >>> (32 - positie)) & 1) === 1;
+}
+
+async function _blok6() {
+  if (typeof connected === 'undefined' || !connected) { _boek(6, 'Stille sensoren', 'overgeslagen', 'geen verbinding', null); return; }
+  if (typeof demoMode !== 'undefined' && demoMode) { _boek(6, 'Stille sensoren', 'overgeslagen', 'demomodus', null); return; }
+
+  let tok = 0;
+  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-stil', 8000) : 0; } catch (e) {}
+  _boek(6, 'Busslot', tok ? 'ok' : 'LET OP', tok ? 'bus geclaimd' : 'niet vrijgekomen — metingen lopen naast de pollus', null);
+
+  const doel = STIL_VERDACHT.concat([STIL_CONTROLE]);
+  const leeg = function (r) { return !r || /NO DATA|UNABLE|ERROR|STOPPED/i.test(r); };
+
+  try {
+    // ── 1. steunvragen ──
+    const steun = {};
+    for (const q of ['0100', '0120', '0140', '0160']) {
+      try { steun[q] = await sendCmd(q, 3000); } catch (e) { steun[q] = ''; }
+      await _wacht(80);
+    }
+    const alleSteun = Object.keys(steun).map(function (k) { return steun[k]; }).join(' ');
+    _boek(6, 'Steunvragen gelezen', 'ok', ['0100', '0120', '0140', '0160'].map(function (q) {
+      return q + '=' + String(steun[q] || '—').replace(/\s+/g, '').slice(0, 12);
+    }).join('  '), null);
+
+    for (const pid of doel) {
+      const rol = (pid === STIL_CONTROLE) ? 'CONTROLE' : 'verdacht';
+      const naam = (function () { try { const d = getPidDef(pid); return (d && d.name) || pid; } catch (e) { return pid; } })();
+      const bevinding = [];
+
+      // 1 — claimt de ECU ondersteuning?
+      const bit = _bitAan(alleSteun, pid);
+      bevinding.push('steunbit=' + (bit === null ? 'onbekend' : bit ? 'JA' : 'NEE'));
+
+      // 2 — wisselvallig?
+      let raak = 0;
+      const monsters = [];
+      for (let i = 0; i < 5; i++) {
+        if (_trStop) break;
+        let r = '';
+        try { r = await sendCmd(pid, 2000); } catch (e) {}
+        if (!leeg(r)) { raak++; monsters.push(String(r).replace(/\s+/g, '').slice(0, 14)); }
+        await _wacht(220);
+      }
+      bevinding.push('los 5x: ' + raak + ' raak' + (monsters.length ? ' (' + monsters[0] + ')' : ''));
+
+      // 3 — ruime tijd
+      let traag = '';
+      try { traag = await sendCmd(pid, 9000); } catch (e) {}
+      bevinding.push('ruime timeout: ' + (leeg(traag) ? 'nog steeds stil' : 'WEL antwoord'));
+      await _wacht(150);
+
+      // 4 — groepering: met z'n tweeën en met z'n zessen
+      const maat = doel.filter(function (p) { return p !== pid; }).slice(0, 1).concat([]);
+      let duo = '';
+      try { duo = await sendCmd(pid + (maat[0] || STIL_CONTROLE).slice(2), 3000); } catch (e) {}
+      bevinding.push('in een paar: ' + (leeg(duo) ? 'stil' : 'antwoord (' + String(duo).replace(/\s+/g, '').slice(0, 16) + ')'));
+      await _wacht(150);
+
+      // Groep van zes: de PID zelf plus vijf die het aantoonbaar doen. Zo is
+      // te zien of een grote groep de kleine wegdrukt.
+      const goeden = ['0C', '0D', '04', '11', '05'];
+      let zes = '';
+      try { zes = await sendCmd(pid + goeden.join(''), 4000); } catch (e) {}
+      const zesHex = String(zes).replace(/\s+/g, '');
+      const eigenKop = ('4' + (parseInt(pid.slice(0, 2), 16) + 0x40).toString(16).slice(-1) + pid.slice(2)).toUpperCase();
+      bevinding.push('in een groep van 6: ' + (leeg(zes) ? 'hele groep stil' :
+        (zesHex.toUpperCase().indexOf(eigenKop) > -1 ? 'eigen antwoord aanwezig' : 'groep antwoordt, deze PID ontbreekt erin')));
+      await _wacht(150);
+
+      // 5 — welk stuurapparaat antwoordt?
+      let metKop = '';
+      try {
+        await sendCmd('ATH1', 1500);
+        metKop = await sendCmd(pid, 3000);
+      } catch (e) {}
+      try { await sendCmd('ATH0', 1500); } catch (e) {}   // altijd terugzetten
+      const adres = String(metKop).replace(/\s+/g, '').slice(0, 6);
+      bevinding.push('met headers: ' + (leeg(metKop) ? 'geen enkel adres reageert' : adres));
+
+      const stil = (raak === 0 && leeg(traag) && leeg(duo));
+      let staat = 'ok';
+      if (rol === 'CONTROLE' && stil) staat = 'FOUT';           // dan is er iets veel groters mis
+      else if (stil && bit === true) staat = 'LET OP';          // ECU belooft iets wat hij niet levert
+      else if (stil && bit === false) staat = 'LET OP';         // hoort niet in de lijst te staan
+      else if (stil) staat = 'LET OP';
+
+      _boek(6, pid + ' ' + naam + ' [' + rol + ']', staat, bevinding.join('  |  '), null);
+    }
+
+    // Het hele profiel tegen de steunbits leggen. Dit is de brede versie van
+    // dezelfde vraag: hoeveel PIDs staan er in de lijst die de ECU ontkent?
+    await _doe(6, 'Profiel tegen de steunbits', function () {
+      let lijst = [];
+      try { lijst = (typeof supportedPIDs !== 'undefined') ? Array.from(supportedPIDs) : []; } catch (e) {}
+      if (!lijst.length) return { staat: 'LET OP', detail: 'supportedPIDs is leeg' };
+      const ontkend = [], onbekend = [];
+      lijst.forEach(function (p) {
+        if (!/^01[0-9A-F]{2}$/i.test(p)) return;      // mode 21/22 heeft geen steunbits
+        const b = _bitAan(alleSteun, p);
+        if (b === false) ontkend.push(p);
+        else if (b === null) onbekend.push(p);
+      });
+      if (!ontkend.length) return lijst.length + ' PIDs, geen enkele door de ECU ontkend';
+      return { staat: 'LET OP', detail: ontkend.length + ' van ' + lijst.length + ' worden door de ECU ONTKEND: ' + ontkend.join(', ') +
+        (onbekend.length ? '  (' + onbekend.length + ' zonder steunblok)' : '') };
+    });
+
+    // Slotsom in één regel, zodat je niet zelf hoeft te puzzelen.
+    _boek(6, 'Slotsom', 'ok',
+      'Steunbit NEE + altijd stil = ontdekkingsfout, hoort niet in de lijst. ' +
+      'Steunbit JA + altijd stil = ECU belooft meer dan hij levert, gate moet opruimen. ' +
+      'Los stil maar in een groep wél = groeperingsfout. ' +
+      'Controle-PID stil = de meting zelf deugt niet.', null);
+
+  } finally {
+    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+    try { await sendCmd('ATH0', 1500); } catch (e) {}   // vangnet: headers nooit aan laten staan
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 // BLOK 5 — WAT ER IN DEZE UPDATE VERANDERD IS
 // ══════════════════════════════════════════════════════════════════
 // Dit blok hoort bij CAMPAGNE onderaan: daar staat de vráag, hier staat de
@@ -438,25 +606,62 @@ async function _blok5() {
   });
 
   await _doe(5, 'Geen dode knoppen in het menu', function () {
-    // Een kebab-item dat een gesloopte functie aanroept doet niets en meldt
-    // niets — de gebruiker denkt dat de app hapert.
+    // Een knop die een gesloopte functie aanroept doet niets en meldt niets —
+    // de gebruiker denkt dat de app hapert.
+    //
+    // De eerste versie hiervan (17-08) knipte het voorvoegsel van een
+    // aanroep af: uit `PLRemote.openShare()` haalde hij `openShare`, zag die
+    // niet op window staan, en meldde 27 dode knoppen die allemaal prima
+    // werkten. Ook `event.preventDefault()` en `.catch()` telden mee. Een
+    // controle die vals alarm slaat is erger dan geen controle: dan leer je
+    // hem negeren.
+    //
+    // Nu: het hele pad oplossen (PLRemote.openShare → window.PLRemote.openShare)
+    // en methodeaanroepen op een uitdrukking overslaan.
+    const TAAL = ['if', 'for', 'while', 'switch', 'return', 'typeof', 'new', 'delete',
+                  'void', 'catch', 'function', 'try', 'else', 'do', 'await', 'in', 'of'];
     const dood = [];
+    const paden = /(?:^|[^.\w$])([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(/g;
+
     document.querySelectorAll('[onclick]').forEach(function (el) {
-      const m = String(el.getAttribute('onclick') || '').match(/([A-Za-z_$][\w$]*)\s*\(/g) || [];
-      m.forEach(function (aanroep) {
-        const naam = aanroep.replace(/\s*\($/, '');
-        if (typeof window[naam] !== 'function' && dood.indexOf(naam) === -1) dood.push(naam);
-      });
+      const code = String(el.getAttribute('onclick') || '');
+      let m;
+      paden.lastIndex = 0;
+      while ((m = paden.exec(code))) {
+        const pad = m[1];
+        const delen = pad.split('.');
+        if (TAAL.indexOf(delen[0]) > -1) continue;
+        // Aanroepen op iets wat pas tijdens het klikken bestaat (event, this,
+        // document.getElementById(...)) kunnen we hier niet natrekken.
+        if (['event', 'this', 'e', 'document', 'window', 'console', 'navigator', 'JSON', 'Math'].indexOf(delen[0]) > -1) continue;
+
+        let obj = window, ok = true;
+        for (let i = 0; i < delen.length; i++) {
+          if (obj == null || typeof obj[delen[i]] === 'undefined') { ok = false; break; }
+          obj = obj[delen[i]];
+        }
+        if (!ok || typeof obj !== 'function') {
+          if (dood.indexOf(pad) === -1) dood.push(pad);
+        }
+      }
     });
     if (dood.length) return { staat: 'FOUT', detail: dood.length + ' knop(pen) roepen iets aan dat niet bestaat: ' + dood.join(', ') };
     return 'elke knop roept een bestaande functie aan';
   });
 
   await _doe(5, 'Geen restant van een afgebroken run', function () {
+    // Let op de volgorde: _bewaarSelectie() schrijft het herstelpunt weg vóór
+    // blok 5 draait, dus een naïeve check vindt altijd iets — en meldde op
+    // 17-08 dat de vórige run niet netjes eindigde terwijl hij naar zijn eigen
+    // vingerafdruk keek. Alleen een punt van vóór deze run telt.
     let r = null;
     try { r = localStorage.getItem('pl_testrun_herstel'); } catch (e) {}
-    if (r) return { staat: 'LET OP', detail: 'er staat nog een herstelpunt in de opslag — vorige run eindigde niet netjes' };
-    return 'schoon';
+    if (!r) return 'schoon';
+    let t = 0;
+    try { t = (JSON.parse(r) || {}).t || 0; } catch (e) {}
+    if (t >= _trStart) return 'schoon (het punt van deze run staat klaar)';
+    const min = Math.round((_trStart - t) / 60000);
+    return { staat: 'LET OP', detail: 'herstelpunt van ' + min + ' min geleden staat er nog — die run eindigde niet netjes' };
   });
 }
 
@@ -466,7 +671,7 @@ async function _blok5() {
 async function startTestrun(blokken) {
   if (_trBezig) { try { showToast('Testrun loopt al'); } catch (e) {} return; }
   if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch (e) {} return; }
-  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true };
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -482,6 +687,7 @@ async function startTestrun(blokken) {
     if (b.b2) await _blok2();
     if (b.b3) await _blok3();
     if (b.b4) await _blok4();
+    if (b.b6) await _blok6();
   } catch (e) {
     _boek(0, 'Testrun', 'FOUT', (e && e.message) || String(e), null);
   } finally {
@@ -520,13 +726,26 @@ function testrunTekst() {
   const r = [];
   r.push('PIDLANE TESTRUN ' + TESTRUN_VERSIE);
   r.push('════════════════════════════════════════════════');
-  r.push('Datum     : ' + new Date().toLocaleString('nl-NL'));
-  r.push('Voertuig  : ' + ([v.merk, v.model, v.year || v.bouwjaar, v.brandstof].filter(Boolean).join(' ') || 'onbekend'));
-  r.push('Verbonden : ' + ((typeof connected !== 'undefined' && connected) ? 'ja' : 'nee') +
+  // Twee tijdstippen, want ze lopen uiteen: op 18-08 werd een run van 13:47
+  // om 13:54 opgeslagen. De meetblokken waren toen zeven minuten oud terwijl
+  // de TX/RX-staart hieronder vers was — twee verschillende momenten in één
+  // bestand, en niets dat dat vertelde.
+  const opgeslagen = new Date();
+  const gestart = new Date(_trStart || Date.now());
+  r.push('Run gestart : ' + gestart.toLocaleString('nl-NL'));
+  r.push('Opgeslagen  : ' + opgeslagen.toLocaleString('nl-NL'));
+  const kloof = Math.round((opgeslagen - gestart) / 60000);
+  if (kloof >= 2) {
+    r.push('              ⚠ ' + kloof + ' minuten na de run opgeslagen. De meetblokken');
+    r.push('                hieronder zijn van de run; de TX/RX-staart en de logs');
+    r.push('                onderaan zijn van NU en horen er niet bij.');
+  }
+  r.push('Voertuig    : ' + ([v.merk, v.model, v.year || v.bouwjaar, v.brandstof].filter(Boolean).join(' ') || 'onbekend'));
+  r.push('Verbonden   : ' + ((typeof connected !== 'undefined' && connected) ? 'ja' : 'nee') +
     ((typeof demoMode !== 'undefined' && demoMode) ? '  (DEMO)' : ''));
-  r.push('Toestel   : ' + navigator.userAgent);
-  r.push('Duur      : ' + (_trDuur || Math.round((_nu() - _trStart) / 1000)) + ' s');
-  r.push('Uitslag   : ' + t.ok + ' ok, ' + t.fout + ' fout, ' + t.letop + ' let op');
+  r.push('Toestel     : ' + navigator.userAgent);
+  r.push('Duur        : ' + (_trDuur || Math.round((_nu() - _trStart) / 1000)) + ' s');
+  r.push('Uitslag     : ' + t.ok + ' ok, ' + t.fout + ' fout, ' + t.letop + ' let op');
   r.push('');
   r.push('WAAR DEZE RUN OVER GAAT');
   r.push('────────────────────────────────────────────────');
@@ -534,7 +753,7 @@ function testrunTekst() {
   for (let i = 0; i < CAMPAGNE.vragen.length; i++) r.push('  ' + (i + 1) + '. ' + CAMPAGNE.vragen[i]);
   r.push('');
 
-  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen' };
+  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren' };
   let vorig = -99;
   for (let i = 0; i < _trLog.length; i++) {
     const x = _trLog[i];
@@ -551,7 +770,7 @@ function testrunTekst() {
       const g = plDiagGevallen();
       if (g && g.length) {
         r.push('');
-        r.push('TX/RX — laatste ' + Math.min(g.length, 60) + ' gevallen');
+        r.push('TX/RX — laatste ' + Math.min(g.length, 60) + ' gevallen (LIVE, tot het moment van opslaan)');
         r.push('────────────────────────────────────────────────');
         g.slice(-60).forEach(function (c) {
           r.push('[' + c.t + '] TX ' + c.tx + '  RX ' + c.rx);
@@ -679,13 +898,13 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Koude start — waar komt de negatieve ontstekingstiming vandaan, en zakt het pollbudget vanzelf terug?',
+  titel: 'Het voertuigprofiel bevat PIDs die de ECU niet ondersteunt — hoeveel precies?',
   vragen: [
-    'Geeft 010E bij een KOUDE motor ruwe bytes die passen bij de gemelde graden? (warm klopte alles: 410E92 = +9°)',
-    'Zakt het pollbudget verder terug tijdens de sweep, en klimt het daarna vanzelf weer? (17-08: 30% → 22% → 17%)',
-    'Is vehicleInfo volledig gevuld op het moment dat de run start? (17-08 stond er alleen "Mazda")',
-    'Komt de bus nu wél vrij voor de sweep, nu er gewacht wordt in plaats van één keer geprobeerd?',
-    'Blijven 0155 en 0156 één byte leveren waar de tabel er twee verwacht?'
+    'Bevestigt blok 6 dat 015C, 0146, 015E en 0114 een steunbit op NEE hebben? (uit de logs van 18-08: 4100FE3FA813 en 4140FAD08C81 zeggen alle vier nee)',
+    'Doet de controle-PID 010C het overal wél — los, in een paar en in een groep van zes? Zo niet, dan ligt het aan de groepering en niet aan de PIDs.',
+    'Hoeveel van de 55 PIDs in het opgeslagen profiel worden door de steunbits ontkend?',
+    'Meldt blok 5 nu geen dode knoppen meer, en klopt de herstelpunt-controle?',
+    'Klimt het pollbudget na de sweep terug naar 100%?'
   ]
 };
 
