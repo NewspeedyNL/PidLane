@@ -6,6 +6,110 @@ Dit bestand is het werkplan over sessies heen. `PIDLANE.md` beschrijft hoe het
 systeem in elkaar zit, `OVERDRACHT.md` wat er in één sessie gebeurd is, dit
 bestand wat er nog moet gebeuren en in welke volgorde.
 
+## Koude start beantwoord (18-08, tweede log)
+
+Het tweede bestand van 18-08 is **dezelfde run**, zeven minuten later opnieuw
+opgeslagen. Alleen de TX/RX-staart en de logs onderaan zijn vers — en juist die
+geven het antwoord, want daarin rijdt hij écht: koelwater 53 °C, toerental tot
+2292, belasting tot 71%.
+
+**Ontstekingstiming bij het opwarmen, uit de ruwe batches:**
+
+| ruw | graden | keer |
+|---|---|---|
+| `0x84` | +2,0° | 1 |
+| `0x95` | +10,5° | 2 |
+| `0x9C`–`0xAB` | +14° t/m +21,5° | 3 |
+| `0xBB`–`0xBE` | +29,5° t/m +31° | 10 |
+| `0xC9`–`0xCA` | +36,5° t/m +37° | 4 |
+
+Allemaal positief, en het patroon klopt: meer vervroeging naarmate toerental en
+belasting stijgen. **In drie runs en ruim veertig ruwe metingen is er geen
+enkele negatieve waarde meer geweest.** De −11,5° t/m −21,5° van 16-08 blijven
+onverklaard maar zijn niet teruggekeerd. `parsePID()` bewaart nu de ruwe bytes
+en de let-op-melding zet ze erbij, dus mocht het terugkomen, dan staat het
+antwoord meteen in het log. Vraag blijft open, maar niet meer urgent.
+
+**Wel een echt gebrek in het logboek zelf:** de meetblokken waren van 13:47, de
+TX/RX-staart van 13:54, en er stond nergens dat dat twee verschillende momenten
+waren. Vanaf 1.4 staan er twee tijdstippen in de kop, met een waarschuwing zodra
+ze meer dan twee minuten uiteenlopen.
+
+## Testrun 1.2 op de weg (18-08): 1 fout, en die was van de test zelf
+
+- **Beide meldingen in blok 5 waren vals alarm.** De dode-knoppencontrole knipte
+  het voorvoegsel van `PLRemote.openShare()` af en meldde 27 werkende knoppen
+  als dood; `event.preventDefault()` en `.catch()` telden ook mee. En het
+  "restant van een afgebroken run" was het herstelpunt dat dezelfde run een
+  seconde eerder had weggeschreven. Allebei gerepareerd, met
+  `test-dodeknoppen.js` eromheen: vals alarm mag niet, en het echte geval moet
+  gevonden worden. **Een controle die altijd vals alarm slaat is erger dan geen
+  controle — die leer je negeren.**
+- **Het busslot werkte wel**: `bus geclaimd voor de sweep`. De wissel van
+  `claim()` naar `wait()` deed wat hij moest doen.
+- **`vehicleInfo` was compleet**: Mazda CX-5 2018 benzine. Vorige keer half
+  leeg; oorzaak nog onbekend, dus blijft de moeite van het opletten waard.
+- **Het pollbudget klom terug van 100% naar 74% en bleef daar**, met
+  `belasting 75` en label `normaal`. Anders dan de spiraal van 17-08. Wel
+  `foutPct 15` — dat is nieuw en hoger dan de 0% van gisteren.
+- **`0155`/`0156` afwijking is weg**: 18 geleerd, 0 afwijkend. Vorige run had er
+  40 geleerd met 2 afwijkend; de selectie was deze keer kleiner.
+- **`010E` gaf `410E94` = +10°** en in de TX/RX `410E93`, `410E90`. Nog steeds
+  positief — maar het koelwater stond al op 50 °C, dus dit was geen koude start.
+  De vraag blijft open.
+- **Vier stille sensoren staan in de actieve selectie**: `015C` (motorolie),
+  `0146` (omgevingstemperatuur), `015E` (brandstofverbruik) en `0114` (O2 B1S1).
+  Zes pogingen elk, nul antwoorden. Dat zijn vier tegels die nooit iets tonen.
+
+## De vier stille sensoren: oorzaak gevonden (18-08, zonder rijden)
+
+De ECU zégt gewoon dat hij ze niet ondersteunt. Uit de bestaande logs:
+
+```
+0100 → 4100FE3FA813
+0140 → 4140FAD08C81
+```
+
+Die vier bytes per steunvraag zijn 32 bits, één per PID. Uitgerekend:
+
+| PID | steunbit | |
+|---|---|---|
+| `0114` O2 B1S1 | **NEE** | staat wel in de selectie |
+| `015C` motorolie | **NEE** | staat wel in de selectie |
+| `0146` omgevingstemp | **NEE** | staat wel in de selectie |
+| `015E` brandstofverbruik | **NEE** | staat wel in de selectie |
+| `010C` toerental | JA | werkt |
+| `0115` O2 B1S2 | JA | werkt |
+
+Geen pollprobleem, geen batchkwestie. Ze horen daar nooit te zijn gekomen.
+
+**Hoe komen ze er dan in?** `initConnection()` slaat de ontdekking over zodra
+het VIN bekend is: `applyVinProfileIfKnown()` zet `supportedPIDs` uit een
+opgeslagen profiel van 55 PIDs en de bitmap wordt niet meer gelezen. Dat
+profiel is ooit gemaakt — waarschijnlijk door de directe-poll-fallback of een
+oudere versie — en wordt sindsdien elke sessie hergebruikt zonder ooit tegen de
+steunbits gehouden te worden. Een fout die één keer is opgeslagen blijft
+daardoor voor altijd staan.
+
+**Sessie B — profiel tegen de steunbits houden.** De bitmap kost drie of vier
+verzoeken, dus het snelle-start-voordeel blijft grotendeels overeind. Voorstel:
+bij het laden van een profiel altijd `0100/0120/0140/0160` lezen en de
+doorsnede nemen; wat de ECU ontkent gaat eruit en wordt gemeld. En het profiel
+opnieuw wegschrijven, zodat het zichzelf herstelt. Raakt `pidlane-pids.js`
+(`applyVinProfileIfKnown`) en `pidlane-bt.js` (`initConnection`); gedrags-
+wijziging, dus apart, met een test op de bitdecodering.
+
+Blok 6 van de testrun (1.5) meet dit nu breed: hoeveel van de PIDs in het
+profiel worden door de ECU ontkend. Draai dat één keer, dan weet je hoe groot
+het is voordat je de fix bouwt.
+
+**Sessie C — mag de gate een stille sensor opruimen?** Los van bovenstaande:
+een PID die herhaald geen antwoord geeft is geen ongeldige waarde, dus de
+plausibiliteitszeef laat hem staan. Op hoeveel mislukte pogingen mag de
+herijking hem uit `activePIDs` halen, en hoe komt hij terug als hij later
+alsnog antwoordt? Dit blijft nodig als vangnet voor PIDs die de ECU wél belooft
+maar niet levert.
+
 **Bij elke update die je oplevert**
 
 Herschrijf in `pidlane-testrun.js` zowel `CAMPAGNE` (de vraag) als `_blok5()`
