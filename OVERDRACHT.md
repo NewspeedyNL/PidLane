@@ -1,4 +1,4 @@
-# OVERDRACHT.md — sessie 15 t/m 19 augustus 2026
+# OVERDRACHT.md — sessie 15 t/m 20 augustus 2026
 
 Wat er in deze sessies is gebeurd, wat er nu anders werkt, en waar de volgende
 sessie begint. Voor de volgorde van het werk: `PLAN.md`. Voor hoe het systeem in
@@ -72,6 +72,58 @@ herstelt naar `7DF` in een `finally`.
 Knop "Budget + olie" draait alleen deze twee. Doe die vóór de sweep: de sweep
 jaagt de bezetting naar 100% en vervuilt het spoor.
 
+**Wat de ritten van 19-08 opleverden.** Drie runs: 14:38 op de oude build
+(1.5), 23:25 op 1.7, plus de eerste echte bulkopname.
+
+*De olietemperatuur zit niet waar de code denkt.* `2101`, `22111F` en `015C`
+gaven alle drie NO DATA. Maar `22111F` gericht op header `7E0` gaf `7F 22 31` —
+requestOutOfRange, niet serviceNotSupported. Mode 22 leeft dus op 7E0 en alleen
+die identifier bestaat er niet. `2101` staat nu als vervanger van `015C`
+geregistreerd terwijl hij aantoonbaar dood is; dat moet eruit. Blok 9 (nieuw,
+losse knop) scant de 11xx-reeks in 45 s.
+
+*Het pollbudget remde op fouten, niet op bezetting.* De enige verlaging van
+14:38 stond op `bezet 74%, fout 18%` — 74% ligt onder de drempel van 85, dus de
+foutgraad was de trigger. Die kwam van `015C`, `0146`, `0114` en `015E`: zestien
+missers van PIDs die de ECU ontkent. `PLSched` snoeit ze wel, maar herkanst na
+120 s, dus de foutpuls komt elke twee minuten terug. Om 23:25, zonder die vier,
+0% fouten en 100% tempo. Punt 1 en punt 2 hangen dus aan elkaar, en dat stond
+nergens.
+
+*`0143` staat er 256× naast.* Twee metingen: `41430048` toont 0,11 waar 28,2%
+hoort, `41430029` toont 0,06 waar 16,1% hoort. De parser rekent `A + B/256` in
+plaats van `A × 256 + B`.
+
+*De bulk-recorder werkt.* 101 monsters op 1 Hz, 55 PIDs, 7,4 minuten, geen
+ontbrekende velden, één gat van 343 s (de pauze). MAP haalde 103 kPa bij
+barometer 101 — 18 monsters boven de 85 kPa-drempel, dus de turbodetectie krijgt
+eindelijk voer, en 2 kPa boven barometrisch bevestigt atmosferisch. `010E` ging
+naar −1° bij 1177 rpm en 74,5% belasting; mild en verklaarbaar als klopregeling,
+niets als de −21,5° van 16-08. Segmentdetectie zet wel 59 van de 101 monsters op
+"onbekend" — die herkent stationair niet.
+
+**Het logboek is terug** (20-08, `pidlane-logboek.js`, kebab → Logboek). Er
+werd op vier plekken gelogd en sinds de testrun-consolidatie bracht geen scherm
+ze samen: `log()` (500 regels), `btDiag()` (1400, met kopie in localStorage),
+de diagbundel-ring (400) en de live-log-spiegel. Het logboek *trekt* die
+bronnen op het moment dat je het opent — geen wrappers om `log()` of `btDiag()`,
+want die codebase heeft er al één laag van en die maakt broncode-inspectie
+onbetrouwbaar. Filteren op bron en niveau, zoeken, exporteren via `plOpslaan`.
+Leest de localStorage-kopie als de ring in het geheugen leeg is, dus ná een
+crash sta je niet met lege handen. Eén regel in `pidlane-auth.js` erbij:
+`window.plLokaalLog` — geregistreerd in `KRITIEK`, want `test-bedrading.js`
+ving hem direct.
+
+**Privacy en de Play Store** (20-08, `pidlane-privacy.js` + `privacy.html` +
+`ANDROID-PLAYSTORE.md`). De prominente disclosure staat nu vóór het scannen in
+`connectSerial()`, als eigen scherm dat alleen over Bluetooth en
+voertuiggegevens gaat. Bewust niet samengevoegd met het akkoordscherm voor
+geanonimiseerde data: Google verbiedt het combineren van een data-disclosure
+met andere mededelingen. Twee echte blokkades gevonden — de workflow bouwde
+alleen een debug-APK terwijl Play een `.aab` eist, en `ACCESS_FINE_LOCATION`
+staat op `maxSdkVersion=30` terwijl de bulk-recorder wél GPS gebruikt, waardoor
+die functie op elk modern toestel stil kapot is.
+
 **Termux op de telefoon.** Node draait nu op het toestel; `plcheck.sh` in de
 repo-root doet syntaxcontrole, alle tests, div-balans en scripttag-controle.
 Draai dat vóór elke commit.
@@ -105,6 +157,19 @@ Draai dat vóór elke commit.
 **Een statische definitie is geen globale beschikbaarheid.** `openShare` staat
 in de bron maar lokaal in een IIFE. De statische test zag hem, de runtime niet.
 De runtime-controle is de autoriteit.
+
+**Een halve deploy ziet eruit als een geslaagde test.** De run van 19-08 om
+23:25 draaide op een tablet met een oude build: `profielTegenSteunbits`
+ontbrak. Blok 6 meldde niettemin "55 PIDs, geen enkele ontkend" en dat las als
+bevestiging van de fix — terwijl dat profiel gewoon al schoon wás. De fix is
+dus nog steeds onbevestigd, en er is bijna een vinkje gezet op iets wat niet
+gemeten is. Testrun 1.7.1 zet daarom een deploy-controle vooraan in blok 5:
+staat daar FOUT, dan telt de rest van de run niet.
+
+Hetzelfde geldt kleiner voor het kenteken. Zonder ingevoerd kenteken blijft
+`vehicleInfo` op alleen "Mazda" staan, en dan geeft het merkfilter in
+`probeUitgebreid()` GEEN kandidaten terug. Dat leest als een defect in de
+mode-21-route en is een lege invoer.
 
 **Een taakomschrijving is geen bron.** `PLAN.md` punt 4 zei "mode 22 PID `2101`,
 al gedefinieerd maar nergens opgevraagd". Allebei fout: `2101` is in dit project

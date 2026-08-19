@@ -372,9 +372,11 @@ de Durable Object de plek om het saldo te serialiseren.
 ## 9. Werkafspraken
 
 **Drie bestanden, drie rollen.** `PIDLANE.md` beschrijft hoe het systeem in
-elkaar zit (bron van waarheid), `OVERDRACHT.md` wat er in één sessie gebeurd is,
-`PLAN.md` wat er nog moet gebeuren en in welke volgorde. Begin een sessie in
-`PLAN.md`, eindig er ook.
+elkaar zit (bron van waarheid), `OVERDRACHT.md` wat er in de laatste sessies
+gebeurd is en waar de volgende begint, `PLAN.md` wat er nog moet gebeuren en in
+welke volgorde. Begin een sessie in `PLAN.md`, eindig er ook. Start je een
+nieuwe chat, plak dan `OVERDRACHT.md` erin — dat is de kortste weg naar
+werkende context zonder de hele repo te delen.
 
 - **Nederlandstalige codebase.** Commentaar, changelogs, UI-teksten: Nederlands.
 - **Complete, gevalideerde bestanden** — nooit patch-blokken in de chat.
@@ -1428,4 +1430,34 @@ Herschrijf ze samen bij elke update. Twee soorten controles horen er altijd in:
 
 Blok 5 draait als eerste: gaat er iets mis met de update, dan staat dat bovenaan
 en niet onder driehonderd regels sweep.
+
+### Het voertuigprofiel werd nooit tegen de ECU gehouden (18-08-2026)
+
+Vier sensoren stonden in de actieve selectie die deze CX-5 niet ondersteunt.
+Blok 6 van de testrun mat het uit: elke verdachte PID los, met ruime timeout, in
+een paar, in een groep van zes en met headers aan, met `010C` als controle door
+dezelfde molen. Uitkomst: de controle-PID antwoordde overal (adres `7E8`), de
+vier verdachten nergens, en hun steunbit stond op nul. Breed gemeten: **7 van de
+62 PIDs in het profiel worden door de ECU ontkend** — exact de zeven die in de
+sweep nooit antwoordden.
+
+Oorzaak: `initConnection()` slaat de ontdekking over zodra het VIN bekend is en
+laadt `supportedPIDs` uit een opgeslagen profiel. Dat profiel is ooit gemaakt —
+vermoedelijk door de directe-poll-fallback — en werd sindsdien elke sessie
+hergebruikt zonder ooit tegen de bitmap gehouden te worden. **Een fout die één
+keer is opgeslagen bleef daardoor voor altijd staan**, met tegels die nooit iets
+tonen en pollbudget dat naar niets ging.
+
+`profielTegenSteunbits()` (in `pidlane-rijsituatie.js`) leest nu alsnog
+`0100/0120/0140/0160`, gooit eruit wat de ECU ontkent, en schrijft het profiel
+opnieuw weg zodat het zichzelf herstelt. Vier verzoeken, dus de snelle start
+blijft snel. Wat de ECU niet noemt — mode 21/22, fabrikant-PIDs — blijft staan:
+daar bestaan geen steunbits voor, dus afwezigheid zegt daar niets. Is geen enkel
+steunblok leesbaar, dan wordt er níéts verwijderd.
+
+Deze functie verwijdert sensoren, dus `test-steunbits.js` toetst de telling met
+de échte antwoorden van de CX-5 (`4100FE3FA813`, `4120A007B011`,
+`4140FAD08C81`, `41606B080001`) tegen wat er in het veld aantoonbaar wél en niet
+antwoordde. Inclusief de randgevallen: een niet-gelezen blok mag nooit tot
+verwijderen leiden, en mode 22 heeft geen steunbits.
 

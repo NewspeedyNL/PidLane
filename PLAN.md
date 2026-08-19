@@ -1,6 +1,6 @@
 # PLAN.md — wat er nog open staat
 
-Bijgewerkt: 19-08-2026.
+Bijgewerkt: 20-08-2026.
 
 Dit bestand is het werkplan over sessies heen: **alleen wat er nog moet
 gebeuren, in volgorde**. Wat er gebeurd is staat in `OVERDRACHT.md`, hoe het
@@ -25,16 +25,29 @@ het oude echt weg. Zie §20 in `PIDLANE.md`.
 
 ## 1. Eerst rijden: drie dingen bevestigen
 
-Geen code. Er staan drie fixes klaar die alleen de weg kan bevestigen. Doe ze in
-één rit met **testrun 1.7**.
+**De poging van 19-08 telt niet.** Blok 5 meldde `profielTegenSteunbits
+ontbreekt` — de tablet draaide een oude build. Blok 6 zei wél "55 PIDs, geen
+enkele ontkend", en dat zag eruit als geslaagd, maar dat profiel was al schoon.
+Een halve deploy die eruitziet als een bevestiging is duurder dan een mislukte
+test. Testrun 1.7.1 zet die controle daarom vooraan in blok 5: staat daar FOUT,
+lees de rest van de run dan niet als bewijs.
 
-Testrun 1.7 meet in dezelfde rit alvast voor punt 2 en 4, zonder er iets aan te
-veranderen. Dat vraagt twee dingen van de rit: **minstens tien minuten rijden
-vóór je de run start** (anders is het pollbudget-spoor te kort) en **een warme
-motor** (anders liggen olie- en koelwatertemperatuur te dicht bij elkaar om
-schalingen te scheiden). Blok 7 en 8 zijn ook los te draaien met de knop
+Twee dingen vooraf, allebei op 19-08 misgegaan:
+
+- **Deploy compleet?** Blok 5 mag geen FOUT geven.
+- **Kenteken ingevoerd?** Zonder kenteken blijft `vehicleInfo` op alleen "Mazda"
+  staan en geeft het merkfilter in `probeUitgebreid()` GEEN kandidaten terug.
+  Dat lijkt op een defect en is het niet.
+
+Doe de rest in één rit met **testrun 1.7.1**, en let erop dat het profiel vóór
+de rit nog vervuild ís — anders bewijst "0 ontkend" niets.
+
+Testrun 1.7.1 meet in dezelfde rit alvast voor punt 2, zonder er iets aan te
+veranderen. Dat vraagt **minstens tien minuten rijden vóór je de run start**,
+anders is het pollbudget-spoor te kort. Blok 7 is los te draaien met de knop
 "Budget + olie" — dat is de verstandige volgorde: eerst die, dan pas de sweep,
-want de sweep vervuilt het spoor.
+want de sweep vervuilt het spoor. Blok 9 (DID-scan, 45 s) vraagt een warme
+motor en staat bewust niet in de gewone run.
 
 **Bij het verbinden** hoort er te staan: *"7 sensoren verwijderd die deze auto
 niet ondersteunt"* (`0146`, `0114`, `010A`, `015E`, `012C`, `015C`, `015A`).
@@ -65,13 +78,32 @@ Voorstel: bezetting alleen als tegendruk tellen wanneer de responstijd oploopt
 of er fouten bijkomen. Bouw eerst een test die de spiraal reproduceert, dan pas
 de wijziging — anders weet je achteraf niet of het beter is geworden.
 
-**Voorwerk staat klaar (19-08).** Blok 7 van de testrun bemonstert de regelkring
-elke twee seconden en telt de remmomenten waarbij er 0% fouten waren én de
-responstijd niet opliep. Die telling is de hele vraag. Begin deze sessie niet
-zonder dat getal: is hij nul, dan klopt het vermoeden niet en gaat punt 2 dicht
-in plaats van open. Blok 7 raakt `PLLoad` niet aan en reconstrueert de genomen
-beslissing uit `PLLoad.cfg` — wijkt die reconstructie af van wat `_mult` deed,
-dan is dat op zichzelf een vondst.
+**Twee metingen van 19-08, en ze wijzen niet dezelfde kant op.**
+
+*14:38, oude build, vier fantoom-PIDs actief.* Eén verlaging: `bezet 74%, fout
+18%, 194ms`. Bezetting 74% ligt **onder** `bezetOp` (85), dus de trigger was de
+foutgraad, niet de bezetting. En die foutgraad kwam ergens vandaan: `perPid`
+telt `015C` 5 missers, `0146` 5, `0114` 3, `015E` 3. Zestien missers van PIDs
+die de ECU ontkent. Tempo eindigde op 34%.
+
+*23:25, fantoom-PIDs weg.* Blok 7 over 42 s stationair: nul remmomenten, tempo
+100% van begin tot eind, foutgraad 0% in álle monsters. En de omgekeerde
+uitslag op de kernvraag: responstijd 102 ms bij lage bezetting tegen 160 ms bij
+hoge — **+57%**. Bezetting voorspelt hier wél tegendruk. Zone "ruim" werd 64%
+van de tijd gehaald, dus de vaste terugweg bestaat.
+
+**Waar dat op neerkomt.** Het vermoeden in de kop hierboven — terugschroeven op
+bezetting zonder fouten — is in geen van beide metingen bevestigd. Wat er in de
+14:38-run gebeurde was terugschroeven op fouten die er niet hadden moeten zijn.
+Als dat het hele verhaal is, is punt 2 geen regelkringprobleem maar een gevolg
+van punt 1, en gaat het vanzelf weg zodra de steunbitfix draait.
+
+**Doe daarom eerst dit, en pas dan de wijziging overwegen:** blok 7 over een rit
+van minstens tien minuten, op een build mét de steunbitfix. Blijft de foutgraad
+dan op 0% en het tempo op 100%, dan gaat punt 2 dicht en is de winst al binnen.
+Duikt het tempo alsnog bij 0% fouten, dan pas is de tegendruk verkeerd
+opgehangen — en dan weet je ook meteen waaraan wél, want blok 7 logt de
+responstijd erbij. 42 s stilstand bewijst geen van beide.
 
 ---
 
@@ -90,42 +122,78 @@ sensoren voorgoed wegwerkt.
 
 ---
 
-## 4. Waar zit de motorolietemperatuur?
+## 4. Waar zit de motorolietemperatuur? — GEMETEN 19-08
 
-**Deze tekst stond hier fout, op twee punten (nagelopen 19-08).** Er stond "mode
-22 PID `2101`, nergens opgevraagd". Beide kloppen niet:
+**Beslist. Wat hier stond klopte op twee punten niet**, en de meting heeft de
+rest afgemaakt. De oude tekst zei "mode 22 PID `2101`, nergens opgevraagd":
+`2101` is in dit project mode 21 PID 01 (een mode-22 identifier is twee bytes en
+past niet in de vier-tekens-sleutel), en `pidlane-bt.js:1691` roept
+`probeUitgebreid()` al aan bij het verbinden — in een stille catch.
 
-- `2101` is in dit project **mode 21 PID 01**, niet mode 22. Zie de kop van
-  `pidlane-uitgebreid.js`: een mode-22 identifier is twee bytes (`22`+`111F`) en
-  past niet in de vier-tekens-sleutelconventie.
-- Het **wordt** opgevraagd. `pidlane-bt.js:1691` roept `probeUitgebreid()` aan na
-  het verbinden — in een stille catch, dus faalt hij, dan zie je niets.
+Blok 8 van testrun 1.7, CX-5, koelwater 73 °C:
 
-Wat er dus werkelijk open staat is niet bouwen maar **meten welke adressering
-klopt**. Er zijn drie kandidaten en geen enkele is ooit tegen deze auto gehouden:
+| aanvraag | antwoord |
+|---|---|
+| `2101` (mode 21) | NO DATA |
+| `22111F` functioneel | NO DATA |
+| `015C` (standaard) | NO DATA |
+| `22111F` op header `7E0` | **`7F 22 31`** |
 
-| aanvraag | verwacht | herkomst |
+Die laatste is de vondst. `31` is requestOutOfRange, niet `11`
+(serviceNotSupported): **mode 22 leeft op 7E0, alleen bestaat identifier `111F`
+daar niet.** De veldbron klopt voor andere SkyActiv-jaren, niet voor deze auto.
+
+**Wat er nog te doen is:**
+
+1. ~~`2101` uit `pidlane-uitgebreid.js` halen.~~ **Gedaan 19-08.** De definitie is
+   weg uit `UITGEBREID_DEFS` met de meting als aantekening erbij, de melding
+   "olietemp zit op 2101 in plaats van 015C" is eruit, en in `PIDS_EXTRA`
+   (dood object, wordt nergens gelezen) staat hij nu als `DOOD op CX-5 2018` —
+   dat is de bron waaruit hij ooit is overgenomen. Blok 5 bewaakt dat hij niet
+   terugkruipt. De mode-21-route blijft, voor `2102`/`210C`/`210D`.
+2. Blok 9 draaien (losse knop, warme motor): 256 identifiers `2211xx` op 7E0,
+   ~45 s. Antwoordt er een, dan bestaat hij; of het de olie is blijkt pas uit
+   twee metingen, koud en warm. Loopt hij mee met het koelwater maar trager,
+   dan is het de olie.
+3. Levert blok 9 niets op, dan is dit punt dicht: deze CX-5 heeft de
+   olietemperatuur niet op de diagnosebus. Verder zoeken heeft dan alleen zin
+   met een echte Mazda-DID-lijst, niet met raden.
+
+## 4b. `0143` staat er 256× naast
+
+Klein, zelfstandig, twee keer bevestigd. De parser rekent `A + B/256` waar het
+`A × 256 + B` moet zijn.
+
+| ruw | app toont | hoort |
 |---|---|---|
-| `2101` | `6101 xx`, waarde A−40 | wat `pidlane-uitgebreid.js` aanneemt |
-| `22111F` | `62111F xx`, waarde A−50 | breed gedeeld voor SkyActiv, header 7E0 |
-| `015C` | `415C xx` | de standaard; volgens de steunbits dood op deze CX-5 |
+| `41430048` (B=72) | 0,11 | 28,2 % |
+| `41430029` (B=41) | 0,06 | 16,1 % |
 
-Blok 8 van testrun 1.7 vraagt alle drie op, herkent een negatief antwoord
-(`7F 22 31`) apart van NO DATA, en rekent beide schalingen uit tegen het
-koelwater als plausibiliteitsanker. Uitkomsten en gevolg:
-
-- **`22111F` antwoordt, `2101` niet** → de definitie in `pidlane-uitgebreid.js`
-  is fout en de sleutelconventie moet mode 22 aankunnen. Dat is dan een echte
-  sessie, want het raakt de sleutelruimte.
-- **`2101` antwoordt** → de code klopt en dit punt is al af; alleen de naam in
-  dit bestand was verkeerd.
-- **Geen van beide** → deze CX-5 heeft de olietemperatuur niet op de
-  diagnosebus. Punt dicht.
-
-De sonde zet tijdelijk header `7E0` en herstelt naar `7DF` in een `finally`.
-Blijft `7E0` staan, dan praat de app daarna alleen nog tegen het motorblok.
+Nooit opgevallen omdat niemand naar absolute motorbelasting kijkt. Raakt
+`pidlane-data.js`. Controleer meteen of dezelfde bytecombinatie elders in de
+tabel voorkomt — dit is precies het soort fout dat op meer PIDs zit.
 
 ---
+
+## 4c. Play Store: twee blokkades, één keuze
+
+Zie `ANDROID-PLAYSTORE.md` voor de volledige checklist. Wat er beslist moet
+worden voordat er iets ingezonden kan worden:
+
+**Locatie — kiezen.** De app gebruikt `navigator.geolocation` in
+`pidlane-bulk.js` en `pidlane-gps.js`, maar het manifest zet
+`ACCESS_FINE_LOCATION` op `maxSdkVersion=30`. Op Android 12+ is die functie dus
+stil kapot: `watchPosition` roept nooit zijn callback aan. Ofwel GPS eruit
+(snelste route door de review), ofwel `maxSdkVersion` weg plus een eigen
+disclosure vóór de eerste ritopname en locatie in de Data safety-form.
+
+**Ondertekenen.** De workflow bouwt nu ook een `.aab` (Play neemt geen losse
+APK meer aan), maar die is ongetekend. Keystore aanmaken en beslissen tussen
+Play App Signing en zelf tekenen. Doe dit pas als de rest staat — een gelekte
+keystore is niet te repareren.
+
+Verder: reken erop dat een reviewer geen OBD2-adapter heeft. Wat hij dan te
+zien krijgt bepaalt of de app "onbruikbaar" of "ik had geen hardware" is.
 
 ## 5. De stille catches, per module
 
