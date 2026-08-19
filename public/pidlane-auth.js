@@ -763,6 +763,9 @@ function updateApiPill(){
 }
 
 const localLog=[];
+// Uitleesbaar maken voor pidlane-logboek.js. Bewust een kopie: het logboek
+// mag lezen, nooit schrijven of afkappen.
+window.plLokaalLog=function(){ return localLog.slice(); };
 function log(msg,type=''){
   const bar=document.getElementById('logbar');
   const ts=new Date().toTimeString().slice(0,8);

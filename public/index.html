@@ -1219,6 +1219,8 @@ function closeConnOv(){
         <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
       <button class="kebab-item" onclick="closeKebab();reportNav()" style="position:relative">📄 Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:50%;transform:translateY(-50%);right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:16px;text-align:center"></span></button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
+      <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
+      <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
       <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
       <div class="kebab-sep"></div>
@@ -2317,7 +2319,9 @@ function closeConnOv(){
 <script src="pidlane-bulk.js"></script><!-- passieve bulk-datarecorder (PLBulk) — vereist ná watchers -->
 <script src="pidlane-waakronde.js"></script><!-- stille achtergrondcontrole van niet-gekozen sensoren — vereist ná pids + pidgate + diagbundel -->
 <script src="pidlane-export.js"></script><!-- opslaan: keuze tekst/PDF + gedeelde huisstijl -->
-<script src="pidlane-testrun.js"></script><!-- testrun: één knop, één rit, één logboek — vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot -->
+<script src="pidlane-testrun.js"></script><!-- testrun: één knop, één rit, één logboek -->
+<script src="pidlane-logboek.js"></script><!-- logboek: voegt BT-, app- en PID-logs samen in één tijdlijn -->
+<script src="pidlane-privacy.js"></script><!-- privacy: prominente BT-disclosure vóór connectSerial + verklaring in menu -->
 <script src="pidlane-bedrading.js"></script><!-- bedradingscontrole: bestaat alles wat modules van elkaar verwachten — MOET als laatste -->
 
 <script>

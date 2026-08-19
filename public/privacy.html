@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacyverklaring — PidLane</title>
+<!--
+  Deze pagina bestaat om twee redenen. Ten eerste verwijst de app ernaar
+  vanuit pidlane-privacy.js; een dode link daar is op zichzelf al genoeg
+  voor een afwijzing. Ten tweede vraagt de Play Console een publieke
+  privacy-URL bij het inzenden.
+
+  De prominente disclosure in de app is iets ANDERS dan deze pagina en
+  vervangt hem niet. Google eist beide: de disclosure in de flow, deze
+  verklaring als naslag. Houd ze inhoudelijk gelijk — wijkt de een af van
+  de ander, dan is dat een tegenstrijdigheid die een reviewer opmerkt.
+-->
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin:0; padding:24px 18px 60px; background:#0D1117; color:#e6edf3;
+    font:400 15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  main { max-width:720px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; color:#fff; }
+  h2 { font-size:17px; margin:30px 0 8px; color:#fff; }
+  .sub { color:#8b949e; font-size:13px; margin-bottom:26px; }
+  p, li { color:#c9d1d9; }
+  ul { padding-left:20px; }
+  li { margin-bottom:7px; }
+  a { color:#58a6ff; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #21262d; vertical-align:top; }
+  th { color:#fff; font-weight:700; }
+  .kader { background:#161b22; border:1px solid #21262d; border-radius:10px; padding:14px 16px; margin:16px 0; }
+  footer { margin-top:40px; padding-top:16px; border-top:1px solid #21262d; color:#8b949e; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Privacyverklaring</h1>
+  <div class="sub">PidLane — laatst bijgewerkt: 20 augustus 2026</div>
+
+  <p>PidLane leest de boordcomputer van je auto uit via een OBD2-adapter en maakt daar een
+  diagnose van. Deze verklaring beschrijft welke gegevens daarbij worden verwerkt, waarom,
+  en wat je eraan kunt doen.</p>
+
+  <h2>Bluetooth en de "apparaten in de buurt"-permissie</h2>
+  <p>Om met de OBD2-adapter te kunnen praten vraagt PidLane toegang tot Bluetooth. Op Android
+  heet die permissie <em>apparaten in de buurt</em>. Zonder die toegang kan de app zijn werk
+  niet doen — er is geen andere weg naar de gegevens van je auto.</p>
+
+  <div class="kader">
+    <strong>Bluetooth wordt niet gebruikt om je locatie te bepalen.</strong> De scanpermissie is
+    aangevraagd met de markering <code>neverForLocation</code>. Android blokkeert daarmee op
+    systeemniveau het afleiden van je plaats uit Bluetooth-signalen. PidLane scant uitsluitend
+    om de adapter in je auto te vinden.
+  </div>
+
+  <h2>Welke gegevens uit je auto komen</h2>
+  <table>
+    <tr><th>Gegeven</th><th>Waarvoor</th></tr>
+    <tr><td>Foutcodes (DTC's)</td><td>De diagnose zelf: wat meldt de auto.</td></tr>
+    <tr><td>Sensorwaarden</td><td>Toerental, temperaturen, druk, brandstoftrims — de meting waar de analyse op draait.</td></tr>
+    <tr><td>Chassisnummer (VIN)</td><td>Bepalen om welk merk, model en bouwjaar het gaat, zodat de juiste referentiewaarden worden gebruikt.</td></tr>
+    <tr><td>Kenteken (als je het invult)</td><td>Voertuiggegevens ophalen bij de RDW-open-data-dienst.</td></tr>
+    <tr><td>Locatie (alleen bij ritopname)</td><td>Hoogteverschil meenemen in de belastinganalyse. Dit is optioneel en staat standaard uit.</td></tr>
+  </table>
+
+  <h2>Waar die gegevens heen gaan</h2>
+  <ul>
+    <li><strong>Op je toestel.</strong> Metingen, logboeken en instellingen staan lokaal opgeslagen.
+    Ze gaan niet vanzelf ergens heen.</li>
+    <li><strong>Naar onze server</strong>, als je om een AI-analyse vraagt. De meting wordt dan
+    verwerkt tot een rapport en bewaard bij je account, zodat je hem later kunt teruglezen.</li>
+    <li><strong>Naar Anthropic</strong>, de aanbieder van het taalmodel dat het rapport schrijft.
+    Er gaan meetwaarden en voertuiggegevens mee; geen naam, e-mailadres of kenteken.</li>
+    <li><strong>Naar de RDW</strong>, als je een kenteken invult. Dat is een openbare dienst; er
+    gaat geen persoonsgegeven van jou mee, alleen het kenteken.</li>
+  </ul>
+
+  <h2>Geanonimiseerde referentiedata</h2>
+  <p>Als je daarvoor toestemming hebt gegeven, worden meetwaarden zonder kenteken, VIN of
+  persoonsgegevens gebruikt om referentiewaarden per merk en model op te bouwen. Daar wordt
+  de diagnose voor alle gebruikers scherper van. Deze toestemming vraagt de app apart en je
+  kunt hem intrekken.</p>
+
+  <h2>Wat er niet gebeurt</h2>
+  <ul>
+    <li>Geen advertenties en geen advertentie-identificatie.</li>
+    <li>Geen verkoop van gegevens aan derden.</li>
+    <li>Geen volgen van je locatie via Bluetooth.</li>
+    <li>Geen toegang tot je contacten, agenda, foto's, sms of belgeschiedenis.</li>
+  </ul>
+
+  <h2>Bewaren en verwijderen</h2>
+  <p>Gegevens op je toestel verwijder je door de app-gegevens te wissen of via de wisfunctie in
+  de app. Gegevens bij je account verwijder je via <em>Mijn account</em>, of door een verzoek te
+  sturen via het e-mailadres onderaan. Wij verwijderen een account en de bijbehorende rapporten
+  binnen 30 dagen na zo'n verzoek.</p>
+
+  <h2>Je rechten</h2>
+  <p>Je hebt recht op inzage, correctie, verwijdering en overdracht van je gegevens, en je kunt
+  bezwaar maken tegen de verwerking. Een verzoek daartoe kun je sturen naar het adres hieronder.
+  Ben je het oneens met hoe wij daarmee omgaan, dan kun je een klacht indienen bij de
+  Autoriteit Persoonsgegevens.</p>
+
+  <h2>Kinderen</h2>
+  <p>PidLane is niet gericht op kinderen en verzamelt niet bewust gegevens van personen onder
+  de 16 jaar.</p>
+
+  <footer>
+    <strong>Contact</strong><br>
+    PidLane — <a href="mailto:privacy@pidlane.nl">privacy@pidlane.nl</a><br>
+    <a href="/">Terug naar de app</a>
+  </footer>
+
+</main>
+</body>
+</html>

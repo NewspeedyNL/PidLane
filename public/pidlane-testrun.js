@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '1.7 (19-08-2026)';
+const TESTRUN_VERSIE = '1.8 (20-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -762,8 +762,13 @@ async function _blok7() {
 // ══════════════════════════════════════════════════════════════════
 // BLOK 8 — WAAR ZIT DE OLIETEMPERATUUR? (PLAN.md punt 4)
 // ══════════════════════════════════════════════════════════════════
-// PLAN.md zegt "mode 22 PID 2101, al gedefinieerd maar nergens opgevraagd".
-// Bij het nalezen bleek dat op twee punten niet te kloppen:
+// GEMETEN 19-08. Alle drie kandidaten gaven NO DATA; 22111F op header 7E0 gaf
+// 7F 22 31 (requestOutOfRange), dus mode 22 leeft maar die identifier niet.
+// 2101 is daarop uit UITGEBREID_DEFS verwijderd. Dit blok blijft draaien als
+// controle: goedkoop, en een antwoord dat er nu wél is verandert de conclusie.
+//
+// De aanleiding, voor wie de geschiedenis nodig heeft. PLAN.md zei "mode 22 PID
+// 2101, al gedefinieerd maar nergens opgevraagd". Dat klopte op twee punten niet:
 //
 //   1. `2101` is in dit project mode 21 PID 01, niet mode 22. Zie de kop van
 //      pidlane-uitgebreid.js: een mode-22 identifier is twee bytes ('22'+'111F')
@@ -783,7 +788,7 @@ async function _blok7() {
 //
 // Alles is lezend. Mode 22 is ReadDataByIdentifier — er wordt niets geschreven.
 const OLIE_KANDIDATEN = [
-  ['2101',   'mode 21 PID 01 — wat de app nu probeert'],
+  ['2101',   'mode 21 PID 01 — op 19-08 dood bevonden, blijft als controle'],
   ['22111F', 'mode 22 DID 111F — de SkyActiv-kandidaat uit het veld'],
   ['015C',   'mode 01 PID 5C — de standaard, bekend dood op deze CX-5']
 ];
@@ -904,24 +909,138 @@ async function _blok8() {
         try { r = await sendCmd('22111F', 3000); } catch (e) {}
         const h = hex(r);
         const i = h.indexOf('62111F');
-        if (i < 0) return { staat: 'LET OP', detail: 'gericht op 7E0 ook geen 62111F — ruw: ' + String(r || '—').replace(/\s+/g, ' ').slice(0, 30) };
-        const A = parseInt(h.substr(i + 6, 2), 16);
-        return 'ANTWOORD op 7E0: bytes ' + h.slice(i + 6, i + 14) + '  A=' + A +
-               ' → A−40 = ' + (A - 40) + ' °C, A−50 = ' + (A - 50) + ' °C' +
-               (koel != null ? '  (koelwater ' + koel + ' °C)' : '');
+        if (i >= 0) {
+          const A = parseInt(h.substr(i + 6, 2), 16);
+          return 'ANTWOORD op 7E0: bytes ' + h.slice(i + 6, i + 14) + '  A=' + A +
+                 ' → A−40 = ' + (A - 40) + ' °C, A−50 = ' + (A - 50) + ' °C' +
+                 (koel != null ? '  (koelwater ' + koel + ' °C)' : '');
+        }
+        // Een 7F is géén stilte. 7F 22 11 betekent dat mode 22 niet bestaat op
+        // dit adres; 7F 22 31 betekent dat mode 22 wél leeft en alleen déze
+        // identifier onbekend is. Dat tweede is de opening voor de DID-scan
+        // hieronder, dus het onderscheid moet in het log staan.
+        const n = h.indexOf('7F22');
+        if (n >= 0) {
+          const reden = h.substr(n + 4, 2);
+          if (reden === '31')
+            return { staat: 'LET OP', detail: '7F 22 31 — mode 22 LEEFT op 7E0, identifier 111F bestaat niet. Draai de DID-scan.' };
+          return { staat: 'LET OP', detail: '7F 22 ' + reden + ' — mode 22 geweigerd op 7E0 (' +
+            ({ '11': 'service niet ondersteund', '12': 'subfunctie onbekend', '22': 'condities niet goed', '33': 'beveiliging' }[reden] || 'onbekende reden') + ')' };
+        }
+        return { staat: 'LET OP', detail: 'geen 62111F en geen 7F — ruw: ' + String(r || '—').replace(/\s+/g, ' ').slice(0, 30) };
       });
     }
 
     _boek(8, 'Slotsom', 'ok',
-      'Antwoordt 22111F wél en 2101 niet, dan staat de verkeerde definitie in pidlane-uitgebreid.js ' +
-      'en moet de sleutelconventie mode 22 aankunnen. Antwoordt 2101 wél, dan klopt de code en is ' +
-      'PLAN.md punt 4 al af. Antwoordt geen van beide, dan heeft deze CX-5 de olietemperatuur niet ' +
-      'op de diagnosebus en kan punt 4 dicht.', null);
+      'Op 19-08 gaven alle drie NO DATA en gaf 22111F op 7E0 een 7F 22 31: mode 22 leeft, ' +
+      'identifier 111F bestaat niet. Deze drie blijven staan als controle — komt er nu wél ' +
+      'een antwoord, dan hing het aan een voorwaarde die toen niet gold (koude motor, ' +
+      'contact zonder lopende motor, ander stuurapparaat wakker). Blijft alles stil, ' +
+      'dan is blok 9 de volgende stap.', null);
 
   } finally {
     // Header ALTIJD terugzetten naar de functionele broadcast. Blijft 7E0 staan,
     // dan praat de hele app daarna alleen nog tegen het motorblok — en dat merk
     // je pas als een andere module niets meer terugkrijgt.
+    if (headerGezet) { try { await sendCmd('ATSH7DF', 1500); } catch (e) {} }
+    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BLOK 9 — DID-SCAN OVER MODE 22 (los te draaien)
+// ══════════════════════════════════════════════════════════════════
+// Draait NIET mee in de gewone run. Blok 8 van 19-08 leverde `7F 22 31` op
+// header 7E0: mode 22 leeft, identifier 111F bestaat niet. Daarmee is de vraag
+// niet meer "praat deze ECU mode 22" maar "op welke identifier".
+//
+// De reeks 11xx is de gok met de beste onderbouwing — de gedeelde Mazda-lijsten
+// zitten daar (111F voor olie, 1177 voor MAF-spanning). 256 aanvragen à ~160 ms
+// is ongeveer 45 seconden. Dat is te doen; blind alle 65536 DIDs niet.
+//
+// Wat een treffer is: een antwoord dat met 62 begint in plaats van 7F. De
+// identifier bestaat dan. Wat het betekent staat er niet bij — dat is
+// handwerk achteraf, met de waarde naast koelwater, toerental en luchtmassa.
+//
+// Alles lezend. Mode 22 schrijft niet.
+async function _blok9() {
+  if (typeof connected === 'undefined' || !connected) { _boek(9, 'DID-scan', 'overgeslagen', 'geen verbinding', null); return; }
+  if (typeof demoMode !== 'undefined' && demoMode) { _boek(9, 'DID-scan', 'overgeslagen', 'demomodus', null); return; }
+
+  let tok = 0;
+  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-did', 8000) : 0; } catch (e) {}
+  let headerGezet = false;
+  const hex = function (r) { return String(r || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase(); };
+
+  try {
+    let proto = '';
+    try { proto = String(await sendCmd('ATDPN', 1500) || '').trim(); } catch (e) {}
+    if (!/^A?6$/i.test(proto.replace(/[^0-9A-Za-z]/g, ''))) {
+      _boek(9, 'DID-scan', 'overgeslagen', 'geen 11-bit CAN (ATDPN = "' + proto + '")', null);
+      return;
+    }
+    try { await sendCmd('ATSH7E0', 1500); headerGezet = true; }
+    catch (e) { _boek(9, 'DID-scan', 'LET OP', 'ATSH7E0 geweigerd', null); return; }
+
+    // Koelwater als ijkpunt: een olietemperatuur moet daar in de buurt liggen.
+    let koel = null;
+    try {
+      const rk = await sendCmd('0105', 2500), h = hex(rk), i = h.indexOf('4105');
+      if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
+    } catch (e) {}
+
+    _boek(9, 'Scan gestart', 'ok', 'reeks 2211xx op header 7E0, 256 identifiers' +
+      (koel != null ? '  |  koelwater ' + koel + ' °C' : ''), null);
+
+    const treffers = [];
+    let geweigerd = 0, stil = 0;
+    const t0 = _nu();
+
+    for (let n = 0; n < 256 && !_trStop; n++) {
+      const did = '11' + n.toString(16).toUpperCase().padStart(2, '0');
+      let r = '';
+      try { r = await sendCmd('22' + did, 1200); } catch (e) {}
+      const h = hex(r);
+      const i = h.indexOf('62' + did);
+      if (i >= 0) {
+        const bytes = h.slice(i + 6, i + 18);
+        const A = parseInt(bytes.substr(0, 2), 16);
+        treffers.push({ did: did, bytes: bytes, A: A });
+      } else if (h.indexOf('7F22') >= 0) geweigerd++;
+      else stil++;
+      await _wacht(20);
+    }
+
+    const duur = Math.round((_nu() - t0) / 1000);
+    _boek(9, 'Scan klaar', 'ok', treffers.length + ' identifiers antwoorden, ' + geweigerd +
+      ' geweigerd met 7F, ' + stil + ' stil  |  ' + duur + ' s', null);
+
+    if (!treffers.length) {
+      _boek(9, 'Slotsom', 'LET OP',
+        'Geen enkele 11xx-identifier bestaat op 7E0. Mode 22 leeft wel, dus de olietemperatuur ' +
+        'zit in een andere reeks of op een ander stuurapparaat (7E1 = transmissie). Verder ' +
+        'zoeken heeft alleen zin met een echte Mazda-DID-lijst, niet met raden.', null);
+      return;
+    }
+
+    // Alles tonen, met de temperatuur-verdachten apart. Een byte die als A−40
+    // of A−50 vlak bij het koelwater uitkomt is een kandidaat — meer niet.
+    for (const t of treffers) {
+      const merk = [];
+      if (isFinite(t.A) && koel != null) {
+        if (Math.abs((t.A - 40) - koel) < 25) merk.push('A−40 = ' + (t.A - 40) + ' °C, dicht bij koelwater');
+        if (Math.abs((t.A - 50) - koel) < 25) merk.push('A−50 = ' + (t.A - 50) + ' °C, dicht bij koelwater');
+      }
+      _boek(9, '22' + t.did, merk.length ? 'LET OP' : 'ok',
+        'bytes ' + t.bytes + (merk.length ? '  [VERDACHT: ' + merk.join('; ') + ']' : ''), null);
+    }
+
+    _boek(9, 'Slotsom', 'ok',
+      'Een identifier die antwoordt bestaat — wat hij betekent niet. Toets een verdachte door ' +
+      'twee keer te meten: koud en warm. Loopt hij mee met het koelwater maar trager, dan is het ' +
+      'de olie. Blijft hij staan, dan is het iets anders.', null);
+
+  } finally {
     if (headerGezet) { try { await sendCmd('ATSH7DF', 1500); } catch (e) {} }
     try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
   }
@@ -943,6 +1062,76 @@ async function _blok8() {
 // zes ingangen gesloopt, en een achtergebleven verwijzing merk je pas als een
 // klant erop drukt.
 async function _blok5() {
+
+  // ── TOEGEVOEGD 20-08: logboek en privacy-disclosure ──
+  await _doe(5, 'Logboek leest alle bronnen', function () {
+    if (!window.PLLogboek || typeof PLLogboek.verzamel !== 'function')
+      return { staat: 'FOUT', detail: 'PLLogboek ontbreekt — geen logscherm in het menu' };
+    if (typeof plLokaalLog !== 'function')
+      return { staat: 'FOUT', detail: 'plLokaalLog ontbreekt — het app-log komt niet in het logboek' };
+    const r = PLLogboek.verzamel();
+    const bronnen = {};
+    r.forEach(function (x) { bronnen[x.bron] = (bronnen[x.bron] || 0) + 1; });
+    const namen = Object.keys(bronnen);
+    if (!r.length) return { staat: 'LET OP', detail: 'geen regels — verse start, of alle ringen leeg' };
+    // BT hoort er altijd bij zodra er iets met de adapter is gebeurd. Ontbreekt
+    // hij terwijl er wel verbinding is, dan leest het logboek de verkeerde ring.
+    if (typeof connected !== 'undefined' && connected && !bronnen.BT)
+      return { staat: 'FOUT', detail: 'verbonden maar geen BT-regels in het logboek — bron niet gekoppeld' };
+    return r.length + ' regels uit ' + namen.length + ' bronnen (' +
+      namen.map(function (n) { return n + ' ' + bronnen[n]; }).join(', ') + ')';
+  });
+
+  await _doe(5, 'Logboek verandert niets', function () {
+    // Het logboek trekt data op; het mag zich niet in log() of btDiag() hangen.
+    // Een logvenster dat het gedrag van de app verandert is waardeloos als
+    // bewijsmiddel — precies de fout die pidlane-remote.js al één keer maakte.
+    if (typeof btDiag !== 'function') return { staat: 'FOUT', detail: 'btDiag weg' };
+    const bron = String(btDiag);
+    if (/PLLogboek|logboek/i.test(bron))
+      return { staat: 'FOUT', detail: 'btDiag noemt het logboek — er is een wrapper omheen gezet' };
+    return 'btDiag en log() ongemoeid, logboek leest alleen';
+  });
+
+  await _doe(5, 'BT-disclosure vóór het verbinden', function () {
+    if (!window.PLPrivacy || typeof PLPrivacy.disclosureOk !== 'function')
+      return { staat: 'FOUT', detail: 'PLPrivacy ontbreekt — Play Store weigert een BT-app zonder disclosure' };
+    // De poort moet in connectSerial zitten, vóór het scannen. Staat hij er
+    // niet, dan verschijnt het Android-permissiedialoog zonder uitleg erboven
+    // en is dat een afwijzingsgrond.
+    let inFlow = false;
+    try { inFlow = /PLPrivacy/.test(String(window.connectSerial || '')); } catch (e) {}
+    if (!inFlow)
+      return { staat: 'FOUT', detail: 'connectSerial roept PLPrivacy niet aan — disclosure staat buiten de flow' };
+    return 'poort aanwezig in connectSerial, disclosure v' + PLPrivacy.versie +
+      ' — toestemming ' + (PLPrivacy.gegeven() ? 'gegeven' : 'nog niet gegeven');
+  });
+
+  // ── Deploy-controle. Staat vooraan met reden ──
+  // De rit van 19-08 draaide op een build waarin profielTegenSteunbits ontbrak.
+  // Blok 6 meldde "0 ontkend" en dat zag eruit als een bevestiging, terwijl het
+  // profiel gewoon al schoon wás. Een halve deploy die eruitziet als een
+  // geslaagde test is duurder dan een mislukte test.
+  await _doe(5, 'Is deze deploy compleet', function () {
+    const eis = ['profielTegenSteunbits', 'pidCmd', 'probeUitgebreid', 'plHerijkTick', 'plOpslaan',
+                 'openLogboek', 'openPrivacy', 'plLokaalLog'];
+    const weg = eis.filter(function (n) { return typeof window[n] !== 'function'; });
+    if (weg.length)
+      return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') + ' — oude build. Lees de rest van deze run niet als bevestiging.' };
+    return 'alle sleutelfuncties aanwezig, testrun ' + TESTRUN_VERSIE;
+  });
+
+  await _doe(5, 'Voertuig bekend genoeg', function () {
+    // Zonder kenteken blijft vehicleInfo half en geeft het merkfilter in
+    // probeUitgebreid GEEN kandidaten terug. Dat lijkt op een defect en is het
+    // niet — 19-08 kostte dat een halve avond.
+    const v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) ? vehicleInfo : null;
+    if (!v) return { staat: 'LET OP', detail: 'vehicleInfo leeg' };
+    const mist = ['merk', 'model', 'bouwjaar', 'brandstof'].filter(function (k) { return !v[k]; });
+    if (mist.length)
+      return { staat: 'LET OP', detail: 'mist ' + mist.join(', ') + ' — voer het kenteken in, anders filtert de merkroute alles weg' };
+    return v.merk + ' ' + v.model + ' ' + v.bouwjaar + ' ' + v.brandstof;
+  });
 
   // ── TOEGEVOEGD 19-08: pollbudget-spoor (PLAN.md punt 2) ──
   await _doe(5, 'Budgetsampler leeft', function () {
@@ -983,11 +1172,26 @@ async function _blok5() {
     if (typeof isMode01 !== 'function') weg.push('isMode01');
     if (typeof probeUitgebreid !== 'function') weg.push('probeUitgebreid');
     if (weg.length) return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') + ' — pidlane-uitgebreid.js niet geladen' };
-    // De aanname die blok 8 toetst, hier expliciet: de app zoekt de
-    // olietemperatuur op mode 21, het veld noemt mode 22.
-    const d = (window.UITGEBREID_DEFS && UITGEBREID_DEFS['2101']) || null;
-    if (!d) return { staat: 'LET OP', detail: 'pad aanwezig, maar 2101 staat niet in UITGEBREID_DEFS' };
-    return '2101 gedefinieerd als "' + d.name + '" (' + (d.merk || 'geen merk') + ', vervangt ' + (d.vervangt || '—') + ') — blok 8 toetst of dat klopt';
+    const n = window.UITGEBREID_DEFS ? Object.keys(UITGEBREID_DEFS).length : 0;
+    return 'mode-21-route leeft, ' + n + ' definities';
+  });
+
+  // ── VERWIJDERD 19-08: 2101 als olietemperatuur ──
+  // Gemeten NO DATA op de CX-5. De definitie droeg vervangt:'015C', dus de app
+  // bood een sensor aan die deze auto niet levert. Deze toets bewaakt dat hij
+  // niet terugkruipt — uit een oude zip, een merge, of een gedeelde PID-lijst.
+  await _doe(5, '2101 is echt weg', function () {
+    const fout = [];
+    if (window.UITGEBREID_DEFS && UITGEBREID_DEFS['2101']) fout.push('UITGEBREID_DEFS');
+    try {
+      const d = (typeof getPidDef === 'function') ? getPidDef('2101') : null;
+      // PIDS_EXTRA houdt hem bewust als waarschuwing, met DOOD in de naam. Een
+      // definitie zonder die markering betekent dat er ergens een echte terug is.
+      if (d && !/DOOD/i.test(String(d.name || ''))) fout.push('getPidDef geeft "' + d.name + '"');
+    } catch (e) {}
+    try { if (typeof supportedPIDs !== 'undefined' && supportedPIDs.has('2101')) fout.push('staat in supportedPIDs'); } catch (e) {}
+    if (fout.length) return { staat: 'FOUT', detail: '2101 is terug via: ' + fout.join(', ') };
+    return 'niet in UITGEBREID_DEFS, niet in supportedPIDs, PIDS_EXTRA houdt alleen de waarschuwing';
   });
 
   await _doe(5, 'Sonde raakt de auto niet aan', function () {
@@ -1144,6 +1348,9 @@ async function startTestrun(blokken) {
     if (b.b4) await _blok4();
     if (b.b6) await _blok6();
     if (b.b8) await _blok8();
+    // Blok 9 staat bewust niet in de standaardset: 45 s scannen hoort niet in
+    // elke run. Alleen via de knop "DID-scan".
+    if (b.b9) await _blok9();
   } catch (e) {
     _boek(0, 'Testrun', 'FOUT', (e && e.message) || String(e), null);
   } finally {
@@ -1209,7 +1416,7 @@ function testrunTekst() {
   for (let i = 0; i < CAMPAGNE.vragen.length; i++) r.push('  ' + (i + 1) + '. ' + CAMPAGNE.vragen[i]);
   r.push('');
 
-  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren', 7: 'BLOK 7 — het pollbudget (PLAN.md punt 2)', 8: 'BLOK 8 — waar zit de olietemperatuur (PLAN.md punt 4)' };
+  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren', 7: 'BLOK 7 — het pollbudget (PLAN.md punt 2)', 8: 'BLOK 8 — waar zit de olietemperatuur (PLAN.md punt 4)', 9: 'BLOK 9 — DID-scan mode 22' };
   let vorig = -99;
   for (let i = 0; i < _trLog.length; i++) {
     const x = _trLog[i];
@@ -1306,6 +1513,7 @@ function openTestrun() {
         // Los te draaien, want beide willen een wárme motor en een spoor van een
         // paar minuten. Dat is precies het moment waarop je géén sweep van drie
         // minuten wilt starten.
+        '<button onclick="startTestrun({b9:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">DID-scan (45 s)</button>' +
         '<button onclick="startTestrun({b7:true,b8:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget + olie</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
         '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
@@ -1358,14 +1566,17 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Bevestigen wat 18-08 opleverde, en bewijs verzamelen voor PLAN.md punt 2 en 4',
+  titel: 'Overdoen op een complete build: de steunbitfix, en het pollbudget over een echte rit',
   vragen: [
-    'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (18-08: 0146, 0114, 010A, 015E, 012C, 015C, 015A)',
-    'Zegt blok 6 nu "0 ontkend"? Zo niet, dan is het profiel niet opnieuw weggeschreven en komt de fout elke sessie terug.',
+    'VOORAF — voer het kenteken in en controleer dat blok 5 geen FOUT geeft. De run van 19-08 draaide op een build zonder profielTegenSteunbits; die uitslag telt niet.',
+    'NIEUW — verschijnt het privacyscherm vóór het Android-dialoog "apparaten in de buurt", en breekt de weigerknop het verbinden netjes af?',
+    'NIEUW — staan er in het Logboek (kebab) regels uit BT, APP en PID door elkaar, op tijd gesorteerd?',
+    'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (0146, 0114, 010A, 015E, 012C, 015C, 015A)',
+    'Zegt blok 6 "0 ontkend" op een profiel dat vóór deze rit nog vervuild wás? Alleen dan bewijst het iets.',
     'Verdwijnt er niets dat het wel deed? Kijk of 010C, 0104, 0105, 010E en 0115 er nog zijn.',
-    'BLOK 7 — zijn er remmomenten bij 0% fouten én een vlakke responstijd? Dat is het bewijs voor of tegen punt 2. Rijd hiervoor minstens tien minuten vóór je de run start.',
-    'BLOK 7 — wordt de zone "ruim" ooit bereikt, of is de vaste terugweg op deze bus onbereikbaar?',
-    'BLOK 8 — antwoordt 2101 (mode 21) of 22111F (mode 22), en welke schaling is plausibel tegen het koelwater? Rijd de motor eerst warm, anders liggen olie en koelwater te dicht bij elkaar.'
+    'BLOK 7 na minstens tien minuten rijden — hoeveel remmomenten bij 0% fouten en vlakke responstijd? Stationair gaf 19-08 nul remmomenten en +57% responstijd bij hoge bezetting; dat pleit tegen punt 2, maar 42 s stilstand bewijst niets.',
+    'BLOK 7 — blijft de foutgraad op 0% nu de vier fantoom-PIDs weg zijn? Op 19-08 om 14:38 dook het tempo naar 34% bij 15% fouten, en die fouten kwamen van 015C, 0146, 015E en 0114.',
+    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0, en beweegt die mee met het koelwater?'
   ]
 };
 

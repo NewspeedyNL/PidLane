@@ -15,15 +15,18 @@
 
    PIDS_EXTRA in pidlane-data.js declareerde al vier Mazda-PIDs "(mode
    22)" maar werd NERGENS gelezen. Ze zijn dus nooit gevraagd — wat de
-   bug verborgen hield. Ondertussen sneuvelde 015C (motorolie temp,
-   mode 01) op de CX-5 als dood: de bitmap meldt hem, de ECU antwoordt
-   niet. Precies de PID waarvoor 2101 het Mazda-alternatief is.
+   bug verborgen hield.
+
+   BIJGESTELD 19-08-2026: 2101 zat hier als Mazda-alternatief voor het
+   dode 015C. Gemeten op de CX-5 2018: 2101 antwoordt óók niet. De
+   definitie is eruit; zie de aantekening bij UITGEBREID_DEFS. De
+   mode-21-route zelf blijft, voor 2102/210C/210D.
 
    DE SLEUTELCONVENTIE — die klopte al
 
    Een PID-sleutel is mode + identifier, hexadecimaal:
        '010C' → mode 01, PID 0C   (toerental, J1979 standaard)
-       '2101' → mode 21, PID 01   (Mazda/Ford propriëtair)
+       '2102' → mode 21, PID 02   (Mazda/Ford propriëtair)
    Het antwoord van de ECU is altijd mode + 0x40:
        mode 01 → 41 …             mode 21 → 61 …
    parsePID() in pidlane-diagbundel.js rekende dat AL correct uit
@@ -39,6 +42,12 @@
    het al zat: los, in pidlane-bt.js (22F190 voor het VIN). Deze module
    gaat over de pollbare fabrikant-PIDs.
 
+   Nuance van 19-08: op deze CX-5 antwoordt mode 22 op header 7E0 wel
+   degelijk (7F 22 31 = identifier onbekend, service wél ondersteund).
+   Een mode-22-PID pollbaar maken vraagt dus geen ander protocol, maar
+   wél een bredere sleutel dan vier tekens. Zolang er geen werkende
+   identifier bekend is, is dat een oplossing zonder probleem.
+
    NIET BATCHEN
 
    Multi-PID batching ('010C0D11' → drie PIDs in één request) is een
@@ -48,9 +57,7 @@
 
    SCHALING IS ONGEVERIFIEERD — en dat staat er ook bij
 
-   Van 2101 is de −40-offset vrijwel zeker (elke temperatuur-PID in
-   J1979 en in Mazda's eigen blok gebruikt hem). Van 2102/210C/210D is
-   de schaling NIET bevestigd op een echte auto. Die staan daarom als
+   Van 2102/210C/210D is de schaling NIET bevestigd op een echte auto. Die staan daarom als
    `onzeker:true` en `cat:'Overig'`: ze worden gepollt en gelogd, maar
    pidGate('duidbaar') houdt ze uit rapporten en AI-analyse tot iemand
    ze heeft geijkt. De probe logt de rauwe bytes zodat dat ijken één
@@ -85,13 +92,29 @@
   // Vorm gelijk aan ALL_PID_DEFS zodat getPidDef() ze zonder verdere
   // aanpassing vindt en buildDiscoveredPIDList() ze netjes inschaalt.
   const UITGEBREID_DEFS = {
-    // Mazda SkyActiv — motorblok, mode 21.
-    '2101': {
-      name: 'Motorolie temp', unit: '°C', cat: 'Temp',
-      min: -40, max: 215, wH: 130, dH: 150,
-      merk: 'MAZDA', vervangt: '015C',
-      parse: b => (b[0] - 40)
-    },
+    // ── 2101 IS HIER WEGGEHAALD (19-08-2026). NIET TERUGZETTEN. ──
+    // Stond hier als 'Motorolie temp', merk MAZDA, vervangt 015C, parse b[0]−40.
+    // Blok 8 van testrun 1.7 heeft het op de CX-5 2018 gemeten, met sendCmd
+    // rechtstreeks en dus buiten het merkfilter om:
+    //
+    //   2101   (mode 21 PID 01)          → NO DATA
+    //   22111F (mode 22, functioneel)    → NO DATA
+    //   015C   (de standaard)            → NO DATA
+    //   22111F op header 7E0             → 7F 22 31
+    //
+    // Die laatste is requestOutOfRange, niet serviceNotSupported: mode 22 leeft
+    // wél op 7E0, alleen bestaat identifier 111F daar niet. De olietemperatuur
+    // zit dus ergens anders, en waar precies is nog niet bekend — blok 9 van de
+    // testrun scant de 11xx-reeks.
+    //
+    // Waarom weghalen en niet laten staan: de definitie droeg `vervangt:'015C'`,
+    // dus de app bood een sensor aan die deze auto niet levert. Een belofte die
+    // de auto niet waarmaakt is erger dan een ontbrekende tegel.
+    //
+    // De mode-21-route zelf blijft bestaan voor de drie hieronder. Dat 2101 hier
+    // ooit stond kwam uit een Toyota GT86/Subaru BRZ-lijst; daar is het wél de
+    // olietemperatuur. Overgenomen zonder meting — vandaar deze aantekening, zodat
+    // de volgende die zo'n lijst tegenkomt weet dat het hier al geprobeerd is.
     '2102': {
       name: 'Turbodruk (rauw)', unit: 'raw', cat: 'Overig',
       min: 0, max: 255, merk: 'MAZDA', onzeker: true,
@@ -215,14 +238,10 @@
     if (nieuw) {
       try { buildDiscoveredPIDList(); } catch (e) {}
       log(`🔎 Fabrikant-PIDs: ${nieuw} van ${lijst.length} beschikbaar`, 'ok');
-      // 015C is op deze auto dood terwijl 2101 het wel doet: dat is geen
-      // sensordefect maar een andere adressering. Één regel die een
-      // monteur een halve zoektocht bespaart.
-      try {
-        if (supportedPIDs.has('2101') && window.PLSched && PLSched.dood('015C')) {
-          log('ℹ️ Motorolie temp zit bij dit voertuig op 2101, niet op 015C', 'info');
-        }
-      } catch (e) {}
+      // Hier stond een regel die meldde dat de olietemperatuur op 2101 zit in
+      // plaats van 015C. Weg op 19-08: 2101 antwoordt niet op deze auto, dus
+      // die melding stuurde een monteur een doodlopende weg in. Zodra blok 9
+      // een werkende identifier vindt kan er weer zoiets komen — dan mét meting.
     } else {
       btDiag(`Uitgebreid: ${lijst.length} kandidaten geprobeerd, geen enkele beschikbaar`, 'info');
     }

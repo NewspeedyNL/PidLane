@@ -310,6 +310,73 @@ function decodeVIN(vin){
 // ════════════════════════════════════════
 
 // Methode 1: Bitmap — vraag 0100/0120/0140 etc.
+// ── HET PROFIEL TEGEN DE STEUNBITS HOUDEN ─────────────────────────
+// Op 18-08 bleken vier sensoren in de actieve selectie te staan die deze CX-5
+// helemaal niet ondersteunt: 015C, 0146, 015E en 0114. De testrun (blok 6)
+// mat het breed: 7 van de 62 PIDs in het profiel worden door de ECU ontkend,
+// en dat zijn exact de zeven die in de sweep nooit antwoordden. De controle-PID
+// 010C deed het overal wél, dus het lag niet aan het pollen of het batchen.
+//
+// Oorzaak: zodra het VIN bekend is slaat initConnection() de ontdekking over
+// en laadt applyVinProfileIfKnown() de PID-lijst uit localStorage. Dat profiel
+// is ooit gemaakt — vermoedelijk door de directe-poll-fallback — en werd
+// sindsdien elke sessie hergebruikt zonder ooit tegen de bitmap gehouden te
+// worden. Een fout die één keer is opgeslagen bleef daardoor voor altijd staan:
+// tegels die nooit iets tonen, en pollbudget dat naar niets gaat.
+//
+// Deze functie leest alsnog de vier steunvragen (drie tot vier verzoeken, dus
+// het snelle-startvoordeel blijft grotendeels overeind), gooit eruit wat de ECU
+// ontkent, en schrijft het profiel opnieuw weg zodat het zichzelf herstelt.
+//
+// Wat de ECU níét noemt (mode 21/22, fabrikant-PIDs) blijft staan: daar bestaan
+// geen steunbits voor, dus afwezigheid zegt daar niets.
+async function profielTegenSteunbits(){
+  if(typeof supportedPIDs==='undefined' || !supportedPIDs.size) return 0;
+  const bits={};
+  for(const q of ['0100','0120','0140','0160']){
+    let r='';
+    try{ r=await sendCmd(q,3000); }catch(e){}
+    if(!r || /NO DATA|UNABLE|ERROR|STOPPED/i.test(r)) continue;
+    const hex=String(r).replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+    const kop='41'+q.slice(2).toUpperCase();
+    const i=hex.indexOf(kop);
+    if(i<0) continue;
+    const d=hex.slice(i+4,i+12);
+    if(d.length<8) continue;
+    const w=parseInt(d,16);
+    if(isNaN(w)) continue;
+    bits[parseInt(q.slice(2),16)]=w;
+  }
+  if(!Object.keys(bits).length){
+    btDiag('Steunbits niet leesbaar — profiel ongewijzigd gelaten','warn');
+    return 0;
+  }
+
+  const weg=[];
+  Array.from(supportedPIDs).forEach(pid=>{
+    if(!/^01[0-9A-F]{2}$/i.test(pid)) return;            // geen mode 01 → geen steunbit
+    const n=parseInt(pid.slice(2),16);
+    const blok=Math.floor((n-1)/32)*32;
+    const w=bits[blok];
+    if(w===undefined) return;                            // blok niet gelezen → niets beweren
+    const positie=n-blok;                                // 1..32
+    if(((w>>>(32-positie))&1)===0) weg.push(pid);
+  });
+
+  if(!weg.length){ btDiag('Profiel klopt met de steunbits — niets verwijderd','ok'); return 0; }
+
+  weg.forEach(p=>{ supportedPIDs.delete(p); try{ activePIDs.delete(p); }catch(e){} });
+  const namen=weg.map(p=>{ try{ const d=getPidDef(p); return p+(d&&d.name?' ('+d.name+')':''); }catch(e){ return p; } });
+  log(`🧹 ${weg.length} sensoren uit het profiel verwijderd — deze auto ondersteunt ze niet: ${namen.join(', ')}`,'ok');
+  btDiag(`Profiel opgeschoond: ${weg.join(', ')}`,'ok');
+
+  // Profiel opnieuw wegschrijven, anders staat dezelfde fout er de volgende
+  // sessie gewoon weer.
+  try{ if(typeof saveVinProfile==='function' && vehicleInfo?.vin) saveVinProfile(vehicleInfo.vin); }catch(e){}
+  try{ herijkPidGate('profiel tegen steunbits gehouden'); }catch(e){}
+  return weg.length;
+}
+
 async function discoverPIDsBitmap(){
   const ranges=['0100','0120','0140','0160','0180','01A0'];
   for(const rangeCmd of ranges){

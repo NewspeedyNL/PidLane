@@ -47,7 +47,7 @@ var KRITIEK = [
   'log','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
-  'plBevestig','plHerijkTick','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
+  'plBevestig','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',
   'selectCategoryPIDs','sendCmd','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',
@@ -65,7 +65,8 @@ var KRITIEK = [
   'openAIReportSheet','closeAIReportSheet',
   'openBulkRecorder',
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
-  'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf','actiefPollProfiel','setPollProfile',
+  'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf',
+  'profielTegenSteunbits','saveVinProfile','actiefPollProfiel','setPollProfile',
   
   
 ];

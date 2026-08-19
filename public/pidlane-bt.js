@@ -46,6 +46,24 @@ function btEnvDump(){
 //  ENTRY — bouwt de cascade en probeert transports ná elkaar
 // ════════════════════════════════════════════════════════════════════
 async function connectSerial(){
+  // Prominente disclosure vóór álles. Google Play eist dat de gebruiker weet
+  // waarom Bluetooth wordt gevraagd vóórdat het systeemdialoog verschijnt —
+  // niet erna, en niet weggestopt in een menu. Eenmalig; PLPrivacy onthoudt
+  // het akkoord per versie van de tekst.
+  //
+  // Faalt de module (niet geladen), dan gaan we door: een ontbrekend
+  // privacyscherm mag de app niet onbruikbaar maken. Dat het ontbreekt is
+  // zichtbaar in de testrun, niet hier.
+  try{
+    if(window.PLPrivacy && typeof PLPrivacy.disclosureOk === 'function'){
+      const mag = await PLPrivacy.disclosureOk();
+      if(!mag){
+        try{ btDiag('Verbinden afgebroken — geen toestemming voor Bluetooth','warn'); }catch(e){}
+        return;
+      }
+    }
+  }catch(e){ try{ btDiag('Disclosure overgeslagen: '+(e.message||e),'warn'); }catch(_){} }
+
   // Desktop/Chrome: Web Bluetooth werkt alleen in een secure context.
   if(window.PIDLANE_DESKTOP && !window.isSecureContext && !/^(localhost|127\.)/.test(location.hostname)){
     showConnError('Web Bluetooth vereist een beveiligde verbinding.\nOpen PidLane via https:// (GitHub Pages) of via http://localhost.\nEen dubbelgeklikt file://-bestand kan geen Bluetooth gebruiken.');
@@ -1589,6 +1607,14 @@ async function startDiscovery(){
   if(knownVin && applyVinProfileIfKnown(vinInfo.vin)){
     addProg('⚡',`Bekend voertuig — ${supportedPIDs.size} PIDs uit profiel (snelle start)`);
     usedProfile=true;
+    // Het profiel wordt hier NIET blind vertrouwd. Zie profielTegenSteunbits()
+    // in pidlane-rijsituatie.js: op 18-08 bleken 7 van de 62 PIDs in dit
+    // profiel door de ECU ontkend te worden, en die stonden er al maanden in.
+    // Vier verzoeken, dus de snelle start blijft snel.
+    try{
+      const weg=await profielTegenSteunbits();
+      if(weg) addProg('🧹',`${weg} sensoren verwijderd die deze auto niet ondersteunt`);
+    }catch(e){ btDiag('Steunbitcontrole overgeslagen: '+(e.message||e),'warn'); }
   } else {
     addProg('🔍','PIDs ophalen (0100, 0120, 0140...)');
     // Stap 1: probeer discovery via bitmap methode
