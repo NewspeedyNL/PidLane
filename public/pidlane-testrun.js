@@ -21,6 +21,13 @@
 // achteraf terug te zien welke vraag een run moest beantwoorden — en of hij
 // dat deed.
 //
+// WAT ER IN 1.7 BIJ KWAM
+// Twee sondes die vooruitlopen op PLAN.md punt 2 en 4. Ze veranderen NIETS aan
+// het gedrag van de app — ze verzamelen het bewijs waarmee die twee sessies
+// moeten beginnen. Blok 7 leest een spoor van de pollbudget-regeling dat de
+// hele rit doorloopt; blok 8 vraagt drie kandidaten voor de olietemperatuur op
+// en rekent beide gangbare schalingen uit. Wie van beide klopt, beslist de weg.
+//
 // VEILIGHEID
 // Uitsluitend lezende commando's. VERBODEN hieronder wordt gecontroleerd
 // vóórdat er iets de bus op gaat: geen 04 (foutgeheugen wissen), geen 2F/31
@@ -30,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '1.5 (18-08-2026)';
+const TESTRUN_VERSIE = '1.7 (19-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -126,6 +133,107 @@ try {
     }, 4000);
   }
 } catch (e) {}
+
+// ══════════════════════════════════════════════════════════════════
+// HET POLLBUDGET-SPOOR — meet mee, regelt niets
+// ══════════════════════════════════════════════════════════════════
+// PLAN.md punt 2: de regelkring schroeft het tempo terug op bezetting alleen,
+// óók bij 0% fouten en vlakke responstijden. Gemeten op 17-08: 30% → 22% → 17%
+// bij fout 0% en 124 ms. Het vermoeden is dat bezetting op deze bus geen bewijs
+// van tegendruk is — bezetting is aanvraagtempo × responstijd, dus bij continu
+// pollen per definitie hoog.
+//
+// Dit is een VERMOEDEN, en de wijziging zelf is sessie 2. Wat hier staat meet
+// alleen: elke twee seconden een monster van PLBus.stats() en PLLoad.staat(),
+// in een ring. PLLoad wordt NIET aangeraakt en niet gewrapt — de beslissing die
+// PLLoad nam wordt achteraf gereconstrueerd uit zijn eigen drempels. Wijkt de
+// reconstructie af van wat _mult werkelijk deed, dan is dát de bevinding.
+//
+// Waarom een eigen sampler en niet gewoon de BT-log: PLLoad logt pas bij een
+// stap van 0,2. De trage terugloop zet stapjes van 0,03 en de spiraal bestaat
+// juist uit die kleine stapjes. Die zijn in de log onzichtbaar.
+//
+// Draait vanaf het laden, ook zonder testrun — een spiraal ontstaat over een
+// rit, niet in de twee minuten dat de run loopt.
+const PLBudget = (function () {
+  const MAX = 1800;                  // 2 s × 1800 = één uur
+  let ring = [];
+  let _aan = false;
+
+  function monster() {
+    try {
+      if (typeof connected === 'undefined' || !connected) return;
+      if (typeof demoMode !== 'undefined' && demoMode) return;
+      if (!window.PLBus || typeof PLBus.stats !== 'function') return;
+      if (!window.PLLoad || typeof PLLoad.staat !== 'function') return;
+      const s = PLBus.stats();
+      const st = PLLoad.staat();
+      ring.push({
+        t: Date.now(),
+        mult: st.mult,
+        tempo: st.tempoPct,
+        bezet: s.belasting,
+        fout: s.foutPct,
+        ms: s.venGemMs,
+        perSec: s.perSec
+      });
+      if (ring.length > MAX) ring.splice(0, ring.length - MAX);
+    } catch (e) {
+      // Bewust stil: dit is een waarnemer op vreemde objecten, en een fout hier
+      // mag nooit de rit verstoren. Dat de sampler leeft is aan het aantal
+      // monsters te zien; staat dat op 0, dan meldt blok 7 dat.
+    }
+  }
+
+  function start() {
+    if (_aan) return;
+    _aan = true;
+    setInterval(monster, 2000);
+  }
+
+  // De drempels uit PLLoad zelf halen, niet overschrijven. Anders meet dit blok
+  // straks tegen verouderde getallen zodra sessie 2 ze verzet.
+  function drempels() {
+    const c = (window.PLLoad && PLLoad.cfg) ? PLLoad.cfg : {};
+    return {
+      bezetOp: c.bezetOp == null ? 85 : c.bezetOp,
+      bezetAf: c.bezetAf == null ? 55 : c.bezetAf,
+      foutOp: c.foutOp == null ? 10 : c.foutOp,
+      traagMs: c.traagMs == null ? 400 : c.traagMs,
+      kalmFoutPct: c.kalmFoutPct == null ? 5 : c.kalmFoutPct
+    };
+  }
+
+  // Welke tak zou PLLoad.tick() bij dit monster gekozen hebben?
+  function zone(m) {
+    const d = drempels();
+    const druk = m.bezet >= d.bezetOp || m.fout >= d.foutOp;
+    const ruim = m.bezet < d.bezetAf && m.fout < d.foutOp;
+    if (druk) return 'druk';
+    if (ruim) return 'ruim';
+    if (m.fout <= d.kalmFoutPct && m.ms < d.traagMs) return 'kalm';
+    return 'stil';                   // dode zone zonder aftasten
+  }
+
+  function mediaan(a) {
+    if (!a.length) return 0;
+    const s = a.slice().sort(function (x, y) { return x - y; });
+    const h = Math.floor(s.length / 2);
+    return s.length % 2 ? s[h] : Math.round((s[h - 1] + s[h]) / 2);
+  }
+
+  return {
+    start: start,
+    spoor: function () { return ring.slice(); },
+    aantal: function () { return ring.length; },
+    zone: zone,
+    drempels: drempels,
+    mediaan: mediaan,
+    wis: function () { ring = []; }
+  };
+})();
+window.PLBudget = PLBudget;
+try { PLBudget.start(); } catch (e) {}
 
 // ══════════════════════════════════════════════════════════════════
 // BLOK 1 — BEDRADING EN OMGEVING
@@ -540,6 +648,286 @@ async function _blok6() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// BLOK 7 — HET POLLBUDGET (PLAN.md punt 2)
+// ══════════════════════════════════════════════════════════════════
+// Leest het spoor uit PLBudget en beantwoordt één vraag: schroeft de regelkring
+// terug zonder dat de ECU erom vraagt?
+//
+// "Vraagt erom" betekent: fouten, of een responstijd die oploopt. Bezetting
+// alleen telt hier NIET als vraag — dat is precies het punt dat bewezen of
+// weerlegd moet worden. Een terugschroefmoment bij fout 0% én een vlakke
+// responstijd is een ONGEVRAAGDE rem. Zijn die er niet, dan is het vermoeden
+// uit PLAN.md onjuist en kan punt 2 dicht.
+//
+// Dit blok verandert niets. Het levert het bewijsmateriaal waarmee sessie 2
+// begint — en zonder dat bewijs moet die sessie niet beginnen, want dan weet je
+// achteraf niet of het beter is geworden.
+async function _blok7() {
+  const sp = (window.PLBudget && typeof PLBudget.spoor === 'function') ? PLBudget.spoor() : [];
+
+  if (!sp.length) {
+    _boek(7, 'Pollbudget-spoor', 'overgeslagen', 'geen monsters — niet verbonden geweest, of de sampler draait niet', null);
+    return;
+  }
+  if (sp.length < 30) {
+    _boek(7, 'Pollbudget-spoor', 'LET OP',
+      sp.length + ' monsters (' + Math.round(sp.length * 2) + ' s) — te kort voor een oordeel, rijd langer door', null);
+  }
+
+  const d = PLBudget.drempels();
+  const med = PLBudget.mediaan;
+
+  await _doe(7, 'Spoor', function () {
+    const duur = Math.round((sp[sp.length - 1].t - sp[0].t) / 1000);
+    return sp.length + ' monsters over ' + duur + ' s  |  drempels: bezetOp ' + d.bezetOp +
+      '%, bezetAf ' + d.bezetAf + '%, foutOp ' + d.foutOp + '%, traag ' + d.traagMs + ' ms';
+  });
+
+  await _doe(7, 'Tempoverloop', function () {
+    const t = sp.map(function (m) { return m.tempo; });
+    const eerste = t[0], laatste = t[t.length - 1];
+    const laag = Math.min.apply(null, t), hoog = Math.max.apply(null, t);
+    const tekst = 'start ' + eerste + '% → nu ' + laatste + '%  (laagst ' + laag + '%, hoogst ' + hoog + '%)';
+    // Een netto daling is op zichzelf niet fout — dat hoort AIMD te doen als de
+    // bus vol zit. Of het terecht was, beslist de controle hieronder.
+    if (laatste < eerste) return { staat: 'LET OP', detail: tekst + '  — netto teruggeschroefd' };
+    return tekst;
+  });
+
+  await _doe(7, 'Tijd per zone', function () {
+    const tel = { druk: 0, ruim: 0, kalm: 0, stil: 0 };
+    sp.forEach(function (m) { tel[PLBudget.zone(m)]++; });
+    const pct = function (n) { return Math.round(n / sp.length * 100); };
+    return 'druk ' + pct(tel.druk) + '%, ruim ' + pct(tel.ruim) + '%, kalm ' + pct(tel.kalm) +
+      '%, dode zone ' + pct(tel.stil) + '%' +
+      (tel.ruim === 0 ? '   [ruim is nooit bereikt — de vaste terugweg bestaat op deze bus niet]' : '');
+  });
+
+  // ── De kernmeting ──
+  await _doe(7, 'Ongevraagde remmomenten', function () {
+    // Elke stap waarbij het tempo omlaag ging. Per stap: waren er fouten, en
+    // liep de responstijd op ten opzichte van het halve minuutje ervoor?
+    const remmen = [];
+    for (let i = 1; i < sp.length; i++) {
+      if (sp[i].mult <= sp[i - 1].mult) continue;          // mult omhoog = tempo omlaag
+      const vanaf = Math.max(0, i - 15);                   // 15 × 2 s = 30 s terug
+      const eerder = sp.slice(vanaf, i).map(function (m) { return m.ms; });
+      const basis = med(eerder);
+      const opgelopen = basis > 0 && sp[i].ms > basis * 1.15;
+      const fouten = sp[i].fout > 0;
+      remmen.push({ i: i, fout: sp[i].fout, ms: sp[i].ms, basis: basis, bezet: sp[i].bezet, terecht: fouten || opgelopen });
+    }
+    if (!remmen.length) return 'geen enkele stap omlaag in dit spoor';
+
+    const ongevraagd = remmen.filter(function (r) { return !r.terecht; });
+    const kop = remmen.length + ' remmomenten, waarvan ' + ongevraagd.length + ' zonder fouten én zonder oplopende responstijd';
+    if (!ongevraagd.length) return kop + ' — de regelkring reageerde steeds op iets echts';
+
+    const v = ongevraagd.slice(0, 4).map(function (r) {
+      return 'bezet ' + r.bezet + '%, fout ' + r.fout + '%, ' + r.ms + ' ms (mediaan 30 s ervoor ' + r.basis + ' ms)';
+    }).join(' | ');
+    return { staat: 'LET OP', detail: kop + '.  Voorbeelden: ' + v };
+  });
+
+  await _doe(7, 'Zegt bezetting iets over de responstijd?', function () {
+    // Als de responstijd niet meebeweegt met de bezetting, is bezetting op deze
+    // bus geen bruikbaar tegendruksignaal — dan meet hij alleen hoe hard wíj
+    // vragen, niet hoe zwaar de ECU het heeft.
+    const laag = sp.filter(function (m) { return m.bezet < d.bezetAf; }).map(function (m) { return m.ms; });
+    const hoog = sp.filter(function (m) { return m.bezet >= d.bezetOp; }).map(function (m) { return m.ms; });
+    if (!laag.length || !hoog.length)
+      return 'te weinig spreiding in de bezetting om te vergelijken (laag ' + laag.length + ', hoog ' + hoog.length + ' monsters)';
+    const mLaag = med(laag), mHoog = med(hoog);
+    const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;
+    const tekst = 'responstijd bij lage bezetting ' + mLaag + ' ms, bij hoge bezetting ' + mHoog + ' ms (' +
+      (verschil >= 0 ? '+' : '') + verschil + '%)';
+    if (Math.abs(verschil) < 15)
+      return { staat: 'LET OP', detail: tekst + ' — vrijwel geen verschil, dus bezetting voorspelt hier geen tegendruk' };
+    return tekst;
+  });
+
+  await _doe(7, 'Foutbeeld', function () {
+    const f = sp.map(function (m) { return m.fout; });
+    const nul = f.filter(function (x) { return x === 0; }).length;
+    return Math.round(nul / f.length * 100) + '% van de monsters had 0% fouten, hoogste foutgraad ' +
+      Math.max.apply(null, f) + '%';
+  });
+
+  _boek(7, 'Slotsom', 'ok',
+    'Ongevraagde remmomenten > 0 én bezetting voorspelt geen responstijd = het vermoeden uit PLAN.md punt 2 klopt; ' +
+    'de tegendruk moet dan aan responstijd/fouten hangen, niet aan bezetting. ' +
+    '0 ongevraagde remmomenten = het vermoeden klopt niet en punt 2 kan dicht.', null);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BLOK 8 — WAAR ZIT DE OLIETEMPERATUUR? (PLAN.md punt 4)
+// ══════════════════════════════════════════════════════════════════
+// PLAN.md zegt "mode 22 PID 2101, al gedefinieerd maar nergens opgevraagd".
+// Bij het nalezen bleek dat op twee punten niet te kloppen:
+//
+//   1. `2101` is in dit project mode 21 PID 01, niet mode 22. Zie de kop van
+//      pidlane-uitgebreid.js: een mode-22 identifier is twee bytes ('22'+'111F')
+//      en past niet in de vier-tekens-sleutelconventie.
+//   2. Het wordt WEL opgevraagd. pidlane-bt.js roept probeUitgebreid() aan na
+//      het verbinden — in een stille catch, dus als dat faalt zie je niets.
+//
+// En er is een derde kandidaat die de code niet kent. In het veld circuleert
+// voor SkyActiv al jaren mode 22 met identifier 111F, header 7E0, waarde A−50.
+// De code gokt op mode 21 PID 01 met A−40. Twee onbewezen aannames naast
+// elkaar, en geen van beide is ooit tegen deze auto gehouden.
+//
+// Dit blok kiest niet. Het vraagt alle kandidaten op, logt de rauwe bytes, en
+// rekent beide schalingen uit naast het koelwater als plausibiliteitsanker:
+// warme olie zit boven de koelwatertemperatuur en zelden meer dan ~40 °C erboven.
+// Wat de rit oplevert, beslist welke definitie in pidlane-uitgebreid.js hoort.
+//
+// Alles is lezend. Mode 22 is ReadDataByIdentifier — er wordt niets geschreven.
+const OLIE_KANDIDATEN = [
+  ['2101',   'mode 21 PID 01 — wat de app nu probeert'],
+  ['22111F', 'mode 22 DID 111F — de SkyActiv-kandidaat uit het veld'],
+  ['015C',   'mode 01 PID 5C — de standaard, bekend dood op deze CX-5']
+];
+
+async function _blok8() {
+  if (typeof connected === 'undefined' || !connected) { _boek(8, 'Olietemperatuur', 'overgeslagen', 'geen verbinding', null); return; }
+  if (typeof demoMode !== 'undefined' && demoMode) { _boek(8, 'Olietemperatuur', 'overgeslagen', 'demomodus', null); return; }
+
+  let tok = 0;
+  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-olie', 8000) : 0; } catch (e) {}
+  _boek(8, 'Busslot', tok ? 'ok' : 'LET OP', tok ? 'bus geclaimd' : 'niet vrijgekomen — metingen lopen naast de pollus', null);
+
+  const leeg = function (r) { return !r || /NO DATA|UNABLE|ERROR|STOPPED|\?/i.test(String(r)); };
+  const hex = function (r) { return String(r || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase(); };
+
+  let headerGezet = false;
+
+  try {
+    // ── Wat zegt de app er zelf al over? ──
+    await _doe(8, 'Stand van zaken in de app', function () {
+      const uit = [];
+      try { uit.push('2101 in supportedPIDs: ' + ((typeof supportedPIDs !== 'undefined' && supportedPIDs.has('2101')) ? 'JA' : 'nee')); } catch (e) { uit.push('supportedPIDs onleesbaar'); }
+      try { uit.push('015C dood volgens PLSched: ' + ((window.PLSched && PLSched.dood && PLSched.dood('015C')) ? 'JA' : 'nee')); } catch (e) {}
+      try { uit.push('probeUitgebreid bestaat: ' + (typeof probeUitgebreid === 'function' ? 'JA' : 'NEE')); } catch (e) {}
+      try {
+        const k = (window.PLUitgebreid && PLUitgebreid.kandidaten) ? PLUitgebreid.kandidaten() : null;
+        uit.push('kandidaten volgens merkfilter: ' + (k ? (k.length ? k.join(', ') : 'GEEN — merk onbekend of gefilterd') : 'onbekend'));
+      } catch (e) {}
+      return uit.join('  |  ');
+    });
+
+    // ── Koelwater als anker ──
+    let koel = null;
+    try {
+      const rk = await sendCmd('0105', 2500);
+      if (!leeg(rk)) {
+        const h = hex(rk), i = h.indexOf('4105');
+        if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
+      }
+    } catch (e) {}
+    _boek(8, 'Koelwater (0105)', koel == null ? 'LET OP' : 'ok',
+      koel == null ? 'niet gelezen — plausibiliteit is dan niet te beoordelen' : koel + ' °C', null);
+    await _wacht(120);
+
+    // ── Protocol: mag ik een header zetten? ──
+    let protocol = '';
+    try { protocol = String(await sendCmd('ATDPN', 1500) || '').trim(); } catch (e) {}
+    const canElfBit = /^A?6$/i.test(protocol.replace(/[^0-9A-Za-z]/g, ''));
+    _boek(8, 'Protocol', 'ok', 'ATDPN = "' + protocol + '"' +
+      (canElfBit ? '  (11-bit CAN 500k — header 7E0 mag)' : '  (geen 11-bit CAN — headertest wordt overgeslagen)'), null);
+
+    // ── De kandidaten, één voor één ──
+    for (const [pid, wat] of OLIE_KANDIDATEN) {
+      if (_trStop) break;
+      if (VERBODEN.test(pid)) { _boek(8, pid, 'overgeslagen', 'staat op de verbodenlijst', null); continue; }
+
+      const bevinding = [wat];
+      const t0 = _nu();
+      let raw = '';
+      try { raw = await sendCmd(pid, 3000); } catch (e) { raw = 'FOUT: ' + (e.message || e); }
+      const ms = _nu() - t0;
+      const h = hex(raw);
+      bevinding.push('ruw: ' + (String(raw || '—').replace(/\s+/g, ' ').trim().slice(0, 30)));
+
+      // Verwachte positieve header: mode + 0x40, gevolgd door de identifier.
+      const mode = parseInt(pid.slice(0, 2), 16);
+      const kop = ((mode + 0x40).toString(16).toUpperCase().padStart(2, '0')) + pid.slice(2).toUpperCase();
+      const i = h.indexOf(kop);
+
+      // Negatief antwoord van de ECU herkennen: 7F <mode> <reden>. Dat is iets
+      // anders dan NO DATA — de ECU heeft het gehoord en weigert bewust.
+      const neg = h.indexOf('7F' + pid.slice(0, 2).toUpperCase());
+      if (neg >= 0) {
+        const reden = h.substr(neg + 4, 2);
+        const uitleg = { '11': 'service niet ondersteund', '12': 'subfunctie niet ondersteund',
+                         '31': 'identifier buiten bereik', '22': 'condities niet goed', '33': 'beveiliging' }[reden] || 'reden ' + reden;
+        bevinding.push('ECU WEIGERT: 7F ' + pid.slice(0, 2) + ' ' + reden + ' — ' + uitleg);
+        _boek(8, pid, 'LET OP', bevinding.join('  |  '), ms);
+        await _wacht(180);
+        continue;
+      }
+
+      if (leeg(raw) || i < 0) {
+        bevinding.push(leeg(raw) ? 'geen bruikbaar antwoord' : 'antwoord bevat de kop ' + kop + ' niet');
+        _boek(8, pid, 'LET OP', bevinding.join('  |  '), ms);
+        await _wacht(180);
+        continue;
+      }
+
+      // Databytes achter de kop. Beide gangbare offsets uitrekenen en tegen het
+      // koelwater houden — de rit beslist welke klopt, niet dit bestand.
+      const bytes = h.slice(i + kop.length);
+      const A = parseInt(bytes.substr(0, 2), 16);
+      bevinding.push('databytes: ' + bytes.slice(0, 12));
+      if (isFinite(A)) {
+        const m40 = A - 40, m50 = A - 50;
+        bevinding.push('A=' + A + ' → A−40 = ' + m40 + ' °C, A−50 = ' + m50 + ' °C');
+        if (koel != null) {
+          const oordeel = function (v) {
+            if (v < koel - 15) return 'onder koelwater';
+            if (v > koel + 60) return 'onwaarschijnlijk hoog';
+            return 'PLAUSIBEL';
+          };
+          bevinding.push('t.o.v. koelwater ' + koel + ' °C: A−40 ' + oordeel(m40) + ', A−50 ' + oordeel(m50));
+        }
+      }
+      _boek(8, pid, 'ok', bevinding.join('  |  '), ms);
+      await _wacht(180);
+    }
+
+    // ── Mode 22 nog eens, nu gericht aan het motorblok ──
+    // Het veld noemt header 7E0. Zonder header gaat het verzoek functioneel
+    // (7DF) de bus op en mag elk stuurapparaat antwoorden — of geen enkel.
+    if (canElfBit && !_trStop) {
+      await _doe(8, 'Mode 22 met header 7E0', async function () {
+        try { await sendCmd('ATSH7E0', 1500); headerGezet = true; } catch (e) { return { staat: 'LET OP', detail: 'ATSH7E0 geweigerd' }; }
+        let r = '';
+        try { r = await sendCmd('22111F', 3000); } catch (e) {}
+        const h = hex(r);
+        const i = h.indexOf('62111F');
+        if (i < 0) return { staat: 'LET OP', detail: 'gericht op 7E0 ook geen 62111F — ruw: ' + String(r || '—').replace(/\s+/g, ' ').slice(0, 30) };
+        const A = parseInt(h.substr(i + 6, 2), 16);
+        return 'ANTWOORD op 7E0: bytes ' + h.slice(i + 6, i + 14) + '  A=' + A +
+               ' → A−40 = ' + (A - 40) + ' °C, A−50 = ' + (A - 50) + ' °C' +
+               (koel != null ? '  (koelwater ' + koel + ' °C)' : '');
+      });
+    }
+
+    _boek(8, 'Slotsom', 'ok',
+      'Antwoordt 22111F wél en 2101 niet, dan staat de verkeerde definitie in pidlane-uitgebreid.js ' +
+      'en moet de sleutelconventie mode 22 aankunnen. Antwoordt 2101 wél, dan klopt de code en is ' +
+      'PLAN.md punt 4 al af. Antwoordt geen van beide, dan heeft deze CX-5 de olietemperatuur niet ' +
+      'op de diagnosebus en kan punt 4 dicht.', null);
+
+  } finally {
+    // Header ALTIJD terugzetten naar de functionele broadcast. Blijft 7E0 staan,
+    // dan praat de hele app daarna alleen nog tegen het motorblok — en dat merk
+    // je pas als een andere module niets meer terugkrijgt.
+    if (headerGezet) { try { await sendCmd('ATSH7DF', 1500); } catch (e) {} }
+    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 // BLOK 5 — WAT ER IN DEZE UPDATE VERANDERD IS
 // ══════════════════════════════════════════════════════════════════
 // Dit blok hoort bij CAMPAGNE onderaan: daar staat de vráag, hier staat de
@@ -555,6 +943,69 @@ async function _blok6() {
 // zes ingangen gesloopt, en een achtergebleven verwijzing merk je pas als een
 // klant erop drukt.
 async function _blok5() {
+
+  // ── TOEGEVOEGD 19-08: pollbudget-spoor (PLAN.md punt 2) ──
+  await _doe(5, 'Budgetsampler leeft', function () {
+    if (!window.PLBudget || typeof PLBudget.spoor !== 'function')
+      return { staat: 'FOUT', detail: 'PLBudget ontbreekt — blok 7 heeft niets te meten' };
+    const n = PLBudget.aantal();
+    if (!n) {
+      // Niet verbonden geweest is een geldige reden; dan is dit geen fout maar
+      // een lege meting. Verbonden én nul monsters is wél een fout.
+      const verbonden = (typeof connected !== 'undefined' && connected);
+      return verbonden
+        ? { staat: 'FOUT', detail: 'verbonden, maar 0 monsters — de sampler draait niet' }
+        : { staat: 'LET OP', detail: '0 monsters, nog niet verbonden geweest' };
+    }
+    return n + ' monsters in de ring (' + Math.round(n * 2) + ' s aan spoor)';
+  });
+
+  await _doe(5, 'Sampler regelt niets', function () {
+    // De hele opzet staat of valt hiermee: PLBudget mag alleen kijken. Zodra
+    // hij PLLoad aanraakt meet hij zijn eigen invloed en is het spoor waardeloos
+    // als bewijs voor sessie 2.
+    if (!window.PLLoad) return { staat: 'FOUT', detail: 'PLLoad ontbreekt' };
+    const eigen = ['mult', 'tick', 'reset', 'staat', 'cfg', '_mult'];
+    const ontbreekt = eigen.filter(function (k) { return PLLoad[k] === undefined; });
+    if (ontbreekt.length) return { staat: 'FOUT', detail: 'PLLoad mist: ' + ontbreekt.join(', ') + ' — is hij gewrapt?' };
+    if (typeof PLLoad.tick !== 'function') return { staat: 'FOUT', detail: 'PLLoad.tick is geen functie meer' };
+    // De drempels moeten uit PLLoad komen, niet uit een kopie in dit bestand.
+    const d = PLBudget.drempels();
+    if (d.bezetOp !== PLLoad.cfg.bezetOp || d.foutOp !== PLLoad.cfg.foutOp)
+      return { staat: 'FOUT', detail: 'PLBudget rekent met andere drempels dan PLLoad' };
+    return 'PLLoad ongemoeid, drempels komen uit PLLoad.cfg (bezetOp ' + d.bezetOp + '%, foutOp ' + d.foutOp + '%)';
+  });
+
+  // ── TOEGEVOEGD 19-08: olietemperatuur-sonde (PLAN.md punt 4) ──
+  await _doe(5, 'Mode-21-pad aanwezig', function () {
+    const weg = [];
+    if (typeof pidCmd !== 'function') weg.push('pidCmd');
+    if (typeof isMode01 !== 'function') weg.push('isMode01');
+    if (typeof probeUitgebreid !== 'function') weg.push('probeUitgebreid');
+    if (weg.length) return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') + ' — pidlane-uitgebreid.js niet geladen' };
+    // De aanname die blok 8 toetst, hier expliciet: de app zoekt de
+    // olietemperatuur op mode 21, het veld noemt mode 22.
+    const d = (window.UITGEBREID_DEFS && UITGEBREID_DEFS['2101']) || null;
+    if (!d) return { staat: 'LET OP', detail: 'pad aanwezig, maar 2101 staat niet in UITGEBREID_DEFS' };
+    return '2101 gedefinieerd als "' + d.name + '" (' + (d.merk || 'geen merk') + ', vervangt ' + (d.vervangt || '—') + ') — blok 8 toetst of dat klopt';
+  });
+
+  await _doe(5, 'Sonde raakt de auto niet aan', function () {
+    // Blok 8 zet een header en vraagt mode 22 op. Beide zijn lezend, maar een
+    // schrijfcommando dat er ooit in sluipt is niet terug te draaien. Daarom
+    // hier de lijst zelf tegen de verbodenlijst houden, vóór de rit.
+    const fout = OLIE_KANDIDATEN.map(function (k) { return k[0]; }).filter(function (p) { return VERBODEN.test(p); });
+    if (fout.length) return { staat: 'FOUT', detail: 'kandidaat staat op de verbodenlijst: ' + fout.join(', ') };
+    return OLIE_KANDIDATEN.length + ' kandidaten, alle lezend (mode 01/21/22)';
+  });
+
+  // ── TOEGEVOEGD 18-08: profiel tegen de steunbits ──
+  await _doe(5, 'Steunbitcontrole aanwezig', function () {
+    // Deze functie VERWIJDERT PIDs uit het profiel, dus hier telt vooral dat
+    // hij bestaat én dat blok 6 hieronder meet of hij ook echt gedraaid heeft.
+    if (typeof profielTegenSteunbits !== 'function') return { staat: 'FOUT', detail: 'profielTegenSteunbits ontbreekt — profiel wordt niet gecontroleerd' };
+    return 'aanwezig — blok 6 meet of het profiel schoon is';
+  });
 
   // ── TOEGEVOEGD 17-08: gedeelde export met formaatkeuze ──
   await _doe(5, 'Exportmodule geladen', function () {
@@ -671,7 +1122,7 @@ async function _blok5() {
 async function startTestrun(blokken) {
   if (_trBezig) { try { showToast('Testrun loopt al'); } catch (e) {} return; }
   if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch (e) {} return; }
-  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true };
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b8: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -684,10 +1135,15 @@ async function startTestrun(blokken) {
     // en niet onderaan een log van driehonderd regels.
     if (b.b5) await _blok5();
     if (b.b1) await _blok1();
+    // Blok 7 vóór de sweep. De sweep claimt de bus en jaagt de bezetting naar
+    // 100%, dus daarna is het spoor vervuild met onze eigen meting — precies de
+    // vertekening die blok 4 al met "vóór de sweep" moest opvangen.
+    if (b.b7) await _blok7();
     if (b.b2) await _blok2();
     if (b.b3) await _blok3();
     if (b.b4) await _blok4();
     if (b.b6) await _blok6();
+    if (b.b8) await _blok8();
   } catch (e) {
     _boek(0, 'Testrun', 'FOUT', (e && e.message) || String(e), null);
   } finally {
@@ -753,7 +1209,7 @@ function testrunTekst() {
   for (let i = 0; i < CAMPAGNE.vragen.length; i++) r.push('  ' + (i + 1) + '. ' + CAMPAGNE.vragen[i]);
   r.push('');
 
-  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren' };
+  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren', 7: 'BLOK 7 — het pollbudget (PLAN.md punt 2)', 8: 'BLOK 8 — waar zit de olietemperatuur (PLAN.md punt 4)' };
   let vorig = -99;
   for (let i = 0; i < _trLog.length; i++) {
     const x = _trLog[i];
@@ -846,7 +1302,11 @@ function openTestrun() {
       '</div>' +
       '<div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
         '<button onclick="startTestrun()" style="background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 13px var(--f);cursor:pointer">▶ Start</button>' +
-        '<button onclick="startTestrun({b5:true,b1:true,b4:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
+        '<button onclick="startTestrun({b5:true,b1:true,b4:true,b7:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
+        // Los te draaien, want beide willen een wárme motor en een spoor van een
+        // paar minuten. Dat is precies het moment waarop je géén sweep van drie
+        // minuten wilt starten.
+        '<button onclick="startTestrun({b7:true,b8:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget + olie</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
         '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
       '</div>' +
@@ -898,13 +1358,14 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Het voertuigprofiel bevat PIDs die de ECU niet ondersteunt — hoeveel precies?',
+  titel: 'Bevestigen wat 18-08 opleverde, en bewijs verzamelen voor PLAN.md punt 2 en 4',
   vragen: [
-    'Bevestigt blok 6 dat 015C, 0146, 015E en 0114 een steunbit op NEE hebben? (uit de logs van 18-08: 4100FE3FA813 en 4140FAD08C81 zeggen alle vier nee)',
-    'Doet de controle-PID 010C het overal wél — los, in een paar en in een groep van zes? Zo niet, dan ligt het aan de groepering en niet aan de PIDs.',
-    'Hoeveel van de 55 PIDs in het opgeslagen profiel worden door de steunbits ontkend?',
-    'Meldt blok 5 nu geen dode knoppen meer, en klopt de herstelpunt-controle?',
-    'Klimt het pollbudget na de sweep terug naar 100%?'
+    'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (18-08: 0146, 0114, 010A, 015E, 012C, 015C, 015A)',
+    'Zegt blok 6 nu "0 ontkend"? Zo niet, dan is het profiel niet opnieuw weggeschreven en komt de fout elke sessie terug.',
+    'Verdwijnt er niets dat het wel deed? Kijk of 010C, 0104, 0105, 010E en 0115 er nog zijn.',
+    'BLOK 7 — zijn er remmomenten bij 0% fouten én een vlakke responstijd? Dat is het bewijs voor of tegen punt 2. Rijd hiervoor minstens tien minuten vóór je de run start.',
+    'BLOK 7 — wordt de zone "ruim" ooit bereikt, of is de vaste terugweg op deze bus onbereikbaar?',
+    'BLOK 8 — antwoordt 2101 (mode 21) of 22111F (mode 22), en welke schaling is plausibel tegen het koelwater? Rijd de motor eerst warm, anders liggen olie en koelwater te dicht bij elkaar.'
   ]
 };
 
