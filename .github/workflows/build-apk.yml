@@ -1,7 +1,14 @@
 # ════════════════════════════════════════════════════════════
 #  PidLane APK-build workflow
-#  Bijgewerkt: 2026-07-20 (CET)
-#  Wijziging: app-icoon komt nu van het ECHTE logo (icon-512.png in de
+#  Bijgewerkt: 2026-08-20 (CET)
+#  Wijziging: naast de debug-APK nu ook een RELEASE-BUNDLE (.aab). De
+#             Play Store neemt sinds 2021 geen losse APK meer aan voor
+#             nieuwe inzendingen; zonder .aab kom je niet eens aan de
+#             review toe. Ongetekend — ondertekenen doe je met een
+#             keystore die NIET in de repo hoort.
+#             Ook: versionCode/versionName uit package.json, en de
+#             permissiecontrole faalt nu hard i.p.v. door te bouwen.
+#  Eerder:    app-icoon komt van het ECHTE logo (icon-512.png in de
 #             repo) i.p.v. de nagetekende SVG — die was "net wat anders".
 #             SVG blijft als vangnet zodat de build nooit breekt.
 #  Eerder:    CAMERA-permissie + camera-feature toegevoegd aan de
@@ -16,6 +23,8 @@ on:
     branches: [main]
     paths:
      - 'public/index.html'
+     - 'public/privacy.html'
+     - 'package.json'
      - 'capacitor.config.json'
      - 'icon-512.png'
      - '.github/workflows/build-apk.yml'
@@ -108,6 +117,31 @@ jobs:
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />'
+              # LOCATIE — LET OP, dit is een bewuste keuze en geen standaardregel.
+              #
+              # Voor Bluetooth is locatie NIET nodig op Android 12+: daar doet
+              # BLUETOOTH_SCAN met neverForLocation het werk. Voor Android 11 en
+              # ouder eist het systeem wél ACCESS_FINE_LOCATION om te mogen
+              # scannen — vandaar maxSdkVersion=30.
+              #
+              # MAAR de app gebruikt locatie ook ECHT: de bulk-recorder leest via
+              # navigator.geolocation de hoogte mee voor klimbelasting
+              # (pidlane-bulk.js gpsStart, pidlane-gps.js). Met maxSdkVersion=30
+              # is die functie op elk modern toestel stil kapot — de permissie
+              # wordt daar niet eens aangevraagd.
+              #
+              # Twee uitwegen, kies er één en pas dit blok aan:
+              #   a) GPS-ritlogging laten vallen  -> laat maxSdkVersion=30 staan,
+              #      en haal de geolocation-aanroepen uit bulk/gps. Simpelste
+              #      route door de review: geen locatie in de Data safety-form.
+              #   b) GPS-ritlogging houden        -> haal maxSdkVersion weg bij
+              #      FINE_LOCATION, declareer locatie in de Data safety-form, en
+              #      toon een aparte disclosure vóór de eerste ritopname. Locatie
+              #      is een "sensitive permission": zonder eigen disclosure is
+              #      afwijzing vrijwel zeker.
+              #
+              # Tot die keuze gemaakt is staat b) NIET aan: liever een functie die
+              # aantoonbaar uit staat dan een permissie die je niet kunt verdedigen.
               '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />'
               '\n    <uses-permission android:name="android.permission.CAMERA" />'
               '\n    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />'
@@ -128,13 +162,32 @@ jobs:
           print("── Manifest NA injectie ──")
           print(xml)
 
-          if 'BLUETOOTH_SCAN' not in xml or 'neverForLocation' not in xml:
-              print("FOUT: BT-permissie-injectie mislukt")
-              sys.exit(1)
+          # Harde controles. Een build die doorloopt met een halve permissieset
+          # levert een APK op die het pas in de auto laat afweten — of pas bij
+          # de review. Beide keren duurder dan hier stoppen.
+          moet = [
+              ('BLUETOOTH_SCAN', 'scannen naar de adapter'),
+              ('neverForLocation', 'verklaring dat scan niet voor plaatsbepaling is'),
+              ('BLUETOOTH_CONNECT', 'praten met een gekoppelde adapter'),
+              ('android.hardware.bluetooth_le', 'BLE-feature (required=false)'),
+          ]
+          for naam, waarvoor in moet:
+              if naam not in xml:
+                  print("FOUT: %s ontbreekt (%s)" % (naam, waarvoor)); sys.exit(1)
+
+          # Mag er NIET in: achtergrondlocatie. Die vraagt een aparte
+          # Play-verklaring met video-onderbouwing, en de app gebruikt hem niet.
+          # Als een plugin hem ooit meesmokkelt via manifest-merge wil je dat
+          # hier zien en niet in de reviewmail.
+          for verboden in ('ACCESS_BACKGROUND_LOCATION', 'READ_PHONE_STATE',
+                           'QUERY_ALL_PACKAGES', 'REQUEST_INSTALL_PACKAGES'):
+              if verboden in xml:
+                  print("FOUT: %s staat in het manifest en hoort er niet in" % verboden); sys.exit(1)
+
           if 'android.permission.CAMERA' not in xml:
               print("FOUT: CAMERA-permissie-injectie mislukt")
               sys.exit(1)
-          print("OK: Bluetooth- en camera-permissies correct geinjecteerd")
+          print("OK: permissieset compleet, niets verbodens gevonden")
           PY
 
       - name: Generate app icons from PidLane logo
@@ -197,12 +250,49 @@ jobs:
       - name: Accept Android licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
+      - name: Set versionCode and versionName
+        run: |
+          # versionName komt uit package.json zodat er één plek is waar het
+          # staat. versionCode is het buildnummer: Play eist dat die bij elke
+          # inzending OPLOOPT, en run_number doet dat vanzelf. Zet je hem ooit
+          # handmatig lager, dan weigert Play de upload zonder nuttige melding.
+          VN=$(node -p "require('./package.json').version")
+          VC=${{ github.run_number }}
+          echo "versionName=$VN versionCode=$VC"
+          python3 - "$VN" "$VC" <<'PY'
+          import re, sys, pathlib
+          vn, vc = sys.argv[1], sys.argv[2]
+          p = pathlib.Path("android/app/build.gradle")
+          g = p.read_text()
+          g = re.sub(r'versionCode\s+\d+',      'versionCode ' + vc, g, count=1)
+          g = re.sub(r'versionName\s+"[^"]*"',  'versionName "' + vn + '"', g, count=1)
+          p.write_text(g)
+          if ('versionCode ' + vc) not in g or ('versionName "' + vn + '"') not in g:
+              print("FOUT: versie niet gezet in build.gradle"); sys.exit(1)
+          print("OK: versionCode", vc, "versionName", vn)
+          PY
+
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Build release bundle (.aab)
+        run: cd android && ./gradlew bundleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4.6.2
         with:
           name: PidLane-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: PidLane-release-aab
+          # ONGETEKEND. Ondertekenen gebeurt met een upload-keystore die niet
+          # in de repo staat en niet in een artifact hoort. Twee wegen:
+          #   a) Play App Signing: upload deze .aab, Google tekent hem
+          #   b) lokaal: jarsigner met je eigen keystore vóór de upload
+          # Zie ANDROID-PLAYSTORE.md.
+          path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
