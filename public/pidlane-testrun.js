@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '2.0 (20-08-2026)';
+const TESTRUN_VERSIE = '2.2 (20-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -175,7 +175,14 @@ const PLBudget = (function () {
         bezet: s.belasting,
         fout: s.foutPct,
         ms: s.venGemMs,
-        perSec: s.perSec
+        perSec: s.perSec,
+        // De testrun belast de bus zelf: de sweep vraagt 50 PIDs achter elkaar
+        // op, blok 6 pookt vijf keer in een dode PID, blok 8 vraagt er drie op
+        // die gegarandeerd NO DATA geven. Op 20-08 leverde dat een foutpiek van
+        // 82% op in een spoor dat over normaal rijden hoort te gaan.
+        // Markeren in plaats van weglaten: het onderscheid is de informatie, en
+        // een gat in de reeks is lastiger te lezen dan een gemarkeerd monster.
+        run: !!_trBezig
       });
       if (ring.length > MAX) ring.splice(0, ring.length - MAX);
     } catch (e) {
@@ -663,7 +670,12 @@ async function _blok6() {
 // begint — en zonder dat bewijs moet die sessie niet beginnen, want dan weet je
 // achteraf niet of het beter is geworden.
 async function _blok7() {
-  const sp = (window.PLBudget && typeof PLBudget.spoor === 'function') ? PLBudget.spoor() : [];
+  const alles = (window.PLBudget && typeof PLBudget.spoor === 'function') ? PLBudget.spoor() : [];
+  // Alleen de monsters van buiten een testrun tellen mee. Wat de run zelf op de
+  // bus doet — sweep, dode-PID-sondes — hoort niet in een oordeel over hoe de
+  // regelkring zich tijdens rijden gedraagt.
+  const sp = alles.filter(function (m) { return !m.run; });
+  const eigen = alles.length - sp.length;
 
   if (!sp.length) {
     _boek(7, 'Pollbudget-spoor', 'overgeslagen', 'geen monsters — niet verbonden geweest, of de sampler draait niet', null);
@@ -679,8 +691,10 @@ async function _blok7() {
 
   await _doe(7, 'Spoor', function () {
     const duur = Math.round((sp[sp.length - 1].t - sp[0].t) / 1000);
-    return sp.length + ' monsters over ' + duur + ' s  |  drempels: bezetOp ' + d.bezetOp +
-      '%, bezetAf ' + d.bezetAf + '%, foutOp ' + d.foutOp + '%, traag ' + d.traagMs + ' ms';
+    return sp.length + ' monsters over ' + duur + ' s' +
+      (eigen ? '  (' + eigen + ' tijdens een testrun weggelaten)' : '') +
+      '  |  drempels: bezetOp ' + d.bezetOp + '%, bezetAf ' + d.bezetAf +
+      '%, foutOp ' + d.foutOp + '%, traag ' + d.traagMs + ' ms';
   });
 
   await _doe(7, 'Tempoverloop', function () {
@@ -713,9 +727,20 @@ async function _blok7() {
       const vanaf = Math.max(0, i - 15);                   // 15 × 2 s = 30 s terug
       const eerder = sp.slice(vanaf, i).map(function (m) { return m.ms; });
       const basis = med(eerder);
-      const opgelopen = basis > 0 && sp[i].ms > basis * 1.15;
-      const fouten = sp[i].fout > 0;
-      remmen.push({ i: i, fout: sp[i].fout, ms: sp[i].ms, basis: basis, bezet: sp[i].bezet, terecht: fouten || opgelopen });
+      // PLLoad tikt op zijn eigen ritme; de beslissing viel ergens TUSSEN dit
+      // monster en het vorige. Op 20-08 meldde het BT-log "bezet 89%" terwijl
+      // het monster erna 84% aangaf — genoeg om een terechte rem als
+      // ongevraagd te tellen. Daarom van beide monsters de zwaarste waarde
+      // nemen: dat is de toestand die PLLoad gezien kán hebben.
+      const bezet = Math.max(sp[i].bezet, sp[i - 1].bezet);
+      const fout = Math.max(sp[i].fout, sp[i - 1].fout);
+      const ms = Math.max(sp[i].ms, sp[i - 1].ms);
+      const opgelopen = basis > 0 && ms > basis * 1.15;
+      const drukGenoeg = bezet >= d.bezetOp;
+      // "Ongevraagd" = geen fouten, geen oplopende responstijd, én ook niet
+      // druk genoeg om de bezettingstak te verklaren.
+      remmen.push({ i: i, fout: fout, ms: ms, basis: basis, bezet: bezet,
+                    terecht: fout > 0 || opgelopen || drukGenoeg });
     }
     if (!remmen.length) return 'geen enkele stap omlaag in dit spoor';
 
@@ -749,8 +774,10 @@ async function _blok7() {
   await _doe(7, 'Foutbeeld', function () {
     const f = sp.map(function (m) { return m.fout; });
     const nul = f.filter(function (x) { return x === 0; }).length;
-    return Math.round(nul / f.length * 100) + '% van de monsters had 0% fouten, hoogste foutgraad ' +
-      Math.max.apply(null, f) + '%';
+    const piek = Math.max.apply(null, f);
+    const runPiek = eigen ? Math.max.apply(null, alles.filter(function (m) { return m.run; }).map(function (m) { return m.fout; })) : 0;
+    return Math.round(nul / f.length * 100) + '% van de monsters had 0% fouten, hoogste foutgraad ' + piek + '%' +
+      (runPiek > piek ? '   [tijdens testruns liep hij op tot ' + runPiek + '% — dat is de run zelf, niet de auto]' : '');
   });
 
   _boek(7, 'Slotsom', 'ok',
@@ -1063,6 +1090,21 @@ async function _blok9() {
 // klant erop drukt.
 async function _blok5() {
 
+  // ── TOEGEVOEGD 20-08: adaptertype stuurt de ketenvolgorde ──
+  await _doe(5, 'Keten volgt het adaptertype', function () {
+    if (!window.PLStart || typeof PLStart.adapterTransport !== 'function')
+      return { staat: 'FOUT', detail: 'PLStart.adapterTransport ontbreekt' };
+    let bron = '';
+    try { bron = String(window.connectSerial || ''); } catch (e) {}
+    if (bron && bron.indexOf('adapterTransport') < 0)
+      return { staat: 'FOUT', detail: 'connectSerial gebruikt het gekozen adaptertype niet — eerste verbinding kost weer een BLE-scan' };
+    const k = PLStart.adapterTransport();
+    let laatste = '';
+    try { laatste = localStorage.getItem('pl_lastTransport') || ''; } catch (e) {}
+    return 'kanaal "' + (k || 'geen keuze') + '"' +
+      (laatste ? ', maar pl_lastTransport=' + laatste + ' gaat voor' : ', geen eerdere verbinding — dit bepaalt de volgorde');
+  });
+
   // ── TOEGEVOEGD 20-08: brandstof vóór de health-scan ──
   await _doe(5, 'Brandstofpoort staat vóór de scan', function () {
     if (typeof brandstofPoort !== 'function')
@@ -1193,10 +1235,14 @@ async function _blok5() {
     // niet — 19-08 kostte dat een halve avond.
     const v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) ? vehicleInfo : null;
     if (!v) return { staat: 'LET OP', detail: 'vehicleInfo leeg' };
-    const mist = ['merk', 'model', 'bouwjaar', 'brandstof'].filter(function (k) { return !v[k]; });
+    // Het veld heet year, niet bouwjaar. Deze controle keek naar het verkeerde
+    // veld en meldde "mist bouwjaar" bij een auto waarvan het bouwjaar gewoon
+    // bekend was — precies het soort vals alarm dat je binnen een week negeert.
+    const heeft = { merk: v.merk, model: v.model, bouwjaar: v.year || v.bouwjaar, brandstof: v.brandstof };
+    const mist = Object.keys(heeft).filter(function (k) { return !heeft[k]; });
     if (mist.length)
       return { staat: 'LET OP', detail: 'mist ' + mist.join(', ') + ' — voer het kenteken in, anders filtert de merkroute alles weg' };
-    return v.merk + ' ' + v.model + ' ' + v.bouwjaar + ' ' + v.brandstof;
+    return [heeft.merk, heeft.model, heeft.bouwjaar, heeft.brandstof].join(' ');
   });
 
   // ── TOEGEVOEGD 19-08: pollbudget-spoor (PLAN.md punt 2) ──
@@ -1639,6 +1685,8 @@ const CAMPAGNE = {
     'NIEUW — staan er in het Logboek (kebab) regels uit BT, APP en PID door elkaar, op tijd gesorteerd?',
     'NIEUW — loopt de cascade zichtbaar mee op het startscherm tijdens het verbinden, en klopt de volgorde met het BT-log?',
     'NIEUW — komt "Brandstof: benzine (obd)" in de verbindstappen te staan, VOOR de sensorcheck? Op de CX-5 hoort 0151 dat zonder kenteken op te lossen.',
+    'NIEUW — begint de keten nu met SPP in plaats van BLE? Op 20-08 kostte de BLE-scan 18 van de 44 seconden. Kies "OBDLink MX+" in het startscherm en kijk of "Keten: Classic eerst" in het log staat.',
+    'HERHALEN — dit is de TWEEDE verbinding op dit toestel, dus nu laadt het profiel (55 PIDs) en draait profielTegenSteunbits pas echt. De run van 20-08 deed volle discovery en kon punt 1 dus niet bevestigen.',
     'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (0146, 0114, 010A, 015E, 012C, 015C, 015A)',
     'Zegt blok 6 "0 ontkend" op een profiel dat vóór deze rit nog vervuild wás? Alleen dan bewijst het iets.',
     'Verdwijnt er niets dat het wel deed? Kijk of 010C, 0104, 0105, 010E en 0115 er nog zijn.',

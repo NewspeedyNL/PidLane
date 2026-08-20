@@ -106,7 +106,18 @@ async function connectSerial(){
   // terug op de normale volgorde.
   const savedAddr = (()=>{ try{ return localStorage.getItem('spp_address'); }catch(e){ return null; } })();
   const savedName = (()=>{ try{ return localStorage.getItem('spp_name'); }catch(e){ return null; } })() || 'OBDLink';
-  const lastTransport = (()=>{ try{ return localStorage.getItem('pl_lastTransport'); }catch(e){ return null; } })();
+  // Wat werkte de vorige keer? Leeg bij de eerste verbinding — en dan valt de
+  // keuze terug op het adaptertype dat de gebruiker in het startscherm heeft
+  // aangeklikt. Zonder dat begint elke eerste verbinding met een BLE-scan van
+  // 12 tot 18 seconden, ook bij een adapter die aantoonbaar Classic is.
+  let lastTransport = (()=>{ try{ return localStorage.getItem('pl_lastTransport'); }catch(e){ return null; } })();
+  if(!lastTransport){
+    try{
+      const kanaal = (window.PLStart && typeof PLStart.adapterTransport==='function') ? PLStart.adapterTransport() : '';
+      if(kanaal==='classic'){ lastTransport='spp'; btDiag('Keten: Classic eerst (gekozen adaptertype)','proto'); }
+      else if(kanaal==='ble'){ lastTransport='ble'; btDiag('Keten: BLE eerst (gekozen adaptertype)','proto'); }
+    }catch(e){}
+  }
   const chain = [];
   if (spp && savedAddr && lastTransport !== 'ble' && !haveCfgMac)
                           chain.push(['SPP (laatst gebruikte adapter)', async () => {

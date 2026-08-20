@@ -61,6 +61,8 @@
       kort: 'MX+',
       merk: 'OBDLink MX+ of LX',
       transport: 'Bluetooth Classic',
+      // Stuurt de vololgorde van de verbindingsketen; zie adapterTransport().
+      kanaal: 'classic',
       stappen: [
         'Steek de adapter in de OBD-poort — meestal onder het dashboard, links',
         'Zet het contact aan; de adapter start vanzelf op',
@@ -76,6 +78,7 @@
       kort: 'ELM327',
       merk: 'ELM327 (v1.5 / v2.1 en klonen)',
       transport: 'Bluetooth Classic',
+      kanaal: 'classic',
       stappen: [
         'Steek de adapter in de OBD-poort',
         'Zet het contact aan; er gaat een lampje branden',
@@ -91,6 +94,7 @@
       kort: 'BLE',
       merk: 'Vgate iCar Pro, Veepeak BLE, LELink',
       transport: 'Bluetooth Low Energy',
+      kanaal: 'ble',
       stappen: [
         'Steek de adapter in de OBD-poort',
         'Zet het contact aan',
@@ -105,6 +109,8 @@
       kort: 'Onbekend',
       merk: 'PidLane zoekt zelf',
       transport: 'alles achter elkaar',
+      // Bewust leeg: wie het niet weet, krijgt de volledige keten.
+      kanaal: '',
       stappen: [
         'Steek de adapter in de OBD-poort',
         'Zet het contact aan',
@@ -328,6 +334,22 @@
   }
 
   // ── STUREN ────────────────────────────────────────────────────────
+  // Welk kanaal hoort bij het gekozen adaptertype? connectSerial() gebruikt dit
+  // om de keten te ordenen.
+  //
+  // Waarom dit bestaat: op 20-08 kostte een verbinding met de OBDLink MX+
+  // 44 seconden, waarvan 18 aan een BLE-scan die op een Classic-adapter nooit
+  // kan slagen. De keten kende wel pl_lastTransport, maar dat staat er pas ná
+  // een geslaagde verbinding — precies niet de eerste keer, wanneer wachten
+  // het meest kost en de gebruiker het minst vertrouwen heeft.
+  //
+  // Het adaptertype is er wél al: dat is het eerste wat het startscherm vraagt.
+  // Geen gok, maar wat de gebruiker zelf heeft aangeklikt.
+  function adapterTransport() {
+    const a = ADAPTERS[gekozenType()];
+    return (a && a.kanaal) || '';
+  }
+
   function kies(type) {
     zetType(type);
     tekenStappen(type);
@@ -367,6 +389,7 @@
     kies: kies,
     terugNaarKiezer: terugNaarKiezer,
     toonHulp: toonHulp,
+    adapterTransport: adapterTransport,
     ververs: ververs,
     begin: begin,
     poging: poging,

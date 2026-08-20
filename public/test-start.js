@@ -53,6 +53,17 @@ t('bekende gebruiker krijgt de compacte kaart', /laatst verbonden/.test(vak()));
 t('bekende gebruiker ziet geen stappenlijst', !/<li/.test(vak()), 'stappen nog zichtbaar');
 t('tijdsaanduiding klopt', /3 uur geleden/.test(vak()), vak().slice(0,200));
 
+// Ketenvolgorde per adaptertype — de 18 seconden BLE-scan van 20-08
+localStorage.setItem('pl_adaptertype','mxplus');
+t('MX+ stuurt de keten naar Classic', P.adapterTransport()==='classic');
+localStorage.setItem('pl_adaptertype','elm327');
+t('ELM327 ook Classic', P.adapterTransport()==='classic');
+localStorage.setItem('pl_adaptertype','ble');
+t('BLE-adapter stuurt naar BLE', P.adapterTransport()==='ble');
+localStorage.setItem('pl_adaptertype','onbekend');
+t('"weet ik niet" stuurt niets — volledige keten', P.adapterTransport()==='');
+localStorage.setItem('pl_adaptertype','mxplus');
+
 // Cascade
 P.begin();
 t('cascade begint leeg', /Verbinding zoeken/.test(vak()));
