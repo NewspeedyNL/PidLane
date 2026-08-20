@@ -330,6 +330,77 @@ function decodeVIN(vin){
 //
 // Wat de ECU níét noemt (mode 21/22, fabrikant-PIDs) blijft staan: daar bestaan
 // geen steunbits voor, dus afwezigheid zegt daar niets.
+// ══════════════════════════════════════════════════════════════════
+// STEUNBITS — één plek waar staat wat de ECU ontkent
+// ══════════════════════════════════════════════════════════════════
+// Gemeten op 20-08 en de reden dat PLAN.md punt 1 vier ritten bleef hangen:
+//
+//   19:36:22  discovery uit de bitmaps      → 55 PIDs, precies conform
+//   19:36:26  profiel opgeslagen            → 55 PIDs, schoon
+//   19:36:49  applyVehiclePIDPreset()       → 26 PIDs erbij, waaronder 015C
+//   19:37:51  blok 6 telt supportedPIDs     → 62, waarvan 7 ontkend
+//
+// De steunbitcontrole wérkte dus; drieëntwintig seconden later zette de
+// merk-preset er `MAZDA: ['015C','0110']` bovenop — en 015C is precies de PID
+// waarvan de bitmap NEE zegt en die op deze auto aantoonbaar dood is.
+//
+// Dit is "een fix die faalt door een fix" in zuivere vorm: de gate zat in
+// profielTegenSteunbits(), niet in de preset, dus de preset liep er dwars
+// doorheen. Zolang de bitmaps alleen lokaal in die ene functie leefden, kón
+// geen andere plek ze raadplegen.
+//
+// Vandaar deze opslag. Wie een PID wil toevoegen vraagt het hier.
+let _steunbits = {};        // blokstart (0,32,64,96) → 32-bits woord
+
+function _steunbitsOnthoud(blokStart, woord){
+  if(!isFinite(woord)) return;
+  _steunbits[blokStart] = woord >>> 0;
+}
+
+// true  = de ECU ondersteunt deze PID
+// false = de ECU ontkent hem expliciet
+// null  = onbekend (blok niet gelezen, of geen mode 01)
+function ecuSteunt(pid){
+  if(!/^01[0-9A-F]{2}$/i.test(String(pid||''))) return null;   // mode 21/22 heeft geen steunbits
+  const n = parseInt(String(pid).slice(2), 16);
+  if(!isFinite(n) || n < 1) return null;
+  const blok = Math.floor((n - 1) / 32) * 32;
+  const w = _steunbits[blok];
+  if(w === undefined) return null;                             // niets gelezen → niets beweren
+  const positie = n - blok;                                    // 1..32
+  return ((w >>> (32 - positie)) & 1) === 1;
+}
+
+// Toevoegen mag, tenzij de ECU de PID expliciet ontkent. Onbekend telt als ja:
+// afwezigheid van bewijs is hier geen bewijs van afwezigheid, en een te gretige
+// zeef is erger dan de kwaal — deze fix verwijdert sensoren.
+function magToevoegen(pid){
+  return ecuSteunt(pid) !== false;
+}
+
+// WAAR DEZE ZEEF WEL EN NIET HOORT — nagelopen 20-08, alle vijf de plekken
+// die supportedPIDs uitbreiden:
+//
+//   discoverPIDsBitmap()      voegt toe OMDAT de bit aan staat        → geen zeef,
+//                             dat is de bron zelf
+//   discoverPIDsDirect()      voegt toe NA een echt antwoord          → geen zeef
+//   deepRefreshPIDs()         voegt toe NA een echt antwoord          → geen zeef
+//   probeUitgebreid()         mode 21/22, heeft geen steunbits        → geen zeef
+//   applyVehiclePIDPreset()   voegt toe op AANNAME (merk + brandstof) → ZEEF
+//
+// De scheidslijn is niet "welke module" maar "op bewijs of op aanname".
+// Een PID die daadwerkelijk antwoordt bestaat, wat de bitmap ook beweert —
+// bitmaps liegen soms, een geldig antwoord niet. Alleen wie toevoegt zonder
+// te meten moet langs de steunbits.
+//
+// Voeg je hier ooit een zesde plek toe: bepaal eerst in welke van die twee
+// categorieën hij valt. Dat is de vraag die bij de vorige vier fixes is
+// overgeslagen.
+
+window.ecuSteunt = ecuSteunt;
+window.magToevoegen = magToevoegen;
+window.steunbitsRuw = function(){ return Object.assign({}, _steunbits); };
+
 async function profielTegenSteunbits(){
   if(typeof supportedPIDs==='undefined' || !supportedPIDs.size) return 0;
   const bits={};
@@ -346,6 +417,7 @@ async function profielTegenSteunbits(){
     const w=parseInt(d,16);
     if(isNaN(w)) continue;
     bits[parseInt(q.slice(2),16)]=w;
+    _steunbitsOnthoud(parseInt(q.slice(2),16), w);   // ook bewaren voor andere modules
   }
   if(!Object.keys(bits).length){
     btDiag('Steunbits niet leesbaar — profiel ongewijzigd gelaten','warn');
@@ -403,6 +475,10 @@ async function discoverPIDsBitmap(){
 
     if(!bitmapHex||bitmapHex.length<8) continue;
     const bitmap=parseInt(bitmapHex,16);
+    // De discovery leest exact dezelfde vier bitmaps als profielTegenSteunbits().
+    // Hier bewaren betekent dat de preset straks weet wat de ECU ontkent, ook
+    // als die controle niet meer apart draait (verse discovery slaat hem over).
+    try{ _steunbitsOnthoud(parseInt(rangeCmd.slice(2),16), bitmap); }catch(e){}
     if(isNaN(bitmap)||bitmap===0) continue;
 
     const base=parseInt(rangeCmd.slice(2),16);
@@ -561,11 +637,29 @@ function applyVehiclePIDPreset(merk, brandstof, jaar){
   const groep = (typeof merkGroep==='function') ? merkGroep(merk) : '';
   if(groep && MERK_EXTRA_PIDS[groep]) preset.push(...MERK_EXTRA_PIDS[groep]);
 
-  // Dedupliceer en laad
+  // Dedupliceer, en houd elke kandidaat tegen de steunbits.
+  //
+  // Zonder deze zeef zette de preset PIDs terug die de ECU net had ontkend.
+  // Gemeten op 20-08: MAZDA voegt 015C toe (motorolietemperatuur), terwijl
+  // 4140FAD08C81 daar NEE voor zegt en de PID op deze CX-5 nooit antwoordt.
+  // De tegel verscheen dan wel maar bleef leeg, en het pollbudget ging naar
+  // een sensor die niet bestaat.
+  //
+  // Onbekend telt als toegestaan: is het blok niet gelezen, dan beweert de
+  // zeef niets. Een preset die te veel weggooit is erger dan de kwaal.
   const uniq = [...new Set(preset)];
-  uniq.forEach(p => supportedPIDs.add(p));
-  btDiag(`Voertuig-preset geladen: ${uniq.length} PIDs (${m||'onbekend'} ${jaar||'?'} ${b||'benzine'})`, 'ok');
-  log(`🔧 PID preset: ${uniq.length} PIDs voor ${m||'onbekend'} ${b||'benzine'} ${jaar||''}`, 'ok');
+  const geweigerd = [];
+  uniq.forEach(p => {
+    if(typeof magToevoegen === 'function' && !magToevoegen(p)){ geweigerd.push(p); return; }
+    supportedPIDs.add(p);
+  });
+  const toegevoegd = uniq.length - geweigerd.length;
+  btDiag(`Voertuig-preset geladen: ${toegevoegd} PIDs (${m||'onbekend'} ${jaar||'?'} ${b||'benzine'})`, 'ok');
+  if(geweigerd.length){
+    btDiag(`Preset: ${geweigerd.length} niet toegevoegd, ECU ontkent ze: ${geweigerd.join(', ')}`,'ok');
+    log(`🧹 Preset sloeg ${geweigerd.length} sensoren over die deze auto niet heeft: ${geweigerd.join(', ')}`,'ok');
+  }
+  log(`🔧 PID preset: ${toegevoegd} PIDs voor ${m||'onbekend'} ${b||'benzine'} ${jaar||''}`, 'ok');
   buildDiscoveredPIDList();
 }
 

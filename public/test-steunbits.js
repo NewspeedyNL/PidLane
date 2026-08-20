@@ -80,5 +80,65 @@ toets('0160', true,  'laatste bit van blok 0140 (81 eindigt op 1)');
 if (ondersteund([], '010C') !== null) { fout++; console.log('  FOUT  zonder antwoorden moet het resultaat null zijn'); }
 else console.log('  ok    zonder leesbare steunvragen wordt er niets beweerd');
 
+// ══════════════════════════════════════════════════════════════════
+// TOEGEVOEGD 20-08 — mag de merk-preset zetten wat de ECU ontkent?
+// ══════════════════════════════════════════════════════════════════
+// Hierboven staat dat profielTegenSteunbits() de vier fantomen weggooit, en
+// dat klopte. Wat er niet stond: drieëntwintig seconden later zette
+// applyVehiclePIDPreset() er MAZDA: ['015C','0110'] weer bovenop. Uit het
+// logboek van 20-08:
+//
+//   19:36:22  discovery uit de bitmaps   → 55 PIDs, precies conform
+//   19:36:49  voertuig-preset geladen    → 26 PIDs erbij, waaronder 015C
+//   19:37:51  blok 6 telt supportedPIDs  → 62, waarvan 7 ontkend
+//
+// Vier ritten lang leek punt 1 daardoor te falen terwijl de controle werkte.
+// Dit deel bewaakt dat de preset voortaan langs dezelfde poort gaat.
+const fsMod = require('fs');
+const bron = fsMod.readFileSync(__dirname + '/pidlane-rijsituatie.js', 'utf8');
+
+function bronToets(naam, voorwaarde, waarom) {
+  if (voorwaarde) console.log('  ok    ' + naam);
+  else { fout++; console.log('  FOUT  ' + naam + (waarom ? ' — ' + waarom : '')); }
+}
+
+const iPreset = bron.indexOf('function applyVehiclePIDPreset');
+const iZeef = bron.indexOf('magToevoegen(p)');
+bronToets('preset houdt elke kandidaat tegen de steunbits',
+  iPreset >= 0 && iZeef > iPreset,
+  'applyVehiclePIDPreset zeeft niet — 015C komt terug in supportedPIDs');
+
+bronToets('discoverPIDsBitmap bewaart de bitmaps',
+  /_steunbitsOnthoud\(parseInt\(rangeCmd/.test(bron),
+  'zonder opslag kan de preset niets raadplegen');
+
+bronToets('profielTegenSteunbits bewaart ze ook',
+  /_steunbitsOnthoud\(parseInt\(q\.slice/.test(bron),
+  'bij een profiel-start blijven de bits anders onbekend');
+
+bronToets('poort is van buiten bereikbaar',
+  /window\.magToevoegen/.test(bron) && /window\.ecuSteunt/.test(bron));
+
+// De scheidslijn: toevoegen op BEWIJS mag zonder zeef, toevoegen op AANNAME
+// niet. Sneuvelt deze toets, dan is er een plek bijgekomen die PIDs aanneemt
+// zonder te meten — en dan is de vraag welke van de twee het is.
+const addPlekken = (bron.match(/supportedPIDs\.add/g) || []).length;
+bronToets('aantal toevoegplekken onveranderd (4)', addPlekken === 4,
+  addPlekken + ' gevonden i.p.v. 4 — nieuwe plek? Bepaal eerst: bewijs of aanname');
+
+// ── De testrun mag de bus niet zelf vervuilen ──
+// Alle 18 missers van 20-08 kwamen van vier ontkende PIDs. De run maakte dus
+// het probleem dat hij moest meten: 15% foutgraad, pollbudget naar 55%, en een
+// waarschuwing aan de gebruiker over lege antwoorden.
+const run = fsMod.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8');
+bronToets('sweep slaat ontkende PIDs over',
+  /_ontkend\.push\(p\)/.test(run) && /ecuSteunt\(p\) === false/.test(run),
+  'blok 3 vraagt dode PIDs op en duwt de foutgraad omhoog');
+bronToets('blok 6 pookt niet in wat al verklaard is',
+  /_verklaard\.push\(p\)/.test(run),
+  'dertig verzoeken aan PIDs waarvan de ECU al zei dat ze niet bestaan');
+bronToets('blok 8 slaat ontkende kandidaten over',
+  /niet opgevraagd: de ECU ontkent hem/.test(run));
+
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

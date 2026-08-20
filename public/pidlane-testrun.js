@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '2.3 (20-08-2026)';
+const TESTRUN_VERSIE = '2.6 (20-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -423,6 +423,27 @@ async function _blok3() {
   lijst = lijst.filter(function (p) { return p && !VERBODEN.test(p); });
   if (!lijst.length) { _boek(3, 'PID-sweep', 'overgeslagen', 'geen PID-lijst beschikbaar', null); return; }
 
+  // PIDs die de ECU expliciet ontkent niet opvragen. Ze geven gegarandeerd
+  // NO DATA, en elke misser telt mee in PLBus.foutPct — waarop PLLoad het
+  // pollbudget terugschroeft. Op 20-08 kwamen ALLE 18 missers in een run van
+  // 230 verzoeken van vier zulke PIDs (0114, 015E, 015C, 0146), goed voor 15%
+  // foutgraad en de melding "veel lege antwoorden van de ECU" aan de
+  // gebruiker. De testrun maakte dus zelf het probleem dat hij moest meten.
+  //
+  // Onbekend blijft gewoon meedoen: alleen een expliciete NEE is genoeg reden
+  // om niet te vragen. Blok 6 onderzoekt de overgeslagen PIDs alsnog, maar
+  // gericht en met veel minder verkeer.
+  const _ontkend = [];
+  if (typeof ecuSteunt === 'function') {
+    lijst = lijst.filter(function (p) {
+      if (ecuSteunt(p) === false) { _ontkend.push(p); return false; }
+      return true;
+    });
+  }
+  if (_ontkend.length)
+    _boek(3, 'Niet opgevraagd', 'ok', _ontkend.length + ' PIDs overgeslagen — de ECU ontkent ze: ' +
+      _ontkend.join(', ') + '  (zou alleen lege antwoorden opleveren)', null);
+
   _boek(3, 'PID-sweep', 'bezig', lijst.length + ' PIDs, selectie tijdelijk overschreven', null);
 
   // Bus claimen voor de duur van de sweep. Zonder dit interleaven de metingen
@@ -590,7 +611,28 @@ async function _blok6() {
   try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-stil', 8000) : 0; } catch (e) {}
   _boek(6, 'Busslot', tok ? 'ok' : 'LET OP', tok ? 'bus geclaimd' : 'niet vrijgekomen — metingen lopen naast de pollus', null);
 
-  const doel = STIL_VERDACHT.concat([STIL_CONTROLE]);
+  // Waar dit blok voor bedoeld is: uitzoeken waaróm een sensor zwijgt. Maar
+  // een PID waarvan de ECU zegt dat hij niet bestaat is dáármee verklaard —
+  // daar vijf keer los, met ruime timeout, in een paar, in een groep van zes
+  // én met headers in pooken levert alleen lege antwoorden op. Dat is precies
+  // het verkeer dat op 20-08 de foutgraad naar 15% duwde.
+  //
+  // Sinds de steunbits centraal beschikbaar zijn (ecuSteunt) kan dat in één
+  // regel worden vastgesteld in plaats van in dertig verzoeken. Wat overblijft
+  // is de interessante categorie: steunbit JA, maar de auto zwijgt toch — de
+  // ECU belooft dan meer dan hij levert, en dát moet de gate opruimen.
+  const _verklaard = [];
+  let doel = STIL_VERDACHT.slice();
+  if (typeof ecuSteunt === 'function') {
+    doel = doel.filter(function (p) {
+      if (ecuSteunt(p) === false) { _verklaard.push(p); return false; }
+      return true;
+    });
+  }
+  if (_verklaard.length)
+    _boek(6, 'Verklaard zonder meten', 'ok', _verklaard.length + ' PIDs: de ECU ontkent ze in de steunbits (' +
+      _verklaard.join(', ') + ') — niet opnieuw opgevraagd, dat zou alleen de bus belasten', null);
+  doel = doel.concat([STIL_CONTROLE]);
   const leeg = function (r) { return !r || /NO DATA|UNABLE|ERROR|STOPPED/i.test(r); };
 
   try {
@@ -918,6 +960,13 @@ async function _blok8() {
     for (const [pid, wat] of OLIE_KANDIDATEN) {
       if (_trStop) break;
       if (VERBODEN.test(pid)) { _boek(8, pid, 'overgeslagen', 'staat op de verbodenlijst', null); continue; }
+      // 015C staat hier als referentie, maar de steunbits zeggen het al. Eén
+      // leeg antwoord is weinig, maar dit blok draait bij elke run en de
+      // uitkomst ligt vast — dan is vragen zonde van de bus.
+      if (typeof ecuSteunt === 'function' && ecuSteunt(pid) === false) {
+        _boek(8, pid, 'ok', wat + '  |  niet opgevraagd: de ECU ontkent hem in de steunbits', null);
+        continue;
+      }
 
       const bevinding = [wat];
       const t0 = _nu();
@@ -1136,6 +1185,88 @@ async function _blok9() {
 // zes ingangen gesloopt, en een achtergebleven verwijzing merk je pas als een
 // klant erop drukt.
 async function _blok5() {
+
+  // ── VERWIJDERD 20-08 (avond): vier wizard-stappen die niets deden ──
+  await _doe(5, 'Wizard is één scherm', function () {
+    const weg = ['_wizStep1', '_wizStep2', '_wizStep3', '_wizStep4', '_wizStep5']
+      .filter(function (n) { return typeof window[n] === 'function'; });
+    if (weg.length)
+      return { staat: 'FOUT', detail: 'terug uit een oude build: ' + weg.join(', ') };
+    if (typeof _wizStep6 !== 'function' && typeof wizShow !== 'function')
+      return { staat: 'FOUT', detail: 'de samenvatting is óók weg — te veel gesloopt' };
+    // De knoppen in wizS4 bestaan nog in de HTML. Die wordt niet meer getoond,
+    // maar een verdwenen functie achter een bestaande onclick is een dode knop.
+    const knoppen = ['wizNext', 'wizRdwLookup', 'wizFinish'].filter(function (n) { return typeof window[n] !== 'function'; });
+    if (knoppen.length)
+      return { staat: 'FOUT', detail: 'dode knop in de wizard-HTML: ' + knoppen.join(', ') + ' bestaat niet meer' };
+    return 'stap 1 t/m 5 weg, samenvatting en knoppen intact';
+  });
+
+  await _doe(5, 'Snelheid wordt één keer gemeten', function () {
+    // Wizard-stap 2 mat de bus nóg eens, bovenop initConnection. Acht extra
+    // metingen voor een getal dat al bekend was.
+    let bron = '';
+    try { bron = String(window.wizShow || '') + String(window.wizGo || ''); } catch (e) {}
+    if (/measureConnSpeed/.test(bron))
+      return { staat: 'FOUT', detail: 'de wizard meet de bussnelheid opnieuw' };
+    return 'alleen initConnection meet';
+  });
+
+  // ── TOEGEVOEGD 20-08 (avond): de run belast de bus niet met dode PIDs ──
+  await _doe(5, 'Run vraagt geen ontkende PIDs op', function () {
+    // Op 20-08 kwamen ALLE 18 missers in een run van 230 verzoeken van vier
+    // PIDs die de ECU ontkent. Dat gaf 15% foutgraad, een pollbudget van 55%
+    // en de waarschuwing "veel lege antwoorden van de ECU" — allemaal door de
+    // meting zelf veroorzaakt.
+    if (typeof ecuSteunt !== 'function')
+      return { staat: 'LET OP', detail: 'ecuSteunt ontbreekt — de run kan zichzelf niet ontzien' };
+    let bits = {};
+    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
+    if (!Object.keys(bits).length)
+      return { staat: 'LET OP', detail: 'nog geen bitmaps — blok 3 vraagt deze run alles op' };
+    // Wat zou de sweep nu overslaan?
+    let over = 0;
+    try {
+      const bron = (typeof discoveredPIDDefs !== 'undefined' && discoveredPIDDefs.length)
+        ? discoveredPIDDefs.map(function (d) { return d.pid; })
+        : (typeof activePIDs !== 'undefined' ? Array.from(activePIDs) : []);
+      over = bron.filter(function (p) { return ecuSteunt(p) === false; }).length;
+    } catch (e) {}
+    return over
+      ? 'sweep slaat ' + over + ' ontkende PIDs over — scheelt evenzoveel lege antwoorden'
+      : 'geen ontkende PIDs in de sweeplijst (profiel is schoon)';
+  });
+
+  // ── TOEGEVOEGD 20-08 (avond): de preset gaat langs de steunbits ──
+  await _doe(5, 'Preset respecteert de steunbits', function () {
+    if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
+      return { staat: 'FOUT', detail: 'de poort ontbreekt — de preset kan weer fantomen terugzetten' };
+    let bits = {};
+    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
+    const blokken = Object.keys(bits).length;
+    if (!blokken)
+      return { staat: 'LET OP', detail: 'nog geen bitmaps gelezen — de zeef laat dan alles door (bedoeld)' };
+    // Op deze CX-5 moet 015C geweigerd worden en 0110 doorgelaten: dat is
+    // precies het paar uit MERK_EXTRA_PIDS.MAZDA dat op 20-08 misging.
+    const uit = [];
+    if (magToevoegen('015C')) uit.push('015C zou nog toegevoegd worden');
+    if (!magToevoegen('010C')) uit.push('010C wordt geweigerd — te gretige zeef');
+    if (uit.length) return { staat: 'FOUT', detail: uit.join('; ') };
+    return blokken + ' bitmapblokken gelezen, poort actief';
+  });
+
+  await _doe(5, 'Geen fantomen in supportedPIDs', function () {
+    // De echte uitkomst, niet de code: staat er nog iets in de actieve set dat
+    // de ECU ontkent? Dit is wat blok 6 op 20-08 als "7 van 62" meldde.
+    if (typeof supportedPIDs === 'undefined' || !supportedPIDs.size)
+      return { staat: 'LET OP', detail: 'supportedPIDs leeg' };
+    if (typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'ecuSteunt ontbreekt' };
+    const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
+    if (ontkend.length)
+      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size +
+        ' worden door de ECU ontkend: ' + ontkend.join(', ') + ' — iets zet ze terug ná de discovery' };
+    return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
+  });
 
   // ── TOEGEVOEGD 20-08: adaptertype stuurt de ketenvolgorde ──
   await _doe(5, 'Keten volgt het adaptertype', function () {
@@ -1733,7 +1864,11 @@ const CAMPAGNE = {
     'NIEUW — loopt de cascade zichtbaar mee op het startscherm tijdens het verbinden, en klopt de volgorde met het BT-log?',
     'NIEUW — komt "Brandstof: benzine (obd)" in de verbindstappen te staan, VOOR de sensorcheck? Op de CX-5 hoort 0151 dat zonder kenteken op te lossen.',
     'NIEUW — begint de keten nu met SPP in plaats van BLE? Op 20-08 kostte de BLE-scan 18 van de 44 seconden. Kies "OBDLink MX+" in het startscherm en kijk of "Keten: Classic eerst" in het log staat.',
-    'KERNVRAAG — waarom laadt het VIN-profiel niet? Drie verbindingen op rij sloegen er een op en gebruikten hem daarna niet. Blok 1 "VIN-profiel" zegt nu of hij in de opslag staat; het BT-log zegt waarom hij is afgewezen. Zonder dit blijft punt 1 onbevestigbaar, want profielTegenSteunbits zit alléén in het profielpad.',
+    'KERNVRAAG — meldt blok 6 nu 0 ontkend? Op 20-08 stond daar "7 van 62" terwijl de discovery 55 schone PIDs opleverde: applyVehiclePIDPreset zette MAZDA 015C er 23 seconden later bovenop. Die preset gaat nu langs de steunbits.',
+    'Staat er bij het verbinden "Preset sloeg N sensoren over die deze auto niet heeft"? Op de CX-5 hoort daar 015C bij.',
+    'NA HET VERBINDEN — komt er nu meteen één samenvattingsscherm in plaats van zes stappen, en wordt het kenteken niet meer een tweede keer gevraagd?',
+    'BUSBELASTING — blijft de foutgraad nu op 0%? Op 20-08 kwamen alle 18 missers van 0114, 015E, 015C en 0146; die worden nu niet meer opgevraagd. Verdwijnt daarmee ook de melding "veel lege antwoorden van de ECU"?',
+    'PROFIEL — verbind TWEE keer zonder de app-gegevens te wissen. De eerste maakt het profiel (55 PIDs), pas de tweede laadt het en toont "Bekend voertuig". Blok 1 "VIN-profiel" zegt of hij in de opslag staat.',
     'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (0146, 0114, 010A, 015E, 012C, 015C, 015A)',
     'Zegt blok 6 "0 ontkend" op een profiel dat vóór deze rit nog vervuild wás? Alleen dan bewijst het iets.',
     'Verdwijnt er niets dat het wel deed? Kijk of 010C, 0104, 0105, 010E en 0115 er nog zijn.',

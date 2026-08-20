@@ -148,9 +148,38 @@ async function autoExpertAsk(mode){
 // ══════════════════════════════════════════════════════════════════
 let _wizStep=0;
 
+// ══════════════════════════════════════════════════════════════════
+// DE WIZARD — teruggebracht tot één scherm (20-08-2026)
+// ══════════════════════════════════════════════════════════════════
+// Er waren zes stappen, en vier ervan lieten iets zien dat al gebeurd was.
+// initConnection() doet ALLES — protocol, VIN, discovery, health-scan,
+// snelheidsmeting, profiel opslaan — en roept daarna pas wizShow() aan.
+//
+//   stap 1  toonde adapter en protocol, en wachtte 2 seconden voor niets.
+//           Het startscherm toont de adapter nu zelf, met de cascade live.
+//   stap 2  mat de bussnelheid NOG EENS. initConnection deed dat al op
+//           regel 1721 van pidlane-bt.js, inclusief applyStrategy. Acht
+//           extra metingen op de bus voor een getal dat al bekend was.
+//   stap 3  toonde een voortgangsbalk voor een discovery die klaar was.
+//   stap 4  vroeg het kenteken in een tweede invoerveld, naast kentInput
+//           in de voertuigkaart. De brandstofpoort vraagt het nu al, en
+//           alleen wanneer het echt nodig is — zie brandstofPoort() in
+//           pidlane-voertuigdata.js.
+//   stap 5  toonde een voortgangsbalk voor een health-scan die klaar was.
+//           Er zat zelfs een deadline van 4 seconden in om te voorkomen
+//           dat de nep-animatie bleef hangen.
+//
+// Wat overblijft is stap 6: de samenvatting. Die doet echt werk
+// (selectStandardSet) en vertelt de gebruiker wat er is gevonden.
+//
+// De HTML van wizS1 t/m wizS5 blijft in index.html staan maar wordt nooit
+// meer getoond. Weghalen raakt de div-balans en is een aparte, mechanische
+// opruimstap — niet mengen met een gedragswijziging.
 function wizShow(){
   document.getElementById('wizardOv').classList.remove('hidden');
-  wizGo(1);
+  // Stappenbalk verbergen: met één stap zegt "1 van 6" niets meer.
+  try{ const bar=document.getElementById('wizStepBar'); if(bar) bar.style.display='none'; }catch(e){}
+  wizGo(6);
 }
 function wizHide(){
   document.getElementById('wizardOv').classList.add('hidden');
@@ -176,126 +205,32 @@ function wizGo(n){
   for(let i=1;i<=6;i++) document.getElementById('wizS'+i)?.classList.add('hidden');
   const active=document.getElementById('wizS'+n);
   if(active) active.classList.remove('hidden');
-  // Stap-acties
-  if(n===1) _wizStep1();
-  if(n===2) _wizStep2();
-  if(n===3) _wizStep3();
-  if(n===4) _wizStep4();
-  if(n===5) _wizStep5();
+  // Stap-acties. Alleen 6 bestaat nog; 1 t/m 5 zijn op 20-08 verwijderd omdat
+  // ze werk toonden dat initConnection al had gedaan. Een aanroep van een
+  // verdwenen stap is een fout die je wilt zien, niet stil wegslikken.
   if(n===6) _wizStep6();
+  else if(typeof btDiag==='function') btDiag('wizGo('+n+') — die stap bestaat niet meer','warn');
 }
 
 function wizNext(n){ wizGo(n); }
 
-// STAP 1 — Verbonden: toon protocol + adapter naam
-function _wizStep1(){
-  const net=typeof selectedNetwork!=='undefined'?selectedNetwork:null;
-  const proto=typeof _connSpeed!=='undefined'&&_connSpeed?_connSpeed.protocol:'';
-  const adapterNaam=net?.name||(window._sppConn?.name)||'OBD2 adapter';
-  document.getElementById('wizS1Proto').textContent=
-    `${adapterNaam}${proto&&proto!=='?'?' · '+proto:''}`;
-  const info=document.getElementById('wizS1Info');
-  info.innerHTML=`📡 Adapter: <b>${adapterNaam}</b><br>🔌 Protocol: <b>${proto||'wordt gedetecteerd...'}</b>`;
-  setTimeout(()=>wizGo(2), 2000);
-}
+// STAP 1 t/m 5 zijn op 20-08-2026 VERWIJDERD. Ze toonden voortgang voor werk
+// dat initConnection() al had gedaan: adapter en protocol (staan nu op het
+// startscherm, met de cascade live), een tweede snelheidsmeting van 8 reads
+// bovenop die van regel 1721 in pidlane-bt.js, en twee voortgangsbalken voor
+// een discovery en een health-scan die allebei klaar waren — met een deadline
+// van 4 seconden erin om te voorkomen dat de nep-animatie bleef hangen.
+//
+// Stap 4 vroeg het kenteken in een tweede invoerveld naast kentInput. Dat doet
+// brandstofPoort() nu, en alleen wanneer de brandstof anders onbekend blijft.
+//
+// wizNext() en wizRdwLookup() blijven bestaan: de knoppen in wizS4 roepen ze
+// nog aan. Die HTML wordt nooit meer getoond, maar een verdwenen functie
+// achter een bestaande onclick is een dode knop — zie test-dodeknoppen.js.
 
-// STAP 2 — Adapter evalueren: snelheid meten + strategie kiezen in wizard
-async function _wizStep2(){
-  const fill=document.getElementById('wizMeterFill');
-  const lbl=document.getElementById('wizMeterLbl');
-  fill.style.width='15%'; lbl.textContent='Meten...';
-  // Alleen meten, GEEN stratOverlay popup (wizard heeft eigen UI)
-  const speed=await measureConnSpeed(demoMode?0:8);
-  fill.style.width='100%';
-  if(!speed){ wizGo(3); return; }
-  const rps=speed.readsPerSec;
-  lbl.textContent=`⚡ ${rps} reads/sec · ⏱ ${speed.avgMs}ms`;
-  // Geen keuzemenu meer: het pollbudget wordt automatisch geregeld door
-  // PLLoad op basis van gemeten busbezetting. De gemeten snelheid blijft wel
-  // zichtbaar — die zegt iets over de adapter — maar is geen vraag meer.
-  const voorstel=suggestStrategy(speed);
-  try{ applyStrategy(voorstel); }catch(e){}
-  const strats=document.getElementById('wizStrats');
-  if(strats) strats.style.display='none';
-  lbl.textContent=`⚡ ${rps} reads/sec · ⏱ ${speed.avgMs}ms — tempo wordt automatisch geregeld`;
-  setTimeout(()=>wizGo(3), 900);
-}
 
-// STAP 3 — PIDs ontdekken: discovery loopt al, toon voortgang
-function _wizStep3(){
-  const fill=document.getElementById('wizS3Fill');
-  const count=document.getElementById('wizS3Count');
-  const sub=document.getElementById('wizS3Sub');
-  let pct=0;
-  // FIX: de 30s-fallback vuurde ALTIJD — ook als discovery allang klaar was en
-  // de gebruiker al op stap 5/6 zat → hard teruggeschoten naar stap 4.
-  // Nu: handle bewaren, cancelen bij succes, en guard op _wizStep===3.
-  let fb=null;
-  const finish=()=>{ if(fb){ clearTimeout(fb); fb=null; } };
-  const t=setInterval(()=>{
-    const n=typeof supportedPIDs!=='undefined'?supportedPIDs.size:0;
-    pct=Math.min(pct+Math.random()*8+2, 95);
-    fill.style.width=pct+'%';
-    count.textContent=n>0?`${n} sensoren gevonden`:'Scannen...';
-    // Als discovery klaar is (supportedPIDs niet meer 0 en buildDiscoveredPIDList al gedraaid)
-    if(n>0 && typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs.length>0 && pct>60){
-      clearInterval(t); finish();
-      fill.style.width='100%';
-      count.textContent=`✅ ${n} sensoren gevonden`;
-      sub.textContent='Discovery voltooid';
-      setTimeout(()=>{ if(_wizStep===3) wizGo(4); }, 800);
-    }
-  }, 400);
-  // Fallback: na 30s toch door — maar alleen als we nog écht op stap 3 staan
-  fb=setTimeout(()=>{ fb=null; clearInterval(t); if(_wizStep===3) wizGo(4); }, 30000);
-}
 
-// STAP 4 — Voertuig: eerst tonen wat de VIN al prijsgaf, dán kenteken optioneel
-function _wizStep4(){
-  const v=getVehicle()||{};
-  const known=document.getElementById('wizVinKnown');
-  const vinRow=document.getElementById('wizVinRow');
-  const hint=document.getElementById('wizKentHint');
-  // Heeft de VIN-uitlezing iets bruikbaars opgeleverd?
-  const heeftMerk=v.merk&&v.merk!=='Onbekend'&&v.merk!=='Onbekend merk';
-  const heeftIets=heeftMerk||v.year||v.brandstof||v.motor;
 
-  if(v.vin&&heeftIets){
-    // Toon kaart met alles wat we al weten uit de VIN (NHTSA)
-    const rows=[];
-    if(heeftMerk) rows.push(['Merk/model',`${v.merk}${v.model?' '+v.model:''}`]);
-    if(v.year)      rows.push(['Bouwjaar', v.year]);
-    if(v.motor)     rows.push(['Motor', v.motor]);
-    if(v.brandstof) rows.push(['Brandstof', cap(v.brandstof)]);
-    known.style.display='';
-    known.innerHTML=`<div class="vk-head">✓ Al bekend via VIN-uitlezing</div>
-      <div class="vk-grid">${rows.map(([k,val])=>`<span class="vk-k">${k}</span><span class="vk-v">${val}</span>`).join('')}</div>`;
-    vinRow.style.display='';
-    vinRow.innerHTML=`🔑 VIN: <b>${v.vin}</b>`;
-    // Kenteken alleen nog nuttig als merk/model/brandstof incompleet zijn
-    const compleet=heeftMerk&&v.model&&v.brandstof;
-    hint.textContent=compleet
-      ? 'Voertuig is compleet herkend. Kenteken invoeren is optioneel (voegt o.a. kleur, APK en historie toe).'
-      : 'Sommige gegevens ontbreken nog. Vul het kenteken in om merk, model en brandstof aan te vullen via de RDW.';
-  } else if(v.vin){
-    // VIN gelezen maar niets te decoderen
-    known.style.display='none';
-    vinRow.style.display='';
-    vinRow.innerHTML=`🔑 VIN: <b>${v.vin}</b> — niet herkend in database`;
-    hint.textContent='De VIN leverde geen voertuiggegevens op. Vul het kenteken in voor merk, model, bouwjaar en brandstof.';
-  } else {
-    // Geen VIN
-    known.style.display='none';
-    vinRow.style.display='';
-    vinRow.innerHTML='VIN niet uitgelezen door de auto.';
-    hint.textContent='Vul het kenteken in voor merk, model, bouwjaar en brandstof via de RDW.';
-  }
-
-  // Bestaand kenteken voorvullen
-  const savedKent=localStorage.getItem('pl_kenteken')||'';
-  document.getElementById('wizKent').value=savedKent;
-  document.getElementById('wizKentStatus').innerHTML='';
-}
 
 // Hoofdletter aan begin (brandstof-labels netjes weergeven)
 function cap(s){ s=String(s||''); return s? s.charAt(0).toUpperCase()+s.slice(1) : s; }
@@ -341,59 +276,6 @@ function _wizRefreshKnown(){
     <div class="vk-grid">${rows.map(([k,val])=>`<span class="vk-k">${k}</span><span class="vk-v">${val}</span>`).join('')}</div>`;
 }
 
-// STAP 5 — Sensorcheck: initialHealthScan is al klaar (await vóór wizard),
-// dit toont alleen de uitkomst met een korte voortgangsanimatie.
-async function _wizStep5(){
-  const fill=document.getElementById('wizS5Fill');
-  const count=document.getElementById('wizS5Count');
-  const sub=document.getElementById('wizS5Sub');
-  const pids=typeof supportedPIDs!=='undefined'?[...supportedPIDs]:[];
-  // Globale veiligheidslimiet: nooit langer dan 4s blijven hangen, ook al
-  // mist er onverhoopt een PID in _pidHealth (voorkomt terugval/blokkade).
-  const deadline=Date.now()+4000;
-  let done=0;
-  for(const pid of pids){
-    // Korte wacht alleen als deze PID nog niet beoordeeld is (zelden);
-    // stopt zodra de globale deadline is bereikt.
-    while(!_pidHealth[pid] && Date.now()<deadline){ await delay(60); }
-    done++;
-    const pct=Math.round((done/Math.max(pids.length,1))*100);
-    fill.style.width=pct+'%';
-    count.textContent=`${done} / ${pids.length} gecontroleerd`;
-    // Vloeiende animatie zonder de stap traag te maken
-    if(pids.length<=20) await delay(25);
-  }
-  // Render resultaten
-  const ok=pids.filter(p=>_pidHealth[p]==='ok').length;
-  const geen=pids.filter(p=>_pidHealth[p]==='nodata').length;
-  const onzin=pids.filter(p=>_pidHealth[p]==='onzin').length;
-  sub.textContent=`${ok} actief · ${geen} niet aanwezig · ${onzin} ongeldig`;
-  fill.style.width='100%';
-  // Categorie-samenvatting
-  const cats={};
-  pids.forEach(pid=>{
-    if(_pidHealth[pid]!=='ok') return;
-    const d=getPidDef(pid);
-    const cat=(d&&d.cat)||'Overig';
-    cats[cat]=(cats[cat]||0)+1;
-  });
-  const catSum=document.getElementById('wizCatSum');
-  catSum.style.display='';
-  catSum.innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,n])=>
-    `<span class="wiz-cat-chip ok">${c}: ${n}</span>`).join('')+
-    (geen>0?`<span class="wiz-cat-chip none">Niet aanwezig: ${geen}</span>`:'');
-  // Detail: lijst van gezonde PIDs
-  const detail=document.getElementById('wizPidDetail');
-  const gezond=pids.filter(p=>_pidHealth[p]==='ok');
-  detail.innerHTML=gezond.map(p=>{
-    const d=getPidDef(p);
-    return `<span style="color:var(--gn)">✓</span> ${d?d.name:p}`;
-  }).join('<br>')+
-  (geen>0?'<hr style="border-color:var(--bd);margin:6px 0">'+
-    pids.filter(p=>_pidHealth[p]==='nodata').map(p=>{const d=getPidDef(p);return `<span style="color:var(--tx3)">—</span> ${d?d.name:p} <span style="color:var(--tx3);font-size:11px">niet aanwezig</span>`;}).join('<br>'):'');
-  document.getElementById('wizDetailToggle').style.display='';
-  setTimeout(()=>wizGo(6), 1200);
-}
 
 function wizToggleDetail(){
   const d=document.getElementById('wizPidDetail');
