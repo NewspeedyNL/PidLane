@@ -229,3 +229,153 @@ function _dossierPromptLine(){
     return '\nDOSSIER (door gebruiker bevestigd, LEIDEND): '+p.join('; ')+'. Weeg km-stand en onderhoudshistorie zwaar mee; goede live-waarden sluiten achterstallig onderhoud of hoge km zonder beurt NIET uit — benoem dat als risico.';
   }catch(e){ return ''; }
 }
+
+// ══════════════════════════════════════════════════════════════════
+// BRANDSTOFPOORT — zorgt dat het brandstoftype bekend is vóórdat er
+// beslissingen op worden genomen
+// ══════════════════════════════════════════════════════════════════
+// HET PROBLEEM
+//
+// pidGate() filtert fantoomsensoren weg op basis van vehicleFuelType():
+// geen NOx/AdBlue op een benzineauto, geen lambda-trims op een diesel.
+// initialHealthScan() beoordeelt élke PID en gebruikt die gate. Maar de
+// volgorde in initConnection() was:
+//
+//     VIN → NHTSA → updateVehicleCard → initialHealthScan → wizard(kenteken)
+//
+// Het kenteken kwam dus ná de scan die het had moeten sturen. Bij een
+// voertuig dat al eens is uitgelezen viel dat niet op: updateVehicleCard
+// doet een automatische rdwLookup() op het opgeslagen kenteken, ruim vóór
+// de scan. Alleen de eerste keer ging het mis — precies de keer dat het
+// profiel wordt aangemaakt dat daarna hergebruikt wordt.
+//
+// WAAROM DE VIN HET NIET OPLOST
+//
+// tryReadVIN() decodeert via vpic.nhtsa.dot.gov, de Amerikaanse
+// voertuigdatabase. Voor een Japanse of Europese auto levert die vaak
+// alleen het merk. Dat verklaart waarom vehicleInfo op 17-08 op enkel
+// "Mazda" bleef staan en op 18-08 compleet was: op 18-08 stond het
+// kenteken in localStorage en deed de RDW het werk.
+//
+// DE VOLGORDE HIER
+//
+// Van goedkoop naar duur, en de gebruiker komt als laatste:
+//
+//   1. Al bekend uit VIN/NHTSA/RDW? Klaar, niets vragen.
+//   2. PID 0151 uitlezen. Eén commando, ~150 ms, en de auto weet het
+//      zelf. Dit lost het in de praktijk meestal op.
+//   3. Pas dan het kenteken vragen, met een overslaan-knop die werkt.
+//
+// Stap 2 is geen nieuwe kennis: vehicleFuelType() viel al terug op
+// pidVals['0151']. Alleen stond die waarde er tijdens de scan nog niet
+// betrouwbaar in — dat hing af van de pollvolgorde. Nu wordt hij
+// expliciet opgehaald op het moment dat hij nodig is.
+async function brandstofPoort(){
+  const nu = () => { try{ return vehicleFuelType(); }catch(e){ return 'onbekend'; } };
+
+  if(nu() !== 'onbekend') return { bron:'bekend', type:nu() };
+  if(typeof connected === 'undefined' || !connected) return { bron:'geen verbinding', type:'onbekend' };
+  if(typeof demoMode !== 'undefined' && demoMode) return { bron:'demo', type:nu() };
+
+  // ── 2. De auto zelf vragen ──
+  try{
+    const r = await sendCmd('0151', 2500);
+    const h = String(r||'').replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+    const i = h.indexOf('4151');
+    if(i >= 0){
+      const code = parseInt(h.substr(i+4,2), 16);
+      if(isFinite(code) && code >= 1){
+        // In pidVals zetten: vehicleFuelType() leest die als terugval, dus
+        // hiermee weten de gate en de health-scan het meteen.
+        try{ if(typeof pidVals !== 'undefined' && pidVals) pidVals['0151'] = code; }catch(e){}
+        const type = nu();
+        if(type !== 'onbekend'){
+          try{ btDiag('Brandstof uit de auto (0151='+code+'): '+type, 'ok'); }catch(e){}
+          return { bron:'obd', type, code };
+        }
+      }
+    }
+    try{ btDiag('0151 gaf geen bruikbaar brandstoftype', 'warn'); }catch(e){}
+  }catch(e){
+    try{ btDiag('0151 uitlezen mislukt: '+(e.message||e), 'warn'); }catch(_){}
+  }
+
+  // ── 3. Het kenteken vragen ──
+  // Alleen hier, en alleen als er nog niets anders werkte. Een vraag die je
+  // stelt terwijl je het antwoord al hebt, leert mensen om weg te klikken.
+  const kent = await _vraagKenteken();
+  if(!kent) return { bron:'overgeslagen', type:'onbekend' };
+
+  try{
+    const inp = document.getElementById('kentInput');
+    if(inp) inp.value = kent;
+    const res = await rdwLookup();
+    if(res && res.ok){
+      try{ localStorage.setItem('pl_kenteken', kent); }catch(e){}
+      const type = nu();
+      try{ btDiag('Brandstof via RDW ('+kent+'): '+type, 'ok'); }catch(e){}
+      return { bron:'rdw', type, kenteken:kent };
+    }
+  }catch(e){
+    try{ btDiag('RDW-lookup mislukt: '+(e.message||e), 'warn'); }catch(_){}
+  }
+  return { bron:'rdw-mislukt', type:nu() };
+}
+
+// Klein invoerscherm. Bewust géén plBevestig: dat is ja/nee, hier is een
+// waarde nodig. Overslaan staat er even duidelijk bij als opzoeken — wie
+// geen Nederlands kenteken heeft moet niet vast komen te zitten.
+function _vraagKenteken(){
+  return new Promise(function(klaar){
+    let af = false;
+    const sluit = function(waarde){
+      if(af) return; af = true;
+      try{ document.removeEventListener('keydown', esc); }catch(e){}
+      try{ ov.remove(); }catch(e){}
+      klaar(waarde || '');
+    };
+    const esc = function(e){ if(e.key === 'Escape') sluit(''); };
+
+    const ov = document.createElement('div');
+    ov.id = 'brandstofPoortOv';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10025;background:rgba(8,11,17,.975);' +
+      'display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML =
+      '<div style="width:100%;max-width:400px;background:var(--sur,#131926);border:1px solid var(--bd,#28324a);' +
+        'border-radius:14px;padding:18px">' +
+        '<div style="font-size:16px;font-weight:800;color:var(--tx,#eef2fa);margin-bottom:4px">' +
+          'Benzine of diesel?</div>' +
+        '<div style="font-size:12px;color:var(--tx2,#9aa6bd);line-height:1.55;margin-bottom:12px">' +
+          'Deze auto geeft zijn brandstoftype niet prijs, en de VIN-database kent hem niet. ' +
+          'Met het kenteken haalt PidLane het bij de RDW op.<br><br>' +
+          'Zonder deze gegevens worden er sensoren getoond die deze auto niet heeft — ' +
+          'roetfilter op een benzinemotor, of lambdatrims op een diesel.</div>' +
+        '<input id="bpKent" placeholder="Kenteken" maxlength="8" autocomplete="off" ' +
+          'style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:9px;' +
+          'border:1px solid var(--bd,#28324a);background:var(--sur2,#1b2333);color:var(--tx,#eef2fa);' +
+          'font:600 15px var(--f);text-transform:uppercase;letter-spacing:.06em;text-align:center">' +
+        '<button id="bpOk" style="width:100%;margin-top:10px;background:var(--ac,#4d82ff);color:#fff;border:0;' +
+          'border-radius:9px;padding:12px;font:700 14px var(--f);cursor:pointer">Opzoeken bij de RDW</button>' +
+        '<button id="bpSkip" style="width:100%;margin-top:7px;background:var(--sur2,#1b2333);' +
+          'color:var(--tx2,#9aa6bd);border:1px solid var(--bd,#28324a);border-radius:9px;padding:11px;' +
+          'font:600 13px var(--f);cursor:pointer">Overslaan — geen Nederlands kenteken</button>' +
+      '</div>';
+    document.body.appendChild(ov);
+
+    const veld = ov.querySelector('#bpKent');
+    const lees = function(){
+      return String(veld.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    };
+    ov.querySelector('#bpOk').onclick = function(){
+      const k = lees();
+      if(k.length < 4){ veld.style.borderColor = 'var(--rd,#ff5a5a)'; return; }
+      sluit(k);
+    };
+    ov.querySelector('#bpSkip').onclick = function(){ sluit(''); };
+    veld.addEventListener('keydown', function(e){ if(e.key === 'Enter') ov.querySelector('#bpOk').click(); });
+    document.addEventListener('keydown', esc);
+    try{ veld.focus(); }catch(e){}
+  });
+}
+
+window.brandstofPoort = brandstofPoort;

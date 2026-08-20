@@ -47,7 +47,7 @@ var KRITIEK = [
   'log','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
-  'plBevestig','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
+  'brandstofPoort','plBevestig','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',
   'selectCategoryPIDs','sendCmd','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',

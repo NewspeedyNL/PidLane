@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '1.8 (20-08-2026)';
+const TESTRUN_VERSIE = '2.0 (20-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1063,6 +1063,71 @@ async function _blok9() {
 // klant erop drukt.
 async function _blok5() {
 
+  // ── TOEGEVOEGD 20-08: brandstof vóór de health-scan ──
+  await _doe(5, 'Brandstofpoort staat vóór de scan', function () {
+    if (typeof brandstofPoort !== 'function')
+      return { staat: 'FOUT', detail: 'brandstofPoort ontbreekt — de scan draait weer blind' };
+    let bron = '';
+    try { bron = String(window.initConnection || ''); } catch (e) {}
+    if (!bron) {
+      // initConnection zit niet als global in deze build; dan is de volgorde
+      // niet uit de bron te lezen. Geen fout, wel het vermelden waard.
+      return 'aanwezig — volgorde niet verifieerbaar (initConnection niet globaal)';
+    }
+    const iPoort = bron.indexOf('brandstofPoort');
+    const iScan = bron.indexOf('initialHealthScan');
+    if (iPoort < 0) return { staat: 'FOUT', detail: 'initConnection roept brandstofPoort niet aan' };
+    if (iScan >= 0 && iPoort > iScan)
+      return { staat: 'FOUT', detail: 'brandstofpoort staat NA de health-scan — dat is de bug die hij moest oplossen' };
+    return 'poort vóór de health-scan bedraad';
+  });
+
+  await _doe(5, 'Brandstoftype is bekend', function () {
+    let ft = 'onbekend';
+    try { ft = vehicleFuelType(); } catch (e) { return { staat: 'FOUT', detail: 'vehicleFuelType ontbreekt' }; }
+    let bron = 'geen';
+    try {
+      if (vehicleInfo && vehicleInfo.brandstof) bron = 'voertuiggegevens (' + vehicleInfo.brandstof + ')';
+      else if (typeof pidVals !== 'undefined' && pidVals['0151'] != null) bron = 'OBD 0151=' + pidVals['0151'];
+    } catch (e) {}
+    if (ft === 'onbekend')
+      return { staat: 'LET OP', detail: 'onbekend — fantoomsensoren zijn nu niet te filteren; vul een kenteken in' };
+    return ft + ' via ' + bron;
+  });
+
+  // ── TOEGEVOEGD 20-08: startscherm per adaptertype ──
+  await _doe(5, 'Startscherm kent adaptertypes', function () {
+    if (!window.PLStart || !PLStart.adapters)
+      return { staat: 'FOUT', detail: 'PLStart ontbreekt — startscherm valt terug op de statische stappen' };
+    const a = PLStart.adapters;
+    const namen = Object.keys(a);
+    if (namen.length < 4) return { staat: 'FOUT', detail: 'maar ' + namen.length + ' profielen' };
+    // De hele reden voor deze module: de instructies moeten per type verschillen.
+    // Zijn ze gelijk, dan is er een profiel overschreven en krijgt een ELM327
+    // weer MX+-instructies.
+    const mx = (a.mxplus.stappen || []).join(' ');
+    const elm = (a.elm327.stappen || []).join(' ');
+    const ble = (a.ble.stappen || []).join(' ');
+    if (mx === elm || elm === ble) return { staat: 'FOUT', detail: 'profielen hebben identieke stappen' };
+    if (!/pair-knop/i.test(mx)) return { staat: 'FOUT', detail: 'MX+ noemt de pair-knop niet' };
+    if (/pair-knop/i.test(elm)) return { staat: 'FOUT', detail: 'ELM327 noemt een pair-knop die hij niet heeft' };
+    if (!/1234|0000/.test(elm)) return { staat: 'FOUT', detail: 'ELM327 noemt geen pincode' };
+    return namen.length + ' profielen, elk met eigen stappen';
+  });
+
+  await _doe(5, 'Cascade meldt zich aan het startscherm', function () {
+    if (!window.PLStart || typeof PLStart.poging !== 'function')
+      return { staat: 'FOUT', detail: 'PLStart.poging ontbreekt' };
+    // Zonder deze aanroepen staat de gebruiker twintig seconden naar een
+    // stilstaand scherm te kijken terwijl de keten wordt afgelopen.
+    let bron = '';
+    try { bron = String(window.connectSerial || ''); } catch (e) {}
+    const mist = ['PLStart.begin', 'PLStart.poging', 'PLStart.gelukt', 'PLStart.mislukt']
+      .filter(function (n) { return bron.indexOf(n) < 0; });
+    if (mist.length) return { staat: 'FOUT', detail: 'connectSerial roept niet aan: ' + mist.join(', ') };
+    return 'begin/poging/gelukt/mislukt alle vier bedraad in connectSerial';
+  });
+
   // ── TOEGEVOEGD 20-08: logboek en privacy-disclosure ──
   await _doe(5, 'Logboek leest alle bronnen', function () {
     if (!window.PLLogboek || typeof PLLogboek.verzamel !== 'function')
@@ -1115,6 +1180,7 @@ async function _blok5() {
   await _doe(5, 'Is deze deploy compleet', function () {
     const eis = ['profielTegenSteunbits', 'pidCmd', 'probeUitgebreid', 'plHerijkTick', 'plOpslaan',
                  'openLogboek', 'openPrivacy', 'plLokaalLog'];
+    if (!window.PLStart) eis.push('PLStart (startscherm)');
     const weg = eis.filter(function (n) { return typeof window[n] !== 'function'; });
     if (weg.length)
       return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') + ' — oude build. Lees de rest van deze run niet als bevestiging.' };
@@ -1571,6 +1637,8 @@ const CAMPAGNE = {
     'VOORAF — voer het kenteken in en controleer dat blok 5 geen FOUT geeft. De run van 19-08 draaide op een build zonder profielTegenSteunbits; die uitslag telt niet.',
     'NIEUW — verschijnt het privacyscherm vóór het Android-dialoog "apparaten in de buurt", en breekt de weigerknop het verbinden netjes af?',
     'NIEUW — staan er in het Logboek (kebab) regels uit BT, APP en PID door elkaar, op tijd gesorteerd?',
+    'NIEUW — loopt de cascade zichtbaar mee op het startscherm tijdens het verbinden, en klopt de volgorde met het BT-log?',
+    'NIEUW — komt "Brandstof: benzine (obd)" in de verbindstappen te staan, VOOR de sensorcheck? Op de CX-5 hoort 0151 dat zonder kenteken op te lossen.',
     'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (0146, 0114, 010A, 015E, 012C, 015C, 015A)',
     'Zegt blok 6 "0 ontkend" op een profiel dat vóór deze rit nog vervuild wás? Alleen dan bewijst het iets.',
     'Verdwijnt er niets dat het wel deed? Kijk of 010C, 0104, 0105, 010E en 0115 er nog zijn.',

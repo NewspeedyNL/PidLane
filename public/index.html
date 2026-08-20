@@ -662,16 +662,17 @@ function closeConnOv(){
           <div class="api-lbl">🤖 API Key <a href="mailto:nico@pidlane.nl?subject=PidLane%20API-key%20aanvraag">Aanvragen bij admin →</a></div>
           <input class="api-inp" id="startApiKey" type="password" placeholder="sk-ant-api03-... (handmatig invoeren)" autocomplete="off">
         </div>
+        <!-- 20-08-2026 — pidlane-start.js VERVANGT deze div zodra hij laadt, en
+             toont dan de stappen die bij de gekozen adapter horen (of een
+             compacte kaart voor wie al eens verbonden is). Wat hieronder staat
+             is het vangnet: laadt die module niet, dan ziet een nieuwe
+             gebruiker nog steeds hoe het moet. Bewust generiek gehouden — de
+             oude tekst noemde alleen de MX+ en klopte niet voor een ELM327. -->
         <div class="msteps">
-          <!-- 27-07-2026 — de tekst zit voortaan in één omhullend span-element.
-               .mstep is een flexbox, en een losse strong werd daardoor een
-               eigen flex-item:
-               "Eenmalig:" en "Druk eerst op de pair-knop" sprongen naar links
-               terwijl de rest van de zin rechts uitlijnde. -->
-          <div class="mstep"><div class="sn">1</div><span>Steek de OBDLink MX+ in de OBD-poort (onder het dashboard, links)</span></div>
+          <div class="mstep"><div class="sn">1</div><span>Steek de adapter in de OBD-poort (onder het dashboard, links)</span></div>
           <div class="mstep"><div class="sn">2</div><span>Zet het contact aan — de adapter start vanzelf op</span></div>
-          <div class="mstep"><div class="sn">3</div><span><strong>Eenmalig:</strong> koppel de adapter via de Bluetooth-instellingen van Android</span></div>
-          <div class="mstep"><div class="sn">4</div><span><strong>Druk eerst op de pair-knop op de MX+</strong> — de LED gaat knipperen</span></div>
+          <div class="mstep"><div class="sn">3</div><span><strong>Heeft de adapter een pair-knop?</strong> Druk die dan eerst in</span></div>
+          <div class="mstep"><div class="sn">4</div><span><strong>Eenmalig:</strong> koppel de adapter via de Bluetooth-instellingen van Android. Vraagt hij een pincode: 1234 of 0000</span></div>
           <div class="mstep"><div class="sn">5</div><span>Klik daarna op Verbinden; PidLane doet de rest</span></div>
         </div>
 
@@ -2322,6 +2323,7 @@ function closeConnOv(){
 <script src="pidlane-testrun.js"></script><!-- testrun: één knop, één rit, één logboek -->
 <script src="pidlane-logboek.js"></script><!-- logboek: voegt BT-, app- en PID-logs samen in één tijdlijn -->
 <script src="pidlane-privacy.js"></script><!-- privacy: prominente BT-disclosure vóór connectSerial + verklaring in menu -->
+<script src="pidlane-start.js"></script><!-- startscherm: adapterprofielen, geheugen, cascade-voortgang -->
 <script src="pidlane-bedrading.js"></script><!-- bedradingscontrole: bestaat alles wat modules van elkaar verwachten — MOET als laatste -->
 
 <script>

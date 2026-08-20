@@ -150,6 +150,11 @@ async function connectSerial(){
     return;
   }
 
+  // Startscherm laten zien dat de keten begint. De keten is hier pas
+  // samengesteld — welke transports erin zitten hangt af van wat de vorige
+  // keer werkte — dus dit kan niet eerder.
+  try{ if(window.PLStart) PLStart.begin(); }catch(e){}
+
   let lastErr = null;
   let permissionBlocked = false;
   // 2 pogingen: de eerste scan mist de adapter vaak (BLE-cache koud);
@@ -159,9 +164,14 @@ async function connectSerial(){
     if (pass === 2) btDiag('↻ Automatische tweede scanronde...', 'proto');
     for (const [label, fn] of chain){
       btDiag(`▶ Poging${pass>1?' (ronde '+pass+')':''}: ${label}`, 'proto');
+      try{ if(window.PLStart) PLStart.poging(label, pass); }catch(e){}
       try {
         await fn();
-        if (connected){ btDiag(`✓ Verbonden via ${label}`, 'ok'); return; }
+        if (connected){
+          btDiag(`✓ Verbonden via ${label}`, 'ok');
+          try{ if(window.PLStart) PLStart.gelukt(label); }catch(e){}
+          return;
+        }
         btDiag(`${label}: geen verbinding — volgende transport`, 'warn');
       } catch(e){
         lastErr = e;
@@ -196,6 +206,11 @@ async function connectSerial(){
     }
     if (!connected && !permissionBlocked && pass === 1) await delay(800);
   }
+
+  // Keten helemaal afgelopen zonder verbinding: de laatste poging in het
+  // startscherm nog van "bezig" naar "mislukt" zetten, anders blijft daar een
+  // regel staan pulseren terwijl er niets meer gebeurt.
+  try{ if(window.PLStart) PLStart.mislukt(); }catch(e){}
 
   resetConnectBtn();
   showConnError((lastErr?.message || 'Geen OBD2-adapter gevonden.') +
@@ -1643,6 +1658,20 @@ async function startDiscovery(){
   // zódat de gezondheidsscan hieronder het brandstoftype kent en diesel/SCR- of
   // turbo-fantoomsensoren correct kan wegfilteren op een benzineauto.
   updateVehicleCard(vinInfo);
+
+  // Brandstoftype vaststellen vóórdat de gate erop gaat beslissen. Zie
+  // brandstofPoort() in pidlane-voertuigdata.js: eerst kijken of het al
+  // bekend is, dan de auto zelf vragen (0151), en pas als laatste de
+  // gebruiker om een kenteken. Stond dit er niet, dan draaide de scan
+  // hieronder blind en werd het kenteken pas in de wizard gevraagd —
+  // ruim ná de beslissingen die het had moeten sturen.
+  try{
+    if(typeof brandstofPoort === 'function'){
+      const bp = await brandstofPoort();
+      if(bp && bp.type && bp.type !== 'onbekend') addProg('⛽', `Brandstof: ${bp.type} (${bp.bron})`);
+      else addProg('⚠️', 'Brandstoftype onbekend — sommige sensoren zijn niet te filteren');
+    }
+  }catch(e){ btDiag('Brandstofpoort overgeslagen: '+(e.message||e), 'warn'); }
 
   // Eerste gezondheidsscan: lees elke PID 1x en beoordeel of die gezond/bij
   // de auto hoort. Ongezonde/dode PIDs worden in de lijst uitgegrijsd.
