@@ -314,14 +314,21 @@ jobs:
               print("signingConfigs bestaat al - niets gedaan"); sys.exit(0)
           if "buildTypes {" not in g:
               print("FOUT: buildTypes niet gevonden in build.gradle"); sys.exit(1)
+          # LET OP de if-guard. Gradle evalueert dit hele bestand ook bij
+          # assembleDebug, en daar staan de PL_-variabelen niet. Zonder guard
+          # wordt het file(null) en faalt de DEBUG-build op regel 22 met
+          # "path may not be null or empty string" - een fout die niets met
+          # debug te maken lijkt te hebben. Gebeurd op 20-08.
           regels = [
               "",
               "    signingConfigs {",
               "        release {",
-              '            storeFile file(System.getenv("PL_KEYSTORE"))',
-              '            storePassword System.getenv("PL_STORE_PASS")',
-              '            keyAlias System.getenv("PL_KEY_ALIAS")',
-              '            keyPassword System.getenv("PL_KEY_PASS")',
+              '            if (System.getenv("PL_KEYSTORE")) {',
+              '                storeFile file(System.getenv("PL_KEYSTORE"))',
+              '                storePassword System.getenv("PL_STORE_PASS")',
+              '                keyAlias System.getenv("PL_KEY_ALIAS")',
+              '                keyPassword System.getenv("PL_KEY_PASS")',
+              "            }",
               "        }",
               "    }",
               "",
