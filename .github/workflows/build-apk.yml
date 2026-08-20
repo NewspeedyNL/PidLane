@@ -295,8 +295,24 @@ jobs:
             echo "FOUT: keystore niet leesbaar. Controleer KEYSTORE_BASE64 en KEYSTORE_PASSWORD."
             exit 1
           fi
+          # De private key er ook echt uit halen. De controle hierboven zegt
+          # alleen dat de STORE opengaat; Gradle heeft daarna het KEY-wachtwoord
+          # nodig en dat kan een andere zijn. Op 20-08 kostte dat drie minuten
+          # bouwen voor een fout die hier in twintig seconden zichtbaar is.
+          #
+          # Let op bij PKCS12 (de standaard van moderne keytool): dat formaat
+          # kent geen apart key-wachtwoord — store en key zijn daar altijd
+          # gelijk. Vul KEY_PASSWORD dan met dezelfde waarde als KEYSTORE_PASSWORD.
+          if ! keytool -certreq -keystore $RUNNER_TEMP/upload.jks \
+                 -alias "${{ secrets.KEY_ALIAS }}" \
+                 -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+                 -keypass "${{ secrets.KEY_PASSWORD }}" >/dev/null 2>&1; then
+            echo "FOUT: sleutel niet uitleesbaar. Controleer KEY_ALIAS en KEY_PASSWORD."
+            echo "Bij een PKCS12-keystore moet KEY_PASSWORD gelijk zijn aan KEYSTORE_PASSWORD."
+            exit 1
+          fi
           echo "getekend=ja" >> $GITHUB_OUTPUT
-          echo "Keystore geladen en leesbaar."
+          echo "Keystore geladen, sleutel uitleesbaar."
 
       - name: Inject signing config
         if: steps.signing.outputs.getekend == 'ja'
