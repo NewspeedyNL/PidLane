@@ -1,6 +1,6 @@
 # PLAN.md — wat er nog open staat
 
-Bijgewerkt: 20-08-2026.
+Bijgewerkt: 19-08-2026.
 
 Dit bestand is het werkplan over sessies heen: **alleen wat er nog moet
 gebeuren, in volgorde**. Wat er gebeurd is staat in `OVERDRACHT.md`, hoe het
@@ -23,47 +23,54 @@ het oude echt weg. Zie §20 in `PIDLANE.md`.
 
 ---
 
-## 1. Eerst rijden: drie dingen bevestigen
+## 1. Eerst rijden: bevestigen dat de preset-fix werkt
 
-**De poging van 19-08 telt niet.** Blok 5 meldde `profielTegenSteunbits
-ontbreekt` — de tablet draaide een oude build. Blok 6 zei wél "55 PIDs, geen
-enkele ontkend", en dat zag eruit als geslaagd, maar dat profiel was al schoon.
-Een halve deploy die eruitziet als een bevestiging is duurder dan een mislukte
-test. Testrun 1.7.1 zet die controle daarom vooraan in blok 5: staat daar FOUT,
-lees de rest van de run dan niet als bewijs.
+**De oorzaak is gevonden (20-08, avond).** Punt 1 leek vier ritten te falen
+terwijl de steunbitcontrole gewoon werkte. Uit het logboek van 19:36:
 
-Twee dingen vooraf, allebei op 19-08 misgegaan:
+```
+19:36:22  discovery uit de bitmaps      → 55 PIDs, precies conform
+19:36:26  profiel opgeslagen            → 55 PIDs, schoon
+19:36:49  applyVehiclePIDPreset()       → 26 PIDs erbij, waaronder 015C
+19:37:51  blok 6 telt supportedPIDs     → 62, waarvan 7 ontkend
+```
 
-- **Deploy compleet?** Blok 5 mag geen FOUT geven.
-- **Kenteken ingevoerd?** Zonder kenteken blijft `vehicleInfo` op alleen "Mazda"
-  staan en geeft het merkfilter in `probeUitgebreid()` GEEN kandidaten terug.
-  Dat lijkt op een defect en is het niet.
+`MERK_EXTRA_PIDS.MAZDA = ['015C','0110']` stond hard in
+`pidlane-rijsituatie.js` en zette de motorolietemperatuur terug die de bitmap
+net had ontkend. "Een fix die faalt door een fix" in zuivere vorm: de gate zat
+in `profielTegenSteunbits()`, niet in de preset.
 
-Doe de rest in één rit met **testrun 1.7.1**, en let erop dat het profiel vóór
-de rit nog vervuild ís — anders bewijst "0 ontkend" niets.
+**Wat er is veranderd.** De bitmaps worden nu bewaard zodra ze gelezen worden
+(`_steunbits` in `pidlane-rijsituatie.js`), en `magToevoegen()` is de poort
+waar de preset langs moet. De scheidslijn staat als commentaar bij die functie:
+toevoegen op **bewijs** (een echt antwoord) mag zonder zeef, toevoegen op
+**aanname** (merk + brandstof) niet. Alle vijf toevoegplekken zijn nagelopen;
+alleen de preset viel in de tweede categorie. `test-steunbits.js` bewaakt het
+aantal, dus een zesde plek valt op.
 
-Testrun 1.7.1 meet in dezelfde rit alvast voor punt 2, zonder er iets aan te
-veranderen. Dat vraagt **minstens tien minuten rijden vóór je de run start**,
-anders is het pollbudget-spoor te kort. Blok 7 is los te draaien met de knop
-"Budget + olie" — dat is de verstandige volgorde: eerst die, dan pas de sweep,
-want de sweep vervuilt het spoor. Blok 9 (DID-scan, 45 s) vraagt een warme
-motor en staat bewust niet in de gewone run.
+**Wat de rit moet bevestigen:**
 
-**Bij het verbinden** hoort er te staan: *"7 sensoren verwijderd die deze auto
-niet ondersteunt"* (`0146`, `0114`, `010A`, `015E`, `012C`, `015C`, `015A`).
+- Blok 6 meldt **0 ontkend**. Staat er nog iets, dan is er nóg een plek die
+  PIDs terugzet ná de discovery.
+- Bij het verbinden staat *"Preset sloeg N sensoren over die deze auto niet
+  heeft"*, met `015C` erbij.
+- **Er verdwijnt niets dat het wél deed**: `010C`, `0104`, `0105`, `010E` en
+  `0115` horen er gewoon te zijn. Deze fix weigert sensoren, dus een te gretige
+  versie is erger dan de kwaal.
 
-**In blok 6** hoort "Profiel tegen de steunbits" nu **0 ontkend** te melden.
-Staat er nog iets, dan is het profiel niet opnieuw weggeschreven en komt de fout
-elke sessie terug — dan is `saveVinProfile()` het probleem, niet de controle.
+**Het profiel apart, met twee verbindingen.** Verbind twee keer zonder
+tussendoor de app-gegevens te wissen. De eerste maakt het profiel (55 PIDs), de
+tweede laadt het en toont *"Bekend voertuig"*. Dat is nooit gelukt omdat er bij
+elke nieuwe build gewist werd — geen bug, wel een testmethode die de vraag niet
+kon beantwoorden. Blok 1 "VIN-profiel" zegt nu of hij in de opslag staat.
 
-**Controleer dat er niets verdween dat het wél deed**: `010C`, `0104`, `0105`,
-`010E` en `0115` horen er gewoon te zijn. Deze fix verwijdert sensoren, dus een
-te gretige versie is erger dan de kwaal.
+Twee dingen vooraf, allebei eerder misgegaan: blok 5 mag geen FOUT geven
+(deploy compleet), en vul het kenteken in, anders blijft `vehicleInfo` op enkel
+"Mazda" staan.
 
-Neem ook mee: hoeveel tijd kost de steunbitcontrole bij een bekend voertuig —
-blijft de snelle start snel?
-
----
+Blok 7 loopt in dezelfde rit mee voor punt 2 — dat vraagt minstens tien minuten
+rijden vóór je de run start. Blok 9 (DID-scan, 45 s) is een losse knop en
+vraagt een warme motor.
 
 ## 2. Het pollbudget bij bezetting zonder fouten
 
@@ -77,6 +84,29 @@ vraagt. Gemeten op 17-08: 30% → 22% → 17% bij `fout 0%` en `124 ms`.
 Voorstel: bezetting alleen als tegendruk tellen wanneer de responstijd oploopt
 of er fouten bijkomen. Bouw eerst een test die de spiraal reproduceert, dan pas
 de wijziging — anders weet je achteraf niet of het beter is geworden.
+
+**Dit punt is waarschijnlijk een gevolg van punt 1 (bewezen 20-08).** In de run
+van 19:40 kwamen **alle 18 missers** van 230 verzoeken van precies vier PIDs:
+
+```
+0114  n=0  mis=6      015E  n=0  mis=6
+015C  n=0  mis=3      0146  n=0  mis=3
+```
+
+Nul geslaagde metingen, alleen missers — en het zijn exact de PIDs die de
+bitmap ontkent en die de preset terugzette. Geen enkele andere PID miste er
+één. De keten:
+
+```
+preset zet 015C c.s. terug → worden gepolld → altijd NO DATA
+   → foutgraad 15% → boven foutOp (10%) → pollbudget naar 55%
+   → "⚠ Veel lege antwoorden van de ECU" aan de gebruiker
+```
+
+Met de preset-zeef en een testrun die ontkende PIDs niet meer opvraagt, zou
+dit vanzelf moeten verdwijnen. **Meet dat eerst.** Blijft de foutgraad op 0%
+en het tempo op 100%, dan gaat dit punt dicht zonder dat er één regel aan de
+regelkring is veranderd.
 
 **Twee metingen van 19-08, en ze wijzen niet dezelfde kant op.**
 
@@ -174,26 +204,6 @@ Nooit opgevallen omdat niemand naar absolute motorbelasting kijkt. Raakt
 tabel voorkomt — dit is precies het soort fout dat op meer PIDs zit.
 
 ---
-
-## 4c. Play Store: twee blokkades, één keuze
-
-Zie `ANDROID-PLAYSTORE.md` voor de volledige checklist. Wat er beslist moet
-worden voordat er iets ingezonden kan worden:
-
-**Locatie — kiezen.** De app gebruikt `navigator.geolocation` in
-`pidlane-bulk.js` en `pidlane-gps.js`, maar het manifest zet
-`ACCESS_FINE_LOCATION` op `maxSdkVersion=30`. Op Android 12+ is die functie dus
-stil kapot: `watchPosition` roept nooit zijn callback aan. Ofwel GPS eruit
-(snelste route door de review), ofwel `maxSdkVersion` weg plus een eigen
-disclosure vóór de eerste ritopname en locatie in de Data safety-form.
-
-**Ondertekenen.** De workflow bouwt nu ook een `.aab` (Play neemt geen losse
-APK meer aan), maar die is ongetekend. Keystore aanmaken en beslissen tussen
-Play App Signing en zelf tekenen. Doe dit pas als de rest staat — een gelekte
-keystore is niet te repareren.
-
-Verder: reken erop dat een reviewer geen OBD2-adapter heeft. Wat hij dan te
-zien krijgt bepaalt of de app "onbruikbaar" of "ik had geen hardware" is.
 
 ## 5. De stille catches, per module
 

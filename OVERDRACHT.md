@@ -102,6 +102,45 @@ naar −1° bij 1177 rpm en 74,5% belasting; mild en verklaarbaar als klopregeli
 niets als de −21,5° van 16-08. Segmentdetectie zet wel 59 van de 101 monsters op
 "onbekend" — die herkent stationair niet.
 
+**De preset liep dwars door de steunbitcontrole heen** (20-08 avond,
+`pidlane-rijsituatie.js`). Punt 1 leek vier ritten te falen terwijl de controle
+gewoon werkte. De discovery leverde 55 PIDs op, precies conform de bitmaps; 23
+seconden later zette `applyVehiclePIDPreset()` er 26 bij, waaronder `015C` uit
+`MERK_EXTRA_PIDS.MAZDA` — de PID waarvan `4140FAD08C81` NEE zegt en die op deze
+auto nooit antwoordt. Blok 6 telde daarna 62 PIDs met 7 ontkende, en dat las als
+een falende fix.
+
+De bitmaps worden nu bewaard zodra ze gelezen worden (`_steunbits`), en
+`magToevoegen()` is de poort waar de preset langs moet. De scheidslijn die
+daarbij hoort: toevoegen op **bewijs** (een echt antwoord uit de auto) mag
+zonder zeef, toevoegen op **aanname** (merk + brandstof) niet. Van de vijf
+plekken die `supportedPIDs` uitbreiden viel alleen de preset in die tweede
+categorie. `test-steunbits.js` telt ze nu, dus een zesde plek valt op.
+
+**De wizard is van zes stappen naar één** (20-08 avond, `pidlane-scheduler.js`).
+Vier ervan toonden voortgang voor werk dat `initConnection()` al had gedaan:
+adapter en protocol (staan nu op het startscherm, met de cascade live), een
+tweede snelheidsmeting van acht reads bovenop die van regel 1721, en twee
+voortgangsbalken voor een discovery en een health-scan die allebei klaar waren
+— met een deadline van 4 seconden erin om te voorkomen dat de nep-animatie
+bleef hangen. Stap 4 vroeg het kenteken in een tweede invoerveld naast
+`kentInput`; dat doet `brandstofPoort()` nu, en alleen wanneer het nodig is.
+
+Wat overblijft is de samenvatting, die echt werk doet (`selectStandardSet`).
+`wizNext()` en `wizRdwLookup()` blijven bestaan omdat de knoppen in `wizS4` ze
+nog aanroepen — die HTML wordt niet meer getoond, maar een verdwenen functie
+achter een bestaande onclick is een dode knop. De HTML zelf weghalen raakt de
+div-balans en is een aparte, mechanische stap.
+
+**De testrun maakte zelf het probleem dat hij mat.** In de run van 20-08 19:40
+kwamen alle 18 missers van 230 verzoeken van vier ontkende PIDs (`0114`,
+`015E`, `015C`, `0146`) — nul geslaagde metingen, alleen missers. Dat gaf 15%
+foutgraad, een pollbudget van 55% en de waarschuwing "veel lege antwoorden van
+de ECU" aan de gebruiker. De sweep vraagt die PIDs nu niet meer op, blok 6
+stelt met één regel vast wat hij eerst in dertig verzoeken uitzocht, en blok 8
+slaat `015C` over. Wat overblijft in blok 6 is de interessante categorie:
+steunbit JA maar de auto zwijgt toch.
+
 **Het logboek is terug** (20-08, `pidlane-logboek.js`, kebab → Logboek). Er
 werd op vier plekken gelogd en sinds de testrun-consolidatie bracht geen scherm
 ze samen: `log()` (500 regels), `btDiag()` (1400, met kopie in localStorage),
@@ -170,6 +209,13 @@ Hetzelfde geldt kleiner voor het kenteken. Zonder ingevoerd kenteken blijft
 `vehicleInfo` op alleen "Mazda" staan, en dan geeft het merkfilter in
 `probeUitgebreid()` GEEN kandidaten terug. Dat leest als een defect in de
 mode-21-route en is een lege invoer.
+
+**Een meting die zijn eigen onderwerp verstoort.** Twee keer op één dag: blok 7
+telde een foutpiek van 82% die van de testrun zelf kwam, en blok 6 telde zeven
+"ontkende" PIDs die de preset er ná de discovery bij had gezet. Beide keren leek
+de app stuk terwijl de meetopstelling het probleem was. Vraag bij een
+verrassende uitslag eerst of het meetmoment klopt — blok 6 draait ná blok 3, en
+de preset draait ná de discovery.
 
 **Een taakomschrijving is geen bron.** `PLAN.md` punt 4 zei "mode 22 PID `2101`,
 al gedefinieerd maar nergens opgevraagd". Allebei fout: `2101` is in dit project
