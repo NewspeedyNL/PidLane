@@ -4,8 +4,9 @@
 > **welk bestand je nodig hebt** zonder de code te lezen. Zet dit in de
 > project-kennisbank. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-08-01, na ronde 5 van de PID-gate (herijking).
-> Daarvóór: 2026-07-31, serverzijdige tegoedafrekening.
+> Laatst bijgewerkt: 2026-08-20 — steunbitpoort, logboek, privacy-disclosure,
+> startscherm per adaptertype, wizard van zes stappen naar één.
+> Daarvóór: 2026-08-01, na ronde 5 van de PID-gate (herijking).
 
 ---
 
@@ -72,7 +73,9 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 ## 4. Modules — laadvolgorde en verantwoordelijkheid
 
 > **De volgorde is functioneel, niet cosmetisch.** Zie §5.
-> 40 script-tags: `capacitor.js`, `config.js` en 38 `pidlane-*.js`-modules.
+> 52 script-tags: `capacitor.js`, `config.js` en 50 `pidlane-*.js`-modules.
+> `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
+> `pidlane-bedrading.js` achteraan staat.
 
 ### Fase 1 — data en assets (in `<head>`)
 
@@ -133,7 +136,16 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 41 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
 | 42 | `pidlane-uitgebreid.js` | 8 | `PLUitgebreid` — fabrikant-PIDs buiten mode 01 (mode 21), `pidCmd()`/`isMode01()`, probe na verbinden |
 | 43 | `pidlane-waakronde.js` | 13 | `PLWaak` — stille achtergrondcontrole van sensoren buiten je selectie; claimt de bus 3 PIDs per 12s, oordeelt per meting, ambient strook |
-| — | `pidlane-bulk.js` | 27 | `PLBulk` — passieve bulk-datarecorder (IndexedDB). **Nog niet in index.html geladen** |
+| 44 | `pidlane-bulk.js` | 27 | `PLBulk` — passieve bulk-datarecorder (IndexedDB). Eerste echte opname 19-08: 101 monsters op 1 Hz, 55 PIDs, geen gaten |
+| 45 | `pidlane-recall.js` | 16 | terugroepacties en servicebulletins per voertuig |
+| 46 | `pidlane-gps.js` | 20 | `PLGps` — ritlogging met hoogte, opt-in. **Wordt verwijderd**: zie `ANDROID-PLAYSTORE.md` blokkade 1 |
+| 47 | `pidlane-mode06.js` | 16 | mode 06 — testresultaten van de boordmonitors |
+| 48 | `pidlane-export.js` | 20 | `plOpslaan`/`plMaakPdf` — jsPDF in huisstijl |
+| 49 | `pidlane-testrun.js` | 76 | één knop, één rit, één logboek. Vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot — zie §20 |
+| 50 | `pidlane-logboek.js` | 16 | `PLLogboek` — voegt vier logbronnen samen in één tijdlijn: `log()` (500 regels, via `plLokaalLog()`), `btDiag()` (1400, met kopie in localStorage), de diagbundel-ring (400) en de live-log-spiegel. Kebab → Logboek. **Trekt** data op bij openen; hangt zich niet in `log()` of `btDiag()` — die codebase heeft al één laag wrappers (`pidlane-remote.js`) en een tweede zou broncode-inspectie onbruikbaar maken |
+| 51 | `pidlane-privacy.js` | 12 | `PLPrivacy` — prominente Bluetooth-disclosure vóór `connectSerial()`, plus privacyscherm in het menu. Play Store-eis, zie `ANDROID-PLAYSTORE.md` |
+| 52 | `pidlane-start.js` | 20 | `PLStart` — startscherm: adapterprofielen per type, geheugen van eerdere verbindingen, verbindingscascade als live voortgang. Stuurt óók de ketenvolgorde in `connectSerial()` |
+| — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
 
 ---
 
@@ -383,8 +395,14 @@ werkende context zonder de hele repo te delen.
   Sinds de opsplitsing: complete *module*bestanden, niet complete `index.html`.
   `worker.js` (117 KB) is inmiddels ook te groot voor de chat: lever die als
   downloadbaar bestand.
-- Vóór elke oplevering: `node --check` op elk JS-bestand + div-balanscontrole.
+- Vóór elke oplevering: **`plcheck.sh`** in de repo-root. Die doet syntaxcontrole
+  op alle bestanden, draait de 20 tests, telt de div-balans van `index.html` en
+  `admin.html`, controleert dat elke module in `index.html` hangt en dat
+  `pidlane-bedrading.js` achteraan staat. Draait in Termux op de telefoon.
   Bij geldcode ook een echte test met gestubte Airtable en Anthropic.
+- **Bij elke oplevering ook `CAMPAGNE` en `_blok5()` in `pidlane-testrun.js`
+  herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
+  toegevoegd én verwijderd. Zie §20.
 - Build-changelog bovenaan `index.html` (HTML-commentaar).
 - `str_replace` voor chirurgische bewerkingen, met uniciteitscontrole.
 - Mechanisch en inhoudelijk wijzigen nooit in dezelfde stap.
@@ -394,6 +412,12 @@ werkende context zonder de hele repo te delen.
 Deel **alleen de module waar je aan werkt**. De hele repo als zip kost
 ~500 K tokens; één module kost er 5–20 K. Weet je niet welke module?
 Zoek in de tabel in §4 — daar staat dit bestand voor.
+
+Andersom geldt hetzelfde: laat een oplevering als **delta-zip** komen — alleen
+de gewijzigde en nieuwe bestanden, in dezelfde mapstructuur, uit te pakken over
+de werkkopie. Scheelt een factor vijf en maakt in één oogopslag zichtbaar wat
+er is aangeraakt. Let op dat `.github/` een verborgen map is: `cp -r bron/. doel/`
+neemt die mee, een bestandsbeheerder op Android meestal niet.
 
 ---
 
@@ -406,7 +430,27 @@ Zoek in de tabel in §4 — daar staat dit bestand voor.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Bijgewerkt 31-07-2026.
+Bijgewerkt 20-08-2026. Voor de actuele werkvolgorde: `PLAN.md`. Wat hier staat
+is de blijvende lijst; `PLAN.md` is de kortlopende.
+
+**Nieuw op 20-08 en nog open:**
+
+- **`0143` staat er 256× naast.** De parser rekent `A + B/256` waar het
+  `A × 256 + B` moet zijn. Twee metingen: `41430048` toont 0,11 waar 28,2%
+  hoort, `41430029` toont 0,06 waar 16,1% hoort. Raakt `pidlane-data.js`.
+  Controleer meteen of dezelfde bytecombinatie elders in de tabel voorkomt.
+- **Mode 22 leeft op deze CX-5, de identifier niet.** `22111F` op header `7E0`
+  geeft `7F 22 31` (requestOutOfRange, niet serviceNotSupported). De
+  olietemperatuur zit dus ergens, maar `2101`, `22111F` en `015C` zijn alle
+  drie dood. Blok 9 van de testrun scant de 11xx-reeks.
+- **Play Store: locatie.** De app gebruikt `navigator.geolocation` in
+  `pidlane-bulk.js` en `pidlane-gps.js`, maar het manifest zet
+  `ACCESS_FINE_LOCATION` op `maxSdkVersion="30"`. Op Android 12+ is die functie
+  stil kapot. Zie `ANDROID-PLAYSTORE.md` blokkade 1 — GPS wordt verwijderd.
+
+**Opgelost op 20-08:** de merk-preset zette PIDs terug die de ECU ontkent
+(§15 ronde 6); het brandstoftype kwam ná de scan die het moest sturen (§15b);
+de wizard toonde voortgang voor voltooid werk (§15b).
 
 1. **Restjes.** `rebuildPidDefsCache()` bestaat niet (wel geguard);
    15 id's worden opgevraagd die nergens bestaan (`userLabel`, `apiPill`,
@@ -958,6 +1002,111 @@ letterlijk uit `pidlane-pidgate.js`: `test-pidgate.js` matcht op
 Die markering staat er expliciet voor. Verplaats je iets, verplaats dan ook de
 knippaden — anders faalt de test met "niet gevonden" in plaats van met een
 echte regressie.
+
+---
+
+### Ronde 6 — de steunbitpoort (20-08-2026)
+
+De gate hierboven beantwoordt *"mag deze PID mee naar de UI"*. Er bleek een
+tweede vraag te bestaan die nergens centraal stond: **"mag deze PID überhaupt
+in `supportedPIDs`"**. Vier ritten lang leek `profielTegenSteunbits()` te
+falen. Uit het logboek van 20-08:
+
+```
+19:36:22  discovery uit de bitmaps      → 55 PIDs, precies conform
+19:36:26  profiel opgeslagen            → 55 PIDs, schoon
+19:36:49  applyVehiclePIDPreset()       → 26 PIDs erbij, waaronder 015C
+19:37:51  blok 6 telt supportedPIDs     → 62, waarvan 7 ontkend
+```
+
+`MERK_EXTRA_PIDS.MAZDA = ['015C','0110']` zette de motorolietemperatuur terug
+die de bitmap net had ontkend. De controle zat in `profielTegenSteunbits()`,
+niet in de preset — dus de preset liep er dwars doorheen. Precies het patroon
+uit de kop van dit hoofdstuk, één niveau lager.
+
+**De oplossing: de bitmaps worden bewaard.** Ze leefden alleen lokaal in die
+ene functie, dus geen andere plek kón ze raadplegen.
+
+| naam | in | doet |
+|---|---|---|
+| `_steunbits` | `pidlane-rijsituatie.js` | blokstart (0/32/64/96) → 32-bits woord |
+| `ecuSteunt(pid)` | idem, global | `true` / `false` / `null` (onbekend) |
+| `magToevoegen(pid)` | idem, global | `ecuSteunt(pid) !== false` |
+| `steunbitsRuw()` | idem, global | kopie voor diagnostiek |
+
+Gevuld door **zowel** `discoverPIDsBitmap()` als `profielTegenSteunbits()` —
+beide lezen dezelfde vier vragen (`0100`/`0120`/`0140`/`0160`), dus welke route
+de sessie ook neemt, de bits zijn bekend.
+
+**De scheidslijn is niet "welke module" maar "op bewijs of op aanname".**
+Alle vijf plekken die `supportedPIDs` uitbreiden, nagelopen op 20-08:
+
+| plek | voegt toe | zeef |
+|---|---|---|
+| `discoverPIDsBitmap()` | omdat de bit aan staat | nee — dat ís de bron |
+| `discoverPIDsDirect()` | na een echt antwoord | nee |
+| `deepRefreshPIDs()` | na een echt antwoord | nee |
+| `probeUitgebreid()` | mode 21/22, geen steunbits | n.v.t. |
+| `applyVehiclePIDPreset()` | **merk + brandstof, ongemeten** | **ja** |
+
+Een PID die daadwerkelijk antwoordt bestáát, wat de bitmap ook beweert —
+bitmaps liegen soms, een geldig antwoord niet. Alleen wie toevoegt zónder te
+meten gaat langs `magToevoegen()`. **Onbekend telt als toegestaan**: is het
+blok niet gelezen, dan beweert de zeef niets. Een te gretige zeef is erger dan
+de kwaal, want deze fix verwijdert sensoren.
+
+Komt er ooit een zesde plek bij: bepaal eerst in welke van die twee
+categorieën hij valt. `test-steunbits.js` telt het aantal
+`supportedPIDs.add`-aanroepen, dus een nieuwe plek valt op.
+
+**Wat het opleverde.** De fantoom-PIDs waren óók de bron van het pollbudget dat
+terugschroefde. In de run van 19:40 kwamen **alle 18 missers** van 230
+verzoeken van vier ontkende PIDs (`0114`, `015E`, `015C`, `0146`) — nul
+geslaagde metingen, alleen missers. Dat gaf 15% foutgraad, een pollbudget van
+55% en de waarschuwing "veel lege antwoorden van de ECU" aan de gebruiker.
+
+De testrun vraagt ontkende PIDs nu ook niet meer op: de sweep slaat ze over,
+blok 6 stelt met één regel vast wat hij eerst in dertig verzoeken uitzocht, en
+blok 8 slaat `015C` over. De meting maakte anders zelf het probleem dat hij mat.
+
+---
+
+## 15b. Na het verbinden — brandstofpoort en de wizard (20-08-2026)
+
+`initConnection()` doet alles: protocol, VIN, discovery, health-scan,
+snelheidsmeting, profiel opslaan. Twee dingen zaten daarin op de verkeerde
+plek.
+
+**Het brandstoftype kwam te laat.** `pidGate()` filtert fantoomsensoren op
+`vehicleFuelType()`, en `initialHealthScan()` beoordeelt élke PID met die gate.
+Maar het kenteken werd pas in de wizard gevraagd — ná de scan die het had
+moeten sturen. Bij een voertuig dat al eens is uitgelezen viel dat niet op:
+`updateVehicleCard()` doet een automatische `rdwLookup()` op het opgeslagen
+kenteken. Alleen de eerste keer ging het mis — precies de keer dat het profiel
+wordt aangemaakt dat daarna hergebruikt wordt.
+
+`brandstofPoort()` in `pidlane-voertuigdata.js` staat nu tussen
+`updateVehicleCard()` en de health-scan, en werkt van goedkoop naar duur:
+
+1. al bekend uit VIN/NHTSA/RDW → niets doen, niets vragen
+2. PID `0151` uitlezen (~150 ms) en in `pidVals` zetten, zodat de gate hem ziet
+3. pas dán het kenteken vragen, met een overslaan-knop die werkt
+
+Let op bij de VIN-route: `tryReadVIN()` decodeert via `vpic.nhtsa.dot.gov`, de
+Amerikaanse database. Voor een Japanse of Europese auto levert die vaak alleen
+het merk. De bronprioriteit is `rdw > nhtsa > vin`; RDW is dus de betere bron.
+
+**De wizard is van zes stappen naar één.** Vier ervan toonden voortgang voor
+werk dat `initConnection()` al had gedaan — inclusief een tweede
+`measureConnSpeed()` van acht reads bovenop die van `pidlane-bt.js`, en twee
+voortgangsbalken met een deadline erin om te voorkomen dat de nep-animatie
+bleef hangen. Wat overblijft is de samenvatting (`_wizStep6`), die echt werk
+doet: `selectStandardSet()`.
+
+`wizNext()` en `wizRdwLookup()` bestaan nog omdat de knoppen in `wizS4` ze
+aanroepen. Die HTML wordt niet meer getoond, maar een verdwenen functie achter
+een bestaande onclick is een dode knop. De HTML zelf weghalen raakt de
+div-balans en is een aparte, mechanische stap.
 
 ---
 
