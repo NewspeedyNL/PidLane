@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '2.2 (20-08-2026)';
+const TESTRUN_VERSIE = '2.3 (20-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -284,6 +284,53 @@ async function _blok1() {
     if (!window.PLElm) return { staat: 'FOUT', detail: 'PLElm ontbreekt — de poort zit niet in deze build' };
     const dicht = PLElm.poortDicht();
     return dicht ? { staat: 'LET OP', detail: 'poort staat dicht — er loopt een herinitialisatie' } : 'aanwezig en open';
+  });
+
+  await _doe(1, 'VIN-profiel', function () {
+    // Drie verbindingen op rij (19-08, 20-08 12:10, 20-08 12:31) sloeg de app
+    // een profiel op onder JMZKF6W7600766507 en laadde het de keer erna niet:
+    // geen "Bekend voertuig" in het log, direct bitmap-discovery. Daardoor
+    // draait profielTegenSteunbits() nooit — die zit alleen in het profielpad —
+    // en blijft PLAN.md punt 1 onbevestigd hangen.
+    //
+    // Waar het misgaat is van buiten niet te zien: applyVinProfileIfKnown()
+    // vangt alles in één catch en geeft alleen false terug. Deze controle kijkt
+    // daarom in de opslag zelf.
+    const vin = (function () { try { return (vehicleInfo && vehicleInfo.vin) || ''; } catch (e) { return ''; } })();
+    const alle = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('pl_vinprof_') === 0) alle.push(k);
+      }
+    } catch (e) { return { staat: 'FOUT', detail: 'localStorage onleesbaar' }; }
+
+    if (!alle.length)
+      return { staat: 'LET OP', detail: 'geen enkel opgeslagen profiel — saveVinProfile schrijft niet, of de opslag overleeft de sessie niet' };
+
+    if (!vin)
+      return { staat: 'LET OP', detail: alle.length + ' profiel(en) opgeslagen, maar geen VIN in deze sessie om tegen te matchen' };
+
+    const sleutel = 'pl_vinprof_' + String(vin).toUpperCase();
+    const raw = (function () { try { return localStorage.getItem(sleutel); } catch (e) { return null; } })();
+    if (!raw) {
+      // Het profiel bestaat wél, maar onder een andere sleutel. Dat is de
+      // interessante uitkomst: dan wijkt de VIN van nu af van die bij opslaan.
+      return { staat: 'FOUT', detail: 'huidige VIN ' + vin + ' heeft geen profiel; wél opgeslagen: ' +
+        alle.map(function (k) { return k.replace('pl_vinprof_', ''); }).join(', ') };
+    }
+    let prof = null;
+    try { prof = JSON.parse(raw); } catch (e) {
+      return { staat: 'FOUT', detail: 'profiel staat er maar is onleesbaar (' + raw.length + ' tekens) — JSON stuk' };
+    }
+    if (!prof || !prof.pids || !prof.pids.length)
+      return { staat: 'FOUT', detail: 'profiel bestaat maar bevat geen PIDs — daarom valt de app terug op discovery' };
+
+    const uur = prof.ts ? Math.round((Date.now() - prof.ts) / 36e5 * 10) / 10 : null;
+    const health = prof.health ? Object.keys(prof.health).length : 0;
+    return prof.pids.length + ' PIDs' + (health ? ', ' + health + ' health-oordelen' : ', GEEN health') +
+      (uur == null ? '' : ', ' + uur + ' uur oud') +
+      ' — dit had bij het verbinden geladen moeten worden';
   });
 
   await _doe(1, 'Opslag', function () {
@@ -1686,7 +1733,7 @@ const CAMPAGNE = {
     'NIEUW — loopt de cascade zichtbaar mee op het startscherm tijdens het verbinden, en klopt de volgorde met het BT-log?',
     'NIEUW — komt "Brandstof: benzine (obd)" in de verbindstappen te staan, VOOR de sensorcheck? Op de CX-5 hoort 0151 dat zonder kenteken op te lossen.',
     'NIEUW — begint de keten nu met SPP in plaats van BLE? Op 20-08 kostte de BLE-scan 18 van de 44 seconden. Kies "OBDLink MX+" in het startscherm en kijk of "Keten: Classic eerst" in het log staat.',
-    'HERHALEN — dit is de TWEEDE verbinding op dit toestel, dus nu laadt het profiel (55 PIDs) en draait profielTegenSteunbits pas echt. De run van 20-08 deed volle discovery en kon punt 1 dus niet bevestigen.',
+    'KERNVRAAG — waarom laadt het VIN-profiel niet? Drie verbindingen op rij sloegen er een op en gebruikten hem daarna niet. Blok 1 "VIN-profiel" zegt nu of hij in de opslag staat; het BT-log zegt waarom hij is afgewezen. Zonder dit blijft punt 1 onbevestigbaar, want profielTegenSteunbits zit alléén in het profielpad.',
     'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (0146, 0114, 010A, 015E, 012C, 015C, 015A)',
     'Zegt blok 6 "0 ontkend" op een profiel dat vóór deze rit nog vervuild wás? Alleen dan bewijst het iets.',
     'Verdwijnt er niets dat het wel deed? Kijk of 010C, 0104, 0105, 010E en 0115 er nog zijn.',

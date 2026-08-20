@@ -559,9 +559,23 @@ function saveVinProfile(vin){
       health:(typeof _pidHealth!=='undefined'&&_pidHealth)?Object.assign({},_pidHealth):null,
       ts:Date.now()
     };
-    localStorage.setItem(vinProfileKey(vin), JSON.stringify(prof));
+    const sleutel=vinProfileKey(vin);
+    localStorage.setItem(sleutel, JSON.stringify(prof));
+    // Terugleescontrole. "Opgeslagen" in het log betekende tot nu toe alleen
+    // dat setItem niet gooide — niet dat er iets stond. Op Android kan een
+    // WebView de opslag onder druk opruimen zonder een fout te geven, en dan
+    // ziet een geslaagde opslag er precies zo uit als een mislukte.
+    const terug=localStorage.getItem(sleutel);
+    if(!terug){
+      log('⚠️ Voertuigprofiel NIET bewaard — opslag weigerde stil','warn');
+      try{ btDiag('setItem('+sleutel+') gooide niet, maar getItem geeft null','err'); }catch(_){}
+      return;
+    }
     log(`💾 Voertuigprofiel opgeslagen (${prof.pids.length} PIDs) voor ${vin}`,'ok');
-  }catch(e){}
+  }catch(e){
+    // Quota vol is een verwachte fout; hem stil opeten is dat niet.
+    try{ log('⚠️ Voertuigprofiel opslaan mislukt: '+(e.message||e),'warn'); }catch(_){}
+  }
 }
 
 // Gezondheidsoordeel uit het laatst geladen profiel; null als er geen was.
@@ -573,11 +587,18 @@ window.profielHealth=profielHealth;
 
 // Laadt opgeslagen PID-set; geeft true terug als een bruikbaar profiel bestond.
 function applyVinProfileIfKnown(vin){
+  // Deze functie gaf tot 20-08 alleen false terug, ongeacht de reden. Drie
+  // verbindingen op rij sloegen een profiel op en laadden het de keer erna
+  // niet, en uit het log was niet te zien waaróm: ontbrekende sleutel, stukke
+  // JSON en een leeg pids-veld zagen er alle drie identiek uit. Omdat
+  // profielTegenSteunbits() alléén in dit pad zit, bleef PLAN.md punt 1
+  // daardoor onbevestigd hangen.
+  const sleutel=vinProfileKey(vin);
   try{
-    const raw=localStorage.getItem(vinProfileKey(vin));
-    if(!raw) return false;
+    const raw=localStorage.getItem(sleutel);
+    if(!raw){ btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn'); return false; }
     const prof=JSON.parse(raw);
-    if(!prof?.pids?.length) return false;
+    if(!prof?.pids?.length){ btDiag('Profiel '+sleutel+' bevat geen PIDs — volle discovery','warn'); return false; }
     supportedPIDs=new Set(prof.pids);
     if(prof.brandstof) vehicleInfo.brandstof=prof.brandstof;
     if(prof.motor) vehicleInfo.motor=prof.motor;
@@ -587,7 +608,11 @@ function applyVinProfileIfKnown(vin){
     _profielHealth = (prof.health && typeof prof.health==='object') ? prof.health : null;
     log(`⚡ Bekend voertuig — ${prof.pids.length} PIDs uit profiel geladen`,'ok');
     return true;
-  }catch(e){ return false; }
+  }catch(e){
+    // Nooit stil: dit is een aanroep van eigen opslag, geen verwachte fout.
+    try{ btDiag('Profiel '+sleutel+' onbruikbaar: '+(e.message||e),'err'); }catch(_){}
+    return false;
+  }
 }
 
 // ══════════════════════════════════════════════════════
