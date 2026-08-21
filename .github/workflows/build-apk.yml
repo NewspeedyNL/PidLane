@@ -24,6 +24,7 @@ on:
     paths:
      - 'public/index.html'
      - 'public/privacy.html'
+     - 'public/config.js'
      - 'package.json'
      - 'capacitor.config.json'
      - 'icon-512.png'
@@ -117,32 +118,28 @@ jobs:
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />'
               '\n    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />'
-              # LOCATIE — LET OP, dit is een bewuste keuze en geen standaardregel.
+              # LOCATIE — keuze a) is op 21-08-2026 gemaakt: GEEN locatie.
               #
-              # Voor Bluetooth is locatie NIET nodig op Android 12+: daar doet
-              # BLUETOOTH_SCAN met neverForLocation het werk. Voor Android 11 en
-              # ouder eist het systeem wél ACCESS_FINE_LOCATION om te mogen
-              # scannen — vandaar maxSdkVersion=30.
+              # Voor Bluetooth is locatie niet nodig op Android 12+: daar doet
+              # BLUETOOTH_SCAN met neverForLocation het werk. Op Android 11 en
+              # ouder eist het systeem ACCESS_FINE_LOCATION om te mogen scannen,
+              # en daar is @e-is/capacitor-bluetooth-serial van afhankelijk.
+              # Vandaar dat de permissie blijft staan MET maxSdkVersion=30: hij
+              # geldt alleen op API 30 en lager, en verschijnt op moderne
+              # toestellen niet eens in de permissielijst.
               #
-              # MAAR de app gebruikt locatie ook ECHT: de bulk-recorder leest via
-              # navigator.geolocation de hoogte mee voor klimbelasting
-              # (pidlane-bulk.js gpsStart, pidlane-gps.js). Met maxSdkVersion=30
-              # is die functie op elk modern toestel stil kapot — de permissie
-              # wordt daar niet eens aangevraagd.
+              # Wat er wél veranderd is: de app leest zelf geen locatie meer.
+              # pidlane-gps.js is verwijderd en de bulk-recorder neemt geen
+              # positie meer op. Die functie was op Android 12+ toch al stil
+              # kapot (permissie tot API 30, dus watchPosition kreeg nooit een
+              # fix) en kostte in ruil een sensitive permission met eigen
+              # disclosure en een Data safety-verklaring.
               #
-              # Twee uitwegen, kies er één en pas dit blok aan:
-              #   a) GPS-ritlogging laten vallen  -> laat maxSdkVersion=30 staan,
-              #      en haal de geolocation-aanroepen uit bulk/gps. Simpelste
-              #      route door de review: geen locatie in de Data safety-form.
-              #   b) GPS-ritlogging houden        -> haal maxSdkVersion weg bij
-              #      FINE_LOCATION, declareer locatie in de Data safety-form, en
-              #      toon een aparte disclosure vóór de eerste ritopname. Locatie
-              #      is een "sensitive permission": zonder eigen disclosure is
-              #      afwijzing vrijwel zeker.
-              #
-              # Tot die keuze gemaakt is staat b) NIET aan: liever een functie die
-              # aantoonbaar uit staat dan een permissie die je niet kunt verdedigen.
-              '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />'
+              # Gevolg voor de Play Store: locatie hoeft NIET in de Data
+              # safety-form als gedeeld of verzameld gegeven. Komt er ooit
+              # geolocation-code terug in de app, dan klopt die verklaring niet
+              # meer — test-geen-gps.js bewaakt dat, en de controle hieronder
+              # faalt als de permissie zonder maxSdkVersion in het manifest komt.
               '\n    <uses-permission android:name="android.permission.CAMERA" />'
               '\n    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />'
               '\n    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />'
@@ -183,6 +180,17 @@ jobs:
                            'QUERY_ALL_PACKAGES', 'REQUEST_INSTALL_PACKAGES'):
               if verboden in xml:
                   print("FOUT: %s staat in het manifest en hoort er niet in" % verboden); sys.exit(1)
+
+          # Locatie mag alleen bestaan als legacy-BT-permissie, dus uitsluitend
+          # met maxSdkVersion=30. Zonder die grens is het een sensitive
+          # permission die om een eigen disclosure en een Data safety-verklaring
+          # vraagt — en de app leest sinds 21-08 helemaal geen locatie meer.
+          import re as _re
+          for _p in ('ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'):
+              for _m in _re.finditer(r'<uses-permission[^>]*' + _p + r'[^>]*/>', xml):
+                  if 'maxSdkVersion="30"' not in _m.group(0):
+                      print("FOUT: %s zonder maxSdkVersion=30 — dat is een sensitive permission" % _p)
+                      print("      gevonden: %s" % _m.group(0)); sys.exit(1)
 
           if 'android.permission.CAMERA' not in xml:
               print("FOUT: CAMERA-permissie-injectie mislukt")
@@ -258,7 +266,20 @@ jobs:
           # handmatig lager, dan weigert Play de upload zonder nuttige melding.
           VN=$(node -p "require('./package.json').version")
           VC=${{ github.run_number }}
-          echo "versionName=$VN versionCode=$VC"
+
+          # Het versienummer staat óók in public/config.js, want dat is wat de
+          # gebruiker in het loginscherm ziet en wat in elk log en rapport
+          # meegaat. Die twee liepen acht minor-versies uit elkaar (2.1.0 tegen
+          # 2.9.0): een gebruiker meldde dan een bug op "2.9.0" terwijl de APK
+          # op zijn toestel 2.1.0 heette. Hier hard falen is goedkoper dan dat
+          # achteraf uitzoeken.
+          AV=$(node -p "(require('fs').readFileSync('public/config.js','utf8').match(/const APP_VERSION\s*=\s*'([^']+)'/)||[])[1]||''")
+          if [ "$VN" != "$AV" ]; then
+            echo "FOUT: package.json zegt $VN, public/config.js zegt $AV"
+            echo "      Zet ze gelijk voor je pusht — test-versie.js bewaakt dit ook."
+            exit 1
+          fi
+          echo "versionName=$VN (gelijk aan APP_VERSION) versionCode=$VC"
           python3 - "$VN" "$VC" <<'PY'
           import re, sys, pathlib
           vn, vc = sys.argv[1], sys.argv[2]
