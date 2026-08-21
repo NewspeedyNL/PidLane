@@ -74,6 +74,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 
 > **De volgorde is functioneel, niet cosmetisch.** Zie §5.
 > 52 script-tags: `capacitor.js`, `config.js` en 50 `pidlane-*.js`-modules.
+> (21-08: `pidlane-gps.js` eruit, `pidlane-run.js` erbij — telling ongewijzigd.)
 > `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
 > `pidlane-bedrading.js` achteraan staat.
 
@@ -138,7 +139,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 43 | `pidlane-waakronde.js` | 13 | `PLWaak` — stille achtergrondcontrole van sensoren buiten je selectie; claimt de bus 3 PIDs per 12s, oordeelt per meting, ambient strook |
 | 44 | `pidlane-bulk.js` | 27 | `PLBulk` — passieve bulk-datarecorder (IndexedDB). Eerste echte opname 19-08: 101 monsters op 1 Hz, 55 PIDs, geen gaten |
 | 45 | `pidlane-recall.js` | 16 | terugroepacties en servicebulletins per voertuig |
-| 46 | `pidlane-gps.js` | 20 | `PLGps` — ritlogging met hoogte, opt-in. **Wordt verwijderd**: zie `ANDROID-PLAYSTORE.md` blokkade 1 |
+| 46 | `pidlane-run.js` | 15 | `PLRun` — de Run-chip in de topbar: één plek waar staat wat er op de achtergrond draait (rit-monitor, bulk-recorder, waakronde, caravan, rit-analyse) en waar het uit kan. Leest de staat bij het tekenen uit de bron; wrapt niets. Caravan en rit-analyse vragen bevestiging bij stoppen. **Let op:** `caravanActive` en `ritActive` staan in script-scope, niet op `window` — zie `test-run.js` |
 | 47 | `pidlane-mode06.js` | 16 | mode 06 — testresultaten van de boordmonitors |
 | 48 | `pidlane-export.js` | 20 | `plOpslaan`/`plMaakPdf` — jsPDF in huisstijl |
 | 49 | `pidlane-testrun.js` | 76 | één knop, één rit, één logboek. Vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot — zie §20 |
@@ -443,10 +444,6 @@ is de blijvende lijst; `PLAN.md` is de kortlopende.
   geeft `7F 22 31` (requestOutOfRange, niet serviceNotSupported). De
   olietemperatuur zit dus ergens, maar `2101`, `22111F` en `015C` zijn alle
   drie dood. Blok 9 van de testrun scant de 11xx-reeks.
-- **Play Store: locatie.** De app gebruikt `navigator.geolocation` in
-  `pidlane-bulk.js` en `pidlane-gps.js`, maar het manifest zet
-  `ACCESS_FINE_LOCATION` op `maxSdkVersion="30"`. Op Android 12+ is die functie
-  stil kapot. Zie `ANDROID-PLAYSTORE.md` blokkade 1 — GPS wordt verwijderd.
 
 **Opgelost op 20-08:** de merk-preset zette PIDs terug die de ECU ontkent
 (§15 ronde 6); het brandstoftype kwam ná de scan die het moest sturen (§15b);

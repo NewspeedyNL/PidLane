@@ -18,7 +18,7 @@ repo — die wordt elke build opnieuw gegenereerd. De set:
 | `BLUETOOTH_SCAN` + `neverForLocation` | adapter zoeken, zonder plaatsbepaling |
 | `BLUETOOTH_CONNECT` | praten met een gekoppelde adapter |
 | `BLUETOOTH` / `BLUETOOTH_ADMIN`, `maxSdkVersion=30` | Android 11 en ouder |
-| `ACCESS_FINE_LOCATION`, `maxSdkVersion=30` | eis van Android ≤11 om te mógen scannen |
+| `ACCESS_FINE_LOCATION`, `maxSdkVersion=30` | eis van Android ≤11 om te mógen scannen — géén locatiefunctie, zie blokkade 1 |
 | `bluetooth` / `bluetooth_le` als `uses-feature required=false` | installeerbaar op toestellen zonder BLE |
 
 De controle in de workflow faalt nu hard als er iets uit die set ontbreekt, en
@@ -40,30 +40,39 @@ bestaan, een reviewer mag erop mailen.
 
 ---
 
-## Blokkade 1 — locatie: kies, en doe het vóór de inzending
+## ~~Blokkade 1 — locatie~~ — OPGELOST 21-08-2026, route (a)
 
-De app gebruikt `navigator.geolocation.watchPosition` in `pidlane-bulk.js`
-(`gpsStart`) en `pidlane-gps.js`, voor hoogteverschil bij klimbelasting. Maar
-het manifest zet `ACCESS_FINE_LOCATION` op `maxSdkVersion="30"`. Op Android 12
-en hoger wordt die permissie dus niet eens aangevraagd: **de GPS-functie is
-daar stil kapot.** Niet met een foutmelding — `watchPosition` roept gewoon nooit
-zijn callback aan.
+**Keuze gemaakt: de app leest geen locatie meer.** `pidlane-gps.js` is uit de
+repo, de bulk-recorder neemt geen positie meer op, en `privacy.html` en het
+disclosurescherm zeggen dat nu ook.
 
-Twee wegen, en er is geen derde:
+Waarom (a) en niet (b): de functie wérkte al niet. `ACCESS_FINE_LOCATION` stond
+op `maxSdkVersion="30"`, dus op Android 12 en hoger werd de permissie niet eens
+aangevraagd en riep `watchPosition` nooit zijn callback aan — zonder foutmelding,
+want de fout verdween in een lege catch. Er is dus niets verloren gegaan dat
+werkte. Wat het opleverde was bovendien context, geen invoer: de klimdetectie in
+de recorder draait op motorbelasting en snelheid, niet op hoogte.
 
-**(a) GPS laten vallen.** Laat `maxSdkVersion=30` staan en haal de
-`geolocation`-aanroepen uit `pidlane-bulk.js` en `pidlane-gps.js`. Dan is
-locatie geen onderwerp in de Data safety-form en is dit hoofdstuk klaar. Dit is
-de snelste route door de review.
+Wat blijft staan is `ACCESS_FINE_LOCATION` **met** `maxSdkVersion=30`. Dat is
+geen locatiefunctie maar een eis van Android 11 en ouder om überhaupt naar
+Bluetooth te mogen scannen, waar `@e-is/capacitor-bluetooth-serial` van afhangt.
+Op moderne toestellen verschijnt hij niet in de permissielijst.
 
-**(b) GPS houden.** Haal `maxSdkVersion` weg bij `ACCESS_FINE_LOCATION`,
-declareer locatie in de Data safety-form, en bouw een aparte disclosure vóór de
-eerste ritopname — locatie is een *sensitive permission*, en zonder eigen
-disclosure is afwijzing vrijwel zeker. `pidlane-privacy.js` heeft de vorm al;
-er moet een tweede scherm bij met een eigen versienummer.
+**Gevolg voor de inzending:** locatie is géén onderwerp in de Data safety-form.
+Niet verzameld, niet gedeeld.
 
-Tot die keuze gemaakt is staat (a) aan. Liever een functie die aantoonbaar uit
-staat dan een permissie die je in een reviewgesprek niet kunt verdedigen.
+**Bewaakt door:**
+
+- `public/test-geen-gps.js` — geen enkele module leest een positie, de module
+  bestaat niet meer, en de drie verklaringen (Data safety, `privacy.html`,
+  disclosurescherm) zeggen alle drie hetzelfde
+- de CI faalt hard als `ACCESS_FINE_LOCATION` of `ACCESS_COARSE_LOCATION` ooit
+  zónder `maxSdkVersion=30` in het manifest komt — bijvoorbeeld doordat een
+  plugin hem via manifest-merge meesmokkelt
+- blok 5 van de testrun controleert het in de draaiende app
+
+Wil je hoogte ooit terug: de barometrische druk (PID `0133`) zit al in elke
+meting en kost geen enkele permissie.
 
 ---
 
@@ -257,7 +266,7 @@ Een tegenstrijdigheid tussen die drie is een afwijzing waar je lang op wacht.
 | E-mailadres | ja | nee | account en inloggen |
 | App-activiteit (diagnoses) | ja | nee | rapporten bewaren bij het account |
 | Apparaat-/andere gegevens (VIN, sensorwaarden) | ja | ja | AI-analyse via Anthropic |
-| Locatie | **hangt af van blokkade 1** | nee | hoogte bij ritopname |
+| Locatie | **nee** | nee | niet verzameld — zie blokkade 1 |
 | Foto's/media, contacten, agenda, sms | nee | nee | — |
 
 Vermeld bij "gedeeld" dat meetwaarden naar de aanbieder van het taalmodel gaan.
@@ -267,8 +276,11 @@ Dat is echt delen met een derde partij, ook al staat er geen naam bij.
 
 ## Vóór je op inzenden drukt
 
-- [ ] Keuze gemaakt bij blokkade 1, en het manifest komt overeen met de code
+- [x] Keuze gemaakt bij blokkade 1 (geen locatie), manifest en code komen overeen
 - [ ] `.aab` gebouwd, ondertekend, `versionCode` hoger dan de vorige inzending
+- [ ] `versionName` in de Play Console komt overeen met `package.json` én
+      `public/config.js` — die twee liepen tot 21-08 acht versies uiteen; de CI
+      faalt nu hard als dat opnieuw gebeurt
 - [ ] `info@pidlane.nl` bestaat en wordt gelezen
 - [ ] `privacy.html` bereikbaar op de publieke URL
 - [ ] Disclosure getest op een schoon toestel: hij hoort te verschijnen vóór het

@@ -1,6 +1,6 @@
 {
   "name": "pidlane",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "PidLane - AI Car Diagnostics",
   "main": "src/index.html",
   "scripts": {

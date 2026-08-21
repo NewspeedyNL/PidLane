@@ -1,60 +1,90 @@
-# Alleen de gewijzigde bestanden — 21-08-2026
+# Alleen de gewijzigde bestanden — 21-08-2026, versie 3.0.0
 
-Dit is géén complete repo. Het zijn de 9 bestanden die nieuw zijn of gewijzigd
+Dit is géén complete repo. Het zijn de 20 bestanden die nieuw zijn of gewijzigd
 ten opzichte van de zip waarmee deze sessie begon, in dezelfde mapstructuur.
-Uitpakken over je bestaande werkkopie heen.
 
-`pidlane-busdiag.js` en `pidlane-copiloot.js` heb je zelf al uit de repo
-gehaald — die zitten hier dus niet in en hoeven ook niet opnieuw weg.
+## LET OP — hier wordt wél iets verwijderd
+
+Overkopiëren is deze keer niet genoeg. `public/pidlane-gps.js` is uit de app
+gehaald; blijft dat bestand staan, dan laadt het niet meer (de script-tag is
+weg) maar `test-geen-gps.js` faalt er wel op. Verwijder hem dus expliciet.
+
+`pidlane-busdiag.js` en `pidlane-copiloot.js` had je zelf al weggehaald.
 
 ## Uitpakken (Termux)
 
     cd ~
-    unzip -o /sdcard/Download/PidLane-delta.zip -d /tmp/delta
+    unzip -o /sdcard/Download/PidLane-delta-21-08-avond.zip -d /tmp/delta
     cp -r /tmp/delta/PidLane-main/. ~/PidLane/
+    rm -f ~/PidLane/public/pidlane-gps.js
     cd ~/PidLane
     plcheck
 
-`plcheck` moet **73 bestanden, 21 tests** en verder alles groen melden, met een
-div-balans van 782/782. Pas dan committen.
+`plcheck` moet **74 bestanden, 23 tests** melden, div-balans **728/728**, en
+verder alles groen. Pas dan committen.
 
-## Nieuw (2)
+## Nieuw (4)
 
 | bestand | wat |
 |---|---|
 | `public/pidlane-run.js` | de Run-chip: één plek waar staat wat er op de achtergrond draait, met vijf schakelaars |
-| `public/test-run.js` | 18 toetsen op dat paneel, waaronder de script-scope-valkuil |
+| `public/test-run.js` | toetsen op dat paneel, waaronder de script-scope-valkuil |
+| `public/test-versie.js` | houdt `package.json` en `config.js` op hetzelfde versienummer |
+| `public/test-geen-gps.js` | bewaakt dat de app locatievrij blijft en dat de drie verklaringen kloppen |
 
-## Gewijzigd (7)
+## Verwijderd (1)
+
+| bestand | waarom |
+|---|---|
+| `public/pidlane-gps.js` | alle locatiefunctionaliteit is eruit — zie hieronder |
+
+## Gewijzigd (15)
 
 | bestand | wat er anders is |
 |---|---|
-| `public/pidlane-data.js` | `0143` rekende met deler `655.35` waar `2.55` hoort — stond 256x naast. `max` van 100 naar 400 |
-| `public/index.html` | vierde chip in de topbar (`runChip` + `rdot`) en de script-tag voor `pidlane-run.js`, vóór de bedradingscontrole |
-| `public/pidlane-export.js` | opmerkingveld in het opslaan-venster; gaat mee bovenaan de tekst en als kader in de PDF |
-| `public/pidlane-testrun.js` | versie 2.8; blok 1 toetst het VIN-profiel nu écht, blok 5 en `CAMPAGNE` herschreven |
+| `public/index.html` | Run-chip in de topbar; wizard-stappenbalk en `wizS1..wizS5` eruit (782 → 728 divs); script-tags bijgewerkt |
+| `public/config.js` | `APP_VERSION` naar **3.0.0** |
+| `package.json` | `version` naar **3.0.0** — stond op 2.1.0 |
+| `public/pidlane-data.js` | `0143` rekende met deler `655.35` waar `2.55` hoort; `max` 100 → 400 |
+| `public/pidlane-scheduler.js` | `wizNext`, `wizRdwLookup`, `_wizRefreshKnown`, `wizToggleDetail` verwijderd; `wizGo()` teruggebracht |
+| `public/pidlane-bulk.js` | neemt geen positie meer op; `gpsStart`/`gpsStop`/veld `g` weg |
+| `public/pidlane-export.js` | opmerkingveld in het opslaan-venster, gaat mee in tekst en PDF |
+| `public/pidlane-testrun.js` | versie 2.9; blok 1 toetst het VIN-profiel echt; blok 5 en `CAMPAGNE` herschreven |
+| `public/pidlane-privacy.js` | disclosure zegt nu dat er helemaal geen locatie wordt bepaald |
+| `public/privacy.html` | locatie uit de datatabel, expliciete regel bij "wat we niet doen" |
 | `public/pidlane-bedrading.js` | vijf schakelfuncties geregistreerd, `obj` in `GEEN_GLOBALE` |
-| `public/test-bedrading.js` | scanner ziet nu ook `typeof X !== 'function'`, niet alleen `===` |
-| `PLAN.md` | punt 1 en 2 dicht, punt 4b afgehandeld, nieuwe bevindingen erin |
+| `public/test-bedrading.js` | scanner ziet nu ook `typeof X !== 'function'` |
+| `.github/workflows/build-apk.yml` | versiecontrole faalt hard; locatiekeuze vastgelegd en bewaakt; `config.js` als build-trigger |
+| `ANDROID-PLAYSTORE.md` | blokkade 1 gesloten op route (a) |
+| `PIDLANE.md`, `PLAN.md` | modultabel en werkplan bijgewerkt |
 
-## Wat je in de auto moet nakijken
+## De drie klussen in het kort
 
-Staat in `CAMPAGNE` bovenaan het testrun-logboek. Kort: de chip moet vijf
-regels tonen die kloppen met wat er draait, caravan en rit-analyse moeten om
-bevestiging vragen bij **stoppen** (niet bij starten), het opmerkingveld moet
-zowel in tekst als PDF terechtkomen, en blok 7 moet voor de vierde keer nul
-ongevraagde remmomenten melden.
+**Wizard opgeruimd.** De HTML van vier stappen die niets deden stond er nog
+omdat weghalen de div-balans raakt en dat een aparte stap hoorde te zijn. Dat is
+deze. Vier functies werden daardoor dood en zijn ook weg — dode functies maken
+de dode-knoppencontrole waardeloos, want die kan dan niet meer zien of iets bij
+een knop hoort of gewoon nooit opgeruimd is.
 
-## Twee dingen die deze ronde boven water kwamen
+**Versies gelijk.** `package.json` zei 2.1.0, `config.js` zei 2.9.0, en de CI
+zet `versionName` uit package.json — een bugmelding op "2.9.0" ging dus over een
+APK die 2.1.0 heette. Beide op 3.0.0, bewaakt door `test-versie.js` én door een
+harde stap in de workflow. `versionCode` blijft het buildnummer; die hoort juist
+niet gelijk te zijn, want Play eist dat hij bij elke inzending oploopt.
 
-**De bedradingsscanner keek maar naar de helft.** Hij zocht op
-`typeof X === 'function'` en niet op `!==`. De vijf nieuwe guards in
-`pidlane-run.js` gleden er zonder één melding doorheen. Dat is precies de
-failliete controle waar dit project al eerder tegenaan liep: groen licht dat
-niets betekent. Regex uitgebreid; daarmee kwam meteen één bestaand geval boven
-(`obj`, lusvariabele in de dode-knoppencontrole).
+**Locatie eruit.** De functie wérkte al niet: `ACCESS_FINE_LOCATION` liep tot
+API 30, dus op Android 12+ kreeg `watchPosition` nooit een fix en verdween de
+fout in een lege catch. Wat het opleverde was context, geen invoer — de
+klimdetectie draait op belasting en snelheid. In ruil kostte het een sensitive
+permission met eigen disclosure en een Data safety-verklaring. De permissie
+blijft staan mét `maxSdkVersion=30`, want Android 11 en ouder eisen hem om
+überhaupt naar Bluetooth te mogen scannen.
 
-**`window.caravanActive` bestaat niet.** `caravanActive` en `ritActive` zijn
-top-level `let` in scripts zonder IIFE, dus ze staan in script-scope. Was het
-paneel daarop gebouwd, dan hadden alle schakelaars permanent op UIT gestaan en
-had je dat pas in de auto gemerkt. `test-run.js` bewaakt het.
+Wil je hoogte ooit terug: PID `0133` (barometrische druk) zit al in elke meting
+en kost geen enkele permissie.
+
+## Vanaf nu bij elke update
+
+`package.json` en `public/config.js` met een opgehoogde versie meeleveren in de
+delta-zip. De workflow faalt als ze uiteenlopen, dus vergeten wordt gezien —
+maar dan pas ná de push.

@@ -1,6 +1,6 @@
 # PLAN.md — wat er nog open staat
 
-Bijgewerkt: 21-08-2026.
+Bijgewerkt: 21-08-2026 (avond) — versie 3.0.0.
 
 Dit bestand is het werkplan over sessies heen: **alleen wat er nog moet
 gebeuren, in volgorde**. Wat er gebeurd is staat in `OVERDRACHT.md`, hoe het
@@ -70,77 +70,54 @@ Herschrijven bij de volgende oplevering, samen met `_blok5()`.
 - **Blok 9 met warme motor**, losse knop, 45 s. Koelwater stond nu op 53 °C.
 
 
-## 2. Het pollbudget bij bezetting zonder fouten
+## 2. ~~Het pollbudget bij bezetting zonder fouten~~ — DICHT (21-08)
 
-Raakt `pidlane-plload.js` en `test-plload.js`. Gedragswijziging.
-
-Bezetting is aanvraagtempo × responstijd; bij continu pollen is die per
-definitie hoog. Nu geldt `belasting >= 85%` als tegendruk, óók bij 0% fouten en
-vlakke responstijden. Dan throttlet de app zichzelf zonder dat de ECU erom
-vraagt. Gemeten op 17-08: 30% → 22% → 17% bij `fout 0%` en `124 ms`.
-
-Voorstel: bezetting alleen als tegendruk tellen wanneer de responstijd oploopt
-of er fouten bijkomen. Bouw eerst een test die de spiraal reproduceert, dan pas
-de wijziging — anders weet je achteraf niet of het beter is geworden.
-
-**Dit punt is waarschijnlijk een gevolg van punt 1 (bewezen 20-08).** In de run
-van 19:40 kwamen **alle 18 missers** van 230 verzoeken van precies vier PIDs:
+Drie ritten, drie keer **nul ongevraagde remmomenten**: elke verlaging reageerde
+op echte fouten of op een oplopende responstijd. Het vermoeden in de oude kop —
+dat de app zichzelf terugschroeft op bezetting alleen — is niet één keer
+bevestigd.
 
 ```
-0114  n=0  mis=6      015E  n=0  mis=6
-015C  n=0  mis=3      0146  n=0  mis=3
+11:28   34 s   1 remmoment,  0 ongevraagd   responstijd  83 -> 85 ms   (+2%)
+11:36  500 s   4 remmomenten, 0 ongevraagd  responstijd  83 -> 995 ms  (+1099%)
+11:47   22 s   2 remmomenten, 0 ongevraagd  responstijd  99 -> 247 ms  (+149%)
 ```
 
-Nul geslaagde metingen, alleen missers — en het zijn exact de PIDs die de
-bitmap ontkent en die de preset terugzette. Geen enkele andere PID miste er
-één. De keten:
+Bezetting voorspelt de responstijd juist heel sterk zodra er echt gereden wordt.
+De tegendruk hangt dus terecht waar hij hangt, en er is geen regel aan
+`pidlane-plload.js` veranderd. Wat punt 2 leek te zijn was punt 1: de vier
+fantoom-PIDs die elke twee minuten een foutpuls gaven.
+
+**Wat er wél overblijft — nieuw punt 2b hieronder.**
+
+## 2b. Waarom loopt de adapter achter tijdens het rijden?
+
+Geen regelkringprobleem maar een transportprobleem, en het is nog niet verklaard.
+
+Op 21-08 om 11:36, na acht minuten rijden:
 
 ```
-preset zet 015C c.s. terug → worden gepolld → altijd NO DATA
-   → foutgraad 15% → boven foutOp (10%) → pollbudget naar 55%
-   → "⚠ Veel lege antwoorden van de ECU" aan de gebruiker
+gemMs 950   venGemMs 148   reqOnvol 12 (4%)   busbelasting "bufferend"
+tempoPct 30%, klimt binnen 500 s niet meer terug boven 55%
 ```
 
-Met de preset-zeef en een testrun die ontkende PIDs niet meer opvraagt, zou
-dit vanzelf moeten verdwijnen. **Meet dat eerst.** Blijft de foutgraad op 0%
-en het tempo op 100%, dan gaat dit punt dicht zonder dat er één regel aan de
-regelkring is veranderd.
+Het cumulatieve gemiddelde stond op 950 ms terwijl het venster op 148 ms zat:
+er is dus een periode geweest met extreme vertraging. De missers zaten verspreid
+over **alle** gepollde PIDs, één of twee per stuk — geen enkele sensor stak eruit.
+Dat sluit een fantoom-PID uit en wijst op de verbinding zelf.
 
-**Twee metingen van 19-08, en ze wijzen niet dezelfde kant op.**
+Om 11:47 was het beeld milder ("langzaam", 58%) maar niet weg: **0% fouten in
+álle monsters en tóch een tempo van 56%.** Dat is de kern van de vraag — waarom
+klimt hij niet terug als er niets meer misgaat?
 
-*14:38, oude build, vier fantoom-PIDs actief.* Eén verlaging: `bezet 74%, fout
-18%, 194ms`. Bezetting 74% ligt **onder** `bezetOp` (85), dus de trigger was de
-foutgraad, niet de bezetting. En die foutgraad kwam ergens vandaan: `perPid`
-telt `015C` 5 missers, `0146` 5, `0114` 3, `015E` 3. Zestien missers van PIDs
-die de ECU ontkent. Tempo eindigde op 34%.
+Eerste stap is meten, niet bouwen: kijk in het Logboek of er bij die trage
+momenten een BT-dip of herverbinding staat. Er liggen al twee aanwijzingen in
+`OVERDRACHT.md`: vier BT-herverbindingen in twaalf minuten op 16-08, telkens
+gevolgd door "scherm blijft aan", met het vermoeden dat Android de WebView naar
+de achtergrond duwt en de socket meeneemt.
 
-*23:25, fantoom-PIDs weg.* Blok 7 over 42 s stationair: nul remmomenten, tempo
-100% van begin tot eind, foutgraad 0% in álle monsters. En de omgekeerde
-uitslag op de kernvraag: responstijd 102 ms bij lage bezetting tegen 160 ms bij
-hoge — **+57%**. Bezetting voorspelt hier wél tegendruk. Zone "ruim" werd 64%
-van de tijd gehaald, dus de vaste terugweg bestaat.
-
-**Waar dat op neerkomt.** Het vermoeden in de kop hierboven — terugschroeven op
-bezetting zonder fouten — is in geen van beide metingen bevestigd. Wat er in de
-14:38-run gebeurde was terugschroeven op fouten die er niet hadden moeten zijn.
-Als dat het hele verhaal is, is punt 2 geen regelkringprobleem maar een gevolg
-van punt 1, en gaat het vanzelf weg zodra de steunbitfix draait.
-
-**Meting van 21-08, 34 s stationair — nog steeds te kort, maar de richting is
-consistent.** Blok 7: 17 monsters, tempo van 100% naar 79%, één remmoment en dat
-was er één *mét* fouten (hoogste foutgraad 2%, 71% van de monsters op 0%). Nul
-ongevraagde remmomenten dus. En de kernvraag opnieuw omgekeerd beantwoord ten
-opzichte van 19-08: responstijd 83 ms bij lage bezetting tegen 85 ms bij hoge,
-**+2%** — bezetting voorspelt hier geen tegendruk, maar hij veroorzaakt er ook
-geen. Twee runs, twee verschillende uitkomsten (+57% en +2%), allebei op
-stilstand. Dat is precies waarom dit een rit nodig heeft.
-
-**Doe daarom eerst dit, en pas dan de wijziging overwegen:** blok 7 over een rit
-van minstens tien minuten, op een build mét de steunbitfix. Blijft de foutgraad
-dan op 0% en het tempo op 100%, dan gaat punt 2 dicht en is de winst al binnen.
-Duikt het tempo alsnog bij 0% fouten, dan pas is de tegendruk verkeerd
-opgehangen — en dan weet je ook meteen waaraan wél, want blok 7 logt de
-responstijd erbij. 42 s stilstand bewijst geen van beide.
+Pas als de oorzaak bekend is heeft het zin om aan de terugweg van `PLLoad` te
+sleutelen.
 
 ---
 
@@ -201,24 +178,27 @@ de motor te koud voor een zinnige tweede meting.
    olietemperatuur niet op de diagnosebus. Verder zoeken heeft dan alleen zin
    met een echte Mazda-DID-lijst, niet met raden.
 
-## 4b. `0143` staat er 256× naast
+## 4b. ~~`0143` staat er 256× naast~~ — DICHT (21-08)
 
-Klein, zelfstandig, twee keer bevestigd. De parser rekent `A + B/256` waar het
-`A × 256 + B` moet zijn.
+De fout was niet `A + B/256` maar de deler **`655.35`** (= 65535/100) waar
+`2.55` hoort: PID 43 is volgens SAE `(A×256+B) × 100/255`. Drie veldmetingen
+werden er exact door verklaard, en de vierde bevestigde de fix:
 
-| ruw | app toont | hoort |
-|---|---|---|
-| `41430048` (B=72) | 0,11 | 28,2 % |
-| `41430029` (B=41) | 0,06 | 16,1 % |
-| `41430038` (B=56) | 0,09 | 22,0 % |
+```
+41430048  toonde 0,11   hoort 28,24 %
+41430029  toonde 0,06   hoort 16,08 %
+41430038  toonde 0,09   hoort 21,96 %
+41430037  toont  21,57 %              <- na de fix, 21-08 11:47
+```
 
-De derde regel komt uit de sweep van 21-08 en rekent exact uit: `(0 + 56/256) ×
-100/255 = 0,0858` → toont 0,09, terwijl `56 × 100/255 = 21,96 %` de juiste
-waarde is en klopt voor stationair draaien.
+`max` moest mee, van 100 naar 400: absolute belasting loopt bij overdruk tot een
+paar honderd procent, en met de oude grens zou de gerepareerde waarde op een
+turbo meteen als "buiten bereik" gemeld zijn door veldlab en koopcheck. Een
+nieuw vals alarm in ruil voor het oude.
 
-Nooit opgevallen omdat niemand naar absolute motorbelasting kijkt. Raakt
-`pidlane-data.js`. Controleer meteen of dezelfde bytecombinatie elders in de
-tabel voorkomt — dit is precies het soort fout dat op meer PIDs zit.
+Nergens anders in de tabel staat een 16-bit procent-PID, dus deze fout stond
+alleen. Waarom het nooit opviel: `pidlane-auth.js:532` voedt de demo met
+kant-en-klare procenten, dus in demomodus zag de sensor er altijd goed uit.
 
 ---
 
@@ -284,58 +264,76 @@ Al een keer uitgesteld.
 
 ---
 
-## 8. Vierde chip in de topbar: "Run"
+## 8. ~~Vierde chip in de topbar~~ — GEBOUWD (21-08)
 
-Gevraagd 21-08. Nieuwe module `pidlane-run.js`, plus een chip in de topbar van
-`index.html` en één script-tag (vóór `pidlane-bedrading.js`, die blijft
-laatste). Doe dit **na** de validatierit van punt 1: nieuwe code erin betekent
-een nieuwe `CAMPAGNE`, en dan verwatert de vraag die nu precies op de
-steunbitfix gericht is.
+`pidlane-run.js` + `test-run.js`, chip in `index.html`. Vijf schakelaars, dot
+groen met teller zodra er iets draait. Caravan en rit-analyse vragen bevestiging
+bij **stoppen**, niet bij starten, en staan grijs zonder adapter.
 
-Naast de bestaande drie chips (Auto, OBD, AI) komt een vierde met een dot die
-groen wordt zodra er iets op de achtergrond draait. Dat is meteen de winst: nu
-is nergens te zien dát de waakronde aanstaat. Tikken opent een paneel met
-schakelaars.
+De valkuil uit de vorige versie van dit punt was echt: `caravanActive` en
+`ritActive` zijn top-level `let` zonder IIFE, dus `window.caravanActive` is
+altijd `undefined`. `test-run.js` bewaakt het.
 
-| functie | aan/uit | staat uitlezen |
-|---|---|---|
-| Rit-monitor | `toggleRitMonitor()` | `PLMon.userAan`, `PLMon.active` |
-| Bulk-recorder | `PLBulk.start()` / `.stop()` | `PLBulk.status().actief` (+ `.gepauzeerd`) |
-| Waakronde | `PLWaak.schakel()` | `PLWaak.actief()` |
-| Caravan-modus | `startCaravan()` / `stopCaravan()` | `caravanActive` |
-| Rit-analyse | `startRitAnalyse()` / `stopRitAnalyse()` | `ritActive` |
+Daarbij kwam een gat in de bedradingscontrole boven water: `test-bedrading.js`
+scande alleen op `typeof X === 'function'`, niet op `!==`. De vijf nieuwe guards
+gleden er zonder melding doorheen. Regex uitgebreid; er kwam meteen één bestaand
+geval mee (`obj`, lusvariabele in de dode-knoppencontrole).
 
-De laatste twee zijn geen schakelaars maar **sessies met fasen**. Halverwege
-uitzetten gooit een lopende meting weg — `stopCaravan()` genereert meteen het
-rapport, `stopRitAnalyse()` breekt de fasenreeks af. Vraag daar om bevestiging
-vóór het stoppen; aanzetten mag zonder. Ze starten ook geen van beide zonder
-verbinding (`preAnalysisCheck()`), dus toon ze grijs als er geen adapter hangt
-in plaats van ze te laten falen.
+## 9. ~~Opmerkingveld bij het opslaan~~ — GEBOUWD (21-08)
 
-**Valkuil bij het uitlezen.** `caravanActive` en `ritActive` zijn top-level
-`let` in een klassiek script zónder IIFE. Die staan in script-scope, niet op
-`window`: `typeof caravanActive !== 'undefined'` werkt, `window.caravanActive`
-geeft altijd `undefined`. Bouw je het paneel op de tweede vorm, dan staat elke
-schakelaar altijd op uit en zie je dat pas in de auto.
+Tekstvak in de keuzedialoog van `plOpslaan()`. Bovenaan het tekstbestand, in een
+kader onder de kopband in de PDF. Leeg laten verandert niets aan het bestand. De
+vier aanroepers hoefden niet mee te veranderen.
 
-Elke `typeof`-guard die hierbij ontstaat: registreren in `KRITIEK`
-(`pidlane-bedrading.js`), anders vangt `test-bedrading.js` hem.
+## 10. ~~Wizard-HTML, versies, locatie~~ — GEDAAN (21-08, avond)
 
-## 9. Opmerkingveld bij het opslaan van een log
+Drie dingen die als "openstaand van gisteravond" op de lijst stonden.
 
-Gevraagd 21-08. Raakt alleen `pidlane-export.js` en `test-export.js`.
+**De wizard-HTML is weg.** Stappenbalk (12 divs) en `wizS1` t/m `wizS5` (42
+divs) uit `index.html`: 782 → 728, in balans. Daarmee werden `wizNext`,
+`wizRdwLookup`, `_wizRefreshKnown` en `wizToggleDetail` dood en die zijn ook
+verwijderd — dode functies maken de dode-knoppencontrole waardeloos, want die
+kan dan niet meer zien of iets bij een knop hoort of gewoon nooit opgeruimd is.
 
-In de keuzedialoog van `plOpslaan()` een tekstvak erbij: wat is dit voor log,
-en wat viel er op. Die opmerking gaat mee in het bestand, zodat hij bij het
-uploaden niet apart hoeft te worden verteld en later nog bij de meting staat.
+**De versies lopen niet meer uiteen.** `package.json` zei 2.1.0, `config.js`
+zei 2.9.0, en de CI zet `versionName` uit package.json — een bugmelding op
+"2.9.0" ging dus over een APK die 2.1.0 heette. Beide staan op **3.0.0**,
+`test-versie.js` bewaakt het, en de workflow faalt hard als ze verschillen.
+`public/config.js` is als build-trigger toegevoegd, anders bouwt een versiebump
+geen nieuwe APK. `versionCode` blijft het buildnummer; die hoort juist niet
+gelijk te zijn.
 
-- **Tekst**: als eigen blok bovenaan, vóór de bestaande kop.
-- **PDF**: als kader onder de kopband, boven de inhoud — `plMaakPdf()` krijgt
-  hem via `opties`.
-- Leeg laten mag; dan verandert er niets aan het huidige bestand.
+**Locatie is eruit.** `pidlane-gps.js` verwijderd, geen positie meer in de
+bulk-recorder, `privacy.html` en het disclosurescherm bijgewerkt, blokkade 1 in
+`ANDROID-PLAYSTORE.md` gesloten op route (a). De functie wérkte toch al niet:
+`ACCESS_FINE_LOCATION` liep tot API 30, dus op Android 12+ kreeg `watchPosition`
+nooit een fix en verdween de fout in een lege catch. `test-geen-gps.js` bewaakt
+de drie verklaringen samen, en de CI faalt als de permissie ooit zonder
+`maxSdkVersion=30` in het manifest komt.
 
-De vier aanroepers (`archief`, `logboek`, `rijsituatie`, `testrun`) hoeven niet
-mee te veranderen: de opmerking wordt in de dialoog ingevuld, niet doorgegeven.
+**Bij elke update meeleveren:** `package.json` en `public/config.js` met een
+opgehoogde versie, in de delta-zip. Dat is nu onderdeel van de oplevering.
+
+---
+
+## 11. De race in `bt.js:1787`
+
+`updateVehicleCard()` roept `rdwLookup()` aan **zonder `await`**, dus de preset
+kan `supportedPIDs` bijwerken vóórdat `initConnection` op regel 1730
+`saveVinProfile()` doet. Zo kwamen de zeven ontkende PIDs ooit in het opgeslagen
+profiel terecht. De steunbitzeef dicht het gevolg, niet de oorzaak. Klein en
+zelfstandig; oppakken wanneer je toch in die module zit.
+
+## 12. Blok 1 van de testrun: nog twee scherpe randen
+
+De VIN-profielmelding is op 21-08 gerepareerd (leest nu `profielHealth()` in
+plaats van onvoorwaardelijk te waarschuwen), maar de tegenproef is nooit
+gedaan: **wis de app-gegevens, verbind opnieuw, en kijk of daar dan LET OP met
+"NIET geladen" staat.** Een controle die alleen groen kan worden bewijst niets.
+
+Tweede randje uit dezelfde hoek: blok 4 meldde op 21-08 om 11:36 twee afwijkende
+bytelengtes (`0155` en `0156`, tabel 2 tegen gemeten 1). Om 11:47 was dat weg.
+Komt het terug, dan klopt de lengtetabel niet voor die twee.
 
 ---
 
