@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '2.9 (21-08-2026)';
+const TESTRUN_VERSIE = '3.0 (21-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1185,6 +1185,256 @@ async function _blok9() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// BLOK 10 — SNELHEIDSPROEF: HOE SCHOON KAN DEZE VERBINDING?
+// ══════════════════════════════════════════════════════════════════
+// DE VRAAG (PLAN.md punt 2b)
+// Op 21-08 om 11:36 stond de bus op gemMs 950 terwijl het venster op 148 ms
+// zat, met 12 onvolledige verzoeken en tempoPct 30 dat binnen 500 s niet meer
+// boven de 55% kwam. Om 11:47 was het beeld milder maar niet weg: 0% fouten in
+// álle monsters en tóch een tempo van 56%. De missers zaten verspreid over alle
+// gepollde PIDs, één of twee per stuk — geen enkele sensor stak eruit. Dat
+// sluit een fantoom-PID uit en wijst op het transport.
+//
+// Blok 7 kijkt naar wat de app dóét. Dit blok kijkt naar wat de verbinding
+// KAN. Het zet PLLoad buitenspel, polt zelf met vaste dichtheden, en meet waar
+// het knikt.
+//
+// DE OPZET — vijf trappen van 70 s, met rust ertussen
+//
+//   ijking   ~25 s  welke PIDs antwoorden gegarandeerd
+//   trap 1    70 s  één verzoek per 1000 ms   rustig
+//   rust      30 s  alleen een prik per 5 s
+//   trap 2    70 s  per 500 ms
+//   rust      30 s
+//   trap 3    70 s  per 250 ms
+//   rust      30 s
+//   trap 4    70 s  per 120 ms
+//   rust      30 s
+//   trap 5    70 s  zo snel als de adapter aankan
+//   narust    45 s  herstelt de responstijd, en hoe snel
+//
+// Samen ongeveer 9,5 minuut.
+//
+// WAAROM EERST IJKEN
+// Zonder ijking meet je twee dingen tegelijk: transportfouten en dode sensoren.
+// Op 20-08 kwamen ALLE 18 missers van een run van vier PIDs die de ECU ontkent
+// — dat gaf 15% foutgraad en een pollbudget van 55%, en het leek alsof de bus
+// het niet aankon. De ijkronde vraagt elke kandidaat één keer op en houdt
+// alleen over wat écht antwoordt. Daarna is elke misser een echte fout.
+//
+// WAAROM RUST TUSSEN DE TRAPPEN
+// Dat is de eigenlijke vraag. Een adapter die onder druk trager wordt is
+// normaal; een adapter die daarna niet meer bijkomt is een buffer die
+// volloopt. De prik van één verzoek per 5 s belast niets en laat zien of de
+// latentie terugzakt naar de waarde van vóór de trap.
+//
+// WAAROM PER TRAP CLAIMEN EN NIET ÉÉN KEER VOOR ALLES
+// PLBus.MAX_HOLD_MS staat op 180 s: een houder die langer blijft wordt door de
+// volgende claim afgebroken. Tien minuten vasthouden zou dus halverwege
+// stilletjes worden weggenomen. Per trap claimen (70 s) blijft ruim binnen die
+// grens, en tijdens de rust is de bus vrij — wat meteen realistischer is.
+// ══════════════════════════════════════════════════════════════════
+
+const SNELHEID_TRAPPEN = [
+  { naam: 'trap 1', pauze: 1000, sec: 70 },
+  { naam: 'trap 2', pauze:  500, sec: 70 },
+  { naam: 'trap 3', pauze:  250, sec: 70 },
+  { naam: 'trap 4', pauze:  120, sec: 70 },
+  { naam: 'trap 5', pauze:    0, sec: 70 }
+];
+const SNELHEID_RUST_S = 30;
+const SNELHEID_NARUST_S = 45;
+
+function _pctl(arr, p) {
+  if (!arr.length) return 0;
+  const s = arr.slice().sort(function (a, b) { return a - b; });
+  const i = Math.min(s.length - 1, Math.max(0, Math.round((s.length - 1) * p)));
+  return s[i];
+}
+
+function _wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+// Eén verzoek. Geeft {ms, ok} terug. "ok" betekent: er kwam een antwoord dat
+// parsePID kon lezen. Leeg, NO DATA, timeout en fout tellen allemaal als misser
+// — na de ijking is dat allemaal transport.
+async function _snelheidVraag(pid) {
+  const t0 = _nu();
+  let raw = '';
+  try { raw = await sendCmd(pid, 2500); } catch (e) { raw = ''; }
+  const ms = _nu() - t0;
+  let ok = false;
+  try {
+    if (raw && !/NO DATA|UNABLE|ERROR|STOPPED|\?/i.test(raw)) {
+      const w = (typeof parsePID === 'function') ? parsePID(pid, raw) : null;
+      ok = (w !== null && w !== undefined && !(typeof w === 'number' && isNaN(w)));
+    }
+  } catch (e) { ok = false; }
+  return { ms: ms, ok: ok };
+}
+
+async function _blok10() {
+  if (typeof connected === 'undefined' || !connected) {
+    _boek(10, 'Snelheidsproef', 'overgeslagen', 'geen verbinding', null); return;
+  }
+  if (typeof demoMode !== 'undefined' && demoMode) {
+    _boek(10, 'Snelheidsproef', 'overgeslagen', 'demomodus — dit meet de adapter, niet de app', null); return;
+  }
+
+  // ── ijking ──
+  let kandidaten = [];
+  try {
+    if (typeof supportedPIDs !== 'undefined' && supportedPIDs.size) kandidaten = Array.from(supportedPIDs);
+    else if (typeof activePIDs !== 'undefined') kandidaten = Array.from(activePIDs);
+  } catch (e) {}
+  kandidaten = kandidaten.filter(function (p) { return p && !VERBODEN.test(p); });
+  if (typeof ecuSteunt === 'function')
+    kandidaten = kandidaten.filter(function (p) { return ecuSteunt(p) !== false; });
+
+  // Voorkeur voor sensoren die continu veranderen en die elke motor heeft.
+  // Die geven bij herhaald opvragen echte antwoorden en geen gecachet blok.
+  const voorkeur = ['010C', '010D', '0104', '0105', '010B', '010F', '0111', '0142', '0146'];
+  kandidaten.sort(function (a, b) {
+    const ia = voorkeur.indexOf(a), ib = voorkeur.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  kandidaten = kandidaten.slice(0, 12);
+
+  if (!kandidaten.length) { _boek(10, 'Snelheidsproef', 'overgeslagen', 'geen bruikbare PIDs', null); return; }
+
+  _boek(10, 'IJking', 'bezig', kandidaten.length + ' kandidaten, elk één proefvraag', null);
+
+  const set = [];
+  let ijkTok = 0;
+  try { ijkTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-snelheid-ijk', 8000) : 0; } catch (e) {}
+  try {
+    for (let i = 0; i < kandidaten.length && set.length < 8; i++) {
+      if (_trStop) break;
+      const r = await _snelheidVraag(kandidaten[i]);
+      if (r.ok) set.push(kandidaten[i]);
+      await _wacht(60);
+    }
+  } finally {
+    try { if (ijkTok && window.PLBus && PLBus.release) PLBus.release(ijkTok); } catch (e) {}
+  }
+
+  if (set.length < 3) {
+    _boek(10, 'IJking', 'FOUT', 'maar ' + set.length + ' van ' + kandidaten.length +
+      ' PIDs antwoordden — met zo weinig is de proef niet te vertrouwen. ' +
+      'Draait de motor? Staat de verbinding?', null);
+    return;
+  }
+  _boek(10, 'IJking', 'ok', set.length + ' PIDs antwoorden gegarandeerd: ' + set.join(', ') +
+    ' — vanaf hier is elke misser transport, geen dode sensor', null);
+
+  const uitslag = [];
+  let basis = null;     // mediaan van de rustigste trap, als ijkpunt voor herstel
+
+  // ── de trappen ──
+  for (let t = 0; t < SNELHEID_TRAPPEN.length; t++) {
+    if (_trStop) { _boek(10, 'Snelheidsproef', 'gestopt', 'afgebroken na ' + t + ' trappen', null); break; }
+    const trap = SNELHEID_TRAPPEN[t];
+
+    let tok = 0;
+    try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-snelheid', 8000) : 0; } catch (e) {}
+    if (!tok) _boek(10, trap.naam, 'LET OP', 'bus niet vrijgekomen — deze trap loopt naast de pollus en telt dus mee met vreemd verkeer', null);
+
+    const tijden = [];
+    let n = 0, mis = 0, i = 0;
+    const eind = _nu() + trap.sec * 1000;
+    try {
+      while (_nu() < eind && !_trStop) {
+        const r = await _snelheidVraag(set[i % set.length]);
+        i++; n++;
+        if (r.ok) tijden.push(r.ms); else mis++;
+        if (trap.pauze) await _wacht(trap.pauze);
+      }
+    } finally {
+      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+    }
+
+    const med = _pctl(tijden, 0.5), p90 = _pctl(tijden, 0.9), max = tijden.length ? Math.max.apply(null, tijden) : 0;
+    const misPct = n ? Math.round(mis / n * 100) : 0;
+    const perSec = +(n / trap.sec).toFixed(1);
+    if (basis === null && med) basis = med;
+
+    uitslag.push({ naam: trap.naam, pauze: trap.pauze, n: n, mis: mis, misPct: misPct, perSec: perSec, med: med, p90: p90, max: max });
+
+    // Alleen de trap zelf is FOUT-waardig als er missers vallen: na de ijking
+    // hoort elk verzoek een antwoord te krijgen.
+    _boek(10, trap.naam + ' — ' + (trap.pauze ? 'per ' + trap.pauze + ' ms' : 'zo snel mogelijk'),
+      misPct > 0 ? 'LET OP' : 'ok',
+      n + ' verzoeken (' + perSec + '/s), ' + mis + ' mis (' + misPct + '%), ' +
+      'mediaan ' + med + ' ms, p90 ' + p90 + ' ms, traagste ' + max + ' ms' +
+      (basis && med ? ', ' + (med >= basis ? '+' : '') + Math.round((med - basis) / basis * 100) + '% tegenover trap 1' : ''),
+      null);
+
+    // ── rust ──
+    const rustSec = (t === SNELHEID_TRAPPEN.length - 1) ? SNELHEID_NARUST_S : SNELHEID_RUST_S;
+    const prikken = [];
+    const rustEind = _nu() + rustSec * 1000;
+    let eersteHerstel = null;
+    while (_nu() < rustEind && !_trStop) {
+      await _wacht(5000);
+      if (_trStop) break;
+      let ptok = 0;
+      try { ptok = (window.PLBus && PLBus.claim) ? PLBus.claim('testrun-snelheid-prik') : 0; } catch (e) {}
+      const r = await _snelheidVraag(set[0]);
+      try { if (ptok && window.PLBus && PLBus.release) PLBus.release(ptok); } catch (e) {}
+      if (r.ok) {
+        prikken.push(r.ms);
+        if (eersteHerstel === null && basis && r.ms <= basis * 1.25)
+          eersteHerstel = Math.round((rustSec * 1000 - (rustEind - _nu())) / 1000);
+      }
+    }
+
+    if (prikken.length) {
+      const laatste = prikken[prikken.length - 1];
+      const terug = (basis && laatste <= basis * 1.25);
+      _boek(10, 'rust na ' + trap.naam, terug ? 'ok' : 'LET OP',
+        rustSec + ' s stil, ' + prikken.length + ' prikken: ' + prikken.join(', ') + ' ms' +
+        (basis ? ' — trap 1 zat op ' + basis + ' ms, ' +
+          (terug ? 'terug binnen ' + (eersteHerstel === null ? '?' : eersteHerstel) + ' s'
+                 : 'NIET hersteld, blijft ' + Math.round((laatste - basis) / basis * 100) + '% hoger') : ''),
+        null);
+    }
+  }
+
+  // ── slotsom ──
+  if (uitslag.length >= 2) {
+    const schoon = uitslag.filter(function (u) { return u.misPct === 0; });
+    const snelste = schoon.length ? schoon[schoon.length - 1] : null;
+    const knik = uitslag.filter(function (u) { return u.misPct > 0; })[0] || null;
+
+    _boek(10, 'Wat deze verbinding aankan', snelste ? 'ok' : 'LET OP',
+      (snelste
+        ? 'zonder één misser tot ' + snelste.perSec + ' verzoeken/s (' + snelste.naam +
+          ', mediaan ' + snelste.med + ' ms)'
+        : 'geen enkele trap bleef foutloos') +
+      (knik ? '. Eerste missers bij ' + knik.naam + ': ' + knik.misPct + '% op ' + knik.perSec + '/s'
+            : '. Geen enkele trap gaf missers — de adapter is niet de beperking'),
+      null);
+
+    // De vergelijking waar het om begonnen is: loopt de latentie op met de
+    // dichtheid, of springt hij pas op één punt weg?
+    const rij = uitslag.map(function (u) {
+      return u.naam + ' ' + u.perSec + '/s → ' + u.med + ' ms' + (u.misPct ? ' (' + u.misPct + '% mis)' : '');
+    }).join('  |  ');
+    _boek(10, 'Verloop', 'ok', rij, null);
+
+    // En de vergelijking met wat de app op dat moment dacht.
+    let ld = null;
+    try { ld = (window.PLLoad && PLLoad.staat) ? PLLoad.staat() : null; } catch (e) {}
+    let bs = null;
+    try { bs = (window.PLBus && PLBus.stats) ? PLBus.stats() : null; } catch (e) {}
+    if (ld || bs)
+      _boek(10, 'Stand van de app na de proef', 'ok',
+        (ld ? 'tempo ' + ld.tempoPct + '%' : '') +
+        (bs ? ', bus ' + bs.belasting + '% bezet, fout ' + bs.foutPct + '%, gem ' + bs.gemMs +
+              ' ms (venster ' + bs.venGemMs + ' ms)' : ''), null);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 // BLOK 5 — WAT ER IN DEZE UPDATE VERANDERD IS
 // ══════════════════════════════════════════════════════════════════
 // Dit blok hoort bij CAMPAGNE onderaan: daar staat de vráag, hier staat de
@@ -1427,6 +1677,9 @@ async function startTestrun(blokken) {
     // Blok 9 staat bewust niet in de standaardset: 45 s scannen hoort niet in
     // elke run. Alleen via de knop "DID-scan".
     if (b.b9) await _blok9();
+    // Blok 10 duurt in zijn eentje ruim negen minuten en hoort daarom nooit in
+    // de standaardset. Alleen via de knop "Snelheidsproef".
+    if (b.b10) await _blok10();
   } catch (e) {
     _boek(0, 'Testrun', 'FOUT', (e && e.message) || String(e), null);
   } finally {
@@ -1492,7 +1745,7 @@ function testrunTekst() {
   for (let i = 0; i < CAMPAGNE.vragen.length; i++) r.push('  ' + (i + 1) + '. ' + CAMPAGNE.vragen[i]);
   r.push('');
 
-  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren', 7: 'BLOK 7 — het pollbudget (PLAN.md punt 2)', 8: 'BLOK 8 — waar zit de olietemperatuur (PLAN.md punt 4)', 9: 'BLOK 9 — DID-scan mode 22' };
+  const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren', 7: 'BLOK 7 — het pollbudget (PLAN.md punt 2)', 8: 'BLOK 8 — waar zit de olietemperatuur (PLAN.md punt 4)', 9: 'BLOK 9 — DID-scan mode 22', 10: 'BLOK 10 — snelheidsproef (PLAN.md punt 2b)' };
   let vorig = -99;
   for (let i = 0; i < _trLog.length; i++) {
     const x = _trLog[i];
@@ -1591,6 +1844,7 @@ function openTestrun() {
         // minuten wilt starten.
         '<button onclick="startTestrun({b9:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">DID-scan (45 s)</button>' +
         '<button onclick="startTestrun({b7:true,b8:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget + olie</button>' +
+        '<button onclick="startTestrun({b10:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snelheidsproef (10 min)</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
         '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
       '</div>' +
@@ -1642,20 +1896,21 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Versie 3.0.0 — locatie eruit, wizard opgeruimd, versies gelijk',
+  titel: 'Snelheidsproef — wat kan deze verbinding schoon aan? (punt 2b)',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. Blok 5 toont nu ook het versienummer: er hoort 3.0.0 te staan. Staat er iets anders, dan draait er een oude build en telt de rest niet.',
-    'LOCATIE — start de bulk-recorder en kijk of het dashboard nog een GPS-regel toont. Die hoort weg te zijn, en Android hoort tijdens een opname niet meer om locatie te vragen.',
-    'LOCATIE — open Privacy in het kebabmenu: staat er "Geen locatiebepaling" met de zin dat de ritopname-functie verwijderd is?',
-    'WIZARD — verbind opnieuw. Komt er één samenvattingsscherm zonder stappenbalk, en zit er geen leeg vlak of scheve rand waar de vijf stappen stonden? De HTML is er uit; dat kan de opmaak verschoven hebben.',
-    'RUN-CHIP — vijf regels, standen kloppen, dot wordt groen bij de waakronde. Caravan en rit-analyse vragen bevestiging bij STOPPEN, niet bij starten.',
-    'OPSLAAN — vul het opmerkingveld en sla op als tekst én als PDF. Staat de tekst bovenaan het txt-bestand en in een kader onder de kopband in de PDF?',
-    'BUS — loopt de adapter nog achter tijdens het rijden? 11:36 gaf gemMs 950 tegen een venster van 148 ms; 11:47 gaf "langzaam" op 58% zonder één fout. Kijk in het Logboek of er bij de trage momenten een BT-dip staat.',
-    'BLOK 7 — vierde rit op rij 0 ongevraagde remmomenten? Dan is punt 2 definitief dicht.',
-    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0? Laatste stap voor punt 4.',
-    'STEUNBITS — blok 6 hoort nog steeds 0 ontkend te melden. Een regressie daar verloopt stil: alleen tegels die nooit een waarde tonen.'
+    'VOORAF — blok 5 mag geen FOUT geven en hoort versie 3.0.0 te tonen. Dit is een aparte knop: "Snelheidsproef (10 min)". Draai hem NIET samen met de sweep, die vervuilt het spoor.',
+    'VOORAF — rijd, of laat de motor minstens stationair warmdraaien. Een koude motor met een stabiel toerental geeft te gladde antwoorden; onderweg is de meting eerlijker.',
+    'IJKING — hoeveel van de kandidaten antwoordden? Bij minder dan 3 stopt de proef. Staan er 6 tot 8 in de lijst, dan is elke misser daarna transport en geen dode sensor.',
+    'KERNVRAAG — bij welke trap vallen de eerste missers? De regel "Wat deze verbinding aankan" zegt tot hoeveel verzoeken per seconde het foutloos bleef. Als geen enkele trap missers geeft, is de adapter niet de beperking en zit het probleem in PLLoad of in de app.',
+    'KERNVRAAG — loopt de mediaan geleidelijk op of springt hij op één punt weg? Kijk naar de regel "Verloop". Geleidelijk is een adapter die het druk heeft; een sprong is een buffer die volloopt.',
+    'HERSTEL — dit is waar het om begonnen is. Na elke trap staat er 30 s rust met prikken van één verzoek per 5 s. Zakt de responstijd terug naar de waarde van trap 1, en binnen hoeveel seconden? Een "NIET hersteld" na een zware trap verklaart waarom het tempo op 21-08 om 11:47 op 56% bleef hangen terwijl er 0% fouten waren.',
+    'HERSTEL — de laatste rust duurt 45 s. Als hij daar wél herstelt en na 30 s niet, weet je hoeveel lucht de adapter nodig heeft.',
+    'VERGELIJKING — onderaan staat de stand van de app (tempo, bus, fout). Hoe verhoudt het tempo van PLLoad zich tot wat de proef net foutloos haalde? Loopt de app ver onder wat de verbinding aankan, dan schroeft hij te ver terug.',
+    'LOGBOEK — kijk of er tijdens de proef een BT-dip of herverbinding in het log staat. Op 16-08 waren het er vier in twaalf minuten, telkens gevolgd door "scherm blijft aan".',
+    'CONTROLE — blijft blok 6 op 0 ontkende PIDs staan, en toont 0143 nog tientallen procenten? Die twee horen bij elke run even gecheckt te worden; een regressie daar verloopt stil.'
   ]
 };
+
 
 
 
