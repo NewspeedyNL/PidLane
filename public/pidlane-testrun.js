@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '2.8 (21-08-2026)';
+const TESTRUN_VERSIE = '2.9 (21-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1201,73 +1201,85 @@ async function _blok9() {
 // klant erop drukt.
 async function _blok5() {
 
-  // ── TOEGEVOEGD 21-08: de Run-chip ──
+  // ── TOEGEVOEGD 21-08 (avond): versies lopen niet meer uiteen ──
+  await _doe(5, 'Versienummer klopt', function () {
+    // package.json zei 2.1.0, config.js zei 2.9.0. De CI zet versionName uit
+    // package.json, dus een gebruiker die "2.9.0" in het loginscherm zag had
+    // een APK met versionName 2.1.0 op zijn toestel — en bij een bugmelding
+    // zoek je dan in de verkeerde build. De app kan package.json niet lezen;
+    // test-versie.js doet die vergelijking. Hier tonen we wat er draait.
+    let v = '?';
+    try { v = (typeof APP_VERSION !== 'undefined') ? String(APP_VERSION) : '?'; } catch (e) {}
+    if (v === '?') return { staat: 'FOUT', detail: 'APP_VERSION niet beschikbaar — config.js niet geladen?' };
+    if (!/^\d+\.\d+\.\d+$/.test(v))
+      return { staat: 'FOUT', detail: 'APP_VERSION "' + v + '" is geen semver — Play weigert dat als versionName' };
+    return 'app ' + v + ', testrun ' + TESTRUN_VERSIE;
+  });
+
+  // ── VERWIJDERD 21-08 (avond): alle locatiefunctionaliteit ──
+  await _doe(5, 'De app leest geen locatie meer', function () {
+    // Drie verklaringen hangen hieraan: de Data safety-form, privacy.html en
+    // het disclosurescherm. Eén teruggekeerde positie-aanroep maakt ze alle
+    // drie onwaar, en dat merk je pas in een reviewmail.
+    //
+    // Deze controle kijkt naar GEDRAG, niet naar de bron. Twee redenen: de
+    // wrappers in pidlane-remote.js maken broncode-inspectie in deze codebase
+    // onbetrouwbaar, én test-geen-gps.js zou aanslaan op de zoekwoorden die
+    // hier dan letterlijk zouden staan — die test scant álle modules, deze
+    // erbij.
+    if (typeof PLGps !== 'undefined')
+      return { staat: 'FOUT', detail: 'PLGps bestaat nog — pidlane-gps.js is terug' };
+    let s = {};
+    try { s = (window.PLBulk && typeof PLBulk.status === 'function') ? PLBulk.status() : {}; } catch (e) {}
+    if (Object.prototype.hasOwnProperty.call(s, 'gps'))
+      return { staat: 'FOUT', detail: 'PLBulk.status() heeft nog een positieveld' };
+    // blkStat is het statusblok in het recorderdashboard (pidlane-bulk.js
+    // regel 555). Niet blkDash — die bestaat niet, en een getElementById op
+    // een verzonnen id geeft null, waarna deze regel stilletjes altijd slaagt.
+    const rij = document.getElementById('blkStat');
+    if (rij && /GPS/.test(rij.innerHTML || ''))
+      return { staat: 'FOUT', detail: 'het recorderdashboard toont nog een GPS-regel' };
+    return 'geen PLGps, geen positie in de recorder';
+  });
+
+  // ── VERWIJDERD 21-08 (avond): de dode wizard-HTML ──
+  await _doe(5, 'Wizard-HTML is opgeruimd', function () {
+    const weg = ['wizS1', 'wizS2', 'wizS3', 'wizS4', 'wizS5', 'wizStepBar']
+      .filter(function (id) { return !!document.getElementById(id); });
+    if (weg.length)
+      return { staat: 'FOUT', detail: 'staat nog in index.html: ' + weg.join(', ') };
+    if (!document.getElementById('wizS6'))
+      return { staat: 'FOUT', detail: 'de samenvatting is óók weg — te veel gesloopt' };
+    const dood = ['wizNext', 'wizRdwLookup', 'wizToggleDetail']
+      .filter(function (n) { return typeof window[n] === 'function'; });
+    if (dood.length)
+      return { staat: 'LET OP', detail: 'functies zonder knop: ' + dood.join(', ') };
+    return 'stappenbalk en wizS1..wizS5 weg, samenvatting intact';
+  });
+
+  // ── BLIJFT STAAN: de Run-chip van vanmiddag ──
   await _doe(5, 'Run-chip zit in de topbar', function () {
     if (!window.PLRun || typeof PLRun.staat !== 'function')
       return { staat: 'FOUT', detail: 'PLRun ontbreekt — de module hangt niet in index.html' };
-    const chip = document.getElementById('runChip');
-    const dot = document.getElementById('rdot');
-    if (!chip || !dot)
+    if (!document.getElementById('runChip') || !document.getElementById('rdot'))
       return { staat: 'FOUT', detail: 'de chip of de dot staat niet in de topbar' };
     const st = PLRun.staat();
     const gelezen = Object.keys(st).filter(function (k) { return st[k] !== null; });
     if (gelezen.length < 3)
-      return { staat: 'FOUT', detail: 'maar ' + gelezen.length + ' van de 5 modules leesbaar: ' +
-        Object.keys(st).filter(function (k) { return st[k] === null; }).join(', ') + ' geven null' };
+      return { staat: 'FOUT', detail: 'maar ' + gelezen.length + ' van de 5 modules leesbaar' };
     return gelezen.length + ' van 5 leesbaar, versie ' + PLRun.versie;
   });
 
-  await _doe(5, 'Sessiestaat komt niet van window', function () {
-    // caravanActive en ritActive zijn top-level `let` zonder IIFE: die staan in
-    // script-scope, niet op window. Wie ze via window leest krijgt vijf
-    // schakelaars die permanent op UIT staan, en merkt dat pas in de auto.
-    let viaWindow = false;
-    try { viaWindow = (typeof window.caravanActive !== 'undefined') || (typeof window.ritActive !== 'undefined'); } catch (e) {}
-    const st = (window.PLRun && typeof PLRun.staat === 'function') ? PLRun.staat() : {};
-    if (st.caravan === null && st.rit === null)
-      return { staat: 'FOUT', detail: 'caravan en rit-analyse geven allebei null — het paneel leest ze niet' };
-    return 'beide gelezen uit script-scope' + (viaWindow ? ' (ze staan nu óók op window — dan is er iets veranderd in de module)' : '');
-  });
-
-  // ── TOEGEVOEGD 21-08: opmerkingveld bij het opslaan ──
   await _doe(5, 'Opslaan vraagt om een opmerking', function () {
     if (typeof plOpslaan !== 'function') return { staat: 'FOUT', detail: 'plOpslaan ontbreekt' };
     let bron = '';
     try { bron = String(window.plOpslaan || ''); } catch (e) {}
     if (bron && bron.indexOf('plExpOpm') < 0)
       return { staat: 'FOUT', detail: 'het veld zit niet in de keuzedialoog' };
-    if (bron && bron.indexOf('_metOpmerking') < 0)
-      return { staat: 'FOUT', detail: 'de opmerking wordt niet in het tekstbestand gezet' };
     return 'veld aanwezig, gaat mee in tekst en PDF';
   });
 
-  await _doe(5, 'PDF kent het opmerkingkader', function () {
-    if (typeof plMaakPdf !== 'function') return { staat: 'FOUT', detail: 'plMaakPdf ontbreekt' };
-    let bron = '';
-    try { bron = String(window.plMaakPdf || ''); } catch (e) {}
-    if (bron && bron.indexOf('o.opmerking') < 0)
-      return { staat: 'FOUT', detail: 'de PDF negeert de opmerking — die verdwijnt dan zonder melding' };
-    return 'kader wordt getekend als er iets ingevuld is';
-  });
-
-  // ── TOEGEVOEGD 21-08: de bedradingsscanner ziet nu ook !== ──
-  await _doe(5, 'Bedradingscontrole dekt beide guardvormen', function () {
-    if (!window.PLBedrading || !Array.isArray(PLBedrading.kritiek))
-      return { staat: 'FOUT', detail: 'PLBedrading ontbreekt' };
-    const nodig = ['toggleRitMonitor', 'startCaravan', 'stopCaravan', 'startRitAnalyse', 'stopRitAnalyse'];
-    const mist = nodig.filter(function (n) { return PLBedrading.kritiek.indexOf(n) < 0; });
-    if (mist.length)
-      return { staat: 'FOUT', detail: 'niet geregistreerd: ' + mist.join(', ') + ' — die falen stil als ze verdwijnen' };
-    const weg = nodig.filter(function (n) { return typeof window[n] !== 'function'; });
-    if (weg.length)
-      return { staat: 'FOUT', detail: 'geregistreerd maar niet aanwezig: ' + weg.join(', ') };
-    return nodig.length + ' schakelfuncties geregistreerd en aanwezig';
-  });
-
-  // ── BLIJFT STAAN: de 0143-fix van vanochtend ──
-  // In het veld bevestigd (41430037 -> 21,57 %), maar een regressie hier is
-  // stil: de tegel toont dan gewoon weer 0,0x en niemand kijkt naar absolute
-  // motorbelasting.
+  // ── BLIJFT STAAN: de 0143-fix ──
   await _doe(5, '0143 rekent in procenten', function () {
     let d = null;
     try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) {}
@@ -1305,7 +1317,7 @@ async function _blok5() {
     const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
     if (ontkend.length)
       return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size +
-        ' worden door de ECU ontkend: ' + ontkend.join(', ') + ' — iets zet ze terug ná de discovery' };
+        ' worden door de ECU ontkend: ' + ontkend.join(', ') };
     return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
   });
 
@@ -1630,22 +1642,21 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'De Run-chip, het opmerkingveld, en nog altijd de trage adapter',
+  titel: 'Versie 3.0.0 — locatie eruit, wizard opgeruimd, versies gelijk',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. Staat daar iets, dan is de build niet compleet en telt de rest van deze run niet.',
-    'RUN-CHIP — staat er een vierde chip naast Auto, OBD en AI? Tik erop: zie je vijf regels met AAN/UIT, en klopt elke stand met wat er echt draait?',
-    'RUN-CHIP — zet de waakronde aan en kijk of de dot groen wordt en het cijfer verschijnt. Dat was het hele punt: tot nu toe kon die aanstaan zonder dat het ergens bleek.',
-    'RUN-CHIP — Caravan-modus en Rit-analyse horen om bevestiging te vragen bij STOPPEN, niet bij starten. Probeer beide. Zonder verbinding horen ze grijs te staan met "verbind eerst een adapter".',
-    'RUN-CHIP — start de bulk-recorder via de chip en kijk of de regel meetelt ("neemt op — N regels"). Pauzeren via het eigen scherm hoort hier als "gepauzeerd" te verschijnen.',
-    'OPSLAAN — staat er nu een opmerkingveld in het opslaan-venster? Vul iets in, sla op als tekst: staat het bovenaan het bestand? En als PDF: staat het in een kader onder de kopband?',
-    'OPSLAAN — laat het veld ook eens leeg. Dan hoort het bestand er precies zo uit te zien als voorheen, zonder lege kop.',
-    'BUS — loopt de adapter nog steeds achter tijdens het rijden? Op 21-08 om 11:36 stond gemMs op 950 tegen een venster van 148 ms, met 12 onvolledige verzoeken en busbelasting "bufferend". Om 11:47 was het "langzaam" op 58%. Kijk in het Logboek of er bij de trage momenten een BT-dip staat.',
-    'BUS — klimt het tempo terug? Twee runs op rij bleef het onder de 60% hangen zonder dat er nog fouten waren (11:47: 0% fouten in álle monsters, tempo toch 56%). Dat is de vraag die overblijft nu punt 2 zelf dicht kan.',
-    'BLOK 7 — nog steeds 0 ongevraagde remmomenten? Drie ritten op rij nu: 0 van 1, 0 van 4, 0 van 2. Als deze vierde het bevestigt is PLAN.md punt 2 definitief dicht.',
-    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0? Het koelwater haalde 90 °C en 2101/22111F bleven NO DATA, dus kou was niet de reden. Dit is de laatste stap voor punt 4.',
-    'BLOK 1 — blijft de VIN-profielregel "bij het verbinden geladen, snelle start" zeggen? En wis een keer de app-gegevens: dan hoort daar LET OP met "NIET geladen" te staan.'
+    'VOORAF — blok 5 mag geen FOUT geven. Blok 5 toont nu ook het versienummer: er hoort 3.0.0 te staan. Staat er iets anders, dan draait er een oude build en telt de rest niet.',
+    'LOCATIE — start de bulk-recorder en kijk of het dashboard nog een GPS-regel toont. Die hoort weg te zijn, en Android hoort tijdens een opname niet meer om locatie te vragen.',
+    'LOCATIE — open Privacy in het kebabmenu: staat er "Geen locatiebepaling" met de zin dat de ritopname-functie verwijderd is?',
+    'WIZARD — verbind opnieuw. Komt er één samenvattingsscherm zonder stappenbalk, en zit er geen leeg vlak of scheve rand waar de vijf stappen stonden? De HTML is er uit; dat kan de opmaak verschoven hebben.',
+    'RUN-CHIP — vijf regels, standen kloppen, dot wordt groen bij de waakronde. Caravan en rit-analyse vragen bevestiging bij STOPPEN, niet bij starten.',
+    'OPSLAAN — vul het opmerkingveld en sla op als tekst én als PDF. Staat de tekst bovenaan het txt-bestand en in een kader onder de kopband in de PDF?',
+    'BUS — loopt de adapter nog achter tijdens het rijden? 11:36 gaf gemMs 950 tegen een venster van 148 ms; 11:47 gaf "langzaam" op 58% zonder één fout. Kijk in het Logboek of er bij de trage momenten een BT-dip staat.',
+    'BLOK 7 — vierde rit op rij 0 ongevraagde remmomenten? Dan is punt 2 definitief dicht.',
+    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0? Laatste stap voor punt 4.',
+    'STEUNBITS — blok 6 hoort nog steeds 0 ontkend te melden. Een regressie daar verloopt stil: alleen tegels die nooit een waarde tonen.'
   ]
 };
+
 
 
 

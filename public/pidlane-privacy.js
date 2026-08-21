@@ -65,8 +65,9 @@
       'PidLane gebruikt Bluetooth om te praten met de adapter in de OBD2-poort van je auto. ' +
       'Android noemt die permissie "apparaten in de buurt". Zonder die permissie kan de app niets uitlezen.'],
     ['📍', 'Geen locatiebepaling',
-      'PidLane bepaalt of bewaart je locatie niet via Bluetooth. De scanpermissie is aangevraagd met de ' +
-      'markering neverForLocation, waarmee Android het gebruik voor plaatsbepaling blokkeert.'],
+      'PidLane vraagt je locatie niet op en slaat hem niet op. De scanpermissie is aangevraagd met de ' +
+      'markering neverForLocation, waarmee Android het gebruik voor plaatsbepaling blokkeert. ' +
+      'De ritopname kon tot augustus 2026 optioneel de hoogte meenemen; die functie is verwijderd.'],
     ['🚗', 'Wat er uit de auto komt',
       'Foutcodes, sensorwaarden, motorgegevens en het chassisnummer (VIN). Die gegevens gaan naar het ' +
       'scherm en, als je om een AI-analyse vraagt, naar onze server om daar een rapport van te maken.'],

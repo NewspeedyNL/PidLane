@@ -36,6 +36,27 @@
    tunnel) blijft de sessie open en gaan er lege regels in met een
    markering, zodat je in de export ziet WAAR het gat zat.
 
+   GEEN LOCATIE — VERWIJDERD 21-08-2026
+   Tot deze datum nam de recorder via navigator.geolocation een positie op
+   bij elke regel (veld `g`), voor hoogte bij klimbelasting. Dat is eruit,
+   en bewust:
+
+     - Het leverde weinig op. De klimdetectie hieronder werkt op
+       motorbelasting en snelheid, niet op hoogte; het veld was context,
+       geen invoer.
+     - Het kostte veel. Locatie is in de Play Store een "sensitive
+       permission": eigen disclosure, verklaring in de Data safety-form,
+       en bij een bedrijfsvoertuig een AVG-verhaal over herleidbaarheid
+       naar de bestuurder.
+     - Het wérkte niet eens. ACCESS_FINE_LOCATION stond in het manifest op
+       maxSdkVersion=30, dus op elk toestel met Android 12 of hoger kreeg
+       watchPosition nooit een fix. Die functie was stil kapot en niemand
+       merkte het, want de fout werd in een lege catch opgevangen.
+
+   Een permissie die je niet kunt verdedigen is duurder dan een functie
+   die je mist. Wil je hoogte ooit terug, dan is de barometrische druk
+   (PID 0133) de weg — die zit al in elke meting.
+
    Admin-only. Zichtbaar via het kebabmenu.
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
@@ -82,8 +103,6 @@ var _blkS = {
   _klimSinds: 0,
   _motorUit : 0,
   _laatsteTick: 0,
-  gps       : null,     // {lat,lon,alt,acc,t}
-  gpsWatch  : null,
   db        : null,
   fout      : ''
 };
@@ -205,34 +224,6 @@ function dbWis() {
   });
 }
 
-/* ═══════════════════ GPS ═══════════════════ */
-/* Hoogte is het halve verhaal bij klimbelasting. Optioneel: geen GPS is
-   geen probleem, dan blijft het veld gewoon leeg. */
-
-function gpsStart() {
-  try {
-    if (!navigator.geolocation) return;
-    _blkS.gpsWatch = navigator.geolocation.watchPosition(function (p) {
-      try {
-        _blkS.gps = {
-          lat: Math.round(p.coords.latitude  * 1e5) / 1e5,
-          lon: Math.round(p.coords.longitude * 1e5) / 1e5,
-          alt: (p.coords.altitude === null || p.coords.altitude === undefined)
-                 ? null : Math.round(p.coords.altitude),
-          acc: Math.round(p.coords.accuracy || 0),
-          t  : _blkNu()
-        };
-      } catch (e) {}
-    }, function () { /* geweigerd of geen fix: stil doorgaan */ },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
-  } catch (e) {}
-}
-
-function gpsStop() {
-  try { if (_blkS.gpsWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(_blkS.gpsWatch); } catch (e) {}
-  _blkS.gpsWatch = null;
-}
-
 /* ═══════════════════ SEGMENTDETECTIE ═══════════════════ */
 /* Automatisch, want tijdens het rijden met een caravan druk je niks in.
    Volgorde is een prioriteitsladder: motor-uit wint van stil, stil wint
@@ -288,7 +279,6 @@ function tick() {
       n   : Object.keys(vals).length,
       v   : vals
     };
-    if (_blkS.gps && (t - _blkS.gps.t) < 30000) regel.g = _blkS.gps;
     /* Geen enkele PID-waarde binnen: markeer het gat expliciet, zodat je
        in de export ziet WAAR de adapter of de bus wegviel. */
     if (regel.n === 0) regel.gat = 1;
@@ -416,7 +406,6 @@ async function start(stil) {
   _blkS._stilSinds = _blkS._klimSinds = _blkS._motorUit = 0;
   _blkS.fout = '';
 
-  gpsStart();
   _blkS.timer      = setInterval(tick, TICK_MS);
   _blkS.flushTimer = setInterval(function () { flush(); }, FLUSH_MS);
   _blkChipMaak(); chipBij();
@@ -450,7 +439,6 @@ async function stop() {
   _blkS.gepauzeerd = false;
   if (_blkS.timer)      { clearInterval(_blkS.timer);      _blkS.timer = null; }
   if (_blkS.flushTimer) { clearInterval(_blkS.flushTimer); _blkS.flushTimer = null; }
-  gpsStop();
   await flush();
   metaWeg();
   chipWeg(); dashBij();
@@ -606,7 +594,6 @@ function dashBij() {
       '<div><b>Looptijd</b> · ' + duur + '</div>' +
       '<div><b>Segment</b> · ' + _blkS.seg + '</div>' +
       '<div><b>Regels</b> · ' + _blkS.nRegels + ' &nbsp;<span style="opacity:.6">(' + _blkS.nBlokken + ' blokken, buffer ' + _blkS.buf.length + ')</span></div>' +
-      '<div><b>GPS</b> · ' + (_blkS.gps ? (_blkS.gps.alt !== null ? _blkS.gps.alt + ' m hoogte' : 'fix, geen hoogte') : 'geen') + '</div>' +
       (_blkS.fout ? '<div style="color:#e0a055"><b>Laatste fout</b> · ' + _blkS.fout + '</div>' : '');
   }
   var b1 = _blkEl('blkStart'); if (b1) b1.textContent = _blkS.actief ? '⏹️ Stop opname' : '▶️ Start opname';

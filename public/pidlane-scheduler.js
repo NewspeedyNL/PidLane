@@ -193,97 +193,27 @@ function wizFinish(){
 
 function wizGo(n){
   _wizStep=n;
-  // Stap-balk bijwerken
-  document.querySelectorAll('.wiz-step').forEach(el=>{
-    const s=+el.dataset.s;
-    el.classList.toggle('active',s===n);
-    el.classList.toggle('done',s<n);
-    el.innerHTML=s<n?'✓':s===n?`<span>${s}</span>`:`<span>${s}</span>`;
-  });
-  document.querySelectorAll('.wiz-line').forEach((el,i)=>el.classList.toggle('done',i<n-1));
-  // Stap-content tonen
-  for(let i=1;i<=6;i++) document.getElementById('wizS'+i)?.classList.add('hidden');
-  const active=document.getElementById('wizS'+n);
-  if(active) active.classList.remove('hidden');
-  // Stap-acties. Alleen 6 bestaat nog; 1 t/m 5 zijn op 20-08 verwijderd omdat
-  // ze werk toonden dat initConnection al had gedaan. Een aanroep van een
-  // verdwenen stap is een fout die je wilt zien, niet stil wegslikken.
+  // Er is nog één scherm: de samenvatting. De stappenbalk en wizS1..wizS5 zijn
+  // op 21-08 uit index.html gehaald, dus hier valt niets meer te tonen of te
+  // markeren. Een aanroep met een ander nummer is een fout die je wilt zien.
+  const s6=document.getElementById('wizS6');
+  if(s6) s6.classList.remove('hidden');
   if(n===6) _wizStep6();
   else if(typeof btDiag==='function') btDiag('wizGo('+n+') — die stap bestaat niet meer','warn');
 }
 
-function wizNext(n){ wizGo(n); }
-
-// STAP 1 t/m 5 zijn op 20-08-2026 VERWIJDERD. Ze toonden voortgang voor werk
-// dat initConnection() al had gedaan: adapter en protocol (staan nu op het
-// startscherm, met de cascade live), een tweede snelheidsmeting van 8 reads
-// bovenop die van regel 1721 in pidlane-bt.js, en twee voortgangsbalken voor
-// een discovery en een health-scan die allebei klaar waren — met een deadline
-// van 4 seconden erin om te voorkomen dat de nep-animatie bleef hangen.
+// wizNext(), wizRdwLookup(), _wizRefreshKnown() en wizToggleDetail() zijn op
+// 21-08 verwijderd. Ze hoorden bij wizS4 (kenteken) en wizS5 (sensordetail) en
+// werden alleen aangeroepen door onclick-handlers in die HTML. Nu die HTML weg
+// is, zijn het dode functies — en dode functies maken de dode-knoppencontrole
+// waardeloos, want die kan dan niet meer het verschil zien tussen "bestaat nog
+// voor een knop" en "bestaat nog omdat niemand hem opruimde".
 //
-// Stap 4 vroeg het kenteken in een tweede invoerveld naast kentInput. Dat doet
-// brandstofPoort() nu, en alleen wanneer de brandstof anders onbekend blijft.
-//
-// wizNext() en wizRdwLookup() blijven bestaan: de knoppen in wizS4 roepen ze
-// nog aan. Die HTML wordt nooit meer getoond, maar een verdwenen functie
-// achter een bestaande onclick is een dode knop — zie test-dodeknoppen.js.
-
-
-
-
+// Het kenteken vraagt brandstofPoort() nu, en alleen wanneer de brandstof
+// anders onbekend blijft (pidlane-voertuigdata.js).
 
 // Hoofdletter aan begin (brandstof-labels netjes weergeven)
 function cap(s){ s=String(s||''); return s? s.charAt(0).toUpperCase()+s.slice(1) : s; }
-
-async function wizRdwLookup(){
-  const kent=document.getElementById('wizKent').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const status=document.getElementById('wizKentStatus');
-  if(!kent){ status.textContent='Voer eerst een kenteken in'; return; }
-  if(kent.length<4){ status.textContent='Dat kenteken lijkt te kort — controleer de invoer'; return; }
-  status.textContent='⏳ RDW opzoeken...';
-  // Voer de invoer door naar het verborgen hoofdveld dat rdwLookup gebruikt
-  const kentInput=document.getElementById('kentInput');
-  if(kentInput) kentInput.value=kent;
-  const res=await rdwLookup();
-  if(res&&res.ok){
-    const v=getVehicle()||{};
-    status.innerHTML=`✅ ${v.merk} ${v.model||''} ${v.year||''} ${v.brandstof?'· <b>'+cap(v.brandstof)+'</b>':''}`;
-    // VIN-kaart bijwerken zodat aangevulde gegevens direct zichtbaar zijn
-    _wizRefreshKnown();
-  } else if(res&&res.reason==='notfound'){
-    status.innerHTML=`❌ Kenteken <b>${kent}</b> niet gevonden bij de RDW.<br><span style="color:var(--tx3);font-size:12px">Controleer of je je niet hebt vertypt (bijv. 0/O of 1/I).</span>`;
-  } else if(res&&(res.reason==='network'||res.reason==='http')){
-    status.textContent='⚠️ RDW tijdelijk niet bereikbaar — probeer het zo opnieuw.';
-  } else {
-    status.textContent='Kon het kenteken niet opzoeken — controleer de invoer.';
-  }
-}
-
-// Werk de "Al bekend via VIN"-kaart in stap 4 bij na een RDW-aanvulling
-function _wizRefreshKnown(){
-  const v=getVehicle()||{};
-  const known=document.getElementById('wizVinKnown');
-  if(!known) return;
-  const heeftMerk=v.merk&&v.merk!=='Onbekend'&&v.merk!=='Onbekend merk';
-  const rows=[];
-  if(heeftMerk) rows.push(['Merk/model',`${v.merk}${v.model?' '+v.model:''}`]);
-  if(v.year)      rows.push(['Bouwjaar', v.year]);
-  if(v.motor)     rows.push(['Motor', v.motor]);
-  if(v.brandstof) rows.push(['Brandstof', cap(v.brandstof)]);
-  if(!rows.length) return;
-  known.style.display='';
-  known.innerHTML=`<div class="vk-head">✓ Voertuiggegevens</div>
-    <div class="vk-grid">${rows.map(([k,val])=>`<span class="vk-k">${k}</span><span class="vk-v">${val}</span>`).join('')}</div>`;
-}
-
-
-function wizToggleDetail(){
-  const d=document.getElementById('wizPidDetail');
-  const b=document.getElementById('wizDetailToggle').querySelector('button');
-  const open=d.style.display==='none';
-  d.style.display=open?'':'none';
-  b.textContent=open?'▲ Verberg detail':'▼ Toon detail';
-}
 
 // STAP 6 — Klaar: samenvatting + standaard set selecteren
 function _wizStep6(){

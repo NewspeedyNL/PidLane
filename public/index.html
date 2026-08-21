@@ -1277,97 +1277,17 @@ function closeConnOv(){
   </div>
 </div>
 
-<!-- ══ VERBINDING-WIZARD (6 stappen na protocol-detectie) ══ -->
+<!-- ══ VERBINDINGSSAMENVATTING ══
+     Was tot 20-08 een wizard van zes stappen. Vier daarvan toonden voortgang
+     voor werk dat initConnection() al had gedaan; de HTML bleef staan omdat
+     weghalen de div-balans raakt en dat een aparte stap hoorde te zijn. Die
+     stap is dit: de stappenbalk (12 divs) en stap 1 t/m 5 (42 divs) zijn er op
+     21-08 uit. Wat overblijft is de samenvatting, die echt werk doet
+     (selectStandardSet). Zie pidlane-scheduler.js. -->
 <div id="wizardOv" class="wiz-ov hidden">
   <div class="wiz-panel">
-    <!-- Stap-indicator -->
-    <div class="wiz-steps" id="wizStepBar">
-      <div class="wiz-step" data-s="1">1</div>
-      <div class="wiz-line"></div>
-      <div class="wiz-step" data-s="2">2</div>
-      <div class="wiz-line"></div>
-      <div class="wiz-step" data-s="3">3</div>
-      <div class="wiz-line"></div>
-      <div class="wiz-step" data-s="4">4</div>
-      <div class="wiz-line"></div>
-      <div class="wiz-step" data-s="5">5</div>
-      <div class="wiz-line"></div>
-      <div class="wiz-step" data-s="6">6</div>
-    </div>
-
-    <!-- Inhoud per stap -->
     <div class="wiz-body" id="wizBody">
 
-      <!-- STAP 1: Verbonden -->
-      <div id="wizS1" class="wiz-s hidden">
-        <div class="wiz-icon">✅</div>
-        <div class="wiz-title">Verbonden!</div>
-        <div class="wiz-sub" id="wizS1Proto">Protocol detecteren...</div>
-        <div class="wiz-info" id="wizS1Info"></div>
-      </div>
-
-      <!-- STAP 2: Adapter evalueren -->
-      <div id="wizS2" class="wiz-s hidden">
-        <div class="wiz-icon">⚡</div>
-        <div class="wiz-title">Adapter evalueren</div>
-        <div class="wiz-sub">Snelheid meten...</div>
-        <div class="wiz-meter" id="wizMeter">
-          <div class="wiz-meter-bar"><div class="wiz-meter-fill" id="wizMeterFill"></div></div>
-          <div class="wiz-meter-lbl" id="wizMeterLbl">Meten...</div>
-        </div>
-        <div class="wiz-strats" id="wizStrats" style="display:none">
-          <div class="wiz-strat-lbl">Kies poll-strategie:</div>
-          <div id="wizStratBtns"></div>
-        </div>
-      </div>
-
-      <!-- STAP 3: PIDs ontdekken -->
-      <div id="wizS3" class="wiz-s hidden">
-        <div class="wiz-icon">🔍</div>
-        <div class="wiz-title">Sensoren ontdekken</div>
-        <div class="wiz-sub" id="wizS3Sub">Bitmap-scan loopt...</div>
-        <div class="wiz-progbar"><div class="wiz-progfill" id="wizS3Fill"></div></div>
-        <div class="wiz-pid-count" id="wizS3Count">0 sensoren gevonden</div>
-      </div>
-
-      <!-- STAP 4: Voertuig identificeren -->
-      <div id="wizS4" class="wiz-s hidden">
-        <div class="wiz-icon">🇳🇱</div>
-        <div class="wiz-title">Voertuig identificeren</div>
-        <!-- Wat al bekend is via de VIN-uitlezing (NHTSA) -->
-        <div id="wizVinKnown" class="wiz-vin-known" style="display:none"></div>
-        <div id="wizVinRow" class="wiz-vin-row"></div>
-        <div id="wizKentHint" class="wiz-kent-hint"></div>
-        <div class="wiz-kent-row">
-          <input id="wizKent" type="text" placeholder="Kenteken (bijv. R054XD)" maxlength="8"
-            onkeydown="if(event.key==='Enter')wizRdwLookup()"
-            style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;text-transform:uppercase">
-          <button onclick="wizRdwLookup()" class="wiz-rdw-btn">🔍 RDW</button>
-        </div>
-        <div id="wizKentStatus" class="wiz-kent-status"></div>
-        <div class="wiz-actions" style="margin-top:14px">
-          <button class="wiz-btn-sec" onclick="wizNext(5)">Overslaan</button>
-          <button class="wiz-btn-pri" id="wizS4Next" onclick="wizNext(5)">Volgende →</button>
-        </div>
-      </div>
-
-      <!-- STAP 5: Sensorcheck -->
-      <div id="wizS5" class="wiz-s hidden">
-        <div class="wiz-icon">🔬</div>
-        <div class="wiz-title">Sensorcheck</div>
-        <div class="wiz-sub" id="wizS5Sub">Sensoren testen op aanwezigheid...</div>
-        <div class="wiz-progbar"><div class="wiz-progfill" id="wizS5Fill"></div></div>
-        <div class="wiz-pid-count" id="wizS5Count"></div>
-        <!-- Categorie-samenvatting -->
-        <div id="wizCatSum" class="wiz-cat-sum" style="display:none"></div>
-        <!-- Uitklapbare detail -->
-        <div id="wizDetailToggle" style="display:none;text-align:center;margin-top:6px">
-          <button class="wiz-btn-sec" onclick="wizToggleDetail()" style="font-size:12px;padding:5px 12px">▼ Toon detail</button>
-        </div>
-        <div id="wizPidDetail" class="wiz-pid-detail" style="display:none"></div>
-      </div>
-
-      <!-- STAP 6: Klaar -->
       <div id="wizS6" class="wiz-s hidden">
         <div class="wiz-icon" style="font-size:48px">🚀</div>
         <div class="wiz-title">Klaar voor gebruik!</div>
@@ -2166,7 +2086,6 @@ function closeConnOv(){
 <script src="pidlane-busgate.js"></script><!-- bus-poort (PLBusGate) — vereist ná pidlane-data.js (PLBus) -->
 <script src="pidlane-plload.js"></script>
 <script src="pidlane-recall.js"></script><!-- terugroepacties met detail (PLRecall) -->
-<script src="pidlane-gps.js"></script><!-- GPS-ritlogging, opt-in (PLGps) -->
 <script src="pidlane-mode06.js"></script><!-- on-board monitortests (PLM06) — vereist sendCmd + PLBus -->
 <script src="pidlane-demo.js"></script>
 <script src="pidlane-uihelpers.js"></script>
