@@ -287,7 +287,7 @@ window.PIDS_EXTRA = {
   '0149':{name:'Gaspedaal positie',   unit:'%',  min:0,   max:100, cat:'Rijden'},
   '015A':{name:'Hybride accu %',      unit:'%',  min:0,   max:100, cat:'Electrisch'},
   '015B':{name:'Hybride accu temp',   unit:'°C', min:-40, max:80,  cat:'Electrisch'},
-  '0143':{name:'Abs motorbelasting',  unit:'%',  min:0,   max:100, cat:'Motor'},
+  '0143':{name:'Abs motorbelasting',  unit:'%',  min:0,   max:400, cat:'Motor'},   // max mee met ALL_PID_DEFS, zie daar
   '0146':{name:'Omgevingstemperatuur',unit:'°C', min:-40, max:60,  cat:'Temperatuur'},
   '015E':{name:'Brandstofverbruik',   unit:'L/h',min:0,   max:20,  cat:'Brandstof'},
   '015C':{name:'Motorolie temp',      unit:'°C', min:-40, max:150, cat:'Temperatuur'},
@@ -541,7 +541,21 @@ window.ALL_PID_DEFS ={
   '010D':{name:'Voertuigsnelheid',     unit:'km/h',cat:'Rijden',     min:0,   max:280,                     parse:b=>b[0]},
   '0149':{name:'Gaspedaal positie',    unit:'%',   cat:'Rijden',     min:0,   max:100,                     parse:b=>(b[0]*100/255)},
   '0142':{name:'Accuspanning',         unit:'V',   cat:'Electrisch', min:8,   max:16,   wL:11.5, dL:10.5, parse:b=>((b[0]*256+b[1])/1000)},
-  '0143':{name:'Abs. motorbelasting',  unit:'%',   cat:'Electrisch', min:0,   max:100,                     parse:b=>((b[0]*256+b[1])/655.35)},
+  // 0143 stond er 256x naast. De deler was 655.35 (= 65535/100, de schaal voor
+  // "0-100% over zestien bits") terwijl PID 43 volgens SAE J1979
+  // (A x 256 + B) x 100 / 255 is; de juiste deler is dus 2.55. Drie veldmetingen
+  // op de CX-5, alle drie exact verklaard door de oude deler:
+  //   41430048 (B=72)  toonde 0,11  hoort 28,2 %
+  //   41430029 (B=41)  toonde 0,06  hoort 16,1 %
+  //   41430038 (B=56)  toonde 0,09  hoort 22,0 %   (21-08, stationair)
+  // Waarom het nooit opviel: pidlane-auth.js:532 voedt de demo met kant-en-klare
+  // procenten (22 tot 50), dus in demomodus zag deze sensor er altijd goed uit.
+  // max was 100 en moest mee: absolute belasting loopt bij een atmosferische
+  // motor tot ~95%, maar bij overdruk tot een paar honderd procent. Met max 100
+  // zou de gerepareerde waarde op een turbo meteen als "buiten bereik" gemeld
+  // worden door veldlab en koopcheck - een nieuw vals alarm in ruil voor het
+  // oude. 400 dekt elke personenauto; SAE laat formeel 25700% toe.
+  '0143':{name:'Abs. motorbelasting',  unit:'%',   cat:'Electrisch', min:0,   max:400,                     parse:b=>((b[0]*256+b[1])*100/255)},
   '015B':{name:'Hybride accu %',       unit:'%',   cat:'Electrisch', min:0,   max:100,                     parse:b=>(b[0]*100/255)},
   '0113':{name:'O2-sensoren aanwezig', unit:'',   cat:'Emissie',    min:0,   max:255,  bitmap:true,         parse:b=>b[0]},
   '0115':{name:'O2 sensor B1S2',       unit:'V',   cat:'Emissie',    min:0,   max:1.3,                     parse:b=>(b[0]/200)},

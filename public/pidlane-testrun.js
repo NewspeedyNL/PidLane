@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '2.6 (20-08-2026)';
+const TESTRUN_VERSIE = '2.7 (21-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -328,9 +328,24 @@ async function _blok1() {
 
     const uur = prof.ts ? Math.round((Date.now() - prof.ts) / 36e5 * 10) / 10 : null;
     const health = prof.health ? Object.keys(prof.health).length : 0;
-    return prof.pids.length + ' PIDs' + (health ? ', ' + health + ' health-oordelen' : ', GEEN health') +
-      (uur == null ? '' : ', ' + uur + ' uur oud') +
-      ' — dit had bij het verbinden geladen moeten worden';
+    const basis = prof.pids.length + ' PIDs' + (health ? ', ' + health + ' health-oordelen' : ', GEEN health') +
+      (uur == null ? '' : ', ' + uur + ' uur oud');
+
+    // Tot 21-08 stond hier onvoorwaardelijk "dit had bij het verbinden geladen
+    // moeten worden". Die zin controleerde niets: hij keek alleen of er een
+    // profiel in de opslag lag, niet of het gebruikt was. Op 21-08 stond hij
+    // twee runs lang in het log terwijl de app netjes een snelle start deed —
+    // een melding die vals alarm slaat leer je binnen een week negeren, en dan
+    // mis je de echte. profielHealth() is de betrouwbare vlag: die wordt gezet
+    // door applyVinProfileIfKnown() en blijft null bij een volle discovery.
+    let geladen = null;
+    try { geladen = (typeof profielHealth === 'function') ? profielHealth() : undefined; } catch (e) { geladen = undefined; }
+    if (geladen === undefined)
+      return basis + ' — of het geladen is, is niet vast te stellen (profielHealth ontbreekt)';
+    if (geladen)
+      return basis + ' — bij het verbinden geladen, snelle start';
+    return { staat: 'LET OP', detail: basis +
+      ' — staat in de opslag maar is bij het verbinden NIET geladen; de app deed een volle discovery' };
   });
 
   await _doe(1, 'Opslag', function () {
@@ -1186,45 +1201,91 @@ async function _blok9() {
 // klant erop drukt.
 async function _blok5() {
 
-  // ── VERWIJDERD 20-08 (avond): vier wizard-stappen die niets deden ──
-  await _doe(5, 'Wizard is één scherm', function () {
-    const weg = ['_wizStep1', '_wizStep2', '_wizStep3', '_wizStep4', '_wizStep5']
-      .filter(function (n) { return typeof window[n] === 'function'; });
-    if (weg.length)
-      return { staat: 'FOUT', detail: 'terug uit een oude build: ' + weg.join(', ') };
-    if (typeof _wizStep6 !== 'function' && typeof wizShow !== 'function')
-      return { staat: 'FOUT', detail: 'de samenvatting is óók weg — te veel gesloopt' };
-    // De knoppen in wizS4 bestaan nog in de HTML. Die wordt niet meer getoond,
-    // maar een verdwenen functie achter een bestaande onclick is een dode knop.
-    const knoppen = ['wizNext', 'wizRdwLookup', 'wizFinish'].filter(function (n) { return typeof window[n] !== 'function'; });
-    if (knoppen.length)
-      return { staat: 'FOUT', detail: 'dode knop in de wizard-HTML: ' + knoppen.join(', ') + ' bestaat niet meer' };
-    return 'stap 1 t/m 5 weg, samenvatting en knoppen intact';
+  // ── TOEGEVOEGD 21-08: 0143 rekent weer in procenten ──
+  await _doe(5, '0143 staat niet meer 256x naast', function () {
+    // Meten, niet lezen: dit is de uitkomst van de echte parser op de ruwe
+    // bytes uit de sweep van 21-08 (41430038, stationair). Oud gaf 0,09.
+    let d = null;
+    try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) {}
+    if (!d || typeof d.parse !== 'function')
+      return { staat: 'FOUT', detail: '0143 heeft geen parser meer in ALL_PID_DEFS' };
+    let v = null;
+    try { v = d.parse([0x00, 0x38]); } catch (e) { return { staat: 'FOUT', detail: 'parser klapt: ' + (e.message || e) }; }
+    if (!(v > 21.5 && v < 22.5))
+      return { staat: 'FOUT', detail: '41430038 geeft ' + (Math.round(v * 100) / 100) + ', hoort 21,96 %' };
+    // Tweede ijkpunt uit een andere rit, zodat één toevallig kloppende deler
+    // niet volstaat.
+    let w = null;
+    try { w = d.parse([0x00, 0x48]); } catch (e) {}
+    if (!(w > 27.9 && w < 28.5))
+      return { staat: 'FOUT', detail: '41430048 geeft ' + (Math.round(w * 100) / 100) + ', hoort 28,24 %' };
+    return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, 41430048 -> ' + (Math.round(w * 100) / 100) + ' %';
   });
 
-  await _doe(5, 'Snelheid wordt één keer gemeten', function () {
-    // Wizard-stap 2 mat de bus nóg eens, bovenop initConnection. Acht extra
-    // metingen voor een getal dat al bekend was.
+  // ── VERWIJDERD 21-08: de deler 655.35 ──
+  await _doe(5, 'De oude deler is echt weg', function () {
     let bron = '';
-    try { bron = String(window.wizShow || '') + String(window.wizGo || ''); } catch (e) {}
-    if (/measureConnSpeed/.test(bron))
-      return { staat: 'FOUT', detail: 'de wizard meet de bussnelheid opnieuw' };
-    return 'alleen initConnection meet';
+    try { bron = String(ALL_PID_DEFS['0143'].parse); } catch (e) { return { staat: 'FOUT', detail: 'parser niet leesbaar' }; }
+    if (bron.indexOf('655.35') >= 0)
+      return { staat: 'FOUT', detail: 'de oude deler staat er nog in — build niet compleet' };
+    // max moest mee: met max 100 zou de gerepareerde waarde op een turbo
+    // meteen als "buiten bereik" gemeld worden. Nieuw vals alarm in ruil voor
+    // het oude, dus dat hoort samen gewijzigd te blijven.
+    const mx = ALL_PID_DEFS['0143'].max;
+    if (!(mx >= 400))
+      return { staat: 'FOUT', detail: 'max staat op ' + mx + ' — een turbo boven 100% wordt dan afgekeurd' };
+    return 'deler weg, max ' + mx + '%';
   });
 
-  // ── TOEGEVOEGD 20-08 (avond): de run belast de bus niet met dode PIDs ──
+  // ── TOEGEVOEGD 21-08: blok 1 toetst het profiel echt ──
+  await _doe(5, 'VIN-profielmelding is geen vals alarm meer', function () {
+    if (typeof profielHealth !== 'function')
+      return { staat: 'FOUT', detail: 'profielHealth ontbreekt — blok 1 kan niet vaststellen of het profiel geladen is' };
+    let bron = '';
+    try { bron = String(_blok1 || ''); } catch (e) {}
+    if (bron && bron.indexOf('dit had bij het verbinden geladen moeten worden') >= 0)
+      return { staat: 'FOUT', detail: 'de onvoorwaardelijke waarschuwing staat er nog' };
+    const h = profielHealth();
+    return h ? 'profiel geladen, ' + Object.keys(h).length + ' health-oordelen' : 'geen profiel geladen deze sessie (volle discovery)';
+  });
+
+  // ── BLIJFT STAAN: de steunbitzeef uit de vorige update ──
+  // Punt 1 is op 21-08 11:28 gesloten (blok 6: 55 PIDs, 0 ontkend). Deze twee
+  // controles blijven omdat een regressie hier stil verloopt: er komt geen
+  // foutmelding, er verschijnen alleen weer tegels die nooit een waarde tonen.
+  await _doe(5, 'Preset respecteert de steunbits', function () {
+    if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
+      return { staat: 'FOUT', detail: 'de poort ontbreekt — de preset kan weer fantomen terugzetten' };
+    let bits = {};
+    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
+    const blokken = Object.keys(bits).length;
+    if (!blokken)
+      return { staat: 'LET OP', detail: 'nog geen bitmaps gelezen — de zeef laat dan alles door (bedoeld)' };
+    const uit = [];
+    if (magToevoegen('015C')) uit.push('015C zou nog toegevoegd worden');
+    if (!magToevoegen('010C')) uit.push('010C wordt geweigerd — te gretige zeef');
+    if (uit.length) return { staat: 'FOUT', detail: uit.join('; ') };
+    return blokken + ' bitmapblokken gelezen, poort actief';
+  });
+
+  await _doe(5, 'Geen fantomen in supportedPIDs', function () {
+    if (typeof supportedPIDs === 'undefined' || !supportedPIDs.size)
+      return { staat: 'LET OP', detail: 'supportedPIDs leeg' };
+    if (typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'ecuSteunt ontbreekt' };
+    const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
+    if (ontkend.length)
+      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size +
+        ' worden door de ECU ontkend: ' + ontkend.join(', ') + ' — iets zet ze terug ná de discovery' };
+    return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
+  });
+
   await _doe(5, 'Run vraagt geen ontkende PIDs op', function () {
-    // Op 20-08 kwamen ALLE 18 missers in een run van 230 verzoeken van vier
-    // PIDs die de ECU ontkent. Dat gaf 15% foutgraad, een pollbudget van 55%
-    // en de waarschuwing "veel lege antwoorden van de ECU" — allemaal door de
-    // meting zelf veroorzaakt.
     if (typeof ecuSteunt !== 'function')
       return { staat: 'LET OP', detail: 'ecuSteunt ontbreekt — de run kan zichzelf niet ontzien' };
     let bits = {};
     try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
     if (!Object.keys(bits).length)
       return { staat: 'LET OP', detail: 'nog geen bitmaps — blok 3 vraagt deze run alles op' };
-    // Wat zou de sweep nu overslaan?
     let over = 0;
     try {
       const bron = (typeof discoveredPIDDefs !== 'undefined' && discoveredPIDDefs.length)
@@ -1237,319 +1298,12 @@ async function _blok5() {
       : 'geen ontkende PIDs in de sweeplijst (profiel is schoon)';
   });
 
-  // ── TOEGEVOEGD 20-08 (avond): de preset gaat langs de steunbits ──
-  await _doe(5, 'Preset respecteert de steunbits', function () {
-    if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
-      return { staat: 'FOUT', detail: 'de poort ontbreekt — de preset kan weer fantomen terugzetten' };
-    let bits = {};
-    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
-    const blokken = Object.keys(bits).length;
-    if (!blokken)
-      return { staat: 'LET OP', detail: 'nog geen bitmaps gelezen — de zeef laat dan alles door (bedoeld)' };
-    // Op deze CX-5 moet 015C geweigerd worden en 0110 doorgelaten: dat is
-    // precies het paar uit MERK_EXTRA_PIDS.MAZDA dat op 20-08 misging.
-    const uit = [];
-    if (magToevoegen('015C')) uit.push('015C zou nog toegevoegd worden');
-    if (!magToevoegen('010C')) uit.push('010C wordt geweigerd — te gretige zeef');
-    if (uit.length) return { staat: 'FOUT', detail: uit.join('; ') };
-    return blokken + ' bitmapblokken gelezen, poort actief';
-  });
-
-  await _doe(5, 'Geen fantomen in supportedPIDs', function () {
-    // De echte uitkomst, niet de code: staat er nog iets in de actieve set dat
-    // de ECU ontkent? Dit is wat blok 6 op 20-08 als "7 van 62" meldde.
-    if (typeof supportedPIDs === 'undefined' || !supportedPIDs.size)
-      return { staat: 'LET OP', detail: 'supportedPIDs leeg' };
-    if (typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'ecuSteunt ontbreekt' };
-    const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
-    if (ontkend.length)
-      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size +
-        ' worden door de ECU ontkend: ' + ontkend.join(', ') + ' — iets zet ze terug ná de discovery' };
-    return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
-  });
-
-  // ── TOEGEVOEGD 20-08: adaptertype stuurt de ketenvolgorde ──
-  await _doe(5, 'Keten volgt het adaptertype', function () {
-    if (!window.PLStart || typeof PLStart.adapterTransport !== 'function')
-      return { staat: 'FOUT', detail: 'PLStart.adapterTransport ontbreekt' };
-    let bron = '';
-    try { bron = String(window.connectSerial || ''); } catch (e) {}
-    if (bron && bron.indexOf('adapterTransport') < 0)
-      return { staat: 'FOUT', detail: 'connectSerial gebruikt het gekozen adaptertype niet — eerste verbinding kost weer een BLE-scan' };
-    const k = PLStart.adapterTransport();
-    let laatste = '';
-    try { laatste = localStorage.getItem('pl_lastTransport') || ''; } catch (e) {}
-    return 'kanaal "' + (k || 'geen keuze') + '"' +
-      (laatste ? ', maar pl_lastTransport=' + laatste + ' gaat voor' : ', geen eerdere verbinding — dit bepaalt de volgorde');
-  });
-
-  // ── TOEGEVOEGD 20-08: brandstof vóór de health-scan ──
-  await _doe(5, 'Brandstofpoort staat vóór de scan', function () {
-    if (typeof brandstofPoort !== 'function')
-      return { staat: 'FOUT', detail: 'brandstofPoort ontbreekt — de scan draait weer blind' };
-    let bron = '';
-    try { bron = String(window.initConnection || ''); } catch (e) {}
-    if (!bron) {
-      // initConnection zit niet als global in deze build; dan is de volgorde
-      // niet uit de bron te lezen. Geen fout, wel het vermelden waard.
-      return 'aanwezig — volgorde niet verifieerbaar (initConnection niet globaal)';
-    }
-    const iPoort = bron.indexOf('brandstofPoort');
-    const iScan = bron.indexOf('initialHealthScan');
-    if (iPoort < 0) return { staat: 'FOUT', detail: 'initConnection roept brandstofPoort niet aan' };
-    if (iScan >= 0 && iPoort > iScan)
-      return { staat: 'FOUT', detail: 'brandstofpoort staat NA de health-scan — dat is de bug die hij moest oplossen' };
-    return 'poort vóór de health-scan bedraad';
-  });
-
-  await _doe(5, 'Brandstoftype is bekend', function () {
-    let ft = 'onbekend';
-    try { ft = vehicleFuelType(); } catch (e) { return { staat: 'FOUT', detail: 'vehicleFuelType ontbreekt' }; }
-    let bron = 'geen';
-    try {
-      if (vehicleInfo && vehicleInfo.brandstof) bron = 'voertuiggegevens (' + vehicleInfo.brandstof + ')';
-      else if (typeof pidVals !== 'undefined' && pidVals['0151'] != null) bron = 'OBD 0151=' + pidVals['0151'];
-    } catch (e) {}
-    if (ft === 'onbekend')
-      return { staat: 'LET OP', detail: 'onbekend — fantoomsensoren zijn nu niet te filteren; vul een kenteken in' };
-    return ft + ' via ' + bron;
-  });
-
-  // ── TOEGEVOEGD 20-08: startscherm per adaptertype ──
-  await _doe(5, 'Startscherm kent adaptertypes', function () {
-    if (!window.PLStart || !PLStart.adapters)
-      return { staat: 'FOUT', detail: 'PLStart ontbreekt — startscherm valt terug op de statische stappen' };
-    const a = PLStart.adapters;
-    const namen = Object.keys(a);
-    if (namen.length < 4) return { staat: 'FOUT', detail: 'maar ' + namen.length + ' profielen' };
-    // De hele reden voor deze module: de instructies moeten per type verschillen.
-    // Zijn ze gelijk, dan is er een profiel overschreven en krijgt een ELM327
-    // weer MX+-instructies.
-    const mx = (a.mxplus.stappen || []).join(' ');
-    const elm = (a.elm327.stappen || []).join(' ');
-    const ble = (a.ble.stappen || []).join(' ');
-    if (mx === elm || elm === ble) return { staat: 'FOUT', detail: 'profielen hebben identieke stappen' };
-    if (!/pair-knop/i.test(mx)) return { staat: 'FOUT', detail: 'MX+ noemt de pair-knop niet' };
-    if (/pair-knop/i.test(elm)) return { staat: 'FOUT', detail: 'ELM327 noemt een pair-knop die hij niet heeft' };
-    if (!/1234|0000/.test(elm)) return { staat: 'FOUT', detail: 'ELM327 noemt geen pincode' };
-    return namen.length + ' profielen, elk met eigen stappen';
-  });
-
-  await _doe(5, 'Cascade meldt zich aan het startscherm', function () {
-    if (!window.PLStart || typeof PLStart.poging !== 'function')
-      return { staat: 'FOUT', detail: 'PLStart.poging ontbreekt' };
-    // Zonder deze aanroepen staat de gebruiker twintig seconden naar een
-    // stilstaand scherm te kijken terwijl de keten wordt afgelopen.
-    let bron = '';
-    try { bron = String(window.connectSerial || ''); } catch (e) {}
-    const mist = ['PLStart.begin', 'PLStart.poging', 'PLStart.gelukt', 'PLStart.mislukt']
-      .filter(function (n) { return bron.indexOf(n) < 0; });
-    if (mist.length) return { staat: 'FOUT', detail: 'connectSerial roept niet aan: ' + mist.join(', ') };
-    return 'begin/poging/gelukt/mislukt alle vier bedraad in connectSerial';
-  });
-
-  // ── TOEGEVOEGD 20-08: logboek en privacy-disclosure ──
-  await _doe(5, 'Logboek leest alle bronnen', function () {
-    if (!window.PLLogboek || typeof PLLogboek.verzamel !== 'function')
-      return { staat: 'FOUT', detail: 'PLLogboek ontbreekt — geen logscherm in het menu' };
-    if (typeof plLokaalLog !== 'function')
-      return { staat: 'FOUT', detail: 'plLokaalLog ontbreekt — het app-log komt niet in het logboek' };
-    const r = PLLogboek.verzamel();
-    const bronnen = {};
-    r.forEach(function (x) { bronnen[x.bron] = (bronnen[x.bron] || 0) + 1; });
-    const namen = Object.keys(bronnen);
-    if (!r.length) return { staat: 'LET OP', detail: 'geen regels — verse start, of alle ringen leeg' };
-    // BT hoort er altijd bij zodra er iets met de adapter is gebeurd. Ontbreekt
-    // hij terwijl er wel verbinding is, dan leest het logboek de verkeerde ring.
-    if (typeof connected !== 'undefined' && connected && !bronnen.BT)
-      return { staat: 'FOUT', detail: 'verbonden maar geen BT-regels in het logboek — bron niet gekoppeld' };
-    return r.length + ' regels uit ' + namen.length + ' bronnen (' +
-      namen.map(function (n) { return n + ' ' + bronnen[n]; }).join(', ') + ')';
-  });
-
-  await _doe(5, 'Logboek verandert niets', function () {
-    // Het logboek trekt data op; het mag zich niet in log() of btDiag() hangen.
-    // Een logvenster dat het gedrag van de app verandert is waardeloos als
-    // bewijsmiddel — precies de fout die pidlane-remote.js al één keer maakte.
-    if (typeof btDiag !== 'function') return { staat: 'FOUT', detail: 'btDiag weg' };
-    const bron = String(btDiag);
-    if (/PLLogboek|logboek/i.test(bron))
-      return { staat: 'FOUT', detail: 'btDiag noemt het logboek — er is een wrapper omheen gezet' };
-    return 'btDiag en log() ongemoeid, logboek leest alleen';
-  });
-
-  await _doe(5, 'BT-disclosure vóór het verbinden', function () {
-    if (!window.PLPrivacy || typeof PLPrivacy.disclosureOk !== 'function')
-      return { staat: 'FOUT', detail: 'PLPrivacy ontbreekt — Play Store weigert een BT-app zonder disclosure' };
-    // De poort moet in connectSerial zitten, vóór het scannen. Staat hij er
-    // niet, dan verschijnt het Android-permissiedialoog zonder uitleg erboven
-    // en is dat een afwijzingsgrond.
-    let inFlow = false;
-    try { inFlow = /PLPrivacy/.test(String(window.connectSerial || '')); } catch (e) {}
-    if (!inFlow)
-      return { staat: 'FOUT', detail: 'connectSerial roept PLPrivacy niet aan — disclosure staat buiten de flow' };
-    return 'poort aanwezig in connectSerial, disclosure v' + PLPrivacy.versie +
-      ' — toestemming ' + (PLPrivacy.gegeven() ? 'gegeven' : 'nog niet gegeven');
-  });
-
-  // ── Deploy-controle. Staat vooraan met reden ──
-  // De rit van 19-08 draaide op een build waarin profielTegenSteunbits ontbrak.
-  // Blok 6 meldde "0 ontkend" en dat zag eruit als een bevestiging, terwijl het
-  // profiel gewoon al schoon wás. Een halve deploy die eruitziet als een
-  // geslaagde test is duurder dan een mislukte test.
-  await _doe(5, 'Is deze deploy compleet', function () {
-    const eis = ['profielTegenSteunbits', 'pidCmd', 'probeUitgebreid', 'plHerijkTick', 'plOpslaan',
-                 'openLogboek', 'openPrivacy', 'plLokaalLog'];
-    if (!window.PLStart) eis.push('PLStart (startscherm)');
-    const weg = eis.filter(function (n) { return typeof window[n] !== 'function'; });
-    if (weg.length)
-      return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') + ' — oude build. Lees de rest van deze run niet als bevestiging.' };
-    return 'alle sleutelfuncties aanwezig, testrun ' + TESTRUN_VERSIE;
-  });
-
-  await _doe(5, 'Voertuig bekend genoeg', function () {
-    // Zonder kenteken blijft vehicleInfo half en geeft het merkfilter in
-    // probeUitgebreid GEEN kandidaten terug. Dat lijkt op een defect en is het
-    // niet — 19-08 kostte dat een halve avond.
-    const v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) ? vehicleInfo : null;
-    if (!v) return { staat: 'LET OP', detail: 'vehicleInfo leeg' };
-    // Het veld heet year, niet bouwjaar. Deze controle keek naar het verkeerde
-    // veld en meldde "mist bouwjaar" bij een auto waarvan het bouwjaar gewoon
-    // bekend was — precies het soort vals alarm dat je binnen een week negeert.
-    const heeft = { merk: v.merk, model: v.model, bouwjaar: v.year || v.bouwjaar, brandstof: v.brandstof };
-    const mist = Object.keys(heeft).filter(function (k) { return !heeft[k]; });
-    if (mist.length)
-      return { staat: 'LET OP', detail: 'mist ' + mist.join(', ') + ' — voer het kenteken in, anders filtert de merkroute alles weg' };
-    return [heeft.merk, heeft.model, heeft.bouwjaar, heeft.brandstof].join(' ');
-  });
-
-  // ── TOEGEVOEGD 19-08: pollbudget-spoor (PLAN.md punt 2) ──
-  await _doe(5, 'Budgetsampler leeft', function () {
-    if (!window.PLBudget || typeof PLBudget.spoor !== 'function')
-      return { staat: 'FOUT', detail: 'PLBudget ontbreekt — blok 7 heeft niets te meten' };
-    const n = PLBudget.aantal();
-    if (!n) {
-      // Niet verbonden geweest is een geldige reden; dan is dit geen fout maar
-      // een lege meting. Verbonden én nul monsters is wél een fout.
-      const verbonden = (typeof connected !== 'undefined' && connected);
-      return verbonden
-        ? { staat: 'FOUT', detail: 'verbonden, maar 0 monsters — de sampler draait niet' }
-        : { staat: 'LET OP', detail: '0 monsters, nog niet verbonden geweest' };
-    }
-    return n + ' monsters in de ring (' + Math.round(n * 2) + ' s aan spoor)';
-  });
-
-  await _doe(5, 'Sampler regelt niets', function () {
-    // De hele opzet staat of valt hiermee: PLBudget mag alleen kijken. Zodra
-    // hij PLLoad aanraakt meet hij zijn eigen invloed en is het spoor waardeloos
-    // als bewijs voor sessie 2.
-    if (!window.PLLoad) return { staat: 'FOUT', detail: 'PLLoad ontbreekt' };
-    const eigen = ['mult', 'tick', 'reset', 'staat', 'cfg', '_mult'];
-    const ontbreekt = eigen.filter(function (k) { return PLLoad[k] === undefined; });
-    if (ontbreekt.length) return { staat: 'FOUT', detail: 'PLLoad mist: ' + ontbreekt.join(', ') + ' — is hij gewrapt?' };
-    if (typeof PLLoad.tick !== 'function') return { staat: 'FOUT', detail: 'PLLoad.tick is geen functie meer' };
-    // De drempels moeten uit PLLoad komen, niet uit een kopie in dit bestand.
-    const d = PLBudget.drempels();
-    if (d.bezetOp !== PLLoad.cfg.bezetOp || d.foutOp !== PLLoad.cfg.foutOp)
-      return { staat: 'FOUT', detail: 'PLBudget rekent met andere drempels dan PLLoad' };
-    return 'PLLoad ongemoeid, drempels komen uit PLLoad.cfg (bezetOp ' + d.bezetOp + '%, foutOp ' + d.foutOp + '%)';
-  });
-
-  // ── TOEGEVOEGD 19-08: olietemperatuur-sonde (PLAN.md punt 4) ──
-  await _doe(5, 'Mode-21-pad aanwezig', function () {
-    const weg = [];
-    if (typeof pidCmd !== 'function') weg.push('pidCmd');
-    if (typeof isMode01 !== 'function') weg.push('isMode01');
-    if (typeof probeUitgebreid !== 'function') weg.push('probeUitgebreid');
-    if (weg.length) return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') + ' — pidlane-uitgebreid.js niet geladen' };
-    const n = window.UITGEBREID_DEFS ? Object.keys(UITGEBREID_DEFS).length : 0;
-    return 'mode-21-route leeft, ' + n + ' definities';
-  });
-
-  // ── VERWIJDERD 19-08: 2101 als olietemperatuur ──
-  // Gemeten NO DATA op de CX-5. De definitie droeg vervangt:'015C', dus de app
-  // bood een sensor aan die deze auto niet levert. Deze toets bewaakt dat hij
-  // niet terugkruipt — uit een oude zip, een merge, of een gedeelde PID-lijst.
-  await _doe(5, '2101 is echt weg', function () {
-    const fout = [];
-    if (window.UITGEBREID_DEFS && UITGEBREID_DEFS['2101']) fout.push('UITGEBREID_DEFS');
-    try {
-      const d = (typeof getPidDef === 'function') ? getPidDef('2101') : null;
-      // PIDS_EXTRA houdt hem bewust als waarschuwing, met DOOD in de naam. Een
-      // definitie zonder die markering betekent dat er ergens een echte terug is.
-      if (d && !/DOOD/i.test(String(d.name || ''))) fout.push('getPidDef geeft "' + d.name + '"');
-    } catch (e) {}
-    try { if (typeof supportedPIDs !== 'undefined' && supportedPIDs.has('2101')) fout.push('staat in supportedPIDs'); } catch (e) {}
-    if (fout.length) return { staat: 'FOUT', detail: '2101 is terug via: ' + fout.join(', ') };
-    return 'niet in UITGEBREID_DEFS, niet in supportedPIDs, PIDS_EXTRA houdt alleen de waarschuwing';
-  });
-
-  await _doe(5, 'Sonde raakt de auto niet aan', function () {
-    // Blok 8 zet een header en vraagt mode 22 op. Beide zijn lezend, maar een
-    // schrijfcommando dat er ooit in sluipt is niet terug te draaien. Daarom
-    // hier de lijst zelf tegen de verbodenlijst houden, vóór de rit.
-    const fout = OLIE_KANDIDATEN.map(function (k) { return k[0]; }).filter(function (p) { return VERBODEN.test(p); });
-    if (fout.length) return { staat: 'FOUT', detail: 'kandidaat staat op de verbodenlijst: ' + fout.join(', ') };
-    return OLIE_KANDIDATEN.length + ' kandidaten, alle lezend (mode 01/21/22)';
-  });
-
-  // ── TOEGEVOEGD 18-08: profiel tegen de steunbits ──
-  await _doe(5, 'Steunbitcontrole aanwezig', function () {
-    // Deze functie VERWIJDERT PIDs uit het profiel, dus hier telt vooral dat
-    // hij bestaat én dat blok 6 hieronder meet of hij ook echt gedraaid heeft.
-    if (typeof profielTegenSteunbits !== 'function') return { staat: 'FOUT', detail: 'profielTegenSteunbits ontbreekt — profiel wordt niet gecontroleerd' };
-    return 'aanwezig — blok 6 meet of het profiel schoon is';
-  });
-
-  // ── TOEGEVOEGD 17-08: gedeelde export met formaatkeuze ──
-  await _doe(5, 'Exportmodule geladen', function () {
-    if (typeof plOpslaan !== 'function') return { staat: 'FOUT', detail: 'plOpslaan ontbreekt — pidlane-export.js niet geladen' };
-    if (typeof plMaakPdf !== 'function') return { staat: 'FOUT', detail: 'plMaakPdf ontbreekt' };
-    return 'plOpslaan en plMaakPdf aanwezig';
-  });
-
-  await _doe(5, 'PDF-opbouw werkt', async function () {
-    if (typeof plMaakPdf !== 'function') return { staat: 'FOUT', detail: 'plMaakPdf ontbreekt' };
-    // Echt een PDF maken van een paar regels. Dit is de enige manier om te
-    // weten of jsPDF geladen kan worden op dit toestel — die komt van een CDN,
-    // dus zonder internet faalt hij, en dat wil je hier zien en niet pas als
-    // er een klant meekijkt.
-    try {
-      const blob = await plMaakPdf('proef.pdf', 'PROEF\n----------\n[00:00:00]  ok  regel\n', { titel: 'Proef' });
-      if (!blob || !blob.size) return { staat: 'FOUT', detail: 'plMaakPdf gaf geen bestand terug' };
-      return Math.round(blob.size / 1024) + ' kB PDF gemaakt';
-    } catch (e) {
-      return { staat: 'LET OP', detail: 'PDF lukt niet: ' + (e.message || e) + ' (internet nodig voor jsPDF)' };
-    }
-  });
-
-  // ── TOEGEVOEGD 17-08: meetuitgangen i.p.v. broncode-inspectie ──
-  await _doe(5, 'Meetuitgangen', function () {
-    const weg = [];
-    if (!window.PLGate || typeof PLGate.stats !== 'function') weg.push('PLGate.stats');
-    if (!window.PLElm || typeof PLElm.poortDicht !== 'function') weg.push('PLElm.poortDicht');
-    if (typeof plDiagGevallen !== 'function') weg.push('plDiagGevallen');
-    if (weg.length) return { staat: 'FOUT', detail: 'ontbreekt: ' + weg.join(', ') };
-    const st = PLGate.stats();
-    const nodig = ['mapMonsters', 'maxMap', 'herijkingen', 'ticks'];
-    const mist = nodig.filter(function (k) { return typeof st[k] !== 'number'; });
-    if (mist.length) return { staat: 'FOUT', detail: 'PLGate.stats mist velden: ' + mist.join(', ') };
-    return 'PLGate, PLElm en plDiagGevallen leveren gegevens';
-  });
-
-  await _doe(5, 'Bus wachten i.p.v. proberen', function () {
-    if (!window.PLBus || typeof PLBus.wait !== 'function') return { staat: 'FOUT', detail: 'PLBus.wait ontbreekt — de sweep valt terug op claim()' };
-    return 'PLBus.wait beschikbaar';
-  });
-
-  // ── VERWIJDERD 16-08: zes losse diagnose-ingangen ──
-  await _doe(5, 'Oude ingangen opgeruimd', function () {
-    const oud = ['openBusDiag', 'openZelftest', 'openOpdracht', 'plCopilotOpen', 'openLogCenter', 'plDiagBundle'];
-    const rest = oud.filter(function (n) { return typeof window[n] === 'function'; });
-    if (rest.length) return { staat: 'FOUT', detail: 'bestaat nog: ' + rest.join(', ') + ' — sloop niet afgemaakt' };
-    return oud.length + ' verwijderde ingangen zijn echt weg';
-  });
-
+  // ── BLIJFT STAAN: twee structurele controles ──
+  // Deze twee horen bij geen enkele update in het bijzonder; ze bewaken de run
+  // zelf en de knoppen. De rest van het oude blok 5 (wizard, adaptertype,
+  // brandstofpoort, startscherm, cascade) is op 21-08 verwijderd: die
+  // wijzigingen zijn in het veld bevestigd, en een blok dat elke update
+  // aangroeit wordt binnen een maand ongelezen.
   await _doe(5, 'Geen dode knoppen in het menu', function () {
     // Een knop die een gesloopte functie aanroept doet niets en meldt niets —
     // de gebruiker denkt dat de app hapert.
@@ -1608,7 +1362,16 @@ async function _blok5() {
     const min = Math.round((_trStart - t) / 60000);
     return { staat: 'LET OP', detail: 'herstelpunt van ' + min + ' min geleden staat er nog — die run eindigde niet netjes' };
   });
+
+  // ── BLIJFT STAAN: de oude diagnose-ingangen ──
+  await _doe(5, 'Oude ingangen opgeruimd', function () {
+    const oud = ['openBusDiag', 'openZelftest', 'openOpdracht', 'plCopilotOpen', 'openLogCenter', 'plDiagBundle'];
+    const rest = oud.filter(function (n) { return typeof window[n] === 'function'; });
+    if (rest.length) return { staat: 'FOUT', detail: 'bestaat nog: ' + rest.join(', ') + ' — sloop niet afgemaakt' };
+    return oud.length + ' verwijderde ingangen zijn echt weg';
+  });
 }
+
 
 // ══════════════════════════════════════════════════════════════════
 // AANSTUREN
@@ -1856,27 +1619,22 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Overdoen op een complete build: de steunbitfix, en het pollbudget over een echte rit',
+  titel: 'De 0143-fix, en de vraag waarom de adapter tijdens het rijden achterloopt',
   vragen: [
-    'VOORAF — voer het kenteken in en controleer dat blok 5 geen FOUT geeft. De run van 19-08 draaide op een build zonder profielTegenSteunbits; die uitslag telt niet.',
-    'NIEUW — verschijnt het privacyscherm vóór het Android-dialoog "apparaten in de buurt", en breekt de weigerknop het verbinden netjes af?',
-    'NIEUW — staan er in het Logboek (kebab) regels uit BT, APP en PID door elkaar, op tijd gesorteerd?',
-    'NIEUW — loopt de cascade zichtbaar mee op het startscherm tijdens het verbinden, en klopt de volgorde met het BT-log?',
-    'NIEUW — komt "Brandstof: benzine (obd)" in de verbindstappen te staan, VOOR de sensorcheck? Op de CX-5 hoort 0151 dat zonder kenteken op te lossen.',
-    'NIEUW — begint de keten nu met SPP in plaats van BLE? Op 20-08 kostte de BLE-scan 18 van de 44 seconden. Kies "OBDLink MX+" in het startscherm en kijk of "Keten: Classic eerst" in het log staat.',
-    'KERNVRAAG — meldt blok 6 nu 0 ontkend? Op 20-08 stond daar "7 van 62" terwijl de discovery 55 schone PIDs opleverde: applyVehiclePIDPreset zette MAZDA 015C er 23 seconden later bovenop. Die preset gaat nu langs de steunbits.',
-    'Staat er bij het verbinden "Preset sloeg N sensoren over die deze auto niet heeft"? Op de CX-5 hoort daar 015C bij.',
-    'NA HET VERBINDEN — komt er nu meteen één samenvattingsscherm in plaats van zes stappen, en wordt het kenteken niet meer een tweede keer gevraagd?',
-    'BUSBELASTING — blijft de foutgraad nu op 0%? Op 20-08 kwamen alle 18 missers van 0114, 015E, 015C en 0146; die worden nu niet meer opgevraagd. Verdwijnt daarmee ook de melding "veel lege antwoorden van de ECU"?',
-    'PROFIEL — verbind TWEE keer zonder de app-gegevens te wissen. De eerste maakt het profiel (55 PIDs), pas de tweede laadt het en toont "Bekend voertuig". Blok 1 "VIN-profiel" zegt of hij in de opslag staat.',
-    'Meldt de verbinding "7 sensoren verwijderd die deze auto niet ondersteunt"? (0146, 0114, 010A, 015E, 012C, 015C, 015A)',
-    'Zegt blok 6 "0 ontkend" op een profiel dat vóór deze rit nog vervuild wás? Alleen dan bewijst het iets.',
-    'Verdwijnt er niets dat het wel deed? Kijk of 010C, 0104, 0105, 010E en 0115 er nog zijn.',
-    'BLOK 7 na minstens tien minuten rijden — hoeveel remmomenten bij 0% fouten en vlakke responstijd? Stationair gaf 19-08 nul remmomenten en +57% responstijd bij hoge bezetting; dat pleit tegen punt 2, maar 42 s stilstand bewijst niets.',
-    'BLOK 7 — blijft de foutgraad op 0% nu de vier fantoom-PIDs weg zijn? Op 19-08 om 14:38 dook het tempo naar 34% bij 15% fouten, en die fouten kwamen van 015C, 0146, 015E en 0114.',
-    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0, en beweegt die mee met het koelwater?'
+    'VOORAF — blok 5 mag geen FOUT geven. Staat daar iets, dan is de build niet compleet en telt de rest van deze run niet.',
+    'KERNVRAAG 0143 — toont "Abs. motorbelasting" nu tientallen procenten in plaats van 0,0x? Stationair hoort daar ongeveer 20 tot 25% te staan, bij vol gas op deze atmosferische motor tot ruim 90%. Blok 3 zet de ruwe bytes erbij: reken er zelf een na.',
+    '0143 — slaat er nergens een bereikwaarschuwing aan? De waarde ging van 0,09 naar 22 en het bereik van 100 naar 400; als koopcheck of veldlab "TE HOOG" of "buiten bereik" meldt, is de grens op de verkeerde plek gezet.',
+    'BLOK 1 — zegt de VIN-profielregel nu "bij het verbinden geladen, snelle start"? Die melding stond er op 21-08 twee runs lang als waarschuwing terwijl de app het profiel gewoon gebruikte.',
+    'BLOK 1 tegenproef — wis de app-gegevens, verbind opnieuw, en kijk of diezelfde regel dan LET OP geeft met "NIET geladen". Een controle die alleen groen kan worden bewijst niets.',
+    'KERNVRAAG BUS — waarom loopt de adapter tijdens het rijden achter? Op 21-08 om 11:36 stond gemMs op 950 terwijl het venster op 148 ms zat, met 12 onvolledige verzoeken (4%) en busbelasting "bufferend". De missers zaten op ALLE gepollde PIDs, één of twee per stuk — dus geen fantoomsensor maar het transport. Kijk in het Logboek of er op die momenten een BT-dip of herverbinding staat.',
+    'BUS — herstelt het tempo weer? Blok 4 gaf tempoPct 30% en blok 7 zag het niet meer boven de 55% komen in 500 seconden. Rijd na een rustige periode nog een run: klimt hij terug of blijft hij hangen?',
+    'BLOK 7 — bevestigt een tweede rit dat er 0 ongevraagde remmomenten zijn? Op 21-08 waren het er 4 van de 4 mét fouten of oplopende responstijd, en bezetting voorspelde de responstijd wél (83 ms laag tegen 995 ms hoog). Als dat standhoudt gaat PLAN.md punt 2 dicht.',
+    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0? Op 21-08 bereikte het koelwater 90 °C en gaven 2101 en 22111F nog steeds NO DATA, dus de kou was niet de reden. Dit is de laatste stap voor punt 4.',
+    'STEUNBITS — blijft blok 6 op 0 ontkend staan? Punt 1 is gesloten, maar een regressie hier verloopt stil: er komen alleen weer tegels die nooit een waarde tonen.',
+    'BYTELENGTES — blok 4 meldde 0155 en 0156 als afwijkend (tabel 2, gemeten 1). Komt dat terug, dan klopt de lengtetabel niet voor deze twee.'
   ]
 };
+
 
 window.openTestrun = openTestrun;
 window.closeTestrun = closeTestrun;
