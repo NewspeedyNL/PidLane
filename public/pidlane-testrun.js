@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.0 (21-08-2026)';
+const TESTRUN_VERSIE = '3.1 (21-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1388,13 +1388,23 @@ async function _blok10() {
     }
 
     if (prikken.length) {
-      const laatste = prikken[prikken.length - 1];
-      const terug = (basis && laatste <= basis * 1.25);
+      // Oordelen op de MEDIAAN van de laatste drie prikken, niet op de laatste.
+      // De eerste versie keek naar één enkele meting, en op 21-08 bleek hoe
+      // waardeloos dat is: de spreiding liep van 72 tot 364 ms, dus het oordeel
+      // hing aan toeval. De rust na trap 5 kreeg "hersteld" (laatste 149) bij
+      // een mediaan van 177, terwijl de rust na trap 1 "NIET hersteld" kreeg
+      // (laatste 170) bij een mediaan van 151 — precies omgekeerd. Vier van de
+      // vijf LET OP's in die run waren ruis.
+      const staart = prikken.slice(-3);
+      const nu = _pctl(staart, 0.5);
+      const alles = _pctl(prikken, 0.5);
+      const terug = (basis && nu <= basis * 1.25);
       _boek(10, 'rust na ' + trap.naam, terug ? 'ok' : 'LET OP',
         rustSec + ' s stil, ' + prikken.length + ' prikken: ' + prikken.join(', ') + ' ms' +
-        (basis ? ' — trap 1 zat op ' + basis + ' ms, ' +
-          (terug ? 'terug binnen ' + (eersteHerstel === null ? '?' : eersteHerstel) + ' s'
-                 : 'NIET hersteld, blijft ' + Math.round((laatste - basis) / basis * 100) + '% hoger') : ''),
+        ' — mediaan ' + alles + ' ms, laatste drie ' + nu + ' ms' +
+        (basis ? ', trap 1 zat op ' + basis + ' ms: ' +
+          (terug ? 'hersteld' + (eersteHerstel === null ? '' : ' binnen ' + eersteHerstel + ' s')
+                 : 'blijft ' + Math.round((nu - basis) / basis * 100) + '% hoger') : ''),
         null);
     }
   }
@@ -1426,11 +1436,26 @@ async function _blok10() {
     try { ld = (window.PLLoad && PLLoad.staat) ? PLLoad.staat() : null; } catch (e) {}
     let bs = null;
     try { bs = (window.PLBus && PLBus.stats) ? PLBus.stats() : null; } catch (e) {}
-    if (ld || bs)
-      _boek(10, 'Stand van de app na de proef', 'ok',
+    if (ld || bs) {
+      // Dit is de regel waar het om gaat. Op 21-08 stond hier "tempo 18%" bij
+      // 0% fouten, terwijl de proef er net 9,1 verzoeken per seconde foutloos
+      // doorheen had geduwd. De app schroefde dus terug op bezetting, en
+      // bezetting is aanvraagtempo x responstijd — juist een SNELLE bus haalt
+      // daar een hoog percentage. Zie PLAN.md punt 13.
+      const snel = (uitslag.filter(function (u) { return u.misPct === 0; }).pop() || null);
+      let oordeel = 'ok';
+      if (ld && snel && bs && bs.foutPct === 0 && ld.tempoPct < 50)
+        oordeel = 'LET OP';
+      _boek(10, 'Stand van de app na de proef', oordeel,
         (ld ? 'tempo ' + ld.tempoPct + '%' : '') +
         (bs ? ', bus ' + bs.belasting + '% bezet, fout ' + bs.foutPct + '%, gem ' + bs.gemMs +
-              ' ms (venster ' + bs.venGemMs + ' ms)' : ''), null);
+              ' ms (venster ' + bs.venGemMs + ' ms)' : '') +
+        (oordeel === 'LET OP' && snel
+          ? ' — de app staat op ' + ld.tempoPct + '% terwijl de verbinding zonder één misser ' +
+            snel.perSec + '/s aankan. Terugschroeven op bezetting terwijl de foutgraad 0 is.'
+          : ''),
+        null);
+    }
   }
 }
 
