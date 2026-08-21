@@ -90,34 +90,79 @@ fantoom-PIDs die elke twee minuten een foutpuls gaven.
 
 **Wat er wél overblijft — nieuw punt 2b hieronder.**
 
-## 2b. Waarom loopt de adapter achter tijdens het rijden?
+## 2b. ~~Waarom loopt de adapter achter tijdens het rijden?~~ — BEANTWOORD (21-08, 19:12)
 
-Geen regelkringprobleem maar een transportprobleem, en het is nog niet verklaard.
-
-Op 21-08 om 11:36, na acht minuten rijden:
+**Hij loopt niet achter. De adapter is niet de beperking.** Snelheidsproef
+(blok 10), rijdend, 1229 verzoeken over vijf trappen, **nul missers**:
 
 ```
-gemMs 950   venGemMs 148   reqOnvol 12 (4%)   busbelasting "bufferend"
-tempoPct 30%, klimt binnen 500 s niet meer terug boven 55%
+trap 1  0,9/s → 123 ms
+trap 2  1,6/s → 131 ms
+trap 3  2,5/s → 151 ms
+trap 4  3,5/s → 164 ms
+trap 5  9,1/s →  92 ms      <- sneller dan trap 1
 ```
 
-Het cumulatieve gemiddelde stond op 950 ms terwijl het venster op 148 ms zat:
-er is dus een periode geweest met extreme vertraging. De missers zaten verspreid
-over **alle** gepollde PIDs, één of twee per stuk — geen enkele sensor stak eruit.
-Dat sluit een fantoom-PID uit en wijst op de verbinding zelf.
+Bij negen verzoeken per seconde is de mediaan een kwart lager dan bij één per
+seconde: 638 verzoeken, p90 op 158 ms. Snel achter elkaar pollen houdt de
+ELM327 warm — de seriële pipeline blijft gevuld en de adaptive timing hoeft
+niet steeds opnieuw in te regelen. Een verzoek ná stilte betaalt die opstart
+elke keer opnieuw. De losse prikken tijdens de rustmomenten bevestigen dat: 33
+metingen, mediaan 177 ms, hóger dan welke continue trap dan ook.
 
-Om 11:47 was het beeld milder ("langzaam", 58%) maar niet weg: **0% fouten in
-álle monsters en tóch een tempo van 56%.** Dat is de kern van de vraag — waarom
-klimt hij niet terug als er niets meer misgaat?
+**Rust maakt het per verzoek dus langzamer, niet sneller.** Dat is het
+omgekeerde van wat de vraag veronderstelde.
 
-Eerste stap is meten, niet bouwen: kijk in het Logboek of er bij die trage
-momenten een BT-dip of herverbinding staat. Er liggen al twee aanwijzingen in
-`OVERDRACHT.md`: vier BT-herverbindingen in twaalf minuten op 16-08, telkens
-gevolgd door "scherm blijft aan", met het vermoeden dat Android de WebView naar
-de achtergrond duwt en de socket meeneemt.
+De 950 ms van 's ochtends was een incident (vermoedelijk een BT-dip), geen
+rijgedrag: dezelfde auto, ook rijdend, komt nu op 130 ms gemiddeld uit.
 
-Pas als de oorzaak bekend is heeft het zin om aan de terugweg van `PLLoad` te
-sleutelen.
+**Wat er wél uit kwam staat hieronder als punt 13.**
+
+---
+
+## 13. `PLLoad` regelt op de verkeerde grootheid
+
+De slotregel van de proef: **`tempo 18%, bus 66% bezet, fout 0%`** — terwijl de
+verbinding er net 9,1 verzoeken per seconde foutloos doorheen duwde. De app
+stond op achttien procent van wat de bus aankan, zonder één fout als aanleiding.
+
+**De oorzaak staat al in de code, in het commentaar van 01-08:** bezetting is
+aanvraagtempo × responstijd. Juist een *snelle* bus haalt daar een hoog
+percentage — 66% bij 92 ms mediaan is efficiëntie, geen tegendruk. `PLLoad`
+leest dat als druk en schroeft terug.
+
+**En de terugweg is te traag om het te herstellen.** Bij tempo 18% staat `_mult`
+op 5,56. De weg terug naar 1,0:
+
+```
+ruim  (bezetting < 55, stap 0,05)   92 ticks  = 3,1 min
+kalm  (dode zone,     stap 0,03)   152 ticks  = 5,1 min
+```
+
+Bij 66% bezetting zit hij in de dode zone, dus geldt de traagste van de twee.
+Dat verklaart precies waarom het tempo op 21-08 om 11:47 op 56% bleef staan
+terwijl er 0% fouten waren, en waarom het in 500 s niet terugklom.
+
+**Drie knoppen, in volgorde van veiligheid:**
+
+1. `omlaagTraag` van 0,03 naar ongeveer 0,08 — halveert de hersteltijd zonder
+   de hysterese aan te tasten. Kleinste ingreep, minste risico.
+2. `bezetAf` van 55 naar ongeveer 75, zodat `ruim` op dit voertuig bereikbaar is
+   en de snellere stap van 0,05 geldt. Het commentaar van 01-08 zegt zelf al dat
+   `ruim` hier onbereikbaar was; dit maakt dat af.
+3. `druk` alleen laten aanslaan op bezetting **in combinatie met** een oplopende
+   `venGemMs`. Bezetting alleen is aantoonbaar geen tegendruk. Grootste ingreep,
+   raakt de vorm van de regelkring.
+
+**Meet vóór en ná met blok 10.** Die proef is nu het meetinstrument: dezelfde
+vijf trappen, en de slotregel zegt of het tempo van de app nog steeds ver onder
+ligt bij wat de verbinding foutloos haalt. Zonder die voor-en-nameting is dit
+sleutelen aan een regelkring op gevoel.
+
+Eén ding om niet te vergeten: de proef jaagt de bezetting zelf omhoog. Het tempo
+van 18% is dus deels door de meting veroorzaakt. Dat maakt de conclusie niet
+anders — 0% fouten en 9,1/s foutloos staat los van wie de bus bezet hield — maar
+lees de slotregel niet als "de app staat in het dagelijks gebruik altijd op 18%".
 
 ---
 
