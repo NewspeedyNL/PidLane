@@ -1,11 +1,11 @@
-# Alleen de gewijzigde bestanden — 20-08-2026
+# Alleen de gewijzigde bestanden — 21-08-2026
 
-Dit is géén complete repo. Het zijn de 19 bestanden die nieuw zijn of
-gewijzigd ten opzichte van de zip waarmee deze sessie begon, in dezelfde
-mapstructuur. Uitpakken over je bestaande werkkopie heen.
+Dit is géén complete repo. Het zijn de 9 bestanden die nieuw zijn of gewijzigd
+ten opzichte van de zip waarmee deze sessie begon, in dezelfde mapstructuur.
+Uitpakken over je bestaande werkkopie heen.
 
-Er is **niets verwijderd** in deze ronde, dus overkopiëren is veilig: er
-blijven geen weesbestanden achter.
+`pidlane-busdiag.js` en `pidlane-copiloot.js` heb je zelf al uit de repo
+gehaald — die zitten hier dus niet in en hoeven ook niet opnieuw weg.
 
 ## Uitpakken (Termux)
 
@@ -15,39 +15,46 @@ blijven geen weesbestanden achter.
     cd ~/PidLane
     plcheck
 
-`plcheck` moet 71 bestanden, 20 tests en alles groen melden. Pas dan committen.
+`plcheck` moet **73 bestanden, 21 tests** en verder alles groen melden, met een
+div-balans van 782/782. Pas dan committen.
 
-## Nieuw (8)
-
-| bestand | wat |
-|---|---|
-| `public/pidlane-logboek.js` | logscherm dat BT-, app- en PID-logs samenvoegt; kebab → Logboek |
-| `public/pidlane-privacy.js` | prominente Bluetooth-disclosure vóór `connectSerial()` + privacyscherm |
-| `public/pidlane-start.js` | startscherm: adapterprofielen, geheugen, cascade als voortgang |
-| `public/privacy.html` | publieke privacyverklaring waar de app naar linkt |
-| `public/test-start.js` | 23 toetsen op het startscherm |
-| `public/test-brandstofpoort.js` | 12 toetsen op de volgorde van de brandstofpoort |
-| `public/test-budget.js` | 8 toetsen op de blok 7-correcties van 20-08 |
-| `ANDROID-PLAYSTORE.md` | reviewchecklist en de twee openstaande blokkades |
-
-## Gewijzigd (11)
+## Nieuw (2)
 
 | bestand | wat |
 |---|---|
-| `public/index.html` | kebab-knoppen Logboek en Privacy, drie script-tags, statische stappen als vangnet |
-| `public/pidlane-bt.js` | disclosure-poort, brandstofpoort vóór de health-scan, cascade meldt zich aan het startscherm, ketenvolgorde volgt het adaptertype |
-| `public/pidlane-voertuigdata.js` | `brandstofPoort()` — brandstof vaststellen vóórdat de gate erop beslist |
-| `public/pidlane-uitgebreid.js` | `2101` verwijderd (gemeten NO DATA), met de meting als aantekening |
-| `public/pidlane-data.js` | `2101` in `PIDS_EXTRA` gemarkeerd als dood op CX-5 2018 |
-| `public/pidlane-testrun.js` | versie 2.2: blok 7 (pollbudget), 8 (olietemp), 9 (DID-scan), herschreven blok 5 en `CAMPAGNE` |
-| `public/pidlane-auth.js` | één regel: `window.plLokaalLog` zodat het logboek het app-log kan lezen |
-| `public/pidlane-bedrading.js` | `plLokaalLog` en `brandstofPoort` in `KRITIEK` |
-| `.github/workflows/build-apk.yml` | release-bundle (.aab), versiebeheer, strengere permissiecontrole |
-| `PLAN.md` | punt 4 gesloten, punt 2 herschreven, 4b (`0143`) en 4c (Play Store) toegevoegd |
-| `OVERDRACHT.md` | bevindingen 19 en 20 augustus, plus twee nieuwe valkuilen |
+| `public/pidlane-run.js` | de Run-chip: één plek waar staat wat er op de achtergrond draait, met vijf schakelaars |
+| `public/test-run.js` | 18 toetsen op dat paneel, waaronder de script-scope-valkuil |
 
-## Let op bij de volgende rit
+## Gewijzigd (7)
 
-Dit wordt de **tweede** verbinding op dit toestel. Pas nu laadt het profiel
-van 55 PIDs en draait `profielTegenSteunbits()` werkelijk — de run van 20-08
-deed volle discovery en kon punt 1 dus niet bevestigen.
+| bestand | wat er anders is |
+|---|---|
+| `public/pidlane-data.js` | `0143` rekende met deler `655.35` waar `2.55` hoort — stond 256x naast. `max` van 100 naar 400 |
+| `public/index.html` | vierde chip in de topbar (`runChip` + `rdot`) en de script-tag voor `pidlane-run.js`, vóór de bedradingscontrole |
+| `public/pidlane-export.js` | opmerkingveld in het opslaan-venster; gaat mee bovenaan de tekst en als kader in de PDF |
+| `public/pidlane-testrun.js` | versie 2.8; blok 1 toetst het VIN-profiel nu écht, blok 5 en `CAMPAGNE` herschreven |
+| `public/pidlane-bedrading.js` | vijf schakelfuncties geregistreerd, `obj` in `GEEN_GLOBALE` |
+| `public/test-bedrading.js` | scanner ziet nu ook `typeof X !== 'function'`, niet alleen `===` |
+| `PLAN.md` | punt 1 en 2 dicht, punt 4b afgehandeld, nieuwe bevindingen erin |
+
+## Wat je in de auto moet nakijken
+
+Staat in `CAMPAGNE` bovenaan het testrun-logboek. Kort: de chip moet vijf
+regels tonen die kloppen met wat er draait, caravan en rit-analyse moeten om
+bevestiging vragen bij **stoppen** (niet bij starten), het opmerkingveld moet
+zowel in tekst als PDF terechtkomen, en blok 7 moet voor de vierde keer nul
+ongevraagde remmomenten melden.
+
+## Twee dingen die deze ronde boven water kwamen
+
+**De bedradingsscanner keek maar naar de helft.** Hij zocht op
+`typeof X === 'function'` en niet op `!==`. De vijf nieuwe guards in
+`pidlane-run.js` gleden er zonder één melding doorheen. Dat is precies de
+failliete controle waar dit project al eerder tegenaan liep: groen licht dat
+niets betekent. Regex uitgebreid; daarmee kwam meteen één bestaand geval boven
+(`obj`, lusvariabele in de dode-knoppencontrole).
+
+**`window.caravanActive` bestaat niet.** `caravanActive` en `ritActive` zijn
+top-level `let` in scripts zonder IIFE, dus ze staan in script-scope. Was het
+paneel daarop gebouwd, dan hadden alle schakelaars permanent op UIT gestaan en
+had je dat pas in de auto gemerkt. `test-run.js` bewaakt het.

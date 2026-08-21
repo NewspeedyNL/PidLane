@@ -1,6 +1,6 @@
 # PLAN.md — wat er nog open staat
 
-Bijgewerkt: 19-08-2026.
+Bijgewerkt: 21-08-2026.
 
 Dit bestand is het werkplan over sessies heen: **alleen wat er nog moet
 gebeuren, in volgorde**. Wat er gebeurd is staat in `OVERDRACHT.md`, hoe het
@@ -23,54 +23,52 @@ het oude echt weg. Zie §20 in `PIDLANE.md`.
 
 ---
 
-## 1. Eerst rijden: bevestigen dat de preset-fix werkt
+## 1. ~~De preset-fix bevestigen~~ — DICHT (21-08, 11:28)
 
-**De oorzaak is gevonden (20-08, avond).** Punt 1 leek vier ritten te falen
-terwijl de steunbitcontrole gewoon werkte. Uit het logboek van 19:36:
+Bevestigd in het veld. Testrun 2.6 op de CX-5: **118 ok, 0 fout, 7 let op**, en
+het bewijs staat op drie plekken tegelijk:
 
 ```
-19:36:22  discovery uit de bitmaps      → 55 PIDs, precies conform
-19:36:26  profiel opgeslagen            → 55 PIDs, schoon
-19:36:49  applyVehiclePIDPreset()       → 26 PIDs erbij, waaronder 015C
-19:37:51  blok 6 telt supportedPIDs     → 62, waarvan 7 ontkend
+blok 5   Preset respecteert de steunbits — 4 bitmapblokken gelezen, poort actief
+blok 6   55 PIDs, geen enkele door de ECU ontkend        (was 7 van 62)
+blok 3   45 gelezen, 0 geen data, 0 parserprobleem
+blok 4   bad 1 van 279, foutPct 0                        (was 18 van 230, 15%)
 ```
 
-`MERK_EXTRA_PIDS.MAZDA = ['015C','0110']` stond hard in
-`pidlane-rijsituatie.js` en zette de motorolietemperatuur terug die de bitmap
-net had ontkend. "Een fix die faalt door een fix" in zuivere vorm: de gate zat
-in `profielTegenSteunbits()`, niet in de preset.
+Dat 55 exact gelijk blijft is geen toeval: alles wat de preset aandraagt en de
+ECU wél steunt, zat al in de bitmapset. Met de zeef ervoor voegt de preset per
+definitie niets meer toe. De melding "veel lege antwoorden van de ECU" is weg.
 
-**Wat er is veranderd.** De bitmaps worden nu bewaard zodra ze gelezen worden
-(`_steunbits` in `pidlane-rijsituatie.js`), en `magToevoegen()` is de poort
-waar de preset langs moet. De scheidslijn staat als commentaar bij die functie:
-toevoegen op **bewijs** (een echt antwoord) mag zonder zeef, toevoegen op
-**aanname** (merk + brandstof) niet. Alle vijf toevoegplekken zijn nagelopen;
-alleen de preset viel in de tweede categorie. `test-steunbits.js` bewaakt het
-aantal, dus een zesde plek valt op.
+Het was een **snelle start op een bekend profiel** — de app bood "verbinden of
+toch scannen" aan. `profielTegenSteunbits()` verwijderde er nul, want het
+profiel wás al schoon, en daarom bleef de melding "N sensoren verwijderd"
+terecht uit. Precies zoals voorspeld.
 
-**Wat de rit moet bevestigen:**
+**Wat er uit deze run nog te doen is:**
 
-- Blok 6 meldt **0 ontkend**. Staat er nog iets, dan is er nóg een plek die
-  PIDs terugzet ná de discovery.
-- Bij het verbinden staat *"Preset sloeg N sensoren over die deze auto niet
-  heeft"*, met `015C` erbij.
-- **Er verdwijnt niets dat het wél deed**: `010C`, `0104`, `0105`, `010E` en
-  `0115` horen er gewoon te zijn. Deze fix weigert sensoren, dus een te gretige
-  versie is erger dan de kwaal.
+*Blok 1 slaat vals alarm.* De regel "VIN-profiel — 55 PIDs, 55 health-oordelen,
+0 uur oud — **dit had bij het verbinden geladen moeten worden**" stond er
+terwijl het profiel wél geladen was. Die tekst is statisch: hij controleert
+alleen of er een profiel in de opslag ligt, niet of het gebruikt is. Zo'n
+melding leer je binnen een week negeren. Herformuleren, of echt toetsen (bij een
+snelle start zet `applyVinProfileIfKnown()` een vlag — lees die).
 
-**Het profiel apart, met twee verbindingen.** Verbind twee keer zonder
-tussendoor de app-gegevens te wissen. De eerste maakt het profiel (55 PIDs), de
-tweede laadt het en toont *"Bekend voertuig"*. Dat is nooit gelukt omdat er bij
-elke nieuwe build gewist werd — geen bug, wel een testmethode die de vraag niet
-kon beantwoorden. Blok 1 "VIN-profiel" zegt nu of hij in de opslag staat.
+*De race in `bt.js:1787` staat er nog.* `updateVehicleCard()` roept `rdwLookup()`
+aan **zonder `await`**, dus de preset kan `supportedPIDs` bijwerken vóórdat
+`initConnection` op regel 1730 `saveVinProfile()` doet. Zo kwamen de zeven
+ontkende PIDs ooit in het opgeslagen profiel. De zeef dicht het gevolg, niet de
+oorzaak. Klein en zelfstandig; oppakken wanneer je toch in die module zit.
 
-Twee dingen vooraf, allebei eerder misgegaan: blok 5 mag geen FOUT geven
-(deploy compleet), en vul het kenteken in, anders blijft `vehicleInfo` op enkel
-"Mazda" staan.
+*`CAMPAGNE` klopt niet meer.* Vraag 12 vraagt om de melding "7 sensoren
+verwijderd" als bewijs, terwijl die bij een werkende zeef juist wegblijft.
+Herschrijven bij de volgende oplevering, samen met `_blok5()`.
 
-Blok 7 loopt in dezelfde rit mee voor punt 2 — dat vraagt minstens tien minuten
-rijden vóór je de run start. Blok 9 (DID-scan, 45 s) is een losse knop en
-vraagt een warme motor.
+**Wat er nog gereden moet worden** (zie punt 2 en 4):
+
+- **Tien minuten rijden**, dan pas de run starten. Deze run gaf 17 monsters over
+  34 s en blok 7 zegt zelf: te kort voor een oordeel.
+- **Blok 9 met warme motor**, losse knop, 45 s. Koelwater stond nu op 53 °C.
+
 
 ## 2. Het pollbudget bij bezetting zonder fouten
 
@@ -128,6 +126,15 @@ bezetting zonder fouten — is in geen van beide metingen bevestigd. Wat er in d
 Als dat het hele verhaal is, is punt 2 geen regelkringprobleem maar een gevolg
 van punt 1, en gaat het vanzelf weg zodra de steunbitfix draait.
 
+**Meting van 21-08, 34 s stationair — nog steeds te kort, maar de richting is
+consistent.** Blok 7: 17 monsters, tempo van 100% naar 79%, één remmoment en dat
+was er één *mét* fouten (hoogste foutgraad 2%, 71% van de monsters op 0%). Nul
+ongevraagde remmomenten dus. En de kernvraag opnieuw omgekeerd beantwoord ten
+opzichte van 19-08: responstijd 83 ms bij lage bezetting tegen 85 ms bij hoge,
+**+2%** — bezetting voorspelt hier geen tegendruk, maar hij veroorzaakt er ook
+geen. Twee runs, twee verschillende uitkomsten (+57% en +2%), allebei op
+stilstand. Dat is precies waarom dit een rit nodig heeft.
+
 **Doe daarom eerst dit, en pas dan de wijziging overwegen:** blok 7 over een rit
 van minstens tien minuten, op een build mét de steunbitfix. Blijft de foutgraad
 dan op 0% en het tempo op 100%, dan gaat punt 2 dicht en is de winst al binnen.
@@ -173,6 +180,11 @@ Die laatste is de vondst. `31` is requestOutOfRange, niet `11`
 (serviceNotSupported): **mode 22 leeft op 7E0, alleen bestaat identifier `111F`
 daar niet.** De veldbron klopt voor andere SkyActiv-jaren, niet voor deze auto.
 
+**Herhaald op 21-08 (koelwater 53 °C):** `2101` NO DATA, `22111F` NO DATA,
+`015C` niet opgevraagd (steunbit NEE), en `22111F` op header 7E0 opnieuw
+`7F 22 31`. Onveranderd beeld, dus stap 2 hieronder staat nog open — en toen was
+de motor te koud voor een zinnige tweede meting.
+
 **Wat er nog te doen is:**
 
 1. ~~`2101` uit `pidlane-uitgebreid.js` halen.~~ **Gedaan 19-08.** De definitie is
@@ -198,6 +210,11 @@ Klein, zelfstandig, twee keer bevestigd. De parser rekent `A + B/256` waar het
 |---|---|---|
 | `41430048` (B=72) | 0,11 | 28,2 % |
 | `41430029` (B=41) | 0,06 | 16,1 % |
+| `41430038` (B=56) | 0,09 | 22,0 % |
+
+De derde regel komt uit de sweep van 21-08 en rekent exact uit: `(0 + 56/256) ×
+100/255 = 0,0858` → toont 0,09, terwijl `56 × 100/255 = 21,96 %` de juiste
+waarde is en klopt voor stationair draaien.
 
 Nooit opgevallen omdat niemand naar absolute motorbelasting kijkt. Raakt
 `pidlane-data.js`. Controleer meteen of dezelfde bytecombinatie elders in de
@@ -264,6 +281,61 @@ herijking én de steunbitcontrole, want die veranderen precies wat er langskomt.
 
 **Mode 06 in `pidlane-veldlab.js`** plus de bijbehorende `PIDLANE.md`-update.
 Al een keer uitgesteld.
+
+---
+
+## 8. Vierde chip in de topbar: "Run"
+
+Gevraagd 21-08. Nieuwe module `pidlane-run.js`, plus een chip in de topbar van
+`index.html` en één script-tag (vóór `pidlane-bedrading.js`, die blijft
+laatste). Doe dit **na** de validatierit van punt 1: nieuwe code erin betekent
+een nieuwe `CAMPAGNE`, en dan verwatert de vraag die nu precies op de
+steunbitfix gericht is.
+
+Naast de bestaande drie chips (Auto, OBD, AI) komt een vierde met een dot die
+groen wordt zodra er iets op de achtergrond draait. Dat is meteen de winst: nu
+is nergens te zien dát de waakronde aanstaat. Tikken opent een paneel met
+schakelaars.
+
+| functie | aan/uit | staat uitlezen |
+|---|---|---|
+| Rit-monitor | `toggleRitMonitor()` | `PLMon.userAan`, `PLMon.active` |
+| Bulk-recorder | `PLBulk.start()` / `.stop()` | `PLBulk.status().actief` (+ `.gepauzeerd`) |
+| Waakronde | `PLWaak.schakel()` | `PLWaak.actief()` |
+| Caravan-modus | `startCaravan()` / `stopCaravan()` | `caravanActive` |
+| Rit-analyse | `startRitAnalyse()` / `stopRitAnalyse()` | `ritActive` |
+
+De laatste twee zijn geen schakelaars maar **sessies met fasen**. Halverwege
+uitzetten gooit een lopende meting weg — `stopCaravan()` genereert meteen het
+rapport, `stopRitAnalyse()` breekt de fasenreeks af. Vraag daar om bevestiging
+vóór het stoppen; aanzetten mag zonder. Ze starten ook geen van beide zonder
+verbinding (`preAnalysisCheck()`), dus toon ze grijs als er geen adapter hangt
+in plaats van ze te laten falen.
+
+**Valkuil bij het uitlezen.** `caravanActive` en `ritActive` zijn top-level
+`let` in een klassiek script zónder IIFE. Die staan in script-scope, niet op
+`window`: `typeof caravanActive !== 'undefined'` werkt, `window.caravanActive`
+geeft altijd `undefined`. Bouw je het paneel op de tweede vorm, dan staat elke
+schakelaar altijd op uit en zie je dat pas in de auto.
+
+Elke `typeof`-guard die hierbij ontstaat: registreren in `KRITIEK`
+(`pidlane-bedrading.js`), anders vangt `test-bedrading.js` hem.
+
+## 9. Opmerkingveld bij het opslaan van een log
+
+Gevraagd 21-08. Raakt alleen `pidlane-export.js` en `test-export.js`.
+
+In de keuzedialoog van `plOpslaan()` een tekstvak erbij: wat is dit voor log,
+en wat viel er op. Die opmerking gaat mee in het bestand, zodat hij bij het
+uploaden niet apart hoeft te worden verteld en later nog bij de meting staat.
+
+- **Tekst**: als eigen blok bovenaan, vóór de bestaande kop.
+- **PDF**: als kader onder de kopband, boven de inhoud — `plMaakPdf()` krijgt
+  hem via `opties`.
+- Leeg laten mag; dan verandert er niets aan het huidige bestand.
+
+De vier aanroepers (`archief`, `logboek`, `rijsituatie`, `testrun`) hoeven niet
+mee te veranderen: de opmerking wordt in de dialoog ingevuld, niet doorgegeven.
 
 ---
 
