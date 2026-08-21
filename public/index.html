@@ -1244,6 +1244,12 @@ function closeConnOv(){
     <div class="tchip" id="aiChip" onclick="try{openApiDialog()}catch(e){}" title="AI-verbinding">
       <div class="tdot r" id="adot"></div><span>AI</span>
     </div>
+    <!-- 4️⃣ Run-chip: dot (grijs=niets draait, groen=achtergrondtaak actief).
+         Vijf dingen konden aanstaan zonder dat het ergens zichtbaar was;
+         hier staat wat er loopt en gaat het uit. Zie pidlane-run.js -->
+    <div class="tchip" id="runChip" onclick="try{PLRun.open()}catch(e){}" title="Niets actief op de achtergrond">
+      <div class="tdot" id="rdot"></div><span>Run</span><span id="runTel" style="font-weight:800;color:var(--gn)"></span>
+    </div>
   </div>
 </div>
 
@@ -2324,6 +2330,7 @@ function closeConnOv(){
 <script src="pidlane-logboek.js"></script><!-- logboek: voegt BT-, app- en PID-logs samen in één tijdlijn -->
 <script src="pidlane-privacy.js"></script><!-- privacy: prominente BT-disclosure vóór connectSerial + verklaring in menu -->
 <script src="pidlane-start.js"></script><!-- startscherm: adapterprofielen, geheugen, cascade-voortgang -->
+<script src="pidlane-run.js"></script><!-- run-chip: één plek waar staat wat er op de achtergrond draait -->
 <script src="pidlane-bedrading.js"></script><!-- bedradingscontrole: bestaat alles wat modules van elkaar verwachten — MOET als laatste -->
 
 <script>

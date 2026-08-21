@@ -72,8 +72,12 @@ if (weg.length) {
 }
 
 // ── 2. is elke guard geregistreerd ──
+// Zowel `typeof X === 'function'` als `typeof X !== 'function'`. Tot 21-08 keek
+// deze regex alleen naar de bevestigende vorm, en toen glipten de vijf guards
+// van pidlane-run.js er ongemerkt doorheen. Een bewaking die de helft van de
+// gevallen niet ziet, geeft groen licht dat niets betekent.
 const guards = new Set(
-  [...bronZonderRegistry.matchAll(/typeof\s+([A-Za-z_$][\w$]*)\s*===?\s*['"]function['"]/g)].map(m => m[1])
+  [...bronZonderRegistry.matchAll(/typeof\s+([A-Za-z_$][\w$]*)\s*[!=]==?\s*['"]function['"]/g)].map(m => m[1])
 );
 const bekend = new Set([...KRITIEK, ...GEEN_GLOBALE]);
 const onbekend = [...guards].filter(n => !bekend.has(n)).sort();

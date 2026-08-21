@@ -67,6 +67,10 @@ var KRITIEK = [
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
   'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf',
   'profielTegenSteunbits','saveVinProfile','actiefPollProfiel','setPollProfile',
+  // Het run-paneel (pidlane-run.js) schakelt deze vijf aan en uit. Ze stonden
+  // er nog niet in omdat ze tot 21-08 alleen vanuit hun eigen scherm werden
+  // aangeroepen, zónder guard.
+  'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
   
   
 ];
@@ -78,7 +82,13 @@ var GEEN_GLOBALE = {
   // is een lokale const in pidlane-waakronde.js die window.setConn vasthoudt.
   // Les: een typeof-guard op een LOKALE naam is geen bedradingspunt. De lijst
   // is uit alle guards afgeleid, dus zulke uitzonderingen komen er soms in.
-  '_oz': 'lokale const in pidlane-waakronde.js (verwijst naar window.setConn)'
+  '_oz': 'lokale const in pidlane-waakronde.js (verwijst naar window.setConn)',
+  // Boven water gekomen op 21-08, toen de scanner ook op `!==` ging matchen:
+  // de dode-knoppencontrole in blok 5 loopt een onclick-pad af (PLRemote.openShare
+  // → window.PLRemote.openShare) en controleert onderweg of wat hij vasthoudt
+  // een functie is. `obj` is die lus-variabele, geen naam die een module van een
+  // andere verwacht.
+  'obj': 'lokale lusvariabele in de dode-knoppencontrole (pidlane-testrun.js)'
 };
 
 function controleer(){

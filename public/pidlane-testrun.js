@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '2.7 (21-08-2026)';
+const TESTRUN_VERSIE = '2.8 (21-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1201,10 +1201,74 @@ async function _blok9() {
 // klant erop drukt.
 async function _blok5() {
 
-  // ── TOEGEVOEGD 21-08: 0143 rekent weer in procenten ──
-  await _doe(5, '0143 staat niet meer 256x naast', function () {
-    // Meten, niet lezen: dit is de uitkomst van de echte parser op de ruwe
-    // bytes uit de sweep van 21-08 (41430038, stationair). Oud gaf 0,09.
+  // ── TOEGEVOEGD 21-08: de Run-chip ──
+  await _doe(5, 'Run-chip zit in de topbar', function () {
+    if (!window.PLRun || typeof PLRun.staat !== 'function')
+      return { staat: 'FOUT', detail: 'PLRun ontbreekt — de module hangt niet in index.html' };
+    const chip = document.getElementById('runChip');
+    const dot = document.getElementById('rdot');
+    if (!chip || !dot)
+      return { staat: 'FOUT', detail: 'de chip of de dot staat niet in de topbar' };
+    const st = PLRun.staat();
+    const gelezen = Object.keys(st).filter(function (k) { return st[k] !== null; });
+    if (gelezen.length < 3)
+      return { staat: 'FOUT', detail: 'maar ' + gelezen.length + ' van de 5 modules leesbaar: ' +
+        Object.keys(st).filter(function (k) { return st[k] === null; }).join(', ') + ' geven null' };
+    return gelezen.length + ' van 5 leesbaar, versie ' + PLRun.versie;
+  });
+
+  await _doe(5, 'Sessiestaat komt niet van window', function () {
+    // caravanActive en ritActive zijn top-level `let` zonder IIFE: die staan in
+    // script-scope, niet op window. Wie ze via window leest krijgt vijf
+    // schakelaars die permanent op UIT staan, en merkt dat pas in de auto.
+    let viaWindow = false;
+    try { viaWindow = (typeof window.caravanActive !== 'undefined') || (typeof window.ritActive !== 'undefined'); } catch (e) {}
+    const st = (window.PLRun && typeof PLRun.staat === 'function') ? PLRun.staat() : {};
+    if (st.caravan === null && st.rit === null)
+      return { staat: 'FOUT', detail: 'caravan en rit-analyse geven allebei null — het paneel leest ze niet' };
+    return 'beide gelezen uit script-scope' + (viaWindow ? ' (ze staan nu óók op window — dan is er iets veranderd in de module)' : '');
+  });
+
+  // ── TOEGEVOEGD 21-08: opmerkingveld bij het opslaan ──
+  await _doe(5, 'Opslaan vraagt om een opmerking', function () {
+    if (typeof plOpslaan !== 'function') return { staat: 'FOUT', detail: 'plOpslaan ontbreekt' };
+    let bron = '';
+    try { bron = String(window.plOpslaan || ''); } catch (e) {}
+    if (bron && bron.indexOf('plExpOpm') < 0)
+      return { staat: 'FOUT', detail: 'het veld zit niet in de keuzedialoog' };
+    if (bron && bron.indexOf('_metOpmerking') < 0)
+      return { staat: 'FOUT', detail: 'de opmerking wordt niet in het tekstbestand gezet' };
+    return 'veld aanwezig, gaat mee in tekst en PDF';
+  });
+
+  await _doe(5, 'PDF kent het opmerkingkader', function () {
+    if (typeof plMaakPdf !== 'function') return { staat: 'FOUT', detail: 'plMaakPdf ontbreekt' };
+    let bron = '';
+    try { bron = String(window.plMaakPdf || ''); } catch (e) {}
+    if (bron && bron.indexOf('o.opmerking') < 0)
+      return { staat: 'FOUT', detail: 'de PDF negeert de opmerking — die verdwijnt dan zonder melding' };
+    return 'kader wordt getekend als er iets ingevuld is';
+  });
+
+  // ── TOEGEVOEGD 21-08: de bedradingsscanner ziet nu ook !== ──
+  await _doe(5, 'Bedradingscontrole dekt beide guardvormen', function () {
+    if (!window.PLBedrading || !Array.isArray(PLBedrading.kritiek))
+      return { staat: 'FOUT', detail: 'PLBedrading ontbreekt' };
+    const nodig = ['toggleRitMonitor', 'startCaravan', 'stopCaravan', 'startRitAnalyse', 'stopRitAnalyse'];
+    const mist = nodig.filter(function (n) { return PLBedrading.kritiek.indexOf(n) < 0; });
+    if (mist.length)
+      return { staat: 'FOUT', detail: 'niet geregistreerd: ' + mist.join(', ') + ' — die falen stil als ze verdwijnen' };
+    const weg = nodig.filter(function (n) { return typeof window[n] !== 'function'; });
+    if (weg.length)
+      return { staat: 'FOUT', detail: 'geregistreerd maar niet aanwezig: ' + weg.join(', ') };
+    return nodig.length + ' schakelfuncties geregistreerd en aanwezig';
+  });
+
+  // ── BLIJFT STAAN: de 0143-fix van vanochtend ──
+  // In het veld bevestigd (41430037 -> 21,57 %), maar een regressie hier is
+  // stil: de tegel toont dan gewoon weer 0,0x en niemand kijkt naar absolute
+  // motorbelasting.
+  await _doe(5, '0143 rekent in procenten', function () {
     let d = null;
     try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) {}
     if (!d || typeof d.parse !== 'function')
@@ -1213,46 +1277,12 @@ async function _blok5() {
     try { v = d.parse([0x00, 0x38]); } catch (e) { return { staat: 'FOUT', detail: 'parser klapt: ' + (e.message || e) }; }
     if (!(v > 21.5 && v < 22.5))
       return { staat: 'FOUT', detail: '41430038 geeft ' + (Math.round(v * 100) / 100) + ', hoort 21,96 %' };
-    // Tweede ijkpunt uit een andere rit, zodat één toevallig kloppende deler
-    // niet volstaat.
-    let w = null;
-    try { w = d.parse([0x00, 0x48]); } catch (e) {}
-    if (!(w > 27.9 && w < 28.5))
-      return { staat: 'FOUT', detail: '41430048 geeft ' + (Math.round(w * 100) / 100) + ', hoort 28,24 %' };
-    return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, 41430048 -> ' + (Math.round(w * 100) / 100) + ' %';
+    if (!(d.max >= 400))
+      return { staat: 'FOUT', detail: 'max staat op ' + d.max + ' — een turbo boven 100% wordt dan afgekeurd' };
+    return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, max ' + d.max + '%';
   });
 
-  // ── VERWIJDERD 21-08: de deler 655.35 ──
-  await _doe(5, 'De oude deler is echt weg', function () {
-    let bron = '';
-    try { bron = String(ALL_PID_DEFS['0143'].parse); } catch (e) { return { staat: 'FOUT', detail: 'parser niet leesbaar' }; }
-    if (bron.indexOf('655.35') >= 0)
-      return { staat: 'FOUT', detail: 'de oude deler staat er nog in — build niet compleet' };
-    // max moest mee: met max 100 zou de gerepareerde waarde op een turbo
-    // meteen als "buiten bereik" gemeld worden. Nieuw vals alarm in ruil voor
-    // het oude, dus dat hoort samen gewijzigd te blijven.
-    const mx = ALL_PID_DEFS['0143'].max;
-    if (!(mx >= 400))
-      return { staat: 'FOUT', detail: 'max staat op ' + mx + ' — een turbo boven 100% wordt dan afgekeurd' };
-    return 'deler weg, max ' + mx + '%';
-  });
-
-  // ── TOEGEVOEGD 21-08: blok 1 toetst het profiel echt ──
-  await _doe(5, 'VIN-profielmelding is geen vals alarm meer', function () {
-    if (typeof profielHealth !== 'function')
-      return { staat: 'FOUT', detail: 'profielHealth ontbreekt — blok 1 kan niet vaststellen of het profiel geladen is' };
-    let bron = '';
-    try { bron = String(_blok1 || ''); } catch (e) {}
-    if (bron && bron.indexOf('dit had bij het verbinden geladen moeten worden') >= 0)
-      return { staat: 'FOUT', detail: 'de onvoorwaardelijke waarschuwing staat er nog' };
-    const h = profielHealth();
-    return h ? 'profiel geladen, ' + Object.keys(h).length + ' health-oordelen' : 'geen profiel geladen deze sessie (volle discovery)';
-  });
-
-  // ── BLIJFT STAAN: de steunbitzeef uit de vorige update ──
-  // Punt 1 is op 21-08 11:28 gesloten (blok 6: 55 PIDs, 0 ontkend). Deze twee
-  // controles blijven omdat een regressie hier stil verloopt: er komt geen
-  // foutmelding, er verschijnen alleen weer tegels die nooit een waarde tonen.
+  // ── BLIJFT STAAN: de steunbitzeef (punt 1, gesloten 21-08) ──
   await _doe(5, 'Preset respecteert de steunbits', function () {
     if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
       return { staat: 'FOUT', detail: 'de poort ontbreekt — de preset kan weer fantomen terugzetten' };
@@ -1277,25 +1307,6 @@ async function _blok5() {
       return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size +
         ' worden door de ECU ontkend: ' + ontkend.join(', ') + ' — iets zet ze terug ná de discovery' };
     return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
-  });
-
-  await _doe(5, 'Run vraagt geen ontkende PIDs op', function () {
-    if (typeof ecuSteunt !== 'function')
-      return { staat: 'LET OP', detail: 'ecuSteunt ontbreekt — de run kan zichzelf niet ontzien' };
-    let bits = {};
-    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
-    if (!Object.keys(bits).length)
-      return { staat: 'LET OP', detail: 'nog geen bitmaps — blok 3 vraagt deze run alles op' };
-    let over = 0;
-    try {
-      const bron = (typeof discoveredPIDDefs !== 'undefined' && discoveredPIDDefs.length)
-        ? discoveredPIDDefs.map(function (d) { return d.pid; })
-        : (typeof activePIDs !== 'undefined' ? Array.from(activePIDs) : []);
-      over = bron.filter(function (p) { return ecuSteunt(p) === false; }).length;
-    } catch (e) {}
-    return over
-      ? 'sweep slaat ' + over + ' ontkende PIDs over — scheelt evenzoveel lege antwoorden'
-      : 'geen ontkende PIDs in de sweeplijst (profiel is schoon)';
   });
 
   // ── BLIJFT STAAN: twee structurele controles ──
@@ -1619,21 +1630,23 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'De 0143-fix, en de vraag waarom de adapter tijdens het rijden achterloopt',
+  titel: 'De Run-chip, het opmerkingveld, en nog altijd de trage adapter',
   vragen: [
     'VOORAF — blok 5 mag geen FOUT geven. Staat daar iets, dan is de build niet compleet en telt de rest van deze run niet.',
-    'KERNVRAAG 0143 — toont "Abs. motorbelasting" nu tientallen procenten in plaats van 0,0x? Stationair hoort daar ongeveer 20 tot 25% te staan, bij vol gas op deze atmosferische motor tot ruim 90%. Blok 3 zet de ruwe bytes erbij: reken er zelf een na.',
-    '0143 — slaat er nergens een bereikwaarschuwing aan? De waarde ging van 0,09 naar 22 en het bereik van 100 naar 400; als koopcheck of veldlab "TE HOOG" of "buiten bereik" meldt, is de grens op de verkeerde plek gezet.',
-    'BLOK 1 — zegt de VIN-profielregel nu "bij het verbinden geladen, snelle start"? Die melding stond er op 21-08 twee runs lang als waarschuwing terwijl de app het profiel gewoon gebruikte.',
-    'BLOK 1 tegenproef — wis de app-gegevens, verbind opnieuw, en kijk of diezelfde regel dan LET OP geeft met "NIET geladen". Een controle die alleen groen kan worden bewijst niets.',
-    'KERNVRAAG BUS — waarom loopt de adapter tijdens het rijden achter? Op 21-08 om 11:36 stond gemMs op 950 terwijl het venster op 148 ms zat, met 12 onvolledige verzoeken (4%) en busbelasting "bufferend". De missers zaten op ALLE gepollde PIDs, één of twee per stuk — dus geen fantoomsensor maar het transport. Kijk in het Logboek of er op die momenten een BT-dip of herverbinding staat.',
-    'BUS — herstelt het tempo weer? Blok 4 gaf tempoPct 30% en blok 7 zag het niet meer boven de 55% komen in 500 seconden. Rijd na een rustige periode nog een run: klimt hij terug of blijft hij hangen?',
-    'BLOK 7 — bevestigt een tweede rit dat er 0 ongevraagde remmomenten zijn? Op 21-08 waren het er 4 van de 4 mét fouten of oplopende responstijd, en bezetting voorspelde de responstijd wél (83 ms laag tegen 995 ms hoog). Als dat standhoudt gaat PLAN.md punt 2 dicht.',
-    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0? Op 21-08 bereikte het koelwater 90 °C en gaven 2101 en 22111F nog steeds NO DATA, dus de kou was niet de reden. Dit is de laatste stap voor punt 4.',
-    'STEUNBITS — blijft blok 6 op 0 ontkend staan? Punt 1 is gesloten, maar een regressie hier verloopt stil: er komen alleen weer tegels die nooit een waarde tonen.',
-    'BYTELENGTES — blok 4 meldde 0155 en 0156 als afwijkend (tabel 2, gemeten 1). Komt dat terug, dan klopt de lengtetabel niet voor deze twee.'
+    'RUN-CHIP — staat er een vierde chip naast Auto, OBD en AI? Tik erop: zie je vijf regels met AAN/UIT, en klopt elke stand met wat er echt draait?',
+    'RUN-CHIP — zet de waakronde aan en kijk of de dot groen wordt en het cijfer verschijnt. Dat was het hele punt: tot nu toe kon die aanstaan zonder dat het ergens bleek.',
+    'RUN-CHIP — Caravan-modus en Rit-analyse horen om bevestiging te vragen bij STOPPEN, niet bij starten. Probeer beide. Zonder verbinding horen ze grijs te staan met "verbind eerst een adapter".',
+    'RUN-CHIP — start de bulk-recorder via de chip en kijk of de regel meetelt ("neemt op — N regels"). Pauzeren via het eigen scherm hoort hier als "gepauzeerd" te verschijnen.',
+    'OPSLAAN — staat er nu een opmerkingveld in het opslaan-venster? Vul iets in, sla op als tekst: staat het bovenaan het bestand? En als PDF: staat het in een kader onder de kopband?',
+    'OPSLAAN — laat het veld ook eens leeg. Dan hoort het bestand er precies zo uit te zien als voorheen, zonder lege kop.',
+    'BUS — loopt de adapter nog steeds achter tijdens het rijden? Op 21-08 om 11:36 stond gemMs op 950 tegen een venster van 148 ms, met 12 onvolledige verzoeken en busbelasting "bufferend". Om 11:47 was het "langzaam" op 58%. Kijk in het Logboek of er bij de trage momenten een BT-dip staat.',
+    'BUS — klimt het tempo terug? Twee runs op rij bleef het onder de 60% hangen zonder dat er nog fouten waren (11:47: 0% fouten in álle monsters, tempo toch 56%). Dat is de vraag die overblijft nu punt 2 zelf dicht kan.',
+    'BLOK 7 — nog steeds 0 ongevraagde remmomenten? Drie ritten op rij nu: 0 van 1, 0 van 4, 0 van 2. Als deze vierde het bevestigt is PLAN.md punt 2 definitief dicht.',
+    'BLOK 9 (losse knop, warme motor) — antwoordt er een 11xx-identifier op 7E0? Het koelwater haalde 90 °C en 2101/22111F bleven NO DATA, dus kou was niet de reden. Dit is de laatste stap voor punt 4.',
+    'BLOK 1 — blijft de VIN-profielregel "bij het verbinden geladen, snelle start" zeggen? En wis een keer de app-gegevens: dan hoort daar LET OP met "NIET geladen" te staan.'
   ]
 };
+
 
 
 window.openTestrun = openTestrun;

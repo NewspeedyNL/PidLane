@@ -105,6 +105,25 @@ async function plMaakPdf(bestandsnaam, tekst, opties) {
     y = my + 6;
   }
 
+  // De opmerking van de gebruiker, in een eigen kader. Bewust vóór de
+  // ondertitel en de inhoud: dit is wat de lezer als eerste moet weten over
+  // deze meting — welke rit het was, wat eraan opviel.
+  if (o.opmerking) {
+    const rgls = doc.splitTextToSize(_schoon(o.opmerking), W - 2 * M - 10);
+    const hoogte = rgls.length * 4.6 + 10;
+    doc.setFillColor(247, 249, 252);
+    doc.setDrawColor(LICHT[0], LICHT[1], LICHT[2]);
+    doc.roundedRect(M, y, W - 2 * M, hoogte, 2, 2, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+    doc.setTextColor(GRIJS[0], GRIJS[1], GRIJS[2]);
+    doc.text('OPMERKING', M + 5, y + 5.5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    doc.setTextColor(DONKER[0], DONKER[1], DONKER[2]);
+    let oy = y + 11;
+    rgls.forEach(function (r) { doc.text(r, M + 5, oy); oy += 4.6; });
+    y += hoogte + 6;
+  }
+
   if (o.ondertitel) {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
     doc.setTextColor(DONKER[0], DONKER[1], DONKER[2]);
@@ -206,7 +225,14 @@ function plOpslaan(basisnaam, tekst, opties) {
   ov.innerHTML =
     '<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:18px;max-width:340px;width:100%">' +
       '<div style="font-size:15px;font-weight:800;color:var(--tx);margin-bottom:4px">Hoe wil je dit opslaan?</div>' +
-      '<div style="font-size:12px;color:var(--tx3);margin-bottom:14px">' + (o.titel || 'Rapport') + '</div>' +
+      '<div style="font-size:12px;color:var(--tx3);margin-bottom:12px">' + (o.titel || 'Rapport') + '</div>' +
+      // Het opmerkingveld. Een log zonder context kost aan de andere kant een
+      // ronde vragen: was dit stationair of rijdend, wat viel er op, waarom is
+      // deze run bewaard. Dat weet je nú, niet meer als je het bestand
+      // terugkijkt. Leeg laten mag; dan verandert er niets aan het bestand.
+      '<textarea id="plExpOpm" rows="3" placeholder="Wat is dit voor log? Wat viel er op? (mag leeg)" ' +
+        'style="width:100%;box-sizing:border-box;background:var(--sur2);color:var(--tx);border:1px solid var(--bd);' +
+        'border-radius:9px;padding:9px 10px;font:400 12px var(--f);resize:vertical;margin-bottom:12px"></textarea>' +
       '<button id="plExpPdf" style="width:100%;background:var(--ac);color:#fff;border:0;border-radius:9px;padding:12px;font:700 13px var(--f);cursor:pointer;margin-bottom:8px;text-align:left">' +
         '📕 PDF — nette opmaak<div style="font-weight:400;font-size:11px;opacity:.85;margin-top:2px">Met kopband en voertuiggegevens. Voor als er iemand meekijkt.</div></button>' +
       '<button id="plExpTxt" style="width:100%;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:9px;padding:12px;font:600 13px var(--f);cursor:pointer;text-align:left">' +
@@ -215,22 +241,44 @@ function plOpslaan(basisnaam, tekst, opties) {
     '</div>';
   document.body.appendChild(ov);
 
+  // Wat er in het veld staat op het moment dat je op een knop drukt. Apart
+  // uitgelezen per klik, niet bij het openen: anders mist de laatste zin die
+  // je nog intikte voordat je op PDF drukte.
+  function _opm() {
+    try {
+      const el = document.getElementById('plExpOpm');
+      return el ? String(el.value || '').trim() : '';
+    } catch (e) { return ''; }
+  }
+
+  // In het tekstbestand komt de opmerking bovenaan, vóór de bestaande kop.
+  // Zo staat hij in beeld zonder dat de aanroepers hun eigen kop hoeven aan
+  // te passen — die vier (archief, logboek, rijsituatie, testrun) leveren de
+  // tekst kant-en-klaar aan.
+  function _metOpmerking(t, opm) {
+    if (!opm) return t;
+    const streep = '════════════════════════════════════════════════';
+    return 'OPMERKING\n' + streep + '\n' + opm + '\n' + streep + '\n\n' + t;
+  }
+
   const sluit = function () { try { ov.remove(); } catch (e) {} };
   ov.addEventListener('click', function (e) { if (e.target === ov) sluit(); });
   document.getElementById('plExpAf').onclick = sluit;
 
   document.getElementById('plExpTxt').onclick = function () {
+    const uit = _metOpmerking(tekst, _opm());
     sluit();
-    _bewaar(new Blob([tekst], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', tekst)
+    _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit)
       .then(function (ok) { if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.txt'); } catch (e) {} } });
   };
 
   document.getElementById('plExpPdf').onclick = async function () {
     const knop = this;
+    const opm = _opm();
     knop.disabled = true;
     knop.innerHTML = '⏳ PDF maken…';
     try {
-      const blob = await plMaakPdf(basisnaam + '.pdf', tekst, o);
+      const blob = await plMaakPdf(basisnaam + '.pdf', tekst, Object.assign({}, o, { opmerking: opm }));
       sluit();
       const ok = await _bewaar(blob, basisnaam + '.pdf', null);
       if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.pdf'); } catch (e) {} }
@@ -239,7 +287,8 @@ function plOpslaan(basisnaam, tekst, opties) {
       // wel zeggen waarom — anders lijkt het of de knop niets doet.
       sluit();
       try { showToast('PDF lukte niet (' + (e.message || e) + ') — als tekst opgeslagen'); } catch (e2) {}
-      await _bewaar(new Blob([tekst], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', tekst);
+      const uit = _metOpmerking(tekst, opm);
+      await _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit);
     }
   };
 }
