@@ -1,6 +1,6 @@
 # PLAN.md — wat er nog open staat
 
-Bijgewerkt: 21-08-2026 (nacht) — versie 3.0.0, testrun 3.3.
+Bijgewerkt: 22-08-2026 (nacht) — versie 3.0.0, testrun 3.4.
 
 Dit bestand is het werkplan over sessies heen: **alleen wat er nog moet
 gebeuren, in volgorde**. Wat er gebeurd is staat in `OVERDRACHT.md`, hoe het
@@ -159,6 +159,10 @@ vijf trappen, en de slotregel zegt of het tempo van de app nog steeds ver onder
 ligt bij wat de verbinding foutloos haalt. Zonder die voor-en-nameting is dit
 sleutelen aan een regelkring op gevoel.
 
+**De vóórmeting staat als opdracht 8 in de campagne van testrun 3.4.** Twee
+regels overschrijven volstaat: "Wat deze verbinding aankan" en "Stand van de
+app na de proef". Zolang die er niet zijn, is deze sessie niet te beginnen.
+
 Eén ding om niet te vergeten: de proef jaagt de bezetting zelf omhoog. Het tempo
 van 18% is dus deels door de meting veroorzaakt. Dat maakt de conclusie niet
 anders — 0% fouten en 9,1/s foutloos staat los van wie de bus bezet hield — maar
@@ -178,6 +182,13 @@ Twee vragen die je vooraf moet beantwoorden: op hoeveel mislukte pogingen mag de
 herijking hem uit `activePIDs` halen, en hoe komt hij terug als hij later alsnog
 antwoordt (koud/warm, motor uit/aan)? Zonder dat tweede bouw je een zeef die
 sensoren voorgoed wegwerkt.
+
+**Testrun 3.4 levert de cijfers voor allebei.** Blok 11 telt hoeveel PIDs een
+niet-ok health-oordeel hebben én in de actieve selectie staan — dat is precies
+de populatie waar de drempel over moet gaan. En het controleert of de vier
+haken bestaan waarmee een opgeruimde sensor ooit terug kan komen
+(`plHerijkTick`, `herijkPidGate`, `pidToevoegen`, `magToevoegen`). Ontbreekt er
+één, dan bouw je die zeef zonder terugweg.
 
 ---
 
@@ -267,6 +278,12 @@ bestanden, dus strikt mechanisch en in twee stappen: eerst de helper erbij en
 
 **`merkGroep()`-asymmetrie.** `MINI` matcht op prefix, `BMW` op gelijkheid.
 Raakt de DTC-lookup (§14). Klein, maar apart houden omdat het gedrag verandert.
+
+**De inventarisatie die dit punt als eerste vraagt, doet blok 11 nu vanzelf**
+(testrun 3.4): het telt per module het eigen uitpakwerk tegen
+`splitBatchResponse`, telt de losse `fetch`-aanroepen en kijkt of er al een
+`plFetch`-helper is, en toetst de `merkGroep`-asymmetrie live op vier
+merkstrings. Draai eerst een run, dan begin je die sessie met getallen.
 
 ---
 
@@ -393,11 +410,14 @@ Mode 06 vervalt; was voor eigen gebruik en niet meer nodig.
 
 ---
 
-## 5. De stille catches — 108 opgeruimd, 716 te gaan
+## 5. ~~De stille catches~~ — DICHT (22-08): 584 opgeruimd, 0 te gaan
 
-**`pidlane-bt.js` en `pidlane-veldlab.js`: allebei van 54 naar 0.** Bewezen dat
-alleen catch-bodies en commentaar wijzigden; de rest van de code is teken voor
-teken gelijk.
+**Alle zes bestanden uit deze klus staan op 0:** `pidlane-bt.js`,
+`pidlane-veldlab.js` (21-08), `pidlane-btflow.js`, `pidlane-auth.js`,
+`pidlane-fuel.js`, `pidlane-koopcheck.js`, `pidlane-remote.js` en
+`pidlane-testrun.js` (22-08, resp. 30, 39, 40, 43, 105 en 66). Samen 584 van
+de oorspronkelijke 824. Voor elk bestand bewezen dat alleen catch-bodies en
+commentaar wijzigden — de rest van de code is teken voor teken gelijk.
 
 `test-stille-catches.js` is een **ratel**: per module staat de huidige stand,
 meer mag niet, minder mag altijd. Een catch met een reden erin
@@ -410,9 +430,19 @@ een sonde die juist test óf iets antwoordt), nooit rond een aanroep van eigen
 code. Bij twijfel: `btDiag` als het in het logboek hoort, `console.warn` voor de
 rest. Nooit een toast — die vallen weg tijdens het rijden.
 
-**Nog te doen, op volgorde van omvang:** `remote` 105, `testrun` 66,
-`koopcheck` 42, `fuel` 40, `auth` 39, `btflow` 30. Eén module per sessie, en
-verlaag daarna de grens in de ratel.
+**`remote` en `testrun` (22-08, avond) zijn ook klaar.** Bij `testrun` is
+alleen de regel over `CAMPAGNE`/`_blok5()` gevolgd: de catch-*bodies* binnen
+`_blok5()` zijn gevuld zoals overal elders in het bestand, maar de
+testlogica zelf (welke controles er zijn, wat ze toetsen) is niet aangeraakt.
+Dat blijft een losse stap, samen met de volgende `CAMPAGNE`-herschrijving.
+
+Bij het opruimen van `testrun.js` maakte ik zelf twee keer de fout die deze
+hele klus juist moet voorkomen: een `return {...}` en een geneste try/catch
+ín een catch-body. `verifieer.js` ving het meteen (zei `false` in plaats van
+`true`) — hersteld naar `throw new Error(...)` respectievelijk één enkel
+catch-niveau. Genoemd omdat het laat zien dat de regel "geen `{`/`}` in een
+catch-body" ook geldt voor `return`-statements met een object-literal, niet
+alleen voor `console.warn`-aanroepen.
 
 **Wat de twee modules opleverden:**
 
@@ -422,6 +452,26 @@ punt 4 maandenlang dat mode 21 nergens werd opgevraagd. Idem
 kennis, en dat is de hele fantoomsensor-familie.
 
 *`veldlab.js`* — zie punt 16 hieronder.
+
+*`btflow.js` (22-08)* — zie punt 17 hieronder. Elf van de dertig zaten om een
+eigen tekenfunctie heen (`updateVehicleCard`, `renderDTC`, `renderGauges`,
+`buildDiscoveredPIDList`, `buildPIDList`, `updateScenarioBadge`): faalt zo'n
+aanroep, dan loopt het scherm achter op de staat en zegt niets dat er iets
+misging. Die melden nu via `log(...,'warn')`, want ze raken wat de monteur ziet,
+niet de BT-verbinding.
+
+*`auth.js`, `fuel.js`, `koopcheck.js` (22-08)* — zie punt 18 hieronder. Zelfde
+soort patroon, maar dan zeven keer dezelfde aanname ("de sensoren staan al goed
+vóór ik meet") in plaats van tekenfuncties.
+
+*`remote.js` (22-08, avond)* — zie punt 19 hieronder. Een wrapper-installatie
+die de op-afstand-schrijfblokkade (`clearDTC`) activeert, zat in een lege
+catch — de scherpste vondst van de hele klus.
+
+*`testrun.js` (22-08, avond)* — zie punt 20 hieronder. Twee keer dezelfde
+header-reset (`ATSH7DF`) die "ALTIJD" moet gebeuren volgens het eigen
+commentaar, zat toch stil. Plus: het eigen testblok (`_blok5`) had twee
+plekken die een leesfout ten onrechte als "PASS" zouden boeken.
 
 ---
 
@@ -457,6 +507,169 @@ En `pidlane-veldlab.js:618` wrapt `log()`. Dat is de tweede wrapperlaag naast
 
 ---
 
+## 17. "Log wissen" wist de spiegel niet
+
+Gevonden op 22-08 bij het opruimen van `pidlane-btflow.js`.
+
+`_btPersistNow()` schrijft de BT-log naar **twee** plekken — `sessionStorage`
+én een `localStorage`-spiegel, omdat sessionStorage een Android WebView
+proces-kill niet overleeft. `restoreBtLog()` valt op die spiegel terug.
+`clearBtLog()` (regel 632) wist alleen de sessionStorage-kant.
+
+Gevolg: log wissen, daarna herladen zonder dat er nog een `btDiag`-regel bij is
+gekomen, en de oude log staat er weer. Een knop die zegt dat hij iets wist en
+het dan niet doet is erger dan geen knop — zeker als je hem gebruikt om een
+schone log voor een bugmelding te maken.
+
+De fix is één regel (`localStorage.removeItem('pl_btlog')` ernaast), maar dat is
+een gedragswijziging en hoort dus niet in de opruimstap. Meenemen in de sessie
+die `btflow` inhoudelijk raakt.
+
+Kleiner uit dezelfde module: bij een mislukte optimalisatie zet de code de
+adapter terug op `ELM_BASELINE` in een lege catch, terwijl het venster de
+gebruiker wél meldt dat de standaardinstellingen hersteld zijn. Faalt dat
+herstel, dan staat de adapter nog op de geprobeerde instellingen en weet niemand
+het. Meldt nu via `log(...,'err')`.
+
+---
+
+## 18. Zeven keer dezelfde stille aanname: "de sensoren staan al goed"
+
+Gevonden op 22-08 bij het opruimen van `pidlane-koopcheck.js` en
+`pidlane-fuel.js`. Zeven analysefuncties zetten eerst het juiste PID-profiel
+aan (`ensurePIDsActive` / `ensurePIDListActive`) en beginnen dán pas te meten
+of te analyseren — maar die aanzet-aanroep stond overal in een lege catch:
+
+- `pidRecStartRec()` en `deepLogStart()` (handmatige opnames)
+- `runOnderhoud()`, `runEVCheck()`, `runLangeRitTech()` (de AI-doorlichtingen)
+- `climateStart()` (airco/wintercheck)
+- **`runKoopcheck()` — de scherpste van de zeven.** Het commentaar erboven zegt
+  letterlijk: *"P2: zorg dat de conditiecheck op de juiste, verse PIDs draait —
+  niet op toevallig-actieve of lege sensoren. (Koopcheck miste eerder een
+  profiel.)"* Dat is een gedocumenteerde bugfix. Faalt de aanroep die 'm
+  oplost, dan is de koopcheck stilletjes terug bij precies het probleem dat P2
+  moest wegnemen, en niemand ziet het gebeuren.
+
+Alle zeven melden nu via `log(...,'warn')` als de aanzet mislukt, met erbij dat
+de meting/analyse dan op oude of lege data kan draaien.
+
+Zelfde patroon, los van de zeven: in `loadRemoteConfig()`
+(`auth.js`/`fuel.js`) zegt het commentaar zelf *"faalt dit stil, dan lijkt
+admin.html kapot terwijl de config gewoon in Airtable staat"* — en toch stond
+`applyConfigToUI()` er in een lege catch naast. En in `apiFetch()` (`fuel.js`)
+zat `_situatiePromptLine()` stil: het commentaar zegt dat de AI zonder die
+regel een caravanrit als een zieke auto beoordeelt.
+
+**Niets hiervan is opgelost — alleen zichtbaar gemaakt.** Of de aanroep ook
+echt faalt in het veld is niet getest; dat vraagt een sessie die met opzet een
+PID-activatie laat mislukken en kijkt of de melding verschijnt.
+
+Kleinere vondst uit dezelfde ronde: `markeer.js` matcht `catch(...){}` zonder
+`g`-vlag, dus op een regel met **twee** lege catches op één regel wordt alleen
+de eerste gemarkeerd. In `pidlane-koopcheck.js` (`maybeStartLiveLog()`, regel
+197) bleef zo een `showToast`-catch achter de hand over. Met de hand gevonden
+en gevuld; `gereedschap/markeer.js` zelf is niet aangepast (hoort niet in deze
+klus).
+
+---
+
+## 19. `remote.js`: de schrijfblokkade kon zwijgend uitblijven
+
+Gevonden op 22-08 (avond) bij het opruimen van `pidlane-remote.js` — de
+scherpste vondst van deze klus.
+
+Het bestand haakt met vijftien wrapper-installaties in op bestaande
+functies, elk in zijn eigen `try{ if(typeof X==='function'){...} }catch(_){}`.
+Voor veertien daarvan is een mislukte installatie vervelend (de expert ziet
+dan geen live-telemetrie, of een knop synct niet) maar niet gevaarlijk. Voor
+één is dat anders:
+
+```js
+try{ // de éne schrijfactie in de app: op afstand hard geblokkeerd
+  if(typeof clearDTC==='function'){const _cd=clearDTC;
+    clearDTC=async function(){
+      if(window._remoteVehicleMode){ /* ... blokkeer ... */ return; }
+      return _cd.apply(this,arguments);
+    }; window.clearDTC=clearDTC;}
+}catch(_){}
+```
+
+Het eigen commentaar noemt dit "de éne schrijfactie in de app" — de garantie
+dat een remote sessie alleen-lezen is. Faalt de installatie (bijvoorbeeld
+omdat `clearDTC` op het moment van laden nog niet bestaat), dan is die
+garantie stilletjes niet actief, en zou een expert op afstand foutcodes
+kunnen wissen op andermans auto. Dit is nu de enige plek in de hele
+stille-catches-klus met een `console.error` in plaats van `console.warn`.
+
+**Twee kleinere, verwante vondsten in hetzelfde bestand:**
+
+- `applyVState()` — de functie die het voertuigprofiel van de local naar de
+  expert-instantie kopieert — had `supportedPIDs=new Set(...)` en de
+  `pidToevoegen()`-poort allebei in een lege catch. Faalt de eerste, dan blijft
+  de PID-keuzelijst bij de expert leeg of verouderd. Faalt de tweede, dan komt
+  de remote-selectie ongefilterd door de poort heen — dezelfde
+  fantoomsensor-familie als punt 1, nu via de remote-sessie in plaats van een
+  ECU-verbinding.
+- `shareStop()` — het sluiten van de sessie op de server kon stil mislukken
+  terwijl de lokale UI toch "gestopt" toont. De sessie kan dan op de server
+  nog actief blijven voor de expert.
+
+Niets hiervan is opgelost, alleen zichtbaar gemaakt (`console.error` /
+`console.warn` / `logA(...,'warn')`).
+
+---
+
+## 20. `testrun.js`: twee "ALTIJD"-garanties die toch stil konden falen
+
+Gevonden op 22-08 (avond) bij het opruimen van `pidlane-testrun.js`.
+
+**De header-reset.** Blok 8 en blok 9 zetten voor een test de ECU-header op
+`7E0` (motorblok) en moeten die na afloop terugzetten naar de brede
+broadcast. Het commentaar erboven is ondubbelzinnig:
+
+> Header ALTIJD terugzetten naar de functionele broadcast. Blijft 7E0 staan,
+> dan praat de hele app daarna alleen nog tegen het motorblok — en dat merk
+> je pas als een andere module niets meer terugkrijgt.
+
+En toch stond `try{ await sendCmd('ATSH7DF', 1500); }catch(e){}` in de
+`finally` van allebei de blokken. Blok 9 heeft zelfs een tweede, met opzet
+gebouwd vangnet (nog een `ATSH7DF`-poging) voor het geval de eerste al
+faalde tijdens de scan — en ook dát vangnet was stil. Bij een dubbele mislukking
+zou de rest van de app-sessie zonder waarschuwing alleen nog met het
+motorblok praten. Beide boeken nu een `FOUT`-regel in het testrun-logboek in
+plaats van te zwijgen.
+
+**Het herstelpunt.** `_bewaarSelectie()` legt vóór elke run vast welke PIDs
+en welk profiel actief waren, zodat `_herstelSelectie()` dat na afloop
+terug kan zetten — inclusief bij een crash. De drie regels die dat
+vastleggen (`activePIDs`, `manualPIDs`, `actiefPollProfiel()`) zaten alle
+drie in een lege catch. Faalt zo'n vastlegging, dan legt de run een
+onvolledig of leeg herstelpunt vast, en het herstel ná de run zet dan
+netjes een lege of halve selectie terug — precies het scenario waar de
+module haar bestaansrecht aan ontleent ("de selectie wordt hersteld in een
+finally, ook als de run halverwege klapt").
+
+**De test die zichzelf voor de gek houdt.** In `_blok5()` — het blok dat
+controleert of een opgeruimd stuk code écht weg is — zaten twee controles
+die bij een leesfout de verkeerde kant op vallen: een mislukte lezing van
+`window.renderGauges` (om te checken of een oud vangnet weg is) of van
+`PLBulk.status()` (om te checken of een oud GPS-veld weg is) werd stil
+geslikt, waarna de test gewoon doorging alsof het oude ding aantoonbaar weg
+was. Een test die bij een fout "PASS" meldt in plaats van "kon niet
+controleren" is erger dan geen test. Beide gooien nu door (`throw new
+Error(...)`) zodat `_doe()` het als `FOUT` boekt.
+
+**Bewijsvoering voor PLAN.md punt 2/13.** Los van bovenstaande: `_budgetVoor`
+(het tempo vóór de sweep, blok 3) en de `PLLoad.staat()`/`PLBus.stats()`-
+vergelijking aan het eind van blok 10 zijn de metingen waar die twee
+openstaande punten om vragen. Beide lazen stil — een mislukte meting hier
+levert geen foutmelding op maar gewoon een onvolledige regel in het log,
+wat het bewijs voor punt 2/13 zonder waarschuwing kan uithollen.
+
+Niets hiervan is opgelost, alleen zichtbaar gemaakt.
+
+---
+
 ## 12. Blok 1 van de testrun: nog twee scherpe randen
 
 De VIN-profielmelding is op 21-08 gerepareerd (leest nu `profielHealth()` in
@@ -467,6 +680,9 @@ gedaan: **wis de app-gegevens, verbind opnieuw, en kijk of daar dan LET OP met
 Tweede randje uit dezelfde hoek: blok 4 meldde op 21-08 om 11:36 twee afwijkende
 bytelengtes (`0155` en `0156`, tabel 2 tegen gemeten 1). Om 11:47 was dat weg.
 Komt het terug, dan klopt de lengtetabel niet voor die twee.
+
+**Sinds testrun 3.4 hoef je daar niet meer naar te zoeken:** blok 11 noemt
+`0155`/`0156` expliciet als ze in `PLPidLen.afwijkingen()` staan.
 
 ---
 
