@@ -1,81 +1,122 @@
-# Delta — 21-08-2026 (nacht), versie 3.0.0 / testrun 3.3
+# Delta — stille catches, ronde 5 (laatste twee)
 
-20 bestanden. **Er wordt één bestand hernoemd**, dus overkopiëren alleen is niet
-genoeg.
+Datum 22-08-2026, avond. Vervolgt op de btflow-delta en de
+auth/fuel/koopcheck-delta van eerder vandaag. Twee modules:
+**`pidlane-remote.js` (105 → 0), `pidlane-testrun.js` (66 → 0).**
 
-    cd ~
-    unzip -o /sdcard/Download/PidLane-delta-21-08-nacht.zip -d /tmp/delta
-    cp -r /tmp/delta/PidLane-main/. ~/PidLane/
-    rm -f ~/PidLane/public/pidlane-scheduler.js      # heet nu pidlane-motortype.js
-    cd ~/PidLane && plcheck
+Met deze delta is de hele stille-catches-klus dicht: alle zes bestanden op 0.
 
-`plcheck` moet **76 bestanden, 25 tests**, div-balans **728/728** melden.
-Blijft `pidlane-scheduler.js` staan, dan hangt hij nergens meer in maar heb je
-wel twee kopieën van dezelfde module in de repo.
+Uitpakken over de repo heen — na de eerdere twee delta's, of in plaats
+daarvan als die nog niet verwerkt zijn (`test-stille-catches.js` bevat de
+grens voor alle zes bestanden):
 
-## Nieuw (3)
+    cp -r delta/PidLane-main/. ~/PidLane/
+
+## Wat er in zit
 
 | bestand | wat |
 |---|---|
-| `public/pidlane-motortype.js` | hernoemd uit `pidlane-scheduler.js` — de echte scheduler zit in `pidlane-plload.js` |
-| `public/test-stille-catches.js` | ratel: het aantal lege catches mag per module alleen omlaag |
-| `public/test-demo-toegang.js` | bewaakt dat de demo bereikbaar blijft zonder account |
+| `public/pidlane-remote.js` | 105 lege catches ingevuld |
+| `public/pidlane-testrun.js` | 66 lege catches ingevuld (alleen catch-bodies, `CAMPAGNE`/`_blok5`-testlogica ongemoeid) |
+| `public/test-stille-catches.js` | grens voor alle zes bestanden op 0 |
+| `PLAN.md` | punt 5 gesloten, nieuw punt 19 en 20 met de vondsten |
 
-## Verwijderd (1)
+Géén versiebump: geen gedrag veranderd, dus geen nieuwe APK.
 
-`public/pidlane-scheduler.js` — hernoemd, zie hierboven.
+## Validatie
 
-## Gewijzigd (16)
+    bash plcheck.sh
 
-| bestand | wat er anders is |
-|---|---|
-| `public/pidlane-bt.js` | **de race is dicht**: `initConnection` wacht op de RDW-opzoeking vóór `saveVinProfile()`. 54 lege catches → 0 |
-| `public/pidlane-veldlab.js` | 54 lege catches → 0; drie vondsten, zie onder |
-| `public/pidlane-voertuigdata.js` | aandachtspunten bij het voertuigdossier (`plVoertuigLet`), auto-chip wordt oranje |
-| `public/pidlane-pids.js` | `renderGauges()`-vangnet verwijderd |
-| `public/index.html` | demoknop op het loginscherm; `v2.1` eruit; script-tag hernoemd |
-| `public/pidlane-demo.js` | `plDemoZonderLogin()` — demo zonder sessie te zetten |
-| `public/pidlane-auth.js` | versie-terugval `'2.1'` → `'?'` |
-| `public/pidlane-testrun.js` | versie 3.3, blok 5 en `CAMPAGNE` herschreven |
-| `public/pidlane-bedrading.js` | vier nieuwe namen geregistreerd |
-| `public/test-versie.js` | toets op hardcoded versie-terugvallen |
-| `public/test-geen-gps.js` | witregel |
-| `PIDLANE.md`, `PLAN.md`, `OVERDRACHT.md`, `ANDROID-PLAYSTORE.md`, `LEESMIJ-DELTA.md` | bijgewerkt |
+    ok  syntax — 9 bestanden
+    ok  ratel — geen enkele lege catch erbij
+    ok  pidlane-auth.js — lege catches: 39 → 0
+    ok  pidlane-btflow.js — lege catches: 30 → 0
+    ok  pidlane-fuel.js — lege catches: 40 → 0
+    ok  pidlane-koopcheck.js — lege catches: 43 → 0
+    ok  pidlane-remote.js — lege catches: 105 → 0
+    ok  pidlane-testrun.js — lege catches: 66 → 0
+    ok  alleen catch-bodies+commentaar gewijzigd: true   (beide bestanden)
 
-## De race (punt 11)
+## De klus is klaar: 584 opgeruimd
 
-`updateVehicleCard()` geeft de lopende `rdwLookup()` nu terug en
-`initConnection` wacht erop. Twaalf seconden grens; daarna wordt het profiel
-**niet** opgeslagen, want het zou merk, model en brandstof missen en dat blijft
-hangen tot de volgende volle discovery.
+Op 0: `bt`, `veldlab` (21-08), `btflow`, `auth`, `fuel`, `koopcheck`, `remote`,
+`testrun` (22-08). Van de oorspronkelijke 824 stille catches zijn er 584
+opgeruimd. Wat overblijft is bewust: de zes categorieën "stil met reden"
+(sondes, opruimen, cosmetisch) die overal in deze klus zijn blijven staan
+omdat een fout daar functioneel hetzelfde is als het normale pad.
 
-Mislukt de opzoeking, dan kleurt de auto-chip oranje en staat in het dossier
-waarom. Geen toast: een melding die wegvalt terwijl je rijdt is geen melding.
+---
 
-**Verbinden duurt hierdoor merkbaar langer** als de RDW traag is. Dat is de prijs.
+## De scherpste vondst: `remote.js`, de schrijfblokkade
 
-## 108 stille catches opgeruimd
+`remote.js` haakt met vijftien wrapper-installaties in op bestaande functies.
+Voor één daarvan is een mislukte installatie niet alleen vervelend maar
+gevaarlijk:
 
-`pidlane-bt.js` en `pidlane-veldlab.js`, allebei van 54 naar 0. Bewezen dat
-alleen catch-bodies en commentaar wijzigden — de rest is teken voor teken gelijk.
+```js
+try{ // de éne schrijfactie in de app: op afstand hard geblokkeerd
+  if(typeof clearDTC==='function'){ ... blokkeer clearDTC in remote-modus ... }
+}catch(_){}
+```
 
-**Er komen dus meldingen in het logboek die er nooit waren.** Dat is de bedoeling.
-Let vooral op `probeUitgebreid mislukt` en `Herijking na protocolvondst mislukt`:
-die twee stonden in een lege catch, en daar zijn eerder weken aan verloren.
+Dit is de garantie dat een remote sessie alleen-lezen is. Faalt de
+installatie stil, dan is die garantie niet actief en zou een expert op
+afstand foutcodes kunnen wissen. **Enige plek in de hele klus met
+`console.error` in plaats van `console.warn`.**
 
-`test-stille-catches.js` is een ratel: per module de huidige stand, meer mag
-niet, minder mag altijd. Een catch met een reden erin telt niet mee.
-Nog te gaan: `remote` 105, `testrun` 66, `koopcheck` 42, `fuel` 40, `auth` 39.
+Twee kleinere, verwante vondsten in hetzelfde bestand: `applyVState()` had
+`supportedPIDs=new Set(...)` en de `pidToevoegen()`-poort allebei stil —
+dezelfde fantoomsensor-familie als punt 1, nu via de remote-sessie. En
+`shareStop()` kon de sessie op de server stil laten open staan terwijl de
+lokale UI "gestopt" toont.
 
-## Wat veldlab opleverde — lees dit
+## `testrun.js`: twee "ALTIJD"-garanties die toch stil konden falen
 
-**De Full Survey telt een transportfout als "PID bestaat niet".** Gooit
-`sendCmd` (timeout, socket weg), dan blijft `raw` leeg en wordt de status
-`nodata`. Dat oordeel gaat naar Airtable en voedt de dekkingsmatrix per merk.
-Dezelfde verwarring die blok 10 met een ijkronde vermijdt, maar dan in het
-instrument dat bepaalt wat een merk ondersteunt. Hoeveel bestaande records
-hierdoor vervuild zijn is onbekend — zie `PLAN.md` punt 16.
+**Header-reset.** Blok 8 en 9 zetten de ECU-header op 7E0 en moeten die
+terugzetten — het eigen commentaar zegt "ALTIJD", anders praat de hele app
+straks alleen nog met het motorblok. Beide reset-pogingen (en blok 9's
+tweede, met opzet gebouwde vangnet) zaten stil. Boeken nu een `FOUT`-regel.
 
-`vlSave()` en `_vlAtQueuePush()` slikten QuotaExceeded stil, terwijl het
-commentaar erboven waarschuwt voor "onzichtbaar dataverlies". Een mislukte
-`vlSave()` betekent dat de veldlab-sessie weg is.
+**Het herstelpunt.** `_bewaarSelectie()` legt vóór elke run de PID-selectie
+vast zodat een crash die niet permanent verandert — de drie regels die dat
+vastleggen zaten alle drie stil. Faalt de vastlegging, dan herstelt de app na
+de run netjes een lege selectie in plaats van de echte.
+
+**De test die zichzelf voor de gek houdt.** Twee controles in `_blok5()`
+(zelf: "is dit oude ding echt weg?") vielen bij een leesfout de verkeerde
+kant op — ze meldden "PASS" terwijl ze niets gecontroleerd hadden. Herschreven
+naar `throw new Error(...)` zodat zo'n fout nu als `FOUT` boekt.
+
+**Bewijsvoering.** De metingen die PLAN.md punt 2/13 nodig hebben
+(`_budgetVoor`, en de `PLLoad`/`PLBus`-vergelijking in blok 10) lazen stil —
+een mislukte meting hier ondermijnt het bewijs zonder een spoor achter te
+laten.
+
+Niets van dit alles is opgelost, alleen zichtbaar gemaakt. Zie `PLAN.md`
+punt 19 en 20 voor het volledige verhaal.
+
+## `CAMPAGNE`/`_blok5()`: de regel is gevolgd
+
+Binnen `_blok5()` zijn **alleen de catch-bodies** gevuld, precies zoals
+overal elders in het bestand — de testlogica zelf (welke controles er zijn,
+wat ze toetsen) is niet aangeraakt. `CAMPAGNE` is niet herschreven. Dat blijft
+een losse stap voor de volgende keer dat er inhoudelijk iets verandert.
+
+## Twee keer mezelf op de vingers getikt
+
+Bij het opruimen van `testrun.js` schreef ik zelf twee keer precies de fout
+die deze klus moet voorkomen: een `return { staat:'FOUT', detail:'...' }` en
+een geneste try/catch, allebei ín een catch-body. De niet-hebberige
+verificatie-regex stopt bij de éérste `}` — dus zo'n object-literal of
+geneste catch laat een stuk tekst achter dat niet meer als catch-body geldt.
+`verifieer.js` zei meteen `false` in plaats van `true`; hersteld naar
+`throw new Error(...)` (geen accolades nodig) respectievelijk één enkel
+catch-niveau. Vermeldenswaard omdat de regel "geen `{`/`}` in een catch-body"
+dus ook geldt voor `return`-statements, niet alleen voor `console.warn`.
+
+## De klus zelf
+
+Niets meer te doen op dit vlak. Punt 5 in `PLAN.md` staat op ~~doorgestreept~~
+DICHT. Volgende sessie: kijk in `PLAN.md` welk punt nu aan de beurt is
+(punt 13 — `PLLoad` regelt op bezetting — heeft door deze klus er trouwens
+extra bewijsmateriaal bij gekregen, zie punt 20 hierboven).
