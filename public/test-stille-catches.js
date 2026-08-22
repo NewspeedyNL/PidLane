@@ -39,13 +39,14 @@
 
 const fs = require('fs');
 
-// Stand op 21-08-2026, na het opruimen van pidlane-bt.js en
-// pidlane-veldlab.js (allebei van 54 naar 0).
+// Stand op 22-08-2026. Opgeruimd naar 0: pidlane-bt.js, pidlane-veldlab.js
+// (21-08), pidlane-btflow.js, pidlane-auth.js, pidlane-fuel.js en
+// pidlane-koopcheck.js (22-08, resp. 30, 39, 40 en 43 naar 0).
 const GRENS = {
   "pidlane-archief.js": 23,
-  "pidlane-auth.js": 39,
+  "pidlane-auth.js": 0,
   "pidlane-bedrading.js": 5,
-  "pidlane-btflow.js": 30,
+  "pidlane-btflow.js": 0,
   "pidlane-bulk.js": 19,
   "pidlane-busgate.js": 2,
   "pidlane-caravan.js": 8,
@@ -58,10 +59,10 @@ const GRENS = {
   "pidlane-diagnose.js": 7,
   "pidlane-dossier.js": 1,
   "pidlane-export.js": 11,
-  "pidlane-fuel.js": 40,
+  "pidlane-fuel.js": 0,
   "pidlane-graph.js": 2,
   "pidlane-klant.js": 12,
-  "pidlane-koopcheck.js": 42,
+  "pidlane-koopcheck.js": 0,
   "pidlane-logboek.js": 11,
   "pidlane-mode06.js": 1,
   "pidlane-monitor.js": 10,
@@ -114,12 +115,21 @@ modules.forEach(function (f) {
 // Een module die van de lijst verdwenen is (hernoemd of weg) hoort niet stil
 // te blijven staan: dan zakt de grens nooit meer en dekt de ratel minder dan
 // je denkt.
-Object.keys(GRENS).forEach(function (f) {
-  if (modules.indexOf(f) < 0) {
-    console.log('  FOUT  ' + f + ' staat in de lijst maar bestaat niet meer — haal de regel weg');
-    fout++;
-  }
-});
+//
+// Uitzondering: draait dit in een werkmap met maar een handvol modules (zoals
+// de losse opruimzip), dan is "ontbreekt" gewoon "zit niet in deze zip" en
+// zegt die controle niets. De grens zelf blijft wél gelden voor wat er wél is.
+const DEELVERZAMELING = modules.length < 10;
+if (DEELVERZAMELING) {
+  console.log('  ---   werkmap met ' + modules.length + ' modules — alleen deze worden getoetst\n');
+} else {
+  Object.keys(GRENS).forEach(function (f) {
+    if (modules.indexOf(f) < 0) {
+      console.log('  FOUT  ' + f + ' staat in de lijst maar bestaat niet meer — haal de regel weg');
+      fout++;
+    }
+  });
+}
 
 if (gedaald.length) {
   console.log('  ok    ' + gedaald.length + ' module(s) opgeruimd sinds de laatste stand:');

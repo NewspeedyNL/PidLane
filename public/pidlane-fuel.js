@@ -144,7 +144,7 @@ function _modelPriceEur(mdl){
 let _sessTokIn=0,_sessTokOut=0,_sessCalls=0,_sessCostEur=0;
 function trackTokens(u, mdl){
   const i=u.input_tokens||0,o=u.output_tokens||0;
-  try{ PidLaneEvalLog.log('ai','tokens',{tokensIn:i,tokensOut:o}); }catch(e){}
+  try{ PidLaneEvalLog.log('ai','tokens',{tokensIn:i,tokensOut:o}); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   const P=_modelPriceEur(mdl);
   _sessTokIn+=i; _sessTokOut+=o; _sessCalls++;
   _sessCostEur += i/1e6*P.inp + o/1e6*P.out;
@@ -188,27 +188,27 @@ async function loadRemoteConfig(){
   try{ _tok = window.APP_TOKEN || (tokLoad()?.token) || ''; }catch(e){ _tok = window.APP_TOKEN || ''; }
   try{
     const url=(window.PROXY_URL||'').replace(/\/$/,'')+'/api/config';
-    if(!_tok){ try{ log('Config: nog geen sessietoken — wordt na login opgehaald','info'); }catch(e){} return false; }
+    if(!_tok){ try{ log('Config: nog geen sessietoken — wordt na login opgehaald','info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } return false; }
     const r=await fetch(url,{ headers:{ 'X-App-Token':_tok } });
     if(!r.ok){
-      try{ log('Config niet geladen — HTTP '+r.status+' (app draait op standaardinstellingen)','warn'); }catch(e){}
+      try{ log('Config niet geladen — HTTP '+r.status+' (app draait op standaardinstellingen)','warn'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
       return false;
     }
     const cfg=await r.json();
     if(cfg&&typeof cfg==='object'){
       window.PID_CONFIG={...window.PID_CONFIG,...cfg};
-      try{ localStorage.setItem('pl_remote_config',JSON.stringify(window.PID_CONFIG)); }catch(e){}
-      try{ applyConfigToUI(); }catch(e){}
+      try{ localStorage.setItem('pl_remote_config',JSON.stringify(window.PID_CONFIG)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+      try{ applyConfigToUI(); }catch(e){ log('Config binnen, maar niet op het scherm toegepast — deuren/banner/featureflags kunnen verouderd staan: '+(e.message||e),'warn'); }
       try{
         const _uit=Object.keys(FEATURE_TOGGLES||{}).filter(k=>!featOn(k));
         log('Config geladen: '+Object.keys(cfg).length+' sleutels'+(_uit.length?' — uit: '+_uit.join(', '):' — alles aan'),'ok');
-      }catch(e){}
+      }catch(e){ console.warn('Samenvattingsregel na config-load niet getoond', e); }
       return true;
     }
     return false;
   }catch(e){
     // offline / Worker onbereikbaar → fallback blijft actief
-    try{ log('Config niet bereikbaar — app draait op standaardinstellingen','warn'); }catch(_e){}
+    try{ log('Config niet bereikbaar — app draait op standaardinstellingen','warn'); }catch(_e){ /* stil: melding mag nooit de stroom breken */ }
     return false;
   }
 }
@@ -277,11 +277,11 @@ function applyConfigToUI(){
       b.textContent='📢 '+c.banner_text;
       b.style.display='';
     } else if(b){ b.style.display='none'; }
-  }catch(e){}
-  try{ applyFeatureToggles(); }catch(e){}
+  }catch(e){ console.warn('Configbanner niet getekend', e); }
+  try{ applyFeatureToggles(); }catch(e){ log('Featureflags niet toegepast — schermdelen die uit zouden moeten staan, kunnen zichtbaar blijven: '+(e.message||e),'warn'); }
 }
 // Ook bij boot toepassen (gecachte config), niet alleen na verse fetch.
-document.addEventListener('DOMContentLoaded', function(){ try{ applyConfigToUI(); }catch(e){} });
+document.addEventListener('DOMContentLoaded', function(){ try{ applyConfigToUI(); }catch(e){ console.warn('Gecachte config niet toegepast bij het opstarten', e); } });
 
 // ── Gedeelde basisregels voor alle PidLane-AI-rollen ───────────────
 // Eén bron van waarheid voor de harde regels (geen aannames, zekerheid
@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function(){ try{ applyConfigToUI()
 // (onderhoud/inkoop/prijs/lease/APK/EV/lange-rit/auto-expert) plakken hier
 // hun eigen rol-zin vóór, i.p.v. een losse complete persona te schrijven.
 function pidlaneBasisRegels(){
-  let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){}
+  let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){ console.warn('vehicleInfo niet leesbaar voor de brandstofregel, valt terug op ONBEKEND', e); }
   const _bf=(_vi.brandstof||'').toString().toLowerCase();
   let _bfRegel;
   if(/diesel/.test(_bf)) _bfRegel='Dit is een DIESEL: roetfilter (DPF), AdBlue/SCR en NOx zijn relevant; brandstoftrim-logica wijkt af.';
@@ -315,7 +315,7 @@ function extractAIText(data){
     for(const b of blocks){ if(b && b.type==='text' && typeof b.text==='string') return b.text; }
     // fallback: oud formaat of onverwachte structuur
     if(blocks[0] && typeof blocks[0].text==='string') return blocks[0].text;
-  }catch(e){}
+  }catch(e){ console.warn('AI-antwoord niet uit te lezen uit de responsestructuur', e); }
   return '';
 }
 
@@ -326,9 +326,9 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
     if(currentUser && typeof USERS!=='undefined' && USERS[currentUser?.name||currentUser]?.apiKey?.startsWith('sk-ant-')){
       key = USERS[currentUser?.name||currentUser].apiKey;
     }
-  }catch(e){}
+  }catch(e){ console.warn('Accountsleutel niet uitgelezen, val terug op window.anthropicKey', e); }
   if(!key) key = window.anthropicKey||'';
-  if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){}
+  if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   log(`apiFetch: key ${key?'aanwezig ('+key.length+' tekens)':'LEEG'}`,'info');
 
@@ -338,7 +338,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
   // Sterke, dynamische monteur-instructie. Injecteert het bevestigde brandstoftype
   // zodat de AI geen diesel/AdBlue/turbo verzint op een benzineauto, en dwingt
   // onderbouwing met gemeten waarden + onderscheid koud/warm af.
-  let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){}
+  let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){ console.warn('vehicleInfo niet leesbaar voor de AI-prompt', e); }
   const _vTxt=[_vi.merk,_vi.model,_vi.year,_vi.motor].filter(Boolean).join(' ')||'onbekend voertuig';
   const _bf=(_vi.brandstof||'').toString().toLowerCase();
   // Live toestand meegeven zodat referenties VOORWAARDELIJK beoordeeld worden.
@@ -354,7 +354,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
             (typeof _rpm==='number')?(Math.round(_rpm)+' rpm — motor '+(_rpm>400?'DRAAIT':'uit')):null,
             (typeof _spd==='number')?(Math.round(_spd)+' km/u'):null
            ].filter(Boolean).join(', ')||'onbekend';
-  }catch(e){}
+  }catch(e){ console.warn('Live toestand niet uit te lezen voor de AI-prompt, valt terug op ONBEKEND (AI gaat dan voorzichtiger beoordelen)', e); }
   const _defaultSys =
     'Jij bent PidLane AI-Monteur: een ervaren, kritische autotechnicus die OBD2-sensordata interpreteert voor Nederlandse autobedrijven.\n'+
     'VOERTUIG: '+_vTxt+(_bf?(' \u2014 brandstof: '+_bf):'')+'.'+_dossierPromptLine()+'\n'+
@@ -363,12 +363,12 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
     '7. VOORWAARDELIJKE REFERENTIES \u2014 GEMETEN TOESTAND NU: '+_stTxt+'. Toets elke sensorwaarde tegen de referentie die bij deze toestand hoort, niet tegen een statische band. Concreet: accuspanning bij DRAAIENDE motor is laadspanning, referentie 13,5-14,8 V (12,6-14,4 V geldt alleen bij motor uit; 13,0 V bij draaiende motor duidt op een laadprobleem). Het stationair-toerentalbereik geldt alleen bij stilstand. Inlaatdruk 20-35 kPa geldt alleen stationair bij benzine. Uitlaatgastemperatuur beoordeel je naar belasting. Brandstoftrims beoordeel je alleen bedrijfswarm. Kun je de voor een oordeel benodigde toestand niet vaststellen, gebruik dan status "niet beoordeelbaar" \u2014 nooit "normaal" bij een niet-passende referentie.';
   // Admin-override (remote config) heeft voorrang als die gezet is en er geen
   // expliciete per-call systemPrompt is meegegeven.
-  let _override=''; try{ _override=(window.PID_CONFIG&&window.PID_CONFIG.ai_system_override||'').trim(); }catch(e){}
+  let _override=''; try{ _override=(window.PID_CONFIG&&window.PID_CONFIG.ai_system_override||'').trim(); }catch(e){ console.warn('Admin-override niet leesbaar, systeemprompt blijft op de standaard', e); }
   let sys = systemPrompt || (_override || _defaultSys);
   // Rijsituatie geldt voor ELKE AI-rol — ook bij een eigen systemPrompt of een
   // admin-override. Zonder dit beoordeelt de AI een caravanrit als een zieke
   // auto: hoog verbruik, hoge belasting en warm koelwater zijn dan juist normaal.
-  try{ sys += _situatiePromptLine(); }catch(e){}
+  try{ sys += _situatiePromptLine(); }catch(e){ console.warn('Rijsituatie niet aan de AI-prompt toegevoegd — een caravanrit of hoge belasting kan dan onterecht als probleem beoordeeld worden', e); }
   // Sessie-context: eerdere rapporten alleen meesturen als de gebruiker dat
   // wil. Bij de eerste analyse met beschikbare rapporten verschijnt een
   // keuzesheet (Ja/Nee + "onthoud voor deze sessie"); daarna geldt de keuze
@@ -380,7 +380,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
       if(_use===null) _use=await _srAskUseContext();
       if(_use) sys += _srBlok;
     }
-  }catch(e){}
+  }catch(e){ console.warn('Eerdere rapporten niet meegestuurd als context', e); }
 
   const mdl = model || 'claude-sonnet-5';
 
@@ -441,12 +441,12 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
         throw new Error(msg);
       }
       const data=await resp.json();
-      try{ if(data.usage) trackTokens(data.usage, mdl); }catch(e){}
+      try{ if(data.usage) trackTokens(data.usage, mdl); }catch(e){ console.warn('Tokengebruik niet geregistreerd voor deze call', e); }
       // Afboeken op het EERSTE geslaagde antwoord — vervolgdelen bij
       // max_tokens rekenen niet nog eens. boek() kalibreert meteen de
       // tekens→tokens-schatting bij op de echte usage.
-      try{ if(_plCred && !_plCred.geboekt) window.PLCredits.boek(_plCred, data.usage); }catch(e){}
-      try{ PidLaneEvalLog.log('ai','api-call',{model:mdl,latencyMs:Date.now()-_plT0,part:part+1,stop:data.stop_reason||''}); }catch(e){}
+      try{ if(_plCred && !_plCred.geboekt) window.PLCredits.boek(_plCred, data.usage); }catch(e){ console.warn('Lokale saldoteller niet bijgewerkt — de server heeft al afgeboekt, alleen de weergave kan achterlopen', e); }
+      try{ PidLaneEvalLog.log('ai','api-call',{model:mdl,latencyMs:Date.now()-_plT0,part:part+1,stop:data.stop_reason||''}); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 
       const txt=extractAIText(data)||'';
       full+=txt;
@@ -485,7 +485,7 @@ function aiVerdict(text){
   let vc='green', vi='🟢', vt='Geen urgente problemen gevonden';
   if(hit('🔴|niet rijden|kritiek|gevaarlijk|direct naar de garage|onveilig|levensgevaar')){ vc='red'; vi='🔴'; vt='Aandacht vereist — laat dit nakijken'; }
   else if(hit('🟡|let op|binnenkort|aanbevolen|op termijn|aandacht')){ vc='amber'; vi='🟡'; vt='Let op — niet direct kritiek'; }
-  try{ if(scan.length>200){ PidLaneEvalLog.log('ai','verdict',{stoplicht:{green:'groen',amber:'oranje',red:'rood'}[vc]}); } }catch(e){}
+  try{ if(scan.length>200){ PidLaneEvalLog.log('ai','verdict',{stoplicht:{green:'groen',amber:'oranje',red:'rood'}[vc]}); } }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   return { vc, vi, vt, clr:{green:'var(--gn)',amber:'var(--or)',red:'var(--rd)'}[vc], bg:{green:'var(--gns)',amber:'var(--ors)',red:'var(--rds)'}[vc] };
 }
 // Volledig gesectioneerd rapport (voor in de sheet).
@@ -606,7 +606,7 @@ function renderAIText(text,contentEl){
 }
 function openAIReportSheet(){
   const r=window._lastAIReport; if(!r||!r.html){ showToast?.('Nog geen rapport beschikbaar'); return; }
-  try{ resetDataStream(true); }catch(e){}   // analyse klaar → datastroom vers
+  try{ resetDataStream(true); }catch(e){ console.warn('Datastroom niet gereset na analyse', e); }   // analyse klaar → datastroom vers
   let ov=document.getElementById('aiReportSheet');
   if(!ov){ ov=document.createElement('div'); ov.id='aiReportSheet'; ov.className='ai-sheet-ov'; document.body.appendChild(ov); }
   ov.innerHTML=`<div class="ai-sheet">
@@ -679,12 +679,12 @@ async function shareAIReport(){
     const fname=(typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport.txt';
     const ok=await nativeShareFile(blob,fname);
     if(ok) return;
-  }catch(e){}
+  }catch(e){ /* stil: val door naar de web-fallback hieronder */ }
   try{
     if(navigator.share){ await navigator.share({title:'PidLane AI-rapport', text:txt}); }
     else if(navigator.clipboard){ await navigator.clipboard.writeText(txt); showToast?.('Rapport naar klembord gekopieerd'); }
     else { showToast?.('Delen niet ondersteund op dit toestel'); }
-  }catch(e){}
+  }catch(e){ if(!/abort|cancel/i.test(String(e?.name||e?.message||e))) showToast?.('Delen mislukt — probeer 📋 Kopieer'); }
 }
 // ── PDF RAPPORT EXPORT ──────────────────────────────────────────
 async function loadJsPDF(){
@@ -807,7 +807,7 @@ async function exportAIReportPDF(btn){
     window._lastPdf={blob:doc.output('blob'), fname};
     // PDF bewaren in het sessie-rapportarchief zodat hij later opnieuw
     // gedeeld/gedownload kan worden zonder opnieuw te genereren.
-    try{ registerSessionReport({type:'pdf', title:fname, text:(window._lastAIReport&&window._lastAIReport.text)||'', blob:window._lastPdf.blob, fname}); }catch(e){}
+    try{ registerSessionReport({type:'pdf', title:fname, text:(window._lastAIReport&&window._lastAIReport.text)||'', blob:window._lastPdf.blob, fname}); }catch(e){ console.warn('PDF niet in het rapportarchief gezet — later opnieuw delen/downloaden zonder opnieuw te genereren lukt dan niet', e); }
     showPdfReadyModal();
   }catch(e){
     log('PDF export fout: '+e.message+' — TXT-fallback','err');
@@ -825,7 +825,7 @@ async function exportAIReportPDF(btn){
         String(r.text).replace(/\*\*/g,'')
       ].filter(Boolean).join('\n');
       download(`PidLane-rapport-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.txt`, txt);
-    }catch(_){}
+    }catch(_){ log('Ook de TXT-fallback is mislukt — er is geen rapportbestand beschikbaar','err'); }
   }finally{
     if(btn){btn.textContent=orig; btn.disabled=false;}
   }
@@ -903,7 +903,7 @@ async function savePdfToFolder(btn){
     restore();
     const m=document.getElementById('pdfReadyModal'); if(m) m.style.display='none';
     showToast?.(`✅ Opgeslagen in Documenten/PidLane/\n${fname}`);
-    try{ log(`Rapport opgeslagen: Documents/PidLane/${fname}`,'ok'); }catch(_){}
+    try{ log(`Rapport opgeslagen: Documents/PidLane/${fname}`,'ok'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
   }catch(e){
     restore();
     // Val terug op het deelmenu (met "Opslaan in Bestanden") als schrijven faalt
@@ -984,7 +984,7 @@ function buildFallbackReport(err){
   const tot=(typeof supportedPIDs!=='undefined'&&supportedPIDs.size)?supportedPIDs.size:0;
   const act=(typeof activePIDs!=='undefined'&&activePIDs.size)?activePIDs.size:0;
   L.push(`Beschikbare sensoren (PIDs): ${tot} · actief gemonitord: ${act}.`);
-  try{ if(window._deadPIDs && window._deadPIDs.size) L.push(`🟡 ${window._deadPIDs.size} PID(s) gaven herhaald geen data — mogelijk niet ondersteund of een sensorprobleem.`); }catch(e){}
+  try{ if(window._deadPIDs && window._deadPIDs.size) L.push(`🟡 ${window._deadPIDs.size} PID(s) gaven herhaald geen data — mogelijk niet ondersteund of een sensorprobleem.`); }catch(e){ console.warn('Regel over dode PIDs niet toegevoegd aan het tekstrapport', e); }
   if(typeof vehicleInfo!=='undefined' && (vehicleInfo.merk||vehicleInfo.brandstof)) L.push(`Voertuig: ${[vehicleInfo.merk,vehicleInfo.model,vehicleInfo.year].filter(Boolean).join(' ')||'onbekend'}${vehicleInfo.brandstof?' ('+vehicleInfo.brandstof+')':''}.`);
   L.push('');
   L.push('PRIORITEIT ACTIES');
@@ -1075,7 +1075,7 @@ function plVerifyAugment(el){
       blok.appendChild(b);
     }
     el.appendChild(blok);
-  }catch(e){}
+  }catch(e){ console.warn('Verifiëer-knoppen niet toegevoegd aan het rapport', e); }
 }
 
 async function callAI(prompt,contentEl){
@@ -1087,16 +1087,16 @@ async function callAI(prompt,contentEl){
     }
     const text=await apiFetch(prompt);
     renderAIText(text,contentEl);   // toont verdict + View/Share/Download
-    try{ plVerifyAugment(contentEl); }catch(e){}   // 🔍 knoppen bij Direct aandacht
+    try{ plVerifyAugment(contentEl); }catch(e){ console.warn('Verifiëer-knoppen niet toegevoegd aan het AI-rapport', e); }   // 🔍 knoppen bij Direct aandacht
     log('AI analyse klaar','ok');
   }catch(e){
     // Degraded mode: AI niet beschikbaar → regelgebaseerde fallback i.p.v. kale fout
     try{
       renderAIText(buildFallbackReport(e),contentEl);
-      try{ plVerifyAugment(contentEl); }catch(e2){}
+      try{ plVerifyAugment(contentEl); }catch(e2){ console.warn('Verifiëer-knoppen niet toegevoegd aan de fallback-analyse', e2); }
       log('AI niet beschikbaar — regelgebaseerde fallback getoond ('+e.message+')','warn');
       return;
-    }catch(_){}
+    }catch(_){ /* stil: valt door naar de kale foutmelding hieronder */ }
     contentEl.innerHTML=`<div class="ai-sec"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">${e.message}</div></div>`;
     log('AI fout: '+e.message,'err');
   }
@@ -1149,7 +1149,7 @@ function plMeetStatus(){
         if(nieuwste===null||t1>nieuwste) nieuwste=t1;
       }
     });
-  }catch(e){}
+  }catch(e){ console.warn('Dekking niet volledig berekend voor de meetfase-poort — de poort kan hierdoor onterecht \'te weinig data\' concluderen', e); }
   const sec = (oudste&&nieuwste) ? Math.round((nieuwste-oudste)/1000) : 0;
   return {sensoren, genoeg, sec, maxN, dekking: sensoren? genoeg/sensoren : 0,
           rijSec: plMeetRijSec()};
@@ -1184,7 +1184,7 @@ function plMeetNiveau(gevraagd){
     const m=(window._wizJob||{}).meting;
     const uitPlan = (m==='rit10') ? 'rit' : ((m==='rit2') ? 'kortrit' : null);
     if(uitPlan && rang[uitPlan]>rang[niveau]) niveau=uitPlan;
-  }catch(e){}
+  }catch(e){ console.warn('Wizardplan-niveau niet uitgelezen, meeteis blijft op het gevraagde niveau', e); }
   return niveau;
 }
 function plMeetTekort(niveau){
@@ -1347,7 +1347,7 @@ function plRegistreer(profiel, watVoor){
       // Verbinding weg tijdens registreren: doorwachten heeft geen zin, er
       // komt niets meer binnen.
       if(typeof connected!=='undefined' && !connected && !(typeof demoMode!=='undefined'&&demoMode)){
-        try{ log('Verbinding weg tijdens registreren — analyse gaat door met wat er is.','warn'); }catch(e){}
+        try{ log('Verbinding weg tijdens registreren — analyse gaat door met wat er is.','warn'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
         window._meetBeperkt='verbinding verbroken tijdens registreren';
         sluit(true);
       }
@@ -1403,7 +1403,7 @@ async function plVraagMeting(niveau, watVoor, profiel){
   const prof = (profiel===false) ? null : (profiel || window._laatstProfiel);
   // FASE 1 — aanzetten en testen
   if(prof && typeof ensurePIDsActive==='function'){
-    try{ await ensurePIDsActive(prof); }catch(e){}
+    try{ await ensurePIDsActive(prof); }catch(e){ console.warn('Kernprofiel niet geactiveerd vóór de meting — de poort kan hierdoor op de verkeerde sensorset toetsen', e); }
   }
   const k0=plKernStatus(prof);
   if(k0){
@@ -1427,7 +1427,7 @@ function plMeetPoortVraag(niveau, watVoor){
     // Poort schoon gehaald? Dan geldt een eerdere "toch doorgaan" niet meer.
     // Bleef die staan, dan bleef elk volgend rapport zijn eigen data
     // diskwalificeren met een beperking die al lang was ingelopen.
-    if(r.ok){ try{ delete window._meetBeperkt; }catch(e){} resolve(true); return; }
+    if(r.ok){ try{ delete window._meetBeperkt; }catch(e){ console.warn('Oude meetbeperking niet opgeruimd — een volgend rapport kan zichzelf onterecht blijven beperken', e); } resolve(true); return; }
     let ov=document.getElementById('meetGateOv');
     if(!ov){
       ov=document.createElement('div'); ov.id='meetGateOv'; ov.className='mg-ov';
@@ -1460,7 +1460,7 @@ function plMeetPoortVraag(niveau, watVoor){
     ov.style.display='flex';
     const sluit=()=>{ ov.style.display='none'; };
     const rit=document.getElementById('mgRit');
-    if(rit) rit.onclick=()=>{ sluit(); resolve(false); try{ openRitAnalyse(ritModus); }catch(e){} };
+    if(rit) rit.onclick=()=>{ sluit(); resolve(false); try{ openRitAnalyse(ritModus); }catch(e){ log('Rijtest niet gestart: '+(e.message||e),'err'); } };
     const wacht=document.getElementById('mgWacht');
     if(wacht) wacht.onclick=()=>{
       const eind=Date.now()+r.eis.sec*1000;

@@ -12,10 +12,10 @@
 let _scanLog = [];
 function scanLogAdd(entry){
   _scanLog.push({ ts: new Date().toISOString(), ...entry });
-  try { localStorage.setItem('pl_scanlog', JSON.stringify(_scanLog.slice(-200))); } catch(e){}
+  try { localStorage.setItem('pl_scanlog', JSON.stringify(_scanLog.slice(-200))); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function downloadScanLog(){
-  try { const saved = localStorage.getItem('pl_scanlog'); if(saved) _scanLog = JSON.parse(saved); } catch(e){}
+  try { const saved = localStorage.getItem('pl_scanlog'); if(saved) _scanLog = JSON.parse(saved); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   if(!_scanLog.length){ alert('Nog geen scan log beschikbaar.'); return; }
   const lines = [
     `PidLane Scan Log — Gegenereerd: ${new Date().toLocaleString('nl')}`,
@@ -69,11 +69,11 @@ async function liveLogFlush(){
       await w.write(chunk);
       await w.close();
     } else { // localstorage-spiegel
-      let cur=''; try{ cur=localStorage.getItem('pl_livelog_mirror')||''; }catch(e){}
+      let cur=''; try{ cur=localStorage.getItem('pl_livelog_mirror')||''; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
       cur+=chunk;
       if(cur.length>500000) cur=cur.slice(cur.length-500000);
       try{ localStorage.setItem('pl_livelog_mirror',cur); }
-      catch(e){ try{ localStorage.setItem('pl_livelog_mirror',chunk.slice(-200000)); }catch(_){} }
+      catch(e){ try{ localStorage.setItem('pl_livelog_mirror',chunk.slice(-200000)); }catch(_){ /* stil: opslag kan vol of geblokkeerd zijn */ } }
     }
   }catch(e){
     // Mislukt — regels terugzetten voor volgende poging (begrensd)
@@ -110,15 +110,15 @@ async function liveLogStart(opts={}){
     if(mode==='native' && !resuming){
       await FS.writeFile({path,data:header,directory:'DATA',encoding:'utf8',recursive:true});
     } else if(mode==='localstorage' && !resuming){
-      try{ localStorage.setItem('pl_livelog_mirror',header); }catch(e){}
+      try{ localStorage.setItem('pl_livelog_mirror',header); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     }
-  }catch(e){ try{ log('Live-log aanmaken mislukt: '+(e.message||e),'warn'); }catch(_){} }
+  }catch(e){ try{ log('Live-log aanmaken mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
   _liveLog.active=true;
   try{
     localStorage.setItem('pl_livelog','1');
     localStorage.setItem('pl_livelog_path',path);
     localStorage.setItem('pl_livelog_mode',mode);
-  }catch(e){}
+  }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   if(!_liveLog.timer) _liveLog.timer=setInterval(()=>{ liveLogFlush(); },4000);
   liveLogWrite('--- live-log '+(resuming?'hervat':'gestart')+' @ '+new Date().toTimeString().slice(0,8)+' ---');
   return true;
@@ -128,7 +128,7 @@ async function liveLogStop(o={}){
   await liveLogFlush();
   if(_liveLog.timer){ clearInterval(_liveLog.timer); _liveLog.timer=null; }
   _liveLog.active=false;
-  try{ localStorage.setItem('pl_livelog','0'); }catch(e){} // sessie afgesloten, pad bewaard voor delen
+  try{ localStorage.setItem('pl_livelog','0'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // sessie afgesloten, pad bewaard voor delen
   if(o.share) await liveLogShare();
 }
 
@@ -149,13 +149,13 @@ async function liveLogShare(){
         const blob=new Blob([txt],{type:'text/plain'});
         if(await nativeShareFile(blob,path)) return true;
         download(path,txt); return true;
-      }catch(e){ try{ log('Live-log delen mislukt: '+(e.message||e),'warn'); }catch(_){} }
+      }catch(e){ try{ log('Live-log delen mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
     }
   }
   // Fallback: spiegel of gebundelde export
-  let txt=''; try{ txt=localStorage.getItem('pl_livelog_mirror')||''; }catch(e){}
-  if(txt){ try{ download(path,txt); return true; }catch(e){} }
-  try{ exportAllLogs(); }catch(e){}
+  let txt=''; try{ txt=localStorage.getItem('pl_livelog_mirror')||''; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+  if(txt){ try{ download(path,txt); return true; }catch(e){ /* stil: valt door naar de bredere export hieronder */ } }
+  try{ exportAllLogs(); }catch(e){ log('Live-log delen mislukt, ook de brede export lukte niet: '+(e.message||e),'err'); }
   return true;
 }
 
@@ -174,14 +174,14 @@ async function liveLogRecoveryCheck(){
       const FS=window.Capacitor?.Plugins?.Filesystem;
       if(FS){ try{ const st=await FS.stat({path,directory:'DATA'}); bytes=st?.size||0; }catch(e){ return; } }
     } else {
-      try{ bytes=(localStorage.getItem('pl_livelog_mirror')||'').length; }catch(e){}
+      try{ bytes=(localStorage.getItem('pl_livelog_mirror')||'').length; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
     }
     if(bytes<200) return; // alleen header → niets zinnigs om te herstellen
-    try{ sessionStorage.setItem('pl_livelog_seen','1'); }catch(e){}
+    try{ sessionStorage.setItem('pl_livelog_seen','1'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     const kb=Math.max(1,Math.round(bytes/1024));
-    try{ log(`🛠 Live-log van vorige sessie hervat (${kb} kB bewaard) — tik 📤 Deel live-log om te exporteren`,'ok'); }catch(e){}
-    try{ showToast?.(`🛠 Vorige live-log bewaard (${kb} kB) — deelbaar via 📤`,5000); }catch(e){}
-  }catch(e){}
+    try{ log(`🛠 Live-log van vorige sessie hervat (${kb} kB bewaard) — tik 📤 Deel live-log om te exporteren`,'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+    try{ showToast?.(`🛠 Vorige live-log bewaard (${kb} kB) — deelbaar via 📤`,5000); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  }catch(e){ console.warn('Live-log herstelcheck bij opstarten mislukt — niet-blokkerend, geen crash-melding getoond', e); }
 }
 
 // Prompt + start: zodra tester-consent én extra logfunctie aan staan
@@ -194,8 +194,8 @@ async function maybeStartLiveLog(){
     const ok = window.confirm('Live-logbestand aanmaken?\n\nPidLane schrijft vanaf nu alle logs continu naar een bestand, zodat ze bewaard blijven — óók als de app crasht. Je kunt het later delen of exporteren.');
     if(!ok) return;
     const started=await liveLogStart();
-    if(started){ try{ log('🛠 Live-log actief — '+_liveLog.path+' ('+_liveLog.mode+')','ok'); }catch(e){} try{ showToast?.('🛠 Live-log actief'); }catch(e){} }
-  }catch(e){}
+    if(started){ try{ log('🛠 Live-log actief — '+_liveLog.path+' ('+_liveLog.mode+')','ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } try{ showToast?.('🛠 Live-log actief'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
+  }catch(e){ console.warn('Live-log niet gestart na bevestiging', e); }
 }
 
 // Periodieke veiligheids-flush bij backgrounden/sluiten
@@ -208,9 +208,9 @@ function exportAllLogs(){
   const v = vehicleInfo || {};
   const now = new Date();
   // Herstel uit storage indien arrays leeg
-  try { const s = localStorage.getItem('pl_scanlog'); if(s && !_scanLog.length) _scanLog = JSON.parse(s); } catch(e){}
+  try { const s = localStorage.getItem('pl_scanlog'); if(s && !_scanLog.length) _scanLog = JSON.parse(s); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   let bt = _btLog || [];
-  try { const sb = sessionStorage.getItem('pl_btlog'); if(sb && !bt.length) bt = JSON.parse(sb); } catch(e){}
+  try { const sb = sessionStorage.getItem('pl_btlog'); if(sb && !bt.length) bt = JSON.parse(sb); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   const sep = '='.repeat(60);
   const lines = [
@@ -275,7 +275,7 @@ async function koopRdwLookup(){
     _koopRdwData = { ...v, _recall: recallActief, _teller: tellerOordeel, _kent: kent, _val: val };
     localStorage.setItem('pl_kenteken', kent);
     // Vlag → detail: PLRecall vult de banner met wélke actie en welk risico.
-    try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){ /* stil: element kan al weg zijn */ }
 
     // Voer ook vehicleInfo bij voor AI — alleen gevalideerde velden
     if(f.merk)      vehicleInfo.merk  = f.merk;
@@ -667,7 +667,7 @@ function openProefritKeuze(){
   if(!m){
     m=document.createElement('div'); m.id='proefritKeuzeModal';
     m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:24px';
-    m.onclick=(e)=>{ if(e.target.id==='proefritKeuzeModal'){ m.style.display='none'; try{ goHome(); }catch(err){} } };
+    m.onclick=(e)=>{ if(e.target.id==='proefritKeuzeModal'){ m.style.display='none'; try{ goHome(); }catch(err){ /* stil: element kan al weg zijn */ } } };
     m.innerHTML='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:320px;width:100%">'+
       '<div style="font-weight:800;font-size:15px;margin-bottom:4px;text-align:center">Proefrit Analyse</div>'+
       '<div style="font-size:12px;color:var(--tx3);margin-bottom:14px;text-align:center">Hoe lang wil je rijden? Beide meten puur de techniek onder belasting — geen rijgedrag.</div>'+
@@ -786,12 +786,12 @@ function setUiScale(s){
   document.body.classList.remove('uiS','uiL');
   if(s==='s') document.body.classList.add('uiS');
   else if(s==='l') document.body.classList.add('uiL');
-  try{ localStorage.setItem('pl_uiscale', s); }catch(e){}
+  try{ localStorage.setItem('pl_uiscale', s); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   ['uiS','uiM','uiL'].forEach(function(id){ var b=document.getElementById(id); if(b) b.classList.remove('on'); });
   var on=document.getElementById('ui'+s.toUpperCase()); if(on) on.classList.add('on');
 }
-function applyUiScale(){ var s='m'; try{ s=localStorage.getItem('pl_uiscale')||'m'; }catch(e){} setUiScale(s); }
-try{ applyUiScale(); }catch(e){}
+function applyUiScale(){ var s='m'; try{ s=localStorage.getItem('pl_uiscale')||'m'; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ } setUiScale(s); }
+try{ applyUiScale(); }catch(e){ console.warn('UI-schaal niet toegepast bij het laden', e); }
 // ── Handmatige PID-recorder ──
 var _recSel=new Set(), _recActive=false, _recT0=0, _recTimer=null;
 function openPidRecorder(){
@@ -826,7 +826,7 @@ function _recPool(){
 }
 function buildPidRecList(){
   var list=document.getElementById('pidRecList'); if(!list) return;
-  if(!_recSel.size){ try{ [...(activePIDs||[])].forEach(function(p){ _recSel.add(p); }); }catch(e){} }
+  if(!_recSel.size){ try{ [...(activePIDs||[])].forEach(function(p){ _recSel.add(p); }); }catch(e){ console.warn('Actieve PIDs niet voorgeselecteerd in de recorder', e); } }
   var pool=_recPool(), html='';
   pool.forEach(function(pid){
     var def=getPidDef(pid)||{}; var name=def.name||pid; var unit=def.unit?(' ('+def.unit+')'):'';
@@ -848,7 +848,7 @@ function pidRecToggleRec(){ if(_recActive) pidRecStopRec(); else pidRecStartRec(
 function pidRecStartRec(){
   if(!_recSel.size){ showToast?.('Selecteer eerst minstens één sensor'); return; }
   if(!connected && !demoMode){ showToast?.('Verbind eerst een adapter (of demo)'); return; }
-  try{ ensurePIDListActive([..._recSel]); }catch(e){}
+  try{ ensurePIDListActive([..._recSel]); }catch(e){ log('Geselecteerde sensoren niet actief gezet vóór de opname — de opname kan lege of oude waarden bevatten: '+(e.message||e),'warn'); }
   datalogActive=true; datalogBuffer={}; _recT0=Date.now();
   _recSel.forEach(function(p){ datalogBuffer[p]=[]; });
   _recActive=true;
@@ -915,7 +915,7 @@ function pidRecShare(){
   var txt='PidLane opname '+(d?d.ts.toLocaleString('nl-NL'):'')+' ('+(d?d.dur:0)+'s)\n';
   rows.forEach(function(r){ txt+=r.name+': '+r.n+' metingen, min '+(r.mn==null?'—':fv(r.mn))+', max '+(r.mx==null?'—':fv(r.mx))+', gem '+(r.av==null?'—':fv(r.av))+' '+r.unit+'\n'; });
   try{
-    if(navigator.share){ navigator.share({title:'PidLane opname', text:txt}).catch(function(){}); }
+    if(navigator.share){ navigator.share({title:'PidLane opname', text:txt}).catch(function(){ /* stil: gebruiker kan het deelmenu gewoon sluiten */ }); }
     else if(navigator.clipboard){ navigator.clipboard.writeText(txt); showToast?.('Samenvatting naar klembord'); }
     else showToast?.('Delen niet ondersteund');
   }catch(e){ showToast?.('Delen mislukt'); }
@@ -970,7 +970,7 @@ async function pidRecRunAI(){
 }
 function deepLogStart(){
   if(!connected && !demoMode){ showToast?.('Verbind eerst een adapter (of demo)'); return; }
-  try{ ensurePIDsActive && ensurePIDsActive('totaal'); }catch(e){}
+  try{ ensurePIDsActive && ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet actief gezet vóór de deep-log — de opname kan lege of oude waarden bevatten: '+(e.message||e),'warn'); }
   datalogActive=true; datalogBuffer={}; datalogStart=Date.now();
   [...(activePIDs||[])].forEach(function(pid){ datalogBuffer[pid]=[]; });
   var s=document.getElementById('dd_logstat'); if(s) s.innerHTML='<span class="datalog-badge recording">● Datalog loopt</span>';
@@ -1021,7 +1021,7 @@ function _deepPidOverview(){
 async function runDeepDiag(){
   var probleem=(document.getElementById('dd_probleem')||{}).value||'';
   if(!probleem.trim()){ showToast?.('Vul minimaal het probleem in'); return; }
-  try{ ['ddProgRow','ddStepTitle','ddStepSub','ddFoot'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }); document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display='none'; }); }catch(e){}
+  try{ ['ddProgRow','ddStepTitle','ddStepSub','ddFoot'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }); document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display='none'; }); }catch(e){ /* stil: element kan al weg zijn */ }
   var btn=document.getElementById('dd_eval'); if(btn){ btn.disabled=true; btn.textContent='⏳ Evalueren'; }
   var checks=(document.getElementById('dd_checks')||{}).value||'';
   var merk=(document.getElementById('dd_merk')||{}).value||'';
@@ -1166,7 +1166,7 @@ async function runOnderhoud(){
     return;
   }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert het onderhoud…</div>`;
-  try{ await ensurePIDsActive('totaal'); }catch(e){}
+  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór het onderhoudsadvies — het advies kan op oude data draaien: '+(e.message||e),'warn'); }
   const v=getVehicle();
   const laatste=parseInt(document.getElementById('ondLaatste')?.value)||0;
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
@@ -1192,7 +1192,7 @@ ADVIES: [1-2 zinnen; benadruk serviceboekje compleet houden]`;
     res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'onderhoud',msg:`${v.merk} ${v.model} ${v.km}km: ${text.slice(0,180)}`});
     // 15-07: óók in het 📄 Rapporten-archief — dit was (met EV/klimaat/koop) het enige AI-pad dat daar niet in kwam
-    try{ registerSessionReport({type:'ai', title:'Onderhoudsadvies — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){}
+    try{ registerSessionReport({type:'ai', title:'Onderhoudsadvies — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){ console.warn('Onderhoudsadvies niet in het rapportarchief gezet', e); }
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
 }
 
@@ -1233,7 +1233,7 @@ function runEVCheckRit(){
 async function runEVCheck(){
   const res=document.getElementById('evResult');
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert accu & systemen…</div>`;
-  try{ await ensurePIDsActive('accu'); }catch(e){}
+  try{ await ensurePIDsActive('accu'); }catch(e){ log('Sensoren niet vers gezet vóór de EV/accu-check — de beoordeling kan op oude data draaien: '+(e.message||e),'warn'); }
   const v=getVehicle();
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
@@ -1257,7 +1257,7 @@ ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
     const text=await apiFetch(prompt,900)||'Geen reactie';
     res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'ev-check',msg:`${v.merk} ${v.model} (${ft}): ${text.slice(0,180)}`});
-    try{ registerSessionReport({type:'ai', title:'EV/Hybride check — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){}
+    try{ registerSessionReport({type:'ai', title:'EV/Hybride check — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){ console.warn('EV/Hybride check niet in het rapportarchief gezet', e); }
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
 }
 
@@ -1301,7 +1301,7 @@ function openLangeRit(){
 async function runLangeRitTech(){
   const res=document.getElementById('langeRitResult');
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 Technische go/no-go…</div>`;
-  try{ await ensurePIDsActive('totaal'); }catch(e){}
+  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de lange-rit-check — de go/no-go kan op oude data draaien: '+(e.message||e),'warn'); }
   const v=getVehicle();
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
@@ -1358,7 +1358,7 @@ function langeRitChecklistHTML(){
 }
 
 // Gedeelde sluit-helper voor de losse dashboards
-function closeExtraDash(id){ const el=document.getElementById(id); if(el) el.style.display='none'; try{ goHome(); }catch(e){} }
+function closeExtraDash(id){ const el=document.getElementById(id); if(el) el.style.display='none'; try{ goHome(); }catch(e){ /* stil: element kan al weg zijn */ } }
 
 
 // ═══ AIRCO & WINTER CHECK MODULE ═══
@@ -1469,7 +1469,7 @@ async function climateStart(){
   const airco = _climateMode==='airco';
   // Activeer de relevante sensoren
   const pids = airco ? ['010C','0104','010F','0105','010B'] : ['0105','015C','010C','0142','010F'];
-  try{ await ensurePIDListActive(pids); }catch(e){}
+  try{ await ensurePIDListActive(pids); }catch(e){ log('Sensoren niet actief gezet vóór de klimaatcheck — de meting kan op oude data starten: '+(e.message||e),'warn'); }
   // Baseline na korte stabilisatie
   _climateData.t0 = Date.now();
   _climateData.samples = [];
@@ -1724,7 +1724,7 @@ function climateRenderResult(v, aiText){
       <button onclick="closeClimateCheck()" style="flex:1;padding:12px;border-radius:10px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">Klaar</button>
     </div>
   </div>`;
-  try{ scanLogAdd?.({ type:_climateMode==='airco'?'aircocheck':'wintercheck', msg:`${v.oordeel}${v.deltaT!=null?' (\u0394T '+v.deltaT.toFixed(1)+'\u00b0C)':''}` }); }catch(e){}
+  try{ scanLogAdd?.({ type:_climateMode==='airco'?'aircocheck':'wintercheck', msg:`${v.oordeel}${v.deltaT!=null?' (\u0394T '+v.deltaT.toFixed(1)+'\u00b0C)':''}` }); }catch(e){ console.warn('Klimaatcheck-resultaat niet in het scanlog gezet', e); }
   // 15-07: klimaatcheck ook in het 📄 Rapporten-archief (lokaal oordeel + evt. AI-toelichting)
   try{
     const _cl=[(airco?'AIRCO CHECK':'WINTERCHECK')+' — lokaal oordeel: '+v.oordeel];
@@ -1732,7 +1732,7 @@ function climateRenderResult(v, aiText){
     else { _cl.push('Koelvloeistof eind: '+(v.eindCoolant==null?'—':v.eindCoolant.toFixed(0))+' °C · tijd tot 88°C: '+(v.tijd88==null?'niet bereikt':v.tijd88+'s')+' · accu koud: '+(v.voltKoud==null?'—':v.voltKoud.toFixed(1))+' V ('+v.accu+')'); }
     if(aiText) _cl.push('','AI-TOELICHTING:',aiText);
     registerSessionReport({type:'ai', title:(airco?'Airco check':'Wintercheck')+' — '+v.oordeel, text:_withDisclaimer(_cl.join('\n'))});
-  }catch(e){}
+  }catch(e){ console.warn('Klimaatcheck niet in het rapportarchief gezet', e); }
 }
 
 function climateStatCard(lbl,val,col){
@@ -1746,7 +1746,7 @@ async function runKoopcheck(){
   if(!(await preAnalysisCheck())) return;
   // P2: zorg dat de conditiecheck op de juiste, verse PIDs draait — niet op
   // toevallig-actieve of lege sensoren. (Koopcheck miste eerder een profiel.)
-  if(connected||demoMode){ try{ await ensurePIDsActive('totaal'); }catch(e){} }
+  if(connected||demoMode){ try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de koopcheck — de conditiecheck kan alsnog op toevallig-actieve of lege sensoren draaien (zie P2): '+(e.message||e),'warn'); } }
   const km  = parseInt(document.getElementById('koopKmInput').value)||0;
   const boekje = document.getElementById('koopBoekje').value;
   const laagsteBeurt = parseInt(document.getElementById('koopLaatsteBeurt').value)||0;
@@ -1885,7 +1885,7 @@ async function runKoopcheck(){
   // Sla volledige scanEntry op
   scanLogAdd(scanEntry);
   // 15-07: gecombineerd koop-/lease-/inkooprapport in het 📄 Rapporten-archief
-  try{ if(_koopArch.length) registerSessionReport({type:'ai', title:((KOOP_MODES[_koopMode]||{}).titel||'Koopcheck')+' — '+[merk,model,jaar].filter(Boolean).join(' '), text:_koopArch.join('\n\n')}); }catch(e){}
+  try{ if(_koopArch.length) registerSessionReport({type:'ai', title:((KOOP_MODES[_koopMode]||{}).titel||'Koopcheck')+' — '+[merk,model,jaar].filter(Boolean).join(' '), text:_koopArch.join('\n\n')}); }catch(e){ console.warn('Koopcheck-rapport niet in het rapportarchief gezet', e); }
 
   // Voeg disclaimer toe
   const deelbaar = (_koopMode==='verkoop'||_koopMode==='occasion');

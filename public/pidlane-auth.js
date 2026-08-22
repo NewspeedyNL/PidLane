@@ -48,11 +48,11 @@ function tokLoad(){
   }catch(e){ return null; }
 }
 function tokSave(t){
-  try{ localStorage.setItem(TOK_KEY, JSON.stringify(t)); }catch(e){}
+  try{ localStorage.setItem(TOK_KEY, JSON.stringify(t)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   window.APP_TOKEN = t.token;
 }
 function tokClear(){
-  try{ localStorage.removeItem(TOK_KEY); }catch(e){}
+  try{ localStorage.removeItem(TOK_KEY); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   window.APP_TOKEN = '';
 }
 
@@ -72,7 +72,7 @@ async function serverLogin(user, pass){
   if(!r.ok){
     // Worker-foutcode meenemen zodat doLogin de ÉCHTE oorzaak kan tonen
     // i.p.v. een misleidend "wachtwoord onjuist" via de lokale fallback.
-    let code=''; try{ code=(await r.json())?.error||''; }catch(_){}
+    let code=''; try{ code=(await r.json())?.error||''; }catch(_){ /* stil: foutbody hoeft geen geldige JSON te zijn, code blijft dan leeg */ }
     const e = new Error('login-server gaf '+r.status+(code?' ('+code+')':''));
     e.status = r.status; e.code = code;
     throw e;
@@ -121,7 +121,7 @@ async function doLogin(){
       return;
     }catch(e){
       if(/geblokkeerd|Te veel/i.test(e && e.message || '')){ err.textContent = '⚠ '+e.message; return; }
-      try{ log('Klantlogin niet gelukt ('+(e&&e.message||e)+') — normale route proberen','warn'); }catch(_){}
+      try{ log('Klantlogin niet gelukt ('+(e&&e.message||e)+') — normale route proberen','warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
     }
   }
 
@@ -140,7 +140,7 @@ async function doLogin(){
     tokSave(s);
     err.textContent = '';
     finishLogin(s.user || user, { role: s.role || 'user', label: s.label || s.user || user, apiKey: '' });
-    try{ log('Server-login ok — sessie geldig tot '+new Date(s.exp*1000).toLocaleString('nl-NL'),'ok'); }catch(e){}
+    try{ log('Server-login ok — sessie geldig tot '+new Date(s.exp*1000).toLocaleString('nl-NL'),'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
     return;
   }catch(e){
     // Configuratiefouten van de Worker NIET maskeren met de lokale fallback —
@@ -158,7 +158,7 @@ async function doLogin(){
       return;
     }
     // Écht onbereikbaar (netwerk/offline) → door naar lokale fallback (Demo).
-    try{ log('Login-server onbereikbaar ('+(e?.message||e)+') — alleen lokale accounts','warn'); }catch(_){}
+    try{ log('Login-server onbereikbaar ('+(e?.message||e)+') — alleen lokale accounts','warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
   }
   err.textContent = '';
 
@@ -209,18 +209,18 @@ function finishLogin(user, account){
   window.currentUser = currentUser; // expliciet — `let` maakt geen window-property aan
   // Rol: 'user' = alleen basisfuncties; 'admin' (default) = alles
   document.body.classList.toggle('role-user',(account.role||'admin')==='user');
-  try{ localStorage.setItem('pl_session', user); }catch(e){} // sessie onthouden over herlaads heen
+  try{ localStorage.setItem('pl_session', user); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // sessie onthouden over herlaads heen
 
   // API key instellen — via window zodat het altijd beschikbaar is
   // Voorrang: handmatig ingevoerde key op login-scherm > account-key
   const manualKey = (document.getElementById('loginApiKey')?.value || '').trim();
   if(manualKey && manualKey.startsWith('sk-ant-')){
     window.anthropicKey = manualKey;
-    try{ localStorage.setItem('ns_api_key', manualKey); }catch(e){}
+    try{ localStorage.setItem('ns_api_key', manualKey); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     log('API key handmatig ingevoerd voor '+user,'ok');
   } else if(account.apiKey && account.apiKey.startsWith('sk-ant-')){
     window.anthropicKey = account.apiKey;
-    try{ localStorage.setItem('ns_api_key', account.apiKey); }catch(e){}
+    try{ localStorage.setItem('ns_api_key', account.apiKey); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     log('API key geladen voor '+user,'ok');
   } else {
     window.anthropicKey = '';
@@ -251,7 +251,7 @@ function finishLogin(user, account){
   try{
     const _v=(typeof APP_VERSION!=='undefined')?APP_VERSION:'?';
     log('Config geladen: v'+_v+' \u2014 '+Object.keys(USERS).length+' gebruikers','info');
-  }catch(e){}
+  }catch(e){ console.warn('Configregel niet gelogd na login', e); }
   log('Klik "Verbinden" of "Demo modus" om te starten.','info');
 
   // Remote config NU pas ophalen. Bij boot bestond het sessietoken nog niet,
@@ -259,7 +259,7 @@ function finishLogin(user, account){
   // gezet: zowel de verse login (tokSave -> finishLogin) als het herstel van
   // een onthouden sessie (window.APP_TOKEN=_tok.token -> finishLogin) zetten
   // het ervoor. Zonder deze aanroep bereiken de admin-toggles de app nooit.
-  try{ loadRemoteConfig(); }catch(e){}
+  try{ loadRemoteConfig(); }catch(e){ log('Serverconfig niet geladen — admin-instellingen bereiken de app mogelijk niet: '+(e.message||e),'warn'); }
 
   // Admin krijgt ALTIJD de beste (crash-vaste) live-log — geen drempel.
   try{
@@ -267,12 +267,12 @@ function finishLogin(user, account){
       liveLogStart({silent:true});
       log('🛠 Admin: crash-vaste live-log automatisch actief','ok');
     }
-  }catch(e){}
+  }catch(e){ log('Crash-vaste live-log niet gestart voor admin: '+(e.message||e),'warn'); }
 
   // Menu op de rol zetten: het adminitem hoort alleen bij een beheerder te
   // staan. Hier, want dit is het enige punt waar zowel een verse login als
   // het herstel van een onthouden sessie langskomt.
-  try{ if(window.PLKlant && PLKlant.pasMenuAan) PLKlant.pasMenuAan(); }catch(e){}
+  try{ if(window.PLKlant && PLKlant.pasMenuAan) PLKlant.pasMenuAan(); }catch(e){ log('Menu niet aangepast aan de rol — het adminitem kan verkeerd staan: '+(e.message||e),'warn'); }
 
   // Proxy-modus: test de AI-keten via de proxy (sleutel staat server-side)
   testApiKey();
@@ -285,9 +285,9 @@ async function testApiKey(){
     if(currentUser && typeof USERS!=='undefined' && USERS[currentUser?.name||currentUser]?.apiKey?.startsWith('sk-ant-')){
       key = USERS[currentUser?.name||currentUser].apiKey;
     }
-  }catch(e){}
+  }catch(e){ console.warn('Accountsleutel niet uitgelezen, val terug op window.anthropicKey', e); }
   if(!key) key = window.anthropicKey||'';
-  if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){}
+  if(!key) try{ key=localStorage.getItem('ns_api_key')||''; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   const keyStart=key?.slice(0,15)||'(leeg)';
   log(`API test — key: ${keyStart}... (${key.length} tekens)`,'info');
@@ -315,7 +315,7 @@ async function testApiKey(){
       log(`API key OK ✅ — antwoord: "${reply}"`,'ok');
       // Sla werkende key op
       window.anthropicKey=key;
-      try{localStorage.setItem('ns_api_key',key);}catch(e){}
+      try{localStorage.setItem('ns_api_key',key);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
       const pill=document.getElementById('apiPill');
       if(pill){pill.textContent='🤖 AI-sleutel ✓';pill.className='api-pill kebab-item set';}
     } else {
@@ -343,10 +343,10 @@ function refreshAdminLogRow(){
     for(const name in USERS){
       if(name.toLowerCase()===typed && (USERS[name].role||'admin')==='admin'){ isAdminName=true; break; }
     }
-  }catch(e){}
+  }catch(e){ console.warn('Adminherkenning op het loginscherm mislukt — de log-exportrij kan onterecht verborgen blijven', e); }
   row.style.display = isAdminName ? 'block' : 'none';
   const cb=document.getElementById('adminLogExport');
-  if(cb){ try{ cb.checked = localStorage.getItem('pl_admin_logexport')==='1'; }catch(e){} }
+  if(cb){ try{ cb.checked = localStorage.getItem('pl_admin_logexport')==='1'; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ } }
 }
 
 async function logout(){
@@ -376,19 +376,19 @@ async function logout(){
         log('Uitgelogd zonder log op te slaan','info');
       }
     }
-  }catch(e){ try{ log('Log opslaan bij uitloggen mislukt: '+(e.message||e),'warn'); }catch(_){} }
+  }catch(e){ try{ log('Log opslaan bij uitloggen mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
   currentUser = null;
   window.currentUser = null;
   tokClear();                                       // sessietoken ongeldig maken
-  try{ localStorage.removeItem('pl_session'); }catch(e){}
-  try{ localStorage.removeItem('pl_appstate'); }catch(e){} // sessiestaat niet meenemen naar volgende login
+  try{ localStorage.removeItem('pl_session'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+  try{ localStorage.removeItem('pl_appstate'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // sessiestaat niet meenemen naar volgende login
   window.anthropicKey = '';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
   document.getElementById('loginErr').textContent = '';
   closeConnOv();
   document.getElementById('loginOv').classList.remove('hidden');
-  try{ document.getElementById('lgWaveBg').classList.remove('off'); }catch(e){} // golfachtergrond terug bij uitloggen
+  try{ document.getElementById('lgWaveBg').classList.remove('off'); }catch(e){ /* stil: element kan al weg zijn */ } // golfachtergrond terug bij uitloggen
   handleConnect(); // verbreek verbinding
 }
 
@@ -448,16 +448,16 @@ if(!window.anthropicKey) window.anthropicKey=''; // Niet overschrijven als login
 window.addEventListener('unhandledrejection', e=>{
   const msg = e.reason?.message || String(e.reason) || 'Onbekende fout';
   console.error('Unhandled promise rejection:', msg);
-  try{ log('App fout: '+msg,'err'); }catch(le){}
-  try{ btDiag('Crash: '+msg,'err'); }catch(be){}
-  try{ liveLogFlush(); }catch(fe){}
+  try{ log('App fout: '+msg,'err'); }catch(le){ /* stil: melding mag nooit de stroom breken */ }
+  try{ btDiag('Crash: '+msg,'err'); }catch(be){ /* stil: melding mag nooit de stroom breken */ }
+  try{ liveLogFlush(); }catch(fe){ console.warn('Live-log niet geflusht bij een unhandled rejection — de crashregel kan ontbreken in het geëxporteerde logbestand', fe); }
   e.preventDefault(); // Voorkom app crash
 });
 window.addEventListener('error', e=>{
   const msg = e.message || 'Onbekende fout';
   console.error('Global error:', msg);
-  try{ log('Script fout: '+msg,'err'); }catch(le){}
-  try{ liveLogFlush(); }catch(fe){}
+  try{ log('Script fout: '+msg,'err'); }catch(le){ /* stil: melding mag nooit de stroom breken */ }
+  try{ liveLogFlush(); }catch(fe){ console.warn('Live-log niet geflusht bij een globale fout — de crashregel kan ontbreken in het geëxporteerde logbestand', fe); }
 });
 let dataStable=false, stabilityCount={};
 let slCollapsed=false, srCollapsed=false;
@@ -567,7 +567,7 @@ let _atTimer=null;
 // Lichte usage-event helper bovenop logToSheets — geen nieuwe Airtable-kolommen
 // nodig, hergebruikt Type='usage' + Message. Best-effort, faalt nooit hardop.
 function logUsage(action, detail){
-  try{ logToSheets('usage', `${action}${detail?': '+detail:''}`); }catch(e){}
+  try{ logToSheets('usage', `${action}${detail?': '+detail:''}`); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 async function logToSheets(type, message, extra={}){
@@ -598,7 +598,7 @@ async function logToSheets(type, message, extra={}){
     });
     clearTimeout(_atTimer);
     _atTimer=setTimeout(flushAirtable, 3000);
-  }catch(e){}
+  }catch(e){ console.warn('Logregel niet in de Airtable-buffer gezet — deze regel gaat niet mee naar Airtable', e); }
 }
 
 async function flushAirtable(){
@@ -639,12 +639,12 @@ async function flushAirtable(){
 function _bugDiag(){
   let android='?', plat='web', native=false;
   try{ const c=window.Capacitor; native=!!c?.isNativePlatform?.(); plat=c?.getPlatform?.()||'web';
-    const m=navigator.userAgent.match(/Android\s+([\d.]+)/); if(m) android=m[1]; }catch(e){}
+    const m=navigator.userAgent.match(/Android\s+([\d.]+)/); if(m) android=m[1]; }catch(e){ console.warn('Android-versie niet uit te lezen voor de bugmelding, blijft op "?"', e); }
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
   let conn='onbekend';
-  try{ if(typeof isConnected!=='undefined') conn=isConnected?'verbonden':'niet verbonden'; }catch(e){}
+  try{ if(typeof isConnected!=='undefined') conn=isConnected?'verbonden':'niet verbonden'; }catch(e){ console.warn('Verbindingsstatus niet uit te lezen voor de bugmelding, blijft op "onbekend"', e); }
   let lastErr='';
-  try{ lastErr=(_btLog||[]).filter(l=>l.type==='err'||l.type==='warn').slice(-3).map(l=>l.msg).join(' | '); }catch(e){}
+  try{ lastErr=(_btLog||[]).filter(l=>l.type==='err'||l.type==='warn').slice(-3).map(l=>l.msg).join(' | '); }catch(e){ console.warn('Laatste fouten niet uit de BT-log te halen voor de bugmelding', e); }
   return {
     device:`${plat}${native?' APK':' browser'} · Android ${android}`,
     app:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
@@ -658,8 +658,8 @@ function _bugDiag(){
 }
 
 function openBugReport(){
-  try{ const m=document.getElementById('btLogModal'); if(m) m.style.display='none'; }catch(e){}
-  try{ if(typeof closeKebab==='function') closeKebab(); }catch(e){}
+  try{ const m=document.getElementById('btLogModal'); if(m) m.style.display='none'; }catch(e){ /* stil: element kan al weg zijn */ }
+  try{ if(typeof closeKebab==='function') closeKebab(); }catch(e){ console.warn('Kebabmenu niet gesloten bij het openen van de bugmelding', e); }
   const d=_bugDiag();
   let ov=document.getElementById('bugModal');
   if(!ov){ ov=document.createElement('div'); ov.id='bugModal';
@@ -691,7 +691,7 @@ function openBugReport(){
       </div>
     </div>`;
   ov.style.display='flex';
-  setTimeout(()=>{ try{ document.getElementById('bugDesc').focus(); }catch(e){} },50);
+  setTimeout(()=>{ try{ document.getElementById('bugDesc').focus(); }catch(e){ /* stil: element kan al weg zijn */ } },50);
 }
 
 async function submitBugReport(btn){
@@ -718,8 +718,8 @@ async function submitBugReport(btn){
   }catch(e){ ok=false; }
   if(ok){
     if(msgEl){ msgEl.style.color='var(--gn)'; msgEl.textContent='✓ Bug gemeld — bedankt!'; }
-    try{ if(typeof showToast==='function') showToast('🐞 Bug gemeld, bedankt!',3000); }catch(e){}
-    setTimeout(()=>{ try{ document.getElementById('bugModal').style.display='none'; }catch(e){} },1200);
+    try{ if(typeof showToast==='function') showToast('🐞 Bug gemeld, bedankt!',3000); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+    setTimeout(()=>{ try{ document.getElementById('bugModal').style.display='none'; }catch(e){ /* stil: element kan al weg zijn */ } },1200);
   }else{
     if(msgEl){ msgEl.style.color='var(--or)'; msgEl.innerHTML='Verzenden lukte niet. Gebruik de <b>✉ E-mail</b>-knop om het naar support te sturen.'; }
     if(btn){ btn.disabled=false; btn.textContent='Opnieuw'; }
@@ -743,7 +743,7 @@ function bugEmailFallback(){
 'Verbinding: '+d.conn+'\n'+
 'Laatste fouten: '+(d.lastErr||'—');
   const url='mailto:support@pidlane.nl?subject='+encodeURIComponent('PidLane bug - '+(desc.slice(0,50)||'melding'))+'&body='+encodeURIComponent(body);
-  try{ window.location.href=url; }catch(e){ try{ window.open(url,'_blank'); }catch(_){} }
+  try{ window.location.href=url; }catch(e){ try{ window.open(url,'_blank'); }catch(_){ log('Geen mailclient gevonden — mail de melding zelf naar support@pidlane.nl','warn'); } }
 }
 
 // ════════════════════════════════════════
@@ -777,7 +777,7 @@ function log(msg,type=''){
   bar.appendChild(row); bar.scrollTop=bar.scrollHeight;
   while(bar.children.length>100) bar.removeChild(bar.firstChild);
   localLog.push({ts,type,msg});
-  try{ liveLogWrite(`[${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){}
+  try{ liveLogWrite(`[${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){ console.warn('liveLogWrite() faalde — deze regel ontbreekt in het live logbestand', e); }
   if(localLog.length>500) localLog.shift();
   if(type==='err')  logToSheets('error',  msg);
   if(type==='warn'&&msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier')) logToSheets('outlier',msg);

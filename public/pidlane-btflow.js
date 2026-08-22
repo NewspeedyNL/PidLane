@@ -35,7 +35,7 @@ function persistAppState(){
       ts:  Date.now()
     };
     localStorage.setItem('pl_appstate', JSON.stringify(st));
-  }catch(e){}
+  }catch(e){ console.warn('Sessiestaat niet bewaard — na een herlaad is de lopende diagnose weg', e); }
 }
 function restoreAppState(){
   try{
@@ -46,9 +46,9 @@ function restoreAppState(){
     if(Array.isArray(st.pids) && st.pids.length) supportedPIDs=new Set(st.pids);
     if(st.v && (st.v.vin||st.v.merk)){
       vehicleInfo=Object.assign({merk:'',model:'',year:'',vin:'',brandstof:'',motor:''}, st.v);
-      try{ updateVehicleCard(vehicleInfo); }catch(e){}
+      try{ updateVehicleCard(vehicleInfo); }catch(e){ btDiag('Voertuigkaart niet bijgewerkt na herstel — de kop toont mogelijk nog het oude voertuig: '+(e.message||e),'warn'); }
     }
-    if(Array.isArray(st.dtc)){ dtcCodes=st.dtc.slice(); try{ renderDTC(); }catch(e){} }
+    if(Array.isArray(st.dtc)){ dtcCodes=st.dtc.slice(); try{ renderDTC(); }catch(e){ btDiag('Foutcodelijst niet opnieuw getekend na herstel — het scherm kan achterlopen: '+(e.message||e),'warn'); } }
     log('Sessiestaat hersteld na herlaad','ok');
     return true;
   }catch(e){ return false; }
@@ -60,7 +60,7 @@ function restoreBtLog(){
     let saved=JSON.parse(sessionStorage.getItem('pl_btlog')||'[]');
     // sessionStorage overleeft een Android WebView proces-kill NIET; val dan
     // terug op de localStorage-spiegel zodat de BT-log toch behouden blijft.
-    if(!saved.length){ try{ saved=JSON.parse(localStorage.getItem('pl_btlog')||'[]'); }catch(e){} }
+    if(!saved.length){ try{ saved=JSON.parse(localStorage.getItem('pl_btlog')||'[]'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ } }
     if(!saved.length) return;
     const logEl=document.getElementById('btLog'); if(!logEl) return;
     logEl.innerHTML='';
@@ -77,7 +77,7 @@ function restoreBtLog(){
     });
     logEl.scrollTop=logEl.scrollHeight;
     const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
-  }catch(e){}
+  }catch(e){ console.warn('BT-log van de vorige sessie niet teruggezet', e); }
 }
 document.addEventListener('DOMContentLoaded', restoreBtLog);
 
@@ -88,9 +88,9 @@ document.addEventListener('DOMContentLoaded', restoreBtLog);
 let _btPersistT=null;
 function _btPersistNow(){
   _btPersistT=null;
-  try{ const snap=JSON.stringify(_btLog.slice(-300)); sessionStorage.setItem('pl_btlog',snap); localStorage.setItem('pl_btlog',snap); }catch(e){}
+  try{ const snap=JSON.stringify(_btLog.slice(-300)); sessionStorage.setItem('pl_btlog',snap); localStorage.setItem('pl_btlog',snap); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
-try{ window.addEventListener('pagehide',_btPersistNow); document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') _btPersistNow(); }); }catch(e){}
+try{ window.addEventListener('pagehide',_btPersistNow); document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') _btPersistNow(); }); }catch(e){ console.warn('pagehide/visibilitychange niet gekoppeld — de BT-log wordt niet geflusht bij een proces-kill', e); }
 function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   const ts=new Date().toTimeString().slice(0,8);
@@ -105,7 +105,7 @@ function btDiag(msg, type='info'){
     _btLog.length=0;
     _btLog.push(...kop,{ts,msg:`… ${weg} regels weggelaten (geheugen-cap) …`,type:'info'},...staart);
   }
-  try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){}
+  try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){ console.warn('liveLogWrite() faalde — deze regel ontbreekt in het live logbestand', e); }
   if(!_btPersistT) _btPersistT=setTimeout(_btPersistNow,2000);
   const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
   const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
@@ -264,7 +264,7 @@ Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"o
   }catch(e){
     log('Optimalisatie fout: '+e.message+' — baseline hersteld','err');
     showOptResult('⚠ Optimalisatie mislukt',`${e.message}<br><br>De standaardinstellingen zijn voor de zekerheid hersteld.`);
-    try{ for(const c of ELM_BASELINE) await sendCmd(c,1500); }catch(_){}
+    try{ for(const c of ELM_BASELINE) await sendCmd(c,1500); }catch(_){ log('Herstel naar de standaardinstellingen mislukt: '+(_.message||_)+' — de adapter staat mogelijk nog op de geprobeerde instellingen, verbreek en verbind opnieuw','err'); }
   }finally{
     if(btn){btn.textContent=orig; btn.disabled=false;}
   }
@@ -293,7 +293,7 @@ function showOptResult(title,html){
 async function copyBtLog(btn){
   let txt='';
   try{ txt=(_btLog||[]).map(e=>`${e.ts} [${e.type}] ${e.msg}`).join('\n'); }catch(e){ txt=''; }
-  const done=ok=>{ try{ if(btn){btn.textContent=ok?'✓ Gekopieerd':'✗ Mislukt'; setTimeout(()=>{try{btn.textContent='📋 Kopieer';}catch(_){}} ,1500);} }catch(_){} };
+  const done=ok=>{ try{ if(btn){btn.textContent=ok?'✓ Gekopieerd':'✗ Mislukt'; setTimeout(()=>{try{btn.textContent='📋 Kopieer';}catch(_){ /* stil: de knop kan al weg zijn */ }} ,1500);} }catch(_){ /* stil: de knop kan al weg zijn */ } };
 
   // 1. Web clipboard API — dit is wat "Kopiëren" hoort te doen
   try{
@@ -314,7 +314,7 @@ async function copyBtLog(btn){
     const SH=window.Capacitor?.Plugins?.Share;
     if(SH){
       let canShare=true;
-      try{ if(SH.canShare){ const r=await SH.canShare(); canShare=(r?.value!==false); } }catch(_){}
+      try{ if(SH.canShare){ const r=await SH.canShare(); canShare=(r?.value!==false); } }catch(_){ /* stil: sonde — een Share-plugin die canShare niet kent mag geen fout zijn, we proberen daarna gewoon te delen */ }
       if(canShare){
         await SH.share({title:'PidLane BT-log', text:txt, dialogTitle:'BT-log delen'});
         done(true); return;
@@ -326,7 +326,7 @@ async function copyBtLog(btn){
   }
 
   done(false);
-  try{ showToast?.('Kopiëren niet ondersteund op dit toestel — gebruik 📦 Exporteer alle logs',4000); }catch(_){}
+  try{ showToast?.('Kopiëren niet ondersteund op dit toestel — gebruik 📦 Exporteer alle logs',4000); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
 }
 function fallbackCopyBtLog(txt){
   let ta=null, ok=false;
@@ -337,10 +337,10 @@ function fallbackCopyBtLog(txt){
     ta.setAttribute('readonly','');
     document.body.appendChild(ta);
     ta.focus(); ta.select();
-    try{ ta.setSelectionRange(0,(txt||'').length); }catch(e){}
+    try{ ta.setSelectionRange(0,(txt||'').length); }catch(e){ /* stil: niet elke WebView kent setSelectionRange op een verborgen textarea; select() erboven is genoeg */ }
     try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
   }catch(e){ ok=false; }
-  finally{ try{ if(ta) ta.remove(); }catch(_){} }
+  finally{ try{ if(ta) ta.remove(); }catch(_){ /* stil: element kan al weg zijn */ } }
   return ok;
 }
 
@@ -411,8 +411,8 @@ function _scenarioPlausible(pid,ft){
 // ontdubbeld en gesorteerd op categorie. Dit is wat in het scenario verschijnt.
 function scenarioRelevantPids(ft){
   const set=new Set();
-  try{ if(typeof supportedPIDs!=='undefined'&&supportedPIDs.size) supportedPIDs.forEach(p=>set.add(p)); }catch(e){}
-  try{ if(Array.isArray(discoveredPIDDefs)) discoveredPIDDefs.forEach(d=>{ if(d&&d.pid) set.add(d.pid); }); }catch(e){}
+  try{ if(typeof supportedPIDs!=='undefined'&&supportedPIDs.size) supportedPIDs.forEach(p=>set.add(p)); }catch(e){ console.warn('supportedPIDs niet leesbaar — de scenariolijst mist de PIDs van de huidige scan', e); }
+  try{ if(Array.isArray(discoveredPIDDefs)) discoveredPIDDefs.forEach(d=>{ if(d&&d.pid) set.add(d.pid); }); }catch(e){ console.warn('discoveredPIDDefs niet leesbaar — de scenariolijst mist de ontdekte PIDs', e); }
   SCENARIO_PID_SUGGEST.forEach(p=>set.add(p));
   SCENARIO_PRESETS.forEach(s=>Object.keys(s.pids||{}).forEach(p=>set.add(p)));
   const catOrder={Motor:0,Temp:1,Brandstof:2,Rijden:3,Electrisch:4,Emissie:5,Overig:9};
@@ -427,14 +427,14 @@ function scenarioPreset(id){
   Object.entries(s.pids||{}).forEach(([pid,val])=>{ _scenario.pids[pid]=val; });
   if(s.dtcs&&s.dtcs.length) _scenario.dtcs=[...new Set([...(_scenario.dtcs||[]),...s.dtcs])];
   scenarioRenderBody();
-  try{ log('🧪 Scenario-preset: '+s.label,'info'); }catch(e){}
-  try{ showToast?.('Preset geladen: '+s.label,2500); }catch(e){}
+  try{ log('🧪 Scenario-preset: '+s.label,'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  try{ showToast?.('Preset geladen: '+s.label,2500); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
-function scenarioClearPids(){ _scenario.pids={}; scenarioRenderBody(); try{ showToast?.('PID-waarden leeg'); }catch(e){} }
+function scenarioClearPids(){ _scenario.pids={}; scenarioRenderBody(); try{ showToast?.('PID-waarden leeg'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 // Ververs het scenario-venster als het openstaat (bv. na kenteken-lookup).
 function scenarioRefreshIfOpen(){
   const ov=document.getElementById('scenarioModal');
-  if(ov && ov.style.display==='flex'){ try{ scenarioRenderBody(); }catch(e){} }
+  if(ov && ov.style.display==='flex'){ try{ scenarioRenderBody(); }catch(e){ /* stil: element kan al weg zijn */ } }
 }
 
 function scenarioRenderBody(){
@@ -519,7 +519,7 @@ function scenarioSetVeh(key,v){
   if(!_scenario.vehicle) _scenario.vehicle={};
   _scenario.vehicle[key]=String(v).trim();
   // Brandstof bepaalt of trim/lambda relevant zijn → venster live bijwerken
-  if(key==='brandstof'){ try{ scenarioRenderBody(); }catch(e){} }
+  if(key==='brandstof'){ try{ scenarioRenderBody(); }catch(e){ console.warn('Scenariovenster niet ververst na brandstofwijziging — trim/lambda staan mogelijk verkeerd', e); } }
 }
 function scenarioToggle(on){ _scenario.enabled=!!on; }
 function scenarioReset(){
@@ -547,12 +547,12 @@ function scenarioApply(){
       vin:vehicleInfo.vin||'', brandstof:nieuweBrandstof,
       motor:vehicleInfo.motor||'', _manueel:true
     };
-    try{ updateVehicleCard(vehicleInfo); }catch(e){}
-    try{ showVtag(`${vehicleInfo.merk} ${vehicleInfo.model}`.trim()+' · MANUEEL'); }catch(e){}
+    try{ updateVehicleCard(vehicleInfo); }catch(e){ log('Voertuigkaart niet bijgewerkt — de kop toont nog het vorige voertuig: '+(e.message||e),'warn'); }
+    try{ showVtag(`${vehicleInfo.merk} ${vehicleInfo.model}`.trim()+' · MANUEEL'); }catch(e){ log('MANUEEL-label niet getoond — het scherm zegt niet dat dit een scenario is: '+(e.message||e),'warn'); }
   }
 
   // DTC's direct toepassen + lijst verversen
-  if(_scenario.dtcs.length){ dtcCodes=[..._scenario.dtcs]; try{ renderDTC(); }catch(e){} }
+  if(_scenario.dtcs.length){ dtcCodes=[..._scenario.dtcs]; try{ renderDTC(); }catch(e){ log('Foutcodelijst niet ververst — de DTC-lijst toont nog de oude codes: '+(e.message||e),'warn'); } }
 
   // Na een voertuig-/brandstofwijziging: PID-check opnieuw draaien zodat de
   // sensorlijst klopt met het nieuwe brandstoftype (elektrisch = geen trim/
@@ -560,10 +560,10 @@ function scenarioApply(){
   if(voertuigGewijzigd){ scenarioRecheckPids(); }
 
   // PID-waarden worden automatisch opgepikt door demo() bij de volgende poll.
-  try{ renderGauges(); }catch(e){}
+  try{ renderGauges(); }catch(e){ log('Meters niet opnieuw getekend — de scenariowaarden verschijnen pas bij de volgende poll: '+(e.message||e),'warn'); }
   const nPid=Object.keys(_scenario.pids).length;
   log(`🧪 Scenario toegepast — ${nPid} PID(s), ${_scenario.dtcs.length} DTC(s)${v&&v.merk?', voertuig '+v.merk:''}${voertuigGewijzigd?' (PID-check opnieuw gedaan)':''} (MANUEEL)`,'warn');
-  try{ updateScenarioBadge(); }catch(e){}
+  try{ updateScenarioBadge(); }catch(e){ log('MANUEEL-badge niet bijgewerkt — het scherm zegt niet dat het scenario aan staat: '+(e.message||e),'warn'); }
   document.getElementById('scenarioModal').style.display='none';
   showToast?.(`Scenario actief — ${nPid} PID(s) + ${_scenario.dtcs.length} DTC(s) gelabeld als MANUEEL`,3500);
 }
@@ -574,7 +574,7 @@ function scenarioApply(){
 function scenarioRecheckPids(){
   const ft=vehicleFuelType();
   // 1) Sensorlijst opnieuw opbouwen met het nieuwe brandstoffilter
-  try{ buildDiscoveredPIDList(); }catch(e){}
+  try{ buildDiscoveredPIDList(); }catch(e){ log('Sensorlijst niet opnieuw opgebouwd — het nieuwe brandstoffilter is niet toegepast: '+(e.message||e),'warn'); }
   // 2) Actieve PID's die nu niet meer plausibel zijn, eruit halen
   let verwijderd=0;
   [...activePIDs].forEach(pid=>{
@@ -592,7 +592,7 @@ function scenarioRecheckPids(){
   } else {
     log(`🔧 PID-check opnieuw gedaan voor ${ft}`,'info');
   }
-  try{ buildPIDList(); renderGauges(); rebuildGSel?.(); }catch(e){}
+  try{ buildPIDList(); renderGauges(); rebuildGSel?.(); }catch(e){ log('PID-lijst en meters niet ververst na de PID-check — het scherm loopt achter op de sensorset: '+(e.message||e),'warn'); }
 }
 
 // Toon een blijvende MANUEEL-badge in de UI zolang het scenario actief is
@@ -629,7 +629,7 @@ function btDiagDevice(name, address, rssi){
 
 function clearBtLog(){
   _btLog.length=0; _btDevices.length=0;
-  try{ sessionStorage.removeItem('pl_btlog'); }catch(e){}
+  try{ sessionStorage.removeItem('pl_btlog'); }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
   const logEl=document.getElementById('btLog');
   if(logEl) logEl.innerHTML='<span style="color:var(--tx3);font-style:italic">Klik Verbinden om te starten...</span>';
   const row=document.getElementById('btStatusRow'); if(row) row.innerHTML='';
