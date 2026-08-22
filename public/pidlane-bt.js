@@ -58,11 +58,11 @@ async function connectSerial(){
     if(window.PLPrivacy && typeof PLPrivacy.disclosureOk === 'function'){
       const mag = await PLPrivacy.disclosureOk();
       if(!mag){
-        try{ btDiag('Verbinden afgebroken — geen toestemming voor Bluetooth','warn'); }catch(e){}
+        try{ btDiag('Verbinden afgebroken — geen toestemming voor Bluetooth','warn'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
         return;
       }
     }
-  }catch(e){ try{ btDiag('Disclosure overgeslagen: '+(e.message||e),'warn'); }catch(_){} }
+  }catch(e){ try{ btDiag('Disclosure overgeslagen: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
 
   // Desktop/Chrome: Web Bluetooth werkt alleen in een secure context.
   if(window.PIDLANE_DESKTOP && !window.isSecureContext && !/^(localhost|127\.)/.test(location.hostname)){
@@ -74,8 +74,10 @@ async function connectSerial(){
   try{ PLBus.breek('nieuwe verbinding'); }catch(e){ window._pollBusy=false; }
   // Een poort uit de vorige sessie zou de init van déze verbinding blokkeren.
   // Bewust ná PLBus.breek(): dezelfde plek, dezelfde reden.
-  try{ _elmPoortOpen('nieuwe verbinding'); window._reinitBusy=false; }catch(e){}
-  try{ PLBus.batchReset(); PLBus.resetStats(); }catch(e){}
+  try{ _elmPoortOpen('nieuwe verbinding'); window._reinitBusy=false; }
+  catch(e){ console.warn('ELM-poort openen mislukt: '+(e.message||e)); }
+  try{ PLBus.batchReset(); PLBus.resetStats(); }
+  catch(e){ console.warn('Busstatistieken resetten mislukt: '+(e.message||e)); }
   connected = false;
   window._btGen = (window._btGen || 0) + 1;   // oude commando's ongeldig maken
   window._batchSupported = undefined;         // multi-PID opnieuw testen bij nieuwe auto
@@ -85,7 +87,7 @@ async function connectSerial(){
   const apiVal = document.getElementById('startApiKey').value.trim();
   if (apiVal?.startsWith('sk-ant-')){
     window.anthropicKey = apiVal;
-    try { localStorage.setItem('ns_api_key', apiVal); } catch(e){}
+    try { localStorage.setItem('ns_api_key', apiVal); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     updateApiPill();
   }
 
@@ -116,7 +118,7 @@ async function connectSerial(){
       const kanaal = (window.PLStart && typeof PLStart.adapterTransport==='function') ? PLStart.adapterTransport() : '';
       if(kanaal==='classic'){ lastTransport='spp'; btDiag('Keten: Classic eerst (gekozen adaptertype)','proto'); }
       else if(kanaal==='ble'){ lastTransport='ble'; btDiag('Keten: BLE eerst (gekozen adaptertype)','proto'); }
-    }catch(e){}
+    }catch(e){ /* stil: adaptertype nog niet gekozen, keten valt terug op de standaardvolgorde */ }
   }
   const chain = [];
   if (spp && savedAddr && lastTransport !== 'ble' && !haveCfgMac)
@@ -164,7 +166,8 @@ async function connectSerial(){
   // Startscherm laten zien dat de keten begint. De keten is hier pas
   // samengesteld — welke transports erin zitten hangt af van wat de vorige
   // keer werkte — dus dit kan niet eerder.
-  try{ if(window.PLStart) PLStart.begin(); }catch(e){}
+  try{ if(window.PLStart) PLStart.begin(); }
+  catch(e){ btDiag('Startscherm (begin) mislukt: '+(e.message||e),'warn'); }
 
   let lastErr = null;
   let permissionBlocked = false;
@@ -175,12 +178,14 @@ async function connectSerial(){
     if (pass === 2) btDiag('↻ Automatische tweede scanronde...', 'proto');
     for (const [label, fn] of chain){
       btDiag(`▶ Poging${pass>1?' (ronde '+pass+')':''}: ${label}`, 'proto');
-      try{ if(window.PLStart) PLStart.poging(label, pass); }catch(e){}
+      try{ if(window.PLStart) PLStart.poging(label, pass); }
+      catch(e){ btDiag('Startscherm (poging) mislukt: '+(e.message||e),'warn'); }
       try {
         await fn();
         if (connected){
           btDiag(`✓ Verbonden via ${label}`, 'ok');
-          try{ if(window.PLStart) PLStart.gelukt(label); }catch(e){}
+          try{ if(window.PLStart) PLStart.gelukt(label); }
+          catch(e){ btDiag('Startscherm (gelukt) mislukt: '+(e.message||e),'warn'); }
           return;
         }
         btDiag(`${label}: geen verbinding — volgende transport`, 'warn');
@@ -221,7 +226,8 @@ async function connectSerial(){
   // Keten helemaal afgelopen zonder verbinding: de laatste poging in het
   // startscherm nog van "bezig" naar "mislukt" zetten, anders blijft daar een
   // regel staan pulseren terwijl er niets meer gebeurt.
-  try{ if(window.PLStart) PLStart.mislukt(); }catch(e){}
+  try{ if(window.PLStart) PLStart.mislukt(); }
+  catch(e){ btDiag('Startscherm (mislukt) mislukt: '+(e.message||e),'warn'); }
 
   resetConnectBtn();
   showConnError((lastErr?.message || 'Geen OBD2-adapter gevonden.') +
@@ -288,7 +294,7 @@ async function connectSPP(spp){
       const sa = localStorage.getItem('spp_address');
       const sn = localStorage.getItem('spp_name');
       if (sa){ target = { address: sa, name: sn || 'OBDLink MX+' }; btDiag('Geen OBD2-naam in scan — opgeslagen adres proberen...', 'info'); }
-    } catch(e){}
+    } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   }
 
   if (!target) throw new Error(
@@ -303,13 +309,13 @@ async function doSPPConnect(spp, address, name){
   await spp.connect({ address });               // gooit bij fout
   btDiag('Verbonden ✓', 'ok');
 
-  try { localStorage.setItem('spp_address', address); localStorage.setItem('spp_name', name); localStorage.setItem('pl_lastTransport', 'spp'); } catch(e){}
+  try { localStorage.setItem('spp_address', address); localStorage.setItem('spp_name', name); localStorage.setItem('pl_lastTransport', 'spp'); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 
   window._sppConn = { spp, address, name };     // read()-polling gebruikt dit in sendBT
   connected = true; demoMode = false;
   btDiag(`SPP actief: ${name}`, 'ok');
   log(`SPP verbonden: ${name}`, 'ok');
-  try { logToSheets('connect', `SPP verbonden: ${name}`, { address }); } catch(e){}
+  try { logToSheets('connect', `SPP verbonden: ${name}`, { address }); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
   setConn(true);
   await initELM327();
   await scanNetworks();
@@ -426,7 +432,7 @@ async function connectBLE(ble){
       // Bevestigd!
       btDiag(`✓ ELM327 bevestigd: ${cand.name}`, 'ok');
       log('BLE verbonden: ' + cand.name, 'ok');
-      try { localStorage.setItem('pl_lastTransport', 'ble'); } catch(e){}
+      try { localStorage.setItem('pl_lastTransport', 'ble'); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
       setConn(true);
       await initELM327();
       await scanNetworks();
@@ -435,8 +441,8 @@ async function connectBLE(ble){
       lastBleErr = e;
       btDiag(`✗ ${cand.name}: ${e.message} — volgende kandidaat`, 'warn');
       // Net geopende verbinding/notify netjes loslaten vóór de volgende
-      try { if (window._bleConn) await ble.stopNotifications(window._bleConn.id, window._bleConn.svc, BLE_CHANNELS.find(c=>c[0]===window._bleConn.svc)?.[1]||window._bleConn.svc).catch(()=>{}); } catch(_){}
-      try { if (connectedThis) await ble.disconnect(cand.id).catch(()=>{}); } catch(_){}
+      try { if (window._bleConn) await ble.stopNotifications(window._bleConn.id, window._bleConn.svc, BLE_CHANNELS.find(c=>c[0]===window._bleConn.svc)?.[1]||window._bleConn.svc).catch(()=>{}); } catch(_){ /* stil: opruimen: we zijn al aan het afbreken */ }
+      try { if (connectedThis) await ble.disconnect(cand.id).catch(()=>{}); } catch(_){ /* stil: opruimen: we zijn al aan het afbreken */ }
       window._bleConn = null;
       connected = false;
       await delay(300);
@@ -488,17 +494,17 @@ let _wsConnecting=false;   // guard: voorkomt gestapelde connect-pogingen (casca
 async function disconnectWebSerial(){
   _wsReadAbort = true;                           // stopt de reader-loop
   if (_wsReader){
-    try{ await _wsReader.cancel(); }catch(e){}
-    try{ _wsReader.releaseLock(); }catch(e){}
+    try{ await _wsReader.cancel(); }catch(e){ /* stil: opruimen: we zijn al aan het afbreken */ }
+    try{ _wsReader.releaseLock(); }catch(e){ /* stil: opruimen: we zijn al aan het afbreken */ }
     _wsReader = null;
   }
   if (_wsWriter){
-    try{ await _wsWriter.close(); }catch(e){}
-    try{ _wsWriter.releaseLock(); }catch(e){}
+    try{ await _wsWriter.close(); }catch(e){ /* stil: opruimen: we zijn al aan het afbreken */ }
+    try{ _wsWriter.releaseLock(); }catch(e){ /* stil: opruimen: we zijn al aan het afbreken */ }
     _wsWriter = null;
   }
   if (_wsPort){
-    try{ await _wsPort.close(); }catch(e){}       // <- dit ontbrak: poort echt sluiten
+    try{ await _wsPort.close(); }catch(e){ /* stil: opruimen: we zijn al aan het afbreken */ }       // <- dit ontbrak: poort echt sluiten
     _wsPort = null;
   }
   _wsBuf = '';
@@ -542,7 +548,7 @@ async function connectWebSerial(){
     // Poort tóch nog open (restant van een eerdere cascade of ander programma):
     // forceer één keer sluiten en probeer opnieuw voordat we opgeven.
     if (/already open/i.test((e && e.message) || '')){
-      try{ await _wsPort.close(); }catch(_){}
+      try{ await _wsPort.close(); }catch(_){ /* stil: opruimen: we zijn al aan het afbreken */ }
       try{
         await _wsPort.open({ baudRate: 115200, bufferSize: 4096 });
       }catch(e2){
@@ -577,7 +583,7 @@ async function connectWebSerial(){
           if (value) _wsBuf += decoder.decode(value, {stream:true});
         }
       } catch(e){ /* onderbroken */ }
-      finally { try{ reader.releaseLock(); }catch(e){} }
+      finally { try{ reader.releaseLock(); }catch(e){ /* stil: opruimen: we zijn al aan het afbreken */ } }
     }
   })();
 
@@ -1008,7 +1014,7 @@ async function sppReconnectGuard(spp,address,cmd,force){
       // faalt en de re-init dus nooit start.
       _elmPoortDicht('socket dood — herverbinden');
       btDiag(`Socket dood na "${cmd}" — herverbinden...`,'warn');
-      try{ await spp.disconnect({address}); }catch(e){}
+      try{ await spp.disconnect({address}); }catch(e){ /* stil: opruimen: we zijn al aan het afbreken */ }
       // Direct herverbinden op hetzelfde (gebonde) adres: 3 pogingen met
       // oplopende pauze. Vlak na een socket-dood houdt de adapter de oude
       // socket vaak nog even vast — even wachten en opnieuw proberen slaagt
@@ -1074,7 +1080,7 @@ async function sendCmd(cmd, timeoutMs){
   try{
     const slecht = !r || !String(r).trim() || /NO DATA|ERROR|UNABLE|STOPPED|BUFFER/i.test(String(r));
     PLBus.note(cmd, Date.now()-_t0, slecht);
-  }catch(e){}
+  }catch(e){ console.warn('PLBus.note mislukt - busstatistieken lopen achter: '+(e.message||e)); }
   trackBtQuality(cmd, r);
   return r;
 }
@@ -1121,7 +1127,8 @@ function trackBtQuality(cmd, r){
       // Waarschuwen is dan onzin. En de oude tekst verwees naar "🤖 Optimaliseer",
       // wat sinds PLLoad geen keuze meer is maar automatisch gebeurt.
       let scanBezig=false;
-      try{ scanBezig = (typeof _busyPillUntil!=='undefined' && Date.now() < _busyPillUntil); }catch(e){}
+      try{ scanBezig = (typeof _busyPillUntil!=='undefined' && Date.now() < _busyPillUntil); }
+      catch(e){ /* stil: _busyPillUntil bestaat pas na de eerste scan */ }
       if(!scanBezig){
         _qualWarned=true;
         showToast?.('⚠ Veel lege antwoorden van de ECU — tempo wordt automatisch teruggeschroefd', 5000);
@@ -1162,11 +1169,13 @@ async function measureConnSpeed(samples=8){
   let testPid='010C';
   if(!supportedPIDs.has(testPid)) testPid=[...supportedPIDs][0]||'010C';
   let proto='?';
-  try{ const dp=await sendCmd('ATDP',1500); if(dp) proto=dp.replace(/[\r\n>]/g,'').trim(); }catch(e){}
+  try{ const dp=await sendCmd('ATDP',1500); if(dp) proto=dp.replace(/[\r\n>]/g,'').trim(); }
+  catch(e){ /* stil: ATDP is optioneel, de protocolnaam blijft dan leeg */ }
   const times=[];
   for(let i=0;i<samples;i++){
     const t0=performance.now();
-    try{ await sendCmd('01'+testPid.slice(2)+'1',2000); }catch(e){}
+    try{ await sendCmd('01'+testPid.slice(2)+'1',2000); }
+    catch(e){ /* stil: opwarmvraag, een misser hier zegt niets */ }
     times.push(performance.now()-t0);
   }
   const valid=times.filter(t=>t>0);
@@ -1189,7 +1198,9 @@ function applyStrategy(strat){
   _connStrategy=strat;
   _pollMult=STRATEGIE_INFO[strat]?.mult||1.0;
   updateConnStatusBar();
-  window._connReady=true; try{updateConnGate();}catch(e){}
+  window._connReady=true;
+  try{ updateConnGate(); }
+  catch(e){ btDiag('updateConnGate mislukt — de verbindknop kan in de verkeerde stand staan: '+(e.message||e),'warn'); }
 }
 
 // Compacte status in de topbar-statusregel
@@ -1221,8 +1232,8 @@ async function optimizeConnection(silent=false){
 function showStrategyConfirm(speed, voorstel){
   applyStrategy(voorstel);
   const s=STRATEGIE_INFO[voorstel];
-  try{ if(typeof showToast==='function') showToast(`⚡ ${speed.readsPerSec} reads/s · ${speed.avgMs}ms — tempo wordt automatisch geregeld`); }catch(e){}
-  try{ btDiag(`Verbinding gemeten: ${speed.readsPerSec} reads/s, ${speed.avgMs}ms → startpunt ${s?s.label:voorstel}; PLLoad regelt vanaf hier`,'ok'); }catch(e){}
+  try{ if(typeof showToast==='function') showToast(`⚡ ${speed.readsPerSec} reads/s · ${speed.avgMs}ms — tempo wordt automatisch geregeld`); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  try{ btDiag(`Verbinding gemeten: ${speed.readsPerSec} reads/s, ${speed.avgMs}ms → startpunt ${s?s.label:voorstel}; PLLoad regelt vanaf hier`,'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 
@@ -1316,14 +1327,15 @@ function _schoonProtocolId(id){
 function _onthoudProtocol(id){
   const v=String(id||'').trim().toUpperCase();
   if(!v||v==='?'||v==='0') return;          // '0' = AUTO, dat is geen vergrendeling
-  try{ localStorage.setItem('pl_proto_id', v); }catch(e){}
+  try{ localStorage.setItem('pl_proto_id', v); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 
 function _bekendProtocolId(){
   // Voorkeur: de netwerkkeuze van deze sessie. Valt terug op de opgeslagen
   // waarde, zodat ook een herstart + direct herverbinden meteen goed zit.
   let v='';
-  try{ v=String(selectedNetwork?.id||'').trim().toUpperCase(); }catch(e){}
+  try{ v=String(selectedNetwork?.id||'').trim().toUpperCase(); }
+  catch(e){ /* stil: nog geen netwerk gekozen */ }
   if(!v||v==='?'||v==='0'){
     try{ v=String(localStorage.getItem('pl_proto_id')||'').trim().toUpperCase(); }catch(e){ v=''; }
   }
@@ -1373,7 +1385,7 @@ async function initELM327(opts){
       let _bevestigd='';
       try{
         _bevestigd=(await _elmSend('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim().toUpperCase();
-      }catch(e){}
+      }catch(e){ /* stil: bevestiging via ATDPN is extra zekerheid, geen voorwaarde */ }
       if(_bevestigd && _bevestigd.replace(/^A/,'') === _proto.replace(/^A/,'')){
         btDiag(`Protocol opnieuw vergrendeld: ${_proto} (bevestigd via ATDPN)`,'ok');
       }else if(_bevestigd){
@@ -1385,23 +1397,26 @@ async function initELM327(opts){
         // Nu: terug naar AUTO én de detectie hier zelf afmaken, zodat de
         // adapter vergrendeld achterblijft in plaats van zoekend.
         btDiag(`Protocolvergrendeling week af (gevraagd ${_proto}, kreeg ${_bevestigd}) — terug naar AUTO`,'warn');
-        try{ localStorage.removeItem('pl_proto_id'); }catch(e){}   // fout onthouden protocol niet nóg eens proberen
+        try{ localStorage.removeItem('pl_proto_id'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }   // fout onthouden protocol niet nóg eens proberen
         await _elmSend('ATSP0');
         await delay(200);
         // 0100 dwingt de automatische detectie af; ruime timeout want dit is
         // precies het commando dat de SEARCHING-cyclus doorloopt.
         let _det='';
-        try{ _det=await _elmSend('0100', 12000); }catch(e){}
+        try{ _det=await _elmSend('0100', 12000); }
+        catch(e){ /* stil: hier wordt juist getest OF de bus antwoordt */ }
         if(_det && /41/.test(_det) && !/UNABLE|ERROR|STOPPED|NO DATA/i.test(_det)){
           let _nieuw='';
-          try{ _nieuw=_schoonProtocolId((await _elmSend('ATDPN')).replace(/[^0-9A-Fa-f]/g,'')); }catch(e){}
+          try{ _nieuw=_schoonProtocolId((await _elmSend('ATDPN')).replace(/[^0-9A-Fa-f]/g,'')); }
+          catch(e){ /* stil: protocolnummer opvragen mag mislukken, dan blijft de oude staan */ }
           if(_nieuw){
             _onthoudProtocol(_nieuw);
             // ÓÓK selectedNetwork bijwerken: _bekendProtocolId() geeft daar
             // voorrang aan boven localStorage. Zonder deze regel wist de
             // opslag het goede id en probeerde de volgende herverbinding
             // alsnog het foute — de fix die zichzelf overslaat.
-            try{ if(selectedNetwork) selectedNetwork.id=_nieuw; }catch(e){}
+            try{ if(selectedNetwork) selectedNetwork.id=_nieuw; }
+            catch(e){ /* stil: selectedNetwork kan al opgeruimd zijn */ }
             btDiag(`Protocol opnieuw gedetecteerd na afwijking: ${_nieuw} — vergrendeld`,'ok');
           }else{
             btDiag('Detectie gelukt maar ATDPN gaf geen bruikbaar id — AUTO aangehouden','warn');
@@ -1416,7 +1431,8 @@ async function initELM327(opts){
       // De regelkringen hebben zich aangepast aan een bus die traag léék.
       // Nu de oorzaak weg is: budget en multi-PID meteen terugzetten, anders
       // blijft de app minutenlang onnodig in een lage stand hangen.
-      try{ if(window.PLLoad&&PLLoad.herstelNaProtocolLock) PLLoad.herstelNaProtocolLock(); }catch(e){}
+      try{ if(window.PLLoad&&PLLoad.herstelNaProtocolLock) PLLoad.herstelNaProtocolLock(); }
+      catch(e){ btDiag('PLLoad herstellen na protocol-lock mislukt — het pollbudget kan laag blijven hangen: '+(e.message||e),'warn'); }
     }else{
       // Koude start (of geen bekend protocol): AUTO, scanNetworks() detecteert.
       await _elmSend('ATSP0');
@@ -1471,7 +1487,8 @@ async function scanNetworks(){
     // Heette purgeImplausiblePids(); die functie is in ronde 5b vervangen door
     // herijkPidGate(), maar deze aanroep bleef staan — binnen een stille catch,
     // dus de ReferenceError verdween en het opschonen gebeurde nooit meer.
-    try{ herijkPidGate('protocol gevonden'); }catch(e){}
+    try{ herijkPidGate('protocol gevonden'); }
+    catch(e){ btDiag('Herijking na protocolvondst mislukt — de PID-zeef draait op oude kennis: '+(e.message||e),'warn'); }
   } else {
     // Geen auto-detect — geen contact of auto reageert niet
     btDiag('Geen auto-detect response — contact aan?','warn');
@@ -1668,7 +1685,9 @@ async function startDiscovery(){
   // Voertuiggegevens (merk/model/brandstof/motor uit VIN+NHTSA) nu al vastleggen,
   // zódat de gezondheidsscan hieronder het brandstoftype kent en diesel/SCR- of
   // turbo-fantoomsensoren correct kan wegfilteren op een benzineauto.
-  updateVehicleCard(vinInfo);
+  // De lookup die hier eventueel start, moet klaar zijn vóór saveVinProfile()
+  // verderop. Zie de uitleg bij updateVehicleCard().
+  const _rdwBezig = updateVehicleCard(vinInfo);
 
   // Brandstoftype vaststellen vóórdat de gate erop gaat beslissen. Zie
   // brandstofPoort() in pidlane-voertuigdata.js: eerst kijken of het al
@@ -1709,9 +1728,12 @@ async function startDiscovery(){
   } else {
     // ✕ in de pill breekt de scan af; de flow loopt daarna gewoon door.
     try{showBusyPill('⚡ Hoge busactiviteit — sensoren en voertuig in kaart brengen…',60000,
-      ()=>{ try{ healthScanAfbreken(); }catch(_){} });}catch(_){}
+      ()=>{ try{ healthScanAfbreken(); }
+            catch(_){ btDiag('Gezondheidsscan afbreken mislukt: '+(_.message||_),'warn'); } });}
+    catch(_){ btDiag('Afbreekknop tonen mislukt: '+(_.message||_),'warn'); }
     await initialHealthScan();
-    try{hideBusyPill();}catch(_){}
+    try{ hideBusyPill(); }
+    catch(_){ console.warn('hideBusyPill mislukt: '+(_.message||_)); }
   }
 
   // Connectie-snelheid meten en strategie STIL toepassen (geen popup hier).
@@ -1727,7 +1749,42 @@ async function startDiscovery(){
   // gezondheidscheck toch liet draaien: dan is er een vers oordeel dat het
   // oude in het profiel hoort te vervangen. Zonder deze tweede voorwaarde
   // bleef een profiel na de allereerste scan voor altijd bevroren.
-  if(knownVin && supportedPIDs.size>0 && (!usedProfile || !_slaScanOver)) saveVinProfile(vinInfo.vin);
+  /* ── Eerst de RDW-opzoeking afmaken, dan pas opslaan ────────────────
+     Wachten kost tijd op het verbindscherm, maar een profiel dat halverwege
+     een lookup wordt weggeschreven is maanden fout gebleven zonder dat
+     iemand het zag. Liever een paar seconden langer.
+
+     Twaalf seconden is de grens. Daarna is er geen internet of ligt de
+     RDW-dienst plat, en dan is doorgaan beter dan blijven staan — maar
+     opslaan doen we dán niet: het profiel zou merk, model en brandstof
+     missen en dat blijft hangen tot de volgende volle discovery. Er komt
+     een aandachtspunt in het voertuigdossier zodat het terug te vinden is.  */
+  let _rdwOk = true;
+  if(_rdwBezig && typeof _rdwBezig.then === 'function'){
+    try{
+      const _r = await Promise.race([
+        _rdwBezig,
+        new Promise(res => setTimeout(() => res({ok:false, reason:'timeout'}), 12000))
+      ]);
+      _rdwOk = !(_r && _r.ok === false);
+      if(!_rdwOk) btDiag('RDW-opzoeking mislukt ('+((_r&&_r.reason)||'onbekend')+') — voertuigprofiel NIET opgeslagen','warn');
+    }catch(e){
+      _rdwOk = false;
+      btDiag('RDW-opzoeking klapte: '+(e.message||e)+' — voertuigprofiel NIET opgeslagen','warn');
+    }
+  }
+
+  if(!_rdwOk){
+    try{
+      if(typeof plVoertuigLet==='function')
+        plVoertuigLet('rdw', 'De kentekenopzoeking lukte niet bij het verbinden. Merk, model en brandstof kunnen onvolledig zijn, en het voertuigprofiel is daarom niet opgeslagen. Vul het kenteken opnieuw in als je online bent.');
+    }catch(e){ btDiag('aandachtspunt zetten mislukt: '+(e.message||e),'warn'); }
+  } else {
+    try{ if(typeof plVoertuigLet==='function') plVoertuigLet('rdw', null); }
+    catch(e){ console.warn('Aandachtspunt opheffen mislukt: '+(e.message||e)); }
+  }
+
+  if(knownVin && supportedPIDs.size>0 && _rdwOk && (!usedProfile || !_slaScanOver)) saveVinProfile(vinInfo.vin);
   // Nieuwe sessie-stats beginnen
   _sessionStats={};
 
@@ -1746,7 +1803,11 @@ async function startDiscovery(){
   // alleen gevonden worden door ze te vragen. Bewust NA showWelcome en zonder
   // await: de probe claimt zelf het busslot en mag de verbindingsflow niet
   // ophouden. Zie pidlane-uitgebreid.js.
-  try{ if(typeof probeUitgebreid==='function') probeUitgebreid(); }catch(e){}
+  // Dit is de aanroep die maandenlang stil kon falen: PLAN.md punt 4 stond
+  // op "mode 21 wordt nergens opgevraagd" terwijl het hier gebeurde, in een
+  // lege catch.
+  try{ if(typeof probeUitgebreid==='function') probeUitgebreid(); }
+  catch(e){ btDiag('probeUitgebreid mislukt — uitgebreide PIDs (mode 21/22) niet onderzocht: '+(e.message||e),'warn'); }
 }
 
 // ── VOERTUIGKAART LINKS BOVENIN ──
@@ -1783,8 +1844,17 @@ function updateVehicleCard(vinInfo){
       </div>
     </div>`;
   // Opgeslagen kenteken? Direct automatisch opzoeken (ook bij geldige VIN,
-  // om merk/model/jaar aan te vullen die de VIN-decoder niet kon bepalen)
-  if(savedKent && (!vehicleInfo.vin || !vehicleInfo.model)) rdwLookup();
+  // om merk/model/jaar aan te vullen die de VIN-decoder niet kon bepalen).
+  //
+  // De Promise wordt TERUGGEGEVEN, sinds 21-08-2026. Tot die dag liep deze
+  // aanroep los: rdwLookup() is async en niemand wachtte erop. Gevolg was een
+  // race met saveVinProfile() verderop in initConnection — de preset kon
+  // supportedPIDs bijwerken vlak vóór het opslaan, en zo kwamen er zeven PIDs
+  // in het profiel die de ECU ontkent. Die stonden er maanden in.
+  // Aanroepers die niets met de Promise doen (btflow, demo) merken er niets
+  // van; initConnection wacht er nu wél op.
+  if(savedKent && (!vehicleInfo.vin || !vehicleInfo.model)) return rdwLookup();
+  return null;
 }
 
 // VIN-regel aangetikt → kenteken-invoer tonen/verbergen
@@ -1830,11 +1900,11 @@ async function rdwLookup(showOverview){
             else if(/elektric/.test(low)) bf='elektrisch';
             else if(/lpg|cng|aardgas|waterstof/.test(low)) bf='lpg';
             else bf=oms[0].toLowerCase();
-            if(bf){ mergeVehicleData('rdw', { brandstof:bf }); try{ log('RDW brandstof: '+vehicleInfo.brandstof,'info'); }catch(_){} }
+            if(bf){ mergeVehicleData('rdw', { brandstof:bf }); try{ log('RDW brandstof: '+vehicleInfo.brandstof,'info'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
           }
         }
       }
-    }catch(e){ try{ log('RDW brandstof-ophalen mislukt: '+(e.message||e),'warn'); }catch(_){} }
+    }catch(e){ try{ log('RDW brandstof-ophalen mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
     const jaar=f.year||vehicleInfo.year||'';
     // f komt uit de RDW-tabel m9d7-ebf2 en bevat GEEN brandstof — die staat in
     // 8ys7-d773 en is hierboven al via mergeVehicleData gezet. f.brandstof was
@@ -1845,13 +1915,15 @@ async function rdwLookup(showOverview){
     localStorage.setItem('pl_kenteken',kent);
     // PLRecall haakt hierop in en haalt de terugroepdetails op (welke actie,
     // welk risico, welke status) bovenop de ja/nee-vlag die we al hadden.
-    try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){ /* stil: element kan weg zijn */ }
     // Sla ook gevalideerde extra RDW velden op voor Koopcheck/rapport
     _koopRdwData = { ...v, _kent: kent, _val: val };
     // Prefill Koopcheck kenteken input
     const ki = document.getElementById('koopKentInput');
     if(ki && !ki.value) ki.value = kent;
-    try{ loadUserVehicleData(); applyUserOverrides(); }catch(e){}   // handmatige invoer blijft leidend
+    // handmatige invoer blijft leidend
+    try{ loadUserVehicleData(); applyUserOverrides(); }
+    catch(e){ btDiag('Handmatige voertuiginvoer toepassen mislukt — RDW-gegevens kunnen jouw invoer overschrijven: '+(e.message||e),'warn'); }
     const naam=`${vehicleInfo.merk||''} ${vehicleInfo.model||''}`.trim()||'Voertuig';
     const merkEl=document.getElementById('vicMerk');
     if(merkEl) merkEl.textContent=naam;
@@ -1869,7 +1941,9 @@ async function rdwLookup(showOverview){
     // Geen kenteken/VIN in dit usage-event — alleen geanonimiseerde merk/model-trend (AVG)
     logUsage('rdw_kwaliteit', `${vehicleInfo.merk||'?'} ${vehicleInfo.model||''} ${jaar||'?'} brandstof=${brandstof||'?'} weggelaten=${val.weggelaten.length}`);
     // Pas voertuig-specifieke PID-preset toe als verbinding al actief is
-    try{ scenarioRefreshIfOpen(); }catch(e){}  // kenteken gewijzigd → scenario-PID's verversen
+    // kenteken gewijzigd → scenario-PIDs verversen
+    try{ scenarioRefreshIfOpen(); }
+    catch(e){ btDiag('Scenario verversen na kentekenwijziging mislukt: '+(e.message||e),'warn'); }
     if(demoMode){
       // In demo: herbouw de PID-lijst naar het RDW-brandstoftype, zodat de
       // simulatie (verbranding vs EV) klopt met het ingevoerde kenteken.
@@ -1882,11 +1956,13 @@ async function rdwLookup(showOverview){
         const c=document.getElementById('pidCnt'); if(c) c.textContent=discoveredPIDDefs.length;
         renderGauges(); rebuildGSel(); startPoll(); initialHealthScan(); renderDemoBar();
         log('Demo: PID-lijst herbouwd naar '+(brandstof||'?')+' ('+pids.length+' PIDs)','ok');
-      }catch(e){}
+      }catch(e){ console.warn('Demo: PID-lijst herbouwen mislukt: '+(e.message||e)); }
     } else if(connected && vehicleInfo.merk){
       applyVehiclePIDPreset(vehicleInfo.merk, brandstof, jaar);
     }
-    try{ if(showOverview) openVehicleOverview(); }catch(e){}   // overzicht van alle bekende data + aanvullen
+    // overzicht van alle bekende data + aanvullen
+    try{ if(showOverview) openVehicleOverview(); }
+    catch(e){ btDiag('Voertuigoverzicht openen mislukt: '+(e.message||e),'warn'); }
     return {ok:true,kent,v,val};
   }catch(e){
     if(st) st.textContent='RDW tijdelijk niet bereikbaar — controleer je internet en probeer opnieuw';
@@ -1999,7 +2075,7 @@ async function tryReadVIN(){
           const r=String(ruw[k]==null?'':ruw[k]).replace(/\s+/g,' ').trim().slice(0,140);
           log('   VIN-poging ['+k+'] → '+(r||'(leeg)'),'info');
         });
-      }catch(e){}
+      }catch(e){ /* stil: dit is alleen de logweergave van de ruwe VIN-pogingen */ }
       return null;
     }
     log('VIN: '+vin,'ok');
@@ -2064,7 +2140,7 @@ function vehicleCylinderCount(){
     const rdw=(typeof _koopRdwData!=='undefined'&&_koopRdwData)?_koopRdwData.aantal_cilinders:null;
     const n=parseInt(rdw,10);
     if(!isNaN(n)&&n>0&&n<=16) return n;
-  }catch(e){}
+  }catch(e){ /* stil: cilinderaantal is een gok uit losse bronnen, mag ontbreken */ }
   return 0; // onbekend → geen gate
 }
 function _misfireCylNo(code){

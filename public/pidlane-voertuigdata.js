@@ -150,6 +150,68 @@ function dossierPct(){
   const filled=checks.filter(x=>String(x||'').trim()).length;
   return Math.round(filled/checks.length*100);
 }
+/* ── Aandachtspunten bij het voertuigdossier ─────────────────────────
+   Toegevoegd 21-08-2026. Er zijn dingen die tijdens het verbinden misgaan
+   zonder dat het een fout is: de RDW-opzoeking die niet lukte, waardoor
+   merk/model/brandstof onbekend blijven en het voertuigprofiel bewust NIET
+   is opgeslagen. Dat hoort ergens te staan waar je het terugvindt, en dit
+   is de plek waar je toch al kijkt als je je afvraagt wat de app van de
+   auto weet.
+
+   Bewust geen toast en geen popup: dit is geen storing waar je meteen iets
+   mee moet, het is context bij een onvolledig dossier. Een melding die
+   wegvalt terwijl je aan het rijden bent, is geen melding.
+
+   plVoertuigLet() zet er een; het overzicht leest ze en de auto-chip kleurt
+   oranje zolang er iets staat. Ze verdwijnen bij een geslaagde nieuwe
+   poging, niet vanzelf. */
+window._plVoertuigLet = window._plVoertuigLet || [];
+
+function plVoertuigLet(sleutel, tekst){
+  try{
+    const lijst = window._plVoertuigLet;
+    const i = lijst.findIndex(x => x.sleutel === sleutel);
+    if(tekst === null){                       // opheffen
+      if(i >= 0) lijst.splice(i, 1);
+    } else if(i >= 0){
+      lijst[i].tekst = tekst; lijst[i].t = Date.now();
+    } else {
+      lijst.push({ sleutel: sleutel, tekst: tekst, t: Date.now() });
+    }
+    plVoertuigChipBij();
+  }catch(e){ console.warn('plVoertuigLet:', e); }
+}
+
+function plVoertuigWaarschuwingen(){
+  const lijst = (window._plVoertuigLet || []);
+  if(!lijst.length) return '';
+  const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  return '<div style="background:rgba(247,127,0,.10);border:1px solid var(--or);border-radius:10px;padding:10px 12px;margin-bottom:12px">' +
+    '<div style="font:800 11px var(--f);color:var(--or);margin-bottom:5px">AANDACHTSPUNTEN</div>' +
+    lijst.map(x => '<div style="font:400 12px var(--f);color:var(--tx2);margin-bottom:3px">• ' + esc(x.tekst) + '</div>').join('') +
+    '</div>';
+}
+
+// De dot van de voertuigchip: rood = geen auto, oranje = dossier onvolledig
+// of er staat een aandachtspunt, groen = compleet. Deze functie raakt alleen
+// het oranje-geval aan; de rest wordt elders gezet.
+function plVoertuigChipBij(){
+  try{
+    const dot = document.getElementById('vdot');
+    if(!dot) return;
+    const lijst = (window._plVoertuigLet || []);
+    if(lijst.length && !dot.classList.contains('r')){
+      dot.classList.remove('g'); dot.classList.add('o');
+      const chip = document.getElementById('vchip');
+      if(chip) chip.title = lijst.length + ' aandachtspunt(en) — tik voor het dossier';
+    }
+  }catch(e){ console.warn('plVoertuigChipBij:', e); }
+}
+
+window.plVoertuigLet = plVoertuigLet;
+window.plVoertuigWaarschuwingen = plVoertuigWaarschuwingen;
+window.plVoertuigChipBij = plVoertuigChipBij;
+
 function openVehicleOverview(){
   if(!featOn('feat_dossier')){ showToast?.('Functie uitgeschakeld door beheerder'); return; }
   loadUserVehicleData();
@@ -173,6 +235,7 @@ function openVehicleOverview(){
     </div>
     <div style="overflow-y:auto;padding:14px 16px">
       <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Alle data die de app nu kent (RDW + VIN + eerdere invoer). Pas aan of vul aan — <b>jouw invoer is leidend</b> en weegt mee in elke AI-analyse.</div>
+      ${plVoertuigWaarschuwingen()}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
         ${row('Merk',inp('uvMerk',v.merk))}${row('Model',inp('uvModel',v.model))}
         ${row('Bouwjaar',inp('uvYear',v.year))}${row('Brandstof',inp('uvBrand',v.brandstof,'benzine / diesel / hybride / elektrisch'))}

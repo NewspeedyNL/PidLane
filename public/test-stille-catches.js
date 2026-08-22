@@ -114,21 +114,12 @@ modules.forEach(function (f) {
 // Een module die van de lijst verdwenen is (hernoemd of weg) hoort niet stil
 // te blijven staan: dan zakt de grens nooit meer en dekt de ratel minder dan
 // je denkt.
-//
-// Uitzondering: draait dit in een werkmap met maar een handvol modules (zoals
-// de losse opruimzip), dan is "ontbreekt" gewoon "zit niet in deze zip" en
-// zegt die controle niets. De grens zelf blijft wél gelden voor wat er wél is.
-const DEELVERZAMELING = modules.length < 10;
-if (DEELVERZAMELING) {
-  console.log('  ---   werkmap met ' + modules.length + ' modules — alleen deze worden getoetst\n');
-} else {
-  Object.keys(GRENS).forEach(function (f) {
-    if (modules.indexOf(f) < 0) {
-      console.log('  FOUT  ' + f + ' staat in de lijst maar bestaat niet meer — haal de regel weg');
-      fout++;
-    }
-  });
-}
+Object.keys(GRENS).forEach(function (f) {
+  if (modules.indexOf(f) < 0) {
+    console.log('  FOUT  ' + f + ' staat in de lijst maar bestaat niet meer — haal de regel weg');
+    fout++;
+  }
+});
 
 if (gedaald.length) {
   console.log('  ok    ' + gedaald.length + ' module(s) opgeruimd sinds de laatste stand:');

@@ -588,7 +588,10 @@ async function logToSheets(type, message, extra={}){
         VIN:        String(v.vin||''),
         Protocol:   String(selectedNetwork?.name||''),
         ActivePIDs: [...(activePIDs||[])].join(' '),
-        AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'2.1'),
+        // Terugval was '2.1' — dan staat er in Airtable een versienummer dat
+        // nooit heeft bestaan en zoek je bij een bugmelding in de verkeerde
+        // build. '?' is eerlijk en valt op.
+        AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
         User:       String(currentUser?.name||''),
         Role:       String(currentUser?.role||''),
       }

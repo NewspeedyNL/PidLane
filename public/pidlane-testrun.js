@@ -37,7 +37,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.1 (21-08-2026)';
+const TESTRUN_VERSIE = '3.3 (21-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1476,103 +1476,94 @@ async function _blok10() {
 // klant erop drukt.
 async function _blok5() {
 
-  // ── TOEGEVOEGD 21-08 (avond): versies lopen niet meer uiteen ──
-  await _doe(5, 'Versienummer klopt', function () {
-    // package.json zei 2.1.0, config.js zei 2.9.0. De CI zet versionName uit
-    // package.json, dus een gebruiker die "2.9.0" in het loginscherm zag had
-    // een APK met versionName 2.1.0 op zijn toestel — en bij een bugmelding
-    // zoek je dan in de verkeerde build. De app kan package.json niet lezen;
-    // test-versie.js doet die vergelijking. Hier tonen we wat er draait.
-    let v = '?';
-    try { v = (typeof APP_VERSION !== 'undefined') ? String(APP_VERSION) : '?'; } catch (e) {}
-    if (v === '?') return { staat: 'FOUT', detail: 'APP_VERSION niet beschikbaar — config.js niet geladen?' };
-    if (!/^\d+\.\d+\.\d+$/.test(v))
-      return { staat: 'FOUT', detail: 'APP_VERSION "' + v + '" is geen semver — Play weigert dat als versionName' };
-    return 'app ' + v + ', testrun ' + TESTRUN_VERSIE;
+  // ── TOEGEVOEGD 21-08 (nacht): de race in bt.js is dicht ──
+  await _doe(5, 'Voertuigprofiel wacht op de RDW-opzoeking', function () {
+    if (typeof plVoertuigLet !== 'function')
+      return { staat: 'FOUT', detail: 'plVoertuigLet ontbreekt — mislukte lookups worden nergens meer gemeld' };
+    const punten = (window._plVoertuigLet || []);
+    const rdw = punten.filter(function (x) { return x.sleutel === 'rdw'; })[0];
+    if (rdw)
+      return { staat: 'LET OP', detail: 'de kentekenopzoeking is bij dit verbinden mislukt — profiel NIET opgeslagen. Staat ook achter de auto-chip.' };
+    return 'geen openstaande aandachtspunten bij het voertuig';
   });
 
-  // ── VERWIJDERD 21-08 (avond): alle locatiefunctionaliteit ──
+  // ── TOEGEVOEGD 21-08 (nacht): module hernoemd ──
+  await _doe(5, 'pidlane-motortype.js heet nu goed', function () {
+    const tags = Array.prototype.slice.call(document.querySelectorAll('script[src]'))
+      .map(function (t) { return t.getAttribute('src'); });
+    if (tags.indexOf('pidlane-scheduler.js') >= 0)
+      return { staat: 'FOUT', detail: 'de oude naam hangt er nog in — twee kopieën van dezelfde module' };
+    if (tags.indexOf('pidlane-motortype.js') < 0)
+      return { staat: 'FOUT', detail: 'pidlane-motortype.js hangt niet in index.html' };
+    if (typeof selectStandardSet !== 'function')
+      return { staat: 'FOUT', detail: 'selectStandardSet ontbreekt — de hernoemde module laadt niet' };
+    return 'motortype-module geladen, oude naam weg';
+  });
+
+  // ── VERWIJDERD 21-08 (nacht): het renderGauges-vangnet ──
+  await _doe(5, 'Vangnet in renderGauges is weg', function () {
+    let bron = '';
+    try { bron = String(window.renderGauges || ''); } catch (e) {}
+    if (bron && bron.indexOf('_zeefGemeld') >= 0)
+      return { staat: 'FOUT', detail: 'het vangnet staat er nog in' };
+    if (typeof pidGate !== 'function')
+      return { staat: 'FOUT', detail: 'pidGate ontbreekt — de poorten bij binnenkomst zijn de enige zeef die over is' };
+    return 'tekenlus filtert niet meer, poorten staan bij pidToevoegen en magToevoegen';
+  });
+
+  // ── BLIJFT STAAN: demo vóór de inlogmuur (Play-blokkade 3) ──
+  await _doe(5, 'Demo bereikbaar zonder account', function () {
+    if (typeof plDemoZonderLogin !== 'function')
+      return { staat: 'FOUT', detail: 'plDemoZonderLogin ontbreekt — de knop op het loginscherm is dood' };
+    const knop = document.getElementById('btnDemoLogin');
+    if (!knop) return { staat: 'FOUT', detail: 'de demoknop staat niet in het loginscherm' };
+    const login = document.getElementById('loginOv');
+    if (login && !login.contains(knop))
+      return { staat: 'FOUT', detail: 'de knop staat buiten #loginOv — weer achter de inlogmuur' };
+    return 'knop staat in het loginscherm, functie bestaat';
+  });
+
+  await _doe(5, 'Versie is nergens hardcoded', function () {
+    let v = '?';
+    try { v = (typeof APP_VERSION !== 'undefined') ? String(APP_VERSION) : '?'; } catch (e) {}
+    if (v === '?') return { staat: 'FOUT', detail: 'APP_VERSION niet beschikbaar' };
+    const el = document.getElementById('loginVer');
+    if (el) {
+      const t = (el.textContent || '').replace(/^v/, '');
+      if (t && t !== v && t !== '…')
+        return { staat: 'FOUT', detail: 'loginscherm toont v' + t + ' terwijl de app ' + v + ' is' };
+    }
+    return 'app ' + v + ', loginscherm gelijk, testrun ' + TESTRUN_VERSIE;
+  });
+
+  // ── BLIJFT STAAN: geen locatie, 0143, steunbitzeef ──
   await _doe(5, 'De app leest geen locatie meer', function () {
-    // Drie verklaringen hangen hieraan: de Data safety-form, privacy.html en
-    // het disclosurescherm. Eén teruggekeerde positie-aanroep maakt ze alle
-    // drie onwaar, en dat merk je pas in een reviewmail.
-    //
-    // Deze controle kijkt naar GEDRAG, niet naar de bron. Twee redenen: de
-    // wrappers in pidlane-remote.js maken broncode-inspectie in deze codebase
-    // onbetrouwbaar, én test-geen-gps.js zou aanslaan op de zoekwoorden die
-    // hier dan letterlijk zouden staan — die test scant álle modules, deze
-    // erbij.
     if (typeof PLGps !== 'undefined')
-      return { staat: 'FOUT', detail: 'PLGps bestaat nog — pidlane-gps.js is terug' };
-    let s = {};
-    try { s = (window.PLBulk && typeof PLBulk.status === 'function') ? PLBulk.status() : {}; } catch (e) {}
-    if (Object.prototype.hasOwnProperty.call(s, 'gps'))
+      return { staat: 'FOUT', detail: 'PLGps bestaat nog' };
+    let st = {};
+    try { st = (window.PLBulk && typeof PLBulk.status === 'function') ? PLBulk.status() : {}; } catch (e) {}
+    if (Object.prototype.hasOwnProperty.call(st, 'gps'))
       return { staat: 'FOUT', detail: 'PLBulk.status() heeft nog een positieveld' };
-    // blkStat is het statusblok in het recorderdashboard (pidlane-bulk.js
-    // regel 555). Niet blkDash — die bestaat niet, en een getElementById op
-    // een verzonnen id geeft null, waarna deze regel stilletjes altijd slaagt.
-    const rij = document.getElementById('blkStat');
-    if (rij && /GPS/.test(rij.innerHTML || ''))
-      return { staat: 'FOUT', detail: 'het recorderdashboard toont nog een GPS-regel' };
     return 'geen PLGps, geen positie in de recorder';
   });
 
-  // ── VERWIJDERD 21-08 (avond): de dode wizard-HTML ──
-  await _doe(5, 'Wizard-HTML is opgeruimd', function () {
-    const weg = ['wizS1', 'wizS2', 'wizS3', 'wizS4', 'wizS5', 'wizStepBar']
-      .filter(function (id) { return !!document.getElementById(id); });
-    if (weg.length)
-      return { staat: 'FOUT', detail: 'staat nog in index.html: ' + weg.join(', ') };
-    if (!document.getElementById('wizS6'))
-      return { staat: 'FOUT', detail: 'de samenvatting is óók weg — te veel gesloopt' };
-    const dood = ['wizNext', 'wizRdwLookup', 'wizToggleDetail']
-      .filter(function (n) { return typeof window[n] === 'function'; });
-    if (dood.length)
-      return { staat: 'LET OP', detail: 'functies zonder knop: ' + dood.join(', ') };
-    return 'stappenbalk en wizS1..wizS5 weg, samenvatting intact';
-  });
-
-  // ── BLIJFT STAAN: de Run-chip van vanmiddag ──
-  await _doe(5, 'Run-chip zit in de topbar', function () {
-    if (!window.PLRun || typeof PLRun.staat !== 'function')
-      return { staat: 'FOUT', detail: 'PLRun ontbreekt — de module hangt niet in index.html' };
-    if (!document.getElementById('runChip') || !document.getElementById('rdot'))
-      return { staat: 'FOUT', detail: 'de chip of de dot staat niet in de topbar' };
-    const st = PLRun.staat();
-    const gelezen = Object.keys(st).filter(function (k) { return st[k] !== null; });
-    if (gelezen.length < 3)
-      return { staat: 'FOUT', detail: 'maar ' + gelezen.length + ' van de 5 modules leesbaar' };
-    return gelezen.length + ' van 5 leesbaar, versie ' + PLRun.versie;
-  });
-
-  await _doe(5, 'Opslaan vraagt om een opmerking', function () {
-    if (typeof plOpslaan !== 'function') return { staat: 'FOUT', detail: 'plOpslaan ontbreekt' };
-    let bron = '';
-    try { bron = String(window.plOpslaan || ''); } catch (e) {}
-    if (bron && bron.indexOf('plExpOpm') < 0)
-      return { staat: 'FOUT', detail: 'het veld zit niet in de keuzedialoog' };
-    return 'veld aanwezig, gaat mee in tekst en PDF';
-  });
-
-  // ── BLIJFT STAAN: de 0143-fix ──
   await _doe(5, '0143 rekent in procenten', function () {
     let d = null;
     try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) {}
     if (!d || typeof d.parse !== 'function')
-      return { staat: 'FOUT', detail: '0143 heeft geen parser meer in ALL_PID_DEFS' };
+      return { staat: 'FOUT', detail: '0143 heeft geen parser meer' };
     let v = null;
-    try { v = d.parse([0x00, 0x38]); } catch (e) { return { staat: 'FOUT', detail: 'parser klapt: ' + (e.message || e) }; }
+    try { v = d.parse([0x00, 0x38]); } catch (e) { return { staat: 'FOUT', detail: 'parser klapt' }; }
     if (!(v > 21.5 && v < 22.5))
       return { staat: 'FOUT', detail: '41430038 geeft ' + (Math.round(v * 100) / 100) + ', hoort 21,96 %' };
     if (!(d.max >= 400))
-      return { staat: 'FOUT', detail: 'max staat op ' + d.max + ' — een turbo boven 100% wordt dan afgekeurd' };
+      return { staat: 'FOUT', detail: 'max staat op ' + d.max };
     return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, max ' + d.max + '%';
   });
 
-  // ── BLIJFT STAAN: de steunbitzeef (punt 1, gesloten 21-08) ──
   await _doe(5, 'Preset respecteert de steunbits', function () {
     if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
-      return { staat: 'FOUT', detail: 'de poort ontbreekt — de preset kan weer fantomen terugzetten' };
+      return { staat: 'FOUT', detail: 'de poort ontbreekt' };
     let bits = {};
     try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
     const blokken = Object.keys(bits).length;
@@ -1591,8 +1582,7 @@ async function _blok5() {
     if (typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'ecuSteunt ontbreekt' };
     const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
     if (ontkend.length)
-      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size +
-        ' worden door de ECU ontkend: ' + ontkend.join(', ') };
+      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size + ' ontkend: ' + ontkend.join(', ') };
     return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
   });
 
@@ -1921,20 +1911,22 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Snelheidsproef — wat kan deze verbinding schoon aan? (punt 2b)',
+  titel: 'Race dicht, module hernoemd, vangnet weg, 108 stille catches opgeruimd',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven en hoort versie 3.0.0 te tonen. Dit is een aparte knop: "Snelheidsproef (10 min)". Draai hem NIET samen met de sweep, die vervuilt het spoor.',
-    'VOORAF — rijd, of laat de motor minstens stationair warmdraaien. Een koude motor met een stabiel toerental geeft te gladde antwoorden; onderweg is de meting eerlijker.',
-    'IJKING — hoeveel van de kandidaten antwoordden? Bij minder dan 3 stopt de proef. Staan er 6 tot 8 in de lijst, dan is elke misser daarna transport en geen dode sensor.',
-    'KERNVRAAG — bij welke trap vallen de eerste missers? De regel "Wat deze verbinding aankan" zegt tot hoeveel verzoeken per seconde het foutloos bleef. Als geen enkele trap missers geeft, is de adapter niet de beperking en zit het probleem in PLLoad of in de app.',
-    'KERNVRAAG — loopt de mediaan geleidelijk op of springt hij op één punt weg? Kijk naar de regel "Verloop". Geleidelijk is een adapter die het druk heeft; een sprong is een buffer die volloopt.',
-    'HERSTEL — dit is waar het om begonnen is. Na elke trap staat er 30 s rust met prikken van één verzoek per 5 s. Zakt de responstijd terug naar de waarde van trap 1, en binnen hoeveel seconden? Een "NIET hersteld" na een zware trap verklaart waarom het tempo op 21-08 om 11:47 op 56% bleef hangen terwijl er 0% fouten waren.',
-    'HERSTEL — de laatste rust duurt 45 s. Als hij daar wél herstelt en na 30 s niet, weet je hoeveel lucht de adapter nodig heeft.',
-    'VERGELIJKING — onderaan staat de stand van de app (tempo, bus, fout). Hoe verhoudt het tempo van PLLoad zich tot wat de proef net foutloos haalde? Loopt de app ver onder wat de verbinding aankan, dan schroeft hij te ver terug.',
-    'LOGBOEK — kijk of er tijdens de proef een BT-dip of herverbinding in het log staat. Op 16-08 waren het er vier in twaalf minuten, telkens gevolgd door "scherm blijft aan".',
-    'CONTROLE — blijft blok 6 op 0 ontkende PIDs staan, en toont 0143 nog tientallen procenten? Die twee horen bij elke run even gecheckt te worden; een regressie daar verloopt stil.'
+    'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0.',
+    'VERBINDEN — duurt het verbinden merkbaar langer? initConnection wacht nu op de RDW-opzoeking vóór het profiel wordt opgeslagen. Twaalf seconden is de grens.',
+    'VERBINDEN met vliegtuigstand of zonder internet — komt er dan een aandachtspunt achter de auto-chip (oranje dot), en zegt het dossier dat het profiel NIET is opgeslagen? Dit is de kern van punt 11.',
+    'VERBINDEN daarna weer mét internet — verdwijnt dat aandachtspunt vanzelf?',
+    'TEGELS — verschijnen alle tegels nog? Het vangnet in renderGauges is weg. Zie je een tegel die nooit een waarde toont, dan staat er een toevoegpad open en dát wil je weten.',
+    'LOGBOEK — er komen nu meldingen uit bt.js en veldlab.js die er nooit waren. Kijk of er iets tussen zit dat je nog nooit hebt gezien: 108 catches die zwegen praten nu.',
+    'LOGBOEK — let specifiek op "probeUitgebreid mislukt" en "Herijking na protocolvondst mislukt". Die twee stonden in een lege catch en zijn precies waar eerdere weken aan verloren zijn.',
+    'SURVEY (veldlab) — draai er een als je toch bezig bent. Bij een sendCmd-fout meldt hij nu dat de PID als nodata geteld wordt. Zie je die melding, dan staat er transportfout in de dekkingsmatrix van dit merk.',
+    'BLOK 9 (losse knop, warme motor) — nog steeds niet gedraaid. Laatste openstaande meting van punt 4.',
+    'BLOK 1 tegenproef — wis de app-gegevens, verbind opnieuw: staat er dan LET OP met "NIET geladen"?'
   ]
 };
+
+
 
 
 

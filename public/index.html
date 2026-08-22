@@ -573,16 +573,32 @@
     </div>
     <div class="mact">
       <button class="mbtn p" onclick="doLogin()">Inloggen</button>
+      <!-- Demo VÓÓR de login, toegevoegd 21-08-2026 voor Play-blokkade 3.
+           De reviewnotitie belooft letterlijk "Op het startscherm staat de knop
+           Try demo — no adapter needed". Die knop stond tot vandaag in het
+           verbindscherm, dus achter de inlogmuur: een reviewer zonder account
+           zag hem nooit, kreeg een loginformulier en wees af als "niet te
+           beoordelen". Dezelfde tekst als in de notitie, met opzet — wat de
+           reviewer leest en wat hij ziet moet woordelijk kloppen.
+           Geen tussenvraag "met of zonder adapter": verbinden hoort achter de
+           login, dus die keuze bestaat hier niet en elke extra klik is een plek
+           om af te haken. -->
+      <button class="mbtn s" id="btnDemoLogin" onclick="plDemoZonderLogin()">▷ Try demo — no adapter needed</button>
     </div>
   </div>
   <div class="lg-foot">
-    PidLane <span id="loginVer">v2.1</span> — AI Car Diagnostics<br>
+    PidLane <span id="loginVer">v…</span> — AI Car Diagnostics<br>
     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
     <div style="padding-top:11px">
       <button id="plFrisBtn" class="lg-fris" onclick="plHardReload(this)">🔄 Nieuwste versie laden</button>
     </div>
   </div>
-    <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'2.1');}catch(e){}
+    <!-- Versie op het loginscherm. De terugval was tot 21-08 '2.1', met de
+         letterlijke tekst "v2.1" in de HTML eronder. Dat is precies de plek
+         waar een Play-reviewer als eerste kijkt, en het is dezelfde stille
+         versieleugen als in package.json: een verkeerd getal dat niemand
+         controleert. Liever een vraagteken — dat valt op, een fout getal niet. -->
+    <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'?');}catch(e){}
 
 /* ── Nieuwste versie forceren ────────────────────────────────────────
    location.reload(true) doet in moderne browsers niets meer, en alléén
@@ -1283,7 +1299,7 @@ function closeConnOv(){
      weghalen de div-balans raakt en dat een aparte stap hoorde te zijn. Die
      stap is dit: de stappenbalk (12 divs) en stap 1 t/m 5 (42 divs) zijn er op
      21-08 uit. Wat overblijft is de samenvatting, die echt werk doet
-     (selectStandardSet). Zie pidlane-scheduler.js. -->
+     (selectStandardSet). Zie pidlane-motortype.js. -->
 <div id="wizardOv" class="wiz-ov hidden">
   <div class="wiz-panel">
     <div class="wiz-body" id="wizBody">
@@ -2089,7 +2105,7 @@ function closeConnOv(){
 <script src="pidlane-mode06.js"></script><!-- on-board monitortests (PLM06) — vereist sendCmd + PLBus -->
 <script src="pidlane-demo.js"></script>
 <script src="pidlane-uihelpers.js"></script>
-<script src="pidlane-scheduler.js"></script>
+<script src="pidlane-motortype.js"></script>
 <script src="pidlane-theme.js"></script>
 <script src="pidlane-neon.js"></script>
 <script src="pidlane-rit.js"></script>

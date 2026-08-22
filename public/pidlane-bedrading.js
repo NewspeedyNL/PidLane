@@ -47,7 +47,7 @@ var KRITIEK = [
   'log','magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
-  'brandstofPoort','plBevestig','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
+  'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',
   'selectCategoryPIDs','sendCmd','steunbitsRuw','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',
@@ -71,6 +71,12 @@ var KRITIEK = [
   // er nog niet in omdat ze tot 21-08 alleen vanuit hun eigen scherm werden
   // aangeroepen, zónder guard.
   'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
+  // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
+  // door initConnection als de RDW-opzoeking mislukt.
+  'plVoertuigLet','plVoertuigChipBij','plVoertuigWaarschuwingen',
+  // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
+  // uit pidlane-scheduler.js op 21-08).
+  'selectStandardSet',
   
   
 ];

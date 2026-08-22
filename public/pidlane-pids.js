@@ -204,27 +204,19 @@ function renderGauges(){
   let vastAantal=0;
   [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
-    // VANGNET, geen poort meer (§15, ronde 6). Sinds alle toevoegpaden door
-    // pidToevoegen() lopen kán hier niets implausibels meer langskomen: de
-    // deuren filteren bij binnenkomst, herijkPidGate() ruimt op als de kennis
-    // verandert. Blijft hij toch iets afvangen, dan staat er ergens een deur
-    // open — en dat wil je wéten in plaats van stil wegfilteren, want precies
-    // dat stille filteren hield de bug drie rondes lang verborgen.
-    // Weg mag hij pas als hij een tijd lang niets meer heeft gemeld.
-    if(!pidGate(pid,'plausibel')){
-      try{
-        // Demo is de bewuste uitzondering: die bouwt zijn eigen sluitende
-        // wereld (demoPIDsForFuel) en schrijft rechtstreeks. Daar zou de
-        // melding alleen maar vals alarm zijn.
-        window._zeefGemeld=window._zeefGemeld||new Set();
-        if(!demoMode && !window._zeefGemeld.has(pid)){
-          window._zeefGemeld.add(pid);
-          const _m='Vangnet renderGauges ving '+pid+' af — er is een toevoegpad dat pidToevoegen() overslaat';
-          try{ btDiag(_m,'warn'); }catch(e){ console.warn(_m); }
-        }
-      }catch(e){}
-      return;
-    }
+    // Het vangnet dat hier stond is op 21-08-2026 verwijderd (§15, ronde 6 →
+    // afgerond). Het riep pidGate(pid,'plausibel') aan en meldde via btDiag
+    // zodra er iets langskwam, om te ontdekken of er nog een toevoegpad was
+    // dat pidToevoegen() oversloeg. Het heeft in de ritten sinds de
+    // steunbitcontrole en de geactiveerde herijking niets meer gemeld.
+    //
+    // Bewust wég in plaats van laten staan: een controle die nooit meer
+    // aanslaat wordt niet gelezen, en een zeef in de tekenlus filtert stil —
+    // precies wat de bug destijds drie rondes lang verborgen hield. De poorten
+    // staan nu bij binnenkomst (pidToevoegen, magToevoegen) en herijkPidGate()
+    // ruimt op als de kennis verandert. Komt er ooit toch weer een implausibele
+    // PID in een tegel, dan is dat een open deur en hoort die dáár gedicht te
+    // worden, niet hier weggemoffeld.
 
     // ── Code-/vlag-PIDs: gewone woorden in het compacte blok, geen tegel ──
     // Brandstoftype, OBD-norm, brandstofsysteem-status enz. hebben geen

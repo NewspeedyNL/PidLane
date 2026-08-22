@@ -79,6 +79,5 @@ toets('de CI controleert dat zelf ook',
   'anders merkt niemand het als een plugin de permissie ongemerkt verruimt');
 toets('achtergrondlocatie blijft verboden',
   /ACCESS_BACKGROUND_LOCATION/.test(wf) && /verboden/.test(wf));
-
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

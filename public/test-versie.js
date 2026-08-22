@@ -61,5 +61,28 @@ toets('CI controleert de twee versies tegen elkaar',
   /APP_VERSION/.test(wf),
   'zonder die stap merkt de build het niet als config.js achterloopt');
 
+// ── geen versienummer dat losstaat van APP_VERSION ──
+// Op 21-08 stonden er drie terugvallen op '2.1' verspreid door de app: in de
+// HTML van het loginscherm, in het scriptje dat die HTML overschrijft, en in
+// de Airtable-melding van pidlane-auth.js. Alle drie uit de tijd dat
+// package.json daadwerkelijk 2.1.0 zei. Zo'n terugval is erger dan geen
+// waarde: hij ziet er geldig uit, dus niemand controleert hem, en bij een
+// bugmelding zoek je in een build die nooit heeft bestaan.
+const fs2 = require('fs');
+const bestanden = fs2.readdirSync('.').filter(function (f) {
+  return /^(pidlane-.*\.js|index\.html)$/.test(f);
+});
+const hard = [];
+bestanden.forEach(function (f) {
+  const t = fs2.readFileSync(f, 'utf8');
+  // Alleen terugvallen die aan APP_VERSION hangen. De ELM327-aanduiding
+  // "v1.5 / v2.1 en klonen" in pidlane-start.js is een adapterversie en heeft
+  // hier niets mee te maken — die mag blijven staan.
+  const m = t.match(/APP_VERSION[^;\n]{0,40}:\s*'[\d.]+'/g);
+  if (m) hard.push(f + ' → ' + m.join(', '));
+});
+toets('geen hardcoded versie als terugval op APP_VERSION', hard.length === 0,
+  hard.join('; ') + " — gebruik '?' zodat een ontbrekende config opvalt");
+
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

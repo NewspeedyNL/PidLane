@@ -22,8 +22,13 @@ window.PidLaneEvalLog = (function(){
     if(!s) return;
     s.events.push({t:now(),cat,msg,data:data||null});
     if(s.events.length>800) s.events.splice(0,100);
-    subs.forEach(f=>{try{f(s)}catch(e){}});
-    if(cat==='ai' && data && data.stoplicht){ try{ setTimeout(function(){ try{ vlMicroCheck(); }catch(e){} }, 1200); }catch(e){} }
+    subs.forEach(f=>{ try{ f(s); }catch(e){ console.warn('Veldlab-abonnee gooide een fout:', e); } });
+    if(cat==='ai' && data && data.stoplicht){
+      try{ setTimeout(function(){
+        try{ vlMicroCheck(); }
+        catch(e){ console.warn('vlMicroCheck mislukt:', e); }
+      }, 1200); }catch(e){ console.warn('vlMicroCheck plannen mislukt:', e); }
+    }
   }
   function bindCrash(){
     window.addEventListener('error', ev=>{ if(s) _log('fout','crash: '+(ev.message||'')); });
@@ -45,8 +50,8 @@ window.PidLaneEvalLog = (function(){
 
 /* ---- opslag & signatuur ---- */
 const VL_KEY='pl_veldlab_v1';
-function vlLoad(){ try{ const r=JSON.parse(localStorage.getItem(VL_KEY)||'null'); if(r&&Array.isArray(r.sessies)) return r; }catch(e){} return {sessies:[]}; }
-function vlSave(st){ try{ while(JSON.stringify(st).length>450000 && st.sessies.length>20) st.sessies.splice(0,10); localStorage.setItem(VL_KEY,JSON.stringify(st)); }catch(e){} }
+function vlLoad(){ try{ const r=JSON.parse(localStorage.getItem(VL_KEY)||'null'); if(r&&Array.isArray(r.sessies)) return r; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ } return {sessies:[]}; }
+function vlSave(st){ try{ while(JSON.stringify(st).length>450000 && st.sessies.length>20) st.sessies.splice(0,10); localStorage.setItem(VL_KEY,JSON.stringify(st)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } }
 function vlCaptureOn(){ try{ return localStorage.getItem('pl_veldlab_uit')!=='1'; }catch(e){ return true; } }
 function vlAgeBand(y){ y=parseInt(y,10)||0; if(!y) return '?'; return y<2008?'<2008' : y<2016?'2008-15' : y<2021?'2016-20' : '2021+'; }
 function vlFuel(b){ b=(b||'').toString().toLowerCase(); if(/benz/.test(b))return 'benzine'; if(/dies/.test(b))return 'diesel'; if(/hybr/.test(b))return 'hybride'; if(/elek|electr|\bev\b/.test(b))return 'ev'; return b?'anders':'?'; }
@@ -96,8 +101,8 @@ function vlNovelty(g){
 function vlFinalize(){
   if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
   const snap=PidLaneEvalLog.stop(); if(!snap) return;
-  try{ const el=document.getElementById('vlSheet'); if(el) el.remove(); }catch(e){}
-  if(snap.invalid){ try{ log('🧪 Veldlab: sessie ongeldig (demo actief) — niet opgeslagen','warn'); }catch(e){} return; }
+  try{ const el=document.getElementById('vlSheet'); if(el) el.remove(); }catch(e){ /* stil: element kan al weg zijn */ }
+  if(snap.invalid){ try{ log('🧪 Veldlab: sessie ongeldig (demo actief) — niet opgeslagen','warn'); }catch(e){ /* stil: melding mag nooit de meting breken */ } return; }
   if((snap.events||[]).length<4) return; // te weinig gebeurd om iets van te leren
   const g=vlDerive(snap.events||[]);
   const nv=vlNovelty(g);
@@ -112,11 +117,14 @@ function vlFinalize(){
     errs:g.fouten.slice(0,10).map(f=>String(f.msg||'').slice(0,140)),
     human:snap.human||{}, novel:nv.score };
   const st=vlLoad(); st.sessies.push(rec); vlSave(st);
-  try{ vlAtPush(rec); }catch(e){}
-  try{ log('🧪 Veldlab: sessie #'+st.sessies.length+' vastgelegd ('+nv.cell+(nv.newCell?' — NIEUW terrein':nv.newMerk?' — nieuw merk':'')+')','ok'); }catch(e){}
+  try{ vlAtPush(rec); }
+  catch(e){ console.warn('Veldlab naar wachtrij zetten mislukt:', e); }
+  try{ log('🧪 Veldlab: sessie #'+st.sessies.length+' vastgelegd ('+nv.cell+(nv.newCell?' — NIEUW terrein':nv.newMerk?' — nieuw merk':'')+')','ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
   vlEnsureBtn(true);
 }
-window.addEventListener('pagehide', function(){ try{ vlFinalize(); }catch(e){} });
+// Laatste kans om de sessie vast te leggen. Faalt dit, dan is de hele rit
+// aan meetgegevens weg — console is hier het enige dat nog werkt.
+window.addEventListener('pagehide', function(){ try{ vlFinalize(); }catch(e){ console.warn('vlFinalize bij pagehide mislukt:', e); } });
 
 /* ════════════════════════════════════════
    VELDLAB → AIRTABLE CLOUD-SYNC (via Cloudflare Worker)
@@ -145,7 +153,14 @@ function vlAtQueue(f){ try{
   let s=JSON.stringify(q);
   while(s.length>2000000 && q.length>1){ q.shift(); s=JSON.stringify(q); }
   localStorage.setItem(VL_AT.qKey,s);
-}catch(e){} }
+}catch(e){
+  /* Het commentaar hierboven waarschuwt voor "stille QuotaExceeded → onzichtbaar
+     dataverlies", en de catch deed precies dat. Nu is het zichtbaar: de
+     wachtrij is niet weggeschreven, dus deze sessie gaat verloren bij een
+     herstart. */
+  try{ btDiag('Veldlab-wachtrij niet opgeslagen ('+(e.message||e)+') — deze sessie gaat verloren bij herstart','warn'); }
+  catch(_){ console.warn('Veldlab-wachtrij niet opgeslagen:', e); }
+} }
 // Identiteit van een queue-record (voor veilig verwijderen na verzenden)
 function _vlAtRecId(f){ return String((f&&f.SessieID)||'')+'|'+String((f&&f.Datum)||''); }
 let _vlAtBusy=false;
@@ -158,19 +173,19 @@ async function vlAtFlush(){
     // de wachtrij VERS herlezen en alleen de zojuist verzonden records eruit
     // filteren op identiteit.
     for(let guard=0; guard<20; guard++){
-      let q=[]; try{ q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){}
-      if(!q.length){ if(guard>0){ try{ log('☁ Veldlab → Airtable gesynchroniseerd','ok'); }catch(e){} } return; }
+      let q=[]; try{ q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+      if(!q.length){ if(guard>0){ try{ log('☁ Veldlab → Airtable gesynchroniseerd','ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ } } return; }
       const batch=q.slice(0,10);
       const res=await fetch(ep,{
         method:'POST', headers:{'Content-Type':'application/json','X-App-Token':(typeof APP_TOKEN!=='undefined'&&APP_TOKEN)||''},
         body:JSON.stringify({records:batch.map(f=>({fields:f}))})});
       if(!res.ok) throw new Error('sync HTTP '+res.status);
       const sent=new Set(batch.map(_vlAtRecId));
-      let fresh=[]; try{ fresh=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){}
+      let fresh=[]; try{ fresh=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
       const remaining=fresh.filter(f=>{ const id=_vlAtRecId(f); if(sent.has(id)){ sent.delete(id); return false; } return true; });
       localStorage.setItem(VL_AT.qKey, JSON.stringify(remaining));
     }
-  }catch(e){ try{ btDiag('☁ Veldlab-sync wacht ('+(e.message||e)+') — blijft in wachtrij','warn'); }catch(_){} }
+  }catch(e){ try{ btDiag('☁ Veldlab-sync wacht ('+(e.message||e)+') — blijft in wachtrij','warn'); }catch(_){ /* stil: melding mag nooit de meting breken */ } }
   finally{ _vlAtBusy=false; }
 }
 function vlAtPush(rec){
@@ -188,8 +203,8 @@ function vlAtPush(rec){
     'JSON':JSON.stringify(rec).slice(0,95000) });
   vlAtFlush();
 }
-window.addEventListener('online', function(){ try{ vlAtFlush(); }catch(e){} });
-setTimeout(function(){ try{ vlAtFlush(); }catch(e){} }, 6000);
+window.addEventListener('online', function(){ try{ vlAtFlush(); }catch(e){ console.warn('vlAtFlush bij online mislukt:', e); } });
+setTimeout(function(){ try{ vlAtFlush(); }catch(e){ console.warn('vlAtFlush bij start mislukt:', e); } }, 6000);
 
 /* ════════════════════════════════════════
    FULL VELDLAB SURVEY (admin, ⋯-menu)
@@ -270,7 +285,7 @@ function _svDtc(raw, hdr){
       }
       i=h.indexOf(hdr,i+2);
     }
-  }catch(e){}
+  }catch(e){ /* stil: DTC-hexblok ontleden — half antwoord levert gewoon minder codes op */ }
   return codes;
 }
 // Readiness-monitors decoderen uit een ruwe 0101-respons (J1979 bytes A-D)
@@ -325,10 +340,13 @@ async function vlFullSurvey(){
   // batchtrappen. Zonder busslot vecht dat de hele tijd met de poll-loop: de
   // survey duurt dan twee keer zo lang én de live view valt om. Slot pakken,
   // en pas in de finally weer teruggeven.
-  try{ setPollProfile('expert','full survey'); }catch(e){}
+  try{ setPollProfile('expert','full survey'); }
+  catch(e){ btDiag('Pollprofiel expert zetten mislukt — de survey draait op het gewone tempo: '+(e.message||e),'warn'); }
   let _svBusTok=0;
-  try{ _svBusTok=await PLBus.wait('full-survey', 8000); }catch(_){}
-  try{showBusyPill('📋 Full Survey — bus tijdelijk zwaar belast…',15000);}catch(_){}
+  try{ _svBusTok=await PLBus.wait('full-survey', 8000); }
+  catch(_){ btDiag('Survey kreeg de bus niet exclusief — metingen lopen door ander verkeer heen','warn'); }
+  try{ showBusyPill('📋 Full Survey — bus tijdelijk zwaar belast…',15000); }
+  catch(_){ /* stil: melding mag nooit de meting breken */ }
   const clean=s=>String(s||'').replace(/[\r\n>]+/g,' ').replace(/\s+/g,' ').trim();
   const t0=Date.now();
   const sv={type:'survey', t:t0, tester:(window.currentUser&&currentUser.name)||''};
@@ -360,7 +378,8 @@ async function vlFullSurvey(){
     sv.bitmaps={};
     for(const bp of ['0100','0120','0140','0160','0180']){
       if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
-      try{ const r=await sendCmd(bp,2000); if(r&&!/NO DATA|ERROR|UNABLE/i.test(r)) sv.bitmaps[bp]=clean(r).slice(0,120); }catch(e){}
+      try{ const r=await sendCmd(bp,2000); if(r&&!/NO DATA|ERROR|UNABLE/i.test(r)) sv.bitmaps[bp]=clean(r).slice(0,120); }
+      catch(e){ /* stil: hier wordt getest OF de bitmap bestaat, een misser is het antwoord */ }
     }
 
     const pids=[...supportedPIDs];
@@ -370,7 +389,17 @@ async function vlFullSurvey(){
       const pid=pids[i];
       _vlSvUI('PID-sweep '+(i+1)+'/'+pids.length+'<br><span style="font-weight:400;font-size:13px;opacity:.8">'+pid+'</span>');
       const s0=performance.now();
-      let raw=''; try{ raw=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }catch(e){}
+      /* LET OP — hier zit een meetfout in, zie PLAN.md punt 15.
+          Gooit sendCmd (timeout, socket weg, bus bezet), dan blijft raw leeg en
+          verderop wordt st='nodata'. Een TRANSPORTfout telt dus als "deze auto
+          ondersteunt deze PID niet", en dat oordeel gaat naar Airtable en voedt
+          de dekkingsmatrix per merk. Dat is exact dezelfde verwarring die de
+          snelheidsproef (blok 10) met een ijkronde vermijdt.
+          De catch meldt het nu; het uit elkaar trekken van 'nodata' en
+          'transportfout' is een gedragswijziging en hoort in een eigen ronde. */
+      let raw='', _svErr=null;
+      try{ raw=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }
+      catch(e){ _svErr=e; btDiag('Survey: '+pid+' gooide een fout ('+(e.message||e)+') — wordt hieronder als nodata geteld','warn'); }
       const ms=Math.round(performance.now()-s0);
       const def=getPidDef(pid)||{};
       let st='nodata', val=null, q='', flaky=false;
@@ -387,7 +416,9 @@ async function vlFullSurvey(){
       // weet dan dat deze PID een retry-strategie nodig heeft i.p.v. pruning.
       if(st==='nodata' && !_vlSvAbort){
         await delay(150);
-        let raw2=''; try{ raw2=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }catch(e){}
+        let raw2='';
+        try{ raw2=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }
+        catch(e){ btDiag('Survey: herkansing '+pid+' gooide een fout ('+(e.message||e)+')','warn'); }
         if(raw2 && !/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw2)){
           const v2=parsePID(pid,raw2);
           if(v2!=null){ val=v2; st='ok'; q='ok'; flaky=true; }
@@ -410,7 +441,9 @@ async function vlFullSurvey(){
         if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
         if(cand.length<n) break;
         const req='01'+cand.slice(0,n).map(p=>p.slice(2)).join('');
-        let braw=''; try{ braw=await sendCmd(req,3000); }catch(e){}
+        let braw='';
+        try{ braw=await sendCmd(req,3000); }
+        catch(e){ /* stil: batchtest — of de adapter meerdere PIDs tegelijk aankan is juist de vraag */ }
         const ok=!!braw && /41/i.test(braw) && !/NO DATA|ERROR|UNABLE/i.test(braw);
         sv.batch.ladder.push({n, req, ok, raw:clean(braw).slice(0,140)});
         if(ok){ sv.batch.maxPids=n; sv.batch.ok=true; sv.batch.req=req; }
@@ -432,16 +465,27 @@ async function vlFullSurvey(){
         if(m) hset.add(m[1]);
       });
       sv.ecus={n:hset.size, headers:[...hset]};
-    }catch(e){}
-    finally{ try{ await sendCmd('ATH0',1500); }catch(e){} }
+    }catch(e){ /* stil: 0151 brandstoftype — lang niet elke ECU levert die */ }
+    finally{
+      // Headers weer uit. Lukt dit niet, dan blijft élke volgende meting
+      // headerbytes meekrijgen en faalt het parsen app-breed — dat moet je weten.
+      try{ await sendCmd('ATH0',1500); }
+      catch(e){ btDiag('ATH0 mislukt na de ECU-telling — headers staan mogelijk nog AAN: '+(e.message||e),'warn'); }
+    }
 
     _vlSvUI('DTC uitlezen (actief + pending + permanent)…');
-    let d03=[]; try{ d03=await realScanDTC()||[]; }catch(e){}
-    let d07=''; try{ d07=clean(await sendCmd('07',2500)); }catch(e){}
+    let d03=[];
+    try{ d03=await realScanDTC()||[]; }
+    catch(e){ btDiag('Survey: foutcodes uitlezen mislukt ('+(e.message||e)+') — DTC-telling in deze sessie is onbetrouwbaar','warn'); }
+    let d07='';
+    try{ d07=clean(await sendCmd('07',2500)); }
+    catch(e){ /* stil: mode 07 (pending codes) wordt lang niet door elke ECU ondersteund */ }
     // Mode 0A: permanente DTC's — NIET wisbaar, blijven staan tot de monitor
     // zelf opnieuw slaagt. Dé schoonpoets-detector voor de Koopcheck:
     // 0 km sinds wissen + permanente code = rode vlag.
-    let d0A=''; try{ d0A=clean(await sendCmd('0A',2500)); }catch(e){}
+    let d0A='';
+    try{ d0A=clean(await sendCmd('0A',2500)); }
+    catch(e){ /* stil: mode 0A (permanente codes) idem, ontbreekt op oudere ECU's */ }
     sv.dtc={ actief:d03,
       pending:_svDtc(d07,'47'),   pendingRaw:d07.slice(0,120),
       permanent:_svDtc(d0A,'4A'), permanentRaw:d0A.slice(0,120) };
@@ -452,12 +496,12 @@ async function vlFullSurvey(){
     try{
       const r=await sendCmd('01511',2000); const h=_svNormHex(r); const i=h.indexOf('4151');
       if(i!==-1&&h.length>=i+6){ const c=parseInt(h.slice(i+4,i+6),16); if(!isNaN(c)) sv.ecuFuel={code:c, naam:_SV_FUELTYPES[c]||'onbekend ('+c+')'}; }
-    }catch(e){}
+    }catch(e){ /* stil: 01A6 odometer — vooral 2019+, ouder geeft NO DATA */ }
     // 01A6: echte odometer via OBD (veel voertuigen 2019+; oudere geven NO DATA)
     try{
       const r=await sendCmd('01A61',2500); const h=_svNormHex(r); const i=h.indexOf('41A6');
       if(i!==-1&&h.length>=i+12){ const v=parseInt(h.slice(i+4,i+12),16); if(!isNaN(v)&&v>0) sv.odoKm=Math.round(v/10); }
-    }catch(e){}
+    }catch(e){ console.warn('Survey: stabiliteitsmeting mislukt:', e); }
 
     // ── Variantie-sampling: ruisprofiel van dynamische sensoren ──
     // 4 snelle herhaalmetingen per PID → spreiding voedt de EWMA-tuning en
@@ -468,7 +512,8 @@ async function vlFullSurvey(){
       if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
       const vals=[];
       for(let k=0;k<4;k++){
-        try{ const r=await sendCmd('01'+vp.slice(2)+'1',1500); const v=parsePID(vp,r); if(v!=null&&!isNaN(v)) vals.push(v); }catch(e){}
+        try{ const r=await sendCmd('01'+vp.slice(2)+'1',1500); const v=parsePID(vp,r); if(v!=null&&!isNaN(v)) vals.push(v); }
+        catch(e){ /* stil: stabiliteitsmeting, één ontbrekend monster verandert de spreiding nauwelijks */ }
       }
       if(vals.length>=2){
         const mn=Math.min(...vals), mx=Math.max(...vals);
@@ -479,7 +524,9 @@ async function vlFullSurvey(){
     _vlSvUI('Timing-profiel (010C ×5)…');
     const times=[];
     for(let k=0;k<5 && !_vlSvAbort;k++){
-      const a=performance.now(); try{ await sendCmd('010C1',1500); }catch(e){}
+      const a=performance.now();
+      try{ await sendCmd('010C1',1500); }
+      catch(e){ /* stil: timingmeting — een misser telt gewoon mee als trage ronde */ }
       times.push(Math.round(performance.now()-a));
     }
     sv.timing={rpm5:times, avgMs:times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null};
@@ -494,8 +541,10 @@ async function vlFullSurvey(){
       adp:{type:'📋 survey', proto:sv.adapter.proto, lat:sv.timing.avgMs},
       pids:{n:sv.pids.total, fail:sv.pids.detail.filter(x=>x.st!=='ok').map(x=>x.pid).slice(0,40)},
       dtc:sv.dtc.actief, ai:{}, nav:{doors:['survey']}, errs:[], human:{}, novel:0.8, survey:sv });
-    vlSave(st2); try{ vlEnsureBtn(true); }catch(e){}
-    try{ vlAtPush(st2.sessies[st2.sessies.length-1]); }catch(e){}
+    vlSave(st2);
+    try{ vlEnsureBtn(true); }catch(e){ console.warn('vlEnsureBtn mislukt:', e); }
+    try{ vlAtPush(st2.sessies[st2.sessies.length-1]); }
+    catch(e){ btDiag('Survey niet in de Airtable-wachtrij gezet: '+(e.message||e),'warn'); }
 
     // → direct los survey-JSON downloaden
     try{
@@ -504,9 +553,9 @@ async function vlFullSurvey(){
       a.download='pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-    }catch(e){}
+    }catch(e){ console.warn('Survey-bestand downloaden mislukt:', e); }
 
-    try{ log('📋 Full survey v2: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){}
+    try{ log('📋 Full survey v2: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
     const _flaky=sv.pids.detail.filter(x=>x.flaky).length;
     const _rdy=sv.readiness?(sv.readiness.nietGereed.length?sv.readiness.nietGereed.length+' monitor(s) niet gereed':'alle monitors gereed'):'readiness onbekend';
     _vlSvUI('✅ Survey klaar in '+sv.durS+'s<br><span style="font-weight:400;font-size:13px;opacity:.85">'+
@@ -519,7 +568,7 @@ async function vlFullSurvey(){
     _vlSvUI('⏹ Survey gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
   }finally{
     _vlSvBusy=false;
-    try{ if(_svBusTok){ PLBus.release(_svBusTok); _svBusTok=0; } }catch(_){}
+    try{ if(_svBusTok){ PLBus.release(_svBusTok); _svBusTok=0; } }catch(_){ /* stil: opruimen: token was mogelijk al vrijgegeven */ }
     // Bus is weer vrij: BT-strategie HERIJKEN op de echte pid-snelheid, zodat
     // analyses hierna op de juiste timing draaien. Eerdere metingen (tijdens
     // of vóór de survey/discovery) kunnen vertekend zijn.
@@ -527,9 +576,9 @@ async function vlFullSurvey(){
       setTimeout(()=>{try{
         measureConnSpeed(6).then(sp=>{
           if(sp){applyStrategy(suggestStrategy(sp));
-            try{btDiag('BT-strategie herijkt na Full Survey: '+sp.avgMs+'ms/read → '+_connStrategy,'ok');}catch(_){}}
+            try{btDiag('BT-strategie herijkt na Full Survey: '+sp.avgMs+'ms/read → '+_connStrategy,'ok');}catch(_){ /* stil: melding mag nooit de meting breken */ }}
         });
-      }catch(_){}},1200);
+      }catch(_){ console.warn('BT-strategie herijken na survey mislukt:', _); }},1200);
     }
   }
 }
@@ -543,7 +592,9 @@ function _plEvalCapture(msg,type){
     var t=(type||'').toLowerCase();
     if(!PidLaneEvalLog.active && vlCaptureOn() && t==='ok' && /verbonden/i.test(m) && !(typeof demoMode!=='undefined'&&demoMode)){
       _plPidFlagged={};
-      var who=''; try{ who=(window.currentUser&&currentUser.name)||''; }catch(e){}
+      var who='';
+      try{ who=(window.currentUser&&currentUser.name)||''; }
+      catch(e){ /* stil: nog niet ingelogd */ }
       PidLaneEvalLog.start('VL-'+Date.now().toString(36).toUpperCase(),{tester:who});
     }
     if(!PidLaneEvalLog.active) return;
@@ -551,7 +602,10 @@ function _plEvalCapture(msg,type){
     var cat='app';
     if(t==='err') cat='fout';
     else if(/verbroken/i.test(m)){ PidLaneEvalLog.log('adapter','disconnect');
-      setTimeout(function(){ try{ if(typeof connected==='undefined'||!connected) vlFinalize(); }catch(e){} }, 2500); return; }
+      setTimeout(function(){
+        try{ if(typeof connected==='undefined'||!connected) vlFinalize(); }
+        catch(e){ console.warn('vlFinalize na verbreken mislukt:', e); }
+      }, 2500); return; }
     else if(/fallback/i.test(m)){ PidLaneEvalLog.log('ai','fallback',{fallback:true}); return; }
     else if(/verbind|verbonden|connect|adapter|\bSPP\b|\bBLE\b|latency|gekoppeld|ELM|protocol/i.test(m)) cat='adapter';
     else if(/RDW|kenteken|VIN/i.test(m)) cat='voertuig';
@@ -559,22 +613,36 @@ function _plEvalCapture(msg,type){
     else if(/analyse|rapport|monteur|datalog|token|\bAI\b/i.test(m)) cat='ai';
     else if(/deel|share|export/i.test(m)) cat='share';
     PidLaneEvalLog.log(cat, m);
-  }catch(e){}
+  }catch(e){ console.warn('Veldlab: sessie afronden mislukt:', e); }
 }
-try{ if(typeof log==='function'){ var _plOrigLog=log; log=function(msg,type){ _plOrigLog(msg,type); _plEvalCapture(msg,type); }; } }catch(e){}
+/* Deze regel wrapt log() zodat het veldlab meeleest. Dat is een van de
+   wrapperlagen waar OVERDRACHT.md voor waarschuwt: wie String(window.log)
+   doorzoekt leest deze wrapper en niet het origineel, en dat maakt
+   broncode-inspectie in deze codebase onbetrouwbaar. Meet gedrag.
+
+   Faalt het plaatsen, dan blijft de app werken maar legt het veldlab niets
+   meer vast — en dat merk je pas als het dashboard leeg blijft. */
+try{
+  if(typeof log==='function'){
+    var _plOrigLog=log;
+    log=function(msg,type){ _plOrigLog(msg,type); _plEvalCapture(msg,type); };
+  }
+}catch(e){ console.warn('Veldlab kon log() niet meelezen — het dashboard blijft leeg:', e); }
 
 /* ---- verdachte PID's blijven gemeld (kennisbank-kandidaten) ---- */
 function _plCheckPid(pid,val){
   try{
     if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
     if(_plPidFlagged[pid]) return;
-    var def=null; try{ def=(typeof getPidDef==='function')?getPidDef(pid):null; }catch(e){}
+    var def=null;
+    try{ def=(typeof getPidDef==='function')?getPidDef(pid):null; }
+    catch(e){ console.warn('getPidDef gooide voor '+pid+':', e); }
     var reden='';
     if(!def || !def.name) reden='onbekende PID (geen naam)';
     else if(typeof val!=='number' || !isFinite(val)) reden='onzin-waarde (geen getal)';
     else if(def.min!=null && def.max!=null && (val < def.min-0.001 || val > def.max+0.001)) reden='buiten bereik ('+def.min+'…'+def.max+' '+(def.unit||'')+')';
     if(reden){ _plPidFlagged[pid]=1; PidLaneEvalLog.log('pidq','verdacht',{pid:pid,naam:(def&&def.name)||'',waarde:val,reden:reden}); }
-  }catch(e){}
+  }catch(e){ console.warn('Veldlab: PID-kwaliteit beoordelen mislukt:', e); }
 }
 
 /* ---- adaptieve micro-check: alleen vragen als er iets te leren valt ---- */
@@ -583,7 +651,7 @@ function vlMicroCheck(){
   const snap=PidLaneEvalLog.snapshot(); if(!snap||snap.invalid) return;
   const g=vlDerive(snap.events||[]);
   const nv=vlNovelty(g);
-  if(!(nv.newCell||nv.newMerk||nv.anomaly)) { try{ log('🧪 Veldlab: bekend terrein — geen vragen nodig','info'); }catch(e){} PidLaneEvalLog.setAsked(); return; }
+  if(!(nv.newCell||nv.newMerk||nv.anomaly)) { try{ log('🧪 Veldlab: bekend terrein — geen vragen nodig','info'); }catch(e){ /* stil: melding mag nooit de meting breken */ } PidLaneEvalLog.setAsked(); return; }
   PidLaneEvalLog.setAsked();
   const why = nv.newCell?'Nieuw terrein: '+nv.fuel+' · '+nv.band+' · '+nv.pc : nv.newMerk?'Nieuw merk: '+(nv.merk||'?') : 'Afwijking gezien (fout/fallback/verdachte PID)';
   let el=document.getElementById('vlSheet'); if(el) el.remove();
@@ -613,7 +681,7 @@ function vlMicroCheck(){
     PidLaneEvalLog.setHuman('echt', (document.getElementById('vlEcht').value||'').trim());
     PidLaneEvalLog.setHuman('blocker', (document.getElementById('vlBlok').value||'').trim());
     el.remove();
-    try{ log('🧪 Veldlab: monteur-input vastgelegd','ok'); }catch(e){}
+    try{ log('🧪 Veldlab: monteur-input vastgelegd','ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
   };
   document.getElementById('vlSkip').onclick=function(){ el.remove(); };
 }
@@ -700,11 +768,12 @@ function vlOpenDash(){
   document.getElementById('vlExp').onclick=function(){
     var name='pidlane-veldlab-export-'+new Date().toISOString().slice(0,10)+'.json';
     var body=JSON.stringify({export:'pidlane-veldlab',v:1,t:Date.now(),sessies:S},null,1);
-    try{ if(typeof download==='function'){ download(name,body); return; } }catch(e){}
-    try{ var b=new Blob([body],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},2000);}catch(e){}
+    try{ if(typeof download==='function'){ download(name,body); return; } }
+    catch(e){ console.warn('download() mislukt, terugvallen op blob:', e); }
+    try{ var b=new Blob([body],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},2000);}catch(e){ /* stil: element kan al weg zijn */ }
   };
-  document.getElementById('vlTgl').onclick=function(){ try{ localStorage.setItem('pl_veldlab_uit', vlCaptureOn()?'1':'0'); }catch(e){} vlOpenDash(); };
-  document.getElementById('vlDel').onclick=function(){ if(confirm('Alle veldlab-sessies wissen?')){ try{ localStorage.removeItem(VL_KEY); }catch(e){} vlOpenDash(); } };
+  document.getElementById('vlTgl').onclick=function(){ try{ localStorage.setItem('pl_veldlab_uit', vlCaptureOn()?'1':'0'); }catch(e){ /* stil: element kan al weg zijn */ } vlOpenDash(); };
+  document.getElementById('vlDel').onclick=function(){ if(confirm('Alle veldlab-sessies wissen?')){ try{ localStorage.removeItem(VL_KEY); }catch(e){ /* stil: element kan al weg zijn */ } vlOpenDash(); } };
 }
 
 /* ---- knop rechtsonder (alleen admin) ---- */
@@ -713,5 +782,5 @@ function vlEnsureBtn(force){
   // Veldlab blijft bereikbaar via ☰-menu → 🧪 Veldlab. Deze functie ruimt nu
   // alleen een eventueel nog bestaande knop op (en blijft aanroepbaar voor
   // bestaande callsites).
-  try{ var b=document.getElementById('plEvalBtn'); if(b) b.remove(); }catch(e){}
+  try{ var b=document.getElementById('plEvalBtn'); if(b) b.remove(); }catch(e){ /* stil: element kan al weg zijn */ }
 }

@@ -200,3 +200,37 @@ function _startDemoCore(car, kent){
     }catch(e){} }, 300);
   }
 }
+
+/* ── Demo starten vanaf het LOGINSCHERM ──────────────────────────────
+   Toegevoegd 21-08-2026 voor Play Store-blokkade 3 ("minimum
+   functionality"). Een reviewer heeft geen auto, geen OBD2-adapter en
+   geen account. Zag hij alleen een loginformulier, dan las dat als een
+   app die niet te beoordelen valt — en dat is een afwijzing waar je
+   weken op wacht.
+
+   Wat deze functie NIET doet: inloggen. Er wordt geen sessie gezet, geen
+   token bewaard, geen rol toegekend. AI-analyse loopt via de worker en
+   die vraagt een geldig sessietoken, dus die blijft dicht. Wat er open
+   gaat is precies wat de demo altijd al was: gesimuleerde sensordata en
+   de schermen eromheen.
+
+   De volgorde is bewust. Eerst het loginscherm wegdoen met dezelfde
+   overgang als finishLogin() gebruikt (de golfachtergrond blijft staan,
+   anders knippert het), en pas daarna de auto-kiezer openen. Andersom
+   verschijnt de kiezer óver het loginformulier en zie je het formulier
+   er nog doorheen staan. */
+function plDemoZonderLogin(){
+  if(typeof featOn==='function' && !featOn('feat_demo')){
+    showToast?.('Demo-modus is uitgeschakeld door beheerder'); return;
+  }
+  try{
+    const lo=document.getElementById('loginOv');
+    if(lo){
+      lo.classList.add('lg-leave');
+      setTimeout(()=>{ try{ lo.classList.add('hidden'); lo.classList.remove('lg-leave'); }catch(e){} }, 260);
+    }
+  }catch(e){}
+  try{ btDiag('Demo gestart vanaf het loginscherm (geen sessie)','info'); }catch(e){}
+  setTimeout(()=>{ try{ openDemoCarChooser(); }catch(e){ showToast?.('Demo kon niet starten'); } }, 300);
+}
+window.plDemoZonderLogin = plDemoZonderLogin;
