@@ -115,7 +115,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
 | 26 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
-| 27 | `pidlane-scheduler.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
+| 27 | `pidlane-motortype.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
 | 28 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
 | 29 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
 | 30 | `pidlane-rit.js` | 29 | ritanalyse |
@@ -1448,7 +1448,7 @@ Negentien functies die nergens werden aangeroepen (ook niet vanuit HTML of een
 
 ### Nog open uit deze sweep
 
-- `pidlane-scheduler.js` heet scheduler, maar de echte scheduler (`PLSched`,
+- `pidlane-motortype.js` heet scheduler, maar de echte scheduler (`PLSched`,
   `pidPollInterval`, `pidsDueNow`) zit in `pidlane-plload.js`. Verwarrende naam,
   geen kapotte code.
 - Elf modules doen hun eigen `fetch` naar de worker; er is geen centrale ingang.

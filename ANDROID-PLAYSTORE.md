@@ -196,8 +196,25 @@ diagnosehardware in het voertuig praat.
 
 Reken erop dat een reviewer het probeert zonder auto en zonder adapter. Zorg dat
 het scherm dat hij dan ziet uitlegt wat hij mist, in plaats van te blijven
-hangen op "verbinden…". Overweeg een demomodus die zonder hardware iets laat
-zien — dat is het verschil tussen "onbruikbaar" en "ik had geen adapter".
+hangen op "verbinden…".
+
+**Gedaan op 21-08-2026: de demoknop staat nu op het loginscherm.** Hij stond tot
+die dag in het verbindscherm, dus achter de inlogmuur — terwijl de
+reviewnotitie hieronder belooft dat hij op het startscherm staat. Een reviewer
+zonder account zag alleen een loginformulier. De notitie en de app vertelden
+twee verschillende verhalen, en juist dat is wat een reviewer opmerkt.
+
+De knop zet géén sessie: geen token, geen rol. AI-analyse loopt via de worker en
+die vraagt een geldig sessietoken, dus die route blijft dicht. Wat open gaat is
+wat de demo altijd al was — gesimuleerde sensordata en de schermen eromheen.
+
+`public/test-demo-toegang.js` bewaakt drie dingen samen: de knop staat binnen
+`#loginOv` en niet in `#connOv`, hij roept een bestaande globale functie aan, en
+de knoptekst is woordelijk gelijk aan wat de reviewnotitie belooft.
+
+**Wat er nog moet:** screenshots waarop te zien is dat de app echte
+meetgegevens toont, en een storebeschrijving die Bluetooth-diagnose als
+kernfunctie noemt. Dat is geen code meer.
 
 ---
 

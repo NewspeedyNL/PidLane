@@ -117,7 +117,7 @@ zonder zeef, toevoegen op **aanname** (merk + brandstof) niet. Van de vijf
 plekken die `supportedPIDs` uitbreiden viel alleen de preset in die tweede
 categorie. `test-steunbits.js` telt ze nu, dus een zesde plek valt op.
 
-**De wizard is van zes stappen naar één** (20-08 avond, `pidlane-scheduler.js`).
+**De wizard is van zes stappen naar één** (20-08 avond, `pidlane-motortype.js`).
 Vier ervan toonden voortgang voor werk dat `initConnection()` al had gedaan:
 adapter en protocol (staan nu op het startscherm, met de cascade live), een
 tweede snelheidsmeting van acht reads bovenop die van regel 1721, en twee
@@ -261,6 +261,6 @@ Teruggehaald uit de laatste gecontroleerde zip.
   en neemt de socket mee. Niet onderzocht.
 - `vehicleInfo` was op 17-08 half gevuld (alleen "Mazda") en op 18-08 compleet.
   Oorzaak onbekend; de testrun meldt nu welke velden ontbreken.
-- `pidlane-scheduler.js` heet verkeerd: de echte scheduler zit in
+- `pidlane-motortype.js` heet verkeerd: de echte scheduler zit in
   `pidlane-plload.js`.
 - Snap-on-patentfamilie juridisch laten nakijken vóór de referentie-opslag.

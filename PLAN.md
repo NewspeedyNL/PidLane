@@ -1,6 +1,6 @@
 # PLAN.md — wat er nog open staat
 
-Bijgewerkt: 21-08-2026 (avond) — versie 3.0.0.
+Bijgewerkt: 21-08-2026 (nacht) — versie 3.0.0, testrun 3.3.
 
 Dit bestand is het werkplan over sessies heen: **alleen wat er nog moet
 gebeuren, in volgorde**. Wat er gebeurd is staat in `OVERDRACHT.md`, hoe het
@@ -247,28 +247,6 @@ kant-en-klare procenten, dus in demomodus zag de sensor er altijd goed uit.
 
 ---
 
-## 5. De stille catches, per module
-
-626 van de 948 `try`-blokken gooien hun fout weg zonder spoor. Dat is hoe ronde
-5 maanden dood kon zijn zonder dat iemand het zag.
-
-**De regel:** een `catch` mag stil zijn als je de fout verwacht (localStorage
-vol, DOM-element weg, JSON van een gebruiker). Nooit rond een aanroep van eigen
-code — daar hoort minimaal een `btDiag(..., 'warn')` in.
-
-Niet als aparte grote klus doen. Wel gericht beginnen bij de modules waar een
-stille fout het meest kost, telkens als je er tóch bent:
-
-- `pidlane-pidgate.js` en `pidlane-pids.js` — de PID-filtering; hier ging het
-  drie keer mis
-- `pidlane-bt.js` — 45 stille catches in de transportlaag
-- `pidlane-plload.js` en `pidlane-data.js` — de regelkringen
-
-Nieuwe `typeof`-guards die je onderweg maakt: registreren in `KRITIEK`
-(`pidlane-bedrading.js`). `test-bedrading.js` dwingt dat af.
-
----
-
 ## 6. Verspreide logica samentrekken
 
 Zelfde soort probleem als de PID-gate vóór ronde 1: dezelfde regel op veel
@@ -292,22 +270,10 @@ Raakt de DTC-lookup (§14). Klein, maar apart houden omdat het gedrag verandert.
 
 ---
 
-## 7. Opruimen en afmaken
+## 7. ~~Opruimen en afmaken~~ — zie punt 15
 
-**`pidlane-scheduler.js` heet verkeerd.** De echte scheduler (`PLSched`,
-`pidPollInterval`, `pidsDueNow`) zit in `pidlane-plload.js`; wat in
-`scheduler.js` staat is motortype-splitsing en EV-modus. Hernoemen naar
-`pidlane-motortype.js` of samenvoegen. Puur naamgeving, maar het kost elke keer
-dat je erin duikt tien minuten.
-
-**`renderGauges()`-vangnet.** Verwijderen zodra uit de logs blijkt dat de zeef
-daar nooit meer iets tegenhoudt. Kan pas na een paar ritten met de geactiveerde
-herijking én de steunbitcontrole, want die veranderen precies wat er langskomt.
-
-**Mode 06 in `pidlane-veldlab.js`** plus de bijbehorende `PIDLANE.md`-update.
-Al een keer uitgesteld.
-
----
+Hernoemen, vangnet en mode 06 zijn afgehandeld op 21-08. Wat er van dit punt
+overblijft staat in punt 5 (stille catches) en punt 6 (verspreide logica).
 
 ## 8. ~~Vierde chip in de topbar~~ — GEBOUWD (21-08)
 
@@ -361,13 +327,135 @@ opgehoogde versie, in de delta-zip. Dat is nu onderdeel van de oplevering.
 
 ---
 
-## 11. De race in `bt.js:1787`
+## 14. ~~Play Store: de drie blokkades~~ — ALLE DRIE UIT DE CODE (21-08)
 
-`updateVehicleCard()` roept `rdwLookup()` aan **zonder `await`**, dus de preset
-kan `supportedPIDs` bijwerken vóórdat `initConnection` op regel 1730
-`saveVinProfile()` doet. Zo kwamen de zeven ontkende PIDs ooit in het opgeslagen
-profiel terecht. De steunbitzeef dicht het gevolg, niet de oorzaak. Klein en
-zelfstandig; oppakken wanneer je toch in die module zit.
+**Blokkade 1 — locatie.** Route (a): de app leest geen locatie meer.
+`pidlane-gps.js` weg, geen positie in de bulk-recorder, `privacy.html` en het
+disclosurescherm bijgewerkt. `ACCESS_FINE_LOCATION` blijft alleen als
+legacy-BT-permissie met `maxSdkVersion=30`; de CI faalt als dat ooit verruimd
+wordt. Locatie is geen onderwerp in de Data safety-form.
+
+**Blokkade 2 — inzendbaar bestand.** De CI bouwt en ondertekent een `.aab`,
+`versionCode` loopt mee met `github.run_number`, `versionName` komt uit
+`package.json` en is gelijk aan `APP_VERSION`.
+
+**Blokkade 3 — minimum functionality.** De demoknop staat nu op het
+**loginscherm**, met woordelijk de tekst die de reviewnotitie belooft. Hij stond
+tot 21-08 in het verbindscherm, dus achter de inlogmuur: een reviewer zonder
+account zag alleen een loginformulier. De notitie en de app vertelden twee
+verschillende verhalen, en juist dat merkt een reviewer op.
+
+De knop zet géén sessie — geen token, geen rol. AI loopt via de worker en die
+vraagt een geldig sessietoken, dus die route blijft dicht voor iedereen die
+alleen de demo opent. `test-demo-toegang.js` bewaakt de knop, de functie én dat
+de tekst gelijk blijft aan de reviewnotitie.
+
+**Ook opgeruimd:** drie terugvallen op versie `'2.1'` — in de HTML van het
+loginscherm, in het scriptje dat die HTML overschrijft, en in de
+Airtable-melding van `pidlane-auth.js`. Alle drie uit de tijd dat `package.json`
+werkelijk 2.1.0 zei. Zo'n terugval is erger dan geen waarde: hij ziet er geldig
+uit, dus niemand controleert hem. Nu `'?'`, en `test-versie.js` houdt het zo.
+
+**Wat er nog moet is geen code:** screenshots waarop echte meetgegevens te zien
+zijn, een storebeschrijving die Bluetooth-diagnose als kernfunctie noemt, en de
+Data safety-form invullen gelijk aan `privacy.html`. Plus de keystore-back-up
+ergens die niet dezelfde plek is als de secrets.
+
+---
+
+## 11. ~~De race in `bt.js:1787`~~ — DICHT (21-08)
+
+`updateVehicleCard()` geeft de lopende `rdwLookup()` nu terug, en
+`initConnection` wacht erop voordat `saveVinProfile()` draait. Twaalf seconden
+grens; daarna geen internet of RDW plat, en dan wordt het profiel **niet**
+opgeslagen — het zou merk, model en brandstof missen en dat blijft hangen tot de
+volgende volle discovery.
+
+Nieuw: aandachtspunten bij het voertuigdossier (`plVoertuigLet()` in
+`pidlane-voertuigdata.js`). Mislukt de opzoeking, dan kleurt de auto-chip oranje
+en staat er in het dossier waarom het profiel ontbreekt. Geen toast: een melding
+die wegvalt terwijl je rijdt is geen melding. Het punt verdwijnt bij een
+geslaagde nieuwe poging.
+
+---
+
+## 15. ~~Punt 7: hernoemen, vangnet, mode 06~~ — DICHT (21-08)
+
+`pidlane-scheduler.js` heet nu `pidlane-motortype.js`; alle acht referenties in
+één keer mee. De echte scheduler zat altijd al in `pidlane-plload.js`.
+
+Het `renderGauges()`-vangnet is weg. Het meldde niets meer sinds de
+steunbitcontrole en de geactiveerde herijking. Bewust wég in plaats van laten
+staan: een controle die nooit aanslaat wordt niet gelezen, en een zeef in de
+tekenlus filtert stil — precies wat de bug destijds drie rondes verborgen hield.
+
+Mode 06 vervalt; was voor eigen gebruik en niet meer nodig.
+
+---
+
+## 5. De stille catches — 108 opgeruimd, 716 te gaan
+
+**`pidlane-bt.js` en `pidlane-veldlab.js`: allebei van 54 naar 0.** Bewezen dat
+alleen catch-bodies en commentaar wijzigden; de rest van de code is teken voor
+teken gelijk.
+
+`test-stille-catches.js` is een **ratel**: per module staat de huidige stand,
+meer mag niet, minder mag altijd. Een catch met een reden erin
+(`catch(e){ /* stil: opslag kan vol zijn */ }`) telt niet mee — dat onderscheid
+is het punt. Een test die nul eist zou vanaf dag één rood staan, en een test die
+altijd rood staat wordt genegeerd.
+
+**Werkregel:** stil mag bij een verwachte externe fout (opslag vol, element weg,
+een sonde die juist test óf iets antwoordt), nooit rond een aanroep van eigen
+code. Bij twijfel: `btDiag` als het in het logboek hoort, `console.warn` voor de
+rest. Nooit een toast — die vallen weg tijdens het rijden.
+
+**Nog te doen, op volgorde van omvang:** `remote` 105, `testrun` 66,
+`koopcheck` 42, `fuel` 40, `auth` 39, `btflow` 30. Eén module per sessie, en
+verlaag daarna de grens in de ratel.
+
+**Wat de twee modules opleverden:**
+
+*`bt.js`* — `probeUitgebreid()` stond in een lege catch. Dáárom zei `PLAN.md`
+punt 4 maandenlang dat mode 21 nergens werd opgevraagd. Idem
+`herijkPidGate('protocol gevonden')`: faalt die, dan draait de PID-zeef op oude
+kennis, en dat is de hele fantoomsensor-familie.
+
+*`veldlab.js`* — zie punt 16 hieronder.
+
+---
+
+## 16. De survey telt een transportfout als "PID bestaat niet"
+
+Gevonden op 21-08 bij het opruimen van `pidlane-veldlab.js`, regel 373:
+
+```js
+let raw=''; try{ raw=await sendCmd(...); }catch(e){}
+// verderop:  let st='nodata'
+```
+
+Gooit `sendCmd` — timeout, socket weg, bus bezet — dan blijft `raw` leeg en
+wordt de status `nodata`. Een **transportfout telt dus als "deze auto
+ondersteunt deze PID niet"**, en dat oordeel gaat naar Airtable en voedt de
+dekkingsmatrix per merk.
+
+Exact dezelfde verwarring die blok 10 met een ijkronde vermijdt — maar dan in
+het instrument dat bepaalt wat een merk ondersteunt. Hoeveel van de bestaande
+Airtable-records hierdoor vervuild zijn is onbekend.
+
+De catch meldt het nu. `nodata` en `transportfout` uit elkaar trekken is een
+gedragswijziging: aparte teller in `sv.pids`, en dan de vraag of oude records
+nog te vertrouwen zijn.
+
+Kleiner uit dezelfde module: `vlSave()` en `_vlAtQueuePush()` slikten
+QuotaExceeded stil, terwijl het commentaar erboven letterlijk waarschuwt voor
+"onzichtbaar dataverlies". Een mislukte `vlSave()` betekent dat de veldlab-sessie
+weg is — het enige wat een rit aan onderzoek oplevert. Beide melden nu.
+
+En `pidlane-veldlab.js:618` wrapt `log()`. Dat is de tweede wrapperlaag naast
+`pidlane-remote.js`; nu gedocumenteerd op de plek zelf.
+
+---
 
 ## 12. Blok 1 van de testrun: nog twee scherpe randen
 
