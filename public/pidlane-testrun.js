@@ -21,12 +21,17 @@
 // achteraf terug te zien welke vraag een run moest beantwoorden — en of hij
 // dat deed.
 //
-// WAT ER IN 1.7 BIJ KWAM
-// Twee sondes die vooruitlopen op PLAN.md punt 2 en 4. Ze veranderen NIETS aan
-// het gedrag van de app — ze verzamelen het bewijs waarmee die twee sessies
-// moeten beginnen. Blok 7 leest een spoor van de pollbudget-regeling dat de
-// hele rit doorloopt; blok 8 vraagt drie kandidaten voor de olietemperatuur op
-// en rekent beide gangbare schalingen uit. Wie van beide klopt, beslist de weg.
+// WAT ER IN 3.4 BIJ KWAM
+// Blok 5 is herschreven voor de stille-catches-klus van 22-08: 584 lege catches
+// over acht modules zijn gevuld. Die wijziging is gedragsneutraal, dus er valt
+// niets "nieuws" te testen — wél of de wrappers die eronder zaten nog leven, en
+// of de vondsten uit die klus (PLAN.md punt 19 en 20) in het veld afgaan.
+//
+// Nieuw is blok 11: een inventarisatie die ALLEEN LEEST en de bus niet aanraakt.
+// Het verzamelt in één keer de cijfers waar punt 3 (mag de gate een stille
+// sensor opruimen), punt 6 (verspreide logica) en punt 12 (bytelengtes) om
+// vragen. Geen enkele beslissing, alleen tellen — zodat die drie sessies met
+// getallen kunnen beginnen in plaats van met een schatting.
 //
 // VEILIGHEID
 // Uitsluitend lezende commando's. VERBODEN hieronder wordt gecontroleerd
@@ -37,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.3 (21-08-2026)';
+const TESTRUN_VERSIE = '3.4 (22-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -53,7 +58,7 @@ function _wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 function _boek(blok, naam, staat, detail, ms) {
   _trLog.push({ t: _klok(), blok: blok, naam: naam, staat: staat, detail: detail || '', ms: ms == null ? null : Math.round(ms) });
-  try { _teken(); } catch (e) {}
+  try { _teken(); } catch (e) { console.warn('Testrun-log niet herteken op het scherm (het onderliggende logboek is wel bijgewerkt)', e); }
 }
 
 // Eén controle draaien. Een fout wordt GEBOEKT, niet weggeslikt — dat is het
@@ -89,11 +94,11 @@ function _bewaarSelectie() {
     profiel: null,
     t: _nu()
   };
-  try { if (typeof activePIDs !== 'undefined') s.actief = Array.from(activePIDs); } catch (e) {}
-  try { if (typeof manualPIDs !== 'undefined') s.handmatig = Array.from(manualPIDs); } catch (e) {}
-  try { s.profiel = (typeof actiefPollProfiel === 'function') ? actiefPollProfiel() : null; } catch (e) {}
+  try { if (typeof activePIDs !== 'undefined') s.actief = Array.from(activePIDs); } catch (e) { console.warn('LET OP: actieve PIDs niet in het herstelpunt gezet — het herstel na deze run kan de selectie leegmaken in plaats van teruggeven', e); }
+  try { if (typeof manualPIDs !== 'undefined') s.handmatig = Array.from(manualPIDs); } catch (e) { console.warn('LET OP: handmatige PIDs niet in het herstelpunt gezet — het herstel na deze run kan die selectie kwijtraken', e); }
+  try { s.profiel = (typeof actiefPollProfiel === 'function') ? actiefPollProfiel() : null; } catch (e) { console.warn('LET OP: pollprofiel niet in het herstelpunt gezet', e); }
   _trHerstel = s;
-  try { localStorage.setItem(HERSTEL_SLEUTEL, JSON.stringify(s)); } catch (e) {}
+  try { localStorage.setItem(HERSTEL_SLEUTEL, JSON.stringify(s)); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   return s;
 }
 
@@ -110,11 +115,11 @@ function _herstelSelectie(bron) {
       (s.handmatig || []).forEach(function (p) { manualPIDs.add(p); });
     }
     if (s.profiel && typeof setPollProfile === 'function') setPollProfile(s.profiel, 'testrun klaar');
-    try { renderGauges(); } catch (e) {}
+    try { renderGauges(); } catch (e) { console.warn('Meters niet herberekend na het herstellen van de selectie — de selectie zelf is wel goed teruggezet', e); }
   } catch (e) {
     return 'HERSTEL MISLUKT: ' + (e.message || e);
   }
-  try { localStorage.removeItem(HERSTEL_SLEUTEL); } catch (e) {}
+  try { localStorage.removeItem(HERSTEL_SLEUTEL); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   _trHerstel = null;
   return s.actief.length + ' PIDs teruggezet';
 }
@@ -129,10 +134,10 @@ try {
       try {
         _herstelSelectie(s);
         if (typeof log === 'function') log('⚠ Vorige testrun is niet netjes geëindigd — PID-selectie teruggezet', 'warn');
-      } catch (e) {}
+      } catch (e) { console.warn('Crash-herstel van de PID-selectie bij het opstarten mislukt', e); }
     }, 4000);
   }
-} catch (e) {}
+} catch (e) { console.warn('Controle op een afgebroken vorige testrun mislukt bij het opstarten', e); }
 
 // ══════════════════════════════════════════════════════════════════
 // HET POLLBUDGET-SPOOR — meet mee, regelt niets
@@ -240,7 +245,7 @@ const PLBudget = (function () {
   };
 })();
 window.PLBudget = PLBudget;
-try { PLBudget.start(); } catch (e) {}
+try { PLBudget.start(); } catch (e) { console.warn('PLBudget niet gestart — het pollbudget-spoor voor PLAN.md punt 2 blijft dan leeg', e); }
 
 // ══════════════════════════════════════════════════════════════════
 // BLOK 1 — BEDRADING EN OMGEVING
@@ -417,7 +422,7 @@ async function _blok2() {
 let _budgetVoor = null;
 
 async function _blok3() {
-  try { _budgetVoor = (window.PLLoad && PLLoad.staat) ? PLLoad.staat().tempoPct : null; } catch (e) {}
+  try { _budgetVoor = (window.PLLoad && PLLoad.staat) ? PLLoad.staat().tempoPct : null; } catch (e) { console.warn('Tempo vóór de sweep niet gemeten — blok 4 kan dan geen vóór/na-vergelijking tonen voor PLAN.md punt 2/13', e); }
   if (typeof connected === 'undefined' || !connected) {
     _boek(3, 'PID-sweep', 'overgeslagen', 'geen verbinding', null);
     return;
@@ -434,7 +439,7 @@ async function _blok3() {
     } else if (typeof activePIDs !== 'undefined') {
       lijst = Array.from(activePIDs);
     }
-  } catch (e) {}
+  } catch (e) { console.warn('PID-lijst voor de sweep niet opgebouwd — de melding \'geen PID-lijst beschikbaar\' hieronder kan dan een leesfout verbergen', e); }
   lijst = lijst.filter(function (p) { return p && !VERBODEN.test(p); });
   if (!lijst.length) { _boek(3, 'PID-sweep', 'overgeslagen', 'geen PID-lijst beschikbaar', null); return; }
 
@@ -470,15 +475,15 @@ async function _blok3() {
   // en dat gebeurde op de run van 17-08. wait() wacht tot de lopende cyclus
   // klaar is; die duurt een paar honderd ms, dus 8 s is ruim.
   let _busTok = 0;
-  try { _busTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-sweep', 8000) : 0; } catch (e) {}
+  try { _busTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-sweep', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor de sweep gaf een fout (niet alleen \'bezet\')', e); }
   if (!_busTok) _boek(3, 'Busslot', 'LET OP', 'bus niet vrijgekomen binnen 8 s — sweep loopt naast de pollus', null);
   else _boek(3, 'Busslot', 'ok', 'bus geclaimd voor de sweep', null);
 
   // Selectie verbreden zodat de pollus ze ook echt aanraakt.
   try {
     if (typeof activePIDs !== 'undefined') lijst.forEach(function (p) { activePIDs.add(p); });
-    try { renderGauges(); } catch (e) {}
-  } catch (e) {}
+    try { renderGauges(); } catch (e) { console.warn('Meters niet ververst na het verbreden van de selectie voor de sweep', e); }
+  } catch (e) { console.warn('Selectie niet verbreed vóór de sweep — de pollus raakt dan niet alle geveegde PIDs aan', e); }
 
   let gelukt = 0, leeg = 0, fout = 0;
   const stille = [];
@@ -492,7 +497,7 @@ async function _blok3() {
     const ms = _nu() - t0;
 
     let waarde = null;
-    try { if (typeof parsePID === 'function') waarde = parsePID(pid, raw); } catch (e) {}
+    try { if (typeof parsePID === 'function') waarde = parsePID(pid, raw); } catch (e) { console.warn('Parser klapte op ' + pid + ' — dit is het exacte onderscheid (ECU vs. parser) waar blok 3 voor bestaat: ' + (e.message || e)); }
 
     const naam = (function () {
       try { const d = getPidDef(pid); return (d && d.name) || pid; } catch (e) { return pid; }
@@ -507,7 +512,7 @@ async function _blok3() {
     await _wacht(60);   // de bus even lucht geven tussen de metingen
   }
 
-  try { if (_busTok && window.PLBus && PLBus.release) PLBus.release(_busTok); } catch (e) {}
+  try { if (_busTok && window.PLBus && PLBus.release) PLBus.release(_busTok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
 
   _boek(3, 'PID-sweep klaar', gelukt && !fout ? 'ok' : 'LET OP',
     gelukt + ' gelezen, ' + leeg + ' geen data, ' + fout + ' parserprobleem', null);
@@ -623,7 +628,7 @@ async function _blok6() {
   if (typeof demoMode !== 'undefined' && demoMode) { _boek(6, 'Stille sensoren', 'overgeslagen', 'demomodus', null); return; }
 
   let tok = 0;
-  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-stil', 8000) : 0; } catch (e) {}
+  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-stil', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor blok 6 gaf een fout (niet alleen \'bezet\')', e); }
   _boek(6, 'Busslot', tok ? 'ok' : 'LET OP', tok ? 'bus geclaimd' : 'niet vrijgekomen — metingen lopen naast de pollus', null);
 
   // Waar dit blok voor bedoeld is: uitzoeken waaróm een sensor zwijgt. Maar
@@ -677,7 +682,7 @@ async function _blok6() {
       for (let i = 0; i < 5; i++) {
         if (_trStop) break;
         let r = '';
-        try { r = await sendCmd(pid, 2000); } catch (e) {}
+        try { r = await sendCmd(pid, 2000); } catch (e) { /* stil: een fout hier telt hetzelfde als 'geen antwoord' — precies wat dit blok test */ }
         if (!leeg(r)) { raak++; monsters.push(String(r).replace(/\s+/g, '').slice(0, 14)); }
         await _wacht(220);
       }
@@ -685,14 +690,14 @@ async function _blok6() {
 
       // 3 — ruime tijd
       let traag = '';
-      try { traag = await sendCmd(pid, 9000); } catch (e) {}
+      try { traag = await sendCmd(pid, 9000); } catch (e) { /* stil: een fout hier telt hetzelfde als 'geen antwoord' — precies wat dit blok test */ }
       bevinding.push('ruime timeout: ' + (leeg(traag) ? 'nog steeds stil' : 'WEL antwoord'));
       await _wacht(150);
 
       // 4 — groepering: met z'n tweeën en met z'n zessen
       const maat = doel.filter(function (p) { return p !== pid; }).slice(0, 1).concat([]);
       let duo = '';
-      try { duo = await sendCmd(pid + (maat[0] || STIL_CONTROLE).slice(2), 3000); } catch (e) {}
+      try { duo = await sendCmd(pid + (maat[0] || STIL_CONTROLE).slice(2), 3000); } catch (e) { /* stil: een fout hier telt hetzelfde als 'geen antwoord' — precies wat dit blok test */ }
       bevinding.push('in een paar: ' + (leeg(duo) ? 'stil' : 'antwoord (' + String(duo).replace(/\s+/g, '').slice(0, 16) + ')'));
       await _wacht(150);
 
@@ -700,7 +705,7 @@ async function _blok6() {
       // te zien of een grote groep de kleine wegdrukt.
       const goeden = ['0C', '0D', '04', '11', '05'];
       let zes = '';
-      try { zes = await sendCmd(pid + goeden.join(''), 4000); } catch (e) {}
+      try { zes = await sendCmd(pid + goeden.join(''), 4000); } catch (e) { /* stil: een fout hier telt hetzelfde als 'geen antwoord' — precies wat dit blok test */ }
       const zesHex = String(zes).replace(/\s+/g, '');
       const eigenKop = ('4' + (parseInt(pid.slice(0, 2), 16) + 0x40).toString(16).slice(-1) + pid.slice(2)).toUpperCase();
       bevinding.push('in een groep van 6: ' + (leeg(zes) ? 'hele groep stil' :
@@ -712,8 +717,8 @@ async function _blok6() {
       try {
         await sendCmd('ATH1', 1500);
         metKop = await sendCmd(pid, 3000);
-      } catch (e) {}
-      try { await sendCmd('ATH0', 1500); } catch (e) {}   // altijd terugzetten
+      } catch (e) { /* stil: een fout hier telt hetzelfde als 'geen antwoord' — precies wat dit blok test */ }
+      try { await sendCmd('ATH0', 1500); } catch (e) { console.warn('LET OP: ATH0 (headers uit) mislukt na de headertest — als dit blijft hangen praat de rest van de app mogelijk alleen nog tegen dit adres', e); }   // altijd terugzetten
       const adres = String(metKop).replace(/\s+/g, '').slice(0, 6);
       bevinding.push('met headers: ' + (leeg(metKop) ? 'geen enkel adres reageert' : adres));
 
@@ -731,7 +736,7 @@ async function _blok6() {
     // dezelfde vraag: hoeveel PIDs staan er in de lijst die de ECU ontkent?
     await _doe(6, 'Profiel tegen de steunbits', function () {
       let lijst = [];
-      try { lijst = (typeof supportedPIDs !== 'undefined') ? Array.from(supportedPIDs) : []; } catch (e) {}
+      try { lijst = (typeof supportedPIDs !== 'undefined') ? Array.from(supportedPIDs) : []; } catch (e) { console.warn('supportedPIDs niet leesbaar voor de steunbit-vergelijking — de melding hieronder kan een leesfout verbergen als \'leeg\'', e); }
       if (!lijst.length) return { staat: 'LET OP', detail: 'supportedPIDs is leeg' };
       const ontkend = [], onbekend = [];
       lijst.forEach(function (p) {
@@ -753,8 +758,8 @@ async function _blok6() {
       'Controle-PID stil = de meting zelf deugt niet.', null);
 
   } finally {
-    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
-    try { await sendCmd('ATH0', 1500); } catch (e) {}   // vangnet: headers nooit aan laten staan
+    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
+    try { await sendCmd('ATH0', 1500); } catch (e) { console.warn('LET OP: vangnet ATH0 (headers uit) mislukte ook — als de headertest headers aanzette, kan de rest van de app nu alleen nog tegen dat ene adres praten', e); }   // vangnet: headers nooit aan laten staan
   }
 }
 
@@ -929,7 +934,7 @@ async function _blok8() {
   if (typeof demoMode !== 'undefined' && demoMode) { _boek(8, 'Olietemperatuur', 'overgeslagen', 'demomodus', null); return; }
 
   let tok = 0;
-  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-olie', 8000) : 0; } catch (e) {}
+  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-olie', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor blok 8 gaf een fout (niet alleen \'bezet\')', e); }
   _boek(8, 'Busslot', tok ? 'ok' : 'LET OP', tok ? 'bus geclaimd' : 'niet vrijgekomen — metingen lopen naast de pollus', null);
 
   const leeg = function (r) { return !r || /NO DATA|UNABLE|ERROR|STOPPED|\?/i.test(String(r)); };
@@ -942,12 +947,12 @@ async function _blok8() {
     await _doe(8, 'Stand van zaken in de app', function () {
       const uit = [];
       try { uit.push('2101 in supportedPIDs: ' + ((typeof supportedPIDs !== 'undefined' && supportedPIDs.has('2101')) ? 'JA' : 'nee')); } catch (e) { uit.push('supportedPIDs onleesbaar'); }
-      try { uit.push('015C dood volgens PLSched: ' + ((window.PLSched && PLSched.dood && PLSched.dood('015C')) ? 'JA' : 'nee')); } catch (e) {}
-      try { uit.push('probeUitgebreid bestaat: ' + (typeof probeUitgebreid === 'function' ? 'JA' : 'NEE')); } catch (e) {}
+      try { uit.push('015C dood volgens PLSched: ' + ((window.PLSched && PLSched.dood && PLSched.dood('015C')) ? 'JA' : 'nee')); } catch (e) { uit.push('PLSched.dood() onleesbaar'); }
+      try { uit.push('probeUitgebreid bestaat: ' + (typeof probeUitgebreid === 'function' ? 'JA' : 'NEE')); } catch (e) { uit.push('probeUitgebreid-check faalde'); }
       try {
         const k = (window.PLUitgebreid && PLUitgebreid.kandidaten) ? PLUitgebreid.kandidaten() : null;
         uit.push('kandidaten volgens merkfilter: ' + (k ? (k.length ? k.join(', ') : 'GEEN — merk onbekend of gefilterd') : 'onbekend'));
-      } catch (e) {}
+      } catch (e) { uit.push('PLUitgebreid.kandidaten() onleesbaar'); }
       return uit.join('  |  ');
     });
 
@@ -959,14 +964,14 @@ async function _blok8() {
         const h = hex(rk), i = h.indexOf('4105');
         if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
       }
-    } catch (e) {}
+    } catch (e) { console.warn('Koelwater-anker niet gelezen — de plausibiliteitscheck van de olietemperatuur draait dan zonder ijkpunt', e); }
     _boek(8, 'Koelwater (0105)', koel == null ? 'LET OP' : 'ok',
       koel == null ? 'niet gelezen — plausibiliteit is dan niet te beoordelen' : koel + ' °C', null);
     await _wacht(120);
 
     // ── Protocol: mag ik een header zetten? ──
     let protocol = '';
-    try { protocol = String(await sendCmd('ATDPN', 1500) || '').trim(); } catch (e) {}
+    try { protocol = String(await sendCmd('ATDPN', 1500) || '').trim(); } catch (e) { console.warn('Protocolopvraag (ATDPN) mislukt vóór de headertest', e); }
     const canElfBit = /^A?6$/i.test(protocol.replace(/[^0-9A-Za-z]/g, ''));
     _boek(8, 'Protocol', 'ok', 'ATDPN = "' + protocol + '"' +
       (canElfBit ? '  (11-bit CAN 500k — header 7E0 mag)' : '  (geen 11-bit CAN — headertest wordt overgeslagen)'), null);
@@ -1044,7 +1049,7 @@ async function _blok8() {
       await _doe(8, 'Mode 22 met header 7E0', async function () {
         try { await sendCmd('ATSH7E0', 1500); headerGezet = true; } catch (e) { return { staat: 'LET OP', detail: 'ATSH7E0 geweigerd' }; }
         let r = '';
-        try { r = await sendCmd('22111F', 3000); } catch (e) {}
+        try { r = await sendCmd('22111F', 3000); } catch (e) { /* stil: een fout hier telt hetzelfde als 'geen antwoord' — precies wat deze test meet */ }
         const h = hex(r);
         const i = h.indexOf('62111F');
         if (i >= 0) {
@@ -1080,8 +1085,8 @@ async function _blok8() {
     // Header ALTIJD terugzetten naar de functionele broadcast. Blijft 7E0 staan,
     // dan praat de hele app daarna alleen nog tegen het motorblok — en dat merk
     // je pas als een andere module niets meer terugkrijgt.
-    if (headerGezet) { try { await sendCmd('ATSH7DF', 1500); } catch (e) {} }
-    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+    if (headerGezet) { try { await sendCmd('ATSH7DF', 1500); } catch (e) { _boek(8, 'Header terugzetten', 'FOUT', 'ATSH7DF mislukt — de adapter kan blijven hangen op 7E0 (alleen motorblok); verbreek en verbind opnieuw als andere modules niets meer teruggeven: ' + (e.message || e), null); } }
+    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
   }
 }
 
@@ -1106,13 +1111,13 @@ async function _blok9() {
   if (typeof demoMode !== 'undefined' && demoMode) { _boek(9, 'DID-scan', 'overgeslagen', 'demomodus', null); return; }
 
   let tok = 0;
-  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-did', 8000) : 0; } catch (e) {}
+  try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-did', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor de DID-scan gaf een fout (niet alleen \'bezet\'); in tegenstelling tot blok 3/6/8 meldt blok 9 een gemiste claim niet apart in het logboek', e); }
   let headerGezet = false;
   const hex = function (r) { return String(r || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase(); };
 
   try {
     let proto = '';
-    try { proto = String(await sendCmd('ATDPN', 1500) || '').trim(); } catch (e) {}
+    try { proto = String(await sendCmd('ATDPN', 1500) || '').trim(); } catch (e) { console.warn('Protocolopvraag (ATDPN) mislukt vóór de DID-scan', e); }
     if (!/^A?6$/i.test(proto.replace(/[^0-9A-Za-z]/g, ''))) {
       _boek(9, 'DID-scan', 'overgeslagen', 'geen 11-bit CAN (ATDPN = "' + proto + '")', null);
       return;
@@ -1125,7 +1130,7 @@ async function _blok9() {
     try {
       const rk = await sendCmd('0105', 2500), h = hex(rk), i = h.indexOf('4105');
       if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
-    } catch (e) {}
+    } catch (e) { console.warn('Koelwater-anker niet gelezen — de DID-scan draait dan zonder ijkpunt voor de temperatuur-verdachten', e); }
 
     _boek(9, 'Scan gestart', 'ok', 'reeks 2211xx op header 7E0, 256 identifiers' +
       (koel != null ? '  |  koelwater ' + koel + ' °C' : ''), null);
@@ -1137,7 +1142,7 @@ async function _blok9() {
     for (let n = 0; n < 256 && !_trStop; n++) {
       const did = '11' + n.toString(16).toUpperCase().padStart(2, '0');
       let r = '';
-      try { r = await sendCmd('22' + did, 1200); } catch (e) {}
+      try { r = await sendCmd('22' + did, 1200); } catch (e) { /* stil: een fout hier telt hetzelfde als 'stil', en 256 losse meldingen zouden de console overspoelen */ }
       const h = hex(r);
       const i = h.indexOf('62' + did);
       if (i >= 0) {
@@ -1179,8 +1184,8 @@ async function _blok9() {
       'de olie. Blijft hij staan, dan is het iets anders.', null);
 
   } finally {
-    if (headerGezet) { try { await sendCmd('ATSH7DF', 1500); } catch (e) {} }
-    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+    if (headerGezet) { try { await sendCmd('ATSH7DF', 1500); } catch (e) { _boek(9, 'Header terugzetten', 'FOUT', 'ATSH7DF mislukt — de adapter kan blijven hangen op 7E0 (alleen motorblok); verbreek en verbind opnieuw als andere modules niets meer teruggeven: ' + (e.message || e), null); } }
+    try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
   }
 }
 
@@ -1285,7 +1290,7 @@ async function _blok10() {
   try {
     if (typeof supportedPIDs !== 'undefined' && supportedPIDs.size) kandidaten = Array.from(supportedPIDs);
     else if (typeof activePIDs !== 'undefined') kandidaten = Array.from(activePIDs);
-  } catch (e) {}
+  } catch (e) { console.warn('Kandidatenlijst voor de snelheidsproef niet opgebouwd — de melding \'geen bruikbare PIDs\' hieronder kan dan een leesfout verbergen', e); }
   kandidaten = kandidaten.filter(function (p) { return p && !VERBODEN.test(p); });
   if (typeof ecuSteunt === 'function')
     kandidaten = kandidaten.filter(function (p) { return ecuSteunt(p) !== false; });
@@ -1305,7 +1310,7 @@ async function _blok10() {
 
   const set = [];
   let ijkTok = 0;
-  try { ijkTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-snelheid-ijk', 8000) : 0; } catch (e) {}
+  try { ijkTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-snelheid-ijk', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor de ijkfase gaf een fout (niet alleen \'bezet\')', e); }
   try {
     for (let i = 0; i < kandidaten.length && set.length < 8; i++) {
       if (_trStop) break;
@@ -1314,7 +1319,7 @@ async function _blok10() {
       await _wacht(60);
     }
   } finally {
-    try { if (ijkTok && window.PLBus && PLBus.release) PLBus.release(ijkTok); } catch (e) {}
+    try { if (ijkTok && window.PLBus && PLBus.release) PLBus.release(ijkTok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
   }
 
   if (set.length < 3) {
@@ -1335,7 +1340,7 @@ async function _blok10() {
     const trap = SNELHEID_TRAPPEN[t];
 
     let tok = 0;
-    try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-snelheid', 8000) : 0; } catch (e) {}
+    try { tok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-snelheid', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor trap ' + trap.naam + ' gaf een fout (niet alleen \'bezet\')', e); }
     if (!tok) _boek(10, trap.naam, 'LET OP', 'bus niet vrijgekomen — deze trap loopt naast de pollus en telt dus mee met vreemd verkeer', null);
 
     const tijden = [];
@@ -1349,7 +1354,7 @@ async function _blok10() {
         if (trap.pauze) await _wacht(trap.pauze);
       }
     } finally {
-      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
     }
 
     const med = _pctl(tijden, 0.5), p90 = _pctl(tijden, 0.9), max = tijden.length ? Math.max.apply(null, tijden) : 0;
@@ -1377,9 +1382,9 @@ async function _blok10() {
       await _wacht(5000);
       if (_trStop) break;
       let ptok = 0;
-      try { ptok = (window.PLBus && PLBus.claim) ? PLBus.claim('testrun-snelheid-prik') : 0; } catch (e) {}
+      try { ptok = (window.PLBus && PLBus.claim) ? PLBus.claim('testrun-snelheid-prik') : 0; } catch (e) { console.warn('Busslot-claim voor een hersteltik gaf een fout', e); }
       const r = await _snelheidVraag(set[0]);
-      try { if (ptok && window.PLBus && PLBus.release) PLBus.release(ptok); } catch (e) {}
+      try { if (ptok && window.PLBus && PLBus.release) PLBus.release(ptok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
       if (r.ok) {
         prikken.push(r.ms);
         if (eersteHerstel === null && basis && r.ms <= basis * 1.25)
@@ -1433,9 +1438,9 @@ async function _blok10() {
 
     // En de vergelijking met wat de app op dat moment dacht.
     let ld = null;
-    try { ld = (window.PLLoad && PLLoad.staat) ? PLLoad.staat() : null; } catch (e) {}
+    try { ld = (window.PLLoad && PLLoad.staat) ? PLLoad.staat() : null; } catch (e) { console.warn('PLLoad.staat() niet gelezen — de vergelijking met de app-regeling (PLAN.md punt 13) mist dan zijn belangrijkste getal', e); }
     let bs = null;
-    try { bs = (window.PLBus && PLBus.stats) ? PLBus.stats() : null; } catch (e) {}
+    try { bs = (window.PLBus && PLBus.stats) ? PLBus.stats() : null; } catch (e) { console.warn('PLBus.stats() niet gelezen — de vergelijking met de app-regeling (PLAN.md punt 13) mist dan de foutgraad', e); }
     if (ld || bs) {
       // Dit is de regel waar het om gaat. Op 21-08 stond hier "tempo 18%" bij
       // 0% fouten, terwijl de proef er net 9,1 verzoeken per seconde foutloos
@@ -1476,122 +1481,95 @@ async function _blok10() {
 // klant erop drukt.
 async function _blok5() {
 
-  // ── TOEGEVOEGD 21-08 (nacht): de race in bt.js is dicht ──
-  await _doe(5, 'Voertuigprofiel wacht op de RDW-opzoeking', function () {
-    if (typeof plVoertuigLet !== 'function')
-      return { staat: 'FOUT', detail: 'plVoertuigLet ontbreekt — mislukte lookups worden nergens meer gemeld' };
-    const punten = (window._plVoertuigLet || []);
-    const rdw = punten.filter(function (x) { return x.sleutel === 'rdw'; })[0];
-    if (rdw)
-      return { staat: 'LET OP', detail: 'de kentekenopzoeking is bij dit verbinden mislukt — profiel NIET opgeslagen. Staat ook achter de auto-chip.' };
-    return 'geen openstaande aandachtspunten bij het voertuig';
-  });
+  // ── TOEGEVOEGD 22-08: de stille catches zijn gevuld ──
+  // De opruiming zelf verandert geen gedrag, dus "werkt het nieuwe" is hier de
+  // verkeerde vraag. De juiste vraag is of de dingen die ONDER die lege catches
+  // zaten nog leven. Twee van de vondsten (PLAN.md punt 19 en 20) zijn runtime
+  // te controleren; dat is wat hier gebeurt.
 
-  // ── TOEGEVOEGD 21-08 (nacht): module hernoemd ──
-  await _doe(5, 'pidlane-motortype.js heet nu goed', function () {
-    const tags = Array.prototype.slice.call(document.querySelectorAll('script[src]'))
-      .map(function (t) { return t.getAttribute('src'); });
-    if (tags.indexOf('pidlane-scheduler.js') >= 0)
-      return { staat: 'FOUT', detail: 'de oude naam hangt er nog in — twee kopieën van dezelfde module' };
-    if (tags.indexOf('pidlane-motortype.js') < 0)
-      return { staat: 'FOUT', detail: 'pidlane-motortype.js hangt niet in index.html' };
-    if (typeof selectStandardSet !== 'function')
-      return { staat: 'FOUT', detail: 'selectStandardSet ontbreekt — de hernoemde module laadt niet' };
-    return 'motortype-module geladen, oude naam weg';
-  });
-
-  // ── VERWIJDERD 21-08 (nacht): het renderGauges-vangnet ──
-  await _doe(5, 'Vangnet in renderGauges is weg', function () {
-    let bron = '';
-    try { bron = String(window.renderGauges || ''); } catch (e) {}
-    if (bron && bron.indexOf('_zeefGemeld') >= 0)
-      return { staat: 'FOUT', detail: 'het vangnet staat er nog in' };
-    if (typeof pidGate !== 'function')
-      return { staat: 'FOUT', detail: 'pidGate ontbreekt — de poorten bij binnenkomst zijn de enige zeef die over is' };
-    return 'tekenlus filtert niet meer, poorten staan bij pidToevoegen en magToevoegen';
-  });
-
-  // ── BLIJFT STAAN: demo vóór de inlogmuur (Play-blokkade 3) ──
-  await _doe(5, 'Demo bereikbaar zonder account', function () {
-    if (typeof plDemoZonderLogin !== 'function')
-      return { staat: 'FOUT', detail: 'plDemoZonderLogin ontbreekt — de knop op het loginscherm is dood' };
-    const knop = document.getElementById('btnDemoLogin');
-    if (!knop) return { staat: 'FOUT', detail: 'de demoknop staat niet in het loginscherm' };
-    const login = document.getElementById('loginOv');
-    if (login && !login.contains(knop))
-      return { staat: 'FOUT', detail: 'de knop staat buiten #loginOv — weer achter de inlogmuur' };
-    return 'knop staat in het loginscherm, functie bestaat';
-  });
-
-  await _doe(5, 'Versie is nergens hardcoded', function () {
-    let v = '?';
-    try { v = (typeof APP_VERSION !== 'undefined') ? String(APP_VERSION) : '?'; } catch (e) {}
-    if (v === '?') return { staat: 'FOUT', detail: 'APP_VERSION niet beschikbaar' };
-    const el = document.getElementById('loginVer');
-    if (el) {
-      const t = (el.textContent || '').replace(/^v/, '');
-      if (t && t !== v && t !== '…')
-        return { staat: 'FOUT', detail: 'loginscherm toont v' + t + ' terwijl de app ' + v + ' is' };
+  // PUNT 19 — de scherpste vondst van de klus. remote.js installeert vijftien
+  // wrappers, elk in een eigen try/catch. Faalde de clearDTC-wrapper, dan was de
+  // alleen-lezen-garantie van een remote sessie stilletjes niet actief. De
+  // installatie is niet meer stil, maar dat helpt alleen als hij ook slaagt —
+  // en dát is van buitenaf te zien: een gewrapte functie heeft de vlag in zijn
+  // brontekst staan, een kale niet.
+  await _doe(5, 'Remote-wrappers zijn geïnstalleerd', function () {
+    if (typeof window.PLRemote === 'undefined')
+      return { staat: 'LET OP', detail: 'PLRemote niet geladen — de wrappers horen dan ook niet te bestaan, niets te controleren' };
+    const eis = [
+      ['clearDTC', '_remoteVehicleMode', 'DE SCHRIJFBLOKKADE (punt 19)'],
+      ['sendCmd', '_remoteVehicleMode', 'stray one-shots'],
+      ['realScanDTC', '_remoteVehicleMode', 'de DTC-deur'],
+      ['ensurePIDListActive', '_remoteVehicleMode', 'sensoractivatie naar de local'],
+      ['selectCategoryPIDs', 'remPollActive', 'de +Alles-knop'],
+      ['updPID', 'feed', 'de telemetrie-tap']
+    ];
+    const weg = [], ok = [];
+    for (const [naam, merk, wat] of eis) {
+      let bron = '';
+      try { bron = String(window[naam] || ''); } catch (e) { bron = ''; }
+      if (!bron) { weg.push(naam + ' bestaat niet'); continue; }
+      if (bron.indexOf(merk) >= 0) ok.push(naam);
+      else weg.push(naam + ' NIET gewrapt (' + wat + ')');
     }
-    return 'app ' + v + ', loginscherm gelijk, testrun ' + TESTRUN_VERSIE;
+    if (weg.length)
+      return { staat: 'FOUT', detail: weg.join('; ') + '  —  wél gewrapt: ' + (ok.join(', ') || 'geen') };
+    return ok.length + ' wrappers actief, inclusief de alleen-lezen-blokkade op clearDTC';
   });
 
-  // ── BLIJFT STAAN: geen locatie, 0143, steunbitzeef ──
-  await _doe(5, 'De app leest geen locatie meer', function () {
-    if (typeof PLGps !== 'undefined')
-      return { staat: 'FOUT', detail: 'PLGps bestaat nog' };
-    let st = {};
-    try { st = (window.PLBulk && typeof PLBulk.status === 'function') ? PLBulk.status() : {}; } catch (e) {}
-    if (Object.prototype.hasOwnProperty.call(st, 'gps'))
-      return { staat: 'FOUT', detail: 'PLBulk.status() heeft nog een positieveld' };
-    return 'geen PLGps, geen positie in de recorder';
+  // PUNT 20 — _bewaarSelectie() legt vóór elke run vast wat er actief was, en
+  // die drie regels zaten alle drie in een lege catch. Faalt de vastlegging, dan
+  // zet het herstel na afloop een lege selectie terug in plaats van de echte.
+  // Dit blok draait ná _bewaarSelectie(), dus het herstelpunt staat er al.
+  await _doe(5, 'Herstelpunt is gevuld, niet leeg', function () {
+    if (!_trHerstel)
+      return { staat: 'FOUT', detail: 'geen herstelpunt — _bewaarSelectie() heeft niets vastgelegd' };
+    // Let op de valkuil: als activePIDs zélf onleesbaar is, dan faalt zowel het
+    // bewaren als deze controle, en zou een naïeve vergelijking (0 tegen 0)
+    // "ok" melden terwijl er structureel iets mis is. Daarom eerst de leesbaarheid
+    // vaststellen en pas daarna vergelijken.
+    let nActief = null;
+    try { nActief = (typeof activePIDs !== 'undefined') ? activePIDs.size : -1; }
+    catch (e) { throw new Error('activePIDs is onleesbaar (' + (e.message || e) + ') — dan is het herstelpunt óók leeg gebleven en wist deze run straks je selectie'); }
+    if (nActief === -1)
+      return { staat: 'LET OP', detail: 'activePIDs bestaat niet in deze build — niets om te bewaren, en niets om te herstellen' };
+    const nBewaard = (_trHerstel.actief || []).length;
+    if (nActief > 0 && nBewaard === 0)
+      return { staat: 'FOUT', detail: nActief + ' PIDs actief maar het herstelpunt is LEEG — na deze run wordt je selectie gewist in plaats van teruggezet' };
+    if (nActief === 0 && nBewaard === 0)
+      return { staat: 'LET OP', detail: 'geen enkele PID actief — herstelpunt is leeg, maar dat klopt dan. Zonder verbinding zegt deze controle niets' };
+    if (nActief !== nBewaard)
+      return { staat: 'LET OP', detail: nBewaard + ' bewaard tegen ' + nActief + ' actief — verschil kan kloppen als er net iets veranderde' };
+    return nBewaard + ' PIDs vastgelegd, profiel ' + (_trHerstel.profiel || '—');
   });
 
-  await _doe(5, '0143 rekent in procenten', function () {
-    let d = null;
-    try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) {}
-    if (!d || typeof d.parse !== 'function')
-      return { staat: 'FOUT', detail: '0143 heeft geen parser meer' };
-    let v = null;
-    try { v = d.parse([0x00, 0x38]); } catch (e) { return { staat: 'FOUT', detail: 'parser klapt' }; }
-    if (!(v > 21.5 && v < 22.5))
-      return { staat: 'FOUT', detail: '41430038 geeft ' + (Math.round(v * 100) / 100) + ', hoort 21,96 %' };
-    if (!(d.max >= 400))
-      return { staat: 'FOUT', detail: 'max staat op ' + d.max };
-    return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, max ' + d.max + '%';
-  });
-
-  await _doe(5, 'Preset respecteert de steunbits', function () {
-    if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
-      return { staat: 'FOUT', detail: 'de poort ontbreekt' };
-    let bits = {};
-    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) {}
-    const blokken = Object.keys(bits).length;
-    if (!blokken)
-      return { staat: 'LET OP', detail: 'nog geen bitmaps gelezen — de zeef laat dan alles door (bedoeld)' };
-    const uit = [];
-    if (magToevoegen('015C')) uit.push('015C zou nog toegevoegd worden');
-    if (!magToevoegen('010C')) uit.push('010C wordt geweigerd — te gretige zeef');
-    if (uit.length) return { staat: 'FOUT', detail: uit.join('; ') };
-    return blokken + ' bitmapblokken gelezen, poort actief';
-  });
-
-  await _doe(5, 'Geen fantomen in supportedPIDs', function () {
-    if (typeof supportedPIDs === 'undefined' || !supportedPIDs.size)
-      return { staat: 'LET OP', detail: 'supportedPIDs leeg' };
-    if (typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'ecuSteunt ontbreekt' };
-    const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
-    if (ontkend.length)
-      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size + ' ontkend: ' + ontkend.join(', ') };
-    return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
+  // Bewijs dat de opgeruimde bestanden ook echt uitgeleverd zijn. Leest de bron
+  // zoals de browser hem serveert. Let op: draait er een service-worker met een
+  // oude cache, dan kan de app iets ánders draaien dan hier gemeten wordt — de
+  // wrappercontrole hierboven is het runtime-bewijs, dit is het bron-bewijs.
+  await _doe(5, 'Geen lege catches meer in de acht opgeruimde modules', async function () {
+    const mods = ['pidlane-bt.js', 'pidlane-veldlab.js', 'pidlane-btflow.js', 'pidlane-auth.js',
+                  'pidlane-fuel.js', 'pidlane-koopcheck.js', 'pidlane-remote.js', 'pidlane-testrun.js'];
+    const RE = /catch\s*\([^)]*\)\s*\{\s*\}/g;
+    const vuil = [], onleesbaar = [];
+    for (const m of mods) {
+      const bron = await _bron(m);
+      if (bron == null) { onleesbaar.push(m); continue; }
+      const n = (bron.match(RE) || []).length;
+      if (n) vuil.push(m + ': ' + n);
+    }
+    if (vuil.length)
+      return { staat: 'FOUT', detail: vuil.join(', ') + ' — deze build is niet de opgeruimde versie' };
+    if (onleesbaar.length === mods.length)
+      return { staat: 'LET OP', detail: 'geen enkele module leesbaar via fetch — controle niet uitgevoerd' };
+    if (onleesbaar.length)
+      return { staat: 'LET OP', detail: (mods.length - onleesbaar.length) + ' schoon, niet gelezen: ' + onleesbaar.join(', ') };
+    return 'alle acht modules schoon';
   });
 
   // ── BLIJFT STAAN: twee structurele controles ──
   // Deze twee horen bij geen enkele update in het bijzonder; ze bewaken de run
-  // zelf en de knoppen. De rest van het oude blok 5 (wizard, adaptertype,
-  // brandstofpoort, startscherm, cascade) is op 21-08 verwijderd: die
-  // wijzigingen zijn in het veld bevestigd, en een blok dat elke update
-  // aangroeit wordt binnen een maand ongelezen.
+  // zelf en de knoppen.
   await _doe(5, 'Geen dode knoppen in het menu', function () {
     // Een knop die een gesloopte functie aanroept doet niets en meldt niets —
     // de gebruiker denkt dat de app hapert.
@@ -1642,10 +1620,10 @@ async function _blok5() {
     // 17-08 dat de vórige run niet netjes eindigde terwijl hij naar zijn eigen
     // vingerafdruk keek. Alleen een punt van vóór deze run telt.
     let r = null;
-    try { r = localStorage.getItem('pl_testrun_herstel'); } catch (e) {}
+    try { r = localStorage.getItem('pl_testrun_herstel'); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
     if (!r) return 'schoon';
     let t = 0;
-    try { t = (JSON.parse(r) || {}).t || 0; } catch (e) {}
+    try { t = (JSON.parse(r) || {}).t || 0; } catch (e) { throw new Error('herstelpunt staat er nog maar is niet leesbaar (corrupte JSON) — die run eindigde niet netjes'); }
     if (t >= _trStart) return 'schoon (het punt van deze run staat klaar)';
     const min = Math.round((_trStart - t) / 60000);
     return { staat: 'LET OP', detail: 'herstelpunt van ' + min + ' min geleden staat er nog — die run eindigde niet netjes' };
@@ -1658,6 +1636,210 @@ async function _blok5() {
     if (rest.length) return { staat: 'FOUT', detail: 'bestaat nog: ' + rest.join(', ') + ' — sloop niet afgemaakt' };
     return oud.length + ' verwijderde ingangen zijn echt weg';
   });
+
+  // ── BLIJFT STAAN: 0143, steunbitzeef, geen fantomen ──
+  // Deze drie zijn in het veld bevestigd maar bewaken elk een fout die eerder
+  // is teruggekropen. Ze kosten niets en vangen een regressie meteen.
+  await _doe(5, '0143 rekent in procenten', function () {
+    let d = null;
+    try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) { console.warn('ALL_PID_DEFS[0143]-lezing gaf een fout (resultaat telt hetzelfde als \'ontbreekt\')', e); }
+    if (!d || typeof d.parse !== 'function')
+      return { staat: 'FOUT', detail: '0143 heeft geen parser meer' };
+    let v = null;
+    try { v = d.parse([0x00, 0x38]); } catch (e) { throw new Error('parser klapt op 41430038'); }
+    if (!(v > 21.5 && v < 22.5))
+      return { staat: 'FOUT', detail: '41430038 geeft ' + (Math.round(v * 100) / 100) + ', hoort 21,96 %' };
+    if (!(d.max >= 400))
+      return { staat: 'FOUT', detail: 'max staat op ' + d.max };
+    return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, max ' + d.max + '%';
+  });
+
+  await _doe(5, 'Preset respecteert de steunbits', function () {
+    if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
+      return { staat: 'FOUT', detail: 'de poort ontbreekt' };
+    let bits = {};
+    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) { console.warn('steunbitsRuw()-lezing gaf een fout (resultaat telt hetzelfde als \'nog geen bitmaps\')', e); }
+    const blokken = Object.keys(bits).length;
+    if (!blokken)
+      return { staat: 'LET OP', detail: 'nog geen bitmaps gelezen — de zeef laat dan alles door (bedoeld)' };
+    const uit = [];
+    if (magToevoegen('015C')) uit.push('015C zou nog toegevoegd worden');
+    if (!magToevoegen('010C')) uit.push('010C wordt geweigerd — te gretige zeef');
+    if (uit.length) return { staat: 'FOUT', detail: uit.join('; ') };
+    return blokken + ' bitmapblokken gelezen, poort actief';
+  });
+
+  await _doe(5, 'Geen fantomen in supportedPIDs', function () {
+    if (typeof supportedPIDs === 'undefined' || !supportedPIDs.size)
+      return { staat: 'LET OP', detail: 'supportedPIDs leeg' };
+    if (typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'ecuSteunt ontbreekt' };
+    const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
+    if (ontkend.length)
+      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size + ' ontkend: ' + ontkend.join(', ') };
+    return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BLOK 11 — INVENTARISATIE VOOR DE OPENSTAANDE PUNTEN
+// ══════════════════════════════════════════════════════════════════
+// Raakt de bus NIET aan en verandert niets. Het telt alleen, zodat drie
+// openstaande sessies met getallen kunnen beginnen in plaats van met een
+// schatting. Kost een paar seconden en mag dus gewoon in elke run mee.
+//
+//   punt 3   mag de gate een stille sensor opruimen? → hoeveel zijn het er,
+//            en hoe lang zwijgen ze al?
+//   punt 6   verspreide logica → hoeveel modules pakken zelf een 41-header
+//            uit, en hoeveel doen hun eigen fetch?
+//   punt 12  bytelengtes → staan 0155/0156 er nog steeds naast?
+const _bronCache = {};
+async function _bron(naam) {
+  if (Object.prototype.hasOwnProperty.call(_bronCache, naam)) return _bronCache[naam];
+  let t = null;
+  try {
+    const r = await fetch(naam);
+    t = r.ok ? await r.text() : null;
+  } catch (e) { t = null; }
+  _bronCache[naam] = t;
+  return t;
+}
+
+async function _blok11() {
+
+  // ── PUNT 3: hoe groot is het probleem van de stille sensoren? ──
+  // De vraag uit PLAN.md is "op hoeveel mislukte pogingen mag de herijking hem
+  // uit activePIDs halen". Die drempel kun je niet kiezen zonder te weten hoe
+  // de verdeling eruitziet. Hier staat hij.
+  await _doe(11, 'Stille sensoren: hoeveel en hoe hardnekkig', function () {
+    let h = {};
+    try { h = (typeof _pidHealth !== 'undefined' && _pidHealth) ? _pidHealth : {}; } catch (e) { throw new Error('_pidHealth onleesbaar'); }
+    const sleutels = Object.keys(h);
+    if (!sleutels.length) return { staat: 'LET OP', detail: 'geen health-oordelen — nog niet lang genoeg gepolld' };
+
+    let actief = new Set();
+    try { if (typeof activePIDs !== 'undefined') actief = activePIDs; } catch (e) { /* stil: valt terug op een lege set */ }
+
+    const perStaat = {};
+    const stilInSelectie = [];
+    sleutels.forEach(function (p) {
+      const st = String(h[p] && h[p].staat ? h[p].staat : h[p]);
+      perStaat[st] = (perStaat[st] || 0) + 1;
+      if (st !== 'ok' && actief.has && actief.has(p)) stilInSelectie.push(p);
+    });
+
+    const verdeling = Object.keys(perStaat).map(function (k) { return k + ': ' + perStaat[k]; }).join(', ');
+    if (!stilInSelectie.length)
+      return sleutels.length + ' beoordeeld (' + verdeling + '), geen enkele niet-ok PID staat in je selectie';
+    return { staat: 'LET OP', detail: sleutels.length + ' beoordeeld (' + verdeling + '). ' +
+      stilInSelectie.length + ' NIET-OK maar wél in de actieve selectie: ' + stilInSelectie.join(', ') +
+      '  — dit is de populatie waar punt 3 een drempel voor moet kiezen' };
+  });
+
+  // Bijbehorende vraag uit punt 3: hoe komt een opgeruimde sensor ooit terug?
+  // Dat kan alleen als er een pad is dat hem opnieuw beoordeelt. Bestaat dat?
+  await _doe(11, 'Punt 3: is er een terugweg voor een opgeruimde sensor', function () {
+    const haken = ['plHerijkTick', 'herijkPidGate', 'pidToevoegen', 'magToevoegen'];
+    const er = haken.filter(function (n) { return typeof window[n] === 'function'; });
+    const weg = haken.filter(function (n) { return typeof window[n] !== 'function'; });
+    if (weg.length)
+      return { staat: 'LET OP', detail: 'aanwezig: ' + (er.join(', ') || 'geen') + '  |  ONTBREEKT: ' + weg.join(', ') +
+        ' — zonder terugweg bouwt punt 3 een zeef die sensoren voorgoed wegwerkt' };
+    return 'alle vier de haken bestaan (' + er.join(', ') + ') — een terugweg is technisch mogelijk';
+  });
+
+  // ── PUNT 6: verspreide logica, de inventarisatie die dat punt als eerste vraagt ──
+  await _doe(11, 'Punt 6: wie pakt zelf een 41-header uit', async function () {
+    const mods = ['pidlane-bt.js', 'pidlane-diagbundel.js', 'pidlane-graph.js', 'pidlane-monitor.js',
+                  'pidlane-uitgebreid.js', 'pidlane-veldlab.js', 'pidlane-verify.js', 'pidlane-waakronde.js'];
+    const eigen = [], viaHelper = [], onleesbaar = [];
+    for (const m of mods) {
+      const bron = await _bron(m);
+      if (bron == null) { onleesbaar.push(m.replace('pidlane-', '').replace('.js', '')); continue; }
+      const helper = (bron.match(/splitBatchResponse/g) || []).length;
+      // Ruwe maat: een eigen zoekactie naar een 41-antwoordkop.
+      const zelf = (bron.match(/indexOf\(\s*['"]4[0-9A-F]/gi) || []).length;
+      const naam = m.replace('pidlane-', '').replace('.js', '');
+      if (helper) viaHelper.push(naam + '(' + helper + ')');
+      if (zelf) eigen.push(naam + '(' + zelf + ')');
+    }
+    const staart = onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '';
+    if (!eigen.length && !onleesbaar.length)
+      return 'geen enkele module pakt nog zelf uit — punt 6 is op dit onderdeel klaar';
+    return { staat: 'LET OP', detail: 'eigen uitpakwerk: ' + (eigen.join(', ') || 'geen') +
+      '  |  via splitBatchResponse: ' + (viaHelper.join(', ') || 'geen') + staart };
+  });
+
+  await _doe(11, 'Punt 6: hoeveel modules doen hun eigen fetch', async function () {
+    const mods = ['pidlane-auth.js', 'pidlane-fuel.js', 'pidlane-koopcheck.js', 'pidlane-remote.js',
+                  'pidlane-veldlab.js', 'pidlane-credits.js', 'pidlane-klant.js', 'pidlane-export.js'];
+    const rij = [], onleesbaar = [];
+    let totaal = 0;
+    for (const m of mods) {
+      const bron = await _bron(m);
+      if (bron == null) { onleesbaar.push(m.replace('pidlane-', '').replace('.js', '')); continue; }
+      const n = (bron.match(/[^.\w]fetch\s*\(/g) || []).length;
+      if (n) { rij.push(m.replace('pidlane-', '').replace('.js', '') + ': ' + n); totaal += n; }
+    }
+    const heeftHelper = (typeof window.plFetch === 'function');
+    const staart = onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '';
+    return { staat: totaal > 1 && !heeftHelper ? 'LET OP' : 'ok',
+      detail: totaal + ' losse fetch-aanroepen over ' + rij.length + ' modules (' + (rij.join(', ') || 'geen') + ')' +
+        '  |  plFetch-helper: ' + (heeftHelper ? 'bestaat' : 'NOG NIET') + staart };
+  });
+
+  // ── PUNT 6 (deelvraag): de merkGroep-asymmetrie, live te toetsen ──
+  await _doe(11, 'Punt 6: merkGroep-asymmetrie MINI vs BMW', function () {
+    if (typeof merkGroep !== 'function')
+      return { staat: 'LET OP', detail: 'merkGroep() bestaat niet in deze build' };
+    const proef = ['MINI', 'MINI COOPER', 'BMW', 'BMW 320D'];
+    const uit = proef.map(function (m) {
+      let r = '?';
+      try { r = String(merkGroep(m)); } catch (e) { r = 'FOUT'; }
+      return m + '→' + r;
+    });
+    let mini = '', miniLang = '', bmw = '', bmwLang = '';
+    try { mini = String(merkGroep('MINI')); miniLang = String(merkGroep('MINI COOPER'));
+          bmw = String(merkGroep('BMW')); bmwLang = String(merkGroep('BMW 320D')); } catch (e) { /* stil: uit-rij hieronder toont het al */ }
+    const scheef = (mini === miniLang) && (bmw !== bmwLang);
+    if (scheef)
+      return { staat: 'LET OP', detail: uit.join('  ') + '  — MINI matcht op prefix, BMW op gelijkheid. Dit is de asymmetrie uit punt 6 (§14, DTC-lookup)' };
+    return uit.join('  ');
+  });
+
+  // ── PUNT 12: komen de afwijkende bytelengtes terug? ──
+  await _doe(11, 'Punt 12: bytelengtes 0155 en 0156', function () {
+    if (!window.PLPidLen || !PLPidLen.afwijkingen)
+      return { staat: 'LET OP', detail: 'PLPidLen.afwijkingen() ontbreekt' };
+    let afw = {};
+    try { afw = PLPidLen.afwijkingen() || {}; } catch (e) { throw new Error('PLPidLen.afwijkingen() klapt'); }
+    const k = Object.keys(afw);
+    if (!k.length) return 'geen enkele afwijking gemeten';
+    const verdacht = k.filter(function (p) { return p === '0155' || p === '0156'; });
+    return { staat: 'LET OP', detail: k.length + ' afwijkend: ' + JSON.stringify(afw).slice(0, 220) +
+      (verdacht.length ? '  — 0155/0156 staan er wéér bij, dus de lengtetabel klopt niet voor die twee (punt 12)' : '') };
+  });
+
+  // ── De opruimklus zelf: gaat er iets af dat er eerder niet was? ──
+  // 584 catches praten nu. Deze regel zet het aantal meldingen sinds het begin
+  // van de run naast elkaar, zodat je in het logboek kunt zien of er iets
+  // nieuws bij zit zonder de hele staart door te lezen.
+  await _doe(11, 'Meldingen sinds het begin van deze run', function () {
+    let app = [];
+    try { app = (window._appLog || window.logBuffer || []); } catch (e) { app = []; }
+    let bt = [];
+    try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
+    const tel = function (arr, soort) {
+      let n = 0;
+      (arr || []).forEach(function (l) {
+        const t = (l && l.type) ? String(l.type) : '';
+        if (t === soort) n++;
+      });
+      return n;
+    };
+    return 'app-log ' + (app.length || 0) + ' regels (' + tel(app, 'warn') + ' warn, ' + tel(app, 'err') + ' err)' +
+           '  |  BT-log ' + (bt.length || 0) + ' regels (' + tel(bt, 'warn') + ' warn, ' + tel(bt, 'err') + ' err)' +
+           '  — kijk in de staart van het logboek of er meldingen bij zitten die je nog nooit gezien hebt';
+  });
 }
 
 
@@ -1665,9 +1847,9 @@ async function _blok5() {
 // AANSTUREN
 // ══════════════════════════════════════════════════════════════════
 async function startTestrun(blokken) {
-  if (_trBezig) { try { showToast('Testrun loopt al'); } catch (e) {} return; }
-  if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch (e) {} return; }
-  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b8: true };
+  if (_trBezig) { try { showToast('Testrun loopt al'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
+  if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b8: true, b11: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -1687,6 +1869,10 @@ async function startTestrun(blokken) {
     if (b.b2) await _blok2();
     if (b.b3) await _blok3();
     if (b.b4) await _blok4();
+    // Blok 11 leest alleen (health, bronbestanden, tabellen) en raakt de bus
+    // niet aan, dus de plek maakt niet uit — hier staat het tussen de goedkope
+    // blokken, ruim vóór de trage metingen van blok 6 en 8.
+    if (b.b11) await _blok11();
     if (b.b6) await _blok6();
     if (b.b8) await _blok8();
     // Blok 9 staat bewust niet in de standaardset: 45 s scannen hoort niet in
@@ -1785,7 +1971,7 @@ function testrunTekst() {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { r.push(''); r.push('(TX/RX-sectie niet toegevoegd — plDiagGevallen() gaf een fout: ' + (e.message || e) + ')'); }
 
   // Staart van de logs, zodat je niet apart hoeft te exporteren.
   try {
@@ -1796,7 +1982,7 @@ function testrunTekst() {
       r.push('────────────────────────────────────────────────');
       app.slice(-120).forEach(function (l) { r.push(typeof l === 'string' ? l : JSON.stringify(l)); });
     }
-  } catch (e) {}
+  } catch (e) { r.push(''); r.push('(APP-LOG-sectie niet toegevoegd — lezen mislukt: ' + (e.message || e) + ')'); }
   try {
     const bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : null;
     if (bt && bt.length) {
@@ -1805,7 +1991,7 @@ function testrunTekst() {
       r.push('────────────────────────────────────────────────');
       bt.slice(-150).forEach(function (l) { r.push(typeof l === 'string' ? l : JSON.stringify(l)); });
     }
-  } catch (e) {}
+  } catch (e) { r.push(''); r.push('(BT-LOG-sectie niet toegevoegd — lezen mislukt: ' + (e.message || e) + ')'); }
 
   r.push('');
   r.push('════════════════════════════════════════════════');
@@ -1831,15 +2017,15 @@ function testrunOpslaan() {
     a.href = URL.createObjectURL(new Blob([tekst], { type: 'text/plain;charset=utf-8' }));
     a.download = basis + '.txt';
     document.body.appendChild(a); a.click();
-    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500);
-  } catch (e) {}
+    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch(e){ /* stil: element kan al weg zijn */ } }, 1500);
+  } catch (e) { console.warn('Opslaan mislukt — geen rapport gedownload', e); }
 }
 
 // ══════════════════════════════════════════════════════════════════
 // SCHERM
 // ══════════════════════════════════════════════════════════════════
 function openTestrun() {
-  if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch (e) {} return; }
+  if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
   let ov = document.getElementById('testrunOv');
   if (!ov) {
     ov = document.createElement('div');
@@ -1853,13 +2039,15 @@ function openTestrun() {
       '</div>' +
       '<div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
         '<button onclick="startTestrun()" style="background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 13px var(--f);cursor:pointer">▶ Start</button>' +
-        '<button onclick="startTestrun({b5:true,b1:true,b4:true,b7:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
+        '<button onclick="startTestrun({b5:true,b1:true,b4:true,b7:true,b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
         // Los te draaien, want beide willen een wárme motor en een spoor van een
         // paar minuten. Dat is precies het moment waarop je géén sweep van drie
         // minuten wilt starten.
         '<button onclick="startTestrun({b9:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">DID-scan (45 s)</button>' +
         '<button onclick="startTestrun({b7:true,b8:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget + olie</button>' +
         '<button onclick="startTestrun({b10:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snelheidsproef (10 min)</button>' +
+        // Alleen tellen, geen bus: mag ook los, bijvoorbeeld thuis op de bank.
+        '<button onclick="startTestrun({b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Inventarisatie</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
         '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
       '</div>' +
@@ -1911,18 +2099,29 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Race dicht, module hernoemd, vangnet weg, 108 stille catches opgeruimd',
+  titel: '584 stille catches opgeruimd over acht modules — wat gaat er nu af dat er nooit afging?',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0.',
-    'VERBINDEN — duurt het verbinden merkbaar langer? initConnection wacht nu op de RDW-opzoeking vóór het profiel wordt opgeslagen. Twaalf seconden is de grens.',
-    'VERBINDEN met vliegtuigstand of zonder internet — komt er dan een aandachtspunt achter de auto-chip (oranje dot), en zegt het dossier dat het profiel NIET is opgeslagen? Dit is de kern van punt 11.',
-    'VERBINDEN daarna weer mét internet — verdwijnt dat aandachtspunt vanzelf?',
-    'TEGELS — verschijnen alle tegels nog? Het vangnet in renderGauges is weg. Zie je een tegel die nooit een waarde toont, dan staat er een toevoegpad open en dát wil je weten.',
-    'LOGBOEK — er komen nu meldingen uit bt.js en veldlab.js die er nooit waren. Kijk of er iets tussen zit dat je nog nooit hebt gezien: 108 catches die zwegen praten nu.',
-    'LOGBOEK — let specifiek op "probeUitgebreid mislukt" en "Herijking na protocolvondst mislukt". Die twee stonden in een lege catch en zijn precies waar eerdere weken aan verloren zijn.',
-    'SURVEY (veldlab) — draai er een als je toch bezig bent. Bij een sendCmd-fout meldt hij nu dat de PID als nodata geteld wordt. Zie je die melding, dan staat er transportfout in de dekkingsmatrix van dit merk.',
-    'BLOK 9 (losse knop, warme motor) — nog steeds niet gedraaid. Laatste openstaande meting van punt 4.',
-    'BLOK 1 tegenproef — wis de app-gegevens, verbind opnieuw: staat er dan LET OP met "NIET geladen"?'
+    'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0, testrun 3.4.',
+
+    'BLOK 5 — "Remote-wrappers zijn geïnstalleerd" moet groen zijn. Staat daar FOUT bij clearDTC, dan is de alleen-lezen-blokkade van een remote sessie NIET actief (punt 19) en moet je stoppen met delen tot dat opgelost is.',
+
+    'BLOK 5 — "Geen lege catches meer in de acht opgeruimde modules". FOUT hier betekent dat de deploy niet is doorgekomen en je op de oude build rijdt; dan zegt de rest van deze run niets.',
+
+    'LOGBOEK, DE HOOFDVRAAG — 584 catches die zwegen praten nu. Lees de staart van het logboek en let op meldingen die je nog nooit gezien hebt. Blok 11 geeft je de aantallen zodat je weet of het de moeite is.',
+
+    'LOGBOEK, SPECIFIEK — let op "Sensoren niet vers gezet vóór ..." (punt 18: zeven analysefuncties die aannemen dat de juiste sensoren al aanstaan) en op "Voertuigprofiel niet (volledig) toegepast" (punt 19). Die twee families zijn het waarschijnlijkst.',
+
+    'BLOK 9, DE LOSSE KNOP, WARME MOTOR — dit is de laatste openstaande meting van punt 4 en staat al dagen open. 45 seconden, 256 identifiers op 7E0. Rijd eerst tien minuten. Levert het niets op, dan is punt 4 dicht: deze CX-5 heeft de olietemperatuur niet op de diagnosebus.',
+
+    'NA BLOK 8 OF 9 — kijk of er een FOUT-regel "Header terugzetten" in het log staat. Die is nieuw (punt 20). Staat hij er, dan hangt de adapter mogelijk nog op 7E0 en praat de app daarna alleen nog met het motorblok: verbreek en verbind opnieuw.',
+
+    'BLOK 10, DE SNELHEIDSPROEF (10 min, losse knop) — dit is de VÓÓRMETING voor punt 13. Noteer de slotregel "Wat deze verbinding aankan" en "Stand van de app na de proef". Zonder deze twee getallen is sleutelen aan PLLoad gokwerk.',
+
+    'BLOK 11 — nieuw, kost niets, raakt de bus niet aan. Levert in één keer de cijfers voor punt 3 (hoeveel stille sensoren staan er in je selectie), punt 6 (hoeveel modules pakken zelf uit, hoeveel doen eigen fetch) en punt 12 (staan 0155/0156 er weer naast).',
+
+    'TEGELS — verschijnen alle tegels nog met een waarde? De opruiming is gedragsneutraal, dus hier hoort niets te veranderen. Ziet u wél verschil, dan zat er onder een van die 584 catches iets dat wél gedrag droeg.',
+
+    'BLOK 1 TEGENPROEF (punt 12) — wis de app-gegevens, verbind opnieuw: staat er dan LET OP met "NIET geladen"? Een controle die alleen groen kan worden bewijst niets. Nooit gedaan.'
   ]
 };
 
