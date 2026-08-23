@@ -11,10 +11,10 @@ window.PLRemote=(function(){
   function hb(){return String(window.PROXY_URL||'').replace(/\/$/,'');}
   function wb(){return hb().replace(/^http/i,'ws');}
   function tok(){return (typeof window.APP_TOKEN==='string'&&window.APP_TOKEN)||'';}
-  function logA(m,c){try{if(typeof log==='function')log(m,c||'info');}catch(_){}}
+  function logA(m,c){try{if(typeof log==='function')log(m,c||'info');}catch(_){ /* stil: melding mag nooit de stroom breken */ }}
   function vehLabel(){
-    try{if(window.rdwData&&rdwData.merk)return (rdwData.merk+' '+(rdwData.handelsbenaming||'')).trim();}catch(_){}
-    try{if(typeof selectedDemoVehicle!=='undefined'&&selectedDemoVehicle&&selectedDemoVehicle.naam)return selectedDemoVehicle.naam;}catch(_){}
+    try{if(window.rdwData&&rdwData.merk)return (rdwData.merk+' '+(rdwData.handelsbenaming||'')).trim();}catch(_){ /* stil: valt door naar de volgende bron hieronder */ }
+    try{if(typeof selectedDemoVehicle!=='undefined'&&selectedDemoVehicle&&selectedDemoVehicle.naam)return selectedDemoVehicle.naam;}catch(_){ /* stil: valt door naar null hieronder */ }
     return null;
   }
 
@@ -26,8 +26,8 @@ window.PLRemote=(function(){
      De pill staat position:fixed rechtsboven en dekte anders de PID-keuze-knop
      in de tabbalk af; met die klasse reserveert .tabs rechts ruimte (pidlane.css). */
   function showPill(on){$('remPill').style.display=on?'flex':'none';
-    try{document.documentElement.classList.toggle('rem-pill-on',!!on);}catch(_){}
-    try{window.PLWake&&PLWake.sync();}catch(_){}}
+    try{document.documentElement.classList.toggle('rem-pill-on',!!on);}catch(_){ /* stil: element kan al weg zijn */ }
+    try{window.PLWake&&PLWake.sync();}catch(_){ console.warn('PLWake niet gesynchroniseerd na het tonen/verbergen van de pill', _); }}
 
   async function shareStart(){
     const err=$('remShareErr');err.textContent='';
@@ -53,7 +53,7 @@ window.PLRemote=(function(){
     openLocalWs();
     requestShortCode(j);   // 10-cijferige meekijk-code ophalen (niet-blokkerend)
     logA('📡 Diagnose delen gestart — sessie '+j.sessionId,'ok');
-    try{logUsage('remote_share_start',j.sessionId);}catch(_){}
+    try{logUsage('remote_share_start',j.sessionId);}catch(_){ console.warn('Gebruiksstatistiek remote_share_start niet gelogd', _); }
     // GEEN auto Full Survey meer bij het starten van een remote sessie.
     // Die legde de bus juist plat op het moment dat de expert begint mee te
     // kijken: de survey leest élke ondersteunde PID (soms 2x) plus bitmaps en
@@ -67,7 +67,7 @@ window.PLRemote=(function(){
         headers:{'Content-Type':'application/json','X-App-Token':tok()},
         body:JSON.stringify({pairId:pp.pid,claimToken:pp.ct,sessionId:j.sessionId,joinToken:j.joinToken})})
         .then(r=>r.json())
-        .then(cj=>{ if(cj&&cj.ok){logA('🔗 Gekoppeld aan expert via QR','ok');try{logUsage('remote_pair_claim',pp.pid);}catch(_){}}
+        .then(cj=>{ if(cj&&cj.ok){logA('🔗 Gekoppeld aan expert via QR','ok');try{logUsage('remote_pair_claim',pp.pid);}catch(_){ console.warn('Gebruiksstatistiek remote_pair_claim niet gelogd', _); }}
                     else logA('⚠ QR-koppeling mislukt: '+((cj&&cj.error)||'onbekend'),'warn'); })
         .catch(e=>logA('⚠ QR-koppeling mislukt: '+(e.message||e),'warn'));
     }
@@ -127,7 +127,7 @@ window.PLRemote=(function(){
   }
   function shareLink(sid,jt){
     let base='';
-    try{if(location.protocol==='http:'||location.protocol==='https:')base=location.origin+location.pathname;}catch(_){}
+    try{if(location.protocol==='http:'||location.protocol==='https:')base=location.origin+location.pathname;}catch(_){ /* stil: valt terug op PUBLIC_APP_URL hieronder */ }
     if(!base&&typeof window.PUBLIC_APP_URL==='string')base=window.PUBLIC_APP_URL;
     return base+'#remote=1&sid='+sid+'&jt='+encodeURIComponent(jt);
   }
@@ -169,7 +169,7 @@ window.PLRemote=(function(){
         ensurePIDListActive([...activePIDs,...add]);
         logA('🔭 Expert volgt nu ook: '+(m.pids||[]).join(', '),'info');
       }
-    }catch(_){}
+    }catch(_){ console.warn('Expert-PID-verzoek niet verwerkt — de respons meldt toch \'ok\' terug', _); }
     sendWs({type:'response',reqId:m.reqId,data:{poll:'ok'}});
   }
   /* ── VOERTUIGPROFIEL (vstate) ─────────────────────────────────────
@@ -184,12 +184,12 @@ window.PLRemote=(function(){
     const o={t:Date.now()};
     try{o.pids=(typeof supportedPIDs!=='undefined')?[...supportedPIDs].slice(0,200):[];}catch(_){o.pids=[];}
     try{const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
-      o.veh={merk:v.merk||'',model:v.model||'',year:v.year||'',vin:v.vin||'',brandstof:v.brandstof||'',motor:v.motor||''};}catch(_){}
-    try{o.active=(typeof activePIDs!=='undefined')?[...activePIDs].slice(0,60):[];}catch(_){}
-    try{const h={};if(typeof _pidHealth!=='undefined'){for(const k in _pidHealth){if(_pidHealth[k]&&_pidHealth[k]!=='ok')h[k]=_pidHealth[k];}}o.health=h;}catch(_){}
-    try{o.dtc=(typeof dtcCodes!=='undefined'&&Array.isArray(dtcCodes))?dtcCodes.slice(0,40):[];}catch(_){}
-    try{o.demo=(typeof demoMode!=='undefined')&&!!demoMode;}catch(_){}
-    try{o.rps=(typeof _connSpeed!=='undefined'&&_connSpeed&&_connSpeed.readsPerSec)||null;}catch(_){}
+      o.veh={merk:v.merk||'',model:v.model||'',year:v.year||'',vin:v.vin||'',brandstof:v.brandstof||'',motor:v.motor||''};}catch(_){ console.warn('Voertuiginfo niet in het vstate-snapshot gezet — de expert ziet dan geen voertuig', _); }
+    try{o.active=(typeof activePIDs!=='undefined')?[...activePIDs].slice(0,60):[];}catch(_){ console.warn('Actieve PIDs niet in het vstate-snapshot gezet', _); }
+    try{const h={};if(typeof _pidHealth!=='undefined'){for(const k in _pidHealth){if(_pidHealth[k]&&_pidHealth[k]!=='ok')h[k]=_pidHealth[k];}}o.health=h;}catch(_){ console.warn('Sensor-gezondheid niet in het vstate-snapshot gezet', _); }
+    try{o.dtc=(typeof dtcCodes!=='undefined'&&Array.isArray(dtcCodes))?dtcCodes.slice(0,40):[];}catch(_){ console.warn('Foutcodes niet in het vstate-snapshot gezet', _); }
+    try{o.demo=(typeof demoMode!=='undefined')&&!!demoMode;}catch(_){ console.warn('Demo-vlag niet in het vstate-snapshot gezet', _); }
+    try{o.rps=(typeof _connSpeed!=='undefined'&&_connSpeed&&_connSpeed.readsPerSec)||null;}catch(_){ console.warn('Leessnelheid niet in het vstate-snapshot gezet', _); }
     return o;
   }
   let _vstT=null;
@@ -206,7 +206,7 @@ window.PLRemote=(function(){
       const act=(typeof _recActive!=='undefined')&&_recActive;
       const sec=act?Math.round((Date.now()-_recT0)/1000):0;
       sendWs({type:'record-status',data:Object.assign({rec:!!act,sec:sec,n:n},extra||{})});
-    }catch(_){}
+    }catch(_){ console.warn('Opnamestatus niet naar de expert gestuurd (volgende tik probeert opnieuw)', _); }
   }
   async function answerRecord(m){
     const act=String(m.action||'');
@@ -221,7 +221,7 @@ window.PLRemote=(function(){
         pidRecStartRec();   // zelfde machinerie als de recorder-UI — DOM-guarded, headless-veilig
         if(typeof _recActive==='undefined'||!_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'start-mislukt'}});return;}
         logA('🔭 Expert startte een opname op dit toestel ('+bruikbaar.length+' sensoren)','warn');
-        try{logUsage('remote_record_start',bruikbaar.join(' '));}catch(_){}
+        try{logUsage('remote_record_start',bruikbaar.join(' '));}catch(_){ console.warn('Gebruiksstatistiek remote_record_start niet gelogd', _); }
         clearInterval(_remRecStatT);_remRecStatT=setInterval(()=>_remRecStatus(),1000);
         sendWs({type:'response',reqId:m.reqId,data:{record:'gestart',pids:bruikbaar}});
         _remRecStatus();
@@ -232,7 +232,7 @@ window.PLRemote=(function(){
         if(typeof _recActive==='undefined'||!_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'niet-actief'}});return;}
         pidRecStopRec();
         logA('🔭 Expert stopte de opname','info');
-        try{logUsage('remote_record_stop',((window._recData&&window._recData.dur)||0)+'s');}catch(_){}
+        try{logUsage('remote_record_stop',((window._recData&&window._recData.dur)||0)+'s');}catch(_){ console.warn('Gebruiksstatistiek remote_record_stop niet gelogd', _); }
         const d=window._recData||{};
         const rows=(typeof _recStats==='function')?_recStats():[];
         sendWs({type:'response',reqId:m.reqId,data:{record:'gestopt',dur:d.dur||0,n:d.n||0,
@@ -257,7 +257,7 @@ window.PLRemote=(function(){
     const prob=String(m.problem||'').slice(0,500);
     if(!window._recData||!window._recData.n){sendWs({type:'response',reqId:m.reqId,data:{analysis:null,err:'geen opname beschikbaar — eerst opnemen en stoppen'}});return;}
     logA('🔭 Expert vroeg AI-analyse van de opname (gebruikt AI-tegoed van dit account)','warn');
-    try{logUsage('remote_analyze',prob.slice(0,80));}catch(_){}
+    try{logUsage('remote_analyze',prob.slice(0,80));}catch(_){ console.warn('Gebruiksstatistiek remote_analyze niet gelogd', _); }
     sendWs({type:'response',reqId:m.reqId,data:{analysisBusy:true}});
     try{
       const txt=await pidRecAiText(prob||'Algemene beoordeling van de opgenomen sensordata; benoem afwijkingen en waarschijnlijke oorzaken.');
@@ -277,17 +277,17 @@ window.PLRemote=(function(){
     try{ // verse waarde uit de lopende poll? geen extra buskanaal nodig
       if(typeof pidVals!=='undefined'&&pidVals[pid]!==undefined&&
          (Date.now()-((typeof _pidLastUpd!=='undefined'&&_pidLastUpd[pid])||0))<5000)return pidVals[pid];
-    }catch(_){}
+    }catch(_){ /* stil: valt door naar een verse meting hieronder */ }
     try{
       if(typeof demoMode!=='undefined'&&demoMode&&typeof demo==='function'){
-        const v=demo(pid);try{updPID(pid,v);}catch(_){}
+        const v=demo(pid);try{updPID(pid,v);}catch(_){ console.warn('Demo-waarde niet in de lokale pijplijn gezet, de expert krijgt de waarde nog wel', _); }
         return (typeof v==='number')?v:null;
       }
       if(typeof connected==='undefined'||!connected)return null;
       return await withBtLock(async()=>{
         const raw=await sendCmd('01'+sfx+'1',2500);
         const v=parsePID(pid,raw);
-        if(v!=null){try{updPID(pid,v);}catch(_){}}
+        if(v!=null){try{updPID(pid,v);}catch(_){ console.warn('Gemeten waarde niet in de lokale pijplijn gezet, de expert krijgt de waarde nog wel', _); }}
         return (v==null?null:v);
       });
     }catch(_){return null;}
@@ -307,7 +307,7 @@ window.PLRemote=(function(){
     sendWs({type:'response',reqId:m.reqId,data:{dtc:codes}});
     logA('🔭 Expert las foutcodes uit ('+codes.length+' code'+(codes.length===1?'':'s')+')','info');
   }
-  function sendWs(o){try{if(S.ws&&S.ws.readyState===1)S.ws.send(JSON.stringify(o));}catch(_){}}
+  function sendWs(o){try{if(S.ws&&S.ws.readyState===1)S.ws.send(JSON.stringify(o));}catch(_){ console.warn('Bericht niet naar de expert verstuurd', _); }}
   function feed(pid,val){
     if(S.mode!=='local'||!S.ws||S.ws.readyState!==1)return;
     if(typeof val!=='number'||!isFinite(val))return;
@@ -325,15 +325,15 @@ window.PLRemote=(function(){
     clearInterval(_remRecStatT);_remRecStatT=null;
     try{if(S.sess)await fetch(hb()+'/session/close',{method:'POST',
       headers:{'Content-Type':'application/json','X-App-Token':tok()},
-      body:JSON.stringify({sessionId:S.sess.sessionId})});}catch(_){}
-    try{if(S.ws)S.ws.close();}catch(_){}
+      body:JSON.stringify({sessionId:S.sess.sessionId})});}catch(_){ logA('Sessie niet netjes gesloten op de server — kan daar nog even actief blijven voor de expert','warn'); }
+    try{if(S.ws)S.ws.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
     endShareUi();logA('📡 Delen gestopt','info');
-    try{logUsage('remote_share_stop',(S.sess&&S.sess.sessionId)||'');}catch(_){}
+    try{logUsage('remote_share_stop',(S.sess&&S.sess.sessionId)||'');}catch(_){ console.warn('Gebruiksstatistiek remote_share_stop niet gelogd', _); }
   }
   function endShareUi(){S.mode=null;S.ws=null;showPill(false);
     $('remShareOn').style.display='none';$('remShareOff').style.display='';$('remShareErr').textContent='';
-    try{$('remQr').innerHTML='';}catch(_){}
-    try{$('remShort').value='';$('remShort').placeholder='··· ··· ····';}catch(_){}}
+    try{$('remQr').innerHTML='';}catch(_){ /* stil: element kan al weg zijn */ }
+    try{$('remShort').value='';$('remShort').placeholder='··· ··· ····';}catch(_){ /* stil: element kan al weg zijn */ }}
 
   /* ── EXPERT: meekijken ────────────────────────────────────────── */
   function openExpert(){$('remExpertOv').classList.add('open');}
@@ -355,7 +355,7 @@ window.PLRemote=(function(){
   async function startQrScan(onHit,hint){
     const ov=$('remScanOv');if(!ov)return;
     if(!('BarcodeDetector' in window)){
-      try{showToast?.('QR-scannen wordt hier niet ondersteund — gebruik de camera-app van je toestel');}catch(_){}
+      try{showToast?.('QR-scannen wordt hier niet ondersteund — gebruik de camera-app van je toestel');}catch(_){ /* stil: melding mag nooit de stroom breken */ }
       return;
     }
     $('remScanHint').textContent=hint||'Richt de camera op de QR-code';
@@ -370,18 +370,18 @@ window.PLRemote=(function(){
         try{
           const codes=await det.detect(v);
           if(codes&&codes.length){const txt=String(codes[0].rawValue||'');stopQrScan();onHit(txt);return;}
-        }catch(_){}
+        }catch(_){ /* stil: volgend beeldje probeert het opnieuw */ }
         setTimeout(loop,180);
       };
       loop();
     }catch(e){
       stopQrScan();
-      try{showToast?.('Camera niet beschikbaar: '+(e.message||e));}catch(_){}
+      try{showToast?.('Camera niet beschikbaar: '+(e.message||e));}catch(_){ /* stil: melding mag nooit de stroom breken */ }
     }
   }
   function stopQrScan(){
     _scanRun=false;
-    try{if(_scanStream)_scanStream.getTracks().forEach(t=>t.stop());}catch(_){}
+    try{if(_scanStream)_scanStream.getTracks().forEach(t=>t.stop());}catch(_){ /* stil: opruimen, camera kan al gestopt zijn */ }
     _scanStream=null;
     const ov=$('remScanOv');if(ov)ov.style.display='none';
     const v=$('remScanVid');if(v)v.srcObject=null;
@@ -390,8 +390,8 @@ window.PLRemote=(function(){
   function scanForJoin(){
     startQrScan(txt=>{
       const p=parseJoin(txt);
-      if(!p){try{showToast?.('Geen geldige PidLane-QR');}catch(_){}return;}
-      try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){}
+      if(!p){try{showToast?.('Geen geldige PidLane-QR');}catch(_){ /* stil: melding mag nooit de stroom breken */ }return;}
+      try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){ console.warn('Code-veld niet vooringevuld na het scannen', _); }
       expertConnect(p);
     },'Scan de deel-QR op het toestel bij de auto');
   }
@@ -400,7 +400,7 @@ window.PLRemote=(function(){
     startQrScan(txt=>{
       const pid=(txt.match(/[#&]pid=([A-Za-z0-9]+)/)||[])[1]||'';
       const ct=(txt.match(/[#&]ct=([^&\s]+)/)||[])[1]||'';
-      if(!pid||!ct){try{showToast?.('Geen geldige koppel-QR');}catch(_){}return;}
+      if(!pid||!ct){try{showToast?.('Geen geldige koppel-QR');}catch(_){ /* stil: melding mag nooit de stroom breken */ }return;}
       S.pendingClaim={pid:pid,ct:decodeURIComponent(ct)};
       shareStart();
     },'Scan de koppel-QR op het scherm van de expert');
@@ -416,7 +416,7 @@ window.PLRemote=(function(){
       if(!r.ok||!j.pairId)throw new Error((j&&j.error)||('HTTP '+r.status));
       S.pair=j;
       let base='';
-      try{if(location.protocol==='http:'||location.protocol==='https:')base=location.origin+location.pathname;}catch(_){}
+      try{if(location.protocol==='http:'||location.protocol==='https:')base=location.origin+location.pathname;}catch(_){ /* stil: valt terug op PUBLIC_APP_URL hieronder */ }
       if(!base&&typeof window.PUBLIC_APP_URL==='string')base=window.PUBLIC_APP_URL;
       const link=base+'#pair=1&pid='+j.pairId+'&ct='+encodeURIComponent(j.claimToken);
       const ok=await renderQrInto('remPairQr','remPairRow',link);
@@ -430,14 +430,14 @@ window.PLRemote=(function(){
           if(pj&&pj.status==='ready'&&pj.sessionId&&pj.joinToken){
             clearInterval(S.pairT);S.pairT=null;
             if(st)st.textContent='✅ Gescand — verbinden…';
-            try{$('remJoinIn').value=pj.sessionId+'~'+pj.joinToken;}catch(_){}
+            try{$('remJoinIn').value=pj.sessionId+'~'+pj.joinToken;}catch(_){ console.warn('Code-veld niet vooringevuld na koppelen', _); }
             expertConnect({sid:pj.sessionId,jt:pj.joinToken});
             const row=$('remPairRow');if(row)row.style.display='none';
           }else if(pj&&pj.status==='expired'){
             clearInterval(S.pairT);S.pairT=null;
             if(st)st.textContent='⏰ Verlopen — maak een nieuwe QR.';
           }
-        }catch(_){}
+        }catch(_){ /* stil: volgende tik (2s) probeert het opnieuw */ }
       },2000);
     }catch(e){err.textContent='⚠ Koppel-QR mislukt: '+(e.message||e);}
   }
@@ -447,7 +447,7 @@ window.PLRemote=(function(){
     const h=str.indexOf('#');if(h>=0)str=str.slice(h+1);
     if(/(^|&)sid=/.test(str)){
       try{const p=new URLSearchParams(str);const sid=p.get('sid'),jt=p.get('jt');
-        if(sid&&jt)return{sid:sid.trim(),jt:jt.trim()};}catch(_){}
+        if(sid&&jt)return{sid:sid.trim(),jt:jt.trim()};}catch(_){ /* stil: valt door naar de eenvoudige vorm hieronder */ }
     }
     const t=str.split('~');
     if(t.length===2&&t[0].trim()&&t[1].trim())return{sid:t[0].trim(),jt:t[1].trim()};
@@ -457,7 +457,7 @@ window.PLRemote=(function(){
     const r=await fetch(hb()+'/code/resolve',{method:'POST',
       headers:{'Content-Type':'application/json','X-App-Token':tok()},
       body:JSON.stringify({code})});
-    let cj={};try{cj=await r.json();}catch(_){}
+    let cj={};try{cj=await r.json();}catch(_){ /* stil: foutbody hoeft geen geldige JSON te zijn */ }
     if(r.status===429)throw new Error('te veel pogingen — wacht even');
     if(r.status===410||(cj&&cj.error==='expired'))throw new Error('code verlopen');
     if(r.status===404||(cj&&cj.error==='unknown_code'))throw new Error('onbekende code');
@@ -557,20 +557,20 @@ window.PLRemote=(function(){
       const v=d[k];
       if(typeof v!=='number'||!isFinite(v))continue;
       const pid='01'+String(k).toUpperCase();
-      try{updPID(pid,v);}catch(_){}
+      try{updPID(pid,v);}catch(_){ console.warn('Remote-waarde niet in de meters gezet: '+pid, _); }
       // Historie-frames (backfill bij verbinden): alleen meters/pidVals vullen,
       // NIET de opname/stabiliteit in — die frames hebben oude tijdstippen.
       if(isBackfill)continue;
-      try{checkStability(pid,v);}catch(_){}
-      try{feedDatalog(pid,v);}catch(_){}
-      try{feedSessionStat(pid,v);}catch(_){}
+      try{checkStability(pid,v);}catch(_){ console.warn('Stabiliteitscheck niet gedaan voor: '+pid, _); }
+      try{feedDatalog(pid,v);}catch(_){ console.warn('Waarde niet in de opnamebuffer gezet: '+pid, _); }
+      try{feedSessionStat(pid,v);}catch(_){ console.warn('Sessiestatistiek niet bijgewerkt voor: '+pid, _); }
     }
     // De poll-loop draait remote niet (polling zit op de telefoon) → de
     // per-ronde engines hier zelf aftrappen, gethrottled tot ~1×/s.
     if(!isBackfill&&(!window._remEngT||Date.now()-window._remEngT>900)){
       window._remEngT=Date.now();
-      try{runCorrelationEngine();}catch(_){}
-      try{updateEVMode();}catch(_){}
+      try{runCorrelationEngine();}catch(_){ console.warn('Correlatie-engine niet gedraaid op remote-data', _); }
+      try{updateEVMode();}catch(_){ console.warn('EV-modusdetectie niet gedraaid op remote-data', _); }
     }
   }
   // Voertuigprofiel van de local toepassen op déze app-instantie: vult
@@ -582,15 +582,15 @@ window.PLRemote=(function(){
     if(!v||typeof v!=='object'||!window._remoteVehicleMode)return;
     try{
       if(v.veh&&(v.veh.merk||v.veh.vin)){
-        try{mergeVehicleData('vin',v.veh);}catch(_){}
-        try{if(v.veh.vin)vehicleInfo.vin=v.veh.vin;}catch(_){}
+        try{mergeVehicleData('vin',v.veh);}catch(_){ console.warn('Voertuigdata van de local niet overgenomen', _); }
+        try{if(v.veh.vin)vehicleInfo.vin=v.veh.vin;}catch(_){ console.warn('VIN niet overgenomen van de local', _); }
         try{const lbl=((vehicleInfo.merk||'')+' '+(vehicleInfo.model||'')).trim();
-            showVtag(lbl||vehicleInfo.vin||'Remote voertuig');}catch(_){}
+            showVtag(lbl||vehicleInfo.vin||'Remote voertuig');}catch(_){ console.warn('Voertuigtag niet bijgewerkt', _); }
       }
-      if(v.health&&typeof v.health==='object'){try{for(const k in v.health)_pidHealth[k]=v.health[k];}catch(_){}}
+      if(v.health&&typeof v.health==='object'){try{for(const k in v.health)_pidHealth[k]=v.health[k];}catch(_){ console.warn('Sensor-gezondheid van de local niet overgenomen', _); }}
       if(Array.isArray(v.pids)&&v.pids.length){
-        try{supportedPIDs=new Set(v.pids.filter(p=>typeof p==='string'&&/^01[0-9A-F]{2}$/i.test(p)));}catch(_){}
-        try{buildDiscoveredPIDList();}catch(_){}
+        try{supportedPIDs=new Set(v.pids.filter(p=>typeof p==='string'&&/^01[0-9A-F]{2}$/i.test(p)));}catch(_){ logA('Ondersteunde PIDs van de local niet overgenomen — de PID-keuzelijst kan leeg of verouderd blijven op deze expert-instantie: '+(_&&_.message||_),'warn'); }
+        try{buildDiscoveredPIDList();}catch(_){ console.warn('PID-lijst niet opnieuw opgebouwd na het overnemen van de remote sensoren', _); }
       }
       if(Array.isArray(v.active)&&v.active.length){
         // Toevoegpoort (§15, ronde 6). Deze regel staat bewust ná supportedPIDs
@@ -601,19 +601,19 @@ window.PLRemote=(function(){
           const _kand=v.active.filter(p=>typeof p==='string'&&getPidDef(p));
           const _r=pidToevoegen(_kand,{handmatig:false});
           if(_r.weg.length)logA('🚫 '+_r.weg.length+' sensor(en) uit de remote-selectie overgeslagen — niet bruikbaar op dit voertuig','info');
-        }catch(_){}
+        }catch(_){ logA('PID-gate niet doorlopen voor de remote-selectie — de actieve sensorset kan ongefilterd blijven staan: '+(_&&_.message||_),'warn'); }
       }
-      try{if(Array.isArray(v.dtc)&&v.dtc.length&&!dtcCodes.length){dtcCodes=[...v.dtc];try{renderDTC();}catch(_){}}}catch(_){}
+      try{if(Array.isArray(v.dtc)&&v.dtc.length&&!dtcCodes.length){dtcCodes=[...v.dtc];try{renderDTC();}catch(_){ console.warn('Foutcodelijst niet opnieuw getekend na overname van de local', _); }}}catch(_){ console.warn('Foutcodes van de local niet overgenomen', _); }
       if(v.demo&&!S.demoWarned){S.demoWarned=true;
         logA('⚠ Let op: de local draait DEMO-data — dit is geen echt voertuig','warn');}
-      try{buildPIDList(document.getElementById('psrch')?.value||'');}catch(_){}
-      try{document.getElementById('pidCnt').textContent=activePIDs.size;}catch(_){}
-      try{renderGauges();rebuildGSel();}catch(_){}
-      try{refreshAllReadiness();}catch(_){}
+      try{buildPIDList(document.getElementById('psrch')?.value||'');}catch(_){ /* stil: element kan al weg zijn */ }
+      try{document.getElementById('pidCnt').textContent=activePIDs.size;}catch(_){ /* stil: element kan al weg zijn */ }
+      try{renderGauges();rebuildGSel();}catch(_){ console.warn('Meters/selectielijst niet ververst na het overnemen van het voertuigprofiel', _); }
+      try{refreshAllReadiness();}catch(_){ console.warn('Meetgereedheid niet herberekend na het overnemen van het voertuigprofiel', _); }
       window._connReady=true;
-      try{updateConnGate();}catch(_){}
+      try{updateConnGate();}catch(_){ console.warn('Verbindingspoort niet bijgewerkt na het overnemen van het voertuigprofiel', _); }
       logA('🔭 Voertuigprofiel toegepast — '+(((v.pids&&v.pids.length)|0))+' sensoren van de local beschikbaar','ok');
-    }catch(_){}
+    }catch(_){ logA('Voertuigprofiel van de local niet (volledig) toegepast — analyses op deze expert-instantie kunnen op een onvolledig profiel draaien: '+(_&&_.message||_),'warn'); }
   }
   // Volledige actieve set (gedebounced) naar de local sturen na een handmatige
   // PID-keuze op de expert. De local doet een UNIE met zijn eigen selectie en
@@ -628,40 +628,40 @@ window.PLRemote=(function(){
           .filter(s=>/^[0-9A-F]{2}$/.test(s)).slice(0,24);
         if(sfx.length&&S.ews&&S.ews.readyState===1)
           S.ews.send(JSON.stringify({type:'request-poll',pids:sfx,reqId:Math.random().toString(36).slice(2,8)}));
-      }catch(_){}
+      }catch(_){ console.warn('Handmatige PID-keuze niet doorgestuurd naar de local om mee te pollen', _); }
     },400);
   }
   function enterDrive(){
     if(!S.ews||S.ews.readyState!==1){expLog('✖ Eerst verbinden met een sessie');return;}
     try{if(typeof connected!=='undefined'&&connected&&!window._remoteVehicleMode){
-      expLog('✖ Verbreek eerst je eigen Bluetooth-verbinding');return;}}catch(_){}
+      expLog('✖ Verbreek eerst je eigen Bluetooth-verbinding');return;}}catch(_){ console.warn('Eigen-verbinding-check bij het starten van remote-modus mislukt', _); }
     window._remoteVehicleMode=true;
-    try{connected=true;demoMode=false;}catch(_){}
-    try{setConn(true);}catch(_){}
-    try{document.getElementById('connOv').classList.add('hidden');}catch(_){}
-    try{if(typeof goHome==='function')goHome();}catch(_){}
+    try{connected=true;demoMode=false;}catch(_){ console.warn('Verbindingsstatus niet op actief gezet voor remote-modus', _); }
+    try{setConn(true);}catch(_){ console.warn('Verbindingsindicator niet bijgewerkt voor remote-modus', _); }
+    try{document.getElementById('connOv').classList.add('hidden');}catch(_){ /* stil: element kan al weg zijn */ }
+    try{if(typeof goHome==='function')goHome();}catch(_){ console.warn('Niet naar het beginscherm genavigeerd bij het starten van remote-modus', _); }
     expertClose();
     const p=$('remDrivePill');if(p){p.style.display='flex';
       p.textContent='🔭 remote · '+((S.expJoin&&S.expJoin.sid)||'');}
     // Remote sessie = analyse-klaar: geen BT-gate ('Check connectie') meer.
     window._connReady=true;
-    try{updateConnGate();}catch(_){}
+    try{updateConnGate();}catch(_){ console.warn('Verbindingspoort niet bijgewerkt bij het starten van remote-modus', _); }
     // Voertuigprofiel van de local toepassen (of alsnog opvragen).
     if(S.vstate)applyVState(S.vstate);
     else if(S.ews&&S.ews.readyState===1)S.ews.send(JSON.stringify({type:'request-vstate',reqId:_rid()}));
     // Laatst ontvangen live-waarden meteen de meters/pijplijn in.
-    try{for(const k in S.vals){const vv=S.vals[k];if(typeof vv==='number')updPID('01'+k,vv);}}catch(_){}
+    try{for(const k in S.vals){const vv=S.vals[k];if(typeof vv==='number')updPID('01'+k,vv);}}catch(_){ console.warn('Laatst bekende waarden niet meteen in de meters gezet', _); }
     // Huidige actieve set meteen bij de local laten meepollen → meters vullen
-    try{if(typeof activePIDs!=='undefined'&&activePIDs.size)ensurePIDListActive([...activePIDs]);}catch(_){}
+    try{if(typeof activePIDs!=='undefined'&&activePIDs.size)ensurePIDListActive([...activePIDs]);}catch(_){ logA('Actieve sensoren niet aangezet op de local bij het starten van remote-modus — de meters kunnen leeg blijven: '+(_&&_.message||_),'warn'); }
     logA('🔭 Remote sessie is nu de databron — deuren en analyses bruikbaar (alleen-lezen)','ok');
   }
   function exitDrive(){
     if(!window._remoteVehicleMode)return;
     window._remoteVehicleMode=false;
-    try{connected=false;}catch(_){}
-    try{setConn(false);}catch(_){}
+    try{connected=false;}catch(_){ console.warn('Verbindingsstatus niet uitgezet bij het verlaten van remote-modus', _); }
+    try{setConn(false);}catch(_){ console.warn('Verbindingsindicator niet bijgewerkt bij het verlaten van remote-modus', _); }
     window._connReady=false;
-    try{updateConnGate();}catch(_){}
+    try{updateConnGate();}catch(_){ console.warn('Verbindingspoort niet bijgewerkt bij het verlaten van remote-modus', _); }
     const p=$('remDrivePill');if(p)p.style.display='none';
   }
   function mergeVals(d){if(!d||typeof d!=='object')return;
@@ -669,7 +669,7 @@ window.PLRemote=(function(){
       if(typeof v==='number'&&isFinite(v))S.vals[String(k).toUpperCase()]=v;}}
   function pidName(sfx){
     try{const d=(typeof getPidDef==='function')?getPidDef('01'+sfx):null;
-      if(d){const n=d.n||d.name||('PID '+sfx);const u=d.u||d.unit||'';return n+(u?' ('+u+')':'');}}catch(_){}
+      if(d){const n=d.n||d.name||('PID '+sfx);const u=d.u||d.unit||'';return n+(u?' ('+u+')':'');}}catch(_){ /* stil: valt terug op de generieke naam hieronder */ }
     return 'PID '+sfx;
   }
   function renderTiles(){
@@ -731,7 +731,7 @@ window.PLRemote=(function(){
   }
   function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);
     exitDrive();
-    try{if(S.ews)S.ews.close();}catch(_){}
+    try{if(S.ews)S.ews.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
     S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};S.vstate=null;
     $('remExpLive').style.display='none';$('remExpConn').style.display='';
     $('remExpErr').textContent='';setExpStat('—');}
@@ -744,13 +744,13 @@ window.PLRemote=(function(){
       const pid=(h.match(/[#&]pid=([A-Za-z0-9]+)/)||[])[1]||'';
       const ct=(h.match(/[#&]ct=([^&]+)/)||[])[1]||'';
       if(pid&&ct){pendingPair={pid:pid,ct:decodeURIComponent(ct)};
-        try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}}
+        try{history.replaceState(null,'',location.pathname+location.search);}catch(_){ /* stil: cosmetisch, url-balk opschonen */ }}
     }else if(/remote=1/.test(h)||/sid=/.test(h)){
       const p=parseJoin(h);
       if(p){pendingJoin=p;
-        try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}}
+        try{history.replaceState(null,'',location.pathname+location.search);}catch(_){ /* stil: cosmetisch, url-balk opschonen */ }}
     }
-  }catch(_){}
+  }catch(_){ console.warn('Deep-link uit de URL-hash niet verwerkt — een gedeelde link opent dan niet vanzelf de juiste sessie', _); }
   function afterLogin(){
     if(pendingPair){
       const pp=pendingPair;pendingPair=null;
@@ -763,14 +763,14 @@ window.PLRemote=(function(){
     if(!pendingJoin)return;
     const p=pendingJoin;pendingJoin=null;
     openExpert();
-    try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){}
+    try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){ console.warn('Code-veld niet vooringevuld na deep-link', _); }
     expertConnect(p);
   }
   try{ // telemetrie-tap: elke live-waarde die de app verwerkt óók (throttled) delen
     if(typeof updPID==='function'){const _u=updPID;
-      updPID=function(pid,val){_u(pid,val);try{feed(pid,val);}catch(_){}};
+      updPID=function(pid,val){_u(pid,val);try{feed(pid,val);}catch(_){ console.warn('Live-waarde niet doorgegeven aan de expert-tap: '+pid, _); }};
       window.updPID=updPID;}
-  }catch(_){}
+  }catch(_){ console.warn('updPID-wrapper (kernfunctie) niet geïnstalleerd — telemetrie naar de expert werkt dan niet tijdens het delen', _); }
   /* ── Remote-voertuig-wrappers (alleen actief als _remoteVehicleMode aan is) ── */
   try{ // PID-selectie: elke analyse/deur die sensoren activeert → local pollt ze mee
     if(typeof ensurePIDListActive==='function'){const _e=ensurePIDListActive;
@@ -783,78 +783,78 @@ window.PLRemote=(function(){
             if(sfx.length)S.ews.send(JSON.stringify({type:'request-poll',pids:sfx,
               reqId:Math.random().toString(36).slice(2,8)}));
           }
-        }catch(_){}
+        }catch(_){ console.warn('PID-selectie niet doorgestuurd naar de local om mee te pollen', _); }
         return r;
       }; window.ensurePIDListActive=ensurePIDListActive;}
-  }catch(_){}
+  }catch(_){ console.warn('ensurePIDListActive-wrapper (kernfunctie) niet geïnstalleerd — sensoractivatie synct dan niet naar de remote-sessie', _); }
   try{ // polling gebeurt op de telefoon; hier stroomt de data binnen via de sessie
     if(typeof startPoll==='function'){const _sp=startPoll;
       startPoll=function(){
         if(window._remoteVehicleMode){logA('Remote: polling loopt op de telefoon — live data stroomt vanzelf binnen','info');return;}
         return _sp.apply(this,arguments);
       }; window.startPoll=startPoll;}
-  }catch(_){}
+  }catch(_){ console.warn('startPoll-wrapper niet geïnstalleerd — in remote-modus kan dit toestel dan proberen zelf te pollen zonder adapter', _); }
   try{ // analyse-gate: een actieve remote sessie telt als gecheckte verbinding
     if(typeof preAnalysisCheck==='function'){const _pa=preAnalysisCheck;
       preAnalysisCheck=async function(){ if(window._remoteVehicleMode)return true; return _pa.apply(this,arguments); };
       window.preAnalysisCheck=preAnalysisCheck;}
-  }catch(_){}
+  }catch(_){ console.warn('preAnalysisCheck-wrapper niet geïnstalleerd — analyses kunnen dan onterecht blijven vragen om een lokale verbinding', _); }
   try{ // snelheidsmeting leest de bus — remote overslaan (aanroepers vangen null af)
     if(typeof measureConnSpeed==='function'){const _mc=measureConnSpeed;
       measureConnSpeed=async function(){ if(window._remoteVehicleMode)return null; return _mc.apply(this,arguments); };
       window.measureConnSpeed=measureConnSpeed;}
-  }catch(_){}
+  }catch(_){ console.warn('measureConnSpeed-wrapper niet geïnstalleerd — in remote-modus kan dit een echte busmeting proberen zonder adapter', _); }
   try{ // gezondheidsscan leest de bus — remote komt de gezondheid uit het vstate-snapshot
     if(typeof initialHealthScan==='function'){const _ih=initialHealthScan;
       initialHealthScan=async function(){ if(window._remoteVehicleMode)return; return _ih.apply(this,arguments); };
       window.initialHealthScan=initialHealthScan;}
-  }catch(_){}
+  }catch(_){ console.warn('initialHealthScan-wrapper niet geïnstalleerd — in remote-modus kan dit een echte scan proberen zonder adapter', _); }
   try{ // handmatige PID-keuze op de expert → local pollt de set mee (uniewerking)
     if(typeof togglePID==='function'){const _tg=togglePID;
-      togglePID=function(){ const r=_tg.apply(this,arguments); try{remPollActive();}catch(_){} return r; };
+      togglePID=function(){ const r=_tg.apply(this,arguments); try{remPollActive();}catch(_){ console.warn('PID-keuze niet doorgestuurd naar de local om mee te pollen', _); } return r; };
       window.togglePID=togglePID;}
-  }catch(_){}
+  }catch(_){ console.warn('togglePID-wrapper niet geïnstalleerd — handmatige PID-keuze op de expert synct dan niet naar de local', _); }
   try{ // '+ Alles'-categorieknop idem
     if(typeof selectCategoryPIDs==='function'){const _sc2=selectCategoryPIDs;
-      selectCategoryPIDs=function(){ const r=_sc2.apply(this,arguments); try{remPollActive();}catch(_){} return r; };
+      selectCategoryPIDs=function(){ const r=_sc2.apply(this,arguments); try{remPollActive();}catch(_){ console.warn('Categorie-keuze niet doorgestuurd naar de local om mee te pollen', _); } return r; };
       window.selectCategoryPIDs=selectCategoryPIDs;}
-  }catch(_){}
+  }catch(_){ console.warn('selectCategoryPIDs-wrapper (kernfunctie) niet geïnstalleerd — de \'+ Alles\'-knop synct dan niet naar de remote-sessie', _); }
   try{ // geen Bluetooth hier: stray one-shots krijgen een lege (NO DATA-achtige) respons
     if(typeof sendCmd==='function'){const _sc=sendCmd;
       sendCmd=async function(cmd,t){ if(window._remoteVehicleMode)return ''; return _sc(cmd,t); };
       window.sendCmd=sendCmd;}
-  }catch(_){}
+  }catch(_){ console.warn('sendCmd-wrapper (kernfunctie) niet geïnstalleerd — losse commando\'s kunnen dan in remote-modus een echte (niet-bestaande) BT-verbinding proberen', _); }
   try{ // DTC-deur werkt remote via het read-only verzoek naar de telefoon
     if(typeof realScanDTC==='function'){const _rd=realScanDTC;
       realScanDTC=async function(){ if(window._remoteVehicleMode)return remoteDtc(); return _rd(); };
       window.realScanDTC=realScanDTC;}
-  }catch(_){}
+  }catch(_){ console.warn('realScanDTC-wrapper (kernfunctie) niet geïnstalleerd — de DTC-deur kan dan in remote-modus een echte (niet-bestaande) BT-verbinding proberen', _); }
   try{ // de éne schrijfactie in de app: op afstand hard geblokkeerd
     if(typeof clearDTC==='function'){const _cd=clearDTC;
       clearDTC=async function(){
         if(window._remoteVehicleMode){
-          try{showToast?.('🔒 Foutcodes wissen kan niet op afstand — alleen-lezen');}catch(_){}
+          try{showToast?.('🔒 Foutcodes wissen kan niet op afstand — alleen-lezen');}catch(_){ /* stil: melding mag nooit de stroom breken */ }
           logA('🔒 Wissen geblokkeerd: remote sessie is alleen-lezen','warn');return;}
         return _cd.apply(this,arguments);
       }; window.clearDTC=clearDTC;}
-  }catch(_){}
+  }catch(_){ console.error('KRITIEK: clearDTC-wrapper niet geïnstalleerd — de alleen-lezen-blokkade op foutcodes wissen is dan NIET actief in een remote sessie', _); }
   try{ // adapter-survey is per definitie hardware-lokaal
     if(typeof vlFullSurvey==='function'){const _vs=vlFullSurvey;
       vlFullSurvey=function(){
-        if(window._remoteVehicleMode){try{showToast?.('Veldlab-survey werkt alleen bij de auto zelf');}catch(_){}return;}
+        if(window._remoteVehicleMode){try{showToast?.('Veldlab-survey werkt alleen bij de auto zelf');}catch(_){ /* stil: melding mag nooit de stroom breken */ }return;}
         return _vs.apply(this,arguments);
       }; window.vlFullSurvey=vlFullSurvey;}
-  }catch(_){}
+  }catch(_){ console.warn('vlFullSurvey-wrapper niet geïnstalleerd — de survey-knop kan dan in remote-modus proberen een echte scan te starten', _); }
   try{ // local: discovery/verversing van de PID-lijst → snapshot naar de expert
     if(typeof buildDiscoveredPIDList==='function'){const _bd=buildDiscoveredPIDList;
-      buildDiscoveredPIDList=function(){ const r=_bd.apply(this,arguments); try{sendVStateSoon();}catch(_){} return r; };
+      buildDiscoveredPIDList=function(){ const r=_bd.apply(this,arguments); try{sendVStateSoon();}catch(_){ console.warn('Vernieuwd voertuigprofiel niet naar de expert gestuurd', _); } return r; };
       window.buildDiscoveredPIDList=buildDiscoveredPIDList;}
-  }catch(_){}
+  }catch(_){ console.warn('buildDiscoveredPIDList-wrapper niet geïnstalleerd — de expert krijgt dan geen vers snapshot na een nieuwe discovery', _); }
   try{ // local: voertuiginfo (VIN/RDW) bijgewerkt → snapshot verversen
     if(typeof showVtag==='function'){const _svt=showVtag;
-      showVtag=function(){ const r=_svt.apply(this,arguments); try{sendVStateSoon();}catch(_){} return r; };
+      showVtag=function(){ const r=_svt.apply(this,arguments); try{sendVStateSoon();}catch(_){ console.warn('Vernieuwd voertuigprofiel niet naar de expert gestuurd na VIN/RDW-update', _); } return r; };
       window.showVtag=showVtag;}
-  }catch(_){}
+  }catch(_){ console.warn('showVtag-wrapper niet geïnstalleerd — de expert ziet dan geen bijgewerkte voertuiginfo', _); }
   function remoteDtc(){
     return new Promise(res=>{
       if(!S.ews||S.ews.readyState!==1)return res([]);
@@ -866,14 +866,14 @@ window.PLRemote=(function(){
   }
   try{ // na login: eventuele deep-link naar een gedeelde sessie afhandelen
     if(typeof finishLogin==='function'){const _f=finishLogin;
-      finishLogin=function(u,a){_f(u,a);try{afterLogin();}catch(_){}};
+      finishLogin=function(u,a){_f(u,a);try{afterLogin();}catch(_){ console.warn('Deep-link na login niet afgehandeld — een gedeelde sessie opent dan niet vanzelf', _); }};
       window.finishLogin=finishLogin;}
-  }catch(_){}
+  }catch(_){ console.warn('finishLogin-wrapper niet geïnstalleerd — deep-links naar een gedeelde sessie werken dan niet na inloggen', _); }
 
   function copy(id){
     const el=$(id);if(!el)return;
-    try{el.select();el.setSelectionRange(0,99999);}catch(_){}
-    try{navigator.clipboard.writeText(el.value);}catch(_){try{document.execCommand('copy');}catch(__){}}
+    try{el.select();el.setSelectionRange(0,99999);}catch(_){ /* stil: niet elke input ondersteunt setSelectionRange; select() erboven is genoeg */ }
+    try{navigator.clipboard.writeText(el.value);}catch(_){try{document.execCommand('copy');}catch(__){ /* stil: browserfunctie ontbreekt of is geweigerd */ }}
     logA('Gekopieerd naar klembord','ok');
   }
 
