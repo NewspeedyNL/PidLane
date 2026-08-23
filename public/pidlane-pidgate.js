@@ -91,13 +91,63 @@ const BOOST_PIDS = new Set(['0170','2102','0187']);
 // ── Turbo-detectie: drempels ──────────────────────────────────────────
 // Bijstellen na een rit; zie PIDLANE.md §15 voor de meetgegevens waarop deze
 // waarden zijn gekozen. Bewust hier bovenaan en niet verstopt in de functie.
-const MAP_BEWIJS_KPA   = 85;    // vanaf deze inlaatdruk staat de gasklep ver open
+//
+// 24-08-2026: de twee drempels die met omgevingsdruk te maken hebben stonden
+// als vast getal in de code. Dat is op twee manieren mis.
+//
+//   1. Te krap. Op 23-08 mat de CX-5 een piek van 105 kPa terwijl de grens op
+//      106 stond — één kPa marge op een atmosferische motor. Eén kPa hoger en
+//      hij was als turbo beoordeeld. Dat is de ONSCHULDIGE kant (er wordt dan
+//      niets weggefilterd), maar het is geen marge.
+//   2. Erger: op hoogte klopt geen van beide getallen. Op 1500 m is de
+//      omgevingsdruk ~85 kPa. Dan haalt een atmosferische motor de
+//      bewijsdrempel van 85 kPa NOOIT, dus valt er nooit een oordeel en is de
+//      hele detectie stil dood — precies de fout die ronde 5 al eens maakte.
+//      En een turbo die daar naar 100 kPa laadt blijft onder de 106 en wordt
+//      dus als ATMOSFERISCH bestempeld, waarna zijn boost-tegels verdwijnen.
+//      Dát is de schadelijke kant.
+//
+// Allebei opgelost door van de auto zelf te vragen hoe hoog de omgevingsdruk
+// is. PID 0133 (barometerdruk) geeft dat rechtstreeks; op de CX-5 gemeten op
+// 102 kPa. Kent het voertuig 0133 niet, dan is de MAP-waarde bij draaiend
+// contact en stilstaande motor hetzelfde getal — er is dan geen onderdruk.
+// Levert geen van beide iets op, dan blijven de oude vaste getallen staan.
+const MAP_BEWIJS_ONDER = 15;    // zoveel ONDER omgevingsdruk = gasklep ver open
+const MAP_BOOST_MARGE  = 8;     // zoveel BOVEN omgevingsdruk = echte laaddruk
+const MAP_BEWIJS_KPA   = 85;    // terugval als de omgevingsdruk onbekend is
+const MAP_ATMOSF_MAX   = 106;   // terugval, idem — bewust laag: te snel
+                                // "turbo" zeggen verwijdert niets
 const MAP_BEWIJS_MIN   = 10;    // zoveel van zulke metingen voor een oordeel
-const MAP_ATMOSF_MAX   = 106;   // piek hieronder = nooit boost = geen turbo
 const MAP_MOTOR_RPM    = 300;   // daaronder draait de motor niet
+const MAP_BARO_MIN     = 60;    // plausibel bereik voor een barometerwaarde
+const MAP_BARO_MAX     = 115;   // (60 kPa ≈ 4200 m, hoger dan 115 bestaat niet)
+const MAP_BARO_MIN_N   = 3;     // zoveel stilstaande metingen voor een terugval
 
 // Houdt de hoogst gemeten inlaatdruk bij → bewijs of er turbo is.
 let _maxMapSeen = 0, _mapSamples = 0;
+// Omgevingsdruk afgeleid uit MAP bij stilstaande motor (terugval voor 0133).
+let _baroUitMap = 0, _baroUitMapN = 0;
+
+/* De omgevingsdruk op dit moment, in kPa, of null als hij onbekend is.
+   Twee bronnen, in volgorde van betrouwbaarheid. Geen van beide beschikbaar
+   betekent GEEN oordeel — niet een gok. */
+function _omgevingsdruk(){
+  const b = (typeof pidVals!=='undefined') ? pidVals['0133'] : undefined;
+  if(typeof b==='number' && b>=MAP_BARO_MIN && b<=MAP_BARO_MAX) return b;
+  if(_baroUitMapN>=MAP_BARO_MIN_N && _baroUitMap>=MAP_BARO_MIN && _baroUitMap<=MAP_BARO_MAX)
+    return _baroUitMap;
+  return null;
+}
+// Vanaf deze inlaatdruk staat de gasklep zo ver open dat de meting iets zegt.
+function _bewijsDrempel(){
+  const p=_omgevingsdruk();
+  return p===null ? MAP_BEWIJS_KPA : Math.round(p-MAP_BEWIJS_ONDER);
+}
+// Piek hieronder = nooit boost gezien = geen turbo.
+function _atmosfDrempel(){
+  const p=_omgevingsdruk();
+  return p===null ? MAP_ATMOSF_MAX : Math.round(p+MAP_BOOST_MARGE);
+}
 let _herijkTeller = 0;      // hoe vaak herijkPidGate() echt gedraaid heeft
 let _tickTeller   = 0;      // hoe vaak plHerijkTick() is aangeroepen
 
@@ -108,8 +158,14 @@ let _tickTeller   = 0;      // hoe vaak plHerijkTick() is aangeroepen
 // alles gewoon bedraad was. Tellers liegen niet.
 try{ window.PLGate = {
   stats: function(){
+    // Drempels meepubliceren: de testrun kan zo TOETSEN dat ze meebewegen
+    // met de omgevingsdruk, in plaats van de broncode te moeten lezen.
+    let baro=null, bewijs=MAP_BEWIJS_KPA, atmosf=MAP_ATMOSF_MAX;
+    try{ baro=_omgevingsdruk(); bewijs=_bewijsDrempel(); atmosf=_atmosfDrempel(); }
+    catch(e){ console.warn('PLGate.stats: drempels niet bepaald — '+(e.message||e)); }
     return { mapMonsters:_mapSamples, maxMap:_maxMapSeen,
-             herijkingen:_herijkTeller, ticks:_tickTeller };
+             herijkingen:_herijkTeller, ticks:_tickTeller,
+             omgevingsdruk:baro, bewijsDrempel:bewijs, atmosfDrempel:atmosf };
   }
 }; }catch(e){}   // de statemachine-tests draaien zonder window
 
@@ -127,7 +183,7 @@ try{ window.PLGate = {
 // stilstaande motor geeft ~101 kPa (geen onderdruk) en dat zou anders als
 // bewijs voor "atmosferisch" tellen.
 function _mapBewijsMoment(m){
-  if(m < MAP_BEWIJS_KPA) return false;
+  if(m < _bewijsDrempel()) return false;
   const r = (typeof pidVals!=='undefined') ? pidVals['010C'] : undefined;
   return typeof r==='number' && r > MAP_MOTOR_RPM;
 }
@@ -135,6 +191,14 @@ function _mapBewijsMoment(m){
 function _noteMap(){
   const m = (typeof pidVals!=='undefined') ? pidVals['010B'] : undefined;
   if(typeof m!=='number' || m <= 0 || m >= 300) return;
+  const r = (typeof pidVals!=='undefined') ? pidVals['010C'] : undefined;
+  // Contact aan, motor uit: geen onderdruk, dus MAP IS de omgevingsdruk.
+  // Dit is de terugval voor voertuigen zonder 0133. Hoogste waarde nemen,
+  // want een motor die net is afgezet loopt nog even naar ambient toe.
+  if(typeof r==='number' && r<=MAP_MOTOR_RPM){
+    _baroUitMapN++;
+    if(m>_baroUitMap) _baroUitMap=m;
+  }
   if(m > _maxMapSeen) _maxMapSeen = m;                  // piek: altijd bijhouden
   if(_mapBewijsMoment(m)) _mapSamples++;                // bewijs: alleen hoge druk
 }
@@ -145,7 +209,7 @@ function _noteMap(){
 // ontbrekende tegel op een turbo.
 function _isNaturallyAspirated(){
   if(_mapSamples < MAP_BEWIJS_MIN) return false;
-  return _maxMapSeen <= MAP_ATMOSF_MAX;
+  return _maxMapSeen <= _atmosfDrempel();
 }
 function _boostPhantom(pid){
   if(!BOOST_PIDS.has(pid)) return false;

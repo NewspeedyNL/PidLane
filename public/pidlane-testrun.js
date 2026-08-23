@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.7 (24-08-2026)';
+const TESTRUN_VERSIE = '3.8 (24-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1487,6 +1487,25 @@ async function _blok5() {
   await _doe(5, 'Batch 23-08: alle tien fixes geladen', function () {
     const eis = [
       // ── TOEGEVOEGD in deze update ──
+      ['turbodrempel volgt de omgevingsdruk', 'pidgate', function () {
+        // Gedrag: PLGate publiceert de drempels, dus we kunnen zien of ze
+        // meebewegen. Op zeeniveau (baro ~102) hoort de atmosferische grens
+        // rond 110 te liggen, niet op de oude vaste 106.
+        if (!window.PLGate || typeof PLGate.stats !== 'function') return false;
+        const st = PLGate.stats();
+        if (typeof st.atmosfDrempel !== 'number') return false;
+        if (st.omgevingsdruk === null) return st.atmosfDrempel === 106;
+        return st.atmosfDrempel === Math.round(st.omgevingsdruk + 8) &&
+               st.bewijsDrempel === Math.round(st.omgevingsdruk - 15);
+      }],
+      ['marge op de piek', 'pidgate', function () {
+        // Op 23-08 was de piek 105 bij een grens van 106. Nu moet er lucht
+        // tussen zitten; is die weg, dan wil je het weten vóór een rit.
+        if (!window.PLGate || typeof PLGate.stats !== 'function') return null;
+        const st = PLGate.stats();
+        if (!st.maxMap || st.omgevingsdruk === null) return null;
+        return (st.atmosfDrempel - st.maxMap) >= 3;
+      }],
       ['opruimdeur bestaat', 'pidgate', function () {
         return typeof window.pidOpruimen === 'function' &&
                typeof window.pidOpgeruimdLijst === 'function';
@@ -2218,7 +2237,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Opruimregel voor stille sensoren + naronde op de batch van 23-08',
+  titel: 'Opruimregel stille sensoren + turbodrempel op omgevingsdruk + naronde 23-08',
   vragen: [
     'VOORAF — blok 5 mag geen FOUT geven. De veldlab-controle keek vorige run naar broncode van een functie in een closure en meldde ten onrechte "niet geladen"; die toetst nu gedrag.',
 
@@ -2230,7 +2249,7 @@ const CAMPAGNE = {
 
     'PLLOAD — vorige rit: 6 verlagingen in 35 min, waarvan 1 bij foutgraad 0 (en die had 1198 ms, dus terecht). Blijft dat zo? Zoek op "Pollbudget vastgehouden" — die regel stond op info-niveau en komt dus NIET in de logboek-export; kijk in de testrun-diagbundel.',
 
-    'TURBODREMPEL — vorige rit: 1461 MAP-monsters, piek 105 kPa, drempel 106. Een kPa marge. Noteer de nieuwe piek; komt die boven 106, dan wordt deze atmosferische auto als turbo beoordeeld.',
+    'TURBODREMPEL — de grens is niet meer vast maar volgt PID 0133 (barometer, op deze auto 102 kPa). Blok 5 toetst dat. Noteer piek en grens uit blok 1: met piek 105 en grens 110 is de marge 5 kPa in plaats van 1. Zakt de marge onder 3, dan meldt blok 5 dat.',
 
     'FIX 2 — FULL SURVEY. Draai er een bij stilstand. Blok 5 toetst nu de regel zelf, maar de uitslag telt: staat "transportfout" apart naast "niet aanwezig"?',
 

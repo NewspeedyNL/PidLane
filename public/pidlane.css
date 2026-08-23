@@ -1314,10 +1314,33 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 
 /* ── Inlogknop: omlijnd met groen-naar-blauw verloop, zoals in het ontwerp ── */
 .ov#loginOv .mact{
-  width:calc(var(--lgD)*.62);
+  width:calc(var(--lgD)*.70);
   flex:0 0 auto; margin:0;
   padding:calc(var(--lgD)*.034) 0 0;
   background:transparent; border:0; border-radius:0;
+}
+/* ── Demoknop: moet op ÉÉN regel passen ────────────────────────────
+   De cirkel heeft een vaste hoogte (width en height allebei --lgD). Brak
+   deze knop naar twee regels, dan liep de inhoud onderuit de cirkel en
+   kwam de versieregel in .lg-foot er dwars doorheen te staan — twee
+   elementen op dezelfde plek. Dat was geen fout in .lg-foot: die staat
+   gewoon onder de nominale onderkant van de cirkel.
+
+   De tekst zelf is Engels en blijft dat. De Play-reviewnotitie belooft
+   letterlijk "Try demo — no adapter needed"; wat de reviewer leest en wat
+   hij ziet moet woordelijk kloppen (zie het commentaar in index.html).
+   Dus niet de tekst korter, maar de knop passend.
+
+   Nagerekend op de smalste stand: 30 tekens x ~0,55 em x .029*--lgD geeft
+   ~0,48*--lgD aan tekst in een knop van 0,70*--lgD breed. Ruim. Daarom kan
+   white-space:nowrap er veilig bij, en dát is de eigenlijke garantie: een
+   knop die niet kán afbreken laat de cirkel niet overlopen. */
+.ov#loginOv .mbtn.s{
+  font-size:clamp(10.5px, calc(var(--lgD)*.029), 13px);
+  padding:calc(var(--lgD)*.026) 8px;
+  border-radius:calc(var(--lgD)*.028);
+  line-height:1.25;
+  white-space:nowrap;
 }
 .ov#loginOv .mbtn.p{
   width:100%;
@@ -1377,8 +1400,8 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   }
   .ov#loginOv .msub{ display:block; font-size:12px; color:var(--tx2); }
   .ov#loginOv .lg-form{ width:min(86%,320px); }
-  .ov#loginOv .mact{ width:min(74%,270px); }
-  .ov#loginOv .lg-foot{ margin-top:16px; }
+  .ov#loginOv .mact{ width:min(84%,300px); }
+  .ov#loginOv .lg-foot{ margin-top:20px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
