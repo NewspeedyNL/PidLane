@@ -1,7 +1,7 @@
 # PidLane — werkdocument
 
 Eén bestand. Vervangt `PLAN.md`, `OVERDRACHT.md` en alle losse leesmij's.
-Bijgewerkt: 23-08-2026 · app v3.0.0 · testrun 3.6
+Bijgewerkt: 23-08-2026 (avond) · app v3.0.0 · testrun 3.6
 
 ---
 
@@ -15,6 +15,15 @@ en noteer per fix of hij groen of rood is.
 
 Daarna: groene fixes verdwijnen uit dit document. Rode gaan in één naronde en
 dan is de set klaar. Ze komen niet terug als nieuwe genummerde punten.
+
+**Let op — de batch stond tot vanavond rood.** `test-plload.js` faalde op 6 van
+17 toetsen door fix 11. Niet omdat de fix fout was, maar omdat het plantmodel
+in de test `venGemMs` vastpinde op 105 ms: geijkt op de oude regeling, die
+alleen naar bezetting keek. Met een vlakke responstijd bestaat er onder de
+nieuwe voorwaarde per definitie geen tegendruk, dus zakte de regeling in het
+model door tot MIN bij 100% bezetting. Het model beschreef geen bus meer.
+Herzien en uitgebreid naar 20 toetsen; tegenproef gedaan (oude `||` terug =
+4 toetsen rood). Evenwicht in het model nu mult ~5 bij 81% bezetting.
 
 ---
 
@@ -83,21 +92,27 @@ van de 86 verlagingen staan, waarvan 24 terecht.
 Drie meldingen van 23-08. Ik heb de bestanden niet, dus deze zitten **niet** in
 de batch.
 
-**Demo-knop op het loginscherm.** Zit in `index.html`. Niet alleen slecht
-geplaatst: de tekst is Engels in een Nederlandse app, loopt over twee regels, en
-de versieregel "PidLane v3.0.0 — AI Car Diagnostics" loopt er dwars doorheen.
-Twee elementen op dezelfde plek.
+**Demo-knop op het loginscherm.** Nog open, bewust niet blind gerepareerd.
+Twee dingen die niet samen kunnen: de Engelse tekst is er met opzet. Het
+commentaar erboven in `index.html` zegt dat de Play-reviewnotitie letterlijk
+"Try demo — no adapter needed" belooft en dat wat de reviewer leest en ziet
+woordelijk moet kloppen. Vertalen naar Nederlands breekt dus de reviewbelofte
+die Play-blokkade 3 moest wegnemen.
 
-**Bulk-recorder komt niet bovenop.** Zit in `pidlane-bulk.js`. Op het screenshot
-staat de modal wél voor, maar de zwevende chips (tokens, saldo, Mijn plan,
-km/u) liggen eroverheen. Eén oorzaak, twee symptomen: de modal-laag en de
-chip-laag zijn niet geordend.
+Wat overblijft is opmaak: de knop loopt over twee regels en `.lg-foot` botst
+ertegenaan. Dat zit in `pidlane.css` (`.ov#loginOv .mact` en `.ov#loginOv
+.lg-foot`, beide `flex:0 0 auto` in een kolom die overloopt), niet in de HTML.
+Zonder te kunnen zien hoe het rendert is dat gokken. Stuur een screenshot van
+het loginscherm op je eigen toestel, dan is het één regel CSS.
 
-**Opmerkingveld bij opslaan werkt niet.** Stond als gebouwd genoteerd op 21-08,
-maar de tekst komt niet in het bestand. Bestand onbekend.
+**Bulk-recorder komt niet bovenop.** OPGELOST 23-08. De overlay stond op
+`z-index:9200` en lag daarmee onder de topbar (9550), het tokenchipje van
+PLCredits (9400) en elke andere overlay in de app — alle andere schermvullende
+modals zitten op 9600-9900. Nu 9800, gelijk aan `.wiz-ov`.
 
-Stuur `index.html` en `pidlane-bulk.js` en zeg waar het opmerkingveld zit, dan
-gaan die drie in de naronde mee.
+**Opmerkingveld bij opslaan.** Zit er wél in, in `pidlane-export.js`: de
+opmerking komt in een eigen kader boven aan de PDF en bovenaan het tekstbestand.
+Toetsen tijdens de rit.
 
 ---
 
@@ -124,17 +139,55 @@ module.
 
 Klein, geen sessie waard, maar niet vergeten.
 
-- **Mode 22 olietemperatuur.** De scan van 23-08 vond één treffer op 256:
-  `221166` antwoordt met `0000` bij koelwater 91 °C. Dat is de olietemperatuur
-  niet. Alleen prefix `11` op header `7E0` is gescand; `7E1` (TCM) is
-  onaangeroerd. Zonder echte Mazda-DID-lijst is verder zoeken raden.
 - **Socket-stabiliteit.** 12 keer dood in 48 minuten op 23-08, met 107
   geweigerde verzoeken tijdens herinitialisatie. Een kwart van de sessie ging op
   aan herstellen. Kijk of fix 11 dit meebeweegt.
 - **Blok 1 tegenproef.** Op 23-08 verscheen spontaan "Geen profiel onder
   pl_vinprof_… — volle discovery". De controle kán dus rood worden. Blijft over:
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
+- **`0143` staat er 256x naast.** De parser rekent `A + B/256` waar
+  `A x 256 + B` hoort (PIDLANE.md §11). Stond niet in dit document en zat dus
+  in geen enkele batch. Na de rit de nieuwe logs nakijken; nog steeds fout, dan
+  herfix + hertest en daarna dicht.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
+  Stille catches zijn er 394, niet 240 — zie het hoofdstuk hieronder.
+
+---
+
+# 5b. STILLE CATCHES — gemeten, met een aflopend criterium
+
+Uit de bron van 23-08, zelfde definitie als `test-stille-catches.js`.
+
+**394**, niet 240, over 38 modules. Die 240 kwam uit 824 - 584 en telde
+`pidlane-remote.js` en `pidlane-testrun.js` nog mee; die staan inmiddels op 0.
+Hun ratelgrenzen stonden nog op 105 en 66 — daar mochten dus 171 lege catches
+bij zonder dat de test piepte. Nu allebei op 0 gezet, tegenproef gedaan.
+
+**Wat er niet gevonden is, is het belangrijkste.** Per stille catch is het
+`try`-blok uitgeknipt en gekeken of er een aanroep in zit van een functie die
+nergens in het project bestaat — de klasse bug die ronde 5 maandenlang
+stillegde. **Nul treffers.** Er ligt op dit moment geen dood mechanisme achter
+deze 394 te wachten.
+
+| soort | aantal | oordeel |
+|---|---|---|
+| om een aanroep van eigen code heen | 266 | tegen de werkregel |
+| alleen extern (opslag, DOM, JSON, fetch) | 63 | mag stil zijn |
+| geen aanroep herkend | 64 | onschuldig |
+
+Naar bereikbaarheid: ring 1 (opstart en verbinden) 65 om eigen code, ring 2
+(meten en parsen) 115, ring 3 (alleen als je die functie opent) 86.
+
+**Criterium voor publiceren: ring 1 + 2 naar nul — 180 stuks over 21 modules.**
+Dat is drie a vier sessies op het tempo van 22-08. Ring 2 eerst: daar raakt een
+gemiste fout de meetdata in plaats van een schermpje, en `datalog`,
+`rijsituatie` en `pids` zijn samen 52 van de 115. "Nul in de hele codebase" is
+geen criterium maar een horizon.
+
+Kanttekening bij het getal: de eerste telling zat er 19 naast omdat de
+tokenizer struikelde over een regex met een quote erin (`/"/g` in een
+template-interpolatie in `pidlane-pids.js`). Een grove regex geeft hier net zo
+makkelijk een verkeerd getal als het getal dat hiermee gecorrigeerd werd.
 
 ---
 
