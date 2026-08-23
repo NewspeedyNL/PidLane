@@ -1498,7 +1498,19 @@ function plMeetPromptBlok(){
   if(st.rijSec===null)     s+='\nDit voertuig levert geen snelheid; of er gereden is, is niet vast te stellen.';
   else if(st.rijSec<10)    s+='\nAlles is STILSTAAND gemeten (geen rijdata). Doe geen uitspraken over gedrag onder belasting, koppeling, overbrenging of verbruik onderweg.';
   else                     s+='\nWaarvan '+st.rijSec+' s rijdend gemeten (boven 15 km/h).';
-  // Kern-dekking: welke sensoren hoorden bij deze analyse, en hebben we ze?
+  // Opgeruimde sensoren (besluit 23-08-2026). Zonder deze regel leest het
+  // rapport een verkorte sensorlijst als "deze auto heeft dat niet", terwijl
+  // de app hem zelf uit de ronde heeft gehaald. Dat is een ander verhaal en
+  // de lezer hoort het verschil te kennen.
+  try{
+    const op=(typeof pidOpgeruimdLijst==='function')?pidOpgeruimdLijst():[];
+    if(op.length) s+='\n\nTIJDENS DEZE SESSIE OPGERUIMD ('+op.length+'): '+
+      op.map(o=>o.naam+' ('+o.pid+')').join(', ')+
+      '. Deze sensoren stonden in de selectie maar bleven na herhaalde pogingen '+
+      'zonder antwoord en zijn daarom uit de meetronde gehaald. Behandel ze NIET '+
+      'als afwezig op dit voertuig en niet als defect onderdeel — er is alleen '+
+      'geen meting. Noem ze in je conclusie als niet-gemeten.';
+  }catch(e){ console.warn('plMeetPromptBlok: opgeruimde sensoren niet opgehaald — '+(e.message||e)); }
   const k=plKernDekking();
   if(k){
     s+='\n\nKernsensoren voor analyse "'+k.prof+'" ('+k.totaal+' stuks): '+

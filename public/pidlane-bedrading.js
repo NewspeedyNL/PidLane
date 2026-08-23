@@ -55,7 +55,8 @@ var KRITIEK = [
   'vehicleFuelType','vlFullSurvey','withBus',
   // Deze twee stonden in PIDLANE.md als bedraad maar waren dat niet. Ze staan
   // hier zodat dat niet nog eens ongemerkt kan gebeuren.
-  'herijkPidGate','pidToevoegen',
+  'herijkPidGate','pidToevoegen','pidOpruimen','pidOpgeruimdLijst',
+  'plSurveyUitkomst',
   // Schermen die de zelftest in fase 2 opent en weer sluit. Geen aanhalings-
   // tekens in dit commentaar: de test leest deze lijst met een regex.
   'openClimateCheck','closeClimateCheck',

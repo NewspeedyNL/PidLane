@@ -198,6 +198,12 @@ function pidGate(pid, niveau, opt){
 
   // 3 — kiesbaar
   if(!opt.force){
+    // Een sensor die deze sessie is opgeruimd komt hier niet meer langs.
+    // Bewust op deze trede en niet lager: 'plausibel' en 'bestaat' gaan over
+    // wat dit voertuig HEEFT, en dat verandert niet doordat een sensor zweeg.
+    // Bewust ook binnen de force-uitzondering: zet de gebruiker hem met
+    // "Toon alles" handmatig aan, dan mag dat — het is zijn auto.
+    if(typeof _pidOpgeruimd!=='undefined' && _pidOpgeruimd.has(pid)) return false;
     // 'twijfel' mag hier BEWUST door: de analyses gebruiken twijfelachtige
     // sensoren wél, met een waarschuwing uit buildQualityReport. Wat niet
     // meetelt is een sensor die niets levert ('nodata') of onzin ('onzin').
@@ -354,6 +360,64 @@ function getPidDef(pid){
       || (typeof ALL_PID_DEFS!=='undefined'&&ALL_PID_DEFS[pid])
       || PIDS.find(p=>p.pid===pid)
       || null;
+}
+
+// ── DE UITGANGSDEUR (23-08-2026) ──────────────────────────────────
+// `pidToevoegen()` is de enige deur naar binnen. Tot vandaag was er geen
+// deur naar buiten: een sensor die niets meer leverde bleef in `activePIDs`
+// staan en werd elke ronde opnieuw bevraagd. Elke NO DATA wacht de timeout
+// uit, dus dat kost bandbreedte die de sensoren die het wél doen nodig
+// hebben — precies het patroon uit §15 ronde 6, maar dan omgekeerd.
+//
+// De regel (besluit 23-08): vijf mislukte pogingen achter elkaar, dan vijf
+// herkansingen van één per minuut, en pas als die ook alle vijf falen gaat
+// hij eruit. Dat is bewust traag: de rekensom is 5 pogingen + 5 minuten,
+// dus een sensor die alleen tijdens een socket-dip zweeg overleeft het.
+//
+// TERUGWEG: binnen dezelfde sessie is die er niet. Een nieuwe sessie
+// doorloopt dezelfde volgorde opnieuw en is dus de enige weg terug. Dat is
+// een bewuste keuze en geen tekortkoming: een terugweg op koud/warm of
+// motor-uit/aan zou betekenen dat de sensor bij elke motorstart terugkomt,
+// vijf minuten bandbreedte kost en er dan weer uit gaat — een zeef die
+// elke rit opnieuw dicht moet slibben.
+const _pidOpgeruimd=new Set(), _pidOpruimReden=Object.create(null);
+
+function pidOpruimen(pid, reden){
+  pid=String(pid||'').toUpperCase();
+  if(!pid || _pidOpgeruimd.has(pid)) return false;
+  _pidOpgeruimd.add(pid);
+  _pidOpruimReden[pid]=reden||'geen antwoord';
+  let uitSelectie=false;
+  try{ if(typeof activePIDs!=='undefined' && activePIDs.delete(pid)) uitSelectie=true; }
+  catch(e){ throw new Error('pidOpruimen: activePIDs niet bereikbaar — '+(e.message||e)); }
+  // manualPIDs blijft ONGEMOEID. Wat de gebruiker met "Toon alles" bewust
+  // heeft aangezet mag de app niet achter zijn rug weghalen; dezelfde regel
+  // als bij `herijkPidGate()`.
+  const naam=(getPidDef(pid)||{}).name||pid;
+  const tekst=`Sensor ${pid} (${naam}) opgeruimd: ${_pidOpruimReden[pid]}. `+
+              `Komt deze sessie niet terug; een nieuwe sessie probeert opnieuw.`;
+  try{ if(typeof btDiag==='function') btDiag(tekst,'warn'); }
+  catch(e){ console.warn('pidOpruimen: btDiag faalde — '+(e.message||e)); }
+  try{ if(typeof log==='function') log('🧹 '+tekst,'warn'); }
+  catch(e){ console.warn('pidOpruimen: log faalde — '+(e.message||e)); }
+  try{ if(typeof plHerijkTick==='function') markeerHerijking(); }
+  catch(e){ console.warn('pidOpruimen: herijking niet gemarkeerd — '+(e.message||e)); }
+  return uitSelectie;
+}
+
+// Voor het AI-rapport en voor blok 11. Levert een lijst, geen tekst: de
+// opmaak hoort bij de aanroeper.
+function pidOpgeruimdLijst(){
+  return Array.from(_pidOpgeruimd).map(p=>({
+    pid:p, naam:(getPidDef(p)||{}).name||p, reden:_pidOpruimReden[p]
+  }));
+}
+// test-herijking.js knipt dit blok uit de module en draait het in een
+// context zonder `window`. Vandaar de expliciete controle in plaats van een
+// kale toewijzing — die gooide een ReferenceError en maakte de test rood.
+if(typeof window!=='undefined'){
+  window.pidOpruimen=pidOpruimen;
+  window.pidOpgeruimdLijst=pidOpgeruimdLijst;
 }
 
 // ── einde gate-blok ───────────────────────────────────────────────

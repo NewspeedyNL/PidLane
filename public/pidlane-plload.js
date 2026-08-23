@@ -229,7 +229,14 @@ function pidPollInterval(pid){
 // antwoorden snoeien we ze uit de poll; elke ~2 min krijgt een dode PID één
 // herkansing (komt-ie later tot leven, dan keert-ie vanzelf terug).
 const _noDataStreak={}, _pidDead=new Set(), _pidDeadSince={};
-const PID_DEAD_THRESHOLD=4, PID_REPROBE_MS=120000;
+// Drempels aangepast op 23-08-2026 aan het besluit over stille sensoren:
+// vijf mislukte pogingen (was vier), daarna één herkansing per minuut (was
+// per twee minuten), en na vijf mislukte herkansingen gaat de sensor via
+// `pidOpruimen()` uit de selectie. Vóór vandaag bleef hij eeuwig herkansen.
+const PID_DEAD_THRESHOLD=5, PID_REPROBE_MS=60000;
+const PID_OPRUIM_NA=5;
+// Per PID: hoeveel herkansingen er al mislukt zijn sinds hij gesnoeid werd.
+const _pidHerkans=Object.create(null);
 
 // ── CADANS-REGISTER (fase 4) ────────────────────────────────────────
 // Tot nu toe bestond nergens in de app het onderscheid tussen "deze PID is
@@ -270,7 +277,16 @@ function markPidData(pid){
   _pidLastTry[pid]=nu; _pidLastOk[pid]=nu;
   _noDataStreak[pid]=0; delete _streakSince[pid];
   _qualBump(pid,true);
-  if(_pidDead.delete(pid)) delete _pidDeadSince[pid];
+  if(_pidDead.delete(pid)){
+    delete _pidDeadSince[pid];
+    // Een geslaagde herkansing wist de teller volledig. Anders zou een
+    // sensor die af en toe hapert na genoeg losse haperingen alsnog worden
+    // opgeruimd, terwijl hij het grootste deel van de tijd gewoon werkt.
+    if(_pidHerkans[pid]){
+      btDiag(`PID ${pid} antwoordt weer na ${_pidHerkans[pid]} mislukte herkansing(en) — terug in de ronde`,'info');
+      delete _pidHerkans[pid];
+    }
+  }
 }
 function markPidNoData(pid){
   const nu=Date.now();
@@ -278,7 +294,17 @@ function markPidNoData(pid){
   if(!_streakSince[pid]) _streakSince[pid]=nu;
   _noDataStreak[pid]=(_noDataStreak[pid]||0)+1;
   _qualBump(pid,false);
-  if(_pidDead.has(pid)) return;
+  if(_pidDead.has(pid)){
+    // Dit was een HERKANSING, en die is mislukt. Na PID_OPRUIM_NA mislukte
+    // herkansingen gaat de sensor de deur uit. Vóór 23-08 bleef hij hier
+    // eindeloos in rondjes lopen: elke minuut één timeout, een hele rit lang.
+    _pidHerkans[pid]=(_pidHerkans[pid]||0)+1;
+    if(_pidHerkans[pid]>=PID_OPRUIM_NA && typeof pidOpruimen==='function'){
+      pidOpruimen(pid, `${PID_DEAD_THRESHOLD} pogingen plus ${_pidHerkans[pid]} herkansingen zonder antwoord`);
+      _pidDead.delete(pid); delete _pidDeadSince[pid]; delete _pidHerkans[pid];
+    }
+    return;
+  }
   // Snoeien vereist nu VIER dingen, niet twee:
   //   1) een reeks missers            2) een lage kwaliteitsscore
   //   3) die reeks duurt ook in ECHTE tijd lang genoeg voor déze cadans
@@ -308,6 +334,8 @@ window.PLSched={
   laatstePoging(pid){ return _pidLastTry[pid]||0; },
   laatsteSucces(pid){ return _pidLastOk[pid]||0; },
   dood(pid){ return _pidDead.has(pid); },
+  herkansingen(pid){ return _pidHerkans[pid]||0; },
+  opgeruimd(){ try{ return pidOpgeruimdLijst(); }catch(e){ return []; } },
   kwaliteit(pid){ return pidQuality(pid); },
   actief(){ try{ return Array.from(activePIDs); }catch(e){ return []; } },
   info(pid){

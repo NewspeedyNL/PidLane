@@ -428,7 +428,11 @@ async function vlFullSurvey(){
       }
       // Twee keer een echte fout op de lijn = transport, geen oordeel over de
       // auto. Deze PID hoort NIET in de dekkingsmatrix terecht te komen.
-      if(st==='nodata' && _svErr && _svErr2) st='transport';
+      // De regel zelf staat in plSurveyUitkomst() buiten deze IIFE, zodat de
+      // testrun hem kan TOETSEN in plaats van de broncode van vlFullSurvey te
+      // doorzoeken — die functie staat in een closure en is van buiten niet
+      // leesbaar, waardoor blok 5 op 23-08 ten onrechte "niet geladen" meldde.
+      st = plSurveyUitkomst(st, _svErr, _svErr2);
       sv.pids[st]++;
       const _d={pid, naam:(def.name||def.naam||'').slice(0,40), val, unit:def.unit||'', ms, st, q};
       if(flaky) _d.flaky=true;
@@ -789,3 +793,25 @@ function vlEnsureBtn(force){
   // bestaande callsites).
   try{ var b=document.getElementById('plEvalBtn'); if(b) b.remove(); }catch(e){ /* stil: element kan al weg zijn */ }
 }
+
+/* De uitkomstregel van de full survey, bewust BUITEN de IIFE hierboven.
+
+   Aanleiding: op 23-08-2026 meldde blok 5 van de testrun "survey transport
+   (veldlab) — dat bestand is niet meegekomen", terwijl de fix er gewoon in
+   zat. De controle deed `String(window.vlFullSurvey)` en kreeg een lege
+   string, want `vlFullSurvey` staat in een closure. Precies de val uit
+   PIDLANE.md §20: een statische definitie is geen globale beschikbaarheid,
+   en broncode-inspectie is hier geen bewijs.
+
+   Door de regel als losse, zuivere functie naar buiten te halen kan de
+   testrun hem echt aanroepen: geef hem twee lijnfouten en kijk of er
+   'transport' uit komt. Dat is gedrag, niet tekst.
+
+   nodata + twee echte lijnfouten = transportfout, geen oordeel over de auto.
+   Eén enkele fout is niet genoeg: die kan een losse hapering zijn, en de
+   herkansing bestaat juist om dat verschil te maken. */
+function plSurveyUitkomst(status, fout1, fout2){
+  if(status==='nodata' && fout1 && fout2) return 'transport';
+  return status;
+}
+window.plSurveyUitkomst = plSurveyUitkomst;
