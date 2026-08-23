@@ -23,6 +23,8 @@
 // zodat een handmatige keuze en de automatiek elkaar niet overschrijven.
 const PLLoad={
   _mult:1.0, _laatstTick:0, _sinds:0, _staat:'normaal', _gelogdeMult:undefined,
+  // Vorige responstijd, om te zien of hij OPLOOPT. Zie het blok bij `druk`.
+  _vorigVenMs:null, _laatstOvergeslagen:0,
   MIN:1.0, MAX:6.0,
   cfg:{
     tickMs:2000,        // niet vaker bijregelen dan dit
@@ -33,6 +35,11 @@ const PLLoad={
     doodPct:80,         // vrijwel alles mislukt
     omhoog:1.35,        // multiplicative decrease van het tempo
     omlaag:0.05,        // additive increase van het tempo (in de ruime zone)
+    // Hoeveel de responstijd moet oplopen tegenover de vorige tick voordat
+    // het als tegendruk telt. 1.15 = 15% erbij. Ruim genoeg om ruis (een
+    // enkele trage respons) niet als tegendruk te lezen, streng genoeg om
+    // een echte opbouw te zien voordat hij traagMs haalt.
+    venStijgFactor:1.15,
     // Trage terugloop binnen de dode zone (bezetAf..bezetOp). Zonder deze
     // stap is de dode zone een VAL in plaats van een demping — zie het blok
     // hieronder. Klein gehouden zodat hij de hysterese niet ondermijnt: het
@@ -54,7 +61,38 @@ const PLLoad={
     let s=null;
     try{ s=(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null; }catch(e){}
     if(!s) return;
-    const druk = s.belasting>=this.cfg.bezetOp || s.foutPct>=this.cfg.foutOp;
+    /* ── BEZETTING ALLEEN IS GEEN TEGENDRUK (23-08-2026) ──────────────────
+       Hier stond `belasting>=bezetOp || foutPct>=foutOp`. Die OF was de fout:
+       een hoge bezetting sloeg op zichzelf al aan, ongeacht of er iets
+       misging.
+
+       Uit het veldlog van 23-08 (48 minuten, bergen op en af, met bulk-
+       recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan):
+       86 verlagingen tegen 21 verhogingen, en 61 van die 86 bij foutgraad
+       NUL. Het patroon is een cascade — om 12:19 ging het tempo in 22
+       seconden van 74% naar 17% terwijl de bezetting op 93-100% bleef
+       staan. Verlagen bracht de bezetting dus niet omlaag.
+
+       Waarom niet: PLLoad regelt zíjn pollronde, maar de waakronde (15
+       sensoren per 60 s, buiten de selectie), de bulk-recorder en de
+       profielwissels vullen de bus ook. De bezetting weerspiegelt ál dat
+       verkeer; het budget raakt maar een deel. Zo knijpt hij zichzelf af
+       voor drukte die hij niet veroorzaakt en niet kan wegnemen.
+
+       Daarom nu: bezetting telt alleen mee mét een tweede signaal dat er
+       echt iets vastloopt — een responstijd die oploopt of al boven
+       traagMs zit. Fouten blijven een zelfstandige trigger; die zijn per
+       definitie echte tegendruk.
+
+       Nagerekend op datzelfde log: van de 86 verlagingen blijven er 26
+       staan, waarvan 24 bij een responstijd boven 400 ms of oplopend. De
+       cascade van 12:19 (600-700 ms) verlaagt dus nog steeds — terecht.
+       Die van 11:37 (97-101 ms bij 85-87% bezet) niet meer. */
+    const foutDruk  = s.foutPct>=this.cfg.foutOp;
+    const bezetHoog = s.belasting>=this.cfg.bezetOp;
+    const venTraag  = s.venGemMs>=this.cfg.traagMs;
+    const venStijgt = this._vorigVenMs!=null && s.venGemMs>=this._vorigVenMs*this.cfg.venStijgFactor;
+    const druk = foutDruk || (bezetHoog && (venTraag || venStijgt));
     const ruim = s.belasting<this.cfg.bezetAf && s.foutPct<this.cfg.foutOp;
     /* ── DE DODE ZONE WAS EEN VAL ────────────────────────────────────────
        Tussen bezetAf (55%) en bezetOp (85%) was `_mult` bevroren: niet druk,
@@ -101,6 +139,18 @@ const PLLoad={
     } else if(this._gelogdeMult===undefined){
       this._gelogdeMult=this._mult;
     }
+    /* Zonder deze regel is de wijziging van 23-08 onmeetbaar: je ziet in het
+       log alleen minder verlagingen, en weet niet of dat komt doordat de
+       voorwaarde werkt of doordat de rit rustiger was. Nu staat er zwart op
+       wit dat de oude code hier verlaagd zou hebben en waarom dat niet meer
+       gebeurt. Hooguit eens per 20 s, anders loopt de log vol — op het log
+       van 23-08 zou dit 60 keer gevuurd hebben. */
+    if(bezetHoog && !druk && nu-this._laatstOvergeslagen>20000){
+      this._laatstOvergeslagen=nu;
+      btDiag(`Pollbudget vastgehouden op ${(100/this._mult).toFixed(0)}% — bezet ${s.belasting}% `+
+             `maar responstijd ${s.venGemMs}ms (vorige ${this._vorigVenMs==null?'—':this._vorigVenMs+'ms'}), fout ${s.foutPct}%`,'info');
+    }
+    this._vorigVenMs=s.venGemMs;
     this._staat=this._bepaalStaat(s);
   },
 
@@ -127,7 +177,12 @@ const PLLoad={
              tempoPct:Math.round(100/this._mult), mult:this._mult };
   },
 
-  reset(){ this._mult=1.0; this._staat='normaal'; this._laatstTick=0; this._gelogdeMult=undefined; }
+  // _vorigVenMs moet hier mee: na een protocolherstel is de oude responstijd
+  // van vóór de storing geen geldig ijkpunt meer. Bleef hij staan, dan zou de
+  // eerste tick na herstel een "daling" zien tegenover een waarde uit een
+  // heel andere toestand.
+  reset(){ this._mult=1.0; this._staat='normaal'; this._laatstTick=0; this._gelogdeMult=undefined;
+           this._vorigVenMs=null; this._laatstOvergeslagen=0; }
 };
 window.PLLoad=PLLoad;
 

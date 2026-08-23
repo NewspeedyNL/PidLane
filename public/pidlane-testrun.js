@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.4 (22-08-2026)';
+const TESTRUN_VERSIE = '3.5 (23-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1481,7 +1481,56 @@ async function _blok10() {
 // klant erop drukt.
 async function _blok5() {
 
-  // ── TOEGEVOEGD 22-08: de stille catches zijn gevuld ──
+  // ── TOEGEVOEGD 23-08: PLLoad regelt niet meer op bezetting alleen ──
+  // De wijziging zelf is één regel (`druk`), maar de gevolgen zijn pas in het
+  // veld te zien. Wat hier te controleren valt is of de nieuwe voorwaarde ook
+  // echt in de geladen code zit — niet of hij het juiste doet.
+  await _doe(5, 'PLLoad: nieuwe drukvoorwaarde geladen', function () {
+    if (typeof window.PLLoad === 'undefined')
+      return { staat: 'FOUT', detail: 'PLLoad bestaat niet' };
+    if (typeof PLLoad.cfg.venStijgFactor !== 'number')
+      return { staat: 'FOUT', detail: 'cfg.venStijgFactor ontbreekt — dit is de oude plload.js' };
+    let bron = '';
+    try { bron = String(PLLoad.tick || ''); } catch (e) { throw new Error('PLLoad.tick niet leesbaar — kan de voorwaarde niet controleren'); }
+    const mist = ['bezetHoog', 'venStijgt', 'venTraag', 'foutDruk'].filter(function (n) { return bron.indexOf(n) < 0; });
+    if (mist.length)
+      return { staat: 'FOUT', detail: 'tick() mist: ' + mist.join(', ') + ' — oude versie geladen' };
+    // De oude regel was: belasting>=bezetOp || foutPct>=foutOp. Staat die OF
+    // er nog letterlijk in, dan is er iets misgegaan bij het samenvoegen.
+    if (/belasting\s*>=\s*this\.cfg\.bezetOp\s*\|\|/.test(bron))
+      return { staat: 'FOUT', detail: 'de oude OF-voorwaarde staat er nog steeds in' };
+    return 'venStijgFactor ' + PLLoad.cfg.venStijgFactor + ', bezetOp ' + PLLoad.cfg.bezetOp +
+           '%, traagMs ' + PLLoad.cfg.traagMs + ' — bezetting telt alleen mét oplopende responstijd';
+  });
+
+  await _doe(5, 'PLLoad: ijkpunt wordt gewist bij herstel', function () {
+    if (typeof window.PLLoad === 'undefined') return { staat: 'FOUT', detail: 'PLLoad bestaat niet' };
+    // _vorigVenMs is het ijkpunt voor "loopt de responstijd op". Blijft die na
+    // een protocolherstel staan, dan wordt de eerste tick daarna vergeleken
+    // met een waarde uit een heel andere toestand.
+    let bron = '';
+    try { bron = String(PLLoad.reset || ''); } catch (e) { throw new Error('PLLoad.reset niet leesbaar'); }
+    if (bron.indexOf('_vorigVenMs') < 0)
+      return { staat: 'FOUT', detail: 'reset() wist _vorigVenMs niet — na een protocolherstel wordt tegen een oud ijkpunt vergeleken' };
+    return 'reset() wist het ijkpunt';
+  });
+
+  await _doe(5, 'PLLoad: staat op dit moment', function () {
+    if (typeof window.PLLoad === 'undefined' || !PLLoad.staat) return { staat: 'LET OP', detail: 'PLLoad niet beschikbaar' };
+    let st = null;
+    try { st = PLLoad.staat(); } catch (e) { throw new Error('PLLoad.staat() klapt'); }
+    let bs = null;
+    try { bs = (window.PLBus && PLBus.stats) ? PLBus.stats() : null; } catch (e) { bs = null; }
+    const extra = bs ? ' bij bezet ' + bs.belasting + '%, fout ' + bs.foutPct + '%, ' + bs.venGemMs + 'ms' : '';
+    // Niet als FOUT boeken: vroeg in een rit is een laag tempo normaal. Dit is
+    // een meetpunt voor het logboek, geen oordeel.
+    if (st.tempoPct <= 30 && bs && bs.foutPct === 0 && bs.venGemMs < PLLoad.cfg.traagMs)
+      return { staat: 'LET OP', detail: 'tempo ' + st.tempoPct + '%' + extra +
+        ' — laag terwijl er niets misgaat en de respons snel is. Precies het patroon van 23-08; noteer dit.' };
+    return 'tempo ' + st.tempoPct + '% (' + st.code + ')' + extra;
+  });
+
+  // ── BLIJFT STAAN uit 22-08: de stille catches ──
   // De opruiming zelf verandert geen gedrag, dus "werkt het nieuwe" is hier de
   // verkeerde vraag. De juiste vraag is of de dingen die ONDER die lege catches
   // zaten nog leven. Twee van de vondsten (PLAN.md punt 19 en 20) zijn runtime
@@ -2099,29 +2148,29 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: '584 stille catches opgeruimd over acht modules — wat gaat er nu af dat er nooit afging?',
+  titel: 'PLLoad regelt niet meer op bezetting alleen — zakt het tempo nog steeds naar 17%?',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0, testrun 3.4.',
+    'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0, testrun 3.5.',
 
-    'BLOK 5 — "Remote-wrappers zijn geïnstalleerd" moet groen zijn. Staat daar FOUT bij clearDTC, dan is de alleen-lezen-blokkade van een remote sessie NIET actief (punt 19) en moet je stoppen met delen tot dat opgelost is.',
+    'DE HOOFDVRAAG — op 23-08 stond de app na 48 minuten structureel op 17-29% tempo, met 86 verlagingen tegen 21 verhogingen en 61 daarvan bij foutgraad NUL. Kijk aan het eind van deze rit waar het tempo staat. Blijft het boven de 50% bij 0% fouten, dan werkt de ingreep.',
 
-    'BLOK 5 — "Geen lege catches meer in de acht opgeruimde modules". FOUT hier betekent dat de deploy niet is doorgekomen en je op de oude build rijdt; dan zegt de rest van deze run niets.',
+    'LOGBOEK — zoek op "Pollbudget vastgehouden". Die regel is nieuw en zegt: de bus is vol, maar de responstijd loopt niet op, dus houd het tempo vast. Op het log van 23-08 zou hij ongeveer 60 keer gevuurd hebben. Zie je hem nooit, dan is de voorwaarde niet actief of was de rit rustig.',
 
-    'LOGBOEK, DE HOOFDVRAAG — 584 catches die zwegen praten nu. Lees de staart van het logboek en let op meldingen die je nog nooit gezien hebt. Blok 11 geeft je de aantallen zodat je weet of het de moeite is.',
+    'LOGBOEK — tel "Pollbudget verlaagd" en kijk bij elke regel naar het ms-getal aan het eind. Elke verlaging hoort nu boven de 400 ms te zitten of duidelijk opgelopen te zijn. Staat er nog een verlaging bij 100-250 ms, dan lekt er een pad langs de nieuwe voorwaarde.',
 
-    'LOGBOEK, SPECIFIEK — let op "Sensoren niet vers gezet vóór ..." (punt 18: zeven analysefuncties die aannemen dat de juiste sensoren al aanstaan) en op "Voertuigprofiel niet (volledig) toegepast" (punt 19). Die twee families zijn het waarschijnlijkst.',
+    'CASCADES — de oude code ging in 22 seconden van 74% naar 17% in stapjes van 4 s. Zie je zo\'n reeks nog, kijk dan of de responstijd in die reeks óók oploopt. Zo ja: terecht, er liep echt iets vast. Zo nee: melden.',
 
-    'BLOK 9, DE LOSSE KNOP, WARME MOTOR — dit is de laatste openstaande meting van punt 4 en staat al dagen open. 45 seconden, 256 identifiers op 7E0. Rijd eerst tien minuten. Levert het niets op, dan is punt 4 dicht: deze CX-5 heeft de olietemperatuur niet op de diagnosebus.',
+    'RIJ ZOALS OP 23-08 — bulk-recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan. Die vier vullen de bus zonder dat PLLoad ze regelt; dat was juist de reden dat bezetting geen bruikbaar signaal bleek. Zonder die belasting toets je de wijziging niet.',
 
-    'NA BLOK 8 OF 9 — kijk of er een FOUT-regel "Header terugzetten" in het log staat. Die is nieuw (punt 20). Staat hij er, dan hangt de adapter mogelijk nog op 7E0 en praat de app daarna alleen nog met het motorblok: verbreek en verbind opnieuw.',
+    'BLOK 10, DE SNELHEIDSPROEF (10 min, losse knop) — de NAMETING. Op 23-08 was de slotregel: tempo 17%, bus 94% bezet, fout 0%. Als het nu hoger uitkomt bij dezelfde bezetting, is dat het bewijs.',
 
-    'BLOK 10, DE SNELHEIDSPROEF (10 min, losse knop) — dit is de VÓÓRMETING voor punt 13. Noteer de slotregel "Wat deze verbinding aankan" en "Stand van de app na de proef". Zonder deze twee getallen is sleutelen aan PLLoad gokwerk.',
+    'LET OP BIJ BLOK 10 — de trappen claimen het busslot, de rustpauzes niet. Daardoor meet de proef deels het verschil tussen een schone en een drukke bus, niet alleen het pollritme. Lees de rustprikken dus niet als "rust maakt de verbinding traag".',
 
-    'BLOK 11 — nieuw, kost niets, raakt de bus niet aan. Levert in één keer de cijfers voor punt 3 (hoeveel stille sensoren staan er in je selectie), punt 6 (hoeveel modules pakken zelf uit, hoeveel doen eigen fetch) en punt 12 (staan 0155/0156 er weer naast).',
+    'BLOK 11 — inventarisatie, kost niets, raakt de bus niet aan. Punt 3, 6 en 12 in één keer.',
 
-    'TEGELS — verschijnen alle tegels nog met een waarde? De opruiming is gedragsneutraal, dus hier hoort niets te veranderen. Ziet u wél verschil, dan zat er onder een van die 584 catches iets dat wél gedrag droeg.',
+    'STABILITEIT — op 23-08 ging de socket 12 keer dood in 48 minuten, met 107 geweigerde verzoeken tijdens herinitialisatie. Kijk of dat nu minder is. Een lager pollbudget was mogelijk óók een gevolg van die storingen, niet alleen een oorzaak.',
 
-    'BLOK 1 TEGENPROEF (punt 12) — wis de app-gegevens, verbind opnieuw: staat er dan LET OP met "NIET geladen"? Een controle die alleen groen kan worden bewijst niets. Nooit gedaan.'
+    'TEGELS — verschijnen alle tegels nog met een waarde, en voelt de app sneller? Bij hoger tempo horen de meters vaker te verspringen.'
   ]
 };
 
