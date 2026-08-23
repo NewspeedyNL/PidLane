@@ -1,6 +1,6 @@
 # PLAN.md — wat er nog open staat
 
-Bijgewerkt: 22-08-2026 (nacht) — versie 3.0.0, testrun 3.4.
+Bijgewerkt: 23-08-2026 — versie 3.0.0, testrun 3.5.
 
 Dit bestand is het werkplan over sessies heen: **alleen wat er nog moet
 gebeuren, in volgorde**. Wat er gebeurd is staat in `OVERDRACHT.md`, hoe het
@@ -120,56 +120,96 @@ rijgedrag: dezelfde auto, ook rijdend, komt nu op 130 ms gemiddeld uit.
 
 ---
 
-## 13. `PLLoad` regelt op de verkeerde grootheid
+## 13. `PLLoad` regelde op de verkeerde grootheid — INGREEP GEDAAN (23-08)
 
-De slotregel van de proef: **`tempo 18%, bus 66% bezet, fout 0%`** — terwijl de
-verbinding er net 9,1 verzoeken per seconde foutloos doorheen duwde. De app
-stond op achttien procent van wat de bus aankan, zonder één fout als aanleiding.
+**De wijziging is één regel.** In `pidlane-plload.js` stond:
 
-**De oorzaak staat al in de code, in het commentaar van 01-08:** bezetting is
-aanvraagtempo × responstijd. Juist een *snelle* bus haalt daar een hoog
-percentage — 66% bij 92 ms mediaan is efficiëntie, geen tegendruk. `PLLoad`
-leest dat als druk en schroeft terug.
-
-**En de terugweg is te traag om het te herstellen.** Bij tempo 18% staat `_mult`
-op 5,56. De weg terug naar 1,0:
-
-```
-ruim  (bezetting < 55, stap 0,05)   92 ticks  = 3,1 min
-kalm  (dode zone,     stap 0,03)   152 ticks  = 5,1 min
+```js
+const druk = s.belasting>=this.cfg.bezetOp || s.foutPct>=this.cfg.foutOp;
 ```
 
-Bij 66% bezetting zit hij in de dode zone, dus geldt de traagste van de twee.
-Dat verklaart precies waarom het tempo op 21-08 om 11:47 op 56% bleef staan
-terwijl er 0% fouten waren, en waarom het in 500 s niet terugklom.
+Die `||` was de fout: bezetting boven 85% sloeg op zichzelf al aan, ongeacht
+responstijd of fouten. Nu telt bezetting alleen mee mét een tweede signaal —
+een responstijd die oploopt (`venStijgFactor` 1.15) of al boven `traagMs` zit.
+Fouten blijven een zelfstandige trigger.
 
-**Drie knoppen, in volgorde van veiligheid:**
+### Het bewijs uit het veldlog van 23-08
 
-1. `omlaagTraag` van 0,03 naar ongeveer 0,08 — halveert de hersteltijd zonder
-   de hysterese aan te tasten. Kleinste ingreep, minste risico.
-2. `bezetAf` van 55 naar ongeveer 75, zodat `ruim` op dit voertuig bereikbaar is
-   en de snellere stap van 0,05 geldt. Het commentaar van 01-08 zegt zelf al dat
-   `ruim` hier onbereikbaar was; dit maakt dat af.
-3. `druk` alleen laten aanslaan op bezetting **in combinatie met** een oplopende
-   `venGemMs`. Bezetting alleen is aantoonbaar geen tegendruk. Grootste ingreep,
-   raakt de vorm van de regelkring.
+48 minuten, bergen op en af, met bulk-recorder, caravan-tracker, rijmonitor en
+waakronde tegelijk aan.
 
-**Meet vóór en ná met blok 10.** Die proef is nu het meetinstrument: dezelfde
-vijf trappen, en de slotregel zegt of het tempo van de app nog steeds ver onder
-ligt bij wat de verbinding foutloos haalt. Zonder die voor-en-nameting is dit
-sleutelen aan een regelkring op gevoel.
+- **86 verlagingen tegen 21 verhogingen.** Vier keer zo vaak omlaag als omhoog.
+- **61 van die 86 bij foutgraad nul.**
+- Verlagingen komen in cascades van 4 seconden; verhogingen kosten minuten en
+  gebeuren alleen onder 78% bezet. Daardoor zit de app structureel op 17-29%.
+- De cascade van 12:19 — tempo 74 → 55 → 41 → 30 → 22 → 17% in 22 seconden,
+  terwijl de bezetting op 93-100% bleef staan. **Verlagen bracht de bezetting
+  niet omlaag.**
 
-**De vóórmeting staat als opdracht 8 in de campagne van testrun 3.4.** Twee
-regels overschrijven volstaat: "Wat deze verbinding aankan" en "Stand van de
-app na de proef". Zolang die er niet zijn, is deze sessie niet te beginnen.
+### Waarom bezetting hier niet werkt
 
-Eén ding om niet te vergeten: de proef jaagt de bezetting zelf omhoog. Het tempo
-van 18% is dus deels door de meting veroorzaakt. Dat maakt de conclusie niet
-anders — 0% fouten en 9,1/s foutloos staat los van wie de bus bezet hield — maar
-lees de slotregel niet als "de app staat in het dagelijks gebruik altijd op 18%".
+`PLLoad` regelt zíjn pollronde, maar de waakronde (15 sensoren per 60 s, buiten
+de selectie), de bulk-recorder en de profielwissels vullen de bus ook — het log
+telt 267 unieke TX-groepen en vijftien profielwissels. De bezetting weerspiegelt
+ál dat verkeer; het budget raakt maar een deel. Zo knijpt hij zichzelf af voor
+drukte die hij niet veroorzaakt en niet kan wegnemen.
+
+Dat is een andere diagnose dan "bezetting is intrinsiek een slecht signaal", en
+het verschil is niet uitgemeten. Wat wél vaststaat is dat de regelaar op dit
+toestel, met deze modules, zichzelf naar de bodem duwt zonder aanleiding.
+
+### Nagerekend op datzelfde log
+
+Van de 86 verlagingen blijven er **26** staan, waarvan 24 bij een responstijd
+boven 400 ms of duidelijk oplopend. De cascade van 12:19 (600-700 ms) verlaagt
+dus nog steeds — terecht. Die van 11:37 (97-101 ms bij 85-87% bezet) niet meer.
+
+Rooktest bevestigde dat op de echte reeksen, plus vier randgevallen: sluipende
+opbouw wordt gevangen vóórdat `traagMs` bereikt is, een hoge maar vlakke
+responstijd (300 ms) verlaagt niet, een ontbrekende `venGemMs` laat het tempo
+staan in plaats van te verlagen, en `reset()` wist het ijkpunt zodat er na een
+protocolherstel niet tegen een oude waarde vergeleken wordt.
+
+### Wat er nog niet vaststaat
+
+**De cascade kan terugkomen.** Blijft de responstijd oplopen terwijl `PLLoad`
+verlaagt, dan zakt hij alsnog naar 17%. Dat is per ontwerp — dan is er echt iets
+aan de hand — maar het is niet uitgesloten dat responstijd net zo min op de
+ingreep reageert als bezetting. Dat blijkt pas uit de nameting.
+
+**De snelheidsproef meet deels iets anders dan gedacht.** Blok 10 claimt tijdens
+elke trap het busslot, in de rustpauzes niet. Het verschil tussen trap (119 ms)
+en rust (379 ms) is dus deels het verschil tussen een schone en een drukke bus,
+niet alleen tussen snel en langzaam pollen. Lees de rustprikken niet als "rust
+maakt de verbinding traag".
+
+**Vier aanvragers op één bus blijft open.** Deze ingreep maakt `PLLoad`
+ongevoelig voor drukte die hij niet veroorzaakt; hij lost niet op dát er vier
+modules langs elkaar heen de bus vullen. Dat hoort bij punt 6.
+
+### De nameting
+
+Rijd zoals op 23-08 — dezelfde vier modules aan, anders toets je niets. Testrun
+3.5 stelt de vragen. Drie dingen om te noteren:
+
+1. Waar staat het tempo aan het eind van de rit bij 0% fouten?
+2. Hoe vaak staat `"Pollbudget vastgehouden"` in het log? Op 23-08 zou die
+   regel ongeveer 60 keer gevuurd hebben.
+3. Staat er nog een `"Pollbudget verlaagd"` bij 100-250 ms? Dan lekt er een pad
+   langs de nieuwe voorwaarde.
+
+Blok 10 is de harde nameting: op 23-08 was de slotregel *tempo 17%, bus 94%
+bezet, fout 0%*.
+
+### Nog niet aangeraakt
+
+`omlaagTraag` (0,03) en `bezetAf` (55) staan onveranderd. Knop 1 en 2 uit de
+oude opzet vielen af: `bezetAf` naar 75 doet niets als de bezetting tijdens elke
+cascade op 93-100% staat, en de terugweg versnellen bestrijdt het symptoom
+terwijl het probleem de heenweg was. Blijkt na de nameting dat het herstel nog
+steeds te traag is, dan is `omlaagTraag` alsnog de volgende stap.
 
 ---
-
 ## 3. Mag de gate een stille sensor opruimen?
 
 Raakt `pidlane-pidgate.js` en de health-laag. Gedragswijziging.
@@ -683,6 +723,12 @@ Komt het terug, dan klopt de lengtetabel niet voor die twee.
 
 **Sinds testrun 3.4 hoef je daar niet meer naar te zoeken:** blok 11 noemt
 `0155`/`0156` expliciet als ze in `PLPidLen.afwijkingen()` staan.
+
+**De eerste rand is op 23-08 vanzelf beantwoord.** Om 11:33:32 stond er in het
+veldlog `Geen profiel onder pl_vinprof_JMZKF6W7600766507 — volle discovery`.
+Dat is precies de tegenproef die nooit gedaan was: de controle kán rood worden,
+hij is niet alleen-groen. Blijft over: nagaan of blok 1 dat óók als LET OP
+boekt, niet alleen de BT-log.
 
 ---
 
