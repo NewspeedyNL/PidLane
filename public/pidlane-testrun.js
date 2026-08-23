@@ -2185,7 +2185,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Batch van 10 fixes + de PLLoad-ingreep — één rit, daarna gaat de hele set dicht',
+  titel: 'Batch van 13 fixes + de PLLoad-ingreep — één rit, daarna gaat de hele set dicht',
   vragen: [
     'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0, testrun 3.6. Staat er FOUT, dan is een bestand niet meegekomen.',
 
@@ -2201,13 +2201,17 @@ const CAMPAGNE = {
 
     'FIX 10 — REMOTE. Alleen als je een remote sessie kunt opzetten. Kijk of "terugval op de steunbits" in het log komt. Zo niet, sla deze over — dan is de gate gewoon gelukt.',
 
-    'UI — na afsluiten van de bulk-recorder: komt hij nu bovenop of nog steeds ergens achter? En dekken de zwevende chips (tokens, Mijn plan, km/u) hem nog af?',
+    'FIX 12 — CLEARDTC-WRAPPER. Blok 5 controleert of de remote-blokkade op clearDTC staat. Staat daar FOUT, dan kan een remote-expert het foutgeheugen wissen terwijl dat geblokkeerd hoort te zijn — dan stoppen, niet doorrijden.',
 
-    'UI — loginscherm: staat de demo-knop nu netjes onder INLOGGEN zonder over de versietekst te lopen?',
+    'FIX 13 — HEADER-RESET. Zoek in het log naar een melding over een mislukte ATSH7DF-reset. Die stond tot vandaag in een finally met "ALTIJD" in het commentaar maar meldde niets. Zie je hem: noteer bij welke handeling. Zie je niets: dan faalde hij niet, en dat is de normale uitkomst.',
 
-    'UI — opmerkingveld bij opslaan: typ er iets in, sla op, en kijk of die tekst in het opgeslagen bestand staat.',
+    'BLOK 11 (leest alleen, raakt de bus niet) — draaien ná de rit, met de app nog open. Telt de stille sensoren, het eigen uitpakwerk per module en de 0106/0107-uitschieters. Sluit je de app eerst af, dan zijn die tellers leeg.',
 
     'BLOK 10 (10 min, losse knop) — de nameting voor PLLoad. Slotregel van 23-08 was: tempo 17%, bus 94% bezet, fout 0%.',
+
+    'TEGELS — staan 0170, 2102 of 2187 nog in beeld? Op deze CX-5 (atmosferisch) horen die te verdwijnen zodra het MAP-oordeel valt. Daarvoor zijn tien stevige acceleraties nodig: onder 85 kPa komt er geen bewijs binnen.',
+
+    'UI — nog NIET geleverd, dus hier valt niets te toetsen: de demo-knop op het loginscherm en de laagvolgorde van de bulk-recorder. Die twee gaan mee in de naronde. Het opmerkingveld bij opslaan zit er wél in: typ er iets in, sla op, en kijk of die tekst bovenaan het bestand staat.',
 
     'RIJ ZOALS OP 23-08 — bulk-recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan. Zonder die belasting toets je de PLLoad-ingreep niet.'
   ]

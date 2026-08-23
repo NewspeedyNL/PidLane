@@ -538,7 +538,11 @@ function sluitDash() {
 function bouwDash() {
   var o = document.createElement('div');
   o.id = 'blkOverlay';
-  o.style.cssText = 'display:none;position:fixed;inset:0;z-index:9200;background:rgba(4,8,14,.86);' +
+  // 9800, gelijk aan .wiz-ov en de andere schermvullende modals. Stond tot
+  // 23-08 op 9200 en lag daarmee ONDER de topbar (9550), het tokenchipje van
+  // PLCredits (9400) en elke andere overlay in de app — vandaar dat de
+  // zwevende chips over het dashboard heen bleven liggen.
+  o.style.cssText = 'display:none;position:fixed;inset:0;z-index:9800;background:rgba(4,8,14,.86);' +
     'align-items:center;justify-content:center;padding:16px;font-family:var(--f)';
   o.innerHTML =
     '<div style="width:100%;max-width:460px;max-height:86vh;overflow:auto;background:var(--sur,#151b24);' +

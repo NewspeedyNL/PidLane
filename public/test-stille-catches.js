@@ -41,6 +41,9 @@ const fs = require('fs');
 
 // Stand op 22-08-2026. Opgeruimd naar 0: pidlane-bt.js, pidlane-veldlab.js
 // (21-08), pidlane-btflow.js, pidlane-auth.js, pidlane-fuel.js en
+// pidlane-koopcheck.js (22-08), en pidlane-remote.js + pidlane-testrun.js
+// (23-08, van 105 en 66 naar 0). Stand 23-08: 394 lege catches over 38
+// modules, waarvan 266 om een aanroep van eigen code heen.
 // pidlane-koopcheck.js (22-08, resp. 30, 39, 40 en 43 naar 0).
 const GRENS = {
   "pidlane-archief.js": 23,
@@ -73,12 +76,12 @@ const GRENS = {
   "pidlane-plload.js": 8,
   "pidlane-privacy.js": 6,
   "pidlane-recall.js": 3,
-  "pidlane-remote.js": 105,
+  "pidlane-remote.js": 0,
   "pidlane-rijsituatie.js": 23,
   "pidlane-rit.js": 3,
   "pidlane-run.js": 8,
   "pidlane-start.js": 5,
-  "pidlane-testrun.js": 66,
+  "pidlane-testrun.js": 0,
   "pidlane-theme.js": 24,
   "pidlane-totalcheck.js": 18,
   "pidlane-uihelpers.js": 20,
