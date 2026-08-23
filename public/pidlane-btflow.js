@@ -629,7 +629,13 @@ function btDiagDevice(name, address, rssi){
 
 function clearBtLog(){
   _btLog.length=0; _btDevices.length=0;
+  // 23-08: _btPersistNow() schrijft naar sessionStorage ÉN een localStorage-
+  // spiegel (sessionStorage overleeft een WebView proces-kill niet, en
+  // restoreBtLog() valt op de spiegel terug). Alleen de sessionStorage-kant
+  // wissen betekende: log wissen, herladen, en hij staat er weer — precies
+  // wanneer je een schone log voor een bugmelding wilde.
   try{ sessionStorage.removeItem('pl_btlog'); }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
+  try{ localStorage.removeItem('pl_btlog'); }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
   const logEl=document.getElementById('btLog');
   if(logEl) logEl.innerHTML='<span style="color:var(--tx3);font-style:italic">Klik Verbinden om te starten...</span>';
   const row=document.getElementById('btStatusRow'); if(row) row.innerHTML='';

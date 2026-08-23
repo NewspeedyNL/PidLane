@@ -1403,7 +1403,16 @@ async function plVraagMeting(niveau, watVoor, profiel){
   const prof = (profiel===false) ? null : (profiel || window._laatstProfiel);
   // FASE 1 — aanzetten en testen
   if(prof && typeof ensurePIDsActive==='function'){
-    try{ await ensurePIDsActive(prof); }catch(e){ console.warn('Kernprofiel niet geactiveerd vóór de meting — de poort kan hierdoor op de verkeerde sensorset toetsen', e); }
+    // 23-08: dit is FASE 1 van de meetpoort — de juiste sensoren aanzetten
+    // vóórdat er gemeten wordt. Faalde dit stil, dan toetste de poort op de
+    // verkeerde set en concludeerde 'te weinig data' zonder reden. De poort
+    // krijgt nu te horen dat de set onbetrouwbaar is, zodat hij de gebruiker
+    // niet ten onrechte een rijtest laat doen.
+    try{ await ensurePIDsActive(prof); }
+    catch(e){
+      console.warn('Kernprofiel niet geactiveerd vóór de meting — de poort kan hierdoor op de verkeerde sensorset toetsen', e);
+      log('Sensoren voor de meting niet aangezet ('+(e.message||e)+') — de meetcontrole hieronder kan onterecht \'te weinig data\' zeggen','warn');
+    }
   }
   const k0=plKernStatus(prof);
   if(k0){

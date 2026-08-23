@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.5 (23-08-2026)';
+const TESTRUN_VERSIE = '3.6 (23-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1481,6 +1481,43 @@ async function _blok10() {
 // klant erop drukt.
 async function _blok5() {
 
+  // ── TOEGEVOEGD 23-08 (batch): tien fixes in één keer ──
+  // Deze controle vervangt tien losse: hij kijkt of elke fix in de geladen
+  // code zit. Niet of hij het juiste doet — dat is de rit.
+  await _doe(5, 'Batch 23-08: alle tien fixes geladen', function () {
+    const eis = [
+      ['clearBtLog', 'btflow', function () {
+        const b = String(window.clearBtLog || '');
+        return b && b.indexOf("localStorage.removeItem('pl_btlog')") >= 0;
+      }],
+      ['survey transport', 'veldlab', function () {
+        // sv.pids kent nu een vierde uitkomst naast ok/nodata/invalid.
+        const b = String(window.vlFullSurvey || '');
+        return b ? b.indexOf('transport') >= 0 : null;
+      }],
+      ['sensorvlag', 'koopcheck', function () { return typeof window._plSensorBanner === 'function'; }],
+      ['meetpoort meldt', 'fuel', function () {
+        const b = String(window.plVraagMeting || '');
+        return b ? b.indexOf('niet aangezet') >= 0 : null;
+      }],
+      ['gate-terugval', 'remote', function () {
+        if (typeof window.PLRemote === 'undefined') return null;
+        return null;   // zit in een closure, niet van buiten leesbaar
+      }]
+    ];
+    const stuk = [], ok = [], onbekend = [];
+    for (const [naam, mod, test] of eis) {
+      let r = null;
+      try { r = test(); } catch (e) { r = false; }
+      if (r === true) ok.push(naam);
+      else if (r === null) onbekend.push(naam + ' (' + mod + ')');
+      else stuk.push(naam + ' (' + mod + ')');
+    }
+    if (stuk.length)
+      return { staat: 'FOUT', detail: 'NIET geladen: ' + stuk.join(', ') + ' — dat bestand is niet meegekomen' };
+    return ok.length + ' bevestigd' + (onbekend.length ? ', niet van buiten te zien: ' + onbekend.join(', ') : '');
+  });
+
   // ── TOEGEVOEGD 23-08: PLLoad regelt niet meer op bezetting alleen ──
   // De wijziging zelf is één regel (`druk`), maar de gevolgen zijn pas in het
   // veld te zien. Wat hier te controleren valt is of de nieuwe voorwaarde ook
@@ -2148,29 +2185,31 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'PLLoad regelt niet meer op bezetting alleen — zakt het tempo nog steeds naar 17%?',
+  titel: 'Batch van 10 fixes + de PLLoad-ingreep — één rit, daarna gaat de hele set dicht',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0, testrun 3.5.',
+    'VOORAF — blok 5 mag geen FOUT geven. Versie 3.0.0, testrun 3.6. Staat er FOUT, dan is een bestand niet meegekomen.',
 
-    'DE HOOFDVRAAG — op 23-08 stond de app na 48 minuten structureel op 17-29% tempo, met 86 verlagingen tegen 21 verhogingen en 61 daarvan bij foutgraad NUL. Kijk aan het eind van deze rit waar het tempo staat. Blijft het boven de 50% bij 0% fouten, dan werkt de ingreep.',
+    'PLLOAD (de belangrijkste) — waar staat het tempo aan het eind van de rit bij 0% fouten? Op 23-08 was dat 17-29%. Zoek ook op "Pollbudget vastgehouden": die regel is nieuw. Staat er nog een "Pollbudget verlaagd" bij 100-250 ms, dan lekt er een pad.',
 
-    'LOGBOEK — zoek op "Pollbudget vastgehouden". Die regel is nieuw en zegt: de bus is vol, maar de responstijd loopt niet op, dus houd het tempo vast. Op het log van 23-08 zou hij ongeveer 60 keer gevuurd hebben. Zie je hem nooit, dan is de voorwaarde niet actief of was de rit rustig.',
+    'FIX 1 — LOG WISSEN. Open het BT-logboek, wis het, herlaad de app zonder iets te doen. Is de log nu écht leeg? Vóór vandaag stond hij er weer.',
 
-    'LOGBOEK — tel "Pollbudget verlaagd" en kijk bij elke regel naar het ms-getal aan het eind. Elke verlaging hoort nu boven de 400 ms te zitten of duidelijk opgelopen te zijn. Staat er nog een verlaging bij 100-250 ms, dan lekt er een pad langs de nieuwe voorwaarde.',
+    'FIX 2 — FULL SURVEY (bij stilstand). Draai er één. Zie je in de uitslag "transportfout" apart staan naast "niet aanwezig"? Zo ja: die PIDs vervuilen de dekkingsmatrix niet meer. Zie je 0 transportfouten, dan was de lijn schoon — ook goed.',
 
-    'CASCADES — de oude code ging in 22 seconden van 74% naar 17% in stapjes van 4 s. Zie je zo\'n reeks nog, kijk dan of de responstijd in die reeks óók oploopt. Zo ja: terecht, er liep echt iets vast. Zo nee: melden.',
+    'FIX 3 t/m 8 — DE ZEVEN ANALYSES. Draai onderhoudsadvies, EV-check, lange-rit-check, klimaatcheck en koopcheck. Verschijnt er ergens een ORANJE BALK bovenaan met "kon vlak vóór deze analyse niet ververst worden"? Zo ja: noteer welke. Zo nee: dan lukte het aanzetten steeds, en dat is de bedoeling.',
 
-    'RIJ ZOALS OP 23-08 — bulk-recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan. Die vier vullen de bus zonder dat PLLoad ze regelt; dat was juist de reden dat bezetting geen bruikbaar signaal bleek. Zonder die belasting toets je de wijziging niet.',
+    'FIX 9 — MEETPOORT. Start een analyse die om een rijtest vraagt. Zegt de poort "te weinig data" zonder dat er een sensorwaarschuwing in het log staat? Dan klopt het. Staat er wél "Sensoren voor de meting niet aangezet", dan weet je nu waarom de poort zeurde.',
 
-    'BLOK 10, DE SNELHEIDSPROEF (10 min, losse knop) — de NAMETING. Op 23-08 was de slotregel: tempo 17%, bus 94% bezet, fout 0%. Als het nu hoger uitkomt bij dezelfde bezetting, is dat het bewijs.',
+    'FIX 10 — REMOTE. Alleen als je een remote sessie kunt opzetten. Kijk of "terugval op de steunbits" in het log komt. Zo niet, sla deze over — dan is de gate gewoon gelukt.',
 
-    'LET OP BIJ BLOK 10 — de trappen claimen het busslot, de rustpauzes niet. Daardoor meet de proef deels het verschil tussen een schone en een drukke bus, niet alleen het pollritme. Lees de rustprikken dus niet als "rust maakt de verbinding traag".',
+    'UI — na afsluiten van de bulk-recorder: komt hij nu bovenop of nog steeds ergens achter? En dekken de zwevende chips (tokens, Mijn plan, km/u) hem nog af?',
 
-    'BLOK 11 — inventarisatie, kost niets, raakt de bus niet aan. Punt 3, 6 en 12 in één keer.',
+    'UI — loginscherm: staat de demo-knop nu netjes onder INLOGGEN zonder over de versietekst te lopen?',
 
-    'STABILITEIT — op 23-08 ging de socket 12 keer dood in 48 minuten, met 107 geweigerde verzoeken tijdens herinitialisatie. Kijk of dat nu minder is. Een lager pollbudget was mogelijk óók een gevolg van die storingen, niet alleen een oorzaak.',
+    'UI — opmerkingveld bij opslaan: typ er iets in, sla op, en kijk of die tekst in het opgeslagen bestand staat.',
 
-    'TEGELS — verschijnen alle tegels nog met een waarde, en voelt de app sneller? Bij hoger tempo horen de meters vaker te verspringen.'
+    'BLOK 10 (10 min, losse knop) — de nameting voor PLLoad. Slotregel van 23-08 was: tempo 17%, bus 94% bezet, fout 0%.',
+
+    'RIJ ZOALS OP 23-08 — bulk-recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan. Zonder die belasting toets je de PLLoad-ingreep niet.'
   ]
 };
 

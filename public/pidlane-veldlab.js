@@ -383,20 +383,21 @@ async function vlFullSurvey(){
     }
 
     const pids=[...supportedPIDs];
-    sv.pids={total:pids.length, ok:0, nodata:0, invalid:0, detail:[]};
+    sv.pids={total:pids.length, ok:0, nodata:0, invalid:0, transport:0, detail:[]};
     for(let i=0;i<pids.length;i++){
       if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
       const pid=pids[i];
       _vlSvUI('PID-sweep '+(i+1)+'/'+pids.length+'<br><span style="font-weight:400;font-size:13px;opacity:.8">'+pid+'</span>');
       const s0=performance.now();
-      /* LET OP — hier zit een meetfout in, zie PLAN.md punt 15.
-          Gooit sendCmd (timeout, socket weg, bus bezet), dan blijft raw leeg en
-          verderop wordt st='nodata'. Een TRANSPORTfout telt dus als "deze auto
-          ondersteunt deze PID niet", en dat oordeel gaat naar Airtable en voedt
-          de dekkingsmatrix per merk. Dat is exact dezelfde verwarring die de
-          snelheidsproef (blok 10) met een ijkronde vermijdt.
-          De catch meldt het nu; het uit elkaar trekken van 'nodata' en
-          'transportfout' is een gedragswijziging en hoort in een eigen ronde. */
+      /* OPGELOST 23-08 (was PLAN.md punt 16).
+          Gooide sendCmd (timeout, socket weg, bus bezet), dan bleef raw leeg
+          en werd st='nodata'. Een TRANSPORTfout telde dus als "deze auto
+          ondersteunt deze PID niet", en dat oordeel ging naar Airtable en
+          voedde de dekkingsmatrix per merk — één slechte verbinding kon zo een
+          heel merk als "PID niet ondersteund" wegzetten.
+          Nu krijgt een transportfout een eigen uitkomst ('transport'), maar
+          pas nadat de herkansing óók gefaald heeft. Slaagt de herkansing, dan
+          was het een hapering en telt de PID gewoon als ok+flaky. */
       let raw='', _svErr=null;
       try{ raw=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }
       catch(e){ _svErr=e; btDiag('Survey: '+pid+' gooide een fout ('+(e.message||e)+') — wordt hieronder als nodata geteld','warn'); }
@@ -414,16 +415,20 @@ async function vlFullSurvey(){
       // Flaky vs. echt afwezig: nodata krijgt één herkansing na korte pauze.
       // Slaagt die, dan telt de PID als ok maar met flaky-vlag → het veldlab
       // weet dan dat deze PID een retry-strategie nodig heeft i.p.v. pruning.
+      let _svErr2=null;
       if(st==='nodata' && !_vlSvAbort){
         await delay(150);
         let raw2='';
         try{ raw2=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1800); }
-        catch(e){ btDiag('Survey: herkansing '+pid+' gooide een fout ('+(e.message||e)+')','warn'); }
+        catch(e){ _svErr2=e; btDiag('Survey: herkansing '+pid+' gooide een fout ('+(e.message||e)+')','warn'); }
         if(raw2 && !/NO DATA|UNABLE|ERROR|STOPPED/i.test(raw2)){
           const v2=parsePID(pid,raw2);
           if(v2!=null){ val=v2; st='ok'; q='ok'; flaky=true; }
         }
       }
+      // Twee keer een echte fout op de lijn = transport, geen oordeel over de
+      // auto. Deze PID hoort NIET in de dekkingsmatrix terecht te komen.
+      if(st==='nodata' && _svErr && _svErr2) st='transport';
       sv.pids[st]++;
       const _d={pid, naam:(def.name||def.naam||'').slice(0,40), val, unit:def.unit||'', ms, st, q};
       if(flaky) _d.flaky=true;
@@ -555,11 +560,11 @@ async function vlFullSurvey(){
       setTimeout(()=>URL.revokeObjectURL(a.href),2000);
     }catch(e){ console.warn('Survey-bestand downloaden mislukt:', e); }
 
-    try{ log('📋 Full survey v2: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
+    try{ log('📋 Full survey v2: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig'+(sv.pids.transport?' / '+sv.pids.transport+' TRANSPORTFOUT (niet als ontbrekend geteld)':'')+' · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
     const _flaky=sv.pids.detail.filter(x=>x.flaky).length;
     const _rdy=sv.readiness?(sv.readiness.nietGereed.length?sv.readiness.nietGereed.length+' monitor(s) niet gereed':'alle monitors gereed'):'readiness onbekend';
     _vlSvUI('✅ Survey klaar in '+sv.durS+'s<br><span style="font-weight:400;font-size:13px;opacity:.85">'+
-      sv.pids.ok+' PIDs ok ('+_flaky+' flaky) · '+sv.pids.nodata+' niet aanwezig · '+sv.pids.invalid+' ongeldig<br>'+
+      sv.pids.ok+' PIDs ok ('+_flaky+' flaky) · '+sv.pids.nodata+' niet aanwezig · '+sv.pids.invalid+' ongeldig'+(sv.pids.transport?' · <span style="color:#fb923c">'+sv.pids.transport+' transportfout</span>':'')+'<br>'+
       'Gem. '+sv.timing.avgMs+' ms · batch max '+(sv.batch.maxPids||0)+' PIDs · '+(sv.ecus?sv.ecus.n:0)+' ECU(s)<br>'+
       'DTC: '+sv.dtc.actief.length+' actief · '+(sv.dtc.pending||[]).length+' pending · '+(sv.dtc.permanent||[]).length+' permanent · '+_rdy+'<br>'+
       'CALID '+(sv.calid&&sv.calid.ascii?'✓':'—')+' · CVN '+(sv.cvn&&sv.cvn.hex&&sv.cvn.hex.length?'✓':'—')+' · odometer '+(sv.odoKm?sv.odoKm+' km':'—')+'<br>'+

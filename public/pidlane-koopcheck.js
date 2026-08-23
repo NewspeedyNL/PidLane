@@ -844,6 +844,43 @@ function pidRecToggle(pid,on){ if(on) _recSel.add(pid); else _recSel.delete(pid)
 function pidRecSelectAll(on){ document.querySelectorAll('#pidRecList .pidrec-row').forEach(function(r){ if(r.style.display==='none') return; var cb=r.querySelector('input'); var pid=cb.getAttribute('data-pid'); cb.checked=on; if(on)_recSel.add(pid); else _recSel.delete(pid); }); pidRecUpdCount(); }
 function pidRecFilter(q){ q=(q||'').toLowerCase(); document.querySelectorAll('#pidRecList .pidrec-row').forEach(function(r){ r.style.display = r.getAttribute('data-name').indexOf(q)>=0?'flex':'none'; }); }
 function pidRecUpdCount(){ var c=document.getElementById('pidRecCount'); if(c) c.textContent=_recSel.size+' sensor(en) geselecteerd'; }
+/* ══ SENSORTWIJFEL — variant A (23-08-2026) ══════════════════════════════
+   Zeven analyses zetten eerst het juiste PID-profiel aan en meten dan pas.
+   Tot 22-08 stond die aanzet in een lege catch; sinds de opruimklus meldt hij
+   in het logboek, maar het logboek is niet wat de monteur leest.
+
+   Gekozen: doorgaan, maar het rapport zegt er zelf bij dat het op mogelijk
+   verouderde sensordata kan draaien. Afbreken zou erger zijn — een koopcheck
+   die halverwege stopt kost een klant, een koopcheck met een eerlijke
+   waarschuwing niet.
+
+   De vlag geldt per analyse: zetten bij het falen, opnemen én wissen bij het
+   tonen van het resultaat. Zo lekt een waarschuwing van de ene analyse niet
+   door naar de volgende. */
+let _plSensorTwijfel = null;
+function _plSensorVlag(watMislukte){
+  _plSensorTwijfel = { wat: watMislukte, t: Date.now() };
+}
+// Geeft de bannerregel terug (of leeg) en wist de vlag.
+function _plSensorBanner(){
+  if(!_plSensorTwijfel) return '';
+  const wat = _plSensorTwijfel.wat || 'de sensoren';
+  _plSensorTwijfel = null;
+  return '<div style="background:#7c2d12;border:1px solid #ea580c;border-radius:8px;'+
+         'padding:10px 12px;margin-bottom:10px;font-size:13px;color:#fed7aa;line-height:1.5">'+
+         '⚠ <b>Let op:</b> '+wat+' kon vlak vóór deze analyse niet ververst worden. '+
+         'De beoordeling hieronder kan op verouderde of onvolledige sensordata draaien. '+
+         'Verbreek en verbind opnieuw en draai de analyse nog een keer als je hier iets op baseert.</div>';
+}
+// Zelfde vlag, maar voor de tekstrapporten (export/archief) in plaats van HTML.
+function _plSensorTekstregel(){
+  if(!_plSensorTwijfel) return '';
+  const wat = _plSensorTwijfel.wat || 'de sensoren';
+  _plSensorTwijfel = null;
+  return 'LET OP: '+wat+' kon vlak vóór deze analyse niet ververst worden — '+
+         'de beoordeling kan op verouderde of onvolledige sensordata draaien.\n\n';
+}
+
 function pidRecToggleRec(){ if(_recActive) pidRecStopRec(); else pidRecStartRec(); }
 function pidRecStartRec(){
   if(!_recSel.size){ showToast?.('Selecteer eerst minstens één sensor'); return; }
@@ -970,7 +1007,7 @@ async function pidRecRunAI(){
 }
 function deepLogStart(){
   if(!connected && !demoMode){ showToast?.('Verbind eerst een adapter (of demo)'); return; }
-  try{ ensurePIDsActive && ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet actief gezet vóór de deep-log — de opname kan lege of oude waarden bevatten: '+(e.message||e),'warn'); }
+  try{ ensurePIDsActive && ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet actief gezet vóór de deep-log — de opname kan lege of oude waarden bevatten: '+(e.message||e),'warn'); showToast?.('⚠ Sensoren niet ververst — de opname kan gaten bevatten'); }
   datalogActive=true; datalogBuffer={}; datalogStart=Date.now();
   [...(activePIDs||[])].forEach(function(pid){ datalogBuffer[pid]=[]; });
   var s=document.getElementById('dd_logstat'); if(s) s.innerHTML='<span class="datalog-badge recording">● Datalog loopt</span>';
@@ -1166,7 +1203,7 @@ async function runOnderhoud(){
     return;
   }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert het onderhoud…</div>`;
-  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór het onderhoudsadvies — het advies kan op oude data draaien: '+(e.message||e),'warn'); }
+  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór het onderhoudsadvies — het advies kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De sensoren voor het onderhoudsadvies'); }
   const v=getVehicle();
   const laatste=parseInt(document.getElementById('ondLaatste')?.value)||0;
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
@@ -1189,10 +1226,11 @@ GEVONDEN GEBREKEN: [afwijkingen uit de sensordata, of "geen"]
 ADVIES: [1-2 zinnen; benadruk serviceboekje compleet houden]`;
   try{
     const text=await apiFetch(prompt,900)||'Geen reactie';
-    res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
+    const _tw=_plSensorTwijfel?_plSensorTwijfel.wat:null;   // vlag lezen vóór de banner hem wist
+    res.innerHTML=_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'onderhoud',msg:`${v.merk} ${v.model} ${v.km}km: ${text.slice(0,180)}`});
     // 15-07: óók in het 📄 Rapporten-archief — dit was (met EV/klimaat/koop) het enige AI-pad dat daar niet in kwam
-    try{ registerSessionReport({type:'ai', title:'Onderhoudsadvies — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){ console.warn('Onderhoudsadvies niet in het rapportarchief gezet', e); }
+    try{ registerSessionReport({type:'ai', title:'Onderhoudsadvies — '+[v.merk,v.model].filter(Boolean).join(' '), text:(_tw?'LET OP: '+_tw+' kon vlak vóór deze analyse niet ververst worden — de beoordeling kan op verouderde sensordata draaien.\n\n':'')+_withDisclaimer(text)}); }catch(e){ console.warn('Onderhoudsadvies niet in het rapportarchief gezet', e); }
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
 }
 
@@ -1233,7 +1271,7 @@ function runEVCheckRit(){
 async function runEVCheck(){
   const res=document.getElementById('evResult');
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert accu & systemen…</div>`;
-  try{ await ensurePIDsActive('accu'); }catch(e){ log('Sensoren niet vers gezet vóór de EV/accu-check — de beoordeling kan op oude data draaien: '+(e.message||e),'warn'); }
+  try{ await ensurePIDsActive('accu'); }catch(e){ log('Sensoren niet vers gezet vóór de EV/accu-check — de beoordeling kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De accu- en systeemsensoren'); }
   const v=getVehicle();
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
@@ -1255,9 +1293,10 @@ AANDACHTSPUNTEN: [afwijkingen of foutcodes, of "geen"]
 ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
   try{
     const text=await apiFetch(prompt,900)||'Geen reactie';
-    res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
+    const _tw=_plSensorTwijfel?_plSensorTwijfel.wat:null;
+    res.innerHTML=_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'ev-check',msg:`${v.merk} ${v.model} (${ft}): ${text.slice(0,180)}`});
-    try{ registerSessionReport({type:'ai', title:'EV/Hybride check — '+[v.merk,v.model].filter(Boolean).join(' '), text:_withDisclaimer(text)}); }catch(e){ console.warn('EV/Hybride check niet in het rapportarchief gezet', e); }
+    try{ registerSessionReport({type:'ai', title:'EV/Hybride check — '+[v.merk,v.model].filter(Boolean).join(' '), text:(_tw?'LET OP: '+_tw+' kon vlak vóór deze analyse niet ververst worden — de beoordeling kan op verouderde sensordata draaien.\n\n':'')+_withDisclaimer(text)}); }catch(e){ console.warn('EV/Hybride check niet in het rapportarchief gezet', e); }
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
 }
 
@@ -1301,7 +1340,7 @@ function openLangeRit(){
 async function runLangeRitTech(){
   const res=document.getElementById('langeRitResult');
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 Technische go/no-go…</div>`;
-  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de lange-rit-check — de go/no-go kan op oude data draaien: '+(e.message||e),'warn'); }
+  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de lange-rit-check — de go/no-go kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De sensoren voor de go/no-go'); }
   const v=getVehicle();
   const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
@@ -1321,7 +1360,7 @@ KRITISCHE PUNTEN: [wat eerst gecheckt/verholpen moet, of "geen"]
 ADVIES: [concrete stappen voor vertrek]`;
   try{
     const text=await apiFetch(prompt,900)||'Geen reactie';
-    res.innerHTML=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line;margin-bottom:12px">${text.replace(/</g,'&lt;')}</div>`+langeRitChecklistHTML();
+    res.innerHTML=_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line;margin-bottom:12px">${text.replace(/</g,'&lt;')}</div>`+langeRitChecklistHTML();
     scanLogAdd?.({type:'lange-rit',msg:`${v.merk} ${v.model}: ${text.slice(0,150)}`});
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`+langeRitChecklistHTML(); }
 }
@@ -1469,7 +1508,7 @@ async function climateStart(){
   const airco = _climateMode==='airco';
   // Activeer de relevante sensoren
   const pids = airco ? ['010C','0104','010F','0105','010B'] : ['0105','015C','010C','0142','010F'];
-  try{ await ensurePIDListActive(pids); }catch(e){ log('Sensoren niet actief gezet vóór de klimaatcheck — de meting kan op oude data starten: '+(e.message||e),'warn'); }
+  try{ await ensurePIDListActive(pids); }catch(e){ log('Sensoren niet actief gezet vóór de klimaatcheck — de meting kan op oude data starten: '+(e.message||e),'warn'); _plSensorVlag('De klimaatsensoren'); }
   // Baseline na korte stabilisatie
   _climateData.t0 = Date.now();
   _climateData.samples = [];
@@ -1731,7 +1770,7 @@ function climateRenderResult(v, aiText){
     if(airco){ if(v.deltaT!=null)_cl.push('Delta T: '+v.deltaT.toFixed(1)+' °C (T1 '+(v.t1==null?'—':v.t1.toFixed(1))+' → T2 '+(v.t2==null?'—':v.t2.toFixed(1))+')'); _cl.push('Compressor schakelt in: '+(v.compressorAan?'ja':'niet gedetecteerd')); }
     else { _cl.push('Koelvloeistof eind: '+(v.eindCoolant==null?'—':v.eindCoolant.toFixed(0))+' °C · tijd tot 88°C: '+(v.tijd88==null?'niet bereikt':v.tijd88+'s')+' · accu koud: '+(v.voltKoud==null?'—':v.voltKoud.toFixed(1))+' V ('+v.accu+')'); }
     if(aiText) _cl.push('','AI-TOELICHTING:',aiText);
-    registerSessionReport({type:'ai', title:(airco?'Airco check':'Wintercheck')+' — '+v.oordeel, text:_withDisclaimer(_cl.join('\n'))});
+    registerSessionReport({type:'ai', title:(airco?'Airco check':'Wintercheck')+' — '+v.oordeel, text:_plSensorTekstregel()+_withDisclaimer(_cl.join('\n'))});
   }catch(e){ console.warn('Klimaatcheck niet in het rapportarchief gezet', e); }
 }
 
@@ -1746,7 +1785,7 @@ async function runKoopcheck(){
   if(!(await preAnalysisCheck())) return;
   // P2: zorg dat de conditiecheck op de juiste, verse PIDs draait — niet op
   // toevallig-actieve of lege sensoren. (Koopcheck miste eerder een profiel.)
-  if(connected||demoMode){ try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de koopcheck — de conditiecheck kan alsnog op toevallig-actieve of lege sensoren draaien (zie P2): '+(e.message||e),'warn'); } }
+  if(connected||demoMode){ try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de koopcheck — de conditiecheck kan alsnog op toevallig-actieve of lege sensoren draaien (zie P2): '+(e.message||e),'warn'); _plSensorVlag('De sensoren voor de conditiecheck'); } }
   const km  = parseInt(document.getElementById('koopKmInput').value)||0;
   const boekje = document.getElementById('koopBoekje').value;
   const laagsteBeurt = parseInt(document.getElementById('koopLaatsteBeurt').value)||0;
@@ -1785,7 +1824,7 @@ async function runKoopcheck(){
     rdw_recall: _koopRdwData?._recall||false,
   };
 
-  res.innerHTML = `
+  res.innerHTML = _plSensorBanner() + `
     <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:8px">
       <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:8px">⏳ Onderhoudcheck bezig...</div>
       <div id="koopOnderhoudRes" style="font-size:12px;color:var(--tx2)">AI analyseert onderhoudshistorie...</div>

@@ -601,7 +601,19 @@ window.PLRemote=(function(){
           const _kand=v.active.filter(p=>typeof p==='string'&&getPidDef(p));
           const _r=pidToevoegen(_kand,{handmatig:false});
           if(_r.weg.length)logA('🚫 '+_r.weg.length+' sensor(en) uit de remote-selectie overgeslagen — niet bruikbaar op dit voertuig','info');
-        }catch(_){ logA('PID-gate niet doorlopen voor de remote-selectie — de actieve sensorset kan ongefilterd blijven staan: '+(_&&_.message||_),'warn'); }
+        }catch(_){
+          // 23-08: hier stond alleen een melding. Faalt pidToevoegen(), dan
+          // bleef de remote-selectie ONGEFILTERD staan — dezelfde
+          // fantoomsensor-familie als punt 1, nu via de remote-sessie. Nu
+          // vallen we terug op de steunbits: liever een kleinere set die
+          // klopt dan een volledige set die de expert misleidt.
+          logA('PID-gate niet doorlopen voor de remote-selectie: '+(_&&_.message||_)+' — terugval op de steunbits','warn');
+          try{
+            const _veilig=v.active.filter(function(p){ return typeof p==='string' && getPidDef(p) && (typeof ecuSteunt!=='function' || ecuSteunt(p)!==false); });
+            if(typeof activePIDs!=='undefined'){ activePIDs.clear(); _veilig.forEach(function(p){ activePIDs.add(p); }); }
+            logA(_veilig.length+' van '+v.active.length+' remote-sensoren overgenomen na terugval','info');
+          }catch(__){ logA('Ook de terugval mislukte — de sensorset van de local is NIET overgenomen: '+(__&&__.message||__),'err'); }
+        }
       }
       try{if(Array.isArray(v.dtc)&&v.dtc.length&&!dtcCodes.length){dtcCodes=[...v.dtc];try{renderDTC();}catch(_){ console.warn('Foutcodelijst niet opnieuw getekend na overname van de local', _); }}}catch(_){ console.warn('Foutcodes van de local niet overgenomen', _); }
       if(v.demo&&!S.demoWarned){S.demoWarned=true;
