@@ -148,7 +148,14 @@ const PLLoad={
     if(bezetHoog && !druk && nu-this._laatstOvergeslagen>20000){
       this._laatstOvergeslagen=nu;
       btDiag(`Pollbudget vastgehouden op ${(100/this._mult).toFixed(0)}% — bezet ${s.belasting}% `+
-             `maar responstijd ${s.venGemMs}ms (vorige ${this._vorigVenMs==null?'—':this._vorigVenMs+'ms'}), fout ${s.foutPct}%`,'info');
+             `maar responstijd ${s.venGemMs}ms (vorige ${this._vorigVenMs==null?'—':this._vorigVenMs+'ms'}), fout ${s.foutPct}%`,'warn');
+    /* 'warn' en niet 'info' (24-08). Op info-niveau haalde deze regel de
+       logboek-export niet: na de rit van 23-08 was hij alleen terug te
+       vinden in de diagbundel bínnen de testrun. Uitgerekend de regel die
+       moet bewijzen dat de ingreep van 23-08 werkt was dus niet op te
+       zoeken in het log dat je opstuurt. De cooldown van 20 s houdt het
+       volume in toom — op het log van 23-08 zou dit 60 keer gevuurd
+       hebben, nu hooguit drie keer per minuut. */
     }
     this._vorigVenMs=s.venGemMs;
     this._staat=this._bepaalStaat(s);

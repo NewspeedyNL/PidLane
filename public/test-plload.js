@@ -30,7 +30,7 @@ const ctx = {
   console,
   Date: new Proxy(Date, { get: (t, p) => p === 'now' ? (() => NU) : t[p] }),
   connected: true, demoMode: false,
-  btDiag: (m, s) => gelogd.push(String(m)),
+  btDiag: (m, s) => gelogd.push({ tekst: String(m), niveau: s || 'info' }),
   PID_POLL_CLASS: {}, _focusPIDs: new Set(), _pollMult: 1,
   setInterval: () => 0, clearInterval: () => {}, setTimeout: () => 0, clearTimeout: () => {}
 };
@@ -119,8 +119,11 @@ console.log('\n— bezetting alleen is geen tegendruk (23-08) —');
   draai(1, { belasting: 86, foutPct: 0, venGemMs: 97 });
   draai(4, { belasting: 87, foutPct: 0, venGemMs: 101 });
   toets('vlakke responstijd bij 87% bezet verlaagt niet', L._mult, 1.0);
-  toets('en meldt zich in de log',
-        gelogd.some(m => /vastgehouden/.test(m)), true);
+  const vast = gelogd.filter(g => /vastgehouden/.test(g.tekst));
+  toets('en meldt zich in de log', vast.length > 0, true);
+  // Op 'info' haalde deze regel de logboek-export niet — zie 23-08.
+  toets('op warn-niveau, anders staat hij niet in de export',
+        vast.every(g => g.niveau === 'warn'), true);
 }
 
 console.log('\n— tegendruk wint nog steeds meteen —');
@@ -161,7 +164,7 @@ console.log('\n— de trage terugloop komt in de log —');
   L.reset(); L._mult = 6.0;
   draai(200);
   toets('minstens een logregel over de terugloop',
-        gelogd.some(m => /stapsgewijs verhoogd/.test(m)), true);
+        gelogd.some(g => /stapsgewijs verhoogd/.test(g.tekst)), true);
 }
 
 console.log('\n— losgekoppeld / demo blijft ongemoeid —');
