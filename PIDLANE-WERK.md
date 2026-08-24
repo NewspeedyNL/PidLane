@@ -113,10 +113,18 @@ maar dan in de UI — één lus die op klasse selecteert terwijl de bedoeling
 "heeft een modus" is. Komt er ooit nog een knop bij in die rij, dan valt hij
 vanzelf buiten de lus.
 
-**Drie oranje puntjes onder het wachtwoordveld.** Melding van 24-08, met
-screenshot. Niet opgelost: het blok `#loginOv` (`index.html` vanaf regel 529)
-is nog niet gedeeld, en blind CSS aanpassen is precies wat op 21-08 met het
-opmerkingveld misging. Nodig: `sed -n '529,620p' public/index.html`.
+**Drie oranje puntjes onder het wachtwoordveld — opgelost.** Geen CSS en geen
+los element: `doLogin()` zette tijdens het wachten letterlijk `'…'` in
+`#loginErr`, en dat vakje heeft inline `color:var(--rd)`. Een wachtindicator in
+de foutkleur dus. Bovendien had de fetch naar `/auth/login` geen tijdslimiet,
+dus bij een Worker die de verbinding openhield bleven ze staan tot je de app
+afsloot. Nu: één setter `plLoginMeld(el, tekst, soort)` — grijs bij `bezig`,
+rood bij `fout` — plus afbreken na 12 s (`LOGIN_TIMEOUT_MS`). Alle veertien
+schrijvers naar `#loginErr` lopen erdoorheen, ook die in `logout()`.
+
+Waard om te onthouden: dit is dezelfde vorm als de waakknop hierboven. Eén
+element met twee betekenissen, en de ene betekenis erft de opmaak van de
+andere.
 
 **Testrun opgeruimd (3.9).** De knoppen "DID-scan (45 s)" en "Budget + olie"
 zijn weg, en `b8` staat niet meer in de standaardset — die drie dienden alleen

@@ -9,7 +9,7 @@ cd PidLane-main
 bash plcheck.sh $(pwd)      # moet groen zijn
 ```
 
-Drie bestanden. Testrun gaat van 3.8 naar **3.9**.
+Vier bestanden. Testrun gaat van 3.8 naar **4.0**.
 
 ---
 
@@ -35,15 +35,49 @@ document.querySelectorAll('.pidview-btn').forEach(b=>b.classList.toggle('active'
 klasse zelf. Twee schrijvers op één klasse, en de verkeerde won.
 
 **Nu:** `.pidview-btn[data-mode]`. De grens ligt waar hij hoort — bij "heeft een
-modus", niet bij "staat in die rij". Komt er ooit nog een knop bij naast de
-waakknop, dan valt die vanzelf buiten de lus.
-
-Diff tegen het origineel is precies die ene regel plus commentaar. `node --check`
-groen.
+modus", niet bij "staat in die rij".
 
 ---
 
-## 2. `public/pidlane-testrun.js` — knoppen weg, CAMPAGNE en blok 5 herschreven
+## 2. `public/pidlane-auth.js` — de drie puntjes onder het wachtwoordveld
+
+**Dit is geen CSS-probleem en geen los element.** `doLogin()` zette tijdens het
+wachten letterlijk `err.textContent = '…'` in `#loginErr`, en dat vakje heeft
+inline `color:var(--rd)` in `index.html`. Dus: een wachtindicator in de
+foutkleur, precies onder het wachtwoordveld.
+
+Twee dingen waren mis:
+
+- **Verkeerde kleur.** Rood betekent in deze app "er is iets fout". Hier
+  betekende het "even wachten".
+- **Geen tijdslimiet.** Alle paden zetten het veld netjes weer leeg — bij
+  succes, bij een fout wachtwoord, bij 429, bij 5xx, bij een onbereikbare
+  server. Maar zolang de `fetch` naar `/auth/login` hángt geeft die nooit een
+  fout, dus was er ook nooit een uitweg. Dat is vermoedelijk het moment van je
+  screenshot.
+
+**Nu één setter:**
+
+```js
+plLoginMeld(el, tekst, soort)   // 'bezig' grijs · 'fout' rood · 'leeg' leeg
+```
+
+Alle veertien schrijvers naar `#loginErr` lopen erdoorheen, ook die in
+`logout()`. De tekst is `⏳ Inloggen…` in plaats van drie kale punten.
+`data-soort` staat op het element zodat de testrun het van buitenaf kan
+aflezen.
+
+En `serverLogin()` breekt af na `LOGIN_TIMEOUT_MS` (12 s) via een
+`AbortController`. Een afgebroken poging komt naar buiten als een gewone Error
+zónder `.status` en `.code`, en valt in `doLogin()` dus in dezelfde tak als
+"netwerk onbereikbaar" — daar hoort hij, en die tak bestond al.
+
+Gecontroleerd: nul directe `err.textContent`-schrijvers over (alleen nog in een
+commentaarregel die uitlegt wat er stond).
+
+---
+
+## 3. `public/pidlane-testrun.js` — knoppen weg, CAMPAGNE en blok 5 herschreven
 
 ### Weg: twee knoppen en b8 uit de standaardset
 
@@ -55,81 +89,81 @@ groen.
 
 Alle drie dienden de jacht op de mode 22-olietemperatuur, en die is op 23-08
 losgelaten. **Die derde is de belangrijkste**: zonder hem waren de knoppen weg
-maar scande élke volle run nog steeds, inclusief het header-gedoe op `7E0`. Dat
-had je pas in het logboek gezien.
+maar scande élke volle run nog steeds, inclusief het header-gedoe op `7E0`.
 
 `_blok8()` en `_blok9()` blijven staan en zijn los aan te roepen met
-`startTestrun({b8:true})` of `{b9:true}` vanuit de console. Ze slopen is een
-mechanische stap van ruim driehonderd regels en die gaat apart — niet in dezelfde
-commit als een inhoudelijke wijziging.
+`startTestrun({b8:true})` of `{b9:true}`. Ze slopen is een mechanische stap van
+ruim driehonderd regels en gaat apart.
 
-### Blok 5 — twee nieuwe controles
+### Blok 5 — vier nieuwe controles
 
-**TOEGEVOEGD — "Waakknop overleeft een weergavewissel".** Twee helften:
+**Waakknop overleeft een weergavewissel.** De knop wordt **bewust op `active`
+gezet**, dan gaat `setPidView()` langs alle drie de standen, en na elke stand
+wordt gekeken of de klasse er nog is. Daarna staan weergave én knop terug zoals
+ze stonden. Dat opzetten is de kern van de tegenproef: bij een uitstaande
+waakronde is "blijft dof" ook waar voor de oude, foute selector.
 
-1. `.pidview-btn[data-mode]` moet minder knoppen vinden dan `.pidview-btn`. Zijn
-   ze gelijk, dan heeft de waakknop een `data-mode` gekregen en valt hij weer
-   binnen de lus.
-2. De echte proef: de knop wordt **bewust op `active` gezet**, dan gaat
-   `setPidView()` langs alle drie de standen, en na elke stand wordt gekeken of
-   de klasse er nog is. Daarna staat de weergave terug zoals hij stond en de
-   knop zoals hij stond.
+**Inlogmelding: bezig is grijs, fout is rood.** Draait `plLoginMeld()` op een
+los element (het echte inlogscherm blijft ongemoeid) en toetst alle drie de
+soorten, plus dat `LOGIN_TIMEOUT_MS` bestaat.
 
-Die eerste stap is de kern van de tegenproef. Zonder hem bewijst de test niets:
-bij een uitstaande waakronde is "blijft dof" ook waar voor de oude, foute
-selector. Zet je de selector terug op `.pidview-btn`, dan slaat deze controle af
-— hij kan dus rood worden.
+**Geen kale puntjes meer in doLogin.** Leest de bron. Dat mag hier: `doLogin`
+wordt door niets gewrapt — `pidlane-remote.js` raakt `updPID`, `sendCmd`,
+`clearDTC`, `realScanDTC`, `ensurePIDListActive` en `selectCategoryPIDs`, niet
+de login. Een gedragstest kan dit niet zien, want daarvoor zou je een echte
+inlogpoging moeten doen.
 
-**VERWIJDERD — "Olieknoppen weg, b8 uit de standaardset".** Loopt de knoppen in
-`#testrunOv` na op `b8`/`b9`, en knipt daarna de standaardset uit de bron van
-`startTestrun`. Let op het knippad: bewust smal op precies dat objectliteraal
+**Olieknoppen weg, b8 uit de standaardset.** Loopt de knoppen in `#testrunOv`
+na en knipt de standaardset uit de bron van `startTestrun`. Knippad bewust smal
 (`/blokken\s*\|\|\s*\{[^}]*\}/`), want een zoektocht op "b8" in de hele functie
-vindt óók het commentaar erboven en meldt dan onterecht FOUT. Dat is nagerekend:
-de echte set komt er zonder `b8` uit, een nagemaakte mét `b8` slaat af.
+vindt óók het commentaar erboven en meldt dan onterecht FOUT.
+
+### Tegenproeven gedaan
+
+- Oude setter (alles rood) nagebouwd → de nieuwe controle slaat af op "bezig in
+  foutkleur". De test kan dus rood worden.
+- Standaardset mét `b8` nagemaakt → knippad vindt hem. Echte set komt schoon
+  door.
+- `.pidview-btn` terugzetten → de waakknopcontrole slaat af.
 
 ### CAMPAGNE
 
-18 vragen. Leidt met de twee wijzigingen van vandaag, daarna de openstaande
+19 vragen. Leidt met de drie wijzigingen van vandaag, daarna de openstaande
 batch van 23-08 — die rit is nog niet gereden, dus die vragen blijven staan.
-Het opmerkingveld (kapt af op 20 tekens) staat er nog steeds in, nu expliciet
-als "nog steeds open".
 
 ---
 
-## 3. `PIDLANE-WERK.md`
+## 4. `PIDLANE-WERK.md`
 
-§3 uitgebreid met "Nieuw op 24-08": de waakknop-fix en de testrun-opruiming.
+§3 uitgebreid met "Nieuw op 24-08": waakknop, inlogmelding, testrun-opruiming.
 
 ---
 
-## Wat er NIET in zit
+## Eén patroon, drie keer
 
-**De drie oranje puntjes onder het wachtwoordveld.** Ik heb het blok niet.
-`#loginOv` begint op regel 529 van `index.html` en daar houdt mijn kennis op.
-Drie oranje stipjes zijn een element — een laadindicator die na een afgebroken
-poging blijft staan, een sterkte-indicator in drie segmenten, of een statusstip
-in de LET OP-kleur (`#e0972f`, dezelfde die de waakronde gebruikt). Welke van de
-drie het is bepaalt of de fix in de HTML of in de CSS zit.
+Alle drie de UI-vondsten van vandaag hebben dezelfde vorm: **één ding met twee
+betekenissen, waarbij de ene de opmaak of de behandeling van de andere erft.**
 
-```
-sed -n '529,620p' public/index.html
-```
+- `active` op `#waakBtn` betekende zowel "waakronde loopt" als "dit is de
+  gekozen weergave"
+- `#loginErr` betekende zowel "er is een fout" als "we zijn bezig"
+- `pidview-btn` betekende zowel "knop in deze rij" als "knop met een modus"
 
-Blind gokken is hier duurder dan één ronde wachten: dat is letterlijk wat op
-21-08 met het opmerkingveld gebeurde, en dat staat nog steeds als "gebouwd maar
-werkt niet" in het werkdocument.
+Dat is dezelfde soort fout als de fantoomsensor-familie uit §7 van het
+werkdocument, maar dan in de UI. Als er straks nog UI-meldingen komen: kijk
+eerst of het element of de klasse twee rollen heeft.
 
 ---
 
 ## Committen
 
-Drie commits:
+Vier commits:
 
 1. `pidlane-pids.js` — waakknop buiten de weergave-lus
-2. `pidlane-testrun.js` — 3.9: olieknoppen weg, b8 uit de standaardset, CAMPAGNE
-   en blok 5 herschreven
-3. `PIDLANE-WERK.md` — administratie
+2. `pidlane-auth.js` — inlogmelding via plLoginMeld, tijdslimiet op /auth/login
+3. `pidlane-testrun.js` — 4.0: olieknoppen weg, b8 uit de standaardset,
+   CAMPAGNE en blok 5 herschreven
+4. `PIDLANE-WERK.md` — administratie
 
-Gecontroleerd: `node --check` groen op beide JS-bestanden, nul lege catches in
-`pidlane-testrun.js` (ratel blijft op 0), knoppenbalk telt nu 8 knoppen zonder
-`b8`/`b9`.
+Gecontroleerd: `node --check` groen op alle drie de JS-bestanden, nul lege
+catches in `pidlane-auth.js` en `pidlane-testrun.js` (ratel blijft op 0).
