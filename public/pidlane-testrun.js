@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.9 (24-08-2026)';
+const TESTRUN_VERSIE = '4.0 (24-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1522,7 +1522,60 @@ async function _blok5() {
     return metMode + ' weergaveknoppen in de lus, waakknop blijft ongemoeid (terug op ' + terug + ')';
   });
 
-  // ── VERWIJDERD 24-08: de twee olieknoppen ──
+  // ── TOEGEVOEGD 24-08: het inlogscherm meldt "bezig" niet meer in de foutkleur ──
+  // #loginErr deed twee dingen tegelijk. Het vakje heeft inline color:var(--rd)
+  // in index.html, en doLogin() zette er tijdens het wachten letterlijk '…' in.
+  // Drie rode puntjes onder het wachtwoordveld lezen als een storing. Bovendien
+  // had de fetch naar /auth/login geen tijdslimiet, dus bij een Worker die de
+  // verbinding openhield bleven ze staan tot je de app afsloot.
+  await _doe(5, 'Inlogmelding: bezig is grijs, fout is rood', function () {
+    if (typeof window.plLoginMeld !== 'function')
+      return { staat: 'FOUT', detail: 'plLoginMeld ontbreekt — pidlane-auth.js is niet meegekomen' };
+
+    // Gedrag op een los element, zodat het echte inlogscherm ongemoeid blijft.
+    const proef = document.createElement('div');
+    const uit = [];
+
+    window.plLoginMeld(proef, '⏳ Inloggen…', 'bezig');
+    if (proef.dataset.soort !== 'bezig') uit.push('soort blijft ' + proef.dataset.soort + ' bij bezig');
+    if (String(proef.style.color).indexOf('--rd') >= 0) uit.push('bezig staat in de FOUTKLEUR — dit is precies de oude situatie');
+    if (!proef.textContent) uit.push('bezig zet geen tekst');
+
+    window.plLoginMeld(proef, '⚠ Fout', 'fout');
+    if (String(proef.style.color).indexOf('--rd') < 0) uit.push('een echte fout is niet meer rood — te ver doorgeslagen');
+
+    window.plLoginMeld(proef, '', 'leeg');
+    if (proef.textContent) uit.push('leeg maakt het veld niet leeg');
+
+    if (uit.length)
+      return { staat: 'FOUT', detail: uit.join('; ') };
+
+    // Tweede helft: de tijdslimiet. Zonder die grens kan een hangende Worker
+    // het scherm voorgoed op "bezig" laten staan.
+    if (typeof LOGIN_TIMEOUT_MS !== 'number' || LOGIN_TIMEOUT_MS <= 0)
+      return { staat: 'FOUT', detail: 'LOGIN_TIMEOUT_MS ontbreekt — de login-fetch kan nog eeuwig hangen' };
+
+    return 'bezig grijs, fout rood, leeg leeg — afbreken na ' + Math.round(LOGIN_TIMEOUT_MS / 1000) + ' s';
+  });
+
+  // ── VERWIJDERD 24-08: de kale '…' als wachtindicator ──
+  // Bron lezen mag hier: doLogin() wordt door niets gewrapt (remote.js raakt
+  // updPID, sendCmd, clearDTC, realScanDTC, ensurePIDListActive en
+  // selectCategoryPIDs — niet de login). Een gedragstest kan dit niet zien,
+  // want je zou er een echte inlogpoging voor moeten doen.
+  await _doe(5, 'Geen kale puntjes meer in doLogin', function () {
+    let bron = '';
+    try { bron = String(window.doLogin || ''); } catch (e) { throw new Error('doLogin niet leesbaar'); }
+    if (!bron)
+      return { staat: 'LET OP', detail: 'doLogin staat niet op window — niets te lezen' };
+    if (bron.indexOf("'\u2026'") >= 0)
+      return { staat: 'FOUT', detail: "doLogin zet nog steeds '\u2026' in #loginErr — de oude wachtindicator staat er nog" };
+    if (bron.indexOf('err.textContent') >= 0)
+      return { staat: 'FOUT', detail: 'doLogin schrijft nog rechtstreeks in #loginErr langs plLoginMeld heen — dan klopt de kleur niet' };
+    return 'alle meldingen lopen via plLoginMeld';
+  });
+
+
   // Mode 22 olietemperatuur is op 23-08 losgelaten. De knoppen "DID-scan (45 s)"
   // en "Budget + olie" dienden alleen die zoektocht, en b8 stond bovendien in de
   // standaardset — dus élke volle run scande alsnog. De blokken zelf blijven
@@ -2327,6 +2380,8 @@ const CAMPAGNE = {
     'NIEUW — WAAKKNOP. Open live view, zet de waakronde aan, en schakel puntjes → getallen → trends → puntjes. Blijft de knop oplichten? Vorige build doofde hij terwijl de waakronde gewoon doorliep — de strook bleef staan en de bus werd nog geclaimd. Als hij nu dooft: blok 5 zegt bij welke stand.',
 
     'NIEUW — WAAKRONDE ZELF. Controleer meteen dat de strook boven het raster niet verdwijnt bij een wissel, en dat er na de wissel nog stippen bijkleuren. De knop was cosmetisch, maar dat is een conclusie uit code en niet uit de auto.',
+
+    'NIEUW — INLOGSCHERM. Log uit en weer in. Tijdens het wachten hoort er nu "⏳ Inloggen…" in grijs te staan, niet drie rode puntjes. Tik daarna bewust een fout wachtwoord: die melding moet wél rood zijn. Beide fout = blok 5 zegt welke helft.',
 
     'VERWIJDERD — de knoppen "DID-scan (45 s)" en "Budget + olie" zijn weg, en b8 staat niet meer in de standaardset. Kijk in het logboek: staat er nog een regel van blok 8 of 9 na een volle run? Dan zit er ergens nog een ingang.',
 

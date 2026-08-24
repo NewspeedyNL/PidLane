@@ -39,6 +39,32 @@ async function sha256hex(s){
 // ══════════════════════════════════════════════════════════════════
 const TOK_KEY='pl_tok';
 
+// Hoe lang we op /auth/login wachten voordat we het opgeven. Zonder grens kan
+// een Worker die de verbinding openhoudt zonder te antwoorden het inlogscherm
+// voorgoed op "bezig" laten staan: fetch geeft dan nooit een fout, dus er komt
+// nooit een uitweg. 12 s is ruim voor een koude Worker-start.
+const LOGIN_TIMEOUT_MS = 12000;
+
+// ── Meldingen op het inlogscherm ────────────────────────────────────
+// #loginErr deed twee dingen tegelijk. Het toont fouten — en het vakje heeft
+// inline `color:var(--rd)` in index.html — maar het diende óók als
+// wachtindicator: daar stond letterlijk `err.textContent = '…'`. Drie rode
+// puntjes onder het wachtwoordveld lezen als een storing, niet als "even
+// geduld", en bij een hangende fetch bleven ze staan zonder dat iemand wist
+// waarom. Eén setter nu, met de kleur aan de soort gekoppeld:
+//   'bezig'  grijs, dit is een status
+//   'fout'   rood, er is echt iets mis
+//   'leeg'   veld leegmaken
+// `data-soort` staat erop zodat de testrun het van buitenaf kan aflezen.
+function plLoginMeld(el, tekst, soort){
+  if(!el) return;
+  const s = soort || 'leeg';
+  el.dataset.soort = s;
+  el.style.color = (s === 'bezig') ? 'var(--tx3,#7c8aa5)' : 'var(--rd)';
+  el.textContent = tekst || '';
+}
+window.plLoginMeld = plLoginMeld;
+
 function tokLoad(){
   try{
     const t=JSON.parse(localStorage.getItem(TOK_KEY)||'null');
@@ -63,11 +89,25 @@ function tokClear(){
 async function serverLogin(user, pass){
   const base = (typeof PROXY_URL!=='undefined' && PROXY_URL) ? String(PROXY_URL).replace(/\/$/,'') : '';
   if(!base) throw new Error('PROXY_URL ontbreekt');
-  const r = await fetch(base+'/auth/login',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({user:String(user||''), pass:String(pass||'')})
-  });
+  // Afbreken na LOGIN_TIMEOUT_MS. Een afgebroken poging komt hieronder naar
+  // buiten als een gewone Error zonder .status en .code, en valt in doLogin dus
+  // in dezelfde tak als "netwerk onbereikbaar" — precies waar hij hoort.
+  const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const kap = ctl ? setTimeout(function(){ ctl.abort(); }, LOGIN_TIMEOUT_MS) : null;
+  let r;
+  try{
+    r = await fetch(base+'/auth/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user:String(user||''), pass:String(pass||'')}),
+      signal: ctl ? ctl.signal : undefined
+    });
+  }catch(e){
+    if(e && e.name === 'AbortError') throw new Error('login-server antwoordde niet binnen '+Math.round(LOGIN_TIMEOUT_MS/1000)+' s');
+    throw e;
+  }finally{
+    if(kap) clearTimeout(kap);
+  }
   if(r.status===401) return null;
   if(!r.ok){
     // Worker-foutcode meenemen zodat doLogin de ÉCHTE oorzaak kan tonen
@@ -107,20 +147,20 @@ async function doLogin(){
   // als voorheen — deze stap raakt ze niet. Klopt het wachtwoord niet, of is
   // de server onbereikbaar, dan valt hij door naar de normale route.
   if(user.includes('@') && window.PLKlant){
-    err.textContent = '…';
+    plLoginMeld(err, '⏳ Inloggen…', 'bezig');
     try{
       const k = await PLKlant.login(user, pass);
       if(k){
-        err.textContent = '';
+        plLoginMeld(err, '', 'leeg');
         PLKlant.neemSessie(k, user);
         return;
       }
-      err.textContent = '⚠ E-mailadres of wachtwoord onjuist';
+      plLoginMeld(err, '⚠ E-mailadres of wachtwoord onjuist', 'fout');
       document.getElementById('loginPass').value = '';
       document.getElementById('loginPass').focus();
       return;
     }catch(e){
-      if(/geblokkeerd|Te veel/i.test(e && e.message || '')){ err.textContent = '⚠ '+e.message; return; }
+      if(/geblokkeerd|Te veel/i.test(e && e.message || '')){ plLoginMeld(err, '⚠ '+e.message, 'fout'); return; }
       try{ log('Klantlogin niet gelukt ('+(e&&e.message||e)+') — normale route proberen','warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
     }
   }
@@ -128,17 +168,17 @@ async function doLogin(){
   // ── STAP 1: server-login (Worker) ──────────────────────────────
   // Dit is de normale weg. Alleen als de Worker onbereikbaar is vallen we
   // terug op de lokale USERS-tabel — die bevat uitsluitend het Demo-account.
-  err.textContent = '…';
+  plLoginMeld(err, '⏳ Inloggen…', 'bezig');
   try{
     const s = await serverLogin(user, pass);
     if(s === null){
-      err.textContent = '⚠ Gebruikersnaam of wachtwoord onjuist';
+      plLoginMeld(err, '⚠ Gebruikersnaam of wachtwoord onjuist', 'fout');
       document.getElementById('loginPass').value = '';
       document.getElementById('loginPass').focus();
       return;
     }
     tokSave(s);
-    err.textContent = '';
+    plLoginMeld(err, '', 'leeg');
     finishLogin(s.user || user, { role: s.role || 'user', label: s.label || s.user || user, apiKey: '' });
     try{ log('Server-login ok — sessie geldig tot '+new Date(s.exp*1000).toLocaleString('nl-NL'),'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
     return;
@@ -146,21 +186,21 @@ async function doLogin(){
     // Configuratiefouten van de Worker NIET maskeren met de lokale fallback —
     // dat gaf "wachtwoord onjuist" terwijl het probleem server-side zat.
     if(e && e.code==='no_session_secret'){
-      err.textContent='⚠ Worker mist secret SESSION_SECRET — zet die in Cloudflare en deploy';
+      plLoginMeld(err, '⚠ Worker mist secret SESSION_SECRET — zet die in Cloudflare en deploy', 'fout');
       return;
     }
     if(e && e.status===429){
-      err.textContent='⚠ Te veel loginpogingen — wacht 1 minuut';
+      plLoginMeld(err, '⚠ Te veel loginpogingen — wacht 1 minuut', 'fout');
       return;
     }
     if(e && e.status>=500){
-      err.textContent='⚠ Login-server fout: '+(e.code||e.status)+' — check Worker-secrets (USERS_JSON / SESSION_SECRET)';
+      plLoginMeld(err, '⚠ Login-server fout: '+(e.code||e.status)+' — check Worker-secrets (USERS_JSON / SESSION_SECRET)', 'fout');
       return;
     }
-    // Écht onbereikbaar (netwerk/offline) → door naar lokale fallback (Demo).
+    // Écht onbereikbaar (netwerk/offline/tijdslimiet) → lokale fallback (Demo).
     try{ log('Login-server onbereikbaar ('+(e?.message||e)+') — alleen lokale accounts','warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
   }
-  err.textContent = '';
+  plLoginMeld(err, '', 'leeg');
 
   // ── STAP 2: lokale fallback (offline / Demo) ───────────────────
   // Tolerante login: eerst exacte match; anders hoofdletter-ongevoelig op de
@@ -186,16 +226,16 @@ async function doLogin(){
       }
     }
   }catch(e){
-    err.textContent = '⚠ Login-fout: '+(e?.message||e);
+    plLoginMeld(err, '⚠ Login-fout: '+(e?.message||e), 'fout');
     return;
   }
   if(!account || !passOk){
-    err.textContent = '⚠ Login-server onbereikbaar — offline werkt alleen Demo/demo';
+    plLoginMeld(err, '⚠ Login-server onbereikbaar — offline werkt alleen Demo/demo', 'fout');
     document.getElementById('loginPass').value = '';
     document.getElementById('loginPass').focus();
     return;
   }
-  err.textContent = '';
+  plLoginMeld(err, '', 'leeg');
   finishLogin(user, account);
 }
 
@@ -385,7 +425,7 @@ async function logout(){
   window.anthropicKey = '';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
-  document.getElementById('loginErr').textContent = '';
+  plLoginMeld(document.getElementById('loginErr'), '', 'leeg');
   closeConnOv();
   document.getElementById('loginOv').classList.remove('hidden');
   try{ document.getElementById('lgWaveBg').classList.remove('off'); }catch(e){ /* stil: element kan al weg zijn */ } // golfachtergrond terug bij uitloggen
