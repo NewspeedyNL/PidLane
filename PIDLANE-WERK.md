@@ -171,6 +171,46 @@ Klein, geen sessie waard, maar niet vergeten.
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
 
+## Rit van 23-08 (nacht) — wat de meting opleverde
+
+27,6 min, 1295 monsters op 1 Hz, 11 min boven 15 km/u, tot 96 km/u en 3865 rpm.
+De eerste echte rit onder belasting sinds de batch.
+
+- **Fix 11 werkt.** 34 remmomenten, waarvan 1 zonder fouten én zonder oplopende
+  responstijd. Vóór de fix: 61 van de 86. Bezetting voorspelt nu wél responstijd
+  (128 → 180 ms, +41%).
+- **Socket is de echte boosdoener, geen los eindje meer.** 9× SPP herverbonden,
+  12× `flush read() fout`, 5× ELM-poort dicht. Drie gaten in de bulkopname:
+  134 s, **167 s middenin het segment 'rijden'**, en 66 s — samen ruim zes van
+  de 27,6 minuten weg, en juist het interessante stuk. PLLoad reageert netjes op
+  iets dat hij niet kan oplossen.
+- **Turbo-oordeel voor het eerst gevallen.** 1461 MAP-monsters, piek 105 kPa,
+  barometer 102, grens 110.
+- **Boost-PIDs kunnen op deze auto niet verdwijnen.** `0160 = 41606B080001`
+  decodeert naar `62 63 65 67 68 6D 80` — geen `70`. De mode 21-probe vindt
+  `2102`/`2187` niet. Het fantoom-scenario vraagt een ander voertuig.
+  (Openstaand: in §15 van PIDLANE.md staat `2187`, elders `0187`. Eén van beide
+  klopt niet; `PIDS_EXTRA` in `pidlane-data.js` is de bron.)
+- **32 van de 55 PIDs bewogen niet in 27 minuten rijden.** `0155`/`0156` staan
+  op 128 — de rauwe byte `0x80`, ongeschaald, terwijl trim rond 0% hoort te
+  liggen. `0123`/`0159` (raildruk) bevroren op 9900. `019D`/`019E`/`01A0` op
+  −40/−24: rauwe nul met temperatuuroffset. Die laatste drie zijn géén
+  fantomen — blok `0180` (`262157`) meldt ze, de ECU claimt ze dus en levert
+  niets. Precies de gevallen waar de opruimregel voor bestaat.
+- **De bulk-recorder gaat niet door de gate.** `0120`, `0140`, `0160` en `0180`
+  staan als sensorwaarde in de opname; dat zijn de steunbitmaps.
+  `GEEN_SENSOR_PIDS` houdt ze uit de keuzelijst maar niet uit `pidlane-bulk.js`.
+  Een vijfde deur naast de vier uit ronde 6.
+- **`0143` lijkt al goed.** 0–96,9%, gemiddeld 19,4 tegen 30,0 voor `0104`.
+  Formule nakijken vóór afvinken.
+- **Opmerkingveld kapt af op exact 20 tekens** — bevestigd
+  (`"Testrun na herverbin"`).
+- **Blok 5 stond op FOUT in beide runs van die nacht** ("survey transport
+  (veldlab) niet geladen"), en op 24-08 op "pidgate niet geladen". Beide keren
+  weg na herladen. Dat is de HTTP-cache. De melding zegt dat sinds testrun 4.1
+  zelf. Werkregel: vóór elke meetrit "Nieuwste versie laden", en pas starten als
+  blok 5 schoon is.
+
 ---
 
 # 6. HOE WE WERKEN

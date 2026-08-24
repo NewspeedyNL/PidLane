@@ -9,7 +9,7 @@ cd PidLane-main
 bash plcheck.sh $(pwd)      # moet groen zijn
 ```
 
-Vier bestanden. Testrun gaat van 3.8 naar **4.0**.
+Vier bestanden. Testrun gaat van 3.8 naar **4.1**.
 
 ---
 
@@ -126,9 +126,27 @@ vindt óók het commentaar erboven en meldt dan onterecht FOUT.
   door.
 - `.pidview-btn` terugzetten → de waakknopcontrole slaat af.
 
+### Twee tekstfixes uit de logs van 23-08 (4.1)
+
+**De "niet geladen"-melding noemt nu de cache.** Blok 5 stond twee keer op FOUT
+— 23-08 op "survey transport (veldlab)", 24-08 op "pidgate" — en beide keren
+was hij weg na een herlaadbeurt. Dat is de HTTP-cache die een oude module
+serveert, niet een ontbrekend bestand. De melding stuurde je dus een bestand
+laten zoeken dat er gewoon was. Nu zegt hij het zelf, met de volgorde erbij:
+eerst "Nieuwste versie laden", dan pas concluderen.
+
+**De tegelvraag is vervangen.** "Staan 0170, 2102 of 2187 nog in beeld?" kan op
+deze CX-5 nooit "ja" opleveren: steunbitblok `0160 = 41606B080001` decodeert
+naar `62 63 65 67 68 6D 80` — geen `70` — en de mode 21-probe vindt de andere
+twee niet. Een vraag die maar één antwoord kan hebben toetst niets; dat is
+precies waarom de UI-vragen op 23-08 al zijn geschrapt. Ervoor in de plaats: de
+turbodrempel-vraag noemt nu het oordeel dat op 23-08 vóór het eerst viel
+(1461 monsters, piek 105, grens 110) en vraagt om piek en marge, niet om een
+tegel die er niet is.
+
 ### CAMPAGNE
 
-19 vragen. Leidt met de drie wijzigingen van vandaag, daarna de openstaande
+20 vragen. Leidt met de drie wijzigingen van vandaag, daarna de openstaande
 batch van 23-08 — die rit is nog niet gereden, dus die vragen blijven staan.
 
 ---
@@ -161,7 +179,7 @@ Vier commits:
 
 1. `pidlane-pids.js` — waakknop buiten de weergave-lus
 2. `pidlane-auth.js` — inlogmelding via plLoginMeld, tijdslimiet op /auth/login
-3. `pidlane-testrun.js` — 4.0: olieknoppen weg, b8 uit de standaardset,
+3. `pidlane-testrun.js` — 4.1: olieknoppen weg, b8 uit de standaardset,
    CAMPAGNE en blok 5 herschreven
 4. `PIDLANE-WERK.md` — administratie
 
