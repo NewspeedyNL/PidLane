@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '3.8 (24-08-2026)';
+const TESTRUN_VERSIE = '3.9 (24-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1481,6 +1481,79 @@ async function _blok10() {
 // klant erop drukt.
 async function _blok5() {
 
+  // ── TOEGEVOEGD 24-08: de waakknop dooft niet meer bij een weergavewissel ──
+  // Melding was "waakronde gaat uit als ik van puntjes naar getallen schakel".
+  // Hij ging niet uit: #waakBtn draagt de klasse pidview-btn (hij staat in
+  // dezelfde rij) maar heeft geen data-mode, dus de active-lus in setPidView()
+  // haalde zijn markering eraf terwijl PLWaak gewoon doorliep. Twee schrijvers
+  // op één klasse, en de verkeerde won.
+  await _doe(5, 'Waakknop overleeft een weergavewissel', function () {
+    const knop = document.getElementById('waakBtn');
+    if (!knop)
+      return { staat: 'LET OP', detail: '#waakBtn bestaat niet — live view nog niet geopend, niets te toetsen' };
+    if (typeof window.setPidView !== 'function')
+      return { staat: 'FOUT', detail: 'setPidView ontbreekt' };
+
+    // Eerste helft: de lus mag alleen de échte weergaveknoppen zien.
+    const metMode = document.querySelectorAll('.pidview-btn[data-mode]').length;
+    const alle    = document.querySelectorAll('.pidview-btn').length;
+    if (!metMode)
+      return { staat: 'FOUT', detail: 'geen enkele knop met data-mode — dan schakelt de weergave niet meer' };
+    if (metMode === alle)
+      return { staat: 'FOUT', detail: '#waakBtn heeft een data-mode gekregen; dan valt hij weer binnen de lus' };
+
+    // Tweede helft, en die is de kern: zet de knop bewust aan vóór de proef.
+    // Zonder dat bewijst de test niets — bij een uitstaande waakronde is
+    // "blijft dof" ook waar voor de oude, foute selector.
+    const wasAan = knop.classList.contains('active');
+    knop.classList.add('active');
+    const terug = (typeof pidViewMode !== 'undefined') ? pidViewMode : 'dots';
+    const gedoofd = [];
+    ['full', 'numbers', 'dots'].forEach(function (m) {
+      setPidView(m);
+      if (!knop.classList.contains('active')) gedoofd.push(m);
+    });
+    setPidView(terug);                       // weergave terug zoals hij stond
+    if (!wasAan) knop.classList.remove('active');
+
+    if (gedoofd.length)
+      return { staat: 'FOUT', detail: 'waakknop dooft bij: ' + gedoofd.join(', ') +
+        ' — setPidView() selecteert nog op .pidview-btn zonder [data-mode]' };
+    return metMode + ' weergaveknoppen in de lus, waakknop blijft ongemoeid (terug op ' + terug + ')';
+  });
+
+  // ── VERWIJDERD 24-08: de twee olieknoppen ──
+  // Mode 22 olietemperatuur is op 23-08 losgelaten. De knoppen "DID-scan (45 s)"
+  // en "Budget + olie" dienden alleen die zoektocht, en b8 stond bovendien in de
+  // standaardset — dus élke volle run scande alsnog. De blokken zelf blijven
+  // bestaan (los aanroepbaar); alleen de ingangen zijn dicht.
+  await _doe(5, 'Olieknoppen weg, b8 uit de standaardset', function () {
+    const ov = document.getElementById('testrunOv');
+    if (!ov)
+      return { staat: 'LET OP', detail: 'paneel niet opgebouwd — kan de knoppen niet nalopen' };
+    const rest = [];
+    ov.querySelectorAll('[onclick]').forEach(function (el) {
+      const c = String(el.getAttribute('onclick') || '');
+      if (c.indexOf('b8') >= 0 && rest.indexOf('Budget + olie') < 0) rest.push('Budget + olie');
+      if (c.indexOf('b9') >= 0 && rest.indexOf('DID-scan') < 0) rest.push('DID-scan');
+    });
+    if (rest.length)
+      return { staat: 'FOUT', detail: 'knop bestaat nog: ' + rest.join(', ') + ' — sloop niet afgemaakt' };
+
+    // De standaardset is een objectliteraal in een default-argument; dat is
+    // alleen uit de bron te lezen. Bewust smal geknipt op precies dat literaal,
+    // want een zoektocht op "b8" in de hele functie vindt ook het commentaar
+    // erboven en meldt dan onterecht FOUT.
+    let bron = '';
+    try { bron = String(window.startTestrun || ''); } catch (e) { throw new Error('startTestrun niet leesbaar — standaardset niet te controleren'); }
+    const m = bron.match(/blokken\s*\|\|\s*\{[^}]*\}/);
+    if (!m)
+      return { staat: 'LET OP', detail: 'standaardset niet gevonden in de bron — controle niet uitgevoerd' };
+    if (m[0].indexOf('b8') >= 0)
+      return { staat: 'FOUT', detail: 'b8 staat nog in de standaardset — elke volle run scant alsnog naar olietemperatuur' };
+    return 'beide knoppen weg, standaardset is ' + m[0].replace(/\s+/g, ' ');
+  });
+
   // ── TOEGEVOEGD 23-08 (batch): tien fixes in één keer ──
   // Deze controle vervangt tien losse: hij kijkt of elke fix in de geladen
   // code zit. Niet of hij het juiste doet — dat is de rit.
@@ -1987,7 +2060,12 @@ async function _blok11() {
 async function startTestrun(blokken) {
   if (_trBezig) { try { showToast('Testrun loopt al'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
   if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
-  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b8: true, b11: true };
+  // b8 zat hier tot 24-08 in. Dat is de olietemperatuur-jacht (mode 21/22), en
+  // die is losgelaten. Hem in de standaardset laten staan zou betekenen dat elke
+  // volle run alsnog scant naar iets waar we niet meer naar zoeken — inclusief
+  // het header-gedoe op 7E0 dat daarbij hoort. Los aan te roepen blijft het:
+  // startTestrun({b8:true}).
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -2012,9 +2090,11 @@ async function startTestrun(blokken) {
     // blokken, ruim vóór de trage metingen van blok 6 en 8.
     if (b.b11) await _blok11();
     if (b.b6) await _blok6();
+    // Blok 8 en 9 horen sinds 24-08 in geen enkele knop meer thuis: dat is de
+    // mode 21/22-olietemperatuur en die zoektocht is gestaakt. De code blijft
+    // staan zodat een losse aanroep vanuit de console nog kan, mocht er ooit
+    // een echte Mazda-DID-lijst opduiken.
     if (b.b8) await _blok8();
-    // Blok 9 staat bewust niet in de standaardset: 45 s scannen hoort niet in
-    // elke run. Alleen via de knop "DID-scan".
     if (b.b9) await _blok9();
     // Blok 10 duurt in zijn eentje ruim negen minuten en hoort daarom nooit in
     // de standaardset. Alleen via de knop "Snelheidsproef".
@@ -2178,11 +2258,14 @@ function openTestrun() {
       '<div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
         '<button onclick="startTestrun()" style="background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 13px var(--f);cursor:pointer">▶ Start</button>' +
         '<button onclick="startTestrun({b5:true,b1:true,b4:true,b7:true,b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
-        // Los te draaien, want beide willen een wárme motor en een spoor van een
-        // paar minuten. Dat is precies het moment waarop je géén sweep van drie
-        // minuten wilt starten.
-        '<button onclick="startTestrun({b9:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">DID-scan (45 s)</button>' +
-        '<button onclick="startTestrun({b7:true,b8:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget + olie</button>' +
+        // Weg op 24-08: "DID-scan (45 s)" (blok 9) en "Budget + olie" (blok 7+8).
+        // Beide dienden de jacht op de mode 22-olietemperatuur, en die is op
+        // 23-08 definitief losgelaten — zonder echte Mazda-DID-lijst is verder
+        // zoeken raden. De blokken zelf staan er nog en zijn los aan te roepen
+        // met startTestrun({b8:true}) of {b9:true} vanuit de console; ze slopen
+        // is een mechanische stap en die gaat apart. Wat blijft is blok 7, het
+        // pollbudget, want dat heeft niets met olie te maken.
+        '<button onclick="startTestrun({b7:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget</button>' +
         '<button onclick="startTestrun({b10:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snelheidsproef (10 min)</button>' +
         // Alleen tellen, geen bus: mag ook los, bijvoorbeeld thuis op de bank.
         '<button onclick="startTestrun({b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Inventarisatie</button>' +
@@ -2237,21 +2320,31 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Opruimregel stille sensoren + turbodrempel op omgevingsdruk + naronde 23-08',
+  titel: 'Waakknop + opgeruimde testrun, bovenop de openstaande batch van 23-08',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. De veldlab-controle keek vorige run naar broncode van een functie in een closure en meldde ten onrechte "niet geladen"; die toetst nu gedrag.',
+    'VOORAF — blok 5 mag geen FOUT geven. Twee controles zijn nieuw: de waakknop en de verdwenen olieknoppen. Staan die op FOUT, dan is de levering van 24-08 niet meegekomen.',
 
-    'NIEUW — OPRUIMREGEL. Zoek in het log op "opgeruimd". Een sensor die zes keer achter elkaar niets geeft wordt gesnoeid, krijgt vijf herkansingen van een per minuut, en gaat dan uit de selectie. Verwacht op deze CX-5: 0101, 0121 of 016D. Zie je er meer dan drie, meld het — dan is de zeef te gretig.',
+    'NIEUW — WAAKKNOP. Open live view, zet de waakronde aan, en schakel puntjes → getallen → trends → puntjes. Blijft de knop oplichten? Vorige build doofde hij terwijl de waakronde gewoon doorliep — de strook bleef staan en de bus werd nog geclaimd. Als hij nu dooft: blok 5 zegt bij welke stand.',
 
-    'NIEUW — TERUGWEG. Staat er ook "antwoordt weer na N mislukte herkansing(en)"? Dan heeft een sensor zich hersteld voordat hij eruit ging, en dat is precies de bedoeling. Geen enkele van beide meldingen betekent dat geen sensor de drempel haalde.',
+    'NIEUW — WAAKRONDE ZELF. Controleer meteen dat de strook boven het raster niet verdwijnt bij een wissel, en dat er na de wissel nog stippen bijkleuren. De knop was cosmetisch, maar dat is een conclusie uit code en niet uit de auto.',
 
-    'NIEUW — AI-RAPPORT. Draai een analyse nadat er iets is opgeruimd. Staat er in het rapport dat die sensor niet gemeten is, en NIET dat hij ontbreekt of defect is? Dat onderscheid is de hele reden dat de melding er staat.',
+    'VERWIJDERD — de knoppen "DID-scan (45 s)" en "Budget + olie" zijn weg, en b8 staat niet meer in de standaardset. Kijk in het logboek: staat er nog een regel van blok 8 of 9 na een volle run? Dan zit er ergens nog een ingang.',
 
-    'PLLOAD — vorige rit: 6 verlagingen in 35 min, waarvan 1 bij foutgraad 0 (en die had 1198 ms, dus terecht). Blijft dat zo? Zoek op "Pollbudget vastgehouden" — die regel stond op info-niveau en komt dus NIET in de logboek-export; kijk in de testrun-diagbundel.',
+    'VERWIJDERD — "Budget" bestaat nog wél (blok 7 alleen). Druk erop en kijk of er een budgetmeting uitkomt zonder dat er iets over olie in het log verschijnt.',
 
-    'TURBODREMPEL — de grens is niet meer vast maar volgt PID 0133 (barometer, op deze auto 102 kPa). Blok 5 toetst dat. Noteer piek en grens uit blok 1: met piek 105 en grens 110 is de marge 5 kPa in plaats van 1. Zakt de marge onder 3, dan meldt blok 5 dat.',
+    'OPRUIMREGEL — zoek in het log op "opgeruimd". Een sensor die zes keer niets geeft wordt gesnoeid, krijgt vijf herkansingen van een per minuut, en gaat dan uit de selectie. Verwacht op deze CX-5: 0101, 0121 of 016D. Meer dan drie? Meld het, dan is de zeef te gretig.',
 
-    'FIX 2 — FULL SURVEY. Draai er een bij stilstand. Blok 5 toetst nu de regel zelf, maar de uitslag telt: staat "transportfout" apart naast "niet aanwezig"?',
+    'TERUGWEG — staat er ook "antwoordt weer na N mislukte herkansing(en)"? Dan herstelde een sensor zich vóórdat hij eruit ging, en dat is de bedoeling. Geen van beide meldingen betekent dat geen sensor de drempel haalde.',
+
+    'AI-RAPPORT — draai een analyse nadat er iets is opgeruimd. Staat er dat die sensor niet gemeten is, en NIET dat hij ontbreekt of defect is? Dat onderscheid is de hele reden dat de melding bestaat.',
+
+    'PLLOAD — vorige rit: 6 verlagingen in 35 min, waarvan 1 bij foutgraad 0 (die had 1198 ms, dus terecht). Blijft dat zo? Zoek op "Pollbudget vastgehouden" — die regel staat op info-niveau en komt NIET in de logboek-export; kijk in de testrun-diagbundel.',
+
+    'TURBODREMPEL — de grens volgt PID 0133 (barometer, hier 102 kPa). Blok 5 toetst dat. Noteer piek en grens uit blok 1: bij piek 105 en grens 110 is de marge 5 kPa. Zakt de marge onder 3, dan meldt blok 5 dat.',
+
+    'FIX 12 — CLEARDTC. Blok 5 controleert de remote-blokkade. FOUT daar = stoppen, dan kan een remote-expert het foutgeheugen wissen terwijl dat geblokkeerd hoort te zijn.',
+
+    'FIX 2 — FULL SURVEY. Draai er een bij stilstand. Blok 5 toetst de regel zelf; de uitslag telt: staat "transportfout" apart naast "niet aanwezig"?',
 
     'FIX 1 — LOG WISSEN. Wis het BT-logboek, herlaad, kijk of het echt leeg blijft.',
 
@@ -2259,13 +2352,11 @@ const CAMPAGNE = {
 
     'FIX 9 — MEETPOORT. Zegt de poort "te weinig data" met of zonder sensorwaarschuwing erbij?',
 
-    'FIX 12 — CLEARDTC. Blok 5 controleert de remote-blokkade. FOUT daar = stoppen.',
+    'BLOK 11 — draaien ná de rit, app nog open. Vergelijk de drie niet-ok sensoren met wat er is opgeruimd.',
 
-    'BLOK 11 — draaien na de rit, app nog open. Vergelijk de drie niet-ok sensoren met wat er is opgeruimd.',
+    'OPMERKINGVELD — nog steeds open: vorige keer kapte "Testrun na herverbin" af op exact 20 tekens. Typ er bewust een lange zin in en kijk hoeveel er bovenaan het bestand belandt.',
 
-    'OPMERKINGVELD — vorige keer kapte "Testrun na herverbin" af op exact 20 tekens. Typ er bewust een lange zin in en kijk hoeveel er bovenaan het bestand belandt.',
-
-    'RIJ ZOALS OP 23-08 — bulk-recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan.'
+    'RIJ ZOALS OP 23-08 — bulk-recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan. Anders toets je de PLLoad-ingreep niet.'
   ]
 };
 

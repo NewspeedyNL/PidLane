@@ -325,7 +325,14 @@ function setPidView(mode){
   pidViewMode=mode;
   const g=document.getElementById('gGrid');
   if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots'); if(mode!=='full') g.classList.add('view-'+mode); }
-  document.querySelectorAll('.pidview-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+  // Alleen de knoppen MET een data-mode zijn weergaveknoppen. #waakBtn draagt
+  // dezelfde klasse (hij staat in dezelfde rij) maar heeft geen data-mode, dus
+  // `b.dataset.mode===mode` was daar altijd false en elke wissel van weergave
+  // haalde zijn `active` eraf. De waakronde liep gewoon door — _aan bleef true,
+  // de strook bleef staan, de bus werd nog geclaimd — maar de knop zag eruit
+  // als uit. PLWaak.schakel() beheert die klasse zelf; die twee liepen elkaar
+  // in de weg. De attribuutselector zet de grens bij "heeft een modus".
+  document.querySelectorAll('.pidview-btn[data-mode]').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
   try{ localStorage.setItem('pl_pidview', mode); }catch(e){}
   // Stale-watchdog alleen nodig in puntjes-modus
   if(mode==='dots') startStaleWatchdog(); else stopStaleWatchdog();
