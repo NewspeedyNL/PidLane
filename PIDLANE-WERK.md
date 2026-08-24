@@ -37,9 +37,9 @@ nieuwe logregel vuurde ook, precies in het doelgeval: *"Pollbudget
 vastgehouden op 78% — bezet 86% maar responstijd 176ms (vorige 234ms), fout
 0%"*.
 
-**Let op:** die regel staat op `info` en komt daardoor NIET in de
-logboek-export. Hij was alleen terug te vinden in de diagbundel binnen de
-testrun. Wil je hem kunnen opzoeken, dan moet dat `warn` worden.
+**Stond op `info`** en kwam daardoor NIET in de logboek-export — alleen in de
+diagbundel binnen de testrun. Op 24-08 naar `warn` gezet, met een toets in
+`test-plload.js` die op het niveau controleert en niet alleen op de tekst.
 
 **`0143` is opgelost.** `41430029 → 16,08%` en `41430038 → 21,96%`. PIDLANE.md
 §11 noemde 16,1% als de juiste waarde. Punt dicht.
@@ -73,8 +73,8 @@ geboekt, niet alleen in de BT-log.
   `MAP_ATMOSF_MAX` staat op 106. Eén kPa hoger en deze atmosferische CX-5 was
   als turbo beoordeeld. De verkeerde kant op is veilig (turbo = niets
   verwijderen), maar dit is geen marge. Nog niet aangeraakt.
-- **Het opmerkingveld kapt af op 20 tekens.** "Testrun na herverbin" is exact
-  20. In `pidlane-export.js` staat geen `maxlength`, dus het zit elders.
+- **Het opmerkingveld werkt.** De drie opmerkingen kwamen alle drie bovenaan het
+bestand terecht.
 
 **Socket:** 9 herverbindingen in 35 min tegen 12 in 48 min op 23-08 — zelfde
 tempo, fix 11 beweegt daar niet in mee. Wel anders verdeeld: tussen 23:09 en
@@ -269,10 +269,15 @@ Klein, geen sessie waard, maar niet vergeten.
 - **Blok 1 tegenproef.** Op 23-08 verscheen spontaan "Geen profiel onder
   pl_vinprof_… — volle discovery". De controle kán dus rood worden. Blijft over:
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
-- **Opmerkingveld kapt af op 20 tekens.** Niet in `pidlane-export.js`; bron
-  onbekend.
-- **"Pollbudget vastgehouden" staat op info-niveau** en ontbreekt daardoor in
-  de logboek-export. Naar `warn`?
+- **Opmerkingveld: geen afkapping gevonden.** Op 24-08 nagelopen in
+  `pidlane-export.js`: geen `maxlength`, geen `slice`, en zowel het tekstpad
+  (`_metOpmerking`) als het PDF-pad (`splitTextToSize`) krijgen de volle
+  waarde. Mijn eerdere conclusie was op één toevallige waarde van precies 20
+  tekens gebaseerd en klopt niet. Gebeurt het nog eens: noteer wat je intikte
+  én wat er in het bestand kwam, dan is er iets te meten.
+- **"Pollbudget vastgehouden" staat nu op `warn`** (24-08). Op `info` haalde
+  hij de logboek-export niet, terwijl juist die regel moet bewijzen dat de
+  ingreep van 23-08 werkt. Cooldown van 20 s houdt het volume in toom.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
   Stille catches zijn er 394, niet 240 — zie het hoofdstuk hieronder.
 
