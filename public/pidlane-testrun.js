@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.0 (24-08-2026)';
+const TESTRUN_VERSIE = '4.1 (24-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1692,7 +1692,10 @@ async function _blok5() {
       else stuk.push(naam + ' (' + mod + ')');
     }
     if (stuk.length)
-      return { staat: 'FOUT', detail: 'NIET geladen: ' + stuk.join(', ') + ' — dat bestand is niet meegekomen' };
+      return { staat: 'FOUT', detail: 'NIET geladen: ' + stuk.join(', ') +
+        ' — bestand ontbreekt óf de browser serveert nog een oude versie uit de cache. ' +
+        'Druk eerst op "Nieuwste versie laden" op het inlogscherm en draai de run opnieuw; ' +
+        'staat het daarna nog op FOUT, dan is het bestand echt niet meegekomen.' };
     return ok.length + ' bevestigd' + (onbekend.length ? ', niet van buiten te zien: ' + onbekend.join(', ') : '');
   });
 
@@ -2395,7 +2398,9 @@ const CAMPAGNE = {
 
     'PLLOAD — vorige rit: 6 verlagingen in 35 min, waarvan 1 bij foutgraad 0 (die had 1198 ms, dus terecht). Blijft dat zo? Zoek op "Pollbudget vastgehouden" — die regel staat op info-niveau en komt NIET in de logboek-export; kijk in de testrun-diagbundel.',
 
-    'TURBODREMPEL — de grens volgt PID 0133 (barometer, hier 102 kPa). Blok 5 toetst dat. Noteer piek en grens uit blok 1: bij piek 105 en grens 110 is de marge 5 kPa. Zakt de marge onder 3, dan meldt blok 5 dat.',
+    'TURBODREMPEL — het oordeel is op 23-08 voor het eerst gevallen: 1461 MAP-monsters, piek 105 kPa, barometer 102, grens 110. Noteer piek en grens opnieuw uit blok 1. Zakt de marge onder 3 kPa, dan meldt blok 5 dat.',
+
+    'TEGELS — NIET meer vragen of 0170, 2102 of 2187 verdwijnen. Dat kan op deze auto nooit gebeuren: het steunbitblok 0160 (41606B080001) meldt 62 63 65 67 68 6D 80 en dus geen 70, en de mode 21-probe vindt 2102/2187 niet. Een vraag die alleen \'nee\' kan opleveren toetst niets. Het fantoom-scenario vraagt een auto waarvan de ECU laaddruk-PIDs meldt zonder turbo.',
 
     'FIX 12 — CLEARDTC. Blok 5 controleert de remote-blokkade. FOUT daar = stoppen, dan kan een remote-expert het foutgeheugen wissen terwijl dat geblokkeerd hoort te zijn.',
 
