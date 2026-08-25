@@ -48,14 +48,14 @@ function relevantSupportedPIDs(profile){
   // Welk profiel is als laatste opgevraagd? Puur een notitie voor het
   // meetdekking-blok in het rapport, dat anders niet weet wélke kern-set aan
   // de orde was. Verandert niets aan het gedrag hieronder.
-  try{ window._laatstProfiel = profile; }catch(e){}
+  try{ window._laatstProfiel = profile; }catch(e){ /* stil: schrijfactie, geen vervolgstap hangt hiervan af */ }
   // Elke analyse die z'n PID-set opvraagt, zet meteen het bijpassende
   // POLLPROFIEL (fase 3). Zo hoeft geen enkele analysefunctie dit apart te
   // regelen: accu-check gaat vanzelf naar het accuprofiel, rit naar monitor.
   try{
     const np=(window.ANALYSE2POLL||{})[profile];
     if(np) setPollProfile(np, 'analyse '+profile);
-  }catch(e){}
+  }catch(e){ console.warn('setPollProfile mislukt:', e); }
   // BASIS_PIDS loopt bij elke functie mee (motorcontext); profiel eroverheen.
   const base = [...new Set([...BASIS_PIDS, ...(ANALYSE_PIDS[profile] || [])])];
   // In demo of zonder discovery: gewoon het basisprofiel
@@ -160,7 +160,7 @@ async function ensurePIDListActive(pidList){
   }
   // Stil overslaan zou de vorige bug terugbrengen in omgekeerde vorm: dan
   // mist een analyse sensoren zonder dat iemand weet waarom.
-  if(geweigerd){ try{ log(`Analyse: ${geweigerd} sensor(en) overgeslagen — niet op dit voertuig of geen data`,'info'); }catch(e){} }
+  if(geweigerd){ try{ log(`Analyse: ${geweigerd} sensor(en) overgeslagen — niet op dit voertuig of geen data`,'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 
   // P7: readiness tonen wanneer de auto (een deel van) het profiel niet heeft
   const rd=pidReadiness(pidList);
@@ -269,12 +269,12 @@ function pidTileTap(pid){
 function pidDeselect(pid){
   if(!activePIDs.has(pid)) return;
   activePIDs.delete(pid); manualPIDs.delete(pid);
-  try{ const cb=document.querySelector('input[type=checkbox][data-pid="'+pid+'"]'); if(cb) cb.checked=false; }catch(e){}
-  try{ renderGauges(); }catch(e){}
-  try{ rebuildGSel(); }catch(e){}
+  try{ const cb=document.querySelector('input[type=checkbox][data-pid="'+pid+'"]'); if(cb) cb.checked=false; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+  try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt:', e); }
+  try{ rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
   const d=getPidDef(pid);
   showToast?.('⏸ '+((d&&d.name)||pid)+' uit — aanzetten via sensorkeuze');
-  try{ log('Sensor uitgezet via dubbeltik: '+((d&&d.name)||pid),'info'); }catch(e){}
+  try{ log('Sensor uitgezet via dubbeltik: '+((d&&d.name)||pid),'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 // ── Datastroom-reset: achterstand/drukte wegwerken zodat een volgende
@@ -284,12 +284,12 @@ function resetDataStream(auto){
     Object.keys(pidHist||{}).forEach(k=>{ if(Array.isArray(pidHist[k])) pidHist[k]=pidHist[k].slice(-5); });
     stabilityCount={}; outlierCount={}; dataStable=false; window._stabilityT0=null;
     _pidLastUpd={}; _pidLastUpdPause={}; pidSmooth={};
-    try{ if(typeof window._rxBuf==='string') window._rxBuf=''; }catch(e){}
-    try{ if(typeof window._sppBuf==='string') window._sppBuf=''; }catch(e){}
-    try{ if(typeof btBuffer==='string') btBuffer=''; }catch(e){}
+    try{ if(typeof window._rxBuf==='string') window._rxBuf=''; }catch(e){ /* stil: buffer-reset; ontbreekt hij dan is er ook niets te wissen */ }
+    try{ if(typeof window._sppBuf==='string') window._sppBuf=''; }catch(e){ /* stil: buffer-reset; ontbreekt hij dan is er ook niets te wissen */ }
+    try{ if(typeof btBuffer==='string') btBuffer=''; }catch(e){ /* stil: buffer-reset; ontbreekt hij dan is er ook niets te wissen */ }
     if(!auto) showToast?.('🔄 Datastroom gereset — meting start vers');
     log('Datastroom gereset'+(auto?' (automatisch na analyse)':''),'info');
-  }catch(e){}
+  }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 /* 27-07-2026 — fv() rondde ALLES boven de 10 af op hele eenheden. Voor
@@ -310,7 +310,7 @@ function fv(v, pidOfDef){
   try{
     if(typeof pidOfDef==='string'){ const d=getPidDef(pidOfDef); unit=(d&&d.unit)||''; }
     else if(pidOfDef && pidOfDef.unit) unit=pidOfDef.unit;
-  }catch(e){}
+  }catch(e){ console.warn('getPidDef mislukt:', e); }
   return Number(v).toFixed(fvDec(unit,v));
 }
 
@@ -333,7 +333,7 @@ function setPidView(mode){
   // als uit. PLWaak.schakel() beheert die klasse zelf; die twee liepen elkaar
   // in de weg. De attribuutselector zet de grens bij "heeft een modus".
   document.querySelectorAll('.pidview-btn[data-mode]').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
-  try{ localStorage.setItem('pl_pidview', mode); }catch(e){}
+  try{ localStorage.setItem('pl_pidview', mode); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   // Stale-watchdog alleen nodig in puntjes-modus
   if(mode==='dots') startStaleWatchdog(); else stopStaleWatchdog();
 }
@@ -358,7 +358,7 @@ function startStaleWatchdog(){
       // Zonder deze correctie kleurde tijdens elke sweep de hele live view
       // rood, terwijl er niets mis was met de sensoren.
       let krediet=0;
-      try{ krediet=Math.max(0, PLBus.pausedTotal()-(_pidLastUpdPause[pid]||0)); }catch(e){}
+      try{ krediet=Math.max(0, PLBus.pausedTotal()-(_pidLastUpdPause[pid]||0)); }catch(e){ console.warn('PLBus.pausedTotal mislukt:', e); }
       const stale=(now-last-krediet)>drempel;
       card.classList.toggle('stale', stale);
     });
@@ -400,7 +400,7 @@ function refreshLegeTegels(){
       dot.classList.toggle('leeg', leeg);
       if(leeg) dot.title=LEEG_TIP; else dot.removeAttribute('title');
     });
-  }catch(e){}
+  }catch(e){ console.warn('pidTegelLeeg mislukt:', e); }
 }
 
 function applyG(pid,val){
@@ -455,7 +455,7 @@ function applyG(pid,val){
 }
 function updPID(pid,val){
   pidVals[pid]=val;
-  try{ _plCheckPid(pid,val); }catch(e){}
+  try{ _plCheckPid(pid,val); }catch(e){ console.warn('_plCheckPid mislukt:', e); }
   // ── De twee haken van ronde 5 (§15) ──────────────────────────────
   // Deze stonden in PIDLANE.md als gelegd (5a-2 en 5b, beide ✅) en
   // test-herijking.js toetst ze, maar ze werden nergens aangeroepen: de test
@@ -464,8 +464,8 @@ function updPID(pid,val){
   // herijking draaide nooit (de bronlijst werd nooit herbouwd bij nieuwe
   // kennis). Beide zijn goedkoop: _noteMap() is twee vergelijkingen,
   // plHerijkTick() maakt één stempel en vergelijkt één string.
-  try{ if(typeof _noteMap==='function') _noteMap(); }catch(e){}
-  try{ if(typeof plHerijkTick==='function') plHerijkTick(); }catch(e){}
+  try{ if(typeof _noteMap==='function') _noteMap(); }catch(e){ console.warn('_noteMap mislukt:', e); }
+  try{ if(typeof plHerijkTick==='function') plHerijkTick(); }catch(e){ console.warn('plHerijkTick mislukt:', e); }
   _pidLastUpd[pid]=Date.now();
   // Pauzekrediet (fase 1): leg vast hoeveel bus-pauzetijd er tot nu toe was.
   // De stale-watchdog trekt de pauze die ná deze meting kwam eraf, zodat een
@@ -567,13 +567,13 @@ function saveVinProfile(vin){
     const terug=localStorage.getItem(sleutel);
     if(!terug){
       log('⚠️ Voertuigprofiel NIET bewaard — opslag weigerde stil','warn');
-      try{ btDiag('setItem('+sleutel+') gooide niet, maar getItem geeft null','err'); }catch(_){}
+      try{ btDiag('setItem('+sleutel+') gooide niet, maar getItem geeft null','err'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
       return;
     }
     log(`💾 Voertuigprofiel opgeslagen (${prof.pids.length} PIDs) voor ${vin}`,'ok');
   }catch(e){
     // Quota vol is een verwachte fout; hem stil opeten is dat niet.
-    try{ log('⚠️ Voertuigprofiel opslaan mislukt: '+(e.message||e),'warn'); }catch(_){}
+    try{ log('⚠️ Voertuigprofiel opslaan mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
   }
 }
 
@@ -609,7 +609,7 @@ function applyVinProfileIfKnown(vin){
     return true;
   }catch(e){
     // Nooit stil: dit is een aanroep van eigen opslag, geen verwachte fout.
-    try{ btDiag('Profiel '+sleutel+' onbruikbaar: '+(e.message||e),'err'); }catch(_){}
+    try{ btDiag('Profiel '+sleutel+' onbruikbaar: '+(e.message||e),'err'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
     return false;
   }
 }
@@ -643,7 +643,7 @@ function saveSession(){
     while(arr.length>20) arr.shift(); // max 20 sessies per voertuig
     localStorage.setItem(sessionsKey(vin), JSON.stringify(arr));
     log(`💾 Sessie opgeslagen (${Object.keys(compact).length} PIDs) in voertuigdossier`,'ok');
-  }catch(e){}
+  }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function loadSessions(vin){
   try{ return JSON.parse(localStorage.getItem(sessionsKey(vin||vehicleInfo?.vin))||'[]'); }

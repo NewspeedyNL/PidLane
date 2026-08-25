@@ -50,11 +50,11 @@
   function _uitBtLog() {
     const uit = [];
     let bron = null;
-    try { if (typeof _btLog !== 'undefined' && _btLog && _btLog.length) bron = _btLog; } catch (e) {}
+    try { if (typeof _btLog !== 'undefined' && _btLog && _btLog.length) bron = _btLog; } catch(e){ /* stil: _btLog kan nog niet bestaan — het logboek toont dan gewoon minder regels */ }
     if (!bron) {
       // Geheugen leeg (verse start na een crash) — val terug op de kopie.
-      try { bron = JSON.parse(sessionStorage.getItem('pl_btlog') || 'null'); } catch (e) {}
-      if (!bron) { try { bron = JSON.parse(localStorage.getItem('pl_btlog') || 'null'); } catch (e) {} }
+      try { bron = JSON.parse(sessionStorage.getItem('pl_btlog') || 'null'); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+      if (!bron) { try { bron = JSON.parse(localStorage.getItem('pl_btlog') || 'null'); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ } }
     }
     if (!Array.isArray(bron)) return uit;
     for (const r of bron) {
@@ -67,7 +67,7 @@
   function _uitAppLog() {
     const uit = [];
     let bron = null;
-    try { if (typeof plLokaalLog === 'function') bron = plLokaalLog(); } catch (e) {}
+    try { if (typeof plLokaalLog === 'function') bron = plLokaalLog(); } catch(e){ console.warn('plLokaalLog mislukt:', e); }
     if (!Array.isArray(bron)) return uit;
     for (const r of bron) {
       if (!r) continue;
@@ -79,7 +79,7 @@
   function _uitDiagRing() {
     const uit = [];
     let bron = null;
-    try { if (typeof plDiagGevallen === 'function') bron = plDiagGevallen(); } catch (e) {}
+    try { if (typeof plDiagGevallen === 'function') bron = plDiagGevallen(); } catch(e){ console.warn('plDiagGevallen mislukt:', e); }
     if (!Array.isArray(bron)) return uit;
     for (const r of bron) {
       if (!r) continue;
@@ -106,7 +106,7 @@
     // bevat regels die al in BT/APP staan; dubbel tonen maakt het onleesbaar.
     const uit = [];
     let tekst = '';
-    try { tekst = localStorage.getItem('pl_livelog_mirror') || ''; } catch (e) {}
+    try { tekst = localStorage.getItem('pl_livelog_mirror') || ''; } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
     if (!tekst) return uit;
     const regels = tekst.split('\n').filter(Boolean).slice(-600);
     for (const r of regels) {
@@ -158,8 +158,8 @@
     try {
       const v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) ? vehicleInfo : null;
       if (v) r.push('Voertuig    : ' + [v.merk, v.model, v.bouwjaar, v.brandstof].filter(Boolean).join(' '));
-    } catch (e) {}
-    try { r.push('Verbonden   : ' + ((typeof connected !== 'undefined' && connected) ? 'ja' : 'nee')); } catch (e) {}
+    } catch(e){ /* stil: vehicleInfo kan nog niet bestaan — het logboek toont dan gewoon minder regels */ }
+    try { r.push('Verbonden   : ' + ((typeof connected !== 'undefined' && connected) ? 'ja' : 'nee')); } catch(e){ /* stil: connected kan nog niet bestaan — het logboek toont dan gewoon minder regels */ }
     const g = gefilterd();
     r.push('Regels      : ' + g.length + ' van ' + _st.regels.length +
       (_st.bron !== 'ALLES' || _st.niveau !== 'ALLES' || _st.zoek ?
@@ -189,8 +189,8 @@
       a.href = URL.createObjectURL(new Blob([tekst], { type: 'text/plain;charset=utf-8' }));
       a.download = basis + '.txt';
       document.body.appendChild(a); a.click();
-      setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500);
-    } catch (e) {}
+      setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch(e){ /* stil: element kan al weg zijn */ } }, 1500);
+    } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   }
 
   // ── 4. SCHERM ─────────────────────────────────────────────────────
@@ -313,5 +313,5 @@
     versie: LOGBOEK_VERSIE
   };
 
-  try { if (typeof btDiag === 'function') btDiag('pidlane-logboek.js geladen — ' + LOGBOEK_VERSIE, 'info'); } catch (e) {}
+  try { if (typeof btDiag === 'function') btDiag('pidlane-logboek.js geladen — ' + LOGBOEK_VERSIE, 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
 })();

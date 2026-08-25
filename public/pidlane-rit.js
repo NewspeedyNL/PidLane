@@ -56,7 +56,7 @@ function closeRitAnalyse(){
   if(ritActive) stopRitAnalyse();
   document.getElementById('ritDash').style.display='none';
   _removeRitPill();
-  try{ goHome(); }catch(e){}
+  try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
 }
 
 // Minimaliseer de Rit Analyse zónder hem te stoppen: het overlay verdwijnt,
@@ -416,7 +416,7 @@ async function stopRitAnalyse(){
   // Rit gestart vanuit Onderhoud Plannen → terug en analyse draaien
   if(window._ondPending){
     window._ondPending=false;
-    try{ closeRitAnalyse?.(); }catch(e){}
+    try{ closeRitAnalyse?.(); }catch(e){ console.warn('closeRitAnalyse mislukt:', e); }
     openOnderhoud();
     setTimeout(()=>{ setOndRit('geen'); runOnderhoud(); }, 300);
     return;
@@ -424,7 +424,7 @@ async function stopRitAnalyse(){
   // Rit gestart vanuit EV-check → terug en analyse draaien
   if(window._evPending){
     window._evPending=false;
-    try{ closeRitAnalyse?.(); }catch(e){}
+    try{ closeRitAnalyse?.(); }catch(e){ console.warn('closeRitAnalyse mislukt:', e); }
     openEVCheck();
     setTimeout(()=>runEVCheck(), 300);
     return;

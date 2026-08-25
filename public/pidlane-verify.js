@@ -84,7 +84,7 @@ const PLVerify = {
               const r=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'), 1500);
               const v=this._decode(pid, r);
               if (v!==null){ d.ok++; d.waarden.push(v); d.tijden.push(Date.now()); }
-            }catch(e){}
+            }catch(e){ console.warn('pidCmd mislukt:', e); }
           }
         } finally {
           if(_busTok){ PLBus.release(_busTok); _busTok=0; }   // alleen ONS slot teruggeven
@@ -107,7 +107,7 @@ const PLVerify = {
       try{
         const lim=(typeof PID_HARD_LIMITS!=='undefined')?PID_HARD_LIMITS[pid]:null;
         if (lim && d.waarden.length) buiten=d.waarden.some(v=>v<lim.min||v>lim.max);
-      }catch(e){}
+      }catch(e){ /* stil: PID_HARD_LIMITS kan voor deze pid ontbreken */ }
       gezond[pid]={ rate:+rate.toFixed(1), okPct:+(okPct*100).toFixed(0), vast, buiten,
                     min:d.waarden.length?Math.min(...d.waarden):null,
                     max:d.waarden.length?Math.max(...d.waarden):null, n:d.waarden.length };
@@ -194,7 +194,7 @@ const PLVerify = {
       if (res.sig && window.PLMon && window.PLMon.events[res.sig]){
         window.PLMon.events[res.sig].verif=res;
       }
-    }catch(e){}
+    }catch(e){ /* stil: event kan intussen al opgeruimd zijn door PLMon */ }
     const kop = res.status==='bevestigd' ? '❗ Bevestigd'
               : res.status==='meetprobleem' ? '⚠️ Meetprobleem'
               : '✅ Niet gereproduceerd';
@@ -208,7 +208,7 @@ const PLVerify = {
               'Datagezondheid per PID:',
               ...Object.entries(res.gezond).map(([p,q])=>`  ${p}: ${q.n} samples, ${q.okPct}% respons, ${q.rate}/s, bereik ${q.min}–${q.max}${q.vast?', WAARDE ZIT VAST':''}${q.buiten?', BUITEN FYSIEKE GRENS':''}`)
              ].join('\n') });
-    }catch(e){}
+    }catch(e){ console.warn('registerSessionReport mislukt:', e); }
   },
 
   // Minimale decoder voor focus-samples (respons '41 PP ...').
@@ -235,7 +235,7 @@ const PLVerify = {
     }
   },
 
-  _log(msg,lvl){ try{ if (typeof log==='function') log(msg,lvl||'info'); }catch(e){} }
+  _log(msg,lvl){ try{ if (typeof log==='function') log(msg,lvl||'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 };
 
 window.PLVerify = PLVerify;

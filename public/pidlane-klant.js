@@ -51,12 +51,12 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const _nl = (n) => Number(n || 0).toLocaleString('nl-NL');
-  const _log = (m, t) => { try { (window.log || function () {})(m, t || 'info'); } catch (e) {} };
+  const _log = (m, t) => { try { (window.log || function () {})(m, t || 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } };
 
   function _base() {
     try {
       if (typeof PROXY_URL !== 'undefined' && PROXY_URL) return String(PROXY_URL).replace(/\/$/, '');
-    } catch (e) {}
+    } catch(e){ /* stil: PROXY_URL kan nog niet geladen zijn */ }
     return '';
   }
   function _tok() { try { return window.APP_TOKEN || ''; } catch (e) { return ''; } }
@@ -77,7 +77,7 @@
     if (metToken && _tok()) h['X-App-Token'] = _tok();
     const r = await fetch(b + pad, { method: 'POST', headers: h, body: JSON.stringify(body || {}) });
     const ruw = await r.text();
-    let d = {}; try { d = JSON.parse(ruw); } catch (e) {}
+    let d = {}; try { d = JSON.parse(ruw); } catch(e){ /* stil: JSON kan corrupt of leeg zijn */ }
     return { status: r.status, ok: r.ok && d && d.ok !== false, data: d || {}, ruw: ruw };
   }
 
@@ -169,7 +169,7 @@
     o.querySelector('#regGo').onclick = _doeRegistratie;
     o.querySelector('#regPass2').onkeydown = (e) => { if (e.key === 'Enter') _doeRegistratie(); };
     o.classList.remove('hidden');
-    setTimeout(() => { try { o.querySelector('#regEmail').focus(); } catch (e) {} }, 80);
+    setTimeout(() => { try { o.querySelector('#regEmail').focus(); } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ } }, 80);
   }
 
   function _zetMelding(el, soort, tekst) {
@@ -233,7 +233,7 @@
     const k = d.klant || {};
     try {
       if (window.PLCredits && PLCredits.zetServerSaldo) PLCredits.zetServerSaldo(k.saldo);
-    } catch (e) {}
+    } catch(e){ console.warn('PLCredits.zetServerSaldo mislukt:', e); }
 
     try {
       if (typeof finishLogin === 'function') {
@@ -320,10 +320,10 @@
         if (r.data.detail) m += '\n(' + String(r.data.detail).slice(0, 160) + ')';
         return _zetMelding(err, 'err', m);
       }
-      try { if (window.PLCredits) PLCredits.zetServerSaldo(r.data.saldo); } catch (e) {}
+      try { if (window.PLCredits) PLCredits.zetServerSaldo(r.data.saldo); } catch(e){ console.warn('PLCredits.zetServerSaldo mislukt:', e); }
       _sluit('klantOnbOv');
       if (r.data.toegekend > 0) {
-        try { (window.showToast || function () {})('\u26A1 ' + r.data.toegekend + ' tokens toegevoegd'); } catch (e) {}
+        try { (window.showToast || function () {})('\u26A1 ' + r.data.toegekend + ' tokens toegevoegd'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
       }
       _log('Akkoorden vastgelegd \u2014 saldo ' + r.data.saldo, 'ok');
     } catch (e) {
@@ -380,7 +380,7 @@
   // Dan meteen het formulier voor een nieuw wachtwoord tonen, vóór de login.
   function checkHerstelLink() {
     let token = '';
-    try { token = new URLSearchParams(location.search).get('herstel') || ''; } catch (e) {}
+    try { token = new URLSearchParams(location.search).get('herstel') || ''; } catch(e){ /* stil: browser-API kan ontbreken of geweigerd worden */ }
     if (!/^[0-9a-f]{64}$/.test(token)) return;
 
     const o = _ov('klantNieuwPwOv');
@@ -408,7 +408,7 @@
         _zetMelding(err, 'ok', 'Gelukt. Je kunt nu inloggen.');
         setTimeout(() => {
           _sluit('klantNieuwPwOv');
-          try { history.replaceState(null, '', location.pathname); } catch (e) {}
+          try { history.replaceState(null, '', location.pathname); } catch(e){ /* stil: browser-API kan ontbreken of geweigerd worden */ }
         }, 1600);
       } catch (e) {
         _zetMelding(err, 'err', 'Geen verbinding met de server.');
@@ -488,7 +488,7 @@
     const cb = body.querySelector('#mtCode');
     if (cb) cb.onclick = () => {
       _sluit('klantTokenOv');
-      try { if (window.PLCredits) PLCredits.openVerzilver(); } catch (e) {}
+      try { if (window.PLCredits) PLCredits.openVerzilver(); } catch(e){ console.warn('PLCredits.openVerzilver mislukt:', e); }
     };
     const kb = body.querySelector('#mtKoop');
     if (kb) kb.onclick = () => openKoop(k);
@@ -565,7 +565,7 @@
   function pasMenuAan() {
     try {
       let admin = false;
-      try { admin = (typeof isAdmin === 'function') && isAdmin(); } catch (e) {}
+      try { admin = (typeof isAdmin === 'function') && isAdmin(); } catch(e){ console.warn('isAdmin mislukt:', e); }
       ['admGroupBtn', 'admGroup'].forEach(function (id) {
         const el = document.getElementById(id);
         if (el) el.style.display = admin ? '' : 'none';
@@ -575,7 +575,7 @@
         const g = document.getElementById('admGroup');
         if (g) g.classList.remove('open');
       }
-    } catch (e) {}
+    } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   }
 
   // ── Saldo verversen na het inwisselen van een code ───────────────────

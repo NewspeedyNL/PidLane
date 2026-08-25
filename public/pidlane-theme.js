@@ -8,11 +8,11 @@
 // THEME / FONT / ZOOM
 // ════════════════════════════════════════
 (function initThemeDefault(){
-  var saved=null; try{ saved=localStorage.getItem('ns_theme'); }catch(e){}
+  var saved=null; try{ saved=localStorage.getItem('ns_theme'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   isDark = true;            // thema-knop verwijderd: altijd donker thema
   document.documentElement.classList.toggle('dark',isDark);
   function setBtn(){ var b=document.getElementById('themeBtn'); if(b) b.textContent=isDark?'☀️':'🌙'; }
-  setBtn(); try{ document.addEventListener('DOMContentLoaded',setBtn); }catch(e){}
+  setBtn(); try{ document.addEventListener('DOMContentLoaded',setBtn); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
 })();
 // ── BUSY-INDICATOR: duidelijke animatie bij hoog busverkeer ──
 // Toont een pill onder de topbar zolang discovery/health-scan/Full Survey de
@@ -38,7 +38,7 @@ function showBusyPill(txt,ms,onAnnuleer){
       x.textContent='✕';
       x.onclick=function(){
         const fn=_busyPillAnnuleer; _busyPillAnnuleer=null;
-        try{ if(fn) fn(); }catch(e){}
+        try{ if(fn) fn(); }catch(e){ console.warn('fn() — callback van de aanroeper mislukt:', e); }
         hideBusyPill();
       };
       p.appendChild(x);
@@ -71,8 +71,8 @@ function plBevestig(vraag, jaTekst, neeTekst, titel){
   return new Promise(resolve=>{
     let klaar=false;
     const af=v=>{ if(klaar)return; klaar=true;
-      try{ document.removeEventListener('keydown',esc); }catch(e){}
-      try{ ov.remove(); }catch(e){}
+      try{ document.removeEventListener('keydown',esc); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+      try{ ov.remove(); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
       resolve(!!v);
     };
     const esc=e=>{ if(e.key==='Escape') af(false); };
@@ -107,8 +107,8 @@ function plBevestig(vraag, jaTekst, neeTekst, titel){
 
     ov.appendChild(box);
     document.body.appendChild(ov);
-    try{ document.addEventListener('keydown',esc); }catch(e){}
-    try{ ja.focus(); }catch(e){}
+    try{ document.addEventListener('keydown',esc); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+    try{ ja.focus(); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   });
 }
 window.plBevestig=plBevestig;
@@ -116,7 +116,7 @@ function fontSize(delta){
   currentFont=Math.min(18,Math.max(10,currentFont+delta));
   document.documentElement.style.fontSize=currentFont+'px';
   const fl=document.getElementById('fontLbl'); if(fl) fl.textContent=currentFont;   // ctrl-bar verwijderd — label optioneel
-  try{localStorage.setItem('ns_font',currentFont);}catch(e){}
+  try{localStorage.setItem('ns_font',currentFont);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 // TABLET-HARDENING (2026-07-15): het transform-zoom mechanisme is VOLLEDIG
 // uitgeschakeld. Er is geen UI meer die zoom() aanroept, en een scale() op
@@ -128,7 +128,7 @@ function fontSize(delta){
 function applyZoom(){
   const el=document.getElementById('appScale');
   if(el){ el.style.transform=''; el.style.width=''; el.style.height=''; el.style.transformOrigin=''; }
-  try{ localStorage.removeItem('ns_zoom'); }catch(e){}
+  try{ localStorage.removeItem('ns_zoom'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function zoom(){ /* verwijderd — transform-zoom bestaat niet meer, zie applyZoom() */ }
 
@@ -165,7 +165,7 @@ function closeTopOverlay(){
   }
   // 5) Kebab-menu open?
   const kebab=document.getElementById('kebabMenu');
-  if(kebab && kebab.classList.contains('open')){ try{ closeKebab(); }catch(_){} return true; }
+  if(kebab && kebab.classList.contains('open')){ try{ closeKebab(); }catch(_){ console.warn('closeKebab mislukt:', _); } return true; }
   // 6) Verbind-overlay (alleen sluiten als al verbonden/demo — anders laten staan)
   const connOv=document.getElementById('connOv');
   if(vis(connOv) && (connected||demoMode)){ closeConnOv(); return true; }
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function(){
         AppPlugin.minimizeApp?.();             // niets open → app naar achtergrond (niet afsluiten)
       });
     }
-  }catch(e){}
+  }catch(e){ /* stil: alleen beschikbaar op het native platform */ }
 
   // Welcome card klikkers
   // 2026-07-26: elke kaart ruimt eerst achtergebleven modus-overlays op. Zonder
@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // onder het welkomstscherm staan en dook hij weer op zodra dat scherm sloot.
   const wcBind=(id,fn)=>{
     const el=document.getElementById(id); if(!el) return;
-    el.onclick=function(ev){ try{ plCloseModeOverlays(); }catch(e){} return fn.call(this,ev); };
+    el.onclick=function(ev){ try{ plCloseModeOverlays(); }catch(e){ console.warn('plCloseModeOverlays mislukt:', e); } return fn.call(this,ev); };
   };
   wcBind('wc-diag',()=>startChoice('diag'));
   wcBind('wc-onderdeel', ()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openOnderdeelCheck(); });
@@ -220,8 +220,8 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-langerit',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openLangeRit(); });
   wcBind('wc-caravan',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); if(typeof openCaravan==='function') openCaravan(); });
   wcBind('wc-seizoen',()=>openSeizoensCheck());
-  try{ injectFavStars(); }catch(e){}   // ⭐ sterretjes op alle functiekaarten
-  try{ favBarInit(); }catch(e){}       // ⭐ favorieten-knop in de welkom-header
+  try{ injectFavStars(); }catch(e){ console.warn('injectFavStars mislukt:', e); }   // ⭐ sterretjes op alle functiekaarten
+  try{ favBarInit(); }catch(e){ console.warn('favBarInit mislukt:', e); }       // ⭐ favorieten-knop in de welkom-header
   // soon-kaarten: tik geeft korte feedback, geen actie (momenteel geen)
   [].forEach(id=>{
     const el=document.getElementById(id);
@@ -235,8 +235,8 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('btnDemo').onclick=()=>startDemo();
 
   // Remote config: pas direct de gecachte/fallback-config toe, ververs op achtergrond
-  try{ applyConfigToUI(); }catch(e){}
-  try{ loadRemoteConfig(); }catch(e){}
+  try{ applyConfigToUI(); }catch(e){ console.warn('applyConfigToUI mislukt:', e); }
+  try{ loadRemoteConfig(); }catch(e){ console.warn('loadRemoteConfig mislukt:', e); }
 
   buildPIDList();
   // Laad API key alleen als al eerder ingelogd
@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(saved&&saved.startsWith('sk-ant-')){
       window.anthropicKey=saved; updateApiPill();
     }
-  }catch(e){}
+  }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   // Restore opgeslagen voorkeuren
   try{
@@ -257,14 +257,14 @@ document.addEventListener('DOMContentLoaded', function(){
     // onherstelbaar — precies de bron van de "alles staat rechts"-bug op
     // tablet. Sleutel opruimen en vast op 100% starten (tekstgrootte S/M/L
     // in het ☰-menu blijft de bedoelde schaalknop).
-    try{ localStorage.removeItem('ns_zoom'); }catch(e){}
+    try{ localStorage.removeItem('ns_zoom'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     currentZoom=1.0; applyZoom();
     // PID-scherm standaard ingeklapt; opent via uitvouw-knop. Sluit na 15s inactiviteit.
     if(!slCollapsed){ slCollapsed=true; document.getElementById('appGrid').classList.add('sl-col'); const b=document.getElementById('slToggle'); if(b) b.textContent='▶'; }
     if(localStorage.getItem('ns_sr')==='true') toggleSR();
     initSLActivityReset();
     setPidView('dots'); // live view start altijd in puntjes-weergave (genegeerde voorkeur)
-  }catch(e){}
+  }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   window.addEventListener('resize',()=>{ if(graphPID||trendPIDs.length) drawGraph(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNeonDashboard?.(); closeRitAnalyse?.(); }});
@@ -287,12 +287,12 @@ document.addEventListener('DOMContentLoaded', function(){
       if(_tok) window.APP_TOKEN=_tok.token;
       finishLogin(_name, _acc);
       log(`Sessie hersteld: ${_name}`,'ok');
-      try{ restoreAppState(); }catch(e){}
+      try{ restoreAppState(); }catch(e){ console.warn('restoreAppState mislukt:', e); }
       try{
         const P=window.Capacitor?.Plugins||{};
         if(window.Capacitor?.isNativePlatform?.())
           log(`Native plugins — Filesystem: ${P.Filesystem?'✓':'✗ (rebuild nodig)'} | Share: ${P.Share?'✓':'✗ (rebuild nodig)'}`, (P.Filesystem&&P.Share)?'ok':'warn');
-      }catch(e){}
+      }catch(e){ /* stil: melding mag nooit de stroom breken */ }
       // Was er een actieve BT-verbinding vóór Android de app herlaadde?
       // Dan direct opnieuw verbinden via het opgeslagen MAC-adres.
       try{
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function(){
           log('Automatisch herverbinden...','info');
           setTimeout(()=>{ if(!connected) connectSerial(); },800);
         }
-      }catch(e){}
+      }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
     } else {
       setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
     }
@@ -308,12 +308,12 @@ document.addEventListener('DOMContentLoaded', function(){
     setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
   }
 
-  try{ refreshAdminLogRow(); }catch(e){}
+  try{ refreshAdminLogRow(); }catch(e){ console.warn('refreshAdminLogRow mislukt:', e); }
   // Live-log hervatten als een vorige sessie nog "actief" was (crash/herlaad):
   // het bestaande bestand wordt voortgezet, vorige regels blijven behouden.
   try{
     if(localStorage.getItem('pl_livelog')==='1'){ liveLogStart({silent:true}); liveLogRecoveryCheck(); }
-  }catch(e){}
+  }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   log('PidLane geladen.','info');
 });

@@ -340,10 +340,10 @@ function _monIntroStart(){
   const el=document.getElementById('monIntroTxt'); if(!el) return;
   el.classList.remove('weg');
   clearTimeout(_monIntroT);
-  _monIntroT=setTimeout(()=>{ try{ el.classList.add('weg'); }catch(e){} }, 10000);
+  _monIntroT=setTimeout(()=>{ try{ el.classList.add('weg'); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ } }, 10000);
 }
 function openMonitorView(){
-  try{ document.getElementById('welcomeScreen').classList.add('hidden'); }catch(e){}
+  try{ document.getElementById('welcomeScreen').classList.add('hidden'); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   const pane=document.getElementById('pane-monitor'); if(pane) pane.classList.add('active');
@@ -355,9 +355,9 @@ function openMonitorView(){
   _monSluitPidLade();
   setTimeout(_monSluitPidLade,350); setTimeout(_monSluitPidLade,1200);
   _monDemoChip=false;               // demo-testchipje weg zodra de pane open is
-  try{ _monTick(); }catch(e){}      // meteen vullen, niet wachten op de 1s-tik
-  try{ _monChipTick(); }catch(e){}  // chipje direct weg zodra de pane open is
-  try{ _monIntroStart(); }catch(e){}
+  try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); }      // meteen vullen, niet wachten op de 1s-tik
+  try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); }  // chipje direct weg zodra de pane open is
+  try{ _monIntroStart(); }catch(e){ console.warn('_monIntroStart mislukt:', e); }
 }
 // ── PID-lade-bewaking op de monitor ─────────────────────────────
 // Staat het sensorenpaneel (#slPanel: zijbalk op desktop, sheet op mobiel)
@@ -380,8 +380,8 @@ function _monSluitPidLade(){
     const g=document.getElementById('appGrid'); if(g) g.classList.add('sl-col');
     if(typeof updateSLToggleIcon==='function') updateSLToggleIcon();
     if(typeof clearSLAutoHide==='function') clearSLAutoHide();
-    try{ localStorage.setItem('ns_sl','true'); }catch(e){}
-  }catch(e){}
+    try{ localStorage.setItem('ns_sl','true'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+  }catch(e){ console.warn('clearSLAutoHide mislukt:', e); }
 }
 // Is de monitor-pane wat de gebruiker NU ziet? Let op: goHome() legt het
 // welkomstscherm als overlay BOVENOP — de pane houdt dan gewoon z'n
@@ -399,8 +399,8 @@ function _monPaneZichtbaar(){
 let _monDemoChip=false;
 function monMinimize(){
   if(typeof demoMode!=='undefined'&&demoMode) _monDemoChip=true;
-  try{ goHome(); }catch(e){}
-  try{ _monChipTick(); }catch(e){}
+  try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
+  try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); }
 }
 const _MON_ERNSTIG=/^(ECT_HOOG|PIEK:|UITVAL:|THERMOSTAAT|TEST:x_laadspanning)/;
 
@@ -421,7 +421,7 @@ function _monBenzine(){
     if(typeof f==='number') return !(f===4||f===5);       // 4/5 = diesel volgens J1979
     const b=String((vehicleInfo&&(vehicleInfo.brandstof||vehicleInfo.fuel))||'').toLowerCase();
     if(/diesel|tdi|hdi|dci|cdi|crdi/.test(b)) return false;
-  }catch(e){}
+  }catch(e){ /* stil: pidVals/vehicleInfo kunnen nog ontbreken vóór de eerste meting */ }
   return true;                                            // bij twijfel benzinegrenzen
 }
 const _MON_TIPS=[
@@ -562,7 +562,7 @@ function _monChipMaak(){
   c.style.cssText='display:none;align-items:center;gap:7px;background:var(--sur,#151b24);border:1.5px solid var(--bd,#26303b);color:var(--tx,#e6e9ef);border-radius:22px;padding:7px 13px;font-family:var(--f);font-size:13px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.45);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent';
   c.innerHTML='<span>🛡️</span><span id="monChipSpd">— km/u</span><span id="monChipCnt" style="display:none;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--or,#f2820c);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center"></span>';
   c.title='Rit-monitor openen';
-  c.onclick=()=>{ try{ openMonitorView(); }catch(e){} };
+  c.onclick=()=>{ try{ openMonitorView(); }catch(e){ console.warn('openMonitorView mislukt:', e); } };
   const lane=document.getElementById('fabLane');
   if(lane){ lane.appendChild(c); }
   else{
@@ -595,7 +595,7 @@ function _monChipTick(){
 }
 // Chip élke seconde verversen (ook buiten de pane); pane alleen indien zichtbaar
 // — die guard zit in _monTick zelf.
-setInterval(()=>{ try{ _monChipTick(); }catch(e){} try{ _monTick(); }catch(e){} },1000);
+setInterval(()=>{ try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); } try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); } },1000);
 
 // Filter de catalogus op motortype + welke PIDs de auto levert.
 function bscBuildList(){
@@ -629,7 +629,7 @@ async function startBasicCheck(){
   if(!list.length){ bscRender(`<div class="bsc-empty">Geen geschikte sensoren gevonden voor deze auto. Verbind en voer eerst een PID-scan uit.</div>`); return; }
   // Automatische PID-selectie: alle hoofd- en hulp-PIDs van de reeks aanzetten.
   const allPids=[...new Set(list.flatMap(t=>t.usePids))];
-  try{ await ensurePIDListActive(allPids); }catch(e){}
+  try{ await ensurePIDListActive(allPids); }catch(e){ console.warn('ensurePIDListActive mislukt:', e); }
   _bscState={list, idx:0, results:[], testT0:0, holdStart:0, raf:null};
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
   bscToast(`${list.length} tests geselecteerd voor ${et} · ${allPids.length} sensoren aangezet`);
@@ -758,8 +758,8 @@ function bscFinish(){
          <button class="btn" onclick="bscExport()">💾 Exporteer</button>
        </div>
      </div>`);
-  try{ scanLogAdd?.({type:'basischeck', msg:`${ok}/${R.length-nv} groen (${tw} twijfel, ${gn} geen data, ${nv} n.v.t.)`}); }catch(e){}
-  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) PidLaneEvalLog.log('app','basischeck: '+ok+'/'+R.length+' groen'); }catch(e){}
+  try{ scanLogAdd?.({type:'basischeck', msg:`${ok}/${R.length-nv} groen (${tw} twijfel, ${gn} geen data, ${nv} n.v.t.)`}); }catch(e){ console.warn('scanLogAdd mislukt:', e); }
+  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) PidLaneEvalLog.log('app','basischeck: '+ok+'/'+R.length+' groen'); }catch(e){ /* stil: eigen telemetrielog (PidLaneEvalLog) — mag de basischeck nooit blokkeren */ }
   _bscState=null;
 }
 
@@ -769,12 +769,12 @@ function bscExport(){
   const lines=['PidLane — Basic System Check', 'Datum: '+new Date().toLocaleString('nl'),
     v.merk?`Voertuig: ${v.merk} ${v.model||''} ${v.year||''}`:'',''];
   R.forEach(r=>lines.push(`[${(r.status||'').toUpperCase()}] ${r.naam}: ${r.waarde!==undefined?r.waarde+' '+r.unit:'geen data'}`));
-  try{ download('basic-system-check.txt', lines.join('\n')); }catch(e){}
+  try{ download('basic-system-check.txt', lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
 }
 
 /* ---- weergave ---- */
 function bscRender(html){ const el=document.getElementById('bscBody'); if(el) el.innerHTML=html; }
-function bscToast(m){ try{ showToast?.(m,2600); }catch(e){} }
+function bscToast(m){ try{ showToast?.(m,2600); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 
 // Live-scherm van de lopende test (progress + canvas).
 function bscPaint(t, band, v, held, geslaagd, wacht){

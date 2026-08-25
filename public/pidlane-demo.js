@@ -27,7 +27,7 @@ function demoPIDsForFuel(brandstof){
 // → DEMO_VEHICLES verplaatst naar pidlane-data.js
 function loadDemoVehicle(key){
   const dv=DEMO_VEHICLES[key]||DEMO_VEHICLES.benzine;
-  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){}
+  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   demoMode=true; connected=true; dataStable=true;
   const pids=demoPIDsForFuel(dv.brandstof);
   supportedPIDs=new Set(pids);
@@ -38,11 +38,11 @@ function loadDemoVehicle(key){
   vehicleInfo.brandstof=dv.brandstof; vehicleInfo.motor=dv.motor||'';
   buildPIDList();
   const cntEl=document.getElementById('pidCnt'); if(cntEl) cntEl.textContent=discoveredPIDDefs.length;
-  try{ renderGauges(); rebuildGSel(); }catch(e){}
+  try{ renderGauges(); rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
   showVtag('DEMO — '+dv.merk+' '+dv.model);
   log('Demo-voertuig: '+dv.merk+' '+dv.model+' ('+dv.brandstof+') — '+pids.length+' PIDs','warn');
   startPoll();
-  try{ initialHealthScan(); }catch(e){}
+  try{ initialHealthScan(); }catch(e){ console.warn('initialHealthScan mislukt:', e); }
   renderDemoBar();
 }
 function demoRefresh(){
@@ -67,7 +67,7 @@ function renderDemoBar(){
 function startDemo(){
   if(!featOn('feat_demo')){ showToast?.('Demo-modus is uitgeschakeld door beheerder'); return; }
   const apiVal=document.getElementById('startApiKey').value.trim();
-  if(apiVal&&apiVal.startsWith('sk-ant-')){window.anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){}updateApiPill();}
+  if(apiVal&&apiVal.startsWith('sk-ant-')){window.anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }updateApiPill();}
   openDemoCarChooser();   // eerst kiezen — niet automatisch één vaste auto
 }
 function openDemoCarChooser(){
@@ -113,7 +113,7 @@ function startDemoKenteken(){
   _startDemoCore(null, kent);
 }
 function _startDemoCore(car, kent){
-  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){}
+  try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   demoMode=true; connected=true; dataStable=true;
   closeConnOv();
   resetToStep1();
@@ -125,7 +125,7 @@ function _startDemoCore(car, kent){
   vehicleInfo=demoVin;
   // Merge-laag voeden: normalisatie + fantoomfilter (purge bij brandstof) draaien
   // direct mee — dus een diesel-demo toont diesel-sensoren, benzine niet, enz.
-  try{ resetVehicleSources(); mergeVehicleData('vin', { merk:demoVin.merk, model:demoVin.model, year:demoVin.year, brandstof:demoVin.brandstof }); }catch(e){}
+  try{ resetVehicleSources(); mergeVehicleData('vin', { merk:demoVin.merk, model:demoVin.model, year:demoVin.year, brandstof:demoVin.brandstof }); }catch(e){ console.warn('mergeVehicleData mislukt:', e); }
 
   // Alle PIDs die een Mazda CX-5 2018 typisch ondersteunt
   const demoPIDs=[
@@ -193,11 +193,11 @@ function _startDemoCore(car, kent){
   // Kenteken als demo-auto: echte RDW-opzoeking vult merk/model/brandstof in
   // en het fantoomfilter draait mee — net als bij een echte verbinding.
   if(kent){
-    try{ localStorage.setItem('pl_kenteken', kent); }catch(e){}
+    try{ localStorage.setItem('pl_kenteken', kent); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     setTimeout(()=>{ try{
       const i=document.getElementById('kentInput'); if(i) i.value=kent;
       rdwLookup(false);
-    }catch(e){} }, 300);
+    }catch(e){ console.warn('rdwLookup mislukt:', e); } }, 300);
   }
 }
 
@@ -227,10 +227,10 @@ function plDemoZonderLogin(){
     const lo=document.getElementById('loginOv');
     if(lo){
       lo.classList.add('lg-leave');
-      setTimeout(()=>{ try{ lo.classList.add('hidden'); lo.classList.remove('lg-leave'); }catch(e){} }, 260);
+      setTimeout(()=>{ try{ lo.classList.add('hidden'); lo.classList.remove('lg-leave'); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ } }, 260);
     }
-  }catch(e){}
-  try{ btDiag('Demo gestart vanaf het loginscherm (geen sessie)','info'); }catch(e){}
+  }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+  try{ btDiag('Demo gestart vanaf het loginscherm (geen sessie)','info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   setTimeout(()=>{ try{ openDemoCarChooser(); }catch(e){ showToast?.('Demo kon niet starten'); } }, 300);
 }
 window.plDemoZonderLogin = plDemoZonderLogin;

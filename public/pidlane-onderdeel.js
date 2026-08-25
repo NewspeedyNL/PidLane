@@ -70,7 +70,7 @@ function stilteBeeld(){
       if(!t) return;                                     // nooit iets gehad: geen bewijs, geen uitspraak
       if(nu-t > STIL_MS) stil.push(pid); else levend.push(pid);
     });
-  }catch(e){}
+  }catch(e){ /* stil: activePIDs/supportedPIDs/_pidLastUpd kunnen nog niet bestaan */ }
   return {stil:stil, levend:levend};
 }
 /* Railwaarden: een sensor kan óók "dood" zijn terwijl hij wél een getal geeft.

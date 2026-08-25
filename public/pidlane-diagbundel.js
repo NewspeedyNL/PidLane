@@ -27,7 +27,7 @@ function _diagNote(cmd, raw, expect, out){
       mist:gevraagd.filter(p=>!(p in gekregen))
     });
     if(_diagRing.length>400) _diagRing.shift();
-  }catch(e){}
+  }catch(e){ /* stil: dit is alleen de interne diagnoseregistratie, geen kernpad */ }
 }
 // De exportknop "Diagnosebundel" is vervallen: de testrun (pidlane-testrun.js)
 // zet deze gevallen zelf in zijn logboek, op dezelfde tijdlijn als de rest.
@@ -175,7 +175,7 @@ function splitBatchResponse(raw, expectPids){
         const bron=(expect.size===1)?'solo':'batch';
         for(const k of Object.keys(best.out)) window.PLPidLen.melden(k.slice(2), best.out[k].length, bron);
       }
-    }catch(e){}
+    }catch(e){ console.warn('PLPidLen.melden mislukt:', e); }
     return best?best.out:{};
   }
 
@@ -203,7 +203,7 @@ function parsePID(pid,raw){
   // achteraf naspeurbaar: de let-op-melding in pidlane-datalog.js zet 'm erbij,
   // zodat je bij een rare waarde de bytes ziet in plaats van te moeten gokken
   // of het de motor was of de batch-splitsing.
-  try{ (window._pidRuw=window._pidRuw||{})[pid]=String(raw||'').trim().slice(0,40); }catch(e){}
+  try{ (window._pidRuw=window._pidRuw||{})[pid]=String(raw||'').trim().slice(0,40); }catch(e){ /* stil: alleen een cache voor weergave, geen kernpad */ }
   if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')||raw.includes('UNABLE')||raw.includes('?')) return null;
   const cleaned=raw.replace(/[^0-9A-Fa-f]/g,'');
   if(cleaned.length<4) return null;
@@ -217,7 +217,7 @@ function parsePID(pid,raw){
   // Gebruik parse functie uit discovery definitie
   const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
   let rawVal=null;
-  if(def?.parse){ try{rawVal=def.parse(b);}catch(e){} }
+  if(def?.parse){ try{rawVal=def.parse(b);}catch(e){ console.warn('def.parse mislukt:', e); } }
   else rawVal=b[0]??null;
   return validateAndSmooth(pid,rawVal);
 }
@@ -228,10 +228,10 @@ function applyParsedBytes(pid,bytes){
   // Structuur meekijken vóór het parsen: PLPidVorm werkt op de RUWE bytes en
   // merkt zo op dat een PID helemaal geen enkelvoudige sensorwaarde is (zoals
   // 016D, dat als temperatuur wordt uitgelezen maar een regelblok is).
-  try{ window.PLPidVorm && window.PLPidVorm.zie(pid, bytes); }catch(e){}
+  try{ window.PLPidVorm && window.PLPidVorm.zie(pid, bytes); }catch(e){ console.warn('PLPidVorm.zie mislukt:', e); }
   const def=getPidDef(pid);
   let rawVal=null;
-  if(def?.parse){ try{rawVal=def.parse(bytes);}catch(e){} }
+  if(def?.parse){ try{rawVal=def.parse(bytes);}catch(e){ console.warn('def.parse mislukt:', e); } }
   else rawVal=bytes[0]??null;
   if(rawVal===null||rawVal===undefined||isNaN(rawVal)) return null;
   return validateAndSmooth(pid,rawVal);
@@ -247,7 +247,7 @@ window.plMeetPidLengte=function(pid, raw){
     const out=splitBatchResponse(raw,[pid]);
     const b=out && out[pid];
     if(b && b.length) window.PLPidVorm && window.PLPidVorm.zie(pid, b);
-  }catch(e){}
+  }catch(e){ console.warn('splitBatchResponse mislukt:', e); }
 };
 
 // ════════════════════════════════════════
@@ -264,7 +264,7 @@ window.plMeetPidLengte=function(pid, raw){
 //   _pollProfileAuto = wat de situatie vraagt (analyse, live view, caravan)
 //   _pollProfileVast = wat de gebruiker handmatig heeft vastgezet (wint altijd)
 let _pollProfileVast=null, _pollProfileAuto='basis';
-try{ _pollProfileVast=localStorage.getItem('pl_pollprofiel')||null; }catch(e){}
+try{ _pollProfileVast=localStorage.getItem('pl_pollprofiel')||null; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 function actiefPollProfiel(){
   const naam=_pollProfileVast || _pollProfileAuto;
   return (window.POLL_PROFIELEN && POLL_PROFIELEN[naam]) ? naam : 'basis';
@@ -276,15 +276,15 @@ function setPollProfile(naam, reden){
   _pidNextPoll={};                       // nieuw tempo direct laten ingaan
   if(!_pollProfileVast){
     const p=POLL_PROFIELEN[naam];
-    try{ btDiag('Pollprofiel: '+p.emoji+' '+p.label+(reden?' ('+reden+')':''),'info'); }catch(e){}
+    try{ btDiag('Pollprofiel: '+p.emoji+' '+p.label+(reden?' ('+reden+')':''),'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }
 }
 // Handmatig vastzetten vanuit het busdiagnose-scherm (null = weer automatisch)
 function zetPollProfielVast(naam){
   _pollProfileVast = (naam && window.POLL_PROFIELEN && POLL_PROFIELEN[naam]) ? naam : null;
   try{ if(_pollProfileVast) localStorage.setItem('pl_pollprofiel',_pollProfileVast);
-       else localStorage.removeItem('pl_pollprofiel'); }catch(e){}
+       else localStorage.removeItem('pl_pollprofiel'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   _pidNextPoll={};
-  try{ showToast(_pollProfileVast?('Pollprofiel vast: '+POLL_PROFIELEN[_pollProfileVast].label):'Pollprofiel weer automatisch'); }catch(e){}
+  try{ showToast(_pollProfileVast?('Pollprofiel vast: '+POLL_PROFIELEN[_pollProfileVast].label):'Pollprofiel weer automatisch'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 window.setPollProfile=setPollProfile; window.zetPollProfielVast=zetPollProfielVast;

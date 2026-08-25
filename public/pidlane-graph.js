@@ -212,9 +212,9 @@ async function scanDTC(){
   document.getElementById('bscan').disabled=false;
   document.getElementById('bclr').disabled=!dtcCodes.length;
   log(`Scan: ${dtcCodes.length} code(s)`,dtcCodes.length?'warn':'ok');
-  try{ PidLaneEvalLog.log('dtc','uitgelezen',{codes:[...dtcCodes]}); }catch(e){}
+  try{ PidLaneEvalLog.log('dtc','uitgelezen',{codes:[...dtcCodes]}); }catch(e){ /* stil: eigen telemetrielog (PidLaneEvalLog) — mag de scan nooit blokkeren */ }
   // Uitlezing bewaren in het sessie-rapportarchief (📄 Rapporten-knop + AI-context)
-  try{ registerSessionReport({type:'dtc', title:'Foutcode-uitlezing — '+(dtcCodes.length?dtcCodes.length+' code'+(dtcCodes.length===1?'':'s'):'geen codes'), text:_srDtcText()}); }catch(e){}
+  try{ registerSessionReport({type:'dtc', title:'Foutcode-uitlezing — '+(dtcCodes.length?dtcCodes.length+' code'+(dtcCodes.length===1?'':'s'):'geen codes'), text:_srDtcText()}); }catch(e){ console.warn('_srDtcText mislukt:', e); }
 }
 async function realScanDTC(){
   const r=await sendCmd('03');const codes=[];

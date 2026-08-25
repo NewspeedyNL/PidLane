@@ -135,21 +135,21 @@
     try { return localStorage.getItem('pl_adaptertype') || ''; } catch (e) { return ''; }
   }
   function zetType(t) {
-    try { localStorage.setItem('pl_adaptertype', t); } catch (e) {}
+    try { localStorage.setItem('pl_adaptertype', t); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   }
   function aantalVerbindingen() {
     try { return Number(localStorage.getItem('pl_verbindingen') || 0); } catch (e) { return 0; }
   }
   function telVerbinding() {
-    try { localStorage.setItem('pl_verbindingen', String(aantalVerbindingen() + 1)); } catch (e) {}
-    try { localStorage.setItem('pl_laatsteVerbinding', String(Date.now())); } catch (e) {}
+    try { localStorage.setItem('pl_verbindingen', String(aantalVerbindingen() + 1)); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+    try { localStorage.setItem('pl_laatsteVerbinding', String(Date.now())); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   }
   function laatsteAdapterNaam() {
     try { return localStorage.getItem('spp_name') || ''; } catch (e) { return ''; }
   }
   function geledenTekst() {
     let t = 0;
-    try { t = Number(localStorage.getItem('pl_laatsteVerbinding') || 0); } catch (e) {}
+    try { t = Number(localStorage.getItem('pl_laatsteVerbinding') || 0); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
     if (!t) return '';
     const min = Math.floor((Date.now() - t) / 60000);
     if (min < 2) return 'zojuist';
@@ -379,7 +379,7 @@
       st.textContent = '@keyframes plStartPuls{0%,100%{opacity:1}50%{opacity:.45}}';
       document.head.appendChild(st);
     }
-    try { if (typeof btDiag === 'function') btDiag('pidlane-start.js geladen — ' + START_VERSIE, 'info'); } catch (e) {}
+    try { if (typeof btDiag === 'function') btDiag('pidlane-start.js geladen — ' + START_VERSIE, 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

@@ -100,7 +100,7 @@
   const pauze = ms => new Promise(r => setTimeout(r, ms));
 
   function diag(msg, lvl) {
-    try { if (typeof btDiag === 'function') btDiag(msg, lvl || 'info'); } catch (e) {}
+    try { if (typeof btDiag === 'function') btDiag(msg, lvl || 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }
 
   function midNaam(mid) {

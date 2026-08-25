@@ -1,24 +1,25 @@
 // ══════════════════════════════════════════════════════════════════
-// test-stille-catches.js — het aantal mag alleen omlaag
+// test-stille-catches.js — geen lege catches, nul is de norm
 // ──────────────────────────────────────────────────────────────────
-// WAAROM DIT EEN RATEL IS EN GEEN CONTROLE
+// WAAROM DIT BESTAAT
 //
-// Er stonden 821 lege catches in deze codebase. Drie mechanismen zijn er
+// Er stonden ooit 821 lege catches in deze codebase. Drie mechanismen zijn er
 // maandenlang dood door geweest: purgeImplausiblePids() bestond niet meer,
 // _noteMap() en plHerijkTick() werden nooit aangeroepen, en
 // rebuildPidDefsCache() heeft nooit bestaan. Alle drie stil weggeslikt.
 // probeUitgebreid() stond in PLAN.md als "wordt nergens opgevraagd" terwijl
 // het gewoon gebeurde — in een lege catch.
 //
-// Dat opruimen is werk van maanden, niet van één sessie. Een test die eist
-// dat het er nul zijn zou dus vanaf dag één rood staan, en een test die
-// altijd rood staat wordt genegeerd — precies de failliete controle waar dit
-// project al eerder tegenaan liep.
+// Van 22-08 tot 25-08-2026 draaide hier een RATEL: per module stond
+// vastgelegd hoeveel lege catches er nu waren, meer mocht niet, minder mocht
+// altijd. Een test die eist dat het er nul zijn zou dag één al rood hebben
+// gestaan, en een rood-startende test wordt genegeerd — precies de
+// failliete controle waar dit project al eerder tegenaan liep.
 //
-// Daarom een RATEL: per module staat hieronder hoeveel er nu zijn. Meer mag
-// niet, minder mag altijd. Nieuwe code kan er dus geen bij smokkelen, en elke
-// opgeruimde module verlaagt zijn eigen grens. Zo wordt het een gewoonte in
-// plaats van een project.
+// Op 25-08-2026 is de laatste module opgeruimd (394 lege catches over 38
+// bestanden, in één ronde vervangen door een melding of een reden). Nul is
+// nu het startpunt, dus de ratel is overbodig: deze test eist voortaan
+// gewoon nul, overal.
 //
 // WAT NIET MEETELT
 // Een catch met een reden erin — `catch(e){ /* stil: opslag kan vol zijn */ }`
@@ -30,8 +31,8 @@
 // ALS DEZE TEST ROOD STAAT
 // Je hebt een lege catch toegevoegd. Twee opties: vul hem met een melding
 // (btDiag voor iets dat in het logboek hoort, console.warn voor de rest), of
-// zet er een reden in als hij bewust stil is. Verlaag de grens NOOIT door het
-// getal hieronder op te hogen.
+// zet er een reden in als hij bewust stil is. Er is geen grens meer om te
+// verlagen — nul is de enige geldige waarde.
 //
 // Draaien vanuit public/:  node test-stille-catches.js      (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -39,108 +40,27 @@
 
 const fs = require('fs');
 
-// Stand op 22-08-2026. Opgeruimd naar 0: pidlane-bt.js, pidlane-veldlab.js
-// (21-08), pidlane-btflow.js, pidlane-auth.js, pidlane-fuel.js en
-// pidlane-koopcheck.js (22-08), en pidlane-remote.js + pidlane-testrun.js
-// (23-08, van 105 en 66 naar 0). Stand 23-08: 394 lege catches over 38
-// modules, waarvan 266 om een aanroep van eigen code heen.
-// pidlane-koopcheck.js (22-08, resp. 30, 39, 40 en 43 naar 0).
-const GRENS = {
-  "pidlane-archief.js": 23,
-  "pidlane-auth.js": 0,
-  "pidlane-bedrading.js": 5,
-  "pidlane-btflow.js": 0,
-  "pidlane-bulk.js": 19,
-  "pidlane-busgate.js": 2,
-  "pidlane-caravan.js": 8,
-  "pidlane-correlatie.js": 1,
-  "pidlane-credits.js": 11,
-  "pidlane-data.js": 6,
-  "pidlane-datalog.js": 25,
-  "pidlane-demo.js": 11,
-  "pidlane-diagbundel.js": 11,
-  "pidlane-diagnose.js": 7,
-  "pidlane-dossier.js": 1,
-  "pidlane-export.js": 11,
-  "pidlane-fuel.js": 0,
-  "pidlane-graph.js": 2,
-  "pidlane-klant.js": 12,
-  "pidlane-koopcheck.js": 0,
-  "pidlane-logboek.js": 11,
-  "pidlane-mode06.js": 1,
-  "pidlane-monitor.js": 10,
-  "pidlane-motortype.js": 5,
-  "pidlane-onderdeel.js": 1,
-  "pidlane-pidgate.js": 13,
-  "pidlane-pids.js": 22,
-  "pidlane-plload.js": 8,
-  "pidlane-privacy.js": 6,
-  "pidlane-recall.js": 3,
-  "pidlane-remote.js": 0,
-  "pidlane-rijsituatie.js": 23,
-  "pidlane-rit.js": 3,
-  "pidlane-run.js": 8,
-  "pidlane-start.js": 5,
-  "pidlane-testrun.js": 0,
-  "pidlane-theme.js": 24,
-  "pidlane-totalcheck.js": 18,
-  "pidlane-uihelpers.js": 20,
-  "pidlane-uitgebreid.js": 9,
-  "pidlane-verify.js": 5,
-  "pidlane-voertuigdata.js": 22,
-  "pidlane-waakronde.js": 13,
-  "pidlane-watchers.js": 9,
-};
-
 const RE = /catch\s*\(\s*[a-zA-Z_$][\w$]*\s*\)\s*\{\s*\}/g;
-let fout = 0, totaal = 0, gedaald = [];
+let fout = 0, totaal = 0;
 
 const modules = fs.readdirSync('.').filter(function (f) {
   return /^pidlane-.*\.js$/.test(f);
 }).sort();
 
-console.log('Stille catches — het aantal mag alleen omlaag\n');
+console.log('Stille catches — nul is de norm\n');
 
 modules.forEach(function (f) {
   const n = (fs.readFileSync(f, 'utf8').match(RE) || []).length;
   totaal += n;
-  const grens = Object.prototype.hasOwnProperty.call(GRENS, f) ? GRENS[f] : 0;
-  if (n > grens) {
-    console.log('  FOUT  ' + f + ': ' + n + ' lege catches, grens is ' + grens);
+  if (n > 0) {
+    console.log('  FOUT  ' + f + ': ' + n + ' lege catch(es)');
     console.log('        Vul hem met een melding, of zet er een reden in:');
     console.log('        catch(e){ /* stil: waarom dit mag */ }');
     fout++;
-  } else if (n < grens) {
-    gedaald.push(f + ' ' + grens + ' → ' + n);
   }
 });
 
-// Een module die van de lijst verdwenen is (hernoemd of weg) hoort niet stil
-// te blijven staan: dan zakt de grens nooit meer en dekt de ratel minder dan
-// je denkt.
-//
-// Uitzondering: draait dit in een werkmap met maar een handvol modules (zoals
-// de losse opruimzip), dan is "ontbreekt" gewoon "zit niet in deze zip" en
-// zegt die controle niets. De grens zelf blijft wél gelden voor wat er wél is.
-const DEELVERZAMELING = modules.length < 10;
-if (DEELVERZAMELING) {
-  console.log('  ---   werkmap met ' + modules.length + ' modules — alleen deze worden getoetst\n');
-} else {
-  Object.keys(GRENS).forEach(function (f) {
-    if (modules.indexOf(f) < 0) {
-      console.log('  FOUT  ' + f + ' staat in de lijst maar bestaat niet meer — haal de regel weg');
-      fout++;
-    }
-  });
-}
-
-if (gedaald.length) {
-  console.log('  ok    ' + gedaald.length + ' module(s) opgeruimd sinds de laatste stand:');
-  gedaald.forEach(function (r) { console.log('        ' + r); });
-  console.log('        Verlaag de grenzen hierboven, dan kan het niet terugkruipen.');
-}
-
-if (!fout) console.log('  ok    ' + modules.length + ' modules, ' + totaal + ' stille catches — geen enkele erbij');
+if (!fout) console.log('  ok    ' + modules.length + ' modules, 0 lege catches');
 
 console.log('\n' + (fout ? fout + ' probleem(en)' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

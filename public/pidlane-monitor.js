@@ -225,7 +225,7 @@ const PLMon = {
                : (pid==='06'||pid==='07') ? Math.round((A-128)/1.28*10)/10 // trim %
                : pid==='04'||pid==='11' ? Math.round(A/2.55) // load/gasklep %
                : A;                                          // snelheid e.d.
-      }catch(e){}
+      }catch(e){ console.warn('sendCmd mislukt:', e); }
     }
     return Object.keys(ff).length?ff:null;
   },
@@ -281,7 +281,7 @@ const PLMon = {
     if (!ev.snap){ const s=this._snapshot(); if (s) ev.snap=s; }
     if (meldLuid) this._log(`Monitor: ${code} — ${reden} [${st.fase}/${st.temp}]`,'warn');
     // Ernstige waarschuwingen automatisch laten verifiëren (focus-hertest).
-    if (meldLuid) try{ if (window.PLVerify) window.PLVerify.consider(sig); }catch(e){}
+    if (meldLuid) try{ if (window.PLVerify) window.PLVerify.consider(sig); }catch(e){ console.warn('PLVerify.consider mislukt:', e); }
   },
 
   // ═══════════════ rapportage ═══════════════
@@ -291,7 +291,7 @@ const PLMon = {
              `Eindstand ECU: MIL ${this.prev.mil?'AAN':'uit'}, DTC-teller ${this.prev.count??'?'}`,''];
     if (!this._order.length){
       L.push('Geen afwijkingen waargenomen tijdens de rit.');
-      try{ if (window.PLWatch && window.PLWatch.coverageText) L.push('', window.PLWatch.coverageText()); }catch(e){}
+      try{ if (window.PLWatch && window.PLWatch.coverageText) L.push('', window.PLWatch.coverageText()); }catch(e){ console.warn('PLWatch.coverageText mislukt:', e); }
       return L.join('\n');
     }
     for (const sig of this._order){
@@ -306,7 +306,7 @@ const PLMon = {
       if (e.snap) L.push(`  5s-terugkijk: ${Object.entries(e.snap).map(([p,a])=>p+'['+a.slice(-6).join(',')+']').join(' ')}`);
     }
     L.push('','Interpretatie-hint: clustering van herhalingen in één rij-fase (bijv. alleen bij accelereren) wijst op belasting-/trillingsafhankelijk falen: bedrading, connector, of een sensor die onder last wegvalt.');
-    try{ if (window.PLWatch && window.PLWatch.coverageText) L.push('', window.PLWatch.coverageText()); }catch(e){}
+    try{ if (window.PLWatch && window.PLWatch.coverageText) L.push('', window.PLWatch.coverageText()); }catch(e){ console.warn('PLWatch.coverageText mislukt:', e); }
     return L.join('\n');
   },
 
@@ -317,11 +317,11 @@ const PLMon = {
       registerSessionReport({ type:'monitor',
         title:`Passieve foutbewaking — ${n?n+' bevinding'+(n===1?'':'en'):'geen bevindingen'}`,
         text:this.summaryText() });
-    }catch(e){}
+    }catch(e){ console.warn('registerSessionReport mislukt:', e); }
     this._log(`Monitor-rapport opgeslagen (${n} bevinding${n===1?'':'en'})`, n?'warn':'ok');
   },
 
-  _log(msg,lvl){ try{ if (typeof log==='function') log(msg,lvl||'info'); }catch(e){} }
+  _log(msg,lvl){ try{ if (typeof log==='function') log(msg,lvl||'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 };
 
 window.PLMon = PLMon;
@@ -342,10 +342,10 @@ window.toggleRitMonitor = function(){
   } else if (verbonden && featOk && !PLMon.active){
     PLMon.start();          // meteen starten, niet wachten op de watchdog-tik
   }
-  try{ if(typeof log==='function') log(PLMon.userAan?'🔔 Rit-monitor door gebruiker AANgezet':'🔕 Rit-monitor door gebruiker UITgezet','info'); }catch(e){}
+  try{ if(typeof log==='function') log(PLMon.userAan?'🔔 Rit-monitor door gebruiker AANgezet':'🔕 Rit-monitor door gebruiker UITgezet','info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   try{ if(typeof showToast==='function') showToast(
         !PLMon.userAan ? '🔕 Rit-monitor uit'
-        : (verbonden ? '🔔 Rit-monitor gestart' : '🔔 Rit-monitor aan — start zodra je verbonden bent')); }catch(e){}
+        : (verbonden ? '🔔 Rit-monitor gestart' : '🔔 Rit-monitor aan — start zodra je verbonden bent')); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   window.updateMonitorBtn();
 };
 window.monitorStatusTekst = function(){
@@ -373,11 +373,11 @@ window.updateMonitorBtn = function(){
     b.style.display='flex'; b.style.alignItems='center'; b.style.gap='6px';
   }
 };
-setInterval(()=>{ try{ window.updateMonitorBtn(); }catch(e){} }, 3000);
+setInterval(()=>{ try{ window.updateMonitorBtn(); }catch(e){ console.warn('updateMonitorBtn mislukt:', e); } }, 3000);
 
 // De oude bewaarde stand wordt niet meer gelezen — sleutel opruimen zodat er
 // niets blijft rondslingeren dat suggereert dat de monitor nog aan zou staan.
-try{ localStorage.removeItem('pl_monitor_aan'); }catch(e){}
+try{ localStorage.removeItem('pl_monitor_aan'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 
 PLMon.boot();
 })();

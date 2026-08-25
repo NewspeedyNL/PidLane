@@ -92,7 +92,7 @@ function buildAutoExpertContext(){
   const lines=[];
   const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
   lines.push(`VOERTUIG: ${merkModel||'onbekend'}${v.brandstof?' ('+v.brandstof+')':''}${v.vin?' VIN '+v.vin:''}`);
-  try{ const _sit=situatieKort(); if(_sit) lines.push('RIJSITUATIE NU: '+_sit); }catch(e){}
+  try{ const _sit=situatieKort(); if(_sit) lines.push('RIJSITUATIE NU: '+_sit); }catch(e){ console.warn('situatieKort mislukt:', e); }
   // Brandstof-context zodat de monteur geen verbrandingsonderdelen aanhaalt bij een EV
   const _ft=vehicleFuelType();
   if(_ft==='elektrisch') lines.push('AANDRIJVING: volledig elektrisch — geen verbrandingsmotor, brandstof, trim, lambda of uitlaat. Praat niet over brandstofzaken.');
@@ -185,7 +185,7 @@ let _wizStep=0;
 function wizShow(){
   document.getElementById('wizardOv').classList.remove('hidden');
   // Stappenbalk verbergen: met één stap zegt "1 van 6" niets meer.
-  try{ const bar=document.getElementById('wizStepBar'); if(bar) bar.style.display='none'; }catch(e){}
+  try{ const bar=document.getElementById('wizStepBar'); if(bar) bar.style.display='none'; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   wizGo(6);
 }
 function wizHide(){
@@ -251,7 +251,7 @@ function toggleSL(){
   slCollapsed=!slCollapsed;
   document.getElementById('appGrid').classList.toggle('sl-col',slCollapsed);
   updateSLToggleIcon();
-  try{localStorage.setItem('ns_sl',slCollapsed);}catch(e){}
+  try{localStorage.setItem('ns_sl',slCollapsed);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   if(!slCollapsed) armSLAutoHide(); else clearSLAutoHide();
 }
 function updateSLToggleIcon(){
@@ -273,7 +273,7 @@ function armSLAutoHide(){
       slCollapsed=true;
       document.getElementById('appGrid').classList.add('sl-col');
       const btn=document.getElementById('slToggle'); if(btn) btn.textContent='▶';
-      try{localStorage.setItem('ns_sl','true');}catch(e){}
+      try{localStorage.setItem('ns_sl','true');}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     }
   }, SL_HIDE_MS);
 }
@@ -289,7 +289,7 @@ function toggleSR(){
   document.getElementById('appGrid').classList.toggle('sr-col',srCollapsed);
   const btn=document.getElementById('srToggle');
   btn.textContent=srCollapsed?'◀':'▶';
-  try{localStorage.setItem('ns_sr',srCollapsed);}catch(e){}
+  try{localStorage.setItem('ns_sr',srCollapsed);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 // ── Native opslaan/delen via Capacitor (Filesystem + Share plugins) ──
 // De Capacitor WebView heeft géén download-afhandeling: blob-links en

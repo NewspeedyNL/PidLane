@@ -852,7 +852,7 @@ window.PLPidLen = (function(){
   }
   function bewaar(){
     if(!SLEUTEL) return;
-    try{ localStorage.setItem('pl_pidlen_'+SLEUTEL, JSON.stringify(LEER)); }catch(e){}
+    try{ localStorage.setItem('pl_pidlen_'+SLEUTEL, JSON.stringify(LEER)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   }
   return {
     // Gemeten lengte melden. Alleen aanroepen vanuit een parse die volledig
@@ -926,7 +926,7 @@ window.PLPidVorm = (function(){
     try{
       var v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
       k=v.vin || [v.merk,v.model,v.year].filter(Boolean).join('|') || null;
-    }catch(e){}
+    }catch(e){ /* stil: vehicleInfo kan nog niet bestaan bij het eerste gebruik */ }
     if(k && k!==SLEUTEL){ SLEUTEL=k; S={}; }
   }
   return {
@@ -1190,7 +1190,7 @@ window.HUD_LABEL_DICT ={
     const n = Math.round(Number(val));
     if(!isFinite(n)) return '—';
     if(typeof t.fn==='function'){
-      let r=null; try{ r=t.fn(n); }catch(e){}
+      let r=null; try{ r=t.fn(n); }catch(e){ console.warn('t.fn mislukt:', e); }
       return r || t.leeg || ('code '+n);
     }
     if(t.map && t.map[n]!==undefined) return t.map[n];
@@ -1229,7 +1229,7 @@ const S={
   hist:[]
 };
 const nu=()=>Date.now();
-function diag(m,l){ try{ if(typeof btDiag==='function') btDiag(m,l||'info'); }catch(e){} }
+function diag(m,l){ try{ if(typeof btDiag==='function') btDiag(m,l||'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 
 window.PLBus={
   MAX_HOLD_MS:180000,      // 3 min: daarna geldt een houder als vastgelopen
@@ -1350,8 +1350,8 @@ window.PLBus={
     // Ook de geleerde bytelengtes en structuurverdenkingen wissen: die horen
     // bij dít voertuig en deze sessie. Zonder deze weg terug bleef een eenmaal
     // verkeerd geleerde lengte permanent in localStorage staan.
-    try{ window.PLPidLen && window.PLPidLen.wis(); }catch(e){}
-    try{ window.PLPidVorm && window.PLPidVorm.wis(); }catch(e){}
+    try{ window.PLPidLen && window.PLPidLen.wis(); }catch(e){ console.warn('PLPidLen.wis mislukt:', e); }
+    try{ window.PLPidVorm && window.PLPidVorm.wis(); }catch(e){ console.warn('PLPidVorm.wis mislukt:', e); }
   },
 
   /* ── adaptieve batchgrootte (fase 2) ── */

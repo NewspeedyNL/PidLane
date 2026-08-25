@@ -141,7 +141,7 @@
         if (!window.ALL_PID_DEFS[pid]) window.ALL_PID_DEFS[pid] = UITGEBREID_DEFS[pid];
       });
     }
-  } catch (e) {}
+  } catch(e){ console.warn('ALL_PID_DEFS aanvullen met UITGEBREID_DEFS mislukt:', e); }
 
   // ── 3. MERKFILTER ─────────────────────────────────────────────────
   // Een Mazda-PID op een Volkswagen vragen levert in het gunstigste
@@ -155,7 +155,7 @@
                   (window.selectedModel && selectedModel.merk) || '';
         return merkGroep(m) || '';
       }
-    } catch (e) {}
+    } catch(e){ console.warn('merkGroep mislukt:', e); }
     return '';
   }
 
@@ -167,7 +167,7 @@
       if (d.merk && !merk) return false;      // merk onbekend → niet gokken
       // Fantoomfilter hergebruiken: BOOST_PIDS bevat 2102 al, dus een
       // atmosferische motor krijgt de turbo-PID hier vanzelf niet.
-      try { if (typeof pidGate === 'function' && !pidGate(pid, 'plausibel')) return false; } catch (e) {}
+      try { if (typeof pidGate === 'function' && !pidGate(pid, 'plausibel')) return false; } catch(e){ console.warn('pidGate mislukt:', e); }
       return true;
     });
   }
@@ -198,7 +198,7 @@
     let tok = 0;
     try { tok = (window.PLBus && PLBus.claim) ? PLBus.claim('uitgebreid-probe') : 0; } catch (e) { tok = 0; }
     if (window.PLBus && PLBus.claim && !tok) {
-      try { btDiag('Uitgebreide probe uitgesteld — bus bezet door "' + (PLBus.owner ? PLBus.owner() : '?') + '"', 'info'); } catch (e) {}
+      try { btDiag('Uitgebreide probe uitgesteld — bus bezet door "' + (PLBus.owner ? PLBus.owner() : '?') + '"', 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
       return { nieuw: 0, overgeslagen: true, busBezet: true };
     }
 
@@ -218,7 +218,7 @@
                      schoon.indexOf(hdr) >= 0;
 
         if (goed) {
-          try { supportedPIDs.add(pid); } catch (e) {}
+          try { supportedPIDs.add(pid); } catch(e){ console.warn('supportedPIDs.add mislukt:', e); }
           nieuw++;
           const d = UITGEBREID_DEFS[pid];
           const bytes = schoon.slice(schoon.indexOf(hdr) + hdr.length);
@@ -229,14 +229,14 @@
         } else {
           btDiag(`Uitgebreid ${pid} — geen antwoord`, 'info');
         }
-        try { await delay(60); } catch (e) {}
+        try { await delay(60); } catch(e){ console.warn('delay mislukt:', e); }
       }
     } finally {
-      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
     }
 
     if (nieuw) {
-      try { buildDiscoveredPIDList(); } catch (e) {}
+      try { buildDiscoveredPIDList(); } catch(e){ console.warn('buildDiscoveredPIDList mislukt:', e); }
       log(`🔎 Fabrikant-PIDs: ${nieuw} van ${lijst.length} beschikbaar`, 'ok');
       // Hier stond een regel die meldde dat de olietemperatuur op 2101 zit in
       // plaats van 015C. Weg op 19-08: 2101 antwoordt niet op deze auto, dus
@@ -259,6 +259,6 @@
   btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');
 
   function btDiagSafe(m) {
-    try { if (typeof btDiag === 'function') btDiag(m, 'info'); } catch (e) {}
+    try { if (typeof btDiag === 'function') btDiag(m, 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }
 })();

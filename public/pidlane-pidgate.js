@@ -167,7 +167,7 @@ try{ window.PLGate = {
              herijkingen:_herijkTeller, ticks:_tickTeller,
              omgevingsdruk:baro, bewijsDrempel:bewijs, atmosfDrempel:atmosf };
   }
-}; }catch(e){}   // de statemachine-tests draaien zonder window
+}; }catch(e){ /* stil: de statemachine-tests draaien zonder window — dan bestaat window niet en slaat de export gewoon over */ }   // de statemachine-tests draaien zonder window
 
 // Zegt deze meting íets over boost? Stationair draaien zegt niets: ook een
 // turbomotor zit dan rond 30-40 kPa, ruim onder omgevingsdruk. Alleen bij een
@@ -308,22 +308,22 @@ function herijkPidGate(reden){
   const weg=[];
   try{
     // 1 — bronlijst opnieuw bouwen tegen de kennis van nú
-    try{ if(typeof buildDiscoveredPIDList==='function') buildDiscoveredPIDList(); }catch(e){}
+    try{ if(typeof buildDiscoveredPIDList==='function') buildDiscoveredPIDList(); }catch(e){ console.warn('buildDiscoveredPIDList mislukt:', e); }
 
     // 2 — pas daarna de actieve selectie opschonen
     if(typeof activePIDs==='undefined') return 0;
     activePIDs.forEach(pid=>{ if(!pidGate(pid,'plausibel')) weg.push(pid); });
-    weg.forEach(pid=>{ activePIDs.delete(pid); try{ manualPIDs.delete(pid); }catch(e){} });
+    weg.forEach(pid=>{ activePIDs.delete(pid); try{ manualPIDs.delete(pid); }catch(e){ console.warn('manualPIDs.delete mislukt:', e); } });
 
     // 3 — beeld bijwerken
-    try{ renderGauges(); }catch(e){}
-    try{ rebuildGSel(); }catch(e){}
-    try{ const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size; }catch(e){}
+    try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt:', e); }
+    try{ rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
+    try{ const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
     if(weg.length){
-      try{ log('🚫 '+weg.length+' sensor(en) verborgen — niet aanwezig op dit voertuig ('+vehicleFuelType()+')','info'); }catch(e){}
+      try{ log('🚫 '+weg.length+' sensor(en) verborgen — niet aanwezig op dit voertuig ('+vehicleFuelType()+')','info'); }catch(e){ console.warn('vehicleFuelType mislukt:', e); }
     }
-    if(reden){ try{ btDiag('Herijking PID-gate: '+reden+(weg.length?` → ${weg.length} weg`:' → geen wijziging'),'info'); }catch(e){} }
-  }catch(e){}
+    if(reden){ try{ btDiag('Herijking PID-gate: '+reden+(weg.length?` → ${weg.length} weg`:' → geen wijziging'),'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
+  }catch(e){ console.warn('pidGate mislukt:', e); }
   return weg.length;
 }
 
@@ -363,7 +363,7 @@ function pidToevoegen(pids, opt){
     if(typeof pid!=='string' || !pid) return;
     if(!pidGate(pid, niveau, {force})){ weg.push(pid); return; }
     activePIDs.add(pid);
-    if(handmatig){ try{ manualPIDs.add(pid); }catch(e){} }
+    if(handmatig){ try{ manualPIDs.add(pid); }catch(e){ console.warn('manualPIDs.add mislukt:', e); } }
     ok.push(pid);
   });
   return {ok, weg};
@@ -380,9 +380,9 @@ function pidToevoegen(pids, opt){
 let _plausStempel='', _ooitWarm=false, _herijkVuil=false;
 
 function _maakPlausStempel(){
-  try{ if(_engineWarmRunning()) _ooitWarm=true; }catch(e){}
-  let ft=''; try{ ft=vehicleFuelType()||''; }catch(e){}
-  let na=false; try{ na=_isNaturallyAspirated(); }catch(e){}
+  try{ if(_engineWarmRunning()) _ooitWarm=true; }catch(e){ console.warn('_engineWarmRunning mislukt:', e); }
+  let ft=''; try{ ft=vehicleFuelType()||''; }catch(e){ console.warn('vehicleFuelType mislukt:', e); }
+  let na=false; try{ na=_isNaturallyAspirated(); }catch(e){ console.warn('_isNaturallyAspirated mislukt:', e); }
   return ft+'|'+(na?'atmosferisch':'onbekend')+'|'+(_ooitWarm?'warm':'koud');
 }
 
