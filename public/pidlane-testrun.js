@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.1 (24-08-2026)';
+const TESTRUN_VERSIE = '4.3 (25-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1576,6 +1576,33 @@ async function _blok5() {
   });
 
 
+  // ── TOEGEVOEGD 25-08: scherm blijft aan tijdens de meting ──
+  // Uit de rit van 23-08: veertien stiltes in het logboek, en op precies
+  // dezelfde kloktijden geen bulkdata. Het proces liep niet. PLWake dekt
+  // daarvan één helft — het scherm dat uitgaat — niet de andere, de app die
+  // je echt verlaat. Daarvoor is een foreground service nodig.
+  await _doe(5, 'Scherm-wakelock (PLWake)', function () {
+    if (typeof window.PLWake === 'undefined')
+      return { staat: 'FOUT', detail: 'PLWake ontbreekt — pidlane-auth.js is niet meegekomen' };
+    if (!PLWake.steunt())
+      return { staat: 'LET OP', detail: 'deze WebView kent navigator.wakeLock niet — scherm aanhouden werkt hier niet' };
+
+    // Alleen oordelen als de voorwaarden kloppen. Niet verbonden betekent
+    // terecht geen lock; dat als FOUT tellen zou een altijd-rode test geven,
+    // en die wordt genegeerd (§ratel).
+    if (!(typeof connected !== 'undefined' && connected))
+      return { staat: 'LET OP', detail: 'niet verbonden, dus terecht geen wakelock — draai dit blok opnieuw mét verbinding' };
+    if (document.visibilityState !== 'visible')
+      return { staat: 'LET OP', detail: 'pagina niet zichtbaar tijdens de test' };
+
+    if (!PLWake.actief()) {
+      const f = PLWake.fout();
+      return { staat: 'FOUT', detail: 'verbonden en zichtbaar, maar geen wakelock' +
+        (f ? ' — geweigerd: ' + f + ' (batterijbesparing?)' : ' — geen reden gemeld') };
+    }
+    return 'wakelock actief zolang de verbinding staat';
+  });
+
   // Mode 22 olietemperatuur is op 23-08 losgelaten. De knoppen "DID-scan (45 s)"
   // en "Budget + olie" dienden alleen die zoektocht, en b8 stond bovendien in de
   // standaardset — dus élke volle run scande alsnog. De blokken zelf blijven
@@ -1971,8 +1998,54 @@ async function _bron(naam) {
   return t;
 }
 
-async function _blok11() {
+/* ── BLOK 12 — WIE IS DEZE ADAPTER? (24-08-2026, alleen lezen) ────────
+   Het logboek van 23-08 meldt "OBD2 adapter: OBDLink MX+ 90011" en pas
+   daarna "ELM327 v1.4b". Dat tweede is de ATI-string, en juist die staat
+   in PIDLANE.md als bewijs dat dit een clone zonder STN-chip is. Maar een
+   echte OBDLink MX+ antwoordt op ATI óók met een ELM327-versie, puur voor
+   compatibiliteit: de STN2120 die erin zit kan veel meer.
 
+   Het onderscheid is één commando. STI is een STN-commando dat geen enkele
+   ELM327 kent: een STN-adapter antwoordt met zijn eigen firmware ("STN2120
+   v5.6.1"), een clone antwoordt "?" of niets. STDI geeft de merknaam.
+
+   Waarom dit ertoe doet: als er een STN in zit, dan zijn STPX (één commando
+   met eigen timeout en verwacht aantal frames) en MS-CAN wél beschikbaar.
+   Dat raakt de hele pollstrategie. En zolang het onbeslist is, staat er een
+   aanname in de architectuurkaart die de verkeerde kant op wijst.
+
+   Alleen lezen: drie commando's, geen header, geen protocolwissel, geen
+   schrijfactie richting de auto. Kost een seconde of twee. */
+async function _blok12() {
+  if (typeof connected === 'undefined' || !connected) {
+    await _doe(12, 'Adapter-identiteit', function () {
+      return { staat: 'LET OP', detail: 'niet verbonden — blok 12 vraagt de adapter zelf iets' };
+    });
+    return;
+  }
+
+  await _doe(12, 'Adapter-identiteit (ATI / STI / STDI)', async function () {
+    let ati = '', sti = '', stdi = '';
+    try { ati = String(await sendCmd('ATI', 2000) || '').trim(); } catch (e) { ati = 'FOUT'; }
+    try { sti = String(await sendCmd('STI', 2000) || '').trim(); } catch (e) { sti = ''; }
+    try { stdi = String(await sendCmd('STDI', 2000) || '').trim(); } catch (e) { stdi = ''; }
+
+    const schoon = function (x) { return String(x).replace(/[\r\n>]+/g, ' ').replace(/\s+/g, ' ').trim(); };
+    ati = schoon(ati); sti = schoon(sti); stdi = schoon(stdi);
+
+    // "?" is het ELM327-antwoord op een onbekend commando. Leeg telt ook als
+    // "kent het niet" — een clone die niets terugstuurt is nog steeds een clone.
+    const kentSTI = !!sti && !/^\?+$/.test(sti) && !/^NO DATA$/i.test(sti);
+
+    if (kentSTI)
+      return { staat: 'LET OP', detail: 'STN-adapter: STI="' + sti + '"' + (stdi ? ', STDI="' + stdi + '"' : '') +
+        ' terwijl ATI="' + ati + '". STPX en MS-CAN zijn dus beschikbaar — PIDLANE.md zegt van niet en moet bij.' };
+
+    return 'geen STN: ATI="' + ati + '", STI kent hij niet (' + (sti || 'geen antwoord') + '). Aanname in PIDLANE.md klopt.';
+  });
+}
+
+async function _blok11() {
   // ── PUNT 3: hoe groot is het probleem van de stille sensoren? ──
   // De vraag uit PLAN.md is "op hoeveel mislukte pogingen mag de herijking hem
   // uit activePIDs halen". Die drempel kun je niet kiezen zonder te weten hoe
@@ -2121,7 +2194,7 @@ async function startTestrun(blokken) {
   // volle run alsnog scant naar iets waar we niet meer naar zoeken — inclusief
   // het header-gedoe op 7E0 dat daarbij hoort. Los aan te roepen blijft het:
   // startTestrun({b8:true}).
-  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true };
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true, b12: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -2145,6 +2218,7 @@ async function startTestrun(blokken) {
     // niet aan, dus de plek maakt niet uit — hier staat het tussen de goedkope
     // blokken, ruim vóór de trage metingen van blok 6 en 8.
     if (b.b11) await _blok11();
+    if (b.b12) await _blok12();
     if (b.b6) await _blok6();
     // Blok 8 en 9 horen sinds 24-08 in geen enkele knop meer thuis: dat is de
     // mode 21/22-olietemperatuur en die zoektocht is gestaakt. De code blijft
@@ -2376,47 +2450,49 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Waakknop + opgeruimde testrun, bovenop de openstaande batch van 23-08',
+  titel: 'Openstaande items na de rit van 23-08 — achtergrond, adapter, klok, bevroren sensoren',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. Twee controles zijn nieuw: de waakknop en de verdwenen olieknoppen. Staan die op FOUT, dan is de levering van 24-08 niet meegekomen.',
+    'VOORAF — blok 5 mag geen FOUT geven. Staat er "NIET geladen", lees de melding: dat kan ook de cache zijn. Eerst "Nieuwste versie laden", dan opnieuw.',
 
-    'NIEUW — WAAKKNOP. Open live view, zet de waakronde aan, en schakel puntjes → getallen → trends → puntjes. Blijft de knop oplichten? Vorige build doofde hij terwijl de waakronde gewoon doorliep — de strook bleef staan en de bus werd nog geclaimd. Als hij nu dooft: blok 5 zegt bij welke stand.',
+    'BLOK 12 — ADAPTER. Nieuw en het belangrijkste van deze run. Zegt hij "STN-adapter", dan zit er een STN2120 in de OBDLink MX+ en zijn STPX en MS-CAN wél beschikbaar. PIDLANE.md zegt nu het tegenovergestelde op grond van de ATI-string, en die liegt bij deze adapter. Noteer de drie antwoorden letterlijk.',
 
-    'NIEUW — WAAKRONDE ZELF. Controleer meteen dat de strook boven het raster niet verdwijnt bij een wissel, en dat er na de wissel nog stippen bijkleuren. De knop was cosmetisch, maar dat is een conclusie uit code en niet uit de auto.',
+    'WAKELOCK — nieuw. Verbind en kijk of het log "Scherm blijft aan tijdens de meting" meldt. Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Zo niet, dan weigert batterijbesparing de lock en noemt blok 5 de reden.',
 
-    'NIEUW — INLOGSCHERM. Log uit en weer in. Tijdens het wachten hoort er nu "⏳ Inloggen…" in grijs te staan, niet drie rode puntjes. Tik daarna bewust een fout wachtwoord: die melding moet wél rood zijn. Beide fout = blok 5 zegt welke helft.',
+    'ACHTERGROND — DE KERN VAN DEZE RIT. Rijd tien minuten zonder de app ook maar één keer te verlaten. Geen log openen, geen notificatie wegtikken, scherm aan laten. Vergelijk daarna het aantal herverbindingen met de 9 van 23-08.',
 
-    'VERWIJDERD — de knoppen "DID-scan (45 s)" en "Budget + olie" zijn weg, en b8 staat niet meer in de standaardset. Kijk in het logboek: staat er nog een regel van blok 8 of 9 na een volle run? Dan zit er ergens nog een ingang.',
+    'ACHTERGROND, TWEEDE HELFT. Doe daarna bewust het omgekeerde: verlaat de app drie keer kort (log openen, terug). Kijk of er telkens een herverbinding volgt. Op 23-08 volgde elke herverbinding op een stilte in het logboek — dat verband moet zich herhalen, anders klopt de verklaring niet.',
 
-    'VERWIJDERD — "Budget" bestaat nog wél (blok 7 alleen). Druk erop en kijk of er een budgetmeting uitkomt zonder dat er iets over olie in het log verschijnt.',
+    'KLOK — vergelijk het eerste tijdstip in de bulkopname met het eerste in het logboek. Op 23-08 scheelde dat exact twee uur: de recorder schrijft UTC, de logger lokale tijd. Zolang dat zo is zijn de twee bestanden niet naast elkaar te leggen.',
 
-    'OPRUIMREGEL — zoek in het log op "opgeruimd". Een sensor die zes keer niets geeft wordt gesnoeid, krijgt vijf herkansingen van een per minuut, en gaat dan uit de selectie. Verwacht op deze CX-5: 0101, 0121 of 016D. Meer dan drie? Meld het, dan is de zeef te gretig.',
+    'BEVROREN SENSOREN — 0155 en 0156 stonden 27 minuten lang op 128. Dat is de rauwe byte 0x80; brandstoftrim hoort rond 0% te liggen. Kijk of dat nog steeds zo is en of blok 11 er iets over zegt.',
 
-    'TERUGWEG — staat er ook "antwoordt weer na N mislukte herkansing(en)"? Dan herstelde een sensor zich vóórdat hij eruit ging, en dat is de bedoeling. Geen van beide meldingen betekent dat geen sensor de drempel haalde.',
+    'BEVROREN SENSOREN — 0123 en 0159 (raildruk) stonden allebei stil op 9900 tijdens een hele rit. Op directe inspuiting kan dat niet. Bewegen ze nu wél?',
 
-    'AI-RAPPORT — draai een analyse nadat er iets is opgeruimd. Staat er dat die sensor niet gemeten is, en NIET dat hij ontbreekt of defect is? Dat onderscheid is de hele reden dat de melding bestaat.',
+    'STEUNBITMAPS IN DE OPNAME — 0120, 0140, 0160 en 0180 stonden als sensorwaarde in de bulkopname. Dat zijn de bitmaps zelf. GEEN_SENSOR_PIDS houdt ze uit de keuzelijst maar niet uit pidlane-bulk.js. Controleer of ze er nog in staan.',
 
-    'PLLOAD — vorige rit: 6 verlagingen in 35 min, waarvan 1 bij foutgraad 0 (die had 1198 ms, dus terecht). Blijft dat zo? Zoek op "Pollbudget vastgehouden" — die regel staat op info-niveau en komt NIET in de logboek-export; kijk in de testrun-diagbundel.',
+    'OPRUIMREGEL — zoek in het log op "opgeruimd". Rijd lang genoeg: zes mislukkingen plus vijf herkansingen van een per minuut kost minstens vijf minuten. Verwacht op deze CX-5: 0101, 0121, 016D, en de vier uit blok 0180 (018E, 019D, 019E, 01A0) die de ECU wél claimt maar niet levert.',
 
-    'TURBODREMPEL — het oordeel is op 23-08 voor het eerst gevallen: 1461 MAP-monsters, piek 105 kPa, barometer 102, grens 110. Noteer piek en grens opnieuw uit blok 1. Zakt de marge onder 3 kPa, dan meldt blok 5 dat.',
+    'TERUGWEG — staat er ook "antwoordt weer na N mislukte herkansing(en)"? Dan herstelde een sensor zich vóór hij eruit ging.',
 
-    'TEGELS — NIET meer vragen of 0170, 2102 of 2187 verdwijnen. Dat kan op deze auto nooit gebeuren: het steunbitblok 0160 (41606B080001) meldt 62 63 65 67 68 6D 80 en dus geen 70, en de mode 21-probe vindt 2102/2187 niet. Een vraag die alleen \'nee\' kan opleveren toetst niets. Het fantoom-scenario vraagt een auto waarvan de ECU laaddruk-PIDs meldt zonder turbo.',
+    'AI-RAPPORT — draai een analyse nadat er iets is opgeruimd. Staat er dat die sensor niet gemeten is, en NIET dat hij ontbreekt of defect is?',
 
-    'FIX 12 — CLEARDTC. Blok 5 controleert de remote-blokkade. FOUT daar = stoppen, dan kan een remote-expert het foutgeheugen wissen terwijl dat geblokkeerd hoort te zijn.',
+    'PLLOAD — 23-08 gaf 34 remmomenten, waarvan 1 zonder fouten én zonder oplopende responstijd. Blijft dat zo als de app niet meer naar de achtergrond gaat? Vermoeden: een deel van die 34 was een reactie op het hervatten na een stilte, niet op de bus.',
 
-    'FIX 2 — FULL SURVEY. Draai er een bij stilstand. Blok 5 toetst de regel zelf; de uitslag telt: staat "transportfout" apart naast "niet aanwezig"?',
+    'TURBODREMPEL — het oordeel viel op 23-08 voor het eerst: 1461 MAP-monsters, piek 105 kPa, barometer 102, grens 110. Noteer piek en marge opnieuw. Onder 3 kPa meldt blok 5 het.',
 
-    'FIX 1 — LOG WISSEN. Wis het BT-logboek, herlaad, kijk of het echt leeg blijft.',
+    'TEGELS — NIET meer vragen of 0170, 2102 of 2187 verdwijnen. Dat kan op deze auto nooit: steunbitblok 0160 (41606B080001) decodeert naar 62 63 65 67 68 6D 80, dus geen 70, en de mode 21-probe vindt de andere twee niet. Het fantoom-scenario vraagt een auto waarvan de ECU laaddruk meldt zonder turbo.',
 
-    'FIX 3 t/m 8 — DE ZEVEN ANALYSES. Oranje balk bovenaan bij twijfel? Noteer welke.',
+    '0143 — leek op 23-08 goed: 0 tot 96,9%, gemiddeld 19,4 tegen 30,0 voor 0104. Bevestig dat en vink het losse eindje af.',
 
-    'FIX 9 — MEETPOORT. Zegt de poort "te weinig data" met of zonder sensorwaarschuwing erbij?',
+    'FIX 2 — FULL SURVEY. Op 23-08 stond deze op FOUT ("survey transport niet geladen") en dat was de cache. Nu dus echt toetsen: staat "transportfout" apart naast "niet aanwezig"?',
 
-    'BLOK 11 — draaien ná de rit, app nog open. Vergelijk de drie niet-ok sensoren met wat er is opgeruimd.',
+    'FIX 1 — LOG WISSEN. Wissen, herladen, blijft hij leeg?',
 
-    'OPMERKINGVELD — nog steeds open: vorige keer kapte "Testrun na herverbin" af op exact 20 tekens. Typ er bewust een lange zin in en kijk hoeveel er bovenaan het bestand belandt.',
+    'FIX 12 — CLEARDTC. Blok 5 controleert de remote-blokkade. FOUT daar = stoppen.',
 
-    'RIJ ZOALS OP 23-08 — bulk-recorder, caravan-tracker, rijmonitor en waakronde tegelijk aan. Anders toets je de PLLoad-ingreep niet.'
+    'OPMERKINGVELD — kapt nog steeds af op exact 20 tekens ("Testrun na herverbin"). Typ een lange zin en tel wat er overblijft.',
+
+    'RIJ MET ALLE VIER DE AANVRAGERS AAN — bulk-recorder, caravan-tracker, rijmonitor en waakronde. Anders toets je de PLLoad-ingreep niet.'
   ]
 };
 

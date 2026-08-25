@@ -467,6 +467,88 @@ const YEARS=Array.from({length:22},(_,i)=>(2024-i).toString());
 // STATE
 // ════════════════════════════════════════
 let port=null, reader=null, writer=null, connected=false, demoMode=false;
+
+/* ── PLWake — scherm aan houden zolang er gemeten wordt (24-08-2026) ──
+   Uit de rit van 23-08: het logboek had veertien stiltes van 40 tot 240 s,
+   en op precies dezelfde kloktijden ontbrak ook de bulkopname. Een dode
+   socket lógt fouten; hier logde niets. Het proces liep dus niet — Android
+   bevriest de JS-timers van een WebView zodra hij niet meer in beeld is.
+   Elke herverbinding volgde direct op zo'n stilte: bij terugkomst stuurt de
+   app een commando in een socket die Android intussen heeft opgeruimd.
+
+   Deze wake lock lost dat NIET helemaal op. Hij houdt alleen het scherm aan,
+   dus hij dekt de categorie "scherm ging uit tijdens het rijden". Verlaat je
+   de app echt (log openen, notificatie), dan bevriest hij alsnog — daarvoor
+   is een foreground service nodig en dat is native werk.
+
+   Twee dingen om te weten over de API:
+   - De browser geeft de lock zelf vrij zodra de pagina uit beeld gaat. Er is
+     dus geen "hij blijft hangen"-risico, maar wél een plicht om hem bij
+     terugkomst opnieuw aan te vragen. Vandaar de visibilitychange-haak.
+   - Hij vereist een zichtbare pagina; aanvragen terwijl je verborgen bent
+     gooit een fout. Die slikken we, de volgende tik pakt het op.
+
+   Bewust GEEN haak in handleConnect(): dat zou een tweede plek worden die
+   moet weten wanneer er gemeten wordt. `connected` staat hier in dit bestand
+   en is de enige waarheid; een tik van 5 s is goedkoop genoeg om die te
+   volgen. */
+window.PLWake = (function(){
+  var lock = null, tikker = null, gemist = 0, laatsteFout = '';
+
+  function steunt(){ return !!(navigator && navigator.wakeLock && navigator.wakeLock.request); }
+  function melden(m, n){ try{ if(typeof log==='function') log(m, n||'info'); }catch(e){ /* stil: melden mag de meting nooit breken */ } }
+
+  async function pak(){
+    if(lock || !steunt()) return false;
+    if(document.visibilityState !== 'visible') return false;
+    try{
+      lock = await navigator.wakeLock.request('screen');
+      gemist = 0; laatsteFout = '';
+      // De browser kan hem zelf loslaten (tab weg, batterijbesparing aan).
+      // Zonder deze haak denkt PLWake dat hij hem nog heeft.
+      lock.addEventListener('release', function(){ lock = null; });
+      melden('Scherm blijft aan tijdens de meting','ok');
+      return true;
+    }catch(e){
+      lock = null; gemist++; laatsteFout = String(e && e.message || e);
+      // Eén melding, niet elke 5 s. Batterijbesparing weigert de lock en dat
+      // is geen storing — het is iets wat de gebruiker zelf heeft aangezet.
+      if(gemist === 1) melden('Scherm aanhouden geweigerd ('+laatsteFout+') — zet batterijbesparing uit als de app tijdens het rijden bevriest','warn');
+      return false;
+    }
+  }
+
+  async function los(){
+    if(!lock) return;
+    var l = lock; lock = null;
+    try{ await l.release(); }catch(e){ /* stil: al vrijgegeven door de browser is de normale gang van zaken */ }
+  }
+
+  function tik(){
+    var wil = (typeof connected !== 'undefined' && connected) && document.visibilityState === 'visible';
+    if(wil && !lock) pak();
+    else if(!wil && lock && (typeof connected === 'undefined' || !connected)) los();
+  }
+
+  document.addEventListener('visibilitychange', function(){
+    // Terug in beeld: de browser heeft de lock losgelaten, dus opnieuw vragen.
+    if(document.visibilityState === 'visible') tik();
+  });
+
+  if(steunt()){
+    tikker = setInterval(tik, 5000);
+    tik();
+  }
+
+  return {
+    actief:  function(){ return !!lock; },
+    steunt:  steunt,
+    fout:    function(){ return laatsteFout; },
+    aan:     pak,
+    uit:     los,
+    stop:    function(){ if(tikker) clearInterval(tikker); tikker = null; return los(); }
+  };
+})();
 let activePIDs=new Set(), pidVals={}, pidHist={}, pidSmooth={};
 // ── P4: handmatige PID-keuzes scheiden van analyse-toevoegingen ──
 // manualPIDs = door de gebruiker zelf aangevinkte sensoren; die blijven
