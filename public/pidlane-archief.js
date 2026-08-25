@@ -63,7 +63,7 @@ function registerSessionReport(entry){
     };
     list.push(rec);
     _srUpdateBadge();
-    try{ logUsage?.('sessie_rapport','type='+rec.type+';n='+list.length); }catch(e){}
+    try{ logUsage?.('sessie_rapport','type='+rec.type+';n='+list.length); }catch(e){ console.warn('logUsage mislukt:', e); }
     return rec;
   }catch(e){ return null; }
 }
@@ -73,7 +73,7 @@ function _srUpdateBadge(){
     const n=(window._sessionReports||[]).length;
     b.textContent=n>9?'9+':String(n);
     b.style.display=n?'block':'none';
-  }catch(e){}
+  }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
 }
 // Setter-hook: elke bestaande (en toekomstige) toewijzing aan window._lastAIReport
 // archiveert automatisch — geen 5+ losse callsites aanpassen.
@@ -89,7 +89,7 @@ function _srUpdateBadge(){
           if(v && v.text && !window._srSilent){
             registerSessionReport({type:'ai', text:v.text, html:v.html||null, ts:v.ts});
           }
-        }catch(e){}
+        }catch(e){ console.warn('registerSessionReport mislukt:', e); }
       }
     });
   }catch(e){ /* defineProperty geweigerd → archief werkt dan alleen via expliciete hooks */ }
@@ -104,13 +104,13 @@ window.addEventListener('load',function(){
           if(/\.txt$/i.test(String(name||'')) && typeof content==='string' && content.trim()){
             registerSessionReport({type:'txt', title:String(name), text:content, fname:String(name)});
           }
-        }catch(e){}
+        }catch(e){ console.warn('registerSessionReport mislukt:', e); }
         return _orig.apply(this,arguments);
       };
       wrapped._srWrapped=true;
       window.download=wrapped;
     }
-  }catch(e){}
+  }catch(e){ /* stil: wrapt window.download alleen als die al bestaat; ontbreekt hij dan gebeurt er niets */ }
   _srUpdateBadge();
 });
 // Leesbare tekst van de huidige foutcode-stand (voor archief + AI-context)
@@ -158,7 +158,7 @@ function _srAskUseContext(){
 }
 function srSetCtxMode(m){
   window._srUseContext = m==='on' ? true : m==='off' ? false : null;
-  try{ openReportsOverview(); }catch(e){}   // overzicht verversen met nieuwe stand
+  try{ openReportsOverview(); }catch(e){ console.warn('openReportsOverview mislukt:', e); }   // overzicht verversen met nieuwe stand
 }
 // Contextblok met eerdere sessie-rapporten voor AI-prompts.
 // Compact gehouden (tokenbudget): max 4 rapporten, nieuwste eerst gekozen maar
@@ -245,7 +245,7 @@ function srOpen(id){
     try{ window._lastAIReport={text:r.text, html:r.html||_aiReportHtml(r.text), ts:r.ts}; }
     finally{ window._srSilent=false; }
     closeReportsOverview();
-    try{ openAIReportSheet(); }catch(e){}
+    try{ openAIReportSheet(); }catch(e){ console.warn('openAIReportSheet mislukt:', e); }
     return;
   }
   if(r.type==='pdf'){ srShare(id); return; }
@@ -268,7 +268,7 @@ async function srShare(id){
   if(r.type==='pdf'){
     if(!r.blob){ showToast?.('PDF niet meer beschikbaar — genereer opnieuw'); return; }
     window._lastPdf={blob:r.blob, fname:r.fname||'PidLane-rapport.pdf'};
-    try{ showPdfReadyModal(); }catch(e){}
+    try{ showPdfReadyModal(); }catch(e){ console.warn('showPdfReadyModal mislukt:', e); }
     return;
   }
   // Ook hier eerst de formaatkeuze: een sessierapport is precies zo'n stuk dat
@@ -279,21 +279,21 @@ async function srShare(id){
       plOpslaan(basis, r.text, {titel:r.title||'Sessierapport'});
       return;
     }
-  }catch(e){}
+  }catch(e){ console.warn('plOpslaan mislukt:', e); }
   try{
     const blob=new Blob([r.text],{type:'text/plain'});
     const fname=r.fname||((typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport.txt');
     if(await nativeShareFile(blob,fname)) return;
-  }catch(e){}
+  }catch(e){ console.warn('nativeShareFile mislukt:', e); }
   try{
     if(navigator.share){ await navigator.share({title:r.title, text:r.text}); }
     else if(navigator.clipboard){ await navigator.clipboard.writeText(r.text); showToast?.('Rapport naar klembord gekopieerd'); }
-  }catch(e){}
+  }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 async function srDownloadTxt(id){
   const r=(window._sessionReports||[]).find(x=>x.id===id); if(!r||!r.text) return;
   const fname=r.fname||((typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport.txt');
-  try{ await download(fname, r.text); }catch(e){}
+  try{ await download(fname, r.text); }catch(e){ console.warn('download mislukt:', e); }
 }
 
 // ── BACK-NAVIGATIE + ANDROID HARDWARE-BACK ──
@@ -303,9 +303,9 @@ async function srDownloadTxt(id){
 // vraagt een tweede tik om écht af te sluiten.
 function appBack(){
   // 0. Open lade (sensoren/logs) eerst sluiten
-  try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){}
+  try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){ console.warn('closeLades mislukt:', e); }
   // 0b. Context-keuzesheet open? Netjes afwijzen (promise resolven, niet hangen)
-  try{ const c=document.getElementById('srCtxAsk'); if(c && getComputedStyle(c).display!=='none'){ window._srCtxDismiss?.(); return true; } }catch(e){}
+  try{ const c=document.getElementById('srCtxAsk'); if(c && getComputedStyle(c).display!=='none'){ window._srCtxDismiss?.(); return true; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
   for(const id of ['srTextSheet','aiReportSheet','pdfReadyModal','reportsOverviewSheet','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
     const el=document.getElementById(id);
@@ -314,7 +314,7 @@ function appBack(){
   // 2. Dashboards / sub-overlays met eigen display
   let closed=false;
   ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; closed=true; } });
-  if(closed){ try{ goHome(); }catch(e){} return true; }
+  if(closed){ try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); } return true; }
   // 27-07-2026 — hier stonden twee id's die nergens in de app bestaan
   // ('ritAnalyseOv' en 'ritAnalyse'). Het echte element heet #ritDash. Gevolg:
   // de Android-terugknop deed tijdens een lopende rit-analyse niets — hij viel
@@ -336,7 +336,7 @@ function appBack(){
       else cd.style.display='none';
       return true;
     }
-  }catch(e){}
+  }catch(e){ console.warn('closeCaravanDash mislukt:', e); }
   // 3. Welkomstscherm zichtbaar?
   const ws=document.getElementById('welcomeScreen');
   if(ws && !ws.classList.contains('hidden')){
@@ -345,16 +345,16 @@ function appBack(){
     return false; // op de root-keuze → niet automatisch afsluiten
   }
   // 4. In een mode/pane → terug naar home
-  try{ goHome(); return true; }catch(e){}
+  try{ goHome(); return true; }catch(e){ console.warn('goHome mislukt:', e); }
   return false;
 }
 function _plBackHandler(){
   let handled=false;
-  try{ handled=appBack(); }catch(e){}
+  try{ handled=appBack(); }catch(e){ console.warn('appBack mislukt:', e); }
   if(!handled){
     // Root bereikt: tweede tik binnen 2s sluit de app pas écht af.
-    if(window._plExitArmed){ try{ window.Capacitor?.Plugins?.App?.exitApp?.(); }catch(e){} }
-    else { window._plExitArmed=true; try{ showToast?.('Tik nogmaals op terug om af te sluiten',2000); }catch(e){} setTimeout(()=>{ window._plExitArmed=false; },2000); }
+    if(window._plExitArmed){ try{ window.Capacitor?.Plugins?.App?.exitApp?.(); }catch(e){ /* stil: alleen beschikbaar op het native platform */ } }
+    else { window._plExitArmed=true; try{ showToast?.('Tik nogmaals op terug om af te sluiten',2000); }catch(e){ /* stil: melding mag nooit de stroom breken */ } setTimeout(()=>{ window._plExitArmed=false; },2000); }
   }
 }
 function setupBackButton(){
@@ -362,13 +362,13 @@ function setupBackButton(){
   const A=window.Capacitor?.Plugins?.App;
   if(A&&A.addListener){
     // Capacitor (APK): vang de hardware-back op; default (afsluiten) wordt onderdrukt.
-    try{ A.addListener('backButton',()=>{ _plBackHandler(); }); return; }catch(e){}
+    try{ A.addListener('backButton',()=>{ _plBackHandler(); }); return; }catch(e){ console.warn('_plBackHandler mislukt:', e); }
   }
   // Browser/WebView zonder App-plugin: history-trap zodat back niet de pagina verlaat.
   try{
     history.pushState({pl:1},'');
     window.addEventListener('popstate',()=>{ _plBackHandler(); history.pushState({pl:1},''); });
-  }catch(e){}
+  }catch(e){ console.warn('_plBackHandler mislukt:', e); }
 }
 document.addEventListener('DOMContentLoaded', setupBackButton);
 
@@ -398,7 +398,7 @@ function toggleLade(id){
   const el=document.getElementById(id); if(!el) return;
   const open=el.classList.contains('lade-open');
   closeLades();
-  if(!open){ el.classList.add('lade-open'); if(id==='slPanel'){ el.classList.add('lade-tall'); try{ setPidView('dots'); }catch(e){} } }
+  if(!open){ el.classList.add('lade-open'); if(id==='slPanel'){ el.classList.add('lade-tall'); try{ setPidView('dots'); }catch(e){ console.warn('setPidView mislukt:', e); } } }
 }
 function closeLades(){ ['slPanel','logLade'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('lade-open'); }); }
 function toggleLadeTall(id){ const el=document.getElementById(id); if(el) el.classList.toggle('lade-tall'); }

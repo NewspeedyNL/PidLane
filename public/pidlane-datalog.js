@@ -64,9 +64,9 @@ function validateAndSmooth(pid,rawVal){
       // het echte klopregeling was of een verkeerd gesplitste batch. Eén woord
       // extra in deze regel maakt dat verschil voortaan zichtbaar.
       let ruw='';
-      try{ const r=(window._pidRuw||{})[pid]; if(r) ruw=`  [ruw: ${r}]`; }catch(e){}
+      try{ const r=(window._pidRuw||{})[pid]; if(r) ruw=`  [ruw: ${r}]`; }catch(e){ /* stil: window._pidRuw kan nog leeg zijn */ }
       log(`ℹ ${m}${ruw}`,'info');
-      try{ logToSheets('opvallend',m,{pid,value:rawVal,reason:'let_op'}); }catch(e){}
+      try{ logToSheets('opvallend',m,{pid,value:rawVal,reason:'let_op'}); }catch(e){ console.warn('logToSheets mislukt:', e); }
     }
     // bewust GEEN markOutlier en GEEN return: de waarde loopt gewoon door.
   }
@@ -309,13 +309,13 @@ function saveApiKey(){
     return;
   }
   window.anthropicKey=val;
-  try{val?localStorage.setItem('ns_api_key',val):localStorage.removeItem('ns_api_key');}catch(e){}
+  try{val?localStorage.setItem('ns_api_key',val):localStorage.removeItem('ns_api_key');}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   updateApiPill(); closeApiDialog();
   log(val?'API key opgeslagen':'API key verwijderd',val?'ok':'warn');
 }
 function clearApiKey(){
   window.anthropicKey='';
-  try{localStorage.removeItem('ns_api_key');}catch(e){}
+  try{localStorage.removeItem('ns_api_key');}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   updateApiPill(); closeApiDialog();
 }
 function openApiDialog(){
@@ -347,7 +347,7 @@ function openDoor(key){
   const d=document.getElementById('wmDoors'); if(d) d.style.display='none';
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
   const p=document.getElementById('dp-'+key); if(p) p.style.display='block';
-  try{ document.querySelector('.welcome-scroll')?.scrollTo(0,0); }catch(e){}
+  try{ document.querySelector('.welcome-scroll')?.scrollTo(0,0); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   logUsage('deur_open', key);
 }
 function backToDoors(){
@@ -365,7 +365,7 @@ function backToDoors(){
 // ══════════════════════════════════════════════════════════════════
 const FAV_KEY='pl_favorites';
 function favGet(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); }catch(e){ return []; } }
-function favSet(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a)); }catch(e){} }
+function favSet(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } }
 function favHas(id){ return favGet().indexOf(id)!==-1; }
 function favToggle(id){
   const a=favGet(); const i=a.indexOf(id);
@@ -376,8 +376,8 @@ function favToggle(id){
   if(st){ const on=i===-1; st.classList.toggle('on',on); st.textContent=on?'★':'☆';
     st.title=on?'Uit favorieten halen':'Aan favorieten toevoegen';
     st.setAttribute('aria-pressed',on?'true':'false'); }
-  try{ favBarSync(); }catch(e){}
-  try{ logUsage('favoriet_'+(i===-1?'aan':'uit'), id); }catch(e){}
+  try{ favBarSync(); }catch(e){ console.warn('favBarSync mislukt:', e); }
+  try{ logUsage('favoriet_'+(i===-1?'aan':'uit'), id); }catch(e){ console.warn('logUsage mislukt:', e); }
 }
 // Sterknop op elke functiekaart (wc-…) prikken. Idempotent.
 function injectFavStars(){
@@ -460,7 +460,7 @@ function favBarInit(){
   try{
     const ov=document.getElementById('favOv');
     if(ov && ov.parentElement!==document.body) document.body.appendChild(ov);
-  }catch(e){}
+  }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   const btn=document.getElementById('favBtn');
   if(btn && !btn._plBound){
     btn._plBound=true;
@@ -478,14 +478,14 @@ function favBarInit(){
   }
   const ws=document.getElementById('welcomeScreen');
   if(ws && window.MutationObserver){
-    try{ new MutationObserver(()=>{ favPopClose(); favBarSync(); }).observe(ws,{attributes:true,attributeFilter:['class']}); }catch(e){}
+    try{ new MutationObserver(()=>{ favPopClose(); favBarSync(); }).observe(ws,{attributes:true,attributeFilter:['class']}); }catch(e){ console.warn('favBarSync mislukt:', e); }
   }
   favBarSync();
 }
 function showWelcome(vinInfo){
   const ws=document.getElementById('welcomeScreen');
   ws.classList.remove('hidden');
-  try{ backToDoors(); }catch(e){}  // altijd starten op het deuren-keuzescherm
+  try{ backToDoors(); }catch(e){ console.warn('backToDoors mislukt:', e); }  // altijd starten op het deuren-keuzescherm
   if(vinInfo&&vinInfo.merk){
     document.getElementById('welcomeTitle').textContent=`${vinInfo.merk} ${vinInfo.model||''} ${vinInfo.year||''} herkend`;
   } else if(demoMode){
@@ -506,16 +506,16 @@ function goHome(){
 function openPidChoice(){
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
   window._pidLadeUserTs=Date.now();         // bewust geopend — monitor-guard 2 min met rust
-  try{ toggleLade('slPanel'); }catch(e){}   // toggle: opent én sluit
+  try{ toggleLade('slPanel'); }catch(e){ console.warn('toggleLade mislukt:', e); }   // toggle: opent én sluit
 }
 function confirmPidLive(){
   window._pidLadeUserTs=0;                  // bewust verlaten — guard weer scherp
-  try{ closeLades(); }catch(e){}
+  try{ closeLades(); }catch(e){ console.warn('closeLades mislukt:', e); }
 }
 function pidChoiceBackHome(){
   window._pidLadeUserTs=0;                  // bewust verlaten — guard weer scherp
-  try{ closeLades(); }catch(e){}
-  try{ goHome(); }catch(e){}
+  try{ closeLades(); }catch(e){ console.warn('closeLades mislukt:', e); }
+  try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
 }
 // ── Alle volledig-schermige modus-overlays opruimen ───────────────────
 // 2026-07-26 — deze logica zat alleen ín openLiveView(). Gevolg: startte je een
@@ -531,30 +531,30 @@ function plCloseModeOverlays(){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }
   // 2) Modus-dashboards opzij — nette close-functies waar die bestaan
-  try{ closeDeepDiag(); }catch(e){}
-  try{ closeClimateCheck(); }catch(e){}          // ruimt óók z'n timer op
-  try{ closeNeonDashboard(); }catch(e){}         // ruimt hudTimer op
+  try{ closeDeepDiag(); }catch(e){ console.warn('closeDeepDiag mislukt:', e); }
+  try{ closeClimateCheck(); }catch(e){ console.warn('closeClimateCheck mislukt:', e); }          // ruimt óók z'n timer op
+  try{ closeNeonDashboard(); }catch(e){ console.warn('closeNeonDashboard mislukt:', e); }         // ruimt hudTimer op
   try{
     const rd=document.getElementById('ritDash');
     if(rd && rd.style.display!=='none'){
       if(typeof ritActive!=='undefined' && ritActive) minimizeRitAnalyse();  // meting loopt door + pill
       else rd.style.display='none';
     }
-  }catch(e){}
+  }catch(e){ console.warn('minimizeRitAnalyse mislukt:', e); }
   try{
     const cd=document.getElementById('caravanDash');
     if(cd && cd.style.display!=='none'){
       if(typeof caravanActive!=='undefined' && caravanActive) minimizeCaravanDash();  // rit loopt door + pill
       else cd.style.display='none';
     }
-  }catch(e){}
+  }catch(e){ console.warn('minimizeCaravanDash mislukt:', e); }
   for(const id of ['pidRecOv','onderhoudDash','evDash','langeRitDash','vlDash','vlSheet','vlSvOv','reportsOverviewSheet','aiReportSheet','srTextSheet']){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }
 }
 window.plCloseModeOverlays=plCloseModeOverlays;
 function openLiveView(){
-  try{ setPollProfile('live','live view geopend'); }catch(e){}
+  try{ setPollProfile('live','live view geopend'); }catch(e){ console.warn('setPollProfile mislukt:', e); }
   // Eén betrouwbare route naar de live view — óók vanuit een analysepaneel
   // (Conditiecheck e.d.). Voorheen bleef de live view "achteraan": deze
   // functie verborg alleen het welkomstscherm en liet zowel de actieve
@@ -564,13 +564,13 @@ function openLiveView(){
   plCloseModeOverlays();
   // 3) Welkomstscherm en lades weg, en het midden ECHT naar de Live-tab
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
-  try{ closeLades(); }catch(e){}
-  try{ sw('live', document.querySelector('.tabs .tab')); }catch(e){}
+  try{ closeLades(); }catch(e){ console.warn('closeLades mislukt:', e); }
+  try{ sw('live', document.querySelector('.tabs .tab')); }catch(e){ console.warn('sw mislukt:', e); }
 }
 window.openLiveView=openLiveView;
 function reportNav(){
   // Rapporten-knop opent nu altijd het sessie-overzicht (alle rapporten van
   // deze sessie). Zonder rapporten: dezelfde vriendelijke melding als voorheen.
-  if((window._sessionReports||[]).length){ try{ openReportsOverview(); }catch(e){} }
-  else { try{ showToast('Nog geen rapport — start eerst een analyse'); }catch(e){} }
+  if((window._sessionReports||[]).length){ try{ openReportsOverview(); }catch(e){ console.warn('openReportsOverview mislukt:', e); } }
+  else { try{ showToast('Nog geen rapport — start eerst een analyse'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 }

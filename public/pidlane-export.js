@@ -58,8 +58,8 @@ function _voertuigRegels() {
   if (naam) uit.push(['Voertuig', naam]);
   if (v.brandstof) uit.push(['Brandstof', v.brandstof]);
   if (v.vin) uit.push(['VIN', v.vin]);
-  try { const k = localStorage.getItem('pl_kenteken'); if (k) uit.push(['Kenteken', k]); } catch (e) {}
-  try { if (typeof activePIDs !== 'undefined') uit.push(['Sensoren', activePIDs.size + ' actief']); } catch (e) {}
+  try { const k = localStorage.getItem('pl_kenteken'); if (k) uit.push(['Kenteken', k]); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+  try { if (typeof activePIDs !== 'undefined') uit.push(['Sensoren', activePIDs.size + ' actief']); } catch(e){ /* stil: activePIDs kan nog niet bestaan bij export vóór een sessie */ }
   return uit;
 }
 
@@ -193,22 +193,22 @@ async function plMaakPdf(bestandsnaam, tekst, opties) {
 async function _bewaar(blob, naam, tekstAlsFallback) {
   try {
     if (typeof nativeShareFile === 'function' && await nativeShareFile(blob, naam)) return true;
-  } catch (e) {}
+  } catch(e){ console.warn('nativeShareFile mislukt:', e); }
   try {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = naam;
     document.body.appendChild(a); a.click();
-    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500);
+    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch(e){ /* stil: element kan al weg zijn */ } }, 1500);
     return true;
-  } catch (e) {}
+  } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   try {
     if (tekstAlsFallback && navigator.clipboard) {
       await navigator.clipboard.writeText(tekstAlsFallback);
-      try { showToast('Opslaan mislukt — naar klembord gekopieerd'); } catch (e) {}
+      try { showToast('Opslaan mislukt — naar klembord gekopieerd'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
       return true;
     }
-  } catch (e) {}
+  } catch(e){ /* stil: klembord-toegang kan geweigerd worden */ }
   return false;
 }
 
@@ -261,7 +261,7 @@ function plOpslaan(basisnaam, tekst, opties) {
     return 'OPMERKING\n' + streep + '\n' + opm + '\n' + streep + '\n\n' + t;
   }
 
-  const sluit = function () { try { ov.remove(); } catch (e) {} };
+  const sluit = function () { try { ov.remove(); } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ } };
   ov.addEventListener('click', function (e) { if (e.target === ov) sluit(); });
   document.getElementById('plExpAf').onclick = sluit;
 
@@ -269,7 +269,7 @@ function plOpslaan(basisnaam, tekst, opties) {
     const uit = _metOpmerking(tekst, _opm());
     sluit();
     _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit)
-      .then(function (ok) { if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.txt'); } catch (e) {} } });
+      .then(function (ok) { if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.txt'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } } });
   };
 
   document.getElementById('plExpPdf').onclick = async function () {
@@ -281,12 +281,12 @@ function plOpslaan(basisnaam, tekst, opties) {
       const blob = await plMaakPdf(basisnaam + '.pdf', tekst, Object.assign({}, o, { opmerking: opm }));
       sluit();
       const ok = await _bewaar(blob, basisnaam + '.pdf', null);
-      if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.pdf'); } catch (e) {} }
+      if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.pdf'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } }
     } catch (e) {
       // Geen internet of bibliotheek stuk: dan is tekst beter dan niets, maar
       // wel zeggen waarom — anders lijkt het of de knop niets doet.
       sluit();
-      try { showToast('PDF lukte niet (' + (e.message || e) + ') — als tekst opgeslagen'); } catch (e2) {}
+      try { showToast('PDF lukte niet (' + (e.message || e) + ') — als tekst opgeslagen'); } catch(e2){ /* stil: melding mag nooit de stroom breken */ }
       const uit = _metOpmerking(tekst, opm);
       await _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit);
     }

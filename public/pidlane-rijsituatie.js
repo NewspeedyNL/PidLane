@@ -58,7 +58,7 @@ function _refreshVtag(){
     if(!el || el.style.display==='none') return;
     const naam=((vehicleInfo&&vehicleInfo.merk)||'')+' '+((vehicleInfo&&vehicleInfo.model)||'');
     showVtag(naam.trim()||'Voertuig');
-  }catch(e){}
+  }catch(e){ console.warn('showVtag mislukt:', e); }
 }
 
 // ── Aan/uit zetten. Slaat direct op: geen "vergeten op te slaan"-risico. ──
@@ -72,8 +72,8 @@ function toggleSituatie(id){
     saveUserVehicleData();
     renderSituatie('sitBlok'); renderSituatie('sitSheetBody');
     _refreshVtag();
-    try{ logUsage('situatie', userVehicleData.sit.join(',')||'leeg'); }catch(e){}
-  }catch(e){}
+    try{ logUsage('situatie', userVehicleData.sit.join(',')||'leeg'); }catch(e){ console.warn('logUsage mislukt:', e); }
+  }catch(e){ console.warn('_refreshVtag mislukt:', e); }
 }
 function sitSetVeld(key,val){
   try{
@@ -82,7 +82,7 @@ function sitSetVeld(key,val){
     if(!userVehicleData.sitTs) userVehicleData.sitTs=Date.now();
     saveUserVehicleData();
     if(key==='sitExtra') _refreshVtag();
-  }catch(e){}
+  }catch(e){ console.warn('_refreshVtag mislukt:', e); }
 }
 function situatieWis(){
   try{
@@ -93,7 +93,7 @@ function situatieWis(){
     renderSituatie('sitBlok'); renderSituatie('sitSheetBody');
     _refreshVtag();
     showToast?.('Rijsituatie gewist — analyses rekenen weer met een lege auto');
-  }catch(e){}
+  }catch(e){ console.warn('_refreshVtag mislukt:', e); }
 }
 
 // ── Chipraster + velden + voorbeeld van wat de AI ermee doet ──
@@ -215,7 +215,7 @@ try{
   window.toggleSituatie=toggleSituatie; window.situatieWis=situatieWis;
   window.sitSetVeld=sitSetVeld;         window.renderSituatie=renderSituatie;
   window._situatiePromptLine=_situatiePromptLine;
-}catch(e){}
+}catch(e){ console.warn('situatie-functies exporteren naar window mislukt:', e); }
 
 // ════════════════════════════════════════════════════════════════
 //  LOG-CENTRUM — alle logstromen op één plek (via ⋯-menu)
@@ -233,8 +233,8 @@ function _lcLines(kind){
 // gewend bent en dat de testrun en de bugmelder allebei gebruiken.
 function _lcFullText(){
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
-  let ver='?'; try{ ver=(window.PID_CONFIG&&window.PID_CONFIG.app_version)||(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'); }catch(e){}
-  let usr='?'; try{ usr=(typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.user))||'?'; }catch(e){}
+  let ver='?'; try{ ver=(window.PID_CONFIG&&window.PID_CONFIG.app_version)||(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'); }catch(e){ /* stil: versie-info kan nog niet bestaan — logregel wordt dan gewoon korter */ }
+  let usr='?'; try{ usr=(typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.user))||'?'; }catch(e){ /* stil: currentUser kan nog niet bestaan — logregel wordt dan gewoon korter */ }
   return ['PidLane logs','Datum: '+new Date().toLocaleString('nl-NL'),'Versie: '+ver,'Gebruiker: '+usr,
     'Toestel: '+navigator.userAgent,
     'Verbinding: '+((typeof connected!=='undefined'&&connected)?((typeof demoMode!=='undefined'&&demoMode)?'demo':'verbonden'):'niet verbonden'),
@@ -251,7 +251,7 @@ async function lcSave(btn){
     const blob=new Blob([txt],{type:'text/plain'});
     const ok=await nativeShareFile(blob,basis+'.txt');
     if(!ok) download(basis+'.txt',txt);
-  }catch(e){ try{ download(basis+'.txt',txt); }catch(_){} }
+  }catch(e){ try{ download(basis+'.txt',txt); }catch(_){ console.warn('download mislukt:', _); } }
   if(btn){ btn.textContent=o; btn.disabled=false; }
 }
 function lcSend(){
@@ -406,7 +406,7 @@ async function profielTegenSteunbits(){
   const bits={};
   for(const q of ['0100','0120','0140','0160']){
     let r='';
-    try{ r=await sendCmd(q,3000); }catch(e){}
+    try{ r=await sendCmd(q,3000); }catch(e){ console.warn('sendCmd mislukt:', e); }
     if(!r || /NO DATA|UNABLE|ERROR|STOPPED/i.test(r)) continue;
     const hex=String(r).replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
     const kop='41'+q.slice(2).toUpperCase();
@@ -437,15 +437,15 @@ async function profielTegenSteunbits(){
 
   if(!weg.length){ btDiag('Profiel klopt met de steunbits — niets verwijderd','ok'); return 0; }
 
-  weg.forEach(p=>{ supportedPIDs.delete(p); try{ activePIDs.delete(p); }catch(e){} });
+  weg.forEach(p=>{ supportedPIDs.delete(p); try{ activePIDs.delete(p); }catch(e){ console.warn('activePIDs.delete mislukt:', e); } });
   const namen=weg.map(p=>{ try{ const d=getPidDef(p); return p+(d&&d.name?' ('+d.name+')':''); }catch(e){ return p; } });
   log(`🧹 ${weg.length} sensoren uit het profiel verwijderd — deze auto ondersteunt ze niet: ${namen.join(', ')}`,'ok');
   btDiag(`Profiel opgeschoond: ${weg.join(', ')}`,'ok');
 
   // Profiel opnieuw wegschrijven, anders staat dezelfde fout er de volgende
   // sessie gewoon weer.
-  try{ if(typeof saveVinProfile==='function' && vehicleInfo?.vin) saveVinProfile(vehicleInfo.vin); }catch(e){}
-  try{ herijkPidGate('profiel tegen steunbits gehouden'); }catch(e){}
+  try{ if(typeof saveVinProfile==='function' && vehicleInfo?.vin) saveVinProfile(vehicleInfo.vin); }catch(e){ console.warn('saveVinProfile mislukt:', e); }
+  try{ herijkPidGate('profiel tegen steunbits gehouden'); }catch(e){ console.warn('herijkPidGate mislukt:', e); }
   return weg.length;
 }
 
@@ -478,7 +478,7 @@ async function discoverPIDsBitmap(){
     // De discovery leest exact dezelfde vier bitmaps als profielTegenSteunbits().
     // Hier bewaren betekent dat de preset straks weet wat de ECU ontkent, ook
     // als die controle niet meer apart draait (verse discovery slaat hem over).
-    try{ _steunbitsOnthoud(parseInt(rangeCmd.slice(2),16), bitmap); }catch(e){}
+    try{ _steunbitsOnthoud(parseInt(rangeCmd.slice(2),16), bitmap); }catch(e){ console.warn('_steunbitsOnthoud mislukt:', e); }
     if(isNaN(bitmap)||bitmap===0) continue;
 
     const base=parseInt(rangeCmd.slice(2),16);
@@ -523,7 +523,7 @@ async function deepRefreshPIDs(){
   const st=document.getElementById('pidRefreshStatus');
   const btn=document.getElementById('pidRefreshBtn');
   if(!connected && !demoMode){ if(st) st.textContent='⚠ Eerst verbinden'; return; }
-  if(demoMode){ if(st) st.textContent='Demo: PID-lijst verversen...'; try{ demoRefresh(); }catch(e){} if(st) st.textContent='✓ Ververst (demo)'; return; }
+  if(demoMode){ if(st) st.textContent='Demo: PID-lijst verversen...'; try{ demoRefresh(); }catch(e){ console.warn('demoRefresh mislukt:', e); } if(st) st.textContent='✓ Ververst (demo)'; return; }
   if(btn){ btn.disabled=true; btn.textContent='⏳ Zoeken...'; }
   const before=supportedPIDs.size;
   try{
@@ -703,7 +703,7 @@ function healthUitProfiel(health){
   btDiag(`⚡ Gezondheid uit profiel overgenomen (${n}/${supportedPIDs.size} bekend) — scan overgeslagen`,'info');
   autoSelectHealthyKern();
   buildDiscoveredPIDList();
-  try{ refreshLegeTegels(); }catch(e){}
+  try{ refreshLegeTegels(); }catch(e){ console.warn('refreshLegeTegels mislukt:', e); }
   return true;
 }
 window.healthUitProfiel=healthUitProfiel;
@@ -763,7 +763,7 @@ async function initialHealthScan(){
   buildDiscoveredPIDList();
   // Pas hier weten we welke sensoren wél gemeld maar niet geleverd worden.
   // De tegels zijn op dat moment al opgebouwd, dus even bijwerken.
-  try{ refreshLegeTegels(); }catch(e){}
+  try{ refreshLegeTegels(); }catch(e){ console.warn('refreshLegeTegels mislukt:', e); }
 }
 
 // Selecteer automatisch de gezonde kern-PIDs (optie 3 + alleen gezonde)
@@ -890,19 +890,19 @@ function applyPidPreset(id){
   // grafiekkeuze allemaal meegaan.
   activePIDs.clear(); manualPIDs.clear();
   bruikbaar.forEach(p=>{ activePIDs.add(p); manualPIDs.add(p); });
-  try{ buildPIDList(document.getElementById('psrch')?.value||''); }catch(e){}
-  try{ document.getElementById('pidCnt').textContent=activePIDs.size; }catch(e){}
-  try{ renderGauges(); rebuildGSel(); }catch(e){}
+  try{ buildPIDList(document.getElementById('psrch')?.value||''); }catch(e){ console.warn('buildPIDList mislukt:', e); }
+  try{ document.getElementById('pidCnt').textContent=activePIDs.size; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+  try{ renderGauges(); rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
   if(tip){
     tip.textContent=pr.tip+' — '+bruikbaar.length+' sensoren actief'
       + (ontbreekt?(', '+ontbreekt+' niet beschikbaar op deze auto'):'');
   }
-  try{ showToast?.('🎚️ '+pr.naam+' — '+bruikbaar.length+' sensoren actief'); }catch(e){}
+  try{ showToast?.('🎚️ '+pr.naam+' — '+bruikbaar.length+' sensoren actief'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 // ── PID PANEL — nu dynamisch vanuit discovery ──
 function buildPIDList(filter=''){
-  try{ _pidPresetVulSelect(); }catch(e){}
+  try{ _pidPresetVulSelect(); }catch(e){ console.warn('_pidPresetVulSelect mislukt:', e); }
   // Onzin-sensoren horen niet eens in de keuzelijst: een benzineauto met een
   // AdBlue-regel erin ziet er kapot uit, ook als je hem nooit aanvinkt.
   const el=document.getElementById('pidList');
@@ -980,7 +980,7 @@ function buildPIDList(filter=''){
 // J1979-tabel. De tabel is de startgok voor een auto die we nog niet kennen.
 function pidByteLen(suffix){
   const s=String(suffix).toUpperCase();
-  try{ const g=window.PLPidLen&&window.PLPidLen.lengte(s); if(g) return g; }catch(e){}
+  try{ const g=window.PLPidLen&&window.PLPidLen.lengte(s); if(g) return g; }catch(e){ console.warn('PLPidLen.lengte mislukt:', e); }
   return PID_BYTE_LEN[s]||1;
 }
 

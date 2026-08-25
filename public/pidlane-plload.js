@@ -59,7 +59,7 @@ const PLLoad={
     this._laatstTick=nu;
     if(!connected||demoMode){ this._mult=1.0; this._staat='normaal'; return; }
     let s=null;
-    try{ s=(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null; }catch(e){}
+    try{ s=(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null; }catch(e){ console.warn('PLBus.stats mislukt:', e); }
     if(!s) return;
     /* ── BEZETTING ALLEEN IS GEEN TEGENDRUK (23-08-2026) ──────────────────
        Hier stond `belasting>=bezetOp || foutPct>=foutOp`. Die OF was de fout:
@@ -327,7 +327,7 @@ function markPidNoData(pid){
       btDiag(`PID ${pid} zou gesnoeid worden, maar bus zelf is ziek (${s.foutPct}% fout) — uitgesteld`,'warn');
       return;
     }
-  }catch(e){}
+  }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   _pidDead.add(pid); _pidDeadSince[pid]=nu;
   btDiag(`PID ${pid} ${_noDataStreak[pid]}× geen data over ${Math.round(duur/1000)}s (kwaliteit ${pidQuality(pid)}%) — gesnoeid (herkansing over ${PID_REPROBE_MS/1000}s)`,'info');
 }
@@ -381,7 +381,7 @@ function startPoll(){
   clearInterval(pollTimer);
   dataStable=false; stabilityCount={}; pidSmooth={}; outlierCount={}; window._stabilityT0=null;
   _pidNextPoll={};
-  try{ PLLoad.reset(); }catch(e){}   // nieuwe PID-set = budget opnieuw ijken
+  try{ PLLoad.reset(); }catch(e){ console.warn('PLLoad.reset mislukt:', e); }   // nieuwe PID-set = budget opnieuw ijken
   document.getElementById('aiContent').innerHTML=`<div class="ai-ph"><div class="pi">📡</div><p>Data valideren...<br><br>Even geduld — outliers worden gefilterd voor betrouwbare analyse.</p></div>`;
 
   // Scheduler-tick: 100ms. Per tick worden alleen de PIDs gepolld die volgens
@@ -467,7 +467,7 @@ function startPoll(){
           // Per-PID telemetrie: hier weten we exact wat gevraagd is en wat
           // terugkwam, dus dit is de enige plek waar `mis` betrouwbaar te
           // tellen valt (zie PLBus.notePids).
-          try{ PLBus.notePids(grp, null, parsed); }catch(e){}
+          try{ PLBus.notePids(grp, null, parsed); }catch(e){ console.warn('PLBus.notePids mislukt:', e); }
           const got=Object.keys(parsed).length;
           if(got===0){
             // Zit er wél een 41-payload in de respons? Dan kwam de data goed
@@ -517,7 +517,7 @@ function startPoll(){
       updateEVMode();
       // Regelkring: meet de verzadiging en stel het pollbudget bij (fase 4).
       // Zelf-afgeregeld op cfg.tickMs, dus elke ronde aanroepen is prima.
-      try{ PLLoad.tick(); }catch(e){}
+      try{ PLLoad.tick(); }catch(e){ console.warn('PLLoad.tick mislukt:', e); }
     }finally{
       PLBus.release(_busTok);
     }
@@ -555,9 +555,9 @@ function _herstelNaProtocolLock(){
   _batchDips=0;
   _batchOffSince=0;
   window._batchSupported=undefined;        // undefined = weer toegestaan
-  try{ PLBus.batchReset(); }catch(e){}
-  try{ PLLoad.reset(); }catch(e){}
-  try{ btDiag('Regelkringen opnieuw geijkt na protocolherstel','ok'); }catch(e){}
+  try{ PLBus.batchReset(); }catch(e){ console.warn('PLBus.batchReset mislukt:', e); }
+  try{ PLLoad.reset(); }catch(e){ console.warn('PLLoad.reset mislukt:', e); }
+  try{ btDiag('Regelkringen opnieuw geijkt na protocolherstel','ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 PLLoad.herstelNaProtocolLock=_herstelNaProtocolLock;
 // Periodiek: als batch uit staat en het al een tijd goed gaat, één keer

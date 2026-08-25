@@ -161,7 +161,7 @@ const PLWatch = {
 
   boot(){
     if (this._timer) return;
-    this._timer = setInterval(()=>{ try{ this._tick(); }catch(e){} }, this.cfg.tickMs);
+    this._timer = setInterval(()=>{ try{ this._tick(); }catch(e){ console.warn('this._tick mislukt:', e); } }, this.cfg.tickMs);
   },
 
   _actief(){ return !!(window.PLMon && window.PLMon.active); },
@@ -176,7 +176,7 @@ const PLWatch = {
         const v=S.interval(pid);
         if(typeof v==='number' && v>0 && v<999999) return v;
       }
-    }catch(e){}
+    }catch(e){ console.warn('PLSched.interval mislukt:', e); }
     return null;
   },
   // Hoe lang mag deze PID stil zijn voordat het opvalt?
@@ -236,14 +236,14 @@ const PLWatch = {
     let poortDicht=false;
     try{
       if(window.PLBusGate && typeof PLBusGate.gate==='function') poortDicht=!PLBusGate.gate('ecu');
-    }catch(e){}
+    }catch(e){ console.warn('PLBusGate.gate mislukt:', e); }
     // OF, niet EN: allebei onderdrukken meldingen, dus samen onderdrukken ze
     // strikt meer dan elk apart. Een fix die minder afvangt dan de vorige is
     // hier nooit de bedoeling.
     const busStilNu=poortDicht||lokaleFractie;
     if(busStilNu&&!this._busStil){
       let waarom='cadans-fractie';
-      try{ if(poortDicht && window.PLBusGate) waarom=PLBusGate.status().reden; }catch(e){}
+      try{ if(poortDicht && window.PLBusGate) waarom=PLBusGate.status().reden; }catch(e){ console.warn('PLBusGate.status mislukt:', e); }
       this._log('Watchers: bus/adapter-hik ('+waarom+') — meldingen onderdrukt','info');
     }
     this._busStil=busStilNu;
@@ -346,7 +346,7 @@ const PLWatch = {
       const d=this._dekking[t.id]||(this._dekking[t.id]={runs:0,hits:0});
       d.runs++;
       let uitkomst=null;
-      try{ uitkomst=t.check(ctx); }catch(e){}
+      try{ uitkomst=t.check(ctx); }catch(e){ console.warn('t.check mislukt:', e); }
       if(uitkomst){
         d.hits++;
         this._meldTest('TEST:'+t.id, uitkomst);
@@ -372,21 +372,21 @@ const PLWatch = {
     const nu=Date.now();
     if(!negeerCooldown && this._cool[sig] && nu-this._cool[sig]<this.cfg.cooldownMs) return;
     this._cool[sig]=nu;
-    try{ window.PLMon._event(sig, 'watcher', reden, null, true); }catch(e){}
+    try{ window.PLMon._event(sig, 'watcher', reden, null, true); }catch(e){ console.warn('PLMon._event mislukt:', e); }
   },
   _meldTest(sig, reden){
     const nu=Date.now();
     if(this._cool[sig] && nu-this._cool[sig]<this.cfg.testCooldownMs) return;
     this._cool[sig]=nu;
-    try{ window.PLMon._event(sig, 'test', reden, null, true); }catch(e){}
+    try{ window.PLMon._event(sig, 'test', reden, null, true); }catch(e){ console.warn('PLMon._event mislukt:', e); }
   },
 
   _naam(pid){
     try{ const d=(typeof getPidDef==='function')?getPidDef(pid):null;
-      if(d&&d.name) return d.name+' ('+pid+')'; }catch(e){}
+      if(d&&d.name) return d.name+' ('+pid+')'; }catch(e){ console.warn('getPidDef mislukt:', e); }
     return pid;
   },
-  _log(msg,lvl){ try{ if(typeof log==='function') log(msg,lvl||'info'); }catch(e){} }
+  _log(msg,lvl){ try{ if(typeof log==='function') log(msg,lvl||'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 };
 
 window.PLWatch = PLWatch;

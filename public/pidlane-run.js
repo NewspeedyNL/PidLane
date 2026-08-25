@@ -87,7 +87,7 @@
     if (typeof PLWaak === 'undefined' || !PLWaak || typeof PLWaak.actief !== 'function') return null;
     let aan = false, bevindingen = 0;
     try { aan = !!PLWaak.actief(); } catch (e) { return null; }
-    try { bevindingen = (PLWaak.bevindingen() || []).length; } catch (e) {}
+    try { bevindingen = (PLWaak.bevindingen() || []).length; } catch(e){ console.warn('PLWaak.bevindingen mislukt:', e); }
     return {
       aan: aan,
       draait: aan,
@@ -187,7 +187,7 @@
     let n = 0;
     ITEMS.forEach(function (it) {
       let s = null;
-      try { s = it.lees(); } catch (e) {}
+      try { s = it.lees(); } catch(e){ console.warn('it.lees mislukt:', e); }
       if (s && s.draait) n++;
     });
     return n;
@@ -207,7 +207,7 @@
   // ── het paneel ────────────────────────────────────────────────────
   function _regel(it) {
     let s = null;
-    try { s = it.lees(); } catch (e) {}
+    try { s = it.lees(); } catch(e){ console.warn('it.lees mislukt:', e); }
     const ontbreekt = !s;
     const aan = !!(s && s.aan);
     const geblokkeerd = !!(s && s.sessie && !aan && !_verbonden());
@@ -275,7 +275,7 @@
     const it = ITEMS.filter(function (x) { return x.id === id; })[0];
     if (!it) return;
     let s = null;
-    try { s = it.lees(); } catch (e) {}
+    try { s = it.lees(); } catch(e){ console.warn('it.lees mislukt:', e); }
 
     // Een sessie afbreken gooit een lopende meting weg — daar hoort een
     // vraag bij. Aanzetten niet: dat kost hooguit buscapaciteit.
@@ -286,7 +286,7 @@
 
     let fout = null;
     try { fout = it.schakel(); } catch (e) { fout = it.naam + ': ' + (e.message || e); }
-    if (fout) { try { showToast(fout); } catch (e) {} }
+    if (fout) { try { showToast(fout); } catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 
     // De onderliggende modules doen hun werk soms asynchroon (caravan doet
     // een preAnalysisCheck met een dialoog). Twee keer tekenen vangt dat op
@@ -301,7 +301,7 @@
       try {
         verversDot();
         if (_open) teken();
-      } catch (e) {}
+      } catch(e){ console.warn('teken mislukt:', e); }
     }, 4000);
   }
 
@@ -324,7 +324,7 @@
       const uit = {};
       ITEMS.forEach(function (it) {
         let s = null;
-        try { s = it.lees(); } catch (e) {}
+        try { s = it.lees(); } catch(e){ console.warn('it.lees mislukt:', e); }
         uit[it.id] = s ? { aan: !!s.aan, draait: !!s.draait, detail: s.detail } : null;
       });
       return uit;
@@ -332,5 +332,5 @@
     versie: RUN_VERSIE
   };
 
-  try { if (typeof btDiag === 'function') btDiag('pidlane-run.js geladen — ' + RUN_VERSIE, 'info'); } catch (e) {}
+  try { if (typeof btDiag === 'function') btDiag('pidlane-run.js geladen — ' + RUN_VERSIE, 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
 })();

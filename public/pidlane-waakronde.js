@@ -151,13 +151,13 @@
         ? [...supportedPIDs]
         : (window.discoveredPIDDefs || []).map(d => d.pid);
       bron.forEach(pid => {
-        try { if (activePIDs.has(pid)) return; } catch (e) {}
-        try { if (typeof pidIsTekst === 'function' && pidIsTekst(pid)) return; } catch (e) {}
-        try { if (typeof pidGate === 'function' && !pidGate(pid, 'kiesbaar')) return; } catch (e) {}
+        try { if (activePIDs.has(pid)) return; } catch(e){ console.warn('activePIDs.has mislukt:', e); }
+        try { if (typeof pidIsTekst === 'function' && pidIsTekst(pid)) return; } catch(e){ console.warn('pidIsTekst mislukt:', e); }
+        try { if (typeof pidGate === 'function' && !pidGate(pid, 'kiesbaar')) return; } catch(e){ console.warn('pidGate mislukt:', e); }
         if (!def(pid)) return;
         uit.push(pid);
       });
-    } catch (e) {}
+    } catch(e){ console.warn('def mislukt:', e); }
     return uit;
   }
 
@@ -224,7 +224,7 @@
   function negeer(pid) {
     if (!pid) return;
     _genegeerd[pid] = true;
-    try { log('\u25CB Waakronde: ' + naam(pid) + ' genegeerd voor deze sessie', 'info'); } catch (e) {}
+    try { log('\u25CB Waakronde: ' + naam(pid) + ' genegeerd voor deze sessie', 'info'); } catch(e){ console.warn('naam mislukt:', e); }
     teken();
   }
 
@@ -281,12 +281,12 @@
         rij.staat  = o.staat;
         rij.reden  = o.reden;
         rij.tijd   = Date.now();
-        try { await delay(40); } catch (e) {}
+        try { await delay(40); } catch(e){ console.warn('delay mislukt:', e); }
       }
       _cursor += BATCH;
       _bezig = null;
     } finally {
-      try { if (window.PLBus && PLBus.release) PLBus.release(tok); } catch (e) {}
+      try { if (window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
     }
 
     teken();
@@ -356,7 +356,7 @@
         _drukLang = true;
         const p = _drukPid;
         if (_drukEl) { _drukEl.classList.remove('wkDruk'); _drukEl = null; }
-        try { if (navigator.vibrate) navigator.vibrate(18); } catch (e2) {}
+        try { if (navigator.vibrate) navigator.vibrate(18); } catch(e2){ /* stil: vibratie werkt niet op elk toestel */ }
         negeer(p);                  // teken() hertekent; knop verdwijnt
       }, LANG_MS);
     };
@@ -370,7 +370,7 @@
       try {
         document.addEventListener('pointerup', drukLos, true);
         document.addEventListener('pointercancel', drukLos, true);
-      } catch (e) {}
+      } catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
     }
     // Muisgebruik: knop verlaten tijdens het indrukken telt als afbreken.
     // Bij touch komt dit door de impliciete capture niet tussendoor.
@@ -548,7 +548,7 @@
     if (_pols) clearInterval(_pols);
     _pols = setInterval(teken, 1000);
     try { log('\u25C9 Waakronde aan \u2014 ' + n + ' sensoren buiten je selectie, ' +
-              Math.round((n / BATCH) * RONDE_MS / 1000) + 's per ronde', 'ok'); } catch (e) {}
+              Math.round((n / BATCH) * RONDE_MS / 1000) + 's per ronde', 'ok'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
     plan(1500);
     return true;
   }
@@ -562,14 +562,14 @@
     _drukPid = null; _drukLang = false; _drukEl = null;
     _bezig = null; _pin = null;
     strookWeg();
-    try { log('\u25CB Waakronde uit', 'info'); } catch (e) {}
+    try { log('\u25CB Waakronde uit', 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }
 
   function schakel() {
     if (_aan) stop(); else start();
     const b = document.getElementById('waakBtn');
     if (b) b.classList.toggle('active', _aan);
-    try { localStorage.setItem('pl_waak', _aan ? '1' : '0'); } catch (e) {}
+    try { localStorage.setItem('pl_waak', _aan ? '1' : '0'); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     return _aan;
   }
   window.toggleWaakronde = schakel;
@@ -588,7 +588,7 @@
         return _oz.apply(this, arguments);
       };
     }
-  } catch (e) {}
+  } catch(e){ console.warn('schakel mislukt:', e); }
 
   window.PLWaak = {
     start: start, stop: stop, schakel: schakel,

@@ -60,7 +60,7 @@ function diagCacheGet(sig){
   }catch(e){ return null; }
 }
 function diagCacheSet(sig, causes){
-  try{ localStorage.setItem(_diagKey(sig), JSON.stringify({sig, ts:Date.now(), causes})); }catch(e){}
+  try{ localStorage.setItem(_diagKey(sig), JSON.stringify({sig, ts:Date.now(), causes})); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function diagHistoryAdd(v, desc, causes){
   try{
@@ -70,7 +70,7 @@ function diagHistoryAdd(v, desc, causes){
     arr.unshift({ ts:Date.now(), desc:String(desc||'').slice(0,120),
       top:(causes||[]).slice(0,3).map(c=>({ n:String(c.naam||'').slice(0,60), k:c.kans||'' })) });
     localStorage.setItem(key, JSON.stringify(arr.slice(0,25)));
-  }catch(e){}
+  }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 async function findCauses(force){
   const desc=document.getElementById('diagDesc').value.trim();
@@ -157,7 +157,7 @@ Formaat (exact deze sleutels):
       const text=await apiFetch(prompt,2200);
       causes=parseCausesJSON(text);
       if(!causes.length){ causes=[{naam:'Analyse',kans:'med',frequentie:'',uitleg:String(text).replace(/```json|```/g,'').trim().slice(0,300),check_pids:[],check_uitleg:'',check_waarden:{},bewijs_logica:''}]; }
-      try{ fillCausePids(causes, (available||[]).map(p=>p.pid).concat((withAlt||[]).map(p=>p.alt))); }catch(e){}
+      try{ fillCausePids(causes, (available||[]).map(p=>p.pid).concat((withAlt||[]).map(p=>p.alt))); }catch(e){ console.warn('fillCausePids mislukt:', e); }
       diagCacheSet(_sig, causes);
       diagHistoryAdd(v, desc, causes);
     }
@@ -178,11 +178,11 @@ function parseCausesJSON(text){
   if(!text) return [];
   let t=String(text).replace(/```json/gi,'').replace(/```/g,'').trim();
   const a=t.indexOf('['); if(a>=0) t=t.slice(a);
-  try{ const r=JSON.parse(t); if(Array.isArray(r)) return r; }catch(e){}
+  try{ const r=JSON.parse(t); if(Array.isArray(r)) return r; }catch(e){ /* stil: JSON kan corrupt of leeg zijn */ }
   // afkap-reparatie: knip tot laatste volledige object en sluit de array
-  try{ const lb=t.lastIndexOf('}'); if(lb>0){ const r=JSON.parse(t.slice(0,lb+1)+']'); if(Array.isArray(r)) return r; } }catch(e){}
+  try{ const lb=t.lastIndexOf('}'); if(lb>0){ const r=JSON.parse(t.slice(0,lb+1)+']'); if(Array.isArray(r)) return r; } }catch(e){ /* stil: tussenstap in de parseerketen — knipt tot het laatste volledige object, mislukt ook dit dan volgt de laatste poging hieronder */ }
   // laatste redmiddel: losse objecten eruit vissen
-  try{ const objs=t.match(/\{[^{}]*\}/g)||[]; const r=objs.map(o=>{try{return JSON.parse(o);}catch(_){return null;}}).filter(Boolean); if(r.length) return r; }catch(e){}
+  try{ const objs=t.match(/\{[^{}]*\}/g)||[]; const r=objs.map(o=>{try{return JSON.parse(o);}catch(_){return null;}}).filter(Boolean); if(r.length) return r; }catch(e){ /* stil: laatste stap van de parseerketen — mislukt ook dit, dan blijft het resultaat leeg */ }
   return [];
 }
 // ── Leid relevante PIDs af uit oorzaak-tekst (alleen wat de auto echt levert) ──
@@ -325,6 +325,6 @@ async function runDiagAI(causeName){
   const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const diagOut=document.getElementById('aiContentDiag');
   await callAI(prompt,diagOut);
-  try{ diagOut.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){}
+  try{ diagOut.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   if(btn) btn.disabled=false;
 }

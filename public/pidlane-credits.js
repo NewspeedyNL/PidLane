@@ -80,8 +80,8 @@
   };
 
   // ── Kleine helpers ───────────────────────────────────────────────────
-  const _log = (m, t) => { try { (window.log || function () {})(m, t || 'info'); } catch (e) {} };
-  const _toast = (m) => { try { (window.showToast || function () {})(m); } catch (e) {} };
+  const _log = (m, t) => { try { (window.log || function () {})(m, t || 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } };
+  const _toast = (m) => { try { (window.showToast || function () {})(m); } catch(e){ /* stil: melding mag nooit de stroom breken */ } };
   const _esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const _nl = (n) => Number(n || 0).toLocaleString('nl-NL');
@@ -182,8 +182,8 @@
     if (_testModus()) return false;                  // testmodus wint
     if (_isKlant()) return false;                    // klant betaalt met tokens
     // Elk ander ingelogd account komt uit de tabel Users → abonnement, vrij.
-    try { if (window.currentUser) return true; } catch (e) {}
-    try { if (demoMode === true) return true; } catch (e) {}
+    try { if (window.currentUser) return true; } catch(e){ /* stil: leest een globale die nog niet gezet hoeft te zijn */ }
+    try { if (demoMode === true) return true; } catch(e){ /* stil: leest een globale die nog niet gezet hoeft te zijn */ }
     return false;
   }
 
@@ -195,7 +195,7 @@
     try {
       const o = JSON.parse(_lsGet(CFG.lsKalib) || 'null');
       if (o && isFinite(o.tpt) && o.tpt > 1.5 && o.tpt < 8) return o;
-    } catch (e) {}
+    } catch(e){ /* stil: JSON kan corrupt of leeg zijn */ }
     return { tpt: CFG.tekensPerToken, uf: CFG.uitvoerFactor, n: 0 };
   }
 
@@ -215,7 +215,7 @@
       }
       k.n = (k.n || 0) + 1;
       _lsSet(CFG.lsKalib, JSON.stringify(k));
-    } catch (e) {}
+    } catch(e){ /* stil: waarde kan niet-serialiseerbaar zijn */ }
   }
 
   function _schatTokens(txt) {
@@ -432,7 +432,7 @@
         c.onclick = function () {
           try {
             if (window.PLKlant && PLKlant.isKlant && PLKlant.isKlant()) { PLKlant.openMijnTokens(); return; }
-          } catch (e) {}
+          } catch(e){ console.warn('PLKlant.openMijnTokens mislukt:', e); }
           openVerzilver();
         };
         document.body.appendChild(c);
@@ -440,7 +440,7 @@
       const s = saldo();
       c.innerHTML = '\u26A1 ' + _nl(s) + ' tokens';
       c.style.borderColor = s <= 0 ? 'var(--rd,#ef4444)' : (s <= 5 ? 'var(--or,#f59e0b)' : 'var(--bd,#2a3142)');
-    } catch (e) {}
+    } catch(e){ console.warn('_nl mislukt:', e); }
   }
 
   // ── Overlay-hulp ─────────────────────────────────────────────────────
@@ -547,7 +547,7 @@
         '</div>';
 
       const klaar = (v) => {
-        try { _nietMeerVragen = !!(document.getElementById('plCredStil') || {}).checked; } catch (e) {}
+        try { _nietMeerVragen = !!(document.getElementById('plCredStil') || {}).checked; } catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
         ov.style.display = 'none';
         _sheetBezig = null;
         window._plCredDismiss = null;
@@ -629,7 +629,7 @@
     try {
       const basis = (typeof PROXY_URL !== 'undefined' && PROXY_URL) ? PROXY_URL : '';
       const kop = { 'Content-Type': 'application/json' };
-      try { if (window.APP_TOKEN) kop['X-App-Token'] = window.APP_TOKEN; } catch (e) {}
+      try { if (window.APP_TOKEN) kop['X-App-Token'] = window.APP_TOKEN; } catch(e){ /* stil: APP_TOKEN kan nog niet gezet zijn */ }
       const resp = await fetch(basis + CFG.verzilverPad, {
         method: 'POST',
         headers: kop,
@@ -715,7 +715,7 @@
       const s = saldo();
       if (s <= 5) _toast('\u26A1 Nog ' + s + ' tokens over');
       _log('Tegoed afgeboekt: -' + kosten + ' (saldo ' + s + ')', 'info');
-    } catch (e) {}
+    } catch(e){ console.warn('_log mislukt:', e); }
   }
 
   // ── Publieke API ─────────────────────────────────────────────────────

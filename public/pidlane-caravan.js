@@ -43,7 +43,7 @@ const CARAVAN_HIST_CAP  = 400;    // ~6.5 min bij 1s
 // ═══════════════════ OPEN / RESET ═══════════════════
 function openCaravan(){
   const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
-  try{ closeLades(); }catch(e){}
+  try{ closeLades(); }catch(e){ console.warn('closeLades mislukt:', e); }
   const ov=document.getElementById('caravanDash'); if(!ov) return;
   ov.style.display='block';
   caravanResetUI();
@@ -86,7 +86,7 @@ async function startCaravan(){
   // reset meters
   caravanActive=true;
   caravanStartTime=Date.now();
-  try{ setPollProfile('caravan','caravan-rit gestart'); }catch(e){}
+  try{ setPollProfile('caravan','caravan-rit gestart'); }catch(e){ console.warn('setPollProfile mislukt:', e); }
   caravanLastTick=Date.now();
   caravanHist={}; caravanCoach=[]; caravanCooldown={};
   caravanKm=0; caravanLiters=0;
@@ -126,7 +126,7 @@ function closeCaravanDash(){
   }
   _removeCaravanPill();
   const ov=document.getElementById('caravanDash'); if(ov) ov.style.display='none';
-  try{ goHome(); }catch(e){}
+  try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
 }
 window.closeCaravanDash=closeCaravanDash;
 
@@ -251,7 +251,7 @@ function _carAlert(key,msg,level,cooldownMs){
   // met de guard onschadelijk waar hij ontbreekt (o.a. iOS).
   if(level==='warn'){
     showToast(msg,8000);
-    try{ if(navigator.vibrate) navigator.vibrate([120,80,120]); }catch(e){}
+    try{ if(navigator.vibrate) navigator.vibrate([120,80,120]); }catch(e){ /* stil: vibratie werkt niet op elk toestel */ }
   }
   else showToast(msg,4500);
 }
@@ -549,9 +549,9 @@ Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
 
       const row=document.createElement('div'); row.style.cssText='display:flex;gap:6px;margin-top:8px';
       const dl=document.createElement('button'); dl.className='btn'; dl.style.cssText='flex:1;justify-content:center'; dl.textContent='💾 Tekst';
-      dl.onclick=()=>{ try{ download(`caravan-rit-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n')); }catch(e){} };
+      dl.onclick=()=>{ try{ download(`caravan-rit-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); } };
       const pdf=document.createElement('button'); pdf.className='btn'; pdf.style.cssText='flex:1;justify-content:center'; pdf.textContent='📄 PDF';
-      pdf.onclick=function(){ try{ exportAIReportPDF(this); }catch(e){} };
+      pdf.onclick=function(){ try{ exportAIReportPDF(this); }catch(e){ console.warn('exportAIReportPDF mislukt:', e); } };
       row.appendChild(dl); row.appendChild(pdf); host.appendChild(row);
     }
   }catch(e){ log('Caravan-rapport tonen mislukt: '+e.message,'warn'); }
@@ -559,8 +559,8 @@ Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
   // overlay sluiten en naar home; tekstrapport ook meteen wegschrijven
   const ov=document.getElementById('caravanDash'); if(ov) ov.style.display='none';
   _removeCaravanPill();
-  try{ download(`caravan-rit-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n')); }catch(e){}
+  try{ download(`caravan-rit-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
   log('🚐 Caravan-rapport klaar','ok');
-  try{ goHome(); }catch(e){}
+  try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
 }
 window.generateCaravanRapport=generateCaravanRapport;

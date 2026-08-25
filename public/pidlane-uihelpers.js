@@ -38,7 +38,7 @@ function setConn(on){
   if(sp){ sp.classList.toggle('show', !on); }
   // Readiness kaartjes bijwerken na verbindingsstatus-wijziging
   setTimeout(()=>{ if(typeof refreshAllReadiness==='function') refreshAllReadiness(); }, 300);
-  try{updateConnGate();}catch(e){}
+  try{updateConnGate();}catch(e){ console.warn('updateConnGate mislukt:', e); }
 }
 // ── ⋯ kebab menu ──
 function toggleKebab(e){
@@ -97,8 +97,8 @@ document.addEventListener('click',(e)=>{
 });
 function showVtag(t){
   const el=document.getElementById('vtag'); if(!el) return;
-  let pct=0; try{ pct=dossierPct(); }catch(e){}
-  let sitHtml=''; try{ sitHtml=situatieChipHtml(); }catch(e){}
+  let pct=0; try{ pct=dossierPct(); }catch(e){ console.warn('dossierPct mislukt:', e); }
+  let sitHtml=''; try{ sitHtml=situatieChipHtml(); }catch(e){ console.warn('situatieChipHtml mislukt:', e); }
   // 2026-07-26 — de voertuignaam ("DEMO — Mazda CX-5 …") stond hier voluit in
   // de topbalk en duwde bij tekstgrootte L de OBD- en AI-chip buiten beeld,
   // terwijl de balk bewust niet horizontaal scrollbaar is. De naam gaat nu naar
@@ -110,7 +110,7 @@ function showVtag(t){
   el.style.display='block';
   // Klik loopt via de omliggende voertuig-chip (#vchip) — geen eigen onclick meer,
   // anders opent het voertuigoverzicht dubbel (event bubbelt naar de chip).
-  try{ updateTopbarStatus(); }catch(e){}
+  try{ updateTopbarStatus(); }catch(e){ console.warn('updateTopbarStatus mislukt:', e); }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -129,7 +129,7 @@ function updateTopbarStatus(){
   // lezen we daarom uit data-naam i.p.v. uit de zichtbare tekst.
   const naam=(vt && vt.dataset && vt.dataset.naam) ? vt.dataset.naam : '';
   const known=!!(vt && vt.style.display!=='none' && naam);
-  let pct=0; try{ pct=dossierPct(); }catch(e){}
+  let pct=0; try{ pct=dossierPct(); }catch(e){ console.warn('dossierPct mislukt:', e); }
   if(vd) vd.className='tdot '+(known ? (pct>=80?'g':'o') : 'r');
   if(vl) vl.style.display=known?'none':'inline';
   const vc=document.getElementById('vchip');
@@ -158,10 +158,10 @@ function updateTopbarStatus(){
 }
 // Lichte bereikbaarheidscheck van de proxy (no-cors: elke netwerkrespons telt als bereikbaar)
 async function checkAiReachable(){
-  if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; try{updateTopbarStatus();}catch(e){} return; }
+  if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } return; }
   try{ await fetch(PROXY_URL,{method:'GET',mode:'no-cors',cache:'no-store'}); _aiReach=true; }
   catch(e){ _aiReach=false; }
-  try{ updateTopbarStatus(); }catch(e){}
+  try{ updateTopbarStatus(); }catch(e){ console.warn('updateTopbarStatus mislukt:', e); }
 }
 // Tik op OBD-dot: niet verbonden → verbindscherm; verbonden → verbreken bevestigen
 function obdChipTap(){
@@ -174,26 +174,26 @@ function obdChipTap(){
 }
 // Fix 19-07: handles + guards zodat deze globale diensten niet stapelen
 // wanneer dit blok bij een herstart nogmaals wordt doorlopen.
-if(!window._topbarTimer) window._topbarTimer=setInterval(()=>{ try{updateTopbarStatus();}catch(e){} },2000);   // dots actueel houden
-if(!window._aiPingTimer) window._aiPingTimer=setInterval(()=>{ try{checkAiReachable();}catch(e){} },300000);   // proxy elke 5 min pingen
-setTimeout(()=>{ try{checkAiReachable();}catch(e){} },1500);             // eerste check na opstart
+if(!window._topbarTimer) window._topbarTimer=setInterval(()=>{ try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } },2000);   // dots actueel houden
+if(!window._aiPingTimer) window._aiPingTimer=setInterval(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } },300000);   // proxy elke 5 min pingen
+setTimeout(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } },1500);             // eerste check na opstart
 async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
     connected=false; demoMode=false; clearInterval(pollTimer);
     // Test-scenario opheffen wanneer demo/verbinding stopt
     _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
-    try{ updateScenarioBadge(); }catch(e){}
-    try{ localStorage.removeItem('pl_autoconn'); }catch(e){} // bewust verbroken — niet auto-herverbinden
+    try{ updateScenarioBadge(); }catch(e){ console.warn('updateScenarioBadge mislukt:', e); }
+    try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // bewust verbroken — niet auto-herverbinden
     try{
       if(window._sppConn){
         await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
       }
-    }catch(e){}
-    try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){}
+    }catch(e){ /* stil: opruimen: verbinding kan al weg zijn */ }
+    try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){ /* stil: opruimen: verbinding kan al weg zijn */ }
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false);
-    try{ const _vt=document.getElementById('vtag'); if(_vt){ _vt.style.display='none'; _vt.dataset.naam=''; } }catch(e){}
+    try{ const _vt=document.getElementById('vtag'); if(_vt){ _vt.style.display='none'; _vt.dataset.naam=''; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
     pidVals={}; pidHist={}; pidSmooth={}; stabilityCount={}; dataStable=false; window._stabilityT0=null;
     log('Verbinding verbroken','warn');
   } else {
@@ -208,9 +208,9 @@ async function handleConnect(){
 // laden was. Dat verklaart zowel de "port already open"-fout bij herverbinden
 // als het onderuitgaan van het tabblad bij een per ongeluk ververste pagina.
 window.addEventListener('pagehide',()=>{
-  try{ if(connected&&!demoMode) saveSession(); }catch(e){}
-  try{ if(window._sppConn) window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{}); }catch(e){}
-  try{ if(typeof disconnectWebSerial==='function') disconnectWebSerial(); }catch(e){}
+  try{ if(connected&&!demoMode) saveSession(); }catch(e){ console.warn('saveSession mislukt:', e); }
+  try{ if(window._sppConn) window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{}); }catch(e){ /* stil: opruimen: verbinding kan al weg zijn */ }
+  try{ if(typeof disconnectWebSerial==='function') disconnectWebSerial(); }catch(e){ console.warn('disconnectWebSerial mislukt:', e); }
 });
 function sw(name,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -299,13 +299,13 @@ function refreshAllReadiness(){
   renderReadinessCard('rdyDtc',     'dtc');
   renderReadinessCard('rdyKoop',    'koop');
   renderReadinessCard('rdyRit',     'rit');
-  try{ renderBasicReadiness(); }catch(e){}
+  try{ renderBasicReadiness(); }catch(e){ console.warn('renderBasicReadiness mislukt:', e); }
 }
 // Basic system check: toon hoeveel tests er voor deze auto beschikbaar zijn.
 function renderBasicReadiness(){
   const el=document.getElementById('rdyBasic'); if(!el) return;
   if(!connected && !demoMode){ el.className='rdy-card off'; el.innerHTML='📡 Verbind adapter om te starten'; return; }
-  let list=[]; try{ list=bscBuildList(); }catch(e){}
+  let list=[]; try{ list=bscBuildList(); }catch(e){ console.warn('bscBuildList mislukt:', e); }
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
   if(!list.length){ el.className='rdy-card warn'; el.innerHTML='⚠ Geen geschikte sensoren gevonden — voer eerst een PID-scan uit'; return; }
   el.className='rdy-card ok';

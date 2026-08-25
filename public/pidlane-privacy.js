@@ -53,7 +53,7 @@
     catch (e) { return false; }   // geen opslag = elke keer tonen, liever te vaak dan te weinig
   }
   function bewaar() {
-    try { localStorage.setItem(SLEUTEL, String(DISCLOSURE_VERSIE)); } catch (e) {}
+    try { localStorage.setItem(SLEUTEL, String(DISCLOSURE_VERSIE)); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   }
 
   // ── De tekst ──────────────────────────────────────────────────────
@@ -120,9 +120,9 @@
       document.body.appendChild(ov);
 
       function sluit(akkoord) {
-        try { ov.remove(); } catch (e) {}
+        try { ov.remove(); } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
         if (akkoord) bewaar();
-        try { if (typeof btDiag === 'function') btDiag('BT-disclosure v' + DISCLOSURE_VERSIE + ': ' + (akkoord ? 'akkoord' : 'geweigerd'), akkoord ? 'ok' : 'warn'); } catch (e) {}
+        try { if (typeof btDiag === 'function') btDiag('BT-disclosure v' + DISCLOSURE_VERSIE + ': ' + (akkoord ? 'akkoord' : 'geweigerd'), akkoord ? 'ok' : 'warn'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
         klaar(akkoord);
       }
       ov.querySelector('#btDiscOk').onclick = function () { sluit(true); };
@@ -174,8 +174,8 @@
   }
 
   function trekIn() {
-    try { localStorage.removeItem(SLEUTEL); } catch (e) {}
-    try { showToast('Toestemming ingetrokken — je krijgt de uitleg opnieuw bij het verbinden'); } catch (e) {}
+    try { localStorage.removeItem(SLEUTEL); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+    try { showToast('Toestemming ingetrokken — je krijgt de uitleg opnieuw bij het verbinden'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
     const ov = document.getElementById('privacyOv');
     if (ov) ov.remove();
   }
@@ -189,5 +189,5 @@
     versie: DISCLOSURE_VERSIE
   };
 
-  try { if (typeof btDiag === 'function') btDiag('pidlane-privacy.js geladen — disclosure v' + DISCLOSURE_VERSIE, 'info'); } catch (e) {}
+  try { if (typeof btDiag === 'function') btDiag('pidlane-privacy.js geladen — disclosure v' + DISCLOSURE_VERSIE, 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
 })();

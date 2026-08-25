@@ -5,7 +5,7 @@
 // WAAROM DIT BESTAAT
 // Op 15-08-2026 bleek `purgeImplausiblePids()` op twee plekken aangeroepen te
 // worden terwijl die functie sinds ronde 5b niet meer bestond. Beide aanroepen
-// stonden in `try{ … }catch(e){}`, dus de ReferenceError verdween geruisloos en
+// stonden in een lege catch (try zonder inhoud erna), dus de ReferenceError verdween geruisloos en
 // het opschonen van de PID-lijst gebeurde maandenlang niet — terwijl PIDLANE.md
 // die ronde als afgerond had staan en `test-herijking.js` groen was (die test
 // riep de functies zélf aan, dus de ontbrekende bedrading zag hij niet).
@@ -111,15 +111,15 @@ function controleer(){
     var m = 'BEDRADING: ' + ontbreekt.length + ' verwachte functie(s) ontbreken — ' + ontbreekt.join(', ');
     // Beide kanalen: btDiag voor het verbindingslog, log voor het gebruikerslog,
     // console als geen van beide er is (dan is er iets veel ergers aan de hand).
-    try { if (typeof btDiag==='function') btDiag(m,'err'); } catch(e){}
-    try { if (typeof log==='function') log('⚠ ' + m,'err'); } catch(e){}
-    try { console.error(m); } catch(e){}
+    try { if (typeof btDiag==='function') btDiag(m,'err'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+    try { if (typeof log==='function') log('⚠ ' + m,'err'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+    try { console.error(m); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }
   return ontbreekt;
 }
 // Na de laatste module draaien. Een tick uitstel zodat modules die zichzelf in
 // een DOMContentLoaded-haak registreren ook meegeteld zijn.
-try { setTimeout(controleer, 0); } catch(e){}
+try { setTimeout(controleer, 0); } catch(e){ console.warn('setTimeout(controleer) — de bedradingscontrole zelf zou dan nooit draaien mislukt:', e); }
 
 window.PLBedrading = { controleer: controleer, kritiek: KRITIEK, geenGlobale: GEEN_GLOBALE };
 })();

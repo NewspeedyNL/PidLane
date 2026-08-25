@@ -14,7 +14,7 @@ let _lastCorrelations=[];
 function runCorrelationEngine(){
   const hits=[];
   for(const r of CORRELATION_RULES){
-    try{ if(r.test()) hits.push(r); }catch(e){}
+    try{ if(r.test()) hits.push(r); }catch(e){ /* stil: sonde — test alleen of dit patroon matcht */ }
   }
   // Idee 3: leren-van-normaal — voeg statistische afwijkingen t.o.v. de
   // eigen voertuighistorie toe als bevinding (alleen voor actieve PIDs).

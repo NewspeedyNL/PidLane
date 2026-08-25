@@ -72,7 +72,7 @@ var _laatstSlecht = 0;   // wanneer de bus voor het laatst niet 'ecu' haalde
 function _stats(){
   try{
     if(window.PLBus && typeof PLBus.stats==='function') return PLBus.stats();
-  }catch(e){}
+  }catch(e){ console.warn('PLBus.stats mislukt:', e); }
   return null;
 }
 
@@ -85,7 +85,7 @@ function meet(){
     leegReeks: 0, perSec: null, foutPct: null, onvolPct: null,
     trede: 'geen', reden: ''
   };
-  try{ uit.leegReeks = Number(window._emptyStreak)||0; }catch(e){}
+  try{ uit.leegReeks = Number(window._emptyStreak)||0; }catch(e){ /* stil: leest een teller die pas na de eerste botmeting bestaat */ }
 
   if(uit.demo){ uit.trede='betrouwbaar'; uit.reden='demomodus'; return uit; }
   if(!uit.verbonden){ uit.reden='niet verbonden'; return uit; }

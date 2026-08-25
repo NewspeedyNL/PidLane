@@ -109,14 +109,14 @@
     const url = (typeof PROXY_URL !== 'undefined' ? PROXY_URL : '') +
                 '/proxy?url=' + encodeURIComponent(doel);
     const headers = {};
-    try { if (typeof APP_TOKEN !== 'undefined' && APP_TOKEN) headers['X-App-Token'] = APP_TOKEN; } catch (e) {}
+    try { if (typeof APP_TOKEN !== 'undefined' && APP_TOKEN) headers['X-App-Token'] = APP_TOKEN; } catch(e){ /* stil: APP_TOKEN kan nog niet gezet zijn */ }
     const r = await fetch(url, { headers });
     if (!r.ok) throw new Error(`RDW ${dataset}: HTTP ${r.status}`);
     return r.json();
   }
 
   function diag(msg, lvl) {
-    try { if (typeof btDiag === 'function') btDiag(msg, lvl || 'info'); } catch (e) {}
+    try { if (typeof btDiag === 'function') btDiag(msg, lvl || 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }
 
   // ── Ophalen ───────────────────────────────────────────────────────────
@@ -288,7 +288,7 @@
     PLRecall.vulKoopcheckBanner(kt).then(res => {
       if (!res) return;
       window._plRecall = res;   // beschikbaar voor de AI-prompts
-      try { window.dispatchEvent(new CustomEvent('pl:recall-klaar', { detail: res })); } catch (e) {}
+      try { window.dispatchEvent(new CustomEvent('pl:recall-klaar', { detail: res })); } catch(e){ /* stil: browser-API kan ontbreken of geweigerd worden */ }
     });
   });
 

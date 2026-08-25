@@ -112,17 +112,17 @@ var _blkS = {
 function _blkEl(id) { try { return document.getElementById(id); } catch (e) { return null; } }
 
 function toast(m) {
-  try { if (typeof showToast === 'function') { showToast(m); return; } } catch (e) {}
-  try { console.log('[PLBulk] ' + m); } catch (e) {}
+  try { if (typeof showToast === 'function') { showToast(m); return; } } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  try { console.log('[PLBulk] ' + m); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 function logg(m, lvl) {
-  try { if (typeof log === 'function') { log('📼 ' + m, lvl || 'info'); return; } } catch (e) {}
-  try { console.log('[PLBulk] ' + m); } catch (e) {}
+  try { if (typeof log === 'function') { log('📼 ' + m, lvl || 'info'); return; } } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  try { console.log('[PLBulk] ' + m); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 function magIk() {
-  try { if (typeof isAdmin === 'function') return !!isAdmin(); } catch (e) {}
+  try { if (typeof isAdmin === 'function') return !!isAdmin(); } catch(e){ console.warn('isAdmin mislukt:', e); }
   return false;
 }
 
@@ -152,12 +152,12 @@ function pakPidVals() {
       if (typeof v === 'number') { if (isFinite(v)) uit[k] = Math.round(v * 1000) / 1000; }
       else if (typeof v === 'string' || typeof v === 'boolean') uit[k] = v;
     }
-  } catch (e) {}
+  } catch(e){ console.warn('pidVals-snapshot opbouwen — anders lijkt een gedeeltelijk resultaat compleet mislukt:', e); }
   return uit;
 }
 
 function getPid(p) {
-  try { if (typeof pidVals !== 'undefined' && pidVals) return pidVals[p]; } catch (e) {}
+  try { if (typeof pidVals !== 'undefined' && pidVals) return pidVals[p]; } catch(e){ /* stil: pidVals kan nog niet bestaan vóór de eerste meting */ }
   return undefined;
 }
 
@@ -175,7 +175,7 @@ function dbOpen() {
         try {
           var db = ev.target.result;
           if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { autoIncrement: true });
-        } catch (e) {}
+        } catch(e){ console.warn('IndexedDB-store aanmaken (onupgradeneeded) mislukt:', e); }
       };
       rq.onsuccess = function () { res(rq.result); };
       rq.onerror   = function () { rej(rq.error || new Error('open mislukt')); };
@@ -309,7 +309,7 @@ async function flush() {
     await dbKlaar();
     await dbSchrijf(blok);
     _blkS.nBlokken++;
-    try { _blkS.bytes += JSON.stringify(blok).length; } catch (e) {}
+    try { _blkS.bytes += JSON.stringify(blok).length; } catch(e){ /* stil: waarde kan niet-serialiseerbaar zijn */ }
     if (_blkS.bytes > WAARSCHUW_MB * 1048576) {
       toast('Bulk-recorder: al ' + mb(_blkS.bytes) + ' MB opgeslagen — exporteer tussendoor');
       _blkS.bytes = 0;   // niet blijven zeuren
@@ -337,7 +337,7 @@ function metaBewaar() {
       blokken : _blkS.nBlokken,
       seg     : _blkS.seg
     }));
-  } catch (e) {}
+  } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 
 function metaLees() {
@@ -345,7 +345,7 @@ function metaLees() {
 }
 
 function metaWeg() {
-  try { localStorage.removeItem(META_KEY); } catch (e) {}
+  try { localStorage.removeItem(META_KEY); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 
 /* ═══════════════════ ZWEVENDE CHIP ═══════════════════ */
@@ -496,7 +496,7 @@ async function exporteer() {
 }
 
 function bewaarBestand(naam, body) {
-  try { if (typeof download === 'function') { download(naam, body); return; } } catch (e) {}
+  try { if (typeof download === 'function') { download(naam, body); return; } } catch(e){ console.warn('download mislukt:', e); }
   try {
     var b = new Blob([body], { type: 'application/x-ndjson' });
     var u = URL.createObjectURL(b);
@@ -504,7 +504,7 @@ function bewaarBestand(naam, body) {
     a.href = u; a.download = naam;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(u); }, 2000);
-  } catch (e) {}
+  } catch(e){ /* stil: element kan al weg zijn */ }
 }
 
 async function wisAlles() {
@@ -616,7 +616,7 @@ setInterval(function () {
     if (_blkS.actief) chipBij();
     var o = _blkEl('blkOverlay');
     if (o && o.style.display !== 'none') dashBij();
-  } catch (e) {}
+  } catch(e){ console.warn('dashBij mislukt:', e); }
 }, 1000);
 
 /* ═══════════════════ HERSTART OVERLEVEN ═══════════════════ */
@@ -636,22 +636,22 @@ function herstelPoging() {
     toast('Bulk-recorder liep nog (' + mins + ' min) — hervat');
     logg('sessie hervat na herstart', 'warn');
     start(true);
-  } catch (e) {}
+  } catch(e){ console.warn('start mislukt:', e); }
 }
 
 try {
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', function () { setTimeout(herstelPoging, 3000); });
   else setTimeout(herstelPoging, 3000);
-} catch (e) {}
+} catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
 
 /* Laatste kans om de buffer te redden als de pagina weggaat. */
 try {
-  window.addEventListener('pagehide', function () { try { if (_blkS.actief) { metaBewaar(); flush(); } } catch (e) {} });
+  window.addEventListener('pagehide', function () { try { if (_blkS.actief) { metaBewaar(); flush(); } } catch(e){ console.warn('flush mislukt:', e); } });
   document.addEventListener('visibilitychange', function () {
-    try { if (document.visibilityState === 'hidden' && _blkS.actief) flush(); } catch (e) {}
+    try { if (document.visibilityState === 'hidden' && _blkS.actief) flush(); } catch(e){ console.warn('flush mislukt:', e); }
   });
-} catch (e) {}
+} catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
 
 /* ═══════════════════ EXPORT NAAR GLOBALE SCOPE ═══════════════════ */
 

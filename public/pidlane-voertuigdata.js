@@ -96,7 +96,7 @@ function mergeVehicleData(src, data){
     // Idem: purgeImplausiblePids() bestaat sinds ronde 5b niet meer. Deze
     // aanroep faalde stil, waardoor §11-punt 2 ("geen herijking van de
     // bronlijst") in de praktijk nooit is opgelost — ook al stond 5b als ✅.
-    if(vehicleInfo.brandstof && vehicleInfo.brandstof!==_hadB){ try{ herijkPidGate('brandstoftype bekend: '+vehicleInfo.brandstof); }catch(e){} }
+    if(vehicleInfo.brandstof && vehicleInfo.brandstof!==_hadB){ try{ herijkPidGate('brandstoftype bekend: '+vehicleInfo.brandstof); }catch(e){ console.warn('herijkPidGate mislukt:', e); } }
   }
   if(data.motor!==undefined)     _setField('motor',     data.motor, src);
   // Model NA merk zetten, zodat dedup het (net genormaliseerde) merk kent.
@@ -114,7 +114,7 @@ function _uvdDefault(){
 }
 let userVehicleData=_uvdDefault();
 function _uvKey(){
-  let k=''; try{ k=(vehicleInfo&&vehicleInfo.vin)||localStorage.getItem('pl_kenteken')||''; }catch(e){}
+  let k=''; try{ k=(vehicleInfo&&vehicleInfo.vin)||localStorage.getItem('pl_kenteken')||''; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   return 'pl_uvd_'+(k||'onbekend');
 }
 function loadUserVehicleData(){
@@ -122,7 +122,7 @@ function loadUserVehicleData(){
   // gemerged: had auto B nog geen eigen opslag, dan bleven km, onderhoud en
   // bijzonderheden van auto A gewoon staan en gingen die mee de AI-prompt in.
   userVehicleData=_uvdDefault();
-  try{ const s=localStorage.getItem(_uvKey()); if(s) userVehicleData={...userVehicleData,...JSON.parse(s)}; }catch(e){}
+  try{ const s=localStorage.getItem(_uvKey()); if(s) userVehicleData={...userVehicleData,...JSON.parse(s)}; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   if(!Array.isArray(userVehicleData.sit)) userVehicleData.sit=[];
   // Rijsituatie verloopt vanzelf: een caravanvlag van gisteren mag de analyse
   // van vandaag niet kleuren.
@@ -131,17 +131,17 @@ function loadUserVehicleData(){
     if(userVehicleData.sit.length && userVehicleData.sitTs && (Date.now()-userVehicleData.sitTs)>ttl){
       userVehicleData.sit=[]; userVehicleData.sitTs=0;
       saveUserVehicleData();
-      try{ log('Rijsituatie verlopen (>'+Math.round(ttl/3600000)+' u) — vlaggen automatisch gewist','info'); }catch(e){}
+      try{ log('Rijsituatie verlopen (>'+Math.round(ttl/3600000)+' u) — vlaggen automatisch gewist','info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
     }
-  }catch(e){}
+  }catch(e){ console.warn('saveUserVehicleData mislukt:', e); }
 }
 function saveUserVehicleData(){
-  try{ localStorage.setItem(_uvKey(), JSON.stringify(userVehicleData)); }catch(e){}
+  try{ localStorage.setItem(_uvKey(), JSON.stringify(userVehicleData)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function applyUserOverrides(){
   const u=userVehicleData||{}; const core={};
   ['merk','model','year','brandstof'].forEach(k=>{ if(String(u[k]||'').trim()) core[k]=u[k]; });
-  if(Object.keys(core).length){ try{ mergeVehicleData('user',core); }catch(e){} }
+  if(Object.keys(core).length){ try{ mergeVehicleData('user',core); }catch(e){ console.warn('mergeVehicleData mislukt:', e); } }
 }
 function dossierPct(){
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
@@ -257,28 +257,28 @@ function openVehicleOverview(){
     </div>
   </div>`;
   m.style.display='flex';
-  try{ renderSituatie('sitBlok'); }catch(e){}
+  try{ renderSituatie('sitBlok'); }catch(e){ console.warn('renderSituatie mislukt:', e); }
 }
 function saveVehicleOverview(){
   const g=id=>((document.getElementById(id)||{}).value||'').trim();
   // Kernvelden via de merge-laag met bron 'user' (hoogste prioriteit)
-  try{ mergeVehicleData('user',{ merk:g('uvMerk'), model:g('uvModel'), year:g('uvYear'), brandstof:g('uvBrand') }); }catch(e){}
+  try{ mergeVehicleData('user',{ merk:g('uvMerk'), model:g('uvModel'), year:g('uvYear'), brandstof:g('uvBrand') }); }catch(e){ console.warn('mergeVehicleData mislukt:', e); }
   userVehicleData.merk=g('uvMerk'); userVehicleData.model=g('uvModel');
   userVehicleData.year=g('uvYear'); userVehicleData.brandstof=g('uvBrand');
   userVehicleData.km=g('uvKm'); userVehicleData.beurt=g('uvBeurt');
   userVehicleData.distributie=g('uvDistr'); userVehicleData.bijz=g('uvBijz');
   // De rijsituatie slaat zichzelf al op bij elke tik, maar het vrije tekstveld
   // pakken we hier nog een keer op zodat er niets verloren gaat bij snel sluiten.
-  try{ const se=document.getElementById('uvSitExtra'); if(se) userVehicleData.sitExtra=String(se.value||'').trim(); }catch(e){}
+  try{ const se=document.getElementById('uvSitExtra'); if(se) userVehicleData.sitExtra=String(se.value||'').trim(); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   saveUserVehicleData();
   try{
     const naam=`${vehicleInfo.merk||''} ${vehicleInfo.model||''}`.trim()||'Voertuig';
     showVtag(naam);
     const me=document.getElementById('vicMerk'); if(me) me.textContent=naam;
-  }catch(e){}
+  }catch(e){ console.warn('showVtag mislukt:', e); }
   const m=document.getElementById('vehOverview'); if(m) m.style.display='none';
   showToast?.('✓ Voertuigdata opgeslagen — telt mee in analyses');
-  try{ logUsage('dossier_update','pct='+dossierPct()); }catch(e){}
+  try{ logUsage('dossier_update','pct='+dossierPct()); }catch(e){ console.warn('dossierPct mislukt:', e); }
 }
 // Dossier-regel voor AI-prompts: gebruikersdata is leidend en weegt zwaar mee.
 function _dossierPromptLine(){
@@ -350,17 +350,17 @@ async function brandstofPoort(){
       if(isFinite(code) && code >= 1){
         // In pidVals zetten: vehicleFuelType() leest die als terugval, dus
         // hiermee weten de gate en de health-scan het meteen.
-        try{ if(typeof pidVals !== 'undefined' && pidVals) pidVals['0151'] = code; }catch(e){}
+        try{ if(typeof pidVals !== 'undefined' && pidVals) pidVals['0151'] = code; }catch(e){ /* stil: pidVals kan nog niet bestaan vóór de eerste meting */ }
         const type = nu();
         if(type !== 'onbekend'){
-          try{ btDiag('Brandstof uit de auto (0151='+code+'): '+type, 'ok'); }catch(e){}
+          try{ btDiag('Brandstof uit de auto (0151='+code+'): '+type, 'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
           return { bron:'obd', type, code };
         }
       }
     }
-    try{ btDiag('0151 gaf geen bruikbaar brandstoftype', 'warn'); }catch(e){}
+    try{ btDiag('0151 gaf geen bruikbaar brandstoftype', 'warn'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   }catch(e){
-    try{ btDiag('0151 uitlezen mislukt: '+(e.message||e), 'warn'); }catch(_){}
+    try{ btDiag('0151 uitlezen mislukt: '+(e.message||e), 'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
   }
 
   // ── 3. Het kenteken vragen ──
@@ -374,13 +374,13 @@ async function brandstofPoort(){
     if(inp) inp.value = kent;
     const res = await rdwLookup();
     if(res && res.ok){
-      try{ localStorage.setItem('pl_kenteken', kent); }catch(e){}
+      try{ localStorage.setItem('pl_kenteken', kent); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
       const type = nu();
-      try{ btDiag('Brandstof via RDW ('+kent+'): '+type, 'ok'); }catch(e){}
+      try{ btDiag('Brandstof via RDW ('+kent+'): '+type, 'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
       return { bron:'rdw', type, kenteken:kent };
     }
   }catch(e){
-    try{ btDiag('RDW-lookup mislukt: '+(e.message||e), 'warn'); }catch(_){}
+    try{ btDiag('RDW-lookup mislukt: '+(e.message||e), 'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
   }
   return { bron:'rdw-mislukt', type:nu() };
 }
@@ -393,8 +393,8 @@ function _vraagKenteken(){
     let af = false;
     const sluit = function(waarde){
       if(af) return; af = true;
-      try{ document.removeEventListener('keydown', esc); }catch(e){}
-      try{ ov.remove(); }catch(e){}
+      try{ document.removeEventListener('keydown', esc); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+      try{ ov.remove(); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
       klaar(waarde || '');
     };
     const esc = function(e){ if(e.key === 'Escape') sluit(''); };
@@ -437,7 +437,7 @@ function _vraagKenteken(){
     ov.querySelector('#bpSkip').onclick = function(){ sluit(''); };
     veld.addEventListener('keydown', function(e){ if(e.key === 'Enter') ov.querySelector('#bpOk').click(); });
     document.addEventListener('keydown', esc);
-    try{ veld.focus(); }catch(e){}
+    try{ veld.focus(); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   });
 }
 
