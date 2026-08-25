@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.5 (25-08-2026)';
+const TESTRUN_VERSIE = '4.6 (25-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2085,6 +2085,92 @@ async function _blok12() {
   });
 }
 
+/* ── BLOK 13 — LEVERT STPX WAT HET BELOOFT? (25-08-2026, alleen lezen) ─
+   Blok 12 stelde vast dat dit een STN2255 is (OBDLink MX+), geen clone.
+   Daarmee is STPX beschikbaar: één commando waarin je zelf de header, de
+   data én het VERWACHTE AANTAL ANTWOORDFRAMES meegeeft.
+
+   Waarom dat zoveel uitmaakt: bij een gewone ELM-uitvraag weet de adapter
+   niet hoeveel frames er komen, dus wacht hij tot de timeout verstrijkt of
+   tot hij denkt klaar te zijn. Dat is precies de reden dat deze app
+   batchgroottes moet raden, bytelengtes moet leren (PLPidLen) en bij twijfel
+   van drie naar één terugvalt. Met R:1 weet de adapter dat hij na één frame
+   mag stoppen en antwoordt hij meteen.
+
+   Dit blok meet dat verschil in plaats van het aan te nemen. Vijf keer
+   hetzelfde PID langs beide wegen, mediaan vergelijken. Vijf is weinig, maar
+   dit is een eerste peiling — als het verschil klein is, hoef je die hele
+   laag niet aan te raken.
+
+   ALLEEN LEZEN: STPX verandert geen enkele instelling van de adapter en
+   schrijft niets naar de auto. Er wordt bewust NIET van protocol gewisseld
+   (MS-CAN) — dat verandert wél de toestand en hoort niet in een testrun die
+   je tijdens het rijden kunt draaien.
+
+   Onzekerheid die ik eerlijk meld: de exacte STPX-syntax verschilt per
+   firmwareversie. Daarom staat het rauwe antwoord in de uitslag. Komt er "?"
+   terug, dan kent deze firmware de vorm niet en is dat het antwoord — niet
+   een bewijs dat STPX niet werkt. */
+async function _blok13() {
+  if (typeof connected === 'undefined' || !connected) {
+    await _doe(13, 'STPX-winst', function () {
+      return { staat: 'LET OP', detail: 'niet verbonden — blok 13 vraagt de adapter zelf iets' };
+    });
+    return;
+  }
+
+  const schoon = function (x) { return String(x == null ? '' : x).replace(/[\r\n>]+/g, ' ').replace(/\s+/g, ' ').trim(); };
+  const mediaan = function (a) { const b = a.slice().sort(function (x, y) { return x - y; }); return b[Math.floor(b.length / 2)]; };
+
+  // 1. Kent deze firmware de STPX-vorm überhaupt?
+  let vorm = '';
+  await _doe(13, 'STPX: kent de adapter het commando', async function () {
+    let r = '';
+    try { r = schoon(await sendCmd('STPX D:0100, R:1', 3000)); } catch (e) { r = 'FOUT: ' + (e && e.message || e); }
+    vorm = r;
+    if (!r) return { staat: 'FOUT', detail: 'geen antwoord op STPX' };
+    if (/^\?+$/.test(r)) return { staat: 'FOUT', detail: 'antwoord "?" — deze firmware kent deze STPX-vorm niet. Rauw: "' + r + '"' };
+    if (/^41 ?00/i.test(r.replace(/\s/g, '')) || /4100/i.test(r.replace(/\s/g, '')))
+      return 'STPX antwoordt als een normale uitvraag: "' + r + '"';
+    return { staat: 'LET OP', detail: 'antwoord niet herkend als 4100 — beoordeel zelf. Rauw: "' + r + '"' };
+  });
+
+  if (/^\?+$/.test(vorm) || !vorm) return;
+
+  // 2. Hoeveel scheelt het? Vijf metingen per weg, om en om zodat een
+  //    tijdelijk drukke bus beide kanten even hard raakt.
+  await _doe(13, 'STPX: hoeveel sneller dan een gewone uitvraag', async function () {
+    const gewoon = [], stpx = [];
+    for (let i = 0; i < 5; i++) {
+      let t = Date.now();
+      try { await sendCmd('010C', 3000); } catch (e) { /* mislukte poging telt niet mee */ }
+      gewoon.push(Date.now() - t);
+      t = Date.now();
+      try { await sendCmd('STPX D:010C, R:1', 3000); } catch (e) { /* mislukte poging telt niet mee */ }
+      stpx.push(Date.now() - t);
+    }
+    const g = mediaan(gewoon), x = mediaan(stpx);
+    if (!g || !x) return { staat: 'LET OP', detail: 'geen bruikbare tijden gemeten' };
+    const pct = Math.round((g - x) / g * 100);
+    const regel = 'gewoon ' + g + ' ms, STPX ' + x + ' ms (' + (pct >= 0 ? '−' : '+') + Math.abs(pct) + '%)';
+    if (pct >= 20)
+      return { staat: 'LET OP', detail: regel + ' — dit is de moeite waard: met R: hoeft de adapter niet meer op een timeout te wachten. Overweeg de batchgok, PLPidLen en de terugval drie-naar-één te vervangen.' };
+    if (pct <= -10)
+      return { staat: 'LET OP', detail: regel + ' — STPX is hier LANGZAMER. Niet doen dus, of de syntax klopt niet.' };
+    return regel + ' — verschil te klein om die laag voor om te bouwen';
+  });
+
+  // 3. Wat de firmware verder meldt. Puur informatief; MS-CAN wordt bewust
+  //    niet uitgeprobeerd, want daarvoor moet je van protocol wisselen.
+  await _doe(13, 'STPX: protocol en kanaal', async function () {
+    let dpn = '', stp = '';
+    try { dpn = schoon(await sendCmd('ATDPN', 2000)); } catch (e) { dpn = ''; }
+    try { stp = schoon(await sendCmd('STPRS', 2000)); } catch (e) { stp = ''; }
+    return 'ATDPN="' + (dpn || 'geen antwoord') + '", STPRS="' + (stp || 'geen antwoord') +
+      '" — MS-CAN is niet geprobeerd: dat vraagt een protocolwissel en die hoort niet in een testrun tijdens het rijden';
+  });
+}
+
 async function _blok11() {
   // ── PUNT 3: hoe groot is het probleem van de stille sensoren? ──
   // De vraag uit PLAN.md is "op hoeveel mislukte pogingen mag de herijking hem
@@ -2234,7 +2320,7 @@ async function startTestrun(blokken) {
   // volle run alsnog scant naar iets waar we niet meer naar zoeken — inclusief
   // het header-gedoe op 7E0 dat daarbij hoort. Los aan te roepen blijft het:
   // startTestrun({b8:true}).
-  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true, b12: true };
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true, b12: true, b13: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -2259,6 +2345,7 @@ async function startTestrun(blokken) {
     // blokken, ruim vóór de trage metingen van blok 6 en 8.
     if (b.b11) await _blok11();
     if (b.b12) await _blok12();
+    if (b.b13) await _blok13();
     if (b.b6) await _blok6();
     // Blok 8 en 9 horen sinds 24-08 in geen enkele knop meer thuis: dat is de
     // mode 21/22-olietemperatuur en die zoektocht is gestaakt. De code blijft
@@ -2495,6 +2582,12 @@ const CAMPAGNE = {
     'VOORAF — blok 5 mag geen FOUT geven. Staat er "NIET geladen", lees de melding: dat kan ook de cache zijn. Eerst "Nieuwste versie laden", dan opnieuw.',
 
     'BLOK 12 — ADAPTER: BEANTWOORD op 25-08. STI="STN2255 v5.12.4", STDI="OBDLink MX+ r3.1.3", ATI="ELM327 v1.4b". Het IS een STN. Deze vraag hoeft niet opnieuw; laat blok 12 wel meelopen zodat een andere adapter meteen opvalt.',
+
+    'BLOK 13 — STPX. Nieuw, en de eigenlijke vervolgvraag op blok 12. Hij meet vijf keer om en om: gewone uitvraag tegen STPX met R:1. Noteer beide medianen. Scheelt het 20% of meer, dan kan de batchgok, PLPidLen en de terugval van drie-naar-één op termijn weg — dat is een hele laag minder. Scheelt het weinig, dan hoef je daar niet aan te beginnen en is dat óók winst.',
+
+    'BLOK 13, TWEEDE LEZING — draai hem één keer bij stilstand en één keer tijdens het rijden met alle vier de aanvragers aan. STPX helpt vooral als de bus druk is; bij stilstand meet je het gunstigste geval en dat zegt weinig over de praktijk.',
+
+    'MS-CAN — blok 13 probeert dit BEWUST NIET, want een protocolwissel hoort niet in een testrun die je tijdens het rijden draait. Wil je het weten, doe het los en stationair, met de terugweg vooraf uitgeschreven.',
 
     'VIN-PROFIEL — blok 1 meldde: staat in de opslag maar wordt bij het verbinden NIET geladen, de app doet een volle discovery. Kijk of dat elke keer gebeurt. Zo ja, dan kost elke verbinding onnodig een complete scan en blijft het voertuig op "Mazda" staan zonder model, bouwjaar en brandstof — wat de brandstofafhankelijke gates voedt.',
 
