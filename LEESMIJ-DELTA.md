@@ -7,7 +7,7 @@ cd PidLane-main
 bash plcheck.sh $(pwd)
 ```
 
-Vijf bestanden. Testrun 3.8 → **4.5**. Zie ook OVERDRACHT-NIEUWE-CHAT.md.
+Zes bestanden. Testrun 3.8 → **4.5**. Zie ook OVERDRACHT-NIEUWE-CHAT.md en het nieuwe PIDLANE-CONTRACT.md (ontwerp, geen code).
 
 ---
 

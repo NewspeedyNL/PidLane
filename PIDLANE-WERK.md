@@ -171,6 +171,27 @@ Klein, geen sessie waard, maar niet vergeten.
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
 
+## Richting: het contract tussen meten en gebruiken
+
+Nieuw op 25-08, uitgewerkt in **`PIDLANE-CONTRACT.md`** (versie 0.1, ontwerp).
+
+Aanleiding: de vier meetvondsten van deze week kwamen allemaal bij de AI aan
+alsof het echte metingen waren — `0155 = 128` (rauwe byte), raildruk 27 minuten
+bevroren, `019D = −40` (ECU claimt maar levert niet), en een rit waarvan zes
+minuten ontbraken. De meetlaag wéét dat meestal prima; die kennis komt alleen
+nergens terecht.
+
+Het contract legt twee dingen vast: per meetwaarde een kwaliteitsklasse met
+reden, en per sessie een dekking (duur, gaten, volledigheid, herverbindingen).
+Kernregel: `waarde` is `null` zodra de kwaliteit niet `gemeten` of `stabiel` is,
+zodat een afnemer die de kwaliteit negeert zichtbaar faalt in plaats van stil.
+
+**Geen herbouw.** Invoering via een tussenlaag (`plMeetwaarde`, `plDekking`) en
+daarna één afnemer per sessie, AI-rapport eerst. Eerst STPX afronden, want dat
+verandert de meetlaag nog.
+
+Vier besluiten staan open in §9 van dat document.
+
 ## Testrun 25-08 (stilstand, 23 s) — nieuwe bevindingen
 
 - **VIN-profiel wordt niet gebruikt.** Blok 1: *"staat in de opslag maar is bij

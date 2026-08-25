@@ -101,6 +101,27 @@ Op opbrengst gesorteerd:
 
 ---
 
+## De richting: PIDLANE-CONTRACT.md
+
+Nieuw op 25-08, en het belangrijkste stuk van deze sessie. Ontwerp, geen code.
+
+De hele app draait op "data verzamelen en aan AI koppelen". Die koppeling werkt
+op een aanname die niet klopt: dat elke waarde die binnenkomt een echte meting
+is. `0155 = 128` is een rauwe byte. Raildruk stond 27 minuten stil. `019D = −40`
+komt van een PID die de ECU claimt maar niet levert. Een rit van 27,6 minuten
+miste er zes. Alle vier kwamen ze bij de AI aan als feiten.
+
+Het contract legt vast: per meetwaarde een kwaliteitsklasse met reden, en per
+sessie een dekking. Kernregel: `waarde` is `null` zodra de kwaliteit niet
+`gemeten` of `stabiel` is — dan faalt een afnemer die de kwaliteit negeert
+zichtbaar in plaats van stil.
+
+**Geen herbouw.** Tussenlaag (`plMeetwaarde`, `plDekking`), daarna één afnemer
+per sessie met blok 5-test, AI-rapport eerst. Eerst STPX, want dat verandert de
+meetlaag nog.
+
+**Vier besluiten staan open in §9** — die zijn aan Nico en bepalen de vorm.
+
 ## Openstaande punten, in volgorde
 
 ### 1. Opslaglocaties veranderen (staat in Claude's geheugen)
