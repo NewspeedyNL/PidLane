@@ -551,29 +551,118 @@ async function handleMessages(request, env) {
   const apiKey = clientKey || resolveAnthropicKey(env);
   if (!apiKey) return json({ error: { message: "Geen API-key beschikbaar in de Worker (check ANTHROPIC_API_KEY secret)" } }, 401);
 
-  // ── Tegoedcontrole vooraf ────────────────────────────────────────
+  const doAnthropicCall = async () => {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": request.headers.get("anthropic-version") || "2023-06-01"
+      },
+      body: JSON.stringify(payload)
+    });
+    const text = await r.text();
+    return { r, text };
+  };
+
+  // ── Klantaccounts: tegoedcontrole, AI-call en afboeking lopen SAMEN
+  // binnen het Saldo-slot van deze klant ────────────────────────────
   // Alleen voor klantaccounts (tabel Klanten). Accounts uit de tabel Users
   // zijn zakelijk met abonnement en betalen niet per analyse. Brengt de klant
   // zijn eigen sleutel mee, dan betaalt hij Anthropic al rechtstreeks en
-  // rekenen we hier niets af.
-  const tarief = tegoedTarief(env);
-  let klantRec = null, saldoVoor = 0;
+  // rekenen we hier niets af — en is er dus ook geen Saldo om te beschermen.
+  //
+  // Tot 26-08-2026 lazen twee gelijktijdige calls van hetzelfde account (twee
+  // apparaten, of een dubbele tik) allebei hetzelfde Saldo, en de laatst
+  // schrijvende afboeking won — de andere verdween geruisloos. Het hele stuk
+  // van lezen tot en met terugschrijven staat daarom nu in metSaldoSlot():
+  // een tweede aanvraag van dezelfde klant komt pas binnen als de eerste al
+  // heeft afgeboekt, en ziet dan het bijgewerkte Saldo. Een tweede aanvraag
+  // die tegen het slot aanloopt krijgt een nette "wacht even"-melding
+  // (tegoed_bezet) in plaats van gratis AI of een verdwenen afboeking.
   if (session.r === "klant" && !clientKey) {
     if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
-    // De foutvorm hieronder is bewust {error:{message}} en niet de {error:"..."}
-    // van de andere klantroutes: apiFetch in pidlane-fuel.js leest
-    // err?.error?.message uit en toont anders een kaal "HTTP 402". Zo krijgt de
-    // gebruiker een leesbare melding zonder dat fuel.js mee hoeft te wijzigen.
-    // `code` staat ernaast voor als de app er ooit op wil sturen.
+    const tarief = tegoedTarief(env);
+    let uitkomst;
     try {
-      klantRec = await klantZoek(env, session.u);
+      uitkomst = await metSaldoSlot(env, session.u, async () => {
+        // VERS gelezen, binnen het slot: dit is de eigenlijke
+        // racebeveiliging, niet het slot op zich (zie metSaldoSlot hierboven).
+        //
+        // De foutvorm hieronder is bewust {error:{message}} en niet de
+        // {error:"..."} van de andere klantroutes: apiFetch in
+        // pidlane-fuel.js leest err?.error?.message uit en toont anders een
+        // kaal "HTTP 402". Zo krijgt de gebruiker een leesbare melding zonder
+        // dat fuel.js mee hoeft te wijzigen. `code` staat ernaast voor als de
+        // app er ooit op wil sturen.
+        let klantRec;
+        try {
+          klantRec = await klantZoek(env, session.u);
+        } catch (e) {
+          // Bewust dichtklappen in plaats van doorlaten: een storing bij
+          // Airtable mag geen gratis AI opleveren. Wil je liever dat de app
+          // blijft werken als Airtable hapert, geef hier dan klantRec = null
+          // terug in plaats van een foutmelding — dan gaat de call door
+          // zonder afboeking.
+          try {
+            console.error("[tegoed] saldo niet leesbaar voor " + session.u + " :: " + String(e && e.message || e));
+          } catch (_) {
+          }
+          return {
+            status: 503,
+            body: { ok: false, code: "tegoed_onbekend", error: { message: "Je tegoed kon even niet gecontroleerd worden. Probeer het zo opnieuw." } }
+          };
+        }
+        if (!klantRec)
+          return { status: 404, body: { ok: false, code: "geen_account", error: { message: "Account niet gevonden." } } };
+        const kf = klantRec.fields || {};
+        if (kf.Status === "geblokkeerd")
+          return { status: 403, body: { ok: false, code: "geblokkeerd", error: { message: "Dit account is geblokkeerd." } } };
+        const saldoVoor = Number(kf.Saldo || 0);
+        if (saldoVoor < tarief.min)
+          return {
+            status: 402,
+            body: { ok: false, code: "onvoldoende_tegoed", saldo: saldoVoor, error: { message: "Je tokens zijn op. Wissel een activatiecode in om verder te gaan." } }
+          };
+
+        const { r, text } = await doAnthropicCall();
+        const kop = { "Content-Type": "application/json", ...CORS };
+
+        // ── Afboeken op echt verbruik ────────────────────────────────
+        // Alleen bij een geslaagd antwoord: een 429 of 500 van Anthropic
+        // levert de klant niets op en kost hem dus ook niets.
+        //
+        // Mislukt de schrijfactie, dan gaat het antwoord alsnog naar de
+        // klant: de call is al betaald bij Anthropic en achterhouden helpt
+        // niemand. Het gemis gaat naar de logs.
+        if (r.ok) {
+          let kosten = tarief.min;
+          try {
+            const d = JSON.parse(text);
+            kosten = tegoedKosten(d && d.usage, tarief);
+          } catch (_) {
+          }
+          const saldoNa = Math.max(0, saldoVoor - kosten);
+          try {
+            await klantPatch(env, klantRec.id, { Saldo: saldoNa });
+            kop["X-PidLane-Saldo"] = String(saldoNa);
+          } catch (e) {
+            try {
+              console.error("[tegoed] afboeken mislukt voor " + session.u + " (" + kosten + " credits) :: " + String(e && e.message || e));
+            } catch (_) {
+            }
+            kop["X-PidLane-Saldo"] = String(saldoVoor);
+          }
+        }
+        return { raw: new Response(text, { status: r.status, headers: kop }) };
+      });
     } catch (e) {
-      // Bewust dichtklappen in plaats van doorlaten: een storing bij Airtable
-      // mag geen gratis AI opleveren. Wil je liever dat de app blijft werken
-      // als Airtable hapert, geef hier dan klantRec = null terug in plaats van
-      // een foutmelding — dan gaat de call door zonder afboeking.
+      // metSaldoSlot zelf gooide: het slot kon niet aangevraagd worden
+      // (REMOTE_SESSION ontbreekt of de DO is onbereikbaar). NIET doorgaan
+      // zonder bescherming — dat zou precies de race terugbrengen die dit
+      // slot moet oplossen.
       try {
-        console.error("[tegoed] saldo niet leesbaar voor " + session.u + " :: " + String(e && e.message || e));
+        console.error("[tegoed] saldo-slot niet beschikbaar voor " + session.u + " :: " + String(e && e.message || e));
       } catch (_) {
       }
       return json({
@@ -582,70 +671,20 @@ async function handleMessages(request, env) {
         error: { message: "Je tegoed kon even niet gecontroleerd worden. Probeer het zo opnieuw." }
       }, 503);
     }
-    if (!klantRec)
-      return json({ ok: false, code: "geen_account", error: { message: "Account niet gevonden." } }, 404);
-    const kf = klantRec.fields || {};
-    if (kf.Status === "geblokkeerd")
-      return json({ ok: false, code: "geblokkeerd", error: { message: "Dit account is geblokkeerd." } }, 403);
-    saldoVoor = Number(kf.Saldo || 0);
-    if (saldoVoor < tarief.min)
+    if (uitkomst.bezet)
       return json({
         ok: false,
-        code: "onvoldoende_tegoed",
-        saldo: saldoVoor,
-        error: { message: "Je tokens zijn op. Wissel een activatiecode in om verder te gaan." }
-      }, 402);
+        code: "tegoed_bezet",
+        error: { message: "Er loopt al een analyse voor dit account. Wacht tot die klaar is." }
+      }, 409);
+    const uit = uitkomst.result;
+    return uit.raw || json(uit.body, uit.status);
   }
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": request.headers.get("anthropic-version") || "2023-06-01"
-    },
-    body: JSON.stringify(payload)
-  });
-  const text = await r.text();
-  const kop = { "Content-Type": "application/json", ...CORS };
-
-  // ── Afboeken op echt verbruik ────────────────────────────────────
-  // Alleen bij een geslaagd antwoord: een 429 of 500 van Anthropic levert de
-  // klant niets op en kost hem dus ook niets. De afboeking wordt afgewacht
-  // (niet in waitUntil), zodat vervolgcalls bij max_tokens een saldo zien dat
-  // al is bijgewerkt. Dat kost een paar honderd ms op een call die er toch al
-  // seconden over doet.
-  //
-  // Mislukt de schrijfactie, dan gaat het antwoord alsnog naar de klant: de
-  // call is al betaald bij Anthropic en achterhouden helpt niemand. Het gemis
-  // gaat naar de logs.
-  //
-  // BEKENDE GRENS: Airtable kent geen transacties. Twee gelijktijdige calls
-  // van hetzelfde account (twee apparaten) kunnen elkaars afboeking
-  // overschrijven. Bij normaal gebruik lopen calls netjes achter elkaar; wordt
-  // dit ooit een probleem, dan is de Durable Object de plek om het saldo te
-  // serialiseren.
-  if (klantRec && r.ok) {
-    let kosten = tarief.min;
-    try {
-      const d = JSON.parse(text);
-      kosten = tegoedKosten(d && d.usage, tarief);
-    } catch (_) {
-    }
-    const saldoNa = Math.max(0, saldoVoor - kosten);
-    try {
-      await klantPatch(env, klantRec.id, { Saldo: saldoNa });
-      kop["X-PidLane-Saldo"] = String(saldoNa);
-    } catch (e) {
-      try {
-        console.error("[tegoed] afboeken mislukt voor " + session.u + " (" + kosten + " credits) :: " + String(e && e.message || e));
-      } catch (_) {
-      }
-      kop["X-PidLane-Saldo"] = String(saldoVoor);
-    }
-  }
-
-  return new Response(text, { status: r.status, headers: kop });
+  // ── Zakelijke accounts en klanten met eigen sleutel: geen Saldo om te
+  // beschermen, dus geen slot nodig. ──────────────────────────────────
+  const { r, text } = await doAnthropicCall();
+  return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
 }
 __name(handleMessages, "handleMessages");
 async function handleAirtableLog(request, env) {
@@ -1236,6 +1275,43 @@ function redeemStub(env, code) {
   return env.REMOTE_SESSION.get(env.REMOTE_SESSION.idFromName("redeem:" + code));
 }
 __name(redeemStub, "redeemStub");
+
+// ── Saldo-slot ────────────────────────────────────────────────────────
+// Eigen instance-naamruimte per klant-e-mail, zodat het slot van de ene
+// klant nooit dat van een ander raakt en nooit dat van een activatiecode.
+function saldoStub(env, email) {
+  return env.REMOTE_SESSION.get(env.REMOTE_SESSION.idFromName("saldo:" + String(email || "").trim().toLowerCase()));
+}
+__name(saldoStub, "saldoStub");
+
+// Voert fn() uit terwijl het Saldo-slot van deze klant vast staat, en geeft
+// het los in een finally — ook als fn() gooit. fn() hoort zelf een VERSE
+// klantZoek() te doen zodra hij binnen is: dat is de eigenlijke
+// racebeveiliging, niet het slot op zich. Zie handleMessages,
+// handleCreditsRedeem en handleKlantOnboarding voor de drie plekken die dit
+// gebruiken — dat zijn alle drie de plekken die Saldo lezen en terugschrijven.
+//
+// Lukt het niet om het slot zelf aan te vragen (REMOTE_SESSION ontbreekt, de
+// DO is onbereikbaar), dan gooit dit door in plaats van fn() zonder
+// bescherming te draaien: dat zou precies de race terugbrengen die dit
+// oplost. De aanroeper vangt dat af als "tegoed kon niet gecontroleerd
+// worden", niet als "ga maar door".
+async function metSaldoSlot(env, email, fn) {
+  if (!env.REMOTE_SESSION) throw new Error("geen REMOTE_SESSION-binding — saldo kan niet veilig gemuteerd worden");
+  const slot = saldoStub(env, email);
+  const grendel = await slot.fetch("https://do/saldo-lock", { method: "POST" });
+  if (!grendel.ok) return { bezet: true, result: void 0 };
+  try {
+    const result = await fn();
+    return { bezet: false, result };
+  } finally {
+    try {
+      await slot.fetch("https://do/saldo-unlock", { method: "POST" });
+    } catch (_) {
+    }
+  }
+}
+__name(metSaldoSlot, "metSaldoSlot");
 function randDigits(n) {
   let out = "";
   while (out.length < n) {
@@ -1318,6 +1394,26 @@ var RemoteSessionDO = class {
       this.vstate = await this.ctx.storage.get("vstate") || null;
     });
   }
+  // Gedeelde implementatie achter redeem-lock/-unlock EN saldo-lock/-unlock:
+  // één instance per beschermde entiteit (zie redeemStub/saldoStub) maakt dit
+  // veilig generiek te maken over de sleutel en hoe lang een slot geldig blijft.
+  async _lock(key, staleMs) {
+    const nu = Date.now();
+    let gelukt = false;
+    await this.ctx.blockConcurrencyWhile(async () => {
+      const cur = Number(await this.ctx.storage.get(key)) || 0;
+      // Een slot ouder dan staleMs is een restant van een verzoek dat
+      // halverwege is gesneuveld (Worker herstart, netwerkfout); dat mag
+      // verlopen in plaats van de entiteit voorgoed op slot te zetten.
+      if (cur && nu - cur < staleMs) return;
+      await this.ctx.storage.put(key, nu);
+      gelukt = true;
+    });
+    return gelukt;
+  }
+  async _unlock(key) {
+    await this.ctx.storage.delete(key);
+  }
   async fetch(request) {
     if (request.headers.get("Upgrade") === "websocket") return this.handleConnect(request);
     const url = new URL(request.url);
@@ -1399,20 +1495,30 @@ var RemoteSessionDO = class {
     // Airtable werken zoals je gewend bent, en blokkeert een afgebroken
     // verzoek een code niet voorgoed.
     if (op === "redeem-lock") {
-      const nu = Date.now();
-      let gelukt = false;
-      await this.ctx.blockConcurrencyWhile(async () => {
-        const cur = Number(await this.ctx.storage.get("redeemLock")) || 0;
-        // Slot ouder dan 30 s is een restant van een verzoek dat halverwege
-        // is gesneuveld; dat mag verlopen.
-        if (cur && nu - cur < 3e4) return;
-        await this.ctx.storage.put("redeemLock", nu);
-        gelukt = true;
-      });
+      const gelukt = await this._lock("redeemLock", 3e4);
       return Response.json({ ok: gelukt }, { status: gelukt ? 200 : 409 });
     }
     if (op === "redeem-unlock") {
-      await this.ctx.storage.delete("redeemLock");
+      await this._unlock("redeemLock");
+      return Response.json({ ok: true });
+    }
+    // Zelfde soort kortstondig slot, nu rond Saldo lezen-en-terugschrijven.
+    // Airtable kent geen transacties: een AI-afboeking, een activatiecode
+    // inwisselen en de eenmalige onboardingbonus lazen tot 26-08-2026 alle
+    // drie onafhankelijk hetzelfde Saldo en de laatst schrijvende won — de
+    // andere mutatie verdween geruisloos. Zie metSaldoSlot() verderop in dit
+    // bestand voor de kant die dit slot gebruikt.
+    //
+    // Stale-timeout ruim langer dan bij redeem-lock: een activatiecode
+    // controleren is een paar Airtable-calls, een AI-antwoord kan met
+    // max_tokens=8192 tientallen seconden duren en het slot moet daar
+    // overheen blijven staan.
+    if (op === "saldo-lock") {
+      const gelukt = await this._lock("saldoLock", 12e4);
+      return Response.json({ ok: gelukt }, { status: gelukt ? 200 : 409 });
+    }
+    if (op === "saldo-unlock") {
+      await this._unlock("saldoLock");
       return Response.json({ ok: true });
     }
     if (op === "code-put") {
@@ -1879,12 +1985,21 @@ async function handleCreditsRedeem(request, env) {
     try {
       const p = await klantAuth(request, env);
       if (p) {
-        const kr = await klantZoek(env, p.u);
-        if (kr) {
+        // Lezen-optellen-terugschrijven op Saldo, dus door hetzelfde slot als
+        // handleMessages (AI-afboeking) en handleKlantOnboarding
+        // (welkomstbonus): zonder slot kon het bijboeken van deze code een
+        // gelijktijdige afboeking overschrijven of omgekeerd. Lukt het slot
+        // zelf niet, dan gooit metSaldoSlot door naar de buitenste catch
+        // hieronder — de code is dan al afgestempeld (stap 3/4 hierboven),
+        // dus dat wordt gemeld als "geldig maar bijboeken mislukt", niet als
+        // een mislukte inwisseling.
+        const uitkomst = await metSaldoSlot(env, p.u, async () => {
+          const kr = await klantZoek(env, p.u);
+          if (!kr) return null;
           const kf = kr.fields || {};
-          saldo = Number(kf.Saldo || 0) + credits;
+          const nieuwSaldo = Number(kf.Saldo || 0) + credits;
           await klantPatch(env, kr.id, {
-            Saldo: saldo,
+            Saldo: nieuwSaldo,
             TotaalGekocht: Number(kf.TotaalGekocht || 0) + credits
           });
           await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
@@ -1892,7 +2007,11 @@ async function handleCreditsRedeem(request, env) {
             headers: hdr,
             body: JSON.stringify({ records: [{ id: rec.id, fields: { GebruiktDoor: kf.Email || door } }] })
           }).catch(() => {});
-        }
+          return nieuwSaldo;
+        });
+        if (uitkomst.bezet)
+          throw new Error("saldo-slot bezet — er loopt al een andere saldowijziging voor dit account");
+        saldo = uitkomst.result;
       }
     } catch (e) {
       return json({
@@ -2692,31 +2811,33 @@ async function handleKlantOnboarding(request, env) {
     return json({ ok: false, error: "Akkoord met uitlezen en geanonimiseerde data is nodig om PidLane te gebruiken." }, 400);
 
   try {
-    const rec = await klantZoek(env, p.u);
-    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
-    const f = rec.fields || {};
-
     const akkoorden = ["survey", "anondata"];
     if (b.nieuwsbrief === true) akkoorden.push("nieuwsbrief");
 
-    const alGehad = f.StartTegoedGegeven === true;
-    const bedrag = Math.max(0, Math.round(Number(env.KLANT_START_SALDO || 20)));
-    const huidig = Number(f.Saldo || 0);
-    const nieuw = alGehad ? huidig : huidig + bedrag;
+    // Leest en telt op bij Saldo, dus door hetzelfde slot als handleMessages
+    // en handleCreditsRedeem: zonder slot kon deze eenmalige welkomstbonus
+    // een gelijktijdige AI-afboeking of code-inwisseling overschrijven.
+    const uitkomst = await metSaldoSlot(env, p.u, async () => {
+      const rec = await klantZoek(env, p.u);
+      if (!rec) return { status: 404, body: { ok: false, error: "Account niet gevonden." } };
+      const f = rec.fields || {};
+      const alGehad = f.StartTegoedGegeven === true;
+      const bedrag = Math.max(0, Math.round(Number(env.KLANT_START_SALDO || 20)));
+      const huidig = Number(f.Saldo || 0);
+      const nieuw = alGehad ? huidig : huidig + bedrag;
 
-    await klantPatch(env, rec.id, {
-      Akkoorden: akkoorden,
-      AkkoordOp: new Date().toISOString(),
-      StartTegoedGegeven: true,
-      Saldo: nieuw
-    });
+      await klantPatch(env, rec.id, {
+        Akkoorden: akkoorden,
+        AkkoordOp: new Date().toISOString(),
+        StartTegoedGegeven: true,
+        Saldo: nieuw
+      });
 
-    return json({
-      ok: true,
-      saldo: nieuw,
-      toegekend: alGehad ? 0 : bedrag,
-      akkoorden
+      return { status: 200, body: { ok: true, saldo: nieuw, toegekend: alGehad ? 0 : bedrag, akkoorden } };
     });
+    if (uitkomst.bezet)
+      return json({ ok: false, error: "Je keuzes worden al vastgelegd. Probeer het over een paar seconden opnieuw." }, 409);
+    return json(uitkomst.result.body, uitkomst.result.status);
   } catch (e) {
     return klantFout(e, "Vastleggen van je keuzes mislukte.");
   }
