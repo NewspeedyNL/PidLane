@@ -65,7 +65,34 @@ function plLoginMeld(el, tekst, soort){
 }
 window.plLoginMeld = plLoginMeld;
 
+// ── Uitlogvlag ──────────────────────────────────────────────────────
+// Nico, 25-08: "na uitloggen wordt er automatisch weer ingelogd."
+// Hij logde niet opnieuw in — hij is nooit uitgelogd geraakt. logout()
+// vraagt een admin eerst of de volledige log bewaard moet worden, en dat
+// opent een deel- of bestandsvenster. De app gaat daarmee naar de
+// achtergrond, Android herlaadt de WebView bij terugkomst, en op dát moment
+// staan pl_session en het sessietoken er nog gewoon: het wissen gebeurde
+// pas ná de export. Het sessieherstel in pidlane-theme.js vindt een geldig
+// token, roept finishLogin() aan, en je bent weer binnen.
+//
+// Waarom niet simpelweg alles vóór de export wissen: de export leunt op
+// window.APP_TOKEN, en tokClear() maakt die leeg. Dan zou de logbundel
+// stukgaan — precies de reden dat de vraag oorspronkelijk vooraan stond.
+//
+// Deze vlag scheidt de twee: de opgeslagen sessie is meteen dood, het
+// token in het geheugen blijft leven tot de export klaar is. Herstart de
+// app tussendoor, dan vindt het herstel niets. De vlag verdwijnt bij het
+// einde van logout() en bij een volgende geslaagde login.
+const UITLOG_KEY='pl_uitloggen';
+function uitlogVlagAan(){ try{ localStorage.setItem(UITLOG_KEY,'1'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } }
+function uitlogVlagWeg(){ try{ localStorage.removeItem(UITLOG_KEY); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } }
+function uitlogBezig(){ try{ return localStorage.getItem(UITLOG_KEY)==='1'; }catch(e){ return false; } }
+
 function tokLoad(){
+  // Midden in een uitlogpoging nooit een sessie teruggeven, ook al staat er
+  // een geldig token. Dit is het enige punt waar het herstel in
+  // pidlane-theme.js langskomt (regel 277: tokLoad()).
+  if(uitlogBezig()) return null;
   try{
     const t=JSON.parse(localStorage.getItem(TOK_KEY)||'null');
     if(!t||!t.token||!t.exp) return null;
@@ -74,6 +101,7 @@ function tokLoad(){
   }catch(e){ return null; }
 }
 function tokSave(t){
+  uitlogVlagWeg();                 // verse login = uitloggen is voorbij
   try{ localStorage.setItem(TOK_KEY, JSON.stringify(t)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   window.APP_TOKEN = t.token;
 }
@@ -394,6 +422,14 @@ async function logout(){
   // worden. Pas daarna uitloggen. De vraag wordt gesteld vóór het wissen van
   // currentUser/voertuigdata zodat de geëxporteerde log compleet is.
   // (Het oude inlog-vinkje 'Extra logfunctie' is hiermee vervallen.)
+  // Eerst de opgeslagen sessie doden, dán pas exporteren. Zie de uitleg bij
+  // UITLOG_KEY hierboven: de export kan een venster openen, en een herstart
+  // op dat moment mag niets meer vinden om te herstellen. window.APP_TOKEN
+  // blijft nog even staan zodat de export zelf gewoon werkt.
+  uitlogVlagAan();
+  try{ localStorage.removeItem('pl_session'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+  try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+
   try{
     if(currentUser?.role==='admin'){
       const bewaar = window.confirm(
@@ -420,8 +456,8 @@ async function logout(){
   currentUser = null;
   window.currentUser = null;
   tokClear();                                       // sessietoken ongeldig maken
-  try{ localStorage.removeItem('pl_session'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   try{ localStorage.removeItem('pl_appstate'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // sessiestaat niet meenemen naar volgende login
+  uitlogVlagWeg();                                  // uitloggen is af; het loginscherm mag weer werken
   window.anthropicKey = '';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
@@ -468,7 +504,7 @@ const YEARS=Array.from({length:22},(_,i)=>(2024-i).toString());
 // ════════════════════════════════════════
 let port=null, reader=null, writer=null, connected=false, demoMode=false;
 
-/* ── PLWake — scherm aan houden zolang er gemeten wordt (24-08-2026) ──
+/* ── PLWakelock — scherm aan houden zolang er gemeten wordt (24-08-2026) ──
    Uit de rit van 23-08: het logboek had veertien stiltes van 40 tot 240 s,
    en op precies dezelfde kloktijden ontbrak ook de bulkopname. Een dode
    socket lógt fouten; hier logde niets. Het proces liep dus niet — Android
@@ -492,7 +528,11 @@ let port=null, reader=null, writer=null, connected=false, demoMode=false;
    moet weten wanneer er gemeten wordt. `connected` staat hier in dit bestand
    en is de enige waarheid; een tik van 5 s is goedkoop genoeg om die te
    volgen. */
-window.PLWake = (function(){
+// NAAM: PLWakelock, niet PLWake. Testrun 4.3 gaf "PLWake.steunt is not a
+// function" terwijl het object wél bestond — er is dus al een window.PLWake
+// in een module die ná pidlane-auth.js laadt, en die overschreef deze. De
+// naam is nu uniek; botst hij ooit alsnog, dan meldt blok 5 wát hij aantrof.
+window.PLWakelock = (function(){
   var lock = null, tikker = null, gemist = 0, laatsteFout = '';
 
   function steunt(){ return !!(navigator && navigator.wakeLock && navigator.wakeLock.request); }
@@ -505,7 +545,7 @@ window.PLWake = (function(){
       lock = await navigator.wakeLock.request('screen');
       gemist = 0; laatsteFout = '';
       // De browser kan hem zelf loslaten (tab weg, batterijbesparing aan).
-      // Zonder deze haak denkt PLWake dat hij hem nog heeft.
+      // Zonder deze haak denkt PLWakelock dat hij hem nog heeft.
       lock.addEventListener('release', function(){ lock = null; });
       melden('Scherm blijft aan tijdens de meting','ok');
       return true;

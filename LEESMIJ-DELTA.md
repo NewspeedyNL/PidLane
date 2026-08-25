@@ -7,7 +7,7 @@ cd PidLane-main
 bash plcheck.sh $(pwd)
 ```
 
-Vier bestanden. Testrun 3.8 → **4.3**.
+Vijf bestanden. Testrun 3.8 → **4.5**. Zie ook OVERDRACHT-NIEUWE-CHAT.md.
 
 ---
 
@@ -94,6 +94,40 @@ zodat niemand hem over een half jaar terugzet.
 gewoon doorliep. Selector nu `.pidview-btn[data-mode]`.
 
 ## 3. `public/pidlane-auth.js` — de drie puntjes + PLWake
+
+### Uitloggen blijft uitloggen
+
+**Je logde niet automatisch opnieuw in — je bent nooit uitgelogd geraakt.**
+
+`logout()` vraagt een admin eerst of de volledige log bewaard moet worden. Zeg
+je OK, dan opent een deel- of bestandsvenster, de app gaat naar de achtergrond,
+en Android herlaadt de WebView bij terugkomst. Op dát moment stonden
+`pl_session` en het sessietoken er nog gewoon, want het wissen gebeurde pas ná
+de export. Het sessieherstel in `pidlane-theme.js` (regel 277, `tokLoad()`)
+vindt een geldig token, roept `finishLogin()` aan, en je bent weer binnen.
+
+Dezelfde achtergrondkwestie dus als de herverbindingen, maar met een ander
+gevolg.
+
+**Waarom niet gewoon alles vóór de export wissen:** de export leunt op
+`window.APP_TOKEN`, en `tokClear()` maakt die leeg. Dan gaat de logbundel stuk —
+precies de reden dat die vraag oorspronkelijk vooraan stond.
+
+De uitlogvlag (`pl_uitloggen`) scheidt de twee. Bij het begin van `logout()`
+gaat de vlag aan en verdwijnen `pl_session` en `pl_autoconn`; `tokLoad()` geeft
+`null` zolang de vlag staat. Het token in het geheugen blijft leven tot de
+export klaar is. Herstart de app tussendoor, dan vindt het herstel niets. De
+vlag verdwijnt aan het einde van `logout()` en bij elke geslaagde `tokSave()` —
+dat tweede is het vangnet, zodat een halverwege afgebroken uitlogpoging je niet
+permanent buitensluit.
+
+Gecontroleerd met een nagebouwde tegenproef: de oude `tokLoad()` zonder vlag
+laat de nieuwe blok 5-controle afgaan op "tokLoad geeft nog een sessie", de
+nieuwe komt groen door, en de vlag staat na afloop weer uit.
+
+**Voor `PIDLANE.md`:** het sessieherstel staat in `pidlane-theme.js` — een
+boot-kritisch pad in de module voor opmaak. Ik had er drie greps voor nodig.
+Dat hoort op de architectuurkaart, los van deze bug.
 
 ### PLWake — scherm blijft aan tijdens de meting
 

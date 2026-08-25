@@ -171,6 +171,28 @@ Klein, geen sessie waard, maar niet vergeten.
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
 
+## Testrun 25-08 (stilstand, 23 s) — nieuwe bevindingen
+
+- **VIN-profiel wordt niet gebruikt.** Blok 1: *"staat in de opslag maar is bij
+  het verbinden NIET geladen; de app deed een volle discovery."* 55 PIDs met 55
+  health-oordelen, 18 minuten oud, en toch alles opnieuw scannen. Kost tijd bij
+  elke verbinding. Vermoedelijk ook de reden dat het voertuig op "Mazda" staat
+  zonder model, bouwjaar en brandstof — en dát voedt `merkGroep()` en de
+  brandstofafhankelijke gates.
+- **`0155`/`0156` staan niet in `ALL_PID_DEFS`.** In de sweep heten ze letterlijk
+  "PID 0155". Daarom komt de rauwe byte `0x80` = 128 eruit — geen parserfout maar
+  een ontbrekende definitie. Het zijn de secundaire O2-trims; met
+  `(A−128)·100/128` wordt 128 netjes 0%. Eén regel per PID in `pidlane-data.js`.
+  Dit sluit het losse eindje uit de rit van 23-08.
+- **Naambotsing `PLWake`.** Testrun 4.3 gaf FOUT `PLWake.steunt is not a
+  function` terwijl het object bestond: er is al een `window.PLWake` in een
+  module die ná `pidlane-auth.js` laadt. Hernoemd naar `PLWakelock` (4.5). Nog
+  te doen: nagaan wat die andere `PLWake` is —
+  `grep -rn "PLWake" public/*.js | grep -v pidlane-auth`. Als dat een bestaande
+  wakelock is, is de mijne een duplicaat.
+- **PLLoad opnieuw schoon.** 4 remmomenten, 0 ongevraagd, bezetting voorspelt
+  responstijd (+89%). Tweede bevestiging van fix 11.
+
 ## Rit van 23-08 (nacht) — wat de meting opleverde
 
 27,6 min, 1295 monsters op 1 Hz, 11 min boven 15 km/u, tot 96 km/u en 3865 rpm.
@@ -229,14 +251,16 @@ De eerste echte rit onder belasting sinds de batch.
   staan als sensorwaarde in de opname; dat zijn de steunbitmaps.
   `GEEN_SENSOR_PIDS` houdt ze uit de keuzelijst maar niet uit `pidlane-bulk.js`.
   Een vijfde deur naast de vier uit ronde 6.
-- **De adapter is mogelijk géén clone.** Het logboek zegt `OBD2 adapter:
-  OBDLink MX+ 90011` en pas daarna `ELM327 v1.4b` — dat tweede is de
-  `ATI`-string, en een echte MX+ meldt zich zo voor compatibiliteit. Zit er een
-  STN2120 in, dan zijn **STPX en MS-CAN wél beschikbaar** en klopt de aanname
-  in PIDLANE.md niet. Testrun 4.2 heeft er blok 12 voor: `STI` is een
-  STN-commando dat geen ELM327 kent. Antwoordt hij met firmware, dan is het een
-  STN; `?` of niets betekent clone. **Tot die meting blijft dit een open vraag,
-  geen feit.**
+- **De adapter IS een STN — bevestigd 25-08.** Blok 12 gaf
+  `STI="STN2255 v5.12.4"`, `STDI="OBDLink MX+ r3.1.3"` terwijl `ATI` gewoon
+  `ELM327 v1.4b` zegt. De aanname in PIDLANE.md ("clone, geen STN-chip") was een
+  verkeerde conclusie uit de ATI-string en moet weg.
+
+  **STPX en MS-CAN zijn dus beschikbaar.** Dat raakt de pollstrategie
+  fundamenteel: met STPX geef je per commando een eigen timeout en een verwacht
+  aantal frames mee. Het gokken met batchgroottes, de zelflerende `PLPidLen` en
+  de terugval van drie-naar-één zijn dan niet meer nodig. Dat is geen
+  optimalisatie maar een hele laag die kan verdwijnen — eigen sessie waard.
 - **Bulk en logboek gebruiken verschillende klokken.** Opname 21:03:34–21:31:12,
   logboek 23:00:11–23:35:23. Exact twee uur: de recorder schrijft UTC, de logger
   lokale tijd. Alleen opgemerkt doordat de seconden van de gaten toevallig

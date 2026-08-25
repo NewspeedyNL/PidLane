@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.3 (25-08-2026)';
+const TESTRUN_VERSIE = '4.5 (25-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1576,31 +1576,71 @@ async function _blok5() {
   });
 
 
+  // ── TOEGEVOEGD 25-08: uitloggen blijft uitloggen ──
+  // logout() opent voor een admin eerst een deel-/bestandsvenster (log
+  // bewaren). Android herlaadt de WebView bij terugkomst, en het herstel in
+  // pidlane-theme.js (regel 277, tokLoad()) vond dan nog een geldig token —
+  // want het wissen gebeurde pas ná de export. Gevolg: je zat weer binnen.
+  // De uitlogvlag maakt de opgeslagen sessie meteen dood terwijl
+  // window.APP_TOKEN blijft leven, zodat de export zelf niet stukgaat.
+  await _doe(5, 'Uitloggen blijft uitloggen', function () {
+    if (typeof uitlogBezig !== 'function' || typeof uitlogVlagAan !== 'function')
+      return { staat: 'FOUT', detail: 'uitlogvlag ontbreekt — pidlane-auth.js is niet meegekomen' };
+
+    // Gedragstest op de echte functies, maar zonder uit te loggen: vlag aan,
+    // kijken of tokLoad zwijgt, vlag weer weg. De vlag stond hier per
+    // definitie uit (je bent ingelogd), dus opruimen is veilig.
+    const stond = uitlogBezig();
+    if (stond)
+      return { staat: 'LET OP', detail: 'uitlogvlag stond al aan — vorige uitlogpoging is niet afgerond' };
+
+    let uit = '';
+    try {
+      uitlogVlagAan();
+      if (!uitlogBezig()) uit = 'vlag laat zich niet zetten (localStorage geblokkeerd?)';
+      else if (tokLoad() !== null) uit = 'tokLoad() geeft nog een sessie terug terwijl de uitlogvlag aan staat — het herstel in pidlane-theme.js zou je weer binnenlaten';
+    } finally {
+      uitlogVlagWeg();
+    }
+    if (uit) return { staat: 'FOUT', detail: uit };
+    if (uitlogBezig()) return { staat: 'FOUT', detail: 'vlag blijft hangen na opruimen — dan kom je nooit meer binnen' };
+
+    return 'vlag zet tokLoad() stil en ruimt zichzelf op';
+  });
+
   // ── TOEGEVOEGD 25-08: scherm blijft aan tijdens de meting ──
   // Uit de rit van 23-08: veertien stiltes in het logboek, en op precies
   // dezelfde kloktijden geen bulkdata. Het proces liep niet. PLWake dekt
   // daarvan één helft — het scherm dat uitgaat — niet de andere, de app die
   // je echt verlaat. Daarvoor is een foreground service nodig.
-  await _doe(5, 'Scherm-wakelock (PLWake)', function () {
-    if (typeof window.PLWake === 'undefined')
-      return { staat: 'FOUT', detail: 'PLWake ontbreekt — pidlane-auth.js is niet meegekomen' };
-    if (!PLWake.steunt())
+  await _doe(5, 'Scherm-wakelock (PLWakelock)', function () {
+    // 25-08: heette eerst PLWake en dat gaf FOUT "steunt is not a function"
+    // terwijl het object bestond — er is al een window.PLWake elders. Deze
+    // test noemt dat nu bij naam in plaats van erover te struikelen.
+    const vreemd = (typeof window.PLWake !== 'undefined');
+    if (typeof window.PLWakelock === 'undefined')
+      return { staat: 'FOUT', detail: 'PLWakelock ontbreekt — pidlane-auth.js is niet meegekomen' +
+        (vreemd ? ' (er is wél een window.PLWake, van een andere module)' : '') };
+    if (typeof PLWakelock.steunt !== 'function')
+      return { staat: 'FOUT', detail: 'PLWakelock is overschreven door een andere module — sleutels: ' +
+        Object.keys(PLWakelock).join(', ') };
+    if (!PLWakelock.steunt())
       return { staat: 'LET OP', detail: 'deze WebView kent navigator.wakeLock niet — scherm aanhouden werkt hier niet' };
 
     // Alleen oordelen als de voorwaarden kloppen. Niet verbonden betekent
-    // terecht geen lock; dat als FOUT tellen zou een altijd-rode test geven,
-    // en die wordt genegeerd (§ratel).
+    // terecht geen lock; dat als FOUT tellen geeft een altijd-rode test, en
+    // die wordt genegeerd (§ratel).
     if (!(typeof connected !== 'undefined' && connected))
       return { staat: 'LET OP', detail: 'niet verbonden, dus terecht geen wakelock — draai dit blok opnieuw mét verbinding' };
     if (document.visibilityState !== 'visible')
       return { staat: 'LET OP', detail: 'pagina niet zichtbaar tijdens de test' };
 
-    if (!PLWake.actief()) {
-      const f = PLWake.fout();
+    if (!PLWakelock.actief()) {
+      const f = PLWakelock.fout();
       return { staat: 'FOUT', detail: 'verbonden en zichtbaar, maar geen wakelock' +
         (f ? ' — geweigerd: ' + f + ' (batterijbesparing?)' : ' — geen reden gemeld') };
     }
-    return 'wakelock actief zolang de verbinding staat';
+    return 'wakelock actief' + (vreemd ? ' (let op: er bestaat ook een window.PLWake van een andere module)' : '');
   });
 
   // Mode 22 olietemperatuur is op 23-08 losgelaten. De knoppen "DID-scan (45 s)"
@@ -2454,7 +2494,14 @@ const CAMPAGNE = {
   vragen: [
     'VOORAF — blok 5 mag geen FOUT geven. Staat er "NIET geladen", lees de melding: dat kan ook de cache zijn. Eerst "Nieuwste versie laden", dan opnieuw.',
 
-    'BLOK 12 — ADAPTER. Nieuw en het belangrijkste van deze run. Zegt hij "STN-adapter", dan zit er een STN2120 in de OBDLink MX+ en zijn STPX en MS-CAN wél beschikbaar. PIDLANE.md zegt nu het tegenovergestelde op grond van de ATI-string, en die liegt bij deze adapter. Noteer de drie antwoorden letterlijk.',
+    'BLOK 12 — ADAPTER: BEANTWOORD op 25-08. STI="STN2255 v5.12.4", STDI="OBDLink MX+ r3.1.3", ATI="ELM327 v1.4b". Het IS een STN. Deze vraag hoeft niet opnieuw; laat blok 12 wel meelopen zodat een andere adapter meteen opvalt.',
+
+    'VIN-PROFIEL — blok 1 meldde: staat in de opslag maar wordt bij het verbinden NIET geladen, de app doet een volle discovery. Kijk of dat elke keer gebeurt. Zo ja, dan kost elke verbinding onnodig een complete scan en blijft het voertuig op "Mazda" staan zonder model, bouwjaar en brandstof — wat de brandstofafhankelijke gates voedt.',
+
+    'PID 0155 EN 0156 — heten letterlijk "PID 0155" in de sweep, dus ze staan niet in ALL_PID_DEFS. Daarom komt de rauwe byte 0x80 = 128 eruit. Geen parserfout maar een ontbrekende definitie: secundaire O2-trim, formule (A-128)*100/128. Controleer of ze na toevoeging rond 0% uitkomen.',
+
+
+    'UITLOGGEN — nieuw. Log uit als admin en kies OK bij de vraag of de log bewaard moet worden. Het deelvenster opent, de app gaat naar de achtergrond. Kom terug: sta je op het LOGINSCHERM? Vóór deze fix was je weer binnen. Doe het daarna nog eens met Annuleren — dat pad was altijd al goed en moet goed blijven.',
 
     'WAKELOCK — nieuw. Verbind en kijk of het log "Scherm blijft aan tijdens de meting" meldt. Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Zo niet, dan weigert batterijbesparing de lock en noemt blok 5 de reden.',
 
