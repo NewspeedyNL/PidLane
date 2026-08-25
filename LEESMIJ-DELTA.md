@@ -1,187 +1,159 @@
 # LEESMIJ-DELTA — 24-08-2026
 
-Uitpakken over de werkkopie. De zip bevat `PidLane-main/…`, dus:
-
 ```
 cd ~/                       # de map WAARIN PidLane-main staat
 unzip -o pidlane-delta-2408.zip
 cd PidLane-main
-bash plcheck.sh $(pwd)      # moet groen zijn
+bash plcheck.sh $(pwd)
 ```
 
-Vier bestanden. Testrun gaat van 3.8 naar **4.1**.
+Vier bestanden. Testrun 3.8 → **4.3**.
 
 ---
 
-## 1. `public/pidlane-pids.js` — de waakknop dooft niet meer
+## De correctie voorop
 
-**Melding:** "als ik in live view schakel van puntjes naar getallen of
-grafieken, gaat waakronde uit."
+In een eerdere versie van deze delta stond de socket-instabiliteit als
+hoofdprobleem in `PIDLANE-WERK.md`. **Dat was fout**, en de fout is leerzaam
+genoeg om te bewaren: hij staat als herziening in het werkdocument, niet
+weggepoetst.
 
-**Wat er werkelijk gebeurde:** hij ging niet uit. `_aan` bleef `true`, de strook
-bleef staan, de bus werd nog elke twaalf seconden geclaimd. Alleen de knop zag
-eruit als uit.
+Ik keek naar de meetdata (9 herverbindingen, drie gaten in de bulkopname) en
+concludeerde "instabiele verbinding". Wat ik niet had gedaan is naar het
+**logboek zelf** kijken. Dat heeft veertien stiltes op precies dezelfde
+kloktijden — 179 s, 168 s, 177 s, 66 s. En dat is het bewijs: een dode socket
+lógt fouten. Hier logt niets. Geen fout, geen poging, geen watchdog. Het proces
+liep niet.
 
-`#waakBtn` staat in dezelfde rij als de drie weergaveknoppen en draagt daarom de
-klasse `pidview-btn` (regel 1452 in `index.html`). Maar hij heeft geen
-`data-mode` — hij ís geen weergave. En `setPidView()` deed:
+Android bevriest de JS-timers van een WebView op de achtergrond. Pollus,
+recorder en logger stoppen tegelijk. Sluitstuk: elke herverbinding volgt direct
+op een stilte. Om 23:31:00 hervat de app, 16 s later "socket dood na 012E1" —
+het eerste commando in een socket die Android intussen heeft opgeruimd.
 
-```js
-document.querySelectorAll('.pidview-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
-```
-
-`b.dataset.mode` is daar `undefined`, de vergelijking dus altijd `false`, dus
-`active` gaat eraf — bij élke wissel. `PLWaak.schakel()` beheert diezelfde
-klasse zelf. Twee schrijvers op één klasse, en de verkeerde won.
-
-**Nu:** `.pidview-btn[data-mode]`. De grens ligt waar hij hoort — bij "heeft een
-modus", niet bij "staat in die rij".
+Aanleiding, van Nico: het logboek openen of opslaan schakelt naar een ander
+venster, en bij terugkomst moet er herverbonden worden.
 
 ---
 
-## 2. `public/pidlane-auth.js` — de drie puntjes onder het wachtwoordveld
+## 1. `public/pidlane-testrun.js` — 4.2
 
-**Dit is geen CSS-probleem en geen los element.** `doLogin()` zette tijdens het
-wachten letterlijk `err.textContent = '…'` in `#loginErr`, en dat vakje heeft
-inline `color:var(--rd)` in `index.html`. Dus: een wachtindicator in de
-foutkleur, precies onder het wachtwoordveld.
+### Nieuw: blok 12, wie is deze adapter
 
-Twee dingen waren mis:
+Het logboek zegt `OBD2 adapter: OBDLink MX+ 90011` en pas daarna
+`ELM327 v1.4b`. Dat tweede is de `ATI`-string, en juist die staat in
+`PIDLANE.md` als bewijs dat dit een clone zonder STN-chip is. Maar een echte
+OBDLink MX+ antwoordt op `ATI` óók met een ELM327-versie, puur voor
+compatibiliteit.
 
-- **Verkeerde kleur.** Rood betekent in deze app "er is iets fout". Hier
-  betekende het "even wachten".
-- **Geen tijdslimiet.** Alle paden zetten het veld netjes weer leeg — bij
-  succes, bij een fout wachtwoord, bij 429, bij 5xx, bij een onbereikbare
-  server. Maar zolang de `fetch` naar `/auth/login` hángt geeft die nooit een
-  fout, dus was er ook nooit een uitweg. Dat is vermoedelijk het moment van je
-  screenshot.
+Het onderscheid is één commando. `STI` kent geen enkele ELM327: een STN-adapter
+antwoordt met eigen firmware, een clone met `?` of niets. Blok 12 vraagt `ATI`,
+`STI` en `STDI`, meer niet — geen header, geen protocolwissel, niets richting de
+auto.
 
-**Nu één setter:**
+Zegt hij "STN-adapter", dan zijn **STPX en MS-CAN wél beschikbaar** en raakt dat
+de hele pollstrategie. Blok 12 staat daarom bewust op LET OP in dat geval: het
+is geen fout, het is iets wat je moet weten.
 
-```js
-plLoginMeld(el, tekst, soort)   // 'bezig' grijs · 'fout' rood · 'leeg' leeg
-```
+Staat in de standaardset (`b12`), kost een seconde of twee.
 
-Alle veertien schrijvers naar `#loginErr` lopen erdoorheen, ook die in
-`logout()`. De tekst is `⏳ Inloggen…` in plaats van drie kale punten.
-`data-soort` staat op het element zodat de testrun het van buitenaf kan
-aflezen.
+### CAMPAGNE — 20 vragen, opnieuw opgezet rond de openstaande punten
 
-En `serverLogin()` breekt af na `LOGIN_TIMEOUT_MS` (12 s) via een
-`AbortController`. Een afgebroken poging komt naar buiten als een gewone Error
-zónder `.status` en `.code`, en valt in `doLogin()` dus in dezelfde tak als
-"netwerk onbereikbaar" — daar hoort hij, en die tak bestond al.
+Leidt met blok 12 en met de achtergrondproef, die in twee helften uiteenvalt:
+eerst tien minuten rijden **zonder de app te verlaten**, daarna bewust drie keer
+kort weg. Als de verklaring klopt, volgt op elke afwezigheid een herverbinding —
+en op de eerste helft geen enkele. Dat is de tegenproef.
 
-Gecontroleerd: nul directe `err.textContent`-schrijvers over (alleen nog in een
-commentaarregel die uitlegt wat er stond).
+Verder erin: de klokvergelijking (UTC versus lokaal), de bevroren `0155`/`0156`
+op 128, de raildruk die stilstond, de bitmaps in de bulkopname, en de opruimregel
+met zeven concrete kandidaten in plaats van drie — de vier uit blok `0180`
+(`018E`, `019D`, `019E`, `01A0`) horen erbij, want de ECU claimt ze en levert
+niets.
 
----
+Eruit: de tegelvraag over `0170`/`2102`/`2187`. Die kan op deze auto nooit "ja"
+opleveren — steunbitblok `0160 = 41606B080001` decodeert naar
+`62 63 65 67 68 6D 80`, dus geen `70`. De reden staat in de vervangende vraag,
+zodat niemand hem over een half jaar terugzet.
 
-## 3. `public/pidlane-testrun.js` — knoppen weg, CAMPAGNE en blok 5 herschreven
+### Eerder in deze delta, ongewijzigd
 
-### Weg: twee knoppen en b8 uit de standaardset
-
-| was | nu |
-|---|---|
-| DID-scan (45 s) → `{b9}` | weg |
-| Budget + olie → `{b7,b8}` | **Budget** → `{b7}` |
-| standaardset bevatte `b8: true` | `b8` eruit |
-
-Alle drie dienden de jacht op de mode 22-olietemperatuur, en die is op 23-08
-losgelaten. **Die derde is de belangrijkste**: zonder hem waren de knoppen weg
-maar scande élke volle run nog steeds, inclusief het header-gedoe op `7E0`.
-
-`_blok8()` en `_blok9()` blijven staan en zijn los aan te roepen met
-`startTestrun({b8:true})` of `{b9:true}`. Ze slopen is een mechanische stap van
-ruim driehonderd regels en gaat apart.
-
-### Blok 5 — vier nieuwe controles
-
-**Waakknop overleeft een weergavewissel.** De knop wordt **bewust op `active`
-gezet**, dan gaat `setPidView()` langs alle drie de standen, en na elke stand
-wordt gekeken of de klasse er nog is. Daarna staan weergave én knop terug zoals
-ze stonden. Dat opzetten is de kern van de tegenproef: bij een uitstaande
-waakronde is "blijft dof" ook waar voor de oude, foute selector.
-
-**Inlogmelding: bezig is grijs, fout is rood.** Draait `plLoginMeld()` op een
-los element (het echte inlogscherm blijft ongemoeid) en toetst alle drie de
-soorten, plus dat `LOGIN_TIMEOUT_MS` bestaat.
-
-**Geen kale puntjes meer in doLogin.** Leest de bron. Dat mag hier: `doLogin`
-wordt door niets gewrapt — `pidlane-remote.js` raakt `updPID`, `sendCmd`,
-`clearDTC`, `realScanDTC`, `ensurePIDListActive` en `selectCategoryPIDs`, niet
-de login. Een gedragstest kan dit niet zien, want daarvoor zou je een echte
-inlogpoging moeten doen.
-
-**Olieknoppen weg, b8 uit de standaardset.** Loopt de knoppen in `#testrunOv`
-na en knipt de standaardset uit de bron van `startTestrun`. Knippad bewust smal
-(`/blokken\s*\|\|\s*\{[^}]*\}/`), want een zoektocht op "b8" in de hele functie
-vindt óók het commentaar erboven en meldt dan onterecht FOUT.
-
-### Tegenproeven gedaan
-
-- Oude setter (alles rood) nagebouwd → de nieuwe controle slaat af op "bezig in
-  foutkleur". De test kan dus rood worden.
-- Standaardset mét `b8` nagemaakt → knippad vindt hem. Echte set komt schoon
-  door.
-- `.pidview-btn` terugzetten → de waakknopcontrole slaat af.
-
-### Twee tekstfixes uit de logs van 23-08 (4.1)
-
-**De "niet geladen"-melding noemt nu de cache.** Blok 5 stond twee keer op FOUT
-— 23-08 op "survey transport (veldlab)", 24-08 op "pidgate" — en beide keren
-was hij weg na een herlaadbeurt. Dat is de HTTP-cache die een oude module
-serveert, niet een ontbrekend bestand. De melding stuurde je dus een bestand
-laten zoeken dat er gewoon was. Nu zegt hij het zelf, met de volgorde erbij:
-eerst "Nieuwste versie laden", dan pas concluderen.
-
-**De tegelvraag is vervangen.** "Staan 0170, 2102 of 2187 nog in beeld?" kan op
-deze CX-5 nooit "ja" opleveren: steunbitblok `0160 = 41606B080001` decodeert
-naar `62 63 65 67 68 6D 80` — geen `70` — en de mode 21-probe vindt de andere
-twee niet. Een vraag die maar één antwoord kan hebben toetst niets; dat is
-precies waarom de UI-vragen op 23-08 al zijn geschrapt. Ervoor in de plaats: de
-turbodrempel-vraag noemt nu het oordeel dat op 23-08 vóór het eerst viel
-(1461 monsters, piek 105, grens 110) en vraagt om piek en marge, niet om een
-tegel die er niet is.
-
-### CAMPAGNE
-
-20 vragen. Leidt met de drie wijzigingen van vandaag, daarna de openstaande
-batch van 23-08 — die rit is nog niet gereden, dus die vragen blijven staan.
+- Blok 5: vier controles erbij (waakknop, inlogmelding grijs/rood,
+  `LOGIN_TIMEOUT_MS`, geen kale puntjes, olieknoppen weg). Alle vier met
+  tegenproef nagerekend: de oude setter slaat af op "bezig in foutkleur", een
+  standaardset mét `b8` wordt gevonden, `.pidview-btn` terugzetten laat de
+  waakknopcontrole afgaan.
+- "Niet geladen"-melding noemt nu de cache. Blok 5 stond twee keer op FOUT
+  (23-08 veldlab, 24-08 pidgate) en beide keren was het weg na herladen.
+- Olieknoppen weg, `b8` uit de standaardset.
 
 ---
+
+## 2. `public/pidlane-pids.js` — waakknop dooft niet meer
+
+`#waakBtn` draagt de klasse `pidview-btn` maar heeft geen `data-mode`, dus de
+`active`-lus in `setPidView()` haalde zijn markering eraf terwijl `PLWaak`
+gewoon doorliep. Selector nu `.pidview-btn[data-mode]`.
+
+## 3. `public/pidlane-auth.js` — de drie puntjes + PLWake
+
+### PLWake — scherm blijft aan tijdens de meting
+
+Dekt één helft van het achtergrondprobleem: het scherm dat uitgaat. **Niet** de
+andere helft — verlaat je de app echt, dan bevriest hij alsnog. Daarvoor is een
+foreground service nodig en dat is native werk.
+
+Twee dingen over de API die de implementatie sturen:
+
+- De browser geeft de lock **zelf** vrij zodra de pagina uit beeld gaat. Geen
+  risico dat hij blijft hangen, wel de plicht om hem bij terugkomst opnieuw aan
+  te vragen — vandaar de `visibilitychange`-haak.
+- Aanvragen terwijl de pagina verborgen is gooit een fout. Die slikken we; de
+  volgende tik pakt het op.
+
+Bewust **geen** haak in `handleConnect()`. Dat zou een tweede plek worden die
+moet weten wanneer er gemeten wordt, en dat is precies het patroon waar dit
+project al drie keer op is gestruikeld. `connected` staat in dit bestand en is
+de enige waarheid; een tik van 5 s is goedkoop genoeg om die te volgen.
+
+Weigert batterijbesparing de lock, dan komt er **één** melding, niet elke vijf
+seconden. Dat is geen storing maar een instelling van de gebruiker.
+
+`PLWake` hoort nog in de KRITIEK-lijst van `pidlane-bedrading.js` — dat bestand
+zit niet in deze sessie, dus dat is aan jou of aan een volgende ronde.
+
+### De drie puntjes
+
+`doLogin()` zette `err.textContent = '…'` tijdens het wachten, en `#loginErr`
+heeft inline `color:var(--rd)`. Een wachtindicator in de foutkleur. Alle veertien
+schrijvers lopen nu via `plLoginMeld(el, tekst, soort)`, en `serverLogin()`
+breekt af na 12 s — zonder tijdslimiet gaf een hangende fetch nooit een fout en
+dus nooit een uitweg.
 
 ## 4. `PIDLANE-WERK.md`
 
-§3 uitgebreid met "Nieuw op 24-08": waakknop, inlogmelding, testrun-opruiming.
+Ritbevindingen van 23-08, de herziene oorzaak, de adapter als open vraag met de
+`STI`-test, en de klokkwestie.
 
 ---
 
-## Eén patroon, drie keer
+## Wat er NIET in zit
 
-Alle drie de UI-vondsten van vandaag hebben dezelfde vorm: **één ding met twee
-betekenissen, waarbij de ene de opmaak of de behandeling van de andere erft.**
+De vier vondsten uit de bulkopname zijn **vastgelegd, niet gerepareerd**:
+`0155`/`0156` op de rauwe byte, raildruk bevroren op 9900, de bitmaps die
+`pidlane-bulk.js` als sensorwaarde opneemt, en de twee klokbases. Vandaag
+ontdekt, dus vandaag niet gefixt. Ze staan genummerd klaar.
 
-- `active` op `#waakBtn` betekende zowel "waakronde loopt" als "dit is de
-  gekozen weergave"
-- `#loginErr` betekende zowel "er is een fout" als "we zijn bezig"
-- `pidview-btn` betekende zowel "knop in deze rij" als "knop met een modus"
-
-Dat is dezelfde soort fout als de fantoomsensor-familie uit §7 van het
-werkdocument, maar dan in de UI. Als er straks nog UI-meldingen komen: kijk
-eerst of het element of de klasse twee rollen heeft.
+Ook niet: de foreground service. Dat is de echte oplossing voor het
+achtergrondprobleem en het is een eigen sessie waard — Capacitor-plugin, wake
+lock, en een pollus die niet meer aan `setInterval` in een WebView hangt.
 
 ---
 
 ## Committen
 
-Vier commits:
-
 1. `pidlane-pids.js` — waakknop buiten de weergave-lus
 2. `pidlane-auth.js` — inlogmelding via plLoginMeld, tijdslimiet op /auth/login
-3. `pidlane-testrun.js` — 4.1: olieknoppen weg, b8 uit de standaardset,
-   CAMPAGNE en blok 5 herschreven
+3. `pidlane-testrun.js` — 4.2: blok 12, CAMPAGNE herzien, olieknoppen weg,
+   blok 5 uitgebreid
 4. `PIDLANE-WERK.md` — administratie
 
-Gecontroleerd: `node --check` groen op alle drie de JS-bestanden, nul lege
-catches in `pidlane-auth.js` en `pidlane-testrun.js` (ratel blijft op 0).
+`node --check` groen op alle drie de JS-bestanden, nul lege catches.

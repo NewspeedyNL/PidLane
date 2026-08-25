@@ -179,11 +179,39 @@ De eerste echte rit onder belasting sinds de batch.
 - **Fix 11 werkt.** 34 remmomenten, waarvan 1 zonder fouten én zonder oplopende
   responstijd. Vóór de fix: 61 van de 86. Bezetting voorspelt nu wél responstijd
   (128 → 180 ms, +41%).
-- **Socket is de echte boosdoener, geen los eindje meer.** 9× SPP herverbonden,
-  12× `flush read() fout`, 5× ELM-poort dicht. Drie gaten in de bulkopname:
-  134 s, **167 s middenin het segment 'rijden'**, en 66 s — samen ruim zes van
-  de 27,6 minuten weg, en juist het interessante stuk. PLLoad reageert netjes op
-  iets dat hij niet kan oplossen.
+- **De app stond stil, de socket was het gevolg.** *(Herzien 24-08. Hier stond
+  eerst "socket is de echte boosdoener"; dat was fout en de correctie staat
+  hieronder, omdat de redenering leerzaam is.)*
+
+  De aanleiding was 9× SPP herverbonden, 12× `flush read() fout` en drie gaten
+  in de bulkopname (134 s, **167 s middenin het rijden**, 66 s). Dat leek een
+  instabiele verbinding. Maar het **logboek zelf** heeft veertien stiltes op
+  precies dezelfde kloktijden — 179 s, 168 s, 177 s, 66 s — en dáár zit het
+  bewijs: een dode socket logt fouten. Hier logt niets. Geen fout, geen poging,
+  geen watchdog. Het proces liep niet.
+
+  Android bevriest de JS-timers van een WebView op de achtergrond, dus pollus,
+  recorder en logger stoppen tegelijk. Sluitstuk: **elke herverbinding volgt
+  direct op een stilte.** Om 23:31:00 hervat de app, 16 s later "socket dood na
+  012E1" — dat is het eerste commando in een socket die Android intussen heeft
+  opgeruimd, niet busfalen.
+
+  Aanleiding volgens Nico: het logboek openen of opslaan schakelt naar een ander
+  venster; bij terugkomst moet er herverbonden worden.
+
+  Wat er moet gebeuren, op opbrengst gesorteerd:
+  1. **Foreground service + wake lock** (Capacitor). Zolang de pollus in
+     JS-timers zit is elke vensterwissel een gat. Dit is de echte oplossing en
+     het is werk.
+  2. **Herkennen in plaats van repareren.** `visibilitychange` afvangen, opname
+     als gepauzeerd markeren, bij terugkomst meteen actief herverbinden in
+     plaats van wachten tot een commando faalt. Klein, kan snel.
+  3. **Logboek openen zonder venster te wisselen.** De directe aanleiding,
+     waarschijnlijk het goedkoopst.
+
+  Gevolg voor PLLoad: een deel van de 34 remmomenten kan een reactie zijn op
+  het hervatten, niet op de bus. Pas te scheiden met een rit waarin de app niet
+  naar de achtergrond gaat.
 - **Turbo-oordeel voor het eerst gevallen.** 1461 MAP-monsters, piek 105 kPa,
   barometer 102, grens 110.
 - **Boost-PIDs kunnen op deze auto niet verdwijnen.** `0160 = 41606B080001`
@@ -201,6 +229,19 @@ De eerste echte rit onder belasting sinds de batch.
   staan als sensorwaarde in de opname; dat zijn de steunbitmaps.
   `GEEN_SENSOR_PIDS` houdt ze uit de keuzelijst maar niet uit `pidlane-bulk.js`.
   Een vijfde deur naast de vier uit ronde 6.
+- **De adapter is mogelijk géén clone.** Het logboek zegt `OBD2 adapter:
+  OBDLink MX+ 90011` en pas daarna `ELM327 v1.4b` — dat tweede is de
+  `ATI`-string, en een echte MX+ meldt zich zo voor compatibiliteit. Zit er een
+  STN2120 in, dan zijn **STPX en MS-CAN wél beschikbaar** en klopt de aanname
+  in PIDLANE.md niet. Testrun 4.2 heeft er blok 12 voor: `STI` is een
+  STN-commando dat geen ELM327 kent. Antwoordt hij met firmware, dan is het een
+  STN; `?` of niets betekent clone. **Tot die meting blijft dit een open vraag,
+  geen feit.**
+- **Bulk en logboek gebruiken verschillende klokken.** Opname 21:03:34–21:31:12,
+  logboek 23:00:11–23:35:23. Exact twee uur: de recorder schrijft UTC, de logger
+  lokale tijd. Alleen opgemerkt doordat de seconden van de gaten toevallig
+  gelijk waren. Wie de twee bestanden naast elkaar legt, concludeert eerst dat
+  ze niet bij elkaar horen.
 - **`0143` lijkt al goed.** 0–96,9%, gemiddeld 19,4 tegen 30,0 voor `0104`.
   Formule nakijken vóór afvinken.
 - **Opmerkingveld kapt af op exact 20 tekens** — bevestigd
