@@ -5,7 +5,7 @@
 # Doet in één keer wat er tot nu toe met de hand gebeurde, en wat dus
 # soms is overgeslagen:
 #
-#   1. node --check op elk JS-bestand
+#   1. node --check op elk JS-bestand plus worker.js
 #   2. de volledige testsuite (elke test moet exit 0 geven)
 #   3. div-balans van de HTML
 #   4. scripttag-controle: elke pidlane-*.js hangt in index.html
@@ -39,6 +39,16 @@ for f in *.js; do
     stuk=$((stuk+1))
   fi
 done
+# worker.js hoort er ook bij: dat is de complete backend en die stond hier
+# tot 25-08-2026 niet in, terwijl een syntaxfout daar de hele dienst plat legt.
+if [ -f "$REPO/worker.js" ]; then
+  n=$((n+1))
+  if ! node --check "$REPO/worker.js" >/dev/null 2>&1; then
+    echo "${ROOD}  SYNTAXFOUT${UIT}  worker.js"
+    node --check "$REPO/worker.js" 2>&1 | head -3 | sed 's/^/              /'
+    stuk=$((stuk+1))
+  fi
+fi
 [ $stuk -eq 0 ] && echo "${GROEN}  ok${UIT}  syntax — $n bestanden" || fout=$((fout+stuk))
 
 # ── 2. tests ──
@@ -56,15 +66,15 @@ rm -f /tmp/plcheck_$$.log
 [ $gefaald -eq 0 ] && echo "${GROEN}  ok${UIT}  tests — $t stuks, allemaal exit 0" || fout=$((fout+gefaald))
 
 # ── 3. div-balans ──
-for h in index.html admin.html; do
+for h in index.html ../admin/admin.html; do
   [ -e "$h" ] || continue
   op=$(grep -o '<div\b' "$h" | wc -l)
   dicht=$(grep -o '</div>' "$h" | wc -l)
   if [ "$op" -ne "$dicht" ]; then
-    echo "${ROOD}  DIV SCHEEF${UIT}  $h — $op open, $dicht dicht"
+    echo "${ROOD}  DIV SCHEEF${UIT}  $(basename "$h") — $op open, $dicht dicht"
     fout=$((fout+1))
   else
-    echo "${GROEN}  ok${UIT}  div-balans $h — $op/$dicht"
+    echo "${GROEN}  ok${UIT}  div-balans $(basename "$h") — $op/$dicht"
   fi
 done
 

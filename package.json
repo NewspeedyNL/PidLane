@@ -6,7 +6,9 @@
   "scripts": {
     "build": "echo 'No build step needed'",
     "cap:add": "npx cap add android",
-    "cap:sync": "npx cap sync android"
+    "cap:sync": "npx cap sync android",
+    "admin": "python3 -m http.server 8788 --directory admin",
+    "test": "bash plcheck.sh ."
   },
   "dependencies": {
     "@capacitor/core": "6.1.2",

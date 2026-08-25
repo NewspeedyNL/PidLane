@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — ADMIN DASHBOARD (losstaand, NIET op publieke Pages zetten!)
+     PidLane — ADMIN DASHBOARD (draait lokaal; staat bewust NIET in public/)
      Build: 2026-07-20 (CET) — 👤 Gebruikersbeheer + 🩺 status + nieuwe toggles
 
      App draait op https://app.pidhub.nl (GitHub Pages: newspeedynl.github.io).
@@ -526,8 +526,9 @@ function logout(){
   b.innerHTML = '<b>⛔ Deze pagina is lokaal geopend (' + location.protocol + '//)</b><br>' +
     'Zo werkt hij niet: de browser blokkeert elk verzoek naar de Worker op CORS, ' +
     'nog vóór je token wordt meegestuurd. Dat ziet eruit als een geweigerde sleutel, maar is het niet.<br><br>' +
-    'Open de pagina via je eigen domein:<br>' +
-    '<a href="https://app.pidlane.nl/admin.html" style="color:#fff;font-weight:700">https://app.pidlane.nl/admin.html</a>';
+    'Start hem via een lokale server \u2014 vanuit de repo:<br>' +
+    '<code style="display:inline-block;background:#111;padding:4px 8px;border-radius:6px;margin:6px 0">npm run admin</code><br>' +
+    'en open dan <b>http://localhost:8788/admin.html</b>. Zie admin/LEESMIJ.md.';
   g.insertBefore(b, g.firstChild);
   const knop = g.querySelector('.btn-pri');
   if (knop) { knop.disabled = true; knop.style.opacity = '.5'; knop.title = 'Open de pagina eerst via https://'; }

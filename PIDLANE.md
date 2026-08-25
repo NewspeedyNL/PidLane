@@ -4,7 +4,9 @@
 > **welk bestand je nodig hebt** zonder de code te lezen. Zet dit in de
 > project-kennisbank. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-08-20 — steunbitpoort, logboek, privacy-disclosure,
+> Laatst bijgewerkt: 2026-08-25 — testgate in CI, CORS dicht op de AI- en
+> dataroutes, VIN niet langer ruw naar Airtable, admin.html uit `public/`.
+> Daarvóór: 2026-08-20 — steunbitpoort, logboek, privacy-disclosure,
 > startscherm per adaptertype, wizard van zes stappen naar één.
 > Daarvóór: 2026-08-01, na ronde 5 van de PID-gate (herijking).
 
@@ -55,14 +57,27 @@ PidLane/
 ├─ worker.js               (117 KB) Cloudflare Worker: auth, proxy, Airtable, DO, tegoed
 ├─ wrangler.toml                    assets + R2 + DO-bindings
 ├─ capacitor.config.json            webDir "www", server.url app.pidlane.nl
-├─ .github/workflows/build-apk.yml  APK-build
-└─ public/
+├─ plcheck.sh                       validatie voor een commit (zie §11)
+├─ .github/workflows/
+│  ├─ build-apk.yml                 APK- en .aab-build
+│  └─ tests.yml                     testgate: draait plcheck.sh op elke push
+├─ admin/
+│  ├─ admin.html          (49 KB)  admin-, gebruikers-, klant- en codebeheer
+│  └─ LEESMIJ.md                    hoe je hem lokaal draait
+└─ public/                          ← alles hier wordt PUBLIEK geserveerd
    ├─ index.html           (203 KB) HTML-structuur + bootstrap + script-tags
-   ├─ admin.html           (44 KB)  admin-, gebruikers-, klant- en codebeheer
    ├─ config.js            (3 KB)   PROXY_URL, AIRTABLE_URL, APP_VERSION
    ├─ pidlane.css          (157 KB) hoofdstylesheet
-   └─ pidlane-*.js         (39 modules, zie §4)
+   ├─ pidlane-*.js         (39 modules, zie §4)
+   └─ test-*.js            (29 tests, draaien via plcheck.sh)
 ```
+
+> **admin.html staat bewust buiten `public/`.** Alles in `public/` wordt door de
+> Worker als statisch bestand geserveerd; tot 25-08-2026 was de beheerpagina
+> daarmee voor iedereen te openen op `https://app.pidlane.nl/admin.html`. Dat
+> lekte geen gegevens — elke admin-route controleert `ADMIN_TOKEN` server-side —
+> maar het zette de complete beheerkant publiek in de etalage. Draaien doe je
+> hem nu lokaal met `npm run admin`; zie `admin/LEESMIJ.md`.
 
 `index.html` was 735 KB en is op 2026-07-28 opgesplitst naar ~203 KB.
 Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,

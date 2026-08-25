@@ -1,0 +1,82 @@
+# ════════════════════════════════════════════════════════════
+#  PidLane — testgate
+#  Aangemaakt: 2026-08-25 (CET)
+#
+#  WAAROM DIT BESTAAT
+#  Dit project heeft goed gereedschap: plcheck.sh, 28 tests, de ratel op
+#  stille catches en de bedradingscontrole. Dat draaide alleen als iemand
+#  het met de hand aanriep vanuit Termux — precies de stap die plcheck.sh
+#  zelf omschrijft als "wat dus soms is overgeslagen".
+#
+#  Hoe vaak dat misging is meetbaar: op 25-08-2026 stond test-bedrading.js
+#  rood op main. uitlogBezig en uitlogVlagAan zaten achter een typeof-guard
+#  in pidlane-testrun.js zonder in KRITIEK te staan — de controle die stille
+#  bedradingsfouten moet vangen was zelf stil kapot, en dat was live gegaan.
+#
+#  Deze workflow draait dezelfde controles als plcheck.sh, op elke push en
+#  elke pull request. Eén bron van waarheid: verandert plcheck.sh, dan
+#  verandert de gate mee.
+# ════════════════════════════════════════════════════════════
+name: Tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TZ: Europe/Amsterdam
+
+jobs:
+  plcheck:
+    name: plcheck (syntax, tests, structuur)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '24'
+
+      # plcheck.sh heeft een Termux-shebang; met `bash` ervoor draait hij
+      # overal. Het pad-argument is de repo-root, niet $HOME/PidLane.
+      - name: Draai plcheck
+        run: bash plcheck.sh .
+
+  geheimen:
+    name: Geen sleutels in de repo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      # config.js is bewust publiek en zegt dat ook in zijn eigen kop. Deze
+      # controle bewaakt dat dat zo BLIJFT: een sleutel die per ongeluk in een
+      # commit meelift is met terugwerkende kracht niet meer weg te halen —
+      # hij staat dan voorgoed in de git-historie en moet ingetrokken worden.
+      # Hier stoppen is de enige plek waar dat nog goedkoop is.
+      - name: Zoek naar echte sleutels
+        run: |
+          # Let op de opzet: gezocht wordt naar sleutels MET inhoud erachter.
+          # De app controleert op tientallen plekken of iets met 'sk-ant-'
+          # begint, en placeholders staan in de invoervelden — die mogen niet
+          # afgaan, anders wordt deze controle genegeerd en dat is erger dan
+          # geen controle.
+          patroon='sk-ant-api[0-9]{2}-[A-Za-z0-9_-]{20,}|pat[A-Za-z0-9]{14}\.[A-Za-z0-9]{40,}|key[A-Za-z0-9]{14}[^A-Za-z0-9]'
+          if grep -rEn "$patroon" \
+               --include='*.js' --include='*.html' --include='*.json' \
+               --include='*.toml' --include='*.md' --include='*.yml' \
+               --exclude-dir=.git . ; then
+            echo
+            echo "FOUT: bovenstaande lijkt op een echte sleutel of token."
+            echo "      Haal hem eruit EN trek hem in — hij staat in de historie."
+            exit 1
+          fi
+          echo "OK: geen sleutels gevonden."

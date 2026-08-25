@@ -117,7 +117,7 @@ function vlFinalize(){
     errs:g.fouten.slice(0,10).map(f=>String(f.msg||'').slice(0,140)),
     human:snap.human||{}, novel:nv.score };
   const st=vlLoad(); st.sessies.push(rec); vlSave(st);
-  try{ vlAtPush(rec); }
+  try{ vlAtPush(rec).catch(e=>console.warn('Veldlab naar wachtrij zetten mislukt:', e)); }
   catch(e){ console.warn('Veldlab naar wachtrij zetten mislukt:', e); }
   try{ log('🧪 Veldlab: sessie #'+st.sessies.length+' vastgelegd ('+nv.cell+(nv.newCell?' — NIEUW terrein':nv.newMerk?' — nieuw merk':'')+')','ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
   vlEnsureBtn(true);
@@ -188,7 +188,72 @@ async function vlAtFlush(){
   }catch(e){ try{ btDiag('☁ Veldlab-sync wacht ('+(e.message||e)+') — blijft in wachtrij','warn'); }catch(_){ /* stil: melding mag nooit de meting breken */ } }
   finally{ _vlAtBusy=false; }
 }
-function vlAtPush(rec){
+/* ── VIN wordt NOOIT ruw verstuurd ────────────────────────────────
+   Tot 25-08-2026 ging de volledige VIN mee naar Airtable: niet in een los
+   veld, maar binnen het JSON-blob hieronder (JSON.stringify(rec) bevat
+   rec.veh.vin). Het akkoordscherm vraagt toestemming voor "geanonimiseerde
+   meetdata", en een VIN is via het RDW herleidbaar tot een kentekenhouder.
+   Toestemmingstekst en werkelijke inhoud dekten elkaar dus niet.
+
+   Wat er nu heen gaat:
+     wmi    de eerste drie tekens — de fabrikantcode (JM3 = Mazda). Zegt niets
+            over een individueel voertuig en is voor Veldlab wel bruikbaar.
+     vinId  16 hex-tekens uit SHA-256(zout + VIN). Genoeg om surveys van
+            dezelfde auto te groeperen — nodig voor de CALID/CVN-vergelijking
+            waar de Koopcheck op leunt — zonder de VIN zelf mee te sturen.
+
+   EERLIJK OVER WAT DIT WEL EN NIET IS: dit is pseudonimisering, geen
+   anonimisering. Het zout staat in clientcode en is dus niet geheim; wie het
+   heeft kan een VIN toetsen die hij al kent. Het haalt de herleidbaarheid uit
+   de opslag, maar onder de AVG blijft een pseudoniem persoonsgegeven. Laat
+   daarom de tekst van het akkoordscherm nog eens langs deze alinea leggen.
+
+   Nieuwe velden met persoonsgegevens horen HIER afgevangen te worden en niet
+   bij de opbouw van het record — dit is het enige punt waar alles langskomt. */
+const VL_VIN_ZOUT = 'pidlane-veldlab-v1';
+
+async function _vlVinPseudoniem(vin){
+  const schoon=String(vin||'').toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'');
+  if(schoon.length<11) return null;                 // te kort om een VIN te zijn
+  const buf=new TextEncoder().encode(VL_VIN_ZOUT+':'+schoon);
+  const dig=await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+}
+
+/* Maakt een verzendbare kopie: raakt het origineel niet aan, zodat de app
+   zelf de VIN gewoon blijft tonen en gebruiken. */
+async function _vlSchoonVoorVerzending(rec){
+  let kopie;
+  try{ kopie=JSON.parse(JSON.stringify(rec)); }
+  catch(e){
+    // NIET het origineel teruggeven: dat bevat de VIN nog. Doorgooien, zodat
+    // vlAtPush hieronder besluit om niets te versturen. Een record dat niet te
+    // serialiseren is (kringverwijzing) kan sowieso niet naar Airtable.
+    throw new Error('record niet serialiseerbaar: '+(e.message||e));
+  }
+  const v=kopie&&kopie.veh;
+  if(v&&v.vin){
+    const ruw=String(v.vin);
+    try{
+      const id=await _vlVinPseudoniem(ruw);
+      if(id) v.vinId=id;
+    }catch(e){ /* stil: crypto.subtle ontbreekt buiten een secure context —
+                  de VIN gaat hieronder hoe dan ook weg, dat is wat telt */ }
+    v.wmi=ruw.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,3);
+    delete v.vin;
+  }
+  return kopie;
+}
+
+async function vlAtPush(rec){
+  try{ rec=await _vlSchoonVoorVerzending(rec); }
+  catch(e){
+    // Lukt het schoonmaken niet, dan gaat er NIETS weg. Liever een survey
+    // kwijt dan een VIN verstuurd — dit is de enige plek waar die afweging
+    // gemaakt wordt en hij valt altijd dezelfde kant op.
+    try{ btDiag('Veldlab-record niet verzonden: anonimiseren mislukte ('+(e.message||e)+')','warn'); }catch(_){ /* stil: btDiag bestaat niet in elke context — de melding is bijzaak, het niet-verzenden is de hoofdzaak */ }
+    return;
+  }
   const ua=navigator.userAgent||'';
   const dev=/Android.*Mobile|iPhone/i.test(ua)?'telefoon':(/Android|iPad|Tablet/i.test(ua)?'tablet':'laptop');
   vlAtQueue({ 'SessieID':String(rec.id||('s-'+(rec.t||Date.now()))),
@@ -552,7 +617,8 @@ async function vlFullSurvey(){
       dtc:sv.dtc.actief, ai:{}, nav:{doors:['survey']}, errs:[], human:{}, novel:0.8, survey:sv });
     vlSave(st2);
     try{ vlEnsureBtn(true); }catch(e){ console.warn('vlEnsureBtn mislukt:', e); }
-    try{ vlAtPush(st2.sessies[st2.sessies.length-1]); }
+    try{ vlAtPush(st2.sessies[st2.sessies.length-1])
+           .catch(e=>btDiag('Survey niet in de Airtable-wachtrij gezet: '+(e.message||e),'warn')); }
     catch(e){ btDiag('Survey niet in de Airtable-wachtrij gezet: '+(e.message||e),'warn'); }
 
     // → direct los survey-JSON downloaden

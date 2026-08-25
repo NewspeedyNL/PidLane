@@ -40,10 +40,11 @@ function resolveAnthropicKey(env) {
     const v = env[n];
     if (typeof v === "string" && v.startsWith("sk-ant-")) return v;
   }
-  for (const k in env) {
-    const v = env[k];
-    if (typeof v === "string" && v.startsWith("sk-ant-")) return v;
-  }
+  // Hier stond een lus over ALLE omgevingsvariabelen die de eerste waarde met
+  // sk-ant- pakte. Dat werkte zolang er precies een sleutel in de omgeving
+  // stond; met een tweede (bijvoorbeeld een oude die blijft hangen) werd het
+  // onvoorspelbaar welke er ging. Ontbreekt de sleutel nu, dan is dat een
+  // duidelijke 401 in plaats van stil de verkeerde sleutel gebruiken.
   return "";
 }
 __name(resolveAnthropicKey, "resolveAnthropicKey");
@@ -71,15 +72,29 @@ var ALLOWED_ORIGINS = [
   "http://localhost",
   "https://localhost"
 ];
+// Lokale ontwikkelserver draait zelden op poort 80, en de Origin-header bevat
+// de poort — "http://localhost:8788" matcht dus NIET op "http://localhost".
+// admin.html wordt sinds 25-08-2026 lokaal geserveerd (zie admin/LEESMIJ.md),
+// en heeft dit nodig. Alleen loopback, alleen http.
+var LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
+function originToegestaan(origin) {
+  return ALLOWED_ORIGINS.includes(origin) || LOCALHOST_ORIGIN.test(origin);
+}
+__name(originToegestaan, "originToegestaan");
+// LET OP — alles wat hier NIET in staat krijgt Access-Control-Allow-Origin: *
+// en is daarmee vanaf elke website aan te roepen met een geleend of gestolen
+// sessietoken. Dat gold tot 25-08-2026 ook voor /v1/messages en /copilot, de
+// twee routes die tegoed verbruiken. Een nieuwe route hoort hier standaard in;
+// laat hem er alleen uit als hij echt publiek moet zijn.
 function isRestrictedPath(pathname) {
-  return pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname === "/api/config";
+  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname === "/copilot" || pathname === "/proxy" || pathname === "/api/config";
 }
 __name(isRestrictedPath, "isRestrictedPath");
 function lockOrigin(request, resp) {
   const origin = request.headers.get("Origin") || "";
   const headers = new Headers(resp.headers);
   headers.delete("Access-Control-Allow-Origin");
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+  if (origin && originToegestaan(origin)) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Vary", "Origin");
   }
@@ -2717,17 +2732,17 @@ var worker_default = {
     }
     try {
       if (url.pathname === "/auth/login" && request.method === "POST")
-        return await handleLogin(request, env, ctx);
+        return lockOrigin(request, await handleLogin(request, env, ctx));
       if (url.pathname === "/v1/messages" && request.method === "POST")
-        return await handleMessages(request, env);
+        return lockOrigin(request, await handleMessages(request, env));
       if (url.pathname === "/copilot" && request.method === "POST")
-        return await handleCopilot(request, env);
+        return lockOrigin(request, await handleCopilot(request, env));
       if (url.pathname === "/airtable/log" && request.method === "POST")
-        return await handleAirtableLog(request, env);
+        return lockOrigin(request, await handleAirtableLog(request, env));
       if (url.pathname === "/airtable/veldlab" && request.method === "POST")
-        return await handleAirtableVeldlab(request, env);
+        return lockOrigin(request, await handleAirtableVeldlab(request, env));
       if (url.pathname === "/airtable/reference" && request.method === "POST")
-        return await handleAirtableReference(request, env);
+        return lockOrigin(request, await handleAirtableReference(request, env));
       if (url.pathname === "/session/create" && request.method === "POST")
         return lockOrigin(request, await handleSessionCreate(request, env));
       if (url.pathname === "/session/telemetry" && request.method === "POST")
@@ -2775,7 +2790,7 @@ var worker_default = {
       if (url.pathname === "/credits/redeem" && request.method === "POST")
         return lockOrigin(request, await handleCreditsRedeem(request, env));
       if (url.pathname === "/proxy" && request.method === "GET")
-        return await handleProxy(request, env);
+        return lockOrigin(request, await handleProxy(request, env));
       if (url.pathname === "/api/config") {
         if (request.method === "GET") return lockOrigin(request, await handleConfigGet(request, env, ctx));
         if (request.method === "POST") return lockOrigin(request, await handleConfigPost(request, env, ctx));

@@ -53,7 +53,7 @@ pidlane-verify.js         rit-monitor Laag C (focus-hertest)
 pidlane-monitor.js        rit-monitor Laag A (foutcode-harvesting)
 pidlane-watchers.js       rit-monitor Laag B (signaalanalyse)
 worker.js                 Cloudflare Worker: auth, AI-proxy, Airtable, remote-sessies
-admin.html                gebruikersbeheer
+admin/admin.html          gebruikersbeheer (lokaal draaien: npm run admin)
 ```
 
 > De marketingsite (`pidlane.nl`) staat in een apart repo (`PidLane-Pitch`).

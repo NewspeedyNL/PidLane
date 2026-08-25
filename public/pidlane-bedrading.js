@@ -51,6 +51,7 @@ var KRITIEK = [
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',
   'selectCategoryPIDs','sendCmd','steunbitsRuw','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',
+  'uitlogBezig','uitlogVlagAan',
   'updPID','updateSLToggleIcon',
   'vehicleFuelType','vlFullSurvey','withBus',
   // Deze twee stonden in PIDLANE.md als bedraad maar waren dat niet. Ze staan
