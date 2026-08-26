@@ -14,6 +14,9 @@
 //              de keuzelijst, maar elk pad dat ALL_PID_DEFS rechtstreeks
 //              leest polde ze alsnog als sensor (0180 = 262157, 01A0 = -24).
 //
+// Later bijgekomen, zelfde soort fout uit de rit van 21-08:
+//   0143       rekende 256x te laag door de deler 655.35 in plaats van 2.55.
+//
 // Beide controles stonden eerst alleen in blok 5 van de testrun. Dat werkt,
 // maar blok 5 draait in een browser, op een telefoon, in een auto — dus de
 // tegenproef gebeurde één keer met de hand bij het schrijven en daarna nooit
@@ -99,6 +102,35 @@ function keurTrimsGelijkGeschaald(defs) {
   return uit;
 }
 
+// 0143 (absolute motorbelasting) stond 256x naast: de deler was 655.35
+// (= 65535/100) terwijl SAE J1979 (A x 256 + B) x 100 / 255 voorschrijft.
+// Nooit opgevallen omdat de demomodus kant-en-klare procenten voedt. De drie
+// ijkpunten hieronder zijn echte veldmetingen op de CX-5; ze staan ook in het
+// commentaar bij de definitie in pidlane-data.js.
+const IJKPUNTEN_0143 = [
+  { b: [0x00, 0x48], hoort: 28.2 },
+  { b: [0x00, 0x29], hoort: 16.1 },
+  { b: [0x00, 0x38], hoort: 22.0 }   // 21-08, stationair
+];
+
+function keurAbsoluteBelasting(defs) {
+  const d = defs['0143'];
+  if (!d || typeof d.parse !== 'function') return ['0143: geen definitie of geen parser'];
+  const uit = [];
+  IJKPUNTEN_0143.forEach(function (p) {
+    const v = d.parse(p.b);
+    if (typeof v !== 'number' || isNaN(v)) { uit.push('0143: parser geeft geen getal bij B=' + p.b[1]); return; }
+    if (Math.abs(v - p.hoort) > 0.1)
+      uit.push('0143: B=' + p.b[1] + ' geeft ' + (Math.round(v * 100) / 100) + ', hoort ' + p.hoort + '%');
+  });
+  // max moest van 100 naar 400 mee. Bij overdruk loopt absolute belasting ruim
+  // over de 100%; met max 100 melden veldlab en koopcheck de gerepareerde
+  // waarde meteen als "buiten bereik" — een nieuw vals alarm in ruil voor het
+  // oude. Deze helft van de fix is dus net zo dragend als de deler.
+  if (!(d.max >= 400)) uit.push('0143: max staat op ' + d.max + ', hoort >= 400 (turbo loopt over 100%)');
+  return uit;
+}
+
 // Een steunbitmap is de inhoudsopgave van mode 01, geen meting. Staat er een
 // sensordefinitie voor, dan pakt elke consument die ALL_PID_DEFS rechtstreeks
 // leest 'm alsnog op — langs pidGate() heen.
@@ -152,6 +184,8 @@ toetsSchoon('0155/0156 hebben een definitie en byte 128 geeft 0%',
   keurSecundaireTrims(DEFS));
 toetsSchoon('secundaire trim schaalt gelijk aan de primaire',
   keurTrimsGelijkGeschaald(DEFS));
+toetsSchoon('0143 klopt op alle drie de veldmetingen, max dekt overdruk',
+  keurAbsoluteBelasting(DEFS));
 toetsSchoon('geen enkele steunbitmap heeft een sensordefinitie',
   keurBitmapsGeenSensor(DEFS, GEEN_SENSOR));
 
@@ -167,6 +201,19 @@ toetsMeldt('een halve schaalfout wordt gezien',
 
 toetsMeldt('uiteenlopen van 0106 en 0155 wordt gezien',
   keurTrimsGelijkGeschaald(met(DEFS, function (d) { d['0155'] = { name: 'anders', parse: function (b) { return b[0] / 1.28 - 99; } }; })), '0155');
+
+toetsMeldt('de oude 655.35-deler van 0143 wordt gezien (de fout van 21-08)',
+  keurAbsoluteBelasting(met(DEFS, function (d) {
+    d['0143'] = { name: 'oud', max: 400, parse: function (b) { return (b[0] * 256 + b[1]) / 655.35; } };
+  })), '0143');
+
+toetsMeldt('max terugzetten op 100 wordt gezien (nieuw vals alarm op een turbo)',
+  keurAbsoluteBelasting(met(DEFS, function (d) {
+    d['0143'] = { name: 'krap', max: 100, parse: DEFS['0143'].parse };
+  })), 'max staat op 100');
+
+toetsMeldt('0143 zonder parser wordt gezien',
+  keurAbsoluteBelasting(met(DEFS, function (d) { delete d['0143']; })), '0143');
 
 toetsMeldt('0180 terugzetten als sensor wordt gezien (de fout van 23-08)',
   keurBitmapsGeenSensor(met(DEFS, function (d) { d['0180'] = { name: 'Motor looptijd totaal', parse: function (b) { return b[0]; } }; }), GEEN_SENSOR), '0180');

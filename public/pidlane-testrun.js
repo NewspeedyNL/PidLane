@@ -1988,19 +1988,10 @@ async function _blok5() {
   // ── BLIJFT STAAN: 0143, steunbitzeef, geen fantomen ──
   // Deze drie zijn in het veld bevestigd maar bewaken elk een fout die eerder
   // is teruggekropen. Ze kosten niets en vangen een regressie meteen.
-  await _doe(5, '0143 rekent in procenten', function () {
-    let d = null;
-    try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) { console.warn('ALL_PID_DEFS[0143]-lezing gaf een fout (resultaat telt hetzelfde als \'ontbreekt\')', e); }
-    if (!d || typeof d.parse !== 'function')
-      return { staat: 'FOUT', detail: '0143 heeft geen parser meer' };
-    let v = null;
-    try { v = d.parse([0x00, 0x38]); } catch (e) { throw new Error('parser klapt op 41430038'); }
-    if (!(v > 21.5 && v < 22.5))
-      return { staat: 'FOUT', detail: '41430038 geeft ' + (Math.round(v * 100) / 100) + ', hoort 21,96 %' };
-    if (!(d.max >= 400))
-      return { staat: 'FOUT', detail: 'max staat op ' + d.max };
-    return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, max ' + d.max + '%';
-  });
+  // 0143 is hier weg (26-08). Die controle las alleen ALL_PID_DEFS en riep
+  // parse() aan — geen DOM, geen bus — dus hij draait nu in test-piddefs.js,
+  // bij elke commit, op alle drie de veldmetingen van 21-08 in plaats van
+  // alleen 41430038, en met de oude 655.35-deler als tegenproef.
 
   await _doe(5, 'Preset respecteert de steunbits', function () {
     if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
