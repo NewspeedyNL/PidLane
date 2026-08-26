@@ -24,6 +24,29 @@ Solo-project, naast een baan — onderhoudslast is een harde ontwerprandvoorwaar
 **Adapters:** OBDLink MX+ (STN-chipset, Bluetooth Classic SPP, 115200 baud) voor
 garagegebruik; Vgate iCar Pro BT 3.0 voor consumenten.
 
+**De MX+ liegt op `ATI` — bevestigd 25-08 en opnieuw 26-08-2026.** Hij antwoordt
+daar met `ELM327 v1.4b`, puur voor compatibiliteit. Eerder is daar de conclusie
+"clone zonder STN-chip" uit getrokken en die stond een tijd als feit in dit
+document. Het onderscheid is één commando dat geen enkele echte ELM327 kent:
+
+| commando | antwoord op de MX+ |
+|---|---|
+| `ATI`  | `ELM327 v1.4b` — zegt niets over de chip |
+| `STI`  | `STN2255 v5.12.4` — een clone antwoordt hier `?` of niets |
+| `STDI` | `OBDLink MX+ r3.1.3` |
+
+Gevolg: **STPX en MS-CAN zijn beschikbaar.** Met STPX geef je per commando een
+eigen timeout en een verwacht aantal frames mee, waarmee het gokken met
+batchgroottes, de zelflerende `PLPidLen` en de terugval van drie-naar-één op
+termijn kunnen verdwijnen — geen optimalisatie maar een hele laag minder.
+
+Nog niet ingebouwd, en één meting waarschuwt tegen haast: blok 13 van testrun
+4.7 mat bij stilstand gewoon 154 ms tegen STPX 167 ms (+8%). Dat is het
+gúnstigste geval (rustige bus). De vraag is of STPX wint als de bus vol staat,
+en die meet je alleen tijdens het rijden met alle vier de aanvragers aan.
+Blok 12 toont de identiteit, blok 13 de snelheid; MS-CAN is bewust ongemoeid,
+want dat vraagt een protocolwissel en die hoort niet in een rijdende testrun.
+
 ---
 
 ## 2. Domeinen en deploy
@@ -674,11 +697,23 @@ zichtbaar dat de tekst geleend is.
 Onbekend of leeg merk valt vanzelf terug op generiek — `merkGroep()` geeft dan
 een lege string en stap 1 wordt overgeslagen.
 
-**Let op — openstaande kopie.** `applyVehiclePIDPreset()` in
-`pidlane-rijsituatie.js` heeft nog een eigen, hardcoded merkgroepering
-(`BMW||MINI`, `VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`). Dat is
-dezelfde beslissing op een tweede plek en hoort naar `merkGroep()`. Bewust niet
-in dezelfde ronde gedaan; dat is een mechanische wijziging en die gaat apart.
+**De tweede kopie is weg (ronde 9).** `applyVehiclePIDPreset()` in
+`pidlane-rijsituatie.js` had een eigen, hardcoded merkgroepering
+(`BMW||MINI`, `VOLKSWAGEN||AUDI||SKODA||SEAT`, `TOYOTA||LEXUS`) die alleen
+exact gespelde merknamen kende. Die roept nu `merkGroep()` aan; de PIDs per bak
+zijn ongewijzigd gebleven. Er is dus nog één beslisplek voor merkgroepering, en
+dat is de reden dat de fix van 26-08 hieronder maar op één plaats hoefde.
+
+**Elk merk matcht op prefix — 26-08-2026.** Zeven merkregels deden dat al, twee
+toetsten op gelijkheid (`m==='BMW'`, `m==='VW'`). `merkGroep()` normaliseert weg
+wat geen letter is, dus `BMW 320D` wordt `BMWD` en `VW GOLF` wordt `VWGOLF`:
+allebei ongelijk, allebei terug naar `''`. Een BMW met zijn model erbij kreeg
+daardoor generieke DTC-teksten in plaats van de BMW-bucket, en geen merk-preset
+— zonder één melding, want `''` is de geldige uitkomst voor een onbekend merk.
+`MINI COOPER` had er via zijn prefix nooit last van. Testrun 4.7 vond de
+BMW-helft; de VW-helft kwam pas boven bij het narekenen. De regel is daarom
+structureel gelijkgetrokken in plaats van per merk goedgezet, en vastgelegd in
+`test-merkgroep.js` met de oude implementatie als tegenproef.
 
 ---
 
