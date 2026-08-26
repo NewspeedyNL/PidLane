@@ -87,6 +87,9 @@ var KRITIEK = [
   // scanNetworks() terug op alleen het herkende protocol en is handmatig kiezen
   // weer onbereikbaar — precies de toestand van vóór 26-08.
   'plProtocolLijst',
+  // De verbindwizard: de kentekenstap vóór de protocolscan en het tekenen van
+  // de protocolkeuze. Blok 5 toetst ze, en die guards horen hier genoemd.
+  'toonKentekenStap','kentekenBevestig','kentekenOverslaan','kentPoortReset','renderNetworkCards',
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',
