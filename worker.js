@@ -357,6 +357,7 @@ async function allUsers(env) {
   try {
     fromSecret = JSON.parse(env.USERS_JSON || "{}");
   } catch (_) {
+    /* stil: USERS_JSON leeg of kapot — dan gewoon geen secret-users erbij, alleen Airtable telt */
   }
   return { ...fromAirtable, ...fromSecret };
 }
@@ -368,12 +369,21 @@ async function rehashAirtablePassword(env, recId, pass) {
     const table = cfg(env, "AIRTABLE_USERS_TABLE");
     const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`;
     const PassHash = await hashPassword(pass, env);
-    await fetch(url, {
+    const r = await fetch(url, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({ records: [{ id: recId, fields: { PassHash } }], typecast: true })
     });
-  } catch (_) {
+    // Faalt dit stil, dan blijft het account op het oude (legacy) hashformaat
+    // staan en probeert de volgende inlog het gewoon opnieuw — niet
+    // catastrofaal. Maar blijft het telkens mislukken, dan wil je dat weten
+    // (kapotte AIRTABLE_TOKEN, verkeerde tabel), dus het gaat naar de logs.
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      try { console.error("[auth] herhashen mislukt voor " + recId + " :: " + r.status + " " + t.slice(0, 200)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+    }
+  } catch (e) {
+    try { console.error("[auth] herhashen gaf een fout voor " + recId + " :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
   }
 }
 __name(rehashAirtablePassword, "rehashAirtablePassword");
@@ -469,6 +479,7 @@ async function handleCopilot(request, env) {
       ctxBlok = "HUIDIGE TOESTAND (momentopname uit de app):\n" + (c.length > 6e4 ? c.slice(0, 6e4) + " \u2026(afgekapt)" : c);
     }
   } catch (_) {
+    /* stil: body.context is optioneel; kan niet naar tekst als het circulair is — dan gaat de call zonder context door */
   }
   const messages = ctxBlok ? [{ role: "user", content: ctxBlok }, ...body.messages] : body.messages;
   const payload = {
@@ -607,6 +618,7 @@ async function handleMessages(request, env) {
           try {
             console.error("[tegoed] saldo niet leesbaar voor " + session.u + " :: " + String(e && e.message || e));
           } catch (_) {
+            /* stil: melden mag de stroom nooit breken */
           }
           return {
             status: 503,
@@ -640,7 +652,13 @@ async function handleMessages(request, env) {
           try {
             const d = JSON.parse(text);
             kosten = tegoedKosten(d && d.usage, tarief);
-          } catch (_) {
+          } catch (e) {
+            // Antwoord van Anthropic was geen geldige JSON ondanks r.ok — dan
+            // valt kosten terug op het minimumtarief. Dat kan de klant te
+            // weinig laten betalen voor een grote call; "het gemis gaat naar
+            // de logs" (zie het commentaar hierboven) gold tot nu toe niet
+            // voor dit specifieke geval.
+            try { console.error("[tegoed] verbruik niet af te lezen voor " + session.u + " :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
           }
           const saldoNa = Math.max(0, saldoVoor - kosten);
           try {
@@ -650,6 +668,7 @@ async function handleMessages(request, env) {
             try {
               console.error("[tegoed] afboeken mislukt voor " + session.u + " (" + kosten + " credits) :: " + String(e && e.message || e));
             } catch (_) {
+              /* stil: melden mag de stroom nooit breken */
             }
             kop["X-PidLane-Saldo"] = String(saldoVoor);
           }
@@ -664,6 +683,7 @@ async function handleMessages(request, env) {
       try {
         console.error("[tegoed] saldo-slot niet beschikbaar voor " + session.u + " :: " + String(e && e.message || e));
       } catch (_) {
+        /* stil: melden mag de stroom nooit breken */
       }
       return json({
         ok: false,
@@ -931,6 +951,7 @@ async function handleConfigPost(request, env, ctx) {
     const cacheKey = new Request(new URL("/api/config", request.url).toString(), { method: "GET" });
     ctx.waitUntil(cache.delete(cacheKey));
   } catch (_) {
+    /* stil: cache-verversing is best-effort; een oude /api/config-cache lost zichzelf op bij de volgende TTL */
   }
   const allOk = results.every((x) => x.ok);
   return json({ ok: allOk, results }, allOk ? 200 : 502);
@@ -974,6 +995,7 @@ async function handleUsersGet(request, env) {
       locked: true
     }));
   } catch (_) {
+    /* stil: USERS_JSON leeg of kapot — locked blijft leeg, geen secret-gebruikers in de lijst */
   }
   return json({ users, locked }, 200);
 }
@@ -999,6 +1021,7 @@ async function handleUsersPost(request, env) {
     if (Object.keys(s).some((k) => k.toLowerCase() === user.toLowerCase()))
       return json({ error: "locked_user", hint: "Deze naam staat in USERS_JSON en wordt daar beheerd." }, 409);
   } catch (_) {
+    /* stil: USERS_JSON leeg of kapot — dan is er niets om de naam tegen te controleren */
   }
   const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
   const table = cfg(env, "AIRTABLE_USERS_TABLE");
@@ -1085,6 +1108,7 @@ async function handleSessionCreate(request, env) {
   try {
     body = await request.json();
   } catch (_) {
+    /* stil: kapotte of ontbrekende JSON-body — body blijft {}, de velden hieronder valideren toch elk apart */
   }
   const nowS = Math.floor(Date.now() / 1e3);
   const ttlM = Math.min(Math.max(Number(body.ttlMin) || 120, 5), 480);
@@ -1308,6 +1332,7 @@ async function metSaldoSlot(env, email, fn) {
     try {
       await slot.fetch("https://do/saldo-unlock", { method: "POST" });
     } catch (_) {
+      /* stil: lukt het loslaten niet, dan verloopt het slot vanzelf na 30s (zie metSaldoSlot) */
     }
   }
 }
@@ -1331,6 +1356,7 @@ async function handleCodeCreate(request, env) {
   try {
     body = await request.json();
   } catch (_) {
+    /* stil: kapotte of ontbrekende JSON-body — body blijft {}, de velden hieronder valideren toch elk apart */
   }
   const sessionId = String(body.sessionId || "").trim();
   const joinToken = String(body.joinToken || "").trim();
@@ -1595,6 +1621,7 @@ var RemoteSessionDO = class {
       try {
         b = await request.json();
       } catch (_) {
+        /* stil: kapotte of ontbrekende JSON-body bij close — b blijft {}, er wordt verder niets uit gelezen */
       }
       if (this._meta && b.u && b.r !== "admin" && b.u !== this._meta.owner)
         return Response.json({ error: "not_owner" }, { status: 403 });
@@ -1607,6 +1634,7 @@ var RemoteSessionDO = class {
           ws.send(JSON.stringify({ type: "closed" }));
           ws.close(1e3, "session closed");
         } catch (_) {
+          /* stil: socket kan al dicht zijn; er is dan niets meer te sluiten */
         }
       }
       return Response.json({ ok: true });
@@ -1620,6 +1648,7 @@ var RemoteSessionDO = class {
       try {
         ws.send(msg);
       } catch (_) {
+        /* stil: één dode ontvanger mag de broadcast naar de rest niet breken */
       }
     }
   }
@@ -1630,6 +1659,7 @@ var RemoteSessionDO = class {
       try {
         ws.send(msg);
       } catch (_) {
+        /* stil: één dode ontvanger mag de broadcast naar de rest niet breken */
       }
     }
   }
@@ -1729,12 +1759,14 @@ var RemoteSessionDO = class {
         if (this.vstate) server.send(JSON.stringify({ type: "vstate", data: this.vstate, t: Date.now() }));
       }
     } catch (_) {
+      /* stil: socket kan meteen na accept al weg zijn */
     }
     try {
       const experts = this.ctx.getWebSockets("expert").length;
       if (role === "expert") this.broadcastTo("local", { type: "presence", experts });
       else server.send(JSON.stringify({ type: "presence", experts }));
     } catch (_) {
+      /* stil: socket kan meteen na accept al weg zijn */
     }
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -1752,6 +1784,7 @@ var RemoteSessionDO = class {
       try {
         ws.send(JSON.stringify({ type: "pong", t: Date.now() }));
       } catch (_) {
+        /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
       }
       return;
     }
@@ -1793,6 +1826,7 @@ var RemoteSessionDO = class {
         try {
           ws.send(JSON.stringify({ type: "request-rejected", reason: "rate_limited" }));
         } catch (_) {
+          /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
         }
         return;
       }
@@ -1802,6 +1836,7 @@ var RemoteSessionDO = class {
         try {
           ws.send(JSON.stringify({ type: "request-rejected", reason: "invalid" }));
         } catch (_) {
+          /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
         }
         return;
       }
@@ -1810,6 +1845,7 @@ var RemoteSessionDO = class {
         try {
           ws.send(JSON.stringify({ type: "request-rejected", reason: "local_offline", reqId: req.reqId }));
         } catch (_) {
+          /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
         }
         return;
       }
@@ -1821,11 +1857,13 @@ var RemoteSessionDO = class {
         try {
           l.send(out);
         } catch (_) {
+          /* stil: één dode local mag de doorstuur naar de rest niet breken */
         }
       }
       try {
         ws.send(JSON.stringify({ type: "request-sent", reqId: req.reqId, pids: req.pids || null }));
       } catch (_) {
+        /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
       }
       return;
     }
@@ -1834,6 +1872,7 @@ var RemoteSessionDO = class {
     try {
       ws.close(code, reason);
     } catch (_) {
+      /* stil: socket is hier al aan het sluiten; een tweede close mag falen */
     }
     try {
       const att = ws.deserializeAttachment() || {};
@@ -1842,6 +1881,7 @@ var RemoteSessionDO = class {
         this.broadcastTo("local", { type: "presence", experts });
       }
     } catch (_) {
+      /* stil: socket is hier al aan het sluiten; presence-melding is best-effort */
     }
   }
   async webSocketError(ws, error) {
@@ -1871,7 +1911,7 @@ async function handleCreditsRedeem(request, env) {
   if (rl.limited) return rateLimitResponse(rl);
 
   let body = {};
-  try { body = await request.json(); } catch (e) {}
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const code = String(body && body.code || "").trim().toUpperCase();
   const door = String(body && body.email || "").trim().toLowerCase() || "anoniem";
 
@@ -1918,7 +1958,7 @@ async function handleCreditsRedeem(request, env) {
       const verval = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(rauw) ? rauw + "T23:59:59Z" : rauw);
       if (!Number.isFinite(verval)) {
         // Onleesbare datum niet negeren: dan weet je niet of de code geldig is.
-        try { console.error("[credits] onleesbare vervaldatum: " + rauw); } catch (_) {}
+        try { console.error("[credits] onleesbare vervaldatum: " + rauw); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
         return json({ ok: false, error: "Deze code kan nu niet gecontroleerd worden." }, 409);
       }
       if (Date.now() > verval)
@@ -1973,6 +2013,7 @@ async function handleCreditsRedeem(request, env) {
       try {
         console.error("[credits] afstempelen mislukt :: " + r2.status + " " + t2.slice(0, 200));
       } catch (_) {
+        /* stil: melden mag de stroom nooit breken */
       }
       return json({ ok: false, error: "Inwisselen mislukt, probeer later opnieuw." }, 502);
     }
@@ -2031,6 +2072,7 @@ async function handleCreditsRedeem(request, env) {
       try {
         await slot.fetch("https://do/redeem-unlock", { method: "POST" });
       } catch (_) {
+        /* stil: lukt het loslaten niet, dan verloopt het slot vanzelf na 30s (zie hierboven) */
       }
     }
   }
@@ -2059,7 +2101,7 @@ __name(handleCreditsRedeem, "handleCreditsRedeem");
 // gokwerk te diagnosticeren — precies waar dit misging.
 function klantFout(e, bericht, code) {
   const det = String(e && (e.message || e) || "onbekend").slice(0, 300);
-  try { console.error("[klant] " + bericht + " :: " + det); } catch (_) {}
+  try { console.error("[klant] " + bericht + " :: " + det); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
   return json({ ok: false, error: bericht, detail: det }, code || 500);
 }
 __name(klantFout, "klantFout");
@@ -2154,7 +2196,7 @@ async function handleKlantRegistreer(request, env) {
   if (rl.limited) return rateLimitResponse(rl);
 
   let body = {};
-  try { body = await request.json(); } catch (e) {}
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const email = String(body.email || "").trim().toLowerCase();
   const pass = String(body.pass || "");
   const naam = String(body.naam || "").trim().slice(0, 80);
@@ -2213,7 +2255,7 @@ async function handleKlantLogin(request, env, ctx) {
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   let body = {};
-  try { body = await request.json(); } catch (e) {}
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const email = String(body.email || "").trim().toLowerCase();
   const pass = String(body.pass || "");
 
@@ -2292,7 +2334,7 @@ async function handleKlantWachtwoord(request, env) {
   if (rl.limited) return rateLimitResponse(rl);
 
   let body = {};
-  try { body = await request.json(); } catch (e) {}
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const huidig = String(body.huidig || "");
   const nieuw = String(body.nieuw || "");
 
@@ -2328,7 +2370,7 @@ async function handleKlantResetAanvraag(request, env) {
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   let body = {};
-  try { body = await request.json(); } catch (e) {}
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const email = String(body.email || "").trim().toLowerCase();
 
   // Per adres bewust streng: anders is dit endpoint een manier om iemands
@@ -2376,6 +2418,7 @@ async function handleKlantResetAanvraag(request, env) {
       try {
         console.error("[klant] herstelmail mislukt (" + verstuurd.status + "): " + (verstuurd.detail || "geen toelichting"));
       } catch (_) {
+        /* stil: melden mag de stroom nooit breken */
       }
       if (adminOnly(request, env))
         return json({
@@ -2420,11 +2463,11 @@ async function klantMailVersturen(env, email, link) {
     // sleutel zonder verzendrecht, of een adres dat de provider weigert.
     // Zonder deze tekst is een mislukte mail niet te diagnosticeren.
     const tekst = await r.text().catch(() => "");
-    try { console.error("[klant] mail " + r.status + " :: " + tekst.slice(0, 300)); } catch (_) {}
+    try { console.error("[klant] mail " + r.status + " :: " + tekst.slice(0, 300)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
     return { ok: false, status: r.status, detail: tekst.slice(0, 250) };
   } catch (e) {
     const det = String(e && e.message || e);
-    try { console.error("[klant] mail netwerkfout :: " + det); } catch (_) {}
+    try { console.error("[klant] mail netwerkfout :: " + det); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
     return { ok: false, status: 0, detail: det };
   }
 }
@@ -2439,7 +2482,7 @@ async function handleKlantResetUitvoeren(request, env) {
   if (rl.limited) return rateLimitResponse(rl);
 
   let body = {};
-  try { body = await request.json(); } catch (e) {}
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const token = String(body.token || "").trim().toLowerCase();
   const pass = String(body.pass || "");
 
@@ -2489,7 +2532,7 @@ async function handleKlantAdminWachtwoord(request, env) {
   if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
 
   let body = {};
-  try { body = await request.json(); } catch (e) {}
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const email = String(body.email || "").trim().toLowerCase();
   const pass = String(body.pass || "");
 
@@ -2573,7 +2616,7 @@ async function handleAdminKlantenPost(request, env) {
   if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
 
   let b = {};
-  try { b = await request.json(); } catch (e) {}
+  try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
   const actie = String(b.actie || "");
   const id = String(b.id || "");
   if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id." }, 400);
@@ -2700,7 +2743,7 @@ async function handleAdminCodesPost(request, env) {
   if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
 
   let b = {};
-  try { b = await request.json(); } catch (e) {}
+  try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
   const actie = String(b.actie || "");
   const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
   const table = cfg(env, "AIRTABLE_CODES_TABLE");
@@ -2805,7 +2848,7 @@ async function handleKlantOnboarding(request, env) {
   if (rl.limited) return rateLimitResponse(rl);
 
   let b = {};
-  try { b = await request.json(); } catch (e) {}
+  try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
 
   if (b.survey !== true || b.anon !== true)
     return json({ ok: false, error: "Akkoord met uitlezen en geanonimiseerde data is nodig om PidLane te gebruiken." }, 400);

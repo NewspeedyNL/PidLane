@@ -54,15 +54,17 @@ const fs = require('fs');
 const RE = /(^|[^.\w$])catch\s*(?:\(\s*(?:[a-zA-Z_$][\w$]*|\{[^}]*\}|\[[^\]]*\])\s*\))?\s*\{\s*\}/g;
 let fout = 0, totaal = 0;
 
-// LET OP — worker.js zit hier NIET bij, en dat is geen vergetelheid maar een
-// openstaand punt. Op 26-08 is geprobeerd hem toe te voegen: hij bleek 44 lege
-// catches te bevatten. De backend is nooit meegegaan in de opruimronde van
-// 22-08. Toevoegen zou plcheck.sh rood zetten en rood laten, en een
-// rood-startende controle wordt genegeerd — precies waarom de ratel hierboven
-// is afgeschaft. Eerst opruimen, dan deze regel uitbreiden met ../worker.js.
-const modules = fs.readdirSync('.').filter(function (f) {
+// worker.js zit er sinds 26-08 bij (de backend, niet alleen de frontend-
+// modules). Een eerste poging vond 44 lege catches — de backend was nooit
+// meegegaan in de opruimronde van 22-08. Twee ervan verborgen een echte
+// bevinding (een stil mislukte wachtwoord-herhash, en verbruik dat
+// onopgemerkt op het minimumtarief terugviel); de rest kreeg een reden. Het
+// pad staat als eerste zodat de foutmelding hem herkenbaar toont als
+// "../worker.js: N lege catch(es)" in plaats van kaal "worker.js" naast de
+// pidlane-namen.
+const modules = ['../worker.js'].concat(fs.readdirSync('.').filter(function (f) {
   return /^pidlane-.*\.js$/.test(f);
-}).sort();
+}).sort());
 
 console.log('Stille catches — nul is de norm\n');
 
@@ -77,7 +79,7 @@ modules.forEach(function (f) {
   }
 });
 
-if (!fout) console.log('  ok    ' + modules.length + ' modules, 0 lege catches');
+if (!fout) console.log('  ok    ' + modules.length + ' bestanden, 0 lege catches');
 
 console.log('\n' + (fout ? fout + ' probleem(en)' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

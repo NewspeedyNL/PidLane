@@ -170,21 +170,29 @@ Klein, geen sessie waard, maar niet vergeten.
   pl_vinprof_… — volle discovery". De controle kán dus rood worden. Blijft over:
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
-- **`worker.js` — 44 lege catches, eigen opruimronde waard.** De backend is
-  nooit meegegaan in de ronde van 22-08; de frontend staat op nul, `worker.js`
-  is nooit gescand. Gevonden op 26-08 bij een poging het bestand aan
-  `test-stille-catches.js` toe te voegen. Die poging is teruggedraaid: de test
-  zou dag één rood staan en dan wordt hij genegeerd — dezelfde reden waarom de
-  ratel is afgeschaft. Eerst opruimen, dan de scanregel uitbreiden.
+- **`worker.js` — 44 lege catches, dicht (26-08).** Was afgelopen als los
+  eindje: de backend was nooit meegegaan in de ronde van 22-08, en
+  `test-stille-catches.js` scande het bestand niet. Nu wel — het pad staat
+  vooraan in de lijst zodat de foutmelding hem herkenbaar toont.
 
-  Triage van een steekproef: het meeste is dezelfde klasse als de frontend-ronde
-  en heeft alleen een *reden* nodig — `JSON.parse` op externe invoer (r359 op
-  `USERS_JSON`, r471 op `body.context`, r643 op een AI-antwoord), een
-  `cache.delete` (r933), en catches rondom `console.error` zelf (r609, r652,
-  r666: melden mag de stroom niet breken). Twee verdienen een echte melding:
-  **r376** slikt een mislukte Airtable-PATCH van een wachtwoordhash volledig
-  weg, en **r643** laat een mislukte kostenberekening stil terugvallen op het
-  minimumtarief — dat raakt de afboeking van tegoed.
+  Correctie op de eerdere triage hieronder: **r376** slikte geen wachtwoord-
+  wijziging weg zoals hier eerst stond, maar het opportunistische herhashen
+  van een legacy-hash na een geslaagde login — mislukt dat stil, dan blijft
+  het account op het oude formaat staan en probeert de volgende inlog het
+  gewoon opnieuw. Minder ernstig dan gedacht, maar bij structureel falen
+  (kapotte token, verkeerde tabel) wil je dat wél zien; heeft nu een melding
+  onder `[auth]`. **r643** klopte wel: een AI-antwoord dat geen geldige JSON
+  is laat de kostenberekening stil op het minimumtarief vallen — het
+  commentaar één regel erboven zegt zelfs expliciet "het gemis gaat naar de
+  logs", en deed dat tot nu toe niet. Heeft nu een melding onder `[tegoed]`.
+
+  De overige 42 kregen een reden in plaats van een melding: `JSON.parse` op
+  externe of optionele invoer (`USERS_JSON`, `body.context`, een verzoek-body
+  die toch verderop gevalideerd wordt), een best-effort `cache.delete`, een
+  saldo-slot dat in een `finally` probeert los te laten maar toch vanzelf na
+  30s verloopt, dertien WebSocket-`send`/`close`-aanroepen waar de andere kant
+  al weg kan zijn, en de bestaande "melden mag de stroom niet breken"-guards
+  rond `console.error` zelf.
 
 ## Richting: het contract tussen meten en gebruiken
 
