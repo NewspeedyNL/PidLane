@@ -82,6 +82,11 @@ var KRITIEK = [
   // Ontbreekt hij, dan vallen allebei terug op de oude "VIN gewijzigd = alles
   // weg", en dan wist het lezen van de VIN de RDW-data uit de kentekenstap.
   'plAnderVoertuig',
+  // Bouwt de protocolkeuze op (pidlane-data.js): herkend protocol bovenaan, de
+  // rest van PROTOCOLS eronder als handmatige optie. Ontbreekt hij, dan valt
+  // scanNetworks() terug op alleen het herkende protocol en is handmatig kiezen
+  // weer onbereikbaar — precies de toestand van vóór 26-08.
+  'plProtocolLijst',
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',

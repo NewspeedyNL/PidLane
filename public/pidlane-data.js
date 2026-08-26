@@ -606,6 +606,49 @@ window.PROTOCOLS =[
   {id:'2',name:'SAE J1850 VPW',              icon:'🔌',desc:'Oudere GM modellen'},
 ];
 
+// ── plProtocolLijst() — wat komt er in de protocolkeuze te staan ──────
+// 26-08-2026. PROTOCOLS hierboven werd door NIETS gelezen: scanNetworks() zette
+// alleen het automatisch gevonden protocol in de lijst, dus stond er altijd
+// precies één ding en sloeg het keuzescherm zichzelf over (het stapte na 1,5 s
+// vanzelf door). "Kiezen uit meerdere protocollen" was daarmee onbereikbaar
+// terwijl de tabel er al lag.
+//
+// De ELM327 detecteert goed maar niet onfeilbaar — op een bus met meerdere
+// snelheden, achter een gateway die 11-bit naar 29-bit spiegelt, of op een auto
+// die CAN én K-Line voert kan de eerste treffer de verkeerde zijn. Dan moet je
+// er handmatig langs kunnen zonder opnieuw te beginnen.
+//
+// Volgorde: het gedetecteerde protocol bovenaan (de beste gok van de adapter
+// zelf), daarna PROTOCOLS in zijn eigen volgorde — die staat al van meest naar
+// minst waarschijnlijk, CAN 11-bit 500k voorop.
+//
+// Pure functie, geen DOM: bewaakt door test-protocolkeuze.js.
+window.plProtocolLijst = function plProtocolLijst(gedetecteerd, tabel){
+  // ATDPN zet een 'A' voor een automatisch gevonden protocol ("A6"). Die hoort
+  // niet bij het id zelf, dus zonder strippen zou het gedetecteerde protocol
+  // ook nog eens als handmatige optie verschijnen.
+  const norm = function(id){ return String(id==null?'':id).replace(/^A/i,'').toUpperCase(); };
+  const uit = [], gezien = new Set();
+  if(gedetecteerd && gedetecteerd.id!=null && String(gedetecteerd.id)!==''){
+    uit.push({
+      id: gedetecteerd.id,
+      name: gedetecteerd.name || 'Automatisch herkend',
+      icon: gedetecteerd.icon || '✅',
+      desc: gedetecteerd.desc || 'Automatisch herkend door de adapter',
+      auto: true, handmatig: false
+    });
+    gezien.add(norm(gedetecteerd.id));
+  }
+  const bron = Array.isArray(tabel) ? tabel : (window.PROTOCOLS || []);
+  bron.forEach(function(p){
+    if(!p || p.id==null) return;
+    if(gezien.has(norm(p.id))) return;
+    gezien.add(norm(p.id));
+    uit.push({ id:p.id, name:p.name, icon:p.icon, desc:p.desc, auto:false, handmatig:true });
+  });
+  return uit;
+};
+
 // ── SAE_PID_NAMES (was index.html regel 10596) ──
 window.SAE_PID_NAMES ={
   '04':'Motorbelasting berekend','05':'Koelvloeistof temp','06':'Korte trim bank1','07':'Lange trim bank1',

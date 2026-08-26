@@ -1464,6 +1464,10 @@ async function initELM327(opts){
 let _kentPoortKlaar = false;
 function kentPoortReset(){ _kentPoortKlaar = false; }
 
+// Wat de adapter zelf herkende, of null. Apart van discoveredNetworks omdat die
+// lijst sinds 26-08 óók de handmatige alternatieven bevat.
+let _gedetecteerdProtocol = null;
+
 function toonKentekenStap(){
   ['step1','step2','step3'].forEach(function(id){
     const el=document.getElementById(id); if(el) el.style.display='none';
@@ -1534,6 +1538,7 @@ async function scanNetworks(){
   document.getElementById('networkList').innerHTML='<div class="ai-ld" style="justify-content:center"><div class="spin"></div> Protocol zoeken...</div>';
   document.getElementById('connActions').innerHTML=`<button class="mbtn s" onclick="resetToStep1()">↺ Opnieuw beginnen</button>`;
   discoveredNetworks=[];
+  _gedetecteerdProtocol=null;
 
   // 0100 triggert automatische protocol detectie — kan 3-8 seconden duren
   // Verhoog sendBT timeout tijdelijk naar 12 seconden voor deze stap
@@ -1554,10 +1559,10 @@ async function scanNetworks(){
     // Succesvol — protocol gevonden
     const protoResp=(await sendCmd('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim()||'6';
     const protoName=(await sendCmd('ATDP')).replace(/[>\r\n]/g,'').trim()||'Auto-detected';
-    discoveredNetworks.push({
+    _gedetecteerdProtocol={
       id:protoResp, name:protoName, icon:'✅',
-      desc:'Automatisch herkend door ELM327', auto:true
-    });
+      desc:'Automatisch herkend door ELM327'
+    };
     log(`Protocol: ${protoName} (${protoResp})`,'ok');
     btDiag(`Protocol gevonden: ${protoName}`,'ok');
     _onthoudProtocol(protoResp);   // zodat een herverbinding niet terugvalt op AUTO
@@ -1575,24 +1580,39 @@ async function scanNetworks(){
     }
   }
 
+  // Het gedetecteerde protocol bovenaan, daarna de handmatige alternatieven uit
+  // PROTOCOLS. De opbouw zelf staat als pure functie in pidlane-data.js zodat
+  // test-protocolkeuze.js hem zonder DOM kan toetsen.
+  discoveredNetworks = (typeof plProtocolLijst==='function')
+    ? plProtocolLijst(_gedetecteerdProtocol)
+    : (_gedetecteerdProtocol ? [Object.assign({auto:true},_gedetecteerdProtocol)] : []);
+  if(discoveredNetworks.length<=1 && _gedetecteerdProtocol)
+    btDiag('PROTOCOLS-tabel ontbreekt — alleen het gedetecteerde protocol is kiesbaar','warn');
   renderNetworkCards();
 }
 
 function renderNetworkCards(){
-  document.getElementById('step2Title').textContent=
-    discoveredNetworks.length===0 ? 'Geen netwerken gevonden' :
-    discoveredNetworks.length===1 ? '1 netwerk gevonden — automatisch geselecteerd' :
-    `${discoveredNetworks.length} netwerken gevonden`;
-  document.getElementById('step2Sub').textContent=
-    discoveredNetworks.length===0 ? 'Controleer verbinding en contact' :
-    discoveredNetworks.length===1 ? 'Diagnose start automatisch...' : 'Selecteer het netwerk voor diagnose';
+  // 26-08-2026 — GEEN AUTOMATISCHE DOORSTAP MEER. Hier stond: bij precies één
+  // netwerk niet laten kiezen maar na 1,5 s vanzelf startDiscovery() aanroepen.
+  // Omdat scanNetworks() er altijd precies één in de lijst zette, kwam de
+  // gebruiker dus nooit aan een keuze toe — het protocol was al vergrendeld
+  // (ATSP) voor je het scherm had gelezen, en zat de detectie ernaast dan was
+  // de enige uitweg opnieuw beginnen. De adapter doet nog steeds het voorwerk
+  // en zijn vondst staat bovenaan en voorgeselecteerd; de bevestiging is nu
+  // van de gebruiker.
+  const auto=discoveredNetworks.filter(function(n){ return n.auto; });
+  const heeftAuto=auto.length>0;
 
-  // Eén netwerk? Niet laten kiezen — automatisch selecteren en doorgaan
-  if(discoveredNetworks.length===1&&!window._autoNetStarted){
-    window._autoNetStarted=true;
-    selectedNetwork=discoveredNetworks[0];
-    setTimeout(()=>{ window._autoNetStarted=false; startDiscovery(); },1500);
-  }
+  document.getElementById('step2Title').textContent=
+    !discoveredNetworks.length ? 'Geen protocol gevonden' :
+    heeftAuto ? 'Protocol herkend' : 'Kies het protocol handmatig';
+  document.getElementById('step2Sub').textContent=
+    !discoveredNetworks.length ? 'Controleer verbinding en contact' :
+    heeftAuto ? 'Bevestig de herkenning, of kies zelf een ander protocol'
+              // Mislukte detectie komt meestal doordat het contact uit staat.
+              // Handmatig kiezen kan, maar is zelden wat je nodig hebt — dus
+              // eerst die hint, dan pas de lijst.
+              : 'Meestal staat het contact uit. Zet het aan en scan opnieuw, of kies zelf een protocol';
 
   const list=document.getElementById('networkList');
   list.innerHTML='';
@@ -1600,7 +1620,7 @@ function renderNetworkCards(){
   if(discoveredNetworks.length===0){
     list.innerHTML=`
       <div style="text-align:center;padding:14px;font-size:13px;color:var(--rd)">
-        ⚠ Geen netwerken gevonden.<br>
+        ⚠ Geen protocol gevonden.<br>
         <small style="color:var(--tx3)">Controleer of contact aan staat en adapter goed zit.</small>
       </div>`;
     document.getElementById('connActions').innerHTML=`
@@ -1609,17 +1629,30 @@ function renderNetworkCards(){
     return;
   }
 
+  // Kopje boven het handmatige deel, zodat "herkend" en "zelf kiezen" niet als
+  // één ononderscheiden rij kaarten lezen.
+  let kopjeGezet=false;
   discoveredNetworks.forEach((net,i)=>{
+    if(net.handmatig&&!kopjeGezet){
+      kopjeGezet=true;
+      const kop=document.createElement('div');
+      kop.style.cssText='font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3);margin:10px 0 2px';
+      kop.textContent=heeftAuto?'Of kies handmatig':'Beschikbare protocollen';
+      list.appendChild(kop);
+    }
     const card=document.createElement('div');
     card.className='network-card'+(i===0?' sel':'');
     card.id='ncard-'+i;
+    const badge=net.auto
+      ? '<div class="network-badge nb-ok">Herkend</div>'
+      : '<div class="network-badge" style="background:var(--sur);color:var(--tx3)">Handmatig</div>';
     card.innerHTML=`
       <div class="network-icon">${net.icon}</div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="network-name">${net.name}</div>
         <div class="network-desc">${net.desc}</div>
       </div>
-      <div class="network-badge nb-ok">Actief</div>`;
+      ${badge}`;
     card.onclick=()=>{
       document.querySelectorAll('.network-card').forEach(c=>c.classList.remove('sel'));
       card.classList.add('sel');
@@ -1629,15 +1662,21 @@ function renderNetworkCards(){
     list.appendChild(card);
   });
 
-  // Auto-select eerste
+  // Het gedetecteerde protocol staat vooraan en is de voorselectie; zonder
+  // detectie is dat de eerste uit PROTOCOLS (CAN 11-bit 500k).
   selectedNetwork=discoveredNetworks[0];
   updateNetworkBtn(selectedNetwork);
 }
 
 function updateNetworkBtn(net){
-  document.getElementById('connActions').innerHTML=`
-    <button class="mbtn p" onclick="startDiscovery()">✓ Gebruik: ${net.name.slice(0,30)}</button>
-    <button class="mbtn s" onclick="scanNetworks()">🔄 Opnieuw scannen</button>`;
+  const handmatig=net&&net.handmatig;
+  const kiesKnop=`<button class="mbtn ${_gedetecteerdProtocol?'p':'s'}" onclick="startDiscovery()">${handmatig?'⚙ Forceer':'✓ Gebruik'}: ${String(net.name||'').slice(0,28)}</button>`;
+  const scanKnop=`<button class="mbtn ${_gedetecteerdProtocol?'s':'p'}" onclick="scanNetworks()">🔄 Opnieuw scannen</button>`;
+  // Herkende de adapter niets, dan is opnieuw scannen (na het contact aanzetten)
+  // vrijwel altijd het juiste vervolg en handmatig forceren de uitzondering.
+  // Dan staat die knop dus vooraan, en niet andersom.
+  document.getElementById('connActions').innerHTML=
+    _gedetecteerdProtocol ? kiesKnop+scanKnop : scanKnop+kiesKnop;
 }
 
 function resetToStep1(){
