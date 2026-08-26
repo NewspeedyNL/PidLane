@@ -720,6 +720,38 @@ function closeConnOv(){
         </div>
       </div>
 
+      <!-- STAP 1b: KENTEKEN — vóór de protocolscan (26-08-2026)
+           Stond eerst alleen op de voertuigkaart, ná de hele discovery. Het
+           kenteken bepaalt merk, model, bouwjaar en brandstof, en dát voedt
+           merkGroep(), de DTC-lookup en de brandstofafhankelijke PID-gates.
+           Achteraf invullen betekent dat de discovery al gedraaid heeft op een
+           voertuig zonder eigenschappen — de "mist: model, bouwjaar, brandstof"
+           uit testrun 4.7.
+           Het invoerveld heet BEWUST kentWizInput en niet kentInput: dat tweede
+           staat op de voertuigkaart en moet uniek blijven. -->
+      <div id="stepKent" style="display:none">
+        <div class="mh">
+          <div class="mlogo">🇳🇱</div>
+          <div class="mttl">Welk voertuig is dit?</div>
+          <div class="msub">Kenteken bepaalt merk, model, bouwjaar en brandstof</div>
+        </div>
+        <div style="padding:0 20px 14px">
+          <input id="kentWizInput" placeholder="12-ABC-3" maxlength="8" autocomplete="off"
+            autocapitalize="characters" spellcheck="false"
+            style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-size:20px;font-weight:700;letter-spacing:2px;text-align:center;text-transform:uppercase">
+          <div id="kentWizStatus" style="font-size:12px;color:var(--tx3);margin-top:8px;min-height:16px;text-align:center"></div>
+          <div style="font-size:11px;color:var(--tx3);margin-top:10px;line-height:1.5">
+            Zonder kenteken werkt de diagnose gewoon, maar mist de app merk, model,
+            bouwjaar en brandstof. Merkspecifieke foutcodes en de brandstoffilters
+            vallen dan terug op algemene teksten.
+          </div>
+          <div id="kentWizBuiten" style="font-size:11px;color:var(--tx3);margin-top:8px;line-height:1.5">
+            Buitenlands kenteken of geen internet? Kies <strong>Overslaan</strong> —
+            de VIN wordt straks alsnog uitgelezen.
+          </div>
+        </div>
+      </div>
+
       <!-- STAP 2: Netwerk scan resultaten -->
       <div id="step2" style="display:none">
         <div class="mh">

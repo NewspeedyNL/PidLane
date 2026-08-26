@@ -1447,7 +1447,85 @@ async function initELM327(opts){
 // ── STAP 2: NETWERK SCAN ──
 // → PROTOCOLS verplaatst naar pidlane-data.js
 
+// ── STAP 1b — DE KENTEKENPOORT (26-08-2026) ──────────────────────────
+// Het kenteken stond op de voertuigkaart, dus ná de volledige discovery. Maar
+// het bepaalt merk, model, bouwjaar en brandstof, en dat voedt merkGroep(), de
+// DTC-lookup (§14) en de brandstofafhankelijke PID-gates. Achteraf invullen
+// betekent dat de discovery draait op een voertuig zonder eigenschappen —
+// precies de "Voertuig — mist: model, bouwjaar, brandstof" uit testrun 4.7.
+//
+// De poort zit in scanNetworks() en niet in de vier transports (SPP, BLE,
+// WebSerial, WebBT) die er allemaal op uitkomen: één beslisplek, geen vier
+// kopieën die uiteen kunnen lopen.
+//
+// Overslaan mag en is zichtbaar. Een buitenlands kenteken, een RDW die plat
+// ligt of een telefoon zonder bereik mag een diagnose nooit blokkeren; de VIN
+// wordt straks alsnog gelezen. Wat NIET meer kan is er ongemerkt langslopen.
+let _kentPoortKlaar = false;
+function kentPoortReset(){ _kentPoortKlaar = false; }
+
+function toonKentekenStap(){
+  ['step1','step2','step3'].forEach(function(id){
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  const st=document.getElementById('stepKent'); if(st) st.style.display='';
+  const inp=document.getElementById('kentWizInput');
+  const stat=document.getElementById('kentWizStatus');
+  if(stat) stat.textContent='';
+  if(inp){
+    // Voorvullen met het laatst gebruikte kenteken, maar de gebruiker moet het
+    // wél bevestigen. Tot nu toe werd dat kenteken stilzwijgend hergebruikt op
+    // élke auto waarmee je verbond — de plaat van gisteren op de auto van nu.
+    let vorig=''; try{ vorig=localStorage.getItem('pl_kenteken')||''; }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
+    inp.value=vorig;
+    if(vorig && stat) stat.textContent='Laatst gebruikt — controleer of dit de auto is waar je nu in zit';
+    try{ inp.focus(); inp.select(); }catch(e){ /* stil: focus mag falen op een verborgen veld */ }
+  }
+  const acts=document.getElementById('connActions');
+  if(acts) acts.innerHTML=
+    '<button class="mbtn p" id="kentOkBtn" onclick="kentekenBevestig()">🇳🇱 Opzoeken en doorgaan</button>'+
+    '<button class="mbtn s" onclick="kentekenOverslaan()">Overslaan — geen kenteken</button>';
+  btDiag('Kentekenstap — wacht op invoer vóór de protocolscan','info');
+}
+
+async function kentekenBevestig(){
+  const inp=document.getElementById('kentWizInput');
+  const stat=document.getElementById('kentWizStatus');
+  const btn=document.getElementById('kentOkBtn');
+  const kent=String((inp&&inp.value)||'').replace(/[\s-]/g,'').toUpperCase();
+  if(kent.length<4){
+    if(stat) stat.textContent='Voer een geldig kenteken in (minimaal 4 tekens)';
+    return;
+  }
+  if(btn){ btn.disabled=true; btn.textContent='Opzoeken...'; }
+  let r=null;
+  try{
+    r=await rdwLookup(false,{kenteken:kent, statusEl:stat});
+  }catch(e){
+    if(stat) stat.textContent='Opzoeken mislukt: '+(e.message||e);
+    btDiag('RDW-opzoeking in de kentekenstap mislukte: '+(e.message||e),'warn');
+  }
+  if(btn){ btn.disabled=false; btn.textContent='🇳🇱 Opzoeken en doorgaan'; }
+  if(!r||!r.ok){
+    // rdwLookup heeft de reden al in stat gezet (niet gevonden, RDW down,
+    // typefout). Niet doorstappen: de gebruiker kan corrigeren of overslaan.
+    return;
+  }
+  _kentPoortKlaar=true;
+  await scanNetworks();
+}
+
+function kentekenOverslaan(){
+  _kentPoortKlaar=true;
+  btDiag('Kenteken overgeslagen — merk/model/brandstof komen straks alleen uit de VIN','warn');
+  try{ log('Kenteken overgeslagen bij het verbinden','warn'); }catch(e){ /* stil: melding mag de stroom niet breken */ }
+  scanNetworks();
+}
+
 async function scanNetworks(){
+  // De poort. Demo heeft geen echte auto en stelt zijn eigen kenteken in.
+  if(!_kentPoortKlaar && !demoMode){ toonKentekenStap(); return; }
+  const _sk=document.getElementById('stepKent'); if(_sk) _sk.style.display='none';
   document.getElementById('step1').style.display='none';
   document.getElementById('step2').style.display='';
   document.getElementById('step3').style.display='none';
@@ -1563,6 +1641,10 @@ function updateNetworkBtn(net){
 }
 
 function resetToStep1(){
+  // Terug naar het begin betekent ook: de kentekenpoort weer scherp. Een
+  // volgende verbinding kan een andere auto zijn.
+  kentPoortReset();
+  const _sk=document.getElementById('stepKent'); if(_sk) _sk.style.display='none';
   document.getElementById('step1').style.display='';
   document.getElementById('step2').style.display='none';
   document.getElementById('step3').style.display='none';
@@ -1874,11 +1956,21 @@ function updateVehicleCard(vinInfo){
 // VIN-regel aangetikt → kenteken-invoer tonen/verbergen
 
 // RDW open data: voertuiggegevens op Nederlands kenteken (gratis, geen key)
-async function rdwLookup(showOverview){
+// `opties` (26-08-2026) laat een aanroeper het kenteken en het meldingsvakje
+// meegeven in plaats van ze uit #kentInput/#kentStatus te lezen. Dat is er
+// bijgekomen voor de kentekenstap in de verbindwizard, die zijn eigen invoer
+// heeft. BEWUST géén tweede element met id 'kentInput': dat is precies de fout
+// die pidlane-motortype.js documenteert ("stap 4 vroeg het kenteken in een
+// tweede invoerveld, naast kentInput"). Eén veld per plek, één functie die het
+// opzoekwerk doet. Zonder opties gedraagt hij zich exact als voorheen.
+async function rdwLookup(showOverview, opties){
   const inp=document.getElementById('kentInput');
-  const st=document.getElementById('kentStatus');
-  if(!inp) return {ok:false,reason:'no-input'};
-  const kent=inp.value.replace(/[\s-]/g,'').toUpperCase();
+  const st=(opties&&opties.statusEl)||document.getElementById('kentStatus');
+  const ruw=(opties&&opties.kenteken!==undefined&&opties.kenteken!==null)
+    ? opties.kenteken
+    : (inp?inp.value:null);
+  if(ruw===null||ruw===undefined) return {ok:false,reason:'no-input'};
+  const kent=String(ruw).replace(/[\s-]/g,'').toUpperCase();
   if(kent.length<4){ if(st) st.textContent='Voer een geldig kenteken in (minimaal 4 tekens)'; return {ok:false,reason:'invalid'}; }
   if(st) st.textContent='RDW opzoeken...';
   try{
