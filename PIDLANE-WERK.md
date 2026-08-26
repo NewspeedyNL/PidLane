@@ -238,6 +238,33 @@ helft van het bestand. In blok 5 staat nog één goedkope versiemarkering (0155
 erin, 0180 eruit) voor wat node níét kan zien: of de app de nieuwe tabel ook
 echt geladen heeft, of dat de HTTP-cache een oude serveert.
 
+**Tweede ronde: nog twee controles uit blok 5.** Dezelfde werkregel toegepast
+op wat er al stond.
+
+- **`0143 rekent in procenten`** las alleen de tabel en riep `parse()` aan.
+  Verhuisd naar `test-piddefs.js`, en meteen aangescherpt: alle drie de
+  veldmetingen van de CX-5 als ijkpunt in plaats van alleen `41430038`, en de
+  eis `max >= 400` heeft een eigen tegenproef gekregen — dat max van 100 naar
+  400 moest was de tweede helft van de fix van 21-08, want bij overdruk loopt
+  absolute belasting over de 100% en anders meldt veldlab het als "buiten
+  bereik".
+- **`Geen lege catches meer in de acht opgeruimde modules`** haalde acht
+  modules op via `fetch`. Volledig gedekt door `test-stille-catches.js` (50
+  modules, elke commit, eis is nul), dus weg. De acht waren de modules van de
+  opruimronde van 22-08 — historisch toeval, geen principiële set.
+
+Daarbij twee dingen bovenwater die er los van staan:
+
+1. De regex van `test-stille-catches.js` miste de bindingloze en de
+   destructurerende lege catch; die van blok 5 miste de bindingloze én sloeg
+   vals alarm op een promise-afhandelaar met een lege functie. Beide gaten
+   dicht, nog steeds nul bevindingen.
+2. `worker.js` wordt door die test helemaal niet gescand, terwijl `plcheck.sh`
+   het bestand voor syntax wél meeneemt met het argument dat een fout daar de
+   hele dienst plat legt. Er staan 13 bindingloze catches in, alle netjes
+   gevuld met een foutantwoord — dus vandaag geen bevinding, maar de test kijkt
+   er structureel langsheen. Nog te besluiten of hij mee moet.
+
 Nog open na deze batch: STPX onder belasting, de opruimregel (vijf minuten
 nodig om te triggeren), en raildruk `0123`/`0159` die op 23-08 bevroren stond.
 Zie CAMPAGNE in testrun 4.7 voor de exacte vragen.
