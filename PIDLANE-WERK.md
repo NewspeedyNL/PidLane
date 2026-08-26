@@ -228,9 +228,15 @@ CAMPAGNE herschreven naar deze batch plus de nog openstaande rit.
    `ALL_PID_DEFS` had er nog volledige — en verkeerde — sensordefinities voor
    staan ("Motor looptijd totaal" resp. "Tussenkoeler temp A"; het zijn de
    steunbitmaps voor PIDs 81-A0 en A1-C0). Verklaart de "STEUNBITMAPS IN DE
-   OPNAME"-bevinding uit de rit van 23-08 (0180 = 262157, 01A0 = −24). Blok 5
-   bewaakt nu permanent dat geen enkele PID uit `GEEN_SENSOR_PIDS` een
-   definitie in `ALL_PID_DEFS` heeft.
+   OPNAME"-bevinding uit de rit van 23-08 (0180 = 262157, 01A0 = −24).
+
+**Nawerk dezelfde dag: `test-piddefs.js`.** De twee tabelcontroles van fix 3 en
+fix 4 stonden eerst alleen in blok 5. Die toetsen de tabel zoals hij op schijf
+staat, en dat kan node ook — dus ze zijn verhuisd naar `test-piddefs.js`, waar
+ze bij élke commit meedraaien via `plcheck.sh`, mét hun tegenproef als tweede
+helft van het bestand. In blok 5 staat nog één goedkope versiemarkering (0155
+erin, 0180 eruit) voor wat node níét kan zien: of de app de nieuwe tabel ook
+echt geladen heeft, of dat de HTTP-cache een oude serveert.
 
 Nog open na deze batch: STPX onder belasting, de opruimregel (vijf minuten
 nodig om te triggeren), en raildruk `0123`/`0159` die op 23-08 bevroren stond.
@@ -383,5 +389,15 @@ deden onafhankelijk van elkaar hetzelfde; `ALL_PID_DEFS` en `GEEN_SENSOR_PIDS`
 spraken elkaar tegen over of `0180`/`01A0` sensoren zijn. Beide keren was de
 oplossing dezelfde: één plek aanwijzen als de waarheid en de andere
 verwijderen, niet allebei laten bestaan "voor de zekerheid". `GEEN_SENSOR_PIDS`
-is nu blijvend bewaakt in blok 5: geen enkele PID daarin mag een definitie in
-`ALL_PID_DEFS` hebben.
+is nu blijvend bewaakt in `test-piddefs.js`: geen enkele PID daarin mag een
+definitie in `ALL_PID_DEFS` hebben.
+
+**Een tegenproef die niet meedraait is geen tegenproef (26-08).** De regel
+"elke nieuwe controle krijgt een tegenproef" stond er al, maar in blok 5 kwam
+die neer op één keer met de hand omdraaien bij het schrijven — blok 5 draait
+in een browser, op een telefoon, in een auto. Daarna bewijst hij niets meer.
+Werkregel erbij: toetst een controle alleen data of pure functies (geen DOM,
+geen bus, geen verbinding), dan hoort hij als `test-*.js` onder `plcheck.sh`,
+met de tegenproef als tweede helft van het bestand — dezelfde vorm die
+`test-dodeknoppen.js` al had ("vals alarm mag niet" / "het echte geval moet
+wél gevonden worden"). Blok 5 houdt wat alleen in de auto zichtbaar is.

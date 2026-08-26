@@ -2027,50 +2027,30 @@ async function _blok5() {
     return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
   });
 
-  // ── TOEGEVOEGD 26-08: 0155/0156 hebben nu een definitie ──
-  // Ze heetten letterlijk "PID 0155"/"PID 0156" in de sweep en ontbraken in
-  // ALL_PID_DEFS, waardoor de rauwe byte (415580 → 128) op het scherm kwam.
-  // Secundaire trim, zelfde schaal als 0106/0107: byte 128 hoort 0% te zijn.
+  // ── TOEGEVOEGD 26-08, AFGESLANKT dezelfde dag: is de nieuwe PID-tabel geladen? ──
+  // Hier stonden eerst twee volledige controles: 0155/0156 moeten een
+  // definitie hebben, en geen enkele steunbitmap mag er een hebben. Die
+  // toetsen de tabel zoals hij op schijf staat, en dat kan node ook — dus ze
+  // staan nu in test-piddefs.js, waar ze bij élke commit meedraaien mét hun
+  // tegenproef. Hier laten staan zou twee waarheden geven over dezelfde regel,
+  // en dat is precies de fout die fix 1 en fix 4 van deze batch opruimden.
   //
-  // Tegenproef (handmatig gedraaid): definitie weghalen uit pidlane-data.js
-  // laat deze controle op FOUT gaan.
-  await _doe(5, '0155/0156 hebben een definitie (secundaire brandstoftrim)', function () {
-    let d155 = null, d156 = null;
-    try {
-      d155 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0155'] : null;
-      d156 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0156'] : null;
-    } catch (e) { console.warn('ALL_PID_DEFS[0155/0156]-lezing gaf een fout (telt hetzelfde als \'ontbreekt\')', e); }
-    if (!d155 || typeof d155.parse !== 'function')
-      return { staat: 'FOUT', detail: '0155 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
-    if (!d156 || typeof d156.parse !== 'function')
-      return { staat: 'FOUT', detail: '0156 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
-    let v155 = null, v156 = null;
-    try { v155 = d155.parse([128]); } catch (e) { throw new Error('parser 0155 klapt op byte 128'); }
-    try { v156 = d156.parse([128]); } catch (e) { throw new Error('parser 0156 klapt op byte 128'); }
-    if (Math.abs(v155) > 0.01) return { staat: 'FOUT', detail: '0155 geeft ' + v155 + ' bij byte 128, hoort 0% (neutrale trim)' };
-    if (Math.abs(v156) > 0.01) return { staat: 'FOUT', detail: '0156 geeft ' + v156 + ' bij byte 128, hoort 0% (neutrale trim)' };
-    return '0155 en 0156 aanwezig, byte 128 (0x80) -> 0% bij beide';
-  });
-
-  // ── TOEGEVOEGD 26-08: steunbitmaps blijven uit ALL_PID_DEFS ──
-  // 0180 en 01A0 stonden dubbel geboekt: GEEN_SENSOR_PIDS hield ze al uit de
-  // keuzelijst via pidGate(), maar ALL_PID_DEFS had er ook nog volledige (en
-  // onjuiste) sensordefinities voor staan. Elk pad dat ALL_PID_DEFS leest
-  // zonder langs pidGate() te gaan, polde ze dus alsnog als meting. Deze
-  // controle blijft staan als permanente bewaking tegen de volgende bitmap
-  // die per ongeluk als sensor wordt toegevoegd.
-  //
-  // Tegenproef (handmatig gedraaid): '0180' teruggezet in ALL_PID_DEFS laat
-  // deze controle op FOUT gaan.
-  await _doe(5, 'Steunbitmaps (GEEN_SENSOR_PIDS) hebben geen sensordefinitie', function () {
-    if (typeof GEEN_SENSOR_PIDS === 'undefined')
-      return { staat: 'LET OP', detail: 'GEEN_SENSOR_PIDS ontbreekt — pidlane-rijsituatie.js is niet meegekomen' };
+  // Wat node NIET kan zien is of de app die tabel ook echt geladen heeft. De
+  // HTTP-cache heeft hier al twee keer een oude module geserveerd (23-08 en
+  // 24-08, beide keren weg na "Nieuwste versie laden"). Daarom blijft er één
+  // goedkope versiemarkering staan: twee feiten die alleen in de nieuwe tabel
+  // allebei waar zijn. Geen herhaling van de regels — alleen de vraag of dit
+  // de nieuwe tabel is.
+  await _doe(5, 'PID-tabel is de nieuwe (0155 erin, 0180 eruit)', function () {
     if (typeof ALL_PID_DEFS === 'undefined')
-      return { staat: 'FOUT', detail: 'ALL_PID_DEFS ontbreekt' };
-    const lek = Array.from(GEEN_SENSOR_PIDS).filter(function (p) { return !!ALL_PID_DEFS[p]; });
-    if (lek.length)
-      return { staat: 'FOUT', detail: lek.length + ' steunbitmap(s) staan nog als sensor in ALL_PID_DEFS: ' + lek.join(', ') };
-    return GEEN_SENSOR_PIDS.size + ' steunbitmaps, geen enkele met een sensordefinitie in ALL_PID_DEFS';
+      return { staat: 'FOUT', detail: 'ALL_PID_DEFS ontbreekt — pidlane-data.js is niet meegekomen' };
+    const oud = [];
+    if (!ALL_PID_DEFS['0155']) oud.push('0155 ontbreekt nog');
+    if (ALL_PID_DEFS['0180'])  oud.push('0180 staat er nog als sensor');
+    if (oud.length)
+      return { staat: 'FOUT', detail: 'oude PID-tabel geladen (' + oud.join(', ') +
+        ') — waarschijnlijk de HTTP-cache; doe "Nieuwste versie laden" en draai opnieuw' };
+    return 'nieuwe tabel geladen; de inhoudelijke controles draaien in test-piddefs.js';
   });
 }
 
