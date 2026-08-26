@@ -255,16 +255,38 @@ window.DTC_MERK_LABEL = {
 // ── merkGroep() — één plek waar merknamen op een bucket worden gemapt ──
 // Gebruikt door pidlane-bt.js en, sinds ronde 9, door applyVehiclePIDPreset()
 // in pidlane-rijsituatie.js. Nieuwe merkregels horen hier en nergens anders.
+//
+// 26-08-2026 — ASYMMETRIE WEG. Twee van de negen merkregels toetsten op
+// GELIJKHEID (m==='BMW', m==='VW'), de rest op prefix. Dat verschil zie je niet
+// tot er een model in het merkveld staat: de normalisatie hieronder stript
+// spaties en cijfers, dus 'BMW 320D' wordt 'BMWD' en 'VW GOLF' wordt 'VWGOLF'.
+// Allebei mislukten ze de ===-vergelijking en vielen terug op '' — geen groep,
+// dus geen merk-specifieke DTC-lookup (§14) en geen merk-preset. 'MINI COOPER'
+// zat er via zijn prefix wél gewoon in. Alleen het kále merk werkte dus bij BMW
+// en VW, en dat is net het geval dat je op een testbank invult en in de praktijk
+// zelden binnenkrijgt — RDW levert 'merk' en 'handelsbenaming' apart, maar
+// handmatige invoer en VIN-decoders zetten er wél een model achter.
+//
+// Testrun 4.7 vond de BMW-helft; VW kwam pas boven bij het narekenen, want
+// blok 11 probeerde alleen MINI en BMW. Vandaar dat de regel nu STRUCTUREEL
+// gelijk is voor alle merken in plaats van per merk goedgezet: er is geen
+// tweede vorm meer die stil kan gaan afwijken. Bewaakt door test-merkgroep.js.
 window.merkGroep = function merkGroep(merk){
   const m = String(merk||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                             .toUpperCase().replace(/[^A-Z]/g,'');
   if(!m) return '';
-  if(m.indexOf('MAZDA')===0) return 'MAZDA';
-  if(m.indexOf('VOLKSWAGEN')===0||m==='VW'||m.indexOf('AUDI')===0||m.indexOf('SKODA')===0||m.indexOf('SEAT')===0||m.indexOf('CUPRA')===0) return 'VAG';
-  if(m.indexOf('TOYOTA')===0||m.indexOf('LEXUS')===0) return 'TOYOTA';
-  if(m.indexOf('FORD')===0) return 'FORD';
-  if(m.indexOf('OPEL')===0||m.indexOf('VAUXHALL')===0) return 'OPEL';
-  if(m==='BMW'||m.indexOf('MINI')===0) return 'BMW';
+  // Elk merk matcht op PREFIX. Geen enkele uitzondering — zie de comment boven
+  // deze functie: twee ===-vergelijkingen lieten 'BMW 320D' en 'VW GOLF' vallen.
+  const start = function(){
+    for(let i=0;i<arguments.length;i++) if(m.indexOf(arguments[i])===0) return true;
+    return false;
+  };
+  if(start('MAZDA')) return 'MAZDA';
+  if(start('VOLKSWAGEN','VW','AUDI','SKODA','SEAT','CUPRA')) return 'VAG';
+  if(start('TOYOTA','LEXUS')) return 'TOYOTA';
+  if(start('FORD')) return 'FORD';
+  if(start('OPEL','VAUXHALL')) return 'OPEL';
+  if(start('BMW','MINI')) return 'BMW';
   return '';
 };
 
