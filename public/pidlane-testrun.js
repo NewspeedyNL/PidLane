@@ -311,7 +311,12 @@ async function _blok1() {
     } catch (e) { return { staat: 'FOUT', detail: 'localStorage onleesbaar' }; }
 
     if (!alle.length)
-      return { staat: 'LET OP', detail: 'geen enkel opgeslagen profiel — saveVinProfile schrijft niet, of de opslag overleeft de sessie niet' };
+      // HERZIEN 26-08: dit was LET OP, en sloeg op 25-08 vals alarm bij een
+      // eerste verbinding met een onbekend VIN — geen profiel, dus terecht
+      // een volle discovery, en toch een melding die eruitziet als een
+      // storing. Nul profielen is precies wat een nieuw voertuig of een
+      // verse installatie hoort te laten zien.
+      return 'nog geen profiel voor dit voertuig opgeslagen — eerste verbinding, de app deed terecht een volle discovery';
 
     if (!vin)
       return { staat: 'LET OP', detail: alle.length + ' profiel(en) opgeslagen, maar geen VIN in deze sessie om tegen te matchen' };
@@ -349,6 +354,16 @@ async function _blok1() {
       return basis + ' — of het geladen is, is niet vast te stellen (profielHealth ontbreekt)';
     if (geladen)
       return basis + ' — bij het verbinden geladen, snelle start';
+
+    // HERZIEN 26-08: geladen===false betekende hier altijd LET OP, ook vlak
+    // nadat een eerste volle discovery het profiel zojuist zélf heeft
+    // aangemaakt — precies de situatie uit het log van 25-08 (opgeslagen om
+    // 20:34:18, en de controle die er meteen overheen liep meldde alsnog
+    // "niet geladen"). Zo'n vers profiel kán bij dít verbinden niet geladen
+    // zijn, want het bestond toen nog niet. `uur` (hierboven al berekend)
+    // onderscheidt dat van een profiel dat er al stond en genegeerd is.
+    if (uur !== null && uur <= 0.1)
+      return basis + ' — nog maar een paar minuten oud: dit profiel is tijdens déze sessie zelf ontstaan, dus terecht niet geladen bij het verbinden';
     return { staat: 'LET OP', detail: basis +
       ' — staat in de opslag maar is bij het verbinden NIET geladen; de app deed een volle discovery' };
   });
