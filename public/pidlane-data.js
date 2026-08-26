@@ -538,6 +538,12 @@ window.ALL_PID_DEFS ={
   '0107':{name:'Brandstoftrim lang B1',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
   '0108':{name:'Brandstoftrim kort B2',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
   '0109':{name:'Brandstoftrim lang B2',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  // 0155/0156 ontbraken hier: de sweep meldde ze letterlijk als "PID 0155" /
+  // "PID 0156" en de rauwe byte kwam eruit (415580 → 128). Secundaire trim,
+  // byte A = bank 1, byte B = bank 3 — zelfde schaal als 0106/0107, dus 128
+  // → 0%, een gezonde trim.
+  '0155':{name:'Sec. brandstoftrim kort B1',unit:'%', cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  '0156':{name:'Sec. brandstoftrim lang B1',unit:'%', cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
   '010D':{name:'Voertuigsnelheid',     unit:'km/h',cat:'Rijden',     min:0,   max:280,                     parse:b=>b[0]},
   '0149':{name:'Gaspedaal positie',    unit:'%',   cat:'Rijden',     min:0,   max:100,                     parse:b=>(b[0]*100/255)},
   '0142':{name:'Accuspanning',         unit:'V',   cat:'Electrisch', min:8,   max:16,   wL:11.5, dL:10.5, parse:b=>((b[0]*256+b[1])/1000)},
@@ -704,7 +710,11 @@ Object.assign(ALL_PID_DEFS,{
   '017D':{name:'DPF temp B2',            unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>(((b[0]*256+b[1])*0.1)-40)},
   '017E':{name:'NOx NTE status',         unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
   '017F':{name:'PM NTE status',          unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
-  '0180':{name:'Motor looptijd totaal',  unit:'s',   cat:'Motor',    min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
+  // 0180 stond hier als "Motor looptijd totaal", maar 0x80 is de steunbitmap
+  // voor PIDs 81-A0 — geen meting. GEEN_SENSOR_PIDS (pidlane-rijsituatie.js)
+  // hield 'm al buiten de keuzelijst; deze foute definitie is verwijderd
+  // zodat geen enkel pad dat rechtstreeks ALL_PID_DEFS leest 'm alsnog als
+  // sensor oppakt.
   '0181':{name:'MIL looptijd totaal',    unit:'min', cat:'Emissie',  min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
   '0182':{name:'Afstand MIL totaal',     unit:'km',  cat:'Emissie',  min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
   '0183':{name:'Afstand na wissen totaal',unit:'km', cat:'Overig',   min:0,max:4294967295,parse:b=>(((b[0]<<24)>>>0)+(b[1]<<16)+(b[2]<<8)+b[3])},
@@ -736,7 +746,9 @@ Object.assign(ALL_PID_DEFS,{
   '019D':{name:'Turbo temp inlaat B',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
   '019E':{name:'Turbo temp uitlaat A',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
   '019F':{name:'Turbo temp uitlaat B',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
-  '01A0':{name:'Tussenkoeler temp A',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
+  // 01A0 stond hier als "Tussenkoeler temp A", maar 0xA0 is de steunbitmap
+  // voor PIDs A1-C0 — geen meting. Zelfde reden en aanpak als bij 0180
+  // hierboven: verwijderd, GEEN_SENSOR_PIDS blijft de ene waarheid.
   '01A1':{name:'Tussenkoeler temp B',    unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
   '01A2':{name:'EGR koeler temp B1',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},
   '01A3':{name:'EGR koeler temp B2',     unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},

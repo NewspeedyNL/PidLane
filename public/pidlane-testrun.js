@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.6 (25-08-2026)';
+const TESTRUN_VERSIE = '4.7 (26-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -311,7 +311,12 @@ async function _blok1() {
     } catch (e) { return { staat: 'FOUT', detail: 'localStorage onleesbaar' }; }
 
     if (!alle.length)
-      return { staat: 'LET OP', detail: 'geen enkel opgeslagen profiel — saveVinProfile schrijft niet, of de opslag overleeft de sessie niet' };
+      // HERZIEN 26-08: dit was LET OP, en sloeg op 25-08 vals alarm bij een
+      // eerste verbinding met een onbekend VIN — geen profiel, dus terecht
+      // een volle discovery, en toch een melding die eruitziet als een
+      // storing. Nul profielen is precies wat een nieuw voertuig of een
+      // verse installatie hoort te laten zien.
+      return 'nog geen profiel voor dit voertuig opgeslagen — eerste verbinding, de app deed terecht een volle discovery';
 
     if (!vin)
       return { staat: 'LET OP', detail: alle.length + ' profiel(en) opgeslagen, maar geen VIN in deze sessie om tegen te matchen' };
@@ -349,6 +354,16 @@ async function _blok1() {
       return basis + ' — of het geladen is, is niet vast te stellen (profielHealth ontbreekt)';
     if (geladen)
       return basis + ' — bij het verbinden geladen, snelle start';
+
+    // HERZIEN 26-08: geladen===false betekende hier altijd LET OP, ook vlak
+    // nadat een eerste volle discovery het profiel zojuist zélf heeft
+    // aangemaakt — precies de situatie uit het log van 25-08 (opgeslagen om
+    // 20:34:18, en de controle die er meteen overheen liep meldde alsnog
+    // "niet geladen"). Zo'n vers profiel kán bij dít verbinden niet geladen
+    // zijn, want het bestond toen nog niet. `uur` (hierboven al berekend)
+    // onderscheidt dat van een profiel dat er al stond en genegeerd is.
+    if (uur !== null && uur <= 0.1)
+      return basis + ' — nog maar een paar minuten oud: dit profiel is tijdens déze sessie zelf ontstaan, dus terecht niet geladen bij het verbinden';
     return { staat: 'LET OP', detail: basis +
       ' — staat in de opslag maar is bij het verbinden NIET geladen; de app deed een volle discovery' };
   });
@@ -1608,39 +1623,38 @@ async function _blok5() {
     return 'vlag zet tokLoad() stil en ruimt zichzelf op';
   });
 
-  // ── TOEGEVOEGD 25-08: scherm blijft aan tijdens de meting ──
-  // Uit de rit van 23-08: veertien stiltes in het logboek, en op precies
-  // dezelfde kloktijden geen bulkdata. Het proces liep niet. PLWake dekt
-  // daarvan één helft — het scherm dat uitgaat — niet de andere, de app die
-  // je echt verlaat. Daarvoor is een foreground service nodig.
-  await _doe(5, 'Scherm-wakelock (PLWakelock)', function () {
-    // 25-08: heette eerst PLWake en dat gaf FOUT "steunt is not a function"
-    // terwijl het object bestond — er is al een window.PLWake elders. Deze
-    // test noemt dat nu bij naam in plaats van erover te struikelen.
-    const vreemd = (typeof window.PLWake !== 'undefined');
-    if (typeof window.PLWakelock === 'undefined')
-      return { staat: 'FOUT', detail: 'PLWakelock ontbreekt — pidlane-auth.js is niet meegekomen' +
-        (vreemd ? ' (er is wél een window.PLWake, van een andere module)' : '') };
-    if (typeof PLWakelock.steunt !== 'function')
-      return { staat: 'FOUT', detail: 'PLWakelock is overschreven door een andere module — sleutels: ' +
-        Object.keys(PLWakelock).join(', ') };
-    if (!PLWakelock.steunt())
-      return { staat: 'LET OP', detail: 'deze WebView kent navigator.wakeLock niet — scherm aanhouden werkt hier niet' };
+  // ── HERSCHREVEN 26-08: PLWakelock was een duplicaat van PLWake ──
+  // Twee scherm-wakelocks deden hetzelfde: PLWake (index.html) wikkelt
+  // setConn() om — reageert direct in plaats van elke 5 s te pollen — en
+  // kijkt ook naar remPill/remDrivePill zodat een remote-sessie het scherm
+  // ook aanhoudt. PLWakelock (pidlane-auth.js) is er daarom uit; deze
+  // controle toetst nu de blijvende, bredere versie. PLWake exporteert
+  // alleen `sync` — geen steunt()/actief()/fout() om tegen te toetsen — dus
+  // deze controle kijkt naar wat er wél te toetsen valt.
+  //
+  // Tegenproef (handmatig gedraaid tijdens het maken van deze fix): met
+  // PLWakelock tijdelijk teruggezet meldt de laatste stap hieronder FOUT.
+  await _doe(5, 'Scherm-wakelock (PLWake)', function () {
+    if (typeof window.PLWake !== 'object' || !window.PLWake)
+      return { staat: 'FOUT', detail: 'PLWake ontbreekt — het scherm-aan-blok in index.html is niet meegekomen' };
+    if (typeof PLWake.sync !== 'function')
+      return { staat: 'FOUT', detail: 'PLWake is overschreven door iets anders — sleutels: ' + Object.keys(PLWake).join(', ') };
 
-    // Alleen oordelen als de voorwaarden kloppen. Niet verbonden betekent
-    // terecht geen lock; dat als FOUT tellen geeft een altijd-rode test, en
-    // die wordt genegeerd (§ratel).
+    if (!('wakeLock' in navigator))
+      return { staat: 'LET OP', detail: 'deze WebView kent navigator.wakeLock niet (oude WebView) — scherm aanhouden werkt hier niet' };
+
+    // Alleen oordelen als de voorwaarden kloppen. Niet verbonden of de
+    // pagina niet zichtbaar betekent terecht geen lock; dat als FOUT tellen
+    // geeft een altijd-rode test, en die wordt genegeerd (§ratel).
     if (!(typeof connected !== 'undefined' && connected))
       return { staat: 'LET OP', detail: 'niet verbonden, dus terecht geen wakelock — draai dit blok opnieuw mét verbinding' };
     if (document.visibilityState !== 'visible')
       return { staat: 'LET OP', detail: 'pagina niet zichtbaar tijdens de test' };
 
-    if (!PLWakelock.actief()) {
-      const f = PLWakelock.fout();
-      return { staat: 'FOUT', detail: 'verbonden en zichtbaar, maar geen wakelock' +
-        (f ? ' — geweigerd: ' + f + ' (batterijbesparing?)' : ' — geen reden gemeld') };
-    }
-    return 'wakelock actief' + (vreemd ? ' (let op: er bestaat ook een window.PLWake van een andere module)' : '');
+    if (typeof window.PLWakelock !== 'undefined')
+      return { staat: 'FOUT', detail: 'window.PLWakelock bestaat weer — het duplicaat is terug (pidlane-auth.js)' };
+
+    return 'PLWake aanwezig (sync), geen duplicaat PLWakelock';
   });
 
   // Mode 22 olietemperatuur is op 23-08 losgelaten. De knoppen "DID-scan (45 s)"
@@ -2011,6 +2025,52 @@ async function _blok5() {
     if (ontkend.length)
       return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size + ' ontkend: ' + ontkend.join(', ') };
     return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
+  });
+
+  // ── TOEGEVOEGD 26-08: 0155/0156 hebben nu een definitie ──
+  // Ze heetten letterlijk "PID 0155"/"PID 0156" in de sweep en ontbraken in
+  // ALL_PID_DEFS, waardoor de rauwe byte (415580 → 128) op het scherm kwam.
+  // Secundaire trim, zelfde schaal als 0106/0107: byte 128 hoort 0% te zijn.
+  //
+  // Tegenproef (handmatig gedraaid): definitie weghalen uit pidlane-data.js
+  // laat deze controle op FOUT gaan.
+  await _doe(5, '0155/0156 hebben een definitie (secundaire brandstoftrim)', function () {
+    let d155 = null, d156 = null;
+    try {
+      d155 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0155'] : null;
+      d156 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0156'] : null;
+    } catch (e) { console.warn('ALL_PID_DEFS[0155/0156]-lezing gaf een fout (telt hetzelfde als \'ontbreekt\')', e); }
+    if (!d155 || typeof d155.parse !== 'function')
+      return { staat: 'FOUT', detail: '0155 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
+    if (!d156 || typeof d156.parse !== 'function')
+      return { staat: 'FOUT', detail: '0156 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
+    let v155 = null, v156 = null;
+    try { v155 = d155.parse([128]); } catch (e) { throw new Error('parser 0155 klapt op byte 128'); }
+    try { v156 = d156.parse([128]); } catch (e) { throw new Error('parser 0156 klapt op byte 128'); }
+    if (Math.abs(v155) > 0.01) return { staat: 'FOUT', detail: '0155 geeft ' + v155 + ' bij byte 128, hoort 0% (neutrale trim)' };
+    if (Math.abs(v156) > 0.01) return { staat: 'FOUT', detail: '0156 geeft ' + v156 + ' bij byte 128, hoort 0% (neutrale trim)' };
+    return '0155 en 0156 aanwezig, byte 128 (0x80) -> 0% bij beide';
+  });
+
+  // ── TOEGEVOEGD 26-08: steunbitmaps blijven uit ALL_PID_DEFS ──
+  // 0180 en 01A0 stonden dubbel geboekt: GEEN_SENSOR_PIDS hield ze al uit de
+  // keuzelijst via pidGate(), maar ALL_PID_DEFS had er ook nog volledige (en
+  // onjuiste) sensordefinities voor staan. Elk pad dat ALL_PID_DEFS leest
+  // zonder langs pidGate() te gaan, polde ze dus alsnog als meting. Deze
+  // controle blijft staan als permanente bewaking tegen de volgende bitmap
+  // die per ongeluk als sensor wordt toegevoegd.
+  //
+  // Tegenproef (handmatig gedraaid): '0180' teruggezet in ALL_PID_DEFS laat
+  // deze controle op FOUT gaan.
+  await _doe(5, 'Steunbitmaps (GEEN_SENSOR_PIDS) hebben geen sensordefinitie', function () {
+    if (typeof GEEN_SENSOR_PIDS === 'undefined')
+      return { staat: 'LET OP', detail: 'GEEN_SENSOR_PIDS ontbreekt — pidlane-rijsituatie.js is niet meegekomen' };
+    if (typeof ALL_PID_DEFS === 'undefined')
+      return { staat: 'FOUT', detail: 'ALL_PID_DEFS ontbreekt' };
+    const lek = Array.from(GEEN_SENSOR_PIDS).filter(function (p) { return !!ALL_PID_DEFS[p]; });
+    if (lek.length)
+      return { staat: 'FOUT', detail: lek.length + ' steunbitmap(s) staan nog als sensor in ALL_PID_DEFS: ' + lek.join(', ') };
+    return GEEN_SENSOR_PIDS.size + ' steunbitmaps, geen enkele met een sensordefinitie in ALL_PID_DEFS';
   });
 }
 
@@ -2577,62 +2637,31 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Openstaande items na de rit van 23-08 — achtergrond, adapter, klok, bevroren sensoren',
+  titel: 'Batch 26-08-2026 — PLWakelock-duplicaat, VIN-profielmelding, 0155/0156, steunbitmaps, plus de openstaande rit',
   vragen: [
     'VOORAF — blok 5 mag geen FOUT geven. Staat er "NIET geladen", lees de melding: dat kan ook de cache zijn. Eerst "Nieuwste versie laden", dan opnieuw.',
 
-    'BLOK 12 — ADAPTER: BEANTWOORD op 25-08. STI="STN2255 v5.12.4", STDI="OBDLink MX+ r3.1.3", ATI="ELM327 v1.4b". Het IS een STN. Deze vraag hoeft niet opnieuw; laat blok 12 wel meelopen zodat een andere adapter meteen opvalt.',
+    'FIX 1 — WAKELOCK-DUPLICAAT WEG. window.PLWakelock (pidlane-auth.js) is verwijderd; window.PLWake (index.html) blijft de enige. Verbind en kijk of het log "🔆 Scherm blijft aan zolang de verbinding/sessie loopt" meldt — niet meer "Scherm blijft aan tijdens de meting" (die tekst hoorde bij het verwijderde duplicaat). Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Blok 5 toetst PLWake en meldt FOUT als PLWakelock ooit terugkomt.',
 
-    'BLOK 13 — STPX. Nieuw, en de eigenlijke vervolgvraag op blok 12. Hij meet vijf keer om en om: gewone uitvraag tegen STPX met R:1. Noteer beide medianen. Scheelt het 20% of meer, dan kan de batchgok, PLPidLen en de terugval van drie-naar-één op termijn weg — dat is een hele laag minder. Scheelt het weinig, dan hoef je daar niet aan te beginnen en is dat óók winst.',
+    'FIX 1, REMOTE — PLWake kijkt ook naar remPill/remDrivePill. Open diagnose delen of expert-modus op remote data en controleer dat het scherm ook dán aanblijft, zonder dat er een echte BT-verbinding actief is.',
 
-    'BLOK 13, TWEEDE LEZING — draai hem één keer bij stilstand en één keer tijdens het rijden met alle vier de aanvragers aan. STPX helpt vooral als de bus druk is; bij stilstand meet je het gunstigste geval en dat zegt weinig over de praktijk.',
+    'FIX 2 — VIN-PROFIEL, EERSTE VERBINDING MET EEN NIEUW VOERTUIG. Blok 1 gaf hier altijd LET OP, ook als er nog helemaal geen profiel bestond. Moet nu "ok" zijn met de tekst dat de app terecht een volle discovery deed.',
 
-    'MS-CAN — blok 13 probeert dit BEWUST NIET, want een protocolwissel hoort niet in een testrun die je tijdens het rijden draait. Wil je het weten, doe het los en stationair, met de terugweg vooraf uitgeschreven.',
+    'FIX 2, VIN-PROFIEL BINNEN DEZE SESSIE OPGESLAGEN. Verbind met een voertuig zonder profiel, laat de discovery + het opslaan gebeuren, en herlaad blok 1 meteen daarna. Het profiel is dan een paar minuten oud — moet nog steeds "ok" zijn, niet LET OP.',
 
-    'VIN-PROFIEL — blok 1 meldde: staat in de opslag maar wordt bij het verbinden NIET geladen, de app doet een volle discovery. Kijk of dat elke keer gebeurt. Zo ja, dan kost elke verbinding onnodig een complete scan en blijft het voertuig op "Mazda" staan zonder model, bouwjaar en brandstof — wat de brandstofafhankelijke gates voedt.',
+    'FIX 2, ECHT GENEGEERD PROFIEL. Verbind twee keer met hetzelfde bekende voertuig. Bij de tweede keer hoort blok 1 "bij het verbinden geladen, snelle start" te zeggen. Krijg je in plaats daarvan LET OP met een profiel dat al langer dan een paar minuten oud is, dan is dát de echte bevinding — schrijf op hoe oud.',
 
-    'PID 0155 EN 0156 — heten letterlijk "PID 0155" in de sweep, dus ze staan niet in ALL_PID_DEFS. Daarom komt de rauwe byte 0x80 = 128 eruit. Geen parserfout maar een ontbrekende definitie: secundaire O2-trim, formule (A-128)*100/128. Controleer of ze na toevoeging rond 0% uitkomen.',
+    'FIX 3 — 0155/0156 NIET MEER ALS RAUWE BYTE. Ze stonden op de rauwe waarde 128 (0x80). Controleer in de live-view dat ze nu als percentage rond 0% liggen, net als 0106/0107.',
 
+    'FIX 4 — STEUNBITMAPS WEG UIT DE OPNAME. 0180 en 01A0 stonden als sensorwaarde in de bulkopname (0180 = 262157, 01A0 = -24) terwijl het de steunbitmaps voor PIDs 81-A0 en A1-C0 zijn. Controleer of ze nog ergens in de bulk-recorder, gauges of AI-rapport verschijnen — als dat wél zo is, leest die consument ALL_PID_DEFS zonder langs pidGate() te gaan, en is dát de volgende plek om te fixen.',
 
-    'UITLOGGEN — nieuw. Log uit als admin en kies OK bij de vraag of de log bewaard moet worden. Het deelvenster opent, de app gaat naar de achtergrond. Kom terug: sta je op het LOGINSCHERM? Vóór deze fix was je weer binnen. Doe het daarna nog eens met Annuleren — dat pad was altijd al goed en moet goed blijven.',
+    'STPX ONDER BELASTING — nog open sinds 25-08. Blok 13 meet vijf keer om en om: gewone uitvraag tegen STPX met R:1. Draai hem één keer bij stilstand en één keer tijdens het rijden met alle vier de aanvragers aan — STPX helpt vooral als de bus druk is, en bij stilstand meet je het gunstigste geval. Scheelt het 20% of meer tijdens het rijden, dan kan de batchgok, PLPidLen en de terugval van drie-naar-één op termijn weg.',
 
-    'WAKELOCK — nieuw. Verbind en kijk of het log "Scherm blijft aan tijdens de meting" meldt. Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Zo niet, dan weigert batterijbesparing de lock en noemt blok 5 de reden.',
+    'OPRUIMREGEL, VIJF MINUTEN — nog open sinds 23-08. Zoek in het log op "opgeruimd". Rijd lang genoeg: zes mislukkingen plus vijf herkansingen van één per minuut kost minstens vijf minuten. Verwacht op deze CX-5: 0101, 0121, 016D, en de PIDs uit het 0180-blok (018E, 019D, 019E, 01A0) die de ECU wél claimt maar niet levert. Staat er ook "antwoordt weer na N mislukte herkansing(en)" — dan herstelde een sensor zich vóór hij eruit ging.',
 
-    'ACHTERGROND — DE KERN VAN DEZE RIT. Rijd tien minuten zonder de app ook maar één keer te verlaten. Geen log openen, geen notificatie wegtikken, scherm aan laten. Vergelijk daarna het aantal herverbindingen met de 9 van 23-08.',
+    'RAILDRUK 0123/0159 — nog open sinds 23-08. Beide stonden een hele rit stil op 9900. Op directe inspuiting kan dat niet. Bewegen ze nu wél?',
 
-    'ACHTERGROND, TWEEDE HELFT. Doe daarna bewust het omgekeerde: verlaat de app drie keer kort (log openen, terug). Kijk of er telkens een herverbinding volgt. Op 23-08 volgde elke herverbinding op een stilte in het logboek — dat verband moet zich herhalen, anders klopt de verklaring niet.',
-
-    'KLOK — vergelijk het eerste tijdstip in de bulkopname met het eerste in het logboek. Op 23-08 scheelde dat exact twee uur: de recorder schrijft UTC, de logger lokale tijd. Zolang dat zo is zijn de twee bestanden niet naast elkaar te leggen.',
-
-    'BEVROREN SENSOREN — 0155 en 0156 stonden 27 minuten lang op 128. Dat is de rauwe byte 0x80; brandstoftrim hoort rond 0% te liggen. Kijk of dat nog steeds zo is en of blok 11 er iets over zegt.',
-
-    'BEVROREN SENSOREN — 0123 en 0159 (raildruk) stonden allebei stil op 9900 tijdens een hele rit. Op directe inspuiting kan dat niet. Bewegen ze nu wél?',
-
-    'STEUNBITMAPS IN DE OPNAME — 0120, 0140, 0160 en 0180 stonden als sensorwaarde in de bulkopname. Dat zijn de bitmaps zelf. GEEN_SENSOR_PIDS houdt ze uit de keuzelijst maar niet uit pidlane-bulk.js. Controleer of ze er nog in staan.',
-
-    'OPRUIMREGEL — zoek in het log op "opgeruimd". Rijd lang genoeg: zes mislukkingen plus vijf herkansingen van een per minuut kost minstens vijf minuten. Verwacht op deze CX-5: 0101, 0121, 016D, en de vier uit blok 0180 (018E, 019D, 019E, 01A0) die de ECU wél claimt maar niet levert.',
-
-    'TERUGWEG — staat er ook "antwoordt weer na N mislukte herkansing(en)"? Dan herstelde een sensor zich vóór hij eruit ging.',
-
-    'AI-RAPPORT — draai een analyse nadat er iets is opgeruimd. Staat er dat die sensor niet gemeten is, en NIET dat hij ontbreekt of defect is?',
-
-    'PLLOAD — 23-08 gaf 34 remmomenten, waarvan 1 zonder fouten én zonder oplopende responstijd. Blijft dat zo als de app niet meer naar de achtergrond gaat? Vermoeden: een deel van die 34 was een reactie op het hervatten na een stilte, niet op de bus.',
-
-    'TURBODREMPEL — het oordeel viel op 23-08 voor het eerst: 1461 MAP-monsters, piek 105 kPa, barometer 102, grens 110. Noteer piek en marge opnieuw. Onder 3 kPa meldt blok 5 het.',
-
-    'TEGELS — NIET meer vragen of 0170, 2102 of 2187 verdwijnen. Dat kan op deze auto nooit: steunbitblok 0160 (41606B080001) decodeert naar 62 63 65 67 68 6D 80, dus geen 70, en de mode 21-probe vindt de andere twee niet. Het fantoom-scenario vraagt een auto waarvan de ECU laaddruk meldt zonder turbo.',
-
-    '0143 — leek op 23-08 goed: 0 tot 96,9%, gemiddeld 19,4 tegen 30,0 voor 0104. Bevestig dat en vink het losse eindje af.',
-
-    'FIX 2 — FULL SURVEY. Op 23-08 stond deze op FOUT ("survey transport niet geladen") en dat was de cache. Nu dus echt toetsen: staat "transportfout" apart naast "niet aanwezig"?',
-
-    'FIX 1 — LOG WISSEN. Wissen, herladen, blijft hij leeg?',
-
-    'FIX 12 — CLEARDTC. Blok 5 controleert de remote-blokkade. FOUT daar = stoppen.',
-
-    'OPMERKINGVELD — kapt nog steeds af op exact 20 tekens ("Testrun na herverbin"). Typ een lange zin en tel wat er overblijft.',
-
-    'RIJ MET ALLE VIER DE AANVRAGERS AAN — bulk-recorder, caravan-tracker, rijmonitor en waakronde. Anders toets je de PLLoad-ingreep niet.'
+    'RIJ MET ALLE VIER DE AANVRAGERS AAN — bulk-recorder, caravan-tracker, rijmonitor en waakronde. Zonder dat toets je de STPX- en PLLoad-vragen niet onder realistische belasting.'
   ]
 };
 
