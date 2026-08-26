@@ -40,12 +40,31 @@
 
 const fs = require('fs');
 
-const RE = /catch\s*\(\s*[a-zA-Z_$][\w$]*\s*\)\s*\{\s*\}/g;
+// 26-08: verbreed. De oude vorm eiste een simpele naam tussen de haakjes en
+// miste daardoor twee lege catches die wel degelijk stil zijn: de bindingloze
+// (ES2019, zonder haakjes) en de destructurerende. De variant die in blok 5 stond
+// ving de bindingloze ook niet, en sloeg bovendien vals alarm op een
+// promise-afhandelaar met een lege functie erin. Vandaar de eis dat het
+// sleutelwoord niet voorafgegaan wordt door een punt of een woordteken.
+//
+// LET OP bij het uitbreiden van dit commentaar: schrijf de vormen hierboven
+// niet letterlijk uit. Deze test leest de bron van elke module met de regex
+// hieronder en telt zijn eigen voorbeelden gewoon mee — dat gebeurde op
+// 26-08 in pidlane-testrun.js, twee valse bevindingen uit een toelichting.
+const RE = /(^|[^.\w$])catch\s*(?:\(\s*(?:[a-zA-Z_$][\w$]*|\{[^}]*\}|\[[^\]]*\])\s*\))?\s*\{\s*\}/g;
 let fout = 0, totaal = 0;
 
-const modules = fs.readdirSync('.').filter(function (f) {
+// worker.js zit er sinds 26-08 bij (de backend, niet alleen de frontend-
+// modules). Een eerste poging vond 44 lege catches — de backend was nooit
+// meegegaan in de opruimronde van 22-08. Twee ervan verborgen een echte
+// bevinding (een stil mislukte wachtwoord-herhash, en verbruik dat
+// onopgemerkt op het minimumtarief terugviel); de rest kreeg een reden. Het
+// pad staat als eerste zodat de foutmelding hem herkenbaar toont als
+// "../worker.js: N lege catch(es)" in plaats van kaal "worker.js" naast de
+// pidlane-namen.
+const modules = ['../worker.js'].concat(fs.readdirSync('.').filter(function (f) {
   return /^pidlane-.*\.js$/.test(f);
-}).sort();
+}).sort());
 
 console.log('Stille catches — nul is de norm\n');
 
@@ -60,7 +79,7 @@ modules.forEach(function (f) {
   }
 });
 
-if (!fout) console.log('  ok    ' + modules.length + ' modules, 0 lege catches');
+if (!fout) console.log('  ok    ' + modules.length + ' bestanden, 0 lege catches');
 
 console.log('\n' + (fout ? fout + ' probleem(en)' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

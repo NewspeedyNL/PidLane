@@ -170,6 +170,29 @@ Klein, geen sessie waard, maar niet vergeten.
   pl_vinprof_… — volle discovery". De controle kán dus rood worden. Blijft over:
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
+- **`worker.js` — 44 lege catches, dicht (26-08).** Was afgelopen als los
+  eindje: de backend was nooit meegegaan in de ronde van 22-08, en
+  `test-stille-catches.js` scande het bestand niet. Nu wel — het pad staat
+  vooraan in de lijst zodat de foutmelding hem herkenbaar toont.
+
+  Correctie op de eerdere triage hieronder: **r376** slikte geen wachtwoord-
+  wijziging weg zoals hier eerst stond, maar het opportunistische herhashen
+  van een legacy-hash na een geslaagde login — mislukt dat stil, dan blijft
+  het account op het oude formaat staan en probeert de volgende inlog het
+  gewoon opnieuw. Minder ernstig dan gedacht, maar bij structureel falen
+  (kapotte token, verkeerde tabel) wil je dat wél zien; heeft nu een melding
+  onder `[auth]`. **r643** klopte wel: een AI-antwoord dat geen geldige JSON
+  is laat de kostenberekening stil op het minimumtarief vallen — het
+  commentaar één regel erboven zegt zelfs expliciet "het gemis gaat naar de
+  logs", en deed dat tot nu toe niet. Heeft nu een melding onder `[tegoed]`.
+
+  De overige 42 kregen een reden in plaats van een melding: `JSON.parse` op
+  externe of optionele invoer (`USERS_JSON`, `body.context`, een verzoek-body
+  die toch verderop gevalideerd wordt), een best-effort `cache.delete`, een
+  saldo-slot dat in een `finally` probeert los te laten maar toch vanzelf na
+  30s verloopt, dertien WebSocket-`send`/`close`-aanroepen waar de andere kant
+  al weg kan zijn, en de bestaande "melden mag de stroom niet breken"-guards
+  rond `console.error` zelf.
 
 ## Richting: het contract tussen meten en gebruiken
 
@@ -228,9 +251,43 @@ CAMPAGNE herschreven naar deze batch plus de nog openstaande rit.
    `ALL_PID_DEFS` had er nog volledige — en verkeerde — sensordefinities voor
    staan ("Motor looptijd totaal" resp. "Tussenkoeler temp A"; het zijn de
    steunbitmaps voor PIDs 81-A0 en A1-C0). Verklaart de "STEUNBITMAPS IN DE
-   OPNAME"-bevinding uit de rit van 23-08 (0180 = 262157, 01A0 = −24). Blok 5
-   bewaakt nu permanent dat geen enkele PID uit `GEEN_SENSOR_PIDS` een
-   definitie in `ALL_PID_DEFS` heeft.
+   OPNAME"-bevinding uit de rit van 23-08 (0180 = 262157, 01A0 = −24).
+
+**Nawerk dezelfde dag: `test-piddefs.js`.** De twee tabelcontroles van fix 3 en
+fix 4 stonden eerst alleen in blok 5. Die toetsen de tabel zoals hij op schijf
+staat, en dat kan node ook — dus ze zijn verhuisd naar `test-piddefs.js`, waar
+ze bij élke commit meedraaien via `plcheck.sh`, mét hun tegenproef als tweede
+helft van het bestand. In blok 5 staat nog één goedkope versiemarkering (0155
+erin, 0180 eruit) voor wat node níét kan zien: of de app de nieuwe tabel ook
+echt geladen heeft, of dat de HTTP-cache een oude serveert.
+
+**Tweede ronde: nog twee controles uit blok 5.** Dezelfde werkregel toegepast
+op wat er al stond.
+
+- **`0143 rekent in procenten`** las alleen de tabel en riep `parse()` aan.
+  Verhuisd naar `test-piddefs.js`, en meteen aangescherpt: alle drie de
+  veldmetingen van de CX-5 als ijkpunt in plaats van alleen `41430038`, en de
+  eis `max >= 400` heeft een eigen tegenproef gekregen — dat max van 100 naar
+  400 moest was de tweede helft van de fix van 21-08, want bij overdruk loopt
+  absolute belasting over de 100% en anders meldt veldlab het als "buiten
+  bereik".
+- **`Geen lege catches meer in de acht opgeruimde modules`** haalde acht
+  modules op via `fetch`. Volledig gedekt door `test-stille-catches.js` (50
+  modules, elke commit, eis is nul), dus weg. De acht waren de modules van de
+  opruimronde van 22-08 — historisch toeval, geen principiële set.
+
+Daarbij twee dingen bovenwater die er los van staan:
+
+1. De regex van `test-stille-catches.js` miste de bindingloze en de
+   destructurerende lege catch; die van blok 5 miste de bindingloze én sloeg
+   vals alarm op een promise-afhandelaar met een lege functie. Beide gaten
+   dicht, nog steeds nul bevindingen.
+2. **`worker.js` heeft 44 lege catches.** Die test scande het bestand niet,
+   terwijl `plcheck.sh` het voor syntax wél meeneemt met het argument dat een
+   fout daar de hele dienst plat legt. Bij een eerste inschatting leken het er
+   13 en allemaal gevuld; dat was fout — er was alleen op de bindingloze vorm
+   gekeken. De echte telling is 44: 10x `catch (e) {}` en 34x `catch (_) {}`.
+   Zie het losse eindje hieronder.
 
 Nog open na deze batch: STPX onder belasting, de opruimregel (vijf minuten
 nodig om te triggeren), en raildruk `0123`/`0159` die op 23-08 bevroren stond.
@@ -383,5 +440,15 @@ deden onafhankelijk van elkaar hetzelfde; `ALL_PID_DEFS` en `GEEN_SENSOR_PIDS`
 spraken elkaar tegen over of `0180`/`01A0` sensoren zijn. Beide keren was de
 oplossing dezelfde: één plek aanwijzen als de waarheid en de andere
 verwijderen, niet allebei laten bestaan "voor de zekerheid". `GEEN_SENSOR_PIDS`
-is nu blijvend bewaakt in blok 5: geen enkele PID daarin mag een definitie in
-`ALL_PID_DEFS` hebben.
+is nu blijvend bewaakt in `test-piddefs.js`: geen enkele PID daarin mag een
+definitie in `ALL_PID_DEFS` hebben.
+
+**Een tegenproef die niet meedraait is geen tegenproef (26-08).** De regel
+"elke nieuwe controle krijgt een tegenproef" stond er al, maar in blok 5 kwam
+die neer op één keer met de hand omdraaien bij het schrijven — blok 5 draait
+in een browser, op een telefoon, in een auto. Daarna bewijst hij niets meer.
+Werkregel erbij: toetst een controle alleen data of pure functies (geen DOM,
+geen bus, geen verbinding), dan hoort hij als `test-*.js` onder `plcheck.sh`,
+met de tegenproef als tweede helft van het bestand — dezelfde vorm die
+`test-dodeknoppen.js` al had ("vals alarm mag niet" / "het echte geval moet
+wél gevonden worden"). Blok 5 houdt wat alleen in de auto zichtbaar is.

@@ -1895,25 +1895,23 @@ async function _blok5() {
   // zoals de browser hem serveert. Let op: draait er een service-worker met een
   // oude cache, dan kan de app iets ánders draaien dan hier gemeten wordt — de
   // wrappercontrole hierboven is het runtime-bewijs, dit is het bron-bewijs.
-  await _doe(5, 'Geen lege catches meer in de acht opgeruimde modules', async function () {
-    const mods = ['pidlane-bt.js', 'pidlane-veldlab.js', 'pidlane-btflow.js', 'pidlane-auth.js',
-                  'pidlane-fuel.js', 'pidlane-koopcheck.js', 'pidlane-remote.js', 'pidlane-testrun.js'];
-    const RE = /catch\s*\([^)]*\)\s*\{\s*\}/g;
-    const vuil = [], onleesbaar = [];
-    for (const m of mods) {
-      const bron = await _bron(m);
-      if (bron == null) { onleesbaar.push(m); continue; }
-      const n = (bron.match(RE) || []).length;
-      if (n) vuil.push(m + ': ' + n);
-    }
-    if (vuil.length)
-      return { staat: 'FOUT', detail: vuil.join(', ') + ' — deze build is niet de opgeruimde versie' };
-    if (onleesbaar.length === mods.length)
-      return { staat: 'LET OP', detail: 'geen enkele module leesbaar via fetch — controle niet uitgevoerd' };
-    if (onleesbaar.length)
-      return { staat: 'LET OP', detail: (mods.length - onleesbaar.length) + ' schoon, niet gelezen: ' + onleesbaar.join(', ') };
-    return 'alle acht modules schoon';
-  });
+  // De lege-catchescontrole is hier weg (26-08). Hij haalde acht modules op
+  // via fetch en telde lege catches — maar test-stille-catches.js doet dat
+  // onder node over alle vijftig modules, bij elke commit, en eist nul. De
+  // acht hier waren de modules die op 22-08 zijn opgeruimd; dat is een
+  // historisch toeval, geen principiële set (een oude pidlane-bulk.js viel
+  // er buiten). De regex hier was bovendien kapot: hij sloeg vals alarm op
+  // een promise-afhandelaar met een lege functie erin. Die van de node-test
+  // is in dezelfde commit verbreed naar de bindingloze en de destructurerende
+  // vorm, zodat deze verhuizing niets meeneemt. De vormen staan hier bewust
+  // niet letterlijk uitgeschreven: die test leest de bron met een regex en
+  // zou zijn eigen documentatie als bevinding tellen.
+  //
+  // Wat blok 5 uniek toevoegde was "heeft de server een oude build
+  // geserveerd" — maar acht HTTP-fetches tijdens een rit zijn daar een duur
+  // en indirect instrument voor. De bedradingscontrole ziet een ontbrekende
+  // module al bij het laden, en de PID-tabelmarkering hierboven ziet een
+  // oude datamodule.
 
   // ── BLIJFT STAAN: twee structurele controles ──
   // Deze twee horen bij geen enkele update in het bijzonder; ze bewaken de run
@@ -1988,19 +1986,10 @@ async function _blok5() {
   // ── BLIJFT STAAN: 0143, steunbitzeef, geen fantomen ──
   // Deze drie zijn in het veld bevestigd maar bewaken elk een fout die eerder
   // is teruggekropen. Ze kosten niets en vangen een regressie meteen.
-  await _doe(5, '0143 rekent in procenten', function () {
-    let d = null;
-    try { d = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0143'] : null; } catch (e) { console.warn('ALL_PID_DEFS[0143]-lezing gaf een fout (resultaat telt hetzelfde als \'ontbreekt\')', e); }
-    if (!d || typeof d.parse !== 'function')
-      return { staat: 'FOUT', detail: '0143 heeft geen parser meer' };
-    let v = null;
-    try { v = d.parse([0x00, 0x38]); } catch (e) { throw new Error('parser klapt op 41430038'); }
-    if (!(v > 21.5 && v < 22.5))
-      return { staat: 'FOUT', detail: '41430038 geeft ' + (Math.round(v * 100) / 100) + ', hoort 21,96 %' };
-    if (!(d.max >= 400))
-      return { staat: 'FOUT', detail: 'max staat op ' + d.max };
-    return '41430038 -> ' + (Math.round(v * 100) / 100) + ' %, max ' + d.max + '%';
-  });
+  // 0143 is hier weg (26-08). Die controle las alleen ALL_PID_DEFS en riep
+  // parse() aan — geen DOM, geen bus — dus hij draait nu in test-piddefs.js,
+  // bij elke commit, op alle drie de veldmetingen van 21-08 in plaats van
+  // alleen 41430038, en met de oude 655.35-deler als tegenproef.
 
   await _doe(5, 'Preset respecteert de steunbits', function () {
     if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
@@ -2027,50 +2016,30 @@ async function _blok5() {
     return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
   });
 
-  // ── TOEGEVOEGD 26-08: 0155/0156 hebben nu een definitie ──
-  // Ze heetten letterlijk "PID 0155"/"PID 0156" in de sweep en ontbraken in
-  // ALL_PID_DEFS, waardoor de rauwe byte (415580 → 128) op het scherm kwam.
-  // Secundaire trim, zelfde schaal als 0106/0107: byte 128 hoort 0% te zijn.
+  // ── TOEGEVOEGD 26-08, AFGESLANKT dezelfde dag: is de nieuwe PID-tabel geladen? ──
+  // Hier stonden eerst twee volledige controles: 0155/0156 moeten een
+  // definitie hebben, en geen enkele steunbitmap mag er een hebben. Die
+  // toetsen de tabel zoals hij op schijf staat, en dat kan node ook — dus ze
+  // staan nu in test-piddefs.js, waar ze bij élke commit meedraaien mét hun
+  // tegenproef. Hier laten staan zou twee waarheden geven over dezelfde regel,
+  // en dat is precies de fout die fix 1 en fix 4 van deze batch opruimden.
   //
-  // Tegenproef (handmatig gedraaid): definitie weghalen uit pidlane-data.js
-  // laat deze controle op FOUT gaan.
-  await _doe(5, '0155/0156 hebben een definitie (secundaire brandstoftrim)', function () {
-    let d155 = null, d156 = null;
-    try {
-      d155 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0155'] : null;
-      d156 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0156'] : null;
-    } catch (e) { console.warn('ALL_PID_DEFS[0155/0156]-lezing gaf een fout (telt hetzelfde als \'ontbreekt\')', e); }
-    if (!d155 || typeof d155.parse !== 'function')
-      return { staat: 'FOUT', detail: '0155 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
-    if (!d156 || typeof d156.parse !== 'function')
-      return { staat: 'FOUT', detail: '0156 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
-    let v155 = null, v156 = null;
-    try { v155 = d155.parse([128]); } catch (e) { throw new Error('parser 0155 klapt op byte 128'); }
-    try { v156 = d156.parse([128]); } catch (e) { throw new Error('parser 0156 klapt op byte 128'); }
-    if (Math.abs(v155) > 0.01) return { staat: 'FOUT', detail: '0155 geeft ' + v155 + ' bij byte 128, hoort 0% (neutrale trim)' };
-    if (Math.abs(v156) > 0.01) return { staat: 'FOUT', detail: '0156 geeft ' + v156 + ' bij byte 128, hoort 0% (neutrale trim)' };
-    return '0155 en 0156 aanwezig, byte 128 (0x80) -> 0% bij beide';
-  });
-
-  // ── TOEGEVOEGD 26-08: steunbitmaps blijven uit ALL_PID_DEFS ──
-  // 0180 en 01A0 stonden dubbel geboekt: GEEN_SENSOR_PIDS hield ze al uit de
-  // keuzelijst via pidGate(), maar ALL_PID_DEFS had er ook nog volledige (en
-  // onjuiste) sensordefinities voor staan. Elk pad dat ALL_PID_DEFS leest
-  // zonder langs pidGate() te gaan, polde ze dus alsnog als meting. Deze
-  // controle blijft staan als permanente bewaking tegen de volgende bitmap
-  // die per ongeluk als sensor wordt toegevoegd.
-  //
-  // Tegenproef (handmatig gedraaid): '0180' teruggezet in ALL_PID_DEFS laat
-  // deze controle op FOUT gaan.
-  await _doe(5, 'Steunbitmaps (GEEN_SENSOR_PIDS) hebben geen sensordefinitie', function () {
-    if (typeof GEEN_SENSOR_PIDS === 'undefined')
-      return { staat: 'LET OP', detail: 'GEEN_SENSOR_PIDS ontbreekt — pidlane-rijsituatie.js is niet meegekomen' };
+  // Wat node NIET kan zien is of de app die tabel ook echt geladen heeft. De
+  // HTTP-cache heeft hier al twee keer een oude module geserveerd (23-08 en
+  // 24-08, beide keren weg na "Nieuwste versie laden"). Daarom blijft er één
+  // goedkope versiemarkering staan: twee feiten die alleen in de nieuwe tabel
+  // allebei waar zijn. Geen herhaling van de regels — alleen de vraag of dit
+  // de nieuwe tabel is.
+  await _doe(5, 'PID-tabel is de nieuwe (0155 erin, 0180 eruit)', function () {
     if (typeof ALL_PID_DEFS === 'undefined')
-      return { staat: 'FOUT', detail: 'ALL_PID_DEFS ontbreekt' };
-    const lek = Array.from(GEEN_SENSOR_PIDS).filter(function (p) { return !!ALL_PID_DEFS[p]; });
-    if (lek.length)
-      return { staat: 'FOUT', detail: lek.length + ' steunbitmap(s) staan nog als sensor in ALL_PID_DEFS: ' + lek.join(', ') };
-    return GEEN_SENSOR_PIDS.size + ' steunbitmaps, geen enkele met een sensordefinitie in ALL_PID_DEFS';
+      return { staat: 'FOUT', detail: 'ALL_PID_DEFS ontbreekt — pidlane-data.js is niet meegekomen' };
+    const oud = [];
+    if (!ALL_PID_DEFS['0155']) oud.push('0155 ontbreekt nog');
+    if (ALL_PID_DEFS['0180'])  oud.push('0180 staat er nog als sensor');
+    if (oud.length)
+      return { staat: 'FOUT', detail: 'oude PID-tabel geladen (' + oud.join(', ') +
+        ') — waarschijnlijk de HTTP-cache; doe "Nieuwste versie laden" en draai opnieuw' };
+    return 'nieuwe tabel geladen; de inhoudelijke controles draaien in test-piddefs.js';
   });
 }
 
