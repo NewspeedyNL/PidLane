@@ -2160,11 +2160,17 @@ async function _blok12() {
     // "kent het niet" — een clone die niets terugstuurt is nog steeds een clone.
     const kentSTI = !!sti && !/^\?+$/.test(sti) && !/^NO DATA$/i.test(sti);
 
+    // 26-08b: PIDLANE.md IS bijgewerkt (§1 noemt STI/STDI en wat STPX betekent).
+    // De oude tekst zei "PIDLANE.md zegt van niet en moet bij" en bleef dat
+    // zeggen nadat het gedaan was — een opdracht die nooit afgaat leert je 'm
+    // negeren. Blijft LET OP, want het is iets wat je moet wéten (de
+    // pollstrategie hangt eraan), niet iets wat stuk is.
     if (kentSTI)
       return { staat: 'LET OP', detail: 'STN-adapter: STI="' + sti + '"' + (stdi ? ', STDI="' + stdi + '"' : '') +
-        ' terwijl ATI="' + ati + '". STPX en MS-CAN zijn dus beschikbaar — PIDLANE.md zegt van niet en moet bij.' };
+        ' terwijl ATI="' + ati + '". STPX en MS-CAN zijn beschikbaar (staat zo in PIDLANE.md §1). ' +
+        'Of STPX ook wint is blok 13 — bij stilstand niet, onder belasting nog te meten.' };
 
-    return 'geen STN: ATI="' + ati + '", STI kent hij niet (' + (sti || 'geen antwoord') + '). Aanname in PIDLANE.md klopt.';
+    return 'geen STN: ATI="' + ati + '", STI kent hij niet (' + (sti || 'geen antwoord') + ').';
   });
 }
 
