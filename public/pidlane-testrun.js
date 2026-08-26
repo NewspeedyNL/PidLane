@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.6 (25-08-2026)';
+const TESTRUN_VERSIE = '4.7 (26-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2637,62 +2637,31 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Openstaande items na de rit van 23-08 — achtergrond, adapter, klok, bevroren sensoren',
+  titel: 'Batch 26-08-2026 — PLWakelock-duplicaat, VIN-profielmelding, 0155/0156, steunbitmaps, plus de openstaande rit',
   vragen: [
     'VOORAF — blok 5 mag geen FOUT geven. Staat er "NIET geladen", lees de melding: dat kan ook de cache zijn. Eerst "Nieuwste versie laden", dan opnieuw.',
 
-    'BLOK 12 — ADAPTER: BEANTWOORD op 25-08. STI="STN2255 v5.12.4", STDI="OBDLink MX+ r3.1.3", ATI="ELM327 v1.4b". Het IS een STN. Deze vraag hoeft niet opnieuw; laat blok 12 wel meelopen zodat een andere adapter meteen opvalt.',
+    'FIX 1 — WAKELOCK-DUPLICAAT WEG. window.PLWakelock (pidlane-auth.js) is verwijderd; window.PLWake (index.html) blijft de enige. Verbind en kijk of het log "🔆 Scherm blijft aan zolang de verbinding/sessie loopt" meldt — niet meer "Scherm blijft aan tijdens de meting" (die tekst hoorde bij het verwijderde duplicaat). Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Blok 5 toetst PLWake en meldt FOUT als PLWakelock ooit terugkomt.',
 
-    'BLOK 13 — STPX. Nieuw, en de eigenlijke vervolgvraag op blok 12. Hij meet vijf keer om en om: gewone uitvraag tegen STPX met R:1. Noteer beide medianen. Scheelt het 20% of meer, dan kan de batchgok, PLPidLen en de terugval van drie-naar-één op termijn weg — dat is een hele laag minder. Scheelt het weinig, dan hoef je daar niet aan te beginnen en is dat óók winst.',
+    'FIX 1, REMOTE — PLWake kijkt ook naar remPill/remDrivePill. Open diagnose delen of expert-modus op remote data en controleer dat het scherm ook dán aanblijft, zonder dat er een echte BT-verbinding actief is.',
 
-    'BLOK 13, TWEEDE LEZING — draai hem één keer bij stilstand en één keer tijdens het rijden met alle vier de aanvragers aan. STPX helpt vooral als de bus druk is; bij stilstand meet je het gunstigste geval en dat zegt weinig over de praktijk.',
+    'FIX 2 — VIN-PROFIEL, EERSTE VERBINDING MET EEN NIEUW VOERTUIG. Blok 1 gaf hier altijd LET OP, ook als er nog helemaal geen profiel bestond. Moet nu "ok" zijn met de tekst dat de app terecht een volle discovery deed.',
 
-    'MS-CAN — blok 13 probeert dit BEWUST NIET, want een protocolwissel hoort niet in een testrun die je tijdens het rijden draait. Wil je het weten, doe het los en stationair, met de terugweg vooraf uitgeschreven.',
+    'FIX 2, VIN-PROFIEL BINNEN DEZE SESSIE OPGESLAGEN. Verbind met een voertuig zonder profiel, laat de discovery + het opslaan gebeuren, en herlaad blok 1 meteen daarna. Het profiel is dan een paar minuten oud — moet nog steeds "ok" zijn, niet LET OP.',
 
-    'VIN-PROFIEL — blok 1 meldde: staat in de opslag maar wordt bij het verbinden NIET geladen, de app doet een volle discovery. Kijk of dat elke keer gebeurt. Zo ja, dan kost elke verbinding onnodig een complete scan en blijft het voertuig op "Mazda" staan zonder model, bouwjaar en brandstof — wat de brandstofafhankelijke gates voedt.',
+    'FIX 2, ECHT GENEGEERD PROFIEL. Verbind twee keer met hetzelfde bekende voertuig. Bij de tweede keer hoort blok 1 "bij het verbinden geladen, snelle start" te zeggen. Krijg je in plaats daarvan LET OP met een profiel dat al langer dan een paar minuten oud is, dan is dát de echte bevinding — schrijf op hoe oud.',
 
-    'PID 0155 EN 0156 — heten letterlijk "PID 0155" in de sweep, dus ze staan niet in ALL_PID_DEFS. Daarom komt de rauwe byte 0x80 = 128 eruit. Geen parserfout maar een ontbrekende definitie: secundaire O2-trim, formule (A-128)*100/128. Controleer of ze na toevoeging rond 0% uitkomen.',
+    'FIX 3 — 0155/0156 NIET MEER ALS RAUWE BYTE. Ze stonden op de rauwe waarde 128 (0x80). Controleer in de live-view dat ze nu als percentage rond 0% liggen, net als 0106/0107.',
 
+    'FIX 4 — STEUNBITMAPS WEG UIT DE OPNAME. 0180 en 01A0 stonden als sensorwaarde in de bulkopname (0180 = 262157, 01A0 = -24) terwijl het de steunbitmaps voor PIDs 81-A0 en A1-C0 zijn. Controleer of ze nog ergens in de bulk-recorder, gauges of AI-rapport verschijnen — als dat wél zo is, leest die consument ALL_PID_DEFS zonder langs pidGate() te gaan, en is dát de volgende plek om te fixen.',
 
-    'UITLOGGEN — nieuw. Log uit als admin en kies OK bij de vraag of de log bewaard moet worden. Het deelvenster opent, de app gaat naar de achtergrond. Kom terug: sta je op het LOGINSCHERM? Vóór deze fix was je weer binnen. Doe het daarna nog eens met Annuleren — dat pad was altijd al goed en moet goed blijven.',
+    'STPX ONDER BELASTING — nog open sinds 25-08. Blok 13 meet vijf keer om en om: gewone uitvraag tegen STPX met R:1. Draai hem één keer bij stilstand en één keer tijdens het rijden met alle vier de aanvragers aan — STPX helpt vooral als de bus druk is, en bij stilstand meet je het gunstigste geval. Scheelt het 20% of meer tijdens het rijden, dan kan de batchgok, PLPidLen en de terugval van drie-naar-één op termijn weg.',
 
-    'WAKELOCK — nieuw. Verbind en kijk of het log "Scherm blijft aan tijdens de meting" meldt. Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Zo niet, dan weigert batterijbesparing de lock en noemt blok 5 de reden.',
+    'OPRUIMREGEL, VIJF MINUTEN — nog open sinds 23-08. Zoek in het log op "opgeruimd". Rijd lang genoeg: zes mislukkingen plus vijf herkansingen van één per minuut kost minstens vijf minuten. Verwacht op deze CX-5: 0101, 0121, 016D, en de PIDs uit het 0180-blok (018E, 019D, 019E, 01A0) die de ECU wél claimt maar niet levert. Staat er ook "antwoordt weer na N mislukte herkansing(en)" — dan herstelde een sensor zich vóór hij eruit ging.',
 
-    'ACHTERGROND — DE KERN VAN DEZE RIT. Rijd tien minuten zonder de app ook maar één keer te verlaten. Geen log openen, geen notificatie wegtikken, scherm aan laten. Vergelijk daarna het aantal herverbindingen met de 9 van 23-08.',
+    'RAILDRUK 0123/0159 — nog open sinds 23-08. Beide stonden een hele rit stil op 9900. Op directe inspuiting kan dat niet. Bewegen ze nu wél?',
 
-    'ACHTERGROND, TWEEDE HELFT. Doe daarna bewust het omgekeerde: verlaat de app drie keer kort (log openen, terug). Kijk of er telkens een herverbinding volgt. Op 23-08 volgde elke herverbinding op een stilte in het logboek — dat verband moet zich herhalen, anders klopt de verklaring niet.',
-
-    'KLOK — vergelijk het eerste tijdstip in de bulkopname met het eerste in het logboek. Op 23-08 scheelde dat exact twee uur: de recorder schrijft UTC, de logger lokale tijd. Zolang dat zo is zijn de twee bestanden niet naast elkaar te leggen.',
-
-    'BEVROREN SENSOREN — 0155 en 0156 stonden 27 minuten lang op 128. Dat is de rauwe byte 0x80; brandstoftrim hoort rond 0% te liggen. Kijk of dat nog steeds zo is en of blok 11 er iets over zegt.',
-
-    'BEVROREN SENSOREN — 0123 en 0159 (raildruk) stonden allebei stil op 9900 tijdens een hele rit. Op directe inspuiting kan dat niet. Bewegen ze nu wél?',
-
-    'STEUNBITMAPS IN DE OPNAME — 0120, 0140, 0160 en 0180 stonden als sensorwaarde in de bulkopname. Dat zijn de bitmaps zelf. GEEN_SENSOR_PIDS houdt ze uit de keuzelijst maar niet uit pidlane-bulk.js. Controleer of ze er nog in staan.',
-
-    'OPRUIMREGEL — zoek in het log op "opgeruimd". Rijd lang genoeg: zes mislukkingen plus vijf herkansingen van een per minuut kost minstens vijf minuten. Verwacht op deze CX-5: 0101, 0121, 016D, en de vier uit blok 0180 (018E, 019D, 019E, 01A0) die de ECU wél claimt maar niet levert.',
-
-    'TERUGWEG — staat er ook "antwoordt weer na N mislukte herkansing(en)"? Dan herstelde een sensor zich vóór hij eruit ging.',
-
-    'AI-RAPPORT — draai een analyse nadat er iets is opgeruimd. Staat er dat die sensor niet gemeten is, en NIET dat hij ontbreekt of defect is?',
-
-    'PLLOAD — 23-08 gaf 34 remmomenten, waarvan 1 zonder fouten én zonder oplopende responstijd. Blijft dat zo als de app niet meer naar de achtergrond gaat? Vermoeden: een deel van die 34 was een reactie op het hervatten na een stilte, niet op de bus.',
-
-    'TURBODREMPEL — het oordeel viel op 23-08 voor het eerst: 1461 MAP-monsters, piek 105 kPa, barometer 102, grens 110. Noteer piek en marge opnieuw. Onder 3 kPa meldt blok 5 het.',
-
-    'TEGELS — NIET meer vragen of 0170, 2102 of 2187 verdwijnen. Dat kan op deze auto nooit: steunbitblok 0160 (41606B080001) decodeert naar 62 63 65 67 68 6D 80, dus geen 70, en de mode 21-probe vindt de andere twee niet. Het fantoom-scenario vraagt een auto waarvan de ECU laaddruk meldt zonder turbo.',
-
-    '0143 — leek op 23-08 goed: 0 tot 96,9%, gemiddeld 19,4 tegen 30,0 voor 0104. Bevestig dat en vink het losse eindje af.',
-
-    'FIX 2 — FULL SURVEY. Op 23-08 stond deze op FOUT ("survey transport niet geladen") en dat was de cache. Nu dus echt toetsen: staat "transportfout" apart naast "niet aanwezig"?',
-
-    'FIX 1 — LOG WISSEN. Wissen, herladen, blijft hij leeg?',
-
-    'FIX 12 — CLEARDTC. Blok 5 controleert de remote-blokkade. FOUT daar = stoppen.',
-
-    'OPMERKINGVELD — kapt nog steeds af op exact 20 tekens ("Testrun na herverbin"). Typ een lange zin en tel wat er overblijft.',
-
-    'RIJ MET ALLE VIER DE AANVRAGERS AAN — bulk-recorder, caravan-tracker, rijmonitor en waakronde. Anders toets je de PLLoad-ingreep niet.'
+    'RIJ MET ALLE VIER DE AANVRAGERS AAN — bulk-recorder, caravan-tracker, rijmonitor en waakronde. Zonder dat toets je de STPX- en PLLoad-vragen niet onder realistische belasting.'
   ]
 };
 

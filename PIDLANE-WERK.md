@@ -1,7 +1,7 @@
 # PidLane — werkdocument
 
 Eén bestand. Vervangt `PLAN.md`, `OVERDRACHT.md` en alle losse leesmij's.
-Bijgewerkt: 23-08-2026 · app v3.0.0 · testrun 3.6
+Bijgewerkt: 26-08-2026 · app v3.0.0 · testrun 4.7
 
 ---
 
@@ -194,25 +194,47 @@ Vier besluiten staan open in §9 van dat document.
 
 ## Testrun 25-08 (stilstand, 23 s) — nieuwe bevindingen
 
-- **VIN-profiel wordt niet gebruikt.** Blok 1: *"staat in de opslag maar is bij
-  het verbinden NIET geladen; de app deed een volle discovery."* 55 PIDs met 55
-  health-oordelen, 18 minuten oud, en toch alles opnieuw scannen. Kost tijd bij
-  elke verbinding. Vermoedelijk ook de reden dat het voertuig op "Mazda" staat
-  zonder model, bouwjaar en brandstof — en dát voedt `merkGroep()` en de
-  brandstofafhankelijke gates.
-- **`0155`/`0156` staan niet in `ALL_PID_DEFS`.** In de sweep heten ze letterlijk
-  "PID 0155". Daarom komt de rauwe byte `0x80` = 128 eruit — geen parserfout maar
-  een ontbrekende definitie. Het zijn de secundaire O2-trims; met
-  `(A−128)·100/128` wordt 128 netjes 0%. Eén regel per PID in `pidlane-data.js`.
-  Dit sluit het losse eindje uit de rit van 23-08.
-- **Naambotsing `PLWake`.** Testrun 4.3 gaf FOUT `PLWake.steunt is not a
-  function` terwijl het object bestond: er is al een `window.PLWake` in een
-  module die ná `pidlane-auth.js` laadt. Hernoemd naar `PLWakelock` (4.5). Nog
-  te doen: nagaan wat die andere `PLWake` is —
-  `grep -rn "PLWake" public/*.js | grep -v pidlane-auth`. Als dat een bestaande
-  wakelock is, is de mijne een duplicaat.
+- **VIN-profiel wordt niet gebruikt.** ~~Blok 1: *"staat in de opslag maar is
+  bij het verbinden NIET geladen; de app deed een volle discovery."*~~
+  **Afgehandeld 26-08 (batch, fix 2).** De melding sloeg ook vals alarm bij een
+  eerste verbinding met een onbekend voertuig en bij een profiel dat de
+  discovery zélf net had aangemaakt — dat is nu "ok". Blijft over: nagaan of
+  het hierboven beschreven geval (bekend voertuig, écht genegeerd profiel)
+  zich nog voordoet — zie CAMPAGNE in testrun 4.7.
+- **`0155`/`0156` staan niet in `ALL_PID_DEFS`.** ~~In de sweep heten ze
+  letterlijk "PID 0155".~~ **Afgehandeld 26-08 (batch, fix 3).** Toegevoegd met
+  `(A−128)·100/128`, zelfde vorm als `0106`/`0107`. Byte 128 geeft nu 0%.
+- **Naambotsing `PLWake`.** ~~Testrun 4.3 gaf FOUT `PLWake.steunt is not a
+  function`...~~ **Afgehandeld 26-08 (batch, fix 1).** Uitgezocht: `window.PLWake`
+  (index.html) is geen naambotsing maar een eerder gebouwde, bredere
+  scherm-wakelock — wikkelt `setConn()` om, kijkt ook naar `remPill`/
+  `remDrivePill`. `window.PLWakelock` (pidlane-auth.js) was het duplicaat en is
+  verwijderd; blok 5 toetst nu `PLWake` en meldt FOUT als het duplicaat
+  terugkomt.
 - **PLLoad opnieuw schoon.** 4 remmomenten, 0 ongevraagd, bezetting voorspelt
   responstijd (+89%). Tweede bevestiging van fix 11.
+
+## Batch 26-08 — vier fixes, dicht
+
+Vier kleine, losse fixes; elk een eigen commit. Testrun opgehoogd naar 4.7,
+CAMPAGNE herschreven naar deze batch plus de nog openstaande rit.
+
+1. **PLWakelock-duplicaat verwijderd** — zie "Naambotsing `PLWake`" hierboven.
+2. **VIN-profielmelding gesplitst** — zie "VIN-profiel wordt niet gebruikt"
+   hierboven.
+3. **`0155`/`0156` toegevoegd aan `ALL_PID_DEFS`** — zie hierboven.
+4. **Steunbitmaps `0180`/`01A0` uit `ALL_PID_DEFS`.** Stonden dubbel geboekt:
+   `GEEN_SENSOR_PIDS` hield ze al buiten de keuzelijst via `pidGate()`, maar
+   `ALL_PID_DEFS` had er nog volledige — en verkeerde — sensordefinities voor
+   staan ("Motor looptijd totaal" resp. "Tussenkoeler temp A"; het zijn de
+   steunbitmaps voor PIDs 81-A0 en A1-C0). Verklaart de "STEUNBITMAPS IN DE
+   OPNAME"-bevinding uit de rit van 23-08 (0180 = 262157, 01A0 = −24). Blok 5
+   bewaakt nu permanent dat geen enkele PID uit `GEEN_SENSOR_PIDS` een
+   definitie in `ALL_PID_DEFS` heeft.
+
+Nog open na deze batch: STPX onder belasting, de opruimregel (vijf minuten
+nodig om te triggeren), en raildruk `0123`/`0159` die op 23-08 bevroren stond.
+Zie CAMPAGNE in testrun 4.7 voor de exacte vragen.
 
 ## Rit van 23-08 (nacht) — wat de meting opleverde
 
@@ -354,3 +376,12 @@ verpest data. De harde poort werkt, bevestigd in veldlogs.
 busslot, in de rust niet. Het verschil tussen trap (119 ms) en rust (379 ms) is
 dus deels schone bus tegen drukke bus — lees het niet als "rust maakt de
 verbinding traag".
+
+**Eén waarheid per feit (26-08).** Twee keer dezelfde les in één batch: een
+`window.PLWake` (index.html) en een `window.PLWakelock` (pidlane-auth.js)
+deden onafhankelijk van elkaar hetzelfde; `ALL_PID_DEFS` en `GEEN_SENSOR_PIDS`
+spraken elkaar tegen over of `0180`/`01A0` sensoren zijn. Beide keren was de
+oplossing dezelfde: één plek aanwijzen als de waarheid en de andere
+verwijderen, niet allebei laten bestaan "voor de zekerheid". `GEEN_SENSOR_PIDS`
+is nu blijvend bewaakt in blok 5: geen enkele PID daarin mag een definitie in
+`ALL_PID_DEFS` hebben.
