@@ -30,6 +30,33 @@ const _FIELD_SRC_PREF = {
 let _vehSrc = {};
 function resetVehicleSources(){ _vehSrc = {}; }
 
+// ── plAnderVoertuig() — "moeten we alles weggooien?" op één plek ──────
+// 26-08-2026. Twee plekken gooiden voertuigdata weg zodra de VIN binnenkwam:
+// resetVehicleSources() in tryReadVIN() (wist de bron-rangen, waardoor het
+// zwakkere WMI-merk het sterkere RDW-merk alsnog overschreef) en de
+// vehicleInfo-reset in updateVehicleCard() (wist de velden zelf). Allebei
+// toetsten ze op "de VIN is anders dan wat we hadden" — en een LEGE oude VIN
+// telde daarbij als anders.
+//
+// Dat klopte zolang de VIN het eerste was wat de app over een auto wist. Sinds
+// de kentekenstap vóór de protocolscan is dat niet meer zo: RDW heeft merk,
+// model, bouwjaar en brandstof dan al geleverd, en die zijn STERKER dan wat de
+// VIN oplevert (zie de rangorde hierboven). Ze weggooien op het moment dat de
+// VIN gelezen wordt, is de sterke bron inruilen voor de zwakke.
+//
+// De vraag is dus niet "is de VIN veranderd" maar "is dit aantoonbaar een
+// ANDERE auto". Dat is alleen zo als we twee ingevulde VINs hebben die van
+// elkaar verschillen. Leeg → ingevuld betekent "we weten nu de VIN", niet
+// "andere auto".
+//
+// Pure functie, geen DOM en geen globals — bewaakt door test-voertuigreset.js.
+window.plAnderVoertuig = function plAnderVoertuig(oudVin, nieuwVin){
+  const a = String(oudVin || '').trim().toUpperCase();
+  const b = String(nieuwVin || '').trim().toUpperCase();
+  if (!a || !b) return false;   // minstens één onbekend → geen bewijs van een ander voertuig
+  return a !== b;
+};
+
 // Merknaam netjes: 'MAZDA' -> 'Mazda', 'MERCEDES-BENZ' -> 'Mercedes-Benz',
 // 'BMW'/'MG'/'CX-5' blijven zoals gangbaar. Woord-voor-woord Title Case,
 // maar korte all-caps merken (<=3 letters, bv BMW/MG/DS/KIA) blijven caps.

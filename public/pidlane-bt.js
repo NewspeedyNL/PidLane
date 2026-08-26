@@ -1814,9 +1814,23 @@ async function startDiscovery(){
 function updateVehicleCard(vinInfo){
   // Basis-object; velden worden via de merge-laag (bronprioriteit) gevuld,
   // zodat een latere RDW-lookup ze netjes kan verrijken i.p.v. botsen.
-  vehicleInfo = vehicleInfo && vehicleInfo.vin===(vinInfo?.vin||'') ? vehicleInfo : {
-    merk: 'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:''
-  };
+  //
+  // De voorwaarde was `vehicleInfo.vin===(vinInfo?.vin||'')`: alles weggooien
+  // zodra de binnenkomende VIN niet gelijk was aan wat er stond. Een LEGE oude
+  // VIN telde daarbij als ongelijk, dus het lezen van de VIN wiste op dat
+  // moment alles wat er al bekend was. Zolang de VIN het eerste was wat de app
+  // over een auto wist, viel dat niet op; met de kentekenstap vóór de
+  // protocolscan staat er dan al RDW-data (merk, model, jaar, brandstof) en die
+  // is sterker dan wat de VIN oplevert. Zie plAnderVoertuig().
+  const _anderVoertuig = (typeof plAnderVoertuig==='function')
+    ? plAnderVoertuig(vehicleInfo && vehicleInfo.vin, vinInfo?.vin)
+    : !(vehicleInfo && vehicleInfo.vin===(vinInfo?.vin||''));
+  if(!vehicleInfo || _anderVoertuig){
+    vehicleInfo = { merk: 'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };
+    // Ander voertuig → ook de bron-rangen leeg, anders houdt een veld de rang
+    // van de vórige auto vast en weigert het de nieuwe (zwakkere) bron.
+    try{ resetVehicleSources(); }catch(e){ /* stil: module kan ontbreken in een deelbuild */ }
+  }
   vehicleInfo.vin = vinInfo?.vin || vehicleInfo.vin || '';
   // vinInfo bevat reeds ge-merancte data uit tryReadVIN; hier alleen aanvullen
   // voor het geval updateVehicleCard los wordt aangeroepen.
@@ -2079,7 +2093,15 @@ async function tryReadVIN(){
       return null;
     }
     log('VIN: '+vin,'ok');
-    resetVehicleSources();               // nieuwe VIN → bron-tracking resetten
+    // Bron-tracking alleen resetten bij een AANTOONBAAR ander voertuig. Stond
+    // hier onvoorwaardelijk: dan verloor een RDW-lookup die vóór de VIN liep
+    // (de kentekenstap) zijn rang, en overschreef het zwakkere WMI-merk uit de
+    // VIN het sterkere RDW-merk alsnog. Zie plAnderVoertuig().
+    if(typeof plAnderVoertuig!=='function' || plAnderVoertuig(vehicleInfo&&vehicleInfo.vin, vin)){
+      resetVehicleSources();
+    } else if(vehicleInfo && vehicleInfo.merk && vehicleInfo.merk!=='Onbekend'){
+      log('   VIN hoort bij de al bekende voertuigdata — bronrangen blijven staan','info');
+    }
     const info=decodeVIN(vin);
     mergeVehicleData('vin', info);       // WMI-merk/jaar als basis
     // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken.

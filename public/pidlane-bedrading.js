@@ -76,6 +76,12 @@ var KRITIEK = [
   // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
   // door initConnection als de RDW-opzoeking mislukt.
   'plVoertuigLet','plVoertuigChipBij','plVoertuigWaarschuwingen',
+  // Beslist of binnenkomende VIN een ANDER voertuig is (pidlane-voertuigdata.js).
+  // Twee plekken in pidlane-bt.js hangen eraan: het wel/niet resetten van de
+  // bron-rangen in tryReadVIN() en van vehicleInfo zelf in updateVehicleCard().
+  // Ontbreekt hij, dan vallen allebei terug op de oude "VIN gewijzigd = alles
+  // weg", en dan wist het lezen van de VIN de RDW-data uit de kentekenstap.
+  'plAnderVoertuig',
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',
