@@ -542,6 +542,52 @@ bezetting alléén verlaagt niets meer.
 - STPX bij stilstand nu −1% (4.7 gaf +8%). Bevestigt: bij stilstand levert STPX
   niets. De vraag blijft de drukke bus.
 
+## Rit van 26-08 (23:54) — gereden op 4.8, dus blok 14 draaide niet
+
+**De rit is niet gemeten.** Het toestel draaide testrun **4.8** (exact commit
+41887f9): geen `b14` in de standaardset, geen `PLRit`, en de adapterregel zei
+nog "PIDLANE.md moet bij" — die zit sinds ac7283d anders. Er is wél gereden
+(motorlooptijd 1615 s, brandstof 90,98% → 87,84%, koelwater 90 °C), maar niets
+nam het op, en de herlaad vlak vóór de run wiste ook het PLBudget-spoor
+(18 monsters over 36 s). Raildruk over een hele rit, de opruimregel, MAP onder
+belasting en de gaten/herverbindingen staan dus nog steeds open.
+
+Werkregel die hieruit volgt: **kijk vóór het wegrijden naar het versienummer in
+de kop van de testrun**, niet alleen naar blok 5. Blok 5 kan niet melden dat een
+blok ontbreekt dat in die build nog niet bestaat — dat is precies het gat waar
+deze rit in viel.
+
+Wat deze run desondanks opleverde:
+
+- **VIN-profiel wordt wél geladen bij het verbinden.** Blok 1: *"55 PIDs, 55
+  health-oordelen, 0.4 uur oud — bij het verbinden geladen, snelle start"*. Dat
+  is het derde geval uit de CAMPAGNE (bekend voertuig, tweede verbinding) en het
+  reproduceert **niet**. Het restant van "VIN-profiel wordt niet gebruikt" mag
+  daarmee dicht: de melding van 25-08 was de valse-alarmkant, en die is met
+  fix 2 weg.
+- **STPX is ook op een drukkere bus niet sneller — derde meting.** Nu
+  *gewoon 335 ms, STPX 378 ms (+13% LANGZAMER)*, bij `gemMs` 196 en PLLoad op
+  bezet 90% / 167 ms. Daarmee staat de reeks op +8% (4.7, stilstand), −1% (4.8,
+  stilstand) en +13% trager (drukker). Nog geen meting op een écht volle bus met
+  vier aanvragers, maar de richting is drie keer dezelfde: **hier valt niets te
+  halen.** Dat is materiaal om de STPX-sessie te schrappen in plaats van in te
+  plannen.
+- **019D/019E staan nu ín de sweep** (47 PIDs i.p.v. 45) en lezen −40 / −39:
+  rauwe nul met temperatuuroffset. Precies de "ECU claimt maar levert niet"-
+  populatie waar de opruimregel voor bestaat.
+- **Stille sensoren in de actieve selectie: van 3 naar 5** — 0101, 0121, 012E,
+  016D, 019D. 012E (EVAP) en 019D zijn nieuw. Deze telling is de basis voor de
+  drempel van punt 3.
+- **Punt 12 is deze run schoon**: *"geen enkele afwijking gemeten"*, 23 geleerd.
+  Dit was een ander toestel (SM-X526B i.p.v. SM-S947B), dus `PLPidLen` begon met
+  lege opslag. Bevestigt dat die 2 afwijkingen voertuig-/toestelgebonden leren
+  waren en geen tabelfout — zoals al vermoed.
+- **De blok 7-nulmeting vuurde deze keer niet**: 107 ms tegen 163 ms (+52%). De
+  gemelde fout treedt dus alleen op als de lage-bezettingsgroep uit 0 ms-monsters
+  bestaat. Intermitterend, en daarmee net zo verraderlijk — de fix blijft nodig.
+- Voertuig bleef compleet na 27 minuten draaien: *"Mazda CX-5 2018 benzine —
+  VIN 766507"*.
+
 ## Rit van 23-08 (nacht) — wat de meting opleverde
 
 27,6 min, 1295 monsters op 1 Hz, 11 min boven 15 km/u, tot 96 km/u en 3865 rpm.
