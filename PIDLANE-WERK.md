@@ -293,6 +293,73 @@ Nog open na deze batch: STPX onder belasting, de opruimregel (vijf minuten
 nodig om te triggeren), en raildruk `0123`/`0159` die op 23-08 bevroren stond.
 Zie CAMPAGNE in testrun 4.7 voor de exacte vragen.
 
+## Testrun 4.7 (26-08-2026, stilstand, 18 s) — batch bevestigd, twee staarten open, drie nieuwe bevindingen
+
+**Batch 26-08, per fix.**
+
+- **Fix 1 (PLWakelock-duplicaat)** — groen. Blok 5: "PLWake aanwezig (sync),
+  geen duplicaat PLWakelock."
+- **Fix 2 (VIN-profielmelding)** — groen voor de twee gevallen die deze run
+  raakte (eerste verbinding zonder profiel; profiel binnen dezelfde sessie
+  opgeslagen — "0 uur oud... terecht niet geladen"). Het derde geval uit de
+  CAMPAGNE-vraag — twee keer verbinden met hetzelfde *bekende* voertuig, dan
+  een écht genegeerd profiel ouder dan een paar minuten — deed zich niet voor;
+  deze meting is een verse discovery, geen herverbinding. **Blijft open.**
+- **Fix 3 (0155/0156 als percentage)** — groen. Live-sweep: beide op 0%, net
+  als 0106/0107.
+- **Fix 4 (steunbitmaps uit `ALL_PID_DEFS`)** — groen in de tabel zelf
+  (nieuwe PID-tabel geladen, geen fantomen in `supportedPIDs`). De
+  consumer-check uit de vraag (bulk-recorder, gauges, AI-rapport) is deze run
+  niet uitgevoerd — blok 2 opent/sluit die schermen alleen, toetst geen
+  PID-inhoud. **Blijft open.** Verschijnen 0180/01A0 daar toch, dan gaat die
+  consument buiten `pidGate()` om `ALL_PID_DEFS` lezen — dat is dan de
+  volgende plek.
+
+**Geen bug: bytelengtes 0155/0156 (punt 12).** `PLPidLen.afwijkingen()` meldt
+tabel=2, gemeten=1 voor allebei. Nagekeken in `pidlane-data.js`: dat is precies
+waar `PLPidLen` (26-07) voor gebouwd is — "Mazda SkyActiv geeft PID 55/56 in 1
+byte i.p.v. 2" staat al als voorbeeld in die comment. Het zelflerende systeem
+werkt zoals ontworpen. Niets te fixen.
+
+**Nieuwe bug: `merkGroep()`-asymmetrie MINI vs BMW (§14, DTC-lookup).**
+Bevestigd door de code te lezen (`pidlane-data.js:258`): MINI matcht op
+prefix (`m.indexOf('MINI')===0`), dus "MINI COOPER" → groep BMW/Mini. BMW
+matcht op exacte gelijkheid (`m==='BMW'`) — "BMW 320D" wordt na het strippen
+van spaties/cijfers `BMWD`, mist de vergelijking en valt terug op `''`: geen
+groep, geen merk-specifieke DTC-lookup. Bij BMW is alleen het kale merk zonder
+toevoeging gedekt, bij MINI elke variant. Vermoedelijk een prefix-match ook
+voor BMW; niet in deze sessie gefixt.
+
+**Vier aanvragers op één bus — cijfers voor de openstaande vraag (§4).** Eigen
+41-header-uitpakwerk buiten `splitBatchResponse()` om: diagbundel (1), graph
+(1), monitor (2), veldlab (3), verify (1) — plus diagbundel (4) die wél via
+`splitBatchResponse` gaat. Losse `fetch`-aanroepen: 18 over 7 modules (auth 4,
+fuel 2, koopcheck 1, remote 7, veldlab 1, credits 1, klant 2); een gedeelde
+`plFetch`-helper bestaat nog niet. Geen bug — voedt de bestaande open vraag,
+geen actie op zichzelf.
+
+**Adapter-identiteit herbevestigd, `PIDLANE.md` nog niet bijgewerkt.** STI/STDI
+bevestigen opnieuw de STN-chip (dus STPX en MS-CAN beschikbaar); `PIDLANE.md`
+beweert nog het tegendeel. Stond al als "de logische volgende sessie" in
+`OVERDRACHT-NIEUWE-CHAT.md` (25-08) — nog steeds niet gedaan.
+
+**STPX bij stilstand: verschil te klein om op te bouwen.** Gewoon 154 ms, STPX
+167 ms (+8%). Dit is het gunstigste geval (rustige bus, zie CAMPAGNE-punt 9);
+de vraag blijft open voor het rijden met alle vier de aanvragers aan.
+
+**Raildruk 0123/0159 bewegen weer — niet over een hele rit bevestigd.** Deze
+sweep: 0123 = 10050, 0159 = 9890 — niet langer de vaste 9900 van 23-08. Eén
+meting van 18 s zegt niets over of ze een hele rit blijven bewegen. Blijft
+open tot de rit met alle vier de aanvragers.
+
+**Voertuig mist model/bouwjaar/brandstof — ongewijzigd, gekoppeld aan het
+VIN-profiel.** Bevestigt het vermoeden uit `OVERDRACHT-NIEUWE-CHAT.md` punt 4:
+dit voertuig heeft nog geen (volledig) profiel om die velden uit te halen. Los
+van de `merkGroep`-asymmetrie hierboven, wel dezelfde databron.
+
+**Opruimregel: niet getriggerd.** 18 s zit ruim onder de vijf minuten die
+nodig zijn; ongewijzigd open.
+
 ## Rit van 23-08 (nacht) — wat de meting opleverde
 
 27,6 min, 1295 monsters op 1 Hz, 11 min boven 15 km/u, tot 96 km/u en 3865 rpm.
