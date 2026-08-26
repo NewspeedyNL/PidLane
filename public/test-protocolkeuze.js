@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────────────
 // WAAROM DEZE TEST BESTAAT
 //
-// PROTOCOLS staat sinds de opsplitsing in pidlane-data.js met tien protocollen
+// PROTOCOLS staat sinds de opsplitsing in pidlane-data.js met negen protocollen
 // erin, en werd door NIETS gelezen. scanNetworks() zette alleen het automatisch
 // gevonden protocol in discoveredNetworks, dus stond er altijd precies één ding
 // in — en renderNetworkCards() had een tak "één netwerk? niet laten kiezen,

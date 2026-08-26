@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.8 (26-08-2026)';
+const TESTRUN_VERSIE = '4.9 (26-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -246,6 +246,109 @@ const PLBudget = (function () {
 })();
 window.PLBudget = PLBudget;
 try { PLBudget.start(); } catch (e) { console.warn('PLBudget niet gestart — het pollbudget-spoor voor PLAN.md punt 2 blijft dan leeg', e); }
+
+// ══════════════════════════════════════════════════════════════════
+// DE RITWAARNEMER (PLRit) — voor alles wat alleen een RIT kan beantwoorden
+// ══════════════════════════════════════════════════════════════════
+// 26-08-2026. Vier vragen staan al dagen open en geen van vieren is bij
+// stilstand te beantwoorden:
+//
+//   raildruk 0123/0159   stonden een hele rit stil op 9900 — beweegt dat nu?
+//   opruimregel          zes mislukkingen + vijf herkansingen kost >5 minuten
+//   turbodetectie        vraagt MAP-monsters onder belasting
+//   32 van de 55 PIDs    bewogen niet in 27 minuten rijden
+//
+// De testrun meet een MOMENT: hij vraagt elke PID één keer op en dat is het.
+// Eén losse waarde van 10090 zegt niets over of de raildruk een half uur lang
+// beweegt. Daar is een waarnemer voor nodig die de hele rit meeloopt, en dat is
+// wat dit is — hetzelfde patroon als PLBudget hierboven: hij draait vanaf het
+// laden, regelt niets, en de testrun leest hem achteraf uit (blok 14).
+//
+// Waarom niet pidHist gebruiken: die bewaart 120 monsters per PID. Op 1 Hz is
+// dat twee minuten. Voor "bewoog deze sensor over de hele rit" heb je een
+// accumulator nodig, geen venster.
+//
+// Tijdens een testrun wordt er NIET bemonsterd (_trBezig). De sweep vraagt 45
+// PIDs achter elkaar op en blok 6 pookt in dode PIDs; die waarden horen niet in
+// een beeld van "wat deed de auto tijdens het rijden".
+const PLRit = (function () {
+  const TIK = 5000;          // elke 5 s; een rit van 30 min = 360 monsters
+  const GAT_MS = 20000;      // >20 s tussen twee tikken = de app lag stil
+  let per = {};              // pid -> {n,min,max,laatst,veranderingen,tLaatsteVer}
+  let start = 0, laatstT = 0, gaten = [], herverbindingen = 0;
+  let vorigVerbonden = null, _aan = false;
+
+  // nuOverride is er alleen voor de test (zie tik: hieronder). Zonder argument
+  // is het gewoon Date.now().
+  function tik(nuOverride) {
+    try {
+      const verbonden = !(typeof connected === 'undefined' || !connected);
+      // Herverbindingen tellen: dit is het signaal van de achtergrondkwestie
+      // (Android bevriest de WebView-timers). Ook tellen als we niet meten.
+      if (vorigVerbonden === false && verbonden) herverbindingen++;
+      vorigVerbonden = verbonden;
+
+      if (!verbonden) return;
+      if (typeof demoMode !== 'undefined' && demoMode) return;
+      if (typeof _trBezig !== 'undefined' && _trBezig) return;   // niet tijdens een run
+      if (typeof pidVals === 'undefined' || !pidVals) return;
+
+      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
+      if (!start) start = nu;
+      // Een gat betekent dat deze lus zelf niet liep — precies het bewijs uit de
+      // rit van 23-08 (het logboek zweeg op dezelfde kloktijden).
+      if (laatstT && (nu - laatstT) > GAT_MS)
+        gaten.push({ van: laatstT, tot: nu, s: Math.round((nu - laatstT) / 1000) });
+      laatstT = nu;
+
+      Object.keys(pidVals).forEach(function (p) {
+        const v = pidVals[p];
+        if (typeof v !== 'number' || !isFinite(v)) return;
+        const e = per[p];
+        if (!e) { per[p] = { n: 1, min: v, max: v, laatst: v, veranderingen: 0, tLaatsteVer: nu }; return; }
+        e.n++;
+        if (v < e.min) e.min = v;
+        if (v > e.max) e.max = v;
+        if (v !== e.laatst) { e.veranderingen++; e.laatst = v; e.tLaatsteVer = nu; }
+      });
+    } catch (e) {
+      // Bewust stil: een waarnemer op vreemde objecten mag de rit nooit
+      // verstoren. Dat hij leeft is aan het monsteraantal te zien; staat dat op
+      // 0, dan meldt blok 14 dat en niet deze catch.
+    }
+  }
+
+  function start_() {
+    if (_aan) return;
+    _aan = true;
+    setInterval(tik, TIK);
+  }
+
+  return {
+    start: start_,
+    // Bewust naar buiten: anders is de accumulator alleen te toetsen door vijf
+    // seconden per monster te wachten, en dan wordt hij dus niet getoetst. Met
+    // een klok-parameter kan test-rit.js een rit van een half uur in een paar
+    // milliseconden naspelen. In de app roept niemand dit aan; het interval doet
+    // het werk.
+    tik: function (nuOverride) { return tik(nuOverride); },
+    per: function () { return JSON.parse(JSON.stringify(per)); },
+    gaten: function () { return gaten.slice(); },
+    herverbindingen: function () { return herverbindingen; },
+    duurS: function (nuOverride) {
+      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
+      return start ? Math.round((nu - start) / 1000) : 0;
+    },
+    monsters: function () {
+      let n = 0; Object.keys(per).forEach(function (p) { if (per[p].n > n) n = per[p].n; }); return n;
+    },
+    // Zet de teller op nul aan het begin van een rit, zodat het beeld over déze
+    // rit gaat en niet over alles sinds het opstarten van de app.
+    wis: function () { per = {}; start = 0; laatstT = 0; gaten = []; herverbindingen = 0; }
+  };
+})();
+window.PLRit = PLRit;
+try { PLRit.start(); } catch (e) { console.warn('PLRit niet gestart — blok 14 (de rit) blijft dan leeg', e); }
 
 // ══════════════════════════════════════════════════════════════════
 // BLOK 1 — BEDRADING EN OMGEVING
@@ -2160,11 +2263,17 @@ async function _blok12() {
     // "kent het niet" — een clone die niets terugstuurt is nog steeds een clone.
     const kentSTI = !!sti && !/^\?+$/.test(sti) && !/^NO DATA$/i.test(sti);
 
+    // 26-08b: PIDLANE.md IS bijgewerkt (§1 noemt STI/STDI en wat STPX betekent).
+    // De oude tekst zei "PIDLANE.md zegt van niet en moet bij" en bleef dat
+    // zeggen nadat het gedaan was — een opdracht die nooit afgaat leert je 'm
+    // negeren. Blijft LET OP, want het is iets wat je moet wéten (de
+    // pollstrategie hangt eraan), niet iets wat stuk is.
     if (kentSTI)
       return { staat: 'LET OP', detail: 'STN-adapter: STI="' + sti + '"' + (stdi ? ', STDI="' + stdi + '"' : '') +
-        ' terwijl ATI="' + ati + '". STPX en MS-CAN zijn dus beschikbaar — PIDLANE.md zegt van niet en moet bij.' };
+        ' terwijl ATI="' + ati + '". STPX en MS-CAN zijn beschikbaar (staat zo in PIDLANE.md §1). ' +
+        'Of STPX ook wint is blok 13 — bij stilstand niet, onder belasting nog te meten.' };
 
-    return 'geen STN: ATI="' + ati + '", STI kent hij niet (' + (sti || 'geen antwoord') + '). Aanname in PIDLANE.md klopt.';
+    return 'geen STN: ATI="' + ati + '", STI kent hij niet (' + (sti || 'geen antwoord') + ').';
   });
 }
 
@@ -2223,6 +2332,21 @@ async function _blok13() {
   // 2. Hoeveel scheelt het? Vijf metingen per weg, om en om zodat een
   //    tijdelijk drukke bus beide kanten even hard raakt.
   await _doe(13, 'STPX: hoeveel sneller dan een gewone uitvraag', async function () {
+    // 26-08b — DE OMSTANDIGHEDEN ERBIJ. Twee runs gaven +8% en −1%, allebei bij
+    // stilstand, en aan de uitslag alleen was dat niet te zien. STPX hoort juist
+    // te winnen als de bus vol staat: dan wacht een gewone uitvraag op een
+    // timeout terwijl R:1 meteen afrondt. Zonder de bezetting en de snelheid
+    // erbij is een meting van 156 vs 155 ms niet te onderscheiden van dezelfde
+    // meting tijdens het rijden — en dan blijft de vraag eeuwig open staan.
+    const omstandigheid = function () {
+      let bezet = null, perSec = null, kmh = null;
+      try { const s = PLBus.stats(); bezet = s.belasting; perSec = s.perSec; } catch (e) { /* stil: alleen context */ }
+      try { if (typeof pidVals !== 'undefined' && pidVals && typeof pidVals['010D'] === 'number') kmh = pidVals['010D']; }
+      catch (e) { /* stil: alleen context */ }
+      return { bezet: bezet, perSec: perSec, kmh: kmh };
+    };
+    const voor = omstandigheid();
+
     const gewoon = [], stpx = [];
     for (let i = 0; i < 5; i++) {
       let t = Date.now();
@@ -2232,15 +2356,33 @@ async function _blok13() {
       try { await sendCmd('STPX D:010C, R:1', 3000); } catch (e) { /* mislukte poging telt niet mee */ }
       stpx.push(Date.now() - t);
     }
+    const na = omstandigheid();
     const g = mediaan(gewoon), x = mediaan(stpx);
     if (!g || !x) return { staat: 'LET OP', detail: 'geen bruikbare tijden gemeten' };
     const pct = Math.round((g - x) / g * 100);
-    const regel = 'gewoon ' + g + ' ms, STPX ' + x + ' ms (' + (pct >= 0 ? '−' : '+') + Math.abs(pct) + '%)';
+
+    const kmh = (na.kmh == null ? voor.kmh : na.kmh);
+    const bezet = (voor.bezet == null ? na.bezet : Math.round(((voor.bezet || 0) + (na.bezet || 0)) / 2));
+    const rijdt = (typeof kmh === 'number' && kmh >= 15);
+    const ctx = 'bij ' + (bezet == null ? '?' : bezet + '%') + ' busbezetting, ' +
+      (kmh == null ? 'snelheid onbekend' : kmh + ' km/u') +
+      (voor.perSec == null ? '' : ', ' + voor.perSec + ' verzoeken/s');
+    const regel = 'gewoon ' + g + ' ms, STPX ' + x + ' ms (' + (pct >= 0 ? '−' : '+') + Math.abs(pct) + '%)  [' + ctx + ']';
+
+    // Zonder een drukke bus is dit het gunstigste geval en dus geen antwoord op
+    // de openstaande vraag. Dat expliciet zeggen, anders leest een klein
+    // verschil bij stilstand als "STPX levert niets op".
+    const staart = rijdt ? '' :
+      '  — LET OP: dit is bij stilstand gemeten, het gunstigste geval voor een gewone uitvraag. ' +
+      'De openstaande vraag is of STPX wint als de bus vol staat; draai dit blok tijdens het rijden ' +
+      'met alle vier de aanvragers aan.';
+
     if (pct >= 20)
-      return { staat: 'LET OP', detail: regel + ' — dit is de moeite waard: met R: hoeft de adapter niet meer op een timeout te wachten. Overweeg de batchgok, PLPidLen en de terugval drie-naar-één te vervangen.' };
+      return { staat: 'LET OP', detail: regel + ' — dit is de moeite waard: met R: hoeft de adapter niet meer op een timeout te wachten. Overweeg de batchgok, PLPidLen en de terugval drie-naar-één te vervangen.' + staart };
     if (pct <= -10)
-      return { staat: 'LET OP', detail: regel + ' — STPX is hier LANGZAMER. Niet doen dus, of de syntax klopt niet.' };
-    return regel + ' — verschil te klein om die laag voor om te bouwen';
+      return { staat: 'LET OP', detail: regel + ' — STPX is hier LANGZAMER. Niet doen dus, of de syntax klopt niet.' + staart };
+    return { staat: rijdt ? 'ok' : 'LET OP',
+      detail: regel + ' — verschil te klein om die laag voor om te bouwen' + staart };
   });
 
   // 3. Wat de firmware verder meldt. Puur informatief; MS-CAN wordt bewust
@@ -2251,6 +2393,143 @@ async function _blok13() {
     try { stp = schoon(await sendCmd('STPRS', 2000)); } catch (e) { stp = ''; }
     return 'ATDPN="' + (dpn || 'geen antwoord') + '", STPRS="' + (stp || 'geen antwoord') +
       '" — MS-CAN is niet geprobeerd: dat vraagt een protocolwissel en die hoort niet in een testrun tijdens het rijden';
+  });
+}
+
+/* ── BLOK 14 — DE RIT (26-08-2026, meet niets zelf) ───────────────────
+   Leest PLRit uit. Raakt de bus NIET aan: alles hieronder komt uit wat er
+   tijdens het rijden al langskwam. Daarom veilig om tijdens de rit te draaien.
+
+   Beantwoordt de vier vragen die bij stilstand onbeantwoordbaar zijn. De
+   eerste controle is de belangrijkste: als de auto niet gereden heeft, is de
+   rest van dit blok betekenisloos en zegt hij dat, in plaats van vier
+   groene vinkjes te geven op een stilstaande auto. */
+async function _blok14() {
+  const R = window.PLRit;
+  if (!R) {
+    await _doe(14, 'De rit', function () {
+      return { staat: 'FOUT', detail: 'PLRit ontbreekt — pidlane-testrun.js is niet meegekomen (cache?)' };
+    });
+    return;
+  }
+
+  const per = R.per();
+  const duur = R.duurS();
+  const pids = Object.keys(per);
+  const nz = function (p) { return per[p] || null; };
+
+  // ── 0. Heeft deze auto überhaupt gereden? ──
+  // Zonder dit is elke uitspraak hieronder een uitspraak over stilstand.
+  let gereden = false;
+  await _doe(14, 'Is er gereden?', function () {
+    const sp = nz('010D');                      // voertuigsnelheid
+    if (!sp) return { staat: 'LET OP', detail: 'geen snelheidsmonsters (010D) — staat 010D in de actieve selectie?' };
+    gereden = sp.max >= 15;
+    const kop = 'hoogste snelheid ' + sp.max + ' km/u over ' + Math.round(duur / 60) + ' min (' + sp.n + ' monsters)';
+    if (!gereden)
+      return { staat: 'LET OP', detail: kop + ' — de auto heeft niet gereden. Alles hieronder gaat dan over stilstand ' +
+        'en beantwoordt de openstaande vragen NIET. Rijd en draai dit blok opnieuw.' };
+    return kop;
+  });
+
+  // ── 1. Raildruk — de vraag sinds 23-08 ──
+  await _doe(14, 'Raildruk 0123/0159 — bewegen ze?', function () {
+    const a = nz('0123'), b = nz('0159');
+    if (!a && !b) return { staat: 'LET OP', detail: 'geen monsters van 0123 of 0159 — staan ze in de actieve selectie?' };
+    const rij = [];
+    [['0123', a], ['0159', b]].forEach(function (p) {
+      if (!p[1]) { rij.push(p[0] + ': geen monsters'); return; }
+      const e = p[1];
+      rij.push(p[0] + ': ' + e.veranderingen + ' wijzigingen, ' + e.min + '–' + e.max + ' (' + e.n + ' monsters)');
+    });
+    const stil = [a, b].filter(function (e) { return e && e.veranderingen === 0; }).length;
+    if (stil && gereden)
+      return { staat: 'LET OP', detail: rij.join('  |  ') + ' — nog steeds bevroren tijdens het rijden. ' +
+        'Op directe inspuiting kan dat niet: dit is een parser- of definitiefout, geen sensor die stilstaat.' };
+    if (stil)
+      return { staat: 'LET OP', detail: rij.join('  |  ') + ' — stil, maar er is niet gereden; zegt nog niets' };
+    return rij.join('  |  ') + ' — allebei in beweging, de bevinding van 23-08 is hiermee weg';
+  });
+
+  // ── 2. Welke sensoren bewogen niet? ──
+  // 23-08: 32 van de 55 bewogen niet in 27 minuten. Dit is dezelfde telling,
+  // maar dan met het onderscheid tussen "hoort stil te staan" en de rest.
+  await _doe(14, 'Sensoren die niet bewogen', function () {
+    if (!pids.length) return { staat: 'LET OP', detail: 'nog geen monsters — draait PLRit? (' + R.monsters() + ' monsters)' };
+    // Deze PIDs HOREN constant te zijn: status, configuratie en tellers die
+    // alleen bij een storing oplopen. Ze meetellen als "bevroren sensor" geeft
+    // elke rit een handvol vals alarm.
+    const MAG_STIL = {
+      '0101': 'MIL-status', '0121': 'afstand met MIL aan', '011C': 'OBD-norm',
+      '0113': 'O2-sensoren aanwezig', '0151': 'brandstoftype', '0163': 'referentiekoppel',
+      '0165': 'aux-ondersteuning', '0141': 'monitors deze rit', '0103': 'brandstofsysteemstatus',
+      '014D': 'tijd met MIL aan', '0130': 'warmlopen sinds wissen', '011F': 'motorlooptijd'
+    };
+    const stil = pids.filter(function (p) { return per[p].veranderingen === 0 && !MAG_STIL[p]; });
+    const stilVerwacht = pids.filter(function (p) { return per[p].veranderingen === 0 && MAG_STIL[p]; });
+    const kop = pids.length + ' PIDs bemonsterd, ' + stil.length + ' bewogen niet' +
+      (stilVerwacht.length ? ' (plus ' + stilVerwacht.length + ' die dat horen te doen)' : '');
+    if (!stil.length) return kop;
+    const lijst = stil.slice(0, 12).map(function (p) {
+      const d = (window.ALL_PID_DEFS && ALL_PID_DEFS[p]) ? ALL_PID_DEFS[p].name : p;
+      return p + ' (' + d + ') vast op ' + per[p].laatst;
+    }).join(', ');
+    return { staat: gereden ? 'LET OP' : 'ok',
+      detail: kop + ': ' + lijst + (stil.length > 12 ? ' … +' + (stil.length - 12) + ' meer' : '') +
+        (gereden ? '  — dit is de populatie voor de opruimregel én voor punt 12 (definitie klopt niet)' : '  — er is niet gereden, dus verwacht') };
+  });
+
+  // ── 3. Turbo — MAP onder belasting ──
+  await _doe(14, 'MAP onder belasting (turbodetectie)', function () {
+    const m = nz('010B');
+    if (!m) return { staat: 'LET OP', detail: 'geen MAP-monsters (010B) — staat hij in de actieve selectie?' };
+    const baro = nz('0133');
+    const grens = (baro ? baro.max : 101) + 9;
+    const kop = 'MAP ' + m.min + '–' + m.max + ' kPa over ' + m.n + ' monsters, barometer ' +
+      (baro ? baro.max : '?') + ', grens ' + grens;
+    if (!gereden) return { staat: 'LET OP', detail: kop + ' — niet gereden, dus geen oordeel over turbo' };
+    if (m.max > grens) return kop + ' — boven de grens: dit is een TURBO';
+    return kop + ' — nooit boven de grens: atmosferisch, of niet hard genoeg getrokken';
+  });
+
+  // ── 4. De opruimregel — draaide hij, en wat deed hij? ──
+  await _doe(14, 'Opruimregel: is er iets opgeruimd?', function () {
+    let bt = [];
+    try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
+    let app = [];
+    try { app = (window._appLog || window.logBuffer || []); } catch (e) { app = []; }
+    const alles = [].concat(bt || [], app || []);
+    if (!alles.length) return { staat: 'LET OP', detail: 'geen logregels te lezen — controle niet uitgevoerd' };
+    const zoek = function (re) {
+      return alles.filter(function (l) { return l && re.test(String(l.msg || '')); })
+                  .map(function (l) { return (l.ts ? l.ts + ' ' : '') + String(l.msg).slice(0, 110); });
+    };
+    const op = zoek(/opgeruimd/i);
+    const terug = zoek(/antwoordt weer na/i);
+    if (!op.length && !terug.length)
+      return { staat: duur > 300 ? 'LET OP' : 'ok',
+        detail: 'niets opgeruimd in ' + Math.round(duur / 60) + ' min' +
+          (duur > 300 ? ' — na vijf minuten had de regel moeten kunnen vuren; controleer of hij aanstaat'
+                      : ' (nog geen vijf minuten gereden — de regel kán nog niet gevuurd hebben)') };
+    const r = [];
+    if (op.length) r.push(op.length + 'x opgeruimd: ' + op.slice(0, 3).join(' | '));
+    if (terug.length) r.push(terug.length + 'x hersteld vóór het opruimen: ' + terug.slice(0, 3).join(' | '));
+    return { staat: 'LET OP', detail: r.join('  ||  ') + ' — dit is de meting waar de drempel op gekozen moet worden' };
+  });
+
+  // ── 5. Liep de app door, of bevroor hij? ──
+  // De bevinding van 23-08: veertien stiltes in het logboek, elke herverbinding
+  // volgde op een stilte. Dit is dezelfde meting, maar dan geteld in plaats van
+  // achteraf uit twee logs gereconstrueerd.
+  await _doe(14, 'Liep de app door tijdens de rit?', function () {
+    const g = R.gaten(), hv = R.herverbindingen();
+    const kop = Math.round(duur / 60) + ' min waargenomen, ' + R.monsters() + ' monsters, ' +
+      g.length + ' gat(en), ' + hv + ' herverbinding(en)';
+    if (!g.length && !hv) return kop + ' — ononderbroken';
+    const lijst = g.slice(0, 5).map(function (x) { return x.s + ' s'; }).join(', ');
+    return { staat: 'LET OP', detail: kop + (g.length ? '. Stiltes: ' + lijst : '') +
+      ' — een gat betekent dat de meetlus zelf niet liep (Android bevriest WebView-timers op de achtergrond). ' +
+      'Volgt elke herverbinding op een gat, dan is dat de achtergrondkwestie en niet de bus.' };
   });
 }
 
@@ -2403,7 +2682,10 @@ async function startTestrun(blokken) {
   // volle run alsnog scant naar iets waar we niet meer naar zoeken — inclusief
   // het header-gedoe op 7E0 dat daarbij hoort. Los aan te roepen blijft het:
   // startTestrun({b8:true}).
-  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true, b12: true, b13: true };
+  // b14 (de rit) staat in de standaardset: hij meet niets zelf, leest alleen
+  // PLRit uit en kost dus geen buscommando's. Bij stilstand zegt hij netjes dat
+  // er niet gereden is in plaats van vier groene vinkjes te geven.
+  const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true, b12: true, b13: true, b14: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
@@ -2427,6 +2709,9 @@ async function startTestrun(blokken) {
     // niet aan, dus de plek maakt niet uit — hier staat het tussen de goedkope
     // blokken, ruim vóór de trage metingen van blok 6 en 8.
     if (b.b11) await _blok11();
+    // Blok 14 leest alleen PLRit uit en raakt de bus niet aan. Vóór blok 12/13,
+    // want die vragen de adapter wél iets en dat wil je niet in het ritbeeld.
+    if (b.b14) await _blok14();
     if (b.b12) await _blok12();
     if (b.b13) await _blok13();
     if (b.b6) await _blok6();
@@ -2607,6 +2892,11 @@ function openTestrun() {
         // pollbudget, want dat heeft niets met olie te maken.
         '<button onclick="startTestrun({b7:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget</button>' +
         '<button onclick="startTestrun({b10:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snelheidsproef (10 min)</button>' +
+        // De rit (26-08b). Twee knoppen omdat het twee momenten zijn: nulstellen
+        // aan het begin van de rit, uitlezen aan het eind. Blok 14 zit óók in de
+        // standaardset, dus wie gewoon "Start" drukt krijgt het ritbeeld erbij.
+        '<button onclick="ritNulstellen()" style="background:var(--sur2);color:var(--gn);border:1px solid var(--gn);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">🚗 Rit begint (nulstellen)</button>' +
+        '<button onclick="startTestrun({b14:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Ritverslag</button>' +
         // Alleen tellen, geen bus: mag ook los, bijvoorbeeld thuis op de bank.
         '<button onclick="startTestrun({b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Inventarisatie</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
@@ -2660,9 +2950,53 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Batch 26-08b — kentekenstap, protocolkeuze, merkGroep, plus de openstaande rit',
+  titel: 'RIT 26-08 — alles wat alleen rijdend te meten is (blok 14), plus de batch bij stilstand',
   vragen: [
-    'VOORAF — blok 5 mag geen FOUT geven. Staat er "NIET geladen", lees de melding: dat kan ook de cache zijn. Eerst "Nieuwste versie laden", dan opnieuw.',
+    '── ZO DRAAI JE DEZE RIT ───────────────────────────────────',
+
+    'STAP 1, STILSTAND. "Nieuwste versie laden", verbind, en druk op ▶ Start. Blok 5 mag geen FOUT geven. Dit is je nulmeting; bewaar hem.',
+
+    'STAP 2, VOOR HET WEGRIJDEN. Zet alle vier de aanvragers aan (bulk-recorder, caravan-tracker, rijmonitor, waakronde) en druk daarna op "🚗 Rit begint (nulstellen)". Zonder die knop gaat blok 14 over alles sinds het opstarten van de app in plaats van over deze rit.',
+
+    'STAP 3, RIJDEN. Minstens tien minuten en echt rijden — de opruimregel heeft zes mislukkingen plus vijf herkansingen van één per minuut nodig, dus onder de vijf minuten kán hij niet vuren. Trek onderweg een paar keer stevig op: zonder belasting geen MAP-monsters en dus geen turbo-oordeel.',
+
+    'STAP 4, TIJDENS HET RIJDEN (laat iemand anders tikken, of doe het stilstaand met de motor aan na een stuk rijden). Druk op ▶ Start. Dit is de enige manier om blok 13 (STPX) op een DRUKKE bus te meten. Blok 13 zet nu zelf de bezetting en de snelheid in de uitslag, dus je ziet achteraf of het echt onder belasting was.',
+
+    'STAP 5, NA DE RIT. Nog een keer ▶ Start, met de motor aan. Blok 14 geeft het ritverslag.',
+
+    '── WAT BLOK 14 MOET ZEGGEN ────────────────────────────────',
+
+    'IS ER GEREDEN. Staat hier LET OP "de auto heeft niet gereden", dan is de rest van blok 14 betekenisloos — dan is 010D niet in de selectie of is de rit te kort geweest. Controleer dit eerst, voordat je conclusies uit de rest trekt.',
+
+    'RAILDRUK 0123/0159 — de vraag sinds 23-08. Beide stonden een hele rit stil op 9900. Blok 14 telt nu hoeveel wijzigingen elk had. Nul wijzigingen tijdens echt rijden = geen sensor die stilstaat maar een parser- of definitiefout, en dán is dat de volgende fix.',
+
+    'SENSOREN DIE NIET BEWOGEN. Op 23-08 waren dat er 32 van de 55. Blok 14 laat de status-PIDs (MIL, OBD-norm, brandstoftype…) buiten beschouwing, dus wat overblijft is de echte populatie voor de opruimregel. Schrijf het aantal op.',
+
+    'OPRUIMREGEL. Blok 14 zoekt "opgeruimd" en "antwoordt weer na" in de logs. Verwacht op deze CX-5: 0101, 0121, 016D en de PIDs uit het 0180-blok (018E, 019D, 019E, 01A0). Staat er na tien minuten rijden nog steeds niets, dan vuurt de regel niet en is DAT de bevinding.',
+
+    'LIEP DE APP DOOR. Gaten en herverbindingen worden nu geteld terwijl je rijdt, in plaats van achteraf uit twee logs gereconstrueerd. Volgt elke herverbinding op een gat, dan is dat de achtergrondkwestie (Android bevriest de WebView-timers) en niet de bus. Open onderweg bewust één keer het logboek — dat is de vensterwissel die het volgens de analyse van 23-08 uitlokt.',
+
+    'MAP / TURBO. Blok 14 meldt de hoogste MAP tegen de barometer. Kwam hij nooit boven de grens terwijl je wél hard hebt getrokken, dan is deze CX-5 atmosferisch en kan die vraag dicht.',
+
+    '── STPX, DE ANDERE OPEN VRAAG ─────────────────────────────',
+
+    'STPX ONDER BELASTING. Bij stilstand gaf hij +8% (4.7) en −1% (4.8) — dat is het gunstigste geval voor een gewone uitvraag en dus geen antwoord. Blok 13 zet nu de bezetting en km/u in de uitslag; staat daar "bij stilstand gemeten", dan telt de meting niet mee. Scheelt het rijdend 20% of meer, dan kunnen de batchgok, PLPidLen en de terugval drie-naar-één op termijn weg.',
+
+    '── DE BATCH VAN VANDAAG, BIJ STILSTAND ────────────────────',
+
+    'KENTEKENSTAP — OVERLEEFT DE VIN. Al groen op 26-08 (blok 1 gaf "Mazda CX-5 2018 benzine — VIN 766507"). Kijk of dat zo blijft na een rit met herverbindingen: verspringt het merk na een herverbinding naar iets grovers of wordt brandstof leeg, dan wist een pad alsnog de RDW-bron.',
+
+    'KENTEKENSTAP — OVERSLAAN. Verbind een keer opnieuw en kies "Overslaan". De diagnose hoort door te lopen met "Kenteken overgeslagen bij het verbinden" in het log. Een fout kenteken (XX-99-XX) mag je niet klemzetten.',
+
+    'PROTOCOLKEUZE — HANDMATIG FORCEREN. Kies bewust CAN 29-bit 500k en druk op "Forceer". Verwacht dat de discovery faalt — dat bewijst dat de keuze doorwerkt tot ATSP. Ga daarna terug en neem het herkende protocol.',
+
+    'PROTOCOLKEUZE — ZONDER CONTACT. Contact uit, scannen. Volledige protocollijst met "Meestal staat het contact uit" en "Opnieuw scannen" vooraan.',
+
+    'FIX 4 — STEUNBITMAPS. Open na de rit de bulk-recorder, de gauges en het AI-rapport en zoek naar 0180 en 01A0. Verschijnen ze daar als sensorwaarde, dan leest die consument ALL_PID_DEFS zonder langs pidGate() te gaan, en is dát de volgende plek om te fixen.',
+
+    'VIN-PROFIEL, ECHT GENEGEERD. Verbind twee keer met deze auto. De tweede keer hoort blok 1 "bij het verbinden geladen, snelle start" te zeggen. Krijg je LET OP met een profiel ouder dan een paar minuten, dan is dát de echte bevinding — schrijf op hoe oud.',
+
+    'BLOK 7 — BEKENDE FOUT, NEGEREN. "responstijd bij lage bezetting 0 ms (+0%) — vrijwel geen verschil" is een gemelde bug in de controle zelf (deel-door-nul geeft 0% en dat leest als "geen verschil"). Staat genoteerd, wordt apart gefixt. Trek er geen conclusie uit.',
 
     'KENTEKENSTAP — VERSCHIJNT HIJ. Verbind met de auto. Vóór de protocolscan hoort nu het scherm "Welk voertuig is dit?" te komen, met het laatst gebruikte kenteken al ingevuld. Komt de protocolscan meteen, dan is de poort niet geladen (cache) of draait er een oude scanNetworks.',
 
@@ -2674,33 +3008,11 @@ const CAMPAGNE = {
 
     'PROTOCOLKEUZE — GEEN AUTOMATISCHE DOORSTAP. Na de scan hoort de app te WACHTEN. Bovenaan het herkende protocol met "Herkend", daaronder "Of kies handmatig" met de rest. Stapt hij na ~1,5 s vanzelf door naar PIDs ophalen, dan draait de oude renderNetworkCards.',
 
-    'PROTOCOLKEUZE — HANDMATIG FORCEREN. Kies bewust een ander protocol (bv. CAN 29-bit 500k) en druk op "Forceer". Verwacht dat de discovery faalt of niets vindt — dat is goed, het bewijst dat de keuze doorwerkt tot ATSP. Ga daarna terug en neem het herkende protocol.',
+    'WAKELOCK TIJDENS DE RIT. Juist onderweg telt dit: blijft het scherm aan zolang de verbinding loopt? Het log hoort "🔆 Scherm blijft aan zolang de verbinding/sessie loopt" te melden. Gaat het scherm onderweg tóch uit, dan bevriezen de timers en zie je dat terug als gaten in blok 14.',
 
-    'PROTOCOLKEUZE — ZONDER CONTACT. Zet het contact UIT en scan. Je hoort nu de volledige protocollijst te krijgen met "Meestal staat het contact uit" en "Opnieuw scannen" als eerste knop — niet het oude doodlopende "geen netwerken gevonden".',
+    '── AL GROEN OP 26-08, ALLEEN NOG BEVESTIGEN ───────────────',
 
-    'MERKGROEP — BMW/VW MET MODEL. Alleen te toetsen met een ander voertuig of via handmatige invoer: zet het merk op "BMW 320D" of "VW Golf" en kijk of een foutcode nog merkspecifieke tekst krijgt. Tot deze batch viel alles met een model erachter terug op generiek.',
-
-    'FIX 1 — WAKELOCK-DUPLICAAT WEG. window.PLWakelock (pidlane-auth.js) is verwijderd; window.PLWake (index.html) blijft de enige. Verbind en kijk of het log "🔆 Scherm blijft aan zolang de verbinding/sessie loopt" meldt — niet meer "Scherm blijft aan tijdens de meting" (die tekst hoorde bij het verwijderde duplicaat). Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Blok 5 toetst PLWake en meldt FOUT als PLWakelock ooit terugkomt.',
-
-    'FIX 1, REMOTE — PLWake kijkt ook naar remPill/remDrivePill. Open diagnose delen of expert-modus op remote data en controleer dat het scherm ook dán aanblijft, zonder dat er een echte BT-verbinding actief is.',
-
-    'FIX 2 — VIN-PROFIEL, EERSTE VERBINDING MET EEN NIEUW VOERTUIG. Blok 1 gaf hier altijd LET OP, ook als er nog helemaal geen profiel bestond. Moet nu "ok" zijn met de tekst dat de app terecht een volle discovery deed.',
-
-    'FIX 2, VIN-PROFIEL BINNEN DEZE SESSIE OPGESLAGEN. Verbind met een voertuig zonder profiel, laat de discovery + het opslaan gebeuren, en herlaad blok 1 meteen daarna. Het profiel is dan een paar minuten oud — moet nog steeds "ok" zijn, niet LET OP.',
-
-    'FIX 2, ECHT GENEGEERD PROFIEL. Verbind twee keer met hetzelfde bekende voertuig. Bij de tweede keer hoort blok 1 "bij het verbinden geladen, snelle start" te zeggen. Krijg je in plaats daarvan LET OP met een profiel dat al langer dan een paar minuten oud is, dan is dát de echte bevinding — schrijf op hoe oud.',
-
-    'FIX 3 — 0155/0156 NIET MEER ALS RAUWE BYTE. Ze stonden op de rauwe waarde 128 (0x80). Controleer in de live-view dat ze nu als percentage rond 0% liggen, net als 0106/0107.',
-
-    'FIX 4 — STEUNBITMAPS WEG UIT DE OPNAME. 0180 en 01A0 stonden als sensorwaarde in de bulkopname (0180 = 262157, 01A0 = -24) terwijl het de steunbitmaps voor PIDs 81-A0 en A1-C0 zijn. Controleer of ze nog ergens in de bulk-recorder, gauges of AI-rapport verschijnen — als dat wél zo is, leest die consument ALL_PID_DEFS zonder langs pidGate() te gaan, en is dát de volgende plek om te fixen.',
-
-    'STPX ONDER BELASTING — nog open sinds 25-08. Blok 13 meet vijf keer om en om: gewone uitvraag tegen STPX met R:1. Draai hem één keer bij stilstand en één keer tijdens het rijden met alle vier de aanvragers aan — STPX helpt vooral als de bus druk is, en bij stilstand meet je het gunstigste geval. Scheelt het 20% of meer tijdens het rijden, dan kan de batchgok, PLPidLen en de terugval van drie-naar-één op termijn weg.',
-
-    'OPRUIMREGEL, VIJF MINUTEN — nog open sinds 23-08. Zoek in het log op "opgeruimd". Rijd lang genoeg: zes mislukkingen plus vijf herkansingen van één per minuut kost minstens vijf minuten. Verwacht op deze CX-5: 0101, 0121, 016D, en de PIDs uit het 0180-blok (018E, 019D, 019E, 01A0) die de ECU wél claimt maar niet levert. Staat er ook "antwoordt weer na N mislukte herkansing(en)" — dan herstelde een sensor zich vóór hij eruit ging.',
-
-    'RAILDRUK 0123/0159 — nog open sinds 23-08. Beide stonden een hele rit stil op 9900. Op directe inspuiting kan dat niet. Bewegen ze nu wél?',
-
-    'RIJ MET ALLE VIER DE AANVRAGERS AAN — bulk-recorder, caravan-tracker, rijmonitor en waakronde. Zonder dat toets je de STPX- en PLLoad-vragen niet onder realistische belasting.'
+    'Deze vier stonden groen in testrun 4.8 bij stilstand en hoeven alleen te blijven kloppen: merkGroep (BMW 320D→BMW), 0155/0156 rond 0%, het VIN-profiel dat binnen deze sessie is ontstaan, en blok 5 zonder FOUT. Wijkt er één af na een rit met herverbindingen, dan is dát de bevinding.'
   ]
 };
 
@@ -2710,9 +3022,22 @@ const CAMPAGNE = {
 
 
 
+// Nulstellen aan het begin van een rit, zodat blok 14 over DEZE rit gaat en
+// niet over alles sinds het opstarten van de app. Bewust een knop en geen
+// automatische haak aan "verbonden": dan zou elke herverbinding onderweg het
+// ritbeeld wissen, en juist die herverbindingen zijn wat we willen tellen.
+function ritNulstellen() {
+  if (!window.PLRit) { try { showToast('PLRit ontbreekt'); } catch (e) { /* stil */ } return; }
+  PLRit.wis();
+  try { showToast('Rit nulgesteld — rijden maar'); } catch (e) { /* stil: melding mag de stroom niet breken */ }
+  try { log('Ritwaarnemer nulgesteld — blok 14 meet vanaf nu', 'ok'); } catch (e) { /* stil */ }
+  try { btDiag('PLRit nulgesteld', 'ok'); } catch (e) { /* stil */ }
+}
+
 window.openTestrun = openTestrun;
 window.closeTestrun = closeTestrun;
 window.startTestrun = startTestrun;
+window.ritNulstellen = ritNulstellen;
 window.stopTestrun = stopTestrun;
 window.testrunOpslaan = testrunOpslaan;
 window.testrunTekst = testrunTekst;

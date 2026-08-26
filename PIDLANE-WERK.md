@@ -425,7 +425,7 @@ vanzelf door: `scanNetworks()` zette alleen het gevonden protocol in de lijst en
 enige tak die ooit liep. Het protocol werd dus vergrendeld voordat je het scherm
 gelezen had, en zat de detectie ernaast dan was opnieuw beginnen de enige uitweg.
 
-`PROTOCOLS` (tien protocollen, sinds de opsplitsing in `pidlane-data.js`) werd
+`PROTOCOLS` (negen protocollen, sinds de opsplitsing in `pidlane-data.js`) werd
 daarbij **door niets gelezen**. Dat is nu de bron van de handmatige
 alternatieven. Herkend protocol bovenaan en voorgeselecteerd, alternatieven
 eronder, gebruiker bevestigt altijd zelf. Zonder detectie verschijnt de
@@ -439,6 +439,154 @@ batch: één waarheid per feit. `PROTOCOLS` bestond naast een hardcoded lijst va
 één, en `kentInput` dreigde een tweeling te krijgen. En `test-bedrading.js` wees
 twee keer meteen aan dat een nieuwe `typeof`-guard in KRITIEK hoort — die ratel
 werkt.
+
+## Testrun 4.8 (26-08, twee runs bij stilstand) — batch 26-08b bevestigd
+
+Run A 19:05, 20 s, 112 ok / 0 fout / 7 let op. Run B 19:11, 532 s, blok 10
+(snelheidsproef), 12 ok / 0 fout / 4 let op.
+
+**Alles uit de batch is groen.**
+
+- **Kentekenstap** — blok 5 "stap aanwezig, wizardveld heet `kentWizInput`,
+  **1x `#kentInput` in de DOM**". De tweelingval is dus echt vermeden, gemeten in
+  de browser en niet alleen in de bron.
+- **Protocolkeuze** — "9 protocollen in de tabel, 9 opties bij een herkend
+  protocol", en "de 1,5-seconde-tak is weg uit `renderNetworkCards()`".
+- **`merkGroep`** — `MINI→BMW  MINI COOPER→BMW  BMW→BMW  **BMW 320D→BMW**`, en
+  de controle staat op **ok** in plaats van LET OP.
+- **Bedrading** — 126 verwachte functies aanwezig (was 119); de zeven nieuwe
+  KRITIEK-namen bestaan allemaal.
+- **De kern van de batch: blok 1 "Voertuig" staat op ok.** *"Mazda CX-5 2018
+  benzine — VIN 766507"*, waar 4.7 nog "Mazda — mist: model, bouwjaar,
+  brandstof" gaf. Dat de VIN eróók staat is het bewijs voor CAMPAGNE-vraag 4:
+  de RDW-data heeft het lezen van de VIN **overleefd**. Zonder
+  `plAnderVoertuig()` was merk hier teruggevallen op het WMI-merk en was
+  brandstof leeg geweest.
+- Zijdelings bevestigd: `0155`/`0156` staan op 0%, en **raildruk beweegt**
+  (`0123`=10090, `0159`=10080 — niet meer de vaste 9900 van 23-08). Nog steeds
+  één moment, geen hele rit.
+
+### NIEUW — blok 7 trekt de omgekeerde conclusie bij een nulmeting
+
+Run A: *"responstijd bij lage bezetting **0 ms**, bij hoge bezetting 144 ms
+(**+0%**) — vrijwel geen verschil, dus bezetting voorspelt hier geen
+tegendruk"*. Dat is precies andersom: 0 tegen 144 is geen klein verschil.
+
+Oorzaak staat in `pidlane-testrun.js`, de controle "Zegt bezetting iets over de
+responstijd?":
+
+```js
+const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;
+```
+
+De deel-door-nul-vangst geeft `0` terug, en `0` valt vervolgens door
+`Math.abs(verschil) < 15` in de tak "vrijwel geen verschil". De vangst zegt dus
+niet "onmeetbaar" maar "geen verschil", en dat is een ándere uitspraak.
+
+Twee dingen mis, en het tweede is het echte:
+
+1. `mLaag === 0` betekent niet "0 ms gemeten" maar "hier valt geen percentage
+   van te maken". Dat hoort een eigen uitkomst te zijn, geen 0%.
+2. **Een responstijd van 0 ms is geen meting.** Die monsters horen er
+   waarschijnlijk helemaal niet in te zitten; nu trekken ze de mediaan van de
+   lage-bezettingsgroep naar nul.
+
+Waarom het telt: deze regel voedt de **Slotsom** die bepaalt of PLAN.md punt 2
+dicht kan. Een nulmeting die zich voordoet als "bezetting voorspelt niets"
+duwt die conclusie de verkeerde kant op. Zelfde familie als de vondsten van
+deze week: niet de meting is stuk, maar wat de meting over zichzelf beweert.
+
+Vastgelegd, niet gefixt (§6). Zit in blok 7 en staat los van batch 26-08b.
+
+### Blok 10 — de snelheidsproef, en waarom de "rust"-regels rood staan
+
+Vijf trappen, **0 missers op alle vijf**, tot 6,4 verzoeken/s:
+
+| trap | tempo | mediaan | t.o.v. trap 1 |
+|---|---|---|---|
+| 1 | 0,9/s | 128 ms | — |
+| 2 | 1,5/s | 133 ms | +4% |
+| 3 | 2,5/s | 141 ms | +10% |
+| 4 | 3,6/s | 151 ms | +18% |
+| 5 | 6,4/s | 166 ms | +30% |
+
+De adapter is dus niet de beperking. Vier van de vijf "rust na trap N" staan op
+LET OP omdat de responstijd in de rust **hoger** ligt dan tijdens de trap (tot
+401 ms na trap 5, tegen 166 ms tijdens die trap).
+
+Dat is geen busprobleem maar de kanttekening die in §7 al staat: **blok 10
+claimt tijdens elke trap het busslot en in de rust niet.** Tijdens de trap meet
+je een schone bus, in de rust een bus met vier aanvragers erop. Nu met vijf
+trappen in plaats van één bevestigd, dus die uitleg mag als vaststaand gelden —
+lees deze regels niet als "de verbinding wordt traag als je hem met rust laat".
+Trap 3 is het tegenvoorbeeld: dáár herstelde hij wél binnen 5 s.
+
+Terzijde uit het BT-log van run B: *"Pollbudget vastgehouden op 100% — bezet 89%
+maar responstijd 260 ms (vorige 239 ms), fout 0%"*. Fix 11 doet precies wat hij
+moet: 260 ms zit onder `traagMs` 400 en onder 239 × `venStijgFactor` 1,15, dus
+bezetting alléén verlaagt niets meer.
+
+### Kleiner, nog open
+
+- **Adapterregel repareerde zichzelf niet.** Blok 12 zei nog "PIDLANE.md zegt van
+  niet en moet bij" nadat dat gedaan was. Bijgewerkt — een opdracht die nooit
+  afgaat leert je hem negeren.
+- **`PROTOCOLS` heeft er negen, niet tien.** Stond fout in mijn eigen
+  aantekening bij batch 26-08b; blok 5 telde het na.
+- **BT-log run A: 33 warn en 1 err** (4.7 gaf 3 warn, 0 err). Niet te
+  diagnosticeren zonder de staart van dat log — bij de volgende run even in het
+  logboek kijken wat die ene fout is.
+- **Stille sensoren: `onzin: 1`** is nieuw naast `nodata: 3` (4.7 had
+  `nodata: 4`, geen onzin-categorie in de telling). Zelfde populatie, andere
+  indeling — nakijken bij de opruimregel.
+- STPX bij stilstand nu −1% (4.7 gaf +8%). Bevestigt: bij stilstand levert STPX
+  niets. De vraag blijft de drukke bus.
+
+## Rit van 26-08 (23:54) — gereden op 4.8, dus blok 14 draaide niet
+
+**De rit is niet gemeten.** Het toestel draaide testrun **4.8** (exact commit
+41887f9): geen `b14` in de standaardset, geen `PLRit`, en de adapterregel zei
+nog "PIDLANE.md moet bij" — die zit sinds ac7283d anders. Er is wél gereden
+(motorlooptijd 1615 s, brandstof 90,98% → 87,84%, koelwater 90 °C), maar niets
+nam het op, en de herlaad vlak vóór de run wiste ook het PLBudget-spoor
+(18 monsters over 36 s). Raildruk over een hele rit, de opruimregel, MAP onder
+belasting en de gaten/herverbindingen staan dus nog steeds open.
+
+Werkregel die hieruit volgt: **kijk vóór het wegrijden naar het versienummer in
+de kop van de testrun**, niet alleen naar blok 5. Blok 5 kan niet melden dat een
+blok ontbreekt dat in die build nog niet bestaat — dat is precies het gat waar
+deze rit in viel.
+
+Wat deze run desondanks opleverde:
+
+- **VIN-profiel wordt wél geladen bij het verbinden.** Blok 1: *"55 PIDs, 55
+  health-oordelen, 0.4 uur oud — bij het verbinden geladen, snelle start"*. Dat
+  is het derde geval uit de CAMPAGNE (bekend voertuig, tweede verbinding) en het
+  reproduceert **niet**. Het restant van "VIN-profiel wordt niet gebruikt" mag
+  daarmee dicht: de melding van 25-08 was de valse-alarmkant, en die is met
+  fix 2 weg.
+- **STPX is ook op een drukkere bus niet sneller — derde meting.** Nu
+  *gewoon 335 ms, STPX 378 ms (+13% LANGZAMER)*, bij `gemMs` 196 en PLLoad op
+  bezet 90% / 167 ms. Daarmee staat de reeks op +8% (4.7, stilstand), −1% (4.8,
+  stilstand) en +13% trager (drukker). Nog geen meting op een écht volle bus met
+  vier aanvragers, maar de richting is drie keer dezelfde: **hier valt niets te
+  halen.** Dat is materiaal om de STPX-sessie te schrappen in plaats van in te
+  plannen.
+- **019D/019E staan nu ín de sweep** (47 PIDs i.p.v. 45) en lezen −40 / −39:
+  rauwe nul met temperatuuroffset. Precies de "ECU claimt maar levert niet"-
+  populatie waar de opruimregel voor bestaat.
+- **Stille sensoren in de actieve selectie: van 3 naar 5** — 0101, 0121, 012E,
+  016D, 019D. 012E (EVAP) en 019D zijn nieuw. Deze telling is de basis voor de
+  drempel van punt 3.
+- **Punt 12 is deze run schoon**: *"geen enkele afwijking gemeten"*, 23 geleerd.
+  Dit was een ander toestel (SM-X526B i.p.v. SM-S947B), dus `PLPidLen` begon met
+  lege opslag. Bevestigt dat die 2 afwijkingen voertuig-/toestelgebonden leren
+  waren en geen tabelfout — zoals al vermoed.
+- **De blok 7-nulmeting vuurde deze keer niet**: 107 ms tegen 163 ms (+52%). De
+  gemelde fout treedt dus alleen op als de lage-bezettingsgroep uit 0 ms-monsters
+  bestaat. Intermitterend, en daarmee net zo verraderlijk — de fix blijft nodig.
+- Voertuig bleef compleet na 27 minuten draaien: *"Mazda CX-5 2018 benzine —
+  VIN 766507"*.
 
 ## Rit van 23-08 (nacht) — wat de meting opleverde
 
