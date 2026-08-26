@@ -2026,6 +2026,31 @@ async function _blok5() {
       return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size + ' ontkend: ' + ontkend.join(', ') };
     return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
   });
+
+  // ── TOEGEVOEGD 26-08: 0155/0156 hebben nu een definitie ──
+  // Ze heetten letterlijk "PID 0155"/"PID 0156" in de sweep en ontbraken in
+  // ALL_PID_DEFS, waardoor de rauwe byte (415580 → 128) op het scherm kwam.
+  // Secundaire trim, zelfde schaal als 0106/0107: byte 128 hoort 0% te zijn.
+  //
+  // Tegenproef (handmatig gedraaid): definitie weghalen uit pidlane-data.js
+  // laat deze controle op FOUT gaan.
+  await _doe(5, '0155/0156 hebben een definitie (secundaire brandstoftrim)', function () {
+    let d155 = null, d156 = null;
+    try {
+      d155 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0155'] : null;
+      d156 = (typeof ALL_PID_DEFS !== 'undefined') ? ALL_PID_DEFS['0156'] : null;
+    } catch (e) { console.warn('ALL_PID_DEFS[0155/0156]-lezing gaf een fout (telt hetzelfde als \'ontbreekt\')', e); }
+    if (!d155 || typeof d155.parse !== 'function')
+      return { staat: 'FOUT', detail: '0155 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
+    if (!d156 || typeof d156.parse !== 'function')
+      return { staat: 'FOUT', detail: '0156 heeft geen definitie/parser — de sweep laat de rauwe byte weer zien' };
+    let v155 = null, v156 = null;
+    try { v155 = d155.parse([128]); } catch (e) { throw new Error('parser 0155 klapt op byte 128'); }
+    try { v156 = d156.parse([128]); } catch (e) { throw new Error('parser 0156 klapt op byte 128'); }
+    if (Math.abs(v155) > 0.01) return { staat: 'FOUT', detail: '0155 geeft ' + v155 + ' bij byte 128, hoort 0% (neutrale trim)' };
+    if (Math.abs(v156) > 0.01) return { staat: 'FOUT', detail: '0156 geeft ' + v156 + ' bij byte 128, hoort 0% (neutrale trim)' };
+    return '0155 en 0156 aanwezig, byte 128 (0x80) -> 0% bij beide';
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════

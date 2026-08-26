@@ -538,6 +538,12 @@ window.ALL_PID_DEFS ={
   '0107':{name:'Brandstoftrim lang B1',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
   '0108':{name:'Brandstoftrim kort B2',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
   '0109':{name:'Brandstoftrim lang B2',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  // 0155/0156 ontbraken hier: de sweep meldde ze letterlijk als "PID 0155" /
+  // "PID 0156" en de rauwe byte kwam eruit (415580 → 128). Secundaire trim,
+  // byte A = bank 1, byte B = bank 3 — zelfde schaal als 0106/0107, dus 128
+  // → 0%, een gezonde trim.
+  '0155':{name:'Sec. brandstoftrim kort B1',unit:'%', cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
+  '0156':{name:'Sec. brandstoftrim lang B1',unit:'%', cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
   '010D':{name:'Voertuigsnelheid',     unit:'km/h',cat:'Rijden',     min:0,   max:280,                     parse:b=>b[0]},
   '0149':{name:'Gaspedaal positie',    unit:'%',   cat:'Rijden',     min:0,   max:100,                     parse:b=>(b[0]*100/255)},
   '0142':{name:'Accuspanning',         unit:'V',   cat:'Electrisch', min:8,   max:16,   wL:11.5, dL:10.5, parse:b=>((b[0]*256+b[1])/1000)},
