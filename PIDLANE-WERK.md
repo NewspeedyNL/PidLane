@@ -1,7 +1,7 @@
 # PidLane — werkdocument
 
 Eén bestand. Vervangt `PLAN.md`, `OVERDRACHT.md` en alle losse leesmij's.
-Bijgewerkt: 26-08-2026 · app v3.0.0 · testrun 4.7
+Bijgewerkt: 26-08-2026 · app v3.0.0 · testrun 4.8
 
 ---
 
@@ -359,6 +359,86 @@ van de `merkGroep`-asymmetrie hierboven, wel dezelfde databron.
 
 **Opruimregel: niet getriggerd.** 18 s zit ruim onder de vijf minuten die
 nodig zijn; ongewijzigd open.
+
+## Batch 26-08b — kentekenstap, protocolkeuze, merkGroep
+
+Vijf commits, testrun naar **4.8**. Uit §4/§5 is bewust alleen het kleine werk
+meegenomen (merkGroep + PIDLANE.md); de opruimregel en de vier aanvragers
+blijven open keuzes.
+
+**1. `merkGroep()` matcht overal op prefix.** Zeven merkregels deden dat al,
+twee toetsten op gelijkheid (`m==='BMW'`, `m==='VW'`). De normalisatie stript
+alles wat geen letter is, dus `BMW 320D` → `BMWD` en `VW GOLF` → `VWGOLF`:
+allebei ongelijk, allebei terug naar `''`, dus generieke DTC-tekst en geen
+merk-preset. Stil, want `''` is de geldige uitkomst voor een onbekend merk.
+Testrun 4.7 vond de BMW-helft; **de VW-helft kwam pas boven bij het narekenen**,
+want blok 11 probeerde alleen MINI en BMW. Daarom is de regel structureel
+gelijkgetrokken in plaats van per merk goedgezet. `test-merkgroep.js` legt de
+regel vast (kaal merk en merk-met-model geven dezelfde groep, veertien
+merknamen) met de oude implementatie als tegenproef.
+
+Meegevallen: de tweede merkgroepering waar §14 van PIDLANE.md voor
+waarschuwde, in `applyVehiclePIDPreset()`, is in ronde 9 al naar `merkGroep()`
+gegaan. Er was dus maar één plek te fixen. Die waarschuwing is weg.
+
+**2. `PIDLANE.md` bijgewerkt.** De onjuiste "clone zonder STN-chip" stond er al
+niet meer in, maar de positieve kant ontbrak: `ATI` liegt, `STI`/`STDI` niet, en
+STPX en MS-CAN zijn dus beschikbaar. Met de kanttekening van blok 13 erbij
+(+8% bij stilstand — geen grond om die laag te herbouwen vóór er onder
+belasting gemeten is).
+
+**3. Het lezen van de VIN wist geen sterkere data meer.** Voorwaarde voor punt
+4, maar op zichzelf al fout. Twee plekken gooiden voertuigdata weg zodra de VIN
+binnenkwam — `resetVehicleSources()` in `tryReadVIN()` (de bron-rangen) en de
+`vehicleInfo`-reset in `updateVehicleCard()` (de velden). Allebei toetsten ze op
+"binnenkomende VIN != opgeslagen VIN", waarbij een **lege** opgeslagen VIN als
+ongelijk telde. Zolang de VIN het eerste was wat de app over een auto wist viel
+dat niet op. `plAnderVoertuig()` beantwoordt nu de juiste vraag: niet "is de VIN
+veranderd" maar "is dit aantoonbaar een ANDERE auto", en dat is alleen zo bij
+twee ingevulde VINs die verschillen. Bij een echt ander voertuig wordt er nog
+steeds volledig gereset — inclusief de bron-rangen, wat in
+`updateVehicleCard()` juist ontbrak.
+
+**4. Kenteken is een eigen stap vóór de protocolscan.** Het stond op de
+voertuigkaart en werd dus pas ná de hele discovery gevraagd, terwijl het merk,
+model, bouwjaar en brandstof bepaalt — en dát voedt `merkGroep()`, de
+DTC-lookup en de brandstofgates. De poort zit in `scanNetworks()` en niet in de
+vier transports die daarop uitkomen: één beslisplek. Overslaan mag, staat als
+knop en komt in het log; een buitenlands kenteken of een RDW die plat ligt mag
+een diagnose nooit blokkeren.
+
+Nevenwinst: het laatst gebruikte kenteken wordt voorgevuld maar moet worden
+**bevestigd**. Tot nu toe hergebruikte `updateVehicleCard()` dat stilzwijgend op
+elke auto waarmee je verbond — de plaat van gisteren op de auto van nu.
+
+Bewust géén tweede element met id `kentInput`: het wizardveld heet
+`kentWizInput` en `rdwLookup()` krijgt de waarde mee via een nieuwe
+opties-parameter. Dat is precies de fout die `pidlane-motortype.js`
+documenteert. `test-dubbele-ids.js` bewaakt het als ratel — twee bewust
+geaccepteerde dubbele id's met reden (`btnConnect`/`btnDemo`, scoped bedraad),
+elk nieuw geval faalt.
+
+**5. Protocolkeuze biedt echt een keuze.** De app stapte na het detecteren
+vanzelf door: `scanNetworks()` zette alleen het gevonden protocol in de lijst en
+`renderNetworkCards()` had een tak "precies één netwerk? na 1,5 s
+`startDiscovery()`". Omdat de lijst er altijd precies één bevatte, was dat de
+enige tak die ooit liep. Het protocol werd dus vergrendeld voordat je het scherm
+gelezen had, en zat de detectie ernaast dan was opnieuw beginnen de enige uitweg.
+
+`PROTOCOLS` (tien protocollen, sinds de opsplitsing in `pidlane-data.js`) werd
+daarbij **door niets gelezen**. Dat is nu de bron van de handmatige
+alternatieven. Herkend protocol bovenaan en voorgeselecteerd, alternatieven
+eronder, gebruiker bevestigt altijd zelf. Zonder detectie verschijnt de
+volledige lijst met "opnieuw scannen" vooraan in plaats van een doodlopend
+"geen netwerken gevonden" — want dan staat meestal gewoon het contact uit.
+De `A` die `ATDPN` voor een automatisch gevonden protocol zet (`A6`) wordt
+gestript bij het ontdubbelen.
+
+**Werkregel bevestigd.** Beide nieuwe fixes gingen over hetzelfde als de vorige
+batch: één waarheid per feit. `PROTOCOLS` bestond naast een hardcoded lijst van
+één, en `kentInput` dreigde een tweeling te krijgen. En `test-bedrading.js` wees
+twee keer meteen aan dat een nieuwe `typeof`-guard in KRITIEK hoort — die ratel
+werkt.
 
 ## Rit van 23-08 (nacht) — wat de meting opleverde
 
