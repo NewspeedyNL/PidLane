@@ -40,7 +40,15 @@
 
 const fs = require('fs');
 
-const RE = /catch\s*\(\s*[a-zA-Z_$][\w$]*\s*\)\s*\{\s*\}/g;
+// 26-08: verbreed. De oude vorm eiste een simpele naam tussen de haakjes en
+// miste daardoor twee lege catches die wel degelijk stil zijn:
+//   catch {}            bindingloos (ES2019) — 13x in worker.js, alle gevuld
+//   catch({message}){}  destructurerend
+// De variant die in blok 5 stond (`catch\s*\([^)]*\)`) ving die eerste ook
+// niet, en sloeg bovendien vals alarm op `.catch(function(){})` — een
+// promise-afhandelaar met een lege functie is geen lege catch. Vandaar de
+// eis dat `catch` niet voorafgegaan wordt door een punt of een woordteken.
+const RE = /(^|[^.\w$])catch\s*(?:\(\s*(?:[a-zA-Z_$][\w$]*|\{[^}]*\}|\[[^\]]*\])\s*\))?\s*\{\s*\}/g;
 let fout = 0, totaal = 0;
 
 const modules = fs.readdirSync('.').filter(function (f) {
