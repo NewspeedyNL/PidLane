@@ -1447,7 +1447,89 @@ async function initELM327(opts){
 // ── STAP 2: NETWERK SCAN ──
 // → PROTOCOLS verplaatst naar pidlane-data.js
 
+// ── STAP 1b — DE KENTEKENPOORT (26-08-2026) ──────────────────────────
+// Het kenteken stond op de voertuigkaart, dus ná de volledige discovery. Maar
+// het bepaalt merk, model, bouwjaar en brandstof, en dat voedt merkGroep(), de
+// DTC-lookup (§14) en de brandstofafhankelijke PID-gates. Achteraf invullen
+// betekent dat de discovery draait op een voertuig zonder eigenschappen —
+// precies de "Voertuig — mist: model, bouwjaar, brandstof" uit testrun 4.7.
+//
+// De poort zit in scanNetworks() en niet in de vier transports (SPP, BLE,
+// WebSerial, WebBT) die er allemaal op uitkomen: één beslisplek, geen vier
+// kopieën die uiteen kunnen lopen.
+//
+// Overslaan mag en is zichtbaar. Een buitenlands kenteken, een RDW die plat
+// ligt of een telefoon zonder bereik mag een diagnose nooit blokkeren; de VIN
+// wordt straks alsnog gelezen. Wat NIET meer kan is er ongemerkt langslopen.
+let _kentPoortKlaar = false;
+function kentPoortReset(){ _kentPoortKlaar = false; }
+
+// Wat de adapter zelf herkende, of null. Apart van discoveredNetworks omdat die
+// lijst sinds 26-08 óók de handmatige alternatieven bevat.
+let _gedetecteerdProtocol = null;
+
+function toonKentekenStap(){
+  ['step1','step2','step3'].forEach(function(id){
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  const st=document.getElementById('stepKent'); if(st) st.style.display='';
+  const inp=document.getElementById('kentWizInput');
+  const stat=document.getElementById('kentWizStatus');
+  if(stat) stat.textContent='';
+  if(inp){
+    // Voorvullen met het laatst gebruikte kenteken, maar de gebruiker moet het
+    // wél bevestigen. Tot nu toe werd dat kenteken stilzwijgend hergebruikt op
+    // élke auto waarmee je verbond — de plaat van gisteren op de auto van nu.
+    let vorig=''; try{ vorig=localStorage.getItem('pl_kenteken')||''; }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
+    inp.value=vorig;
+    if(vorig && stat) stat.textContent='Laatst gebruikt — controleer of dit de auto is waar je nu in zit';
+    try{ inp.focus(); inp.select(); }catch(e){ /* stil: focus mag falen op een verborgen veld */ }
+  }
+  const acts=document.getElementById('connActions');
+  if(acts) acts.innerHTML=
+    '<button class="mbtn p" id="kentOkBtn" onclick="kentekenBevestig()">🇳🇱 Opzoeken en doorgaan</button>'+
+    '<button class="mbtn s" onclick="kentekenOverslaan()">Overslaan — geen kenteken</button>';
+  btDiag('Kentekenstap — wacht op invoer vóór de protocolscan','info');
+}
+
+async function kentekenBevestig(){
+  const inp=document.getElementById('kentWizInput');
+  const stat=document.getElementById('kentWizStatus');
+  const btn=document.getElementById('kentOkBtn');
+  const kent=String((inp&&inp.value)||'').replace(/[\s-]/g,'').toUpperCase();
+  if(kent.length<4){
+    if(stat) stat.textContent='Voer een geldig kenteken in (minimaal 4 tekens)';
+    return;
+  }
+  if(btn){ btn.disabled=true; btn.textContent='Opzoeken...'; }
+  let r=null;
+  try{
+    r=await rdwLookup(false,{kenteken:kent, statusEl:stat});
+  }catch(e){
+    if(stat) stat.textContent='Opzoeken mislukt: '+(e.message||e);
+    btDiag('RDW-opzoeking in de kentekenstap mislukte: '+(e.message||e),'warn');
+  }
+  if(btn){ btn.disabled=false; btn.textContent='🇳🇱 Opzoeken en doorgaan'; }
+  if(!r||!r.ok){
+    // rdwLookup heeft de reden al in stat gezet (niet gevonden, RDW down,
+    // typefout). Niet doorstappen: de gebruiker kan corrigeren of overslaan.
+    return;
+  }
+  _kentPoortKlaar=true;
+  await scanNetworks();
+}
+
+function kentekenOverslaan(){
+  _kentPoortKlaar=true;
+  btDiag('Kenteken overgeslagen — merk/model/brandstof komen straks alleen uit de VIN','warn');
+  try{ log('Kenteken overgeslagen bij het verbinden','warn'); }catch(e){ /* stil: melding mag de stroom niet breken */ }
+  scanNetworks();
+}
+
 async function scanNetworks(){
+  // De poort. Demo heeft geen echte auto en stelt zijn eigen kenteken in.
+  if(!_kentPoortKlaar && !demoMode){ toonKentekenStap(); return; }
+  const _sk=document.getElementById('stepKent'); if(_sk) _sk.style.display='none';
   document.getElementById('step1').style.display='none';
   document.getElementById('step2').style.display='';
   document.getElementById('step3').style.display='none';
@@ -1456,6 +1538,7 @@ async function scanNetworks(){
   document.getElementById('networkList').innerHTML='<div class="ai-ld" style="justify-content:center"><div class="spin"></div> Protocol zoeken...</div>';
   document.getElementById('connActions').innerHTML=`<button class="mbtn s" onclick="resetToStep1()">↺ Opnieuw beginnen</button>`;
   discoveredNetworks=[];
+  _gedetecteerdProtocol=null;
 
   // 0100 triggert automatische protocol detectie — kan 3-8 seconden duren
   // Verhoog sendBT timeout tijdelijk naar 12 seconden voor deze stap
@@ -1476,10 +1559,10 @@ async function scanNetworks(){
     // Succesvol — protocol gevonden
     const protoResp=(await sendCmd('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim()||'6';
     const protoName=(await sendCmd('ATDP')).replace(/[>\r\n]/g,'').trim()||'Auto-detected';
-    discoveredNetworks.push({
+    _gedetecteerdProtocol={
       id:protoResp, name:protoName, icon:'✅',
-      desc:'Automatisch herkend door ELM327', auto:true
-    });
+      desc:'Automatisch herkend door ELM327'
+    };
     log(`Protocol: ${protoName} (${protoResp})`,'ok');
     btDiag(`Protocol gevonden: ${protoName}`,'ok');
     _onthoudProtocol(protoResp);   // zodat een herverbinding niet terugvalt op AUTO
@@ -1497,24 +1580,39 @@ async function scanNetworks(){
     }
   }
 
+  // Het gedetecteerde protocol bovenaan, daarna de handmatige alternatieven uit
+  // PROTOCOLS. De opbouw zelf staat als pure functie in pidlane-data.js zodat
+  // test-protocolkeuze.js hem zonder DOM kan toetsen.
+  discoveredNetworks = (typeof plProtocolLijst==='function')
+    ? plProtocolLijst(_gedetecteerdProtocol)
+    : (_gedetecteerdProtocol ? [Object.assign({auto:true},_gedetecteerdProtocol)] : []);
+  if(discoveredNetworks.length<=1 && _gedetecteerdProtocol)
+    btDiag('PROTOCOLS-tabel ontbreekt — alleen het gedetecteerde protocol is kiesbaar','warn');
   renderNetworkCards();
 }
 
 function renderNetworkCards(){
-  document.getElementById('step2Title').textContent=
-    discoveredNetworks.length===0 ? 'Geen netwerken gevonden' :
-    discoveredNetworks.length===1 ? '1 netwerk gevonden — automatisch geselecteerd' :
-    `${discoveredNetworks.length} netwerken gevonden`;
-  document.getElementById('step2Sub').textContent=
-    discoveredNetworks.length===0 ? 'Controleer verbinding en contact' :
-    discoveredNetworks.length===1 ? 'Diagnose start automatisch...' : 'Selecteer het netwerk voor diagnose';
+  // 26-08-2026 — GEEN AUTOMATISCHE DOORSTAP MEER. Hier stond: bij precies één
+  // netwerk niet laten kiezen maar na 1,5 s vanzelf startDiscovery() aanroepen.
+  // Omdat scanNetworks() er altijd precies één in de lijst zette, kwam de
+  // gebruiker dus nooit aan een keuze toe — het protocol was al vergrendeld
+  // (ATSP) voor je het scherm had gelezen, en zat de detectie ernaast dan was
+  // de enige uitweg opnieuw beginnen. De adapter doet nog steeds het voorwerk
+  // en zijn vondst staat bovenaan en voorgeselecteerd; de bevestiging is nu
+  // van de gebruiker.
+  const auto=discoveredNetworks.filter(function(n){ return n.auto; });
+  const heeftAuto=auto.length>0;
 
-  // Eén netwerk? Niet laten kiezen — automatisch selecteren en doorgaan
-  if(discoveredNetworks.length===1&&!window._autoNetStarted){
-    window._autoNetStarted=true;
-    selectedNetwork=discoveredNetworks[0];
-    setTimeout(()=>{ window._autoNetStarted=false; startDiscovery(); },1500);
-  }
+  document.getElementById('step2Title').textContent=
+    !discoveredNetworks.length ? 'Geen protocol gevonden' :
+    heeftAuto ? 'Protocol herkend' : 'Kies het protocol handmatig';
+  document.getElementById('step2Sub').textContent=
+    !discoveredNetworks.length ? 'Controleer verbinding en contact' :
+    heeftAuto ? 'Bevestig de herkenning, of kies zelf een ander protocol'
+              // Mislukte detectie komt meestal doordat het contact uit staat.
+              // Handmatig kiezen kan, maar is zelden wat je nodig hebt — dus
+              // eerst die hint, dan pas de lijst.
+              : 'Meestal staat het contact uit. Zet het aan en scan opnieuw, of kies zelf een protocol';
 
   const list=document.getElementById('networkList');
   list.innerHTML='';
@@ -1522,7 +1620,7 @@ function renderNetworkCards(){
   if(discoveredNetworks.length===0){
     list.innerHTML=`
       <div style="text-align:center;padding:14px;font-size:13px;color:var(--rd)">
-        ⚠ Geen netwerken gevonden.<br>
+        ⚠ Geen protocol gevonden.<br>
         <small style="color:var(--tx3)">Controleer of contact aan staat en adapter goed zit.</small>
       </div>`;
     document.getElementById('connActions').innerHTML=`
@@ -1531,17 +1629,30 @@ function renderNetworkCards(){
     return;
   }
 
+  // Kopje boven het handmatige deel, zodat "herkend" en "zelf kiezen" niet als
+  // één ononderscheiden rij kaarten lezen.
+  let kopjeGezet=false;
   discoveredNetworks.forEach((net,i)=>{
+    if(net.handmatig&&!kopjeGezet){
+      kopjeGezet=true;
+      const kop=document.createElement('div');
+      kop.style.cssText='font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3);margin:10px 0 2px';
+      kop.textContent=heeftAuto?'Of kies handmatig':'Beschikbare protocollen';
+      list.appendChild(kop);
+    }
     const card=document.createElement('div');
     card.className='network-card'+(i===0?' sel':'');
     card.id='ncard-'+i;
+    const badge=net.auto
+      ? '<div class="network-badge nb-ok">Herkend</div>'
+      : '<div class="network-badge" style="background:var(--sur);color:var(--tx3)">Handmatig</div>';
     card.innerHTML=`
       <div class="network-icon">${net.icon}</div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div class="network-name">${net.name}</div>
         <div class="network-desc">${net.desc}</div>
       </div>
-      <div class="network-badge nb-ok">Actief</div>`;
+      ${badge}`;
     card.onclick=()=>{
       document.querySelectorAll('.network-card').forEach(c=>c.classList.remove('sel'));
       card.classList.add('sel');
@@ -1551,18 +1662,28 @@ function renderNetworkCards(){
     list.appendChild(card);
   });
 
-  // Auto-select eerste
+  // Het gedetecteerde protocol staat vooraan en is de voorselectie; zonder
+  // detectie is dat de eerste uit PROTOCOLS (CAN 11-bit 500k).
   selectedNetwork=discoveredNetworks[0];
   updateNetworkBtn(selectedNetwork);
 }
 
 function updateNetworkBtn(net){
-  document.getElementById('connActions').innerHTML=`
-    <button class="mbtn p" onclick="startDiscovery()">✓ Gebruik: ${net.name.slice(0,30)}</button>
-    <button class="mbtn s" onclick="scanNetworks()">🔄 Opnieuw scannen</button>`;
+  const handmatig=net&&net.handmatig;
+  const kiesKnop=`<button class="mbtn ${_gedetecteerdProtocol?'p':'s'}" onclick="startDiscovery()">${handmatig?'⚙ Forceer':'✓ Gebruik'}: ${String(net.name||'').slice(0,28)}</button>`;
+  const scanKnop=`<button class="mbtn ${_gedetecteerdProtocol?'s':'p'}" onclick="scanNetworks()">🔄 Opnieuw scannen</button>`;
+  // Herkende de adapter niets, dan is opnieuw scannen (na het contact aanzetten)
+  // vrijwel altijd het juiste vervolg en handmatig forceren de uitzondering.
+  // Dan staat die knop dus vooraan, en niet andersom.
+  document.getElementById('connActions').innerHTML=
+    _gedetecteerdProtocol ? kiesKnop+scanKnop : scanKnop+kiesKnop;
 }
 
 function resetToStep1(){
+  // Terug naar het begin betekent ook: de kentekenpoort weer scherp. Een
+  // volgende verbinding kan een andere auto zijn.
+  kentPoortReset();
+  const _sk=document.getElementById('stepKent'); if(_sk) _sk.style.display='none';
   document.getElementById('step1').style.display='';
   document.getElementById('step2').style.display='none';
   document.getElementById('step3').style.display='none';
@@ -1814,9 +1935,23 @@ async function startDiscovery(){
 function updateVehicleCard(vinInfo){
   // Basis-object; velden worden via de merge-laag (bronprioriteit) gevuld,
   // zodat een latere RDW-lookup ze netjes kan verrijken i.p.v. botsen.
-  vehicleInfo = vehicleInfo && vehicleInfo.vin===(vinInfo?.vin||'') ? vehicleInfo : {
-    merk: 'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:''
-  };
+  //
+  // De voorwaarde was `vehicleInfo.vin===(vinInfo?.vin||'')`: alles weggooien
+  // zodra de binnenkomende VIN niet gelijk was aan wat er stond. Een LEGE oude
+  // VIN telde daarbij als ongelijk, dus het lezen van de VIN wiste op dat
+  // moment alles wat er al bekend was. Zolang de VIN het eerste was wat de app
+  // over een auto wist, viel dat niet op; met de kentekenstap vóór de
+  // protocolscan staat er dan al RDW-data (merk, model, jaar, brandstof) en die
+  // is sterker dan wat de VIN oplevert. Zie plAnderVoertuig().
+  const _anderVoertuig = (typeof plAnderVoertuig==='function')
+    ? plAnderVoertuig(vehicleInfo && vehicleInfo.vin, vinInfo?.vin)
+    : !(vehicleInfo && vehicleInfo.vin===(vinInfo?.vin||''));
+  if(!vehicleInfo || _anderVoertuig){
+    vehicleInfo = { merk: 'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };
+    // Ander voertuig → ook de bron-rangen leeg, anders houdt een veld de rang
+    // van de vórige auto vast en weigert het de nieuwe (zwakkere) bron.
+    try{ resetVehicleSources(); }catch(e){ /* stil: module kan ontbreken in een deelbuild */ }
+  }
   vehicleInfo.vin = vinInfo?.vin || vehicleInfo.vin || '';
   // vinInfo bevat reeds ge-merancte data uit tryReadVIN; hier alleen aanvullen
   // voor het geval updateVehicleCard los wordt aangeroepen.
@@ -1860,11 +1995,21 @@ function updateVehicleCard(vinInfo){
 // VIN-regel aangetikt → kenteken-invoer tonen/verbergen
 
 // RDW open data: voertuiggegevens op Nederlands kenteken (gratis, geen key)
-async function rdwLookup(showOverview){
+// `opties` (26-08-2026) laat een aanroeper het kenteken en het meldingsvakje
+// meegeven in plaats van ze uit #kentInput/#kentStatus te lezen. Dat is er
+// bijgekomen voor de kentekenstap in de verbindwizard, die zijn eigen invoer
+// heeft. BEWUST géén tweede element met id 'kentInput': dat is precies de fout
+// die pidlane-motortype.js documenteert ("stap 4 vroeg het kenteken in een
+// tweede invoerveld, naast kentInput"). Eén veld per plek, één functie die het
+// opzoekwerk doet. Zonder opties gedraagt hij zich exact als voorheen.
+async function rdwLookup(showOverview, opties){
   const inp=document.getElementById('kentInput');
-  const st=document.getElementById('kentStatus');
-  if(!inp) return {ok:false,reason:'no-input'};
-  const kent=inp.value.replace(/[\s-]/g,'').toUpperCase();
+  const st=(opties&&opties.statusEl)||document.getElementById('kentStatus');
+  const ruw=(opties&&opties.kenteken!==undefined&&opties.kenteken!==null)
+    ? opties.kenteken
+    : (inp?inp.value:null);
+  if(ruw===null||ruw===undefined) return {ok:false,reason:'no-input'};
+  const kent=String(ruw).replace(/[\s-]/g,'').toUpperCase();
   if(kent.length<4){ if(st) st.textContent='Voer een geldig kenteken in (minimaal 4 tekens)'; return {ok:false,reason:'invalid'}; }
   if(st) st.textContent='RDW opzoeken...';
   try{
@@ -2079,7 +2224,15 @@ async function tryReadVIN(){
       return null;
     }
     log('VIN: '+vin,'ok');
-    resetVehicleSources();               // nieuwe VIN → bron-tracking resetten
+    // Bron-tracking alleen resetten bij een AANTOONBAAR ander voertuig. Stond
+    // hier onvoorwaardelijk: dan verloor een RDW-lookup die vóór de VIN liep
+    // (de kentekenstap) zijn rang, en overschreef het zwakkere WMI-merk uit de
+    // VIN het sterkere RDW-merk alsnog. Zie plAnderVoertuig().
+    if(typeof plAnderVoertuig!=='function' || plAnderVoertuig(vehicleInfo&&vehicleInfo.vin, vin)){
+      resetVehicleSources();
+    } else if(vehicleInfo && vehicleInfo.merk && vehicleInfo.merk!=='Onbekend'){
+      log('   VIN hoort bij de al bekende voertuigdata — bronrangen blijven staan','info');
+    }
     const info=decodeVIN(vin);
     mergeVehicleData('vin', info);       // WMI-merk/jaar als basis
     // NHTSA API als merk onbekend — gratis, officieel, 2000+ merken.

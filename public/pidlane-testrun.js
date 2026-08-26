@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.7 (26-08-2026)';
+const TESTRUN_VERSIE = '4.8 (26-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2041,6 +2041,60 @@ async function _blok5() {
         ') — waarschijnlijk de HTTP-cache; doe "Nieuwste versie laden" en draai opnieuw' };
     return 'nieuwe tabel geladen; de inhoudelijke controles draaien in test-piddefs.js';
   });
+
+  // ── Batch 26-08b: de kentekenstap en de protocolkeuze ──
+  // Wat node al toetst staat in test-merkgroep.js, test-voertuigreset.js,
+  // test-dubbele-ids.js en test-protocolkeuze.js. Hier alleen wat node NIET kan
+  // zien: of de app deze versie ook echt geladen heeft, en of de DOM-kant
+  // (het wizardveld, de bedrading van de knoppen) er in de browser is.
+  await _doe(5, 'Kentekenstap zit vóór de protocolscan', function () {
+    const mist = [];
+    if (!document.getElementById('stepKent')) mist.push('#stepKent ontbreekt in index.html');
+    if (!document.getElementById('kentWizInput')) mist.push('#kentWizInput ontbreekt');
+    ['toonKentekenStap', 'kentekenBevestig', 'kentekenOverslaan', 'kentPoortReset'].forEach(function (f) {
+      if (typeof window[f] !== 'function') mist.push(f + '() ontbreekt');
+    });
+    if (mist.length)
+      return { staat: 'FOUT', detail: 'kentekenstap niet geladen (' + mist.join(', ') +
+        ') — mogelijk de HTTP-cache; doe "Nieuwste versie laden" en draai opnieuw' };
+    // De val van 26-08: een tweede element met id kentInput. In de browser is
+    // dat pas te zien als de voertuigkaart ook gerenderd is — daarom hier en
+    // niet alleen in test-dubbele-ids.js.
+    const dubbel = document.querySelectorAll('#kentInput').length;
+    if (dubbel > 1)
+      return { staat: 'FOUT', detail: dubbel + ' elementen met id kentInput in de DOM — ' +
+        'getElementById pakt er één en rdwLookup() leest dan het verkeerde veld' };
+    return 'stap aanwezig, wizardveld heet kentWizInput, ' + dubbel + 'x #kentInput in de DOM';
+  });
+
+  await _doe(5, 'Protocolkeuze biedt meer dan één optie', function () {
+    if (typeof plProtocolLijst !== 'function')
+      return { staat: 'FOUT', detail: 'plProtocolLijst() ontbreekt — pidlane-data.js is niet meegekomen ' +
+        '(of de HTTP-cache serveert de oude); zonder deze functie stapt de app weer vanzelf door' };
+    if (!Array.isArray(window.PROTOCOLS) || PROTOCOLS.length < 5)
+      return { staat: 'FOUT', detail: 'PROTOCOLS ontbreekt of is te kort — dan valt er niets te kiezen' };
+    let n = 0;
+    try { n = plProtocolLijst({ id: 'A6', name: 'test' }).length; }
+    catch (e) { return { staat: 'FOUT', detail: 'plProtocolLijst() klapt: ' + (e.message || e) }; }
+    if (n < 2)
+      return { staat: 'FOUT', detail: 'met een herkend protocol blijven er ' + n + ' opties over — geen keuze' };
+    return PROTOCOLS.length + ' protocollen in de tabel, ' + n + ' opties bij een herkend protocol';
+  });
+
+  // De automatische doorstap is weg. Dit is een gedragscontrole die alleen in
+  // de app kan: staat de oude tak er nog, dan is renderNetworkCards() oud.
+  await _doe(5, 'Geen automatische doorstap meer na de protocolscan', function () {
+    if (typeof renderNetworkCards !== 'function')
+      return { staat: 'LET OP', detail: 'renderNetworkCards() ontbreekt — niet te toetsen' };
+    const bron = String(renderNetworkCards);
+    if (/_autoNetStarted/.test(bron))
+      return { staat: 'FOUT', detail: 'renderNetworkCards() bevat nog _autoNetStarted — de oude versie ' +
+        'stapt na 1,5 s vanzelf door en de keuze is onbereikbaar' };
+    // Bron lezen mag hier: de tak is alleen zichtbaar door 1,5 s te wachten op
+    // iets dat NIET hoort te gebeuren, en dat is geen bruikbare gedragstest.
+    // Zie de werkregel in §20 (blok 5 toetst gedrag, bron alleen met reden).
+    return 'de 1,5-seconde-tak is weg uit renderNetworkCards()';
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2606,9 +2660,25 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'Batch 26-08-2026 — PLWakelock-duplicaat, VIN-profielmelding, 0155/0156, steunbitmaps, plus de openstaande rit',
+  titel: 'Batch 26-08b — kentekenstap, protocolkeuze, merkGroep, plus de openstaande rit',
   vragen: [
     'VOORAF — blok 5 mag geen FOUT geven. Staat er "NIET geladen", lees de melding: dat kan ook de cache zijn. Eerst "Nieuwste versie laden", dan opnieuw.',
+
+    'KENTEKENSTAP — VERSCHIJNT HIJ. Verbind met de auto. Vóór de protocolscan hoort nu het scherm "Welk voertuig is dit?" te komen, met het laatst gebruikte kenteken al ingevuld. Komt de protocolscan meteen, dan is de poort niet geladen (cache) of draait er een oude scanNetworks.',
+
+    'KENTEKENSTAP — OPZOEKEN. Vul het kenteken in en kies "Opzoeken en doorgaan". Je hoort de RDW-regel te zien (merk, model, bouwjaar) vóórdat de protocolscan begint. Ga daarna door en kijk op de voertuigkaart: staan merk, model, bouwjaar én brandstof er nu wél, waar blok 1 eerder "mist: model, bouwjaar, brandstof" gaf?',
+
+    'KENTEKENSTAP — OVERLEEFT DE VIN. Dit is de kern van de fix eronder. Nadat de VIN is uitgelezen (stap 3, "VIN: ..."), moeten merk/model/bouwjaar/brandstof uit het kenteken er NOG STEEDS staan. Verspringt het merk na het VIN-lezen naar iets grovers of wordt de brandstof leeg, dan wist het VIN-pad alsnog de sterkere RDW-bron.',
+
+    'KENTEKENSTAP — OVERSLAAN. Verbind opnieuw en kies "Overslaan". De diagnose hoort gewoon door te lopen, met "Kenteken overgeslagen bij het verbinden" in het log. Controleer dat een fout kenteken (bv. XX-99-XX) je niet klemzet: hij meldt "niet gevonden" en je kunt corrigeren of alsnog overslaan.',
+
+    'PROTOCOLKEUZE — GEEN AUTOMATISCHE DOORSTAP. Na de scan hoort de app te WACHTEN. Bovenaan het herkende protocol met "Herkend", daaronder "Of kies handmatig" met de rest. Stapt hij na ~1,5 s vanzelf door naar PIDs ophalen, dan draait de oude renderNetworkCards.',
+
+    'PROTOCOLKEUZE — HANDMATIG FORCEREN. Kies bewust een ander protocol (bv. CAN 29-bit 500k) en druk op "Forceer". Verwacht dat de discovery faalt of niets vindt — dat is goed, het bewijst dat de keuze doorwerkt tot ATSP. Ga daarna terug en neem het herkende protocol.',
+
+    'PROTOCOLKEUZE — ZONDER CONTACT. Zet het contact UIT en scan. Je hoort nu de volledige protocollijst te krijgen met "Meestal staat het contact uit" en "Opnieuw scannen" als eerste knop — niet het oude doodlopende "geen netwerken gevonden".',
+
+    'MERKGROEP — BMW/VW MET MODEL. Alleen te toetsen met een ander voertuig of via handmatige invoer: zet het merk op "BMW 320D" of "VW Golf" en kijk of een foutcode nog merkspecifieke tekst krijgt. Tot deze batch viel alles met een model erachter terug op generiek.',
 
     'FIX 1 — WAKELOCK-DUPLICAAT WEG. window.PLWakelock (pidlane-auth.js) is verwijderd; window.PLWake (index.html) blijft de enige. Verbind en kijk of het log "🔆 Scherm blijft aan zolang de verbinding/sessie loopt" meldt — niet meer "Scherm blijft aan tijdens de meting" (die tekst hoorde bij het verwijderde duplicaat). Laat de telefoon daarna twee minuten met rust liggen: blijft het scherm aan? Blok 5 toetst PLWake en meldt FOUT als PLWakelock ooit terugkomt.',
 

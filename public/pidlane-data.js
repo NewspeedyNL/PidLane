@@ -255,16 +255,38 @@ window.DTC_MERK_LABEL = {
 // ── merkGroep() — één plek waar merknamen op een bucket worden gemapt ──
 // Gebruikt door pidlane-bt.js en, sinds ronde 9, door applyVehiclePIDPreset()
 // in pidlane-rijsituatie.js. Nieuwe merkregels horen hier en nergens anders.
+//
+// 26-08-2026 — ASYMMETRIE WEG. Twee van de negen merkregels toetsten op
+// GELIJKHEID (m==='BMW', m==='VW'), de rest op prefix. Dat verschil zie je niet
+// tot er een model in het merkveld staat: de normalisatie hieronder stript
+// spaties en cijfers, dus 'BMW 320D' wordt 'BMWD' en 'VW GOLF' wordt 'VWGOLF'.
+// Allebei mislukten ze de ===-vergelijking en vielen terug op '' — geen groep,
+// dus geen merk-specifieke DTC-lookup (§14) en geen merk-preset. 'MINI COOPER'
+// zat er via zijn prefix wél gewoon in. Alleen het kále merk werkte dus bij BMW
+// en VW, en dat is net het geval dat je op een testbank invult en in de praktijk
+// zelden binnenkrijgt — RDW levert 'merk' en 'handelsbenaming' apart, maar
+// handmatige invoer en VIN-decoders zetten er wél een model achter.
+//
+// Testrun 4.7 vond de BMW-helft; VW kwam pas boven bij het narekenen, want
+// blok 11 probeerde alleen MINI en BMW. Vandaar dat de regel nu STRUCTUREEL
+// gelijk is voor alle merken in plaats van per merk goedgezet: er is geen
+// tweede vorm meer die stil kan gaan afwijken. Bewaakt door test-merkgroep.js.
 window.merkGroep = function merkGroep(merk){
   const m = String(merk||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                             .toUpperCase().replace(/[^A-Z]/g,'');
   if(!m) return '';
-  if(m.indexOf('MAZDA')===0) return 'MAZDA';
-  if(m.indexOf('VOLKSWAGEN')===0||m==='VW'||m.indexOf('AUDI')===0||m.indexOf('SKODA')===0||m.indexOf('SEAT')===0||m.indexOf('CUPRA')===0) return 'VAG';
-  if(m.indexOf('TOYOTA')===0||m.indexOf('LEXUS')===0) return 'TOYOTA';
-  if(m.indexOf('FORD')===0) return 'FORD';
-  if(m.indexOf('OPEL')===0||m.indexOf('VAUXHALL')===0) return 'OPEL';
-  if(m==='BMW'||m.indexOf('MINI')===0) return 'BMW';
+  // Elk merk matcht op PREFIX. Geen enkele uitzondering — zie de comment boven
+  // deze functie: twee ===-vergelijkingen lieten 'BMW 320D' en 'VW GOLF' vallen.
+  const start = function(){
+    for(let i=0;i<arguments.length;i++) if(m.indexOf(arguments[i])===0) return true;
+    return false;
+  };
+  if(start('MAZDA')) return 'MAZDA';
+  if(start('VOLKSWAGEN','VW','AUDI','SKODA','SEAT','CUPRA')) return 'VAG';
+  if(start('TOYOTA','LEXUS')) return 'TOYOTA';
+  if(start('FORD')) return 'FORD';
+  if(start('OPEL','VAUXHALL')) return 'OPEL';
+  if(start('BMW','MINI')) return 'BMW';
   return '';
 };
 
@@ -583,6 +605,49 @@ window.PROTOCOLS =[
   {id:'1',name:'SAE J1850 PWM',              icon:'🔌',desc:'Oudere Ford modellen'},
   {id:'2',name:'SAE J1850 VPW',              icon:'🔌',desc:'Oudere GM modellen'},
 ];
+
+// ── plProtocolLijst() — wat komt er in de protocolkeuze te staan ──────
+// 26-08-2026. PROTOCOLS hierboven werd door NIETS gelezen: scanNetworks() zette
+// alleen het automatisch gevonden protocol in de lijst, dus stond er altijd
+// precies één ding en sloeg het keuzescherm zichzelf over (het stapte na 1,5 s
+// vanzelf door). "Kiezen uit meerdere protocollen" was daarmee onbereikbaar
+// terwijl de tabel er al lag.
+//
+// De ELM327 detecteert goed maar niet onfeilbaar — op een bus met meerdere
+// snelheden, achter een gateway die 11-bit naar 29-bit spiegelt, of op een auto
+// die CAN én K-Line voert kan de eerste treffer de verkeerde zijn. Dan moet je
+// er handmatig langs kunnen zonder opnieuw te beginnen.
+//
+// Volgorde: het gedetecteerde protocol bovenaan (de beste gok van de adapter
+// zelf), daarna PROTOCOLS in zijn eigen volgorde — die staat al van meest naar
+// minst waarschijnlijk, CAN 11-bit 500k voorop.
+//
+// Pure functie, geen DOM: bewaakt door test-protocolkeuze.js.
+window.plProtocolLijst = function plProtocolLijst(gedetecteerd, tabel){
+  // ATDPN zet een 'A' voor een automatisch gevonden protocol ("A6"). Die hoort
+  // niet bij het id zelf, dus zonder strippen zou het gedetecteerde protocol
+  // ook nog eens als handmatige optie verschijnen.
+  const norm = function(id){ return String(id==null?'':id).replace(/^A/i,'').toUpperCase(); };
+  const uit = [], gezien = new Set();
+  if(gedetecteerd && gedetecteerd.id!=null && String(gedetecteerd.id)!==''){
+    uit.push({
+      id: gedetecteerd.id,
+      name: gedetecteerd.name || 'Automatisch herkend',
+      icon: gedetecteerd.icon || '✅',
+      desc: gedetecteerd.desc || 'Automatisch herkend door de adapter',
+      auto: true, handmatig: false
+    });
+    gezien.add(norm(gedetecteerd.id));
+  }
+  const bron = Array.isArray(tabel) ? tabel : (window.PROTOCOLS || []);
+  bron.forEach(function(p){
+    if(!p || p.id==null) return;
+    if(gezien.has(norm(p.id))) return;
+    gezien.add(norm(p.id));
+    uit.push({ id:p.id, name:p.name, icon:p.icon, desc:p.desc, auto:false, handmatig:true });
+  });
+  return uit;
+};
 
 // ── SAE_PID_NAMES (was index.html regel 10596) ──
 window.SAE_PID_NAMES ={
