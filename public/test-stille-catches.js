@@ -42,8 +42,7 @@ const fs = require('fs');
 
 // 26-08: verbreed. De oude vorm eiste een simpele naam tussen de haakjes en
 // miste daardoor twee lege catches die wel degelijk stil zijn: de bindingloze
-// (ES2019, zonder haakjes — 13x in worker.js, daar alle dertien netjes
-// gevuld) en de destructurerende. De variant die tot vandaag in blok 5 stond
+// (ES2019, zonder haakjes) en de destructurerende. De variant die in blok 5 stond
 // ving de bindingloze ook niet, en sloeg bovendien vals alarm op een
 // promise-afhandelaar met een lege functie erin. Vandaar de eis dat het
 // sleutelwoord niet voorafgegaan wordt door een punt of een woordteken.
@@ -55,6 +54,12 @@ const fs = require('fs');
 const RE = /(^|[^.\w$])catch\s*(?:\(\s*(?:[a-zA-Z_$][\w$]*|\{[^}]*\}|\[[^\]]*\])\s*\))?\s*\{\s*\}/g;
 let fout = 0, totaal = 0;
 
+// LET OP — worker.js zit hier NIET bij, en dat is geen vergetelheid maar een
+// openstaand punt. Op 26-08 is geprobeerd hem toe te voegen: hij bleek 44 lege
+// catches te bevatten. De backend is nooit meegegaan in de opruimronde van
+// 22-08. Toevoegen zou plcheck.sh rood zetten en rood laten, en een
+// rood-startende controle wordt genegeerd — precies waarom de ratel hierboven
+// is afgeschaft. Eerst opruimen, dan deze regel uitbreiden met ../worker.js.
 const modules = fs.readdirSync('.').filter(function (f) {
   return /^pidlane-.*\.js$/.test(f);
 }).sort();

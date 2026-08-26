@@ -170,6 +170,21 @@ Klein, geen sessie waard, maar niet vergeten.
   pl_vinprof_… — volle discovery". De controle kán dus rood worden. Blijft over:
   nagaan of blok 1 dat óók als LET OP boekt, niet alleen de BT-log.
 - **Play Store.** `.aab` via `bundleRelease` staat klaar, blokkades zijn weg.
+- **`worker.js` — 44 lege catches, eigen opruimronde waard.** De backend is
+  nooit meegegaan in de ronde van 22-08; de frontend staat op nul, `worker.js`
+  is nooit gescand. Gevonden op 26-08 bij een poging het bestand aan
+  `test-stille-catches.js` toe te voegen. Die poging is teruggedraaid: de test
+  zou dag één rood staan en dan wordt hij genegeerd — dezelfde reden waarom de
+  ratel is afgeschaft. Eerst opruimen, dan de scanregel uitbreiden.
+
+  Triage van een steekproef: het meeste is dezelfde klasse als de frontend-ronde
+  en heeft alleen een *reden* nodig — `JSON.parse` op externe invoer (r359 op
+  `USERS_JSON`, r471 op `body.context`, r643 op een AI-antwoord), een
+  `cache.delete` (r933), en catches rondom `console.error` zelf (r609, r652,
+  r666: melden mag de stroom niet breken). Twee verdienen een echte melding:
+  **r376** slikt een mislukte Airtable-PATCH van een wachtwoordhash volledig
+  weg, en **r643** laat een mislukte kostenberekening stil terugvallen op het
+  minimumtarief — dat raakt de afboeking van tegoed.
 
 ## Richting: het contract tussen meten en gebruiken
 
@@ -259,11 +274,12 @@ Daarbij twee dingen bovenwater die er los van staan:
    destructurerende lege catch; die van blok 5 miste de bindingloze én sloeg
    vals alarm op een promise-afhandelaar met een lege functie. Beide gaten
    dicht, nog steeds nul bevindingen.
-2. `worker.js` wordt door die test helemaal niet gescand, terwijl `plcheck.sh`
-   het bestand voor syntax wél meeneemt met het argument dat een fout daar de
-   hele dienst plat legt. Er staan 13 bindingloze catches in, alle netjes
-   gevuld met een foutantwoord — dus vandaag geen bevinding, maar de test kijkt
-   er structureel langsheen. Nog te besluiten of hij mee moet.
+2. **`worker.js` heeft 44 lege catches.** Die test scande het bestand niet,
+   terwijl `plcheck.sh` het voor syntax wél meeneemt met het argument dat een
+   fout daar de hele dienst plat legt. Bij een eerste inschatting leken het er
+   13 en allemaal gevuld; dat was fout — er was alleen op de bindingloze vorm
+   gekeken. De echte telling is 44: 10x `catch (e) {}` en 34x `catch (_) {}`.
+   Zie het losse eindje hieronder.
 
 Nog open na deze batch: STPX onder belasting, de opruimregel (vijf minuten
 nodig om te triggeren), en raildruk `0123`/`0159` die op 23-08 bevroren stond.
