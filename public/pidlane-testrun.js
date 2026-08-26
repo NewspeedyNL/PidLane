@@ -1608,39 +1608,38 @@ async function _blok5() {
     return 'vlag zet tokLoad() stil en ruimt zichzelf op';
   });
 
-  // ── TOEGEVOEGD 25-08: scherm blijft aan tijdens de meting ──
-  // Uit de rit van 23-08: veertien stiltes in het logboek, en op precies
-  // dezelfde kloktijden geen bulkdata. Het proces liep niet. PLWake dekt
-  // daarvan één helft — het scherm dat uitgaat — niet de andere, de app die
-  // je echt verlaat. Daarvoor is een foreground service nodig.
-  await _doe(5, 'Scherm-wakelock (PLWakelock)', function () {
-    // 25-08: heette eerst PLWake en dat gaf FOUT "steunt is not a function"
-    // terwijl het object bestond — er is al een window.PLWake elders. Deze
-    // test noemt dat nu bij naam in plaats van erover te struikelen.
-    const vreemd = (typeof window.PLWake !== 'undefined');
-    if (typeof window.PLWakelock === 'undefined')
-      return { staat: 'FOUT', detail: 'PLWakelock ontbreekt — pidlane-auth.js is niet meegekomen' +
-        (vreemd ? ' (er is wél een window.PLWake, van een andere module)' : '') };
-    if (typeof PLWakelock.steunt !== 'function')
-      return { staat: 'FOUT', detail: 'PLWakelock is overschreven door een andere module — sleutels: ' +
-        Object.keys(PLWakelock).join(', ') };
-    if (!PLWakelock.steunt())
-      return { staat: 'LET OP', detail: 'deze WebView kent navigator.wakeLock niet — scherm aanhouden werkt hier niet' };
+  // ── HERSCHREVEN 26-08: PLWakelock was een duplicaat van PLWake ──
+  // Twee scherm-wakelocks deden hetzelfde: PLWake (index.html) wikkelt
+  // setConn() om — reageert direct in plaats van elke 5 s te pollen — en
+  // kijkt ook naar remPill/remDrivePill zodat een remote-sessie het scherm
+  // ook aanhoudt. PLWakelock (pidlane-auth.js) is er daarom uit; deze
+  // controle toetst nu de blijvende, bredere versie. PLWake exporteert
+  // alleen `sync` — geen steunt()/actief()/fout() om tegen te toetsen — dus
+  // deze controle kijkt naar wat er wél te toetsen valt.
+  //
+  // Tegenproef (handmatig gedraaid tijdens het maken van deze fix): met
+  // PLWakelock tijdelijk teruggezet meldt de laatste stap hieronder FOUT.
+  await _doe(5, 'Scherm-wakelock (PLWake)', function () {
+    if (typeof window.PLWake !== 'object' || !window.PLWake)
+      return { staat: 'FOUT', detail: 'PLWake ontbreekt — het scherm-aan-blok in index.html is niet meegekomen' };
+    if (typeof PLWake.sync !== 'function')
+      return { staat: 'FOUT', detail: 'PLWake is overschreven door iets anders — sleutels: ' + Object.keys(PLWake).join(', ') };
 
-    // Alleen oordelen als de voorwaarden kloppen. Niet verbonden betekent
-    // terecht geen lock; dat als FOUT tellen geeft een altijd-rode test, en
-    // die wordt genegeerd (§ratel).
+    if (!('wakeLock' in navigator))
+      return { staat: 'LET OP', detail: 'deze WebView kent navigator.wakeLock niet (oude WebView) — scherm aanhouden werkt hier niet' };
+
+    // Alleen oordelen als de voorwaarden kloppen. Niet verbonden of de
+    // pagina niet zichtbaar betekent terecht geen lock; dat als FOUT tellen
+    // geeft een altijd-rode test, en die wordt genegeerd (§ratel).
     if (!(typeof connected !== 'undefined' && connected))
       return { staat: 'LET OP', detail: 'niet verbonden, dus terecht geen wakelock — draai dit blok opnieuw mét verbinding' };
     if (document.visibilityState !== 'visible')
       return { staat: 'LET OP', detail: 'pagina niet zichtbaar tijdens de test' };
 
-    if (!PLWakelock.actief()) {
-      const f = PLWakelock.fout();
-      return { staat: 'FOUT', detail: 'verbonden en zichtbaar, maar geen wakelock' +
-        (f ? ' — geweigerd: ' + f + ' (batterijbesparing?)' : ' — geen reden gemeld') };
-    }
-    return 'wakelock actief' + (vreemd ? ' (let op: er bestaat ook een window.PLWake van een andere module)' : '');
+    if (typeof window.PLWakelock !== 'undefined')
+      return { staat: 'FOUT', detail: 'window.PLWakelock bestaat weer — het duplicaat is terug (pidlane-auth.js)' };
+
+    return 'PLWake aanwezig (sync), geen duplicaat PLWakelock';
   });
 
   // Mode 22 olietemperatuur is op 23-08 losgelaten. De knoppen "DID-scan (45 s)"
