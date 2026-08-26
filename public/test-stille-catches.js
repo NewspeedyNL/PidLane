@@ -41,13 +41,17 @@
 const fs = require('fs');
 
 // 26-08: verbreed. De oude vorm eiste een simpele naam tussen de haakjes en
-// miste daardoor twee lege catches die wel degelijk stil zijn:
-//   catch {}            bindingloos (ES2019) — 13x in worker.js, alle gevuld
-//   catch({message}){}  destructurerend
-// De variant die in blok 5 stond (`catch\s*\([^)]*\)`) ving die eerste ook
-// niet, en sloeg bovendien vals alarm op `.catch(function(){})` — een
-// promise-afhandelaar met een lege functie is geen lege catch. Vandaar de
-// eis dat `catch` niet voorafgegaan wordt door een punt of een woordteken.
+// miste daardoor twee lege catches die wel degelijk stil zijn: de bindingloze
+// (ES2019, zonder haakjes — 13x in worker.js, daar alle dertien netjes
+// gevuld) en de destructurerende. De variant die tot vandaag in blok 5 stond
+// ving de bindingloze ook niet, en sloeg bovendien vals alarm op een
+// promise-afhandelaar met een lege functie erin. Vandaar de eis dat het
+// sleutelwoord niet voorafgegaan wordt door een punt of een woordteken.
+//
+// LET OP bij het uitbreiden van dit commentaar: schrijf de vormen hierboven
+// niet letterlijk uit. Deze test leest de bron van elke module met de regex
+// hieronder en telt zijn eigen voorbeelden gewoon mee — dat gebeurde op
+// 26-08 in pidlane-testrun.js, twee valse bevindingen uit een toelichting.
 const RE = /(^|[^.\w$])catch\s*(?:\(\s*(?:[a-zA-Z_$][\w$]*|\{[^}]*\}|\[[^\]]*\])\s*\))?\s*\{\s*\}/g;
 let fout = 0, totaal = 0;
 

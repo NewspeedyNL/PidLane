@@ -1895,25 +1895,23 @@ async function _blok5() {
   // zoals de browser hem serveert. Let op: draait er een service-worker met een
   // oude cache, dan kan de app iets ánders draaien dan hier gemeten wordt — de
   // wrappercontrole hierboven is het runtime-bewijs, dit is het bron-bewijs.
-  await _doe(5, 'Geen lege catches meer in de acht opgeruimde modules', async function () {
-    const mods = ['pidlane-bt.js', 'pidlane-veldlab.js', 'pidlane-btflow.js', 'pidlane-auth.js',
-                  'pidlane-fuel.js', 'pidlane-koopcheck.js', 'pidlane-remote.js', 'pidlane-testrun.js'];
-    const RE = /catch\s*\([^)]*\)\s*\{\s*\}/g;
-    const vuil = [], onleesbaar = [];
-    for (const m of mods) {
-      const bron = await _bron(m);
-      if (bron == null) { onleesbaar.push(m); continue; }
-      const n = (bron.match(RE) || []).length;
-      if (n) vuil.push(m + ': ' + n);
-    }
-    if (vuil.length)
-      return { staat: 'FOUT', detail: vuil.join(', ') + ' — deze build is niet de opgeruimde versie' };
-    if (onleesbaar.length === mods.length)
-      return { staat: 'LET OP', detail: 'geen enkele module leesbaar via fetch — controle niet uitgevoerd' };
-    if (onleesbaar.length)
-      return { staat: 'LET OP', detail: (mods.length - onleesbaar.length) + ' schoon, niet gelezen: ' + onleesbaar.join(', ') };
-    return 'alle acht modules schoon';
-  });
+  // De lege-catchescontrole is hier weg (26-08). Hij haalde acht modules op
+  // via fetch en telde lege catches — maar test-stille-catches.js doet dat
+  // onder node over alle vijftig modules, bij elke commit, en eist nul. De
+  // acht hier waren de modules die op 22-08 zijn opgeruimd; dat is een
+  // historisch toeval, geen principiële set (een oude pidlane-bulk.js viel
+  // er buiten). De regex hier was bovendien kapot: hij sloeg vals alarm op
+  // een promise-afhandelaar met een lege functie erin. Die van de node-test
+  // is in dezelfde commit verbreed naar de bindingloze en de destructurerende
+  // vorm, zodat deze verhuizing niets meeneemt. De vormen staan hier bewust
+  // niet letterlijk uitgeschreven: die test leest de bron met een regex en
+  // zou zijn eigen documentatie als bevinding tellen.
+  //
+  // Wat blok 5 uniek toevoegde was "heeft de server een oude build
+  // geserveerd" — maar acht HTTP-fetches tijdens een rit zijn daar een duur
+  // en indirect instrument voor. De bedradingscontrole ziet een ontbrekende
+  // module al bij het laden, en de PID-tabelmarkering hierboven ziet een
+  // oude datamodule.
 
   // ── BLIJFT STAAN: twee structurele controles ──
   // Deze twee horen bij geen enkele update in het bijzonder; ze bewaken de run
