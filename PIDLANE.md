@@ -4,7 +4,10 @@
 > **welk bestand je nodig hebt** zonder de code te lezen. Zet dit in de
 > project-kennisbank. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-08-25 — testgate in CI, CORS dicht op de AI- en
+> Laatst bijgewerkt: 2026-08-27 — toestemmingsteksten kloppen weer met de
+> verwerking (pseudoniem, niet anoniem), tweede VIN-lek in de logroute dicht,
+> `worker.js` vastgelegd als eigen bron, auto-merge na een groene testgate.
+> Daarvóór: 2026-08-25 — testgate in CI, CORS dicht op de AI- en
 > dataroutes, VIN niet langer ruw naar Airtable, admin.html uit `public/`.
 > Daarvóór: 2026-08-20 — steunbitpoort, logboek, privacy-disclosure,
 > startscherm per adaptertype, wizard van zes stappen naar één.
@@ -77,13 +80,15 @@ want dat vraagt een protocolwissel en die hoort niet in een rijdende testrun.
 
 ```
 PidLane/
-├─ worker.js               (117 KB) Cloudflare Worker: auth, proxy, Airtable, DO, tegoed
+├─ worker.js               (134 KB) Cloudflare Worker: auth, proxy, Airtable, DO, tegoed
+│                                  ← bundel én bron, met de hand onderhouden (§6)
 ├─ wrangler.toml                    assets + R2 + DO-bindings
 ├─ capacitor.config.json            webDir "www", server.url app.pidlane.nl
 ├─ plcheck.sh                       validatie voor een commit (zie §11)
 ├─ .github/workflows/
 │  ├─ build-apk.yml                 APK- en .aab-build
-│  └─ tests.yml                     testgate: draait plcheck.sh op elke push
+│  ├─ tests.yml                     testgate: draait plcheck.sh op elke push
+│  └─ automerge.yml                 voegt een PR samen zodra de testgate groen is
 ├─ admin/
 │  ├─ admin.html          (49 KB)  admin-, gebruikers-, klant- en codebeheer
 │  └─ LEESMIJ.md                    hoe je hem lokaal draait
@@ -92,7 +97,7 @@ PidLane/
    ├─ config.js            (3 KB)   PROXY_URL, AIRTABLE_URL, APP_VERSION
    ├─ pidlane.css          (157 KB) hoofdstylesheet
    ├─ pidlane-*.js         (39 modules, zie §4)
-   └─ test-*.js            (29 tests, draaien via plcheck.sh)
+   └─ test-*.js            (37 tests, draaien via plcheck.sh)
 ```
 
 > **admin.html staat bewust buiten `public/`.** Alles in `public/` wordt door de
@@ -231,6 +236,39 @@ positie vrij.
 
 ## 6. Backend — worker.js
 
+### `worker.js` is de bron — vastgelegd 27-08-2026
+
+Het bestand ziet eruit als build-uitvoer en dat wás het ook: `__defProp`,
+`__name`, `worker_default`, `@__PURE__`-markeringen — allemaal esbuild. **De
+esbuild-invoer bestaat niet meer en komt ook niet terug.** Er is geen
+buildstap: Cloudflare Workers Builds pakt bij `git push` dit bestand zoals het
+is. De bundel ís dus de bron, en iedereen bewerkt hem al maanden met de hand.
+
+Dat stond nergens, en aan de vorm van het bestand is het niet af te lezen —
+vandaar deze paragraaf. De afspraken die erbij horen:
+
+| | |
+|---|---|
+| **Bewerken** | rechtstreeks in `worker.js`. Geen `src/`-map aanleggen: die loopt vanaf dag twee uit de pas met wat er draait. |
+| **`__name`-conventie** | aanhouden. Elke top-level `function X` krijgt `__name(X, "X");` erachter; een functie-expressie krijgt `__name((...) => ..., "naam")`. |
+| **Niet bundelen** | een bundler er opnieuw overheen halen herschrijft het hele bestand, maakt de diff onleesbaar en gooit het Nederlandse commentaar weg. Dat commentaar is hier de dure helft. |
+| **Controle** | `plcheck.sh` doet `node --check worker.js`; de testgate in CI doet hetzelfde. |
+
+De `__name`-conventie is geen cosmetiek: `__name` zet de `.name` van de
+functie, en dát is wat er in een stacktrace in de Cloudflare-logs staat. Sla je
+het over, dan heet je functie daar `(anonymous)` op het moment dat je hem het
+hardst nodig hebt.
+
+> **Weg per 27-08-2026: de `//# sourceMappingURL=worker.js.map` aan het eind.**
+> Die `.map` heeft in deze repo nooit bestaan — restant van de build waar dit
+> ooit uit kwam. Hij kostte een 404 bij elke devtools-sessie en suggereerde dat
+> er ergens een originele bron lag. Die ligt er niet.
+
+De volledige versie van deze afspraak staat ook in de kop van `worker.js` zelf,
+want dat is waar iemand hem nodig heeft.
+
+### Endpoints
+
 Endpoints (alles hieronder moet óók in `run_worker_first` in `wrangler.toml`
 staan, anders wordt het als bestand geserveerd en krijg je een 404 die eruitziet
 als een routingfout):
@@ -333,6 +371,45 @@ meetsessie. PID-kwaliteit wordt geclassificeerd als `ok` / `unsupported` /
 bevestigingen per `merk|model|jaar|CALID`-cel) promoveren naar de
 Referentie-store met p5/p50/p95-bereiken per PID.
 
+### De VIN — twee uitgaande paden, één pseudoniem
+
+Een VIN is via het RDW herleidbaar tot een kentekenhouder, dus hij hoort niet
+ruw in Airtable. Er zijn precies **twee** plekken waar voertuigdata de telefoon
+uit gaat, en ze zijn allebei op een andere dag gedicht — dat is het waard om te
+onthouden, want de eerste fix wekte de indruk dat het klaar was:
+
+| Pad | Functie | Dicht sinds |
+|---|---|---|
+| Veldlab-sessies → `Sessies` | `_vlSchoonVoorVerzending()` in `pidlane-veldlab.js` | 25-08-2026 |
+| Logregels → `Logs` | `_plVinVoorLog()` in `pidlane-auth.js` | 27-08-2026 |
+
+Het tweede pad was het ergere van de twee en werd bij de eerste ronde gemist:
+`logToSheets()` schreef de volledige VIN in een **eigen kolom**, op élke
+logregel, met de kolom `User` in dezelfde rij. Niet weggestopt in een JSON-blob
+zoals bij Veldlab, maar gewoon zichtbaar in de tabel.
+
+Beide paden delen één functie, `_vlVinPseudoniem()`: `SHA-256(zout + VIN)`,
+eerste 16 hextekens. Dezelfde auto krijgt daardoor in beide tabellen hetzelfde
+staartje en logregels blijven te koppelen aan een Veldlab-sessie — precies
+waarvoor de VIN-kolom werd gebruikt. Veldlab bewaart daarnaast de `wmi` (de
+eerste drie tekens, de fabrikantcode); de logkolom `VIN` bevat sinds 27-08 de
+vorm `JM3:9f2c…`.
+
+> **De kolom heet nog steeds `VIN` en dat blijft zo.** Een nieuwe naam is een
+> veld dat in de Airtable-logtabel niet bestaat, en `typecast: true` maakt geen
+> velden aan: dat geeft 422 `UNKNOWN_FIELD_NAME` en dan valt álle logging om.
+> De inhoud is veranderd, de kolom niet.
+
+**Dit is pseudonimisering, geen anonimisering.** Het zout staat in clientcode en
+is dus niet geheim; wie een VIN al kent kan hem toetsen. Onder de AVG blijft een
+pseudoniem een persoonsgegeven. De vier teksten die dat aan de gebruiker
+uitleggen — het akkoordscherm in `pidlane-klant.js`, `privacy.html`, de
+BT-disclosure in `pidlane-privacy.js` en de foutmelding in `worker.js` — zeiden
+tot 27-08-2026 alle vier "geanonimiseerd". `test-toestemmingstekst.js` bewaakt
+sindsdien dat die claim niet terugkomt; `test-vin-anoniem.js` bewaakt het
+gedrag van beide paden. Die twee horen bij elkaar: de een toetst wat de code
+doet, de ander of we er eerlijk over zijn.
+
 ---
 
 ## 8. AI-integratie
@@ -430,12 +507,18 @@ nieuwe chat, plak dan `OVERDRACHT.md` erin — dat is de kortste weg naar
 werkende context zonder de hele repo te delen.
 
 - **Nederlandstalige codebase.** Commentaar, changelogs, UI-teksten: Nederlands.
+- **Een PR wacht op de testgate, niet op aandacht.** `automerge.yml` voegt hem
+  samen zodra de workflow *Tests* groen afrondt. Wil je dat een PR blijft
+  liggen, zet er het label `handmatig` op of hou hem in draft — dat zijn de
+  twee remmen. De workflow draait altijd de versie die op `main` staat, dus
+  een PR die `automerge.yml` zelf wijzigt gaat die ene keer met de hand.
 - **Complete, gevalideerde bestanden** — nooit patch-blokken in de chat.
   Sinds de opsplitsing: complete *module*bestanden, niet complete `index.html`.
-  `worker.js` (117 KB) is inmiddels ook te groot voor de chat: lever die als
-  downloadbaar bestand.
+  `worker.js` (134 KB) is inmiddels ook te groot voor de chat: lever die als
+  downloadbaar bestand. Bewerk hem rechtstreeks — hij is zijn eigen bron, zie §6.
 - Vóór elke oplevering: **`plcheck.sh`** in de repo-root. Die doet syntaxcontrole
-  op alle bestanden, draait de 20 tests, telt de div-balans van `index.html` en
+  op alle bestanden, draait alle `test-*.js` (37 op 27-08-2026 — tel ze liever
+  dan dit getal te geloven), telt de div-balans van `index.html` en
   `admin.html`, controleert dat elke module in `index.html` hangt en dat
   `pidlane-bedrading.js` achteraan staat. Draait in Termux op de telefoon.
   Bij geldcode ook een echte test met gestubte Airtable en Anthropic.
@@ -471,6 +554,29 @@ neemt die mee, een bestandsbeheerder op Android meestal niet.
 
 Bijgewerkt 20-08-2026. Voor de actuele werkvolgorde: `PLAN.md`. Wat hier staat
 is de blijvende lijst; `PLAN.md` is de kortlopende.
+
+**Nieuw op 27-08 en nog open:**
+
+- **Toestemmingen die onder de oude tekst zijn gegeven.** Het akkoordscherm
+  sprak tot 27-08-2026 van "geanonimiseerde" meetdata terwijl de verwerking
+  pseudonimisering is. De tekst klopt nu, maar wie eerder akkoord gaf, gaf dat
+  op een onjuiste voorstelling van zaken — en dat akkoord is aanvechtbaar.
+  `openOnboarding()` verschijnt alleen zolang `startTegoed !== true`, dus die
+  groep krijgt het scherm nooit meer te zien. Wat ervoor nodig is: net als bij
+  `DISCLOSURE_VERSIE` in `pidlane-privacy.js` een versienummer op het
+  akkoordscherm, opslaan welke versie iemand heeft geaccepteerd, en bij een
+  lagere versie opnieuw vragen — zonder het proeftegoed er nog eens aan te
+  koppelen, want dat is eenmalig en mag geen drukmiddel worden. Bewust niet in
+  dezelfde ronde gebouwd als de tekstcorrectie: dat raakt de Airtable-kolom
+  `Akkoorden` en de onboarding-route, en die twee horen niet in een
+  tekstwijziging thuis.
+- **De bugmelder stuurt de ruwe VIN mee.** `_bugDiag()` in `pidlane-auth.js`
+  zet `vin` in het bugrecord. Anders dan de logroute is dit door de gebruiker
+  zelf aangezwengeld en staat er sinds 27-08 ook bij het knopje dat het
+  meegaat, dus de melding klopt met wat er gebeurt. Maar het blijft de enige
+  plek waar een volledige VIN de telefoon nog verlaat. Afweging voor later: bij
+  een bug over één specifiek voertuig is de VIN echt bruikbaar, dus dit is geen
+  automatische "eruit".
 
 **Nieuw op 20-08 en nog open:**
 
