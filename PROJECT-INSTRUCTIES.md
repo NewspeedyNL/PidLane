@@ -31,16 +31,17 @@ leidend. Samengevat: `bash plcheck.sh .` moet groen zijn vóór elke commit, blo
 5 en `CAMPAGNE` in `pidlane-testrun.js` worden per oplevering herschreven, en
 samenvoegen in `main` betekent live — er zit geen mens tussen de PR en de klant.
 
-**Oriënteren.** `PIDLANE-WERK.md` zegt wat er nú speelt, `PIDLANE.md` §4 zegt
-in welk bestand iets zit, `PIDLANE-CONTRACT.md` is ontwerp en nog geen code.
+**Oriënteren.** `PIDLANE.md` §4 zegt in welk bestand iets zit en §11 wat er
+bekend en onopgelost is, de GitHub-issues zeggen wat er nú speelt, en
+`PIDLANE-CONTRACT.md` is ontwerp en nog geen code.
 Zoek gericht in plaats van hele bestanden te laden — `index.html` is 203 KB en
 `worker.js` 134 KB, dus dat kost context die je verderop nodig hebt.
 
 **Werkhouding.**
 
 - Eén onderwerp per sessie en per PR. Bugs die je onderweg vindt, leg je vast in
-  `PIDLANE-WERK.md` — je repareert ze niet in dezelfde sessie, tenzij daar
-  expliciet om gevraagd wordt.
+  `PIDLANE.md` §11 of als issue — je repareert ze niet in dezelfde sessie,
+  tenzij daar expliciet om gevraagd wordt.
 - Toets voordat je iets beweert. Kun je iets niet toetsen (rijden, adapter,
   telefoon), zeg dat dan en maak er een vraag voor `CAMPAGNE` van.
 - Een eerdere conclusie die fout blijkt, wordt hardop gecorrigeerd en herzien
@@ -74,7 +75,7 @@ De instructies blijven bewust kort en gaan over hoe er samengewerkt wordt.
 Alles wat de code raakt hoort in `CLAUDE.md`, want dat staat naast de code en
 gaat in dezelfde PR mee als de code verandert. Bij verschil wint `CLAUDE.md`.
 
-**Project knowledge is nu de zwakke plek.** Kopieën van `PIDLANE.md` of
-`OVERDRACHT.md` daar zijn momentopnamen: ze veranderen niet mee met de repo en
-gaan de repo dus tegenspreken. Beter leeg, of hooguit dingen die niet in de repo
-kunnen staan — schermafdrukken, adaptergedrag, meetdata uit een rit.
+**Project knowledge is nu de zwakke plek.** Een kopie van `PIDLANE.md` daar is
+een momentopname: die verandert niet mee met de repo en gaat de repo dus
+tegenspreken. Beter leeg, of hooguit dingen die niet in de repo kunnen staan —
+schermafdrukken, adaptergedrag, meetdata uit een rit.

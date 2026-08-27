@@ -10,9 +10,13 @@
 
 | bestand | waarvoor |
 |---|---|
-| `PIDLANE-WERK.md` | wat er nú speelt, welke batch open staat, wat er gemeten moet worden |
-| `PIDLANE.md` | architectuurkaart — §4 zegt in welk bestand iets zit, zonder code te lezen |
+| `PIDLANE.md` | architectuurkaart — §4 zegt in welk bestand iets zit zonder code te lezen; §11 is de lijst met bekende problemen |
 | `PIDLANE-CONTRACT.md` | het ontwerp voor meetkwaliteit en sessiedekking (nog niet gebouwd) |
+| GitHub-issues | wat er nú speelt en wat er gemeten moet worden |
+
+Kortlopend werk hoort in een issue, niet in een document. `PIDLANE-WERK.md`
+bestond daarvoor en is op 27-08-2026 opgeheven: het groeide tot 40 KB, en de
+helft daarvan was verslag van ritten die al afgehandeld waren.
 
 Zoek gericht (`grep`, `sed -n`) in plaats van hele bestanden te laden:
 `index.html` is 203 KB, `worker.js` 134 KB, `pidlane.css` 157 KB. Weet je niet
@@ -103,18 +107,20 @@ dan is een eerder gegeven akkoord niet meer geldig.
 
 In dezelfde PR:
 
-- **`PIDLANE-WERK.md`** — wat er gedaan is, wat er open blijft, wat er gereden
-  moet worden. Ook bevindingen die je níét gerepareerd hebt.
-- **`PIDLANE.md`** — alleen bij een structuur-, contract- of architectuurwijziging.
+- **`PIDLANE.md` §11** — bevindingen die blijven staan, ook die je níét
+  gerepareerd hebt. De rest van `PIDLANE.md` alleen bij een structuur-,
+  contract- of architectuurwijziging.
+- **Een GitHub-issue** voor wat af te ronden valt: een fix die nog getoetst moet
+  worden, een vraag die alleen tijdens een rit te beantwoorden is.
 - Een eerdere conclusie die fout blijkt, wordt **herzien vastgelegd, niet
   weggepoetst**. De `ATI`-vergissing (§1) is bewaard omdat de fout leerzamer is
   dan de correctie.
 
 ## Wat je niet doet
 
-- Bugs die je onderweg vindt: **vastleggen in `PIDLANE-WERK.md`, niet in
-  dezelfde sessie repareren** — tenzij er expliciet om gevraagd wordt. Eén
-  onderwerp per PR.
+- Bugs die je onderweg vindt: **vastleggen in `PIDLANE.md` §11 of als issue,
+  niet in dezelfde sessie repareren** — tenzij er expliciet om gevraagd wordt.
+  Eén onderwerp per PR.
 - Geen bestanden verwijderen, hernoemen of verplaatsen zonder te vragen.
 - Geen "opruimacties" of stijlrefactors erbij die niemand gevraagd heeft.
 - Niets live zetten wat niet getoetst is. Kan iets alleen in de auto getoetst

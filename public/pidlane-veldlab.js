@@ -699,7 +699,7 @@ function _plEvalCapture(msg,type){
   }catch(e){ console.warn('Veldlab: sessie afronden mislukt:', e); }
 }
 /* Deze regel wrapt log() zodat het veldlab meeleest. Dat is een van de
-   wrapperlagen waar OVERDRACHT.md voor waarschuwt: wie String(window.log)
+   wrapperlagen waar PIDLANE.md §20 voor waarschuwt: wie String(window.log)
    doorzoekt leest deze wrapper en niet het origineel, en dat maakt
    broncode-inspectie in deze codebase onbetrouwbaar. Meet gedrag.
 

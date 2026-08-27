@@ -91,6 +91,7 @@ PidLane/
 ├─ capacitor.config.json            webDir "www", server.url app.pidlane.nl
 ├─ plcheck.sh                       validatie voor een commit (zie §11)
 ├─ CLAUDE.md                        werkregels die Claude Code elke sessie leest (§9)
+├─ PIDLANE-CONTRACT.md              ontwerp: meetkwaliteit en sessiedekking (nog niet gebouwd)
 ├─ PROJECT-INSTRUCTIES.md           de tekst voor het instructieveld van het Claude-project
 ├─ .github/workflows/
 │  ├─ build-apk.yml                 APK- en .aab-build
@@ -544,11 +545,16 @@ staat hieronder; de dagelijkse regels staan in `CLAUDE.md` in de repo-root, en
 de houding waarmee er gewerkt wordt in `PROJECT-INSTRUCTIES.md` (de tekst in het
 instructieveld van het Claude-project).
 
-**Drie documenten, drie rollen.** `PIDLANE.md` beschrijft hoe het systeem in
-elkaar zit (bron van waarheid), `PIDLANE-WERK.md` wat er nu speelt en wat er nog
-open staat — dat bestand verving `PLAN.md`, `OVERDRACHT.md` en de losse
-leesmij's — en `PIDLANE-CONTRACT.md` het ontwerp voor meetkwaliteit dat nog
-gebouwd moet worden. Begin een sessie in `PIDLANE-WERK.md`, eindig er ook.
+**Twee documenten en een issuelijst.** `PIDLANE.md` beschrijft hoe het systeem
+in elkaar zit (bron van waarheid) en houdt in §11 bij wat er bekend en
+onopgelost is; `PIDLANE-CONTRACT.md` is het ontwerp voor meetkwaliteit dat nog
+gebouwd moet worden. Wat er nú speelt staat in de GitHub-issues.
+
+`PLAN.md`, `OVERDRACHT.md`, `OVERDRACHT-NIEUWE-CHAT.md`, `LEESMIJ-DELTA.md` en
+`PIDLANE-WERK.md` zijn op 27-08-2026 opgeheven. Ze waren allemaal een vorm van
+hetzelfde: een document dat een chat moest overleven omdat de volgende sessie
+niet bij de repo kon. Dat is niet meer zo. Wat er nog open in stond staat in
+§11.
 
 - **Nederlandstalige codebase.** Commentaar, changelogs, commitberichten,
   PR-titels en UI-teksten: Nederlands.
@@ -597,8 +603,76 @@ voor.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Bijgewerkt 20-08-2026. Voor de actuele werkvolgorde: `PLAN.md`. Wat hier staat
-is de blijvende lijst; `PLAN.md` is de kortlopende.
+Bijgewerkt 27-08-2026. **Dit is de enige blijvende lijst.** `PLAN.md`,
+`OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan niet meer; wat daar nog open stond
+is hieronder opgenomen. Kortlopend werk hoort in een GitHub-issue, niet in een
+document dat tussen twee sessies moet overleven.
+
+### Overgenomen uit `PIDLANE-WERK.md` (27-08-2026)
+
+Deze stonden daar als open genoteerd en zijn verder niet aangeraakt.
+
+- **Blok 7 trekt de omgekeerde conclusie bij een nulmeting.**
+  `const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;` in
+  `pidlane-testrun.js`: de deel-door-nul-vangst geeft `0`, en `0` valt door
+  `Math.abs(verschil) < 15` in de tak "vrijwel geen verschil". Gemeten: 0 ms
+  tegen 144 ms gepresenteerd als +0%. Twee dingen mis — `mLaag === 0` hoort een
+  eigen uitkomst te zijn ("onmeetbaar"), en een responstijd van 0 ms is
+  überhaupt geen meting en hoort niet in de groep. Treedt intermitterend op: op
+  26-08 vuurde hij niet (107 tegen 163 ms). Voedt de Slotsom, dus hij duwt een
+  conclusie de verkeerde kant op.
+- **`merkGroep()`-asymmetrie MINI versus BMW** (`pidlane-data.js:258`). MINI
+  matcht op prefix, BMW op exacte gelijkheid: "BMW 320D" wordt `BMWD`, mist de
+  vergelijking en valt terug op geen groep — dus geen merkspecifieke
+  DTC-lookup. Bij MINI is elke variant gedekt, bij BMW alleen het kale merk.
+- **Vier aanvragers op één bus.** Waakronde, bulk-recorder, caravan-tracker en
+  rijmonitor vullen de bus langs elkaar heen; PLLoad regelt er één. Gemeten op
+  26-08: eigen 41-header-uitpakwerk buiten `splitBatchResponse()` om in
+  diagbundel, graph, monitor (2×), veldlab (3×) en verify; 18 losse
+  `fetch`-aanroepen over 7 modules, en geen gedeelde `plFetch`-helper. Geen bug
+  op zichzelf — het is de vraag of dit één poort moet worden.
+- **De opruimregel is nog niet beslist.** Na hoeveel mislukte pogingen mag een
+  stille sensor uit `activePIDs`, en langs welke weg komt hij terug als hij
+  later alsnog antwoordt (koud/warm, motor uit/aan)? Zonder dat tweede bouw je
+  een zeef die sensoren voorgoed wegwerkt. Stand 26-08: vijf stille sensoren in
+  de actieve selectie (`0101`, `0121`, `012E`, `016D`, `019D`), en `019D`/`019E`
+  lezen −40/−39 — de rauwe nul met temperatuuroffset, precies de populatie
+  waarvoor de regel bestaat.
+- **Raildruk over een hele rit.** `0123`/`0159` stonden op 23-08 zevenentwintig
+  minuten stil op 9900; op 26-08 bewogen ze weer (10050 / 9890). Eén sweep van
+  18 s bewijst niets over een hele rit. Open tot de rit met alle vier de
+  aanvragers aan.
+- **De app bevriest op de achtergrond.** Android bevriest de JS-timers van de
+  WebView: pollus, recorder en logger stoppen tegelijk, en elke herverbinding
+  volgt direct op een stilte. `PLWake` dekt alleen "scherm gaat uit", niet "app
+  wordt verlaten". De echte oplossing is een foreground service (Capacitor,
+  native werk); de goedkope tussenstap is `visibilitychange` afvangen, de opname
+  als gepauzeerd markeren en bij terugkomst actief herverbinden.
+- **Twee klokbases.** De bulkrecorder schrijft UTC, de logger lokale tijd — op
+  23-08 exact twee uur verschil. Wie beide bestanden naast elkaar legt,
+  concludeert eerst dat ze niet bij elkaar horen. `PIDLANE-CONTRACT.md` §6 legt
+  UTC vast als de enige klok.
+- **Drie UI-meldingen van 23-08, nooit opgepakt.** De demo-knop op het
+  loginscherm (Engelse tekst in een Nederlandse app, loopt over twee regels en
+  botst met de versieregel — twee elementen op dezelfde plek); de bulk-recorder
+  komt niet bovenop, want de zwevende chips liggen over de modal (de modal-laag
+  en de chip-laag zijn niet geordend); en het opmerkingveld bij opslaan komt
+  niet in het bestand terecht.
+- **Kleiner.** `221166` antwoordt met `0000` bij koelwater 91 °C — dat is de
+  olietemperatuur niet, en alleen prefix `11` op header `7E0` is gescand (`7E1`
+  is onaangeroerd). Blok 1 boekt een terecht gevonden ontbrekend profiel
+  mogelijk niet als LET OP. Eén onverklaarde `err` in het BT-log van 26-08.
+  Stille sensoren kregen een categorie `onzin` naast `nodata`, zelfde populatie
+  maar een andere indeling — nakijken bij de opruimregel.
+
+### Werkregel uit de mislukte rit van 26-08
+
+Er is 27 minuten gereden en er is niets opgenomen: het toestel draaide testrun
+4.8, waarin blok 14 nog niet bestond. **Kijk vóór het wegrijden naar het
+versienummer in de kop van de testrun**, niet alleen naar blok 5 — blok 5 kan
+niet melden dat een blok ontbreekt dat in die build nog niet bestaat.
+
+### De blijvende lijst
 
 **Opgelost op 27-08:** wie vóór de tekstcorrectie akkoord gaf, gaf dat op een
 onjuiste voorstelling van zaken (meetdata heette anoniem, is pseudoniem) — dat
