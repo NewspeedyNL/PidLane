@@ -1,10 +1,13 @@
 # PIDLANE.md — architectuurkaart
 
 > Doel van dit bestand: Claude (of een nieuwe medewerker) moet hiermee weten
-> **welk bestand je nodig hebt** zonder de code te lezen. Zet dit in de
-> project-kennisbank. Bij elke structuurwijziging bijwerken.
+> **welk bestand je nodig hebt** zonder de code te lezen. Het staat in de repo en
+> nergens anders — een kopie in een kennisbank loopt achter en gaat de code
+> tegenspreken. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-08-27 — toestemmingsteksten kloppen weer met de
+> Laatst bijgewerkt: 2026-08-27 — werkafspraken herschreven voor het werken
+> rechtstreeks in de repo (§9), `CLAUDE.md` en `PROJECT-INSTRUCTIES.md` erbij.
+> Daarvóór dezelfde dag: toestemmingsteksten kloppen weer met de
 > verwerking (pseudoniem, niet anoniem), tweede VIN-lek in de logroute dicht,
 > akkoord op de oude tekst telt niet meer mee, `worker.js` vastgelegd als
 > eigen bron, auto-merge na een groene testgate, topbar van vier chips naar
@@ -87,6 +90,8 @@ PidLane/
 ├─ wrangler.toml                    assets + R2 + DO-bindings
 ├─ capacitor.config.json            webDir "www", server.url app.pidlane.nl
 ├─ plcheck.sh                       validatie voor een commit (zie §11)
+├─ CLAUDE.md                        werkregels die Claude Code elke sessie leest (§9)
+├─ PROJECT-INSTRUCTIES.md           de tekst voor het instructieveld van het Claude-project
 ├─ .github/workflows/
 │  ├─ build-apk.yml                 APK- en .aab-build
 │  ├─ tests.yml                     testgate: draait plcheck.sh op elke push
@@ -532,47 +537,54 @@ de Durable Object de plek om het saldo te serialiseren.
 
 ## 9. Werkafspraken
 
-**Drie bestanden, drie rollen.** `PIDLANE.md` beschrijft hoe het systeem in
-elkaar zit (bron van waarheid), `OVERDRACHT.md` wat er in de laatste sessies
-gebeurd is en waar de volgende begint, `PLAN.md` wat er nog moet gebeuren en in
-welke volgorde. Begin een sessie in `PLAN.md`, eindig er ook. Start je een
-nieuwe chat, plak dan `OVERDRACHT.md` erin — dat is de kortste weg naar
-werkende context zonder de hele repo te delen.
+**Sinds 27-08-2026 gaat het werk rechtstreeks door de repo.** Claude Code leest
+en wijzigt de bestanden zelf; er worden geen modules meer in een chat geplakt en
+er komt geen delta-zip meer uit een sessie. Wat daarvan aan afspraken overblijft
+staat hieronder; de dagelijkse regels staan in `CLAUDE.md` in de repo-root, en
+de houding waarmee er gewerkt wordt in `PROJECT-INSTRUCTIES.md` (de tekst in het
+instructieveld van het Claude-project).
 
-- **Nederlandstalige codebase.** Commentaar, changelogs, UI-teksten: Nederlands.
+**Drie documenten, drie rollen.** `PIDLANE.md` beschrijft hoe het systeem in
+elkaar zit (bron van waarheid), `PIDLANE-WERK.md` wat er nu speelt en wat er nog
+open staat — dat bestand verving `PLAN.md`, `OVERDRACHT.md` en de losse
+leesmij's — en `PIDLANE-CONTRACT.md` het ontwerp voor meetkwaliteit dat nog
+gebouwd moet worden. Begin een sessie in `PIDLANE-WERK.md`, eindig er ook.
+
+- **Nederlandstalige codebase.** Commentaar, changelogs, commitberichten,
+  PR-titels en UI-teksten: Nederlands.
 - **Een PR wacht op de testgate, niet op aandacht.** `automerge.yml` voegt hem
   samen zodra de workflow *Tests* groen afrondt. Wil je dat een PR blijft
   liggen, zet er het label `handmatig` op of hou hem in draft — dat zijn de
   twee remmen. De workflow draait altijd de versie die op `main` staat, dus
   een PR die `automerge.yml` zelf wijzigt gaat die ene keer met de hand.
-- **Complete, gevalideerde bestanden** — nooit patch-blokken in de chat.
-  Sinds de opsplitsing: complete *module*bestanden, niet complete `index.html`.
-  `worker.js` (134 KB) is inmiddels ook te groot voor de chat: lever die als
-  downloadbaar bestand. Bewerk hem rechtstreeks — hij is zijn eigen bron, zie §6.
-- Vóór elke oplevering: **`plcheck.sh`** in de repo-root. Die doet syntaxcontrole
-  op alle bestanden, draait alle `test-*.js` (38 op 27-08-2026 — tel ze liever
-  dan dit getal te geloven), telt de div-balans van `index.html` en
-  `admin.html`, controleert dat elke module in `index.html` hangt en dat
-  `pidlane-bedrading.js` achteraan staat. Draait in Termux op de telefoon.
-  Bij geldcode ook een echte test met gestubte Airtable en Anthropic.
+- **Samenvoegen is deployen.** Cloudflare Workers Builds pakt de push naar
+  `main` en zet hem live. Er zit geen mens tussen de PR en de klant; daarom moet
+  de gate vóór de push groen zijn, niet erna.
+- Vóór elke oplevering: **`plcheck.sh`** in de repo-root. Die doet
+  syntaxcontrole op alle bestanden, draait alle `test-*.js` (38 op 27-08-2026 —
+  tel ze liever dan dit getal te geloven), telt de div-balans van `index.html`
+  en `admin.html`, controleert dat elke module in `index.html` hangt en dat
+  `pidlane-bedrading.js` achteraan staat. Exit 0 is de enige uitkomst waarna je
+  mag committen. `tests.yml` draait hetzelfde in CI, plus een sleutelscan.
 - **Bij elke oplevering ook `CAMPAGNE` en `_blok5()` in `pidlane-testrun.js`
   herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
   toegevoegd én verwijderd. Zie §20.
 - Build-changelog bovenaan `index.html` (HTML-commentaar).
-- `str_replace` voor chirurgische bewerkingen, met uniciteitscontrole.
-- Mechanisch en inhoudelijk wijzigen nooit in dezelfde stap.
+- Chirurgische bewerkingen met een unieke zoekstring, niet met een hele
+  bestandsherschrijving — dan blijft de diff leesbaar.
+- Mechanisch en inhoudelijk wijzigen nooit in dezelfde commit.
+- `worker.js` bewerk je rechtstreeks: hij is zijn eigen bron, zie §6.
 
 ### Zuinig omgaan met context
 
-Deel **alleen de module waar je aan werkt**. De hele repo als zip kost
-~500 K tokens; één module kost er 5–20 K. Weet je niet welke module?
-Zoek in de tabel in §4 — daar staat dit bestand voor.
+De repo staat er nu in zijn geheel, en dat is precies waarom dit blijft gelden:
+alles kúnnen lezen is niet hetzelfde als alles moeten lezen. `index.html` is
+203 KB, `worker.js` 134 KB, `pidlane.css` 157 KB — één zo'n bestand blind
+inladen kost de ruimte die je verderop in de sessie nodig hebt.
 
-Andersom geldt hetzelfde: laat een oplevering als **delta-zip** komen — alleen
-de gewijzigde en nieuwe bestanden, in dezelfde mapstructuur, uit te pakken over
-de werkkopie. Scheelt een factor vijf en maakt in één oogopslag zichtbaar wat
-er is aangeraakt. Let op dat `.github/` een verborgen map is: `cp -r bron/. doel/`
-neemt die mee, een bestandsbeheerder op Android meestal niet.
+Zoek gericht op naam of symbool en lees het stuk eromheen. Weet je niet in welk
+bestand iets zit, kijk dan eerst in de tabel in §4 — daar staat dit document
+voor.
 
 ---
 
