@@ -647,6 +647,44 @@ function logUsage(action, detail){
   try{ logToSheets('usage', `${action}${detail?': '+detail:''}`); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
+/* ── Ook hier gaat de VIN niet ruw weg ────────────────────────────────
+   Op 25-08-2026 is de ruwe VIN uit de Veldlab-sync gehaald
+   (_vlSchoonVoorVerzending in pidlane-veldlab.js). Dit pad is toen gemist,
+   en het was het ergere van de twee: logToSheets() schreef de volledige VIN
+   in een EIGEN Airtable-kolom — niet weggestopt in een JSON-blob — op élke
+   logregel, met in dezelfde rij de kolom `User`. VIN plus gebruikersnaam in
+   één record is via het RDW herleidbaar tot een kentekenhouder, en het
+   akkoordscherm van pidlane-klant.js beloofde het tegendeel.
+
+   Wat er nu in de kolom `VIN` staat: `<WMI>:<16 hex>`, bijvoorbeeld
+   `JM3:9f2c…`. Dezelfde pseudoniemfunctie als Veldlab, dus dezelfde auto
+   krijgt in beide tabellen hetzelfde staartje en logregels blijven te
+   koppelen aan een Veldlab-sessie — precies waarvoor de kolom werd gebruikt.
+
+   De kolomNAAM blijft `VIN`. Een nieuwe naam zou een veld zijn dat in de
+   Airtable-logtabel niet bestaat, en `typecast:true` maakt geen velden aan:
+   dat geeft 422 UNKNOWN_FIELD_NAME en dan valt álle logging om. De inhoud
+   is veranderd, de kolom niet.
+
+   Lukt het pseudonimiseren niet (geen crypto.subtle buiten een secure
+   context, of pidlane-veldlab.js niet geladen), dan blijft alleen de WMI
+   staan — de fabrikantcode, die niets over een individueel voertuig zegt.
+   Wat er in geen enkel geval nog gebeurt, is terugvallen op de ruwe VIN. */
+async function _plVinVoorLog(vin){
+  const ruw=String(vin||'');
+  if(!ruw) return '';
+  const wmi=ruw.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,3);
+  try{
+    if(typeof _vlVinPseudoniem!=='function') return wmi;   // module niet geladen
+    const id=await _vlVinPseudoniem(ruw);
+    return id ? wmi+':'+id : wmi;
+  }catch(e){
+    // Melden, en terugvallen op alleen de WMI — nooit op de ruwe VIN.
+    try{ console.warn('VIN niet gepseudonimiseerd voor de log — alleen de WMI gaat mee', e); }catch(_){ /* stil: console kan ontbreken */ }
+    return wmi;
+  }
+}
+
 async function logToSheets(type, message, extra={}){
   // Controleer of Airtable geconfigureerd is. NB: verzending loopt via de
   // Worker (X-App-Token) — de Airtable-token hoort server-side en de client
@@ -655,14 +693,19 @@ async function logToSheets(type, message, extra={}){
   if(typeof AIRTABLE_URL==='undefined'||!AIRTABLE_URL) return;
   try{
     const v=vehicleInfo||{};
+    // Tijdstip vóór de await pakken: het pseudonimiseren duurt een tick en
+    // anders schuift de Timestamp op ten opzichte van het moment dat de
+    // regel werd gelogd.
+    const ts=new Date().toISOString();
+    const vinId=await _plVinVoorLog(v.vin);
     _atBuffer.push({
       fields:{
-        Timestamp:  new Date().toISOString(),
+        Timestamp:  ts,
         Type:       String(type||'info'),
         Message:    String(message||'').slice(0,500),
         Merk:       String(v.merk||''),
         Year:       String(v.year||''),
-        VIN:        String(v.vin||''),
+        VIN:        vinId,
         Protocol:   String(selectedNetwork?.name||''),
         ActivePIDs: [...(activePIDs||[])].join(' '),
         // Terugval was '2.1' — dan staat er in Airtable een versienummer dat
@@ -750,7 +793,7 @@ function openBugReport(){
       </div>
       <div style="overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
         <div style="font-size:12px;color:var(--tx3);line-height:1.5;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px">
-          📎 Automatisch meegestuurd: ${d.device} · app ${d.app} · ${d.voertuig} · ${d.protocol} · ${d.conn}
+          📎 Automatisch meegestuurd: ${d.device} · app ${d.app} · ${d.voertuig} · ${d.protocol} · ${d.conn}${d.user?' · je account ('+d.user+')':''}${d.vin?' · chassisnummer '+d.vin:''}
         </div>
         <div>
           <label style="font-size:13px;font-weight:700;display:block;margin-bottom:5px">Wat ging er mis? *</label>

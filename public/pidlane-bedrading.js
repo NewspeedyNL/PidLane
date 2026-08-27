@@ -54,6 +54,12 @@ var KRITIEK = [
   'uitlogBezig','uitlogVlagAan',
   'updPID','updateSLToggleIcon',
   'vehicleFuelType','vlFullSurvey','withBus',
+  // Pseudonimiseren van de VIN (pidlane-veldlab.js). logToSheets in
+  // pidlane-auth.js zit achter een guard omdat auth.js eerder laadt dan
+  // veldlab.js; bij de aanroep staat de functie er wel. Verdwijnt hij, dan
+  // valt _plVinVoorLog terug op alleen de WMI en gaat er stil minder mee dan
+  // bedoeld -- daarom hoort hij hier en niet in GEEN_GLOBALE.
+  '_vlVinPseudoniem',
   // Deze twee stonden in PIDLANE.md als bedraad maar waren dat niet. Ze staan
   // hier zodat dat niet nog eens ongemerkt kan gebeuren.
   'herijkPidGate','pidToevoegen','pidOpruimen','pidOpgeruimdLijst',

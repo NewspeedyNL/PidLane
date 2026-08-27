@@ -30,9 +30,18 @@ de build zien en niet in de reviewmail.
 **De prominente disclosure staat er.** `pidlane-privacy.js`, getoond vanuit
 `connectSerial()` vóórdat Android om "apparaten in de buurt" vraagt. Eigen
 scherm, alleen over Bluetooth en voertuiggegevens, met een weigerknop die
-werkt. Het akkoordscherm voor geanonimiseerde meetdata (`pidlane-klant.js`)
+werkt. Het akkoordscherm voor het delen van meetdata (`pidlane-klant.js`)
 staat daar bewust los van: Google verbiedt het samenvoegen van een
 data-disclosure met andere mededelingen.
+
+> **27-08-2026 — let op bij het invullen van de Data safety-vragenlijst.** Dat
+> akkoordscherm sprak tot die datum van "geanonimiseerde" meetdata, en dat was
+> onjuist: de VIN wordt gepseudonimiseerd, niet geanonimiseerd. Google's
+> vragenlijst kent "Data is anonymized" als expliciete keuze en die mag hier
+> **niet** aangevinkt worden — een pseudoniem dat met een bekende VIN na te
+> rekenen is, telt als persoonsgegeven. Vink aan dat er voertuiggegevens worden
+> verzameld en gedeeld. Een Data safety-formulier dat afwijkt van wat de app
+> doet, is een van de vaakst genoemde afwijzingsgronden.
 
 **De privacyverklaring bestaat**, op `/privacy.html`, en de app linkt ernaar.
 Vul het contactadres in vóór de inzending — `info@pidlane.nl` moet echt

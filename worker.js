@@ -1,3 +1,40 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   worker.js — de complete Cloudflare Worker. DIT BESTAND IS DE BRON.
+   ──────────────────────────────────────────────────────────────────────────
+   Vastgelegd 27-08-2026, omdat het tot nu toe nergens stond en het aan de
+   vorm van dit bestand niet af te lezen is.
+
+   Dit ís een esbuild-uitvoer, ooit. Je ziet het aan de `__defProp`/`__name`-
+   regels hieronder, aan `worker_default` en aan de `@__PURE__`-markeringen in
+   commentaar. Maar de esbuild-invoer bestaat niet meer en er is geen
+   buildstap: Cloudflare Workers Builds neemt bij `git push` dit bestand zoals
+   het is. Er is dus geen "echte" bron waar dit uit voortkomt — die rol heeft
+   dit bestand zelf overgenomen. Je bewerkt het met de hand, en dat doet
+   iedereen hier al maanden.
+
+   WAT DAT BETEKENT VOOR EEN WIJZIGING
+
+   · Bewerk worker.js rechtstreeks. Zoek niet naar een `src/`-map en zet er
+     ook geen op: die zou vanaf dag twee uit de pas lopen met wat er draait.
+   · Houd de `__name`-conventie aan. Elke top-level `function X` krijgt er
+     `__name(X, "X");` achteraan, en een functie-expressie krijgt de vorm
+     `__name((...) => ..., "naam")`. Puur cosmetisch is dat niet: `__name`
+     zet de `.name` van de functie, en dat is wat er in een stacktrace in de
+     Cloudflare-logs terechtkomt. Sla je het over, dan heet je functie daar
+     `(anonymous)` op het moment dat je hem het hardst nodig hebt.
+   · Niet opnieuw door een bundler halen. Dat herschrijft het hele bestand,
+     maakt de diff onleesbaar en gooit het Nederlandse commentaar weg dat op
+     tientallen plekken uitlegt waaróm iets zo staat. Dat commentaar is hier
+     de dure helft.
+   · `plcheck.sh` draait `node --check` op dit bestand. Dat is de vangnet-
+     controle vóór een push; de testgate in CI doet hetzelfde.
+
+   Er stond hier tot 27-08-2026 een `//# sourceMappingURL=worker.js.map` aan
+   het eind. Die map is er nooit geweest in deze repo — het was een restant
+   van de build waar dit ooit uit kwam. Weggehaald: een verwijzing naar een
+   bestand dat niet bestaat kost een 404 bij elke devtools-sessie en suggereert
+   bovendien dat er ergens een originele bron ligt. Die ligt er niet.
+   ══════════════════════════════════════════════════════════════════════════ */
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -2168,15 +2205,35 @@ async function klantAuth(request, env) {
 }
 __name(klantAuth, "klantAuth");
 
+// Moment waarop de toestemmingstekst inhoudelijk is gecorrigeerd: de claim dat
+// de meetdata anoniem is, is vervangen door de juiste omschrijving — delen
+// onder een pseudoniem (zie de AVG-alinea bij handleKlantOnboarding). Een
+// akkoord van vóór dit moment is
+// gegeven op een tekst die de verwerking verkeerd omschreef, en dat akkoord
+// is aanvechtbaar — dus telt hier niet meer als geldig.
+//
+// Bewust GEEN nieuw Airtable-veld voor het versienummer. AkkoordOp bestaat al
+// en wordt al bij elk akkoord bijgewerkt; een geschreven-veldnaam die nog niet
+// in de Klanten-tabel bestaat geeft 422 UNKNOWN_FIELD_NAME op de PATCH — zie
+// de VIN-logregel hierboven voor waar dat al eens misging. Hergebruik van een
+// bestaand veld is hier dus niet netheid maar het verschil tussen wel en niet
+// werken.
+const AKKOORD_TEKST_SINDS = "2026-08-27T00:00:00.000Z";
+
 function klantPubliek(rec) {
   const f = rec && rec.fields || {};
+  const akkoordOp = f.AkkoordOp ? new Date(f.AkkoordOp) : null;
+  const akkoordActueel = !!(akkoordOp && !isNaN(akkoordOp) &&
+    akkoordOp.toISOString() >= AKKOORD_TEKST_SINDS);
   return {
     email: f.Email || "",
     naam: f.Naam || "",
     saldo: Number(f.Saldo || 0),
     status: f.Status || "actief",
-    // Vertelt de app of het scherm met akkoorden nog getoond moet worden.
+    // Vertelt de app of het akkoordscherm nog getoond moet worden: geen
+    // eerder akkoord, óf een akkoord op de inmiddels achterhaalde tekst.
     startTegoed: f.StartTegoedGegeven === true,
+    akkoordActueel,
     akkoorden: Array.isArray(f.Akkoorden) ? f.Akkoorden.slice() : []
   };
 }
@@ -2830,9 +2887,26 @@ __name(handleAdminCodesPost, "handleAdminCodesPost");
 //
 // AVG — twee soorten toestemming, bewust uit elkaar gehouden:
 //   survey + anondata → functioneel. Dit is wat PidLane doet: je auto
-//     uitlezen en geanonimiseerde meetwaarden gebruiken om de
+//     uitlezen en gepseudonimiseerde meetwaarden gebruiken om de
 //     referentiedatabase te voeden. Zonder dat is de app zinloos, dus dit
 //     mag voorwaarde zijn.
+//
+//     De akkoordsleutel heet `anon`/`anondata` en dat blijft zo — de naam
+//     staat in bestaande records. Maar de lading is pseudonimisering, niet
+//     anonimisering: _vlSchoonVoorVerzending() in pidlane-veldlab.js ruilt
+//     de VIN om voor SHA-256(zout + VIN) met een zout dat in clientcode
+//     staat, en een pseudoniem blijft onder de AVG een persoonsgegeven.
+//     De teksten die de gebruiker leest (onboardingscherm in
+//     pidlane-klant.js, privacy.html, de melding hieronder) zeggen dat
+//     sinds 27-08-2026 ook met zoveel woorden. Verandert die verwerking,
+//     dan gaan die drie plekken mee.
+//
+//     Wie zijn akkoord al vóór 27-08-2026 gaf, deed dat op de onjuiste tekst.
+//     klantPubliek() (`akkoordActueel`, zie AKKOORD_TEKST_SINDS hierboven in
+//     dit bestand) rekent zo'n akkoord niet meer als geldig, en het
+//     onboardingscherm verschijnt dan opnieuw bij de eerstvolgende login —
+//     zónder het proeftegoed nog eens uit te keren, want `alGehad` hieronder
+//     blijft op StartTegoedGegeven staan en telt los van AkkoordOp.
 //   nieuwsbrief → marketing. Dit mag NOOIT voorwaarde zijn voor het
 //     proeftegoed. Toestemming moet vrij gegeven zijn (AVG art. 7 lid 4);
 //     een beloning eraan koppelen maakt haar aanvechtbaar. De vraag staat
@@ -2851,7 +2925,7 @@ async function handleKlantOnboarding(request, env) {
   try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
 
   if (b.survey !== true || b.anon !== true)
-    return json({ ok: false, error: "Akkoord met uitlezen en geanonimiseerde data is nodig om PidLane te gebruiken." }, 400);
+    return json({ ok: false, error: "Akkoord met uitlezen en het delen van gepseudonimiseerde meetdata is nodig om PidLane te gebruiken." }, 400);
 
   try {
     const akkoorden = ["survey", "anondata"];
@@ -2979,4 +3053,3 @@ export {
   RemoteSessionDO,
   worker_default as default
 };
-//# sourceMappingURL=worker.js.map

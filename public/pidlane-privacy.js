@@ -18,7 +18,7 @@
    scherm dat alleen over Bluetooth en voertuiggegevens gaat — er staat
    geen nieuwsbrief, geen tegoed en geen algemene voorwaarden bij. Het
    akkoordscherm van pidlane-klant.js (openOnboarding) blijft bestaan en
-   gaat over iets anders: het delen van geanonimiseerde meetdata. Ze zijn
+   gaat over iets anders: het delen van gepseudonimiseerde meetdata. Ze zijn
    bewust NIET samengevoegd, hoe verleidelijk dat ook is.
 
    WAAR HET STAAT IN DE FLOW
@@ -44,7 +44,8 @@
 (function () {
   'use strict';
 
-  const DISCLOSURE_VERSIE = 2;              // ophogen bij inhoudelijke wijziging
+  const DISCLOSURE_VERSIE = 3;              // ophogen bij inhoudelijke wijziging
+                                            // 3 (27-08-2026): VIN-regel benoemt het pseudoniem
   const SLEUTEL = 'pl_bt_disclosure';
   const PRIVACY_URL = 'https://app.pidlane.nl/privacy.html';
 
@@ -70,7 +71,9 @@
       'De ritopname kon tot augustus 2026 optioneel de hoogte meenemen; die functie is verwijderd.'],
     ['🚗', 'Wat er uit de auto komt',
       'Foutcodes, sensorwaarden, motorgegevens en het chassisnummer (VIN). Die gegevens gaan naar het ' +
-      'scherm en, als je om een AI-analyse vraagt, naar onze server om daar een rapport van te maken.'],
+      'scherm en, als je om een AI-analyse vraagt, naar onze server om daar een rapport van te maken. ' +
+      'Het chassisnummer zelf blijft op je toestel: in de referentiedata die je apart deelt staat er ' +
+      'een uit dat nummer berekende code in de plaats. Dat is een pseudoniem, geen anonimisering.'],
     ['💾', 'Wat er bewaard wordt',
       'Metingen en logboeken staan op je eigen toestel. Vraag je een analyse aan, dan wordt de meting ' +
       'op onze server verwerkt en bewaard bij je account. Je kunt ze daar verwijderen.']
