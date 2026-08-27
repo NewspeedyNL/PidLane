@@ -3,7 +3,7 @@
 Bijgewerkt: 20-08-2026. Nagelopen op de repo zoals hij nu is.
 
 Dit gaat alleen over de Android-kant en de review. Voor de app zelf:
-`PIDLANE.md`. Voor het werkplan: `PLAN.md`.
+`PIDLANE.md`. Voor wat er nu speelt: de GitHub-issues.
 
 ---
 

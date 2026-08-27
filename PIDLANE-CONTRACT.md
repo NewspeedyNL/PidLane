@@ -1,6 +1,10 @@
 # PidLane — het contract tussen meten en gebruiken
 
-Versie 0.1 — 25-08-2026 — **ontwerp, nog niet gebouwd**
+Versie 0.2 — 27-08-2026 — **ontwerp, nog niet gebouwd**
+
+> De vier besluiten uit §9 zijn op 27-08-2026 genomen. Ze zijn hieronder in de
+> tekst verwerkt; §9 legt vast wat er gekozen is en waarom, zodat de afweging
+> niet verdwijnt als de keuze later ter discussie staat.
 
 Dit document beschrijft één afspraak: wat een meting is als hij de meetlaag
 verlaat. Er staat geen code in en er verandert nog niets aan de app. Het is
@@ -79,7 +83,9 @@ negeert krijgt dan `null` en niet een getal dat toevallig geloofwaardig oogt.
 mensentaal — hij komt letterlijk in het AI-rapport en in het logboek terecht.
 
 **`bron`** is `ecu`, `afgeleid` (berekend uit andere PIDs), `profiel` (uit het
-opgeslagen VIN-profiel, dus niet vers gemeten) of `demo`.
+opgeslagen VIN-profiel, dus niet vers gemeten) of `demo`. Staat er ergens in een
+sessie `demo`, dan moet dat bovenaan het rapport en in de gearchiveerde versie
+komen te staan — zie besluit 4 in §9.
 
 **`gemetenOp`** is een epoch-timestamp in milliseconden, **UTC**. Zie §6.
 
@@ -94,17 +100,28 @@ opruimregel; er wordt geen nieuw vocabulaire uitgevonden waar er al een is.
 |---|---|---|---|
 | `gemeten` | vers antwoord, binnen bereik, beweegt | getal | meetlaag |
 | `stabiel` | vers antwoord, binnen bereik, beweegt niet — kan legitiem zijn (koelwater bij warme motor) | getal | meetlaag |
-| `verdacht` | binnen bereik maar bevroren waar beweging hoort, of buiten `PID_HARD_LIMITS` | **null** | waakronde / PLWatch |
+| `verdacht` | bevroren terwijl `moetBewegen` het uitsluit, of buiten `PID_HARD_LIMITS` | **null** | waakronde / PLWatch |
 | `rauw` | geen definitie, waarde is een ongeschaalde byte | **null** | de gate, bij het opzoeken van de definitie |
 | `stil` | gepollt, geen antwoord | **null** | meetlaag |
 | `nietGemeten` | deze sessie niet gepollt | **null** | de gate |
 | `opgeruimd` | door de opruimregel uit `activePIDs` verwijderd | **null** | opruimregel |
 | `ontkend` | steunbit zegt nee | **null** | steunbitcontrole |
 
-Het onderscheid tussen `stabiel` en `verdacht` is het lastigste en het is
-bewust niet automatisch te beslissen. Koelwater dat bij 92 °C stilstaat is
-gezond; raildruk die bij 9900 stilstaat is dat niet. Dat verschil zit in de
-PID-definitie, niet in de meting — zie de openstaande besluiten (§9).
+Het onderscheid tussen `stabiel` en `verdacht` zit in de PID, niet in de
+meting: koelwater dat bij 92 °C stilstaat is gezond, raildruk die bij 9900
+stilstaat niet. Dat verschil wordt vastgelegd met één nieuw, **optioneel** veld
+in `ALL_PID_DEFS`:
+
+```
+moetBewegen: 'draait'    // motor draait  → stilstand is onmogelijk
+moetBewegen: 'rijden'    // in beweging   → stilstand is onmogelijk
+```
+
+Een PID **zonder** dat veld kan nooit `verdacht` worden op grond van stilstand;
+die blijft `stabiel`. Zo kost een tabel van ~55 ingangen geen 55 oordelen, en
+levert een vergeten ingang geen vals alarm op maar hooguit een gemiste vangst.
+Vullen doe je alleen waar stilstand fysiek uitgesloten is — raildruk, toerental,
+MAF, inspuittijd — en dat is een stuk of acht. Besluit 1, §9.
 
 `rauw` is nieuw en volgt rechtstreeks uit de `0155`-vondst. Zodra een PID
 zonder definitie binnenkomt is de waarde per definitie betekenisloos, hoe
@@ -127,6 +144,7 @@ plausibel hij er ook uitziet.
   monsters:        1295,
   hz:              1,
   segmenten:       { rijden: 798, stil: 268, onbekend: 229 },
+  langsteGatRijdenS: 167,
   herverbindingen: 9,
   achtergrond:     14,
   actievePIDs:     24,
@@ -134,11 +152,15 @@ plausibel hij er ook uitziet.
 }
 ```
 
-**`volledigheid`** is `gemetenS / duurS` en is het getal dat een afnemer moet
-lezen voordat hij iets over een verloop zegt.
+**`volledigheid`** is `gemetenS / duurS` en is het eerste van twee getallen die
+een afnemer moet lezen voordat hij iets over een verloop zegt. Het tweede is
+`langsteGatRijdenS`: de langste ononderbroken stilte die in een rijdend segment
+viel. Eén percentage verbergt namelijk juist wat je wilt weten — 0,78 verdeeld
+over stilstand is iets anders dan 0,78 met één gat van 167 s middenin het
+rijden. Zie de drempel in §7.
 
 **`achtergrond`** telt hoe vaak de app naar de achtergrond ging. Dat is de
-oorzaak van de gaten en van de herverbindingen (zie `PIDLANE-WERK.md`), en het
+oorzaak van de gaten en van de herverbindingen (zie `PIDLANE.md` §11), en het
 hoort in de dekking omdat het de betrouwbaarheid van de hele sessie raakt.
 
 **`gaten`** staat er voluit in, niet alleen als totaal. Een gat van 167 seconden
@@ -174,9 +196,18 @@ turbo" mag nooit volgen uit `nietGemeten`. Dit is precies de fout die
 `_boostPhantom()` moest voorkomen en die nu ongetest is.
 
 **Regel 3 — de dekking hoort in het oordeel.** Zegt een afnemer iets over een
-verloop, een trend of een gemiddelde, dan moet `volledigheid` erin meegewogen
-zijn. Onder een nader te bepalen drempel (§9) mag er geen uitspraak over
-verloop gedaan worden, alleen over losse waarnemingen.
+verloop, een trend of een gemiddelde, dan moet de dekking erin meegewogen zijn.
+De drempel heeft twee voorwaarden en ze moeten **allebei** gehaald worden:
+
+| | |
+|---|---|
+| `volledigheid` | ≥ 0,85 |
+| `langsteGatRijdenS` | ≤ 60 |
+
+Wordt één van beide niet gehaald, dan mag er geen uitspraak over verloop gedaan
+worden — alleen over losse waarnemingen, en met de reden erbij. De rit van 23-08
+(0,78; langste gat 167 s tijdens het rijden) valt daarmee op beide gronden af,
+en dat is de bedoeling: die rit voelde te mager en was het ook. Besluit 2, §9.
 
 ### Wat de AI-prompt concreet moet krijgen
 
@@ -228,32 +259,63 @@ oplevert.
 STPX. De adapter blijkt een STN2255, en als de transportlaag daarop overgaat
 verandert het gedrag van de meetlaag — batchgroottes, timeouts, `PLPidLen`, de
 terugval van drie-naar-één. Het contract raakt daar niet door van vorm, maar de
-tussenlaag uit stap 1 wel. Eerst STPX, dan dit.
+tussenlaag uit stap 1 wel.
+
+**Die voorwaarde staat inmiddels op losse schroeven.** Drie metingen met blok 13
+geven STPX geen enkele voorsprong: +8% trager (4.7, stilstand), −1% (4.8,
+stilstand) en +13% trager op een drukkere bus (26-08, `gemMs` 196, bezet 90%).
+Drie keer dezelfde richting. Bevestigt de rit met alle vier de aanvragers dat
+beeld, dan vervalt deze voorwaarde en kan stap 1 meteen beginnen — dan wordt de
+STPX-sessie geschrapt in plaats van ingepland.
 
 ---
 
-## 9. Openstaande besluiten — voor Nico
+## 9. De vier besluiten — genomen op 27-08-2026
 
-Deze vier bepalen de vorm en ik wil er niet zelf over beslissen.
+Ze stonden hier open omdat ze de vorm van het contract bepalen. Hieronder wat er
+gekozen is en waarom; de tekst hierboven is er al op aangepast. De afweging
+blijft staan, want over een half jaar is de vraag "waarom eigenlijk?" en niet
+"wat ook alweer?".
 
-**1. `stabiel` versus `verdacht`.** Het onderscheid zit in de PID: van sommige
-sensoren is stilstand normaal, van andere niet. Dat vraagt een veld in
-`ALL_PID_DEFS`, zoiets als `beweegtBij: 'rijden'` of `magStilstaan: true`. Dat
-is een aanpassing in een tabel met ~55 ingangen. Wil je dat, of houden we het
-voorlopig bij één klasse `stabiel` en laten we het oordeel aan de afnemer?
+**1. `stabiel` versus `verdacht` → een opt-in veld `moetBewegen`, korte lijst.**
+Niet alle ~55 ingangen een oordeel geven, maar alleen de sensoren waar stilstand
+met draaiende motor fysiek onmogelijk is. De reden is de richting waarin een
+vergissing uitpakt: een ontbrekend veld levert een gemiste vangst op, een fout
+ingevuld veld zet een gezonde sensor permanent op `verdacht`. Het eerste kost
+een bevinding, het tweede kost vertrouwen in het hele oordeel. Begin daarom bij
+raildruk (`0123`/`0159`), toerental, MAF en inspuittijd, en vul de rest pas aan
+als een meting daar aanleiding toe geeft.
 
-**2. De drempel voor `volledigheid`.** Onder welk percentage mag een afnemer
-niets meer over een verloop zeggen? Ik zou 0,7 voorstellen, maar dat is een
-gok — de rit van 23-08 zat op 0,78 en dat voelde al te mager.
+**2. De drempel → `volledigheid` ≥ 0,85 én geen gat langer dan 60 s tijdens het
+rijden.** Twee voorwaarden in plaats van het voorgestelde ene getal van 0,7. De
+rit van 23-08 is precies waarom: die zat op 0,78 — ruim boven 0,7 — en had
+tegelijk één gat van 167 seconden middenin het rijden. Eén percentage kan dat
+niet uitdrukken, want het middelt de plek van het gat weg. Daarvoor is
+`langsteGatRijdenS` aan §5 toegevoegd.
 
-**3. Waar dit document hoort.** Los bestand (zoals nu) of een hoofdstuk in
-`PIDLANE.md`? Los is makkelijker te herzien; in `PIDLANE.md` is het beter
-vindbaar. Ik neig naar los, met een verwijzing vanuit `PIDLANE.md` §4.
+**3. Waar dit document hoort → los, en het verhuist bij oplevering.** Zolang dit
+ontwerp is, blijft het een eigen bestand met een verwijzing vanuit `PIDLANE.md`
+§4; makkelijker te herzien, en `PIDLANE.md` beschrijft wat er drááit. Zodra de
+tussenlaag er staat verhuist de beschrijving naar `PIDLANE.md` en verdwijnt dit
+bestand. Dat is bewust een opdracht en geen keuze achteraf: twee beschrijvingen
+van hetzelfde die naast elkaar blijven liggen, is hier al drie keer een bug
+geweest.
 
-**4. Wat er met `demo` gebeurt.** Demo-data heeft per definitie kwaliteit
-`gemeten`, maar bron `demo`. Mag de AI daar een rapport op baseren, of moet er
-een expliciete waarschuwing in? Nu gebeurt het eerste, en voor een gratis
-etalageversie kan dat prima zijn — maar dan wel bewust.
+**4. Demo → wél een AI-rapport, mét verplichte vermelding en op een kort
+budget.** Een demo zonder rapport laat juist het onderdeel weg dat je wilt
+tonen. Twee voorwaarden dus:
+
+- **Vermelding.** `bron: 'demo'` staat bovenaan het rapport, in het
+  gearchiveerde rapport én in de prompt. Zonder dat kan een demorapport voor een
+  echte diagnose worden aangezien, en dat kan nu wel.
+- **Kort budget.** Demo krijgt een eigen, ingekorte prompt en een lage
+  `max_tokens`. Dat is geen zuinigheid maar noodzaak: `_vrijgesteld()` in
+  `pidlane-credits.js` geeft `true` bij `demoMode`, dus een demogebruiker betaalt
+  niet — de rekening komt op het projectaccount. Zonder plafond is de
+  etalageversie een open kraan. Bij de bouw hoort daar een teller per sessie
+  bij, en de vraag of er nog een tweede blokkade zit: `sendCmd()` weigert in
+  demo (`pidlane-bt.js:1058`), maar of dat het rapportpad raakt is niet
+  uitgezocht.
 
 ---
 

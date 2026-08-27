@@ -1,10 +1,13 @@
 # PIDLANE.md — architectuurkaart
 
 > Doel van dit bestand: Claude (of een nieuwe medewerker) moet hiermee weten
-> **welk bestand je nodig hebt** zonder de code te lezen. Zet dit in de
-> project-kennisbank. Bij elke structuurwijziging bijwerken.
+> **welk bestand je nodig hebt** zonder de code te lezen. Het staat in de repo en
+> nergens anders — een kopie in een kennisbank loopt achter en gaat de code
+> tegenspreken. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-08-27 — toestemmingsteksten kloppen weer met de
+> Laatst bijgewerkt: 2026-08-27 — werkafspraken herschreven voor het werken
+> rechtstreeks in de repo (§9), `CLAUDE.md` en `PROJECT-INSTRUCTIES.md` erbij.
+> Daarvóór dezelfde dag: toestemmingsteksten kloppen weer met de
 > verwerking (pseudoniem, niet anoniem), tweede VIN-lek in de logroute dicht,
 > akkoord op de oude tekst telt niet meer mee, `worker.js` vastgelegd als
 > eigen bron, auto-merge na een groene testgate, topbar van vier chips naar
@@ -87,6 +90,9 @@ PidLane/
 ├─ wrangler.toml                    assets + R2 + DO-bindings
 ├─ capacitor.config.json            webDir "www", server.url app.pidlane.nl
 ├─ plcheck.sh                       validatie voor een commit (zie §11)
+├─ CLAUDE.md                        werkregels die Claude Code elke sessie leest (§9)
+├─ PIDLANE-CONTRACT.md              ontwerp: meetkwaliteit en sessiedekking (nog niet gebouwd)
+├─ PROJECT-INSTRUCTIES.md           de tekst voor het instructieveld van het Claude-project
 ├─ .github/workflows/
 │  ├─ build-apk.yml                 APK- en .aab-build
 │  ├─ tests.yml                     testgate: draait plcheck.sh op elke push
@@ -532,47 +538,59 @@ de Durable Object de plek om het saldo te serialiseren.
 
 ## 9. Werkafspraken
 
-**Drie bestanden, drie rollen.** `PIDLANE.md` beschrijft hoe het systeem in
-elkaar zit (bron van waarheid), `OVERDRACHT.md` wat er in de laatste sessies
-gebeurd is en waar de volgende begint, `PLAN.md` wat er nog moet gebeuren en in
-welke volgorde. Begin een sessie in `PLAN.md`, eindig er ook. Start je een
-nieuwe chat, plak dan `OVERDRACHT.md` erin — dat is de kortste weg naar
-werkende context zonder de hele repo te delen.
+**Sinds 27-08-2026 gaat het werk rechtstreeks door de repo.** Claude Code leest
+en wijzigt de bestanden zelf; er worden geen modules meer in een chat geplakt en
+er komt geen delta-zip meer uit een sessie. Wat daarvan aan afspraken overblijft
+staat hieronder; de dagelijkse regels staan in `CLAUDE.md` in de repo-root, en
+de houding waarmee er gewerkt wordt in `PROJECT-INSTRUCTIES.md` (de tekst in het
+instructieveld van het Claude-project).
 
-- **Nederlandstalige codebase.** Commentaar, changelogs, UI-teksten: Nederlands.
+**Twee documenten en een issuelijst.** `PIDLANE.md` beschrijft hoe het systeem
+in elkaar zit (bron van waarheid) en houdt in §11 bij wat er bekend en
+onopgelost is; `PIDLANE-CONTRACT.md` is het ontwerp voor meetkwaliteit dat nog
+gebouwd moet worden. Wat er nú speelt staat in de GitHub-issues.
+
+`PLAN.md`, `OVERDRACHT.md`, `OVERDRACHT-NIEUWE-CHAT.md`, `LEESMIJ-DELTA.md` en
+`PIDLANE-WERK.md` zijn op 27-08-2026 opgeheven. Ze waren allemaal een vorm van
+hetzelfde: een document dat een chat moest overleven omdat de volgende sessie
+niet bij de repo kon. Dat is niet meer zo. Wat er nog open in stond staat in
+§11.
+
+- **Nederlandstalige codebase.** Commentaar, changelogs, commitberichten,
+  PR-titels en UI-teksten: Nederlands.
 - **Een PR wacht op de testgate, niet op aandacht.** `automerge.yml` voegt hem
   samen zodra de workflow *Tests* groen afrondt. Wil je dat een PR blijft
   liggen, zet er het label `handmatig` op of hou hem in draft — dat zijn de
   twee remmen. De workflow draait altijd de versie die op `main` staat, dus
   een PR die `automerge.yml` zelf wijzigt gaat die ene keer met de hand.
-- **Complete, gevalideerde bestanden** — nooit patch-blokken in de chat.
-  Sinds de opsplitsing: complete *module*bestanden, niet complete `index.html`.
-  `worker.js` (134 KB) is inmiddels ook te groot voor de chat: lever die als
-  downloadbaar bestand. Bewerk hem rechtstreeks — hij is zijn eigen bron, zie §6.
-- Vóór elke oplevering: **`plcheck.sh`** in de repo-root. Die doet syntaxcontrole
-  op alle bestanden, draait alle `test-*.js` (38 op 27-08-2026 — tel ze liever
-  dan dit getal te geloven), telt de div-balans van `index.html` en
-  `admin.html`, controleert dat elke module in `index.html` hangt en dat
-  `pidlane-bedrading.js` achteraan staat. Draait in Termux op de telefoon.
-  Bij geldcode ook een echte test met gestubte Airtable en Anthropic.
+- **Samenvoegen is deployen.** Cloudflare Workers Builds pakt de push naar
+  `main` en zet hem live. Er zit geen mens tussen de PR en de klant; daarom moet
+  de gate vóór de push groen zijn, niet erna.
+- Vóór elke oplevering: **`plcheck.sh`** in de repo-root. Die doet
+  syntaxcontrole op alle bestanden, draait alle `test-*.js` (38 op 27-08-2026 —
+  tel ze liever dan dit getal te geloven), telt de div-balans van `index.html`
+  en `admin.html`, controleert dat elke module in `index.html` hangt en dat
+  `pidlane-bedrading.js` achteraan staat. Exit 0 is de enige uitkomst waarna je
+  mag committen. `tests.yml` draait hetzelfde in CI, plus een sleutelscan.
 - **Bij elke oplevering ook `CAMPAGNE` en `_blok5()` in `pidlane-testrun.js`
   herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
   toegevoegd én verwijderd. Zie §20.
 - Build-changelog bovenaan `index.html` (HTML-commentaar).
-- `str_replace` voor chirurgische bewerkingen, met uniciteitscontrole.
-- Mechanisch en inhoudelijk wijzigen nooit in dezelfde stap.
+- Chirurgische bewerkingen met een unieke zoekstring, niet met een hele
+  bestandsherschrijving — dan blijft de diff leesbaar.
+- Mechanisch en inhoudelijk wijzigen nooit in dezelfde commit.
+- `worker.js` bewerk je rechtstreeks: hij is zijn eigen bron, zie §6.
 
 ### Zuinig omgaan met context
 
-Deel **alleen de module waar je aan werkt**. De hele repo als zip kost
-~500 K tokens; één module kost er 5–20 K. Weet je niet welke module?
-Zoek in de tabel in §4 — daar staat dit bestand voor.
+De repo staat er nu in zijn geheel, en dat is precies waarom dit blijft gelden:
+alles kúnnen lezen is niet hetzelfde als alles moeten lezen. `index.html` is
+203 KB, `worker.js` 134 KB, `pidlane.css` 157 KB — één zo'n bestand blind
+inladen kost de ruimte die je verderop in de sessie nodig hebt.
 
-Andersom geldt hetzelfde: laat een oplevering als **delta-zip** komen — alleen
-de gewijzigde en nieuwe bestanden, in dezelfde mapstructuur, uit te pakken over
-de werkkopie. Scheelt een factor vijf en maakt in één oogopslag zichtbaar wat
-er is aangeraakt. Let op dat `.github/` een verborgen map is: `cp -r bron/. doel/`
-neemt die mee, een bestandsbeheerder op Android meestal niet.
+Zoek gericht op naam of symbool en lees het stuk eromheen. Weet je niet in welk
+bestand iets zit, kijk dan eerst in de tabel in §4 — daar staat dit document
+voor.
 
 ---
 
@@ -585,8 +603,76 @@ neemt die mee, een bestandsbeheerder op Android meestal niet.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Bijgewerkt 20-08-2026. Voor de actuele werkvolgorde: `PLAN.md`. Wat hier staat
-is de blijvende lijst; `PLAN.md` is de kortlopende.
+Bijgewerkt 27-08-2026. **Dit is de enige blijvende lijst.** `PLAN.md`,
+`OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan niet meer; wat daar nog open stond
+is hieronder opgenomen. Kortlopend werk hoort in een GitHub-issue, niet in een
+document dat tussen twee sessies moet overleven.
+
+### Overgenomen uit `PIDLANE-WERK.md` (27-08-2026)
+
+Deze stonden daar als open genoteerd en zijn verder niet aangeraakt.
+
+- **Blok 7 trekt de omgekeerde conclusie bij een nulmeting.**
+  `const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;` in
+  `pidlane-testrun.js`: de deel-door-nul-vangst geeft `0`, en `0` valt door
+  `Math.abs(verschil) < 15` in de tak "vrijwel geen verschil". Gemeten: 0 ms
+  tegen 144 ms gepresenteerd als +0%. Twee dingen mis — `mLaag === 0` hoort een
+  eigen uitkomst te zijn ("onmeetbaar"), en een responstijd van 0 ms is
+  überhaupt geen meting en hoort niet in de groep. Treedt intermitterend op: op
+  26-08 vuurde hij niet (107 tegen 163 ms). Voedt de Slotsom, dus hij duwt een
+  conclusie de verkeerde kant op.
+- **`merkGroep()`-asymmetrie MINI versus BMW** (`pidlane-data.js:258`). MINI
+  matcht op prefix, BMW op exacte gelijkheid: "BMW 320D" wordt `BMWD`, mist de
+  vergelijking en valt terug op geen groep — dus geen merkspecifieke
+  DTC-lookup. Bij MINI is elke variant gedekt, bij BMW alleen het kale merk.
+- **Vier aanvragers op één bus.** Waakronde, bulk-recorder, caravan-tracker en
+  rijmonitor vullen de bus langs elkaar heen; PLLoad regelt er één. Gemeten op
+  26-08: eigen 41-header-uitpakwerk buiten `splitBatchResponse()` om in
+  diagbundel, graph, monitor (2×), veldlab (3×) en verify; 18 losse
+  `fetch`-aanroepen over 7 modules, en geen gedeelde `plFetch`-helper. Geen bug
+  op zichzelf — het is de vraag of dit één poort moet worden.
+- **De opruimregel is nog niet beslist.** Na hoeveel mislukte pogingen mag een
+  stille sensor uit `activePIDs`, en langs welke weg komt hij terug als hij
+  later alsnog antwoordt (koud/warm, motor uit/aan)? Zonder dat tweede bouw je
+  een zeef die sensoren voorgoed wegwerkt. Stand 26-08: vijf stille sensoren in
+  de actieve selectie (`0101`, `0121`, `012E`, `016D`, `019D`), en `019D`/`019E`
+  lezen −40/−39 — de rauwe nul met temperatuuroffset, precies de populatie
+  waarvoor de regel bestaat.
+- **Raildruk over een hele rit.** `0123`/`0159` stonden op 23-08 zevenentwintig
+  minuten stil op 9900; op 26-08 bewogen ze weer (10050 / 9890). Eén sweep van
+  18 s bewijst niets over een hele rit. Open tot de rit met alle vier de
+  aanvragers aan.
+- **De app bevriest op de achtergrond.** Android bevriest de JS-timers van de
+  WebView: pollus, recorder en logger stoppen tegelijk, en elke herverbinding
+  volgt direct op een stilte. `PLWake` dekt alleen "scherm gaat uit", niet "app
+  wordt verlaten". De echte oplossing is een foreground service (Capacitor,
+  native werk); de goedkope tussenstap is `visibilitychange` afvangen, de opname
+  als gepauzeerd markeren en bij terugkomst actief herverbinden.
+- **Twee klokbases.** De bulkrecorder schrijft UTC, de logger lokale tijd — op
+  23-08 exact twee uur verschil. Wie beide bestanden naast elkaar legt,
+  concludeert eerst dat ze niet bij elkaar horen. `PIDLANE-CONTRACT.md` §6 legt
+  UTC vast als de enige klok.
+- **Drie UI-meldingen van 23-08, nooit opgepakt.** De demo-knop op het
+  loginscherm (Engelse tekst in een Nederlandse app, loopt over twee regels en
+  botst met de versieregel — twee elementen op dezelfde plek); de bulk-recorder
+  komt niet bovenop, want de zwevende chips liggen over de modal (de modal-laag
+  en de chip-laag zijn niet geordend); en het opmerkingveld bij opslaan komt
+  niet in het bestand terecht.
+- **Kleiner.** `221166` antwoordt met `0000` bij koelwater 91 °C — dat is de
+  olietemperatuur niet, en alleen prefix `11` op header `7E0` is gescand (`7E1`
+  is onaangeroerd). Blok 1 boekt een terecht gevonden ontbrekend profiel
+  mogelijk niet als LET OP. Eén onverklaarde `err` in het BT-log van 26-08.
+  Stille sensoren kregen een categorie `onzin` naast `nodata`, zelfde populatie
+  maar een andere indeling — nakijken bij de opruimregel.
+
+### Werkregel uit de mislukte rit van 26-08
+
+Er is 27 minuten gereden en er is niets opgenomen: het toestel draaide testrun
+4.8, waarin blok 14 nog niet bestond. **Kijk vóór het wegrijden naar het
+versienummer in de kop van de testrun**, niet alleen naar blok 5 — blok 5 kan
+niet melden dat een blok ontbreekt dat in die build nog niet bestaat.
+
+### De blijvende lijst
 
 **Opgelost op 27-08:** wie vóór de tekstcorrectie akkoord gaf, gaf dat op een
 onjuiste voorstelling van zaken (meetdata heette anoniem, is pseudoniem) — dat
