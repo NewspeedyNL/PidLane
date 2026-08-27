@@ -205,8 +205,16 @@ async function vlAtFlush(){
    EERLIJK OVER WAT DIT WEL EN NIET IS: dit is pseudonimisering, geen
    anonimisering. Het zout staat in clientcode en is dus niet geheim; wie het
    heeft kan een VIN toetsen die hij al kent. Het haalt de herleidbaarheid uit
-   de opslag, maar onder de AVG blijft een pseudoniem persoonsgegeven. Laat
-   daarom de tekst van het akkoordscherm nog eens langs deze alinea leggen.
+   de opslag, maar onder de AVG blijft een pseudoniem persoonsgegeven.
+
+   NAGELOPEN 27-08-2026. Deze alinea vroeg om de akkoordtekst ernaast te
+   leggen; dat is gedaan en de tekst week af. Het onboardingscherm
+   (pidlane-klant.js), privacy.html, de BT-disclosure (pidlane-privacy.js) en
+   de foutmelding in worker.js zeiden alle vier "geanonimiseerd" en zeggen nu
+   wat er werkelijk gebeurt. Bij dezelfde ronde bleek logToSheets() in
+   pidlane-auth.js de ruwe VIN nog wél te versturen — dat pad loopt sinds
+   27-08 via _plVinVoorLog() en gebruikt de functie hieronder.
+   Verandert de verwerking hier, dan gaan die vijf plekken mee.
 
    Nieuwe velden met persoonsgegevens horen HIER afgevangen te worden en niet
    bij de opbouw van het record — dit is het enige punt waar alles langskomt. */

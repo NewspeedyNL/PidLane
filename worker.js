@@ -2830,9 +2830,19 @@ __name(handleAdminCodesPost, "handleAdminCodesPost");
 //
 // AVG — twee soorten toestemming, bewust uit elkaar gehouden:
 //   survey + anondata → functioneel. Dit is wat PidLane doet: je auto
-//     uitlezen en geanonimiseerde meetwaarden gebruiken om de
+//     uitlezen en gepseudonimiseerde meetwaarden gebruiken om de
 //     referentiedatabase te voeden. Zonder dat is de app zinloos, dus dit
 //     mag voorwaarde zijn.
+//
+//     De akkoordsleutel heet `anon`/`anondata` en dat blijft zo — de naam
+//     staat in bestaande records. Maar de lading is pseudonimisering, niet
+//     anonimisering: _vlSchoonVoorVerzending() in pidlane-veldlab.js ruilt
+//     de VIN om voor SHA-256(zout + VIN) met een zout dat in clientcode
+//     staat, en een pseudoniem blijft onder de AVG een persoonsgegeven.
+//     De teksten die de gebruiker leest (onboardingscherm in
+//     pidlane-klant.js, privacy.html, de melding hieronder) zeggen dat
+//     sinds 27-08-2026 ook met zoveel woorden. Verandert die verwerking,
+//     dan gaan die drie plekken mee.
 //   nieuwsbrief → marketing. Dit mag NOOIT voorwaarde zijn voor het
 //     proeftegoed. Toestemming moet vrij gegeven zijn (AVG art. 7 lid 4);
 //     een beloning eraan koppelen maakt haar aanvechtbaar. De vraag staat
@@ -2851,7 +2861,7 @@ async function handleKlantOnboarding(request, env) {
   try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
 
   if (b.survey !== true || b.anon !== true)
-    return json({ ok: false, error: "Akkoord met uitlezen en geanonimiseerde data is nodig om PidLane te gebruiken." }, 400);
+    return json({ ok: false, error: "Akkoord met uitlezen en het delen van gepseudonimiseerde meetdata is nodig om PidLane te gebruiken." }, 400);
 
   try {
     const akkoorden = ["survey", "anondata"];

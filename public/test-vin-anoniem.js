@@ -5,12 +5,23 @@
 // Tot 25-08-2026 stuurde vlAtPush() het hele sessierecord als JSON naar
 // Airtable, inclusief rec.veh.vin. Dat viel niet op omdat de VIN niet in een
 // eigen kolom stond maar binnen het JSON-blob — je ziet hem pas als je een
-// record opent en gaat lezen. Ondertussen vraagt het akkoordscherm toestemming
+// record opent en gaat lezen. Ondertussen vroeg het akkoordscherm toestemming
 // voor "geanonimiseerde meetdata".
 //
-// Deze test knipt de anonimiseerlaag uit pidlane-veldlab.js en voert hem echt
-// uit: hij toetst gedrag, niet de aanwezigheid van een regel tekst. Een VIN
-// die er via een nieuw veld weer in sluipt, valt hier om.
+// TWEE PADEN, NIET ÉÉN — bijgewerkt 27-08-2026. Die fix raakte alleen
+// Veldlab. logToSheets() in pidlane-auth.js schreef de volledige VIN in een
+// EIGEN kolom, op élke logregel, met de gebruikersnaam in dezelfde rij. Deel 7
+// hieronder dekt dat pad af. Beide paden delen nu één pseudoniemfunctie, dus
+// dezelfde auto krijgt in beide tabellen hetzelfde staartje.
+//
+// En let op de naam van dit bestand: het is pseudonimisering, geen
+// anonimisering. Het zout staat in clientcode. Zie de alinea boven
+// VL_VIN_ZOUT in pidlane-veldlab.js, en test-toestemmingstekst.js voor de
+// bewaking van de teksten die dat aan de gebruiker moeten uitleggen.
+//
+// Deze test knipt beide lagen uit hun bestand en voert ze echt uit: hij toetst
+// gedrag, niet de aanwezigheid van een regel tekst. Een VIN die er via een
+// nieuw veld weer in sluipt, valt hier om.
 //
 // Draaien vanuit public/:  node test-vin-anoniem.js   (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -41,7 +52,7 @@ function toets(naam, ok, detail) {
 const VIN = 'JM3KFBCL8J0123456';          // Mazda CX-5, het testvoertuig
 
 (async function () {
-  console.log('\nVIN-anonimisering\n');
+  console.log('\nVIN-pseudonimisering\n');
 
   // ── 1. de kern: geen VIN in wat er verstuurd wordt ──
   const rec = {
@@ -100,6 +111,48 @@ const VIN = 'JM3KFBCL8J0123456';          // Mazda CX-5, het testvoertuig
   catch (e) { gegooid = true; }
   toets('onserialiseerbaar record gooit i.p.v. de VIN teruggeven', gegooid,
         gegooid ? '' : 'kreeg terug: ' + (lek && lek.veh && lek.veh.vin));
+
+  // ── 7. het tweede pad: de Airtable-logregel ──
+  // Dit is het gat dat op 25-08 openbleef. vlAtPush() was schoongemaakt,
+  // maar logToSheets() in pidlane-auth.js schreef de volledige VIN in een
+  // eigen kolom, op elke logregel, met de gebruikersnaam ernaast. Sinds
+  // 27-08 loopt dat via _plVinVoorLog(). Zelfde toets als hierboven: gedrag,
+  // niet de aanwezigheid van een regel tekst.
+  const asrc = fs.readFileSync(__dirname + '/pidlane-auth.js', 'utf8');
+  const avan = asrc.indexOf('async function _plVinVoorLog');
+  const atot = asrc.indexOf('async function logToSheets');
+  if (avan < 0 || atot < 0 || atot < avan) {
+    console.error('FOUT: _plVinVoorLog niet gevonden in pidlane-auth.js.');
+    console.error('      Verwacht _plVinVoorLog ... async function logToSheets.');
+    process.exit(1);
+  }
+  const maakLog = new Function('_vlVinPseudoniem', 'console',
+    asrc.slice(avan, atot) + '\nreturn _plVinVoorLog;');
+  const _plVinVoorLog = maakLog(_vlVinPseudoniem, console);
+
+  const uitLog = await _plVinVoorLog(VIN);
+  toets('logveld bevat de ruwe VIN niet', String(uitLog).indexOf(VIN) < 0,
+        'kreeg ' + uitLog);
+  toets('logveld is WMI:pseudoniem', /^JM3:[0-9a-f]{16}$/.test(uitLog),
+        'kreeg ' + uitLog);
+  toets('logveld gebruikt hetzelfde pseudoniem als Veldlab',
+        uitLog === 'JM3:' + a, uitLog + ' vs JM3:' + a);
+  toets('lege VIN geeft een leeg logveld', (await _plVinVoorLog('')) === '');
+  toets('geen VIN-veld geeft een leeg logveld', (await _plVinVoorLog(undefined)) === '');
+
+  // Zonder de pseudoniemfunctie (pidlane-veldlab.js niet geladen) mag er
+  // hooguit een WMI overblijven — nooit een terugval op de ruwe waarde.
+  const zonderFn = maakLog(undefined, console);
+  const kaal = await zonderFn(VIN);
+  toets('zonder pseudoniemfunctie blijft alleen de WMI over', kaal === 'JM3',
+        'kreeg ' + kaal);
+
+  // En als crypto omvalt ook niet.
+  const stil = { warn: function () {} };
+  const kapot = maakLog(function () { throw new Error('geen crypto.subtle'); }, stil);
+  const naFout = await kapot(VIN);
+  toets('crypto-fout valt niet terug op de ruwe VIN',
+        String(naFout).indexOf(VIN) < 0 && naFout === 'JM3', 'kreeg ' + naFout);
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'alle ' + n + ' tests geslaagd') + '\n');
   process.exit(fout ? 1 : 0);

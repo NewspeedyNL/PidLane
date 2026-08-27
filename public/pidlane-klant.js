@@ -250,10 +250,24 @@
   // ── Akkoorden + proeftegoed ──────────────────────────────────────────
   // Verschijnt na registratie, en opnieuw bij inloggen zolang het
   // proeftegoed nog niet is opgehaald. Bewust géén wegklik-kruisje: zonder
-  // akkoord op het uitlezen en de geanonimiseerde meetdata kan de app zijn
+  // akkoord op het uitlezen en het delen van de meetdata kan de app zijn
   // werk niet doen. De nieuwsbrief staat er los onder en is optioneel — een
   // beloning koppelen aan marketingtoestemming maakt die toestemming
   // juridisch aanvechtbaar.
+  //
+  // PSEUDONIEM, NIET ANONIEM — 27-08-2026.
+  // Dit scherm noemde de meetdata tot vandaag anoniem. Dat dekte de lading
+  // niet meer sinds _vlSchoonVoorVerzending() in pidlane-veldlab.js de VIN
+  // vervangt door SHA-256(zout + VIN): het zout staat in clientcode en is dus
+  // niet geheim, wie een VIN al kent kan hem toetsen, en het vinkje `vinId`
+  // koppelt alle metingen van dezelfde auto aan elkaar. Dat is precies de
+  // definitie van pseudonimisering (AVG overweging 26) en een pseudoniem
+  // blijft een persoonsgegeven. De tekst hieronder zegt dat nu ook.
+  //
+  // De sleutels op de lijn (`anon` in de body, `anondata` in de Airtable-
+  // kolom Akkoorden) blijven bewust hun oude naam houden: die staan in
+  // bestaande records en hernoemen zou de administratie in tweeën knippen.
+  // Alleen de tekst die de gebruiker leest is veranderd.
   function openOnboarding(saldoNu) {
     const gratis = Math.round(1 / CFG.euroPerToken);
     const o = _ov('klantOnbOv');
@@ -266,10 +280,15 @@
             'Na het verbinden voert PidLane een volledige uitlezing uit: foutcodes, ' +
             'sensorwaarden en ECU-gegevens. Daar draait de diagnose op.') +
 
-          _vink('onbAnon', 'Geanonimiseerde meetdata delen',
-            'Meetwaarden zonder kenteken of persoonsgegevens worden gebruikt om ' +
-            'referentiewaarden per merk en model op te bouwen. Daar wordt de ' +
-            'diagnose voor iedereen scherper van \u2014 ook voor jou.') +
+          _vink('onbAnon', 'Meetdata delen onder een pseudoniem',
+            'Meetwaarden gaan mee zonder je naam, e-mailadres of kenteken. In ' +
+            'plaats van het chassisnummer (VIN) gaat er een uit dat nummer ' +
+            'berekende code mee, zodat metingen van dezelfde auto bij elkaar ' +
+            'blijven horen. Daarmee bouwen we referentiewaarden per merk en ' +
+            'model op \u2014 daar wordt de diagnose voor iedereen scherper van, ' +
+            'ook voor jou. Dat is pseudonimisering en geen anonimisering: wie ' +
+            'jouw chassisnummer al kent, kan die code narekenen. Onder de AVG ' +
+            'blijven het dus persoonsgegevens \u2014 je kunt ze laten verwijderen.') +
 
           '<div style="height:8px"></div>' +
           _vink('onbNieuws', 'Updates en nieuws per mail',

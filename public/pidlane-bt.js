@@ -2083,7 +2083,11 @@ async function rdwLookup(showOverview, opties){
     if(val.weggelaten.length){
       val.weggelaten.forEach(w=>log(`RDW weggelaten — ${w.label}: ${w.reden}`,'warn'));
     }
-    // Geen kenteken/VIN in dit usage-event — alleen geanonimiseerde merk/model-trend (AVG)
+    // Geen kenteken in dit usage-event — alleen een merk/model-trend (AVG).
+    // Let op: logToSheets() hangt er zelf nog kolommen aan (Merk, Year, VIN,
+    // User). Die VIN is sinds 27-08-2026 een pseudoniem, geen ruw nummer —
+    // zie _plVinVoorLog() in pidlane-auth.js. Dit commentaar beweerde tot
+    // die datum dat er niets herleidbaars meeging, en dat was onjuist.
     logUsage('rdw_kwaliteit', `${vehicleInfo.merk||'?'} ${vehicleInfo.model||''} ${jaar||'?'} brandstof=${brandstof||'?'} weggelaten=${val.weggelaten.length}`);
     // Pas voertuig-specifieke PID-preset toe als verbinding al actief is
     // kenteken gewijzigd → scenario-PIDs verversen
