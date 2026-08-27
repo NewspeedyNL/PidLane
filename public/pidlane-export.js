@@ -189,10 +189,37 @@ async function plMaakPdf(bestandsnaam, tekst, opties) {
   return doc.output('blob');
 }
 
+// ── standaardmap ───────────────────────────────────────────────────
+// Rechtstreeks naar Documenten/PidLane/ schrijven — dezelfde map die
+// savePdfToFolder() (pidlane-fuel.js) al gebruikte voor het caravan-
+// eindrapport. Vindbaar in de bestandsbeheerder, geen deelmenu nodig.
+// recursive:true maakt de map PidLane aan als die nog niet bestaat.
+async function _naarStandaardMap(blob, naam) {
+  const FS = window.Capacitor?.Plugins?.Filesystem;
+  if (!FS) return false; // plugin niet aanwezig (desktop-browser) → fallback
+  const b64 = await new Promise(function (res, rej) {
+    const r = new FileReader();
+    r.onload = function () { res(String(r.result).split(',')[1]); };
+    r.onerror = function () { rej(new Error('Lezen mislukt')); };
+    r.readAsDataURL(blob);
+  });
+  await FS.writeFile({ path: 'PidLane/' + naam, data: b64, directory: 'DOCUMENTS', recursive: true });
+  return true;
+}
+
 // ── opslaan zelf ───────────────────────────────────────────────────
 async function _bewaar(blob, naam, tekstAlsFallback) {
   try {
-    if (typeof nativeShareFile === 'function' && await nativeShareFile(blob, naam)) return true;
+    if (await _naarStandaardMap(blob, naam)) {
+      try { showToast('Opgeslagen: Documenten/PidLane/' + naam); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+      return true;
+    }
+  } catch(e){ console.warn('Opslaan in standaardmap mislukt:', e); }
+  try {
+    if (typeof nativeShareFile === 'function' && await nativeShareFile(blob, naam)) {
+      try { showToast('Opgeslagen: ' + naam); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+      return true;
+    }
   } catch(e){ console.warn('nativeShareFile mislukt:', e); }
   try {
     const a = document.createElement('a');
@@ -200,6 +227,7 @@ async function _bewaar(blob, naam, tekstAlsFallback) {
     a.download = naam;
     document.body.appendChild(a); a.click();
     setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch(e){ /* stil: element kan al weg zijn */ } }, 1500);
+    try { showToast('Opgeslagen: ' + naam); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
     return true;
   } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   try {
@@ -268,8 +296,8 @@ function plOpslaan(basisnaam, tekst, opties) {
   document.getElementById('plExpTxt').onclick = function () {
     const uit = _metOpmerking(tekst, _opm());
     sluit();
-    _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit)
-      .then(function (ok) { if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.txt'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } } });
+    // _bewaar meldt zelf waar het bestand terecht is gekomen.
+    _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit);
   };
 
   document.getElementById('plExpPdf').onclick = async function () {
@@ -280,8 +308,7 @@ function plOpslaan(basisnaam, tekst, opties) {
     try {
       const blob = await plMaakPdf(basisnaam + '.pdf', tekst, Object.assign({}, o, { opmerking: opm }));
       sluit();
-      const ok = await _bewaar(blob, basisnaam + '.pdf', null);
-      if (ok) { try { showToast('Opgeslagen: ' + basisnaam + '.pdf'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } }
+      await _bewaar(blob, basisnaam + '.pdf', null);
     } catch (e) {
       // Geen internet of bibliotheek stuk: dan is tekst beter dan niets, maar
       // wel zeggen waarom — anders lijkt het of de knop niets doet.
