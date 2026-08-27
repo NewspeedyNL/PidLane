@@ -202,6 +202,10 @@
     if (chip) chip.title = n ? n + ' achtergrondtaak/taken actief' : 'Niets actief op de achtergrond';
     const tel = document.getElementById('runTel');
     if (tel) tel.textContent = n ? String(n) : '';
+    // Zelfde telling op de samengevoegde systeem-chip — anders is een actieve
+    // achtergrondtaak onzichtbaar zolang de vier losse chips zijn ingeklapt.
+    const sysTel = document.getElementById('sysTel');
+    if (sysTel) sysTel.textContent = n ? String(n) : '';
   }
 
   // ── het paneel ────────────────────────────────────────────────────

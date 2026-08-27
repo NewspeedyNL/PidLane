@@ -573,7 +573,7 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
 .api-pill.set { background:var(--gns); color:var(--gn); border-color:#86efac; }
 .api-pill.unset { background:var(--ors); color:var(--or); border-color:#fed7aa; animation:softblink 2.6s ease-in-out infinite; }
 @keyframes softblink { 0%,100%{opacity:1} 50%{opacity:.35} }
-.pill.attn { border-color:var(--or)!important; animation:softblink 1.8s ease-in-out infinite; }
+.pill.attn, .tchip.sys.attn { border-color:var(--or)!important; animation:softblink 1.8s ease-in-out infinite; }
 /* ── Topbar statuschips: 🚗 voertuig / 📡 OBD-snelheid / 🤖 AI ── */
 .tchip { display:inline-flex; align-items:center; justify-content:center; gap:6px; height:30px; padding:0 10px; box-sizing:border-box;
   border-radius:999px; border:1px solid var(--bd); line-height:1;
@@ -588,6 +588,13 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
 #obdChip .dot:not(.on):not(.demo):not(.slow) { background:var(--rd); box-shadow:0 0 0 2px rgba(224,64,90,.2); animation:softblink 1.8s ease-in-out infinite; }
 .dot.slow { background:var(--or); box-shadow:0 0 0 2px rgba(247,127,0,.2); animation:blink 2s infinite; }
 #vchip #vtag { background:transparent; padding:0; max-width:none; }
+/* ── Systeem-chip: voertuig/OBD/AI/Run samengevoegd — zie pidlane-uihelpers.js ── */
+.tchip.sys { gap:7px; padding:0 12px; }
+.sys-drop { display:none; position:absolute; right:0; top:38px; min-width:180px; background:var(--sur);
+  border:1px solid var(--bd); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14); padding:7px;
+  flex-direction:column; gap:6px; z-index:9560; }
+.sys-drop.open { display:flex; }
+.sys-drop .tchip { width:100%; justify-content:flex-start; }
 /* Smalle schermen: logo-tekst weg, chips compacter, autonaam korter */
 @media (max-width:480px){
   .topbar{ padding:0 8px; }

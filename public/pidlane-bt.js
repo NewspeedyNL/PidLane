@@ -1120,6 +1120,9 @@ function trackBtQuality(cmd, r){
       if(!pill.dataset.origTitle) pill.dataset.origTitle=pill.title||'';
       pill.classList.add('attn');
       pill.title='Veel lege antwoorden van de ECU — PidLane regelt het tempo automatisch bij';
+      // Ook op de samengevoegde systeem-chip: anders verdwijnt deze waarschuwing
+      // zodra de vier losse chips zijn ingeklapt.
+      try{ document.getElementById('sysChip')?.classList.add('attn'); }catch(e){ /* stil: sysChip bestaat pas na de topbar-splitsing */ }
     }
     if(!_qualWarned){
       // Tijdens discovery/health-scan/survey levert de ECU van nature veel
@@ -1137,6 +1140,7 @@ function trackBtQuality(cmd, r){
   } else if(ratio<=0.1 && pill && pill.classList.contains('attn')){
     pill.classList.remove('attn');
     pill.title=pill.dataset.origTitle||'';
+    try{ document.getElementById('sysChip')?.classList.remove('attn'); }catch(e){ /* stil: sysChip bestaat pas na de topbar-splitsing */ }
   }
 }
 

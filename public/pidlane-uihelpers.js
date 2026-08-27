@@ -60,15 +60,13 @@ function setConn(on){
   const dot=document.getElementById('sdot'),txt=document.getElementById('stxt'),btn=document.getElementById('cbtn');
   const pill=document.querySelector('.pill');
   if(pill){ pill.classList.remove('attn'); if(pill.dataset.origTitle) pill.title=pill.dataset.origTitle; }
+  document.getElementById('sysChip')?.classList.remove('attn');
   _btQual.length=0; _qualWarned=false;
   // Bezig-staat opheffen — verbinding heeft nu een eindstaat bereikt.
   document.querySelectorAll('[id="btnConnect"]').forEach(b=>{ b.disabled=false; if(on) b.textContent='✅ Verbonden'; });
   if(btn){ btn.disabled=false; }
   if(on){dot.className='dot '+(demoMode?'demo':'on');txt.textContent=demoMode?'Demo modus':'Verbonden';if(btn){btn.textContent='Verbreken';btn.className='btn-t off';}}
   else{dot.className='dot';txt.textContent='Niet verbonden';if(btn){btn.textContent='Verbinden';btn.className='btn-t';}_connSpeed=null;_connStrategy=null;_pollMult=1.0;window._connReady=false;}
-  // Optie-3: statuschip alleen tonen wanneer NIET verbonden (en niet in demo)
-  const sp=document.getElementById('statusPill');
-  if(sp){ sp.classList.toggle('show', !on); }
   // Readiness kaartjes bijwerken na verbindingsstatus-wijziging
   setTimeout(()=>{ if(typeof refreshAllReadiness==='function') refreshAllReadiness(); }, 300);
   try{updateConnGate();}catch(e){ console.warn('updateConnGate mislukt:', e); }
@@ -147,12 +145,20 @@ function showVtag(t){
 }
 
 // ══════════════════════════════════════════════════════════════════
-// TOPBAR STATUSDOTS — drie balletjes rechts in de bovenbalk:
+// TOPBAR STATUSDOTS — vier balletjes, sinds 27-08-2026 achter één
+// samengevoegde "Systeem"-chip (#sysChip/#sysdot, zie updateSysDot()
+// hieronder). Tik erop om ze uit te klappen — daarbinnen doen ze zelf nog
+// precies wat ze altijd deden:
 //   1️⃣ Voertuig : rood=geen auto herkend · oranje=dossier onvolledig · groen=dossier ≥80%
 //   2️⃣ OBD      : rood=niet verbonden · oranje=demo of traag (<12 reads/s) · groen=snel verbonden
+//              — tik = verbinden/verbreken (obdChipTap)
 //   3️⃣ AI       : groen=proxy bereikbaar of geldige sleutel · rood=geen AI beschikbaar
-// Vervangt de oude statusPill + de menu-items "AI-sleutel" en "Verbinden":
-// tik op de OBD-dot = verbinden/verbreken, tik op de AI-dot = AI-dialoog.
+//              — tik = AI-dialoog (openApiDialog)
+//   4️⃣ Run      : grijs=niets draait op de achtergrond · groen=iets actief (zie pidlane-run.js)
+//              — telt NIET mee in de kleur van de systeem-dot: niets draaien
+//                 is de normale staat, geen probleem
+// Systeem-dot = de ernstigste van 1/2/3 (rood > oranje > groen). Vervangt de
+// oude statusPill + de menu-items "AI-sleutel" en "Verbinden".
 // ══════════════════════════════════════════════════════════════════
 let _aiReach=null;   // null=nog niet gemeten, true/false=laatste proxy-check
 function updateTopbarStatus(){
@@ -167,28 +173,75 @@ function updateTopbarStatus(){
   if(vl) vl.style.display=known?'none':'inline';
   const vc=document.getElementById('vchip');
   if(vc) vc.title=known?(naam+' — dossier '+pct+'%, tik voor overzicht'):'Nog geen voertuig herkend — verbind eerst';
+  // Ernst voor de systeem-dot: 0=groen, 1=oranje, 2=rood — dezelfde regel als
+  // hierboven voor vd, maar ook bruikbaar buiten de className-string.
+  const vSev = known ? (pct>=80?0:1) : 2;
   // 2️⃣ OBD-dot: kleur op basis van verbinding + gemeten snelheid
   const sd=document.getElementById('sdot');
+  let sSev=2;
   if(sd){
-    if(!connected && !demoMode){ sd.className='dot'; }
-    else if(demoMode){ sd.className='dot demo'; }
-    else if(_connSpeed && _connSpeed.readsPerSec<12){ sd.className='dot slow'; }
-    else { sd.className='dot on'; }
+    if(!connected && !demoMode){ sd.className='dot'; sSev=2; }
+    else if(demoMode){ sd.className='dot demo'; sSev=1; }
+    else if(_connSpeed && _connSpeed.readsPerSec<12){ sd.className='dot slow'; sSev=1; }
+    else { sd.className='dot on'; sSev=0; }
   }
   // Tooltip = de bestaande (verborgen) statusregel, zolang er geen kwaliteitswaarschuwing actief is
   const oc=document.getElementById('obdChip'), st=document.getElementById('stxt');
   if(oc && st && !oc.classList.contains('attn')) oc.title=st.textContent||'OBD-verbinding';
   // 3️⃣ AI-dot
   const ad=document.getElementById('adot');
+  let aSev=2;
   if(ad){
     const hasProxy=(typeof PROXY_URL!=='undefined' && !!PROXY_URL);
     const hasKey=!!(window.anthropicKey && String(window.anthropicKey).startsWith('sk-ant-'));
     const ok=hasProxy ? (_aiReach!==false) : hasKey;
     ad.className='tdot '+(ok?'g':'r');
+    aSev=ok?0:2;
     const ac=document.getElementById('aiChip');
     if(ac) ac.title=ok?'AI-verbinding actief':'Geen AI-verbinding — tik voor instellingen';
   }
+  // 4️⃣ Systeem-dot: de ernstigste van voertuig/OBD/AI. Run telt hier bewust
+  // niet in mee — "niets draait op de achtergrond" is geen probleem, dat is
+  // de normale staat — Run krijgt zijn eigen telbadge via PLRun.verversDot().
+  updateSysDot(Math.max(vSev, sSev, aSev));
 }
+// Kleur + tooltip van de samengevoegde systeem-chip. Losgetrokken van
+// updateTopbarStatus() zodat de ernst-berekening op één plek staat i.p.v.
+// verspreid over drie if-blokken.
+function updateSysDot(ernst){
+  const sd=document.getElementById('sysdot'); if(!sd) return;
+  sd.className='tdot '+(ernst>=2?'r':(ernst===1?'o':'g'));
+  const sc=document.getElementById('sysChip');
+  if(sc) sc.title=ernst>=2?'Systeemstatus: actie nodig — tik voor details'
+    :(ernst===1?'Systeemstatus: let op — tik voor details':'Systeemstatus: alles goed — tik voor details');
+}
+// Tik op de systeem-chip: klap de vier losse chips uit/in. Zelfde reparenting-
+// truc als toggleKebab() hierboven — .sys-drop zit anders klem in .topbar,
+// dat om lay-outredenen overflow:hidden heeft.
+function toggleSysStatus(e){
+  if(e) e.stopPropagation();
+  const d=document.getElementById('tprDetail'); if(!d) return;
+  if(d.classList.contains('open')){ d.classList.remove('open'); return; }
+  const btn=document.getElementById('sysChip');
+  const r=btn?btn.getBoundingClientRect():null;
+  if(d.parentElement!==document.body) document.body.appendChild(d);
+  d.style.position='fixed';
+  d.style.top=((r?r.bottom:46)+6)+'px';
+  d.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
+  d.style.left='auto';
+  d.style.zIndex='9560';
+  d.classList.add('open');
+}
+function closeSysStatus(){
+  const d=document.getElementById('tprDetail'); if(d) d.classList.remove('open');
+}
+document.addEventListener('click',(e)=>{
+  // Zie de kebab-listener hierboven voor dezelfde reden: na reparenting zit
+  // #tprDetail niet meer ín #sysChip, dus allebei moeten als "binnen" gelden.
+  const chip=document.getElementById('sysChip'), d=document.getElementById('tprDetail');
+  const binnen=(chip && chip.contains(e.target)) || (d && d.contains(e.target));
+  if(d && d.classList.contains('open') && !binnen) closeSysStatus();
+});
 // Lichte bereikbaarheidscheck van de proxy (no-cors: elke netwerkrespons telt als bereikbaar)
 async function checkAiReachable(){
   if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } return; }

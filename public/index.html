@@ -1333,23 +1333,37 @@ function closeConnOv(){
   </div>
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
   <div class="tpr">
-    <!-- 1️⃣ Voertuig-chip: dot (rood=geen auto, oranje=dossier onvolledig, groen=compleet) + naam -->
-    <div class="tchip" id="vchip" onclick="try{openVehicleOverview()}catch(e){}" title="Voertuig &amp; gevonden informatie">
-      <div class="tdot r" id="vdot"></div><span id="vchipLbl">Auto</span><div id="vtag"></div>
+    <!-- 🔵 Systeem-chip — samengevoegd 27-08-2026 uit de vier losse chips
+         hieronder (voertuig/OBD/AI/Run), die vier stuks brede ruimte kostten
+         voor iets dat 95% van de tijd toch gewoon groen stond. Tik erop om
+         ze uit te klappen; ze doen daarbinnen zelf nog precies hetzelfde als
+         voorheen (zelfde ids, zelfde onclick's). Kleur = de ernstigste van
+         voertuig/OBD/AI (zie updateSysDot() in pidlane-uihelpers.js); Run telt
+         niet mee in de kleur — "niets draait op de achtergrond" is geen
+         probleem — maar krijgt hier wél zijn telbadge door, anders is een
+         actieve achtergrondtaak bij het inklappen onzichtbaar. -->
+    <div class="tchip sys" id="sysChip" onclick="toggleSysStatus(event)" title="Systeemstatus — tik voor details">
+      <div class="tdot" id="sysdot"></div><span>Systeem</span><span id="sysTel" style="font-weight:800;color:var(--gn)"></span>
     </div>
-    <!-- 2️⃣ OBD-chip: dot (rood=niet verbonden, oranje=traag/demo, groen=snel) -->
-    <div class="tchip pill" id="obdChip" onclick="obdChipTap()" title="OBD-verbinding">
-      <div class="dot" id="sdot"></div><span>OBD</span><span id="stxt" style="display:none">Niet verbonden</span>
-    </div>
-    <!-- 3️⃣ AI-chip: dot (groen=AI bereikbaar, rood=geen AI) -->
-    <div class="tchip" id="aiChip" onclick="try{openApiDialog()}catch(e){}" title="AI-verbinding">
-      <div class="tdot r" id="adot"></div><span>AI</span>
-    </div>
-    <!-- 4️⃣ Run-chip: dot (grijs=niets draait, groen=achtergrondtaak actief).
-         Vijf dingen konden aanstaan zonder dat het ergens zichtbaar was;
-         hier staat wat er loopt en gaat het uit. Zie pidlane-run.js -->
-    <div class="tchip" id="runChip" onclick="try{PLRun.open()}catch(e){}" title="Niets actief op de achtergrond">
-      <div class="tdot" id="rdot"></div><span>Run</span><span id="runTel" style="font-weight:800;color:var(--gn)"></span>
+    <div class="sys-drop" id="tprDetail">
+      <!-- 1️⃣ Voertuig-chip: dot (rood=geen auto, oranje=dossier onvolledig, groen=compleet) + naam -->
+      <div class="tchip" id="vchip" onclick="closeSysStatus();try{openVehicleOverview()}catch(e){}" title="Voertuig &amp; gevonden informatie">
+        <div class="tdot r" id="vdot"></div><span id="vchipLbl">Auto</span><div id="vtag"></div>
+      </div>
+      <!-- 2️⃣ OBD-chip: dot (rood=niet verbonden, oranje=traag/demo, groen=snel) -->
+      <div class="tchip pill" id="obdChip" onclick="closeSysStatus();obdChipTap()" title="OBD-verbinding">
+        <div class="dot" id="sdot"></div><span>OBD</span><span id="stxt" style="display:none">Niet verbonden</span>
+      </div>
+      <!-- 3️⃣ AI-chip: dot (groen=AI bereikbaar, rood=geen AI) -->
+      <div class="tchip" id="aiChip" onclick="closeSysStatus();try{openApiDialog()}catch(e){}" title="AI-verbinding">
+        <div class="tdot r" id="adot"></div><span>AI</span>
+      </div>
+      <!-- 4️⃣ Run-chip: dot (grijs=niets draait, groen=achtergrondtaak actief).
+           Vijf dingen konden aanstaan zonder dat het ergens zichtbaar was;
+           hier staat wat er loopt en gaat het uit. Zie pidlane-run.js -->
+      <div class="tchip" id="runChip" onclick="closeSysStatus();try{PLRun.open()}catch(e){}" title="Niets actief op de achtergrond">
+        <div class="tdot" id="rdot"></div><span>Run</span><span id="runTel" style="font-weight:800;color:var(--gn)"></span>
+      </div>
     </div>
   </div>
 </div>
