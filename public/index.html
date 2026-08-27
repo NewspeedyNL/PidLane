@@ -588,6 +588,10 @@
   </div>
   <div class="lg-foot">
     PidLane <span id="loginVer">v…</span> — AI Car Diagnostics<br>
+    <!-- Tweede, gedempte regel: wat er nodig is om te zien of deze build vers
+         is. Bewust NIET op de productregel erboven: die is wat een Play-reviewer
+         leest en die hoort v3.0.0 te tonen, niet "testrun 4.9". -->
+    <span id="loginBuild" style="font-size:10px;opacity:.55;letter-spacing:.3px"></span><br>
     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
     <div style="padding-top:11px">
       <button id="plFrisBtn" class="lg-fris" onclick="plHardReload(this)">🔄 Nieuwste versie laden</button>
@@ -599,6 +603,55 @@
          versieleugen als in package.json: een verkeerd getal dat niemand
          controleert. Liever een vraagteken — dat valt op, een fout getal niet. -->
     <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'?');}catch(e){}
+
+/* ── De buildregel op het inlogscherm (27-08-2026) ───────────────────
+   AANLEIDING. Op 26-08 is een hele rit verloren gegaan: het toestel draaide
+   testrun 4.8 terwijl 4.9 al op main stond. Dat was nergens te zien zonder de
+   testrun te openen, en die zit achter isAdmin(). Het inlogscherm is de plek
+   waar je vlak vóór een rit staat, dus daar hoort het.
+
+   WAAROM APP_VERSION EN TESTRUN_VERSIE NIET SAMENGEVOEGD ZIJN. Ze meten
+   verschillende dingen. APP_VERSION voedt VERSION_URL (de update-check) en de
+   Play Store; die zou dan omhoog springen omdat een admin-only testscherm
+   veranderde. TESTRUN_VERSIE volgt de batches en verandert juist vaak. Eén
+   nummer maken betekent één van beide betekenissen weggooien.
+
+   MAAR ZE ZIJN ALLEBEI GEEN BUILD-IDENTITEIT, en dat is wat er op 26-08
+   ontbrak. Verander ik pidlane-bt.js zonder de testrun aan te raken, dan blijft
+   3.0.0 / 4.9 staan en weet je nog niets. Daarom staat er een derde ding: de
+   Last-Modified van een asset dat de server zelf teruggeeft. Die verandert bij
+   ELKE deploy, zonder dat iemand een nummer hoeft op te hogen — en dit project
+   heeft geen build-stap, dus een commit-hash injecteren kan niet.
+
+   Faalt het ophalen (offline, file://, geen header), dan komt er NIETS te
+   staan. Zie de comment hierboven: een vraagteken of niets valt op, een fout
+   getal niet. */
+window.plVersieRegel = async function(){
+  var el = document.getElementById('loginBuild');
+  if(!el) return;
+  var delen = [];
+  try{ if(typeof TESTRUN_VERSIE!=='undefined' && TESTRUN_VERSIE) delen.push('testrun '+String(TESTRUN_VERSIE).split(' ')[0]); }catch(e){ /* stil: module kan ontbreken */ }
+  if(delen.length) el.textContent = delen.join(' · ');
+
+  // Build-stempel van de server. HEAD op een klein, altijd aanwezig bestand.
+  try{
+    var r = await fetch('config.js?stempel='+Date.now(), { method:'HEAD', cache:'no-store' });
+    var lm = r && (r.headers.get('last-modified') || r.headers.get('date'));
+    if(!lm) return;
+    var d = new Date(lm);
+    if(isNaN(d.getTime())) return;
+    var p2 = function(n){ return (n<10?'0':'')+n; };
+    delen.push('build '+p2(d.getDate())+'-'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes()));
+    el.textContent = delen.join(' · ');
+  }catch(e){
+    // Bewust stil: geen net, een file://-context of een server zonder
+    // Last-Modified. Dan staat er alleen de testrunversie, en dat is eerlijk.
+  }
+};
+try{
+  if(document.readyState==='complete') plVersieRegel();
+  else window.addEventListener('load', function(){ plVersieRegel(); }, { once:true });
+}catch(e){ console.warn('plVersieRegel niet gestart — de buildregel op het inlogscherm blijft leeg:', e); }
 
 /* ── Nieuwste versie forceren ────────────────────────────────────────
    location.reload(true) doet in moderne browsers niets meer, en alléén
