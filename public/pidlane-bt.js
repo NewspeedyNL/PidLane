@@ -1272,7 +1272,7 @@ function updateConnGate(){
   if(!g){
     if(!need) return;
     g=document.createElement('div'); g.id='connGate';
-    g.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:80px;z-index:9450;background:#1a6fff;color:#fff;font:800 13px/1 var(--f,sans-serif);padding:11px 16px;border-radius:24px;cursor:pointer;box-shadow:0 4px 16px rgba(26,111,255,.45);border:none;transition:transform .15s';
+    g.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:80px;z-index:var(--z-zwevend,9400);background:#1a6fff;color:#fff;font:800 13px/1 var(--f,sans-serif);padding:11px 16px;border-radius:24px;cursor:pointer;box-shadow:0 4px 16px rgba(26,111,255,.45);border:none;transition:transform .15s';
     g.textContent='\ud83d\udd0c Check connectie';
     g.onclick=async()=>{ g.textContent='\u23f3 Checken\u2026'; const ok=await runConnectionCheck(); if(ok){ showToast?.('\u2705 Klaar voor analyse'); } else { g.textContent='\ud83d\udd0c Check connectie'; } };
     document.body.appendChild(g);
