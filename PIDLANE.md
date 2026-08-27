@@ -7,7 +7,8 @@
 > Laatst bijgewerkt: 2026-08-27 — toestemmingsteksten kloppen weer met de
 > verwerking (pseudoniem, niet anoniem), tweede VIN-lek in de logroute dicht,
 > akkoord op de oude tekst telt niet meer mee, `worker.js` vastgelegd als
-> eigen bron, auto-merge na een groene testgate.
+> eigen bron, auto-merge na een groene testgate, topbar van vier chips naar
+> één systeem-chip.
 > Daarvóór: 2026-08-25 — testgate in CI, CORS dicht op de AI- en
 > dataroutes, VIN niet langer ruw naar Airtable, admin.html uit `public/`.
 > Daarvóór: 2026-08-20 — steunbitpoort, logboek, privacy-disclosure,
@@ -158,7 +159,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 22g | `pidlane-export.js` | 1 | **opslaan** — `plOpslaan()` vraagt eerst tekst of PDF en maakt in beide gevallen hetzelfde bestand. De PDF krijgt de huisstijl van het AI-rapport: blauwe kopband op elke pagina, voertuigblok, monospace inhoud met statuskleuren, paginanummers. Gebruikt door testrun, logboek en sessierapporten. Test: `test-export.js` |
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
-| 26 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus |
+| 26 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus — `updateTopbarStatus()`/`updateSysDot()`, zie de topbar-paragraaf in §4 |
 | 27 | `pidlane-motortype.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
 | 28 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
 | 29 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
@@ -191,6 +192,32 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 51 | `pidlane-privacy.js` | 12 | `PLPrivacy` — prominente Bluetooth-disclosure vóór `connectSerial()`, plus privacyscherm in het menu. Play Store-eis, zie `ANDROID-PLAYSTORE.md` |
 | 52 | `pidlane-start.js` | 20 | `PLStart` — startscherm: adapterprofielen per type, geheugen van eerdere verbindingen, verbindingscascade als live voortgang. Stuurt óók de ketenvolgorde in `connectSerial()` |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
+
+### De topbar-statuschip — vier bolletjes achter één (27-08-2026)
+
+De topbar had vier losse chips naast elkaar: Voertuig (dossier-%), OBD, AI,
+Run. Op smalle schermen kostte dat structureel ruimte voor iets dat ~95% van
+de tijd toch gewoon groen stond. Ze zijn samengevoegd achter één
+`#sysChip`/`#sysdot` — tik erop en de vier oorspronkelijke chips (zelfde ids,
+zelfde onclick's, ongewijzigd) klappen uit in een dropdown; tik op één ervan,
+of ernaast, en hij klapt weer dicht.
+
+- **Kleur = de ernstigste van Voertuig/OBD/AI** (rood > oranje > groen),
+  berekend in `updateSysDot()` (`pidlane-uihelpers.js`). **Run telt niet mee**:
+  "niets draait op de achtergrond" is de normale staat, geen probleem — Run
+  krijgt in plaats daarvan zijn telbadge (`#runTel`) doorgespiegeld naar
+  `#sysTel`, zodat een actieve achtergrondtaak niet onzichtbaar wordt zodra de
+  chips zijn ingeklapt.
+- De `.attn`-waarschuwing (veel lege ECU-antwoorden, `pidlane-bt.js`) spiegelt
+  om dezelfde reden mee naar `#sysChip` — anders verdwijnt die pulserende rand
+  net als bij Run zodra alles is ingeklapt.
+- Reparenting-truc identiek aan `toggleKebab()`: `.sys-drop` verhuist bij het
+  openen naar `<body>` met `position:fixed`, want `.topbar` heeft
+  `overflow:hidden` en zou een kind dat naar buiten uitklapt afsnijden.
+- En passant weggehaald: `#statusPill`, een dode `getElementById` naar een
+  element dat al niet meer in `index.html` stond sinds een eerdere
+  topbar-ronde — het eigen commentaar zei het letterlijk ("vervangt de oude
+  statusPill") maar de regel die ernaar zocht was blijven staan.
 
 ---
 
