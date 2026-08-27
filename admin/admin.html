@@ -65,6 +65,20 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:520px){.grid2{grid-template-columns:1fr}}
   .hint{font-size:12px;color:var(--tx2);margin-top:6px}
+  .oefen-poort{margin-top:18px;padding-top:16px;border-top:1px solid var(--bd)}
+  .oefen-balk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#2a2410;color:#e0cf6f;border:1px solid #6b5c1c;border-radius:10px;
+    padding:10px 14px;margin-bottom:14px;font-size:13px}
+  .oefen-balk button{margin-left:auto}
+  details.uitleg{margin:8px 0 2px;border:1px solid var(--bd);border-radius:8px;
+    background:rgba(255,255,255,.02)}
+  details.uitleg>summary{cursor:pointer;padding:7px 11px;font-size:12px;
+    color:var(--tx2);font-weight:600;list-style:none}
+  details.uitleg>summary::-webkit-details-marker{display:none}
+  details.uitleg>summary::before{content:'❔ ';opacity:.8}
+  details.uitleg[open]>summary{border-bottom:1px solid var(--bd)}
+  details.uitleg .body{padding:9px 12px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  details.uitleg .body b{color:var(--tx)}
 </style>
 </head>
 <body>
@@ -82,10 +96,31 @@
     <button class="btn-sec" onclick="poortTest()">🔎 Verbinding testen</button>
   </div>
   <div id="gateMsg" class="msg"></div>
+  <!-- Oefenmodus. Bewust een aparte knop en niet een vinkje bij "Inloggen":
+       oefenen is een andere handeling dan inloggen, en je hoort nooit per
+       ongeluk in de ene stand te belanden terwijl je de andere bedoelde. -->
+  <div class="oefen-poort">
+    <button class="btn-sec" onclick="oefenStart()">🧪 Oefenen met voorbeelden</button>
+    <div class="hint" style="margin-top:8px">
+      Geen token nodig en geen verbinding met de Worker. Je krijgt vier
+      voorbeeldklanten, drie gebruikers en drie activatiecodes om op te
+      oefenen — inclusief een geblokkeerde klant, een saldo van nul en een
+      openstaand wachtwoordherstel. Alles wat je wijzigt blijft in dit
+      tabblad en is bij verversen weer weg.
+    </div>
+  </div>
 </div>
 
 <!-- ── Dashboard ── -->
 <div id="dash" class="wrap hidden">
+  <!-- Zolang de oefenmodus aanstaat staat deze balk er. Niet weg te klikken:
+       het verschil tussen oefenen en productie mag nooit van je geheugen
+       afhangen. -->
+  <div id="oefenBalk" class="oefen-balk hidden">
+    🧪 <b>OEFENMODUS</b> — je werkt met voorbeeldgegevens. Er gaat niets naar de
+    Worker en er verandert niets aan echte klanten.
+    <button class="btn-sec btn-sm" onclick="location.reload()">Stoppen</button>
+  </div>
   <h1 style="display:flex;justify-content:space-between;align-items:center">PidLane Admin <span style="font-size:12px;color:var(--tx2)">— live config</span><button class="btn-sec btn-sm" onclick="logout()">Uitloggen</button></h1>
   <p class="sub">Wijzigingen gaan direct live. De klant-app haalt config op bij elke start (gecached ~60s) en valt terug op hardcoded defaults bij geen verbinding.</p>
 
@@ -106,6 +141,24 @@
        ════════════════════════════════════════════════════════════ -->
   <div class="card">
     <h2>👤 Gebruikers</h2>
+    <details class="uitleg"><summary>Wat doet dit scherm?</summary><div class="body">
+Dit zijn de <b>zakelijke logins</b> uit de tabel Users in Airtable — jijzelf en je
+medewerkers. Niet je klanten; die staan een kaart lager.
+<br><br>
+<b>Inlognaam</b> is waarmee iemand inlogt. Een e-mailadres mag: de app probeert
+dan eerst de klantroute en valt bij een afwijzing door naar deze tabel.
+<br><br>
+<b>Rol admin</b> geeft toegang tot dit scherm en tot het ☰-menu Admin in de app.
+Geef dat niet weg voor iets wat met <b>user</b> ook kan.
+<br><br>
+<b>Geblokkeerd</b> laat het account bestaan maar weigert de login. Gebruik dat in
+plaats van wissen als iemand tijdelijk weg is — wissen is niet terug te draaien
+en de naam is daarna weer vrij uit te geven.
+<br><br>
+<b>🔒 noodingang</b> staat in de Worker-secret USERS_JSON en niet in Airtable. Die
+kun je hier niet bewerken, en dat is de bedoeling: als Airtable plat ligt is dat
+de enige manier om nog binnen te komen.
+</div></details>
     <p class="sub" style="margin:0 0 12px">Deze accounts kunnen inloggen in de app. Een wachtwoord is nooit terug te lezen — alleen te overschrijven.</p>
 
     <div id="userList"></div>
@@ -157,6 +210,26 @@
   <!-- ── Klantaccounts (tokentegoed) ── -->
   <div class="card">
     <h2>👥 Klanten <span style="font-weight:400;color:var(--tx2);font-size:12px">— tokenaccounts</span></h2>
+    <details class="uitleg"><summary>Wat betekenen saldo en status?</summary><div class="body">
+Dit zijn de <b>zelf-geregistreerde klanten</b> met een tokensaldo, uit de tabel
+Klanten. Elke AI-analyse kost tokens; is het saldo op, dan stopt de analyse en
+niet de app.
+<br><br>
+<b>⚡ saldo</b> is wat er nu over is. <b>ooit gekocht</b> is het totaal dat er ooit is
+bijgeboekt — het verschil daartussen is wat er verbruikt is.
+<br><br>
+<b>Saldo</b> zet je handmatig bij, bijvoorbeeld na een betaling die niet via een
+activatiecode liep, of als compensatie. Er zit geen tweede paar ogen op: wat je
+hier intikt is direct het nieuwe saldo, niet een bijboeking.
+<br><br>
+<b>Status geblokkeerd</b> weigert de login maar laat saldo en historie staan.
+<br><br>
+<b>herstel open</b> betekent dat de klant een wachtwoordherstel heeft aangevraagd
+dat nog niet is afgerond. Zet je hier een wachtwoord, dan vervalt die aanvraag.
+<br><br>
+<b>Verwijderen wist ook het saldo</b> en is niet terug te draaien. Bij twijfel:
+blokkeren.
+</div></details>
     <div class="hint" style="margin-top:0;margin-bottom:10px">
       Dit zijn de zelf-geregistreerde klanten met tokentegoed. Losstaand van
       &ldquo;Gebruikers&rdquo; hierboven, dat zijn je eigen B2B-logins.
@@ -174,6 +247,20 @@
   <!-- ── Activatiecodes ── -->
   <div class="card">
     <h2>🎟️ Activatiecodes</h2>
+    <details class="uitleg"><summary>Hoe werkt een activatiecode?</summary><div class="body">
+Een code is een tegoedbon. De klant vult hem in de app in en het aantal tokens
+wordt bij zijn saldo opgeteld; de code gaat daarna op <b>gebruikt</b> en kan geen
+tweede keer.
+<br><br>
+<b>Open</b> = uitgegeven maar nog niet verzilverd. Die tokens staan dus nog
+uit: als je ze allemaal tegelijk verzilverd zou zien, is dat wat het je kost.
+<br><br>
+<b>Prijs</b> is puur administratief — hij rekent niets af, hij telt alleen mee in
+de omzetregel bovenaan zodat je weet wat er verzilverd is.
+<br><br>
+Een code verwijderen die nog open staat maakt hem ongeldig. Heeft een klant hem
+al betaald maar nog niet ingevuld, dan is hij zijn tegoed kwijt.
+</div></details>
     <div class="hint" style="margin-top:0;margin-bottom:10px">
       Codes komen direct in Airtable te staan en zijn meteen geldig.
       <b>Genereer ze pas als je ze gaat verkopen</b> — een openstaande code is
@@ -216,6 +303,19 @@
   <!-- Feature toggles -->
   <div class="card">
     <h2>🚪 Deuren aan/uit</h2>
+    <details class="uitleg"><summary>Wat gebeurt er als ik een deur uitzet?</summary><div class="body">
+Een deur is een hele ingang op het startscherm van de app. Uitzetten laat hem
+daar verdwijnen bij <b>alle</b> klanten, bij hun eerstvolgende start.
+<br><br>
+De app haalt deze config op bij elke start en cachet hem ongeveer een minuut.
+Een wijziging is dus niet meteen bij iedereen zichtbaar, maar wel binnen enkele
+minuten — en bij iemand die op dat moment middenin een analyse zit pas daarna.
+<br><br>
+Heeft de app geen verbinding, dan valt hij terug op de standaardwaarden in de
+code. Een deur die je hier uitzet komt bij een klant zonder internet dus wél
+terug. Gebruik dit om iets tijdelijk weg te halen, niet om iets af te sluiten
+wat echt niet mag.
+</div></details>
     <div class="row">
       <div><div class="lbl">Verbruik &amp; besparen</div><div class="desc"><code>door_saving_active</code></div></div>
       <label class="switch"><input type="checkbox" id="t_door_saving_active"><span class="slider"></span></label>
@@ -251,6 +351,18 @@
   <!-- AI-prompt met test -->
   <div class="card">
     <h2>🤖 AI-basisinstructie (override)</h2>
+    <details class="uitleg"><summary>Wanneer gebruik ik dit, en wat is het risico?</summary><div class="body">
+Dit vervangt de basisinstructie die vóór elke AI-analyse wordt meegestuurd. Laat
+je het leeg, dan geldt de instructie uit de code — dat is de normale toestand.
+<br><br>
+<b>Test eerst.</b> De knop "🧪 Test deze prompt" stuurt hem één keer in zonder hem
+live te zetten. Dat kost tokens maar geen klanten.
+<br><br>
+Het risico zit niet in een fout die je ziet, maar in een die je niet ziet: een
+instructie die de AI subtiel voorzichtiger of stelliger maakt, verandert elk
+advies dat er daarna uitkomt, bij iedereen. Zet hem live als je hem getest hebt,
+en zet hem terug op leeg zodra je hem niet meer nodig hebt.
+</div></details>
     <label>System-instructie (leeg = app gebruikt z'n ingebouwde instructie)</label>
     <textarea id="v_ai_system_override" placeholder="Laat leeg om de standaard te gebruiken. Test eerst voor je opslaat!"></textarea>
     <div class="bar">
@@ -405,8 +517,161 @@ function diagnose(where, status, bodyText){
   return { kind:'err', title:'❌ Onverwachte fout ('+status+').', detail:detailStr.slice(0,300) };
 }
 
+/* ══ OEFENMODUS ═══════════════════════════════════════════════════
+   WAAROM DIT BESTAAT
+   Deze pagina beheert echte klanten, echt saldo en echte gebruikers, en elke
+   knop werkt meteen op productie. Er was dus geen manier om uit te proberen
+   wat een knop dóét zonder het aan een echte klant te doen. Wie hier voor het
+   eerst komt, leert de pagina kennen op de gegevens van betalende klanten.
+
+   In de oefenmodus wordt geen enkel verzoek naar de Worker gestuurd. Alle
+   antwoorden komen uit de voorbeeldgegevens hieronder, en wijzigingen landen
+   daar ook: verhoog je een saldo, dan zie je dat terug in de lijst. Zo kun je
+   de hele pagina doorlopen — saldo aanpassen, iemand blokkeren, een code
+   aanmaken, een gebruiker verwijderen — en zien wat er gebeurt.
+
+   Bij het verversen van de pagina staat alles weer op de begintoestand.
+
+   WAAROM HET NIET WORDT ONTHOUDEN
+   Bewust geen localStorage. Oefenmodus moet je elke keer zelf kiezen; anders
+   is er een toestand waarin je denkt live te werken terwijl je oefent — of
+   erger, andersom. Om dezelfde reden staat er een balk over de volle breedte
+   zolang hij aanstaat: één ding, één betekenis.
+
+   De voorbeelden zijn met opzet niet allemaal netjes. Er zit een geblokkeerde
+   klant tussen, iemand met saldo 0, een openstaand wachtwoordherstel en een
+   gebruiker zonder wachtwoord — dat zijn precies de gevallen waarop je wilt
+   kunnen oefenen, en die je in een schone lijst nooit tegenkomt. */
+let OEFEN = false;
+
+const OEFEN_START = {
+  klanten: [
+    { id:'rec001', email:'j.dekker@gmail.com',     naam:'Jan Dekker',
+      status:'actief',      saldo:180, totaal:250, aangemaakt:'2026-06-14', laatsteLogin:'2026-08-26', heeftReset:false },
+    { id:'rec002', email:'garage.pieters@ziggo.nl', naam:'Autobedrijf Pieters',
+      status:'actief',      saldo:0,   totaal:500, aangemaakt:'2026-05-02', laatsteLogin:'2026-08-27', heeftReset:false },
+    { id:'rec003', email:'m.visser@outlook.com',    naam:'Marieke Visser',
+      status:'actief',      saldo:25,  totaal:25,  aangemaakt:'2026-08-25', laatsteLogin:'2026-08-25', heeftReset:true  },
+    { id:'rec004', email:'testrit@voorbeeld.nl',    naam:'',
+      status:'geblokkeerd', saldo:40,  totaal:100, aangemaakt:'2026-03-11', laatsteLogin:'2026-07-02', heeftReset:false }
+  ],
+  users: [
+    { user:'nico',                 label:'Nico',              role:'admin', active:true,  hasPass:true  },
+    { user:'monteur@pidlane.nl',   label:'Werkplaats',        role:'user',  active:true,  hasPass:true  },
+    { user:'stagiair',             label:'Stagiair (tijdelijk)', role:'user', active:false, hasPass:false }
+  ],
+  locked: [
+    { user:'noodingang', label:'Noodingang', role:'admin' }
+  ],
+  codes: [
+    { code:'PL-4KJ2-9XQ1', credits:100, status:'open',     prijs:9.95,  aangemaakt:'2026-08-20', gebruiktDoor:'',                  gebruiktOp:'' },
+    { code:'PL-7HB3-2MZ8', credits:250, status:'open',     prijs:19.95, aangemaakt:'2026-08-22', gebruiktDoor:'',                  gebruiktOp:'' },
+    { code:'PL-1QA9-5RT4', credits:100, status:'gebruikt', prijs:9.95,  aangemaakt:'2026-07-30', gebruiktDoor:'j.dekker@gmail.com', gebruiktOp:'2026-08-14' }
+  ],
+  config: {
+    door_saving_active:true, door_deal_active:true, door_prep_active:false,
+    banner_active:false, banner_text:'',
+    ai_system_override:''
+  }
+};
+
+let OEFEN_DATA = null;
+function oefenReset(){ OEFEN_DATA = JSON.parse(JSON.stringify(OEFEN_START)); }
+
+/* Het antwoord dat de Worker zou hebben gegeven. Eén plek, zodat er geen
+   tweede waarheid ontstaat naast callWorker(). */
+function oefenAntwoord(path, opts){
+  const methode = (opts && opts.method || 'GET').toUpperCase();
+  let body = {};
+  try { if (opts && opts.body) body = JSON.parse(opts.body); } catch(e){ /* stil: niet elke body is JSON */ }
+  const D = OEFEN_DATA;
+
+  if (path.indexOf('/api/config') === 0){
+    if (methode === 'GET') return Object.assign({}, D.config);
+    Object.assign(D.config, body || {});
+    return { ok:true };
+  }
+
+  if (path.indexOf('/admin/klanten') === 0){
+    if (methode === 'GET'){
+      const q = (path.split('q=')[1] || '').toLowerCase();
+      const lijst = q ? D.klanten.filter(k => (k.email+' '+k.naam).toLowerCase().indexOf(decodeURIComponent(q)) >= 0)
+                      : D.klanten;
+      return { klanten: lijst,
+               stats: { aantal: D.klanten.length,
+                        totaalSaldo: D.klanten.reduce((a,k) => a + k.saldo, 0) } };
+    }
+    const k = D.klanten.find(x => x.id === body.id);
+    if (!k) return { ok:true };
+    if (body.actie === 'verwijder') D.klanten = D.klanten.filter(x => x.id !== body.id);
+    if (body.saldo   !== undefined) k.saldo  = Number(body.saldo);
+    if (body.status  !== undefined) k.status = body.status;
+    if (body.wachtwoord !== undefined) k.heeftReset = false;
+    return { ok:true };
+  }
+
+  if (path.indexOf('/admin/users') === 0){
+    if (methode === 'GET') return { users: D.users, locked: D.locked };
+    if (body.actie === 'verwijder' || body.delete){
+      D.users = D.users.filter(u => u.user !== (body.user || body.naam));
+      return { ok:true };
+    }
+    const naam = body.user || body.naam;
+    const best = D.users.find(u => u.user === naam);
+    if (best) Object.assign(best, { label: body.label ?? best.label, role: body.role ?? best.role,
+                                    active: body.active ?? best.active,
+                                    hasPass: body.pass ? true : best.hasPass });
+    else D.users.push({ user:naam, label:body.label || naam, role:body.role || 'user',
+                        active: body.active !== false, hasPass: !!body.pass });
+    return { ok:true };
+  }
+
+  if (path.indexOf('/admin/codes') === 0){
+    if (methode === 'GET'){
+      const f = (path.split('status=')[1] || '').split('&')[0];
+      const lijst = (!f || f === 'alle') ? D.codes : D.codes.filter(c => c.status === f);
+      const open = D.codes.filter(c => c.status === 'open');
+      const geb  = D.codes.filter(c => c.status === 'gebruikt');
+      return { codes: lijst,
+               stats: { totaal:D.codes.length, open:open.length,
+                        openCredits: open.reduce((a,c) => a + c.credits, 0),
+                        gebruikt: geb.length,
+                        omzet: geb.reduce((a,c) => a + (c.prijs||0), 0) } };
+    }
+    if (body.actie === 'verwijder'){
+      D.codes = D.codes.filter(c => c.code !== body.code);
+      return { ok:true };
+    }
+    const n = Math.max(1, Number(body.aantal || 1));
+    for (let i = 0; i < n; i++){
+      const blok = () => Math.random().toString(36).slice(2, 6).toUpperCase();
+      D.codes.unshift({ code:'PL-'+blok()+'-'+blok(), credits:Number(body.credits || 100),
+                        status:'open', prijs:Number(body.prijs || 0),
+                        aangemaakt:new Date().toISOString().slice(0,10),
+                        gebruiktDoor:'', gebruiktOp:'' });
+    }
+    return { ok:true, aangemaakt:n };
+  }
+
+  if (path.indexOf('/v1/messages') === 0){
+    return { content:[{ type:'text',
+      text:'(oefenmodus) Dit is een voorbeeldantwoord. De AI-route is niet aangeroepen ' +
+           'en er zijn geen tokens verbruikt.' }] };
+  }
+
+  return { ok:true, oefen:true };
+}
+
 // ── fetch met nette diagnose ──
 async function callWorker(where, path, opts){
+  // Oefenmodus onderschept hier, en alleen hier: dit is de enige plek waar de
+  // pagina de Worker aanroept. Zou er een tweede route bijkomen die dat niet
+  // doet, dan lekt die in oefenmodus wél naar productie — zet nieuwe aanroepen
+  // dus altijd door callWorker heen.
+  if (OEFEN){
+    await new Promise(res => setTimeout(res, 220));   // even wachten, anders voelt het onecht
+    return { ok:true, data: oefenAntwoord(path, opts), status:200 };
+  }
   let r;
   try{
     r = await fetch(WURL+path, opts);
@@ -503,6 +768,24 @@ function enter(){
   loadCodes();
 }
 
+/* Oefenmodus starten. Zet dezelfde schermen op als enter(), maar zonder
+   token en zonder Worker: callWorker() onderschept alles. */
+function oefenStart(){
+  OEFEN = true;
+  oefenReset();
+  TOKEN = '(oefenmodus)';
+  WURL  = '(geen worker)';
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  document.getElementById('oefenBalk').classList.remove('hidden');
+  renderFeatures();
+  checkStatus();
+  loadConfig();
+  loadUsers();
+  loadKlanten();
+  loadCodes();
+}
+
 function logout(){
   TOKEN='';
   document.getElementById('adminTok').value='';
@@ -551,6 +834,17 @@ async function checkStatus(){
     { id:'st_ai',      naam:'AI-route (Anthropic)',   run:()=>callWorker('ai','/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':TOKEN},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:16,messages:[{role:'user',content:'ping'}],thinking:{type:'disabled'}})}) },
   ];
   el.innerHTML=items.map(i=>`<div class="row"><div class="lbl">${i.naam}</div><span class="pill p-demo" id="${i.id}">…test</span></div>`).join('');
+  // In oefenmodus is er niets om te meten. Een groene "✓ OK" zou hier een
+  // werkende keten suggereren die niet is aangeraakt — dat is precies het soort
+  // valse geruststelling waar deze kaart tegen bedoeld is. Dus geen oordeel.
+  if(OEFEN){
+    for(const i of items){
+      const p=document.getElementById(i.id);
+      p.textContent='niet gemeten'; p.className='pill p-demo';
+      p.title='Oefenmodus: er is geen verzoek naar de Worker gestuurd.';
+    }
+    return;
+  }
   for(const i of items){
     const p=document.getElementById(i.id);
     try{ await i.run(); p.textContent='✓ OK'; p.className='pill p-user'; }

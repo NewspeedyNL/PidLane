@@ -11,6 +11,16 @@ Worker gemunt heeft. Het bestand waarschuwde daar in regel 3 zelf al voor.
 
 Nu staat hij buiten `public/` en wordt hij dus nergens geserveerd.
 
+**Let op: dat is maar de helft.** Deze repo is openbaar, dus `admin/admin.html`
+is gewoon te lezen op GitHub. De verkenningswaarde die de verhuizing wilde
+wegnemen — welke endpoints er zijn en hoe ze heten — ligt daarmee nog steeds op
+straat. De echte bescherming is en blijft server-side: elke adminroute
+controleert `ADMIN_TOKEN`. Wie dat argument helemaal wil sluiten, moet de repo
+privé maken; het bestand hier weghalen helpt niet, want de geschiedenis bewaart
+het toch. Zie ook `newspeedynl.github.io` in `ALLOWED_ORIGINS` van `worker.js`:
+staat GitHub Pages aan voor deze repo, dan is de pagina via dat adres mogelijk
+zelfs te openen én accepteert de Worker die herkomst.
+
 ## Openen
 
 Vanuit de repo:
@@ -19,12 +29,44 @@ Vanuit de repo:
 npm run admin
 ```
 
-en open dan **http://localhost:8788/admin.html**.
+en open dan **http://127.0.0.1:8788/admin.html**.
 
-Dat start `python3 -m http.server` op de map `admin/`. Werkt op Termux, Linux,
-macOS en Windows zolang `python3` in het pad staat. Liever iets anders? Elke
-statische server voldoet — het enige dat telt is dat de pagina via
-`http://localhost` of `http://127.0.0.1` geopend wordt.
+Dat draait `admin/serve.js` op node. Tot 28-08-2026 stond hier
+`python3 -m http.server`; dat werkte, maar node is er in dit project sowieso
+(de hele testreeks draait erop) en python3 niet per se. Op een kaal Windows-
+toestel of een verse Termux was het eerste wat je bij het beheer tegenkwam dus
+een installatieprobleem in plaats van de pagina.
+
+De server bindt op `127.0.0.1` en niet op `0.0.0.0`: de adminpagina hoort niet
+op je wifi te staan, ook niet even. Andere poort nodig? `PORT=9000 npm run admin`.
+
+Liever iets anders? Elke statische server voldoet — het enige dat telt is dat de
+pagina via `http://localhost` of `http://127.0.0.1` geopend wordt.
+
+## Oefenen zonder iets kapot te maken
+
+Op de toegangspoort staat **🧪 Oefenen met voorbeelden**. Geen token nodig, en er
+gaat geen enkel verzoek naar de Worker: alle antwoorden komen uit
+voorbeeldgegevens in de pagina zelf.
+
+Je krijgt vier klanten, drie gebruikers en drie activatiecodes — met opzet niet
+allemaal netjes. Er zit een geblokkeerde klant tussen, iemand met saldo nul, een
+openstaand wachtwoordherstel en een gebruiker zonder wachtwoord. Dat zijn
+precies de gevallen waarop je wilt kunnen oefenen en die je in een schone lijst
+nooit tegenkomt.
+
+Wijzigingen landen echt in die voorbeelden: pas je een saldo aan, dan zie je het
+totaal bovenaan meebewegen. Bij het verversen van de pagina staat alles weer op
+de begintoestand.
+
+De modus wordt **niet onthouden** en is niet weg te klikken zolang hij aanstaat.
+Er hoort geen toestand te bestaan waarin je denkt live te werken terwijl je
+oefent — of andersom. Om dezelfde reden zegt de statuskaart in oefenmodus
+"niet gemeten" in plaats van een groene vink: er is niets gemeten.
+
+Elke sectie heeft daarnaast een uitklapbare **❔-uitleg**: wat het scherm doet,
+en wat er gebeurt als je het fout doet. Vooral bij Klanten en Activatiecodes is
+dat het lezen waard — daar zit geld achter.
 
 ## Waarom niet gewoon dubbelklikken
 

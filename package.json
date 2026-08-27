@@ -7,7 +7,7 @@
     "build": "echo 'No build step needed'",
     "cap:add": "npx cap add android",
     "cap:sync": "npx cap sync android",
-    "admin": "python3 -m http.server 8788 --directory admin",
+    "admin": "node admin/serve.js",
     "test": "bash plcheck.sh ."
   },
   "dependencies": {
