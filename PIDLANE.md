@@ -603,67 +603,38 @@ voor.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Bijgewerkt 27-08-2026. **Dit is de enige blijvende lijst.** `PLAN.md`,
-`OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan niet meer; wat daar nog open stond
-is hieronder opgenomen. Kortlopend werk hoort in een GitHub-issue, niet in een
-document dat tussen twee sessies moet overleven.
+Bijgewerkt 27-08-2026. `PLAN.md`, `OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan
+niet meer. **Wat er open staat, staat in de issues** — dit hoofdstuk verwijst
+ernaar en bewaart de uitleg eromheen: waarom iets stuk was, wat er al geprobeerd
+is, en welke conclusie achteraf fout bleek. Dat laatste is de reden dat de
+opgeloste punten hieronder blijven staan.
 
-### Overgenomen uit `PIDLANE-WERK.md` (27-08-2026)
+### Wat er open staat — de issues
 
-Deze stonden daar als open genoteerd en zijn verder niet aangeraakt.
+Op 27-08-2026 is alles wat hier als open stond naar GitHub-issues verhuisd. De
+beschrijving staat daar en niet meer hier: twee lijsten van hetzelfde lopen uit
+de pas, en dan is de vraag welke klopt.
 
-- **Blok 7 trekt de omgekeerde conclusie bij een nulmeting.**
-  `const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;` in
-  `pidlane-testrun.js`: de deel-door-nul-vangst geeft `0`, en `0` valt door
-  `Math.abs(verschil) < 15` in de tak "vrijwel geen verschil". Gemeten: 0 ms
-  tegen 144 ms gepresenteerd als +0%. Twee dingen mis — `mLaag === 0` hoort een
-  eigen uitkomst te zijn ("onmeetbaar"), en een responstijd van 0 ms is
-  überhaupt geen meting en hoort niet in de groep. Treedt intermitterend op: op
-  26-08 vuurde hij niet (107 tegen 163 ms). Voedt de Slotsom, dus hij duwt een
-  conclusie de verkeerde kant op.
-- **`merkGroep()`-asymmetrie MINI versus BMW** (`pidlane-data.js:258`). MINI
-  matcht op prefix, BMW op exacte gelijkheid: "BMW 320D" wordt `BMWD`, mist de
-  vergelijking en valt terug op geen groep — dus geen merkspecifieke
-  DTC-lookup. Bij MINI is elke variant gedekt, bij BMW alleen het kale merk.
-- **Vier aanvragers op één bus.** Waakronde, bulk-recorder, caravan-tracker en
-  rijmonitor vullen de bus langs elkaar heen; PLLoad regelt er één. Gemeten op
-  26-08: eigen 41-header-uitpakwerk buiten `splitBatchResponse()` om in
-  diagbundel, graph, monitor (2×), veldlab (3×) en verify; 18 losse
-  `fetch`-aanroepen over 7 modules, en geen gedeelde `plFetch`-helper. Geen bug
-  op zichzelf — het is de vraag of dit één poort moet worden.
-- **De opruimregel is nog niet beslist.** Na hoeveel mislukte pogingen mag een
-  stille sensor uit `activePIDs`, en langs welke weg komt hij terug als hij
-  later alsnog antwoordt (koud/warm, motor uit/aan)? Zonder dat tweede bouw je
-  een zeef die sensoren voorgoed wegwerkt. Stand 26-08: vijf stille sensoren in
-  de actieve selectie (`0101`, `0121`, `012E`, `016D`, `019D`), en `019D`/`019E`
-  lezen −40/−39 — de rauwe nul met temperatuuroffset, precies de populatie
-  waarvoor de regel bestaat.
-- **Raildruk over een hele rit.** `0123`/`0159` stonden op 23-08 zevenentwintig
-  minuten stil op 9900; op 26-08 bewogen ze weer (10050 / 9890). Eén sweep van
-  18 s bewijst niets over een hele rit. Open tot de rit met alle vier de
-  aanvragers aan.
-- **De app bevriest op de achtergrond.** Android bevriest de JS-timers van de
-  WebView: pollus, recorder en logger stoppen tegelijk, en elke herverbinding
-  volgt direct op een stilte. `PLWake` dekt alleen "scherm gaat uit", niet "app
-  wordt verlaten". De echte oplossing is een foreground service (Capacitor,
-  native werk); de goedkope tussenstap is `visibilitychange` afvangen, de opname
-  als gepauzeerd markeren en bij terugkomst actief herverbinden.
-- **Twee klokbases.** De bulkrecorder schrijft UTC, de logger lokale tijd — op
-  23-08 exact twee uur verschil. Wie beide bestanden naast elkaar legt,
-  concludeert eerst dat ze niet bij elkaar horen. `PIDLANE-CONTRACT.md` §6 legt
-  UTC vast als de enige klok.
-- **Drie UI-meldingen van 23-08, nooit opgepakt.** De demo-knop op het
-  loginscherm (Engelse tekst in een Nederlandse app, loopt over twee regels en
-  botst met de versieregel — twee elementen op dezelfde plek); de bulk-recorder
-  komt niet bovenop, want de zwevende chips liggen over de modal (de modal-laag
-  en de chip-laag zijn niet geordend); en het opmerkingveld bij opslaan komt
-  niet in het bestand terecht.
-- **Kleiner.** `221166` antwoordt met `0000` bij koelwater 91 °C — dat is de
-  olietemperatuur niet, en alleen prefix `11` op header `7E0` is gescand (`7E1`
-  is onaangeroerd). Blok 1 boekt een terecht gevonden ontbrekend profiel
-  mogelijk niet als LET OP. Eén onverklaarde `err` in het BT-log van 26-08.
-  Stille sensoren kregen een categorie `onzin` naast `nodata`, zelfde populatie
-  maar een andere indeling — nakijken bij de opruimregel.
+| # | wat | soort |
+|---|---|---|
+| [#12](https://github.com/NewspeedyNL/PidLane/issues/12) | blok 7 presenteert een nulmeting als "vrijwel geen verschil" | bug |
+| [#13](https://github.com/NewspeedyNL/PidLane/issues/13) | `merkGroep()`: BMW matcht op gelijkheid, MINI op prefix | bug |
+| [#14](https://github.com/NewspeedyNL/PidLane/issues/14) | PID `0143` staat er 256× naast | bug |
+| [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | bulkrecorder schrijft UTC, logger lokale tijd | bug |
+| [#21](https://github.com/NewspeedyNL/PidLane/issues/21) | demo-knop botst met de versieregel op het loginscherm | UI |
+| [#22](https://github.com/NewspeedyNL/PidLane/issues/22) | zwevende chips liggen over de bulk-recorder | UI |
+| [#23](https://github.com/NewspeedyNL/PidLane/issues/23) | opmerkingveld bij opslaan komt niet in het bestand | UI |
+| [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | de app bevriest op de achtergrond | groot |
+| [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — wordt dat één poort? | besluit |
+| [#16](https://github.com/NewspeedyNL/PidLane/issues/16) | opruimregel: drempel en terugweg | besluit |
+| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` over een hele rit | meten |
+| [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
+| [#24](https://github.com/NewspeedyNL/PidLane/issues/24) | restjes uit de bedradingssweep (vijf eindjes) | opruimen |
+| [#25](https://github.com/NewspeedyNL/PidLane/issues/25) | kleine staarten uit de testruns van 26-08 | opruimen |
+
+Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
+begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
+De stand van zaken staat in de issues.
 
 ### Werkregel uit de mislukte rit van 26-08
 
@@ -691,28 +662,15 @@ dit door de gebruiker zelf aangezwengeld, het staat sinds 27-08 bij het knopje
 vermeld, en bij een bug over één specifiek voertuig is de VIN juist bruikbaar.
 Geen open punt.
 
-**Nieuw op 20-08 en nog open:**
-
-- **`0143` staat er 256× naast.** De parser rekent `A + B/256` waar het
-  `A × 256 + B` moet zijn. Twee metingen: `41430048` toont 0,11 waar 28,2%
-  hoort, `41430029` toont 0,06 waar 16,1% hoort. Raakt `pidlane-data.js`.
-  Controleer meteen of dezelfde bytecombinatie elders in de tabel voorkomt.
-- **Mode 22 leeft op deze CX-5, de identifier niet.** `22111F` op header `7E0`
-  geeft `7F 22 31` (requestOutOfRange, niet serviceNotSupported). De
-  olietemperatuur zit dus ergens, maar `2101`, `22111F` en `015C` zijn alle
-  drie dood. Blok 9 van de testrun scant de 11xx-reeks.
+**Nieuw op 20-08 en nog open** — beide staan nu als issue: `0143` staat er 256×
+naast (#14) en mode 22 leeft op deze CX-5 terwijl de identifier onbekend blijft
+(#20).
 
 **Opgelost op 20-08:** de merk-preset zette PIDs terug die de ECU ontkent
 (§15 ronde 6); het brandstoftype kwam ná de scan die het moest sturen (§15b);
 de wizard toonde voortgang voor voltooid werk (§15b).
 
-1. **Restjes.** `rebuildPidDefsCache()` bestaat niet (wel geguard);
-   15 id's worden opgevraagd die nergens bestaan (`userLabel`, `apiPill`,
-   `themeBtn`, `statusPill`, `cbtn`, `plEvalBtn`…); `logout()` wist de
-   `pl_credits_*`-sleutels niet, dus een volgende klant op hetzelfde apparaat
-   ziet even het saldo van de vorige (de eerste `verversSaldo()` corrigeert het); een gebruikersnaam mét `@` kan de
-   Users-route nooit meer bereiken (klantlogin geeft 401 en `doLogin` stopt daar
-   hard); de Tikkie-links staan hardcoded in een publieke repo.
+1. **Restjes** — vijf losse eindjes uit de bedradingssweep, verzameld in #24.
 
 2. **Geen herijking van de bronlijst.** `discoveredPIDDefs` wordt gebouwd
    tijdens de gezondheidsscan, wanneer het brandstoftype meestal nog onbekend
