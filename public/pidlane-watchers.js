@@ -99,7 +99,7 @@ const PLWatch = {
         return null; } },
 
     { id:'STAT_RPM', naam:'rustig stationair',
-      fase:['stationair'], warm:true, pids:['010C'], duurMs:5000,
+      fase:['stationair'], warm:true, pids:['010C','0104'], duurMs:5000,
       // max-min kan een WEGZAKKEND fast-idle niet onderscheiden van een
       // schokkend stationair: een monotone daling 1050->660 geeft 392 "schommeling".
       // Ruw stationair oscilleert (richtingswisselingen ~50-60% van de overgangen),
@@ -116,8 +116,31 @@ const PLWatch = {
         // vlakke reeks, 160 rpm bij écht ruw stationair.
         const s2=r.slice().sort((a,b)=>a-b), n=s2.length;
         const spread=s2[Math.floor(3*n/4)]-s2[Math.floor(n/4)];
-        if(spread>60) return `ruw stationair: toerental schommelt ${Math.round(spread)} rpm (IQR, ${Math.round(omkPct*100)}% richtingswisselingen) — denk aan valse lucht, bobine/bougie of stationairregeling`;
-        return null; } },
+        if(spread<=60) return null;
+        // 28-08-2026 — DE AIRCO. Op de rit van 27-08 gaf deze test twee keer
+        // "ruw stationair" (65 en 193 rpm) terwijl het de airco was die in- en
+        // uitschakelde: de compressor koppelt in, het toerental zakt, de
+        // stationairregeling compenseert. De MÉTING klopte; de verdachtenlijst
+        // eronder niet, en die komt in een klantrapport terecht. Een monteur
+        // naar valse lucht, bobines en bougies sturen voor een normaal
+        // werkende airco is duurder dan geen melding.
+        //
+        // Waarom hier nog GEEN automatisch onderscheid: een inkoppelende
+        // compressor is te herkennen aan een sprong in de motorbelasting, maar
+        // valse lucht geeft óók belastingvariatie. Waar die grens ligt is
+        // zonder metingen aan een auto met een schakelende airco niet te
+        // zeggen, en een gegokte drempel zou echte ruwloop gaan verbergen —
+        // dat is een duurdere fout dan deze. Zie issue #30 en de CAMPAGNE:
+        // de gemeten belastingspreiding gaat daarom mee in de melding, zodat
+        // de volgende rit de cijfers oplevert om dat onderscheid wél te maken.
+        const bl=c.win('0104',5000);
+        let blTekst='';
+        if(bl.length>=4){
+          const b2=bl.slice().sort((a,b)=>a-b), bn=b2.length;
+          blTekst=`, motorbelasting varieert ${Math.round(b2[Math.floor(3*bn/4)]-b2[Math.floor(bn/4)])}%`;
+        }
+        return `ruw stationair: toerental schommelt ${Math.round(spread)} rpm (IQR, ${Math.round(omkPct*100)}% richtingswisselingen${blTekst}) — een in- en uitschakelende airco geeft ditzelfde beeld: zet die eerst uit en kijk of het blijft. Blijft het, denk dan aan valse lucht, bobine/bougie of stationairregeling`;
+        } },
 
     { id:'STAT_MAP', naam:'inlaatdruk bij stationair (vacuüm)',
       fase:['stationair'], warm:true, pids:['010B','0111','0106'], duurMs:5000,

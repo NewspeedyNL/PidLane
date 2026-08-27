@@ -1,5 +1,25 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-28b (CET) — DE AIRCO IS GEEN DEFECT (#30)
+
+       • 🌬️ RUW STATIONAIR — de watcher STAT_RPM meldde op 27-08 twee keer
+         "ruw stationair" (65 en 193 rpm) terwijl het de airco was die in- en
+         uitschakelde. De MÉTING klopte; de verdachtenlijst eronder niet, en
+         die komt in een klantrapport terecht. Een monteur naar valse lucht,
+         bobines en bougies sturen voor een normaal werkende airco is duurder
+         dan geen melding.
+         De melding noemt de airco nu eerst, met een handeling die de
+         gebruiker zelf kan doen (zet hem uit en kijk of het blijft). De dure
+         verdachten blijven staan, maar erachter.
+         BEWUST GEEN drempel omhoog: dan verdwijnt 193 rpm, maar echt ruw
+         lopen ook. En bewust nog geen automatisch onderscheid — een
+         inkoppelende compressor is te zien aan een sprong in de
+         motorbelasting, maar valse lucht geeft óók belastingvariatie, en waar
+         die grens ligt is zonder metingen aan een auto met schakelende airco
+         niet te zeggen. Daarom leest de watcher 0104 nu wél mee en zet hij de
+         gemeten belastingspreiding in de melding: dat zijn de cijfers die het
+         onderscheid later mogelijk maken.
+
      Build: 2026-08-28 (CET) — DE SESSIE: INLOGGEN EN UITLOGGEN (#24)
 
        • 🔑 INLOGGEN MET EEN E-MAILADRES — doLogin() probeert bij een @ in de
