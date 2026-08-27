@@ -6,7 +6,8 @@
 >
 > Laatst bijgewerkt: 2026-08-27 — toestemmingsteksten kloppen weer met de
 > verwerking (pseudoniem, niet anoniem), tweede VIN-lek in de logroute dicht,
-> `worker.js` vastgelegd als eigen bron, auto-merge na een groene testgate.
+> akkoord op de oude tekst telt niet meer mee, `worker.js` vastgelegd als
+> eigen bron, auto-merge na een groene testgate.
 > Daarvóór: 2026-08-25 — testgate in CI, CORS dicht op de AI- en
 > dataroutes, VIN niet langer ruw naar Airtable, admin.html uit `public/`.
 > Daarvóór: 2026-08-20 — steunbitpoort, logboek, privacy-disclosure,
@@ -97,7 +98,7 @@ PidLane/
    ├─ config.js            (3 KB)   PROXY_URL, AIRTABLE_URL, APP_VERSION
    ├─ pidlane.css          (157 KB) hoofdstylesheet
    ├─ pidlane-*.js         (39 modules, zie §4)
-   └─ test-*.js            (37 tests, draaien via plcheck.sh)
+   └─ test-*.js            (38 tests, draaien via plcheck.sh)
 ```
 
 > **admin.html staat bewust buiten `public/`.** Alles in `public/` wordt door de
@@ -410,6 +411,11 @@ sindsdien dat die claim niet terugkomt; `test-vin-anoniem.js` bewaakt het
 gedrag van beide paden. Die twee horen bij elkaar: de een toetst wat de code
 doet, de ander of we er eerlijk over zijn.
 
+Een derde stuk hoort hierbij: een akkoord dat vóór de correctie is gegeven, is
+gegeven op de onjuiste tekst en telt niet meer. `klantPubliek()` in `worker.js`
+rekent dat uit als `akkoordActueel` (§11, "Opgelost op 27-08"), getest in
+`test-akkoord-heraccorderen.js`.
+
 ---
 
 ## 8. AI-integratie
@@ -517,7 +523,7 @@ werkende context zonder de hele repo te delen.
   `worker.js` (134 KB) is inmiddels ook te groot voor de chat: lever die als
   downloadbaar bestand. Bewerk hem rechtstreeks — hij is zijn eigen bron, zie §6.
 - Vóór elke oplevering: **`plcheck.sh`** in de repo-root. Die doet syntaxcontrole
-  op alle bestanden, draait alle `test-*.js` (37 op 27-08-2026 — tel ze liever
+  op alle bestanden, draait alle `test-*.js` (38 op 27-08-2026 — tel ze liever
   dan dit getal te geloven), telt de div-balans van `index.html` en
   `admin.html`, controleert dat elke module in `index.html` hangt en dat
   `pidlane-bedrading.js` achteraan staat. Draait in Termux op de telefoon.
@@ -555,28 +561,22 @@ neemt die mee, een bestandsbeheerder op Android meestal niet.
 Bijgewerkt 20-08-2026. Voor de actuele werkvolgorde: `PLAN.md`. Wat hier staat
 is de blijvende lijst; `PLAN.md` is de kortlopende.
 
-**Nieuw op 27-08 en nog open:**
+**Opgelost op 27-08:** wie vóór de tekstcorrectie akkoord gaf, gaf dat op een
+onjuiste voorstelling van zaken (meetdata heette anoniem, is pseudoniem) — dat
+akkoord is aanvechtbaar en mocht niet blijven gelden. `klantPubliek()` in
+`worker.js` rekent nu `akkoordActueel` uit door `AkkoordOp` te vergelijken met
+het moment van de correctie (`AKKOORD_TEKST_SINDS`); `_neemSessie()` in
+`pidlane-klant.js` toont `openOnboarding()` opnieuw zolang dat niet actueel is,
+zónder het proeftegoed er nog eens aan te koppelen — `StartTegoedGegeven` blijft
+de enige gate daarvoor. Geen nieuw Airtable-veld nodig: `AkkoordOp` bestond al
+en wordt al bij elk akkoord bijgewerkt. Getest in
+`test-akkoord-heraccorderen.js`.
 
-- **Toestemmingen die onder de oude tekst zijn gegeven.** Het akkoordscherm
-  sprak tot 27-08-2026 van "geanonimiseerde" meetdata terwijl de verwerking
-  pseudonimisering is. De tekst klopt nu, maar wie eerder akkoord gaf, gaf dat
-  op een onjuiste voorstelling van zaken — en dat akkoord is aanvechtbaar.
-  `openOnboarding()` verschijnt alleen zolang `startTegoed !== true`, dus die
-  groep krijgt het scherm nooit meer te zien. Wat ervoor nodig is: net als bij
-  `DISCLOSURE_VERSIE` in `pidlane-privacy.js` een versienummer op het
-  akkoordscherm, opslaan welke versie iemand heeft geaccepteerd, en bij een
-  lagere versie opnieuw vragen — zonder het proeftegoed er nog eens aan te
-  koppelen, want dat is eenmalig en mag geen drukmiddel worden. Bewust niet in
-  dezelfde ronde gebouwd als de tekstcorrectie: dat raakt de Airtable-kolom
-  `Akkoorden` en de onboarding-route, en die twee horen niet in een
-  tekstwijziging thuis.
-- **De bugmelder stuurt de ruwe VIN mee.** `_bugDiag()` in `pidlane-auth.js`
-  zet `vin` in het bugrecord. Anders dan de logroute is dit door de gebruiker
-  zelf aangezwengeld en staat er sinds 27-08 ook bij het knopje dat het
-  meegaat, dus de melding klopt met wat er gebeurt. Maar het blijft de enige
-  plek waar een volledige VIN de telefoon nog verlaat. Afweging voor later: bij
-  een bug over één specifiek voertuig is de VIN echt bruikbaar, dus dit is geen
-  automatische "eruit".
+De bugmelder (`_bugDiag()` in `pidlane-auth.js`) stuurt bij het handmatig
+melden van een bug de ruwe VIN mee, en dat is bewust: anders dan de logroute is
+dit door de gebruiker zelf aangezwengeld, het staat sinds 27-08 bij het knopje
+vermeld, en bij een bug over één specifiek voertuig is de VIN juist bruikbaar.
+Geen open punt.
 
 **Nieuw op 20-08 en nog open:**
 

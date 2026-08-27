@@ -242,8 +242,15 @@
     } catch (e) { _log('finishLogin faalde: ' + e.message, 'warn'); }
     _log('Klantlogin ok \u2014 ' + (k.email || email) + ', ' + (k.saldo || 0) + ' tokens', 'ok');
 
-    // Proeftegoed nog niet opgehaald? Dan eerst de akkoorden.
-    if (k.startTegoed !== true) setTimeout(function () { openOnboarding(k.saldo || 0); }, 400);
+    // Proeftegoed nog niet opgehaald, of het akkoord staat nog op de
+    // inmiddels achterhaalde omschrijving van de meetdata als anoniem?
+    // Dan eerst (opnieuw) de akkoorden. akkoordActueel komt van de server
+    // (klantPubliek() in worker.js) en vergelijkt AkkoordOp met het moment
+    // waarop de tekst is gecorrigeerd — geen aparte versie bijhouden aan
+    // deze kant.
+    if (k.startTegoed !== true || k.akkoordActueel !== true) {
+      setTimeout(function () { openOnboarding(k.saldo || 0, k.startTegoed === true); }, 400);
+    }
     pasMenuAan();
   }
 
@@ -268,12 +275,20 @@
   // kolom Akkoorden) blijven bewust hun oude naam houden: die staan in
   // bestaande records en hernoemen zou de administratie in tweeën knippen.
   // Alleen de tekst die de gebruiker leest is veranderd.
-  function openOnboarding(saldoNu) {
+  // `heraccorderen` = true wanneer het proeftegoed al is uitgekeerd en dit
+  // scherm alleen terugkomt omdat AkkoordOp op de oude tekst staat (zie
+  // akkoordActueel in _neemSessie). Kop, knoptekst en de melding na afloop
+  // zijn dan anders: er komen geen tokens meer, dus dat mag het scherm niet
+  // beloven.
+  function openOnboarding(saldoNu, heraccorderen) {
     const gratis = Math.round(1 / CFG.euroPerToken);
     const o = _ov('klantOnbOv');
+    o.dataset.heraccorderen = heraccorderen ? '1' : '';
     o.innerHTML =
       '<div class="modal"><div class="modal-scroll">' +
-        _kop('Nog \u00e9\u00e9n stap', 'Daarna staan je ' + gratis + ' tokens klaar') +
+        (heraccorderen
+          ? _kop('Onze voorwaarden zijn aangescherpt', 'Je tokens blijven gewoon staan \u2014 lees de bijgewerkte tekst en ga opnieuw akkoord')
+          : _kop('Nog \u00e9\u00e9n stap', 'Daarna staan je ' + gratis + ' tokens klaar')) +
         '<div class="lg-form">' +
 
           _vink('onbSurvey', 'Uitlezen van mijn voertuig',
@@ -298,7 +313,9 @@
           '<div id="onbErr" style="font-size:12px;min-height:18px;text-align:center;margin-top:8px"></div>' +
         '</div>' +
       '</div>' +
-      '<div class="mact"><button class="mbtn p" id="onbGo" style="width:100%">Akkoord \u2014 geef mij mijn tokens</button></div></div>';
+      '<div class="mact"><button class="mbtn p" id="onbGo" style="width:100%">' +
+        (heraccorderen ? 'Ga akkoord met de bijgewerkte tekst' : 'Akkoord \u2014 geef mij mijn tokens') +
+      '</button></div></div>';
 
     o.querySelector('#onbGo').onclick = _doeOnboarding;
     o.classList.remove('hidden');
@@ -340,9 +357,15 @@
         return _zetMelding(err, 'err', m);
       }
       try { if (window.PLCredits) PLCredits.zetServerSaldo(r.data.saldo); } catch(e){ console.warn('PLCredits.zetServerSaldo mislukt:', e); }
+      const heraccorderen = o.dataset.heraccorderen === '1';
       _sluit('klantOnbOv');
       if (r.data.toegekend > 0) {
         try { (window.showToast || function () {})('\u26A1 ' + r.data.toegekend + ' tokens toegevoegd'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+      } else if (heraccorderen) {
+        // Geen tokens deze keer \u2014 dit was een heraccordering op de bijgewerkte
+        // tekst, geen eerste keer. Zonder deze melding lijkt de knop niets te
+        // hebben gedaan.
+        try { (window.showToast || function () {})('Voorwaarden geaccepteerd'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
       }
       _log('Akkoorden vastgelegd \u2014 saldo ' + r.data.saldo, 'ok');
     } catch (e) {

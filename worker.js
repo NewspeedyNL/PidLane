@@ -2205,15 +2205,35 @@ async function klantAuth(request, env) {
 }
 __name(klantAuth, "klantAuth");
 
+// Moment waarop de toestemmingstekst inhoudelijk is gecorrigeerd: de claim dat
+// de meetdata anoniem is, is vervangen door de juiste omschrijving — delen
+// onder een pseudoniem (zie de AVG-alinea bij handleKlantOnboarding). Een
+// akkoord van vóór dit moment is
+// gegeven op een tekst die de verwerking verkeerd omschreef, en dat akkoord
+// is aanvechtbaar — dus telt hier niet meer als geldig.
+//
+// Bewust GEEN nieuw Airtable-veld voor het versienummer. AkkoordOp bestaat al
+// en wordt al bij elk akkoord bijgewerkt; een geschreven-veldnaam die nog niet
+// in de Klanten-tabel bestaat geeft 422 UNKNOWN_FIELD_NAME op de PATCH — zie
+// de VIN-logregel hierboven voor waar dat al eens misging. Hergebruik van een
+// bestaand veld is hier dus niet netheid maar het verschil tussen wel en niet
+// werken.
+const AKKOORD_TEKST_SINDS = "2026-08-27T00:00:00.000Z";
+
 function klantPubliek(rec) {
   const f = rec && rec.fields || {};
+  const akkoordOp = f.AkkoordOp ? new Date(f.AkkoordOp) : null;
+  const akkoordActueel = !!(akkoordOp && !isNaN(akkoordOp) &&
+    akkoordOp.toISOString() >= AKKOORD_TEKST_SINDS);
   return {
     email: f.Email || "",
     naam: f.Naam || "",
     saldo: Number(f.Saldo || 0),
     status: f.Status || "actief",
-    // Vertelt de app of het scherm met akkoorden nog getoond moet worden.
+    // Vertelt de app of het akkoordscherm nog getoond moet worden: geen
+    // eerder akkoord, óf een akkoord op de inmiddels achterhaalde tekst.
     startTegoed: f.StartTegoedGegeven === true,
+    akkoordActueel,
     akkoorden: Array.isArray(f.Akkoorden) ? f.Akkoorden.slice() : []
   };
 }
@@ -2880,6 +2900,13 @@ __name(handleAdminCodesPost, "handleAdminCodesPost");
 //     pidlane-klant.js, privacy.html, de melding hieronder) zeggen dat
 //     sinds 27-08-2026 ook met zoveel woorden. Verandert die verwerking,
 //     dan gaan die drie plekken mee.
+//
+//     Wie zijn akkoord al vóór 27-08-2026 gaf, deed dat op de onjuiste tekst.
+//     klantPubliek() (`akkoordActueel`, zie AKKOORD_TEKST_SINDS hierboven in
+//     dit bestand) rekent zo'n akkoord niet meer als geldig, en het
+//     onboardingscherm verschijnt dan opnieuw bij de eerstvolgende login —
+//     zónder het proeftegoed nog eens uit te keren, want `alGehad` hieronder
+//     blijft op StartTegoedGegeven staan en telt los van AkkoordOp.
 //   nieuwsbrief → marketing. Dit mag NOOIT voorwaarde zijn voor het
 //     proeftegoed. Toestemming moet vrij gegeven zijn (AVG art. 7 lid 4);
 //     een beloning eraan koppelen maakt haar aanvechtbaar. De vraag staat
