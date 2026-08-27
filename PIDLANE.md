@@ -688,6 +688,29 @@ veld bij het ópenen uitlezen in plaats van bij de klik) wordt hij rood. Zonder
 zo'n test zegt "het werkt" hier niets: je moet het bestand openen om het te
 weten, en dan is de rit voorbij.
 
+### Uitloggen mocht geen gratis tokens gaan uitdelen (28-08)
+
+Issue #24 meldde dat `logout()` de `pl_credits_*`-sleutels niet wist: op een
+gedeeld werkplaatstoestel zag de volgende gebruiker even het saldo van de
+vorige. De voor de hand liggende fix — die drie sleutels weggooien — is fout,
+en dat is hier het bewaarde stuk.
+
+`saldo()` kent bij een **ontbrekende** saldosleutel het gratis proeftegoed toe
+(`CFG.gratisStart`, 25). Wie de sleutel verwijdert maakt uitloggen dus een knop
+die 25 nieuwe tokens uitdeelt, zo vaak als je erop drukt. De tegenproef in
+`test-inlog-sessie.js` laat dat zien: met de naïeve variant geeft `saldo()`
+na het uitloggen weer 25 en staat er `"25"` in de opslag.
+
+`vergeetKlant()` zet de sleutel daarom op **nul** in plaats van hem te
+verwijderen, en laat twee sleutels met opzet staan: `pl_credits_init` (de
+vastlegging dát dit toestel zijn proeftegoed al kreeg — die moet een uitlogactie
+juist overleven) en `pl_credits_kalib` (tekens-per-token van het AI-model, een
+eigenschap van het model en niet van de klant).
+
+Algemener: **"wis alles wat van de vorige gebruiker was" botst hier met "onthoud
+wat dit toestel al gehad heeft".** Bij elke volgende schoonmaakactie is dat de
+vraag die eerst beantwoord moet worden.
+
 ### Werkregel uit de mislukte rit van 26-08
 
 Er is 27 minuten gereden en er is niets opgenomen: het toestel draaide testrun

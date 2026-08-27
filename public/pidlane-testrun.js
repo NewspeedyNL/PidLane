@@ -1600,163 +1600,87 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 27-08-2026 — vier schermfouten op de telefoon plus de
-  // laagordening. Blok 5 toetst wat er in DEZE update veranderd is; de
-  // controles van 24-08 (waakknop, inlogmelding, protocolkeuze) zijn hier
-  // weggehaald omdat ze bij die oplevering hoorden en sindsdien groen staan.
+  // OPLEVERING 28-08-2026 — de sessie: inloggen en uitloggen (#24).
+  // De opmaakcontroles van 27-08 zijn hier weggehaald; die oplevering is
+  // afgerond en staat groen. Wat hier staat gaat over déze twee fixes.
+  //
+  // Het echte gedrag zit in test-inlog-sessie.js in de gate: doLogin() en
+  // vergeetKlant() zijn daar met een nagemaakte omgeving doorlopen, mét
+  // tegenproef. In de app zelf kan dat niet — inloggen toetsen zou je
+  // uitloggen, en vergeetKlant() aanroepen zou je saldo wissen. Hier staat
+  // dus alleen wat je zonder schade kunt vaststellen.
   // ══════════════════════════════════════════════════════════════
 
-  // ── 1. TOPBALK — het logo mag verdwijnen, niet halveren ──────────
-  // De melding kwam van een screenshot: tussen 🏠 en de chips stond een halve
-  // icoon. .logo is het enige krimpbare kind van een balk met overflow:hidden,
-  // dus at elk chipje dat erbij kwam een stukje logo op. Onder 480px hoort hij
-  // nu helemaal weg te zijn; daarboven hoort hij er héél te staan.
-  await _doe(5, 'Topbalk toont geen half logo', function () {
-    const logo = document.querySelector('.topbar .logo');
-    const ico  = document.querySelector('.topbar .logo-i');
-    if (!logo || !ico)
-      return { staat: 'LET OP', detail: 'topbalk niet in beeld — niets te meten' };
-    const breed = window.innerWidth;
-    const weg   = getComputedStyle(logo).display === 'none';
-    if (breed <= 480) {
-      if (!weg)
-        return { staat: 'FOUT', detail: 'op ' + breed + 'px staat het logo er nog; daar past het niet ' +
-          'naast de chips en wordt het afgesneden — het hoort display:none te zijn' };
-      return 'onder 480px (' + breed + 'px) is het logo in zijn geheel weg, zoals bedoeld';
-    }
-    if (weg) return 'logo verborgen op ' + breed + 'px';
-    const lr = logo.getBoundingClientRect(), ir = ico.getBoundingClientRect();
-    if (ir.width < 25.5 || ir.right > lr.right + 0.5)
-      return { staat: 'FOUT', detail: 'het logo-icoon is ' + ir.width.toFixed(1) + 'px breed en steekt ' +
-        (ir.right - lr.right).toFixed(1) + 'px buiten .logo — dat is precies het halve logo uit de melding' };
-    return 'logo heel op ' + breed + 'px (icoon ' + ir.width.toFixed(1) + 'px)';
+  // ── 1. Is de uitlogschoonmaak bedraad? ───────────────────────────
+  // logout() roept PLCredits.vergeetKlant() aan achter een ?.-guard. Zo'n
+  // guard is precies hoe rebuildPidDefsCache() maandenlang niet bestond
+  // zonder dat iemand het merkte (zie §18). Daarom hier controleren dát hij
+  // er is, in plaats van erop te vertrouwen dat de aanroep iets doet.
+  await _doe(5, 'Uitloggen kan het saldo van de vorige gebruiker wissen', function () {
+    if (!window.PLCredits)
+      return { staat: 'FOUT', detail: 'PLCredits ontbreekt — pidlane-credits.js is niet meegekomen' };
+    if (typeof PLCredits.vergeetKlant !== 'function')
+      return { staat: 'FOUT', detail: 'PLCredits.vergeetKlant() ontbreekt; logout() roept hem aan achter ' +
+        'een ?.-guard, dus dan gebeurt er stil niets en ziet de volgende gebruiker het saldo van de vorige' };
+
+    // De sleutelnamen staan in CFG en nergens anders — dat is de hele reden
+    // dat vergeetKlant() in pidlane-credits.js woont. Verdwijnt er één, dan
+    // wist de schoonmaak iets anders dan het saldo.
+    const c = PLCredits.CFG || {};
+    const mist = ['lsSaldo', 'lsKalib', 'lsInit'].filter(k => !c[k]);
+    if (mist.length)
+      return { staat: 'FOUT', detail: 'CFG mist ' + mist.join(', ') + ' — vergeetKlant() wist dan de ' +
+        'verkeerde sleutel of geen enkele' };
+    if (!(c.gratisStart > 0))
+      return { staat: 'LET OP', detail: 'CFG.gratisStart is 0 of ontbreekt — het proeftegoed staat uit' };
+    return 'vergeetKlant() aanwezig, drie sleutels bekend, proeftegoed ' + c.gratisStart;
   });
 
-  // ── 2. RIT-MONITOR — het tegelraster loopt niet meer het scherm uit ──
-  // repeat(4,1fr) is minmax(auto,1fr): een spoor mag niet smaller worden dan
-  // zijn langste woord, dus duwde INLAATLUCHT het raster buiten beeld en viel
-  // "Verbruik nu" er half af. Twee dingen bewijzen de fix: geen overloop, en
-  // vier even brede tegels (ongelijke breedtes = de bodem werkt nog).
-  await _doe(5, 'Tegelraster van de rit-monitor past op het scherm', function () {
-    const rasters = [...document.querySelectorAll('#pane-monitor .mon-grid2')];
-    if (!rasters.length)
-      return { staat: 'LET OP', detail: 'rit-monitor niet opgebouwd — niets te meten' };
-    const klachten = [];
-    rasters.forEach(function (g, i) {
-      const over = g.scrollWidth - g.clientWidth;
-      if (over > 1) klachten.push('raster ' + (i + 1) + ' loopt ' + over + 'px over');
-      const br = [...g.children].map(t => t.getBoundingClientRect().width);
-      if (br.length && (Math.max(...br) - Math.min(...br)) > 1)
-        klachten.push('raster ' + (i + 1) + ' heeft ongelijke tegels (' +
-          br.map(b => b.toFixed(0)).join('/') + 'px) — de minmax(0,1fr) is weg');
-      const laatste = g.children[g.children.length - 1];
-      if (laatste && laatste.getBoundingClientRect().right > window.innerWidth + 0.5)
-        klachten.push('de laatste tegel van raster ' + (i + 1) + ' valt buiten beeld');
-    });
-    if (klachten.length) return { staat: 'FOUT', detail: klachten.join('; ') };
-    const br = [...rasters[0].children].map(t => t.getBoundingClientRect().width.toFixed(0));
-    return rasters.length + ' rasters passen, tegels gelijk breed (' + br.join('/') + 'px)';
+  // ── 2. Deelt uitloggen geen nieuw proeftegoed uit? ───────────────
+  // Dit is de fout die de voor de hand liggende fix zou introduceren: wie de
+  // saldosleutel verwíjdert in plaats van op nul zet, laat saldo() een
+  // ontbrekende sleutel zien — en die kent het gratis proeftegoed toe. Dan is
+  // uitloggen een knop die 25 tokens uitdeelt, zo vaak als je wilt.
+  //
+  // Hier niet vergeetKlant() aanroepen (dat zou het saldo van de gebruiker
+  // wissen), maar de voorwaarde toetsen die het lek mogelijk maakt: staat de
+  // saldosleutel er, dan deelt saldo() niets uit.
+  await _doe(5, 'Uitloggen levert geen gratis tokens op', function () {
+    if (!window.PLCredits) return { staat: 'LET OP', detail: 'PLCredits ontbreekt — niets te meten' };
+    const c = PLCredits.CFG || {};
+    let ruw = null;
+    try { ruw = localStorage.getItem(c.lsSaldo); }
+    catch (e) { return { staat: 'LET OP', detail: 'localStorage niet leesbaar: ' + (e.message || e) }; }
+    if (ruw === null)
+      return { staat: 'LET OP', detail: 'nog geen saldosleutel op dit toestel — het proeftegoed is nog ' +
+        'niet toegekend, dus hier valt nu niets te toetsen' };
+    if (PLCredits.serverModus())
+      return 'serverSaldo actief; de lokale sleutel staat op ' + ruw + ' en dient alleen als cache';
+    const n = parseInt(ruw, 10);
+    if (!isFinite(n))
+      return { staat: 'FOUT', detail: 'de saldosleutel bevat ' + JSON.stringify(ruw) + ' — geen getal; ' +
+        'saldo() leest dat als 0 en de weergave klopt niet' };
+    return 'saldosleutel aanwezig (' + n + '), dus saldo() kent geen nieuw proeftegoed toe';
   });
 
-  // ── 3. RIT-MONITOR — de waarschuwingskop breekt af i.p.v. over te lopen ──
-  await _doe(5, 'Kop "Waarschuwingen & onderbouwing" blijft binnen het scherm', function () {
-    const kop = document.querySelector('#pane-monitor .mon-warnkop');
-    if (!kop) return { staat: 'LET OP', detail: 'waarschuwingskop niet in beeld — niets te meten' };
-    const span = kop.querySelector('span'), knop = kop.querySelector('button');
-    if (!span) return { staat: 'FOUT', detail: 'de kop heeft geen tekst-span meer' };
-    const sr = span.getBoundingClientRect(), kr = kop.getBoundingClientRect();
-    if (span.scrollWidth - span.clientWidth > 1)
-      return { staat: 'FOUT', detail: 'de kop loopt ' + (span.scrollWidth - span.clientWidth) +
-        'px over zijn eigen breedte — min-width:0 ontbreekt, dus breekt hij niet af' };
-    if (sr.left < kr.left - 0.5 || sr.right > kr.right + 0.5)
-      return { staat: 'FOUT', detail: 'de kop steekt buiten zijn rij (links ' + (sr.left - kr.left).toFixed(1) +
-        'px, rechts ' + (sr.right - kr.right).toFixed(1) + 'px)' };
-    if (knop) {
-      const br = knop.getBoundingClientRect();
-      if (br.right > window.innerWidth + 0.5)
-        return { staat: 'FOUT', detail: 'de Rapport-knop valt buiten beeld' };
-    }
-    return 'kop past binnen de rij (' + sr.width.toFixed(0) + 'px) en de knop staat in beeld';
-  });
-
-  // ── 4. TAAL — geen Engels meer in de basiscontrole ───────────────
-  // De demoknop op het loginscherm is bewust WEL Engels (Play-reviewnotitie);
-  // die staat hier dus niet bij, en dat is geen omissie maar het besluit.
-  await _doe(5, 'Basiscontrole spreekt Nederlands', function () {
-    const kop  = document.querySelector('#pane-check .chk-intro h3, .chk-intro h3');
-    const knop = document.getElementById('btnBasic');
-    const fout = [];
-    if (kop && /basic system check/i.test(kop.textContent)) fout.push('kop staat nog op "Basic system check"');
-    if (knop && /basic check/i.test(knop.textContent))      fout.push('knop staat nog op "Start basic check"');
-    const leeg = document.querySelector('.bsc-empty');
-    if (leeg && /basic check/i.test(leeg.textContent))      fout.push('de uitleg verwijst nog naar "Start basic check"');
-    if (fout.length) return { staat: 'FOUT', detail: fout.join('; ') };
-    if (!kop && !knop) return { staat: 'LET OP', detail: 'basiscontrole niet opgebouwd — niets te lezen' };
-    return 'kop en knop staan in het Nederlands' + (knop ? ' ("' + knop.textContent.trim() + '")' : '');
-  });
-
-  // ── 5. LAAGORDENING — chips onder de modals, in één regel vastgelegd ──
-  // De bulk-recorder lag onder de zwevende chips. Dat is op 23-08 verholpen
-  // door die ene modal op te hogen; de chips stonden zelf nog op vier hoogtes.
-  // Nu is het een rangorde: zwevend < topbalk < modal < opslaanvenster.
-  await _doe(5, 'Laagordening: zwevende chips liggen onder de modals', function () {
-    const s = getComputedStyle(document.documentElement);
-    const n = k => parseInt(s.getPropertyValue(k), 10);
-    const zwevend = n('--z-zwevend'), topbar = n('--z-topbar'),
-          modal = n('--z-modal'), hoog = n('--z-modal-hoog'), opslaan = n('--z-opslaan');
-    if ([zwevend, topbar, modal, hoog, opslaan].some(v => !Number.isFinite(v)))
-      return { staat: 'FOUT', detail: 'de --z-*-variabelen ontbreken in pidlane.css — dan ligt de ordening ' +
-        'weer bij het losse getal per element, en dat was de oorzaak' };
-    if (!(zwevend < topbar && topbar < modal && modal <= hoog && hoog < opslaan))
-      return { staat: 'FOUT', detail: 'de rangorde klopt niet: zwevend ' + zwevend + ', topbalk ' + topbar +
-        ', modal ' + modal + ', modal-hoog ' + hoog + ', opslaan ' + opslaan };
-
-    // En dan de chips zelf: staat er één op een eigen getal, dan is de ordening
-    // wel opgeschreven maar niet gevolgd.
-    const afwijkend = [];
-    ['plCredChip', 'tokPill', 'ritPill'].forEach(function (id) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const z = parseInt(getComputedStyle(el).zIndex, 10);
-      if (Number.isFinite(z) && z !== zwevend) afwijkend.push(id + ' op ' + z);
-    });
-    if (afwijkend.length)
-      return { staat: 'FOUT', detail: 'zwevende chips buiten de laag: ' + afwijkend.join(', ') +
-        ' (zou ' + zwevend + ' moeten zijn)' };
-    const blk = document.getElementById('blkOverlay');
-    if (blk) {
-      const z = parseInt(getComputedStyle(blk).zIndex, 10);
-      if (Number.isFinite(z) && z <= zwevend)
-        return { staat: 'FOUT', detail: 'de bulk-recorder (' + z + ') ligt niet boven de chips (' + zwevend + ')' };
-    }
-    return 'rangorde ' + zwevend + ' < ' + topbar + ' < ' + modal + ' ≤ ' + hoog + ' < ' + opslaan +
-      ', alle aanwezige chips staan op ' + zwevend;
-  });
-
-  // ── 6. OPSLAAN — het opmerkingveld staat er en wordt per klik gelezen ──
-  // Of de tekst ook echt in het bestand komt, toetst test-opmerkingveld.js in
-  // de gate: dat vraagt een bestand terugzien en kan hier niet. Wat hier wél
-  // te meten is: staat het veld er, en zit het vóór de twee knoppen.
-  await _doe(5, 'Opslaanvenster heeft een opmerkingveld', function () {
-    if (typeof plOpslaan !== 'function')
-      return { staat: 'FOUT', detail: 'plOpslaan() ontbreekt — pidlane-export.js is niet meegekomen' };
-    const oud = document.getElementById('plExportOv');
-    if (oud) return { staat: 'LET OP', detail: 'er staat al een opslaanvenster open — niet gestoord' };
-    let uit;
-    try {
-      plOpslaan('PidLane-blok5-proef', 'proefinhoud', { titel: 'Blok 5' });
-      const veld = document.getElementById('plExpOpm');
-      const txt  = document.getElementById('plExpTxt');
-      if (!veld)      uit = { staat: 'FOUT', detail: 'geen #plExpOpm in het venster — het veld is verdwenen' };
-      else if (!txt)  uit = { staat: 'FOUT', detail: 'geen tekstknop in het venster' };
-      else if (veld.compareDocumentPosition(txt) !== 4 /* volgt erop */)
-        uit = { staat: 'FOUT', detail: 'het veld staat niet vóór de opslagknoppen — dan tikt niemand het in' };
-      else uit = 'opmerkingveld aanwezig, vóór beide knoppen';
-    } finally {
-      const ov = document.getElementById('plExportOv');
-      if (ov) ov.remove();                 // het venster mag de rit niet blokkeren
-    }
-    return uit;
+  // ── 3. Kan een e-mailadres nog langs de Users-route? ─────────────
+  // BRONCONTROLE, met reden. Een gedragstest zou een echte inlogpoging
+  // vereisen en dus de lopende sessie beëindigen — dat is in een testrun
+  // onaanvaardbaar. De gedragstest staat daarom in test-inlog-sessie.js; hier
+  // alleen de vraag of díé versie van doLogin ook echt in de app draait, want
+  // dat is wat de HTTP-cache twee keer eerder verkeerd heeft laten aflopen.
+  await _doe(5, 'Login: een afgewezen klantlogin valt door naar Users', function () {
+    if (typeof doLogin !== 'function')
+      return { staat: 'FOUT', detail: 'doLogin() ontbreekt — pidlane-auth.js is niet meegekomen' };
+    const bron = String(doLogin);
+    if (!/klantAfgewezen/.test(bron))
+      return { staat: 'FOUT', detail: 'doLogin() kent klantAfgewezen niet: dit is de oude versie, waarin ' +
+        'een afgewezen klantlogin hard stopt. Iedereen met een @ in zijn gebruikersnaam komt er dan niet ' +
+        'in. Eerst "Nieuwste versie laden" — is het daarna nog zo, dan draait de oude code echt.' };
+    if (!/geblokkeerd|Te veel/.test(bron))
+      return { staat: 'FOUT', detail: 'de blokkade-tak is uit doLogin() verdwenen — dan omzeilt een ' +
+        'geblokkeerd account zichzelf door door te vallen naar Users' };
+    return 'doorval naar Users aanwezig, blokkade stopt nog steeds hard';
   });
 }
 
@@ -2510,43 +2434,41 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 27-08 — vier schermfouten op de telefoon, plus de laagordening',
+  titel: 'OPLEVERING 28-08 — de sessie: inloggen en uitloggen (#24), vóór de Play Store-testfase',
   vragen: [
     '── WAAROM DEZE RONDE ──────────────────────────────────────',
 
-    'Twee screenshots van 27-08 lieten drie dingen tegelijk zien: een half afgesneden logo in de topbalk, een tegelrij van de rit-monitor die het scherm uit liep, en een waarschuwingskop die naast de Rapport-knop niet meer paste. Alle drie zijn opmaakfouten die alleen op een echte telefoon te zien zijn — een browser op een breed scherm laat ze niet zien. Vandaar dat deze campagne bij stilstand kan, maar wél op het toestel zelf.',
+    'Dit is de laatste ronde vóór de Play Store-testfase, en daarom staan hier twee dingen in die een tester meteen raken. Een tester die niet kan inloggen, test niets — dat weegt zwaarder dan welke meetfout dan ook.',
 
     '── STAP VOOR STAP ─────────────────────────────────────────',
 
-    'STAP 1. "Nieuwste versie laden" — anders kijk je naar de oude opmaak en concludeer je dat er niets veranderd is. Dat is hier twee keer eerder gebeurd.',
+    'STAP 1. "Nieuwste versie laden". Blok 5 controle 3 kijkt of de nieuwe doLogin écht draait; staat die op FOUT, dan kijk je naar de oude code uit de cache en zegt de rest van deze lijst niets.',
 
-    'STAP 2. Verbind en druk op ▶ Start. Blok 5 mag geen FOUT geven. De zes controles daarin gaan precies over deze oplevering; de controles van 24-08 zijn eruit gehaald omdat die oplevering afgerond is.',
+    'STAP 2. INLOGGEN MET EEN E-MAILADRES ALS GEBRUIKERSNAAM. Dit is de kern. Maak in de tabel Users een account met een e-mailadres als gebruikersnaam (of gebruik een bestaande medewerker die er al zo een heeft) en log daarmee in. Vóór deze ronde kwam je er niet in: de app probeerde de klantroute, kreeg een afwijzing, en stopte daar. Nu hoort hij door te vallen naar de Users-route en je gewoon binnen te laten.',
 
-    'STAP 3. Kijk zélf naar de topbalk. Staat er tussen 🏠 en de chips een halve icoon, dan is de fix niet aangekomen. Op een telefoon (onder 480px) hoort er hélemaal geen logo te staan — dat is bedoeld, geen ontbrekend plaatje.',
+    'STAP 3. EEN KLANT MOET NOG GEWOON WERKEN. Log in met een echt klantaccount (tabel Klanten). Die hoort binnen te komen via de klantroute, zonder dat de Users-route eraan te pas komt. Werkt dit niet meer, dan is de doorval te ver doorgeslagen.',
 
-    'STAP 4. Open de rit-monitor. De onderste tegelrij is Inlaatlucht / Gaspedaal / Ontsteking / Verbruik nu. Alle vier moeten er staan, alle vier even breed, en niets mag rechts van het scherm afvallen. Ongelijke breedtes zijn het signaal: dan werkt de oude 1fr-regel nog.',
+    'STAP 4. FOUT WACHTWOORD. Tik een bestaand e-mailadres met een verkeerd wachtwoord. Verwacht "E-mailadres of wachtwoord onjuist" — niet "Gebruikersnaam of wachtwoord onjuist". Beide routes wijzen dan af, en de melding hoort bij het scherm dat je voor je hebt.',
 
-    'STAP 5. Scrol in dezelfde pane door naar "⚠️ Waarschuwingen & onderbouwing". De tekst mag afbreken, maar geen letter mag buiten het scherm vallen, en de knop "📄 Rapport nu" moet volledig zichtbaar zijn.',
+    'STAP 5. GEBLOKKEERD ACCOUNT. Dit is de tegenproef en de belangrijkste stap van deze ronde. Probeer een account net zo vaak verkeerd tot het geblokkeerd raakt. De app hoort dán hard te stoppen met de blokkademelding, en NIET door te vallen naar de Users-route — want dan zou de blokkade zichzelf omzeilen. Komt hier "Gebruikersnaam of wachtwoord onjuist" in plaats van de blokkademelding, dan is dat een beveiligingsfout en geen schoonheidsfoutje.',
 
-    'STAP 6. Open de basiscontrole (deur "Live PID-data" → Basic-tabblad). Er hoort nergens meer Engels te staan: "Basiscontrole systeem" en de knop "▶ Basiscontrole starten". Let op: de demoknop op het INLOGSCHERM blijft wél Engels ("Try demo — no adapter needed") — die tekst staat woordelijk in de Play-reviewnotitie en verandert dus niet.',
+    'STAP 6. UITLOGGEN OP EEN GEDEELD TOESTEL. Log in als klant A met saldo, log uit, en kijk naar de saldochip vóórdat je opnieuw inlogt. Die hoort op nul te staan, niet op het saldo van A.',
 
-    'STAP 7. Zet de bulk-recorder aan (☰ → Admin → Bulk-recorder) terwijl er zwevende chips in beeld staan (tokensaldo linksonder, of de rit-pill onderaan na het minimaliseren van de ritanalyse). Geen enkel chipje mag over het dashboard heen liggen. Ligt er tóch een overheen, dan staat er ergens weer een los z-index-getal in plaats van --z-zwevend.',
+    'STAP 7. EN DE STAP DIE ER ECHT TOE DOET: log dríé keer achter elkaar uit en weer in. Het saldo mag NIET elke keer op 25 springen. Doet het dat wel, dan is de saldosleutel verwijderd in plaats van op nul gezet, en is uitloggen een knop geworden die gratis tokens uitdeelt.',
 
-    'STAP 8. Sla iets op (📜 Logboek → opslaan). Tik een zin in het opmerkingveld, kies "Tekst", en open het bestand. De zin hoort bovenaan te staan onder het kopje OPMERKING. Doe het daarna nog eens met "PDF": daar hoort hij in een eigen kader boven de inhoud.',
+    '── WAT ER IS VERANDERD ────────────────────────────────────',
 
-    '── WAT ER IS WEGGEHAALD ───────────────────────────────────',
+    'doLogin() stopte bij een afgewezen klantlogin met een return. Alleen een uitzondering (server onbereikbaar) viel door naar de Users-route, een nette afwijzing niet. Dat is nu omgedraaid: afwijzing valt door, blokkade stopt hard.',
 
-    'De .logo-regel onder 480px zette alleen de tekst op font-size:0 en liet het icoon staan. Dat icoon was juist het probleem, dus die truc is weg en het logo verdwijnt daar nu helemaal.',
+    'logout() wist alleen pl_session en pl_autoconn. Er is nu PLCredits.vergeetKlant(), die het saldo op nul zet en het werkgeheugen van de module leegt. De sleutelnamen staan in PLCredits en niet in logout() — één plek die ze kent.',
 
-    'De vier zwevende chips stonden op vier verschillende z-indexen (8500, 9400, 9400, 9450). Die losse getallen zijn weg; ze lezen nu alle vier --z-zwevend uit pidlane.css. Ook de vaste 9800 van de bulk-recorder is vervangen door --z-modal-hoog.',
+    'BEWUST NIET GEWIST: pl_credits_init (de vastlegging dát dit toestel zijn proeftegoed al kreeg) en pl_credits_kalib (tekens-per-token van het AI-model, een eigenschap van het model en niet van de klant).',
 
-    'Blok 5 bevatte de controles van de oplevering van 24-08 (waakknop bij weergavewissel, inlogmelding in de foutkleur, protocolkeuze zonder automatische doorstap). Die zijn eruit; ze horen bij die ronde en stonden sindsdien groen.',
+    '── WAT DEZE RONDE NIET RAAKT ──────────────────────────────',
 
-    '── WAT DEZE RONDE NIET BEANTWOORDT ────────────────────────',
+    'De testrun-blokken 7 en 14 melden nog steeds iets anders dan ze meten (#12 en #29). Blok 14 zei op 27-08 "niets opgeruimd" terwijl het log twee opruimacties toonde. Trek daar deze ronde geen conclusies uit; het staat als issue en wordt apart gefixt.',
 
-    'De afgesneden waarschuwingskop is in een nagemaakte telefoon (412px én 320px, ook op tekstgrootte L) niet te reproduceren geweest. De tegelrij wél: die liep daar 19px over en gaf tegels van 103/95/98/83px. De fix op de kop is dus onderbouwd met de oorzaak (een flexkind dat niet onder zijn langste woord mag krimpen) maar niet met een nagebouwde fout. Kijk in stap 5 daarom extra goed, en meld het mét de tekstgrootte-instelling als het terugkomt.',
-
-    'De open vragen van de rit van 26-08 (raildruk 0123/0159, opruimregel, mode 22 olietemperatuur, blok 13 onder belasting) staan hier NIET in. Die horen bij een rit, niet bij een opmaakronde — zie de issues.'
+    'De airco-melding (#30) staat er ook nog: een aan- en uitschakelende airco wordt gemeld als ruw stationair, met valse lucht en bobines als verdachten. Bij een testrit met de airco aan krijg je die dus; het is bekend en het klopt niet.'
   ]
 };
 
