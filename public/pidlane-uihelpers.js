@@ -7,6 +7,39 @@
 // ════════════════════════════════════════
 // UI HELPERS
 // ════════════════════════════════════════
+// ── Voertuig-blok en demo-balk inklapbaar ──
+// Op het PID-keuzescherm eten "Voertuig" (kaart + demo-balk) samen zoveel
+// vaste ruimte op dat de scrollbare PID-lijst eronder nauwelijks hoogte
+// overhoudt. Beide onthouden hun stand (aan/uit) in localStorage, zodat een
+// keer inklappen blijft staan bij de volgende sessie.
+function toggleVehicleSection(){
+  const body=document.getElementById('vehicleBody'); if(!body) return;
+  const collapsing = body.style.display!=='none';
+  body.style.display = collapsing?'none':'';
+  const chev=document.getElementById('vehSecChev'); if(chev) chev.textContent = collapsing?'▸':'▾';
+  try{ localStorage.setItem('pl_vehsec_collapsed', collapsing?'1':'0'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+}
+function toggleDemoBarBody(){
+  const body=document.getElementById('demoBarBody'); if(!body) return;
+  const collapsing = body.style.display!=='none';
+  body.style.display = collapsing?'none':'';
+  const chev=document.getElementById('demoBarChev'); if(chev) chev.textContent = collapsing?'▸':'▾';
+  try{ localStorage.setItem('pl_demobar_collapsed', collapsing?'1':'0'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+}
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    if(localStorage.getItem('pl_vehsec_collapsed')==='1'){
+      const body=document.getElementById('vehicleBody'), chev=document.getElementById('vehSecChev');
+      if(body) body.style.display='none';
+      if(chev) chev.textContent='▸';
+    }
+    if(localStorage.getItem('pl_demobar_collapsed')==='1'){
+      const body=document.getElementById('demoBarBody'), chev=document.getElementById('demoBarChev');
+      if(body) body.style.display='none';
+      if(chev) chev.textContent='▸';
+    }
+  }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+});
 // Zet BEIDE verbind-knoppen (topbar #cbtn + modal #btnConnect) in de
 // "bezig"-staat tijdens de ~12 sec scan, zodat gebruikers niet herhaald
 // kunnen klikken terwijl het verbindscript al loopt.

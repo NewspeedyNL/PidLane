@@ -1412,24 +1412,33 @@ function closeConnOv(){
         <button onclick="pidChoiceBackHome()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12.5px;font-weight:700;cursor:pointer">← Startscherm</button>
         <button onclick="confirmPidLive()" style="flex:1.4;padding:9px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-size:12.5px;font-weight:800;cursor:pointer">✅ Naar Live weergave</button>
       </div>
-      <!-- VEHICLE INFO — automatisch ingevuld via VIN/scan -->
+      <!-- VEHICLE INFO — automatisch ingevuld via VIN/scan. Inklapbaar (▾/▸):
+           op een klein scherm eet dit blok samen met de demo-balk zoveel
+           ruimte op dat de PID-lijst eronder nauwelijks nog hoogte overhoudt
+           om te scrollen. Zie toggleVehicleSection() in pidlane-uihelpers.js. -->
       <div class="slsec" id="vehicleSection">
-        <div class="slttl">Voertuig</div>
+        <div class="slttl" onclick="toggleVehicleSection()" style="cursor:pointer">Voertuig<span id="vehSecChev">▾</span></div>
+        <div id="vehicleBody">
         <div id="demoBar" style="display:none;margin-bottom:8px;padding:8px;background:var(--pus);border:1px solid var(--pu);border-radius:8px">
-          <div style="font-size:11px;font-weight:700;color:var(--pu);margin-bottom:5px">🧪 DEMO-VOERTUIG — wissel brandstoftype</div>
-          <select id="demoVehSel" onchange="loadDemoVehicle(this.value)" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-size:12px;font-weight:600;margin-bottom:6px">
-            <option value="benzine">⛽ Benzine — Mazda CX-5</option>
-            <option value="diesel">🛢️ Diesel — VW Passat TDI</option>
-            <option value="hybride">🔋 Hybride — Toyota Prius</option>
-            <option value="elektrisch">⚡ Elektrisch — Tesla Model 3</option>
-          </select>
-          <div style="display:flex;gap:6px">
-            <button onclick="demoRefresh()" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:700;cursor:pointer">🔄 Refresh</button>
-            <button onclick="optimizeConnectionAI(this)" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:700;cursor:pointer">🛠 Optimaliseer</button>
+          <div onclick="toggleDemoBarBody()" style="font-size:11px;font-weight:700;color:var(--pu);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+            <span>🧪 DEMO-VOERTUIG — wissel brandstoftype</span><span id="demoBarChev">▾</span>
+          </div>
+          <div id="demoBarBody">
+            <select id="demoVehSel" onchange="loadDemoVehicle(this.value)" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-size:12px;font-weight:600;margin-bottom:6px">
+              <option value="benzine">⛽ Benzine — Mazda CX-5</option>
+              <option value="diesel">🛢️ Diesel — VW Passat TDI</option>
+              <option value="hybride">🔋 Hybride — Toyota Prius</option>
+              <option value="elektrisch">⚡ Elektrisch — Tesla Model 3</option>
+            </select>
+            <div style="display:flex;gap:6px">
+              <button onclick="demoRefresh()" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:700;cursor:pointer">🔄 Refresh</button>
+              <button onclick="optimizeConnectionAI(this)" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:12px;font-weight:700;cursor:pointer">🛠 Optimaliseer</button>
+            </div>
           </div>
         </div>
         <div id="vehicleCard" style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;">
           <div style="font-size:12px;color:var(--tx3);text-align:center;padding:4px 0">Verbind OBD2 adapter<br>voor automatische herkenning</div>
+        </div>
         </div>
       </div>
       <!-- PID LIST — dynamisch na discovery -->
