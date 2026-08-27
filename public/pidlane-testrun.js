@@ -985,14 +985,31 @@ async function _blok7() {
     // Als de responstijd niet meebeweegt met de bezetting, is bezetting op deze
     // bus geen bruikbaar tegendruksignaal — dan meet hij alleen hoe hard wíj
     // vragen, niet hoe zwaar de ECU het heeft.
-    const laag = sp.filter(function (m) { return m.bezet < d.bezetAf; }).map(function (m) { return m.ms; });
-    const hoog = sp.filter(function (m) { return m.bezet >= d.bezetOp; }).map(function (m) { return m.ms; });
+    //
+    // FIX 27-08-2026 — trok tot vandaag de omgekeerde conclusie bij een
+    // nulmeting (rit 26-08: 0 ms tegen 144 ms werd gemeld als "+0%, vrijwel
+    // geen verschil"). Een responstijd van 0 ms is geen meting — dat monster
+    // kreeg vermoedelijk nooit een antwoord — en zulke monsters trokken de
+    // mediaan van hun groep naar nul. Erger: de deel-door-nul-vangst
+    // (`mLaag ? ... : 0`) gaf dan zelf ook 0% terug, en 0% viel door
+    // `Math.abs(verschil)<15` heen als "vrijwel geen verschil": het
+    // tegenovergestelde van "onmeetbaar". Nulmetingen gaan er nu eerst uit;
+    // pas als er dán te weinig overblijft, is dat een eigen — expliciet
+    // benoemde — uitkomst in plaats van een stille 0%.
+    const heeftMs = function (m) { return m.ms > 0; };
+    const alLaag = sp.filter(function (m) { return m.bezet < d.bezetAf; });
+    const alHoog = sp.filter(function (m) { return m.bezet >= d.bezetOp; });
+    const laag = alLaag.filter(heeftMs).map(function (m) { return m.ms; });
+    const hoog = alHoog.filter(heeftMs).map(function (m) { return m.ms; });
+    const nulLaag = alLaag.length - laag.length, nulHoog = alHoog.length - hoog.length;
+    const nulNoot = (nulLaag || nulHoog) ? '  [' + (nulLaag + nulHoog) + ' nulmeting(en) genegeerd — geen echte meting]' : '';
     if (!laag.length || !hoog.length)
-      return 'te weinig spreiding in de bezetting om te vergelijken (laag ' + laag.length + ', hoog ' + hoog.length + ' monsters)';
+      return 'te weinig spreiding in de bezetting om te vergelijken (laag ' + laag.length + ', hoog ' + hoog.length + ' monsters)' + nulNoot;
     const mLaag = med(laag), mHoog = med(hoog);
-    const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;
+    // mLaag is hier nooit 0: laag bevat alleen ms>0-waarden en is niet leeg.
+    const verschil = Math.round((mHoog - mLaag) / mLaag * 100);
     const tekst = 'responstijd bij lage bezetting ' + mLaag + ' ms, bij hoge bezetting ' + mHoog + ' ms (' +
-      (verschil >= 0 ? '+' : '') + verschil + '%)';
+      (verschil >= 0 ? '+' : '') + verschil + '%)' + nulNoot;
     if (Math.abs(verschil) < 15)
       return { staat: 'LET OP', detail: tekst + ' — vrijwel geen verschil, dus bezetting voorspelt hier geen tegendruk' };
     return tekst;

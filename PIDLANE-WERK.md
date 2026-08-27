@@ -496,7 +496,14 @@ dicht kan. Een nulmeting die zich voordoet als "bezetting voorspelt niets"
 duwt die conclusie de verkeerde kant op. Zelfde familie als de vondsten van
 deze week: niet de meting is stuk, maar wat de meting over zichzelf beweert.
 
-Vastgelegd, niet gefixt (§6). Zit in blok 7 en staat los van batch 26-08b.
+**Gefixt op 27-08-2026.** Nulmetingen (`ms===0`) worden nu vóór de mediaan
+uit beide groepen gefilterd — ze zijn geen meting, ze trekken hem alleen naar
+nul. Blijft een groep na het filteren leeg, dan is dat een eigen, benoemde
+uitkomst ("te weinig spreiding ... nulmeting(en) genegeerd"), nooit meer een
+stille 0%. De deel-door-nul-vangst (`mLaag ? ... : 0`) is weg: na het filteren
+is `laag` niet leeg en bevat alleen `ms>0`, dus `mLaag` kan niet meer nul zijn.
+Regressietest: `test-blok7-nulmeting.js`, geverifieerd tegen zowel de oude
+(faalt op 5 van 10) als de nieuwe code (slaagt op alle 10).
 
 ### Blok 10 — de snelheidsproef, en waarom de "rust"-regels rood staan
 
