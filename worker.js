@@ -1,3 +1,40 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   worker.js — de complete Cloudflare Worker. DIT BESTAND IS DE BRON.
+   ──────────────────────────────────────────────────────────────────────────
+   Vastgelegd 27-08-2026, omdat het tot nu toe nergens stond en het aan de
+   vorm van dit bestand niet af te lezen is.
+
+   Dit ís een esbuild-uitvoer, ooit. Je ziet het aan de `__defProp`/`__name`-
+   regels hieronder, aan `worker_default` en aan de `@__PURE__`-markeringen in
+   commentaar. Maar de esbuild-invoer bestaat niet meer en er is geen
+   buildstap: Cloudflare Workers Builds neemt bij `git push` dit bestand zoals
+   het is. Er is dus geen "echte" bron waar dit uit voortkomt — die rol heeft
+   dit bestand zelf overgenomen. Je bewerkt het met de hand, en dat doet
+   iedereen hier al maanden.
+
+   WAT DAT BETEKENT VOOR EEN WIJZIGING
+
+   · Bewerk worker.js rechtstreeks. Zoek niet naar een `src/`-map en zet er
+     ook geen op: die zou vanaf dag twee uit de pas lopen met wat er draait.
+   · Houd de `__name`-conventie aan. Elke top-level `function X` krijgt er
+     `__name(X, "X");` achteraan, en een functie-expressie krijgt de vorm
+     `__name((...) => ..., "naam")`. Puur cosmetisch is dat niet: `__name`
+     zet de `.name` van de functie, en dat is wat er in een stacktrace in de
+     Cloudflare-logs terechtkomt. Sla je het over, dan heet je functie daar
+     `(anonymous)` op het moment dat je hem het hardst nodig hebt.
+   · Niet opnieuw door een bundler halen. Dat herschrijft het hele bestand,
+     maakt de diff onleesbaar en gooit het Nederlandse commentaar weg dat op
+     tientallen plekken uitlegt waaróm iets zo staat. Dat commentaar is hier
+     de dure helft.
+   · `plcheck.sh` draait `node --check` op dit bestand. Dat is de vangnet-
+     controle vóór een push; de testgate in CI doet hetzelfde.
+
+   Er stond hier tot 27-08-2026 een `//# sourceMappingURL=worker.js.map` aan
+   het eind. Die map is er nooit geweest in deze repo — het was een restant
+   van de build waar dit ooit uit kwam. Weggehaald: een verwijzing naar een
+   bestand dat niet bestaat kost een 404 bij elke devtools-sessie en suggereert
+   bovendien dat er ergens een originele bron ligt. Die ligt er niet.
+   ══════════════════════════════════════════════════════════════════════════ */
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -2989,4 +3026,3 @@ export {
   RemoteSessionDO,
   worker_default as default
 };
-//# sourceMappingURL=worker.js.map
