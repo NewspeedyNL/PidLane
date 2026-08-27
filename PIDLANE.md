@@ -621,9 +621,7 @@ de pas, en dan is de vraag welke klopt.
 | [#13](https://github.com/NewspeedyNL/PidLane/issues/13) | `merkGroep()`: BMW matcht op gelijkheid, MINI op prefix | bug |
 | [#14](https://github.com/NewspeedyNL/PidLane/issues/14) | PID `0143` staat er 256× naast | bug |
 | [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | bulkrecorder schrijft UTC, logger lokale tijd | bug |
-| [#21](https://github.com/NewspeedyNL/PidLane/issues/21) | demo-knop botst met de versieregel op het loginscherm | UI |
-| [#22](https://github.com/NewspeedyNL/PidLane/issues/22) | zwevende chips liggen over de bulk-recorder | UI |
-| [#23](https://github.com/NewspeedyNL/PidLane/issues/23) | opmerkingveld bij opslaan komt niet in het bestand | UI |
+| [#22](https://github.com/NewspeedyNL/PidLane/issues/22) | zwevende chips liggen over de bulk-recorder | UI — oorzaak weggenomen 27-08 |
 | [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | de app bevriest op de achtergrond | groot |
 | [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — wordt dat één poort? | besluit |
 | [#16](https://github.com/NewspeedyNL/PidLane/issues/16) | opruimregel: drempel en terugweg | besluit |
@@ -635,6 +633,60 @@ de pas, en dan is de vraag welke klopt.
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### Opmaakronde 27-08 — vier schermfouten, en drie issues die al dood waren
+
+Aanleiding waren twee screenshots van een telefoon. Wat daarop te zien was, was
+op een breed scherm onzichtbaar: **een opmaakfout die alleen bij weinig ruimte
+ontstaat, bewijs je niet in een browservenster.** Alle vier de fouten hieronder
+zijn dan ook op 412 px nagemeten, niet met het oog beoordeeld.
+
+1. **Het logo werd doormidden geknipt.** `.logo` is het enige krimpbare kind van
+   een balk met `overflow:hidden`, dus at elk chipje dat erbij kwam een stukje
+   logo op. De regel onder 480 px zette alleen de *tekst* op `font-size:0` en
+   liet het icoon staan — precies het verkeerde deel. Een half logo is geen
+   kleiner logo maar een weergavefout, dus verdwijnt het daar nu in zijn geheel.
+   De volgorde staat er nu bij: chips (bediening) gaan vóór het logo (versiering).
+
+2. **Het tegelraster van de rit-monitor liep het scherm uit.** `repeat(4,1fr)`
+   is `minmax(auto,1fr)`: een spoor mag niet smaller worden dan zijn langste
+   woord. `INLAATLUCHT` duwde het raster 19 px buiten beeld, waardoor "Verbruik
+   nu" er half afviel en de tegels 103/95/98/83 px breed werden in plaats van
+   even breed. Met `minmax(0,1fr)` zijn het er vier van 90 px. Dit is de enige
+   van de vier die met een tegenproef is vastgelegd: met de oude regel terug
+   komt de overloop meetbaar terug.
+
+3. **De waarschuwingskop botste met de Rapport-knop.** Zelfde soort oorzaak: een
+   flexkind staat op `min-width:auto` en kan niet krimpen onder zijn langste
+   woord, dus liep wat niet paste het scherm uit in plaats van af te breken.
+   `min-width:0` haalt die bodem weg. **Let op — deze is niet gereproduceerd.**
+   Op 412 px en op 320 px, ook op tekstgrootte L, brak de kop gewoon netjes af.
+   De fix is dus onderbouwd met de oorzaak en niet met een nagebouwde fout; als
+   het terugkomt, is de tekstgrootte-instelling het eerste wat erbij moet.
+
+4. **Engels in een Nederlandse app.** "Basic system check" en "Start basic
+   check" zijn vertaald. De demoknop op het loginscherm blijft wél Engels: die
+   tekst staat woordelijk in de Play-reviewnotitie, en wat de reviewer leest en
+   wat hij ziet moet kloppen. Dat is een besluit, geen vergeten regel.
+
+**Drie issues waren al opgelost voordat ze werden aangemaakt.** #21, #22 en #23
+zijn op 27-08 uit deze lijst naar GitHub verhuisd, maar #21 en #23 bleken op
+`main` al te werken — de fixes waren op 24-08 meegekomen zonder dat de lijst
+werd bijgewerkt. Dat is precies het risico dat het verhuizen naar issues moest
+wegnemen en dat bij de verhuizing zelf één keer is misgegaan. #22 was half
+opgelost: het symptoom was weg doordat die éne modal was opgehoogd, maar de
+chips stonden nog op vier verschillende hoogtes (8500/9400/9400/9450), dus er
+lag niets vast en de volgende modal zou er weer onderuit duiken. Er is nu één
+rangorde in `pidlane.css` (`zwevend < topbalk < modal < opslaanvenster`) met
+benoemde `--z-*`-variabelen; wie een chip of modal toevoegt leest die uit in
+plaats van een eigen getal te kiezen.
+
+`test-opmerkingveld.js` is nieuw: die draait `plOpslaan()` met een nagemaakte
+DOM en kijkt of de ingetikte opmerking in de Blob terechtkomt — voor tekst én,
+via een nagemaakte jsPDF, voor de PDF-route. Met de fout uit #23 nagebouwd (het
+veld bij het ópenen uitlezen in plaats van bij de klik) wordt hij rood. Zonder
+zo'n test zegt "het werkt" hier niets: je moet het bestand openen om het te
+weten, en dan is de rit voorbij.
 
 ### Werkregel uit de mislukte rit van 26-08
 

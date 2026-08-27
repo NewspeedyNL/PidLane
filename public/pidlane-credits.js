@@ -426,7 +426,7 @@
       if (!c) {
         c = document.createElement('div');
         c.id = 'plCredChip';
-        c.style.cssText = 'position:fixed;' + CFG.chipPositie + ';z-index:9400;background:var(--sur2,#1a1f2e);' +
+        c.style.cssText = 'position:fixed;' + CFG.chipPositie + ';z-index:var(--z-zwevend,9400);background:var(--sur2,#1a1f2e);' +
           'border:1px solid var(--bd,#2a3142);color:var(--tx2,#cbd5e1);font:700 10px/1 var(--f,sans-serif);' +
           'padding:6px 9px;border-radius:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)';
         c.onclick = function () {

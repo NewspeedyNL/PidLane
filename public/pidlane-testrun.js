@@ -1599,604 +1599,164 @@ async function _blok10() {
 // klant erop drukt.
 async function _blok5() {
 
-  // ── TOEGEVOEGD 24-08: de waakknop dooft niet meer bij een weergavewissel ──
-  // Melding was "waakronde gaat uit als ik van puntjes naar getallen schakel".
-  // Hij ging niet uit: #waakBtn draagt de klasse pidview-btn (hij staat in
-  // dezelfde rij) maar heeft geen data-mode, dus de active-lus in setPidView()
-  // haalde zijn markering eraf terwijl PLWaak gewoon doorliep. Twee schrijvers
-  // op één klasse, en de verkeerde won.
-  await _doe(5, 'Waakknop overleeft een weergavewissel', function () {
-    const knop = document.getElementById('waakBtn');
-    if (!knop)
-      return { staat: 'LET OP', detail: '#waakBtn bestaat niet — live view nog niet geopend, niets te toetsen' };
-    if (typeof window.setPidView !== 'function')
-      return { staat: 'FOUT', detail: 'setPidView ontbreekt' };
+  // ══════════════════════════════════════════════════════════════
+  // OPLEVERING 27-08-2026 — vier schermfouten op de telefoon plus de
+  // laagordening. Blok 5 toetst wat er in DEZE update veranderd is; de
+  // controles van 24-08 (waakknop, inlogmelding, protocolkeuze) zijn hier
+  // weggehaald omdat ze bij die oplevering hoorden en sindsdien groen staan.
+  // ══════════════════════════════════════════════════════════════
 
-    // Eerste helft: de lus mag alleen de échte weergaveknoppen zien.
-    const metMode = document.querySelectorAll('.pidview-btn[data-mode]').length;
-    const alle    = document.querySelectorAll('.pidview-btn').length;
-    if (!metMode)
-      return { staat: 'FOUT', detail: 'geen enkele knop met data-mode — dan schakelt de weergave niet meer' };
-    if (metMode === alle)
-      return { staat: 'FOUT', detail: '#waakBtn heeft een data-mode gekregen; dan valt hij weer binnen de lus' };
+  // ── 1. TOPBALK — het logo mag verdwijnen, niet halveren ──────────
+  // De melding kwam van een screenshot: tussen 🏠 en de chips stond een halve
+  // icoon. .logo is het enige krimpbare kind van een balk met overflow:hidden,
+  // dus at elk chipje dat erbij kwam een stukje logo op. Onder 480px hoort hij
+  // nu helemaal weg te zijn; daarboven hoort hij er héél te staan.
+  await _doe(5, 'Topbalk toont geen half logo', function () {
+    const logo = document.querySelector('.topbar .logo');
+    const ico  = document.querySelector('.topbar .logo-i');
+    if (!logo || !ico)
+      return { staat: 'LET OP', detail: 'topbalk niet in beeld — niets te meten' };
+    const breed = window.innerWidth;
+    const weg   = getComputedStyle(logo).display === 'none';
+    if (breed <= 480) {
+      if (!weg)
+        return { staat: 'FOUT', detail: 'op ' + breed + 'px staat het logo er nog; daar past het niet ' +
+          'naast de chips en wordt het afgesneden — het hoort display:none te zijn' };
+      return 'onder 480px (' + breed + 'px) is het logo in zijn geheel weg, zoals bedoeld';
+    }
+    if (weg) return 'logo verborgen op ' + breed + 'px';
+    const lr = logo.getBoundingClientRect(), ir = ico.getBoundingClientRect();
+    if (ir.width < 25.5 || ir.right > lr.right + 0.5)
+      return { staat: 'FOUT', detail: 'het logo-icoon is ' + ir.width.toFixed(1) + 'px breed en steekt ' +
+        (ir.right - lr.right).toFixed(1) + 'px buiten .logo — dat is precies het halve logo uit de melding' };
+    return 'logo heel op ' + breed + 'px (icoon ' + ir.width.toFixed(1) + 'px)';
+  });
 
-    // Tweede helft, en die is de kern: zet de knop bewust aan vóór de proef.
-    // Zonder dat bewijst de test niets — bij een uitstaande waakronde is
-    // "blijft dof" ook waar voor de oude, foute selector.
-    const wasAan = knop.classList.contains('active');
-    knop.classList.add('active');
-    const terug = (typeof pidViewMode !== 'undefined') ? pidViewMode : 'dots';
-    const gedoofd = [];
-    ['full', 'numbers', 'dots'].forEach(function (m) {
-      setPidView(m);
-      if (!knop.classList.contains('active')) gedoofd.push(m);
+  // ── 2. RIT-MONITOR — het tegelraster loopt niet meer het scherm uit ──
+  // repeat(4,1fr) is minmax(auto,1fr): een spoor mag niet smaller worden dan
+  // zijn langste woord, dus duwde INLAATLUCHT het raster buiten beeld en viel
+  // "Verbruik nu" er half af. Twee dingen bewijzen de fix: geen overloop, en
+  // vier even brede tegels (ongelijke breedtes = de bodem werkt nog).
+  await _doe(5, 'Tegelraster van de rit-monitor past op het scherm', function () {
+    const rasters = [...document.querySelectorAll('#pane-monitor .mon-grid2')];
+    if (!rasters.length)
+      return { staat: 'LET OP', detail: 'rit-monitor niet opgebouwd — niets te meten' };
+    const klachten = [];
+    rasters.forEach(function (g, i) {
+      const over = g.scrollWidth - g.clientWidth;
+      if (over > 1) klachten.push('raster ' + (i + 1) + ' loopt ' + over + 'px over');
+      const br = [...g.children].map(t => t.getBoundingClientRect().width);
+      if (br.length && (Math.max(...br) - Math.min(...br)) > 1)
+        klachten.push('raster ' + (i + 1) + ' heeft ongelijke tegels (' +
+          br.map(b => b.toFixed(0)).join('/') + 'px) — de minmax(0,1fr) is weg');
+      const laatste = g.children[g.children.length - 1];
+      if (laatste && laatste.getBoundingClientRect().right > window.innerWidth + 0.5)
+        klachten.push('de laatste tegel van raster ' + (i + 1) + ' valt buiten beeld');
     });
-    setPidView(terug);                       // weergave terug zoals hij stond
-    if (!wasAan) knop.classList.remove('active');
-
-    if (gedoofd.length)
-      return { staat: 'FOUT', detail: 'waakknop dooft bij: ' + gedoofd.join(', ') +
-        ' — setPidView() selecteert nog op .pidview-btn zonder [data-mode]' };
-    return metMode + ' weergaveknoppen in de lus, waakknop blijft ongemoeid (terug op ' + terug + ')';
+    if (klachten.length) return { staat: 'FOUT', detail: klachten.join('; ') };
+    const br = [...rasters[0].children].map(t => t.getBoundingClientRect().width.toFixed(0));
+    return rasters.length + ' rasters passen, tegels gelijk breed (' + br.join('/') + 'px)';
   });
 
-  // ── TOEGEVOEGD 24-08: het inlogscherm meldt "bezig" niet meer in de foutkleur ──
-  // #loginErr deed twee dingen tegelijk. Het vakje heeft inline color:var(--rd)
-  // in index.html, en doLogin() zette er tijdens het wachten letterlijk '…' in.
-  // Drie rode puntjes onder het wachtwoordveld lezen als een storing. Bovendien
-  // had de fetch naar /auth/login geen tijdslimiet, dus bij een Worker die de
-  // verbinding openhield bleven ze staan tot je de app afsloot.
-  await _doe(5, 'Inlogmelding: bezig is grijs, fout is rood', function () {
-    if (typeof window.plLoginMeld !== 'function')
-      return { staat: 'FOUT', detail: 'plLoginMeld ontbreekt — pidlane-auth.js is niet meegekomen' };
-
-    // Gedrag op een los element, zodat het echte inlogscherm ongemoeid blijft.
-    const proef = document.createElement('div');
-    const uit = [];
-
-    window.plLoginMeld(proef, '⏳ Inloggen…', 'bezig');
-    if (proef.dataset.soort !== 'bezig') uit.push('soort blijft ' + proef.dataset.soort + ' bij bezig');
-    if (String(proef.style.color).indexOf('--rd') >= 0) uit.push('bezig staat in de FOUTKLEUR — dit is precies de oude situatie');
-    if (!proef.textContent) uit.push('bezig zet geen tekst');
-
-    window.plLoginMeld(proef, '⚠ Fout', 'fout');
-    if (String(proef.style.color).indexOf('--rd') < 0) uit.push('een echte fout is niet meer rood — te ver doorgeslagen');
-
-    window.plLoginMeld(proef, '', 'leeg');
-    if (proef.textContent) uit.push('leeg maakt het veld niet leeg');
-
-    if (uit.length)
-      return { staat: 'FOUT', detail: uit.join('; ') };
-
-    // Tweede helft: de tijdslimiet. Zonder die grens kan een hangende Worker
-    // het scherm voorgoed op "bezig" laten staan.
-    if (typeof LOGIN_TIMEOUT_MS !== 'number' || LOGIN_TIMEOUT_MS <= 0)
-      return { staat: 'FOUT', detail: 'LOGIN_TIMEOUT_MS ontbreekt — de login-fetch kan nog eeuwig hangen' };
-
-    return 'bezig grijs, fout rood, leeg leeg — afbreken na ' + Math.round(LOGIN_TIMEOUT_MS / 1000) + ' s';
+  // ── 3. RIT-MONITOR — de waarschuwingskop breekt af i.p.v. over te lopen ──
+  await _doe(5, 'Kop "Waarschuwingen & onderbouwing" blijft binnen het scherm', function () {
+    const kop = document.querySelector('#pane-monitor .mon-warnkop');
+    if (!kop) return { staat: 'LET OP', detail: 'waarschuwingskop niet in beeld — niets te meten' };
+    const span = kop.querySelector('span'), knop = kop.querySelector('button');
+    if (!span) return { staat: 'FOUT', detail: 'de kop heeft geen tekst-span meer' };
+    const sr = span.getBoundingClientRect(), kr = kop.getBoundingClientRect();
+    if (span.scrollWidth - span.clientWidth > 1)
+      return { staat: 'FOUT', detail: 'de kop loopt ' + (span.scrollWidth - span.clientWidth) +
+        'px over zijn eigen breedte — min-width:0 ontbreekt, dus breekt hij niet af' };
+    if (sr.left < kr.left - 0.5 || sr.right > kr.right + 0.5)
+      return { staat: 'FOUT', detail: 'de kop steekt buiten zijn rij (links ' + (sr.left - kr.left).toFixed(1) +
+        'px, rechts ' + (sr.right - kr.right).toFixed(1) + 'px)' };
+    if (knop) {
+      const br = knop.getBoundingClientRect();
+      if (br.right > window.innerWidth + 0.5)
+        return { staat: 'FOUT', detail: 'de Rapport-knop valt buiten beeld' };
+    }
+    return 'kop past binnen de rij (' + sr.width.toFixed(0) + 'px) en de knop staat in beeld';
   });
 
-  // ── VERWIJDERD 24-08: de kale '…' als wachtindicator ──
-  // Bron lezen mag hier: doLogin() wordt door niets gewrapt (remote.js raakt
-  // updPID, sendCmd, clearDTC, realScanDTC, ensurePIDListActive en
-  // selectCategoryPIDs — niet de login). Een gedragstest kan dit niet zien,
-  // want je zou er een echte inlogpoging voor moeten doen.
-  await _doe(5, 'Geen kale puntjes meer in doLogin', function () {
-    let bron = '';
-    try { bron = String(window.doLogin || ''); } catch (e) { throw new Error('doLogin niet leesbaar'); }
-    if (!bron)
-      return { staat: 'LET OP', detail: 'doLogin staat niet op window — niets te lezen' };
-    if (bron.indexOf("'\u2026'") >= 0)
-      return { staat: 'FOUT', detail: "doLogin zet nog steeds '\u2026' in #loginErr — de oude wachtindicator staat er nog" };
-    if (bron.indexOf('err.textContent') >= 0)
-      return { staat: 'FOUT', detail: 'doLogin schrijft nog rechtstreeks in #loginErr langs plLoginMeld heen — dan klopt de kleur niet' };
-    return 'alle meldingen lopen via plLoginMeld';
+  // ── 4. TAAL — geen Engels meer in de basiscontrole ───────────────
+  // De demoknop op het loginscherm is bewust WEL Engels (Play-reviewnotitie);
+  // die staat hier dus niet bij, en dat is geen omissie maar het besluit.
+  await _doe(5, 'Basiscontrole spreekt Nederlands', function () {
+    const kop  = document.querySelector('#pane-check .chk-intro h3, .chk-intro h3');
+    const knop = document.getElementById('btnBasic');
+    const fout = [];
+    if (kop && /basic system check/i.test(kop.textContent)) fout.push('kop staat nog op "Basic system check"');
+    if (knop && /basic check/i.test(knop.textContent))      fout.push('knop staat nog op "Start basic check"');
+    const leeg = document.querySelector('.bsc-empty');
+    if (leeg && /basic check/i.test(leeg.textContent))      fout.push('de uitleg verwijst nog naar "Start basic check"');
+    if (fout.length) return { staat: 'FOUT', detail: fout.join('; ') };
+    if (!kop && !knop) return { staat: 'LET OP', detail: 'basiscontrole niet opgebouwd — niets te lezen' };
+    return 'kop en knop staan in het Nederlands' + (knop ? ' ("' + knop.textContent.trim() + '")' : '');
   });
 
+  // ── 5. LAAGORDENING — chips onder de modals, in één regel vastgelegd ──
+  // De bulk-recorder lag onder de zwevende chips. Dat is op 23-08 verholpen
+  // door die ene modal op te hogen; de chips stonden zelf nog op vier hoogtes.
+  // Nu is het een rangorde: zwevend < topbalk < modal < opslaanvenster.
+  await _doe(5, 'Laagordening: zwevende chips liggen onder de modals', function () {
+    const s = getComputedStyle(document.documentElement);
+    const n = k => parseInt(s.getPropertyValue(k), 10);
+    const zwevend = n('--z-zwevend'), topbar = n('--z-topbar'),
+          modal = n('--z-modal'), hoog = n('--z-modal-hoog'), opslaan = n('--z-opslaan');
+    if ([zwevend, topbar, modal, hoog, opslaan].some(v => !Number.isFinite(v)))
+      return { staat: 'FOUT', detail: 'de --z-*-variabelen ontbreken in pidlane.css — dan ligt de ordening ' +
+        'weer bij het losse getal per element, en dat was de oorzaak' };
+    if (!(zwevend < topbar && topbar < modal && modal <= hoog && hoog < opslaan))
+      return { staat: 'FOUT', detail: 'de rangorde klopt niet: zwevend ' + zwevend + ', topbalk ' + topbar +
+        ', modal ' + modal + ', modal-hoog ' + hoog + ', opslaan ' + opslaan };
 
-  // ── TOEGEVOEGD 25-08: uitloggen blijft uitloggen ──
-  // logout() opent voor een admin eerst een deel-/bestandsvenster (log
-  // bewaren). Android herlaadt de WebView bij terugkomst, en het herstel in
-  // pidlane-theme.js (regel 277, tokLoad()) vond dan nog een geldig token —
-  // want het wissen gebeurde pas ná de export. Gevolg: je zat weer binnen.
-  // De uitlogvlag maakt de opgeslagen sessie meteen dood terwijl
-  // window.APP_TOKEN blijft leven, zodat de export zelf niet stukgaat.
-  await _doe(5, 'Uitloggen blijft uitloggen', function () {
-    if (typeof uitlogBezig !== 'function' || typeof uitlogVlagAan !== 'function')
-      return { staat: 'FOUT', detail: 'uitlogvlag ontbreekt — pidlane-auth.js is niet meegekomen' };
+    // En dan de chips zelf: staat er één op een eigen getal, dan is de ordening
+    // wel opgeschreven maar niet gevolgd.
+    const afwijkend = [];
+    ['plCredChip', 'tokPill', 'ritPill'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const z = parseInt(getComputedStyle(el).zIndex, 10);
+      if (Number.isFinite(z) && z !== zwevend) afwijkend.push(id + ' op ' + z);
+    });
+    if (afwijkend.length)
+      return { staat: 'FOUT', detail: 'zwevende chips buiten de laag: ' + afwijkend.join(', ') +
+        ' (zou ' + zwevend + ' moeten zijn)' };
+    const blk = document.getElementById('blkOverlay');
+    if (blk) {
+      const z = parseInt(getComputedStyle(blk).zIndex, 10);
+      if (Number.isFinite(z) && z <= zwevend)
+        return { staat: 'FOUT', detail: 'de bulk-recorder (' + z + ') ligt niet boven de chips (' + zwevend + ')' };
+    }
+    return 'rangorde ' + zwevend + ' < ' + topbar + ' < ' + modal + ' ≤ ' + hoog + ' < ' + opslaan +
+      ', alle aanwezige chips staan op ' + zwevend;
+  });
 
-    // Gedragstest op de echte functies, maar zonder uit te loggen: vlag aan,
-    // kijken of tokLoad zwijgt, vlag weer weg. De vlag stond hier per
-    // definitie uit (je bent ingelogd), dus opruimen is veilig.
-    const stond = uitlogBezig();
-    if (stond)
-      return { staat: 'LET OP', detail: 'uitlogvlag stond al aan — vorige uitlogpoging is niet afgerond' };
-
-    let uit = '';
+  // ── 6. OPSLAAN — het opmerkingveld staat er en wordt per klik gelezen ──
+  // Of de tekst ook echt in het bestand komt, toetst test-opmerkingveld.js in
+  // de gate: dat vraagt een bestand terugzien en kan hier niet. Wat hier wél
+  // te meten is: staat het veld er, en zit het vóór de twee knoppen.
+  await _doe(5, 'Opslaanvenster heeft een opmerkingveld', function () {
+    if (typeof plOpslaan !== 'function')
+      return { staat: 'FOUT', detail: 'plOpslaan() ontbreekt — pidlane-export.js is niet meegekomen' };
+    const oud = document.getElementById('plExportOv');
+    if (oud) return { staat: 'LET OP', detail: 'er staat al een opslaanvenster open — niet gestoord' };
+    let uit;
     try {
-      uitlogVlagAan();
-      if (!uitlogBezig()) uit = 'vlag laat zich niet zetten (localStorage geblokkeerd?)';
-      else if (tokLoad() !== null) uit = 'tokLoad() geeft nog een sessie terug terwijl de uitlogvlag aan staat — het herstel in pidlane-theme.js zou je weer binnenlaten';
+      plOpslaan('PidLane-blok5-proef', 'proefinhoud', { titel: 'Blok 5' });
+      const veld = document.getElementById('plExpOpm');
+      const txt  = document.getElementById('plExpTxt');
+      if (!veld)      uit = { staat: 'FOUT', detail: 'geen #plExpOpm in het venster — het veld is verdwenen' };
+      else if (!txt)  uit = { staat: 'FOUT', detail: 'geen tekstknop in het venster' };
+      else if (veld.compareDocumentPosition(txt) !== 4 /* volgt erop */)
+        uit = { staat: 'FOUT', detail: 'het veld staat niet vóór de opslagknoppen — dan tikt niemand het in' };
+      else uit = 'opmerkingveld aanwezig, vóór beide knoppen';
     } finally {
-      uitlogVlagWeg();
+      const ov = document.getElementById('plExportOv');
+      if (ov) ov.remove();                 // het venster mag de rit niet blokkeren
     }
-    if (uit) return { staat: 'FOUT', detail: uit };
-    if (uitlogBezig()) return { staat: 'FOUT', detail: 'vlag blijft hangen na opruimen — dan kom je nooit meer binnen' };
-
-    return 'vlag zet tokLoad() stil en ruimt zichzelf op';
-  });
-
-  // ── HERSCHREVEN 26-08: PLWakelock was een duplicaat van PLWake ──
-  // Twee scherm-wakelocks deden hetzelfde: PLWake (index.html) wikkelt
-  // setConn() om — reageert direct in plaats van elke 5 s te pollen — en
-  // kijkt ook naar remPill/remDrivePill zodat een remote-sessie het scherm
-  // ook aanhoudt. PLWakelock (pidlane-auth.js) is er daarom uit; deze
-  // controle toetst nu de blijvende, bredere versie. PLWake exporteert
-  // alleen `sync` — geen steunt()/actief()/fout() om tegen te toetsen — dus
-  // deze controle kijkt naar wat er wél te toetsen valt.
-  //
-  // Tegenproef (handmatig gedraaid tijdens het maken van deze fix): met
-  // PLWakelock tijdelijk teruggezet meldt de laatste stap hieronder FOUT.
-  await _doe(5, 'Scherm-wakelock (PLWake)', function () {
-    if (typeof window.PLWake !== 'object' || !window.PLWake)
-      return { staat: 'FOUT', detail: 'PLWake ontbreekt — het scherm-aan-blok in index.html is niet meegekomen' };
-    if (typeof PLWake.sync !== 'function')
-      return { staat: 'FOUT', detail: 'PLWake is overschreven door iets anders — sleutels: ' + Object.keys(PLWake).join(', ') };
-
-    if (!('wakeLock' in navigator))
-      return { staat: 'LET OP', detail: 'deze WebView kent navigator.wakeLock niet (oude WebView) — scherm aanhouden werkt hier niet' };
-
-    // Alleen oordelen als de voorwaarden kloppen. Niet verbonden of de
-    // pagina niet zichtbaar betekent terecht geen lock; dat als FOUT tellen
-    // geeft een altijd-rode test, en die wordt genegeerd (§ratel).
-    if (!(typeof connected !== 'undefined' && connected))
-      return { staat: 'LET OP', detail: 'niet verbonden, dus terecht geen wakelock — draai dit blok opnieuw mét verbinding' };
-    if (document.visibilityState !== 'visible')
-      return { staat: 'LET OP', detail: 'pagina niet zichtbaar tijdens de test' };
-
-    if (typeof window.PLWakelock !== 'undefined')
-      return { staat: 'FOUT', detail: 'window.PLWakelock bestaat weer — het duplicaat is terug (pidlane-auth.js)' };
-
-    return 'PLWake aanwezig (sync), geen duplicaat PLWakelock';
-  });
-
-  // Mode 22 olietemperatuur is op 23-08 losgelaten. De knoppen "DID-scan (45 s)"
-  // en "Budget + olie" dienden alleen die zoektocht, en b8 stond bovendien in de
-  // standaardset — dus élke volle run scande alsnog. De blokken zelf blijven
-  // bestaan (los aanroepbaar); alleen de ingangen zijn dicht.
-  await _doe(5, 'Olieknoppen weg, b8 uit de standaardset', function () {
-    const ov = document.getElementById('testrunOv');
-    if (!ov)
-      return { staat: 'LET OP', detail: 'paneel niet opgebouwd — kan de knoppen niet nalopen' };
-    const rest = [];
-    ov.querySelectorAll('[onclick]').forEach(function (el) {
-      const c = String(el.getAttribute('onclick') || '');
-      if (c.indexOf('b8') >= 0 && rest.indexOf('Budget + olie') < 0) rest.push('Budget + olie');
-      if (c.indexOf('b9') >= 0 && rest.indexOf('DID-scan') < 0) rest.push('DID-scan');
-    });
-    if (rest.length)
-      return { staat: 'FOUT', detail: 'knop bestaat nog: ' + rest.join(', ') + ' — sloop niet afgemaakt' };
-
-    // De standaardset is een objectliteraal in een default-argument; dat is
-    // alleen uit de bron te lezen. Bewust smal geknipt op precies dat literaal,
-    // want een zoektocht op "b8" in de hele functie vindt ook het commentaar
-    // erboven en meldt dan onterecht FOUT.
-    let bron = '';
-    try { bron = String(window.startTestrun || ''); } catch (e) { throw new Error('startTestrun niet leesbaar — standaardset niet te controleren'); }
-    const m = bron.match(/blokken\s*\|\|\s*\{[^}]*\}/);
-    if (!m)
-      return { staat: 'LET OP', detail: 'standaardset niet gevonden in de bron — controle niet uitgevoerd' };
-    if (m[0].indexOf('b8') >= 0)
-      return { staat: 'FOUT', detail: 'b8 staat nog in de standaardset — elke volle run scant alsnog naar olietemperatuur' };
-    return 'beide knoppen weg, standaardset is ' + m[0].replace(/\s+/g, ' ');
-  });
-
-  // ── TOEGEVOEGD 23-08 (batch): tien fixes in één keer ──
-  // Deze controle vervangt tien losse: hij kijkt of elke fix in de geladen
-  // code zit. Niet of hij het juiste doet — dat is de rit.
-  await _doe(5, 'Batch 23-08: alle tien fixes geladen', function () {
-    const eis = [
-      // ── TOEGEVOEGD in deze update ──
-      ['turbodrempel volgt de omgevingsdruk', 'pidgate', function () {
-        // Gedrag: PLGate publiceert de drempels, dus we kunnen zien of ze
-        // meebewegen. Op zeeniveau (baro ~102) hoort de atmosferische grens
-        // rond 110 te liggen, niet op de oude vaste 106.
-        if (!window.PLGate || typeof PLGate.stats !== 'function') return false;
-        const st = PLGate.stats();
-        if (typeof st.atmosfDrempel !== 'number') return false;
-        if (st.omgevingsdruk === null) return st.atmosfDrempel === 106;
-        return st.atmosfDrempel === Math.round(st.omgevingsdruk + 8) &&
-               st.bewijsDrempel === Math.round(st.omgevingsdruk - 15);
-      }],
-      ['marge op de piek', 'pidgate', function () {
-        // Op 23-08 was de piek 105 bij een grens van 106. Nu moet er lucht
-        // tussen zitten; is die weg, dan wil je het weten vóór een rit.
-        if (!window.PLGate || typeof PLGate.stats !== 'function') return null;
-        const st = PLGate.stats();
-        if (!st.maxMap || st.omgevingsdruk === null) return null;
-        return (st.atmosfDrempel - st.maxMap) >= 3;
-      }],
-      ['opruimdeur bestaat', 'pidgate', function () {
-        return typeof window.pidOpruimen === 'function' &&
-               typeof window.pidOpgeruimdLijst === 'function';
-      }],
-      ['opruimdeur werkt', 'pidgate', function () {
-        // Gedrag, geen broncode: een PID die niet in de selectie staat mag
-        // geen uitzondering geven en moet gewoon in de lijst belanden.
-        if (typeof window.pidOpruimen !== 'function') return false;
-        const voor = window.pidOpgeruimdLijst().length;
-        window.pidOpruimen('0FFF', 'zelftest');
-        const na = window.pidOpgeruimdLijst().length;
-        // Tweede keer mag niets meer toevoegen.
-        window.pidOpruimen('0FFF', 'zelftest');
-        return na === voor + 1 && window.pidOpgeruimdLijst().length === na;
-      }],
-      ['opruimdrempels', 'plload', function () {
-        if (!window.PLSched || typeof PLSched.herkansingen !== 'function') return false;
-        return typeof PLSched.opgeruimd === 'function';
-      }],
-      ['AI hoort van opgeruimde sensoren', 'fuel', function () {
-        const b = String(window.plMeetPromptBlok || '');
-        return b ? b.indexOf('OPGERUIMD') >= 0 : null;
-      }],
-      // ── uit de batch van 23-08, blijven staan ──
-      ['clearBtLog', 'btflow', function () {
-        const b = String(window.clearBtLog || '');
-        return b && b.indexOf("localStorage.removeItem('pl_btlog')") >= 0;
-      }],
-      ['survey transport', 'veldlab', function () {
-        // GEDRAG, geen broncode. Op 23-08 keek deze controle naar
-        // String(window.vlFullSurvey) en kreeg een lege string, omdat die
-        // functie in een closure staat — hij meldde toen "niet geladen"
-        // terwijl de fix er wel degelijk in zat. Nu wordt de regel echt
-        // aangeroepen: twee lijnfouten op een nodata moeten 'transport'
-        // opleveren, en zonder die twee fouten mag er niets veranderen.
-        if (typeof window.plSurveyUitkomst !== 'function') return false;
-        const met = window.plSurveyUitkomst('nodata', new Error('x'), new Error('y'));
-        const zonder = window.plSurveyUitkomst('nodata', null, null);
-        const een = window.plSurveyUitkomst('nodata', new Error('x'), null);
-        return met === 'transport' && zonder === 'nodata' && een === 'nodata';
-      }],
-      ['sensorvlag', 'koopcheck', function () { return typeof window._plSensorBanner === 'function'; }],
-      ['meetpoort meldt', 'fuel', function () {
-        const b = String(window.plVraagMeting || '');
-        return b ? b.indexOf('niet aangezet') >= 0 : null;
-      }],
-      ['gate-terugval', 'remote', function () {
-        if (typeof window.PLRemote === 'undefined') return null;
-        return null;   // zit in een closure, niet van buiten leesbaar
-      }]
-    ];
-    const stuk = [], ok = [], onbekend = [];
-    for (const [naam, mod, test] of eis) {
-      let r = null;
-      try { r = test(); } catch (e) { r = false; }
-      if (r === true) ok.push(naam);
-      else if (r === null) onbekend.push(naam + ' (' + mod + ')');
-      else stuk.push(naam + ' (' + mod + ')');
-    }
-    if (stuk.length)
-      return { staat: 'FOUT', detail: 'NIET geladen: ' + stuk.join(', ') +
-        ' — bestand ontbreekt óf de browser serveert nog een oude versie uit de cache. ' +
-        'Druk eerst op "Nieuwste versie laden" op het inlogscherm en draai de run opnieuw; ' +
-        'staat het daarna nog op FOUT, dan is het bestand echt niet meegekomen.' };
-    return ok.length + ' bevestigd' + (onbekend.length ? ', niet van buiten te zien: ' + onbekend.join(', ') : '');
-  });
-
-  // ── TOEGEVOEGD 23-08: PLLoad regelt niet meer op bezetting alleen ──
-  // De wijziging zelf is één regel (`druk`), maar de gevolgen zijn pas in het
-  // veld te zien. Wat hier te controleren valt is of de nieuwe voorwaarde ook
-  // echt in de geladen code zit — niet of hij het juiste doet.
-  await _doe(5, 'PLLoad: nieuwe drukvoorwaarde geladen', function () {
-    if (typeof window.PLLoad === 'undefined')
-      return { staat: 'FOUT', detail: 'PLLoad bestaat niet' };
-    if (typeof PLLoad.cfg.venStijgFactor !== 'number')
-      return { staat: 'FOUT', detail: 'cfg.venStijgFactor ontbreekt — dit is de oude plload.js' };
-    let bron = '';
-    try { bron = String(PLLoad.tick || ''); } catch (e) { throw new Error('PLLoad.tick niet leesbaar — kan de voorwaarde niet controleren'); }
-    const mist = ['bezetHoog', 'venStijgt', 'venTraag', 'foutDruk'].filter(function (n) { return bron.indexOf(n) < 0; });
-    if (mist.length)
-      return { staat: 'FOUT', detail: 'tick() mist: ' + mist.join(', ') + ' — oude versie geladen' };
-    // De oude regel was: belasting>=bezetOp || foutPct>=foutOp. Staat die OF
-    // er nog letterlijk in, dan is er iets misgegaan bij het samenvoegen.
-    if (/belasting\s*>=\s*this\.cfg\.bezetOp\s*\|\|/.test(bron))
-      return { staat: 'FOUT', detail: 'de oude OF-voorwaarde staat er nog steeds in' };
-    return 'venStijgFactor ' + PLLoad.cfg.venStijgFactor + ', bezetOp ' + PLLoad.cfg.bezetOp +
-           '%, traagMs ' + PLLoad.cfg.traagMs + ' — bezetting telt alleen mét oplopende responstijd';
-  });
-
-  await _doe(5, 'PLLoad: ijkpunt wordt gewist bij herstel', function () {
-    if (typeof window.PLLoad === 'undefined') return { staat: 'FOUT', detail: 'PLLoad bestaat niet' };
-    // _vorigVenMs is het ijkpunt voor "loopt de responstijd op". Blijft die na
-    // een protocolherstel staan, dan wordt de eerste tick daarna vergeleken
-    // met een waarde uit een heel andere toestand.
-    let bron = '';
-    try { bron = String(PLLoad.reset || ''); } catch (e) { throw new Error('PLLoad.reset niet leesbaar'); }
-    if (bron.indexOf('_vorigVenMs') < 0)
-      return { staat: 'FOUT', detail: 'reset() wist _vorigVenMs niet — na een protocolherstel wordt tegen een oud ijkpunt vergeleken' };
-    return 'reset() wist het ijkpunt';
-  });
-
-  await _doe(5, 'PLLoad: staat op dit moment', function () {
-    if (typeof window.PLLoad === 'undefined' || !PLLoad.staat) return { staat: 'LET OP', detail: 'PLLoad niet beschikbaar' };
-    let st = null;
-    try { st = PLLoad.staat(); } catch (e) { throw new Error('PLLoad.staat() klapt'); }
-    let bs = null;
-    try { bs = (window.PLBus && PLBus.stats) ? PLBus.stats() : null; } catch (e) { bs = null; }
-    const extra = bs ? ' bij bezet ' + bs.belasting + '%, fout ' + bs.foutPct + '%, ' + bs.venGemMs + 'ms' : '';
-    // Niet als FOUT boeken: vroeg in een rit is een laag tempo normaal. Dit is
-    // een meetpunt voor het logboek, geen oordeel.
-    if (st.tempoPct <= 30 && bs && bs.foutPct === 0 && bs.venGemMs < PLLoad.cfg.traagMs)
-      return { staat: 'LET OP', detail: 'tempo ' + st.tempoPct + '%' + extra +
-        ' — laag terwijl er niets misgaat en de respons snel is. Precies het patroon van 23-08; noteer dit.' };
-    return 'tempo ' + st.tempoPct + '% (' + st.code + ')' + extra;
-  });
-
-  // ── BLIJFT STAAN uit 22-08: de stille catches ──
-  // De opruiming zelf verandert geen gedrag, dus "werkt het nieuwe" is hier de
-  // verkeerde vraag. De juiste vraag is of de dingen die ONDER die lege catches
-  // zaten nog leven. Twee van de vondsten (PLAN.md punt 19 en 20) zijn runtime
-  // te controleren; dat is wat hier gebeurt.
-
-  // PUNT 19 — de scherpste vondst van de klus. remote.js installeert vijftien
-  // wrappers, elk in een eigen try/catch. Faalde de clearDTC-wrapper, dan was de
-  // alleen-lezen-garantie van een remote sessie stilletjes niet actief. De
-  // installatie is niet meer stil, maar dat helpt alleen als hij ook slaagt —
-  // en dát is van buitenaf te zien: een gewrapte functie heeft de vlag in zijn
-  // brontekst staan, een kale niet.
-  await _doe(5, 'Remote-wrappers zijn geïnstalleerd', function () {
-    if (typeof window.PLRemote === 'undefined')
-      return { staat: 'LET OP', detail: 'PLRemote niet geladen — de wrappers horen dan ook niet te bestaan, niets te controleren' };
-    const eis = [
-      ['clearDTC', '_remoteVehicleMode', 'DE SCHRIJFBLOKKADE (punt 19)'],
-      ['sendCmd', '_remoteVehicleMode', 'stray one-shots'],
-      ['realScanDTC', '_remoteVehicleMode', 'de DTC-deur'],
-      ['ensurePIDListActive', '_remoteVehicleMode', 'sensoractivatie naar de local'],
-      ['selectCategoryPIDs', 'remPollActive', 'de +Alles-knop'],
-      ['updPID', 'feed', 'de telemetrie-tap']
-    ];
-    const weg = [], ok = [];
-    for (const [naam, merk, wat] of eis) {
-      let bron = '';
-      try { bron = String(window[naam] || ''); } catch (e) { bron = ''; }
-      if (!bron) { weg.push(naam + ' bestaat niet'); continue; }
-      if (bron.indexOf(merk) >= 0) ok.push(naam);
-      else weg.push(naam + ' NIET gewrapt (' + wat + ')');
-    }
-    if (weg.length)
-      return { staat: 'FOUT', detail: weg.join('; ') + '  —  wél gewrapt: ' + (ok.join(', ') || 'geen') };
-    return ok.length + ' wrappers actief, inclusief de alleen-lezen-blokkade op clearDTC';
-  });
-
-  // PUNT 20 — _bewaarSelectie() legt vóór elke run vast wat er actief was, en
-  // die drie regels zaten alle drie in een lege catch. Faalt de vastlegging, dan
-  // zet het herstel na afloop een lege selectie terug in plaats van de echte.
-  // Dit blok draait ná _bewaarSelectie(), dus het herstelpunt staat er al.
-  await _doe(5, 'Herstelpunt is gevuld, niet leeg', function () {
-    if (!_trHerstel)
-      return { staat: 'FOUT', detail: 'geen herstelpunt — _bewaarSelectie() heeft niets vastgelegd' };
-    // Let op de valkuil: als activePIDs zélf onleesbaar is, dan faalt zowel het
-    // bewaren als deze controle, en zou een naïeve vergelijking (0 tegen 0)
-    // "ok" melden terwijl er structureel iets mis is. Daarom eerst de leesbaarheid
-    // vaststellen en pas daarna vergelijken.
-    let nActief = null;
-    try { nActief = (typeof activePIDs !== 'undefined') ? activePIDs.size : -1; }
-    catch (e) { throw new Error('activePIDs is onleesbaar (' + (e.message || e) + ') — dan is het herstelpunt óók leeg gebleven en wist deze run straks je selectie'); }
-    if (nActief === -1)
-      return { staat: 'LET OP', detail: 'activePIDs bestaat niet in deze build — niets om te bewaren, en niets om te herstellen' };
-    const nBewaard = (_trHerstel.actief || []).length;
-    if (nActief > 0 && nBewaard === 0)
-      return { staat: 'FOUT', detail: nActief + ' PIDs actief maar het herstelpunt is LEEG — na deze run wordt je selectie gewist in plaats van teruggezet' };
-    if (nActief === 0 && nBewaard === 0)
-      return { staat: 'LET OP', detail: 'geen enkele PID actief — herstelpunt is leeg, maar dat klopt dan. Zonder verbinding zegt deze controle niets' };
-    if (nActief !== nBewaard)
-      return { staat: 'LET OP', detail: nBewaard + ' bewaard tegen ' + nActief + ' actief — verschil kan kloppen als er net iets veranderde' };
-    return nBewaard + ' PIDs vastgelegd, profiel ' + (_trHerstel.profiel || '—');
-  });
-
-  // Bewijs dat de opgeruimde bestanden ook echt uitgeleverd zijn. Leest de bron
-  // zoals de browser hem serveert. Let op: draait er een service-worker met een
-  // oude cache, dan kan de app iets ánders draaien dan hier gemeten wordt — de
-  // wrappercontrole hierboven is het runtime-bewijs, dit is het bron-bewijs.
-  // De lege-catchescontrole is hier weg (26-08). Hij haalde acht modules op
-  // via fetch en telde lege catches — maar test-stille-catches.js doet dat
-  // onder node over alle vijftig modules, bij elke commit, en eist nul. De
-  // acht hier waren de modules die op 22-08 zijn opgeruimd; dat is een
-  // historisch toeval, geen principiële set (een oude pidlane-bulk.js viel
-  // er buiten). De regex hier was bovendien kapot: hij sloeg vals alarm op
-  // een promise-afhandelaar met een lege functie erin. Die van de node-test
-  // is in dezelfde commit verbreed naar de bindingloze en de destructurerende
-  // vorm, zodat deze verhuizing niets meeneemt. De vormen staan hier bewust
-  // niet letterlijk uitgeschreven: die test leest de bron met een regex en
-  // zou zijn eigen documentatie als bevinding tellen.
-  //
-  // Wat blok 5 uniek toevoegde was "heeft de server een oude build
-  // geserveerd" — maar acht HTTP-fetches tijdens een rit zijn daar een duur
-  // en indirect instrument voor. De bedradingscontrole ziet een ontbrekende
-  // module al bij het laden, en de PID-tabelmarkering hierboven ziet een
-  // oude datamodule.
-
-  // ── BLIJFT STAAN: twee structurele controles ──
-  // Deze twee horen bij geen enkele update in het bijzonder; ze bewaken de run
-  // zelf en de knoppen.
-  await _doe(5, 'Geen dode knoppen in het menu', function () {
-    // Een knop die een gesloopte functie aanroept doet niets en meldt niets —
-    // de gebruiker denkt dat de app hapert.
-    //
-    // De eerste versie hiervan (17-08) knipte het voorvoegsel van een
-    // aanroep af: uit `PLRemote.openShare()` haalde hij `openShare`, zag die
-    // niet op window staan, en meldde 27 dode knoppen die allemaal prima
-    // werkten. Ook `event.preventDefault()` en `.catch()` telden mee. Een
-    // controle die vals alarm slaat is erger dan geen controle: dan leer je
-    // hem negeren.
-    //
-    // Nu: het hele pad oplossen (PLRemote.openShare → window.PLRemote.openShare)
-    // en methodeaanroepen op een uitdrukking overslaan.
-    const TAAL = ['if', 'for', 'while', 'switch', 'return', 'typeof', 'new', 'delete',
-                  'void', 'catch', 'function', 'try', 'else', 'do', 'await', 'in', 'of'];
-    const dood = [];
-    const paden = /(?:^|[^.\w$])([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(/g;
-
-    document.querySelectorAll('[onclick]').forEach(function (el) {
-      const code = String(el.getAttribute('onclick') || '');
-      let m;
-      paden.lastIndex = 0;
-      while ((m = paden.exec(code))) {
-        const pad = m[1];
-        const delen = pad.split('.');
-        if (TAAL.indexOf(delen[0]) > -1) continue;
-        // Aanroepen op iets wat pas tijdens het klikken bestaat (event, this,
-        // document.getElementById(...)) kunnen we hier niet natrekken.
-        if (['event', 'this', 'e', 'document', 'window', 'console', 'navigator', 'JSON', 'Math'].indexOf(delen[0]) > -1) continue;
-
-        let obj = window, ok = true;
-        for (let i = 0; i < delen.length; i++) {
-          if (obj == null || typeof obj[delen[i]] === 'undefined') { ok = false; break; }
-          obj = obj[delen[i]];
-        }
-        if (!ok || typeof obj !== 'function') {
-          if (dood.indexOf(pad) === -1) dood.push(pad);
-        }
-      }
-    });
-    if (dood.length) return { staat: 'FOUT', detail: dood.length + ' knop(pen) roepen iets aan dat niet bestaat: ' + dood.join(', ') };
-    return 'elke knop roept een bestaande functie aan';
-  });
-
-  await _doe(5, 'Geen restant van een afgebroken run', function () {
-    // Let op de volgorde: _bewaarSelectie() schrijft het herstelpunt weg vóór
-    // blok 5 draait, dus een naïeve check vindt altijd iets — en meldde op
-    // 17-08 dat de vórige run niet netjes eindigde terwijl hij naar zijn eigen
-    // vingerafdruk keek. Alleen een punt van vóór deze run telt.
-    let r = null;
-    try { r = localStorage.getItem('pl_testrun_herstel'); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
-    if (!r) return 'schoon';
-    let t = 0;
-    try { t = (JSON.parse(r) || {}).t || 0; } catch (e) { throw new Error('herstelpunt staat er nog maar is niet leesbaar (corrupte JSON) — die run eindigde niet netjes'); }
-    if (t >= _trStart) return 'schoon (het punt van deze run staat klaar)';
-    const min = Math.round((_trStart - t) / 60000);
-    return { staat: 'LET OP', detail: 'herstelpunt van ' + min + ' min geleden staat er nog — die run eindigde niet netjes' };
-  });
-
-  // ── BLIJFT STAAN: de oude diagnose-ingangen ──
-  await _doe(5, 'Oude ingangen opgeruimd', function () {
-    const oud = ['openBusDiag', 'openZelftest', 'openOpdracht', 'plCopilotOpen', 'openLogCenter', 'plDiagBundle'];
-    const rest = oud.filter(function (n) { return typeof window[n] === 'function'; });
-    if (rest.length) return { staat: 'FOUT', detail: 'bestaat nog: ' + rest.join(', ') + ' — sloop niet afgemaakt' };
-    return oud.length + ' verwijderde ingangen zijn echt weg';
-  });
-
-  // ── BLIJFT STAAN: 0143, steunbitzeef, geen fantomen ──
-  // Deze drie zijn in het veld bevestigd maar bewaken elk een fout die eerder
-  // is teruggekropen. Ze kosten niets en vangen een regressie meteen.
-  // 0143 is hier weg (26-08). Die controle las alleen ALL_PID_DEFS en riep
-  // parse() aan — geen DOM, geen bus — dus hij draait nu in test-piddefs.js,
-  // bij elke commit, op alle drie de veldmetingen van 21-08 in plaats van
-  // alleen 41430038, en met de oude 655.35-deler als tegenproef.
-
-  await _doe(5, 'Preset respecteert de steunbits', function () {
-    if (typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function')
-      return { staat: 'FOUT', detail: 'de poort ontbreekt' };
-    let bits = {};
-    try { bits = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {}; } catch (e) { console.warn('steunbitsRuw()-lezing gaf een fout (resultaat telt hetzelfde als \'nog geen bitmaps\')', e); }
-    const blokken = Object.keys(bits).length;
-    if (!blokken)
-      return { staat: 'LET OP', detail: 'nog geen bitmaps gelezen — de zeef laat dan alles door (bedoeld)' };
-    const uit = [];
-    if (magToevoegen('015C')) uit.push('015C zou nog toegevoegd worden');
-    if (!magToevoegen('010C')) uit.push('010C wordt geweigerd — te gretige zeef');
-    if (uit.length) return { staat: 'FOUT', detail: uit.join('; ') };
-    return blokken + ' bitmapblokken gelezen, poort actief';
-  });
-
-  await _doe(5, 'Geen fantomen in supportedPIDs', function () {
-    if (typeof supportedPIDs === 'undefined' || !supportedPIDs.size)
-      return { staat: 'LET OP', detail: 'supportedPIDs leeg' };
-    if (typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'ecuSteunt ontbreekt' };
-    const ontkend = Array.from(supportedPIDs).filter(function (p) { return ecuSteunt(p) === false; });
-    if (ontkend.length)
-      return { staat: 'FOUT', detail: ontkend.length + ' van ' + supportedPIDs.size + ' ontkend: ' + ontkend.join(', ') };
-    return supportedPIDs.size + ' PIDs, geen enkele door de ECU ontkend';
-  });
-
-  // ── TOEGEVOEGD 26-08, AFGESLANKT dezelfde dag: is de nieuwe PID-tabel geladen? ──
-  // Hier stonden eerst twee volledige controles: 0155/0156 moeten een
-  // definitie hebben, en geen enkele steunbitmap mag er een hebben. Die
-  // toetsen de tabel zoals hij op schijf staat, en dat kan node ook — dus ze
-  // staan nu in test-piddefs.js, waar ze bij élke commit meedraaien mét hun
-  // tegenproef. Hier laten staan zou twee waarheden geven over dezelfde regel,
-  // en dat is precies de fout die fix 1 en fix 4 van deze batch opruimden.
-  //
-  // Wat node NIET kan zien is of de app die tabel ook echt geladen heeft. De
-  // HTTP-cache heeft hier al twee keer een oude module geserveerd (23-08 en
-  // 24-08, beide keren weg na "Nieuwste versie laden"). Daarom blijft er één
-  // goedkope versiemarkering staan: twee feiten die alleen in de nieuwe tabel
-  // allebei waar zijn. Geen herhaling van de regels — alleen de vraag of dit
-  // de nieuwe tabel is.
-  await _doe(5, 'PID-tabel is de nieuwe (0155 erin, 0180 eruit)', function () {
-    if (typeof ALL_PID_DEFS === 'undefined')
-      return { staat: 'FOUT', detail: 'ALL_PID_DEFS ontbreekt — pidlane-data.js is niet meegekomen' };
-    const oud = [];
-    if (!ALL_PID_DEFS['0155']) oud.push('0155 ontbreekt nog');
-    if (ALL_PID_DEFS['0180'])  oud.push('0180 staat er nog als sensor');
-    if (oud.length)
-      return { staat: 'FOUT', detail: 'oude PID-tabel geladen (' + oud.join(', ') +
-        ') — waarschijnlijk de HTTP-cache; doe "Nieuwste versie laden" en draai opnieuw' };
-    return 'nieuwe tabel geladen; de inhoudelijke controles draaien in test-piddefs.js';
-  });
-
-  // ── Batch 26-08b: de kentekenstap en de protocolkeuze ──
-  // Wat node al toetst staat in test-merkgroep.js, test-voertuigreset.js,
-  // test-dubbele-ids.js en test-protocolkeuze.js. Hier alleen wat node NIET kan
-  // zien: of de app deze versie ook echt geladen heeft, en of de DOM-kant
-  // (het wizardveld, de bedrading van de knoppen) er in de browser is.
-  await _doe(5, 'Kentekenstap zit vóór de protocolscan', function () {
-    const mist = [];
-    if (!document.getElementById('stepKent')) mist.push('#stepKent ontbreekt in index.html');
-    if (!document.getElementById('kentWizInput')) mist.push('#kentWizInput ontbreekt');
-    ['toonKentekenStap', 'kentekenBevestig', 'kentekenOverslaan', 'kentPoortReset'].forEach(function (f) {
-      if (typeof window[f] !== 'function') mist.push(f + '() ontbreekt');
-    });
-    if (mist.length)
-      return { staat: 'FOUT', detail: 'kentekenstap niet geladen (' + mist.join(', ') +
-        ') — mogelijk de HTTP-cache; doe "Nieuwste versie laden" en draai opnieuw' };
-    // De val van 26-08: een tweede element met id kentInput. In de browser is
-    // dat pas te zien als de voertuigkaart ook gerenderd is — daarom hier en
-    // niet alleen in test-dubbele-ids.js.
-    const dubbel = document.querySelectorAll('#kentInput').length;
-    if (dubbel > 1)
-      return { staat: 'FOUT', detail: dubbel + ' elementen met id kentInput in de DOM — ' +
-        'getElementById pakt er één en rdwLookup() leest dan het verkeerde veld' };
-    return 'stap aanwezig, wizardveld heet kentWizInput, ' + dubbel + 'x #kentInput in de DOM';
-  });
-
-  await _doe(5, 'Protocolkeuze biedt meer dan één optie', function () {
-    if (typeof plProtocolLijst !== 'function')
-      return { staat: 'FOUT', detail: 'plProtocolLijst() ontbreekt — pidlane-data.js is niet meegekomen ' +
-        '(of de HTTP-cache serveert de oude); zonder deze functie stapt de app weer vanzelf door' };
-    if (!Array.isArray(window.PROTOCOLS) || PROTOCOLS.length < 5)
-      return { staat: 'FOUT', detail: 'PROTOCOLS ontbreekt of is te kort — dan valt er niets te kiezen' };
-    let n = 0;
-    try { n = plProtocolLijst({ id: 'A6', name: 'test' }).length; }
-    catch (e) { return { staat: 'FOUT', detail: 'plProtocolLijst() klapt: ' + (e.message || e) }; }
-    if (n < 2)
-      return { staat: 'FOUT', detail: 'met een herkend protocol blijven er ' + n + ' opties over — geen keuze' };
-    return PROTOCOLS.length + ' protocollen in de tabel, ' + n + ' opties bij een herkend protocol';
-  });
-
-  // De automatische doorstap is weg. Dit is een gedragscontrole die alleen in
-  // de app kan: staat de oude tak er nog, dan is renderNetworkCards() oud.
-  await _doe(5, 'Geen automatische doorstap meer na de protocolscan', function () {
-    if (typeof renderNetworkCards !== 'function')
-      return { staat: 'LET OP', detail: 'renderNetworkCards() ontbreekt — niet te toetsen' };
-    const bron = String(renderNetworkCards);
-    if (/_autoNetStarted/.test(bron))
-      return { staat: 'FOUT', detail: 'renderNetworkCards() bevat nog _autoNetStarted — de oude versie ' +
-        'stapt na 1,5 s vanzelf door en de keuze is onbereikbaar' };
-    // Bron lezen mag hier: de tak is alleen zichtbaar door 1,5 s te wachten op
-    // iets dat NIET hoort te gebeuren, en dat is geen bruikbare gedragstest.
-    // Zie de werkregel in §20 (blok 5 toetst gedrag, bron alleen met reden).
-    return 'de 1,5-seconde-tak is weg uit renderNetworkCards()';
+    return uit;
   });
 }
 
@@ -2950,69 +2510,43 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'RIT 26-08 — alles wat alleen rijdend te meten is (blok 14), plus de batch bij stilstand',
+  titel: 'OPLEVERING 27-08 — vier schermfouten op de telefoon, plus de laagordening',
   vragen: [
-    '── ZO DRAAI JE DEZE RIT ───────────────────────────────────',
+    '── WAAROM DEZE RONDE ──────────────────────────────────────',
 
-    'STAP 1, STILSTAND. "Nieuwste versie laden", verbind, en druk op ▶ Start. Blok 5 mag geen FOUT geven. Dit is je nulmeting; bewaar hem.',
+    'Twee screenshots van 27-08 lieten drie dingen tegelijk zien: een half afgesneden logo in de topbalk, een tegelrij van de rit-monitor die het scherm uit liep, en een waarschuwingskop die naast de Rapport-knop niet meer paste. Alle drie zijn opmaakfouten die alleen op een echte telefoon te zien zijn — een browser op een breed scherm laat ze niet zien. Vandaar dat deze campagne bij stilstand kan, maar wél op het toestel zelf.',
 
-    'STAP 2, VOOR HET WEGRIJDEN. Zet alle vier de aanvragers aan (bulk-recorder, caravan-tracker, rijmonitor, waakronde) en druk daarna op "🚗 Rit begint (nulstellen)". Zonder die knop gaat blok 14 over alles sinds het opstarten van de app in plaats van over deze rit.',
+    '── STAP VOOR STAP ─────────────────────────────────────────',
 
-    'STAP 3, RIJDEN. Minstens tien minuten en echt rijden — de opruimregel heeft zes mislukkingen plus vijf herkansingen van één per minuut nodig, dus onder de vijf minuten kán hij niet vuren. Trek onderweg een paar keer stevig op: zonder belasting geen MAP-monsters en dus geen turbo-oordeel.',
+    'STAP 1. "Nieuwste versie laden" — anders kijk je naar de oude opmaak en concludeer je dat er niets veranderd is. Dat is hier twee keer eerder gebeurd.',
 
-    'STAP 4, TIJDENS HET RIJDEN (laat iemand anders tikken, of doe het stilstaand met de motor aan na een stuk rijden). Druk op ▶ Start. Dit is de enige manier om blok 13 (STPX) op een DRUKKE bus te meten. Blok 13 zet nu zelf de bezetting en de snelheid in de uitslag, dus je ziet achteraf of het echt onder belasting was.',
+    'STAP 2. Verbind en druk op ▶ Start. Blok 5 mag geen FOUT geven. De zes controles daarin gaan precies over deze oplevering; de controles van 24-08 zijn eruit gehaald omdat die oplevering afgerond is.',
 
-    'STAP 5, NA DE RIT. Nog een keer ▶ Start, met de motor aan. Blok 14 geeft het ritverslag.',
+    'STAP 3. Kijk zélf naar de topbalk. Staat er tussen 🏠 en de chips een halve icoon, dan is de fix niet aangekomen. Op een telefoon (onder 480px) hoort er hélemaal geen logo te staan — dat is bedoeld, geen ontbrekend plaatje.',
 
-    '── WAT BLOK 14 MOET ZEGGEN ────────────────────────────────',
+    'STAP 4. Open de rit-monitor. De onderste tegelrij is Inlaatlucht / Gaspedaal / Ontsteking / Verbruik nu. Alle vier moeten er staan, alle vier even breed, en niets mag rechts van het scherm afvallen. Ongelijke breedtes zijn het signaal: dan werkt de oude 1fr-regel nog.',
 
-    'IS ER GEREDEN. Staat hier LET OP "de auto heeft niet gereden", dan is de rest van blok 14 betekenisloos — dan is 010D niet in de selectie of is de rit te kort geweest. Controleer dit eerst, voordat je conclusies uit de rest trekt.',
+    'STAP 5. Scrol in dezelfde pane door naar "⚠️ Waarschuwingen & onderbouwing". De tekst mag afbreken, maar geen letter mag buiten het scherm vallen, en de knop "📄 Rapport nu" moet volledig zichtbaar zijn.',
 
-    'RAILDRUK 0123/0159 — de vraag sinds 23-08. Beide stonden een hele rit stil op 9900. Blok 14 telt nu hoeveel wijzigingen elk had. Nul wijzigingen tijdens echt rijden = geen sensor die stilstaat maar een parser- of definitiefout, en dán is dat de volgende fix.',
+    'STAP 6. Open de basiscontrole (deur "Live PID-data" → Basic-tabblad). Er hoort nergens meer Engels te staan: "Basiscontrole systeem" en de knop "▶ Basiscontrole starten". Let op: de demoknop op het INLOGSCHERM blijft wél Engels ("Try demo — no adapter needed") — die tekst staat woordelijk in de Play-reviewnotitie en verandert dus niet.',
 
-    'SENSOREN DIE NIET BEWOGEN. Op 23-08 waren dat er 32 van de 55. Blok 14 laat de status-PIDs (MIL, OBD-norm, brandstoftype…) buiten beschouwing, dus wat overblijft is de echte populatie voor de opruimregel. Schrijf het aantal op.',
+    'STAP 7. Zet de bulk-recorder aan (☰ → Admin → Bulk-recorder) terwijl er zwevende chips in beeld staan (tokensaldo linksonder, of de rit-pill onderaan na het minimaliseren van de ritanalyse). Geen enkel chipje mag over het dashboard heen liggen. Ligt er tóch een overheen, dan staat er ergens weer een los z-index-getal in plaats van --z-zwevend.',
 
-    'OPRUIMREGEL. Blok 14 zoekt "opgeruimd" en "antwoordt weer na" in de logs. Verwacht op deze CX-5: 0101, 0121, 016D en de PIDs uit het 0180-blok (018E, 019D, 019E, 01A0). Staat er na tien minuten rijden nog steeds niets, dan vuurt de regel niet en is DAT de bevinding.',
+    'STAP 8. Sla iets op (📜 Logboek → opslaan). Tik een zin in het opmerkingveld, kies "Tekst", en open het bestand. De zin hoort bovenaan te staan onder het kopje OPMERKING. Doe het daarna nog eens met "PDF": daar hoort hij in een eigen kader boven de inhoud.',
 
-    'LIEP DE APP DOOR. Gaten en herverbindingen worden nu geteld terwijl je rijdt, in plaats van achteraf uit twee logs gereconstrueerd. Volgt elke herverbinding op een gat, dan is dat de achtergrondkwestie (Android bevriest de WebView-timers) en niet de bus. Open onderweg bewust één keer het logboek — dat is de vensterwissel die het volgens de analyse van 23-08 uitlokt.',
+    '── WAT ER IS WEGGEHAALD ───────────────────────────────────',
 
-    'MAP / TURBO. Blok 14 meldt de hoogste MAP tegen de barometer. Kwam hij nooit boven de grens terwijl je wél hard hebt getrokken, dan is deze CX-5 atmosferisch en kan die vraag dicht.',
+    'De .logo-regel onder 480px zette alleen de tekst op font-size:0 en liet het icoon staan. Dat icoon was juist het probleem, dus die truc is weg en het logo verdwijnt daar nu helemaal.',
 
-    '── STPX, DE ANDERE OPEN VRAAG ─────────────────────────────',
+    'De vier zwevende chips stonden op vier verschillende z-indexen (8500, 9400, 9400, 9450). Die losse getallen zijn weg; ze lezen nu alle vier --z-zwevend uit pidlane.css. Ook de vaste 9800 van de bulk-recorder is vervangen door --z-modal-hoog.',
 
-    'STPX ONDER BELASTING. Bij stilstand gaf hij +8% (4.7) en −1% (4.8) — dat is het gunstigste geval voor een gewone uitvraag en dus geen antwoord. Blok 13 zet nu de bezetting en km/u in de uitslag; staat daar "bij stilstand gemeten", dan telt de meting niet mee. Scheelt het rijdend 20% of meer, dan kunnen de batchgok, PLPidLen en de terugval drie-naar-één op termijn weg.',
+    'Blok 5 bevatte de controles van de oplevering van 24-08 (waakknop bij weergavewissel, inlogmelding in de foutkleur, protocolkeuze zonder automatische doorstap). Die zijn eruit; ze horen bij die ronde en stonden sindsdien groen.',
 
-    '── DE BATCH VAN VANDAAG, BIJ STILSTAND ────────────────────',
+    '── WAT DEZE RONDE NIET BEANTWOORDT ────────────────────────',
 
-    'KENTEKENSTAP — OVERLEEFT DE VIN. Al groen op 26-08 (blok 1 gaf "Mazda CX-5 2018 benzine — VIN 766507"). Kijk of dat zo blijft na een rit met herverbindingen: verspringt het merk na een herverbinding naar iets grovers of wordt brandstof leeg, dan wist een pad alsnog de RDW-bron.',
+    'De afgesneden waarschuwingskop is in een nagemaakte telefoon (412px én 320px, ook op tekstgrootte L) niet te reproduceren geweest. De tegelrij wél: die liep daar 19px over en gaf tegels van 103/95/98/83px. De fix op de kop is dus onderbouwd met de oorzaak (een flexkind dat niet onder zijn langste woord mag krimpen) maar niet met een nagebouwde fout. Kijk in stap 5 daarom extra goed, en meld het mét de tekstgrootte-instelling als het terugkomt.',
 
-    'KENTEKENSTAP — OVERSLAAN. Verbind een keer opnieuw en kies "Overslaan". De diagnose hoort door te lopen met "Kenteken overgeslagen bij het verbinden" in het log. Een fout kenteken (XX-99-XX) mag je niet klemzetten.',
-
-    'PROTOCOLKEUZE — HANDMATIG FORCEREN. Kies bewust CAN 29-bit 500k en druk op "Forceer". Verwacht dat de discovery faalt — dat bewijst dat de keuze doorwerkt tot ATSP. Ga daarna terug en neem het herkende protocol.',
-
-    'PROTOCOLKEUZE — ZONDER CONTACT. Contact uit, scannen. Volledige protocollijst met "Meestal staat het contact uit" en "Opnieuw scannen" vooraan.',
-
-    'FIX 4 — STEUNBITMAPS. Open na de rit de bulk-recorder, de gauges en het AI-rapport en zoek naar 0180 en 01A0. Verschijnen ze daar als sensorwaarde, dan leest die consument ALL_PID_DEFS zonder langs pidGate() te gaan, en is dát de volgende plek om te fixen.',
-
-    'VIN-PROFIEL, ECHT GENEGEERD. Verbind twee keer met deze auto. De tweede keer hoort blok 1 "bij het verbinden geladen, snelle start" te zeggen. Krijg je LET OP met een profiel ouder dan een paar minuten, dan is dát de echte bevinding — schrijf op hoe oud.',
-
-    'BLOK 7 — BEKENDE FOUT, NEGEREN. "responstijd bij lage bezetting 0 ms (+0%) — vrijwel geen verschil" is een gemelde bug in de controle zelf (deel-door-nul geeft 0% en dat leest als "geen verschil"). Staat genoteerd, wordt apart gefixt. Trek er geen conclusie uit.',
-
-    'KENTEKENSTAP — VERSCHIJNT HIJ. Verbind met de auto. Vóór de protocolscan hoort nu het scherm "Welk voertuig is dit?" te komen, met het laatst gebruikte kenteken al ingevuld. Komt de protocolscan meteen, dan is de poort niet geladen (cache) of draait er een oude scanNetworks.',
-
-    'KENTEKENSTAP — OPZOEKEN. Vul het kenteken in en kies "Opzoeken en doorgaan". Je hoort de RDW-regel te zien (merk, model, bouwjaar) vóórdat de protocolscan begint. Ga daarna door en kijk op de voertuigkaart: staan merk, model, bouwjaar én brandstof er nu wél, waar blok 1 eerder "mist: model, bouwjaar, brandstof" gaf?',
-
-    'KENTEKENSTAP — OVERLEEFT DE VIN. Dit is de kern van de fix eronder. Nadat de VIN is uitgelezen (stap 3, "VIN: ..."), moeten merk/model/bouwjaar/brandstof uit het kenteken er NOG STEEDS staan. Verspringt het merk na het VIN-lezen naar iets grovers of wordt de brandstof leeg, dan wist het VIN-pad alsnog de sterkere RDW-bron.',
-
-    'KENTEKENSTAP — OVERSLAAN. Verbind opnieuw en kies "Overslaan". De diagnose hoort gewoon door te lopen, met "Kenteken overgeslagen bij het verbinden" in het log. Controleer dat een fout kenteken (bv. XX-99-XX) je niet klemzet: hij meldt "niet gevonden" en je kunt corrigeren of alsnog overslaan.',
-
-    'PROTOCOLKEUZE — GEEN AUTOMATISCHE DOORSTAP. Na de scan hoort de app te WACHTEN. Bovenaan het herkende protocol met "Herkend", daaronder "Of kies handmatig" met de rest. Stapt hij na ~1,5 s vanzelf door naar PIDs ophalen, dan draait de oude renderNetworkCards.',
-
-    'WAKELOCK TIJDENS DE RIT. Juist onderweg telt dit: blijft het scherm aan zolang de verbinding loopt? Het log hoort "🔆 Scherm blijft aan zolang de verbinding/sessie loopt" te melden. Gaat het scherm onderweg tóch uit, dan bevriezen de timers en zie je dat terug als gaten in blok 14.',
-
-    '── AL GROEN OP 26-08, ALLEEN NOG BEVESTIGEN ───────────────',
-
-    'Deze vier stonden groen in testrun 4.8 bij stilstand en hoeven alleen te blijven kloppen: merkGroep (BMW 320D→BMW), 0155/0156 rond 0%, het VIN-profiel dat binnen deze sessie is ontstaan, en blok 5 zonder FOUT. Wijkt er één af na een rit met herverbindingen, dan is dát de bevinding.'
+    'De open vragen van de rit van 26-08 (raildruk 0123/0159, opruimregel, mode 22 olietemperatuur, blok 13 onder belasting) staan hier NIET in. Die horen bij een rit, niet bij een opmaakronde — zie de issues.'
   ]
 };
 

@@ -76,7 +76,7 @@ function _showRitPill(){
   if(!p){
     p=document.createElement('div');
     p.id='ritPill';
-    p.style.cssText='position:fixed;bottom:48px;left:50%;transform:translateX(-50%);z-index:8500;background:linear-gradient(135deg,#00b4cc,#7c3aed);color:#fff;font-size:12px;font-weight:800;padding:7px 14px;border-radius:16px;box-shadow:0 3px 14px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;gap:8px;letter-spacing:.3px';
+    p.style.cssText='position:fixed;bottom:48px;left:50%;transform:translateX(-50%);z-index:var(--z-zwevend,9400);background:linear-gradient(135deg,#00b4cc,#7c3aed);color:#fff;font-size:12px;font-weight:800;padding:7px 14px;border-radius:16px;box-shadow:0 3px 14px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;gap:8px;letter-spacing:.3px';
     p.onclick=restoreRitAnalyse;
     document.body.appendChild(p);
   }
