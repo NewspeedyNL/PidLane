@@ -3034,6 +3034,13 @@ function ritNulstellen() {
   try { btDiag('PLRit nulgesteld', 'ok'); } catch (e) { /* stil */ }
 }
 
+// 27-08-2026 naar buiten gebracht. Het inlogscherm toont dit nummer, want dat
+// is de plek waar je vóór een rit kijkt of je build vers is — en dat was tot nu
+// toe alleen te zien door de testrun te openen, wat achter isAdmin() zit. Op
+// 26-08 is een hele rit verloren gegaan omdat het toestel 4.8 draaide terwijl
+// 4.9 al klaar stond; dat was op het inlogscherm niet te zien.
+window.TESTRUN_VERSIE = TESTRUN_VERSIE;
+
 window.openTestrun = openTestrun;
 window.closeTestrun = closeTestrun;
 window.startTestrun = startTestrun;

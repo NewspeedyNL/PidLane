@@ -84,5 +84,48 @@ bestanden.forEach(function (f) {
 toets('geen hardcoded versie als terugval op APP_VERSION', hard.length === 0,
   hard.join('; ') + " — gebruik '?' zodat een ontbrekende config opvalt");
 
+// ── de buildregel op het inlogscherm (27-08-2026) ──
+// Op 26-08 ging een hele rit verloren omdat het toestel testrun 4.8 draaide
+// terwijl 4.9 al op main stond. Dat was op het inlogscherm niet te zien, en de
+// testrun zelf zit achter isAdmin(). Sindsdien staat de testrunversie plus een
+// build-stempel onder de productregel.
+//
+// Elk van de drie schakels hieronder faalt STIL als hij wegvalt: dan staat er
+// gewoon niets, precies zoals nu. Daarom worden ze hier alle drie vastgepind.
+const tr = fs2.readFileSync('pidlane-testrun.js', 'utf8');
+const idx = fs2.readFileSync('index.html', 'utf8');
+
+toets('TESTRUN_VERSIE wordt geëxporteerd naar window',
+  /window\.TESTRUN_VERSIE\s*=/.test(tr),
+  'zonder export staat de testrunversie niet op het inlogscherm en valt dat niet op');
+
+toets('het inlogscherm heeft een plek voor de buildregel',
+  /id="loginBuild"/.test(idx),
+  '#loginBuild ontbreekt — plVersieRegel() schrijft dan nergens naartoe');
+
+toets('plVersieRegel() bestaat en wordt gestart',
+  /window\.plVersieRegel\s*=/.test(idx) && /plVersieRegel\(\)/.test(idx),
+  'de functie moet bestaan én aangeroepen worden, anders blijft de regel leeg');
+
+// Zelfde principe als hierboven: liever niets dan een verzonnen stempel. Een
+// vast ingetypte datum ziet er geldig uit en veroudert onzichtbaar.
+const buildBlok = (idx.match(/window\.plVersieRegel[\s\S]*?\n\};/) || [''])[0];
+toets('de buildregel verzint geen datum als terugval',
+  !/build\s*'?\s*\+?\s*'[0-9]{2}-[0-9]{2}/.test(buildBlok),
+  'er staat een vaste datum in de buildregel — die veroudert zonder dat iemand het ziet');
+
+// APP_VERSION en TESTRUN_VERSIE horen NIET gelijk te zijn: de eerste voedt de
+// Play Store en de update-check, de tweede volgt de batches. Wel moet de
+// testrunversie de vorm hebben die de inlogregel verwacht (cijfers vooraan,
+// want daar wordt op gesplitst).
+const tv = tr.match(/const TESTRUN_VERSIE\s*=\s*'([^']+)'/);
+toets('TESTRUN_VERSIE staat in pidlane-testrun.js', !!tv);
+if (tv) {
+  toets('TESTRUN_VERSIE begint met een nummer',
+    /^\d+\.\d+/.test(tv[1]),
+    'de inlogregel splitst op de eerste spatie: "' + tv[1] + '" geeft dan rommel');
+  console.log('        → testrun ' + tv[1].split(' ')[0]);
+}
+
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);
