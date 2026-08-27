@@ -38,7 +38,7 @@ var KRITIEK = [
   '_niceReportName','_noteMap','_recStats',
   'btDiag','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
-  'demo','detectEngineType','disconnectWebSerial','download','dtcInfo',
+  'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo',
   'ensurePIDListActive','ensurePIDsActive',
   'featOn','finishLogin','fv',
   'getPidDef','getVehicle','goHome',

@@ -718,8 +718,48 @@
     } catch(e){ console.warn('_log mislukt:', e); }
   }
 
+  // ── vergeetKlant() — het saldo van de vorige gebruiker weg bij uitloggen ──
+  // logout() wiste tot 28-08 alleen pl_session en pl_autoconn. Op een gedeeld
+  // werkplaatstoestel zag de volgende gebruiker daardoor even het saldo van de
+  // vorige staan. Geen geldfout — de eerste verversSaldo() corrigeert het —
+  // maar wel het eerste wat iemand ziet.
+  //
+  // LET OP: "wis de drie pl_credits_*-sleutels" is de voor de hand liggende
+  // fix en hij is fout. saldo() kent bij een ONTBREKENDE sleutel het gratis
+  // proeftegoed toe (CFG.gratisStart). Weggooien maakt uitloggen dus een knop
+  // die 25 nieuwe tokens uitdeelt, zo vaak als je wilt. Daarom:
+  //
+  //   lsSaldo  → op '0' zetten, niet verwijderen. Nul is eerlijk ("we weten
+  //              het nog niet"), het saldo van iemand anders is dat niet.
+  //              Stond er niets, dan blijft er niets staan — dat toestel heeft
+  //              zijn proeftegoed nog niet gehad en houdt dat recht.
+  //   lsInit   → blijft. Dat is de vastlegging dát dit toestel zijn
+  //              proeftegoed al kreeg, en die moet een uitlogactie juist
+  //              overleven.
+  //   lsKalib  → blijft. Dat is tekens-per-token van het AI-model, een
+  //              eigenschap van het model en niet van de klant. Wissen maakt
+  //              de eerstvolgende kostenschatting alleen maar slechter.
+  //
+  // De functie staat hier en niet in logout(), zodat de sleutelnamen op één
+  // plek blijven. Een tweede plek die dezelfde namen moet kennen is in dit
+  // project al drie keer een bug geweest.
+  function vergeetKlant() {
+    try {
+      if (_lsGet(CFG.lsSaldo) !== null) _lsSet(CFG.lsSaldo, '0');
+    } catch (e) { console.warn('saldo op nul zetten mislukt:', e); }
+    // Het werkgeheugen is de andere helft: localStorage opschonen helpt niet
+    // als het saldo nog in de module staat. Zonder deze drie regels geeft
+    // saldo() gewoon weer het bedrag van de vorige gebruiker terug.
+    _memSaldo = null;
+    _serverSaldo = null;
+    _nietMeerVragen = false;
+    try { _chipVerversen(); } catch (e) { console.warn('saldochip verversen mislukt:', e); }
+    _log('Saldo van de vorige gebruiker gewist bij uitloggen', 'info');
+  }
+
   // ── Publieke API ─────────────────────────────────────────────────────
   window.PLCredits = {
+    vergeetKlant: vergeetKlant,
     saldo: saldo,
     bijboeken: bijboeken,
     afboeken: afboeken,

@@ -174,6 +174,15 @@ async function doLogin(){
   // een gebruikersnaam zonder @, dus die lopen hieronder exact dezelfde weg
   // als voorheen — deze stap raakt ze niet. Klopt het wachtwoord niet, of is
   // de server onbereikbaar, dan valt hij door naar de normale route.
+  //
+  // 28-08-2026 — "valt door naar de normale route" gold alleen bij een
+  // uitzondering (server onbereikbaar), niet bij een afwijzing. Een afgewezen
+  // klantlogin deed `return`, en daarmee was de Users-route onbereikbaar voor
+  // iedereen met een @ in zijn gebruikersnaam. Een medewerker met een
+  // e-mailadres als gebruikersnaam kon dus niet inloggen — en dat is precies
+  // de vorm die je bij een testronde uitdeelt. Nu valt ook een afwijzing door;
+  // alleen een blokkade stopt hard, want doorlopen zou daar het slot omzeilen.
+  let klantAfgewezen = false;
   if(user.includes('@') && window.PLKlant){
     plLoginMeld(err, '⏳ Inloggen…', 'bezig');
     try{
@@ -183,10 +192,13 @@ async function doLogin(){
         PLKlant.neemSessie(k, user);
         return;
       }
-      plLoginMeld(err, '⚠ E-mailadres of wachtwoord onjuist', 'fout');
-      document.getElementById('loginPass').value = '';
-      document.getElementById('loginPass').focus();
-      return;
+      // Afgewezen, maar niet klaar: dit kan een Users-account zijn dat
+      // toevallig een e-mailadres als gebruikersnaam heeft. Nog geen melding
+      // tonen — die zou een seconde later door de Users-route overschreven
+      // worden. Onthouden dat het een e-mailadres was, zodat de foutmelding
+      // straks de juiste woorden gebruikt.
+      klantAfgewezen = true;
+      try{ log('Klantlogin afgewezen — Users-route proberen','warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
     }catch(e){
       if(/geblokkeerd|Te veel/i.test(e && e.message || '')){ plLoginMeld(err, '⚠ '+e.message, 'fout'); return; }
       try{ log('Klantlogin niet gelukt ('+(e&&e.message||e)+') — normale route proberen','warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
@@ -200,7 +212,11 @@ async function doLogin(){
   try{
     const s = await serverLogin(user, pass);
     if(s === null){
-      plLoginMeld(err, '⚠ Gebruikersnaam of wachtwoord onjuist', 'fout');
+      // Beide routes wijzen af. Wie een e-mailadres intikte is vrijwel zeker
+      // een klant met een verkeerd wachtwoord, dus krijgt die de melding die
+      // bij zijn scherm past.
+      plLoginMeld(err, klantAfgewezen ? '⚠ E-mailadres of wachtwoord onjuist'
+                                      : '⚠ Gebruikersnaam of wachtwoord onjuist', 'fout');
       document.getElementById('loginPass').value = '';
       document.getElementById('loginPass').focus();
       return;
@@ -429,6 +445,12 @@ async function logout(){
   uitlogVlagAan();
   try{ localStorage.removeItem('pl_session'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+  // Het tegoed hoort bij de klant, niet bij het toestel. Zonder deze regel ziet
+  // de volgende gebruiker op een gedeeld werkplaatstoestel het saldo van de
+  // vorige staan tot de eerste verversSaldo(). De sleutelnamen staan bewust
+  // NIET hier maar in PLCredits — zie vergeetKlant() daar.
+  try{ window.PLCredits?.vergeetKlant?.(); }
+  catch(e){ console.warn('saldo van de vorige gebruiker wissen mislukt:', e); }
 
   try{
     if(currentUser?.role==='admin'){

@@ -1,5 +1,31 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-28 (CET) — DE SESSIE: INLOGGEN EN UITLOGGEN (#24)
+
+       • 🔑 INLOGGEN MET EEN E-MAILADRES — doLogin() probeert bij een @ in de
+         gebruikersnaam eerst de klantroute. Een AFGEWEZEN klantlogin deed
+         daar `return`, waardoor de Users-route onbereikbaar was: een
+         medewerker met een e-mailadres als gebruikersnaam kon niet inloggen.
+         Alleen een uitzondering (server onbereikbaar) viel door, een nette
+         afwijzing niet. Nu valt ook een afwijzing door. Een BLOKKADE stopt
+         nog steeds hard — doorlopen zou daar het slot omzeilen, en dat is de
+         helft die niet mee mocht veranderen.
+       • 💳 UITLOGGEN LAAT GEEN SALDO ACHTER — logout() wiste alleen
+         pl_session en pl_autoconn, dus op een gedeeld werkplaatstoestel zag
+         de volgende gebruiker het saldo van de vorige. Er is nu
+         PLCredits.vergeetKlant().
+         LET OP de vorm van die fix: "wis de drie pl_credits_*-sleutels" is
+         de voor de hand liggende oplossing en hij is FOUT. saldo() kent bij
+         een ontbrekende sleutel het gratis proeftegoed toe, dus weggooien
+         maakt uitloggen een knop die 25 tokens uitdeelt, zo vaak als je
+         wilt. De sleutel gaat daarom op nul en wordt niet verwijderd.
+         pl_credits_init (dit toestel kreeg zijn proeftegoed al) en
+         pl_credits_kalib (tekens-per-token van het model, geen klantdata)
+         blijven bewust staan.
+       • 🧪 test-inlog-sessie.js — beide fixes als gedrag, met tegenproef:
+         de oude `return` maakt hem rood, en het verwijderen van de
+         saldosleutel ook.
+
      Build: 2026-08-27 (CET) — VIER SCHERMFOUTEN OP DE TELEFOON
 
        • 🔝 TOPBALK — het logo werd doormidden geknipt. .logo is het enige
