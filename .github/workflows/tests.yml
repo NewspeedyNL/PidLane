@@ -3,10 +3,10 @@
 #  Aangemaakt: 2026-08-25 (CET)
 #
 #  WAAROM DIT BESTAAT
-#  Dit project heeft goed gereedschap: plcheck.sh, 28 tests, de ratel op
-#  stille catches en de bedradingscontrole. Dat draaide alleen als iemand
-#  het met de hand aanriep vanuit Termux — precies de stap die plcheck.sh
-#  zelf omschrijft als "wat dus soms is overgeslagen".
+#  Dit project heeft goed gereedschap: plcheck.sh, de hele test-*.js-reeks,
+#  de ratel op stille catches en de bedradingscontrole. Dat draaide alleen als
+#  iemand het met de hand aanriep vanuit Termux — precies de stap die
+#  plcheck.sh zelf omschrijft als "wat dus soms is overgeslagen".
 #
 #  Hoe vaak dat misging is meetbaar: op 25-08-2026 stond test-bedrading.js
 #  rood op main. uitlogBezig en uitlogVlagAan zaten achter een typeof-guard

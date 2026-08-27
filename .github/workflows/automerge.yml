@@ -1,0 +1,139 @@
+# ════════════════════════════════════════════════════════════
+#  PidLane — samenvoegen zodra de testgate groen is
+#  Aangemaakt: 27-08-2026 (CET)
+#
+#  WAAROM DIT BESTAAT
+#  Een PR bleef hangen tot iemand er toevallig naar keek. Op 26-08 was dat
+#  vier uur, terwijl de testgate na drie minuten al groen stond. Dit is een
+#  soloproject: die vier uur waren geen review, het was wachttijd.
+#
+#  WAT HET DOET
+#  Zodra de workflow "Tests" op een PR-commit succesvol afrondt, wordt die PR
+#  samengevoegd. Niet eerder — de gate is de voorwaarde, niet een formaliteit
+#  achteraf.
+#
+#  WAAROM NIET GITHUB'S EIGEN AUTO-MERGE
+#  Dat is de knop die je zou verwachten, maar hij vraagt twee dingen die
+#  buiten dit bestand liggen:
+#    1. Settings → General → Pull Requests → "Allow auto-merge" aan.
+#    2. Branch protection op `main` die de checks `plcheck` en `geheimen`
+#       VERPLICHT stelt.
+#  Zonder (2) is GitHub's auto-merge actief gevaarlijk: hij voegt samen zodra
+#  de PR technisch samen te voegen is, en dat is meestal vóórdat de tests
+#  klaar zijn. Precies het omgekeerde van wat hier de bedoeling is.
+#
+#  Staan (1) en (2) er ooit wel, dan mag dit bestand weg en volstaat
+#  `gh pr merge --auto`. Tot die tijd doet deze workflow het werk zonder
+#  van repo-instellingen af te hangen.
+#
+#  LET OP — DIT WERKT PAS VANAF `main`
+#  `workflow_run` draait altijd de versie van dit bestand die op de
+#  standaardbranch staat. De PR die deze workflow introduceert wordt dus niet
+#  door zichzelf samengevoegd; die eerste keer gaat met de hand.
+#
+#  DE NOODREM
+#  Zet het label `handmatig` op een PR en deze workflow laat hem met rust.
+#  Een draft-PR wordt ook overgeslagen.
+# ════════════════════════════════════════════════════════════
+name: Auto-merge
+
+on:
+  workflow_run:
+    workflows: ['Tests']
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: automerge-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  samenvoegen:
+    name: Samenvoegen na groene testgate
+    runs-on: ubuntu-latest
+    # Alleen de run die aan een PR hangt. De testgate draait óók op de push
+    # naar dezelfde branch; die run negeren we, anders voegen we samen terwijl
+    # de PR-run nog loopt.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Zoek de PR en voeg samen
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha;
+            const { owner, repo } = context.repo;
+
+            // De payload draagt zelf een pull_requests-lijst, maar die is bij
+            // workflow_run niet betrouwbaar gevuld. Opzoeken op de commit is
+            // dat wel.
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner, repo, commit_sha: sha
+            });
+            const open = prs.filter(p => p.state === 'open');
+            if (!open.length) {
+              core.info(`Geen open PR op ${sha.slice(0, 7)} — niets te doen.`);
+              return;
+            }
+
+            for (const kort of open) {
+              // Verse staat ophalen: de lijst hierboven is een momentopname en
+              // mergeable_state ontbreekt erin.
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: kort.number
+              });
+              const naam = `#${pr.number} (${pr.title})`;
+
+              if (pr.draft) {
+                core.info(`${naam}: draft — overgeslagen.`);
+                continue;
+              }
+              if ((pr.labels || []).some(l => l.name === 'handmatig')) {
+                core.info(`${naam}: label 'handmatig' — overgeslagen.`);
+                continue;
+              }
+              // Geen PR's vanuit een fork: die kunnen code meebrengen die deze
+              // workflow met schrijfrechten zou samenvoegen zonder dat iemand
+              // ernaar heeft gekeken.
+              if (pr.head.repo.full_name !== `${owner}/${repo}`) {
+                core.info(`${naam}: komt uit een fork — overgeslagen.`);
+                continue;
+              }
+              // De testgate draaide op head_sha. Is er daarna doorgepusht, dan
+              // zegt die groene run niets meer over wat er nu ligt.
+              if (pr.head.sha !== sha) {
+                core.info(`${naam}: er is doorgepusht na de geteste commit — overgeslagen.`);
+                continue;
+              }
+              if (pr.mergeable === false) {
+                core.warning(`${naam}: mergeconflict met ${pr.base.ref} — los dat eerst op.`);
+                continue;
+              }
+
+              try {
+                await github.rest.pulls.merge({
+                  owner, repo, pull_number: pr.number,
+                  merge_method: 'merge',            // zelfde vorm als de bestaande historie
+                  sha: pr.head.sha                  // faalt liever dan de verkeerde commit samenvoegen
+                });
+                core.notice(`${naam} samengevoegd in ${pr.base.ref}.`);
+              } catch (e) {
+                // 405 = een menselijke poort (verplichte review, branch
+                // protection). 409 = de commit is intussen verschoven. Geen van
+                // beide is een storing, dus hier gaat de build niet op rood —
+                // dat zou het rode kruis betekenisloos maken.
+                if (e.status === 405 || e.status === 409) {
+                  core.notice(`${naam} niet samengevoegd: ${e.message}`);
+                  await core.summary
+                    .addHeading('Niet automatisch samengevoegd', 3)
+                    .addRaw(`PR ${naam} is groen, maar GitHub liet samenvoegen niet toe:\n\n> ${e.message}\n\nMeestal een verplichte review of branch protection. Voeg hem met de hand samen.`)
+                    .write();
+                  continue;
+                }
+                throw e;
+              }
+            }
