@@ -2464,11 +2464,17 @@ const CAMPAGNE = {
 
     'BEWUST NIET GEWIST: pl_credits_init (de vastlegging dát dit toestel zijn proeftegoed al kreeg) en pl_credits_kalib (tekens-per-token van het AI-model, een eigenschap van het model en niet van de klant).',
 
+    '── METEN VOOR #30: DE AIRCO ───────────────────────────────',
+
+    'AIRCO AAN, DAN UIT. Laat de motor warm stationair draaien met de airco AAN tot je de compressor hoort in- en uitschakelen, en kijk of de rit-monitor "ruw stationair" meldt. Noteer twee getallen uit die melding: de rpm-schommeling en de belastingspreiding. Doe daarna hetzelfde met de airco UIT en noteer dezelfde twee getallen.',
+
+    'WAAROM DIT ERTOE DOET. De melding noemt de airco nu als eerste verdachte, maar de app kan het verschil nog niet zélf zien. Een inkoppelende compressor geeft een sprong in de motorbelasting — valse lucht ook, en waar die grens ligt is niet te bedenken maar alleen te meten. Deze twee metingen zijn precies wat #30 nodig heeft om dat onderscheid wél te kunnen maken. Zonder die cijfers blijft het gokken, en een gegokte drempel zou echte ruwloop gaan verbergen.',
+
     '── WAT DEZE RONDE NIET RAAKT ──────────────────────────────',
 
     'De testrun-blokken 7 en 14 melden nog steeds iets anders dan ze meten (#12 en #29). Blok 14 zei op 27-08 "niets opgeruimd" terwijl het log twee opruimacties toonde. Trek daar deze ronde geen conclusies uit; het staat als issue en wordt apart gefixt.',
 
-    'De airco-melding (#30) staat er ook nog: een aan- en uitschakelende airco wordt gemeld als ruw stationair, met valse lucht en bobines als verdachten. Bij een testrit met de airco aan krijg je die dus; het is bekend en het klopt niet.'
+    'Het automatische onderscheid airco/valse lucht is er nog NIET (#30 blijft open). De melding is eerlijker geworden, maar hij komt er nog steeds bij een schakelende airco. Dat is bekend; de meetstap hierboven levert de cijfers om het echt op te lossen.'
   ]
 };
 
