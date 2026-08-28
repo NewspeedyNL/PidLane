@@ -1641,11 +1641,18 @@ async function _blok5() {
     if (mist.length)
       return { staat: 'FOUT', detail: 'de fork mist: ' + mist.join(', ') + '. pidlane-bt.js roept die ' +
         'aan; dit is precies het verschil dat je pas in de auto merkt' };
-    if (!window._btAdres)
-      return { staat: 'LET OP', detail: 'alle ' + nodig.length + ' methodes aanwezig, maar niet verbonden — ' +
-        'of read() nog {value:…} teruggeeft is alleen met een adapter te zien' };
+    // 28-08-2026 — deze controle zocht window._btAdres, dat nergens bestaat.
+    // pidlane-bt.js bewaart de actieve SPP-verbinding in window._sppConn
+    // ({spp, address, name}); de controle gaf daardoor altijd LET OP, ook
+    // tijdens een echte rit met een verbonden adapter (testrun 5.0-log,
+    // 28-08 17:00 — "Verbonden: ja" bovenaan, "niet verbonden" in blok 5).
+    const conn = window._sppConn;
+    if (!conn)
+      return { staat: 'LET OP', detail: 'alle ' + nodig.length + ' methodes aanwezig, maar geen actieve ' +
+        'SPP-verbinding (' + (window._bleConn ? 'wel via BLE' : 'geen enkele verbinding') + ') — of read() ' +
+        'nog {value:…} teruggeeft is alleen via een SPP-adapter te zien' };
     try {
-      const r = await SPP.read({ address: window._btAdres });
+      const r = await conn.spp.read({ address: conn.address });
       if (r && typeof r.value !== 'undefined') return 'alle methodes aanwezig, read() geeft {value:…} zoals verwacht';
       return { staat: 'FOUT', detail: 'read() gaf ' + JSON.stringify(Object.keys(r || {})) +
         ' terug in plaats van {value:…}. pidlane-bt.js leest .value en ziet dus stilte, zonder foutmelding' };
@@ -1725,7 +1732,13 @@ async function _blok5() {
 
     // De twee tokendefinities MOETEN env() gebruiken — dat is hun terugval.
     // Alles daarbuiten hoort via de tokens te lopen.
-    const regels = css.split('\n')
+    //
+    // Commentaarblokken eerst leegmaken (regels behouden, tekst niet): zonder
+    // dat matcht deze controle ook UITLEG die het woord env() noemt — precies
+    // de tekst boven --pl-sat hierboven deed dat, en gaf op 28-08 een vals
+    // FOUT op een run waarin niets fout was.
+    const zonderCommentaar = css.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''));
+    const regels = zonderCommentaar.split('\n')
       .map((t, i) => ({ nr: i + 1, t: t }))
       .filter(x => /env\(safe-area-inset/.test(x.t) && !/--pl-sa[tb]\s*:/.test(x.t));
     if (regels.length)
