@@ -161,6 +161,13 @@ de enige manier om nog binnen te komen.
 </div></details>
     <p class="sub" style="margin:0 0 12px">Deze accounts kunnen inloggen in de app. Een wachtwoord is nooit terug te lezen — alleen te overschrijven.</p>
 
+    <!-- Filter. Bewust client-side: de lijst is al binnen, en een zoekopdracht
+         die de Worker aanroept zou bij elke toetsaanslag een verzoek doen. -->
+    <div class="bar" style="margin-bottom:8px">
+      <input type="text" id="uZoek" placeholder="Filter op naam, inlognaam of rol"
+             style="flex:1;min-width:160px" oninput="tekenUsers()">
+      <button class="btn-sec btn-sm" onclick="document.getElementById('uZoek').value='';tekenUsers()">Wis</button>
+    </div>
     <div id="userList"></div>
 
     <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:14px">
@@ -612,7 +619,10 @@ function oefenAntwoord(path, opts){
 
   if (path.indexOf('/admin/users') === 0){
     if (methode === 'GET') return { users: D.users, locked: D.locked };
-    if (body.actie === 'verwijder' || body.delete){
+    // Let op de sleutel: gebruikers gebruiken {action:'delete'} (Engels), klanten
+    // {actie:'verwijder'} (Nederlands). Dat verschil zit in de bestaande code en
+    // is hier nagebootst; wie het ooit gelijktrekt, moet ook deze regel aanpassen.
+    if (body.action === 'delete' || body.actie === 'verwijder'){
       D.users = D.users.filter(u => u.user !== (body.user || body.naam));
       return { ok:true };
     }
@@ -861,6 +871,70 @@ function dt(s){
   catch(e){ return '—'; }
 }
 
+let KLANTEN_CACHE = [];
+
+/* ── Klantdetail ───────────────────────────────────────────────────
+   De lijst toont saldo en "ooit gekocht", en de vraag die daarna komt is
+   altijd dezelfde: waar zijn die tokens gebleven. Dat is uit de twee getallen
+   af te leiden maar niemand rekent dat in zijn hoofd, en de codes die deze
+   klant verzilverd heeft staan in een heel andere kaart.
+
+   Wat hier NIET staat: verbruik over tijd. Daar is geen bron voor — de
+   Klanten-tabel houdt alleen een stand bij, geen historie. Een grafiek
+   verzinnen uit twee getallen zou een precisie suggereren die er niet is.
+   Wil je dat echt, dan moet er eerst iets gaan bijhouden. */
+async function kDetail(id){
+  const k = KLANTEN_CACHE.find(x => x.id === id);
+  if(!k){ alert('Klant niet meer in beeld — herlaad de lijst.'); return; }
+
+  // Het codefilter staat standaard op "open", en dan kent de cache juist de
+  // GEBRUIKTE codes niet — precies degene die dit detail nodig heeft. Eén keer
+  // de volledige lijst ophalen als dat zo is; daarna zit hij in ALLE_CODES en
+  // kost het niets meer. Liever één verzoek dan een detail dat bijna altijd
+  // "onbekend" zegt.
+  if(!ALLE_CODES){
+    try{
+      const { data } = await callWorker('users','/admin/codes?status=alle',
+        { headers:{'X-Admin-Token':TOKEN} });
+      ALLE_CODES = data.codes || [];
+    }catch(e){
+      ALLE_CODES = null;   // niet onthouden: een volgende poging mag opnieuw
+    }
+  }
+  const verbruikt = Math.max(0, (k.totaal||0) - (k.saldo||0));
+  const bron = ALLE_CODES || CODES_CACHE.codes || [];
+  const mijn = bron.filter(c =>
+    String(c.gebruiktDoor||'').toLowerCase() === String(k.email||'').toLowerCase());
+
+  let t = 'KLANT ' + (k.email||'') + (k.naam ? '  (' + k.naam + ')' : '') + '\n';
+  t += '─'.repeat(46) + '\n';
+  t += 'Status        : ' + (k.status||'?') + (k.heeftReset ? '   ⚠ wachtwoordherstel staat open' : '') + '\n';
+  t += 'Aangemeld     : ' + dt(k.aangemaakt) + '\n';
+  t += 'Laatst ingelogd: ' + dt(k.laatsteLogin) + '\n\n';
+  t += 'Saldo nu      : ' + (k.saldo||0) + ' tokens\n';
+  t += 'Ooit gekocht  : ' + (k.totaal||0) + ' tokens\n';
+  t += 'Verbruikt     : ' + verbruikt + ' tokens\n\n';
+
+  if(mijn.length){
+    t += 'Verzilverde codes (' + mijn.length + '):\n';
+    mijn.forEach(c => {
+      t += '  ' + c.code + '  ' + c.credits + ' tokens  ' +
+           (c.gebruiktOp ? 'op ' + dt(c.gebruiktOp) : '') + '\n';
+    });
+    const viaCodes = mijn.reduce((a,c) => a + Number(c.credits||0), 0);
+    t += '  samen ' + viaCodes + ' tokens\n';
+    if(viaCodes !== (k.totaal||0)){
+      t += '\n  Let op: "ooit gekocht" is ' + (k.totaal||0) + ' en via codes kwam ' + viaCodes +
+           '.\n  Het verschil van ' + ((k.totaal||0) - viaCodes) + ' is handmatig bijgeboekt.\n';
+    }
+  } else {
+    t += ALLE_CODES
+      ? 'Verzilverde codes: geen. Het saldo is dus handmatig bijgeboekt.\n'
+      : 'Verzilverde codes: niet op te halen (de codelijst gaf een fout).\n';
+  }
+  alert(t);
+}
+
 async function loadKlanten(){
   const box=document.getElementById('kLijst'), msg=document.getElementById('kMsg');
   const q=(document.getElementById('kZoek').value||'').trim();
@@ -869,6 +943,7 @@ async function loadKlanten(){
     const { data } = await callWorker('users','/admin/klanten'+(q?'?q='+encodeURIComponent(q):''),
       { headers:{'X-Admin-Token':TOKEN} });
     const lijst=data.klanten||[];
+    KLANTEN_CACHE = lijst;
     document.getElementById('kStats').textContent =
       lijst.length ? `${data.stats.aantal} klanten · ${data.stats.totaalSaldo} tokens in omloop` : '';
     if(!lijst.length){ box.innerHTML='<div class="hint">Nog geen klanten geregistreerd.</div>'; return; }
@@ -885,6 +960,7 @@ async function loadKlanten(){
             aangemeld ${dt(k.aangemaakt)} · laatst ingelogd ${dt(k.laatsteLogin)}
           </div>
           <div class="bar" style="margin-top:6px">
+            <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
             <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo</button>
             <button class="btn-sec btn-sm" onclick="kStatus('${k.id}','${k.status}')">Status</button>
             <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
@@ -939,14 +1015,42 @@ function kWachtwoord(id, email){
   kPost({actie:'wachtwoord',id,pass:v},'Wachtwoord aangepast. Geef het door aan de klant.');
 }
 
+/* ── bevestigen door de naam over te tikken ────────────────────────
+   Een confirm() is één klik van "weg is weg" verwijderd, en de knop staat
+   naast drie knoppen die wél veilig zijn. Wie hier per ongeluk klikt en dan
+   per ongeluk Enter drukt, is een klant met saldo kwijt.
+
+   Overtikken kost twee seconden en kan niet per ongeluk. Dat is precies het
+   verschil dat je wilt: geen extra drempel voor wie het meent, wel een
+   volledige stop voor wie afdwaalde. Hoofdletters doen niet mee — het gaat om
+   de aandacht, niet om het typen. */
+function bevestigWissen(wat, naam, gevolg){
+  const v = prompt(
+    'Verwijderen: ' + wat + '\n\n' + gevolg +
+    '\n\nDit kan niet ongedaan worden gemaakt.\n' +
+    'Typ ter bevestiging: ' + naam);
+  if (v === null) return false;
+  if (v.trim().toLowerCase() !== String(naam).trim().toLowerCase()){
+    alert('Dat komt niet overeen met "' + naam + '". Er is niets verwijderd.');
+    return false;
+  }
+  return true;
+}
+
 function kVerwijder(id, email){
-  if(!confirm('Klant '+email+' definitief verwijderen?\n\nHet tokensaldo verdwijnt hiermee ook. Dit kan niet ongedaan worden gemaakt.')) return;
+  if(!bevestigWissen('klant ' + email, email,
+     'Het tokensaldo en de hele historie van deze klant verdwijnen mee.')) return;
   kPost({actie:'verwijder',id},'Klant verwijderd.');
 }
 
 /* ════════════════════════════════════════════════════════════════
    🎟️ ACTIVATIECODES
    ════════════════════════════════════════════════════════════════ */
+let CODES_CACHE = { codes: [], filter: '' };
+// De volledige codelijst, los van het filter op het scherm. Alleen gevuld
+// zodra iemand een klantdetail opent, en daarna hergebruikt.
+let ALLE_CODES = null;
+
 async function loadCodes(){
   const box=document.getElementById('cLijst'), msg=document.getElementById('cMsg');
   const f=document.getElementById('cFilter').value;
@@ -959,6 +1063,11 @@ async function loadCodes(){
       `${s.totaal||0} codes in beeld · ${s.open||0} open (${s.openCredits||0} tokens uitstaand) · ` +
       `${s.gebruikt||0} gebruikt` + (s.omzet ? ` · €${s.omzet.toFixed(2)} verzilverd` : '');
     const lijst=data.codes||[];
+    // Onthouden voor het klantdetail: dat koppelt codes aan een e-mailadres.
+    // Let op dat dit de GEFILTERDE lijst is — staat het filter op "open", dan
+    // kent het detail de gebruikte codes niet. Daarom zegt het detail er zelf
+    // bij waar het naar keek.
+    CODES_CACHE = { codes: lijst, filter: f };
     if(!lijst.length){ box.innerHTML='<div class="hint">Geen codes in deze selectie.</div>'; return; }
     box.innerHTML=lijst.map(c=>`
       <div class="row" style="align-items:flex-start">
@@ -1043,6 +1152,8 @@ function rolePill(role){
   return `<span class="pill ${cls}">${esc(role)}</span>`;
 }
 
+let USERS_CACHE = { users: [], locked: [] };
+
 async function loadUsers(){
   const m=document.getElementById('userMsg');
   const list=document.getElementById('userList');
@@ -1051,42 +1162,63 @@ async function loadUsers(){
     const { data } = await callWorker('users','/admin/users',{
       headers:{ 'X-Admin-Token':TOKEN }
     });
-    const users=data.users||[], locked=data.locked||[];
-
-    let html='';
-
-    // Noodingang (USERS_JSON) — alleen tonen, niet bewerkbaar
-    for(const u of locked){
-      html+=`<div class="row">
-        <div>
-          <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}<span class="pill p-lock">🔒 noodingang</span></div>
-          <div class="desc">Inlognaam <code>${esc(u.user)}</code> — beheerd in Worker-secret USERS_JSON</div>
-        </div>
-      </div>`;
-    }
-
-    // Airtable-gebruikers
-    for(const u of users){
-      html+=`<div class="row">
-        <div>
-          <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}${u.active?'':'<span class="pill p-off">geblokkeerd</span>'}</div>
-          <div class="desc">Inlognaam <code>${esc(u.user)}</code>${u.hasPass?'':' — ⚠ geen wachtwoord ingesteld'}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn-sec btn-sm" onclick="editUser('${esc(u.user)}','${esc(u.label)}','${esc(u.role)}',${u.active})">Bewerk</button>
-          <button class="btn-del" onclick="delUser('${esc(u.user)}')">Wis</button>
-        </div>
-      </div>`;
-    }
-
-    if(!html) html='<div class="desc">Nog geen gebruikers in Airtable. Voeg er hieronder een toe.</div>';
-    list.innerHTML=html;
-    show(m,'ok',`✓ ${users.length} gebruiker(s) geladen${locked.length?` + ${locked.length} noodingang`:''}.`);
+    USERS_CACHE = { users: data.users||[], locked: data.locked||[] };
+    tekenUsers();
+    const u=USERS_CACHE.users.length, l=USERS_CACHE.locked.length;
+    show(m,'ok',`✓ ${u} gebruiker(s) geladen${l?` + ${l} noodingang`:''}.`);
   }catch(e){
     list.innerHTML='';
     const d = e.diag || { kind:'err', title:'Laden mislukt.', detail:e.message };
     show(m, d.kind, d.title, d.detail);
   }
+}
+
+/* Tekenen en filteren zijn gescheiden van laden: filteren mag de Worker niet
+   raken. Bij elke toetsaanslag een verzoek doen is bij drie gebruikers
+   onzichtbaar en bij dertig een rem. */
+function tekenUsers(){
+  const list=document.getElementById('userList');
+  if(!list) return;
+  const q=((document.getElementById('uZoek')||{}).value||'').trim().toLowerCase();
+  const past=u => !q || (String(u.label||'')+' '+String(u.user||'')+' '+String(u.role||''))
+                        .toLowerCase().indexOf(q) >= 0;
+  const locked=USERS_CACHE.locked.filter(past);
+  const users =USERS_CACHE.users.filter(past);
+
+  let html='';
+
+  // Noodingang (USERS_JSON) — alleen tonen, niet bewerkbaar
+  for(const u of locked){
+    html+=`<div class="row">
+      <div>
+        <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}<span class="pill p-lock">🔒 noodingang</span></div>
+        <div class="desc">Inlognaam <code>${esc(u.user)}</code> — beheerd in Worker-secret USERS_JSON</div>
+      </div>
+    </div>`;
+  }
+
+  // Airtable-gebruikers
+  for(const u of users){
+    html+=`<div class="row">
+      <div>
+        <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}${u.active?'':'<span class="pill p-off">geblokkeerd</span>'}</div>
+        <div class="desc">Inlognaam <code>${esc(u.user)}</code>${u.hasPass?'':' — ⚠ geen wachtwoord ingesteld'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-sec btn-sm" onclick="editUser('${esc(u.user)}','${esc(u.label)}','${esc(u.role)}',${u.active})">Bewerk</button>
+        <button class="btn-del" onclick="delUser('${esc(u.user)}')">Wis</button>
+      </div>
+    </div>`;
+  }
+
+  if(!html){
+    // Onderscheid maken tussen "niets gevonden" en "nog niets aangemaakt":
+    // anders denk je bij een filter dat je gebruikers kwijt bent.
+    html = q
+      ? `<div class="desc">Geen gebruiker die past bij “${esc(q)}”. <a href="#" onclick="event.preventDefault();document.getElementById('uZoek').value='';tekenUsers()">Filter wissen</a></div>`
+      : '<div class="desc">Nog geen gebruikers in Airtable. Voeg er hieronder een toe.</div>';
+  }
+  list.innerHTML=html;
 }
 
 function editUser(user,label,role,active){
@@ -1144,7 +1276,8 @@ async function saveUser(){
 }
 
 async function delUser(user){
-  if(!confirm(`Gebruiker "${user}" definitief verwijderen?\n\nWil je alleen tijdelijk blokkeren, gebruik dan Bewerk → Actief uit.`)) return;
+  if(!bevestigWissen('gebruiker ' + user, user,
+     'Wil je alleen tijdelijk blokkeren? Gebruik dan Bewerk → Actief uit; het account blijft dan bestaan.')) return;
   const m=document.getElementById('userMsg');
   show(m,'warn','Verwijderen…');
   try{

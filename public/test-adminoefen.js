@@ -95,6 +95,17 @@ if (van < 0 || tot < 0 || tot < van) {
         'die is niet bewerkbaar en hoort in een eigen lijst');
   toets('er is een geblokkeerde gebruiker om op te oefenen', us.users.some(u => !u.active));
 
+  // De verwijdersleutel verschilt per tabel: gebruikers sturen
+  // {action:'delete'} (Engels), klanten {actie:'verwijder'} (Nederlands). Dat
+  // verschil zit in de bestaande pagina; de oefenmodus moet het nabootsen,
+  // anders doet "Wis" bij een gebruiker daar niets en lijkt de knop stuk.
+  const voorUser = us.users.length;
+  O.oefenAntwoord('/admin/users', { method:'POST', body: JSON.stringify({ action:'delete', user: us.users[0].user }) });
+  toets('gebruiker wissen werkt met {action:delete}',
+        O.oefenAntwoord('/admin/users', {}).users.length === voorUser - 1,
+        'de oefenmodus kent alleen de klant-sleutel; dan doet Wis bij een gebruiker niets');
+  O.oefenReset();
+
   const co = O.oefenAntwoord('/admin/codes', {});
   toets('codes gevuld', Array.isArray(co.codes) && co.codes.length >= 2);
   toets('open-tokens kloppen',
