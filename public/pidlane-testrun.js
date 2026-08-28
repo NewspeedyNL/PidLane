@@ -1600,87 +1600,63 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 28-08-2026 — de sessie: inloggen en uitloggen (#24).
-  // De opmaakcontroles van 27-08 zijn hier weggehaald; die oplevering is
-  // afgerond en staat groen. Wat hier staat gaat over déze twee fixes.
+  // OPLEVERING 28-08-2026 (2) — de betaallinks uit de code (#24).
+  // De sessiecontroles van vanochtend zijn hier weggehaald; die oplevering is
+  // afgerond en staat groen in test-inlog-sessie.js.
   //
-  // Het echte gedrag zit in test-inlog-sessie.js in de gate: doLogin() en
-  // vergeetKlant() zijn daar met een nagemaakte omgeving doorlopen, mét
-  // tegenproef. In de app zelf kan dat niet — inloggen toetsen zou je
-  // uitloggen, en vergeetKlant() aanroepen zou je saldo wissen. Hier staat
-  // dus alleen wat je zonder schade kunt vaststellen.
+  // De echte grens — welke URL de app in een href accepteert — zit in
+  // test-betaallinks.js in de gate, mét tegenproef. Hier staat wat je alleen
+  // ín de app kunt zien: wat er nú live doorkomt.
   // ══════════════════════════════════════════════════════════════
 
-  // ── 1. Is de uitlogschoonmaak bedraad? ───────────────────────────
-  // logout() roept PLCredits.vergeetKlant() aan achter een ?.-guard. Zo'n
-  // guard is precies hoe rebuildPidDefsCache() maandenlang niet bestond
-  // zonder dat iemand het merkte (zie §18). Daarom hier controleren dát hij
-  // er is, in plaats van erop te vertrouwen dat de aanroep iets doet.
-  await _doe(5, 'Uitloggen kan het saldo van de vorige gebruiker wissen', function () {
-    if (!window.PLCredits)
-      return { staat: 'FOUT', detail: 'PLCredits ontbreekt — pidlane-credits.js is niet meegekomen' };
-    if (typeof PLCredits.vergeetKlant !== 'function')
-      return { staat: 'FOUT', detail: 'PLCredits.vergeetKlant() ontbreekt; logout() roept hem aan achter ' +
-        'een ?.-guard, dus dan gebeurt er stil niets en ziet de volgende gebruiker het saldo van de vorige' };
+  await _doe(5, 'Betaallink komt uit de config en is bruikbaar', function () {
+    const c = window.PID_CONFIG || {};
+    // Config komt pas ná het inloggen binnen (/api/config vraagt een
+    // sessietoken). Nog niet geladen is geen fout, maar wel iets om te weten:
+    // dan valt er over de link niets te zeggen.
+    if (!Object.keys(c).length)
+      return { staat: 'LET OP', detail: 'PID_CONFIG is leeg — config nog niet opgehaald, dus de ' +
+        'betaallink is hier niet te beoordelen. Log in en draai opnieuw.' };
 
-    // De sleutelnamen staan in CFG en nergens anders — dat is de hele reden
-    // dat vergeetKlant() in pidlane-credits.js woont. Verdwijnt er één, dan
-    // wist de schoonmaak iets anders dan het saldo.
-    const c = PLCredits.CFG || {};
-    const mist = ['lsSaldo', 'lsKalib', 'lsInit'].filter(k => !c[k]);
-    if (mist.length)
-      return { staat: 'FOUT', detail: 'CFG mist ' + mist.join(', ') + ' — vergeetKlant() wist dan de ' +
-        'verkeerde sleutel of geen enkele' };
-    if (!(c.gratisStart > 0))
-      return { staat: 'LET OP', detail: 'CFG.gratisStart is 0 of ontbreekt — het proeftegoed staat uit' };
-    return 'vergeetKlant() aanwezig, drie sleutels bekend, proeftegoed ' + c.gratisStart;
+    const koop = String(c.tikkie_kopen || '').trim();
+    if (!koop)
+      return { staat: 'LET OP', detail: 'geen tikkie_kopen in de config — de app toont dan "Tokens ' +
+        'aanvragen" per mail. Dat is een geldige stand; zet hem in admin.html als dat niet de bedoeling is' };
+
+    // Dezelfde toets als in de app. Komt de link hier niet door, dan verdwijnt
+    // de koopknop STIL — dat is precies het soort fout waar niemand een melding
+    // van krijgt en waar een klant op vastloopt.
+    if (!/^https:\/\/tikkie\.me\/[^\s"'<>]*$/.test(koop))
+      return { staat: 'FOUT', detail: 'tikkie_kopen wordt geweigerd door de linktoets: ' +
+        JSON.stringify(koop.slice(0, 60)) + ' — de koopknop is daardoor onzichtbaar en de klant ziet ' +
+        'alleen de mailknop. Alleen https://tikkie.me/… wordt geaccepteerd' };
+
+    const donatie = String(c.tikkie_donatie || '').trim();
+    if (donatie && !/^https:\/\/tikkie\.me\/[^\s"'<>]*$/.test(donatie))
+      return { staat: 'FOUT', detail: 'tikkie_donatie wordt geweigerd door de linktoets — de ' +
+        'trakteerknop blijft weg' };
+
+    return 'koopknop actief' + (donatie ? ', trakteerknop actief' : ', geen donatielink (mag)');
   });
 
-  // ── 2. Deelt uitloggen geen nieuw proeftegoed uit? ───────────────
-  // Dit is de fout die de voor de hand liggende fix zou introduceren: wie de
-  // saldosleutel verwíjdert in plaats van op nul zet, laat saldo() een
-  // ontbrekende sleutel zien — en die kent het gratis proeftegoed toe. Dan is
-  // uitloggen een knop die 25 tokens uitdeelt, zo vaak als je wilt.
-  //
-  // Hier niet vergeetKlant() aanroepen (dat zou het saldo van de gebruiker
-  // wissen), maar de voorwaarde toetsen die het lek mogelijk maakt: staat de
-  // saldosleutel er, dan deelt saldo() niets uit.
-  await _doe(5, 'Uitloggen levert geen gratis tokens op', function () {
-    if (!window.PLCredits) return { staat: 'LET OP', detail: 'PLCredits ontbreekt — niets te meten' };
-    const c = PLCredits.CFG || {};
-    let ruw = null;
-    try { ruw = localStorage.getItem(c.lsSaldo); }
-    catch (e) { return { staat: 'LET OP', detail: 'localStorage niet leesbaar: ' + (e.message || e) }; }
-    if (ruw === null)
-      return { staat: 'LET OP', detail: 'nog geen saldosleutel op dit toestel — het proeftegoed is nog ' +
-        'niet toegekend, dus hier valt nu niets te toetsen' };
-    if (PLCredits.serverModus())
-      return 'serverSaldo actief; de lokale sleutel staat op ' + ruw + ' en dient alleen als cache';
-    const n = parseInt(ruw, 10);
-    if (!isFinite(n))
-      return { staat: 'FOUT', detail: 'de saldosleutel bevat ' + JSON.stringify(ruw) + ' — geen getal; ' +
-        'saldo() leest dat als 0 en de weergave klopt niet' };
-    return 'saldosleutel aanwezig (' + n + '), dus saldo() kent geen nieuw proeftegoed toe';
-  });
-
-  // ── 3. Kan een e-mailadres nog langs de Users-route? ─────────────
-  // BRONCONTROLE, met reden. Een gedragstest zou een echte inlogpoging
-  // vereisen en dus de lopende sessie beëindigen — dat is in een testrun
-  // onaanvaardbaar. De gedragstest staat daarom in test-inlog-sessie.js; hier
-  // alleen de vraag of díé versie van doLogin ook echt in de app draait, want
-  // dat is wat de HTTP-cache twee keer eerder verkeerd heeft laten aflopen.
-  await _doe(5, 'Login: een afgewezen klantlogin valt door naar Users', function () {
-    if (typeof doLogin !== 'function')
-      return { staat: 'FOUT', detail: 'doLogin() ontbreekt — pidlane-auth.js is niet meegekomen' };
-    const bron = String(doLogin);
-    if (!/klantAfgewezen/.test(bron))
-      return { staat: 'FOUT', detail: 'doLogin() kent klantAfgewezen niet: dit is de oude versie, waarin ' +
-        'een afgewezen klantlogin hard stopt. Iedereen met een @ in zijn gebruikersnaam komt er dan niet ' +
-        'in. Eerst "Nieuwste versie laden" — is het daarna nog zo, dan draait de oude code echt.' };
-    if (!/geblokkeerd|Te veel/.test(bron))
-      return { staat: 'FOUT', detail: 'de blokkade-tak is uit doLogin() verdwenen — dan omzeilt een ' +
-        'geblokkeerd account zichzelf door door te vallen naar Users' };
-    return 'doorval naar Users aanwezig, blokkade stopt nog steeds hard';
+  // ── Staat er niets meer hardcoded in de geladen app? ─────────────
+  // BRONCONTROLE, met reden: dit gaat over de afwezigheid van een waarde in de
+  // code die dráái. De gate toetst de bestanden in de repo; deze controle
+  // toetst wat de browser werkelijk heeft geladen — en dat is een ander ding
+  // zodra de HTTP-cache een oude versie serveert. "Niet geladen" is hier al
+  // twee keer de cache geweest.
+  await _doe(5, 'Geen betaallink meer hardcoded in de draaiende app', function () {
+    if (typeof PLKlant === 'undefined')
+      return { staat: 'FOUT', detail: 'PLKlant ontbreekt — pidlane-klant.js is niet meegekomen' };
+    let bron = '';
+    try { bron = Object.keys(PLKlant).map(k => String(PLKlant[k])).join('\n'); }
+    catch (e) { return { staat: 'LET OP', detail: 'PLKlant niet uit te lezen: ' + (e.message || e) }; }
+    const m = bron.match(/https:\/\/tikkie\.me\/pay\/[A-Za-z0-9]{8,}/);
+    if (m)
+      return { staat: 'FOUT', detail: 'er staat nog een vaste betaallink in de geladen code (' +
+        m[0].slice(0, 34) + '…). Eerst "Nieuwste versie laden"; blijft het staan, dan is de fix niet ' +
+        'meegekomen en is de link niet te wisselen zonder deploy' };
+    return 'geen vaste betaallink in de geladen PLKlant-code';
   });
 }
 
@@ -2434,47 +2410,35 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-08 — de sessie: inloggen en uitloggen (#24), vóór de Play Store-testfase',
+  titel: 'OPLEVERING 28-08 (2) — de betaallinks uit de code, vlak vóór de Play Store-testfase',
   vragen: [
     '── WAAROM DEZE RONDE ──────────────────────────────────────',
 
-    'Dit is de laatste ronde vóór de Play Store-testfase, en daarom staan hier twee dingen in die een tester meteen raken. Een tester die niet kan inloggen, test niets — dat weegt zwaarder dan welke meetfout dan ook.',
+    'De Tikkie-links stonden hardcoded in pidlane-klant.js, in een publieke repo (#24). Ze komen nu uit de Config-tabel via /api/config en zijn te beheren in admin.html onder "Betaallinks". Niet omdat zo\u2019n link geheim is — wie hem heeft kan alleen betalen, niet incasseren — maar omdat je hem anders niet kunt wisselen zonder een deploy.',
 
     '── STAP VOOR STAP ─────────────────────────────────────────',
 
-    'STAP 1. "Nieuwste versie laden". Blok 5 controle 3 kijkt of de nieuwe doLogin écht draait; staat die op FOUT, dan kijk je naar de oude code uit de cache en zegt de rest van deze lijst niets.',
+    'STAP 1. "Nieuwste versie laden". Blok 5 controle 2 kijkt of de nieuwe code écht draait; staat die op FOUT, dan kijk je naar de oude versie uit de cache.',
 
-    'STAP 2. INLOGGEN MET EEN E-MAILADRES ALS GEBRUIKERSNAAM. Dit is de kern. Maak in de tabel Users een account met een e-mailadres als gebruikersnaam (of gebruik een bestaande medewerker die er al zo een heeft) en log daarmee in. Vóór deze ronde kwam je er niet in: de app probeerde de klantroute, kreeg een afwijzing, en stopte daar. Nu hoort hij door te vallen naar de Users-route en je gewoon binnen te laten.',
+    'STAP 2. Log in en druk op \u25b6 Start. Blok 5 hoort te zeggen "koopknop actief". Staat er LET OP "PID_CONFIG is leeg", dan is de config nog niet opgehaald — draai opnieuw. Staat er FOUT, dan wordt je link geweigerd door de linktoets en ziet de klant alleen de mailknop.',
 
-    'STAP 3. EEN KLANT MOET NOG GEWOON WERKEN. Log in met een echt klantaccount (tabel Klanten). Die hoort binnen te komen via de klantroute, zonder dat de Users-route eraan te pas komt. Werkt dit niet meer, dan is de doorval te ver doorgeslagen.',
+    'STAP 3. DE ECHTE PROEF. Open Mijn account \u2192 tokens, en druk op de koopknop. Hij hoort je Tikkie te openen. Dit is de enige stap die bewijst dat de link niet alleen geldig is maar ook klopt — een geldige link naar de verkeerde Tikkie ziet er in blok 5 precies hetzelfde uit.',
 
-    'STAP 4. FOUT WACHTWOORD. Tik een bestaand e-mailadres met een verkeerd wachtwoord. Verwacht "E-mailadres of wachtwoord onjuist" — niet "Gebruikersnaam of wachtwoord onjuist". Beide routes wijzen dan af, en de melding hoort bij het scherm dat je voor je hebt.',
+    'STAP 4. LEEGMAKEN MAG. Haal in admin.html de link weg en sla op. Na ~60 s hoort de koopknop te verdwijnen en "Tokens aanvragen" per mail te verschijnen. Geen kapot scherm, geen dode knop. Zet hem daarna terug.',
 
-    'STAP 5. GEBLOKKEERD ACCOUNT. Dit is de tegenproef en de belangrijkste stap van deze ronde. Probeer een account net zo vaak verkeerd tot het geblokkeerd raakt. De app hoort dán hard te stoppen met de blokkademelding, en NIET door te vallen naar de Users-route — want dan zou de blokkade zichzelf omzeilen. Komt hier "Gebruikersnaam of wachtwoord onjuist" in plaats van de blokkademelding, dan is dat een beveiligingsfout en geen schoonheidsfoutje.',
-
-    'STAP 6. UITLOGGEN OP EEN GEDEELD TOESTEL. Log in als klant A met saldo, log uit, en kijk naar de saldochip vóórdat je opnieuw inlogt. Die hoort op nul te staan, niet op het saldo van A.',
-
-    'STAP 7. EN DE STAP DIE ER ECHT TOE DOET: log dríé keer achter elkaar uit en weer in. Het saldo mag NIET elke keer op 25 springen. Doet het dat wel, dan is de saldosleutel verwijderd in plaats van op nul gezet, en is uitloggen een knop geworden die gratis tokens uitdeelt.',
+    'STAP 5. Vul in admin.html bewust iets ongeldigs in, bijvoorbeeld http:// in plaats van https://. De app hoort dat te weigeren en terug te vallen op de mailknop, en blok 5 hoort er FOUT op te geven. Dat laatste is het punt: de app faalt hier STIL, dus zonder blok 5 merk je het pas als een klant belt.',
 
     '── WAT ER IS VERANDERD ────────────────────────────────────',
 
-    'doLogin() stopte bij een afgewezen klantlogin met een return. Alleen een uitzondering (server onbereikbaar) viel door naar de Users-route, een nette afwijzing niet. Dat is nu omgedraaid: afwijzing valt door, blokkade stopt hard.',
+    'CFG.tikkieKopen en CFG.tikkieDonatie zijn geen vaste waarden meer maar getters die PID_CONFIG lezen. Vaste waarden zouden de stand bevriezen op het moment dat het bestand laadt, en dat is altijd vóór de login — dus altijd leeg.',
 
-    'logout() wist alleen pl_session en pl_autoconn. Er is nu PLCredits.vergeetKlant(), die het saldo op nul zet en het werkgeheugen van de module leegt. De sleutelnamen staan in PLCredits en niet in logout() — één plek die ze kent.',
+    'Er zit een toets op: alleen https://tikkie.me/\u2026 komt erdoor. Dat is geen nette-invoer-controle maar een veiligheidsgrens. De waarde komt nu uit Airtable en belandt in een href; zonder die toets voert een klik op de koopknop uit wat er in die tabel staat. Getoetst in test-betaallinks.js, met twaalf varianten die geweigerd moeten worden.',
 
-    'BEWUST NIET GEWIST: pl_credits_init (de vastlegging dát dit toestel zijn proeftegoed al kreeg) en pl_credits_kalib (tekens-per-token van het AI-model, een eigenschap van het model en niet van de klant).',
+    '── WAT DEZE RONDE NIET OPLOST ─────────────────────────────',
 
-    '── METEN VOOR #30: DE AIRCO ───────────────────────────────',
+    'De oude links staan nog in de git-geschiedenis en dat verandert hier niet. Wil je ze echt uit omloop, dan is een NIEUWE Tikkie aanmaken de enige weg — een andere waarde invullen verandert niets aan wat er al gedeeld is. Weeg zelf of dat de moeite waard is; een betaallink is geen sleutel.',
 
-    'AIRCO AAN, DAN UIT. Laat de motor warm stationair draaien met de airco AAN tot je de compressor hoort in- en uitschakelen, en kijk of de rit-monitor "ruw stationair" meldt. Noteer twee getallen uit die melding: de rpm-schommeling en de belastingspreiding. Doe daarna hetzelfde met de airco UIT en noteer dezelfde twee getallen.',
-
-    'WAAROM DIT ERTOE DOET. De melding noemt de airco nu als eerste verdachte, maar de app kan het verschil nog niet zélf zien. Een inkoppelende compressor geeft een sprong in de motorbelasting — valse lucht ook, en waar die grens ligt is niet te bedenken maar alleen te meten. Deze twee metingen zijn precies wat #30 nodig heeft om dat onderscheid wél te kunnen maken. Zonder die cijfers blijft het gokken, en een gegokte drempel zou echte ruwloop gaan verbergen.',
-
-    '── WAT DEZE RONDE NIET RAAKT ──────────────────────────────',
-
-    'De testrun-blokken 7 en 14 melden nog steeds iets anders dan ze meten (#12 en #29). Blok 14 zei op 27-08 "niets opgeruimd" terwijl het log twee opruimacties toonde. Trek daar deze ronde geen conclusies uit; het staat als issue en wordt apart gefixt.',
-
-    'Het automatische onderscheid airco/valse lucht is er nog NIET (#30 blijft open). De melding is eerlijker geworden, maar hij komt er nog steeds bij een schakelende airco. Dat is bekend; de meetstap hierboven levert de cijfers om het echt op te lossen.'
+    'De testrun-blokken 7 en 14 melden nog steeds iets anders dan ze meten (#12 en #29), en de airco-melding (#30) komt er nog bij een schakelende airco. Beide bekend, beide apart.'
   ]
 };
 
