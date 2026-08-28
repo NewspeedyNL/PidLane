@@ -7,8 +7,15 @@
 //  PidLane — Universele Bluetooth-verbindingslaag
 //  Cascade: SPP (Classic) → BLE → Web Bluetooth.
 //  Werkt op telefoons + tablets, oud + nieuw. Logt elke stap.
-//  SPP @e-is API: connect/write/read(polling 50ms)/disconnect/requestPermissions
+//  SPP-API: connect/write/read(polling 50ms)/disconnect/requestPermissions
 // ════════════════════════════════════════════════════════════════════
+/* 28-08-2026 — de SPP-plugin is van @e-is naar @ascentio-it gegaan. Die eerste
+   is op 6.0.3 blijven staan (31-12-2024) en is nooit voorbij Capacitor 6
+   gekomen; het Android-API-niveau komt uit het Capacitor-template, dus daarmee
+   kon de app de Play-eis van 31-08-2026 niet halen. De fork registreert onder
+   dezelfde naam BluetoothSerial en heeft dezelfde methodes en hetzelfde
+   antwoordformaat ({value:"..."} bij read), dus hieronder verandert niets.
+   Die naam is de koppeling: hij staat nergens in een import maar alleen hier. */
 function getSPP(){ return window.Capacitor?.Plugins?.BluetoothSerial || null; }
 function getBLE(){ return window.Capacitor?.Plugins?.BluetoothLe   || null; }
 
@@ -243,7 +250,7 @@ function resetConnectBtn(){
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  MODUS 1 — SPP (Bluetooth Classic, @e-is/capacitor-bluetooth-serial)
+//  MODUS 1 — SPP (Bluetooth Classic, @ascentio-it/capacitor-bluetooth-serial)
 //  Werkende API: connect/write/read(polling 50ms)/disconnect/requestPermissions
 //  Gooit een error bij mislukken — de cascade vangt 'm op.
 // ════════════════════════════════════════════════════════════════════
@@ -807,7 +814,7 @@ async function connectWebBluetooth(){
 
 // ════════════════════════════════════════
 // STUREN & ONTVANGEN
-// @e-is: write({address,value}) + read({address}) polling elke 50ms
+// SPP: write({address,value}) + read({address}) polling elke 50ms
 // readUntil gaf lege responses — read() polling is de enige werkende methode
 // Promise.race timeouts annuleren readUntil NIET → hangende reads aten responses op
 // BLE/WebBT: accumulator patroon met veilige null-checks
@@ -889,7 +896,7 @@ async function _sendBTOnce(cmd, timeoutMs){
       }
 
       // Polling: elke 50ms read() tot '>' prompt of timeout
-      // ⚠ KRITIEK: @e-is read() geeft {value:"..."} terug, NIET {data:"..."}!
+      // ⚠ KRITIEK: read() geeft {value:"..."} terug, NIET {data:"..."}!
       // Dit was maandenlang de oorzaak van "lege" responses.
       let buf='';
       let pollCount=0;
