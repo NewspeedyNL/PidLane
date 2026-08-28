@@ -665,12 +665,20 @@ maken.
 
 **Wat hierbij níét bewezen is, en dus open staat:**
 
-1. **De vervangende SPP-plugin is niet aan een adapter getoetst.** De vergelijking
-   is statisch gedaan: zelfde bestandenset, zelfde namespace, zelfde plugin-naam,
-   zelfde `@CapacitorPlugin`-annotatie, alle zeven aangeroepen methodes aanwezig,
-   en het grote regelverschil in `BluetoothSerialPlugin.java` is opmaak. Dat zegt
-   niets over gedrag onderweg. Blok 5 van testrun 5.0 controleert het formaat van
-   `read()`; de rest is een rit.
+1. ~~**De vervangende SPP-plugin is niet aan een adapter getoetst.**~~ **BEWEZEN
+   op 28-08-2026, 19:08** — testrun 5.2 op de Mazda CX-5 met de OBDLink MX+
+   (STN2255), Android 16, Capacitor 8:
+
+   - `read()` geeft nog steeds `{value:…}`, aangetoond met een echte gelogde
+     regel: `read() #1 → {"value":"009\r0:410C0A150D00\r…}`
+   - de volledige PID-sweep: **45 gelezen, 0 geen data, 0 parserprobleem**
+   - 375 busverzoeken, 1 slecht, foutgraad 0%, gemiddeld 117 ms
+
+   Daarmee is de zwaarste onbekende van de Capacitor-upgrade weg: de fork van
+   `@ascentio-it` gedraagt zich op een echte adapter identiek aan `@e-is`. De
+   statische vergelijking (zelfde bestandenset, namespace, plugin-naam,
+   `@CapacitorPlugin`-annotatie, alle zeven methodes) is dus bevestigd door
+   gedrag en niet alleen door lezen.
 2. **`@ascentio-it` is een eenmansfork.** Beter dan een pakket dat sinds
    31-12-2024 stilstaat, maar geen garantie. Valt hij stil, dan is de terugval het
    plugin-mapje als lokale Capacitor-plugin in deze repo opnemen. Nu niet doen:
@@ -697,6 +705,13 @@ maken.
    schuift hij mee naar 48px. De overige vensters zijn broncontrole — met
    reden erbij in `test-schermranden.js` — omdat ze pas openen na app-boot
    (netwerkverzoeken, voertuigstatus) die een kale testomgeving niet nabootst.
+
+   **Op het toestel bevestigd (28-08-2026, 19:08, testrun 5.2):** de topbalk
+   krijgt 37px marge (balk 83px), en het Logboek net zo — `padding-top volgt
+   --pl-sat (37px marge)`. Twee van de zeven vensters zijn daarmee op een echt
+   Android 16-toestel gemeten; de andere vijf (testrunpaneel, Veldlab, diepe
+   diagnose, neon-HUD, rittracker/caravantracker) staan nog op broncontrole en
+   vragen nog één blik met het oog.
 4. **De topbalk is in `uiL` hoger dan zijn eigen `height`-regel zegt** (47px waar
    `height:42px` staat). Oorzaak: een flexitem heeft `min-height:auto`, dus de
    balk kan niet kleiner dan zijn inhoud. Dat gedrag is ouder dan deze wijziging
