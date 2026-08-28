@@ -58,14 +58,32 @@ toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
   kost een klant.
 
   **Herzien, niet weggepoetst** (#35): hier stond tot 28-08 "samenvoegen in
-  `main` is deployen". Dat was toen al onjuist — Workers Builds bouwde op élke
-  push, en bij PR #34 stond de Worker 33 minuten vóór de merge live op de
-  branchcommit. `wrangler.toml` zei het al precies ("`git push` → Workers
-  Builds bouwt en deployt automatisch"); niemand had die twee naast elkaar
-  gelegd. De regel las als "een branch is een veilige werkplek en de PR is de
-  poort", en dat verklaart waarom er halfaf werk naar branches ging om het
-  later af te maken. Met het filter erop klopt de oude lezing alsnog — maar om
-  een reden die er eerst niet was.
+  `main` is deployen". Die formulering las als "een branch is een veilige
+  werkplek en de PR is de poort", en dat verklaart waarom er halfaf werk naar
+  branches ging om het later af te maken.
+
+  **Wat vaststaat:** Workers Builds bouwt op élke push, ook naar een branch,
+  en ook als die push `worker.js` niet aanraakt. Commit `809ca689` wijzigde
+  alleen `CLAUDE.md` en `wrangler.toml` en kreeg toch "✅ Deployment
+  successful" van de Cloudflare-bot. Bouwen wordt dus niet gefilterd op wat er
+  veranderde.
+
+  **Wat NIET vaststaat, en waar deze regel op 28-08 te stellig was:** of zo'n
+  branch-build ook verkeer krijgt. Een build maakt een *versie*; alleen een
+  *deployment* serveert. In het dashboard stonden de branch-builds onder
+  Version History terwijl de Active deployment op `main` bleef staan. Het is
+  dus goed mogelijk dat een branchpush nooit live ging en dat de oude regel
+  materieel klopte. Hier stond eerst dat de Worker bij PR #34 "33 minuten vóór
+  de merge live stond" — dat is niet aangetoond; alleen dát er gebouwd werd.
+
+  **Zo beslis je het** (nog te doen): Cloudflare → Workers → `pidlane-proxy` →
+  Deployments → *View all deployments*. Staat daar een deployment op een
+  `claude/…`-branch, dan gaan branches wél live. Alleen `main`, dan niet.
+
+  De les die hoe dan ook blijft staan: "de bot zegt Deployment successful" is
+  geen bewijs dat er iets live staat, en dat onderscheid is hier twee keer
+  achter elkaar misgegaan — eerst door het te missen, daarna door het te
+  stellig te corrigeren.
 
   Blijft gelden, filter of niet: `bash plcheck.sh .` groen vóór elke push die
   `worker.js` raakt. Het filter is een vangnet, geen vervanging.
