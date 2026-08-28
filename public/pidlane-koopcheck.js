@@ -744,7 +744,7 @@ function openDeepDiag(){
   ];
   _ddStep=0;
   ov.innerHTML=
-    '<div style="display:flex;align-items:center;gap:12px;padding:18px 18px 10px;flex-shrink:0">'+
+    '<div style="display:flex;align-items:center;gap:12px;padding:calc(18px + var(--pl-sat,0px)) 18px 10px;flex-shrink:0">'+
       '<div id="ddProgRow" style="display:flex;align-items:center;gap:12px;flex:1">'+
         '<div id="ddProgTxt" style="font-size:15px;font-weight:800;color:#7aa2ff;white-space:nowrap"></div>'+
         '<div style="flex:1;height:6px;background:#1a2030;border-radius:3px;overflow:hidden"><div id="ddProg" style="height:100%;width:0;background:#2f6bff;transition:width .3s"></div></div>'+
@@ -757,7 +757,7 @@ function openDeepDiag(){
       window._ddSteps.map(function(s,i){ return '<div class="dd-step" data-i="'+i+'" style="display:none">'+s.html+'</div>'; }).join('')+
       '<div id="dd_result" style="display:none;margin-top:14px"></div>'+
     '</div>'+
-    '<div id="ddFoot" style="display:flex;gap:12px;padding:14px 18px calc(20px + env(safe-area-inset-bottom));flex-shrink:0;border-top:1px solid #1a2030">'+
+    '<div id="ddFoot" style="display:flex;gap:12px;padding:14px 18px calc(20px + var(--pl-sab,0px));flex-shrink:0;border-top:1px solid #1a2030">'+
       '<button id="ddPrev" onclick="ddPrev()" style="padding:16px 22px;border-radius:12px;border:1px solid #2a3550;background:transparent;color:#cdd5e5;font-family:var(--f);font-size:18px;font-weight:800;cursor:pointer">\u2190</button>'+
       '<button id="ddNext" onclick="ddNext()" style="flex:1;padding:16px;border-radius:12px;border:none;background:#2f6bff;color:#fff;font-family:var(--f);font-size:17px;font-weight:800;cursor:pointer">Volgende \u2192</button>'+
     '</div>';

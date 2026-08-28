@@ -272,7 +272,11 @@
     if (!ov) {
       ov = document.createElement('div');
       ov.id = 'logboekOv';
-      ov.style.cssText = 'position:fixed;inset:0;z-index:9975;background:rgba(8,11,17,.97);display:flex;flex-direction:column;padding:12px;gap:8px';
+      // 28-08-2026 — dit paneel stond flush tegen de bovenkant: op een
+      // Android 15+-toestel schoof "Logboek" en "Sluiten" onder de statusbalk.
+      // Zie PIDLANE.md §11 (edge-to-edge was alleen in een browser gemeten).
+      ov.style.cssText = 'position:fixed;inset:0;z-index:9975;background:rgba(8,11,17,.97);display:flex;flex-direction:column;' +
+        'padding:calc(12px + var(--pl-sat,0px)) 12px calc(12px + var(--pl-sab,0px));gap:8px';
       ov.innerHTML =
         '<div style="display:flex;align-items:center;gap:9px;flex-shrink:0">' +
           '<div style="font-size:16px;font-weight:800;color:var(--tx)">📜 Logboek</div>' +

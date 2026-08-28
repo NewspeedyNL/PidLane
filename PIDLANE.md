@@ -675,11 +675,28 @@ maken.
    31-12-2024 stilstaat, maar geen garantie. Valt hij stil, dan is de terugval het
    plugin-mapje als lokale Capacitor-plugin in deze repo opnemen. Nu niet doen:
    dat is onderhoudslast die pas nodig is als het zover is.
-3. **Edge-to-edge is alleen in een browser nagemeten.** Zonder inset is de
-   topbalk in alle drie de standen (gewoon, <480px, uiL) exact gelijk aan die van
-   `main`; met een gesimuleerde inset van 36px komt de marge aan. Hoe het er op
-   een echt Android 15+-toestel uitziet is niet gemeten, en dat is waar het om
-   gaat.
+3. **Edge-to-edge — bevestigd op een echt toestel, en meteen een gat gevonden.**
+   Een schermfoto van 28-08 liet zien dat de topbalk netjes onder de statusbalk
+   bleef, maar het Logboek-venster niet: "Logboek", "Sluiten" en de regelteller
+   lagen half achter de systeemklok. De topbalk was op 28-08 de ENIGE plek die
+   was aangepakt; de app bouwt ~20 andere volschermvensters zelf op met een
+   losse `<div style="position:fixed;inset:0;...">`, elk met eigen padding en
+   zonder gedeelde class — dus zonder gemeenschappelijke CSS-regel die ze in
+   één keer meeneemt.
+
+   Nagelopen welke vensters écht tegen de rand liggen (geen backdrop ertussen,
+   in tegenstelling tot gecentreerde dialogen en onderaan-uitschuivende vellen —
+   die blijven bewust ongemoeid) en van dezelfde `--pl-sat`/`--pl-sab`-tokens
+   voorzien: het Logboek, het testrunpaneel, het Veldlab-dashboard, de "diepe
+   diagnose"-stappen, en in `index.html` de neon-HUD, de rittracker en de
+   caravantracker. `test-schermranden.js` bewaakt dat met tegenproef: alle vijf
+   teruggedraaide varianten worden rood.
+
+   Het Logboek is ook echt gemeten (Playwright, 412px): zonder inset staat de
+   kop op 12px van de rand zoals altijd; met een gesimuleerde inset van 36px
+   schuift hij mee naar 48px. De overige vensters zijn broncontrole — met
+   reden erbij in `test-schermranden.js` — omdat ze pas openen na app-boot
+   (netwerkverzoeken, voertuigstatus) die een kale testomgeving niet nabootst.
 4. **De topbalk is in `uiL` hoger dan zijn eigen `height`-regel zegt** (47px waar
    `height:42px` staat). Oorzaak: een flexitem heeft `min-height:auto`, dus de
    balk kan niet kleiner dan zijn inhoud. Dat gedrag is ouder dan deze wijziging
