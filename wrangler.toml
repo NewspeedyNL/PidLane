@@ -2,7 +2,13 @@
 # wrangler.toml — Cloudflare Worker "pidlane-proxy"
 # ───────────────────────────────────────────────────────────────────────
 # Twee deploy-routes, allebei geldig:
-#   1. git push  → Cloudflare Workers Builds bouwt en deployt automatisch
+#   1. git push naar `main` → Cloudflare Workers Builds bouwt en deployt
+#      automatisch. LET OP: welke branches dit aftrappen is een instelling in
+#      het dashboard (Workers → pidlane-proxy → Settings → Builds), niet iets
+#      in dit bestand. Tot 28-08-2026 bouwde hij op ELKE branch, en stond de
+#      Worker bij PR #34 dus 33 minuten vóór de merge live. Sindsdien hoort er
+#      een branchfilter op `main` te staan — zie issue #35. Deze regel zei
+#      eerder alleen "git push", en dat was precies het misverstand.
 #   2. npm run deploy → lokaal via wrangler (nu je node op deze PC hebt)
 #
 # Ze bijten elkaar niet, maar draai ze niet door elkaar heen: een lokale

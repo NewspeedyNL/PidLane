@@ -46,25 +46,32 @@ toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
 - `automerge.yml` voegt de PR samen zodra de workflow *Tests* groen afrondt.
   Remmen: het label `handmatig`, of de PR in draft laten.
-- **Elke push is deployen — óók naar een branch.** Cloudflare Workers Builds
-  bouwt op elke push en zet `worker.js` live op `app.pidlane.nl`. Niet pas bij
-  de merge: bij PR #34 stond de Worker 33 minuten vóór de merge al live, op de
-  branchcommit. `wrangler.toml` zei het al precies ("`git push` → Workers Builds
-  bouwt en deployt automatisch"); bevestigd door de eigenaar op 28-08-2026.
+- **Alleen `main` deployt — en dat is een dashboardinstelling, geen code.**
+  Cloudflare Workers Builds bouwt `worker.js` en zet hem live op
+  `app.pidlane.nl`. Wélke branches dat aftrappen staat in Cloudflare →
+  Workers → `pidlane-proxy` → Settings → Builds, en hoort sinds 28-08-2026 op
+  alleen `main` te staan (zie #35).
 
-  **Herzien, niet weggepoetst** (zie #35): hier stond tot 28-08 "samenvoegen in
-  `main` is deployen". Dat las als "een branch is een veilige werkplek en de PR
-  is de poort". Het omgekeerde is waar — de PR is een verslag achteraf, geen
-  poort. De fout is bewaard omdat hij verklaart waarom er sessies zijn geweest
-  waarin halfaf werk naar een branch ging "om het later af te maken".
+  **Ga daar niet blind van uit.** Het staat niet in deze repo, dus een
+  wijziging in het dashboard is hier onzichtbaar. Twijfel je, of push je iets
+  dat je niet wilt uitleveren: kijk het na. Het kost tien seconden en de fout
+  kost een klant.
 
-  Wat dat betekent voor het werk:
-  - `bash plcheck.sh .` groen vóór **elke** push die `worker.js` raakt, niet
-    vóór de merge.
-  - Push geen worker-wijziging die je niet wilt uitleveren. Nog niet af? Houd
-    hem lokaal, of raak `worker.js` in die push niet aan.
-  - Dit geldt alleen voor de Worker. `public/` wordt door dezelfde build
-    meegenomen, maar `admin/` staat daarbuiten en gaat nergens heen.
+  **Herzien, niet weggepoetst** (#35): hier stond tot 28-08 "samenvoegen in
+  `main` is deployen". Dat was toen al onjuist — Workers Builds bouwde op élke
+  push, en bij PR #34 stond de Worker 33 minuten vóór de merge live op de
+  branchcommit. `wrangler.toml` zei het al precies ("`git push` → Workers
+  Builds bouwt en deployt automatisch"); niemand had die twee naast elkaar
+  gelegd. De regel las als "een branch is een veilige werkplek en de PR is de
+  poort", en dat verklaart waarom er halfaf werk naar branches ging om het
+  later af te maken. Met het filter erop klopt de oude lezing alsnog — maar om
+  een reden die er eerst niet was.
+
+  Blijft gelden, filter of niet: `bash plcheck.sh .` groen vóór elke push die
+  `worker.js` raakt. Het filter is een vangnet, geen vervanging.
+
+  `admin/` valt hier volledig buiten: dat staat niet in `public/` en wordt
+  nergens geserveerd.
 - Bij tegoed- of API-wijzigingen moeten `worker.js` en `public/` in **dezelfde**
   push mee. Loopt de een voor, dan draait er even een versie waarin niemand
   betaalt of juist dubbel.
