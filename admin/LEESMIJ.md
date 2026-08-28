@@ -68,6 +68,44 @@ Elke sectie heeft daarnaast een uitklapbare **❔-uitleg**: wat het scherm doet,
 en wat er gebeurt als je het fout doet. Vooral bij Klanten en Activatiecodes is
 dat het lezen waard — daar zit geld achter.
 
+## Saldo: bijboeken of zetten
+
+Twee knoppen, en het verschil is opzettelijk.
+
+**Bijboeken** is de gewone handeling: "klant heeft 50 gekocht" → `50`. Een
+negatief getal boekt af. De Worker leest het saldo vlak vóór het schrijven en
+telt daar bij op. Dat is belangrijk: rekende de pagina zelf, dan zou hij het
+saldo gebruiken uit een lijst die minuten geleden geladen is, en het verbruik
+van elke analyse die de klant intussen deed terugschrijven.
+
+**Saldo zetten** overschrijft het bedrag. Dat is de gevaarlijke variant — een
+rekenfout in je hoofd schrijft rechtstreeks geld weg — en daarom vraagt hij een
+extra bevestiging met het verschil erbij.
+
+Airtable kent geen transacties. Twee beheerders die op dezelfde seconde
+bijboeken kunnen elkaar nog steeds overschrijven. Bij één beheerder is dat geen
+praktisch risico; het staat hier zodat niemand later denkt dat het atomair is.
+
+## De auditregel — en wat hij niet is
+
+Elke wijziging aan een klant (saldo, status, wachtwoord) schrijft een regel in
+het veld **`Audit`** van de Klanten-tabel. Je ziet ze terug onder *Details* bij
+de klant, nieuwste eerst.
+
+**Dit veld moet je zelf aanmaken**: een lang-tekstveld met de naam `Audit` in de
+Klanten-tabel. Bestaat het niet, dan werkt alles gewoon door — alleen de
+vastlegging niet, en het antwoord zegt dat dan (`vastgelegd: false`). Dat is met
+opzet zo gebouwd: een vergeten veld hoort het beheer niet plat te leggen. Om
+dezelfde reden gaan de wijziging en de auditregel als twee losse schrijfacties
+naar Airtable, met de wijziging eerst.
+
+**De naam bij een regel bewijst niets.** Er is één `ADMIN_TOKEN` en dat draagt
+geen identiteit. De naam komt uit de adminpagina (je wordt er één keer om
+gevraagd, daarna staat hij in localStorage) en is dus zelf-opgegeven. Hij
+onderscheidt collega's die hem invullen; hij houdt niemand tegen die dat niet
+doet. Wil je een audit die wél sluitend is, dan is er een token per beheerder
+nodig — dat is een andere verbouwing.
+
 ## Waarom niet gewoon dubbelklikken
 
 Dan is de herkomst `file://` en stuurt de browser `Origin: null`. De Worker

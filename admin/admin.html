@@ -554,7 +554,8 @@ let OEFEN = false;
 const OEFEN_START = {
   klanten: [
     { id:'rec001', email:'j.dekker@gmail.com',     naam:'Jan Dekker',
-      status:'actief',      saldo:180, totaal:250, aangemaakt:'2026-06-14', laatsteLogin:'2026-08-26', heeftReset:false },
+      status:'actief',      saldo:180, totaal:250, aangemaakt:'2026-06-14', laatsteLogin:'2026-08-26', heeftReset:false,
+      audit:'[2026-08-14 09:12] nico: saldo +100 (80 → 180) — code PL-1QA9-5RT4 verzilverd' },
     { id:'rec002', email:'garage.pieters@ziggo.nl', naam:'Autobedrijf Pieters',
       status:'actief',      saldo:0,   totaal:500, aangemaakt:'2026-05-02', laatsteLogin:'2026-08-27', heeftReset:false },
     { id:'rec003', email:'m.visser@outlook.com',    naam:'Marieke Visser',
@@ -610,11 +611,28 @@ function oefenAntwoord(path, opts){
     }
     const k = D.klanten.find(x => x.id === body.id);
     if (!k) return { ok:true };
-    if (body.actie === 'verwijder') D.klanten = D.klanten.filter(x => x.id !== body.id);
-    if (body.saldo   !== undefined) k.saldo  = Number(body.saldo);
-    if (body.status  !== undefined) k.status = body.status;
-    if (body.wachtwoord !== undefined) k.heeftReset = false;
-    return { ok:true };
+    if (body.actie === 'verwijder'){ D.klanten = D.klanten.filter(x => x.id !== body.id); return { ok:true }; }
+    // De auditregel wordt hier net zo opgebouwd als in de Worker, zodat je in
+    // de oefenmodus ziet wat er straks bij een echte klant komt te staan.
+    const stempel = t => {
+      const wie = String(body.door || '').trim() || 'onbekend';
+      k.audit = '[' + new Date().toISOString().slice(0,16).replace('T',' ') + '] ' +
+                wie + ': ' + t + (k.audit ? '\n' + k.audit : '');
+    };
+    if (body.actie === 'bijboeken'){
+      const d = Number(body.delta || 0), van = k.saldo;
+      if (van + d < 0) return { ok:false, error:'Saldo zou negatief worden.' };
+      k.saldo = van + d;
+      stempel('saldo ' + (d>0?'+':'') + d + ' (' + van + ' → ' + k.saldo + ')' +
+              (body.reden ? ' — ' + body.reden : ''));
+      return { ok:true, van, naar:k.saldo, vastgelegd:true };
+    }
+    const gewijzigd = [];
+    if (body.saldo  !== undefined){ k.saldo  = Number(body.saldo); gewijzigd.push('Saldo=' + k.saldo); }
+    if (body.status !== undefined){ k.status = body.status;        gewijzigd.push('Status=' + k.status); }
+    if (body.wachtwoord !== undefined){ k.heeftReset = false;      gewijzigd.push('wachtwoord door beheerder gezet'); }
+    if (gewijzigd.length) stempel(gewijzigd.join(', '));
+    return { ok:true, vastgelegd:true };
   }
 
   if (path.indexOf('/admin/users') === 0){
@@ -932,6 +950,20 @@ async function kDetail(id){
       ? 'Verzilverde codes: geen. Het saldo is dus handmatig bijgeboekt.\n'
       : 'Verzilverde codes: niet op te halen (de codelijst gaf een fout).\n';
   }
+
+  t += '\n' + '─'.repeat(46) + '\n';
+  if(k.audit){
+    t += 'WIJZIGINGEN (nieuwste eerst)\n' + k.audit + '\n\n';
+    t += 'De naam bij een regel is zelf-opgegeven: er is één admin-token en dat\n' +
+         'draagt geen identiteit. Het onderscheidt collega\u2019s die hem invullen,\n' +
+         'het bewijst niets.\n';
+  } else {
+    t += 'WIJZIGINGEN: nog niets vastgelegd.\n\n' +
+         'Staat hier nooit iets terwijl je wel wijzigt, dan ontbreekt het veld\n' +
+         '"Audit" in de Klanten-tabel van Airtable. Maak daar een lang-tekstveld\n' +
+         'met die naam aan; de wijziging zelf werkt ook zonder, alleen de\n' +
+         'vastlegging niet.\n';
+  }
   alert(t);
 }
 
@@ -961,7 +993,8 @@ async function loadKlanten(){
           </div>
           <div class="bar" style="margin-top:6px">
             <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
-            <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo</button>
+            <button class="btn-sec btn-sm" onclick="kBijboeken('${k.id}',${k.saldo})">Bijboeken</button>
+            <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo zetten</button>
             <button class="btn-sec btn-sm" onclick="kStatus('${k.id}','${k.status}')">Status</button>
             <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
             <button class="btn-del" onclick="kVerwijder('${k.id}','${esc(k.email)}')">Verwijder</button>
@@ -992,12 +1025,34 @@ async function kPost(body, gelukt){
   }
 }
 
+/* Zetten is de gevaarlijke variant en bijboeken de gewone. "Klant heeft 50
+   gekocht" is een bijboeking; het absolute getal vraagt dat je eerst zelf
+   optelt, en een rekenfout schrijft rechtstreeks geld weg. Daarom staan ze als
+   twee knoppen naast elkaar in plaats van één veld waar je maar moet weten wat
+   de bedoeling is. */
+function kBijboeken(id, huidig){
+  const v=prompt('Hoeveel tokens bijboeken?\n\n' +
+                 'Saldo staat nu op ' + huidig + '. Een negatief getal boekt af.\n' +
+                 'Voorbeeld: 50 of -10', '');
+  if(v===null) return;
+  const d=parseInt(v,10);
+  if(!isFinite(d)||d===0){ alert('Vul een geheel getal in dat niet 0 is.'); return; }
+  if(huidig + d < 0){ alert('Dat zou het saldo op ' + (huidig+d) + ' zetten. Kan niet.'); return; }
+  const reden=(prompt('Waarom? (komt in de auditregel, mag leeg)','')||'').trim();
+  kPost({actie:'bijboeken',id,delta:d,reden,door:beheerderNaam()},
+        `${d>0?'+':''}${d} tokens bijgeboekt.`);
+}
+
 function kSaldo(id, huidig){
-  const v=prompt('Nieuw tokensaldo voor deze klant:', huidig);
+  const v=prompt('Saldo ZETTEN op een vast getal.\n\n' +
+                 'Let op: dit overschrijft het saldo, het telt er niet bij op.\n' +
+                 'Wil je bijboeken na een aankoop, gebruik dan "Bijboeken".', huidig);
   if(v===null) return;
   const n=parseInt(v,10);
   if(!isFinite(n)||n<0){ alert('Vul een getal van 0 of hoger in.'); return; }
-  kPost({actie:'update',id,saldo:n},`Saldo op ${n} gezet.`);
+  if(n!==huidig && !confirm(`Saldo van ${huidig} naar ${n} zetten?\n\n` +
+     `Dat is een verschil van ${n-huidig>0?'+':''}${n-huidig} tokens.`)) return;
+  kPost({actie:'update',id,saldo:n,door:beheerderNaam()},`Saldo op ${n} gezet.`);
 }
 
 function kStatus(id, huidig){
@@ -1005,7 +1060,7 @@ function kStatus(id, huidig){
   if(v===null) return;
   const s=v.trim().toLowerCase();
   if(!['actief','geblokkeerd','ongeverifieerd'].includes(s)){ alert('Onbekende status.'); return; }
-  kPost({actie:'update',id,status:s},`Status is nu ${s}.`);
+  kPost({actie:'update',id,status:s,door:beheerderNaam()},`Status is nu ${s}.`);
 }
 
 function kWachtwoord(id, email){
@@ -1013,6 +1068,24 @@ function kWachtwoord(id, email){
   if(v===null) return;
   if(v.length<10){ alert('Minimaal 10 tekens.'); return; }
   kPost({actie:'wachtwoord',id,pass:v},'Wachtwoord aangepast. Geef het door aan de klant.');
+}
+
+/* ── Wie ben jij? ──────────────────────────────────────────────────
+   Er is één ADMIN_TOKEN en dat draagt geen identiteit. Voor de auditregel is
+   dus een naam nodig, en die kan alleen zelf-opgegeven zijn. Dat maakt hem
+   niet waardeloos: hij onderscheidt collega's die hem invullen. Hij houdt
+   alleen niemand tegen die dat niet doet, en daarom staat dat er in de uitleg
+   bij het detail letterlijk bij. Een auditregel die betrouwbaarder lijkt dan
+   hij is, is erger dan geen. */
+function beheerderNaam(){
+  let n = '';
+  try{ n = localStorage.getItem('pl_admin_naam') || ''; }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
+  if(!n){
+    n = (prompt('Onder welke naam wil je dat je wijzigingen worden vastgelegd?\n' +
+                '(Alleen voor de auditregel bij de klant. Leeg laten mag.)') || '').trim();
+    try{ if(n) localStorage.setItem('pl_admin_naam', n); }catch(e){ /* stil */ }
+  }
+  return n;
 }
 
 /* ── bevestigen door de naam over te tikken ────────────────────────

@@ -2624,6 +2624,45 @@ __name(handleKlantAdminWachtwoord, "handleKlantAdminWachtwoord");
 // ═══════════════════════════════════════════════════════════════════
 // Voor admin.html. Alles achter X-Admin-Token.
 
+// ── Auditregel bij een klantrecord ──────────────────────────────────
+// WAAROM APART VAN DE WIJZIGING ZELF
+// De regel gaat naar het veld `Audit` in de Klanten-tabel. Bestaat dat veld
+// niet, dan weigert Airtable de HELE patch met 422 UNKNOWN_FIELD_NAME — dus
+// zou een ontbrekend auditveld ook de saldowijziging tegenhouden. Daarom twee
+// losse patches, en de belangrijke gaat eerst: de wijziging landt altijd, de
+// vastlegging is een poging. Lukt die niet, dan zegt het antwoord dat erbij.
+//
+// WAAROM "wie" MAAR HALF BETROUWBAAR IS
+// Er is één ADMIN_TOKEN en dat draagt geen identiteit. `door` komt uit de
+// adminpagina en is dus zelf-opgegeven: het onderscheidt collega's die te
+// goeder trouw hun naam invullen, en houdt niemand tegen die dat niet doet.
+// Daarom staat dat er letterlijk bij in het antwoord van de pagina — een
+// auditregel die betrouwbaarder lijkt dan hij is, is erger dan geen.
+async function klantAudit(env, id, tekst, door) {
+  const wie = String(door || "").trim().slice(0, 40) || "onbekend";
+  const regel = `[${new Date().toISOString().slice(0, 16).replace("T", " ")}] ${wie}: ${tekst}`;
+  try {
+    const { base, table, hdr } = klantTabel(env);
+    // Eerst lezen: Airtable kan niet aanvullen, alleen overschrijven.
+    const r = await fetch(
+      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
+      { headers: hdr }
+    );
+    if (!r.ok) return false;
+    const rec = await r.json();
+    const oud = String((rec.fields || {}).Audit || "");
+    // Nieuwste bovenaan, en afkappen op 4000 tekens: een lange-tekstveld in
+    // Airtable is niet oneindig en de oudste regels zijn het minst waard.
+    let nieuw = regel + (oud ? "\n" + oud : "");
+    if (nieuw.length > 4000) nieuw = nieuw.slice(0, 4000).replace(/\n[^\n]*$/, "\n…ouder afgekapt");
+    await klantPatch(env, id, { Audit: nieuw });
+    return true;
+  } catch (e) {
+    return false;   // niet stil: de aanroeper meldt het door aan de pagina
+  }
+}
+__name(klantAudit, "klantAudit");
+
 // ── GET /admin/klanten?q=zoekterm ───────────────────────────────────
 async function handleAdminKlantenGet(request, env) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
@@ -2656,7 +2695,8 @@ async function handleAdminKlantenGet(request, env) {
         status: f.Status || "actief",
         aangemaakt: f.Aangemaakt || "",
         laatsteLogin: f.LaatsteLogin || "",
-        heeftReset: !!f.ResetToken
+        heeftReset: !!f.ResetToken,
+        audit: f.Audit || ""
       };
     });
     const totaalSaldo = klanten.reduce((s, k) => s + k.saldo, 0);
@@ -2681,6 +2721,38 @@ async function handleAdminKlantenPost(request, env) {
   const { base, table, hdr } = klantTabel(env);
 
   try {
+    // ── bijboeken: +50 in plaats van "zet op 230" ──────────────────
+    // WAAROM SERVER-SIDE EN NIET IN DE PAGINA
+    // De pagina zou het oude saldo kunnen optellen en het nieuwe totaal
+    // sturen. Maar dat oude saldo komt uit een lijst die minuten geleden is
+    // geladen; heeft de klant intussen een analyse gedraaid, dan schrijf je
+    // zijn verbruik terug. Hier wordt vlak vóór het schrijven gelezen, en dat
+    // scheelt het verschil tussen "een paar milliseconden" en "een kwartier".
+    //
+    // Airtable kent geen transacties, dus twee beheerders die op dezelfde
+    // seconde bijboeken kunnen elkaar nog steeds overschrijven. Bij één
+    // beheerder is dat geen praktisch risico; het staat hier zodat niemand
+    // later denkt dat dit atomair is.
+    if (actie === "bijboeken") {
+      const d = Math.round(Number(b.delta));
+      if (!isFinite(d) || d === 0) return json({ ok: false, error: "Bijboeking moet een getal zijn dat niet 0 is." }, 400);
+      if (Math.abs(d) > 1e5) return json({ ok: false, error: "Bijboeking buiten bereik." }, 400);
+      const r0 = await fetch(
+        `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
+        { headers: hdr }
+      );
+      if (!r0.ok) return json({ ok: false, error: "Klant niet gevonden." }, 404);
+      const huidig = Number(((await r0.json()).fields || {}).Saldo || 0);
+      const nieuw = huidig + d;
+      if (nieuw < 0) return json({ ok: false, error: `Saldo zou ${nieuw} worden; het staat nu op ${huidig}.` }, 400);
+      if (nieuw > 1e6) return json({ ok: false, error: "Saldo buiten bereik." }, 400);
+      await klantPatch(env, id, { Saldo: nieuw });
+      const vast = await klantAudit(env, id,
+        `saldo ${d > 0 ? "+" : ""}${d} (${huidig} → ${nieuw})` + (b.reden ? ` — ${String(b.reden).slice(0, 120)}` : ""),
+        b.door);
+      return json({ ok: true, van: huidig, naar: nieuw, vastgelegd: vast });
+    }
+
     if (actie === "update") {
       const f = {};
       if (b.saldo !== undefined) {
@@ -2697,7 +2769,9 @@ async function handleAdminKlantenPost(request, env) {
       if (b.opmerking !== undefined) f.Opmerking = String(b.opmerking).slice(0, 2000);
       if (!Object.keys(f).length) return json({ ok: false, error: "Niets om te wijzigen." }, 400);
       await klantPatch(env, id, f);
-      return json({ ok: true });
+      const wat = Object.keys(f).map((k) => `${k}=${f[k]}`).join(", ");
+      const vast = await klantAudit(env, id, wat, b.door);
+      return json({ ok: true, vastgelegd: vast });
     }
 
     if (actie === "wachtwoord") {
@@ -2709,7 +2783,8 @@ async function handleAdminKlantenPost(request, env) {
         ResetToken: "",
         ResetVerloopt: null
       });
-      return json({ ok: true });
+      const vast = await klantAudit(env, id, "wachtwoord door beheerder gezet", b.door);
+      return json({ ok: true, vastgelegd: vast });
     }
 
     if (actie === "verwijder") {
