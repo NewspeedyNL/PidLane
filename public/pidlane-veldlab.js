@@ -868,7 +868,6 @@ function vlEnsureBtn(force){
   // Veldlab blijft bereikbaar via ☰-menu → 🧪 Veldlab. Deze functie ruimt nu
   // alleen een eventueel nog bestaande knop op (en blijft aanroepbaar voor
   // bestaande callsites).
-  try{ var b=document.getElementById('plEvalBtn'); if(b) b.remove(); }catch(e){ /* stil: element kan al weg zijn */ }
 }
 
 /* De uitkomstregel van de full survey, bewust BUITEN de IIFE hierboven.

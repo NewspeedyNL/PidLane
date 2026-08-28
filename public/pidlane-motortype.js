@@ -185,7 +185,6 @@ let _wizStep=0;
 function wizShow(){
   document.getElementById('wizardOv').classList.remove('hidden');
   // Stappenbalk verbergen: met één stap zegt "1 van 6" niets meer.
-  try{ const bar=document.getElementById('wizStepBar'); if(bar) bar.style.display='none'; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   wizGo(6);
 }
 function wizHide(){

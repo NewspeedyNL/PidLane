@@ -134,12 +134,38 @@ function aiBusyEnd(){
 // 15-07-2026, platform.claude.com). NB: Sonnet 5 heeft een nieuwe tokenizer
 // (~30% meer tokens voor dezelfde tekst) — usage-velden zijn dus hoger dan
 // bij Sonnet 4.6, de prijs per token is gelijk.
+/* Tarieven per miljoen tokens, in DOLLAR — zoals Anthropic ze publiceert.
+   Nagekeken bij de bron op 28-08-2026 (platform.claude.com, models/overview).
+
+   Waarom in dollar en niet meer in euro: hiervoor stonden hier omgerekende
+   euro's met de koers onzichtbaar in de getallen gebakken ($15 → €13,80). Dan
+   is niet te zien of een getal verouderd is omdat de prijs veranderde of omdat
+   de koers dat deed. Nu staat de koers apart, mét de datum waarop hij gold.
+
+   Wat hier op 28-08-2026 fout stond (#48):
+   - Opus op $15/$75. Dat is de Opus 3-generatie; elke huidige Opus (5, 4.8,
+     4.7, 4.6) kost $5/$25. De app toonde dus drie keer te sombere kosten,
+     precies op het getal waarop je besluit om Opus níét te gebruiken.
+   - Een "introductieprijs" voor Sonnet 5 die niet bestaat: de code sprong op
+     01-09-2026 van $2/$10 naar $3/$15. Sonnet 5 is gewoon $2/$10; $3/$15 is
+     het tarief van Sonnet 4.6, een ander model. Zonder deze fix was de teller
+     drie dagen later 50% gaan overdrijven zonder dat er iets veranderde.
+
+   NIET meegerekend, allebei in ons voordeel: cache-reads kosten 10% van het
+   invoertarief en de Batch API is 50% goedkoper. Deze schatting is dus een
+   bovengrens, en dat is de veilige kant. */
+const USD_EUR = 0.92;              // koers van 28-08-2026, met de hand gezet
+const MODEL_USD = {
+  haiku:  { inp: 1,  out: 5  },    // Haiku 4.5
+  opus:   { inp: 5,  out: 25 },    // Opus 5 / 4.8 / 4.7 / 4.6
+  sonnet: { inp: 2,  out: 10 }     // Sonnet 5  (Sonnet 4.6 was $3/$15)
+};
 function _modelPriceEur(mdl){
   const m=String(mdl||'').toLowerCase();
-  if(m.includes('haiku'))  return {inp:0.92,  out:4.60 };            // Haiku 4.5  $1/$5
-  if(m.includes('opus'))   return {inp:13.80, out:69.00};            // Opus       $15/$75
-  const intro = Date.now() < Date.parse('2026-09-01T00:00:00Z');     // Sonnet 5 intro t/m 31-08-2026
-  return intro ? {inp:1.84, out:9.20} : {inp:2.76, out:13.80};       // $2/$10 → $3/$15
+  const t = m.includes('haiku') ? MODEL_USD.haiku
+          : m.includes('opus')  ? MODEL_USD.opus
+          : MODEL_USD.sonnet;
+  return { inp: t.inp * USD_EUR, out: t.out * USD_EUR };
 }
 let _sessTokIn=0,_sessTokOut=0,_sessCalls=0,_sessCostEur=0;
 function trackTokens(u, mdl){

@@ -11,7 +11,7 @@
   var saved=null; try{ saved=localStorage.getItem('ns_theme'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   isDark = true;            // thema-knop verwijderd: altijd donker thema
   document.documentElement.classList.toggle('dark',isDark);
-  function setBtn(){ var b=document.getElementById('themeBtn'); if(b) b.textContent=isDark?'☀️':'🌙'; }
+  function setBtn(){ /* #themeBtn bestaat niet meer; het thema wisselt via het kebabmenu. */ }
   setBtn(); try{ document.addEventListener('DOMContentLoaded',setBtn); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
 })();
 // ── BUSY-INDICATOR: duidelijke animatie bij hoog busverkeer ──

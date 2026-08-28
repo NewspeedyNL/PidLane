@@ -326,10 +326,6 @@ function finishLogin(user, account){
   const apiRow = document.getElementById('connApiRow');
   if(apiRow) apiRow.style.display = 'none';
 
-  // Toon gebruikersnaam in topbar
-  const lbl=document.getElementById('userLabel');
-  if(lbl){ lbl.textContent=`👤 ${user}`; lbl.style.display='block'; }
-
   updateApiPill();
   log(`Ingelogd als ${user} (${account.role})`,'ok');
   try{

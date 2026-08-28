@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.2 (28-08-2026)';
+const TESTRUN_VERSIE = '5.3 (28-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -59,6 +59,34 @@ function _wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 function _boek(blok, naam, staat, detail, ms) {
   _trLog.push({ t: _klok(), blok: blok, naam: naam, staat: staat, detail: detail || '', ms: ms == null ? null : Math.round(ms) });
   try { _teken(); } catch (e) { console.warn('Testrun-log niet herteken op het scherm (het onderliggende logboek is wel bijgewerkt)', e); }
+}
+
+/* De app-log ophalen. (#29, 28-08-2026)
+
+   Dit stond op drie plekken als `window._appLog || window.logBuffer || []`,
+   en die twee globals BESTAAN NIET — nergens in public/. Alle drie de plekken
+   kregen dus altijd een lege array, zonder ooit een fout te geven.
+
+   Drie symptomen die daaruit volgden, alle drie zichtbaar in de run van 28-08:
+     1. Blok 14 zei "niets opgeruimd" terwijl de opruimregel twee keer had
+        gevuurd — die regels staan in de APP-log, en die werd nooit gelezen.
+        Erger dan alleen missen: het advies eronder ("controleer of hij
+        aanstaat") stuurt je naar precies het onderzoek dat je niet moet doen.
+     2. "Meldingen sinds het begin van deze run" meldde structureel
+        "app-log 0 regels" naast een BT-log van 1183 regels.
+     3. Het opgeslagen rapport had nooit een APP-LOG-sectie.
+
+   De echte bron is plLokaalLog() uit pidlane-auth.js, precies zoals
+   pidlane-logboek.js hem al leest. Eén plek, zodat de volgende die de app-log
+   nodig heeft hem niet opnieuw hoeft te raden. */
+function _appLogRegels() {
+  try {
+    if (typeof plLokaalLog === 'function') {
+      const a = plLokaalLog();
+      if (Array.isArray(a)) return a;
+    }
+  } catch (e) { console.warn('plLokaalLog() gaf een fout — de app-log ontbreekt in deze run', e); }
+  return [];
 }
 
 // Eén controle draaien. Een fout wordt GEBOEKT, niet weggeslikt — dat is het
@@ -985,14 +1013,36 @@ async function _blok7() {
     // Als de responstijd niet meebeweegt met de bezetting, is bezetting op deze
     // bus geen bruikbaar tegendruksignaal — dan meet hij alleen hoe hard wíj
     // vragen, niet hoe zwaar de ECU het heeft.
-    const laag = sp.filter(function (m) { return m.bezet < d.bezetAf; }).map(function (m) { return m.ms; });
-    const hoog = sp.filter(function (m) { return m.bezet >= d.bezetOp; }).map(function (m) { return m.ms; });
+    // 28-08-2026 (#12) — 0 ms is geen meting maar een ontbrekende meting, en
+    // die hoort niet in de groep. Op 26-08 bestond de lage-bezettingsgroep uit
+    // 0 ms-monsters; de mediaan werd 0, de deel-door-nul-vangst maakte er +0%
+    // van, en 0% viel door |verschil| < 15 in de tak "vrijwel geen verschil".
+    // Uitkomst: 0 ms tegen 144 ms werd gepresenteerd als "bezetting voorspelt
+    // hier geen tegendruk" — precies de omgekeerde conclusie, op de regel die
+    // de Slotsom voedt die bepaalt of de PLLoad-vraag (#15) dicht kan.
+    const meet = function (m) { return m.ms > 0; };
+    const alleLaag = sp.filter(function (m) { return m.bezet < d.bezetAf; });
+    const alleHoog = sp.filter(function (m) { return m.bezet >= d.bezetOp; });
+    const laag = alleLaag.filter(meet).map(function (m) { return m.ms; });
+    const hoog = alleHoog.filter(meet).map(function (m) { return m.ms; });
+    const weg = (alleLaag.length - laag.length) + (alleHoog.length - hoog.length);
+    const staart = weg ? '  [' + weg + ' monster(s) van 0 ms buiten beschouwing gelaten — geen meting]' : '';
+
     if (!laag.length || !hoog.length)
-      return 'te weinig spreiding in de bezetting om te vergelijken (laag ' + laag.length + ', hoog ' + hoog.length + ' monsters)';
+      return { staat: 'LET OP', detail: 'te weinig bruikbare spreiding om te vergelijken (laag ' +
+        laag.length + ', hoog ' + hoog.length + ' monsters met een echte responstijd)' + staart };
+
     const mLaag = med(laag), mHoog = med(hoog);
-    const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;
+    // Derde tak: onmeetbaar. mLaag === 0 kan hier niet meer voorkomen omdat de
+    // nulmonsters eruit zijn, maar de vangst blijft staan — hij mag nooit meer
+    // stilletjes 0% opleveren als er ooit een andere bron van nullen bijkomt.
+    if (!mLaag)
+      return { staat: 'LET OP', detail: 'lage-bezettingsgroep heeft mediaan 0 ms — hier valt geen ' +
+        'verhouding van te maken, dus over tegendruk zegt deze run niets' + staart };
+
+    const verschil = Math.round((mHoog - mLaag) / mLaag * 100);
     const tekst = 'responstijd bij lage bezetting ' + mLaag + ' ms, bij hoge bezetting ' + mHoog + ' ms (' +
-      (verschil >= 0 ? '+' : '') + verschil + '%)';
+      (verschil >= 0 ? '+' : '') + verschil + '%)' + staart;
     if (Math.abs(verschil) < 15)
       return { staat: 'LET OP', detail: tekst + ' — vrijwel geen verschil, dus bezetting voorspelt hier geen tegendruk' };
     return tekst;
@@ -1600,167 +1650,67 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 28-08-2026 (3) — Capacitor 8 en de veilige zone.
-  // De betaallinkcontroles van vanmiddag zijn hier weg; die oplevering is
-  // afgerond en staat groen in test-betaallinks.js.
+  // OPLEVERING 28-08-2026 (6) — drie stille fouten in de meetkant zelf.
+  // De Capacitor-controles van 5.2 zijn hier weg: die oplevering is afgerond
+  // en staat groen in test-capversies.js en test-schermranden.js.
   //
-  // Wat de gate NIET kan zien en deze run wél: of de nieuwe native laag er
-  // ook echt is. De gate leest package.json; of de APK op dit toestel met
-  // Capacitor 8 en de nieuwe SPP-plugin is gebouwd, blijkt pas hier.
+  // Deze ronde gaat over iets ongemakkelijkers: de app MAT goed en
+  // RAPPORTEERDE verkeerd, op drie plekken tegelijk.
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1: draait dit op de nieuwe native laag? ───────────
-  await _doe(5, 'Capacitor 8 draait op dit toestel', function () {
-    const C = window.Capacitor;
-    if (!C) return { staat: 'LET OP', detail: 'geen Capacitor — dit is de browser, niet de app. ' +
-      'De native kant is hier niet te beoordelen; draai dit in de APK' };
-    const plat = (typeof C.getPlatform === 'function') ? C.getPlatform() : '?';
-    // Capacitor zet zijn eigen versie niet altijd op window; de plugins zijn
-    // het bewijs dat telt. Ontbreekt BluetoothSerial, dan is de plugin bij
-    // het bouwen weggevallen en werkt Bluetooth Classic niet meer.
-    const P = C.Plugins || {};
-    const heeft = Object.keys(P);
-    if (!P.BluetoothSerial)
-      return { staat: 'FOUT', detail: 'BluetoothSerial ontbreekt in Capacitor.Plugins. De SPP-plugin ' +
-        'is bij de overstap naar @ascentio-it weggevallen; klassieke ELM327-adapters verbinden dan ' +
-        'niet meer. Aanwezig: ' + heeft.join(', ') };
-    if (!P.BluetoothLe)
-      return { staat: 'FOUT', detail: 'BluetoothLe ontbreekt — de BLE-adapters vallen weg' };
-    return 'platform ' + plat + ', ' + heeft.length + ' plugins, SPP en BLE beide aanwezig';
+  // ── TOEGEVOEGD 1: leest de testrun de app-log nu écht? ───────────
+  // Dit was #29. De app-log werd gelezen als window._appLog || window.logBuffer,
+  // en die bestaan nergens — dus altijd leeg, zonder ooit een fout.
+  await _doe(5, 'De app-log komt binnen bij de testrun', function () {
+    if (typeof plLokaalLog !== 'function')
+      return { staat: 'FOUT', detail: 'plLokaalLog() ontbreekt — pidlane-auth.js is niet meegekomen, ' +
+        'en dan leest blok 14 opnieuw een lege lijst' };
+    const app = _appLogRegels();
+    if (!app.length)
+      return { staat: 'LET OP', detail: 'app-log is leeg. Dat kan kloppen bij een verse start, maar ' +
+        'juist dit was de fout van 28-08: kijk in het logboek onder BRON = APP of daar wél regels staan' };
+    return app.length + ' regels binnen via plLokaalLog() — blok 14 kan de opruimregel nu zien';
   });
 
-  // ── TOEGEVOEGD 2: doet de nieuwe SPP-plugin wat de oude deed? ────
-  // Niet "bestaat de methode" maar "antwoordt hij in het formaat dat
-  // pidlane-bt.js verwacht". Het antwoordveld is {value:"..."}; werd dat
-  // {data:"..."}, dan leest de app stilte in plaats van een foutmelding.
-  await _doe(5, 'De SPP-plugin heeft de methodes die de app aanroept', async function () {
-    const SPP = window.Capacitor?.Plugins?.BluetoothSerial;
-    if (!SPP) return { staat: 'LET OP', detail: 'geen SPP-plugin — zie de vorige controle' };
-    const nodig = ['connect', 'disconnect', 'isConnected', 'read', 'write', 'scan', 'requestPermissions'];
-    const mist = nodig.filter(m => typeof SPP[m] !== 'function');
-    if (mist.length)
-      return { staat: 'FOUT', detail: 'de fork mist: ' + mist.join(', ') + '. pidlane-bt.js roept die ' +
-        'aan; dit is precies het verschil dat je pas in de auto merkt' };
-    // 28-08-2026 — deze controle zocht window._btAdres, dat nergens bestaat.
-    // pidlane-bt.js bewaart de actieve SPP-verbinding in window._sppConn
-    // ({spp, address, name}); de controle gaf daardoor altijd LET OP, ook
-    // tijdens een echte rit met een verbonden adapter (testrun 5.0-log,
-    // 28-08 17:00 — "Verbonden: ja" bovenaan, "niet verbonden" in blok 5).
-    const conn = window._sppConn;
-    if (!conn)
-      return { staat: 'LET OP', detail: 'alle ' + nodig.length + ' methodes aanwezig, maar geen actieve ' +
-        'SPP-verbinding (' + (window._bleConn ? 'wel via BLE' : 'geen enkele verbinding') + ') — of read() ' +
-        'nog {value:…} teruggeeft is alleen via een SPP-adapter te zien' };
-    // 28-08-2026 (2) — hier stond een eigen conn.spp.read()-aanroep. De echte
-    // poll-lus in pidlane-bt.js leest DEZELFDE serial-verbinding elke 50ms;
-    // een tweede, losstaande read() ernaast concurreert om dezelfde bytes en
-    // kan blijven hangen als de plugin geen tweede gelijktijdige read verwacht
-    // — precies het scenario waarin de hele testrun vastloopt en "Sluiten"
-    // niet meer reageert, want de async keten zit vast op deze await.
-    // pidlane-bt.js logt zelf al de EERSTE read() van elk commando
-    // (`read() #1 → …`, alleen bij pollCount===1), dus die evidentie lezen we
-    // hier terug in plaats van er zelf nog een uit te lokken.
-    let regel = null;
+  // ── TOEGEVOEGD 2: heeft blok 7 nulmetingen in zijn spoor? ────────
+  // Dit was #12. De echte controle draait verderop in blok 7; hier kijken we
+  // alleen of de valkuil zich in deze run überhaupt voordoet, zodat je weet
+  // of blok 7 dit keer iets te vertellen heeft.
+  await _doe(5, 'Nulmetingen in het bezettingsspoor', function () {
+    let sp = [];
+    try { sp = (window.PLLoad && typeof PLLoad.spoor === 'function') ? PLLoad.spoor() : []; } catch (e) { sp = []; }
+    if (!sp.length)
+      return { staat: 'LET OP', detail: 'geen spoor beschikbaar — blok 7 zegt het verderop zelf' };
+    const nullen = sp.filter(function (m) { return m && m.ms === 0; }).length;
+    if (nullen)
+      return nullen + ' van de ' + sp.length + ' monsters staan op 0 ms; blok 7 hoort die eruit te ' +
+        'laten en dat te melden in plaats van er +0% van te maken';
+    return 'spoor van ' + sp.length + ' monsters, geen enkele 0 ms — de valkuil van #12 doet zich hier niet voor';
+  });
+
+  // ── VERWIJDERD: staat er nergens meer een dode logbron? ─────────
+  // De helft die het makkelijkst wordt vergeten.
+  await _doe(5, 'Geen dode logbronnen meer in de geladen testrun', async function () {
+    let js = '';
     try {
-      for (let i = _btLog.length - 1; i >= 0 && !regel; i--) {
-        if (typeof _btLog[i].msg === 'string' && _btLog[i].msg.indexOf('read() #1 → ') === 0) regel = _btLog[i].msg;
-      }
-    } catch (e) { /* stil: _btLog kan nog niet bestaan, dan blijft regel null en volgt LET OP hieronder */ }
-    if (!regel)
-      return { staat: 'LET OP', detail: 'alle ' + nodig.length + ' methodes aanwezig en verbonden, maar nog ' +
-        'geen enkel commando gelogd — of read() {value:…} teruggeeft is dan nog niet te zien. Vraag eerst ' +
-        'een PID op (blok 3 doet dat vanzelf verderop in deze run)' };
-    if (regel.indexOf('"value"') >= 0) return 'alle methodes aanwezig, read() gaf {value:…} zoals verwacht (' + regel.slice(0, 60) + '…)';
-    return { staat: 'FOUT', detail: 'laatste read() was ' + regel.slice(0, 70) +
-      ' — geen "value"-veld. pidlane-bt.js leest .value en ziet dus stilte, zonder foutmelding' };
-  });
+      const r = await fetch('pidlane-testrun.js', { cache: 'reload' });
+      if (!r.ok) return { staat: 'LET OP', detail: 'pidlane-testrun.js niet op te halen (' + r.status + ')' };
+      js = await r.text();
+    } catch (e) { return { staat: 'LET OP', detail: 'bron niet op te halen: ' + (e.message || e) }; }
 
-  // ── TOEGEVOEGD 3: komt de veilige zone aan bij de topbalk? ───────
-  // Dit is de controle waar edge-to-edge om draait. Op een toestel met
-  // targetSdk 36 tekent de WebView onder de statusbalk; is de marge er niet,
-  // dan staat de klok van Android over het logo.
-  await _doe(5, 'Veilige zone komt aan bij de topbalk', function () {
-    const tb = document.querySelector('.topbar');
-    if (!tb) return { staat: 'LET OP', detail: 'geen topbalk zichtbaar op dit scherm' };
-    const wortel = getComputedStyle(document.documentElement);
-    const token = (wortel.getPropertyValue('--pl-sat') || '').trim();
-    if (!token)
-      return { staat: 'FOUT', detail: '--pl-sat bestaat niet. Dan valt elke marge terug op niets en ' +
-        'schuift de hele app onder de statusbalk. Eerst "Nieuwste versie laden"; blijft het staan, ' +
-        'dan is de nieuwe pidlane.css niet meegekomen' };
-    const inset = parseFloat(getComputedStyle(tb).paddingTop) || 0;
-    // Nul is geldig: in een browser, en op Android zonder edge-to-edge, is er
-    // geen inset. Dat is geen fout maar wel iets om te weten bij het lezen.
-    if (inset === 0)
-      return { staat: 'LET OP', detail: 'token aanwezig (' + token + ') maar de marge is 0 — dit toestel ' +
-        'geeft geen inset door. Verwacht in de browser; op een Android 15+-toestel betekent het dat ' +
-        'edge-to-edge hier niet speelt' };
-    const rect = tb.getBoundingClientRect();
-    const kind = tb.querySelector('.kebab-btn, .tchip, .logo-i');
-    const kTop = kind ? kind.getBoundingClientRect().top : null;
-    if (kTop !== null && kTop < inset)
-      return { staat: 'FOUT', detail: 'de balk heeft ' + Math.round(inset) + 'px marge maar het eerste ' +
-        'element staat op y=' + Math.round(kTop) + ' — dat ligt onder de statusbalk. Eén van de drie ' +
-        'topbalk-regels (gewoon / <480px / uiL) zet de padding opnieuw en gooit de marge weg' };
-    return 'marge ' + Math.round(inset) + 'px, balk ' + Math.round(rect.height) + 'px, inhoud eronderuit';
-  });
-
-  // ── TOEGEVOEGD: ook de ANDERE vensters, niet alleen de topbalk ──
-  // De aanleiding voor dit blokje: de topbalk bleek op een echt toestel wél
-  // goed, het Logboek-venster niet. Dat is precies het gat tussen "de tokens
-  // bestaan" (vorige controle) en "elk venster gebruikt ze ook" — en dat gat
-  // is nu dicht voor de vensters die met het oog tegen de rand liggen.
-  await _doe(5, 'Ook het Logboek gebruikt de veilige zone', function () {
-    if (typeof openLogboek !== 'function')
-      return { staat: 'LET OP', detail: 'openLogboek ontbreekt — pidlane-logboek.js niet meegekomen?' };
-    const wasOpen = document.getElementById('logboekOv')?.style.display === 'flex';
-    openLogboek();
-    const ov = document.getElementById('logboekOv');
-    if (!ov) return { staat: 'FOUT', detail: 'openLogboek() bouwde geen #logboekOv op' };
-    const basisTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pl-sat')) || 0;
-    const echtTop = parseFloat(getComputedStyle(ov).paddingTop) || 0;
-    if (!wasOpen) { try { ov.style.display = 'none'; } catch (e) { /* stil: venster weer dichtzetten mag de meting niet breken */ } }
-    // 12px is de vaste basisruimte uit de stijl zelf; de rest hoort de
-    // gemeten --pl-sat te zijn. Komt dat niet overeen, dan is de marge
-    // ergens onderweg vervangen door een vast getal — precies wat er bij
-    // het Logboek is gebeurd.
-    const verschil = Math.round(echtTop - 12);
-    if (Math.abs(verschil - basisTop) > 1)
-      return { staat: 'FOUT', detail: 'padding-top is ' + Math.round(echtTop) + 'px, verwacht 12 + ' +
-        Math.round(basisTop) + ' — de veilige zone komt niet aan bij dit venster' };
-    return 'padding-top volgt --pl-sat (' + Math.round(basisTop) + 'px marge)';
-  });
-
-  // ── VERWIJDERD: staat er nergens meer een losse env()-regel? ─────
-  // De helft die het makkelijkst wordt vergeten. Twaalf env()-regels zijn
-  // vervangen door de twee tokens; blijft er ergens één staan, dan werkt die
-  // op een WebView onder versie 140 met verkeerde waarden — en dat is nou
-  // net het toestel waarop je het niet ziet aankomen.
-  await _doe(5, 'Geen losse env(safe-area) meer in de geladen stijlen', async function () {
-    let css = '';
-    try {
-      const r = await fetch('pidlane.css', { cache: 'reload' });
-      if (!r.ok) return { staat: 'LET OP', detail: 'pidlane.css niet op te halen (' + r.status + ')' };
-      css = await r.text();
-    } catch (e) { return { staat: 'LET OP', detail: 'pidlane.css niet op te halen: ' + (e.message || e) }; }
-
-    // De twee tokendefinities MOETEN env() gebruiken — dat is hun terugval.
-    // Alles daarbuiten hoort via de tokens te lopen.
-    //
-    // Commentaarblokken eerst leegmaken (regels behouden, tekst niet): zonder
-    // dat matcht deze controle ook UITLEG die het woord env() noemt — precies
-    // de tekst boven --pl-sat hierboven deed dat, en gaf op 28-08 een vals
-    // FOUT op een run waarin niets fout was.
-    const zonderCommentaar = css.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''));
-    const regels = zonderCommentaar.split('\n')
-      .map((t, i) => ({ nr: i + 1, t: t }))
-      .filter(x => /env\(safe-area-inset/.test(x.t) && !/--pl-sa[tb]\s*:/.test(x.t));
+    // Prozaregels en commentaar noemen de dode globals met opzet; alleen
+    // uitvoerbare regels tellen. Zelfde afspraak als in test-applog.js.
+    const regels = js.split('\n')
+      .map(function (t, i) { return { nr: i + 1, t: t }; })
+      .filter(function (x) {
+        return /window\.(_appLog|logBuffer)/.test(x.t) && !/^\s*(['"]|\/\/|\*)/.test(x.t);
+      });
     if (regels.length)
-      return { staat: 'FOUT', detail: regels.length + ' losse env()-regel(s), o.a. regel ' +
-        regels[0].nr + ': ' + regels[0].t.trim().slice(0, 70) };
-    if (!/--pl-sat\s*:/.test(css) || !/--pl-sab\s*:/.test(css))
-      return { staat: 'FOUT', detail: 'de tokens --pl-sat/--pl-sab staan niet in de geladen css' };
-    return 'twee tokens, geen losse env()-regels';
+      return { staat: 'FOUT', detail: regels.length + ' regel(s) lezen de dode globals nog, o.a. regel ' +
+        regels[0].nr + '. Eerst "Nieuwste versie laden"; blijft het staan, dan is de fix niet meegekomen' };
+    if (!/_appLogRegels/.test(js))
+      return { staat: 'FOUT', detail: 'de gedeelde helper _appLogRegels() staat niet in de geladen code' };
+    return 'één gedeelde helper, geen dode globals';
   });
 }
 
@@ -2060,8 +2010,7 @@ async function _blok14() {
   await _doe(14, 'Opruimregel: is er iets opgeruimd?', function () {
     let bt = [];
     try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
-    let app = [];
-    try { app = (window._appLog || window.logBuffer || []); } catch (e) { app = []; }
+    const app = _appLogRegels();
     const alles = [].concat(bt || [], app || []);
     if (!alles.length) return { staat: 'LET OP', detail: 'geen logregels te lezen — controle niet uitgevoerd' };
     const zoek = function (re) {
@@ -2216,8 +2165,7 @@ async function _blok11() {
   // van de run naast elkaar, zodat je in het logboek kunt zien of er iets
   // nieuws bij zit zonder de hele staart door te lezen.
   await _doe(11, 'Meldingen sinds het begin van deze run', function () {
-    let app = [];
-    try { app = (window._appLog || window.logBuffer || []); } catch (e) { app = []; }
+    const app = _appLogRegels();
     let bt = [];
     try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
     const tel = function (arr, soort) {
@@ -2382,7 +2330,7 @@ function testrunTekst() {
 
   // Staart van de logs, zodat je niet apart hoeft te exporteren.
   try {
-    const app = (window._appLog || window.logBuffer || []);
+    const app = _appLogRegels();
     if (app && app.length) {
       r.push('');
       r.push('APP-LOG — laatste 120 regels');
@@ -2517,31 +2465,42 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-08 (5) — blok 5 vroor zichzelf dicht, en dat is nu een leesregel geworden',
+  titel: 'OPLEVERING 28-08 (6) — drie stille fouten in de meetkant zelf',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Na de vorige ronde (5.1, de zes volschermvensters) meldde je: het testrunvenster kwam in beeld, maar niets werkte meer \u2014 geen knop, geen scroll. Oorzaak: de controle die read()\u2019s antwoordformaat wilde bewijzen deed dat met een eigen conn.spp.read({address}), los van de normale poll-lus die dezelfde verbinding al elke 50ms uitleest. Twee gelijktijdige reads op \u00e9\u00e9n serial-verbinding, en de plugin bleef hangen. Omdat de hele testrun \u00e9\u00e9n lange await-keten is, liep alles vanaf dat punt vast \u2014 ook \u201cSluiten\u201d, want die stond nooit aan de beurt.',
+    'Drie fouten van dezelfde soort, alle drie opgeruimd: de app MAT goed en RAPPORTEERDE verkeerd. Dat type kost het meeste vertrouwen, want van buitenaf is het niet te onderscheiden van een echte bevinding \u2014 en een test die dezelfde verkeerde bron leest staat vrolijk groen mee.',
 
-    'De fix leest nu terug wat pidlane-bt.js toch al logt (elke eerste read() van een commando gaat naar _btLog) in plaats van er zelf nog \u00e9\u00e9n uit te lokken. Geen eigen I/O meer op een verbinding die de app zelf actief gebruikt.',
+    'Nummer 29: de app-log werd op drie plekken gelezen uit twee globals die nergens bestaan. Altijd leeg, nooit een fout, want de terugval op een lege lijst ving het op. Daardoor meldde blok 14 "niets opgeruimd" terwijl de opruimregel twee keer had gevuurd, gaf blok 11 "app-log 0 regels" naast 1183 BT-regels, en had het opgeslagen rapport nooit een APP-LOG-sectie. Alle drie stonden in de run van 19:09.',
+
+    'Nummer 12: blok 7 gaf bij een deel-door-nul stilzwijgend 0% terug, en 0% viel in de tak "vrijwel geen verschil". 0 ms tegen 144 ms werd zo gepresenteerd als "bezetting voorspelt geen tegendruk" \u2014 de omgekeerde conclusie, op de regel die bepaalt of de PLLoad-vraag dicht kan.',
+
+    'Nummer 48: de prijstabel stond op 15/75 dollar voor Opus (dat is de Opus 3-generatie; nu 5/25) en had een introductieprijs voor Sonnet 5 die niet bestaat \u2014 met een klokvergelijking die op 1 september vanzelf 50% te hoog zou gaan tellen. Een fout die geen enkele commit veroorzaakt en die dus door geen enkele review gevangen wordt.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Verbind zoals je deed toen het vastliep: eerst SPP, dan de testrun starten. Blok 5 hoort nu door te lopen tot het einde \u2014 kijk of alle 14 blokken hun regel krijgen, niet alleen blok 5.',
+    'STAP 1. Blok 5 controle 1 hoort nu een aantal app-logregels te melden in plaats van niets. Staat er LET OP "app-log is leeg", kijk dan in het logboek onder BRON = APP of daar wél regels staan \u2014 dat is precies het verschil dat maanden onzichtbaar was.',
 
-    'STAP 2. Terwijl de run loopt: probeer te scrollen en druk op Sluiten. Beide horen meteen te reageren, ook middenin de run. Reageert een van beide niet, dan zit er ergens anders nog een blokkerende await \u2014 dat is dan een nieuw punt, niet dit punt terug.',
+    'STAP 2. DE ECHTE PROEF, EN DIE VRAAGT EEN RIT VAN MINSTENS VIJF MINUTEN. Rijd tot de opruimregel vuurt (in het logboek verschijnt dan een regel met "opgeruimd") en draai daarna de testrun. Blok 14 hoort dat nu te MELDEN in plaats van "niets opgeruimd \u2014 controleer of hij aanstaat" te zeggen. Zonder die rit is deze fix niet bewezen.',
 
-    'STAP 3. Kijk in blok 5 naar de regel over de SPP-methodes: die hoort nu \u201cread() gaf {value:\u2026} zoals verwacht\u201d te zeggen mét een stukje van de echte, al gelogde regel erachter \u2014 niet meer een losse meting.',
+    'STAP 3. Sla het rapport op en kijk of er nu een sectie APP-LOG in staat, onder de BT-LOG. Die ontbrak altijd.',
+
+    'STAP 4. Kijk in blok 11 ("Meldingen sinds het begin van deze run") of het aantal app-logregels niet meer nul is.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Les die in PIDLANE.md \u00a711 staat vastgelegd: een diagnostische controle die meeloopt in de testrun mag nooit zelf I/O doen op een verbinding die de app ook gebruikt. Lezen uit wat er al gelogd is, nooit een verzoek ernaast.',
+    'De app-log loopt nu via \u00e9\u00e9n helper die plLokaalLog() leest \u2014 dezelfde bron die het logboek al gebruikte \u2014 en die een fout MELDT in plaats van stil nul terug te geven. Blok 7 gooit nulmetingen eruit vóór de mediaan en meldt hoeveel. De prijstabel staat in dollar met de wisselkoers als aparte constante, zonder klok.',
+
+    'Drie nieuwe tests in de gate, alle drie met tegenproef: test-applog.js, test-bezetting.js en test-modelprijs.js. Daarnaast zes dode element-opzoekingen weg; monitorBtn en de dode functie refreshAdminLogRow zijn bewust blijven staan, met de reden in de commit.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De zes vensters uit 5.1 (Logboek, testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker/caravantracker) vragen nog steeds hun eigen blik op het toestel \u2014 zie CAMPAGNE van die ronde. De overige openstaande punten (SPP-plugin niet aan een adapter getoetst, eenmansfork, #41, #42, #12/#29/#30/#40) staan onveranderd.'
+    'De vijf vensters uit 5.1 (testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker) staan nog op broncontrole en vragen \u00e9\u00e9n blik met het oog op het toestel.',
+
+    'De punten die een rit of een besluit vragen blijven staan: 15, 16, 17, 18, 20, 30, 40 en 46, plus de Play-punten 41 en 42 en het besluit 49.'
   ]
 };
+
 
 
 
