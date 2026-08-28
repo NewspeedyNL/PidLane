@@ -65,6 +65,20 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:520px){.grid2{grid-template-columns:1fr}}
   .hint{font-size:12px;color:var(--tx2);margin-top:6px}
+  .oefen-poort{margin-top:18px;padding-top:16px;border-top:1px solid var(--bd)}
+  .oefen-balk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#2a2410;color:#e0cf6f;border:1px solid #6b5c1c;border-radius:10px;
+    padding:10px 14px;margin-bottom:14px;font-size:13px}
+  .oefen-balk button{margin-left:auto}
+  details.uitleg{margin:8px 0 2px;border:1px solid var(--bd);border-radius:8px;
+    background:rgba(255,255,255,.02)}
+  details.uitleg>summary{cursor:pointer;padding:7px 11px;font-size:12px;
+    color:var(--tx2);font-weight:600;list-style:none}
+  details.uitleg>summary::-webkit-details-marker{display:none}
+  details.uitleg>summary::before{content:'❔ ';opacity:.8}
+  details.uitleg[open]>summary{border-bottom:1px solid var(--bd)}
+  details.uitleg .body{padding:9px 12px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  details.uitleg .body b{color:var(--tx)}
 </style>
 </head>
 <body>
@@ -82,10 +96,31 @@
     <button class="btn-sec" onclick="poortTest()">🔎 Verbinding testen</button>
   </div>
   <div id="gateMsg" class="msg"></div>
+  <!-- Oefenmodus. Bewust een aparte knop en niet een vinkje bij "Inloggen":
+       oefenen is een andere handeling dan inloggen, en je hoort nooit per
+       ongeluk in de ene stand te belanden terwijl je de andere bedoelde. -->
+  <div class="oefen-poort">
+    <button class="btn-sec" onclick="oefenStart()">🧪 Oefenen met voorbeelden</button>
+    <div class="hint" style="margin-top:8px">
+      Geen token nodig en geen verbinding met de Worker. Je krijgt vier
+      voorbeeldklanten, drie gebruikers en drie activatiecodes om op te
+      oefenen — inclusief een geblokkeerde klant, een saldo van nul en een
+      openstaand wachtwoordherstel. Alles wat je wijzigt blijft in dit
+      tabblad en is bij verversen weer weg.
+    </div>
+  </div>
 </div>
 
 <!-- ── Dashboard ── -->
 <div id="dash" class="wrap hidden">
+  <!-- Zolang de oefenmodus aanstaat staat deze balk er. Niet weg te klikken:
+       het verschil tussen oefenen en productie mag nooit van je geheugen
+       afhangen. -->
+  <div id="oefenBalk" class="oefen-balk hidden">
+    🧪 <b>OEFENMODUS</b> — je werkt met voorbeeldgegevens. Er gaat niets naar de
+    Worker en er verandert niets aan echte klanten.
+    <button class="btn-sec btn-sm" onclick="location.reload()">Stoppen</button>
+  </div>
   <h1 style="display:flex;justify-content:space-between;align-items:center">PidLane Admin <span style="font-size:12px;color:var(--tx2)">— live config</span><button class="btn-sec btn-sm" onclick="logout()">Uitloggen</button></h1>
   <p class="sub">Wijzigingen gaan direct live. De klant-app haalt config op bij elke start (gecached ~60s) en valt terug op hardcoded defaults bij geen verbinding.</p>
 
@@ -106,8 +141,33 @@
        ════════════════════════════════════════════════════════════ -->
   <div class="card">
     <h2>👤 Gebruikers</h2>
+    <details class="uitleg"><summary>Wat doet dit scherm?</summary><div class="body">
+Dit zijn de <b>zakelijke logins</b> uit de tabel Users in Airtable — jijzelf en je
+medewerkers. Niet je klanten; die staan een kaart lager.
+<br><br>
+<b>Inlognaam</b> is waarmee iemand inlogt. Een e-mailadres mag: de app probeert
+dan eerst de klantroute en valt bij een afwijzing door naar deze tabel.
+<br><br>
+<b>Rol admin</b> geeft toegang tot dit scherm en tot het ☰-menu Admin in de app.
+Geef dat niet weg voor iets wat met <b>user</b> ook kan.
+<br><br>
+<b>Geblokkeerd</b> laat het account bestaan maar weigert de login. Gebruik dat in
+plaats van wissen als iemand tijdelijk weg is — wissen is niet terug te draaien
+en de naam is daarna weer vrij uit te geven.
+<br><br>
+<b>🔒 noodingang</b> staat in de Worker-secret USERS_JSON en niet in Airtable. Die
+kun je hier niet bewerken, en dat is de bedoeling: als Airtable plat ligt is dat
+de enige manier om nog binnen te komen.
+</div></details>
     <p class="sub" style="margin:0 0 12px">Deze accounts kunnen inloggen in de app. Een wachtwoord is nooit terug te lezen — alleen te overschrijven.</p>
 
+    <!-- Filter. Bewust client-side: de lijst is al binnen, en een zoekopdracht
+         die de Worker aanroept zou bij elke toetsaanslag een verzoek doen. -->
+    <div class="bar" style="margin-bottom:8px">
+      <input type="text" id="uZoek" placeholder="Filter op naam, inlognaam of rol"
+             style="flex:1;min-width:160px" oninput="tekenUsers()">
+      <button class="btn-sec btn-sm" onclick="document.getElementById('uZoek').value='';tekenUsers()">Wis</button>
+    </div>
     <div id="userList"></div>
 
     <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:14px">
@@ -157,6 +217,26 @@
   <!-- ── Klantaccounts (tokentegoed) ── -->
   <div class="card">
     <h2>👥 Klanten <span style="font-weight:400;color:var(--tx2);font-size:12px">— tokenaccounts</span></h2>
+    <details class="uitleg"><summary>Wat betekenen saldo en status?</summary><div class="body">
+Dit zijn de <b>zelf-geregistreerde klanten</b> met een tokensaldo, uit de tabel
+Klanten. Elke AI-analyse kost tokens; is het saldo op, dan stopt de analyse en
+niet de app.
+<br><br>
+<b>⚡ saldo</b> is wat er nu over is. <b>ooit gekocht</b> is het totaal dat er ooit is
+bijgeboekt — het verschil daartussen is wat er verbruikt is.
+<br><br>
+<b>Saldo</b> zet je handmatig bij, bijvoorbeeld na een betaling die niet via een
+activatiecode liep, of als compensatie. Er zit geen tweede paar ogen op: wat je
+hier intikt is direct het nieuwe saldo, niet een bijboeking.
+<br><br>
+<b>Status geblokkeerd</b> weigert de login maar laat saldo en historie staan.
+<br><br>
+<b>herstel open</b> betekent dat de klant een wachtwoordherstel heeft aangevraagd
+dat nog niet is afgerond. Zet je hier een wachtwoord, dan vervalt die aanvraag.
+<br><br>
+<b>Verwijderen wist ook het saldo</b> en is niet terug te draaien. Bij twijfel:
+blokkeren.
+</div></details>
     <div class="hint" style="margin-top:0;margin-bottom:10px">
       Dit zijn de zelf-geregistreerde klanten met tokentegoed. Losstaand van
       &ldquo;Gebruikers&rdquo; hierboven, dat zijn je eigen B2B-logins.
@@ -174,6 +254,20 @@
   <!-- ── Activatiecodes ── -->
   <div class="card">
     <h2>🎟️ Activatiecodes</h2>
+    <details class="uitleg"><summary>Hoe werkt een activatiecode?</summary><div class="body">
+Een code is een tegoedbon. De klant vult hem in de app in en het aantal tokens
+wordt bij zijn saldo opgeteld; de code gaat daarna op <b>gebruikt</b> en kan geen
+tweede keer.
+<br><br>
+<b>Open</b> = uitgegeven maar nog niet verzilverd. Die tokens staan dus nog
+uit: als je ze allemaal tegelijk verzilverd zou zien, is dat wat het je kost.
+<br><br>
+<b>Prijs</b> is puur administratief — hij rekent niets af, hij telt alleen mee in
+de omzetregel bovenaan zodat je weet wat er verzilverd is.
+<br><br>
+Een code verwijderen die nog open staat maakt hem ongeldig. Heeft een klant hem
+al betaald maar nog niet ingevuld, dan is hij zijn tegoed kwijt.
+</div></details>
     <div class="hint" style="margin-top:0;margin-bottom:10px">
       Codes komen direct in Airtable te staan en zijn meteen geldig.
       <b>Genereer ze pas als je ze gaat verkopen</b> — een openstaande code is
@@ -216,6 +310,19 @@
   <!-- Feature toggles -->
   <div class="card">
     <h2>🚪 Deuren aan/uit</h2>
+    <details class="uitleg"><summary>Wat gebeurt er als ik een deur uitzet?</summary><div class="body">
+Een deur is een hele ingang op het startscherm van de app. Uitzetten laat hem
+daar verdwijnen bij <b>alle</b> klanten, bij hun eerstvolgende start.
+<br><br>
+De app haalt deze config op bij elke start en cachet hem ongeveer een minuut.
+Een wijziging is dus niet meteen bij iedereen zichtbaar, maar wel binnen enkele
+minuten — en bij iemand die op dat moment middenin een analyse zit pas daarna.
+<br><br>
+Heeft de app geen verbinding, dan valt hij terug op de standaardwaarden in de
+code. Een deur die je hier uitzet komt bij een klant zonder internet dus wél
+terug. Gebruik dit om iets tijdelijk weg te halen, niet om iets af te sluiten
+wat echt niet mag.
+</div></details>
     <div class="row">
       <div><div class="lbl">Verbruik &amp; besparen</div><div class="desc"><code>door_saving_active</code></div></div>
       <label class="switch"><input type="checkbox" id="t_door_saving_active"><span class="slider"></span></label>
@@ -251,6 +358,18 @@
   <!-- AI-prompt met test -->
   <div class="card">
     <h2>🤖 AI-basisinstructie (override)</h2>
+    <details class="uitleg"><summary>Wanneer gebruik ik dit, en wat is het risico?</summary><div class="body">
+Dit vervangt de basisinstructie die vóór elke AI-analyse wordt meegestuurd. Laat
+je het leeg, dan geldt de instructie uit de code — dat is de normale toestand.
+<br><br>
+<b>Test eerst.</b> De knop "🧪 Test deze prompt" stuurt hem één keer in zonder hem
+live te zetten. Dat kost tokens maar geen klanten.
+<br><br>
+Het risico zit niet in een fout die je ziet, maar in een die je niet ziet: een
+instructie die de AI subtiel voorzichtiger of stelliger maakt, verandert elk
+advies dat er daarna uitkomt, bij iedereen. Zet hem live als je hem getest hebt,
+en zet hem terug op leeg zodra je hem niet meer nodig hebt.
+</div></details>
     <label>System-instructie (leeg = app gebruikt z'n ingebouwde instructie)</label>
     <textarea id="v_ai_system_override" placeholder="Laat leeg om de standaard te gebruiken. Test eerst voor je opslaat!"></textarea>
     <div class="bar">
@@ -405,8 +524,182 @@ function diagnose(where, status, bodyText){
   return { kind:'err', title:'❌ Onverwachte fout ('+status+').', detail:detailStr.slice(0,300) };
 }
 
+/* ══ OEFENMODUS ═══════════════════════════════════════════════════
+   WAAROM DIT BESTAAT
+   Deze pagina beheert echte klanten, echt saldo en echte gebruikers, en elke
+   knop werkt meteen op productie. Er was dus geen manier om uit te proberen
+   wat een knop dóét zonder het aan een echte klant te doen. Wie hier voor het
+   eerst komt, leert de pagina kennen op de gegevens van betalende klanten.
+
+   In de oefenmodus wordt geen enkel verzoek naar de Worker gestuurd. Alle
+   antwoorden komen uit de voorbeeldgegevens hieronder, en wijzigingen landen
+   daar ook: verhoog je een saldo, dan zie je dat terug in de lijst. Zo kun je
+   de hele pagina doorlopen — saldo aanpassen, iemand blokkeren, een code
+   aanmaken, een gebruiker verwijderen — en zien wat er gebeurt.
+
+   Bij het verversen van de pagina staat alles weer op de begintoestand.
+
+   WAAROM HET NIET WORDT ONTHOUDEN
+   Bewust geen localStorage. Oefenmodus moet je elke keer zelf kiezen; anders
+   is er een toestand waarin je denkt live te werken terwijl je oefent — of
+   erger, andersom. Om dezelfde reden staat er een balk over de volle breedte
+   zolang hij aanstaat: één ding, één betekenis.
+
+   De voorbeelden zijn met opzet niet allemaal netjes. Er zit een geblokkeerde
+   klant tussen, iemand met saldo 0, een openstaand wachtwoordherstel en een
+   gebruiker zonder wachtwoord — dat zijn precies de gevallen waarop je wilt
+   kunnen oefenen, en die je in een schone lijst nooit tegenkomt. */
+let OEFEN = false;
+
+const OEFEN_START = {
+  klanten: [
+    { id:'rec001', email:'j.dekker@gmail.com',     naam:'Jan Dekker',
+      status:'actief',      saldo:180, totaal:250, aangemaakt:'2026-06-14', laatsteLogin:'2026-08-26', heeftReset:false,
+      audit:'[2026-08-14 09:12] nico: saldo +100 (80 → 180) — code PL-1QA9-5RT4 verzilverd' },
+    { id:'rec002', email:'garage.pieters@ziggo.nl', naam:'Autobedrijf Pieters',
+      status:'actief',      saldo:0,   totaal:500, aangemaakt:'2026-05-02', laatsteLogin:'2026-08-27', heeftReset:false },
+    { id:'rec003', email:'m.visser@outlook.com',    naam:'Marieke Visser',
+      status:'actief',      saldo:25,  totaal:25,  aangemaakt:'2026-08-25', laatsteLogin:'2026-08-25', heeftReset:true  },
+    { id:'rec004', email:'testrit@voorbeeld.nl',    naam:'',
+      status:'geblokkeerd', saldo:40,  totaal:100, aangemaakt:'2026-03-11', laatsteLogin:'2026-07-02', heeftReset:false }
+  ],
+  users: [
+    { user:'nico',                 label:'Nico',              role:'admin', active:true,  hasPass:true  },
+    { user:'monteur@pidlane.nl',   label:'Werkplaats',        role:'user',  active:true,  hasPass:true  },
+    { user:'stagiair',             label:'Stagiair (tijdelijk)', role:'user', active:false, hasPass:false }
+  ],
+  locked: [
+    { user:'noodingang', label:'Noodingang', role:'admin' }
+  ],
+  codes: [
+    { code:'PL-4KJ2-9XQ1', credits:100, status:'open',     prijs:9.95,  aangemaakt:'2026-08-20', gebruiktDoor:'',                  gebruiktOp:'' },
+    { code:'PL-7HB3-2MZ8', credits:250, status:'open',     prijs:19.95, aangemaakt:'2026-08-22', gebruiktDoor:'',                  gebruiktOp:'' },
+    { code:'PL-1QA9-5RT4', credits:100, status:'gebruikt', prijs:9.95,  aangemaakt:'2026-07-30', gebruiktDoor:'j.dekker@gmail.com', gebruiktOp:'2026-08-14' }
+  ],
+  config: {
+    door_saving_active:true, door_deal_active:true, door_prep_active:false,
+    banner_active:false, banner_text:'',
+    ai_system_override:''
+  }
+};
+
+let OEFEN_DATA = null;
+function oefenReset(){ OEFEN_DATA = JSON.parse(JSON.stringify(OEFEN_START)); }
+
+/* Het antwoord dat de Worker zou hebben gegeven. Eén plek, zodat er geen
+   tweede waarheid ontstaat naast callWorker(). */
+function oefenAntwoord(path, opts){
+  const methode = (opts && opts.method || 'GET').toUpperCase();
+  let body = {};
+  try { if (opts && opts.body) body = JSON.parse(opts.body); } catch(e){ /* stil: niet elke body is JSON */ }
+  const D = OEFEN_DATA;
+
+  if (path.indexOf('/api/config') === 0){
+    if (methode === 'GET') return Object.assign({}, D.config);
+    Object.assign(D.config, body || {});
+    return { ok:true };
+  }
+
+  if (path.indexOf('/admin/klanten') === 0){
+    if (methode === 'GET'){
+      const q = (path.split('q=')[1] || '').toLowerCase();
+      const lijst = q ? D.klanten.filter(k => (k.email+' '+k.naam).toLowerCase().indexOf(decodeURIComponent(q)) >= 0)
+                      : D.klanten;
+      return { klanten: lijst,
+               stats: { aantal: D.klanten.length,
+                        totaalSaldo: D.klanten.reduce((a,k) => a + k.saldo, 0) } };
+    }
+    const k = D.klanten.find(x => x.id === body.id);
+    if (!k) return { ok:true };
+    if (body.actie === 'verwijder'){ D.klanten = D.klanten.filter(x => x.id !== body.id); return { ok:true }; }
+    // De auditregel wordt hier net zo opgebouwd als in de Worker, zodat je in
+    // de oefenmodus ziet wat er straks bij een echte klant komt te staan.
+    const stempel = t => {
+      const wie = String(body.door || '').trim() || 'onbekend';
+      k.audit = '[' + new Date().toISOString().slice(0,16).replace('T',' ') + '] ' +
+                wie + ': ' + t + (k.audit ? '\n' + k.audit : '');
+    };
+    if (body.actie === 'bijboeken'){
+      const d = Number(body.delta || 0), van = k.saldo;
+      if (van + d < 0) return { ok:false, error:'Saldo zou negatief worden.' };
+      k.saldo = van + d;
+      stempel('saldo ' + (d>0?'+':'') + d + ' (' + van + ' → ' + k.saldo + ')' +
+              (body.reden ? ' — ' + body.reden : ''));
+      return { ok:true, van, naar:k.saldo, vastgelegd:true };
+    }
+    const gewijzigd = [];
+    if (body.saldo  !== undefined){ k.saldo  = Number(body.saldo); gewijzigd.push('Saldo=' + k.saldo); }
+    if (body.status !== undefined){ k.status = body.status;        gewijzigd.push('Status=' + k.status); }
+    if (body.wachtwoord !== undefined){ k.heeftReset = false;      gewijzigd.push('wachtwoord door beheerder gezet'); }
+    if (gewijzigd.length) stempel(gewijzigd.join(', '));
+    return { ok:true, vastgelegd:true };
+  }
+
+  if (path.indexOf('/admin/users') === 0){
+    if (methode === 'GET') return { users: D.users, locked: D.locked };
+    // Let op de sleutel: gebruikers gebruiken {action:'delete'} (Engels), klanten
+    // {actie:'verwijder'} (Nederlands). Dat verschil zit in de bestaande code en
+    // is hier nagebootst; wie het ooit gelijktrekt, moet ook deze regel aanpassen.
+    if (body.action === 'delete' || body.actie === 'verwijder'){
+      D.users = D.users.filter(u => u.user !== (body.user || body.naam));
+      return { ok:true };
+    }
+    const naam = body.user || body.naam;
+    const best = D.users.find(u => u.user === naam);
+    if (best) Object.assign(best, { label: body.label ?? best.label, role: body.role ?? best.role,
+                                    active: body.active ?? best.active,
+                                    hasPass: body.pass ? true : best.hasPass });
+    else D.users.push({ user:naam, label:body.label || naam, role:body.role || 'user',
+                        active: body.active !== false, hasPass: !!body.pass });
+    return { ok:true };
+  }
+
+  if (path.indexOf('/admin/codes') === 0){
+    if (methode === 'GET'){
+      const f = (path.split('status=')[1] || '').split('&')[0];
+      const lijst = (!f || f === 'alle') ? D.codes : D.codes.filter(c => c.status === f);
+      const open = D.codes.filter(c => c.status === 'open');
+      const geb  = D.codes.filter(c => c.status === 'gebruikt');
+      return { codes: lijst,
+               stats: { totaal:D.codes.length, open:open.length,
+                        openCredits: open.reduce((a,c) => a + c.credits, 0),
+                        gebruikt: geb.length,
+                        omzet: geb.reduce((a,c) => a + (c.prijs||0), 0) } };
+    }
+    if (body.actie === 'verwijder'){
+      D.codes = D.codes.filter(c => c.code !== body.code);
+      return { ok:true };
+    }
+    const n = Math.max(1, Number(body.aantal || 1));
+    for (let i = 0; i < n; i++){
+      const blok = () => Math.random().toString(36).slice(2, 6).toUpperCase();
+      D.codes.unshift({ code:'PL-'+blok()+'-'+blok(), credits:Number(body.credits || 100),
+                        status:'open', prijs:Number(body.prijs || 0),
+                        aangemaakt:new Date().toISOString().slice(0,10),
+                        gebruiktDoor:'', gebruiktOp:'' });
+    }
+    return { ok:true, aangemaakt:n };
+  }
+
+  if (path.indexOf('/v1/messages') === 0){
+    return { content:[{ type:'text',
+      text:'(oefenmodus) Dit is een voorbeeldantwoord. De AI-route is niet aangeroepen ' +
+           'en er zijn geen tokens verbruikt.' }] };
+  }
+
+  return { ok:true, oefen:true };
+}
+
 // ── fetch met nette diagnose ──
 async function callWorker(where, path, opts){
+  // Oefenmodus onderschept hier, en alleen hier: dit is de enige plek waar de
+  // pagina de Worker aanroept. Zou er een tweede route bijkomen die dat niet
+  // doet, dan lekt die in oefenmodus wél naar productie — zet nieuwe aanroepen
+  // dus altijd door callWorker heen.
+  if (OEFEN){
+    await new Promise(res => setTimeout(res, 220));   // even wachten, anders voelt het onecht
+    return { ok:true, data: oefenAntwoord(path, opts), status:200 };
+  }
   let r;
   try{
     r = await fetch(WURL+path, opts);
@@ -503,6 +796,24 @@ function enter(){
   loadCodes();
 }
 
+/* Oefenmodus starten. Zet dezelfde schermen op als enter(), maar zonder
+   token en zonder Worker: callWorker() onderschept alles. */
+function oefenStart(){
+  OEFEN = true;
+  oefenReset();
+  TOKEN = '(oefenmodus)';
+  WURL  = '(geen worker)';
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  document.getElementById('oefenBalk').classList.remove('hidden');
+  renderFeatures();
+  checkStatus();
+  loadConfig();
+  loadUsers();
+  loadKlanten();
+  loadCodes();
+}
+
 function logout(){
   TOKEN='';
   document.getElementById('adminTok').value='';
@@ -551,6 +862,17 @@ async function checkStatus(){
     { id:'st_ai',      naam:'AI-route (Anthropic)',   run:()=>callWorker('ai','/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':TOKEN},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:16,messages:[{role:'user',content:'ping'}],thinking:{type:'disabled'}})}) },
   ];
   el.innerHTML=items.map(i=>`<div class="row"><div class="lbl">${i.naam}</div><span class="pill p-demo" id="${i.id}">…test</span></div>`).join('');
+  // In oefenmodus is er niets om te meten. Een groene "✓ OK" zou hier een
+  // werkende keten suggereren die niet is aangeraakt — dat is precies het soort
+  // valse geruststelling waar deze kaart tegen bedoeld is. Dus geen oordeel.
+  if(OEFEN){
+    for(const i of items){
+      const p=document.getElementById(i.id);
+      p.textContent='niet gemeten'; p.className='pill p-demo';
+      p.title='Oefenmodus: er is geen verzoek naar de Worker gestuurd.';
+    }
+    return;
+  }
   for(const i of items){
     const p=document.getElementById(i.id);
     try{ await i.run(); p.textContent='✓ OK'; p.className='pill p-user'; }
@@ -567,6 +889,84 @@ function dt(s){
   catch(e){ return '—'; }
 }
 
+let KLANTEN_CACHE = [];
+
+/* ── Klantdetail ───────────────────────────────────────────────────
+   De lijst toont saldo en "ooit gekocht", en de vraag die daarna komt is
+   altijd dezelfde: waar zijn die tokens gebleven. Dat is uit de twee getallen
+   af te leiden maar niemand rekent dat in zijn hoofd, en de codes die deze
+   klant verzilverd heeft staan in een heel andere kaart.
+
+   Wat hier NIET staat: verbruik over tijd. Daar is geen bron voor — de
+   Klanten-tabel houdt alleen een stand bij, geen historie. Een grafiek
+   verzinnen uit twee getallen zou een precisie suggereren die er niet is.
+   Wil je dat echt, dan moet er eerst iets gaan bijhouden. */
+async function kDetail(id){
+  const k = KLANTEN_CACHE.find(x => x.id === id);
+  if(!k){ alert('Klant niet meer in beeld — herlaad de lijst.'); return; }
+
+  // Het codefilter staat standaard op "open", en dan kent de cache juist de
+  // GEBRUIKTE codes niet — precies degene die dit detail nodig heeft. Eén keer
+  // de volledige lijst ophalen als dat zo is; daarna zit hij in ALLE_CODES en
+  // kost het niets meer. Liever één verzoek dan een detail dat bijna altijd
+  // "onbekend" zegt.
+  if(!ALLE_CODES){
+    try{
+      const { data } = await callWorker('users','/admin/codes?status=alle',
+        { headers:{'X-Admin-Token':TOKEN} });
+      ALLE_CODES = data.codes || [];
+    }catch(e){
+      ALLE_CODES = null;   // niet onthouden: een volgende poging mag opnieuw
+    }
+  }
+  const verbruikt = Math.max(0, (k.totaal||0) - (k.saldo||0));
+  const bron = ALLE_CODES || CODES_CACHE.codes || [];
+  const mijn = bron.filter(c =>
+    String(c.gebruiktDoor||'').toLowerCase() === String(k.email||'').toLowerCase());
+
+  let t = 'KLANT ' + (k.email||'') + (k.naam ? '  (' + k.naam + ')' : '') + '\n';
+  t += '─'.repeat(46) + '\n';
+  t += 'Status        : ' + (k.status||'?') + (k.heeftReset ? '   ⚠ wachtwoordherstel staat open' : '') + '\n';
+  t += 'Aangemeld     : ' + dt(k.aangemaakt) + '\n';
+  t += 'Laatst ingelogd: ' + dt(k.laatsteLogin) + '\n\n';
+  t += 'Saldo nu      : ' + (k.saldo||0) + ' tokens\n';
+  t += 'Ooit gekocht  : ' + (k.totaal||0) + ' tokens\n';
+  t += 'Verbruikt     : ' + verbruikt + ' tokens\n\n';
+
+  if(mijn.length){
+    t += 'Verzilverde codes (' + mijn.length + '):\n';
+    mijn.forEach(c => {
+      t += '  ' + c.code + '  ' + c.credits + ' tokens  ' +
+           (c.gebruiktOp ? 'op ' + dt(c.gebruiktOp) : '') + '\n';
+    });
+    const viaCodes = mijn.reduce((a,c) => a + Number(c.credits||0), 0);
+    t += '  samen ' + viaCodes + ' tokens\n';
+    if(viaCodes !== (k.totaal||0)){
+      t += '\n  Let op: "ooit gekocht" is ' + (k.totaal||0) + ' en via codes kwam ' + viaCodes +
+           '.\n  Het verschil van ' + ((k.totaal||0) - viaCodes) + ' is handmatig bijgeboekt.\n';
+    }
+  } else {
+    t += ALLE_CODES
+      ? 'Verzilverde codes: geen. Het saldo is dus handmatig bijgeboekt.\n'
+      : 'Verzilverde codes: niet op te halen (de codelijst gaf een fout).\n';
+  }
+
+  t += '\n' + '─'.repeat(46) + '\n';
+  if(k.audit){
+    t += 'WIJZIGINGEN (nieuwste eerst)\n' + k.audit + '\n\n';
+    t += 'De naam bij een regel is zelf-opgegeven: er is één admin-token en dat\n' +
+         'draagt geen identiteit. Het onderscheidt collega\u2019s die hem invullen,\n' +
+         'het bewijst niets.\n';
+  } else {
+    t += 'WIJZIGINGEN: nog niets vastgelegd.\n\n' +
+         'Staat hier nooit iets terwijl je wel wijzigt, dan ontbreekt het veld\n' +
+         '"Audit" in de Klanten-tabel van Airtable. Maak daar een lang-tekstveld\n' +
+         'met die naam aan; de wijziging zelf werkt ook zonder, alleen de\n' +
+         'vastlegging niet.\n';
+  }
+  alert(t);
+}
+
 async function loadKlanten(){
   const box=document.getElementById('kLijst'), msg=document.getElementById('kMsg');
   const q=(document.getElementById('kZoek').value||'').trim();
@@ -575,6 +975,7 @@ async function loadKlanten(){
     const { data } = await callWorker('users','/admin/klanten'+(q?'?q='+encodeURIComponent(q):''),
       { headers:{'X-Admin-Token':TOKEN} });
     const lijst=data.klanten||[];
+    KLANTEN_CACHE = lijst;
     document.getElementById('kStats').textContent =
       lijst.length ? `${data.stats.aantal} klanten · ${data.stats.totaalSaldo} tokens in omloop` : '';
     if(!lijst.length){ box.innerHTML='<div class="hint">Nog geen klanten geregistreerd.</div>'; return; }
@@ -591,7 +992,9 @@ async function loadKlanten(){
             aangemeld ${dt(k.aangemaakt)} · laatst ingelogd ${dt(k.laatsteLogin)}
           </div>
           <div class="bar" style="margin-top:6px">
-            <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo</button>
+            <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
+            <button class="btn-sec btn-sm" onclick="kBijboeken('${k.id}',${k.saldo})">Bijboeken</button>
+            <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo zetten</button>
             <button class="btn-sec btn-sm" onclick="kStatus('${k.id}','${k.status}')">Status</button>
             <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
             <button class="btn-del" onclick="kVerwijder('${k.id}','${esc(k.email)}')">Verwijder</button>
@@ -622,12 +1025,34 @@ async function kPost(body, gelukt){
   }
 }
 
+/* Zetten is de gevaarlijke variant en bijboeken de gewone. "Klant heeft 50
+   gekocht" is een bijboeking; het absolute getal vraagt dat je eerst zelf
+   optelt, en een rekenfout schrijft rechtstreeks geld weg. Daarom staan ze als
+   twee knoppen naast elkaar in plaats van één veld waar je maar moet weten wat
+   de bedoeling is. */
+function kBijboeken(id, huidig){
+  const v=prompt('Hoeveel tokens bijboeken?\n\n' +
+                 'Saldo staat nu op ' + huidig + '. Een negatief getal boekt af.\n' +
+                 'Voorbeeld: 50 of -10', '');
+  if(v===null) return;
+  const d=parseInt(v,10);
+  if(!isFinite(d)||d===0){ alert('Vul een geheel getal in dat niet 0 is.'); return; }
+  if(huidig + d < 0){ alert('Dat zou het saldo op ' + (huidig+d) + ' zetten. Kan niet.'); return; }
+  const reden=(prompt('Waarom? (komt in de auditregel, mag leeg)','')||'').trim();
+  kPost({actie:'bijboeken',id,delta:d,reden,door:beheerderNaam()},
+        `${d>0?'+':''}${d} tokens bijgeboekt.`);
+}
+
 function kSaldo(id, huidig){
-  const v=prompt('Nieuw tokensaldo voor deze klant:', huidig);
+  const v=prompt('Saldo ZETTEN op een vast getal.\n\n' +
+                 'Let op: dit overschrijft het saldo, het telt er niet bij op.\n' +
+                 'Wil je bijboeken na een aankoop, gebruik dan "Bijboeken".', huidig);
   if(v===null) return;
   const n=parseInt(v,10);
   if(!isFinite(n)||n<0){ alert('Vul een getal van 0 of hoger in.'); return; }
-  kPost({actie:'update',id,saldo:n},`Saldo op ${n} gezet.`);
+  if(n!==huidig && !confirm(`Saldo van ${huidig} naar ${n} zetten?\n\n` +
+     `Dat is een verschil van ${n-huidig>0?'+':''}${n-huidig} tokens.`)) return;
+  kPost({actie:'update',id,saldo:n,door:beheerderNaam()},`Saldo op ${n} gezet.`);
 }
 
 function kStatus(id, huidig){
@@ -635,7 +1060,7 @@ function kStatus(id, huidig){
   if(v===null) return;
   const s=v.trim().toLowerCase();
   if(!['actief','geblokkeerd','ongeverifieerd'].includes(s)){ alert('Onbekende status.'); return; }
-  kPost({actie:'update',id,status:s},`Status is nu ${s}.`);
+  kPost({actie:'update',id,status:s,door:beheerderNaam()},`Status is nu ${s}.`);
 }
 
 function kWachtwoord(id, email){
@@ -645,14 +1070,60 @@ function kWachtwoord(id, email){
   kPost({actie:'wachtwoord',id,pass:v},'Wachtwoord aangepast. Geef het door aan de klant.');
 }
 
+/* ── Wie ben jij? ──────────────────────────────────────────────────
+   Er is één ADMIN_TOKEN en dat draagt geen identiteit. Voor de auditregel is
+   dus een naam nodig, en die kan alleen zelf-opgegeven zijn. Dat maakt hem
+   niet waardeloos: hij onderscheidt collega's die hem invullen. Hij houdt
+   alleen niemand tegen die dat niet doet, en daarom staat dat er in de uitleg
+   bij het detail letterlijk bij. Een auditregel die betrouwbaarder lijkt dan
+   hij is, is erger dan geen. */
+function beheerderNaam(){
+  let n = '';
+  try{ n = localStorage.getItem('pl_admin_naam') || ''; }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
+  if(!n){
+    n = (prompt('Onder welke naam wil je dat je wijzigingen worden vastgelegd?\n' +
+                '(Alleen voor de auditregel bij de klant. Leeg laten mag.)') || '').trim();
+    try{ if(n) localStorage.setItem('pl_admin_naam', n); }catch(e){ /* stil */ }
+  }
+  return n;
+}
+
+/* ── bevestigen door de naam over te tikken ────────────────────────
+   Een confirm() is één klik van "weg is weg" verwijderd, en de knop staat
+   naast drie knoppen die wél veilig zijn. Wie hier per ongeluk klikt en dan
+   per ongeluk Enter drukt, is een klant met saldo kwijt.
+
+   Overtikken kost twee seconden en kan niet per ongeluk. Dat is precies het
+   verschil dat je wilt: geen extra drempel voor wie het meent, wel een
+   volledige stop voor wie afdwaalde. Hoofdletters doen niet mee — het gaat om
+   de aandacht, niet om het typen. */
+function bevestigWissen(wat, naam, gevolg){
+  const v = prompt(
+    'Verwijderen: ' + wat + '\n\n' + gevolg +
+    '\n\nDit kan niet ongedaan worden gemaakt.\n' +
+    'Typ ter bevestiging: ' + naam);
+  if (v === null) return false;
+  if (v.trim().toLowerCase() !== String(naam).trim().toLowerCase()){
+    alert('Dat komt niet overeen met "' + naam + '". Er is niets verwijderd.');
+    return false;
+  }
+  return true;
+}
+
 function kVerwijder(id, email){
-  if(!confirm('Klant '+email+' definitief verwijderen?\n\nHet tokensaldo verdwijnt hiermee ook. Dit kan niet ongedaan worden gemaakt.')) return;
+  if(!bevestigWissen('klant ' + email, email,
+     'Het tokensaldo en de hele historie van deze klant verdwijnen mee.')) return;
   kPost({actie:'verwijder',id},'Klant verwijderd.');
 }
 
 /* ════════════════════════════════════════════════════════════════
    🎟️ ACTIVATIECODES
    ════════════════════════════════════════════════════════════════ */
+let CODES_CACHE = { codes: [], filter: '' };
+// De volledige codelijst, los van het filter op het scherm. Alleen gevuld
+// zodra iemand een klantdetail opent, en daarna hergebruikt.
+let ALLE_CODES = null;
+
 async function loadCodes(){
   const box=document.getElementById('cLijst'), msg=document.getElementById('cMsg');
   const f=document.getElementById('cFilter').value;
@@ -665,6 +1136,11 @@ async function loadCodes(){
       `${s.totaal||0} codes in beeld · ${s.open||0} open (${s.openCredits||0} tokens uitstaand) · ` +
       `${s.gebruikt||0} gebruikt` + (s.omzet ? ` · €${s.omzet.toFixed(2)} verzilverd` : '');
     const lijst=data.codes||[];
+    // Onthouden voor het klantdetail: dat koppelt codes aan een e-mailadres.
+    // Let op dat dit de GEFILTERDE lijst is — staat het filter op "open", dan
+    // kent het detail de gebruikte codes niet. Daarom zegt het detail er zelf
+    // bij waar het naar keek.
+    CODES_CACHE = { codes: lijst, filter: f };
     if(!lijst.length){ box.innerHTML='<div class="hint">Geen codes in deze selectie.</div>'; return; }
     box.innerHTML=lijst.map(c=>`
       <div class="row" style="align-items:flex-start">
@@ -749,6 +1225,8 @@ function rolePill(role){
   return `<span class="pill ${cls}">${esc(role)}</span>`;
 }
 
+let USERS_CACHE = { users: [], locked: [] };
+
 async function loadUsers(){
   const m=document.getElementById('userMsg');
   const list=document.getElementById('userList');
@@ -757,42 +1235,63 @@ async function loadUsers(){
     const { data } = await callWorker('users','/admin/users',{
       headers:{ 'X-Admin-Token':TOKEN }
     });
-    const users=data.users||[], locked=data.locked||[];
-
-    let html='';
-
-    // Noodingang (USERS_JSON) — alleen tonen, niet bewerkbaar
-    for(const u of locked){
-      html+=`<div class="row">
-        <div>
-          <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}<span class="pill p-lock">🔒 noodingang</span></div>
-          <div class="desc">Inlognaam <code>${esc(u.user)}</code> — beheerd in Worker-secret USERS_JSON</div>
-        </div>
-      </div>`;
-    }
-
-    // Airtable-gebruikers
-    for(const u of users){
-      html+=`<div class="row">
-        <div>
-          <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}${u.active?'':'<span class="pill p-off">geblokkeerd</span>'}</div>
-          <div class="desc">Inlognaam <code>${esc(u.user)}</code>${u.hasPass?'':' — ⚠ geen wachtwoord ingesteld'}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn-sec btn-sm" onclick="editUser('${esc(u.user)}','${esc(u.label)}','${esc(u.role)}',${u.active})">Bewerk</button>
-          <button class="btn-del" onclick="delUser('${esc(u.user)}')">Wis</button>
-        </div>
-      </div>`;
-    }
-
-    if(!html) html='<div class="desc">Nog geen gebruikers in Airtable. Voeg er hieronder een toe.</div>';
-    list.innerHTML=html;
-    show(m,'ok',`✓ ${users.length} gebruiker(s) geladen${locked.length?` + ${locked.length} noodingang`:''}.`);
+    USERS_CACHE = { users: data.users||[], locked: data.locked||[] };
+    tekenUsers();
+    const u=USERS_CACHE.users.length, l=USERS_CACHE.locked.length;
+    show(m,'ok',`✓ ${u} gebruiker(s) geladen${l?` + ${l} noodingang`:''}.`);
   }catch(e){
     list.innerHTML='';
     const d = e.diag || { kind:'err', title:'Laden mislukt.', detail:e.message };
     show(m, d.kind, d.title, d.detail);
   }
+}
+
+/* Tekenen en filteren zijn gescheiden van laden: filteren mag de Worker niet
+   raken. Bij elke toetsaanslag een verzoek doen is bij drie gebruikers
+   onzichtbaar en bij dertig een rem. */
+function tekenUsers(){
+  const list=document.getElementById('userList');
+  if(!list) return;
+  const q=((document.getElementById('uZoek')||{}).value||'').trim().toLowerCase();
+  const past=u => !q || (String(u.label||'')+' '+String(u.user||'')+' '+String(u.role||''))
+                        .toLowerCase().indexOf(q) >= 0;
+  const locked=USERS_CACHE.locked.filter(past);
+  const users =USERS_CACHE.users.filter(past);
+
+  let html='';
+
+  // Noodingang (USERS_JSON) — alleen tonen, niet bewerkbaar
+  for(const u of locked){
+    html+=`<div class="row">
+      <div>
+        <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}<span class="pill p-lock">🔒 noodingang</span></div>
+        <div class="desc">Inlognaam <code>${esc(u.user)}</code> — beheerd in Worker-secret USERS_JSON</div>
+      </div>
+    </div>`;
+  }
+
+  // Airtable-gebruikers
+  for(const u of users){
+    html+=`<div class="row">
+      <div>
+        <div class="lbl">${esc(u.label||u.user)} ${rolePill(u.role)}${u.active?'':'<span class="pill p-off">geblokkeerd</span>'}</div>
+        <div class="desc">Inlognaam <code>${esc(u.user)}</code>${u.hasPass?'':' — ⚠ geen wachtwoord ingesteld'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-sec btn-sm" onclick="editUser('${esc(u.user)}','${esc(u.label)}','${esc(u.role)}',${u.active})">Bewerk</button>
+        <button class="btn-del" onclick="delUser('${esc(u.user)}')">Wis</button>
+      </div>
+    </div>`;
+  }
+
+  if(!html){
+    // Onderscheid maken tussen "niets gevonden" en "nog niets aangemaakt":
+    // anders denk je bij een filter dat je gebruikers kwijt bent.
+    html = q
+      ? `<div class="desc">Geen gebruiker die past bij “${esc(q)}”. <a href="#" onclick="event.preventDefault();document.getElementById('uZoek').value='';tekenUsers()">Filter wissen</a></div>`
+      : '<div class="desc">Nog geen gebruikers in Airtable. Voeg er hieronder een toe.</div>';
+  }
+  list.innerHTML=html;
 }
 
 function editUser(user,label,role,active){
@@ -850,7 +1349,8 @@ async function saveUser(){
 }
 
 async function delUser(user){
-  if(!confirm(`Gebruiker "${user}" definitief verwijderen?\n\nWil je alleen tijdelijk blokkeren, gebruik dan Bewerk → Actief uit.`)) return;
+  if(!bevestigWissen('gebruiker ' + user, user,
+     'Wil je alleen tijdelijk blokkeren? Gebruik dan Bewerk → Actief uit; het account blijft dan bestaan.')) return;
   const m=document.getElementById('userMsg');
   show(m,'warn','Verwijderen…');
   try{

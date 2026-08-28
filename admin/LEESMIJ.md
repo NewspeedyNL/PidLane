@@ -11,6 +11,16 @@ Worker gemunt heeft. Het bestand waarschuwde daar in regel 3 zelf al voor.
 
 Nu staat hij buiten `public/` en wordt hij dus nergens geserveerd.
 
+**Let op: dat is maar de helft.** Deze repo is openbaar, dus `admin/admin.html`
+is gewoon te lezen op GitHub. De verkenningswaarde die de verhuizing wilde
+wegnemen — welke endpoints er zijn en hoe ze heten — ligt daarmee nog steeds op
+straat. De echte bescherming is en blijft server-side: elke adminroute
+controleert `ADMIN_TOKEN`. Wie dat argument helemaal wil sluiten, moet de repo
+privé maken; het bestand hier weghalen helpt niet, want de geschiedenis bewaart
+het toch. Zie ook `newspeedynl.github.io` in `ALLOWED_ORIGINS` van `worker.js`:
+staat GitHub Pages aan voor deze repo, dan is de pagina via dat adres mogelijk
+zelfs te openen én accepteert de Worker die herkomst.
+
 ## Openen
 
 Vanuit de repo:
@@ -19,12 +29,82 @@ Vanuit de repo:
 npm run admin
 ```
 
-en open dan **http://localhost:8788/admin.html**.
+en open dan **http://127.0.0.1:8788/admin.html**.
 
-Dat start `python3 -m http.server` op de map `admin/`. Werkt op Termux, Linux,
-macOS en Windows zolang `python3` in het pad staat. Liever iets anders? Elke
-statische server voldoet — het enige dat telt is dat de pagina via
-`http://localhost` of `http://127.0.0.1` geopend wordt.
+Dat draait `admin/serve.js` op node. Tot 28-08-2026 stond hier
+`python3 -m http.server`; dat werkte, maar node is er in dit project sowieso
+(de hele testreeks draait erop) en python3 niet per se. Op een kaal Windows-
+toestel of een verse Termux was het eerste wat je bij het beheer tegenkwam dus
+een installatieprobleem in plaats van de pagina.
+
+De server bindt op `127.0.0.1` en niet op `0.0.0.0`: de adminpagina hoort niet
+op je wifi te staan, ook niet even. Andere poort nodig? `PORT=9000 npm run admin`.
+
+Liever iets anders? Elke statische server voldoet — het enige dat telt is dat de
+pagina via `http://localhost` of `http://127.0.0.1` geopend wordt.
+
+## Oefenen zonder iets kapot te maken
+
+Op de toegangspoort staat **🧪 Oefenen met voorbeelden**. Geen token nodig, en er
+gaat geen enkel verzoek naar de Worker: alle antwoorden komen uit
+voorbeeldgegevens in de pagina zelf.
+
+Je krijgt vier klanten, drie gebruikers en drie activatiecodes — met opzet niet
+allemaal netjes. Er zit een geblokkeerde klant tussen, iemand met saldo nul, een
+openstaand wachtwoordherstel en een gebruiker zonder wachtwoord. Dat zijn
+precies de gevallen waarop je wilt kunnen oefenen en die je in een schone lijst
+nooit tegenkomt.
+
+Wijzigingen landen echt in die voorbeelden: pas je een saldo aan, dan zie je het
+totaal bovenaan meebewegen. Bij het verversen van de pagina staat alles weer op
+de begintoestand.
+
+De modus wordt **niet onthouden** en is niet weg te klikken zolang hij aanstaat.
+Er hoort geen toestand te bestaan waarin je denkt live te werken terwijl je
+oefent — of andersom. Om dezelfde reden zegt de statuskaart in oefenmodus
+"niet gemeten" in plaats van een groene vink: er is niets gemeten.
+
+Elke sectie heeft daarnaast een uitklapbare **❔-uitleg**: wat het scherm doet,
+en wat er gebeurt als je het fout doet. Vooral bij Klanten en Activatiecodes is
+dat het lezen waard — daar zit geld achter.
+
+## Saldo: bijboeken of zetten
+
+Twee knoppen, en het verschil is opzettelijk.
+
+**Bijboeken** is de gewone handeling: "klant heeft 50 gekocht" → `50`. Een
+negatief getal boekt af. De Worker leest het saldo vlak vóór het schrijven en
+telt daar bij op. Dat is belangrijk: rekende de pagina zelf, dan zou hij het
+saldo gebruiken uit een lijst die minuten geleden geladen is, en het verbruik
+van elke analyse die de klant intussen deed terugschrijven.
+
+**Saldo zetten** overschrijft het bedrag. Dat is de gevaarlijke variant — een
+rekenfout in je hoofd schrijft rechtstreeks geld weg — en daarom vraagt hij een
+extra bevestiging met het verschil erbij.
+
+Airtable kent geen transacties. Twee beheerders die op dezelfde seconde
+bijboeken kunnen elkaar nog steeds overschrijven. Bij één beheerder is dat geen
+praktisch risico; het staat hier zodat niemand later denkt dat het atomair is.
+
+## De auditregel — en wat hij niet is
+
+Elke wijziging aan een klant (saldo, status, wachtwoord) schrijft een regel in
+het veld **`Audit`** van de Klanten-tabel. Je ziet ze terug onder *Details* bij
+de klant, nieuwste eerst.
+
+**Dit veld moet je zelf aanmaken**: een lang-tekstveld met de naam `Audit` in de
+Klanten-tabel. Bestaat het niet, dan werkt alles gewoon door — alleen de
+vastlegging niet, en het antwoord zegt dat dan (`vastgelegd: false`). Dat is met
+opzet zo gebouwd: een vergeten veld hoort het beheer niet plat te leggen. Om
+dezelfde reden gaan de wijziging en de auditregel als twee losse schrijfacties
+naar Airtable, met de wijziging eerst.
+
+**De naam bij een regel bewijst niets.** Er is één `ADMIN_TOKEN` en dat draagt
+geen identiteit. De naam komt uit de adminpagina (je wordt er één keer om
+gevraagd, daarna staat hij in localStorage) en is dus zelf-opgegeven. Hij
+onderscheidt collega's die hem invullen; hij houdt niemand tegen die dat niet
+doet. Wil je een audit die wél sluitend is, dan is er een token per beheerder
+nodig — dat is een andere verbouwing.
 
 ## Waarom niet gewoon dubbelklikken
 
