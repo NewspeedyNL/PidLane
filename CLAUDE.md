@@ -46,9 +46,25 @@ toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
 - `automerge.yml` voegt de PR samen zodra de workflow *Tests* groen afrondt.
   Remmen: het label `handmatig`, of de PR in draft laten.
-- **Samenvoegen in `main` is deployen.** Cloudflare Workers Builds pakt de push
-  en zet hem live op `app.pidlane.nl`. Er zit geen mens tussen die PR en de
-  klant — dat is de reden dat de gate vóór de push groen moet zijn.
+- **Elke push is deployen — óók naar een branch.** Cloudflare Workers Builds
+  bouwt op elke push en zet `worker.js` live op `app.pidlane.nl`. Niet pas bij
+  de merge: bij PR #34 stond de Worker 33 minuten vóór de merge al live, op de
+  branchcommit. `wrangler.toml` zei het al precies ("`git push` → Workers Builds
+  bouwt en deployt automatisch"); bevestigd door de eigenaar op 28-08-2026.
+
+  **Herzien, niet weggepoetst** (zie #35): hier stond tot 28-08 "samenvoegen in
+  `main` is deployen". Dat las als "een branch is een veilige werkplek en de PR
+  is de poort". Het omgekeerde is waar — de PR is een verslag achteraf, geen
+  poort. De fout is bewaard omdat hij verklaart waarom er sessies zijn geweest
+  waarin halfaf werk naar een branch ging "om het later af te maken".
+
+  Wat dat betekent voor het werk:
+  - `bash plcheck.sh .` groen vóór **elke** push die `worker.js` raakt, niet
+    vóór de merge.
+  - Push geen worker-wijziging die je niet wilt uitleveren. Nog niet af? Houd
+    hem lokaal, of raak `worker.js` in die push niet aan.
+  - Dit geldt alleen voor de Worker. `public/` wordt door dezelfde build
+    meegenomen, maar `admin/` staat daarbuiten en gaat nergens heen.
 - Bij tegoed- of API-wijzigingen moeten `worker.js` en `public/` in **dezelfde**
   push mee. Loopt de een voor, dan draait er even een versie waarin niemand
   betaalt of juist dubbel.
