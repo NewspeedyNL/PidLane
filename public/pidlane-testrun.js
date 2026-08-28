@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '4.9 (26-08-2026)';
+const TESTRUN_VERSIE = '5.0 (28-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1600,63 +1600,114 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 28-08-2026 (2) — de betaallinks uit de code (#24).
-  // De sessiecontroles van vanochtend zijn hier weggehaald; die oplevering is
-  // afgerond en staat groen in test-inlog-sessie.js.
+  // OPLEVERING 28-08-2026 (3) — Capacitor 8 en de veilige zone.
+  // De betaallinkcontroles van vanmiddag zijn hier weg; die oplevering is
+  // afgerond en staat groen in test-betaallinks.js.
   //
-  // De echte grens — welke URL de app in een href accepteert — zit in
-  // test-betaallinks.js in de gate, mét tegenproef. Hier staat wat je alleen
-  // ín de app kunt zien: wat er nú live doorkomt.
+  // Wat de gate NIET kan zien en deze run wél: of de nieuwe native laag er
+  // ook echt is. De gate leest package.json; of de APK op dit toestel met
+  // Capacitor 8 en de nieuwe SPP-plugin is gebouwd, blijkt pas hier.
   // ══════════════════════════════════════════════════════════════
 
-  await _doe(5, 'Betaallink komt uit de config en is bruikbaar', function () {
-    const c = window.PID_CONFIG || {};
-    // Config komt pas ná het inloggen binnen (/api/config vraagt een
-    // sessietoken). Nog niet geladen is geen fout, maar wel iets om te weten:
-    // dan valt er over de link niets te zeggen.
-    if (!Object.keys(c).length)
-      return { staat: 'LET OP', detail: 'PID_CONFIG is leeg — config nog niet opgehaald, dus de ' +
-        'betaallink is hier niet te beoordelen. Log in en draai opnieuw.' };
-
-    const koop = String(c.tikkie_kopen || '').trim();
-    if (!koop)
-      return { staat: 'LET OP', detail: 'geen tikkie_kopen in de config — de app toont dan "Tokens ' +
-        'aanvragen" per mail. Dat is een geldige stand; zet hem in admin.html als dat niet de bedoeling is' };
-
-    // Dezelfde toets als in de app. Komt de link hier niet door, dan verdwijnt
-    // de koopknop STIL — dat is precies het soort fout waar niemand een melding
-    // van krijgt en waar een klant op vastloopt.
-    if (!/^https:\/\/tikkie\.me\/[^\s"'<>]*$/.test(koop))
-      return { staat: 'FOUT', detail: 'tikkie_kopen wordt geweigerd door de linktoets: ' +
-        JSON.stringify(koop.slice(0, 60)) + ' — de koopknop is daardoor onzichtbaar en de klant ziet ' +
-        'alleen de mailknop. Alleen https://tikkie.me/… wordt geaccepteerd' };
-
-    const donatie = String(c.tikkie_donatie || '').trim();
-    if (donatie && !/^https:\/\/tikkie\.me\/[^\s"'<>]*$/.test(donatie))
-      return { staat: 'FOUT', detail: 'tikkie_donatie wordt geweigerd door de linktoets — de ' +
-        'trakteerknop blijft weg' };
-
-    return 'koopknop actief' + (donatie ? ', trakteerknop actief' : ', geen donatielink (mag)');
+  // ── TOEGEVOEGD 1: draait dit op de nieuwe native laag? ───────────
+  await _doe(5, 'Capacitor 8 draait op dit toestel', function () {
+    const C = window.Capacitor;
+    if (!C) return { staat: 'LET OP', detail: 'geen Capacitor — dit is de browser, niet de app. ' +
+      'De native kant is hier niet te beoordelen; draai dit in de APK' };
+    const plat = (typeof C.getPlatform === 'function') ? C.getPlatform() : '?';
+    // Capacitor zet zijn eigen versie niet altijd op window; de plugins zijn
+    // het bewijs dat telt. Ontbreekt BluetoothSerial, dan is de plugin bij
+    // het bouwen weggevallen en werkt Bluetooth Classic niet meer.
+    const P = C.Plugins || {};
+    const heeft = Object.keys(P);
+    if (!P.BluetoothSerial)
+      return { staat: 'FOUT', detail: 'BluetoothSerial ontbreekt in Capacitor.Plugins. De SPP-plugin ' +
+        'is bij de overstap naar @ascentio-it weggevallen; klassieke ELM327-adapters verbinden dan ' +
+        'niet meer. Aanwezig: ' + heeft.join(', ') };
+    if (!P.BluetoothLe)
+      return { staat: 'FOUT', detail: 'BluetoothLe ontbreekt — de BLE-adapters vallen weg' };
+    return 'platform ' + plat + ', ' + heeft.length + ' plugins, SPP en BLE beide aanwezig';
   });
 
-  // ── Staat er niets meer hardcoded in de geladen app? ─────────────
-  // BRONCONTROLE, met reden: dit gaat over de afwezigheid van een waarde in de
-  // code die dráái. De gate toetst de bestanden in de repo; deze controle
-  // toetst wat de browser werkelijk heeft geladen — en dat is een ander ding
-  // zodra de HTTP-cache een oude versie serveert. "Niet geladen" is hier al
-  // twee keer de cache geweest.
-  await _doe(5, 'Geen betaallink meer hardcoded in de draaiende app', function () {
-    if (typeof PLKlant === 'undefined')
-      return { staat: 'FOUT', detail: 'PLKlant ontbreekt — pidlane-klant.js is niet meegekomen' };
-    let bron = '';
-    try { bron = Object.keys(PLKlant).map(k => String(PLKlant[k])).join('\n'); }
-    catch (e) { return { staat: 'LET OP', detail: 'PLKlant niet uit te lezen: ' + (e.message || e) }; }
-    const m = bron.match(/https:\/\/tikkie\.me\/pay\/[A-Za-z0-9]{8,}/);
-    if (m)
-      return { staat: 'FOUT', detail: 'er staat nog een vaste betaallink in de geladen code (' +
-        m[0].slice(0, 34) + '…). Eerst "Nieuwste versie laden"; blijft het staan, dan is de fix niet ' +
-        'meegekomen en is de link niet te wisselen zonder deploy' };
-    return 'geen vaste betaallink in de geladen PLKlant-code';
+  // ── TOEGEVOEGD 2: doet de nieuwe SPP-plugin wat de oude deed? ────
+  // Niet "bestaat de methode" maar "antwoordt hij in het formaat dat
+  // pidlane-bt.js verwacht". Het antwoordveld is {value:"..."}; werd dat
+  // {data:"..."}, dan leest de app stilte in plaats van een foutmelding.
+  await _doe(5, 'De SPP-plugin heeft de methodes die de app aanroept', async function () {
+    const SPP = window.Capacitor?.Plugins?.BluetoothSerial;
+    if (!SPP) return { staat: 'LET OP', detail: 'geen SPP-plugin — zie de vorige controle' };
+    const nodig = ['connect', 'disconnect', 'isConnected', 'read', 'write', 'scan', 'requestPermissions'];
+    const mist = nodig.filter(m => typeof SPP[m] !== 'function');
+    if (mist.length)
+      return { staat: 'FOUT', detail: 'de fork mist: ' + mist.join(', ') + '. pidlane-bt.js roept die ' +
+        'aan; dit is precies het verschil dat je pas in de auto merkt' };
+    if (!window._btAdres)
+      return { staat: 'LET OP', detail: 'alle ' + nodig.length + ' methodes aanwezig, maar niet verbonden — ' +
+        'of read() nog {value:…} teruggeeft is alleen met een adapter te zien' };
+    try {
+      const r = await SPP.read({ address: window._btAdres });
+      if (r && typeof r.value !== 'undefined') return 'alle methodes aanwezig, read() geeft {value:…} zoals verwacht';
+      return { staat: 'FOUT', detail: 'read() gaf ' + JSON.stringify(Object.keys(r || {})) +
+        ' terug in plaats van {value:…}. pidlane-bt.js leest .value en ziet dus stilte, zonder foutmelding' };
+    } catch (e) {
+      return { staat: 'LET OP', detail: 'read() gaf een fout: ' + (e.message || e) };
+    }
+  });
+
+  // ── TOEGEVOEGD 3: komt de veilige zone aan bij de topbalk? ───────
+  // Dit is de controle waar edge-to-edge om draait. Op een toestel met
+  // targetSdk 36 tekent de WebView onder de statusbalk; is de marge er niet,
+  // dan staat de klok van Android over het logo.
+  await _doe(5, 'Veilige zone komt aan bij de topbalk', function () {
+    const tb = document.querySelector('.topbar');
+    if (!tb) return { staat: 'LET OP', detail: 'geen topbalk zichtbaar op dit scherm' };
+    const wortel = getComputedStyle(document.documentElement);
+    const token = (wortel.getPropertyValue('--pl-sat') || '').trim();
+    if (!token)
+      return { staat: 'FOUT', detail: '--pl-sat bestaat niet. Dan valt elke marge terug op niets en ' +
+        'schuift de hele app onder de statusbalk. Eerst "Nieuwste versie laden"; blijft het staan, ' +
+        'dan is de nieuwe pidlane.css niet meegekomen' };
+    const inset = parseFloat(getComputedStyle(tb).paddingTop) || 0;
+    // Nul is geldig: in een browser, en op Android zonder edge-to-edge, is er
+    // geen inset. Dat is geen fout maar wel iets om te weten bij het lezen.
+    if (inset === 0)
+      return { staat: 'LET OP', detail: 'token aanwezig (' + token + ') maar de marge is 0 — dit toestel ' +
+        'geeft geen inset door. Verwacht in de browser; op een Android 15+-toestel betekent het dat ' +
+        'edge-to-edge hier niet speelt' };
+    const rect = tb.getBoundingClientRect();
+    const kind = tb.querySelector('.kebab-btn, .tchip, .logo-i');
+    const kTop = kind ? kind.getBoundingClientRect().top : null;
+    if (kTop !== null && kTop < inset)
+      return { staat: 'FOUT', detail: 'de balk heeft ' + Math.round(inset) + 'px marge maar het eerste ' +
+        'element staat op y=' + Math.round(kTop) + ' — dat ligt onder de statusbalk. Eén van de drie ' +
+        'topbalk-regels (gewoon / <480px / uiL) zet de padding opnieuw en gooit de marge weg' };
+    return 'marge ' + Math.round(inset) + 'px, balk ' + Math.round(rect.height) + 'px, inhoud eronderuit';
+  });
+
+  // ── VERWIJDERD: staat er nergens meer een losse env()-regel? ─────
+  // De helft die het makkelijkst wordt vergeten. Twaalf env()-regels zijn
+  // vervangen door de twee tokens; blijft er ergens één staan, dan werkt die
+  // op een WebView onder versie 140 met verkeerde waarden — en dat is nou
+  // net het toestel waarop je het niet ziet aankomen.
+  await _doe(5, 'Geen losse env(safe-area) meer in de geladen stijlen', async function () {
+    let css = '';
+    try {
+      const r = await fetch('pidlane.css', { cache: 'reload' });
+      if (!r.ok) return { staat: 'LET OP', detail: 'pidlane.css niet op te halen (' + r.status + ')' };
+      css = await r.text();
+    } catch (e) { return { staat: 'LET OP', detail: 'pidlane.css niet op te halen: ' + (e.message || e) }; }
+
+    // De twee tokendefinities MOETEN env() gebruiken — dat is hun terugval.
+    // Alles daarbuiten hoort via de tokens te lopen.
+    const regels = css.split('\n')
+      .map((t, i) => ({ nr: i + 1, t: t }))
+      .filter(x => /env\(safe-area-inset/.test(x.t) && !/--pl-sa[tb]\s*:/.test(x.t));
+    if (regels.length)
+      return { staat: 'FOUT', detail: regels.length + ' losse env()-regel(s), o.a. regel ' +
+        regels[0].nr + ': ' + regels[0].t.trim().slice(0, 70) };
+    if (!/--pl-sat\s*:/.test(css) || !/--pl-sab\s*:/.test(css))
+      return { staat: 'FOUT', detail: 'de tokens --pl-sat/--pl-sab staan niet in de geladen css' };
+    return 'twee tokens, geen losse env()-regels';
   });
 }
 
@@ -2410,37 +2461,48 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-08 (2) — de betaallinks uit de code, vlak vóór de Play Store-testfase',
+  titel: 'OPLEVERING 28-08 (3) — Capacitor 8: zonder deze stap neemt de Play Store de app niet aan',
   vragen: [
-    '── WAAROM DEZE RONDE ──────────────────────────────────────',
+    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De Tikkie-links stonden hardcoded in pidlane-klant.js, in een publieke repo (#24). Ze komen nu uit de Config-tabel via /api/config en zijn te beheren in admin.html onder "Betaallinks". Niet omdat zo\u2019n link geheim is — wie hem heeft kan alleen betalen, niet incasseren — maar omdat je hem anders niet kunt wisselen zonder een deploy.',
+    'De Play Store weigert per 31-08-2026 elke inzending onder API 36. De app stond op 34, want android/ wordt elke build gegenereerd uit het template van de Capacitor-versie, en Capacitor 6 brengt 34 mee. De .aab van build 405 was dus onuploadbaar. Capacitor 6 \u2192 8 (7 geeft 35 en is ook te laag), en daarmee AGP 8.13, Gradle 8.14.3, Java 21 en minSdk 24.',
 
-    '── STAP VOOR STAP ─────────────────────────────────────────',
+    'Twee dingen zijn hierbij van eigenaar of vorm veranderd, en die twee zijn wat deze run moet uitwijzen: de SPP-plugin (@e-is stond stil sinds 31-12-2024, nu @ascentio-it) en de veilige zone rond de schermranden, die vanaf targetSdk 35 verplicht wordt.',
 
-    'STAP 1. "Nieuwste versie laden". Blok 5 controle 2 kijkt of de nieuwe code écht draait; staat die op FOUT, dan kijk je naar de oude versie uit de cache.',
+    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 2. Log in en druk op \u25b6 Start. Blok 5 hoort te zeggen "koopknop actief". Staat er LET OP "PID_CONFIG is leeg", dan is de config nog niet opgehaald — draai opnieuw. Staat er FOUT, dan wordt je link geweigerd door de linktoets en ziet de klant alleen de mailknop.',
+    'STAP 0. DIT MOET DE NIEUWE APK ZIJN. Deze ronde is niet met "Nieuwste versie laden" te toetsen: de wijziging zit in de native laag, niet in de webcode. Installeer de APK uit de build van de branch claude/capacitor-8, anders meet blok 5 de oude schil om de nieuwe website.',
 
-    'STAP 3. DE ECHTE PROEF. Open Mijn account \u2192 tokens, en druk op de koopknop. Hij hoort je Tikkie te openen. Dit is de enige stap die bewijst dat de link niet alleen geldig is maar ook klopt — een geldige link naar de verkeerde Tikkie ziet er in blok 5 precies hetzelfde uit.',
+    'STAP 1. Start de app en draai de testrun. Blok 5 controle 1 hoort te zeggen dat SPP en BLE beide aanwezig zijn. Staat er FOUT dat BluetoothSerial ontbreekt, dan is de plugin bij het bouwen weggevallen \u2014 stop hier, want dan verbindt geen enkele klassieke adapter meer.',
 
-    'STAP 4. LEEGMAKEN MAG. Haal in admin.html de link weg en sla op. Na ~60 s hoort de koopknop te verdwijnen en "Tokens aanvragen" per mail te verschijnen. Geen kapot scherm, geen dode knop. Zet hem daarna terug.',
+    'STAP 2. DE ECHTE PROEF, EN DIE KAN ALLEEN IN DE AUTO. Verbind met je gewone ELM327 via SPP en lees een paar PIDs uit. Dit is de enige stap die bewijst dat de vervangende plugin doet wat de oude deed; controle 2 kijkt alleen of de methodes er zijn en of read() nog {value:\u2026} teruggeeft. Werkt dit, dan is de zwaarste onbekende van deze upgrade weg.',
 
-    'STAP 5. Vul in admin.html bewust iets ongeldigs in, bijvoorbeeld http:// in plaats van https://. De app hoort dat te weigeren en terug te vallen op de mailknop, en blok 5 hoort er FOUT op te geven. Dat laatste is het punt: de app faalt hier STIL, dus zonder blok 5 merk je het pas als een klant belt.',
+    'STAP 3. KIJK NAAR DE BOVENKANT VAN HET SCHERM. Op Android 15 en hoger tekent de app nu onder de statusbalk. De topbalk hoort daar netjes onderuit te schuiven: logo, chips en het \u2630-menu volledig zichtbaar, niet half achter de klok of het batterij-icoon. Controle 3 meet dat, maar je oog is hier sneller dan de meting \u2014 kijk ook naar de onderkant, bij de zwevende chips en de knoppenbalk van een openstaand scherm.',
 
-    '── WAT ER IS VERANDERD ────────────────────────────────────',
+    'STAP 4. ZET DE TEKSTGROOTTE OP GROOT (uiL) en kijk opnieuw naar de topbalk. Die stand heeft een eigen CSS-regel die de marge opnieuw zet; als er \u00e9\u00e9n vergeten was, is het die. Hetzelfde geldt voor draaien naar liggend.',
 
-    'CFG.tikkieKopen en CFG.tikkieDonatie zijn geen vaste waarden meer maar getters die PID_CONFIG lezen. Vaste waarden zouden de stand bevriezen op het moment dat het bestand laadt, en dat is altijd vóór de login — dus altijd leeg.',
+    'STAP 5. Draai \u00e9\u00e9n gewone diagnose af, van verbinden tot rapport. Niet omdat daar iets aan veranderd is, maar omdat een major-upgrade van de native laag alles raakt wat door de bridge gaat: bestanden opslaan, delen, de camera voor de QR-koppeling.',
 
-    'Er zit een toets op: alleen https://tikkie.me/\u2026 komt erdoor. Dat is geen nette-invoer-controle maar een veiligheidsgrens. De waarde komt nu uit Airtable en belandt in een href; zonder die toets voert een klik op de koopknop uit wat er in die tabel staat. Getoetst in test-betaallinks.js, met twaalf varianten die geweigerd moeten worden.',
+    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '── WAT DEZE RONDE NIET OPLOST ─────────────────────────────',
+    'In public/ is bijna niets aangeraakt, en dat is geen toeval maar de reden dat deze upgrade te doen was: de app roept plugins aan via window.Capacitor.Plugins.<naam> en nergens via een import. De plugin heet nog steeds BluetoothSerial, dus pidlane-bt.js merkt de wisseling niet. Houd dat zo \u2014 een import zou de volgende ronde duurder maken.',
 
-    'De oude links staan nog in de git-geschiedenis en dat verandert hier niet. Wil je ze echt uit omloop, dan is een NIEUWE Tikkie aanmaken de enige weg — een andere waarde invullen verandert niets aan wat er al gedeeld is. Weeg zelf of dat de moeite waard is; een betaallink is geen sleutel.',
+    'De veilige zone loopt nu via twee tokens (--pl-sat / --pl-sab) in plaats van twaalf losse env()-regels. Reden: Capacitor leest de insets zelf uit en zet ze als --safe-area-inset-*, en die gaan v\u00f3\u00f3r env(), omdat WebView onder versie 140 bij env() verkeerde waarden teruggeeft. \u00c9\u00e9n plek om te wijzigen, net als de z-index-tokens.',
 
-    'De testrun-blokken 7 en 14 melden nog steeds iets anders dan ze meten (#12 en #29), en de airco-melding (#30) komt er nog bij een schakelende airco. Beide bekend, beide apart.'
+    'De topbalk had als enige nog helemaal geen marge. Let op: die heeft DRIE regels (gewoon, onder 480px, en uiL) en alle drie zetten padding opnieuw \u2014 twee daarvan gooiden de marge weg terwijl de hoogte hem w\u00e9l meetelde. Nagemeten in een browser: zonder inset is de balk in alle drie de standen exact gelijk aan die van main.',
+
+    'De build controleert het API-niveau nu zelf, tegen \u00e9\u00e9n getal (PLAY_MIN_TARGET_SDK) in build-apk.yml. Bewust controleren en niet injecteren: injecteren zet het getal op twee plekken en dan is bij de volgende verhoging niet te zien welke wint. Volgend jaar is dit \u00e9\u00e9n versienummer in package.json en \u00e9\u00e9n getal in de workflow.',
+
+    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+
+    'minSdk gaat van 22 naar 24: Android 5.0 en 5.1 vallen af. Afgestemd, maar het staat hier zodat het later niet als verrassing terugkomt.',
+
+    'De app kan nog steeds geen account verwijderen terwijl privacy.html dat wel belooft (#41), en of tokens kopen via Tikkie langs Play\u2019s betaalregels komt is nog niet uitgezocht (#42). Allebei nodig v\u00f3\u00f3r publicatie, geen van beide v\u00f3\u00f3r een gesloten test.',
+
+    'De blokken 7 en 14 melden nog steeds iets anders dan ze meten (#12 en #29), de airco-melding komt er nog bij een schakelende airco (#30), en 0155/0156 staan nog naast hun bytelengte (#40).'
   ]
 };
+
 
 
 

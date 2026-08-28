@@ -629,10 +629,62 @@ de pas, en dan is de vraag welke klopt.
 | [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
 | [#24](https://github.com/NewspeedyNL/PidLane/issues/24) | restjes uit de bedradingssweep (vijf eindjes) | opruimen |
 | [#25](https://github.com/NewspeedyNL/PidLane/issues/25) | kleine staarten uit de testruns van 26-08 | opruimen |
+| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldt een vals negatief | bug |
+| [#30](https://github.com/NewspeedyNL/PidLane/issues/30) | schakelende airco leest als ruw stationair | bug |
+| [#31](https://github.com/NewspeedyNL/PidLane/issues/31) | sensorlogging is asymmetrisch | bug |
+| [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
+| [#41](https://github.com/NewspeedyNL/PidLane/issues/41) | account verwijderen ontbreekt, privacy.html belooft het wel | Play |
+| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### Capacitor 8 — 28-08-2026, en wat er onbewezen blijft
+
+De Play Store weigert per 31-08-2026 alles onder API 36. Het API-niveau van de
+app komt niet uit deze repo maar uit het Capacitor-template: `android/` wordt
+elke build opnieuw gegenereerd, en Capacitor 6 brengt API 34 mee. **Daarmee is
+`package.json` het bestand dat bepaalt of de Play Store de bundel aanneemt**, en
+dat stond nergens opgeschreven — de workflow controleerde de permissieset hard
+en het API-niveau helemaal niet.
+
+Dat is nu omgedraaid: `PLAY_MIN_TARGET_SDK` staat als één getal in
+`build-apk.yml`, de build leest `android/variables.gradle` en stopt als het
+daaronder zit. **Controleren, niet injecteren** — injecteren zet het getal op
+twee plekken en dan is bij de volgende verhoging niet te zien welke wint. De
+tegenproef is gedraaid op de echte templates: Capacitor 6 (34) wordt rood,
+Capacitor 8 (36) groen, en een eis van 37 wordt weer rood.
+
+De reden dat deze upgrade goedkoop was, is een eigenschap die het waard is te
+bewaken: **de webcode importeert Capacitor nergens.** Alles loopt via
+`window.Capacitor.Plugins.<naam>`. De SPP-plugin wisselde van `@e-is` naar
+`@ascentio-it` — beide registreren als `BluetoothSerial` — en daardoor hoefde er
+in `public/` geen regel code mee. Een `import` zou de volgende ronde duurder
+maken.
+
+**Wat hierbij níét bewezen is, en dus open staat:**
+
+1. **De vervangende SPP-plugin is niet aan een adapter getoetst.** De vergelijking
+   is statisch gedaan: zelfde bestandenset, zelfde namespace, zelfde plugin-naam,
+   zelfde `@CapacitorPlugin`-annotatie, alle zeven aangeroepen methodes aanwezig,
+   en het grote regelverschil in `BluetoothSerialPlugin.java` is opmaak. Dat zegt
+   niets over gedrag onderweg. Blok 5 van testrun 5.0 controleert het formaat van
+   `read()`; de rest is een rit.
+2. **`@ascentio-it` is een eenmansfork.** Beter dan een pakket dat sinds
+   31-12-2024 stilstaat, maar geen garantie. Valt hij stil, dan is de terugval het
+   plugin-mapje als lokale Capacitor-plugin in deze repo opnemen. Nu niet doen:
+   dat is onderhoudslast die pas nodig is als het zover is.
+3. **Edge-to-edge is alleen in een browser nagemeten.** Zonder inset is de
+   topbalk in alle drie de standen (gewoon, <480px, uiL) exact gelijk aan die van
+   `main`; met een gesimuleerde inset van 36px komt de marge aan. Hoe het er op
+   een echt Android 15+-toestel uitziet is niet gemeten, en dat is waar het om
+   gaat.
+4. **De topbalk is in `uiL` hoger dan zijn eigen `height`-regel zegt** (47px waar
+   `height:42px` staat). Oorzaak: een flexitem heeft `min-height:auto`, dus de
+   balk kan niet kleiner dan zijn inhoud. Dat gedrag is ouder dan deze wijziging
+   en is hier niet aangeraakt — het staat genoteerd omdat het bij het meten
+   verwarring gaf en de volgende keer weer zal geven.
 
 ### Opmaakronde 27-08 — vier schermfouten, en drie issues die al dood waren
 

@@ -1,6 +1,6 @@
 # ANDROID-PLAYSTORE.md — wat er nog tussen jou en een goedkeuring staat
 
-Bijgewerkt: 20-08-2026. Nagelopen op de repo zoals hij nu is.
+Bijgewerkt: 28-08-2026. Nagelopen op de repo zoals hij nu is.
 
 Dit gaat alleen over de Android-kant en de review. Voor de app zelf:
 `PIDLANE.md`. Voor wat er nu speelt: de GitHub-issues.
@@ -64,7 +64,7 @@ de recorder draait op motorbelasting en snelheid, niet op hoogte.
 
 Wat blijft staan is `ACCESS_FINE_LOCATION` **met** `maxSdkVersion=30`. Dat is
 geen locatiefunctie maar een eis van Android 11 en ouder om überhaupt naar
-Bluetooth te mogen scannen, waar `@e-is/capacitor-bluetooth-serial` van afhangt.
+Bluetooth te mogen scannen, waar `@ascentio-it/capacitor-bluetooth-serial` van afhangt.
 Op moderne toestellen verschijnt hij niet in de permissielijst.
 
 **Gevolg voor de inzending:** locatie is géén onderwerp in de Data safety-form.
@@ -85,7 +85,18 @@ meting en kost geen enkele permissie.
 
 ---
 
-## Blokkade 2 — je kunt geen APK inzenden
+## ~~Blokkade 2 — je kunt geen APK inzenden~~ — OPGELOST 28-08-2026
+
+**De ondertekening staat.** In build #405 (28-08, 00:51, main) draaiden de
+stappen *Inject signing config* en *Verify signature* allebei echt — niet
+overgeslagen. Die twee zitten achter `getekend == ja`, dus de vier
+KEYSTORE-secrets staan en de `.aab` is ondertekend. `versionCode` liep mee op
+405, `versionName` 3.0.0 gelijk aan `APP_VERSION`.
+
+De uitleg hieronder blijft staan voor het geval de keystore ooit vervangen moet
+worden.
+
+### Hoe het er stond
 
 De workflow bouwde alleen `assembleDebug`. Daar komt de Play Store niet mee
 overweg: nieuwe apps moeten als **Android App Bundle (.aab)** worden ingezonden,
@@ -227,6 +238,71 @@ kernfunctie noemt. Dat is geen code meer.
 
 ---
 
+## ~~Blokkade 4 — targetSDK~~ — OPGELOST 28-08-2026, maar dit komt jaarlijks terug
+
+**Play weigert per 31-08-2026 elke inzending onder API 36** — nieuwe apps én
+updates. Er is verlenging aan te vragen tot 1 november. De app stond op 34.
+
+Dat getal staat nergens in deze repo. `android/` wordt elke build opnieuw
+gegenereerd, en het API-niveau komt uit het template van de Capacitor-versie in
+`package.json`:
+
+| Capacitor | targetSdk | AGP | Gradle | minSdk | JDK |
+|---|---|---|---|---|---|
+| 6.1.2 | 34 | 8.2.1 | 8.2.1 | 22 | 17 |
+| 7.x | 35 | | | | |
+| 8.5.0 | **36** | 8.13.0 | 8.14.3 | **24** | **21** |
+
+Capacitor 7 is geen tussenstation: die geeft 35 en is ook te laag. Van 6 naar 8
+dus, in één keer. minSdk 22 → 24 betekent dat Android 5.0 en 5.1 afvallen.
+
+**De SPP-plugin moest mee en kon niet.** `@e-is/capacitor-bluetooth-serial`
+staat sinds 31-12-2024 stil op 6.0.3. Vervangen door
+`@ascentio-it/capacitor-bluetooth-serial` 8.0.1 — een fork die daar expliciet
+voor gemaakt is. Zelfde bestandenset, zelfde namespace, zelfde plugin-naam
+`BluetoothSerial`, zelfde `@CapacitorPlugin`-annotatie, alle zeven methodes die
+`pidlane-bt.js` aanroept aanwezig. Zie `PIDLANE.md` §11 voor wat daaraan
+onbewezen blijft.
+
+### Zo blijft het volgend jaar klein
+
+Drie afspraken, en ze zijn belangrijker dan de upgrade zelf.
+
+**1. Geen SDK-nummers in de workflow.** De verleiding is om `targetSdkVersion`
+te injecteren zoals de permissies. Niet doen: dan staat het getal op twee
+plekken, gaat `compileSdk` er niet vanzelf in mee, en is bij de volgende
+verhoging niet te zien welke wint. Laat het template het zeggen.
+
+**2. Controleer wél, met één getal.** `PLAY_MIN_TARGET_SDK` staat bovenaan
+`build-apk.yml`; de stap *Controleer target API-niveau* leest
+`android/variables.gradle` en stopt de build als het daaronder zit, met de
+mededeling welke Capacitor-versie je nodig hebt. Twintig seconden, in plaats van
+een afwijzing bij de upload met een melding die nergens naar de oorzaak wijst.
+Getoetst met tegenproef op de echte templates: 34 rood, 36 groen, eis 37 rood.
+
+**3. Importeer Capacitor nooit in `public/`.** Alles loopt via
+`window.Capacitor.Plugins.<naam>`. Daardoor koste deze major-upgrade in de
+webcode nul regels — alleen commentaar. `test-capversies.js` bewaakt dat de
+Capacitor-pakketten dezelfde major houden en dat de JDK meebeweegt.
+
+**De ronde van volgend jaar is dan:** versienummer in `package.json` omhoog,
+`PLAY_MIN_TARGET_SDK` omhoog, `npm install`, workflow draaien op een branch.
+
+### En dan het deel dat geen versienummer is: edge-to-edge
+
+Vanaf targetSdk 35 tekent de WebView onder de status- en navigatiebalk, en bij
+targetSdk 36 doet de oude ontsnapping (`overlaysWebView:false` op de
+StatusBar-plugin) niets meer. `pidlane.css` gebruikt daarvoor twee tokens,
+`--pl-sat` en `--pl-sab`, die Capacitor's `--safe-area-inset-*` vóór `env()`
+zetten — WebView onder versie 140 geeft bij `env()` verkeerde waarden terug.
+
+Let op bij het wijzigen van de topbalk: die heeft **drie** regels (gewoon, onder
+480px, en `uiL`) en alle drie zetten de padding opnieuw. Twee daarvan gooiden de
+marge weg terwijl de hoogte hem wél meetelde — dan wordt de balk hoger zonder
+dat de inhoud meeschuift, en dat zie je op één schermbreedte niet.
+
+---
+
 ## Reviewnotitie en storebeschrijving
 
 Vier plekken moeten hetzelfde verhaal vertellen. Loopt er één uiteen, dan is
@@ -303,7 +379,12 @@ Dat is echt delen met een derde partij, ook al staat er geen naam bij.
 ## Vóór je op inzenden drukt
 
 - [x] Keuze gemaakt bij blokkade 1 (geen locatie), manifest en code komen overeen
-- [ ] `.aab` gebouwd, ondertekend, `versionCode` hoger dan de vorige inzending
+- [x] `.aab` gebouwd en ondertekend (build #405); `versionCode` loopt mee met
+      `run_number`, dus hoger dan de vorige inzending
+- [ ] `.aab` opnieuw gebouwd op Capacitor 8 — de bundel van #405 staat op
+      API 34 en wordt bij de upload geweigerd
+- [ ] SPP-verbinding getoetst met een echte adapter ná de plugin-wisseling
+- [ ] Topbalk en onderranden bekeken op een Android 15+-toestel (edge-to-edge)
 - [ ] `versionName` in de Play Console komt overeen met `package.json` én
       `public/config.js` — die twee liepen tot 21-08 acht versies uiteen; de CI
       faalt nu hard als dat opnieuw gebeurt
@@ -313,6 +394,9 @@ Dat is echt delen met een derde partij, ook al staat er geen naam bij.
       Android-permissiedialoog, niet erna
 - [ ] Weigerknop getest: geen permissieverzoek, geen verbinding, app blijft heel
 - [ ] Data safety-form ingevuld en gelijk aan `privacy.html`
+- [ ] Verwijder-URL ingevuld bij *App content → Data deletion* (zie #41 —
+      `privacy.html` belooft nu iets wat de app niet heeft)
+- [ ] Betaalregels nagelezen voor de Tikkie-route (#42)
 - [ ] Reviewnotitie ingevuld in *App access* (tekst hierboven)
 - [ ] `feat_demo` staat AAN in de AppConfig-tabel — anders is de demoknop
       verborgen en klopt je reviewnotitie niet
