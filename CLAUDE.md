@@ -46,50 +46,35 @@ toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
 - `automerge.yml` voegt de PR samen zodra de workflow *Tests* groen afrondt.
   Remmen: het label `handmatig`, of de PR in draft laten.
-- **Alleen `main` deployt — en dat is een dashboardinstelling, geen code.**
-  Cloudflare Workers Builds bouwt `worker.js` en zet hem live op
-  `app.pidlane.nl`. Wélke branches dat aftrappen staat in Cloudflare →
-  Workers → `pidlane-proxy` → Settings → Builds, en hoort sinds 28-08-2026 op
-  alleen `main` te staan (zie #35).
+- **Elke push naar `main` is deployen.** Cloudflare Workers Builds bouwt en
+  draait `wrangler deploy`; die deployment krijgt meteen 100% van het verkeer.
+  Er zit geen mens tussen die merge en de klant — dat is de reden dat de gate
+  vóór de push groen moet zijn. Geldt ook voor een directe commit op `main`
+  (bijvoorbeeld via de webeditor), niet alleen voor een merge.
 
-  **Ga daar niet blind van uit.** Het staat niet in deze repo, dus een
-  wijziging in het dashboard is hier onzichtbaar. Twijfel je, of push je iets
-  dat je niet wilt uitleveren: kijk het na. Het kost tien seconden en de fout
-  kost een klant.
+  **Een push naar een branch bouwt wél, maar deployt niet.** Workers Builds
+  draait op élke branch en ongeacht welke bestanden veranderden — een commit
+  die alleen `CLAUDE.md` raakt geeft ook een build. Maar zo'n build wordt geen
+  deployment. Nagemeten op 28-08-2026: zeven builds sinds middernacht, vier
+  deployments, en die vier vallen exact samen met de vier keer dat er iets op
+  `main` kwam.
 
-  **Herzien, niet weggepoetst** (#35): hier stond tot 28-08 "samenvoegen in
-  `main` is deployen". Die formulering las als "een branch is een veilige
-  werkplek en de PR is de poort", en dat verklaart waarom er halfaf werk naar
-  branches ging om het later af te maken.
+  **Waar dit twee keer misging** (#35, gesloten): de Cloudflare-bot zet onder
+  elke PR "✅ Deployment successful", óók voor een branch-build die nooit
+  verkeer heeft gezien. Die tekst is een bouwstatus, geen bewijs dat er iets
+  live staat. Ik las hem als het laatste, concludeerde dat branches
+  rechtstreeks naar productie gingen, en herschreef deze regel — twee keer,
+  in de verkeerde richting. De regel die er stond klopte gewoon.
 
-  **Wat vaststaat:** Workers Builds bouwt op élke push, ook naar een branch,
-  en ook als die push `worker.js` niet aanraakt. Commit `809ca689` wijzigde
-  alleen `CLAUDE.md` en `wrangler.toml` en kreeg toch "✅ Deployment
-  successful" van de Cloudflare-bot. Bouwen wordt dus niet gefilterd op wat er
-  veranderde.
+  De les is niet de uitkomst maar de vorm: **een geruststellende of
+  alarmerende melding van een bot is een waarneming, geen conclusie.** Zoek de
+  bron op — hier: Deployments → View all deployments — vóórdat je een werkregel
+  omgooit. Dat kostte hier drie PR's aan documentatie die niets verbeterde.
 
-  **Wat NIET vaststaat, en waar deze regel op 28-08 te stellig was:** of zo'n
-  branch-build ook verkeer krijgt. Een build maakt een *versie*; alleen een
-  *deployment* serveert. In het dashboard stonden de branch-builds onder
-  Version History terwijl de Active deployment op `main` bleef staan. Het is
-  dus goed mogelijk dat een branchpush nooit live ging en dat de oude regel
-  materieel klopte. Hier stond eerst dat de Worker bij PR #34 "33 minuten vóór
-  de merge live stond" — dat is niet aangetoond; alleen dát er gebouwd werd.
-
-  **Zo beslis je het** (nog te doen): Cloudflare → Workers → `pidlane-proxy` →
-  Deployments → *View all deployments*. Staat daar een deployment op een
-  `claude/…`-branch, dan gaan branches wél live. Alleen `main`, dan niet.
-
-  De les die hoe dan ook blijft staan: "de bot zegt Deployment successful" is
-  geen bewijs dat er iets live staat, en dat onderscheid is hier twee keer
-  achter elkaar misgegaan — eerst door het te missen, daarna door het te
-  stellig te corrigeren.
-
-  Blijft gelden, filter of niet: `bash plcheck.sh .` groen vóór elke push die
-  `worker.js` raakt. Het filter is een vangnet, geen vervanging.
-
-  `admin/` valt hier volledig buiten: dat staat niet in `public/` en wordt
-  nergens geserveerd.
+  De instelling die dit bepaalt staat overigens níét in deze repo maar in
+  Cloudflare → Workers → `pidlane-proxy` → Settings → Builds. Verandert daar
+  iets, dan is dat hier onzichtbaar; bij twijfel kijk je het na met dezelfde
+  Deployments-lijst.
 - Bij tegoed- of API-wijzigingen moeten `worker.js` en `public/` in **dezelfde**
   push mee. Loopt de een voor, dan draait er even een versie waarin niemand
   betaalt of juist dubbel.
