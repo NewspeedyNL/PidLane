@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.1 (28-08-2026)';
+const TESTRUN_VERSIE = '5.2 (28-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1651,14 +1651,28 @@ async function _blok5() {
       return { staat: 'LET OP', detail: 'alle ' + nodig.length + ' methodes aanwezig, maar geen actieve ' +
         'SPP-verbinding (' + (window._bleConn ? 'wel via BLE' : 'geen enkele verbinding') + ') — of read() ' +
         'nog {value:…} teruggeeft is alleen via een SPP-adapter te zien' };
+    // 28-08-2026 (2) — hier stond een eigen conn.spp.read()-aanroep. De echte
+    // poll-lus in pidlane-bt.js leest DEZELFDE serial-verbinding elke 50ms;
+    // een tweede, losstaande read() ernaast concurreert om dezelfde bytes en
+    // kan blijven hangen als de plugin geen tweede gelijktijdige read verwacht
+    // — precies het scenario waarin de hele testrun vastloopt en "Sluiten"
+    // niet meer reageert, want de async keten zit vast op deze await.
+    // pidlane-bt.js logt zelf al de EERSTE read() van elk commando
+    // (`read() #1 → …`, alleen bij pollCount===1), dus die evidentie lezen we
+    // hier terug in plaats van er zelf nog een uit te lokken.
+    let regel = null;
     try {
-      const r = await conn.spp.read({ address: conn.address });
-      if (r && typeof r.value !== 'undefined') return 'alle methodes aanwezig, read() geeft {value:…} zoals verwacht';
-      return { staat: 'FOUT', detail: 'read() gaf ' + JSON.stringify(Object.keys(r || {})) +
-        ' terug in plaats van {value:…}. pidlane-bt.js leest .value en ziet dus stilte, zonder foutmelding' };
-    } catch (e) {
-      return { staat: 'LET OP', detail: 'read() gaf een fout: ' + (e.message || e) };
-    }
+      for (let i = _btLog.length - 1; i >= 0 && !regel; i--) {
+        if (typeof _btLog[i].msg === 'string' && _btLog[i].msg.indexOf('read() #1 → ') === 0) regel = _btLog[i].msg;
+      }
+    } catch (e) { /* stil: _btLog kan nog niet bestaan, dan blijft regel null en volgt LET OP hieronder */ }
+    if (!regel)
+      return { staat: 'LET OP', detail: 'alle ' + nodig.length + ' methodes aanwezig en verbonden, maar nog ' +
+        'geen enkel commando gelogd — of read() {value:…} teruggeeft is dan nog niet te zien. Vraag eerst ' +
+        'een PID op (blok 3 doet dat vanzelf verderop in deze run)' };
+    if (regel.indexOf('"value"') >= 0) return 'alle methodes aanwezig, read() gaf {value:…} zoals verwacht (' + regel.slice(0, 60) + '…)';
+    return { staat: 'FOUT', detail: 'laatste read() was ' + regel.slice(0, 70) +
+      ' — geen "value"-veld. pidlane-bt.js leest .value en ziet dus stilte, zonder foutmelding' };
   });
 
   // ── TOEGEVOEGD 3: komt de veilige zone aan bij de topbalk? ───────
@@ -2503,33 +2517,32 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-08 (4) — de andere vensters onder de statusbalk uit',
+  titel: 'OPLEVERING 28-08 (5) — blok 5 vroor zichzelf dicht, en dat is nu een leesregel geworden',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Een schermfoto liet zien dat de vorige ronde (Capacitor 8, edge-to-edge) de topbalk wel goed had staan maar het Logboek niet: "Logboek", "Sluiten" en de regelteller lagen half achter de systeemklok. De topbalk was de enige plek die was aangepakt. De app bouwt ~20 andere volschermvensters zelf op, elk met een eigen <div style="position:fixed;inset:0;...">, zonder gedeelde class.',
+    'Na de vorige ronde (5.1, de zes volschermvensters) meldde je: het testrunvenster kwam in beeld, maar niets werkte meer \u2014 geen knop, geen scroll. Oorzaak: de controle die read()\u2019s antwoordformaat wilde bewijzen deed dat met een eigen conn.spp.read({address}), los van de normale poll-lus die dezelfde verbinding al elke 50ms uitleest. Twee gelijktijdige reads op \u00e9\u00e9n serial-verbinding, en de plugin bleef hangen. Omdat de hele testrun \u00e9\u00e9n lange await-keten is, liep alles vanaf dat punt vast \u2014 ook \u201cSluiten\u201d, want die stond nooit aan de beurt.',
 
-    'Van die ~20 zijn er zes die ECHT tegen de rand liggen (geen backdrop ertussen): het Logboek, het testrunpaneel, het Veldlab-dashboard, de "diepe diagnose", de neon-HUD en de rittracker/caravantracker. Die zes zijn nu van dezelfde --pl-sat/--pl-sab-tokens voorzien als de topbalk. Gecentreerde dialogen en onderaan-uitschuivende vellen zijn bewust ongemoeid: daarboven of -onder blijft alleen de halfdoorzichtige achtergrond staan.',
+    'De fix leest nu terug wat pidlane-bt.js toch al logt (elke eerste read() van een commando gaat naar _btLog) in plaats van er zelf nog \u00e9\u00e9n uit te lokken. Geen eigen I/O meer op een verbinding die de app zelf actief gebruikt.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Dit blok toetst het Logboek automatisch (nieuwe controle hieronder). Werkt die, dan is de veilige-zonetoken in ieder geval tot in de praktijk verbonden.',
+    'STAP 1. Verbind zoals je deed toen het vastliep: eerst SPP, dan de testrun starten. Blok 5 hoort nu door te lopen tot het einde \u2014 kijk of alle 14 blokken hun regel krijgen, niet alleen blok 5.',
 
-    'STAP 2. DE ECHTE PROEF, EN DIE VRAAGT OM TE KIJKEN. Open zelf, op het toestel waar het eerder misging: het Logboek (kebabmenu), dit testrunpaneel, en als je erin komt het Veldlab-dashboard en de "diepe diagnose" vanaf een demo-analyse. Kijk naar de kop van elk scherm \u2014 niets hoort nog half achter de systeemklok te staan.',
+    'STAP 2. Terwijl de run loopt: probeer te scrollen en druk op Sluiten. Beide horen meteen te reageren, ook middenin de run. Reageert een van beide niet, dan zit er ergens anders nog een blokkerende await \u2014 dat is dan een nieuw punt, niet dit punt terug.',
 
-    'STAP 3. Rij een stuk met de HUD open (het neon-dashboard) en met de rittracker, als je die gebruikt. Beide hebben een eigen koptekst die nu een marge heeft gekregen; controleer dat de knoppen daarin nog steeds op één lijn met de tekst staan \u2014 dat gaf bij de topbalk eerder een aparte fout (min-height:auto op een flexitem), en het is niet gemeten of dat hier ook speelt.',
+    'STAP 3. Kijk in blok 5 naar de regel over de SPP-methodes: die hoort nu \u201cread() gaf {value:\u2026} zoals verwacht\u201d te zeggen mét een stukje van de echte, al gelogde regel erachter \u2014 niet meer een losse meting.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Zes vensters kregen dezelfde behandeling als de topbalk: de bovenkant (en waar het venster tot de onderrand komt, ook de onderkant) rekent nu met --pl-sat/--pl-sab in plaats van een vast getal. test-schermranden.js bewaakt dat met tegenproef \u2014 vijf teruggedraaide varianten, allemaal rood.',
+    'Les die in PIDLANE.md \u00a711 staat vastgelegd: een diagnostische controle die meeloopt in de testrun mag nooit zelf I/O doen op een verbinding die de app ook gebruikt. Lezen uit wat er al gelogd is, nooit een verzoek ernaast.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Er kunnen nog meer vensters zijn die met het oog tegen de rand liggen en hier niet in stonden \u2014 deze zes zijn nagelopen op basis van "geen backdrop ertussen", niet uitgeput door elk scherm van de app te doorlopen. Zie er zelf een tijdens het testen, dan is dat een nieuw punt voor \u00a711, niet een reden om aan te nemen dat de rest ook goed zit.',
-
-    'De overige punten uit de vorige ronde staan onveranderd: de SPP-plugin is niet aan een adapter getoetst, @ascentio-it is een eenmansfork, en de topbalk is in uiL hoger dan zijn eigen height-regel zegt.'
+    'De zes vensters uit 5.1 (Logboek, testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker/caravantracker) vragen nog steeds hun eigen blik op het toestel \u2014 zie CAMPAGNE van die ronde. De overige openstaande punten (SPP-plugin niet aan een adapter getoetst, eenmansfork, #41, #42, #12/#29/#30/#40) staan onveranderd.'
   ]
 };
+
 
 
 

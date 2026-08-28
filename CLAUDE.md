@@ -84,7 +84,9 @@ toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
 - **Nederlands**: commentaar, commitberichten, PR-titels, UI-teksten, changelog.
 - Commitbericht = één regel die zegt wat er inhoudelijk veranderde, niet welk
   bestand. Stijl: `Testrun 4.9: blok 14 meet de rit, blok 13 meldt de omstandigheden`.
-- Bouw-changelog bovenaan `index.html` (HTML-commentaar) bijwerken.
+- Bouw-changelog bovenaan `CHANGELOG.md` bijwerken (niet meer in `index.html`
+  zelf sinds 28-08-2026: die tekst veranderde bij elke oplevering mee terwijl
+  `build-apk.yml` op elke wijziging aan `index.html` een Android-build start).
 - **Mechanisch en inhoudelijk wijzigen nooit in dezelfde commit.** Hernoemen,
   verplaatsen en herindelen is een eigen commit, los van gedragswijziging.
 - Geen stille `catch`-blokken. Een fout die niemand ziet, is de fout die maanden
