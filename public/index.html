@@ -1,5 +1,25 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-28c (CET) — BETAALLINKS UIT DE CODE (#24)
+
+       • 💶 TIKKIE-LINKS — stonden hardcoded in pidlane-klant.js, in een
+         publieke repo. Komen nu uit de Config-tabel via /api/config, te
+         beheren in admin.html onder "Betaallinks". Niet omdat zo'n link
+         geheim is (wie hem heeft kan betalen, niet incasseren) maar omdat je
+         hem anders niet kunt wisselen zonder een deploy — en dat is precies
+         wat je wilt kunnen als er een verkeerde rondgaat.
+         CFG.tikkieKopen/tikkieDonatie zijn nu GETTERS: de config komt pas ná
+         het inloggen binnen, dus een vaste waarde zou de stand bevriezen op
+         het moment dat het bestand laadt, en dat is altijd leeg.
+         LET OP de nieuwe grens: de waarde komt uit Airtable en belandt in een
+         href. Alleen https://tikkie.me/… wordt geaccepteerd — zonder die
+         toets voert een klik uit wat er in die tabel staat, en _esc() dekt
+         dat niet af (dat ontsnapt HTML, niet het schema van een URL).
+         Leeg laten mag en blijft de bestaande, getoetste toestand: dan toont
+         het scherm "Tokens aanvragen" per mail.
+         De oude links staan nog in de git-geschiedenis; alleen een nieuwe
+         Tikkie haalt die echt uit omloop.
+
      Build: 2026-08-28b (CET) — DE AIRCO IS GEEN DEFECT (#30)
 
        • 🌬️ RUW STATIONAIR — de watcher STAT_RPM meldde op 27-08 twee keer

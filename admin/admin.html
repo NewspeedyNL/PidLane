@@ -357,6 +357,35 @@ wat echt niet mag.
 
   <!-- AI-prompt met test -->
   <div class="card">
+    <h2>💶 Betaallinks</h2>
+    <details class="uitleg"><summary>Waarom staan deze hier en niet in de code?</summary><div class="body">
+    Tot 28-08-2026 stonden de Tikkie-links hardcoded in <code>pidlane-klant.js</code>,
+    in een publieke repo. Niet omdat zo'n link geheim is — wie hem heeft kan
+    alleen betalen, niet incasseren — maar omdat je hem dan niet kunt wisselen
+    zonder een deploy. En dat is precies wat je wilt kunnen als er een
+    verkeerde rondgaat.
+    <br><br>
+    <b>Leeg laten mag.</b> Dan verdwijnt de koopknop en ziet de klant "Tokens
+    aanvragen" per mail. Dat is een bestaande, getoetste toestand en geen
+    kapot scherm.
+    <br><br>
+    Alleen links die met <code>https://tikkie.me/</code> beginnen worden
+    geaccepteerd. De app weigert de rest stilzwijgend en valt terug op de
+    mailknop — die waarde belandt in een <code>href</code>, dus daar is geen
+    ruimte voor "we zien wel".
+    <br><br>
+    <b>Let op:</b> de oude links staan nog in de git-geschiedenis. Wil je die
+    echt uit omloop, dan is een nieuwe Tikkie aanmaken de enige weg — hier iets
+    anders invullen verandert niets aan wat er al gedeeld is.
+    </div></details>
+    <label>Tokens kopen</label>
+    <input type="text" id="v_tikkie_kopen" placeholder="https://tikkie.me/pay/…">
+    <label style="margin-top:10px">Ontwikkelaar trakteren (optioneel)</label>
+    <input type="text" id="v_tikkie_donatie" placeholder="https://tikkie.me/pay/…">
+    <div class="hint">Wijzigingen gaan mee met "Opslaan" onderaan; de app pakt ze binnen ~60 s op.</div>
+  </div>
+
+  <div class="card">
     <h2>🤖 AI-basisinstructie (override)</h2>
     <details class="uitleg"><summary>Wanneer gebruik ik dit, en wat is het risico?</summary><div class="body">
 Dit vervangt de basisinstructie die vóór elke AI-analyse wordt meegestuurd. Laat
@@ -579,7 +608,8 @@ const OEFEN_START = {
   config: {
     door_saving_active:true, door_deal_active:true, door_prep_active:false,
     banner_active:false, banner_text:'',
-    ai_system_override:''
+    ai_system_override:'',
+    tikkie_kopen:'https://tikkie.me/pay/voorbeeld', tikkie_donatie:''
   }
 };
 
@@ -1384,6 +1414,8 @@ async function loadConfig(){
     setToggle('t_banner_active',      cfg.banner_active,      false);
     FEATURES.forEach(f=>setToggle('t_'+f[0], cfg[f[0]], true));
     document.getElementById('v_banner_text').value = cfg.banner_text || '';
+    document.getElementById('v_tikkie_kopen').value = cfg.tikkie_kopen || '';
+    document.getElementById('v_tikkie_donatie').value = cfg.tikkie_donatie || '';
     document.getElementById('v_ai_system_override').value = cfg.ai_system_override || '';
     show(m,'ok','✓ Config geladen.');
   }catch(e){
@@ -1407,6 +1439,8 @@ async function saveAll(){
     { Key:'banner_active',      Value:String(document.getElementById('t_banner_active').checked),      Description:'Banner tonen ja/nee' },
     { Key:'banner_text',        Value:document.getElementById('v_banner_text').value,                  Description:'Banner-tekst' },
     { Key:'ai_system_override', Value:document.getElementById('v_ai_system_override').value,           Description:'AI system-instructie override (leeg = standaard)' },
+    { Key:'tikkie_kopen',       Value:document.getElementById('v_tikkie_kopen').value.trim(),          Description:'Tikkie-link tokens kopen (leeg = mailknop)' },
+    { Key:'tikkie_donatie',     Value:document.getElementById('v_tikkie_donatie').value.trim(),        Description:'Tikkie-link vrijwillige bijdrage (leeg = knop weg)' },
     ...FEATURES.map(f=>({ Key:f[0], Value:String(document.getElementById('t_'+f[0])?.checked??true), Description:f[1]+' aan/uit' })),
   ];
   try{

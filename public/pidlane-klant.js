@@ -40,12 +40,38 @@
     pakketTokens: 100,
     pakketPrijs: 4.99,
 
-    // VUL DEZE IN met je eigen Tikkie-links, anders blijven de knoppen weg.
-    // Een persoonlijke Tikkie is een vaste link zonder koppeling met de app:
-    // je ziet de betaling in je Tikkie-app en stuurt daarna zelf een code.
-    tikkieKopen: 'https://tikkie.me/pay/vtvn3r3neuqj16r3429n',      // bv. 'https://tikkie.me/pay/xxxxx'
-    tikkieDonatie: 'https://tikkie.me/pay/sca8f8ilh2pmctedfimv'     // idem, voor een vrijwillige bijdrage
+    // ── Betaallinks ────────────────────────────────────────────────
+    // Stonden tot 28-08-2026 hardcoded in dit bestand, in een publieke repo
+    // (#24). Ze komen nu uit de Config-tabel in Airtable, via /api/config, en
+    // zijn te beheren in admin.html onder "Betaallinks".
+    //
+    // Waarom dat beter is: niet omdat een Tikkie-link geheim zou zijn — wie
+    // hem heeft kan alleen betalen, niet incasseren. Maar een link in de code
+    // kun je niet wisselen zonder een deploy, en dat is precies wat je wilt
+    // kunnen als er een verkeerde rondgaat.
+    //
+    // GETTERS, geen vaste waarden: de config komt pas ná het inloggen binnen
+    // (/api/config vraagt een sessietoken). Een vaste waarde zou hier de stand
+    // bij het laden van dit bestand bevriezen, en dat is altijd leeg.
+    get tikkieKopen()   { return _betaallink('tikkie_kopen'); },
+    get tikkieDonatie() { return _betaallink('tikkie_donatie'); }
   };
+
+  // Alleen een echte Tikkie-link doorlaten. Dit is geen nette-invoer-controle
+  // maar een veiligheidsgrens: de waarde komt uit Airtable en belandt in een
+  // href. Zonder deze toets zet iemand met schrijfrechten op die tabel er
+  // `javascript:...` in, en dan voert een klik dat uit. _esc() dekt dat niet —
+  // die ontsnapt HTML, niet het schema van een URL.
+  //
+  // Leeg of niet-herkend geeft een lege string, en dat is een bestaande,
+  // getoetste toestand: het scherm toont dan "Tokens aanvragen" per mail in
+  // plaats van een koopknop.
+  function _betaallink(sleutel) {
+    let v = '';
+    try { v = String((window.PID_CONFIG || {})[sleutel] || '').trim(); }
+    catch (e) { return ''; }
+    return /^https:\/\/tikkie\.me\/[^\s"'<>]*$/.test(v) ? v : '';
+  }
 
   const _esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

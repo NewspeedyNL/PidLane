@@ -711,6 +711,40 @@ Algemener: **"wis alles wat van de vorige gebruiker was" botst hier met "onthoud
 wat dit toestel al gehad heeft".** Bij elke volgende schoonmaakactie is dat de
 vraag die eerst beantwoord moet worden.
 
+### Betaallinks uit de code (28-08) — en waarom dat geen sleutelkwestie was
+
+De Tikkie-links stonden hardcoded in `pidlane-klant.js` (#24). Ze staan nu in de
+Config-tabel en komen via `/api/config` binnen; `admin.html` beheert ze.
+
+**De reden is niet geheimhouding.** Een Tikkie-link is geen sleutel: wie hem
+heeft kan betalen, niet incasseren. Hij hoort ook gewoon bij klanten terecht te
+komen. De winst zit ergens anders — een link in de code kun je niet wisselen
+zonder een deploy, en dat is precies wat je wél wilt kunnen op het moment dat er
+een verkeerde rondgaat. Wie dit als "secret lekt" leest, verplaatst hem naar een
+env-var en denkt klaar te zijn; dan is de beheerbaarheid er nog steeds niet.
+
+**Wat de verplaatsing wél binnenhaalt is een nieuw risico**, en dat is het stuk
+om te onthouden. De waarde stond eerst in code die door de gate kwam; nu komt hij
+uit een tabel die je vanuit een webpagina vult, en hij belandt in een `href`. Zet
+daar iemand `javascript:…` neer, dan voert een klik op de koopknop dat uit.
+`_esc()` dekt dat niet af: die ontsnapt HTML, niet het schema van een URL.
+
+Daarom `_betaallink()`, met een toets op `https://tikkie.me/`. Dat is een
+veiligheidsgrens en geen invoercontrole, dus staat hij in `test-betaallinks.js`
+met twaalf varianten die geweigerd moeten worden — inclusief
+`javascript:alert(1)//https://tikkie.me/`, dat door een naïeve `/tikkie\.me/`
+gewoon heen komt. De tegenproef rekt de toets op en laat zien dat de test dan
+rood wordt.
+
+**Algemener: een waarde die van code naar configuratie verhuist, verhuist ook van
+"door de gate" naar "door wie schrijfrechten heeft".** Bij elke volgende
+verplaatsing is de vraag dus niet alleen waar de waarde staat, maar wat er
+gebeurt als iemand er iets anders neerzet dan bedoeld.
+
+**Blijft open:** de oude links staan in de git-geschiedenis en gaan daar niet
+meer uit. Alleen een nieuwe Tikkie aanmaken haalt ze echt uit omloop. Voor een
+betaallink is dat een afweging, geen noodzaak.
+
 ### Werkregel uit de mislukte rit van 26-08
 
 Er is 27 minuten gereden en er is niets opgenomen: het toestel draaide testrun
