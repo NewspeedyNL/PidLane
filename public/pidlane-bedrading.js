@@ -45,7 +45,7 @@ var KRITIEK = [
   'ecuSteunt','hasTesterConsent','healthUitProfiel',
   'initialHealthScan','isAdmin','isMode01','isPIDOkVal',
   'log','magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
-  'openCaravan','openRitAnalyse',
+  'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',

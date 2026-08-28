@@ -819,7 +819,10 @@ function vlOpenDash(){
   const st=vlLoad(), A=vlAnalyse(st), S=st.sessies;
   let ov=document.getElementById('vlDash'); if(ov) ov.remove();
   ov=document.createElement('div'); ov.id='vlDash';
-  ov.style.cssText='position:fixed;inset:0;z-index:9550;background:#0e1218;color:#eaf0f6;font-family:system-ui,sans-serif;overflow-y:auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom))';
+  // Top had geen veilige marge; onder de env()-notatie hing bovendien nog los
+  // van de --pl-sab-token die de rest van de app sinds 28-08 gebruikt.
+  ov.style.cssText='position:fixed;inset:0;z-index:9550;background:#0e1218;color:#eaf0f6;font-family:system-ui,sans-serif;overflow-y:auto;' +
+    'padding:calc(16px + var(--pl-sat,0px)) 16px calc(24px + var(--pl-sab,0px))';
   const esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
   const uniqMerk={}; S.forEach(function(s){ if(s.merk) uniqMerk[s.merk]=1; });
   const cells=Object.keys(A.have||{}).length;

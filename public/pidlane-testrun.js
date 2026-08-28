@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.0 (28-08-2026)';
+const TESTRUN_VERSIE = '5.1 (28-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1684,6 +1684,32 @@ async function _blok5() {
     return 'marge ' + Math.round(inset) + 'px, balk ' + Math.round(rect.height) + 'px, inhoud eronderuit';
   });
 
+  // ── TOEGEVOEGD: ook de ANDERE vensters, niet alleen de topbalk ──
+  // De aanleiding voor dit blokje: de topbalk bleek op een echt toestel wél
+  // goed, het Logboek-venster niet. Dat is precies het gat tussen "de tokens
+  // bestaan" (vorige controle) en "elk venster gebruikt ze ook" — en dat gat
+  // is nu dicht voor de vensters die met het oog tegen de rand liggen.
+  await _doe(5, 'Ook het Logboek gebruikt de veilige zone', function () {
+    if (typeof openLogboek !== 'function')
+      return { staat: 'LET OP', detail: 'openLogboek ontbreekt — pidlane-logboek.js niet meegekomen?' };
+    const wasOpen = document.getElementById('logboekOv')?.style.display === 'flex';
+    openLogboek();
+    const ov = document.getElementById('logboekOv');
+    if (!ov) return { staat: 'FOUT', detail: 'openLogboek() bouwde geen #logboekOv op' };
+    const basisTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pl-sat')) || 0;
+    const echtTop = parseFloat(getComputedStyle(ov).paddingTop) || 0;
+    if (!wasOpen) { try { ov.style.display = 'none'; } catch (e) { /* stil: venster weer dichtzetten mag de meting niet breken */ } }
+    // 12px is de vaste basisruimte uit de stijl zelf; de rest hoort de
+    // gemeten --pl-sat te zijn. Komt dat niet overeen, dan is de marge
+    // ergens onderweg vervangen door een vast getal — precies wat er bij
+    // het Logboek is gebeurd.
+    const verschil = Math.round(echtTop - 12);
+    if (Math.abs(verschil - basisTop) > 1)
+      return { staat: 'FOUT', detail: 'padding-top is ' + Math.round(echtTop) + 'px, verwacht 12 + ' +
+        Math.round(basisTop) + ' — de veilige zone komt niet aan bij dit venster' };
+    return 'padding-top volgt --pl-sat (' + Math.round(basisTop) + 'px marge)';
+  });
+
   // ── VERWIJDERD: staat er nergens meer een losse env()-regel? ─────
   // De helft die het makkelijkst wordt vergeten. Twaalf env()-regels zijn
   // vervangen door de twee tokens; blijft er ergens één staan, dan werkt die
@@ -2384,7 +2410,10 @@ function openTestrun() {
   if (!ov) {
     ov = document.createElement('div');
     ov.id = 'testrunOv';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:9980;background:rgba(8,11,17,.97);display:flex;flex-direction:column;padding:14px;gap:9px;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    // Zelfde reden als de logboekoverlay: dit paneel stond flush tegen de
+    // bovenkant en schoof onder de statusbalk op Android 15+.
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9980;background:rgba(8,11,17,.97);display:flex;flex-direction:column;' +
+      'padding:calc(14px + var(--pl-sat,0px)) 14px calc(14px + var(--pl-sab,0px));gap:9px;overflow-y:auto;-webkit-overflow-scrolling:touch';
     ov.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">' +
         '<div style="font-size:16px;font-weight:800;color:var(--tx)">🔬 Testrun</div>' +
@@ -2461,47 +2490,34 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-08 (3) — Capacitor 8: zonder deze stap neemt de Play Store de app niet aan',
+  titel: 'OPLEVERING 28-08 (4) — de andere vensters onder de statusbalk uit',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De Play Store weigert per 31-08-2026 elke inzending onder API 36. De app stond op 34, want android/ wordt elke build gegenereerd uit het template van de Capacitor-versie, en Capacitor 6 brengt 34 mee. De .aab van build 405 was dus onuploadbaar. Capacitor 6 \u2192 8 (7 geeft 35 en is ook te laag), en daarmee AGP 8.13, Gradle 8.14.3, Java 21 en minSdk 24.',
+    'Een schermfoto liet zien dat de vorige ronde (Capacitor 8, edge-to-edge) de topbalk wel goed had staan maar het Logboek niet: "Logboek", "Sluiten" en de regelteller lagen half achter de systeemklok. De topbalk was de enige plek die was aangepakt. De app bouwt ~20 andere volschermvensters zelf op, elk met een eigen <div style="position:fixed;inset:0;...">, zonder gedeelde class.',
 
-    'Twee dingen zijn hierbij van eigenaar of vorm veranderd, en die twee zijn wat deze run moet uitwijzen: de SPP-plugin (@e-is stond stil sinds 31-12-2024, nu @ascentio-it) en de veilige zone rond de schermranden, die vanaf targetSdk 35 verplicht wordt.',
+    'Van die ~20 zijn er zes die ECHT tegen de rand liggen (geen backdrop ertussen): het Logboek, het testrunpaneel, het Veldlab-dashboard, de "diepe diagnose", de neon-HUD en de rittracker/caravantracker. Die zes zijn nu van dezelfde --pl-sat/--pl-sab-tokens voorzien als de topbalk. Gecentreerde dialogen en onderaan-uitschuivende vellen zijn bewust ongemoeid: daarboven of -onder blijft alleen de halfdoorzichtige achtergrond staan.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 0. DIT MOET DE NIEUWE APK ZIJN. Deze ronde is niet met "Nieuwste versie laden" te toetsen: de wijziging zit in de native laag, niet in de webcode. Installeer de APK uit de build van de branch claude/capacitor-8, anders meet blok 5 de oude schil om de nieuwe website.',
+    'STAP 1. Dit blok toetst het Logboek automatisch (nieuwe controle hieronder). Werkt die, dan is de veilige-zonetoken in ieder geval tot in de praktijk verbonden.',
 
-    'STAP 1. Start de app en draai de testrun. Blok 5 controle 1 hoort te zeggen dat SPP en BLE beide aanwezig zijn. Staat er FOUT dat BluetoothSerial ontbreekt, dan is de plugin bij het bouwen weggevallen \u2014 stop hier, want dan verbindt geen enkele klassieke adapter meer.',
+    'STAP 2. DE ECHTE PROEF, EN DIE VRAAGT OM TE KIJKEN. Open zelf, op het toestel waar het eerder misging: het Logboek (kebabmenu), dit testrunpaneel, en als je erin komt het Veldlab-dashboard en de "diepe diagnose" vanaf een demo-analyse. Kijk naar de kop van elk scherm \u2014 niets hoort nog half achter de systeemklok te staan.',
 
-    'STAP 2. DE ECHTE PROEF, EN DIE KAN ALLEEN IN DE AUTO. Verbind met je gewone ELM327 via SPP en lees een paar PIDs uit. Dit is de enige stap die bewijst dat de vervangende plugin doet wat de oude deed; controle 2 kijkt alleen of de methodes er zijn en of read() nog {value:\u2026} teruggeeft. Werkt dit, dan is de zwaarste onbekende van deze upgrade weg.',
-
-    'STAP 3. KIJK NAAR DE BOVENKANT VAN HET SCHERM. Op Android 15 en hoger tekent de app nu onder de statusbalk. De topbalk hoort daar netjes onderuit te schuiven: logo, chips en het \u2630-menu volledig zichtbaar, niet half achter de klok of het batterij-icoon. Controle 3 meet dat, maar je oog is hier sneller dan de meting \u2014 kijk ook naar de onderkant, bij de zwevende chips en de knoppenbalk van een openstaand scherm.',
-
-    'STAP 4. ZET DE TEKSTGROOTTE OP GROOT (uiL) en kijk opnieuw naar de topbalk. Die stand heeft een eigen CSS-regel die de marge opnieuw zet; als er \u00e9\u00e9n vergeten was, is het die. Hetzelfde geldt voor draaien naar liggend.',
-
-    'STAP 5. Draai \u00e9\u00e9n gewone diagnose af, van verbinden tot rapport. Niet omdat daar iets aan veranderd is, maar omdat een major-upgrade van de native laag alles raakt wat door de bridge gaat: bestanden opslaan, delen, de camera voor de QR-koppeling.',
+    'STAP 3. Rij een stuk met de HUD open (het neon-dashboard) en met de rittracker, als je die gebruikt. Beide hebben een eigen koptekst die nu een marge heeft gekregen; controleer dat de knoppen daarin nog steeds op één lijn met de tekst staan \u2014 dat gaf bij de topbalk eerder een aparte fout (min-height:auto op een flexitem), en het is niet gemeten of dat hier ook speelt.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'In public/ is bijna niets aangeraakt, en dat is geen toeval maar de reden dat deze upgrade te doen was: de app roept plugins aan via window.Capacitor.Plugins.<naam> en nergens via een import. De plugin heet nog steeds BluetoothSerial, dus pidlane-bt.js merkt de wisseling niet. Houd dat zo \u2014 een import zou de volgende ronde duurder maken.',
-
-    'De veilige zone loopt nu via twee tokens (--pl-sat / --pl-sab) in plaats van twaalf losse env()-regels. Reden: Capacitor leest de insets zelf uit en zet ze als --safe-area-inset-*, en die gaan v\u00f3\u00f3r env(), omdat WebView onder versie 140 bij env() verkeerde waarden teruggeeft. \u00c9\u00e9n plek om te wijzigen, net als de z-index-tokens.',
-
-    'De topbalk had als enige nog helemaal geen marge. Let op: die heeft DRIE regels (gewoon, onder 480px, en uiL) en alle drie zetten padding opnieuw \u2014 twee daarvan gooiden de marge weg terwijl de hoogte hem w\u00e9l meetelde. Nagemeten in een browser: zonder inset is de balk in alle drie de standen exact gelijk aan die van main.',
-
-    'De build controleert het API-niveau nu zelf, tegen \u00e9\u00e9n getal (PLAY_MIN_TARGET_SDK) in build-apk.yml. Bewust controleren en niet injecteren: injecteren zet het getal op twee plekken en dan is bij de volgende verhoging niet te zien welke wint. Volgend jaar is dit \u00e9\u00e9n versienummer in package.json en \u00e9\u00e9n getal in de workflow.',
+    'Zes vensters kregen dezelfde behandeling als de topbalk: de bovenkant (en waar het venster tot de onderrand komt, ook de onderkant) rekent nu met --pl-sat/--pl-sab in plaats van een vast getal. test-schermranden.js bewaakt dat met tegenproef \u2014 vijf teruggedraaide varianten, allemaal rood.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'minSdk gaat van 22 naar 24: Android 5.0 en 5.1 vallen af. Afgestemd, maar het staat hier zodat het later niet als verrassing terugkomt.',
+    'Er kunnen nog meer vensters zijn die met het oog tegen de rand liggen en hier niet in stonden \u2014 deze zes zijn nagelopen op basis van "geen backdrop ertussen", niet uitgeput door elk scherm van de app te doorlopen. Zie er zelf een tijdens het testen, dan is dat een nieuw punt voor \u00a711, niet een reden om aan te nemen dat de rest ook goed zit.',
 
-    'De app kan nog steeds geen account verwijderen terwijl privacy.html dat wel belooft (#41), en of tokens kopen via Tikkie langs Play\u2019s betaalregels komt is nog niet uitgezocht (#42). Allebei nodig v\u00f3\u00f3r publicatie, geen van beide v\u00f3\u00f3r een gesloten test.',
-
-    'De blokken 7 en 14 melden nog steeds iets anders dan ze meten (#12 en #29), de airco-melding komt er nog bij een schakelende airco (#30), en 0155/0156 staan nog naast hun bytelengte (#40).'
+    'De overige punten uit de vorige ronde staan onveranderd: de SPP-plugin is niet aan een adapter getoetst, @ascentio-it is een eenmansfork, en de topbalk is in uiL hoger dan zijn eigen height-regel zegt.'
   ]
 };
+
 
 
 
