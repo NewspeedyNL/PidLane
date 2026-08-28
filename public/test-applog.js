@@ -38,14 +38,19 @@ const bron = fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8');
 
 console.log('\n1. De dode globals zijn weg uit de code die draait');
 {
-  // Alleen de uitvoerbare regels tellen: het commentaar bij de helper legt de
-  // fout juist uit en noemt de namen daarom met opzet.
+  // Alleen de uitvoerbare regels tellen. Twee soorten regels noemen de dode
+  // globals met opzet en horen er dus niet in mee:
+  //   - commentaar: de helper legt bovenaan uit wat de fout wás
+  //   - prozaregels: CAMPAGNE beschrijft de fout woordelijk voor de gebruiker
+  // Een prozaregel herken je eraan dat hij begint met een aanhalingsteken.
+  // Grof, maar in dit bestand precies genoeg: echte code die deze globals
+  // leest begint met const/let/var of een toewijzing, nooit met een quote.
   const zonderCommentaar = bron
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''))
     .split('\n').map(r => r.replace(/\/\/.*$/, '')).join('\n');
   const treffers = zonderCommentaar.split('\n')
     .map((t, i) => ({ nr: i + 1, t }))
-    .filter(x => /window\.(_appLog|logBuffer)/.test(x.t));
+    .filter(x => /window\.(_appLog|logBuffer)/.test(x.t) && !/^\s*['"]/.test(x.t));
   toets('geen window._appLog / window.logBuffer meer', treffers.length === 0,
         treffers.map(x => 'regel ' + x.nr).join(', '));
 }

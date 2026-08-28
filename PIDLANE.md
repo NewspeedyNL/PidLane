@@ -640,6 +640,57 @@ Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
 
+### Drie stille fouten in de meetkant — 28-08-2026
+
+Alle drie van dezelfde soort, en die soort is het waard om te benoemen: **de
+app mat goed en rapporteerde verkeerd.** Niet "de meting deugt niet", maar "de
+conclusie eronder hoort niet bij de meting". Van buitenaf niet te onderscheiden
+van een echte bevinding, en daarom het duurste type dat dit project kent — het
+kost vertrouwen in álle uitkomsten, niet alleen in die ene.
+
+**De app-log kwam nooit binnen (#29).** Op drie plekken stond
+`window._appLog || window.logBuffer || []`, en beide globals bestaan nergens in
+`public/`. De `|| []` ving het netjes op, dus er was nooit een fout — alleen
+altijd een lege lijst. Gevolgen: blok 14 zei "niets opgeruimd" terwijl de
+opruimregel twee keer had gevuurd, blok 11 meldde "app-log 0 regels" naast 1183
+BT-regels, en het opgeslagen rapport had nooit een APP-LOG-sectie.
+
+Het venijn zat in het advies: *"na vijf minuten had de regel moeten kunnen
+vuren; controleer of hij aanstaat"*. Dat stuurt je naar precies het onderzoek
+dat je niet moet doen. Een controle die een verkeerde conclusie trékt is erger
+dan een controle die zwijgt.
+
+De echte bron is `plLokaalLog()` — die `pidlane-logboek.js` al las. Nu één
+helper `_appLogRegels()`, die bij een fout **meldt** in plaats van stil nul
+terug te geven.
+
+**Blok 7 presenteerde een nulmeting als "geen verschil" (#12).** De
+deel-door-nul-vangst gaf `0`, en `0` viel door `|verschil| < 15` in de tak
+"vrijwel geen verschil". 0 ms tegen 144 ms werd zo `+0%`. Nulmetingen vallen nu
+vóór de mediaan uit de groep; een lege groep en een mediaan van nul krijgen
+allebei een eigen uitkomst.
+
+**De prijstabel klopte niet meer (#48).** Opus stond op de tarieven van de
+Opus 3-generatie, en er stond een introductieprijs voor Sonnet 5 in die niet
+bestaat — met een `Date.now()`-vergelijking die op 01-09-2026 vanzelf 50% te
+hoog zou gaan tellen. **Een fout die geen enkele commit veroorzaakt, en die dus
+door geen enkele review gevangen wordt.** Dat is het soort dat een test
+verdient die op de klok-afhankelijkheid zelf let, niet alleen op de getallen.
+
+**De les die hier onder ligt.** Alle drie waren onzichtbaar omdat er iets
+*veiligs* omheen stond: een `|| []`, een deel-door-nul-vangst, een
+`typeof`-guard. Die constructies verbergen precies wat ze horen te melden.
+Waar een terugval een lege of neutrale waarde oplevert, hoort een melding —
+anders is het verschil tussen "niets gevonden" en "verkeerd gezocht" van buiten
+niet te zien.
+
+Drie tests in de gate, alle drie met tegenproef: `test-applog.js`,
+`test-bezetting.js`, `test-modelprijs.js`.
+
+**Nog niet bewezen:** dat blok 14 de opruimregel nu écht meldt. Dat vraagt een
+rit van minstens vijf minuten waarin de regel vuurt — de fix is aantoonbaar in
+de gate, maar niet in de auto. Staat als STAP 2 in CAMPAGNE van testrun 5.3.
+
 ### Capacitor 8 — 28-08-2026, en wat er onbewezen blijft
 
 De Play Store weigert per 31-08-2026 alles onder API 36. Het API-niveau van de

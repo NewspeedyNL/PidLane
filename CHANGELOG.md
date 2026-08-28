@@ -11,6 +11,51 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-28g (CET) — DRIE STILLE FOUTEN IN DE MEETKANT ZELF
+
+       • 🧻 DE APP-LOG KWAM NOOIT BINNEN BIJ DE TESTRUN (#29). Hij werd op DRIE
+         plekken gelezen uit window._appLog en window.logBuffer, en die bestaan
+         nergens in public/. Alle drie kregen dus altijd een lege array, zonder
+         ooit een fout — de terugval op een lege lijst ving het netjes op.
+         Gevolgen, alle drie zichtbaar in de run van 28-08 19:09: blok 14 zei
+         "niets opgeruimd" terwijl de opruimregel twee keer had gevuurd (met
+         als advies "controleer of hij aanstaat" — precies het onderzoek dat je
+         niet moet doen), blok 11 meldde "app-log 0 regels" naast 1183
+         BT-regels, en het opgeslagen rapport had nooit een APP-LOG-sectie.
+         De echte bron is plLokaalLog(), zoals het logboek hem al las. Nu één
+         gedeelde helper _appLogRegels() die een fout MELDT in plaats van stil
+         nul terug te geven.
+
+       • 📉 BLOK 7 PRESENTEERDE EEN NULMETING ALS "GEEN VERSCHIL" (#12). De
+         deel-door-nul-vangst gaf 0 terug en 0 viel door |verschil| < 15 in de
+         tak "vrijwel geen verschil". 0 ms tegen 144 ms werd zo +0% en
+         "bezetting voorspelt hier geen tegendruk" — de omgekeerde conclusie,
+         op de regel die de Slotsom voedt die bepaalt of de PLLoad-vraag dicht
+         kan. Nu vallen nulmetingen vóór de mediaan uit de groep, met
+         vermelding van hoeveel er weg zijn, en krijgen een lege groep en een
+         mediaan van nul allebei een eigen uitkomst.
+
+       • 💶 DE PRIJSTABEL KLOPTE NIET MEER (#48). Opus stond op $15/$75 (Opus
+         3-generatie; huidige Opus is $5/$25) en er stond een introductieprijs
+         voor Sonnet 5 in die niet bestaat — met een klokvergelijking die op
+         01-09 vanzelf naar $3/$15 zou springen. Dat raakt de euroteller voor
+         de beheerder, niet de klantafrekening (die loopt langs tegoedTarief()
+         in worker.js). Tarieven staan nu in dollar met de koers als aparte
+         constante, zonder klok.
+
+         DE VORM VAN ALLE DRIE IS DEZELFDE: de app mat goed en rapporteerde
+         verkeerd. Dat type is van buitenaf niet te onderscheiden van een echte
+         bevinding, en een test die dezelfde verkeerde bron leest staat vrolijk
+         groen mee. Vandaar drie nieuwe tests in de gate mét tegenproef:
+         test-applog.js, test-bezetting.js, test-modelprijs.js.
+
+       • 🧹 Zes dode element-opzoekingen weg (#24 punt 2), ná een verse
+         inventaris — van de 15 nooit-aangemaakte id's bleken er zeven wél te
+         bestaan (dynamisch via _ov(), of in lijsten van te sluiten modals).
+         monitorBtn blijft: dat is een bewuste compatibiliteitsguard met
+         commentaar. refreshAdminLogRow is een hele dode functie en verdient
+         een eigen rondje.
+
      Build: 2026-08-28f (CET) — BLOK 5 CORRIGEERT DRIE EIGEN FOUTEN
 
        • 🧪 DE TESTRUN VROOR ZICHZELF DICHT. Na build e meldde een echte run:
