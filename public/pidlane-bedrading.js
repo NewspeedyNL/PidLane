@@ -63,6 +63,12 @@ var KRITIEK = [
   // Deze twee stonden in PIDLANE.md als bedraad maar waren dat niet. Ze staan
   // hier zodat dat niet nog eens ongemerkt kan gebeuren.
   'herijkPidGate','pidToevoegen','pidOpruimen','pidOpgeruimdLijst',
+  // Het kwaliteitsoordeel (pidlane-kwaliteit.js). De herkansronde in
+  // pidlane-pidgate.js roept hem achter een guard aan omdat dat blok ook in
+  // een vm-context zonder kwaliteit.js draait; in de app hoort hij er te
+  // zijn. Ontbreekt hij daar, dan zou een sensor met een onmogelijke waarde
+  // stil terugkomen in de selectie.
+  'assessPidQuality',
   'plSurveyUitkomst',
   // Schermen die de zelftest in fase 2 opent en weer sluit. Geen aanhalings-
   // tekens in dit commentaar: de test leest deze lijst met een regex.

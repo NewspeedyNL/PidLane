@@ -3,7 +3,14 @@
 // De regel: vijf mislukte pogingen achter elkaar snoeien de PID uit de
 // pollronde, daarna krijgt hij vijf herkansingen van één per minuut, en pas
 // als die ook alle vijf falen gaat hij via `pidOpruimen()` uit `activePIDs`.
-// Binnen dezelfde sessie komt hij niet meer terug.
+//
+// BIJGEWERKT 28-08-2026 (besluit bij #16). Hier stond: "binnen dezelfde
+// sessie komt hij niet meer terug". Dat klopt niet meer — er is nu een
+// terugweg via losse peilingen op een oplopende trap. Wat deze test nog wél
+// bewaakt is de grens ertussen: de pollronde is niet de terugweg. Antwoordt
+// een opgeruimde sensor toevallig in het gewone verkeer, dan verandert er
+// niets; alleen `pidHerkansRonde()` zet hem terug, en die staat in
+// test-herkansing.js.
 //
 // Knippad: deze test laadt `pidlane-plload.js` en het opruimblok uit
 // `pidlane-pidgate.js` in een vm-context. Het pidgate-deel wordt geknipt
@@ -95,11 +102,11 @@ console.log('\n— de vijfde is de laatste —');
   toets('uit de selectie', ctx.activePIDs.has('015C'), false);
   toets('reden staat erbij', /zonder antwoord/.test(ctx.PLSched.opgeruimd()[0].reden), true);
   toets('melding in het log', gelogd.some(m => /015C.*opgeruimd/.test(m)), true);
-  toets('melding zegt dat een nieuwe sessie opnieuw probeert',
-        gelogd.some(m => /nieuwe sessie/.test(m)), true);
+  toets('melding kondigt de losse peiling aan',
+        gelogd.some(m => /losse peiling/.test(m)), true);
 }
 
-console.log('\n— geen terugweg binnen deze sessie —');
+console.log('\n— de pollronde is niet de terugweg —');
 {
   ctx.markPidData('015C');                       // hij antwoordt alsnog
   toets('blijft opgeruimd', ctx.PLSched.opgeruimd().length, 1);

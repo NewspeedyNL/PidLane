@@ -395,6 +395,16 @@ function markeerHerijking(){ _herijkVuil=true; }
 // iets veranderd is volgt de dure herbouw.
 function plHerijkTick(){
   _tickTeller++;
+  // De terugweg meelift op deze tick (#16). Bewust hier en niet in een eigen
+  // setInterval: dan loopt hij ook door als de meetlus stilstaat, en dat is
+  // precies het moment waarop er niets te peilen valt. herkansDue() is
+  // goedkoop — een lege Set en een klokvergelijking — dus dit mag bij elke
+  // meting langskomen. De peiling zelf is async en houdt deze tick niet op.
+  try{
+    if(_pidOpgeruimd.size) pidHerkansRonde().catch(function(e){
+      console.warn('Herkansronde mislukt — opgeruimde sensoren blijven deze ronde weg:', e);
+    });
+  }catch(e){ console.warn('Herkansronde niet gestart:', e); }
   try{
     const s=_maakPlausStempel();
     if(s===_plausStempel && !_herijkVuil) return false;
@@ -438,13 +448,54 @@ function getPidDef(pid){
 // hij eruit. Dat is bewust traag: de rekensom is 5 pogingen + 5 minuten,
 // dus een sensor die alleen tijdens een socket-dip zweeg overleeft het.
 //
-// TERUGWEG: binnen dezelfde sessie is die er niet. Een nieuwe sessie
-// doorloopt dezelfde volgorde opnieuw en is dus de enige weg terug. Dat is
-// een bewuste keuze en geen tekortkoming: een terugweg op koud/warm of
-// motor-uit/aan zou betekenen dat de sensor bij elke motorstart terugkomt,
-// vijf minuten bandbreedte kost en er dan weer uit gaat — een zeef die
-// elke rit opnieuw dicht moet slibben.
+// TERUGWEG — HERZIEN OP 28-08-2026 (besluit bij #16).
+//
+// Hier stond: "binnen dezelfde sessie is die er niet, en dat is een bewuste
+// keuze". De onderbouwing was dat een terugweg de sensor bij elke motorstart
+// zou laten terugkomen, vijf minuten bandbreedte zou kosten en er dan weer
+// uit zou gaan — "een zeef die elke rit opnieuw dicht moet slibben".
+//
+// Die redenering blijft staan voor wat hij aanviel, maar hij viel het
+// verkeerde aan. Hij gaat ervan uit dat terugkomen betekent: opnieuw de hele
+// kwalificatiefase in (vijf pogingen plus vijf herkansingen, samen ruim vijf
+// minuten bandbreedte). Dat is inderdaad te duur om te herhalen.
+//
+// Eén losse peiling is iets anders. Dat is één commando. Antwoordt hij niet,
+// dan is er niets verloren en gaat de wachttijd omhoog; antwoordt hij wél,
+// dan is de kwalificatiefase juist overbodig — hij lééft. Bij vijf
+// opgeruimde sensoren en een oplopende wachttijd is dat in het slechtste
+// geval één commando per minuut, tegen ongeveer vijf per seconde die er toch
+// al overheen gaan.
+//
+// Waarom het ertoe doet: een sensor die pas antwoordt als hij warm is, wordt
+// koud opgeruimd en komt zonder terugweg nooit meer in beeld. Dat is precies
+// het geval waar de opruimregel het meeste schade doet, en het enige dat een
+// terugweg oplost.
+//
+// De trap loopt op (5, 10, 20, 40 minuten en daarna elke 40), zodat een écht
+// dode sensor vanzelf stil wordt in plaats van eeuwig te blijven kloppen.
 const _pidOpgeruimd=new Set(), _pidOpruimReden=Object.create(null);
+const _pidHerkansNa=Object.create(null);   // mislukte peilingen ná het opruimen
+const _pidHerkansOp=Object.create(null);   // tijdstip van de volgende peiling
+const HERKANS_TRAP_MIN=[5,10,20,40];       // minuten; daarna blijft het 40
+
+/* Hoe lang tot de volgende peiling, na n mislukte peilingen? Zuiver, zodat
+   de trap te toetsen is zonder bus en zonder klok. */
+function herkansIntervalMs(n){
+  const i=Math.min(Math.max(0,n|0), HERKANS_TRAP_MIN.length-1);
+  return HERKANS_TRAP_MIN[i]*60000;
+}
+
+/* Welke opgeruimde sensoren zijn nú aan de beurt? Ook zuiver: de aanroeper
+   geeft de klok mee, zodat een test niet hoeft te wachten. */
+function herkansDue(nu){
+  const uit=[];
+  _pidOpgeruimd.forEach(function(pid){
+    const op=_pidHerkansOp[pid];
+    if(typeof op==='number' && nu>=op) uit.push(pid);
+  });
+  return uit;
+}
 
 function pidOpruimen(pid, reden){
   pid=String(pid||'').toUpperCase();
@@ -458,8 +509,11 @@ function pidOpruimen(pid, reden){
   // heeft aangezet mag de app niet achter zijn rug weghalen; dezelfde regel
   // als bij `herijkPidGate()`.
   const naam=(getPidDef(pid)||{}).name||pid;
+  // Vanaf nu peilen we hem periodiek nog één keer (zie de trap hierboven).
+  _pidHerkansNa[pid]=0;
+  _pidHerkansOp[pid]=Date.now()+herkansIntervalMs(0);
   const tekst=`Sensor ${pid} (${naam}) opgeruimd: ${_pidOpruimReden[pid]}. `+
-              `Komt deze sessie niet terug; een nieuwe sessie probeert opnieuw.`;
+              `Over ${HERKANS_TRAP_MIN[0]} min volgt één losse peiling; antwoordt hij dan, dan komt hij terug.`;
   try{ if(typeof btDiag==='function') btDiag(tekst,'warn'); }
   catch(e){ console.warn('pidOpruimen: btDiag faalde — '+(e.message||e)); }
   try{ if(typeof log==='function') log('🧹 '+tekst,'warn'); }
@@ -467,6 +521,115 @@ function pidOpruimen(pid, reden){
   try{ if(typeof plHerijkTick==='function') markeerHerijking(); }
   catch(e){ console.warn('pidOpruimen: herijking niet gemarkeerd — '+(e.message||e)); }
   return uitSelectie;
+}
+
+/* ── DE TERUGWEG (28-08-2026, besluit bij #16) ────────────────────
+   Eén losse peiling per opgeruimde sensor die aan de beurt is. Bewust NIET
+   de kwalificatiefase opnieuw: dit is één commando, geen vijf minuten.
+
+   Gaat door withBus(), dus langs dezelfde poort als de rest — het besluit bij
+   #15 zegt dat al het busverkeer daar doorheen moet, en een terugweg die zelf
+   buiten de poort om gaat zou dat meteen weer ondergraven.
+
+   Antwoordt hij: terug in de selectie, met een logregel. Antwoordt hij niet:
+   wachttijd omhoog volgens de trap, verder niets. */
+let _herkansBezig=false;
+
+async function pidHerkansRonde(){
+  if(_herkansBezig) return 0;
+  const due=herkansDue(Date.now());
+  if(!due.length) return 0;
+  if(typeof withBus!=='function' || typeof sendCmd!=='function') return 0;
+  _herkansBezig=true;
+  let terug=0;
+  try{
+    for(const pid of due){
+      // Wachttijd meteen vooruitzetten: ook als de peiling hieronder gooit,
+      // mag hij niet elke tick opnieuw geprobeerd worden.
+      _pidHerkansNa[pid]=(_pidHerkansNa[pid]||0)+1;
+      _pidHerkansOp[pid]=Date.now()+herkansIntervalMs(_pidHerkansNa[pid]);
+      let waarde=null;
+      try{
+        // `snel` (het ELM327-achtervoegsel '1') mag hier: dit is één losse
+        // request, precies het geval waarvoor die vlag bedoeld is. Scheelt
+        // per peiling een timeout-wachttijd.
+        const cmd=(typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1');
+        const raw=await withBus('herkansing-'+pid, function(){ return sendCmd(cmd,2000); }, 4000);
+        waarde=(typeof parsePID==='function')?parsePID(pid,raw):null;
+      }catch(e){
+        try{ if(typeof btDiag==='function') btDiag(`Herkansing ${pid} gaf een fout: ${e.message||e}`,'warn'); }
+        catch(e2){ console.warn('btDiag faalde bij een mislukte herkansing:', e2); }
+        continue;
+      }
+      if(waarde==null) continue;
+      // Een antwoord is nog geen bruikbaar antwoord. In scanMode geeft
+      // assessPidQuality() maar drie uitkomsten, en twee ervan zijn géén
+      // levende sensor:
+      //   'onzin'  → fysiek onmogelijk; dat is onze parse-/schaalfout. Zo'n
+      //              sensor terugzetten verstopt een bug in onze eigen tabel.
+      //   'nodata' → de waarde is exact het sensor-minimum (-40 °C, 0) — het
+      //              vaste antwoord van een module die de sensor niet heeft.
+      //              Precies waarom hij is opgeruimd; hem daarop terugzetten
+      //              zet de zeef weer open.
+      // Alleen 'ok' telt dus als levensteken. Faalt het oordeel zelf, dan
+      // laten we de sensor liever staan dan hem op een onbekende grond terug
+      // te zetten.
+      let leeft=true;
+      try{
+        if(typeof assessPidQuality==='function'){
+          const q=assessPidQuality(pid,waarde,true);
+          leeft = !!(q && q.status==='ok');
+        }
+      }catch(e){
+        console.warn('Kwaliteitsoordeel bij een herkansing mislukt — sensor blijft opgeruimd:', e);
+        leeft=false;
+      }
+      if(!leeft) continue;
+
+      // Twee grendels open, in deze volgorde — beide worden door pidGate()
+      // gelezen, dus ze moeten weg vóór pidToevoegen():
+      //   1. de opruimlijst zelf (trede 'kiesbaar', regel hierboven);
+      //   2. _pidHealth, gezet door initialHealthScan() bij het verbinden.
+      //      Dat oordeel is van vóór deze peiling. Een sensor die nú een
+      //      geldige waarde geeft is versere informatie dan een scan van
+      //      koud; laat je die oude 'nodata' staan, dan weigert de gate hem
+      //      alsnog en gebeurt er niets — precies de stille nul die we hier
+      //      niet willen. Dit is ook wat markeerHerijking() beschrijft.
+      _pidOpgeruimd.delete(pid);
+      delete _pidHerkansNa[pid]; delete _pidHerkansOp[pid]; delete _pidOpruimReden[pid];
+      try{ if(typeof _pidHealth!=='undefined' && _pidHealth) _pidHealth[pid]='ok'; }
+      catch(e){ console.warn('Sensor-gezondheid niet bijgewerkt na een herkansing:', e); }
+
+      const naam=(getPidDef(pid)||{}).name||pid;
+      // De uitkomst van pidToevoegen() wordt gelezen, niet weggegooid: hij
+      // levert `weg` juist zodat een weigering uitgelegd kan worden. Zonder
+      // die controle zou een sensor die op een andere trede blijft hangen
+      // hier als "terug in de selectie" gemeld worden terwijl hij dat niet is.
+      let gezet=false, weggezet='';
+      try{
+        const r=pidToevoegen([pid], {handmatig:false});
+        gezet = !!(r && r.ok && r.ok.length);
+        weggezet = (r && r.weg && r.weg.length) ? 'de gate weigert hem nog' : 'activePIDs ontbreekt';
+      }catch(e){ weggezet='pidToevoegen gaf een fout: '+(e.message||e); }
+
+      if(!gezet){
+        const mislukt=`Sensor ${pid} (${naam}) antwoordt weer, maar komt niet terug in de selectie — ${weggezet}.`;
+        try{ if(typeof btDiag==='function') btDiag(mislukt,'warn'); }
+        catch(e){ console.warn('btDiag faalde bij een mislukte terugzetting:', e); }
+        console.warn(mislukt);
+        continue;
+      }
+
+      const tekst=`Sensor ${pid} (${naam}) antwoordt weer bij een losse peiling — terug in de selectie.`;
+      try{ if(typeof btDiag==='function') btDiag(tekst,'ok'); }
+      catch(e){ console.warn('btDiag faalde bij een geslaagde herkansing:', e); }
+      try{ if(typeof log==='function') log('\u267b\ufe0f '+tekst,'ok'); }
+      catch(e){ console.warn('log faalde bij een geslaagde herkansing:', e); }
+      try{ markeerHerijking(); }catch(e){ console.warn('Herijking niet gemarkeerd na een herkansing:', e); }
+      terug++;
+    }
+  } finally { _herkansBezig=false; }
+  return terug;
 }
 
 // Voor het AI-rapport en voor blok 11. Levert een lijst, geen tekst: de
