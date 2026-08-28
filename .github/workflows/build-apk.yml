@@ -1,7 +1,19 @@
 # ════════════════════════════════════════════════════════════
 #  PidLane APK-build workflow
-#  Bijgewerkt: 2026-08-20 (CET)
-#  Wijziging: naast de debug-APK nu ook een RELEASE-BUNDLE (.aab). De
+#  Bijgewerkt: 2026-08-28 (CET)
+#  Wijziging: Capacitor 8 (targetSdk 36) i.p.v. Capacitor 6 (targetSdk 34),
+#             plus een harde controle op het API-niveau. Play weigert per
+#             31-08-2026 elke inzending onder API 36; die grens werd hier
+#             nergens bewaakt, dus je zou het pas bij de upload merken.
+#             LET OP de vorm: het API-niveau wordt NIET geinjecteerd. Het
+#             komt uit het Capacitor-template en wordt alleen GECONTROLEERD
+#             tegen PLAY_MIN_TARGET_SDK hieronder. Injecteren zou een tweede
+#             waarheid maken naast package.json, en dan is bij de volgende
+#             verhoging niet meer te zien welke van de twee wint.
+#             Ophogen doe je dus in package.json (Capacitor-versie) en in
+#             PLAY_MIN_TARGET_SDK — niet in een gradle-bestand.
+#             Ook: Java 17 -> 21, vereist door AGP 8.13 / Capacitor 8.
+#  Eerder:    naast de debug-APK nu ook een RELEASE-BUNDLE (.aab). De
 #             Play Store neemt sinds 2021 geen losse APK meer aan voor
 #             nieuwe inzendingen; zonder .aab kom je niet eens aan de
 #             review toe. Ongetekend — ondertekenen doe je met een
@@ -39,6 +51,12 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   TZ: Europe/Amsterdam
+  # Het laagste API-niveau dat de Play Store nog aanneemt. Per 31-08-2026: 36.
+  # Google verlegt deze grens jaarlijks rond eind augustus. Verhoog hier het
+  # getal EN in package.json de Capacitor-versie die dat niveau meebrengt;
+  # de stap "Controleer target API-niveau" zegt dan meteen of dat klopt.
+  #   Capacitor 6 -> 34    Capacitor 7 -> 35    Capacitor 8 -> 36
+  PLAY_MIN_TARGET_SDK: 36
 
 jobs:
   build:
@@ -71,10 +89,13 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Setup Java 17
+      - name: Setup Java 21
         uses: actions/setup-java@v4.7.0
         with:
-          java-version: '17'
+          # Capacitor 8 draait op AGP 8.13 / Gradle 8.14.3 en wil Java 21.
+          # Op 17 faalt de build in Gradle met een melding over class file
+          # versions die nergens naar de JDK-keuze wijst.
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Install dependencies
@@ -85,6 +106,61 @@ jobs:
 
       - name: Sync web assets to Android
         run: npx cap sync android
+
+      - name: Controleer target API-niveau
+        run: |
+          # WAAROM DIT HIER STAAT EN NIETS INJECTEERT
+          # android/ wordt elke build opnieuw gegenereerd uit het template van
+          # de Capacitor-versie in package.json. Dat template bepaalt het API-
+          # niveau. Deze stap schrijft dat niet over maar LEEST het en vergelijkt
+          # het met wat de Play Store eist.
+          #
+          # Het alternatief - targetSdkVersion hier inspuiten - werkt ook, maar
+          # dan staat het getal op twee plekken en gaat compileSdk er niet
+          # vanzelf in mee. Een targetSdk boven de compileSdk bouwt bovendien
+          # niet. Liever een build die zegt "jouw Capacitor-versie is te oud"
+          # dan een build die stilzwijgend iets samenstelt wat Play weigert.
+          python3 - <<'PY'
+          import os, re, sys, pathlib
+
+          eis = int(os.environ["PLAY_MIN_TARGET_SDK"])
+          p = pathlib.Path("android/variables.gradle")
+          if not p.exists():
+              print("FOUT: android/variables.gradle bestaat niet — is cap add android gelukt?")
+              sys.exit(1)
+          g = p.read_text()
+          print("── variables.gradle ──")
+          print(g)
+
+          def lees(naam):
+              m = re.search(naam + r"\s*=\s*(\d+)", g)
+              if not m:
+                  print("FOUT: %s niet gevonden in variables.gradle" % naam); sys.exit(1)
+              return int(m.group(1))
+
+          target  = lees("targetSdkVersion")
+          compile_ = lees("compileSdkVersion")
+          minsdk  = lees("minSdkVersion")
+
+          if target < eis:
+              print("FOUT: targetSdkVersion is %d, de Play Store eist minimaal %d." % (target, eis))
+              print("      Dit getal komt uit het Capacitor-template, niet uit deze workflow.")
+              print("      Verhoog de Capacitor-versie in package.json:")
+              print("        Capacitor 6 -> 34    Capacitor 7 -> 35    Capacitor 8 -> 36")
+              print("      Een .aab onder de eis wordt bij de upload geweigerd, met een")
+              print("      melding die nergens naar de oorzaak wijst. Daarom hier stoppen.")
+              sys.exit(1)
+
+          # compileSdk lager dan targetSdk bouwt niet. Als dat ooit gebeurt is er
+          # met de hand aan een gradle-bestand gezeten, en dat is precies wat deze
+          # opzet wil voorkomen.
+          if compile_ < target:
+              print("FOUT: compileSdkVersion (%d) ligt onder targetSdkVersion (%d)" % (compile_, target))
+              sys.exit(1)
+
+          print("OK: targetSdk %d, compileSdk %d, minSdk %d — Play eist %d" %
+                (target, compile_, minsdk, eis))
+          PY
 
       - name: Add Bluetooth + Camera permissions to AndroidManifest
         run: |
@@ -123,7 +199,7 @@ jobs:
               # Voor Bluetooth is locatie niet nodig op Android 12+: daar doet
               # BLUETOOTH_SCAN met neverForLocation het werk. Op Android 11 en
               # ouder eist het systeem ACCESS_FINE_LOCATION om te mogen scannen,
-              # en daar is @e-is/capacitor-bluetooth-serial van afhankelijk.
+              # en daar is @ascentio-it/capacitor-bluetooth-serial van afhankelijk.
               # Vandaar dat de permissie blijft staan MET maxSdkVersion=30: hij
               # geldt alleen op API 30 en lager, en verschijnt op moderne
               # toestellen niet eens in de permissielijst.

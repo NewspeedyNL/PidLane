@@ -11,14 +11,14 @@
     "test": "bash plcheck.sh ."
   },
   "dependencies": {
-    "@capacitor/core": "6.1.2",
-    "@capacitor/android": "6.1.2",
-    "@capacitor/filesystem": "^6.0.0",
-    "@capacitor/share": "^6.0.0",
-    "@capacitor-community/bluetooth-le": "6.1.0",
-    "@e-is/capacitor-bluetooth-serial": "6.0.3"
+    "@capacitor/core": "8.5.0",
+    "@capacitor/android": "8.5.0",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/share": "^8.0.1",
+    "@capacitor-community/bluetooth-le": "8.3.0",
+    "@ascentio-it/capacitor-bluetooth-serial": "8.0.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "6.1.2"
+    "@capacitor/cli": "8.5.0"
   }
 }

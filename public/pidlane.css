@@ -73,10 +73,10 @@ html, body { overflow-x:clip; }
   background:var(--bg); backdrop-filter:none; overflow-y:auto;
 }
 #loginOv .modal { width:100%; max-width:420px; margin:0 auto; background:transparent; box-shadow:none; border-radius:0; max-height:none; animation:none; }
-#loginOv .mh { padding-top:calc(46px + env(safe-area-inset-top,0px)); padding-bottom:18px; }
+#loginOv .mh { padding-top:calc(46px + var(--pl-sat)); padding-bottom:18px; }
 #loginOv .mttl { font-size:26px; }
 #loginOv .msub { font-size:14px; }
-#loginOv .mact { border-top:0; background:transparent; padding-bottom:calc(16px + env(safe-area-inset-bottom,0px)); }
+#loginOv .mact { border-top:0; background:transparent; padding-bottom:calc(16px + var(--pl-sab)); }
 /* ══ IN-APP INTRO (logo-splash, fade naar login; toont 1x per sessie) ══ */
 #introOv { position:fixed; inset:0; z-index:9700; background:radial-gradient(120% 90% at 50% 28%, rgba(16,26,46,.62) 0%, rgba(10,14,23,.60) 55%, rgba(6,8,15,.74) 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .7s ease; padding-bottom:6vh; }
 #introOv.gone { opacity:0; pointer-events:none; }
@@ -188,8 +188,8 @@ html, body { overflow-x:clip; }
       bestaande .lade-handles-regel verderop. */
 #welcomeScreen {
   min-height: calc(100dvh - 46px);
-  bottom: calc(0px - env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  bottom: calc(0px - var(--pl-sab));
+  padding-bottom: var(--pl-sab);
 }
 body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .welcome-header { padding:12px 16px 10px; border-bottom:1px solid var(--bd); background:var(--sur); flex-shrink:0; }
@@ -573,6 +573,26 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
   --z-modal: 9600;
   --z-modal-hoog: 9800;
   --z-opslaan: 10010;
+
+  /* ── VEILIGE ZONE ──────────────────────────────────────────────
+     Vanaf targetSdk 35 dwingt Android edge-to-edge af: de WebView tekent
+     ONDER de status- en navigatiebalk, en de oude ontsnapping
+     (overlaysWebView:false op de StatusBar-plugin) doet vanaf targetSdk 36
+     niets meer. Alles wat tegen een schermrand aan ligt heeft dus een
+     marge nodig, anders staat de klok van Android over onze topbalk.
+
+     Waarom twee lagen. env(safe-area-inset-*) is de webstandaard, maar
+     WebView onder versie 140 geeft daar verkeerde waarden terug. Capacitor
+     leest de insets zelf uit WindowInsetsCompat en zet ze als
+     --safe-area-inset-*; die gaat dus vóór, met env() als terugval en 0px
+     als er niets is (browser, oudere Android).
+
+     Eén plek, zoals de z-index-tokens hierboven: wie een rand-element
+     toevoegt gebruikt --pl-sat/--pl-sab en niet zijn eigen env()-regel.
+     Verandert de manier waarop we aan die getallen komen, dan is dat hier
+     twee regels en niet twaalf. */
+  --pl-sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --pl-sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 /* ══ TOPBAR ══ */
@@ -588,7 +608,7 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
    weergavefout. De volgorde is nu expliciet: chips gaan vóór het ☰/🏠-paar, en
    die twee gaan vóór het logo. Onder 480px is er per definitie te weinig
    ruimte, dus verdwijnt het logo daar in zijn geheel (zie de media query). */
-.topbar { background:var(--sur); border-bottom:1px solid var(--bd); padding:0 14px; height:46px; display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky; top:0; z-index:var(--z-topbar); box-shadow:var(--ss); overflow:hidden; }
+.topbar { background:var(--sur); border-bottom:1px solid var(--bd); padding:var(--pl-sat) 14px 0; height:calc(46px + var(--pl-sat)); display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky; top:0; z-index:var(--z-topbar); box-shadow:var(--ss); overflow:hidden; }
 .topbar > * { min-width:0; }
 .topbar > div:first-child { flex:0 0 auto; }
 .logo { display:flex; align-items:center; gap:7px; font-weight:700; font-size:14px; flex:0 1 auto; min-width:0; overflow:hidden; white-space:nowrap; }
@@ -635,7 +655,7 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
 .sys-drop .tchip { width:100%; justify-content:flex-start; }
 /* Smalle schermen: logo-tekst weg, chips compacter, autonaam korter */
 @media (max-width:480px){
-  .topbar{ padding:0 8px; }
+  .topbar{ padding:var(--pl-sat) 8px 0; }
   /* Geen font-size:0 meer om alleen de tekst te verbergen: op deze breedte
      paste het icoon zelf ook niet meer naast de chips en werd het afgesneden.
      Het logo is versiering, de chips zijn bediening — dus gaat het logo weg. */
@@ -675,7 +695,7 @@ body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
    een vaste hoogte en een vaste set chips: die past dan niet meer, en de balk
    is bewust niet horizontaal scrollbaar. Daarom groeit alleen de topbalk niet
    mee — de rest van de app wel. Zo blijft alles bovenaan altijd zichtbaar. */
-body.uiL .topbar{ height:42px; padding:0 9px; gap:6px; }
+body.uiL .topbar{ height:calc(42px + var(--pl-sat)); padding:var(--pl-sat) 9px 0; gap:6px; }
 body.uiL .topbar .kebab-btn{ width:29px; height:27px; font-size:15px; }
 body.uiL .topbar .tchip{ height:27px; padding:0 8px; gap:5px; font-size:10.5px; }
 body.uiL .topbar .tdot, body.uiL #obdChip .dot{ width:8px; height:8px; }
@@ -1292,7 +1312,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   backdrop-filter:none; -webkit-backdrop-filter:none;
   flex-direction:column;
   align-items:center; justify-content:center;
-  padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(14px + env(safe-area-inset-bottom,0px));
+  padding:calc(12px + var(--pl-sat)) 10px calc(14px + var(--pl-sab));
   overflow-y:auto;
 }
 
@@ -1481,7 +1501,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   background:rgba(6,9,15,.90);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   flex-direction:column; align-items:center; justify-content:center;
-  padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(14px + env(safe-area-inset-bottom,0px));
+  padding:calc(12px + var(--pl-sat)) 10px calc(14px + var(--pl-sab));
   overflow-y:auto;
 }
 .ov#connOv .modal{
@@ -1620,7 +1640,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 }
 .wz-top{
   display:flex; align-items:center; gap:12px; flex:0 0 auto;
-  padding:calc(14px + env(safe-area-inset-top,0px)) 16px 10px;
+  padding:calc(14px + var(--pl-sat)) 16px 10px;
 }
 .wz-terug,.wz-sluit{
   width:34px; height:34px; flex:0 0 auto; border-radius:10px;
@@ -1686,7 +1706,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 
 .wz-foot{
   flex:0 0 auto; display:flex; gap:10px; border-top:1px solid var(--bd);
-  padding:12px 18px calc(16px + env(safe-area-inset-bottom,0px));
+  padding:12px 18px calc(16px + var(--pl-sab));
 }
 .wz-foot:empty{ display:none; }
 .wz-pri,.wz-sec{
@@ -1703,7 +1723,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 
 /* ── Onderdeelaanwijzer ── */
 .od-ov{position:fixed;inset:0;z-index:9750;display:none;flex-direction:column;background:#0a0e17}
-.od-top{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 10px;border-bottom:1px solid var(--bd)}
+.od-top{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:calc(14px + var(--pl-sat)) 16px 10px;border-bottom:1px solid var(--bd)}
 .od-titel{flex:1 1 auto;font-size:18px;font-weight:800}
 .od-x{width:34px;height:34px;flex:0 0 auto;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:15px;cursor:pointer}
 .od-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px}
@@ -1720,7 +1740,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .od-mis{margin-top:8px;font-size:11.5px;line-height:1.45;color:var(--tx3);opacity:.85}
 .od-leeg{border:1px solid var(--bd);border-radius:12px;background:var(--sur2);padding:15px;font-size:13px;line-height:1.6;color:var(--tx2)}
 .od-grens{margin-top:16px;border:1px solid var(--bd);border-left:3px solid #f59e0b;border-radius:12px;background:rgba(245,158,11,.06);padding:13px 14px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
-.od-foot{flex:0 0 auto;border-top:1px solid var(--bd);padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.od-foot{flex:0 0 auto;border-top:1px solid var(--bd);padding:12px 16px calc(16px + var(--pl-sab))}
 .od-btn{width:100%;padding:14px;border-radius:13px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:15px;font-weight:800;cursor:pointer}
 
 /* ── Meetfase-poort ── */

@@ -1,5 +1,52 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-28d (CET) — CAPACITOR 8, ANDERS NEEMT PLAY DE APP NIET AAN
+
+       • 📱 TARGETSDK 34 → 36. android/ staat niet in de repo: de build maakt
+         hem elke keer uit het template van de Capacitor-versie in package.json.
+         Capacitor 6 brengt API 34 mee, en de Play Store weigert per 31-08-2026
+         alles onder API 36 — nieuwe apps én updates. De bundel die er lag was
+         dus onuploadbaar, met een melding die nergens naar de oorzaak wijst.
+         Capacitor 6 → 8 (niet 7: die geeft 35 en is ook te laag). Daarmee ook
+         AGP 8.2.1→8.13.0, Gradle 8.2.1→8.14.3, Java 17→21, minSdk 22→24
+         (Android 5.0/5.1 vallen af).
+
+       • 🔌 DE SPP-PLUGIN IS VAN EIGENAAR GEWISSELD. @e-is/capacitor-bluetooth-
+         serial staat sinds 31-12-2024 stil op 6.0.3 en kon niet mee. Vervangen
+         door @ascentio-it/capacitor-bluetooth-serial 8.0.1 — een fork die
+         onder dezelfde naam BluetoothSerial registreert, dezelfde methodes
+         heeft en read() nog steeds als {value:"..."} beantwoordt.
+         In public/ verandert daarvoor geen regel code: alles loopt via
+         window.Capacitor.Plugins.<naam> en nergens via een import. Dat is de
+         reden dat een Capacitor-major hier goedkoop is, en die eigenschap is
+         het waard om zo te houden.
+
+       • 📏 VEILIGE ZONE (--pl-sat / --pl-sab). Vanaf targetSdk 35 dwingt
+         Android edge-to-edge af: de WebView tekent onder de status- en
+         navigatiebalk, en bij targetSdk 36 doet de oude ontsnapping
+         (overlaysWebView:false) niets meer. De topbalk had als enige nog geen
+         marge — die stond sticky op top:0 en zou dus onder de klok van Android
+         schuiven, met het logo dat we deze week net hebben rechtgezet.
+         Twee tokens naast de z-index-tokens, om dezelfde reden: één plek. Ze
+         zetten Capacitor's --safe-area-inset-* vóór env(), want WebView onder
+         versie 140 geeft bij env() verkeerde waarden terug.
+         LET OP bij het lezen van de diff: de topbalk heeft DRIE regels (de
+         gewone, die onder 480px en die van uiL) en alle drie zetten padding
+         opnieuw. Twee daarvan gooiden de marge weg terwijl de hoogte hem wél
+         meetelde — dan wordt de balk hoger zonder dat de inhoud meeschuift.
+         Nagemeten: zonder inset is de balk in alle drie de standen exact
+         gelijk aan die van main.
+
+       • 🚦 DE BUILD CONTROLEERT HET API-NIVEAU, EN INJECTEERT HET NIET.
+         PLAY_MIN_TARGET_SDK staat als één getal in build-apk.yml; de build
+         leest android/variables.gradle en stopt als het daaronder zit.
+         Bewust geen injectie: dan staat het getal op twee plekken en is bij de
+         volgende verhoging niet te zien welke wint. Volgend jaar is dit dus
+         één versienummer in package.json en één getal in de workflow.
+         test-capversies.js bewaakt dat de zes Capacitor-pakketten dezelfde
+         major houden en dat de JDK meebeweegt — de halve upgrade is hier de
+         klassieke fout.
+
      Build: 2026-08-28c (CET) — BETAALLINKS UIT DE CODE (#24)
 
        • 💶 TIKKIE-LINKS — stonden hardcoded in pidlane-klant.js, in een
