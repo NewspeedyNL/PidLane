@@ -1059,7 +1059,6 @@ async function runDeepDiag(){
   var probleem=(document.getElementById('dd_probleem')||{}).value||'';
   if(!probleem.trim()){ showToast?.('Vul minimaal het probleem in'); return; }
   try{ ['ddProgRow','ddStepTitle','ddStepSub','ddFoot'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }); document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display='none'; }); }catch(e){ /* stil: element kan al weg zijn */ }
-  var btn=document.getElementById('dd_eval'); if(btn){ btn.disabled=true; btn.textContent='⏳ Evalueren'; }
   var checks=(document.getElementById('dd_checks')||{}).value||'';
   var merk=(document.getElementById('dd_merk')||{}).value||'';
   var gevoel=(document.getElementById('dd_gevoel')||{}).value||'';

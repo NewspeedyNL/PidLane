@@ -132,7 +132,6 @@ function btDiag(msg, type='info'){
 // Eén duidelijke suggestie op het Live-scherm, op basis van de situatie.
 function updateReco(){
   // Aanbevolen-banner verwijderd op verzoek — altijd verbergen.
-  const c=document.getElementById('recoCard'); if(c) c.style.display='none';
 }
 // Fix 19-07: handle + guard zodat een herstart (bv. na opnieuw verbinden
 // tijdens een lange rit) geen tweede interval bovenop het eerste zet.
