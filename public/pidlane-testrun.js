@@ -61,6 +61,34 @@ function _boek(blok, naam, staat, detail, ms) {
   try { _teken(); } catch (e) { console.warn('Testrun-log niet herteken op het scherm (het onderliggende logboek is wel bijgewerkt)', e); }
 }
 
+/* De app-log ophalen. (#29, 28-08-2026)
+
+   Dit stond op drie plekken als `window._appLog || window.logBuffer || []`,
+   en die twee globals BESTAAN NIET — nergens in public/. Alle drie de plekken
+   kregen dus altijd een lege array, zonder ooit een fout te geven.
+
+   Drie symptomen die daaruit volgden, alle drie zichtbaar in de run van 28-08:
+     1. Blok 14 zei "niets opgeruimd" terwijl de opruimregel twee keer had
+        gevuurd — die regels staan in de APP-log, en die werd nooit gelezen.
+        Erger dan alleen missen: het advies eronder ("controleer of hij
+        aanstaat") stuurt je naar precies het onderzoek dat je niet moet doen.
+     2. "Meldingen sinds het begin van deze run" meldde structureel
+        "app-log 0 regels" naast een BT-log van 1183 regels.
+     3. Het opgeslagen rapport had nooit een APP-LOG-sectie.
+
+   De echte bron is plLokaalLog() uit pidlane-auth.js, precies zoals
+   pidlane-logboek.js hem al leest. Eén plek, zodat de volgende die de app-log
+   nodig heeft hem niet opnieuw hoeft te raden. */
+function _appLogRegels() {
+  try {
+    if (typeof plLokaalLog === 'function') {
+      const a = plLokaalLog();
+      if (Array.isArray(a)) return a;
+    }
+  } catch (e) { console.warn('plLokaalLog() gaf een fout — de app-log ontbreekt in deze run', e); }
+  return [];
+}
+
 // Eén controle draaien. Een fout wordt GEBOEKT, niet weggeslikt — dat is het
 // hele verschil met de zes losse dingen die dit vervangt.
 async function _doe(blok, naam, fn) {
@@ -985,14 +1013,36 @@ async function _blok7() {
     // Als de responstijd niet meebeweegt met de bezetting, is bezetting op deze
     // bus geen bruikbaar tegendruksignaal — dan meet hij alleen hoe hard wíj
     // vragen, niet hoe zwaar de ECU het heeft.
-    const laag = sp.filter(function (m) { return m.bezet < d.bezetAf; }).map(function (m) { return m.ms; });
-    const hoog = sp.filter(function (m) { return m.bezet >= d.bezetOp; }).map(function (m) { return m.ms; });
+    // 28-08-2026 (#12) — 0 ms is geen meting maar een ontbrekende meting, en
+    // die hoort niet in de groep. Op 26-08 bestond de lage-bezettingsgroep uit
+    // 0 ms-monsters; de mediaan werd 0, de deel-door-nul-vangst maakte er +0%
+    // van, en 0% viel door |verschil| < 15 in de tak "vrijwel geen verschil".
+    // Uitkomst: 0 ms tegen 144 ms werd gepresenteerd als "bezetting voorspelt
+    // hier geen tegendruk" — precies de omgekeerde conclusie, op de regel die
+    // de Slotsom voedt die bepaalt of de PLLoad-vraag (#15) dicht kan.
+    const meet = function (m) { return m.ms > 0; };
+    const alleLaag = sp.filter(function (m) { return m.bezet < d.bezetAf; });
+    const alleHoog = sp.filter(function (m) { return m.bezet >= d.bezetOp; });
+    const laag = alleLaag.filter(meet).map(function (m) { return m.ms; });
+    const hoog = alleHoog.filter(meet).map(function (m) { return m.ms; });
+    const weg = (alleLaag.length - laag.length) + (alleHoog.length - hoog.length);
+    const staart = weg ? '  [' + weg + ' monster(s) van 0 ms buiten beschouwing gelaten — geen meting]' : '';
+
     if (!laag.length || !hoog.length)
-      return 'te weinig spreiding in de bezetting om te vergelijken (laag ' + laag.length + ', hoog ' + hoog.length + ' monsters)';
+      return { staat: 'LET OP', detail: 'te weinig bruikbare spreiding om te vergelijken (laag ' +
+        laag.length + ', hoog ' + hoog.length + ' monsters met een echte responstijd)' + staart };
+
     const mLaag = med(laag), mHoog = med(hoog);
-    const verschil = mLaag ? Math.round((mHoog - mLaag) / mLaag * 100) : 0;
+    // Derde tak: onmeetbaar. mLaag === 0 kan hier niet meer voorkomen omdat de
+    // nulmonsters eruit zijn, maar de vangst blijft staan — hij mag nooit meer
+    // stilletjes 0% opleveren als er ooit een andere bron van nullen bijkomt.
+    if (!mLaag)
+      return { staat: 'LET OP', detail: 'lage-bezettingsgroep heeft mediaan 0 ms — hier valt geen ' +
+        'verhouding van te maken, dus over tegendruk zegt deze run niets' + staart };
+
+    const verschil = Math.round((mHoog - mLaag) / mLaag * 100);
     const tekst = 'responstijd bij lage bezetting ' + mLaag + ' ms, bij hoge bezetting ' + mHoog + ' ms (' +
-      (verschil >= 0 ? '+' : '') + verschil + '%)';
+      (verschil >= 0 ? '+' : '') + verschil + '%)' + staart;
     if (Math.abs(verschil) < 15)
       return { staat: 'LET OP', detail: tekst + ' — vrijwel geen verschil, dus bezetting voorspelt hier geen tegendruk' };
     return tekst;
@@ -2060,8 +2110,7 @@ async function _blok14() {
   await _doe(14, 'Opruimregel: is er iets opgeruimd?', function () {
     let bt = [];
     try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
-    let app = [];
-    try { app = (window._appLog || window.logBuffer || []); } catch (e) { app = []; }
+    const app = _appLogRegels();
     const alles = [].concat(bt || [], app || []);
     if (!alles.length) return { staat: 'LET OP', detail: 'geen logregels te lezen — controle niet uitgevoerd' };
     const zoek = function (re) {
@@ -2216,8 +2265,7 @@ async function _blok11() {
   // van de run naast elkaar, zodat je in het logboek kunt zien of er iets
   // nieuws bij zit zonder de hele staart door te lezen.
   await _doe(11, 'Meldingen sinds het begin van deze run', function () {
-    let app = [];
-    try { app = (window._appLog || window.logBuffer || []); } catch (e) { app = []; }
+    const app = _appLogRegels();
     let bt = [];
     try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
     const tel = function (arr, soort) {
@@ -2382,7 +2430,7 @@ function testrunTekst() {
 
   // Staart van de logs, zodat je niet apart hoeft te exporteren.
   try {
-    const app = (window._appLog || window.logBuffer || []);
+    const app = _appLogRegels();
     if (app && app.length) {
       r.push('');
       r.push('APP-LOG — laatste 120 regels');
