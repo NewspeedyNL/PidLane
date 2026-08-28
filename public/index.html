@@ -1,5 +1,26 @@
 <!-- ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-28f (CET) — BLOK 5 CORRIGEERT DRIE EIGEN FOUTEN
+
+       • 🧪 DE TESTRUN VROOR ZICHZELF DICHT. Na build e meldde een echte run:
+         het venster kwam in beeld, maar geen knop en geen scroll werkten meer.
+         Oorzaak: de nieuwe SPP-controle deed een EIGEN conn.spp.read({address})
+         los van de poll-lus in pidlane-bt.js, die dezelfde verbinding al elke
+         50ms uitleest. Twee gelijktijdige reads op één serial-verbinding, en de
+         plugin bleef hangen — de hele testrun is één lange await-keten, dus
+         alles erna liep vast, óók "Sluiten".
+         Fix: geen eigen read() meer. pidlane-bt.js logt zelf al de eerste
+         read() van elk commando naar _btLog; blok 5 leest die regel nu terug
+         in plaats van er zelf nog een uit te lokken. Les, vastgelegd in
+         PIDLANE.md §11: een controle die meeloopt in de testrun mag nooit I/O
+         doen op een verbinding die de app zelf ook gebruikt.
+       • Twee kleinere zelfgemaakte fouten uit dezelfde ronde, óók gefixt: de
+         "niet verbonden"-melding zocht window._btAdres (bestaat niet — het
+         echte veld is window._sppConn), en de env(safe-area)-scan sloeg aan op
+         zijn EIGEN toelichting in pidlane.css ("Waarom twee lagen...") omdat
+         hij commentaarblokken niet oversloeg. Beide nagemeten: de scan geeft nu
+         0 op de echte css (was 1), een echt lek wordt nog steeds gevonden.
+
      Build: 2026-08-28e (CET) — OOK DE ANDERE VENSTERS ONDER DE STATUSBALK UIT
 
        • 📱 DE TOPBALK WAS NIET HET ENIGE VENSTER. Een schermfoto liet zien dat

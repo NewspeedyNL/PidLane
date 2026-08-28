@@ -702,6 +702,22 @@ maken.
    balk kan niet kleiner dan zijn inhoud. Dat gedrag is ouder dan deze wijziging
    en is hier niet aangeraakt — het staat genoteerd omdat het bij het meten
    verwarring gaf en de volgende keer weer zal geven.
+5. **Blok 5 vroor de hele testrun dicht — zelfgemaakt, en meteen hersteld.**
+   De controle die read()'s antwoordformaat wilde bewijzen deed dat eerst met
+   een eigen `conn.spp.read({address})`, los van de normale poll-lus. Die
+   poll-lus in `pidlane-bt.js` leest dezelfde serial-verbinding al elke 50ms;
+   een tweede, losstaande read() ernaast concurreert om dezelfde bytes, en
+   bleef hangen omdat de plugin kennelijk geen tweede gelijktijdige read
+   verwacht. Gevolg: de hele testrun — een lange `await`-keten — liep vast op
+   die ene regel, en "Sluiten" reageerde niet meer omdat de rest van de keten
+   nooit aan de beurt kwam. Gemeld als "testrun-venster komt in beeld maar
+   niets werkt, ook niet scrollen".
+   Fix: geen eigen read() meer. `pidlane-bt.js` logt zelf al de eerste read()
+   van elk commando (`read() #1 → …`, alleen bij `pollCount===1`) naar
+   `_btLog`; blok 5 leest nu die bestaande regel terug in plaats van er zelf
+   nog een uit te lokken. Les: een diagnostische controle die meeleeft in de
+   testrun mag nooit I/O doen op een verbinding die de app zelf ook actief
+   gebruikt — lezen uit wat er al gelogd is, nooit een eigen verzoek ernaast.
 
 ### Opmaakronde 27-08 — vier schermfouten, en drie issues die al dood waren
 
