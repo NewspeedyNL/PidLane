@@ -383,8 +383,12 @@ Dat is echt delen met een derde partij, ook al staat er geen naam bij.
       `run_number`, dus hoger dan de vorige inzending
 - [ ] `.aab` opnieuw gebouwd op Capacitor 8 — de bundel van #405 staat op
       API 34 en wordt bij de upload geweigerd
-- [ ] SPP-verbinding getoetst met een echte adapter ná de plugin-wisseling
-- [ ] Topbalk en onderranden bekeken op een Android 15+-toestel (edge-to-edge)
+- [x] SPP-verbinding getoetst met een echte adapter ná de plugin-wisseling —
+      testrun 5.2, 28-08-2026 19:08: OBDLink MX+ op een Mazda CX-5, Android 16,
+      volledige sweep 45 gelezen / 0 geen data / 0 parserprobleem, foutgraad 0%
+- [ ] Topbalk en onderranden bekeken op een Android 15+-toestel (edge-to-edge) —
+      topbalk en Logboek zijn gemeten (37px marge); de andere vijf vensters
+      (testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker) nog niet
 - [ ] `versionName` in de Play Console komt overeen met `package.json` én
       `public/config.js` — die twee liepen tot 21-08 acht versies uiteen; de CI
       faalt nu hard als dat opnieuw gebeurt
