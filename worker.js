@@ -665,8 +665,9 @@ async function handleMessages(request, env) {
         if (!klantRec)
           return { status: 404, body: { ok: false, code: "geen_account", error: { message: "Account niet gevonden." } } };
         const kf = klantRec.fields || {};
-        if (kf.Status === "geblokkeerd")
-          return { status: 403, body: { ok: false, code: "geblokkeerd", error: { message: "Dit account is geblokkeerd." } } };
+        const bezwaar = klantToegangProbleem(kf);
+        if (bezwaar)
+          return { status: bezwaar.status, body: { ok: false, code: bezwaar.code, error: { message: bezwaar.bericht } } };
         const saldoVoor = Number(kf.Saldo || 0);
         if (saldoVoor < tarief.min)
           return {
@@ -2205,6 +2206,59 @@ async function klantAuth(request, env) {
 }
 __name(klantAuth, "klantAuth");
 
+// LET OP BIJ HET UITBREIDEN — dit blok staat hier bewust VÓÓR de
+// akkoordgrens hieronder. test-akkoord-heraccorderen.js knipt het stuk vanaf
+// die grensdeclaratie tot en met de afsluitende __name van klantPubliek uit
+// dit bestand en voert dat als losse code uit. Alles wat je dáártussen zet
+// komt in die knip terecht en valt om op "__name is not defined". Nieuwe
+// klanthelpers horen dus hier, niet twintig regels verderop.
+//
+// En noem de naam van die grensconstante hier niet voluit met haar
+// declaratiewoord ervoor: de test zoekt op precies die tekst en pakt dan dit
+// commentaar als beginpunt. Dat is één keer gebeurd bij het schrijven hiervan.
+
+// ── Verwijderen op verzoek: de bewaartermijn ────────────────────────
+// privacy.html belooft verwijdering binnen 30 dagen na een verzoek. Dat getal
+// staat hier één keer en wordt op drie plekken gelezen: de klantroute die het
+// verzoek aanneemt, de cron die opruimt, en de adminlijst die de wachtrij
+// toont. Verander je het hier, verander dan ook privacy.html en
+// verwijderen.html — die twee beloven het aan de gebruiker.
+const KLANT_BEWAARDAGEN = 30;
+
+// Wanneer mag dit record definitief weg? Geeft null als er geen verzoek ligt.
+function klantOpruimMoment(f) {
+  if (!f || f.Status !== "verwijderd" || !f.VerwijderdOp) return null;
+  const t = new Date(f.VerwijderdOp);
+  if (isNaN(t)) return null;
+  return new Date(t.getTime() + KLANT_BEWAARDAGEN * 864e5);
+}
+__name(klantOpruimMoment, "klantOpruimMoment");
+
+// ── Mag dit klantaccount gebruikt worden? ───────────────────────────
+// EÉN plek die dat beslist. Tot 29-08-2026 stond `Status === "geblokkeerd"`
+// twee keer los in dit bestand: in handleKlantLogin en in handleMessages. Dat
+// ging goed zolang er één afwijzende status was, maar met "verwijderd" erbij
+// zou de tweede plek zomaar vergeten kunnen worden — en dan kan een verwijderd
+// account niet meer inloggen maar met een lopend sessietoken nog wél AI
+// gebruiken. Twee plekken die hetzelfde moeten weten is in dit project al
+// drie keer een bug geweest.
+//
+// Geeft null als alles in orde is, anders wat de aanroeper moet terugsturen.
+function klantToegangProbleem(f) {
+  const st = (f && f.Status) || "actief";
+  if (st === "verwijderd")
+    return {
+      status: 403,
+      code: "verwijderd",
+      bericht: "Dit account is op eigen verzoek verwijderd en kan niet meer gebruikt worden."
+    };
+  if (st === "geblokkeerd")
+    return { status: 403, code: "geblokkeerd", bericht: "Dit account is geblokkeerd." };
+  return null;
+}
+__name(klantToegangProbleem, "klantToegangProbleem");
+
+
 // Moment waarop de toestemmingstekst inhoudelijk is gecorrigeerd: de claim dat
 // de meetdata anoniem is, is vervangen door de juiste omschrijving — delen
 // onder een pseudoniem (zie de AVG-alinea bij handleKlantOnboarding). Een
@@ -2219,6 +2273,7 @@ __name(klantAuth, "klantAuth");
 // bestaand veld is hier dus niet netheid maar het verschil tussen wel en niet
 // werken.
 const AKKOORD_TEKST_SINDS = "2026-08-27T00:00:00.000Z";
+
 
 function klantPubliek(rec) {
   const f = rec && rec.fields || {};
@@ -2348,8 +2403,8 @@ async function handleKlantLogin(request, env, ctx) {
     const res = await verifyPassword(pass, f.PassHash);
     if (!res.ok) return await misser();
 
-    if (f.Status === "geblokkeerd")
-      return json({ ok: false, error: "Dit account is geblokkeerd." }, 403);
+    const bezwaar = klantToegangProbleem(f);
+    if (bezwaar) return json({ ok: false, code: bezwaar.code, error: bezwaar.bericht }, bezwaar.status);
 
     // Oude hash tegengekomen? Stilletjes omzetten naar PBKDF2.
     const werk = [];
@@ -2696,6 +2751,14 @@ async function handleAdminKlantenGet(request, env) {
         aangemaakt: f.Aangemaakt || "",
         laatsteLogin: f.LaatsteLogin || "",
         heeftReset: !!f.ResetToken,
+        // De verwijderwachtrij. definitiefOp is afgeleid en niet opgeslagen:
+        // één bron (VerwijderdOp) plus één termijn (KLANT_BEWAARDAGEN), zodat
+        // de pagina niet zelf kan gaan rekenen en er twee antwoorden ontstaan.
+        verwijderdOp: f.VerwijderdOp || "",
+        definitiefOp: (function () {
+          const weg = klantOpruimMoment(f);
+          return weg ? weg.toISOString() : "";
+        })(),
         audit: f.Audit || ""
       };
     });
@@ -2716,7 +2779,11 @@ async function handleAdminKlantenPost(request, env) {
   try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
   const actie = String(b.actie || "");
   const id = String(b.id || "");
-  if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id." }, 400);
+  // "opruimen" gaat over de hele wachtrij en heeft dus geen record-id. Alle
+  // andere acties wél, en die eis blijft staan: een ontbrekend id zou daar
+  // een PATCH op een willekeurig record worden.
+  if (actie !== "opruimen" && !/^rec[A-Za-z0-9]{14}$/.test(id))
+    return json({ ok: false, error: "Ongeldig record-id." }, 400);
 
   const { base, table, hdr } = klantTabel(env);
 
@@ -2764,6 +2831,13 @@ async function handleAdminKlantenPost(request, env) {
         if (!["actief", "ongeverifieerd", "geblokkeerd"].includes(String(b.status)))
           return json({ ok: false, error: "Onbekende status." }, 400);
         f.Status = String(b.status);
+        // Terugzetten uit de verwijderwachtrij. VerwijderdOp MOET dan leeg,
+        // anders staat er een verwijderdatum op een actief account en pikt de
+        // opruimronde hem alsnog op zodra iemand de status weer omzet.
+        // "verwijderd" staat bewust niet in de lijst hierboven: dat zet je
+        // niet met de hand, want dan ontbreekt VerwijderdOp en blijft het
+        // record eeuwig in de wachtrij hangen (zie klantWachtrijOpruimen).
+        f.VerwijderdOp = null;
       }
       if (b.naam !== undefined) f.Naam = String(b.naam).slice(0, 80);
       if (b.opmerking !== undefined) f.Opmerking = String(b.opmerking).slice(0, 2000);
@@ -2785,6 +2859,16 @@ async function handleAdminKlantenPost(request, env) {
       });
       const vast = await klantAudit(env, id, "wachtwoord door beheerder gezet", b.door);
       return json({ ok: true, vastgelegd: vast });
+    }
+
+    // ── nu opruimen ────────────────────────────────────────────────
+    // Dezelfde functie die de cron draait, met de hand aangeroepen. Wist
+    // alleen wat de termijn al voorbij is; wie er nog in zit blijft staan.
+    // Vandaar dat het antwoord alle drie de emmers teruggeeft — anders lijkt
+    // "0 gewist" op een storing terwijl er gewoon niets rijp was.
+    if (actie === "opruimen") {
+      const uit = await klantWachtrijOpruimen(env, new Date());
+      return json({ ok: true, ...uit, bewaardagen: KLANT_BEWAARDAGEN });
     }
 
     if (actie === "verwijder") {
@@ -3036,6 +3120,143 @@ async function handleKlantOnboarding(request, env) {
 }
 __name(handleKlantOnboarding, "handleKlantOnboarding");
 
+// ── POST /klant/verwijder  { pass } ─────────────────────────────────
+// Het recht op verwijdering uit de AVG, en tegelijk de knop die Google Play
+// eist voor elke app waarin je een account kunt aanmaken.
+//
+// MARKEREN, NIET METEEN WISSEN. Het record blijft KLANT_BEWAARDAGEN dagen
+// staan met Status "verwijderd" en het moment in VerwijderdOp; daarna haalt
+// de cron onderaan dit bestand hem echt weg. Twee redenen:
+//   1. privacy.html belooft verwijdering "binnen 30 dagen", niet "direct".
+//      Die termijn is er om vergissingen te kunnen herstellen.
+//   2. Een klik die onherstelbaar is en die per ongeluk gebeurt, is erger
+//      dan een die een maand nawerkt.
+// Wat de klant betreft is het account meteen weg: klantToegangProbleem()
+// weigert hem bij het inloggen én bij elke AI-call, ook met een sessietoken
+// dat nog geldig is.
+//
+// WACHTWOORD ERBIJ. Een sessietoken is genoeg voor saldo bekijken, niet voor
+// een onomkeerbare actie: een toestel dat even onbeheerd is mag dit niet
+// kunnen. Zelfde afweging als bij handleKlantWachtwoord.
+async function handleKlantVerwijder(request, env) {
+  const p = await klantAuth(request, env);
+  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "klant-verwijder", ip, { limit: 10, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
+  const pass = String(body.pass || "");
+
+  try {
+    const rec = await klantZoek(env, p.u);
+    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
+    const f = rec.fields || {};
+
+    // Al aangevraagd? Dan is dit geen fout maar een herhaling — vertel wanneer
+    // het record weggaat in plaats van de klant te laten twijfelen.
+    if (f.Status === "verwijderd") {
+      const weg = klantOpruimMoment(f);
+      return json({
+        ok: true, herhaling: true,
+        verwijderdOp: f.VerwijderdOp || "",
+        definitiefOp: weg ? weg.toISOString() : ""
+      });
+    }
+
+    const res = await verifyPassword(pass, f.PassHash);
+    if (!res.ok) {
+      await new Promise((r) => setTimeout(r, 500));
+      return json({ ok: false, error: "Wachtwoord klopt niet." }, 401);
+    }
+
+    const nu = new Date();
+    // ResetToken meteen mee weg: een openstaande herstelmail zou anders een
+    // weg terug in een verwijderd account zijn.
+    await klantPatch(env, rec.id, {
+      Status: "verwijderd",
+      VerwijderdOp: nu.toISOString(),
+      ResetToken: "",
+      ResetVerloopt: null
+    });
+    await klantAudit(env, rec.id,
+      `account verwijderd op verzoek van de gebruiker; definitief weg na ${KLANT_BEWAARDAGEN} dagen`,
+      "klant zelf");
+
+    const weg = new Date(nu.getTime() + KLANT_BEWAARDAGEN * 864e5);
+    return json({
+      ok: true,
+      verwijderdOp: nu.toISOString(),
+      definitiefOp: weg.toISOString(),
+      bewaardagen: KLANT_BEWAARDAGEN
+    });
+  } catch (e) {
+    return klantFout(e, "Verwijderen mislukt.");
+  }
+}
+__name(handleKlantVerwijder, "handleKlantVerwijder");
+
+// ── De opruimer ─────────────────────────────────────────────────────
+// Draait uit de cron (zie scheduled() onderaan) en uit de adminpagina, zodat
+// beide precies hetzelfde doen. Geeft terug wat er weg is en wat er nog wacht.
+//
+// GEEN STILLE MISLUKKING. Lukt het verwijderen niet, dan komt dat in het
+// resultaat én in de log terecht: een opruimer die zwijgend niets doet is
+// hier het gevaarlijkst van alles, want dan blijft er persoonsgegeven staan
+// terwijl de verklaring zegt dat het weg is.
+async function klantWachtrijOpruimen(env, nu) {
+  const { base, table, hdr } = klantTabel(env);
+  const grens = (nu || new Date());
+  const uit = { bekeken: 0, verwijderd: [], mislukt: [], wacht: [] };
+
+  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
+    `?pageSize=100&filterByFormula=${encodeURIComponent(`{Status}='verwijderd'`)}`;
+  const r = await fetch(url, { headers: hdr });
+  if (!r.ok) throw new Error("airtable_wachtrij_" + r.status);
+  const d = await r.json();
+  const rijen = (d && d.records) || [];
+  uit.bekeken = rijen.length;
+
+  const rijp = [];
+  for (const rec of rijen) {
+    const f = rec.fields || {};
+    const weg = klantOpruimMoment(f);
+    if (!weg) {
+      // Status "verwijderd" zonder bruikbare VerwijderdOp. Niet wissen — we
+      // weten niet sinds wanneer, dus de termijn is niet aantoonbaar om. Dit
+      // hoort zichtbaar te zijn in plaats van eeuwig blijven hangen.
+      uit.mislukt.push({ id: rec.id, reden: "geen bruikbare VerwijderdOp" });
+      continue;
+    }
+    if (weg > grens) { uit.wacht.push({ id: rec.id, definitiefOp: weg.toISOString() }); continue; }
+    rijp.push(rec.id);
+  }
+
+  // Airtable wist maximaal 10 records per aanroep.
+  for (let i = 0; i < rijp.length; i += 10) {
+    const groep = rijp.slice(i, i + 10);
+    const qs = groep.map((id) => `records[]=${encodeURIComponent(id)}`).join("&");
+    const rd = await fetch(
+      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?${qs}`,
+      { method: "DELETE", headers: hdr }
+    );
+    if (rd.ok) {
+      groep.forEach((id) => uit.verwijderd.push(id));
+    } else {
+      const tekst = await rd.text().catch(() => "");
+      groep.forEach((id) => uit.mislukt.push({ id, reden: "airtable_" + rd.status }));
+      try {
+        console.error("[opruimen] wissen mislukt :: " + rd.status + " " + tekst.slice(0, 200));
+      } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+    }
+  }
+  return uit;
+}
+__name(klantWachtrijOpruimen, "klantWachtrijOpruimen");
+
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -3092,6 +3313,8 @@ var worker_default = {
         return lockOrigin(request, await handleKlantOnboarding(request, env));
       if (url.pathname === "/klant/mij" && request.method === "GET")
         return lockOrigin(request, await handleKlantMij(request, env));
+      if (url.pathname === "/klant/verwijder" && request.method === "POST")
+        return lockOrigin(request, await handleKlantVerwijder(request, env));
       if (url.pathname === "/klant/wachtwoord" && request.method === "POST")
         return lockOrigin(request, await handleKlantWachtwoord(request, env));
       if (url.pathname === "/klant/reset-aanvraag" && request.method === "POST")
@@ -3122,6 +3345,42 @@ var worker_default = {
     } catch (e) {
       return json({ error: "worker_exception", message: String(e && e.message || e) }, 500);
     }
+  },
+
+  // ── De dagelijkse opruimronde ────────────────────────────────────
+  // Ingeroosterd in wrangler.toml ([triggers] crons). Dit is het stuk dat de
+  // belofte in privacy.html waarmaakt: een account dat de klant heeft laten
+  // verwijderen verdwijnt echt, ook als niemand eraan denkt.
+  //
+  // WAAROM DIT OOK EEN KNOP IN admin.html HEEFT. Een cron is onzichtbaar: hij
+  // draait of hij draait niet, en het verschil merk je pas als iemand vraagt
+  // waarom zijn gegevens er nog staan. De adminpagina toont daarom dezelfde
+  // wachtrij en roept dezelfde functie aan, zodat de automaat controleerbaar
+  // is in plaats van iets waar je op moet vertrouwen.
+  //
+  // Fouten gaan naar de log en niet naar /dev/null: een opruimer die stil
+  // faalt laat persoonsgegevens staan terwijl de verklaring zegt van niet.
+  async scheduled(event, env, ctx) {
+    if (!env.AIRTABLE_TOKEN) {
+      try { console.error("[opruimen] overgeslagen: geen AIRTABLE_TOKEN"); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      return;
+    }
+    const werk = (async () => {
+      try {
+        const uit = await klantWachtrijOpruimen(env, new Date());
+        console.log(
+          `[opruimen] ${uit.bekeken} gemarkeerd, ${uit.verwijderd.length} gewist, ` +
+          `${uit.wacht.length} nog binnen de termijn, ${uit.mislukt.length} mislukt`
+        );
+        if (uit.mislukt.length)
+          console.error("[opruimen] niet gelukt: " + JSON.stringify(uit.mislukt).slice(0, 400));
+      } catch (e) {
+        try { console.error("[opruimen] ronde afgebroken :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      }
+    })();
+    // waitUntil zodat de ronde afmaakt nadat scheduled() is teruggekeerd.
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(werk);
+    else await werk;
   }
 };
 export {

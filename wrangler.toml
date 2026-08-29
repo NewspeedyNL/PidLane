@@ -51,6 +51,21 @@ run_worker_first = [
   "/health"
 ]
 
+# ── Dagelijkse opruimronde ─────────────────────────────────────────────
+# Roept scheduled() in worker.js aan. Die wist klantaccounts die de gebruiker
+# zelf heeft laten verwijderen en waarvan de bewaartermijn van 30 dagen om is
+# (KLANT_BEWAARDAGEN in worker.js). Zonder deze regel blijft de belofte in
+# privacy.html — "wij verwijderen binnen 30 dagen" — afhankelijk van iemand
+# die eraan denkt.
+#
+# 03:00 UTC: buiten de spits, en het maakt niet uit of het een uur later wordt.
+# Cloudflare garandeert het tijdstip niet precies, alleen dat hij draait.
+#
+# Handmatig uitproberen kan zonder te wachten:
+#   npx wrangler dev --test-scheduled   →  curl "http://localhost:8787/__scheduled"
+[triggers]
+crons = ["0 3 * * *"]
+
 # ── R2-bucket voor de APK en version.json ──────────────────────────────
 # Aangesproken als env.FILES (handleApkDownload, handleVersionJson).
 # Bestaat de bucket nog niet: wrangler r2 bucket create pidlane-files

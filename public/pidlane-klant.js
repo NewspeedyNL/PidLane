@@ -557,6 +557,16 @@
         'padding-top:12px;border-top:1px solid var(--bd,#26304a)">' +
         'Een analyse kost meestal 5 tot 10 tokens, afhankelijk van hoeveel meetdata je ' +
         'meestuurt. Vóór elke analyse zie je precies wat het kost en waarom.' +
+      '</div>' +
+
+      // Account verwijderen (#41). Hij hoort hier omdat privacy.html al naar
+      // "Mijn account" wees voor precies dit, en dat was tot 29-08-2026 een
+      // belofte zonder knop. Bewust onderaan en zonder nadruk: dit is niets
+      // wat je per ongeluk aanraakt, maar het moet wel vindbaar zijn — Google
+      // eist een verwijderoptie in de app zelf.
+      '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--bd,#26304a)">' +
+        '<button class="mbtn" id="mtWeg" style="width:100%;font-weight:400;color:var(--rd,#ef4444)">' +
+          'Account verwijderen</button>' +
       '</div>';
 
     const cb = body.querySelector('#mtCode');
@@ -568,6 +578,81 @@
     if (kb) kb.onclick = () => openKoop(k);
     const db = body.querySelector('#mtDonatie');
     if (db) db.onclick = openDonatie;
+    const wb = body.querySelector('#mtWeg');
+    if (wb) wb.onclick = () => { _sluit('klantTokenOv'); openVerwijderAccount(k); };
+  }
+
+  // ── Account verwijderen ──────────────────────────────────────────────
+  // Het recht op verwijdering uit de AVG, en de knop die Google Play eist voor
+  // elke app waarin je een account kunt aanmaken.
+  //
+  // WAAROM HET WACHTWOORD ERBIJ MOET. De sessie is al geldig — daar zit je mee
+  // in dit scherm. Maar een onomkeerbare actie hoort niet te lukken op een
+  // toestel dat even onbeheerd op de werkbank ligt. De Worker eist hem ook, dus
+  // dit veld is geen schijnzekerheid die de client zelf verzint.
+  //
+  // WAT DE TEKST MOET ZEGGEN, en dit is waar zo'n scherm meestal liegt: het
+  // account is meteen onbruikbaar, maar het record staat er nog dertig dagen.
+  // Dat staat er dus letterlijk bij. "Direct en voorgoed verwijderd" zou korter
+  // zijn en niet waar.
+  function openVerwijderAccount(k) {
+    const o = _ov('klantWegOv');
+    const saldo = (k && Number(k.saldo)) || 0;
+    o.innerHTML =
+      '<div class="modal"><div class="modal-scroll">' +
+        _kop('Account verwijderen', 'Dit kun je niet zelf terugdraaien') +
+        '<div class="lg-form">' +
+          '<div style="background:var(--rds,rgba(239,68,68,.12));border-left:3px solid var(--rd,#ef4444);' +
+            'padding:11px 13px;border-radius:8px;font-size:12px;color:var(--tx2,#9aa6bd);line-height:1.6">' +
+            'Je kunt hierna niet meer inloggen en je opgeslagen rapporten zijn niet meer op te vragen.' +
+            (saldo > 0
+              ? ' Je hebt nog <b style="color:var(--tx,#eef2fa)">' + _nl(saldo) + ' tokens</b> — ' +
+                'die vervallen en worden niet terugbetaald.'
+              : '') +
+          '</div>' +
+          '<div style="font-size:11.5px;color:var(--tx3,#7c8aa5);line-height:1.6;margin:12px 0 4px">' +
+            'Je gegevens worden binnen 30 dagen definitief gewist. In die periode kun je ze nog ' +
+            'terug laten zetten via ' + _esc(CFG.supportMail) + '; daarna is dat niet meer mogelijk.' +
+          '</div>' +
+          '<label style="display:block;font-size:11.5px;color:var(--tx2,#9aa6bd);margin:12px 0 5px">' +
+            'Vul je wachtwoord in om te bevestigen</label>' +
+          '<input type="password" id="wgPass" autocomplete="current-password" class="lg-in" ' +
+            'placeholder="Wachtwoord">' +
+          '<div id="wgErr" style="min-height:16px;font-size:11.5px;margin-top:8px"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mact">' +
+        '<button class="mbtn" id="wgNee" style="flex:1">Annuleren</button>' +
+        '<button class="mbtn" id="wgJa" style="flex:1;color:var(--rd,#ef4444)">Verwijderen</button>' +
+      '</div></div>';
+    o.classList.remove('hidden');
+
+    const err = o.querySelector('#wgErr');
+    o.querySelector('#wgNee').onclick = () => _sluit('klantWegOv');
+
+    o.querySelector('#wgJa').onclick = async () => {
+      const pass = o.querySelector('#wgPass').value || '';
+      if (!pass) return _zetMelding(err, 'err', 'Vul je wachtwoord in.');
+      o.querySelector('#wgJa').disabled = true;
+      _zetMelding(err, 'ok', 'Bezig…');
+      try {
+        const r = await _post('/klant/verwijder', { pass: pass }, true);
+        if (!r.ok) {
+          o.querySelector('#wgJa').disabled = false;
+          return _zetMelding(err, 'err', r.data.error || 'Verwijderen mislukt.');
+        }
+        _log('Account verwijderd op eigen verzoek — definitief weg op ' +
+             String(r.data.definitiefOp || '').slice(0, 10), 'ok');
+        _sluit('klantWegOv');
+        try { (window.showToast || function () {})('Account verwijderd'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+        // Uitloggen hoort erbij: blijven zitten met een sessie op een account
+        // dat niet meer bruikbaar is geeft alleen maar foutmeldingen.
+        try { if (typeof logout === 'function') logout(); } catch(e){ console.warn('uitloggen na verwijderen mislukt:', e); }
+      } catch (e) {
+        o.querySelector('#wgJa').disabled = false;
+        _zetMelding(err, 'err', 'Geen verbinding met de server (' + (e && e.message || 'onbekend') + ')');
+      }
+    };
   }
 
   // ── Tokens kopen ─────────────────────────────────────────────────────
@@ -676,6 +761,7 @@
     openRegistratie: openRegistratie,
     openHerstelAanvraag: openHerstelAanvraag,
     openMijnTokens: openMijnTokens,
+    openVerwijderAccount: openVerwijderAccount,
     openOnboarding: openOnboarding,
     openKoop: openKoop,
     openDonatie: openDonatie,

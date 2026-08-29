@@ -68,6 +68,12 @@ var KRITIEK = [
   // sensorkeuzescherm om in plaats van stil te zwijgen -- en stil zwijgen is
   // precies de bug die #31 beschrijft.
   'plSelectieVoor','plSelectieMeld',
+  // Uitloggen na "Account verwijderen" (#41, pidlane-klant.js). Die aanroep
+  // staat achter een guard omdat klant.js ook los getest wordt, maar in de app
+  // hoort logout() er te zijn. Ontbreekt hij, dan blijft de gebruiker met een
+  // sessie zitten op een account dat niet meer bestaat -- en dat levert een
+  // rij foutmeldingen op in plaats van een nette afsluiting.
+  'logout',
   'plSurveyUitkomst',
   // Schermen die de zelftest in fase 2 opent en weer sluit. Geen aanhalings-
   // tekens in dit commentaar: de test leest deze lijst met een regex.
