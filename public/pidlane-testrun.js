@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.3 (28-08-2026)';
+const TESTRUN_VERSIE = '5.4 (29-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1650,67 +1650,120 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 28-08-2026 (6) — drie stille fouten in de meetkant zelf.
-  // De Capacitor-controles van 5.2 zijn hier weg: die oplevering is afgerond
-  // en staat groen in test-capversies.js en test-schermranden.js.
+  // OPLEVERING 29-08-2026 (7) — #31 en #49: sporen die er niet waren.
+  // De controles van 28-08 (6) zijn hier weg: die oplevering is afgerond en
+  // staat groen in test-applog.js, test-bezetting.js en test-modelprijs.js.
   //
-  // Deze ronde gaat over iets ongemakkelijkers: de app MAT goed en
-  // RAPPORTEERDE verkeerd, op drie plekken tegelijk.
+  // Twee onderwerpen, één vorm. In allebei de gevallen kón de app iets doen
+  // zonder dat er een spoor van overbleef: een sensor aanzetten werd niet
+  // gelogd terwijl uitzetten dat wél werd (#31), en het toestel deelde zelf
+  // tegoed uit zonder dat de server ervan wist (#49).
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1: leest de testrun de app-log nu écht? ───────────
-  // Dit was #29. De app-log werd gelezen als window._appLog || window.logBuffer,
-  // en die bestaan nergens — dus altijd leeg, zonder ooit een fout.
-  await _doe(5, 'De app-log komt binnen bij de testrun', function () {
-    if (typeof plLokaalLog !== 'function')
-      return { staat: 'FOUT', detail: 'plLokaalLog() ontbreekt — pidlane-auth.js is niet meegekomen, ' +
-        'en dan leest blok 14 opnieuw een lege lijst' };
-    const app = _appLogRegels();
-    if (!app.length)
-      return { staat: 'LET OP', detail: 'app-log is leeg. Dat kan kloppen bij een verse start, maar ' +
-        'juist dit was de fout van 28-08: kijk in het logboek onder BRON = APP of daar wél regels staan' };
-    return app.length + ' regels binnen via plLokaalLog() — blok 14 kan de opruimregel nu zien';
+  // ── TOEGEVOEGD 1: meldt de selectiemelder in BEIDE richtingen? ───
+  // Dit was #31: dertien regels "Sensor uitgezet via dubbeltik" en nul regels
+  // over een sensor die erbij kwam. De vraag was daardoor niet te beantwoorden
+  // of vijftien niet-bewegende sensoren het gedrag van de auto waren of
+  // handmatig aangezette PIDs die de ECU niet kent.
+  //
+  // GEEN ENKELE APP-STAAT WORDT AANGERAAKT. plSelectieMeld() vergelijkt de
+  // echte activePIDs met een momentopname die wij meegeven; door die
+  // momentopname te veranderen in plaats van de selectie zien we allebei de
+  // richtingen zonder één sensor aan of uit te zetten.
+  await _doe(5, 'De selectiemelder meldt erbij én eraf', function () {
+    if (typeof plSelectieVoor !== 'function' || typeof plSelectieMeld !== 'function')
+      return { staat: 'FOUT', detail: 'plSelectieVoor/plSelectieMeld ontbreken — pidlane-pidgate.js is niet ' +
+        'meegekomen, en dan verandert de selectie weer zonder spoor' };
+
+    const nu = plSelectieVoor();
+    if (!nu) return { staat: 'LET OP', detail: 'activePIDs niet leesbaar — deze controle vraagt een geladen app' };
+    if (!nu.size) return { staat: 'LET OP', detail: 'de selectie is leeg; de richting "erbij" is dan niet te tonen. ' +
+      'Kies eerst een sensor en draai deze controle opnieuw' };
+
+    // Richting ERBIJ: een momentopname zonder de eerste actieve PID. Het
+    // verschil met de echte selectie is dan precies die ene, "erbij".
+    const eerste = Array.from(nu)[0];
+    const zonder = new Set(nu); zonder.delete(eerste);
+    const a = plSelectieMeld(zonder, 'zelftest \u2014 er is niets veranderd');
+
+    // Richting ERAF: een momentopname mét een PID die niet bestaat.
+    const met = new Set(nu); met.add('__zelftest');
+    const b = plSelectieMeld(met, 'zelftest \u2014 er is niets veranderd');
+
+    if (!a || a.erbij.length !== 1 || a.eraf.length)
+      return { staat: 'FOUT', detail: 'de richting "erbij" wordt niet gemeld: ' + JSON.stringify(a) };
+    if (!b || b.eraf.length !== 1 || b.erbij.length)
+      return { staat: 'FOUT', detail: 'de richting "eraf" wordt niet gemeld: ' + JSON.stringify(b) };
+    if (!/erbij/.test(a.tekst) || !/eraf/.test(b.tekst))
+      return { staat: 'FOUT', detail: 'de twee richtingen krijgen niet dezelfde bewoording: ' +
+        a.tekst + ' / ' + b.tekst };
+
+    return 'beide richtingen gemeld, zelfde bewoording \u2014 selectie is niet aangeraakt (' + nu.size + ' actief)';
   });
 
-  // ── TOEGEVOEGD 2: heeft blok 7 nulmetingen in zijn spoor? ────────
-  // Dit was #12. De echte controle draait verderop in blok 7; hier kijken we
-  // alleen of de valkuil zich in deze run überhaupt voordoet, zodat je weet
-  // of blok 7 dit keer iets te vertellen heeft.
-  await _doe(5, 'Nulmetingen in het bezettingsspoor', function () {
-    let sp = [];
-    try { sp = (window.PLLoad && typeof PLLoad.spoor === 'function') ? PLLoad.spoor() : []; } catch (e) { sp = []; }
-    if (!sp.length)
-      return { staat: 'LET OP', detail: 'geen spoor beschikbaar — blok 7 zegt het verderop zelf' };
-    const nullen = sp.filter(function (m) { return m && m.ms === 0; }).length;
-    if (nullen)
-      return nullen + ' van de ' + sp.length + ' monsters staan op 0 ms; blok 7 hoort die eruit te ' +
-        'laten en dat te melden in plaats van er +0% van te maken';
-    return 'spoor van ' + sp.length + ' monsters, geen enkele 0 ms — de valkuil van #12 doet zich hier niet voor';
+  // ── TOEGEVOEGD 2: kent het tegoed drie toestanden? ───────────────
+  // Dit is de kern van #49. Naast "zoveel" en "nul" bestaat nu ONBEKEND: dit
+  // toestel heeft nog geen saldo van de server gezien. Zonder dat verschil
+  // blokkeert de app elke analyse op een nul die zij zelf verzon.
+  await _doe(5, 'Het tegoed kent "onbekend" naast nul', function () {
+    if (!window.PLCredits) return { staat: 'FOUT', detail: 'PLCredits ontbreekt — pidlane-credits.js is niet meegekomen' };
+    if (typeof PLCredits.saldoBekend !== 'function')
+      return { staat: 'FOUT', detail: 'PLCredits.saldoBekend() ontbreekt; onbekend en nul zijn dan weer hetzelfde' };
+    const bekend = PLCredits.saldoBekend();
+    const s = PLCredits.saldo();
+    if (bekend && s === 0)
+      return 'saldo bekend en nul \u2014 de app hoort hier te blokkeren, en dat is juist';
+    if (!bekend)
+      return 'saldo nog onbekend; de app laat door en de Worker rekent af \u2014 dit is de toestand die vroeger ' +
+        'als "0" werd gelezen';
+    return 'saldo bekend: ' + s + ' tokens';
   });
 
-  // ── VERWIJDERD: staat er nergens meer een dode logbron? ─────────
-  // De helft die het makkelijkst wordt vergeten.
-  await _doe(5, 'Geen dode logbronnen meer in de geladen testrun', async function () {
-    let js = '';
-    try {
-      const r = await fetch('pidlane-testrun.js', { cache: 'reload' });
-      if (!r.ok) return { staat: 'LET OP', detail: 'pidlane-testrun.js niet op te halen (' + r.status + ')' };
-      js = await r.text();
-    } catch (e) { return { staat: 'LET OP', detail: 'bron niet op te halen: ' + (e.message || e) }; }
+  // ── VERWIJDERD 1: deelt de client nog tegoed uit? ────────────────
+  // De helft die het makkelijkst wordt vergeten. CFG.gratisStart bestond als
+  // echte instelling; is hij weg uit het draaiende object, dan kán saldo()
+  // hem niet meer uitdelen. Dit leest geen bron maar de module zoals die
+  // in deze app draait.
+  await _doe(5, 'Geen proeftegoed meer uit de client', function () {
+    if (!window.PLCredits || !PLCredits.CFG)
+      return { staat: 'FOUT', detail: 'PLCredits.CFG ontbreekt' };
+    if (PLCredits.CFG.gratisStart !== undefined)
+      return { staat: 'FOUT', detail: 'CFG.gratisStart staat er nog (' + PLCredits.CFG.gratisStart +
+        '). Eerst "Nieuwste versie laden"; blijft het staan, dan is de fix niet meegekomen en deelt ' +
+        'app-gegevens wissen opnieuw tokens uit' };
+    if (PLCredits.CFG.lsInit !== undefined)
+      return { staat: 'FOUT', detail: 'CFG.lsInit staat er nog; dat was de vastlegging dat dit TOESTEL zijn ' +
+        'proeftegoed al kreeg, en die vraag hoort bij het account' };
+    return 'CFG.gratisStart en CFG.lsInit zijn weg \u2014 het proeftegoed komt van /klant/onboarding';
+  });
 
-    // Prozaregels en commentaar noemen de dode globals met opzet; alleen
-    // uitvoerbare regels tellen. Zelfde afspraak als in test-applog.js.
-    const regels = js.split('\n')
-      .map(function (t, i) { return { nr: i + 1, t: t }; })
-      .filter(function (x) {
-        return /window\.(_appLog|logBuffer)/.test(x.t) && !/^\s*(['"]|\/\/|\*)/.test(x.t);
+  // ── VERWIJDERD 2: staan de losse logregels nog in de bron? ───────
+  // #31 wees erop dat drie plekken hun eigen regel schreven. Twee bewoordingen
+  // voor dezelfde gebeurtenis is hier al drie keer een bug geweest, dus de
+  // oude teksten horen wég te zijn en niet naast de nieuwe te staan.
+  await _doe(5, 'Geen tweede bewoording voor een selectiewijziging', async function () {
+    const oud = ['Sensor uitgezet via dubbeltik', 'Standaard set: '];
+    const gevonden = [];
+    for (const naam of ['pidlane-pids.js', 'pidlane-pidgate.js', 'pidlane-rijsituatie.js']) {
+      let js = '';
+      try {
+        const r = await fetch(naam, { cache: 'reload' });
+        if (!r.ok) return { staat: 'LET OP', detail: naam + ' niet op te halen (' + r.status + ')' };
+        js = await r.text();
+      } catch (e) { return { staat: 'LET OP', detail: naam + ' niet op te halen: ' + (e.message || e) }; }
+
+      // Alleen uitvoerbare regels: commentaar mag de oude tekst noemen, en
+      // doet dat ook — daar staat waarom hij weg is.
+      js.split('\n').forEach(function (t, i) {
+        if (!oud.some(function (o) { return t.indexOf(o) >= 0; })) return;
+        if (/^\s*(\/\/|\*|\/\*)/.test(t)) return;
+        gevonden.push(naam + ':' + (i + 1));
       });
-    if (regels.length)
-      return { staat: 'FOUT', detail: regels.length + ' regel(s) lezen de dode globals nog, o.a. regel ' +
-        regels[0].nr + '. Eerst "Nieuwste versie laden"; blijft het staan, dan is de fix niet meegekomen' };
-    if (!/_appLogRegels/.test(js))
-      return { staat: 'FOUT', detail: 'de gedeelde helper _appLogRegels() staat niet in de geladen code' };
-    return 'één gedeelde helper, geen dode globals';
+    }
+    if (gevonden.length)
+      return { staat: 'FOUT', detail: gevonden.length + ' losse logregel(s) staan er nog: ' + gevonden.join(', ') +
+        '. Dan meldt dezelfde gebeurtenis twee keer iets anders' };
+    return 'de drie modules melden alleen nog via plSelectieMeld()';
   });
 }
 
@@ -2465,39 +2518,43 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-08 (6) — drie stille fouten in de meetkant zelf',
+  titel: 'OPLEVERING 29-08 (7) \u2014 #31 en #49: sporen die er niet waren',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Drie fouten van dezelfde soort, alle drie opgeruimd: de app MAT goed en RAPPORTEERDE verkeerd. Dat type kost het meeste vertrouwen, want van buitenaf is het niet te onderscheiden van een echte bevinding \u2014 en een test die dezelfde verkeerde bron leest staat vrolijk groen mee.',
+    'Twee onderwerpen met dezelfde vorm: de app kon iets doen zonder dat er een spoor van overbleef. Dat is erger dan een ontbrekende regel, want wie het halve spoor ziet trekt er een hele conclusie uit.',
 
-    'Nummer 29: de app-log werd op drie plekken gelezen uit twee globals die nergens bestaan. Altijd leeg, nooit een fout, want de terugval op een lege lijst ving het op. Daardoor meldde blok 14 "niets opgeruimd" terwijl de opruimregel twee keer had gevuurd, gaf blok 11 "app-log 0 regels" naast 1183 BT-regels, en had het opgeslagen rapport nooit een APP-LOG-sectie. Alle drie stonden in de run van 19:09.',
+    'Nummer 31: een sensor UITzetten werd gelogd, AANzetten niet. Het log van 27-08 bevat dertien regels "Sensor uitgezet via dubbeltik" en nul regels over een sensor die erbij kwam \u2014 terwijl er wel degelijk sensoren zijn aangezet. Daardoor was bij het nakijken van die rit niet te beantwoorden of de vijftien niet-bewegende sensoren uit blok 14 het gedrag van de auto waren, of handmatig aangezette PIDs die de ECU niet kent. Dat is het verschil tussen een bevinding en ruis, en het is opgelost door het de eigenaar te vragen \u2014 wat precies \u00e9\u00e9n keer werkt.',
 
-    'Nummer 12: blok 7 gaf bij een deel-door-nul stilzwijgend 0% terug, en 0% viel in de tak "vrijwel geen verschil". 0 ms tegen 144 ms werd zo gepresenteerd als "bezetting voorspelt geen tegendruk" \u2014 de omgekeerde conclusie, op de regel die bepaalt of de PLLoad-vraag dicht kan.',
-
-    'Nummer 48: de prijstabel stond op 15/75 dollar voor Opus (dat is de Opus 3-generatie; nu 5/25) en had een introductieprijs voor Sonnet 5 die niet bestaat \u2014 met een klokvergelijking die op 1 september vanzelf 50% te hoog zou gaan tellen. Een fout die geen enkele commit veroorzaakt en die dus door geen enkele review gevangen wordt.',
+    'Nummer 49: het proeftegoed hing aan het TOESTEL. saldo() deelde 25 credits uit zodra de localStorage-sleutel ontbrak, dus app-gegevens wissen was een knop die onbeperkt tokens gaf. Zolang de Worker het echte saldo bijhield was dat onschadelijk, maar het besluit van 28-08 maakt credits het enige verdienmodel \u2014 en dan is een tweede plek die tegoed uitdeelt het grootste gat. Bijkomend: het toestel deelde 25 uit en de server 20, twee getallen voor \u00e9\u00e9n begrip.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Blok 5 controle 1 hoort nu een aantal app-logregels te melden in plaats van niets. Staat er LET OP "app-log is leeg", kijk dan in het logboek onder BRON = APP of daar wél regels staan \u2014 dat is precies het verschil dat maanden onzichtbaar was.',
+    'STAP 1. Blok 5 controle 1 draait de selectiemelder in beide richtingen zonder \u00e9\u00e9n sensor aan of uit te zetten. Staat er LET OP "de selectie is leeg", kies dan eerst een sensor en draai opnieuw.',
 
-    'STAP 2. DE ECHTE PROEF, EN DIE VRAAGT EEN RIT VAN MINSTENS VIJF MINUTEN. Rijd tot de opruimregel vuurt (in het logboek verschijnt dan een regel met "opgeruimd") en draai daarna de testrun. Blok 14 hoort dat nu te MELDEN in plaats van "niets opgeruimd \u2014 controleer of hij aanstaat" te zeggen. Zonder die rit is deze fix niet bewezen.',
+    'STAP 2. DE ECHTE PROEF, EN DIE DOE JE MET DE HAND. Zet een sensor AAN via een vinkje in het keuzescherm, en zet er daarna een UIT met een dubbeltik op de tegel. In het logboek horen nu twee regels te staan die met dezelfde woorden beginnen: "Sensorselectie via sensorkeuze: 1 erbij (\u2026)" en "Sensorselectie via dubbeltik op de tegel: 1 eraf (\u2026)". Staat er nog "Sensor uitgezet via dubbeltik", dan is de oude regel niet meegekomen.',
 
-    'STAP 3. Sla het rapport op en kijk of er nu een sectie APP-LOG in staat, onder de BT-LOG. Die ontbrak altijd.',
+    'STAP 3. Druk daarna op "Standaard set" en op een preset. E\u00e9n regel per handeling, met het aantal \u2014 geen muur van veertig regels. En let op het getal: dat hoort te zijn wat er ECHT bij kwam, niet hoe groot de set is. Stond de helft al aan, dan is het getal lager.',
 
-    'STAP 4. Kijk in blok 11 ("Meldingen sinds het begin van deze run") of het aantal app-logregels niet meer nul is.',
+    'STAP 4. Voor #49: open het kebabmenu. "\ud83d\udc64 Mijn account" hoort alleen te staan bij een klantaccount. Log je in als beheerder of medewerker, dan is het item weg \u2014 dat scherm had voor die accounts alleen een abonnement uit te leggen dat niet bestaat.',
+
+    'STAP 5. Kijk onderaan het scherm naar de tokenchip. Bij een klantaccount staat er een getal. Is er nog geen saldo van de server binnen, dan staat er "tokens onbekend" en G\u00c9\u00c9N "0 tokens" \u2014 dat verschil is de hele fix. Blok 5 meldt dezelfde toestand in woorden.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De app-log loopt nu via \u00e9\u00e9n helper die plLokaalLog() leest \u2014 dezelfde bron die het logboek al gebruikte \u2014 en die een fout MELDT in plaats van stil nul terug te geven. Blok 7 gooit nulmetingen eruit vóór de mediaan en meldt hoeveel. De prijstabel staat in dollar met de wisselkoers als aparte constante, zonder klok.',
+    'Vijf gebruikershandelingen wijzigen de selectie \u2014 vinkje, dubbeltik, standaardset, "+ Alles" per categorie en preset \u2014 en ze melden nu alle vijf via \u00e9\u00e9n plek: plSelectieMeld() in pidlane-pidgate.js. Die krijgt g\u00e9\u00e9n lijst van wat er zou veranderen maar een momentopname van v\u00f3\u00f3r de handeling, en rekent het verschil zelf uit tegen de echte activePIDs. Een aanroeper k\u00e1n dus niet iets anders melden dan wat er gebeurd is.',
 
-    'Drie nieuwe tests in de gate, alle drie met tegenproef: test-applog.js, test-bezetting.js en test-modelprijs.js. Daarnaast zes dode element-opzoekingen weg; monitorBtn en de dode functie refreshAdminLogRow zijn bewust blijven staan, met de reden in de commit.',
+    'Het tegoed komt alleen nog van de server. De client deelt niets meer uit en telt niets meer bij: localStorage is een afschrift. saldo() kent daardoor drie toestanden in plaats van twee, en de drie plekken die er een besluit op nemen \u2014 de chip, het kostenvenster en preflight() \u2014 vragen saldoBekend() erbij. Een activatiecode wordt alleen nog op een account bijgeschreven en haakt af v\u00f3\u00f3r het verzoek als je niet ingelogd bent, zodat de code niet verbrandt.',
+
+    'Twee nieuwe tests in de gate, allebei met tegenproef: test-selectielog.js (35 toetsen, tien nagebouwde fouten) en test-proeftegoed.js (24 toetsen, vijf nagebouwde fouten). test-inlog-sessie.js is herzien: die eiste tot nu toe dat de saldosleutel op "0" bleef staan, precies omdat wissen 25 tokens uitdeelde. Die eis draait mee.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
+    'Van #49 blijven twee stukken staan, elk een eigen sessie waard: promptcaching (cache-reads kosten 10% van het invoertarief, maar de prefix moet eerst bewezen stabiel zijn \u2014 meten v\u00f3\u00f3r bouwen) en de structurele kant, Users als beheerrol in plaats van klantcategorie.',
+
     'De vijf vensters uit 5.1 (testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker) staan nog op broncontrole en vragen \u00e9\u00e9n blik met het oog op het toestel.',
 
-    'De punten die een rit of een besluit vragen blijven staan: 15, 16, 17, 18, 20, 30, 40 en 46, plus de Play-punten 41 en 42 en het besluit 49.'
+    'De punten die een rit of een besluit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46, plus de Play-punten 41 en 42.'
   ]
 };
 

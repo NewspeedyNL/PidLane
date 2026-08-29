@@ -11,6 +11,66 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-29a (CET) — TWEE SPOREN DIE ER NIET WAREN
+
+       • 📡 EEN SENSOR AANZETTEN WERD NIET GELOGD, UITZETTEN WEL (#31). Het log
+         van 27-08 had dertien regels "Sensor uitgezet via dubbeltik" en nul
+         regels over een sensor die erbij kwam, terwijl er wel degelijk
+         sensoren zijn aangezet. Die asymmetrie is misleidend en niet alleen
+         onvolledig: wie hem leest concludeert dat de selectie alleen kleiner
+         is geworden. Bij het nakijken van die rit was daardoor niet te zeggen
+         of de vijftien niet-bewegende sensoren uit blok 14 het gedrag van de
+         auto waren of handmatig aangezette PIDs die de ECU niet kent — het
+         verschil tussen een bevinding en ruis.
+         Vijf handelingen wijzigen de selectie (vinkje, dubbeltik,
+         standaardset, "+ Alles" per categorie, preset) en melden nu alle vijf
+         via plSelectieMeld() in pidlane-pidgate.js. De losse regels die drie
+         van die plekken zelf schreven zijn weg. De melder krijgt géén lijst
+         van wat er zou veranderen maar een momentopname van vóór de
+         handeling, en rekent het verschil zelf uit tegen de echte activePIDs —
+         een aanroeper kán dus niet iets anders melden dan wat er gebeurd is.
+         Een preset van veertig PIDs geeft één regel met het aantal en twee
+         voorbeelden, geen muur.
+
+       • ⚡ HET PROEFTEGOED HING AAN HET TOESTEL (#49). saldo() in
+         pidlane-credits.js deelde CFG.gratisStart (25) uit zodra de
+         localStorage-sleutel ontbrak, dus app-gegevens wissen was een knop die
+         onbeperkt tokens gaf. Onschadelijk zolang de Worker het echte saldo
+         bijhield — maar credits zijn nu het enige verdienmodel, en dan is een
+         tweede plek die tegoed uitdeelt het grootste gat. Het toestel deelde
+         bovendien 25 uit en handleKlantOnboarding 20: twee getallen voor één
+         begrip.
+         De client deelt nu niets meer uit en telt niets meer bij; het
+         proeftegoed komt van /klant/onboarding, dat KLANT_START_SALDO bijboekt
+         en StartTegoedGegeven zet. localStorage is nog een afschrift.
+         Om te voorkomen dat de fix de app onbruikbaar maakt kent saldo() drie
+         toestanden in plaats van twee — zoveel, nul, en ONBEKEND. Onbekend als
+         nul lezen zou elke analyse blokkeren op een getal dat de client zelf
+         verzon. De saldochip, het kostenvenster en preflight() vragen daarom
+         saldoBekend() erbij; onbekend laat door en de Worker weigert alsnog
+         met 402 als het tegoed echt op is.
+         Een activatiecode wordt alleen nog op een account bijgeschreven en
+         haakt af vóór het verzoek als je niet ingelogd bent — anders stempelt
+         de Worker de code af als gebruikt en komen de tokens in localStorage
+         terecht, waar de server ze nooit ziet.
+
+       • 👤 "MIJN ACCOUNT" VOLGT NU DE ROL (#49). pasMenuAan() verbergt
+         kbAccount voor een niet-klant, in dezelfde functie en om dezelfde
+         reden als het adminblok. Dat scherm zei tegen een beheeraccount dat
+         analyses "in je abonnement zitten" — een abonnement dat niet bestaat.
+         Cosmetisch, geen beveiliging: die zit in de Worker, die elk
+         beheerverzoek aan X-Admin-Token toetst.
+
+       • ✅ TWEE NIEUWE TESTS IN DE GATE, allebei met tegenproef:
+         test-selectielog.js (35 toetsen) en test-proeftegoed.js (24 toetsen,
+         vijf nagebouwde fouten die hem rood maken). test-inlog-sessie.js is
+         herzien: die eiste tot nu toe dat de saldosleutel op "0" bleef staan,
+         juist omdat wissen 25 tokens uitdeelde. Die eis draait mee, met de
+         oude reden erbij. Testrun 5.4: blok 5 en CAMPAGNE toetsen wat er in
+         déze update veranderd is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-08-28g (CET) — DRIE STILLE FOUTEN IN DE MEETKANT ZELF
 
        • 🧻 DE APP-LOG KWAM NOOIT BINNEN BIJ DE TESTRUN (#29). Hij werd op DRIE
