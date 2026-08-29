@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.4 (29-08-2026)';
+const TESTRUN_VERSIE = '5.5 (29-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1650,120 +1650,84 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 29-08-2026 (7) — #31 en #49: sporen die er niet waren.
-  // De controles van 28-08 (6) zijn hier weg: die oplevering is afgerond en
-  // staat groen in test-applog.js, test-bezetting.js en test-modelprijs.js.
+  // OPLEVERING 29-08-2026 (8) — #41: de verwijderknop die er niet was.
+  // De controles van 29-08 (7) zijn hier weg: die oplevering is afgerond en
+  // staat groen in test-selectielog.js en test-proeftegoed.js.
   //
-  // Twee onderwerpen, één vorm. In allebei de gevallen kón de app iets doen
-  // zonder dat er een spoor van overbleef: een sensor aanzetten werd niet
-  // gelogd terwijl uitzetten dat wél werd (#31), en het toestel deelde zelf
-  // tegoed uit zonder dat de server ervan wist (#49).
+  // Dezelfde vorm als de vorige ronde, en dat is geen toeval: privacy.html
+  // beloofde "Gegevens bij je account verwijder je via Mijn account" terwijl
+  // die knop niet bestond. Een verklaring over persoonsgegevens die de app
+  // niet waar kon maken.
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1: meldt de selectiemelder in BEIDE richtingen? ───
-  // Dit was #31: dertien regels "Sensor uitgezet via dubbeltik" en nul regels
-  // over een sensor die erbij kwam. De vraag was daardoor niet te beantwoorden
-  // of vijftien niet-bewegende sensoren het gedrag van de auto waren of
-  // handmatig aangezette PIDs die de ECU niet kent.
-  //
-  // GEEN ENKELE APP-STAAT WORDT AANGERAAKT. plSelectieMeld() vergelijkt de
-  // echte activePIDs met een momentopname die wij meegeven; door die
-  // momentopname te veranderen in plaats van de selectie zien we allebei de
-  // richtingen zonder één sensor aan of uit te zetten.
-  await _doe(5, 'De selectiemelder meldt erbij én eraf', function () {
-    if (typeof plSelectieVoor !== 'function' || typeof plSelectieMeld !== 'function')
-      return { staat: 'FOUT', detail: 'plSelectieVoor/plSelectieMeld ontbreken — pidlane-pidgate.js is niet ' +
-        'meegekomen, en dan verandert de selectie weer zonder spoor' };
-
-    const nu = plSelectieVoor();
-    if (!nu) return { staat: 'LET OP', detail: 'activePIDs niet leesbaar — deze controle vraagt een geladen app' };
-    if (!nu.size) return { staat: 'LET OP', detail: 'de selectie is leeg; de richting "erbij" is dan niet te tonen. ' +
-      'Kies eerst een sensor en draai deze controle opnieuw' };
-
-    // Richting ERBIJ: een momentopname zonder de eerste actieve PID. Het
-    // verschil met de echte selectie is dan precies die ene, "erbij".
-    const eerste = Array.from(nu)[0];
-    const zonder = new Set(nu); zonder.delete(eerste);
-    const a = plSelectieMeld(zonder, 'zelftest \u2014 er is niets veranderd');
-
-    // Richting ERAF: een momentopname mét een PID die niet bestaat.
-    const met = new Set(nu); met.add('__zelftest');
-    const b = plSelectieMeld(met, 'zelftest \u2014 er is niets veranderd');
-
-    if (!a || a.erbij.length !== 1 || a.eraf.length)
-      return { staat: 'FOUT', detail: 'de richting "erbij" wordt niet gemeld: ' + JSON.stringify(a) };
-    if (!b || b.eraf.length !== 1 || b.erbij.length)
-      return { staat: 'FOUT', detail: 'de richting "eraf" wordt niet gemeld: ' + JSON.stringify(b) };
-    if (!/erbij/.test(a.tekst) || !/eraf/.test(b.tekst))
-      return { staat: 'FOUT', detail: 'de twee richtingen krijgen niet dezelfde bewoording: ' +
-        a.tekst + ' / ' + b.tekst };
-
-    return 'beide richtingen gemeld, zelfde bewoording \u2014 selectie is niet aangeraakt (' + nu.size + ' actief)';
+  // ── TOEGEVOEGD 1: is de knop er, en hangt hij aan de route? ──────
+  await _doe(5, 'De verwijderknop zit in het tokenscherm', function () {
+    if (!window.PLKlant)
+      return { staat: 'FOUT', detail: 'PLKlant ontbreekt — pidlane-klant.js is niet meegekomen' };
+    if (typeof PLKlant.openVerwijderAccount !== 'function')
+      return { staat: 'FOUT', detail: 'PLKlant.openVerwijderAccount() ontbreekt. Eerst "Nieuwste versie laden"; ' +
+        'blijft het staan, dan belooft privacy.html weer iets wat de app niet heeft' };
+    return 'openVerwijderAccount() bestaat; het scherm zelf vraagt een klantaccount';
   });
 
-  // ── TOEGEVOEGD 2: kent het tegoed drie toestanden? ───────────────
-  // Dit is de kern van #49. Naast "zoveel" en "nul" bestaat nu ONBEKEND: dit
-  // toestel heeft nog geen saldo van de server gezien. Zonder dat verschil
-  // blokkeert de app elke analyse op een nul die zij zelf verzon.
-  await _doe(5, 'Het tegoed kent "onbekend" naast nul', function () {
-    if (!window.PLCredits) return { staat: 'FOUT', detail: 'PLCredits ontbreekt — pidlane-credits.js is niet meegekomen' };
-    if (typeof PLCredits.saldoBekend !== 'function')
-      return { staat: 'FOUT', detail: 'PLCredits.saldoBekend() ontbreekt; onbekend en nul zijn dan weer hetzelfde' };
-    const bekend = PLCredits.saldoBekend();
-    const s = PLCredits.saldo();
-    if (bekend && s === 0)
-      return 'saldo bekend en nul \u2014 de app hoort hier te blokkeren, en dat is juist';
-    if (!bekend)
-      return 'saldo nog onbekend; de app laat door en de Worker rekent af \u2014 dit is de toestand die vroeger ' +
-        'als "0" werd gelezen';
-    return 'saldo bekend: ' + s + ' tokens';
+  // ── TOEGEVOEGD 2: kent de Worker de route? ───────────────────────
+  // Geen echte verwijdering uitvoeren — dat zou het account van wie de
+  // testrun draait opruimen. We vragen zonder wachtwoord: een 400/401 bewijst
+  // dat de route bestaat en de bevestiging eist, een 404 dat hij ontbreekt.
+  await _doe(5, 'De Worker kent /klant/verwijder', async function () {
+    const basis = (typeof PROXY_URL !== 'undefined' && PROXY_URL) ? PROXY_URL : '';
+    if (!basis) return { staat: 'LET OP', detail: 'PROXY_URL onbekend — deze controle vraagt de Worker iets' };
+    let r;
+    try {
+      const kop = { 'Content-Type': 'application/json' };
+      try { if (window.APP_TOKEN) kop['X-App-Token'] = window.APP_TOKEN; } catch (e) { /* stil: kan nog niet gezet zijn */ }
+      r = await fetch(basis + '/klant/verwijder', { method: 'POST', headers: kop, body: '{}' });
+    } catch (e) { return { staat: 'LET OP', detail: 'Worker niet bereikbaar: ' + (e.message || e) }; }
+
+    if (r.status === 404)
+      return { staat: 'FOUT', detail: 'de route bestaat niet (404) — worker.js is niet meegedeployd, ' +
+        'en dan is de knop in de app een dode knop' };
+    if (r.status === 401)
+      return 'route bestaat en weigert zonder geldige klantsessie (401) — juist';
+    if (r.status === 400 || r.status === 403)
+      return 'route bestaat en eist een bevestiging (' + r.status + ') — juist';
+    return { staat: 'LET OP', detail: 'onverwachte status ' + r.status + '; route bestaat wel' };
   });
 
-  // ── VERWIJDERD 1: deelt de client nog tegoed uit? ────────────────
-  // De helft die het makkelijkst wordt vergeten. CFG.gratisStart bestond als
-  // echte instelling; is hij weg uit het draaiende object, dan kán saldo()
-  // hem niet meer uitdelen. Dit leest geen bron maar de module zoals die
-  // in deze app draait.
-  await _doe(5, 'Geen proeftegoed meer uit de client', function () {
-    if (!window.PLCredits || !PLCredits.CFG)
-      return { staat: 'FOUT', detail: 'PLCredits.CFG ontbreekt' };
-    if (PLCredits.CFG.gratisStart !== undefined)
-      return { staat: 'FOUT', detail: 'CFG.gratisStart staat er nog (' + PLCredits.CFG.gratisStart +
-        '). Eerst "Nieuwste versie laden"; blijft het staan, dan is de fix niet meegekomen en deelt ' +
-        'app-gegevens wissen opnieuw tokens uit' };
-    if (PLCredits.CFG.lsInit !== undefined)
-      return { staat: 'FOUT', detail: 'CFG.lsInit staat er nog; dat was de vastlegging dat dit TOESTEL zijn ' +
-        'proeftegoed al kreeg, en die vraag hoort bij het account' };
-    return 'CFG.gratisStart en CFG.lsInit zijn weg \u2014 het proeftegoed komt van /klant/onboarding';
+  // ── TOEGEVOEGD 3: staat de publieke verwijderpagina er? ──────────
+  // Die URL vult het veld "Data deletion" in de Play Console. Ontbreekt hij,
+  // dan is dat veld niet in te vullen en komt de app er niet door.
+  await _doe(5, 'De publieke verwijderpagina is bereikbaar', async function () {
+    let r;
+    try { r = await fetch('verwijderen.html', { cache: 'reload' }); }
+    catch (e) { return { staat: 'LET OP', detail: 'niet op te halen: ' + (e.message || e) }; }
+    if (!r.ok) return { staat: 'FOUT', detail: 'verwijderen.html geeft ' + r.status +
+      ' — het Play Console-veld "Data deletion" heeft deze URL nodig' };
+    const t = await r.text();
+    if (!/30\s+dagen/i.test(t))
+      return { staat: 'FOUT', detail: 'de pagina noemt de bewaartermijn niet' };
+    return 'bereikbaar en noemt de termijn';
   });
 
-  // ── VERWIJDERD 2: staan de losse logregels nog in de bron? ───────
-  // #31 wees erop dat drie plekken hun eigen regel schreven. Twee bewoordingen
-  // voor dezelfde gebeurtenis is hier al drie keer een bug geweest, dus de
-  // oude teksten horen wég te zijn en niet naast de nieuwe te staan.
-  await _doe(5, 'Geen tweede bewoording voor een selectiewijziging', async function () {
-    const oud = ['Sensor uitgezet via dubbeltik', 'Standaard set: '];
-    const gevonden = [];
-    for (const naam of ['pidlane-pids.js', 'pidlane-pidgate.js', 'pidlane-rijsituatie.js']) {
-      let js = '';
-      try {
-        const r = await fetch(naam, { cache: 'reload' });
-        if (!r.ok) return { staat: 'LET OP', detail: naam + ' niet op te halen (' + r.status + ')' };
-        js = await r.text();
-      } catch (e) { return { staat: 'LET OP', detail: naam + ' niet op te halen: ' + (e.message || e) }; }
+  // ── VERWIJDERD: belooft de tekst nog iets wat er niet is? ────────
+  // De helft die het makkelijkst wordt vergeten. De oude zin wees naar "Mijn
+  // account" zonder knop; die mag niet blijven staan naast de nieuwe.
+  await _doe(5, 'Geen belofte meer zonder knop erachter', async function () {
+    let t = '';
+    try {
+      const r = await fetch('privacy.html', { cache: 'reload' });
+      if (!r.ok) return { staat: 'LET OP', detail: 'privacy.html geeft ' + r.status };
+      t = await r.text();
+    } catch (e) { return { staat: 'LET OP', detail: 'privacy.html niet op te halen: ' + (e.message || e) }; }
 
-      // Alleen uitvoerbare regels: commentaar mag de oude tekst noemen, en
-      // doet dat ook — daar staat waarom hij weg is.
-      js.split('\n').forEach(function (t, i) {
-        if (!oud.some(function (o) { return t.indexOf(o) >= 0; })) return;
-        if (/^\s*(\/\/|\*|\/\*)/.test(t)) return;
-        gevonden.push(naam + ':' + (i + 1));
-      });
-    }
-    if (gevonden.length)
-      return { staat: 'FOUT', detail: gevonden.length + ' losse logregel(s) staan er nog: ' + gevonden.join(', ') +
-        '. Dan meldt dezelfde gebeurtenis twee keer iets anders' };
-    return 'de drie modules melden alleen nog via plSelectieMeld()';
+    if (!/30\s+dagen/i.test(t))
+      return { staat: 'FOUT', detail: 'privacy.html noemt de bewaartermijn niet meer — ' +
+        'code en verklaring lopen dan uit de pas' };
+    if (!/verwijderen\.html/.test(t))
+      return { staat: 'FOUT', detail: 'privacy.html verwijst niet naar de publieke verwijderpagina' };
+    if (!/Account verwijderen/i.test(t))
+      return { staat: 'FOUT', detail: 'privacy.html noemt de knop niet bij naam; dan weet niemand waar hij zoeken moet' };
+    return 'de verklaring noemt de knop, de termijn en de publieke pagina';
   });
 }
 
@@ -2518,43 +2482,45 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 29-08 (7) \u2014 #31 en #49: sporen die er niet waren',
+  titel: 'OPLEVERING 29-08 (8) \u2014 #41: de verwijderknop die er niet was',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Twee onderwerpen met dezelfde vorm: de app kon iets doen zonder dat er een spoor van overbleef. Dat is erger dan een ontbrekende regel, want wie het halve spoor ziet trekt er een hele conclusie uit.',
+    'privacy.html zei letterlijk: "Gegevens bij je account verwijder je via Mijn account". Die knop bestond niet, en er was geen verwijderroute in de Worker. pidlane-privacy.js herhaalde dezelfde belofte in het disclosurescherm. Twee verklaringen die iets beloofden over persoonsgegevens wat de app niet kon waarmaken \u2014 dezelfde vorm als #31 en #49 van vanochtend, met een hogere inzet.',
 
-    'Nummer 31: een sensor UITzetten werd gelogd, AANzetten niet. Het log van 27-08 bevat dertien regels "Sensor uitgezet via dubbeltik" en nul regels over een sensor die erbij kwam \u2014 terwijl er wel degelijk sensoren zijn aangezet. Daardoor was bij het nakijken van die rit niet te beantwoorden of de vijftien niet-bewegende sensoren uit blok 14 het gedrag van de auto waren, of handmatig aangezette PIDs die de ECU niet kent. Dat is het verschil tussen een bevinding en ruis, en het is opgelost door het de eigenaar te vragen \u2014 wat precies \u00e9\u00e9n keer werkt.',
+    'Google eist het bovendien voor elke app waarin je een account kunt aanmaken: een verwijderoptie \u00cdN de app, \u00e9n een publiek bereikbare URL voor het veld "Data deletion" in de Play Console. Er was geen van beide.',
 
-    'Nummer 49: het proeftegoed hing aan het TOESTEL. saldo() deelde 25 credits uit zodra de localStorage-sleutel ontbrak, dus app-gegevens wissen was een knop die onbeperkt tokens gaf. Zolang de Worker het echte saldo bijhield was dat onschadelijk, maar het besluit van 28-08 maakt credits het enige verdienmodel \u2014 en dan is een tweede plek die tegoed uitdeelt het grootste gat. Bijkomend: het toestel deelde 25 uit en de server 20, twee getallen voor \u00e9\u00e9n begrip.',
+    'DE KEUZE DIE ERONDER LIGT: markeren in plaats van meteen wissen. Het account is voor de gebruiker meteen weg, maar het record blijft 30 dagen staan zodat een vergissing te herstellen is. Dat vraagt wel dat er ook echt iemand opruimt \u2014 en die was er niet: geen cron, geen scheduled(). De belofte "binnen 30 dagen" hing tot nu toe aan iemand die eraan denkt.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Blok 5 controle 1 draait de selectiemelder in beide richtingen zonder \u00e9\u00e9n sensor aan of uit te zetten. Staat er LET OP "de selectie is leeg", kies dan eerst een sensor en draai opnieuw.',
+    'STAP 1. Blok 5 controle 2 vraagt de Worker om /klant/verwijder zonder wachtwoord. Een 401 of 400 is GOED: de route bestaat en eist een bevestiging. Krijg je 404, dan is worker.js niet meegedeployd en is de knop in de app een dode knop.',
 
-    'STAP 2. DE ECHTE PROEF, EN DIE DOE JE MET DE HAND. Zet een sensor AAN via een vinkje in het keuzescherm, en zet er daarna een UIT met een dubbeltik op de tegel. In het logboek horen nu twee regels te staan die met dezelfde woorden beginnen: "Sensorselectie via sensorkeuze: 1 erbij (\u2026)" en "Sensorselectie via dubbeltik op de tegel: 1 eraf (\u2026)". Staat er nog "Sensor uitgezet via dubbeltik", dan is de oude regel niet meegekomen.',
+    'STAP 2. DE ECHTE PROEF VRAAGT EEN WEGWERP-KLANTACCOUNT. Registreer een nieuw klantaccount met een adres dat je verder niet gebruikt, log in, open Mijn account, en druk onderaan op "Account verwijderen". Vul eerst een VERKEERD wachtwoord in \u2014 dat hoort te weigeren. Daarna het juiste: je wordt uitgelogd en er verschijnt een melding.',
 
-    'STAP 3. Druk daarna op "Standaard set" en op een preset. E\u00e9n regel per handeling, met het aantal \u2014 geen muur van veertig regels. En let op het getal: dat hoort te zijn wat er ECHT bij kwam, niet hoe groot de set is. Stond de helft al aan, dan is het getal lager.',
+    'STAP 3. Probeer meteen daarna opnieuw in te loggen met datzelfde account. Dat hoort te weigeren met de melding dat het account op eigen verzoek is verwijderd. Lukt inloggen w\u00e9l, dan is de toegangscontrole niet meegekomen.',
 
-    'STAP 4. Voor #49: open het kebabmenu. "\ud83d\udc64 Mijn account" hoort alleen te staan bij een klantaccount. Log je in als beheerder of medewerker, dan is het item weg \u2014 dat scherm had voor die accounts alleen een abonnement uit te leggen dat niet bestaat.',
+    'STAP 4. Open admin.html, kaart Klanten. Het account staat er nog, met een rode regel "verwijderd op verzoek" en de datum waarop het definitief weggaat. Dat is de wachtrij die de cron elke nacht afwerkt. Druk op "\ud83e\uddf9 Nu opruimen": het antwoord hoort "0 gewist \u00b7 1 nog binnen de termijn \u00b7 0 mislukt" te zijn \u2014 want die 30 dagen zijn nog niet om. Dat is g\u00e9\u00e9n storing maar het bewijs dat de termijn gerespecteerd wordt.',
 
-    'STAP 5. Kijk onderaan het scherm naar de tokenchip. Bij een klantaccount staat er een getal. Is er nog geen saldo van de server binnen, dan staat er "tokens onbekend" en G\u00c9\u00c9N "0 tokens" \u2014 dat verschil is de hele fix. Blok 5 meldt dezelfde toestand in woorden.',
+    'STAP 5. Open app.pidlane.nl/verwijderen.html in een browser zonder in te loggen. Dat is de URL die in de Play Console bij "Data deletion" moet komen te staan.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Vijf gebruikershandelingen wijzigen de selectie \u2014 vinkje, dubbeltik, standaardset, "+ Alles" per categorie en preset \u2014 en ze melden nu alle vijf via \u00e9\u00e9n plek: plSelectieMeld() in pidlane-pidgate.js. Die krijgt g\u00e9\u00e9n lijst van wat er zou veranderen maar een momentopname van v\u00f3\u00f3r de handeling, en rekent het verschil zelf uit tegen de echte activePIDs. Een aanroeper k\u00e1n dus niet iets anders melden dan wat er gebeurd is.',
+    'Nieuw: POST /klant/verwijder (met wachtwoordbevestiging), een knop onderaan het tokenscherm, en public/verwijderen.html. De teksten in privacy.html en pidlane-privacy.js zeggen nu wat er ECHT gebeurt, inclusief dat een resterend tegoed vervalt.',
 
-    'Het tegoed komt alleen nog van de server. De client deelt niets meer uit en telt niets meer bij: localStorage is een afschrift. saldo() kent daardoor drie toestanden in plaats van twee, en de drie plekken die er een besluit op nemen \u2014 de chip, het kostenvenster en preflight() \u2014 vragen saldoBekend() erbij. Een activatiecode wordt alleen nog op een account bijgeschreven en haakt af v\u00f3\u00f3r het verzoek als je niet ingelogd bent, zodat de code niet verbrandt.',
+    'Het opruimen loopt op twee manieren die dezelfde functie draaien: een dagelijkse cron om 03:00 UTC doet het werk, en de knop in admin.html maakt dat controleerbaar in plaats van iets waar je op moet vertrouwen. Een record met status "verwijderd" maar zonder bruikbare datum wordt NIET gewist en w\u00e9l gemeld \u2014 de termijn is dan niet aantoonbaar om, en stil laten staan is hier net zo fout als stil wissen.',
 
-    'Twee nieuwe tests in de gate, allebei met tegenproef: test-selectielog.js (35 toetsen, tien nagebouwde fouten) en test-proeftegoed.js (24 toetsen, vijf nagebouwde fouten). test-inlog-sessie.js is herzien: die eiste tot nu toe dat de saldosleutel op "0" bleef staan, precies omdat wissen 25 tokens uitdeelde. Die eis draait mee.',
+    'Toegang loopt nu langs \u00e9\u00e9n plek. Status === "geblokkeerd" stond twee keer los in worker.js, in handleKlantLogin en in handleMessages. Dat is de vorm waarin de tweede plek wordt vergeten zodra er een status bijkomt \u2014 en dan kan een verwijderd account met een lopend sessietoken nog gewoon AI gebruiken. klantToegangProbleem() is nu de enige die daarover gaat.',
+
+    'test-account-verwijderen.js: 39 toetsen, vijf nagebouwde fouten maken hem rood. De scherpste bewaakt dat de bewaartermijn uit worker.js op alle vier de plekken staat waar hij aan de gebruiker verteld wordt \u2014 zet KLANT_BEWAARDAGEN op 14 en de teksten liegen, zonder dat er iets stukgaat.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Van #49 blijven twee stukken staan, elk een eigen sessie waard: promptcaching (cache-reads kosten 10% van het invoertarief, maar de prefix moet eerst bewezen stabiel zijn \u2014 meten v\u00f3\u00f3r bouwen) en de structurele kant, Users als beheerrol in plaats van klantcategorie.',
+    'De cron is niet in productie waargenomen. Hij draait pas voor het eerst om 03:00 UTC, en de eerste rijpe record is er pas over 30 dagen. Tot die tijd is de knop in admin.html het enige dat aantoonbaar werkt \u2014 gebruik die om de wachtrij in de gaten te houden.',
 
-    'De vijf vensters uit 5.1 (testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker) staan nog op broncontrole en vragen \u00e9\u00e9n blik met het oog op het toestel.',
+    'Van #49 blijven promptcaching en de structurele kant (Users als beheerrol) staan. Nieuw genoteerd: #52, de tokenchip die bij een beheerder blijft staan omdat _chipVerversen() alleen bij het laden draait.',
 
-    'De punten die een rit of een besluit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46, plus de Play-punten 41 en 42.'
+    'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46.'
   ]
 };
 

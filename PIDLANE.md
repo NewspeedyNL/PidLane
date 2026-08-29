@@ -632,13 +632,69 @@ de pas, en dan is de vraag welke klopt.
 | [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldt een vals negatief | bug |
 | [#30](https://github.com/NewspeedyNL/PidLane/issues/30) | schakelende airco leest als ruw stationair | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
-| [#41](https://github.com/NewspeedyNL/PidLane/issues/41) | account verwijderen ontbreekt, privacy.html belooft het wel | Play |
 | [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
 | [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
+| [#52](https://github.com/NewspeedyNL/PidLane/issues/52) | de tokenchip blijft staan bij een beheerder | bug |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### De belofte zonder knop — 29-08-2026
+
+`#41` is opgelost, en het is de derde van dezelfde soort op één dag. `#31` was
+een spoor dat maar één kant op wees, `#49` een teller die iets anders beweerde
+dan de server wist, en dit was een **verklaring over persoonsgegevens die de app
+niet kon waarmaken**.
+
+`privacy.html` zei letterlijk "Gegevens bij je account verwijder je via *Mijn
+account*", en `pidlane-privacy.js` herhaalde dat in het disclosurescherm. Die
+knop bestond niet, en er was geen verwijderroute in `worker.js`. Google eist het
+bovendien voor elke app waarin je een account kunt aanmaken: een verwijderoptie
+ín de app én een publiek bereikbare URL voor het veld *Data deletion*.
+
+**Markeren in plaats van meteen wissen.** `POST /klant/verwijder` zet `Status`
+op `"verwijderd"` en het moment in het nieuwe veld `VerwijderdOp`; het record
+verdwijnt `KLANT_BEWAARDAGEN` (30) dagen later. Voor de gebruiker is het account
+meteen weg — inloggen wordt geweigerd en een lopend sessietoken ook — maar een
+vergissing is nog te herstellen. Het wachtwoord moet erbij: een sessie is genoeg
+om je saldo te bekijken, niet voor iets onomkeerbaars op een toestel dat even
+onbeheerd op de werkbank ligt.
+
+**Wat er ontbrak en het meeste werk was: de opruimer.** Er was geen cron en geen
+`scheduled()`-handler in dit project. "Binnen 30 dagen" hing dus aan iemand die
+eraan denkt, en dat is precies de vorm van belofte die na een half jaar niet meer
+klopt. Er staat nu een dagelijkse cron (`[triggers]` in `wrangler.toml`, 03:00
+UTC) én een knop in `admin.html` die dezelfde functie draait. Die twee samen zijn
+een bewuste keuze: **een automaat die je niet kunt zien is een automaat waarvan
+je maar moet aannemen dat hij draait.** De adminlijst toont de wachtrij met de
+datum waarop elk record weggaat.
+
+**De regel die het meest fout kan gaan, en waarom hij is zoals hij is:** een
+record met `Status = "verwijderd"` maar zónder bruikbare `VerwijderdOp` wordt
+*niet* gewist en *wel* gemeld. Wissen mag niet — de termijn is niet aantoonbaar
+om — en stil laten staan mag ook niet, want dan blijft er persoonsgegeven staan
+terwijl de verklaring zegt van niet. Beide fouten zijn in productie onzichtbaar;
+daarom staat de mislukt-lijst zowel in het cron-log als in het adminscherm.
+
+**Eén beslisplek voor toegang.** `Status === "geblokkeerd"` stond twee keer los
+in `worker.js`: in `handleKlantLogin` en in `handleMessages`. Dat ging goed
+zolang er één afwijzende status was. Met "verwijderd" erbij is het de vorm waarin
+de tweede plek wordt vergeten — en dan kan een verwijderd account met een lopend
+sessietoken nog gewoon AI gebruiken. `klantToegangProbleem()` is nu de enige die
+daarover gaat.
+
+**Het akkoord blijft geldig.** `CLAUDE.md` waarschuwt dat een gewijzigde
+verwerking de toestemmingstekst meeverandert en een eerder akkoord ongeldig
+maakt. Dat speelt hier niet: er wordt niets méér of anders verwerkt. De belofte
+werd waargemaakt, niet veranderd. `test-toestemmingstekst.js` bewaakt de claim
+over de meetdata en staat hier los van.
+
+**Een valkuil bij het uitbreiden van `worker.js`.** `test-akkoord-heraccorderen.js`
+knipt het stuk tussen de akkoordgrens en `klantPubliek` uit het bestand en voert
+dat los uit. Alles wat je daartussen zet valt om op `__name is not defined`. De
+nieuwe klanthelpers staan daarom bewust vóór die grens, met een waarschuwing
+erbij — die tijdens het schrijven hiervan één keer is opgelopen.
 
 ### Twee sporen die er niet waren — 29-08-2026
 
