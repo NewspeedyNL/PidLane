@@ -20,6 +20,10 @@
        — anders botst het met de LLM-token-taal die overal in de AI-code zit.
      - FAIL-OPEN: gaat er hier iets stuk, dan draait de analyse gewoon door.
        Een bug in de tegoedmodule mag de app nooit blokkeren.
+     - EEN BRON VOOR HET TEGOED: de server. Deze module deelt zelf geen
+       credits uit en telt er zelf geen bij — localStorage is een afschrift
+       van het serversaldo, nooit de bron. Tot 29-08-2026 was dat anders en
+       leverde app-gegevens wissen telkens 25 nieuwe tokens op (#49).
      - Admin en demomodus betalen niet.
      - Kleine calls (onder de drempel) tonen geen sheet — anders zeurt de app
        bij elke achtergrond-call.
@@ -39,15 +43,23 @@
    CHANGELOG
      2026-07-29  v1.0  Eerste versie: saldo, payload-ontleding, preview-sheet,
                        zelfkalibratie, saldochip, code-inwissel-stub.
+     2026-08-29  v1.1  Proeftegoed weg uit de client (#49). saldo() kent drie
+                       toestanden; een code wordt alleen nog op een account
+                       bijgeschreven.
    ═══════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
   // ── Instellingen — hier draai je aan de knoppen ──────────────────────
   const CFG = {
-    // Startsaldo voor een nieuwe (niet-ingelogde) gebruiker.
-    // 25 credits ≈ 3 à 4 volwaardige analyses.
-    gratisStart: 25,
+    // GEEN gratisStart meer (#49, 29-08-2026). Hier stond `gratisStart: 25`:
+    // saldo() deelde dat uit zodra de localStorage-sleutel ontbrak, dus
+    // app-gegevens wissen leverde onbeperkt nieuwe tokens op. Het echte
+    // proeftegoed staat op het account — handleKlantOnboarding in worker.js
+    // boekt KLANT_START_SALDO (20) bij en zet StartTegoedGegeven, zodat het
+    // per account precies één keer gebeurt. Twee getallen (25 hier, 20 daar)
+    // voor één begrip was bovendien precies de vorm die in dit project al
+    // drie keer een bug is geweest.
 
     // Prijs per 1000 tokens, in credits. De verhouding in:uit (1:5) volgt
     // de echte inkoopprijs, zodat een lang antwoord ook echt zwaarder weegt.
@@ -74,9 +86,13 @@
     // codefunctie uit te schakelen; de sheet meldt dat dan netjes.
     verzilverPad: '/credits/redeem',
 
+    // lsSaldo is sinds 29-08-2026 een AFSCHRIFT van het serversaldo, geen bron.
+    // Ontbreekt hij, dan weten we het niet — zie saldoBekend().
     lsSaldo: 'pl_credits_saldo',
-    lsKalib: 'pl_credits_kalib',
-    lsInit: 'pl_credits_init'
+    lsKalib: 'pl_credits_kalib'
+    // lsInit ('pl_credits_init') is weg. Dat was de vastlegging dát dit toestel
+    // zijn proeftegoed al kreeg, en die vraag stelt het toestel niet meer.
+    // Op toestellen die de sleutel al hebben blijft hij staan en doet niets.
   };
 
   // ── Kleine helpers ───────────────────────────────────────────────────
@@ -88,6 +104,7 @@
 
   function _lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function _lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  function _lsDel(k) { try { localStorage.removeItem(k); return true; } catch (e) { return false; } }
 
   // Geheugen-fallback als localStorage geblokkeerd is (privémodus/webview).
   let _memSaldo = null;
@@ -117,16 +134,26 @@
   // server niet meer aan. Zou hij dat wél doen, dan betaalt de klant dubbel.
 
   // ── Saldo ────────────────────────────────────────────────────────────
+  // DRIE TOESTANDEN, niet twee (#49, 29-08-2026). Naast "zoveel tokens" en
+  // "nul tokens" bestaat er ONBEKEND: dit toestel heeft nog geen saldo van de
+  // server gezien. Dat verschil is de hele fix. Onbekend als nul lezen zou de
+  // app laten blokkeren op een getal dat wij verzonnen hebben; onbekend als
+  // proeftegoed lezen was de bug — dan deelde elke wis-actie 25 tokens uit.
+  //
+  // Onbekend telt in saldo() als 0 omdat elke aanroeper een getal verwacht;
+  // wie op dat getal een besluit neemt, vraagt er saldoBekend() bij. Dat zijn
+  // er precies drie: _chipVerversen(), _sheet() en preflight().
+  function saldoBekend() {
+    if (_serverSaldo !== null || _memSaldo !== null) return true;
+    const raw = _lsGet(CFG.lsSaldo);
+    return !(raw === null || raw === '');
+  }
+
   function saldo() {
     if (_serverSaldo !== null) return _serverSaldo;
     if (_memSaldo !== null) return _memSaldo;
     const raw = _lsGet(CFG.lsSaldo);
-    if (raw === null || raw === '') {
-      // Eerste start: gratis proeftegoed toekennen.
-      _lsSet(CFG.lsInit, String(Date.now()));
-      _setSaldo(CFG.gratisStart);
-      return CFG.gratisStart;
-    }
+    if (raw === null || raw === '') return 0;
     const n = parseInt(raw, 10);
     return isFinite(n) ? Math.max(0, n) : 0;
   }
@@ -438,6 +465,13 @@
         document.body.appendChild(c);
       }
       const s = saldo();
+      if (!saldoBekend()) {
+        // Nog geen saldo van de server gezien. "0 tokens" met een rode rand
+        // zou hier een bewering zijn die we niet kunnen waarmaken.
+        c.innerHTML = '\u26A1 tokens onbekend';
+        c.style.borderColor = 'var(--bd,#2a3142)';
+        return;
+      }
       c.innerHTML = '\u26A1 ' + _nl(s) + ' tokens';
       c.style.borderColor = s <= 0 ? 'var(--rd,#ef4444)' : (s <= 5 ? 'var(--or,#f59e0b)' : 'var(--bd,#2a3142)');
     } catch(e){ console.warn('_nl mislukt:', e); }
@@ -465,7 +499,13 @@
     _sheetBezig = new Promise((res) => {
       const ov = _overlay('plCredSheet');
       const s = saldo();
-      const genoeg = s >= a.credits;
+      const bekend = saldoBekend();
+      // Onbekend saldo mag geen "tekort" tonen: we weten het niet. Het venster
+      // laat dan de kosten zien en laat doorgaan; de Worker weigert alsnog met
+      // 402 als het tegoed echt op is. Dat is ook de bestaande verdeling —
+      // zie de alinea bij _boekServer() hierboven: afrekenen vanuit de app is
+      // een verzoek en geen controle.
+      const genoeg = !bekend || s >= a.credits;
 
       const staafjes = a.blokken.map((b) =>
         '<div style="width:' + Math.max(1.5, b.pct).toFixed(1) + '%;background:' + b.kleur + '"></div>').join('');
@@ -508,10 +548,12 @@
                 '<div style="font-size:10.5px;color:var(--tx3,#94a3b8);margin-top:3px">tokens voor deze analyse</div>' +
               '</div>' +
               '<div style="text-align:right;font-size:10.5px;color:var(--tx3,#94a3b8);line-height:1.5">' +
-                'saldo nu <b style="color:var(--tx2,#cbd5e1)">' + _nl(s) + '</b><br>' +
-                (genoeg
-                  ? 'daarna <b style="color:var(--tx2,#cbd5e1)">' + _nl(s - a.credits) + '</b>'
-                  : '<b style="color:var(--rd,#ef4444)">' + _nl(a.credits - s) + ' tekort</b>') +
+                (bekend
+                  ? 'saldo nu <b style="color:var(--tx2,#cbd5e1)">' + _nl(s) + '</b><br>' +
+                    (genoeg
+                      ? 'daarna <b style="color:var(--tx2,#cbd5e1)">' + _nl(s - a.credits) + '</b>'
+                      : '<b style="color:var(--rd,#ef4444)">' + _nl(a.credits - s) + ' tekort</b>')
+                  : 'saldo nog <b style="color:var(--tx2,#cbd5e1)">onbekend</b><br>wordt op de server geteld') +
               '</div>' +
             '</div>' +
 
@@ -577,7 +619,7 @@
           '<button class="ai-sheet-x" id="plKoopX">\u2715</button></div>' +
         '<div class="ai-sheet-b">' +
           '<div style="font-size:12px;color:var(--tx2,#cbd5e1);line-height:1.55">' +
-            'Huidig saldo: <b>' + _nl(saldo()) + ' tokens</b>.<br>' +
+            'Huidig saldo: <b>' + (saldoBekend() ? _nl(saldo()) + ' tokens' : 'nog onbekend') + '</b>.<br>' +
             'Heb je een activatiecode? Vul die hieronder in.</div>' +
           '<input id="plKoopCode" maxlength="20" placeholder="PIDL-XXXX-XXXXXX" ' +
             'style="width:100%;box-sizing:border-box;margin-top:12px;padding:11px;border-radius:9px;' +
@@ -589,7 +631,8 @@
             'Nog geen code? Vraag er een aan via ' +
             '<a href="mailto:support@pidlane.nl?subject=Tokens%20voor%20PidLane" ' +
             'style="color:var(--bl,#6366f1)">support@pidlane.nl</a>. ' +
-            'Een code is eenmalig te gebruiken en werkt zonder account.</div>' +
+            'Een code is eenmalig te gebruiken en wordt bijgeschreven op je ' +
+            'account \u2014 log dus eerst in.</div>' +
         '</div>' +
         '<div class="ai-sheet-f">' +
           '<button class="ai-act" id="plKoopSluit">Sluiten</button>' +
@@ -626,6 +669,13 @@
     if (!CFG.verzilverPad) {
       return { ok: false, bericht: 'Codes zijn nog niet actief in deze versie.' };
     }
+    // Vóór het verzoek, niet erna (#49). De Worker stempelt de code af als
+    // gebruikt en boekt hem daarna pas bij op het account; is er geen account,
+    // dan is de code verbrand en kwamen de tokens hieronder in localStorage
+    // terecht — een tegoed dat de server niet kent en dus nooit uitbetaalt.
+    if (!_isKlant()) {
+      return { ok: false, bericht: 'Log eerst in met je account \u2014 een code wordt daarop bijgeschreven. Zo raakt hij niet verloren.' };
+    }
     try {
       const basis = (typeof PROXY_URL !== 'undefined' && PROXY_URL) ? PROXY_URL : '';
       const kop = { 'Content-Type': 'application/json' };
@@ -639,10 +689,15 @@
       if (!resp.ok || !d.ok) {
         return { ok: false, bericht: d.error || ('Code afgewezen (' + resp.status + ').') };
       }
-      // Is het op een account bijgeboekt, dan geeft de server het nieuwe
-      // saldo terug — dat is dan leidend boven onze eigen optelling.
-      if (typeof d.saldo === 'number') zetServerSaldo(d.saldo);
-      else bijboeken(d.credits || 0);
+      // Het nieuwe saldo komt van de server; een eigen optelling bestaat niet
+      // meer. Ontbreekt het, dan is de code wél afgestempeld maar niet
+      // bijgeboekt — dat moet de gebruiker weten in plaats van een lokaal
+      // getal te zien dat de server niet kent.
+      if (typeof d.saldo !== 'number') {
+        _log('Code ' + code + ' afgestempeld zonder saldo in het antwoord', 'err');
+        return { ok: false, bericht: 'De code is geldig, maar het bijboeken op je account is niet bevestigd. Neem contact op met support@pidlane.nl.' };
+      }
+      zetServerSaldo(d.saldo);
       return { ok: true, bericht: _nl(d.credits) + ' tokens toegevoegd.', credits: d.credits };
     } catch (e) {
       return { ok: false, bericht: 'Geen verbinding \u2014 probeer het later opnieuw.' };
@@ -672,8 +727,11 @@
 
     const s = saldo();
 
-    // Onvoldoende tegoed → altijd tonen, ook bij kleine calls.
-    if (s < a.credits) {
+    // Onvoldoende tegoed → altijd tonen, ook bij kleine calls. Maar alleen op
+    // een saldo dat we KENNEN: op een toestel dat nog geen serversaldo heeft
+    // gezien zou saldo() 0 teruggeven en zou de app hier elke analyse
+    // afbreken op een getal dat wij zelf verzonnen hebben (#49).
+    if (saldoBekend() && s < a.credits) {
       await _sheet(a);
       throw AfgebrokenFout('Onvoldoende tokens \u2014 ' + a.credits + ' nodig, ' + s + ' beschikbaar.');
     }
@@ -707,9 +765,17 @@
         // een verzoek sturen: dat zou dubbel tellen. Het definitieve getal komt
         // bij de volgende verversSaldo() of uit de X-PidLane-Saldo-header.
         if (_serverSaldo !== null) zetServerSaldo(Math.max(0, _serverSaldo - kosten));
-        else afboeken(kosten);
-      } else {
+        else if (saldoBekend()) afboeken(kosten);
+      } else if (saldoBekend()) {
         afboeken(kosten);
+      }
+
+      // Kennen we het saldo niet, dan is er ook niets afgeboekt om te melden.
+      // Zou afboeken() hier tóch draaien, dan schreef hij '0' weg en werd
+      // "onbekend" stilzwijgend "nul" — waarna preflight alles blokkeert.
+      if (!saldoBekend()) {
+        _log('Tegoed afgeboekt op de server: -' + kosten + ' (lokaal saldo nog onbekend)', 'info');
+        return;
       }
 
       const s = saldo();
@@ -724,18 +790,18 @@
   // vorige staan. Geen geldfout — de eerste verversSaldo() corrigeert het —
   // maar wel het eerste wat iemand ziet.
   //
-  // LET OP: "wis de drie pl_credits_*-sleutels" is de voor de hand liggende
-  // fix en hij is fout. saldo() kent bij een ONTBREKENDE sleutel het gratis
-  // proeftegoed toe (CFG.gratisStart). Weggooien maakt uitloggen dus een knop
-  // die 25 nieuwe tokens uitdeelt, zo vaak als je wilt. Daarom:
+  // HERZIEN OP 29-08-2026 (#49). Hier stond, met nadruk, dat het wissen van de
+  // saldosleutel "de voor de hand liggende fix is en fout": saldo() deelde bij
+  // een ontbrekende sleutel CFG.gratisStart uit, dus uitloggen werd dan een
+  // knop die 25 tokens gaf. Die redenering klopte binnen zijn eigen aanname,
+  // en de aanname was het probleem — niet de conclusie eruit. Nu de client
+  // helemaal geen tegoed meer uitdeelt, is wissen juist wél goed:
   //
-  //   lsSaldo  → op '0' zetten, niet verwijderen. Nul is eerlijk ("we weten
-  //              het nog niet"), het saldo van iemand anders is dat niet.
-  //              Stond er niets, dan blijft er niets staan — dat toestel heeft
-  //              zijn proeftegoed nog niet gehad en houdt dat recht.
-  //   lsInit   → blijft. Dat is de vastlegging dát dit toestel zijn
-  //              proeftegoed al kreeg, en die moet een uitlogactie juist
-  //              overleven.
+  //   lsSaldo  → VERWIJDEREN. Na uitloggen weten we het saldo niet meer, en
+  //              "onbekend" is precies wat een ontbrekende sleutel nu betekent
+  //              (zie saldoBekend()). '0' laten staan was onder de oude regel
+  //              het beste dat kon, maar het is een bewering: het beweert dat
+  //              de volgende gebruiker niets heeft, en dat weten we niet.
   //   lsKalib  → blijft. Dat is tekens-per-token van het AI-model, een
   //              eigenschap van het model en niet van de klant. Wissen maakt
   //              de eerstvolgende kostenschatting alleen maar slechter.
@@ -745,8 +811,8 @@
   // project al drie keer een bug geweest.
   function vergeetKlant() {
     try {
-      if (_lsGet(CFG.lsSaldo) !== null) _lsSet(CFG.lsSaldo, '0');
-    } catch (e) { console.warn('saldo op nul zetten mislukt:', e); }
+      _lsDel(CFG.lsSaldo);
+    } catch (e) { console.warn('saldosleutel wissen mislukt:', e); }
     // Het werkgeheugen is de andere helft: localStorage opschonen helpt niet
     // als het saldo nog in de module staat. Zonder deze drie regels geeft
     // saldo() gewoon weer het bedrag van de vorige gebruiker terug.
@@ -761,6 +827,7 @@
   window.PLCredits = {
     vergeetKlant: vergeetKlant,
     saldo: saldo,
+    saldoBekend: saldoBekend,
     bijboeken: bijboeken,
     afboeken: afboeken,
     zetSaldo: _setSaldo,
@@ -784,5 +851,6 @@
     _chipVerversen();
   }
 
-  _log('pidlane-credits.js geladen \u2014 saldo ' + saldo() + ' tokens', 'info');
+  _log('pidlane-credits.js geladen \u2014 saldo ' +
+       (saldoBekend() ? saldo() + ' tokens' : 'nog onbekend (komt van de server)'), 'info');
 })();
