@@ -161,8 +161,9 @@
         '</div>' +
         REGELS.map(function (r) { return _regel(r[0], r[1], r[2]); }).join('') +
         _regel('🗑️', 'Je gegevens verwijderen',
-          'Metingen op dit toestel wis je met "Alles wissen" hieronder. Gegevens bij je account ' +
-          'verwijder je via Mijn account, of door een bericht te sturen via Meld een bug.') +
+          'Metingen op dit toestel wis je met "Alles wissen" hieronder. Je account verwijder je ' +
+          'onder Mijn account met de knop "Account verwijderen": je kunt dan meteen niet meer ' +
+          'inloggen, en binnen 30 dagen wissen wij het definitief.') +
         '<div style="font-size:11px;color:var(--tx3,#5b6783);line-height:1.5;margin:11px 0 13px">' +
           'Volledige verklaring: <a href="' + PRIVACY_URL + '" target="_blank" rel="noopener" ' +
           'style="color:var(--bl,#4d82ff)">app.pidlane.nl/privacy</a><br>' +

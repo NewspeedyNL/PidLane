@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account verwijderen — PidLane</title>
+<!--
+  Deze pagina bestaat voor het veld "Data deletion" in de Play Console. Google
+  eist voor elke app waarin je een account kunt aanmaken TWEE dingen: een
+  verwijderoptie in de app zelf, én een publiek bereikbare URL waar iemand kan
+  lezen hoe het werkt — óók als hij de app al verwijderd heeft. Dat tweede is
+  precies wat hier staat.
+
+  Houd hem inhoudelijk gelijk aan privacy.html (kopje "Bewaren en verwijderen")
+  en aan het scherm in de app (openVerwijderAccount in pidlane-klant.js).
+  Wijken die drie van elkaar af, dan is dat een tegenstrijdigheid die een
+  reviewer opmerkt — en erger: dan klopt er één niet met wat de Worker doet.
+
+  De termijn van 30 dagen staat op één plek in de code: KLANT_BEWAARDAGEN in
+  worker.js. Verander je die, dan verandert deze pagina mee.
+
+  Bewust GEEN formulier of knop hier. Verwijderen vraagt om een ingelogde
+  sessie plus het wachtwoord (POST /klant/verwijder), en dat hoort in de app te
+  gebeuren en niet op een losse pagina die iedereen kan openen.
+-->
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin:0; padding:24px 18px 60px; background:#0D1117; color:#e6edf3;
+    font:400 15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  main { max-width:720px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; color:#fff; }
+  h2 { font-size:17px; margin:30px 0 8px; color:#fff; }
+  .sub { color:#8b949e; font-size:13px; margin-bottom:26px; }
+  p, li { color:#c9d1d9; }
+  ol, ul { padding-left:20px; }
+  li { margin-bottom:7px; }
+  a { color:#58a6ff; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #21262d; vertical-align:top; }
+  th { color:#fff; font-weight:700; }
+  .kader { background:#161b22; border:1px solid #21262d; border-radius:10px; padding:14px 16px; margin:16px 0; }
+  footer { margin-top:40px; padding-top:16px; border-top:1px solid #21262d; color:#8b949e; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Account verwijderen</h1>
+  <p class="sub">PidLane — hoe je je account en je gegevens laat wissen</p>
+
+  <h2>In de app</h2>
+  <ol>
+    <li>Open het menu (het icoon linksboven).</li>
+    <li>Kies <strong>👤 Mijn account</strong>.</li>
+    <li>Onderaan dat scherm staat <strong>Account verwijderen</strong>.</li>
+    <li>Vul je wachtwoord in ter bevestiging.</li>
+  </ol>
+  <p>Het wachtwoord is er met opzet: verwijderen is niet terug te draaien, en dat
+  mag niet lukken op een toestel dat even onbeheerd ligt.</p>
+
+  <h2>Zonder de app</h2>
+  <p>Heb je PidLane al van je toestel gehaald, stuur dan een bericht vanaf het
+  e-mailadres waarmee je het account hebt aangemaakt naar
+  <a href="mailto:support@pidlane.nl?subject=Account%20verwijderen">support@pidlane.nl</a>.
+  Wij verwerken dat verzoek op dezelfde manier.</p>
+
+  <h2>Wat er precies gebeurt</h2>
+  <table>
+    <tr><th>Wanneer</th><th>Wat</th></tr>
+    <tr>
+      <td>Meteen</td>
+      <td>Je account is onbruikbaar. Inloggen lukt niet meer, en een sessie die
+          nog openstaat wordt geweigerd — ook voor AI-analyses.</td>
+    </tr>
+    <tr>
+      <td>Binnen 30 dagen</td>
+      <td>Je account en de bijbehorende opgeslagen rapporten worden definitief
+          gewist bij ons. Daarna kan niemand ze meer terughalen, wij ook niet.</td>
+    </tr>
+  </table>
+
+  <div class="kader">
+    <p style="margin:0"><strong>Waarom niet meteen helemaal weg?</strong> Die
+    dertig dagen zijn er zodat een vergissing nog te herstellen is. Heb je per
+    ongeluk op de knop gedrukt, mail ons dan binnen die termijn — daarna is het
+    onomkeerbaar.</p>
+  </div>
+
+  <h2>Welke gegevens dit betreft</h2>
+  <ul>
+    <li>Je e-mailadres, je weergavenaam en je wachtwoord (die laatste is
+        opgeslagen als hash, nooit als leesbare tekst).</li>
+    <li>Je tokentegoed en de geschiedenis van bij- en afboekingen.</li>
+    <li>De rapporten die bij je account bewaard zijn.</li>
+    <li>Vastgelegd wanneer en waarmee je akkoord bent gegaan — die vastlegging
+        is een AVG-verplichting en verdwijnt samen met het account.</li>
+  </ul>
+  <p>Een eventueel resterend tokentegoed vervalt bij het verwijderen en wordt
+  niet terugbetaald.</p>
+
+  <h2>Wat op je eigen toestel staat</h2>
+  <p>Metingen, logboeken en instellingen die alleen op je telefoon staan gaan
+  niet via ons. Die wis je met <em>Alles wissen</em> in het privacyscherm van de
+  app, of door de app-gegevens in Android te wissen. Verwijder je de app, dan
+  gaan ze mee.</p>
+
+  <h2>Meetdata die eerder gedeeld is</h2>
+  <p>Heb je toestemming gegeven voor het delen van meetdata, dan is die data
+  onder een pseudoniem opgeslagen en niet aan je account gekoppeld. Er zit dus
+  geen naam of e-mailadres aan, en hij hoort niet bij dit verzoek. Wil je die
+  ook verwijderd hebben, vermeld dat dan in je mail — zie de
+  <a href="/privacy.html">privacyverklaring</a> voor wat er precies gedeeld
+  wordt.</p>
+
+  <footer>
+    PidLane · <a href="mailto:support@pidlane.nl">support@pidlane.nl</a> ·
+    <a href="/privacy.html">Privacyverklaring</a>
+  </footer>
+
+</main>
+</body>
+</html>

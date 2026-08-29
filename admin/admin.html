@@ -245,6 +245,7 @@ blokkeren.
       <input type="text" id="kZoek" placeholder="Zoek op e-mail of naam" style="flex:1;min-width:160px"
              onkeydown="if(event.key==='Enter')loadKlanten()">
       <button class="btn-sec btn-sm" onclick="loadKlanten()">Zoek</button>
+      <button class="btn-sec btn-sm" onclick="kOpruimen()" title="Wist accounts waarvan de bewaartermijn om is">🧹 Nu opruimen</button>
     </div>
     <div id="kStats" class="hint"></div>
     <div id="kLijst"></div>
@@ -639,6 +640,22 @@ function oefenAntwoord(path, opts){
                stats: { aantal: D.klanten.length,
                         totaalSaldo: D.klanten.reduce((a,k) => a + k.saldo, 0) } };
     }
+    // Opruimen gaat over de hele wachtrij en heeft dus geen record-id — vóór
+    // de zoekactie hieronder, die op body.id zoekt.
+    if (body.actie === 'opruimen'){
+      const nu = Date.now();
+      const rijp = D.klanten.filter(x => x.status === 'verwijderd' && x.definitiefOp &&
+                                         new Date(x.definitiefOp).getTime() <= nu);
+      const wacht = D.klanten.filter(x => x.status === 'verwijderd' && x.definitiefOp &&
+                                          new Date(x.definitiefOp).getTime() > nu);
+      const mislukt = D.klanten.filter(x => x.status === 'verwijderd' && !x.definitiefOp)
+                               .map(x => ({ id:x.id, reden:'geen bruikbare VerwijderdOp' }));
+      D.klanten = D.klanten.filter(x => rijp.indexOf(x) < 0);
+      return { ok:true, bekeken: rijp.length + wacht.length + mislukt.length,
+               verwijderd: rijp.map(x => x.id),
+               wacht: wacht.map(x => ({ id:x.id, definitiefOp:x.definitiefOp })),
+               mislukt, bewaardagen: 30 };
+    }
     const k = D.klanten.find(x => x.id === body.id);
     if (!k) return { ok:true };
     if (body.actie === 'verwijder'){ D.klanten = D.klanten.filter(x => x.id !== body.id); return { ok:true }; }
@@ -1010,7 +1027,17 @@ async function loadKlanten(){
       lijst.length ? `${data.stats.aantal} klanten · ${data.stats.totaalSaldo} tokens in omloop` : '';
     if(!lijst.length){ box.innerHTML='<div class="hint">Nog geen klanten geregistreerd.</div>'; return; }
     box.innerHTML=lijst.map(k=>{
-      const pil = k.status==='actief' ? 'p-user' : k.status==='geblokkeerd' ? 'p-off' : 'p-demo';
+      const pil = k.status==='actief' ? 'p-user'
+                : k.status==='geblokkeerd' || k.status==='verwijderd' ? 'p-off' : 'p-demo';
+      /* De verwijderwachtrij zichtbaar maken is de hele reden dat er naast de
+         cron ook een knop staat: een automaat die je niet kunt zien is een
+         automaat waarvan je maar moet aannemen dat hij draait. definitiefOp
+         komt van de Worker en wordt hier niet nagerekend — één bron. */
+      const wacht = k.verwijderdOp
+        ? `<br><span style="color:#ff9a9a">🗑️ verwijderd op verzoek ${dt(k.verwijderdOp)}` +
+          (k.definitiefOp ? ` · definitief weg ${dt(k.definitiefOp)}` : ' · GEEN datum — wordt niet opgeruimd') +
+          `</span>`
+        : '';
       return `<div class="row" style="align-items:flex-start">
         <div style="min-width:0;flex:1">
           <div class="lbl" style="word-break:break-all">${esc(k.email)}
@@ -1019,7 +1046,7 @@ async function loadKlanten(){
           <div class="desc">
             ⚡ <b style="color:var(--tx)">${k.saldo}</b> tokens · ooit gekocht ${k.totaal}
             ${k.naam?' · '+esc(k.naam):''}<br>
-            aangemeld ${dt(k.aangemaakt)} · laatst ingelogd ${dt(k.laatsteLogin)}
+            aangemeld ${dt(k.aangemaakt)} · laatst ingelogd ${dt(k.laatsteLogin)}${wacht}
           </div>
           <div class="bar" style="margin-top:6px">
             <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
@@ -1034,6 +1061,31 @@ async function loadKlanten(){
     }).join('');
   }catch(e){
     box.innerHTML='';
+    if(e.diag) show(msg,e.diag.kind,e.diag.title,e.diag.detail);
+    else show(msg,'err','❌ '+e.message);
+  }
+}
+
+/* Dezelfde functie die de cron elke nacht draait, met de hand aangeroepen.
+   Wist alleen wat de 30 dagen voorbij is; wie er nog in zit blijft staan.
+   Daarom noemt de melding alle drie de emmers — anders leest "0 gewist" als
+   een storing terwijl er gewoon niets rijp was. */
+async function kOpruimen(){
+  const msg=document.getElementById('kMsg');
+  if(!confirm('Accounts wissen waarvan de bewaartermijn van 30 dagen om is?\n\n' +
+              'Dit is onomkeerbaar. Wie nog binnen de termijn zit blijft staan.')) return;
+  try{
+    const { data } = await callWorker('users','/admin/klanten',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},
+      body:JSON.stringify({actie:'opruimen',door:beheerderNaam()})
+    });
+    const weg=(data.verwijderd||[]).length, wacht=(data.wacht||[]).length, mis=(data.mislukt||[]).length;
+    show(msg, mis?'warn':'ok',
+         (mis?'⚠ ':'✓ ') + `${weg} gewist · ${wacht} nog binnen de termijn · ${mis} mislukt`,
+         mis ? JSON.stringify(data.mislukt) : '');
+    loadKlanten();
+  }catch(e){
     if(e.diag) show(msg,e.diag.kind,e.diag.title,e.diag.detail);
     else show(msg,'err','❌ '+e.message);
   }

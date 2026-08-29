@@ -11,6 +11,59 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-29b (CET) — DE BELOFTE ZONDER KNOP
+
+       • 🗑️ ACCOUNT VERWIJDEREN BESTAAT NU ECHT (#41). privacy.html zei
+         letterlijk "Gegevens bij je account verwijder je via Mijn account",
+         en pidlane-privacy.js herhaalde dat in het disclosurescherm. Die knop
+         bestond niet en er was geen verwijderroute in de Worker. Een
+         verklaring over persoonsgegevens die de app niet kon waarmaken — de
+         derde van dezelfde soort op één dag, na #31 en #49.
+         Google eist het bovendien voor elke app waarin je een account kunt
+         aanmaken: een verwijderoptie ín de app én een publieke URL voor het
+         Play Console-veld "Data deletion". Er was geen van beide.
+
+       • ⏳ MARKEREN, NIET METEEN WISSEN. POST /klant/verwijder zet Status op
+         "verwijderd" en het moment in het nieuwe veld VerwijderdOp; het record
+         gaat 30 dagen later definitief weg. Voor de gebruiker is het account
+         meteen weg — inloggen wordt geweigerd en een lopend sessietoken ook —
+         maar een vergissing is in die periode nog te herstellen. Het
+         wachtwoord moet erbij: een sessie is genoeg om je saldo te bekijken,
+         niet voor iets onomkeerbaars op een toestel dat even onbeheerd ligt.
+
+       • 🧹 EN ER RUIMT NU IEMAND OP. Dit was het meeste werk en het
+         makkelijkst over het hoofd te zien: er was geen cron en geen
+         scheduled() in dit project, dus "binnen 30 dagen" hing aan iemand die
+         eraan denkt. Nu draait een dagelijkse cron om 03:00 UTC, én staat er
+         een knop in admin.html die dezelfde functie aanroept. Die twee samen
+         zijn een keuze: een automaat die je niet kunt zien is een automaat
+         waarvan je maar moet aannemen dat hij draait. De adminlijst toont de
+         wachtrij met de datum waarop elk record weggaat.
+         Een record met status "verwijderd" maar zonder bruikbare datum wordt
+         NIET gewist en WEL gemeld — de termijn is dan niet aantoonbaar om, en
+         stil laten staan is hier net zo fout als stil wissen.
+
+       • 🔒 TOEGANG LOOPT LANGS ÉÉN PLEK. Status === "geblokkeerd" stond twee
+         keer los in worker.js, in handleKlantLogin en in handleMessages. Dat
+         is de vorm waarin de tweede plek wordt vergeten zodra er een status
+         bijkomt — en dan kan een verwijderd account met een lopend
+         sessietoken nog gewoon AI gebruiken. klantToegangProbleem() is nu de
+         enige die daarover gaat.
+
+       • 📄 NIEUW: public/verwijderen.html, de publieke pagina voor het Play
+         Console-veld. privacy.html en pidlane-privacy.js zeggen nu wat er
+         écht gebeurt, inclusief dat een resterend tokentegoed vervalt.
+         Het akkoord blijft geldig: er wordt niets méér of anders verwerkt, de
+         belofte is waargemaakt en niet veranderd.
+
+       • ✅ test-account-verwijderen.js, 39 toetsen. Vijf nagebouwde fouten
+         maken hem rood. De scherpste bewaakt dat de bewaartermijn uit
+         worker.js op alle vier de plekken staat waar hij aan de gebruiker
+         verteld wordt — zet KLANT_BEWAARDAGEN op 14 en de teksten liegen
+         zonder dat er iets stukgaat. Testrun 5.5.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-08-29a (CET) — TWEE SPOREN DIE ER NIET WAREN
 
        • 📡 EEN SENSOR AANZETTEN WERD NIET GELOGD, UITZETTEN WEL (#31). Het log
