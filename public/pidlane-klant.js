@@ -501,11 +501,17 @@
 
     const body = o.querySelector('#mtBody');
 
+    // Deze tekst beloofde een abonnement dat niet bestaat ("analyses zitten in
+    // je abonnement"). Het besluit bij #49 zegt wat een niet-klant wél is:
+    // personeel. Zijn analyses lopen op de sleutel van de beheerder, en daar
+    // hoort geen tegoedscherm bij. Het menu-item is sinds datzelfde besluit
+    // verborgen voor niet-klanten (pasMenuAan hieronder); dit blijft staan
+    // voor het geval het scherm langs een andere weg wordt geopend.
     if (!isKlant()) {
       body.innerHTML =
         '<div style="font-size:12.5px;color:var(--tx2);line-height:1.65">' +
-          'Je bent ingelogd met een zakelijk account. Daarvoor gelden geen tokens \u2014 ' +
-          'analyses zitten in je abonnement.' +
+          'Dit is een beheeraccount, geen klantaccount. Er hoort geen tegoed bij: ' +
+          'analyses lopen op de sleutel van de beheerder.' +
         '</div>';
       return;
     }
@@ -638,6 +644,12 @@
         const el = document.getElementById(id);
         if (el) el.style.display = admin ? '' : 'none';
       });
+      // "Mijn account" hoort bij een klantaccount, om dezelfde reden als
+      // hierboven (#49): een beheeraccount heeft geen record in Klanten en
+      // geen tegoed, dus het item opende een scherm dat alleen kon uitleggen
+      // dat er niets te zien was. Ook cosmetisch, geen beveiliging.
+      const acc = document.getElementById('kbAccount');
+      if (acc) acc.style.display = isKlant() ? '' : 'none';
       // Klap een geopend adminmenu dicht bij het wisselen van gebruiker.
       if (!admin) {
         const g = document.getElementById('admGroup');
