@@ -178,15 +178,20 @@ const deel6 = deel5.then(() => {
   toets('het saldo van de vorige gebruiker is weg', PLC.saldo() !== 250,
         'saldo() geeft nog ' + PLC.saldo() + ' — het werkgeheugen is niet gewist');
 
-  // DE TEGENPROEF, en dit is het hele punt van deze test. De voor de hand
-  // liggende fix is de sleutel verwijderen. Doe je dat, dan ziet saldo() een
-  // ontbrekende sleutel, kent het gratis proeftegoed toe, en levert uitloggen
-  // 25 tokens op — elke keer opnieuw. Nul is goed; 25 is een geldlek.
-  toets('en er is GEEN nieuw proeftegoed uitgedeeld', PLC.saldo() === 0,
-        'saldo() geeft ' + PLC.saldo() + ' — bij ' + PLC.CFG.gratisStart +
-        ' is de sleutel verwijderd in plaats van op nul gezet');
-  toets('de saldosleutel bestaat dus nog, met nul erin', opslag[PLC.CFG.lsSaldo] === '0',
+  // DE TEGENPROEF, en dit is het hele punt van deze test. Hij stond hier
+  // omgekeerd tot 29-08-2026: toen eiste hij dat de sleutel op '0' bleef
+  // staan, omdat saldo() bij een ONTBREKENDE sleutel 25 gratis tokens
+  // uitdeelde en uitloggen daarmee een gelduitgifteknop werd. Sinds #49 deelt
+  // de client helemaal geen tegoed meer uit, en is een ontbrekende sleutel de
+  // juiste manier om "we weten het niet" op te schrijven. De eis draait dus
+  // mee: weg is goed, '0' is een bewering over iemand die we niet kennen.
+  toets('er is GEEN nieuw proeftegoed uitgedeeld', PLC.saldo() === 0,
+        'saldo() geeft ' + PLC.saldo() + ' — de client deelt weer tegoed uit');
+  toets('de saldosleutel is weg', opslag[PLC.CFG.lsSaldo] === undefined,
         'opslag: ' + JSON.stringify(opslag[PLC.CFG.lsSaldo]));
+  toets('en het saldo geldt daarna als onbekend, niet als nul',
+        PLC.saldoBekend() === false,
+        'saldoBekend() geeft ' + PLC.saldoBekend() + ' — dan blokkeert preflight op een verzonnen nul');
   toets('de modelkalibratie blijft staan (die is niet van de klant)',
         opslag[PLC.CFG.lsKalib] !== undefined);
 });

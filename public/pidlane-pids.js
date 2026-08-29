@@ -9,6 +9,7 @@
 // ════════════════════════════════════════
 function filterPIDs(v){buildPIDList(v);}
 function togglePID(pid){
+  const _voor=plSelectieVoor();                 // #31: melden gaat via één plek
   if(activePIDs.has(pid)){ activePIDs.delete(pid); manualPIDs.delete(pid); }
   else {
     // Toevoegpoort (§15, ronde 6). De keuzelijst maakt een afgekeurde regel
@@ -25,6 +26,7 @@ function togglePID(pid){
   buildPIDList(document.getElementById('psrch').value);
   document.getElementById('pidCnt').textContent=activePIDs.size;
   renderGauges(); rebuildGSel();
+  plSelectieMeld(_voor,'sensorkeuze');
 }
 
 // ── ANALYSE-PROFIELEN: elke analyse zet zelf de benodigde PIDs aan ──
@@ -268,13 +270,17 @@ function pidTileTap(pid){
 }
 function pidDeselect(pid){
   if(!activePIDs.has(pid)) return;
+  const _voor=plSelectieVoor();                 // #31
   activePIDs.delete(pid); manualPIDs.delete(pid);
   try{ const cb=document.querySelector('input[type=checkbox][data-pid="'+pid+'"]'); if(cb) cb.checked=false; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt:', e); }
   try{ rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
   const d=getPidDef(pid);
   showToast?.('⏸ '+((d&&d.name)||pid)+' uit — aanzetten via sensorkeuze');
-  try{ log('Sensor uitgezet via dubbeltik: '+((d&&d.name)||pid),'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  // De eigen logregel die hier stond ("Sensor uitgezet via dubbeltik: ...")
+  // is vervangen door de gedeelde melder. Twee bewoordingen voor dezelfde
+  // gebeurtenis was precies de asymmetrie uit #31.
+  plSelectieMeld(_voor,'dubbeltik op de tegel');
 }
 
 // ── Datastroom-reset: achterstand/drukte wegwerken zodat een volgende

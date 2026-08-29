@@ -778,6 +778,7 @@ function autoSelectHealthyKern(){
 
 function selectStandardSet(){
   // Selecteer alleen PIDs die de auto ondersteunt, gezond zijn, en in de standaard-set zitten
+  const _voor=plSelectieVoor();                 // #31
   let n=0;
   STANDAARD_PIDS.forEach(pid=>{
     if(!supportedPIDs.has(pid)) return;     // meldt de auto hem — staat los van de ladder
@@ -785,7 +786,10 @@ function selectStandardSet(){
     activePIDs.add(pid); manualPIDs.add(pid); n++;
   });
   const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
-  log(`📡 Standaard set: ${n} PIDs geselecteerd`,'ok');
+  // De eigen telregel is vervangen door de gedeelde melder: die telt wat er
+  // ECHT bij kwam. `n` telt de treffers in de standaardset, en dat is iets
+  // anders zodra er al iets aan stond.
+  plSelectieMeld(_voor,'standaardset');
   buildPIDList(); renderGauges?.(); rebuildGSel?.();
   return n;
 }
@@ -800,6 +804,7 @@ function toggleShowAllPIDs(){
 
 // Activeer alle gezonde PIDs van één categorie in één klik
 function selectCategoryPIDs(cat){
+  const _voor=plSelectieVoor();                 // #31
   let added=0;
   discoveredPIDDefs.forEach(p=>{
     if((p.cat||'Overig')===cat){
@@ -811,6 +816,7 @@ function selectCategoryPIDs(cat){
   buildPIDList(document.getElementById('psrch')?.value||'');
   const cnt=document.getElementById('pidCnt'); if(cnt) cnt.textContent=activePIDs.size;
   if(added) showToast?.(`📡 ${added} ${cat}-sensoren toegevoegd`);
+  plSelectieMeld(_voor,'categorie '+cat);
   renderGauges?.(); rebuildGSel?.();
 }
 
@@ -888,11 +894,13 @@ function applyPidPreset(id){
   }
   // Zelfde route als togglePID() gebruikt, zodat scheduler, tegels en
   // grafiekkeuze allemaal meegaan.
+  const _voor=plSelectieVoor();                 // #31
   activePIDs.clear(); manualPIDs.clear();
   bruikbaar.forEach(p=>{ activePIDs.add(p); manualPIDs.add(p); });
   try{ buildPIDList(document.getElementById('psrch')?.value||''); }catch(e){ console.warn('buildPIDList mislukt:', e); }
   try{ document.getElementById('pidCnt').textContent=activePIDs.size; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   try{ renderGauges(); rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
+  plSelectieMeld(_voor,'preset '+(pr.naam||id));
   if(tip){
     tip.textContent=pr.tip+' — '+bruikbaar.length+' sensoren actief'
       + (ontbreekt?(', '+ontbreekt+' niet beschikbaar op deze auto'):'');

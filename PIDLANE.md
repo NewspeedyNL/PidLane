@@ -631,14 +631,81 @@ de pas, en dan is de vraag welke klopt.
 | [#25](https://github.com/NewspeedyNL/PidLane/issues/25) | kleine staarten uit de testruns van 26-08 | opruimen |
 | [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldt een vals negatief | bug |
 | [#30](https://github.com/NewspeedyNL/PidLane/issues/30) | schakelende airco leest als ruw stationair | bug |
-| [#31](https://github.com/NewspeedyNL/PidLane/issues/31) | sensorlogging is asymmetrisch | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
 | [#41](https://github.com/NewspeedyNL/PidLane/issues/41) | account verwijderen ontbreekt, privacy.html belooft het wel | Play |
 | [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
+| [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### Twee sporen die er niet waren — 29-08-2026
+
+`#31` en `#49` zijn opgelost, en ze deelden een vorm die het benoemen waard is:
+**de app kon iets doen zonder dat er iets van overbleef.** Dat is niet hetzelfde
+als een ontbrekende logregel. Wie een half spoor ziet, trekt er een hele
+conclusie uit — en dat is precies wat er gebeurde.
+
+**#31 — de asymmetrie was misleidend, niet onvolledig.** Een sensor uitzetten
+werd gelogd, aanzetten niet. Het log van 27-08 had dertien regels "Sensor
+uitgezet via dubbeltik" en nul regels over een sensor die erbij kwam. Wie dat
+leest concludeert redelijkerwijs dat de selectie alleen kleiner is geworden. Bij
+het nakijken van die rit was daardoor niet te beantwoorden of de vijftien
+niet-bewegende sensoren uit blok 14 het gedrag van de auto waren of handmatig
+aangezette PIDs die de ECU niet kent — het verschil tussen een bevinding en ruis.
+
+De fix is niet "voeg een regel toe bij het aanzetten". Vijf gebruikershandelingen
+wijzigen `activePIDs` (vinkje in het keuzescherm, dubbeltik op een tegel,
+standaardset, "+ Alles" per categorie, preset), en die melden nu alle vijf via
+één plek: `plSelectieMeld()` in `pidlane-pidgate.js`. Drie losse regels die
+sommige van die plekken zelf schreven zijn weg, inclusief `Sensor uitgezet via
+dubbeltik`.
+
+De ontwerpkeuze die het meeste oplevert: **de melder krijgt geen lijst van wat
+er zou veranderen, maar een momentopname van vóór de handeling**, en rekent het
+verschil zelf uit tegen de echte `activePIDs`. Een aanroeper kán daardoor niet
+iets anders melden dan wat er gebeurd is. `selectStandardSet()` telde
+bijvoorbeeld hoeveel PIDs er in de standaardset zaten — maar zodra er al iets
+aanstond is dat niet hetzelfde als wat erbij kwam.
+
+**#49 — het proeftegoed hing aan het toestel.** `saldo()` in
+`pidlane-credits.js` deelde `CFG.gratisStart` (25) uit zodra de
+localStorage-sleutel ontbrak. App-gegevens wissen was daarmee een knop die
+onbeperkt nieuwe tokens gaf. Zolang de Worker het echte saldo bijhield was dat
+onschadelijk, en zo stond het ook in het issue — maar het besluit van 28-08
+maakt credits het enige verdienmodel, en dan is een tweede plek die tegoed
+uitdeelt het grootste gat. Bijkomend: het toestel deelde er 25 uit en
+`handleKlantOnboarding` 20, twee getallen voor één begrip.
+
+De client deelt nu niets meer uit en telt niets meer bij. Het proeftegoed komt
+uitsluitend van `/klant/onboarding`, dat `KLANT_START_SALDO` bijboekt en
+`StartTegoedGegeven` zet — per account precies één keer. localStorage is nog een
+afschrift van het serversaldo.
+
+**Wat daarbij het makkelijkst fout gaat, en hier expres niet fout ging:** het
+gat dichten door "geen sleutel" als nul te lezen. Dan blokkeert `preflight()`
+elke analyse op een nul die de client zelf verzon. `saldo()` kent daarom **drie**
+toestanden — zoveel, nul, en *onbekend* — en de drie plekken die er een besluit
+op nemen (de saldochip, het kostenvenster, `preflight()`) vragen
+`saldoBekend()` erbij. Onbekend laat door; de Worker weigert alsnog met 402 als
+het tegoed echt op is. Dat is dezelfde verdeling als bij `_boekServer()`:
+afrekenen vanuit de app is een verzoek, geen controle.
+
+**Een eerdere conclusie die herzien is.** In `vergeetKlant()` stond met nadruk
+dat het wissen van de saldosleutel "de voor de hand liggende fix is en fout":
+wissen leidde tot een ontbrekende sleutel, en die deelde 25 tokens uit, dus
+uitloggen werd een gelduitgifteknop. Die redenering klopte binnen haar eigen
+aanname — en de aanname was het probleem, niet de conclusie eruit. Nu de client
+geen tegoed meer uitdeelt is wissen juist wél goed, want "onbekend" is precies
+wat we na uitloggen weten. `test-inlog-sessie.js` eiste het omgekeerde en is
+meegedraaid, met de oude reden erbij.
+
+Van #49 blijft open: **promptcaching** (meten vóór bouwen — de cache werkt op
+een exacte prefix en `ai_system_override` zit daarin) en de structurele kant,
+**`Users` als beheerrol in plaats van klantcategorie**. Het menu-item "Mijn
+account" is wel al meegenomen: `pasMenuAan()` verbergt `kbAccount` voor een
+niet-klant, om dezelfde reden en in dezelfde functie als het adminblok.
 
 ### Drie stille fouten in de meetkant — 28-08-2026
 
