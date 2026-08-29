@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.3 (28-08-2026)';
+const TESTRUN_VERSIE = '5.4 (29-08-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1650,67 +1650,150 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 28-08-2026 (6) — drie stille fouten in de meetkant zelf.
-  // De Capacitor-controles van 5.2 zijn hier weg: die oplevering is afgerond
-  // en staat groen in test-capversies.js en test-schermranden.js.
+  // OPLEVERING 29-08-2026 — twee besluiten uitgevoerd en één losse waarneming.
+  // De controles van 5.3 (app-log, nulmetingen, prijstabel) zijn hier weg:
+  // die oplevering is afgerond en staat groen in test-applog.js,
+  // test-bezetting.js en test-modelprijs.js.
   //
-  // Deze ronde gaat over iets ongemakkelijkers: de app MAT goed en
-  // RAPPORTEERDE verkeerd, op drie plekken tegelijk.
+  // Deze ronde: opgeruimde sensoren krijgen een terugweg (#16), een sensor
+  // AANzetten wordt net zo gelogd als uitzetten (#31), en het menu-item
+  // "Mijn account" volgt de rol (#49).
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1: leest de testrun de app-log nu écht? ───────────
-  // Dit was #29. De app-log werd gelezen als window._appLog || window.logBuffer,
-  // en die bestaan nergens — dus altijd leeg, zonder ooit een fout.
-  await _doe(5, 'De app-log komt binnen bij de testrun', function () {
-    if (typeof plLokaalLog !== 'function')
-      return { staat: 'FOUT', detail: 'plLokaalLog() ontbreekt — pidlane-auth.js is niet meegekomen, ' +
-        'en dan leest blok 14 opnieuw een lege lijst' };
+  // ── TOEGEVOEGD 1: belooft de opruimregel nu een terugweg? ────────
+  // Gedragstoets op de echte uitvoer: de opruimmelding zelf is veranderd.
+  // Stond er "Komt deze sessie niet terug", dan draait er nog oude code.
+  await _doe(5, 'De opruimregel kondigt een herkansing aan', function () {
     const app = _appLogRegels();
-    if (!app.length)
-      return { staat: 'LET OP', detail: 'app-log is leeg. Dat kan kloppen bij een verse start, maar ' +
-        'juist dit was de fout van 28-08: kijk in het logboek onder BRON = APP of daar wél regels staan' };
-    return app.length + ' regels binnen via plLokaalLog() — blok 14 kan de opruimregel nu zien';
+    const opgeruimd = app.filter(function (r) {
+      return /opgeruimd/.test(String((r && r.msg) || ''));
+    });
+    if (!opgeruimd.length) {
+      const lijst = (typeof pidOpgeruimdLijst === 'function') ? pidOpgeruimdLijst() : [];
+      if (lijst.length)
+        return lijst.length + ' sensor(en) staan opgeruimd, maar de melding stond niet in ' +
+          'deze app-log — waarschijnlijk van vóór de laatste herstart';
+      return { staat: 'LET OP', detail: 'nog niets opgeruimd deze sessie. Dit is pas te zien ' +
+        'na een rit waarin een sensor vijf pogingen plus vijf herkansingen zweeg' };
+    }
+    const tekst = opgeruimd.map(function (r) { return String((r && r.msg) || ''); }).join(' | ');
+    if (/niet terug/.test(tekst))
+      return { staat: 'FOUT', detail: 'de melding zegt nog "komt deze sessie niet terug" — de code ' +
+        'van vóór #16 draait. Eerst "Nieuwste versie laden"' };
+    if (!/losse peiling/.test(tekst))
+      return { staat: 'LET OP', detail: 'de melding noemt geen losse peiling: ' + tekst.slice(0, 120) };
+    return opgeruimd.length + ' opruimmelding(en), alle met een aangekondigde herkansing';
   });
 
-  // ── TOEGEVOEGD 2: heeft blok 7 nulmetingen in zijn spoor? ────────
-  // Dit was #12. De echte controle draait verderop in blok 7; hier kijken we
-  // alleen of de valkuil zich in deze run überhaupt voordoet, zodat je weet
-  // of blok 7 dit keer iets te vertellen heeft.
-  await _doe(5, 'Nulmetingen in het bezettingsspoor', function () {
-    let sp = [];
-    try { sp = (window.PLLoad && typeof PLLoad.spoor === 'function') ? PLLoad.spoor() : []; } catch (e) { sp = []; }
-    if (!sp.length)
-      return { staat: 'LET OP', detail: 'geen spoor beschikbaar — blok 7 zegt het verderop zelf' };
-    const nullen = sp.filter(function (m) { return m && m.ms === 0; }).length;
-    if (nullen)
-      return nullen + ' van de ' + sp.length + ' monsters staan op 0 ms; blok 7 hoort die eruit te ' +
-        'laten en dat te melden in plaats van er +0% van te maken';
-    return 'spoor van ' + sp.length + ' monsters, geen enkele 0 ms — de valkuil van #12 doet zich hier niet voor';
+  // ── TOEGEVOEGD 2: is een sensor daarna teruggekomen? ─────────────
+  // De échte proef van #16, en die kan alleen tijdens een rit slagen. Zonder
+  // die omstandigheden is dit LET OP en geen FOUT — een controle die altijd
+  // rood staat wordt genegeerd.
+  await _doe(5, 'Terugweg: heeft een herkansing iets opgeleverd', function () {
+    const app = _appLogRegels();
+    const terug = app.filter(function (r) {
+      return /antwoordt weer bij een losse peiling/.test(String((r && r.msg) || ''));
+    });
+    const nietTerug = app.filter(function (r) {
+      return /antwoordt weer, maar komt niet terug/.test(String((r && r.msg) || ''));
+    });
+    if (nietTerug.length)
+      return { staat: 'FOUT', detail: nietTerug.length + ' sensor(en) antwoordden wel maar bleven ' +
+        'buiten de selectie — de gate houdt ze op een andere trede tegen. De regel in het logboek ' +
+        'zegt welke' };
+    if (terug.length) return terug.length + ' sensor(en) via een losse peiling teruggekomen';
+    const nog = (typeof pidOpgeruimdLijst === 'function') ? pidOpgeruimdLijst().length : 0;
+    return { staat: 'LET OP', detail: nog
+      ? nog + ' sensor(en) staan nog opgeruimd; de eerste peiling volgt 5 minuten na het opruimen'
+      : 'niets opgeruimd, dus ook niets om terug te halen' };
   });
 
-  // ── VERWIJDERD: staat er nergens meer een dode logbron? ─────────
-  // De helft die het makkelijkst wordt vergeten.
-  await _doe(5, 'Geen dode logbronnen meer in de geladen testrun', async function () {
-    let js = '';
-    try {
-      const r = await fetch('pidlane-testrun.js', { cache: 'reload' });
-      if (!r.ok) return { staat: 'LET OP', detail: 'pidlane-testrun.js niet op te halen (' + r.status + ')' };
-      js = await r.text();
-    } catch (e) { return { staat: 'LET OP', detail: 'bron niet op te halen: ' + (e.message || e) }; }
+  // ── TOEGEVOEGD 3: meldt de selectie zichzelf, in beide richtingen? ─
+  // Twee delen. Eerst een gedragstoets die niets verandert: een momentopname
+  // zonder wijziging hoort NIETS te schrijven en een leeg verschil terug te
+  // geven. Dat toetst de melder zelf, zonder de selectie van de gebruiker aan
+  // te raken tijdens een run.
+  await _doe(5, 'De selectiemelder rekent tegen de echte selectie', function () {
+    if (typeof plSelectieVoor !== 'function' || typeof plSelectieMeld !== 'function')
+      return { staat: 'FOUT', detail: 'plSelectieVoor/plSelectieMeld ontbreken — ' +
+        'pidlane-pidgate.js is niet meegekomen en dan meldt geen van de vijf plekken iets' };
+    const voor = plSelectieVoor();
+    if (!voor) return { staat: 'LET OP', detail: 'geen momentopname mogelijk (activePIDs ontbreekt)' };
+    const r = plSelectieMeld(voor, 'zelftest');
+    if (!r) return { staat: 'FOUT', detail: 'de melder gaf niets terug op een geldige momentopname' };
+    if (r.erbij.length || r.eraf.length)
+      return { staat: 'FOUT', detail: 'zonder wijziging meldde hij toch ' + r.erbij.length +
+        ' erbij en ' + r.eraf.length + ' eraf — dan rekent hij niet tegen activePIDs' };
+    return 'geen wijziging, geen regel — ' + voor.size + ' sensoren actief';
+  });
 
-    // Prozaregels en commentaar noemen de dode globals met opzet; alleen
-    // uitvoerbare regels tellen. Zelfde afspraak als in test-applog.js.
-    const regels = js.split('\n')
-      .map(function (t, i) { return { nr: i + 1, t: t }; })
-      .filter(function (x) {
-        return /window\.(_appLog|logBuffer)/.test(x.t) && !/^\s*(['"]|\/\/|\*)/.test(x.t);
-      });
-    if (regels.length)
-      return { staat: 'FOUT', detail: regels.length + ' regel(s) lezen de dode globals nog, o.a. regel ' +
-        regels[0].nr + '. Eerst "Nieuwste versie laden"; blijft het staan, dan is de fix niet meegekomen' };
-    if (!/_appLogRegels/.test(js))
-      return { staat: 'FOUT', detail: 'de gedeelde helper _appLogRegels() staat niet in de geladen code' };
-    return 'één gedeelde helper, geen dode globals';
+  // Tweede deel: staat het ook echt in het log? Dit is het gat uit #31 zelf,
+  // en het is pas te zien als je deze sessie iets hebt aan- of uitgezet.
+  await _doe(5, 'Aanzetten laat net zo goed een spoor na als uitzetten', function () {
+    const app = _appLogRegels().map(function (r) { return String((r && r.msg) || ''); });
+    const regels = app.filter(function (t) { return /Sensorselectie via /.test(t); });
+    if (!regels.length) {
+      const oud = app.filter(function (t) { return /uitgezet via dubbeltik/.test(t); });
+      if (oud.length)
+        return { staat: 'FOUT', detail: oud.length + ' regel(s) in de oude vorm — de code van vóór ' +
+          '#31 draait. Eerst "Nieuwste versie laden"' };
+      return { staat: 'LET OP', detail: 'deze sessie is de selectie niet gewijzigd. Zet één sensor ' +
+        'aan en één uit in het sensorkeuzescherm; er horen dan twee regels te staan' };
+    }
+    const erbij = regels.filter(function (t) { return /erbij/.test(t); }).length;
+    const eraf  = regels.filter(function (t) { return /eraf/.test(t); }).length;
+    if (!erbij && eraf)
+      return { staat: 'FOUT', detail: eraf + ' regels over uitzetten en geen enkele over aanzetten — ' +
+        'precies de asymmetrie van #31, nu in de nieuwe bewoording' };
+    return regels.length + ' selectieregel(s): ' + erbij + ' met erbij, ' + eraf + ' met eraf';
+  });
+
+  // ── TOEGEVOEGD 4: volgt het kebabmenu de rol? ───────────────────
+  // Gedragstoets op de echte DOM, want dat is waar de fout zat.
+  await _doe(5, '"Mijn account" volgt de rol', function () {
+    const el = document.getElementById('kbAccount');
+    if (!el) return { staat: 'LET OP', detail: 'kbAccount niet in de DOM' };
+    let klant = false;
+    try { klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant()); }
+    catch (e) { return { staat: 'LET OP', detail: 'rol niet vast te stellen: ' + (e.message || e) }; }
+    const zichtbaar = el.style.display !== 'none';
+    if (zichtbaar === klant)
+      return klant ? 'klantaccount, item staat er' : 'beheeraccount, item is verborgen';
+    return { staat: 'FOUT', detail: klant
+      ? 'klantaccount maar het item is verborgen'
+      : 'beheeraccount en het item staat er nog — pasMenuAan() is niet gedraaid of de fix ontbreekt' };
+  });
+
+  // ── VERWIJDERD: hangen er nog restanten van de oude teksten? ─────
+  // De helft die het makkelijkst wordt vergeten. Dit is broncontrole, met de
+  // reden erbij: drie van de vier teksten zitten in code die alleen langs een
+  // gebruikershandeling loopt (een dubbeltik, een presetkeuze, het openen van
+  // het tegoedscherm), en die tijdens een testrun uitvoeren zou de selectie of
+  // het scherm van de gebruiker veranderen. De gedragskant is hierboven al
+  // gemeten via het log; dit vangt alleen een half meegekomen oplevering.
+  await _doe(5, 'De oude bewoordingen zijn echt weg', async function () {
+    const bronnen = [
+      ['pidlane-pids.js',        /log\(\s*'Sensor uitgezet via dubbeltik/, 'de losse dubbeltikregel'],
+      ['pidlane-rijsituatie.js', /Standaard set: \$\{n\} PIDs geselecteerd/, 'de eigen telregel van de standaardset'],
+      ['pidlane-klant.js',       /zitten in je abonnement/,                  'het abonnement dat niet bestaat']
+    ];
+    const rest = [];
+    for (const [bestand, patroon, wat] of bronnen) {
+      let js = '';
+      try {
+        const r = await fetch(bestand, { cache: 'reload' });
+        if (!r.ok) return { staat: 'LET OP', detail: bestand + ' niet op te halen (' + r.status + ')' };
+        js = await r.text();
+      } catch (e) { return { staat: 'LET OP', detail: bestand + ' niet op te halen: ' + (e.message || e) }; }
+      // Commentaar noemt de oude teksten met opzet — daar staat waaróm ze weg
+      // zijn. Alleen uitvoerbare regels tellen.
+      const zonder = js.split('\n').map(function (t) { return t.replace(/\/\/.*$/, ''); }).join('\n');
+      if (patroon.test(zonder)) rest.push(wat + ' (' + bestand + ')');
+    }
+    if (rest.length)
+      return { staat: 'FOUT', detail: rest.join('; ') + '. Eerst "Nieuwste versie laden"; blijft het ' +
+        'staan, dan is de oplevering half meegekomen' };
+    return 'geen van de drie oude teksten staat nog in code die draait';
   });
 }
 
@@ -2019,6 +2102,12 @@ async function _blok14() {
     };
     const op = zoek(/opgeruimd/i);
     const terug = zoek(/antwoordt weer na/i);
+    // De terugweg van #16 (29-08-2026): een sensor die ná het opruimen op een
+    // losse peiling weer antwoordt. Andere bewoording dan de herkansing van
+    // plload hierboven, en bewust apart geteld — het zijn twee verschillende
+    // gebeurtenissen op twee momenten in de levensloop van een sensor.
+    const herkans = zoek(/antwoordt weer bij een losse peiling/i);
+    const mislukt = zoek(/antwoordt weer, maar komt niet terug/i);
     if (!op.length && !terug.length)
       return { staat: duur > 300 ? 'LET OP' : 'ok',
         detail: 'niets opgeruimd in ' + Math.round(duur / 60) + ' min' +
@@ -2027,7 +2116,10 @@ async function _blok14() {
     const r = [];
     if (op.length) r.push(op.length + 'x opgeruimd: ' + op.slice(0, 3).join(' | '));
     if (terug.length) r.push(terug.length + 'x hersteld vóór het opruimen: ' + terug.slice(0, 3).join(' | '));
-    return { staat: 'LET OP', detail: r.join('  ||  ') + ' — dit is de meting waar de drempel op gekozen moet worden' };
+    if (herkans.length) r.push(herkans.length + 'x teruggekomen NA het opruimen: ' + herkans.slice(0, 3).join(' | '));
+    if (mislukt.length) r.push(mislukt.length + 'x antwoordde wel maar bleef buiten de selectie: ' + mislukt.slice(0, 3).join(' | '));
+    return { staat: 'LET OP', detail: r.join('  ||  ') + ' — dit is de meting waar de drempel op gekozen moet worden' +
+      (herkans.length ? '. De terugkomers zijn sensoren die koud zwegen en warm wél antwoorden: precies waarvoor de terugweg is gebouwd' : '') };
   });
 
   // ── 5. Liep de app door, of bevroor hij? ──
@@ -2465,42 +2557,53 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-08 (6) — drie stille fouten in de meetkant zelf',
+  titel: 'OPLEVERING 29-08 \u2014 twee besluiten uitgevoerd, \u00e9\u00e9n losse waarneming',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Drie fouten van dezelfde soort, alle drie opgeruimd: de app MAT goed en RAPPORTEERDE verkeerd. Dat type kost het meeste vertrouwen, want van buitenaf is het niet te onderscheiden van een echte bevinding \u2014 en een test die dezelfde verkeerde bron leest staat vrolijk groen mee.',
+    'Drie besluitvragen stonden open en zijn gesteld voordat er code voor geschreven werd. Twee ervan zijn nu uitgevoerd, de derde blijft staan als besluitstuk met werk eronder. Wat ze gemeen hebben: de onderbouwing is meer waard dan de uitkomst \u2014 over een half jaar is de uitkomst uit de code te lezen en de reden niet.',
 
-    'Nummer 29: de app-log werd op drie plekken gelezen uit twee globals die nergens bestaan. Altijd leeg, nooit een fout, want de terugval op een lege lijst ving het op. Daardoor meldde blok 14 "niets opgeruimd" terwijl de opruimregel twee keer had gevuurd, gaf blok 11 "app-log 0 regels" naast 1183 BT-regels, en had het opgeslagen rapport nooit een APP-LOG-sectie. Alle drie stonden in de run van 19:09.',
+    'Nummer 16: een sensor die vijf pogingen plus vijf herkansingen zweeg ging uit de selectie en kwam deze sessie niet meer terug. De notitie erbij zei dat dat bewust was, want een terugweg zou de sensor bij elke motorstart laten terugkomen en vijf minuten bandbreedte kosten. Die redenering rekende met OPNIEUW DE HELE KWALIFICATIEFASE. \u00c9\u00e9n losse peiling is \u00e9\u00e9n commando. Het geval dat het oplost is een sensor die pas antwoordt als hij warm is \u2014 koud opgeruimd, en zonder terugweg nooit meer in beeld.',
 
-    'Nummer 12: blok 7 gaf bij een deel-door-nul stilzwijgend 0% terug, en 0% viel in de tak "vrijwel geen verschil". 0 ms tegen 144 ms werd zo gepresenteerd als "bezetting voorspelt geen tegendruk" \u2014 de omgekeerde conclusie, op de regel die bepaalt of de PLLoad-vraag dicht kan.',
+    'Nummer 31: het log van 27-08 had dertien regels "Sensor uitgezet via dubbeltik" en geen enkele over een sensor die erbij kwam, terwijl die er wel waren. Dat is misleidend en niet alleen onvolledig. Bij het nakijken van die rit was daardoor niet te beantwoorden of vijftien niet-bewegende sensoren het gedrag van de auto waren of handmatig aangezette PIDs die de ECU niet kent \u2014 het verschil tussen een bevinding en ruis.',
 
-    'Nummer 48: de prijstabel stond op 15/75 dollar voor Opus (dat is de Opus 3-generatie; nu 5/25) en had een introductieprijs voor Sonnet 5 die niet bestaat \u2014 met een klokvergelijking die op 1 september vanzelf 50% te hoog zou gaan tellen. Een fout die geen enkele commit veroorzaakt en die dus door geen enkele review gevangen wordt.',
+    'Nummer 15: hier is het besluit "\u00e9\u00e9n poort", maar bij het hermeten bleek de aanleiding verouderd. Waakronde en rijmonitor claimen allebei al via PLBus, bulk en caravan raken de bus niet. Wat er w\u00e9l staat is subtieler: TWEE V\u00d3RMEN van dezelfde poort, tien keer withBus() tegen vijf keer een handgeschreven claim plus finally. Dat omzetten raakt de poll-lus en de testrun en is een eigen sessie.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Blok 5 controle 1 hoort nu een aantal app-logregels te melden in plaats van niets. Staat er LET OP "app-log is leeg", kijk dan in het logboek onder BRON = APP of daar wél regels staan \u2014 dat is precies het verschil dat maanden onzichtbaar was.',
+    'STAP 1. ZONDER RIT, IN TWEE MINUTEN. Open het sensorkeuzescherm, zet \u00e9\u00e9n sensor aan en \u00e9\u00e9n uit, en kijk daarna in het logboek onder BRON = APP. Er horen TWEE regels te staan die allebei beginnen met "Sensorselectie via sensorkeuze", \u00e9\u00e9n met "erbij" en \u00e9\u00e9n met "eraf". Stond er vroeger alleen iets bij uitzetten; dat was de fout.',
 
-    'STAP 2. DE ECHTE PROEF, EN DIE VRAAGT EEN RIT VAN MINSTENS VIJF MINUTEN. Rijd tot de opruimregel vuurt (in het logboek verschijnt dan een regel met "opgeruimd") en draai daarna de testrun. Blok 14 hoort dat nu te MELDEN in plaats van "niets opgeruimd \u2014 controleer of hij aanstaat" te zeggen. Zonder die rit is deze fix niet bewezen.',
+    'STAP 2. Kies daarna een preset uit de keuzelijst. Die zet in \u00e9\u00e9n keer tientallen sensoren, en er hoort \u00e9\u00e9N regel te komen met het aantal en twee voorbeelden \u2014 geen muur van veertig. Komt er wel een muur, dan is dat een FOUT.',
 
-    'STAP 3. Sla het rapport op en kijk of er nu een sectie APP-LOG in staat, onder de BT-LOG. Die ontbrak altijd.',
+    'STAP 3. Log uit en in als beheerder en open het kebabmenu. Het item "Mijn account" hoort er NIET te staan. Het opende een tegoedscherm dat beloofde dat analyses "in je abonnement" zaten, en dat abonnement bestaat niet.',
 
-    'STAP 4. Kijk in blok 11 ("Meldingen sinds het begin van deze run") of het aantal app-logregels niet meer nul is.',
+    'STAP 4. DE ECHTE PROEF VAN #16, EN DIE VRAAGT EEN RIT. Rijd tot er in het logboek een regel met "opgeruimd" verschijnt. Die regel hoort nu te eindigen met "Over 5 min volgt \u00e9\u00e9n losse peiling". Staat er nog "komt deze sessie niet terug", dan draait er oude code.',
+
+    'STAP 5. Rijd daarna door en houd het logboek in de gaten. Antwoordt zo\u0027n sensor later alsnog, dan verschijnt "antwoordt weer bij een losse peiling \u2014 terug in de selectie". Blok 14 telt die apart van de herkansingen v\u00f3\u00f3r het opruimen; dat zijn twee verschillende momenten in de levensloop van een sensor.',
+
+    'STAP 6. Ziet u in plaats daarvan "antwoordt weer, maar komt niet terug in de selectie", meld dat dan. Dat betekent dat de gate hem op een andere trede tegenhoudt, en de regel zegt welke. Dat is een echte bevinding en geen ruis.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De app-log loopt nu via \u00e9\u00e9n helper die plLokaalLog() leest \u2014 dezelfde bron die het logboek al gebruikte \u2014 en die een fout MELDT in plaats van stil nul terug te geven. Blok 7 gooit nulmetingen eruit vóór de mediaan en meldt hoeveel. De prijstabel staat in dollar met de wisselkoers als aparte constante, zonder klok.',
+    'De opruimregel heeft een terugweg: losse peilingen op 5, 10, 20 en 40 minuten, daarna elke 40, zodat een \u00e9cht dode sensor vanzelf stil wordt. Alleen het oordeel "ok" telt als levensteken \u2014 "onzin" is onze eigen parse-fout en "nodata" is een module die een dummywaarde teruggeeft. De peiling loopt via withBus(), dus langs dezelfde poort als de rest.',
 
-    'Drie nieuwe tests in de gate, alle drie met tegenproef: test-applog.js, test-bezetting.js en test-modelprijs.js. Daarnaast zes dode element-opzoekingen weg; monitorBtn en de dode functie refreshAdminLogRow zijn bewust blijven staan, met de reden in de commit.',
+    'Vijf gebruikershandelingen wijzigen de selectie (vinkje, dubbeltik, standaardset, categorieknop, preset) en ze melden nu alle vijf via \u00e9\u00e9n plek, in dezelfde bewoording en op hetzelfde niveau. De melder krijgt geen lijst van wat er zou veranderen maar een momentopname van v\u00f3\u00f3r de handeling, en rekent het verschil uit tegen de echte activePIDs \u2014 een aanroeper k\u00e1n dus niet iets anders melden dan wat er gebeurd is.',
+
+    'Het menu-item "Mijn account" hangt aan de rol, in dezelfde functie die het adminblok verbergt. Cosmetisch: de poort zit in de Worker, die elk beheerverzoek aan X-Admin-Token toetst.',
+
+    'Drie nieuwe tests in de gate, alle drie nagelopen met nagebouwde fouten in de bron: test-herkansing.js (43 toetsen, 8 mutaties), test-selectielog.js (35 toetsen, 10 mutaties) en test-rolmenu.js (13 toetsen, 3 mutaties). Blok 14 telt de terugkomers nu apart.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
+    'De vijf handgeschreven PLBus.claim-plekken uit #15 staan er nog (monitor, plload, testrun, uitgebreid, waakronde), net als het 41-header-uitpakwerk en de ontbrekende plFetch-helper. Dat is de rest van dat besluit en een eigen sessie.',
+
+    'Uit #49 blijven de twee gaten staan: het proeftegoed lekt via localStorage, en promptcaching staat uit. Allebei meten v\u00f3\u00f3r bouwen.',
+
     'De vijf vensters uit 5.1 (testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker) staan nog op broncontrole en vragen \u00e9\u00e9n blik met het oog op het toestel.',
 
-    'De punten die een rit of een besluit vragen blijven staan: 15, 16, 17, 18, 20, 30, 40 en 46, plus de Play-punten 41 en 42 en het besluit 49.'
+    'De punten die een rit vragen blijven staan: 17, 18, 20, 29, 30, 40 en 46, plus de Play-punten 41 en 42.'
   ]
 };
-
 
 
 

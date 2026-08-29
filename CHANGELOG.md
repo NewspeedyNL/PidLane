@@ -11,6 +11,80 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-29a (CET) — TWEE BESLUITEN UITGEVOERD
+
+       • ♻️ EEN OPGERUIMDE SENSOR KRIJGT EEN TERUGWEG (#16). Wie vijf pogingen
+         plus vijf herkansingen zweeg, ging uit de selectie en kwam deze
+         sessie niet meer terug. De notitie erbij zei dat dat bewust was: een
+         terugweg zou de sensor bij elke motorstart laten terugkomen en vijf
+         minuten bandbreedte kosten. Die redenering rekende met OPNIEUW DE
+         HELE KWALIFICATIEFASE. Eén losse peiling is één commando: bij vijf
+         opgeruimde sensoren en een oplopende wachttijd (5, 10, 20, 40 min en
+         daarna 40) is dat in het slechtste geval één per minuut, tegen
+         ongeveer vijf per seconde die er toch al overheen gaan. Het geval dat
+         het oplost is een sensor die pas antwoordt als hij warm is — koud
+         opgeruimd, en zonder terugweg nooit meer in beeld. De oude notitie
+         staat er nog, herzien in plaats van weggepoetst.
+         Alleen het oordeel 'ok' telt als levensteken: 'onzin' is onze eigen
+         parse-fout en 'nodata' is een module die een dummywaarde teruggeeft.
+         Terugzetten opent twee grendels — de opruimlijst én de _pidHealth-
+         stempel uit de koude scan — en leest de uitkomst van pidToevoegen(),
+         zodat een weigering niet als "terug in de selectie" in het log komt.
+
+       • 🧾 SENSOR AANZETTEN WORDT NET ZO GELOGD ALS UITZETTEN (#31). Het log
+         van 27-08 had dertien regels "Sensor uitgezet via dubbeltik" en geen
+         enkele over een sensor die erbij kwam, terwijl die er wél waren. Dat
+         is misleidend en niet alleen onvolledig: wie dat leest concludeert
+         redelijkerwijs dat de selectie alleen kleiner is geworden. Bij het
+         nakijken van die rit was daardoor niet te beantwoorden of de vijftien
+         niet-bewegende sensoren uit blok 14 het gedrag van de auto waren of
+         handmatig aangezette PIDs die de ECU niet kent.
+         Vijf handelingen wijzigen de selectie — vinkje, dubbeltik,
+         standaardset, categorieknop, preset — en ze melden nu alle vijf via
+         plSelectieMeld(), in dezelfde bewoording en op hetzelfde niveau. De
+         losse regels die drie van die plekken zelf schreven zijn weg. De
+         melder krijgt géén lijst van wat er zou veranderen maar een
+         momentopname van vóór de handeling, en rekent het verschil uit tegen
+         de echte activePIDs: een aanroeper kán dus niet iets anders melden
+         dan wat er gebeurd is. Veertig sensoren geven één regel met het
+         aantal en twee voorbeelden, geen muur.
+
+       • 👤 "MIJN ACCOUNT" VOLGT DE ROL (#49, losse waarneming). pasMenuAan()
+         verborg alleen het adminblok. Nagemeten wat een beheeraccount op dat
+         item te zien kreeg — dat stond als niet nagemeten in het issue: het
+         scherm brak niet, maar zei dat analyses "in je abonnement" zaten.
+         Dat abonnement bestaat niet. Het item hangt nu aan isKlant(), in
+         dezelfde functie en om dezelfde reden als het adminblok, en de tekst
+         zegt wat er wél geldt. Cosmetisch — de poort zit in de Worker.
+
+       • 🔍 #15 HERMETEN VÓÓR HET BOUWEN, EN DE PREMISSE BLEEK VEROUDERD. Het
+         besluit is "één poort", maar de kop van het issue ("vier aanvragers
+         vullen de bus langs elkaar heen") klopt niet meer: waakronde en
+         rijmonitor claimen allebei via PLBus, bulk en caravan raken de bus
+         niet, en ritFullSweep() draait in withBus(). Wat er wél staat is
+         subtieler: twee VÓRMEN van dezelfde poort, tien keer withBus() tegen
+         vijf keer een handgeschreven claim plus finally. Dat is een eigen
+         sessie waard en staat in het issue. De les is de vorm, niet de
+         uitkomst: een issue is een waarneming van het moment waarop het
+         geschreven werd.
+
+       • 🧪 TESTRUN 5.4. Blok 5 toetst deze oplevering: de opruimmelding
+         kondigt een herkansing aan, de terugweg heeft iets opgeleverd, de
+         selectiemelder rekent tegen de echte selectie, aanzetten laat een
+         spoor na, het menu-item volgt de rol, en de drie oude bewoordingen
+         zijn echt weg. Blok 14 telt de terugkomers ná het opruimen apart van
+         de herkansingen ervóór — twee verschillende momenten in de levensloop
+         van een sensor.
+         Drie nieuwe tests, alle drie nagelopen met nagebouwde fouten in de
+         bron: test-herkansing.js (43 toetsen, 8 mutaties), test-selectielog.js
+         (35 toetsen, 10 mutaties), test-rolmenu.js (13 toetsen, 3 mutaties).
+         Eén daarvan is het vermelden waard: de toets op de grendel tegen
+         dubbele herkansrondes stond GROEN toen de grendel eruit gesloopt was.
+         Hij mat de wachttijdlogica, niet de grendel. Herschreven met twee
+         sensoren die tegelijk aan de beurt zijn.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-08-28g (CET) — DRIE STILLE FOUTEN IN DE MEETKANT ZELF
 
        • 🧻 DE APP-LOG KWAM NOOIT BINNEN BIJ DE TESTRUN (#29). Hij werd op DRIE

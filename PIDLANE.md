@@ -603,7 +603,7 @@ voor.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Bijgewerkt 27-08-2026. `PLAN.md`, `OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan
+Bijgewerkt 29-08-2026. `PLAN.md`, `OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan
 niet meer. **Wat er open staat, staat in de issues** — dit hoofdstuk verwijst
 ernaar en bewaart de uitleg eromheen: waarom iets stuk was, wat er al geprobeerd
 is, en welke conclusie achteraf fout bleek. Dat laatste is de reden dat de
@@ -617,28 +617,99 @@ de pas, en dan is de vraag welke klopt.
 
 | # | wat | soort |
 |---|---|---|
-| [#12](https://github.com/NewspeedyNL/PidLane/issues/12) | blok 7 presenteert een nulmeting als "vrijwel geen verschil" | bug |
-| [#13](https://github.com/NewspeedyNL/PidLane/issues/13) | `merkGroep()`: BMW matcht op gelijkheid, MINI op prefix | bug |
-| [#14](https://github.com/NewspeedyNL/PidLane/issues/14) | PID `0143` staat er 256× naast | bug |
+| [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — besloten: één poort; twee vórmen resten | besluit |
 | [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | bulkrecorder schrijft UTC, logger lokale tijd | bug |
-| [#22](https://github.com/NewspeedyNL/PidLane/issues/22) | zwevende chips liggen over de bulk-recorder | UI — oorzaak weggenomen 27-08 |
 | [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | de app bevriest op de achtergrond | groot |
-| [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — wordt dat één poort? | besluit |
-| [#16](https://github.com/NewspeedyNL/PidLane/issues/16) | opruimregel: drempel en terugweg | besluit |
-| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` over een hele rit | meten |
 | [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
-| [#24](https://github.com/NewspeedyNL/PidLane/issues/24) | restjes uit de bedradingssweep (vijf eindjes) | opruimen |
 | [#25](https://github.com/NewspeedyNL/PidLane/issues/25) | kleine staarten uit de testruns van 26-08 | opruimen |
-| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldt een vals negatief | bug |
+| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldt een vals negatief — code gerepareerd, rit ontbreekt | bug |
 | [#30](https://github.com/NewspeedyNL/PidLane/issues/30) | schakelende airco leest als ruw stationair | bug |
-| [#31](https://github.com/NewspeedyNL/PidLane/issues/31) | sensorlogging is asymmetrisch | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
 | [#41](https://github.com/NewspeedyNL/PidLane/issues/41) | account verwijderen ontbreekt, privacy.html belooft het wel | Play |
 | [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
+| [#46](https://github.com/NewspeedyNL/PidLane/issues/46) | de Android-terugknop verlaat de app en pauzeert de verbinding | bug |
+| [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel, Users terug naar personeel | besluit |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### Drie besluiten genomen op 29-08-2026
+
+Alle drie stonden ze als "besluit" in de lijst hierboven, en alle drie zijn ze
+gesteld vóórdat er code voor geschreven werd. Wat ze gemeen hebben is dat de
+onderbouwing meer waard is dan de uitkomst — over een half jaar is de uitkomst
+uit de code te lezen en de reden niet.
+
+**#16 — de opruimregel krijgt een terugweg.** Losse peilingen op een oplopende
+trap (5, 10, 20, 40 minuten, daarna 40), niet een nieuwe kwalificatiefase.
+
+De notitie die er stond zei dat er bewust géén terugweg was, want die zou de
+sensor bij elke motorstart laten terugkomen en vijf minuten bandbreedte kosten.
+Die redenering rekende met **opnieuw de hele kwalificatiefase**. Eén losse
+peiling is één commando: bij vijf opgeruimde sensoren en een oplopende wachttijd
+is dat in het slechtste geval één per minuut, tegen ongeveer vijf per seconde die
+er toch al overheen gaan. Het geval dat het oplost is een sensor die pas
+antwoordt als hij warm is — koud opgeruimd, en zonder terugweg nooit meer in
+beeld. De oude notitie staat er nog, herzien, in `pidlane-pidgate.js`.
+
+Alleen het oordeel `ok` telt als levensteken. `onzin` is ónze parse-/schaalfout
+en `nodata` is een module die een dummywaarde teruggeeft — een sensor daarop
+terugzetten verstopt een bug in onze eigen tabel, of zet de zeef weer open.
+
+**#15 — ja, één poort. En de helft bleek al klaar.** Vóór het bouwen is de
+aanleiding hermeten, en de kop van het issue ("vullen de bus langs elkaar heen")
+klopt niet meer: waakronde en rijmonitor claimen allebei via `PLBus`, bulk en
+caravan lezen alleen `pidVals` en raken de bus niet, en `ritFullSweep()` draait
+in `withBus('rit-sweep')`.
+
+Wat er wél staat is subtieler en precies het patroon waar dit project gevoelig
+voor is, één trede hoger: **twee vórmen van dezelfde poort.** Tien plekken doen
+`withBus(naam, fn, maxWachtMs)`, vijf doen met de hand `PLBus.claim()` plus een
+eigen `finally` (monitor, plload, testrun, uitgebreid, waakronde). Een
+handgeschreven `finally` die iemand vergeet houdt het slot vast tot de sessie
+eindigt; `withBus()` kan dat niet. Dat omzetten raakt de poll-lus en de testrun
+en is dus een eigen sessie met een rit erachteraan.
+
+De les hier is niet de uitkomst maar de vorm: **een issue is een waarneming van
+het moment waarop het geschreven werd.** Hermeten vóór bouwen kostte hier tien
+minuten en scheelde een verbouwing die grotendeels al gedaan was. Zelfde soort
+fout als de Cloudflare-bot in `CLAUDE.md`, alleen dan met een eigen oudere
+notitie als bron in plaats van een bot.
+
+**#49 — credits worden het enige verdienmodel**, en `Users` heet voortaan wat
+het is: personeel. Het doorslaggevende argument is niet omzet maar
+kostenblootstelling — een `user` draait op de sleutel van de beheerder, zonder
+plafond en zonder teller. De redenering en de cijfers staan in het issue; hier
+alleen de uitkomst, want twee plekken met dezelfde onderbouwing lopen uit de pas.
+
+Meteen meegenomen: het menu-item "Mijn account" hing niet aan de rol. Een
+beheeraccount kreeg een tegoedscherm dat een abonnement beloofde dat niet
+bestaat. Nu verborgen door dezelfde `pasMenuAan()` die het adminblok verbergt,
+en de tekst zegt wat er wél geldt. Cosmetisch — de poort zit in de Worker.
+
+### Een test die groen stond op het verkeerde mechanisme — 29-08-2026
+
+Het waard om apart te noemen, omdat het precies is waar `CLAUDE.md` voor
+waarschuwt met "een controle zonder tegenproef telt niet".
+
+De herkansronde uit #16 heeft een grendel (`_herkansBezig`) die voorkomt dat er
+twee rondes tegelijk lopen. De toets daarvoor stond groen. Toen de grendel er in
+een tegenproef werd uitgesloopt, bleef hij **groen**.
+
+De reden: met één opgeruimde sensor blijft een tweede ronde óók zonder grendel
+leeg, want de eerste ronde heeft de wachttijd van die ene sensor al vooruitgezet
+vóórdat hij op de bus ging wachten. De toets mat dus de wachttijdlogica en niet
+de grendel, en zou een echte regressie in de grendel nooit hebben gezien.
+
+Herschreven met twee sensoren die tegelijk aan de beurt zijn: de eerste ronde
+hangt bij nummer één, en zonder grendel pakt de tweede nummer twee op. Eén
+commando op de bus of twee — dát is waar de grendel over gaat.
+
+**Wat dit leert over de werkwijze:** de tegenproef hoort niet in de test te
+staan als een extra `eis()`, maar echt uitgevoerd te worden op de bron. De acht
+nagebouwde fouten waarmee `test-herkansing.js` is nagelopen zijn wat de test
+waard maakt; de 43 groene vinkjes op zichzelf zeggen weinig.
 
 ### Drie stille fouten in de meetkant — 28-08-2026
 
