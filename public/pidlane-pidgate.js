@@ -369,6 +369,93 @@ function pidToevoegen(pids, opt){
   return {ok, weg};
 }
 
+// ══════════════════════════════════════════════════════════════════
+// SPOOR IN HET LOG BIJ ELKE SELECTIEWIJZIGING (#31)
+// ══════════════════════════════════════════════════════════════════
+// Het log van de rit van 27-08-2026 had dertien regels "Sensor uitgezet via
+// dubbeltik" en geen enkele regel over een sensor die erbij kwam, terwijl er
+// wel degelijk sensoren zijn aangezet. Dat is erger dan onvolledig: wie
+// dertien keer "uitgezet" leest en nul keer "aangezet", concludeert
+// redelijkerwijs dat de selectie alleen kleiner is geworden.
+//
+// Wat het kostte: bij het nakijken van die rit was niet te beantwoorden of de
+// vijftien niet-bewegende sensoren uit blok 14 het gedrag van de auto waren,
+// of handmatig aangezette PIDs die de ECU niet kent. Dat verschil bepaalt of
+// "15 van de 55 bewogen niet" een bevinding is of ruis. Het is opgelost door
+// het de eigenaar te vragen, en dat werkt precies één keer.
+//
+// TWEE ONTWERPKEUZES, allebei omdat een tweede plek met dezelfde betekenis
+// in dit project al drie keer een bug is geweest:
+//
+//  1. Eén melder. De aanroepers (sensorkeuze, dubbeltik, standaardset,
+//     categorieknop, preset) geven alleen de AANLEIDING mee; de bewoording en
+//     het niveau staan hier, op één plek, en zijn dus in beide richtingen
+//     gelijk.
+//  2. De melder krijgt géén lijst van wat er veranderd zou zijn, maar een
+//     momentopname van vlak vóór de handeling, en rekent het verschil zelf
+//     uit tegen de echte activePIDs. Een aanroeper kán dus niet iets anders
+//     melden dan wat er werkelijk gebeurd is. Dat is precies de manier waarop
+//     zo'n logregel er na een halfjaar naast zit: de code eronder verandert,
+//     de tekst erboven niet.
+//
+// Een preset die veertig sensoren zet geeft één regel, geen veertig: boven de
+// drie namen wordt het een aantal met twee voorbeelden.
+const _SELECTIE_NAMEN_MAX = 3;
+
+/* Momentopname vóór de handeling. Geeft null als er niets te vergelijken
+   valt; plSelectieMeld() doet dan niets. */
+function plSelectieVoor(){
+  try{
+    if(typeof activePIDs==='undefined' || !activePIDs) return null;
+    return new Set(activePIDs);
+  }catch(e){
+    console.warn('Momentopname van de selectie mislukt — deze wijziging komt niet in het log:', e);
+    return null;
+  }
+}
+
+function _selectieNamen(pids){
+  const namen=pids.map(function(p){ return (getPidDef(p)||{}).name||p; }).sort();
+  if(namen.length<=_SELECTIE_NAMEN_MAX) return namen.join(', ');
+  return namen.slice(0,2).join(', ')+' en '+(namen.length-2)+' andere';
+}
+
+/* Vergelijkt de huidige selectie met de momentopname en schrijft één regel.
+   Geeft het verschil terug zodat een aanroeper er iets mee kan (en zodat een
+   test niet op de logtekst hoeft te vissen). */
+function plSelectieMeld(voor, aanleiding){
+  if(!voor) return null;
+  let nu=null;
+  try{ if(typeof activePIDs!=='undefined' && activePIDs) nu=activePIDs; }
+  catch(e){ console.warn('Selectie niet leesbaar bij het melden:', e); }
+  if(!nu){
+    console.warn('Selectiewijziging ('+aanleiding+') niet gemeld: activePIDs ontbreekt');
+    return null;
+  }
+  const erbij=[], eraf=[];
+  nu.forEach(function(p){ if(!voor.has(p)) erbij.push(p); });
+  voor.forEach(function(p){ if(!nu.has(p)) eraf.push(p); });
+  if(!erbij.length && !eraf.length) return {erbij, eraf, tekst:''};
+
+  const delen=[];
+  if(erbij.length) delen.push(erbij.length+' erbij ('+_selectieNamen(erbij)+')');
+  if(eraf.length)  delen.push(eraf.length+' eraf ('+_selectieNamen(eraf)+')');
+  const tekst='Sensorselectie via '+(aanleiding||'onbekende handeling')+': '+
+              delen.join(', ')+' — nu '+nu.size+' actief';
+  try{ if(typeof log==='function') log(tekst,'info'); }
+  catch(e){ console.warn('Selectiewijziging niet in het log gezet:', e); }
+  return {erbij, eraf, tekst};
+}
+
+// Meteen hier exporteren en niet in het blok onderaan: dat blok ligt binnen
+// het knippad van test-stilopruim.js (vanaf "DE UITGANGSDEUR") en deze twee
+// functies liggen erbuiten. Een export daar verwijst dus naar iets dat in die
+// testcontext niet bestaat — een ReferenceError bij het laden.
+if(typeof window!=='undefined'){
+  window.plSelectieVoor=plSelectieVoor;
+  window.plSelectieMeld=plSelectieMeld;
+}
+
 // ── Wanneer moet er herijkt worden? ────────────────────────────────────
 // Niet bij elke meting — dan bouwt de lijst zich tientallen keren per minuut
 // opnieuw op en flikkert het beeld. Wél zodra een van de invoeren van

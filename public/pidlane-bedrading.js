@@ -63,6 +63,11 @@ var KRITIEK = [
   // Deze twee stonden in PIDLANE.md als bedraad maar waren dat niet. Ze staan
   // hier zodat dat niet nog eens ongemerkt kan gebeuren.
   'herijkPidGate','pidToevoegen','pidOpruimen','pidOpgeruimdLijst',
+  // De ene melder van selectiewijzigingen (#31). Vijf plekken in drie modules
+  // roepen deze twee aan zonder guard. Verdwijnt er een, dan valt het
+  // sensorkeuzescherm om in plaats van stil te zwijgen -- en stil zwijgen is
+  // precies de bug die #31 beschrijft.
+  'plSelectieVoor','plSelectieMeld',
   'plSurveyUitkomst',
   // Schermen die de zelftest in fase 2 opent en weer sluit. Geen aanhalings-
   // tekens in dit commentaar: de test leest deze lijst met een regex.
