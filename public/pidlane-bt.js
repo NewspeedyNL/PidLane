@@ -1479,6 +1479,14 @@ function kentPoortReset(){ _kentPoortKlaar = false; }
 // lijst sinds 26-08 óók de handmatige alternatieven bevat.
 let _gedetecteerdProtocol = null;
 
+// Staat de handmatige lijst open? Zie de uitleg boven renderNetworkCards().
+// Per scan opnieuw dicht: een volgende auto is een volgend oordeel.
+let _protoHandmatigOpen = false;
+function protoHandmatigToggle(){
+  _protoHandmatigOpen = !_protoHandmatigOpen;
+  renderNetworkCards();
+}
+
 function toonKentekenStap(){
   ['step1','step2','step3'].forEach(function(id){
     const el=document.getElementById(id); if(el) el.style.display='none';
@@ -1550,6 +1558,7 @@ async function scanNetworks(){
   document.getElementById('connActions').innerHTML=`<button class="mbtn s" onclick="resetToStep1()">↺ Opnieuw beginnen</button>`;
   discoveredNetworks=[];
   _gedetecteerdProtocol=null;
+  _protoHandmatigOpen=false;
 
   // 0100 triggert automatische protocol detectie — kan 3-8 seconden duren
   // Verhoog sendBT timeout tijdelijk naar 12 seconden voor deze stap
@@ -1611,8 +1620,22 @@ function renderNetworkCards(){
   // de enige uitweg opnieuw beginnen. De adapter doet nog steeds het voorwerk
   // en zijn vondst staat bovenaan en voorgeselecteerd; de bevestiging is nu
   // van de gebruiker.
+  //
+  // 30-08-2026 (issue #59) — die keuze werd te duur betaald. Alle negen
+  // protocollen stonden onder elkaar, dus het scherm was ruim twee keer een
+  // telefoonhoogte lang en de knoppen eronder waren onbereikbaar zonder
+  // scrollen. Terwijl in verreweg de meeste gevallen de bovenste kaart al het
+  // antwoord is. Nu staat alleen de vondst in beeld, met eronder één knop die
+  // de handmatige lijst openklapt. De keuze is dus nog steeds van de
+  // gebruiker, alleen niet meer op zijn kosten.
+  //
+  // Herkende de adapter niets, dan is die lijst het enige wat er te zien is
+  // en staat hij meteen open — een dichtgeklapte lijst zou daar een lege
+  // pagina zijn.
   const auto=discoveredNetworks.filter(function(n){ return n.auto; });
   const heeftAuto=auto.length>0;
+  const handmatig=discoveredNetworks.filter(function(n){ return n.handmatig; });
+  const lijstOpen=_protoHandmatigOpen || !heeftAuto;
 
   document.getElementById('step2Title').textContent=
     !discoveredNetworks.length ? 'Geen protocol gevonden' :
@@ -1640,20 +1663,15 @@ function renderNetworkCards(){
     return;
   }
 
-  // Kopje boven het handmatige deel, zodat "herkend" en "zelf kiezen" niet als
-  // één ononderscheiden rij kaarten lezen.
-  let kopjeGezet=false;
-  discoveredNetworks.forEach((net,i)=>{
-    if(net.handmatig&&!kopjeGezet){
-      kopjeGezet=true;
-      const kop=document.createElement('div');
-      kop.style.cssText='font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3);margin:10px 0 2px';
-      kop.textContent=heeftAuto?'Of kies handmatig':'Beschikbare protocollen';
-      list.appendChild(kop);
-    }
+  // Wat er getekend wordt: de vondst altijd, de handmatige lijst alleen als
+  // hij openstaat. De volgorde blijft die van discoveredNetworks, zodat de
+  // voorselectie (index 0) hetzelfde blijft betekenen.
+  const zichtbaar=lijstOpen ? discoveredNetworks : auto;
+
+  const kaart=function(net){
     const card=document.createElement('div');
-    card.className='network-card'+(i===0?' sel':'');
-    card.id='ncard-'+i;
+    card.className='network-card'+(net===selectedNetwork?' sel':'');
+    card.id='ncard-'+discoveredNetworks.indexOf(net);
     const badge=net.auto
       ? '<div class="network-badge nb-ok">Herkend</div>'
       : '<div class="network-badge" style="background:var(--sur);color:var(--tx3)">Handmatig</div>';
@@ -1670,12 +1688,42 @@ function renderNetworkCards(){
       selectedNetwork=net;
       updateNetworkBtn(net);
     };
-    list.appendChild(card);
+    return card;
+  };
+
+  // De voorselectie: wat de gebruiker al koos zolang dat nog in beeld staat,
+  // anders de eerste zichtbare kaart. Zonder deze regel bleef na het
+  // dichtklappen een handmatig protocol geselecteerd dat nergens meer stond —
+  // de knop onderin zei dan iets anders dan het scherm liet zien.
+  if(zichtbaar.indexOf(selectedNetwork)<0) selectedNetwork=zichtbaar[0];
+
+  zichtbaar.forEach(function(net,i){
+    // Kopje boven het handmatige deel, zodat "herkend" en "zelf kiezen" niet
+    // als één ononderscheiden rij kaarten lezen.
+    if(net.handmatig && (i===0 || !zichtbaar[i-1].handmatig)){
+      const kop=document.createElement('div');
+      kop.style.cssText='font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3);margin:10px 0 2px';
+      kop.textContent=heeftAuto?'Of kies handmatig':'Beschikbare protocollen';
+      list.appendChild(kop);
+    }
+    list.appendChild(kaart(net));
   });
 
-  // Het gedetecteerde protocol staat vooraan en is de voorselectie; zonder
-  // detectie is dat de eerste uit PROTOCOLS (CAN 11-bit 500k).
-  selectedNetwork=discoveredNetworks[0];
+  // De knop die de lijst opent. Alleen zinvol als er een vondst is om in te
+  // klappen — zonder vondst staat de lijst sowieso open.
+  if(heeftAuto && handmatig.length){
+    const kn=document.createElement('button');
+    kn.type='button';
+    kn.id='protoHandmatigBtn';
+    kn.className='mbtn s';
+    kn.style.cssText='width:100%;margin-top:9px';
+    kn.textContent=lijstOpen
+      ? '▲ Verberg de handmatige lijst'
+      : '⚙ Handmatig kiezen (' + handmatig.length + ' protocollen)';
+    kn.onclick=protoHandmatigToggle;
+    list.appendChild(kn);
+  }
+
   updateNetworkBtn(selectedNetwork);
 }
 

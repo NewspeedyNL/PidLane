@@ -21,6 +21,10 @@
 //   3. het herkende protocol staat er niet dubbel in, ook niet als ATDPN het
 //      als 'A6' teruggeeft in plaats van '6'
 //
+// DEEL 2 (30-08-2026, issue #59) toetst het scherm dat die lijst tekent. Dat
+// er negen opties ZIJN mag niet betekenen dat er negen in beeld staan: alleen
+// de vondst is zichtbaar, de rest zit achter één knop. Zie de kop bij DEEL 2.
+//
 // Draaien vanuit public/:  node test-protocolkeuze.js      (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
 'use strict';
@@ -209,6 +213,206 @@ toetsMeldt('een lijst die het herkende protocol niet vooraan zet wordt gezien',
     const l = S.plProtocolLijst(det, tabel);
     return l.slice(1).concat(l.slice(0, 1));   // herkende naar achteren
   }, PROTOCOLS), 'bovenste optie is niet het herkende protocol');
+
+
+// ══════════════════════════════════════════════════════════════════
+// DEEL 2 — het SCHERM: alleen de vondst in beeld, de rest achter een knop
+// ──────────────────────────────────────────────────────────────────
+// Issue #59 (30-08-2026): doordat deel 1 hierboven afdwingt dat er ALTIJD
+// meer dan één optie in de lijst staat, tekende renderNetworkCards() negen
+// kaarten onder elkaar. Het scherm werd daarmee ruim twee telefoonhoogtes
+// lang en de knoppen onderin ("Gebruik dit protocol", "Opnieuw scannen")
+// stonden buiten beeld. De keuze moest blijven, de lengte niet.
+//
+// Dit deel draait de ECHTE renderNetworkCards() uit pidlane-bt.js tegen een
+// minimale DOM-nabootsing. Geen broncontrole: de functie wordt uitgevoerd en
+// er wordt geteld wat er in de lijst terechtkomt. Een DOM-stub is hier genoeg
+// omdat de functie alleen getElementById, createElement, appendChild en
+// querySelectorAll gebruikt — laadt pidlane-bt.js ooit een echte DOM-API
+// erbij, dan klapt deze test en dat is de bedoeling.
+// ══════════════════════════════════════════════════════════════════
+
+function Element(tag) {
+  this.tagName = tag; this.children = []; this.style = { cssText: '' };
+  this.className = ''; this.id = ''; this.textContent = ''; this.onclick = null;
+  this._html = '';
+  const zelf = this;
+  Object.defineProperty(this, 'innerHTML', {
+    get: function () { return zelf._html; },
+    set: function (v) { zelf._html = String(v); zelf.children = []; }
+  });
+  Object.defineProperty(this, 'classList', {
+    get: function () {
+      return {
+        add: function (c) { if (!zelf.className.split(/\s+/).includes(c)) zelf.className = (zelf.className + ' ' + c).trim(); },
+        remove: function (c) { zelf.className = zelf.className.split(/\s+/).filter(function (x) { return x && x !== c; }).join(' '); },
+        contains: function (c) { return zelf.className.split(/\s+/).includes(c); }
+      };
+    }
+  });
+}
+Element.prototype.appendChild = function (kind) { this.children.push(kind); return kind; };
+
+function maakDom() {
+  const reg = {};
+  const doc = {
+    getElementById: function (id) {
+      if (!reg[id]) { reg[id] = new Element('div'); reg[id].id = id; }
+      return reg[id];
+    },
+    createElement: function (tag) { return new Element(tag); },
+    querySelectorAll: function (sel) {
+      const klasse = sel.replace(/^\./, '');
+      const uit = [];
+      (function loop(el) {
+        el.children.forEach(function (k) {
+          if (k.className.split(/\s+/).includes(klasse)) uit.push(k);
+          loop(k);
+        });
+      })({ children: Object.keys(reg).map(function (k) { return reg[k]; }) });
+      return uit;
+    }
+  };
+  return { document: doc, reg: reg };
+}
+
+// Haal de twee functies letterlijk uit de module. Geen kopie in dit bestand:
+// een kopie loopt achter en toetst dan de test in plaats van de app.
+function laadScherm(vervangRender) {
+  const bron = fs.readFileSync('pidlane-bt.js', 'utf8');
+  const i = bron.indexOf('function renderNetworkCards(){');
+  const j = bron.indexOf('function updateNetworkBtn(net){');
+  if (i < 0 || j < 0 || j <= i) throw new Error('renderNetworkCards() niet uit pidlane-bt.js te knippen — is hij hernoemd?');
+  const render = vervangRender || bron.slice(i, j);
+
+  const t = bron.indexOf('function protoHandmatigToggle(){');
+  if (t < 0) throw new Error('protoHandmatigToggle() niet gevonden in pidlane-bt.js');
+  const toggle = bron.slice(t, bron.indexOf('\n}\n', t) + 3);
+
+  const dom = maakDom();
+  const ctx = {
+    document: dom.document,
+    discoveredNetworks: [],
+    selectedNetwork: null,
+    _protoHandmatigOpen: false,
+    _gedetecteerdProtocol: null,
+    laatsteKnopNet: null
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(
+    'function updateNetworkBtn(net){ laatsteKnopNet = net; }\n' + toggle + '\n' + render,
+    ctx, { filename: 'renderNetworkCards' });
+  ctx.reg = dom.reg;
+  return ctx;
+}
+
+function kaarten(ctx) {
+  return ctx.reg.networkList.children.filter(function (k) {
+    return k.className.split(/\s+/).includes('network-card');
+  });
+}
+function knop(ctx) {
+  return ctx.reg.networkList.children.filter(function (k) { return k.id === 'protoHandmatigBtn'; })[0] || null;
+}
+
+function tekenMetDetectie(vervangRender) {
+  const ctx = laadScherm(vervangRender);
+  ctx.discoveredNetworks = S.plProtocolLijst(HERKEND_A6, PROTOCOLS);
+  ctx._gedetecteerdProtocol = HERKEND_A6;
+  ctx.renderNetworkCards();
+  return ctx;
+}
+
+// ── de controles ─────────────────────────────────────────────────
+function keurDichtgeklapt(vervangRender) {
+  const ctx = tekenMetDetectie(vervangRender);
+  const uit = [];
+  const k = kaarten(ctx);
+  if (k.length !== 1) uit.push('dichtgeklapt staan er ' + k.length + ' kaarten in beeld, verwacht 1');
+  if (k.length && !/Herkend/.test(k[0].innerHTML)) uit.push('de enige kaart is niet het herkende protocol');
+  const b = knop(ctx);
+  if (!b) uit.push('geen knop om de handmatige lijst te openen');
+  else if (b.textContent.indexOf('Handmatig kiezen') < 0) uit.push('de knop zegt "' + b.textContent + '"');
+  return uit;
+}
+
+function keurOpenklappen() {
+  const ctx = tekenMetDetectie();
+  ctx.protoHandmatigToggle();
+  const uit = [];
+  const k = kaarten(ctx);
+  if (k.length !== ctx.discoveredNetworks.length)
+    uit.push('opengeklapt staan er ' + k.length + ' kaarten, verwacht ' + ctx.discoveredNetworks.length);
+  const b = knop(ctx);
+  if (!b || b.textContent.indexOf('Verberg') < 0) uit.push('de knop biedt geen weg terug');
+  return uit;
+}
+
+function keurZonderDetectie() {
+  const ctx = laadScherm();
+  ctx.discoveredNetworks = S.plProtocolLijst(null, PROTOCOLS);
+  ctx._gedetecteerdProtocol = null;
+  ctx.renderNetworkCards();
+  const uit = [];
+  const k = kaarten(ctx);
+  if (k.length !== ctx.discoveredNetworks.length)
+    uit.push('zonder detectie staan er ' + k.length + ' van de ' + ctx.discoveredNetworks.length + ' kaarten in beeld — dan is het scherm leeg');
+  if (knop(ctx)) uit.push('er staat een "handmatig kiezen"-knop terwijl de lijst al openstaat');
+  return uit;
+}
+
+// Klap open, kies een handmatig protocol, klap dicht: de selectie mag niet
+// op iets blijven staan wat niet meer in beeld is.
+function keurSelectieBlijftZichtbaar() {
+  const ctx = tekenMetDetectie();
+  ctx.protoHandmatigToggle();
+  const handmatig = kaarten(ctx).filter(function (k) { return /Handmatig/.test(k.innerHTML); });
+  if (!handmatig.length) return ['geen handmatige kaart om aan te klikken'];
+  handmatig[0].onclick();
+  const gekozen = ctx.selectedNetwork;
+  if (!gekozen || !gekozen.handmatig) return ['aanklikken van een handmatige kaart selecteert hem niet'];
+  ctx.protoHandmatigToggle();
+  const uit = [];
+  if (ctx.selectedNetwork === gekozen)
+    uit.push('na dichtklappen staat "' + gekozen.name + '" nog geselecteerd terwijl hij niet meer in beeld staat');
+  if (!ctx.selectedNetwork || !ctx.selectedNetwork.auto)
+    uit.push('na dichtklappen is het herkende protocol niet de selectie');
+  return uit;
+}
+
+console.log('\nHet scherm — alleen de vondst, de rest achter een knop (issue #59)\n');
+toetsSchoon('met detectie staat er precies één kaart in beeld', keurDichtgeklapt());
+toetsSchoon('de knop klapt de handmatige lijst open en weer dicht', keurOpenklappen());
+toetsSchoon('zonder detectie staat de lijst meteen open', keurZonderDetectie());
+toetsSchoon('de selectie volgt wat er in beeld staat', keurSelectieBlijftZichtbaar());
+
+// ── tegenproef ───────────────────────────────────────────────────
+// De vorige versie tekende ALTIJD alles. Draai die door dezelfde controle:
+// staat hij groen, dan meet de controle niets.
+const RENDER_OUD = [
+  'function renderNetworkCards(){',
+  '  const auto=discoveredNetworks.filter(function(n){ return n.auto; });',
+  '  const heeftAuto=auto.length>0;',
+  "  document.getElementById('step2Title').textContent='Protocol';",
+  "  document.getElementById('step2Sub').textContent='';",
+  "  const list=document.getElementById('networkList');",
+  "  list.innerHTML='';",
+  '  discoveredNetworks.forEach(function(net,i){',
+  "    const card=document.createElement('div');",
+  "    card.className='network-card'+(i===0?' sel':'');",
+  "    card.innerHTML=net.auto?'Herkend':'Handmatig';",
+  '    card.onclick=function(){ selectedNetwork=net; };',
+  '    list.appendChild(card);',
+  '  });',
+  '  selectedNetwork=discoveredNetworks[0];',
+  '  updateNetworkBtn(selectedNetwork);',
+  '}'
+].join('\n');
+
+toetsMeldt('de oude versie (alles altijd in beeld) valt door de mand',
+  keurDichtgeklapt(RENDER_OUD), 'kaarten in beeld, verwacht 1');
+
 
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);
