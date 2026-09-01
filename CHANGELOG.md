@@ -65,10 +65,26 @@
          ziet er in de data uit als afslaan, en zonder die vraag kan de AI dat
          verschil niet maken.
 
-       • 🔬 TESTRUN 5.7. Blok 5 en CAMPAGNE herschreven voor deze vijf. De
-         #58-proef meet echte afstanden op het toestel (statusbalk,
-         navigatiebalk, waar de topbalk eindigt, waar het werkscherm ophoudt)
-         — in een browser zijn beide zones 0 en zegt die proef weinig.
+       • 📐 EN DE TWEEDE MELDING OP #58: het keuzescherm viel onderaan nog
+         steeds weg. Geen vergeten regel maar een som die er één term naast
+         zat. Dat scherm loopt bewust ONDER de schermrand door (bottom
+         negatief) zodat er geen strook doorschemert; de padding moest dus
+         twee dingen compenseren — dat uitsteken én de navigatiebalk — en
+         deed er maar één. Er staat nu één som die overal geldt:
+         bottom + padding-bottom >= --pl-sab.
+
+       • 🔬 TESTRUN 5.8 — ALLE ZEVEN CONTROLES OP ÉÉN KNOP. Blok 5 en
+         CAMPAGNE herschreven voor deze vijf issues, en zo gebouwd dat er
+         niets voor open hoeft te staan en er niet voor verbonden hoeft te
+         worden. Gesloten vensters worden met getComputedStyle nagerekend
+         (die geeft de px ook bij display:none); het protocolscherm wordt in
+         het verborgen #connOv nagebootst en daarna teruggezet; het venster
+         "Voor de analyse" gaat echt open en in dezelfde taak weer dicht
+         langs het pad dat niets opslaat. Reden: een controle die "eerst
+         even verbinden" vraagt staat structureel op LET OP, en dat is
+         hetzelfde als geen controle.
+         De #58-proef meet echte afstanden op het toestel — in een browser
+         zijn beide zones 0 en zegt hij weinig; hij meldt dat ook zelf.
          Nieuw: test-bevindingen.js, test-slimmeweergave.js,
          test-meetcontext.js; test-schermranden.js en test-protocolkeuze.js
          kregen er een blok bij. 57 tests, allemaal met tegenproef.

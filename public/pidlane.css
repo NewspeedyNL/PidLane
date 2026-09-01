@@ -194,8 +194,21 @@ html, body { overflow-x:clip; }
       bestaande .lade-handles-regel verderop. */
 #welcomeScreen {
   min-height: calc(100dvh - var(--pl-top));
+  /* 01-09-2026 — hier stond padding-bottom ÉÉN keer --pl-sab, en dat is precies
+     één keer te weinig. De twee getallen doen namelijk verschillende dingen:
+
+       bottom: -sab           de LAAG steekt onder de schermrand uit, zodat er
+                              onder de navigatiebalk geen strook van het
+                              werkscherm doorschemert (zie A hierboven);
+       padding-bottom         houdt de INHOUD van die laag vrij.
+
+     Met één keer sab compenseerde de padding alleen het uitsteken, en eindigde
+     de inhoud dus exact op de onderrand van het scherm — dat wil zeggen achter
+     de drie Android-knoppen. Twee keer: één voor het uitsteken, één voor de
+     navigatiebalk zelf. Blok 5 van de testrun rekent dit na (bottom +
+     padding-bottom >= --pl-sab) voor elk venster dat tot de onderrand komt. */
   bottom: calc(0px - var(--pl-sab));
-  padding-bottom: var(--pl-sab);
+  padding-bottom: calc(var(--pl-sab) * 2);
 }
 body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .welcome-header { padding:12px 16px 10px; border-bottom:1px solid var(--bd); background:var(--sur); flex-shrink:0; }

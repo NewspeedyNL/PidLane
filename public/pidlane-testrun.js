@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.7 (01-09-2026)';
+const TESTRUN_VERSIE = '5.8 (01-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1647,13 +1647,24 @@ async function _blok10() {
 // Die tweede is de belangrijkste en het makkelijkst te vergeten: op 16-08 zijn
 // zes ingangen gesloopt, en een achtergebleven verwijzing merk je pas als een
 // klant erop drukt.
+// Meet hoe hoog een veilige zone op DIT toestel werkelijk is. Een probe-div
+// met de token als hoogte is de enige eerlijke weg: getComputedStyle geeft de
+// var()-keten terug zoals hij geschreven staat, niet het getal dat eruit komt.
+function _zone(token) {
+  const p = document.createElement('div');
+  p.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:' + token;
+  document.body.appendChild(p);
+  const h = p.getBoundingClientRect().height;
+  p.remove();
+  return h;
+}
+// px uit een computed style; 'auto' en lege waarden tellen als 0.
+function _px(v) { const n = parseFloat(v); return isFinite(n) ? n : 0; }
+
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
   // OPLEVERING 01-09-2026 (tweede) — issues #58 t/m #62.
-  // De controles van de terugknop-ronde zijn hier weg: die oplevering is
-  // afgerond en staat groen in test-terugknop.js (25 toetsen, drie
-  // tegenproeven). Wat hier staat, gaat over deze vijf:
   //
   //   #58  de onderkant van het scherm viel weg achter de Android-knoppen
   //   #59  het protocolkeuzescherm was twee telefoonhoogtes lang
@@ -1661,27 +1672,26 @@ async function _blok5() {
   //   #61  nieuwe weergave "Slim": dashboard, temperatuurbalken, trend
   //   #62  vragen vóór de analyse, zodat de AI start/stop niet als afslaan leest
   //
-  // Alle vijf zijn hier gedragsproeven die zichzelf opruimen. Waar dat niet
-  // kan (het protocolscherm hoort bij het verbinden) staat LET OP en niet
-  // FOUT — een controle die altijd rood staat wordt genegeerd.
+  // ALLE ZEVEN CONTROLES DRAAIEN OP ÉÉN KNOP. Waar een scherm nodig is dat
+  // normaal dicht staat, wordt het hier in het verborgene opgebouwd en daarna
+  // in een finally teruggezet — niets blijft achter. Dat is bewust, want een
+  // controle die "eerst even verbinden" vraagt wordt overgeslagen, en een
+  // controle die wordt overgeslagen is geen controle.
+  //
+  // Wat NIET met een knop kan is het oordeel: of de balkverdeling van de
+  // temperaturen klopt en of het AI-rapport ánders leest met start/stop op
+  // "ja", weet alleen iemand met een auto ernaast. Dat staat in CAMPAGNE en
+  // in issue #64/#66, niet hier.
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1 (#58): kloppen de veilige zones op dit toestel? ──
-  // Dit is de enige plek waar dit écht te meten valt: in een browser zijn
-  // beide zones 0 en klopt álles. Op een toestel met een statusbalk en drie
-  // knoppen komen de getallen pas uit elkaar. Vandaar meten en niet lezen.
+  // ── TOEGEVOEGD 1 (#58): klopt de rekensom van de veilige zones? ──
+  // In een browser zijn beide zones 0 en klopt álles per definitie. Op een
+  // toestel met een statusbalk en drie knoppen komen de getallen pas uit
+  // elkaar — vandaar meten en niet lezen.
   await _doe(5, 'De app past tussen de statusbalk en de navigatiebalk', function () {
-    const meet = function (token) {
-      const p = document.createElement('div');
-      p.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:' + token;
-      document.body.appendChild(p);
-      const h = p.getBoundingClientRect().height;
-      p.remove();
-      return h;
-    };
-    const sat = meet('var(--pl-sat)');
-    const sab = meet('var(--pl-sab)');
-    const top = meet('var(--pl-top)');
+    const sat = _zone('var(--pl-sat)');
+    const sab = _zone('var(--pl-sab)');
+    const top = _zone('var(--pl-top)');
     if (Math.abs(top - (46 + sat)) > 1)
       return { staat: 'FOUT', detail: '--pl-top is ' + top.toFixed(1) + 'px maar de topbalk is 46 + ' +
         sat.toFixed(1) + ' = ' + (46 + sat).toFixed(1) + 'px hoog' };
@@ -1704,17 +1714,137 @@ async function _blok5() {
            (sat + sab === 0 ? ' (browser: geen zones, dus deze proef zegt hier weinig)' : '');
   });
 
-  // ── TOEGEVOEGD 2 (#60): staan er hoogstens twee bevindingen in beeld? ──
-  // Zes verzonnen bevindingen erin, tellen, en daarna de echte stand
-  // terugzetten. De engine zelf blijft ongemoeid.
+  // ── TOEGEVOEGD 2 (#58): houdt élk randvenster de zone vrij? ──────
+  // Dit is de controle die de tweede melding van 01-09 had gevangen: het
+  // keuzescherm hield onderaan één keer --pl-sab vrij terwijl het er twee
+  // nodig had (de laag steekt zelf --pl-sab onder de schermrand uit, en de
+  // navigatiebalk komt daar nog bij). De som is dus altijd dezelfde:
+  //
+  //     bottom + padding-bottom >= --pl-sab
+  //
+  // Het mooie is dat dit OP GESLOTEN VENSTERS werkt: getComputedStyle geeft
+  // ook voor display:none nog de uitgerekende px terug. Eén knop dus, zonder
+  // een enkel scherm te openen.
+  await _doe(5, 'Elk venster tegen de schermrand houdt de veilige zone vrij', function () {
+    const sat = _zone('var(--pl-sat)');
+    const sab = _zone('var(--pl-sab)');
+    if (sat + sab === 0)
+      return { staat: 'LET OP', detail: 'beide zones zijn 0 (browser of toestel zonder balken) — ' +
+        'deze som klopt dan altijd. Draai hem in de APK' };
+
+    const VENSTERS = [
+      { sel: '#welcomeScreen', kant: 'onder', wat: 'keuzescherm' },
+      { sel: '#fabLane',       kant: 'onder', wat: 'zwevende chips' },
+      { sel: '#slPanel',       kant: 'onder', wat: 'sensorenlade' },
+      { sel: '#connOv',        kant: 'beide', wat: 'verbindscherm' },
+      { sel: '#ritDash',       kant: 'beide', wat: 'rittracker' },
+      { sel: '#caravanDash',   kant: 'beide', wat: 'caravancoach' },
+      { sel: '.topbar',        kant: 'boven', wat: 'topbalk' }
+    ];
+    const fout = [], gemist = [], gemeten = [];
+    VENSTERS.forEach(function (v) {
+      const el = document.querySelector(v.sel);
+      if (!el) { gemist.push(v.sel); return; }
+      const c = getComputedStyle(el);
+      if (v.kant !== 'boven') {
+        const vrij = _px(c.bottom) + _px(c.paddingBottom);
+        gemeten.push(v.wat + ' ' + vrij.toFixed(0) + '/' + sab.toFixed(0));
+        if (vrij < sab - 0.5)
+          fout.push(v.wat + ' (' + v.sel + ') houdt onderaan ' + vrij.toFixed(0) +
+            'px vrij terwijl de navigatiebalk ' + sab.toFixed(0) + 'px is');
+      }
+      if (v.kant !== 'onder') {
+        const vrij = _px(c.top) + _px(c.paddingTop);
+        if (vrij < sat - 0.5)
+          fout.push(v.wat + ' (' + v.sel + ') houdt bovenaan ' + vrij.toFixed(0) +
+            'px vrij terwijl de statusbalk ' + sat.toFixed(0) + 'px is');
+      }
+    });
+    if (fout.length)
+      return { staat: 'FOUT', detail: fout.join(' · ') + ' (issue #58)' };
+    return gemeten.join(', ') + ' px vrij' +
+      (gemist.length ? ' — niet gevonden: ' + gemist.join(', ') : '');
+  });
+
+  // ── TOEGEVOEGD 3 (#59): staat er één protocol in beeld? ──────────
+  // Het protocolscherm hoort bij het verbinden en staat tijdens een testrun
+  // dicht. Wachten tot iemand toevallig verbindt is geen controle, dus wordt
+  // het hier in het VERBORGEN #connOv opgebouwd en daarna teruggezet. Staat
+  // het scherm wél open (je draait de run tijdens het verbinden), dan wordt
+  // er niets aangeraakt en telt hij gewoon wat er staat.
+  await _doe(5, 'Het protocolscherm toont alleen de vondst', function () {
+    const ov = document.getElementById('connOv');
+    const lijst = document.getElementById('networkList');
+    if (!lijst) return { staat: 'LET OP', detail: '#networkList bestaat niet in index.html' };
+    if (typeof renderNetworkCards !== 'function' || typeof plProtocolLijst !== 'function')
+      return { staat: 'FOUT', detail: 'renderNetworkCards() of plProtocolLijst() ontbreekt' };
+
+    const openStaand = ov && !ov.classList.contains('hidden');
+    if (openStaand) {
+      const n = lijst.querySelectorAll('.network-card').length;
+      if (!n) return { staat: 'LET OP', detail: 'het verbindscherm staat open maar nog niet op de protocolstap' };
+      const knop = document.getElementById('protoHandmatigBtn');
+      if (n > 1 && !knop)
+        return { staat: 'FOUT', detail: n + ' kaarten in beeld en geen knop om ze in te klappen (issue #59)' };
+      return 'live gemeten: ' + n + ' kaart(en) in beeld' + (knop ? ', knop aanwezig' : '');
+    }
+
+    // Alles wat we aanraken eerst opzij, inclusief de vier tekstvelden.
+    const IDS = ['step2Title', 'step2Sub', 'networkList', 'connActions'];
+    const bewaard = {};
+    IDS.forEach(function (id) { const e = document.getElementById(id); if (e) bewaard[id] = e.innerHTML; });
+    let oudLijst = null, oudSel = null, oudDet = null, oudOpen = null;
+    try { oudLijst = discoveredNetworks; oudSel = selectedNetwork; oudDet = _gedetecteerdProtocol; oudOpen = _protoHandmatigOpen; }
+    catch (e) { return { staat: 'LET OP', detail: 'de protocolvariabelen zijn niet bereikbaar: ' + (e.message || e) }; }
+
+    try {
+      const gevonden = { id: 'A6', name: 'AUTO, ISO 15765-4 (CAN 11/500)', icon: '✅', desc: 'proefopstelling testrun' };
+      _gedetecteerdProtocol = gevonden;
+      discoveredNetworks = plProtocolLijst(gevonden);
+      _protoHandmatigOpen = false;
+      renderNetworkCards();
+      const dicht = lijst.querySelectorAll('.network-card').length;
+      const knop = document.getElementById('protoHandmatigBtn');
+      if (dicht !== 1)
+        return { staat: 'FOUT', detail: 'met een herkend protocol staan er ' + dicht +
+          ' kaarten in beeld in plaats van 1 (issue #59)' };
+      if (!knop)
+        return { staat: 'FOUT', detail: 'er is geen knop om de handmatige lijst te openen — de keuze is dan weg' };
+
+      knop.onclick();
+      const open = lijst.querySelectorAll('.network-card').length;
+      if (open !== discoveredNetworks.length)
+        return { staat: 'FOUT', detail: 'opengeklapt staan er ' + open + ' van de ' +
+          discoveredNetworks.length + ' protocollen' };
+
+      document.getElementById('protoHandmatigBtn').onclick();
+      const weer = lijst.querySelectorAll('.network-card').length;
+      if (weer !== 1)
+        return { staat: 'FOUT', detail: 'de lijst gaat niet meer dicht (' + weer + ' kaarten)' };
+      if (!selectedNetwork || !selectedNetwork.auto)
+        return { staat: 'FOUT', detail: 'na dichtklappen staat er een protocol geselecteerd dat niet in beeld is' };
+      return 'proefopstelling: 1 kaart dicht → ' + open + ' open → 1 dicht, selectie volgt het beeld';
+    } finally {
+      try {
+        discoveredNetworks = oudLijst; selectedNetwork = oudSel;
+        _gedetecteerdProtocol = oudDet; _protoHandmatigOpen = oudOpen;
+      } catch (e) { console.warn('protocolvariabelen terugzetten mislukt:', e); }
+      IDS.forEach(function (id) {
+        const e = document.getElementById(id);
+        if (e && bewaard[id] !== undefined) e.innerHTML = bewaard[id];
+      });
+    }
+  });
+
+  // ── TOEGEVOEGD 4 (#60): staan er hoogstens twee bevindingen? ─────
   await _doe(5, 'De bevindingenbalk toont er hoogstens twee', function () {
     if (typeof renderCorrelationBanner !== 'function')
       return { staat: 'FOUT', detail: 'renderCorrelationBanner() ontbreekt — pidlane-correlatie.js is niet meegekomen' };
+    if (typeof bevindingenAan === 'function' && !bevindingenAan())
+      return { staat: 'LET OP', detail: 'de balk staat uit (☰ → Bevindingen) — dan valt er niets te tellen' };
     const nep = [];
     for (let i = 1; i <= 6; i++) nep.push({ id: 'proef' + i, naam: 'Proefbevinding ' + i, uitleg: 'PROEF-' + i, ernst: 1, rang: 7 - i });
     try {
-      if (typeof bevindingenAan === 'function' && !bevindingenAan())
-        return { staat: 'LET OP', detail: 'de balk staat uit (☰ → Bevindingen) — dan valt er niets te tellen' };
       renderCorrelationBanner(nep);
       const box = document.getElementById('corrBanner');
       if (!box || box.style.display === 'none')
@@ -1730,50 +1860,80 @@ async function _blok5() {
     }
   });
 
-  // ── TOEGEVOEGD 3 (#61): bouwt de slimme weergave drie vakken? ──────
-  // Wisselt van weergave en zet hem daarna terug. De PID-selectie wordt niet
-  // aangeraakt: alleen de manier waarop dezelfde tegels gerangschikt worden.
-  await _doe(5, 'Slimme weergave zet temperaturen bij elkaar', function () {
-    if (typeof setPidView !== 'function' || typeof slimGroep !== 'function')
-      return { staat: 'FOUT', detail: 'setPidView() of slimGroep() ontbreekt — de weergave kan niet bestaan' };
+  // ── TOEGEVOEGD 5 (#61): de indeling van de slimme weergave ───────
+  // De indeling zelf is een pure functie en kan altijd; de opbouw van de
+  // vakken vraagt geselecteerde sensoren en wordt daarom apart gemeld.
+  await _doe(5, 'Slimme weergave: temperaturen bij elkaar, toeren niet op het dashboard', function () {
+    if (typeof slimGroep !== 'function' || typeof setPidView !== 'function')
+      return { staat: 'FOUT', detail: 'slimGroep() of setPidView() ontbreekt — de weergave kan niet bestaan' };
+
+    // Deel 1 — de indeling. Toerental, motorbelasting en gasklep horen NIET
+    // op het dashboard: dat staat letterlijk in issue #61.
+    const eis = { '010D': 'dash', '012F': 'dash', '0142': 'dash',
+                  '0105': 'temp', '015C': 'temp', '013C': 'temp',
+                  '010C': 'rest', '0104': 'rest', '0111': 'rest' };
+    const mis = Object.keys(eis).filter(function (pid) { return slimGroep(pid) !== eis[pid]; });
+    if (mis.length)
+      return { staat: 'FOUT', detail: 'verkeerd ingedeeld: ' + mis.map(function (p) {
+        return p + ' → ' + slimGroep(p) + ' (verwacht ' + eis[p] + ')'; }).join(', ') };
+
+    // Deel 2 — de opbouw. Wisselt van weergave en zet hem daarna terug; de
+    // PID-selectie wordt niet aangeraakt, alleen de rangschikking.
     if (!activePIDs || !activePIDs.size)
-      return { staat: 'LET OP', detail: 'geen sensoren geselecteerd; er valt niets in te delen' };
+      return { staat: 'LET OP', detail: 'indeling klopt; geen sensoren geselecteerd, dus de vakken zijn niet na te meten' };
     const terug = pidViewMode;
     try {
       setPidView('slim');
-      const vakken = ['dash', 'temp', 'rest'].map(function (g) { return document.getElementById('slimSec-' + g); });
-      if (vakken.some(function (v) { return !v; }))
+      if (['dash', 'temp', 'rest'].some(function (g) { return !document.getElementById('slimSec-' + g); }))
         return { staat: 'FOUT', detail: 'niet alle drie de vakken zijn opgebouwd (issue #61)' };
-      // Elke temperatuur hoort in het temperatuurvak, en nergens anders.
       const fout = [];
       let temps = 0;
       activePIDs.forEach(function (pid) {
         const d = getPidDef(pid); if (!d || d.unit !== '°C') return;
         temps++;
         const tegel = document.getElementById('gc-' + pid);
-        if (!tegel) return;                                   // tekst-PID of niet getekend
+        if (!tegel) return;
         const sec = tegel.parentNode && tegel.parentNode.parentNode;
         if (!sec || sec.id !== 'slimSec-temp') fout.push(d.name);
-        if (!document.getElementById('sb-' + pid)) fout.push(d.name + ' (geen balk)');
+        else if (!document.getElementById('sb-' + pid)) fout.push(d.name + ' (geen balk)');
       });
-      if (fout.length)
-        return { staat: 'FOUT', detail: 'staat niet in het temperatuurvak: ' + fout.join(', ') };
-      if (!temps) return { staat: 'LET OP', detail: 'geen temperatuursensor geselecteerd; het balkdiagram is dan leeg' };
-      return temps + ' temperatuur(en) in één balkdiagram, drie vakken opgebouwd';
+      if (fout.length) return { staat: 'FOUT', detail: 'staat niet in het temperatuurvak: ' + fout.join(', ') };
+      return 'indeling klopt; ' + (temps ? temps + ' temperatuur(en) in één balkdiagram' :
+        'geen temperatuursensor geselecteerd, balkdiagram leeg') + ', drie vakken opgebouwd';
     } finally {
       try { setPidView(terug); } catch (e) { console.warn('setPidView terugzetten mislukt:', e); }
     }
   });
 
-  // ── TOEGEVOEGD 4 (#62): komen de antwoorden in de AI-prompt? ───────
-  // Een venster met vragen is pas iets waard als het antwoord ook verstuurd
-  // wordt. Hier wordt tijdelijk een antwoord gezet, de promptregel gelezen en
-  // de echte stand teruggezet.
-  await _doe(5, 'De meetcontext komt in de AI-prompt terecht', function () {
-    if (typeof plMeetcontextPromptLine !== 'function' || typeof plVoorAnalyse !== 'function')
+  // ── TOEGEVOEGD 6 (#62): het venster én de promptregel ────────────
+  // Twee dingen in één proef, want los van elkaar zeggen ze weinig: een
+  // venster zonder promptregel is versiering, en een promptregel zonder
+  // venster wordt nooit ingevuld. Het venster wordt echt opgebouwd en in
+  // dezelfde taak weer weggeklikt via _srCtxDismiss() — dat pad slaat NIETS
+  // op, dus de meetcontext van de gebruiker blijft ongemoeid.
+  await _doe(5, 'De vragen vóór de analyse bestaan en komen in de prompt', function () {
+    if (typeof plVoorAnalyse !== 'function' || typeof plMeetcontextPromptLine !== 'function')
       return { staat: 'FOUT', detail: 'plVoorAnalyse()/plMeetcontextPromptLine() ontbreekt — er wordt niets gevraagd én niets meegestuurd' };
     const terug = window._plMeetcontext;
     try {
+      // Deel 1 — bouwt het venster op wat het belooft?
+      window._plMeetcontext = null;
+      plVoorAnalyse(false);
+      const ov = document.getElementById('srCtxAsk');
+      if (!ov) return { staat: 'FOUT', detail: 'het venster "Voor de analyse" wordt niet opgebouwd' };
+      const knoppen = ov.querySelectorAll('.pl-vk').length;
+      const vragen = new Set();
+      ov.querySelectorAll('.pl-vk').forEach(function (b) { vragen.add(b.dataset.vraag); });
+      const veld = !!document.getElementById('plVaExtra');
+      const go = !!ov.querySelector('#srCtxGo'), skip = !!ov.querySelector('#srCtxSkip');
+      try { if (window._srCtxDismiss) window._srCtxDismiss(); } catch (e) { console.warn('venster sluiten mislukt:', e); }
+      if (ov.style.display !== 'none')
+        return { staat: 'FOUT', detail: 'het venster gaat niet meer dicht' };
+      if (vragen.size < 3 || !veld || !go || !skip)
+        return { staat: 'FOUT', detail: vragen.size + ' vraag/vragen, ' + knoppen + ' keuzeknoppen, tekstveld ' +
+          (veld ? 'ja' : 'NEE') + ', Analyseer ' + (go ? 'ja' : 'NEE') + ', Overslaan ' + (skip ? 'ja' : 'NEE') };
+
+      // Deel 2 — komt een antwoord ook echt in de prompt?
       window._plMeetcontext = { startstop: 'ja', klacht: 'nee', stabiel: '', extra: '' };
       const t = plMeetcontextPromptLine();
       if (t.indexOf('MEETCONTEXT') < 0)
@@ -1783,35 +1943,19 @@ async function _blok5() {
       if (/onderbrekingen of gaten/i.test(t))
         return { staat: 'FOUT', detail: 'een onbeantwoorde vraag levert tóch een promptregel op' };
       const v = (typeof plMeetStabielVoorstel === 'function') ? plMeetStabielVoorstel() : null;
-      return 'promptregel klopt; voorstel voor stabiliteit nu: ' +
+      return vragen.size + ' vragen + tekstveld, promptregel klopt; voorstel voor stabiliteit nu: ' +
              (v ? ((v.waarde || 'weet ik niet') + ' — ' + v.reden) : 'niet vast te stellen');
     } finally {
       window._plMeetcontext = terug;
     }
   });
 
-  // ── VERWIJDERD 1 (#62): is de oude, losse vraag écht weg? ─────────
+  // ── VERWIJDERD (#62): is de oude, losse vraag écht weg? ──────────
   await _doe(5, 'Het oude losse rapportenvenster bestaat niet meer', function () {
     if (typeof _srAskUseContext !== 'undefined')
       return { staat: 'FOUT', detail: '_srAskUseContext() staat er nog naast plVoorAnalyse(). Zolang die bestaat ' +
         'kan een aanroeper er nog in blijven hangen, en dan krijgt de gebruiker twee vensters achter elkaar' };
     return 'weg; alles loopt via plVoorAnalyse()';
-  });
-
-  // ── VERWIJDERD 2 (#59): toont het protocolscherm nog alles tegelijk? ──
-  // Alleen te zien terwijl het scherm openstaat. Bij het verbinden dus even
-  // de testrun laten lopen, of anders met de hand nakijken (zie CAMPAGNE).
-  await _doe(5, 'Het protocolscherm toont niet meer alle protocollen tegelijk', function () {
-    const lijst = document.getElementById('networkList');
-    if (!lijst) return { staat: 'LET OP', detail: '#networkList bestaat niet — het verbindscherm is nooit geopend' };
-    const kaarten = lijst.querySelectorAll('.network-card').length;
-    if (!kaarten) return { staat: 'LET OP', detail: 'het protocolscherm staat niet open; deze proef hoort daar' };
-    const knop = document.getElementById('protoHandmatigBtn');
-    if (kaarten > 1 && !knop)
-      return { staat: 'FOUT', detail: kaarten + ' kaarten in beeld en geen knop om ze in te klappen (issue #59)' };
-    if (kaarten > 1)
-      return 'de handmatige lijst staat open (' + kaarten + ' kaarten) — dat mag, hij is met één knop weer dicht';
-    return 'één kaart in beeld' + (knop ? ', de rest achter "' + knop.textContent + '"' : '');
   });
 }
 
@@ -2566,53 +2710,51 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 01-09 (tweede) \u2014 issues #58 t/m #62',
+  titel: 'OPLEVERING 01-09 (tweede) \u2014 issues #58 t/m #62, met \u00e9\u00e9n knop na te meten',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Vijf meldingen uit het gebruik, geen van alle diep maar alle vijf elke rit in beeld: de onderkant van het scherm viel weg achter de drie Android-knoppen (#58), het protocolkeuzescherm was langer dan het scherm (#59), de balk met automatische bevindingen liep vol (#60), de live view toonde te veel op \u00e9\u00e9n hoop (#61) en de AI kreeg te weinig context over de meting zelf (#62).',
+    'Vijf meldingen uit het gebruik: de onderkant van het scherm viel weg achter de drie Android-knoppen (#58), het protocolkeuzescherm was langer dan het scherm (#59), de balk met automatische bevindingen liep vol (#60), de live view toonde te veel op \u00e9\u00e9n hoop (#61) en de AI kreeg te weinig context over de meting zelf (#62).',
 
-    'DE \u00c9\u00c9N NA GROOTSTE IS #58 EN DE OORZAAK IS LEERZAAM: op negen plekken stond het getal 46 als offset voor de topbalk. Dat klopte in de tijd dat die balk ook 46px hoog was. Sinds edge-to-edge is hij 46px PLUS de statusbalk, en dat verschil viel er onderaan uit \u2014 samen met de navigatiebalk die nergens werd meegeteld. Het is dus niet \u00e9\u00e9n kapot venster maar \u00e9\u00e9n verouderd getal, negen keer gekopieerd. Er is nu \u00e9\u00e9n token: --pl-top.',
+    'DE OORZAAK VAN #58 IS LEERZAAM: op negen plekken stond het getal 46 als offset voor de topbalk. Dat klopte in de tijd dat die balk ook 46px hoog was. Sinds edge-to-edge is hij 46px PLUS de statusbalk, en dat verschil viel er onderaan uit \u2014 samen met de navigatiebalk, die nergens werd meegeteld. Er is nu \u00e9\u00e9n token: --pl-top.',
+
+    'EN DE TWEEDE MELDING OP #58 IS NOG LEERZAMER, want die kwam nadat de eerste reparatie er al in zat: het keuzescherm bleef onderaan wegvallen. Geen vergeten regel maar een som die er \u00e9\u00e9n term naast zat. Dat scherm loopt bewust ONDER de schermrand door (bottom negatief) zodat er geen strook doorschemert; de padding moest dus twee dingen compenseren \u2014 het uitsteken \u00e9n de navigatiebalk \u2014 en deed er maar \u00e9\u00e9n. De regel is nu \u00e9\u00e9n som die overal geldt: bottom + padding-bottom >= --pl-sab, en blok 5 rekent hem na voor elk randvenster.',
 
     'DE \u00c9CHT GROOTSTE IS #62, WANT DIE RAAKT DE UITKOMST. Een auto met start/stop zet bij stilstand de motor uit: toerental naar 0, spanning zakt in, koelwater loopt op zonder circulatie. In de data is dat niet te onderscheiden van afslaan. Zonder die ene vraag kan de AI dat verschil niet maken en meldt hij een storing op een auto die precies doet wat hij hoort te doen.',
 
-    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    '\u2500\u2500 WAT BLOK 5 ZELF DOET \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Blok 5 meet #58 met echte afstanden: de hoogte van de statusbalk, de hoogte van de navigatiebalk, waar de topbalk eindigt en waar het werkscherm ophoudt. IN EEN BROWSER ZEGT DIE PROEF WEINIG \u2014 daar zijn beide zones 0 en klopt alles per definitie. Draai hem dus in de APK.',
+    'ALLE ZEVEN CONTROLES DRAAIEN OP DEZE ENE KNOP. Er hoeft niets voor open te staan en er hoeft niet voor verbonden te worden. Waar een scherm nodig is dat normaal dicht is, wordt het in het verborgene opgebouwd en in een finally teruggezet \u2014 een controle die "eerst even verbinden" vraagt wordt overgeslagen, en een overgeslagen controle is geen controle.',
 
-    'STAP 2. MET DE HAND EN OP HET TOESTEL (#58). Scroll in de live view helemaal naar beneden. De laatste regel moet leesbaar zijn en niet half onder de drie knoppen staan. Herhaal met het sensorkeuze-scherm (\u2630 \u2192 de lade), het welkomstscherm, en een bottom-sheet (bijvoorbeeld het kostenvenster v\u00f3\u00f3r een analyse): de knoppenrij onderin moet volledig aanraakbaar zijn. Draai het toestel ook \u00e9\u00e9n keer.',
+    '1. De rekensom van de veilige zones: hoe hoog is de statusbalk, hoe hoog de navigatiebalk, klopt --pl-top met waar de topbalk eindigt, en houdt het werkscherm op v\u00f3\u00f3r de navigatiebalk begint.',
 
-    'STAP 3. #59, alleen tijdens het verbinden. Verbind met de adapter en let op het protocolscherm. Er hoort \u00c9\u00c9N kaart te staan (het herkende protocol), met daaronder een knop "Handmatig kiezen (n protocollen)". Druk erop: de lijst klapt open. Druk nogmaals: dicht. De knoppen onderin moeten zonder scrollen bereikbaar zijn. Herkent de adapter niets (contact uit), dan hoort de lijst juist meteen open te staan \u2014 anders kijk je naar een leeg scherm.',
+    '2. De som bottom + padding-bottom >= --pl-sab voor zeven randvensters, \u00f3\u00f3k voor vensters die dicht staan \u2014 getComputedStyle geeft die getallen ook bij display:none. Dit is de controle die de tweede melding van 01-09 had gevangen.',
 
-    'STAP 4. #60 in demostand, want daar liep het mis. Zet de demo aan en kijk naar de balk bovenaan de live view: hoogstens twee bevindingen, met eronder "nog n bevindingen \u2014 bekijk alles". Open dat venster: daar staan ze allemaal. Zet de balk uit via \u2630 \u2192 Bevindingen, of via het kruisje in de balk zelf. Herlaad de app: de keuze hoort onthouden te zijn.',
+    '3. Het protocolscherm: er wordt een herkend protocol nagebootst in het VERBORGEN verbindscherm, geteld hoeveel kaarten er staan (1), de handmatige lijst opengeklapt (alles), weer dichtgeklapt (1), en gekeken of de selectie het beeld volgt. Daarna gaat alles terug zoals het stond. Draait de run terwijl je verbindt, dan wordt er niets aangeraakt en telt hij gewoon wat er staat.',
 
-    'STAP 5. #61 tijdens het rijden, want stilstaand beweegt er niets. Kies weergave "\ud83e\udde0 Slim". Bovenaan het dashboardvak (snelheid, brandstof), daaronder alle temperaturen als \u00e9\u00e9n balkdiagram, onderaan de rest met trendlijnen. LET OP DE BALKEN: die staan voor de marge tot de eigen grens, niet voor het aantal graden \u2014 koelwater op 90 \u00b0C hoort hoger te staan dan omgevingslucht op 20 \u00b0C, en uitlaatgas op 500 \u00b0C juist niet vol. Klopt dat gevoelsmatig niet, dan is slimTempSchaal() de plek.',
+    '4. Zes verzonnen bevindingen erin: er mogen er twee in beeld staan met de rest achter "bekijk alles". Daarna komt de echte stand terug.',
 
-    'STAP 6. #61, tweede deel. Kijk in het vak "Beweegt" welke tegels een trendlijn hebben. Toerental, belasting en pedaalstand horen er \u00e9\u00e9n te hebben; een sensor die stilstaat hoort er g\u00e9\u00e9n te hebben. Zie je een rechte streep staan, dan is de drempel van 2% te laag afgesteld (SLIM_BEWEEG_DEEL in pidlane-pids.js).',
+    '5. De indeling van de slimme weergave (temperaturen bij elkaar, toerental/belasting/gasklep NIET op het dashboard) en, als er sensoren geselecteerd zijn, de opbouw van de drie vakken. De weergave gaat daarna terug naar waar hij stond.',
 
-    'STAP 7. #62. Start een analyse. Er hoort \u00e9\u00e9n venster "Voor de analyse" te komen met drie vragen plus een tekstveld, en \u2014 als er al rapporten in deze sessie zijn \u2014 de vraag over hergebruik in datzelfde venster. Niet twee vensters achter elkaar. Beantwoord ze, en start daarna een tweede analyse: het venster hoort NIET terug te komen. Corrigeren kan via \u2630 \u2192 Rapporten \u2192 Meetcontext \u2192 Opnieuw vragen.',
+    '6. Het venster "Voor de analyse" wordt echt opgebouwd, geteld (drie vragen, tekstveld, beide knoppen) en in dezelfde taak weggeklikt langs het pad dat NIETS opslaat \u2014 je eigen meetcontext blijft dus staan. Daarna wordt gecontroleerd of een antwoord ook echt een MEETCONTEXT-regel in de prompt oplevert.',
 
-    'STAP 8. #62, de proef die ertoe doet. Rijd een stukje met start/stop actief, laat de motor bij een stoplicht uitgaan, en vraag daarna een analyse met start/stop op "ja". Het rapport mag dat NIET als afslaan of als accuprobleem melden. Doe dezelfde meting nog eens met het antwoord op "nee" en kijk of het rapport dan w\u00e9l anders leest \u2014 verandert er niets, dan komt de regel niet aan.',
+    '7. Dat _srAskUseContext() weg is, zodat er geen tweede venster naast plVoorAnalyse() kan blijven hangen.',
 
-    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    '\u2500\u2500 WAT ALLEEN EEN MENS KAN \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '#58 \u2014 nieuw token --pl-top (= 46px + statusbalk) in pidlane.css, gebruikt door .app, #welcomeScreen, de zijpaneel-lade, #remPill en #busyPill. Onderin tellen .app, body, #fabLane, .ov, .modal, .ai-sheet-f en de volschermlade nu --pl-sab mee. test-schermranden.js kreeg er een blok bij dat elk kaal "calc(100vh - 46px)" afwijst.',
+    'DRAAI BLOK 5 IN DE APK EN NIET IN DE BROWSER. In een browser zijn beide veilige zones 0 en klopt elke som per definitie; controle 1 en 2 zeggen daar niets. Ze melden dat ook zelf, met LET OP in plaats van groen.',
 
-    '#59 \u2014 renderNetworkCards() tekent alleen nog de vondst, met eronder \u00e9\u00e9n knop voor de negen handmatige protocollen. De keuze zelf is niet ingeperkt: PROTOCOLS is ongewijzigd en test-protocolkeuze.js bewaakt nog steeds dat er meer dan \u00e9\u00e9n optie in de lijst zit. Alleen het aantal dat tegelijk in beeld staat is veranderd.',
+    'KIJKEN, NIET METEN (#58). Scroll het keuzescherm en de live view helemaal naar beneden: de laatste regel moet leesbaar zijn en niet half onder de knoppen staan. Open een bottom-sheet (het kostenvenster v\u00f3\u00f3r een analyse) en kijk of de knoppenrij volledig aanraakbaar is. Draai het toestel \u00e9\u00e9n keer. De som kan kloppen terwijl het beeld toch fout staat \u2014 dan levert Capacitor verkeerde zonegetallen aan, en blok 5 logt die getallen juist daarom.',
 
-    '#60 \u2014 de balk toont er hoogstens twee, ernstigste eerst, met een venster voor de rest en een schakelaar in \u2630. DE BRON VAN HET VOLLOPEN ZAT NIET IN DE VIJF CORRELATIEREGELS maar in "leren-van-normaal": dat levert \u00e9\u00e9n bevinding per actief PID dat van zijn eigen historie afwijkt, dus met veertig sensoren veertig regels. De AI krijgt via correlationLines() nog steeds alles \u2014 de schakelaar is een schermkeuze en verandert de diagnose niet.',
+    'OORDELEN OVER DE BALKEN (#61, issue #66). Rijd met weergave "Slim" aan. De temperatuurbalken staan voor de MARGE tot de eigen grens en niet voor het aantal graden: koelwater op 90 \u00b0C hoort hoger te staan dan omgevingslucht op 20 \u00b0C, en uitlaatgas op 500 \u00b0C juist niet vol. Klopt dat gevoelsmatig niet, dan is slimTempSchaal() de plek. Kijk in hetzelfde vak welke tegels een trendlijn hebben: een rechte streep betekent dat de drempel van 2% te laag staat.',
 
-    '#61 \u2014 vierde weergaveknop. slimGroep() in pidlane-data.js deelt in: alles met eenheid \u00b0C gaat naar de balken, een korte allowlist (snelheid, brandstofpeil, verbruik, accuspanning) naar het dashboard, de rest naar "Beweegt". Toerental, pedaalstand en motorbelasting staan BEWUST niet in het dashboard: die variëren te veel om als tellerstand te lezen.',
-
-    '#62 \u2014 plVoorAnalyse() vervangt _srAskUseContext(). Drie vragen plus een vrij tekstveld; de stabiliteitsvraag is voorgevuld met wat de app zelf uit de meting kan afleiden (gaten in de reeksen), maar het blijft een voorstel \u2014 alleen de gebruiker weet of de adapter tussendoor los heeft gezeten. "Weet ik niet" levert bewust g\u00e9\u00e9n promptregel op.',
+    'DE A/B-PROEF OP START/STOP (#62, issue #64). Dit is de enige manier om te weten of #62 iets doet. Rijd een stuk, laat de motor bij een stoplicht uitgaan, en vraag een analyse met start/stop op "ja". Het rapport mag dat niet als afslaan of accuprobleem melden. Doe dezelfde meting nog eens met het antwoord op "nee" en kijk of het rapport dan w\u00e9l anders leest. Verandert er niets, dan komt de regel niet aan en is de hele vraag versiering.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De veilige zones komen van Capacitor (--safe-area-inset-*) met env() als terugval. Levert die op een toestel verkeerde getallen, dan klopt de rekensom hierboven nog steeds en staat het beeld tóch fout. Blok 5 logt daarom de gemeten waarden; staan die op 0 terwijl er zichtbaar een balk is, dan zit het probleem daar en niet in de CSS.',
+    'De temperatuurbalk valt voor een PID zonder dH \u00e9n zonder wH terug op het maximum uit de definitie, en dan is hij grof. Welke dat in de praktijk zijn, blijkt pas met een auto ernaast \u2014 issue #66.',
 
-    'De temperatuurbalk zet elke sensor af tegen zijn eigen gevarengrens. Voor een PID zonder dH \u00e9n zonder wH valt hij terug op het maximum uit de definitie, en dan is de balk grof. Welke dat in de praktijk zijn, blijkt pas met een auto ernaast.',
-
-    'Of de vragen uit #62 de juiste vier zijn, is niet vanaf een bureau te bepalen. De lijst staat als data in PL_VOORVRAGEN, dus een vraag erbij is \u00e9\u00e9n item \u2014 maar wélke vraag ontbreekt, leert alleen een rit met een rapport dat ernaast zat.',
+    'Of de drie vragen uit #62 de juiste drie zijn, is niet vanaf een bureau te bepalen. De lijst staat als data in PL_VOORVRAGEN, dus een vraag erbij is \u00e9\u00e9n item \u2014 maar w\u00e9lke vraag ontbreekt, leert alleen een rapport dat ernaast zat. Issue #64.',
 
     'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46.'
   ]

@@ -6,9 +6,11 @@
 > tegenspreken. Bij elke structuurwijziging bijwerken.
 >
 > Laatst bijgewerkt: 2026-09-01 — issues #58 t/m #62: één token `--pl-top`
-> voor de onderkant van de topbalk (§11), plafond op de bevindingenbalk,
-> vierde weergave "Slim", en het venster "Voor de analyse" dat de AI vertelt
-> of start/stop meedeed.
+> voor de onderkant van de topbalk (§11), de som
+> `bottom + padding-bottom >= --pl-sab` voor elk randvenster, plafond op de
+> bevindingenbalk, vierde weergave "Slim", en het venster "Voor de analyse"
+> dat de AI vertelt of start/stop meedeed. Blok 5 van de testrun meet alle
+> vijf op één knop — zie §20.
 > Daarvóór: 2026-08-27 — werkafspraken herschreven voor het werken
 > rechtstreeks in de repo (§9), `CLAUDE.md` en `PROJECT-INSTRUCTIES.md` erbij.
 > Daarvóór dezelfde dag: toestemmingsteksten kloppen weer met de
@@ -667,6 +669,27 @@ De ronde van 28-08 had de veilige zones al ingevoerd (`--pl-sat`/`--pl-sab`) en
 gewone app-schil — precies het scherm dat je het vaakst ziet. Er is nu één
 token erbij, `--pl-top` (= `46px + var(--pl-sat)`), en blok 3 van
 `test-schermranden.js` wijst elk kaal `calc(100vh - 46px)` af.
+
+**#58, tweede melding — de som zat er één term naast.** Na de reparatie
+hierboven viel het **keuzescherm** onderaan nog steeds weg. Geen vergeten
+regel: `#welcomeScreen` loopt bewust *onder* de schermrand door
+(`bottom: calc(0px - var(--pl-sab))`) zodat er onder de navigatiebalk geen
+strook van het werkscherm doorschemert. De padding moest daarom **twee** dingen
+compenseren — dat uitsteken én de navigatiebalk zelf — en deed er maar één. De
+inhoud eindigde dus precies op de onderrand van het scherm, en dat is achter de
+knoppen.
+
+Dat is een klasse fouten en niet één plek, dus staat er nu één som die overal
+geldt:
+
+```
+bottom + padding-bottom >= --pl-sab
+```
+
+Blok 5 van de testrun rekent die na voor zeven randvensters, en — dat is de
+truc — **ook voor vensters die dicht staan**: `getComputedStyle` geeft de
+uitgerekende px ook terug bij `display:none`. `test-schermranden.js` §4 rekent
+dezelfde som op de CSS-bron, met de kapotte versie van 01-09 als tegenproef.
 
 > **Nog niet nagemeten op een toestel — issue #65.** De hele rekensom hangt
 > aan wat Capacitor in `--safe-area-inset-*` zet. Levert dat verkeerde
@@ -2236,6 +2259,35 @@ Onderaan `pidlane-testrun.js` staat `CAMPAGNE`: de vragen die déze versie moet
 beantwoorden. Elke update herschrijft dat blok; de rest van het bestand blijft.
 Het staat bovenaan het logboek, zodat achteraf zichtbaar is welke vraag een run
 moest beantwoorden en of hij dat deed.
+
+### Eén knop, of het is geen controle (01-09-2026)
+
+Blok 5 hoort te toetsen wat er in *deze* update veranderd is. Dat werkt alleen
+als het ook echt draait, en daar zit de valkuil: een controle die "eerst even
+verbinden" of "open eerst dat scherm" vraagt, staat structureel op LET OP en
+wordt daarmee genegeerd — precies zoals een test die altijd rood staat.
+
+Sinds testrun 5.8 bouwt blok 5 daarom zelf op wat het nodig heeft, en zet het
+in een `finally` terug:
+
+- **Gesloten vensters meten met `getComputedStyle`.** Die geeft de uitgerekende
+  px ook terug bij `display:none`. De som `bottom + padding-bottom >= --pl-sab`
+  is daarmee na te rekenen voor zeven randvensters zonder er één te openen.
+- **Het protocolscherm nabootsen in het verborgen `#connOv`.** Een herkend
+  protocol erin, tellen (1 kaart), openklappen (alles), dichtklappen (1),
+  daarna `discoveredNetworks`, `selectedNetwork`, `_gedetecteerdProtocol`,
+  `_protoHandmatigOpen` en de vier tekstvelden terug. Staat het scherm wél
+  open — je draait de run tijdens het verbinden — dan wordt er niets
+  aangeraakt en telt hij gewoon wat er staat.
+- **Het venster "Voor de analyse" echt openen en in dezelfde taak weer sluiten**
+  langs `_srCtxDismiss()`, het pad dat níéts opslaat. De browser schildert er
+  geen frame van, en de meetcontext van de gebruiker blijft staan.
+- **De weergave wisselen en terugzetten** voor de slimme weergave.
+
+Wat níét met een knop kan is het *oordeel*: of de temperatuurbalken kloppen met
+wat een monteur zou zeggen, en of een AI-rapport ánders leest met start/stop op
+"ja". Dat staat in `CAMPAGNE` onder "wat alleen een mens kan", en als issue
+#64 en #66 — niet als een controle die stilletjes op LET OP blijft hangen.
 
 ### De selectie overschrijven
 

@@ -186,7 +186,78 @@ console.log('\n3. De app-schil zelf — issue #58 (29-08-2026)');
         'als dit groen is meet de controle hierboven niets');
 }
 
-console.log('\n4. Tegenproef — wordt een teruggedraaide regel ook echt rood?');
+console.log('\n4. Het keuzescherm — de som van bottom en padding-bottom (01-09, tweede melding)');
+// De reparatie van blok 3 maakte de app-schil goed, maar het keuzescherm bleef
+// onderaan wegvallen. Dat was geen vergeten regel maar een som die er één term
+// naast zat, en dat is een klasse fouten die vaker terugkomt:
+//
+//   een venster dat ONDER de schermrand doorloopt (bottom negatief, zodat er
+//   geen strook doorschemert) moet dat uitsteken ÉN de navigatiebalk in zijn
+//   padding compenseren. Twee dingen, dus twee keer --pl-sab.
+//
+// De regel is daarom:   bottom + padding-bottom >= --pl-sab
+//
+// Hieronder wordt die som echt uitgerekend in plaats van op tekst gematcht:
+// een volgende schrijfwijze van dezelfde waarde moet gewoon groen blijven.
+{
+  // Commentaar eraf voordat er iets geparseerd wordt: de uitleg bij deze
+  // regel noemt "bottom: -sab" letterlijk, en dat is geen declaratie.
+  const css = lees('pidlane.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Reken een CSS-lengte uit met verzonnen, maar herkenbare zones.
+  const SAB = 100, SAT = 50;
+  function reken(uitdrukking) {
+    const e = String(uitdrukking)
+      .replace(/var\(--pl-sab\)/g, String(SAB))
+      .replace(/var\(--pl-sat\)/g, String(SAT))
+      .replace(/var\(--pl-top\)/g, String(46 + SAT))
+      .replace(/calc/g, '')
+      .replace(/px/g, '');
+    if (!/^[-+*/(). \d]+$/.test(e)) return null;      // alleen rekenwerk, niets anders
+    try { return Function('return (' + e + ')')(); } catch (er) { return null; }
+  }
+
+  // Zelfcontrole op de rekenaar: zonder dit weet je niet of hij rekent of raadt.
+  toets('de rekenaar klopt op een bekende som', reken('calc(14px + var(--pl-sab))') === 114,
+        'kreeg ' + reken('calc(14px + var(--pl-sab))') + ', verwacht 114');
+
+  function somVan(bron, naam) {
+    const m = bron.match(new RegExp(naam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g'));
+    if (!m) return null;
+    let bottom = null, pad = null;
+    m.forEach(function (blokTekst) {
+      const b = blokTekst.match(/(?:^|[;{\s])bottom:\s*([^;}]+)/);
+      const p = blokTekst.match(/padding-bottom:\s*([^;}]+)/);
+      if (b) bottom = b[1].trim();
+      if (p) pad = p[1].trim();
+    });
+    if (bottom === null && pad === null) return null;
+    const vb = bottom === null ? 0 : reken(bottom);
+    const vp = pad === null ? 0 : reken(pad);
+    if (vb === null || vp === null) return null;
+    return { som: vb + vp, bottom: bottom, pad: pad };
+  }
+
+  const w = somVan(css, '#welcomeScreen');
+  if (!w) {
+    toets('#welcomeScreen: bottom en padding-bottom te lezen', false, 'de declaraties zijn niet te vinden of niet uit te rekenen');
+  } else {
+    toets('#welcomeScreen houdt onderaan een hele --pl-sab vrij', w.som >= SAB,
+          'bottom ' + w.bottom + ' + padding-bottom ' + w.pad + ' = ' + w.som +
+          ', en dat moet minstens ' + SAB + ' zijn (= --pl-sab). Nu valt de onderste ' +
+          (SAB - w.som) + ' eenheden achter de navigatiebalk');
+  }
+
+  // Tegenproef: de kapotte versie van 01-09 (padding één keer --pl-sab) moet
+  // door dezelfde som worden afgewezen.
+  const kapot = '#welcomeScreen { bottom: calc(0px - var(--pl-sab)); padding-bottom: var(--pl-sab); }';
+  const k = somVan(kapot, '#welcomeScreen');
+  toets('de kapotte versie van 01-09 valt door de mand (tegenproef)',
+        k !== null && k.som < SAB,
+        k === null ? 'de som is niet eens te lezen' : 'de kapotte versie geeft ' + k.som + ' en zou dus groen staan');
+}
+
+console.log('\n5. Tegenproef — wordt een teruggedraaide regel ook echt rood?');
 // Zonder dit weet je alleen dat de toets GROEN kan staan, niet dat hij ooit
 // ROOD wordt. Simuleer de oude, kapotte staat van het Logboek-venster.
 {
