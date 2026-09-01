@@ -1051,12 +1051,17 @@ function closeConnOv(){
         <!-- ("Analyseer wat je nu ziet"-balk verwijderd op verzoek — analyse start via de deuren) -->
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
           <span class="pidview-lbl">Weergave:</span>
-          <button class="pidview-btn active" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
+          <button class="pidview-btn" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
           <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
           <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
-          <!-- Slimme weergave (issue #61): dashboardwaarden groot, temperaturen
-               als één balkdiagram, en een trendlijn alleen waar er iets beweegt. -->
-          <button class="pidview-btn" data-mode="slim" onclick="setPidView('slim')">🧠 Slim</button>
+          <!-- Slimme weergave (#61, #68) en sinds 01-09-2026 de STANDAARD:
+               dashboardwaarden groot, een tellerplaat met verticale meters
+               voor toerental/pedaal/klep/belasting, alle temperaturen als één
+               balkdiagram, en een trendlijn alleen waar er iets beweegt.
+               De active-klasse staat hier omdat dit de startweergave is;
+               plPidViewHerstel() zet hem meteen goed als er een andere
+               voorkeur is opgeslagen. -->
+          <button class="pidview-btn active" data-mode="slim" onclick="setPidView('slim')">🧠 Slim</button>
           <span class="pidview-scheid"></span>
           <button class="pidview-btn waak" id="waakBtn" onclick="toggleWaakronde()" title="Controleert op de achtergrond rustig de sensoren die je niet hebt aangevinkt">◉ Waakronde</button>
         </div>

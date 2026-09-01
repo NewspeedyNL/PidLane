@@ -212,7 +212,7 @@ function renderGauges(){
   const slim = (pidViewMode==='slim');
   const vak = {};
   if(slim){
-    [['dash','🚘 Dashboard'],['temp','🌡️ Temperaturen'],['rest','📈 Beweegt']].forEach(function(p){
+    [['dash','🚘 Dashboard'],['meter','🎛️ Tellerplaat'],['temp','🌡️ Temperaturen'],['rest','📈 Beweegt']].forEach(function(p){
       const sec=document.createElement('div');
       sec.className='slim-sec slim-'+p[0];
       sec.id='slimSec-'+p[0];
@@ -276,12 +276,26 @@ function renderGauges(){
     c.onclick=function(){ pidTileTap(pid); };
     if(slim){
       const groep=(typeof slimGroep==='function')?slimGroep(pid,d):'rest';
-      // Een temperatuur krijgt er een balk bij; de rest houdt zijn sparkline.
+      // Een temperatuur krijgt er een liggende balk bij, een meter een
+      // staande; de rest houdt zijn sparkline.
       if(groep==='temp'){
         const bar=document.createElement('div'); bar.className='sbar';
+        // GROVE SCHAAL ZICHTBAAR MAKEN (issue #66). slimTempSchaal() zet de
+        // balk af tegen dH, anders wH×1,2, anders het maximum uit de
+        // definitie. Die laatste terugval is de zwakke plek: omgevingslucht
+        // (−40…85 °C) komt dan nooit ver, en dat leest als "koud" terwijl
+        // het "onbekende grens" betekent. De balk zegt nu zelf welke van de
+        // twee het is, in plaats van dat het alleen in een issue staat.
+        if(!(d && (typeof d.dH==='number' || typeof d.wH==='number'))){
+          bar.className='sbar grof';
+          bar.title='Grove schaal: deze sensor heeft geen bekende waarschuwings- of gevarengrens, '
+                   +'dus loopt de balk pas vol op het maximum uit de PID-definitie.';
+        }
         const vul=document.createElement('i'); vul.id='sb-'+pid;
         bar.appendChild(vul);
         c.appendChild(bar);
+      } else if(groep==='meter'){
+        c.appendChild(slimMeterBouw(pid,d));
       }
       const v=vak[groep]||vak.rest;
       v.sec.style.display='';
@@ -356,8 +370,22 @@ function fv(v, pidOfDef){
   return Number(v).toFixed(fvDec(unit,v));
 }
 
-// ── PID weergavemodus: 'full' | 'numbers' | 'dots' ──
-let pidViewMode='dots';  // live view start altijd in puntjes-weergave
+// ── PID weergavemodus: 'full' | 'numbers' | 'dots' | 'slim' ──
+//
+// DE STANDAARD IS 'slim' (01-09-2026, na #61 en #68). Daarvoor stond hier
+// 'dots' en werd de opgeslagen voorkeur bij het opstarten OVERSCHREVEN — de
+// regel in pidlane-theme.js zei dat er zelfs bij: "genegeerde voorkeur".
+// setPidView() schreef dus wél naar pl_pidview, en niemand las het ooit
+// terug. Een instelling die je kiest, die wordt opgeslagen en die de app bij
+// de volgende start weggooit is geen instelling maar een knop die doet alsof.
+//
+// Er waren drie plekken die hier iets over zeiden en die het alle drie
+// anders zeiden: deze regel ('dots'), de active-klasse in index.html
+// ('full') en de aanroep in pidlane-theme.js ('dots'). Nu is er één bron:
+// PID_VIEW_STANDAARD, met plPidViewHerstel() als enige die hem toepast.
+const PID_VIEW_MODI = ['full','numbers','dots','slim'];
+const PID_VIEW_STANDAARD = 'slim';
+let pidViewMode=PID_VIEW_STANDAARD;
 let _pidLastUpd={};          // pid -> laatste update-tijd (ms)
 let _pidLastUpdPause={};     // pid -> PLBus.pausedTotal() ten tijde van die update
 let _staleWatchdog=null;
@@ -384,6 +412,17 @@ function setPidView(mode){
   try{ localStorage.setItem('pl_pidview', mode); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
   // Stale-watchdog alleen nodig in puntjes-modus
   if(mode==='dots') startStaleWatchdog(); else stopStaleWatchdog();
+}
+
+// Bij het opstarten: de opgeslagen voorkeur, anders de standaard. Eén plek,
+// zodat "waarmee start de live view" niet opnieuw over drie bestanden
+// verspreid raakt. Een onbekende of beschadigde waarde valt terug op de
+// standaard in plaats van de app in een modus te zetten die niet bestaat.
+function plPidViewHerstel(){
+  let m=null;
+  try{ m=localStorage.getItem('pl_pidview'); }catch(e){ console.warn('pl_pidview lezen mislukt:', e); }
+  setPidView(PID_VIEW_MODI.indexOf(m)>-1 ? m : PID_VIEW_STANDAARD);
+  return pidViewMode;
 }
 
 // (Correlatie-weergave verwijderd; de deterministische correlatie-ENGINE
@@ -504,10 +543,10 @@ function applyG(pid,val){
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SLIMME WEERGAVE (issue #61) — wat er per meting nog bij moet
+// SLIMME WEERGAVE (#61, #68) — wat er per meting nog bij moet
 // ──────────────────────────────────────────────────────────────────
 // De indeling in vakken zit in renderGauges(); hier staat alleen wat per
-// binnenkomende waarde moet meebewegen. Twee dingen:
+// binnenkomende waarde moet meebewegen. Drie dingen:
 //
 //   • de temperatuurbalk. Die staat NIET voor "hoe warm is het" maar voor
 //     "hoe dicht zit deze temperatuur bij zijn eigen grens". Anders is het
@@ -518,9 +557,20 @@ function applyG(pid,val){
 //     "lineaire lijnen onnodig" uit het issue: een rechte streep kost een
 //     halve tegel en zegt niets. De grens ligt op 2% van het bereik van het
 //     PID zelf, dus 160 rpm voor het toerental en 5,6 km/u voor de snelheid.
+//   • de tellerplaat (issue #68). Toerental, gaspedaal, gasklep en
+//     motorbelasting stonden als losse tegels tussen de rest. Ze horen naast
+//     elkaar: het gaat om de VERHOUDING (pedaal in, klep dicht, belasting
+//     laag — dat is een verhaal, drie losse getallen niet). Dezelfde vorm
+//     als het temperatuurdiagram, een kwartslag gedraaid, zodat de ene
+//     balkengroep de andere niet nadoet met een andere betekenis.
 // ══════════════════════════════════════════════════════════════════
 const SLIM_BEWEEG_DEEL = 0.02;   // 2% van het bereik telt als "beweegt"
 const SLIM_BEWEEG_MIN  = 4;      // minder metingen = nog niets te zeggen
+// De sleepwijzer op de tellerplaat kijkt verder terug dan de sparkline (24):
+// een gaspedaal is een halve seconde ingedrukt en dan weer los, en juist die
+// piek wil je nog zien als je na het optrekken naar het scherm kijkt. 60
+// metingen is ruim binnen de 120 die pidHist bewaart.
+const SLIM_PIEK_N = 60;
 
 // Waar loopt de balk vol? De gevarengrens als die bekend is, anders de
 // waarschuwingsgrens met 20% marge, anders het maximum uit de PID-definitie.
@@ -541,6 +591,57 @@ function slimBeweegt(pid,d){
   const drempel = span>0 ? span*SLIM_BEWEEG_DEEL : Math.abs(gem)*SLIM_BEWEEG_DEEL;
   return rg > Math.max(drempel, 1e-9);
 }
+// ── DE TELLERPLAAT (issue #68) ────────────────────────────────────
+// Waar de temperatuurbalk de MARGE TOT DE GRENS toont, toont de meter het
+// BEREIK VAN HET SIGNAAL: 0-100% voor een pedaal, 0-8000 voor het toerental.
+// Dat verschil is met opzet, en het is ook precies waarom deze twee niet in
+// één diagram kunnen. Een gaspedaal HEEFT geen gevarengrens — vol gas is geen
+// storing — dus "hoe dicht bij de grens" is daar een vraag zonder antwoord.
+// Wat je er wél van wilt weten is hoe ver hij open staat en hoe dat zich
+// verhoudt tot de meter ernaast.
+function slimMeterSchaal(d){
+  const lo=(d && typeof d.min==='number' && isFinite(d.min)) ? d.min : 0;
+  const hi=(d && typeof d.max==='number' && isFinite(d.max)) ? d.max : 100;
+  return (hi>lo) ? {lo:lo,hi:hi} : {lo:0,hi:100};
+}
+function slimDeel(val,lo,hi){
+  const v=Number(val);
+  if(!isFinite(v)) return 0;
+  return Math.max(0, Math.min(100, ((v-lo)/(hi-lo))*100));
+}
+// De sleepwijzer: de hoogste waarde uit de laatste SLIM_PIEK_N metingen.
+// Bewust AFGELEID uit pidHist en niet in een eigen teller bijgehouden. Dan
+// hoeft er ook niets gereset te worden bij resetDataStream(), bij een andere
+// auto of bij een wissel van weergave — en een piek die na de rit blijft
+// hangen is erger dan geen piek, want die leest als een meting die zojuist
+// gedaan is.
+function slimPiek(pid){
+  const h=pidHist[pid];
+  if(!h || !h.length) return null;
+  const v=h.slice(-SLIM_PIEK_N).map(x=>x.v).filter(x=>typeof x==='number' && isFinite(x));
+  return v.length ? Math.max.apply(null,v) : null;
+}
+// De meter zelf: drie lagen in één koker. De vulling, het streepje op de
+// waarschuwingsgrens — alleen als die bekend is, anders belooft het een
+// nauwkeurigheid die er niet is — en de sleepwijzer.
+function slimMeterBouw(pid,d){
+  const koker=document.createElement('div'); koker.className='smtr';
+  const vul=document.createElement('i'); vul.id='sm-'+pid;
+  koker.appendChild(vul);
+  if(d && typeof d.wH==='number' && isFinite(d.wH)){
+    const s=slimMeterSchaal(d);
+    const g=document.createElement('div'); g.className='smtr-grens'; g.id='sg-'+pid;
+    g.style.bottom=slimDeel(d.wH,s.lo,s.hi).toFixed(1)+'%';
+    g.title='Waarschuwingsgrens '+d.wH+(d.unit?(' '+d.unit):'');
+    koker.appendChild(g);
+  }
+  const piek=document.createElement('div'); piek.className='smtr-piek'; piek.id='sp-'+pid;
+  piek.title='Hoogste waarde van de laatste '+SLIM_PIEK_N+' metingen';
+  piek.style.display='none';           // pas tonen zodra er historie is
+  koker.appendChild(piek);
+  return koker;
+}
+
 function slimBij(pid,val,d,st,card){
   const bar=document.getElementById('sb-'+pid);
   if(bar){
@@ -548,6 +649,24 @@ function slimBij(pid,val,d,st,card){
     bar.style.width=pct.toFixed(1)+'%';
     bar.className = st==='danger' ? 'rd' : st==='warn' ? 'or' : '';
     return;   // een temperatuur heeft geen sparkline om te verbergen
+  }
+  const mtr=document.getElementById('sm-'+pid);
+  if(mtr){
+    const s=slimMeterSchaal(d);
+    const deel=slimDeel(val,s.lo,s.hi);
+    mtr.style.height=deel.toFixed(1)+'%';
+    mtr.className = st==='danger' ? 'rd' : st==='warn' ? 'or' : '';
+    const pk=document.getElementById('sp-'+pid);
+    if(pk){
+      const p=slimPiek(pid);
+      const pd=(p===null)?null:slimDeel(p,s.lo,s.hi);
+      // Alleen tonen als de piek merkbaar bóven de huidige stand ligt. Een
+      // wijzer die op de vulling zelf ligt voegt niets toe en leest als een
+      // tweede, tegenstrijdige waarde.
+      if(pd===null || pd-deel<1.5){ pk.style.display='none'; }
+      else { pk.style.display=''; pk.style.bottom=pd.toFixed(1)+'%'; }
+    }
+    return;   // een meter heeft ook geen sparkline om te verbergen
   }
   if(card) card.classList.toggle('vlak', !slimBeweegt(pid,d));
 }

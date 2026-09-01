@@ -685,7 +685,14 @@ function toggleLade(id){
   const el=document.getElementById(id); if(!el) return;
   const open=el.classList.contains('lade-open');
   closeLades();
-  if(!open){ el.classList.add('lade-open'); if(id==='slPanel'){ el.classList.add('lade-tall'); try{ setPidView('dots'); }catch(e){ console.warn('setPidView mislukt:', e); } } }
+  // De lade zette hier tot 01-09-2026 de weergave op 'dots'. Dat was een
+  // stille overschrijving van een keuze die de gebruiker zelf had gemaakt: je
+  // koos een weergave, opende het sensorkeuzescherm om er een sensor bij te
+  // zetten, en stond daarna in een andere weergave zonder dat er iets was
+  // gezegd. Met 🧠 Slim als standaard was dat elke sessie raak, want sensoren
+  // kiezen is nou juist het eerste wat je doet. De lade ligt bovendien
+  // óver het rooster heen — wat eronder staat hoeft niet te veranderen.
+  if(!open){ el.classList.add('lade-open'); if(id==='slPanel'){ el.classList.add('lade-tall'); } }
 }
 function closeLades(){ ['slPanel','logLade'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('lade-open'); }); }
 function toggleLadeTall(id){ const el=document.getElementById(id); if(el) el.classList.toggle('lade-tall'); }

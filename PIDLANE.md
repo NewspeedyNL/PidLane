@@ -5,7 +5,11 @@
 > nergens anders — een kopie in een kennisbank loopt achter en gaat de code
 > tegenspreken. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-09-01 — issues #58 t/m #62: één token `--pl-top`
+> Laatst bijgewerkt: 2026-09-01 — issues #68 en #66: de slimme weergave is de
+> STANDAARDweergave (en de opgeslagen voorkeur wordt eindelijk teruggelezen),
+> er is een vierde vak "Tellerplaat" met verticale meters voor het gaspad, en
+> een temperatuurbalk zonder bekende grens zegt dat zelf (§11).
+> Daarvóór dezelfde dag: issues #58 t/m #62 — één token `--pl-top`
 > voor de onderkant van de topbalk (§11), plafond op de bevindingenbalk,
 > vierde weergave "Slim", en het venster "Voor de analyse" dat de AI vertelt
 > of start/stop meedeed.
@@ -139,7 +143,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 |---|---|---|---|
 | 1 | `capacitor.js` | — | alleen in APK aanwezig; `onerror` vangt het web-geval af |
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
-| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH` (de indeling van de slimme weergave) |
+| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de indeling van de slimme weergave in vier vakken) |
 | 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
 
 ### Fase 2 — kern (in `<body>`, rond regel 2128)
@@ -152,7 +156,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 8 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
 | 9 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
 | 10 | `pidlane-archief.js` | 30 | sessierapportarchief, AI-rapporthook, TXT/PDF-export, **de Android-terugknop** (`appBack`) — de enige luisteraar op `backButton`, zie §11 01-09 — en **het venster "Voor de analyse"** (`plVoorAnalyse`, `PL_VOORVRAGEN`, `plMeetcontextPromptLine`): hergebruik van eerdere rapporten én de meetcontext-vragen in één sheet, zie §11 01-09 |
-| 11 | `pidlane-pids.js` | 31 | PID-paneel, gauges, breedband-lambdacorrectie B1S1, de vier weergaven (Trends/Getallen/Puntjes/**Slim**) incl. `slimTempSchaal()` en `slimBeweegt()` |
+| 11 | `pidlane-pids.js` | 31 | PID-paneel, gauges, breedband-lambdacorrectie B1S1, de vier weergaven (Trends/Getallen/Puntjes/**Slim**, met Slim als standaard) incl. `slimTempSchaal()`, `slimBeweegt()`, `slimMeterSchaal()`/`slimPiek()` (de tellerplaat) en `plPidViewHerstel()` — de enige plek die bepaalt waarin de live view start |
 | 12 | `pidlane-correlatie.js` | 8 | deterministische PID-correlatie-engine + de bevindingenbalk: hoogstens `BEV_MAX` (2) in beeld, de rest in een venster, aan/uit via ☰ — de AI krijgt via `correlationLines()` altijd alles |
 | 13 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
 | 14 | `pidlane-diagnose.js` | 20 | Smart Diagnose + klacht-gestuurde PID-focus |
@@ -641,11 +645,73 @@ de pas, en dan is de vraag welke klopt.
 | [#52](https://github.com/NewspeedyNL/PidLane/issues/52) | de tokenchip blijft staan bij een beheerder | bug |
 | [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | welke vragen ontbreken nog in de meetcontext? | meten |
 | [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
-| [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" | meten |
+| [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
+| [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### De slimme weergave werd de standaard — 01-09-2026 (issues #68, #66)
+
+**Wat er gevraagd werd:** de weergave uit #61 meteen als startweergave, en
+toerental, gaspedaal en motorbelasting in een vorm waarin ze naast elkaar te
+lezen zijn (#68).
+
+**Wat er onderweg boven water kwam, en dat is het bewaren waard.**
+`setPidView()` schreef de gekozen weergave keurig weg in `pl_pidview`, en
+**niemand las die sleutel ooit terug**. De aanroep in `pidlane-theme.js` zei
+het er zelfs bij: `setPidView('dots'); // live view start altijd in
+puntjes-weergave (genegeerde voorkeur)`. Dat is geen halve functie maar een
+belofte die niet werd nagekomen: je kiest iets, de app slaat het op, en gooit
+het bij de volgende start weg. Zichtbaar voor de gebruiker, onzichtbaar in de
+code, want er ging niets kapot.
+
+Eronder zat het patroon dat hier vaker toeslaat: **drie plekken die iets over
+dezelfde vraag zeiden, en alle drie iets anders.** `let pidViewMode='dots'` in
+`pidlane-pids.js`, `class="pidview-btn active"` op de Trends-knop in
+`index.html`, en de aanroep met `'dots'` in `pidlane-theme.js`. Bij het openen
+stond de Trends-knop dus actief terwijl je naar puntjes keek. Er is nu één
+bron (`PID_VIEW_STANDAARD`) en één plek die hem toepast
+(`plPidViewHerstel()`); `test-slimmeweergave.js` toetst bovendien dat de
+actieve knop in de HTML dezelfde weergave aanwijst als de code.
+
+**En een derde stille overschrijving:** `toggleLade()` zette de weergave op
+`'dots'` zodra het sensorkeuzescherm openging. Zolang `'dots'` óók de
+standaard was viel dat niet op. Met Slim als standaard zou het elke sessie
+raak zijn geweest — sensoren kiezen is het eerste wat je doet, dus je had de
+nieuwe standaard nooit gezien, en er komt geen melding bij: je staat gewoon
+ineens ergens anders. Die regel is weg.
+
+**De tellerplaat (#68) en waarom hij een andere meetlat heeft.** Toerental,
+gaspedaal, gasklep en motorbelasting staan nu als staande meters naast elkaar
+in één paneel (`SLIM_METER` in `pidlane-data.js`, `slimMeterBouw()` in
+`pidlane-pids.js`). De meter toont de **stand binnen het eigen bereik**
+(0-8000 rpm), terwijl de temperatuurbalk de **marge tot de eigen grens**
+toont. Dat verschil is met opzet en het is ook precies waarom ze niet in één
+diagram kunnen: een gaspedaal *heeft* geen gevarengrens — vol gas is geen
+storing — dus "hoe dicht bij de grens" is daar een vraag zonder antwoord.
+Liggend en staand zijn daarom twee vormen met twee betekenissen; hetzelfde
+plaatje voor allebei zou de fout van "één ding, twee rollen" herhalen.
+
+De EGR-klep (`012C`) en de EVAP-spoelklep (`012E`) staan er bewust **niet**
+op. Ze zijn ook een kleppositie in procenten, maar ze horen bij de
+emissieregeling en niet bij wat de bestuurder doet; naast een gaspedaal
+gelegd nodigen ze uit tot een vergelijking die niets betekent. Dat is een
+redenering en geen meting — blijkt tijdens een rit het tegendeel, dan is het
+één regel in `SLIM_METER`.
+
+**Wat hiermee van #66 af is, en wat niet.** De eerste helft van #66 ging over
+`slimTempSchaal()`, die zonder `dH` en zonder `wH` terugvalt op het maximum
+uit de PID-definitie. Zo'n balk staat laag omdat de grens onbekend is en niet
+omdat het koud is, en dat verschil was op het scherm niet te zien. De schaal
+is **niet** veranderd — dat zou een verzonnen getal zijn — maar die balken
+zijn nu gearceerd met uitleg in de tooltip, en blok 5 van de testrun schrijft
+op wélke sensoren van déze auto het betreft. Daarmee is de vraag uit #66
+beantwoordbaar geworden in plaats van beantwoord. De tweede helft (de drempel
+van 2% voor "beweegt") staat nog open, maar is wel minder zwaar: de
+duidelijkste bewegers staan nu op de tellerplaat, dus het vak "Beweegt" is
+een stuk rustiger dan vanmiddag.
 
 ### Vijf meldingen uit het gebruik — 01-09-2026 (issues #58 t/m #62)
 

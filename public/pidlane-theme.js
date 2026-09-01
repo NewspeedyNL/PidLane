@@ -224,7 +224,10 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!slCollapsed){ slCollapsed=true; document.getElementById('appGrid').classList.add('sl-col'); const b=document.getElementById('slToggle'); if(b) b.textContent='▶'; }
     if(localStorage.getItem('ns_sr')==='true') toggleSR();
     initSLActivityReset();
-    setPidView('dots'); // live view start altijd in puntjes-weergave (genegeerde voorkeur)
+    // Weergave: de opgeslagen voorkeur, anders de standaard (🧠 Slim).
+    // Hier stond tot 01-09-2026 setPidView('dots') met "genegeerde voorkeur"
+    // erachter — de keuze werd wel bewaard en nooit teruggelezen.
+    if(typeof plPidViewHerstel==='function') plPidViewHerstel();
   }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   window.addEventListener('resize',()=>{ if(graphPID||trendPIDs.length) drawGraph(); });

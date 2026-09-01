@@ -120,12 +120,23 @@ var KRITIEK = [
   // dan belandt álles in het vak "beweegt" en is de indeling die de modus
   // bestaansrecht geeft stil verdwenen.
   'slimGroep',
-  // Wat blok 5 van de testrun nameet na de oplevering van 01-09 (issues
-  // #58 t/m #62). Elk van deze namen is een gedragsproef die stil zou
-  // overslaan als de module niet meekwam — en dan zegt de testrun "goed"
-  // terwijl er niets gemeten is.
+  // Wat blok 5 van de testrun nameet. Elk van deze namen is een gedragsproef
+  // die stil zou overslaan als de module niet meekwam — en dan zegt de
+  // testrun "goed" terwijl er niets gemeten is. De namen van de opleveringen
+  // #60 en #62 staan er nog bij: hun eigen guards staan verspreid door de
+  // modules, ook nu blok 5 over #66 en #68 gaat.
   'renderCorrelationBanner','bevindingenAan',     // pidlane-correlatie.js — #60
   'setPidView',                                   // pidlane-pids.js       — #61
+  // Zet de live view bij het opstarten in de opgeslagen of de standaard
+  // weergave (pidlane-pids.js, aangeroepen uit pidlane-theme.js). Ontbreekt
+  // hij, dan start de app in wat pidViewMode toevallig is en is de
+  // standaardweergave uit #68 stil verdwenen.
+  'plPidViewHerstel',                             // pidlane-pids.js       — #68
+  // Opent de sensorlade (pidlane-archief.js). Blok 5 gebruikt hem om te
+  // toetsen dat die lade de weergavekeuze NIET meer omgooit; zonder de
+  // functie zou die proef stil overslaan en zou juist de teruggekeerde
+  // overschrijving onopgemerkt blijven.
+  'toggleLade',                                   // pidlane-archief.js    — #68
   'plVoorAnalyse','plMeetcontextPromptLine','plMeetStabielVoorstel',  // pidlane-archief.js — #62
   
   

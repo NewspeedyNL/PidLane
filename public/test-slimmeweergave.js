@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// test-slimmeweergave.js — de vierde weergave doet wat hij belooft
+// test-slimmeweergave.js — de STANDAARDWEERGAVE doet wat hij belooft
 // ──────────────────────────────────────────────────────────────────
 // WAAROM DEZE TEST BESTAAT
 //
@@ -15,7 +15,27 @@
 //      tegels;
 //   3. geen trendlijn waar er niets te trenden valt.
 //
-// Alle drie zijn hier gedragstoetsen: slimGroep() draait echt uit
+// Issue #68 (01-09-2026) ging een stap verder, en #61 was daar zelf de
+// aanleiding voor: door toerental, pedaalstand en motorbelasting bewust
+// NIET in het dashboard te zetten, kwamen ze als losse tegels in het vak
+// "Beweegt" terecht — netjes, maar niet met elkaar te vergelijken. Ze
+// zitten nu in een vierde vak, de tellerplaat, met verticale meters:
+//
+//   4. slimGroep() kent de groep 'meter' en zet de gaspad-PIDs daarin;
+//   5. de meter staat voor de STAND BINNEN HET EIGEN BEREIK (0-8000 rpm) en
+//      niet voor de marge tot een grens zoals de temperatuurbalk — een
+//      gaspedaal heeft geen gevarengrens;
+//   6. er is een sleepwijzer voor de hoogste waarde van de laatste 60
+//      metingen, en die verdwijnt als de vulling hem inhaalt;
+//   7. de slimme weergave is de STANDAARD, en de opgeslagen voorkeur wordt
+//      eindelijk teruggelezen — pl_pidview werd wel geschreven en nooit
+//      gebruikt.
+//
+// En het stuk van #66 dat zonder auto te doen is: een temperatuurbalk zonder
+// bekende grens (terugval op het PID-maximum) is nu als grof gemarkeerd, zodat
+// een lage balk niet als "koud" leest terwijl hij "grens onbekend" betekent.
+//
+// Alles hier is een gedragstoets: slimGroep() draait echt uit
 // pidlane-data.js, en renderGauges()/slimBij() draaien echt uit
 // pidlane-pids.js tegen een minimale DOM-nabootsing. De regels staan dus
 // nergens in dit bestand nagebouwd — een kopie zou meelopen met de code in
@@ -45,10 +65,15 @@ function toetsMeldt(naam, gemeten, moetNoemen) {
 }
 
 // ── pidlane-data.js: de indeling ─────────────────────────────────
-function laadData() {
+function laadData(vervang) {
   const s = {}; s.window = s;
   vm.createContext(s);
-  vm.runInContext(fs.readFileSync('pidlane-data.js', 'utf8'), s, { filename: 'pidlane-data.js' });
+  let bron = fs.readFileSync('pidlane-data.js', 'utf8');
+  if (vervang) {
+    if (bron.indexOf(vervang[0]) < 0) throw new Error('tegenproef kon "' + vervang[0] + '" niet vinden in pidlane-data.js');
+    bron = bron.replace(vervang[0], vervang[1]);
+  }
+  vm.runInContext(bron, s, { filename: 'pidlane-data.js' });
   if (typeof s.slimGroep !== 'function') throw new Error('slimGroep() niet gevonden in pidlane-data.js');
   return s;
 }
@@ -64,6 +89,8 @@ function knip(bron, van, tot, wat) {
 }
 const SLIM_BRON = knip(PIDS_BRON, 'const SLIM_BEWEEG_DEEL', '\nfunction updPID(', 'het slim-blok');
 const RENDER_BRON = knip(PIDS_BRON, 'function renderGauges(){', '// ── Dubbeltik op een tegel', 'renderGauges()');
+// De weergavekeuze zelf: standaard, herstel uit localStorage en setPidView().
+const VIEW_BRON = knip(PIDS_BRON, 'const PID_VIEW_MODI', 'function startStaleWatchdog(){', 'het weergavemodus-blok');
 
 // ── DOM-nabootsing ───────────────────────────────────────────────
 function Element(tag) {
@@ -91,14 +118,14 @@ function Element(tag) {
     }
   });
 }
-Element.prototype.appendChild = function (k) { this.children.push(k); return k; };
+Element.prototype.appendChild = function (k) { this.children.push(k); k.parentNode = this; return k; };
 Element.prototype.removeAttribute = function () {};
 Element.prototype.setAttribute = function () {};
 
 // Alle PIDs die deze test gebruikt, met hun echte definitie uit pidlane-data.js.
 const DEFS = D.ALL_PID_DEFS;
 
-function maakOmgeving(actief, renderBron) {
+function maakOmgeving(actief, renderBron, slimBron) {
   const reg = {};
   ['gGrid', 'vasteData', 'pidViewSwitch'].forEach(function (id) {
     reg[id] = new Element('div'); reg[id].id = id;
@@ -132,7 +159,7 @@ function maakOmgeving(actief, renderBron) {
   };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext(SLIM_BRON + '\n' + (renderBron || RENDER_BRON), ctx, { filename: 'pidlane-pids.js (slim)' });
+  vm.runInContext((slimBron || SLIM_BRON) + '\n' + (renderBron || RENDER_BRON), ctx, { filename: 'pidlane-pids.js (slim)' });
   ctx.reg = reg;
   return ctx;
 }
@@ -147,7 +174,8 @@ function pidsIn(ctx, groep) {
 }
 
 // ── 1. de indeling ───────────────────────────────────────────────
-function keurIndeling() {
+function keurIndeling(Dx) {
+  Dx = Dx || D;
   const uit = [];
   const verwacht = {
     '010D': 'dash',  // snelheid — staat letterlijk in het issue
@@ -158,41 +186,60 @@ function keurIndeling() {
     '015C': 'temp',  // motorolie
     '010F': 'temp',  // inlaatlucht
     '013C': 'temp',  // katalysator
-    '010C': 'rest',  // toerental — "die variëren te veel"
-    '0104': 'rest',  // motorbelasting — idem
-    '0111': 'rest'   // gasklep/pedaalstand — idem
+    '010C': 'meter', // toerental — de tellerplaat (#68)
+    '0104': 'meter', // motorbelasting — idem
+    '0111': 'meter', // gasklep — idem
+    '0149': 'meter', // gaspedaal — idem
+    '0143': 'meter', // absolute motorbelasting — idem
+    '012C': 'rest',  // EGR-klep: ook een kleppositie in %, maar emissie en
+    '012E': 'rest'   // geen gaspad — bewust NIET op de tellerplaat
   };
   Object.keys(verwacht).forEach(function (pid) {
-    const g = D.slimGroep(pid);
+    const g = Dx.slimGroep(pid);
     if (g !== verwacht[pid])
       uit.push(pid + ' (' + (DEFS[pid] ? DEFS[pid].name : '?') + ') valt in "' + g + '", verwacht "' + verwacht[pid] + '"');
+  });
+  // De regel uit #61 blijft gelden: geen enkel gaspad-signaal komt in het
+  // dashboard terecht. #68 verplaatst ze naar de tellerplaat, niet naar de
+  // tellerstanden — dat was de reden dat ze daar destijds uit bleven.
+  Dx.SLIM_METER.forEach(function (pid) {
+    if (Dx.slimGroep(pid) === 'dash')
+      uit.push(pid + ' staat op de tellerplaat én in het dashboard — dat was juist de fout van vóór #61');
   });
   // Elke °C-PID hoort in de balken, zonder uitzondering — anders staat er
   // straks tóch weer een losse temperatuurtegel tussen.
   Object.keys(DEFS).forEach(function (pid) {
-    if (DEFS[pid].unit === '°C' && D.slimGroep(pid) !== 'temp')
+    if (DEFS[pid].unit === '°C' && Dx.slimGroep(pid) !== 'temp')
       uit.push(pid + ' heeft eenheid °C maar valt niet in het temperatuurvak');
   });
   return uit;
 }
 
 // ── 2. de opbouw van het scherm ──────────────────────────────────
-function keurDrieVakken(renderBron) {
-  const ctx = maakOmgeving(['010D', '012F', '0105', '015C', '010F', '010C', '0104'], renderBron);
+function keurVierVakken(renderBron) {
+  const ctx = maakOmgeving(['010D', '012F', '0105', '015C', '010F', '010C', '0104', '012C'], renderBron);
   ctx.renderGauges();
   const uit = [];
   if (pidsIn(ctx, 'dash').sort().join(',') !== '010D,012F')
     uit.push('dashboardvak bevat ' + pidsIn(ctx, 'dash').join(',') + ', verwacht 010D,012F');
+  if (pidsIn(ctx, 'meter').sort().join(',') !== '0104,010C')
+    uit.push('tellerplaat bevat ' + pidsIn(ctx, 'meter').join(',') + ', verwacht 0104,010C');
   if (pidsIn(ctx, 'temp').sort().join(',') !== '0105,010F,015C')
     uit.push('temperatuurvak bevat ' + pidsIn(ctx, 'temp').join(',') + ', verwacht 0105,010F,015C');
-  if (pidsIn(ctx, 'rest').sort().join(',') !== '0104,010C')
-    uit.push('restvak bevat ' + pidsIn(ctx, 'rest').join(',') + ', verwacht 0104,010C');
-  // Alle drie de vakken zijn gevuld, dus alle drie moeten zichtbaar staan.
-  ['dash', 'temp', 'rest'].forEach(function (g) {
+  if (pidsIn(ctx, 'rest').sort().join(',') !== '012C')
+    uit.push('restvak bevat ' + pidsIn(ctx, 'rest').join(',') + ', verwacht 012C');
+  // Alle vier de vakken zijn gevuld, dus alle vier moeten zichtbaar staan.
+  ['dash', 'meter', 'temp', 'rest'].forEach(function (g) {
     const sec = ctx.reg['slimSec-' + g];
     if (!sec) { uit.push('vak ' + g + ' is helemaal niet opgebouwd'); return; }
     if (sec.style.display === 'none') uit.push('vak ' + g + ' staat op display:none terwijl er tegels in zitten');
   });
+  // De volgorde op het scherm is een keuze: eerst wat er op de teller staat,
+  // dan wat de bestuurder doet, dan de temperaturen, dan de rest. Een vak dat
+  // stilletjes van plaats wisselt is voor de gebruiker een ander scherm.
+  const volgorde = ctx.reg.gGrid.children.map(function (c) { return String(c.id).replace('slimSec-', ''); });
+  if (volgorde.join(',') !== 'dash,meter,temp,rest')
+    uit.push('de vakken staan in de volgorde ' + volgorde.join(',') + ', verwacht dash,meter,temp,rest');
   return uit;
 }
 
@@ -203,17 +250,105 @@ function keurLeegVakVerborgen() {
   ctx.renderGauges();
   const uit = [];
   if (ctx.reg['slimSec-dash'].style.display !== 'none') uit.push('een leeg dashboardvak staat toch in beeld');
+  if (ctx.reg['slimSec-meter'].style.display !== 'none') uit.push('een lege tellerplaat staat toch in beeld');
   if (ctx.reg['slimSec-rest'].style.display !== 'none') uit.push('een leeg restvak staat toch in beeld');
   if (ctx.reg['slimSec-temp'].style.display === 'none') uit.push('het gevulde temperatuurvak staat op display:none');
   return uit;
 }
 
 function keurTempBalk() {
-  const ctx = maakOmgeving(['0105', '010C']);
+  const ctx = maakOmgeving(['0105', '010C', '012C']);
   ctx.renderGauges();
   const uit = [];
   if (!ctx.reg['sb-0105']) uit.push('de koelwatertegel heeft geen balk gekregen');
   if (ctx.reg['sb-010C']) uit.push('het toerental heeft een temperatuurbalk gekregen');
+  // En andersom: een liggende balk en een staande meter zijn twee vormen met
+  // twee betekenissen. Belanden ze op dezelfde tegel, dan is dat niet mooier
+  // maar dubbelzinnig.
+  if (!ctx.reg['sm-010C']) uit.push('het toerental heeft geen meter gekregen');
+  if (ctx.reg['sm-0105']) uit.push('de koelwatertegel heeft óók een meter gekregen');
+  if (ctx.reg['sm-012C'] || ctx.reg['sb-012C']) uit.push('een rest-PID heeft een balk of meter gekregen');
+  return uit;
+}
+
+// ── de tellerplaat (#68) ─────────────────────────────────────────
+function keurMeter(slimBron) {
+  const ctx = maakOmgeving(['010C', '0104', '0111'], null, slimBron);
+  ctx.renderGauges();
+  const uit = [];
+  // Toerental: bereik 0-8000, dus 4000 rpm is de halve meter. NIET de marge
+  // tot de waarschuwingsgrens van 6000 — dat is wat de temperatuurbalk doet.
+  ctx.slimBij('010C', 4000, DEFS['010C'], 'ok', ctx.reg['gc-010C']);
+  const m = ctx.reg['sm-010C'];
+  if (Math.abs(parseFloat(m.style.height) - 50) > 0.6)
+    uit.push('4000 rpm geeft meter ' + m.style.height + ', verwacht ~50% (bereik 0-8000)');
+  // Boven het bereik loopt hij vol en wordt hij rood; eronder blijft hij leeg.
+  ctx.slimBij('010C', 9500, DEFS['010C'], 'danger', ctx.reg['gc-010C']);
+  if (parseFloat(m.style.height) !== 100) uit.push('boven het bereik loopt de meter niet vol (' + m.style.height + ')');
+  if (m.className !== 'rd') uit.push('boven het bereik is de meter niet rood maar "' + m.className + '"');
+  ctx.slimBij('010C', -50, DEFS['010C'], 'ok', ctx.reg['gc-010C']);
+  if (parseFloat(m.style.height) !== 0) uit.push('een negatief toerental geeft meter ' + m.style.height);
+  // Een pedaal op 30% staat op 30% van zijn meter — dezelfde vorm, dezelfde
+  // regel, ook al is het een heel ander soort signaal.
+  ctx.slimBij('0111', 30, DEFS['0111'], 'ok', ctx.reg['gc-0111']);
+  if (Math.abs(parseFloat(ctx.reg['sm-0111'].style.height) - 30) > 0.6)
+    uit.push('gasklep 30% geeft meter ' + ctx.reg['sm-0111'].style.height + ', verwacht ~30%');
+  // Het grensstreepje staat er alleen als de grens bekend is. 010C heeft
+  // wH 6000 (= 75% van 8000), 0111 heeft er geen.
+  const g = ctx.reg['sg-010C'];
+  if (!g) uit.push('het toerental heeft een waarschuwingsgrens (6000) maar geen streepje op de meter');
+  else if (Math.abs(parseFloat(g.style.bottom) - 75) > 0.6)
+    uit.push('het grensstreepje staat op ' + g.style.bottom + ', verwacht ~75% (6000 van 8000)');
+  if (ctx.reg['sg-0111'])
+    uit.push('de gasklep heeft geen bekende grens maar krijgt tóch een streepje — dat belooft een nauwkeurigheid die er niet is');
+  return uit;
+}
+
+function keurSleepwijzer(slimBron) {
+  const ctx = maakOmgeving(['010C'], null, slimBron);
+  ctx.renderGauges();
+  const uit = [];
+  const pk = ctx.reg['sp-010C'];
+  // Zonder historie is er niets om te slepen; dan hoort hij weg te blijven.
+  ctx.slimBij('010C', 800, DEFS['010C'], 'ok', ctx.reg['gc-010C']);
+  if (pk.style.display !== 'none') uit.push('zonder historie staat er tóch een sleepwijzer');
+  // Opgetrokken tot 6000 en weer terug naar 800: de wijzer blijft op 75%
+  // staan terwijl de vulling op 10% zit.
+  metHistorie(ctx, '010C', [800, 2400, 4200, 6000, 3000, 800]);
+  ctx.slimBij('010C', 800, DEFS['010C'], 'ok', ctx.reg['gc-010C']);
+  if (pk.style.display === 'none') uit.push('na een piek van 6000 rpm staat er geen sleepwijzer');
+  else if (Math.abs(parseFloat(pk.style.bottom) - 75) > 0.6)
+    uit.push('de sleepwijzer staat op ' + pk.style.bottom + ', verwacht ~75% (6000 van 8000)');
+  // Haalt de vulling hem in, dan verdwijnt hij: twee wijzers op dezelfde
+  // hoogte lezen als twee verschillende waarden.
+  ctx.slimBij('010C', 6000, DEFS['010C'], 'ok', ctx.reg['gc-010C']);
+  if (pk.style.display !== 'none') uit.push('de sleepwijzer blijft staan terwijl de vulling hem heeft ingehaald');
+  // En hij zakt weer mee: alleen de laatste 60 metingen tellen, dus een piek
+  // van een kwartier geleden mag niet blijven hangen.
+  const lang = [];
+  for (let i = 0; i < 70; i++) lang.push(i === 0 ? 7000 : 900);
+  metHistorie(ctx, '010C', lang);
+  ctx.slimBij('010C', 900, DEFS['010C'], 'ok', ctx.reg['gc-010C']);
+  if (pk.style.display !== 'none')
+    uit.push('een piek van 70 metingen geleden staat er nog steeds (' + pk.style.bottom + ')');
+  return uit;
+}
+
+// ── #66: een balk zonder bekende grens zegt dat zelf ──────────────
+function keurGroveSchaal(renderBron) {
+  const ctx = maakOmgeving(['0105', '0146'], renderBron);
+  ctx.renderGauges();
+  const uit = [];
+  // Koelwater heeft dH 110: gewone balk.
+  const koel = ctx.reg['sb-0105'].parentNode;
+  // Omgevingstemperatuur (−40…85) heeft geen dH en geen wH: terugval op max.
+  const omg = ctx.reg['sb-0146'].parentNode;
+  if (koel && koel.classList.contains('grof'))
+    uit.push('koelwater heeft een gevarengrens maar wordt tóch als grove schaal gemarkeerd');
+  if (!omg || !omg.classList.contains('grof'))
+    uit.push('omgevingstemperatuur valt terug op het PID-maximum maar de balk zegt dat nergens (issue #66)');
+  else if (!/grens/i.test(omg.title))
+    uit.push('de grove balk heeft geen uitleg in de tooltip: "' + omg.title + '"');
   return uit;
 }
 
@@ -272,15 +407,113 @@ function keurVlakkeLijn() {
   return uit;
 }
 
+// ── 5. de slimme weergave is de standaard, en de voorkeur wordt gelezen ──
+// Draait het echte weergavemodus-blok uit pidlane-pids.js, met een
+// nagebootste localStorage. De verleiding is om hier PID_VIEW_STANDAARD uit
+// de bron te lezen — dat toetst niets: dan meet je of de constante zichzelf
+// gelijk is. Wat er gemeten moet worden is waar plPidViewHerstel() de app
+// in zet.
+function maakViewOmgeving(opgeslagen, bron) {
+  const geschreven = {};
+  const ctx = {
+    document: {
+      getElementById: function () { return null; },
+      querySelectorAll: function () { return []; }
+    },
+    console: { warn: function () {}, log: function () {} },
+    localStorage: {
+      getItem: function (k) { return (opgeslagen && k in opgeslagen) ? opgeslagen[k] : null; },
+      setItem: function (k, v) { geschreven[k] = v; }
+    },
+    renderGauges: function () {},
+    startStaleWatchdog: function () {},
+    stopStaleWatchdog: function () {}
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  // pidViewMode is een `let` op scriptniveau en dus GEEN eigenschap van het
+  // globale object — vanuit de test niet direct af te lezen. Deze regel geeft
+  // er een luikje op, zonder de bron te veranderen.
+  vm.runInContext((bron || VIEW_BRON) + '\nwindow.__mode=function(){ return pidViewMode; };',
+    ctx, { filename: 'pidlane-pids.js (weergave)' });
+  ctx.geschreven = geschreven;
+  return ctx;
+}
+function keurStandaardWeergave(bron) {
+  const uit = [];
+  const mk = function (opgeslagen) { return maakViewOmgeving(opgeslagen, bron); };
+  // Niets opgeslagen: de app start in de slimme weergave.
+  let ctx = mk(null);
+  if (ctx.__mode() !== 'slim')
+    uit.push('zonder opgeslagen voorkeur start de live view in "' + ctx.__mode() + '", verwacht "slim"');
+  if (ctx.plPidViewHerstel() !== 'slim')
+    uit.push('plPidViewHerstel() zet de app in "' + ctx.__mode() + '" in plaats van in de standaard');
+  // Wél iets opgeslagen: dan wint die keuze. Dit is de kern van #68 — tot nu
+  // toe werd pl_pidview geschreven en nooit teruggelezen.
+  ctx = mk({ pl_pidview: 'dots' });
+  if (ctx.plPidViewHerstel() !== 'dots')
+    uit.push('een opgeslagen voorkeur "dots" wordt genegeerd; de app start in "' + ctx.__mode() + '"');
+  // Rommel in de opslag zet de app niet in een modus die niet bestaat.
+  ctx = mk({ pl_pidview: 'kleuren' });
+  if (ctx.plPidViewHerstel() !== 'slim')
+    uit.push('een onbekende opgeslagen waarde zet de app in "' + ctx.__mode() + '" in plaats van in de standaard');
+  // De verwijderde correlatie-weergave is precies zo'n onbekende waarde. Hij
+  // komt bij het herstellen dus op de standaard uit en niet op de 'dots' waar
+  // setPidView() hem heen stuurt — dat vangnet is er voor een aanroeper die
+  // nú om die modus vraagt, en dit is een voorkeur van maanden geleden die
+  // over een weergave gaat die niet meer bestaat.
+  ctx = mk({ pl_pidview: 'correlate' });
+  ctx.plPidViewHerstel();
+  if (ctx.__mode() !== 'slim')
+    uit.push('een opgeslagen "correlate" (verwijderde weergave) geeft "' + ctx.__mode() + '"');
+  // Het vangnet in setPidView() zelf staat er nog wél, voor een directe
+  // aanroeper. Verdwijnt dat, dan krijgt het rooster de klasse
+  // view-correlate en is er geen enkele opmaak die daarbij hoort.
+  ctx = mk(null);
+  ctx.setPidView('correlate');
+  if (ctx.__mode() !== 'dots')
+    uit.push('setPidView("correlate") geeft "' + ctx.__mode() + '" in plaats van "dots"');
+  // Een keuze wordt ook echt bewaard, anders valt er de volgende keer niets
+  // te herstellen.
+  ctx = mk(null);
+  ctx.setPidView('numbers');
+  if (ctx.geschreven.pl_pidview !== 'numbers')
+    uit.push('een gekozen weergave wordt niet opgeslagen (pl_pidview = ' + ctx.geschreven.pl_pidview + ')');
+  return uit;
+}
+
+// De knop in index.html moet dezelfde weergave aanwijzen als de code, anders
+// staat er bij het openen een andere knop actief dan de weergave die je ziet.
+// Dat is broncontrole, en dat mag hier: een gedragstoets zou de hele pagina
+// moeten laden, en juist de losse waarheid in de HTML was het probleem.
+function keurKnopStaatGoed() {
+  const html = fs.readFileSync('index.html', 'utf8');
+  const uit = [];
+  const rij = html.match(/<button class="pidview-btn[^>]*data-mode="[a-z]+"[^>]*>/g) || [];
+  if (!rij.length) return ['geen enkele weergaveknop gevonden in index.html'];
+  const actief = rij.filter(function (b) { return /class="pidview-btn active"/.test(b); });
+  if (actief.length !== 1)
+    return [actief.length + ' knoppen staan als actief gemarkeerd; er hoort er precies één te zijn'];
+  const mode = (actief[0].match(/data-mode="([a-z]+)"/) || [])[1];
+  const ctx = maakViewOmgeving(null);
+  if (mode !== ctx.__mode())
+    uit.push('in index.html staat de knop "' + mode + '" actief terwijl de app in "' + ctx.__mode() + '" start');
+  return uit;
+}
+
 // ── draaien ──────────────────────────────────────────────────────
-console.log('Slimme weergave — dashboard, temperatuurbalken, trend waar het beweegt (issue #61)\n');
+console.log('Slimme weergave — standaard, tellerplaat, temperatuurbalken, trend waar het beweegt (#61, #66, #68)\n');
 
 toetsSchoon('de indeling klopt, en toeren/belasting/gasklep zitten NIET in het dashboard', keurIndeling());
-toetsSchoon('de tegels belanden in het juiste vak', keurDrieVakken());
+toetsSchoon('de tegels belanden in het juiste vak, in de juiste volgorde', keurVierVakken());
 toetsSchoon('een leeg vak blijft verborgen', keurLeegVakVerborgen());
-toetsSchoon('alleen temperaturen krijgen een balk', keurTempBalk());
+toetsSchoon('balk en meter komen nooit op dezelfde tegel', keurTempBalk());
 toetsSchoon('de balk meet de marge tot de grens, niet het aantal graden', keurBalkSchaal());
-toetsSchoon('een vlak signaal krijgt geen trendlijn', keurVlakkeLijn());
+toetsSchoon('de meter meet de stand binnen het eigen bereik', keurMeter());
+toetsSchoon('de sleepwijzer houdt de piek vast en laat hem weer los', keurSleepwijzer());
+toetsSchoon('een balk zonder bekende grens zegt dat zelf (#66)', keurGroveSchaal());
+toetsSchoon('de slimme weergave is de standaard en de voorkeur wordt gelezen', keurStandaardWeergave());
+toetsSchoon('de actieve knop in index.html wijst dezelfde weergave aan', keurKnopStaatGoed());
 
 // ── tegenproef ───────────────────────────────────────────────────
 console.log('');
@@ -289,7 +522,55 @@ console.log('');
 const RENDER_OUD = RENDER_BRON.replace("const slim = (pidViewMode==='slim');", 'const slim = false;');
 if (RENDER_OUD === RENDER_BRON) throw new Error('de tegenproef kon de slim-schakelaar niet uitzetten — is de regel hernoemd?');
 toetsMeldt('zonder vakken valt de opbouw door de mand (tegenproef)',
-  keurDrieVakken(RENDER_OUD), 'dashboardvak bevat');
+  keurVierVakken(RENDER_OUD), 'dashboardvak bevat');
+
+// Vijf nagebouwde fouten voor wat er deze ronde bij kwam. Elke controle
+// hierboven moet er één van rood worden — anders weet je alleen dat hij
+// groen kán staan.
+function bouw(bron, van, naar, wat) {
+  if (bron.indexOf(van) < 0) throw new Error('tegenproef "' + wat + '" kon "' + van + '" niet vinden — hernoemd?');
+  return bron.replace(van, naar);
+}
+
+// 1. De tellerplaat weer weg uit de indeling: dan vallen toerental en
+//    belasting terug in "Beweegt", precies de toestand van vóór #68.
+toetsMeldt('zonder de groep "meter" valt de indeling door de mand (tegenproef)',
+  keurIndeling(laadData(["if(window.SLIM_METER.indexOf(pid) > -1) return 'meter';", ''])),
+  'verwacht "meter"');
+
+// 2. De meter op de temperatuurschaal (marge tot de grens) in plaats van op
+//    zijn eigen bereik: 4000 rpm wordt dan 56% van 7200 en geen halve meter.
+toetsMeldt('een meter op de grens-schaal valt door de mand (tegenproef)',
+  keurMeter(bouw(SLIM_BRON,
+    "  const hi=(d && typeof d.max==='number' && isFinite(d.max)) ? d.max : 100;",
+    '  const hi=slimTempSchaal(d);', 'meterschaal')),
+  'verwacht ~50%');
+
+// 3. Een sleepwijzer die blijft staan zodra er historie is. Hij staat dan
+//    bovenop de vulling en leest als een tweede, tegenstrijdige waarde.
+toetsMeldt('een sleepwijzer die nooit wijkt valt door de mand (tegenproef)',
+  keurSleepwijzer(bouw(SLIM_BRON,
+    'if(pd===null || pd-deel<1.5){ pk.style.display=\'none\'; }',
+    'if(pd===null){ pk.style.display=\'none\'; }', 'sleepwijzer')),
+  'ingehaald');
+
+// 4. De markering van een grove schaal weghalen (#66): de balk van de
+//    omgevingstemperatuur ziet er dan uit als elke andere.
+toetsMeldt('een ongemarkeerde grove schaal valt door de mand (tegenproef)',
+  keurGroveSchaal(bouw(RENDER_BRON, "bar.className='sbar grof';", '', 'grove schaal')),
+  'zegt dat nergens');
+
+// 5. En de kern van deze ronde, twee keer: de standaard terug op puntjes, en
+//    de opgeslagen voorkeur weer genegeerd zoals hij dat maandenlang was.
+toetsMeldt('een andere standaardweergave valt door de mand (tegenproef)',
+  keurStandaardWeergave(bouw(VIEW_BRON,
+    "const PID_VIEW_STANDAARD = 'slim';", "const PID_VIEW_STANDAARD = 'dots';", 'standaard')),
+  'verwacht "slim"');
+
+toetsMeldt('een genegeerde voorkeur valt door de mand (tegenproef)',
+  keurStandaardWeergave(bouw(VIEW_BRON,
+    "try{ m=localStorage.getItem('pl_pidview'); }", 'try{ m=null; }', 'voorkeur lezen')),
+  'wordt genegeerd');
 
 // En een balk die tegen het PID-maximum wordt afgezet in plaats van tegen de
 // gevarengrens: dan is koelwater 88 °C ineens 34% en niet 80%.
