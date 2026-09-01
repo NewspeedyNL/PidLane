@@ -46,6 +46,21 @@ toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
 - `automerge.yml` voegt de PR samen zodra de workflow *Tests* groen afrondt.
   Remmen: het label `handmatig`, of de PR in draft laten.
+- **Push élke commit vóórdat je de PR opent.** Automerge kijkt niet of je nog
+  bezig bent: hij merget de branch zoals die op dat moment is en sluit de PR.
+  Een tweede commit die daarna binnenkomt blijft achter op de branch, en de
+  PR kan hem niet meer dragen — een gemergede PR is klaar.
+
+  **Nagemeten op 01-09-2026.** PR #80 werd om 20:52:56 geopend en om 20:53:08
+  gemerged: twaalf seconden, op één van de twee commits. De titel was die van
+  de eerste commit, en dat is precies wat het zo makkelijk maakt om te missen —
+  de PR zag er compleet uit. Testrun 6.0 bleef achter op de branch terwijl
+  `main` op 5.9 stond, en de deploy die eruit volgde bevatte alleen een
+  bijgewerkte `PIDLANE.md`.
+
+  De les is niet "let beter op" maar de volgorde: **af, groen, gepusht, dán
+  pas de PR.** Bij twijfel de PR in draft openen; hem vrijgeven is één klik,
+  een gemergede PR terugdraaien niet.
 - **Elke push naar `main` is deployen.** Cloudflare Workers Builds bouwt en
   draait `wrangler deploy`; die deployment krijgt meteen 100% van het verkeer.
   Er zit geen mens tussen die merge en de klant — dat is de reden dat de gate

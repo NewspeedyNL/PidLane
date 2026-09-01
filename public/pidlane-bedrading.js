@@ -123,8 +123,8 @@ var KRITIEK = [
   // Wat blok 5 van de testrun nameet. Elk van deze namen is een gedragsproef
   // die stil zou overslaan als de module niet meekwam — en dan zegt de
   // testrun "goed" terwijl er niets gemeten is. De namen van de opleveringen
-  // #60 en #62 staan er nog bij: hun eigen guards staan verspreid door de
-  // modules, ook nu blok 5 over #66 en #68 gaat.
+  // #60 t/m #68 staan er nog bij: hun eigen guards staan verspreid door de
+  // modules, ook nu blok 5 over #74 en de begeleide rit gaat.
   'renderCorrelationBanner','bevindingenAan',     // pidlane-correlatie.js — #60
   'setPidView',                                   // pidlane-pids.js       — #61
   // Zet de live view bij het opstarten in de opgeslagen of de standaard

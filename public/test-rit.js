@@ -25,6 +25,8 @@
 const fs = require('fs');
 const vm = require('vm');
 
+const T0 = 1700000000000;   // vast beginmoment, zodat de uitslag niet per run verschilt
+
 // pidlane-testrun.js is een classic script vol globals. De sandbox levert
 // precies wat PLRit aanraakt; alles wat het scherm nodig heeft blijft leeg,
 // want PLRit raakt de DOM niet aan — en dát is meteen vastgelegd: gaat hij dat
@@ -35,7 +37,22 @@ function laadPLRit() {
   s.connected = true;
   s.demoMode = false;
   s._trBezig = false;
-  s.pidVals = {};
+  // DE VERSHEIDSBRON (#74). In de app zet updPID() bij élke geparste waarde
+  // `_pidLastUpd[pid] = Date.now()`, óók als de waarde gelijk bleef. Dat is het
+  // verschil tussen "gemeten en niet bewogen" en "helemaal niet gemeten", en
+  // precies wat PLRit tot 01-09 niet gebruikte.
+  //
+  // De sandbox modelleert dat met een Proxy op pidVals: elke schrijfactie zet
+  // een stempel op de klok van de lopende tik. Zo hoeft geen enkele testplan
+  // hieronder zelf aan stempels te denken, en toch is het gedrag hetzelfde als
+  // in de app. Een PID die tijdens de rit NIET geschreven wordt, houdt zijn
+  // oude stempel — dat is de stale-waarde uit de bug.
+  s._pidLastUpd = {};
+  s._klokNu = T0;
+  s.pidVals = new Proxy({}, {
+    set: function (o, k, v) { o[k] = v; if (s._pidLastUpd) s._pidLastUpd[k] = s._klokNu; return true; },
+    deleteProperty: function (o, k) { delete o[k]; if (s._pidLastUpd) delete s._pidLastUpd[k]; return true; }
+  });
   s.console = { warn: function () { }, error: function () { }, log: function () { } };
   s.localStorage = { getItem: function () { return null; }, setItem: function () { }, key: function () { return null; }, length: 0 };
   s.document = {
@@ -54,7 +71,6 @@ function laadPLRit() {
   return s;
 }
 
-const T0 = 1700000000000;   // vast beginmoment, zodat de uitslag niet per run verschilt
 
 // WAAROM `connected` en `demoMode` hier wél te sturen zijn en `_trBezig` niet.
 // pidlane-testrun.js zit volledig in een IIFE. `_trBezig` is dus een
@@ -76,6 +92,7 @@ function rijd(s, tikken, plan, opties) {
   for (let i = 0; i < tikken; i++) {
     if (o.gatBij === i) t += (o.gatMs || 60000);   // de app lag stil
     else t += stap;
+    s._klokNu = t;                                // stempelklok voor deze tik
     plan(s, i, t);
     s.PLRit.tik(t);
   }
@@ -97,10 +114,18 @@ function keurBewegingTellen(s) {
   });
   const p = s.PLRit.per();
   if (!p['010C']) { uit.push('010C helemaal niet bemonsterd'); return uit; }
-  if (p['010C'].veranderingen !== 19) uit.push('010C: ' + p['010C'].veranderingen + ' wijzigingen, verwacht 19');
-  if (p['010C'].min !== 800) uit.push('010C min ' + p['010C'].min + ', verwacht 800');
+  // 18 en niet 19, en min 810 en niet 800: de eerste waarneming van een PID
+  // telt sinds 01-09 niet mee. Bij die eerste tik is het stempel nog onbekend
+  // en kan de waarde van minuten vóór de rit zijn — precies de stale waarde uit
+  // #74. Pas een stempel dat VERSCHUIFT bewijst een leesbeurt binnen deze rit.
+  if (p['010C'].veranderingen !== 18) uit.push('010C: ' + p['010C'].veranderingen + ' wijzigingen, verwacht 18');
+  if (p['010C'].min !== 810) uit.push('010C min ' + p['010C'].min + ', verwacht 810 (eerste waarneming telt niet mee)');
   if (p['010C'].max !== 990) uit.push('010C max ' + p['010C'].max + ', verwacht 990');
   if (!p['0123']) { uit.push('0123 niet bemonsterd'); return uit; }
+  // 0123 wordt élke tik geschreven met dezelfde waarde: dat is een sensor die
+  // WEL wordt uitgevraagd en niet beweegt. Alleen zó mag "bevroren" gemeld
+  // worden; een PID die niet geschreven wordt hoort in de niet-gemeten groep.
+  if (p['0123'].n < 2) uit.push('0123: ' + p['0123'].n + ' verversingen — hij werd wél uitgevraagd, dus dit hoort een meting te zijn');
   if (p['0123'].veranderingen !== 0) uit.push('0123: ' + p['0123'].veranderingen + ' wijzigingen, verwacht 0 (vastgevroren)');
   if (p['0123'].min !== 9900 || p['0123'].max !== 9900) uit.push('0123 min/max ' + p['0123'].min + '/' + p['0123'].max + ', verwacht 9900/9900');
   if (p['010D'].max !== 50) uit.push('010D max ' + p['010D'].max + ', verwacht 50');
@@ -193,7 +218,7 @@ function keurRommelGenegeerd(s) {
   if (p['019D']) uit.push('een tekstwaarde is als meting geteld (019D)');
   if (p['019E']) uit.push('NaN is als meting geteld (019E)');
   if (!p['010C']) { uit.push('010C helemaal weg door één null'); return uit; }
-  if (p['010C'].min !== 800) uit.push('010C min ' + p['010C'].min + ' — null heeft de min vergiftigd');
+  if (p['010C'].min !== 801) uit.push('010C min ' + p['010C'].min + ' — verwacht 801 (eerste waarneming telt niet mee); null heeft de min vergiftigd');
   return uit;
 }
 
@@ -210,6 +235,95 @@ function keurWisIsSchoon(s) {
   if (s.PLRit.herverbindingen() !== 0) uit.push('herverbindingen niet op 0 na wis()');
   if (s.PLRit.duurS() !== 0) uit.push('duur niet op 0 na wis()');
   if (s.PLRit.monsters() !== 0) uit.push('monsters niet op 0 na wis()');
+  return uit;
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// #74 — GEHEUGEN IS GEEN METING
+// ══════════════════════════════════════════════════════════════════
+// De duurste bug van dit bestand. PLRit telde elke sleutel in `pidVals` als
+// monster, en `pidVals` bewaart de laatst bekende waarde tot de verbinding
+// verbroken wordt. Een PID die één keer gelezen was leverde daarna eeuwig
+// "monsters met nul veranderingen" — en blok 14 noemde dat "bevroren tijdens
+// het rijden". In de run van 01-09 melden 0123 en 0159 evenveel monsters (56)
+// als 010B, terwijl 010B er 390 busreads had en die twee nul. Op #19 is die
+// meting drie keer gebruikt en één keer als sluitingsbewijs.
+//
+// De vier controles hieronder toetsen de reparatie; de tegenproef eronder
+// speelt dezelfde rit met de OUDE regel en laat zien dat die er wél in trapt.
+
+// Een rit waarin 010C elke tik ververst wordt en 0123 alleen vóór de rit één
+// keer geschreven is — precies de stand van 0123/0159 op 01-09.
+function ritMetStaleSensor(s) {
+  s.PLRit.wis();
+  s._klokNu = T0 - 300000;          // vijf minuten vóór de rit
+  s.pidVals['0123'] = 10080;        // één keer gelezen, daarna nooit meer
+  rijd(s, 20, function (sb, i) { sb.pidVals['010C'] = 800 + i * 10; });
+  return s.PLRit.per();
+}
+
+function keurStaleNietGeteld(s) {
+  const uit = [];
+  const p = ritMetStaleSensor(s);
+  if (!p['0123']) { uit.push('0123 komt helemaal niet in per() voor — hij hoort er te staan als NIET gemeten'); return uit; }
+  if (p['0123'].n !== 0)
+    uit.push('0123 telt ' + p['0123'].n + ' verversing(en) terwijl hij tijdens de rit nooit is uitgevraagd — dit is #74');
+  if (p['0123'].tikken !== 20)
+    uit.push('0123 zag ' + p['0123'].tikken + ' tikken, verwacht 20 — het aantal tikken hoort wél geteld te worden');
+  if (!p['010C'] || p['010C'].n < 2)
+    uit.push('010C werd elke tik ververst en telt toch geen metingen — dan meet de waarnemer niets meer');
+  const d = s.PLRit.dekking();
+  if (d.nietGemeten.indexOf('0123') === -1)
+    uit.push('0123 staat niet in dekking().nietGemeten: ' + JSON.stringify(d));
+  if (d.gemeten.indexOf('010C') === -1)
+    uit.push('010C staat niet in dekking().gemeten: ' + JSON.stringify(d));
+  return uit;
+}
+
+// Twee stempels is één bewezen leesbeurt, en dat is te weinig om over beweging
+// te oordelen. Zo'n PID hoort in een eigen groep, niet bij "bewoog niet".
+function keurEenmaligApart(s) {
+  const uit = [];
+  s.PLRit.wis();
+  rijd(s, 12, function (sb, i) { if (i < 2) sb.pidVals['0159'] = 9000 + i; sb.pidVals['010C'] = 800 + i; });
+  const p = s.PLRit.per();
+  if (!p['0159']) { uit.push('0159 ontbreekt in per()'); return uit; }
+  if (p['0159'].n !== 1) uit.push('0159 telt ' + p['0159'].n + ' verversingen, verwacht 1');
+  const d = s.PLRit.dekking();
+  if (d.eenmalig.indexOf('0159') === -1) uit.push('0159 staat niet in dekking().eenmalig: ' + JSON.stringify(d));
+  return uit;
+}
+
+// Geen versheidsbron = niets gemeten, en dat moet HARD gemeld worden. Een
+// stille terugval op de oude telling is hoe #74 vier ritten lang onzichtbaar
+// bleef; die mag hier dus niet terugkomen.
+function keurGeenBron(s) {
+  const uit = [];
+  s.PLRit.wis();
+  const bewaard = s._pidLastUpd;
+  s._pidLastUpd = null;
+  rijd(s, 10, function (sb, i) { sb.pidVals['010C'] = 800 + i; });
+  const b = s.PLRit.bron();
+  if (b.stempels) uit.push('bron() meldt een versheidsbron terwijl _pidLastUpd null is');
+  if (!b.zonderBron) uit.push('bron() telde 0 tikken zonder versheidsbron, verwacht 10');
+  if (s.PLRit.monsters() !== 0) uit.push(s.PLRit.monsters() + ' verversingen geteld zonder versheidsbron — dat is de stille terugval');
+  s._pidLastUpd = bewaard;
+  return uit;
+}
+
+// De kern los, met alle vier de uitkomsten op een rij.
+function keurNeemUitkomsten(s) {
+  const uit = [];
+  const leeg = function () { return { n: 0, tikken: 0, gemist: 0, min: 0, max: 0, laatst: 0, veranderingen: 0, tLaatsteVer: 0, stempel: null }; };
+  let e = leeg();
+  if (s.PLRit._neem(e, 5, undefined, 1) !== 'geen-stempel') uit.push('een ontbrekend stempel wordt niet als "geen-stempel" gemeld');
+  e = leeg();
+  if (s.PLRit._neem(e, 5, 100, 1) !== 'eerste-waarneming') uit.push('de eerste waarneming wordt niet als zodanig gemeld');
+  if (s.PLRit._neem(e, 5, 100, 2) !== 'ongewijzigd') uit.push('een onveranderd stempel wordt niet als "ongewijzigd" gemeld');
+  if (s.PLRit._neem(e, 6, 200, 3) !== 'gemeten') uit.push('een verschoven stempel levert geen meting op');
+  if (e.n !== 1) uit.push('na één verschoven stempel staat n op ' + e.n + ', verwacht 1');
+  if (e.gemist !== 2) uit.push('gemist staat op ' + e.gemist + ', verwacht 2');
   return uit;
 }
 
@@ -234,7 +348,8 @@ toetsSchoon('er wordt bemonsterd onder normale omstandigheden',
   (function () {
     S.PLRit.wis();
     rijd(S, 5, function (sb, i) { sb.pidVals['010C'] = 800 + i; });
-    return S.PLRit.monsters() === 5 ? [] : [S.PLRit.monsters() + ' monsters na 5 tikken'];
+    // 4 en niet 5: de eerste waarneming legt alleen het stempel vast.
+    return S.PLRit.monsters() === 4 ? [] : [S.PLRit.monsters() + ' verversingen na 5 tikken, verwacht 4'];
   })());
 
 toetsSchoon('bewegende en vastgevroren sensoren worden onderscheiden', keurBewegingTellen(S));
@@ -246,6 +361,12 @@ toetsSchoon('de _trBezig-guard staat vóór de bemonstering (broncontrole, zie b
 toetsSchoon('er wordt niet bemonsterd in demomodus', keurNietInDemo(S));
 toetsSchoon('niet-getallen vergiftigen de min/max niet', keurRommelGenegeerd(S));
 toetsSchoon('wis() maakt alles leeg', keurWisIsSchoon(S));
+
+// ── #74 ──────────────────────────────────────────────────────────
+toetsSchoon('een PID die alleen in het geheugen staat, telt niet als meting', keurStaleNietGeteld(S));
+toetsSchoon('één verversing is te weinig voor een oordeel', keurEenmaligApart(S));
+toetsSchoon('zonder versheidsbron wordt er niets geteld', keurGeenBron(S));
+toetsSchoon('_neem() geeft alle vier de uitkomsten', keurNeemUitkomsten(S));
 
 // ── tegenproef ───────────────────────────────────────────────────
 // De controles moeten rood kunnen worden. Elke tegenproef voert dezelfde
@@ -309,6 +430,35 @@ toetsSchoon('een guard met de verkeerde vorm wordt gezien',
       '    Object.keys(pidVals).forEach(function(p){}); }\n})();');
     return r.some(function (x) { return x.indexOf('niet als') > -1; }) ? []
       : ['de broncontrole accepteerde een guard die niets afdwingt: ' + (r.join(' | ') || '(niets)')];
+  })());
+
+// DE TEGENPROEF OP #74. Dezelfde rit, maar met de telregel van vóór 01-09
+// nagebouwd: elke sleutel in pidVals verhoogt `n`, het stempel doet niet mee.
+// Zakt deze controle niet, dan toetst keurStaleNietGeteld() niets.
+function oudeNeem(e, waarde) {
+  e.tikken++;
+  e.n++;
+  if (waarde < e.min) e.min = waarde;
+  if (waarde > e.max) e.max = waarde;
+  if (waarde !== e.laatst) { e.veranderingen++; e.laatst = waarde; }
+  return 'gemeten';
+}
+
+toetsSchoon('de oude, stempelloze telregel wordt gezien',
+  (function () {
+    // Dezelfde rit als hierboven, handmatig doorgerekend met de oude regel.
+    const e = { n: 0, tikken: 0, gemist: 0, min: 10080, max: 10080, laatst: 10080, veranderingen: 0, stempel: null };
+    for (let i = 0; i < 20; i++) oudeNeem(e, 10080);
+    const klachten = [];
+    if (e.n !== 20) klachten.push('de nagebouwde oude regel telt ' + e.n + ' monsters, verwacht 20 — dan is hij niet goed nagebouwd');
+    if (e.veranderingen !== 0) klachten.push('de nagebouwde oude regel meldt beweging waar die er niet is');
+    if (klachten.length) return klachten;
+    // Dit IS de bug: twintig "monsters" en nul veranderingen voor een sensor
+    // die geen enkele keer is uitgevraagd. Blok 14 las dat als "bevroren
+    // tijdens het rijden — parser- of definitiefout" (#19).
+    const echt = ritMetStaleSensor(S)['0123'];
+    return (echt && echt.n === 0) ? []
+      : ['de echte regel telt ' + (echt ? echt.n : '?') + ' verversingen voor een niet-uitgevraagde PID — #74 is terug'];
   })());
 
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));

@@ -5,9 +5,13 @@
 > nergens anders — een kopie in een kennisbank loopt achter en gaat de code
 > tegenspreken. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-09-01 — evaluatie van de testrun van 22:32, de eerste
-> rit sinds drie opleveringen: zes meetfouten in de testrun zelf (§11, issues
-> #74 t/m #79), waarvan één de sluiting van #19 onderuithaalt.
+> Laatst bijgewerkt: 2026-09-01 — testrun 6.0: #74 gerepareerd (de ritwaarnemer
+> telt verversingen in plaats van geheugen, §11) en de begeleide rit erbij —
+> tien stappen met markeringen, pauze en een afrondknop die het verslag altijd
+> wegschrijft, plus wat er verder te automatiseren valt (§20).
+> Daarvóór dezelfde dag: evaluatie van de testrun van 22:32, de eerste rit sinds
+> drie opleveringen: zes meetfouten in de testrun zelf (§11, issues #74 t/m
+> #79), waarvan één de sluiting van #19 onderuithaalt.
 > Daarvóór dezelfde dag: issues #68 en #66: de slimme weergave is de
 > STANDAARDweergave (en de opgeslagen voorkeur wordt eindelijk teruggelezen),
 > er is een vierde vak "Tellerplaat" met verticale meters voor het gaspad, en
@@ -631,7 +635,7 @@ de pas, en dan is de vraag welke klopt.
 | [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | bulkrecorder schrijft UTC, logger lokale tijd | bug |
 | [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | de app bevriest op de achtergrond | groot |
 | [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — wordt dat één poort? | besluit |
-| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` — **heropend 01-09**: de sluiting rustte op een meting die door #74 onbruikbaar blijkt | meten |
+| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` — heropend 01-09; de meting is met #74 gerepareerd, nu nog een rit waarin ze in de pollronde staan | meten |
 | [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
 | [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — de bedrading staat sinds 01-09 groen in blok 5, de hoofdvraag wacht op een rit van tien minuten | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
@@ -644,7 +648,6 @@ de pas, en dan is de vraag welke klopt.
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 | [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
 | [#72](https://github.com/NewspeedyNL/PidLane/issues/72) | de app-log kapt stil af op 500 regels | bug |
-| [#74](https://github.com/NewspeedyNL/PidLane/issues/74) | **`PLRit` telt geheugen in plaats van metingen** — blok 14 verklaart niet-gepollde PIDs "bevroren" | bug |
 | [#75](https://github.com/NewspeedyNL/PidLane/issues/75) | "Meldingen sinds het begin van deze run" telt de hele ringbuffer | bug |
 | [#76](https://github.com/NewspeedyNL/PidLane/issues/76) | blok 7 spiegelt de `PLLoad`-regel van vóór 23-08 | bug |
 | [#77](https://github.com/NewspeedyNL/PidLane/issues/77) | `PLRit` telt de eerste verbinding als herverbinding | bug |
@@ -652,7 +655,7 @@ de pas, en dan is de vraag welke klopt.
 | [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
-#14, #16, #22, #24, #25 en #30. De uitleg eromheen blijft hieronder staan.
+#14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). De uitleg eromheen blijft hieronder staan.
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
@@ -727,6 +730,39 @@ antwoord uit de verkeerde bron haalt en er tóch een stellige conclusie op
 plakt — inclusief een advies dat je onderzoek kost. De reparatiehaak bestaat
 al: `updPID()` zet `_pidLastUpd[pid]`, en dat versheidsstempel maakt "niet
 gemeten" onderscheidbaar van "gemeten en niet bewogen". PLRit gebruikt het niet.
+
+
+**GEREPAREERD op 01-09-2026 (testrun 6.0).** `PLRit` leest nu `_pidLastUpd` —
+het versheidsstempel dat `updPID()` bij élke geparste waarde zet, ook als de
+waarde gelijk bleef. Verschuift dat stempel niet tussen twee tikken, dan is er
+niets gemeten. De telregel zit in `PLRit._neem()` met vier uitkomsten: gemeten,
+ongewijzigd stempel, geen stempel, en *eerste waarneming*.
+
+Die laatste is een bewuste keuze die één meting per PID kost. Bij de eerste tik
+waarin een PID opduikt is zijn stempel nog onbekend en kan de waarde van vóór de
+rit zijn. Alleen een stempel dat verschúift bewijst een leesbeurt binnen deze
+rit. De telling dwaalt daarmee altijd naar "nog niet gemeten" in plaats van naar
+een verzonnen monster — en dat is de kant waar hij moet dwalen, want de
+omgekeerde fout is deze bug.
+
+**Er is geen stille terugval.** Ontbreekt `_pidLastUpd` helemaal, dan meet
+`PLRit` niets en meldt blok 14 dat als FOUT. Een terugval die "gewoon iets"
+meet is precies hoe dit vier ritten lang onzichtbaar bleef.
+
+Blok 14 scheidt nu vijf groepen waar er twee waren: bewogen, gemeten maar stil,
+hoort stil te staan, te weinig gemeten, en niet gemeten. Alleen de tweede is de
+populatie voor de opruimregel (#16). De steunbitmaskers `0100`/`0120`/`0140`/
+`0160` en `0102` zijn aan de "hoort stil te staan"-lijst toegevoegd: *"0120 vast
+op 160"* was de eerste byte van een bitmasker en betekende niets.
+
+`test-rit.js` modelleert de stempels sinds deze ronde met een `Proxy` op
+`pidVals`, precies zoals `updPID()` ze zet — de oude test slaagde omdat hij de
+bug modelleerde. Vier nieuwe toetsen plus een tegenproef die de oude telregel
+nabouwt; bouw je de fout terug in `PLRit`, dan worden zeven toetsen rood.
+
+Wat hier **niet** mee opgelost is: #19 is heropend maar nog niet beantwoord.
+Daarvoor is een rit nodig waarin `0123` en `0159` in de pollronde staan, en dat
+is stap 2 van de begeleide rit (§20).
 
 ### Vier kleinere meetfouten uit dezelfde run — 01-09-2026 (issues #75 t/m #78)
 
@@ -2489,6 +2525,105 @@ Onderaan `pidlane-testrun.js` staat `CAMPAGNE`: de vragen die déze versie moet
 beantwoorden. Elke update herschrijft dat blok; de rest van het bestand blijft.
 Het staat bovenaan het logboek, zodat achteraf zichtbaar is welke vraag een run
 moest beantwoorden en of hij dat deed.
+
+### De begeleide rit (01-09-2026, testrun 6.0)
+
+De campagne hierboven was een tekst die je vóór het wegrijden las en onderweg
+moest onthouden. Dat werkte niet. De rit van 01-09 22:32 verloor drie vragen
+tegelijk, geen van drieën door een bug: er werd vijf minuten gereden waar er
+tien nodig waren, "Rit nulstellen" is niet ingedrukt, en `0123`/`0159` stonden
+niet in de pollronde terwijl de hoofdvraag over die twee ging. Het verslag
+meldde dat pas achteraf, als *"staat hij in de actieve selectie?"* en *"niet
+uitgevoerd deze run"*.
+
+**Een voorwaarde die je achteraf meldt is een verwijt; dezelfde voorwaarde
+vóóraf is een knop.** Dat is de hele gedachte. `PLBegeleid` loopt tien stappen
+af. Elke stap zegt wat hij is, wáárom hij moet, wat de app zojuist zelf gedaan
+heeft en wat jij moet doen — en je sluit hem af met een knop.
+
+| # | stap | wat de app zelf doet |
+|---|---|---|
+| 1 | verbinding en versheidsbron | controleert `connected`, `_pidLastUpd`, `PLRit`, `PLBudget` |
+| 2 | de meet-PIDs in de selectie | `pidToevoegen(RIT_PIDS)` en meldt de weigeringen |
+| 3 | alle aanvragers aan | start waakronde, rit-monitor en bulk-recorder |
+| 4 | nulmeting | `PLRit.wis()` + `PLBudget.wis()` op een eigen knop |
+| 5 | rijden (≥10 min) | toont live hoeveel PIDs er écht ververst worden |
+| 6 | één keer stevig optrekken | markeert het moment met snelheid en toerental |
+| 7 | live view beoordelen | sluit het scherm, vraagt om een oordeel |
+| 8 | logboek nalopen | opent het logboek |
+| 9 | de meetblokken | `startTestrun()` |
+| 10 | afronden | schrijft het verslag weg |
+
+Drie ontwerpkeuzes, en ze hangen samen:
+
+1. **De stappen zijn data, geen doorlopende code.** Volgorde en voorwaarden
+   staan in één lijst, zodat `test-begeleid.js` ze zonder browser kan nalopen
+   en een volgende oplevering er een stap in kan zetten zonder de motor aan te
+   raken.
+2. **`controle()` beslist niet óf je door mag, maar wát er in het verslag
+   komt.** Doorgaan kan altijd — de auto staat stil terwijl je in dit scherm
+   zit en de bestuurder heeft het laatste woord. Wel is er verschil tussen
+   `gedaan`, `gedaan-met-bezwaar` (je zag de waarschuwing en ging door) en
+   `overgeslagen` (je drukte op Overslaan). Alle drie komen ze in het verslag.
+3. **Pauzeren en afronden staan bij élke stap.** Een rit die halverwege moet
+   stoppen levert een half verslag op, met een regel `NIET MEER AAN
+   TOEGEKOMEN` die de open stappen bij naam noemt. Dat is oneindig veel meer
+   waard dan een verloren rit, en het is de reden dat de afrondknop overal
+   staat.
+
+**Markeringen.** `plMarkeer(tekst, opmerking)` schrijft naar vier plekken
+tegelijk: de app-log, de BT-log, de bulk-recorder en een eigen lijst die
+bovenaan het verslag komt. Vier, omdat ze op vier verschillende momenten
+teruggelezen worden en er anders precies één wordt bijgehouden. Snelheid en
+toerental gaan mee uit `pidVals` — dat is de laatst bekende waarde en niet per
+se een verse meting, en dat staat er in het verslag zo bij.
+
+### Wat hierna nog te automatiseren valt, en wat niet
+
+Nagedacht bij het bouwen van 6.0, opgeschreven zodat de volgende ronde niet
+opnieuw begint. In volgorde van opbrengst.
+
+**1. Een meetgeschiktheidspoort vóór elk blok.** De begeleide rit dwingt de
+voorwaarden nu af aan de vóórkant, maar de meetblokken zelf doen dat nog niet:
+blok 13 meet STPX ook als de auto stilstaat, en meldt daarna zelf dat de meting
+daarom niets zegt. Dat is een halve stap. Elk blok zou moeten kunnen zeggen
+*"deze vraag is nu niet te beantwoorden, en dít ontbreekt eraan"* — vóórdat het
+de bus belast. Blok 14 doet dat sinds #74 wél (`_meetStand()`); dat patroon is
+uit te breiden naar 7, 10 en 13.
+
+**2. Een machineleesbare voet onder het verslag.** Het verslag is nu tekst voor
+mensen. Eén JSON-blok onderaan met de uitslagen per controle (id, staat, getal)
+maakt twee dingen mogelijk die nu handwerk zijn: automatisch verschillen zien
+tussen twee ritten, en een regressie herkennen die als "LET OP" wegvalt tussen
+honderd regels. De id's bestaan al — `_boek()` krijgt blok en naam mee.
+
+**3. Runvergelijking.** Met die voet erbij kan de testrun bij de start de
+vorige run uit `localStorage` lezen en meteen melden wat er veranderd is. De
+raildruk-geschiedenis van #19 (bewoog / bewoog niet / bewoog niet) had dan
+meteen als tegenstrijdig gemeld kunnen worden in plaats van drie ritten lang
+per stuk beoordeeld.
+
+**4. Een zelfcontrole op de meetinstrumenten.** #29, #74, #75 en #76 zijn alle
+vier dezelfde fout: een controle die zijn antwoord uit de verkeerde bron haalt
+en er tóch een stellige conclusie op plakt. Dat is een patroon, geen reeks
+toevalligheden. Een blok dat aan het begin van elke run naloopt of elke bron
+bestaat en beweegt — `_pidLastUpd`, `pidOpgeruimdLijst`, `PLBus.stats().perPid`,
+`_pidHealth` — vangt de volgende voordat er een rit aan opgaat. Blok 5 doet dit
+sinds 6.0 voor twee bronnen; het hoort een eigen, blijvend blok te zijn in
+plaats van iets dat per oplevering wordt herschreven.
+
+**5. Automatisch markeren op gebeurtenissen.** Optrekken, remmen, een
+herverbinding en een DTC zijn uit de data te herkennen. Zelf markeren blijft
+nodig voor wat alleen de bestuurder weet ("hier klonk het raar"), maar de
+mechanische helft hoeft niet met de hand.
+
+**Wat niet te automatiseren is, en waarom dat geen tekortkoming is.** Of de
+tellerplaat *iets zegt* als je intrapt; of een temperatuurschaal leesbaar is;
+of de onderste regel vrij van de Android-knoppen blijft; of een geluid
+verontrustend klinkt. Dat zijn oordelen, en een oordeel dat je automatiseert is
+een aanname die je niet meer terugziet. Wat wél kan, en wat 6.0 doet, is ze op
+het juiste moment vrágen en het antwoord vastleggen — inclusief "niet kunnen
+kijken", want ook dat is een uitkomst.
 
 ### De selectie overschrijven
 
