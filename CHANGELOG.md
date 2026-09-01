@@ -11,6 +11,83 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — DE RITWAARNEMER MEET WEER,
+                               EN DE RIT WORDT BEGELEID
+
+       • 📏 DE RITWAARNEMER TELDE GEHEUGEN IN PLAATS VAN METINGEN
+         (issue #74). PLRit telde elke sleutel in pidVals als monster,
+         en pidVals bewaart de laatst bekende waarde tot de verbinding
+         verbroken wordt. Een sensor die één keer gelezen was — door de
+         gezondheidscheck, een eerdere sweep of blok 6 — leverde daarna
+         eeuwig "monsters met nul veranderingen" op, en blok 14 las dat
+         als "bevroren tijdens het rijden".
+
+         HOE JE HET ZAG. In de run van 01-09 melden alle PIDs precies 56
+         monsters: 010B met 390 busreads net zo goed als 0123 en 0159
+         met nul. Identieke tellingen bij totaal verschillende
+         busactiviteit — dat getal was het aantal tikken, niet het aantal
+         metingen. De conclusie eronder, "dit is een parser- of
+         definitiefout", ging over sensoren die niemand had uitgevraagd.
+
+         DIT HAALT DE SLUITING VAN #19 ONDERUIT. Dat issue ging op 27-08
+         dicht op "0123: 1 wijzigingen, 10130-15040 (108 monsters) — in
+         beweging". Eén wijziging met 4910 kPa spreiding over 108
+         monsters is geen bewegende sensor maar een PID die tweemaal is
+         gelezen. #19 staat weer open.
+
+         DE BRON BESTOND AL. updPID() zet _pidLastUpd[pid] bij elke
+         geparste waarde. Verschuift dat stempel niet tussen twee tikken,
+         dan is er niets gemeten. Ontbreekt de bron helemaal, dan meet
+         PLRit NIETS en zegt blok 14 dat — geen stille terugval, want zo
+         bleef deze fout vier ritten onzichtbaar.
+
+         BLOK 14 SCHEIDT NU VIJF GROEPEN waar er twee waren: bewogen,
+         gemeten maar stil, hoort stil te staan, te weinig gemeten, en
+         niet gemeten. Alleen de tweede is de populatie voor de
+         opruimregel. De steunbitmaskers 0100/0120/0140/0160 en 0102
+         staan nu bij "hoort stil te staan": "0120 vast op 160" was de
+         eerste byte van een bitmasker en betekende niets.
+
+       • 🧭 DE BEGELEIDE RIT — tien stappen in plaats van negen regels
+         tekst om te onthouden. De rit van 01-09 verloor drie vragen
+         tegelijk, geen van drieën door een bug: vijf minuten gereden
+         waar er tien nodig waren, niet genulsteld, en 0123/0159 buiten
+         de pollronde terwijl de hoofdvraag over die twee ging. Het
+         verslag meldde dat pas achteraf, als "staat hij in de actieve
+         selectie?" en "niet uitgevoerd deze run".
+
+         Een voorwaarde die je achteraf meldt is een verwijt; dezelfde
+         voorwaarde vooraf is een knop. Elke stap zegt wat hij is, waarom
+         hij moet, wat de app zojuist zelf deed en wat jij doet — en je
+         bevestigt hem. Overslaan mag, met de reden erbij, en die reden
+         komt in het verslag. Stap 2 zet de meet-PIDs in de selectie,
+         stap 3 zet alle aanvragers aan zodat de bus vol staat, stap 4 is
+         de nulmeting, stap 5 toont tijdens het rijden hoeveel PIDs er
+         ECHT ververst worden.
+
+         PAUZE EN AFRONDEN STAAN BIJ ELKE STAP. Moet je stoppen, dan krijg
+         je een half verslag met de gehaalde stappen, de markeringen en
+         een regel NIET MEER AAN TOEGEKOMEN. Beter dan een verloren rit.
+
+       • 📍 MARKEREN. Eén knop, vier bestemmingen: de app-log, de BT-log,
+         de bulk-recorder en het verslag — met kloktijd, opmerking,
+         snelheid en toerental. Zonder markering is een piek om 22:31:14
+         een getal zonder betekenis.
+
+       • 🧪 test-begeleid.js is nieuw (14 toetsen met tegenproeven) en
+         test-rit.js modelleert de versheidsstempels nu met een Proxy op
+         pidVals, precies zoals updPID ze zet — de oude test slaagde omdat
+         hij de bug modelleerde. Bouw je #74 terug in PLRit, dan worden
+         zeven toetsen rood.
+
+       • ⚠ NIET OPGELOST, en dat staat zo in de campagne: #75 (de
+         meldingenteller telt de hele ringbuffer), #76 (blok 7 rekent met
+         de PLLoad-regel van vóór 23-08), #77 (de eerste verbinding telt
+         als herverbinding) en #78 (een health-oordeel wordt nooit
+         herzien). Elk een eigen commit.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-01 (CET) — BLOK 14 LEEST BIJ DE BRON
 
        • 🧭 DE OPRUIMMELDING VAN BLOK 14 KLOPT WEER (issue #29). Elke
