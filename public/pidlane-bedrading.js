@@ -115,6 +115,11 @@ var KRITIEK = [
   // op de sigma die hier uitkomt; ontbreekt hij, dan blijven alleen de vijf
   // regelbevindingen over en verdwijnt "afwijkend voor deze auto" stil.
   'baselineBevinding',
+  // Deelt een PID in bij dashboard / temperatuur / rest (pidlane-data.js).
+  // renderGauges() bouwt de slimme weergave (issue #61) daarop; ontbreekt hij,
+  // dan belandt álles in het vak "beweegt" en is de indeling die de modus
+  // bestaansrecht geeft stil verdwenen.
+  'slimGroep',
   
   
 ];

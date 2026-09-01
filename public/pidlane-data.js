@@ -1255,6 +1255,32 @@ window.HUD_LABEL_DICT ={
     '011E':{ vast:false, map:{0:'Uit', 1:'Actief'} }
   };
 
+  /* ── SLIMME WEERGAVE — welke tegel hoort in welk vak (issue #61) ──────
+     Drie vakken, en de indeling is een inhoudelijke keuze, geen opmaak:
+
+       dash  Dashboard-achtige waarden: wat er in een auto op de teller
+             staat en rustig beweegt. Groot cijfer, geen trendlijn — een
+             sparkline van een brandstofmeter is een rechte streep.
+             Toerental, pedaalstand, gasklep en motorbelasting staan hier
+             BEWUST niet in: die springen alle kanten op en zijn juist als
+             trend leesbaar. Ze vallen daarom in 'rest'.
+       temp  Alles met eenheid °C — koelwater, olie, inlaatlucht, kat, DPF,
+             uitlaatgas. Samen in één balkdiagram in plaats van tien losse
+             tegels; zie slimTempSchaal() in pidlane-pids.js voor waar die
+             balk tegen afgezet wordt.
+       rest  De rest, compact, met trendlijn — maar alleen als het signaal
+             ook echt beweegt.
+
+     Deze lijst is een ALLOWLIST en geen uitsluitlijst: een PID die hier
+     niet in staat valt vanzelf in 'rest', wat de veilige kant is. */
+  window.SLIM_DASH = ['010D','012F','015E','0142'];
+  window.slimGroep = function(pid, def){
+    const d = def || (window.ALL_PID_DEFS && window.ALL_PID_DEFS[pid]) || null;
+    if(d && d.unit === '\u00b0C') return 'temp';
+    if(window.SLIM_DASH.indexOf(pid) > -1) return 'dash';
+    return 'rest';
+  };
+
   /* Staat deze PID in het tekstblok in plaats van in een tegel? */
   window.pidIsTekst = function(pid){
     return !!(window.PID_TEKST && window.PID_TEKST[pid]);

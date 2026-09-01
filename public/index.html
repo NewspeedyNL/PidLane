@@ -1054,6 +1054,9 @@ function closeConnOv(){
           <button class="pidview-btn active" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
           <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
           <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
+          <!-- Slimme weergave (issue #61): dashboardwaarden groot, temperaturen
+               als één balkdiagram, en een trendlijn alleen waar er iets beweegt. -->
+          <button class="pidview-btn" data-mode="slim" onclick="setPidView('slim')">🧠 Slim</button>
           <span class="pidview-scheid"></span>
           <button class="pidview-btn waak" id="waakBtn" onclick="toggleWaakronde()" title="Controleert op de achtergrond rustig de sensoren die je niet hebt aangevinkt">◉ Waakronde</button>
         </div>
