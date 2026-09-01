@@ -5,7 +5,10 @@
 > nergens anders — een kopie in een kennisbank loopt achter en gaat de code
 > tegenspreken. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-09-01 — issues #68 en #66: de slimme weergave is de
+> Laatst bijgewerkt: 2026-09-01 — evaluatie van de testrun van 22:32, de eerste
+> rit sinds drie opleveringen: zes meetfouten in de testrun zelf (§11, issues
+> #74 t/m #79), waarvan één de sluiting van #19 onderuithaalt.
+> Daarvóór dezelfde dag: issues #68 en #66: de slimme weergave is de
 > STANDAARDweergave (en de opgeslagen voorkeur wordt eindelijk teruggelezen),
 > er is een vierde vak "Tellerplaat" met verticale meters voor het gaspad, en
 > een temperatuurbalk zonder bekende grens zegt dat zelf (§11).
@@ -625,20 +628,12 @@ de pas, en dan is de vraag welke klopt.
 
 | # | wat | soort |
 |---|---|---|
-| [#12](https://github.com/NewspeedyNL/PidLane/issues/12) | blok 7 presenteert een nulmeting als "vrijwel geen verschil" | bug |
-| [#13](https://github.com/NewspeedyNL/PidLane/issues/13) | `merkGroep()`: BMW matcht op gelijkheid, MINI op prefix | bug |
-| [#14](https://github.com/NewspeedyNL/PidLane/issues/14) | PID `0143` staat er 256× naast | bug |
 | [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | bulkrecorder schrijft UTC, logger lokale tijd | bug |
-| [#22](https://github.com/NewspeedyNL/PidLane/issues/22) | zwevende chips liggen over de bulk-recorder | UI — oorzaak weggenomen 27-08 |
 | [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | de app bevriest op de achtergrond | groot |
 | [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — wordt dat één poort? | besluit |
-| [#16](https://github.com/NewspeedyNL/PidLane/issues/16) | opruimregel: drempel en terugweg | besluit |
-| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` over een hele rit | meten |
+| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` — **heropend 01-09**: de sluiting rustte op een meting die door #74 onbruikbaar blijkt | meten |
 | [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
-| [#24](https://github.com/NewspeedyNL/PidLane/issues/24) | restjes uit de bedradingssweep (vijf eindjes) | opruimen |
-| [#25](https://github.com/NewspeedyNL/PidLane/issues/25) | kleine staarten uit de testruns van 26-08 | opruimen |
-| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — beide bronfouten zijn 01-09 gerepareerd, wacht nu op een rit die het bevestigt | bug |
-| [#30](https://github.com/NewspeedyNL/PidLane/issues/30) | schakelende airco leest als ruw stationair | bug |
+| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — de bedrading staat sinds 01-09 groen in blok 5, de hoofdvraag wacht op een rit van tien minuten | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
 | [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
 | [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
@@ -648,10 +643,149 @@ de pas, en dan is de vraag welke klopt.
 | [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 | [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
+| [#72](https://github.com/NewspeedyNL/PidLane/issues/72) | de app-log kapt stil af op 500 regels | bug |
+| [#74](https://github.com/NewspeedyNL/PidLane/issues/74) | **`PLRit` telt geheugen in plaats van metingen** — blok 14 verklaart niet-gepollde PIDs "bevroren" | bug |
+| [#75](https://github.com/NewspeedyNL/PidLane/issues/75) | "Meldingen sinds het begin van deze run" telt de hele ringbuffer | bug |
+| [#76](https://github.com/NewspeedyNL/PidLane/issues/76) | blok 7 spiegelt de `PLLoad`-regel van vóór 23-08 | bug |
+| [#77](https://github.com/NewspeedyNL/PidLane/issues/77) | `PLRit` telt de eerste verbinding als herverbinding | bug |
+| [#78](https://github.com/NewspeedyNL/PidLane/issues/78) | `_pidHealth` wordt na de eerste scan nooit herzien | bug |
+| [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
+
+Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
+#14, #16, #22, #24, #25 en #30. De uitleg eromheen blijft hieronder staan.
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### De ritwaarnemer telt geheugen, geen metingen — 01-09-2026 (issue #74)
+
+Gevonden bij het nalezen van de testrun van 01-09 om 22:32, de eerste rit sinds
+drie opleveringen. **Dit is de duurste bevinding van die run en hij raakt drie
+regels in blok 14 tegelijk.**
+
+**Wat er misgaat.** `PLRit.tik()` loopt elke 5 s over álle sleutels van
+`pidVals` en verhoogt daar `n`. `pidVals` is een laatst-bekende-waarde-kaart
+zonder houdbaarheid: geschreven door `updPID()`, gewist bij het verbreken van
+de verbinding, en verder nooit. Een PID die één keer gelezen is — door de
+gezondheidscheck bij het verbinden, door een eerdere sweep, door blok 6 —
+blijft daarna in `pidVals` staan. PLRit telt daarvoor elke vijf seconden een
+"monster" met nul veranderingen. Dat kán niet anders, want niemand ververst hem.
+Blok 14 leest dat als *"deze sensor bewoog niet tijdens de rit"*.
+
+**Hoe je het in het rapport ziet.** Alle PIDs melden precies hetzelfde aantal
+monsters, hoe verschillend hun busactiviteit ook is:
+
+| PID | monsters in blok 14 | echte busreads (`PLBus.stats().perPid`) |
+|---|---|---|
+| `010B` MAP | 56 | 390 |
+| `0123` raildruk | 56 | niet in `perPid` — 0 |
+| `0159` raildruk | 56 | niet in `perPid` — 0 |
+
+Identieke tellingen bij 390 tegen 0 reads: PLRit telt tikken, geen metingen.
+De verhouding klopt ook: van de 53 "bemonsterde" PIDs bewogen er 21, en dat is
+exact de groep die het pollus uitvraagt.
+
+**Welke conclusies daardoor niet klopten.**
+
+- *"Raildruk 0123/0159 — nog steeds bevroren tijdens het rijden. Op directe
+  inspuiting kan dat niet: dit is een parser- of definitiefout."* Allebei
+  stonden ze niet in de actieve selectie en zijn ze tijdens de rit geen enkele
+  keer uitgevraagd. De waarden komen van vóór de rit. De juiste uitkomst is
+  "niet gemeten". Dit is dezelfde meting waarop #19 gesloten is.
+- *"22 bewogen niet ... dit is de populatie voor de opruimregel"* — die
+  populatie is grotendeels de verzameling PIDs die niemand uitvraagt. Een
+  drempel daarop kiezen (#16) is een drempel op een artefact. Er staan zelfs
+  steunbitmaskers in: `0120` "vast op 160" en `0140` "vast op 250" zijn de
+  eerste byte van het antwoord op `0120`/`0140` uit blok 6.
+- `0144` laat de vorm zien: de sweep leest `41447FE0` → 1,00 terwijl blok 14
+  "vast op 2" meldt. Twee getallen voor één PID, want het tweede komt uit een
+  oude `pidVals`-inschrijving.
+
+**Issue #19 is hierdoor heropend, en de fout zat er al twee keer eerder in.**
+De raildrukvraag is op 27-08 gesloten met deze meting: *"0123: 1 wijzigingen,
+10130–15040 (108 monsters) — allebei in beweging"*. Eén wijziging met een
+spreiding van 4910 kPa over 108 monsters is geen bewegende sensor; dat is een
+PID die in de hele sessie twee keer gelezen is en verder uit het geheugen werd
+geteld. Op 28-08 stond hij weer op 0 wijzigingen en is de sluiting al eens
+tegengesproken, maar zonder verklaring — en toen bleef hij dicht. De
+kanttekening die er destijds bij stond (*"1 wijzigingen telt hier waarschijnlijk
+overgangen tussen sample-blokken; het bereik is het bewijs, niet de teller"*)
+was de goede waarneming met de verkeerde verklaring: de teller klopte, hij
+telde alleen iets anders dan gedacht. Zolang `0123` en `0159` niet in de
+actieve selectie staan, meet blok 14 over die twee helemaal niets — en dat is
+in geen van de drie ritten het geval geweest.
+
+**De tegenspraak stond in het rapport zelf.** Blok 14 punt 2 meldt 22 bevroren
+sensoren; punt 4, dat sinds #29 bij de gate meet, meldt *"geen enkele sensor
+bleef lang genoeg stil"*. De gate had gelijk. Dat de twee elkaar tegenspreken
+was de ingang.
+
+**Waarom dit hier apart staat.** Dit is voor de derde keer dezelfde vorm als
+#29 en #12: niet een drempel die verkeerd staat, maar een controle die zijn
+antwoord uit de verkeerde bron haalt en er tóch een stellige conclusie op
+plakt — inclusief een advies dat je onderzoek kost. De reparatiehaak bestaat
+al: `updPID()` zet `_pidLastUpd[pid]`, en dat versheidsstempel maakt "niet
+gemeten" onderscheidbaar van "gemeten en niet bewogen". PLRit gebruikt het niet.
+
+### Vier kleinere meetfouten uit dezelfde run — 01-09-2026 (issues #75 t/m #78)
+
+Alle vier gevonden door het rapport tegen de code te leggen, geen van vieren
+gerepareerd in deze ronde.
+
+**#75 — "Meldingen sinds het begin van deze run" telt de hele ringbuffer.**
+De regel telt `app.length` en `bt.length` zonder tijdsgrens. Het rapport meldt
+"app-log 33 regels" terwijl de complete app-log 33 regels telt waarvan de
+laatste van 22:29:21 is — de run begon om 22:32:02. Er kwam dus niets bij en
+er werd 33 gemeld. Bij een lange rit liegt hetzelfde getal de andere kant op,
+want dan is de buffer afgekapt (#72).
+
+**#76 — blok 7 spiegelt de PLLoad-regel van vóór 23-08.** `PLBudget.zone()`
+rekent `bezet >= bezetOp || fout >= foutOp` — precies de OF die op 23-08 uit
+`PLLoad` is gehaald, met een half scherm commentaar erboven waarom bezetting
+alléén geen tegendruk is. De spiegel is niet meeverhuisd. Daardoor meldt het
+rapport "druk 87%" naast "geen enkele stap omlaag", wat leest als een defecte
+regelkring terwijl `PLLoad` deed wat hij hoort te doen: met de echte regel was
+`druk` nul keer waar (foutgraad ≤1%, `venGemMs` 193 tegen `traagMs` 400).
+In dezelfde regel: de Slotsom kan "0 van de N remmomenten was ongevraagd" niet
+onderscheiden van "er is nooit geremd, dus deze run zegt niets" — en op die
+Slotsom hangt of #15 dicht kan.
+
+**#77 — de eerste verbinding telt als herverbinding.** `vorigVerbonden` begint
+op `null` en de teller kijkt alleen naar `false`; de tikken vóór het verbinden
+zetten hem op `false`, dus de eerste normale verbinding telt mee. Het rapport
+meldt "0 gaten, 1 herverbinding" voor een rit waarin niets is verbroken, en de
+tekst eronder wijst je dan naar de bus of de adapter. Vals spoor in precies de
+meting die #18 moet beantwoorden.
+
+**#78 — `_pidHealth` wordt na de eerste scan nooit herzien.** Eén uitvraag per
+PID met 1500 ms timeout bij het verbinden, en dat oordeel blijft staan — het
+gaat bovendien mee het voertuigprofiel in. Het rapport noemt `0101`, `0121`,
+`012E` en `016D` "NIET-OK maar wél in de actieve selectie", terwijl blok 3 ze
+in dezelfde run alle vier gewoon uitleest en afsluit met "0 geen data, 0
+parserprobleem". `0101` en `0121` staan bovendien in de `MAG_STIL`-lijst van
+blok 14: twee modules die het over dezelfde twee PIDs oneens zijn. Blok 11 zegt
+zelf dat alle vier de haken voor een terugweg bestaan — wat ontbreekt is dat
+iemand ze aanroept met een geslaagde meting als aanleiding (hoort bij #16).
+
+### De veilige zones op een toestel — 01-09-2026 (issue #79, na #58 en #65)
+
+De enige FOUT van de run: *"het werkscherm loopt tot 854px door terwijl er op
+784px een navigatiebalk begint — de onderste 70px valt daarachter weg"*, op een
+SM-S947B met Android 16. De twee proeven erboven (`--pl-top` tegen
+`46 + --pl-sat`, en de onderkant van `.topbar`) staan groen, dus de bovenkant
+klopt en het token wordt gelezen. Het verschil is exact `--pl-sab`.
+
+Waarom dit nog geen reparatie is: de proef meet `#appGrid` tegen
+`innerHeight - sab`, en dat is een geldige toets voor de desktopregel
+(`height: calc(100dvh - --pl-top - --pl-sab)`) maar niet vanzelf voor de regel
+uit `@media (max-width:760px)`, waar `.app` `height:auto` krijgt en bewust de
+scrollende kolom is die langer dan het scherm mág zijn. Het kan dus de layout
+zijn óf de meting. Wat het uitmaakt is één blik op het toestel — scroll de live
+view helemaal naar beneden en kijk of de onderste regel vrij blijft van de drie
+knoppen, STAP 9 van de campagne, die deze rit niet is uitgevoerd. Dat #71 laat
+zien dat het probleem op deze app echt bestaat, maakt het onderzoeken waard;
+het maakt de meting nog niet juist.
 
 ### Blok 14 las de opruimregel in het verkeerde boek — 01-09-2026 (issue #29)
 
