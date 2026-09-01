@@ -120,6 +120,13 @@ var KRITIEK = [
   // dan belandt álles in het vak "beweegt" en is de indeling die de modus
   // bestaansrecht geeft stil verdwenen.
   'slimGroep',
+  // Wat blok 5 van de testrun nameet na de oplevering van 01-09 (issues
+  // #58 t/m #62). Elk van deze namen is een gedragsproef die stil zou
+  // overslaan als de module niet meekwam — en dan zegt de testrun "goed"
+  // terwijl er niets gemeten is.
+  'renderCorrelationBanner','bevindingenAan',     // pidlane-correlatie.js — #60
+  'setPidView',                                   // pidlane-pids.js       — #61
+  'plVoorAnalyse','plMeetcontextPromptLine','plMeetStabielVoorstel',  // pidlane-archief.js — #62
   
   
 ];
