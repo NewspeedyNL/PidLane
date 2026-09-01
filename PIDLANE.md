@@ -639,6 +639,9 @@ de pas, en dan is de vraag welke klopt.
 | [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
 | [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
 | [#52](https://github.com/NewspeedyNL/PidLane/issues/52) | de tokenchip blijft staan bij een beheerder | bug |
+| [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | welke vragen ontbreken nog in de meetcontext? | meten |
+| [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
+| [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" | meten |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
@@ -665,11 +668,11 @@ gewone app-schil — precies het scherm dat je het vaakst ziet. Er is nu één
 token erbij, `--pl-top` (= `46px + var(--pl-sat)`), en blok 3 van
 `test-schermranden.js` wijst elk kaal `calc(100vh - 46px)` af.
 
-> **Nog niet nagemeten op een toestel.** De hele rekensom hangt aan wat
-> Capacitor in `--safe-area-inset-*` zet. Levert dat verkeerde getallen, dan
-> klopt de som nog steeds en staat het beeld tóch fout. Blok 5 van de testrun
-> logt daarom de gemeten hoogtes; staan die op 0 terwijl er zichtbaar een balk
-> is, dan zit het probleem daar en niet in de CSS.
+> **Nog niet nagemeten op een toestel — issue #65.** De hele rekensom hangt
+> aan wat Capacitor in `--safe-area-inset-*` zet. Levert dat verkeerde
+> getallen, dan klopt de som nog steeds en staat het beeld tóch fout. Blok 5
+> van de testrun logt daarom de gemeten hoogtes; staan die op 0 terwijl er
+> zichtbaar een balk is, dan zit het probleem daar en niet in de CSS.
 
 **#60 — de balk liep vol, maar niet door de regels.** In demostand groeide
 "🔗 Automatische bevindingen" door tot voorbij de onderkant van het scherm.
@@ -694,7 +697,8 @@ onleesbaar: koelwater op 90 °C naast uitlaatgas op 600 °C zou een streepje
 naast een volle balk zijn, terwijl het eerste alarmerend is en het tweede
 volstrekt normaal. Voor een PID zonder `dH` én zonder `wH` valt de schaal
 terug op het maximum uit de definitie, en dan is de balk grof. Welke dat in de
-praktijk zijn, blijkt pas met een auto ernaast.
+praktijk zijn, blijkt pas met een auto ernaast — issue #66, samen met de
+drempel van 2% waarboven een signaal een trendlijn krijgt.
 
 **#62 — de vraag die de diagnose raakt.** Vóór een analyse werd alleen gevraagd
 of eerder gemaakte data hergebruikt mocht worden. Een auto met start/stop zet
