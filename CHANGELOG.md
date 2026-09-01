@@ -11,6 +11,50 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — BLOK 14 LEEST BIJ DE BRON
+
+       • 🧭 DE OPRUIMMELDING VAN BLOK 14 KLOPT WEER (issue #29). Elke
+         testrun vroeg "is er iets opgeruimd?" en zocht het antwoord door
+         in het log te grepen op het woord "opgeruimd". Op 27-08 meldde
+         hij "niets opgeruimd in 9 min — controleer of hij aanstaat",
+         terwijl het log van diezelfde rit twee opruimacties bevatte. De
+         regel stond aan en had gevuurd; het advies stuurde je naar
+         precies het onderzoek dat je niet moest doen.
+
+         DE OORZAAK IS DE BRON, NIET DE ZOEKACTIE. Allebei de logs zijn
+         ringbuffers: pidlane-auth.js kapt localLog af op 500 regels,
+         pidlane-btflow.js kapt _btLog af op 1400. Een rit van een half
+         uur wist daarmee zijn eigen bewijs — en wat als eerste sneuvelt
+         is het OUDSTE, dus juist de opruimactie van vroeg in de rit.
+         Blok 14 leest nu pidOpgeruimdLijst() uit de gate zelf: een Set
+         die de hele sessie blijft staan, met per PID de reden erbij. Het
+         log levert nog de tijdstippen en beslist verder niets.
+
+         VIER STANDEN, EN GEEN ENKELE STUURT NOG NAAR HET VERKEERDE
+         ONDERZOEK. Gate gevuld = een telling met reden. Gate leeg = ok,
+         mét de bron erbij: geen enkele sensor bleef lang genoeg stil, en
+         dat is een uitkomst en geen storing. Gate leeg terwijl het log er
+         wél een noemt = FOUT, want dan spreken twee plekken die hetzelfde
+         horen te weten elkaar tegen. Geen bron = geen conclusie.
+
+       • 🧪 test-opruimmelding.js is nieuw: 27 toetsen op de melding, met
+         de oude log-lezende versie nagebouwd als tegenproef. Bouw je de
+         fout terug in de echte functie, dan worden er 13 rood.
+
+       • 📋 Testrun 5.9: blok 5 meet de weg naar de gate in de draaiende
+         app — wat een node-test niet kan zien, en precies het gat waar
+         #29 aan leed — en controleert dat de zin "controleer of hij
+         aanstaat" in geen enkele stand meer terugkomt. CAMPAGNE vraagt om
+         de vergelijking die alleen een lange rit kan geven: noemt blok 14
+         sensoren die in het logboek niet meer terug te vinden zijn?
+
+       • ⚠️ NIET OPGELOST, MET OPZET: localLog kapt nog steeds STIL af.
+         shift() laat niets achter dat zegt dat er iets weg is; de BT-log
+         doet dat wél. Blok 14 heeft er geen last meer van, het logboek dat
+         je zelf openslaat nog wel. Staat in §11 van PIDLANE.md.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-01 (CET) — SLIM IS DE STANDAARD
 
        • 🧠 DE SLIMME WEERGAVE IS DE STARTWEERGAVE. Hij stond sinds
