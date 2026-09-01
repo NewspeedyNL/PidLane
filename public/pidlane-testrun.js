@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.7 (01-09-2026)';
+const TESTRUN_VERSIE = '5.8 (01-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1650,20 +1650,25 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 01-09-2026 (tweede) — issues #58 t/m #62.
-  // De controles van de terugknop-ronde zijn hier weg: die oplevering is
-  // afgerond en staat groen in test-terugknop.js (25 toetsen, drie
-  // tegenproeven). Wat hier staat, gaat over deze vijf:
+  // OPLEVERING 01-09-2026 (derde) — issues #68 en #66, plus de standaard.
   //
-  //   #58  de onderkant van het scherm viel weg achter de Android-knoppen
-  //   #59  het protocolkeuzescherm was twee telefoonhoogtes lang
-  //   #60  de bevindingenbalk liep vol in demostand
-  //   #61  nieuwe weergave "Slim": dashboard, temperatuurbalken, trend
-  //   #62  vragen vóór de analyse, zodat de AI start/stop niet als afslaan leest
+  //   #68  toerental, gaspedaal, gasklep en motorbelasting op één
+  //        tellerplaat met verticale meters, in plaats van los tussen de
+  //        rest — en de slimme weergave is nu de STANDAARDWEERGAVE
+  //   #66  een temperatuurbalk zonder bekende grens zegt dat zelf
   //
-  // Alle vijf zijn hier gedragsproeven die zichzelf opruimen. Waar dat niet
-  // kan (het protocolscherm hoort bij het verbinden) staat LET OP en niet
-  // FOUT — een controle die altijd rood staat wordt genegeerd.
+  // WAT HIER WEG IS EN WAAROM. De controles voor #59, #60, #61 en #62 van
+  // vanmiddag staan hier niet meer: die zijn afgerond en staan groen in
+  // test-protocolkeuze.js, test-bevindingen.js, test-slimmeweergave.js en
+  // test-meetcontext.js, mét tegenproef. Blok 5 hoort over DEZE oplevering
+  // te gaan; anders groeit hij bij elke ronde aan en wordt hij niet meer
+  // gelezen.
+  //
+  // Eén uitzondering: de #58-proef hieronder blijft staan. Niet uit gewoonte,
+  // maar omdat issue #65 nog open staat en juist deze meting nodig heeft —
+  // in een browser zijn beide veilige zones 0 en zegt hij niets, dus hij kan
+  // alleen op een toestel beantwoord worden. Verdwijnt hij hier, dan is er
+  // geen instrument meer voor die vraag.
   // ══════════════════════════════════════════════════════════════
 
   // ── TOEGEVOEGD 1 (#58): kloppen de veilige zones op dit toestel? ──
@@ -1704,36 +1709,10 @@ async function _blok5() {
            (sat + sab === 0 ? ' (browser: geen zones, dus deze proef zegt hier weinig)' : '');
   });
 
-  // ── TOEGEVOEGD 2 (#60): staan er hoogstens twee bevindingen in beeld? ──
-  // Zes verzonnen bevindingen erin, tellen, en daarna de echte stand
-  // terugzetten. De engine zelf blijft ongemoeid.
-  await _doe(5, 'De bevindingenbalk toont er hoogstens twee', function () {
-    if (typeof renderCorrelationBanner !== 'function')
-      return { staat: 'FOUT', detail: 'renderCorrelationBanner() ontbreekt — pidlane-correlatie.js is niet meegekomen' };
-    const nep = [];
-    for (let i = 1; i <= 6; i++) nep.push({ id: 'proef' + i, naam: 'Proefbevinding ' + i, uitleg: 'PROEF-' + i, ernst: 1, rang: 7 - i });
-    try {
-      if (typeof bevindingenAan === 'function' && !bevindingenAan())
-        return { staat: 'LET OP', detail: 'de balk staat uit (☰ → Bevindingen) — dan valt er niets te tellen' };
-      renderCorrelationBanner(nep);
-      const box = document.getElementById('corrBanner');
-      if (!box || box.style.display === 'none')
-        return { staat: 'FOUT', detail: 'met zes bevindingen komt er geen balk' };
-      const zichtbaar = (box.innerHTML.match(/PROEF-\d/g) || []).length;
-      if (zichtbaar > 2)
-        return { staat: 'FOUT', detail: 'er staan ' + zichtbaar + ' bevindingen in beeld — het plafond van 2 werkt niet (issue #60)' };
-      if (box.innerHTML.indexOf('nog 4 bevinding') < 0)
-        return { staat: 'FOUT', detail: 'de overige vier worden nergens aangeboden; ze zijn dan gewoon weg' };
-      return zichtbaar + ' van 6 in beeld, de rest achter "bekijk alles"';
-    } finally {
-      try { runCorrelationEngine(); } catch (e) { /* stil: de echte stand komt bij de volgende pollronde vanzelf terug */ }
-    }
-  });
-
-  // ── TOEGEVOEGD 3 (#61): bouwt de slimme weergave drie vakken? ──────
+  // ── TOEGEVOEGD 2 (#68): staat de tellerplaat er, met meters? ─────
   // Wisselt van weergave en zet hem daarna terug. De PID-selectie wordt niet
   // aangeraakt: alleen de manier waarop dezelfde tegels gerangschikt worden.
-  await _doe(5, 'Slimme weergave zet temperaturen bij elkaar', function () {
+  await _doe(5, 'De tellerplaat zet toeren, pedaal en belasting naast elkaar', function () {
     if (typeof setPidView !== 'function' || typeof slimGroep !== 'function')
       return { staat: 'FOUT', detail: 'setPidView() of slimGroep() ontbreekt — de weergave kan niet bestaan' };
     if (!activePIDs || !activePIDs.size)
@@ -1741,77 +1720,157 @@ async function _blok5() {
     const terug = pidViewMode;
     try {
       setPidView('slim');
-      const vakken = ['dash', 'temp', 'rest'].map(function (g) { return document.getElementById('slimSec-' + g); });
+      const vakken = ['dash', 'meter', 'temp', 'rest'].map(function (g) { return document.getElementById('slimSec-' + g); });
       if (vakken.some(function (v) { return !v; }))
-        return { staat: 'FOUT', detail: 'niet alle drie de vakken zijn opgebouwd (issue #61)' };
-      // Elke temperatuur hoort in het temperatuurvak, en nergens anders.
-      const fout = [];
-      let temps = 0;
+        return { staat: 'FOUT', detail: 'niet alle vier de vakken zijn opgebouwd (issue #68)' };
+      // Elk gaspad-signaal hoort op de tellerplaat, met een meter, en nergens
+      // anders. De temperaturen blijven waar ze sinds #61 al hoorden te staan.
+      const mis = [];
+      let meters = 0, temps = 0;
       activePIDs.forEach(function (pid) {
-        const d = getPidDef(pid); if (!d || d.unit !== '°C') return;
-        temps++;
+        const d = getPidDef(pid); if (!d) return;
+        const groep = slimGroep(pid, d);
+        if (groep !== 'meter' && groep !== 'temp') return;
         const tegel = document.getElementById('gc-' + pid);
         if (!tegel) return;                                   // tekst-PID of niet getekend
         const sec = tegel.parentNode && tegel.parentNode.parentNode;
-        if (!sec || sec.id !== 'slimSec-temp') fout.push(d.name);
-        if (!document.getElementById('sb-' + pid)) fout.push(d.name + ' (geen balk)');
+        if (!sec || sec.id !== 'slimSec-' + groep) { mis.push(d.name + ' (verkeerd vak)'); return; }
+        if (groep === 'meter') {
+          meters++;
+          if (!document.getElementById('sm-' + pid)) mis.push(d.name + ' (geen meter)');
+        } else {
+          temps++;
+          if (!document.getElementById('sb-' + pid)) mis.push(d.name + ' (geen balk)');
+        }
       });
-      if (fout.length)
-        return { staat: 'FOUT', detail: 'staat niet in het temperatuurvak: ' + fout.join(', ') };
-      if (!temps) return { staat: 'LET OP', detail: 'geen temperatuursensor geselecteerd; het balkdiagram is dan leeg' };
-      return temps + ' temperatuur(en) in één balkdiagram, drie vakken opgebouwd';
+      if (mis.length) return { staat: 'FOUT', detail: 'staat niet goed: ' + mis.join(', ') };
+      if (!meters && !temps)
+        return { staat: 'LET OP', detail: 'geen enkele meter- of temperatuursensor geselecteerd; er valt niets te tekenen' };
+      return meters + ' meter(s) op de tellerplaat, ' + temps + ' temperatuur(en) in het balkdiagram';
     } finally {
       try { setPidView(terug); } catch (e) { console.warn('setPidView terugzetten mislukt:', e); }
     }
   });
 
-  // ── TOEGEVOEGD 4 (#62): komen de antwoorden in de AI-prompt? ───────
-  // Een venster met vragen is pas iets waard als het antwoord ook verstuurd
-  // wordt. Hier wordt tijdelijk een antwoord gezet, de promptregel gelezen en
-  // de echte stand teruggezet.
-  await _doe(5, 'De meetcontext komt in de AI-prompt terecht', function () {
-    if (typeof plMeetcontextPromptLine !== 'function' || typeof plVoorAnalyse !== 'function')
-      return { staat: 'FOUT', detail: 'plVoorAnalyse()/plMeetcontextPromptLine() ontbreekt — er wordt niets gevraagd én niets meegestuurd' };
-    const terug = window._plMeetcontext;
+  // ── TOEGEVOEGD 3 (#68): start de app in de slimme weergave? ──────
+  // De opgeslagen voorkeur werd geschreven en nooit teruggelezen. Hier draait
+  // de echte herstelroute tegen de echte opslag — en daarna staat alles terug
+  // zoals het stond, want dit is een meting en geen instelling.
+  await _doe(5, 'De weergavekeuze overleeft een herstart', function () {
+    if (typeof plPidViewHerstel !== 'function')
+      return { staat: 'FOUT', detail: 'plPidViewHerstel() ontbreekt — de app negeert de opgeslagen voorkeur, zoals vóór #68' };
+    const nu = pidViewMode;
+    let bewaard = null;
+    try { bewaard = localStorage.getItem('pl_pidview'); }
+    catch (e) { return { staat: 'LET OP', detail: 'localStorage is niet te lezen; een voorkeur kan hier sowieso niet bewaard worden' }; }
     try {
-      window._plMeetcontext = { startstop: 'ja', klacht: 'nee', stabiel: '', extra: '' };
-      const t = plMeetcontextPromptLine();
-      if (t.indexOf('MEETCONTEXT') < 0)
-        return { staat: 'FOUT', detail: 'de antwoorden leveren geen MEETCONTEXT-blok op (issue #62)' };
-      if (!/start\/stop/i.test(t))
-        return { staat: 'FOUT', detail: 'start/stop staat op "ja" maar komt niet in de prompt — de AI leest de motor dan alsnog als afslaand' };
-      if (/onderbrekingen of gaten/i.test(t))
-        return { staat: 'FOUT', detail: 'een onbeantwoorde vraag levert tóch een promptregel op' };
-      const v = (typeof plMeetStabielVoorstel === 'function') ? plMeetStabielVoorstel() : null;
-      return 'promptregel klopt; voorstel voor stabiliteit nu: ' +
-             (v ? ((v.waarde || 'weet ik niet') + ' — ' + v.reden) : 'niet vast te stellen');
+      // 1. Niets opgeslagen → de standaard, en dat hoort 'slim' te zijn.
+      localStorage.removeItem('pl_pidview');
+      const standaard = plPidViewHerstel();
+      if (standaard !== 'slim')
+        return { staat: 'FOUT', detail: 'zonder opgeslagen voorkeur start de live view in "' + standaard + '"; issue #68 vroeg om Slim' };
+      // 2. Wél opgeslagen → die keuze wint. Dit is het stuk dat kapot was.
+      setPidView('numbers');
+      const her = plPidViewHerstel();
+      if (her !== 'numbers')
+        return { staat: 'FOUT', detail: 'een gekozen weergave overleeft de herstart niet: opgeslagen "numbers", teruggekregen "' + her + '"' };
+      return 'standaard = slim, en een eigen keuze wordt onthouden';
     } finally {
-      window._plMeetcontext = terug;
+      try {
+        if (bewaard === null) localStorage.removeItem('pl_pidview'); else localStorage.setItem('pl_pidview', bewaard);
+      } catch (e) { console.warn('pl_pidview terugzetten mislukt:', e); }
+      try { setPidView(nu); } catch (e) { console.warn('setPidView terugzetten mislukt:', e); }
     }
   });
 
-  // ── VERWIJDERD 1 (#62): is de oude, losse vraag écht weg? ─────────
-  await _doe(5, 'Het oude losse rapportenvenster bestaat niet meer', function () {
-    if (typeof _srAskUseContext !== 'undefined')
-      return { staat: 'FOUT', detail: '_srAskUseContext() staat er nog naast plVoorAnalyse(). Zolang die bestaat ' +
-        'kan een aanroeper er nog in blijven hangen, en dan krijgt de gebruiker twee vensters achter elkaar' };
-    return 'weg; alles loopt via plVoorAnalyse()';
+  // ── TOEGEVOEGD 4 (#66): welke temperatuurbalken hebben geen grens? ──
+  // Dit is géén slaag-of-zakproef maar een meting die een openstaande vraag
+  // beantwoordt. #66 vraagt wélke PIDs in de praktijk terugvallen op het
+  // PID-maximum; dat hangt af van wat de auto levert en is dus alleen hier,
+  // met een echte auto eraan, vast te stellen. De app markeert ze nu zelf,
+  // en de testrun schrijft op welke het zijn.
+  await _doe(5, 'De temperatuurbalken met een grove schaal staan gemarkeerd', function () {
+    if (typeof slimGroep !== 'function')
+      return { staat: 'FOUT', detail: 'slimGroep() ontbreekt — er is geen temperatuurvak' };
+    if (!activePIDs || !activePIDs.size)
+      return { staat: 'LET OP', detail: 'geen sensoren geselecteerd' };
+    const terug = pidViewMode;
+    try {
+      setPidView('slim');
+      const grof = [], fijn = [], mis = [];
+      activePIDs.forEach(function (pid) {
+        const d = getPidDef(pid); if (!d || d.unit !== '°C') return;
+        const bar = document.getElementById('sb-' + pid);
+        if (!bar || !bar.parentNode) return;
+        const zonderGrens = !(typeof d.dH === 'number' || typeof d.wH === 'number');
+        const gemarkeerd = bar.parentNode.classList.contains('grof');
+        if (zonderGrens !== gemarkeerd) mis.push(d.name);
+        (zonderGrens ? grof : fijn).push(d.name);
+      });
+      if (mis.length)
+        return { staat: 'FOUT', detail: 'de markering klopt niet voor: ' + mis.join(', ') + ' (issue #66)' };
+      if (!grof.length && !fijn.length)
+        return { staat: 'LET OP', detail: 'geen temperatuursensor geselecteerd' };
+      return fijn.length + ' met een eigen grens; ' +
+             (grof.length ? grof.length + ' op een grove schaal: ' + grof.join(', ') + ' — dat is het antwoord op #66'
+                          : 'geen enkele op een grove schaal');
+    } finally {
+      try { setPidView(terug); } catch (e) { console.warn('setPidView terugzetten mislukt:', e); }
+    }
   });
 
-  // ── VERWIJDERD 2 (#59): toont het protocolscherm nog alles tegelijk? ──
-  // Alleen te zien terwijl het scherm openstaat. Bij het verbinden dus even
-  // de testrun laten lopen, of anders met de hand nakijken (zie CAMPAGNE).
-  await _doe(5, 'Het protocolscherm toont niet meer alle protocollen tegelijk', function () {
-    const lijst = document.getElementById('networkList');
-    if (!lijst) return { staat: 'LET OP', detail: '#networkList bestaat niet — het verbindscherm is nooit geopend' };
-    const kaarten = lijst.querySelectorAll('.network-card').length;
-    if (!kaarten) return { staat: 'LET OP', detail: 'het protocolscherm staat niet open; deze proef hoort daar' };
-    const knop = document.getElementById('protoHandmatigBtn');
-    if (kaarten > 1 && !knop)
-      return { staat: 'FOUT', detail: kaarten + ' kaarten in beeld en geen knop om ze in te klappen (issue #59)' };
-    if (kaarten > 1)
-      return 'de handmatige lijst staat open (' + kaarten + ' kaarten) — dat mag, hij is met één knop weer dicht';
-    return 'één kaart in beeld' + (knop ? ', de rest achter "' + knop.textContent + '"' : '');
+  // ── VERWIJDERD 1 (#68): staan de meters nog in het vak "Beweegt"? ──
+  // De oude toestand van #61: toerental en belasting als losse tegels tussen
+  // de rest. Blijft daar één van achter, dan is de indeling half doorgevoerd
+  // en staat hetzelfde soort signaal op twee plekken — precies de dubbele
+  // betekenis waar dit project al drie keer een bug aan overhield.
+  await _doe(5, 'Geen enkel gaspad-signaal staat nog los in "Beweegt"', function () {
+    if (typeof setPidView !== 'function' || typeof slimGroep !== 'function')
+      return { staat: 'FOUT', detail: 'setPidView() of slimGroep() ontbreekt' };
+    if (!activePIDs || !activePIDs.size) return { staat: 'LET OP', detail: 'geen sensoren geselecteerd' };
+    const terug = pidViewMode;
+    try {
+      setPidView('slim');
+      if (!document.getElementById('slimSec-rest'))
+        return { staat: 'FOUT', detail: 'het vak "Beweegt" is niet opgebouwd' };
+      const achter = [];
+      (window.SLIM_METER || []).forEach(function (pid) {
+        if (!activePIDs.has(pid)) return;
+        const tegel = document.getElementById('gc-' + pid);
+        if (!tegel) return;
+        const sec = tegel.parentNode && tegel.parentNode.parentNode;
+        if (sec && sec.id === 'slimSec-rest') achter.push((getPidDef(pid) || {}).name || pid);
+      });
+      if (achter.length)
+        return { staat: 'FOUT', detail: achter.join(', ') + ' staat nog los in "Beweegt" in plaats van op de tellerplaat (issue #68)' };
+      return 'geen enkele; alle gaspad-signalen staan op de tellerplaat';
+    } finally {
+      try { setPidView(terug); } catch (e) { console.warn('setPidView terugzetten mislukt:', e); }
+    }
+  });
+
+  // ── VERWIJDERD 2 (#68): gooit het sensorkeuzescherm de weergave om? ──
+  // toggleLade() zette de weergave op 'dots' zodra de sensorlade openging.
+  // Dat was een stille overschrijving van een keuze die de gebruiker zelf had
+  // gemaakt, en met Slim als standaard elke sessie raak — sensoren kiezen is
+  // het eerste wat je doet. De lade gaat hier open en weer dicht.
+  await _doe(5, 'Het sensorkeuzescherm laat de weergave met rust', function () {
+    if (typeof toggleLade !== 'function')
+      return { staat: 'FOUT', detail: 'toggleLade() ontbreekt — de lade is niet te openen' };
+    const lade = document.getElementById('slPanel');
+    if (!lade) return { staat: 'LET OP', detail: '#slPanel bestaat niet; er is geen lade om te openen' };
+    const terug = pidViewMode;
+    const stondOpen = lade.classList.contains('lade-open');
+    try {
+      setPidView('slim');
+      if (!stondOpen) toggleLade('slPanel');
+      if (pidViewMode !== 'slim')
+        return { staat: 'FOUT', detail: 'het openen van de sensorlade zette de weergave op "' + pidViewMode + '" (issue #68)' };
+      return 'de lade opende zonder de weergave aan te raken';
+    } finally {
+      try { if (!stondOpen && typeof closeLades === 'function') closeLades(); } catch (e) { console.warn('closeLades mislukt:', e); }
+      try { setPidView(terug); } catch (e) { console.warn('setPidView terugzetten mislukt:', e); }
+    }
   });
 }
 
@@ -2566,55 +2625,55 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 01-09 (tweede) \u2014 issues #58 t/m #62',
+  titel: 'OPLEVERING 01-09 (derde) \u2014 de slimme weergave is de standaard (#68, #66)',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Vijf meldingen uit het gebruik, geen van alle diep maar alle vijf elke rit in beeld: de onderkant van het scherm viel weg achter de drie Android-knoppen (#58), het protocolkeuzescherm was langer dan het scherm (#59), de balk met automatische bevindingen liep vol (#60), de live view toonde te veel op \u00e9\u00e9n hoop (#61) en de AI kreeg te weinig context over de meting zelf (#62).',
+    'De slimme weergave uit #61 werkte, maar stond achter een knop die je elke keer opnieuw moest indrukken \u2014 en \u00e9\u00e9n groep sensoren stond er nog los in. Deze ronde maakt hem de standaard en bouwt de tellerplaat die #68 vroeg.',
 
-    'DE \u00c9\u00c9N NA GROOTSTE IS #58 EN DE OORZAAK IS LEERZAAM: op negen plekken stond het getal 46 als offset voor de topbalk. Dat klopte in de tijd dat die balk ook 46px hoog was. Sinds edge-to-edge is hij 46px PLUS de statusbalk, en dat verschil viel er onderaan uit \u2014 samen met de navigatiebalk die nergens werd meegeteld. Het is dus niet \u00e9\u00e9n kapot venster maar \u00e9\u00e9n verouderd getal, negen keer gekopieerd. Er is nu \u00e9\u00e9n token: --pl-top.',
+    'DE FOUT DIE HIERONDER ZAT IS DE MOEITE WAARD. setPidView() schreef de gekozen weergave netjes weg in pl_pidview, en NIEMAND las die sleutel ooit terug. De regel in pidlane-theme.js zei het er zelfs bij: "live view start altijd in puntjes-weergave (genegeerde voorkeur)". Een instelling die je kiest, die wordt opgeslagen en die de app bij de volgende start weggooit is geen instelling maar een knop die doet alsof. Er waren bovendien DRIE plekken die iets over de startweergave zeiden en ze zeiden het alle drie anders: pidViewMode ("dots"), de active-klasse in index.html ("full") en de aanroep in theme.js ("dots"). Nu is er \u00e9\u00e9n bron: PID_VIEW_STANDAARD.',
 
-    'DE \u00c9CHT GROOTSTE IS #62, WANT DIE RAAKT DE UITKOMST. Een auto met start/stop zet bij stilstand de motor uit: toerental naar 0, spanning zakt in, koelwater loopt op zonder circulatie. In de data is dat niet te onderscheiden van afslaan. Zonder die ene vraag kan de AI dat verschil niet maken en meldt hij een storing op een auto die precies doet wat hij hoort te doen.',
+    'HET TWEEDE STILLE GEVAL zat in het sensorkeuzescherm: toggleLade() zette de weergave op "dots" zodra de lade openging. Met Slim als standaard zou dat elke sessie raak zijn geweest \u2014 sensoren kiezen is het eerste wat je doet, dus je had de standaard nooit gezien. Die regel is weg.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Blok 5 meet #58 met echte afstanden: de hoogte van de statusbalk, de hoogte van de navigatiebalk, waar de topbalk eindigt en waar het werkscherm ophoudt. IN EEN BROWSER ZEGT DIE PROEF WEINIG \u2014 daar zijn beide zones 0 en klopt alles per definitie. Draai hem dus in de APK.',
+    'STAP 1. Start de app en kijk naar de live view zonder iets in te stellen. Hij hoort in \ud83e\udde0 Slim te staan, met die knop actief. Kies daarna \ud83d\udfe2 Puntjes, sluit de app helemaal af en start opnieuw: hij hoort in Puntjes terug te komen. Zet hem daarna weer op Slim, anders meet de rest van deze lijst niets.',
 
-    'STAP 2. MET DE HAND EN OP HET TOESTEL (#58). Scroll in de live view helemaal naar beneden. De laatste regel moet leesbaar zijn en niet half onder de drie knoppen staan. Herhaal met het sensorkeuze-scherm (\u2630 \u2192 de lade), het welkomstscherm, en een bottom-sheet (bijvoorbeeld het kostenvenster v\u00f3\u00f3r een analyse): de knoppenrij onderin moet volledig aanraakbaar zijn. Draai het toestel ook \u00e9\u00e9n keer.',
+    'STAP 2. Open het sensorkeuzescherm (de lade links) terwijl je in Slim staat, vink een sensor aan en sluit hem weer. De weergave hoort Slim te blijven. Dit ging tot deze ronde mis en het is de vervelendste soort fout: er komt geen melding, je staat gewoon ineens ergens anders.',
 
-    'STAP 3. #59, alleen tijdens het verbinden. Verbind met de adapter en let op het protocolscherm. Er hoort \u00c9\u00c9N kaart te staan (het herkende protocol), met daaronder een knop "Handmatig kiezen (n protocollen)". Druk erop: de lijst klapt open. Druk nogmaals: dicht. De knoppen onderin moeten zonder scrollen bereikbaar zijn. Herkent de adapter niets (contact uit), dan hoort de lijst juist meteen open te staan \u2014 anders kijk je naar een leeg scherm.',
+    'STAP 3. #68, tijdens het rijden. Kijk naar het vak \ud83c\udf9b\ufe0f TELLERPLAAT. Daar horen toerental, gaspedaal, gasklep en motorbelasting als staande meters naast elkaar te staan \u2014 en NERGENS anders, dus niet ook nog los onderin bij "Beweegt". DE VRAAG IS OF ZE ZO NAAST ELKAAR IETS ZEGGEN: trap in, en pedaal en klep horen samen omhoog te gaan met de belasting erachteraan. Doen ze dat niet gelijk op, dan is dat een bevinding \u2014 en dat is precies waarvoor ze naast elkaar staan.',
 
-    'STAP 4. #60 in demostand, want daar liep het mis. Zet de demo aan en kijk naar de balk bovenaan de live view: hoogstens twee bevindingen, met eronder "nog n bevindingen \u2014 bekijk alles". Open dat venster: daar staan ze allemaal. Zet de balk uit via \u2630 \u2192 Bevindingen, of via het kruisje in de balk zelf. Herlaad de app: de keuze hoort onthouden te zijn.',
+    'STAP 4. #68, de sleepwijzer. Trek \u00e9\u00e9n keer stevig op en kijk daarna, terwijl je weer rustig rijdt, naar de grijze streep boven de vulling. Die hoort op de piek te blijven staan en na ongeveer een minuut vanzelf te zakken. Blijft hij hangen terwijl je allang weer stationair draait, dan klopt SLIM_PIEK_N (60 metingen) niet met hoe snel deze auto gepolld wordt.',
 
-    'STAP 5. #61 tijdens het rijden, want stilstaand beweegt er niets. Kies weergave "\ud83e\udde0 Slim". Bovenaan het dashboardvak (snelheid, brandstof), daaronder alle temperaturen als \u00e9\u00e9n balkdiagram, onderaan de rest met trendlijnen. LET OP DE BALKEN: die staan voor de marge tot de eigen grens, niet voor het aantal graden \u2014 koelwater op 90 \u00b0C hoort hoger te staan dan omgevingslucht op 20 \u00b0C, en uitlaatgas op 500 \u00b0C juist niet vol. Klopt dat gevoelsmatig niet, dan is slimTempSchaal() de plek.',
+    'STAP 5. #68, het grensstreepje. Op de toerentalmeter hoort een oranje streepje te staan op 6000 (75% van de meter). Op de gasklep hoort er GEEN te staan, want daar is geen grens bekend. Staat er wel \u00e9\u00e9n zonder dat er een grens is, dan belooft de meter een nauwkeurigheid die er niet is.',
 
-    'STAP 6. #61, tweede deel. Kijk in het vak "Beweegt" welke tegels een trendlijn hebben. Toerental, belasting en pedaalstand horen er \u00e9\u00e9n te hebben; een sensor die stilstaat hoort er g\u00e9\u00e9n te hebben. Zie je een rechte streep staan, dan is de drempel van 2% te laag afgesteld (SLIM_BEWEEG_DEEL in pidlane-pids.js).',
+    'STAP 6. #66, het antwoord dat blok 5 nu opschrijft. Laat de testrun draaien met de auto eraan en lees de regel "De temperatuurbalken met een grove schaal staan gemarkeerd". Daar staat bij NAAM welke temperatuursensoren van deze auto geen eigen grens hebben. Dat is het antwoord op de eerste helft van #66 \u2014 tot nu toe was dat alleen te raden.',
 
-    'STAP 7. #62. Start een analyse. Er hoort \u00e9\u00e9n venster "Voor de analyse" te komen met drie vragen plus een tekstveld, en \u2014 als er al rapporten in deze sessie zijn \u2014 de vraag over hergebruik in datzelfde venster. Niet twee vensters achter elkaar. Beantwoord ze, en start daarna een tweede analyse: het venster hoort NIET terug te komen. Corrigeren kan via \u2630 \u2192 Rapporten \u2192 Meetcontext \u2192 Opnieuw vragen.',
+    'STAP 7. #66, met het oog. De gearceerde balken zijn de grove. Kijk of de rest gevoelsmatig klopt: koelwater op 90 \u00b0C hoort hoger te staan dan omgevingslucht op 20 \u00b0C, en uitlaatgas op 500 \u00b0C hoort juist niet vol te staan. Klopt dat niet, dan is slimTempSchaal() de plek \u2014 \u00e9\u00e9n functie.',
 
-    'STAP 8. #62, de proef die ertoe doet. Rijd een stukje met start/stop actief, laat de motor bij een stoplicht uitgaan, en vraag daarna een analyse met start/stop op "ja". Het rapport mag dat NIET als afslaan of als accuprobleem melden. Doe dezelfde meting nog eens met het antwoord op "nee" en kijk of het rapport dan w\u00e9l anders leest \u2014 verandert er niets, dan komt de regel niet aan.',
+    'STAP 8. Nog steeds #58, en nog steeds alleen op het toestel: scroll de live view helemaal naar beneden en kijk of de onderste regel vrij van de drie Android-knoppen blijft. De tellerplaat maakt het scherm langer, dus deze ronde is dat opnieuw de moeite van het nakijken waard.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '#58 \u2014 nieuw token --pl-top (= 46px + statusbalk) in pidlane.css, gebruikt door .app, #welcomeScreen, de zijpaneel-lade, #remPill en #busyPill. Onderin tellen .app, body, #fabLane, .ov, .modal, .ai-sheet-f en de volschermlade nu --pl-sab mee. test-schermranden.js kreeg er een blok bij dat elk kaal "calc(100vh - 46px)" afwijst.',
+    '#68 \u2014 slimGroep() in pidlane-data.js kent een vierde groep: "meter". SLIM_METER is een allowlist met het hele gaspad (toerental, motorbelasting, absolute motorbelasting, gasklep, relatieve en absolute gasklep B/C, gaspedaal D/E/F). De EGR-klep en de EVAP-spoelklep staan er BEWUST niet in: ook kleppen in procenten, maar emissieregeling en geen bestuurdersinvoer \u2014 naast een gaspedaal gelegd nodigen ze uit tot een vergelijking die niets betekent.',
 
-    '#59 \u2014 renderNetworkCards() tekent alleen nog de vondst, met eronder \u00e9\u00e9n knop voor de negen handmatige protocollen. De keuze zelf is niet ingeperkt: PROTOCOLS is ongewijzigd en test-protocolkeuze.js bewaakt nog steeds dat er meer dan \u00e9\u00e9n optie in de lijst zit. Alleen het aantal dat tegelijk in beeld staat is veranderd.',
+    '#68 \u2014 de meter meet de STAND BINNEN HET EIGEN BEREIK (0-8000 rpm), en dat is met opzet iets anders dan de temperatuurbalk, die de MARGE TOT DE GRENS meet. Een gaspedaal h\u00e9\u00e9ft geen gevarengrens \u2014 vol gas is geen storing \u2014 dus daar is "hoe dicht bij de grens" een vraag zonder antwoord. Liggend en staand zijn daarom twee vormen met twee betekenissen.',
 
-    '#60 \u2014 de balk toont er hoogstens twee, ernstigste eerst, met een venster voor de rest en een schakelaar in \u2630. DE BRON VAN HET VOLLOPEN ZAT NIET IN DE VIJF CORRELATIEREGELS maar in "leren-van-normaal": dat levert \u00e9\u00e9n bevinding per actief PID dat van zijn eigen historie afwijkt, dus met veertig sensoren veertig regels. De AI krijgt via correlationLines() nog steeds alles \u2014 de schakelaar is een schermkeuze en verandert de diagnose niet.',
+    '#68 \u2014 de standaardweergave is Slim en de opgeslagen voorkeur wordt eindelijk teruggelezen (plPidViewHerstel). \u00c9\u00e9n bron: PID_VIEW_STANDAARD in pidlane-pids.js. En toggleLade() zet de weergave niet meer op "dots".',
 
-    '#61 \u2014 vierde weergaveknop. slimGroep() in pidlane-data.js deelt in: alles met eenheid \u00b0C gaat naar de balken, een korte allowlist (snelheid, brandstofpeil, verbruik, accuspanning) naar het dashboard, de rest naar "Beweegt". Toerental, pedaalstand en motorbelasting staan BEWUST niet in het dashboard: die variëren te veel om als tellerstand te lezen.',
-
-    '#62 \u2014 plVoorAnalyse() vervangt _srAskUseContext(). Drie vragen plus een vrij tekstveld; de stabiliteitsvraag is voorgevuld met wat de app zelf uit de meting kan afleiden (gaten in de reeksen), maar het blijft een voorstel \u2014 alleen de gebruiker weet of de adapter tussendoor los heeft gezeten. "Weet ik niet" levert bewust g\u00e9\u00e9n promptregel op.',
+    '#66 \u2014 een temperatuurbalk zonder bekende waarschuwings- of gevarengrens valt terug op het PID-maximum en is nu gearceerd, met uitleg in de tooltip. De schaal is niet veranderd; alleen zegt het scherm nu zelf dat een lage balk daar "grens onbekend" betekent en niet "koud".',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De veilige zones komen van Capacitor (--safe-area-inset-*) met env() als terugval. Levert die op een toestel verkeerde getallen, dan klopt de rekensom hierboven nog steeds en staat het beeld tóch fout. Blok 5 logt daarom de gemeten waarden; staan die op 0 terwijl er zichtbaar een balk is, dan zit het probleem daar en niet in de CSS.',
+    'De tweede helft van #66 staat nog open: de drempel van 2% (SLIM_BEWEEG_DEEL) waarboven een signaal een trendlijn krijgt. Die is deze ronde wel MINDER zwaar geworden \u2014 toerental, pedaal en belasting waren de duidelijkste bewegers en staan nu op de tellerplaat, dus het vak "Beweegt" is een stuk rustiger. Wat daar overblijft moet nog steeds tijdens een rit beoordeeld worden.',
 
-    'De temperatuurbalk zet elke sensor af tegen zijn eigen gevarengrens. Voor een PID zonder dH \u00e9n zonder wH valt hij terug op het maximum uit de definitie, en dan is de balk grof. Welke dat in de praktijk zijn, blijkt pas met een auto ernaast.',
+    'Of de EGR-klep en de EVAP-spoelklep terecht van de tellerplaat zijn gehouden, is een redenering en geen meting. Blijkt tijdens een rit dat je ze juist w\u00e9l naast de gasklep wilt lezen, dan is dat \u00e9\u00e9n regel in SLIM_METER.',
 
-    'Of de vragen uit #62 de juiste vier zijn, is niet vanaf een bureau te bepalen. De lijst staat als data in PL_VOORVRAGEN, dus een vraag erbij is \u00e9\u00e9n item \u2014 maar wélke vraag ontbreekt, leert alleen een rit met een rapport dat ernaast zat.',
+    'De hoogte van de meters (86px) en het aantal per rij zijn op een browser van 412px breed nagekeken en niet op een toestel: acht meters vallen daar netjes in vijf plus drie, met afgekapte namen. Hoeveel er op een echt scherm nog leesbaar naast elkaar staan, wijst de auto uit.',
 
-    'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46.'
+    'DE MEETLAT VAN 0143 (absolute motorbelasting) LOOPT TOT 400%, want dat is wat de definitie zegt. Zijn meter staat daardoor bijna altijd laag, ook bij vollast \u2014 naast de gewone motorbelasting (0-100%) leest dat als "er gebeurt niets". Dat kan kloppen en toch onhandig zijn; of de meter voor dit PID een eigen schaal verdient is een vraag voor een rit, niet voor een bureau.',
+
+    'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46, plus issue #64 (welke meetcontextvraag ontbreekt) en #65 (de veilige zones op een toestel).'
   ]
 };
 

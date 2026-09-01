@@ -11,6 +11,63 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — SLIM IS DE STANDAARD
+
+       • 🧠 DE SLIMME WEERGAVE IS DE STARTWEERGAVE. Hij stond sinds
+         vanmiddag achter een knop die je elke keer opnieuw moest
+         indrukken. Onderweg naar deze wijziging kwam een oudere fout boven:
+         setPidView() schreef de gekozen weergave netjes weg in pl_pidview,
+         en NIEMAND las die sleutel ooit terug — de regel in
+         pidlane-theme.js zei het er letterlijk bij ("genegeerde voorkeur").
+         Een instelling die je kiest, die wordt opgeslagen en die de app bij
+         de volgende start weggooit is geen instelling maar een knop die
+         doet alsof. Er waren bovendien drie plekken die iets over de
+         startweergave zeiden, en ze zeiden het alle drie anders:
+         pidViewMode ("dots"), de active-klasse in index.html ("full") en de
+         aanroep in theme.js ("dots"). Nu is er één bron
+         (PID_VIEW_STANDAARD) en één plek die hem toepast
+         (plPidViewHerstel).
+
+       • 🎛️ NIEUW VAK: DE TELLERPLAAT (issue #68). Toerental, gaspedaal,
+         gasklep en motorbelasting staan niet langer los tussen de rest maar
+         naast elkaar als staande meters in één paneel — met een oranje
+         streepje op de waarschuwingsgrens waar die bekend is, en een grijze
+         sleepwijzer op de hoogste waarde van de laatste 60 metingen.
+         DE MEETLAT IS BEWUST ANDERS DAN DIE VAN DE TEMPERATUURBALK: de
+         meter toont de stand binnen het eigen bereik (0-8000 rpm), de balk
+         de marge tot de eigen grens. Een gaspedaal hééft geen gevarengrens
+         — vol gas is geen storing — dus "hoe dicht bij de grens" is daar
+         een vraag zonder antwoord. Liggend en staand zijn daarom twee
+         vormen met twee betekenissen, en niet twee keer hetzelfde plaatje.
+         De EGR-klep en de EVAP-spoelklep blijven er bewust af: ook kleppen
+         in procenten, maar emissieregeling en geen bestuurdersinvoer.
+
+       • 🚪 HET SENSORKEUZESCHERM LAAT DE WEERGAVE MET RUST. toggleLade()
+         zette hem op "dots" zodra de lade openging — een stille
+         overschrijving van een keuze die de gebruiker zelf had gemaakt. Met
+         Slim als standaard zou dat elke sessie raak zijn geweest, want
+         sensoren kiezen is het eerste wat je doet; je had de nieuwe
+         standaard dan nooit gezien.
+
+       • 🌡️ EEN TEMPERATUURBALK ZONDER GRENS ZEGT DAT ZELF (deel van issue
+         #66). Zonder bekende waarschuwings- of gevarengrens valt de schaal
+         terug op het PID-maximum, en dan staat de balk laag omdat de grens
+         onbekend is — niet omdat het koud is. Die balken zijn nu gearceerd,
+         met uitleg in de tooltip. De schaal zelf is niet veranderd: welke
+         getallen kloppen, blijft een vraag voor een rit. Blok 5 van de
+         testrun schrijft nu wél op wélke sensoren van déze auto het
+         betreft, en dat was tot nu toe alleen te raden.
+
+       • 🔬 TESTRUN 5.8. Blok 5 en CAMPAGNE herschreven voor deze ronde; de
+         controles van #59 t/m #62 zijn eruit (afgerond en groen in hun
+         eigen test-bestanden). De #58-proef blijft staan, niet uit
+         gewoonte maar omdat issue #65 er nog op wacht en die meting alleen
+         op een toestel iets zegt. test-slimmeweergave.js ging van 6 naar 10
+         controles met 7 tegenproeven, waaronder de standaardweergave en de
+         teruggelezen voorkeur. 57 tests, allemaal groen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-01 (CET) — VIJF MELDINGEN UIT HET GEBRUIK
 
        • 📐 DE ONDERKANT VAN HET SCHERM VALT NIET MEER WEG achter de drie

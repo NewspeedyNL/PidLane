@@ -929,7 +929,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
    Issue #61 (30-08-2026). De live view toonde alles op één hoop en met één
    opmaak: een brandstofmeter kreeg dezelfde trendlijn als het toerental,
    terwijl die lijn daar een rechte streep is. Deze modus deelt de tegels in
-   drie vakken (zie slimGroep() in pidlane-data.js) en geeft elk vak de vorm
+   vier vakken (zie slimGroep() in pidlane-data.js) en geeft elk vak de vorm
    die bij de meting past. De TEGELS zelf zijn ongewijzigd — zelfde .gc,
    zelfde ids — zodat applyG() van deze indeling niets hoeft te weten. */
 .gg.view-slim { display:block; }
@@ -968,6 +968,63 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .sbar > i { display:block; height:100%; width:0; background:var(--gn); transition:width .35s ease, background .3s; }
 .sbar > i.or { background:var(--or); }
 .sbar > i.rd { background:var(--rd); }
+/* GROVE SCHAAL (issue #66). Een temperatuur zonder bekende waarschuwings- of
+   gevarengrens wordt afgezet tegen het maximum uit de PID-definitie, en dan
+   staat de balk laag omdat de grens onbekend is — niet omdat het koud is. De
+   arcering zegt dat verschil, zodat het bij het aflezen opvalt en niet alleen
+   in een issue staat. Tooltip erbij, gezet in renderGauges(). */
+/* De selector loopt mee met die van .sbar hierboven: die zet `background`
+   als shorthand en zou een background-image met lagere specificiteit
+   stilletjes wegvegen — de arcering was daardoor eerst onzichtbaar. */
+.gg.view-slim .slim-temp .sbar.grof {
+  border-color:var(--bd2); border-style:dashed;
+  background-image:repeating-linear-gradient(135deg,transparent 0 4px,var(--bd2) 4px 5px);
+}
+/* Bewust een rustige arcering en geen alarmkleur: het is geen storing, het is
+   een schaal zonder bekend eindpunt. Een luide markering zou hier harder
+   roepen dan een koelwatertemperatuur die tegen zijn gevarengrens aan zit,
+   en dat is precies de verkeerde volgorde. */
+
+/* ══ TELLERPLAAT (issue #68) ══
+   Toerental, gaspedaal, gasklep en motorbelasting naast elkaar als staande
+   meters in één paneel. Bewust dezelfde bouw als het temperatuurdiagram maar
+   een kwartslag gedraaid: liggend = marge tot de grens, staand = stand
+   binnen het eigen bereik. Twee vormen, twee betekenissen — hetzelfde
+   plaatje voor allebei zou de eerste bug van dit project herhalen. */
+.gg.view-slim .slim-meter .slim-vak {
+  grid-template-columns:repeat(auto-fit,minmax(64px,1fr)); gap:4px;
+  background:var(--sur); border:1px solid var(--bd); border-radius:var(--r);
+  padding:10px 8px 9px;
+}
+.gg.view-slim .slim-meter .gc {
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  padding:0 2px; border:0; border-radius:0; background:transparent; box-shadow:none; overflow:visible;
+}
+.gg.view-slim .slim-meter .gc::before { display:none; }
+.gg.view-slim .slim-meter .gc:hover { transform:none; box-shadow:none; }
+.gg.view-slim .slim-meter .gspark { display:none; }
+.gg.view-slim .slim-meter .gdot { position:static; order:1; width:6px; height:6px; box-shadow:none; }
+.gg.view-slim .slim-meter .gval { order:2; max-width:100%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gg.view-slim .slim-meter .gv { font-size:14px; letter-spacing:-.4px; }
+.gg.view-slim .slim-meter .gunit { font-size:9px; margin-left:1px; }
+.gg.view-slim .slim-meter .smtr { order:3; }
+.gg.view-slim .slim-meter .gn2 {
+  order:4; margin:0; padding:0; font-size:8.5px; line-height:1.15; letter-spacing:0;
+  text-align:center; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* De koker. De vulling groeit van onderen, zoals een meter hoort te lopen. */
+.smtr { position:relative; width:18px; height:86px; border:1px solid var(--bd); border-radius:9px; background:var(--sur2); overflow:hidden; }
+.smtr > i { position:absolute; left:0; right:0; bottom:0; height:0; display:block; background:var(--gn); transition:height .35s ease, background .3s; }
+.smtr > i.or { background:var(--or); }
+.smtr > i.rd { background:var(--rd); }
+/* Het streepje op de waarschuwingsgrens — alleen getekend als die grens
+   bekend is (slimMeterBouw). Zonder zo'n merkteken is een halfvolle meter
+   een getal zonder maat. */
+.smtr-grens { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--or); opacity:.65; pointer-events:none; }
+/* De sleepwijzer: de hoogste waarde uit de laatste 60 metingen. Verdwijnt
+   zodra de vulling hem inhaalt — twee wijzers op dezelfde plek lezen als
+   twee verschillende waarden. */
+.smtr-piek { position:absolute; left:0; right:0; height:2px; background:var(--tx); opacity:.6; transition:bottom .35s ease; pointer-events:none; }
 
 /* BEWEEGT — de rest, compact, MET trendlijn. Behalve waar er niets te
    trenden valt: .vlak wordt door slimBij() gezet zodra het signaal binnen

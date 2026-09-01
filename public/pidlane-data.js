@@ -1255,29 +1255,46 @@ window.HUD_LABEL_DICT ={
     '011E':{ vast:false, map:{0:'Uit', 1:'Actief'} }
   };
 
-  /* ── SLIMME WEERGAVE — welke tegel hoort in welk vak (issue #61) ──────
-     Drie vakken, en de indeling is een inhoudelijke keuze, geen opmaak:
+  /* ── SLIMME WEERGAVE — welke tegel hoort in welk vak (#61, #68) ───────
+     Vier vakken, en de indeling is een inhoudelijke keuze, geen opmaak:
 
        dash  Dashboard-achtige waarden: wat er in een auto op de teller
              staat en rustig beweegt. Groot cijfer, geen trendlijn — een
              sparkline van een brandstofmeter is een rechte streep.
              Toerental, pedaalstand, gasklep en motorbelasting staan hier
-             BEWUST niet in: die springen alle kanten op en zijn juist als
-             trend leesbaar. Ze vallen daarom in 'rest'.
+             BEWUST niet in: die springen alle kanten op en zijn als
+             tellerstand niet te lezen. Ze vallen in 'meter'.
        temp  Alles met eenheid °C — koelwater, olie, inlaatlucht, kat, DPF,
              uitlaatgas. Samen in één balkdiagram in plaats van tien losse
              tegels; zie slimTempSchaal() in pidlane-pids.js voor waar die
              balk tegen afgezet wordt.
+       meter Toerental, gaspedaal, gasklep en motorbelasting: de signalen die
+             de BESTUURDER stuurt en die tijdens het rijden voortdurend op en
+             neer gaan. Ze stonden sinds #61 in 'rest' met een trendlijn, en
+             dat was de klacht van #68: als losse tegels tussen de rest zijn
+             ze niet met elkaar te vergelijken, terwijl je ze juist naast
+             elkaar wilt lezen (staat het pedaal ingedrukt terwijl de klep
+             dicht blijft?). Ze krijgen daarom één tellerplaat met verticale
+             meters, hetzelfde idee als het temperatuurdiagram maar dan
+             rechtop — zie slimMeterSchaal() in pidlane-pids.js.
        rest  De rest, compact, met trendlijn — maar alleen als het signaal
              ook echt beweegt.
 
-     Deze lijst is een ALLOWLIST en geen uitsluitlijst: een PID die hier
-     niet in staat valt vanzelf in 'rest', wat de veilige kant is. */
+     Deze lijsten zijn ALLOWLISTS en geen uitsluitlijsten: een PID die er niet
+     in staat valt vanzelf in 'rest', wat de veilige kant is. */
   window.SLIM_DASH = ['010D','012F','015E','0142'];
+  /* De tellerplaat (#68). Alles wat het gaspad meet, van pedaal tot
+     motorbelasting, plus het toerental dat eruit volgt. De EGR-klep (012C) en
+     de EVAP-spoelklep (012E) staan er BEWUST niet in: die zijn ook een
+     kleppositie in %, maar ze horen bij de emissieregeling en niet bij wat de
+     bestuurder doet — naast een gaspedaal gelegd nodigen ze uit tot een
+     vergelijking die niets betekent. Ze blijven in 'rest'. */
+  window.SLIM_METER = ['010C','0104','0143','0111','0145','0147','0148','014C','0149','014A','014B'];
   window.slimGroep = function(pid, def){
     const d = def || (window.ALL_PID_DEFS && window.ALL_PID_DEFS[pid]) || null;
     if(d && d.unit === '\u00b0C') return 'temp';
     if(window.SLIM_DASH.indexOf(pid) > -1) return 'dash';
+    if(window.SLIM_METER.indexOf(pid) > -1) return 'meter';
     return 'rest';
   };
 
