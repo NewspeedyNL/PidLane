@@ -12,6 +12,12 @@
 // eigen padding, en zonder gedeelde class is er geen CSS-regel die ze in
 // één keer meeneemt.
 //
+// 29-08-2026 kwam de tweede helft binnen (issue #58, Galaxy S10+): niet een
+// los venster maar de GEWONE app viel onderaan weg achter de drie
+// Android-knoppen. Oorzaak: .app rekende met calc(100vh - 46px) terwijl de
+// topbalk 46px + --pl-sat hoog is, en onderin werd de navigatiebalk helemaal
+// niet meegeteld. Blok 3 hieronder bewaakt de schil zelf.
+//
 // Dit bestand somt de vensters op die met het oog ECHT tegen de bovenrand
 // aan liggen (het venster zelf is de eerste laag onder de systeembalk, geen
 // backdrop ertussen) en toetst dat hun opening naar --pl-sat/--pl-sab wijst.
@@ -105,7 +111,82 @@ console.log('\n2. Twee vensters in index.html (HUD en rittracker)');
   }
 }
 
-console.log('\n3. Tegenproef — wordt een teruggedraaide regel ook echt rood?');
+console.log('\n3. De app-schil zelf — issue #58 (29-08-2026)');
+// De losse volschermvensters hierboven waren op 28-08 al nagelopen, maar de
+// GEWONE app niet: .app stond op calc(100vh - 46px) terwijl de topbalk
+// 46px + --pl-sat hoog is. Dat verschil (plus de navigatiebalk onderin) viel
+// er onderaan uit — op een Galaxy S10+ verdween de onderste strook achter de
+// drie Android-knoppen. Sinds die ronde is er één token: --pl-top = de
+// ONDERKANT van de topbalk. Deze controles bewaken dat de schil dat token
+// gebruikt en niet weer een kaal getal 46.
+{
+  const css = lees('pidlane.css');
+  const html = wortel('public/index.html');
+  const regel = (naam, bron, patroon) => {
+    const r = new RegExp(patroon, 'm');
+    const m = bron.match(r);
+    return m ? m[0] : '';
+  };
+
+  toets('--pl-top bestaat en telt --pl-sat mee',
+        /--pl-top:\s*calc\(46px \+ var\(--pl-sat\)\)/.test(css),
+        'zonder dit token staat de hoogte van de topbalk weer op twee plekken');
+
+  const rApp = regel('.app', css, '^\\.app \\{[^}]*\\}');
+  toets('.app-hoogte gebruikt --pl-top én --pl-sab',
+        /var\(--pl-top/.test(rApp) && /var\(--pl-sab/.test(rApp),
+        'gevonden: ' + (rApp || '(.app-regel niet gevonden)'));
+
+  const rAppMob = regel('.app mobiel', css, '^  \\.app\\{[^}]*\\}');
+  toets('.app-minhoogte op de telefoon gebruikt --pl-top én --pl-sab',
+        /var\(--pl-top/.test(rAppMob) && /var\(--pl-sab/.test(rAppMob),
+        'gevonden: ' + (rAppMob || '(mobiele .app-regel niet gevonden)'));
+
+  const rBody = regel('body', css, '^body \\{[^}]*\\}');
+  toets('body houdt onderaan ruimte vrij voor de navigatiebalk',
+        /padding-bottom:var\(--pl-sab\)/.test(rBody),
+        'op de telefoon scrollt de pagina zelf; zonder dit eindigt de laatste regel achter de knoppen');
+
+  toets('#welcomeScreen begint onder de topbalk',
+        /#welcomeScreen \{[^}]*top:var\(--pl-top\)/.test(css),
+        'met top:46px overlapt het keuzescherm de onderrand van de topbalk');
+
+  toets('#fabLane (zwevende chips) staat boven de navigatiebalk',
+        /#fabLane \{[^}]*bottom:calc\(14px \+ var\(--pl-sab\)\)/.test(css));
+
+  toets('.ai-sheet-f (knoppenrij van een bottom-sheet) gebruikt --pl-sab',
+        /\.ai-sheet-f \{[^}]*var\(--pl-sab\)/.test(css),
+        'de sheet schuift vanaf de onderrand op; zonder dit liggen de knoppen achter de knoppenbalk');
+
+  toets('.ov (gedeelde overlay) houdt boven én onder ruimte vrij',
+        /^\.ov \{[^}]*padding:calc\(12px \+ var\(--pl-sat\)\) 12px calc\(12px \+ var\(--pl-sab\)\)/m.test(css));
+
+  toets('volschermlade op de telefoon gebruikt beide zones',
+        /#slPanel\.lade-open, #logLade\.lade-open \{ padding-bottom:var\(--pl-sab\)/.test(css) &&
+        /#slPanel\.lade-open > \.lade-bar[^{]*\{ padding-top:calc\(9px \+ var\(--pl-sat\)\)/.test(css));
+
+  toets('#remPill hangt onder de topbalk',
+        /#remPill\{position:fixed;top:calc\(6px \+ var\(--pl-top\)\)/.test(html));
+  toets('#busyPill hangt onder de topbalk',
+        /#busyPill\{position:fixed;top:calc\(8px \+ var\(--pl-top\)\)/.test(css));
+
+  // De oude vorm mag nergens meer staan: dát was de bug, niet de plek.
+  // Commentaar telt niet mee — de uitleg hierboven noemt de oude regel
+  // letterlijk, en die tekst is precies wat je wilt bewaren.
+  const cssZonderCommentaar = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const kaal = (cssZonderCommentaar.match(/calc\(100vh - 46px\)/g) || []).length;
+  toets('geen enkele regel rekent nog met calc(100vh - 46px)', kaal === 0,
+        kaal + ' regel(s) rekenen de topbalk nog op 46px zonder veilige zone');
+
+  // Tegenproef op dit blok: de vorige, kapotte .app-regel moet ROOD geven.
+  const oudeApp = '.app { display:grid; grid-template-columns:1fr; height:calc(100vh - 46px); transition:grid-template-columns .25s; }';
+  toets('de oude .app-regel valt wél door de mand (tegenproef)',
+        !(/var\(--pl-top/.test(oudeApp) && /var\(--pl-sab/.test(oudeApp)) &&
+        /calc\(100vh - 46px\)/.test(oudeApp),
+        'als dit groen is meet de controle hierboven niets');
+}
+
+console.log('\n4. Tegenproef — wordt een teruggedraaide regel ook echt rood?');
 // Zonder dit weet je alleen dat de toets GROEN kan staan, niet dat hij ooit
 // ROOD wordt. Simuleer de oude, kapotte staat van het Logboek-venster.
 {
