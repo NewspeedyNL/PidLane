@@ -124,38 +124,238 @@ function _srDtcText(){
     return L.join('\n');
   }catch(e){ return 'Foutcode-uitlezing: '+(Array.isArray(dtcCodes)?dtcCodes.join(', ')||'geen codes':'?'); }
 }
-// ── Keuze: eerdere rapporten meenemen in een nieuwe analyse? ──
+// ══════════════════════════════════════════════════════════════════
+//  VÓÓR DE ANALYSE — één venster, twee soorten vragen (issue #62)
+// ──────────────────────────────────────────────────────────────────
+//  Hier stond alleen de vraag "mogen eerdere rapporten mee?". Dat is een
+//  vraag over HERGEBRUIK. Wat ontbrak is de andere kant: een paar korte
+//  vragen over de meting zelf, waarmee de AI geen verkeerde conclusie
+//  trekt uit iets wat helemaal normaal is.
+//
+//  Het duidelijkste voorbeeld is start/stop. Een motor die bij stilstand
+//  uit gaat ziet er in de data uit als afslaan: toerental naar 0, spanning
+//  zakt, koelwater loopt op zonder circulatie. Zonder die ene vraag is er
+//  geen enkele manier waarop de AI dat onderscheid kan maken — en een
+//  rapport dat "de motor slaat af" meldt op een auto die precies doet wat
+//  hij hoort te doen, is erger dan geen rapport.
+//
+//  Eén venster en niet twee: de gebruiker staat op het punt een analyse te
+//  starten en betaalt daar tokens voor. Drie schermen achter elkaar (vragen
+//  → rapporten → kosten) is er één te veel.
+//
+//  Het element houdt bewust de id 'srCtxAsk': de Android-terugknopladder in
+//  appBack() hieronder en test-terugknop.js kennen die naam. Een hernoeming
+//  zou daar stil doorheen glippen.
+// ══════════════════════════════════════════════════════════════════
+
 // null = nog niet gekozen → vraag tonen bij de eerstvolgende analyse;
 // true/false = onthouden sessiekeuze (aanpasbaar in het Rapporten-overzicht).
 window._srUseContext = null;
+
+// null = nog niet ingevuld. Daarna een object met een antwoord per vraag.
+window._plMeetcontext = null;
+
+// De vragen. Data en geen code, zodat er een vraag bij kan zonder dat het
+// venster of de promptregel verandert. Antwoord '' = "weet ik niet" en
+// levert BEWUST geen promptregel op: dat de gebruiker het niet weet helpt de
+// AI niet, en elke regel kost tokens.
+const PL_VOORVRAGEN = [
+  { key:'startstop',
+    vraag:'Start/stop-systeem',
+    uitleg:'Zet de motor zichzelf uit bij stilstand, en stond dat aan tijdens deze meting?',
+    opties:[['ja','Ja, actief'],['nee','Nee / uit'],['','Weet ik niet']],
+    prompt:{
+      ja:'Start/stop is actief en is tijdens deze meting gebruikt. Een toerental dat bij stilstand naar 0 gaat en een spanningsdip bij het herstarten zijn dan NORMAAL — rapporteer dat niet als afslaan of als accu-/dynamoprobleem.',
+      nee:'Start/stop stond uit of ontbreekt op deze auto. De motor hoort bij stilstand dus gewoon door te draaien; gaat hij toch uit, dan is dat wél een bevinding.' } },
+  { key:'klacht',
+    vraag:'Deed de klacht zich voor?',
+    uitleg:'Was het probleem waar je voor meet er tijdens deze meting ook echt?',
+    opties:[['ja','Ja, tijdens deze meting'],['nee','Nee, niet nu'],['','Weet ik niet']],
+    prompt:{
+      ja:'De klacht deed zich tijdens deze meting daadwerkelijk voor. Afwijkingen in deze data mogen dus aan de klacht gekoppeld worden.',
+      nee:'De klacht deed zich tijdens deze meting NIET voor. Concludeer daarom niet dat er niets aan de hand is: deze data kan de klacht niet ontkrachten, hoogstens bepaalde oorzaken minder waarschijnlijk maken.' } },
+  { key:'stabiel',
+    vraag:'Stabiele meting, geen gaten?',
+    uitleg:'Bleef de verbinding staan en liep de datastroom door?',
+    opties:[['ja','Ja, aaneengesloten'],['nee','Nee, onderbroken'],['','Weet ik niet']],
+    prompt:{
+      ja:'De meting liep aaneengesloten door zonder onderbrekingen.',
+      nee:'De meting had onderbrekingen of gaten. Beoordeel ontbrekende, springende of bevroren waarden dus eerst als meetartefact en niet als defect.' } }
+];
+
+// Voorstel voor de stabiliteitsvraag. De app weet dit deels zelf, dus vragen
+// zonder voor te vullen is de gebruiker laten raden naar wat er al gemeten is.
+// Bewust een VOORSTEL en geen automatisch antwoord: alleen de gebruiker weet
+// of de adapter tussendoor los heeft gezeten.
+function plMeetStabielVoorstel(){
+  try{
+    const pids=[...(activePIDs||[])].filter(p=>Array.isArray(pidHist[p]) && pidHist[p].length>=5);
+    if(!pids.length) return {waarde:'', reden:'nog te weinig metingen om hier iets over te zeggen'};
+    let gaten=0;
+    pids.forEach(p=>{
+      const h=pidHist[p].slice(-60);
+      const dt=[];
+      for(let i=1;i<h.length;i++){ const d=(h[i].t||0)-(h[i-1].t||0); if(d>0) dt.push(d); }
+      if(dt.length<4) return;
+      const gesorteerd=dt.slice().sort((a,b)=>a-b);
+      const mediaan=gesorteerd[Math.floor(gesorteerd.length/2)];
+      // Vier keer het eigen ritme én minstens vier seconden: trage sensoren
+      // (temperatuur, niveau) mogen niet als gat tellen omdat ze traag zijn.
+      if(dt.some(d=>d>Math.max(mediaan*4, 4000))) gaten++;
+    });
+    if(gaten) return {waarde:'nee', reden:gaten+' van de '+pids.length+' sensoren heeft een gat in de reeks'};
+    if(typeof dataStable!=='undefined' && !dataStable)
+      return {waarde:'', reden:'geen gaten gezien, maar de datastroom is nog niet als stabiel gemeld'};
+    return {waarde:'ja', reden:'geen gaten in de reeksen en de datastroom staat als stabiel'};
+  }catch(e){ return {waarde:'', reden:'niet vast te stellen'}; }
+}
+
+// De regel die aan élke AI-prompt geplakt wordt.
+function plMeetcontextPromptLine(){
+  try{
+    const m=window._plMeetcontext;
+    if(!m) return '';
+    const r=[];
+    PL_VOORVRAGEN.forEach(v=>{
+      const a=m[v.key];
+      if(a && v.prompt && v.prompt[a]) r.push('- '+v.prompt[a]);
+    });
+    const extra=String(m.extra||'').trim();
+    if(extra) r.push('- Opgegeven door de gebruiker: '+extra);
+    if(!r.length) return '';
+    return '\n\nMEETCONTEXT (door de gebruiker opgegeven vlak vóór deze analyse — weeg dit mee vóór je een conclusie trekt):\n'+r.join('\n');
+  }catch(e){ return ''; }
+}
+
+// Korte samenvatting voor het Rapporten-overzicht.
+function plMeetcontextKort(){
+  const m=window._plMeetcontext;
+  if(!m) return 'nog niet ingevuld';
+  const p=PL_VOORVRAGEN
+    .filter(v=>m[v.key])
+    .map(v=>v.vraag.replace(/\?$/,'')+': '+(m[v.key]==='ja'?'ja':'nee'));
+  if(String(m.extra||'').trim()) p.push('opmerking');
+  return p.length?p.join(' · '):'alles op "weet ik niet"';
+}
+
 let _srAskPending = null;
-function _srAskUseContext(){
+// Vraagt wat er nog te vragen valt en lost op met {rapporten:bool}.
+// Valt er niets meer te vragen, dan verschijnt er ook geen venster.
+function plVoorAnalyse(heeftRapporten){
+  const vraagRapporten = !!heeftRapporten && window._srUseContext===null;
+  const vraagContext   = (window._plMeetcontext===null);
+  if(!vraagRapporten && !vraagContext)
+    return Promise.resolve({rapporten: window._srUseContext===true});
   if(_srAskPending) return _srAskPending;
+
   _srAskPending = new Promise(res=>{
     let ov=document.getElementById('srCtxAsk');
     if(!ov){ ov=document.createElement('div'); ov.id='srCtxAsk'; ov.className='ai-sheet-ov'; ov.style.zIndex='9920'; document.body.appendChild(ov); }
+
+    const voorstel = plMeetStabielVoorstel();
+    // Voorvullen met wat er al bekend is: het voorstel voor stabiliteit, en
+    // voor de rest wat er in een eerdere ronde is geantwoord.
+    const staat = Object.assign({startstop:'', klacht:'', stabiel:voorstel.waarde, extra:''}, window._plMeetcontext||{});
+
+    const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const n=(window._sessionReports||[]).filter(r=>r.text&&r.type!=='pdf').length;
-    ov.innerHTML='<div class="ai-sheet" style="max-width:420px">'+
-      '<div class="ai-sheet-h"><b>📄 Eerdere rapporten meenemen?</b></div>'+
-      '<div class="ai-sheet-b">'+
-        '<div style="font-size:12px;color:var(--tx2);line-height:1.5">Er '+(n===1?'is 1 eerder rapport':'zijn '+n+' eerdere rapporten')+' in deze sessie. Wil je dat de AI die als context gebruikt bij deze analyse — bijvoorbeeld om te melden of een eerdere bevinding is verbeterd of verslechterd?</div>'+
-        '<label style="display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11px;color:var(--tx3);cursor:pointer"><input type="checkbox" id="srCtxRemember" checked style="accent-color:var(--bl)"> Onthoud mijn keuze voor deze sessie</label>'+
-      '</div>'+
-      '<div class="ai-sheet-f"><button class="ai-act" id="srCtxNo">Nee, alleen deze meting</button><button class="ai-act pri" id="srCtxYes">Ja, neem mee</button></div>'+
-    '</div>';
-    const done=(v,remember)=>{
-      if(remember) window._srUseContext=v;
-      ov.style.display='none'; _srAskPending=null; window._srCtxDismiss=null; res(v);
+
+    const vraagHtml=v=>{
+      const knoppen=v.opties.map(o=>
+        '<button type="button" class="pl-vk'+(staat[v.key]===o[0]?' on':'')+'" data-vraag="'+v.key+'" data-waarde="'+esc(o[0])+'">'+esc(o[1])+'</button>').join('');
+      const tip=(v.key==='stabiel'&&voorstel.reden)
+        ? '<div style="font-size:10.5px;color:var(--tx3);margin-top:4px">Voorstel uit de meting: '+esc(voorstel.reden)+'</div>' : '';
+      return '<div style="padding:9px 0;border-top:1px solid var(--bd)">'+
+        '<div style="font-size:12px;font-weight:700;color:var(--tx)">'+esc(v.vraag)+'</div>'+
+        '<div style="font-size:11px;color:var(--tx3);margin:2px 0 6px">'+esc(v.uitleg)+'</div>'+
+        '<div style="display:flex;gap:5px;flex-wrap:wrap">'+knoppen+'</div>'+tip+
+      '</div>';
     };
-    ov.querySelector('#srCtxYes').onclick=()=>done(true, !!document.getElementById('srCtxRemember')?.checked);
-    ov.querySelector('#srCtxNo').onclick =()=>done(false, !!document.getElementById('srCtxRemember')?.checked);
-    // Wegklikken / hardware-back = deze keer niet meenemen, keuze NIET onthouden
-    window._srCtxDismiss=()=>done(false,false);
+
+    const rapportBlok = vraagRapporten
+      ? '<div style="border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--sur2)">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:2px">📄 Eerdere rapporten meenemen?</div>'+
+          '<div style="font-size:11px;color:var(--tx3);margin-bottom:7px">Er '+(n===1?'is 1 eerder rapport':'zijn '+n+' eerdere rapporten')+' in deze sessie. De AI kan daarmee melden of een eerdere bevinding is verbeterd of verslechterd.</div>'+
+          '<div style="display:flex;gap:5px">'+
+            '<button type="button" class="pl-vk on" data-vraag="_rap" data-waarde="ja">Ja, neem mee</button>'+
+            '<button type="button" class="pl-vk" data-vraag="_rap" data-waarde="nee">Nee, alleen deze meting</button>'+
+          '</div>'+
+          '<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:10.5px;color:var(--tx3);cursor:pointer"><input type="checkbox" id="srCtxRemember" checked style="accent-color:var(--bl)"> Onthoud deze keuze voor de rest van de sessie</label>'+
+        '</div>'
+      : '';
+
+    ov.innerHTML='<div class="ai-sheet" style="max-width:460px">'+
+      '<div class="ai-sheet-h"><b>🧭 Voor de analyse</b></div>'+
+      '<div class="ai-sheet-b">'+
+        rapportBlok+
+        (vraagContext
+          ? '<div style="font-size:11.5px;color:var(--tx2);line-height:1.45">Vier korte vragen. Ze voorkomen dat de AI iets als storing leest wat gewoon normaal gedrag is — start/stop is daar het bekendste voorbeeld van.</div>'+
+            PL_VOORVRAGEN.map(vraagHtml).join('')+
+            '<div style="padding:9px 0;border-top:1px solid var(--bd)">'+
+              '<div style="font-size:12px;font-weight:700;color:var(--tx)">Nog iets dat de AI moet weten?</div>'+
+              '<div style="font-size:11px;color:var(--tx3);margin:2px 0 6px">Bijvoorbeeld: recent onderhoud, een net vervangen onderdeel, aanhanger achter de auto.</div>'+
+              '<input id="plVaExtra" type="text" maxlength="200" placeholder="Optioneel — één zin is genoeg" value="'+esc(staat.extra||'')+'" style="width:100%;box-sizing:border-box;font-family:var(--f);font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx)">'+
+            '</div>'
+          : '')+
+      '</div>'+
+      '<div class="ai-sheet-f"><button class="ai-act" id="srCtxSkip">Overslaan</button><button class="ai-act pri" id="srCtxGo">Analyseer</button></div>'+
+    '</div>';
+
+    // De keuzeknoppen: één antwoord per vraag, direct zichtbaar.
+    const gekozen={_rap:'ja'};
+    Object.keys(staat).forEach(k=>{ gekozen[k]=staat[k]; });
+    ov.querySelectorAll('.pl-vk').forEach(b=>{
+      b.onclick=()=>{
+        const v=b.dataset.vraag;
+        gekozen[v]=b.dataset.waarde;
+        ov.querySelectorAll('.pl-vk[data-vraag="'+v+'"]').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+      };
+    });
+
+    const done=(bewaarContext)=>{
+      let rapporten=true;
+      if(vraagRapporten){
+        rapporten = gekozen._rap!=='nee';
+        const onthoud=!!document.getElementById('srCtxRemember')?.checked;
+        if(onthoud) window._srUseContext=rapporten;
+      } else {
+        rapporten = window._srUseContext===true;
+      }
+      if(bewaarContext && vraagContext){
+        const extraEl=document.getElementById('plVaExtra');
+        window._plMeetcontext={
+          startstop:gekozen.startstop||'', klacht:gekozen.klacht||'', stabiel:gekozen.stabiel||'',
+          extra:String((extraEl&&extraEl.value)||'').trim()
+        };
+        try{ logUsage?.('meetcontext', plMeetcontextKort()); }catch(e){ console.warn('logUsage mislukt:', e); }
+      }
+      ov.style.display='none'; _srAskPending=null; window._srCtxDismiss=null;
+      res({rapporten:rapporten});
+    };
+
+    ov.querySelector('#srCtxGo').onclick=()=>done(true);
+    // Overslaan legt de meetcontext WEL vast, maar leeg. Anders staat het
+    // venster bij elke volgende analyse opnieuw in de weg — en dat is precies
+    // hoe een nuttige vraag een klik wordt die niemand meer leest.
+    ov.querySelector('#srCtxSkip').onclick=()=>{
+      if(vraagContext) window._plMeetcontext={startstop:'',klacht:'',stabiel:'',extra:''};
+      done(false);
+    };
+    // Wegklikken / hardware-back = deze keer niets meenemen, niets onthouden.
+    window._srCtxDismiss=()=>{ gekozen._rap='nee'; done(false); };
     ov.onclick=e=>{ if(e.target===ov) window._srCtxDismiss?.(); };
     ov.style.display='flex';
   });
   return _srAskPending;
 }
+
+// Meetcontext opnieuw laten vragen (knop in het Rapporten-overzicht).
+function plMeetcontextReset(){
+  window._plMeetcontext=null;
+  try{ openReportsOverview(); }catch(e){ console.warn('openReportsOverview mislukt:', e); }
+}
+
 function srSetCtxMode(m){
   window._srUseContext = m==='on' ? true : m==='off' ? false : null;
   try{ openReportsOverview(); }catch(e){ console.warn('openReportsOverview mislukt:', e); }   // overzicht verversen met nieuwe stand
@@ -229,6 +429,18 @@ function openReportsOverview(){
         '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:2px">🤖 Meenemen in nieuwe analyse</div>'+
         '<div style="font-size:11px;color:var(--tx3);margin-bottom:7px">Gebruikt de AI eerdere rapporten als context bij een volgende analyse?</div>'+
         '<div style="display:flex;gap:5px">'+seg('ask','❓ Vragen')+seg('on','✅ Altijd')+seg('off','🚫 Nooit')+'</div>'+
+      '</div>'+
+      // De meetcontext staat hier omdat een fout antwoord élke volgende
+      // analyse vergiftigt: "start/stop staat uit" op een auto die hem wél
+      // heeft, en de AI blijft afslaan melden. Zichtbaar én corrigeerbaar.
+      '<div style="border:1px solid var(--bd);border-radius:10px;padding:9px 10px;margin-bottom:10px;background:var(--sur2)">'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:2px">🧭 Meetcontext</div>'+
+            '<div style="font-size:11px;color:var(--tx3)">'+esc(plMeetcontextKort())+'</div>'+
+          '</div>'+
+          '<button class="ai-act" style="flex:none;padding:6px 12px;font-size:11px" onclick="plMeetcontextReset()">Opnieuw vragen</button>'+
+        '</div>'+
       '</div>'+
       rows+
     '</div>'+
