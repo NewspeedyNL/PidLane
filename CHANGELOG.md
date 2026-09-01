@@ -11,6 +11,60 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — TWEE LUISTERAARS OP ÉÉN KNOP
+
+       • ⬅️ DE TERUGKNOP SCHAKELT DE APP NIET MEER WEG. De klacht bleef
+         staan na twee reparaties, en beide keren om dezelfde reden: er
+         hingen TWEE luisteraars aan 'backButton'. Eén in
+         pidlane-archief.js (appBack) en één in pidlane-theme.js
+         (closeTopOverlay). Capacitor roept elke luisteraar aan — de een
+         onderdrukt de ander niet. De tweede deed minimizeApp() zodra zijn
+         eigen, kortere lijst niets herkende, en op het welkomstscherm
+         herkende die lijst per definitie niets. Eén tik zette de app dus
+         op de achtergrond, dwars door de melding "tik nogmaals om af te
+         sluiten" van de eerste heen.
+         Beide eerdere reparaties zaten in archief.js. Daar was ook niets
+         mis — de fout stond ernaast, in het bestand dat niemand erbij pakte.
+
+       • 🧩 ÉÉN KETTING. closeTopOverlay() is weg, luisteraar en al. De
+         takken die alleen daar stonden (needsUpdateModal, .pick-overlay,
+         neonDash, climateDash, kebabMenu, connOv) zitten nu in appBack(),
+         op hun plek in de volgorde meest-modaal → minst-modaal. connOv
+         houdt zijn voorwaarde: alleen dicht als er verbinding is of demo
+         draait, anders kijk je naar een leeg scherm zonder weg terug.
+
+       • 🚫 exitApp() IS ERUIT. De terugknop sluit de app niet meer af en
+         minimaliseert hem ook niet. Op de root komt er een korte melding,
+         hooguit eens per twee seconden, zodat de knop niet stuk lijkt.
+         Verlaten gaat met de home-knop of het takenoverzicht — een bewuste
+         handeling, geen tik die er net naast zat.
+
+       • 👁️ _plZichtbaar(): één zichtbaarheidstoets voor de hele ketting,
+         inclusief de .hidden-class. Die kwam uit closeTopOverlay en stond
+         niet in appBack: een venster dat met .hidden dicht staat gold daar
+         als open, dus "sloot" back iets wat allang dicht was en deed de
+         knop in de ogen van de gebruiker niets.
+
+       • 🧪 test-terugknop.js (25 toetsen) draait de échte ketting uit
+         archief.js in een nagebouwde DOM, plus een bronregel-toets die de
+         luisteraars telt. Dat tweede met reden: vanuit JS is een tweede
+         luisteraar niet waarneembaar — Capacitor houdt die lijst native
+         bij. Precies dat maakte de bug twee ronden lang onvindbaar.
+         Drie tegenproeven maken de test rood: de oude theme-handler, de
+         oude exitApp-tik, en een tweede luisteraar.
+
+       • 🔍 WAT HET NIET WAS, nagemeten en niet aangenomen: de www-map (een
+         stub; de app laadt live via server.url), de Capacitor-versie, of
+         het thema. De native AppPlugin sluit de app uit zichzelf nooit af,
+         en de bridge-JS wordt ook bij een remote server.url geïnjecteerd —
+         window.Capacitor.Plugins.App bestaat dus gewoon in de APK.
+
+       • Testrun 5.6: blok 5 meet de terugknop met een verklikker op
+         exitApp/minimizeApp, zodat de proef de app niet echt kan
+         wegschakelen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-08-29b (CET) — DE BELOFTE ZONDER KNOP
 
        • 🗑️ ACCOUNT VERWIJDEREN BESTAAT NU ECHT (#41). privacy.html zei

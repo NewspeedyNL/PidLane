@@ -147,7 +147,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 7 | `pidlane-kwaliteit.js` | 9 | **datakwaliteit**: `assessPidQuality()` (`ok`/`twijfel`/`onzin`/`nodata`), `buildQualityReport()`, `_qualityBlokFor()`, `RAPPORT_DISCLAIMER` + `_withDisclaimer()` — vult `_pidHealth`, zie §15 |
 | 8 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
 | 9 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
-| 10 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export |
+| 10 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export, **de Android-terugknop** (`appBack`) — de enige luisteraar op `backButton`, zie §11 01-09 |
 | 11 | `pidlane-pids.js` | 29 | PID-paneel, gauges, breedband-lambdacorrectie B1S1 |
 | 12 | `pidlane-correlatie.js` | 3 | deterministische PID-correlatie-engine |
 | 13 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
@@ -639,6 +639,63 @@ de pas, en dan is de vraag welke klopt.
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### De terugknop schakelde de app weg — 01-09-2026
+
+**Klacht:** de Android-terugknop sloot PidLane onbedoeld. Twee reparaties
+lang bleef dat staan, allebei in `pidlane-archief.js`, en allebei terecht —
+daar was niets mis.
+
+**Oorzaak:** er hingen **twee** luisteraars aan `backButton`. Eén in
+`pidlane-archief.js` (`appBack`) en één in `pidlane-theme.js`
+(`closeTopOverlay`). Capacitor roept élke luisteraar aan; een luisteraar
+onderdrukt de ander niet. De tweede deed `minimizeApp()` zodra zijn eigen,
+kortere lijst niets herkende — en op het welkomstscherm herkende die lijst
+per definitie niets. Eén tik op terug zette de app dus op de achtergrond,
+dwars door de melding "tik nogmaals om af te sluiten" van de eerste heen.
+
+**Waarom het niet te vinden was.** Wie in `archief.js` keek, zag een handler
+die precies deed wat hij moest doen. De fout stond ernaast. En vanuit JS is
+een tweede luisteraar niet te tellen: Capacitor houdt die lijst native bij
+(`AppPlugin.hasListeners`), er is geen registry, en de handler die je wél
+kunt aanroepen draait gewoon door alsof er niets anders is. Een gedragstest
+van de ene handler staat dan groen terwijl de andere de app wegschakelt.
+
+De les is niet welke van de twee gelijk had, maar de vorm: **twee luisteraars
+op één hardwareknop zijn geen dubbele zekerheid maar een race, en de
+verliezer is onzichtbaar.** Dezelfde vorm als "één ding heeft één betekenis"
+in `CLAUDE.md`, nu voor een gebeurtenis in plaats van een class.
+
+**Wat het níét was**, hoewel het daarop leek — nagemeten, niet aangenomen:
+
+| verdachte | wat de meting zei |
+|---|---|
+| de `www`-map | stub; de app laadt live via `server.url`. Raakt de terugknop niet |
+| `@capacitor/app` ontbreekt | zit erin (8.1.1) en `cap add android` vindt de plugin |
+| de native AppPlugin sluit af | doet hij niet: zonder JS-luisteraar hooguit `webView.goBack()`, nooit `finish()` |
+| bridge-JS ontbreekt bij een remote `server.url` | `WebViewLocalServer.handleProxyRequest()` injecteert hem in het HTML-antwoord; `window.Capacitor.Plugins.App` bestaat in de APK |
+| predictive back (targetSdk 36) | AndroidX 1.11 stuurt door naar de `OnBackPressedDispatcher`; de callback van de plugin staat altijd aan |
+
+**Opgelost:** `closeTopOverlay()` is weg, luisteraar en al. De takken die
+alleen daar stonden (`needsUpdateModal`, `.pick-overlay`, `neonDash`,
+`climateDash`, `kebabMenu`, `connOv`) zijn opgenomen in `appBack()`, op hun
+plek in de volgorde meest-modaal → minst-modaal. `exitApp()` is eruit: de
+terugknop schakelt de app niet meer weg — niet afsluiten en niet
+minimaliseren. Verlaten gaat met de home-knop of het takenoverzicht.
+
+Nieuw is `_plZichtbaar()`: één zichtbaarheidstoets voor de hele ketting,
+inclusief de `.hidden`-class. Die toets kwam uit `closeTopOverlay` en stond
+niet in `appBack` — een venster dat met `.hidden` dicht staat gold daar als
+open, dus "sloot" back iets wat allang dicht was en deed de knop in de ogen
+van de gebruiker niets.
+
+`test-terugknop.js` bewaakt beide helften: de echte ketting draait in een
+nagebouwde DOM (gedrag), en een bronregel-toets telt de luisteraars — dat
+laatste met reden, want dat is vanuit JS niet waarneembaar.
+
+**Wat open blijft:** dat de terugknop de app nooit meer verlaat is een keuze,
+geen natuurwet. Voelt het bij gebruik te streng, dan is `_plBackHandler()` in
+`pidlane-archief.js` de enige plek om het terug te draaien.
 
 ### De belofte zonder knop — 29-08-2026
 

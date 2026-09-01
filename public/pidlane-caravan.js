@@ -1,7 +1,7 @@
 /* pidlane-caravan.js — LIVE CARAVAN/AANHANGER-RITTRACKER (build 2026-07-19).
    Losse module in de PidLane-splitopzet; laadt als <script src> onderaan de
    body. Top-level declaraties zijn globaal over de klassieke scripts heen,
-   dus index.html (wcBind, closeTopOverlay, openLiveView) kan de functies en
+   dus index.html (wcBind, appBack, openLiveView) kan de functies en
    de vlag caravanActive gewoon zien.
 
    DOEL: tijdens een lange, zware rit (bergen, caravan) real-time meedenken —
