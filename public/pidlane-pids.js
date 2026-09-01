@@ -711,16 +711,25 @@ function huidigSessieGem(pid){
 // het geleerde normaal voor dit voertuig. Anders ''.
 // De parameter `val` wordt niet meer gebruikt maar blijft staan zodat
 // bestaande aanroepen (correlatie-engine, rapportregels) ongewijzigd werken.
-function baselineWarning(pid,val){
+// Eén berekening, twee uitkomsten: de zin voor het scherm én het getal om op
+// te sorteren. Dat getal is nodig sinds de bevindingenbalk er maar twee toont
+// (issue #60, 30-08-2026) — en het uit de zin terugparsen zou betekenen dat
+// de opmaak bepaalt welke bevinding de belangrijkste is.
+function baselineBevinding(pid){
   const b=vehicleBaseline(pid);
-  if(!b) return '';
+  if(!b) return null;
   const cur=huidigSessieGem(pid);
-  if(cur===null) return '';
+  if(cur===null) return null;
   const sigma=Math.max(b.std, Math.abs(b.mean)*BASE_SIGMA_MIN, 1e-9);
   const dev=Math.abs(cur-b.mean)/sigma;
-  if(dev<BASE_DREMPEL) return '';
+  if(dev<BASE_DREMPEL) return null;
   const d=getPidDef(pid);
   const e=d?.unit||'';
-  return `${d?.name||pid}: deze rit gemiddeld ${fv(cur,pid)}${e} — normaal ${fv(b.mean,pid)}${e} `+
-         `voor deze auto (${dev.toFixed(1)}\u03C3 over ${b.n} ritten)`;
+  return { pid:pid, dev:dev,
+    tekst:`${d?.name||pid}: deze rit gemiddeld ${fv(cur,pid)}${e} — normaal ${fv(b.mean,pid)}${e} `+
+          `voor deze auto (${dev.toFixed(1)}\u03C3 over ${b.n} ritten)` };
+}
+function baselineWarning(pid,val){
+  const r=baselineBevinding(pid);
+  return r?r.tekst:'';
 }

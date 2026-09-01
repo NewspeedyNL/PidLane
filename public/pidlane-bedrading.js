@@ -110,6 +110,11 @@ var KRITIEK = [
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',
+  // Statistische afwijking t.o.v. de eigen historie van deze auto
+  // (pidlane-pids.js). pidlane-correlatie.js rangschikt de bevindingenbalk
+  // op de sigma die hier uitkomt; ontbreekt hij, dan blijven alleen de vijf
+  // regelbevindingen over en verdwijnt "afwijkend voor deze auto" stil.
+  'baselineBevinding',
   
   
 ];

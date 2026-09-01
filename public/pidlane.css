@@ -731,6 +731,11 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .uiscale-btn{ width:26px;height:24px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer; }
 .uiscale-btn.on{ background:var(--bl);color:#fff;border-color:var(--bl); }
+/* Zelfde segmentknopje, maar met een woord erin in plaats van één letter —
+   de vaste 26px van .uiscale-btn past daar niet omheen. Eigen class en geen
+   tweede betekenis aan .uiscale-btn: die knop gaat over tekstgrootte. */
+.kb-seg{ padding:0 9px;height:24px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer; }
+.kb-seg.on{ background:var(--bl);color:#fff;border-color:var(--bl); }
 .kebab-item.api-pill.set { color:var(--gn); }
 .kebab-sep { height:1px; background:var(--bd); margin:4px 2px; }
 .kebab-danger { color:var(--rd)!important; }
