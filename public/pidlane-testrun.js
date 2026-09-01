@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.5 (29-08-2026)';
+const TESTRUN_VERSIE = '5.6 (01-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1650,84 +1650,116 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 29-08-2026 (8) — #41: de verwijderknop die er niet was.
-  // De controles van 29-08 (7) zijn hier weg: die oplevering is afgerond en
-  // staat groen in test-selectielog.js en test-proeftegoed.js.
+  // OPLEVERING 01-09-2026 — de Android-terugknop schakelde de app weg.
+  // De controles van 29-08 (8) zijn hier weg: die oplevering is afgerond en
+  // staat groen in test-account-verwijderen.js.
   //
-  // Dezelfde vorm als de vorige ronde, en dat is geen toeval: privacy.html
-  // beloofde "Gegevens bij je account verwijder je via Mijn account" terwijl
-  // die knop niet bestond. Een verklaring over persoonsgegevens die de app
-  // niet waar kon maken.
+  // De klacht bleef twee reparaties lang staan, en beide keren om dezelfde
+  // reden: er hingen TWEE luisteraars aan 'backButton'. Eén in
+  // pidlane-archief.js en één in pidlane-theme.js. Capacitor roept ze
+  // allebei aan — een luisteraar onderdrukt de ander niet. De tweede deed
+  // minimizeApp() zodra zijn eigen, kortere lijst niets herkende, en op het
+  // welkomstscherm herkende die lijst per definitie niets.
+  //
+  // Beide reparaties zaten in archief.js. Daar was ook niets mis.
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1: is de knop er, en hangt hij aan de route? ──────
-  await _doe(5, 'De verwijderknop zit in het tokenscherm', function () {
-    if (!window.PLKlant)
-      return { staat: 'FOUT', detail: 'PLKlant ontbreekt — pidlane-klant.js is niet meegekomen' };
-    if (typeof PLKlant.openVerwijderAccount !== 'function')
-      return { staat: 'FOUT', detail: 'PLKlant.openVerwijderAccount() ontbreekt. Eerst "Nieuwste versie laden"; ' +
-        'blijft het staan, dan belooft privacy.html weer iets wat de app niet heeft' };
-    return 'openVerwijderAccount() bestaat; het scherm zelf vraagt een klantaccount';
+  // ── TOEGEVOEGD 1: hangt de ene luisteraar er ook echt? ───────────
+  await _doe(5, 'De terugknop-ketting is geladen en geregistreerd', function () {
+    if (typeof appBack !== 'function')
+      return { staat: 'FOUT', detail: 'appBack() ontbreekt — pidlane-archief.js is niet meegekomen. ' +
+        'Eerst "Nieuwste versie laden"; blijft het staan, dan doet de terugknop niets' };
+    if (!window._plBackReady)
+      return { staat: 'FOUT', detail: 'setupBackButton() heeft niet gedraaid — er luistert niemand op back' };
+    const nat = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App);
+    return nat ? 'appBack() bestaat en de App-plugin heeft de luisteraar aangenomen'
+               : 'appBack() bestaat; geen App-plugin, dus de history-trap van de browser doet het werk';
   });
 
-  // ── TOEGEVOEGD 2: kent de Worker de route? ───────────────────────
-  // Geen echte verwijdering uitvoeren — dat zou het account van wie de
-  // testrun draait opruimen. We vragen zonder wachtwoord: een 400/401 bewijst
-  // dat de route bestaat en de bevestiging eist, een 404 dat hij ontbreekt.
-  await _doe(5, 'De Worker kent /klant/verwijder', async function () {
-    const basis = (typeof PROXY_URL !== 'undefined' && PROXY_URL) ? PROXY_URL : '';
-    if (!basis) return { staat: 'LET OP', detail: 'PROXY_URL onbekend — deze controle vraagt de Worker iets' };
-    let r;
+  // ── TOEGEVOEGD 2: doet de ketting wat hij belooft? ───────────────
+  // Het kebabmenu is een van de takken die uit de tweede handler zijn
+  // overgenomen. Als de verhuizing iets kwijtraakte, is dit waar het blijkt.
+  // Onschadelijk: het menu gaat open en meteen weer dicht.
+  await _doe(5, 'Back sluit het kebabmenu (tak uit de oude tweede handler)', function () {
+    const kebab = document.getElementById('kebabMenu');
+    if (!kebab) return { staat: 'LET OP', detail: '#kebabMenu bestaat niet op dit scherm' };
+    const stondOpen = kebab.classList.contains('open');
     try {
-      const kop = { 'Content-Type': 'application/json' };
-      try { if (window.APP_TOKEN) kop['X-App-Token'] = window.APP_TOKEN; } catch (e) { /* stil: kan nog niet gezet zijn */ }
-      r = await fetch(basis + '/klant/verwijder', { method: 'POST', headers: kop, body: '{}' });
-    } catch (e) { return { staat: 'LET OP', detail: 'Worker niet bereikbaar: ' + (e.message || e) }; }
-
-    if (r.status === 404)
-      return { staat: 'FOUT', detail: 'de route bestaat niet (404) — worker.js is niet meegedeployd, ' +
-        'en dan is de knop in de app een dode knop' };
-    if (r.status === 401)
-      return 'route bestaat en weigert zonder geldige klantsessie (401) — juist';
-    if (r.status === 400 || r.status === 403)
-      return 'route bestaat en eist een bevestiging (' + r.status + ') — juist';
-    return { staat: 'LET OP', detail: 'onverwachte status ' + r.status + '; route bestaat wel' };
+      kebab.classList.add('open');
+      const behandeld = appBack();
+      if (!behandeld) return { staat: 'FOUT', detail: 'appBack() zei "niets gedaan" terwijl het menu openstond' };
+      if (kebab.classList.contains('open'))
+        return { staat: 'FOUT', detail: 'het menu bleef open — closeKebab() is niet meeverhuisd uit closeTopOverlay()' };
+      return 'menu open → één back → menu dicht';
+    } finally {
+      if (stondOpen) kebab.classList.add('open'); else kebab.classList.remove('open');
+    }
   });
 
-  // ── TOEGEVOEGD 3: staat de publieke verwijderpagina er? ──────────
-  // Die URL vult het veld "Data deletion" in de Play Console. Ontbreekt hij,
-  // dan is dat veld niet in te vullen en komt de app er niet door.
-  await _doe(5, 'De publieke verwijderpagina is bereikbaar', async function () {
-    let r;
-    try { r = await fetch('verwijderen.html', { cache: 'reload' }); }
-    catch (e) { return { staat: 'LET OP', detail: 'niet op te halen: ' + (e.message || e) }; }
-    if (!r.ok) return { staat: 'FOUT', detail: 'verwijderen.html geeft ' + r.status +
-      ' — het Play Console-veld "Data deletion" heeft deze URL nodig' };
-    const t = await r.text();
-    if (!/30\s+dagen/i.test(t))
-      return { staat: 'FOUT', detail: 'de pagina noemt de bewaartermijn niet' };
-    return 'bereikbaar en noemt de termijn';
-  });
+  // ── TOEGEVOEGD 3: schakelt back de app weg? ──────────────────────
+  // De kern van de klacht, en veilig te meten: exitApp() en minimizeApp()
+  // worden even vervangen door een verklikker. Zou er tóch nog iets de app
+  // wegschakelen, dan vangt de verklikker dat op in plaats van het scherm.
+  await _doe(5, 'Back op het startscherm laat de app staan', function () {
+    const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (!A) return { staat: 'LET OP', detail: 'geen App-plugin (browser) — wegschakelen kan hier niet' };
+    const ws = document.getElementById('welcomeScreen');
+    if (!ws || ws.classList.contains('hidden'))
+      return { staat: 'LET OP', detail: 'het startscherm staat niet aan; deze proef hoort daar' };
 
-  // ── VERWIJDERD: belooft de tekst nog iets wat er niet is? ────────
-  // De helft die het makkelijkst wordt vergeten. De oude zin wees naar "Mijn
-  // account" zonder knop; die mag niet blijven staan naast de nieuwe.
-  await _doe(5, 'Geen belofte meer zonder knop erachter', async function () {
-    let t = '';
+    const betrapt = [];
+    const oudExit = A.exitApp, oudMin = A.minimizeApp;
     try {
-      const r = await fetch('privacy.html', { cache: 'reload' });
-      if (!r.ok) return { staat: 'LET OP', detail: 'privacy.html geeft ' + r.status };
-      t = await r.text();
-    } catch (e) { return { staat: 'LET OP', detail: 'privacy.html niet op te halen: ' + (e.message || e) }; }
+      A.exitApp = function () { betrapt.push('exitApp'); };
+      A.minimizeApp = function () { betrapt.push('minimizeApp'); };
+      _plBackHandler();            // twee keer: de oude fix sloot pas bij de tweede tik
+      _plBackHandler();
+    } finally {
+      A.exitApp = oudExit; A.minimizeApp = oudMin;
+    }
+    if (betrapt.length)
+      return { staat: 'FOUT', detail: 'de terugknop riep ' + betrapt.join(' en ') +
+        ' aan — de app zou nu weg zijn geweest. Zoek de tweede luisteraar' };
+    return 'twee keer back op het startscherm, de app blijft staan';
+  });
 
-    if (!/30\s+dagen/i.test(t))
-      return { staat: 'FOUT', detail: 'privacy.html noemt de bewaartermijn niet meer — ' +
-        'code en verklaring lopen dan uit de pas' };
-    if (!/verwijderen\.html/.test(t))
-      return { staat: 'FOUT', detail: 'privacy.html verwijst niet naar de publieke verwijderpagina' };
-    if (!/Account verwijderen/i.test(t))
-      return { staat: 'FOUT', detail: 'privacy.html noemt de knop niet bij naam; dan weet niemand waar hij zoeken moet' };
-    return 'de verklaring noemt de knop, de termijn en de publieke pagina';
+  // ── VERWIJDERD 1: is de tweede ketting écht weg? ─────────────────
+  await _doe(5, 'De tweede ketting (closeTopOverlay) bestaat niet meer', function () {
+    if (typeof closeTopOverlay !== 'undefined')
+      return { staat: 'FOUT', detail: 'closeTopOverlay() staat er nog. Zolang die bestaat, kan er ook ' +
+        'weer een luisteraar aan hangen — en dan is de klacht terug' };
+    return 'weg; de hele ketting zit nu in appBack()';
+  });
+
+  // ── VERWIJDERD 2: hangt er nergens een tweede luisteraar? ────────
+  // Dit leest broncode, en dat is hier geen luiheid maar de enige weg: een
+  // luisteraar in een ándere module is vanuit JS niet waarneembaar. Capacitor
+  // houdt de lijst native bij, er is geen registry om te tellen, en de
+  // handler die je wél kunt aanroepen draait gewoon door alsof er niets is.
+  // Precies dat maakte deze bug twee ronden lang onvindbaar.
+  await _doe(5, 'Precies één module luistert op backButton', async function () {
+    const modules = ['pidlane-archief.js', 'pidlane-theme.js', 'pidlane-uihelpers.js',
+      'pidlane-start.js', 'pidlane-auth.js', 'pidlane-neon.js', 'pidlane-rit.js', 'pidlane-caravan.js'];
+    const schoon = function (s) {
+      return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+    };
+    const met = [], weg = [], schakelaars = [];
+    for (const m of modules) {
+      const src = await _bron(m);
+      if (src === null) { weg.push(m); continue; }
+      const s = schoon(src);
+      const n = (s.match(/addListener\s*\(\s*['"]backButton['"]/g) || []).length;
+      if (n) met.push(m + ' (' + n + 'x)');
+      if (/\.\s*(minimizeApp|exitApp)\s*(\?\.)?\(/.test(s)) schakelaars.push(m);
+    }
+    if (weg.length === modules.length)
+      return { staat: 'LET OP', detail: 'geen enkele module op te halen — offline?' };
+    if (schakelaars.length)
+      return { staat: 'FOUT', detail: 'roept de app nog weg: ' + schakelaars.join(', ') };
+    if (met.length !== 1 || met[0].indexOf('pidlane-archief.js') !== 0)
+      return { staat: 'FOUT', detail: 'luisteraars gevonden in: ' + (met.join(', ') || 'geen enkele') +
+        ' — verwacht: alleen pidlane-archief.js (1x)' };
+    return 'één luisteraar, in pidlane-archief.js' + (weg.length ? ' (' + weg.length + ' module(s) niet opgehaald)' : '');
   });
 }
 
@@ -2482,43 +2514,45 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 29-08 (8) \u2014 #41: de verwijderknop die er niet was',
+  titel: 'OPLEVERING 01-09 \u2014 de terugknop schakelde de app weg',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'privacy.html zei letterlijk: "Gegevens bij je account verwijder je via Mijn account". Die knop bestond niet, en er was geen verwijderroute in de Worker. pidlane-privacy.js herhaalde dezelfde belofte in het disclosurescherm. Twee verklaringen die iets beloofden over persoonsgegevens wat de app niet kon waarmaken \u2014 dezelfde vorm als #31 en #49 van vanochtend, met een hogere inzet.',
+    'De Android-terugknop schakelde PidLane weg, en dat bleef staan na twee reparaties. Reden: er hingen TWEE luisteraars aan \'backButton\'. E\u00e9n in pidlane-archief.js (appBack) en \u00e9\u00e9n in pidlane-theme.js (closeTopOverlay). Capacitor roept elke luisteraar aan \u2014 de een onderdrukt de ander niet. De tweede deed minimizeApp() zodra zijn eigen, kortere lijst niets herkende, en op het welkomstscherm herkende die lijst per definitie niets.',
 
-    'Google eist het bovendien voor elke app waarin je een account kunt aanmaken: een verwijderoptie \u00cdN de app, \u00e9n een publiek bereikbare URL voor het veld "Data deletion" in de Play Console. Er was geen van beide.',
+    'Gevolg: \u00e9\u00e9n tik op terug zette de app op de achtergrond, dwars door de melding "tik nogmaals om af te sluiten" van de eerste handler heen. Beide eerdere reparaties zaten in archief.js, en daar was ook niets mis. De fout stond ernaast, in het bestand dat niemand erbij pakte.',
 
-    'DE KEUZE DIE ERONDER LIGT: markeren in plaats van meteen wissen. Het account is voor de gebruiker meteen weg, maar het record blijft 30 dagen staan zodat een vergissing te herstellen is. Dat vraagt wel dat er ook echt iemand opruimt \u2014 en die was er niet: geen cron, geen scheduled(). De belofte "binnen 30 dagen" hing tot nu toe aan iemand die eraan denkt.',
+    'DE LES ZIT IN DE VORM, NIET IN DE UITKOMST: twee luisteraars op \u00e9\u00e9n hardwareknop zijn geen dubbele zekerheid maar een race, en de verliezer is onzichtbaar. Vanuit JS is een tweede luisteraar niet te tellen \u2014 Capacitor houdt die lijst native bij. Je kunt de handler die je w\u00e9l kent dus groen testen terwijl de app naast je wordt weggeschakeld.',
+
+    'Wat het NIET was, hoewel het daarop leek: de www-map (die is een stub, de app laadt live via server.url), de Capacitor-versie, of het thema. Wel gecontroleerd en in orde: @capacitor/app 8.1.1 zit in de build, de native AppPlugin sluit de app uit zichzelf nooit af, en de bridge-JS wordt ook bij een remote server.url ge\u00efnjecteerd \u2014 dus window.Capacitor.Plugins.App bestaat in de APK.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Blok 5 controle 2 vraagt de Worker om /klant/verwijder zonder wachtwoord. Een 401 of 400 is GOED: de route bestaat en eist een bevestiging. Krijg je 404, dan is worker.js niet meegedeployd en is de knop in de app een dode knop.',
+    'STAP 1. Blok 5 draait de proef zelf: het kebabmenu open \u2192 \u00e9\u00e9n back \u2192 dicht, en twee keer back op het startscherm zonder dat de app wegvalt. Die tweede proef vervangt exitApp/minimizeApp tijdelijk door een verklikker, dus hij kan de app niet echt wegschakelen.',
 
-    'STAP 2. DE ECHTE PROEF VRAAGT EEN WEGWERP-KLANTACCOUNT. Registreer een nieuw klantaccount met een adres dat je verder niet gebruikt, log in, open Mijn account, en druk onderaan op "Account verwijderen". Vul eerst een VERKEERD wachtwoord in \u2014 dat hoort te weigeren. Daarna het juiste: je wordt uitgelogd en er verschijnt een melding.',
+    'STAP 2. MET DE HAND, EN DIT IS DE ECHTE PROEF (alleen in de APK, niet in de browser). Sta op het startscherm en druk op terug. Er hoort NIETS te gebeuren, behalve een korte melding. De app mag niet naar de achtergrond gaan en niet sluiten. Druk daarna nog vijf keer. Ook dan blijft PidLane staan.',
 
-    'STAP 3. Probeer meteen daarna opnieuw in te loggen met datzelfde account. Dat hoort te weigeren met de melding dat het account op eigen verzoek is verwijderd. Lukt inloggen w\u00e9l, dan is de toegangscontrole niet meegekomen.',
+    'STAP 3. Loop de ketting af: open een modus, druk terug (\u2192 home). Open het kebabmenu, druk terug (\u2192 dicht). Start een rit-analyse en druk terug: de analyse hoort te MINIMALISEREN en door te lopen (pil in beeld), niet te stoppen. Open een deur op het startscherm en druk terug: terug naar de 4 keuzes.',
 
-    'STAP 4. Open admin.html, kaart Klanten. Het account staat er nog, met een rode regel "verwijderd op verzoek" en de datum waarop het definitief weggaat. Dat is de wachtrij die de cron elke nacht afwerkt. Druk op "\ud83e\uddf9 Nu opruimen": het antwoord hoort "0 gewist \u00b7 1 nog binnen de termijn \u00b7 0 mislukt" te zijn \u2014 want die 30 dagen zijn nog niet om. Dat is g\u00e9\u00e9n storing maar het bewijs dat de termijn gerespecteerd wordt.',
+    'STAP 4. De takken die uit de tweede handler zijn overgenomen verdienen aandacht, want die konden bij de verhuizing zoekraken: neon-dashboard, airco/wintercheck, de onderdelen-picker, het kebabmenu en de verbind-overlay. Die laatste heeft een voorwaarde: hij gaat alleen dicht als er verbinding is (of demo). Staat hij er omdat er nog niets is, dan blijft hij staan \u2014 anders kijk je naar een leeg scherm.',
 
-    'STAP 5. Open app.pidlane.nl/verwijderen.html in een browser zonder in te loggen. Dat is de URL die in de Play Console bij "Data deletion" moet komen te staan.',
+    'STAP 5. Verlaat de app met de home-knop of het takenoverzicht. Dat is nu de enige weg naar buiten, en dat is met opzet.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Nieuw: POST /klant/verwijder (met wachtwoordbevestiging), een knop onderaan het tokenscherm, en public/verwijderen.html. De teksten in privacy.html en pidlane-privacy.js zeggen nu wat er ECHT gebeurt, inclusief dat een resterend tegoed vervalt.',
+    'closeTopOverlay() in pidlane-theme.js is weg, luisteraar en al. De takken die alleen daar stonden (needsUpdateModal, .pick-overlay, neonDash, climateDash, kebabMenu, connOv) zijn opgenomen in appBack() in pidlane-archief.js, op hun eigen plek in de volgorde meest-modaal \u2192 minst-modaal.',
 
-    'Het opruimen loopt op twee manieren die dezelfde functie draaien: een dagelijkse cron om 03:00 UTC doet het werk, en de knop in admin.html maakt dat controleerbaar in plaats van iets waar je op moet vertrouwen. Een record met status "verwijderd" maar zonder bruikbare datum wordt NIET gewist en w\u00e9l gemeld \u2014 de termijn is dan niet aantoonbaar om, en stil laten staan is hier net zo fout als stil wissen.',
+    'exitApp() is eruit. De terugknop schakelt de app niet meer weg \u2014 niet afsluiten \u00e9n niet minimaliseren. Op de root komt er een korte melding, hooguit eens per twee seconden, zodat de knop niet stuk lijkt.',
 
-    'Toegang loopt nu langs \u00e9\u00e9n plek. Status === "geblokkeerd" stond twee keer los in worker.js, in handleKlantLogin en in handleMessages. Dat is de vorm waarin de tweede plek wordt vergeten zodra er een status bijkomt \u2014 en dan kan een verwijderd account met een lopend sessietoken nog gewoon AI gebruiken. klantToegangProbleem() is nu de enige die daarover gaat.',
+    'Nieuw: _plZichtbaar(). E\u00e9n zichtbaarheidstoets voor de hele ketting, inclusief de .hidden-class. Die toets kwam uit closeTopOverlay en stond niet in appBack: een venster dat met .hidden dicht staat gold daar als open, dus "sloot" back iets wat allang dicht was en deed de knop in de ogen van de gebruiker niets.',
 
-    'test-account-verwijderen.js: 39 toetsen, vijf nagebouwde fouten maken hem rood. De scherpste bewaakt dat de bewaartermijn uit worker.js op alle vier de plekken staat waar hij aan de gebruiker verteld wordt \u2014 zet KLANT_BEWAARDAGEN op 14 en de teksten liegen, zonder dat er iets stukgaat.',
+    'test-terugknop.js: 25 toetsen. De echte ketting uit archief.js draait daar in een nagebouwde DOM, dus het is gedrag en geen broncode-lezerij. Drie tegenproeven: de oude theme-handler, de oude exitApp-tik, en een tweede luisteraar \u2014 alledrie maken hem rood.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De cron is niet in productie waargenomen. Hij draait pas voor het eerst om 03:00 UTC, en de eerste rijpe record is er pas over 30 dagen. Tot die tijd is de knop in admin.html het enige dat aantoonbaar werkt \u2014 gebruik die om de wachtrij in de gaten te houden.',
+    'Dat de terugknop de app nooit meer verlaat is een keuze, geen natuurwet. Voelt het bij gebruik te streng, dan is de plek om het terug te draaien _plBackHandler() in pidlane-archief.js \u2014 \u00e9\u00e9n functie, en de test zegt meteen wat je verandert.',
 
-    'Van #49 blijven promptcaching en de structurele kant (Users als beheerrol) staan. Nieuw genoteerd: #52, de tokenchip die bij een beheerder blijft staan omdat _chipVerversen() alleen bij het laden draait.',
+    'De ketting is alleen in de APK volledig te toetsen. In de browser hangt hij aan de history-trap en gedraagt terug zich anders; blok 5 zegt LET OP in plaats van FOUT als de App-plugin ontbreekt.',
 
     'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46.'
   ]

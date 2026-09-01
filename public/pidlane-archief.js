@@ -297,23 +297,64 @@ async function srDownloadTxt(id){
 }
 
 // ── BACK-NAVIGATIE + ANDROID HARDWARE-BACK ──
-// De fysieke Android-back-knop sloot voorheen per ongeluk de app. Nu loopt
-// back netjes terug: open overlay → terug; deur-paneel → terug naar de
-// 4 keuzes; in een mode → terug naar home. Pas op de home-landing (root)
-// vraagt een tweede tik om écht af te sluiten.
+// ══════════════════════════════════════════════════════════════════
+// DE ANDROID-TERUGKNOP — één ketting, één plek
+// ──────────────────────────────────────────────────────────────────
+// Back loopt netjes terug: open overlay → dicht; deur-paneel → terug naar
+// de 4 keuzes; in een mode → terug naar home. Op de root gebeurt er niets:
+// de terugknop schakelt PidLane NIET weg.
+//
+// WAAROM DIE LAATSTE REGEL ER STAAT (01-09-2026)
+// Tot vandaag hingen er TWEE luisteraars aan 'backButton': deze, en een
+// tweede in pidlane-theme.js (closeTopOverlay). Capacitor roept ze allebei
+// aan — een luisteraar onderdrukt de ander niet. De tweede deed
+// minimizeApp() zodra zijn eigen, kortere lijst niets herkende. Op het
+// welkomstscherm herkende die lijst per definitie niets, dus ging de app
+// bij de eerste tik naar de achtergrond, dwars door de "tik nogmaals om af
+// te sluiten"-melding van deze handler heen.
+//
+// Daarom hielpen twee eerdere reparaties niet: ze zaten allebei hier,
+// terwijl de app hiernaast werd weggeschakeld. De les is niet welke van de
+// twee gelijk had, maar de vorm: twee luisteraars op één hardwareknop zijn
+// geen dubbele zekerheid maar een race, en de verliezer is onzichtbaar.
+// Er is er nu nog precies één, en test-terugknop.js bewaakt dat.
+//
+// Ook weg: exitApp() op een tweede tik. De opdracht is dat de terugknop de
+// app nooit wegschakelt — niet afsluiten en niet minimaliseren. Verlaten
+// gaat met de home-knop of het takenoverzicht; dat is een bewuste handeling
+// en geen tik die er net naast zat.
+// ══════════════════════════════════════════════════════════════════
+
+// Zichtbaar = hangt in de DOM, heeft geen .hidden en is niet display:none.
+// De .hidden-toets komt uit de oude closeTopOverlay(): een deel van de app
+// verbergt met die class in plaats van met een inline display, en zonder
+// die toets "sluit" back een venster dat allang dicht is — en doet de knop
+// in de ogen van de gebruiker dus niets.
+function _plZichtbaar(el){
+  if(!el) return false;
+  if(el.classList && el.classList.contains('hidden')) return false;
+  try{ return getComputedStyle(el).display!=='none'; }
+  catch(e){ /* stil: element hangt (nog) niet in de DOM — dan is het niet zichtbaar */ return false; }
+}
+
 function appBack(){
   // 0. Open lade (sensoren/logs) eerst sluiten
   try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){ console.warn('closeLades mislukt:', e); }
   // 0b. Context-keuzesheet open? Netjes afwijzen (promise resolven, niet hangen)
-  try{ const c=document.getElementById('srCtxAsk'); if(c && getComputedStyle(c).display!=='none'){ window._srCtxDismiss?.(); return true; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+  try{ const c=document.getElementById('srCtxAsk'); if(_plZichtbaar(c)){ window._srCtxDismiss?.(); return true; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
-  for(const id of ['srTextSheet','aiReportSheet','pdfReadyModal','reportsOverviewSheet','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
+  //    needsUpdateModal kwam uit de tweede handler; die id stond hier niet en
+  //    was dus onbereikbaar voor back zodra die handler weg is.
+  for(const id of ['srTextSheet','aiReportSheet','pdfReadyModal','needsUpdateModal','reportsOverviewSheet','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
     const el=document.getElementById(id);
-    if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; return true; }
+    if(_plZichtbaar(el)){ el.style.display='none'; return true; }
   }
+  // 1b. Onderdelen-/scenario-picker (heeft geen vaste id, alleen een class)
+  const picker=document.querySelector('.pick-overlay, .onderdelen-overlay');
+  if(_plZichtbaar(picker)){ picker.style.display='none'; return true; }
   // 2. Dashboards / sub-overlays met eigen display
   let closed=false;
-  ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(el && getComputedStyle(el).display!=='none'){ el.style.display='none'; closed=true; } });
+  ['onderhoudDash','evDash','langeRitDash'].forEach(id=>{ const el=document.getElementById(id); if(_plZichtbaar(el)){ el.style.display='none'; closed=true; } });
   if(closed){ try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); } return true; }
   // 27-07-2026 — hier stonden twee id's die nergens in de app bestaan
   // ('ritAnalyseOv' en 'ritAnalyse'). Het echte element heet #ritDash. Gevolg:
@@ -323,45 +364,79 @@ function appBack(){
   // afgeronde wordt gesloten. Zelfde gedrag als plCloseModeOverlays().
   try{
     const rd=document.getElementById('ritDash');
-    if(rd && getComputedStyle(rd).display!=='none'){
+    if(_plZichtbaar(rd)){
       if(typeof ritActive!=='undefined' && ritActive && typeof minimizeRitAnalyse==='function') minimizeRitAnalyse();
       else if(typeof closeRitAnalyse==='function') closeRitAnalyse();
       else rd.style.display='none';
       return true;
     }
     const cd=document.getElementById('caravanDash');
-    if(cd && getComputedStyle(cd).display!=='none'){
+    if(_plZichtbaar(cd)){
       if(typeof caravanActive!=='undefined' && caravanActive && typeof minimizeCaravanDash==='function') minimizeCaravanDash();
       else if(typeof closeCaravanDash==='function') closeCaravanDash();
       else cd.style.display='none';
       return true;
     }
   }catch(e){ console.warn('closeCaravanDash mislukt:', e); }
+  // 2b. Neon-dashboard, airco/wintercheck — kwamen uit de tweede handler
+  const neon=document.getElementById('neonDash');
+  if(_plZichtbaar(neon)){
+    if(typeof closeNeonDashboard==='function') closeNeonDashboard(); else neon.style.display='none';
+    return true;
+  }
+  const clim=document.getElementById('climateDash');
+  if(_plZichtbaar(clim)){
+    if(typeof closeClimateCheck==='function') closeClimateCheck(); else clim.style.display='none';
+    return true;
+  }
+  // 2c. Kebabmenu open? Dat is de bovenste laag zodra er verder niets openstaat.
+  const kebab=document.getElementById('kebabMenu');
+  if(kebab && kebab.classList.contains('open')){
+    try{ closeKebab(); }catch(e){ console.warn('closeKebab mislukt:', e); }
+    return true;
+  }
+  // 2d. Verbind-overlay: alleen sluiten als er al verbinding is (of demo).
+  //     Staat hij er omdat er nog NIETS is, dan moet hij blijven staan — anders
+  //     kijkt de gebruiker naar een leeg scherm zonder weg terug.
+  const connOv=document.getElementById('connOv');
+  if(_plZichtbaar(connOv) && ((typeof connected!=='undefined' && connected) || (typeof demoMode!=='undefined' && demoMode))){
+    try{ closeConnOv(); }catch(e){ console.warn('closeConnOv mislukt:', e); }
+    return true;
+  }
   // 3. Welkomstscherm zichtbaar?
   const ws=document.getElementById('welcomeScreen');
   if(ws && !ws.classList.contains('hidden')){
     const doorOpen=[...document.querySelectorAll('.wm-door-panel')].some(p=>getComputedStyle(p).display!=='none');
     if(doorOpen){ backToDoors(); return true; }
-    return false; // op de root-keuze → niet automatisch afsluiten
+    return false; // op de root-keuze → niets te doen, en niet afsluiten
   }
   // 4. In een mode/pane → terug naar home
   try{ goHome(); return true; }catch(e){ console.warn('goHome mislukt:', e); }
   return false;
 }
+
 function _plBackHandler(){
   let handled=false;
   try{ handled=appBack(); }catch(e){ console.warn('appBack mislukt:', e); }
-  if(!handled){
-    // Root bereikt: tweede tik binnen 2s sluit de app pas écht af.
-    if(window._plExitArmed){ try{ window.Capacitor?.Plugins?.App?.exitApp?.(); }catch(e){ /* stil: alleen beschikbaar op het native platform */ } }
-    else { window._plExitArmed=true; try{ showToast?.('Tik nogmaals op terug om af te sluiten',2000); }catch(e){ /* stil: melding mag nooit de stroom breken */ } setTimeout(()=>{ window._plExitArmed=false; },2000); }
-  }
+  if(handled) return;
+  // Root bereikt en er valt niets te sluiten. Hier stond exitApp(); dat is er
+  // uit. De terugknop mag de app niet wegschakelen — niet afsluiten en niet
+  // minimaliseren. Wel één korte melding, hooguit eens per twee seconden,
+  // zodat de knop niet stuk lijkt.
+  if(window._plBackMelding) return;
+  window._plBackMelding=true;
+  setTimeout(()=>{ window._plBackMelding=false; },2000);
+  try{ showToast?.('Je bent op het startscherm — de terugknop sluit PidLane niet',1800); }
+  catch(e){ console.warn('showToast mislukt:', e); }
 }
+
 function setupBackButton(){
   if(window._plBackReady) return; window._plBackReady=true;
   const A=window.Capacitor?.Plugins?.App;
   if(A&&A.addListener){
-    // Capacitor (APK): vang de hardware-back op; default (afsluiten) wordt onderdrukt.
+    // Capacitor (APK): vang de hardware-back op. Zolang er één JS-luisteraar
+    // is, doet de native AppPlugin zelf niets meer — daarom mag er ook maar
+    // één zijn, en daarom staat hij hier.
     try{ A.addListener('backButton',()=>{ _plBackHandler(); }); return; }catch(e){ console.warn('_plBackHandler mislukt:', e); }
   }
   // Browser/WebView zonder App-plugin: history-trap zodat back niet de pagina verlaat.

@@ -135,63 +135,24 @@ function zoom(){ /* verwijderd — transform-zoom bestaat niet meer, zie applyZo
 // ════════════════════════════════════════
 // INIT — alles in DOMContentLoaded zodat HTML zeker geladen is
 // ════════════════════════════════════════
-// Sluit het bovenste open venster/overlay (voor de Android-backknop).
-// Geeft true terug als er iets is gesloten, anders false (dan mag de app
-// naar de achtergrond). Volgorde = van meest-modaal naar minst-modaal.
-function closeTopOverlay(){
-  const vis=el=>el && el.style.display!=='none' && getComputedStyle(el).display!=='none' && !el.classList.contains('hidden');
-  // 1) Losse modals die met display:flex/block worden getoond
-  for(const id of ['pdfReadyModal','needsUpdateModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker']){
-    const el=document.getElementById(id);
-    if(vis(el)){ el.style.display='none'; return true; }
-  }
-  // 2) Onderdelen-/scenario-picker (kan dynamisch andere id's hebben)
-  const picker=document.querySelector('.pick-overlay, .onderdelen-overlay');
-  if(vis(picker)){ picker.style.display='none'; return true; }
-  // 3) Rit Analyse: minimaliseren i.p.v. stoppen (analyse loopt door)
-  const rit=document.getElementById('ritDash');
-  if(typeof caravanActive!=='undefined' && document.getElementById('caravanDash')?.style.display!=='none' && document.getElementById('caravanDash')){ if(caravanActive){ minimizeCaravanDash(); } else { closeCaravanDash(); } return true; }
-  if(vis(rit)){ if(typeof ritActive!=='undefined'&&ritActive){ minimizeRitAnalyse(); } else { closeRitAnalyse(); } return true; }
-  // 4) Neon-dashboard
-  const neon=document.getElementById('neonDash');
-  if(vis(neon)){ try{ closeNeonDashboard(); }catch(_){ neon.style.display='none'; } return true; }
-  // 4b) Airco/Winter check
-  const clim=document.getElementById('climateDash');
-  if(vis(clim)){ try{ closeClimateCheck(); }catch(_){ clim.style.display='none'; } return true; }
-  // 4c) Onderhoud / EV / Lange rit dashboards
-  for(const id of ['onderhoudDash','evDash','langeRitDash']){
-    const el=document.getElementById(id);
-    if(vis(el)){ el.style.display='none'; return true; }
-  }
-  // 5) Kebab-menu open?
-  const kebab=document.getElementById('kebabMenu');
-  if(kebab && kebab.classList.contains('open')){ try{ closeKebab(); }catch(_){ console.warn('closeKebab mislukt:', _); } return true; }
-  // 6) Verbind-overlay (alleen sluiten als al verbonden/demo — anders laten staan)
-  const connOv=document.getElementById('connOv');
-  if(vis(connOv) && (connected||demoMode)){ closeConnOv(); return true; }
-  // 7) In een analyse maar niet op het startscherm? Back gaat naar home.
-  const welcome=document.getElementById('welcomeScreen');
-  if(welcome && welcome.classList.contains('hidden') && (connected||demoMode)){
-    goHome(); return true;
-  }
-  return false;
-}
+// De ketting die de terugknop afloopt (voorheen closeTopOverlay) staat in
+// pidlane-archief.js, in appBack(). Zie de kop van dat blok voor waarom er
+// nog maar één van is.
 
 document.addEventListener('DOMContentLoaded', function(){
 
-  // ── Android hardware-backknop ──────────────────────────────
-  // Zonder deze handler sluit de backknop (of een tik naast een venster) de
-  // hele app. Nu sluit hij eerst een open venster/overlay; pas als er niets
-  // open staat, mag de app naar de achtergrond.
-  try{
-    const AppPlugin=window.Capacitor?.Plugins?.App;
-    if(AppPlugin?.addListener){
-      AppPlugin.addListener('backButton',()=>{
-        if(closeTopOverlay()) return;          // er stond iets open → alleen dat sluiten
-        AppPlugin.minimizeApp?.();             // niets open → app naar achtergrond (niet afsluiten)
-      });
-    }
-  }catch(e){ /* stil: alleen beschikbaar op het native platform */ }
+  // ── Android hardware-backknop: staat NIET meer hier ──────────
+  // Hier hing tot 01-09-2026 een tweede luisteraar op 'backButton', naast
+  // die in pidlane-archief.js. Capacitor roept elke luisteraar aan, dus ze
+  // draaiden allebei: deze deed minimizeApp() zodra zijn eigen — kortere —
+  // lijst niets herkende, en op het welkomstscherm herkende die lijst nooit
+  // iets. Eén tik op terug schakelde de app dus weg, ook al had de handler
+  // hiernaast de tik al netjes afgehandeld. Twee reparaties in archief.js
+  // konden dat niet zien, want de oorzaak stond in dit bestand.
+  // De hele ketting (inclusief de overlays die alleen hier stonden:
+  // needsUpdateModal, .pick-overlay, neonDash, climateDash, kebabMenu,
+  // connOv) is verhuisd naar appBack() in pidlane-archief.js.
+  // Zet hier nooit een tweede luisteraar terug — test-terugknop.js valt.
 
   // Welcome card klikkers
   // 2026-07-26: elke kaart ruimt eerst achtergebleven modus-overlays op. Zonder
