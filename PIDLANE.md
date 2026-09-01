@@ -5,7 +5,11 @@
 > nergens anders — een kopie in een kennisbank loopt achter en gaat de code
 > tegenspreken. Bij elke structuurwijziging bijwerken.
 >
-> Laatst bijgewerkt: 2026-08-27 — werkafspraken herschreven voor het werken
+> Laatst bijgewerkt: 2026-09-01 — issues #58 t/m #62: één token `--pl-top`
+> voor de onderkant van de topbalk (§11), plafond op de bevindingenbalk,
+> vierde weergave "Slim", en het venster "Voor de analyse" dat de AI vertelt
+> of start/stop meedeed.
+> Daarvóór: 2026-08-27 — werkafspraken herschreven voor het werken
 > rechtstreeks in de repo (§9), `CLAUDE.md` en `PROJECT-INSTRUCTIES.md` erbij.
 > Daarvóór dezelfde dag: toestemmingsteksten kloppen weer met de
 > verwerking (pseudoniem, niet anoniem), tweede VIN-lek in de logroute dicht,
@@ -135,7 +139,7 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 |---|---|---|---|
 | 1 | `capacitor.js` | — | alleen in APK aanwezig; `onerror` vangt het web-geval af |
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
-| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets |
+| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH` (de indeling van de slimme weergave) |
 | 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
 
 ### Fase 2 — kern (in `<body>`, rond regel 2128)
@@ -147,9 +151,9 @@ Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
 | 7 | `pidlane-kwaliteit.js` | 9 | **datakwaliteit**: `assessPidQuality()` (`ok`/`twijfel`/`onzin`/`nodata`), `buildQualityReport()`, `_qualityBlokFor()`, `RAPPORT_DISCLAIMER` + `_withDisclaimer()` — vult `_pidHealth`, zie §15 |
 | 8 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
 | 9 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
-| 10 | `pidlane-archief.js` | 25 | sessierapportarchief, AI-rapporthook, TXT/PDF-export, **de Android-terugknop** (`appBack`) — de enige luisteraar op `backButton`, zie §11 01-09 |
-| 11 | `pidlane-pids.js` | 29 | PID-paneel, gauges, breedband-lambdacorrectie B1S1 |
-| 12 | `pidlane-correlatie.js` | 3 | deterministische PID-correlatie-engine |
+| 10 | `pidlane-archief.js` | 30 | sessierapportarchief, AI-rapporthook, TXT/PDF-export, **de Android-terugknop** (`appBack`) — de enige luisteraar op `backButton`, zie §11 01-09 — en **het venster "Voor de analyse"** (`plVoorAnalyse`, `PL_VOORVRAGEN`, `plMeetcontextPromptLine`): hergebruik van eerdere rapporten én de meetcontext-vragen in één sheet, zie §11 01-09 |
+| 11 | `pidlane-pids.js` | 31 | PID-paneel, gauges, breedband-lambdacorrectie B1S1, de vier weergaven (Trends/Getallen/Puntjes/**Slim**) incl. `slimTempSchaal()` en `slimBeweegt()` |
+| 12 | `pidlane-correlatie.js` | 8 | deterministische PID-correlatie-engine + de bevindingenbalk: hoogstens `BEV_MAX` (2) in beeld, de rest in een venster, aan/uit via ☰ — de AI krijgt via `correlationLines()` altijd alles |
 | 13 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
 | 14 | `pidlane-diagnose.js` | 20 | Smart Diagnose + klacht-gestuurde PID-focus |
 | 15 | `pidlane-graph.js` | 14 | multi-line groepstrends, DTC-scanstatus |
@@ -635,10 +639,84 @@ de pas, en dan is de vraag welke klopt.
 | [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
 | [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
 | [#52](https://github.com/NewspeedyNL/PidLane/issues/52) | de tokenchip blijft staan bij een beheerder | bug |
+| [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | welke vragen ontbreken nog in de meetcontext? | meten |
+| [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
+| [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" | meten |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### Vijf meldingen uit het gebruik — 01-09-2026 (issues #58 t/m #62)
+
+Vijf losse klachten, geen ervan diep, alle vijf elke rit in beeld. Twee ervan
+zijn hier het bewaren waard omdat de oorzaak ergens anders zat dan waar hij
+leek te zitten.
+
+**#58 — het getal 46, negen keer gekopieerd.** De onderkant van het scherm viel
+weg achter de drie Android-knoppen (Galaxy S10+). De verleiding is dan te
+zoeken naar het venster dat te lang is. Dat was het niet: `.app` stond op
+`calc(100vh - 46px)`, en 46 was de hoogte van de topbalk **in de tijd dat die
+balk ook echt 46px hoog was**. Sinds Android edge-to-edge afdwingt is hij
+`46px + --pl-sat`, en dat verschil viel er onderaan uit — samen met de
+navigatiebalk, die nergens werd meegeteld. Datzelfde getal stond op negen
+plekken: `#welcomeScreen`, de zijpaneel-lade, `#remPill`, `#busyPill`.
+
+De ronde van 28-08 had de veilige zones al ingevoerd (`--pl-sat`/`--pl-sab`) en
+`test-schermranden.js` bewaakte ~20 volschermvensters. Wat er ontbrak was de
+gewone app-schil — precies het scherm dat je het vaakst ziet. Er is nu één
+token erbij, `--pl-top` (= `46px + var(--pl-sat)`), en blok 3 van
+`test-schermranden.js` wijst elk kaal `calc(100vh - 46px)` af.
+
+> **Nog niet nagemeten op een toestel — issue #65.** De hele rekensom hangt
+> aan wat Capacitor in `--safe-area-inset-*` zet. Levert dat verkeerde
+> getallen, dan klopt de som nog steeds en staat het beeld tóch fout. Blok 5
+> van de testrun logt daarom de gemeten hoogtes; staan die op 0 terwijl er
+> zichtbaar een balk is, dan zit het probleem daar en niet in de CSS.
+
+**#60 — de balk liep vol, maar niet door de regels.** In demostand groeide
+"🔗 Automatische bevindingen" door tot voorbij de onderkant van het scherm.
+`CORRELATION_RULES` telt vijf regels, dus daar kon het niet aan liggen — en
+dat is ook zo. Het tweede deel van de engine is de bron: *leren-van-normaal*
+levert één bevinding **per actief PID** dat meer dan `BASE_DREMPEL` sigma van
+zijn eigen historie afwijkt. Met veertig aangevinkte sensoren zijn dat veertig
+regels, en gesimuleerde demodata wijkt per definitie overal af.
+
+Het plafond zit daarom in de weergave en niet op de bevindingen zelf: er staan
+er hoogstens twee in beeld, de rest zit achter een venster, en
+`correlationLines()` geeft de AI nog steeds álles. De schakelaar in het
+☰-menu is dus een schermkeuze en verandert de diagnose niet — dat staat ook
+letterlijk in het venster, want "uit" dat stiekem ook de analyse verandert is
+precies het soort dubbele betekenis waar deze codebase al drie keer een bug
+aan overhield.
+
+**#61 — de slimme weergave leunt op één aanname.** De temperatuurbalk zet elke
+sensor af tegen zijn **eigen** gevarengrens (`dH`, anders `wH × 1,2`, anders
+`max`) en niet tegen een gedeelde graden-as. Zonder dat is het diagram
+onleesbaar: koelwater op 90 °C naast uitlaatgas op 600 °C zou een streepje
+naast een volle balk zijn, terwijl het eerste alarmerend is en het tweede
+volstrekt normaal. Voor een PID zonder `dH` én zonder `wH` valt de schaal
+terug op het maximum uit de definitie, en dan is de balk grof. Welke dat in de
+praktijk zijn, blijkt pas met een auto ernaast — issue #66, samen met de
+drempel van 2% waarboven een signaal een trendlijn krijgt.
+
+**#62 — de vraag die de diagnose raakt.** Vóór een analyse werd alleen gevraagd
+of eerder gemaakte data hergebruikt mocht worden. Een auto met start/stop zet
+bij stilstand de motor uit: toerental naar 0, spanning zakt in, koelwater loopt
+op zonder circulatie. In de data is dat niet te onderscheiden van afslaan.
+Zonder die ene vraag kán de AI dat verschil niet maken, en meldt hij een
+storing op een auto die precies doet wat hij hoort te doen.
+
+De vragenlijst staat als data in `PL_VOORVRAGEN` (`pidlane-archief.js`), dus
+een vraag erbij is één item. **Wélke vraag ontbreekt, is niet vanaf een bureau
+te bepalen** — dat leert alleen een rit met een rapport dat ernaast zat. Zie
+issue #64.
+
+**#59 — geen les, wel een grens.** De ronde van 26-08 gaf de gebruiker terecht
+de keuze terug over het protocol, maar zette daarvoor alle negen protocollen
+onder elkaar op het scherm. De keuze is niet ingeperkt (`PROTOCOLS` is
+ongewijzigd en `test-protocolkeuze.js` bewaakt nog steeds dat er meer dan één
+optie in de lijst zit); alleen het aantal dat *tegelijk* in beeld staat.
 
 ### De terugknop schakelde de app weg — 01-09-2026
 

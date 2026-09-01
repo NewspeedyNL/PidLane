@@ -11,6 +11,70 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — VIJF MELDINGEN UIT HET GEBRUIK
+
+       • 📐 DE ONDERKANT VAN HET SCHERM VALT NIET MEER WEG achter de drie
+         Android-knoppen (issue #58). Oorzaak was niet één te lang venster
+         maar één verouderd getal: .app rekende met calc(100vh - 46px), en
+         46 was de hoogte van de topbalk in de tijd dat die balk ook echt
+         46px hoog was. Sinds edge-to-edge is hij 46px PLUS de statusbalk,
+         en dat verschil viel er onderaan uit — samen met de navigatiebalk,
+         die nergens werd meegeteld. Datzelfde getal stond op negen plekken.
+         Er is nu één token: --pl-top. Onderin tellen .app, body, #fabLane,
+         .ov, .modal, de bottom-sheets en de volschermlade --pl-sab mee.
+         test-schermranden.js wijst voortaan elk kaal calc(100vh - 46px) af.
+
+       • 🔌 HET PROTOCOLSCHERM PAST WEER OP EEN TELEFOON (issue #59). Er
+         staat nog één kaart in beeld — het herkende protocol — met eronder
+         "Handmatig kiezen (n protocollen)". De keuze zelf is niet ingeperkt:
+         PROTOCOLS is ongewijzigd en er valt nog steeds evenveel te kiezen,
+         alleen niet meer allemaal tegelijk. Herkent de adapter niets, dan
+         staat de lijst meteen open; anders kijk je naar een leeg scherm.
+
+       • 🔗 HOOGSTENS TWEE AUTOMATISCHE BEVINDINGEN IN BEELD (issue #60),
+         ernstigste eerst, de rest achter "bekijk alles". Aan/uit staat in
+         het ☰-menu en wordt onthouden. De bron van het vollopen zat NIET in
+         de vijf correlatieregels maar in "leren-van-normaal": dat levert
+         één bevinding per actief PID dat van zijn eigen historie afwijkt,
+         dus met veertig sensoren veertig regels — en demodata wijkt per
+         definitie overal af. De schakelaar is een schermkeuze: de AI krijgt
+         via correlationLines() nog steeds alles, en dat staat ook in het
+         venster zelf.
+
+       • 🧠 NIEUWE WEERGAVE "SLIM" IN DE LIVE VIEW (issue #61). Bovenaan de
+         dashboardwaardes groot (snelheid, brandstofpeil, verbruik, accu),
+         daaronder alle temperaturen als één balkdiagram, onderaan de rest
+         met een trendlijn — maar alleen waar het signaal ook echt beweegt;
+         een rechte streep kost een halve tegel en zegt niets. Toerental,
+         pedaalstand en motorbelasting staan BEWUST niet in het dashboard:
+         die variëren te veel om als tellerstand te lezen.
+         De balken staan voor de marge tot de EIGEN grens en niet voor het
+         aantal graden. Anders is het diagram onleesbaar: koelwater op 90 °C
+         naast uitlaatgas op 600 °C zou een streepje naast een volle balk
+         zijn, terwijl het eerste alarmerend is en het tweede normaal.
+
+       • 🧭 VÓÓR DE ANALYSE ÉÉN VENSTER MET VRAGEN (issue #62), in plaats
+         van alleen de vraag of eerdere rapporten hergebruikt mogen worden.
+         Drie korte vragen plus een tekstveld: heeft deze auto start/stop en
+         stond dat aan, deed de klacht zich tijdens deze meting voor, en liep
+         de meting door zonder gaten. Die laatste is voorgevuld met wat de app
+         zelf uit de reeksen kan afleiden — maar het blijft een voorstel,
+         want alleen de gebruiker weet of de adapter tussendoor los heeft
+         gezeten. "Weet ik niet" levert bewust géén promptregel op.
+         Start/stop is de belangrijkste: een motor die bij stilstand uit gaat
+         ziet er in de data uit als afslaan, en zonder die vraag kan de AI dat
+         verschil niet maken.
+
+       • 🔬 TESTRUN 5.7. Blok 5 en CAMPAGNE herschreven voor deze vijf. De
+         #58-proef meet echte afstanden op het toestel (statusbalk,
+         navigatiebalk, waar de topbalk eindigt, waar het werkscherm ophoudt)
+         — in een browser zijn beide zones 0 en zegt die proef weinig.
+         Nieuw: test-bevindingen.js, test-slimmeweergave.js,
+         test-meetcontext.js; test-schermranden.js en test-protocolkeuze.js
+         kregen er een blok bij. 57 tests, allemaal met tegenproef.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-01 (CET) — TWEE LUISTERAARS OP ÉÉN KNOP
 
        • ⬅️ DE TERUGKNOP SCHAKELT DE APP NIET MEER WEG. De klacht bleef

@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.6 (01-09-2026)';
+const TESTRUN_VERSIE = '5.7 (01-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1650,116 +1650,168 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 01-09-2026 — de Android-terugknop schakelde de app weg.
-  // De controles van 29-08 (8) zijn hier weg: die oplevering is afgerond en
-  // staat groen in test-account-verwijderen.js.
+  // OPLEVERING 01-09-2026 (tweede) — issues #58 t/m #62.
+  // De controles van de terugknop-ronde zijn hier weg: die oplevering is
+  // afgerond en staat groen in test-terugknop.js (25 toetsen, drie
+  // tegenproeven). Wat hier staat, gaat over deze vijf:
   //
-  // De klacht bleef twee reparaties lang staan, en beide keren om dezelfde
-  // reden: er hingen TWEE luisteraars aan 'backButton'. Eén in
-  // pidlane-archief.js en één in pidlane-theme.js. Capacitor roept ze
-  // allebei aan — een luisteraar onderdrukt de ander niet. De tweede deed
-  // minimizeApp() zodra zijn eigen, kortere lijst niets herkende, en op het
-  // welkomstscherm herkende die lijst per definitie niets.
+  //   #58  de onderkant van het scherm viel weg achter de Android-knoppen
+  //   #59  het protocolkeuzescherm was twee telefoonhoogtes lang
+  //   #60  de bevindingenbalk liep vol in demostand
+  //   #61  nieuwe weergave "Slim": dashboard, temperatuurbalken, trend
+  //   #62  vragen vóór de analyse, zodat de AI start/stop niet als afslaan leest
   //
-  // Beide reparaties zaten in archief.js. Daar was ook niets mis.
+  // Alle vijf zijn hier gedragsproeven die zichzelf opruimen. Waar dat niet
+  // kan (het protocolscherm hoort bij het verbinden) staat LET OP en niet
+  // FOUT — een controle die altijd rood staat wordt genegeerd.
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1: hangt de ene luisteraar er ook echt? ───────────
-  await _doe(5, 'De terugknop-ketting is geladen en geregistreerd', function () {
-    if (typeof appBack !== 'function')
-      return { staat: 'FOUT', detail: 'appBack() ontbreekt — pidlane-archief.js is niet meegekomen. ' +
-        'Eerst "Nieuwste versie laden"; blijft het staan, dan doet de terugknop niets' };
-    if (!window._plBackReady)
-      return { staat: 'FOUT', detail: 'setupBackButton() heeft niet gedraaid — er luistert niemand op back' };
-    const nat = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App);
-    return nat ? 'appBack() bestaat en de App-plugin heeft de luisteraar aangenomen'
-               : 'appBack() bestaat; geen App-plugin, dus de history-trap van de browser doet het werk';
-  });
-
-  // ── TOEGEVOEGD 2: doet de ketting wat hij belooft? ───────────────
-  // Het kebabmenu is een van de takken die uit de tweede handler zijn
-  // overgenomen. Als de verhuizing iets kwijtraakte, is dit waar het blijkt.
-  // Onschadelijk: het menu gaat open en meteen weer dicht.
-  await _doe(5, 'Back sluit het kebabmenu (tak uit de oude tweede handler)', function () {
-    const kebab = document.getElementById('kebabMenu');
-    if (!kebab) return { staat: 'LET OP', detail: '#kebabMenu bestaat niet op dit scherm' };
-    const stondOpen = kebab.classList.contains('open');
-    try {
-      kebab.classList.add('open');
-      const behandeld = appBack();
-      if (!behandeld) return { staat: 'FOUT', detail: 'appBack() zei "niets gedaan" terwijl het menu openstond' };
-      if (kebab.classList.contains('open'))
-        return { staat: 'FOUT', detail: 'het menu bleef open — closeKebab() is niet meeverhuisd uit closeTopOverlay()' };
-      return 'menu open → één back → menu dicht';
-    } finally {
-      if (stondOpen) kebab.classList.add('open'); else kebab.classList.remove('open');
-    }
-  });
-
-  // ── TOEGEVOEGD 3: schakelt back de app weg? ──────────────────────
-  // De kern van de klacht, en veilig te meten: exitApp() en minimizeApp()
-  // worden even vervangen door een verklikker. Zou er tóch nog iets de app
-  // wegschakelen, dan vangt de verklikker dat op in plaats van het scherm.
-  await _doe(5, 'Back op het startscherm laat de app staan', function () {
-    const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
-    if (!A) return { staat: 'LET OP', detail: 'geen App-plugin (browser) — wegschakelen kan hier niet' };
-    const ws = document.getElementById('welcomeScreen');
-    if (!ws || ws.classList.contains('hidden'))
-      return { staat: 'LET OP', detail: 'het startscherm staat niet aan; deze proef hoort daar' };
-
-    const betrapt = [];
-    const oudExit = A.exitApp, oudMin = A.minimizeApp;
-    try {
-      A.exitApp = function () { betrapt.push('exitApp'); };
-      A.minimizeApp = function () { betrapt.push('minimizeApp'); };
-      _plBackHandler();            // twee keer: de oude fix sloot pas bij de tweede tik
-      _plBackHandler();
-    } finally {
-      A.exitApp = oudExit; A.minimizeApp = oudMin;
-    }
-    if (betrapt.length)
-      return { staat: 'FOUT', detail: 'de terugknop riep ' + betrapt.join(' en ') +
-        ' aan — de app zou nu weg zijn geweest. Zoek de tweede luisteraar' };
-    return 'twee keer back op het startscherm, de app blijft staan';
-  });
-
-  // ── VERWIJDERD 1: is de tweede ketting écht weg? ─────────────────
-  await _doe(5, 'De tweede ketting (closeTopOverlay) bestaat niet meer', function () {
-    if (typeof closeTopOverlay !== 'undefined')
-      return { staat: 'FOUT', detail: 'closeTopOverlay() staat er nog. Zolang die bestaat, kan er ook ' +
-        'weer een luisteraar aan hangen — en dan is de klacht terug' };
-    return 'weg; de hele ketting zit nu in appBack()';
-  });
-
-  // ── VERWIJDERD 2: hangt er nergens een tweede luisteraar? ────────
-  // Dit leest broncode, en dat is hier geen luiheid maar de enige weg: een
-  // luisteraar in een ándere module is vanuit JS niet waarneembaar. Capacitor
-  // houdt de lijst native bij, er is geen registry om te tellen, en de
-  // handler die je wél kunt aanroepen draait gewoon door alsof er niets is.
-  // Precies dat maakte deze bug twee ronden lang onvindbaar.
-  await _doe(5, 'Precies één module luistert op backButton', async function () {
-    const modules = ['pidlane-archief.js', 'pidlane-theme.js', 'pidlane-uihelpers.js',
-      'pidlane-start.js', 'pidlane-auth.js', 'pidlane-neon.js', 'pidlane-rit.js', 'pidlane-caravan.js'];
-    const schoon = function (s) {
-      return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+  // ── TOEGEVOEGD 1 (#58): kloppen de veilige zones op dit toestel? ──
+  // Dit is de enige plek waar dit écht te meten valt: in een browser zijn
+  // beide zones 0 en klopt álles. Op een toestel met een statusbalk en drie
+  // knoppen komen de getallen pas uit elkaar. Vandaar meten en niet lezen.
+  await _doe(5, 'De app past tussen de statusbalk en de navigatiebalk', function () {
+    const meet = function (token) {
+      const p = document.createElement('div');
+      p.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:' + token;
+      document.body.appendChild(p);
+      const h = p.getBoundingClientRect().height;
+      p.remove();
+      return h;
     };
-    const met = [], weg = [], schakelaars = [];
-    for (const m of modules) {
-      const src = await _bron(m);
-      if (src === null) { weg.push(m); continue; }
-      const s = schoon(src);
-      const n = (s.match(/addListener\s*\(\s*['"]backButton['"]/g) || []).length;
-      if (n) met.push(m + ' (' + n + 'x)');
-      if (/\.\s*(minimizeApp|exitApp)\s*(\?\.)?\(/.test(s)) schakelaars.push(m);
+    const sat = meet('var(--pl-sat)');
+    const sab = meet('var(--pl-sab)');
+    const top = meet('var(--pl-top)');
+    if (Math.abs(top - (46 + sat)) > 1)
+      return { staat: 'FOUT', detail: '--pl-top is ' + top.toFixed(1) + 'px maar de topbalk is 46 + ' +
+        sat.toFixed(1) + ' = ' + (46 + sat).toFixed(1) + 'px hoog' };
+
+    const bar = document.querySelector('.topbar');
+    if (bar && Math.abs(bar.getBoundingClientRect().bottom - top) > 1.5)
+      return { staat: 'FOUT', detail: 'de topbalk eindigt op ' + bar.getBoundingClientRect().bottom.toFixed(1) +
+        'px terwijl --pl-top ' + top.toFixed(1) + 'px zegt — alles wat daaronder hangt staat dus verkeerd' };
+
+    const app = document.getElementById('appGrid');
+    if (!app) return { staat: 'LET OP', detail: '#appGrid niet gevonden' };
+    const onder = app.getBoundingClientRect().bottom;
+    const grens = window.innerHeight - sab;
+    if (onder > grens + 1)
+      return { staat: 'FOUT', detail: 'het werkscherm loopt tot ' + onder.toFixed(0) + 'px door terwijl er op ' +
+        grens.toFixed(0) + 'px een navigatiebalk begint — de onderste ' + (onder - grens).toFixed(0) +
+        'px valt daarachter weg (issue #58)' };
+    return 'statusbalk ' + sat.toFixed(0) + 'px, navigatiebalk ' + sab.toFixed(0) +
+           'px, werkscherm eindigt op ' + onder.toFixed(0) + ' van ' + grens.toFixed(0) + 'px' +
+           (sat + sab === 0 ? ' (browser: geen zones, dus deze proef zegt hier weinig)' : '');
+  });
+
+  // ── TOEGEVOEGD 2 (#60): staan er hoogstens twee bevindingen in beeld? ──
+  // Zes verzonnen bevindingen erin, tellen, en daarna de echte stand
+  // terugzetten. De engine zelf blijft ongemoeid.
+  await _doe(5, 'De bevindingenbalk toont er hoogstens twee', function () {
+    if (typeof renderCorrelationBanner !== 'function')
+      return { staat: 'FOUT', detail: 'renderCorrelationBanner() ontbreekt — pidlane-correlatie.js is niet meegekomen' };
+    const nep = [];
+    for (let i = 1; i <= 6; i++) nep.push({ id: 'proef' + i, naam: 'Proefbevinding ' + i, uitleg: 'PROEF-' + i, ernst: 1, rang: 7 - i });
+    try {
+      if (typeof bevindingenAan === 'function' && !bevindingenAan())
+        return { staat: 'LET OP', detail: 'de balk staat uit (☰ → Bevindingen) — dan valt er niets te tellen' };
+      renderCorrelationBanner(nep);
+      const box = document.getElementById('corrBanner');
+      if (!box || box.style.display === 'none')
+        return { staat: 'FOUT', detail: 'met zes bevindingen komt er geen balk' };
+      const zichtbaar = (box.innerHTML.match(/PROEF-\d/g) || []).length;
+      if (zichtbaar > 2)
+        return { staat: 'FOUT', detail: 'er staan ' + zichtbaar + ' bevindingen in beeld — het plafond van 2 werkt niet (issue #60)' };
+      if (box.innerHTML.indexOf('nog 4 bevinding') < 0)
+        return { staat: 'FOUT', detail: 'de overige vier worden nergens aangeboden; ze zijn dan gewoon weg' };
+      return zichtbaar + ' van 6 in beeld, de rest achter "bekijk alles"';
+    } finally {
+      try { runCorrelationEngine(); } catch (e) { /* stil: de echte stand komt bij de volgende pollronde vanzelf terug */ }
     }
-    if (weg.length === modules.length)
-      return { staat: 'LET OP', detail: 'geen enkele module op te halen — offline?' };
-    if (schakelaars.length)
-      return { staat: 'FOUT', detail: 'roept de app nog weg: ' + schakelaars.join(', ') };
-    if (met.length !== 1 || met[0].indexOf('pidlane-archief.js') !== 0)
-      return { staat: 'FOUT', detail: 'luisteraars gevonden in: ' + (met.join(', ') || 'geen enkele') +
-        ' — verwacht: alleen pidlane-archief.js (1x)' };
-    return 'één luisteraar, in pidlane-archief.js' + (weg.length ? ' (' + weg.length + ' module(s) niet opgehaald)' : '');
+  });
+
+  // ── TOEGEVOEGD 3 (#61): bouwt de slimme weergave drie vakken? ──────
+  // Wisselt van weergave en zet hem daarna terug. De PID-selectie wordt niet
+  // aangeraakt: alleen de manier waarop dezelfde tegels gerangschikt worden.
+  await _doe(5, 'Slimme weergave zet temperaturen bij elkaar', function () {
+    if (typeof setPidView !== 'function' || typeof slimGroep !== 'function')
+      return { staat: 'FOUT', detail: 'setPidView() of slimGroep() ontbreekt — de weergave kan niet bestaan' };
+    if (!activePIDs || !activePIDs.size)
+      return { staat: 'LET OP', detail: 'geen sensoren geselecteerd; er valt niets in te delen' };
+    const terug = pidViewMode;
+    try {
+      setPidView('slim');
+      const vakken = ['dash', 'temp', 'rest'].map(function (g) { return document.getElementById('slimSec-' + g); });
+      if (vakken.some(function (v) { return !v; }))
+        return { staat: 'FOUT', detail: 'niet alle drie de vakken zijn opgebouwd (issue #61)' };
+      // Elke temperatuur hoort in het temperatuurvak, en nergens anders.
+      const fout = [];
+      let temps = 0;
+      activePIDs.forEach(function (pid) {
+        const d = getPidDef(pid); if (!d || d.unit !== '°C') return;
+        temps++;
+        const tegel = document.getElementById('gc-' + pid);
+        if (!tegel) return;                                   // tekst-PID of niet getekend
+        const sec = tegel.parentNode && tegel.parentNode.parentNode;
+        if (!sec || sec.id !== 'slimSec-temp') fout.push(d.name);
+        if (!document.getElementById('sb-' + pid)) fout.push(d.name + ' (geen balk)');
+      });
+      if (fout.length)
+        return { staat: 'FOUT', detail: 'staat niet in het temperatuurvak: ' + fout.join(', ') };
+      if (!temps) return { staat: 'LET OP', detail: 'geen temperatuursensor geselecteerd; het balkdiagram is dan leeg' };
+      return temps + ' temperatuur(en) in één balkdiagram, drie vakken opgebouwd';
+    } finally {
+      try { setPidView(terug); } catch (e) { console.warn('setPidView terugzetten mislukt:', e); }
+    }
+  });
+
+  // ── TOEGEVOEGD 4 (#62): komen de antwoorden in de AI-prompt? ───────
+  // Een venster met vragen is pas iets waard als het antwoord ook verstuurd
+  // wordt. Hier wordt tijdelijk een antwoord gezet, de promptregel gelezen en
+  // de echte stand teruggezet.
+  await _doe(5, 'De meetcontext komt in de AI-prompt terecht', function () {
+    if (typeof plMeetcontextPromptLine !== 'function' || typeof plVoorAnalyse !== 'function')
+      return { staat: 'FOUT', detail: 'plVoorAnalyse()/plMeetcontextPromptLine() ontbreekt — er wordt niets gevraagd én niets meegestuurd' };
+    const terug = window._plMeetcontext;
+    try {
+      window._plMeetcontext = { startstop: 'ja', klacht: 'nee', stabiel: '', extra: '' };
+      const t = plMeetcontextPromptLine();
+      if (t.indexOf('MEETCONTEXT') < 0)
+        return { staat: 'FOUT', detail: 'de antwoorden leveren geen MEETCONTEXT-blok op (issue #62)' };
+      if (!/start\/stop/i.test(t))
+        return { staat: 'FOUT', detail: 'start/stop staat op "ja" maar komt niet in de prompt — de AI leest de motor dan alsnog als afslaand' };
+      if (/onderbrekingen of gaten/i.test(t))
+        return { staat: 'FOUT', detail: 'een onbeantwoorde vraag levert tóch een promptregel op' };
+      const v = (typeof plMeetStabielVoorstel === 'function') ? plMeetStabielVoorstel() : null;
+      return 'promptregel klopt; voorstel voor stabiliteit nu: ' +
+             (v ? ((v.waarde || 'weet ik niet') + ' — ' + v.reden) : 'niet vast te stellen');
+    } finally {
+      window._plMeetcontext = terug;
+    }
+  });
+
+  // ── VERWIJDERD 1 (#62): is de oude, losse vraag écht weg? ─────────
+  await _doe(5, 'Het oude losse rapportenvenster bestaat niet meer', function () {
+    if (typeof _srAskUseContext !== 'undefined')
+      return { staat: 'FOUT', detail: '_srAskUseContext() staat er nog naast plVoorAnalyse(). Zolang die bestaat ' +
+        'kan een aanroeper er nog in blijven hangen, en dan krijgt de gebruiker twee vensters achter elkaar' };
+    return 'weg; alles loopt via plVoorAnalyse()';
+  });
+
+  // ── VERWIJDERD 2 (#59): toont het protocolscherm nog alles tegelijk? ──
+  // Alleen te zien terwijl het scherm openstaat. Bij het verbinden dus even
+  // de testrun laten lopen, of anders met de hand nakijken (zie CAMPAGNE).
+  await _doe(5, 'Het protocolscherm toont niet meer alle protocollen tegelijk', function () {
+    const lijst = document.getElementById('networkList');
+    if (!lijst) return { staat: 'LET OP', detail: '#networkList bestaat niet — het verbindscherm is nooit geopend' };
+    const kaarten = lijst.querySelectorAll('.network-card').length;
+    if (!kaarten) return { staat: 'LET OP', detail: 'het protocolscherm staat niet open; deze proef hoort daar' };
+    const knop = document.getElementById('protoHandmatigBtn');
+    if (kaarten > 1 && !knop)
+      return { staat: 'FOUT', detail: kaarten + ' kaarten in beeld en geen knop om ze in te klappen (issue #59)' };
+    if (kaarten > 1)
+      return 'de handmatige lijst staat open (' + kaarten + ' kaarten) — dat mag, hij is met één knop weer dicht';
+    return 'één kaart in beeld' + (knop ? ', de rest achter "' + knop.textContent + '"' : '');
   });
 }
 
@@ -2514,45 +2566,53 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 01-09 \u2014 de terugknop schakelde de app weg',
+  titel: 'OPLEVERING 01-09 (tweede) \u2014 issues #58 t/m #62',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'De Android-terugknop schakelde PidLane weg, en dat bleef staan na twee reparaties. Reden: er hingen TWEE luisteraars aan \'backButton\'. E\u00e9n in pidlane-archief.js (appBack) en \u00e9\u00e9n in pidlane-theme.js (closeTopOverlay). Capacitor roept elke luisteraar aan \u2014 de een onderdrukt de ander niet. De tweede deed minimizeApp() zodra zijn eigen, kortere lijst niets herkende, en op het welkomstscherm herkende die lijst per definitie niets.',
+    'Vijf meldingen uit het gebruik, geen van alle diep maar alle vijf elke rit in beeld: de onderkant van het scherm viel weg achter de drie Android-knoppen (#58), het protocolkeuzescherm was langer dan het scherm (#59), de balk met automatische bevindingen liep vol (#60), de live view toonde te veel op \u00e9\u00e9n hoop (#61) en de AI kreeg te weinig context over de meting zelf (#62).',
 
-    'Gevolg: \u00e9\u00e9n tik op terug zette de app op de achtergrond, dwars door de melding "tik nogmaals om af te sluiten" van de eerste handler heen. Beide eerdere reparaties zaten in archief.js, en daar was ook niets mis. De fout stond ernaast, in het bestand dat niemand erbij pakte.',
+    'DE \u00c9\u00c9N NA GROOTSTE IS #58 EN DE OORZAAK IS LEERZAAM: op negen plekken stond het getal 46 als offset voor de topbalk. Dat klopte in de tijd dat die balk ook 46px hoog was. Sinds edge-to-edge is hij 46px PLUS de statusbalk, en dat verschil viel er onderaan uit \u2014 samen met de navigatiebalk die nergens werd meegeteld. Het is dus niet \u00e9\u00e9n kapot venster maar \u00e9\u00e9n verouderd getal, negen keer gekopieerd. Er is nu \u00e9\u00e9n token: --pl-top.',
 
-    'DE LES ZIT IN DE VORM, NIET IN DE UITKOMST: twee luisteraars op \u00e9\u00e9n hardwareknop zijn geen dubbele zekerheid maar een race, en de verliezer is onzichtbaar. Vanuit JS is een tweede luisteraar niet te tellen \u2014 Capacitor houdt die lijst native bij. Je kunt de handler die je w\u00e9l kent dus groen testen terwijl de app naast je wordt weggeschakeld.',
-
-    'Wat het NIET was, hoewel het daarop leek: de www-map (die is een stub, de app laadt live via server.url), de Capacitor-versie, of het thema. Wel gecontroleerd en in orde: @capacitor/app 8.1.1 zit in de build, de native AppPlugin sluit de app uit zichzelf nooit af, en de bridge-JS wordt ook bij een remote server.url ge\u00efnjecteerd \u2014 dus window.Capacitor.Plugins.App bestaat in de APK.',
+    'DE \u00c9CHT GROOTSTE IS #62, WANT DIE RAAKT DE UITKOMST. Een auto met start/stop zet bij stilstand de motor uit: toerental naar 0, spanning zakt in, koelwater loopt op zonder circulatie. In de data is dat niet te onderscheiden van afslaan. Zonder die ene vraag kan de AI dat verschil niet maken en meldt hij een storing op een auto die precies doet wat hij hoort te doen.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP 1. Blok 5 draait de proef zelf: het kebabmenu open \u2192 \u00e9\u00e9n back \u2192 dicht, en twee keer back op het startscherm zonder dat de app wegvalt. Die tweede proef vervangt exitApp/minimizeApp tijdelijk door een verklikker, dus hij kan de app niet echt wegschakelen.',
+    'STAP 1. Blok 5 meet #58 met echte afstanden: de hoogte van de statusbalk, de hoogte van de navigatiebalk, waar de topbalk eindigt en waar het werkscherm ophoudt. IN EEN BROWSER ZEGT DIE PROEF WEINIG \u2014 daar zijn beide zones 0 en klopt alles per definitie. Draai hem dus in de APK.',
 
-    'STAP 2. MET DE HAND, EN DIT IS DE ECHTE PROEF (alleen in de APK, niet in de browser). Sta op het startscherm en druk op terug. Er hoort NIETS te gebeuren, behalve een korte melding. De app mag niet naar de achtergrond gaan en niet sluiten. Druk daarna nog vijf keer. Ook dan blijft PidLane staan.',
+    'STAP 2. MET DE HAND EN OP HET TOESTEL (#58). Scroll in de live view helemaal naar beneden. De laatste regel moet leesbaar zijn en niet half onder de drie knoppen staan. Herhaal met het sensorkeuze-scherm (\u2630 \u2192 de lade), het welkomstscherm, en een bottom-sheet (bijvoorbeeld het kostenvenster v\u00f3\u00f3r een analyse): de knoppenrij onderin moet volledig aanraakbaar zijn. Draai het toestel ook \u00e9\u00e9n keer.',
 
-    'STAP 3. Loop de ketting af: open een modus, druk terug (\u2192 home). Open het kebabmenu, druk terug (\u2192 dicht). Start een rit-analyse en druk terug: de analyse hoort te MINIMALISEREN en door te lopen (pil in beeld), niet te stoppen. Open een deur op het startscherm en druk terug: terug naar de 4 keuzes.',
+    'STAP 3. #59, alleen tijdens het verbinden. Verbind met de adapter en let op het protocolscherm. Er hoort \u00c9\u00c9N kaart te staan (het herkende protocol), met daaronder een knop "Handmatig kiezen (n protocollen)". Druk erop: de lijst klapt open. Druk nogmaals: dicht. De knoppen onderin moeten zonder scrollen bereikbaar zijn. Herkent de adapter niets (contact uit), dan hoort de lijst juist meteen open te staan \u2014 anders kijk je naar een leeg scherm.',
 
-    'STAP 4. De takken die uit de tweede handler zijn overgenomen verdienen aandacht, want die konden bij de verhuizing zoekraken: neon-dashboard, airco/wintercheck, de onderdelen-picker, het kebabmenu en de verbind-overlay. Die laatste heeft een voorwaarde: hij gaat alleen dicht als er verbinding is (of demo). Staat hij er omdat er nog niets is, dan blijft hij staan \u2014 anders kijk je naar een leeg scherm.',
+    'STAP 4. #60 in demostand, want daar liep het mis. Zet de demo aan en kijk naar de balk bovenaan de live view: hoogstens twee bevindingen, met eronder "nog n bevindingen \u2014 bekijk alles". Open dat venster: daar staan ze allemaal. Zet de balk uit via \u2630 \u2192 Bevindingen, of via het kruisje in de balk zelf. Herlaad de app: de keuze hoort onthouden te zijn.',
 
-    'STAP 5. Verlaat de app met de home-knop of het takenoverzicht. Dat is nu de enige weg naar buiten, en dat is met opzet.',
+    'STAP 5. #61 tijdens het rijden, want stilstaand beweegt er niets. Kies weergave "\ud83e\udde0 Slim". Bovenaan het dashboardvak (snelheid, brandstof), daaronder alle temperaturen als \u00e9\u00e9n balkdiagram, onderaan de rest met trendlijnen. LET OP DE BALKEN: die staan voor de marge tot de eigen grens, niet voor het aantal graden \u2014 koelwater op 90 \u00b0C hoort hoger te staan dan omgevingslucht op 20 \u00b0C, en uitlaatgas op 500 \u00b0C juist niet vol. Klopt dat gevoelsmatig niet, dan is slimTempSchaal() de plek.',
 
-    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'STAP 6. #61, tweede deel. Kijk in het vak "Beweegt" welke tegels een trendlijn hebben. Toerental, belasting en pedaalstand horen er \u00e9\u00e9n te hebben; een sensor die stilstaat hoort er g\u00e9\u00e9n te hebben. Zie je een rechte streep staan, dan is de drempel van 2% te laag afgesteld (SLIM_BEWEEG_DEEL in pidlane-pids.js).',
 
-    'closeTopOverlay() in pidlane-theme.js is weg, luisteraar en al. De takken die alleen daar stonden (needsUpdateModal, .pick-overlay, neonDash, climateDash, kebabMenu, connOv) zijn opgenomen in appBack() in pidlane-archief.js, op hun eigen plek in de volgorde meest-modaal \u2192 minst-modaal.',
+    'STAP 7. #62. Start een analyse. Er hoort \u00e9\u00e9n venster "Voor de analyse" te komen met drie vragen plus een tekstveld, en \u2014 als er al rapporten in deze sessie zijn \u2014 de vraag over hergebruik in datzelfde venster. Niet twee vensters achter elkaar. Beantwoord ze, en start daarna een tweede analyse: het venster hoort NIET terug te komen. Corrigeren kan via \u2630 \u2192 Rapporten \u2192 Meetcontext \u2192 Opnieuw vragen.',
 
-    'exitApp() is eruit. De terugknop schakelt de app niet meer weg \u2014 niet afsluiten \u00e9n niet minimaliseren. Op de root komt er een korte melding, hooguit eens per twee seconden, zodat de knop niet stuk lijkt.',
+    'STAP 8. #62, de proef die ertoe doet. Rijd een stukje met start/stop actief, laat de motor bij een stoplicht uitgaan, en vraag daarna een analyse met start/stop op "ja". Het rapport mag dat NIET als afslaan of als accuprobleem melden. Doe dezelfde meting nog eens met het antwoord op "nee" en kijk of het rapport dan w\u00e9l anders leest \u2014 verandert er niets, dan komt de regel niet aan.',
 
-    'Nieuw: _plZichtbaar(). E\u00e9n zichtbaarheidstoets voor de hele ketting, inclusief de .hidden-class. Die toets kwam uit closeTopOverlay en stond niet in appBack: een venster dat met .hidden dicht staat gold daar als open, dus "sloot" back iets wat allang dicht was en deed de knop in de ogen van de gebruiker niets.',
+    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'test-terugknop.js: 25 toetsen. De echte ketting uit archief.js draait daar in een nagebouwde DOM, dus het is gedrag en geen broncode-lezerij. Drie tegenproeven: de oude theme-handler, de oude exitApp-tik, en een tweede luisteraar \u2014 alledrie maken hem rood.',
+    '#58 \u2014 nieuw token --pl-top (= 46px + statusbalk) in pidlane.css, gebruikt door .app, #welcomeScreen, de zijpaneel-lade, #remPill en #busyPill. Onderin tellen .app, body, #fabLane, .ov, .modal, .ai-sheet-f en de volschermlade nu --pl-sab mee. test-schermranden.js kreeg er een blok bij dat elk kaal "calc(100vh - 46px)" afwijst.',
+
+    '#59 \u2014 renderNetworkCards() tekent alleen nog de vondst, met eronder \u00e9\u00e9n knop voor de negen handmatige protocollen. De keuze zelf is niet ingeperkt: PROTOCOLS is ongewijzigd en test-protocolkeuze.js bewaakt nog steeds dat er meer dan \u00e9\u00e9n optie in de lijst zit. Alleen het aantal dat tegelijk in beeld staat is veranderd.',
+
+    '#60 \u2014 de balk toont er hoogstens twee, ernstigste eerst, met een venster voor de rest en een schakelaar in \u2630. DE BRON VAN HET VOLLOPEN ZAT NIET IN DE VIJF CORRELATIEREGELS maar in "leren-van-normaal": dat levert \u00e9\u00e9n bevinding per actief PID dat van zijn eigen historie afwijkt, dus met veertig sensoren veertig regels. De AI krijgt via correlationLines() nog steeds alles \u2014 de schakelaar is een schermkeuze en verandert de diagnose niet.',
+
+    '#61 \u2014 vierde weergaveknop. slimGroep() in pidlane-data.js deelt in: alles met eenheid \u00b0C gaat naar de balken, een korte allowlist (snelheid, brandstofpeil, verbruik, accuspanning) naar het dashboard, de rest naar "Beweegt". Toerental, pedaalstand en motorbelasting staan BEWUST niet in het dashboard: die variëren te veel om als tellerstand te lezen.',
+
+    '#62 \u2014 plVoorAnalyse() vervangt _srAskUseContext(). Drie vragen plus een vrij tekstveld; de stabiliteitsvraag is voorgevuld met wat de app zelf uit de meting kan afleiden (gaten in de reeksen), maar het blijft een voorstel \u2014 alleen de gebruiker weet of de adapter tussendoor los heeft gezeten. "Weet ik niet" levert bewust g\u00e9\u00e9n promptregel op.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Dat de terugknop de app nooit meer verlaat is een keuze, geen natuurwet. Voelt het bij gebruik te streng, dan is de plek om het terug te draaien _plBackHandler() in pidlane-archief.js \u2014 \u00e9\u00e9n functie, en de test zegt meteen wat je verandert.',
+    'De veilige zones komen van Capacitor (--safe-area-inset-*) met env() als terugval. Levert die op een toestel verkeerde getallen, dan klopt de rekensom hierboven nog steeds en staat het beeld tóch fout. Blok 5 logt daarom de gemeten waarden; staan die op 0 terwijl er zichtbaar een balk is, dan zit het probleem daar en niet in de CSS.',
 
-    'De ketting is alleen in de APK volledig te toetsen. In de browser hangt hij aan de history-trap en gedraagt terug zich anders; blok 5 zegt LET OP in plaats van FOUT als de App-plugin ontbreekt.',
+    'De temperatuurbalk zet elke sensor af tegen zijn eigen gevarengrens. Voor een PID zonder dH \u00e9n zonder wH valt hij terug op het maximum uit de definitie, en dan is de balk grof. Welke dat in de praktijk zijn, blijkt pas met een auto ernaast.',
+
+    'Of de vragen uit #62 de juiste vier zijn, is niet vanaf een bureau te bepalen. De lijst staat als data in PL_VOORVRAGEN, dus een vraag erbij is \u00e9\u00e9n item \u2014 maar wélke vraag ontbreekt, leert alleen een rit met een rapport dat ernaast zat.',
 
     'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46.'
   ]

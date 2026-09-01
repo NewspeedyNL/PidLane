@@ -877,6 +877,9 @@ function closeConnOv(){
       <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
       <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
+      <!-- Aan/uit voor de bevindingenbalk in de live view (issue #60). Alleen
+           de BALK; de AI krijgt de bevindingen bij een analyse gewoon mee. -->
+      <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">🔗 Bevindingen<span style="margin-left:auto;display:flex;gap:4px"><button class="kb-seg" id="bevAanBtn" onclick="bevindingenZet(true)">Aan</button><button class="kb-seg" id="bevUitBtn" onclick="bevindingenZet(false)">Uit</button></span></div>
       <div class="kebab-sep"></div>
       <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
       </div>
@@ -1051,6 +1054,9 @@ function closeConnOv(){
           <button class="pidview-btn active" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
           <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
           <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
+          <!-- Slimme weergave (issue #61): dashboardwaarden groot, temperaturen
+               als één balkdiagram, en een trendlijn alleen waar er iets beweegt. -->
+          <button class="pidview-btn" data-mode="slim" onclick="setPidView('slim')">🧠 Slim</button>
           <span class="pidview-scheid"></span>
           <button class="pidview-btn waak" id="waakBtn" onclick="toggleWaakronde()" title="Controleert op de achtergrond rustig de sensoren die je niet hebt aangevinkt">◉ Waakronde</button>
         </div>
@@ -1807,7 +1813,7 @@ function closeConnOv(){
      er wordt niets in de bestaande code gewijzigd.
      ════════════════════════════════════════════════════════════════════ -->
 <style>
-#remPill{position:fixed;top:52px;right:10px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid var(--bl,#00d4ff);color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer}
+#remPill{position:fixed;top:calc(6px + var(--pl-top));right:10px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid var(--bl,#00d4ff);color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer}
 .rem-ov{position:fixed;inset:0;z-index:9700;background:rgba(5,8,12,.72);display:none;align-items:flex-end;justify-content:center}
 .rem-ov.open{display:flex}
 .rem-card{background:var(--sur,#151b24);border:1px solid var(--bd,#26303b);border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:16px 16px 22px;color:var(--tx,#e6e9ef)}

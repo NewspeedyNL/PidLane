@@ -110,6 +110,23 @@ var KRITIEK = [
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',
+  // Statistische afwijking t.o.v. de eigen historie van deze auto
+  // (pidlane-pids.js). pidlane-correlatie.js rangschikt de bevindingenbalk
+  // op de sigma die hier uitkomt; ontbreekt hij, dan blijven alleen de vijf
+  // regelbevindingen over en verdwijnt "afwijkend voor deze auto" stil.
+  'baselineBevinding',
+  // Deelt een PID in bij dashboard / temperatuur / rest (pidlane-data.js).
+  // renderGauges() bouwt de slimme weergave (issue #61) daarop; ontbreekt hij,
+  // dan belandt álles in het vak "beweegt" en is de indeling die de modus
+  // bestaansrecht geeft stil verdwenen.
+  'slimGroep',
+  // Wat blok 5 van de testrun nameet na de oplevering van 01-09 (issues
+  // #58 t/m #62). Elk van deze namen is een gedragsproef die stil zou
+  // overslaan als de module niet meekwam — en dan zegt de testrun "goed"
+  // terwijl er niets gemeten is.
+  'renderCorrelationBanner','bevindingenAan',     // pidlane-correlatie.js — #60
+  'setPidView',                                   // pidlane-pids.js       — #61
+  'plVoorAnalyse','plMeetcontextPromptLine','plMeetStabielVoorstel',  // pidlane-archief.js — #62
   
   
 ];

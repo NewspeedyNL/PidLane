@@ -204,6 +204,28 @@ function renderGauges(){
   // die daar niet in staan komen achteraan. Voorheen: Set-invoegvolgorde.
   const _ord={}; (discoveredPIDDefs||[]).forEach((d,i)=>{ _ord[d.pid]=i; });
   let vastAantal=0;
+  // ── Slimme weergave: drie vakken in plaats van één lang rooster ──
+  // De tegels zelf blijven exact hetzelfde (zelfde ids, zelfde .gc), ze
+  // worden alleen in een ander vak gehangen. Dat is bewust: applyG() vindt
+  // ze via getElementById en heeft van deze indeling geen weet, dus een
+  // weergavekeuze kan de live-verversing niet stukmaken.
+  const slim = (pidViewMode==='slim');
+  const vak = {};
+  if(slim){
+    [['dash','🚘 Dashboard'],['temp','🌡️ Temperaturen'],['rest','📈 Beweegt']].forEach(function(p){
+      const sec=document.createElement('div');
+      sec.className='slim-sec slim-'+p[0];
+      sec.id='slimSec-'+p[0];
+      const kop=document.createElement('div'); kop.className='slim-kop'; kop.textContent=p[1];
+      const box=document.createElement('div'); box.className='slim-vak';
+      sec.appendChild(kop); sec.appendChild(box);
+      // Leeg vak = geen kopje. Een lege sectie "Temperaturen" is een belofte
+      // die niet wordt ingelost; hij gaat pas aan zodra er een tegel in valt.
+      sec.style.display='none';
+      g.appendChild(sec);
+      vak[p[0]]={sec:sec, box:box};
+    });
+  }
   [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     // Het vangnet dat hier stond is op 21-08-2026 verwijderd (§15, ronde 6 →
@@ -248,11 +270,25 @@ function renderGauges(){
     const altTag=_alt?` <span class="gc-alt" title="${(window.pidAltKanaalTip?pidAltKanaalTip(pid):'').replace(/"/g,'&quot;')}">⇄ ${_alt}</span>`:'';
     c.innerHTML=`<div class="gdot${leeg?' leeg':''}" id="gd-${pid}"${leeg?` title="${LEEG_TIP}"`:''}></div>
       <div class="gn2">${d.name}${manTag}${altTag}</div>
-      <div><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
+      <div class="gval"><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     c.style.cursor='pointer'; c.title='Dubbeltik = sensor uitzetten';
     c.onclick=function(){ pidTileTap(pid); };
-    g.appendChild(c);
+    if(slim){
+      const groep=(typeof slimGroep==='function')?slimGroep(pid,d):'rest';
+      // Een temperatuur krijgt er een balk bij; de rest houdt zijn sparkline.
+      if(groep==='temp'){
+        const bar=document.createElement('div'); bar.className='sbar';
+        const vul=document.createElement('i'); vul.id='sb-'+pid;
+        bar.appendChild(vul);
+        c.appendChild(bar);
+      }
+      const v=vak[groep]||vak.rest;
+      v.sec.style.display='';
+      v.box.appendChild(c);
+    } else {
+      g.appendChild(c);
+    }
     if(pidVals[pid]!==undefined) applyG(pid,pidVals[pid]);
   });
   // Herstel actieve weergavemodus op de nieuwe grid
@@ -328,9 +364,15 @@ let _staleWatchdog=null;
 const PID_STALE_MS=4000;     // geen verse waarde binnen 4s = "stale"
 function setPidView(mode){
   if(mode==='correlate') mode='dots';   // correlatie-weergave verwijderd; oude opgeslagen voorkeur netjes opvangen
+  // De slimme weergave is de enige modus met een ANDERE DOM (drie vakken in
+  // plaats van één rooster). Klassen wisselen is daar niet genoeg: het
+  // rooster moet opnieuw opgebouwd worden. Alleen bij een echte overgang,
+  // want renderGauges() gooit alle tegels weg en bouwt ze terug.
+  const herbouw = (mode==='slim') !== (pidViewMode==='slim');
   pidViewMode=mode;
   const g=document.getElementById('gGrid');
-  if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots'); if(mode!=='full') g.classList.add('view-'+mode); }
+  if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots','view-slim'); if(mode!=='full') g.classList.add('view-'+mode); }
+  if(herbouw){ try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt bij het wisselen van weergave:', e); } }
   // Alleen de knoppen MET een data-mode zijn weergaveknoppen. #waakBtn draagt
   // dezelfde klasse (hij staat in dezelfde rij) maar heeft geen data-mode, dus
   // `b.dataset.mode===mode` was daar altijd false en elke wissel van weergave
@@ -458,6 +500,56 @@ function applyG(pid,val){
     sl.setAttribute('points',h.map((y,i)=>`${(i/(h.length-1))*100},${26-((y-mn)/rg)*24}`).join(' '));
     sl.style.stroke=st==='danger'?'var(--rd)':st==='warn'?'var(--or)':'var(--bl)';
   }
+  if(pidViewMode==='slim'){ try{ slimBij(pid,val,d,st,card); }catch(e){ console.warn('slimBij mislukt:', e); } }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SLIMME WEERGAVE (issue #61) — wat er per meting nog bij moet
+// ──────────────────────────────────────────────────────────────────
+// De indeling in vakken zit in renderGauges(); hier staat alleen wat per
+// binnenkomende waarde moet meebewegen. Twee dingen:
+//
+//   • de temperatuurbalk. Die staat NIET voor "hoe warm is het" maar voor
+//     "hoe dicht zit deze temperatuur bij zijn eigen grens". Anders is het
+//     diagram onleesbaar: koelwater op 90 °C naast uitlaatgas op 600 °C
+//     zou een streepje naast een volle balk zijn, terwijl het eerste
+//     alarmerend is en het tweede volstrekt normaal.
+//   • de trendlijn wegzetten als er niets te trenden valt. Dat is de
+//     "lineaire lijnen onnodig" uit het issue: een rechte streep kost een
+//     halve tegel en zegt niets. De grens ligt op 2% van het bereik van het
+//     PID zelf, dus 160 rpm voor het toerental en 5,6 km/u voor de snelheid.
+// ══════════════════════════════════════════════════════════════════
+const SLIM_BEWEEG_DEEL = 0.02;   // 2% van het bereik telt als "beweegt"
+const SLIM_BEWEEG_MIN  = 4;      // minder metingen = nog niets te zeggen
+
+// Waar loopt de balk vol? De gevarengrens als die bekend is, anders de
+// waarschuwingsgrens met 20% marge, anders het maximum uit de PID-definitie.
+function slimTempSchaal(d){
+  const top = (d && typeof d.dH==='number') ? d.dH
+            : (d && typeof d.wH==='number') ? d.wH*1.2
+            : (d && typeof d.max==='number') ? d.max : 100;
+  return (isFinite(top) && top>0) ? top : 100;
+}
+function slimBeweegt(pid,d){
+  const h=pidHist[pid];
+  if(!h || h.length<SLIM_BEWEEG_MIN) return false;
+  const v=h.slice(-24).map(x=>x.v).filter(x=>typeof x==='number' && isFinite(x));
+  if(v.length<SLIM_BEWEEG_MIN) return false;
+  const rg=Math.max(...v)-Math.min(...v);
+  const span=(d && typeof d.max==='number' && typeof d.min==='number') ? (d.max-d.min) : 0;
+  const gem=v.reduce((a,b)=>a+b,0)/v.length;
+  const drempel = span>0 ? span*SLIM_BEWEEG_DEEL : Math.abs(gem)*SLIM_BEWEEG_DEEL;
+  return rg > Math.max(drempel, 1e-9);
+}
+function slimBij(pid,val,d,st,card){
+  const bar=document.getElementById('sb-'+pid);
+  if(bar){
+    const pct=Math.max(0, Math.min(100, (val/slimTempSchaal(d))*100));
+    bar.style.width=pct.toFixed(1)+'%';
+    bar.className = st==='danger' ? 'rd' : st==='warn' ? 'or' : '';
+    return;   // een temperatuur heeft geen sparkline om te verbergen
+  }
+  if(card) card.classList.toggle('vlak', !slimBeweegt(pid,d));
 }
 function updPID(pid,val){
   pidVals[pid]=val;
@@ -711,16 +803,25 @@ function huidigSessieGem(pid){
 // het geleerde normaal voor dit voertuig. Anders ''.
 // De parameter `val` wordt niet meer gebruikt maar blijft staan zodat
 // bestaande aanroepen (correlatie-engine, rapportregels) ongewijzigd werken.
-function baselineWarning(pid,val){
+// Eén berekening, twee uitkomsten: de zin voor het scherm én het getal om op
+// te sorteren. Dat getal is nodig sinds de bevindingenbalk er maar twee toont
+// (issue #60, 30-08-2026) — en het uit de zin terugparsen zou betekenen dat
+// de opmaak bepaalt welke bevinding de belangrijkste is.
+function baselineBevinding(pid){
   const b=vehicleBaseline(pid);
-  if(!b) return '';
+  if(!b) return null;
   const cur=huidigSessieGem(pid);
-  if(cur===null) return '';
+  if(cur===null) return null;
   const sigma=Math.max(b.std, Math.abs(b.mean)*BASE_SIGMA_MIN, 1e-9);
   const dev=Math.abs(cur-b.mean)/sigma;
-  if(dev<BASE_DREMPEL) return '';
+  if(dev<BASE_DREMPEL) return null;
   const d=getPidDef(pid);
   const e=d?.unit||'';
-  return `${d?.name||pid}: deze rit gemiddeld ${fv(cur,pid)}${e} — normaal ${fv(b.mean,pid)}${e} `+
-         `voor deze auto (${dev.toFixed(1)}\u03C3 over ${b.n} ritten)`;
+  return { pid:pid, dev:dev,
+    tekst:`${d?.name||pid}: deze rit gemiddeld ${fv(cur,pid)}${e} — normaal ${fv(b.mean,pid)}${e} `+
+          `voor deze auto (${dev.toFixed(1)}\u03C3 over ${b.n} ritten)` };
+}
+function baselineWarning(pid,val){
+  const r=baselineBevinding(pid);
+  return r?r.tekst:'';
 }

@@ -395,18 +395,22 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
   // admin-override. Zonder dit beoordeelt de AI een caravanrit als een zieke
   // auto: hoog verbruik, hoge belasting en warm koelwater zijn dan juist normaal.
   try{ sys += _situatiePromptLine(); }catch(e){ console.warn('Rijsituatie niet aan de AI-prompt toegevoegd — een caravanrit of hoge belasting kan dan onterecht als probleem beoordeeld worden', e); }
-  // Sessie-context: eerdere rapporten alleen meesturen als de gebruiker dat
-  // wil. Bij de eerste analyse met beschikbare rapporten verschijnt een
-  // keuzesheet (Ja/Nee + "onthoud voor deze sessie"); daarna geldt de keuze
-  // uit window._srUseContext, aanpasbaar via het 📄 Rapporten-overzicht.
+  // Vóór de analyse: één venster met de meetcontext-vragen (start/stop, deed
+  // de klacht zich voor, liep de meting door) en — als er eerdere rapporten
+  // in deze sessie zijn — de vraag of die mee mogen. Valt er niets meer te
+  // vragen omdat alles al beantwoord is, dan verschijnt er geen venster.
+  // De keuze over rapporten staat in window._srUseContext en is aanpasbaar
+  // via het 📄 Rapporten-overzicht; daar staat ook de meetcontext.
   try{
     const _srBlok=_sessionReportsPromptBlock(String(prompt||''));
-    if(_srBlok){
-      let _use=window._srUseContext;
-      if(_use===null) _use=await _srAskUseContext();
-      if(_use) sys += _srBlok;
-    }
+    const _ant=await plVoorAnalyse(!!_srBlok);
+    if(_srBlok && _ant && _ant.rapporten) sys += _srBlok;
   }catch(e){ console.warn('Eerdere rapporten niet meegestuurd als context', e); }
+  // De meetcontext geldt voor ELKE AI-rol, net als de rijsituatie hierboven —
+  // ook bij een eigen systemPrompt of een admin-override. Zonder deze regel
+  // leest de AI een start/stop-motor als een motor die afslaat.
+  try{ sys += plMeetcontextPromptLine(); }
+  catch(e){ console.warn('Meetcontext niet aan de AI-prompt toegevoegd — start/stop kan dan als afslaan gelezen worden', e); }
 
   const mdl = model || 'claude-sonnet-5';
 
