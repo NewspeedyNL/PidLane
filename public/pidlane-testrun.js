@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '5.8 (01-09-2026)';
+const TESTRUN_VERSIE = '5.9 (01-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -88,6 +88,64 @@ function _appLogRegels() {
   } catch (e) { console.warn('plLokaalLog() gaf een fout — de app-log ontbreekt in deze run', e); }
   return [];
 }
+
+// ── DE OPRUIMMELDING (blok 14, punt 4) ────────────────────────────
+// WAAROM DIT EEN EIGEN FUNCTIE IS (#29)
+// Blok 14 las alleen het log, en dat is de verkeerde bron. Beide logs zijn
+// ringbuffers: de app-log kapt stil af op 500 regels (`localLog.shift()` in
+// pidlane-auth.js), de BT-log op 1400. Een rit van een half uur wist dus zijn
+// eigen bewijs, en dan meldde blok 14 "niets opgeruimd — controleer of hij
+// aanstaat": het onderzoek dat je juist NIET moet doen, want de regel had wél
+// gevuurd. Dezelfde soort fout als #12 — de controle wees de verkeerde kant op.
+//
+// De bron is nu `pidOpgeruimdLijst()` uit pidlane-pidgate.js. Dat is een Set
+// die de hele sessie blijft staan en per PID de reden bewaart. Het log doet
+// nog mee, maar alleen voor de tijdstippen; het beslist niets meer.
+//
+// Apart en zuiver, zodat test-opruimmelding.js hem kan draaien zonder een
+// browser en zonder testrun-context. Knippad: tussen de twee ankers hieronder.
+function _opruimStand(lijst, regels, duurS) {
+  const zoek = function (re) {
+    return (regels || []).filter(function (l) { return l && re.test(String(l.msg || '')); })
+                         .map(function (l) { return (l.ts ? l.ts + ' ' : '') + String(l.msg).slice(0, 110); });
+  };
+  const opLog = zoek(/opgeruimd/i);
+  const terug = zoek(/antwoordt weer na/i);
+  const minuten = Math.round((duurS || 0) / 60);
+  const staart = terug.length
+    ? '  ||  ' + terug.length + 'x hersteld vóór het opruimen, volgens het log: ' + terug.slice(0, 3).join(' | ')
+    : '';
+
+  // Geen bron, geen conclusie. Dit is de stand waarin de oude versie een
+  // uitspraak deed die nergens op stoelde.
+  if (!Array.isArray(lijst))
+    return { staat: 'LET OP', detail: 'pidOpgeruimdLijst() ontbreekt of gaf een fout — zonder die bron is over ' +
+      'de opruimregel niets vast te stellen. Het log noemt ' + opLog.length + ' regel(s)' + staart };
+
+  if (lijst.length) {
+    const namen = lijst.slice(0, 6).map(function (o) {
+      return (o.pid || '?') + ' (' + (o.naam || o.pid || '?') + '): ' + (o.reden || 'geen reden vastgelegd');
+    }).join(' | ');
+    const meer = lijst.length > 6 ? ' … +' + (lijst.length - 6) + ' meer' : '';
+    const logdeel = opLog.length
+      ? '  |  het log bevestigt er ' + opLog.length + ': ' + opLog.slice(0, 3).join(' | ')
+      : '  |  het log noemt er geen enkele — die buffer kapt af, dus dat is geen tegenspraak (#29)';
+    return { staat: 'LET OP', detail: lijst.length + 'x opgeruimd in ' + minuten + ' min volgens de gate: ' +
+      namen + meer + logdeel + staart + '  — dit is de meting waar de drempel op gekozen moet worden' };
+  }
+
+  // De gate is leeg. Noemt het log er tóch een, dan is dát de bevinding:
+  // twee plekken die hetzelfde horen te weten spreken elkaar tegen.
+  if (opLog.length)
+    return { staat: 'FOUT', detail: 'de gate meldt niets opgeruimd terwijl het log ' + opLog.length +
+      ' opruimregel(s) noemt: ' + opLog.slice(0, 3).join(' | ') + staart +
+      ' — pidOpgeruimdLijst() en de log spreken elkaar tegen' };
+
+  return { staat: 'ok', detail: 'niets opgeruimd in ' + minuten + ' min — gemeten aan de gate zelf ' +
+    '(pidOpgeruimdLijst), niet aan het log. Geen enkele sensor bleef lang genoeg stil; dat is een ' +
+    'uitkomst en geen storing' + staart };
+}
+// ── einde opruimmelding-blok ──────────────────────────────────────
 
 // Eén controle draaien. Een fout wordt GEBOEKT, niet weggeslikt — dat is het
 // hele verschil met de zes losse dingen die dit vervangt.
@@ -1650,26 +1708,77 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 01-09-2026 (derde) — issues #68 en #66, plus de standaard.
+  // OPLEVERING 01-09-2026 (vierde) — issue #29.
   //
-  //   #68  toerental, gaspedaal, gasklep en motorbelasting op één
-  //        tellerplaat met verticale meters, in plaats van los tussen de
-  //        rest — en de slimme weergave is nu de STANDAARDWEERGAVE
-  //   #66  een temperatuurbalk zonder bekende grens zegt dat zelf
+  //   #29  blok 14 beoordeelt de opruimregel voortaan aan pidOpgeruimdLijst()
+  //        en niet meer aan een greep in het log
   //
-  // WAT HIER WEG IS EN WAAROM. De controles voor #59, #60, #61 en #62 van
-  // vanmiddag staan hier niet meer: die zijn afgerond en staan groen in
-  // test-protocolkeuze.js, test-bevindingen.js, test-slimmeweergave.js en
-  // test-meetcontext.js, mét tegenproef. Blok 5 hoort over DEZE oplevering
-  // te gaan; anders groeit hij bij elke ronde aan en wordt hij niet meer
-  // gelezen.
+  // WAAROM DIT IN BLOK 5 STAAT EN NIET ALLEEN IN EEN NODE-TEST. Dat de
+  // melding klopt, bewijst test-opruimmelding.js met tegenproef. Wat die
+  // test NIET kan zien is of blok 14 de gate in de draaiende app ook echt
+  // te pakken krijgt — precies het gat waar #29 aan leed: de code las een
+  // bron die er niet was en gaf daar geen fout over. Vandaar dat de proef
+  // hieronder de wég naar de bron meet, in de app, met de auto eraan.
   //
-  // Eén uitzondering: de #58-proef hieronder blijft staan. Niet uit gewoonte,
-  // maar omdat issue #65 nog open staat en juist deze meting nodig heeft —
-  // in een browser zijn beide veilige zones 0 en zegt hij niets, dus hij kan
-  // alleen op een toestel beantwoord worden. Verdwijnt hij hier, dan is er
-  // geen instrument meer voor die vraag.
+  // WAT ER BLIJFT STAAN EN WAAROM. De vier proeven voor #58, #66 en #68 zijn
+  // van de vorige twee opleveringen en zouden hier normaal weg zijn. Ze
+  // blijven omdat dit de EERSTE rit is sinds die opleveringen: #58 kan alleen
+  // op een toestel beoordeeld worden (issue #65), en de #66/#68-metingen
+  // schrijven op wat alleen een echte auto kan opleveren. Verdwijnen ze nu,
+  // dan is er geen instrument meer voor de vragen die deze rit moet
+  // beantwoorden. Bij de volgende oplevering gaan ze eruit.
   // ══════════════════════════════════════════════════════════════
+
+  // ── TOEGEVOEGD (#29): kan blok 14 de opruimregel bij de bron lezen? ──
+  // Twee dingen in één proef, want los zeggen ze weinig:
+  //   1. bestaat de weg naar de gate in DEZE app — pidOpgeruimdLijst() als
+  //      functie die een lijst teruggeeft. Dat is wat er bij #29 ontbrak;
+  //   2. doet de melding er ook iets mee. De oude versie kon een gevulde
+  //      gate naast een leeggelopen log zetten en meldde dan "niets
+  //      opgeruimd". Hier gaat er een lijst in die het log niet noemt.
+  // De echte gate wordt alleen GELEZEN; de invoer voor de melding is
+  // verzonnen, want een opruimactie uitlokken zou een sensor uit de
+  // pollronde slopen.
+  await _doe(5, 'Blok 14 leest de opruimregel bij de gate, niet in het log', function () {
+    if (typeof pidOpgeruimdLijst !== 'function')
+      return { staat: 'FOUT', detail: 'pidOpgeruimdLijst() bestaat niet in deze app — blok 14 heeft geen bron ' +
+        'en valt terug op het log; dat is de toestand van #29' };
+    let echt;
+    try { echt = pidOpgeruimdLijst(); }
+    catch (e) { return { staat: 'FOUT', detail: 'pidOpgeruimdLijst() gooit een fout: ' + ((e && e.message) || e) }; }
+    if (!Array.isArray(echt))
+      return { staat: 'FOUT', detail: 'pidOpgeruimdLijst() geeft geen lijst maar ' + typeof echt };
+    // Een gevulde gate naast een log dat er niets over zegt: de stand waarin
+    // de oude versie de verkeerde kant op wees.
+    const proef = _opruimStand([{ pid: '015E', naam: 'Brandstofverbruik', reden: 'proef, geen echte opruimactie' }],
+                               [{ ts: '00:00:00', msg: 'niets over opruimen' }], 900);
+    if (!/015E/.test(proef.detail) || /niets opgeruimd/i.test(proef.detail))
+      return { staat: 'FOUT', detail: 'de melding volgt het log in plaats van de gate: "' + proef.detail + '"' };
+
+    return 'de gate is bereikbaar en meldt op dit moment ' + echt.length + ' opgeruimde sensor(en)' +
+      (echt.length ? ': ' + echt.map(function (o) { return o.pid; }).join(', ') : '') +
+      ' — blok 14 leest dat getal, niet het log';
+  });
+
+  // ── VERWIJDERD (#29): het advies dat naar het verkeerde onderzoek stuurde ──
+  // "controleer of hij aanstaat" was de zin die je een rit kostte: de regel
+  // stond aan en had gevuurd. Hij mag nergens meer uit de melding komen, in
+  // geen enkele stand.
+  await _doe(5, 'De melding stuurt niemand meer naar "controleer of hij aanstaat"', function () {
+    // Geen typeof-guard op _opruimStand: die staat in dit bestand. Ontbreekt
+    // hij, dan gooit dit een ReferenceError en boekt _doe() dat als FOUT met
+    // de naam erbij — luider dan een guard, en het is geen bedradingspunt.
+    const standen = [
+      ['gate leeg, lang gereden', _opruimStand([], [], 1800)],
+      ['gate gevuld, log leeg',   _opruimStand([{ pid: '015E', naam: 'x', reden: 'proef' }], [], 1800)],
+      ['geen bron',               _opruimStand(null, [], 1800)]
+    ];
+    const raak = standen.filter(function (p) { return /controleer of hij aanstaat/i.test(p[1].detail); });
+    if (raak.length)
+      return { staat: 'FOUT', detail: 'het oude advies staat er nog in bij: ' +
+        raak.map(function (p) { return p[0]; }).join(', ') + ' (issue #29)' };
+    return 'geen van de drie standen geeft het oude advies';
+  });
 
   // ── TOEGEVOEGD 1 (#58): kloppen de veilige zones op dit toestel? ──
   // Dit is de enige plek waar dit écht te meten valt: in een browser zijn
@@ -2168,26 +2277,16 @@ async function _blok14() {
 
   // ── 4. De opruimregel — draaide hij, en wat deed hij? ──
   await _doe(14, 'Opruimregel: is er iets opgeruimd?', function () {
+    // De gate is de bron; het log levert hoogstens de tijdstippen. Waarom die
+    // volgorde omkeerde staat bij _opruimStand() — kort: allebei de logs zijn
+    // ringbuffers en een rit van een half uur wist zijn eigen bewijs (#29).
     let bt = [];
     try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
-    const app = _appLogRegels();
-    const alles = [].concat(bt || [], app || []);
-    if (!alles.length) return { staat: 'LET OP', detail: 'geen logregels te lezen — controle niet uitgevoerd' };
-    const zoek = function (re) {
-      return alles.filter(function (l) { return l && re.test(String(l.msg || '')); })
-                  .map(function (l) { return (l.ts ? l.ts + ' ' : '') + String(l.msg).slice(0, 110); });
-    };
-    const op = zoek(/opgeruimd/i);
-    const terug = zoek(/antwoordt weer na/i);
-    if (!op.length && !terug.length)
-      return { staat: duur > 300 ? 'LET OP' : 'ok',
-        detail: 'niets opgeruimd in ' + Math.round(duur / 60) + ' min' +
-          (duur > 300 ? ' — na vijf minuten had de regel moeten kunnen vuren; controleer of hij aanstaat'
-                      : ' (nog geen vijf minuten gereden — de regel kán nog niet gevuurd hebben)') };
-    const r = [];
-    if (op.length) r.push(op.length + 'x opgeruimd: ' + op.slice(0, 3).join(' | '));
-    if (terug.length) r.push(terug.length + 'x hersteld vóór het opruimen: ' + terug.slice(0, 3).join(' | '));
-    return { staat: 'LET OP', detail: r.join('  ||  ') + ' — dit is de meting waar de drempel op gekozen moet worden' };
+    const alles = [].concat(bt || [], _appLogRegels() || []);
+    let lijst = null;
+    try { if (typeof pidOpgeruimdLijst === 'function') lijst = pidOpgeruimdLijst(); }
+    catch (e) { console.warn('pidOpgeruimdLijst() gaf een fout — blok 14 kan de opruimregel niet beoordelen', e); }
+    return _opruimStand(lijst, alles, duur);
   });
 
   // ── 5. Liep de app door, of bevroor hij? ──
@@ -2625,55 +2724,53 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 01-09 (derde) \u2014 de slimme weergave is de standaard (#68, #66)',
+  titel: 'OPLEVERING 01-09 (vierde) \u2014 blok 14 leest de opruimregel bij de bron (#29)',
   vragen: [
-    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    '── WAAROM DEZE RONDE ────────────────────────',
 
-    'De slimme weergave uit #61 werkte, maar stond achter een knop die je elke keer opnieuw moest indrukken \u2014 en \u00e9\u00e9n groep sensoren stond er nog los in. Deze ronde maakt hem de standaard en bouwt de tellerplaat die #68 vroeg.',
+    'Deze ronde repareert een MEETINSTRUMENT, niet de app. Blok 14 vroeg elke rit "is er iets opgeruimd?" en zocht het antwoord door in het log te grepen op het woord "opgeruimd". Op 27-08 meldde hij "niets opgeruimd in 9 min — na vijf minuten had de regel moeten kunnen vuren; controleer of hij aanstaat", terwijl het log van diezelfde rit twee opruimacties bevatte. De regel stond dus aan en had gevuurd; het advies stuurde je naar precies het onderzoek dat je niet moest doen.',
 
-    'DE FOUT DIE HIERONDER ZAT IS DE MOEITE WAARD. setPidView() schreef de gekozen weergave netjes weg in pl_pidview, en NIEMAND las die sleutel ooit terug. De regel in pidlane-theme.js zei het er zelfs bij: "live view start altijd in puntjes-weergave (genegeerde voorkeur)". Een instelling die je kiest, die wordt opgeslagen en die de app bij de volgende start weggooit is geen instelling maar een knop die doet alsof. Er waren bovendien DRIE plekken die iets over de startweergave zeiden en ze zeiden het alle drie anders: pidViewMode ("dots"), de active-klasse in index.html ("full") en de aanroep in theme.js ("dots"). Nu is er \u00e9\u00e9n bron: PID_VIEW_STANDAARD.',
+    'WAAROM HET LOG DE VERKEERDE BRON IS. Allebei de logs zijn ringbuffers. pidlane-auth.js kapt localLog af op 500 regels met een kale shift(), pidlane-btflow.js kapt _btLog af op 1400 (die laat tenminste nog een regel achter dat er iets weg is). Een rit van een half uur wist daarmee zijn eigen bewijs, en het bewijs dat als eerste sneuvelt is het OUDSTE — dus juist de opruimactie van vroeg in de rit, die je het meest wilt zien. De gate zelf, pidOpgeruimdLijst(), houdt een Set bij die de hele sessie blijft staan, met per PID de reden erbij. Die telt nu; het log levert nog hoogstens de tijdstippen.',
 
-    'HET TWEEDE STILLE GEVAL zat in het sensorkeuzescherm: toggleLade() zette de weergave op "dots" zodra de lade openging. Met Slim als standaard zou dat elke sessie raak zijn geweest \u2014 sensoren kiezen is het eerste wat je doet, dus je had de standaard nooit gezien. Die regel is weg.',
+    'DIT IS DE TWEEDE HELFT VAN #29. De eerste helft is op 28-08 gerepareerd: de testrun las de app-log als window._appLog || window.logBuffer || [], en die twee globals bestaan nergens in public/. Dat gaf altijd een lege lijst, zonder ooit een fout. Die kant staat groen in test-applog.js. Wat er overbleef is dat de bron die er wél was, nog steeds de verkeerde was.',
 
-    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    '── STAP VOOR STAP ─────────────────────────',
 
-    'STAP 1. Start de app en kijk naar de live view zonder iets in te stellen. Hij hoort in \ud83e\udde0 Slim te staan, met die knop actief. Kies daarna \ud83d\udfe2 Puntjes, sluit de app helemaal af en start opnieuw: hij hoort in Puntjes terug te komen. Zet hem daarna weer op Slim, anders meet de rest van deze lijst niets.',
+    'STAP 1. Druk aan het begin van de rit op "Rit nulstellen", anders gaat blok 14 over alles sinds het opstarten van de app en niet over deze rit.',
 
-    'STAP 2. Open het sensorkeuzescherm (de lade links) terwijl je in Slim staat, vink een sensor aan en sluit hem weer. De weergave hoort Slim te blijven. Dit ging tot deze ronde mis en het is de vervelendste soort fout: er komt geen melding, je staat gewoon ineens ergens anders.',
+    'STAP 2. #29, de hoofdvraag. Rijd minstens tien minuten — langer is beter, want juist bij een lange rit liep het log leeg. Draai daarna de testrun en lees de regel "Opruimregel: is er iets opgeruimd?". Er staat nu één van drie dingen: een telling met PID, naam en reden per opgeruimde sensor (dat is de meting waar #16 een drempel op moet kiezen); "niets opgeruimd — gemeten aan de gate zelf" (een uitkomst, geen storing); of een FOUT omdat gate en log elkaar tegenspreken. Dat laatste is de enige stand die nog uitgezocht moet worden.',
 
-    'STAP 3. #68, tijdens het rijden. Kijk naar het vak \ud83c\udf9b\ufe0f TELLERPLAAT. Daar horen toerental, gaspedaal, gasklep en motorbelasting als staande meters naast elkaar te staan \u2014 en NERGENS anders, dus niet ook nog los onderin bij "Beweegt". DE VRAAG IS OF ZE ZO NAAST ELKAAR IETS ZEGGEN: trap in, en pedaal en klep horen samen omhoog te gaan met de belasting erachteraan. Doen ze dat niet gelijk op, dan is dat een bevinding \u2014 en dat is precies waarvoor ze naast elkaar staan.',
+    'STAP 3. #29, de tegenproef die alleen een lange rit kan geven. Vergelijk de regel van blok 14 met wat er in het logboek staat. Noemt blok 14 sensoren die je in het logboek NIET meer terugvindt, dan is dat geen tegenspraak maar het bewijs dat het log is afgekapt — en dus precies waarom deze ronde bestaat. Noteer in dat geval hoeveel er in blok 14 staan en hoeveel in het log; dat getal is het antwoord op #29.',
 
-    'STAP 4. #68, de sleepwijzer. Trek \u00e9\u00e9n keer stevig op en kijk daarna, terwijl je weer rustig rijdt, naar de grijze streep boven de vulling. Die hoort op de piek te blijven staan en na ongeveer een minuut vanzelf te zakken. Blijft hij hangen terwijl je allang weer stationair draait, dan klopt SLIM_PIEK_N (60 metingen) niet met hoe snel deze auto gepolld wordt.',
+    'STAP 4. Kijk ook naar blok 5, de regel "Blok 14 leest de opruimregel bij de gate, niet in het log". Die controleert of de weg naar pidOpgeruimdLijst() in de drááiende app bestaat — wat een node-test niet kan zien, en precies het soort gat waar #29 aan leed. Staat daar FOUT, dan is de rest van blok 14 op dit punt niet te vertrouwen.',
 
-    'STAP 5. #68, het grensstreepje. Op de toerentalmeter hoort een oranje streepje te staan op 6000 (75% van de meter). Op de gasklep hoort er GEEN te staan, want daar is geen grens bekend. Staat er wel \u00e9\u00e9n zonder dat er een grens is, dan belooft de meter een nauwkeurigheid die er niet is.',
+    '── EN VERDER, WANT DIT IS DE EERSTE RIT SINDS DRIE OPLEVERINGEN ─',
 
-    'STAP 6. #66, het antwoord dat blok 5 nu opschrijft. Laat de testrun draaien met de auto eraan en lees de regel "De temperatuurbalken met een grove schaal staan gemarkeerd". Daar staat bij NAAM welke temperatuursensoren van deze auto geen eigen grens hebben. Dat is het antwoord op de eerste helft van #66 \u2014 tot nu toe was dat alleen te raden.',
+    'STAP 5. #68, tijdens het rijden. Kijk naar het vak 🎛️ TELLERPLAAT: toerental, gaspedaal, gasklep en motorbelasting horen daar als staande meters naast elkaar te staan, en nergens anders. DE VRAAG IS OF ZE ZO NAAST ELKAAR IETS ZEGGEN: trap in, en pedaal en klep horen samen omhoog te gaan met de belasting erachteraan. Doen ze dat niet gelijk op, dan is dat een bevinding — daarvoor staan ze naast elkaar.',
 
-    'STAP 7. #66, met het oog. De gearceerde balken zijn de grove. Kijk of de rest gevoelsmatig klopt: koelwater op 90 \u00b0C hoort hoger te staan dan omgevingslucht op 20 \u00b0C, en uitlaatgas op 500 \u00b0C hoort juist niet vol te staan. Klopt dat niet, dan is slimTempSchaal() de plek \u2014 \u00e9\u00e9n functie.',
+    'STAP 6. #68, de sleepwijzer en het grensstreepje. Trek één keer stevig op en kijk daarna, terwijl je weer rustig rijdt, naar de grijze streep boven de vulling: die hoort op de piek te blijven en na ongeveer een minuut vanzelf te zakken. En op de toerentalmeter hoort een oranje streepje op 6000 te staan, op de gasklep juist niet — daar is geen grens bekend.',
 
-    'STAP 8. Nog steeds #58, en nog steeds alleen op het toestel: scroll de live view helemaal naar beneden en kijk of de onderste regel vrij van de drie Android-knoppen blijft. De tellerplaat maakt het scherm langer, dus deze ronde is dat opnieuw de moeite van het nakijken waard.',
+    'STAP 7. #66, het antwoord dat blok 5 opschrijft. Lees de regel "De temperatuurbalken met een grove schaal staan gemarkeerd". Daar staat bij naam welke temperatuursensoren van deze auto geen eigen grens hebben — de eerste helft van #66. Kijk daarna met het oog of de rest klopt: koelwater op 90 °C hoort hoger te staan dan omgevingslucht op 20 °C, uitlaatgas op 500 °C juist niet vol.',
 
-    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'STAP 8. #66, tweede helft: de drempel voor "beweegt". Kijk in het vak "Beweegt" welke tegels een trendlijn hebben. Toerental, belasting en pedaal staan nu op de tellerplaat, dus wat er overblijft is de echte vraag. Staat er een rechte streep, dan is SLIM_BEWEEG_DEEL (2%) te laag; mist er een lijn die je wél wilde zien, dan te hoog.',
 
-    '#68 \u2014 slimGroep() in pidlane-data.js kent een vierde groep: "meter". SLIM_METER is een allowlist met het hele gaspad (toerental, motorbelasting, absolute motorbelasting, gasklep, relatieve en absolute gasklep B/C, gaspedaal D/E/F). De EGR-klep en de EVAP-spoelklep staan er BEWUST niet in: ook kleppen in procenten, maar emissieregeling en geen bestuurdersinvoer \u2014 naast een gaspedaal gelegd nodigen ze uit tot een vergelijking die niets betekent.',
+    'STAP 9. #58/#65, alleen op het toestel. Scroll de live view helemaal naar beneden en kijk of de onderste regel vrij van de drie Android-knoppen blijft; open daarna de sensorlade en één bottom-sheet en kijk hetzelfde na. Blok 5 meet de app-schil, maar niet elk scherm.',
 
-    '#68 \u2014 de meter meet de STAND BINNEN HET EIGEN BEREIK (0-8000 rpm), en dat is met opzet iets anders dan de temperatuurbalk, die de MARGE TOT DE GRENS meet. Een gaspedaal h\u00e9\u00e9ft geen gevarengrens \u2014 vol gas is geen storing \u2014 dus daar is "hoe dicht bij de grens" een vraag zonder antwoord. Liggend en staand zijn daarom twee vormen met twee betekenissen.',
+    '── WAT ER IS VERANDERD ──────────────────────',
 
-    '#68 \u2014 de standaardweergave is Slim en de opgeslagen voorkeur wordt eindelijk teruggelezen (plPidViewHerstel). \u00c9\u00e9n bron: PID_VIEW_STANDAARD in pidlane-pids.js. En toggleLade() zet de weergave niet meer op "dots".',
+    '#29 — blok 14 punt 4 roept pidOpgeruimdLijst() aan en geeft die lijst plus het log door aan _opruimStand(), een eigen functie die geen browser nodig heeft. Vier standen: gate gevuld (telling met reden), gate leeg (ok, met de bron erbij), gate leeg terwijl het log er wél een noemt (FOUT — tegenspraak), en geen bron (LET OP, geen conclusie). Herstel vóór het opruimen ("antwoordt weer na") blijft uit het log komen en zegt dat er nu bij.',
 
-    '#66 \u2014 een temperatuurbalk zonder bekende waarschuwings- of gevarengrens valt terug op het PID-maximum en is nu gearceerd, met uitleg in de tooltip. De schaal is niet veranderd; alleen zegt het scherm nu zelf dat een lage balk daar "grens onbekend" betekent en niet "koud".',
+    '#29 — de zin "controleer of hij aanstaat" is uit de melding verdwenen. Blok 5 controleert dat hij in geen van de drie standen terugkomt.',
 
-    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    '#29 — test-opruimmelding.js is nieuw: 27 toetsen op _opruimStand(), met de oude log-lezende versie nagebouwd als tegenproef. Bouw je de fout terug in de echte functie, dan worden 13 toetsen rood.',
 
-    'De tweede helft van #66 staat nog open: de drempel van 2% (SLIM_BEWEEG_DEEL) waarboven een signaal een trendlijn krijgt. Die is deze ronde wel MINDER zwaar geworden \u2014 toerental, pedaal en belasting waren de duidelijkste bewegers en staan nu op de tellerplaat, dus het vak "Beweegt" is een stuk rustiger. Wat daar overblijft moet nog steeds tijdens een rit beoordeeld worden.',
+    '── WAT DEZE RONDE NIET OPLOST ───────────────',
 
-    'Of de EGR-klep en de EVAP-spoelklep terecht van de tellerplaat zijn gehouden, is een redenering en geen meting. Blijkt tijdens een rit dat je ze juist w\u00e9l naast de gasklep wilt lezen, dan is dat \u00e9\u00e9n regel in SLIM_METER.',
+    'DE APP-LOG KAPT NOG STEEDS STIL AF. localLog in pidlane-auth.js doet shift() bij 500 regels en laat niets achter dat zegt dat er iets weg is. De BT-log doet dat wél ("… N regels weggelaten (geheugen-cap) …"). Blok 14 heeft er geen last meer van, maar het logboek dat je zelf openslaat nog wel: daar mist stilzwijgend het begin van een lange rit. Dat is een eigen wijziging in een eigen commit — vastgelegd in §11 van PIDLANE.md.',
 
-    'De hoogte van de meters (86px) en het aantal per rij zijn op een browser van 412px breed nagekeken en niet op een toestel: acht meters vallen daar netjes in vijf plus drie, met afgekapte namen. Hoeveel er op een echt scherm nog leesbaar naast elkaar staan, wijst de auto uit.',
+    'BLOK 14 IS OP DIT PUNT NU JUIST, MAAR #16 IS DAARMEE NIET BEANTWOORD. De drempel voor de opruimregel (vijf pogingen plus vijf herkansingen) is nog steeds gekozen en niet gemeten. Wat deze ronde oplevert is dat de meting waarop je die drempel kûnt kiezen, eindelijk klopt.',
 
-    'DE MEETLAT VAN 0143 (absolute motorbelasting) LOOPT TOT 400%, want dat is wat de definitie zegt. Zijn meter staat daardoor bijna altijd laag, ook bij vollast \u2014 naast de gewone motorbelasting (0-100%) leest dat als "er gebeurt niets". Dat kan kloppen en toch onhandig zijn; of de meter voor dit PID een eigen schaal verdient is een vraag voor een rit, niet voor een bureau.',
-
-    'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 29, 30, 40 en 46, plus issue #64 (welke meetcontextvraag ontbreekt) en #65 (de veilige zones op een toestel).'
+    'De punten die een rit vragen blijven staan: 15, 16, 17, 18, 20, 25, 30, 40 en 46, plus issue #64 (welke meetcontextvraag ontbreekt), #65 (de veilige zones op een toestel) en #66 (de temperatuurschaal en de beweeg-drempel).'
   ]
 };
 

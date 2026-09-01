@@ -637,7 +637,7 @@ de pas, en dan is de vraag welke klopt.
 | [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
 | [#24](https://github.com/NewspeedyNL/PidLane/issues/24) | restjes uit de bedradingssweep (vijf eindjes) | opruimen |
 | [#25](https://github.com/NewspeedyNL/PidLane/issues/25) | kleine staarten uit de testruns van 26-08 | opruimen |
-| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldt een vals negatief | bug |
+| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — beide bronfouten zijn 01-09 gerepareerd, wacht nu op een rit die het bevestigt | bug |
 | [#30](https://github.com/NewspeedyNL/PidLane/issues/30) | schakelende airco leest als ruw stationair | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
 | [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
@@ -647,10 +647,63 @@ de pas, en dan is de vraag welke klopt.
 | [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
 | [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
+| [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
 De stand van zaken staat in de issues.
+
+### Blok 14 las de opruimregel in het verkeerde boek — 01-09-2026 (issue #29)
+
+**De melding.** Op de rit van 27-08 zei blok 14: *"niets opgeruimd in 9 min — na
+vijf minuten had de regel moeten kunnen vuren; controleer of hij aanstaat"*.
+Het app-log van diezelfde rit bevatte twee opruimacties, allebei binnen het
+meetvenster. De regel stond dus aan en had gevuurd; het advies stuurde je naar
+precies het onderzoek dat je niet moest doen. Dezelfde soort fout als #12: een
+controle die de omgekeerde conclusie presenteert is duurder dan geen controle.
+
+**Twee oorzaken, achter elkaar gevonden.**
+
+1. *Gerepareerd op 28-08.* De testrun las de app-log als
+   `window._appLog || window.logBuffer || []`. Geen van beide globals bestaat
+   in `public/`, dus alle drie de leesplekken kregen altijd een lege lijst —
+   zonder ooit een fout, want de `|| []` ving het op. De echte bron is
+   `plLokaalLog()`. Bewaakt door `test-applog.js`.
+2. *Gerepareerd op 01-09.* De bron die er daarna wél was, was nog steeds de
+   verkeerde. **Beide logs zijn ringbuffers.** `localLog` in
+   `pidlane-auth.js` doet `shift()` bij 500 regels; `_btLog` in
+   `pidlane-btflow.js` kapt af op 1400. Een rit van een half uur wist daarmee
+   zijn eigen bewijs — en wat als eerste sneuvelt is het *oudste*, dus juist de
+   opruimactie van vroeg in de rit.
+
+**Wat er nu staat.** Blok 14 punt 4 leest `pidOpgeruimdLijst()` uit
+`pidlane-pidgate.js`: een `Set` die de hele sessie blijft staan, met per PID de
+reden erbij. Het log doet nog mee voor de tijdstippen, maar beslist niets meer.
+De melding zit in `_opruimStand()` — een eigen functie zonder browser-afhankelijk-
+heden, met vier standen:
+
+| stand | oordeel |
+|---|---|
+| gate gevuld | LET OP — telling met PID, naam en reden; dit is de meting waar #16 een drempel op moet kiezen |
+| gate leeg | ok — *"gemeten aan de gate zelf"*, een uitkomst en geen storing |
+| gate leeg, log noemt er wél een | FOUT — twee bronnen die hetzelfde horen te weten spreken elkaar tegen |
+| geen bron | LET OP — geen conclusie |
+
+`test-opruimmelding.js` toetst dat met 27 toetsen en een tegenproef: de oude,
+log-lezende versie is nagebouwd en zakt op dezelfde invoer. Bouw je de fout terug
+in de echte functie, dan worden 13 toetsen rood.
+
+**Wat hier niet is opgelost, en waarom het blijft staan.** `localLog` kapt nog
+steeds *stil* af: `shift()` laat niets achter dat zegt dat er iets weg is. De
+BT-log doet dat wél (`… N regels weggelaten (geheugen-cap) …`). Blok 14 heeft er
+geen last meer van, maar het logboek dat je zelf openslaat nog wel — daar mist
+zwijgend het begin van een lange rit, en dat is precies de vorm waarin deze bug
+maanden bleef staan. Aparte wijziging in een apart bestand, dus een eigen commit.
+
+**Wat een rit nog moet uitwijzen.** Of blok 14 in de draaiende app inderdaad
+sensoren noemt die in het logboek niet meer terug te vinden zijn. Dat verschil
+is het bewijs dat het log afkapte — en tot nu toe is dat een redenering en geen
+meting.
 
 ### De slimme weergave werd de standaard — 01-09-2026 (issues #68, #66)
 
