@@ -559,6 +559,48 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
   content:''; display:inline-block; width:5px; height:5px; border-radius:50%;
   background:var(--gn); margin-left:5px; vertical-align:middle;
 }
+/* ══ VERBORGEN TEGELS ══
+   Een dubbeltik op een tegel verbergt hem sinds 02-09-2026 in plaats van de
+   sensor uit te zetten. Deze strook is de weg terug, en tegelijk het bewijs
+   dat "verborgen" iets anders is dan "uit": de kop zegt met zoveel woorden dat
+   er dóórgemeten wordt. Hij staat onder het rooster en geldt voor alle vier de
+   weergaven — het vak "Rustig" deelt in wat er wél staat, dit somt op wat er
+   niet staat. */
+.verbstrook {
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  background:var(--sur); border:1px dashed var(--bd2); border-radius:var(--r);
+  padding:9px 11px; margin-top:10px;
+}
+.verb-kop {
+  flex:0 0 100%; font-size:10px; font-weight:800; letter-spacing:.6px;
+  text-transform:uppercase; color:var(--tx3); margin-bottom:2px;
+}
+.verb-chip {
+  display:inline-flex; align-items:center; gap:2px; max-width:100%;
+  background:var(--sur2); border:1px solid var(--bd); border-radius:999px;
+  padding:2px 3px 2px 9px;
+}
+.verb-naam {
+  font-size:10.5px; font-weight:700; letter-spacing:.3px; color:var(--tx2);
+  cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  padding:3px 0;
+}
+/* Het kruisje is de andere handeling — stoppen met meten — en dus bewust een
+   eigen knop met een eigen kleur, en niet nóg een betekenis achter dezelfde
+   tik. Rustig van kleur tot je hem aanraakt: het is geen waarschuwing, maar
+   het is wel onomkeerbaarder dan de rest van deze strook. */
+.verb-weg {
+  border:0; background:transparent; color:var(--tx3); cursor:pointer;
+  font-size:11px; line-height:1; padding:4px 6px; border-radius:999px;
+}
+.verb-weg:hover, .verb-weg:focus-visible { color:var(--rd); background:rgba(229,72,77,.12); }
+.verb-alles {
+  margin-left:auto; border:1px solid var(--bd2); background:transparent;
+  color:var(--tx2); cursor:pointer; font-size:10.5px; font-weight:700;
+  padding:4px 10px; border-radius:999px;
+}
+.verb-alles:hover, .verb-alles:focus-visible { color:var(--tx); border-color:var(--tx3); }
+
 .cc { padding-bottom:16px; }
 #welcomeScreen .welcome-scroll { padding-bottom:24px; }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
