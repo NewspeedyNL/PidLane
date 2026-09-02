@@ -212,12 +212,15 @@ function renderGauges(){
   const slim = (pidViewMode==='slim');
   const vak = {};
   if(slim){
-    [['dash','🚘 Dashboard'],['meter','🎛️ Tellerplaat'],['temp','🌡️ Temperaturen'],['rest','📈 Beweegt']].forEach(function(p){
+    // "Rustig" staat achteraan, en dat is de volgorde van het scherm: eerst
+    // wat er op de teller staat, dan wat de bestuurder doet, dan de
+    // temperaturen, dan wat beweegt, en als laatste wat stil ligt.
+    [['dash','🚘 Dashboard'],['meter','🎛️ Tellerplaat'],['temp','🌡️ Temperaturen'],['rest','📈 Beweegt'],['rustig','💤 Rustig']].forEach(function(p){
       const sec=document.createElement('div');
       sec.className='slim-sec slim-'+p[0];
       sec.id='slimSec-'+p[0];
       const kop=document.createElement('div'); kop.className='slim-kop'; kop.textContent=p[1];
-      const box=document.createElement('div'); box.className='slim-vak';
+      const box=document.createElement('div'); box.className='slim-vak'; box.id='slimVak-'+p[0];
       sec.appendChild(kop); sec.appendChild(box);
       // Leeg vak = geen kopje. Een lege sectie "Temperaturen" is een belofte
       // die niet wordt ingelost; hij gaat pas aan zodra er een tegel in valt.
@@ -305,6 +308,15 @@ function renderGauges(){
     }
     if(pidVals[pid]!==undefined) applyG(pid,pidVals[pid]);
   });
+  // De maat, twee keer. Nu meteen, want bij een herbouw midden in een rit is
+  // de historie er al en hoort een stilliggende sensor niet eerst een halve
+  // minuut groot in beeld te staan. En daarna één keer, zodat een verse start
+  // — waar nog niets van de historie te zeggen valt — alsnog uitkomt op de
+  // indeling die bij de auto past.
+  if(slim){
+    try{ slimHerweeg(); slimVakkenBij(); }catch(e){ console.warn('slimHerweeg mislukt:', e); }
+    try{ slimHerweegPlannen(); }catch(e){ console.warn('slimHerweegPlannen mislukt:', e); }
+  }
   // Herstel actieve weergavemodus op de nieuwe grid
   if(pidViewMode!=='full'){ g.classList.add('view-'+pidViewMode); }
   // Tekstblok alleen tonen als er ook echt code-PIDs geselecteerd zijn
@@ -655,6 +667,96 @@ function slimMeterBouw(pid,d){
   return koker;
 }
 
+// ── DE MAAT ───────────────────────────────────────────────────────
+// slimGroep() bepaalt de VORM van een tegel: een balk, een meter, een tegel
+// met een trendlijn. Wat eraan ontbrak is de MAAT — hoevéél ruimte een meting
+// verdient. Die zat aan de soort vast, en daardoor kreeg een brandstofpeil
+// dat een uur lang 68% aanwijst het grootste cijfer van het scherm terwijl
+// het niets nieuws zegt, en stond een MAF die op 2,00 g/s vastligt er even
+// opgewekt bij als een koelwater dat klimt.
+//
+// De maat volgt daarom het gedrag, met drie uitkomsten:
+//   'groot'    het oordeel staat op warn of danger: dit vraagt aandacht.
+//   'regel'    het signaal ligt stil — één regel in het vak "Rustig".
+//   'normaal'  de rest, en alles waar nog geen uitspraak over te doen is.
+//
+// De VOLGORDE is het punt. Een waarde die vastligt MAAR op oranje of rood
+// staat — een brandstoftrim die op +25% blijft plakken, een koelwater dat op
+// 118 °C blijft hangen — is juist het gevaarlijkste geval. Dat mag nooit naar
+// één regel zakken omdát het niet beweegt, dus het oordeel komt eerst.
+//
+// 'temp' en 'meter' krijgen geen maat en blijven waar ze zijn: die hebben hun
+// eigen vorm (een regel in het balkdiagram, een meter op de plaat) en die is
+// al compact. Een koelwater dat te warm wordt kleurt daar rood; het hoeft
+// niet ook nog van plaats te veranderen.
+//
+// SLIM_MAAT_MIN is bewust hoger dan SLIM_BEWEEG_MIN (4). "Beweegt hij?" is na
+// vier metingen te beantwoorden; "ligt hij stil?" niet — dat is een uitspraak
+// over wat er níét gebeurde, en die is pas iets waard als er lang genoeg
+// gekeken is. Tot die tijd is de maat 'normaal', de veilige kant.
+const SLIM_MAAT_MIN = 24;       // metingen voordat "ligt stil" een uitspraak is
+const SLIM_HERWEEG_MS = 30000;  // één herweging per opbouw, zie slimHerweegPlannen()
+let _slimHerweegT = null;
+
+function slimMaat(pid,d,val){
+  const groep=(typeof slimGroep==='function')?slimGroep(pid,d):'rest';
+  if(groep==='temp' || groep==='meter') return null;
+  const v=(val===undefined)?pidVals[pid]:val;
+  if(v!==undefined && v!==null && pidOordeel(d,v,pid)!=='ok') return 'groot';
+  const h=pidHist[pid];
+  if(!h || h.length<SLIM_MAAT_MIN) return 'normaal';
+  return slimBeweegt(pid,d) ? 'normaal' : 'regel';
+}
+
+// Een leeg vak toont geen kopje. Dezelfde regel als bij het opbouwen, maar nu
+// ook nádat een tegel verhuisd is — anders blijft de kop "Rustig" boven een
+// leeg vak staan zodra de laatste tegel daar weer uit omhoog gaat.
+function slimVakkenBij(){
+  ['dash','meter','temp','rest','rustig'].forEach(function(g){
+    const sec=document.getElementById('slimSec-'+g);
+    const box=document.getElementById('slimVak-'+g);
+    if(sec&&box) sec.style.display = box.children.length ? '' : 'none';
+  });
+}
+
+// Zet één tegel in het vak waar hij hoort. VERPLAATST het bestaande element
+// in plaats van het rooster opnieuw op te bouwen: de tegel houdt zijn id, zijn
+// balk, zijn sparkline en zijn plek in de historie, en applyG() merkt er niets
+// van. Geeft true terug als er echt iets verhuisd is.
+function slimPlaats(pid){
+  const card=document.getElementById('gc-'+pid); if(!card) return false;
+  const d=getPidDef(pid); if(!d) return false;
+  const maat=slimMaat(pid,d);
+  if(maat===null) return false;                    // temp en meter blijven staan
+  card.classList.toggle('slim-groot', maat==='groot');
+  const doel=(maat==='regel')?'rustig':((typeof slimGroep==='function')?slimGroep(pid,d):'rest');
+  const box=document.getElementById('slimVak-'+doel);
+  if(!box || card.parentNode===box) return false;
+  box.appendChild(card);
+  slimVakkenBij();
+  return true;
+}
+
+// Eén herweging per opbouw, en daarna niet meer. Tegels die tijdens het rijden
+// van plaats en formaat wisselen zijn onleesbaarder dan een tegel met het
+// verkeerde formaat, dus de indeling wordt NIET doorlopend herrekend. Bij het
+// opbouwen is er nog geen historie — dan is alles 'normaal' — en na
+// SLIM_HERWEEG_MS is er genoeg gezien om te weten wat er stil ligt.
+function slimHerweeg(){
+  if(pidViewMode!=='slim') return 0;
+  let n=0;
+  activePIDs.forEach(function(pid){ if(slimPlaats(pid)) n++; });
+  return n;
+}
+function slimHerweegPlannen(){
+  if(_slimHerweegT){ clearTimeout(_slimHerweegT); _slimHerweegT=null; }
+  if(pidViewMode!=='slim') return;
+  _slimHerweegT=setTimeout(function(){
+    _slimHerweegT=null;
+    try{ slimHerweeg(); }catch(e){ console.warn('slimHerweeg mislukt:', e); }
+  }, SLIM_HERWEEG_MS);
+}
+
 function slimBij(pid,val,d,st,card){
   const bar=document.getElementById('sb-'+pid);
   if(bar){
@@ -682,6 +784,16 @@ function slimBij(pid,val,d,st,card){
     return;   // een meter heeft ook geen sparkline om te verbergen
   }
   if(card) card.classList.toggle('vlak', !slimBeweegt(pid,d));
+  // OMHOOG MAG ALTIJD, OMLAAG ALLEEN BIJ DE HERWEGING. Die asymmetrie is met
+  // opzet. Dat een signaal gáát bewegen, of op oranje springt, is nieuws en
+  // hoort meteen zichtbaar te zijn: een auto die stilstond en nu rijdt heeft
+  // een snelheid die niet in de rustige strook thuishoort, en die had daar bij
+  // de herweging wél terechtkunnen komen. Andersom is het alleen opmaak, en
+  // dan is een indeling die stilstaat meer waard. Zonder deze asymmetrie zou
+  // een tegel die op de grens van "beweegt" balanceert heen en weer springen
+  // tussen twee vakken, en dat is precies wat een scherm onleesbaar maakt.
+  if(card && card.parentNode && card.parentNode.id==='slimVak-rustig'
+     && (st!=='ok' || slimBeweegt(pid,d))) slimPlaats(pid);
 }
 function updPID(pid,val){
   pidVals[pid]=val;
