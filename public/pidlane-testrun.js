@@ -4220,7 +4220,7 @@ const CAMPAGNE = {
 
     'BLOK 5 en STAP 7 — allebei lezen ze nu PLAchtergrond naast PLRit. plmutate.sh staat op 36 mutaties; twee nieuwe maken test-achtergrond.js rood.',
 
-    'BLOK 5 DEKT DEZE RONDE: #52, §8, #42, #49, #76, #75, #79, §11, #19, #15, #40, #18, #17, #29, #61. Die regel is afgeleid uit de proevenlijst zelf en niet met de hand bijgehouden — test-blok5lijst.js maakt hem rood zodra er een proef bij komt die hier niet in staat.',
+    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden — komt er een proef bij, dan staat hij hier vanzelf.',
 
     '── WAT DEZE RONDE NIET OPLOST ─────────',
 
