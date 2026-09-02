@@ -490,6 +490,25 @@ function refreshLegeTegels(){
   }catch(e){ console.warn('pidTegelLeeg mislukt:', e); }
 }
 
+// Het oordeel over één meting: 'ok', 'warn' of 'danger'. Deze drempelregel
+// stond twee keer letterlijk in applyG() — één keer voor het tekstblok en één
+// keer voor de tegel — en slimMaat() heeft hem als derde nodig. Drie kopieën
+// van dezelfde grens is precies de vorm waarin er hier al eerder eentje
+// stilletjes uit de pas liep.
+//
+// De regel voor het motorlampje stond alleen in de tekstblok-kopie. Hij hoort
+// bij het oordeel en niet bij de plek waar het getoond wordt, dus hij staat
+// hier voor allebei. Voor de tegels verandert dat niets: 0101 staat in
+// PID_TEKST en komt daar nooit langs.
+function pidOordeel(d,val,pid){
+  if(!d) return 'ok';
+  let st='ok';
+  if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
+  else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
+  if(pid==='0101' && Math.round(val)===1) st='danger';
+  return st;
+}
+
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
   // Code-/vlag-PIDs staan in het tekstblok, niet in een tegel: daar alleen de
@@ -500,20 +519,14 @@ function applyG(pid,val){
     const el=document.getElementById('vv-'+pid);
     if(el) el.textContent=pidTekstWaarde(pid,val);
     if(row){
-      let st='ok';
-      if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
-      else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
-      // Motorlampje aan is altijd rood, ongeacht drempels
-      if(pid==='0101' && Math.round(val)===1) st='danger';
+      const st=pidOordeel(d,val,pid);
       row.classList.toggle('warn', st==='warn');
       row.classList.toggle('danger', st==='danger');
     }
     return;
   }
   const card=document.getElementById('gc-'+pid); if(!card) return;
-  let st='ok';
-  if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)) st='danger';
-  else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)) st='warn';
+  const st=pidOordeel(d,val,pid);
   // Er is een waarde binnen, dus de lege stand is voorbij. Via classList in
   // plaats van een className-toewijzing: die overschreef ook gc-manueel,
   // waardoor de paarse rand van een handmatig gezette sensor bij de eerste
