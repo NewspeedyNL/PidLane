@@ -1929,6 +1929,12 @@ async function _blok5() {
     if (!klant && r.status !== 401)
       return { staat: 'FOUT', detail: 'zonder klantaccount gaf de Worker ' + r.status + ' in plaats van 401 — ' +
         'de sessiecontrole staat weer ná het afstempelen en dan kan een code verbranden' };
+    // Een verlopen sessie geeft óók 401, en dan zegt deze proef niets over de
+    // controle die we willen meten. Dat is LET OP en geen FOUT: een test die
+    // rood staat om de verkeerde reden wordt genegeerd (CLAUDE.md).
+    if (klant && r.status === 401)
+      return { staat: 'LET OP', detail: 'de Worker weigert de sessie (401) terwijl er een klant is ingelogd — ' +
+        'waarschijnlijk een verlopen sessietoken; log opnieuw in en draai deze proef nog eens' };
     if (klant && r.status !== 404)
       return { staat: 'FOUT', detail: 'met klantaccount gaf een niet-bestaande code ' + r.status +
         ' in plaats van 404 (' + (d.error || 'geen melding') + ')' };
