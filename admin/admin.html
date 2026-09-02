@@ -548,6 +548,41 @@ function diagnose(where, status, bodyText){
   if (errCode==='no_items')      return { kind:'err', title:'❌ Niets om op te slaan.', detail:'Er werden geen instellingen meegestuurd.' };
   if (errCode==='bad_json')      return { kind:'err', title:'❌ Ongeldige data verzonden.', detail:raw.slice(0,200) };
   if (errCode==='no_airtable_token') return { kind:'err', title:'❌ AIRTABLE_TOKEN ontbreekt in de Worker.', detail:'Zet de secret AIRTABLE_TOKEN in Cloudflare → Settings → Variables.' };
+  // ── het saldo-slot (#82) ──────────────────────────────────────
+  // Deze drie zijn geen fout van de beheerder maar van de timing, en de
+  // terugval hieronder zou er "Onverwachte fout" van maken. Dat geeft de
+  // verkeerde raad: bij een bezet of onbereikbaar slot is het juiste antwoord
+  // "zo nog eens", niet "er is iets stuk". Herkend op body.code en niet op de
+  // tekst, want een melding herschrijven mag geen afhandeling breken.
+  if (body?.code==='saldo_bezet') {
+    return { kind:'warn',
+      title:'⏳ Er loopt al een tegoedwijziging voor deze klant.',
+      detail:
+        'Sinds 02-09-2026 loopt bijboeken door hetzelfde slot als de afboeking\n'+
+        'van een analyse. Dit betekent meestal dat de klant op dit moment een\n'+
+        'analyse draait. Wacht een paar seconden en probeer opnieuw — er is\n'+
+        'niets geschreven, dus je boekt niet dubbel bij.' };
+  }
+  if (body?.code==='saldo_slot_stuk') {
+    return { kind:'err',
+      title:'❌ Het tegoed kon niet veilig gewijzigd worden.',
+      detail:
+        'Het slot dat gelijktijdige saldowijzigingen uit elkaar houdt, was niet\n'+
+        'aan te vragen. De Worker gaat er dan bewust NIET omheen, want dan kan\n'+
+        'een gelijktijdige afboeking je bijboeking overschrijven.\n\n'+
+        '• Er is niets geschreven; opnieuw proberen is veilig.\n'+
+        '• Blijft het staan, kijk dan of de binding REMOTE_SESSION nog in\n'+
+        '  wrangler.toml staat en of de laatste worker.js gedeployed is.' };
+  }
+  if (body?.code==='saldo_geen_email') {
+    return { kind:'err',
+      title:'❌ Deze klant heeft geen e-mailadres.',
+      detail:
+        'Het saldo-slot staat per e-mailadres. Zonder adres is er geen slot om\n'+
+        'het bijboeken in te zetten, en dan zou het langs een gelijktijdige\n'+
+        'afboeking heen kunnen schrijven. Vul eerst het veld Email in Airtable.' };
+  }
+
   if (status===404) return { kind:'err', title:'❌ Endpoint niet gevonden (404).', detail:'De Worker kent deze route niet. Is de nieuwste worker.js gedeployed?' };
   if (status>=500)  return { kind:'err', title:'❌ Worker-fout ('+status+').', detail:detailStr.slice(0,300) };
 

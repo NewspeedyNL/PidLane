@@ -11,6 +11,66 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — BIJBOEKEN DOOR HET SALDO-SLOT
+
+       • 🔒 DE VIERDE SALDOSCHRIJVER GING OM HET SLOT HEEN (#82).
+         metSaldoSlot() houdt gelijktijdige saldowijzigingen per
+         klant uit elkaar. Drie plekken liepen erdoorheen — de
+         AI-afboeking, de activatiecode en het proeftegoed — en
+         bijboeken vanuit de beheerpagina niet. Die las het saldo
+         met een eigen fetch en schreef het opgetelde bedrag
+         terug. Nu loopt hij door hetzelfde slot.
+
+       • ⚠️ DE WAARSCHUWING DIE ER STOND, WEES DE VERKEERDE KANT
+         OP. Ze ging over twee beheerders die op dezelfde seconde
+         bijboeken; die botsing bestaat niet. De botsing die wél
+         bestaat is beheerder × klant: je boekt 100 bij terwijl
+         de klant een analyse draait, en één van beide mutaties
+         verdwijnt geruisloos. Dat gebeurt juist wanneer het het
+         meest voorkomt — een klant belt dat zijn tegoed op is en
+         probeert het opnieuw terwijl jij bijboekt.
+
+       • 🧑‍💼 DE BEHEERPAGINA KRIJGT NU BRUIKBAAR ADVIES. Een
+         bezet slot betekent meestal dat de klant op dit moment
+         een analyse draait: er is niets geschreven en opnieuw
+         proberen is veilig. Dat staat er nu, in plaats van
+         "Onverwachte fout (409)".
+
+       • 🧪 test-bijboeken.js TOETST DE VOLGORDE, niet alleen dat
+         het slot wordt aangeroepen — dicht, lezen, schrijven,
+         open, met twee lezingen waarvan de tweede binnen het
+         slot. plmutate.sh staat op zesentwintig mutaties.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — BLOK 5 IS EEN LIJST
+
+       • 🧾 DE ZEVENTIEN PROEVEN VAN BLOK 5 STAAN NU ALS DATA.
+         Ze zaten in één functie van 585 regels waar elke
+         oplevering in geknipt werd, met bovenaan een banner die
+         opsomde wat erbij kwam en wat eruit ging — en die
+         opsomming stond ook in de campagnetekst. Twee lijsten
+         van hetzelfde, met de hand bijgehouden; precies de vorm
+         die PIDLANE-WERK.md en §11 eerder de kop kostte.
+
+       • 🔁 EEN OPLEVERING IS NU EEN ENTRY ERBIJ OF ERAF. De
+         loper eronder blijft ongemoeid, en de regel "BLOK 5 DEKT
+         DEZE RONDE" wordt uit de lijst afgeleid in plaats van
+         overgeschreven. De proefcode zelf is regel voor regel
+         dezelfde gebleven: nagemeten, zeventien blokken, geen
+         verschil.
+
+       • 🧪 test-blok5lijst.js BEWAAKT DE LIJST. Elke entry moet
+         een issue, een naam, een waarom en een proef hebben,
+         geen twee proeven dragen dezelfde naam, en de
+         campagnetekst moet elk issue uit de lijst noemen. Drie
+         mutaties in plmutate.sh maken die test rood — de
+         tegenproef staat daarmee op tweeëntwintig.
+
+       • Aan wat de app meet verandert deze bouw niets.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — DE RIT OOGST BEWIJS
 
        • 🎯 VIJF ISSUES WACHTTEN OP EEN RIT, EN ER WAREN ER VIER

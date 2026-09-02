@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.5 (02-09-2026)';
+const TESTRUN_VERSIE = '6.7 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1860,143 +1860,156 @@ async function _blok10() {
 // Die tweede is de belangrijkste en het makkelijkst te vergeten: op 16-08 zijn
 // zes ingangen gesloopt, en een achtergebleven verwijzing merk je pas als een
 // klant erop drukt.
-async function _blok5() {
+// ══════════════════════════════════════════════════════════════════
+// BLOK 5 — DE PROEVEN VAN DEZE OPLEVERING, ALS LIJST
+// ══════════════════════════════════════════════════════════════════
+// Tot 6.6 was dit één functie van 585 regels waar elke oplevering in werd
+// geknipt en geplakt, met bovenaan een banner die opsomde welke proeven er
+// nieuw waren en welke eruit gingen. Die banner zei hetzelfde als CAMPAGNE:
+// twee lijsten van hetzelfde, bijgehouden met de hand. Dat is in dit project
+// al twee keer misgegaan — PIDLANE-WERK.md, en daarna §11 van PIDLANE.md.
+//
+// Nu is het een lijst. Een oplevering voegt een entry toe of haalt er een
+// weg; _blok5() eronder blijft ongemoeid. En welke issues deze ronde dekt is
+// af te lezen uit de data (PLTestrun.dekking()) in plaats van uit een
+// opsomming die iemand moet onthouden bij te werken.
+//
+// Elke entry:
+//   issue   waar de proef over gaat: '#40', '§8', of '—' als er geen issue
+//           bij hoort. Dit veld is de reden dat de opsomming weg kon.
+//   naam    de regel die in het verslag komt te staan
+//   waarom  één zin: waarom dit hier gemeten wordt en niet in een node-test
+//   proef   de meting zelf, met hetzelfde contract als _doe(): een string bij
+//           ok, of { staat, detail } om zelf het oordeel te bepalen
+//
+// WAAROM DEZE PROEVEN IN DE APP STAAN EN NIET ALLEEN IN NODE. De node-tests
+// draaien de modules met een nagemaakte DOM en een nagemaakte Airtable. Wat
+// ze NIET kunnen zien is of die modules in de dráaiende app aan elkaar hangen
+// — precies het soort verbinding dat bij #29, #74 en #52 ontbrak zonder ooit
+// een fout te geven. Vandaar: de weg meten, in de app.
+//
+// GELDVEILIGHEID. Geen enkele proef hieronder doet een AI-call; die kosten
+// een klant echte tokens.
+// ══════════════════════════════════════════════════════════════════
 
-  // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 02-09-2026 — drie ronden in één oplevering.
-  //
-  // DE DERDE RONDE (6.4) heeft maar één onderwerp, en het is de enige FOUT
-  // uit de run van 12:05 die vanaf een bureau te repareren was:
-  //   #78  de gezondheidscheck stempelde de versheidsbron VÓÓR het oordeel
-  // De proef daarvoor stond er al — "Geen PID staat niet-ok terwijl hij
-  // meet" — en hij deed precies wat een proef hoort te doen: hij meldde
-  // 019D en had gelijk. Wat hij verkeerd bénoemde was de oorzaak ("de
-  // herziening vuurt niet"); die stond een regel eerder in
-  // initialHealthScan(). De proef hieronder is daarop bijgewerkt.
-  //
-  // DE TOKENKETEN
-  //   #52  de tokenchip volgt de rol en niet het laadmoment
-  //   §8   de teller volgt de server: X-PidLane-Saldo wordt uitgelezen
-  //   #42  geen koopknop in de app; de eerste fase loopt met de hand
-  //   —    een activatiecode kan niet meer verbranden zonder account
-  //
-  // HET VERSLAG KLOPT MET DE METING
-  //   #78  een geslaagde meting herziet een 'nodata'/'onzin'-oordeel
-  //   #76  blok 7 leent de zoneregel bij PLLoad in plaats van hem te kopiëren
-  //   #77  de eerste verbinding van een sessie is geen herverbinding
-  //   #75  de meldingenteller telt vanaf de start van de run
-  //   #72  de app-log kapt eerlijk af, met kop, staart en een zichtbare regel
-  //
-  // WAAROM DIT IN BLOK 5 STAAT EN NIET ALLEEN IN EEN NODE-TEST. De vier
-  // node-tests (test-tokenchip, test-saldokop, test-codeverzilver,
-  // test-proeftegoed) draaien de modules met een nagemaakte DOM en een
-  // nagemaakte Airtable. Wat ze NIET kunnen zien is of die modules in de
-  // dráaiende app aan elkaar hangen: of finishLogin() de chip werkelijk laat
-  // herbeoordelen, of de configuratie op dit toestel de koopknop uit laat, en
-  // of de Worker die hier draait het inwisselen zonder klantaccount ook echt
-  // weigert. Dat is exact het soort verbinding dat bij #29, #74 en #52 ontbrak
-  // zonder ooit een fout te geven. Vandaar: de weg meten, in de app.
-  //
-  // WAT ERUIT IS. De drie proeven voor #74 en de begeleide rit van 01-09 zijn
-  // weg — die zijn beantwoord en staan in test-rit.js en test-begeleid.js met
-  // tegenproef. De #58-proef BLIJFT: die gaf op 01-09 de enige FOUT van de run
-  // en het is nog onbeslist of de melding klopt of de meting (#79).
-  //
-  // GELDVEILIGHEID. Geen enkele proef hieronder doet een AI-call; die kosten
-  // een klant echte tokens. De code die naar /credits/redeem gaat bestaat
-  // gegarandeerd niet, dus er valt niets af te stempelen.
-  // ══════════════════════════════════════════════════════════════
+// Hoeveel aanvragers stonden er tijdens de rit aan? Twee proeven hieronder
+// hangen ervan af, dus één keer bepalen en niet twee keer half.
+function _aanvragersNu() {
+  const aan = [];
+  try { if (window.PLWaak && PLWaak.actief()) aan.push('waakronde'); } catch (e) { console.warn('waakrondestand onleesbaar in de rit-oogst', e); }
+  try { if (typeof PLMon !== 'undefined' && PLMon.active) aan.push('rit-monitor'); } catch (e) { console.warn('monitorstand onleesbaar in de rit-oogst', e); }
+  try { if (window.PLBulk && (PLBulk.status() || {}).actief) aan.push('bulk-recorder'); } catch (e) { console.warn('bulkstand onleesbaar in de rit-oogst', e); }
+  try { if (typeof caravanActive !== 'undefined' && caravanActive) aan.push('caravan-tracker'); } catch (e) { console.warn('caravanstand onleesbaar in de rit-oogst', e); }
+  return aan;
+}
 
-  // ── TOEGEVOEGD 1 (#52): hoort de chip bij de rol die nu ingelogd is? ──
+const PROEVEN_B5 = [
+
+  // ── hoort de chip bij de rol die nu ingelogd is? ──
   // De fout van 29-08 in één zin: de chip werd getekend vóór de login en
   // daarna keek er niets meer naar. Een beheerder hield zo een chip die niet
   // bij hem hoort, met "tokens onbekend" erin. Deze proef kijkt naar de DOM
   // van dit moment — dat is de enige plek waar die vraag te beantwoorden is.
-  await _doe(5, 'De tokenchip hoort bij de rol die nu ingelogd is', function () {
-    if (!window.PLCredits) return { staat: 'FOUT', detail: 'PLCredits ontbreekt — de tegoedmodule is niet geladen' };
-    if (typeof PLCredits.chip !== 'function')
-      return { staat: 'FOUT', detail: 'PLCredits.chip() ontbreekt — dan kan niets de chip herbeoordelen na een rolwissel (#52)' };
+  {
+    issue: '#52',
+    naam: 'De tokenchip hoort bij de rol die nu ingelogd is',
+    waarom: 'Alleen de DOM van dit moment laat zien of de chip bij de ingelogde rol hoort.',
+    proef: function () {
+      if (!window.PLCredits) return { staat: 'FOUT', detail: 'PLCredits ontbreekt — de tegoedmodule is niet geladen' };
+      if (typeof PLCredits.chip !== 'function')
+        return { staat: 'FOUT', detail: 'PLCredits.chip() ontbreekt — dan kan niets de chip herbeoordelen na een rolwissel (#52)' };
 
-    const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
-    const rol = (window.currentUser && window.currentUser.role) || 'niemand ingelogd';
-    const er = function () { return !!document.getElementById('plCredChip'); };
+      const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
+      const rol = (window.currentUser && window.currentUser.role) || 'niemand ingelogd';
+      const er = function () { return !!document.getElementById('plCredChip'); };
 
-    // Eerst de stand zoals hij nu is: dít is wat een gebruiker ziet.
-    if (er() !== klant)
-      return { staat: 'FOUT', detail: 'rol "' + rol + '"' + (klant ? '' : ' hoort geen tokenchip te zien') +
-        ' maar de chip is ' + (er() ? 'aanwezig' : 'afwezig') +
-        ' — de chip volgt het laadmoment in plaats van de rol (#52)' };
+      // Eerst de stand zoals hij nu is: dít is wat een gebruiker ziet.
+      if (er() !== klant)
+        return { staat: 'FOUT', detail: 'rol "' + rol + '"' + (klant ? '' : ' hoort geen tokenchip te zien') +
+          ' maar de chip is ' + (er() ? 'aanwezig' : 'afwezig') +
+          ' — de chip volgt het laadmoment in plaats van de rol (#52)' };
 
-    // En dan de haak zelf: een herbeoordeling mag het antwoord niet omgooien.
-    // Doet hij dat wél, dan staat er ergens een tweede plek die dezelfde
-    // beslissing neemt, en dat is in dit project al drie keer een bug geweest.
-    PLCredits.chip();
-    if (er() !== klant)
-      return { staat: 'FOUT', detail: 'na PLCredits.chip() is de chip ' + (er() ? 'verschenen' : 'verdwenen') +
-        ' terwijl de rol niet veranderde — twee plekken beslissen over dezelfde chip' };
+      // En dan de haak zelf: een herbeoordeling mag het antwoord niet omgooien.
+      // Doet hij dat wél, dan staat er ergens een tweede plek die dezelfde
+      // beslissing neemt, en dat is in dit project al drie keer een bug geweest.
+      PLCredits.chip();
+      if (er() !== klant)
+        return { staat: 'FOUT', detail: 'na PLCredits.chip() is de chip ' + (er() ? 'verschenen' : 'verdwenen') +
+          ' terwijl de rol niet veranderde — twee plekken beslissen over dezelfde chip' };
 
-    return 'rol "' + rol + '": chip ' + (klant ? 'aanwezig met ' +
-      (PLCredits.saldoBekend() ? PLCredits.saldo() + ' tokens' : 'saldo nog onbekend') : 'afwezig') +
-      ', en een herbeoordeling laat dat zo';
-  });
+      return 'rol "' + rol + '": chip ' + (klant ? 'aanwezig met ' +
+        (PLCredits.saldoBekend() ? PLCredits.saldo() + ' tokens' : 'saldo nog onbekend') : 'afwezig') +
+        ', en een herbeoordeling laat dat zo';
+    }
+  },
 
-  // ── TOEGEVOEGD 2 (§8): neemt de teller het saldo van de server over? ──
+  // ── neemt de teller het saldo van de server over? ──
   // De Worker stuurt het saldo na afboeking mee in X-PidLane-Saldo. PIDLANE.md
   // beschreef sinds juli dat apiFetch die uitleest — er las niemand, en de
   // teller liep dus op de schatting. Een échte call zou hier tokens kosten, dus
   // we voeren alleen de kop aan de module en zetten daarna terug wat er stond.
-  await _doe(5, 'De tokenteller neemt het saldo van de server over', function () {
-    if (!window.PLCredits || typeof PLCredits.volgServer !== 'function')
-      return { staat: 'FOUT', detail: 'PLCredits.volgServer() ontbreekt — dan blijft de teller op de schatting lopen (§8)' };
-    const kop = function (v) { return { get: function (n) { return String(n).toLowerCase() === 'x-pidlane-saldo' ? String(v) : null; } }; };
-    const bekend = PLCredits.saldoBekend();
-    const voor = PLCredits.saldo();
-    const proef = bekend ? voor + 1 : 7;
+  {
+    issue: '§8',
+    naam: 'De tokenteller neemt het saldo van de server over',
+    waarom: 'De kop X-PidLane-Saldo wordt hier aan de echte module gevoerd; een echte call zou tokens kosten.',
+    proef: function () {
+      if (!window.PLCredits || typeof PLCredits.volgServer !== 'function')
+        return { staat: 'FOUT', detail: 'PLCredits.volgServer() ontbreekt — dan blijft de teller op de schatting lopen (§8)' };
+      const kop = function (v) { return { get: function (n) { return String(n).toLowerCase() === 'x-pidlane-saldo' ? String(v) : null; } }; };
+      const bekend = PLCredits.saldoBekend();
+      const voor = PLCredits.saldo();
+      const proef = bekend ? voor + 1 : 7;
 
-    PLCredits.volgServer(kop(proef), {});
-    const raak = PLCredits.saldo() === proef;
+      PLCredits.volgServer(kop(proef), {});
+      const raak = PLCredits.saldo() === proef;
 
-    // Terugzetten, en wel precies naar de toestand van vóór deze proef. Bij een
-    // klant is dat het oude getal; bij een beheerder was het saldo onbekend en
-    // dat is vergeetKlant() — anders laat deze proef een verzonnen saldo achter.
-    if (bekend) PLCredits.volgServer(kop(voor), {});
-    else PLCredits.vergeetKlant();
+      // Terugzetten, en wel precies naar de toestand van vóór deze proef. Bij een
+      // klant is dat het oude getal; bij een beheerder was het saldo onbekend en
+      // dat is vergeetKlant() — anders laat deze proef een verzonnen saldo achter.
+      if (bekend) PLCredits.volgServer(kop(voor), {});
+      else PLCredits.vergeetKlant();
 
-    if (!raak)
-      return { staat: 'FOUT', detail: 'een saldo van ' + proef + ' in de kop leverde ' + PLCredits.saldo() +
-        ' op — de server is niet leidend en de teller loopt op de schatting' };
-    if (PLCredits.saldo() !== voor || PLCredits.saldoBekend() !== bekend)
-      return { staat: 'FOUT', detail: 'de proef heeft het saldo veranderd (' + voor + ' → ' + PLCredits.saldo() +
-        ') — dat is een fout in deze proef, niet in de app, maar hij moet wel weg' };
-    return 'de kop X-PidLane-Saldo zet de teller (' + proef + ' overgenomen), en de stand van vóór de proef staat terug';
-  });
+      if (!raak)
+        return { staat: 'FOUT', detail: 'een saldo van ' + proef + ' in de kop leverde ' + PLCredits.saldo() +
+          ' op — de server is niet leidend en de teller loopt op de schatting' };
+      if (PLCredits.saldo() !== voor || PLCredits.saldoBekend() !== bekend)
+        return { staat: 'FOUT', detail: 'de proef heeft het saldo veranderd (' + voor + ' → ' + PLCredits.saldo() +
+          ') — dat is een fout in deze proef, niet in de app, maar hij moet wel weg' };
+      return 'de kop X-PidLane-Saldo zet de teller (' + proef + ' overgenomen), en de stand van vóór de proef staat terug';
+    }
+  },
 
-  // ── TOEGEVOEGD 3 (#42): staat de app in de handmatige eerste fase? ──
+  // ── staat de app in de handmatige eerste fase? ──
   // Tokens verkopen ín de app is precies wat Google's betaalregels raakt, en
   // die vraag is niet beantwoord. Zolang `tikkie_kopen` leeg is in de
   // Config-tabel is er geen koopknop en loopt het aanvragen per mail. Dit is
   // de enige plek waar de ECHTE configuratie van dit toestel te zien is — in
   // node is PID_CONFIG altijd leeg en klopt alles vanzelf.
-  await _doe(5, 'Geen koopknop in de app; de aanvraag loopt per mail (#42)', function () {
-    if (!window.PLKlant) return { staat: 'FOUT', detail: 'PLKlant ontbreekt' };
-    const link = PLKlant.CFG.tikkieKopen;
-    if (link)
-      return { staat: 'FOUT', detail: 'er staat een koopknop in de app (tikkie_kopen is gevuld) terwijl de eerste ' +
-        'fase handmatig is — zet de sleutel leeg in admin.html, of sluit #42 met de uitkomst erbij' };
-    if (typeof PLKlant.aanvraagMail !== 'function')
-      return { staat: 'FOUT', detail: 'PLKlant.aanvraagMail() ontbreekt — dan opent de knop een lege mail zonder account' };
-    const mail = PLKlant.aanvraagMail();
-    if (!/^mailto:/.test(mail))
-      return { staat: 'FOUT', detail: 'de aanvraagknop wijst niet naar een mailto maar naar: ' + String(mail).slice(0, 60) };
-    const klant = !!(PLKlant.isKlant && PLKlant.isKlant());
-    const adres = (window.currentUser && window.currentUser.name) || '';
-    if (klant && adres && mail.indexOf(encodeURIComponent(adres)) < 0)
-      return { staat: 'FOUT', detail: 'de aanvraagmail draagt het account niet — dan begint elke handmatige ' +
-        'aanvraag met "en wie ben jij?"' };
-    return 'geen koopknop; de aanvraag gaat per mail' + (klant ? ' met het account erin' : ' (geen klant ingelogd, dus zonder account)');
-  });
+  {
+    issue: '#42',
+    naam: 'Geen koopknop in de app; de aanvraag loopt per mail (#42)',
+    waarom: 'Alleen op een toestel staat de echte Config; in node is PID_CONFIG leeg en klopt alles vanzelf.',
+    proef: function () {
+      if (!window.PLKlant) return { staat: 'FOUT', detail: 'PLKlant ontbreekt' };
+      const link = PLKlant.CFG.tikkieKopen;
+      if (link)
+        return { staat: 'FOUT', detail: 'er staat een koopknop in de app (tikkie_kopen is gevuld) terwijl de eerste ' +
+          'fase handmatig is — zet de sleutel leeg in admin.html, of sluit #42 met de uitkomst erbij' };
+      if (typeof PLKlant.aanvraagMail !== 'function')
+        return { staat: 'FOUT', detail: 'PLKlant.aanvraagMail() ontbreekt — dan opent de knop een lege mail zonder account' };
+      const mail = PLKlant.aanvraagMail();
+      if (!/^mailto:/.test(mail))
+        return { staat: 'FOUT', detail: 'de aanvraagknop wijst niet naar een mailto maar naar: ' + String(mail).slice(0, 60) };
+      const klant = !!(PLKlant.isKlant && PLKlant.isKlant());
+      const adres = (window.currentUser && window.currentUser.name) || '';
+      if (klant && adres && mail.indexOf(encodeURIComponent(adres)) < 0)
+        return { staat: 'FOUT', detail: 'de aanvraagmail draagt het account niet — dan begint elke handmatige ' +
+          'aanvraag met "en wie ben jij?"' };
+      return 'geen koopknop; de aanvraag gaat per mail' + (klant ? ' met het account erin' : ' (geen klant ingelogd, dus zonder account)');
+    }
+  },
 
-  // ── TOEGEVOEGD 4: weigert de Worker een code zonder klantaccount? ──
+  // ── weigert de Worker een code zonder klantaccount? ──
   // De route stempelde de code eerst af en keek pas daarna of er een account
   // was om hem op bij te schrijven. Zonder account was de code verbrand en het
   // tegoed nergens. De app haakte daar zelf al op af, maar dat is een verzoek
@@ -2005,117 +2018,137 @@ async function _blok5() {
   // De code hieronder bestaat niet en kan niet bestaan (hij draagt een stempel
   // van dit moment), dus er valt niets af te stempelen. Een beheerder hoort
   // 401 te krijgen, een klant 404: gevonden-niet.
-  await _doe(5, 'De Worker weigert een code zonder klantaccount', async function () {
-    if (typeof PROXY_URL === 'undefined' || !PROXY_URL)
-      return { staat: 'LET OP', detail: 'geen PROXY_URL — niet te meten zonder Worker' };
-    if (!window.APP_TOKEN)
-      return { staat: 'LET OP', detail: 'geen sessietoken — log eerst in' };
-    const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
-    const code = 'PIDL-B5' + String(Date.now()).slice(-6);
-    let r;
-    try {
-      r = await fetch(String(PROXY_URL).replace(/\/$/, '') + '/credits/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-App-Token': window.APP_TOKEN },
-        body: JSON.stringify({ code: code })
-      });
-    } catch (e) {
-      return { staat: 'LET OP', detail: 'Worker niet bereikbaar: ' + ((e && e.message) || e) };
+  {
+    issue: '#42',
+    naam: 'De Worker weigert een code zonder klantaccount',
+    waarom: 'De grens ligt in de Worker, niet in de app — dus praat deze proef met de echte Worker.',
+    proef: async function () {
+      if (typeof PROXY_URL === 'undefined' || !PROXY_URL)
+        return { staat: 'LET OP', detail: 'geen PROXY_URL — niet te meten zonder Worker' };
+      if (!window.APP_TOKEN)
+        return { staat: 'LET OP', detail: 'geen sessietoken — log eerst in' };
+      const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
+      const code = 'PIDL-B5' + String(Date.now()).slice(-6);
+      let r;
+      try {
+        r = await fetch(String(PROXY_URL).replace(/\/$/, '') + '/credits/redeem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-App-Token': window.APP_TOKEN },
+          body: JSON.stringify({ code: code })
+        });
+      } catch (e) {
+        return { staat: 'LET OP', detail: 'Worker niet bereikbaar: ' + ((e && e.message) || e) };
+      }
+      const d = await r.json().catch(function () { return {}; });
+      if (d.ok === true)
+        return { staat: 'FOUT', detail: 'een verzonnen code werd geaccepteerd — dat kan niet en betekent dat er ' +
+          'iets heel anders mis is met /credits/redeem' };
+      if (!klant && r.status !== 401)
+        return { staat: 'FOUT', detail: 'zonder klantaccount gaf de Worker ' + r.status + ' in plaats van 401 — ' +
+          'de sessiecontrole staat weer ná het afstempelen en dan kan een code verbranden' };
+      // Een verlopen sessie geeft óók 401, en dan zegt deze proef niets over de
+      // controle die we willen meten. Dat is LET OP en geen FOUT: een test die
+      // rood staat om de verkeerde reden wordt genegeerd (CLAUDE.md).
+      if (klant && r.status === 401)
+        return { staat: 'LET OP', detail: 'de Worker weigert de sessie (401) terwijl er een klant is ingelogd — ' +
+          'waarschijnlijk een verlopen sessietoken; log opnieuw in en draai deze proef nog eens' };
+      if (klant && r.status !== 404)
+        return { staat: 'FOUT', detail: 'met klantaccount gaf een niet-bestaande code ' + r.status +
+          ' in plaats van 404 (' + (d.error || 'geen melding') + ')' };
+      return (klant ? 'als klant: 404 code niet gevonden' : 'als beheerder: 401 log eerst in met je account') +
+        ' — er is niets afgestempeld';
     }
-    const d = await r.json().catch(function () { return {}; });
-    if (d.ok === true)
-      return { staat: 'FOUT', detail: 'een verzonnen code werd geaccepteerd — dat kan niet en betekent dat er ' +
-        'iets heel anders mis is met /credits/redeem' };
-    if (!klant && r.status !== 401)
-      return { staat: 'FOUT', detail: 'zonder klantaccount gaf de Worker ' + r.status + ' in plaats van 401 — ' +
-        'de sessiecontrole staat weer ná het afstempelen en dan kan een code verbranden' };
-    // Een verlopen sessie geeft óók 401, en dan zegt deze proef niets over de
-    // controle die we willen meten. Dat is LET OP en geen FOUT: een test die
-    // rood staat om de verkeerde reden wordt genegeerd (CLAUDE.md).
-    if (klant && r.status === 401)
-      return { staat: 'LET OP', detail: 'de Worker weigert de sessie (401) terwijl er een klant is ingelogd — ' +
-        'waarschijnlijk een verlopen sessietoken; log opnieuw in en draai deze proef nog eens' };
-    if (klant && r.status !== 404)
-      return { staat: 'FOUT', detail: 'met klantaccount gaf een niet-bestaande code ' + r.status +
-        ' in plaats van 404 (' + (d.error || 'geen melding') + ')' };
-    return (klant ? 'als klant: 404 code niet gevonden' : 'als beheerder: 401 log eerst in met je account') +
-      ' — er is niets afgestempeld';
-  });
+  },
 
-  // ── VERWIJDERD: het abonnement dat niet bestaat ──────────────────
+  // ── het abonnement dat niet bestaat ──────────────────
   // "Je bent ingelogd met een zakelijk account. Daarvoor gelden geen tokens —
   // analyses zitten in je abonnement." Dat abonnement bestaat niet: onder #49
   // is zo'n account personeel dat op de sleutel van de beheerder draait. De
   // tekst is op 29-08 vervangen; deze proef bewaakt dat hij niet terugkomt via
   // een andere weg, en dat het menu-item weg is voor wie geen klant is.
-  await _doe(5, 'Nergens meer een abonnement beloofd aan personeel', function () {
-    const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
-    const acc = document.getElementById('kbAccount');
-    if (acc && !klant && acc.style.display !== 'none')
-      return { staat: 'FOUT', detail: '"Mijn account" staat in het menu terwijl er geen klantaccount is ingelogd — ' +
-        'dat scherm gaat over een tegoed dat dit account niet heeft (#49)' };
-    const tekst = document.body.innerHTML || '';
-    if (/analyses zitten in je abonnement/i.test(tekst))
-      return { staat: 'FOUT', detail: 'de oude tekst over een abonnement staat weer in beeld — dat abonnement bestaat niet' };
-    return klant ? 'klantaccount: "Mijn account" hoort er te staan en staat er'
-                 : 'geen klantaccount: "Mijn account" is verborgen en nergens wordt een abonnement beloofd';
-  });
+  {
+    issue: '#49',
+    naam: 'Nergens meer een abonnement beloofd aan personeel',
+    waarom: 'Bewaakt dat de belofte van een abonnement niet via een andere weg terugkomt.',
+    proef: function () {
+      const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
+      const acc = document.getElementById('kbAccount');
+      if (acc && !klant && acc.style.display !== 'none')
+        return { staat: 'FOUT', detail: '"Mijn account" staat in het menu terwijl er geen klantaccount is ingelogd — ' +
+          'dat scherm gaat over een tegoed dat dit account niet heeft (#49)' };
+      const tekst = document.body.innerHTML || '';
+      if (/analyses zitten in je abonnement/i.test(tekst))
+        return { staat: 'FOUT', detail: 'de oude tekst over een abonnement staat weer in beeld — dat abonnement bestaat niet' };
+      return klant ? 'klantaccount: "Mijn account" hoort er te staan en staat er'
+                   : 'geen klantaccount: "Mijn account" is verborgen en nergens wordt een abonnement beloofd';
+    }
+  },
 
-  // ── TOEGEVOEGD 7 (#76): meet blok 7 wat PLLoad doet? ──────────────
+  // ── meet blok 7 wat PLLoad doet? ──────────────
   // In node vergelijkt test-zonespiegel.js 2160 combinaties. Wat die test niet
   // kan zien is of de twee modules in DEZE app aan elkaar hangen: PLBudget zit
   // in pidlane-testrun.js en PLLoad in een ander bestand, en dat is precies het
   // soort verbinding dat bij #29 en #74 ontbrak zonder ooit een fout te geven.
-  await _doe(5, 'Blok 7 leent de zoneregel bij PLLoad (#76)', function () {
-    if (!window.PLLoad || typeof PLLoad.zoneVan !== 'function')
-      return { staat: 'FOUT', detail: 'PLLoad.zoneVan() ontbreekt — blok 7 kan de regel dan niet lenen en meldt "niet te bepalen"' };
-    const sp = PLBudget.spoor().filter(function (m) { return !m.run; });
-    if (!sp.length)
-      return { staat: 'LET OP', detail: 'nog geen spoor — niet verbonden, of de app draait net' };
-    let vorig = null, mis = 0, druk = 0;
-    sp.forEach(function (m) {
-      const a = PLBudget.zone(m, vorig);
-      const b = PLLoad.zoneVan({ belasting: m.bezet, foutPct: m.fout, venGemMs: m.ms }, vorig, m.mult);
-      if (a !== b) mis++;
-      if (a === 'druk') druk++;
-      vorig = m.ms;
-    });
-    if (mis)
-      return { staat: 'FOUT', detail: mis + ' van de ' + sp.length + ' monsters krijgen van blok 7 een ander oordeel ' +
-        'dan van PLLoad zelf — de spiegel loopt weer uit de pas (#76)' };
-    return sp.length + ' monsters, elk oordeel gelijk aan dat van PLLoad; ' +
-      Math.round(druk / sp.length * 100) + '% druk op dit moment';
-  });
+  {
+    issue: '#76',
+    naam: 'Blok 7 leent de zoneregel bij PLLoad (#76)',
+    waarom: 'Of PLBudget en PLLoad in DEZE app aan elkaar hangen, ziet test-zonespiegel.js niet.',
+    proef: function () {
+      if (!window.PLLoad || typeof PLLoad.zoneVan !== 'function')
+        return { staat: 'FOUT', detail: 'PLLoad.zoneVan() ontbreekt — blok 7 kan de regel dan niet lenen en meldt "niet te bepalen"' };
+      const sp = PLBudget.spoor().filter(function (m) { return !m.run; });
+      if (!sp.length)
+        return { staat: 'LET OP', detail: 'nog geen spoor — niet verbonden, of de app draait net' };
+      let vorig = null, mis = 0, druk = 0;
+      sp.forEach(function (m) {
+        const a = PLBudget.zone(m, vorig);
+        const b = PLLoad.zoneVan({ belasting: m.bezet, foutPct: m.fout, venGemMs: m.ms }, vorig, m.mult);
+        if (a !== b) mis++;
+        if (a === 'druk') druk++;
+        vorig = m.ms;
+      });
+      if (mis)
+        return { staat: 'FOUT', detail: mis + ' van de ' + sp.length + ' monsters krijgen van blok 7 een ander oordeel ' +
+          'dan van PLLoad zelf — de spiegel loopt weer uit de pas (#76)' };
+      return sp.length + ' monsters, elk oordeel gelijk aan dat van PLLoad; ' +
+        Math.round(druk / sp.length * 100) + '% druk op dit moment';
+    }
+  },
 
-  // ── TOEGEVOEGD 8 (#77/#75/#72): klopt het verslag over zichzelf? ──
+  // ── klopt het verslag over zichzelf? ──
   // Drie kleine metingen die alleen in een lopende sessie iets betekenen: de
   // verbindingsteller, de tijdstempels in beide logs, en de geheugen-cap.
-  await _doe(5, 'De run telt zijn eigen meldingen en verbindingen eerlijk', function () {
-    const uit = [];
-    // #77 — een herverbinding zonder gat was tot vandaag de normale eerste
-    // verbinding. Nu hoort dat een echte onderbreking te zijn.
-    if (window.PLRit) {
-      const hv = PLRit.herverbindingen(), g = PLRit.gaten().length;
-      if (hv > 0 && g === 0)
-        uit.push('LET OP: ' + hv + ' herverbinding(en) zonder enig gat in de meetlus. Sinds #77 telt de eerste ' +
-                 'verbinding niet meer mee, dus dit is er dan ook echt een — of de app is heropgestart');
-      else uit.push(hv + ' herverbinding(en) bij ' + g + ' gat(en)');
+  {
+    issue: '#75',
+    naam: 'De run telt zijn eigen meldingen en verbindingen eerlijk',
+    waarom: 'Verbindingsteller, tijdstempels en geheugen-cap betekenen alleen iets in een lopende sessie.',
+    proef: function () {
+      const uit = [];
+      // #77 — een herverbinding zonder gat was tot vandaag de normale eerste
+      // verbinding. Nu hoort dat een echte onderbreking te zijn.
+      if (window.PLRit) {
+        const hv = PLRit.herverbindingen(), g = PLRit.gaten().length;
+        if (hv > 0 && g === 0)
+          uit.push('LET OP: ' + hv + ' herverbinding(en) zonder enig gat in de meetlus. Sinds #77 telt de eerste ' +
+                   'verbinding niet meer mee, dus dit is er dan ook echt een — of de app is heropgestart');
+        else uit.push(hv + ' herverbinding(en) bij ' + g + ' gat(en)');
+      }
+      // #75/#72 — de app-log moet dateerbaar zijn, anders telt de meldingenregel
+      // in blok 11 altijd nul.
+      const app = _appLogRegels();
+      const zonderT = app.filter(function (l) { return typeof (l && l.t) !== 'number'; }).length;
+      if (app.length && zonderT === app.length)
+        return { staat: 'FOUT', detail: 'geen enkele app-logregel draagt een epoch-tijdstempel — dan telt ' +
+          '"meldingen sinds het begin van deze run" structureel nul (#75)' };
+      uit.push(app.length + ' app-logregels, waarvan ' + zonderT + ' zonder tijdstempel');
+      // De afkapping moet zichtbaar zijn als hij is opgetreden.
+      const weg = app.filter(function (l) { return /weggelaten \(geheugen-cap\)/.test((l && l.msg) || ''); }).length;
+      uit.push(weg ? 'de app-log is afgekapt en zegt dat ook (#72)' : 'de app-log is nog niet tegen de cap gelopen');
+      return uit.join('.  ');
     }
-    // #75/#72 — de app-log moet dateerbaar zijn, anders telt de meldingenregel
-    // in blok 11 altijd nul.
-    const app = _appLogRegels();
-    const zonderT = app.filter(function (l) { return typeof (l && l.t) !== 'number'; }).length;
-    if (app.length && zonderT === app.length)
-      return { staat: 'FOUT', detail: 'geen enkele app-logregel draagt een epoch-tijdstempel — dan telt ' +
-        '"meldingen sinds het begin van deze run" structureel nul (#75)' };
-    uit.push(app.length + ' app-logregels, waarvan ' + zonderT + ' zonder tijdstempel');
-    // De afkapping moet zichtbaar zijn als hij is opgetreden.
-    const weg = app.filter(function (l) { return /weggelaten \(geheugen-cap\)/.test((l && l.msg) || ''); }).length;
-    uit.push(weg ? 'de app-log is afgekapt en zegt dat ook (#72)' : 'de app-log is nog niet tegen de cap gelopen');
-    return uit.join('.  ');
-  });
+  },
 
-  // ── BLIJFT STAAN (#58/#79): kloppen de veilige zones op dit toestel? ──
+  // ── kloppen de veilige zones op dit toestel? ──
   // Deze gaf op 01-09 de enige FOUT van de run, en het is nog onbeslist of
   // de melding klopt of de meting: op ≤760px krijgt .app height:auto en mág
   // #appGrid langer zijn dan het scherm. Stap 7 van de begeleide run zet er
@@ -2123,39 +2156,44 @@ async function _blok5() {
   // Dit is de enige plek waar dit écht te meten valt: in een browser zijn
   // beide zones 0 en klopt álles. Op een toestel met een statusbalk en drie
   // knoppen komen de getallen pas uit elkaar. Vandaar meten en niet lezen.
-  await _doe(5, 'De app past tussen de statusbalk en de navigatiebalk', function () {
-    const meet = function (token) {
-      const p = document.createElement('div');
-      p.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:' + token;
-      document.body.appendChild(p);
-      const h = p.getBoundingClientRect().height;
-      p.remove();
-      return h;
-    };
-    const sat = meet('var(--pl-sat)');
-    const sab = meet('var(--pl-sab)');
-    const top = meet('var(--pl-top)');
-    if (Math.abs(top - (46 + sat)) > 1)
-      return { staat: 'FOUT', detail: '--pl-top is ' + top.toFixed(1) + 'px maar de topbalk is 46 + ' +
-        sat.toFixed(1) + ' = ' + (46 + sat).toFixed(1) + 'px hoog' };
+  {
+    issue: '#79',
+    naam: 'De app past tussen de statusbalk en de navigatiebalk',
+    waarom: 'In een browser zijn beide zones 0 en klopt alles; de getallen komen pas op een toestel uit elkaar.',
+    proef: function () {
+      const meet = function (token) {
+        const p = document.createElement('div');
+        p.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:' + token;
+        document.body.appendChild(p);
+        const h = p.getBoundingClientRect().height;
+        p.remove();
+        return h;
+      };
+      const sat = meet('var(--pl-sat)');
+      const sab = meet('var(--pl-sab)');
+      const top = meet('var(--pl-top)');
+      if (Math.abs(top - (46 + sat)) > 1)
+        return { staat: 'FOUT', detail: '--pl-top is ' + top.toFixed(1) + 'px maar de topbalk is 46 + ' +
+          sat.toFixed(1) + ' = ' + (46 + sat).toFixed(1) + 'px hoog' };
 
-    const bar = document.querySelector('.topbar');
-    if (bar && Math.abs(bar.getBoundingClientRect().bottom - top) > 1.5)
-      return { staat: 'FOUT', detail: 'de topbalk eindigt op ' + bar.getBoundingClientRect().bottom.toFixed(1) +
-        'px terwijl --pl-top ' + top.toFixed(1) + 'px zegt — alles wat daaronder hangt staat dus verkeerd' };
+      const bar = document.querySelector('.topbar');
+      if (bar && Math.abs(bar.getBoundingClientRect().bottom - top) > 1.5)
+        return { staat: 'FOUT', detail: 'de topbalk eindigt op ' + bar.getBoundingClientRect().bottom.toFixed(1) +
+          'px terwijl --pl-top ' + top.toFixed(1) + 'px zegt — alles wat daaronder hangt staat dus verkeerd' };
 
-    const app = document.getElementById('appGrid');
-    if (!app) return { staat: 'LET OP', detail: '#appGrid niet gevonden' };
-    const onder = app.getBoundingClientRect().bottom;
-    const grens = window.innerHeight - sab;
-    if (onder > grens + 1)
-      return { staat: 'FOUT', detail: 'het werkscherm loopt tot ' + onder.toFixed(0) + 'px door terwijl er op ' +
-        grens.toFixed(0) + 'px een navigatiebalk begint — de onderste ' + (onder - grens).toFixed(0) +
-        'px valt daarachter weg (issue #58)' };
-    return 'statusbalk ' + sat.toFixed(0) + 'px, navigatiebalk ' + sab.toFixed(0) +
-           'px, werkscherm eindigt op ' + onder.toFixed(0) + ' van ' + grens.toFixed(0) + 'px' +
-           (sat + sab === 0 ? ' (browser: geen zones, dus deze proef zegt hier weinig)' : '');
-  });
+      const app = document.getElementById('appGrid');
+      if (!app) return { staat: 'LET OP', detail: '#appGrid niet gevonden' };
+      const onder = app.getBoundingClientRect().bottom;
+      const grens = window.innerHeight - sab;
+      if (onder > grens + 1)
+        return { staat: 'FOUT', detail: 'het werkscherm loopt tot ' + onder.toFixed(0) + 'px door terwijl er op ' +
+          grens.toFixed(0) + 'px een navigatiebalk begint — de onderste ' + (onder - grens).toFixed(0) +
+          'px valt daarachter weg (issue #58)' };
+      return 'statusbalk ' + sat.toFixed(0) + 'px, navigatiebalk ' + sab.toFixed(0) +
+             'px, werkscherm eindigt op ' + onder.toFixed(0) + ' van ' + grens.toFixed(0) + 'px' +
+             (sat + sab === 0 ? ' (browser: geen zones, dus deze proef zegt hier weinig)' : '');
+    }
+  },
 
   // ══════════════════════════════════════════════════════════════
   // OPLEVERING 02-09-2026 (tweede) — DE MEETKETEN MEET ZICHZELF
@@ -2176,49 +2214,59 @@ async function _blok5() {
   // verzonnen is.
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1: leest de parser een bekend antwoord goed? ──
-  await _doe(5, 'De parser leest een bekend ELM-antwoord goed', function () {
-    if (typeof parsePID !== 'function')
-      return { staat: 'FOUT', detail: 'parsePID() ontbreekt — dan komt er geen enkele meetwaarde binnen' };
-    if (typeof splitBatchResponse !== 'function')
-      return { staat: 'FOUT', detail: 'splitBatchResponse() ontbreekt — dan valt een batch stil uit elkaar' };
+  // ── leest de parser een bekend antwoord goed? ──
+  {
+    issue: '—',
+    naam: 'De parser leest een bekend ELM-antwoord goed',
+    waarom: 'De runtime-helft van test-parser.js: hangt de keten in de draaiende app aan elkaar?',
+    proef: function () {
+      if (typeof parsePID !== 'function')
+        return { staat: 'FOUT', detail: 'parsePID() ontbreekt — dan komt er geen enkele meetwaarde binnen' };
+      if (typeof splitBatchResponse !== 'function')
+        return { staat: 'FOUT', detail: 'splitBatchResponse() ontbreekt — dan valt een batch stil uit elkaar' };
 
-    // 410C0A98 = 0x0A98 / 4 = 678 rpm. Eén nibble verschuiving geeft hier een
-    // geldig maar verkeerd getal, en dát is de fout die je in een log niet ziet.
-    const rpm = parsePID('010C', '410C0A98');
-    if (rpm !== 678)
-      return { staat: 'FOUT', detail: 'parsePID("010C","410C0A98") gaf ' + rpm + ' in plaats van 678 rpm — ' +
-        'de header-echo wordt verkeerd overgeslagen en élke meting staat scheef' };
+      // 410C0A98 = 0x0A98 / 4 = 678 rpm. Eén nibble verschuiving geeft hier een
+      // geldig maar verkeerd getal, en dát is de fout die je in een log niet ziet.
+      const rpm = parsePID('010C', '410C0A98');
+      if (rpm !== 678)
+        return { staat: 'FOUT', detail: 'parsePID("010C","410C0A98") gaf ' + rpm + ' in plaats van 678 rpm — ' +
+          'de header-echo wordt verkeerd overgeslagen en élke meting staat scheef' };
 
-    const uit = splitBatchResponse('410C0A98 410D50 410584', ['010C', '010D', '0105']);
-    const mist = ['010C', '010D', '0105'].filter(function (p) { return !uit || !uit[p]; });
-    if (mist.length)
-      return { staat: 'FOUT', detail: 'de batch-splitser verloor ' + mist.join(', ') +
-        ' uit een antwoord waar ze alle drie in staan' };
+      const uit = splitBatchResponse('410C0A98 410D50 410584', ['010C', '010D', '0105']);
+      const mist = ['010C', '010D', '0105'].filter(function (p) { return !uit || !uit[p]; });
+      if (mist.length)
+        return { staat: 'FOUT', detail: 'de batch-splitser verloor ' + mist.join(', ') +
+          ' uit een antwoord waar ze alle drie in staan' };
 
-    return 'parsePID leest 678 rpm en de batch levert alle drie de PIDs';
-  });
+      return 'parsePID leest 678 rpm en de batch levert alle drie de PIDs';
+    }
+  },
 
-  // ── TOEGEVOEGD 2: houdt laag 1 een onmogelijke waarde tegen? ──
-  await _doe(5, 'Laag 1 houdt een fysiek onmogelijke waarde tegen', function () {
-    if (typeof validateAndSmooth !== 'function')
-      return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt — dan loopt de meetketen zonder laag 1 t/m 3' };
-    if (typeof PID_HARD_LIMITS === 'undefined' || !PID_HARD_LIMITS['0105'])
-      return { staat: 'FOUT', detail: 'PID_HARD_LIMITS mist 0105 — laag 1 heeft dan geen meetlat' };
+  // ── houdt laag 1 een onmogelijke waarde tegen? ──
+  {
+    issue: '—',
+    naam: 'Laag 1 houdt een fysiek onmogelijke waarde tegen',
+    waarom: 'Of de harde fysieke limiet ook in de draaiende app tussen parser en opslag staat.',
+    proef: function () {
+      if (typeof validateAndSmooth !== 'function')
+        return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt — dan loopt de meetketen zonder laag 1 t/m 3' };
+      if (typeof PID_HARD_LIMITS === 'undefined' || !PID_HARD_LIMITS['0105'])
+        return { staat: 'FOUT', detail: 'PID_HARD_LIMITS mist 0105 — laag 1 heeft dan geen meetlat' };
 
-    // 300 °C koelwater kan niet. Komt dat er tóch doorheen, dan staat laag 1
-    // uit en gaan onmogelijke waarden mee de AI-prompt in.
-    if (validateAndSmooth('0105', 300) !== null)
-      return { staat: 'FOUT', detail: 'koelwater van 300 °C werd geaccepteerd terwijl de harde limiet op ' +
-        PID_HARD_LIMITS['0105'].max + ' staat — laag 1 filtert niet' };
-    if (validateAndSmooth('0105', 90) !== 90)
-      return { staat: 'FOUT', detail: 'koelwater van 90 °C werd NIET geaccepteerd — laag 1 filtert te veel' };
+      // 300 °C koelwater kan niet. Komt dat er tóch doorheen, dan staat laag 1
+      // uit en gaan onmogelijke waarden mee de AI-prompt in.
+      if (validateAndSmooth('0105', 300) !== null)
+        return { staat: 'FOUT', detail: 'koelwater van 300 °C werd geaccepteerd terwijl de harde limiet op ' +
+          PID_HARD_LIMITS['0105'].max + ' staat — laag 1 filtert niet' };
+      if (validateAndSmooth('0105', 90) !== 90)
+        return { staat: 'FOUT', detail: 'koelwater van 90 °C werd NIET geaccepteerd — laag 1 filtert te veel' };
 
-    return 'laag 1 weigert 300 °C en laat 90 °C door, meetlat ' +
-      PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max;
-  });
+      return 'laag 1 weigert 300 °C en laat 90 °C door, meetlat ' +
+        PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max;
+    }
+  },
 
-  // ── BEVINDING: is laag 2+3 wel bereikbaar? ──
+  // ── is laag 2+3 wel bereikbaar? ──
   // Gevonden op 02-09 bij het schrijven van test-parser.js. FILTERED_PIDS is
   // gevuld met SUFFIXEN ('05'), maar pidlane-datalog.js regel 75 toetst de
   // VOLLEDIGE pid ('0105') — en dat is de vorm waarin parsePID() en
@@ -2228,33 +2276,38 @@ async function _blok5() {
   // LET OP en geen FOUT: dit is een vastgelegde bevinding (PIDLANE.md §11) die
   // bewust niet in dezelfde oplevering gerepareerd wordt — één onderwerp per
   // PR. Wordt regel 75 gerepareerd, dan slaat deze proef vanzelf om naar ok.
-  await _doe(5, 'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept', function () {
-    if (typeof validateAndSmooth !== 'function')
-      return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt' };
-    if (typeof FILTERED_PIDS === 'undefined')
-      return { staat: 'FOUT', detail: 'FILTERED_PIDS ontbreekt — dan is er geen lijst met trage signalen' };
+  {
+    issue: '§11',
+    naam: 'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept',
+    waarom: 'Vastgelegde bevinding, bewust niet in deze oplevering gerepareerd — LET OP tot regel 75 klopt.',
+    proef: function () {
+      if (typeof validateAndSmooth !== 'function')
+        return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt' };
+      if (typeof FILTERED_PIDS === 'undefined')
+        return { staat: 'FOUT', detail: 'FILTERED_PIDS ontbreekt — dan is er geen lijst met trage signalen' };
 
-    const vorm = FILTERED_PIDS.has('0105') ? 'volledig' : (FILTERED_PIDS.has('05') ? 'suffix' : 'onbekend');
+      const vorm = FILTERED_PIDS.has('0105') ? 'volledig' : (FILTERED_PIDS.has('05') ? 'suffix' : 'onbekend');
 
-    // Een sprong van 50 naar 200 °C op een traag signaal hoort op bevestiging
-    // te wachten (null). Komt de waarde er ongefilterd doorheen, dan is laag
-    // 2+3 overgeslagen.
-    const bewaar = (typeof pidVals !== 'undefined') ? pidVals['0105'] : undefined;
-    let uit;
-    try {
-      if (typeof pidVals !== 'undefined') pidVals['0105'] = 50;
-      uit = validateAndSmooth('0105', 200);
-    } finally {
-      if (typeof pidVals !== 'undefined') {
-        if (bewaar === undefined) delete pidVals['0105']; else pidVals['0105'] = bewaar;
+      // Een sprong van 50 naar 200 °C op een traag signaal hoort op bevestiging
+      // te wachten (null). Komt de waarde er ongefilterd doorheen, dan is laag
+      // 2+3 overgeslagen.
+      const bewaar = (typeof pidVals !== 'undefined') ? pidVals['0105'] : undefined;
+      let uit;
+      try {
+        if (typeof pidVals !== 'undefined') pidVals['0105'] = 50;
+        uit = validateAndSmooth('0105', 200);
+      } finally {
+        if (typeof pidVals !== 'undefined') {
+          if (bewaar === undefined) delete pidVals['0105']; else pidVals['0105'] = bewaar;
+        }
       }
-    }
 
-    if (uit === null) return 'een sprong op een traag signaal wacht op bevestiging — laag 2+3 draait';
-    return { staat: 'LET OP', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
-      'FILTERED_PIDS is gevuld met ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
-      'dus spike-filter en smoothing worden voor álle PIDs overgeslagen. Vastgelegd in PIDLANE.md §11.' };
-  });
+      if (uit === null) return 'een sprong op een traag signaal wacht op bevestiging — laag 2+3 draait';
+      return { staat: 'LET OP', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
+        'FILTERED_PIDS is gevuld met ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
+        'dus spike-filter en smoothing worden voor álle PIDs overgeslagen. Vastgelegd in PIDLANE.md §11.' };
+    }
+  },
 
   // ════════════════════════════════════════════════════════════
   // DE RIT-OOGST (6.5) — kan er na DÍT logboek een issue dicht?
@@ -2275,176 +2328,219 @@ async function _blok5() {
   // Ze zijn alle zes gratis: geen buscommando, geen AI-call.
   // ════════════════════════════════════════════════════════════
 
-  // Hoeveel aanvragers stonden er tijdens de rit aan? Twee proeven hieronder
-  // hangen ervan af, dus één keer bepalen en niet twee keer half.
-  function _aanvragersNu() {
-    const aan = [];
-    try { if (window.PLWaak && PLWaak.actief()) aan.push('waakronde'); } catch (e) { console.warn('waakrondestand onleesbaar in de rit-oogst', e); }
-    try { if (typeof PLMon !== 'undefined' && PLMon.active) aan.push('rit-monitor'); } catch (e) { console.warn('monitorstand onleesbaar in de rit-oogst', e); }
-    try { if (window.PLBulk && (PLBulk.status() || {}).actief) aan.push('bulk-recorder'); } catch (e) { console.warn('bulkstand onleesbaar in de rit-oogst', e); }
-    try { if (typeof caravanActive !== 'undefined' && caravanActive) aan.push('caravan-tracker'); } catch (e) { console.warn('caravanstand onleesbaar in de rit-oogst', e); }
-    return aan;
-  }
-
   // ── #19: bewegen 0123 en 0159 over een HELE rit, met de bus vol? ────
   // Blok 14 meet of ze bewogen. Wat daar niet staat is of de voorwaarden uit
   // het issue gehaald zijn — en zonder die twee helften naast elkaar is het
   // issue niet te sluiten. Dit is dus geen tweede meting maar het oordeel.
-  await _doe(5, '#19 — raildruk over een hele rit, met alle aanvragers aan', function () {
-    if (!window.PLRit) return { staat: 'LET OP', detail: 'PLRit ontbreekt — geen ritbeeld' };
-    let duur = 0, per = {};
-    try { duur = PLRit.duurS(); per = PLRit.per() || {}; } catch (e) { return { staat: 'LET OP', detail: 'ritstand onleesbaar' }; }
-    const aan = _aanvragersNu();
-    // _meetStand() is dezelfde bron als blok 14 gebruikt. Bewust niet hier
-    // opnieuw uitgerekend: "wanneer telt een PID als gemeten" is één regel, en
-    // twee plekken met dezelfde regel is in dit project al drie keer een bug
-    // geweest. Het verschil tussen 0, 1 en meer verversingen is precies wat
-    // #74 liet zien.
-    const rij = [], stil = [], blind = [];
-    ['0123', '0159'].forEach(function (p) {
-      const e = per[p], m = _meetStand(e);
-      if (m.stand !== 'gemeten') { blind.push(p); rij.push(p + ': ' + m.tekst); return; }
-      rij.push(p + ': ' + m.tekst + ', ' + (e.veranderingen || 0) + ' wijzigingen, ' + e.min + '–' + e.max);
-      if (!e.veranderingen) stil.push(p);
-    });
-    const kop = rij.join('  |  ') + '  |  ' + Math.round(duur / 60) + ' min, ' + aan.length + ' aanvrager(s): ' + (aan.join(', ') || '—');
-    const tekort = [];
-    if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');
-    if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');
-    if (aan.length < 4) tekort.push('maar ' + aan.length + ' van de 4 aanvragers aan');
-    if (stil.length && !blind.length)
-      return { staat: 'LET OP', detail: kop + ' — ' + stil.join(' en ') + ' stond STIL terwijl hij wél werd uitgevraagd. ' +
-        'Op directe inspuiting kan dat niet: dit is de kandidaat voor moetBewegen:\'draait\' uit PIDLANE-CONTRACT.md §4 (#19)' };
-    if (tekort.length)
-      return { staat: 'LET OP', detail: kop + ' — nog niet genoeg om #19 te sluiten: ' + tekort.join('; ') };
-    return kop + ' — allebei in beweging over een volle rit met vier aanvragers: #19 KAN DICHT';
-  });
+  {
+    issue: '#19',
+    naam: '#19 — raildruk over een hele rit, met alle aanvragers aan',
+    waarom: 'Blok 14 meet of ze bewogen; hier staat of de voorwaarden uit het issue gehaald zijn.',
+    proef: function () {
+      if (!window.PLRit) return { staat: 'LET OP', detail: 'PLRit ontbreekt — geen ritbeeld' };
+      let duur = 0, per = {};
+      try { duur = PLRit.duurS(); per = PLRit.per() || {}; } catch (e) { return { staat: 'LET OP', detail: 'ritstand onleesbaar' }; }
+      const aan = _aanvragersNu();
+      // _meetStand() is dezelfde bron als blok 14 gebruikt. Bewust niet hier
+      // opnieuw uitgerekend: "wanneer telt een PID als gemeten" is één regel, en
+      // twee plekken met dezelfde regel is in dit project al drie keer een bug
+      // geweest. Het verschil tussen 0, 1 en meer verversingen is precies wat
+      // #74 liet zien.
+      const rij = [], stil = [], blind = [];
+      ['0123', '0159'].forEach(function (p) {
+        const e = per[p], m = _meetStand(e);
+        if (m.stand !== 'gemeten') { blind.push(p); rij.push(p + ': ' + m.tekst); return; }
+        rij.push(p + ': ' + m.tekst + ', ' + (e.veranderingen || 0) + ' wijzigingen, ' + e.min + '–' + e.max);
+        if (!e.veranderingen) stil.push(p);
+      });
+      const kop = rij.join('  |  ') + '  |  ' + Math.round(duur / 60) + ' min, ' + aan.length + ' aanvrager(s): ' + (aan.join(', ') || '—');
+      const tekort = [];
+      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');
+      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');
+      if (aan.length < 4) tekort.push('maar ' + aan.length + ' van de 4 aanvragers aan');
+      if (stil.length && !blind.length)
+        return { staat: 'LET OP', detail: kop + ' — ' + stil.join(' en ') + ' stond STIL terwijl hij wél werd uitgevraagd. ' +
+          'Op directe inspuiting kan dat niet: dit is de kandidaat voor moetBewegen:\'draait\' uit PIDLANE-CONTRACT.md §4 (#19)' };
+      if (tekort.length)
+        return { staat: 'LET OP', detail: kop + ' — nog niet genoeg om #19 te sluiten: ' + tekort.join('; ') };
+      return kop + ' — allebei in beweging over een volle rit met vier aanvragers: #19 KAN DICHT';
+    }
+  },
 
   // ── #15: wat deden vier aanvragers met de bus? ──────────────
   // Het besluit gaat over één poort of vier. Dat is een ontwerpvraag, maar hij
   // is onbeslisbaar zonder te weten wat vier aanvragers op deze bus dóen — en
   // dat cijfer bestond nog niet, want er is nooit met vier gereden.
-  await _doe(5, '#15 — wat vier aanvragers met de bus deden', function () {
-    const aan = _aanvragersNu();
-    if (!window.PLBudget || !PLBudget.spoor) return { staat: 'LET OP', detail: 'PLBudget ontbreekt — geen spoor' };
-    let sp = [];
-    try { sp = (PLBudget.spoor() || []).filter(function (m) { return !m.run; }); } catch (e) { return { staat: 'LET OP', detail: 'pollbudget-spoor onleesbaar' }; }
-    if (sp.length < 20) return { staat: 'LET OP', detail: sp.length + ' monsters — te kort om iets over #15 te zeggen' };
-    const bez = sp.map(function (m) { return m.bezet; }).filter(function (v) { return typeof v === 'number'; });
-    const ms = sp.map(function (m) { return m.ms; }).filter(function (v) { return typeof v === 'number' && v > 0; });
-    const fout = sp.map(function (m) { return m.fout; }).filter(function (v) { return typeof v === 'number'; });
-    const gem = function (a) { return a.length ? Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length) : null; };
-    const hoog = function (a) { return a.length ? Math.max.apply(null, a) : null; };
-    const kop = aan.length + ' aanvrager(s) (' + (aan.join(', ') || '—') + ') over ' + sp.length + ' monsters: ' +
-      'bezetting gem ' + gem(bez) + '% (hoogst ' + hoog(bez) + '%), responstijd gem ' + gem(ms) + ' ms (hoogst ' + hoog(ms) + ' ms), ' +
-      'foutgraad hoogst ' + hoog(fout) + '%';
-    if (aan.length < 4)
-      return { staat: 'LET OP', detail: kop + ' — dit is het beeld bij ' + aan.length + ' aanvragers. #15 gaat over vier; ' +
-        'zonder die vierde is het cijfer niet het cijfer waar het besluit over gaat' };
-    return kop + ' — gemeten met alle vier tegelijk: dit is het getal waar #15 op wachtte';
-  });
+  {
+    issue: '#15',
+    naam: '#15 — wat vier aanvragers met de bus deden',
+    waarom: 'De ontwerpvraag is onbeslisbaar zonder te weten wat vier aanvragers op deze bus doen.',
+    proef: function () {
+      const aan = _aanvragersNu();
+      if (!window.PLBudget || !PLBudget.spoor) return { staat: 'LET OP', detail: 'PLBudget ontbreekt — geen spoor' };
+      let sp = [];
+      try { sp = (PLBudget.spoor() || []).filter(function (m) { return !m.run; }); } catch (e) { return { staat: 'LET OP', detail: 'pollbudget-spoor onleesbaar' }; }
+      if (sp.length < 20) return { staat: 'LET OP', detail: sp.length + ' monsters — te kort om iets over #15 te zeggen' };
+      const bez = sp.map(function (m) { return m.bezet; }).filter(function (v) { return typeof v === 'number'; });
+      const ms = sp.map(function (m) { return m.ms; }).filter(function (v) { return typeof v === 'number' && v > 0; });
+      const fout = sp.map(function (m) { return m.fout; }).filter(function (v) { return typeof v === 'number'; });
+      const gem = function (a) { return a.length ? Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length) : null; };
+      const hoog = function (a) { return a.length ? Math.max.apply(null, a) : null; };
+      const kop = aan.length + ' aanvrager(s) (' + (aan.join(', ') || '—') + ') over ' + sp.length + ' monsters: ' +
+        'bezetting gem ' + gem(bez) + '% (hoogst ' + hoog(bez) + '%), responstijd gem ' + gem(ms) + ' ms (hoogst ' + hoog(ms) + ' ms), ' +
+        'foutgraad hoogst ' + hoog(fout) + '%';
+      if (aan.length < 4)
+        return { staat: 'LET OP', detail: kop + ' — dit is het beeld bij ' + aan.length + ' aanvragers. #15 gaat over vier; ' +
+          'zonder die vierde is het cijfer niet het cijfer waar het besluit over gaat' };
+      return kop + ' — gemeten met alle vier tegelijk: dit is het getal waar #15 op wachtte';
+    }
+  },
 
   // ── #40: stuurt de auto één byte waar de tabel er twee zegt? ─────
   // PLPidLen leert uit metingen. Staan 0155/0156 niet in de pollronde, dan
   // leert hij niets en meldt blok 4 "0 afwijkend" — wat leest als "opgelost"
   // terwijl het "niet gekeken" betekent. Dat is precies wat de run van 13:14
   // deed. Sinds 6.5 staan ze in RIT_PIDS; hier staat wat dat opleverde.
-  await _doe(5, '#40 — de bytelengte van 0155 en 0156, gemeten', function () {
-    if (!window.PLPidLen || !PLPidLen.geleerd) return { staat: 'LET OP', detail: 'PLPidLen ontbreekt' };
-    let g = {};
-    try { g = PLPidLen.geleerd() || {}; } catch (e) { return { staat: 'LET OP', detail: 'PLPidLen.geleerd() gaf een fout' }; }
-    const tabel = window.PID_BYTE_LEN || {};
-    const rij = [], zonder = [], bewijs = [];
-    ['55', '56'].forEach(function (sfx) {
-      const e = g[sfx], t = tabel[sfx];
-      if (!e) { zonder.push('01' + sfx); rij.push('01' + sfx + ': niets geleerd (tabel ' + t + ')'); return; }
-      rij.push('01' + sfx + ': gemeten ' + e.n + ' byte' + (e.n === 1 ? '' : 's') + ' uit ' + e.hits + ' meting(en) via ' +
-        e.bron + (e.conflict ? ', ' + e.conflict + ' tegenspraak/tegenspraken' : '') + ' — tabel zegt ' + t);
-      if (t != null && e.n !== t && e.hits >= 2 && !e.conflict) bewijs.push('01' + sfx);
-    });
-    const kop = rij.join('  |  ');
-    if (zonder.length)
-      return { staat: 'LET OP', detail: kop + ' — ' + zonder.join(' en ') + ' kwam deze rit niet langs. ' +
-        'Ze staan sinds 6.5 in RIT_PIDS; stond stap 2 aan?' };
-    if (bewijs.length === 2)
-      return kop + ' — allebei bevestigd met minstens twee metingen en zonder tegenspraak: #40 KAN DICHT, ' +
-        'de tabel in pidlane-data.js hoort naar de gemeten waarde';
-    return { staat: 'LET OP', detail: kop + ' — nog niet hard genoeg: er zijn per PID twee bevestigende metingen ' +
-      'zonder tegenspraak nodig voordat je de tabel wijzigt' };
-  });
+  {
+    issue: '#40',
+    naam: '#40 — de bytelengte van 0155 en 0156, gemeten',
+    waarom: 'PLPidLen leert uit metingen; zonder 0155/0156 in de pollronde leert hij niets.',
+    proef: function () {
+      if (!window.PLPidLen || !PLPidLen.geleerd) return { staat: 'LET OP', detail: 'PLPidLen ontbreekt' };
+      let g = {};
+      try { g = PLPidLen.geleerd() || {}; } catch (e) { return { staat: 'LET OP', detail: 'PLPidLen.geleerd() gaf een fout' }; }
+      const tabel = window.PID_BYTE_LEN || {};
+      const rij = [], zonder = [], bewijs = [];
+      ['55', '56'].forEach(function (sfx) {
+        const e = g[sfx], t = tabel[sfx];
+        if (!e) { zonder.push('01' + sfx); rij.push('01' + sfx + ': niets geleerd (tabel ' + t + ')'); return; }
+        rij.push('01' + sfx + ': gemeten ' + e.n + ' byte' + (e.n === 1 ? '' : 's') + ' uit ' + e.hits + ' meting(en) via ' +
+          e.bron + (e.conflict ? ', ' + e.conflict + ' tegenspraak/tegenspraken' : '') + ' — tabel zegt ' + t);
+        if (t != null && e.n !== t && e.hits >= 2 && !e.conflict) bewijs.push('01' + sfx);
+      });
+      const kop = rij.join('  |  ');
+      if (zonder.length)
+        return { staat: 'LET OP', detail: kop + ' — ' + zonder.join(' en ') + ' kwam deze rit niet langs. ' +
+          'Ze staan sinds 6.5 in RIT_PIDS; stond stap 2 aan?' };
+      if (bewijs.length === 2)
+        return kop + ' — allebei bevestigd met minstens twee metingen en zonder tegenspraak: #40 KAN DICHT, ' +
+          'de tabel in pidlane-data.js hoort naar de gemeten waarde';
+      return { staat: 'LET OP', detail: kop + ' — nog niet hard genoeg: er zijn per PID twee bevestigende metingen ' +
+        'zonder tegenspraak nodig voordat je de tabel wijzigt' };
+    }
+  },
 
   // ── #18: bevriest de app op de achtergrond? ───────────────
   // Stap 7 van de begeleide rit zet de markering; hier staat wat eruit kwam.
   // Zonder die stap kan deze proef niets zeggen, en dat zegt hij dan ook.
-  await _doe(5, '#18 — stond de meetlus stil op de achtergrond?', function () {
-    const m = _markeringen.filter(function (x) { return /achtergrond in/i.test(x.tekst); }).pop();
-    if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — stap 7 van de begeleide rit is niet gedaan, ' +
-      'dus over #18 zegt deze rit niets' };
-    let gaten = [];
-    try { gaten = PLRit.gaten() || []; } catch (e) { return { staat: 'LET OP', detail: 'PLRit.gaten() onbereikbaar' }; }
-    const sinds = gaten.filter(function (g) { return g.van >= m.ms - 2000; });
-    const grootste = sinds.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0);
-    const kop = 'markering om ' + m.t + ', daarna ' + sinds.length + ' onderbreking(en), grootste ' + grootste + ' s';
-    if (grootste >= 30)
-      return kop + ' — de meetlus stond stil terwijl de app op de achtergrond was. #18 is hiermee GEREPRODUCEERD ' +
-        'op dit toestel, en dat is wat het issue nodig had om van vermoeden naar bevinding te gaan';
-    if (!sinds.length)
-      return kop + ' — GEEN gat: de lus liep door op de achtergrond. Op dit toestel is #18 niet te reproduceren; ' +
-        'noteer merk, Android-versie en of het scherm aan bleef';
-    return { staat: 'LET OP', detail: kop + ' — wel gehaperd, maar te kort voor de bevriezing uit #18' };
-  });
+  {
+    issue: '#18',
+    naam: '#18 — stond de meetlus stil op de achtergrond?',
+    waarom: 'Stap 7 van de begeleide rit zet de markering; hier staat wat eruit kwam.',
+    proef: function () {
+      const m = _markeringen.filter(function (x) { return /achtergrond in/i.test(x.tekst); }).pop();
+      if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — stap 7 van de begeleide rit is niet gedaan, ' +
+        'dus over #18 zegt deze rit niets' };
+      let gaten = [];
+      try { gaten = PLRit.gaten() || []; } catch (e) { return { staat: 'LET OP', detail: 'PLRit.gaten() onbereikbaar' }; }
+      const sinds = gaten.filter(function (g) { return g.van >= m.ms - 2000; });
+      const grootste = sinds.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0);
+      const kop = 'markering om ' + m.t + ', daarna ' + sinds.length + ' onderbreking(en), grootste ' + grootste + ' s';
+      if (grootste >= 30)
+        return kop + ' — de meetlus stond stil terwijl de app op de achtergrond was. #18 is hiermee GEREPRODUCEERD ' +
+          'op dit toestel, en dat is wat het issue nodig had om van vermoeden naar bevinding te gaan';
+      if (!sinds.length)
+        return kop + ' — GEEN gat: de lus liep door op de achtergrond. Op dit toestel is #18 niet te reproduceren; ' +
+          'noteer merk, Android-versie en of het scherm aan bleef';
+      return { staat: 'LET OP', detail: kop + ' — wel gehaperd, maar te kort voor de bevriezing uit #18' };
+    }
+  },
 
   // ── #17: UTC in de recorder, lokale tijd in de logger ──────────
   // Dit is de goedkoopste van de zes en had er allang moeten staan: het bewijs
   // ligt in het sessie-id van de recorder en op de klok van het toestel. Tot nu
   // toe stond het alleen als beschrijving in het issue.
-  await _doe(5, '#17 — schrijft de bulk-recorder een andere tijd dan de logger?', function () {
-    if (!window.PLBulk || !PLBulk.status) return { staat: 'LET OP', detail: 'PLBulk ontbreekt' };
-    let st = {};
-    try { st = PLBulk.status() || {}; } catch (e) { return { staat: 'LET OP', detail: 'PLBulk.status() gaf een fout' }; }
-    if (!st.sessie) return { staat: 'LET OP', detail: 'geen sessie-id — de recorder heeft deze rit niet gelopen' };
-    // 'blk-2026-09-02T11-11-08-165Z' → de ISO-tijd staat er in UTC in.
-    const m = /^blk-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})/.exec(String(st.sessie));
-    if (!m) return { staat: 'LET OP', detail: 'sessie-id "' + st.sessie + '" heeft niet de verwachte vorm — deze proef kan niets vergelijken' };
-    const offsetMin = -new Date().getTimezoneOffset();
-    const kop = 'recorder-id "' + st.sessie.slice(0, 24) + '…" draagt ' + m[4] + ':' + m[5] + ' (UTC), de klok van dit toestel staat ' +
-      (offsetMin >= 0 ? '+' : '') + (offsetMin / 60) + ' uur';
-    if (offsetMin === 0)
-      return { staat: 'LET OP', detail: kop + ' — dit toestel stáát op UTC, dus het verschil uit #17 is hier niet zichtbaar. ' +
-        'Meet dit nog eens in de zomertijd of met een andere tijdzone' };
-    return { staat: 'LET OP', detail: kop + ' — dat is ' + Math.abs(offsetMin / 60) + ' uur verschil met de app-log, die lokale tijd schrijft. ' +
-      '#17 is hiermee hard gemeten in plaats van beschreven: twee bestanden van dezelfde rit zijn niet naast elkaar te leggen' };
-  });
+  {
+    issue: '#17',
+    naam: '#17 — schrijft de bulk-recorder een andere tijd dan de logger?',
+    waarom: 'Het bewijs ligt in het sessie-id van de recorder en op de klok van het toestel.',
+    proef: function () {
+      if (!window.PLBulk || !PLBulk.status) return { staat: 'LET OP', detail: 'PLBulk ontbreekt' };
+      let st = {};
+      try { st = PLBulk.status() || {}; } catch (e) { return { staat: 'LET OP', detail: 'PLBulk.status() gaf een fout' }; }
+      if (!st.sessie) return { staat: 'LET OP', detail: 'geen sessie-id — de recorder heeft deze rit niet gelopen' };
+      // 'blk-2026-09-02T11-11-08-165Z' → de ISO-tijd staat er in UTC in.
+      const m = /^blk-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})/.exec(String(st.sessie));
+      if (!m) return { staat: 'LET OP', detail: 'sessie-id "' + st.sessie + '" heeft niet de verwachte vorm — deze proef kan niets vergelijken' };
+      const offsetMin = -new Date().getTimezoneOffset();
+      const kop = 'recorder-id "' + st.sessie.slice(0, 24) + '…" draagt ' + m[4] + ':' + m[5] + ' (UTC), de klok van dit toestel staat ' +
+        (offsetMin >= 0 ? '+' : '') + (offsetMin / 60) + ' uur';
+      if (offsetMin === 0)
+        return { staat: 'LET OP', detail: kop + ' — dit toestel stáát op UTC, dus het verschil uit #17 is hier niet zichtbaar. ' +
+          'Meet dit nog eens in de zomertijd of met een andere tijdzone' };
+      return { staat: 'LET OP', detail: kop + ' — dat is ' + Math.abs(offsetMin / 60) + ' uur verschil met de app-log, die lokale tijd schrijft. ' +
+        '#17 is hiermee hard gemeten in plaats van beschreven: twee bestanden van dezelfde rit zijn niet naast elkaar te leggen' };
+    }
+  },
 
   // ── #29: meldt blok 14 een opruiming die echt gebeurd is? ───────
   // De reparatie van 01-09 liet blok 14 aan de gate meten in plaats van in een
   // aflopend log. Wat sindsdien ontbreekt is een rit waarin de regel óók echt
   // vuurt — anders is "niets opgeruimd" nog steeds niet te onderscheiden van
   // "niet gezien". Deze proef legt de twee bronnen naast elkaar.
-  await _doe(5, '#29 — ziet blok 14 een opruiming die echt gebeurde?', function () {
-    let lijst = null;
-    try { if (typeof pidOpgeruimdLijst === 'function') lijst = pidOpgeruimdLijst(); }
-    catch (e) { return { staat: 'LET OP', detail: 'pidOpgeruimdLijst() gaf een fout — dan is er geen bron' }; }
-    if (!lijst) return { staat: 'LET OP', detail: 'pidOpgeruimdLijst() ontbreekt — blok 14 leest dan weer een log (#29)' };
-    const gate = (lijst.size !== undefined) ? Array.from(lijst) : (Array.isArray(lijst) ? lijst : Object.keys(lijst || {}));
-    let bt = [];
-    try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
-    const regels = [].concat(bt || [], _appLogRegels() || [])
-      .map(function (r) { return String((r && (r.msg || r.m || r.tekst)) || r); })
-      .filter(function (t) { return /opgeruimd/i.test(t); });
-    const kop = 'gate: ' + (gate.length ? gate.join(', ') : 'leeg') + '  |  logregels met "opgeruimd": ' + regels.length;
-    if (!gate.length && !regels.length)
-      return { staat: 'LET OP', detail: kop + ' — er is deze rit niets opgeruimd, dus #29 is niet te toetsen. ' +
-        'De regel heeft vijf pogingen plus vijf herkansingen nodig: rijd langer, of neem een sensor mee die zwijgt' };
-    if (gate.length && !regels.length)
-      return kop + ' — de gate meldt een opruiming die niet meer in de logs staat. Precies daarom leest blok 14 sinds ' +
-        '01-09 de gate: het log is een ringbuffer en wist zijn eigen bewijs. #29 KAN DICHT';
-    if (!gate.length && regels.length)
-      return { staat: 'FOUT', detail: kop + ' — het log meldt een opruiming en de gate niet. Dat is de fout van #29 ' +
-        'in spiegelbeeld: nu is de gate de bron die iets mist' };
-    return kop + ' — gate en log wijzen dezelfde kant op: blok 14 ziet wat er echt gebeurde. #29 KAN DICHT';
-  });
+  {
+    issue: '#29',
+    naam: '#29 — ziet blok 14 een opruiming die echt gebeurde?',
+    waarom: 'Legt de gate en het opruimlog naast elkaar: niets opgeruimd, of niet gezien?',
+    proef: function () {
+      let lijst = null;
+      try { if (typeof pidOpgeruimdLijst === 'function') lijst = pidOpgeruimdLijst(); }
+      catch (e) { return { staat: 'LET OP', detail: 'pidOpgeruimdLijst() gaf een fout — dan is er geen bron' }; }
+      if (!lijst) return { staat: 'LET OP', detail: 'pidOpgeruimdLijst() ontbreekt — blok 14 leest dan weer een log (#29)' };
+      const gate = (lijst.size !== undefined) ? Array.from(lijst) : (Array.isArray(lijst) ? lijst : Object.keys(lijst || {}));
+      let bt = [];
+      try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
+      const regels = [].concat(bt || [], _appLogRegels() || [])
+        .map(function (r) { return String((r && (r.msg || r.m || r.tekst)) || r); })
+        .filter(function (t) { return /opgeruimd/i.test(t); });
+      const kop = 'gate: ' + (gate.length ? gate.join(', ') : 'leeg') + '  |  logregels met "opgeruimd": ' + regels.length;
+      if (!gate.length && !regels.length)
+        return { staat: 'LET OP', detail: kop + ' — er is deze rit niets opgeruimd, dus #29 is niet te toetsen. ' +
+          'De regel heeft vijf pogingen plus vijf herkansingen nodig: rijd langer, of neem een sensor mee die zwijgt' };
+      if (gate.length && !regels.length)
+        return kop + ' — de gate meldt een opruiming die niet meer in de logs staat. Precies daarom leest blok 14 sinds ' +
+          '01-09 de gate: het log is een ringbuffer en wist zijn eigen bewijs. #29 KAN DICHT';
+      if (!gate.length && regels.length)
+        return { staat: 'FOUT', detail: kop + ' — het log meldt een opruiming en de gate niet. Dat is de fout van #29 ' +
+          'in spiegelbeeld: nu is de gate de bron die iets mist' };
+      return kop + ' — gate en log wijzen dezelfde kant op: blok 14 ziet wat er echt gebeurde. #29 KAN DICHT';
+    }
+  },
 
+];
+
+// Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
+// het antwoord op de vraag die tot 6.5 twee keer met de hand beantwoord werd:
+// één keer in de banner boven _blok5() en één keer in CAMPAGNE. Beide konden
+// verouderen zonder dat er iets rood werd; deze kan dat niet.
+function _dekkingB5() {
+  const uit = [];
+  for (let i = 0; i < PROEVEN_B5.length; i++) {
+    const q = PROEVEN_B5[i].issue;
+    if (q && q !== '\u2014' && uit.indexOf(q) === -1) uit.push(q);
+  }
+  return uit;
+}
+
+// De loper. Hij kent de proeven niet en hoeft dus niet mee te veranderen
+// als er een oplevering langskomt — dat was het hele punt van de lijst.
+async function _blok5() {
+  // Geen eigen stopcheck: _doe() kijkt zelf naar _trStop en boekt dan niets.
+  // Er hier nóg een zetten zou een tweede plek maken die dezelfde beslissing
+  // neemt, en dat is in dit project al drie keer een bug geweest.
+  for (let i = 0; i < PROEVEN_B5.length; i++) {
+    await _doe(5, PROEVEN_B5[i].naam, PROEVEN_B5[i].proef);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3902,7 +3998,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (vierde) — de rit oogst bewijs, en blok 5 zegt per issue of hij dicht kan',
+  titel: 'OPLEVERING 02-09 (zesde) — bijboeken loopt door het saldo-slot (#82)',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
 
@@ -3924,13 +4020,19 @@ const CAMPAGNE = {
 
     '── WAT ER IS VERANDERD ──────────────',
 
+    'BIJBOEKEN LOOPT DOOR HET SALDO-SLOT (#82). Vier plekken in de Worker lezen het saldo en schrijven het terug; drie ervan deden dat binnen metSaldoSlot() en de vierde niet — bijboeken vanuit de beheerpagina. De waarschuwing die daar stond ging over twee beheerders op dezelfde seconde, en die botsing bestaat niet. De botsing die wél bestaat is beheerder × klant: jij boekt 100 bij terwijl hij een analyse draait, en één van beide mutaties verdwijnt. Sinds nu loopt ook die vierde door het slot.',
+
+    'HIER STAAT DAAROVER GEEN PROEF IN BLOK 5, EN DAT IS EXPRES. Een proef die iets zou toevoegen zou een echte saldowijziging op een echte klant moeten doen, en dat is precies wat je niet wilt uitproberen. Het bewijs ligt in test-bijboeken.js: die toetst de volgorde (slot dicht, lezen, schrijven, slot open) en niet alleen dat het slot wordt aangeroepen, want dat laatste zou ook groen staan als het lezen ernaast liep. Vier mutaties in plmutate.sh maken die test rood.',
+
+    'BLOK 5 IS EEN LIJST GEWORDEN (6.6). De zeventien proeven stonden in één functie van 585 regels waar elke oplevering in geknipt werd, met bovenaan een banner die opsomde wat erbij kwam en wat eruit ging — en die opsomming stond hier ook. Twee lijsten van hetzelfde, met de hand bijgehouden, precies de vorm die §11 van PIDLANE.md vorige week de kop kostte. Nu is elke proef een entry met een issue erbij, en de regel BLOK 5 DEKT DEZE RONDE hierboven wordt daaruit afgeleid. De proefcode zelf is regel voor regel dezelfde gebleven: nagemeten, zeventien blokken, geen verschil.',
+
+    'WAT DAT VOOR EEN VOLGENDE OPLEVERING BETEKENT. Een proef toevoegen is een entry toevoegen; een proef weghalen is een entry weghalen. De loper eronder blijft ongemoeid en er is geen opsomming meer om te vergeten. test-blok5lijst.js bewaakt dat elke entry een issue, een naam, een waarom en een proef heeft, en dat de afgeleide dekking niet stilletjes leeg raakt — plmutate.sh maakt allebei rood.',
+
     'DE BEGELEIDE RIT GAAT VAN 10 NAAR 13 STAPPEN. Stap 3 zet nu ook de caravan-tracker aan in plaats van je te vragen dat zelf te doen — dat stond er vier ritten lang als tekst en is geen enkele keer gebeurd. Stap 7 is nieuw: twee minuten achtergrond, met een markering ervoor, zodat een gat in de meetlus aan dát moment te koppelen is (#18). Stap 9 en 10 zijn nieuw en vragen jouw oordeel (#66, #79).',
 
     'RIT_PIDS KRIJGT 0155 EN 0156 ERBIJ (#40). PLPidLen leert bytelengtes uit metingen, dus een PID die niet in de pollronde staat levert niets. De run van 13:14 meldde "0 afwijkend" en dat las als opgelost, terwijl het "niet gekeken" betekende. Ze staan nu in de meet-PIDs, en test-begeleid.js bewaakt dat die lijst de issues blijft dekken.',
 
-    'BLOK 5 — ZES PROEVEN ERBIJ, onder de kop DE RIT-OOGST. Eén per issue: #19 (raildruk over een hele rit met vier aanvragers), #15 (wat vier aanvragers met de bus deden), #40 (de gemeten bytelengte van 0155/0156), #18 (stond de lus stil op de achtergrond), #17 (recorder-UTC naast de logger, hard gemeten in plaats van beschreven) en #29 (ziet blok 14 een opruiming die echt gebeurde). Ze meten niets nieuws — ze lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate, en spreken één oordeel uit. Alle zes gratis: geen buscommando, geen AI-call.',
-
-    'BLOK 5 — DE #78-PROEF IS ERUIT. Die vroeg of een PID niet-ok kan staan terwijl hij meet. De run van 13:14 antwoordde: 55 beoordeeld, 2 niet-ok, geen enkele met een versheidsstempel. Vraag beantwoord, issue gesloten, en de logica staat met een mutatie achter test-healthherziening.js — dat is een sterkere bewaker dan een proef die alleen draait als iemand een testrun doet.',
+    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Die opsomming staat hier niet meer als tekst maar wordt uit PROEVEN_B5 afgeleid — tot 6.5 stond hij twee keer met de hand geschreven (hier en in de banner boven blok 5), en dan is de vraag welke van de twee klopt. De proeven onder DE RIT-OOGST meten niets nieuws: ze lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate, en spreken per issue één oordeel uit. Alle gratis: geen buscommando, geen AI-call.',
 
     'test-begeleid.js — de volgorde van de drie nieuwe stappen wordt bewaakt, en RIT_PIDS ook. plmutate.sh staat op negentien mutaties: een hernoemde stap-id en een uitgeklede meet-PID-lijst horen allebei rood te worden.',
 
@@ -3993,6 +4095,17 @@ window.begeleidAfronden = begeleidAfronden;
 // Bewust naar buiten voor test-begeleid.js: de stappenlijst en de
 // overgangsregel zijn de twee dingen die zonder browser te toetsen zijn, en
 // een stappenmachine die niet getoetst wordt slaat straks stil een stap over.
+// Bewust naar buiten voor test-blok5lijst.js. De lijst is sinds 6.6 de enige
+// plek waar staat wat blok 5 deze ronde meet; een lijst die niet getoetst
+// wordt verliest bij de eerste opruimactie stil een entry.
+window.PLBlok5 = {
+  proeven: function () { return PROEVEN_B5.map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom, proef: p.proef }; }); },
+  dekking: _dekkingB5,
+  // CAMPAGNE hoort er hier bij en niet als eigen export: de enige vraag die de
+  // test erover stelt is of de dekkingsregel dáár uit dezelfde lijst komt.
+  campagne: function () { return CAMPAGNE; }
+};
+
 window.PLBegeleid = {
   stappen: function () { return _STAPPEN; },
   // De meet-PIDs erbij sinds 6.5. Ze staan hier niet voor de app maar voor
