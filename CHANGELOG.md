@@ -11,6 +11,44 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — DE APP WEET DAT HIJ WEG WAS
+
+       • 📴 #18 IS OP 02-09 GEREPRODUCEERD: twee minuten weg uit de
+         app, en de meetlus stond 190 seconden stil. Van vermoeden
+         naar bevinding. Deze ronde doet er iets aan — niet alles.
+
+       • ⚠ DE BEVRIEZING ZELF BLIJFT. Android bevriest de timers van
+         een WebView; daar is vanuit JavaScript niets tegen te doen.
+         Dat is richting 1 uit het issue en dat is native werk.
+
+       • 🆕 PLACHTERGROND (pidlane-achtergrond.js) — richting 2. Elke
+         onderbreking wordt vastgelegd met duur, korte
+         vensterwissels onder drie seconden niet (anders staat de
+         lijst vol met de bestandskiezer). Vanaf tien seconden wordt
+         de SPP-socket nagekeken, met force UIT: de guard doet dan
+         eerst isConnected() en grijpt alleen in als de socket écht
+         dood is.
+
+       • 🔌 DAT SCHEELT DE ZESTIEN SECONDEN ROMMEL uit het log van
+         23-08. De app hervatte om 23:31:00 en meldde pas zestien
+         seconden later "socket dood na 012E1" — Android had de
+         socket allang opgeruimd, maar dat bleek pas toen de pollus
+         erin probeerde te schrijven.
+
+       • 🧩 ÉÉN EIGENAAR IN PLAATS VAN VIJF HALVE. Er stonden vijf
+         luisteraars op visibilitychange die elk voor zichzelf
+         beslissen wat "weg" betekent en geen van alle het gat
+         vastleggen. Ze doen hun eigen werk (flushen, pauzeren); het
+         oordeel staat nu op één plek.
+
+       • 🧪 test-achtergrond.js (30 toetsen) laadt de module in
+         plaats van hem na te bouwen, met tegenproeven aan beide
+         kanten. sppReconnectGuard staat in KRITIEK — de
+         bedradingscontrole gaf zelf FOUT toen de nieuwe module hem
+         achter een typeof-guard aanriep.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — VERBERGEN IS GEEN UITZETTEN
 
        • 🙈 EEN DUBBELTIK VERBERGT DE TEGEL, HIJ ZET NIETS UIT.

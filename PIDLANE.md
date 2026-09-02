@@ -927,6 +927,54 @@ gedráaid zijn. Dat is iets anders dan wat ze zouden merken, en tussen die twee
 zat hier een gat van vier fouten. Een groene reeks is pas een uitspraak als er
 een tegenproef onder ligt.
 
+### De app bevroor stil, en wist het zelf niet — 03-09-2026 (half opgelost)
+
+`#18` stond sinds 27-08 open als vermoeden. Op 02-09 om 22:04 is hij voor het
+eerst met opzet nagemeten: twee minuten uit de app, en de meetlus stond **190
+seconden** stil. Dat is de bevinding; hieronder staat wat er wel en niet aan
+gedaan is.
+
+**Wat er niet aan gedaan is.** De bevriezing zelf. Android bevriest de
+JS-timers van een WebView en daar is vanuit JavaScript niets tegen te doen —
+dat is richting 1 uit het issue (foreground service plus wake lock) en dat is
+native werk.
+
+**Wat er wel aan gedaan is.** Richting 2: de app weet er nu van. `PLAchtergrond`
+in `pidlane-achtergrond.js` legt elke onderbreking vast en kijkt vanaf tien
+seconden de SPP-socket na. Dat tweede is het dure deel. Uit het log van 23-08:
+
+```
+23:31:00  app hervat
+23:31:16  socket dood na 012E1 — herverbinden...
+```
+
+Zestien seconden. Android had de socket allang opgeruimd, maar dat bleek pas
+toen de pollus er een commando in probeerde te schrijven — met de
+ELM-interpreter in een andere staat dan de app dacht. De controle draait met
+`force` **uit**: de guard doet dan eerst `isConnected()` en grijpt alleen in
+als de socket echt dood is. Een gezonde verbinding mag een achtergrondpauze
+overleven; nakijken is iets anders dan herstarten.
+
+**En het was al vijf keer half geregeld.** Er stonden vijf luisteraars op
+`visibilitychange` — btflow, bulk, fuel, koopcheck, neon en rit. Elk beslist
+voor zichzelf wat "weg" betekent, geen van alle legt het gat vast. Dat is
+"één ding heeft één betekenis" in het klein. Ze blijven hun eigen werk doen;
+het oordeel staat nu op één plek.
+
+**Hoe je ziet of het werkt.** Blok 5 legt sinds 7.0 twee bronnen naast elkaar:
+`PLRit` **leidt** een gat af uit zijn eigen tikken, `PLAchtergrond` **weet**
+het van `visibilitychange`. Ziet PLRit een gat dat PLAchtergrond niet kent, dan
+is dat FOUT — dan lag de lus stil zonder dat de app het doorhad, en dat is
+precies wat deze ronde moest wegnemen.
+
+**Wat de bedradingscontrole hier ving.** `sppReconnectGuard` wordt achter een
+`typeof`-guard aangeroepen, want die functie woont in `pidlane-bt.js` en dat
+laadt eerder. `test-bedrading.js` gaf daar meteen FOUT op: *"zit achter een
+typeof-guard maar staat niet in KRITIEK"*. Terecht — verdwijnt hij, dan doet de
+controle niets en komt de app weer per ongeluk achter een dode socket. Die
+controle deed hier dus precies waar hij voor bestaat, zonder dat iemand eraan
+hoefde te denken.
+
 ### Vier ritten, nul gesloten issues — 02-09-2026
 
 Niet één bevinding maar een patroon, en het is de reden dat testrun 6.5
