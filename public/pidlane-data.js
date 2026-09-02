@@ -1368,6 +1368,7 @@ window.HUD_LABEL_DICT ={
 'use strict';
 const S={
   owner:null, token:0, since:0, seq:1,
+  wacht:[],                  // wie er netjes op het slot staat te wachten (#98)
   pausedTotal:0, pauseStart:0, wildSinds:0,
   tx:0, ok:0, bad:0, msSom:0, msN:0,
   perPid:Object.create(null),
@@ -1381,6 +1382,7 @@ function diag(m,l){ try{ if(typeof btDiag==='function') btDiag(m,l||'info'); }ca
 window.PLBus={
   MAX_HOLD_MS:180000,      // 3 min: daarna geldt een houder als vastgelopen
   LEGACY_MAX_MS:10000,     // verweesde window._pollBusy: na 10s negeren
+  WACHT_MAX_MS:15000,      // een wachter die het slot niet pakt, remt nooit langer dan dit (#98)
 
   claim(naam){
     if(S.owner){
@@ -1401,6 +1403,22 @@ window.PLBus={
       diag('Verweesde _pollBusy stond '+Math.round((nu()-S.wildSinds)/1000)+'s aan — genegeerd door '+naam,'warn');
       window._pollBusy=false; S.wildSinds=0;
     } else if(S.wildSinds){ S.wildSinds=0; }
+    // OPZIJ VOOR WIE AL STAAT TE WACHTEN (#98, 02-09-2026).
+    // Zonder deze regel verhongert een wachter op een drukke bus. wait() kijkt
+    // elke 50 ms of het slot vrij is; de pollus geeft het vrij en pakt het in
+    // dezelfde tel weer terug. Het slot is dan een paar milliseconden vrij en
+    // de wachter kijkt er net naast. Gemeten in de rit van 02-09 22:15, de
+    // eerste met vier aanvragers: de sweep kreeg het slot in 8 seconden niet
+    // en mat daarna naast de pollus — 1250 ms per PID in plaats van 200.
+    //
+    // Het is dus GEEN kwestie van te kort wachten. Langer wachten maakt de
+    // kans alleen groter, niet zeker; dit maakt hem zeker. Wie eenmaal in de
+    // rij staat, krijgt de eerstvolgende vrije beurt.
+    //
+    // De noodrem zit in _iemandWacht(): een wachter die zijn beurt niet pakt
+    // wordt na WACHT_MAX_MS vergeten. Eén module die zich misdraagt mag de bus
+    // niet gijzelen — dezelfde regel als bij de verweesde _pollBusy hierboven.
+    if(this._iemandWacht(naam)) return 0;
     S.owner=naam||'?'; S.token=++S.seq; S.since=nu();
     if(S.owner!=='poll') S.pauseStart=S.since;
     window._pollBusy=true;
@@ -1418,16 +1436,37 @@ window.PLBus={
     return true;
   },
 
+  /* De wachtrij (#98). Alleen wie via wait() binnenkomt staat erin; een losse
+     claim() is een gok en hoort geen voorrang te krijgen. */
+  _wachtAan(naam){ S.wacht.push({naam:naam||'?', sinds:nu()}); },
+  _wachtAf(naam){
+    const i=S.wacht.findIndex(w=>w.naam===(naam||'?'));
+    if(i>=0) S.wacht.splice(i,1);
+  },
+  /* Staat er iemand ANDERS te wachten? Verlopen wachters worden hier vergeten,
+     zodat een wachter die zijn beurt nooit pakt de bus niet dichtzet. */
+  _iemandWacht(naam){
+    if(!S.wacht.length) return false;
+    const t=nu(), voor=S.wacht.length;
+    S.wacht=S.wacht.filter(w=>t-w.sinds < this.WACHT_MAX_MS);
+    if(S.wacht.length<voor) diag('Wachter(s) op het busslot verlopen na '+Math.round(this.WACHT_MAX_MS/1000)+'s — genegeerd','warn');
+    return S.wacht.some(w=>w.naam!==(naam||'?'));
+  },
+  wachtenden(){ return S.wacht.map(w=>w.naam); },
+
   /* Wacht netjes op het slot. Geeft 0 terug als het niet lukt binnen maxMs —
      de aanroeper gaat dan tóch door (functionaliteit boven discipline). */
   async wait(naam,maxMs){
     const t0=nu(), lim=(maxMs===undefined?4000:maxMs);
-    for(;;){
-      const t=this.claim(naam);
-      if(t) return t;
-      if(nu()-t0>lim){ diag('Bus niet vrij voor "'+naam+'" na '+lim+'ms (houder: '+(S.owner||'?')+') — gaat tóch door','warn'); return 0; }
-      await new Promise(r=>setTimeout(r,50));
-    }
+    this._wachtAan(naam);
+    try{
+      for(;;){
+        const t=this.claim(naam);
+        if(t) return t;
+        if(nu()-t0>lim){ diag('Bus niet vrij voor "'+naam+'" na '+lim+'ms (houder: '+(S.owner||'?')+') — gaat tóch door','warn'); return 0; }
+        await new Promise(r=>setTimeout(r,50));
+      }
+    } finally { this._wachtAf(naam); }
   },
 
   busy(){ return !!S.owner; },
