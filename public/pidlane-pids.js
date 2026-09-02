@@ -684,6 +684,13 @@ function updPID(pid,val){
   try{ if(typeof _noteMap==='function') _noteMap(); }catch(e){ console.warn('_noteMap mislukt:', e); }
   try{ if(typeof plHerijkTick==='function') plHerijkTick(); }catch(e){ console.warn('plHerijkTick mislukt:', e); }
   _pidLastUpd[pid]=Date.now();
+  // Een geslaagde meting spreekt een 'nodata'/'onzin'-oordeel tegen (#78). De
+  // beslissing zelf staat in pidlane-rijsituatie.js, bij _pidHealth — hier
+  // alleen de aanleiding, want dit is de plek die wéét dat er een geldige
+  // waarde binnenkwam. Tijdens de gezondheidscheck zelf is dit een no-op: die
+  // zet zijn eigen oordeel vlak na deze aanroep.
+  try{ if(typeof plHealthHerzien==='function') plHealthHerzien(pid,val); }
+  catch(e){ console.warn('plHealthHerzien mislukt:', e); }
   // Pauzekrediet (fase 1): leg vast hoeveel bus-pauzetijd er tot nu toe was.
   // De stale-watchdog trekt de pauze die ná deze meting kwam eraf, zodat een
   // sweep zijn eigen tegels niet rood laat knipperen.

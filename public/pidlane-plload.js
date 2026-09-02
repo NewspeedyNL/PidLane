@@ -51,6 +51,40 @@ const PLLoad={
 
   mult(){ return this._mult; },
 
+  /* ── WELKE ZONE HOORT BIJ DEZE CIJFERS ────────────────────────────────
+     Uitgeknipt uit tick() op 02-09-2026 (#76), zonder de regel zelf aan te
+     raken. Reden: de testrun spiegelde deze beoordeling in PLBudget.zone() om
+     achteraf te kunnen zien welke tak PLLoad zou hebben gekozen — en die
+     spiegel was op 23-08 niet meeverhuisd. Blok 7 meldde daardoor "druk 87%"
+     over een rit waarin PLLoad geen enkele keer verlaagde, naast "geen enkele
+     stap omlaag". Twee regels voor één begrip, en de kopie stuurde de lezer
+     naar een defecte regelkring die er niet was.
+
+     Pure functie, met alles wat hij nodig heeft als argument: de statistieken,
+     de vorige responstijd (voor venStijgt) en de multiplier (voor kalm). Zo
+     kan de testrun hem op een oud spoor draaien zonder de lopende regeling
+     aan te raken.
+
+     LET OP bij het wijzigen van de regel: dit is nu de enige plek. Verander
+     hem hier en zowel de regeling als het verslag verandert mee — dat is het
+     hele punt. */
+  zoneVan(s, vorigVenMs, mult){
+    if(!s) return 'stil';
+    const foutDruk  = s.foutPct>=this.cfg.foutOp;
+    const bezetHoog = s.belasting>=this.cfg.bezetOp;
+    const venTraag  = s.venGemMs>=this.cfg.traagMs;
+    const venStijgt = vorigVenMs!=null && s.venGemMs>=vorigVenMs*this.cfg.venStijgFactor;
+    const druk = foutDruk || (bezetHoog && (venTraag || venStijgt));
+    const ruim = s.belasting<this.cfg.bezetAf && s.foutPct<this.cfg.foutOp;
+    const m = (typeof mult==='number') ? mult : this._mult;
+    const kalm = !druk && !ruim && s.foutPct<=this.cfg.kalmFoutPct &&
+                 s.venGemMs<this.cfg.traagMs && m>this.MIN;
+    if(druk) return 'druk';
+    if(ruim) return 'ruim';
+    if(kalm) return 'kalm';
+    return 'stil';                     // dode zone zonder aftasten
+  },
+
   // Eén regelstap. Wordt aan het eind van elke pollronde aangeroepen en
   // regelt zichzelf af op cfg.tickMs, dus extra aanroepen zijn onschadelijk.
   tick(){
@@ -88,12 +122,14 @@ const PLLoad={
        staan, waarvan 24 bij een responstijd boven 400 ms of oplopend. De
        cascade van 12:19 (600-700 ms) verlaagt dus nog steeds — terecht.
        Die van 11:37 (97-101 ms bij 85-87% bezet) niet meer. */
-    const foutDruk  = s.foutPct>=this.cfg.foutOp;
+    // De regel zelf staat in zoneVan() hierboven, zodat de testrun hem kan
+    // lenen in plaats van overschrijven (#76). bezetHoog is hier apart nodig
+    // voor de "vastgehouden"-logregel onderaan: die gaat juist over het geval
+    // dat de bezetting hoog is en er tóch niet verlaagd wordt.
     const bezetHoog = s.belasting>=this.cfg.bezetOp;
-    const venTraag  = s.venGemMs>=this.cfg.traagMs;
-    const venStijgt = this._vorigVenMs!=null && s.venGemMs>=this._vorigVenMs*this.cfg.venStijgFactor;
-    const druk = foutDruk || (bezetHoog && (venTraag || venStijgt));
-    const ruim = s.belasting<this.cfg.bezetAf && s.foutPct<this.cfg.foutOp;
+    const _zone = this.zoneVan(s, this._vorigVenMs, this._mult);
+    const druk = _zone==='druk';
+    const ruim = _zone==='ruim';
     /* ── DE DODE ZONE WAS EEN VAL ────────────────────────────────────────
        Tussen bezetAf (55%) en bezetOp (85%) was `_mult` bevroren: niet druk,
        niet ruim, dus geen enkele stap. Bedoeld als demping, in de praktijk
@@ -116,8 +152,7 @@ const PLLoad={
        weer omhoog. Dat is hoe AIMD hoort te werken — voorzichtig omhoog
        tasten, hard terug bij tegendruk — en het vindt de echte grens van
        deze bus in plaats van op MAX te blijven staan. */
-    const kalm = !druk && !ruim && s.foutPct<=this.cfg.kalmFoutPct &&
-                 s.venGemMs<this.cfg.traagMs && this._mult>this.MIN;
+    const kalm = _zone==='kalm';
     const vorig=this._mult;
     if(druk)       this._mult=Math.min(this.MAX, this._mult*this.cfg.omhoog);
     else if(ruim)  this._mult=Math.max(this.MIN, this._mult-this.cfg.omlaag);

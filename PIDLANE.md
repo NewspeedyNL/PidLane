@@ -336,7 +336,7 @@ als een routingfout):
 | `/klant/wachtwoord` | wachtwoord wijzigen (ingelogd) |
 | `/klant/reset-aanvraag`, `/klant/reset-uitvoeren` | wachtwoordherstel per mail (token-hash in Airtable) |
 | `/klant/admin-wachtwoord` | noodklep: admin zet handmatig een klantwachtwoord |
-| `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot |
+| `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot; **vraagt een klantsessie** — zonder account wordt er niets afgestempeld (02-09-2026) |
 | `/admin/klanten` | klantbeheer voor admin.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
@@ -405,12 +405,16 @@ solo-project. Als er ooit echt SQL nodig is: **Cloudflare D1**, niet MariaDB.
 | Logs | `appdRasY8ZVJCMkPJ` |
 
 Tabellen: Referentie `tblkfxKcjR6gf0Ahe`, Sessies `tblwbyWN1L6AKwgoy`,
-en in de Config-base `Users`, `Klanten`, `TokenCodes` en `TokenLog`
-(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026).
+en in de Config-base `Users`, `Klanten` en `TokenCodes`. `TokenLog`
+(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026) staat er ook, maar er schrijft
+niets in — zie het kasboek-kader in §8 en issue #83.
 
-**Twee soorten accounts, bewust gescheiden.** `Users` zijn zakelijke logins op
-gebruikersnaam (abonnement, geen tokenverbruik). `Klanten` zijn zelf-
-geregistreerde consumenten op e-mailadres, met een `Saldo`-veld. Het inlogveld
+**Twee soorten accounts, bewust gescheiden.** `Users` zijn logins op
+gebruikersnaam voor **personeel** — de beheerder, een monteur, de noodingang.
+Die draaien op de sleutel van de beheerder en verbruiken geen tokens. Er hoort
+géén abonnement bij; dat woord stond hier tot 02-09-2026 en het abonnement
+bestaat niet (#49). `Klanten` zijn zelf-geregistreerde consumenten op
+e-mailadres, met een `Saldo`-veld. Het inlogveld
 herkent het verschil aan de `@`. Een lek of fout aan de consumentenkant raakt de
 zakelijke accounts niet.
 
@@ -514,29 +518,30 @@ het dat wél doen, dan betaalt de klant dubbel.
 voor de echte afboeking. Wijzig je er één, pas de ander aan — of zet de tarieven
 via Worker-variabelen zodat alleen de schatting nog in de app staat.
 
-### Kasboek — TokenLog
+### Kasboek — TokenLog: ONTWORPEN, NIET GEBOUWD
 
-Elke mutatie op een tokensaldo krijgt een regel in `TokenLog` (Config-base),
-geschreven door `tegoedLog()` in `worker.js`. Vier bronnen: `ai-call`,
-`code-ingewisseld`, `proeftegoed` en `admin-mutatie`.
+**Herzien op 02-09-2026 (#83).** Hier stond een volledige beschrijving van een
+kasboek: tabel `TokenLog`, negen velden, vier bronnen, twee regels die
+vastliggen, en de zin "geschreven door `tegoedLog()` in `worker.js`". Die
+functie bestaat niet, en blijkens `git log -S tegoedLog` heeft ze nooit in dit
+bestand gestaan. Er wordt bij een saldomutatie nergens iets weggeschreven.
 
-Velden: `Moment`, `Klant`, `Soort`, `Credits` (negatief bij afboeken),
-`SaldoNa`, `TokensIn`, `TokensUit`, `Model`, `Details`. Lege cel = onbekend;
-bij een adminmutatie blijft `Credits` bewust leeg omdat het oude saldo daar
-niet gelezen wordt.
+De tekst is bewaard in de geschiedenis en het ontwerp staat als issue #83; het
+staat hier niet meer als beschrijving, want dat is precies wat het onzichtbaar
+hield: wie §8 las, kruiste dit punt af.
 
-Twee regels die vastliggen:
+Waarom het er hoort te komen: op 31-07-2026 verdwenen er tokens zonder
+analyses. Oorzaak bleek `testApiKey()`, die bij élke app-start een echte call
+deed. Dat was alleen te achterhalen door de code te lezen — met een kasboek was
+het één blik geweest. Die aanleiding klopt nog steeds, en zolang er geen kasboek
+is blijft een verdwenen token een leesklus.
 
-- **Het kasboek is administratie, geen bron van waarheid.** Het saldo staat in
-  `Klanten.Saldo`. Een mislukte logregel mag de call nooit laten stranden;
-  daarom zit alles in een try en gaat de schrijfactie via `ctx.waitUntil`.
-- **Een mislukte afboeking krijgt óók een regel**, met `Credits: 0` en een
-  `Details` die dat meldt. Juist dan wil je later kunnen zien dat er AI is
-  verbruikt zonder dat er iets van het saldo af ging.
-
-Aanleiding: op 31-07-2026 verdwenen er tokens zonder analyses. Oorzaak bleek
-`testApiKey()`, die bij élke app-start een echte call deed. Dat was alleen te
-achterhalen door de code te lezen — met een kasboek was het één blik geweest.
+**De les is niet de ontbrekende functie maar de vorm.** Documentatie die een
+ontwerp in de tegenwoordige tijd beschrijft, leest als een beschrijving van wat
+er staat. Twee dingen zijn er zo blijven liggen: dit kasboek, en het uitlezen
+van `X-PidLane-Saldo` (punt 3 hierboven), dat sinds juli beschreven stond en pas
+op 02-09-2026 gebouwd is. Wat nog niet bestaat, staat vanaf nu als issue met een
+vooruitwijzing hier — niet als alinea in de tegenwoordige tijd.
 
 **Achtergrondcalls kosten geld.** Sinds de Worker afrekent is élke call naar
 `/v1/messages` billable, ook calls die nooit langs `PLCredits.preflight` gaan
@@ -544,10 +549,16 @@ en die de gebruiker niet als analyse ziet. Voeg je een AI-call toe die vanzelf
 afgaat, bedenk dan eerst wie hem betaalt. `testApiKey()` draait daarom niet
 meer voor klantaccounts.
 
-**Bekende grens:** Airtable kent geen transacties. Twee gelijktijdige calls van
-hetzelfde account (twee apparaten) kunnen elkaars afboeking overschrijven. Bij
-normaal gebruik lopen calls achter elkaar. Wordt dit ooit een probleem, dan is
-de Durable Object de plek om het saldo te serialiseren.
+**Die grens is er niet meer, op één plek na.** Hier stond dat Airtable geen
+transacties kent en dat twee gelijktijdige calls van hetzelfde account elkaars
+afboeking konden overschrijven — met de Durable Object als toekomstige
+oplossing. Die is er sinds 26-08-2026: `metSaldoSlot()` serialiseert elke
+saldomutatie per klant (zie §7). Drie van de vier schrijvers lopen erdoorheen:
+`handleMessages`, `handleCreditsRedeem` en `handleKlantOnboarding`.
+
+De vierde is `handleAdminKlantenPost` met actie `bijboeken`: die leest en
+schrijft `Saldo` buiten het slot om. Boekt een beheerder bij op het moment dat
+er een analyse loopt, dan overschrijft de één de ander. Dat is **#82**.
 
 ---
 
@@ -639,23 +650,22 @@ de pas, en dan is de vraag welke klopt.
 | [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
 | [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — de bedrading staat sinds 01-09 groen in blok 5, de hoofdvraag wacht op een rit van tien minuten | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
-| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
+| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels — eerste fase is handmatig: `tikkie_kopen` blijft leeg, codes gaan met de hand | Play |
 | [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
-| [#52](https://github.com/NewspeedyNL/PidLane/issues/52) | de tokenchip blijft staan bij een beheerder | bug |
+| [#82](https://github.com/NewspeedyNL/PidLane/issues/82) | bijboeken vanuit admin.html loopt buiten het saldo-slot om | bug |
+| [#83](https://github.com/NewspeedyNL/PidLane/issues/83) | het kasboek `TokenLog` staat in §8 beschreven maar bestaat niet | groot |
 | [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | welke vragen ontbreken nog in de meetcontext? | meten |
 | [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
 | [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 | [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
-| [#72](https://github.com/NewspeedyNL/PidLane/issues/72) | de app-log kapt stil af op 500 regels | bug |
-| [#75](https://github.com/NewspeedyNL/PidLane/issues/75) | "Meldingen sinds het begin van deze run" telt de hele ringbuffer | bug |
-| [#76](https://github.com/NewspeedyNL/PidLane/issues/76) | blok 7 spiegelt de `PLLoad`-regel van vóór 23-08 | bug |
-| [#77](https://github.com/NewspeedyNL/PidLane/issues/77) | `PLRit` telt de eerste verbinding als herverbinding | bug |
-| [#78](https://github.com/NewspeedyNL/PidLane/issues/78) | `_pidHealth` wordt na de eerste scan nooit herzien | bug |
 | [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
-#14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). De uitleg eromheen blijft hieronder staan.
+#14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op
+02-09 kwamen daarbij: #52 (de tokenchip) en #72, #75, #76, #77 en #78 — de vijf
+bevindingen uit de run van 01-09 die geen rit nodig hadden. De uitleg eromheen
+blijft hieronder staan.
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
@@ -1186,6 +1196,113 @@ een exacte prefix en `ai_system_override` zit daarin) en de structurele kant,
 **`Users` als beheerrol in plaats van klantcategorie**. Het menu-item "Mijn
 account" is wel al meegenomen: `pasMenuAan()` verbergt `kbAccount` voor een
 niet-klant, om dezelfde reden en in dezelfde functie als het adminblok.
+
+### De tokenketen nagelopen — 02-09-2026
+
+Aanleiding: de vraag of de openstaande tokenissues klopten. Ze klopten, maar er
+lag meer omheen. Vier vondsten, en drie ervan waren in het gebruik onzichtbaar —
+geen foutmelding, geen rode rand, niets.
+
+**Een activatiecode kon verbranden.** `handleCreditsRedeem` stempelde de code
+eerst af als gebruikt en keek pás daarna of er een ingelogde klant was om hem op
+bij te schrijven. Was die er niet, dan kwam er `ok:true` met `saldo:null` terug:
+code verbruikt, tegoed nergens. De app haakte daar sinds 29-08 zelf al op af
+(`verzilver()` weigert zonder klantaccount) — maar een controle in de app is een
+verzoek en geen grens. De sessiecontrole staat nu vóór de eerste schrijfactie,
+en `GebruiktDoor` komt uit die sessie in plaats van uit de body, waar de
+aanvrager hem zelf kon invullen.
+
+Het commentaar erboven legde die vorm nog uit als een bewuste keuze: "werkt
+BEWUST zonder account — de gratis proef en de eerste aankopen moeten drempelloos
+zijn". Die keuze was met #49 vervallen; het commentaar was blijven staan. **Een
+uitleg van een keuze veroudert net zo hard als de code, en leest dwingender.**
+
+**De teller liep op de schatting.** De Worker boekt af op het echte verbruik en
+stuurt het saldo terug in `X-PidLane-Saldo`; §8 hierboven beschreef sinds juli
+dat `apiFetch` die uitleest. Er las niemand — nergens in `public/` stond die
+header. De schatting van `boek()` is nooit precies de afboeking: bij een
+mislukte PATCH ging er niets af terwijl de app wel aftrok, en bij een
+onleesbaar antwoord boekte de Worker het minimum en de app een volle schatting.
+`PLCredits.volgServer()` leest hem nu uit, op beide paden — na een geslaagd
+antwoord en bij een 402, waar het saldo in de body staat.
+
+**De tokenchip volgde het laadmoment (#52).** Uitgebreid beschreven in het
+issue; de kern is dat `PLCredits.chip()` als publieke ingang bestond en door
+niemand werd aangeroepen. `finishLogin()` en `logout()` doen dat nu. Daarbij
+kwam een toestand aan het licht die niet in het issue stond: `_vrijgesteld()`
+had drie takken en NIEMAND ingelogd viel er doorheen, waardoor er ook op het
+loginscherm een chip stond. De regel is nu één zin — alleen een ingelogde klant
+betaalt met tokens, en alleen die ziet de chip.
+
+**En het kasboek dat niet bestaat (#83).** Zie §8. Dat is de vondst die het
+patroon zichtbaar maakt: twee keer stond er een correcte beschrijving van iets
+dat niet gebouwd was, en beide keren was dat genoeg om het jaren te laten
+liggen.
+
+Wat níét in deze ronde is meegenomen: **#82**, bijboeken vanuit `admin.html`
+loopt als enige saldoschrijver buiten `metSaldoSlot()` om. Gevonden bij het
+nalopen, bewust een eigen commit (één onderwerp per PR).
+
+### Het verslag klopt weer met de meting — 02-09-2026
+
+De vijf bevindingen uit de run van 01-09 die geen rit nodig hadden: #78, #76,
+#77, #75 en #72. Vier ervan zijn dezelfde soort fout als #29, #30 en #74 — **de
+app meet goed en rapporteert iets anders** — en de vijfde is de bron waaruit twee
+van die rapporten putten.
+
+**#78 zat niet in het verslag maar in de app, en het waren twee fouten.**
+`_pidHealth` werd op precies twee momenten gevuld (de scan bij het verbinden, of
+een bewaard voertuigprofiel) en daarna nooit meer herzien. De scan doet één
+uitvraag per PID met een timeout van 1500 ms; komt daar niets uit, dan staat
+`nodata` er de hele sessie — en het gaat mee het profiel in, dus de volgende
+sessie ook. `autoSelectHealthyKern()` en de PID-gate draaien op dat oordeel, dus
+een sensor die één keer te traag was blijft uitgegrijsd. `plHealthHerzien()` laat
+zo'n oordeel nu vervallen zodra er een geldige meting binnenkomt: alleen naar
+boven, alleen als de waarde dezelfde meetlat haalt als de scan, en zichtbaar in
+het logboek.
+
+Van de vier PIDs uit de run waren er echter twee helemaal niet gemist. `0101` en
+`0121` werden **actief** op `nodata` gezet door de dummy-detectie in
+`assessPidQuality()`: een waarde exact op het definitie-minimum in categorie
+Temp/Emissie heet daar "waarschijnlijk niet aanwezig". Voor de MIL-familie is
+nul juist het antwoord dat je hoopt te krijgen. Blok 14 van de testrun wist dat
+al — dezelfde PIDs staan daar in `MAG_STIL`. Twee plekken in dezelfde app met
+een tegenstrijdig oordeel over dezelfde PID. `PID_NUL_NORMAAL` in
+`pidlane-data.js` is nu de ene plek; beide lezen hem.
+
+**#76 was een kopie die niet meeverhuisde.** `PLBudget.zone()` in de testrun
+hield een eigen versie bij van de beslissing die `PLLoad.tick()` neemt, en die
+kopie stond nog op de regel van vóór 23-08 (`bezet >= bezetOp || fout >=
+foutOp`). Blok 7 meldde daardoor "druk 87%" naast "tempo 100% → 100%" en "geen
+enkele stap omlaag" — met de echte regel was druk 0%. `PLLoad.zoneVan()` is nu
+een pure functie die `tick()` zelf gebruikt en die de testrun leent; ontbreekt
+PLLoad, dan meldt blok 7 "niet te bepalen" in plaats van een nabouw.
+
+Daar hoorde een tweede correctie bij die niet over de zones ging: de **Slotsom
+van blok 7 kon twee standen niet onderscheiden**. "0 ongevraagde remmomenten"
+betekende zowel "hij remde en deed dat steeds terecht" als "hij heeft nooit
+geremd". Alleen de eerste zegt iets over de vraag; de tweede is een rit waarin
+de meting niet heeft plaatsgevonden. #15 zou op die tweede zijn gesloten.
+
+**#77 telde de eerste verbinding als herverbinding.** `PLRit.start()` draait bij
+het laden van de app, dus de tikken vóór het verbinden zetten `vorigVerbonden`
+op false. Elke sessie meldde er zo minstens één, bij 0 gaten — en de regel
+eronder stuurt je bij "herverbinding zonder gat" naar de bus of de adapter. Een
+vals spoor in precies de meting die #18 moet beantwoorden.
+
+**#75 en #72 waren één probleem in twee bestanden.** "Meldingen sinds het begin
+van deze run" telde `app.length` en `bt.length`: de hele ringbuffer, zonder
+tijdsgrens. In de run van 01-09 meldde hij 33 app-logregels, waarvan de laatste
+van 22:29:21 — de run begon om 22:32:02. Dat viel niet te repareren zonder #72,
+want beide logs droegen alleen een kloktijdstring en geen epoch. Nu zetten
+`log()` en `btDiag()` er `t` bij (`PIDLANE-CONTRACT.md` §6: tijden zijn epoch,
+de kloktijd is voor het scherm), telt de regel vanaf `_trStart`, en meldt hij
+hoeveel regels hij niet kon dateren in plaats van ze stilzwijgend weg te laten.
+
+En de app-log kapt eerlijk af: kop (300), staart (700) en een zichtbare regel
+ertussen, precies zoals de BT-log dat al deed, met de cap van 500 naar 1200. Wat
+er als eerste uitrolde was juist het oudste — de opstart, de protocolkeuze, de
+eerste opruimacties — en dat is het deel dat je na een lange rit wilt teruglezen.
 
 ### Drie stille fouten in de meetkant — 28-08-2026
 

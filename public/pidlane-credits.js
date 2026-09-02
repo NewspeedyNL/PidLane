@@ -197,7 +197,10 @@
   }
 
   // Is de ingelogde gebruiker een zelf-geregistreerde klant? Die betaalt met
-  // tokens. Accounts uit de tabel Users zijn zakelijk (abonnement) en dus vrij.
+  // tokens. Een account uit de tabel Users is personeel (#49): de beheerder,
+  // een monteur, de noodingang. Dat draait op de sleutel van de beheerder en
+  // heeft geen tegoed — hier stond tot 02-09-2026 "abonnement", en dat
+  // abonnement bestaat niet.
   function _isKlant() {
     try {
       const u = window.currentUser;
@@ -205,13 +208,22 @@
     } catch (e) { return false; }
   }
 
+  // WIE BETAALT ER, EN WIE ZIET DUS DE CHIP — dit is de enige plek waar dat
+  // besluit valt (#52). Één regel: alleen een ingelogde klant betaalt.
+  //
+  // HERZIEN OP 02-09-2026. Hier stonden drie takken: klant → betaalt, ander
+  // ingelogd account → vrij, demomodus → vrij. Wat er niet stond was de vierde
+  // toestand, en dat was precies het gat: NIEMAND ingelogd viel door alle takken
+  // heen en kwam op `false` uit — niet vrijgesteld, dus mét chip. Op het
+  // loginscherm stond daardoor "⚡ tokens onbekend" voor niemand in het
+  // bijzonder, en na uitloggen bleef die staan.
+  //
+  // Demomodus en "ingelogd als personeel" hoeven niet meer apart genoemd: geen
+  // van beide is een klant, dus ze vallen onder dezelfde regel. Drie takken die
+  // hetzelfde antwoord geven zijn drie plekken om een fout te maken.
   function _vrijgesteld() {
     if (_testModus()) return false;                  // testmodus wint
-    if (_isKlant()) return false;                    // klant betaalt met tokens
-    // Elk ander ingelogd account komt uit de tabel Users → abonnement, vrij.
-    try { if (window.currentUser) return true; } catch(e){ /* stil: leest een globale die nog niet gezet hoeft te zijn */ }
-    try { if (demoMode === true) return true; } catch(e){ /* stil: leest een globale die nog niet gezet hoeft te zijn */ }
-    return false;
+    return !_isKlant();                              // alleen een klant betaalt
   }
 
   // ── Kalibratie tekens → tokens ───────────────────────────────────────
@@ -610,6 +622,18 @@
     return _sheetBezig;
   }
 
+  // De aanvraagmail hoort bij PLKlant — daar staat het pakket, de prijs en het
+  // e-mailadres van het account. Eén tekst op twee schermen, dus hier alleen
+  // ophalen. Is PLKlant er niet (deze module draait ook los in de tests), dan
+  // een kale mailto: liever een mail zonder account dan een dode link.
+  function _aanvraagMail() {
+    try {
+      const k = window.PLKlant;
+      if (k && typeof k.aanvraagMail === 'function') return k.aanvraagMail();
+    } catch(e){ console.warn('aanvraagmail van PLKlant niet beschikbaar:', e); }
+    return 'mailto:support@pidlane.nl?subject=' + encodeURIComponent('Tokens voor PidLane');
+  }
+
   // ── Code inwisselen (stub tot stap 5) ────────────────────────────────
   function openVerzilver() {
     const ov = _overlay('plCredKoopSheet');
@@ -629,8 +653,9 @@
           '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd,#2a3142);' +
             'font-size:11px;color:var(--tx3,#94a3b8);line-height:1.6">' +
             'Nog geen code? Vraag er een aan via ' +
-            '<a href="mailto:support@pidlane.nl?subject=Tokens%20voor%20PidLane" ' +
+            '<a href="' + _esc(_aanvraagMail()) + '" ' +
             'style="color:var(--bl,#6366f1)">support@pidlane.nl</a>. ' +
+            'Codes worden met de hand verstuurd, meestal binnen een dag. ' +
             'Een code is eenmalig te gebruiken en wordt bijgeschreven op je ' +
             'account \u2014 log dus eerst in.</div>' +
         '</div>' +
@@ -784,6 +809,51 @@
     } catch(e){ console.warn('_log mislukt:', e); }
   }
 
+  // ── volgServer() — de server heeft het laatste woord over de teller ──
+  // AANLEIDING (02-09-2026). handleMessages boekt af op het ECHTE verbruik en
+  // stuurt het saldo daarna mee terug in de header X-PidLane-Saldo — daar staat
+  // hij zelfs voor in Access-Control-Expose-Headers, en §8 van PIDLANE.md
+  // beschreef al dat apiFetch hem uitleest. Dat deed niemand. De teller in beeld
+  // liep dus op de SCHATTING van boek(), en de schatting is nooit precies
+  // hetzelfde getal als de afboeking:
+  //
+  //   - viel het antwoord van Anthropic niet te ontleden, dan boekte de Worker
+  //     het minimumtarief af en de app een volle schatting;
+  //   - mislukte de PATCH op Airtable, dan ging er niets af terwijl de app wel
+  //     aftrok — de klant zag tokens verdwijnen die hij nog had;
+  //   - staan CREDIT_PER_1K_* als Worker-variabele anders dan CFG hier, dan
+  //     lopen de twee formules per definitie uiteen.
+  //
+  // Twee bronnen voor één getal, en de verkeerde was leidend. Deze functie
+  // maakt de server weer de bron: hij leest het saldo uit het antwoord en zet
+  // het door naar zetServerSaldo(). Wat boek() eraf haalde is daarmee niet meer
+  // dan een tussenstand tot dit getal binnenkomt.
+  //
+  // Twee plekken waar de server het saldo meegeeft, en allebei tellen:
+  //   header  X-PidLane-Saldo   na een geslaagde analyse (het saldo NA afboeken)
+  //   body    { saldo: n }      bij 402 onvoldoende_tegoed (het saldo dat te
+  //                             weinig was) — zonder deze zou de app blijven
+  //                             proberen met een lokaal getal dat te hoog staat.
+  //
+  // Fail-open zoals de rest van deze module: is er niets te lezen, dan gebeurt
+  // er niets en blijft de bestaande teller staan.
+  function volgServer(headers, body) {
+    try {
+      let n = null;
+      try {
+        const h = headers && typeof headers.get === 'function' ? headers.get('X-PidLane-Saldo') : null;
+        if (h !== null && h !== undefined && String(h).trim() !== '') n = Number(h);
+      } catch(e){ console.warn('X-PidLane-Saldo niet leesbaar:', e); }
+      if ((n === null || !isFinite(n)) && body && typeof body.saldo === 'number') n = body.saldo;
+      if (n === null || !isFinite(n)) return null;
+      zetServerSaldo(n);
+      return saldo();
+    } catch (e) {
+      console.warn('serversaldo niet overgenomen:', e);
+      return null;
+    }
+  }
+
   // ── vergeetKlant() — het saldo van de vorige gebruiker weg bij uitloggen ──
   // logout() wiste tot 28-08 alleen pl_session en pl_autoconn. Op een gedeeld
   // werkplaatstoestel zag de volgende gebruiker daardoor even het saldo van de
@@ -832,6 +902,7 @@
     afboeken: afboeken,
     zetSaldo: _setSaldo,
     zetServerSaldo: zetServerSaldo,
+    volgServer: volgServer,
     serverModus: function () { return _serverSaldo !== null; },
     isKlant: _isKlant,
     preflight: preflight,

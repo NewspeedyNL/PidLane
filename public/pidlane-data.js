@@ -839,6 +839,33 @@ window.STANDAARD_PIDS =[
   '011C','0151','0133',
 ];
 
+// ── PID_NUL_NORMAAL — nul is hier de GEZONDE waarde (02-09-2026, #78) ──
+// Voor de meeste sensoren is een waarde die exact op het definitie-minimum
+// staat een sterk signaal dat de sensor er niet is: een turbotemperatuur van
+// -40 °C, een AdBlue-niveau van 0. assessPidQuality() gebruikt dat als
+// dummy-detectie en zet zo'n PID op 'nodata'.
+//
+// Voor de MIL-familie klopt die redenering precies omgekeerd. "Motorlampje
+// uit", "0 km gereden met het lampje aan" en "0 minuten met het lampje aan"
+// zijn niet het bewijs dat de sensor ontbreekt — dat is het antwoord dat je
+// hoopt te krijgen. Een auto zonder storing meldt hier altijd nul.
+//
+// Wat dat kostte (#78): de gezondheidscheck zette 0101 en 0121 op 'nodata' bij
+// een gezonde auto, waarna de PID-gate ze een sessie lang uitgrijsde én het
+// oordeel in het voertuigprofiel bewaarde. Blok 14 van de testrun wist het al
+// beter — daar staan dezelfde PIDs in MAG_STIL, "hoort stil te staan". Twee
+// plekken die iets tegenstrijdigs wisten over dezelfde PID; deze lijst is nu
+// de ene plek, en blok 14 leest hem mee.
+//
+// BEWUST KLEIN GEHOUDEN. Alleen PIDs waarvan nul de goede uitkomst is. 0113
+// (O2-sensoren aanwezig) staat er níét in: dat is een bitmasker, en nul
+// betekent daar wel degelijk "geen enkele gemeld".
+window.PID_NUL_NORMAAL = {
+  '0101': 'motorlampje uit',
+  '0121': 'geen afstand gereden met het lampje aan',
+  '014D': 'geen tijd met het lampje aan'
+};
+
 // ── PID_ALT_KANAAL — dezelfde grootheid, andere bron (27-07-2026) ──────
 // Een aantal J1979-blokken meet iets wat óók een eigen standaard-PID heeft.
 // Sinds de correctie van 0165-0168/016D leveren die blokken echte waarden op,

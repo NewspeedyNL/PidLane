@@ -63,7 +63,15 @@ function assessPidQuality(pid, val, scanMode=false){
       const verdacht=[-40,0,0.00].includes(d.min);
       // Alleen voor sensor-categorieën die niet standaard 0 kunnen zijn
       const sensorCat=['Temp','Emissie'].includes(d.cat||'');
-      if(verdacht && sensorCat){
+      // …behalve waar nul juist het GEZONDE antwoord is (#78, 02-09-2026).
+      // De MIL-familie zit in categorie Emissie met min 0, dus die viel hier
+      // altijd binnen: een auto zonder storing meldt 0101=0 en 0121=0, en de
+      // check las dat als "sensor waarschijnlijk niet aanwezig". Gevolg: de
+      // PID-gate grijsde ze een sessie lang uit, en het oordeel ging mee het
+      // voertuigprofiel in. De lijst staat in pidlane-data.js, zodat blok 14
+      // van de testrun (MAG_STIL) en deze regel hetzelfde weten.
+      const nulIsGoed=!!((window.PID_NUL_NORMAAL||{})[pid]);
+      if(verdacht && sensorCat && !nulIsGoed){
         return {status:'nodata', reden:`waarde gelijk aan sensor-minimum (${d.min} ${unit}) — waarschijnlijk niet aanwezig`, name, val, unit};
       }
     }

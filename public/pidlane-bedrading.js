@@ -43,6 +43,16 @@ var KRITIEK = [
   'featOn','finishLogin','fv',
   'getPidDef','getVehicle','goHome',
   'ecuSteunt','hasTesterConsent','healthUitProfiel',
+  // De twee helften van #78 (02-09-2026). plHealthHerzien() laat een negatief
+  // gezondheidsoordeel vervallen zodra er alsnog een geldige meting binnenkomt;
+  // assessPidQuality() is de meetlat waarmee die beslissing valt. (Geen
+  // aanhalingstekens in dit blok: de scanner leest elke quoted string hier als
+  // een naam uit de lijst.)
+  // Ontbreekt de eerste, dan blijft een sensor die één keer te traag was een
+  // sessie lang uitgegrijsd — en gaat dat oordeel mee het voertuigprofiel in.
+  // Ontbreekt de tweede, dan herziet de eerste niets meer en is dat van buiten
+  // niet te zien: precies de stille vorm waarvoor deze lijst bestaat.
+  'assessPidQuality','plHealthHerzien',
   'initialHealthScan','isAdmin','isMode01','isPIDOkVal',
   'log','magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openRitAnalyse',

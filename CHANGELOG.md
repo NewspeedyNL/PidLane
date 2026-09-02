@@ -11,6 +11,168 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — HET VERSLAG KLOPT MET DE METING
+                               (#72, #75, #76, #77, #78)
+
+       • 🔬 EEN SENSOR DIE ÉÉN KEER TE TRAAG WAS, BLEEF EEN SESSIE
+         LANG UITGEGRIJSD (issue #78). _pidHealth werd op precies
+         twee momenten gevuld — de gezondheidscheck bij het
+         verbinden, of een bewaard voertuigprofiel — en daarna
+         schreef niets het oordeel ooit nog bij. Die scan doet één
+         uitvraag per PID met een timeout van 1500 ms; komt daar
+         niets uit, dan staat "nodata" er voor de rest van de rit.
+         En omdat het oordeel meegaat in het voertuigprofiel, werd
+         een toevallig misgelopen uitvraag een blijvend feit over
+         die auto.
+
+         Een geslaagde meting spreekt dat oordeel nu tegen: alleen
+         naar boven, alleen als de waarde dezelfde meetlat haalt
+         als de scan, en met een regel in het logboek. Stilletjes
+         beter worden is precies de vorm waarin #29 en #74 maanden
+         bleven staan.
+
+         DAARONDER LAG NOG EEN FOUT. Van de vier PIDs uit de run
+         van 01-09 waren er twee helemaal niet gemist: 0101
+         (motorlampje) en 0121 (afstand met MIL aan) werden actief
+         op "nodata" gezet door de dummy-detectie — een waarde
+         exact op het definitie-minimum heet daar "waarschijnlijk
+         niet aanwezig". Voor de MIL-familie is nul juist het
+         antwoord dat je hoopt te krijgen. Blok 14 van de testrun
+         wist dat allang; de gezondheidscheck wist het
+         tegenovergestelde. Nu één lijst (PID_NUL_NORMAAL) die ze
+         allebei lezen.
+
+       • 📊 BLOK 7 HIELD EEN KOPIE BIJ VAN EEN REGEL DIE VERANDERD
+         WAS (issue #76). "Welke tak zou PLLoad gekozen hebben?"
+         rekende met `bezet >= bezetOp || fout >= foutOp` — precies
+         de OF die op 23-08 uit PLLoad is gehaald omdat bezetting
+         alléén geen tegendruk is. De spiegel verhuisde niet mee.
+
+         Gevolg in de run van 01-09: "Tijd per zone: druk 87%"
+         naast "Tempoverloop: 100% → 100%" en "geen enkele stap
+         omlaag". Die drie zijn alleen te rijmen als de
+         zoneverdeling iets anders meet dan de regeling doet — en
+         met de echte regel was druk 0%. Het rapport las als een
+         defecte regelkring die er niet was. PLLoad.zoneVan() is nu
+         de enige plek waar die beslissing valt; blok 7 leent hem.
+
+         En de Slotsom van datzelfde blok kende twee uitkomsten
+         waar er drie zijn: "nooit geremd" telde als "0 ongevraagd
+         geremd" en zou #15 dus sluiten op een meting die niet
+         heeft plaatsgevonden.
+
+       • 🔌 ELKE SESSIE MELDDE EEN HERVERBINDING DIE ER GEEN WAS
+         (issue #77). PLRit start bij het laden van de app, dus de
+         tikken vóór het verbinden zetten de vlag op false — en de
+         eerste, volstrekt normale verbinding telde daarna mee. Met
+         0 gaten ernaast stuurt de regel eronder je dan naar de bus
+         of de adapter: een gratis vals spoor in de meting die #18
+         moet beantwoorden.
+
+       • 🕑 "MELDINGEN SINDS HET BEGIN VAN DEZE RUN" TELDE DE HELE
+         RINGBUFFER (issue #75). In de run van 01-09 meldde die
+         regel 33 app-logregels; de laatste daarvan was van
+         22:29:21 en de run begon om 22:32:02. Er was niets bij
+         gekomen.
+
+         Dat viel niet te repareren zonder #72: beide logs droegen
+         alleen een kloktijdstring ("22:33:41"), en die is niet met
+         een starttijd te vergelijken zonder een omrekening die om
+         middernacht stukgaat. log() en btDiag() zetten er nu een
+         epoch-tijdstempel bij.
+
+       • 📜 DE APP-LOG KAPTE STIL AF OP 500 REGELS (issue #72). Wie
+         het logboek opensloeg na een rit van een half uur zag een
+         lijst die er compleet uitzag en dat niet was — en wat er
+         als eerste uit rolde was juist het oudste: de opstart, de
+         protocolkeuze, de eerste opruimacties. De BT-log doet dit
+         al goed. Nu de app-log ook: kop, staart, en een zichtbare
+         regel ertussen die zegt hoeveel er weg is. Cap van 500
+         naar 1200, want dit is de rustigste van de twee logs.
+
+       • ✅ TESTS. test-zonespiegel.js, test-meldingenteller.js en
+         test-healthherziening.js zijn nieuw; test-rit.js en
+         test-applog.js zijn uitgebreid. Alle vijf met tegenproef.
+         Testrun 6.2 meet in blok 5 wat er in deze oplevering
+         veranderd is — acht proeven, allemaal gratis.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE TOKENKETEN: DE TELLER VOLGT
+                               DE SERVER, DE CHIP VOLGT DE ROL
+
+       • 🎟️ EEN ACTIVATIECODE KON VERBRANDEN. /credits/redeem
+         stempelde de code eerst af als gebruikt en keek pás
+         daarna of er een ingelogde klant was om hem op bij te
+         schrijven. Was die er niet, dan kwam er ok:true met
+         saldo:null terug: code verbruikt, tegoed nergens, en de
+         klant die er €4,99 voor betaalde staat met lege handen.
+
+         De app haakte daar sinds 29-08 zelf al op af, maar een
+         controle in de app is een verzoek en geen grens — een
+         oudere versie, een herhaald verzoek of een curl kwam er
+         gewoon langs. De sessiecontrole staat nu vóór de eerste
+         schrijfactie. GebruiktDoor komt bovendien uit die sessie
+         in plaats van uit de body, waar de aanvrager zelf kon
+         invullen op wiens naam de code kwam.
+
+       • ⚡ DE TELLER LIEP OP DE SCHATTING. De Worker boekt af op
+         het echte verbruik en stuurt het saldo terug in de header
+         X-PidLane-Saldo. Die header staat in
+         Access-Control-Expose-Headers en §8 van PIDLANE.md
+         beschreef sinds juli dat apiFetch hem uitleest. Er las
+         niemand: nergens in public/ stond die naam.
+
+         Het verschil is niet cosmetisch. Mislukte de PATCH op
+         Airtable, dan ging er niets van het saldo af terwijl de
+         app wel aftrok — de klant zag tokens verdwijnen die hij
+         nog had. PLCredits.volgServer() leest de header nu uit,
+         en bij een 402 het saldo uit de body.
+
+       • 🔋 DE TOKENCHIP VOLGT DE ROL, NIET HET LAADMOMENT
+         (issue #52). De chip werd getekend bij het laden van de
+         pagina — dus vóór de login — en daarna keek er niets meer
+         naar. Een beheerder hield zo "⚡ tokens onbekend" in de
+         linkeronderhoek staan. PLCredits.chip() bestond al als
+         publieke ingang en werd door niemand aangeroepen;
+         finishLogin() en logout() doen dat nu.
+
+         Daarbij kwam een toestand aan het licht die niet in het
+         issue stond: NIEMAND ingelogd viel door alle takken van
+         _vrijgesteld() heen en gold als "betaalt". Er stond dus
+         ook een chip op het loginscherm. De regel is nu één zin:
+         alleen een ingelogde klant betaalt met tokens, en alleen
+         die ziet de chip.
+
+       • 💶 EERSTE FASE BLIJFT HANDMATIG (issue #42). Er komt geen
+         koopknop in de app: tokens verkopen ín de app is precies
+         wat Google's betaalregels raakt, en die vraag is niet
+         beantwoord. Zolang tikkie_kopen leeg staat in de
+         Config-tabel loopt het aanvragen per mail en verstuurt de
+         beheerder de code met de hand.
+
+         Die mail draagt nu het account waar de tokens op moeten,
+         plus het pakket en de prijs. Zonder dat begint elke
+         aanvraag met "en wie ben jij?" en duurt hij een dag
+         langer.
+
+       • 🔎 EN EEN KASBOEK DAT NIET BESTAAT (issue #83). §8
+         beschreef een TokenLog-tabel met negen velden, vier
+         bronnen en een functie tegoedLog() die nooit in worker.js
+         heeft gestaan. Twee keer op één pagina stond er een
+         correcte beschrijving van iets dat niet gebouwd was, en
+         beide keren was dat genoeg om het te laten liggen. §8
+         zegt nu wat er wél staat.
+
+       • ✅ TESTS. test-tokenchip.js (19 toetsen),
+         test-saldokop.js (16) en test-codeverzilver.js (21) zijn
+         nieuw, alle drie met tegenproef: bouw de oude fout terug
+         en er worden er 4, 4 en 1 rood. test-proeftegoed.js logt
+         nu in als klant — een tegoed zonder account bestaat niet
+         meer. Testrun 6.1 meet in blok 5 wat hier veranderd is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-01 (CET) — DE RITWAARNEMER MEET WEER,
                                EN DE RIT WORDT BEGELEID
 

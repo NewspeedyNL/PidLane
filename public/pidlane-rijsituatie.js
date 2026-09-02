@@ -708,6 +708,64 @@ function healthUitProfiel(health){
 }
 window.healthUitProfiel=healthUitProfiel;
 
+// ── HERZIENING: een geslaagde meting spreekt het oordeel tegen (#78) ──
+// Tot 02-09-2026 werd _pidHealth op precies twee momenten gevuld — de scan bij
+// het verbinden, of het bewaarde voertuigprofiel — en daarna nooit meer.
+// initialHealthScan() doet één uitvraag per PID met een timeout van 1500 ms;
+// komt daar niets uit, dan staat 'nodata' er voor de rest van de sessie.
+//
+// Dat is niet vrijblijvend: autoSelectHealthyKern() en de PID-gate draaien op
+// dit oordeel, dus een sensor die één keer te traag was blijft een sessie lang
+// uitgegrijsd. En het profiel wordt bewaard, dus een toevallig misgelopen
+// uitvraag wordt een blijvend feit over dit voertuig.
+//
+// Het bewijs (run van 01-09): 0101, 0121, 012E en 016D stonden als niet-ok in
+// blok 11, terwijl blok 3 ze in dezelfde run alle vier gewoon uitlas. 016D is
+// een meerframe-antwoord — de meest waarschijnlijke kandidaat om in 1500 ms te
+// sneuvelen.
+//
+// DRIE KEUZES DIE ERIN ZITTEN:
+//
+//   1. Alleen naar BOVEN herzien. Een 'nodata' of 'onzin' dat wordt
+//      tegengesproken vervalt; een 'ok' wordt hier nooit slechter gemaakt. Dat
+//      oordeel hoort bij de scan en bij assessPidQuality met history, niet bij
+//      één losse meting.
+//   2. Dezelfde meetlat als de scan: assessPidQuality(pid, val, true). Een
+//      geslaagde párse is niet genoeg — een waarde ver buiten het fysieke
+//      bereik blijft onzin, ook al kwam hij netjes binnen.
+//   3. Het gaat naar het logboek. "Stilletjes beter worden" is precies de vorm
+//      waarin #29 en #74 maandenlang bleven staan; wie het profiel later
+//      terugleest moet kunnen zien waarom er iets veranderd is.
+//
+// De lijstweergave wordt gebundeld bijgewerkt: dit kan tijdens het pollen
+// meerdere keren per seconde langskomen, en buildDiscoveredPIDList() is te duur
+// om per meting te draaien.
+let _healthHerzienT=null;
+function plHealthHerzien(pid, val){
+  try{
+    if(typeof _pidHealth==='undefined' || !_pidHealth) return null;
+    const oud=_pidHealth[pid];
+    if(oud!=='nodata' && oud!=='onzin') return null;      // niets te herzien
+    let q=null;
+    try{ q=(typeof assessPidQuality==='function')?assessPidQuality(pid,val,true):null; }
+    catch(e){ console.warn('assessPidQuality klapte bij het herzien van '+pid, e); return null; }
+    if(!q || q.status!=='ok') return null;                // de meting overtuigt niet
+    _pidHealth[pid]='ok';
+    const naam=((window.ALL_PID_DEFS||{})[pid]||{}).name||pid;
+    try{ log(`🔬 ${pid} (${naam}) gaf alsnog een geldige meting (${val}) — oordeel "${oud}" vervalt`,'ok'); }
+    catch(e){ console.warn('herzieningsmelding niet gelogd', e); }
+    try{ btDiag(`🔬 ${pid}: ${oud} → ok na een geslaagde meting`,'ok'); }
+    catch(e){ console.warn('herzieningsmelding niet in de BT-log', e); }
+    if(!_healthHerzienT) _healthHerzienT=setTimeout(function(){
+      _healthHerzienT=null;
+      try{ buildDiscoveredPIDList(); }catch(e){ console.warn('PID-lijst niet herbouwd na een herzien oordeel', e); }
+      try{ refreshLegeTegels(); }catch(e){ console.warn('refreshLegeTegels mislukt na een herzien oordeel', e); }
+    },2000);
+    return 'ok';
+  }catch(e){ console.warn('plHealthHerzien mislukt:', e); return null; }
+}
+window.plHealthHerzien=plHealthHerzien;
+
 async function initialHealthScan(){
   _pidHealth={};
   _healthAbort=false;

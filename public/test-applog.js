@@ -106,5 +106,62 @@ console.log('\n4. TEGENPROEF — zou de oude situatie hier opvallen?');
   toets('de oude vorm geeft inderdaad een lege lijst', oudeFn(window_).length === 0);
 }
 
+console.log('\n5. De app-log kapt eerlijk af (#72)');
+// DE FOUT. `if(localLog.length>500) localLog.shift();` liet NIETS achter dat
+// zei dat er iets weg was. Wie het logboek opensloeg na een rit van een half
+// uur zag een lijst die er compleet uitzag en dat niet was — en wat er als
+// eerste uit rolt is juist het oudste: de opstart, de protocolkeuze, de eerste
+// opruimacties. Precies de vorm waarin #29 maanden bleef staan: een bron die
+// stil minder oplevert dan hij belooft.
+//
+// De BT-log deed dit al goed (kop + staart + een zichtbare regel ertussen).
+// Deze toets draait de ECHTE log() uit pidlane-auth.js — met een nagemaakte
+// DOM, want die functie schrijft ook naar het scherm.
+{
+  const auth = fs.readFileSync(__dirname + '/pidlane-auth.js', 'utf8');
+  const van = auth.indexOf('const APPLOG_CAP');
+  const tot = auth.indexOf('\n}', auth.indexOf('function log(msg,type=', van)) + 2;
+  if (van < 0 || tot < 2) {
+    toets('log() met geheugen-cap gevonden in pidlane-auth.js', false,
+          'APPLOG_CAP niet gevonden — de cap is stil of hernoemd');
+  } else {
+    const localLog = [];
+    const bal = { children: [], appendChild(el) { this.children.push(el); },
+                  removeChild(el) { const i = this.children.indexOf(el); if (i > -1) this.children.splice(i, 1); },
+                  get firstChild() { return this.children[0]; }, scrollTop: 0, scrollHeight: 0 };
+    const doc = { getElementById: () => bal, createElement: () => ({ className: '', innerHTML: '' }) };
+    const maakLog = new Function('localLog', 'document', 'liveLogWrite', 'logToSheets', 'console',
+      auth.slice(van, tot) + '\nreturn {log:log, CAP:APPLOG_CAP, KOP:APPLOG_KOP};');
+    const L = maakLog(localLog, doc, function () {}, function () {}, { warn() {} });
+
+    for (let i = 0; i < L.CAP + 200; i++) L.log('regel ' + i, 'info');
+
+    toets('de buffer blijft binnen de cap', localLog.length <= L.CAP + 1,
+          localLog.length + ' regels bij een cap van ' + L.CAP);
+    // DE KERN: het begin van de rit overleeft.
+    toets('de allereerste regel staat er nog', localLog[0] && localLog[0].msg === 'regel 0',
+          'eerste regel is nu: ' + (localLog[0] && localLog[0].msg));
+    // En de afkapping is zichtbaar.
+    const weg = localLog.filter((l) => /weggelaten \(geheugen-cap\)/.test(l.msg || ''));
+    toets('er staat een zichtbare "weggelaten"-regel in', weg.length === 1,
+          weg.length + ' zulke regels gevonden — 0 betekent dat de afkapping weer stil is');
+    toets('en die noemt hoeveel er weg zijn', weg.length === 1 && /… \d+ regels weggelaten/.test(weg[0].msg),
+          'regel: ' + (weg[0] && weg[0].msg));
+    // De staart is de meest recente, anders lees je een oude rit terug.
+    toets('de laatste regel is de nieuwste', localLog[localLog.length - 1].msg === 'regel ' + (L.CAP + 199),
+          'laatste regel: ' + localLog[localLog.length - 1].msg);
+    toets('elke regel draagt een epoch-tijdstempel (#75)',
+          localLog.every((l) => typeof l.t === 'number'),
+          'er zijn regels zonder t — dan telt de testrun ze niet mee');
+
+    // TEGENPROEF: de oude shift()-vorm op dezelfde reeks.
+    const oudeBuffer = [];
+    for (let i = 0; i < 700; i++) { oudeBuffer.push({ msg: 'regel ' + i }); if (oudeBuffer.length > 500) oudeBuffer.shift(); }
+    toets('de oude vorm verliest het begin zonder melding',
+          oudeBuffer[0].msg !== 'regel 0' && !oudeBuffer.some((l) => /weggelaten/.test(l.msg)),
+          'de tegenproef bewijst niets — de oude vorm zou hier al slagen');
+  }
+}
+
 console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));
 process.exit(fouten ? 1 : 0);

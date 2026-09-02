@@ -62,7 +62,15 @@ function laad() {
     body: { appendChild() {} },
     querySelector: knop
   };
-  global.window = {};
+  // INGELOGD ALS KLANT — sinds 02-09-2026 nodig om hier iets te meten (#52).
+  // _vrijgesteld() had tot dan vier uitkomsten waarvan er één ontbrak: NIEMAND
+  // ingelogd viel door alle takken heen en gold als "betaalt". Deze test leunde
+  // daarop: hij liet preflight() rekenen zonder ooit een gebruiker te zetten.
+  // Nu is de regel één zin — alleen een ingelogde klant betaalt met tokens — en
+  // dus moet de test er een neerzetten. Dat is geen kunstgreep om hem groen te
+  // krijgen: een tegoed zonder account bestaat niet meer, dat is precies wat
+  // #49 besloot.
+  global.window = { currentUser: { name: 'klant@voorbeeld.nl', role: 'klant' } };
   global.fetch = () => Promise.reject(new Error('geen net in de test'));
 
   eval(fs.readFileSync(__dirname + '/pidlane-credits.js', 'utf8'));
