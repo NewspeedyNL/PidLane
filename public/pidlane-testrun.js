@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.6 (02-09-2026)';
+const TESTRUN_VERSIE = '6.7 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -3998,7 +3998,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (vijfde) — blok 5 is een lijst, en de opsomming eronder schrijft zichzelf',
+  titel: 'OPLEVERING 02-09 (zesde) — bijboeken loopt door het saldo-slot (#82)',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
 
@@ -4019,6 +4019,10 @@ const CAMPAGNE = {
     'STAP E. Lees na afloop blok 5, het stuk "DE RIT-OOGST". Daar staat per issue of hij dicht kan. Wat er "KAN DICHT" zegt, mag dicht; wat er LET OP zegt, noemt zelf wat er de volgende keer anders moet.',
 
     '── WAT ER IS VERANDERD ──────────────',
+
+    'BIJBOEKEN LOOPT DOOR HET SALDO-SLOT (#82). Vier plekken in de Worker lezen het saldo en schrijven het terug; drie ervan deden dat binnen metSaldoSlot() en de vierde niet — bijboeken vanuit de beheerpagina. De waarschuwing die daar stond ging over twee beheerders op dezelfde seconde, en die botsing bestaat niet. De botsing die wél bestaat is beheerder × klant: jij boekt 100 bij terwijl hij een analyse draait, en één van beide mutaties verdwijnt. Sinds nu loopt ook die vierde door het slot.',
+
+    'HIER STAAT DAAROVER GEEN PROEF IN BLOK 5, EN DAT IS EXPRES. Een proef die iets zou toevoegen zou een echte saldowijziging op een echte klant moeten doen, en dat is precies wat je niet wilt uitproberen. Het bewijs ligt in test-bijboeken.js: die toetst de volgorde (slot dicht, lezen, schrijven, slot open) en niet alleen dat het slot wordt aangeroepen, want dat laatste zou ook groen staan als het lezen ernaast liep. Vier mutaties in plmutate.sh maken die test rood.',
 
     'BLOK 5 IS EEN LIJST GEWORDEN (6.6). De zeventien proeven stonden in één functie van 585 regels waar elke oplevering in geknipt werd, met bovenaan een banner die opsomde wat erbij kwam en wat eruit ging — en die opsomming stond hier ook. Twee lijsten van hetzelfde, met de hand bijgehouden, precies de vorm die §11 van PIDLANE.md vorige week de kop kostte. Nu is elke proef een entry met een issue erbij, en de regel BLOK 5 DEKT DEZE RONDE hierboven wordt daaruit afgeleid. De proefcode zelf is regel voor regel dezelfde gebleven: nagemeten, zeventien blokken, geen verschil.',
 

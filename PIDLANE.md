@@ -555,12 +555,33 @@ meer voor klantaccounts.
 transacties kent en dat twee gelijktijdige calls van hetzelfde account elkaars
 afboeking konden overschrijven — met de Durable Object als toekomstige
 oplossing. Die is er sinds 26-08-2026: `metSaldoSlot()` serialiseert elke
-saldomutatie per klant (zie §7). Drie van de vier schrijvers lopen erdoorheen:
-`handleMessages`, `handleCreditsRedeem` en `handleKlantOnboarding`.
+saldomutatie per klant (zie §7). Sinds 02-09-2026 lopen **alle vier** de
+schrijvers erdoorheen: `handleMessages` (AI-afboeking), `handleCreditsRedeem`
+(activatiecode), `handleKlantOnboarding` (proeftegoed) en
+`handleAdminKlantenPost` met actie `bijboeken`.
 
-De vierde is `handleAdminKlantenPost` met actie `bijboeken`: die leest en
-schrijft `Saldo` buiten het slot om. Boekt een beheerder bij op het moment dat
-er een analyse loopt, dan overschrijft de één de ander. Dat is **#82**.
+Die vierde ging er tot dan buitenom (**#82**), en het commentaar erboven wees
+de verkeerde kant op: het waarschuwde voor twee beheerders die op dezelfde
+seconde bijboeken, en noemde dat bij één beheerder geen praktisch risico. Dat
+klopt allebei — maar de botsing die ertoe doet is **beheerder × klant**. Je
+boekt 100 bij terwijl de klant een analyse draait; die leest 30 binnen het slot
+en schrijft 19 terug, jij las 30 buiten het slot en schrijft 130. Eén van beide
+mutaties verdwijnt geruisloos, en welke hangt af van wie het laatst schrijft.
+
+**De les is de vorm.** Er stond wel degelijk een waarschuwing, en die was
+gedetailleerd genoeg om vertrouwd te worden. Alleen ging hij over het geval dat
+niet voorkomt. Een risico dat benoemd is voelt als een risico dat afgewogen is,
+en dat is precies waarom deze anderhalve maand bleef staan.
+
+Twee praktische punten die eruit volgden. Het slot staat op het e-mailadres en
+deze route krijgt een record-id binnen, dus er wordt nu twee keer gelezen: één
+keer buiten het slot voor het adres, één keer erbinnen voor het saldo waarmee
+gerekend wordt. En een klant zonder e-mailadres wordt geweigerd in plaats van
+buitenom geschreven — er is dan geen naamruimte om het slot op te zetten.
+
+De actie `update` (saldo op een absoluut bedrag zetten) loopt bewust niet door
+het slot: daar stuurt de beheerder het eindbedrag en ziet hij een getal dat hij
+zelf heeft ingetikt. Dat is een ander geval.
 
 ---
 
@@ -650,6 +671,34 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+### De vierde saldoschrijver ging om het slot heen — 02-09-2026 (#82, opgelost)
+
+`metSaldoSlot()` bestaat sinds 26-08 en serialiseert elke saldomutatie per
+klant. Drie schrijvers liepen erdoorheen, de vierde niet: bijboeken vanuit
+`admin.html` las `Saldo` met een eigen `fetch` en schreef het opgetelde bedrag
+terug — lezen-optellen-terugschrijven, precies het patroon waar het slot voor
+gebouwd is. Sinds 02-09 loopt hij erdoor; de uitleg staat in §8.
+
+**Waarom dit hier staat en niet alleen in het issue.** Er stond een
+waarschuwing boven die code, en een uitgebreide: Airtable kent geen transacties,
+twee beheerders die op dezelfde seconde bijboeken kunnen elkaar overschrijven,
+bij één beheerder is dat geen praktisch risico. Elke zin klopt. Alleen ging het
+geheel over de botsing die niet voorkomt, terwijl de botsing die wél voorkomt —
+beheerder × klant, en juist op het moment dat een klant belt dat zijn tegoed op
+is — er niet in stond.
+
+Dat is dezelfde vorm als de rest van dit hoofdstuk: **een controle die zijn
+antwoord uit de verkeerde bron haalt.** Hier is de bron een waarschuwing die
+zichzelf compleet laat lijken. Een benoemd risico leest als een afgewogen
+risico, en dat is waarom dit anderhalve maand bleef staan zonder dat iemand er
+overheen las.
+
+**Wat er nu bewaakt wordt.** `test-bijboeken.js` toetst de volgorde en niet
+alleen de aanroep: slot dicht, lezen, schrijven, slot open, en twee lezingen
+waarvan de tweede binnen het slot valt. "Roept metSaldoSlot aan" zou ook groen
+staan als het lezen en schrijven ernaast liep. Vier mutaties in `plmutate.sh`
+maken die test rood.
 
 ### De testreeks stond groen op vier nagebouwde fouten — 02-09-2026
 
@@ -1450,9 +1499,10 @@ patroon zichtbaar maakt: twee keer stond er een correcte beschrijving van iets
 dat niet gebouwd was, en beide keren was dat genoeg om het jaren te laten
 liggen.
 
-Wat níét in deze ronde is meegenomen: **#82**, bijboeken vanuit `admin.html`
-loopt als enige saldoschrijver buiten `metSaldoSlot()` om. Gevonden bij het
-nalopen, bewust een eigen commit (één onderwerp per PR).
+Wat níét in díé ronde is meegenomen was **#82**, bijboeken vanuit
+`admin.html` als enige saldoschrijver buiten `metSaldoSlot()` om. Dat is op
+02-09-2026 in een eigen commit gerepareerd; zie §8 voor waarom de waarschuwing
+die er stond de verkeerde botsing beschreef.
 
 ### Het verslag klopt weer met de meting — 02-09-2026
 
