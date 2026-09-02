@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.5 (02-09-2026)';
+const TESTRUN_VERSIE = '6.6 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1911,9 +1911,9 @@ const PROEVEN_B5 = [
   // bij hem hoort, met "tokens onbekend" erin. Deze proef kijkt naar de DOM
   // van dit moment — dat is de enige plek waar die vraag te beantwoorden is.
   {
-    issue: "#52",
-    naam: "De tokenchip hoort bij de rol die nu ingelogd is",
-    waarom: "Alleen de DOM van dit moment laat zien of de chip bij de ingelogde rol hoort.",
+    issue: '#52',
+    naam: 'De tokenchip hoort bij de rol die nu ingelogd is',
+    waarom: 'Alleen de DOM van dit moment laat zien of de chip bij de ingelogde rol hoort.',
     proef: function () {
       if (!window.PLCredits) return { staat: 'FOUT', detail: 'PLCredits ontbreekt — de tegoedmodule is niet geladen' };
       if (typeof PLCredits.chip !== 'function')
@@ -1949,9 +1949,9 @@ const PROEVEN_B5 = [
   // teller liep dus op de schatting. Een échte call zou hier tokens kosten, dus
   // we voeren alleen de kop aan de module en zetten daarna terug wat er stond.
   {
-    issue: "§8",
-    naam: "De tokenteller neemt het saldo van de server over",
-    waarom: "De kop X-PidLane-Saldo wordt hier aan de echte module gevoerd; een echte call zou tokens kosten.",
+    issue: '§8',
+    naam: 'De tokenteller neemt het saldo van de server over',
+    waarom: 'De kop X-PidLane-Saldo wordt hier aan de echte module gevoerd; een echte call zou tokens kosten.',
     proef: function () {
       if (!window.PLCredits || typeof PLCredits.volgServer !== 'function')
         return { staat: 'FOUT', detail: 'PLCredits.volgServer() ontbreekt — dan blijft de teller op de schatting lopen (§8)' };
@@ -1986,9 +1986,9 @@ const PROEVEN_B5 = [
   // de enige plek waar de ECHTE configuratie van dit toestel te zien is — in
   // node is PID_CONFIG altijd leeg en klopt alles vanzelf.
   {
-    issue: "#42",
-    naam: "Geen koopknop in de app; de aanvraag loopt per mail (#42)",
-    waarom: "Alleen op een toestel staat de echte Config; in node is PID_CONFIG leeg en klopt alles vanzelf.",
+    issue: '#42',
+    naam: 'Geen koopknop in de app; de aanvraag loopt per mail (#42)',
+    waarom: 'Alleen op een toestel staat de echte Config; in node is PID_CONFIG leeg en klopt alles vanzelf.',
     proef: function () {
       if (!window.PLKlant) return { staat: 'FOUT', detail: 'PLKlant ontbreekt' };
       const link = PLKlant.CFG.tikkieKopen;
@@ -2019,9 +2019,9 @@ const PROEVEN_B5 = [
   // van dit moment), dus er valt niets af te stempelen. Een beheerder hoort
   // 401 te krijgen, een klant 404: gevonden-niet.
   {
-    issue: "#42",
-    naam: "De Worker weigert een code zonder klantaccount",
-    waarom: "De grens ligt in de Worker, niet in de app — dus praat deze proef met de echte Worker.",
+    issue: '#42',
+    naam: 'De Worker weigert een code zonder klantaccount',
+    waarom: 'De grens ligt in de Worker, niet in de app — dus praat deze proef met de echte Worker.',
     proef: async function () {
       if (typeof PROXY_URL === 'undefined' || !PROXY_URL)
         return { staat: 'LET OP', detail: 'geen PROXY_URL — niet te meten zonder Worker' };
@@ -2067,9 +2067,9 @@ const PROEVEN_B5 = [
   // tekst is op 29-08 vervangen; deze proef bewaakt dat hij niet terugkomt via
   // een andere weg, en dat het menu-item weg is voor wie geen klant is.
   {
-    issue: "#49",
-    naam: "Nergens meer een abonnement beloofd aan personeel",
-    waarom: "Bewaakt dat de belofte van een abonnement niet via een andere weg terugkomt.",
+    issue: '#49',
+    naam: 'Nergens meer een abonnement beloofd aan personeel',
+    waarom: 'Bewaakt dat de belofte van een abonnement niet via een andere weg terugkomt.',
     proef: function () {
       const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
       const acc = document.getElementById('kbAccount');
@@ -2090,9 +2090,9 @@ const PROEVEN_B5 = [
   // in pidlane-testrun.js en PLLoad in een ander bestand, en dat is precies het
   // soort verbinding dat bij #29 en #74 ontbrak zonder ooit een fout te geven.
   {
-    issue: "#76",
-    naam: "Blok 7 leent de zoneregel bij PLLoad (#76)",
-    waarom: "Of PLBudget en PLLoad in DEZE app aan elkaar hangen, ziet test-zonespiegel.js niet.",
+    issue: '#76',
+    naam: 'Blok 7 leent de zoneregel bij PLLoad (#76)',
+    waarom: 'Of PLBudget en PLLoad in DEZE app aan elkaar hangen, ziet test-zonespiegel.js niet.',
     proef: function () {
       if (!window.PLLoad || typeof PLLoad.zoneVan !== 'function')
         return { staat: 'FOUT', detail: 'PLLoad.zoneVan() ontbreekt — blok 7 kan de regel dan niet lenen en meldt "niet te bepalen"' };
@@ -2119,9 +2119,9 @@ const PROEVEN_B5 = [
   // Drie kleine metingen die alleen in een lopende sessie iets betekenen: de
   // verbindingsteller, de tijdstempels in beide logs, en de geheugen-cap.
   {
-    issue: "#75",
-    naam: "De run telt zijn eigen meldingen en verbindingen eerlijk",
-    waarom: "Verbindingsteller, tijdstempels en geheugen-cap betekenen alleen iets in een lopende sessie.",
+    issue: '#75',
+    naam: 'De run telt zijn eigen meldingen en verbindingen eerlijk',
+    waarom: 'Verbindingsteller, tijdstempels en geheugen-cap betekenen alleen iets in een lopende sessie.',
     proef: function () {
       const uit = [];
       // #77 — een herverbinding zonder gat was tot vandaag de normale eerste
@@ -2157,9 +2157,9 @@ const PROEVEN_B5 = [
   // beide zones 0 en klopt álles. Op een toestel met een statusbalk en drie
   // knoppen komen de getallen pas uit elkaar. Vandaar meten en niet lezen.
   {
-    issue: "#79",
-    naam: "De app past tussen de statusbalk en de navigatiebalk",
-    waarom: "In een browser zijn beide zones 0 en klopt alles; de getallen komen pas op een toestel uit elkaar.",
+    issue: '#79',
+    naam: 'De app past tussen de statusbalk en de navigatiebalk',
+    waarom: 'In een browser zijn beide zones 0 en klopt alles; de getallen komen pas op een toestel uit elkaar.',
     proef: function () {
       const meet = function (token) {
         const p = document.createElement('div');
@@ -2216,9 +2216,9 @@ const PROEVEN_B5 = [
 
   // ── leest de parser een bekend antwoord goed? ──
   {
-    issue: "—",
-    naam: "De parser leest een bekend ELM-antwoord goed",
-    waarom: "De runtime-helft van test-parser.js: hangt de keten in de draaiende app aan elkaar?",
+    issue: '—',
+    naam: 'De parser leest een bekend ELM-antwoord goed',
+    waarom: 'De runtime-helft van test-parser.js: hangt de keten in de draaiende app aan elkaar?',
     proef: function () {
       if (typeof parsePID !== 'function')
         return { staat: 'FOUT', detail: 'parsePID() ontbreekt — dan komt er geen enkele meetwaarde binnen' };
@@ -2244,9 +2244,9 @@ const PROEVEN_B5 = [
 
   // ── houdt laag 1 een onmogelijke waarde tegen? ──
   {
-    issue: "—",
-    naam: "Laag 1 houdt een fysiek onmogelijke waarde tegen",
-    waarom: "Of de harde fysieke limiet ook in de draaiende app tussen parser en opslag staat.",
+    issue: '—',
+    naam: 'Laag 1 houdt een fysiek onmogelijke waarde tegen',
+    waarom: 'Of de harde fysieke limiet ook in de draaiende app tussen parser en opslag staat.',
     proef: function () {
       if (typeof validateAndSmooth !== 'function')
         return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt — dan loopt de meetketen zonder laag 1 t/m 3' };
@@ -2277,9 +2277,9 @@ const PROEVEN_B5 = [
   // bewust niet in dezelfde oplevering gerepareerd wordt — één onderwerp per
   // PR. Wordt regel 75 gerepareerd, dan slaat deze proef vanzelf om naar ok.
   {
-    issue: "§11",
-    naam: "Laag 2+3 is bereikbaar zoals de app de meetketen aanroept",
-    waarom: "Vastgelegde bevinding, bewust niet in deze oplevering gerepareerd — LET OP tot regel 75 klopt.",
+    issue: '§11',
+    naam: 'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept',
+    waarom: 'Vastgelegde bevinding, bewust niet in deze oplevering gerepareerd — LET OP tot regel 75 klopt.',
     proef: function () {
       if (typeof validateAndSmooth !== 'function')
         return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt' };
@@ -2333,9 +2333,9 @@ const PROEVEN_B5 = [
   // het issue gehaald zijn — en zonder die twee helften naast elkaar is het
   // issue niet te sluiten. Dit is dus geen tweede meting maar het oordeel.
   {
-    issue: "#19",
-    naam: "#19 — raildruk over een hele rit, met alle aanvragers aan",
-    waarom: "Blok 14 meet of ze bewogen; hier staat of de voorwaarden uit het issue gehaald zijn.",
+    issue: '#19',
+    naam: '#19 — raildruk over een hele rit, met alle aanvragers aan',
+    waarom: 'Blok 14 meet of ze bewogen; hier staat of de voorwaarden uit het issue gehaald zijn.',
     proef: function () {
       if (!window.PLRit) return { staat: 'LET OP', detail: 'PLRit ontbreekt — geen ritbeeld' };
       let duur = 0, per = {};
@@ -2372,9 +2372,9 @@ const PROEVEN_B5 = [
   // is onbeslisbaar zonder te weten wat vier aanvragers op deze bus dóen — en
   // dat cijfer bestond nog niet, want er is nooit met vier gereden.
   {
-    issue: "#15",
-    naam: "#15 — wat vier aanvragers met de bus deden",
-    waarom: "De ontwerpvraag is onbeslisbaar zonder te weten wat vier aanvragers op deze bus doen.",
+    issue: '#15',
+    naam: '#15 — wat vier aanvragers met de bus deden',
+    waarom: 'De ontwerpvraag is onbeslisbaar zonder te weten wat vier aanvragers op deze bus doen.',
     proef: function () {
       const aan = _aanvragersNu();
       if (!window.PLBudget || !PLBudget.spoor) return { staat: 'LET OP', detail: 'PLBudget ontbreekt — geen spoor' };
@@ -2402,9 +2402,9 @@ const PROEVEN_B5 = [
   // terwijl het "niet gekeken" betekent. Dat is precies wat de run van 13:14
   // deed. Sinds 6.5 staan ze in RIT_PIDS; hier staat wat dat opleverde.
   {
-    issue: "#40",
-    naam: "#40 — de bytelengte van 0155 en 0156, gemeten",
-    waarom: "PLPidLen leert uit metingen; zonder 0155/0156 in de pollronde leert hij niets.",
+    issue: '#40',
+    naam: '#40 — de bytelengte van 0155 en 0156, gemeten',
+    waarom: 'PLPidLen leert uit metingen; zonder 0155/0156 in de pollronde leert hij niets.',
     proef: function () {
       if (!window.PLPidLen || !PLPidLen.geleerd) return { staat: 'LET OP', detail: 'PLPidLen ontbreekt' };
       let g = {};
@@ -2434,9 +2434,9 @@ const PROEVEN_B5 = [
   // Stap 7 van de begeleide rit zet de markering; hier staat wat eruit kwam.
   // Zonder die stap kan deze proef niets zeggen, en dat zegt hij dan ook.
   {
-    issue: "#18",
-    naam: "#18 — stond de meetlus stil op de achtergrond?",
-    waarom: "Stap 7 van de begeleide rit zet de markering; hier staat wat eruit kwam.",
+    issue: '#18',
+    naam: '#18 — stond de meetlus stil op de achtergrond?',
+    waarom: 'Stap 7 van de begeleide rit zet de markering; hier staat wat eruit kwam.',
     proef: function () {
       const m = _markeringen.filter(function (x) { return /achtergrond in/i.test(x.tekst); }).pop();
       if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — stap 7 van de begeleide rit is niet gedaan, ' +
@@ -2461,9 +2461,9 @@ const PROEVEN_B5 = [
   // ligt in het sessie-id van de recorder en op de klok van het toestel. Tot nu
   // toe stond het alleen als beschrijving in het issue.
   {
-    issue: "#17",
-    naam: "#17 — schrijft de bulk-recorder een andere tijd dan de logger?",
-    waarom: "Het bewijs ligt in het sessie-id van de recorder en op de klok van het toestel.",
+    issue: '#17',
+    naam: '#17 — schrijft de bulk-recorder een andere tijd dan de logger?',
+    waarom: 'Het bewijs ligt in het sessie-id van de recorder en op de klok van het toestel.',
     proef: function () {
       if (!window.PLBulk || !PLBulk.status) return { staat: 'LET OP', detail: 'PLBulk ontbreekt' };
       let st = {};
@@ -2489,9 +2489,9 @@ const PROEVEN_B5 = [
   // vuurt — anders is "niets opgeruimd" nog steeds niet te onderscheiden van
   // "niet gezien". Deze proef legt de twee bronnen naast elkaar.
   {
-    issue: "#29",
-    naam: "#29 — ziet blok 14 een opruiming die echt gebeurde?",
-    waarom: "Legt de gate en het opruimlog naast elkaar: \"niets opgeruimd\" of \"niet gezien\"?",
+    issue: '#29',
+    naam: '#29 — ziet blok 14 een opruiming die echt gebeurde?',
+    waarom: 'Legt de gate en het opruimlog naast elkaar: niets opgeruimd, of niet gezien?',
     proef: function () {
       let lijst = null;
       try { if (typeof pidOpgeruimdLijst === 'function') lijst = pidOpgeruimdLijst(); }
@@ -2518,6 +2518,19 @@ const PROEVEN_B5 = [
   },
 
 ];
+
+// Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
+// het antwoord op de vraag die tot 6.5 twee keer met de hand beantwoord werd:
+// één keer in de banner boven _blok5() en één keer in CAMPAGNE. Beide konden
+// verouderen zonder dat er iets rood werd; deze kan dat niet.
+function _dekkingB5() {
+  const uit = [];
+  for (let i = 0; i < PROEVEN_B5.length; i++) {
+    const q = PROEVEN_B5[i].issue;
+    if (q && q !== '\u2014' && uit.indexOf(q) === -1) uit.push(q);
+  }
+  return uit;
+}
 
 // De loper. Hij kent de proeven niet en hoeft dus niet mee te veranderen
 // als er een oplevering langskomt — dat was het hele punt van de lijst.
@@ -3985,7 +3998,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (vierde) — de rit oogst bewijs, en blok 5 zegt per issue of hij dicht kan',
+  titel: 'OPLEVERING 02-09 (vijfde) — blok 5 is een lijst, en de opsomming eronder schrijft zichzelf',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
 
@@ -4007,13 +4020,15 @@ const CAMPAGNE = {
 
     '── WAT ER IS VERANDERD ──────────────',
 
+    'BLOK 5 IS EEN LIJST GEWORDEN (6.6). De zeventien proeven stonden in één functie van 585 regels waar elke oplevering in geknipt werd, met bovenaan een banner die opsomde wat erbij kwam en wat eruit ging — en die opsomming stond hier ook. Twee lijsten van hetzelfde, met de hand bijgehouden, precies de vorm die §11 van PIDLANE.md vorige week de kop kostte. Nu is elke proef een entry met een issue erbij, en de regel BLOK 5 DEKT DEZE RONDE hierboven wordt daaruit afgeleid. De proefcode zelf is regel voor regel dezelfde gebleven: nagemeten, zeventien blokken, geen verschil.',
+
+    'WAT DAT VOOR EEN VOLGENDE OPLEVERING BETEKENT. Een proef toevoegen is een entry toevoegen; een proef weghalen is een entry weghalen. De loper eronder blijft ongemoeid en er is geen opsomming meer om te vergeten. test-blok5lijst.js bewaakt dat elke entry een issue, een naam, een waarom en een proef heeft, en dat de afgeleide dekking niet stilletjes leeg raakt — plmutate.sh maakt allebei rood.',
+
     'DE BEGELEIDE RIT GAAT VAN 10 NAAR 13 STAPPEN. Stap 3 zet nu ook de caravan-tracker aan in plaats van je te vragen dat zelf te doen — dat stond er vier ritten lang als tekst en is geen enkele keer gebeurd. Stap 7 is nieuw: twee minuten achtergrond, met een markering ervoor, zodat een gat in de meetlus aan dát moment te koppelen is (#18). Stap 9 en 10 zijn nieuw en vragen jouw oordeel (#66, #79).',
 
     'RIT_PIDS KRIJGT 0155 EN 0156 ERBIJ (#40). PLPidLen leert bytelengtes uit metingen, dus een PID die niet in de pollronde staat levert niets. De run van 13:14 meldde "0 afwijkend" en dat las als opgelost, terwijl het "niet gekeken" betekende. Ze staan nu in de meet-PIDs, en test-begeleid.js bewaakt dat die lijst de issues blijft dekken.',
 
-    'BLOK 5 — ZES PROEVEN ERBIJ, onder de kop DE RIT-OOGST. Eén per issue: #19 (raildruk over een hele rit met vier aanvragers), #15 (wat vier aanvragers met de bus deden), #40 (de gemeten bytelengte van 0155/0156), #18 (stond de lus stil op de achtergrond), #17 (recorder-UTC naast de logger, hard gemeten in plaats van beschreven) en #29 (ziet blok 14 een opruiming die echt gebeurde). Ze meten niets nieuws — ze lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate, en spreken één oordeel uit. Alle zes gratis: geen buscommando, geen AI-call.',
-
-    'BLOK 5 — DE #78-PROEF IS ERUIT. Die vroeg of een PID niet-ok kan staan terwijl hij meet. De run van 13:14 antwoordde: 55 beoordeeld, 2 niet-ok, geen enkele met een versheidsstempel. Vraag beantwoord, issue gesloten, en de logica staat met een mutatie achter test-healthherziening.js — dat is een sterkere bewaker dan een proef die alleen draait als iemand een testrun doet.',
+    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Die opsomming staat hier niet meer als tekst maar wordt uit PROEVEN_B5 afgeleid — tot 6.5 stond hij twee keer met de hand geschreven (hier en in de banner boven blok 5), en dan is de vraag welke van de twee klopt. De proeven onder DE RIT-OOGST meten niets nieuws: ze lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate, en spreken per issue één oordeel uit. Alle gratis: geen buscommando, geen AI-call.',
 
     'test-begeleid.js — de volgorde van de drie nieuwe stappen wordt bewaakt, en RIT_PIDS ook. plmutate.sh staat op negentien mutaties: een hernoemde stap-id en een uitgeklede meet-PID-lijst horen allebei rood te worden.',
 
@@ -4076,6 +4091,17 @@ window.begeleidAfronden = begeleidAfronden;
 // Bewust naar buiten voor test-begeleid.js: de stappenlijst en de
 // overgangsregel zijn de twee dingen die zonder browser te toetsen zijn, en
 // een stappenmachine die niet getoetst wordt slaat straks stil een stap over.
+// Bewust naar buiten voor test-blok5lijst.js. De lijst is sinds 6.6 de enige
+// plek waar staat wat blok 5 deze ronde meet; een lijst die niet getoetst
+// wordt verliest bij de eerste opruimactie stil een entry.
+window.PLBlok5 = {
+  proeven: function () { return PROEVEN_B5.map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom, proef: p.proef }; }); },
+  dekking: _dekkingB5,
+  // CAMPAGNE hoort er hier bij en niet als eigen export: de enige vraag die de
+  // test erover stelt is of de dekkingsregel dáár uit dezelfde lijst komt.
+  campagne: function () { return CAMPAGNE; }
+};
+
 window.PLBegeleid = {
   stappen: function () { return _STAPPEN; },
   // De meet-PIDs erbij sinds 6.5. Ze staan hier niet voor de app maar voor
