@@ -62,7 +62,7 @@ MUTATIES=(
 "public/pidlane-pids.js@@const sigma=Math.max(b.std, Math.abs(b.mean)*BASE_SIGMA_MIN, 1e-9);@@const sigma=Math.max(b.std, 1e-9);@@test-baseline.js@@de sigma-bodem is weg; strakke historie laat alles afgaan"
 "public/pidlane-pids.js@@const BASE_DREMPEL = 3;@@const BASE_DREMPEL = 2.5;@@test-baseline.js@@de bevindingsdrempel is terug naar 2,5 sigma"
 "worker.js@@if (a.length !== b.length) return false;@@if (a.length !== b.length) return true;@@test-token.js@@safeEqual keurt ongelijke lengtes goed"
-"worker.js@@if (!safeEqual(sig, await hmacSign(env.SESSION_SECRET, payload))) return null;@@@@test-token.js@@verifyToken controleert de handtekening niet meer"
+"worker.js@@if (!safeEqual(sig, await hmacSign(env.SESSION_SECRET, payload))) return null;\\n    const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@test-token.js@@verifyToken controleert de handtekening niet meer"
 "worker.js@@if (!p.exp || Math.floor(Date.now() / 1e3) >= p.exp) return null;@@@@test-token.js@@een verlopen sessietoken blijft geldig"
 "worker.js@@const legacyEnabled = String(env.ALLOW_LEGACY_APP_TOKEN || \"\").toLowerCase() === \"true\";@@const legacyEnabled = true;@@test-token.js@@het legacy-token werkt zonder dat de schakelaar aanstaat"
 )
@@ -113,7 +113,11 @@ for regel in "${MUTATIES[@]}"; do
   raak=$(ZOEK="$zoek" VERVANG="$vervang" python3 - "$doel" <<'PY'
 import os, sys
 pad = sys.argv[1]
-zoek, vervang = os.environ['ZOEK'], os.environ['VERVANG']
+# \n in de tabel is een echte nieuwe regel: zo blijft elke mutatie op
+# één tabelregel staan, ook als het anker meerdere regels moet omvatten
+# om uniek te zijn.
+zoek = os.environ['ZOEK'].replace('\\n', '\n')
+vervang = os.environ['VERVANG'].replace('\\n', '\n')
 bron = open(pad, encoding='utf8').read()
 n = bron.count(zoek)
 if n != 1:
