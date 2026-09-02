@@ -100,6 +100,40 @@ function toets(naam, waar, uitleg) {
     toets('parsePID maakt van NO DATA geen getal',
           geenWaarde === null || geenWaarde === undefined, 'kreeg ' + geenWaarde);
 
+    // ── 6. #105 — LAAT BLOK 5 SPOREN NA IN DE MEETGESCHIEDENIS? ──
+    // Dit is de toets die alleen hier kan. In node bestaat window._pidLetOp
+    // niet, draait blok 4 niet, en is er geen app die twaalf seconden later
+    // "Opvallende metingen: 0105 uiterste 200" rapporteert. De vraag gaat over
+    // wat twee modules bij elkáár achterlaten, en dat is per definitie niet te
+    // zien als je er één uit zijn verband knipt.
+    const sporen = await app.ev(`(function(){
+      const naam = ['Laag 1 houdt een fysiek onmogelijke waarde tegen',
+                    'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept'];
+      const lijst = PLBlok5.proeven().filter(p => naam.indexOf(p.naam) >= 0);
+      const voor = JSON.stringify(window._pidLetOp || null);
+      lijst.forEach(p => { try { p.proef(); } catch(e){ /* de uitslag doet er hier niet toe */ } });
+      const na = JSON.stringify(window._pidLetOp || null);
+      return JSON.stringify({ gevonden: lijst.length, gelijk: voor === na, voor: voor, na: na });
+    })()`);
+    const sp = JSON.parse(sporen);
+    toets('beide meetketenproeven zitten in blok 5', sp.gevonden === 2, 'gevonden: ' + sp.gevonden);
+    toets('blok 5 laat de meetgeschiedenis achter zoals hij hem vond (#105)',
+          sp.gelijk, 'vóór ' + sp.voor + ' → ná ' + sp.na);
+
+    // TEGENPROEF: zonder _zonderSporen() zou 200 °C blijven staan. Dat maken we
+    // hier expliciet na door validateAndSmooth rechtstreeks aan te roepen — als
+    // deze toets NIET aanslaat, meet de toets hierboven niets.
+    const rauw = await app.ev(`(function(){
+      const voor = JSON.stringify(window._pidLetOp || null);
+      validateAndSmooth('0105', 200);
+      const na = JSON.stringify(window._pidLetOp || null);
+      if (voor === na) return 'GEEN_SPOOR';
+      window._pidLetOp = voor === 'null' ? undefined : JSON.parse(voor);
+      return 'SPOOR';
+    })()`);
+    toets('en de tegenproef laat zien dat er wél een spoor zou zijn geweest',
+          rauw === 'SPOOR', 'validateAndSmooth liet niets achter — dan bewijst de toets hierboven niets');
+
     // ── WAARNEMING, GEEN OORDEEL ─────────────────────────────────
     // Laag 2+3 staat uit voor álle PIDs (§11, FILTERED_PIDS met
     // suffix-sleutels). Dat is een OPEN bevinding, dus hij hoort hier niet

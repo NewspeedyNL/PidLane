@@ -255,8 +255,18 @@ async function startApp(opties) {
       try { ch.kill(); } catch (e) { console.warn('plbrowser: Chromium stoppen mislukt — ' + e.message); }
       await dood;
       await new Promise(r => srv.close(r));
-      try { fs.rmSync(profiel, { recursive: true, force: true }); }
-      catch (e) { console.warn('plbrowser: profielmap ' + profiel + ' bleef staan — ' + e.message); }
+      // Chromium schrijft bij het afsluiten nog even door in Default/. Twee
+      // pogingen met een pauze ertussen; lukt het dan nog niet, dan melden we
+      // het en laten we de map staan — een achtergebleven tijdelijke map is
+      // geen reden om een proef te laten mislukken.
+      let opgeruimd = false;
+      for (let poging = 0; poging < 2 && !opgeruimd; poging++) {
+        if (poging) await new Promise(r => setTimeout(r, 500));
+        try { fs.rmSync(profiel, { recursive: true, force: true }); opgeruimd = true; }
+        catch (e) {
+          if (poging) console.warn('plbrowser: profielmap ' + profiel + ' bleef staan — ' + e.message);
+        }
+      }
     }
   };
 }

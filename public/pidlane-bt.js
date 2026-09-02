@@ -1038,6 +1038,14 @@ async function sppReconnectGuard(spp,address,cmd,force){
       if(!_rcOk) throw (_rcErr||new Error('herverbinden mislukt'));
       btDiag('Herverbonden ✓','ok');
       log('SPP automatisch herverbonden','warn');
+      // De ritwaarnemer telt herverbindingen door `connected` te bemonsteren, en
+      // een socket die tussen twee tikken sterft en herstelt glipt daar doorheen
+      // (#103). Hier weten we zeker DAT het gebeurde, dus melden we het. PLRit
+      // woont in pidlane-testrun.js en laadt later dan dit bestand — vandaar de
+      // typeof-guard, en vandaar dat PLRit.meldHerverbinding in KRITIEK staat:
+      // verdwijnt hij, dan telt de app stil weer nul.
+      try{ if(typeof PLRit!=='undefined' && PLRit && typeof PLRit.meldHerverbinding==='function') PLRit.meldHerverbinding('spp-guard'); }
+      catch(e){ console.warn('PLRit.meldHerverbinding faalde — deze herverbinding ontbreekt in blok 14: '+(e.message||e)); }
       // Nieuwe socket = ELM327-interpreter is gereset. Opnieuw initialiseren zodat
       // de gebruiker niets hoeft te doen. BELANGRIJK: buiten de BT-queue plannen
       // (initELM327 stuurt zelf commando's → in de queue zou dat deadlocken).

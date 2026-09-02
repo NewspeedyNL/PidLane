@@ -145,5 +145,48 @@ console.log('\n8. Meer dan zes opgeruimde sensoren wordt afgekapt met een tellin
   toets('kapt de opsomming af', /\+3 meer/.test(r.detail), r.detail);
 }
 
+console.log('\n9. Dezelfde opruiming in beide logs telt één keer (#104)');
+{
+  // Dit is precies wat pidOpruimen() doet: btDiag() zet de kale tekst in de
+  // BT-log, log() zet dezelfde tekst met een 🧹 ervoor in de app-log. Blok 14
+  // plakt die twee buffers aan elkaar.
+  const kaal = 'Sensor 015E (Brandstofverbruik) opgeruimd: 5 pogingen plus 5 herkansingen zonder antwoord. ' +
+               'Komt deze sessie niet terug; een nieuwe sessie probeert opnieuw.';
+  const beide = [{ ts: '23:22:02', type: 'warn', msg: kaal },
+                 { ts: '23:22:02', type: 'warn', msg: '🧹 ' + kaal }];
+  const lijst = [{ pid: '015E', naam: 'Brandstofverbruik', reden: '5 pogingen plus 5 herkansingen zonder antwoord' }];
+
+  const r = stand(lijst, beide, 6 * 60);
+  toets('het log bevestigt er één, niet twee',
+        /het log bevestigt er 1:/.test(r.detail), r.detail);
+
+  // TEGENPROEF A — twee ECHTE opruimingen van verschillende sensoren in
+  // dezelfde seconde moeten er wél twee blijven. Zonder deze toets zou
+  // "gooi alles weg wat op elkaar lijkt" ook groen geven.
+  const tweeSensoren = [
+    { ts: '23:22:02', type: 'warn', msg: '🧹 Sensor 015E (Brandstofverbruik) opgeruimd: geen antwoord.' },
+    { ts: '23:22:02', type: 'warn', msg: '🧹 Sensor 0146 (Omgevingstemp) opgeruimd: geen antwoord.' }];
+  const r2 = stand([{ pid: '015E', naam: 'Brandstofverbruik', reden: 'geen antwoord' },
+                    { pid: '0146', naam: 'Omgevingstemp', reden: 'geen antwoord' }], tweeSensoren, 6 * 60);
+  toets('twee verschillende sensoren blijven twee regels',
+        /het log bevestigt er 2:/.test(r2.detail), r2.detail);
+
+  // TEGENPROEF B — dezelfde sensor op een ander tijdstip is een andere
+  // gebeurtenis en mag niet samenvallen.
+  const anderMoment = [
+    { ts: '23:22:02', type: 'warn', msg: '🧹 Sensor 015E (Brandstofverbruik) opgeruimd: geen antwoord.' },
+    { ts: '23:31:40', type: 'warn', msg: '🧹 Sensor 015E (Brandstofverbruik) opgeruimd: geen antwoord.' }];
+  const r3 = stand([{ pid: '015E', naam: 'Brandstofverbruik', reden: 'geen antwoord' }], anderMoment, 20 * 60);
+  toets('dezelfde sensor op een ander tijdstip telt apart',
+        /het log bevestigt er 2:/.test(r3.detail), r3.detail);
+
+  // TEGENPROEF C — de tegenspraakmelding (gate leeg, log niet) moet blijven
+  // werken, en ook dáár met het ontdubbelde aantal.
+  const r4 = stand([], beide, 6 * 60);
+  toets('gate leeg maar log gevuld blijft FOUT', r4.staat === 'FOUT', r4.staat);
+  toets('en noemt dan één regel, niet twee',
+        /het log 1 opruimregel\(s\) noemt/.test(r4.detail), r4.detail);
+}
+
 console.log('\n' + n + ' toetsen, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

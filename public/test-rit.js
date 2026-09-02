@@ -513,5 +513,72 @@ toetsSchoon('de oude, stempelloze telregel wordt gezien',
       : ['de echte regel telt ' + (echt ? echt.n : '?') + ' verversingen voor een niet-uitgevraagde PID — #74 is terug'];
   })());
 
+// ── #103: een herverbinding die TUSSEN twee tikken valt ──────────
+// tik() leest `connected` als momentopname. Een socket die sterft en herstelt
+// zonder dat er een tik tussen valt is daarmee onzichtbaar — dat gebeurde op
+// 02-09 om 23:18:05 en het verslag meldde `0 herverbinding(en) bij 1 gat(en)`.
+console.log('');
+toetsSchoon('een herverbinding tussen twee tikken wordt geteld (#103)',
+  (function () {
+    const s = laadPLRit();
+    const R = s.PLRit;
+    R.start();
+    s.connected = true;  R.tik(T0);            // eerste verbinding: vorigVerbonden wordt true
+    const voor = R.herverbindingen();
+    // Socket sterft en herstelt binnen één tikinterval: tik() ziet alleen het
+    // eindresultaat, dat gelijk is aan de begintoestand.
+    const geteld = R.meldHerverbinding('proef');
+    s.connected = true;  R.tik(T0 + 1000);
+    const na = R.herverbindingen();
+    const k = [];
+    if (voor !== 0) k.push('de eerste verbinding telde al als herverbinding — #77 is terug (' + voor + ')');
+    if (geteld !== true) k.push('meldHerverbinding() zei dat hij niet telde');
+    if (na !== 1) k.push('na de melding staat de teller op ' + na + ', verwacht 1');
+    return k;
+  })());
+
+// TEGENPROEF A — de melding mag niet BOVENOP de bemonstering komen.
+//
+// Het geval dat onderscheidt is een herverbinding die niet meteen blijft
+// hangen: de guard meldt het herstel, maar de socket valt weer weg voordat er
+// een tik overheen gaat, en pas daarna komt hij echt terug. Dat is één
+// onderbreking. Zonder de regel `if (vorigVerbonden === false) return false`
+// telt de melding er één en de bemonstering daarna nóg een — en dan is #77
+// teruggebouwd aan de andere kant, met een verslag dat je naar de bus stuurt
+// voor een probleem dat op de achtergrond zit.
+//
+// De simpelere variant (val, melding, meteen weer verbonden) onderscheidt
+// NIET: daar geven beide vormen 1, omdat meldHerverbinding() vorigVerbonden op
+// true zet en de tik daarna dus niets meer telt. Dat is nagemeten door de regel
+// te verwijderen — de test bleef groen. Vandaar dít scenario.
+toetsSchoon('een melding die niet meteen beklijft telt één keer, niet twee',
+  (function () {
+    const s = laadPLRit();
+    const R = s.PLRit;
+    R.start();
+    s.connected = true;  R.tik(T0);            // eerste verbinding
+    s.connected = false; R.tik(T0 + 1000);     // tik ziet de val
+    R.meldHerverbinding('proef');              // guard meldt herstel...
+    s.connected = false; R.tik(T0 + 2000);     // ...maar de socket is alweer weg
+    s.connected = true;  R.tik(T0 + 3000);     // nu pas echt terug
+    const n = R.herverbindingen();
+    return n === 1 ? [] : ['de teller staat op ' + n + ' voor één onderbreking — dubbel geteld'];
+  })());
+
+// TEGENPROEF B — wissen hoort de teller op nul te zetten, ook na een melding.
+// PLRit.wis() hangt aan de knop "Rit begint (nulstellen)"; blijft er een
+// herverbinding staan, dan gaat blok 14 over de vorige rit.
+toetsSchoon('PLRit.wis() zet ook een gemelde herverbinding terug op nul',
+  (function () {
+    const s = laadPLRit();
+    const R = s.PLRit;
+    R.start();
+    s.connected = true; R.tik(T0);
+    R.meldHerverbinding('proef');
+    R.wis();
+    const n = R.herverbindingen();
+    return n === 0 ? [] : ['na wis() staat de teller op ' + n];
+  })());
+
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);
