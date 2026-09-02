@@ -49,9 +49,21 @@ Dezelfde controle draait in CI (`.github/workflows/tests.yml`), met de
 tegenproef (`plmutate.sh`) en de sleutelscan als eigen jobs ernaast — drie in
 totaal. Lokaal groen krijgen is dus niet optioneel maar goedkoper.
 
-**Bij elke oplevering ook `CAMPAGNE` en `_blok5()` in `pidlane-testrun.js`
-herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
-toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
+**Bij elke oplevering toetst blok 5 wat er in díé update veranderd is.** Sinds
+testrun 6.6 is dat een lijst en geen functie: voeg een entry toe aan
+`PROEVEN_B5` in `pidlane-testrun.js`, of haal er een weg. Elke entry draagt
+`issue`, `naam`, `waarom` en `proef`; `_blok5()` eronder loopt de lijst af en
+verandert niet mee. Zie §20 van `PIDLANE.md`.
+
+- **Schrijf geen opsomming van wat erbij kwam of eruit ging.** Die stond tot
+  6.5 twee keer met de hand — in de banner boven `_blok5()` en in `CAMPAGNE` —
+  en dat is dezelfde vorm die §11 en `PIDLANE-WERK.md` de kop kostte. De regel
+  "BLOK 5 DEKT DEZE RONDE" in `CAMPAGNE` wordt uit de lijst afgeleid. Wat er
+  vorige ronde uitging is een vraag voor `git log`.
+- **`CAMPAGNE` blijft met de hand**, maar alleen voor wat een mens moet dóen:
+  waarom deze ronde, de stappen van de rit, wat deze ronde níét oplost.
+- `test-blok5lijst.js` bewaakt de vorm van de lijst en de koppeling met
+  `CAMPAGNE`; `plmutate.sh` maakt allebei rood.
 
 ## Als je aan tests werkt
 

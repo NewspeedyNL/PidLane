@@ -11,6 +11,34 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — BLOK 5 IS EEN LIJST
+
+       • 🧾 DE ZEVENTIEN PROEVEN VAN BLOK 5 STAAN NU ALS DATA.
+         Ze zaten in één functie van 585 regels waar elke
+         oplevering in geknipt werd, met bovenaan een banner die
+         opsomde wat erbij kwam en wat eruit ging — en die
+         opsomming stond ook in de campagnetekst. Twee lijsten
+         van hetzelfde, met de hand bijgehouden; precies de vorm
+         die PIDLANE-WERK.md en §11 eerder de kop kostte.
+
+       • 🔁 EEN OPLEVERING IS NU EEN ENTRY ERBIJ OF ERAF. De
+         loper eronder blijft ongemoeid, en de regel "BLOK 5 DEKT
+         DEZE RONDE" wordt uit de lijst afgeleid in plaats van
+         overgeschreven. De proefcode zelf is regel voor regel
+         dezelfde gebleven: nagemeten, zeventien blokken, geen
+         verschil.
+
+       • 🧪 test-blok5lijst.js BEWAAKT DE LIJST. Elke entry moet
+         een issue, een naam, een waarom en een proef hebben,
+         geen twee proeven dragen dezelfde naam, en de
+         campagnetekst moet elk issue uit de lijst noemen. Drie
+         mutaties in plmutate.sh maken die test rood — de
+         tegenproef staat daarmee op tweeëntwintig.
+
+       • Aan wat de app meet verandert deze bouw niets.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — DE RIT OOGST BEWIJS
 
        • 🎯 VIJF ISSUES WACHTTEN OP EEN RIT, EN ER WAREN ER VIER

@@ -2707,6 +2707,46 @@ probleem wilde natrekken moest ze alle zes langs en zelf de tijdlijnen op elkaar
 leggen. Vandaar de samenvoeging tot `pidlane-testrun.js`: één knop, één rit,
 één logboek.
 
+### Blok 5 is een lijst (6.6, 02-09-2026)
+
+Blok 5 is de plek waar elke oplevering zijn eigen proeven neerzet. Tot 6.5 was
+dat één functie van 585 regels waarin geknipt en geplakt werd, met bovenaan een
+banner die opsomde welke proeven erbij kwamen en welke eruit gingen — en die
+opsomming stond ook in `CAMPAGNE`.
+
+**Dat is twee lijsten van hetzelfde, met de hand bijgehouden, en dat is in dit
+project de terugkerende fout.** `PIDLANE-WERK.md` ging er op 27-08 aan onderdoor
+en §11 van dit bestand op 02-09; blok 5 was hem aan het overdoen. De vorm van de
+fout is elke keer dezelfde: twee plekken die hetzelfde beweren, waarvan er één
+stil veroudert.
+
+Nu is elke proef een entry in `PROEVEN_B5`:
+
+```js
+{
+  issue: '#40',
+  naam: '#40 — de bytelengte van 0155 en 0156, gemeten',
+  waarom: 'PLPidLen leert uit metingen; zonder 0155/0156 in de pollronde leert hij niets.',
+  proef: function () { /* … */ }
+}
+```
+
+`_blok5()` is een lus van vier regels die de lijst afloopt en verandert bij een
+oplevering niet mee. `_dekkingB5()` leidt uit dezelfde lijst af welke issues
+deze ronde gedekt zijn — ontdubbeld, en zonder de streep die "geen issue"
+betekent — en `CAMPAGNE` draagt die regel als afleiding in plaats van als
+overgeschreven tekst.
+
+`test-blok5lijst.js` toetst wat de lijst belooft: elke entry compleet, geen twee
+proeven met dezelfde naam, een dekking die echt ontdubbelt, en een `CAMPAGNE`
+die elk issue uit de lijst noemt. Drie mutaties in `plmutate.sh` maken die test
+rood: de dekking die niet meer ontdubbelt, een entry die zijn issue kwijt is, en
+een dekkingsregel die weer met de hand is overgeschreven.
+
+**Wat dit niet oplost.** De proeven zelf zijn niet korter geworden en de
+inhoudelijke vraag "wat moet deze ronde gemeten worden" blijft mensenwerk. Wat
+weg is, is de boekhouding eromheen.
+
 ### Wat wél en niet is samengevoegd
 
 Twee van die "pagina's" waren geen pagina. `pidlane-diagbundel.js` bevat
