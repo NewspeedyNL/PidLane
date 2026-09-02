@@ -794,11 +794,24 @@ async function initialHealthScan(){
       }
       const val=parsePID(pid, raw);
       if(val==null){ _pidHealth[pid]='onzin'; onzin++; continue; }
-      updPID(pid,val);
       // scanMode=true: alleen harde fysieke onmogelijkheden markeren als onzin
       const q=assessPidQuality(pid,val,true);
       _pidHealth[pid]=q.status;
-      if(q.status==='ok') ok++; else onzin++;
+      // EERST OORDELEN, DAN PAS STEMPELEN (02-09-2026, tweede vondst bij #78).
+      // updPID() zet `_pidLastUpd[pid]` — de versheidsbron waar blok 5, blok 14
+      // en de stale-watchdog op draaien — en die aanroep stond hiér vóór het
+      // oordeel. Gevolg: een sensor die de dummy-detectie afkeurt kreeg tóch
+      // een versheidsstempel, en het verslag meldde daarna dat hij "niet-ok
+      // staat terwijl hij meet". Gemeten in de run van 02-09 12:05 op 019D
+      // (Turbo temp inlaat B): een atmosferische motor antwoordt daar met
+      // 0x00 = -40 °C, precies het definitie-minimum, dus 'nodata'.
+      //
+      // De herziening kan dat niet rechtzetten: plHealthHerzien() legt
+      // dezelfde waarde weer langs dezelfde regel en krijgt hetzelfde
+      // antwoord. Het is dus geen herziening die niet vuurt maar een stempel
+      // die te vroeg staat — en tegelijk hield het een waarde in pidVals en
+      // pidHist die de app zelf net had afgekeurd.
+      if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;
     }catch(e){ _pidHealth[pid]='onzin'; onzin++; }
   }
   }, 8000);

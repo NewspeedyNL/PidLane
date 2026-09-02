@@ -191,5 +191,122 @@ console.log('\n5. De aanleiding hangt aan updPID (broncontrole, met reden)');
         'de aanroep staat vóór het stempel');
 }
 
-console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));
-process.exit(fouten ? 1 : 0);
+console.log('\n6. De gezondheidscheck stempelt pas als het oordeel er is');
+{
+  // DE TWEEDE VONDST BIJ #78, gemeten in de run van 02-09 om 12:05. Blok 5
+  // meldde FOUT: "019D staat als niet-ok terwijl hij meet". Dat las als een
+  // herziening die niet vuurde, maar de oorzaak zat een regel eerder:
+  // initialHealthScan() riep updPID() aan VOOR assessPidQuality(). updPID zet
+  // `_pidLastUpd[pid]` — de versheidsbron — dus een sensor die de scan
+  // vervolgens afkeurde droeg tóch het stempel "heeft in deze sessie gemeten".
+  //
+  // 019D (Turbo temp inlaat B) is het geval waarop dat zichtbaar werd: een
+  // atmosferische motor antwoordt met 0x00, en b[0]-40 maakt daar -40 °C van
+  // — exact het definitie-minimum, waar de dummy-detectie 'nodata' van maakt.
+  //
+  // Er wordt hier niets nagebouwd behalve het scherm: pidlane-data.js levert
+  // de defs, pidlane-diagbundel.js de parser, pidlane-datalog.js laag 1 en
+  // pidlane-kwaliteit.js het oordeel. Alleen updPID() is een spion — die zit
+  // in pidlane-pids.js tussen de DOM (applyG, drawGraph), en wat hier telt is
+  // WANNEER hij geroepen wordt, niet wat hij daarna doet. Dat hij het
+  // versheidsstempel zet, toetst stap 5 hierboven op de echte bron.
+  const s = {};
+  s.window = s; s.globalThis = s;
+  s.console = { log() {}, warn() {}, error() {} };
+  s.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  s.document = {
+    getElementById: () => null, querySelector: () => null,
+    createElement: () => ({ style: {}, classList: { add() {}, remove() {} }, appendChild() {}, querySelector: () => null }),
+    addEventListener() {}, body: {}
+  };
+  s.navigator = {};
+  s.setTimeout = (f) => 0; s.setInterval = () => 0; s.clearInterval = () => {};
+  vm.createContext(s);
+  vm.runInContext(fs.readFileSync(dir + '/pidlane-data.js', 'utf8'), s, { filename: 'pidlane-data.js' });
+
+  // Wat de meetketen en de scan uit de rest van de app verwachten.
+  const gestempeld = {};     // pid → waarde, gevuld door de updPID-spion
+  const volgorde = [];       // 'updPID:0105' / 'oordeel:0105', op volgorde
+  s._spionUpd = function (pid, val) { gestempeld[pid] = val; volgorde.push('updPID:' + pid); };
+  s._spionOordeel = function (pid) { volgorde.push('oordeel:' + pid); };
+  s._antwoorden = {
+    '0105': '410585',        // 93 °C — een gewone, geldige koelwatermeting
+    '019D': '419D00',        // 0x00 → -40 °C, precies het definitie-minimum
+    '0110': 'NO DATA'        // helemaal geen antwoord
+  };
+  vm.runInContext(`
+    var pidVals={}, pidHist={}, pidSmooth={}, stabilityCount={}, activePIDs=new Set();
+    var dataStable=false, discoveredPIDDefs=[];
+    var demoMode=false, connected=true, supportedPIDs=new Set(['0105','019D','0110']);
+    var _pidHealth={}, _healthAbort=false;
+    function log(){} function logToSheets(){} function btDiag(){}
+    function fv(v){ return String(v); }
+    function getPidDef(pid){ return ALL_PID_DEFS[pid] || null; }
+    function pidByteLen(sfx){ return PID_BYTE_LEN[String(sfx).toUpperCase()]||1; }
+    function pidCmd(pid){ return '01'+pid.slice(2)+'1'; }
+    async function sendCmd(cmd){
+      var sfx=String(cmd).slice(2,4).toUpperCase();
+      return _antwoorden['01'+sfx] || 'NO DATA';
+    }
+    async function withBus(naam, fn){ return await fn(); }
+    function updPID(pid,val){ _spionUpd(pid,val); }
+    function autoSelectHealthyKern(){} function buildDiscoveredPIDList(){} function refreshLegeTegels(){}
+  `, s, { filename: 'sandbox-omgeving' });
+
+  const lees2 = (b) => fs.readFileSync(dir + '/' + b, 'utf8');
+  // meeEind=true neemt het sluitanker mee (de afsluitende accolade van een
+  // functie); anders is het anker het begin van het volgende blok.
+  const knip2 = function (bestand, van, tot, meeEind) {
+    const bron = lees2(bestand);
+    const a = bron.indexOf(van), b = bron.indexOf(tot, a);
+    if (a < 0 || b < a) {
+      console.error('FOUT: knipbereik "' + van + '" niet gevonden in ' + bestand + ' — is er hernoemd?');
+      process.exit(1);
+    }
+    return bron.slice(a, meeEind ? b + tot.length : b);
+  };
+  vm.runInContext(knip2('pidlane-datalog.js', 'let outlierCount={};', 'function startDatalog'), s, { filename: 'pidlane-datalog.js (knip)' });
+  vm.runInContext(knip2('pidlane-diagbundel.js', 'function splitBatchResponse', 'window.plMeetPidLengte'), s, { filename: 'pidlane-diagbundel.js (knip)' });
+  vm.runInContext(knip2('pidlane-kwaliteit.js', 'function assessPidQuality', '\n// Bouwt een betrouwbaarheidsrapport'), s, { filename: 'pidlane-kwaliteit.js (knip)' });
+  // De volgorde is de kern van deze toets, dus die wordt gemeten en niet
+  // gelezen: een schil om assessPidQuality noteert wanneer het oordeel valt.
+  vm.runInContext(`
+    var _echteAssess = assessPidQuality;
+    assessPidQuality = function(pid,val,scan){ _spionOordeel(pid); return _echteAssess(pid,val,scan); };
+  `, s, { filename: 'oordeel-spion' });
+  vm.runInContext(knip2('pidlane-rijsituatie.js', 'async function initialHealthScan(){', '\n}', true), s, { filename: 'pidlane-rijsituatie.js (knip)' });
+
+  // Eerst de meetketen zelf: keurt de parser 019D goed en het oordeel af?
+  // Zonder deze twee zou "de scan doet niets" ook groen geven.
+  const val9D = vm.runInContext(`parsePID('019D','419D00')`, s);
+  toets('019D parseert netjes tot -40 °C', val9D === -40, 'parsePID gaf ' + val9D);
+  const oordeel9D = vm.runInContext(`_echteAssess('019D',-40,true).status`, s);
+  toets('en de dummy-detectie keurt die -40 af', oordeel9D === 'nodata', 'oordeel: ' + oordeel9D);
+
+  vm.runInContext(`_klaar = initialHealthScan();`, s);
+  s._klaar.then(function () {
+    const health = vm.runInContext('_pidHealth', s);
+    toets('0105 wordt ok', health['0105'] === 'ok', 'oordeel: ' + health['0105']);
+    toets('019D wordt nodata', health['019D'] === 'nodata', 'oordeel: ' + health['019D']);
+    toets('0110 (NO DATA) wordt nodata', health['0110'] === 'nodata', 'oordeel: ' + health['0110']);
+
+    toets('een goedgekeurde meting krijgt het versheidsstempel', gestempeld['0105'] === 93,
+          'updPID kreeg voor 0105: ' + gestempeld['0105']);
+    toets('een AFGEKEURDE meting krijgt het NIET', !('019D' in gestempeld),
+          '019D staat gestempeld op ' + gestempeld['019D'] + ' terwijl het oordeel "' + health['019D'] +
+          '" is — dan meldt blok 5 "staat niet-ok terwijl hij meet"');
+    toets('en een NO DATA al helemaal niet', !('0110' in gestempeld),
+          '0110 staat gestempeld op ' + gestempeld['0110']);
+
+    // En de volgorde zelf, want dát is de regel: eerst oordelen, dan stempelen.
+    toets('het oordeel valt vóór het stempel', volgorde.indexOf('oordeel:0105') < volgorde.indexOf('updPID:0105'),
+          'volgorde: ' + volgorde.join(' → '));
+
+    console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));
+    process.exit(fouten ? 1 : 0);
+  }).catch(function (e) {
+    console.log('  FOUT initialHealthScan klapte — ' + (e && e.message));
+    process.exit(1);
+  });
+}
+

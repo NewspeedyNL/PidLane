@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.3 (02-09-2026)';
+const TESTRUN_VERSIE = '6.4 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1863,7 +1863,16 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 02-09-2026 — twee ronden in één oplevering.
+  // OPLEVERING 02-09-2026 — drie ronden in één oplevering.
+  //
+  // DE DERDE RONDE (6.4) heeft maar één onderwerp, en het is de enige FOUT
+  // uit de run van 12:05 die vanaf een bureau te repareren was:
+  //   #78  de gezondheidscheck stempelde de versheidsbron VÓÓR het oordeel
+  // De proef daarvoor stond er al — "Geen PID staat niet-ok terwijl hij
+  // meet" — en hij deed precies wat een proef hoort te doen: hij meldde
+  // 019D en had gelijk. Wat hij verkeerd bénoemde was de oorzaak ("de
+  // herziening vuurt niet"); die stond een regel eerder in
+  // initialHealthScan(). De proef hieronder is daarop bijgewerkt.
   //
   // DE TOKENKETEN
   //   #52  de tokenchip volgt de rol en niet het laadmoment
@@ -2057,6 +2066,20 @@ async function _blok5() {
   // blok 11 meldde vier PIDs als niet-ok terwijl blok 3 ze in dezelfde run
   // uitlas. Alleen hier te zien, want het vraagt een echte sessie met een echte
   // gezondheidscheck erachter.
+  //
+  // BIJGEWERKT 02-09 (derde ronde). Deze proef sloeg in de run van 12:05 aan
+  // op 019D, en de oorzaak bleek een andere dan de tekst hier beweerde. Het
+  // was geen herziening die niet vuurde: initialHealthScan() riep updPID()
+  // aan VÓÓR assessPidQuality(), dus een sensor die de scan daarna afkeurde
+  // droeg tóch het versheidsstempel. 019D (Turbo temp inlaat B) antwoordt op
+  // een atmosferische motor met 0x00 = -40 °C — precies het definitie-minimum
+  // waar de dummy-detectie 'nodata' van maakt. De herziening kón dat niet
+  // rechtzetten: die legt dezelfde waarde langs dezelfde regel.
+  //
+  // Sinds die reparatie stempelt de scan pas ná het oordeel. Deze proef is
+  // daarmee de meting op die wijziging: hij blijft de tegenstrijdigheid
+  // zoeken, maar noemt nu de goede oorzaak, en meldt LET OP wanneer er geen
+  // enkele niet-ok PID is — dan valt er niets te onderscheiden.
   await _doe(5, 'Geen PID staat "niet-ok" terwijl hij meet (#78)', function () {
     if (typeof _pidHealth === 'undefined' || !_pidHealth)
       return { staat: 'LET OP', detail: '_pidHealth bestaat niet in deze app' };
@@ -2072,16 +2095,23 @@ async function _blok5() {
     });
     if (tegenspraak.length)
       return { staat: 'FOUT', detail: tegenspraak.slice(0, 8).join(', ') + ' staan als niet-ok terwijl ze in deze ' +
-        'sessie een waarde hebben opgeleverd — de herziening vuurt niet (#78)' };
+        'sessie een waarde hebben opgeleverd. Twee oorzaken mogelijk: de gezondheidscheck stempelt de ' +
+        'versheidsbron weer vóór het oordeel (initialHealthScan), of plHealthHerzien() komt niet langs (#78)' };
     // En de tweede helft: de MIL-familie mag niet op nul worden afgeschreven.
     const nulNormaal = Object.keys(window.PID_NUL_NORMAAL || {});
     const misdeeld = nulNormaal.filter(function (p) { return _pidHealth[p] === 'nodata'; });
     if (misdeeld.length)
       return { staat: 'FOUT', detail: misdeeld.join(', ') + ' staan op "nodata" terwijl nul daar de gezonde ' +
         'waarde is — de dummy-detectie leest de MIL-familie weer verkeerd (#78)' };
+    // Zonder een enkele niet-ok PID onderscheidt deze proef niets: dan is
+    // "geen tegenspraak" ook waar als de stempelvolgorde weer omdraait.
     const nietOk = beoordeeld.filter(function (p) { return _pidHealth[p] !== 'ok'; });
-    return beoordeeld.length + ' beoordeeld, ' + nietOk.length + ' niet-ok, en geen enkele daarvan gaf in deze sessie ' +
-      'een meting. ' + nulNormaal.length + ' PIDs waar nul normaal is staan niet op nodata';
+    if (!nietOk.length)
+      return { staat: 'LET OP', detail: beoordeeld.length + ' beoordeeld en alles staat op ok — er is geen ' +
+        'afgekeurde sensor om aan te meten of de scan pas ná het oordeel stempelt (#78)' };
+    return beoordeeld.length + ' beoordeeld, ' + nietOk.length + ' niet-ok (' + nietOk.slice(0, 6).join(', ') +
+      '), en geen enkele daarvan draagt een versheidsstempel — de scan stempelt dus pas ná het oordeel. ' +
+      nulNormaal.length + ' PIDs waar nul normaal is staan niet op nodata';
   });
 
   // ── TOEGEVOEGD 7 (#76): meet blok 7 wat PLLoad doet? ──────────────
@@ -3653,47 +3683,43 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (tweede) \u2014 de testreeks krijgt een tegenproef, en de meetketen een test',
+  titel: 'OPLEVERING 02-09 (derde) — de gezondheidscheck stempelt pas als het oordeel er is',
   vragen: [
-    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    '── WAAROM DEZE RONDE ────────────────',
 
-    'Deze oplevering verandert niets aan wat de app doet. Ze verandert wat de app over zichzelf k\u00e1n weten. Aanleiding was een meting op de testreeks zelf: er zijn vier plausibele fouten in de meetketen gezet \u2014 een off-by-one in de header-echo van parsePID, de harde fysieke limiet uitgezet, de NO DATA-poort van de waakronde open, en het oordeel over onbekende sensoren omgedraaid \u2014 en alle 65 tests bleven groen, met "Alles goed \u2014 veilig om te committen" eronder. Elke push naar main is deployen, dus dat was de poort die er niet was.',
+    'De run van 02-09 om 12:05 gaf 106 ok, 2 fout en 9 let op. Van die twee fouten was er één vanaf een bureau te repareren, en dat is wat deze oplevering doet — verder niets. De andere (de veilige zones, #58/#79) is alleen op een toestel te beoordelen en staat onveranderd.',
 
-    'DE OORZAAK, in twee soorten. Drie tests laadden hun onderwerp helemaal niet: test-healthgate, test-mode21 en test-waakronde schreven de te toetsen functie in de test zelf over. Zo\u0027n test kan per definitie niet rood worden. En de kopie loopt uit de pas: healthUitProfiel() had in de test twee parameters en gaf een object terug, terwijl de app er \u00e9\u00e9n heeft en true/false geeft. Die test stond dus jaren groen op een functie die niet bestaat.',
+    'DE FOUT: "019D staat als niet-ok terwijl hij meet". De proef had gelijk, maar de oorzaak die hij noemde klopte niet. Het was geen herziening die niet vuurde: initialHealthScan() riep updPID() aan VÓÓR assessPidQuality(). updPID zet _pidLastUpd[pid] — de versheidsbron waar blok 5, blok 14 en de stale-watchdog op draaien — dus een sensor die de scan een regel later afkeurde droeg tóch het stempel "heeft in deze sessie gemeten".',
 
-    'DE TWEEDE SOORT is subtieler. test-waakronde rekende met een verzonnen tabel HARD={\u00270105\u0027:{min:-20,max:130}} en concludeerde dat koelwater van 215 \u00b0C een bevinding is. In de app staat PID_HARD_LIMITS[\u00270105\u0027] op -40\u2026215, dus 215 \u00b0C is daar doodnormaal \u2014 en m\u00e9\u00e9r dan 215 kan er uit \u00e9\u00e9n byte niet komen. De kernbewering werd bevestigd door een geval dat niet bestaat, terwijl de gevallen die w\u00e9l voorkomen (inlaatdruk onder 2 kPa, boordspanning onder 4 V) nooit langs een test kwamen.',
+    'WAAROM UITGEREKEND 019D. Turbo temp inlaat B antwoordt op deze atmosferische motor met 0x00, en b[0]-40 maakt daar -40 °C van — precies het definitie-minimum. Daar is de dummy-detectie voor: een waarde exact op het minimum in categorie Temp/Emissie leest als "sensor niet aanwezig". Dat oordeel is goed en blijft staan; alleen het stempel hoorde er niet bij. En de herziening kon het niet rechtzetten, want die legt dezelfde -40 opnieuw langs dezelfde regel.',
 
-    'EN DE GROOTSTE GATEN. De parser waar de hele app op draait \u2014 splitBatchResponse(), parsePID(), applyParsedBytes() \u2014 en laag 1 t/m 3 van de meetketen hadden nul tests. De hele authenticatiekant van worker.js ook: makeToken, verifyToken, de join-tokens, safeEqual en auth() werden in geen enkele test bij naam genoemd. Een sensor die verkeerd gelezen wordt merk je tijdens een rit; een handtekeningcontrole die stilzwijgend akkoord gaat merkt niemand.',
+    '── STAP VOOR STAP ─────────────────',
 
-    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'STAP A. Draai de run en lees blok 5, de proef "Geen PID staat niet-ok terwijl hij meet (#78)". Die hoort nu ok te zijn én te vertellen tegen welke afgekeurde sensoren hij gemeten heeft. Staat er LET OP met "alles staat op ok", dan was er op dit voertuig geen enkele afgekeurde sensor en heeft de proef deze run niets kunnen onderscheiden — dat is geen groen licht.',
 
-    'STAP A. Draai de run en lees blok 5. Er staan drie nieuwe proeven onderaan, alle drie gratis: er gaat geen commando naar de bus en geen AI-call overheen. Ze zijn de runtime-helft van test-parser.js \u2014 de node-test draait de parser in een sandbox, deze drie kijken of dezelfde keten in de dr\u00e1aiende app aan elkaar hangt. Dat is precies het gat waar #29 en #74 in vielen.',
+    'STAP B. Kijk in OVERIG bij "Stille sensoren". 019D hoort daar nog steeds als nodata te staan: die sensor zit niet op deze motor en dat oordeel was nooit het probleem. Wat weg hoort te zijn is de tegenspraak in blok 5.',
 
-    'STAP B. De bevinding van deze ronde staat als LET OP in blok 5: "Laag 2+3 is bereikbaar zoals de app de meetketen aanroept". Staat daar LET OP, dan klopt de bevinding en staan spike-filter en smoothing uit voor \u00e1lle PIDs. Slaat hij om naar ok, dan is regel 75 van pidlane-datalog.js gerepareerd en mag deze proef weg.',
+    'STAP C. Geen rit nodig. Wat er te meten viel is met node gemeten; de gezondheidscheck draait nu in test-healthherziening.js met de echte parser, de echte tabellen en het echte oordeel erachter, en plmutate.sh zet de oude volgorde terug om te laten zien dat die test dan rood wordt.',
 
-    'STAP C. Geen rit nodig voor deze oplevering. Wat er te meten viel is gemeten met node; wat er in de auto te meten valt staat hieronder onder "wat deze ronde niet oplost" en is onveranderd.',
+    '── WAT ER IS VERANDERD ──────────────',
 
-    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'ÉÉN REGEL IN pidlane-rijsituatie.js. initialHealthScan() oordeelt eerst en stempelt daarna, en alleen bij \u0027ok\u0027. Gevolg naast het stempel: een waarde die de scan afkeurt komt niet meer in pidVals en pidHist terecht — tot nu toe bleef die staan, terwijl de app hem net zelf onbruikbaar had verklaard.',
 
-    'NIEUW \u2014 test-parser.js (52 toetsen). De meetketen van ruwe ELM-bytes tot meetwaarde, op de \u00e9chte functies: pidlane-data.js levert de tabellen, pidlane-datalog.js laag 1 t/m 3 en pidlane-diagbundel.js de parser. Formaat A en B, CAN-headers, de multiframe-regel uit \u00a711, de Mazda-lengtes (55/56 zijn 1 byte terwijl de tabel 2 zegt), de terugkoppeling naar PLPidLen, en laag 1 en 1b apart.',
+    'test-healthherziening.js — stap 6 erbij (9 toetsen). De scan draait in een sandbox met pidlane-data.js voor de defs, pidlane-diagbundel.js voor de parser, pidlane-datalog.js voor laag 1 en pidlane-kwaliteit.js voor het oordeel. Alleen updPID is een spion, want die zit aan het scherm vast; dát hij het versheidsstempel zet toetst stap 5 al op de echte bron. Er wordt eerst vastgesteld dat 019D wél netjes tot -40 parseert en dat het oordeel die -40 afkeurt — anders zou "de scan doet niets" ook groen geven.',
 
-    'NIEUW \u2014 test-token.js (52 toetsen). De sessietokens van de worker, met de echte WebCrypto van Node. Een geknoeide handtekening, een payload waarin de rol naar admin is opgehoogd, een verlopen token, een token zonder vervaldatum, een ander geheim, rommel, en auth() met het admin-token en de legacy-schakelaar.',
+    'plmutate.sh — zeventien mutaties. De nieuwe zet de oude volgorde terug (updPID vóór het oordeel) en verwacht test-healthherziening.js rood.',
 
-    'NIEUW \u2014 test-baseline.js (33 toetsen). Leren-van-normaal in pidlane-pids.js, dat tot nu toe in kopie onder test-waakronde stond \u00e9n bij de verkeerde module hoorde. De drie remmen apart: BASE_MIN_N, de sigma-bodem en de drempel van 3\u03c3. Inclusief de fout van 02-08: een momentwaarde vergelijken met de spreiding van sessiegemiddelden.',
+    'BLOK 5 — de #78-proef is bijgewerkt, niet toegevoegd. Hij noemt nu beide mogelijke oorzaken in zijn foutregel, meldt welke afgekeurde sensoren hij als tegenproef had, en geeft LET OP wanneer die er niet waren. De drie parserproeven en de #58-proef blijven staan: hun vragen zijn nog open.',
 
-    'HERSCHREVEN \u2014 test-waakronde.js (46 toetsen), test-healthgate.js (35) en test-mode21.js (34) laden nu hun onderwerp in plaats van het over te schrijven. Bij waakronde bleek een tweede les: alleen op de echte bron richten is niet genoeg, de toets moet ook onderscheiden. "NO DATA" bewijst niets over de tekstpoort \u2014 daar zit toch al geen geldige header in. Pas "SEARCHING...41055A" en "41055A STOPPED" laten zien of die poort werkelijk iets doet.',
+    '── WAT DEZE RONDE NIET OPLOST ─────────',
 
-    'NIEUW \u2014 plmutate.sh. De tegenproef onder plcheck.sh. Zestien nagebouwde fouten in de bronbestanden, elk met de test die daarvan rood hoort te worden; het script zet de fout erin, draait die ene test, verwacht exit 1 en zet het bestand terug. Weigert te draaien op een vuile werkmap. plcheck.sh meldt hoeveel tests er gedr\u00e1aid zijn; dit meldt wat ze zouden merken.',
+    '#58/#79 — de tweede FOUT van de run: het werkscherm liep tot 1730px door terwijl de navigatiebalk op 784px begint. Op ≤760px krijgt .app height:auto en mág #appGrid langer zijn dan het scherm; of dit een echte bevinding is of een proef die scrollende inhoud verkeerd leest, is alleen op een toestel te beslissen. Onveranderd.',
 
-    'BLOK 5 \u2014 drie proeven erbij, onderaan. De proeven van de eerste oplevering van 02-09 blijven staan: hun vragen (#79, #29, #19) zijn nog open en die zijn alleen in de auto te beantwoorden.',
+    'DE LET OP OVER HET VOERTUIGPROFIEL. Blok 1 meldde "staat in de opslag maar is bij het verbinden NIET geladen" voor een profiel van 0,3 uur oud. Dat profiel is in déze sessie zelf ontstaan (opgeslagen om 11:48:52, de run begon om 12:04) en kon dus niet geladen zijn. De uitzondering daarvoor kijkt naar 0,1 uur en die marge is te krap zodra je een kwartier na het verbinden meet. Vastgelegd in PIDLANE.md §11 — een tweede onderwerp, dus niet hier.',
 
-    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'FILTERED_PIDS in pidlane-datalog.js regel 75 wordt nog steeds met de verkeerde sleutelvorm bevraagd; laag 2+3 staan daarmee uit voor álle PIDs. Blok 5 meldt dat als LET OP zolang het zo is. Onveranderd — dat is een gedragswijziging in de meetketen die een eigen rit verdient.',
 
-    'DE BEVINDING ZELF. FILTERED_PIDS wordt in pidlane-datalog.js regel 75 met de verkeerde sleutelvorm bevraagd, waardoor laag 2+3 voor \u00e1lle PIDs wordt overgeslagen. Vastgelegd in PIDLANE.md \u00a711, bewust niet hier gerepareerd \u2014 \u00e9\u00e9n onderwerp per PR, en dit is een gedragswijziging in de meetketen die zijn eigen rit verdient.',
-
-    'DE REST VAN DE DEKKING. Achttien modules hebben nog geen enkele testverwijzing, waaronder totalcheck (872 regels), wizard (585), caravan (566) en onderdeel (513). Van de 36 routes in worker.js worden er nu zeven geraakt. Dit is een begin, geen dekking.',
-
-    '#79 \u2014 de veilige zones, alleen op een toestel. #29 en #19 \u2014 wachten op een rit van ruim tien minuten met de raildruk in de pollronde. #82 en #83 \u2014 het saldo-slot en het kasboek TokenLog. #49 \u2014 promptcaching staat nog uit. Alle vijf onveranderd.'
+    '#29 en #19 — wachten op een rit van ruim tien minuten met de raildruk in de pollronde. #82 en #83 — het saldo-slot en het kasboek TokenLog. #49 — promptcaching staat nog uit. #40 — 0155 en 0156 stonden ook deze run weer op 1 byte terwijl de tabel 2 zegt. Alle onveranderd.'
   ]
 };
 

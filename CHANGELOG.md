@@ -11,6 +11,35 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — EERST OORDELEN, DAN STEMPELEN
+
+       • 🩺 DE GEZONDHEIDSCHECK STEMPELDE TE VROEG. initialHealthScan()
+         riep updPID() aan vóór assessPidQuality(). updPID zet
+         _pidLastUpd[pid] — de versheidsbron waar blok 5, blok 14 en
+         de stale-watchdog op draaien — dus een sensor die de scan
+         een regel later afkeurde droeg tóch het stempel "heeft in
+         deze sessie gemeten". De testrun van 02-09 12:05 meldde dat
+         als FOUT op 019D (Turbo temp inlaat B): een atmosferische
+         motor antwoordt daar met 0x00 = -40 °C, precies het
+         definitie-minimum waar de dummy-detectie 'nodata' van maakt.
+
+       • 🔁 GEEN HERZIENINGSFOUT MAAR EEN VOLGORDEFOUT. De proef in
+         blok 5 wees naar plHealthHerzien(), maar die kon het nooit
+         rechtzetten: hij legt dezelfde -40 opnieuw langs dezelfde
+         regel en krijgt hetzelfde antwoord. De scan oordeelt nu
+         eerst en stempelt daarna, en alleen bij 'ok'. Een
+         afgekeurde waarde blijft ook uit pidVals en pidHist.
+
+       • 🧪 DE SCAN HEEFT NU EEN TEST. test-healthherziening.js draait
+         initialHealthScan() in een sandbox met de echte defs, de
+         echte parser, laag 1 en het echte oordeel erachter — en
+         stelt eerst vast dat 019D wél tot -40 parseert en dat het
+         oordeel die -40 afkeurt, anders zou "de scan doet niets"
+         ook groen geven. plmutate.sh zet de oude volgorde terug en
+         verwacht die test rood: zeventien mutaties nu.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — DE TESTREEKS KRIJGT EEN TEGENPROEF
 
        • 🧪 VIER NAGEBOUWDE FOUTEN KWAMEN DOOR DE GATE HEEN. Er zijn
