@@ -1354,9 +1354,12 @@ __name(saldoStub, "saldoStub");
 // Voert fn() uit terwijl het Saldo-slot van deze klant vast staat, en geeft
 // het los in een finally — ook als fn() gooit. fn() hoort zelf een VERSE
 // klantZoek() te doen zodra hij binnen is: dat is de eigenlijke
-// racebeveiliging, niet het slot op zich. Zie handleMessages,
-// handleCreditsRedeem en handleKlantOnboarding voor de drie plekken die dit
-// gebruiken — dat zijn alle drie de plekken die Saldo lezen en terugschrijven.
+// racebeveiliging, niet het slot op zich. Vier plekken gebruiken dit, en dat
+// zijn alle plekken die Saldo lezen en terugschrijven: handleMessages
+// (AI-afboeking), handleCreditsRedeem (activatiecode), handleKlantOnboarding
+// (proeftegoed) en handleAdminKlantenPost actie "bijboeken". Die laatste ging
+// er tot 02-09-2026 buitenom (#82); staat er ooit een vijfde schrijver bij,
+// dan hoort hij hier ook door.
 //
 // Lukt het niet om het slot zelf aan te vragen (REMOTE_SESSION ontbreekt, de
 // DO is onbereikbaar), dan gooit dit door in plaats van fn() zonder
@@ -2822,24 +2825,71 @@ async function handleAdminKlantenPost(request, env) {
     // zijn verbruik terug. Hier wordt vlak vóór het schrijven gelezen, en dat
     // scheelt het verschil tussen "een paar milliseconden" en "een kwartier".
     //
-    // Airtable kent geen transacties, dus twee beheerders die op dezelfde
-    // seconde bijboeken kunnen elkaar nog steeds overschrijven. Bij één
-    // beheerder is dat geen praktisch risico; het staat hier zodat niemand
-    // later denkt dat dit atomair is.
+    // DOOR HET SALDO-SLOT, EN WAAROM DE VORIGE WAARSCHUWING HIER MISWEES.
+    // Er stond dat twee beheerders die op dezelfde seconde bijboeken elkaar
+    // konden overschrijven, en dat dat bij één beheerder geen praktisch risico
+    // is. Dat klopt allebei, maar het is de verkeerde botsing. De botsing die
+    // er wél toe doet is beheerder × klant: je boekt 100 bij op het moment dat
+    // de klant een analyse draait. Die analyse leest 30 binnen het slot, boekt
+    // af naar 19 en schrijft terug; jij las 30 buiten het slot en schrijft 130.
+    // Eén van beide mutaties verdwijnt geruisloos, en welke hangt af van wie
+    // het laatst schrijft.
+    //
+    // Dat is niet theoretisch op het moment dat het het meest voorkomt: een
+    // klant belt dat zijn tegoed op is en jij boekt bij terwijl hij het
+    // opnieuw probeert. Sinds 02-09-2026 loopt deze route daarom door
+    // metSaldoSlot(), net als de AI-afboeking, de activatiecode en het
+    // proeftegoed. Dat waren de drie plekken; dit was de vierde die er
+    // buitenom ging.
+    //
+    // TWEE LEZINGEN, EN DAT IS GEEN VERSPILLING. Het slot staat op het
+    // e-mailadres en deze route krijgt een record-id binnen, dus het adres
+    // moet bekend zijn vóór het slot dicht kan. De eerste fetch haalt dat
+    // adres op (en beantwoordt meteen "bestaat deze klant"); het saldo waarmee
+    // gerékend wordt komt uit de tweede, binnen het slot. Zou de eerste lezing
+    // het saldo leveren, dan stond de race er nog precies zo.
     if (actie === "bijboeken") {
       const d = Math.round(Number(b.delta));
       if (!isFinite(d) || d === 0) return json({ ok: false, error: "Bijboeking moet een getal zijn dat niet 0 is." }, 400);
       if (Math.abs(d) > 1e5) return json({ ok: false, error: "Bijboeking buiten bereik." }, 400);
-      const r0 = await fetch(
-        `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
-        { headers: hdr }
-      );
+
+      const recUrl = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`;
+      const r0 = await fetch(recUrl, { headers: hdr });
       if (!r0.ok) return json({ ok: false, error: "Klant niet gevonden." }, 404);
-      const huidig = Number(((await r0.json()).fields || {}).Saldo || 0);
-      const nieuw = huidig + d;
-      if (nieuw < 0) return json({ ok: false, error: `Saldo zou ${nieuw} worden; het staat nu op ${huidig}.` }, 400);
-      if (nieuw > 1e6) return json({ ok: false, error: "Saldo buiten bereik." }, 400);
-      await klantPatch(env, id, { Saldo: nieuw });
+      const email = String(((await r0.json()).fields || {}).Email || "").trim();
+      // Zonder adres is er geen naamruimte om het slot op te zetten, en dan
+      // zou een bijboeking langs de klant heen kunnen schrijven. Weigeren en
+      // niet stilletjes buitenom gaan: dat is de fout die hier net weg is.
+      if (!email)
+        return json({ ok: false, code: "saldo_geen_email", error: "Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden." }, 409);
+
+      let uitkomst;
+      try {
+        uitkomst = await metSaldoSlot(env, email, async () => {
+          // Verse lezing binnen het slot — dat is de eigenlijke
+          // racebeveiliging, niet het slot op zich (zie metSaldoSlot).
+          const r1 = await fetch(recUrl, { headers: hdr });
+          if (!r1.ok) return { fout: "Klant niet gevonden.", status: 404 };
+          const huidig = Number(((await r1.json()).fields || {}).Saldo || 0);
+          const nieuw = huidig + d;
+          if (nieuw < 0) return { fout: `Saldo zou ${nieuw} worden; het staat nu op ${huidig}.`, status: 400 };
+          if (nieuw > 1e6) return { fout: "Saldo buiten bereik.", status: 400 };
+          await klantPatch(env, id, { Saldo: nieuw });
+          return { huidig, nieuw };
+        });
+      } catch (e) {
+        // metSaldoSlot gooide zelf: het slot kon niet aangevraagd worden.
+        // Dan is doorgaan zonder bescherming precies de race terugbrengen.
+        try { console.error("[admin] saldo-slot onbereikbaar bij bijboeken op " + id + " :: " + String(e && e.message || e)); }
+        catch (_) { /* stil: melden mag de afhandeling niet breken */ }
+        return json({ ok: false, code: "saldo_slot_stuk", error: "Het tegoed kon niet veilig gewijzigd worden. Probeer het zo nog eens." }, 503);
+      }
+      if (uitkomst.bezet)
+        return json({ ok: false, code: "saldo_bezet", error: "Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens." }, 409);
+
+      const uit = uitkomst.result || {};
+      if (uit.fout) return json({ ok: false, error: uit.fout }, uit.status);
+      const huidig = uit.huidig, nieuw = uit.nieuw;
       const vast = await klantAudit(env, id,
         `saldo ${d > 0 ? "+" : ""}${d} (${huidig} → ${nieuw})` + (b.reden ? ` — ${String(b.reden).slice(0, 120)}` : ""),
         b.door);
