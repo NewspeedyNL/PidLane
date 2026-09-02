@@ -136,6 +136,11 @@ var KRITIEK = [
   // dan belandt álles in het vak "beweegt" en is de indeling die de modus
   // bestaansrecht geeft stil verdwenen.
   'slimGroep',
+  // Kort een sensornaam af op betekenis (pidlane-neon.js). De tellerplaat
+  // leent hem voor de namen onder de meters; ontbreekt hij, dan staan daar de
+  // volledige namen en valt de vijfde meter weer van de rij — precies de
+  // klacht uit #68, alleen dan zonder dat iemand ziet waaróm.
+  'hudShortLabel',
   // Wat blok 5 van de testrun nameet. Elk van deze namen is een gedragsproef
   // die stil zou overslaan als de module niet meekwam — en dan zegt de
   // testrun "goed" terwijl er niets gemeten is. De namen van de opleveringen

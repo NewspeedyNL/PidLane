@@ -11,6 +11,49 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE MAAT VOLGT HET GEDRAG
+
+       • 📐 EEN TEGEL IS ZO GROOT ALS HIJ NÚ ZEGT (#61).
+         De slimme weergave deelde in op wat voor soort signaal
+         iets was, en dat bepaalde meteen de maat. Een brandstof-
+         peil dat een uur lang 68% aanwijst kreeg zo het grootste
+         cijfer van het scherm. De vorm blijft aan de soort hangen
+         (balk, meter, tegel); de maat komt nu uit het gedrag:
+         staat het oordeel op oranje of rood dan wordt de tegel
+         groot, ligt het signaal na 24 metingen stil dan zakt hij
+         naar één regel in het nieuwe vak "💤 Rustig".
+         De volgorde van die twee regels is het punt: een waarde
+         die vastligt MAAR op oranje staat is juist het gevaarlijk-
+         ste geval, en die mag niet wegzakken omdát hij stilligt.
+
+       • ↕️ OMHOOG MAG ALTIJD, OMLAAG ALLEEN BIJ DE HERWEGING.
+         Eén herweging per opbouw, dertig seconden na het tekenen.
+         Daarna staat de indeling stil, behalve dat een tegel die
+         uit Rustig omhoog moet dat meteen doet — een auto die
+         stilstond en gaat rijden heeft een snelheid die daar niet
+         thuishoort. Tegels die tijdens het rijden van vak wisselen
+         maken het scherm onleesbaar, en dat is erger dan een tegel
+         met het verkeerde formaat.
+
+       • 🎛️ DE TELLERPLAAT DRAAGT LEESBARE NAMEN (#68).
+         Vijf meters pasten niet naast elkaar; hun namen werden
+         afgekapt tot "MOTORTOE…" en "GASKLEP P…", en dan wijst de
+         plaat een signaal aan zonder te zeggen welk. De namen
+         komen nu van hudShortLabel() uit de HUD — afkorten op
+         betekenis, geen tweede lijst — met de garantie erbij die
+         de HUD niet nodig heeft: twee meters dragen nooit dezelfde
+         naam. "Gaspedaal positie D" en "... E" kwamen allebei uit
+         op "GASPED POS"; bij zo'n botsing valt de hele groep terug
+         op de volledige naam. Kolommen van 56px, twee regels voor
+         de naam, en de volledige naam in de tooltip.
+
+       • 🔤 EEN LANG WOORD LIEP BUITEN ZIJN TEGEL.
+         "ONTSTEKINGSTIMING" en "BRANDSTOFVERBRUIK" hebben geen
+         spatie om op af te breken en liepen daardoor over de rand
+         van hun eigen tegel heen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — BIJBOEKEN DOOR HET SALDO-SLOT
 
        • 🔒 DE VIERDE SALDOSCHRIJVER GING OM HET SLOT HEEN (#82).

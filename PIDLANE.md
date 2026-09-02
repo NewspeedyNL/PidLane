@@ -152,7 +152,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 |---|---|---|---|
 | 1 | `capacitor.js` | — | alleen in APK aanwezig; `onerror` vangt het web-geval af |
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
-| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de indeling van de slimme weergave in vier vakken) |
+| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de VORM van de slimme weergave; de MAAT — en daarmee het vijfde vak "Rustig" — zit in `slimMaat()` in `pidlane-pids.js`) |
 | 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
 
 ### Fase 2 — kern (in `<body>`, rond regel 2128)
@@ -671,6 +671,114 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+### De maat van een tegel volgt zijn gedrag — 02-09-2026 (#61, #68)
+
+**Wat er gevraagd werd:** fijnafstemming van de slimme weergave. Concreet:
+"brandstofpeil is zeer statisch, die hoeft niet zo groot in beeld", en de vraag
+of het scherm zichzelf moet indelen of dat er een bewerkknop moet komen.
+
+**Wat eronder zat.** `slimGroep()` deelde in op wat voor SOORT signaal iets is,
+en die soort bepaalde meteen de maat: `dash` betekende 30 px. Een brandstofpeil
+dat een uur lang 68 % aanwijst kreeg daardoor het grootste cijfer van het
+scherm, terwijl een MAF die op 2,00 g/s vastligt er even opgewekt bij stond als
+een koelwater dat klimt. De indeling was niet fout — hij beantwoordde alleen
+één vraag (*wat voor signaal is dit?*) en niet de tweede (*hoeveel zegt het
+nú?*). De vorm hoort bij de soort, de maat bij het gedrag; dat waren twee
+vragen die aan één antwoord vastzaten.
+
+`slimMaat()` beantwoordt de tweede. Drie uitkomsten, en **de volgorde van de
+regels is de hele beslissing:**
+
+| volgorde | regel | waarom |
+|---|---|---|
+| 1 | oordeel op `warn`/`danger` → **groot** | een waarde die vastligt maar op oranje staat is het gevaarlijkste geval dat er is |
+| 2 | minder dan 24 metingen → **normaal** | "ligt hij stil?" is een uitspraak over wat er níét gebeurde, en die is pas iets waard na lang genoeg kijken |
+| 3 | beweegt niet → **regel** | één regel in het nieuwe vak "Rustig" |
+
+Zou regel 1 ná regel 3 komen, dan zakt een brandstoftrim die op +25 % blijft
+plakken naar één regeltje omdát hij niet beweegt. Dat is geen randgeval maar
+precies het beeld van een storing: een regelkring die vastloopt beweegt niet
+meer. `plmutate.sh` draait die volgorde om en `test-slimmeweergave.js` wordt
+daar rood van.
+
+**SLIM_MAAT_MIN is bewust 24 en niet 4.** `SLIM_BEWEEG_MIN` (4) hoort bij een
+andere vraag. "Beweegt hij?" is met vier metingen te beantwoorden — je ziet
+beweging of niet. "Ligt hij stil?" niet: dat is een bewering over afwezigheid,
+en vier metingen die toevallig gelijk zijn bewijzen niets. Tot dat aantal
+gehaald is, is de maat `normaal` — de veilige kant, net als bij de allowlists
+van `slimGroep()`.
+
+**Omhoog mag altijd, omlaag alleen bij de herweging.** Dit is de regel die het
+scherm leesbaar houdt, en hij is asymmetrisch met opzet. Er is één herweging
+per opbouw (30 s na het tekenen); daarna staat de indeling stil. Uitzondering:
+een tegel die uit "Rustig" omhoog moet, gaat meteen. De aanleiding is concreet
+— zet je de app aan terwijl de auto stilstaat, dan is de snelheid 0 en ligt hij
+stil, en zonder deze uitzondering zou de snelheid de hele rit een regeltje
+blijven. Andersom is er geen haast: dat iets stil is komen te liggen is opmaak,
+en een tegel die tijdens het rijden van vak wisselt is onleesbaarder dan een
+tegel met het verkeerde formaat. Zonder de asymmetrie zou een signaal dat op de
+grens van "beweegt" balanceert heen en weer springen tussen twee vakken.
+
+**Waarom verplaatsen en niet opnieuw tekenen.** `slimPlaats()` verhuist het
+bestaande element met `appendChild`. Een `renderGauges()` zou alle tegels
+weggooien en terugbouwen, en dan is elke sparkline, elke balkstand en elke
+tooltip opnieuw gezet voor één tegel die van vak wisselt. Het DOM-model in
+`test-slimmeweergave.js` bootste dat aanvankelijk verkeerd na: het duwde het
+element in de nieuwe ouder zonder het bij de oude weg te halen, zodat een tegel
+in twee vakken tegelijk had kunnen staan zonder dat de test dat merkte. Dat is
+nu gerepareerd én het is een eigen toets — een groene test die iets bewijst wat
+de browser nooit doet, is erger dan geen test.
+
+**De tellerplaat: korte namen, en nooit twee keer dezelfde (#68).** Vijf
+gaspad-signalen pasten niet naast elkaar; de vijfde viel op een tweede rij en
+de namen werden afgekapt tot `MOTORTOE…`, `GASKLEP P…` en `ABS. MOTO…`. Een
+plaat waarop je niet ziet wélke meter je leest doet precies niet wat #68 vroeg.
+Afkorten doet `hudShortLabel()` al voor de HUD — op betekenis en niet op
+tekenaantal — dus dat is hergebruik en geen tweede lijst.
+
+Wat er wél bij moest is een garantie die de HUD niet nodig heeft: **op één
+plaat mogen twee meters nooit dezelfde naam dragen.** "Gaspedaal positie D" en
+"... E" korten allebei af tot `GASPED POS`. Bij een botsing valt de hele groep
+terug op de volledige naam — de hele groep, niet alleen de tweede, want één
+afgekorte naast één volledige leest als twee verschillende soorten. Dat de
+namen op de plaat twee regels mogen gebruiken hoort daarbij: een ellipsis knipt
+juist het onderscheidende deel weg.
+
+**Wat hiervan niet is opgelost.** `Abs. motorbelasting` kort nog steeds af tot
+`ABS. MOTO`. Dat komt uit stap 3 van `hudShortLabel()` (eerste zes tekens van
+het eerste woord, eerste vier van het tweede), en die functie is van de HUD:
+hem verbouwen verandert ook de hoekmeters daar, en dat is een eigen onderwerp.
+De botsingscontrole vangt het niet, want het botst met niets — het is alleen
+geen naam. Vastgelegd als #95.
+
+**De handmatige kant is bewust niet gebouwd.** De vraag was ook: auto of een
+bewerkknop? Het antwoord is *allebei, maar niet als twee standen*. Een
+schakelaar auto/handmatig maakt twee bronnen voor één scherm, en dan is
+onbeantwoordbaar waar een sensor hoort die vanavond nieuw ontdekt wordt: in de
+handlijst staat hij niet, dus hij valt nergens. Automatisch rekent altijd; met
+de hand komen er hooguit *uitzonderingen* overheen (groot/klein/verbergen als
+diff per auto, met dezelfde sleutel als `PLPidLen`: VIN, anders merk|model|jaar).
+Dat is fase 2, en het staat als #94 open — het voegt blijvende staat per
+voertuig toe, een extra modus aan een scherm dat er al vier draagt, en het raakt
+de sensorkeuze die met #90 nog niet op orde is.
+
+Twee onderdelen van dat voorstel zijn **afgewezen** en dat is het bewaren
+waard. *Actief/niet-actief in het bewerkscherm* niet: dat is de PID-keuze, en
+een dubbeltik op een tegel doet het al — een derde deur naar dezelfde kamer is
+hier al drie keer een bug geweest. *Min/max met de hand* niet: het puntje op
+een tegel is een veiligheidsoordeel uit `dH`, `wH` en `PID_HARD_LIMITS`, en een
+handmatige grens die een tegel groen kleurt is het gevaarlijkste knopje dat
+deze app zou kunnen krijgen. Wat er onder die wens zit is #66 (de grove
+schaal), en het betere antwoord daarop is het *waargenomen* bereik per auto
+leren — niet een getal dat iemand intypt.
+
+**Wat een rit moet uitwijzen.** Of het vak "Rustig" op een echte auto bevat wat
+je verwacht, en of er niet iets in belandt dat je juist groot wilde zien. Blok 5
+van de testrun schrijft per vak de aantallen op plus de namen van wat er stil
+lag, en meldt FOUT als een tegel in twee vakken hangt of als twee meters op de
+plaat dezelfde naam dragen — dat laatste hangt aan de combinatie van PIDs die
+déze auto levert, en die is in node verzonnen.
 
 ### De vierde saldoschrijver ging om het slot heen — 02-09-2026 (#82, opgelost)
 

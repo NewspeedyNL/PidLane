@@ -88,6 +88,10 @@ function knip(bron, van, tot, wat) {
   return bron.slice(i, j);
 }
 const SLIM_BRON = knip(PIDS_BRON, 'const SLIM_BEWEEG_DEEL', '\nfunction updPID(', 'het slim-blok');
+// Het oordeel ok/warn/danger. slimMaat() leunt erop en de volgorde van die
+// twee is de kern van de maat, dus dit moet de echte functie zijn en niet een
+// nagebouwde drempelregel — die zou meelopen in plaats van te controleren.
+const OORDEEL_BRON = knip(PIDS_BRON, 'function pidOordeel(', '\nfunction applyG(', 'pidOordeel()');
 const RENDER_BRON = knip(PIDS_BRON, 'function renderGauges(){', '// ── Dubbeltik op een tegel', 'renderGauges()');
 // De weergavekeuze zelf: standaard, herstel uit localStorage en setPidView().
 const VIEW_BRON = knip(PIDS_BRON, 'const PID_VIEW_MODI', 'function startStaleWatchdog(){', 'het weergavemodus-blok');
@@ -118,14 +122,24 @@ function Element(tag) {
     }
   });
 }
-Element.prototype.appendChild = function (k) { this.children.push(k); k.parentNode = this; return k; };
+// Een echte appendChild HAALT het element eerst bij zijn vorige ouder weg.
+// Zonder die stap zou een tegel die naar het vak "Rustig" verhuist in twee
+// vakken tegelijk staan, en dan bewijst een groene test iets wat de browser
+// nooit doet.
+Element.prototype.appendChild = function (k) {
+  if (k.parentNode && k.parentNode !== this) {
+    const i = k.parentNode.children.indexOf(k);
+    if (i > -1) k.parentNode.children.splice(i, 1);
+  }
+  this.children.push(k); k.parentNode = this; return k;
+};
 Element.prototype.removeAttribute = function () {};
 Element.prototype.setAttribute = function () {};
 
 // Alle PIDs die deze test gebruikt, met hun echte definitie uit pidlane-data.js.
 const DEFS = D.ALL_PID_DEFS;
 
-function maakOmgeving(actief, renderBron, slimBron) {
+function maakOmgeving(actief, renderBron, slimBron, oordeelBron) {
   const reg = {};
   ['gGrid', 'vasteData', 'pidViewSwitch'].forEach(function (id) {
     reg[id] = new Element('div'); reg[id].id = id;
@@ -157,10 +171,19 @@ function maakOmgeving(actief, renderBron, slimBron) {
     applyG: function () {},
     PID_ALT_KANAAL: {}
   };
+  // De geplande herweging (SLIM_HERWEEG_MS). Niet meteen laten lopen: dat er
+  // een tijd tussen zit is juist de afspraak. De test vuurt hem zelf af via
+  // __herweging(), zodat de echte timerweg gebruikt wordt en niet
+  // slimHerweeg() met de hand.
+  let gepland = null;
+  ctx.setTimeout = function (fn) { gepland = fn; return 1; };
+  ctx.clearTimeout = function () { gepland = null; };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext((slimBron || SLIM_BRON) + '\n' + (renderBron || RENDER_BRON), ctx, { filename: 'pidlane-pids.js (slim)' });
+  vm.runInContext((oordeelBron || OORDEEL_BRON) + '\n' + (slimBron || SLIM_BRON) + '\n' + (renderBron || RENDER_BRON),
+    ctx, { filename: 'pidlane-pids.js (slim)' });
   ctx.reg = reg;
+  ctx.__herweging = function () { if (!gepland) return false; gepland(); return true; };
   return ctx;
 }
 
@@ -238,8 +261,8 @@ function keurVierVakken(renderBron) {
   // dan wat de bestuurder doet, dan de temperaturen, dan de rest. Een vak dat
   // stilletjes van plaats wisselt is voor de gebruiker een ander scherm.
   const volgorde = ctx.reg.gGrid.children.map(function (c) { return String(c.id).replace('slimSec-', ''); });
-  if (volgorde.join(',') !== 'dash,meter,temp,rest')
-    uit.push('de vakken staan in de volgorde ' + volgorde.join(',') + ', verwacht dash,meter,temp,rest');
+  if (volgorde.join(',') !== 'dash,meter,temp,rest,rustig')
+    uit.push('de vakken staan in de volgorde ' + volgorde.join(',') + ', verwacht dash,meter,temp,rest,rustig');
   return uit;
 }
 
@@ -252,6 +275,7 @@ function keurLeegVakVerborgen() {
   if (ctx.reg['slimSec-dash'].style.display !== 'none') uit.push('een leeg dashboardvak staat toch in beeld');
   if (ctx.reg['slimSec-meter'].style.display !== 'none') uit.push('een lege tellerplaat staat toch in beeld');
   if (ctx.reg['slimSec-rest'].style.display !== 'none') uit.push('een leeg restvak staat toch in beeld');
+  if (ctx.reg['slimSec-rustig'].style.display !== 'none') uit.push('een leeg vak "Rustig" staat toch in beeld');
   if (ctx.reg['slimSec-temp'].style.display === 'none') uit.push('het gevulde temperatuurvak staat op display:none');
   return uit;
 }
@@ -501,6 +525,164 @@ function keurKnopStaatGoed() {
   return uit;
 }
 
+// ── 6. de maat volgt het gedrag, niet de soort ───────────────────
+// De vorm van een tegel hangt aan slimGroep(); de MAAT hangt aan wat het
+// signaal doet. Drie uitkomsten, en de volgorde waarin ze getoetst worden is
+// het hele punt: een waarde die vastligt maar op oranje staat is juist het
+// gevaarlijkste geval en mag niet naar één regel zakken.
+function vlakkeHistorie(n, v) {
+  const r = []; for (let i = 0; i < n; i++) r.push({ v: v }); return r;
+}
+function keurMaat(slimBron) {
+  const ctx = maakOmgeving(['012F', '010D', '0106', '0105', '010C'], null, slimBron);
+  ctx.renderGauges();
+  const uit = [];
+  // Nog te weinig gezien: geen uitspraak, dus de veilige kant.
+  ctx.pidHist['012F'] = vlakkeHistorie(8, 68);
+  if (ctx.slimMaat('012F', DEFS['012F']) !== 'normaal')
+    uit.push('met 8 metingen wordt een brandstofpeil al "' + ctx.slimMaat('012F', DEFS['012F']) + '" genoemd');
+  // Lang genoeg gezien en het beweegt niet: één regel.
+  ctx.pidHist['012F'] = vlakkeHistorie(30, 68);
+  if (ctx.slimMaat('012F', DEFS['012F']) !== 'regel')
+    uit.push('een brandstofpeil dat 30 metingen op 68% staat krijgt maat "' + ctx.slimMaat('012F', DEFS['012F']) + '", verwacht "regel"');
+  // Het beweegt wél: gewone maat.
+  ctx.pidHist['010D'] = [];
+  for (let i = 0; i < 30; i++) ctx.pidHist['010D'].push({ v: 20 + i * 3 });
+  if (ctx.slimMaat('010D', DEFS['010D']) !== 'normaal')
+    uit.push('een snelheid van 20 naar 107 km/u krijgt maat "' + ctx.slimMaat('010D', DEFS['010D']) + '", verwacht "normaal"');
+  // DE VOLGORDE. Brandstoftrim kort (0106) heeft grenzen; een waarde die
+  // vastligt op +25% is precies de storing die je wilt zien, en die mag niet
+  // naar de rustige strook zakken omdát hij stilligt.
+  const trim = DEFS['0106'];
+  if (!trim || typeof trim.wH !== 'number')
+    uit.push('0106 heeft geen waarschuwingsgrens meer in pidlane-data.js — deze toets meet dan niets');
+  else {
+    ctx.pidHist['0106'] = vlakkeHistorie(30, trim.wH + 5);
+    ctx.pidVals['0106'] = trim.wH + 5;
+    const m = ctx.slimMaat('0106', trim);
+    if (m !== 'groot')
+      uit.push('een brandstoftrim die vastligt op ' + (trim.wH + 5) + '% krijgt maat "' + m + '", verwacht "groot" — stilstand mag een waarschuwing nooit wegstoppen');
+  }
+  // Temperaturen en meters hebben hun eigen vorm en krijgen geen maat.
+  if (ctx.slimMaat('0105', DEFS['0105']) !== null)
+    uit.push('een temperatuur krijgt een maat (' + ctx.slimMaat('0105', DEFS['0105']) + ') terwijl hij in het balkdiagram hoort');
+  if (ctx.slimMaat('010C', DEFS['010C']) !== null)
+    uit.push('een meter krijgt een maat (' + ctx.slimMaat('010C', DEFS['010C']) + ') terwijl hij op de tellerplaat hoort');
+  return uit;
+}
+
+// De herweging verhuist de tegels ook echt, en pas ná de wachttijd.
+function keurHerweging(slimBron, renderBron) {
+  const ctx = maakOmgeving(['012F', '010D', '0105'], renderBron, slimBron);
+  ctx.pidHist['012F'] = vlakkeHistorie(30, 68);
+  ctx.pidHist['010D'] = [];
+  for (let i = 0; i < 30; i++) ctx.pidHist['010D'].push({ v: 20 + i * 3 });
+  ctx.renderGauges();
+  const uit = [];
+  // Bij het opbouwen is de historie er al, dus dan hoort het meteen goed te
+  // staan: een herbouw midden in een rit mag een stilliggende sensor niet
+  // eerst een halve minuut groot in beeld zetten.
+  if (pidsIn(ctx, 'rustig').join(',') !== '012F')
+    uit.push('vak Rustig bevat ' + (pidsIn(ctx, 'rustig').join(',') || '(niets)') + ', verwacht 012F');
+  if (pidsIn(ctx, 'dash').join(',') !== '010D')
+    uit.push('dashboardvak bevat ' + pidsIn(ctx, 'dash').join(',') + ', verwacht alleen 010D');
+  if (ctx.reg['slimSec-rustig'].style.display === 'none')
+    uit.push('vak Rustig staat op display:none terwijl er een tegel in zit');
+  // Een tegel staat nooit in twee vakken tegelijk.
+  const overal = ['dash', 'meter', 'temp', 'rest', 'rustig'].reduce(function (a, g) { return a.concat(pidsIn(ctx, g)); }, []);
+  if (overal.length !== new Set(overal).size)
+    uit.push('een tegel staat in meer dan één vak: ' + overal.join(','));
+  // En de geplande herweging: een verse start heeft nog geen historie, dus
+  // dan staat alles nog op zijn eigen vak. Pas de herweging deelt opnieuw in.
+  const vers = maakOmgeving(['012F', '010D'], renderBron, slimBron);
+  vers.renderGauges();
+  if (pidsIn(vers, 'rustig').length)
+    uit.push('zonder historie belandt er meteen iets in Rustig: ' + pidsIn(vers, 'rustig').join(','));
+  vers.pidHist['012F'] = vlakkeHistorie(30, 68);
+  vers.pidHist['010D'] = [];
+  for (let i = 0; i < 30; i++) vers.pidHist['010D'].push({ v: 20 + i * 3 });
+  if (!vers.__herweging()) uit.push('er is helemaal geen herweging ingepland na het opbouwen');
+  if (pidsIn(vers, 'rustig').join(',') !== '012F')
+    uit.push('na de herweging bevat Rustig ' + (pidsIn(vers, 'rustig').join(',') || '(niets)') + ', verwacht 012F');
+  return uit;
+}
+
+// Omhoog mag altijd, omlaag alleen bij de herweging.
+function keurAsymmetrie(slimBron) {
+  const ctx = maakOmgeving(['012F', '010D'], null, slimBron);
+  ctx.pidHist['010D'] = vlakkeHistorie(30, 0);      // stilstaande auto
+  ctx.pidHist['012F'] = vlakkeHistorie(30, 68);
+  ctx.renderGauges();
+  const uit = [];
+  if (pidsIn(ctx, 'rustig').sort().join(',') !== '010D,012F')
+    uit.push('een stilstaande auto zet niet beide tegels in Rustig, maar ' + pidsIn(ctx, 'rustig').join(','));
+  // De auto trekt op: de snelheid hoort meteen terug omhoog, zonder op de
+  // volgende herweging te wachten — die komt er namelijk niet meer.
+  const rijdt = [];
+  for (let i = 0; i < 30; i++) rijdt.push({ v: i * 3 });
+  ctx.pidHist['010D'] = rijdt;
+  ctx.slimBij('010D', 87, DEFS['010D'], 'ok', ctx.reg['gc-010D']);
+  if (pidsIn(ctx, 'dash').indexOf('010D') < 0)
+    uit.push('de snelheid gaat rijden maar blijft in Rustig staan');
+  // En andersom: een tegel die net stil is komen te liggen zakt NIET tijdens
+  // het rijden weg. Anders springt een tegel op de grens heen en weer.
+  ctx.pidHist['010D'] = vlakkeHistorie(30, 87);
+  ctx.slimBij('010D', 87, DEFS['010D'], 'ok', ctx.reg['gc-010D']);
+  if (pidsIn(ctx, 'dash').indexOf('010D') < 0)
+    uit.push('een tegel zakt tijdens het rijden alsnog weg naar Rustig — dan verspringt de indeling onder je ogen');
+  return uit;
+}
+
+// ── 7. de namen op de tellerplaat ────────────────────────────────
+// Hier hoort de ECHTE hudShortLabel() te draaien, met het echte
+// HUD_LABEL_DICT uit pidlane-data.js. Een nagebouwde afkorter zou precies de
+// botsing wegnemen die getoetst moet worden: dat "Gaspedaal positie D" en
+// "... E" allebei op "GASPED POS" uitkomen is geen bedachte fout maar wat die
+// functie vandaag doet.
+const NEON_BRON = (function () {
+  const bron = fs.readFileSync('pidlane-neon.js', 'utf8');
+  const i = bron.indexOf('function hudShortLabel(name){');
+  if (i < 0) throw new Error('hudShortLabel() niet gevonden in pidlane-neon.js — hernoemd?');
+  const j = bron.indexOf('\nfunction ', i + 10);
+  if (j < 0) throw new Error('het einde van hudShortLabel() is niet te vinden');
+  return bron.slice(i, j);
+})();
+function metKorteNamen(actief, slimBron) {
+  const ctx = maakOmgeving(actief, null, slimBron);
+  ctx.HUD_LABEL_DICT = D.HUD_LABEL_DICT;
+  vm.runInContext(NEON_BRON, ctx, { filename: 'pidlane-neon.js (labels)' });
+  return ctx;
+}
+function keurMeterNamen(slimBron) {
+  // De vijf van de tellerplaat uit de schermafdruk, inclusief de twee
+  // pedaalsensoren die vandaag op dezelfde afkorting uitkomen.
+  const plaat = ['010C', '0104', '0143', '014A', '014B'];
+  const ctx = metKorteNamen(plaat, slimBron);
+  const uit = [];
+  if (typeof ctx.hudShortLabel !== 'function') return ['hudShortLabel() is niet geladen; deze toets meet niets'];
+  const namen = ctx.slimMeterLabels(plaat);
+  // 1. Elke meter heeft een naam, en die is korter dan de volle naam of gelijk.
+  plaat.forEach(function (pid) {
+    if (!namen[pid]) uit.push(pid + ' krijgt geen naam op de tellerplaat');
+  });
+  // 2. En de kern: nooit twee meters met dezelfde naam.
+  const gezien = {};
+  Object.keys(namen).forEach(function (pid) {
+    const n = String(namen[pid]).toUpperCase();
+    if (gezien[n]) uit.push('"' + n + '" staat op twee meters tegelijk: ' + gezien[n] + ' en ' + pid);
+    gezien[n] = pid;
+  });
+  // 3. Dat de afkorting überhaupt iets doet: het toerental is korter dan
+  //    "Motortoerental", anders is de hele stap zinloos.
+  if (namen['010C'] && namen['010C'].length >= DEFS['010C'].name.length)
+    uit.push('het toerental wordt niet afgekort: "' + namen['010C'] + '"');
+  // 4. Alleen de tellerplaat. Een tegel in "Beweegt" heeft de ruimte en houdt
+  //    zijn volledige naam — afkorten waar het niet hoeft is verlies.
+  const ruim = metKorteNamen(['010C', '012C'], slimBron).slimMeterLabels(['010C', '012C']);
+  if (ruim['012C']) uit.push('een tegel buiten de tellerplaat krijgt tóch een korte naam');
+  return uit;
+}
+
 // ── draaien ──────────────────────────────────────────────────────
 console.log('Slimme weergave — standaard, tellerplaat, temperatuurbalken, trend waar het beweegt (#61, #66, #68)\n');
 
@@ -514,6 +696,10 @@ toetsSchoon('de sleepwijzer houdt de piek vast en laat hem weer los', keurSleepw
 toetsSchoon('een balk zonder bekende grens zegt dat zelf (#66)', keurGroveSchaal());
 toetsSchoon('de slimme weergave is de standaard en de voorkeur wordt gelezen', keurStandaardWeergave());
 toetsSchoon('de actieve knop in index.html wijst dezelfde weergave aan', keurKnopStaatGoed());
+toetsSchoon('de maat volgt het gedrag, en een waarschuwing wint van stilstand', keurMaat());
+toetsSchoon('de herweging verhuist de tegels, en een tegel staat nooit in twee vakken', keurHerweging());
+toetsSchoon('omhoog mag altijd, omlaag alleen bij de herweging', keurAsymmetrie());
+toetsSchoon('elke meter op de tellerplaat heeft een eigen, korte naam', keurMeterNamen());
 
 // ── tegenproef ───────────────────────────────────────────────────
 console.log('');
@@ -571,6 +757,61 @@ toetsMeldt('een genegeerde voorkeur valt door de mand (tegenproef)',
   keurStandaardWeergave(bouw(VIEW_BRON,
     "try{ m=localStorage.getItem('pl_pidview'); }", 'try{ m=null; }', 'voorkeur lezen')),
   'wordt genegeerd');
+
+// 6. De maat: het oordeel ná de stilstandcontrole in plaats van ervoor. Dit is
+//    de fout die je écht maakt — de regels lezen los van elkaar allemaal goed,
+//    en pas de volgorde bepaalt of een storing die vastligt zichtbaar blijft.
+toetsMeldt('een waarschuwing die van stilstand verliest valt door de mand (tegenproef)',
+  keurMaat(bouw(SLIM_BRON,
+    "  if(v!==undefined && v!==null && pidOordeel(d,v,pid)!=='ok') return 'groot';\n" +
+    "  const h=pidHist[pid];\n" +
+    "  if(!h || h.length<SLIM_MAAT_MIN) return 'normaal';\n" +
+    "  return slimBeweegt(pid,d) ? 'normaal' : 'regel';",
+    "  const h=pidHist[pid];\n" +
+    "  if(!h || h.length<SLIM_MAAT_MIN) return 'normaal';\n" +
+    "  if(!slimBeweegt(pid,d)) return 'regel';\n" +
+    "  if(v!==undefined && v!==null && pidOordeel(d,v,pid)!=='ok') return 'groot';\n" +
+    "  return 'normaal';", 'volgorde in slimMaat')),
+  'verwacht "groot"');
+
+// 7. Dezelfde drempel voor "beweegt hij?" en "ligt hij stil?". Vier metingen
+//    zijn genoeg voor het eerste en veel te weinig voor het tweede: dan wordt
+//    een sensor tot Rustig veroordeeld voordat er iets gezien is.
+toetsMeldt('een te lage drempel voor stilstand valt door de mand (tegenproef)',
+  keurMaat(bouw(SLIM_BRON, 'const SLIM_MAAT_MIN = 24;', 'const SLIM_MAAT_MIN = 4;', 'maatdrempel')),
+  'met 8 metingen');
+
+// 8. De promotie uit Rustig weg: een auto die gaat rijden houdt dan een
+//    snelheid op één regeltje, tot de volgende keer dat het scherm opnieuw
+//    wordt opgebouwd — en dat kan een hele rit duren.
+toetsMeldt('een tegel die niet terug omhoog kan valt door de mand (tegenproef)',
+  keurAsymmetrie(bouw(SLIM_BRON,
+    "     && (st!=='ok' || slimBeweegt(pid,d))) slimPlaats(pid);",
+    '     && false) slimPlaats(pid);', 'promotie')),
+  'blijft in Rustig staan');
+
+// 9. En de andere helft: elke tegel bij elke meting opnieuw indelen. Dan zakt
+//    een signaal dat even stil ligt middenin de rit weg, en springt het er bij
+//    de eerstvolgende beweging weer uit.
+toetsMeldt('een indeling die onder je ogen verspringt valt door de mand (tegenproef)',
+  keurAsymmetrie(bouw(SLIM_BRON,
+    "  if(card && card.parentNode && card.parentNode.id==='slimVak-rustig'\n" +
+    "     && (st!=='ok' || slimBeweegt(pid,d))) slimPlaats(pid);",
+    '  if(card) slimPlaats(pid);', 'degradatie')),
+  'verspringt');
+
+// 10. De herweging uit renderGauges: het vak Rustig blijft dan leeg, ook als
+//     de historie er allang is.
+toetsMeldt('een opbouw zonder herweging valt door de mand (tegenproef)',
+  keurHerweging(null, bouw(RENDER_BRON, 'slimHerweeg(); slimVakkenBij();', '', 'herweging bij opbouw')),
+  'verwacht 012F');
+
+// 11. De botsingscontrole weg: dan dragen gaspedaal D en E dezelfde naam en
+//     wijst de plaat twee signalen aan zonder te zeggen welk.
+toetsMeldt('twee meters met dezelfde naam vallen door de mand (tegenproef)',
+  keurMeterNamen(bouw(SLIM_BRON,
+    'if(tel[kort].length<2) return;', 'return;', 'botsingscontrole')),
+  'staat op twee meters tegelijk');
 
 // En een balk die tegen het PID-maximum wordt afgezet in plaats van tegen de
 // gevarengrens: dan is koelwater 88 °C ineens 34% en niet 80%.

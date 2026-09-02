@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.7 (02-09-2026)';
+const TESTRUN_VERSIE = '6.8 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2517,6 +2517,67 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── deelt de slimme weergave DEZE auto goed in? ──
+  // slimMaat() is in node getoetst op een verzonnen setje PIDs. Wat daar niet
+  // te zien is, is hoe de indeling uitpakt op de sensoren die déze auto
+  // werkelijk levert: welke er stil liggen, of er iets in twee vakken tegelijk
+  // hangt, en of twee meters op de tellerplaat dezelfde naam dragen. Dat
+  // laatste hangt aan de combinatie van PIDs en niet aan de code, dus het is
+  // per auto een andere vraag — precies het soort dat alleen hier te stellen is.
+  {
+    issue: '#61',
+    naam: 'De slimme weergave deelt de sensoren van deze auto in',
+    waarom: 'Hoe de maat uitpakt hangt aan de sensoren die déze auto levert; in node is die combinatie verzonnen.',
+    proef: function () {
+      const vakken = ['dash', 'meter', 'temp', 'rest', 'rustig'];
+      const inhoud = {}, gezien = {};
+      let totaal = 0, dubbel = [];
+      for (const g of vakken) {
+        const box = document.getElementById('slimVak-' + g);
+        if (!box) return { staat: 'LET OP', detail: 'vak "' + g + '" bestaat niet in de DOM — de live view staat ' +
+          'waarschijnlijk niet in de slimme weergave, dus er valt niets in te delen' };
+        inhoud[g] = Array.from(box.children).map(function (c) { return String(c.id).slice(3); });
+        totaal += inhoud[g].length;
+        for (const pid of inhoud[g]) {
+          if (gezien[pid]) dubbel.push(pid + ' (' + gezien[pid] + ' én ' + g + ')');
+          gezien[pid] = g;
+        }
+      }
+      if (!totaal) return { staat: 'LET OP', detail: 'er staat geen enkele tegel in beeld — kies eerst sensoren' };
+
+      const kop = vakken.map(function (g) { return g + ' ' + inhoud[g].length; }).join(' · ');
+      const naamVan = function (pid) {
+        try { const d = getPidDef(pid); return (d && d.name) || pid; } catch (e) { return pid; }
+      };
+
+      // 1. Een tegel in twee vakken tegelijk. Dat kán alleen als een
+      //    verplaatsing hem niet bij zijn oude ouder weghaalde, en dan staat
+      //    dezelfde meting twee keer in beeld met twee verschillende vormen.
+      if (dubbel.length)
+        return { staat: 'FOUT', detail: kop + ' — dezelfde tegel hangt in twee vakken: ' + dubbel.join(', ') };
+
+      // 2. Twee meters met dezelfde naam op de tellerplaat. In node getoetst op
+      //    vijf vaste PIDs; welke combinatie déze auto levert is een andere vraag.
+      const labels = {}, botsing = [];
+      for (const pid of inhoud.meter) {
+        const el = document.getElementById('gc-' + pid);
+        const t = el ? String(el.textContent || '').toUpperCase() : '';
+        const naam = t ? t.replace(/[\d.,%°λ\s]+/g, ' ').trim() : naamVan(pid).toUpperCase();
+        if (labels[naam]) botsing.push('"' + naam + '" op ' + labels[naam] + ' én ' + pid);
+        labels[naam] = pid;
+      }
+      if (botsing.length)
+        return { staat: 'FOUT', detail: kop + ' — twee meters op de tellerplaat dragen dezelfde naam: ' +
+          botsing.join(', ') + '. De plaat wijst dan een signaal aan zonder te zeggen welk (#68)' };
+
+      // 3. En de waarneming zelf: wat ligt er op déze auto stil? Dat is geen
+      //    fout maar de vraag die de rit moet beantwoorden — is dit inderdaad
+      //    wat je niet groot in beeld wilt hebben?
+      const stil = inhoud.rustig.map(naamVan);
+      return kop + (stil.length ? ' — stil deze rit: ' + stil.join(', ') : ' — niets ligt stil; alles beweegt of heeft nog te weinig historie');
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -3998,13 +4059,13 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (zesde) — bijboeken loopt door het saldo-slot (#82)',
+  titel: 'OPLEVERING 02-09 (zevende) — de maat van een tegel volgt zijn gedrag (#61, #68)',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
 
-    'Vijf issues staan op "wacht op een rit". Er zijn intussen vier ritten geweest en er is er geen enkele van dichtgegaan. Niet omdat de metingen mislukten, maar omdat er elke keer één voorwaarde niet gehaald werd: de caravan-tracker stond niet aan, er werd vier minuten gereden van de tien, of de PID stond niet in de pollronde. Dat bleek dan achteraf, verspreid over blok 4, 7 en 14 — nergens stond de vraag die je eigenlijk had: is dit issue nu dicht te doen?',
+    'De slimme weergave deelde tegels in op wat voor SOORT signaal het was, en dat bepaalde meteen hoe groot ze in beeld kwamen. Een brandstofpeil dat een uur lang 68% aanwijst kreeg daardoor het grootste cijfer van het scherm, terwijl een MAF die op 2,00 g/s vastligt er even opgewekt bij stond als een koelwater dat klimt. De vorm klopte; wat ontbrak was de tweede vraag: hoeveel zegt dit nú?',
 
-    'DEZE OPLEVERING VERANDERT NIETS AAN WAT DE APP MEET. Ze verandert wat de rit oplevert. De begeleide rit haalt de voorwaarden nu zelf binnen in plaats van ze achteraf te missen, en blok 5 spreekt per issue één oordeel uit: SLUIT, of precies wat er ontbrak. Dat tweede is de helft die miste — "onvoldoende" zonder reden is een verwijt, met reden is een boodschappenlijstje voor de volgende rit.',
+    'DEZE OPLEVERING VERANDERT NIETS AAN WAT DE APP MEET. Ze verandert alleen hoeveel ruimte een meting krijgt. Wat lang genoeg is bekeken en stilligt zakt naar één regel in het nieuwe vak Rustig; wat op oranje of rood staat wordt juist groot, ook als het vastligt. Of die indeling op jóúw auto klopt is geen vraag voor een node-test — daar is het setje PIDs verzonnen. Dat is wat deze rit moet uitwijzen.',
 
     '── STAP VOOR STAP ─────────────────',
 
@@ -4016,9 +4077,19 @@ const CAMPAGNE = {
 
     'STAP D. Stap 9 en 10 vragen jouw oordeel en dat van niemand anders. Bij 9 kijk je of de temperatuurbalken en de trendlijnen kloppen (#66). Bij 10 scroll je de live view helemaal naar beneden en kijk je of er iets achter de drie Android-knoppen valt (#79/#58) — die vraag staat sinds 01-09 open en die stap is nog nooit uitgevoerd.',
 
+    'STAP D2 — DE VRAAG VAN DEZE RONDE. Kijk bij stap 9 ook naar het vak Rustig onderaan. Staat daar wat je verwacht: peil, barometerdruk, misschien de accuspanning? Staat er iets in dat je juist groot wilde zien? En kijk of de tellerplaat vijf meters op één rij zet met leesbare namen — MOTOR.RPM, MOTORBELAST — in plaats van MOTORTOE… en GASKLEP P…. Wat er in Rustig belandde staat na afloop in blok 5, met de namen erbij, dus je kunt het achteraf nalezen.',
+
     'STAP E. Lees na afloop blok 5, het stuk "DE RIT-OOGST". Daar staat per issue of hij dicht kan. Wat er "KAN DICHT" zegt, mag dicht; wat er LET OP zegt, noemt zelf wat er de volgende keer anders moet.',
 
     '── WAT ER IS VERANDERD ──────────────',
+
+    'DE MAAT VAN EEN TEGEL VOLGT ZIJN GEDRAG (#61). slimGroep() bepaalt nog steeds de VORM — balk, meter, tegel — maar de MAAT komt nu uit slimMaat(): staat het oordeel op warn of danger dan wordt de tegel groot, ligt het signaal na 24 metingen stil dan zakt hij naar één regel in het nieuwe vak Rustig, en de rest blijft normaal. De volgorde van die twee regels is het punt: een brandstoftrim die vastligt op +25% is juist het gevaarlijkste geval en mag niet wegzakken ómdat hij niet beweegt.',
+
+    'OMHOOG MAG ALTIJD, OMLAAG ALLEEN BIJ DE HERWEGING. Er is één herweging per opbouw, dertig seconden na het tekenen. Daarna blijft de indeling staan, behalve dat een tegel die uit Rustig omhoog moet dat meteen doet — een auto die stilstond en gaat rijden heeft een snelheid die daar niet thuishoort. Andersom niet: een tegel die tijdens het rijden van vak wisselt maakt het scherm onleesbaar, en dat is erger dan een tegel met het verkeerde formaat.',
+
+    'DE TELLERPLAAT DRAAGT KORTE NAMEN, EN NOOIT TWEE KEER DEZELFDE (#68). Vijf meters pasten niet naast elkaar en hun namen werden afgekapt tot MOTORTOE… en ABS. MOTO…. slimMeterLabels() leent hudShortLabel() uit de HUD — afkorten op betekenis, dus geen tweede lijst — en legt er de garantie overheen die de HUD niet nodig heeft: bij een botsing valt de hele groep terug op de volledige naam. Gaspedaal D en E kwamen allebei uit op GASPED POS.',
+
+    'test-slimmeweergave.js — vier nieuwe gedragstoetsen (de maat, de herweging, de asymmetrie, de namen) met zes tegenproeven ernaast, en vier mutaties in plmutate.sh zodat die tegenproef blijft draaien als niemand er meer aan denkt. De tabel staat op dertig, allemaal gevangen.',
 
     'BIJBOEKEN LOOPT DOOR HET SALDO-SLOT (#82). Vier plekken in de Worker lezen het saldo en schrijven het terug; drie ervan deden dat binnen metSaldoSlot() en de vierde niet — bijboeken vanuit de beheerpagina. De waarschuwing die daar stond ging over twee beheerders op dezelfde seconde, en die botsing bestaat niet. De botsing die wél bestaat is beheerder × klant: jij boekt 100 bij terwijl hij een analyse draait, en één van beide mutaties verdwijnt. Sinds nu loopt ook die vierde door het slot.',
 
@@ -4041,6 +4112,10 @@ const CAMPAGNE = {
     'NIETS AAN DE MEETKETEN. FILTERED_PIDS in pidlane-datalog.js regel 75 wordt nog steeds met de verkeerde sleutelvorm bevraagd; laag 2+3 staan uit voor álle PIDs. Blok 5 meldt dat als LET OP zolang het zo is. Dat is een gedragswijziging die een eigen rit verdient — deze rit is er niet voor bedoeld.',
 
     '#90 — "Stille sensoren" leest de selectie die de sweep zojuist heeft overschreven, niet die van jou. Gevonden in de run van 13:14: de melding "2 NIET-OK maar wél in de actieve selectie" ging over de sweeplijst van 46, niet over jouw 28. Bewust niet hier gerepareerd, maar wel om te weten bij het lezen van dat blok.',
+
+    'DE HANDMATIGE KANT VAN DE WEERGAVE. Zelf een tegel groot of klein zetten, of verbergen, en dat per auto bewaren — dat is bewust NIET gebouwd. Het voegt blijvende staat per voertuig toe, een extra modus aan een scherm dat er al vier draagt, en het raakt de sensorkeuze die met #90 nog niet op orde is. Eerst een maand rijden op de automatische indeling: dan weet je welke tegels je écht met de hand wilt verzetten. Staat als #94 open.',
+
+    'ABS. MOTORBELASTING KORT NOG STEEDS AF TOT ABS. MOTO. Dat komt uit stap 3 van hudShortLabel(), en die functie is van de HUD — hem verbouwen verandert ook de hoekmeters daar, en dat is een eigen onderwerp. De botsingscontrole vangt het niet, want het botst met niets; het is alleen geen naam. Staat als #95 open.',
 
     '#86 — blok 1 blijft klagen over het voertuigprofiel zodra je een nieuwe versie laadt. Bekend, en geen app-fout.',
 
