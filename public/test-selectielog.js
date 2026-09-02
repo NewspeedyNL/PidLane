@@ -199,7 +199,14 @@ console.log('\n7. Alle vijf de gebruikershandelingen lopen langs de melder');
 {
   const paren = [
     ['pidlane-pids.js', 'togglePID', 'sensorkeuze'],
-    ['pidlane-pids.js', 'pidDeselect', 'dubbeltik'],
+    // Tot 02-09-2026 heette de aanleiding hier 'dubbeltik op de tegel'. Dat
+    // gebaar VERBERGT sindsdien alleen nog (pidVerberg) en raakt de selectie
+    // niet; uitzetten gaat via het kruisje in de verborgen-strook. Zou de oude
+    // naam blijven staan, dan meldt het selectielog een handeling die niet
+    // meer bestaat — en dat is precies het soort scheve boekhouding waar deze
+    // test voor gemaakt is. test-verbergen.js toetst de andere kant: dat
+    // verbergen hier júist niet langskomt.
+    ['pidlane-pids.js', 'pidDeselect', 'kruisje'],
     ['pidlane-rijsituatie.js', 'selectStandardSet', 'standaardset'],
     ['pidlane-rijsituatie.js', 'selectCategoryPIDs', 'categorie'],
     ['pidlane-rijsituatie.js', 'applyPidPreset', 'preset']

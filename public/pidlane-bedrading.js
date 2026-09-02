@@ -141,6 +141,12 @@ var KRITIEK = [
   // volledige namen en valt de vijfde meter weer van de rij — precies de
   // klacht uit #68, alleen dan zonder dat iemand ziet waaróm.
   'hudShortLabel',
+  // Verbergen en tonen (pidlane-pids.js). Blok 5 toetst ze met een guard, en
+  // die guard is de plek waar het stil zou blijven: ontbreken ze, dan valt de
+  // app terug op het gedrag van vóór 02-09-2026 — een dubbeltik die de sensor
+  // uitzet in plaats van hem te verbergen — en dat is precies het verschil dat
+  // niemand ziet tot de meting mist.
+  'pidVerberg','pidToon',
   // Wat blok 5 van de testrun nameet. Elk van deze namen is een gedragsproef
   // die stil zou overslaan als de module niet meekwam — en dan zegt de
   // testrun "goed" terwijl er niets gemeten is. De namen van de opleveringen

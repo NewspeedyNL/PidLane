@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.8 (02-09-2026)';
+const TESTRUN_VERSIE = '6.9 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2517,6 +2517,66 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── verbergt een dubbeltik, of zet hij nog steeds uit? ──
+  // In node is dit tot op de laatste tak getoetst, maar altijd tegen een
+  // nagebootste DOM. Wat daar niet te zien is, is of de strook in de
+  // dráaiende app bestaat en of het gebaar bij de echte tegels aankomt —
+  // precies het soort verbinding dat bij #29, #74 en #52 ontbrak zonder ooit
+  // een fout te geven. Deze proef verbergt een tegel, kijkt, en zet hem terug.
+  {
+    issue: '#61',
+    naam: 'Een dubbeltik verbergt de tegel en laat de meting met rust',
+    waarom: 'Of het gebaar bij de echte tegels aankomt en de strook echt bestaat, is alleen in de draaiende app te zien.',
+    proef: function () {
+      if (typeof pidVerberg !== 'function' || typeof pidToon !== 'function')
+        return { staat: 'FOUT', detail: 'pidVerberg()/pidToon() ontbreken — dan zet een dubbeltik de sensor weer uit in plaats van hem te verbergen' };
+      const strook = document.getElementById('verborgenStrook');
+      if (!strook)
+        return { staat: 'FOUT', detail: '#verborgenStrook staat niet in index.html — een verborgen tegel is dan nergens meer terug te halen' };
+
+      const kandidaat = Array.from(activePIDs).find(function (p) {
+        return !pidVerborgen(p) && document.getElementById('gc-' + p);
+      });
+      if (!kandidaat)
+        return { staat: 'LET OP', detail: 'geen zichtbare tegel om mee te proeven — kies eerst sensoren en open de live view' };
+
+      const naam = (getPidDef(kandidaat) || {}).name || kandidaat;
+      const voorAantal = activePIDs.size;
+      const voorWaarde = pidVals[kandidaat];
+
+      pidVerberg(kandidaat);
+      const tegelWeg = !document.getElementById('gc-' + kandidaat);
+      const inStrook = !!document.getElementById('vb-' + kandidaat);
+      const nogGeselecteerd = activePIDs.has(kandidaat);
+      const zelfdeAantal = (activePIDs.size === voorAantal);
+      const kopt = String(strook.textContent || '');
+
+      // Terugzetten, hoe de proef ook afloopt: deze rit gaat niet over een
+      // tegel die ik heb weggeklikt.
+      pidToon(kandidaat);
+      const terug = !!document.getElementById('gc-' + kandidaat);
+
+      if (!nogGeselecteerd || !zelfdeAantal)
+        return { staat: 'FOUT', detail: 'verbergen van "' + naam + '" haalde de sensor uit de selectie (' +
+          voorAantal + ' → ' + activePIDs.size + ') — dan wordt er niet meer gemeten, en dat is precies wat verbergen niet is' };
+      if (!tegelWeg)
+        return { staat: 'FOUT', detail: 'de tegel van "' + naam + '" bleef staan na pidVerberg() — het gebaar komt niet bij de tegel aan' };
+      if (!inStrook)
+        return { staat: 'FOUT', detail: '"' + naam + '" verdween maar staat niet in de strook onderaan — dan is hij niet terug te halen' };
+      if (!terug)
+        return { staat: 'FOUT', detail: '"' + naam + '" kwam na pidToon() niet terug in beeld; deze proef heeft een tegel achtergelaten' };
+      if (!/gemeten/i.test(kopt))
+        return { staat: 'FOUT', detail: 'de strook zegt nergens dat er dóórgemeten wordt ("' + kopt.slice(0, 60) +
+          '") — dan is "verborgen" niet van "uit" te onderscheiden' };
+      if (voorWaarde !== undefined && pidVals[kandidaat] === undefined)
+        return { staat: 'FOUT', detail: 'de waarde van "' + naam + '" is tijdens het verbergen verdwenen uit pidVals' };
+
+      const nu = Array.from(activePIDs).filter(function (p) { return pidVerborgen(p); }).length;
+      return '"' + naam + '" verborgen en teruggehaald: selectie bleef ' + voorAantal +
+        ', de strook noemde hem, en de kop zegt dat er doorgemeten wordt. Nu verborgen: ' + nu;
+    }
+  },
+
   // ── deelt de slimme weergave DEZE auto goed in? ──
   // slimMaat() is in node getoetst op een verzonnen setje PIDs. Wat daar niet
   // te zien is, is hoe de indeling uitpakt op de sensoren die déze auto
@@ -4059,9 +4119,11 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (zevende) — de maat van een tegel volgt zijn gedrag (#61, #68)',
+  titel: 'OPLEVERING 02-09 (achtste) — verbergen is geen uitzetten',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
+
+    'Een dubbeltik op een tegel deed twee dingen tegelijk: de sensor uit de selectie halen — dus stoppen met meten, waarmee ook de historie, de rit-opname en de analyse hem kwijtraakten — én de tegel van het scherm halen. Eén handeling met twee betekenissen, en de dure helft was onzichtbaar: je klikte een tegel weg omdat hij in de weg stond, en je verloor er stilletjes een meting mee. Sinds deze ronde raakt dat gebaar alleen het scherm.',
 
     'De slimme weergave deelde tegels in op wat voor SOORT signaal het was, en dat bepaalde meteen hoe groot ze in beeld kwamen. Een brandstofpeil dat een uur lang 68% aanwijst kreeg daardoor het grootste cijfer van het scherm, terwijl een MAF die op 2,00 g/s vastligt er even opgewekt bij stond als een koelwater dat klimt. De vorm klopte; wat ontbrak was de tweede vraag: hoeveel zegt dit nú?',
 
@@ -4077,11 +4139,21 @@ const CAMPAGNE = {
 
     'STAP D. Stap 9 en 10 vragen jouw oordeel en dat van niemand anders. Bij 9 kijk je of de temperatuurbalken en de trendlijnen kloppen (#66). Bij 10 scroll je de live view helemaal naar beneden en kijk je of er iets achter de drie Android-knoppen valt (#79/#58) — die vraag staat sinds 01-09 open en die stap is nog nooit uitgevoerd.',
 
+    'STAP D3 — VERBERGEN. Dubbeltik onderweg één tegel weg die je toch niet leest. Kijk of hij onderaan in de strook verschijnt met een korte naam, en of daar staat dat er nog gemeten wordt. Dubbeltik daarna op die naam om hem terug te halen. Wat je NIET moet zien: dat de sensor uit je selectie verdwijnt — controleer dat desnoods in het keuzescherm, het vinkje hoort gewoon aan te staan.',
+
     'STAP D2 — DE VRAAG VAN DEZE RONDE. Kijk bij stap 9 ook naar het vak Rustig onderaan. Staat daar wat je verwacht: peil, barometerdruk, misschien de accuspanning? Staat er iets in dat je juist groot wilde zien? En kijk of de tellerplaat vijf meters op één rij zet met leesbare namen — MOTOR.RPM, MOTORBELAST — in plaats van MOTORTOE… en GASKLEP P…. Wat er in Rustig belandde staat na afloop in blok 5, met de namen erbij, dus je kunt het achteraf nalezen.',
 
     'STAP E. Lees na afloop blok 5, het stuk "DE RIT-OOGST". Daar staat per issue of hij dicht kan. Wat er "KAN DICHT" zegt, mag dicht; wat er LET OP zegt, noemt zelf wat er de volgende keer anders moet.',
 
     '── WAT ER IS VERANDERD ──────────────',
+
+    'VERBERGEN IS GEEN UITZETTEN. Een dubbeltik op een tegel verbergt hem sindsdien; de sensor blijft geselecteerd, wordt gewoon gemeten en telt gewoon mee in de analyse. De regel voor de gebruiker is één zin: dubbeltik wisselt de zichtbaarheid, waar je hem ook doet — op een tegel verbergt hij, op een naam in de strook onderaan haalt hij hem terug.',
+
+    'UITZETTEN KAN NOG STEEDS, MAAR HEET NU ZO. Het kruisje naast een naam in die strook haalt de sensor uit de selectie en stopt het meten, met een eigen melding. Dat is een benoemde knop in plaats van een tweede betekenis achter hetzelfde gebaar. De kop van de strook zegt met zoveel woorden dat er dóórgemeten wordt; zonder die zin is verborgen niet van uit te onderscheiden en is er niets opgelost maar alleen verplaatst.',
+
+    'TWEE PLEKKEN WAAR DIT STIL FOUT HAD KUNNEN GAAN. Een PID die je verbergt en daarna via het keuzescherm uitzet liet een verborgen-stand achter: bij opnieuw aanvinken verscheen er geen tegel en zei niets waarom. Dat wordt opgeruimd in renderGauges(), want dáár komen alle vier de selectiepaden langs. En klik je álles weg, dan stond er \"Geen sensoren geselecteerd\" — dat noemt de verkeerde oorzaak en stuurt je naar het verkeerde scherm.',
+
+    'test-verbergen.js is nieuw: zes gedragstoetsen met zes tegenproeven, en vier mutaties in plmutate.sh (de tabel staat op vierendertig). De DOM-nabootsing daarin onthield eerst élk element dat ooit was aangemaakt, ook nadat het rooster opnieuw was opgebouwd — dan staat een toets groen op een tegel die in de browser niet meer bestaat. Dezelfde soort fout als de appendChild van vanmiddag: een nabootsing die soepeler is dan de browser bewijst niets.',
 
     'DE MAAT VAN EEN TEGEL VOLGT ZIJN GEDRAG (#61). slimGroep() bepaalt nog steeds de VORM — balk, meter, tegel — maar de MAAT komt nu uit slimMaat(): staat het oordeel op warn of danger dan wordt de tegel groot, ligt het signaal na 24 metingen stil dan zakt hij naar één regel in het nieuwe vak Rustig, en de rest blijft normaal. De volgorde van die twee regels is het punt: een brandstoftrim die vastligt op +25% is juist het gevaarlijkste geval en mag niet wegzakken ómdat hij niet beweegt.',
 
@@ -4112,6 +4184,10 @@ const CAMPAGNE = {
     'NIETS AAN DE MEETKETEN. FILTERED_PIDS in pidlane-datalog.js regel 75 wordt nog steeds met de verkeerde sleutelvorm bevraagd; laag 2+3 staan uit voor álle PIDs. Blok 5 meldt dat als LET OP zolang het zo is. Dat is een gedragswijziging die een eigen rit verdient — deze rit is er niet voor bedoeld.',
 
     '#90 — "Stille sensoren" leest de selectie die de sweep zojuist heeft overschreven, niet die van jou. Gevonden in de run van 13:14: de melding "2 NIET-OK maar wél in de actieve selectie" ging over de sweeplijst van 46, niet over jouw 28. Bewust niet hier gerepareerd, maar wel om te weten bij het lezen van dat blok.',
+
+    'DE VERBORGEN STAND WORDT NIET BEWAARD. Na een herstart staan alle tegels er weer. Bewaren per auto hoort bij #94, met de vragen die daarbij horen: waar hoort een verborgen PID als je een andere auto aansluit, en wat gebeurt er bij een gewiste opslag. Voor nu is teruggeven de veilige kant — een tegel die je een maand geleden hebt weggeklikt en niet meer kent is erger dan een tegel te veel.',
+
+    'VERBERGEN MAAKT DE POLLUS NIET KORTER. De PID wordt gewoon gevraagd. Wil je de ronde korter, dan is dat de sensorkeuze — en dat is precies waarom die twee nu uit elkaar staan.',
 
     'DE HANDMATIGE KANT VAN DE WEERGAVE. Zelf een tegel groot of klein zetten, of verbergen, en dat per auto bewaren — dat is bewust NIET gebouwd. Het voegt blijvende staat per voertuig toe, een extra modus aan een scherm dat er al vier draagt, en het raakt de sensorkeuze die met #90 nog niet op orde is. Eerst een maand rijden op de automatische indeling: dan weet je welke tegels je écht met de hand wilt verzetten. Staat als #94 open.',
 

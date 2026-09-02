@@ -672,6 +672,76 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+### Verbergen is geen uitzetten — 02-09-2026
+
+**Wat er gevraagd werd:** scheiding tussen de PID-keuze en de live view. "Nu is
+PID-keuze altijd ook een weergave in live view."
+
+**Wat eronder zat.** Een dubbeltik op een tegel riep `pidDeselect()` aan, en
+die deed twee dingen tegelijk: de PID uit `activePIDs` halen én de tegel van
+het scherm halen. Het eerste is duur en onzichtbaar — de pollus vraagt de PID
+niet meer, `pidHist` loopt leeg, de rit-opname en de analyse missen hem — en
+het tweede is wat de gebruiker bedoelde. Je klikte een tegel weg omdat hij in
+de weg stond, en je verloor er stilletjes een meting mee. De toast zei "uit —
+aanzetten via sensorkeuze", en dat is waar, maar het leest als een
+schermhandeling.
+
+Nu zijn het twee dingen, met één regel voor de gebruiker: **dubbeltik wisselt
+de zichtbaarheid, waar je hem ook doet.** Op een tegel verbergt hij, op een
+naam in de strook onderaan haalt hij hem terug. Uitzetten is een aparte,
+benoemde handeling geworden: het kruisje in die strook, of het keuzescherm.
+
+| | raakt `activePIDs` | er wordt gemeten | tegel in beeld |
+|---|---|---|---|
+| verbergen (dubbeltik) | nee | ja | nee |
+| uitzetten (✕ of keuzescherm) | ja | nee | nee |
+
+**De strook moest er zijn, niet alleen de scheiding.** Verbergen zonder
+zichtbare weg terug is een put: je klikt iets weg en het bestaat niet meer.
+Daarom de opsomming onderaan, met korte namen (`hudShortLabel()`, dezelfde als
+de tellerplaat gebruikt) en een "Alles tonen" ernaast — met tien verborgen
+tegels is tien keer dubbeltikken geen weg terug.
+
+**De kop van die strook zegt "wordt nog gemeten", en dat is geen versiering.**
+Zonder die zin is "verborgen" niet van "uit" te onderscheiden, en dan is er
+niets opgelost maar alleen verplaatst: iemand verwacht een snellere pollus, of
+schrikt van een analyse die een sensor noemt die hij dacht te hebben
+uitgezet. Dezelfde zin staat in de toast. `test-verbergen.js` toetst dat hij
+er staat — een melding die de helft van de waarheid vertelt is hier al eerder
+een bug geweest.
+
+**Waar dit stil fout had kunnen gaan.** Een PID die je verbergt en daarna via
+het keuzescherm uitzet, laat een verborgen-stand achter. Vink je hem later
+opnieuw aan, dan verschijnt er geen tegel en zegt niets waarom. Dat wordt
+opgeruimd in `renderGauges()` en niet in `togglePID()` c.s.: er zijn vier
+paden die de selectie wijzigen (keuzescherm, standaardset, categorie, preset)
+en dit is de plek waar ze alle vier langskomen.
+
+Tweede plek: klik je *alles* weg, dan stond er "Geen sensoren geselecteerd".
+Dat noemt de verkeerde oorzaak — ze zijn wél geselecteerd en ze worden gemeten
+— en het stuurt je naar het verkeerde scherm om het op te lossen.
+
+**En één die de test bijna niet had gezien.** De DOM-nabootsing in
+`test-verbergen.js` onthield elk element dat ooit was aangemaakt, en
+`getElementById()` gaf dat ook terug nadat het rooster opnieuw was opgebouwd.
+`slimHerweeg()` hing zo'n weggegooide tegel netjes terug in een vak, en de
+toets "de tegel is weg" stond groen op een tegel die in de browser niet meer
+bestaat. `innerHTML=''` koppelt de kinderen nu ook echt los en
+`getElementById()` geeft alleen terug wat nog aan het document hangt. Dat is
+dezelfde soort fout als de `appendChild` van gisteren: **een nabootsing die
+soepeler is dan de browser bewijst niets.**
+
+**Alleen voor deze sessie.** `hiddenPIDs` staat in het geheugen en wordt niet
+bewaard. Bewaren per auto is #94, met de vragen die daarbij horen: waar hoort
+een verborgen PID als je een andere auto aansluit, en wat gebeurt er bij een
+gewiste opslag. Een herstart geeft dus alle tegels terug, en dat is hier de
+veilige kant — een tegel die je een maand geleden hebt weggeklikt en niet meer
+kent, is erger dan een tegel te veel.
+
+**Wat het níét sneller maakt.** Verbergen scheelt niets in de pollus: de PID
+wordt gewoon gevraagd. Wil je de ronde korter, dan is dat de sensorkeuze. Dat
+is precies waarom die twee nu uit elkaar staan.
+
 ### De maat van een tegel volgt zijn gedrag — 02-09-2026 (#61, #68)
 
 **Wat er gevraagd werd:** fijnafstemming van de slimme weergave. Concreet:

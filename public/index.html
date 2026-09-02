@@ -1074,6 +1074,13 @@ function closeConnOv(){
         <div class="gg" id="gGrid">
           <div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>
         </div>
+        <!-- Weggeklikte tegels (02-09-2026). Een dubbeltik op een tegel VERBERGT
+             hem sindsdien; hij blijft geselecteerd en wordt gewoon gemeten.
+             Hier staan ze met een korte naam, met een dubbeltik terug te halen,
+             en met een kruisje als je hem écht wilt uitzetten. Gevuld door
+             renderVerborgenStrook(); blijft leeg en verborgen zolang er niets
+             weggeklikt is. -->
+        <div class="verbstrook" id="verborgenStrook" style="display:none"></div>
         <!-- (Correlatie-weergave verwijderd op verzoek; de correlatie-ENGINE voor AI-bevindingen blijft bestaan) -->
       </div>
 

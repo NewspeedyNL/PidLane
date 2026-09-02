@@ -11,6 +11,46 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — VERBERGEN IS GEEN UITZETTEN
+
+       • 🙈 EEN DUBBELTIK VERBERGT DE TEGEL, HIJ ZET NIETS UIT.
+         Tot nu toe deed dat gebaar twee dingen tegelijk: de
+         sensor uit de selectie halen — dus stoppen met meten,
+         waarmee ook de historie, de rit-opname en de analyse hem
+         kwijtraakten — én de tegel van het scherm halen. Eén
+         handeling met twee betekenissen, en de dure helft was
+         onzichtbaar: je klikte een tegel weg omdat hij in de weg
+         stond en verloor er stilletjes een meting mee.
+         Nu raakt een dubbeltik alleen het scherm. De sensor
+         blijft geselecteerd, wordt gewoon gemeten en telt gewoon
+         mee in de analyse.
+
+       • 👁 EEN STROOK ONDERAAN MET WAT JE HEBT WEGGEKLIKT.
+         Korte namen, en de kop zegt er met zoveel woorden bij dat
+         er dóórgemeten wordt — zonder die zin is "verborgen" niet
+         van "uit" te onderscheiden. Dubbeltik op een naam haalt
+         de tegel terug: één gebaar, één betekenis, waar je hem
+         ook doet. "Alles tonen" voor wie er tien heeft weggeklikt.
+
+       • ✕ UITZETTEN KAN NOG STEEDS, MAAR HEET NU ZO.
+         Het kruisje naast een naam in die strook haalt de sensor
+         uit de selectie en stopt het meten. Dat is een eigen knop
+         met een eigen melding, in plaats van een tweede betekenis
+         achter hetzelfde gebaar.
+
+       • 🙈 ALLES VERBORGEN ZEGT NIET MEER "GEEN SENSOREN
+         GESELECTEERD". Dat zou de verkeerde oorzaak noemen en je
+         naar het verkeerde scherm sturen: ze zijn wél geselecteerd
+         en ze worden gemeten.
+
+       • ↩️ DE VERBORGEN STAND GELDT VOOR DEZE SESSIE.
+         Na een herstart staan alle tegels er weer. Bewaren per
+         auto is een grotere vraag (#94) — en een tegel die je een
+         maand geleden hebt weggeklikt en niet meer kent, is erger
+         dan een tegel te veel.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — DE MAAT VOLGT HET GEDRAG
 
        • 📐 EEN TEGEL IS ZO GROOT ALS HIJ NÚ ZEGT (#61).

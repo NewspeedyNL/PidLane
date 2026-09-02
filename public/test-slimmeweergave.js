@@ -92,7 +92,11 @@ const SLIM_BRON = knip(PIDS_BRON, 'const SLIM_BEWEEG_DEEL', '\nfunction updPID('
 // twee is de kern van de maat, dus dit moet de echte functie zijn en niet een
 // nagebouwde drempelregel — die zou meelopen in plaats van te controleren.
 const OORDEEL_BRON = knip(PIDS_BRON, 'function pidOordeel(', '\nfunction applyG(', 'pidOordeel()');
-const RENDER_BRON = knip(PIDS_BRON, 'function renderGauges(){', '// ── Dubbeltik op een tegel', 'renderGauges()');
+const RENDER_BRON = knip(PIDS_BRON, 'function renderGauges(){', '// VERBERGEN IS GEEN UITZETTEN', 'renderGauges()');
+// Verbergen zit sinds 02-09-2026 in renderGauges: verborgen PIDs krijgen geen
+// tegel en de strook eronder wordt hier gevuld. Dat blok hoort er dus bij —
+// met een stub zou de opbouw iets anders overslaan dan de app doet.
+const VERBERG_BRON = knip(PIDS_BRON, 'const hiddenPIDs = new Set();', 'let _tileTap=', 'het verberg-blok');
 // De weergavekeuze zelf: standaard, herstel uit localStorage en setPidView().
 const VIEW_BRON = knip(PIDS_BRON, 'const PID_VIEW_MODI', 'function startStaleWatchdog(){', 'het weergavemodus-blok');
 
@@ -169,6 +173,7 @@ function maakOmgeving(actief, renderBron, slimBron, oordeelBron) {
     slimGroep: D.slimGroep,
     fv: function (v) { return String(v); },
     applyG: function () {},
+    showToast: undefined,
     PID_ALT_KANAAL: {}
   };
   // De geplande herweging (SLIM_HERWEEG_MS). Niet meteen laten lopen: dat er
@@ -180,7 +185,8 @@ function maakOmgeving(actief, renderBron, slimBron, oordeelBron) {
   ctx.clearTimeout = function () { gepland = null; };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext((oordeelBron || OORDEEL_BRON) + '\n' + (slimBron || SLIM_BRON) + '\n' + (renderBron || RENDER_BRON),
+  vm.runInContext((oordeelBron || OORDEEL_BRON) + '\n' + VERBERG_BRON + '\n' +
+    (slimBron || SLIM_BRON) + '\n' + (renderBron || RENDER_BRON),
     ctx, { filename: 'pidlane-pids.js (slim)' });
   ctx.reg = reg;
   ctx.__herweging = function () { if (!gepland) return false; gepland(); return true; };

@@ -194,8 +194,15 @@ function renderGauges(){
   const vast=document.getElementById('vasteData');
   if(vast){ vast.innerHTML=''; vast.style.display='none'; }
   const sw=document.getElementById('pidViewSwitch');
+  // Een PID die uit de selectie is gehaald mag geen verborgen-spook
+  // achterlaten: vink je hem later opnieuw aan, dan hoort er een tegel te
+  // verschijnen en niet niets. Hier opruimen en niet in togglePID() c.s., want
+  // er zijn vier paden die de selectie wijzigen (keuzescherm, standaardset,
+  // categorie, preset) en dit is de plek waar ze alle vier langskomen.
+  hiddenPIDs.forEach(function(p){ if(!activePIDs.has(p)) hiddenPIDs.delete(p); });
   if(!activePIDs.size){
     if(sw) sw.style.display='none';
+    try{ renderVerborgenStrook(); }catch(e){ console.warn('verborgen-strook mislukt:', e); }
     g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>`;return;
   }
   if(sw) sw.style.display='flex';
@@ -203,7 +210,7 @@ function renderGauges(){
   // Brandstof → ... → Overig). discoveredPIDDefs is al zo gesorteerd; PIDs
   // die daar niet in staan komen achteraan. Voorheen: Set-invoegvolgorde.
   const _ord={}; (discoveredPIDDefs||[]).forEach((d,i)=>{ _ord[d.pid]=i; });
-  let vastAantal=0;
+  let vastAantal=0, getoond=0;
   // ── Slimme weergave: drie vakken in plaats van één lang rooster ──
   // De tegels zelf blijven exact hetzelfde (zelfde ids, zelfde .gc), ze
   // worden alleen in een ander vak gehangen. Dat is bewust: applyG() vindt
@@ -234,6 +241,11 @@ function renderGauges(){
   const meterNaam = slim ? slimMeterLabels([...activePIDs]) : {};
   [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
+    // Verborgen: geen tegel, geen regel in het tekstblok. Verder verandert er
+    // niets — de PID staat nog in activePIDs, dus de pollus vraagt hem, updPID
+    // vult de historie, en applyG() vindt straks alleen geen element om bij te
+    // werken. Meten en tonen zijn hier twee dingen geworden.
+    if(hiddenPIDs.has(pid)) return;
     // Het vangnet dat hier stond is op 21-08-2026 verwijderd (§15, ronde 6 →
     // afgerond). Het riep pidGate(pid,'plausibel') aan en meldde via btDiag
     // zodra er iets langskwam, om te ontdekken of er nog een toevoegpad was
@@ -309,6 +321,7 @@ function renderGauges(){
     } else {
       g.appendChild(c);
     }
+    getoond++;
     if(pidVals[pid]!==undefined) applyG(pid,pidVals[pid]);
   });
   // De maat, twee keer. Nu meteen, want bij een herbouw midden in een rit is
@@ -324,13 +337,133 @@ function renderGauges(){
   if(pidViewMode!=='full'){ g.classList.add('view-'+pidViewMode); }
   // Tekstblok alleen tonen als er ook echt code-PIDs geselecteerd zijn
   if(vast) vast.style.display = vastAantal ? 'grid' : 'none';
+  const verborgen = renderVerborgenStrook();
+  // "Geen sensoren geselecteerd" zou hier liegen: ze zijn wél geselecteerd en
+  // ze worden gemeten, je hebt ze alleen allemaal weggeklikt. Een lege staat
+  // die de verkeerde oorzaak noemt stuurt je naar het verkeerde scherm.
+  if(!getoond && !vastAantal && verborgen)
+    g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">🙈</div><h3>Alles verborgen</h3><p>${verborgen} sensor${verborgen===1?'':'en'} worden nog gemeten. Dubbeltik onderaan op een naam om hem terug te halen.</p></div>`;
 }
-// ── Dubbeltik op een tegel/waarde/puntje = PID uitzetten ──
-// Alleen deselecteren; weer aanzetten gaat via het sensorkeuze-scherm.
+// ══════════════════════════════════════════════════════════════════
+// VERBERGEN IS GEEN UITZETTEN
+// ──────────────────────────────────────────────────────────────────
+// Tot 02-09-2026 deed een dubbeltik op een tegel twee dingen tegelijk: de PID
+// uit `activePIDs` halen (dus stoppen met meten — de pollus vraagt hem niet
+// meer, pidHist loopt leeg, de rit-opname en de analyse missen hem) én de
+// tegel van het scherm halen. Dat is één handeling met twee betekenissen, en
+// dat is in deze codebase al drie keer een bug geweest. Erger nog: de dure
+// helft was onzichtbaar. Je haalde een tegel weg omdat hij in de weg stond, en
+// je verloor er stilletjes een meting mee.
+//
+// Nu zijn het twee dingen:
+//   VERBERGEN  (dubbeltik op de tegel) raakt alleen het scherm. De PID blijft
+//              in activePIDs, wordt gewoon gemeten, blijft in de historie, en
+//              telt gewoon mee in de analyse. Alleen de tegel is weg.
+//   UITZETTEN  (het kruisje in de verborgen-strook, of het keuzescherm) haalt
+//              hem uit de selectie en stopt het meten.
+//
+// De regel voor de gebruiker is één zin: **dubbeltik wisselt de zichtbaarheid,
+// waar je hem ook doet.** Op een tegel verbergt hij, op een naam in de strook
+// onderin haalt hij hem terug. Eén gebaar, één betekenis.
+//
+// BEWUST ALLEEN VOOR DEZE SESSIE. hiddenPIDs staat in het geheugen en wordt
+// niet bewaard. Bewaren per auto is #94, en dat is een grotere vraag: waar
+// hoort een verborgen PID als je een andere auto aansluit, en wat gebeurt er
+// bij een gewiste opslag. Een herstart geeft dus alle tegels terug, en dat is
+// hier de veilige kant — een tegel die je een maand geleden hebt weggeklikt en
+// niet meer kent, is erger dan een tegel te veel.
+const hiddenPIDs = new Set();
+function pidVerborgen(pid){ return hiddenPIDs.has(pid); }
+
+// Verbergen en tonen zijn met opzet twee functies en geen toggle: de
+// aanroepers weten precies welke kant ze op willen, en een toggle die je
+// tweemaal krijgt (dubbeltik!) doet dan niets.
+function pidVerberg(pid){
+  if(!activePIDs.has(pid) || hiddenPIDs.has(pid)) return false;
+  hiddenPIDs.add(pid);
+  try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt:', e); }
+  const d=getPidDef(pid);
+  // De toast zegt er expliciet bij dat er dóórgemeten wordt. Zonder die zin
+  // leest "verborgen" als "uit", en dan verwacht iemand een snellere pollus of
+  // schrikt hij van een analyse die de sensor toch noemt.
+  showToast?.('🙈 '+((d&&d.name)||pid)+' verborgen — wordt nog gemeten. Terug via de strook onderaan.');
+  return true;
+}
+function pidToon(pid){
+  if(!hiddenPIDs.delete(pid)) return false;
+  try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt:', e); }
+  const d=getPidDef(pid);
+  showToast?.('👁 '+((d&&d.name)||pid)+' weer in beeld');
+  return true;
+}
+function pidToonAlles(){
+  if(!hiddenPIDs.size) return 0;
+  const n=hiddenPIDs.size;
+  hiddenPIDs.clear();
+  try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt:', e); }
+  showToast?.('👁 '+n+' tegel'+(n===1?'':'s')+' weer in beeld');
+  return n;
+}
+
+// De strook onderaan de live view: alles wat je hebt weggeklikt, met een korte
+// naam. Bewust een eigen element buiten #gGrid, want dit hoort bij álle vier de
+// weergaven en niet alleen bij de slimme — het vak "Rustig" is een indeling van
+// wat er wél staat, dit is de lijst van wat er níét staat.
+//
+// De kop zegt "wordt nog gemeten". Dat is de hele reden dat deze strook er is:
+// zonder die zin is "verborgen" niet van "uit" te onderscheiden, en dan is er
+// niets opgelost maar alleen verplaatst.
+function renderVerborgenStrook(){
+  const el=document.getElementById('verborgenStrook');
+  if(!el) return 0;
+  el.innerHTML='';
+  const lijst=[...activePIDs].filter(function(p){ return hiddenPIDs.has(p); });
+  if(!lijst.length){ el.style.display='none'; return 0; }
+  el.style.display='flex';
+  const kop=document.createElement('div'); kop.className='verb-kop';
+  kop.textContent='🙈 '+lijst.length+' verborgen — wordt nog gemeten';
+  el.appendChild(kop);
+  lijst.forEach(function(pid){
+    const d=getPidDef(pid);
+    const naam=(d&&d.name)||pid;
+    let kort=naam;
+    try{ if(typeof hudShortLabel==='function') kort=hudShortLabel(naam)||naam; }
+    catch(e){ console.warn('hudShortLabel mislukt:', e); }
+    const chip=document.createElement('span'); chip.className='verb-chip'; chip.id='vb-'+pid;
+    chip.title=naam+' — dubbeltik om hem terug te halen';
+    const lbl=document.createElement('span'); lbl.className='verb-naam'; lbl.textContent=kort;
+    lbl.onclick=function(){ pidTileTap(pid); };
+    // Het kruisje is de ÁNDERE handeling, en die hoort zichtbaar en benoemd te
+    // zijn in plaats van achter hetzelfde gebaar te schuilen: hier stop je met
+    // meten. Eén tik volstaat — dit is een klein doel met een eigen label, geen
+    // tegel waar je met een duim langs veegt.
+    const weg=document.createElement('button'); weg.className='verb-weg'; weg.type='button';
+    weg.textContent='✕';
+    weg.title='Sensor helemaal uitzetten — er wordt dan niet meer gemeten';
+    weg.onclick=function(ev){ if(ev&&ev.stopPropagation) ev.stopPropagation(); pidDeselect(pid); };
+    chip.appendChild(lbl); chip.appendChild(weg);
+    el.appendChild(chip);
+  });
+  // Met tien verborgen tegels is tien keer dubbeltikken geen weg terug.
+  const alles=document.createElement('button'); alles.className='verb-alles'; alles.type='button';
+  alles.id='verbAlles';
+  alles.textContent='Alles tonen';
+  alles.onclick=function(){ pidToonAlles(); };
+  el.appendChild(alles);
+  return lijst.length;
+}
+
+// ── Dubbeltik = wissel de zichtbaarheid ──
+// De dubbeltik-poort zit hier en niet in pidVerberg(): één tik mag niets doen,
+// want een tegel is groot en je zit in een rijdende auto.
 let _tileTap={pid:null,t:0};
 function pidTileTap(pid){
   const now=Date.now();
-  if(_tileTap.pid===pid && now-_tileTap.t<420){ _tileTap={pid:null,t:0}; pidDeselect(pid); return; }
+  if(_tileTap.pid===pid && now-_tileTap.t<420){
+    _tileTap={pid:null,t:0};
+    if(hiddenPIDs.has(pid)) pidToon(pid); else pidVerberg(pid);
+    return;
+  }
   _tileTap={pid:pid,t:now};
 }
 function pidDeselect(pid){
@@ -341,11 +474,16 @@ function pidDeselect(pid){
   try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt:', e); }
   try{ rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
   const d=getPidDef(pid);
-  showToast?.('⏸ '+((d&&d.name)||pid)+' uit — aanzetten via sensorkeuze');
+  showToast?.('⏸ '+((d&&d.name)||pid)+' uit — er wordt niet meer gemeten. Aanzetten via sensorkeuze.');
   // De eigen logregel die hier stond ("Sensor uitgezet via dubbeltik: ...")
   // is vervangen door de gedeelde melder. Twee bewoordingen voor dezelfde
   // gebeurtenis was precies de asymmetrie uit #31.
-  plSelectieMeld(_voor,'dubbeltik op de tegel');
+  //
+  // De aanleiding heette tot 02-09-2026 'dubbeltik op de tegel'. Dat gebaar
+  // verbergt sindsdien alleen nog; écht uitzetten gaat via het kruisje in de
+  // verborgen-strook. De melder moet zeggen wat er werkelijk gebeurde, anders
+  // staat er straks in het selectielog een handeling die niet bestaat.
+  plSelectieMeld(_voor,'kruisje in de verborgen-strook');
 }
 
 // ── Datastroom-reset: achterstand/drukte wegwerken zodat een volgende
