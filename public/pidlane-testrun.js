@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.0 (03-09-2026)';
+const TESTRUN_VERSIE = '7.1 (03-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -798,9 +798,22 @@ async function _blok3() {
   // en dat gebeurde op de run van 17-08. wait() wacht tot de lopende cyclus
   // klaar is; die duurt een paar honderd ms, dus 8 s is ruim.
   let _busTok = 0;
-  try { _busTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-sweep', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor de sweep gaf een fout (niet alleen \'bezet\')', e); }
-  if (!_busTok) _boek(3, 'Busslot', 'LET OP', 'bus niet vrijgekomen binnen 8 s — sweep loopt naast de pollus', null);
-  else _boek(3, 'Busslot', 'ok', 'bus geclaimd voor de sweep', null);
+  // HOE LANG het wachten duurde is sinds 7.1 de meting van #98. Met vier
+  // aanvragers kreeg de sweep het slot op 02-09 in acht seconden niet, omdat de
+  // pollus het na elke cyclus meteen terugpakte. PLBus houdt nu een wachtrij
+  // bij; werkt die, dan hoort dit een paar honderd milliseconden te zijn — één
+  // pollcyclus. Loopt het in de seconden, dan dringt er nog iets voor.
+  const _slotT0 = _nu();
+  try { _busTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-sweep', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor de sweep gaf een fout (niet alleen bezet)', e); }
+  const _slotMs = _nu() - _slotT0;
+  let _houder = null;
+  try { _houder = (window.PLBus && PLBus.owner) ? PLBus.owner() : null; } catch (e) { console.warn('Bushouder onleesbaar bij de sweep', e); }
+  if (!_busTok) _boek(3, 'Busslot', 'LET OP', 'bus niet vrijgekomen binnen 8 s — sweep loopt naast de pollus' +
+    (_houder ? ' (vastgehouden door "' + _houder + '")' : '') +
+    '. De wachtrij van PLBus hoort dit te voorkomen; staat dit er nog, dan dringt er iets voor (#98)', null);
+  else if (_slotMs > 2000) _boek(3, 'Busslot', 'LET OP', 'bus geclaimd, maar pas na ' + _slotMs + ' ms wachten — ' +
+    'met de wachtrij hoort dat een pollcyclus te zijn, geen seconden (#98)', null);
+  else _boek(3, 'Busslot', 'ok', 'bus geclaimd voor de sweep na ' + _slotMs + ' ms wachten', null);
 
   // Selectie verbreden zodat de pollus ze ook echt aanraakt.
   try {
@@ -837,8 +850,16 @@ async function _blok3() {
 
   try { if (_busTok && window.PLBus && PLBus.release) PLBus.release(_busTok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
 
+  // Het tempo erbij (7.1). Dit is de andere helft van #98: op 02-09 duurde de
+  // sweep 73 s in plaats van 12, en 1250 ms per PID in plaats van 200, omdat hij
+  // zonder slot naast de pollus mat. Zonder dit getal in het verslag is dat
+  // verschil alleen terug te vinden door tijdstempels af te trekken.
+  const _sweepMs = _nu() - _slotT0;
+  const _perPid = gelukt ? Math.round(_sweepMs / gelukt) : null;
   _boek(3, 'PID-sweep klaar', gelukt && !fout ? 'ok' : 'LET OP',
-    gelukt + ' gelezen, ' + leeg + ' geen data, ' + fout + ' parserprobleem', null);
+    gelukt + ' gelezen, ' + leeg + ' geen data, ' + fout + ' parserprobleem' +
+    '  |  ' + Math.round(_sweepMs / 1000) + ' s' + (_perPid === null ? '' : ', ' + _perPid + ' ms per PID') +
+    (_busTok ? ' (met slot)' : ' (ZONDER slot — naast de pollus, dus deze tijden zeggen niets over de bus)'), null);
 
   // PIDs die nooit antwoorden maar wél in je selectie stonden: dat is precies
   // waar de gate voor bestaat. Ze hier apart noemen maakt zichtbaar of de
@@ -4188,9 +4209,15 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 03-09 — de app weet dat hij weg was, en komt met opzet terug (#18)',
+  titel: 'OPLEVERING 03-09 (tweede) — wie op het busslot wacht, krijgt de eerstvolgende beurt (#98)',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
+
+    '#98 kwam uit de vorige rit en had zijn eigen bewijs al bij zich: met vier aanvragers kreeg de sweep het busslot in acht seconden niet en mat hij daarna náást de pollus — 1250 ms per PID in plaats van 200, en 73 seconden in plaats van 12. Alle 46 PIDs kwamen binnen, dus het viel niet op als storing; het viel op als traagheid.',
+
+    'IK HAD DE OORZAAK VERKEERD GERADEN. In het issue schreef ik dat 8 seconden te krap was en dat de wachttijd met de bezetting mee moest schalen. Dat is niet zo, en langer wachten had het ook niet opgelost. wait() kijkt elke 50 ms of het slot vrij is; de pollus geeft het vrij en pakt het in dezelfde tel weer terug. Het slot is dan een paar milliseconden vrij en de wachter kijkt er net naast. Dat is geen kwestie van duur maar van eerlijkheid: langer wachten maakt de kans groter, nooit zeker.',
+
+    'PLBus houdt nu een wachtrij bij. Wie via wait() binnenkomt staat erin, en een losse claim() gaat niet meer voor. De noodrem eronder is dezelfde als bij de verweesde _pollBusy: een wachter die zijn beurt na vijftien seconden niet gepakt heeft wordt vergeten, zodat één module de bus niet kan gijzelen.',
 
     '#18 is de zwaarste bug die openstond (ernst:2) en hij is op 02-09 om 22:04 voor het eerst met opzet nagemeten: twee minuten weg uit de app, en de meetlus stond 190 seconden stil. Daarmee ging hij van vermoeden naar bevinding. Deze ronde doet er iets aan — niet alles.',
 
@@ -4202,6 +4229,10 @@ const CAMPAGNE = {
 
     '── STAP VOOR STAP ─────────────────',
 
+    'STAP 0 VOOR DEZE RONDE. Zet in stap 3 weer alle vier de aanvragers aan — zonder die vierde is de bus niet druk genoeg en bewijst deze rit niets over #98. Kijk daarna in blok 3 naar de regel Busslot. Daar hoort nu ok te staan mét het aantal milliseconden dat er gewacht is; een paar honderd is één pollcyclus en dus goed. Staat er LET OP met "niet vrijgekomen binnen 8 s", dan dringt er nog iets voor.',
+
+    'EN DE ANDERE HELFT: de regel PID-sweep klaar draagt nu de duur en het tempo. Vorige rit was dat 73 s en 1250 ms per PID, zonder slot. Met slot hoort het rond de 12 s en 200 ms te liggen. Staat er (ZONDER slot) achter, dan zeggen die tijden niets over de bus en is dat meteen het antwoord.',
+
     'STAP A. Doe de begeleide rit weer helemaal, dertien stappen. Reken op een kwartier: tien minuten rijden plus twee minuten achtergrond.',
 
     'STAP B. Stap 7 is deze ronde het onderwerp. Ga twee minuten weg uit de app en blíjf rijden. Kom terug en kijk wat er in het logboek staat: er hoort nu één regel te staan die zegt hoe lang je weg was, met "socket nagekeken" erachter. Stond die regel er niet, dan vuurde de luisteraar niet en is dat de bevinding.',
@@ -4211,6 +4242,12 @@ const CAMPAGNE = {
     'STAP D. Kijk of de herverbinding sneller ging dan vroeger. Vroeger: zestien seconden rommel na terugkomst. Nu hoort de socketcontrole er meteen te staan. Staat er "Herverbonden ✓" vlak na de achtergrondregel, dan werkte hij; staat er niets, dan leefde de socket nog — ook goed, want de controle grijpt met opzet alleen in als het nodig is.',
 
     '── WAT ER IS VERANDERD ──────────────',
+
+    'PLBus (pidlane-data.js) — een wachtrij met noodrem. test-busslot.js toetst hem op de echte module: de pollus krijgt geen nieuwe beurt zolang er iemand wacht, ook niet op het moment dat het slot vrijkomt, en een verlopen wachter wordt vergeten. Met een tegenproef vooraf, want zonder wachters hoort de pollus gewoon te mogen — anders zou "weiger altijd" ook groen geven.',
+
+    'DIE TEST HING EERST in plaats van rood te worden: wait() draait op de bevroren testklok, dus zijn eigen vervaltijd loopt nooit af. Er staat nu een echte klok naast. Een hangende test is erger dan een falende — plmutate wacht er net zo lang op en in CI is het niet te onderscheiden van een trage runner.',
+
+    'BLOK 3 — de Busslot-regel draagt de wachttijd, de sweep-regel de duur en het tempo per PID. plmutate.sh: 38 mutaties, alles gevangen.',
 
     'NIEUW — pidlane-achtergrond.js. PLAchtergrond legt elke onderbreking vast met duur, negeert korte vensterwissels onder de drie seconden (anders staat de lijst vol met de bestandskiezer), en kijkt vanaf tien seconden de SPP-socket na. Die controle draait met force UIT: de guard doet dan eerst isConnected() en grijpt alleen in als de socket écht dood is. Een gezonde verbinding mag een achtergrondpauze overleven.',
 

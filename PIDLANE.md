@@ -927,6 +927,51 @@ gedráaid zijn. Dat is iets anders dan wat ze zouden merken, en tussen die twee
 zat hier een gat van vier fouten. Een groene reeks is pas een uitspraak als er
 een tegenproef onder ligt.
 
+### De sweep verhongerde op het busslot — 03-09-2026 (opgelost)
+
+Gevonden in de rit van 02-09 22:15, de eerste met **vier** aanvragers tegelijk:
+
+```
+[22:13:04]  ·      PID-sweep — 46 PIDs
+[22:13:13] LETOP   Busslot — bus niet vrijgekomen binnen 8 s
+[22:14:17] LETOP   Busslot — vastgehouden door "poll"
+```
+
+| | rustige rit | vier aanvragers |
+|---|---|---|
+| per PID | ~200 ms | **1000–1250 ms** |
+| hele sweep | ~12 s | **73 s** |
+| `venGemMs` | 182 ms | **1267 ms** |
+
+Alle 46 PIDs kwamen binnen. Het viel dus niet op als storing maar als
+traagheid — en de waarden zijn gemeten terwijl de pollus ertussendoor liep,
+precies waar dat slot voor bestaat.
+
+**De oorzaak die ik in het issue schreef, klopte niet.** Daar stond dat 8
+seconden te krap was en dat de wachttijd met de bezetting mee moest schalen.
+Dat zou het niet hebben opgelost. `wait()` kijkt elke 50 ms of het slot vrij
+is; de pollus geeft het vrij en claimt het in dezelfde tel opnieuw. Het slot is
+dan een paar milliseconden vrij, en de wachter kijkt er net naast. Langer
+wachten vergroot de kans, maar maakt hem nooit zeker — **het is geen kwestie
+van duur maar van eerlijkheid.** Die vergissing staat hier omdat de correctie
+minder leerzaam is dan de fout: "het duurt te lang" is de eerste verklaring die
+opkomt bij een timeout, en hij is hier aantoonbaar de verkeerde.
+
+**Wat er nu staat.** `PLBus` houdt een wachtrij bij. Wie via `wait()`
+binnenkomt staat erin; een losse `claim()` krijgt geen voorrang meer. De
+noodrem eronder is dezelfde als bij de verweesde `_pollBusy`: een wachter die
+zijn beurt binnen `WACHT_MAX_MS` niet pakt wordt vergeten, zodat één module de
+bus niet kan gijzelen.
+
+**Wat de test hier leerde.** `test-busslot.js` draait op een bevroren klok. De
+mutatie die de wachtrij uitzet liet hem daardoor niet falen maar **hangen** —
+`wait()` haalt zijn eigen vervaltijd nooit, dus hij wacht eeuwig. `plmutate.sh`
+liep er twee minuten op vast en liet bovendien de mutatie in de bron staan,
+want hij werd afgebroken vóór het herstel. Er staat nu een echte klok naast de
+bevroren. Een hangende test is erger dan een falende: in CI is hij niet te
+onderscheiden van een trage runner, en de tegenproef eronder zegt intussen
+niets.
+
 ### De app bevroor stil, en wist het zelf niet — 03-09-2026 (half opgelost)
 
 `#18` stond sinds 27-08 open als vermoeden. Op 02-09 om 22:04 is hij voor het

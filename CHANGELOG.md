@@ -11,6 +11,36 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — WIE WACHT, KRIJGT DE BEURT
+
+       • 🚦 #98: MET VIER AANVRAGERS KREEG DE SWEEP HET BUSSLOT NIET.
+         Gemeten in de rit van 02-09: acht seconden wachten zonder
+         resultaat, en daarna meten náást de pollus — 1250 ms per
+         PID in plaats van 200, en 73 s in plaats van 12. Alle 46
+         PIDs kwamen binnen, dus het viel niet op als storing maar
+         als traagheid.
+
+       • 🔍 DE OORZAAK WAS NIET EEN TE KORTE WACHTTIJD, zoals in het
+         issue stond. wait() kijkt elke 50 ms of het slot vrij is;
+         de pollus geeft het vrij en pakt het in dezelfde tel weer
+         terug. Het slot is dan een paar milliseconden vrij en de
+         wachter kijkt er net naast. Langer wachten maakt de kans
+         groter, nooit zeker.
+
+       • 🎟 PLBUS HOUDT NU EEN WACHTRIJ BIJ. Wie via wait()
+         binnenkomt staat erin; een losse claim() gaat niet meer
+         voor. Met dezelfde noodrem als bij de verweesde
+         _pollBusy: een wachter die zijn beurt na vijftien seconden
+         niet gepakt heeft wordt vergeten, zodat één module de bus
+         niet kan gijzelen.
+
+       • 📏 BLOK 3 MEET HET VOORTAAN ZELF. De Busslot-regel draagt
+         de wachttijd in milliseconden, de sweep-regel de duur en
+         het tempo per PID — en zegt erbij of er mét of ZONDER slot
+         gemeten is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — DE APP WEET DAT HIJ WEG WAS
 
        • 📴 #18 IS OP 02-09 GEREPRODUCEERD: twee minuten weg uit de
