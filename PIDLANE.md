@@ -437,11 +437,22 @@ onthouden, want de eerste fix wekte de indruk dat het klaar was:
 |---|---|---|
 | Veldlab-sessies → `Sessies` | `_vlSchoonVoorVerzending()` in `pidlane-veldlab.js` | 25-08-2026 |
 | Logregels → `Logs` | `_plVinVoorLog()` in `pidlane-auth.js` | 27-08-2026 |
+| App-logbuffer → testrunverslag | — | **nog open, zie `#102`** |
 
 Het tweede pad was het ergere van de twee en werd bij de eerste ronde gemist:
 `logToSheets()` schreef de volledige VIN in een **eigen kolom**, op élke
 logregel, met de kolom `User` in dezelfde rij. Niet weggestopt in een JSON-blob
 zoals bij Veldlab, maar gewoon zichtbaar in de tabel.
+
+**Het derde pad is op 02-09-2026 gevonden en staat nog open.** Deze tabel was
+twee keer compleet en was het geen van beide keren. `_plVinVoorLog()` beschermt
+de route naar Airtable, niet de logbuffer waar die route uit put: twee aanroepen
+(`pidlane-bt.js:2289`, `pidlane-pids.js:1097`) schrijven de ruwe VIN daar
+rechtstreeks in, en het testrunverslag exporteert de buffer integraal. Het is
+ook het pad met de ruimste bestemming — bij de andere twee gaat er een kolom
+naar een tabel die alleen ik zie, hier kiest de gebruiker zelf waar het bestand
+heen gaat. Zolang de ruwe VIN in de buffer staat is elke nieuwe afnemer ervan
+weer een nieuw pad. Zie `#102` en §11.
 
 Beide paden delen één functie, `_vlVinPseudoniem()`: `SHA-256(zout + VIN)`,
 eerste 16 hextekens. Dezelfde auto krijgt daardoor in beide tabellen hetzelfde
@@ -1019,6 +1030,87 @@ typeof-guard maar staat niet in KRITIEK"*. Terecht — verdwijnt hij, dan doet d
 controle niets en komt de app weer per ongeluk achter een dode socket. Die
 controle deed hier dus precies waar hij voor bestaat, zonder dat iemand eraan
 hoefde te denken.
+
+**NAGEMETEN OP 02-09-2026 23:22, EN DE PROEF STELT DE VERKEERDE VRAAG.** De rit
+met testrun 7.1 leverde dit op:
+
+```
+PLRit leidt 1 onderbreking(en) af, grootste 64 s
+PLAchtergrond wéét er 1, grootste 120 s
+— de twee bronnen verschillen meer dan een kwart
+```
+
+Dat leest als een meetfout in een van beide. Het is er geen. Het app-log van
+dezelfde rit laat zien wat er gebeurde:
+
+| tijd | wat |
+|---|---|
+| 23:17:59 | app verborgen |
+| 23:18:05 | `SPP automatisch herverbonden` |
+| 23:18:18 | `ELM327 initialisatie klaar` |
+| 23:18:20 | monitor ziet `0105` uitvallen |
+| 23:18:22 | verificatie gestart |
+| 23:18:35 | verificatie afgerond — `0105 antwoordt nu vlot` |
+| *stilte* | |
+| 23:19:59 | terug |
+
+**De app draaide nog ruim een halve minuut door nadat hij verborgen was.** Hij
+deed in die tijd een volledige herverbinding mét ELM-init, zag een sensoruitval
+en rondde een verificatieronde af. Pas daarna bevroor Android hem. De twee
+bronnen meten dus twee verschillende dingen, en allebei goed: PLAchtergrond
+meet hoe lang de app **verborgen** was (dat is wat `visibilitychange` weet),
+PLRit meet hoe lang de meetlus **stillag** (dat is wat de tikken laten zien).
+Tussen die twee zit per definitie de aanlooptijd tot de bevriezing.
+
+Daarmee klopt de regel hierboven — *"ziet PLRit een gat dat PLAchtergrond niet
+kent, dan is dat FOUT"* — nog steeds, maar de proef doet iets anders: hij
+vergelijkt de **duur**, en zet LET OP op een verschil dat de normale uitkomst
+is. De vraag hoort over het **bestaan** te gaan. Het verschil in duur is de
+interessante meetwaarde, niet het alarm.
+
+Dezelfde verwarring zit in de melding zelf: *"De app was 120 s weg — de meetlus
+stond in die tijd stil"* beweert iets wat PLAchtergrond niet meet, en het log
+eronder spreekt het tegen. De duur is van PLAchtergrond, het oordeel over de
+lus is van PLRit.
+
+**Wat deze rit opleverde is dus geen bevestiging maar een getal: ~36 seconden
+tussen verbergen en bevriezen**, op de SM-S947B bij stationair draaien. Dat
+maakt twee dingen concreter. De drempel van tien seconden waarop PLAchtergrond
+de socket nakijkt zit ruim binnen die aanloop, en dat is nu onderbouwd in
+plaats van gekozen. En richting 1 hoeft geen milliseconden te winnen: hij moet
+een gat van deze orde overbruggen. Of de aanloop korter is als het toestel
+meer te doen heeft — er is deze rit niet gereden — staat nog open.
+
+### Het testrunverslag was het derde VIN-pad — 03-09-2026
+
+De rit van 02-09 23:22 leverde een verslag op met de volledige VIN erin, twee
+keer, in de app-logdump onderaan:
+
+```
+{"ts":"23:15:37","type":"ok","msg":"VIN: JMZKF6W7600766507"}
+{"ts":"23:15:42","type":"ok","msg":"💾 Voertuigprofiel opgeslagen (55 PIDs) voor JMZKF6W7600766507"}
+```
+
+Blok 1 van datzelfde verslag maskeert wél: `VIN 766507`. De maskering zat dus in
+de testrun en niet in de bron.
+
+**Waarom §7 dit niet ving.** Die paragraaf noemt twee uitgaande paden en beide
+zijn dicht. Maar `_plVinVoorLog()` beschermt de route naar Airtable — niet de
+logbuffer zelf. Twee aanroepen schrijven de ruwe VIN rechtstreeks in die
+buffer (`pidlane-bt.js:2289` en `pidlane-pids.js:1097`), en het verslag
+exporteert de buffer integraal.
+
+**En dat maakt het het gevaarlijkste van de drie.** Bij de andere twee gaat er
+een gecontroleerde kolom naar een tabel die alleen ik zie. Een testrunverslag
+is bedoeld om gedeeld te worden: het gaat naar een issue, een chat, een
+bestand op een pc. Het is de enige van de drie waar de gebruiker zelf de
+bestemming kiest.
+
+**De les is niet "nog een pad dichtzetten".** Het is dat "uitgaand pad" hier
+twee keer verkeerd is afgebakend: eerst als *de verzendfunctie*, nu als *de
+route naar Airtable*. De buffer zelf was steeds de plek waar het misging, en
+zolang de ruwe VIN daarin staat is de volgende afnemer weer een nieuw pad. Zie
+`#102`.
 
 ### Vier ritten, nul gesloten issues — 02-09-2026
 
