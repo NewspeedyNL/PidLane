@@ -83,6 +83,7 @@ fi
 
 gevangen=0; ontsnapt=0; overgeslagen=0
 ONTSNAPT_LIJST=""
+OVERGESLAGEN_LIJST=""
 
 herstel() { [ -n "$HUIDIG" ] && [ -f "$RESERVE" ] && cp "$RESERVE" "$REPO/$HUIDIG" && rm -f "$RESERVE"; }
 trap 'herstel; echo; echo "${GEEL}Afgebroken — bronbestand teruggezet.${UIT}"; exit 130' INT TERM
@@ -97,10 +98,12 @@ for regel in "${MUTATIES[@]}"; do
   doel="$REPO/$bestand"
   if [ ! -f "$doel" ]; then
     echo "${GEEL}  OVERGESLAGEN${UIT}  $bestand bestaat niet"
+    OVERGESLAGEN_LIJST="$OVERGESLAGEN_LIJST\n    - $omschrijving ($bestand bestaat niet)"
     overgeslagen=$((overgeslagen+1)); continue
   fi
   if [ ! -f "$PUB/$test" ]; then
     echo "${GEEL}  OVERGESLAGEN${UIT}  $test bestaat niet"
+    OVERGESLAGEN_LIJST="$OVERGESLAGEN_LIJST\n    - $omschrijving ($test bestaat niet)"
     overgeslagen=$((overgeslagen+1)); continue
   fi
 
@@ -131,6 +134,7 @@ PY
     herstel
     echo "${GEEL}  OVERGESLAGEN${UIT}  $omschrijving"
     echo "                ${GRIJS}anker $raak× gevonden in $bestand (moet 1× zijn)${UIT}"
+    OVERGESLAGEN_LIJST="$OVERGESLAGEN_LIJST\n    - $omschrijving (anker $raak× in $bestand)"
     overgeslagen=$((overgeslagen+1)); continue
   fi
 
@@ -159,6 +163,22 @@ if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" 
   echo "${ROOD}  LET OP: de werkmap is niet schoon achtergelaten.${UIT}"
   git -C "$REPO" status --short
   exit 2
+fi
+
+# Een overgeslagen mutatie is precies het stille falen waar dit script tegen
+# bestaat: het anker past niet meer, dus die fout wordt niet meer nagebouwd, en
+# de regel eronder meldt vrolijk "gevangen" over alles wat er nog wél in stond.
+# Vandaar exit 1 en niet een gele regel. Repareer het anker (een \n erbij maakt
+# hem langer en dus unieker) of haal de mutatie weg met de reden erbij.
+if [ $overgeslagen -gt 0 ]; then
+  echo
+  echo "${ROOD}Er is een mutatie niet uitgevoerd:${UIT}"
+  printf "$OVERGESLAGEN_LIJST\n"
+  echo
+  echo "Een mutatie die niet meer past bouwt niets na. Zolang dit zo staat"
+  echo "zegt \"alles gevangen\" minder dan het lijkt."
+  echo
+  exit 1
 fi
 
 if [ $ontsnapt -gt 0 ]; then
