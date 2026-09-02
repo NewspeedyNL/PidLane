@@ -966,6 +966,34 @@ verdwijnen.
 steeds uitwijzen dat 0123 stilstaat of dat de app niet bevriest — dat zijn
 antwoorden, en antwoorden zijn precies wat er tot nu toe niet kwam.
 
+**UITKOMST — de rit van 02-09 22:15.** Dertien van de dertien stappen, vier
+aanvragers, tweeëntwintig minuten, en de run sloot af met **109 ok, 0 fout**.
+Vier issues kregen hun antwoord in één rit:
+
+| issue | wat de rit opleverde |
+|---|---|
+| #19 | 0123 en 0159 allebei in beweging: 193 verversingen, 187 resp. 181 wijzigingen, 9730–23790 |
+| #40 | 0155 en 0156 allebei 1 byte uit tien metingen, zonder tegenspraak — de tabel zegt 2 |
+| #29 | de gate meldt 015E opgeruimd, en het log bevestigt hem: blok 14 ziet wat er echt gebeurde |
+| #18 | 190 s stilte in de meetlus terwijl de app op de achtergrond stond — van vermoeden naar bevinding |
+
+Plus twee oordelen die alleen een mens kon geven: de slimme indeling klopt op
+deze auto (#66), en er valt niets achter de Android-knoppen (#79/#58) — daar
+was de melding dus fout en niet de layout.
+
+**En de rit vond zelf twee dingen die niemand had gevraagd.** De eigen proeven
+van 6.5 waren op twee plekken slordig: de #29-proef zette `gate: [object
+Object]` in het verslag en trok daar wél een stellige conclusie uit, en de
+#15-proef telde de achtergrondpauze mee als responstijd (`hoogst 185785 ms` —
+dat is de bevriezing, niet de bus). Allebei gerepareerd. Het patroon is
+inmiddels vertrouwd: *een proef die een stellige uitspraak doet op een bron die
+hij niet goed leest.*
+
+Het derde is [#98](https://github.com/NewspeedyNL/PidLane/issues/98): met vier
+aanvragers krijgt de sweep het busslot niet meer binnen 8 s en meet hij naast
+de pollus — 1250 ms per PID in plaats van 200. Geen regressie, maar een grens
+die er altijd was en die nu voor het eerst gehaald wordt.
+
 ### De gezondheidscheck stempelde vóór hij oordeelde — 02-09-2026 (opgelost)
 
 Gevonden in de testrun van 02-09 om 12:05, als een van de twee FOUTen:

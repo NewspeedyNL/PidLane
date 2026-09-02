@@ -192,6 +192,21 @@ console.log('\n── splitBatchResponse: de Mazda-lengtes (55/56 zijn 1 byte) �
   toets('0155/0156 worden tóch als 1 byte gelezen',
     s.splitBatchResponse('4155805680', ['0155', '0156']),
     { '0155': [0x80], '0156': [0x80] });
+
+  // DE ANDERE HELFT VAN #40. De ruwe bytes uit het issue, solo, met de
+  // gevraagde uitkomst erbij: 0x80 is de rauwe nul van een trimwaarde, dus
+  // (128-128) x 100/128 = 0%. Dat de wáárde klopt is precies waarom dit
+  // nergens opviel — 0155 leest goed terwijl de tabel er twee bytes
+  // verwacht. Zonder deze toets bewijst het blok hierboven alleen dat de
+  // segmentatie werkt, niet dat er de goede meetwaarde uitkomt.
+  //
+  // Nagemeten in de rit van 02-09 22:15: tien metingen op allebei, via batch,
+  // zonder tegenspraak. De tabel blijft op 2 staan — dat is de J1979-norm,
+  // waar de tweede byte de andere bank draagt — en de lerende laag wint op
+  // deze auto. Dat is de keuze die het issue openliet.
+  toets('en 0155 levert dan 0% op (de ruwe bytes uit #40)',
+    s.parsePID('0155', '415580'), 0);
+  toets('0156 net zo', s.parsePID('0156', '415680'), 0);
 }
 
 console.log('\n── splitBatchResponse: terugkoppeling naar PLPidLen ──');
