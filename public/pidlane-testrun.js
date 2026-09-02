@@ -2380,15 +2380,33 @@ const PROEVEN_B5 = [
       if (!window.PLBudget || !PLBudget.spoor) return { staat: 'LET OP', detail: 'PLBudget ontbreekt — geen spoor' };
       let sp = [];
       try { sp = (PLBudget.spoor() || []).filter(function (m) { return !m.run; }); } catch (e) { return { staat: 'LET OP', detail: 'pollbudget-spoor onleesbaar' }; }
-      if (sp.length < 20) return { staat: 'LET OP', detail: sp.length + ' monsters — te kort om iets over #15 te zeggen' };
+      // DE ACHTERGRONDPAUZE ERUIT (02-09-2026). De run van 22:15 meldde
+      // "responstijd gem 897 ms (hoogst 185785 ms)". Die 186 seconden is geen
+      // bus maar de bevriezing uit stap 7: de meetlus stond 190 s stil en de
+      // eerste meting daarna droeg die hele stilte als responstijd. #15 gaat
+      // over wat vier aanvragers met de BUS doen, dus zo'n monster hoort er
+      // niet in — en het weglaten zonder het te melden hoort ook niet. Vandaar
+      // allebei: eruit, en met het aantal erbij.
+      let gaten = [];
+      try { gaten = (window.PLRit && PLRit.gaten) ? (PLRit.gaten() || []) : []; } catch (e) { console.warn('PLRit.gaten() onleesbaar bij de #15-proef', e); }
+      const inGat = function (m) {
+        return gaten.some(function (g) { return typeof m.t === 'number' && m.t >= g.van && m.t <= g.tot + 5000; });
+      };
+      const vuil = sp.filter(inGat).length;
+      sp = sp.filter(function (m) { return !inGat(m); });
+      if (sp.length < 20) return { staat: 'LET OP', detail: sp.length + ' bruikbare monsters — te kort om iets over #15 te zeggen' };
       const bez = sp.map(function (m) { return m.bezet; }).filter(function (v) { return typeof v === 'number'; });
       const ms = sp.map(function (m) { return m.ms; }).filter(function (v) { return typeof v === 'number' && v > 0; });
       const fout = sp.map(function (m) { return m.fout; }).filter(function (v) { return typeof v === 'number'; });
       const gem = function (a) { return a.length ? Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length) : null; };
       const hoog = function (a) { return a.length ? Math.max.apply(null, a) : null; };
-      const kop = aan.length + ' aanvrager(s) (' + (aan.join(', ') || '—') + ') over ' + sp.length + ' monsters: ' +
-        'bezetting gem ' + gem(bez) + '% (hoogst ' + hoog(bez) + '%), responstijd gem ' + gem(ms) + ' ms (hoogst ' + hoog(ms) + ' ms), ' +
-        'foutgraad hoogst ' + hoog(fout) + '%';
+      // Mediaan erbij, want één trage uitschieter trekt een gemiddelde scheef en
+      // juist de uitschieters zijn hier het onderwerp.
+      const mid = function (a) { if (!a.length) return null; const b = a.slice().sort(function (x, y) { return x - y; }); return Math.round(b[Math.floor(b.length / 2)]); };
+      const kop = aan.length + ' aanvrager(s) (' + (aan.join(', ') || '—') + ') over ' + sp.length + ' monsters' +
+        (vuil ? ' (' + vuil + ' weggelaten: die vielen in de achtergrondpauze)' : '') + ': ' +
+        'bezetting gem ' + gem(bez) + '% (hoogst ' + hoog(bez) + '%), responstijd mediaan ' + mid(ms) + ' ms ' +
+        '(gem ' + gem(ms) + ', hoogst ' + hoog(ms) + '), foutgraad hoogst ' + hoog(fout) + '%';
       if (aan.length < 4)
         return { staat: 'LET OP', detail: kop + ' — dit is het beeld bij ' + aan.length + ' aanvragers. #15 gaat over vier; ' +
           'zonder die vierde is het cijfer niet het cijfer waar het besluit over gaat' };
@@ -2497,13 +2515,23 @@ const PROEVEN_B5 = [
       try { if (typeof pidOpgeruimdLijst === 'function') lijst = pidOpgeruimdLijst(); }
       catch (e) { return { staat: 'LET OP', detail: 'pidOpgeruimdLijst() gaf een fout — dan is er geen bron' }; }
       if (!lijst) return { staat: 'LET OP', detail: 'pidOpgeruimdLijst() ontbreekt — blok 14 leest dan weer een log (#29)' };
-      const gate = (lijst.size !== undefined) ? Array.from(lijst) : (Array.isArray(lijst) ? lijst : Object.keys(lijst || {}));
+    // pidOpgeruimdLijst() geeft {pid, naam, reden} — geen strings. De run van
+    // 02-09 22:15 zette daar "gate: [object Object]" van in het verslag en trok
+    // er wél een stellige conclusie uit. Het oordeel klopte toevallig, maar het
+    // bewijs eronder was onleesbaar, en dat is precies de vorm die §11 zes keer
+    // beschrijft. Vandaar hier uitpakken in plaats van joinen.
+    const _naam = function (x) {
+      if (x && typeof x === 'object') return (x.pid || '?') + (x.naam ? ' (' + x.naam + ')' : '');
+      return String(x);
+    };
+    const gate = (lijst && lijst.size !== undefined) ? Array.from(lijst)
+               : (Array.isArray(lijst) ? lijst : Object.keys(lijst || {}));
       let bt = [];
       try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
       const regels = [].concat(bt || [], _appLogRegels() || [])
         .map(function (r) { return String((r && (r.msg || r.m || r.tekst)) || r); })
         .filter(function (t) { return /opgeruimd/i.test(t); });
-      const kop = 'gate: ' + (gate.length ? gate.join(', ') : 'leeg') + '  |  logregels met "opgeruimd": ' + regels.length;
+    const kop = 'gate: ' + (gate.length ? gate.map(_naam).join(', ') : 'leeg') + '  |  logregels met "opgeruimd": ' + regels.length;
       if (!gate.length && !regels.length)
         return { staat: 'LET OP', detail: kop + ' — er is deze rit niets opgeruimd, dus #29 is niet te toetsen. ' +
           'De regel heeft vijf pogingen plus vijf herkansingen nodig: rijd langer, of neem een sensor mee die zwijgt' };
