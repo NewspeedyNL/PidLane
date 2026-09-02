@@ -336,7 +336,7 @@ als een routingfout):
 | `/klant/wachtwoord` | wachtwoord wijzigen (ingelogd) |
 | `/klant/reset-aanvraag`, `/klant/reset-uitvoeren` | wachtwoordherstel per mail (token-hash in Airtable) |
 | `/klant/admin-wachtwoord` | noodklep: admin zet handmatig een klantwachtwoord |
-| `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot |
+| `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot; **vraagt een klantsessie** — zonder account wordt er niets afgestempeld (02-09-2026) |
 | `/admin/klanten` | klantbeheer voor admin.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
@@ -405,12 +405,16 @@ solo-project. Als er ooit echt SQL nodig is: **Cloudflare D1**, niet MariaDB.
 | Logs | `appdRasY8ZVJCMkPJ` |
 
 Tabellen: Referentie `tblkfxKcjR6gf0Ahe`, Sessies `tblwbyWN1L6AKwgoy`,
-en in de Config-base `Users`, `Klanten`, `TokenCodes` en `TokenLog`
-(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026).
+en in de Config-base `Users`, `Klanten` en `TokenCodes`. `TokenLog`
+(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026) staat er ook, maar er schrijft
+niets in — zie het kasboek-kader in §8 en issue #83.
 
-**Twee soorten accounts, bewust gescheiden.** `Users` zijn zakelijke logins op
-gebruikersnaam (abonnement, geen tokenverbruik). `Klanten` zijn zelf-
-geregistreerde consumenten op e-mailadres, met een `Saldo`-veld. Het inlogveld
+**Twee soorten accounts, bewust gescheiden.** `Users` zijn logins op
+gebruikersnaam voor **personeel** — de beheerder, een monteur, de noodingang.
+Die draaien op de sleutel van de beheerder en verbruiken geen tokens. Er hoort
+géén abonnement bij; dat woord stond hier tot 02-09-2026 en het abonnement
+bestaat niet (#49). `Klanten` zijn zelf-geregistreerde consumenten op
+e-mailadres, met een `Saldo`-veld. Het inlogveld
 herkent het verschil aan de `@`. Een lek of fout aan de consumentenkant raakt de
 zakelijke accounts niet.
 
@@ -514,29 +518,30 @@ het dat wél doen, dan betaalt de klant dubbel.
 voor de echte afboeking. Wijzig je er één, pas de ander aan — of zet de tarieven
 via Worker-variabelen zodat alleen de schatting nog in de app staat.
 
-### Kasboek — TokenLog
+### Kasboek — TokenLog: ONTWORPEN, NIET GEBOUWD
 
-Elke mutatie op een tokensaldo krijgt een regel in `TokenLog` (Config-base),
-geschreven door `tegoedLog()` in `worker.js`. Vier bronnen: `ai-call`,
-`code-ingewisseld`, `proeftegoed` en `admin-mutatie`.
+**Herzien op 02-09-2026 (#83).** Hier stond een volledige beschrijving van een
+kasboek: tabel `TokenLog`, negen velden, vier bronnen, twee regels die
+vastliggen, en de zin "geschreven door `tegoedLog()` in `worker.js`". Die
+functie bestaat niet, en blijkens `git log -S tegoedLog` heeft ze nooit in dit
+bestand gestaan. Er wordt bij een saldomutatie nergens iets weggeschreven.
 
-Velden: `Moment`, `Klant`, `Soort`, `Credits` (negatief bij afboeken),
-`SaldoNa`, `TokensIn`, `TokensUit`, `Model`, `Details`. Lege cel = onbekend;
-bij een adminmutatie blijft `Credits` bewust leeg omdat het oude saldo daar
-niet gelezen wordt.
+De tekst is bewaard in de geschiedenis en het ontwerp staat als issue #83; het
+staat hier niet meer als beschrijving, want dat is precies wat het onzichtbaar
+hield: wie §8 las, kruiste dit punt af.
 
-Twee regels die vastliggen:
+Waarom het er hoort te komen: op 31-07-2026 verdwenen er tokens zonder
+analyses. Oorzaak bleek `testApiKey()`, die bij élke app-start een echte call
+deed. Dat was alleen te achterhalen door de code te lezen — met een kasboek was
+het één blik geweest. Die aanleiding klopt nog steeds, en zolang er geen kasboek
+is blijft een verdwenen token een leesklus.
 
-- **Het kasboek is administratie, geen bron van waarheid.** Het saldo staat in
-  `Klanten.Saldo`. Een mislukte logregel mag de call nooit laten stranden;
-  daarom zit alles in een try en gaat de schrijfactie via `ctx.waitUntil`.
-- **Een mislukte afboeking krijgt óók een regel**, met `Credits: 0` en een
-  `Details` die dat meldt. Juist dan wil je later kunnen zien dat er AI is
-  verbruikt zonder dat er iets van het saldo af ging.
-
-Aanleiding: op 31-07-2026 verdwenen er tokens zonder analyses. Oorzaak bleek
-`testApiKey()`, die bij élke app-start een echte call deed. Dat was alleen te
-achterhalen door de code te lezen — met een kasboek was het één blik geweest.
+**De les is niet de ontbrekende functie maar de vorm.** Documentatie die een
+ontwerp in de tegenwoordige tijd beschrijft, leest als een beschrijving van wat
+er staat. Twee dingen zijn er zo blijven liggen: dit kasboek, en het uitlezen
+van `X-PidLane-Saldo` (punt 3 hierboven), dat sinds juli beschreven stond en pas
+op 02-09-2026 gebouwd is. Wat nog niet bestaat, staat vanaf nu als issue met een
+vooruitwijzing hier — niet als alinea in de tegenwoordige tijd.
 
 **Achtergrondcalls kosten geld.** Sinds de Worker afrekent is élke call naar
 `/v1/messages` billable, ook calls die nooit langs `PLCredits.preflight` gaan
@@ -544,10 +549,16 @@ en die de gebruiker niet als analyse ziet. Voeg je een AI-call toe die vanzelf
 afgaat, bedenk dan eerst wie hem betaalt. `testApiKey()` draait daarom niet
 meer voor klantaccounts.
 
-**Bekende grens:** Airtable kent geen transacties. Twee gelijktijdige calls van
-hetzelfde account (twee apparaten) kunnen elkaars afboeking overschrijven. Bij
-normaal gebruik lopen calls achter elkaar. Wordt dit ooit een probleem, dan is
-de Durable Object de plek om het saldo te serialiseren.
+**Die grens is er niet meer, op één plek na.** Hier stond dat Airtable geen
+transacties kent en dat twee gelijktijdige calls van hetzelfde account elkaars
+afboeking konden overschrijven — met de Durable Object als toekomstige
+oplossing. Die is er sinds 26-08-2026: `metSaldoSlot()` serialiseert elke
+saldomutatie per klant (zie §7). Drie van de vier schrijvers lopen erdoorheen:
+`handleMessages`, `handleCreditsRedeem` en `handleKlantOnboarding`.
+
+De vierde is `handleAdminKlantenPost` met actie `bijboeken`: die leest en
+schrijft `Saldo` buiten het slot om. Boekt een beheerder bij op het moment dat
+er een analyse loopt, dan overschrijft de één de ander. Dat is **#82**.
 
 ---
 
@@ -639,9 +650,10 @@ de pas, en dan is de vraag welke klopt.
 | [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
 | [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — de bedrading staat sinds 01-09 groen in blok 5, de hoofdvraag wacht op een rit van tien minuten | bug |
 | [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
-| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels | Play |
+| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels — eerste fase is handmatig: `tikkie_kopen` blijft leeg, codes gaan met de hand | Play |
 | [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
-| [#52](https://github.com/NewspeedyNL/PidLane/issues/52) | de tokenchip blijft staan bij een beheerder | bug |
+| [#82](https://github.com/NewspeedyNL/PidLane/issues/82) | bijboeken vanuit admin.html loopt buiten het saldo-slot om | bug |
+| [#83](https://github.com/NewspeedyNL/PidLane/issues/83) | het kasboek `TokenLog` staat in §8 beschreven maar bestaat niet | groot |
 | [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | welke vragen ontbreken nog in de meetcontext? | meten |
 | [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
 | [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
@@ -655,7 +667,8 @@ de pas, en dan is de vraag welke klopt.
 | [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
-#14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). De uitleg eromheen blijft hieronder staan.
+#14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op
+02-09 kwam #52 daarbij. De uitleg eromheen blijft hieronder staan.
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
@@ -1186,6 +1199,52 @@ een exacte prefix en `ai_system_override` zit daarin) en de structurele kant,
 **`Users` als beheerrol in plaats van klantcategorie**. Het menu-item "Mijn
 account" is wel al meegenomen: `pasMenuAan()` verbergt `kbAccount` voor een
 niet-klant, om dezelfde reden en in dezelfde functie als het adminblok.
+
+### De tokenketen nagelopen — 02-09-2026
+
+Aanleiding: de vraag of de openstaande tokenissues klopten. Ze klopten, maar er
+lag meer omheen. Vier vondsten, en drie ervan waren in het gebruik onzichtbaar —
+geen foutmelding, geen rode rand, niets.
+
+**Een activatiecode kon verbranden.** `handleCreditsRedeem` stempelde de code
+eerst af als gebruikt en keek pás daarna of er een ingelogde klant was om hem op
+bij te schrijven. Was die er niet, dan kwam er `ok:true` met `saldo:null` terug:
+code verbruikt, tegoed nergens. De app haakte daar sinds 29-08 zelf al op af
+(`verzilver()` weigert zonder klantaccount) — maar een controle in de app is een
+verzoek en geen grens. De sessiecontrole staat nu vóór de eerste schrijfactie,
+en `GebruiktDoor` komt uit die sessie in plaats van uit de body, waar de
+aanvrager hem zelf kon invullen.
+
+Het commentaar erboven legde die vorm nog uit als een bewuste keuze: "werkt
+BEWUST zonder account — de gratis proef en de eerste aankopen moeten drempelloos
+zijn". Die keuze was met #49 vervallen; het commentaar was blijven staan. **Een
+uitleg van een keuze veroudert net zo hard als de code, en leest dwingender.**
+
+**De teller liep op de schatting.** De Worker boekt af op het echte verbruik en
+stuurt het saldo terug in `X-PidLane-Saldo`; §8 hierboven beschreef sinds juli
+dat `apiFetch` die uitleest. Er las niemand — nergens in `public/` stond die
+header. De schatting van `boek()` is nooit precies de afboeking: bij een
+mislukte PATCH ging er niets af terwijl de app wel aftrok, en bij een
+onleesbaar antwoord boekte de Worker het minimum en de app een volle schatting.
+`PLCredits.volgServer()` leest hem nu uit, op beide paden — na een geslaagd
+antwoord en bij een 402, waar het saldo in de body staat.
+
+**De tokenchip volgde het laadmoment (#52).** Uitgebreid beschreven in het
+issue; de kern is dat `PLCredits.chip()` als publieke ingang bestond en door
+niemand werd aangeroepen. `finishLogin()` en `logout()` doen dat nu. Daarbij
+kwam een toestand aan het licht die niet in het issue stond: `_vrijgesteld()`
+had drie takken en NIEMAND ingelogd viel er doorheen, waardoor er ook op het
+loginscherm een chip stond. De regel is nu één zin — alleen een ingelogde klant
+betaalt met tokens, en alleen die ziet de chip.
+
+**En het kasboek dat niet bestaat (#83).** Zie §8. Dat is de vondst die het
+patroon zichtbaar maakt: twee keer stond er een correcte beschrijving van iets
+dat niet gebouwd was, en beide keren was dat genoeg om het jaren te laten
+liggen.
+
+Wat níét in deze ronde is meegenomen: **#82**, bijboeken vanuit `admin.html`
+loopt als enige saldoschrijver buiten `metSaldoSlot()` om. Gevonden bij het
+nalopen, bewust een eigen commit (één onderwerp per PR).
 
 ### Drie stille fouten in de meetkant — 28-08-2026
 

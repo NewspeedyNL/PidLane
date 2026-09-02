@@ -466,6 +466,10 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
       if(!resp.ok){
         const err=await resp.json().catch(()=>({}));
         const msg=err?.error?.message||`HTTP ${resp.status}`;
+        // Ook een weigering draagt het saldo: bij 402 (onvoldoende_tegoed) staat
+        // het echte getal in de body. Zonder deze regel blijft de teller op het
+        // te hoge lokale getal staan en probeert de app het gewoon opnieuw.
+        try{ window.PLCredits?.volgServer?.(resp.headers, err); }catch(e){ console.warn('Serversaldo uit de weigering niet overgenomen', e); }
         if(resp.status===401) throw new Error('Proxy weigert (401): sessie verlopen of ongeldig — log uit en opnieuw in.');
         if(resp.status===400) throw new Error(`API fout (400): ${msg}`);
         throw new Error(msg);
@@ -476,6 +480,13 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
       // max_tokens rekenen niet nog eens. boek() kalibreert meteen de
       // tekens→tokens-schatting bij op de echte usage.
       try{ if(_plCred && !_plCred.geboekt) window.PLCredits.boek(_plCred, data.usage); }catch(e){ console.warn('Lokale saldoteller niet bijgewerkt — de server heeft al afgeboekt, alleen de weergave kan achterlopen', e); }
+      // En daarna het echte saldo van de server erover heen. boek() rekent met
+      // de schatting; de Worker stuurt in X-PidLane-Saldo wat er werkelijk van
+      // het account af ging. Deze volgorde is het hele punt: de laatste die
+      // schrijft is de bron, en dat hoort de server te zijn (§8 PIDLANE.md).
+      // Bij een vervolgcall op max_tokens komt de header opnieuw mee — ook dat
+      // deel is afgeboekt, dus ook dat getal telt.
+      try{ window.PLCredits?.volgServer?.(resp.headers, data); }catch(e){ console.warn('Serversaldo niet overgenomen — de teller loopt op de schatting', e); }
       try{ PidLaneEvalLog.log('ai','api-call',{model:mdl,latencyMs:Date.now()-_plT0,part:part+1,stop:data.stop_reason||''}); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 
       const txt=extractAIText(data)||'';

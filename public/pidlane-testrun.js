@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.0 (01-09-2026)';
+const TESTRUN_VERSIE = '6.1 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1780,131 +1780,179 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 02-09-2026 — issue #74 en de begeleide run.
+  // OPLEVERING 02-09-2026 — de tokenketen.
   //
-  //   #74  de ritwaarnemer telt VERVERSINGEN, niet meer elke sleutel in
-  //        pidVals; blok 14 scheidt "niet gemeten" van "gemeten en stil"
-  //   6.0  de begeleide rit: één stap tegelijk, met markeringen, pauze en
-  //        een afrondknop die het verslag altijd wegschrijft
+  //   #52  de tokenchip volgt de rol en niet het laadmoment
+  //   §8   de teller volgt de server: X-PidLane-Saldo wordt uitgelezen
+  //   #42  geen koopknop in de app; de eerste fase loopt met de hand
+  //   —    een activatiecode kan niet meer verbranden zonder account
   //
-  // WAAROM DIT IN BLOK 5 STAAT EN NIET ALLEEN IN EEN NODE-TEST. Dat de telling
-  // klopt bewijst test-rit.js met tegenproef, en dat de stappenmachine niets
-  // kwijtraakt bewijst test-begeleid.js. Wat die twee NIET kunnen zien is of
-  // de weg naar de versheidsbron in de dráaiende app bestaat — `_pidLastUpd`
-  // is een script-scoped global uit een andere module, en dat is exact het
-  // soort verbinding dat bij #29 en #74 ontbrak zonder ooit een fout te geven.
-  // Vandaar dat de proeven hieronder de wég meten, in de app, met de auto eraan.
+  // WAAROM DIT IN BLOK 5 STAAT EN NIET ALLEEN IN EEN NODE-TEST. De vier
+  // node-tests (test-tokenchip, test-saldokop, test-codeverzilver,
+  // test-proeftegoed) draaien de modules met een nagemaakte DOM en een
+  // nagemaakte Airtable. Wat ze NIET kunnen zien is of die modules in de
+  // dráaiende app aan elkaar hangen: of finishLogin() de chip werkelijk laat
+  // herbeoordelen, of de configuratie op dit toestel de koopknop uit laat, en
+  // of de Worker die hier draait het inwisselen zonder klantaccount ook echt
+  // weigert. Dat is exact het soort verbinding dat bij #29, #74 en #52 ontbrak
+  // zonder ooit een fout te geven. Vandaar: de weg meten, in de app.
   //
-  // WAT ERUIT IS. De vier proeven voor #66 en #68 van 01-09 zijn weg: hun
-  // machinehelft is beantwoord (drie temperatuurbalken met een eigen grens,
-  // geen enkele op een grove schaal; zeven meters op de tellerplaat). De helft
-  // die een oog nodig heeft, is nu stap 7 van de begeleide run in plaats van
-  // een regel in CAMPAGNE die je onderweg moet onthouden.
-  // De #58-proef BLIJFT: die gaf op 01-09 de enige FOUT van de run en het is
-  // nog onbeslist of de melding klopt of de meting (#79).
+  // WAT ERUIT IS. De drie proeven voor #74 en de begeleide rit van 01-09 zijn
+  // weg — die zijn beantwoord en staan in test-rit.js en test-begeleid.js met
+  // tegenproef. De #58-proef BLIJFT: die gaf op 01-09 de enige FOUT van de run
+  // en het is nog onbeslist of de melding klopt of de meting (#79).
+  //
+  // GELDVEILIGHEID. Geen enkele proef hieronder doet een AI-call; die kosten
+  // een klant echte tokens. De code die naar /credits/redeem gaat bestaat
+  // gegarandeerd niet, dus er valt niets af te stempelen.
   // ══════════════════════════════════════════════════════════════
 
-  // ── TOEGEVOEGD 1 (#74): meet de ritwaarnemer verversingen of geheugen? ──
-  // Twee dingen in één proef, want los zeggen ze weinig:
-  //   1. bestaat de versheidsbron in DEZE app — `_pidLastUpd` als object dat
-  //      PLRit kan lezen. Dat is wat er bij #74 ontbrak;
-  //   2. doet de telregel er ook iets mee. Een verzonnen invoer gaat door
-  //      _neem(): een stempel dat niet verschuift mag geen meting opleveren.
-  // De echte accumulator wordt alleen GELEZEN; er wordt niets in gezet, want
-  // dat zou het ritbeeld van de lopende rit vervuilen.
-  await _doe(5, 'De ritwaarnemer telt verversingen, niet het geheugen', function () {
-    if (!window.PLRit || typeof PLRit._neem !== 'function')
-      return { staat: 'FOUT', detail: 'PLRit._neem() ontbreekt — de telregel is niet te toetsen in de app' };
-    const b = PLRit.bron();
-    if (!b.stempels)
-      return { staat: 'FOUT', detail: '_pidLastUpd is niet bereikbaar vanuit PLRit — er is geen versheidsbron ' +
-        'en de ritwaarnemer meet dan niets. Dat is de toestand van #74' };
-    // Een sensor die twintig tikken lang met hetzelfde stempel in pidVals
-    // staat: nul metingen. Dat is 0123 in de run van 01-09.
-    const stale = { n: 0, tikken: 0, gemist: 0, min: 10080, max: 10080, laatst: 10080, veranderingen: 0, tLaatsteVer: 0, stempel: null };
-    for (let i = 0; i < 20; i++) PLRit._neem(stale, 10080, 5000, 1000 + i);
-    if (stale.n !== 0)
-      return { staat: 'FOUT', detail: 'een PID met een stilstaand stempel telde ' + stale.n +
-        ' meting(en) over 20 tikken — de oude telregel is terug (#74)' };
-    // En een sensor die élke tik ververst wordt, moet wél tellen.
-    const vers = { n: 0, tikken: 0, gemist: 0, min: 0, max: 0, laatst: 0, veranderingen: 0, tLaatsteVer: 0, stempel: null };
-    for (let i = 0; i < 20; i++) PLRit._neem(vers, 800 + i, 5000 + i, 1000 + i);
-    if (vers.n < 18)
-      return { staat: 'FOUT', detail: 'een PID die elke tik ververst werd telde maar ' + vers.n +
-        ' metingen — dan meet de waarnemer helemaal niets meer' };
-    const d = PLRit.dekking();
-    return 'versheidsbron aanwezig; stilstaand stempel = 0 metingen, verschuivend stempel = ' + vers.n +
-      '. Op dit moment: ' + d.gemeten.length + ' PID(s) echt uitgevraagd, ' + d.nietGemeten.length + ' alleen uit het geheugen';
+  // ── TOEGEVOEGD 1 (#52): hoort de chip bij de rol die nu ingelogd is? ──
+  // De fout van 29-08 in één zin: de chip werd getekend vóór de login en
+  // daarna keek er niets meer naar. Een beheerder hield zo een chip die niet
+  // bij hem hoort, met "tokens onbekend" erin. Deze proef kijkt naar de DOM
+  // van dit moment — dat is de enige plek waar die vraag te beantwoorden is.
+  await _doe(5, 'De tokenchip hoort bij de rol die nu ingelogd is', function () {
+    if (!window.PLCredits) return { staat: 'FOUT', detail: 'PLCredits ontbreekt — de tegoedmodule is niet geladen' };
+    if (typeof PLCredits.chip !== 'function')
+      return { staat: 'FOUT', detail: 'PLCredits.chip() ontbreekt — dan kan niets de chip herbeoordelen na een rolwissel (#52)' };
+
+    const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
+    const rol = (window.currentUser && window.currentUser.role) || 'niemand ingelogd';
+    const er = function () { return !!document.getElementById('plCredChip'); };
+
+    // Eerst de stand zoals hij nu is: dít is wat een gebruiker ziet.
+    if (er() !== klant)
+      return { staat: 'FOUT', detail: 'rol "' + rol + '"' + (klant ? '' : ' hoort geen tokenchip te zien') +
+        ' maar de chip is ' + (er() ? 'aanwezig' : 'afwezig') +
+        ' — de chip volgt het laadmoment in plaats van de rol (#52)' };
+
+    // En dan de haak zelf: een herbeoordeling mag het antwoord niet omgooien.
+    // Doet hij dat wél, dan staat er ergens een tweede plek die dezelfde
+    // beslissing neemt, en dat is in dit project al drie keer een bug geweest.
+    PLCredits.chip();
+    if (er() !== klant)
+      return { staat: 'FOUT', detail: 'na PLCredits.chip() is de chip ' + (er() ? 'verschenen' : 'verdwenen') +
+        ' terwijl de rol niet veranderde — twee plekken beslissen over dezelfde chip' };
+
+    return 'rol "' + rol + '": chip ' + (klant ? 'aanwezig met ' +
+      (PLCredits.saldoBekend() ? PLCredits.saldo() + ' tokens' : 'saldo nog onbekend') : 'afwezig') +
+      ', en een herbeoordeling laat dat zo';
   });
 
-  // ── VERWIJDERD (#74): "bevroren" over een PID die niemand uitvroeg ──
-  // Dat was de zin die #19 sloot en drie ritten lang de verkeerde kant op
-  // wees. Hij mag over een niet-gemeten PID nergens meer uit blok 14 komen.
-  await _doe(5, 'Blok 14 noemt een niet-gemeten PID niet meer "bevroren"', function () {
-    // Geen typeof-guard op _meetStand: die staat in dit bestand. Ontbreekt hij,
-    // dan gooit dit een ReferenceError en boekt _doe() dat als FOUT met de naam
-    // erbij — luider dan een guard, en het is geen bedradingspunt.
-    const blind = _meetStand({ n: 0, tikken: 56, gemist: 56, veranderingen: 0 });
-    const stil  = _meetStand({ n: 40, tikken: 56, gemist: 16, veranderingen: 0 });
-    if (blind.stand !== 'niet-gemeten')
-      return { staat: 'FOUT', detail: '0 verversingen over 56 tikken heet "' + blind.stand + '" — dat hoort "niet-gemeten" te zijn' };
-    if (stil.stand !== 'gemeten')
-      return { staat: 'FOUT', detail: '40 verversingen heet "' + stil.stand + '" — dan is een écht bevroren sensor niet meer te vinden' };
-    if (/bevroren|vast/i.test(blind.tekst))
-      return { staat: 'FOUT', detail: 'de tekst voor een niet-gemeten PID zegt nog steeds iets over vastzitten: "' + blind.tekst + '"' };
-    return 'niet-gemeten en gemeten-maar-stil zijn twee verschillende uitkomsten met verschillende teksten';
+  // ── TOEGEVOEGD 2 (§8): neemt de teller het saldo van de server over? ──
+  // De Worker stuurt het saldo na afboeking mee in X-PidLane-Saldo. PIDLANE.md
+  // beschreef sinds juli dat apiFetch die uitleest — er las niemand, en de
+  // teller liep dus op de schatting. Een échte call zou hier tokens kosten, dus
+  // we voeren alleen de kop aan de module en zetten daarna terug wat er stond.
+  await _doe(5, 'De tokenteller neemt het saldo van de server over', function () {
+    if (!window.PLCredits || typeof PLCredits.volgServer !== 'function')
+      return { staat: 'FOUT', detail: 'PLCredits.volgServer() ontbreekt — dan blijft de teller op de schatting lopen (§8)' };
+    const kop = function (v) { return { get: function (n) { return String(n).toLowerCase() === 'x-pidlane-saldo' ? String(v) : null; } }; };
+    const bekend = PLCredits.saldoBekend();
+    const voor = PLCredits.saldo();
+    const proef = bekend ? voor + 1 : 7;
+
+    PLCredits.volgServer(kop(proef), {});
+    const raak = PLCredits.saldo() === proef;
+
+    // Terugzetten, en wel precies naar de toestand van vóór deze proef. Bij een
+    // klant is dat het oude getal; bij een beheerder was het saldo onbekend en
+    // dat is vergeetKlant() — anders laat deze proef een verzonnen saldo achter.
+    if (bekend) PLCredits.volgServer(kop(voor), {});
+    else PLCredits.vergeetKlant();
+
+    if (!raak)
+      return { staat: 'FOUT', detail: 'een saldo van ' + proef + ' in de kop leverde ' + PLCredits.saldo() +
+        ' op — de server is niet leidend en de teller loopt op de schatting' };
+    if (PLCredits.saldo() !== voor || PLCredits.saldoBekend() !== bekend)
+      return { staat: 'FOUT', detail: 'de proef heeft het saldo veranderd (' + voor + ' → ' + PLCredits.saldo() +
+        ') — dat is een fout in deze proef, niet in de app, maar hij moet wel weg' };
+    return 'de kop X-PidLane-Saldo zet de teller (' + proef + ' overgenomen), en de stand van vóór de proef staat terug';
   });
 
-  // ── TOEGEVOEGD 2 (6.0): staat de begeleide run er, compleet? ─────
-  // De stappenlijst zelf toetst test-begeleid.js. Hier gaat het om de
-  // aansluiting op de app: zijn de knoppen bereikbaar, en overleven de
-  // controles de toestand van dit moment (met auto, met verbinding)?
-  await _doe(5, 'De begeleide rit is compleet en bedraad', function () {
-    if (!window.PLBegeleid || typeof PLBegeleid.stappen !== 'function')
-      return { staat: 'FOUT', detail: 'PLBegeleid ontbreekt — de begeleide rit bestaat niet in deze app' };
-    const knoppen = ['begeleidStart', 'begeleidVolgende', 'begeleidOverslaan', 'begeleidActie',
-                     'begeleidAntwoord', 'begeleidPauze', 'begeleidAfronden', 'plMarkeer'];
-    const weg = knoppen.filter(function (n) { return typeof window[n] !== 'function'; });
-    if (weg.length)
-      return { staat: 'FOUT', detail: 'deze knoppen bestaan niet: ' + weg.join(', ') + ' — de stappen zijn dan niet te bedienen' };
-    const st = PLBegeleid.stappen();
-    const stuk = [];
-    st.forEach(function (s) {
-      if (!s.controle) return;
-      try { const r = s.controle(); if (!r || typeof r.ok !== 'boolean') stuk.push(s.id + ' (geen oordeel)'); }
-      catch (e) { stuk.push(s.id + ' (klapt: ' + ((e && e.message) || e) + ')'); }
-    });
-    if (stuk.length)
-      return { staat: 'FOUT', detail: 'de controle van deze stappen werkt niet in de dráaiende app: ' + stuk.join(', ') };
-    return st.length + ' stappen, alle ' + knoppen.length + ' knoppen bedraad, elke controle geeft een oordeel in deze app';
+  // ── TOEGEVOEGD 3 (#42): staat de app in de handmatige eerste fase? ──
+  // Tokens verkopen ín de app is precies wat Google's betaalregels raakt, en
+  // die vraag is niet beantwoord. Zolang `tikkie_kopen` leeg is in de
+  // Config-tabel is er geen koopknop en loopt het aanvragen per mail. Dit is
+  // de enige plek waar de ECHTE configuratie van dit toestel te zien is — in
+  // node is PID_CONFIG altijd leeg en klopt alles vanzelf.
+  await _doe(5, 'Geen koopknop in de app; de aanvraag loopt per mail (#42)', function () {
+    if (!window.PLKlant) return { staat: 'FOUT', detail: 'PLKlant ontbreekt' };
+    const link = PLKlant.CFG.tikkieKopen;
+    if (link)
+      return { staat: 'FOUT', detail: 'er staat een koopknop in de app (tikkie_kopen is gevuld) terwijl de eerste ' +
+        'fase handmatig is — zet de sleutel leeg in admin.html, of sluit #42 met de uitkomst erbij' };
+    if (typeof PLKlant.aanvraagMail !== 'function')
+      return { staat: 'FOUT', detail: 'PLKlant.aanvraagMail() ontbreekt — dan opent de knop een lege mail zonder account' };
+    const mail = PLKlant.aanvraagMail();
+    if (!/^mailto:/.test(mail))
+      return { staat: 'FOUT', detail: 'de aanvraagknop wijst niet naar een mailto maar naar: ' + String(mail).slice(0, 60) };
+    const klant = !!(PLKlant.isKlant && PLKlant.isKlant());
+    const adres = (window.currentUser && window.currentUser.name) || '';
+    if (klant && adres && mail.indexOf(encodeURIComponent(adres)) < 0)
+      return { staat: 'FOUT', detail: 'de aanvraagmail draagt het account niet — dan begint elke handmatige ' +
+        'aanvraag met "en wie ben jij?"' };
+    return 'geen koopknop; de aanvraag gaat per mail' + (klant ? ' met het account erin' : ' (geen klant ingelogd, dus zonder account)');
   });
 
-  // ── TOEGEVOEGD 3 (6.0): komt een markering in beide logs terecht? ──
-  // Dit kan alleen hier. In node bestaan log() en btDiag() niet, dus daar is
-  // niet te zien of een markering ook werkelijk in het logboek beland is — en
-  // een markering die je achteraf niet terugvindt, is geen markering.
-  await _doe(5, 'Een markering landt in het logboek', function () {
-    // Geen typeof-guard op plMarkeer: die staat in dit bestand. Ontbreekt hij,
-    // dan gooit dit een ReferenceError en boekt _doe() dat als FOUT met de naam
-    // erbij — luider dan een guard, en het is geen bedradingspunt.
-    const merk = 'blok5-proef-' + Math.random().toString(36).slice(2, 8);
-    const m = plMarkeer(merk, 'geplaatst door blok 5; dit is geen echte gebeurtenis');
-    if (!m || m.tekst !== merk)
-      return { staat: 'FOUT', detail: 'plMarkeer() gaf de markering niet terug' };
-    const raak = function (regels) {
-      return (regels || []).some(function (l) { return String((l && l.msg) || l || '').indexOf(merk) > -1; });
-    };
-    const inApp = raak(_appLogRegels());
-    let inBt = false;
-    try { inBt = raak((typeof _btLog !== 'undefined' && _btLog) ? _btLog : []); } catch (e) { console.warn('BT-log niet leesbaar bij de markeringsproef', e); }
-    const mist = [];
-    if (!inApp) mist.push('app-log');
-    if (!inBt) mist.push('BT-log');
-    if (mist.length)
-      return { staat: 'FOUT', detail: 'de markering staat niet in: ' + mist.join(' en ') +
-        ' — dan is hij tijdens het nalezen van de rit niet terug te vinden' };
-    const n = (PLBegeleid.markeringen() || []).length;
-    return 'markering staat in de app-log, de BT-log en de eigen lijst (' + n + ' deze sessie)';
+  // ── TOEGEVOEGD 4: weigert de Worker een code zonder klantaccount? ──
+  // De route stempelde de code eerst af en keek pas daarna of er een account
+  // was om hem op bij te schrijven. Zonder account was de code verbrand en het
+  // tegoed nergens. De app haakte daar zelf al op af, maar dat is een verzoek
+  // en geen grens — deze proef praat dus met de echte Worker.
+  //
+  // De code hieronder bestaat niet en kan niet bestaan (hij draagt een stempel
+  // van dit moment), dus er valt niets af te stempelen. Een beheerder hoort
+  // 401 te krijgen, een klant 404: gevonden-niet.
+  await _doe(5, 'De Worker weigert een code zonder klantaccount', async function () {
+    if (typeof PROXY_URL === 'undefined' || !PROXY_URL)
+      return { staat: 'LET OP', detail: 'geen PROXY_URL — niet te meten zonder Worker' };
+    if (!window.APP_TOKEN)
+      return { staat: 'LET OP', detail: 'geen sessietoken — log eerst in' };
+    const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
+    const code = 'PIDL-B5' + String(Date.now()).slice(-6);
+    let r;
+    try {
+      r = await fetch(String(PROXY_URL).replace(/\/$/, '') + '/credits/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-App-Token': window.APP_TOKEN },
+        body: JSON.stringify({ code: code })
+      });
+    } catch (e) {
+      return { staat: 'LET OP', detail: 'Worker niet bereikbaar: ' + ((e && e.message) || e) };
+    }
+    const d = await r.json().catch(function () { return {}; });
+    if (d.ok === true)
+      return { staat: 'FOUT', detail: 'een verzonnen code werd geaccepteerd — dat kan niet en betekent dat er ' +
+        'iets heel anders mis is met /credits/redeem' };
+    if (!klant && r.status !== 401)
+      return { staat: 'FOUT', detail: 'zonder klantaccount gaf de Worker ' + r.status + ' in plaats van 401 — ' +
+        'de sessiecontrole staat weer ná het afstempelen en dan kan een code verbranden' };
+    if (klant && r.status !== 404)
+      return { staat: 'FOUT', detail: 'met klantaccount gaf een niet-bestaande code ' + r.status +
+        ' in plaats van 404 (' + (d.error || 'geen melding') + ')' };
+    return (klant ? 'als klant: 404 code niet gevonden' : 'als beheerder: 401 log eerst in met je account') +
+      ' — er is niets afgestempeld';
+  });
+
+  // ── VERWIJDERD: het abonnement dat niet bestaat ──────────────────
+  // "Je bent ingelogd met een zakelijk account. Daarvoor gelden geen tokens —
+  // analyses zitten in je abonnement." Dat abonnement bestaat niet: onder #49
+  // is zo'n account personeel dat op de sleutel van de beheerder draait. De
+  // tekst is op 29-08 vervangen; deze proef bewaakt dat hij niet terugkomt via
+  // een andere weg, en dat het menu-item weg is voor wie geen klant is.
+  await _doe(5, 'Nergens meer een abonnement beloofd aan personeel', function () {
+    const klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant());
+    const acc = document.getElementById('kbAccount');
+    if (acc && !klant && acc.style.display !== 'none')
+      return { staat: 'FOUT', detail: '"Mijn account" staat in het menu terwijl er geen klantaccount is ingelogd — ' +
+        'dat scherm gaat over een tegoed dat dit account niet heeft (#49)' };
+    const tekst = document.body.innerHTML || '';
+    if (/analyses zitten in je abonnement/i.test(tekst))
+      return { staat: 'FOUT', detail: 'de oude tekst over een abonnement staat weer in beeld — dat abonnement bestaat niet' };
+    return klant ? 'klantaccount: "Mijn account" hoort er te staan en staat er'
+                 : 'geen klantaccount: "Mijn account" is verborgen en nergens wordt een abonnement beloofd';
   });
 
   // ── BLIJFT STAAN (#58/#79): kloppen de veilige zones op dit toestel? ──
@@ -3277,61 +3325,51 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 01-09 (vijfde) \u2014 de ritwaarnemer meet weer, en de rit wordt begeleid (#74)',
+  titel: 'OPLEVERING 02-09 \u2014 de tokenketen: de teller volgt de server, de chip volgt de rol (#52, #42)',
   vragen: [
-    '── WAAROM DEZE RONDE ────────────────────────',
+    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Deze ronde repareert opnieuw een MEETINSTRUMENT, en het is de duurste van de reeks. De ritwaarnemer PLRit telde elke sleutel in pidVals als monster. pidVals is een laatst-bekende-waarde-kaart zonder houdbaarheid: alleen geschreven door updPID(), alleen gewist bij het verbreken van de verbinding. Een PID die één keer gelezen was — door de gezondheidscheck bij het verbinden, door een eerdere sweep, door blok 6 — leverde daarna eeuwig "monsters met nul veranderingen" op. Blok 14 las dat als "bevroren tijdens het rijden".',
+    'Deze ronde gaat over geld, en dat is een andere soort fout dan een verkeerde meting: een teller die er 3 tokens naast zit merkt niemand, tot iemand belt dat zijn tegoed weg is. Er is niets gerepareerd aan het verdienmodel zelf \u2014 het besluit uit #49 staat \u2014 maar wel aan de keten eromheen. Drie van de vier vondsten waren onzichtbaar in het gebruik: ze gaven geen foutmelding, geen rode rand, niets.',
 
-    'HOE JE HET IN DE RUN VAN 01-09 ZIET. Alle PIDs melden precies 56 monsters: 010B (390 busreads) net zo goed als 0123 en 0159 (nul busreads, ze stonden niet eens in de selectie). Identieke tellingen bij totaal verschillende busactiviteit — dat getal was het aantal tikken, niet het aantal metingen. De conclusie eronder, "dit is een parser- of definitiefout", ging over sensoren die niemand had uitgevraagd.',
+    'DE ZWAARSTE. handleCreditsRedeem stempelde een activatiecode eerst af als gebruikt en keek P\u00c1S DAARNA of er een ingelogde klant was om hem op bij te schrijven. Was die er niet, dan gaf hij ok:true met saldo:null terug. De code verbruikt, het tegoed nergens, en de klant die er \u20ac4,99 voor betaalde staat met lege handen. De app haakte daar sinds 29-08 zelf al op af, maar een controle in de app is een verzoek en geen grens: een oudere versie, een herhaald verzoek of een curl kwam er gewoon langs. Het commentaar erboven legde die vorm nog uit als een keuze ("werkt BEWUST zonder account") \u2014 die keuze is met #49 vervallen en het commentaar was blijven staan.',
 
-    'DIT HAALT DE SLUITING VAN #19 ONDERUIT. Dat issue ging op 27-08 dicht op "0123: 1 wijzigingen, 10130-15040 (108 monsters) — in beweging". Eén wijziging met een spreiding van 4910 kPa over 108 monsters is geen bewegende sensor; dat is een PID die in de hele sessie twee keer gelezen is. #19 staat weer open.',
+    'DE STILSTE. De Worker boekt af op het echte verbruik en stuurt het saldo daarna mee terug in de header X-PidLane-Saldo. Die header staat zelfs in Access-Control-Expose-Headers, en \u00a78 van PIDLANE.md beschreef sinds juli dat apiFetch hem uitleest en doorzet naar PLCredits. Dat deed niemand. Er stond nergens in public/ een regel die die header las. De teller in beeld liep dus op de SCHATTING, en die is nooit precies gelijk aan de afboeking \u2014 zeker niet als de PATCH op Airtable mislukte (dan ging er niets af terwijl de app wel aftrok) of als het antwoord van Anthropic niet te ontleden was (dan boekte de Worker het minimum af en de app een volle schatting).',
 
-    'DE BRON BESTOND AL. updPID() zet `_pidLastUpd[pid]` bij elke geparste waarde. Verschuift dat stempel niet tussen twee tikken, dan is er niets gemeten. PLRit gebruikt dat nu, en de eerste waarneming van een PID telt bewust niet mee: bij die eerste tik is het stempel nog onbekend en kan de waarde van vóór de rit zijn.',
+    'DAT LAATSTE IS DE ECHTE LES VAN DEZE RONDE. Niet de bug, maar hoe hij bleef staan: er stond een correcte beschrijving in de documentatie van iets dat niet gebouwd was. Wie \u00a78 las, kruiste dit punt af. Bij het nalezen bleek er nog zoiets te staan \u2014 het "Kasboek TokenLog", een tabel met negen velden en twee vastgelegde regels, geschreven door een functie tegoedLog() die in worker.js niet voorkomt en er blijkens de geschiedenis nooit in heeft gestaan. Dat is nu #83, en \u00a78 zegt voortaan wat er w\u00e9l staat.',
 
-    '── WAT ER NIEUW IS: DE BEGELEIDE RIT ──────────',
+    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'DE TWEEDE HELFT VAN DEZE OPLEVERING IS EEN WERKWIJZE. De rit van 01-09 verloor drie vragen tegelijk, niet door een bug maar doordat de voorwaarden niet klopten: er werd vijf minuten gereden waar er tien nodig waren, "Rit nulstellen" is niet ingedrukt, en 0123/0159 stonden niet in de pollronde terwijl de hoofdvraag over die twee ging. Het verslag meldde dat allemaal pas achteraf, als "staat hij in de actieve selectie?" en "niet uitgevoerd deze run".',
+    '#52 \u2014 de tokenchip volgt de rol. finishLogin() en logout() laten hem opnieuw beoordelen; PLCredits.chip() bestond al als publieke ingang maar werd door niemand aangeroepen. En de regel eronder is teruggebracht tot \u00e9\u00e9n zin: alleen een ingelogde klant betaalt met tokens, en alleen die ziet de chip. De vierde toestand ontbrak namelijk \u2014 NIEMAND ingelogd viel door alle takken van _vrijgesteld() heen en gold als "betaalt", waardoor er ook op het loginscherm een chip stond.',
 
-    'EEN VOORWAARDE DIE JE ACHTERAF MELDT IS EEN VERWIJT; DEZELFDE VOORWAARDE VOORAF IS EEN KNOP. Druk op "🧭 Begeleide rit" en je loopt tien stappen door. Elke stap zegt wat hij is, waarom hij moet, wat de app zelf zojuist gedaan heeft en wat jij moet doen — en je bevestigt hem met een knop. Overslaan mag, maar dan met de reden erbij, en die reden komt in het verslag. Een lege plek in de meting is er niet meer bij.',
+    '\u00a78 \u2014 apiFetch leest X-PidLane-Saldo uit, op beide paden: na een geslaagd antwoord \u00e9n bij een 402 (daar staat het saldo in de body). volgServer() in PLCredits doet dat werk, fail-open zoals de rest van die module.',
 
-    'DE TIEN STAPPEN. 1 verbinding en versheidsbron. 2 de meet-PIDs in de selectie (dit is de stap die #19 drie ritten heeft gekost). 3 alle aanvragers aan, zodat de bus vol staat — blok 7 en de STPX-vraag gaan over een DRUKKE bus. 4 nulmeting. 5 rijden, met een teller die laat zien hoeveel PIDs er ECHT ververst worden. 6 één keer stevig optrekken en markeren. 7 de live view bekijken en beoordelen. 8 het logboek nalopen. 9 de meetblokken draaien. 10 afronden en het verslag wegschrijven.',
+    'CODES \u2014 /credits/redeem eist een klantsessie v\u00f3\u00f3r de eerste schrijfactie, en GebruiktDoor komt uit die sessie in plaats van uit de body (dat veld was door de aanvrager zelf op te geven). Een geldige sessie zonder klantrecht levert geen ok:true meer met saldo:null.',
 
-    'PAUZE EN VROEGTIJDIG AFRONDEN STAAN BIJ ELKE STAP. Moet je stoppen, druk dan op "🏁 Nu afronden + verslag": je krijgt een half verslag, met de gehaalde stappen, de markeringen en een regel NIET MEER AAN TOEGEKOMEN. Dat is oneindig veel meer waard dan een verloren rit.',
+    '#42 \u2014 vastgelegd dat de eerste fase handmatig is: geen koopknop in de app, `tikkie_kopen` blijft leeg, codes gaan met de hand. De aanvraagmail draagt nu het account waar de tokens op moeten \u2014 zonder dat begint elke aanvraag met "en wie ben jij?".',
 
-    'MARKEREN KAN ALTIJD, ook buiten de begeleide rit om, met "📍 Markeer nu". Elke markering gaat naar vier plekken tegelijk — de app-log, de BT-log, de bulk-recorder en het verslag — met kloktijd, opmerking, snelheid en toerental erbij. Zonder markering is een piek om 22:31:14 een getal zonder betekenis.',
+    'TESTS \u2014 test-tokenchip.js (19 toetsen), test-saldokop.js (16) en test-codeverzilver.js (21) zijn nieuw, alle drie met tegenproef: bouw de oude fout terug en er worden er 4, 4 en 1 rood. test-proeftegoed.js logt nu in als klant, want een tegoed zonder account bestaat niet meer.',
 
-    '── STAP VOOR STAP ─────────────────────────',
+    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP A. Druk op "🧭 Begeleide rit" en volg de stappen. Verder hoef je niets te onthouden; dat is het hele punt van deze oplevering.',
+    'STAP A. Draai de run zoals je bent ingelogd (beheerder). Blok 5 hoort dan te melden: geen chip, geen koopknop, en 401 op /credits/redeem. Die 401 is de hoofdvraag van deze ronde \u2014 hij bewijst dat de sessiecontrole v\u00f3\u00f3r het afstempelen staat.',
 
-    'STAP B. #74, de hoofdvraag. Lees na afloop de regel "Meet de ritwaarnemer echte verversingen?" bovenaan blok 14. Daar staat hoeveel PIDs er echt zijn uitgevraagd en hoeveel er alleen uit het geheugen kwamen. Staat de tweede groep op nul, dan stond je selectie goed. Staat er een FOUT, dan is er iets met de pollus.',
+    'STAP B. Log daarna in met een KLANTACCOUNT en draai blok 5 opnieuw. Nu hoort er w\u00e9l een chip te staan, met hetzelfde getal als "Mijn tokens", en hoort de code-proef 404 te geven. Dit is de enige proef in de reeks die twee rollen nodig heeft; \u00e9\u00e9n van de twee helften meet niets.',
 
-    'STAP C. #19, de vraag die drie ritten verkeerd beantwoord is. Lees "Raildruk 0123/0159 — bewegen ze?". Er staat nu een van drie dingen: een echte meting met verversingen erbij (dán pas telt "bevroren" of "beweegt"), "niet gemeten" met de reden, of een tegenspraak. Alleen de eerste stand beantwoordt #19.',
+    'STAP C. Nog steeds als klant: doe \u00e9\u00e9n echte analyse (bijvoorbeeld de conditiecheck) en kijk naar het getal in de chip v\u00f3\u00f3r en n\u00e1 afloop. Vergelijk het daarna met "Mijn tokens", dat het saldo rechtstreeks bij de server ophaalt. Staan die twee gelijk, dan neemt de teller de server over. Staan ze er een paar naast, dan draait de app nog op de schatting en is de haak niet aangekomen. DIT KOST TOKENS \u2014 het is de enige vraag van deze ronde die niet gratis te beantwoorden is, en de reden dat blok 5 hem niet zelf stelt.',
 
-    'STAP D. #16, de opruimregel. Rijd de volle tien minuten van stap 5 uit. Kortere ritten hebben deze vraag nu twee keer opengelaten.',
+    'STAP D. Log uit terwijl je als klant bent ingelogd en kijk naar de linkeronderhoek van het loginscherm. Daar hoort niets te staan. Bleef er "\u26a1 tokens onbekend" hangen, dan is de aanroep in logout() niet aangekomen.',
 
-    'STAP E. #79/#58, alleen op het toestel. Blok 5 meldde op 01-09 FOUT op de veilige zones. Kijk bij stap 7 zelf: scroll de live view helemaal naar beneden en kijk of de onderste regel vrij van de drie Android-knoppen blijft. Blijft hij vrij, dan is de MELDING fout en niet de layout — dat is het antwoord dat #79 nodig heeft.',
+    'STAP E. #79/#58, onveranderd en nog steeds alleen op het toestel. Blok 5 meldde op 01-09 FOUT op de veilige zones. Scroll de live view helemaal naar beneden en kijk of de onderste regel vrij van de drie Android-knoppen blijft. Blijft hij vrij, dan is de MELDING fout en niet de layout \u2014 dat is het antwoord dat #79 nodig heeft.',
 
-    '── WAT ER IS VERANDERD ──────────────────────',
+    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '#74 — PLRit.neem() beslist per PID per tik of er iets gemeten is, aan de hand van `_pidLastUpd`. Vier uitkomsten: gemeten, ongewijzigd stempel, geen stempel, en eerste waarneming. Ontbreekt de versheidsbron helemaal, dan meet PLRit NIETS en zegt blok 14 dat — er is bewust geen stille terugval op de oude telling, want zo bleef deze bug vier ritten onzichtbaar.',
+    '#82 \u2014 bijboeken vanuit admin.html leest-en-schrijft het saldo BUITEN het saldo-slot om, als enige van de vier plekken die dat doen. Boekt een beheerder bij op het moment dat er een analyse loopt, dan overschrijft de \u00e9\u00e9n de ander. Gevonden tijdens deze ronde, bewust niet in dezelfde commit gerepareerd (\u00e9\u00e9n onderwerp per PR).',
 
-    '#74 — blok 14 scheidt nu vijf groepen in plaats van twee: bewogen, gemeten maar stil, hoort stil te staan, te weinig gemeten, en niet gemeten. Alleen de tweede groep is de populatie voor de opruimregel (#16). De steunbitmaskers 0100/0120/0140/0160 en 0102 zijn aan de "hoort stil te staan"-lijst toegevoegd: "0120 vast op 160" was de eerste byte van een bitmasker en betekende niets.',
+    '#83 \u2014 het kasboek TokenLog staat in \u00a78 beschreven maar bestaat niet. Zolang dat zo is, is een verdwenen token alleen te achterhalen door de code te lezen \u2014 precies waar die alinea in juli over ging.',
 
-    '#74 — test-rit.js modelleert de versheidsstempels nu met een Proxy op pidVals, precies zoals updPID() ze zet. Vier nieuwe toetsen plus een tegenproef die de oude telregel nabouwt. Bouw je de fout terug in PLRit, dan worden zeven toetsen rood.',
+    '#49 \u2014 promptcaching staat nog uit. Cache-reads kosten 10% van het invoertarief en de systeemprompt plus AUTO_KENNIS gaat bij elke analyse opnieuw mee. Let op: caching werkt op een exacte prefix, en `ai_system_override` uit de config zit daarin. Meten v\u00f3\u00f3r bouwen.',
 
-    '6.0 — test-begeleid.js is nieuw: veertien toetsen op de stappenmachine, met tegenproeven. Hij bewaakt onder meer dat nulstellen vóór het rijden staat, dat geen enkele controle klapt op een lege app, en dat het verslag de niet-gehaalde stappen bij naam noemt.',
-
-    'BLOK 5 — de vier proeven voor #66 en #68 zijn eruit: hun machinehelft is op 01-09 beantwoord. De helft die een oog nodig heeft is stap 7 van de begeleide rit geworden. De #58-proef blijft, want die is nog onbeslist (#79).',
-
-    '── WAT DEZE RONDE NIET OPLOST ───────────────',
-
-    '#77 — de eerste verbinding van een sessie telt nog steeds als herverbinding. `vorigVerbonden` begint op null en de tikken vóór het verbinden zetten hem op false. Elke rit meldt dus minstens één herverbinding die er geen is. Blok 14 zegt dat er nu bij; de reparatie is een eigen commit.',
-
-    '#75 — "Meldingen sinds het begin van deze run" telt nog steeds de hele ringbuffer en niet wat er tijdens de run bij kwam. #76 — blok 7 rekent de zoneverdeling nog met de PLLoad-regel van vóór 23-08, waardoor "druk 87%" naast "geen enkele stap omlaag" kan staan. #78 — een health-oordeel wordt na de eerste scan nooit herzien.',
-
-    'DE DREMPELS ZIJN NOG STEEDS NIET GEMETEN. #16 (opruimregel) en de STPX-vraag uit #15 wachten allebei op een rit die lang genoeg duurt en een bus die vol genoeg staat. Wat deze ronde oplevert is dat de begeleide rit die twee voorwaarden nu afdwingt in plaats van ze achteraf te missen.'
+    '#75, #76, #77, #78 \u2014 onveranderd. De meldingenteller telt nog de hele ringbuffer, blok 7 rekent de zoneverdeling met de PLLoad-regel van v\u00f3\u00f3r 23-08, de eerste verbinding van een sessie telt nog als herverbinding, en een health-oordeel wordt na de eerste scan nooit herzien.'
   ]
 };
 

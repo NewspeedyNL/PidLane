@@ -485,6 +485,38 @@
     o.classList.remove('hidden');
   }
 
+  // ── De handmatige route (#42, eerste fase) ───────────────────────────
+  // Er staat geen koopknop in de app zolang `tikkie_kopen` leeg is, en dat
+  // blijft voorlopig zo: tokens verkopen ín de app is precies wat Google's
+  // betaalregels raken, en die vraag is niet beantwoord. De aanvraag loopt dus
+  // per mail en de beheerder stuurt de code met de hand terug.
+  //
+  // Wat deze functie doet is de enige echte verbetering die daar mogelijk is:
+  // de mail vooraf invullen. Het e-mailadres van het account MOET erin, want
+  // een code wordt op een account bijgeschreven en de afzender van een mail is
+  // niet per se de houder van dat account.
+  function _aanvraagMail(k) {
+    // Het scherm geeft het klantrecord mee; wordt deze mail elders opgebouwd
+    // (het codevenster in PLCredits), dan is er geen record maar wel een
+    // ingelogde klant. finishLogin() zet diens e-mailadres in currentUser.name.
+    let adres = (k && k.email) || '';
+    if (!adres && isKlant()) {
+      try { adres = String((window.currentUser || {}).name || ''); }
+      catch(e){ console.warn('e-mailadres van de ingelogde klant niet leesbaar:', e); }
+    }
+    const regels = [
+      'Ik wil graag tokens voor PidLane.',
+      '',
+      'Account: ' + (adres || '(vul hier je e-mailadres in)'),
+      'Aantal: ' + CFG.pakketTokens + ' tokens (\u20ac' + CFG.pakketPrijs.toFixed(2).replace('.', ',') + ')',
+      '',
+      'De activatiecode kan naar dit adres.'
+    ];
+    return 'mailto:' + CFG.supportMail +
+      '?subject=' + encodeURIComponent('Tokens voor PidLane' + (adres ? ' \u2014 ' + adres : '')) +
+      '&body=' + encodeURIComponent(regels.join('\n'));
+  }
+
   // ── Scherm "Mijn tokens" ─────────────────────────────────────────────
   async function openMijnTokens() {
     const o = _ov('klantTokenOv');
@@ -545,8 +577,17 @@
         ? '<button class="mbtn" id="mtKoop" style="width:100%;margin-bottom:9px">' +
             CFG.pakketTokens + ' tokens kopen \u2014 \u20ac' +
             CFG.pakketPrijs.toFixed(2).replace('.', ',') + '</button>'
+        // GEEN koopknop in de app: dat is de stand van de eerste fase (#42).
+        // Zolang `tikkie_kopen` leeg is in de Config-tabel gaat het aanvragen
+        // per mail en verstuurt de beheerder de code met de hand. Die mail
+        // draagt daarom het account waar de tokens op moeten — zonder dat
+        // begint elke aanvraag met "en wie ben jij?" en duurt hij een dag
+        // langer. Zie _aanvraagMail() hierboven voor wat erin staat.
         : '<a class="mbtn" style="width:100%;display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:9px" ' +
-            'href="mailto:' + CFG.supportMail + '?subject=Tokens%20voor%20PidLane">Tokens aanvragen</a>') +
+            'href="' + _esc(_aanvraagMail(k)) + '">Tokens aanvragen</a>' +
+          '<div style="font-size:11px;color:var(--tx3,#7c8aa5);line-height:1.55;margin-bottom:9px">' +
+            'Codes worden met de hand verstuurd, meestal binnen een dag. ' +
+            'Je mailprogramma opent met je account er al in.</div>') +
 
       (CFG.tikkieDonatie
         ? '<button class="mbtn" id="mtDonatie" style="width:100%;font-weight:400">' +
@@ -761,6 +802,7 @@
     openRegistratie: openRegistratie,
     openHerstelAanvraag: openHerstelAanvraag,
     openMijnTokens: openMijnTokens,
+    aanvraagMail: _aanvraagMail,
     openVerwijderAccount: openVerwijderAccount,
     openOnboarding: openOnboarding,
     openKoop: openKoop,

@@ -354,6 +354,23 @@ function finishLogin(user, account){
   // het herstel van een onthouden sessie langskomt.
   try{ if(window.PLKlant && PLKlant.pasMenuAan) PLKlant.pasMenuAan(); }catch(e){ log('Menu niet aangepast aan de rol — het adminitem kan verkeerd staan: '+(e.message||e),'warn'); }
 
+  // En de tokenchip om exact dezelfde reden (#52). PLCredits.chip() bestond al
+  // als publieke ingang maar werd door niemand aangeroepen: de chip werd
+  // getekend bij het LADEN van de pagina, dus vóór de login, en daarna keek
+  // niets er meer naar. Een beheerder hield zo een chip die niet bij hem hoort.
+  // Hier, want dit is het enige punt waar zowel een verse login als een
+  // herstelde sessie langskomt — en het is de rol die de chip bepaalt.
+  try{ window.PLCredits?.chip?.(); }catch(e){ log('Tokenchip niet bijgewerkt na inloggen: '+(e.message||e),'warn'); }
+
+  // Klant erbij: haal het echte saldo op. De chip toont anders het afschrift uit
+  // localStorage, en dat is bij een herstelde sessie (Android herlaadt de
+  // WebView) het getal van de vorige keer — er komt geen /klant/mij aan te pas
+  // tot iemand "Mijn tokens" opent. De server is de bron, dus vragen we het.
+  try{
+    if(window.PLKlant?.isKlant?.() && PLKlant.verversSaldo)
+      PLKlant.verversSaldo().catch(function(e){ console.warn('Saldo niet opgehaald na inloggen', e); });
+  }catch(e){ log('Saldo niet opgehaald na inloggen: '+(e.message||e),'warn'); }
+
   // Proxy-modus: test de AI-keten via de proxy (sleutel staat server-side)
   testApiKey();
 }
@@ -473,6 +490,12 @@ async function logout(){
   }catch(e){ try{ log('Log opslaan bij uitloggen mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
   currentUser = null;
   window.currentUser = null;
+  // Chip opnieuw beoordelen, en pas HIER (#52). vergeetKlant() hierboven doet
+  // dat ook, maar dat is te vroeg: op dat moment staat currentUser nog op de
+  // klant, dus de chip wordt netjes opnieuw getekend — met "tokens onbekend"
+  // erin, en die bleef daarna op het loginscherm staan. Na deze twee regels
+  // klopt het antwoord van _vrijgesteld() pas.
+  try{ window.PLCredits?.chip?.(); }catch(e){ console.warn('Tokenchip niet opgeruimd bij uitloggen:', e); }
   tokClear();                                       // sessietoken ongeldig maken
   try{ localStorage.removeItem('pl_appstate'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // sessiestaat niet meenemen naar volgende login
   uitlogVlagWeg();                                  // uitloggen is af; het loginscherm mag weer werken

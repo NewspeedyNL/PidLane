@@ -1927,13 +1927,22 @@ var RemoteSessionDO = class {
 };
 // ── Tegoed: activatiecode inwisselen ────────────────────────────────
 // POST /credits/redeem  { code: "PIDL-XXXX-XXXXXX" }
-//   → 200 { ok:true, credits:100 }
-//   → 400/404/409/429 { ok:false, error:"..." }
+//   → 200 { ok:true, credits:100, saldo:130 }
+//   → 400/401/404/409/429/500 { ok:false, error:"..." }
 //
-// Werkt BEWUST zonder account (stap B van het plan): de gratis proef en de
-// eerste aankopen moeten drempelloos zijn. Zodra de Klanten-tabel in gebruik
-// is, kan hier optioneel een e-mailadres bij om het saldo aan een account te
-// hangen in plaats van aan localStorage.
+// VRAAGT EEN INGELOGDE KLANT — herzien op 02-09-2026.
+// Hier stond dat dit endpoint BEWUST zonder account werkte: de gratis proef en
+// de eerste aankopen moesten drempelloos zijn, en het tegoed kon desnoods in
+// localStorage landen. Die aanname is met #49 vervallen — de client deelt geen
+// tegoed meer uit en een saldo bestaat alleen nog op een account.
+//
+// Wat er van die oude vorm overbleef was een geldvernietiger: zonder sessie
+// stempelde deze route de code gewoon af als gebruikt (stap 3/4 hieronder) en
+// kwam pas daarna toe aan het bijboeken, dat zonder account niets deed. De code
+// was dan verbrand en het tegoed nergens. De app haakte daar sinds 29-08 zelf
+// al op af (verzilver() in pidlane-credits.js), maar een client-controle is een
+// verzoek en geen grens: een oudere app, een herhaald verzoek of een curl kwam
+// er nog gewoon langs. De controle staat nu VÓÓR de eerste schrijfactie.
 //
 // RACE-BEVEILIGING — Airtable kent geen transacties, dus twee gelijktijdige
 // verzoeken met dezelfde code zouden allebei kunnen slagen. Opgelost met een
@@ -1951,10 +1960,18 @@ async function handleCreditsRedeem(request, env) {
   let body = {};
   try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
   const code = String(body && body.code || "").trim().toUpperCase();
-  const door = String(body && body.email || "").trim().toLowerCase() || "anoniem";
 
   if (!/^[A-Z0-9][A-Z0-9-]{5,23}$/.test(code))
     return json({ ok: false, error: "Ongeldig codeformaat." }, 400);
+
+  // Eerst een account, dán pas de code aanraken. Zie de alinea hierboven: een
+  // code die wordt afgestempeld zonder dat er een saldo is om hem op te zetten,
+  // is weg. `door` komt uit de sessie en niet meer uit de body — dat veld stond
+  // in GebruiktDoor en was tot nu toe door de aanvrager zelf op te geven.
+  const klant = await klantAuth(request, env);
+  if (!klant)
+    return json({ ok: false, error: "Log eerst in met je account — een code wordt daarop bijgeschreven. Zo raakt hij niet verloren." }, 401);
+  const door = String(klant.u || "").trim().toLowerCase() || "onbekend";
 
   const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
   const table = cfg(env, "AIRTABLE_CODES_TABLE");
@@ -2056,43 +2073,47 @@ async function handleCreditsRedeem(request, env) {
       return json({ ok: false, error: "Inwisselen mislukt, probeer later opnieuw." }, 502);
     }
 
-    // 4. Is er een ingelogde klant, dan gaan de tokens naar het account in
-    //    plaats van naar localStorage. Lukt dat bijboeken niet, dan is de
-    //    code al verbruikt — daarom melden we dat expliciet in plaats van
-    //    stilletjes ok:true terug te geven en het tegoed te laten verdampen.
+    // 5. Bijboeken op het account van de ingelogde klant. Vanaf hier is de code
+    //    verbruikt, dus alles wat hierna misgaat wordt gemeld als "geldig maar
+    //    bijboeken mislukt" — nooit als een stille ok:true, want dan verdampt
+    //    het tegoed zonder dat iemand het merkt.
     let saldo = null;
     try {
-      const p = await klantAuth(request, env);
-      if (p) {
-        // Lezen-optellen-terugschrijven op Saldo, dus door hetzelfde slot als
-        // handleMessages (AI-afboeking) en handleKlantOnboarding
-        // (welkomstbonus): zonder slot kon het bijboeken van deze code een
-        // gelijktijdige afboeking overschrijven of omgekeerd. Lukt het slot
-        // zelf niet, dan gooit metSaldoSlot door naar de buitenste catch
-        // hieronder — de code is dan al afgestempeld (stap 3/4 hierboven),
-        // dus dat wordt gemeld als "geldig maar bijboeken mislukt", niet als
-        // een mislukte inwisseling.
-        const uitkomst = await metSaldoSlot(env, p.u, async () => {
-          const kr = await klantZoek(env, p.u);
-          if (!kr) return null;
-          const kf = kr.fields || {};
-          const nieuwSaldo = Number(kf.Saldo || 0) + credits;
-          await klantPatch(env, kr.id, {
-            Saldo: nieuwSaldo,
-            TotaalGekocht: Number(kf.TotaalGekocht || 0) + credits
-          });
-          await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-            method: "PATCH",
-            headers: hdr,
-            body: JSON.stringify({ records: [{ id: rec.id, fields: { GebruiktDoor: kf.Email || door } }] })
-          }).catch(() => {});
-          return nieuwSaldo;
+      // Lezen-optellen-terugschrijven op Saldo, dus door hetzelfde slot als
+      // handleMessages (AI-afboeking) en handleKlantOnboarding
+      // (welkomstbonus): zonder slot kon het bijboeken van deze code een
+      // gelijktijdige afboeking overschrijven of omgekeerd. Lukt het slot
+      // zelf niet, dan gooit metSaldoSlot door naar de catch hieronder.
+      const uitkomst = await metSaldoSlot(env, klant.u, async () => {
+        const kr = await klantZoek(env, klant.u);
+        // Een geldige sessie zonder record in Klanten: het account is
+        // verwijderd of hernoemd tussen inloggen en inwisselen. Gooien en niet
+        // `null` teruggeven — dat laatste kwam als saldo:null naar buiten
+        // naast ok:true, en dan meldt de app een geslaagde inwisseling van
+        // tokens die nergens staan.
+        if (!kr) throw new Error("klantrecord niet gevonden voor " + klant.u);
+        const kf = kr.fields || {};
+        const nieuwSaldo = Number(kf.Saldo || 0) + credits;
+        await klantPatch(env, kr.id, {
+          Saldo: nieuwSaldo,
+          TotaalGekocht: Number(kf.TotaalGekocht || 0) + credits
         });
-        if (uitkomst.bezet)
-          throw new Error("saldo-slot bezet — er loopt al een andere saldowijziging voor dit account");
-        saldo = uitkomst.result;
-      }
+        await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+          method: "PATCH",
+          headers: hdr,
+          body: JSON.stringify({ records: [{ id: rec.id, fields: { GebruiktDoor: kf.Email || door } }] })
+        }).catch(() => {});
+        return nieuwSaldo;
+      });
+      if (uitkomst.bezet)
+        throw new Error("saldo-slot bezet — er loopt al een andere saldowijziging voor dit account");
+      saldo = uitkomst.result;
+      if (typeof saldo !== "number" || !Number.isFinite(saldo))
+        throw new Error("bijboeken gaf geen saldo terug");
     } catch (e) {
+      try {
+        console.error("[credits] code " + code + " afgestempeld maar niet bijgeboekt voor " + door + " :: " + String(e && e.message || e));
+      } catch (_) { /* stil: melden mag de stroom nooit breken */ }
       return json({
         ok: false,
         error: "Code is geldig, maar bijboeken op je account is mislukt. Neem contact op — de code is nu verbruikt."

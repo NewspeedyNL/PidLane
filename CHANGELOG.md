@@ -11,6 +11,81 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE TOKENKETEN: DE TELLER VOLGT
+                               DE SERVER, DE CHIP VOLGT DE ROL
+
+       • 🎟️ EEN ACTIVATIECODE KON VERBRANDEN. /credits/redeem
+         stempelde de code eerst af als gebruikt en keek pás
+         daarna of er een ingelogde klant was om hem op bij te
+         schrijven. Was die er niet, dan kwam er ok:true met
+         saldo:null terug: code verbruikt, tegoed nergens, en de
+         klant die er €4,99 voor betaalde staat met lege handen.
+
+         De app haakte daar sinds 29-08 zelf al op af, maar een
+         controle in de app is een verzoek en geen grens — een
+         oudere versie, een herhaald verzoek of een curl kwam er
+         gewoon langs. De sessiecontrole staat nu vóór de eerste
+         schrijfactie. GebruiktDoor komt bovendien uit die sessie
+         in plaats van uit de body, waar de aanvrager zelf kon
+         invullen op wiens naam de code kwam.
+
+       • ⚡ DE TELLER LIEP OP DE SCHATTING. De Worker boekt af op
+         het echte verbruik en stuurt het saldo terug in de header
+         X-PidLane-Saldo. Die header staat in
+         Access-Control-Expose-Headers en §8 van PIDLANE.md
+         beschreef sinds juli dat apiFetch hem uitleest. Er las
+         niemand: nergens in public/ stond die naam.
+
+         Het verschil is niet cosmetisch. Mislukte de PATCH op
+         Airtable, dan ging er niets van het saldo af terwijl de
+         app wel aftrok — de klant zag tokens verdwijnen die hij
+         nog had. PLCredits.volgServer() leest de header nu uit,
+         en bij een 402 het saldo uit de body.
+
+       • 🔋 DE TOKENCHIP VOLGT DE ROL, NIET HET LAADMOMENT
+         (issue #52). De chip werd getekend bij het laden van de
+         pagina — dus vóór de login — en daarna keek er niets meer
+         naar. Een beheerder hield zo "⚡ tokens onbekend" in de
+         linkeronderhoek staan. PLCredits.chip() bestond al als
+         publieke ingang en werd door niemand aangeroepen;
+         finishLogin() en logout() doen dat nu.
+
+         Daarbij kwam een toestand aan het licht die niet in het
+         issue stond: NIEMAND ingelogd viel door alle takken van
+         _vrijgesteld() heen en gold als "betaalt". Er stond dus
+         ook een chip op het loginscherm. De regel is nu één zin:
+         alleen een ingelogde klant betaalt met tokens, en alleen
+         die ziet de chip.
+
+       • 💶 EERSTE FASE BLIJFT HANDMATIG (issue #42). Er komt geen
+         koopknop in de app: tokens verkopen ín de app is precies
+         wat Google's betaalregels raakt, en die vraag is niet
+         beantwoord. Zolang tikkie_kopen leeg staat in de
+         Config-tabel loopt het aanvragen per mail en verstuurt de
+         beheerder de code met de hand.
+
+         Die mail draagt nu het account waar de tokens op moeten,
+         plus het pakket en de prijs. Zonder dat begint elke
+         aanvraag met "en wie ben jij?" en duurt hij een dag
+         langer.
+
+       • 🔎 EN EEN KASBOEK DAT NIET BESTAAT (issue #83). §8
+         beschreef een TokenLog-tabel met negen velden, vier
+         bronnen en een functie tegoedLog() die nooit in worker.js
+         heeft gestaan. Twee keer op één pagina stond er een
+         correcte beschrijving van iets dat niet gebouwd was, en
+         beide keren was dat genoeg om het te laten liggen. §8
+         zegt nu wat er wél staat.
+
+       • ✅ TESTS. test-tokenchip.js (19 toetsen),
+         test-saldokop.js (16) en test-codeverzilver.js (21) zijn
+         nieuw, alle drie met tegenproef: bouw de oude fout terug
+         en er worden er 4, 4 en 1 rood. test-proeftegoed.js logt
+         nu in als klant — een tegoed zonder account bestaat niet
+         meer. Testrun 6.1 meet in blok 5 wat hier veranderd is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-01 (CET) — DE RITWAARNEMER MEET WEER,
                                EN DE RIT WORDT BEGELEID
 
