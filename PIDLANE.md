@@ -130,9 +130,10 @@ PidLane/
 > maar het zette de complete beheerkant publiek in de etalage. Draaien doe je
 > hem nu lokaal met `npm run admin`; zie `admin/LEESMIJ.md`.
 
-`index.html` was 735 KB en is op 2026-07-28 opgesplitst naar ~203 KB.
-Daarvan is ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar,
-~11 KB inline CSS en ~8,5 KB inline bootstrap-JS.
+`index.html` was 735 KB en is op 2026-07-28 opgesplitst naar ~203 KB. Daarvan
+was ~139 KB echte HTML-markup, ~42 KB build-changelog in commentaar, ~11 KB
+inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
+`CHANGELOG.md` gegaan; gemeten op 02-09-2026 is het bestand 176 KB.
 
 ---
 
@@ -601,7 +602,10 @@ niet bij de repo kon. Dat is niet meer zo. Wat er nog open in stond staat in
 - **Bij elke oplevering ook `CAMPAGNE` en `_blok5()` in `pidlane-testrun.js`
   herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
   toegevoegd én verwijderd. Zie §20.
-- Build-changelog bovenaan `index.html` (HTML-commentaar).
+- Build-changelog bovenaan `CHANGELOG.md`, niet meer in `index.html`:
+  `build-apk.yml` triggert op elke wijziging aan `public/index.html`, dus een
+  nieuwe changelogregel startte daar een Android-build zonder dat er iets aan
+  de app veranderde. Verplaatst op 28-08-2026.
 - Chirurgische bewerkingen met een unieke zoekstring, niet met een hele
   bestandsherschrijving — dan blijft de diff leesbaar.
 - Mechanisch en inhoudelijk wijzigen nooit in dezelfde commit.
@@ -1933,10 +1937,10 @@ uitwerking tot één ladder staat in §15.
 
 ## 13. Vervolgstappen na de opsplitsing
 
-- `index.html` is nu ~203 KB, waarvan 139 KB HTML-markup. Verdere winst is
-  mogelijk door paneel-HTML naar templates te verplaatsen, maar dat is een
-  aparte ronde.
-- Build-changelog (42 KB) kan naar `CHANGELOG.md` → `index.html` ~157 KB.
+- `index.html` is 176 KB (gemeten 02-09-2026), waarvan het grootste deel
+  HTML-markup. Verdere winst is mogelijk door paneel-HTML naar templates te
+  verplaatsen, maar dat is een aparte ronde.
+- Build-changelog (42 KB) naar `CHANGELOG.md`: gedaan op 28-08-2026.
 - Per module opschonen kan nu goedkoop, één module tegelijk.
 
 ---
