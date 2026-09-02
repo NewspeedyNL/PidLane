@@ -229,6 +229,9 @@ function renderGauges(){
       vak[p[0]]={sec:sec, box:box};
     });
   }
+  // De korte namen voor de tellerplaat in één keer voor het hele rooster: de
+  // botsingscontrole kan pas iets zeggen als hij álle meters kent.
+  const meterNaam = slim ? slimMeterLabels([...activePIDs]) : {};
   [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     // Het vangnet dat hier stond is op 21-08-2026 verwijderd (§15, ronde 6 →
@@ -272,7 +275,7 @@ function renderGauges(){
     const _alt=(window.PID_ALT_KANAAL||{})[pid];
     const altTag=_alt?` <span class="gc-alt" title="${(window.pidAltKanaalTip?pidAltKanaalTip(pid):'').replace(/"/g,'&quot;')}">⇄ ${_alt}</span>`:'';
     c.innerHTML=`<div class="gdot${leeg?' leeg':''}" id="gd-${pid}"${leeg?` title="${LEEG_TIP}"`:''}></div>
-      <div class="gn2">${d.name}${manTag}${altTag}</div>
+      <div class="gn2"${meterNaam[pid]?` title="${d.name.replace(/"/g,'&quot;')}"`:''}>${meterNaam[pid]||d.name}${manTag}${altTag}</div>
       <div class="gval"><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     c.style.cursor='pointer'; c.title='Dubbeltik = sensor uitzetten';
@@ -755,6 +758,40 @@ function slimHerweegPlannen(){
     _slimHerweegT=null;
     try{ slimHerweeg(); }catch(e){ console.warn('slimHerweeg mislukt:', e); }
   }, SLIM_HERWEEG_MS);
+}
+
+// ── NAMEN OP DE TELLERPLAAT ───────────────────────────────────────
+// Vijf meters naast elkaar op een telefoon laten geen "Gaspedaal positie D"
+// toe: die naam werd afgekapt tot "GASPEDAAL…" en dan wijst de plaat een
+// signaal aan zonder te zeggen wélk. Afkorten doet hudShortLabel() al voor de
+// HUD — op betekenis en niet op tekenaantal — dus dat is hier hergebruik en
+// geen tweede lijst.
+//
+// Wat er wél bij moet is de garantie die de HUD niet nodig heeft: op één plaat
+// mogen twee meters nooit dezelfde naam dragen. "Gaspedaal positie D" en
+// "... E" korten allebei af tot "GASPED POS", en twee meters met één naam is
+// precies wat #68 wilde oplossen. Bij een botsing valt de hele groep terug op
+// de volledige naam: langer en lelijker, maar leesbaar verkeerd is erger dan
+// lang. Dat de terugval de hele groep raakt en niet alleen de tweede is met
+// opzet — twee meters waarvan er één afgekort is en één niet, lezen als twee
+// verschillende soorten.
+function slimMeterLabels(pids){
+  const uit={}, tel={};
+  (pids||[]).forEach(function(pid){
+    const d=getPidDef(pid); if(!d) return;
+    if(((typeof slimGroep==='function')?slimGroep(pid,d):'rest')!=='meter') return;
+    const naam=d.name||pid;
+    let kort=naam;
+    try{ if(typeof hudShortLabel==='function') kort=hudShortLabel(naam)||naam; }
+    catch(e){ console.warn('hudShortLabel mislukt:', e); }
+    uit[pid]=kort;
+    (tel[kort]=tel[kort]||[]).push(pid);
+  });
+  Object.keys(tel).forEach(function(kort){
+    if(tel[kort].length<2) return;
+    tel[kort].forEach(function(pid){ const d=getPidDef(pid); uit[pid]=(d&&d.name)||pid; });
+  });
+  return uit;
 }
 
 function slimBij(pid,val,d,st,card){

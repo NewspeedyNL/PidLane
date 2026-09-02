@@ -633,6 +633,56 @@ function keurAsymmetrie(slimBron) {
   return uit;
 }
 
+// ── 7. de namen op de tellerplaat ────────────────────────────────
+// Hier hoort de ECHTE hudShortLabel() te draaien, met het echte
+// HUD_LABEL_DICT uit pidlane-data.js. Een nagebouwde afkorter zou precies de
+// botsing wegnemen die getoetst moet worden: dat "Gaspedaal positie D" en
+// "... E" allebei op "GASPED POS" uitkomen is geen bedachte fout maar wat die
+// functie vandaag doet.
+const NEON_BRON = (function () {
+  const bron = fs.readFileSync('pidlane-neon.js', 'utf8');
+  const i = bron.indexOf('function hudShortLabel(name){');
+  if (i < 0) throw new Error('hudShortLabel() niet gevonden in pidlane-neon.js — hernoemd?');
+  const j = bron.indexOf('\nfunction ', i + 10);
+  if (j < 0) throw new Error('het einde van hudShortLabel() is niet te vinden');
+  return bron.slice(i, j);
+})();
+function metKorteNamen(actief, slimBron) {
+  const ctx = maakOmgeving(actief, null, slimBron);
+  ctx.HUD_LABEL_DICT = D.HUD_LABEL_DICT;
+  vm.runInContext(NEON_BRON, ctx, { filename: 'pidlane-neon.js (labels)' });
+  return ctx;
+}
+function keurMeterNamen(slimBron) {
+  // De vijf van de tellerplaat uit de schermafdruk, inclusief de twee
+  // pedaalsensoren die vandaag op dezelfde afkorting uitkomen.
+  const plaat = ['010C', '0104', '0143', '014A', '014B'];
+  const ctx = metKorteNamen(plaat, slimBron);
+  const uit = [];
+  if (typeof ctx.hudShortLabel !== 'function') return ['hudShortLabel() is niet geladen; deze toets meet niets'];
+  const namen = ctx.slimMeterLabels(plaat);
+  // 1. Elke meter heeft een naam, en die is korter dan de volle naam of gelijk.
+  plaat.forEach(function (pid) {
+    if (!namen[pid]) uit.push(pid + ' krijgt geen naam op de tellerplaat');
+  });
+  // 2. En de kern: nooit twee meters met dezelfde naam.
+  const gezien = {};
+  Object.keys(namen).forEach(function (pid) {
+    const n = String(namen[pid]).toUpperCase();
+    if (gezien[n]) uit.push('"' + n + '" staat op twee meters tegelijk: ' + gezien[n] + ' en ' + pid);
+    gezien[n] = pid;
+  });
+  // 3. Dat de afkorting überhaupt iets doet: het toerental is korter dan
+  //    "Motortoerental", anders is de hele stap zinloos.
+  if (namen['010C'] && namen['010C'].length >= DEFS['010C'].name.length)
+    uit.push('het toerental wordt niet afgekort: "' + namen['010C'] + '"');
+  // 4. Alleen de tellerplaat. Een tegel in "Beweegt" heeft de ruimte en houdt
+  //    zijn volledige naam — afkorten waar het niet hoeft is verlies.
+  const ruim = metKorteNamen(['010C', '012C'], slimBron).slimMeterLabels(['010C', '012C']);
+  if (ruim['012C']) uit.push('een tegel buiten de tellerplaat krijgt tóch een korte naam');
+  return uit;
+}
+
 // ── draaien ──────────────────────────────────────────────────────
 console.log('Slimme weergave — standaard, tellerplaat, temperatuurbalken, trend waar het beweegt (#61, #66, #68)\n');
 
@@ -649,6 +699,7 @@ toetsSchoon('de actieve knop in index.html wijst dezelfde weergave aan', keurKno
 toetsSchoon('de maat volgt het gedrag, en een waarschuwing wint van stilstand', keurMaat());
 toetsSchoon('de herweging verhuist de tegels, en een tegel staat nooit in twee vakken', keurHerweging());
 toetsSchoon('omhoog mag altijd, omlaag alleen bij de herweging', keurAsymmetrie());
+toetsSchoon('elke meter op de tellerplaat heeft een eigen, korte naam', keurMeterNamen());
 
 // ── tegenproef ───────────────────────────────────────────────────
 console.log('');
@@ -754,6 +805,13 @@ toetsMeldt('een indeling die onder je ogen verspringt valt door de mand (tegenpr
 toetsMeldt('een opbouw zonder herweging valt door de mand (tegenproef)',
   keurHerweging(null, bouw(RENDER_BRON, 'slimHerweeg(); slimVakkenBij();', '', 'herweging bij opbouw')),
   'verwacht 012F');
+
+// 11. De botsingscontrole weg: dan dragen gaspedaal D en E dezelfde naam en
+//     wijst de plaat twee signalen aan zonder te zeggen welk.
+toetsMeldt('twee meters met dezelfde naam vallen door de mand (tegenproef)',
+  keurMeterNamen(bouw(SLIM_BRON,
+    'if(tel[kort].length<2) return;', 'return;', 'botsingscontrole')),
+  'staat op twee meters tegelijk');
 
 // En een balk die tegen het PID-maximum wordt afgezet in plaats van tegen de
 // gevarengrens: dan is koelwater 88 °C ineens 34% en niet 80%.

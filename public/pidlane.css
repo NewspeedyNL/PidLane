@@ -992,7 +992,11 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
    binnen het eigen bereik. Twee vormen, twee betekenissen — hetzelfde
    plaatje voor allebei zou de eerste bug van dit project herhalen. */
 .gg.view-slim .slim-meter .slim-vak {
-  grid-template-columns:repeat(auto-fit,minmax(64px,1fr)); gap:4px;
+  /* 56px in plaats van 64: met vijf gaspad-signalen (toerental, belasting,
+     gasklep en twee pedaalsensoren) viel de vijfde meter op een tweede rij en
+     stond hij daar in zijn eentje. Vijf naast elkaar is precies waar de plaat
+     voor bedoeld is — de verhouding lezen, niet de losse getallen. */
+  grid-template-columns:repeat(auto-fit,minmax(56px,1fr)); gap:4px;
   background:var(--sur); border:1px solid var(--bd); border-radius:var(--r);
   padding:10px 8px 9px;
 }
@@ -1008,9 +1012,14 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 .gg.view-slim .slim-meter .gv { font-size:14px; letter-spacing:-.4px; }
 .gg.view-slim .slim-meter .gunit { font-size:9px; margin-left:1px; }
 .gg.view-slim .slim-meter .smtr { order:3; }
+/* De naam mag twee regels gebruiken. Met één regel plus ellipsis werd juist
+   het onderscheidende deel weggeknipt ("GASPEDAAL…", "ABS. MOTO…") en dan wijst
+   de meter een signaal aan zonder te zeggen welk. De korte naam komt van
+   slimMeterLabels() in pidlane-pids.js; de volledige naam staat in de tooltip. */
 .gg.view-slim .slim-meter .gn2 {
   order:4; margin:0; padding:0; font-size:8.5px; line-height:1.15; letter-spacing:0;
-  text-align:center; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  text-align:center; width:100%; overflow:hidden; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
 }
 /* De koker. De vulling groeit van onderen, zoals een meter hoort te lopen. */
 .smtr { position:relative; width:18px; height:86px; border:1px solid var(--bd); border-radius:9px; background:var(--sur2); overflow:hidden; }
