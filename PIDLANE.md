@@ -743,6 +743,15 @@ zijn, want het bestond toen nog niet. De uitzondering daarvoor kijkt naar
 het verbinden gaat meten, wat bij een begeleide rit van tien minuten de
 normale gang van zaken is.
 
+**En de oorzaak van dat verse profiel staat vast, want die is nagevraagd
+(02-09-2026):** het profiel is leeg omdat er een nieuwe versie was geladen of
+omdat de opslag gewist was. Wordt dat níét gedaan, dan laadt het profiel
+gewoon en meldt blok 1 "bij het verbinden geladen, snelle start". **Het laden
+zelf mankeert dus niets — dit is een melding, geen app-fout.** Dat onderscheid
+is het hele punt: precies in de sessies waarin je een oplevering uitprobeert
+(nieuwe versie erop, opslag schoon) slaat deze proef vals alarm, en dat zijn
+juist de sessies waarin je hem het meest vertrouwt.
+
 De marge oprekken is niet de goede reparatie: dan verschuift alleen de grens.
 De vraag is "is dit profiel ná het verbinden ontstaan", en daar hoort het
 verbindingsmoment bij, niet een vaste hoeveelheid uren. Niet in deze PR
@@ -825,7 +834,7 @@ de pas, en dan is de vraag welke klopt.
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 | [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
 | [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
-| [#86](https://github.com/NewspeedyNL/PidLane/issues/86) | blok 1 meldt "profiel niet geladen" voor een profiel uit dezelfde sessie — de marge van 0,1 uur is te krap | bug |
+| [#86](https://github.com/NewspeedyNL/PidLane/issues/86) | blok 1 meldt "profiel niet geladen" na een nieuwe versie of een gewiste opslag — melding, geen app-fout | bug |
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
 #14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op
