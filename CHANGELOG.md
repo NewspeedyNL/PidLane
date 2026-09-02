@@ -11,6 +11,42 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE RIT OOGST BEWIJS
+
+       • 🎯 VIJF ISSUES WACHTTEN OP EEN RIT, EN ER WAREN ER VIER
+         GEWEEST. Elke keer sneuvelde er één voorwaarde: de
+         caravan-tracker stond niet aan, er werd vier minuten
+         gereden van de tien, of de PID stond niet in de
+         pollronde. Dat bleek dan achteraf, verspreid over blok 4,
+         7 en 14 — nergens stond het oordeel zelf.
+
+       • 🚗 DE BEGELEIDE RIT GAAT VAN 10 NAAR 13 STAPPEN. De app
+         start nu zelf de caravan-tracker, de vierde aanvrager
+         waar #19 en #15 om vragen (dat stond er vier ritten lang
+         als tekst en gebeurde nooit). Nieuw: twee minuten
+         achtergrond met een markering ervoor (#18), en twee
+         oordeelstappen die alleen een mens kan geven — de slimme
+         weergave (#66) en de veilige zones (#79/#58).
+
+       • 📏 0155 EN 0156 IN DE MEET-PIDS (#40). PLPidLen leert
+         bytelengtes uit metingen, dus een PID die niet langskomt
+         levert niets. De vorige run meldde "0 afwijkend", en dat
+         las als opgelost terwijl het "niet gekeken" betekende.
+
+       • 🧾 BLOK 5 — DE RIT-OOGST, zes proeven. Eén per issue: #19,
+         #15, #40, #18, #17 en #29. Ze meten niets nieuws maar
+         lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate,
+         en spreken één oordeel uit: dicht, of precies wat er
+         ontbrak. Dat tweede is de helft die miste.
+
+       • ➖ DE #78-PROEF IS ERUIT. Beantwoord in de run van 13:14
+         (55 beoordeeld, 2 niet-ok, geen enkele met een
+         versheidsstempel). De logica staat met een mutatie achter
+         test-healthherziening.js — sterker dan een proef die
+         alleen draait als iemand een testrun doet.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — EERST OORDELEN, DAN STEMPELEN
 
        • 🩺 DE GEZONDHEIDSCHECK STEMPELDE TE VROEG. initialHealthScan()

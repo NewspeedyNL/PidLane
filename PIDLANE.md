@@ -689,6 +689,45 @@ gedráaid zijn. Dat is iets anders dan wat ze zouden merken, en tussen die twee
 zat hier een gat van vier fouten. Een groene reeks is pas een uitspraak als er
 een tegenproef onder ligt.
 
+### Vier ritten, nul gesloten issues — 02-09-2026
+
+Niet één bevinding maar een patroon, en het is de reden dat testrun 6.5
+bestaat. Vijf issues staan als "meten" open: #19, #29, #66, #79 en #20. Er zijn
+sinds 27-08 vier ritten gereden. Er is er geen enkele van dichtgegaan.
+
+Niet omdat de metingen mislukten. Elke keer sneuvelde er één **voorwaarde**:
+
+| rit | wat er ontbrak |
+|---|---|
+| 27-08 | de opruimregel vuurde wél, blok 14 las het verkeerde log (#29) |
+| 01-09 | vijf minuten gereden waar er tien nodig zijn; 0123/0159 stonden buiten de selectie |
+| 02-09 12:05 | drie aanvragers in plaats van vier — de caravan-tracker stond uit |
+| 02-09 13:14 | vier minuten gereden; 0155/0156 kwamen niet langs, dus "0 afwijkend" (#40) |
+
+**Wat die vier gemeen hebben.** De voorwaarde stond wél ergens: in de tekst van
+stap 3 ("wil je de caravan-tracker erbij, start die dan zelf"), in het issue, of
+in de campagne. Alleen niet als iets dat de app zelf doet of zelf afdwingt. En
+het gemis bleek pas achteraf, verspreid over blok 4, 7 en 14 — nergens stond de
+vraag die je eigenlijk had: *is dit issue nu dicht te doen?*
+
+Dat is dezelfde vorm als de rest van §11: **een controle die zijn antwoord uit
+de verkeerde bron haalt.** Hier is de verkeerde bron de bestuurder zijn
+geheugen. Een voorwaarde die je achteraf meldt is een verwijt; dezelfde
+voorwaarde vooraf is een knop — dat stond al in de kop van de begeleide rit,
+maar gold nog niet voor de vierde aanvrager en de twee bytelengte-PIDs.
+
+**Wat er nu staat.** De begeleide rit start de caravan-tracker zelf, `RIT_PIDS`
+bevat 0155 en 0156, en er zijn drie stappen bij: twee minuten achtergrond
+(#18) en twee oordelen die alleen een mens kan geven (#66, #79). Blok 5 heeft
+een blok DE RIT-OOGST met zes proeven die per issue zeggen of hij dicht kan, en
+anders wat er ontbrak. `test-begeleid.js` bewaakt de volgorde van de nieuwe
+stappen én de inhoud van `RIT_PIDS`; `plmutate.sh` maakt allebei rood als ze
+verdwijnen.
+
+**Wat dit niet is.** Geen garantie dat de issues dichtgaan. De rit kan nog
+steeds uitwijzen dat 0123 stilstaat of dat de app niet bevriest — dat zijn
+antwoorden, en antwoorden zijn precies wat er tot nu toe niet kwam.
+
 ### De gezondheidscheck stempelde vóór hij oordeelde — 02-09-2026 (opgelost)
 
 Gevonden in de testrun van 02-09 om 12:05, als een van de twee FOUTen:
