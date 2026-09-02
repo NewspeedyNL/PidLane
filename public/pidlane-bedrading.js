@@ -65,6 +65,13 @@ var KRITIEK = [
   // opleveren waar de bedradingscontrole voor bestaat.
   // LET OP: geen apostrof in dit commentaar — lijstUit() in test-bedrading.js
   // leest de namen met een quote-paar-regex en telt een losse apostrof mee.
+  // De socketcontrole bij terugkomst uit de achtergrond (#18, 02-09-2026).
+  // pidlane-achtergrond.js roept sppReconnectGuard achter een typeof-guard aan,
+  // want die functie woont in pidlane-bt.js en dat bestand laadt eerder.
+  // Verdwijnt hij, dan doet de guard niets en komt de app weer per ongeluk
+  // achter een dode socket in plaats van met opzet -- zestien seconden rommel,
+  // precies het geval uit het log van 23-08. Stil falen dus, en daarom hier.
+  'sppReconnectGuard',
   'selectCategoryPIDs','sendCmd','splitBatchResponse','steunbitsRuw','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',
   'uitlogBezig','uitlogVlagAan',

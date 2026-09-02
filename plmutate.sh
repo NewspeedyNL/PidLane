@@ -61,6 +61,8 @@ MUTATIES=(
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"
+"public/pidlane-achtergrond.js@@if (tot - van < DREMPEL_MELDEN) return null;@@if (false) return null;@@test-achtergrond.js@@elke vensterwissel wordt als bevriezing geboekt"
+"public/pidlane-achtergrond.js@@sppReconnectGuard(c.spp, c.address, 'terug na ' + s + ' s achtergrond')@@sppReconnectGuard(c.spp, c.address, 'terug na ' + s + ' s achtergrond', true)@@test-achtergrond.js@@de socketcontrole sloopt een gezonde verbinding in plaats van hem na te kijken"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
