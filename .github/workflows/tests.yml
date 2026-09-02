@@ -50,6 +50,27 @@ jobs:
       - name: Draai plcheck
         run: bash plcheck.sh .
 
+  tegenproef:
+    name: tegenproef (bouwt fouten na, verwacht rood)
+    runs-on: ubuntu-latest
+    # Apart van plcheck en niet ervoor: plcheck is de poort, dit is de vraag of
+    # die poort iets voorstelt. Draait ook als plcheck faalt, want juist dan wil
+    # je weten of de reeks nog onderscheidt.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '24'
+
+      # plmutate.sh wijzigt bronbestanden en zet ze daarna terug. Hij weigert
+      # te draaien op een werkmap met niet-vastgelegde wijzigingen; na een
+      # verse checkout is die schoon, dus dat is hier geen bezwaar.
+      - name: Draai plmutate
+        run: bash plmutate.sh .
+
   geheimen:
     name: Geen sleutels in de repo
     runs-on: ubuntu-latest
