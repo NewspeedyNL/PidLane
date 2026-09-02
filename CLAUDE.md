@@ -10,17 +10,29 @@
 
 | bestand | waarvoor |
 |---|---|
-| `PIDLANE.md` | architectuurkaart — §4 zegt in welk bestand iets zit zonder code te lezen; §11 is de lijst met bekende problemen |
+| GitHub-issues | **wat er nú openstaat** — gelabeld op soort, kant en ernst; dit is de enige stand van zaken |
+| `PIDLANE.md` | architectuurkaart — §4 zegt in welk bestand iets zit zonder code te lezen; §11 legt uit waaróm iets stukging |
 | `PIDLANE-CONTRACT.md` | het ontwerp voor meetkwaliteit en sessiedekking (nog niet gebouwd) |
-| GitHub-issues | wat er nú speelt en wat er gemeten moet worden |
+| `PIDLANE-ARCHIEF.md` | afgehandelde bevindingen ouder dan twee weken — niet standaard lezen, gericht in zoeken |
 
 Kortlopend werk hoort in een issue, niet in een document. `PIDLANE-WERK.md`
 bestond daarvoor en is op 27-08-2026 opgeheven: het groeide tot 40 KB, en de
 helft daarvan was verslag van ritten die al afgehandeld waren.
 
+**Op 02-09-2026 bleek §11 datzelfde aan het doen** — 77 KB, met een tabel van
+open issues erin. Die tabel noemde #65 als open terwijl hij die ochtend om
+09:48 als duplicaat was gesloten, en miste #90 van 11:18: één dag, twee
+fouten, in een lijst met de waarschuwing "twee lijsten van hetzelfde lopen uit
+de pas" er drie regels boven. De regel is dus niet "beter bijhouden" maar
+**geen tweede lijst**: de stand van zaken staat in de issues, §11 bewaart de
+uitleg, en wat afgehandeld én ouder dan twee weken is gaat naar
+`PIDLANE-ARCHIEF.md`.
+
 Zoek gericht (`grep`, `sed -n`) in plaats van hele bestanden te laden:
-`index.html` is 203 KB, `worker.js` 134 KB, `pidlane.css` 157 KB. Weet je niet
-welke module? Kijk eerst in §4 van `PIDLANE.md`.
+`index.html` is 176 KB, `worker.js` 155 KB, `pidlane.css` 182 KB,
+`PIDLANE.md` 164 KB en `pidlane-testrun.js` 237 KB. Weet je niet welke module?
+Kijk eerst in §4 van `PIDLANE.md`. Een ruw testrun-verslag hoort ook niet heel
+de sessie in: haal er `FOUT` en `LET OP` met hun blokkop uit, en plak dat.
 
 ## Vóór elke commit
 
@@ -203,9 +215,14 @@ dan is een eerder gegeven akkoord niet meer geldig.
 
 In dezelfde PR:
 
-- **`PIDLANE.md` §11** — bevindingen die blijven staan, ook die je níét
-  gerepareerd hebt. De rest van `PIDLANE.md` alleen bij een structuur-,
-  contract- of architectuurwijziging.
+- **`PIDLANE.md` §11** — de uitleg bij bevindingen die blijven staan, ook die
+  je níét gerepareerd hebt: waarom het stukging, wat er al geprobeerd is, welke
+  conclusie achteraf fout bleek. **Geen stand van zaken en geen lijst van open
+  punten** — die staat in de issues. De rest van `PIDLANE.md` alleen bij een
+  structuur-, contract- of architectuurwijziging.
+- **`PIDLANE-ARCHIEF.md`** — is een §11-kopje afgehandeld én ouder dan twee
+  weken, verplaats het daarheen. Verplaatsen is een eigen commit: dat is
+  mechanisch werk, en dat gaat hier nooit samen met een gedragswijziging.
 - **Een GitHub-issue** voor wat af te ronden valt: een fix die nog getoetst moet
   worden, een vraag die alleen tijdens een rit te beantwoorden is.
 - Een eerdere conclusie die fout blijkt, wordt **herzien vastgelegd, niet

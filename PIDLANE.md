@@ -106,6 +106,7 @@ PidLane/
 ├─ capacitor.config.json            webDir "www", server.url app.pidlane.nl
 ├─ plcheck.sh                       validatie voor een commit (zie §11)
 ├─ CLAUDE.md                        werkregels die Claude Code elke sessie leest (§9)
+├─ PIDLANE-ARCHIEF.md               afgehandelde bevindingen ouder dan twee weken (staart van §11)
 ├─ PIDLANE-CONTRACT.md              ontwerp: meetkwaliteit en sessiedekking (nog niet gebouwd)
 ├─ PROJECT-INSTRUCTIES.md           de tekst voor het instructieveld van het Claude-project
 ├─ .github/workflows/
@@ -634,11 +635,21 @@ voor.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Bijgewerkt 27-08-2026. `PLAN.md`, `OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan
-niet meer. **Wat er open staat, staat in de issues** — dit hoofdstuk verwijst
-ernaar en bewaart de uitleg eromheen: waarom iets stuk was, wat er al geprobeerd
-is, en welke conclusie achteraf fout bleek. Dat laatste is de reden dat de
-opgeloste punten hieronder blijven staan.
+Bijgewerkt 02-09-2026. `PLAN.md`, `OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan
+niet meer. **Wat er open staat, staat in de issues** — dit hoofdstuk noemt geen
+enkele stand van zaken en bewaart alleen de uitleg eromheen: waarom iets stuk
+was, wat er al geprobeerd is, en welke conclusie achteraf fout bleek. Dat
+laatste is de reden dat de opgeloste punten hieronder blijven staan.
+
+**Twee regels houden dit hoofdstuk klein**, want het was de kant op aan het
+groeien die `PIDLANE-WERK.md` de kop kostte:
+
+1. Geen lijst van open punten hier. De issues zijn de bron en zijn gelabeld op
+   soort, kant en ernst; een tweede lijst loopt uit de pas en dan is de vraag
+   welke klopt.
+2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
+   weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
+   van standaard laadt.
 
 ### De testreeks stond groen op vier nagebouwde fouten — 02-09-2026
 
@@ -853,42 +864,23 @@ een eigen rit en een eigen PR.
 Blok 5 van testrun 6.3 meldt dit als **LET OP** zolang het zo is, en slaat
 vanzelf om naar ok zodra regel 75 gerepareerd is.
 
-### Wat er open staat — de issues
+### Wat er open staat
 
-Op 27-08-2026 is alles wat hier als open stond naar GitHub-issues verhuisd. De
-beschrijving staat daar en niet meer hier: twee lijsten van hetzelfde lopen uit
-de pas, en dan is de vraag welke klopt.
+**In de issues, en nergens anders.** Ze zijn gelabeld op soort (`bug`, `wens`,
+`besluit`, `extern`), op kant (`app`, `worker`, `ui`, `meten`, `bt`) en op
+ernst (`ernst:1` t/m `ernst:4`); daarmee is een tweede lijst hier alleen maar
+een lijst die uit de pas gaat lopen.
 
-| # | wat | soort |
-|---|---|---|
-| [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | bulkrecorder schrijft UTC, logger lokale tijd | bug |
-| [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | de app bevriest op de achtergrond | groot |
-| [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — wordt dat één poort? | besluit |
-| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` — heropend 01-09; de meting is met #74 gerepareerd, nu nog een rit waarin ze in de pollronde staan | meten |
-| [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
-| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — de bedrading staat sinds 01-09 groen in blok 5, de hoofdvraag wacht op een rit van tien minuten | bug |
-| [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
-| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels — eerste fase is handmatig: `tikkie_kopen` blijft leeg, codes gaan met de hand | Play |
-| [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
-| [#82](https://github.com/NewspeedyNL/PidLane/issues/82) | bijboeken vanuit admin.html loopt buiten het saldo-slot om | bug |
-| [#83](https://github.com/NewspeedyNL/PidLane/issues/83) | het kasboek `TokenLog` staat in §8 beschreven maar bestaat niet | groot |
-| [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | welke vragen ontbreken nog in de meetcontext? | meten |
-| [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
-| [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
-| [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
-| [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
-| [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
-| [#86](https://github.com/NewspeedyNL/PidLane/issues/86) | blok 1 meldt "profiel niet geladen" na een nieuwe versie of een gewiste opslag — melding, geen app-fout | bug |
-
-Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
-#14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op
-02-09 kwamen daarbij: #52 (de tokenchip) en #72, #75, #76, #77 en #78 — de vijf
-bevindingen uit de run van 01-09 die geen rit nodig hadden. De uitleg eromheen
-blijft hieronder staan.
+**Nagemeten op 02-09-2026, en dat is de reden dat dit kopje geen tabel meer
+is.** Hier stond er een. Op dat moment vermeldde hij #65 als open — gesloten
+als duplicaat om 09:48 diezelfde dag — en ontbrak #90, aangemaakt om 11:18.
+Eén dag, twee fouten, in een tabel waar drie regels boven stonden dat twee
+lijsten van hetzelfde uit de pas lopen. De waarschuwing klopte; het antwoord
+erop was de tabel schrappen, niet hem bijhouden.
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
-begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
-De stand van zaken staat in de issues.
+begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn
+gemaakt. De stand van zaken staat in de issues.
 
 ### De ritwaarnemer telt geheugen, geen metingen — 01-09-2026 (issue #74)
 
@@ -1786,139 +1778,17 @@ Er is 27 minuten gereden en er is niets opgenomen: het toestel draaide testrun
 versienummer in de kop van de testrun**, niet alleen naar blok 5 — blok 5 kan
 niet melden dat een blok ontbreekt dat in die build nog niet bestaat.
 
-### De blijvende lijst
+### Ouder dan twee weken — naar het archief
 
-**Opgelost op 27-08:** wie vóór de tekstcorrectie akkoord gaf, gaf dat op een
-onjuiste voorstelling van zaken (meetdata heette anoniem, is pseudoniem) — dat
-akkoord is aanvechtbaar en mocht niet blijven gelden. `klantPubliek()` in
-`worker.js` rekent nu `akkoordActueel` uit door `AkkoordOp` te vergelijken met
-het moment van de correctie (`AKKOORD_TEKST_SINDS`); `_neemSessie()` in
-`pidlane-klant.js` toont `openOnboarding()` opnieuw zolang dat niet actueel is,
-zónder het proeftegoed er nog eens aan te koppelen — `StartTegoedGegeven` blijft
-de enige gate daarvoor. Geen nieuw Airtable-veld nodig: `AkkoordOp` bestond al
-en wordt al bij elk akkoord bijgewerkt. Getest in
-`test-akkoord-heraccorderen.js`.
+Alles wat hierboven stond en gedateerd is op of vóór 19-08-2026 staat sinds
+02-09-2026 in `PIDLANE-ARCHIEF.md`: "De blijvende lijst", de ELM-poort van
+15-08 en de ronde van 31-07. Die uitleg is niet weggegooid — hij is verplaatst
+naar een bestand dat je gericht doorzoekt in plaats van standaard laadt.
 
-De bugmelder (`_bugDiag()` in `pidlane-auth.js`) stuurt bij het handmatig
-melden van een bug de ruwe VIN mee, en dat is bewust: anders dan de logroute is
-dit door de gebruiker zelf aangezwengeld, het staat sinds 27-08 bij het knopje
-vermeld, en bij een bug over één specifiek voertuig is de VIN juist bruikbaar.
-Geen open punt.
-
-**Nieuw op 20-08 en nog open** — beide staan nu als issue: `0143` staat er 256×
-naast (#14) en mode 22 leeft op deze CX-5 terwijl de identifier onbekend blijft
-(#20).
-
-**Opgelost op 20-08:** de merk-preset zette PIDs terug die de ECU ontkent
-(§15 ronde 6); het brandstoftype kwam ná de scan die het moest sturen (§15b);
-de wizard toonde voortgang voor voltooid werk (§15b).
-
-1. **Restjes** — vijf losse eindjes uit de bedradingssweep, verzameld in #24.
-
-2. **Geen herijking van de bronlijst.** `discoveredPIDDefs` wordt gebouwd
-   tijdens de gezondheidsscan, wanneer het brandstoftype meestal nog onbekend
-   is. Komt RDW later met "benzine", dan haalt `purgeImplausiblePids()` de
-   AdBlue-tegel wel uit `activePIDs`, maar de bronlijst wordt niet herbouwd —
-   dus de sensor staat nog gewoon in de keuzelijst. De gate is geen zuivere
-   functie van de PID maar van (PID, huidige kennis); de bronlijst heeft dus
-   invalidatie nodig. Ronde 5 in §15.
-   **15-08-2026:** ronde 5 was al gebouwd om dit op te lossen, maar was nooit
-   bedraad — zie §18. Nu wel. Dit punt geldt daarmee als opgelost, maar is nog
-   niet in de praktijk bevestigd: eerste rit erna nakijken.
-
-### Opgelost op 15-08-2026 — de ELM-poort en drie halve sloten
-
-Aanleiding: het veldlog van 15-08 liet zien dat na een socket-dip de
-ELM-herinitialisatie dwars door de pollus liep — `ATWS`/`ATE0`/`ATSP0`
-afgewisseld met PID-requests, echo nog aan, protocoldetectie weggegooid, per
-dip ~10 s onbruikbare data. Op een lange rit tientallen keren.
-
-De `withBus('elm-init')`-wrapper in `pidlane-bt.js` was er al, maar dekte het
-niet, om drie redenen die op één ding neerkomen: **het busslot is
-adviserend.** Het werkt alleen voor code die eerst `PLBus.claim()` doet.
-
-1. `sppReconnectGuard` plant de re-init met `setTimeout(60)` buiten de queue;
-   in dat gat gaf de pollus zijn slot vrij en kon één vuile batch erdoorheen.
-2. `PLBus.wait()` geeft na de limiet `0` terug en de aanroeper gaat tóch door
-   — bewust, want de guard draait ín de `sendCmd` van de houder en zou anders
-   deadlocken. Duurt een survey langer dan 8 s, dan draait de init ongelokt.
-3. `PLBus.breek()` bij een nieuwe verbinding breekt élke houder open, ook een
-   lopende `elm-init`.
-   Plus de aanroepers die `PLBus` überhaupt niet raken: `03`/`04` in
-   `pidlane-graph.js`, de AT-baseline-rollback in `pidlane-btflow.js`.
-
-**Nu: een tweede, hárde poort naast het slot** (`pidlane-bt.js`,
-`_elmPoortDicht/_elmPoortOpen/_elmSend`). Staat de poort dicht, dan weigeren
-`sendCmd` én `sendBT` alles wat geen eenmalig doorlaatbewijs meebrengt; alleen
-de init-reeks heeft dat. Het bewijs is one-shot en wordt synchroon gezet en
-gewist — een "init loopt"-boolean zou de code die tijdens een `await` van de
-init draait óók doorlaten. De poort gaat dicht op het moment dat de socket
-dood wordt verklaard (niet pas in de `setTimeout`), open in de `finally` van
-`_metElmBus` en ook bij een gefaalde of overgeslagen re-init, en vervalt na
-15 s zodat een vastgelopen init de bus niet gijzelt. Een weigering gaat vóór
-`PLBus.note()` en `trackBtQuality()` langs: telde hij mee, dan haalde
-`_emptyStreak` binnen zes weigeringen de "verbinding dood"-drempel en trok de
-app een herverbinding op gang — een reconnect-lus veroorzaakt door de
-bescherming tegen reconnects. Test: `test-elmpoort.js`.
-
-Drie fixes van dezelfde soort, gevonden bij het nalopen van "waar staat er nog
-een slot dat niemand hoeft te gehoorzamen":
-
-- **`pidlane-uitgebreid.js`** claimde de bus en negeerde de uitslag: bij
-  `tok = 0` zond hij gewoon door een lopende sweep heen. Erger nog stond
-  `_gedraaid = true` vóór de claim, en de probe draait maar één keer — één
-  ongelukkig getimede probe boekte de hele uitgebreide PID-set voorgoed als
-  "geen antwoord". Nu: bezet → overslaan, en `_gedraaid` pas zetten als er
-  echt gemeten wordt.
-- **`PLBus.claim()`** (`pidlane-data.js`) had een legacy-uitgang voor een
-  verweesde `window._pollBusy`. Zonder eigenaar greep de `MAX_HOLD_MS`-noodrem
-  daar niet — de bus kon dus permanent dichtstaan, precies in het geval
-  waarvoor die noodrem bestaat. Nu `LEGACY_MAX_MS` (10 s), met het moment van
-  signaleren als startpunt. Test: `test-busslot.js`.
-- **De ATDPN-mismatchtak in `initELM327`** zette de fix uit het
-  protocolgeheugen terug: week het bevestigde protocol af, dan stuurde hij
-  `ATSP0` en klaar — terwijl het herverbindpad nooit doorgaat naar
-  `scanNetworks()`. Adapter bleef in zoekmodus, `SEARCHING...` per commando
-  (8,8 min over 101 commando's in het log van 04-08), en `pl_proto_id` bleef
-  staan zodat de volgende reconnect hetzelfde foute protocol probeerde. Nu
-  maakt die tak de detectie zelf af (`0100` + `ATDPN`), onthoudt het resultaat
-  en werkt óók `selectedNetwork.id` bij — `_bekendProtocolId()` geeft die
-  namelijk voorrang boven localStorage.
-- **`_btGen`** werd alleen in de SPP-tak van `_sendBTOnce` gecontroleerd. In de
-  BLE-, Web-BT- en Web-Serial-takken kon een commando uit de vorige sessie de
-  buffer van de nieuwe leeglezen. Nu in alle vier.
-
-### Opgelost op 31-07-2026
-
-Voor de historie, zodat je niet opnieuw op zoek gaat:
-
-- 7 dubbele DTC-sleutels (P0011, P0012, P0016, P0128, P0340, P0401, P0420).
-  `DTCDB` was één objectliteraal met eerst een generieke en daarna merksecties;
-  de laatste won, dus een Mazda kreeg bij P0128 de BMW-tekst. Nu gesplitst in
-  `DTCDB` (generiek) plus `DTC_MERK` (zes merkbuckets), met een merkbewuste
-  `dtcInfo()`. Zie §14.
-
-- AI-calls werden serverzijdig niet afgerekend — nu wel, op echt verbruik (§8).
-- Serversaldo ging verloren na herladen; `finishLogin` haalt het nu op.
-- `fireAlert()` bestond nergens: elke waarschuwing van de caravancoach gooide
-  een ReferenceError en brak de tick af.
-- `/credits/redeem`: kapotte compare-and-set én een ongeldige datum in een
-  dateTime-veld. Nu een DO-slot en een geldige ISO-tijd.
-- Vervalcontrole activatiecodes brak op een gewijzigd veldtype.
-- `handleKlantLogin` valideerde het e-mailadres niet vóór de Airtable-lookup.
-- `/klant/reset-aanvraag` verklapte via een mislukte mail of een account bestond.
-- `/klant/saldo-muteer` verwijderd — de app boekt niet meer zelf af.
-- `testApiKey()` deed bij elke app-start een billable call: 1 token per keer dat
-  een klant de app opende. Draait nu niet meer voor klantaccounts.
-- Kasboek `TokenLog` toegevoegd, zodat saldomutaties navolgbaar zijn.
-- Ondersteuningsbitmaps (`0120`, `0140`, `0160`…) en de freeze frame-DTC stonden
-  als aankruisbare "raw"-sensor in de keuzelijst.
-- Fantoomsensoren (AdBlue, NOx, SCR) werden aangeboden en gepollt op een
-  benzineauto; het filter draaide alleen bij het rapport.
-- Het bolletje op een tegel was groen tenzij een drempel werd overschreden, dus
-  ook bij een sensor die nooit een waarde gaf.
-- `applyG()` overschreef `className` en wiste daarmee `gc-manueel` bij de eerste
-  meting.
+**De regel die daarbij hoort:** een bevinding die is afgehandeld én ouder is
+dan twee weken, gaat naar het archief. `PIDLANE-WERK.md` groeide tot 40 KB
+omdat die regel er niet was, en §11 was hem aan het overdoen — 77 KB, waarvan
+de helft verslag van ritten die al afgehandeld waren.
 
 ## 12. PID-strategie boven database
 
