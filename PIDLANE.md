@@ -635,6 +635,107 @@ ernaar en bewaart de uitleg eromheen: waarom iets stuk was, wat er al geprobeerd
 is, en welke conclusie achteraf fout bleek. Dat laatste is de reden dat de
 opgeloste punten hieronder blijven staan.
 
+### De testreeks stond groen op vier nagebouwde fouten — 02-09-2026
+
+Gemeten, niet vermoed. Er zijn vier plausibele fouten in de meetketen gezet en
+daarna is `plcheck.sh` gedraaid:
+
+| nagebouwde fout | gevolg in de app |
+|---|---|
+| `parsePID`: `idx+hdr.length` → `idx+hdr.length-2` | elke sensorwaarde schuift een byte op |
+| `validateAndSmooth`: de harde-limiettak → `if(false)` | onmogelijke waarden gaan mee de AI-prompt in |
+| `antwoordHerkend`: de NO DATA-poort → `if(false)` | de waakronde leest een foutmelding als een antwoord |
+| `healthUitProfiel`: de terugval op `'ok'` weg | onbekende sensoren raken uitgegrijsd |
+
+Uitkomst: **`65 stuks, allemaal exit 0`** en daaronder *"Alles goed — veilig om
+te committen."* Elke push naar `main` is deployen, dus dat was de poort die er
+niet was.
+
+De oorzaak had twee vormen. **Drie tests laadden hun onderwerp niet.**
+`test-healthgate.js`, `test-mode21.js` en `test-waakronde.js` schreven de te
+toetsen functie in de test zelf over; zo'n test kan per definitie niet rood
+worden. De kopie loopt bovendien uit de pas: `healthUitProfiel()` had in de test
+twee parameters en gaf een object terug, terwijl de app er één heeft en
+`true`/`false` geeft. Die test stond groen op een functie die niet bestaat.
+
+**En de toets zelf moet onderscheiden.** Dat bleek pas bij het herschrijven: de
+drie tests op de echte bron richten was niet genoeg. `antwoordHerkend('0105',
+'NO DATA')` bewijst niets over de tekstpoort — in "NO DATA" zit toch al geen
+geldige header, dus de controle eronder keurt hem hoe dan ook af. De poort werd
+pas zichtbaar met `'SEARCHING...41055A'` en `'41055A STOPPED'`: een foutwoord
+én iets dat op data lijkt in dezelfde regel. Dat is de vorm die een ELM327 ook
+echt stuurt.
+
+Een derde vorm zat in `test-waakronde.js`: die rekende met een verzonnen tabel
+`HARD={'0105':{min:-20,max:130}}` en concludeerde dat koelwater van 215 °C een
+bevinding is. `PID_HARD_LIMITS['0105']` staat op −40…215, dus 215 °C is
+doodnormaal — en méér dan 215 kan er uit één byte niet komen. De kernbewering
+van die test werd bevestigd door een geval dat niet kan optreden, terwijl de
+gevallen die wél voorkomen (inlaatdruk onder 2 kPa, boordspanning onder 4 V)
+nooit langs een test kwamen.
+
+Wat er sindsdien staat: `test-parser.js`, `test-token.js` en `test-baseline.js`
+zijn nieuw, de drie kopie-tests laden nu hun onderwerp, en `plmutate.sh` doet
+bovenstaande meting voortaan zelf — zestien nagebouwde fouten, elk met de test
+die daarvan rood hoort te worden.
+
+**De les is de vorm, niet de uitkomst.** `plcheck.sh` meldt hoeveel tests er
+gedráaid zijn. Dat is iets anders dan wat ze zouden merken, en tussen die twee
+zat hier een gat van vier fouten. Een groene reeks is pas een uitspraak als er
+een tegenproef onder ligt.
+
+### Laag 2 en 3 van de meetketen staan uit — 02-09-2026
+
+Gevonden bij het schrijven van `test-parser.js`, en niet in dezelfde oplevering
+gerepareerd (één onderwerp per PR).
+
+`FILTERED_PIDS` in `pidlane-datalog.js` is gevuld met **suffixen**:
+
+```js
+const FILTERED_PIDS=new Set(['05','0F','46','5C','2F','42','33','07','09']);
+```
+
+Regel 75 van datzelfde bestand bevraagt hem met de **volledige** PID:
+
+```js
+if(!FILTERED_PIDS.has(pid)) return Math.round(rawVal*100)/100;
+```
+
+`parsePID()` en `applyParsedBytes()` geven `'0105'` door, niet `'05'`. De test
+slaat dus altijd aan en de functie keert terug vóór laag 2 en 3 — het
+spike-filter mét herstel en de smoothing over twee metingen staan daarmee uit
+voor **álle** PIDs, niet alleen voor de trage.
+
+Nagemeten in de sandbox van `test-parser.js`, met de vorige waarde op 50:
+
+| aanroep | uitkomst |
+|---|---|
+| `validateAndSmooth('0105', 200)` | `200` — ongefilterd |
+| `validateAndSmooth('05', 200)` | `null` — wacht op bevestiging |
+
+Dat de logica zelf klopt is dus vastgesteld; alleen de sleutel waarmee hij
+bevraagd wordt is de verkeerde. `pidlane-fuel.js` regel 1287 doet het bij
+dezelfde set wél goed:
+
+```js
+const traag = traagSet.has(pid.slice(2).toUpperCase());
+```
+
+Twee plekken, dezelfde set, twee sleutelvormen — precies het patroon dat
+CLAUDE.md verbiedt met "één ding heeft één betekenis". De andere tabellen in
+diezelfde functie (`PID_HARD_LIMITS`, `PID_LET_OP`) zijn wél op de volledige
+PID gesleuteld, wat de verwarring verklaart.
+
+**Waarom dit niet zomaar een eenregelige fix is.** Laag 2 en 3 aanzetten is een
+gedragswijziging in de meetketen: waarden die nu direct doorlopen gaan dan op
+bevestiging wachten, en dat kost één meetcyclus vertraging op de trage
+sensoren. Of de drempels (35 % sprong, 3,5σ, de 5-seconden bevestiging) na
+maanden uitstaan nog kloppen, is niet vanaf een bureau te zeggen. Dat verdient
+een eigen rit en een eigen PR.
+
+Blok 5 van testrun 6.3 meldt dit als **LET OP** zolang het zo is, en slaat
+vanzelf om naar ok zodra regel 75 gerepareerd is.
+
 ### Wat er open staat — de issues
 
 Op 27-08-2026 is alles wat hier als open stond naar GitHub-issues verhuisd. De

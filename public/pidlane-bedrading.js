@@ -59,11 +59,17 @@ var KRITIEK = [
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',
-  'selectCategoryPIDs','sendCmd','steunbitsRuw','setLeftPanelForMode','showToast','showVtag','startPoll',
+  // De meetketen zelf, sinds blok 5 van testrun 6.3 (02-09-2026). Blok 5 vraagt
+  // parsePID, splitBatchResponse en validateAndSmooth of ze een bekend antwoord
+  // goed lezen. Zonder deze regels zou zulke guard precies het stille falen
+  // opleveren waar de bedradingscontrole voor bestaat.
+  // LET OP: geen apostrof in dit commentaar — lijstUit() in test-bedrading.js
+  // leest de namen met een quote-paar-regex en telt een losse apostrof mee.
+  'selectCategoryPIDs','sendCmd','splitBatchResponse','steunbitsRuw','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',
   'uitlogBezig','uitlogVlagAan',
   'updPID','updateSLToggleIcon',
-  'vehicleFuelType','vlFullSurvey','withBus',
+  'validateAndSmooth','vehicleFuelType','vlFullSurvey','withBus',
   // Pseudonimiseren van de VIN (pidlane-veldlab.js). logToSheets in
   // pidlane-auth.js zit achter een guard omdat auth.js eerder laadt dan
   // veldlab.js; bij de aanroep staat de functie er wel. Verdwijnt hij, dan

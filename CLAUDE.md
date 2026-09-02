@@ -40,6 +40,38 @@ sleutelscan. Lokaal groen krijgen is dus niet optioneel maar goedkoper.
 herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
 toegevoegd én verwijderd. Zie §20 van `PIDLANE.md`.
 
+## Als je aan tests werkt
+
+```
+bash plmutate.sh .
+```
+
+Geen commit-poort — `plcheck.sh` blijft dat. Dit is de vraag eronder: *stelt
+die poort iets voor?* Het script zet zestien nagebouwde fouten één voor één in
+de bron, draait telkens de test die daarvan rood hoort te worden, en zet het
+bestand terug. Exit 0 = alles gevangen. Exit 1 = er kwam er een doorheen, en
+dan dekt die test minder dan zijn naam belooft.
+
+Draai hem als je een test toevoegt of verbouwt, en als je wilt weten of een
+groene reeks nog iets betekent. Hij weigert op een werkmap met niet-vastgelegde
+wijzigingen: hij schrijft in je bronbestanden. In CI draait hij als eigen job,
+dus vergeten kan niet — daar is de checkout altijd schoon.
+
+**Verandert er gedrag dat in de tabel staat, dan verandert de mutatie mee.**
+Een anker dat niet meer past bouwt niets na, en dat is óók exit 1 — met de
+naam van de mutatie erbij. Repareer het anker (er een regel bij nemen met `\n`
+maakt hem langer en dus unieker) of haal de mutatie weg met de reden erbij.
+Nieuwe mutatie? Neem een fout die je écht had kunnen maken. De vraag is niet
+"kan ik dit stukmaken" maar "welke stille fout hoort gevangen te worden".
+
+**Nagemeten op 02-09-2026, en dat is de reden dat dit script bestaat.** Vier
+plausibele fouten in de meetketen — een off-by-one in de header-echo van
+`parsePID`, de harde fysieke limiet uitgezet, de `NO DATA`-poort van de
+waakronde open, en het oordeel over onbekende sensoren omgedraaid — en
+`plcheck.sh` meldde `65 stuks, allemaal exit 0` met *"Alles goed — veilig om te
+committen"* eronder. Elke push naar `main` is deployen. Zie §11 van
+`PIDLANE.md`.
+
 ## Branch, PR, deploy
 
 - Werk op een eigen branch. Nooit rechtstreeks naar `main`, nooit force-pushen.
@@ -138,7 +170,27 @@ dan is een eerder gegeven akkoord niet meer geldig.
 ## Tests
 
 - Een controle zonder tegenproef telt niet. Bouw de fout na en laat zien dat de
-  test dán rood wordt; anders weet je alleen dat hij groen kán staan.
+  test dán rood wordt; anders weet je alleen dat hij groen kán staan. Staat de
+  fout in `plmutate.sh`, dan blijft die tegenproef ook draaien als jij er niet
+  meer aan denkt.
+- **Een test laadt zijn onderwerp, hij schrijft het niet over.** Lees de echte
+  functie in met `vm` of `new Function` en knip erop met een anker dat de test
+  laat stoppen als het verdwijnt. Een test met een eigen kopie van de logica
+  kan per definitie niet rood worden — en de kopie loopt uit de pas zonder dat
+  iemand het ziet. `test-healthgate.js` stond maanden groen op een
+  `healthUitProfiel()` met twee parameters die een object teruggaf, terwijl de
+  app er één heeft en `true`/`false` geeft.
+- **Verzin geen tabellen die de app ook heeft.** `test-waakronde.js` rekende
+  met `HARD={'0105':{min:-20,max:130}}` en bewees daarmee dat 215 °C koelwater
+  een bevinding is. Echt staat `PID_HARD_LIMITS['0105']` op −40…215, en méér
+  dan 215 komt er uit één byte niet uit: het bewijs ging over een geval dat
+  niet bestaat. Laad `pidlane-data.js`; dan toets je de tabel meteen mee.
+- **De toets moet onderscheiden, niet alleen kloppen.** Op de echte bron
+  richten is niet genoeg. `antwoordHerkend('0105','NO DATA')` zegt niets over
+  de tekstpoort — in "NO DATA" zit toch al geen geldige header, dus de
+  controle eronder keurt hem hoe dan ook af. Pas `'SEARCHING...41055A'` en
+  `'41055A STOPPED'` laten zien of die poort werkelijk iets doet. Vraag bij
+  elke toets: welke fout zou hier rood worden, en welke glipt erdoor?
 - Blok 5 toetst **gedrag**, geen broncode. Broncode lezen mag alleen waar een
   gedragstest onmogelijk is, en dan met de reden erbij.
 - Een test die altijd rood staat wordt genegeerd. Ontbreken de voorwaarden

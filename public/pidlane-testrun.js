@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.2 (02-09-2026)';
+const TESTRUN_VERSIE = '6.3 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2180,6 +2180,105 @@ async function _blok5() {
            (sat + sab === 0 ? ' (browser: geen zones, dus deze proef zegt hier weinig)' : '');
   });
 
+  // ══════════════════════════════════════════════════════════════
+  // OPLEVERING 02-09-2026 (tweede) — DE MEETKETEN MEET ZICHZELF
+  //
+  // §20 noemt dit als vierde punt op de lijst "wat er nog te automatiseren
+  // valt": een blok dat aan het begin van een run naloopt of elke bron
+  // bestaat en beweegt. #29, #74, #75 en #76 waren alle vier dezelfde fout —
+  // een controle die zijn antwoord uit de verkeerde bron haalt en er tóch
+  // een stellige conclusie op plakt.
+  //
+  // De drie proeven hieronder zijn de runtime-helft van test-parser.js. Die
+  // node-test draait de parser in een sandbox met de echte tabellen; wat hij
+  // niet kan zien is of dezelfde keten in de DRÁAIENDE app aan elkaar hangt.
+  // Precies het gat waar #29 en #74 in vielen.
+  //
+  // Ze zijn alle drie gratis: er gaat geen commando naar de bus en geen
+  // AI-call overheen. Er wordt gerekend op een antwoord dat hier ter plekke
+  // verzonnen is.
+  // ══════════════════════════════════════════════════════════════
+
+  // ── TOEGEVOEGD 1: leest de parser een bekend antwoord goed? ──
+  await _doe(5, 'De parser leest een bekend ELM-antwoord goed', function () {
+    if (typeof parsePID !== 'function')
+      return { staat: 'FOUT', detail: 'parsePID() ontbreekt — dan komt er geen enkele meetwaarde binnen' };
+    if (typeof splitBatchResponse !== 'function')
+      return { staat: 'FOUT', detail: 'splitBatchResponse() ontbreekt — dan valt een batch stil uit elkaar' };
+
+    // 410C0A98 = 0x0A98 / 4 = 678 rpm. Eén nibble verschuiving geeft hier een
+    // geldig maar verkeerd getal, en dát is de fout die je in een log niet ziet.
+    const rpm = parsePID('010C', '410C0A98');
+    if (rpm !== 678)
+      return { staat: 'FOUT', detail: 'parsePID("010C","410C0A98") gaf ' + rpm + ' in plaats van 678 rpm — ' +
+        'de header-echo wordt verkeerd overgeslagen en élke meting staat scheef' };
+
+    const uit = splitBatchResponse('410C0A98 410D50 410584', ['010C', '010D', '0105']);
+    const mist = ['010C', '010D', '0105'].filter(function (p) { return !uit || !uit[p]; });
+    if (mist.length)
+      return { staat: 'FOUT', detail: 'de batch-splitser verloor ' + mist.join(', ') +
+        ' uit een antwoord waar ze alle drie in staan' };
+
+    return 'parsePID leest 678 rpm en de batch levert alle drie de PIDs';
+  });
+
+  // ── TOEGEVOEGD 2: houdt laag 1 een onmogelijke waarde tegen? ──
+  await _doe(5, 'Laag 1 houdt een fysiek onmogelijke waarde tegen', function () {
+    if (typeof validateAndSmooth !== 'function')
+      return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt — dan loopt de meetketen zonder laag 1 t/m 3' };
+    if (typeof PID_HARD_LIMITS === 'undefined' || !PID_HARD_LIMITS['0105'])
+      return { staat: 'FOUT', detail: 'PID_HARD_LIMITS mist 0105 — laag 1 heeft dan geen meetlat' };
+
+    // 300 °C koelwater kan niet. Komt dat er tóch doorheen, dan staat laag 1
+    // uit en gaan onmogelijke waarden mee de AI-prompt in.
+    if (validateAndSmooth('0105', 300) !== null)
+      return { staat: 'FOUT', detail: 'koelwater van 300 °C werd geaccepteerd terwijl de harde limiet op ' +
+        PID_HARD_LIMITS['0105'].max + ' staat — laag 1 filtert niet' };
+    if (validateAndSmooth('0105', 90) !== 90)
+      return { staat: 'FOUT', detail: 'koelwater van 90 °C werd NIET geaccepteerd — laag 1 filtert te veel' };
+
+    return 'laag 1 weigert 300 °C en laat 90 °C door, meetlat ' +
+      PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max;
+  });
+
+  // ── BEVINDING: is laag 2+3 wel bereikbaar? ──
+  // Gevonden op 02-09 bij het schrijven van test-parser.js. FILTERED_PIDS is
+  // gevuld met SUFFIXEN ('05'), maar pidlane-datalog.js regel 75 toetst de
+  // VOLLEDIGE pid ('0105') — en dat is de vorm waarin parsePID() en
+  // applyParsedBytes() hem doorgeven. pidlane-fuel.js regel 1287 doet het
+  // met .slice(2) wél goed. Gevolg: spike-filter en smoothing staan uit.
+  //
+  // LET OP en geen FOUT: dit is een vastgelegde bevinding (PIDLANE.md §11) die
+  // bewust niet in dezelfde oplevering gerepareerd wordt — één onderwerp per
+  // PR. Wordt regel 75 gerepareerd, dan slaat deze proef vanzelf om naar ok.
+  await _doe(5, 'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept', function () {
+    if (typeof validateAndSmooth !== 'function')
+      return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt' };
+    if (typeof FILTERED_PIDS === 'undefined')
+      return { staat: 'FOUT', detail: 'FILTERED_PIDS ontbreekt — dan is er geen lijst met trage signalen' };
+
+    const vorm = FILTERED_PIDS.has('0105') ? 'volledig' : (FILTERED_PIDS.has('05') ? 'suffix' : 'onbekend');
+
+    // Een sprong van 50 naar 200 °C op een traag signaal hoort op bevestiging
+    // te wachten (null). Komt de waarde er ongefilterd doorheen, dan is laag
+    // 2+3 overgeslagen.
+    const bewaar = (typeof pidVals !== 'undefined') ? pidVals['0105'] : undefined;
+    let uit;
+    try {
+      if (typeof pidVals !== 'undefined') pidVals['0105'] = 50;
+      uit = validateAndSmooth('0105', 200);
+    } finally {
+      if (typeof pidVals !== 'undefined') {
+        if (bewaar === undefined) delete pidVals['0105']; else pidVals['0105'] = bewaar;
+      }
+    }
+
+    if (uit === null) return 'een sprong op een traag signaal wacht op bevestiging — laag 2+3 draait';
+    return { staat: 'LET OP', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
+      'FILTERED_PIDS is gevuld met ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
+      'dus spike-filter en smoothing worden voor álle PIDs overgeslagen. Vastgelegd in PIDLANE.md §11.' };
+  });
+
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3554,63 +3653,47 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 \u2014 de tokenketen, en het verslag dat klopt met de meting (#52, #75-#78)',
+  titel: 'OPLEVERING 02-09 (tweede) \u2014 de testreeks krijgt een tegenproef, en de meetketen een test',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Twee ronden in \u00e9\u00e9n oplevering, en ze delen dezelfde soort fout. De eerste gaat over geld: de tokenketen. De tweede over het verslag van de run zelf. In beide gevallen deed de app iets anders dan wat ze erover meldde \u2014 en in geen van de acht gevallen kwam er een foutmelding.',
+    'Deze oplevering verandert niets aan wat de app doet. Ze verandert wat de app over zichzelf k\u00e1n weten. Aanleiding was een meting op de testreeks zelf: er zijn vier plausibele fouten in de meetketen gezet \u2014 een off-by-one in de header-echo van parsePID, de harde fysieke limiet uitgezet, de NO DATA-poort van de waakronde open, en het oordeel over onbekende sensoren omgedraaid \u2014 en alle 65 tests bleven groen, met "Alles goed \u2014 veilig om te committen" eronder. Elke push naar main is deployen, dus dat was de poort die er niet was.',
 
-    'DE TOKENKETEN, kort. Een activatiecode kon verbranden: /credits/redeem stempelde hem af als gebruikt en keek P\u00c1S DAARNA of er een account was om hem op bij te schrijven. De tokenteller liep op de sch\u00e1tting terwijl de Worker het echte saldo al meestuurde in X-PidLane-Saldo \u2014 een header die in \u00a78 van PIDLANE.md al sinds juli beschreven stond als "wordt uitgelezen", en die nergens in public/ voorkwam. En de tokenchip volgde het laadmoment in plaats van de rol (#52).',
+    'DE OORZAAK, in twee soorten. Drie tests laadden hun onderwerp helemaal niet: test-healthgate, test-mode21 en test-waakronde schreven de te toetsen functie in de test zelf over. Zo\u0027n test kan per definitie niet rood worden. En de kopie loopt uit de pas: healthUitProfiel() had in de test twee parameters en gaf een object terug, terwijl de app er \u00e9\u00e9n heeft en true/false geeft. Die test stond dus jaren groen op een functie die niet bestaat.',
 
-    'HET VERSLAG, en dat is de grotere helft. Vier van de vijf bevindingen uit de run van 01-09 zijn gerepareerd, en \u00e9\u00e9n daarvan bleek twee verschillende fouten te zijn.',
+    'DE TWEEDE SOORT is subtieler. test-waakronde rekende met een verzonnen tabel HARD={\u00270105\u0027:{min:-20,max:130}} en concludeerde dat koelwater van 215 \u00b0C een bevinding is. In de app staat PID_HARD_LIMITS[\u00270105\u0027] op -40\u2026215, dus 215 \u00b0C is daar doodnormaal \u2014 en m\u00e9\u00e9r dan 215 kan er uit \u00e9\u00e9n byte niet komen. De kernbewering werd bevestigd door een geval dat niet bestaat, terwijl de gevallen die w\u00e9l voorkomen (inlaatdruk onder 2 kPa, boordspanning onder 4 V) nooit langs een test kwamen.',
 
-    '#78 \u2014 DE DUURSTE, want deze zit niet in het verslag maar in de app. `_pidHealth` werd op twee momenten gevuld (de scan bij het verbinden, of het bewaarde profiel) en daarna nooit meer herzien. De scan doet \u00e9\u00e9n uitvraag per PID met een timeout van 1500 ms; komt daar niets uit, dan staat "nodata" er de hele sessie \u2014 en het gaat mee het voertuigprofiel in, dus de volgende sessie ook. De PID-gate en autoSelectHealthyKern draaien erop, dus een sensor die \u00e9\u00e9n keer te traag was blijft uitgegrijsd.',
-
-    'EN DAARONDER LAG NOG IETS. Van de vier PIDs uit de run van 01-09 waren er twee helemaal niet gemist. 0101 (motorlampje) en 0121 (afstand met MIL aan) werden ACTIEF op nodata gezet door de dummy-detectie in assessPidQuality: een waarde exact op het definitie-minimum, in categorie Emissie, heet daar "waarschijnlijk niet aanwezig". Voor de MIL-familie is nul juist het antwoord dat je hoopt te krijgen. Blok 14 van de testrun wist dat allang \u2014 die twee staan in MAG_STIL, "hoort stil te staan". Twee plekken in dezelfde app met een tegenstrijdig oordeel over dezelfde PID, precies de vorm die CLAUDE.md verbiedt.',
-
-    '#76 \u2014 blok 7 hield een KOPIE bij van de beslissing die PLLoad neemt, en die kopie was blijven staan op de regel van v\u00f3\u00f3r 23-08 (`bezet >= bezetOp || fout >= foutOp`). Daardoor meldde blok 7 over de rit van 01-09 "druk 87%" naast "tempo 100% \u2192 100%" en "geen enkele stap omlaag". Met de echte regel was druk 0%. Het rapport las als een defecte regelkring die er niet was.',
-
-    '#77 \u2014 `vorigVerbonden` begon op null en de tikken v\u00f3\u00f3r het verbinden zetten hem op false, dus de eerste normale verbinding telde als herverbinding. Elke sessie meldde er minstens \u00e9\u00e9n, met 0 gaten ernaast \u2014 en de regel eronder stuurt je bij "herverbinding zonder gat" naar de bus of de adapter. Een vals spoor in de meting die #18 moet beantwoorden.',
-
-    '#75 en #72 \u2014 "Meldingen sinds het begin van deze run" telde de hele ringbuffer. In de run van 01-09 meldde hij 33 app-logregels; de laatste daarvan was van 22:29:21 en de run begon om 22:32:02. Er was niets bij gekomen. Dat viel niet te repareren zonder #72 erbij: de app-log kapte stil af op 500 regels \u00e9n droeg alleen een kloktijdstring, geen epoch. Beide logs zetten er nu `t` bij, en de app-log kapt af zoals de BT-log het al deed \u2014 kop, staart, en een zichtbare regel ertussen die zegt hoeveel er weg is.',
+    'EN DE GROOTSTE GATEN. De parser waar de hele app op draait \u2014 splitBatchResponse(), parsePID(), applyParsedBytes() \u2014 en laag 1 t/m 3 van de meetketen hadden nul tests. De hele authenticatiekant van worker.js ook: makeToken, verifyToken, de join-tokens, safeEqual en auth() werden in geen enkele test bij naam genoemd. Een sensor die verkeerd gelezen wordt merk je tijdens een rit; een handtekeningcontrole die stilzwijgend akkoord gaat merkt niemand.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP A. Draai de run zoals gewoonlijk en lees blok 5. Acht proeven, allemaal gratis \u2014 er gaat geen AI-call en geen activatiecode aan op. De belangrijkste is "Geen PID staat niet-ok terwijl hij meet": die meet de tegenstrijdigheid van 01-09 rechtstreeks.',
+    'STAP A. Draai de run en lees blok 5. Er staan drie nieuwe proeven onderaan, alle drie gratis: er gaat geen commando naar de bus en geen AI-call overheen. Ze zijn de runtime-helft van test-parser.js \u2014 de node-test draait de parser in een sandbox, deze drie kijken of dezelfde keten in de dr\u00e1aiende app aan elkaar hangt. Dat is precies het gat waar #29 en #74 in vielen.',
 
-    'STAP B. #78 nameten in het echt. Kijk in blok 11 naar de regel met de niet-ok PIDs. Staan 0101 en 0121 er nog bij, dan leest de dummy-detectie de MIL-familie nog verkeerd. Staat er een andere PID bij die in blok 3 w\u00e9l gelezen wordt, dan vuurt de herziening niet \u2014 en dan hoort daar een logregel bij te staan die begint met "\ud83d\udd2c".',
+    'STAP B. De bevinding van deze ronde staat als LET OP in blok 5: "Laag 2+3 is bereikbaar zoals de app de meetketen aanroept". Staat daar LET OP, dan klopt de bevinding en staan spike-filter en smoothing uit voor \u00e1lle PIDs. Slaat hij om naar ok, dan is regel 75 van pidlane-datalog.js gerepareerd en mag deze proef weg.',
 
-    'STAP C. #76. Lees "Tijd per zone" in blok 7 naast "Tempoverloop" en "Ongevraagde remmomenten". Die drie horen nu \u00e9\u00e9n verhaal te vertellen. Staat er druk 0% bij een tempo dat op 100% blijft, dan klopt het beeld \u2014 dat is de rustige bus, geen defecte regelkring.',
-
-    'STAP D. #77. Blok 14 hoort nu 0 herverbindingen te melden op een rit waarin niets is verbroken. Meldt hij er toch \u00e9\u00e9n bij 0 gaten, dan is de app tussendoor heropgestart, of er is een echte onderbreking geweest.',
-
-    'STAP E. #75. Lees "Meldingen sinds het begin van deze run" in blok 11 en vergelijk met de app-log in het opgeslagen rapport. Het getal hoort nu te kloppen met wat er n\u00e1 de starttijd van de run in staat, en niet meer met de hele lijst.',
-
-    'STAP F. De tokenketen. Als beheerder hoort blok 5 te melden: geen chip, geen koopknop, en 401 op /credits/redeem. Log daarna in met een klantaccount en draai blok 5 opnieuw \u2014 dan hoort er w\u00e9l een chip te staan en geeft de codeproef 404. Wil je de teller zelf zien volgen: doe \u00e9\u00e9n analyse en vergelijk de chip met "Mijn tokens". DAT kost tokens, en het is de enige vraag van deze oplevering die niet gratis is.',
-
-    'STAP G. #79/#58, onveranderd en nog steeds alleen op het toestel. Scroll de live view helemaal naar beneden en kijk of de onderste regel vrij blijft van de drie Android-knoppen. Blijft hij vrij, dan is de MELDING fout en niet de layout \u2014 dat is het antwoord dat #79 nodig heeft.',
+    'STAP C. Geen rit nodig voor deze oplevering. Wat er te meten viel is gemeten met node; wat er in de auto te meten valt staat hieronder onder "wat deze ronde niet oplost" en is onveranderd.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '#78 \u2014 plHealthHerzien() in pidlane-rijsituatie.js: een geslaagde meting laat een nodata/onzin-oordeel vervallen, mits de waarde dezelfde meetlat haalt als de scan (assessPidQuality). Alleen naar boven, nooit naar beneden, en het gaat naar het logboek. updPID() is de aanleiding, want dat is de plek die w\u00e9\u00e9t dat er een geldige waarde binnenkwam. PID_NUL_NORMAAL in pidlane-data.js is de ene plek waar staat dat nul bij de MIL-familie gezond is; assessPidQuality \u00e9n MAG_STIL in blok 14 lezen die.',
+    'NIEUW \u2014 test-parser.js (52 toetsen). De meetketen van ruwe ELM-bytes tot meetwaarde, op de \u00e9chte functies: pidlane-data.js levert de tabellen, pidlane-datalog.js laag 1 t/m 3 en pidlane-diagbundel.js de parser. Formaat A en B, CAN-headers, de multiframe-regel uit \u00a711, de Mazda-lengtes (55/56 zijn 1 byte terwijl de tabel 2 zegt), de terugkoppeling naar PLPidLen, en laag 1 en 1b apart.',
 
-    '#76 \u2014 PLLoad.zoneVan() is uit tick() geknipt als pure functie; tick() gebruikt hem zelf en PLBudget.zone() leent hem. Ontbreekt PLLoad, dan zegt blok 7 "niet te bepalen" \u2014 bewust g\u00e9\u00e9n nabouw, want dat is precies hoe deze bug ontstond. De Slotsom van blok 7 kent nu drie uitkomsten in plaats van twee: "nooit geremd" is geen bewijs dat de regelkring eerlijk remt, en kan #15 dus niet sluiten.',
+    'NIEUW \u2014 test-token.js (52 toetsen). De sessietokens van de worker, met de echte WebCrypto van Node. Een geknoeide handtekening, een payload waarin de rol naar admin is opgehoogd, een verlopen token, een token zonder vervaldatum, een ander geheim, rommel, en auth() met het admin-token en de legacy-schakelaar.',
 
-    '#77 \u2014 `vorigVerbonden` blijft null tot de eerste keer dat er verbinding is. PLRit.wis() raakt de vlag bewust niet aan, anders levert "Rit nulstellen" dezelfde valse telling opnieuw op.',
+    'NIEUW \u2014 test-baseline.js (33 toetsen). Leren-van-normaal in pidlane-pids.js, dat tot nu toe in kopie onder test-waakronde stond \u00e9n bij de verkeerde module hoorde. De drie remmen apart: BASE_MIN_N, de sigma-bodem en de drempel van 3\u03c3. Inclusief de fout van 02-08: een momentwaarde vergelijken met de spreiding van sessiegemiddelden.',
 
-    '#75/#72 \u2014 log() en btDiag() zetten `t` (epoch) bij elke regel; de meldingenteller kapt beide lijsten af op de starttijd van de run en meldt hoeveel regels hij niet kon dateren. De app-log gaat van een stille cap van 500 naar 1200 met kop (300), staart (700) en een zichtbare "weggelaten"-regel.',
+    'HERSCHREVEN \u2014 test-waakronde.js (46 toetsen), test-healthgate.js (35) en test-mode21.js (34) laden nu hun onderwerp in plaats van het over te schrijven. Bij waakronde bleek een tweede les: alleen op de echte bron richten is niet genoeg, de toets moet ook onderscheiden. "NO DATA" bewijst niets over de tekstpoort \u2014 daar zit toch al geen geldige header in. Pas "SEARCHING...41055A" en "41055A STOPPED" laten zien of die poort werkelijk iets doet.',
 
-    'TESTS \u2014 test-zonespiegel.js (13 toetsen, waaronder \u00e9\u00e9n die 2160 combinaties van blok 7 en PLLoad tegen elkaar houdt), test-meldingenteller.js (11) en test-healthherziening.js (16) zijn nieuw. test-rit.js kreeg twee toetsen voor #77 en test-applog.js zeven voor de geheugen-cap. Elk met tegenproef: bouw de oude fout terug en er worden er 7, 2, 8, 1 en 1 rood.',
+    'NIEUW \u2014 plmutate.sh. De tegenproef onder plcheck.sh. Zestien nagebouwde fouten in de bronbestanden, elk met de test die daarvan rood hoort te worden; het script zet de fout erin, draait die ene test, verwacht exit 1 en zet het bestand terug. Weigert te draaien op een vuile werkmap. plcheck.sh meldt hoeveel tests er gedr\u00e1aid zijn; dit meldt wat ze zouden merken.',
 
-    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'BLOK 5 \u2014 drie proeven erbij, onderaan. De proeven van de eerste oplevering van 02-09 blijven staan: hun vragen (#79, #29, #19) zijn nog open en die zijn alleen in de auto te beantwoorden.',
 
-    '#79 \u2014 de veilige zones. Alleen op een toestel te beantwoorden, en dat is stap G.',
+    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '#29 en #19 \u2014 wachten allebei nog op een rit die lang genoeg duurt: de opruimregel heeft ruim tien minuten nodig en de raildruk moet in de pollronde staan. Blok 5 kan die vragen niet stellen, hoe goed de meting inmiddels ook is.',
+    'DE BEVINDING ZELF. FILTERED_PIDS wordt in pidlane-datalog.js regel 75 met de verkeerde sleutelvorm bevraagd, waardoor laag 2+3 voor \u00e1lle PIDs wordt overgeslagen. Vastgelegd in PIDLANE.md \u00a711, bewust niet hier gerepareerd \u2014 \u00e9\u00e9n onderwerp per PR, en dit is een gedragswijziging in de meetketen die zijn eigen rit verdient.',
 
-    '#82 \u2014 bijboeken vanuit admin.html loopt als enige saldoschrijver buiten het saldo-slot om. #83 \u2014 het kasboek TokenLog staat in \u00a78 beschreven maar bestaat niet. Allebei gevonden tijdens deze oplevering, allebei bewust een eigen commit.',
+    'DE REST VAN DE DEKKING. Achttien modules hebben nog geen enkele testverwijzing, waaronder totalcheck (872 regels), wizard (585), caravan (566) en onderdeel (513). Van de 36 routes in worker.js worden er nu zeven geraakt. Dit is een begin, geen dekking.',
 
-    '#49 \u2014 promptcaching staat nog uit. Cache-reads kosten 10% van het invoertarief. Let op: caching werkt op een exacte prefix, en `ai_system_override` zit daarin. Meten v\u00f3\u00f3r bouwen.'
+    '#79 \u2014 de veilige zones, alleen op een toestel. #29 en #19 \u2014 wachten op een rit van ruim tien minuten met de raildruk in de pollronde. #82 en #83 \u2014 het saldo-slot en het kasboek TokenLog. #49 \u2014 promptcaching staat nog uit. Alle vijf onveranderd.'
   ]
 };
 

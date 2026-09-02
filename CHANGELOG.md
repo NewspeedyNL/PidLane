@@ -11,6 +11,57 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE TESTREEKS KRIJGT EEN TEGENPROEF
+
+       • 🧪 VIER NAGEBOUWDE FOUTEN KWAMEN DOOR DE GATE HEEN. Er zijn
+         vier plausibele fouten in de meetketen gezet — een off-by-one
+         in de header-echo van parsePID, de harde fysieke limiet
+         uitgezet, de NO DATA-poort van de waakronde open, en het
+         oordeel over onbekende sensoren omgedraaid — en alle 65
+         tests bleven groen, met "Alles goed — veilig om te
+         committen" eronder. Elke push naar main is deployen.
+
+       • 🔍 DRIE TESTS LAADDEN HUN ONDERWERP NIET. test-healthgate,
+         test-mode21 en test-waakronde schreven de te toetsen
+         functie in de test zelf over; zulke tests kunnen niet rood
+         worden. De kopie liep bovendien uit de pas: healthUitProfiel
+         had er in de test twee parameters en gaf een object terug,
+         terwijl de app er één heeft en true/false geeft. Alle drie
+         laden nu hun echte module.
+
+       • 🆕 TEST-PARSER.JS (52 toetsen) — de meetketen van ruwe
+         ELM-bytes tot meetwaarde, op de echte functies en de echte
+         tabellen. Formaat A en B, CAN-headers, de multiframe-regel
+         waar 0107 op wegviel, de Mazda-lengtes (55/56 zijn 1 byte
+         terwijl de tabel 2 zegt), en laag 1 en 1b apart.
+
+       • 🆕 TEST-TOKEN.JS (52 toetsen) — de sessietokens van de
+         worker, met de echte WebCrypto. Een geknoeide handtekening,
+         een payload waarin de rol naar admin is opgehoogd, een
+         verlopen token, een ander geheim, en auth() met het
+         admin-token en de legacy-schakelaar. Die hele kant had tot
+         nu toe geen enkele test.
+
+       • 🆕 TEST-BASELINE.JS (33 toetsen) — leren-van-normaal in
+         pidlane-pids.js, dat in kopie onder test-waakronde stond en
+         daar niet eens thuishoorde.
+
+       • 🔁 PLMUTATE.SH — de tegenproef onder plcheck.sh. Zestien
+         nagebouwde fouten, elk met de test die daarvan rood hoort
+         te worden. plcheck meldt hoeveel tests er gedraaid zijn;
+         dit meldt wat ze zouden merken.
+
+       • ⚠️ BEVINDING, NIET GEREPAREERD: laag 2 en 3 van de
+         meetketen staan uit. FILTERED_PIDS is gevuld met suffixen
+         ('05') terwijl pidlane-datalog.js regel 75 de volledige PID
+         toetst ('0105'), en dat is de vorm die parsePID doorgeeft.
+         Spike-filter en smoothing worden daardoor voor álle PIDs
+         overgeslagen. Blok 5 van testrun 6.3 meldt het als LET OP.
+         Zie PIDLANE.md §11 — aanzetten is een gedragswijziging in
+         de meetketen en verdient een eigen rit.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — HET VERSLAG KLOPT MET DE METING
                                (#72, #75, #76, #77, #78)
 
