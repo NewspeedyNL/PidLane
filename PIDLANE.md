@@ -1081,6 +1081,70 @@ plaats van gekozen. En richting 1 hoeft geen milliseconden te winnen: hij moet
 een gat van deze orde overbruggen. Of de aanloop korter is als het toestel
 meer te doen heeft — er is deze rit niet gereden — staat nog open.
 
+### De app kon al die tijd gewoon in een browser draaien — 03-09-2026
+
+Op 02-09 stonden er 22 issues open en kwamen er die dag vijf bij. De klacht
+was niet dat er te weinig gevonden werd, maar dat er te weinig dícht ging.
+
+**De meting die dat verklaart.** Van die 22 hadden er ongeveer vijftien geen
+auto nodig. Ze hadden een dráaiende app nodig — een tekstlabel dat verkeerd
+afkapt, een selectie die door de sweep wordt overschreven, een melding die te
+vroeg alarm slaat. Maar de enige plek waar de app draaide was een rit, en een
+rit duurt een kwartier en gebeurt één keer per dag. Daardoor stond #95 (een
+label van elf tekens) in dezelfde wachtrij als #20 (een identifier die alleen
+een echte ECU kan bevestigen).
+
+**De conclusie die dat in stand hield stond in `test-schermranden.js`:**
+
+> Playwright kan dit gedrag meten [...] Voor de rest lukt dat hier niet zonder
+> de hele app-boot na te bouwen: `openTestrun()` weigert zonder `isAdmin()`,
+> en dat hangt aan een ingelogde sessie die een kale testomgeving niet heeft.
+
+Die redenering is logisch en hij is fout, en het is dezelfde vorm als de
+`ATI`-vergissing in §1: een waarneming ("het lukt niet") werd een conclusie
+("het kan niet") zonder de bron op te zoeken. **De app-boot hoeft niet
+nagebouwd te worden — hij kan gewoon draaien.** Nagemeten op 03-09: alle 57
+modules laden, `PLBus`/`PLLoad`/`PLSched`/`PLBedrading`/`PLRit`/`PLAchtergrond`
+leven, 146 PIDs staan in de tabel, nul JS-fouten, geen enkel dialoogvenster.
+Vijftien seconden.
+
+**Wat het al die tijd tegenhield was één regel in de `<head>`:**
+
+```html
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans..." rel="stylesheet">
+```
+
+Een `<script>` wacht op nog openstaande stylesheets voordat het draait. In een
+testomgeving zonder internet komt die CSS nooit, dus bleef de parser hangen op
+script 1 van 57 — met `readyState: "loading"`, geen foutmelding en geen
+tijdslimiet. Het zag eruit als "de app start niet", en dat leest als een
+fundamenteel probleem in plaats van als een ontbrekende download. Blokkeer
+extern verkeer en de boot loopt door.
+
+Dat extern verkeer blokkeren hoort er trouwens sowieso bij: een proef die het
+net op kan meet de dag en niet de code.
+
+**Wat dit oplevert.** `plbrowser.js` start de echte app en `bproef-*.js` stelt
+er vragen aan. De eerste proef reproduceert meteen de bevinding waar de rit van
+02-09 23:22 een kwartier voor nodig had: `validateAndSmooth('0105', 200)` geeft
+`200` in plaats van `null`, want `FILTERED_PIDS` is met suffix-sleutels gevuld
+terwijl de meetketen de volledige PID doorgeeft. Dat is een fout in de
+KOPPELING tussen twee modules, en die is per definitie onzichtbaar voor een
+test die één van de twee uit zijn verband knipt met `vm`.
+
+**Geen npm, geen Playwright, geen buildstap.** Node 22 heeft een ingebouwde
+WebSocket en praat daarmee rechtstreeks met het debugprotocol van Chromium.
+Dat is geen puristische keuze maar dezelfde randvoorwaarde als altijd: dit is
+een soloproject naast een baan, en gereedschap dat zelf onderhoud vraagt wordt
+niet gedraaid.
+
+**Wat dit niet oplost.** Er zit geen auto achter. De nep-adapter vervangt
+`_sendBTOnce()` en levert antwoorden uit een tabel; wat een echte ECU doet
+onder een volle bus blijft een vraag voor een rit. De scheiding staat nu in
+`CLAUDE.md`: een functie los is node, een koppeling is de browser, een echte
+bus is `CAMPAGNE` — en dat laatste is voortaan een besluit met een reden in
+plaats van de restcategorie waar alles in belandde.
+
 ### Het testrunverslag was het derde VIN-pad — 03-09-2026
 
 De rit van 02-09 23:22 leverde een verslag op met de volledige VIN erin, twee

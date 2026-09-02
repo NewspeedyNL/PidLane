@@ -71,6 +71,39 @@ jobs:
       - name: Draai plmutate
         run: bash plmutate.sh .
 
+  browserproeven:
+    name: browserproeven (de echte app in een echte browser)
+    runs-on: ubuntu-latest
+    # Apart van plcheck, om dezelfde reden als de tegenproef: plcheck moet op
+    # Termux kunnen draaien en daar staat geen Chromium. plbrowser.sh slaat
+    # daar netjes over met exit 0 — hier niet, want de runner heeft Chrome.
+    # Zonder deze job zou "overgeslagen" stilletjes "goed" gaan betekenen.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '24'
+
+      # De ubuntu-runner heeft Google Chrome voorgeïnstalleerd; plbrowser.js
+      # vindt hem zelf via /usr/bin/google-chrome. Deze stap is er alleen om
+      # het HARD te laten falen als dat ooit verandert — anders slaat het
+      # script over en leest groen als bewijs, wat het niet is.
+      - name: Is er een browser?
+        run: |
+          pad=$(node -e "process.stdout.write(require('./plbrowser.js').vindChromium()||'')")
+          if [ -z "$pad" ]; then
+            echo "FOUT: geen Chromium/Chrome op de runner — de browserproeven"
+            echo "      zouden overslaan en dat leest ten onrechte als groen."
+            exit 1
+          fi
+          echo "Browser: $pad"
+
+      - name: Draai de browserproeven
+        run: bash plbrowser.sh .
+
   geheimen:
     name: Geen sleutels in de repo
     runs-on: ubuntu-latest
