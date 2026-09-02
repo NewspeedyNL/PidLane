@@ -110,7 +110,7 @@ PidLane/
 ├─ PROJECT-INSTRUCTIES.md           de tekst voor het instructieveld van het Claude-project
 ├─ .github/workflows/
 │  ├─ build-apk.yml                 APK- en .aab-build
-│  ├─ tests.yml                     testgate: draait plcheck.sh op elke push
+│  ├─ tests.yml                     testgate: plcheck.sh, plmutate.sh, sleutelscan
 │  └─ automerge.yml                 voegt een PR samen zodra de testgate groen is
 ├─ admin/
 │  ├─ admin.html          (49 KB)  admin-, gebruikers-, klant- en codebeheer
@@ -598,7 +598,8 @@ niet bij de repo kon. Dat is niet meer zo. Wat er nog open in stond staat in
   tel ze liever dan dit getal te geloven), telt de div-balans van `index.html`
   en `admin.html`, controleert dat elke module in `index.html` hangt en dat
   `pidlane-bedrading.js` achteraan staat. Exit 0 is de enige uitkomst waarna je
-  mag committen. `tests.yml` draait hetzelfde in CI, plus een sleutelscan.
+  mag committen. `tests.yml` draait hetzelfde in CI, met de tegenproef
+  (`plmutate.sh`) en een sleutelscan als eigen jobs ernaast.
 - **Bij elke oplevering ook `CAMPAGNE` en `_blok5()` in `pidlane-testrun.js`
   herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
   toegevoegd én verwijderd. Zie §20.

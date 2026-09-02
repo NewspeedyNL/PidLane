@@ -16,8 +16,14 @@
 #  Dat is de knop die je zou verwachten, maar hij vraagt twee dingen die
 #  buiten dit bestand liggen:
 #    1. Settings → General → Pull Requests → "Allow auto-merge" aan.
-#    2. Branch protection op `main` die de checks `plcheck` en `geheimen`
-#       VERPLICHT stelt.
+#    2. Branch protection op `main` die alle drie de checks van *Tests*
+#       VERPLICHT stelt. Let op: branch protection zoekt op de weergavenaam
+#       van de job, niet op de job-id. Dat zijn dus:
+#         "plcheck (syntax, tests, structuur)"
+#         "tegenproef (bouwt fouten na, verwacht rood)"
+#         "Geen sleutels in de repo"
+#       Mist de tegenproef in die lijst, dan is de poort verplicht en de
+#       vraag of die poort iets voorstelt vrijblijvend — de verkeerde kant op.
 #  Zonder (2) is GitHub's auto-merge actief gevaarlijk: hij voegt samen zodra
 #  de PR technisch samen te voegen is, en dat is meestal vóórdat de tests
 #  klaar zijn. Precies het omgekeerde van wat hier de bedoeling is.
