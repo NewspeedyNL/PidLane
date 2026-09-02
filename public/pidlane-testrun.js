@@ -4113,9 +4113,9 @@ const CAMPAGNE = {
 
     '#90 — "Stille sensoren" leest de selectie die de sweep zojuist heeft overschreven, niet die van jou. Gevonden in de run van 13:14: de melding "2 NIET-OK maar wél in de actieve selectie" ging over de sweeplijst van 46, niet over jouw 28. Bewust niet hier gerepareerd, maar wel om te weten bij het lezen van dat blok.',
 
-    'DE HANDMATIGE KANT VAN DE WEERGAVE. Zelf een tegel groot of klein zetten, of verbergen, en dat per auto bewaren — dat is bewust NIET gebouwd. Het voegt blijvende staat per voertuig toe, een extra modus aan een scherm dat er al vier draagt, en het raakt de sensorkeuze die met #90 nog niet op orde is. Eerst een maand rijden op de automatische indeling: dan weet je welke tegels je écht met de hand wilt verzetten.',
+    'DE HANDMATIGE KANT VAN DE WEERGAVE. Zelf een tegel groot of klein zetten, of verbergen, en dat per auto bewaren — dat is bewust NIET gebouwd. Het voegt blijvende staat per voertuig toe, een extra modus aan een scherm dat er al vier draagt, en het raakt de sensorkeuze die met #90 nog niet op orde is. Eerst een maand rijden op de automatische indeling: dan weet je welke tegels je écht met de hand wilt verzetten. Staat als #94 open.',
 
-    'ABS. MOTORBELASTING KORT NOG STEEDS AF TOT ABS. MOTO. Dat komt uit stap 3 van hudShortLabel(), en die functie is van de HUD — hem verbouwen verandert ook de hoekmeters daar, en dat is een eigen onderwerp. De botsingscontrole vangt het niet, want het botst met niets; het is alleen geen naam.',
+    'ABS. MOTORBELASTING KORT NOG STEEDS AF TOT ABS. MOTO. Dat komt uit stap 3 van hudShortLabel(), en die functie is van de HUD — hem verbouwen verandert ook de hoekmeters daar, en dat is een eigen onderwerp. De botsingscontrole vangt het niet, want het botst met niets; het is alleen geen naam. Staat als #95 open.',
 
     '#86 — blok 1 blijft klagen over het voertuigprofiel zodra je een nieuwe versie laadt. Bekend, en geen app-fout.',
 

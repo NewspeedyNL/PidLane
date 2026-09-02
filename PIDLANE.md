@@ -750,7 +750,7 @@ juist het onderscheidende deel weg.
 het eerste woord, eerste vier van het tweede), en die functie is van de HUD:
 hem verbouwen verandert ook de hoekmeters daar, en dat is een eigen onderwerp.
 De botsingscontrole vangt het niet, want het botst met niets — het is alleen
-geen naam.
+geen naam. Vastgelegd als #95.
 
 **De handmatige kant is bewust niet gebouwd.** De vraag was ook: auto of een
 bewerkknop? Het antwoord is *allebei, maar niet als twee standen*. Een
@@ -759,7 +759,7 @@ onbeantwoordbaar waar een sensor hoort die vanavond nieuw ontdekt wordt: in de
 handlijst staat hij niet, dus hij valt nergens. Automatisch rekent altijd; met
 de hand komen er hooguit *uitzonderingen* overheen (groot/klein/verbergen als
 diff per auto, met dezelfde sleutel als `PLPidLen`: VIN, anders merk|model|jaar).
-Dat is fase 2, en het staat als issue open — het voegt blijvende staat per
+Dat is fase 2, en het staat als #94 open — het voegt blijvende staat per
 voertuig toe, een extra modus aan een scherm dat er al vier draagt, en het raakt
 de sensorkeuze die met #90 nog niet op orde is.
 
