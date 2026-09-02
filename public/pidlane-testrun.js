@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.1 (02-09-2026)';
+const TESTRUN_VERSIE = '6.2 (02-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -302,15 +302,39 @@ const PLBudget = (function () {
     };
   }
 
-  // Welke tak zou PLLoad.tick() bij dit monster gekozen hebben?
-  function zone(m) {
-    const d = drempels();
-    const druk = m.bezet >= d.bezetOp || m.fout >= d.foutOp;
-    const ruim = m.bezet < d.bezetAf && m.fout < d.foutOp;
-    if (druk) return 'druk';
-    if (ruim) return 'ruim';
-    if (m.fout <= d.kalmFoutPct && m.ms < d.traagMs) return 'kalm';
-    return 'stil';                   // dode zone zonder aftasten
+  /* Welke tak zou PLLoad.tick() bij dit monster gekozen hebben?
+
+     HERZIEN OP 02-09-2026 (#76). Hier stond een eigen kopie van die
+     beoordeling, en die kopie was blijven staan op de regel van vóór 23-08:
+     `bezet >= bezetOp || fout >= foutOp`. Precies de OF die toen uit PLLoad is
+     gehaald, met een lang blok commentaar erboven waarom bezetting alléén geen
+     tegendruk is. De spiegel is niet meeverhuisd.
+
+     Wat dat kostte: blok 7 meldde over de rit van 01-09 "Tijd per zone: druk
+     87%, ruim 10%, kalm 3%" naast "Tempoverloop: start 100% → nu 100%" en
+     "geen enkele stap omlaag". Die drie zijn alleen te rijmen als de
+     zoneverdeling niet meet wat PLLoad doet — en dat was zo: met de echte
+     regel (foutPct hoogstens 1%, venGemMs 193 tegen traagMs 400) was `druk`
+     geen enkele keer waar. 0%, niet 87%. Het rapport las als een defecte
+     regelkring die er niet was.
+
+     Nu leent hij de beslissing bij PLLoad.zoneVan(), net zoals drempels()
+     de getallen al bij PLLoad.cfg haalt in plaats van ze te herhalen.
+     `venStijgt` heeft de vorige responstijd nodig; die staat per monster in
+     het spoor, dus die geven we mee — vandaar de tweede parameter.
+
+     Terugval als PLLoad ontbreekt: 'onbekend'. Bewust géén nabouw van de
+     regel, want dat is precies hoe deze bug ontstond. Blok 7 meldt dan dat de
+     zoneverdeling niet te bepalen was, en dat is eerlijker dan een getal. */
+  function zone(m, vorigMs) {
+    if (!window.PLLoad || typeof PLLoad.zoneVan !== 'function') return 'onbekend';
+    const s = { belasting: m.bezet, foutPct: m.fout, venGemMs: m.ms };
+    const vorig = (typeof vorigMs === 'number') ? vorigMs : null;
+    // De multiplier van dat moment hoort erbij: PLLoad rekent 'kalm' alleen
+    // als er nog iets te winnen valt (_mult > MIN). Stond hij de hele rit op
+    // 1,0, dan is 'kalm' onbereikbaar — en dat is informatie, geen gebrek.
+    try { return PLLoad.zoneVan(s, vorig, m.mult); }
+    catch (e) { console.warn('PLLoad.zoneVan() klapte op een spoormonster', e); return 'onbekend'; }
   }
 
   function mediaan(a) {
@@ -411,10 +435,33 @@ const PLRit = (function () {
   function tik(nuOverride) {
     try {
       const verbonden = !(typeof connected === 'undefined' || !connected);
-      // Herverbindingen tellen: dit is het signaal van de achtergrondkwestie
-      // (Android bevriest de WebView-timers). Ook tellen als we niet meten.
-      if (vorigVerbonden === false && verbonden) herverbindingen++;
-      vorigVerbonden = verbonden;
+      /* Herverbindingen tellen: dit is het signaal van de achtergrondkwestie
+         (Android bevriest de WebView-timers). Ook tellen als we niet meten.
+
+         HERZIEN OP 02-09-2026 (#77). Hier stond `if (vorigVerbonden === false
+         && verbonden)`, met `vorigVerbonden` beginnend op null. PLRit.start()
+         draait bij het laden van de app, dus de tikken vóór het verbinden
+         zetten die vlag op false — en de eerste, volstrekt normale verbinding
+         telde daarna als herverbinding. In de rit van 01-09 meldde blok 14
+         "1 herverbinding" bij 0 gaten, terwijl er niets verbroken was: de app
+         laadde om 22:25:53 en de SPP-verbinding kwam om 22:26:46.
+
+         Dat is niet alleen een getal te veel. De regel eronder zegt "volgt elke
+         herverbinding op een gat, dan is dat de achtergrondkwestie en niet de
+         bus" — met 0 gaten en 1 herverbinding wijst die tekst je naar de bus of
+         de adapter. Een gratis vals spoor in precies de meting die #18 moet
+         beantwoorden.
+
+         Nu blijft `vorigVerbonden` op null tot de EERSTE keer dat er verbinding
+         is. Pas daarna kan false→true een herverbinding zijn. PLRit.wis() raakt
+         deze vlag bewust niet aan: anders levert "Rit nulstellen" dezelfde
+         valse telling opnieuw op. */
+      if (verbonden) {
+        if (vorigVerbonden === false) herverbindingen++;
+        vorigVerbonden = true;
+      } else if (vorigVerbonden !== null) {
+        vorigVerbonden = false;
+      }
 
       if (!verbonden) return;
       if (typeof demoMode !== 'undefined' && demoMode) return;
@@ -1094,12 +1141,27 @@ async function _blok7() {
   });
 
   await _doe(7, 'Tijd per zone', function () {
-    const tel = { druk: 0, ruim: 0, kalm: 0, stil: 0 };
-    sp.forEach(function (m) { tel[PLBudget.zone(m)]++; });
+    const tel = { druk: 0, ruim: 0, kalm: 0, stil: 0, onbekend: 0 };
+    // De vorige responstijd meegeven: `venStijgt` in PLLoad kijkt naar de stap
+    // tussen twee tikken, en zonder dat argument zou deze telling opnieuw een
+    // andere regel meten dan de regeling (#76). Het eerste monster heeft er
+    // geen — daar is venStijgt bij PLLoad ook onbekend.
+    let vorigMs = null;
+    sp.forEach(function (m) {
+      const z = PLBudget.zone(m, vorigMs);
+      if (tel[z] === undefined) tel[z] = 0;
+      tel[z]++;
+      vorigMs = m.ms;
+    });
     const pct = function (n) { return Math.round(n / sp.length * 100); };
+    if (tel.onbekend === sp.length)
+      return { staat: 'LET OP', detail: 'PLLoad.zoneVan() ontbreekt — de zoneverdeling is niet te bepalen. ' +
+        'Bewust geen eigen nabouw van de regel: dat was precies hoe deze meting op 23-08 uit de pas ging lopen (#76)' };
     return 'druk ' + pct(tel.druk) + '%, ruim ' + pct(tel.ruim) + '%, kalm ' + pct(tel.kalm) +
       '%, dode zone ' + pct(tel.stil) + '%' +
-      (tel.ruim === 0 ? '   [ruim is nooit bereikt — de vaste terugweg bestaat op deze bus niet]' : '');
+      (tel.onbekend ? ', niet te bepalen ' + pct(tel.onbekend) + '%' : '') +
+      (tel.ruim === 0 ? '   [ruim is nooit bereikt — de vaste terugweg bestaat op deze bus niet]' : '') +
+      (tel.kalm === 0 ? '   [kalm vraagt _mult > 1,0; stond het tempo de hele rit op 100%, dan is die zone onbereikbaar]' : '');
   });
 
   // ── De kernmeting ──
@@ -1127,7 +1189,15 @@ async function _blok7() {
       remmen.push({ i: i, fout: fout, ms: ms, basis: basis, bezet: bezet,
                     terecht: fout > 0 || opgelopen || drukGenoeg });
     }
-    if (!remmen.length) return 'geen enkele stap omlaag in dit spoor';
+    // TWEE STANDEN DIE NIET HETZELFDE ZIJN (#76). "Nooit geremd" is geen bewijs
+    // dat de regelkring eerlijk remt — het is een rit waarin hij nooit heeft
+    // hoeven remmen, en die zegt over de vraag niets. De Slotsom hieronder las
+    // dat tot 02-09-2026 als "0 ongevraagd, dus punt 2 kan dicht". Daarom
+    // draagt deze uitkomst nu zelf de waarschuwing, en niet alleen de Slotsom.
+    if (!remmen.length)
+      return { staat: 'LET OP', detail: 'geen enkele stap omlaag in dit spoor — de regelkring heeft in deze rit ' +
+        'nooit geremd. Dat is GEEN antwoord op de vraag of hij terecht remt; daarvoor is een rit nodig waarin ' +
+        'de bus vol genoeg staat (#15)' };
 
     const ongevraagd = remmen.filter(function (r) { return !r.terecht; });
     const kop = remmen.length + ' remmomenten, waarvan ' + ongevraagd.length + ' zonder fouten én zonder oplopende responstijd';
@@ -1187,10 +1257,23 @@ async function _blok7() {
       (runPiek > piek ? '   [tijdens testruns liep hij op tot ' + runPiek + '% — dat is de run zelf, niet de auto]' : '');
   });
 
-  _boek(7, 'Slotsom', 'ok',
-    'Ongevraagde remmomenten > 0 én bezetting voorspelt geen responstijd = het vermoeden uit PLAN.md punt 2 klopt; ' +
-    'de tegendruk moet dan aan responstijd/fouten hangen, niet aan bezetting. ' +
-    '0 ongevraagde remmomenten = het vermoeden klopt niet en punt 2 kan dicht.', null);
+  // DRIE UITKOMSTEN, NIET TWEE (#76). De oude Slotsom kende alleen "meer dan 0
+  // ongevraagd" en "0 ongevraagd", en gooide daarmee de belangrijkste stand
+  // weg: een rit waarin er helemaal niet geremd is. Die telt als "0
+  // ongevraagd" en zou punt 2 dus sluiten op een meting die er niet was.
+  const _remStanden = (function () {
+    let n = 0;
+    for (let i = 1; i < sp.length; i++) if (sp[i].mult > sp[i - 1].mult) n++;
+    return n;
+  })();
+  _boek(7, 'Slotsom', _remStanden ? 'ok' : 'LET OP',
+    _remStanden === 0
+      ? 'In deze rit is geen enkele keer geremd (' + sp.length + ' monsters). Punt 2 kan hierop NIET dicht: ' +
+        'de vraag is of de regelkring terecht remt, en dat is alleen te zien in een rit waarin hij remt. ' +
+        'Nodig: een volle bus — alle aanvragers aan, en lang genoeg rijden (#15).'
+      : 'Ongevraagde remmomenten > 0 én bezetting voorspelt geen responstijd = het vermoeden uit PLAN.md punt 2 klopt; ' +
+        'de tegendruk moet dan aan responstijd/fouten hangen, niet aan bezetting. ' +
+        _remStanden + ' remmomenten gemeten, waarvan geen enkele ongevraagd = het vermoeden klopt niet en punt 2 kan dicht.', null);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1780,12 +1863,20 @@ async function _blok10() {
 async function _blok5() {
 
   // ══════════════════════════════════════════════════════════════
-  // OPLEVERING 02-09-2026 — de tokenketen.
+  // OPLEVERING 02-09-2026 — twee ronden in één oplevering.
   //
+  // DE TOKENKETEN
   //   #52  de tokenchip volgt de rol en niet het laadmoment
   //   §8   de teller volgt de server: X-PidLane-Saldo wordt uitgelezen
   //   #42  geen koopknop in de app; de eerste fase loopt met de hand
   //   —    een activatiecode kan niet meer verbranden zonder account
+  //
+  // HET VERSLAG KLOPT MET DE METING
+  //   #78  een geslaagde meting herziet een 'nodata'/'onzin'-oordeel
+  //   #76  blok 7 leent de zoneregel bij PLLoad in plaats van hem te kopiëren
+  //   #77  de eerste verbinding van een sessie is geen herverbinding
+  //   #75  de meldingenteller telt vanaf de start van de run
+  //   #72  de app-log kapt eerlijk af, met kop, staart en een zichtbare regel
   //
   // WAAROM DIT IN BLOK 5 STAAT EN NIET ALLEEN IN EEN NODE-TEST. De vier
   // node-tests (test-tokenchip, test-saldokop, test-codeverzilver,
@@ -1959,6 +2050,92 @@ async function _blok5() {
       return { staat: 'FOUT', detail: 'de oude tekst over een abonnement staat weer in beeld — dat abonnement bestaat niet' };
     return klant ? 'klantaccount: "Mijn account" hoort er te staan en staat er'
                  : 'geen klantaccount: "Mijn account" is verborgen en nergens wordt een abonnement beloofd';
+  });
+
+  // ── TOEGEVOEGD 6 (#78): spreekt een meting het oordeel nog tegen? ──
+  // Dit is de tegenstrijdigheid uit de run van 01-09, rechtstreeks gemeten:
+  // blok 11 meldde vier PIDs als niet-ok terwijl blok 3 ze in dezelfde run
+  // uitlas. Alleen hier te zien, want het vraagt een echte sessie met een echte
+  // gezondheidscheck erachter.
+  await _doe(5, 'Geen PID staat "niet-ok" terwijl hij meet (#78)', function () {
+    if (typeof _pidHealth === 'undefined' || !_pidHealth)
+      return { staat: 'LET OP', detail: '_pidHealth bestaat niet in deze app' };
+    if (typeof plHealthHerzien !== 'function')
+      return { staat: 'FOUT', detail: 'plHealthHerzien() ontbreekt — dan wordt een oordeel na de scan nooit meer herzien (#78)' };
+    const beoordeeld = Object.keys(_pidHealth);
+    if (!beoordeeld.length)
+      return { staat: 'LET OP', detail: 'nog geen gezondheidsoordeel — niet verbonden of de scan is overgeslagen' };
+    const vers = (typeof _pidLastUpd !== 'undefined' && _pidLastUpd) ? _pidLastUpd : {};
+    const tegenspraak = beoordeeld.filter(function (p) {
+      const h = _pidHealth[p];
+      return (h === 'nodata' || h === 'onzin') && typeof vers[p] === 'number';
+    });
+    if (tegenspraak.length)
+      return { staat: 'FOUT', detail: tegenspraak.slice(0, 8).join(', ') + ' staan als niet-ok terwijl ze in deze ' +
+        'sessie een waarde hebben opgeleverd — de herziening vuurt niet (#78)' };
+    // En de tweede helft: de MIL-familie mag niet op nul worden afgeschreven.
+    const nulNormaal = Object.keys(window.PID_NUL_NORMAAL || {});
+    const misdeeld = nulNormaal.filter(function (p) { return _pidHealth[p] === 'nodata'; });
+    if (misdeeld.length)
+      return { staat: 'FOUT', detail: misdeeld.join(', ') + ' staan op "nodata" terwijl nul daar de gezonde ' +
+        'waarde is — de dummy-detectie leest de MIL-familie weer verkeerd (#78)' };
+    const nietOk = beoordeeld.filter(function (p) { return _pidHealth[p] !== 'ok'; });
+    return beoordeeld.length + ' beoordeeld, ' + nietOk.length + ' niet-ok, en geen enkele daarvan gaf in deze sessie ' +
+      'een meting. ' + nulNormaal.length + ' PIDs waar nul normaal is staan niet op nodata';
+  });
+
+  // ── TOEGEVOEGD 7 (#76): meet blok 7 wat PLLoad doet? ──────────────
+  // In node vergelijkt test-zonespiegel.js 2160 combinaties. Wat die test niet
+  // kan zien is of de twee modules in DEZE app aan elkaar hangen: PLBudget zit
+  // in pidlane-testrun.js en PLLoad in een ander bestand, en dat is precies het
+  // soort verbinding dat bij #29 en #74 ontbrak zonder ooit een fout te geven.
+  await _doe(5, 'Blok 7 leent de zoneregel bij PLLoad (#76)', function () {
+    if (!window.PLLoad || typeof PLLoad.zoneVan !== 'function')
+      return { staat: 'FOUT', detail: 'PLLoad.zoneVan() ontbreekt — blok 7 kan de regel dan niet lenen en meldt "niet te bepalen"' };
+    const sp = PLBudget.spoor().filter(function (m) { return !m.run; });
+    if (!sp.length)
+      return { staat: 'LET OP', detail: 'nog geen spoor — niet verbonden, of de app draait net' };
+    let vorig = null, mis = 0, druk = 0;
+    sp.forEach(function (m) {
+      const a = PLBudget.zone(m, vorig);
+      const b = PLLoad.zoneVan({ belasting: m.bezet, foutPct: m.fout, venGemMs: m.ms }, vorig, m.mult);
+      if (a !== b) mis++;
+      if (a === 'druk') druk++;
+      vorig = m.ms;
+    });
+    if (mis)
+      return { staat: 'FOUT', detail: mis + ' van de ' + sp.length + ' monsters krijgen van blok 7 een ander oordeel ' +
+        'dan van PLLoad zelf — de spiegel loopt weer uit de pas (#76)' };
+    return sp.length + ' monsters, elk oordeel gelijk aan dat van PLLoad; ' +
+      Math.round(druk / sp.length * 100) + '% druk op dit moment';
+  });
+
+  // ── TOEGEVOEGD 8 (#77/#75/#72): klopt het verslag over zichzelf? ──
+  // Drie kleine metingen die alleen in een lopende sessie iets betekenen: de
+  // verbindingsteller, de tijdstempels in beide logs, en de geheugen-cap.
+  await _doe(5, 'De run telt zijn eigen meldingen en verbindingen eerlijk', function () {
+    const uit = [];
+    // #77 — een herverbinding zonder gat was tot vandaag de normale eerste
+    // verbinding. Nu hoort dat een echte onderbreking te zijn.
+    if (window.PLRit) {
+      const hv = PLRit.herverbindingen(), g = PLRit.gaten().length;
+      if (hv > 0 && g === 0)
+        uit.push('LET OP: ' + hv + ' herverbinding(en) zonder enig gat in de meetlus. Sinds #77 telt de eerste ' +
+                 'verbinding niet meer mee, dus dit is er dan ook echt een — of de app is heropgestart');
+      else uit.push(hv + ' herverbinding(en) bij ' + g + ' gat(en)');
+    }
+    // #75/#72 — de app-log moet dateerbaar zijn, anders telt de meldingenregel
+    // in blok 11 altijd nul.
+    const app = _appLogRegels();
+    const zonderT = app.filter(function (l) { return typeof (l && l.t) !== 'number'; }).length;
+    if (app.length && zonderT === app.length)
+      return { staat: 'FOUT', detail: 'geen enkele app-logregel draagt een epoch-tijdstempel — dan telt ' +
+        '"meldingen sinds het begin van deze run" structureel nul (#75)' };
+    uit.push(app.length + ' app-logregels, waarvan ' + zonderT + ' zonder tijdstempel');
+    // De afkapping moet zichtbaar zijn als hij is opgetreden.
+    const weg = app.filter(function (l) { return /weggelaten \(geheugen-cap\)/.test((l && l.msg) || ''); }).length;
+    uit.push(weg ? 'de app-log is afgekapt en zegt dat ook (#72)' : 'de app-log is nog niet tegen de cap gelopen');
+    return uit.join('.  ');
   });
 
   // ── BLIJFT STAAN (#58/#79): kloppen de veilige zones op dit toestel? ──
@@ -2335,7 +2512,15 @@ async function _blok14() {
     // Deze PIDs HOREN constant te zijn: status, configuratie en tellers die
     // alleen bij een storing oplopen. Ze meetellen als "bevroren sensor" geeft
     // elke rit een handvol vals alarm.
-    const MAG_STIL = {
+    // De MIL-familie komt uit PID_NUL_NORMAAL in pidlane-data.js (#78): daar
+    // staat dat nul voor die PIDs de GEZONDE waarde is, en de gezondheidscheck
+    // leest dezelfde lijst. Tot 02-09-2026 wist blok 14 dat wel ("hoort stil te
+    // staan") en assessPidQuality het tegenovergestelde ("waarde gelijk aan
+    // sensor-minimum — waarschijnlijk niet aanwezig"): twee plekken met een
+    // tegenstrijdig oordeel over dezelfde PID. De letterlijke lijst hieronder
+    // wint bij een dubbele sleutel, zodat de namen in dit rapport blijven staan
+    // zoals ze waren.
+    const MAG_STIL = Object.assign({}, (window.PID_NUL_NORMAAL || {}), {
       '0101': 'MIL-status', '0121': 'afstand met MIL aan', '011C': 'OBD-norm',
       '0113': 'O2-sensoren aanwezig', '0151': 'brandstoftype', '0163': 'referentiekoppel',
       '0165': 'aux-ondersteuning', '0141': 'monitors deze rit', '0103': 'brandstofsysteemstatus',
@@ -2345,7 +2530,7 @@ async function _blok14() {
       // byte van een bitmasker en betekent niets.
       '0100': 'steunbits 01-20', '0120': 'steunbits 21-40',
       '0140': 'steunbits 41-60', '0160': 'steunbits 61-80', '0102': 'DTC uit freeze frame'
-    };
+    });
     const stil = [], beweegt = [], blind = [], eenmalig = [], verwacht = [];
     pids.forEach(function (p) {
       const m = _meetStand(per[p]);
@@ -2414,7 +2599,8 @@ async function _blok14() {
     return { staat: 'LET OP', detail: kop + (g.length ? '. Stiltes: ' + lijst : '') +
       ' — een gat betekent dat de meetlus zelf niet liep (Android bevriest WebView-timers op de achtergrond). ' +
       'Volgt elke herverbinding op een gat, dan is dat de achtergrondkwestie en niet de bus. ' +
-      'Let op: de eerste verbinding van een sessie telt nu nog als herverbinding (#77).' };
+      'De eerste verbinding van een sessie telt sinds 02-09-2026 niet meer mee (#77), dus elke ' +
+      'herverbinding hierboven is er ook echt een.' };
   });
 }
 
@@ -2532,14 +2718,47 @@ async function _blok11() {
       (verdacht.length ? '  — 0155/0156 staan er wéér bij, dus de lengtetabel klopt niet voor die twee (punt 12)' : '') };
   });
 
-  // ── De opruimklus zelf: gaat er iets af dat er eerder niet was? ──
-  // 584 catches praten nu. Deze regel zet het aantal meldingen sinds het begin
-  // van de run naast elkaar, zodat je in het logboek kunt zien of er iets
-  // nieuws bij zit zonder de hele staart door te lezen.
+  /* ── De opruimklus zelf: gaat er iets af dat er eerder niet was? ──
+     584 catches praten nu. Deze regel zet het aantal meldingen sinds het begin
+     van de run naast elkaar, zodat je in het logboek kunt zien of er iets
+     nieuws bij zit zonder de hele staart door te lezen.
+
+     HERZIEN OP 02-09-2026 (#75). De regel heette "sinds het begin van deze run"
+     en telde `app.length` en `bt.length`: de volledige inhoud van beide
+     ringbuffers, zonder enige tijdsgrens. In de run van 01-09 meldde hij
+     "app-log 33 regels"; in het opgeslagen rapport staat de complete app-log —
+     precies 33 regels, waarvan de laatste van 22:29:21, terwijl de run om
+     22:32:02 begon. Er was geen enkele regel bij gekomen. Voor de BT-log kwam
+     er nog iets bij: het rapport wordt ná de run opgeslagen, dus de 1232
+     getelde regels bevatten ook twee minuten polverkeer van daarna.
+
+     Het advies eronder ("kijk in de staart van het logboek") veronderstelt dat
+     het getal over de run gaat. Nu doet het dat ook: beide lijsten worden
+     afgekapt op `t >= _trStart`.
+
+     WAAROM DAT EEN EPOCH-VELD NODIG HAD. Beide logs droegen alleen `ts` als
+     kloktijdstring ("22:33:41"). Vergelijken met een starttijd vraagt dan een
+     omrekening die om middernacht stukgaat. log() en btDiag() zetten er sinds
+     02-09-2026 `t` (epoch) bij — zie PIDLANE-CONTRACT.md §6.
+
+     Regels zonder `t` worden NIET meegeteld maar wel gemeld. Dat zijn er twee
+     soorten: regels uit een vorige sessie die restoreBtLog() heeft teruggezet,
+     en regels van vóór deze versie. Beide horen niet bij deze run — maar
+     stilzwijgend weglaten is precies de fout die hierboven staat. */
   await _doe(11, 'Meldingen sinds het begin van deze run', function () {
     const app = _appLogRegels();
     let bt = [];
     try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
+    const vanaf = _trStart || 0;
+    const sinds = function (arr) {
+      const uit = { regels: [], ongedateerd: 0 };
+      (arr || []).forEach(function (l) {
+        const t = l && typeof l.t === 'number' ? l.t : null;
+        if (t === null) { uit.ongedateerd++; return; }
+        if (t >= vanaf) uit.regels.push(l);
+      });
+      return uit;
+    };
     const tel = function (arr, soort) {
       let n = 0;
       (arr || []).forEach(function (l) {
@@ -2548,9 +2767,13 @@ async function _blok11() {
       });
       return n;
     };
-    return 'app-log ' + (app.length || 0) + ' regels (' + tel(app, 'warn') + ' warn, ' + tel(app, 'err') + ' err)' +
-           '  |  BT-log ' + (bt.length || 0) + ' regels (' + tel(bt, 'warn') + ' warn, ' + tel(bt, 'err') + ' err)' +
-           '  — kijk in de staart van het logboek of er meldingen bij zitten die je nog nooit gezien hebt';
+    const a = sinds(app), b = sinds(bt);
+    const oud = a.ongedateerd + b.ongedateerd;
+    return 'app-log ' + a.regels.length + ' regels (' + tel(a.regels, 'warn') + ' warn, ' + tel(a.regels, 'err') + ' err)' +
+           '  |  BT-log ' + b.regels.length + ' regels (' + tel(b.regels, 'warn') + ' warn, ' + tel(b.regels, 'err') + ' err)' +
+           '  — geteld vanaf de start van deze run' +
+           (oud ? '; ' + oud + ' regel(s) zonder tijdstempel niet meegeteld (vorige sessie of oudere versie)' : '') +
+           '.  Kijk in de staart van het logboek of er meldingen bij zitten die je nog nooit gezien hebt';
   });
 }
 
@@ -3331,51 +3554,63 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 \u2014 de tokenketen: de teller volgt de server, de chip volgt de rol (#52, #42)',
+  titel: 'OPLEVERING 02-09 \u2014 de tokenketen, en het verslag dat klopt met de meting (#52, #75-#78)',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Deze ronde gaat over geld, en dat is een andere soort fout dan een verkeerde meting: een teller die er 3 tokens naast zit merkt niemand, tot iemand belt dat zijn tegoed weg is. Er is niets gerepareerd aan het verdienmodel zelf \u2014 het besluit uit #49 staat \u2014 maar wel aan de keten eromheen. Drie van de vier vondsten waren onzichtbaar in het gebruik: ze gaven geen foutmelding, geen rode rand, niets.',
+    'Twee ronden in \u00e9\u00e9n oplevering, en ze delen dezelfde soort fout. De eerste gaat over geld: de tokenketen. De tweede over het verslag van de run zelf. In beide gevallen deed de app iets anders dan wat ze erover meldde \u2014 en in geen van de acht gevallen kwam er een foutmelding.',
 
-    'DE ZWAARSTE. handleCreditsRedeem stempelde een activatiecode eerst af als gebruikt en keek P\u00c1S DAARNA of er een ingelogde klant was om hem op bij te schrijven. Was die er niet, dan gaf hij ok:true met saldo:null terug. De code verbruikt, het tegoed nergens, en de klant die er \u20ac4,99 voor betaalde staat met lege handen. De app haakte daar sinds 29-08 zelf al op af, maar een controle in de app is een verzoek en geen grens: een oudere versie, een herhaald verzoek of een curl kwam er gewoon langs. Het commentaar erboven legde die vorm nog uit als een keuze ("werkt BEWUST zonder account") \u2014 die keuze is met #49 vervallen en het commentaar was blijven staan.',
+    'DE TOKENKETEN, kort. Een activatiecode kon verbranden: /credits/redeem stempelde hem af als gebruikt en keek P\u00c1S DAARNA of er een account was om hem op bij te schrijven. De tokenteller liep op de sch\u00e1tting terwijl de Worker het echte saldo al meestuurde in X-PidLane-Saldo \u2014 een header die in \u00a78 van PIDLANE.md al sinds juli beschreven stond als "wordt uitgelezen", en die nergens in public/ voorkwam. En de tokenchip volgde het laadmoment in plaats van de rol (#52).',
 
-    'DE STILSTE. De Worker boekt af op het echte verbruik en stuurt het saldo daarna mee terug in de header X-PidLane-Saldo. Die header staat zelfs in Access-Control-Expose-Headers, en \u00a78 van PIDLANE.md beschreef sinds juli dat apiFetch hem uitleest en doorzet naar PLCredits. Dat deed niemand. Er stond nergens in public/ een regel die die header las. De teller in beeld liep dus op de SCHATTING, en die is nooit precies gelijk aan de afboeking \u2014 zeker niet als de PATCH op Airtable mislukte (dan ging er niets af terwijl de app wel aftrok) of als het antwoord van Anthropic niet te ontleden was (dan boekte de Worker het minimum af en de app een volle schatting).',
+    'HET VERSLAG, en dat is de grotere helft. Vier van de vijf bevindingen uit de run van 01-09 zijn gerepareerd, en \u00e9\u00e9n daarvan bleek twee verschillende fouten te zijn.',
 
-    'DAT LAATSTE IS DE ECHTE LES VAN DEZE RONDE. Niet de bug, maar hoe hij bleef staan: er stond een correcte beschrijving in de documentatie van iets dat niet gebouwd was. Wie \u00a78 las, kruiste dit punt af. Bij het nalezen bleek er nog zoiets te staan \u2014 het "Kasboek TokenLog", een tabel met negen velden en twee vastgelegde regels, geschreven door een functie tegoedLog() die in worker.js niet voorkomt en er blijkens de geschiedenis nooit in heeft gestaan. Dat is nu #83, en \u00a78 zegt voortaan wat er w\u00e9l staat.',
+    '#78 \u2014 DE DUURSTE, want deze zit niet in het verslag maar in de app. `_pidHealth` werd op twee momenten gevuld (de scan bij het verbinden, of het bewaarde profiel) en daarna nooit meer herzien. De scan doet \u00e9\u00e9n uitvraag per PID met een timeout van 1500 ms; komt daar niets uit, dan staat "nodata" er de hele sessie \u2014 en het gaat mee het voertuigprofiel in, dus de volgende sessie ook. De PID-gate en autoSelectHealthyKern draaien erop, dus een sensor die \u00e9\u00e9n keer te traag was blijft uitgegrijsd.',
 
-    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'EN DAARONDER LAG NOG IETS. Van de vier PIDs uit de run van 01-09 waren er twee helemaal niet gemist. 0101 (motorlampje) en 0121 (afstand met MIL aan) werden ACTIEF op nodata gezet door de dummy-detectie in assessPidQuality: een waarde exact op het definitie-minimum, in categorie Emissie, heet daar "waarschijnlijk niet aanwezig". Voor de MIL-familie is nul juist het antwoord dat je hoopt te krijgen. Blok 14 van de testrun wist dat allang \u2014 die twee staan in MAG_STIL, "hoort stil te staan". Twee plekken in dezelfde app met een tegenstrijdig oordeel over dezelfde PID, precies de vorm die CLAUDE.md verbiedt.',
 
-    '#52 \u2014 de tokenchip volgt de rol. finishLogin() en logout() laten hem opnieuw beoordelen; PLCredits.chip() bestond al als publieke ingang maar werd door niemand aangeroepen. En de regel eronder is teruggebracht tot \u00e9\u00e9n zin: alleen een ingelogde klant betaalt met tokens, en alleen die ziet de chip. De vierde toestand ontbrak namelijk \u2014 NIEMAND ingelogd viel door alle takken van _vrijgesteld() heen en gold als "betaalt", waardoor er ook op het loginscherm een chip stond.',
+    '#76 \u2014 blok 7 hield een KOPIE bij van de beslissing die PLLoad neemt, en die kopie was blijven staan op de regel van v\u00f3\u00f3r 23-08 (`bezet >= bezetOp || fout >= foutOp`). Daardoor meldde blok 7 over de rit van 01-09 "druk 87%" naast "tempo 100% \u2192 100%" en "geen enkele stap omlaag". Met de echte regel was druk 0%. Het rapport las als een defecte regelkring die er niet was.',
 
-    '\u00a78 \u2014 apiFetch leest X-PidLane-Saldo uit, op beide paden: na een geslaagd antwoord \u00e9n bij een 402 (daar staat het saldo in de body). volgServer() in PLCredits doet dat werk, fail-open zoals de rest van die module.',
+    '#77 \u2014 `vorigVerbonden` begon op null en de tikken v\u00f3\u00f3r het verbinden zetten hem op false, dus de eerste normale verbinding telde als herverbinding. Elke sessie meldde er minstens \u00e9\u00e9n, met 0 gaten ernaast \u2014 en de regel eronder stuurt je bij "herverbinding zonder gat" naar de bus of de adapter. Een vals spoor in de meting die #18 moet beantwoorden.',
 
-    'CODES \u2014 /credits/redeem eist een klantsessie v\u00f3\u00f3r de eerste schrijfactie, en GebruiktDoor komt uit die sessie in plaats van uit de body (dat veld was door de aanvrager zelf op te geven). Een geldige sessie zonder klantrecht levert geen ok:true meer met saldo:null.',
-
-    '#42 \u2014 vastgelegd dat de eerste fase handmatig is: geen koopknop in de app, `tikkie_kopen` blijft leeg, codes gaan met de hand. De aanvraagmail draagt nu het account waar de tokens op moeten \u2014 zonder dat begint elke aanvraag met "en wie ben jij?".',
-
-    'TESTS \u2014 test-tokenchip.js (19 toetsen), test-saldokop.js (16) en test-codeverzilver.js (21) zijn nieuw, alle drie met tegenproef: bouw de oude fout terug en er worden er 4, 4 en 1 rood. test-proeftegoed.js logt nu in als klant, want een tegoed zonder account bestaat niet meer.',
+    '#75 en #72 \u2014 "Meldingen sinds het begin van deze run" telde de hele ringbuffer. In de run van 01-09 meldde hij 33 app-logregels; de laatste daarvan was van 22:29:21 en de run begon om 22:32:02. Er was niets bij gekomen. Dat viel niet te repareren zonder #72 erbij: de app-log kapte stil af op 500 regels \u00e9n droeg alleen een kloktijdstring, geen epoch. Beide logs zetten er nu `t` bij, en de app-log kapt af zoals de BT-log het al deed \u2014 kop, staart, en een zichtbare regel ertussen die zegt hoeveel er weg is.',
 
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP A. Draai de run zoals je bent ingelogd (beheerder). Blok 5 hoort dan te melden: geen chip, geen koopknop, en 401 op /credits/redeem. Die 401 is de hoofdvraag van deze ronde \u2014 hij bewijst dat de sessiecontrole v\u00f3\u00f3r het afstempelen staat.',
+    'STAP A. Draai de run zoals gewoonlijk en lees blok 5. Acht proeven, allemaal gratis \u2014 er gaat geen AI-call en geen activatiecode aan op. De belangrijkste is "Geen PID staat niet-ok terwijl hij meet": die meet de tegenstrijdigheid van 01-09 rechtstreeks.',
 
-    'STAP B. Log daarna in met een KLANTACCOUNT en draai blok 5 opnieuw. Nu hoort er w\u00e9l een chip te staan, met hetzelfde getal als "Mijn tokens", en hoort de code-proef 404 te geven. Dit is de enige proef in de reeks die twee rollen nodig heeft; \u00e9\u00e9n van de twee helften meet niets.',
+    'STAP B. #78 nameten in het echt. Kijk in blok 11 naar de regel met de niet-ok PIDs. Staan 0101 en 0121 er nog bij, dan leest de dummy-detectie de MIL-familie nog verkeerd. Staat er een andere PID bij die in blok 3 w\u00e9l gelezen wordt, dan vuurt de herziening niet \u2014 en dan hoort daar een logregel bij te staan die begint met "\ud83d\udd2c".',
 
-    'STAP C. Nog steeds als klant: doe \u00e9\u00e9n echte analyse (bijvoorbeeld de conditiecheck) en kijk naar het getal in de chip v\u00f3\u00f3r en n\u00e1 afloop. Vergelijk het daarna met "Mijn tokens", dat het saldo rechtstreeks bij de server ophaalt. Staan die twee gelijk, dan neemt de teller de server over. Staan ze er een paar naast, dan draait de app nog op de schatting en is de haak niet aangekomen. DIT KOST TOKENS \u2014 het is de enige vraag van deze ronde die niet gratis te beantwoorden is, en de reden dat blok 5 hem niet zelf stelt.',
+    'STAP C. #76. Lees "Tijd per zone" in blok 7 naast "Tempoverloop" en "Ongevraagde remmomenten". Die drie horen nu \u00e9\u00e9n verhaal te vertellen. Staat er druk 0% bij een tempo dat op 100% blijft, dan klopt het beeld \u2014 dat is de rustige bus, geen defecte regelkring.',
 
-    'STAP D. Log uit terwijl je als klant bent ingelogd en kijk naar de linkeronderhoek van het loginscherm. Daar hoort niets te staan. Bleef er "\u26a1 tokens onbekend" hangen, dan is de aanroep in logout() niet aangekomen.',
+    'STAP D. #77. Blok 14 hoort nu 0 herverbindingen te melden op een rit waarin niets is verbroken. Meldt hij er toch \u00e9\u00e9n bij 0 gaten, dan is de app tussendoor heropgestart, of er is een echte onderbreking geweest.',
 
-    'STAP E. #79/#58, onveranderd en nog steeds alleen op het toestel. Blok 5 meldde op 01-09 FOUT op de veilige zones. Scroll de live view helemaal naar beneden en kijk of de onderste regel vrij van de drie Android-knoppen blijft. Blijft hij vrij, dan is de MELDING fout en niet de layout \u2014 dat is het antwoord dat #79 nodig heeft.',
+    'STAP E. #75. Lees "Meldingen sinds het begin van deze run" in blok 11 en vergelijk met de app-log in het opgeslagen rapport. Het getal hoort nu te kloppen met wat er n\u00e1 de starttijd van de run in staat, en niet meer met de hele lijst.',
+
+    'STAP F. De tokenketen. Als beheerder hoort blok 5 te melden: geen chip, geen koopknop, en 401 op /credits/redeem. Log daarna in met een klantaccount en draai blok 5 opnieuw \u2014 dan hoort er w\u00e9l een chip te staan en geeft de codeproef 404. Wil je de teller zelf zien volgen: doe \u00e9\u00e9n analyse en vergelijk de chip met "Mijn tokens". DAT kost tokens, en het is de enige vraag van deze oplevering die niet gratis is.',
+
+    'STAP G. #79/#58, onveranderd en nog steeds alleen op het toestel. Scroll de live view helemaal naar beneden en kijk of de onderste regel vrij blijft van de drie Android-knoppen. Blijft hij vrij, dan is de MELDING fout en niet de layout \u2014 dat is het antwoord dat #79 nodig heeft.',
+
+    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+
+    '#78 \u2014 plHealthHerzien() in pidlane-rijsituatie.js: een geslaagde meting laat een nodata/onzin-oordeel vervallen, mits de waarde dezelfde meetlat haalt als de scan (assessPidQuality). Alleen naar boven, nooit naar beneden, en het gaat naar het logboek. updPID() is de aanleiding, want dat is de plek die w\u00e9\u00e9t dat er een geldige waarde binnenkwam. PID_NUL_NORMAAL in pidlane-data.js is de ene plek waar staat dat nul bij de MIL-familie gezond is; assessPidQuality \u00e9n MAG_STIL in blok 14 lezen die.',
+
+    '#76 \u2014 PLLoad.zoneVan() is uit tick() geknipt als pure functie; tick() gebruikt hem zelf en PLBudget.zone() leent hem. Ontbreekt PLLoad, dan zegt blok 7 "niet te bepalen" \u2014 bewust g\u00e9\u00e9n nabouw, want dat is precies hoe deze bug ontstond. De Slotsom van blok 7 kent nu drie uitkomsten in plaats van twee: "nooit geremd" is geen bewijs dat de regelkring eerlijk remt, en kan #15 dus niet sluiten.',
+
+    '#77 \u2014 `vorigVerbonden` blijft null tot de eerste keer dat er verbinding is. PLRit.wis() raakt de vlag bewust niet aan, anders levert "Rit nulstellen" dezelfde valse telling opnieuw op.',
+
+    '#75/#72 \u2014 log() en btDiag() zetten `t` (epoch) bij elke regel; de meldingenteller kapt beide lijsten af op de starttijd van de run en meldt hoeveel regels hij niet kon dateren. De app-log gaat van een stille cap van 500 naar 1200 met kop (300), staart (700) en een zichtbare "weggelaten"-regel.',
+
+    'TESTS \u2014 test-zonespiegel.js (13 toetsen, waaronder \u00e9\u00e9n die 2160 combinaties van blok 7 en PLLoad tegen elkaar houdt), test-meldingenteller.js (11) en test-healthherziening.js (16) zijn nieuw. test-rit.js kreeg twee toetsen voor #77 en test-applog.js zeven voor de geheugen-cap. Elk met tegenproef: bouw de oude fout terug en er worden er 7, 2, 8, 1 en 1 rood.',
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '#82 \u2014 bijboeken vanuit admin.html leest-en-schrijft het saldo BUITEN het saldo-slot om, als enige van de vier plekken die dat doen. Boekt een beheerder bij op het moment dat er een analyse loopt, dan overschrijft de \u00e9\u00e9n de ander. Gevonden tijdens deze ronde, bewust niet in dezelfde commit gerepareerd (\u00e9\u00e9n onderwerp per PR).',
+    '#79 \u2014 de veilige zones. Alleen op een toestel te beantwoorden, en dat is stap G.',
 
-    '#83 \u2014 het kasboek TokenLog staat in \u00a78 beschreven maar bestaat niet. Zolang dat zo is, is een verdwenen token alleen te achterhalen door de code te lezen \u2014 precies waar die alinea in juli over ging.',
+    '#29 en #19 \u2014 wachten allebei nog op een rit die lang genoeg duurt: de opruimregel heeft ruim tien minuten nodig en de raildruk moet in de pollronde staan. Blok 5 kan die vragen niet stellen, hoe goed de meting inmiddels ook is.',
 
-    '#49 \u2014 promptcaching staat nog uit. Cache-reads kosten 10% van het invoertarief en de systeemprompt plus AUTO_KENNIS gaat bij elke analyse opnieuw mee. Let op: caching werkt op een exacte prefix, en `ai_system_override` uit de config zit daarin. Meten v\u00f3\u00f3r bouwen.',
+    '#82 \u2014 bijboeken vanuit admin.html loopt als enige saldoschrijver buiten het saldo-slot om. #83 \u2014 het kasboek TokenLog staat in \u00a78 beschreven maar bestaat niet. Allebei gevonden tijdens deze oplevering, allebei bewust een eigen commit.',
 
-    '#75, #76, #77, #78 \u2014 onveranderd. De meldingenteller telt nog de hele ringbuffer, blok 7 rekent de zoneverdeling met de PLLoad-regel van v\u00f3\u00f3r 23-08, de eerste verbinding van een sessie telt nog als herverbinding, en een health-oordeel wordt na de eerste scan nooit herzien.'
+    '#49 \u2014 promptcaching staat nog uit. Cache-reads kosten 10% van het invoertarief. Let op: caching werkt op een exacte prefix, en `ai_system_override` zit daarin. Meten v\u00f3\u00f3r bouwen.'
   ]
 };
 

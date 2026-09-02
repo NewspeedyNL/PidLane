@@ -659,16 +659,13 @@ de pas, en dan is de vraag welke klopt.
 | [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 | [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
-| [#72](https://github.com/NewspeedyNL/PidLane/issues/72) | de app-log kapt stil af op 500 regels | bug |
-| [#75](https://github.com/NewspeedyNL/PidLane/issues/75) | "Meldingen sinds het begin van deze run" telt de hele ringbuffer | bug |
-| [#76](https://github.com/NewspeedyNL/PidLane/issues/76) | blok 7 spiegelt de `PLLoad`-regel van vóór 23-08 | bug |
-| [#77](https://github.com/NewspeedyNL/PidLane/issues/77) | `PLRit` telt de eerste verbinding als herverbinding | bug |
-| [#78](https://github.com/NewspeedyNL/PidLane/issues/78) | `_pidHealth` wordt na de eerste scan nooit herzien | bug |
 | [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
 #14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op
-02-09 kwam #52 daarbij. De uitleg eromheen blijft hieronder staan.
+02-09 kwamen daarbij: #52 (de tokenchip) en #72, #75, #76, #77 en #78 — de vijf
+bevindingen uit de run van 01-09 die geen rit nodig hadden. De uitleg eromheen
+blijft hieronder staan.
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.
@@ -1245,6 +1242,67 @@ liggen.
 Wat níét in deze ronde is meegenomen: **#82**, bijboeken vanuit `admin.html`
 loopt als enige saldoschrijver buiten `metSaldoSlot()` om. Gevonden bij het
 nalopen, bewust een eigen commit (één onderwerp per PR).
+
+### Het verslag klopt weer met de meting — 02-09-2026
+
+De vijf bevindingen uit de run van 01-09 die geen rit nodig hadden: #78, #76,
+#77, #75 en #72. Vier ervan zijn dezelfde soort fout als #29, #30 en #74 — **de
+app meet goed en rapporteert iets anders** — en de vijfde is de bron waaruit twee
+van die rapporten putten.
+
+**#78 zat niet in het verslag maar in de app, en het waren twee fouten.**
+`_pidHealth` werd op precies twee momenten gevuld (de scan bij het verbinden, of
+een bewaard voertuigprofiel) en daarna nooit meer herzien. De scan doet één
+uitvraag per PID met een timeout van 1500 ms; komt daar niets uit, dan staat
+`nodata` er de hele sessie — en het gaat mee het profiel in, dus de volgende
+sessie ook. `autoSelectHealthyKern()` en de PID-gate draaien op dat oordeel, dus
+een sensor die één keer te traag was blijft uitgegrijsd. `plHealthHerzien()` laat
+zo'n oordeel nu vervallen zodra er een geldige meting binnenkomt: alleen naar
+boven, alleen als de waarde dezelfde meetlat haalt als de scan, en zichtbaar in
+het logboek.
+
+Van de vier PIDs uit de run waren er echter twee helemaal niet gemist. `0101` en
+`0121` werden **actief** op `nodata` gezet door de dummy-detectie in
+`assessPidQuality()`: een waarde exact op het definitie-minimum in categorie
+Temp/Emissie heet daar "waarschijnlijk niet aanwezig". Voor de MIL-familie is
+nul juist het antwoord dat je hoopt te krijgen. Blok 14 van de testrun wist dat
+al — dezelfde PIDs staan daar in `MAG_STIL`. Twee plekken in dezelfde app met
+een tegenstrijdig oordeel over dezelfde PID. `PID_NUL_NORMAAL` in
+`pidlane-data.js` is nu de ene plek; beide lezen hem.
+
+**#76 was een kopie die niet meeverhuisde.** `PLBudget.zone()` in de testrun
+hield een eigen versie bij van de beslissing die `PLLoad.tick()` neemt, en die
+kopie stond nog op de regel van vóór 23-08 (`bezet >= bezetOp || fout >=
+foutOp`). Blok 7 meldde daardoor "druk 87%" naast "tempo 100% → 100%" en "geen
+enkele stap omlaag" — met de echte regel was druk 0%. `PLLoad.zoneVan()` is nu
+een pure functie die `tick()` zelf gebruikt en die de testrun leent; ontbreekt
+PLLoad, dan meldt blok 7 "niet te bepalen" in plaats van een nabouw.
+
+Daar hoorde een tweede correctie bij die niet over de zones ging: de **Slotsom
+van blok 7 kon twee standen niet onderscheiden**. "0 ongevraagde remmomenten"
+betekende zowel "hij remde en deed dat steeds terecht" als "hij heeft nooit
+geremd". Alleen de eerste zegt iets over de vraag; de tweede is een rit waarin
+de meting niet heeft plaatsgevonden. #15 zou op die tweede zijn gesloten.
+
+**#77 telde de eerste verbinding als herverbinding.** `PLRit.start()` draait bij
+het laden van de app, dus de tikken vóór het verbinden zetten `vorigVerbonden`
+op false. Elke sessie meldde er zo minstens één, bij 0 gaten — en de regel
+eronder stuurt je bij "herverbinding zonder gat" naar de bus of de adapter. Een
+vals spoor in precies de meting die #18 moet beantwoorden.
+
+**#75 en #72 waren één probleem in twee bestanden.** "Meldingen sinds het begin
+van deze run" telde `app.length` en `bt.length`: de hele ringbuffer, zonder
+tijdsgrens. In de run van 01-09 meldde hij 33 app-logregels, waarvan de laatste
+van 22:29:21 — de run begon om 22:32:02. Dat viel niet te repareren zonder #72,
+want beide logs droegen alleen een kloktijdstring en geen epoch. Nu zetten
+`log()` en `btDiag()` er `t` bij (`PIDLANE-CONTRACT.md` §6: tijden zijn epoch,
+de kloktijd is voor het scherm), telt de regel vanaf `_trStart`, en meldt hij
+hoeveel regels hij niet kon dateren in plaats van ze stilzwijgend weg te laten.
+
+En de app-log kapt eerlijk af: kop (300), staart (700) en een zichtbare regel
+ertussen, precies zoals de BT-log dat al deed, met de cap van 500 naar 1200. Wat
+er als eerste uitrolde was juist het oudste — de opstart, de protocolkeuze, de
+eerste opruimacties — en dat is het deel dat je na een lange rit wilt teruglezen.
 
 ### Drie stille fouten in de meetkant — 28-08-2026
 

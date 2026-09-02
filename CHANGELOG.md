@@ -11,6 +11,93 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — HET VERSLAG KLOPT MET DE METING
+                               (#72, #75, #76, #77, #78)
+
+       • 🔬 EEN SENSOR DIE ÉÉN KEER TE TRAAG WAS, BLEEF EEN SESSIE
+         LANG UITGEGRIJSD (issue #78). _pidHealth werd op precies
+         twee momenten gevuld — de gezondheidscheck bij het
+         verbinden, of een bewaard voertuigprofiel — en daarna
+         schreef niets het oordeel ooit nog bij. Die scan doet één
+         uitvraag per PID met een timeout van 1500 ms; komt daar
+         niets uit, dan staat "nodata" er voor de rest van de rit.
+         En omdat het oordeel meegaat in het voertuigprofiel, werd
+         een toevallig misgelopen uitvraag een blijvend feit over
+         die auto.
+
+         Een geslaagde meting spreekt dat oordeel nu tegen: alleen
+         naar boven, alleen als de waarde dezelfde meetlat haalt
+         als de scan, en met een regel in het logboek. Stilletjes
+         beter worden is precies de vorm waarin #29 en #74 maanden
+         bleven staan.
+
+         DAARONDER LAG NOG EEN FOUT. Van de vier PIDs uit de run
+         van 01-09 waren er twee helemaal niet gemist: 0101
+         (motorlampje) en 0121 (afstand met MIL aan) werden actief
+         op "nodata" gezet door de dummy-detectie — een waarde
+         exact op het definitie-minimum heet daar "waarschijnlijk
+         niet aanwezig". Voor de MIL-familie is nul juist het
+         antwoord dat je hoopt te krijgen. Blok 14 van de testrun
+         wist dat allang; de gezondheidscheck wist het
+         tegenovergestelde. Nu één lijst (PID_NUL_NORMAAL) die ze
+         allebei lezen.
+
+       • 📊 BLOK 7 HIELD EEN KOPIE BIJ VAN EEN REGEL DIE VERANDERD
+         WAS (issue #76). "Welke tak zou PLLoad gekozen hebben?"
+         rekende met `bezet >= bezetOp || fout >= foutOp` — precies
+         de OF die op 23-08 uit PLLoad is gehaald omdat bezetting
+         alléén geen tegendruk is. De spiegel verhuisde niet mee.
+
+         Gevolg in de run van 01-09: "Tijd per zone: druk 87%"
+         naast "Tempoverloop: 100% → 100%" en "geen enkele stap
+         omlaag". Die drie zijn alleen te rijmen als de
+         zoneverdeling iets anders meet dan de regeling doet — en
+         met de echte regel was druk 0%. Het rapport las als een
+         defecte regelkring die er niet was. PLLoad.zoneVan() is nu
+         de enige plek waar die beslissing valt; blok 7 leent hem.
+
+         En de Slotsom van datzelfde blok kende twee uitkomsten
+         waar er drie zijn: "nooit geremd" telde als "0 ongevraagd
+         geremd" en zou #15 dus sluiten op een meting die niet
+         heeft plaatsgevonden.
+
+       • 🔌 ELKE SESSIE MELDDE EEN HERVERBINDING DIE ER GEEN WAS
+         (issue #77). PLRit start bij het laden van de app, dus de
+         tikken vóór het verbinden zetten de vlag op false — en de
+         eerste, volstrekt normale verbinding telde daarna mee. Met
+         0 gaten ernaast stuurt de regel eronder je dan naar de bus
+         of de adapter: een gratis vals spoor in de meting die #18
+         moet beantwoorden.
+
+       • 🕑 "MELDINGEN SINDS HET BEGIN VAN DEZE RUN" TELDE DE HELE
+         RINGBUFFER (issue #75). In de run van 01-09 meldde die
+         regel 33 app-logregels; de laatste daarvan was van
+         22:29:21 en de run begon om 22:32:02. Er was niets bij
+         gekomen.
+
+         Dat viel niet te repareren zonder #72: beide logs droegen
+         alleen een kloktijdstring ("22:33:41"), en die is niet met
+         een starttijd te vergelijken zonder een omrekening die om
+         middernacht stukgaat. log() en btDiag() zetten er nu een
+         epoch-tijdstempel bij.
+
+       • 📜 DE APP-LOG KAPTE STIL AF OP 500 REGELS (issue #72). Wie
+         het logboek opensloeg na een rit van een half uur zag een
+         lijst die er compleet uitzag en dat niet was — en wat er
+         als eerste uit rolde was juist het oudste: de opstart, de
+         protocolkeuze, de eerste opruimacties. De BT-log doet dit
+         al goed. Nu de app-log ook: kop, staart, en een zichtbare
+         regel ertussen die zegt hoeveel er weg is. Cap van 500
+         naar 1200, want dit is de rustigste van de twee logs.
+
+       • ✅ TESTS. test-zonespiegel.js, test-meldingenteller.js en
+         test-healthherziening.js zijn nieuw; test-rit.js en
+         test-applog.js zijn uitgebreid. Alle vijf met tegenproef.
+         Testrun 6.2 meet in blok 5 wat er in deze oplevering
+         veranderd is — acht proeven, allemaal gratis.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-02 (CET) — DE TOKENKETEN: DE TELLER VOLGT
                                DE SERVER, DE CHIP VOLGT DE ROL
 

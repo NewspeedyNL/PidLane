@@ -94,7 +94,13 @@ try{ window.addEventListener('pagehide',_btPersistNow); document.addEventListene
 function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   const ts=new Date().toTimeString().slice(0,8);
-  _btLog.push({ts,msg,type});
+  // `t` is de epoch-tijd erbij (#75, 02-09-2026). `ts` is alleen "HH:MM:SS" en
+  // dus niet te vergelijken met een starttijd; de testrun telde daardoor de
+  // hele ringbuffer als "meldingen sinds het begin van deze run" — inclusief
+  // het polverkeer van ná de run, want dat rapport wordt later opgeslagen.
+  // Regels die uit de opslag zijn teruggezet (restoreBtLog) hebben geen `t`;
+  // die zijn per definitie van een vorige sessie.
+  _btLog.push({ts,t:Date.now(),msg,type});
   // Geheugen-cap MET ANKER: de eerste regels van een sessie (protocol, VIN,
   // discovery) blijven altijd staan. Die rolden er vroeger binnen een minuut
   // uit — daardoor was de VIN-poging bij het exporteren telkens al weg en
@@ -103,7 +109,7 @@ function btDiag(msg, type='info'){
     const kop=_btLog.slice(0,300), staart=_btLog.slice(-800);
     const weg=_btLog.length-kop.length-staart.length;
     _btLog.length=0;
-    _btLog.push(...kop,{ts,msg:`… ${weg} regels weggelaten (geheugen-cap) …`,type:'info'},...staart);
+    _btLog.push(...kop,{ts,t:Date.now(),msg:`… ${weg} regels weggelaten (geheugen-cap) …`,type:'info'},...staart);
   }
   try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){ console.warn('liveLogWrite() faalde — deze regel ontbreekt in het live logbestand', e); }
   if(!_btPersistT) _btPersistT=setTimeout(_btPersistNow,2000);

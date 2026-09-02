@@ -170,6 +170,56 @@ function keurHerverbindingTellen(s) {
   return uit;
 }
 
+// ── #77 — DE EERSTE VERBINDING IS GEEN HERVERBINDING ──────────────
+// PLRit.start() draait bij het laden van de app; verbinden gebeurt seconden
+// later. De tikken daartussen zetten de vlag op false, en de eerste normale
+// verbinding telde daarna als herverbinding. In de rit van 01-09 meldde blok 14
+// "1 herverbinding" bij 0 gaten, terwijl er niets verbroken was.
+//
+// Dat is niet alleen een getal te veel: de regel eronder stuurt je bij "een
+// herverbinding zonder gat" naar de bus of de adapter — een vals spoor in de
+// meting die #18 moet beantwoorden.
+//
+// Deze controle heeft een VERSE sandbox nodig. De gedeelde S staat al de hele
+// test op connected=true, en dan is de beginsituatie van #77 niet na te spelen.
+function keurEersteVerbindingGeenHerverbinding() {
+  const uit = [];
+  const s = laadPLRit();
+  s.connected = false;                       // app geladen, nog niet verbonden
+  let t = T0;
+  const tik = function () { t += 5000; s.PLRit.tik(t); };
+  tik(); tik(); tik();                       // drie tikken vóór het verbinden
+  s.connected = true;
+  s.pidVals['010C'] = 800;
+  tik(); tik();
+  if (s.PLRit.herverbindingen() !== 0)
+    uit.push(s.PLRit.herverbindingen() + ' herverbinding(en) geteld op een sessie waarin niets is verbroken (#77)');
+  // En daarna moet hij wél tellen, anders is de fix een uitgezette teller.
+  s.connected = false; tik();
+  s.connected = true; tik();
+  if (s.PLRit.herverbindingen() !== 1)
+    uit.push('na een echte onderbreking staat de teller op ' + s.PLRit.herverbindingen() + ', verwacht 1');
+  return uit;
+}
+
+// De tegenproef uit het issue, letterlijk. `wis()` mag de vlag niet resetten:
+// deed hij dat wel, dan levert "Rit nulstellen" midden in een rit dezelfde
+// valse telling opnieuw op.
+function keurWisResetVlagNiet() {
+  const uit = [];
+  const s = laadPLRit();
+  s.connected = false;
+  let t = T0;
+  const tik = function () { t += 5000; s.PLRit.tik(t); };
+  tik();
+  s.connected = true; tik();
+  s.PLRit.wis();                             // "Rit nulstellen" na het verbinden
+  tik(); tik();
+  if (s.PLRit.herverbindingen() !== 0)
+    uit.push('na wis() telt de lopende verbinding als ' + s.PLRit.herverbindingen() + ' herverbinding(en)');
+  return uit;
+}
+
 // Tijdens een testrun mag er NIET bemonsterd worden: de sweep vraagt 45 PIDs
 // achter elkaar op en blok 6 pookt in dode PIDs. Die waarden horen niet in een
 // beeld van wat de auto tijdens het rijden deed.
@@ -356,6 +406,8 @@ toetsSchoon('bewegende en vastgevroren sensoren worden onderscheiden', keurBeweg
 toetsSchoon('een gat in de meetlus wordt geteld', keurGatenTellen(S));
 toetsSchoon('een normale rit levert geen gaten op', keurNormaalGeenGat(S));
 toetsSchoon('herverbindingen worden geteld', keurHerverbindingTellen(S));
+toetsSchoon('de eerste verbinding van een sessie telt niet mee (#77)', keurEersteVerbindingGeenHerverbinding());
+toetsSchoon('"Rit nulstellen" laat de verbindingsvlag staan (#77)', keurWisResetVlagNiet());
 toetsSchoon('de _trBezig-guard staat vóór de bemonstering (broncontrole, zie boven)',
   keurNietTijdensRun(fs.readFileSync('pidlane-testrun.js', 'utf8')));
 toetsSchoon('er wordt niet bemonsterd in demomodus', keurNietInDemo(S));
