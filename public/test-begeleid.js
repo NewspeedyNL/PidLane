@@ -93,7 +93,15 @@ function keurVolgorde(stappen) {
     ['pids', 'nulmeting', 'de selectie moet staan vóór de nulmeting, anders meet je een halve rit'],
     ['nulmeting', 'rijden', 'zonder nulstellen gaat het ritbeeld over alles sinds het opstarten (fout van 01-09)'],
     ['rijden', 'meten', 'de sweep belast de bus zelf en hoort niet in het ritbeeld'],
-    ['meten', 'afronden', 'afronden vóór het meten levert een verslag zonder metingen']
+    ['meten', 'afronden', 'afronden vóór het meten levert een verslag zonder metingen'],
+    // De drie oogststappen van 6.5. Alle drie hebben een RIJDENDE auto nodig en
+    // moeten vóór het meten gebeuren, want blok 5 leest hun uitkomst uit.
+    ['rijden', 'achtergrond', 'een gat in de meetlus (#18) is alleen een gat als de lus liep — dus na de rijstap'],
+    ['achtergrond', 'meten', 'blok 5 leest de achtergrondmarkering uit; staat die er nog niet, dan zegt #18 niets'],
+    ['rijden', 'slimweergave', 'stilstaand beweegt er niets en liggen de temperaturen tegen elkaar aan (#66)'],
+    ['slimweergave', 'meten', 'het oordeel over de weergave hoort in het verslag van déze run'],
+    ['rijden', 'zones', 'de veilige zones beoordeel je met de app in gebruik, niet op de oprit (#79)'],
+    ['zones', 'meten', 'blok 5 meldt #58 zelf; jouw oordeel hoort ernaast te staan, niet erna']
   ];
   eis.forEach(function (e) {
     if (idx[e[0]] === undefined) { uit.push('stap "' + e[0] + '" ontbreekt'); return; }
@@ -203,6 +211,24 @@ const S = laad();
 const STAPPEN = S.PLBegeleid.stappen();
 
 toetsSchoon('er zijn stappen', STAPPEN.length >= 5 ? [] : [STAPPEN.length + ' stappen — te weinig voor een meetrit']);
+
+// ── De meet-PIDs zijn een afspraak met de issues ──────────────────
+// Een rit die de PID niet aanzet, beantwoordt de vraag niet — dat is letterlijk
+// waarom #19 drie ritten lang openbleef. Die afspraak staat in RIT_PIDS, en een
+// array zonder toets is een array die de volgende opruimactie niet overleeft.
+{
+  const RP = (S.PLBegeleid.ritPids ? S.PLBegeleid.ritPids() : []);
+  const eis = [
+    ['0123', '#19 — raildruk direct'],
+    ['0159', '#19 — raildruk absoluut'],
+    ['0155', '#40 — bytelengte, tabel zegt 2'],
+    ['0156', '#40 — bytelengte, tabel zegt 2'],
+    ['010D', 'zonder snelheid is er geen rit vast te stellen']
+  ];
+  toetsSchoon('de meet-PIDs dekken de issues die een rit nodig hebben',
+    eis.filter(function (e) { return RP.indexOf(e[0]) < 0; })
+       .map(function (e) { return e[0] + ' ontbreekt in RIT_PIDS (' + e[1] + ')'; }));
+}
 toetsSchoon('elke stap vertelt wat, waarom en wat jij doet', keurStappenCompleet(STAPPEN));
 toetsSchoon('de volgorde draagt de meting', keurVolgorde(STAPPEN));
 toetsSchoon('geen enkele controle klapt op een lege app', keurControlesOverlevenEenLegeApp(STAPPEN));
