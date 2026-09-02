@@ -746,7 +746,7 @@ normale gang van zaken is.
 De marge oprekken is niet de goede reparatie: dan verschuift alleen de grens.
 De vraag is "is dit profiel ná het verbinden ontstaan", en daar hoort het
 verbindingsmoment bij, niet een vaste hoeveelheid uren. Niet in deze PR
-opgelost — één onderwerp per PR.
+opgelost — één onderwerp per PR. Staat als [#86](https://github.com/NewspeedyNL/PidLane/issues/86).
 
 ### Laag 2 en 3 van de meetketen staan uit — 02-09-2026
 
@@ -825,6 +825,7 @@ de pas, en dan is de vraag welke klopt.
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 | [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
 | [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
+| [#86](https://github.com/NewspeedyNL/PidLane/issues/86) | blok 1 meldt "profiel niet geladen" voor een profiel uit dezelfde sessie — de marge van 0,1 uur is te krap | bug |
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
 #14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op

@@ -3715,7 +3715,7 @@ const CAMPAGNE = {
 
     '#58/#79 — de tweede FOUT van de run: het werkscherm liep tot 1730px door terwijl de navigatiebalk op 784px begint. Op ≤760px krijgt .app height:auto en mág #appGrid langer zijn dan het scherm; of dit een echte bevinding is of een proef die scrollende inhoud verkeerd leest, is alleen op een toestel te beslissen. Onveranderd.',
 
-    'DE LET OP OVER HET VOERTUIGPROFIEL. Blok 1 meldde "staat in de opslag maar is bij het verbinden NIET geladen" voor een profiel van 0,3 uur oud. Dat profiel is in déze sessie zelf ontstaan (opgeslagen om 11:48:52, de run begon om 12:04) en kon dus niet geladen zijn. De uitzondering daarvoor kijkt naar 0,1 uur en die marge is te krap zodra je een kwartier na het verbinden meet. Vastgelegd in PIDLANE.md §11 — een tweede onderwerp, dus niet hier.',
+    'DE LET OP OVER HET VOERTUIGPROFIEL. Blok 1 meldde "staat in de opslag maar is bij het verbinden NIET geladen" voor een profiel van 0,3 uur oud. Dat profiel is in déze sessie zelf ontstaan (opgeslagen om 11:48:52, de run begon om 12:04) en kon dus niet geladen zijn. De uitzondering daarvoor kijkt naar 0,1 uur en die marge is te krap zodra je een kwartier na het verbinden meet. Vastgelegd in PIDLANE.md §11 en als issue #86 — een tweede onderwerp, dus niet hier.',
 
     'FILTERED_PIDS in pidlane-datalog.js regel 75 wordt nog steeds met de verkeerde sleutelvorm bevraagd; laag 2+3 staan daarmee uit voor álle PIDs. Blok 5 meldt dat als LET OP zolang het zo is. Onveranderd — dat is een gedragswijziging in de meetketen die een eigen rit verdient.',
 
