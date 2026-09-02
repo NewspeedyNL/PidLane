@@ -90,6 +90,15 @@ ctx.window._pollBusy = false;
 // Deze sectie draait ECHT async: wait() gebruikt een echte setTimeout van 50 ms
 // en dat is precies het gedrag dat op het spel staat.
 (async function () {
+  // MET EEN HARDE GRENS EROMHEEN. wait() draait op de bevroren testklok, dus
+  // zijn eigen vervaltijd loopt nooit af: raakt de wachtrij stuk, dan wacht hij
+  // eeuwig en HANGT deze test in plaats van rood te worden. Een hangende test
+  // is erger dan een falende — plmutate wacht er net zo lang op, en in CI ziet
+  // niemand het verschil met een trage runner. Vandaar een echte klok ernaast.
+  const metGrens = function (belofte, ms) {
+    return Promise.race([belofte, new Promise(function (r) { setTimeout(function () { r('TIJD-OP'); }, ms); })]);
+  };
+
   console.log('\n— de wachtrij op het busslot (#98) —');
   B.breek('opruimen voor de wachtrijtoets');
   ctx.window._pollBusy = false;
@@ -111,10 +120,12 @@ ctx.window._pollBusy = false;
   B.release(vrij);
   toets('ook nu het slot vrij is, gaat de pollus niet voor', B.claim('poll'), 0);
 
-  const tok = await p;
-  toets('de wachter krijgt het slot', tok > 0, true);
+  const tok = await metGrens(p, 3000);
+  toets('de wachter krijgt het slot', typeof tok === 'number' && tok > 0, true);
   toets('en is daarna uit de rij', B.wachtenden(), []);
-  B.release(tok);
+  if (typeof tok === 'number') B.release(tok);
+  B.breek('opruimen na de wachtrijtoets');
+  ctx.window._pollBusy = false;
   toets('daarna mag de pollus weer', B.claim('poll') > 0, true);
   B.breek('opruimen');
   ctx.window._pollBusy = false;
@@ -142,7 +153,7 @@ ctx.window._pollBusy = false;
   // slot vrij is en pas daarna naar zijn eigen vervaltijd. Dat is bestaand en
   // verdedigbaar gedrag (een slot dat je hebt, weiger je niet), maar het maakt
   // deze toets stil groen als je er niet op let.
-  toets('het spook geeft zelf 0 terug', await spook, 0);
+  toets('het spook geeft zelf 0 terug', await metGrens(spook, 3000), 0);
   B.release(na);
 
   console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
