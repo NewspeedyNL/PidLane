@@ -33,8 +33,9 @@ Exit 0 is de voorwaarde om te committen — niets daarboven. De controle doet
 telt de div-balans van `index.html` en `admin.html`, en controleert dat elke
 module in `index.html` hangt met `pidlane-bedrading.js` als laatste.
 
-Dezelfde controle draait in CI (`.github/workflows/tests.yml`) plus een
-sleutelscan. Lokaal groen krijgen is dus niet optioneel maar goedkoper.
+Dezelfde controle draait in CI (`.github/workflows/tests.yml`), met de
+tegenproef (`plmutate.sh`) en de sleutelscan als eigen jobs ernaast — drie in
+totaal. Lokaal groen krijgen is dus niet optioneel maar goedkoper.
 
 **Bij elke oplevering ook `CAMPAGNE` en `_blok5()` in `pidlane-testrun.js`
 herschrijven**, zodat blok 5 toetst wat er in díé update veranderd is —
@@ -47,8 +48,8 @@ bash plmutate.sh .
 ```
 
 Geen commit-poort — `plcheck.sh` blijft dat. Dit is de vraag eronder: *stelt
-die poort iets voor?* Het script zet zestien nagebouwde fouten één voor één in
-de bron, draait telkens de test die daarvan rood hoort te worden, en zet het
+die poort iets voor?* Het script zet elke nagebouwde fout uit zijn tabel één
+voor één in de bron, draait telkens de test die daarvan rood hoort te worden, en zet het
 bestand terug. Exit 0 = alles gevangen. Exit 1 = er kwam er een doorheen, en
 dan dekt die test minder dan zijn naam belooft.
 
