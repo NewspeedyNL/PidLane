@@ -615,10 +615,15 @@ async function handleMessages(request, env) {
 
   // ── Klantaccounts: tegoedcontrole, AI-call en afboeking lopen SAMEN
   // binnen het Saldo-slot van deze klant ────────────────────────────
-  // Alleen voor klantaccounts (tabel Klanten). Accounts uit de tabel Users
-  // zijn zakelijk met abonnement en betalen niet per analyse. Brengt de klant
-  // zijn eigen sleutel mee, dan betaalt hij Anthropic al rechtstreeks en
-  // rekenen we hier niets af — en is er dus ook geen Saldo om te beschermen.
+  // Alleen voor klantaccounts (tabel Klanten). Accounts uit de tabel Users zijn
+  // PERSONEEL (#49) — de beheerder, een monteur, de noodingang — en draaien op
+  // de sleutel van de beheerder. Hier stond tot 02-09-2026 "zakelijk met
+  // abonnement"; dat abonnement bestaat niet, en de rekening voor die calls
+  // komt bij de beheerder terecht, zonder plafond en zonder teller. Dat is
+  // bekend en aanvaard zolang Users personeel is; wordt het ooit een
+  // klantcategorie, dan hoort er een tegoed bij. Brengt de klant zijn eigen
+  // sleutel mee, dan betaalt hij Anthropic al rechtstreeks en rekenen we hier
+  // niets af — en is er dus ook geen Saldo om te beschermen.
   //
   // Tot 26-08-2026 lazen twee gelijktijdige calls van hetzelfde account (twee
   // apparaten, of een dubbele tik) allebei hetzelfde Saldo, en de laatst
@@ -739,7 +744,7 @@ async function handleMessages(request, env) {
     return uit.raw || json(uit.body, uit.status);
   }
 
-  // ── Zakelijke accounts en klanten met eigen sleutel: geen Saldo om te
+  // ── Personeel en klanten met eigen sleutel: geen Saldo om te
   // beschermen, dus geen slot nodig. ──────────────────────────────────
   const { r, text } = await doAnthropicCall();
   return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
