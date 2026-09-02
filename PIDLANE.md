@@ -742,31 +742,79 @@ Op 27-08-2026 is alles wat hier als open stond naar GitHub-issues verhuisd. De
 beschrijving staat daar en niet meer hier: twee lijsten van hetzelfde lopen uit
 de pas, en dan is de vraag welke klopt.
 
-| # | wat | soort |
-|---|---|---|
-| [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | bulkrecorder schrijft UTC, logger lokale tijd | bug |
-| [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | de app bevriest op de achtergrond | groot |
-| [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | vier aanvragers op één bus — wordt dat één poort? | besluit |
-| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | raildruk `0123`/`0159` — heropend 01-09; de meting is met #74 gerepareerd, nu nog een rit waarin ze in de pollronde staan | meten |
-| [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | mode 22 olietemperatuur: dienst leeft, identifier onbekend | meten |
-| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | blok 14 meldde een vals negatief — de bedrading staat sinds 01-09 groen in blok 5, de hoofdvraag wacht op een rit van tien minuten | bug |
-| [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | `0155`/`0156` staan naast hun bytelengte | bug |
-| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | tokens kopen via Tikkie langs Play's betaalregels — eerste fase is handmatig: `tikkie_kopen` blijft leeg, codes gaan met de hand | Play |
-| [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open | besluit |
-| [#82](https://github.com/NewspeedyNL/PidLane/issues/82) | bijboeken vanuit admin.html loopt buiten het saldo-slot om | bug |
-| [#83](https://github.com/NewspeedyNL/PidLane/issues/83) | het kasboek `TokenLog` staat in §8 beschreven maar bestaat niet | groot |
-| [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | welke vragen ontbreken nog in de meetcontext? | meten |
-| [#65](https://github.com/NewspeedyNL/PidLane/issues/65) | veilige zones nameten op een toestel | meten |
-| [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | schaal van de temperatuurbalk en de drempel voor "beweegt" — de grove balken zijn sinds 01-09 gemarkeerd, de getallen zelf wachten op een rit | meten |
-| [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
-| [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
-| [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
+**Sinds 02-09-2026 draagt elk issue drie labels** — categorie (`app`, `ui`,
+`bt`, `worker`, `algemeen`), soort (`bug`, `wens`, `meten`, `besluit`,
+`extern`) en ernst (`ernst:1-noodgeval` t/m `ernst:4-klein`). De betekenis en
+de bijbehorende werkregels staan in `CLAUDE.md`. **De labels in GitHub zijn
+leidend**; de tabel hieronder is een momentopname — en dat is niet theoretisch,
+want hij miste #68 al.
+
+| # | ernst | cat | soort | wat |
+|---|---|---|---|---|
+| [#18](https://github.com/NewspeedyNL/PidLane/issues/18) | 2 | app | bug | de app bevriest op de achtergrond — pollus, recorder en logger stoppen tegelijk |
+| [#40](https://github.com/NewspeedyNL/PidLane/issues/40) | 2 | app | bug | `0155`/`0156` staan naast hun bytelengte |
+| [#82](https://github.com/NewspeedyNL/PidLane/issues/82) | 2 | worker | bug | bijboeken vanuit admin.html loopt buiten het saldo-slot om |
+| [#83](https://github.com/NewspeedyNL/PidLane/issues/83) | 2 | worker | wens | het kasboek `TokenLog` staat in §8 beschreven maar bestaat niet |
+| [#17](https://github.com/NewspeedyNL/PidLane/issues/17) | 3 | app | bug | bulkrecorder schrijft UTC, logger lokale tijd |
+| [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | 3 | ui | bug | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount |
+| [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | 3 | ui | bug | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) |
+| [#19](https://github.com/NewspeedyNL/PidLane/issues/19) | 3 | app | meten | raildruk `0123`/`0159` — de meting is met #74 gerepareerd, nu nog een rit waarin ze in de pollronde staan |
+| [#29](https://github.com/NewspeedyNL/PidLane/issues/29) | 3 | app | meten | blok 14 meldde een vals negatief — de bedrading staat groen, de hoofdvraag wacht op een rit van tien minuten |
+| [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | 3 | ui | meten | blok 5 meldt FOUT op de veilige zones — melding of meting? |
+| [#15](https://github.com/NewspeedyNL/PidLane/issues/15) | 3 | bt | besluit | vier aanvragers op één bus — wordt dat één poort? |
+| [#49](https://github.com/NewspeedyNL/PidLane/issues/49) | 3 | worker | besluit | credits als enig verdienmodel — promptcaching en Users-als-personeel staan nog open |
+| [#42](https://github.com/NewspeedyNL/PidLane/issues/42) | 3 | worker | extern | tokens kopen via Tikkie langs Play's betaalregels — eerste fase is handmatig |
+| [#20](https://github.com/NewspeedyNL/PidLane/issues/20) | 4 | bt | meten | mode 22 olietemperatuur: dienst leeft, identifier onbekend |
+| [#66](https://github.com/NewspeedyNL/PidLane/issues/66) | 4 | ui | meten | schaal van de temperatuurbalk en de drempel voor "beweegt" |
+| [#68](https://github.com/NewspeedyNL/PidLane/issues/68) | 4 | ui | wens | slimme weergave: toeren en gaspedaal verdienen een andere vorm dan een balkje |
+| [#64](https://github.com/NewspeedyNL/PidLane/issues/64) | 4 | app | besluit | welke vragen ontbreken nog in de meetcontext? |
+
+Op 02-09 is **#65 samengevoegd met #79**: beide vroegen om dezelfde
+toestelsessie, en #79 noemt zichzelf al "de meting waar #65 om vroeg". De
+handmatige checklist per scherm staat nu bij #79. Twee issues voor één rit
+betekent dat er één blijft staan nadat de andere is afgevinkt — dat is de
+saldoregel in zijn eenvoudigste vorm.
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
 #14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op
 02-09 kwamen daarbij: #52 (de tokenchip) en #72, #75, #76, #77 en #78 — de vijf
 bevindingen uit de run van 01-09 die geen rit nodig hadden. De uitleg eromheen
 blijft hieronder staan.
+
+### De lijst groeide, en de reden staat niet waar je hem zoekt — 02-09-2026
+
+Geteld over 27-08 t/m 02-09: **46 issues geopend, 28 gesloten.** Netto +18 in
+zes dagen; 1,64 geopend per gesloten. Zo loopt een lijst niet leeg.
+
+De voor de hand liggende verklaring — er wordt te traag gerepareerd — klopt
+niet. De doorlooptijd van gesloten issues is mediaan **één dag**. Wat er
+gebeurt is iets anders: er staan negen issues ouder dan drie dagen open, en
+die zijn vrijwel allemaal `meten`, `besluit` of `extern`.
+
+| | `bug` | `wens` | `meten` | `besluit` | `extern` |
+|---|---|---|---|---|---|
+| **app** | 3 | · | 2 | 1 | · |
+| **ui** | 2 | 1 | 3 | · | · |
+| **worker** | 1 | 1 | · | 1 | 1 |
+| **bt** | · | · | 1 | 1 | · |
+
+**Tien van de achttien — 56% — zijn met code niet te sluiten.** Ze wachten op
+een rit, op een knoop, of op iemand buiten dit project. Daar was geen moment
+voor ingepland, dus ze bleven staan, en elke nieuwe ronde legde er weer wat
+bovenop.
+
+Daar komt de tweede helft bij: de werkregel *"bugs die je onderweg vindt
+vastleggen, niet repareren"* is een zuivere issue-fabriek. Hij is er om
+scope-creep tegen te houden en dat doet hij, maar hij maakt geen onderscheid
+tussen een fout die de meetketen raakt en een verkeerd woord in een knop —
+allebei worden ze een regel op de lijst, en de tweede soort wordt nooit
+opgepakt.
+
+De vier regels die hieruit volgen (de saldoregel, `meten` aan een campagne,
+een houdbaarheidsdatum op `besluit`, en `ernst:4` meenemen in plaats van
+opschrijven) staan in `CLAUDE.md`. Of ze werken is over twee weken te zien aan
+dezelfde telling: geopend versus gesloten. Gaat die verhouding niet onder de
+1,0, dan zijn de regels het probleem en niet de lijst.
 
 Wat hieronder blijft staan is de **uitleg** die je nodig hebt om die issues te
 begrijpen: hoe het systeem in elkaar zit en welke fouten er eerder zijn gemaakt.

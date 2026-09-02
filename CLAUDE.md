@@ -126,6 +126,126 @@ committen"* eronder. Elke push naar `main` is deployen. Zie §11 van
   push mee. Loopt de een voor, dan draait er even een versie waarin niemand
   betaalt of juist dubbel.
 
+## Issues — drie labels, en ze zijn alle drie verplicht
+
+Elk issue krijgt **waar** het zit, **wat** het is en **hoe erg** het is. Eén
+label uit elke rij, niet meer en niet minder. De labels in GitHub zijn leidend;
+de tabel in `PIDLANE.md` §11 is een momentopname.
+
+### Categorie — waar zit het
+
+| label | wat eronder valt |
+|---|---|
+| `app` | meetketen, parser, PID-logica, testrun, rapport |
+| `ui` | scherm, layout, weergave, navigatie, teksten |
+| `bt` | verbinding, adapter, ELM, busprotocol, poll-ronde |
+| `worker` | backend, tegoed, auth, admin, Airtable |
+| `algemeen` | repo, werkregels, CI, documentatie, build |
+
+Twijfel je tussen twee? Kies waar de **reparatie** landt, niet waar de klacht
+zichtbaar werd. Een meetfout die je in de live view ziet is `app`, niet `ui`.
+
+### Soort — wat is er nodig om het te sluiten
+
+Dit is de belangrijkste van de drie, en dat is gemeten (zie hieronder).
+
+| label | om het te sluiten heb je nodig |
+|---|---|
+| `bug` | het doet iets anders dan het hoort — **een bureau** |
+| `wens` | het kan beter, maar het is niet stuk — **een bureau** |
+| `meten` | het antwoord komt alleen uit een rit — **een auto** |
+| `besluit` | er moet gekozen worden, niet gebouwd — **jij** |
+| `extern` | het antwoord ligt buiten deze repo (Play, Cloudflare, RDW) — **opzoeken** |
+
+`bug` en `wens` sluit je met code. De andere drie niet, en dat is precies
+waarom ze blijven liggen. Zie de saldoregel.
+
+### Ernst — hoe erg is het
+
+| label | betekenis | wanneer pak je het |
+|---|---|---|
+| `ernst:1-noodgeval` | de dienst ligt plat, of er lekt geld of persoonsgegevens | **nu**, alles opzij, mag alle regels hieronder breken |
+| `ernst:2-ernstig` | een kernfunctie geeft een fout antwoord: de meting klopt niet, het saldo klopt niet | eerstvolgende oplevering |
+| `ernst:3-hinder` | het werkt maar verkeerd of lelijk, en er is een omweg | als het uitkomt |
+| `ernst:4-klein` | nice to have, cosmetisch, niemand struikelt erover | mag eeuwig blijven liggen, of dicht |
+
+**Ernst gaat over het gevolg, niet over de moeite.** Een fout die één regel
+kost maar de hele meting scheeftrekt is `ernst:2`; een verbouwing van een week
+die niemand mist is `ernst:4`. Zodra "hoe moeilijk is het" in dit label
+sluipt, is het geen prioriteit meer maar een planning, en dan zakken de dure
+dingen vanzelf naar onderen.
+
+Een privacy-bevinding is **altijd** `ernst:1`. Een VIN die ruw de telefoon uit
+gaat is geen hinder.
+
+## De saldoregel — waarom de lijst groeide
+
+**Nagemeten op 02-09-2026.** Van 27-08 tot 02-09: **46 issues geopend, 28
+gesloten.** Netto +18 in zes dagen, 1,64 geopend per gesloten. Dat loopt niet
+vanzelf leeg.
+
+De verdeling laat zien waar het vastloopt — en het is niet waar je het zoekt:
+
+|  | `bug` | `wens` | `meten` | `besluit` | `extern` |
+|---|---|---|---|---|---|
+| **app** | 3 | · | 2 | 1 | · |
+| **ui** | 2 | 1 | 3 | · | · |
+| **worker** | 1 | 1 | · | 1 | 1 |
+| **bt** | · | · | 1 | 1 | · |
+
+**Tien van de achttien (56%) zijn met code niet te sluiten.** De doorlooptijd
+bevestigt het: gesloten issues leefden mediaan **één dag**, terwijl negen
+issues ouder dan drie dagen open staan — en die negen zijn vrijwel allemaal
+`meten`, `besluit` of `extern`. Het probleem is dus niet dat er te traag
+gerepareerd wordt. Het is dat de helft van de lijst wacht op iets wat achter
+een bureau niet gebeurt, en dat daar geen moment voor is ingepland.
+
+Vier regels, en ze grijpen op verschillende helften aan:
+
+1. **Elke oplevering sluit er minstens evenveel als hij opent.** Laat je een
+   bevinding achter, sluit er dan ook een. Netto nul is het minimum, netto
+   negatief is het doel. Lukt dat niet, dan zeg je in de PR waarom.
+
+2. **`meten` hangt aan een rit of hij bestaat niet.** Een `meten`-issue dat
+   niet in de `CAMPAGNE` van de volgende testrun staat, wordt niet
+   beantwoord — dat is zes dagen lang bewezen door #19, #20 en #29. Bij elke
+   oplevering: zet ze in de campagne, of sluit ze met de reden erbij. Een
+   vraag die je niet gaat stellen is geen openstaande vraag.
+
+3. **`besluit` krijgt een houdbaarheidsdatum van veertien dagen.** Daarna
+   beslis je, of hij gaat dicht als *"niet nu"* met wat je toen wist. #15 en
+   #49 staan open sinds 27 en 28 augustus zonder dat er iets aan veranderde;
+   die hebben geen tijd nodig maar een knoop. Dicht is geen verlies — het
+   staat in de historie en heropenen kost één klik.
+
+4. **`extern` is één poging, dan geparkeerd.** Zoek het uit of laat het los.
+   Een issue dat wacht op iemand anders is geen werk, hooguit een
+   herinnering.
+
+### Wat je NIET meer als issue opschrijft
+
+Dit is de regel die het hardst duwt, en hij vervangt de oude *"nooit in
+dezelfde sessie repareren"*:
+
+- **`ernst:1`: repareren, nu, altijd** — ook midden in ander werk, ook als het
+  de PR breed maakt. Zeg het in het commitbericht.
+- **`ernst:4` in een bestand dat je tóch al openhebt: gewoon doen.** Een issue
+  schrijven voor een fix van één regel kost meer dan de fix, en levert een
+  regel op die maanden blijft staan. Noem hem in het commitbericht en klaar.
+- **Alles daartussen blijft zoals het was**: vastleggen, niet in dezelfde
+  sessie repareren. Eén gedragswijziging per PR.
+
+De grens ligt bij gedrag: raakt het de meetketen, het tegoed of de privacy,
+dan is het nooit "even meenemen", hoe klein het ook lijkt. Daar geldt de oude
+regel onverkort — dat is de reden dat hij bestaat.
+
+### Een plafond
+
+Boven de **twintig** open issues gaat een oplevering eerst omlaag: geen nieuwe
+functies tot de lijst weer onder de twintig staat. Twintig is geen natuurwet
+maar het punt waarop deze lijst ophoudt leesbaar te zijn, en een lijst die
+niemand meer leest is hetzelfde als geen lijst.
+
 ## Codeafspraken
 
 - **Nederlands**: commentaar, commitberichten, PR-titels, UI-teksten, changelog.
@@ -215,7 +335,12 @@ In dezelfde PR:
 
 - Bugs die je onderweg vindt: **vastleggen in `PIDLANE.md` §11 of als issue,
   niet in dezelfde sessie repareren** — tenzij er expliciet om gevraagd wordt.
-  Eén onderwerp per PR.
+  Eén gedragswijziging per PR. **Uitzondering sinds 02-09-2026**, want deze
+  regel alleen liet de lijst met 1,64 geopend per gesloten groeien: een
+  `ernst:1` repareer je altijd meteen, en een `ernst:4` in een bestand dat je
+  tóch al openhebt neem je mee in plaats van hem op te schrijven. De grens
+  ligt bij gedrag — meetketen, tegoed en privacy nooit "even meenemen". Zie
+  "De saldoregel".
 - Geen bestanden verwijderen, hernoemen of verplaatsen zonder te vragen.
 - Geen "opruimacties" of stijlrefactors erbij die niemand gevraagd heeft.
 - Niets live zetten wat niet getoetst is. Kan iets alleen in de auto getoetst
