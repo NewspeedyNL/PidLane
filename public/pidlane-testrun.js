@@ -3902,43 +3902,47 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (derde) — de gezondheidscheck stempelt pas als het oordeel er is',
+  titel: 'OPLEVERING 02-09 (vierde) — de rit oogst bewijs, en blok 5 zegt per issue of hij dicht kan',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
 
-    'De run van 02-09 om 12:05 gaf 106 ok, 2 fout en 9 let op. Van die twee fouten was er één vanaf een bureau te repareren, en dat is wat deze oplevering doet — verder niets. De andere (de veilige zones, #58/#79) is alleen op een toestel te beoordelen en staat onveranderd.',
+    'Vijf issues staan op "wacht op een rit". Er zijn intussen vier ritten geweest en er is er geen enkele van dichtgegaan. Niet omdat de metingen mislukten, maar omdat er elke keer één voorwaarde niet gehaald werd: de caravan-tracker stond niet aan, er werd vier minuten gereden van de tien, of de PID stond niet in de pollronde. Dat bleek dan achteraf, verspreid over blok 4, 7 en 14 — nergens stond de vraag die je eigenlijk had: is dit issue nu dicht te doen?',
 
-    'DE FOUT: "019D staat als niet-ok terwijl hij meet". De proef had gelijk, maar de oorzaak die hij noemde klopte niet. Het was geen herziening die niet vuurde: initialHealthScan() riep updPID() aan VÓÓR assessPidQuality(). updPID zet _pidLastUpd[pid] — de versheidsbron waar blok 5, blok 14 en de stale-watchdog op draaien — dus een sensor die de scan een regel later afkeurde droeg tóch het stempel "heeft in deze sessie gemeten".',
-
-    'WAAROM UITGEREKEND 019D. Turbo temp inlaat B antwoordt op deze atmosferische motor met 0x00, en b[0]-40 maakt daar -40 °C van — precies het definitie-minimum. Daar is de dummy-detectie voor: een waarde exact op het minimum in categorie Temp/Emissie leest als "sensor niet aanwezig". Dat oordeel is goed en blijft staan; alleen het stempel hoorde er niet bij. En de herziening kon het niet rechtzetten, want die legt dezelfde -40 opnieuw langs dezelfde regel.',
+    'DEZE OPLEVERING VERANDERT NIETS AAN WAT DE APP MEET. Ze verandert wat de rit oplevert. De begeleide rit haalt de voorwaarden nu zelf binnen in plaats van ze achteraf te missen, en blok 5 spreekt per issue één oordeel uit: SLUIT, of precies wat er ontbrak. Dat tweede is de helft die miste — "onvoldoende" zonder reden is een verwijt, met reden is een boodschappenlijstje voor de volgende rit.',
 
     '── STAP VOOR STAP ─────────────────',
 
-    'STAP A. Draai de run en lees blok 5, de proef "Geen PID staat niet-ok terwijl hij meet (#78)". Die hoort nu ok te zijn én te vertellen tegen welke afgekeurde sensoren hij gemeten heeft. Staat er LET OP met "alles staat op ok", dan was er op dit voertuig geen enkele afgekeurde sensor en heeft de proef deze run niets kunnen onderscheiden — dat is geen groen licht.',
+    'STAP A. Doe de begeleide rit hélemaal, van stap 1 tot 13. Elke overgeslagen stap is een issue dat open blijft, en dat staat dan ook met zoveel woorden in het verslag. Reken op een kwartier rijden: tien minuten voor #29 en #19, plus twee minuten achtergrond voor #18.',
 
-    'STAP B. Kijk in OVERIG bij "Stille sensoren". 019D hoort daar nog steeds als nodata te staan: die sensor zit niet op deze motor en dat oordeel was nooit het probleem. Wat weg hoort te zijn is de tegenspraak in blok 5.',
+    'STAP B. Let bij stap 3 op of de caravan-tracker écht aanging. Lukt dat niet, dan is het bijna altijd de knop 🔌 Check connectie die nog niet is ingedrukt — druk die in en doe de stap opnieuw. Zonder die vierde aanvrager blijven #19 en #15 open, en dat is precies waar de vorige vier ritten op strandden.',
 
-    'STAP C. Geen rit nodig. Wat er te meten viel is met node gemeten; de gezondheidscheck draait nu in test-healthherziening.js met de echte parser, de echte tabellen en het echte oordeel erachter, en plmutate.sh zet de oude volgorde terug om te laten zien dat die test dan rood wordt.',
+    'STAP C. Bij stap 7 ga je twee minuten weg uit de app. Blijf rijden. Kom terug en druk op Verder; de app rekent zelf uit of de meetlus stilstond.',
+
+    'STAP D. Stap 9 en 10 vragen jouw oordeel en dat van niemand anders. Bij 9 kijk je of de temperatuurbalken en de trendlijnen kloppen (#66). Bij 10 scroll je de live view helemaal naar beneden en kijk je of er iets achter de drie Android-knoppen valt (#79/#58) — die vraag staat sinds 01-09 open en die stap is nog nooit uitgevoerd.',
+
+    'STAP E. Lees na afloop blok 5, het stuk "DE RIT-OOGST". Daar staat per issue of hij dicht kan. Wat er "KAN DICHT" zegt, mag dicht; wat er LET OP zegt, noemt zelf wat er de volgende keer anders moet.',
 
     '── WAT ER IS VERANDERD ──────────────',
 
-    'ÉÉN REGEL IN pidlane-rijsituatie.js. initialHealthScan() oordeelt eerst en stempelt daarna, en alleen bij \u0027ok\u0027. Gevolg naast het stempel: een waarde die de scan afkeurt komt niet meer in pidVals en pidHist terecht — tot nu toe bleef die staan, terwijl de app hem net zelf onbruikbaar had verklaard.',
+    'DE BEGELEIDE RIT GAAT VAN 10 NAAR 13 STAPPEN. Stap 3 zet nu ook de caravan-tracker aan in plaats van je te vragen dat zelf te doen — dat stond er vier ritten lang als tekst en is geen enkele keer gebeurd. Stap 7 is nieuw: twee minuten achtergrond, met een markering ervoor, zodat een gat in de meetlus aan dát moment te koppelen is (#18). Stap 9 en 10 zijn nieuw en vragen jouw oordeel (#66, #79).',
 
-    'test-healthherziening.js — stap 6 erbij (9 toetsen). De scan draait in een sandbox met pidlane-data.js voor de defs, pidlane-diagbundel.js voor de parser, pidlane-datalog.js voor laag 1 en pidlane-kwaliteit.js voor het oordeel. Alleen updPID is een spion, want die zit aan het scherm vast; dát hij het versheidsstempel zet toetst stap 5 al op de echte bron. Er wordt eerst vastgesteld dat 019D wél netjes tot -40 parseert en dat het oordeel die -40 afkeurt — anders zou "de scan doet niets" ook groen geven.',
+    'RIT_PIDS KRIJGT 0155 EN 0156 ERBIJ (#40). PLPidLen leert bytelengtes uit metingen, dus een PID die niet in de pollronde staat levert niets. De run van 13:14 meldde "0 afwijkend" en dat las als opgelost, terwijl het "niet gekeken" betekende. Ze staan nu in de meet-PIDs, en test-begeleid.js bewaakt dat die lijst de issues blijft dekken.',
 
-    'plmutate.sh — zeventien mutaties. De nieuwe zet de oude volgorde terug (updPID vóór het oordeel) en verwacht test-healthherziening.js rood.',
+    'BLOK 5 — ZES PROEVEN ERBIJ, onder de kop DE RIT-OOGST. Eén per issue: #19 (raildruk over een hele rit met vier aanvragers), #15 (wat vier aanvragers met de bus deden), #40 (de gemeten bytelengte van 0155/0156), #18 (stond de lus stil op de achtergrond), #17 (recorder-UTC naast de logger, hard gemeten in plaats van beschreven) en #29 (ziet blok 14 een opruiming die echt gebeurde). Ze meten niets nieuws — ze lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate, en spreken één oordeel uit. Alle zes gratis: geen buscommando, geen AI-call.',
 
-    'BLOK 5 — de #78-proef is bijgewerkt, niet toegevoegd. Hij noemt nu beide mogelijke oorzaken in zijn foutregel, meldt welke afgekeurde sensoren hij als tegenproef had, en geeft LET OP wanneer die er niet waren. De drie parserproeven en de #58-proef blijven staan: hun vragen zijn nog open.',
+    'BLOK 5 — DE #78-PROEF IS ERUIT. Die vroeg of een PID niet-ok kan staan terwijl hij meet. De run van 13:14 antwoordde: 55 beoordeeld, 2 niet-ok, geen enkele met een versheidsstempel. Vraag beantwoord, issue gesloten, en de logica staat met een mutatie achter test-healthherziening.js — dat is een sterkere bewaker dan een proef die alleen draait als iemand een testrun doet.',
+
+    'test-begeleid.js — de volgorde van de drie nieuwe stappen wordt bewaakt, en RIT_PIDS ook. plmutate.sh staat op negentien mutaties: een hernoemde stap-id en een uitgeklede meet-PID-lijst horen allebei rood te worden.',
 
     '── WAT DEZE RONDE NIET OPLOST ─────────',
 
-    '#58/#79 — de tweede FOUT van de run: het werkscherm liep tot 1730px door terwijl de navigatiebalk op 784px begint. Op ≤760px krijgt .app height:auto en mág #appGrid langer zijn dan het scherm; of dit een echte bevinding is of een proef die scrollende inhoud verkeerd leest, is alleen op een toestel te beslissen. Onveranderd.',
+    'NIETS AAN DE MEETKETEN. FILTERED_PIDS in pidlane-datalog.js regel 75 wordt nog steeds met de verkeerde sleutelvorm bevraagd; laag 2+3 staan uit voor álle PIDs. Blok 5 meldt dat als LET OP zolang het zo is. Dat is een gedragswijziging die een eigen rit verdient — deze rit is er niet voor bedoeld.',
 
-    'DE LET OP OVER HET VOERTUIGPROFIEL. Blok 1 meldde "staat in de opslag maar is bij het verbinden NIET geladen" voor een profiel van 0,3 uur oud. Dat profiel is in déze sessie zelf ontstaan (opgeslagen om 11:48:52, de run begon om 12:04) en kon dus niet geladen zijn. Nagevraagd bij de rijder: er was een nieuwe versie geladen, en dan is de opslag leeg. Doe je dat niet, dan laadt het profiel gewoon en meldt blok 1 "snelle start". Het laden mankeert dus niets, de melding wel — en uitgerekend in de sessies waarin je een oplevering uitprobeert slaat hij vals alarm. De uitzondering ervoor kijkt naar 0,1 uur en die marge is te krap zodra je een kwartier na het verbinden meet. Vastgelegd in PIDLANE.md §11 en als issue #86 — een tweede onderwerp, dus niet hier.',
+    '#90 — "Stille sensoren" leest de selectie die de sweep zojuist heeft overschreven, niet die van jou. Gevonden in de run van 13:14: de melding "2 NIET-OK maar wél in de actieve selectie" ging over de sweeplijst van 46, niet over jouw 28. Bewust niet hier gerepareerd, maar wel om te weten bij het lezen van dat blok.',
 
-    'FILTERED_PIDS in pidlane-datalog.js regel 75 wordt nog steeds met de verkeerde sleutelvorm bevraagd; laag 2+3 staan daarmee uit voor álle PIDs. Blok 5 meldt dat als LET OP zolang het zo is. Onveranderd — dat is een gedragswijziging in de meetketen die een eigen rit verdient.',
+    '#86 — blok 1 blijft klagen over het voertuigprofiel zodra je een nieuwe versie laadt. Bekend, en geen app-fout.',
 
-    '#29 en #19 — wachten op een rit van ruim tien minuten met de raildruk in de pollronde. #82 en #83 — het saldo-slot en het kasboek TokenLog. #49 — promptcaching staat nog uit. #40 — 0155 en 0156 stonden ook deze run weer op 1 byte terwijl de tabel 2 zegt. Alle onveranderd.'
+    '#20, #49, #64, #82, #83 — die hebben geen rit nodig maar een besluit of werk aan de worker. Onveranderd.'
   ]
 };
 
