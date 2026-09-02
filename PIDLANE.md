@@ -684,6 +684,70 @@ gedráaid zijn. Dat is iets anders dan wat ze zouden merken, en tussen die twee
 zat hier een gat van vier fouten. Een groene reeks is pas een uitspraak als er
 een tegenproef onder ligt.
 
+### De gezondheidscheck stempelde vóór hij oordeelde — 02-09-2026 (opgelost)
+
+Gevonden in de testrun van 02-09 om 12:05, als een van de twee FOUTen:
+*"019D staat als niet-ok terwijl hij meet — de herziening vuurt niet (#78)"*.
+De proef had gelijk, de oorzaak die hij noemde niet.
+
+`initialHealthScan()` in `pidlane-rijsituatie.js` deed dit:
+
+```js
+const val=parsePID(pid, raw);
+if(val==null){ _pidHealth[pid]='onzin'; onzin++; continue; }
+updPID(pid,val);                          // ← stempelt
+const q=assessPidQuality(pid,val,true);   // ← en oordeelt dan pas
+_pidHealth[pid]=q.status;
+```
+
+`updPID()` zet `_pidLastUpd[pid]`. Dat is de **versheidsbron**: blok 5, blok 14
+en de stale-watchdog lezen hem als "deze sensor heeft in deze sessie een
+meting opgeleverd". Stond het oordeel daarna op `nodata` of `onzin`, dan
+vertelde het verslag twee dingen tegelijk die elkaar uitsluiten.
+
+**Waarom uitgerekend 019D.** Turbo temp inlaat B parseert als `b[0]-40`. Een
+atmosferische motor antwoordt met `0x00`, dus -40 °C — exact het
+definitie-minimum. Daar is de dummy-detectie in `assessPidQuality()` voor: een
+waarde precies op het minimum in categorie Temp/Emissie leest als "sensor niet
+aanwezig". Dat oordeel is goed en is niet aangeraakt.
+
+**En daarom kon de herziening het niet rechtzetten.** `plHealthHerzien()` legt
+een nieuwe meting langs diezelfde regel. Voor een sensor die er niet is komt
+daar elke keer weer -40 uit, dus elke keer weer `nodata`. Wie naar de melding
+keek zocht dus in een functie die correct werkte, terwijl de fout een regel
+eerder stond. Dat is het patroon van §11 in het klein: *de melding wees naar de
+laatste stap in de keten, niet naar de stap waar het misging.*
+
+**Wat er nu staat.** De scan oordeelt eerst en stempelt daarna, en alleen bij
+`ok`. Een tweede gevolg dat er gratis bij komt: een waarde die de scan afkeurt
+belandt niet meer in `pidVals` en `pidHist` — tot nu toe bleef die staan,
+terwijl de app hem net zelf onbruikbaar had verklaard.
+
+`test-healthherziening.js` stap 6 draait `initialHealthScan()` in een sandbox
+met de echte defs, de echte parser, laag 1 en het echte oordeel erachter. Er
+wordt eerst vastgesteld dát 019D tot -40 parseert en dát het oordeel die -40
+afkeurt; zonder die twee zou "de scan doet helemaal niets" ook groen geven.
+`plmutate.sh` zet de oude volgorde terug en verwacht die test rood.
+
+### Het voertuigprofiel-alarm heeft een te krappe marge — 02-09-2026
+
+Ook uit de run van 12:05, als LET OP in blok 1: *"55 PIDs, 55 health-oordelen,
+0.3 uur oud — staat in de opslag maar is bij het verbinden NIET geladen; de app
+deed een volle discovery"*.
+
+Dat is vals alarm, en het is dezelfde vorm als de correctie van 26-08 die er al
+in zit. Het profiel is in díé sessie zelf ontstaan: opgeslagen om 11:48:52, de
+testrun draaide om 12:04:29. Zo'n profiel *kán* bij dit verbinden niet geladen
+zijn, want het bestond toen nog niet. De uitzondering daarvoor kijkt naar
+`uur <= 0.1` — zes minuten — en die marge is te krap zodra je een kwartier na
+het verbinden gaat meten, wat bij een begeleide rit van tien minuten de
+normale gang van zaken is.
+
+De marge oprekken is niet de goede reparatie: dan verschuift alleen de grens.
+De vraag is "is dit profiel ná het verbinden ontstaan", en daar hoort het
+verbindingsmoment bij, niet een vaste hoeveelheid uren. Niet in deze PR
+opgelost — één onderwerp per PR. Staat als [#86](https://github.com/NewspeedyNL/PidLane/issues/86).
+
 ### Laag 2 en 3 van de meetketen staan uit — 02-09-2026
 
 Gevonden bij het schrijven van `test-parser.js`, en niet in dezelfde oplevering
@@ -761,6 +825,7 @@ de pas, en dan is de vraag welke klopt.
 | [#69](https://github.com/NewspeedyNL/PidLane/issues/69) | "Mijn account" ontbreekt in het ☰-menu bij een gebruikersaccount | bug |
 | [#71](https://github.com/NewspeedyNL/PidLane/issues/71) | de demo-autokiezer valt achter de Android-navigatieknoppen (gemist door #58) | bug |
 | [#79](https://github.com/NewspeedyNL/PidLane/issues/79) | blok 5 meldt FOUT op de veilige zones — melding of meting? | meten |
+| [#86](https://github.com/NewspeedyNL/PidLane/issues/86) | blok 1 meldt "profiel niet geladen" voor een profiel uit dezelfde sessie — de marge van 0,1 uur is te krap | bug |
 
 Op 01-09 uit deze tabel gehaald omdat ze inmiddels gesloten zijn: #12, #13,
 #14, #16, #22, #24, #25, #30 en #74 (die laatste dezelfde dag gerepareerd). Op
