@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '6.9 (02-09-2026)';
+const TESTRUN_VERSIE = '7.0 (03-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2453,24 +2453,54 @@ const PROEVEN_B5 = [
   // Zonder die stap kan deze proef niets zeggen, en dat zegt hij dan ook.
   {
     issue: '#18',
-    naam: '#18 — stond de meetlus stil op de achtergrond?',
-    waarom: 'Stap 7 van de begeleide rit zet de markering; hier staat wat eruit kwam.',
+    naam: '#18 — weet de app dat hij weg was, en komt hij met opzet terug?',
+    waarom: 'De bevriezing zelf is niet vanuit JavaScript te repareren. Wat wél kan is ervan weten — en dat is wat 7.0 toevoegt.',
     proef: function () {
       const m = _markeringen.filter(function (x) { return /achtergrond in/i.test(x.tekst); }).pop();
       if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — stap 7 van de begeleide rit is niet gedaan, ' +
         'dus over #18 zegt deze rit niets' };
+      if (!window.PLAchtergrond || typeof PLAchtergrond.sinds !== 'function')
+        return { staat: 'FOUT', detail: 'PLAchtergrond ontbreekt — dan weet de app nog steeds niets van zijn eigen pauze, ' +
+          'en blijft het gat iets dat PLRit achteraf moet raden (#18)' };
+
       let gaten = [];
       try { gaten = PLRit.gaten() || []; } catch (e) { return { staat: 'LET OP', detail: 'PLRit.gaten() onbereikbaar' }; }
       const sinds = gaten.filter(function (g) { return g.van >= m.ms - 2000; });
       const grootste = sinds.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0);
-      const kop = 'markering om ' + m.t + ', daarna ' + sinds.length + ' onderbreking(en), grootste ' + grootste + ' s';
-      if (grootste >= 30)
-        return kop + ' — de meetlus stond stil terwijl de app op de achtergrond was. #18 is hiermee GEREPRODUCEERD ' +
-          'op dit toestel, en dat is wat het issue nodig had om van vermoeden naar bevinding te gaan';
-      if (!sinds.length)
-        return kop + ' — GEEN gat: de lus liep door op de achtergrond. Op dit toestel is #18 niet te reproduceren; ' +
-          'noteer merk, Android-versie en of het scherm aan bleef';
-      return { staat: 'LET OP', detail: kop + ' — wel gehaperd, maar te kort voor de bevriezing uit #18' };
+
+      let bgs = [];
+      try { bgs = PLAchtergrond.sinds(m.ms - 2000) || []; } catch (e) { return { staat: 'LET OP', detail: 'PLAchtergrond.sinds() gaf een fout' }; }
+      const bgGrootste = bgs.reduce(function (a, p) { return Math.max(a, p.s || 0); }, 0);
+      const kop = 'markering om ' + m.t + '  |  PLRit leidt ' + sinds.length + ' onderbreking(en) af, grootste ' + grootste +
+        ' s  |  PLAchtergrond wéét er ' + bgs.length + ', grootste ' + bgGrootste + ' s';
+
+      // DE KERN VAN 7.0. Twee bronnen die langs verschillende weg naar
+      // hetzelfde moeten wijzen: PLRit leidt het gat af uit zijn eigen tikken,
+      // PLAchtergrond hangt aan visibilitychange. Lopen ze uiteen, dan is dat
+      // interessanter dan of er een gat was.
+      if (!bgs.length && grootste >= 30)
+        return { staat: 'FOUT', detail: kop + ' — de meetlus stond ' + grootste + ' s stil maar PLAchtergrond legde niets vast. ' +
+          'De luisteraar op visibilitychange vuurde dus niet: precies de stille vorm die 7.0 moest wegnemen' };
+      if (bgs.length && !sinds.length)
+        return { staat: 'LET OP', detail: kop + ' — PLAchtergrond zag een pauze waar PLRit geen gat afleidt. ' +
+          'Dat kan: kort weg, of de pollus liep door. Geen bevinding, wel het vermelden waard' };
+      if (bgs.length && grootste >= 30 && Math.abs(bgGrootste - grootste) > Math.max(15, grootste * 0.25))
+        return { staat: 'LET OP', detail: kop + ' — de twee bronnen verschillen meer dan een kwart. ' +
+          'Een van beide meet iets anders dan de onderbreking zelf' };
+
+      // En de tweede helft: is de socket bij terugkomst nagekeken?
+      const laatste = bgs.length ? bgs[bgs.length - 1] : null;
+      const sock = laatste ? (laatste.socket || 'niet nagekeken (korter dan de drempel)') : '—';
+      if (laatste && /ontbreekt/.test(String(laatste.socket)))
+        return { staat: 'FOUT', detail: kop + '  |  socket: ' + sock + ' — de haak naar sppReconnectGuard is weg, ' +
+          'dus de app komt weer per ongeluk achter een dode socket in plaats van met opzet' };
+
+      if (!bgs.length && !sinds.length)
+        return { staat: 'LET OP', detail: kop + ' — geen van beide bronnen zag een onderbreking. Ben je wel echt ' +
+          'twee minuten weg geweest, en bleef de app draaien?' };
+
+      return kop + '  |  socket: ' + sock + ' — beide bronnen wijzen dezelfde kant op: de app weet dat hij weg was ' +
+        'en komt met opzet terug. Dat is wat 7.0 aan #18 toevoegt; de bevriezing zelf blijft native werk';
     }
   },
 
@@ -3765,16 +3795,27 @@ const _STAPPEN = [
       try { gaten = PLRit.gaten() || []; } catch (e) { return { ok: false, tekst: 'PLRit.gaten() onbereikbaar — de proef kan niets zeggen' }; }
       const sinds = gaten.filter(function (g) { return g.van >= m.ms - 2000; });
       const grootste = sinds.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0);
+      // SINDS 7.0 STAAN ER TWEE BRONNEN NAAST ELKAAR. PLRit LEIDT een gat af
+      // uit zijn eigen tikken: hij ziet achteraf dat er niets langskwam.
+      // PLAchtergrond WEET het, want die hangt aan visibilitychange. Wijzen ze
+      // dezelfde kant op, dan klopt het beeld; ziet PLRit een gat dat
+      // PLAchtergrond niet kent, dan lag de lus stil om een andere reden en is
+      // dat een bevinding op zichzelf.
+      let bg = null;
+      try { bg = (window.PLAchtergrond && PLAchtergrond.laatste) ? PLAchtergrond.laatste() : null; }
+      catch (e) { console.warn('PLAchtergrond onleesbaar bij de achtergrondstap', e); }
+      const bgTekst = !window.PLAchtergrond ? 'PLAchtergrond ontbreekt — dan weet de app nog steeds niets van zijn eigen pauze (#18)'
+        : (!bg ? 'PLAchtergrond legde niets vast' : 'PLAchtergrond: ' + bg.s + ' s' + (bg.socket ? ', ' + bg.socket : ''));
       // Allebei de uitkomsten zijn een meting. Dat is het punt: tot nu toe was
       // er alleen een vermoeden, en een vermoeden sluit geen issue.
       if (grootste >= 30)
         return { ok: true, tekst: weg + ' s weg geweest, grootste gat daarna ' + grootste + ' s over ' + sinds.length +
-          ' onderbreking(en) — de meetlus stond stil terwijl de app op de achtergrond was. Dat is #18, gereproduceerd' };
+          ' onderbreking(en) — de meetlus stond stil terwijl de app op de achtergrond was. Dat is #18, gereproduceerd.  |  ' + bgTekst };
       if (!sinds.length)
         return { ok: true, tekst: weg + ' s weg geweest en GEEN gat in de meting — de lus liep door op de achtergrond. ' +
-          'Dat spreekt #18 tegen op dit toestel; noteer het merk en de Android-versie erbij' };
+          'Dat spreekt #18 tegen op dit toestel; noteer het merk en de Android-versie erbij.  |  ' + bgTekst };
       return { ok: true, tekst: weg + ' s weg geweest, grootste gat ' + grootste + ' s — te klein om de bevriezing uit #18 te zijn, ' +
-        'maar de lus haperde wel' };
+        'maar de lus haperde wel.  |  ' + bgTekst };
     }
   },
   {
@@ -4147,83 +4188,49 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 02-09 (achtste) — verbergen is geen uitzetten',
+  titel: 'OPLEVERING 03-09 — de app weet dat hij weg was, en komt met opzet terug (#18)',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
 
-    'Een dubbeltik op een tegel deed twee dingen tegelijk: de sensor uit de selectie halen — dus stoppen met meten, waarmee ook de historie, de rit-opname en de analyse hem kwijtraakten — én de tegel van het scherm halen. Eén handeling met twee betekenissen, en de dure helft was onzichtbaar: je klikte een tegel weg omdat hij in de weg stond, en je verloor er stilletjes een meting mee. Sinds deze ronde raakt dat gebaar alleen het scherm.',
+    '#18 is de zwaarste bug die openstond (ernst:2) en hij is op 02-09 om 22:04 voor het eerst met opzet nagemeten: twee minuten weg uit de app, en de meetlus stond 190 seconden stil. Daarmee ging hij van vermoeden naar bevinding. Deze ronde doet er iets aan — niet alles.',
 
-    'De slimme weergave deelde tegels in op wat voor SOORT signaal het was, en dat bepaalde meteen hoe groot ze in beeld kwamen. Een brandstofpeil dat een uur lang 68% aanwijst kreeg daardoor het grootste cijfer van het scherm, terwijl een MAF die op 2,00 g/s vastligt er even opgewekt bij stond als een koelwater dat klimt. De vorm klopte; wat ontbrak was de tweede vraag: hoeveel zegt dit nú?',
+    'WAT ER NIET GEBEURT. De bevriezing zelf blijft. Android bevriest de timers van een WebView en daar is vanuit JavaScript niets tegen te doen; dat is richting 1 uit het issue en dat is native werk (foreground service plus wake lock). Wie dat verwacht van deze oplevering, wordt teleurgesteld.',
 
-    'DEZE OPLEVERING VERANDERT NIETS AAN WAT DE APP MEET. Ze verandert alleen hoeveel ruimte een meting krijgt. Wat lang genoeg is bekeken en stilligt zakt naar één regel in het nieuwe vak Rustig; wat op oranje of rood staat wordt juist groot, ook als het vastligt. Of die indeling op jóúw auto klopt is geen vraag voor een node-test — daar is het setje PIDs verzonnen. Dat is wat deze rit moet uitwijzen.',
+    'WAT ER WÉL GEBEURT — richting 2 uit het issue. De app WEET voortaan dat hij weg is geweest, hoe lang, en komt met opzet terug. Dat laatste is het dure deel: uit het log van 23-08 hervat de app om 23:31:00 en meldt zestien seconden later "socket dood na 012E1". Android had de socket allang opgeruimd, maar dat bleek pas toen de pollus er een commando in probeerde te schrijven — met de ELM-interpreter in een andere staat dan de app dacht. Die zestien seconden zijn rommel.',
+
+    'EN ER WAS AL VIJF KEER EEN HALF ANTWOORD. In de app stonden vijf luisteraars op visibilitychange — btflow, bulk, fuel, koopcheck, neon en rit — die elk voor zichzelf beslissen wat "weg" betekent en geen van alle het gat vastleggen. Precies wat CLAUDE.md verbiedt met "één ding heeft één betekenis". Ze blijven hun eigen werk doen (flushen, pauzeren); het OORDEEL over de onderbreking staat nu op één plek.',
 
     '── STAP VOOR STAP ─────────────────',
 
-    'STAP A. Doe de begeleide rit hélemaal, van stap 1 tot 13. Elke overgeslagen stap is een issue dat open blijft, en dat staat dan ook met zoveel woorden in het verslag. Reken op een kwartier rijden: tien minuten voor #29 en #19, plus twee minuten achtergrond voor #18.',
+    'STAP A. Doe de begeleide rit weer helemaal, dertien stappen. Reken op een kwartier: tien minuten rijden plus twee minuten achtergrond.',
 
-    'STAP B. Let bij stap 3 op of de caravan-tracker écht aanging. Lukt dat niet, dan is het bijna altijd de knop 🔌 Check connectie die nog niet is ingedrukt — druk die in en doe de stap opnieuw. Zonder die vierde aanvrager blijven #19 en #15 open, en dat is precies waar de vorige vier ritten op strandden.',
+    'STAP B. Stap 7 is deze ronde het onderwerp. Ga twee minuten weg uit de app en blíjf rijden. Kom terug en kijk wat er in het logboek staat: er hoort nu één regel te staan die zegt hoe lang je weg was, met "socket nagekeken" erachter. Stond die regel er niet, dan vuurde de luisteraar niet en is dat de bevinding.',
 
-    'STAP C. Bij stap 7 ga je twee minuten weg uit de app. Blijf rijden. Kom terug en druk op Verder; de app rekent zelf uit of de meetlus stilstond.',
+    'STAP C. Lees daarna in blok 5 de proef "#18 — weet de app dat hij weg was". Die legt twee bronnen naast elkaar: PLRit LEIDT een gat af uit zijn eigen tikken, PLAchtergrond WEET het van visibilitychange. Wijzen ze dezelfde kant op, dan klopt het beeld. Ziet PLRit wél een gat en PLAchtergrond niet, dan is dat FOUT — dan lag de lus stil zonder dat de app het doorhad, en dat is exact wat deze ronde moest wegnemen.',
 
-    'STAP D. Stap 9 en 10 vragen jouw oordeel en dat van niemand anders. Bij 9 kijk je of de temperatuurbalken en de trendlijnen kloppen (#66). Bij 10 scroll je de live view helemaal naar beneden en kijk je of er iets achter de drie Android-knoppen valt (#79/#58) — die vraag staat sinds 01-09 open en die stap is nog nooit uitgevoerd.',
-
-    'STAP D3 — VERBERGEN. Dubbeltik onderweg één tegel weg die je toch niet leest. Kijk of hij onderaan in de strook verschijnt met een korte naam, en of daar staat dat er nog gemeten wordt. Dubbeltik daarna op die naam om hem terug te halen. Wat je NIET moet zien: dat de sensor uit je selectie verdwijnt — controleer dat desnoods in het keuzescherm, het vinkje hoort gewoon aan te staan.',
-
-    'STAP D2 — DE VRAAG VAN DEZE RONDE. Kijk bij stap 9 ook naar het vak Rustig onderaan. Staat daar wat je verwacht: peil, barometerdruk, misschien de accuspanning? Staat er iets in dat je juist groot wilde zien? En kijk of de tellerplaat vijf meters op één rij zet met leesbare namen — MOTOR.RPM, MOTORBELAST — in plaats van MOTORTOE… en GASKLEP P…. Wat er in Rustig belandde staat na afloop in blok 5, met de namen erbij, dus je kunt het achteraf nalezen.',
-
-    'STAP E. Lees na afloop blok 5, het stuk "DE RIT-OOGST". Daar staat per issue of hij dicht kan. Wat er "KAN DICHT" zegt, mag dicht; wat er LET OP zegt, noemt zelf wat er de volgende keer anders moet.',
+    'STAP D. Kijk of de herverbinding sneller ging dan vroeger. Vroeger: zestien seconden rommel na terugkomst. Nu hoort de socketcontrole er meteen te staan. Staat er "Herverbonden ✓" vlak na de achtergrondregel, dan werkte hij; staat er niets, dan leefde de socket nog — ook goed, want de controle grijpt met opzet alleen in als het nodig is.',
 
     '── WAT ER IS VERANDERD ──────────────',
 
-    'VERBERGEN IS GEEN UITZETTEN. Een dubbeltik op een tegel verbergt hem sindsdien; de sensor blijft geselecteerd, wordt gewoon gemeten en telt gewoon mee in de analyse. De regel voor de gebruiker is één zin: dubbeltik wisselt de zichtbaarheid, waar je hem ook doet — op een tegel verbergt hij, op een naam in de strook onderaan haalt hij hem terug.',
+    'NIEUW — pidlane-achtergrond.js. PLAchtergrond legt elke onderbreking vast met duur, negeert korte vensterwissels onder de drie seconden (anders staat de lijst vol met de bestandskiezer), en kijkt vanaf tien seconden de SPP-socket na. Die controle draait met force UIT: de guard doet dan eerst isConnected() en grijpt alleen in als de socket écht dood is. Een gezonde verbinding mag een achtergrondpauze overleven.',
 
-    'UITZETTEN KAN NOG STEEDS, MAAR HEET NU ZO. Het kruisje naast een naam in die strook haalt de sensor uit de selectie en stopt het meten, met een eigen melding. Dat is een benoemde knop in plaats van een tweede betekenis achter hetzelfde gebaar. De kop van de strook zegt met zoveel woorden dat er dóórgemeten wordt; zonder die zin is verborgen niet van uit te onderscheiden en is er niets opgelost maar alleen verplaatst.',
+    'NIEUW — test-achtergrond.js (30 toetsen). De module wordt geladen, niet nagebouwd: de drempels, de lijst en de socketbeslissing komen uit de bron. Met tegenproeven aan allebei de kanten — een korte vensterwissel mag geen bevriezing heten, en een lange mag niet met force=true de verbinding slopen. De test draait op een stuurbare klok; op de echte tijd landden twee overgangen in dezelfde milliseconde en was hij soms groen.',
 
-    'TWEE PLEKKEN WAAR DIT STIL FOUT HAD KUNNEN GAAN. Een PID die je verbergt en daarna via het keuzescherm uitzet liet een verborgen-stand achter: bij opnieuw aanvinken verscheen er geen tegel en zei niets waarom. Dat wordt opgeruimd in renderGauges(), want dáár komen alle vier de selectiepaden langs. En klik je álles weg, dan stond er \"Geen sensoren geselecteerd\" — dat noemt de verkeerde oorzaak en stuurt je naar het verkeerde scherm.',
+    'BEDRADING — sppReconnectGuard staat in KRITIEK. Dat is niet uit voorzorg: de bedradingscontrole gaf zelf FOUT toen de nieuwe module hem achter een typeof-guard aanriep. Verdwijnt die functie, dan doet de controle niets en komt de app weer per ongeluk achter een dode socket.',
 
-    'test-verbergen.js is nieuw: zes gedragstoetsen met zes tegenproeven, en vier mutaties in plmutate.sh (de tabel staat op vierendertig). De DOM-nabootsing daarin onthield eerst élk element dat ooit was aangemaakt, ook nadat het rooster opnieuw was opgebouwd — dan staat een toets groen op een tegel die in de browser niet meer bestaat. Dezelfde soort fout als de appendChild van vanmiddag: een nabootsing die soepeler is dan de browser bewijst niets.',
+    'BLOK 5 en STAP 7 — allebei lezen ze nu PLAchtergrond naast PLRit. plmutate.sh staat op 36 mutaties; twee nieuwe maken test-achtergrond.js rood.',
 
-    'DE MAAT VAN EEN TEGEL VOLGT ZIJN GEDRAG (#61). slimGroep() bepaalt nog steeds de VORM — balk, meter, tegel — maar de MAAT komt nu uit slimMaat(): staat het oordeel op warn of danger dan wordt de tegel groot, ligt het signaal na 24 metingen stil dan zakt hij naar één regel in het nieuwe vak Rustig, en de rest blijft normaal. De volgorde van die twee regels is het punt: een brandstoftrim die vastligt op +25% is juist het gevaarlijkste geval en mag niet wegzakken ómdat hij niet beweegt.',
-
-    'OMHOOG MAG ALTIJD, OMLAAG ALLEEN BIJ DE HERWEGING. Er is één herweging per opbouw, dertig seconden na het tekenen. Daarna blijft de indeling staan, behalve dat een tegel die uit Rustig omhoog moet dat meteen doet — een auto die stilstond en gaat rijden heeft een snelheid die daar niet thuishoort. Andersom niet: een tegel die tijdens het rijden van vak wisselt maakt het scherm onleesbaar, en dat is erger dan een tegel met het verkeerde formaat.',
-
-    'DE TELLERPLAAT DRAAGT KORTE NAMEN, EN NOOIT TWEE KEER DEZELFDE (#68). Vijf meters pasten niet naast elkaar en hun namen werden afgekapt tot MOTORTOE… en ABS. MOTO…. slimMeterLabels() leent hudShortLabel() uit de HUD — afkorten op betekenis, dus geen tweede lijst — en legt er de garantie overheen die de HUD niet nodig heeft: bij een botsing valt de hele groep terug op de volledige naam. Gaspedaal D en E kwamen allebei uit op GASPED POS.',
-
-    'test-slimmeweergave.js — vier nieuwe gedragstoetsen (de maat, de herweging, de asymmetrie, de namen) met zes tegenproeven ernaast, en vier mutaties in plmutate.sh zodat die tegenproef blijft draaien als niemand er meer aan denkt. De tabel staat op dertig, allemaal gevangen.',
-
-    'BIJBOEKEN LOOPT DOOR HET SALDO-SLOT (#82). Vier plekken in de Worker lezen het saldo en schrijven het terug; drie ervan deden dat binnen metSaldoSlot() en de vierde niet — bijboeken vanuit de beheerpagina. De waarschuwing die daar stond ging over twee beheerders op dezelfde seconde, en die botsing bestaat niet. De botsing die wél bestaat is beheerder × klant: jij boekt 100 bij terwijl hij een analyse draait, en één van beide mutaties verdwijnt. Sinds nu loopt ook die vierde door het slot.',
-
-    'HIER STAAT DAAROVER GEEN PROEF IN BLOK 5, EN DAT IS EXPRES. Een proef die iets zou toevoegen zou een echte saldowijziging op een echte klant moeten doen, en dat is precies wat je niet wilt uitproberen. Het bewijs ligt in test-bijboeken.js: die toetst de volgorde (slot dicht, lezen, schrijven, slot open) en niet alleen dat het slot wordt aangeroepen, want dat laatste zou ook groen staan als het lezen ernaast liep. Vier mutaties in plmutate.sh maken die test rood.',
-
-    'BLOK 5 IS EEN LIJST GEWORDEN (6.6). De zeventien proeven stonden in één functie van 585 regels waar elke oplevering in geknipt werd, met bovenaan een banner die opsomde wat erbij kwam en wat eruit ging — en die opsomming stond hier ook. Twee lijsten van hetzelfde, met de hand bijgehouden, precies de vorm die §11 van PIDLANE.md vorige week de kop kostte. Nu is elke proef een entry met een issue erbij, en de regel BLOK 5 DEKT DEZE RONDE hierboven wordt daaruit afgeleid. De proefcode zelf is regel voor regel dezelfde gebleven: nagemeten, zeventien blokken, geen verschil.',
-
-    'WAT DAT VOOR EEN VOLGENDE OPLEVERING BETEKENT. Een proef toevoegen is een entry toevoegen; een proef weghalen is een entry weghalen. De loper eronder blijft ongemoeid en er is geen opsomming meer om te vergeten. test-blok5lijst.js bewaakt dat elke entry een issue, een naam, een waarom en een proef heeft, en dat de afgeleide dekking niet stilletjes leeg raakt — plmutate.sh maakt allebei rood.',
-
-    'DE BEGELEIDE RIT GAAT VAN 10 NAAR 13 STAPPEN. Stap 3 zet nu ook de caravan-tracker aan in plaats van je te vragen dat zelf te doen — dat stond er vier ritten lang als tekst en is geen enkele keer gebeurd. Stap 7 is nieuw: twee minuten achtergrond, met een markering ervoor, zodat een gat in de meetlus aan dát moment te koppelen is (#18). Stap 9 en 10 zijn nieuw en vragen jouw oordeel (#66, #79).',
-
-    'RIT_PIDS KRIJGT 0155 EN 0156 ERBIJ (#40). PLPidLen leert bytelengtes uit metingen, dus een PID die niet in de pollronde staat levert niets. De run van 13:14 meldde "0 afwijkend" en dat las als opgelost, terwijl het "niet gekeken" betekende. Ze staan nu in de meet-PIDs, en test-begeleid.js bewaakt dat die lijst de issues blijft dekken.',
-
-    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Die opsomming staat hier niet meer als tekst maar wordt uit PROEVEN_B5 afgeleid — tot 6.5 stond hij twee keer met de hand geschreven (hier en in de banner boven blok 5), en dan is de vraag welke van de twee klopt. De proeven onder DE RIT-OOGST meten niets nieuws: ze lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate, en spreken per issue één oordeel uit. Alle gratis: geen buscommando, geen AI-call.',
-
-    'test-begeleid.js — de volgorde van de drie nieuwe stappen wordt bewaakt, en RIT_PIDS ook. plmutate.sh staat op negentien mutaties: een hernoemde stap-id en een uitgeklede meet-PID-lijst horen allebei rood te worden.',
+    'BLOK 5 DEKT DEZE RONDE: #52, §8, #42, #49, #76, #75, #79, §11, #19, #15, #40, #18, #17, #29, #61. Die regel is afgeleid uit de proevenlijst zelf en niet met de hand bijgehouden — test-blok5lijst.js maakt hem rood zodra er een proef bij komt die hier niet in staat.',
 
     '── WAT DEZE RONDE NIET OPLOST ─────────',
 
-    'NIETS AAN DE MEETKETEN. FILTERED_PIDS in pidlane-datalog.js regel 75 wordt nog steeds met de verkeerde sleutelvorm bevraagd; laag 2+3 staan uit voor álle PIDs. Blok 5 meldt dat als LET OP zolang het zo is. Dat is een gedragswijziging die een eigen rit verdient — deze rit is er niet voor bedoeld.',
+    '#98 — met vier aanvragers kreeg de sweep het busslot niet binnen 8 s en mat hij naast de pollus: 1250 ms per PID in plaats van 200. Gevonden in de rit van 22:15 en nog open. Blok 3 meldt het zelf met LET OP, dus je ziet het in het verslag terug.',
 
-    '#90 — "Stille sensoren" leest de selectie die de sweep zojuist heeft overschreven, niet die van jou. Gevonden in de run van 13:14: de melding "2 NIET-OK maar wél in de actieve selectie" ging over de sweeplijst van 46, niet over jouw 28. Bewust niet hier gerepareerd, maar wel om te weten bij het lezen van dat blok.',
+    '#79 — de veilige zones. De rit van 22:15 liep op de tablet, waar de proef per definitie klopt; de twee FOUT-runs liepen op de telefoon. Doe stap 10 nog eens op de SM-S947B, dan is die vraag beslist.',
 
-    'DE VERBORGEN STAND WORDT NIET BEWAARD. Na een herstart staan alle tegels er weer. Bewaren per auto hoort bij #94, met de vragen die daarbij horen: waar hoort een verborgen PID als je een andere auto aansluit, en wat gebeurt er bij een gewiste opslag. Voor nu is teruggeven de veilige kant — een tegel die je een maand geleden hebt weggeklikt en niet meer kent is erger dan een tegel te veel.',
+    '#17 — de recorder schrijft UTC en de logger lokale tijd. Hard gemeten in de vorige rit, nog niet gerepareerd. Blok 5 meldt het als LET OP.',
 
-    'VERBERGEN MAAKT DE POLLUS NIET KORTER. De PID wordt gewoon gevraagd. Wil je de ronde korter, dan is dat de sensorkeuze — en dat is precies waarom die twee nu uit elkaar staan.',
-
-    'DE HANDMATIGE KANT VAN DE WEERGAVE. Zelf een tegel groot of klein zetten, of verbergen, en dat per auto bewaren — dat is bewust NIET gebouwd. Het voegt blijvende staat per voertuig toe, een extra modus aan een scherm dat er al vier draagt, en het raakt de sensorkeuze die met #90 nog niet op orde is. Eerst een maand rijden op de automatische indeling: dan weet je welke tegels je écht met de hand wilt verzetten. Staat als #94 open.',
-
-    'ABS. MOTORBELASTING KORT NOG STEEDS AF TOT ABS. MOTO. Dat komt uit stap 3 van hudShortLabel(), en die functie is van de HUD — hem verbouwen verandert ook de hoekmeters daar, en dat is een eigen onderwerp. De botsingscontrole vangt het niet, want het botst met niets; het is alleen geen naam. Staat als #95 open.',
-
-    '#86 — blok 1 blijft klagen over het voertuigprofiel zodra je een nieuwe versie laadt. Bekend, en geen app-fout.',
-
-    '#20, #49, #64, #82, #83 — die hebben geen rit nodig maar een besluit of werk aan de worker. Onveranderd.'
+    'FILTERED_PIDS — laag 2+3 staan nog steeds uit voor álle PIDs. Onveranderd, en nog steeds een eigen rit waard.'
   ]
 };
 
