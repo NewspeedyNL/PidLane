@@ -23,7 +23,8 @@
 # en zet het bestand daarna terug.
 #
 # Exit 0 = elke nagebouwde fout is gevangen.
-# Exit 1 = er is een fout doorheen gekomen; die test dekt minder dan hij lijkt.
+# Exit 1 = er is een fout doorheen gekomen (die test dekt minder dan hij lijkt),
+#          of een anker paste niet meer en die fout is dus niet eens nagebouwd.
 #
 # WANNEER JE HEM DRAAIT
 # Niet bij elke commit — `plcheck.sh` blijft de poort vóór het committen.

@@ -58,10 +58,11 @@ wijzigingen: hij schrijft in je bronbestanden. In CI draait hij als eigen job,
 dus vergeten kan niet — daar is de checkout altijd schoon.
 
 **Verandert er gedrag dat in de tabel staat, dan verandert de mutatie mee.**
-Een anker dat niet meer past wordt overgeslagen, en een overgeslagen mutatie
-toetst niets. Nieuwe mutatie erbij? Neem een fout die je écht had kunnen maken.
-De vraag is niet "kan ik dit stukmaken" maar "welke stille fout hoort gevangen
-te worden".
+Een anker dat niet meer past bouwt niets na, en dat is óók exit 1 — met de
+naam van de mutatie erbij. Repareer het anker (er een regel bij nemen met `\n`
+maakt hem langer en dus unieker) of haal de mutatie weg met de reden erbij.
+Nieuwe mutatie? Neem een fout die je écht had kunnen maken. De vraag is niet
+"kan ik dit stukmaken" maar "welke stille fout hoort gevangen te worden".
 
 **Nagemeten op 02-09-2026, en dat is de reden dat dit script bestaat.** Vier
 plausibele fouten in de meetketen — een off-by-one in de header-echo van
