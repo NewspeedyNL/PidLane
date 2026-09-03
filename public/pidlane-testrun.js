@@ -104,6 +104,33 @@ function _appLogRegels() {
 //
 // Apart en zuiver, zodat test-opruimmelding.js hem kan draaien zonder een
 // browser en zonder testrun-context. Knippad: tussen de twee ankers hieronder.
+// ── STILLE SENSOREN (blok 11) ─────────────────────────────────────
+// Apart en zuiver zodat test-stille-selectie.js hem kan draaien zonder browser
+// en zonder testrun-context. `actief` wordt BEWUST doorgegeven in plaats van
+// hier opgehaald: welke selectie de juiste is, is precies wat #90 fout had, en
+// een functie die zijn eigen bron kiest kun je daar niet op toetsen.
+// Knippad: tussen de twee ankers hieronder.
+function _stilleSensorenStand(h, actief) {
+  const sleutels = Object.keys(h || {});
+  if (!sleutels.length) return { staat: 'LET OP', detail: 'geen health-oordelen — nog niet lang genoeg gepolld' };
+
+  const perStaat = {};
+  const stilInSelectie = [];
+  sleutels.forEach(function (p) {
+    const st = String(h[p] && h[p].staat ? h[p].staat : h[p]);
+    perStaat[st] = (perStaat[st] || 0) + 1;
+    if (st !== 'ok' && actief && actief.has && actief.has(p)) stilInSelectie.push(p);
+  });
+
+  const verdeling = Object.keys(perStaat).map(function (k) { return k + ': ' + perStaat[k]; }).join(', ');
+  if (!stilInSelectie.length)
+    return sleutels.length + ' beoordeeld (' + verdeling + '), geen enkele niet-ok PID staat in je selectie';
+  return { staat: 'LET OP', detail: sleutels.length + ' beoordeeld (' + verdeling + '). ' +
+    stilInSelectie.length + ' NIET-OK maar wél in de actieve selectie: ' + stilInSelectie.join(', ') +
+    '  — dit is de populatie waar punt 3 een drempel voor moet kiezen' };
+}
+// ── einde stille-sensoren-blok ────────────────────────────────────
+
 // ── HET PROFIELOORDEEL (blok 1) ───────────────────────────────────
 // WAAROM DIT EEN EIGEN FUNCTIE IS (#86, 03-09-2026)
 // Dit oordeel zat in een anonieme functie in _blok1() en was daarmee alleen te
@@ -260,6 +287,45 @@ async function _doe(blok, naam, fn) {
 // finally, en een kopie in localStorage zodat een crash of een weggezwiepte
 // app de selectie niet permanent kwijtmaakt.
 const HERSTEL_SLEUTEL = 'pl_testrun_herstel';
+
+/* ── WAT HAD DE GEBRUIKER AANSTAAN? (#90, 03-09-2026) ──────────────
+   Blok 3 overschrijft `activePIDs` voor de duur van de PID-sweep, en het
+   herstel gebeurt pas in het `finally` van runTestrun() — dus aan het einde
+   van de HELE run. Alles wat daartussen draait en `activePIDs` leest, meet de
+   sweep en niet de gebruiker.
+
+   Wat dat oplevert, uit de run van 02-09 13:14:
+
+     13:13:59  Selectie bewaard — 28 actieve PIDs
+     13:14:00  PID-sweep — 46 PIDs, selectie tijdelijk overschreven
+     13:14:12  Stille sensoren leest activePIDs → ziet er 46
+     13:14:23  Selectie hersteld — 28 PIDs teruggezet
+
+   De melding die eruit kwam noemde 016D en 019D als "NIET-OK maar wél in de
+   actieve selectie". De busstatistiek van diezelfde run laat zien dat de
+   pollus er 28 heeft uitgevraagd en die twee daar niet bij zaten: ze stonden
+   in de selectie van de SWEEP. De proef wees dus een populatie aan die niet
+   bestond — en juist die proef zegt van zichzelf dat hij de populatie aanwijst
+   waar een drempel op gekozen moet worden.
+
+   Erger dan fout is dat hij STIL fout is: in de run van 12:05 gaf dezelfde
+   proef "geen enkele niet-ok PID staat in je selectie", en dat was net zo goed
+   de sweep-selectie. Hij klopte daar alleen toevallig.
+
+   Eén bron voor de vraag "wat had de gebruiker aanstaan": tijdens een run is
+   dat het herstelpunt, daarbuiten de live selectie. Het `finally` blijft het
+   vangnet voor een afgebroken run — dat is met opzet niet verplaatst. */
+function _gebruikersSelectie() {
+  if (typeof _trBezig !== 'undefined' && _trBezig &&
+      _trHerstel && Array.isArray(_trHerstel.actief))
+    return new Set(_trHerstel.actief);
+  try {
+    if (typeof activePIDs !== 'undefined' && activePIDs) return new Set(activePIDs);
+  } catch (e) {
+    console.warn('Testrun: activePIDs onleesbaar bij het bepalen van de gebruikersselectie', e);
+  }
+  return new Set();
+}
 
 function _bewaarSelectie() {
   const s = {
@@ -3173,9 +3239,9 @@ function _meetStand(e) {
 // het enige dat je hierna kunt doen, dus dat moet erbij.
 function _waaromNiet(pid) {
   const gevraagd = _ritGevraagd.indexOf(pid) > -1;
-  let inSelectie = false;
-  try { inSelectie = !!(typeof activePIDs !== 'undefined' && activePIDs && activePIDs.has && activePIDs.has(pid)); }
-  catch (e) { console.warn('activePIDs niet leesbaar bij het duiden van een niet-gemeten PID', e); }
+  // De selectie van de GEBRUIKER, niet die van de sweep (#90). Blok 14 draait
+  // ná blok 3, dus activePIDs staat hier vol met de sweeplijst.
+  const inSelectie = _gebruikersSelectie().has(pid);
   if (gevraagd && inSelectie) return 'staat sinds stap 2 in de selectie en levert tóch niets — dát is een bevinding';
   if (inSelectie) return 'staat wél in de selectie maar kwam niet aan de beurt — kijk naar het pollbudget (blok 7)';
   return 'stond niet in de selectie; start de begeleide run, stap 2 zet hem erbij';
@@ -3378,26 +3444,9 @@ async function _blok11() {
   await _doe(11, 'Stille sensoren: hoeveel en hoe hardnekkig', function () {
     let h = {};
     try { h = (typeof _pidHealth !== 'undefined' && _pidHealth) ? _pidHealth : {}; } catch (e) { throw new Error('_pidHealth onleesbaar'); }
-    const sleutels = Object.keys(h);
-    if (!sleutels.length) return { staat: 'LET OP', detail: 'geen health-oordelen — nog niet lang genoeg gepolld' };
-
-    let actief = new Set();
-    try { if (typeof activePIDs !== 'undefined') actief = activePIDs; } catch (e) { /* stil: valt terug op een lege set */ }
-
-    const perStaat = {};
-    const stilInSelectie = [];
-    sleutels.forEach(function (p) {
-      const st = String(h[p] && h[p].staat ? h[p].staat : h[p]);
-      perStaat[st] = (perStaat[st] || 0) + 1;
-      if (st !== 'ok' && actief.has && actief.has(p)) stilInSelectie.push(p);
-    });
-
-    const verdeling = Object.keys(perStaat).map(function (k) { return k + ': ' + perStaat[k]; }).join(', ');
-    if (!stilInSelectie.length)
-      return sleutels.length + ' beoordeeld (' + verdeling + '), geen enkele niet-ok PID staat in je selectie';
-    return { staat: 'LET OP', detail: sleutels.length + ' beoordeeld (' + verdeling + '). ' +
-      stilInSelectie.length + ' NIET-OK maar wél in de actieve selectie: ' + stilInSelectie.join(', ') +
-      '  — dit is de populatie waar punt 3 een drempel voor moet kiezen' };
+    // Niet activePIDs (#90): blok 3 heeft die overschreven met de sweeplijst en
+    // herstelt hem pas aan het eind van de run.
+    return _stilleSensorenStand(h, _gebruikersSelectie());
   });
 
   // Bijbehorende vraag uit punt 3: hoe komt een opgeruimde sensor ooit terug?
