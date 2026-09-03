@@ -125,6 +125,18 @@ MUTATIES=(
 "public/pidlane-plfetch.js@@  try{ if(window.PLCredits && PLCredits.volgServer) PLCredits.volgServer(resp.headers, null); }@@  try{ if(false) PLCredits.volgServer(resp.headers, null); }@@test-plfetch.js@@het serversaldo uit X-PidLane-Saldo blijft weer liggen"
 "public/pidlane-plfetch.js@@  if(resp.status===401) diag('Server weigert (401) bij '+pad+' — sessie verlopen of ongeldig','warn');@@@@test-plfetch.js@@een verlopen sessie is weer stil"
 "public/pidlane-klant.js@@    const r = await plFetch(pad, { method: 'POST', geenToken: !metToken, json: body || {} });@@    const r = await fetch(_base() + pad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });@@test-plfetch.js@@een module doet zijn serveraanroep weer zelf, buiten de helper om"
+# ── het scherm dat de gebruiker ziet als de app niet laadt ──
+# Alle drie zijn stille fouten: de workflow bouwt gewoon door, de bundel ziet
+# er goed uit, en je merkt het pas op een toestel zonder netwerk. Dat is het
+# toestel waarop niemand meer kijkt — en bij een Play-review is het het
+# toestel van de reviewer.
+"capacitor.config.json@@    \"cleartext\": false,\n    \"errorPath\": \"error.html\"@@    \"cleartext\": false@@test-foutpagina.js@@de schil is zijn errorPath kwijt en valt terug op de kale WebView-fout"
+".github/workflows/build-apk.yml@@cat > www/error.html@@cat > www/offline.html@@test-foutpagina.js@@de foutpagina is hernoemd zonder capacitor.config.json mee te nemen"
+".github/workflows/build-apk.yml@@          <title>Geen verbinding — PidLane</title>@@          <title>Geen verbinding — PidLane</title>\n          <link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Inter\">@@test-foutpagina.js@@de foutpagina haalt een lettertype van het net dat er juist niet is"
+# ── de knop waar de reviewnotitie naar wijst ──
+# De halve schakelaar: één van de twee demoknoppen gedekt. Dat is precies hoe
+# hij er tot 03-09 in stond, en de fout is onzichtbaar zolang feat_demo aan is.
+"public/pidlane-fuel.js@@  feat_demo:         ['[id=\"btnDemo\"]','[id=\"btnDemoLogin\"]'],@@  feat_demo:         ['[id=\"btnDemo\"]'],@@test-demo-toegang.js@@feat_demo laat de demoknop op het loginscherm als dode knop staan"
 )
 
 echo
