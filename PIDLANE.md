@@ -654,10 +654,11 @@ meer voor klantaccounts.
 transacties kent en dat twee gelijktijdige calls van hetzelfde account elkaars
 afboeking konden overschrijven — met de Durable Object als toekomstige
 oplossing. Die is er sinds 26-08-2026: `metSaldoSlot()` serialiseert elke
-saldomutatie per klant (zie §7). Sinds 02-09-2026 lopen **alle vier** de
+saldomutatie per klant (zie §7). Sinds 03-09-2026 lopen **alle vijf** de
 schrijvers erdoorheen: `handleMessages` (AI-afboeking), `handleCreditsRedeem`
 (activatiecode), `handleKlantOnboarding` (proeftegoed) en
-`handleAdminKlantenPost` met actie `bijboeken`.
+`handleAdminKlantenPost` met de acties `bijboeken` (sinds 02-09, #82) en
+`update` (sinds 03-09, #93).
 
 Die vierde ging er tot dan buitenom (**#82**), en het commentaar erboven wees
 de verkeerde kant op: het waarschuwde voor twee beheerders die op dezelfde
@@ -678,9 +679,40 @@ keer buiten het slot voor het adres, één keer erbinnen voor het saldo waarmee
 gerekend wordt. En een klant zonder e-mailadres wordt geweigerd in plaats van
 buitenom geschreven — er is dan geen naamruimte om het slot op te zetten.
 
-De actie `update` (saldo op een absoluut bedrag zetten) loopt bewust niet door
-het slot: daar stuurt de beheerder het eindbedrag en ziet hij een getal dat hij
-zelf heeft ingetikt. Dat is een ander geval.
+**En toen was er een vijfde.** Hierboven stond dat de actie `update` (saldo op
+een absoluut bedrag zetten) bewust niet door het slot liep, omdat de beheerder
+daar het eindbedrag stuurt en dus een getal ziet dat hij zelf heeft ingetikt.
+Die redenering is op 03-09-2026 met **#93** omgevallen, en op precies dezelfde
+manier als bij #82: hij was gedetailleerd genoeg om vertrouwd te worden, maar
+ging over de verkeerde helft van het probleem.
+
+Zetten rekent inderdaad niet. Maar het **overschrijft**, en dat is even
+onzichtbaar: draait de klant op dat moment een analyse, dan boekt die binnen
+het slot af naar 19 en schrijft terug, waarna deze PATCH er het getal overheen
+zet dat de beheerder minuten geleden op zijn scherm zag. De afboeking verdwijnt
+en de klant houdt tokens die hij verbruikt heeft — het spiegelbeeld van #82.
+Sinds 03-09-2026 loopt het saldogedeelte van `update` daarom door hetzelfde
+slot, met dezelfde twee lezingen. `Status`, `Naam` en `Opmerking` niet: een
+klant deblokkeren hoort niet te wachten op een analyse, en een klant zónder
+e-mailadres moet hernoembaar blijven.
+
+**Een slot beschermt het schrijven, niet het besluit.** Dat is het tweede stuk
+van #93 en het interessantere. `kSaldo()` in `admin/admin.html` vulde het
+invoerveld voor met het saldo uit de klantenlijst — mogelijk minuten oud — en
+rekende in de bevestiging een verschil uit: *"Dat is een verschil van +50
+tokens."* Staat de klant intussen op 150 in plaats van 180, dan wordt het in
+werkelijkheid +80. Je bevestigt dan precies het getal dat je aan het afwegen
+bent, en het klopt niet. Het onderscheid dat #82 maakte — bijboeken rekent,
+zetten niet — hield dus maar half stand: de Worker rekende niet, de pagina wél,
+en met een bron die niet vers was.
+
+Dat verschil is nu geen schatting meer maar een **voorwaarde**. De pagina
+stuurt mee wát er stond (`saldoWas`); klopt dat niet meer met wat er binnen het
+slot gelezen wordt, dan wordt er niets geschreven en komt `saldo_verschoven`
+terug met het verse getal erbij. Zonder `saldoWas` — een oudere pagina — gaat
+het door zoals het ging; het slot beschermt dan nog steeds het schrijven zelf.
+Dat is bewust: een harde eis zou een pagina die nog niet ververst is stilzwijgend
+onbruikbaar maken, en dat is een ander soort stille fout.
 
 ---
 
@@ -2774,6 +2806,42 @@ een exacte prefix en `ai_system_override` zit daarin) en de structurele kant,
 **`Users` als beheerrol in plaats van klantcategorie**. Het menu-item "Mijn
 account" is wel al meegenomen: `pasMenuAan()` verbergt `kbAccount` voor een
 niet-klant, om dezelfde reden en in dezelfde functie als het adminblok.
+
+### Zetten is de gevaarlijke variant, en die liep buitenom — 03-09-2026
+
+**#93.** Bij het repareren van #82 is `bijboeken` door `metSaldoSlot()` gehaald
+en is de actie `update` er bewust buiten gelaten, met een reden die opgeschreven
+is en er goed uitzag: bij zetten stuurt de beheerder het eindbedrag, dus gaat er
+iets mis dan ziet hij een getal dat hij zelf heeft ingetikt. Bij bijboeken rekent
+de Worker, en dáár is een rekenfout onzichtbaar.
+
+Die redenering dekt de helft. Zetten rekent niet, maar het overschrijft, en
+overschrijven is even onzichtbaar als verkeerd rekenen — zie §8 voor het
+mechanisme en voor wat er nu staat. Wat hier de moeite waard is, is dat dit
+**dezelfde fout in dezelfde week** is: bij #82 stond er ook een gedetailleerde
+waarschuwing die over het verkeerde geval ging, en die anderhalve maand bleef
+staan omdat een benoemd risico voelt als een afgewogen risico. Bij #93 was het
+geen waarschuwing maar een vrijstelling — "dit geval hoeft niet" — en die leest
+nog dwingender, want er staat een reden bij.
+
+**De vraag die het onderscheid had gemaakt** is niet "kan hier iets misgaan"
+maar *welke botsing bedoelen we eigenlijk?* Bij #82 werd beheerder × beheerder
+afgewogen terwijl beheerder × klant het geval was. Bij #93 werd "rekent de
+Worker?" afgewogen terwijl "wordt er overschreven?" de vraag was. Beide keren
+was het antwoord op de gestelde vraag juist.
+
+**En er zat een tweede helft in die niet in de Worker zat.** Een slot beschermt
+het schrijven, niet het besluit: de knop in `admin/admin.html` liet de beheerder
+een verschil bevestigen dat op een mogelijk minuten oude lijst was uitgerekend.
+Dat verschil is nu een voorwaarde (`saldoWas`) die de Worker binnen het slot
+natelt — de reparatie liep dus over twee bestanden, en de Worker-helft alleen
+zou de misleidende belofte hebben laten staan.
+
+**Wat dit nog niet oplost.** Of "zetten" überhaupt moet blijven bestaan nu
+`bijboeken` het veilige pad is, is niet beantwoord. Hij bestaat voor het geval
+dat je een verkeerd getal moet rechttrekken; dat is zeldzaam en het is de
+gevaarlijke variant. De vraag staat in #93 beschreven en is bewust niet in deze
+ronde beslist.
 
 ### De tokenketen nagelopen — 02-09-2026
 

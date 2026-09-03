@@ -1,11 +1,24 @@
 // ══════════════════════════════════════════════════════════════════
-// test-bijboeken.js — saldo bijboeken in de Worker
+// test-bijboeken.js — saldo bijboeken én zetten in de Worker
 // ──────────────────────────────────────────────────────────────────
-// WAAROM DIT GETOETST WORDT EN "saldo zetten" NIET
-// Bij zetten stuurt de beheerder het eindbedrag: gaat dat mis, dan ziet hij
-// een getal dat hij zelf heeft ingetikt. Bij bijboeken rekent de Worker, en
-// een rekenfout daar is onzichtbaar tot een klant belt dat zijn tokens weg
-// zijn. Dat is het verschil dat een test rechtvaardigt.
+// HIER STOND WAAROM "saldo zetten" NIET GETOETST WERD, en die redenering is
+// op 03-09-2026 met #93 omgevallen. Ze luidde: bij zetten stuurt de beheerder
+// het eindbedrag, dus gaat er iets mis dan ziet hij een getal dat hij zelf
+// heeft ingetikt; bij bijboeken rekent de Worker, en dáár is een rekenfout
+// onzichtbaar tot een klant belt.
+//
+// Het eerste deel klopte niet. Zetten rekent inderdaad niet, maar het
+// OVERSCHRIJFT, en dat is net zo goed onzichtbaar: draait de klant op dat
+// moment een analyse, dan boekt die binnen het slot af en schrijft terug,
+// waarna deze PATCH er het oude getal overheen zet. De afboeking verdwijnt en
+// de klant houdt tokens die hij verbruikt heeft — exact het gat van #82, maar
+// dan in spiegelbeeld. En de knop in admin.html rekende wél: hij toonde een
+// verschil dat op een mogelijk minuten oude lijst was gebaseerd.
+//
+// Deel 10 t/m 15 toetsen dus de andere kant: dat zetten door hetzelfde slot
+// loopt, dat het meegestuurde `saldoWas` een voorwaarde is en geen sier, en
+// dat een update ZÓNDER saldo nog steeds zonder slot doorgaat — want anders
+// zou je een klant niet meer kunnen deblokkeren zolang het slot bezet is.
 //
 // DE KERN: bijboeken leest het saldo vlak vóór het schrijven. Zou het het door
 // de pagina meegestuurde "huidige" saldo gebruiken, dan schrijf je het
@@ -249,13 +262,162 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
           r.body.code === 'saldo_geen_email', 'code=' + r.body.code);
   }
 
-  // ── 10. de adminpagina kent elke code die deze route kan sturen ──
+  // ── 10. ZETTEN GAAT DOOR HETZELFDE SLOT (#93) ───────────────────
+  // Tot 03-09-2026 schreef deze route Saldo rechtstreeks weg. Het slot dat
+  // bijboeken sinds #82 heeft, ontbrak hier — en de botsing die ertoe doet is
+  // dezelfde: beheerder × klant. Net als bij deel 6 is de vraag niet "wordt
+  // metSaldoSlot aangeroepen" maar of het lezen en schrijven er werkelijk
+  // TUSSEN zitten.
+  console.log('\n10. Saldo zetten schrijft binnen het slot');
+  {
+    const { staat, roep } = bouw(180);
+    const r = await roep({ actie: 'update', id: ID, saldo: 200, saldoWas: 180, door: 'nico' });
+    toets('antwoord is ok', r.body.ok === true, JSON.stringify(r.body));
+    toets('van 180 naar 200', r.body.van === 180 && r.body.naar === 200, JSON.stringify(r.body));
+    toets('het slot staat op het e-mailadres, niet op het record-id',
+          staat.slotOp === 'klant@example.com',
+          'slot stond op ' + JSON.stringify(staat.slotOp));
+    const i = staat.stappen;
+    toets('er is binnen het slot geschreven',
+          i.indexOf('schrijf-binnen') > i.indexOf('slot-dicht') &&
+          i.indexOf('schrijf-binnen') < i.indexOf('slot-open'), i.join(' → '));
+    toets('er is niets buiten het slot geschreven',
+          i.indexOf('schrijf-buiten') === -1, i.join(' → '));
+    toets('er is twee keer gelezen — adres buiten, saldo binnen',
+          staat.gelezen === 2, 'gelezen: ' + staat.gelezen);
+    toets('er is precies één keer geschreven', staat.geschreven.length === 1,
+          JSON.stringify(staat.geschreven));
+    toets('en wel het gevraagde eindbedrag', staat.geschreven[0].Saldo === 200);
+    toets('de auditregel noemt beide bedragen',
+          /180/.test(staat.audits[0].tekst) && /200/.test(staat.audits[0].tekst),
+          staat.audits[0] && staat.audits[0].tekst);
+    toets('de naam gaat mee', staat.audits[0].door === 'nico');
+  }
+
+  // ── 11. TEGENPROEF — saldoWas is een voorwaarde, geen sier ───────
+  // Dit is de kern van #93. De beheerder besloot "zet op 200" toen er 180
+  // stond; inmiddels staat er 150 omdat de klant een analyse draaide. Zou de
+  // handler gewoon schrijven, dan geeft hij die klant 50 tokens terug die hij
+  // net verbruikt heeft — en de beheerder heeft dat nooit gezien, want zijn
+  // bevestigingsvenster rekende met de 180.
+  console.log('\n11. Een verschoven saldo wordt geweigerd, niet overschreven');
+  {
+    const { staat, roep } = bouw(150);            // klant heeft intussen verbruikt
+    const r = await roep({ actie: 'update', id: ID, saldo: 200, saldoWas: 180 });
+    toets('antwoord is niet ok', r.body.ok === false, JSON.stringify(r.body));
+    toets('er is NIETS geschreven', staat.geschreven.length === 0,
+          JSON.stringify(staat.geschreven) + ' — dan is de afboeking van de klant weg');
+    toets('er is niets vastgelegd', staat.audits.length === 0);
+    toets('het is een 409 en geen 200', r.status === 409, 'status ' + r.status);
+    toets('er gaat een code mee die de adminpagina kan herkennen',
+          r.body.code === 'saldo_verschoven', 'code=' + r.body.code);
+    toets('het verse getal gaat mee terug', r.body.huidig === 150,
+          'huidig=' + r.body.huidig + ' — zonder dat moet de beheerder gokken');
+    // De weigering moet uit de vergelijking komen, niet uit het slot: het slot
+    // ging hier gewoon dicht en weer open.
+    toets('het slot is wel degelijk gebruikt', staat.slotOp === 'klant@example.com');
+    toets('en er is binnen het slot vers gelezen',
+          staat.stappen.indexOf('lees-binnen') > staat.stappen.indexOf('slot-dicht'),
+          staat.stappen.join(' → '));
+  }
+
+  // ── 12. hetzelfde getal is geen botsing ─────────────────────────
+  // Zonder deze toets zou "weiger altijd" ook groen staan, en dan werkt de
+  // knop nooit meer.
+  console.log('\n12. Klopt saldoWas wél, dan gaat het gewoon door');
+  {
+    const { staat, roep } = bouw(180);
+    const r = await roep({ actie: 'update', id: ID, saldo: 0, saldoWas: 180 });
+    toets('antwoord is ok', r.body.ok === true, JSON.stringify(r.body));
+    toets('op nul zetten mag', staat.geschreven[0].Saldo === 0,
+          JSON.stringify(staat.geschreven));
+  }
+
+  // ── 13. zonder saldoWas gaat het door zoals het ging ────────────
+  // Achterwaartse compatibiliteit: een oudere adminpagina (of een aanroep met
+  // de hand) stuurt saldoWas niet mee. Dan is er niets om tegenaan te
+  // vergelijken — maar het slot beschermt het schrijven nog steeds.
+  console.log('\n13. Zonder saldoWas: wél het slot, geen vergelijking');
+  {
+    const { staat, roep } = bouw(150);
+    const r = await roep({ actie: 'update', id: ID, saldo: 200 });
+    toets('antwoord is ok', r.body.ok === true, JSON.stringify(r.body));
+    toets('er is geschreven', staat.geschreven.length === 1 && staat.geschreven[0].Saldo === 200);
+    toets('en het ging door het slot',
+          staat.stappen.indexOf('schrijf-binnen') !== -1, staat.stappen.join(' → '));
+  }
+
+  // ── 14. een update ZONDER saldo raakt het slot niet ──────────────
+  // Dit is de tegenhanger die het makkelijkst stilletjes fout gaat: het slot
+  // om de hele update leggen "omdat het veiliger klinkt". Dan kun je een klant
+  // niet meer deblokkeren terwijl hij een analyse draait, en een klant zónder
+  // e-mailadres krijgt nooit meer een nieuwe naam.
+  console.log('\n14. Naam en status gaan buiten het slot om');
+  {
+    const { staat, roep } = bouw(180);
+    const r = await roep({ actie: 'update', id: ID, status: 'geblokkeerd', naam: 'Jan' });
+    toets('antwoord is ok', r.body.ok === true, JSON.stringify(r.body));
+    toets('het slot is niet eens aangevraagd', staat.slotOp === null,
+          'slot stond op ' + JSON.stringify(staat.slotOp));
+    toets('er is niet gelezen', staat.gelezen === 0, 'gelezen: ' + staat.gelezen);
+    toets('en er is geschreven', staat.geschreven.length === 1, JSON.stringify(staat.geschreven));
+    toets('zonder Saldo in de patch', staat.geschreven[0].Saldo === undefined,
+          JSON.stringify(staat.geschreven[0]));
+    toets('VerwijderdOp wordt leeggemaakt bij een statuswijziging',
+          staat.geschreven[0].VerwijderdOp === null, JSON.stringify(staat.geschreven[0]));
+  }
+  {
+    const { staat, roep } = bouw(180, { email: '' });
+    const r = await roep({ actie: 'update', id: ID, naam: 'Jan' });
+    toets('een klant zonder e-mailadres kan nog wél hernoemd worden',
+          r.body.ok === true && staat.geschreven.length === 1, JSON.stringify(r.body));
+  }
+  {
+    const { staat, roep } = bouw(180);
+    const r = await roep({ actie: 'update', id: ID });
+    toets('een lege update wordt nog steeds geweigerd',
+          r.body.ok === false && staat.geschreven.length === 0, JSON.stringify(r.body));
+  }
+
+  // ── 15. het slot faalt: zetten gaat er niet omheen ───────────────
+  console.log('\n15. Een bezet of stuk slot zet geen saldo');
+  {
+    const { staat, roep } = bouw(180, { slot: 'bezet' });
+    const r = await roep({ actie: 'update', id: ID, saldo: 200, saldoWas: 180 });
+    toets('bezet → niet ok', r.body.ok === false, JSON.stringify(r.body));
+    toets('bezet → niets geschreven', staat.geschreven.length === 0);
+    toets('bezet → code saldo_bezet', r.body.code === 'saldo_bezet', 'code=' + r.body.code);
+  }
+  {
+    const { staat, roep } = bouw(180, { slot: 'stuk' });
+    const r = await roep({ actie: 'update', id: ID, saldo: 200, saldoWas: 180 });
+    toets('stuk → niet ok', r.body.ok === false, JSON.stringify(r.body));
+    toets('stuk → niets geschreven', staat.geschreven.length === 0);
+    toets('stuk → het is geen 200', r.status >= 500, 'status ' + r.status);
+    toets('stuk → code saldo_slot_stuk', r.body.code === 'saldo_slot_stuk', 'code=' + r.body.code);
+  }
+  {
+    const { staat, roep } = bouw(180, { email: '' });
+    const r = await roep({ actie: 'update', id: ID, saldo: 200 });
+    toets('zonder e-mailadres wordt het saldo niet gezet',
+          r.body.ok === false && staat.geschreven.length === 0, JSON.stringify(r.body));
+    toets('en dat meldt code saldo_geen_email', r.body.code === 'saldo_geen_email',
+          'code=' + r.body.code);
+  }
+  {
+    const { staat, roep } = bouw(180);
+    const r = await roep({ actie: 'update', id: ID, saldo: -5, saldoWas: 180 });
+    toets('een negatief saldo wordt geweigerd vóór het slot',
+          r.body.ok === false && staat.slotOp === null, JSON.stringify(r.body));
+  }
+
+  // ── 16. de adminpagina kent elke code die deze route kan sturen ──
   // Een foutcode is een afspraak tussen twee bestanden. Kent de pagina hem
   // niet, dan valt hij door naar "Onverwachte fout (409)" en krijgt de
   // beheerder het verkeerde advies: er is niets stuk, hij moet het zo nog
   // eens proberen. Dat is precies het soort losse eind dat pas opvalt op het
   // moment dat het misgaat — bij een klant die belt dat zijn tegoed op is.
-  console.log('\n10. Elke foutcode uit deze route wordt door admin.html afgehandeld');
+  console.log('\n16. Elke foutcode uit deze route wordt door admin.html afgehandeld');
   {
     const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'admin.html'), 'utf8');
     const codes = (src.match(/code: "([a-z0-9_]+)"/g) || [])
@@ -263,11 +425,46 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
     // Zonder dit anker zou de lus over nul codes lopen en vanzelf groen staan.
     toets('de route stuurt foutcodes mee', codes.length >= 3,
           'gevonden: ' + JSON.stringify(codes));
+    // Op de AFHANDELING kijken en niet op het woord. "Staat de naam ergens in
+    // het bestand" was de eerste opzet, en plmutate.sh liet zien wat daar mis
+    // mee is: één commentaarregel die de code noemt houdt de toets groen
+    // terwijl de afhandeling hernoemd is. Precies de stille fout die deze
+    // kruiscontrole moest vangen.
     codes.forEach((c) => {
+      const afhandeling = new RegExp("code\\s*===\\s*'" + c + "'");
       toets("admin.html handelt '" + c + "' af",
-            admin.indexOf("'" + c + "'") !== -1,
+            afhandeling.test(admin),
             'de pagina valt terug op "Onverwachte fout" voor deze code');
     });
+  }
+
+  // ── 17. de knop stuurt de voorwaarde ook echt mee (#93) ──────────
+  // De vergelijking in de Worker is dood hout als admin.html `saldoWas` niet
+  // meestuurt: zonder dat veld valt hij terug op "geen vergelijking" (deel 13)
+  // en overschrijft de knop weer stilletjes. Dit is een broncontrole en geen
+  // gedragstest, omdat admin.html geen module is die je los kunt laden — de
+  // knop hangt aan een pagina met een prompt() erin. De aanhaakpunten zijn
+  // daarom zo gekozen dat ze verdwijnen zodra iemand de knop verbouwt.
+  console.log('\n17. De knop in admin.html stuurt saldoWas mee');
+  {
+    const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'admin.html'), 'utf8');
+    const i = admin.indexOf('function kSaldo(');
+    toets('kSaldo bestaat nog', i >= 0);
+    const lijf = i < 0 ? '' : admin.slice(i, i + 1200);
+    toets('kSaldo stuurt actie update', /actie:'update'/.test(lijf));
+    toets('kSaldo stuurt saldoWas mee', /saldoWas\s*:\s*huidig/.test(lijf),
+          'zonder dit veld vergelijkt de Worker niets en overschrijft de knop weer');
+    // En de tegenhanger: bijboeken hoort dit veld JUIST niet te sturen. Daar
+    // rekent de Worker zelf, en een voorwaarde op een verouderd getal zou
+    // bijboeken laten weigeren op precies het moment dat het het hardst nodig
+    // is — een klant die belt dat zijn tegoed op is.
+    // Op de aanroep zelf kijken en niet op een venster tekst eromheen: het
+    // commentaar tussen beide knoppen noemt saldoWas uiteraard ook, en een
+    // ruimer venster staat dan rood zonder dat er iets mis is.
+    const roepB = (admin.match(/kPost\(\{actie:'bijboeken'[^}]*\}/) || [''])[0];
+    toets('de bijboek-aanroep is nog te vinden', roepB.length > 0);
+    toets('kBijboeken stuurt geen saldoWas', roepB.length > 0 && !/saldoWas/.test(roepB),
+          roepB);
   }
 
   console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));

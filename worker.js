@@ -2896,12 +2896,47 @@ async function handleAdminKlantenPost(request, env) {
       return json({ ok: true, van: huidig, naar: nieuw, vastgelegd: vast });
     }
 
+    // ── update: naam, status, opmerking — en saldo ZETTEN ──────────
+    // ZETTEN IS DE GEVAARLIJKE VARIANT, en tot 03-09-2026 was hij ook de
+    // enige Saldo-schrijver die buiten het slot om ging. #82 haalde
+    // `bijboeken` binnen; `update` bleef er bewust buiten, met het argument
+    // dat de beheerder hier een eindbedrag stuurt en er dus niets te rekenen
+    // valt. Dat argument dekt de helft. Er wordt hier inderdaad niet
+    // gerekend, maar er wordt wél overschreven: draait de klant op dat
+    // moment een analyse, dan boekt die binnen het slot af naar 19 en
+    // schrijft terug, en deze PATCH zet daar het getal overheen dat de
+    // beheerder minuten geleden op zijn scherm zag. De afboeking verdwijnt
+    // geruisloos en de klant houdt tokens die hij verbruikt heeft — het
+    // spiegelbeeld van #82, en de reden dat #93 bestaat.
+    //
+    // Sinds #93 loopt het saldogedeelte daarom door metSaldoSlot(), met
+    // dezelfde twee lezingen als `bijboeken`: de eerste haalt het
+    // e-mailadres op (het slot staat op het adres, deze route krijgt een
+    // record-id binnen), de tweede leest binnen het slot het saldo waar
+    // tegenaan vergeleken wordt.
+    //
+    // EN DAT VERGELIJKEN IS HET TWEEDE STUK, want een slot alleen maakt
+    // "zetten" niet eerlijk. Het beschermt het schrijven, niet het besluit:
+    // de beheerder vormt zijn bedoeling op een getal uit een lijst die
+    // minuten oud kan zijn, en de knop rekende hem daar een verschil mee
+    // voor. Daarom stuurt de pagina nu mee wát er stond (`saldoWas`).
+    // Klopt dat niet meer met wat er binnen het slot gelezen wordt, dan is
+    // de bedoeling verlopen: er wordt niet geschreven maar geweigerd, met
+    // het verse getal erbij. Zonder `saldoWas` — een oudere pagina, of een
+    // aanroep met de hand — gaat het door zoals het ging; het slot
+    // beschermt dan nog steeds het schrijven zelf.
+    //
+    // Status, Naam en Opmerking hebben het slot niet nodig. Ze liften mee in
+    // dezelfde PATCH als er ook een saldo in zit: twee losse patches op één
+    // record kunnen een half doorgevoerde wijziging achterlaten, en dat is
+    // erger dan een paar velden die het slot niet nodig hadden.
     if (actie === "update") {
       const f = {};
+      let saldoNieuw = null;
       if (b.saldo !== undefined) {
         const s = Math.round(Number(b.saldo));
         if (!isFinite(s) || s < 0 || s > 1e6) return json({ ok: false, error: "Saldo buiten bereik." }, 400);
-        f.Saldo = s;
+        saldoNieuw = s;
       }
       if (b.status !== undefined) {
         if (!["actief", "ongeverifieerd", "geblokkeerd"].includes(String(b.status)))
@@ -2917,11 +2952,71 @@ async function handleAdminKlantenPost(request, env) {
       }
       if (b.naam !== undefined) f.Naam = String(b.naam).slice(0, 80);
       if (b.opmerking !== undefined) f.Opmerking = String(b.opmerking).slice(0, 2000);
-      if (!Object.keys(f).length) return json({ ok: false, error: "Niets om te wijzigen." }, 400);
-      await klantPatch(env, id, f);
-      const wat = Object.keys(f).map((k) => `${k}=${f[k]}`).join(", ");
-      const vast = await klantAudit(env, id, wat, b.door);
-      return json({ ok: true, vastgelegd: vast });
+      if (saldoNieuw === null && !Object.keys(f).length)
+        return json({ ok: false, error: "Niets om te wijzigen." }, 400);
+
+      // Geen saldo erbij: dit pad raakt geen tegoed en gaat rechtstreeks,
+      // precies zoals het altijd ging. Een naamswijziging heeft niets te
+      // maken met de afboeking van een analyse en hoeft daar niet op te
+      // wachten — en een status omzetten al helemaal niet, want dat is de
+      // knop waarmee je een klant deblokkeert.
+      if (saldoNieuw === null) {
+        await klantPatch(env, id, f);
+        const wat = Object.keys(f).map((k) => `${k}=${f[k]}`).join(", ");
+        const vast = await klantAudit(env, id, wat, b.door);
+        return json({ ok: true, vastgelegd: vast });
+      }
+
+      // Vanaf hier gaat er tegoed om. `saldoWas` is optioneel; is hij er,
+      // dan is hij de voorwaarde waaronder deze wijziging bedoeld werd.
+      let saldoWas = null;
+      if (b.saldoWas !== undefined) {
+        saldoWas = Math.round(Number(b.saldoWas));
+        if (!isFinite(saldoWas) || saldoWas < 0 || saldoWas > 1e6)
+          return json({ ok: false, error: "Het meegestuurde oude saldo is geen bruikbaar getal." }, 400);
+      }
+
+      const zetUrl = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`;
+      const z0 = await fetch(zetUrl, { headers: hdr });
+      if (!z0.ok) return json({ ok: false, error: "Klant niet gevonden." }, 404);
+      const zetEmail = String(((await z0.json()).fields || {}).Email || "").trim();
+      if (!zetEmail)
+        return json({ ok: false, code: "saldo_geen_email", error: "Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden." }, 409);
+
+      let zetUit;
+      try {
+        zetUit = await metSaldoSlot(env, zetEmail, async () => {
+          // Verse lezing binnen het slot — hier hetzelfde als bij
+          // bijboeken, alleen wordt er niet mee gerekend maar tegenaan
+          // vergeleken.
+          const z1 = await fetch(zetUrl, { headers: hdr });
+          if (!z1.ok) return { fout: "Klant niet gevonden.", status: 404 };
+          const huidig = Number(((await z1.json()).fields || {}).Saldo || 0);
+          if (saldoWas !== null && huidig !== saldoWas)
+            return {
+              fout: `Het saldo staat inmiddels op ${huidig} en niet meer op ${saldoWas}. Er is niets gewijzigd.`,
+              status: 409, code: "saldo_verschoven", huidig
+            };
+          await klantPatch(env, id, Object.assign({}, f, { Saldo: saldoNieuw }));
+          return { huidig, nieuw: saldoNieuw };
+        });
+      } catch (e) {
+        // metSaldoSlot gooide zelf: het slot kon niet aangevraagd worden.
+        // Doorgaan zonder bescherming is precies de race terugbrengen.
+        try { console.error("[admin] saldo-slot onbereikbaar bij zetten op " + id + " :: " + String(e && e.message || e)); }
+        catch (_) { /* stil: melden mag de afhandeling niet breken */ }
+        return json({ ok: false, code: "saldo_slot_stuk", error: "Het tegoed kon niet veilig gewijzigd worden. Probeer het zo nog eens." }, 503);
+      }
+      if (zetUit.bezet)
+        return json({ ok: false, code: "saldo_bezet", error: "Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens." }, 409);
+
+      const zet = zetUit.result || {};
+      if (zet.fout) return json({ ok: false, code: zet.code, error: zet.fout, huidig: zet.huidig }, zet.status);
+
+      const delen = Object.keys(f).map((k) => `${k}=${f[k]}`);
+      delen.push(`Saldo gezet (${zet.huidig} \u2192 ${zet.nieuw})`);
+      const vastZet = await klantAudit(env, id, delen.join(", "), b.door);
+      return json({ ok: true, van: zet.huidig, naar: zet.nieuw, vastgelegd: vastZet });
     }
 
     if (actie === "wachtwoord") {

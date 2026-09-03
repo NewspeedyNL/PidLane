@@ -11,6 +11,55 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — SALDO ZETTEN DOOR HET
+                               SALDO-SLOT
+
+       • 🔒 DE VIJFDE SALDOSCHRIJVER GING OM HET SLOT HEEN
+         (#93). Bij #82 zijn vier van de vijf plekken door
+         metSaldoSlot() gehaald en is "saldo zetten" er bewust
+         buiten gelaten, met een reden die goed leek: daar stuurt
+         de beheerder het eindbedrag, dus valt er niets te
+         rekenen. Dat klopt, en het is de verkeerde vraag.
+         Zetten rekent niet, maar het OVERSCHRIJFT: draait de
+         klant op dat moment een analyse, dan boekt die binnen
+         het slot af en schrijft terug, waarna dit patch er het
+         oude getal overheen zet. De afboeking verdwijnt en de
+         klant houdt tokens die hij verbruikt heeft — het
+         spiegelbeeld van #82. Nu loopt ook die vijfde erdoor.
+
+       • ⏱️ EEN SLOT BESCHERMT HET SCHRIJVEN, NIET HET BESLUIT.
+         De knop "Saldo zetten" vulde het veld voor met het saldo
+         uit de klantenlijst — mogelijk minuten oud — en rekende
+         daar in de bevestiging een verschil mee uit: "een
+         verschil van +50 tokens". Staat de klant intussen op 150
+         in plaats van 180, dan wordt het in werkelijkheid +80.
+         Je bevestigt dan precies het getal dat je aan het
+         afwegen bent, en het klopt niet. Dat verschil is nu een
+         voorwaarde: de pagina stuurt mee wat er stond, de Worker
+         telt dat binnen het slot na, en klopt het niet meer dan
+         wordt er NIETS geschreven.
+
+       • 🧑‍💼 DE BEHEERPAGINA ZEGT DAN WAT ER AAN DE HAND IS.
+         Nieuwe code saldo_verschoven: er is niets gewijzigd, het
+         saldo staat nu op zoveel, meestal draaide de klant net
+         een analyse — en wilde je optellen, gebruik dan
+         "Bijboeken", want die rekent zelf.
+
+       • 🔓 NAAM, STATUS EN OPMERKING GAAN BUITEN HET SLOT OM.
+         Een klant deblokkeren hoort niet te wachten op een
+         analyse, en een klant zonder e-mailadres moet
+         hernoembaar blijven — daar is geen naamruimte voor een
+         slot, en dat mag geen naamswijziging blokkeren.
+
+       • 🧪 test-bijboeken.js DEKT NU OOK ZETTEN. De kop van dat
+         bestand legde uit waarom juist dát niet getoetst werd;
+         die redenering is meeveranderd. Zeven nieuwe delen: de
+         volgorde rond het slot, de tegenproef met een verschoven
+         saldo, dat een kloppende voorwaarde gewoon doorgaat, en
+         dat een update zonder saldo het slot niet aanraakt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — KLAAR VOOR DE PLAY STORE:
                                HET SCHERM DAT DE REVIEWER ZIET
 
