@@ -1955,10 +1955,15 @@ async function _blok10() {
     while (_nu() < rustEind && !_trStop) {
       await _wacht(5000);
       if (_trStop) break;
-      let ptok = 0;
-      try { ptok = (window.PLBus && PLBus.claim) ? PLBus.claim('testrun-snelheid-prik') : 0; } catch (e) { console.warn('Busslot-claim voor een hersteltik gaf een fout', e); }
-      const r = await _snelheidVraag(set[0]);
-      try { if (ptok && window.PLBus && PLBus.release) PLBus.release(ptok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
+      // Slot pakken als het vrij is, maar NIET wachten: deze prik meet hoe snel
+      // de bus na een trap herstelt, en dat is ook een meting waard als een
+      // ander er net op zit. Vandaar withBus met wachttijd 0 in plaats van de
+      // eigen claim met een handgeschreven release die hier tot #115 stond —
+      // withBus() kan het teruggeven niet vergeten, ook niet als de vraag
+      // hieronder er met een fout uitspringt.
+      const r = (typeof withBus === 'function')
+        ? await withBus('testrun-snelheid-prik', () => _snelheidVraag(set[0]), 0)
+        : await _snelheidVraag(set[0]);
       if (r.ok) {
         prikken.push(r.ms);
         if (eersteHerstel === null && basis && r.ms <= basis * 1.25)

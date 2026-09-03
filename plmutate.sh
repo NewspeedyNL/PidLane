@@ -101,6 +101,15 @@ MUTATIES=(
 "worker.js@@if (!safeEqual(sig, await hmacSign(env.SESSION_SECRET, payload))) return null;\\n    const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@test-token.js@@verifyToken controleert de handtekening niet meer"
 "worker.js@@if (!p.exp || Math.floor(Date.now() / 1e3) >= p.exp) return null;@@@@test-token.js@@een verlopen sessietoken blijft geldig"
 "worker.js@@const legacyEnabled = String(env.ALLOW_LEGACY_APP_TOKEN || \"\").toLowerCase() === \"true\";@@const legacyEnabled = true;@@test-token.js@@het legacy-token werkt zonder dat de schakelaar aanstaat"
+# ── de buspoort van 03-09-2026 (#115) ──
+# Alle vier de fouten die een handgeschreven claim/finally écht maakte: het
+# slot niet teruggeven als het werk klapt, de uitslag van de claim negeren,
+# alsnog gaan wachten waar dat niet mag, en ergens weer een eigen claim
+# neerzetten.
+"public/pidlane-data.js@@try{ return await fn(); }\n  finally{ window.PLBus.release(tok); }@@const uit=await fn(); window.PLBus.release(tok); return uit;@@test-busslot.js@@de poort geeft het slot niet terug als het werk er met een fout uitspringt"
+"public/pidlane-data.js@@  if(!tok) return (typeof alsBezet==='function')?await alsBezet():undefined;@@@@test-busslot.js@@de poort negeert een bezette bus en praat er dwars doorheen"
+"public/pidlane-data.js@@    if(lim<=0) return this.claim(naam);@@@@test-busslot.js@@de hersteltik gaat tóch staan wachten in plaats van eenmalig te proberen"
+"public/pidlane-monitor.js@@    return await withBusOfNiets('monitor', ()=>this._cycleWerk());@@    const t = PLBus.claim('monitor'); if (!t) return; return await this._cycleWerk();@@test-busslot.js@@een module claimt het busslot weer met de hand, buiten de poort om"
 )
 
 echo

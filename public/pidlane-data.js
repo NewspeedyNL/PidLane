@@ -1458,6 +1458,13 @@ window.PLBus={
      de aanroeper gaat dan tóch door (functionaliteit boven discipline). */
   async wait(naam,maxMs){
     const t0=nu(), lim=(maxMs===undefined?4000:maxMs);
+    // lim<=0 betekent "pakken als hij vrij is, maar niet wachten". Zonder deze
+    // afslag sliep de lus eerst 50 ms en pas dáárna keek hij op de klok, en dan
+    // meldde hij ook nog "niet vrij na 0ms" in het logboek — een mislukte
+    // wachtbeurt terwijl er niet gewacht is. Ook GEEN plek in de wachtrij: wie
+    // niet wacht hoort geen voorrang te krijgen, zelfde regel als bij een losse
+    // claim().
+    if(lim<=0) return this.claim(naam);
     this._wachtAan(naam);
     try{
       for(;;){
@@ -1555,11 +1562,38 @@ window.PLBus={
   batchReset(){ S.batchGroep=3; S.batchGoed=0; }
 };
 
-/* Handige wrapper: alles binnen fn() draait met de bus geclaimd. */
+/* Handige wrapper: alles binnen fn() draait met de bus geclaimd. Lukt het
+   claimen binnen maxWachtMs niet, dan gaat het werk TOCH door (functionaliteit
+   boven discipline) — zie wait(). maxWachtMs=0 betekent: pakken als hij vrij
+   is, niet wachten, en hoe dan ook meten. */
 window.withBus=async function(naam,fn,maxWachtMs){
   const tok=await window.PLBus.wait(naam,maxWachtMs);
   try{ return await fn(); }
   finally{ if(tok) window.PLBus.release(tok); }
+};
+
+/* Dezelfde slotgarantie, maar voor wie zijn beurt liever OVERSLAAT dan
+   voordringt: is de bus bezet, dan draait fn() niet en komt `alsBezet()`
+   terug (of undefined als die er niet is).
+   ─────────────────────────────────────────────────────────────────────
+   WAAROM DIT ER IS (#115, 03-09-2026). Er liepen twee vormen van dezelfde
+   poort naast elkaar: withBus() hierboven, en op vijf plekken een
+   handgeschreven PLBus.claim() met een eigen finally eromheen — de pollus,
+   de monitor, de waakronde, de uitgebreide probe en een hersteltik in de
+   testrun. Die vijf deden allemaal hetzelfde: proberen, bij bezet de beurt
+   overslaan, en aan het eind netjes vrijgeven. Vier keer hetzelfde met de
+   hand naschrijven is vier kansen om dat finally te vergeten, en een houder
+   die nooit vrijgeeft valt buiten élke noodrem die PLBus heeft: MAX_HOLD_MS
+   breekt hem pas na drie minuten af en WACHT_MAX_MS (#98) gaat alleen over
+   wachters, niet over houders. Deze helper kan het niet vergeten.
+   Ze wachten bewust NIET: dit zijn ronde-lussen die elke tik terugkomen.
+   Wachten zou de bus voor een zware lezer dichthouden voor werk dat over
+   100 ms net zo goed kan. */
+window.withBusOfNiets=async function(naam,fn,alsBezet){
+  const tok=window.PLBus.claim(naam);
+  if(!tok) return (typeof alsBezet==='function')?await alsBezet():undefined;
+  try{ return await fn(); }
+  finally{ window.PLBus.release(tok); }
 };
 })();
 

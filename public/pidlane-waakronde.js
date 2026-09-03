@@ -261,12 +261,14 @@
 
     // Nooit voordringen: bij druk of een bezet slot gewoon de volgende tik.
     if (busDrukt()) { _rust = 'druk'; plan(RONDE_MS); teken(); return; }
-    let tok = 0;
-    try { tok = (window.PLBus && PLBus.claim) ? PLBus.claim('waakronde') : 0; } catch (e) { tok = 0; }
-    if (!tok) { _rust = 'bezet'; plan(RONDE_MS); teken(); return; }
-    _rust = '';
-
-    try {
+    // Sinds #115 via withBusOfNiets() in plaats van een eigen claim met een
+    // handgeschreven finally: dezelfde poort als de pollus, de monitor en de
+    // probe, zodat het slot niet op vijf plekken met de hand teruggegeven
+    // hoeft te worden. `bezet` hieronder is wat er gebeurt als de bus al
+    // vergeven is — dan slaan we deze tik over en komen we zo terug.
+    const bezet = () => { _rust = 'bezet'; plan(RONDE_MS); teken(); return true; };
+    const werk = async () => {
+      _rust = '';
       const groep = _lijst.slice(_cursor, _cursor + BATCH);
       for (const rij of groep) {
         if (!_aan || !connected) break;
@@ -285,12 +287,12 @@
       }
       _cursor += BATCH;
       _bezig = null;
-    } finally {
-      try { if (window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
-    }
-
-    teken();
-    plan(RONDE_MS);
+      teken();
+      plan(RONDE_MS);
+    };
+    // Geen PLBus, geen slot om te pakken: dan draait het werk gewoon door.
+    if (typeof withBusOfNiets === 'function') { await withBusOfNiets('waakronde', werk, bezet); return; }
+    await werk();
   }
 
   function plan(ms) {

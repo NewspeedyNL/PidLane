@@ -96,9 +96,17 @@ const PLMon = {
   // ═══════════════ hoofdcyclus ═══════════════
   async _cycle(){
     if (!this.active || this._busy) return;
-    // Netjes wachten als de fast-lane midden in een pollronde zit.
-    const busTok = PLBus.claim('monitor');
-    if (!busTok){ return; }          // bus bezet: volgende tik proberen we opnieuw
+    // Netjes wachten als de fast-lane midden in een pollronde zit: bij een
+    // bezet slot slaan we deze tik over en proberen we het bij de volgende
+    // opnieuw. withBusOfNiets() geeft het slot ALTIJD terug, ook als het werk
+    // hieronder er met een fout uitspringt (#115) — en geeft nooit per
+    // ongeluk het slot van een ander vrij.
+    return await withBusOfNiets('monitor', ()=>this._cycleWerk());
+  },
+
+  // Het werk van één cyclus, met het busslot al in handen. Los van _cycle()
+  // zodat de inspringing van dit blok ongemoeid blijft naast de poort.
+  async _cycleWerk(){
     this._busy = true;
     try{
       const st = await this._readStatus();          // mode 0101
@@ -123,7 +131,7 @@ const PLMon = {
       }
       this.prev = st;
     }catch(e){ /* bus-hik: stil overslaan, volgende cyclus opnieuw */ }
-    finally{ this._busy = false; PLBus.release(busTok); }  // ALLEEN ons eigen slot teruggeven
+    finally{ this._busy = false; }
   },
 
   // ── mode 0101: MIL-bit, DTC-teller, readiness ──

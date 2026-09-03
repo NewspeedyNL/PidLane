@@ -664,8 +664,8 @@ async function _webSerialSend(cmd, timeoutMs){
 // landt dan soms vlak ná ATSP0, middenin de protocoldetectie (SEARCHING...,
 // ~10 s foute/rommelige data per keer, op een lange rit soms tientallen
 // keren). withBus() (pidlane-data.js) claimt 'elm-init' als eigenaar zodat
-// de poll-loop's eigen PLBus.claim('poll') tijdelijk faalt en die cyclus
-// overslaat i.p.v. ertussen te kruipen. Fallback op ongated uitvoeren als
+// de eigen poging van de poll-loop (withBusOfNiets('poll'), sinds #115) faalt
+// en die cyclus overslaat i.p.v. ertussen te kruipen. Fallback op ongated uitvoeren als
 // PLBus/withBus (nog) niet geladen is — zelfde defensieve stijl als de
 // bestaande PLBus-aanroepen elders in dit bestand.
 // ── DE ELM-POORT (hard) ──
