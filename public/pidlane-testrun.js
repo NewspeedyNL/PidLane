@@ -104,11 +104,40 @@ function _appLogRegels() {
 //
 // Apart en zuiver, zodat test-opruimmelding.js hem kan draaien zonder een
 // browser en zonder testrun-context. Knippad: tussen de twee ankers hieronder.
+// Eén gebeurtenis, één regel. (#104, 03-09-2026)
+//
+// pidOpruimen() schrijft dezelfde opruiming TWEE keer weg: via btDiag() naar de
+// BT-log en via log() naar de app-log, die tweede met een 🧹 ervoor. Alles wat
+// beide buffers aan elkaar plakt — blok 14 én de #29-proef in blok 5 — telde
+// daardoor elke opruiming dubbel.
+//
+// En niet betrouwbaar dubbel, wat het erger maakt: de BT-log is een ringbuffer
+// met zware doorloop. Op 02-09 meldde blok 14 om 23:22:13 "de gate zegt 1, het
+// log bevestigt er 2" en om 23:23:54 "bevestigt er 1" — dezelfde ene
+// gebeurtenis, twee antwoorden, afhankelijk van hoeveel busverkeer er intussen
+// doorheen was gegaan. Een teller die met de ringbuffer meebeweegt is geen
+// meting, en dit is nu juist de meting waar de drempel op gekozen moet worden.
+//
+// De sleutel is tijdstip + de tekst zonder opmaak. Twee opruimingen van
+// VERSCHILLENDE PIDs in dezelfde seconde houden een eigen sleutel, want de
+// sensornaam staat in de tekst; dezelfde PID twee keer opruimen kan niet, want
+// _pidOpgeruimd is een Set.
+function _opruimOntdubbel(regels, re) {
+  const gezien = new Set(), uit = [];
+  (regels || []).forEach(function (l) {
+    const msg = String((l && (l.msg || l.m || l.tekst)) || l || '');
+    if (!re.test(msg)) return;
+    const kern = msg.replace(/[^0-9A-Za-z]+/g, ' ').trim().toLowerCase().slice(0, 80);
+    const sleutel = ((l && l.ts) || '') + '|' + kern;
+    if (gezien.has(sleutel)) return;
+    gezien.add(sleutel);
+    uit.push(((l && l.ts) ? l.ts + ' ' : '') + msg.slice(0, 110));
+  });
+  return uit;
+}
+
 function _opruimStand(lijst, regels, duurS) {
-  const zoek = function (re) {
-    return (regels || []).filter(function (l) { return l && re.test(String(l.msg || '')); })
-                         .map(function (l) { return (l.ts ? l.ts + ' ' : '') + String(l.msg).slice(0, 110); });
-  };
+  const zoek = function (re) { return _opruimOntdubbel(regels, re); };
   const opLog = zoek(/opgeruimd/i);
   const terug = zoek(/antwoordt weer na/i);
   const minuten = Math.round((duurS || 0) / 60);
@@ -517,6 +546,37 @@ const PLRit = (function () {
     per: function () { return JSON.parse(JSON.stringify(per)); },
     gaten: function () { return gaten.slice(); },
     herverbindingen: function () { return herverbindingen; },
+
+    /* Een herverbinding MELDEN in plaats van hem uit `connected` afleiden.
+       (#103, 03-09-2026)
+
+       tik() leest `connected` als momentopname. Een socket die tussen twee
+       tikken sterft en herstelt is daarmee onzichtbaar, en dat is precies wat
+       er op 02-09 gebeurde: het app-log heeft om 23:18:05 "SPP automatisch
+       herverbonden" staan met een volledige ELM-init erachteraan, en zowel
+       blok 5 als blok 14 meldden `0 herverbinding(en) bij 1 gat(en)`.
+
+       Dat is niet één getal te weinig. De regel eronder zegt "volgt elke
+       herverbinding op een gat, dan is dat de achtergrondkwestie en niet de
+       bus" — met nul herverbindingen valt er niets te volgen en leest het gat
+       als een zuivere bevriezing. Spiegelbeeld van #77, dat er juist één te
+       veel telde en je naar de bus stuurde.
+
+       sppReconnectGuard weet zéker dát het gebeurde. Die zekerheid is beter dan
+       elke bemonstering, hoe vaak je ook kijkt.
+
+       DUBBELTELLEN VOORKOMEN. Zag tik() de onderbreking óók (vorigVerbonden is
+       dan false), dan telt hij hem bij de eerstvolgende tik zelf al. In dat
+       geval doet deze melding niets — anders staat er twee waar er één was, en
+       dan hebben we #77 teruggebouwd aan de andere kant. */
+    meldHerverbinding: function (bron) {
+      if (vorigVerbonden === false) return false;   // tik() heeft de val gezien en telt hem zelf
+      herverbindingen++;
+      vorigVerbonden = true;
+      try { if (typeof btDiag === 'function') btDiag('PLRit telt een herverbinding (' + (bron || 'onbekend') + ')', 'info'); }
+      catch (e) { console.warn('PLRit: herverbinding wel geteld, niet gemeld in de BT-log', e); }
+      return true;
+    },
     // Was er een versheidsbron? Zo niet, dan is er niets gemeten en hoort
     // blok 14 dat te zeggen in plaats van nullen te presenteren als uitkomst.
     bron: function () {
@@ -1924,6 +1984,57 @@ function _aanvragersNu() {
   return aan;
 }
 
+/* ── EEN PROEF LAAT GEEN SPOREN NA (#105, 03-09-2026) ──────────────
+   Twee proeven in blok 5 schieten verzonnen waarden in de meetketen: 300 °C
+   op 0105 om te zien of laag 1 hem tegenhoudt, en 200 °C om te zien of laag
+   2+3 bereikbaar is. Dat is met opzet en het is de goede manier om GEDRAG te
+   toetsen — CLAUDE.md schrijft het zelfs voor.
+
+   Alleen schreef validateAndSmooth() die waarden ook wég, en dan is de toets
+   in de bron gaan schrijven die hij toetst. Op 02-09 rapporteerde blok 4
+   twaalf seconden later:
+
+       Opvallende metingen — 0105 uiterste 200 (1x)
+
+   De werkelijke koelwatertemperatuur die rit was 91–93 °C. De 200 kwam nooit
+   uit de auto. Wie dat verslag over een paar weken terugleest heeft geen
+   enkele manier om te zien dat het de testrun zelf was.
+
+   Dit is dezelfde regel als bij blok 3, dat de PID-selectie tijdelijk
+   overschrijft en er "Selectie hersteld — 33 PIDs teruggezet" onder zet: wie
+   in de app schrijft, zet terug. De log-regels blijven staan — die zijn waar,
+   de proef heeft echt gedraaid — maar er staat nu een markering omheen zodat
+   ze te plaatsen zijn. */
+function _zonderSporen(naam, fn) {
+  const bewaard = {};
+  const pak = function (sleutel, lees) {
+    try { bewaard[sleutel] = JSON.stringify(lees()); }
+    catch (e) { bewaard[sleutel] = undefined;
+      console.warn('Testrun: ' + sleutel + ' niet bewaard vóór "' + naam + '" — die teller kan vervuild raken', e); }
+  };
+  pak('letOp',    function () { return window._pidLetOp || null; });
+  pak('letOpLog', function () { return window._letOpGelogd || null; });
+  pak('outlier',  function () { return (typeof outlierCount !== 'undefined') ? outlierCount : null; });
+
+  try { if (typeof log === 'function') log('🔬 Testrun: proef "' + naam + '" voedt met opzet onmogelijke waarden in — de meldingen hierna tot "proef klaar" komen niet uit de auto', 'info'); }
+  catch (e) { console.warn('Testrun: markering vóór de proef niet gelogd', e); }
+
+  try {
+    return fn();
+  } finally {
+    const zet = function (sleutel, schrijf) {
+      if (bewaard[sleutel] === undefined) return;
+      try { schrijf(JSON.parse(bewaard[sleutel])); }
+      catch (e) { console.warn('Testrun: ' + sleutel + ' niet teruggezet na "' + naam + '"', e); }
+    };
+    zet('letOp',    function (v) { if (v === null) delete window._pidLetOp;   else window._pidLetOp = v; });
+    zet('letOpLog', function (v) { if (v === null) delete window._letOpGelogd; else window._letOpGelogd = v; });
+    zet('outlier',  function (v) { if (v !== null && typeof outlierCount !== 'undefined') outlierCount = v; });
+    try { if (typeof log === 'function') log('🔬 Testrun: proef "' + naam + '" klaar — de meetgeschiedenis staat terug zoals hij was', 'info'); }
+    catch (e) { console.warn('Testrun: markering ná de proef niet gelogd', e); }
+  }
+}
+
 const PROEVEN_B5 = [
 
   // ── hoort de chip bij de rol die nu ingelogd is? ──
@@ -2268,7 +2379,7 @@ const PROEVEN_B5 = [
     issue: '—',
     naam: 'Laag 1 houdt een fysiek onmogelijke waarde tegen',
     waarom: 'Of de harde fysieke limiet ook in de draaiende app tussen parser en opslag staat.',
-    proef: function () {
+    proef: function () { return _zonderSporen('Laag 1', function () {
       if (typeof validateAndSmooth !== 'function')
         return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt — dan loopt de meetketen zonder laag 1 t/m 3' };
       if (typeof PID_HARD_LIMITS === 'undefined' || !PID_HARD_LIMITS['0105'])
@@ -2284,7 +2395,7 @@ const PROEVEN_B5 = [
 
       return 'laag 1 weigert 300 °C en laat 90 °C door, meetlat ' +
         PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max;
-    }
+    }); }
   },
 
   // ── is laag 2+3 wel bereikbaar? ──
@@ -2301,7 +2412,7 @@ const PROEVEN_B5 = [
     issue: '§11',
     naam: 'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept',
     waarom: 'Vastgelegde bevinding, bewust niet in deze oplevering gerepareerd — LET OP tot regel 75 klopt.',
-    proef: function () {
+    proef: function () { return _zonderSporen('Laag 2+3', function () {
       if (typeof validateAndSmooth !== 'function')
         return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt' };
       if (typeof FILTERED_PIDS === 'undefined')
@@ -2327,7 +2438,7 @@ const PROEVEN_B5 = [
       return { staat: 'LET OP', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
         'FILTERED_PIDS is gevuld met ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
         'dus spike-filter en smoothing worden voor álle PIDs overgeslagen. Vastgelegd in PIDLANE.md §11.' };
-    }
+    }); }
   },
 
   // ════════════════════════════════════════════════════════════
@@ -2442,8 +2553,8 @@ const PROEVEN_B5 = [
   // deed. Sinds 6.5 staan ze in RIT_PIDS; hier staat wat dat opleverde.
   {
     issue: '#40',
-    naam: '#40 — de bytelengte van 0155 en 0156, gemeten',
-    waarom: 'PLPidLen leert uit metingen; zonder 0155/0156 in de pollronde leert hij niets.',
+    naam: '#40 — leest de app 0155/0156 goed, ook al wijken ze van de tabel af',
+    waarom: 'De lerende laag hoort te winnen van de tabel. Afwijken is geen fout maar de bedoeling.',
     proef: function () {
       if (!window.PLPidLen || !PLPidLen.geleerd) return { staat: 'LET OP', detail: 'PLPidLen ontbreekt' };
       let g = {};
@@ -2461,11 +2572,53 @@ const PROEVEN_B5 = [
       if (zonder.length)
         return { staat: 'LET OP', detail: kop + ' — ' + zonder.join(' en ') + ' kwam deze rit niet langs. ' +
           'Ze staan sinds 6.5 in RIT_PIDS; stond stap 2 aan?' };
+      /* HERZIEN OP 03-09-2026 (#106). Hier stond: "#40 KAN DICHT, de tabel in
+         pidlane-data.js hoort naar de gemeten waarde". Dat advies was fout, en
+         het bleef elke rit opnieuw op het scherm staan terwijl #40 op 02-09 om
+         20:27 al gesloten was — met de ANDERE uitkomst.
+
+         0155/0156 zijn in J1979 de secundaire lambdatrim voor twee bankparen:
+         twee bytes, één per bank. Een motor met één bank antwoordt met één. De
+         tabelwaarde 2 is dus in het algemeen goed en deze CX-5 antwoordt korter.
+         Dat is precies waar de lerende laag voor bestaat, en pidByteLen() geeft
+         PLPidLen.lengte() al voorrang op de tabel.
+
+         De proef stelde daarmee de verkeerde vraag. "Gemeten wijkt af van de
+         tabel" is bij een lerende laag geen bevinding maar de normale toestand;
+         een proef die dáár LET OP op zet staat vanaf de eerste rit in deze auto
+         permanent oranje, en CLAUDE.md zegt wat daarvan komt: een test die
+         altijd rood staat wordt genegeerd.
+
+         De vraag is nu GEDRAG: pakt de app de bytes goed uit? Dus of de
+         geleerde lengte wint van de tabel, en of een batch mét 0155 erin de PID
+         eráchter nog steeds goed uitpakt. test-parser.js toetst dat laatste al
+         op de echte functies; hier staat wat déze auto ervan liet zien. */
+      if (typeof pidByteLen !== 'function')
+        return { staat: 'FOUT', detail: kop + ' — pidByteLen() ontbreekt, dus er is geen laag die kan kiezen ' +
+          'tussen de tabel en wat er gemeten is' };
+
+      const misleest = [];
+      ['55', '56'].forEach(function (sfx) {
+        const e = g[sfx];
+        if (!e || e.hits < 2 || e.conflict) return;   // te weinig bewijs: hieronder afgehandeld
+        let gebruikt = null;
+        try { gebruikt = pidByteLen(sfx); }
+        catch (err) { misleest.push('01' + sfx + ': pidByteLen() gaf een fout — ' + (err.message || err)); return; }
+        if (gebruikt !== e.n)
+          misleest.push('01' + sfx + ': gemeten ' + e.n + ' byte(s) maar de app rekent met ' + gebruikt);
+      });
+
+      if (misleest.length)
+        return { staat: 'FOUT', detail: kop + '  ||  ' + misleest.join(' | ') +
+          ' — de lerende laag wint NIET van de tabel. Een batch met deze PID erin schuift dan alles ' +
+          'wat erachter zit een byte op, en dat is stil: de waarde ziet er nog goed uit.' };
+
       if (bewijs.length === 2)
-        return kop + ' — allebei bevestigd met minstens twee metingen en zonder tegenspraak: #40 KAN DICHT, ' +
-          'de tabel in pidlane-data.js hoort naar de gemeten waarde';
-      return { staat: 'LET OP', detail: kop + ' — nog niet hard genoeg: er zijn per PID twee bevestigende metingen ' +
-        'zonder tegenspraak nodig voordat je de tabel wijzigt' };
+        return kop + ' — allebei bevestigd met minstens twee metingen en zonder tegenspraak, en de app leest ' +
+          'ze ook echt met de gemeten lengte. De tabel blijft staan: die klopt voor een motor met twee banken ' +
+          '(J1979), deze CX-5 heeft er één. #40 is hiermee gesloten (02-09); dit blijft staan als bewaking.';
+      return kop + ' — de app leest ze met de lengte die hij zelf gemeten heeft. Voor een harde uitspraak over ' +
+        'dit voertuig zijn per PID twee bevestigende metingen zonder tegenspraak nodig; die zijn er nog niet.';
     }
   },
 
@@ -2578,10 +2731,11 @@ const PROEVEN_B5 = [
     const gate = (lijst && lijst.size !== undefined) ? Array.from(lijst)
                : (Array.isArray(lijst) ? lijst : Object.keys(lijst || {}));
       let bt = [];
-      try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; } catch (e) { bt = []; }
-      const regels = [].concat(bt || [], _appLogRegels() || [])
-        .map(function (r) { return String((r && (r.msg || r.m || r.tekst)) || r); })
-        .filter(function (t) { return /opgeruimd/i.test(t); });
+      try { bt = (typeof _btLog !== 'undefined' && _btLog) ? _btLog : []; }
+      catch (e) { bt = []; console.warn('Testrun: BT-log onleesbaar bij de #29-proef', e); }
+      // Ontdubbelen (#104): btDiag en log krijgen dezelfde opruiming, dus zonder
+      // dit telt deze proef er twee waar er één gebeurde.
+      const regels = _opruimOntdubbel([].concat(bt || [], _appLogRegels() || []), /opgeruimd/i);
     const kop = 'gate: ' + (gate.length ? gate.map(_naam).join(', ') : 'leeg') + '  |  logregels met "opgeruimd": ' + regels.length;
       if (!gate.length && !regels.length)
         return { staat: 'LET OP', detail: kop + ' — er is deze rit niets opgeruimd, dus #29 is niet te toetsen. ' +
@@ -3279,9 +3433,25 @@ async function _blok11() {
     try { afw = PLPidLen.afwijkingen() || {}; } catch (e) { throw new Error('PLPidLen.afwijkingen() klapt'); }
     const k = Object.keys(afw);
     if (!k.length) return 'geen enkele afwijking gemeten';
-    const verdacht = k.filter(function (p) { return p === '0155' || p === '0156'; });
-    return { staat: 'LET OP', detail: k.length + ' afwijkend: ' + JSON.stringify(afw).slice(0, 220) +
-      (verdacht.length ? '  — 0155/0156 staan er wéér bij, dus de lengtetabel klopt niet voor die twee (punt 12)' : '') };
+    // HERZIEN 03-09-2026 (#106). Dit stond op LET OP zodra gemeten en tabel
+    // verschilden, en dat verschil is bij een lerende laag de normale toestand —
+    // in deze auto dus élke rit oranje. Een afwijking is pas iets als de app er
+    // ook echt mee misrekent; dat is wat hieronder getoetst wordt.
+    if (typeof pidByteLen !== 'function')
+      return { staat: 'LET OP', detail: k.length + ' afwijkend, maar pidByteLen() ontbreekt — niet na te gaan ' +
+        'of de app de geleerde lengte gebruikt' };
+    const mis = k.filter(function (p) {
+      const sfx = String(p).slice(-2), e = afw[p];
+      const gemeten = (e && (e.gemeten != null ? e.gemeten : e.n));
+      if (gemeten == null) return false;
+      try { return pidByteLen(sfx) !== gemeten; } catch (err) { return true; }
+    });
+    if (mis.length)
+      return { staat: 'FOUT', detail: mis.length + ' van ' + k.length + ' afwijkingen worden door de app ' +
+        'MISgelezen: ' + mis.join(', ') + ' — pidByteLen() volgt daar de tabel in plaats van de meting, en dan ' +
+        'schuift een batch alles wat erachter zit een byte op' };
+    return k.length + ' afwijking(en) van de tabel, allemaal correct gelezen door de lerende laag: ' +
+      JSON.stringify(afw).slice(0, 200);
   });
 
   /* ── De opruimklus zelf: gaat er iets af dat er eerder niet was? ──

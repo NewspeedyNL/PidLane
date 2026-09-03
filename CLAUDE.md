@@ -97,6 +97,56 @@ waakronde open, en het oordeel over onbekende sensoren omgedraaid — en
 committen"* eronder. Elke push naar `main` is deployen. Zie §11 van
 `PIDLANE.md`.
 
+## Als iets een draaiende app nodig heeft
+
+```
+bash plbrowser.sh .
+```
+
+Start de **echte** `index.html` in Chromium en draait de `bproef-*.js`-reeks
+ertegenaan. Geen npm, geen Playwright, geen buildstap: node praat rechtstreeks
+met het debugprotocol. Geen Chromium op dit toestel? Dan slaat hij over met
+exit 0 en zegt erbij dat er niets gemeten is. In CI draait hij als eigen job,
+en daar is overslaan een fout — anders gaat "overgeslagen" stilletijk "goed"
+betekenen.
+
+**Waarom dit er is, gemeten op 03-09-2026.** Er stonden 22 issues open.
+Vijftien daarvan hadden geen auto nodig maar een dráaiende app, en die was er
+alleen tijdens een rit. Daardoor stond een te kort afgekapt tekstlabel (#95)
+in dezelfde wachtrij als een vraag die echt een motor nodig heeft (#20).
+
+De reden dat het zo gegroeid was staat in `test-schermranden.js`: *"lukt hier
+niet zonder de hele app-boot na te bouwen"*. Dat klopte niet. De boot hoeft
+niet nagebouwd te worden, hij kan gewoon draaien — alle 57 modules, alle
+kernobjecten, 146 PIDs, nul fouten, in vijftien seconden. Wat het tegenhield
+was één regel in de `<head>`: de stylesheet van Google Fonts. Een `<script>`
+wacht op openstaande CSS, en die CSS kwam zonder internet nooit.
+
+**De werkregel die daarmee verandert.** "Kan iets alleen in de auto getoetst
+worden, dan is het een vraag voor `CAMPAGNE`" stond er al, en is de goede
+regel — maar hij werd op alles toegepast. Voortaan:
+
+| de vraag gaat over | waar hij thuishoort |
+|---|---|
+| een functie los | `test-*.js` (node) |
+| de koppeling tussen modules, de DOM, de opstartvolgorde | `bproef-*.js` (browser) |
+| wat een echte ECU of een volle bus doet | `CAMPAGNE`, dus een rit |
+
+Naar `CAMPAGNE` verhuizen is dus een **besluit met een reden**, geen
+restcategorie. Staat er "wachten op een rit" bij een issue, dan hoort erbij
+waarom een browserproef het niet kan.
+
+**Wat een browserproef níét is.** Er zit geen auto achter. De nep-adapter
+vervangt `_sendBTOnce()` — het laagste punt waar één commando één antwoord
+krijgt — zodat alles erboven (`sendBT` met zijn herhaalgedrag, `sendCmd` met
+`PLBus.note()` en `trackBtQuality()`) échte code blijft. De antwoorden komen
+bij voorkeur uit een echt testrunverslag: daar staat elke TX met zijn RX in.
+Wat een bus onder belasting doet blijft een vraag voor een rit.
+
+Dezelfde regel als bij de andere tests geldt hier dubbel: **een proef zonder
+tegenproef telt niet.** `bproef-meetketen.js` is nagemeten door laag 1 uit te
+zetten; hij wordt dan rood met de gemeten waarde erbij.
+
 ## Branch, PR, deploy
 
 - Werk op een eigen branch. Nooit rechtstreeks naar `main`, nooit force-pushen.

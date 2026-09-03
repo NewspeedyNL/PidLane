@@ -1081,6 +1081,137 @@ plaats van gekozen. En richting 1 hoeft geen milliseconden te winnen: hij moet
 een gat van deze orde overbruggen. Of de aanloop korter is als het toestel
 meer te doen heeft — er is deze rit niet gereden — staat nog open.
 
+### Het meetinstrument was zelf niet nagemeten — 03-09-2026 (#103 t/m #106)
+
+Vier bevindingen uit de rit van 02-09 23:22 gingen niet over de app maar over
+de **testrun**. Dat is geen toeval en het is het vermelden waard, want het is
+één patroon: elk stuk gereedschap in dit project heeft een tegenproef behalve
+het gereedschap dat de tegenproeven leest.
+
+**#104 — dubbel tellen, en niet elke keer.** `pidOpruimen()` schrijft dezelfde
+opruiming twee keer weg: via `btDiag()` naar de BT-log en via `log()` naar de
+app-log, die tweede met een 🧹 ervoor. Blok 14 plakt beide buffers aan elkaar,
+dus elke opruiming telde dubbel. Wat het van een schoonheidsfoutje een echte
+bevinding maakt is de instabiliteit: de BT-log is een ringbuffer met zware
+doorloop, dus om 23:22:13 stond er *"de gate zegt 1, het log bevestigt er 2"*
+en om 23:23:54 *"bevestigt er 1"* — dezelfde ene gebeurtenis, twee antwoorden,
+afhankelijk van hoeveel busverkeer er intussen langs was gekomen. En de proef
+zegt er zelf bij dat dit de meting is waar de drempel op gekozen moet worden.
+
+**#103 — de teller keek net naast de gebeurtenis.** `PLRit.tik()` leest
+`connected` als momentopname. Op 02-09 stierf de socket zes seconden na het
+naar de achtergrond gaan en herstelde hij zichzelf, met een volledige ELM-init
+erachteraan — en het verslag meldde `0 herverbinding(en) bij 1 gat(en)`.
+
+Dat is exact dezelfde vorm als het busslot van #98: iets is even waar tussen
+twee metingen door, en wie bemonstert kijkt ernaast. De oplossing is ook
+dezelfde: niet vaker kijken maar het laten mélden. `sppReconnectGuard` weet
+zéker dát het gebeurde.
+
+En het is het spiegelbeeld van #77, dat er juist één te veel telde. Dezelfde
+teller, twee keer fout, twee kanten op — met beide keren een verslag dat je
+naar de verkeerde oorzaak stuurt.
+
+**#105 — de toets schreef in de bron die hij toetst.** Blok 5 schiet 300 °C en
+200 °C op `0105` in om laag 1 en laag 2+3 te toetsen. Dat is de goede manier om
+gedrag te meten. Maar `validateAndSmooth()` schrijft die waarden ook wég, en
+twaalf seconden later rapporteerde blok 4:
+
+```
+Opvallende metingen — 0105 uiterste 200 (1x)
+```
+
+De werkelijke koelwatertemperatuur was 91–93 °C. Blok 3 deed het al goed
+(*"selectie tijdelijk overschreven"* … *"Selectie hersteld"*); blok 5 niet.
+
+**#106 — een advies dat bewust was afgewezen, elke rit opnieuw.** De
+`#40`-proef eindigde met *"#40 KAN DICHT, de tabel in pidlane-data.js hoort
+naar de gemeten waarde"*. #40 was op 02-09 om 20:27 al gesloten, met de
+tegenovergestelde uitkomst: de tabel klopt (J1979 — twee bytes, één per bank),
+deze CX-5 heeft één bank, en de lerende laag hoort te winnen.
+
+De denkfout eronder is de bruikbaarste van de vier. De proef besloot op
+*"gemeten wijkt af van de tabel"* en concludeerde *"de tabel is fout"*. Bij een
+lerende laag is afwijken geen bevinding maar **de bedoeling**. Zo'n proef staat
+vanaf de eerste rit in deze auto permanent oranje, en dan geldt wat `CLAUDE.md`
+erover zegt: een test die altijd rood staat wordt genegeerd.
+
+Beide proeven vragen nu naar gedrag: *pakt de app de bytes goed uit* — wint
+`PLPidLen.lengte()` van de tabel, en pakt een batch mét `0155` erin de PID
+eráchter nog goed uit. Wijkt de meting af terwijl de app hem correct leest, dan
+is dat `ok` met de afwijking als toelichting.
+
+**Wat de bedradingscontrole hier ving.** Die nieuwe vraag roept `pidByteLen()`
+aan achter een `typeof`-guard, want `pidlane-testrun.js` laadt later dan de
+parser. `test-bedrading.js` gaf daar meteen FOUT op: *"zit achter een
+typeof-guard maar staat niet in KRITIEK"*. Tweede keer deze week dat die
+controle een verse guard ving zonder dat iemand eraan hoefde te denken — de
+eerste was `sppReconnectGuard`.
+
+### De app kon al die tijd gewoon in een browser draaien — 03-09-2026
+
+Op 02-09 stonden er 22 issues open en kwamen er die dag vijf bij. De klacht
+was niet dat er te weinig gevonden werd, maar dat er te weinig dícht ging.
+
+**De meting die dat verklaart.** Van die 22 hadden er ongeveer vijftien geen
+auto nodig. Ze hadden een dráaiende app nodig — een tekstlabel dat verkeerd
+afkapt, een selectie die door de sweep wordt overschreven, een melding die te
+vroeg alarm slaat. Maar de enige plek waar de app draaide was een rit, en een
+rit duurt een kwartier en gebeurt één keer per dag. Daardoor stond #95 (een
+label van elf tekens) in dezelfde wachtrij als #20 (een identifier die alleen
+een echte ECU kan bevestigen).
+
+**De conclusie die dat in stand hield stond in `test-schermranden.js`:**
+
+> Playwright kan dit gedrag meten [...] Voor de rest lukt dat hier niet zonder
+> de hele app-boot na te bouwen: `openTestrun()` weigert zonder `isAdmin()`,
+> en dat hangt aan een ingelogde sessie die een kale testomgeving niet heeft.
+
+Die redenering is logisch en hij is fout, en het is dezelfde vorm als de
+`ATI`-vergissing in §1: een waarneming ("het lukt niet") werd een conclusie
+("het kan niet") zonder de bron op te zoeken. **De app-boot hoeft niet
+nagebouwd te worden — hij kan gewoon draaien.** Nagemeten op 03-09: alle 57
+modules laden, `PLBus`/`PLLoad`/`PLSched`/`PLBedrading`/`PLRit`/`PLAchtergrond`
+leven, 146 PIDs staan in de tabel, nul JS-fouten, geen enkel dialoogvenster.
+Vijftien seconden.
+
+**Wat het al die tijd tegenhield was één regel in de `<head>`:**
+
+```html
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans..." rel="stylesheet">
+```
+
+Een `<script>` wacht op nog openstaande stylesheets voordat het draait. In een
+testomgeving zonder internet komt die CSS nooit, dus bleef de parser hangen op
+script 1 van 57 — met `readyState: "loading"`, geen foutmelding en geen
+tijdslimiet. Het zag eruit als "de app start niet", en dat leest als een
+fundamenteel probleem in plaats van als een ontbrekende download. Blokkeer
+extern verkeer en de boot loopt door.
+
+Dat extern verkeer blokkeren hoort er trouwens sowieso bij: een proef die het
+net op kan meet de dag en niet de code.
+
+**Wat dit oplevert.** `plbrowser.js` start de echte app en `bproef-*.js` stelt
+er vragen aan. De eerste proef reproduceert meteen de bevinding waar de rit van
+02-09 23:22 een kwartier voor nodig had: `validateAndSmooth('0105', 200)` geeft
+`200` in plaats van `null`, want `FILTERED_PIDS` is met suffix-sleutels gevuld
+terwijl de meetketen de volledige PID doorgeeft. Dat is een fout in de
+KOPPELING tussen twee modules, en die is per definitie onzichtbaar voor een
+test die één van de twee uit zijn verband knipt met `vm`.
+
+**Geen npm, geen Playwright, geen buildstap.** Node 22 heeft een ingebouwde
+WebSocket en praat daarmee rechtstreeks met het debugprotocol van Chromium.
+Dat is geen puristische keuze maar dezelfde randvoorwaarde als altijd: dit is
+een soloproject naast een baan, en gereedschap dat zelf onderhoud vraagt wordt
+niet gedraaid.
+
+**Wat dit niet oplost.** Er zit geen auto achter. De nep-adapter vervangt
+`_sendBTOnce()` en levert antwoorden uit een tabel; wat een echte ECU doet
+onder een volle bus blijft een vraag voor een rit. De scheiding staat nu in
+`CLAUDE.md`: een functie los is node, een koppeling is de browser, een echte
+bus is `CAMPAGNE` — en dat laatste is voortaan een besluit met een reden in
+plaats van de restcategorie waar alles in belandde.
+
 ### Het testrunverslag was het derde VIN-pad — 03-09-2026
 
 De rit van 02-09 23:22 leverde een verslag op met de volledige VIN erin, twee

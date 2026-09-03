@@ -69,6 +69,10 @@ MUTATIES=(
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
+# ── de vier reparaties van 03-09-2026 (#103 t/m #106) ──
+"public/pidlane-testrun.js@@    if (gezien.has(sleutel)) return;@@@@test-opruimmelding.js@@dezelfde opruiming in beide logs telt weer dubbel (#104)"
+"public/pidlane-testrun.js@@      if (vorigVerbonden === false) return false;   // tik() heeft de val gezien en telt hem zelf@@@@test-rit.js@@een gemelde herverbinding komt bovenop de bemonstering (#103)"
+"public/pidlane-testrun.js@@      herverbindingen++;\n      vorigVerbonden = true;@@      vorigVerbonden = true;@@test-rit.js@@een gemelde herverbinding wordt niet meer geteld (#103)"
 "public/pidlane-plload.js@@const batchable=due.filter(p=>!isBitmapPid(p)&&_m01(p));@@const batchable=due.filter(p=>!isBitmapPid(p));@@test-mode21.js@@mode 21 gaat weer stilzwijgend mee in een mode-01-batch"
 "public/pidlane-pids.js@@const sigma=Math.max(b.std, Math.abs(b.mean)*BASE_SIGMA_MIN, 1e-9);@@const sigma=Math.max(b.std, 1e-9);@@test-baseline.js@@de sigma-bodem is weg; strakke historie laat alles afgaan"
 "public/pidlane-pids.js@@const BASE_DREMPEL = 3;@@const BASE_DREMPEL = 2.5;@@test-baseline.js@@de bevindingsdrempel is terug naar 2,5 sigma"

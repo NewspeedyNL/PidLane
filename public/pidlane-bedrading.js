@@ -72,6 +72,15 @@ var KRITIEK = [
   // achter een dode socket in plaats van met opzet -- zestien seconden rommel,
   // precies het geval uit het log van 23-08. Stil falen dus, en daarom hier.
   'sppReconnectGuard',
+  // De lerende bytelengte (#106, 03-09-2026). Blok 5 en blok 4 vragen sinds
+  // vandaag niet meer of de meting van de tabel afwijkt -- dat doet ze bij een
+  // lerende laag altijd -- maar of de app de bytes goed LEEST. Dat gaat via
+  // pidByteLen() achter een typeof-guard, want pidlane-testrun.js laadt later
+  // dan de parser. Verdwijnt hij, dan valt die controle stil weg en meldt de
+  // testrun opgewekt dat alles goed gelezen wordt zonder ooit gekeken te
+  // hebben. Deze regel is toegevoegd omdat de bedradingscontrole er zelf FOUT
+  // op gaf, precies zoals bij sppReconnectGuard hierboven.
+  'pidByteLen',
   'selectCategoryPIDs','sendCmd','splitBatchResponse','steunbitsRuw','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',
   'uitlogBezig','uitlogVlagAan',
