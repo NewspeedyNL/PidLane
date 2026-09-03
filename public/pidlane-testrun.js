@@ -2796,24 +2796,38 @@ const PROEVEN_B5 = [
   // toe stond het alleen als beschrijving in het issue.
   {
     issue: '#17',
-    naam: '#17 — schrijft de bulk-recorder een andere tijd dan de logger?',
-    waarom: 'Het bewijs ligt in het sessie-id van de recorder en op de klok van het toestel.',
+    naam: '#17 — schrijft de bulk-recorder dezelfde tijd als de logger?',
+    waarom: 'Het bewijs ligt in het sessie-id van de recorder naast het epoch-moment waarop hij begon.',
     proef: function () {
       if (!window.PLBulk || !PLBulk.status) return { staat: 'LET OP', detail: 'PLBulk ontbreekt' };
+      if (typeof plStempelLokaal !== 'function')
+        return { staat: 'FOUT', detail: 'plStempelLokaal() ontbreekt — dan bouwt de recorder zijn id weer met UTC (#17)' };
       let st = {};
       try { st = PLBulk.status() || {}; } catch (e) { return { staat: 'LET OP', detail: 'PLBulk.status() gaf een fout' }; }
       if (!st.sessie) return { staat: 'LET OP', detail: 'geen sessie-id — de recorder heeft deze rit niet gelopen' };
-      // 'blk-2026-09-02T11-11-08-165Z' → de ISO-tijd staat er in UTC in.
-      const m = /^blk-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})/.exec(String(st.sessie));
-      if (!m) return { staat: 'LET OP', detail: 'sessie-id "' + st.sessie + '" heeft niet de verwachte vorm — deze proef kan niets vergelijken' };
+      if (!st.gestart) return { staat: 'FOUT', detail: 'PLBulk.status() geeft geen `gestart` mee — zonder dat epoch-getal ' +
+        'is het etiket nergens meer aan te toetsen (#17)' };
+
+      // Het epoch-moment is de waarheid (PIDLANE-CONTRACT.md §6); het id is er
+      // het etiket van. Ze horen exact hetzelfde moment te noemen, in de klok
+      // die de gebruiker op het scherm ziet. Niet vergelijken met de klok van
+      // NU: de recorder kan uren geleden begonnen zijn.
+      const hoort = 'blk-' + plStempelLokaal(st.gestart);
       const offsetMin = -new Date().getTimezoneOffset();
-      const kop = 'recorder-id "' + st.sessie.slice(0, 24) + '…" draagt ' + m[4] + ':' + m[5] + ' (UTC), de klok van dit toestel staat ' +
-        (offsetMin >= 0 ? '+' : '') + (offsetMin / 60) + ' uur';
+      const kop = 'recorder-id "' + String(st.sessie) + '", gestart ' +
+        new Date(st.gestart).toTimeString().slice(0, 8) + ' lokaal (klok ' +
+        (offsetMin >= 0 ? '+' : '') + (offsetMin / 60) + ' uur t.o.v. UTC)';
+
+      if (/Z$/.test(String(st.sessie)))
+        return { staat: 'FOUT', detail: kop + ' — het id eindigt op Z en claimt daarmee UTC. Dat was de leugen ' +
+          'uit #17: de app-log ernaast schrijft lokale tijd' };
+      if (String(st.sessie) !== hoort)
+        return { staat: 'FOUT', detail: kop + ' — verwacht "' + hoort + '". Het etiket loopt niet gelijk met het ' +
+          'moment waarop de recorder begon, en dan zijn twee bestanden van dezelfde rit niet naast elkaar te leggen (#17)' };
       if (offsetMin === 0)
-        return { staat: 'LET OP', detail: kop + ' — dit toestel stáát op UTC, dus het verschil uit #17 is hier niet zichtbaar. ' +
-          'Meet dit nog eens in de zomertijd of met een andere tijdzone' };
-      return { staat: 'LET OP', detail: kop + ' — dat is ' + Math.abs(offsetMin / 60) + ' uur verschil met de app-log, die lokale tijd schrijft. ' +
-        '#17 is hiermee hard gemeten in plaats van beschreven: twee bestanden van dezelfde rit zijn niet naast elkaar te leggen' };
+        return kop + ' — het id klopt met het startmoment, maar dit toestel stáát op UTC, dus het verschil uit #17 ' +
+          'zou hier hoe dan ook niet zichtbaar zijn. Meet dit nog eens in de zomertijd of met een andere tijdzone';
+      return kop + ' — het id draagt exact dat moment in dezelfde klok als het logboek';
     }
   },
 
@@ -4657,6 +4671,8 @@ const CAMPAGNE = {
 
     'BLOK 5 en STAP 7 — allebei lezen ze nu PLAchtergrond naast PLRit. plmutate.sh staat op 36 mutaties; twee nieuwe maken test-achtergrond.js rood.',
 
+    '#17 — DE RECORDER EN HET LOGBOEK LOPEN NU OP DEZELFDE KLOK. Het sessie-id werd met toISOString() gebouwd, dus in UTC, terwijl de app-log ernaast lokale tijd schrijft: twee keer gemeten, twee uur verschil, en dezelfde rit leek uit twee bestanden te komen die niet bij elkaar horen. plStempelLokaal() en plDatumLokaal() (pidlane-uihelpers.js) zijn nu de ene plek waar epoch naar kloktijd gaat, en de Z is eraf — die letter betekent UTC en dat was het niet.',
+
     '#95 — "ABS. MOTO" IS GEEN NAAM. hudShortLabel() zette het eerste woord op zes tekens en het tweede op vier, dus bij "Abs. motorbelasting" bleef de bepaling heel en verdween de grootheid. Alle 146 PID-namen zijn in de draaiende app nagemeten: 45 eindigden midden in een woord, nu nog één. De grens is bovendien een parameter geworden — elf voor de HUD-hoekmeter (één regel), dertien voor de tellerplaat (twee regels), en die dertien is opgemeten en niet gekozen.',
 
     '#71 — DE ONDERSTE VELLEN. De demo-autokiezer, Rijsituatie en Voertuigoverzicht bouwen zichzelf met inline styles op en droegen geen --pl-sab; hun onderste knop viel daardoor deels achter de drie Android-knoppen. Het waren er drie en niet één, en dat is niet gegrept maar gemeten: bproef-schermranden.js opent elk vel in de draaiende app met een nagebootste navigatiebalk van 48px. Vóór de reparatie bleef er 14, 12 en 12px over; nu 62, 60 en 60px.',
@@ -4670,8 +4686,6 @@ const CAMPAGNE = {
     '#98 — met vier aanvragers kreeg de sweep het busslot niet binnen 8 s en mat hij naast de pollus: 1250 ms per PID in plaats van 200. Gevonden in de rit van 22:15 en nog open. Blok 3 meldt het zelf met LET OP, dus je ziet het in het verslag terug.',
 
     '#79 — de veilige zones. De rit van 22:15 liep op de tablet, waar de proef per definitie klopt; de twee FOUT-runs liepen op de telefoon. Doe stap 10 nog eens op de SM-S947B, dan is die vraag beslist.',
-
-    '#17 — de recorder schrijft UTC en de logger lokale tijd. Hard gemeten in de vorige rit, nog niet gerepareerd. Blok 5 meldt het als LET OP.',
 
     'FILTERED_PIDS — laag 2+3 staan nog steeds uit voor álle PIDs. Onveranderd, en nog steeds een eigen rit waard.'
   ]

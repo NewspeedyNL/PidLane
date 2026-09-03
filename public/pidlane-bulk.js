@@ -395,7 +395,11 @@ async function start(stil) {
 
   _blkS.actief = true;
   _blkS.gepauzeerd = false;
-  _blkS.sessieId = 'blk-' + new Date().toISOString().replace(/[:.]/g, '-');
+  // Lokale klok, niet UTC (#17). De regel die hieronder in het logboek komt
+  // draagt dezelfde tijd; met toISOString() scheelde dat twee uur en leek het
+  // om twee verschillende momenten te gaan. Het epoch-getal staat in
+  // _blkS.gestart en in elk blok (van/tot) — dát is de tijd die telt.
+  _blkS.sessieId = 'blk-' + plStempelLokaal();
   _blkS.gestart = _blkNu();
   _blkS.buf = [];
   _blkS.nRegels = 0;
@@ -487,7 +491,9 @@ async function exporteer() {
       }
     }
     var body = uit.join('\n');
-    var naam = 'pidlane-bulk-' + new Date().toISOString().slice(0, 10) + '.ndjson';
+    // Ook hier de lokale dag (#17): met toISOString() krijgt een export om
+    // half één 's nachts de datum van gisteren mee.
+    var naam = 'pidlane-bulk-' + plDatumLokaal() + '.ndjson';
     bewaarBestand(naam, body);
     toast('Geëxporteerd: ' + uit.length + ' regels (' + mb(body.length) + ' MB)');
   } catch (e) {
@@ -666,8 +672,13 @@ window.PLBulk = {
   open     : openDash,
   sluit    : sluitDash,
   status   : function () {
+    // `gestart` is epoch-ms en dus de tijd die telt (PIDLANE-CONTRACT.md §6);
+    // `sessie` draagt dezelfde tijd als etiket, in de lokale klok. Blok 5 legt
+    // die twee naast elkaar — zonder het epoch-getal erbij valt er niets te
+    // vergelijken dan de klok van dit moment, en die is uren later (#17).
     return { actief: _blkS.actief, gepauzeerd: _blkS.gepauzeerd, regels: _blkS.nRegels,
-             blokken: _blkS.nBlokken, segment: _blkS.seg, sessie: _blkS.sessieId, fout: _blkS.fout };
+             blokken: _blkS.nBlokken, segment: _blkS.seg, sessie: _blkS.sessieId,
+             gestart: _blkS.gestart, fout: _blkS.fout };
   }
 };
 

@@ -11,6 +11,39 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — ÉÉN KLOK VOOR WIE MEELEEST
+
+       • 🕐 #17: RECORDER EN LOGBOEK LIEPEN TWEE UUR UIT ELKAAR.
+         Het sessie-id werd met toISOString() gebouwd (UTC), de
+         app-log ernaast schrijft lokale tijd. Dezelfde seconde
+         stond in het log als 23:16:03 en in de bestandsnaam als
+         21-16-03 — twee bestanden van dezelfde rit die niet bij
+         elkaar leken te horen.
+
+       • 📍 DE FOUT ZAT IN HET ETIKET, NIET IN DE OPSLAG. De
+         blokken dragen epoch-milliseconden en dat was altijd al
+         goed. Wat scheefliep was de omrekening naar kloktijd:
+         één keer UTC, één keer lokaal. Die omrekening staat nu
+         op één plek — plStempelLokaal() en plDatumLokaal().
+
+       • 🅩 DE Z IS ERAF. Die letter betekent UTC, en dat was het
+         niet. Ook de datum van een exportbestand volgt nu de
+         lokale dag: met toISOString() kreeg een export om half
+         één 's nachts die van gisteren.
+
+       • 🌍 GETOETST MET EEN ECHTE TIJDZONE. Op een CI-runner in
+         UTC is deze fout onzichtbaar. test-tijdklok.js en
+         bproef-tijdklok.js zetten daarom zelf TZ=Europe/Amsterdam
+         — de browserproef vóórdat Chromium start, want die erft
+         hem mee — en meten twee uur verschil in plaats van erover
+         te redeneren.
+
+       • 🔬 BLOK 5 IS VAN MELDER TOETS GEWORDEN. Hij meldde alleen
+         dát er verschil was; hij vergelijkt nu het sessie-id met
+         het epoch-moment waarop de recorder begon.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — "ABS. MOTO" IS GEEN NAAM
 
        • ✂️ #95: DE AFKORTER KAPTE HET VERKEERDE WEG.

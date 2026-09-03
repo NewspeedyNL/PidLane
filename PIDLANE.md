@@ -700,6 +700,57 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+### Recorder en logboek liepen op twee klokken — 03-09-2026 (#17)
+
+**Wat er gebeurde.** De bulk-recorder bouwde zijn sessie-id met
+`toISOString()`, dus in UTC, terwijl `log()` ernaast lokale tijd schrijft. Uit
+de rit van 02-09, twee regels over hetzelfde moment:
+
+```
+{"ts":"23:16:03", ... "msg":"📼 bulk-recorder gestart (blk-2026-09-02T21-16-03-568Z)"}
+```
+
+Zelfde seconde, twee uur verschil. Wie die twee bestanden naast elkaar legt
+concludeert eerst dat ze niet bij elkaar horen — en dat is precies wat er twee
+keer gebeurde.
+
+**De fout zat niet in de opslag maar in het etiket.** De blokken van de
+recorder dragen `van`/`tot` als epoch-milliseconden, en het app-log draagt
+`t: Date.now()` naast zijn `ts`. Allebei volgen ze
+`PIDLANE-CONTRACT.md` §6 gewoon. Wat scheefliep was de omrekening naar een
+kloktijd die de gebruiker leest: die gebeurde één keer in UTC en één keer
+lokaal.
+
+Er is nu één plek waar epoch naar kloktijd gaat: `plStempelLokaal()` en
+`plDatumLokaal()` in `pidlane-uihelpers.js`. De `Z` is eraf — die letter
+betekent UTC, en dat was de leugen in de oude naam.
+
+**Wat er nog niet mee opgelost is.** Vijftien andere plekken bouwen een
+exportbestandsnaam met `toISOString().slice(0,10)`, en die geven om half één
+'s nachts de datum van gisteren mee — `pidlane-fuel.js`, `pidlane-rit.js`,
+`pidlane-koopcheck.js`, `pidlane-caravan.js`, `pidlane-dossier.js` en
+`pidlane-rijsituatie.js` onder meer. Dat is dezelfde fout, maar het overzetten
+is mechanisch werk over zes bestanden, en dat hoort niet in dezelfde commit als
+een gedragswijziging. Het `export`-veld ín het bulkbestand blijft bewust
+`toISOString()`: dat is machinegegeven met een `Z` erachter en dus ondubbelzinnig.
+
+**Waarom een browserproef en niet alleen een node-test.** Een CI-runner staat
+op UTC, en dáár geeft `toISOString()` precies dezelfde tijd als de lokale klok:
+de fout is er onzichtbaar. `test-tijdklok.js` zet daarom `process.env.TZ` vóór
+de eerste `Date` en toetst de helpers op vaste momenten, met de oude vorm
+ernaast als tegenproef. `bproef-tijdklok.js` doet hetzelfde een laag hoger: hij
+zet `TZ` vóórdat Chromium start — die variabele erft de browser mee — start de
+echte recorder met een echte IndexedDB eronder, en legt het sessie-id naast de
+regel die `log()` op datzelfde moment schreef. Zonder die tijdzone meet geen
+van beide iets.
+
+**En blok 5 is van melder naar toets geworden.** De proef meldde tot nu toe
+alleen dát er verschil was. Hij vergelijkt nu het sessie-id met
+`plStempelLokaal(st.gestart)` — het epoch-moment waarop de recorder begon, dat
+`PLBulk.status()` daarvoor is gaan meegeven. Niet met de klok van dít moment:
+de recorder kan uren eerder begonnen zijn, en dan zou elke proef falen om de
+verkeerde reden.
+
 ### "ABS. MOTO" is geen naam — de afkorter kapte het verkeerde weg — 03-09-2026 (#95)
 
 **Wat er gebeurde.** `hudShortLabel('Abs. motorbelasting')` gaf `ABS. MOTO`.
