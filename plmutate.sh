@@ -145,6 +145,15 @@ MUTATIES=(
 "package.json@@  \"version\": \"3.0.0\",@@  \"version\": \"3.1.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
 "PLAY-INZENDING.md@@| URL | \`https://app.pidlane.nl/verwijderen.html\` |@@| URL | \`https://pidlane.nl/verwijderen.html\` |@@test-playteksten.js@@de verwijder-URL wijst naar een andere host dan de app zelf gebruikt"
 "PLAY-INZENDING.md@@## 8. Ads@@De gedeelde meetdata is geanonimiseerd.\n\n## 8. Ads@@test-playteksten.js@@het inzenddocument noemt de meetdata weer anoniem in plaats van gepseudonimiseerd"
+# ── de poort voor automerge (03-09-2026) ──
+# Dit is de stilste plek in de opzet om iets stuk te hebben: een verkeerd
+# besluit hier voegt iets samen wat niet af is, en elke merge is een deploy.
+# De vierde is de subtielste en daarom belangrijk: de poort blijft dicht maar
+# zegt het niet meer, en dan blijft een PR liggen zoals vóór automerge.
+"automerge-besluit.js@@  if (labels.indexOf(LABEL_KLAAR) < 0) {@@  if (false) {@@test-automerge.js@@de klaar-poort staat open: alles wordt weer vanzelf samengevoegd"
+"automerge-besluit.js@@  if (f.headRepo !== f.eigenRepo) {@@  if (false) {@@test-automerge.js@@een PR uit een fork wordt weer samengevoegd door de bot"
+"automerge-besluit.js@@  if (typeof f.achterstand === 'number' && f.achterstand > 0) {@@  if (false) {@@test-automerge.js@@een verlopen groene vlag telt weer: de basis mag opgeschoven zijn"
+"automerge-besluit.js@@             melden: true, sleutel: 'geen-klaar' };@@             melden: false, sleutel: 'geen-klaar' };@@test-automerge.js@@een PR zonder label blijft stil liggen in plaats van het te zeggen"
 )
 
 echo

@@ -1,45 +1,47 @@
 # ════════════════════════════════════════════════════════════
-#  PidLane — samenvoegen zodra de testgate groen is
+#  PidLane — samenvoegen wat af is, en alleen dat
 #  Aangemaakt: 27-08-2026 (CET)
+#  Herzien:    03-09-2026 — opt-in in plaats van opt-out
 #
 #  WAAROM DIT BESTAAT
 #  Een PR bleef hangen tot iemand er toevallig naar keek. Op 26-08 was dat
 #  vier uur, terwijl de testgate na drie minuten al groen stond. Dit is een
 #  soloproject: die vier uur waren geen review, het was wachttijd.
 #
-#  WAT HET DOET
-#  Zodra de workflow "Tests" op een PR-commit succesvol afrondt, wordt die PR
-#  samengevoegd. Niet eerder — de gate is de voorwaarde, niet een formaliteit
-#  achteraf.
+#  WAAROM HET OP 03-09 IS OMGEKEERD
+#  De eerste opzet voegde samen zodra de gate groen was, met het label
+#  `handmatig` als rem. Nagemeten over 56 samengevoegde PR's: de mediaan van
+#  openen tot samenvoegen was 29 SECONDEN, 43 ervan gingen binnen 40
+#  seconden. Er was dus geen moment waarop iemand kon ingrijpen — en elke
+#  merge is hier een deploy naar 100% van het verkeer.
+#
+#  En 14 keer volgde er binnen twee uur nóg een PR op dezelfde branch. PR #80
+#  van 01-09 is de zuivere vorm: geopend 20:52:56, samengevoegd 20:53:08 op
+#  één van de twee commits; testrun 6.0 bleef achter terwijl main op 5.9
+#  stond. CLAUDE.md maakte daar een gedragsregel van ("af, groen, gepusht,
+#  dán pas de PR") en die draaide op oplettendheid.
+#
+#  NU:  samenvoegen vraagt het label `klaar`. Zonder dat gebeurt er niets, en
+#       de workflow zegt dat op de PR — stil laten liggen zou dit erger maken
+#       dan wat het opving.
+#
+#  WAAR HET BESLUIT STAAT
+#  In `automerge-besluit.js` aan de wortel van de repo, als gewone functie
+#  zonder netwerk. Reden: als inline script hier was hij niet te toetsen, en
+#  een fout hier merk je pas als er iets verkeerds live staat.
+#  public/test-automerge.js voert hem uit, plmutate.sh bouwt de fouten na.
+#  Deze workflow doet alleen het opzoeken en het uitvoeren.
 #
 #  WAAROM NIET GITHUB'S EIGEN AUTO-MERGE
-#  Dat is de knop die je zou verwachten, maar hij vraagt twee dingen die
-#  buiten dit bestand liggen:
-#    1. Settings → General → Pull Requests → "Allow auto-merge" aan.
-#    2. Branch protection op `main` die alle drie de checks van *Tests*
-#       VERPLICHT stelt. Let op: branch protection zoekt op de weergavenaam
-#       van de job, niet op de job-id. Dat zijn dus:
-#         "plcheck (syntax, tests, structuur)"
-#         "tegenproef (bouwt fouten na, verwacht rood)"
-#         "Geen sleutels in de repo"
-#       Mist de tegenproef in die lijst, dan is de poort verplicht en de
-#       vraag of die poort iets voorstelt vrijblijvend — de verkeerde kant op.
-#  Zonder (2) is GitHub's auto-merge actief gevaarlijk: hij voegt samen zodra
-#  de PR technisch samen te voegen is, en dat is meestal vóórdat de tests
-#  klaar zijn. Precies het omgekeerde van wat hier de bedoeling is.
-#
-#  Staan (1) en (2) er ooit wel, dan mag dit bestand weg en volstaat
-#  `gh pr merge --auto`. Tot die tijd doet deze workflow het werk zonder
-#  van repo-instellingen af te hangen.
+#  Die vraagt branch protection op `main` met alle drie de checks van *Tests*
+#  als verplicht, plus "Allow auto-merge" in de instellingen. Zonder dat is
+#  hij actief gevaarlijk: hij voegt samen zodra het technisch kan, meestal
+#  vóórdat de tests klaar zijn. En hij kent geen `klaar`-poort.
 #
 #  LET OP — DIT WERKT PAS VANAF `main`
 #  `workflow_run` draait altijd de versie van dit bestand die op de
-#  standaardbranch staat. De PR die deze workflow introduceert wordt dus niet
-#  door zichzelf samengevoegd; die eerste keer gaat met de hand.
-#
-#  DE NOODREM
-#  Zet het label `handmatig` op een PR en deze workflow laat hem met rust.
-#  Een draft-PR wordt ook overgeslagen.
+#  standaardbranch staat. De PR die deze wijziging introduceert wordt dus nog
+#  door de OUDE workflow behandeld; die eerste keer gaat met de hand.
 # ════════════════════════════════════════════════════════════
 name: Auto-merge
 
@@ -67,20 +69,56 @@ jobs:
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Zoek de PR en voeg samen
+      # DIT IS EEN VEILIGHEIDSPUNT, GEEN FORMALITEIT.
+      # Zonder ref checkt actions/checkout bij een workflow_run de
+      # STANDAARDBRANCH uit, en dat is precies wat hier moet. Zou hier de
+      # PR-head staan, dan kan een PR zijn eigen mergeregels meebrengen:
+      # automerge-besluit.js herschrijven naar "altijd ja" en zichzelf
+      # binnenlaten. De regels komen dus van main, de PR levert alleen feiten.
+      - name: Checkout (de regels van main, niet die van de PR)
+        uses: actions/checkout@v4.2.2
+
+      - name: Beslis en voer uit
         uses: actions/github-script@v7.0.1
         with:
           script: |
+            const { besluit, meldtekst, LABEL_KLAAR } =
+              require(`${process.env.GITHUB_WORKSPACE}/automerge-besluit.js`);
             const sha = context.payload.workflow_run.head_sha;
             const { owner, repo } = context.repo;
+
+            // BESTAAT HET LABEL ÜBERHAUPT?
+            // Dit is de valkuil van een opt-in-poort: is `klaar` niet als label
+            // in de repo aangemaakt, dan kan niemand hem zetten, en blijft
+            // ELKE PR liggen zonder dat er iets mis lijkt. Precies de toestand
+            // die automerge moest opheffen, nu met een dichte deur zonder
+            // klink. Dus: één keer nakijken en er hard over zijn.
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: LABEL_KLAAR });
+            } catch (e) {
+              if (e.status === 404) {
+                core.warning(`Het label \`${LABEL_KLAAR}\` bestaat niet in deze repo. ` +
+                  `Zolang dat zo is wordt er NIETS automatisch samengevoegd. ` +
+                  `Maak hem aan: Issues → Labels → New label, of typ de naam in de ` +
+                  `labelkiezer van een PR — GitHub maakt hem dan aan.`);
+                await core.summary
+                  .addHeading(`Label \`${LABEL_KLAAR}\` bestaat niet`, 3)
+                  .addRaw(`Automerge is sinds 03-09-2026 opt-in en wacht op dat label. ` +
+                    `Zolang het niet bestaat blijft elke PR liggen.\n\n` +
+                    `Aanmaken: **Issues → Labels → New label**, naam \`${LABEL_KLAAR}\`.`)
+                  .write();
+              } else {
+                core.warning(`Labelcontrole mislukte (${e.message}) — ga door op de feiten van de PR.`);
+              }
+            }
 
             // De payload draagt zelf een pull_requests-lijst, maar die is bij
             // workflow_run niet betrouwbaar gevuld. Opzoeken op de commit is
             // dat wel.
-            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+            const { data: gevonden } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
               owner, repo, commit_sha: sha
             });
-            const open = prs.filter(p => p.state === 'open');
+            const open = gevonden.filter(p => p.state === 'open');
             if (!open.length) {
               core.info(`Geen open PR op ${sha.slice(0, 7)} — niets te doen.`);
               return;
@@ -88,35 +126,43 @@ jobs:
 
             for (const kort of open) {
               // Verse staat ophalen: de lijst hierboven is een momentopname en
-              // mergeable_state ontbreekt erin.
+              // mergeable ontbreekt erin.
               const { data: pr } = await github.rest.pulls.get({
                 owner, repo, pull_number: kort.number
               });
               const naam = `#${pr.number} (${pr.title})`;
 
-              if (pr.draft) {
-                core.info(`${naam}: draft — overgeslagen.`);
-                continue;
+              // Hoeveel loopt de basis vóór op deze branch? Die vraag kan
+              // alleen de API beantwoorden, dus hij hoort hier en niet in het
+              // besluit. Faalt de vergelijking, dan gaat er null in en is dit
+              // niet de poort die dichtvalt — een kapotte API mag geen
+              // verkapte blokkade worden.
+              let achterstand = null;
+              try {
+                const { data: v } = await github.rest.repos.compareCommitsWithBasehead({
+                  owner, repo, basehead: `${pr.base.ref}...${pr.head.sha}`
+                });
+                achterstand = v.behind_by;
+              } catch (e) {
+                core.warning(`${naam}: achterstand niet te bepalen (${e.message}) — die poort staat deze run open.`);
               }
-              if ((pr.labels || []).some(l => l.name === 'handmatig')) {
-                core.info(`${naam}: label 'handmatig' — overgeslagen.`);
-                continue;
-              }
-              // Geen PR's vanuit een fork: die kunnen code meebrengen die deze
-              // workflow met schrijfrechten zou samenvoegen zonder dat iemand
-              // ernaar heeft gekeken.
-              if (pr.head.repo.full_name !== `${owner}/${repo}`) {
-                core.info(`${naam}: komt uit een fork — overgeslagen.`);
-                continue;
-              }
-              // De testgate draaide op head_sha. Is er daarna doorgepusht, dan
-              // zegt die groene run niets meer over wat er nu ligt.
-              if (pr.head.sha !== sha) {
-                core.info(`${naam}: er is doorgepusht na de geteste commit — overgeslagen.`);
-                continue;
-              }
-              if (pr.mergeable === false) {
-                core.warning(`${naam}: mergeconflict met ${pr.base.ref} — los dat eerst op.`);
+
+              const b = besluit({
+                nummer:      pr.number,
+                draft:       pr.draft,
+                labels:      (pr.labels || []).map(l => l.name),
+                headRepo:    pr.head.repo ? pr.head.repo.full_name : '(verwijderd)',
+                eigenRepo:   `${owner}/${repo}`,
+                headSha:     pr.head.sha,
+                getesteSha:  sha,
+                mergeable:   pr.mergeable,
+                achterstand: achterstand,
+                baseRef:     pr.base.ref
+              });
+
+              if (!b.samenvoegen) {
+                core.info(`${naam}: ${b.reden} — niet samengevoegd.`);
+                if (b.melden) await meld(pr, b);
                 continue;
               }
 
@@ -126,7 +172,7 @@ jobs:
                   merge_method: 'merge',            // zelfde vorm als de bestaande historie
                   sha: pr.head.sha                  // faalt liever dan de verkeerde commit samenvoegen
                 });
-                core.notice(`${naam} samengevoegd in ${pr.base.ref}.`);
+                core.notice(`${naam} samengevoegd in ${pr.base.ref} — ${b.reden}.`);
               } catch (e) {
                 // 405 = een menselijke poort (verplichte review, branch
                 // protection). 409 = de commit is intussen verschoven. Geen van
@@ -142,4 +188,29 @@ jobs:
                 }
                 throw e;
               }
+            }
+
+            // ── melden op de PR, maar niet elke run opnieuw ──
+            // Elke push start een nieuwe testrun en dus een nieuwe beurt hier.
+            // Zonder ontdubbeling staat er na vijf commits vijf keer dezelfde
+            // tekst, en dan leest niemand hem meer. De sleutel gaat als
+            // HTML-commentaar mee, zodat de vergelijking over het GEVAL gaat
+            // en niet over de formulering.
+            async function meld(pr, b) {
+              const merk = `<!-- automerge:${b.sleutel} -->`;
+              const { data: bestaand } = await github.rest.issues.listComments({
+                owner, repo, issue_number: pr.number, per_page: 100
+              });
+              const vanOns = bestaand.filter(c =>
+                c.user.type === 'Bot' && /<!-- automerge:/.test(c.body || ''));
+              const laatste = vanOns[vanOns.length - 1];
+              if (laatste && laatste.body.indexOf(merk) >= 0) {
+                core.info(`#${pr.number}: melding "${b.sleutel}" stond er al — niet herhaald.`);
+                return;
+              }
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: pr.number,
+                body: `${merk}\n${meldtekst(b)}\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_`
+              });
+              core.info(`#${pr.number}: gemeld "${b.sleutel}".`);
             }
