@@ -45,17 +45,32 @@
 # ════════════════════════════════════════════════════════════
 name: Auto-merge
 
+#  TWEE INGANGEN, EN DE TWEEDE IS EEN CORRECTIE VAN 03-09-2026
+#  De eerste opzet vuurde alléén op het afronden van *Tests*. Dat heeft een
+#  gat dat dezelfde dag opdook: zet je het label ERNA — en dat is de normale
+#  volgorde, want je labelt als het werk af is — dan gebeurt er niets meer.
+#  Er komt immers geen tweede Tests-run. De PR blijft liggen tot je opnieuw
+#  pusht, en in de praktijk merge je dan met de hand. Precies het gedrag dat
+#  deze poort moest vervangen.
+#
+#  Dus ook op `labeled`. Langs die weg is "de gate is groen" géén gegeven
+#  meer, en dat wordt hieronder expliciet opgezocht.
 on:
   workflow_run:
     workflows: ['Tests']
     types: [completed]
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: write
   pull-requests: write
 
 concurrency:
-  group: automerge-${{ github.event.workflow_run.head_sha }}
+  # Beide ingangen dragen hun commit ergens anders. Zonder de tweede helft is
+  # de sleutel leeg bij een label-event, en vallen alle gelabelde PR's in één
+  # groep — dan staan ze op elkaar te wachten zonder reden.
+  group: automerge-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -66,17 +81,28 @@ jobs:
     # naar dezelfde branch; die run negeren we, anders voegen we samen terwijl
     # de PR-run nog loopt.
     if: >-
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success'
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'pull_request'
     steps:
-      # DIT IS EEN VEILIGHEIDSPUNT, GEEN FORMALITEIT.
-      # Zonder ref checkt actions/checkout bij een workflow_run de
-      # STANDAARDBRANCH uit, en dat is precies wat hier moet. Zou hier de
-      # PR-head staan, dan kan een PR zijn eigen mergeregels meebrengen:
-      # automerge-besluit.js herschrijven naar "altijd ja" en zichzelf
-      # binnenlaten. De regels komen dus van main, de PR levert alleen feiten.
-      - name: Checkout (de regels van main, niet die van de PR)
+      # DIT IS EEN VEILIGHEIDSPUNT, GEEN FORMALITEIT — en sinds de tweede
+      # ingang moet de ref er EXPLICIET bij staan.
+      #
+      # Bij een workflow_run checkt actions/checkout zonder ref de
+      # standaardbranch uit, en dat was precies goed. Maar bij een
+      # pull_request-event pakt hij de PR-head. Dat zou hier een gat zijn: een
+      # PR kan dan zijn eigen mergeregels meebrengen — automerge-besluit.js
+      # herschrijven naar "altijd ja", het label zetten, en zichzelf
+      # binnenlaten.
+      #
+      # Vandaar de vaste ref. De regels komen van de standaardbranch, de PR
+      # levert alleen feiten. Wie deze regel ooit weghaalt of op iets anders
+      # zet, haalt die eigenschap weg.
+      - name: Checkout (de regels van de standaardbranch, niet die van de PR)
         uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Beslis en voer uit
         uses: actions/github-script@v7.0.1
@@ -84,8 +110,36 @@ jobs:
           script: |
             const { besluit, meldtekst, LABEL_KLAAR } =
               require(`${process.env.GITHUB_WORKSPACE}/automerge-besluit.js`);
-            const sha = context.payload.workflow_run.head_sha;
             const { owner, repo } = context.repo;
+
+            // Welke ingang heeft ons wakker gemaakt? Dat bepaalt twee dingen:
+            // waar de commit vandaan komt, en of "de gate is groen" al
+            // vaststaat of nog opgezocht moet worden.
+            const viaLabel = context.eventName === 'pull_request';
+            const sha = viaLabel
+              ? context.payload.pull_request.head.sha
+              : context.payload.workflow_run.head_sha;
+            core.info(`Wakker via ${viaLabel ? 'een label' : 'een afgeronde testrun'} op ${sha.slice(0, 7)}.`);
+
+            // Staat de testgate groen op déze commit?
+            //   via workflow_run  — ja, daar filtert de job-conditie al op.
+            //   via een label     — onbekend, dus opzoeken. Lukt dat niet, dan
+            //                       gaat er null door en houdt het besluit de
+            //                       poort dicht: bij twijfel niet samenvoegen.
+            async function testsGroenOp(commit) {
+              if (!viaLabel) return true;
+              try {
+                const { data } = await github.rest.actions.listWorkflowRuns({
+                  owner, repo, workflow_id: 'tests.yml', head_sha: commit, per_page: 20
+                });
+                const afgerond = (data.workflow_runs || []).filter(r => r.status === 'completed');
+                if (!afgerond.length) return null;
+                return afgerond.some(r => r.conclusion === 'success');
+              } catch (e) {
+                core.warning(`Testuitslag van ${commit.slice(0, 7)} niet op te halen (${e.message}) — poort blijft dicht.`);
+                return null;
+              }
+            }
 
             // BESTAAT HET LABEL ÜBERHAUPT?
             // Dit is de valkuil van een opt-in-poort: is `klaar` niet als label
@@ -93,8 +147,17 @@ jobs:
             // ELKE PR liggen zonder dat er iets mis lijkt. Precies de toestand
             // die automerge moest opheffen, nu met een dichte deur zonder
             // klink. Dus: één keer nakijken en er hard over zijn.
+            // LET OP de vorm: hoofdletterongevoelig zoeken, net als het besluit.
+            // getLabel() op de exacte naam gaf een 404 terwijl het label als
+            // `Klaar` bestond — dan waarschuwt deze controle over iets wat er
+            // gewoon is, en een controle met vals alarm wordt genegeerd.
             try {
-              await github.rest.issues.getLabel({ owner, repo, name: LABEL_KLAAR });
+              const { data: alle } = await github.rest.issues.listLabelsForRepo({
+                owner, repo, per_page: 100
+              });
+              const bestaat = alle.some(l =>
+                String(l.name).trim().toLowerCase() === LABEL_KLAAR.toLowerCase());
+              if (!bestaat) { const e = new Error('label ontbreekt'); e.status = 404; throw e; }
             } catch (e) {
               if (e.status === 404) {
                 core.warning(`Het label \`${LABEL_KLAAR}\` bestaat niet in deze repo. ` +
@@ -112,23 +175,30 @@ jobs:
               }
             }
 
-            // De payload draagt zelf een pull_requests-lijst, maar die is bij
-            // workflow_run niet betrouwbaar gevuld. Opzoeken op de commit is
-            // dat wel.
-            const { data: gevonden } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner, repo, commit_sha: sha
-            });
-            const open = gevonden.filter(p => p.state === 'open');
-            if (!open.length) {
+            // Welke PR's gaat dit over? Via een label is dat er precies één —
+            // die van het event. Via een testrun moeten ze opgezocht worden:
+            // de payload draagt wel een pull_requests-lijst, maar die is bij
+            // workflow_run niet betrouwbaar gevuld; zoeken op de commit is dat
+            // wel.
+            let nummers;
+            if (viaLabel) {
+              nummers = [context.payload.pull_request.number];
+            } else {
+              const { data: gevonden } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: sha
+              });
+              nummers = gevonden.filter(p => p.state === 'open').map(p => p.number);
+            }
+            if (!nummers.length) {
               core.info(`Geen open PR op ${sha.slice(0, 7)} — niets te doen.`);
               return;
             }
 
-            for (const kort of open) {
+            for (const nummer of nummers) {
               // Verse staat ophalen: de lijst hierboven is een momentopname en
               // mergeable ontbreekt erin.
               const { data: pr } = await github.rest.pulls.get({
-                owner, repo, pull_number: kort.number
+                owner, repo, pull_number: nummer
               });
               const naam = `#${pr.number} (${pr.title})`;
 
@@ -156,6 +226,7 @@ jobs:
                 headSha:     pr.head.sha,
                 getesteSha:  sha,
                 mergeable:   pr.mergeable,
+                testsGroen:  await testsGroenOp(pr.head.sha),
                 achterstand: achterstand,
                 baseRef:     pr.base.ref
               });

@@ -48,6 +48,7 @@ function pr(anders) {
     headSha: 'aaaaaaa1111111111111111111111111111111111',
     getesteSha: 'aaaaaaa1111111111111111111111111111111111',
     mergeable: true,
+    testsGroen: true,
     achterstand: 0,
     baseRef: 'main'
   }, anders || {});
@@ -69,12 +70,24 @@ toets('en dit MOET op de PR komen', zonder.melden === true,
 toets('de melding noemt het label bij naam',
       meldtekst(zonder).indexOf('`' + LABEL_KLAAR + '`') >= 0);
 
-// Een ander label mag niet per ongeluk als toestemming gelden. Dit is het
-// geval dat een tikfout ("klaar!" of "Klaar") zou opleveren.
-for (const l of ['klaar!', 'Klaar', 'af', 'ready', 'automerge']) {
+// Een ánder label mag niet per ongeluk als toestemming gelden.
+for (const l of ['klaar!', 'af', 'ready', 'automerge', 'klaarr']) {
   const b = besluit(pr({ labels: [l] }));
   toets('label "' + l + '" geldt niet als `' + LABEL_KLAAR + '`', b.samenvoegen === false,
         'dan zou een tikfout in een label een deploy zijn');
+}
+
+// MAAR DE SCHRIJFWIJZE WEL — en dit is een correctie op de eerste versie.
+// Die vergeleek exact en zei er expliciet bij dat `Klaar` niet telt. Op
+// 03-09-2026 werd het label als `Klaar` aangemaakt, bleef de PR liggen, en
+// ging de merge alsnog met de hand: precies het gedrag dat deze poort moest
+// vervangen. GitHub kent labelnamen zelf hoofdletterongevoelig — je kunt geen
+// `klaar` én `Klaar` naast elkaar hebben — dus exact vergelijken toetste op
+// een verschil dat niet bestaat.
+for (const l of ['Klaar', 'KLAAR', 'kLaAr', ' klaar ']) {
+  const b = besluit(pr({ labels: [l] }));
+  toets('label "' + l + '" telt wél als `' + LABEL_KLAAR + '`', b.samenvoegen === true,
+        'een label dat er goed uitziet en niets doet is erger dan geen label');
 }
 
 console.log('\n3. Rangorde — welke poort wint van welke');
@@ -88,6 +101,11 @@ toets('en dat gaat om het veto, niet om iets anders', beide.sleutel === 'veto', 
 // Fork wint van alles, ook van een PR die er verder perfect uitziet. Dit is de
 // veiligheidspoort: code van buiten mag niet door een bot met schrijfrechten
 // naar binnen.
+// Ook het veto is hoofdletterongevoelig: een rem die je met een hoofdletter
+// kunt omzeilen is geen rem.
+toets('`Handmatig` met hoofdletter remt ook',
+      besluit(pr({ labels: [LABEL_KLAAR, 'Handmatig'] })).sleutel === 'veto');
+
 const fork = besluit(pr({ headRepo: 'iemandanders/PidLane', labels: [LABEL_KLAAR] }));
 toets('een fork wordt nooit samengevoegd', fork.samenvoegen === false, fork.reden);
 toets('en fork wint óók van het veto (staat bovenaan)',
@@ -105,6 +123,22 @@ toets('doorgepusht na de testrun → niet samenvoegen', verschoven.samenvoegen =
 toets('en stil, want die push start zelf een nieuwe run', verschoven.melden === false);
 toets('de reden noemt beide commits', /aaaaaaa/.test(verschoven.reden) && /bbbbbbb/.test(verschoven.reden),
       'anders is niet te zien wat er verschoven is');
+
+console.log('\n4b. De testgate moet groen staan op déze commit');
+
+// Bij de eerste opzet was dit impliciet: de workflow vuurde alleen op het
+// afronden van Tests. Nu vuurt hij ook op het zetten van een label, en langs
+// die weg is groen geen gegeven meer — dan moet het nagevraagd worden.
+const nietGroen = besluit(pr({ testsGroen: false }));
+toets('testgate niet groen → niet samenvoegen', nietGroen.samenvoegen === false, nietGroen.reden);
+toets('en stil, want een lopende run komt hier vanzelf langs', nietGroen.melden === false);
+
+const groenOnbekend = besluit(pr({ testsGroen: null }));
+toets('onbekende testuitslag telt als NIET groen', groenOnbekend.samenvoegen === false,
+      'bij twijfel niet samenvoegen — dit is de poort die een deploy tegenhoudt');
+toets('en dat is een ander besluit dan "niet groen"',
+      groenOnbekend.reden !== nietGroen.reden,
+      'anders lees je "geen run gevonden" als "gate rood" en ga je iets zoeken wat er niet is');
 
 console.log('\n5. De basis mag niet zijn opgeschoven (de nieuwe poort)');
 
@@ -155,7 +189,8 @@ console.log('\n8. Elk besluit is volledig ingevuld');
 
 // Een besluit zonder reden of zonder sleutel maakt het joblogboek en de
 // ontdubbeling van meldingen stuk, en dat merk je pas als je het nodig hebt.
-const allen = [goed, zonder, beide, fork, draft, verschoven, achter, conflict, onbekend, pr80];
+const allen = [goed, zonder, beide, fork, draft, verschoven, achter, conflict, onbekend,
+               pr80, nietGroen];
 toets('elk besluit draagt een reden', allen.every(b => typeof b.reden === 'string' && b.reden.length > 3));
 toets('elk besluit draagt een sleutel', allen.every(b => typeof b.sleutel === 'string' && b.sleutel.length > 1));
 toets('elk besluit zegt expliciet ja of nee', allen.every(b => typeof b.samenvoegen === 'boolean'));
@@ -174,9 +209,35 @@ toets('precies drie soorten gevallen melden: achterstand, conflict, geen-klaar',
 // En de tegenhanger: de stille gevallen blijven stil. Zonder deze regel zou
 // een extra melden:true ergens anders onopgemerkt doorglippen.
 const stil = [...new Set(allen.filter(b => !b.melden).map(b => b.sleutel))].sort();
-toets('en de rest zwijgt: draft, fork, ok, onbekend, verschoven, veto',
-      JSON.stringify(stil) === JSON.stringify(['draft', 'fork', 'ok', 'onbekend', 'verschoven', 'veto']),
+toets('en de rest zwijgt: draft, fork, niet-groen, ok, onbekend, verschoven, veto',
+      JSON.stringify(stil) === JSON.stringify(['draft', 'fork', 'niet-groen', 'ok', 'onbekend', 'verschoven', 'veto']),
       'gevonden: ' + JSON.stringify(stil));
+
+console.log('\n9. De workflow zelf: twee eigenschappen die het besluit niet kan bewaken');
+
+// Deze twee zitten in de YAML en niet in de functie, maar ze zijn te
+// belangrijk om onbewaakt te laten.
+const fs = require('fs');
+const wf = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/automerge.yml'), 'utf8');
+
+// (a) DE TWEEDE INGANG. Zonder `labeled` doet het label niets als je het zet
+// nádat de tests groen zijn — en dat is de normale volgorde. Op 03-09-2026
+// bleef de PR daardoor liggen en ging de merge alsnog met de hand.
+toets('de workflow vuurt ook op het zetten van een label',
+      /pull_request:\s*\n\s*types:\s*\[labeled\]/.test(wf),
+      'anders werkt het label alleen als je het ZET VOOR de testrun klaar is');
+
+// (b) DE CHECKOUT-REF, en dit is een veiligheidspunt. Bij een
+// pull_request-event pakt actions/checkout zonder ref de PR-HEAD. Dan kan een
+// PR zijn eigen mergeregels meebrengen: automerge-besluit.js herschrijven naar
+// "altijd ja", zichzelf labelen, en binnenkomen.
+const mRef = wf.match(/uses:\s*actions\/checkout@[^\n]*\n\s*with:\s*\n\s*ref:\s*([^\n]+)/);
+toets('de checkout haalt de regels expliciet van de standaardbranch', !!mRef,
+      'zonder ref pakt hij bij een pull_request-event de PR-head — dan schrijft een PR zijn eigen mergeregels');
+if (mRef) {
+  toets('en die ref is niet de PR-head',
+        !/pull_request|head/.test(mRef[1]), 'gevonden: ' + mRef[1].trim());
+}
 
 console.log('');
 if (fouten) { console.log('test-automerge: ' + fouten + ' fout(en)'); process.exit(1); }
