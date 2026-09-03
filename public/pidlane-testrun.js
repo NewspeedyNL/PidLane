@@ -2283,11 +2283,7 @@ const PROEVEN_B5 = [
       const code = 'PIDL-B5' + String(Date.now()).slice(-6);
       let r;
       try {
-        r = await fetch(String(PROXY_URL).replace(/\/$/, '') + '/credits/redeem', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-App-Token': window.APP_TOKEN },
-          body: JSON.stringify({ code: code })
-        });
+        r = await plFetch('/credits/redeem', { method: 'POST', json: { code: code } });
       } catch (e) {
         return { staat: 'LET OP', detail: 'Worker niet bereikbaar: ' + ((e && e.message) || e) };
       }
@@ -3226,6 +3222,9 @@ function _zonderParser(bron) {
   return _zonderCommentaar(t.slice(0, a) + t.slice(b));
 }
 
+/* GEEN plFetch (#117): dit haalt geen server op maar een eigen bronbestand van
+   dezelfde map — geen basis-URL, geen tokenkop, geen 401. Zou dit door plFetch
+   lopen, dan kreeg elk bestandsnaampje er PROXY_URL voor geplakt. */
 async function _bron(naam) {
   if (Object.prototype.hasOwnProperty.call(_bronCache, naam)) return _bronCache[naam];
   let t = null;
@@ -3700,20 +3699,36 @@ async function _blok11() {
   await _doe(11, 'Punt 6: hoeveel modules doen hun eigen fetch', async function () {
     const mods = _appModules();
     if (!mods.length) return { staat: 'LET OP', detail: 'geen modules uit de DOM te lezen — deze telling zegt niets' };
-    const rij = [], onleesbaar = [];
-    let totaal = 0;
+    // Twee bestanden mógen hun eigen fetch doen, en waaróm staat erbij. Meer
+    // uitzonderingen dan deze twee horen er niet te komen: elke extra is weer
+    // een plek die zelf over de basis-URL, de tokenkop en een 401 beslist.
+    const magZelf = {
+      'pidlane-plfetch.js': 'is de helper zelf',
+      'pidlane-testrun.js': 'leest eigen bronbestanden in voor deze telling — geen server, geen token'
+    };
+    const rij = [], metReden = [], onleesbaar = [];
+    let totaal = 0, viaHelper = 0;
     for (const m of mods) {
-      const naam = _modNaam(m);
+      const naam = _modNaam(m), best = String(m).replace(/^.*\//, '');
       const bron = await _bron(m);
       if (bron == null) { onleesbaar.push(naam); continue; }
-      const n = (_zonderCommentaar(bron).match(/[^.\w]fetch\s*\(/g) || []).length;
-      if (n) { rij.push(naam + ': ' + n); totaal += n; }
+      const code = _zonderCommentaar(bron);
+      viaHelper += (code.match(/[^.\w]plFetch\s*\(/g) || []).length;
+      const n = (code.match(/[^.\w]fetch\s*\(/g) || []).length;
+      if (!n) continue;
+      if (magZelf[best]) { metReden.push(naam + '(' + n + '): ' + magZelf[best]); continue; }
+      rij.push(naam + ': ' + n); totaal += n;
     }
     const heeftHelper = (typeof window.plFetch === 'function');
-    const staart = onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '';
-    return { staat: totaal > 1 && !heeftHelper ? 'LET OP' : 'ok',
-      detail: totaal + ' losse fetch-aanroepen over ' + rij.length + ' modules (' + (rij.join(', ') || 'geen') + ')' +
-        '  |  plFetch-helper: ' + (heeftHelper ? 'bestaat' : 'NOG NIET') + staart };
+    const staart = (metReden.length ? '  |  met reden: ' + metReden.join('; ') : '') +
+                   (onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '');
+    if (!heeftHelper)
+      return { staat: 'LET OP', detail: 'plFetch bestaat NIET — ' + totaal + ' losse fetch-aanroepen beslissen elk zelf ' +
+        'over basis-URL, tokenkop en 401 (' + (rij.join(', ') || 'geen') + ')' + staart };
+    if (totaal)
+      return { staat: 'LET OP', detail: totaal + ' losse fetch-aanroepen buiten plFetch om (' + rij.join(', ') + ')' +
+        '  |  via plFetch: ' + viaHelper + staart };
+    return viaHelper + ' aanroepen via plFetch, geen enkele module doet nog zijn eigen fetch' + staart;
   });
 
   // ── PUNT 6 (deelvraag): de merkGroep-asymmetrie, live te toetsen ──

@@ -248,7 +248,7 @@ async function koopRdwLookup(){
 
   try {
     // Hoofddata
-    const r1 = await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`),{headers:{'X-App-Token':APP_TOKEN}});
+    const r1 = await plFetch('/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`));
     if(!r1.ok){ st.textContent='⚠️ RDW antwoordde niet goed — probeer het zo opnieuw'; btn.disabled=false; return; }
     const d1 = await r1.json();
     if(!d1||!d1.length){ st.textContent = `❌ Kenteken "${kent}" niet gevonden bij RDW — controleer op een typefout`; btn.disabled=false; return; }

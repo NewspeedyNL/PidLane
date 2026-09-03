@@ -117,6 +117,11 @@ var KRITIEK = [
   'openBulkRecorder',
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
   'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf',
+  // De ene plek waar de app het net op gaat (#117, pidlane-plfetch.js). Elf
+  // modules roepen hem aan, de meeste zonder guard -- verdwijnt hij, dan valt
+  // de app om op elke serveraanroep. Hij staat hier omdat dat dan meteen
+  // zichtbaar is in plaats van pas bij de eerste inlogpoging.
+  'plFetch','plFetchUrl',
   'profielTegenSteunbits','saveVinProfile','actiefPollProfiel','setPollProfile',
   // Het run-paneel (pidlane-run.js) schakelt deze vijf aan en uit. Ze stonden
   // er nog niet in omdat ze tot 21-08 alleen vanuit hun eigen scherm werden

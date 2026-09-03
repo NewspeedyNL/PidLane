@@ -282,7 +282,7 @@ document.addEventListener('click',(e)=>{
 // Lichte bereikbaarheidscheck van de proxy (no-cors: elke netwerkrespons telt als bereikbaar)
 async function checkAiReachable(){
   if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } return; }
-  try{ await fetch(PROXY_URL,{method:'GET',mode:'no-cors',cache:'no-store'}); _aiReach=true; }
+  try{ await plFetch('/',{method:'GET',mode:'no-cors',cache:'no-store'}); _aiReach=true; }
   catch(e){ _aiReach=false; }
   try{ updateTopbarStatus(); }catch(e){ console.warn('updateTopbarStatus mislukt:', e); }
 }

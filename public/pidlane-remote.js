@@ -35,9 +35,8 @@ window.PLRemote=(function(){
     err.textContent='Sessie aanmaken…';
     let j;
     try{
-      const r=await fetch(hb()+'/session/create',{method:'POST',
-        headers:{'Content-Type':'application/json','X-App-Token':tok()},
-        body:JSON.stringify({ttlMin:240,vehicle:vehLabel()})});
+      const r=await plFetch('/session/create',{method:'POST',
+        json:{ttlMin:240,vehicle:vehLabel()}});
       j=await r.json();
       if(!r.ok||!j.sessionId)throw new Error((j&&j.error)||('HTTP '+r.status));
     }catch(e){err.textContent='⚠ Kon geen sessie starten: '+(e.message||e);return;}
@@ -63,9 +62,8 @@ window.PLRemote=(function(){
     // QR-koppeling: sessie-info deponeren zodat de expert-laptop vanzelf verbindt.
     if(S.pendingClaim){
       const pp=S.pendingClaim;S.pendingClaim=null;
-      fetch(hb()+'/pair/claim',{method:'POST',
-        headers:{'Content-Type':'application/json','X-App-Token':tok()},
-        body:JSON.stringify({pairId:pp.pid,claimToken:pp.ct,sessionId:j.sessionId,joinToken:j.joinToken})})
+      plFetch('/pair/claim',{method:'POST',
+        json:{pairId:pp.pid,claimToken:pp.ct,sessionId:j.sessionId,joinToken:j.joinToken}})
         .then(r=>r.json())
         .then(cj=>{ if(cj&&cj.ok){logA('🔗 Gekoppeld aan expert via QR','ok');try{logUsage('remote_pair_claim',pp.pid);}catch(_){ console.warn('Gebruiksstatistiek remote_pair_claim niet gelogd', _); }}
                     else logA('⚠ QR-koppeling mislukt: '+((cj&&cj.error)||'onbekend'),'warn'); })
@@ -112,9 +110,8 @@ window.PLRemote=(function(){
     const inp=$('remShort'),st=$('remShortStat');if(!inp)return;
     inp.value='';inp.placeholder='code ophalen…';if(st)st.textContent='';
     try{
-      const r=await fetch(hb()+'/code/create',{method:'POST',
-        headers:{'Content-Type':'application/json','X-App-Token':tok()},
-        body:JSON.stringify({sessionId:j.sessionId,joinToken:j.joinToken})});
+      const r=await plFetch('/code/create',{method:'POST',
+        json:{sessionId:j.sessionId,joinToken:j.joinToken}});
       const cj=await r.json();
       if(!r.ok||!cj.code)throw new Error((cj&&cj.error)||('HTTP '+r.status));
       inp.value=fmtCode(cj.code);
@@ -323,9 +320,8 @@ window.PLRemote=(function(){
   async function shareStop(){
     S.stopFlag=true;clearTimeout(S.recT);stopFlush();
     clearInterval(_remRecStatT);_remRecStatT=null;
-    try{if(S.sess)await fetch(hb()+'/session/close',{method:'POST',
-      headers:{'Content-Type':'application/json','X-App-Token':tok()},
-      body:JSON.stringify({sessionId:S.sess.sessionId})});}catch(_){ logA('Sessie niet netjes gesloten op de server — kan daar nog even actief blijven voor de expert','warn'); }
+    try{if(S.sess)await plFetch('/session/close',{method:'POST',
+      json:{sessionId:S.sess.sessionId}});}catch(_){ logA('Sessie niet netjes gesloten op de server — kan daar nog even actief blijven voor de expert','warn'); }
     try{if(S.ws)S.ws.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
     endShareUi();logA('📡 Delen gestopt','info');
     try{logUsage('remote_share_stop',(S.sess&&S.sess.sessionId)||'');}catch(_){ console.warn('Gebruiksstatistiek remote_share_stop niet gelogd', _); }
@@ -410,8 +406,7 @@ window.PLRemote=(function(){
     if(!tok()){err.textContent='⚠ Inloggen vereist om een koppel-QR te maken.';return;}
     const st=$('remPairStat');
     try{
-      const r=await fetch(hb()+'/pair/create',{method:'POST',
-        headers:{'Content-Type':'application/json','X-App-Token':tok()},body:'{}'});
+      const r=await plFetch('/pair/create',{method:'POST',json:{}});
       const j=await r.json();
       if(!r.ok||!j.pairId)throw new Error((j&&j.error)||('HTTP '+r.status));
       S.pair=j;
@@ -425,7 +420,7 @@ window.PLRemote=(function(){
       clearInterval(S.pairT);
       S.pairT=setInterval(async()=>{
         try{
-          const pr=await fetch(hb()+'/pair/poll?id='+encodeURIComponent(j.pairId)+'&pt='+encodeURIComponent(j.pollToken));
+          const pr=await plFetch('/pair/poll?id='+encodeURIComponent(j.pairId)+'&pt='+encodeURIComponent(j.pollToken));
           const pj=await pr.json();
           if(pj&&pj.status==='ready'&&pj.sessionId&&pj.joinToken){
             clearInterval(S.pairT);S.pairT=null;
@@ -454,9 +449,8 @@ window.PLRemote=(function(){
     return null;
   }
   async function resolveShortCode(code){
-    const r=await fetch(hb()+'/code/resolve',{method:'POST',
-      headers:{'Content-Type':'application/json','X-App-Token':tok()},
-      body:JSON.stringify({code})});
+    const r=await plFetch('/code/resolve',{method:'POST',
+      json:{code}});
     let cj={};try{cj=await r.json();}catch(_){ /* stil: foutbody hoeft geen geldige JSON te zijn */ }
     if(r.status===429)throw new Error('te veel pogingen — wacht even');
     if(r.status===410||(cj&&cj.error==='expired'))throw new Error('code verlopen');

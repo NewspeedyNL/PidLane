@@ -118,6 +118,13 @@ MUTATIES=(
 "public/pidlane-veldlab.js@@    const b=splitBatchResponse(String(raw||''), ['0101'])['0101'];\n    if(!b||b.length<4) return null;\n    const A=b[0], B=b[1], C=b[2], D=b[3];@@    const h=_svNormHex(raw); const i=h.indexOf('4101');\n    if(i===-1||h.length<i+12) return null;\n    const A=parseInt(h.slice(i+4,i+6),16), B=parseInt(h.slice(i+6,i+8),16),\n          C=parseInt(h.slice(i+8,i+10),16), D=parseInt(h.slice(i+10,i+12),16);@@test-uitpakken.js@@de readiness-decoder pakt zijn 0101 weer zelf uit"
 "public/pidlane-data.js@@  'A6':4\n};@@  'A6':1\n};@@test-uitpakken.js@@de odometer krijgt weer één byte in plaats van vier"
 "public/pidlane-testrun.js@@        const b = splitBatchResponse(String(rk), ['0105'])['0105'];\n        if (b && b.length) koel = b[0] - 40;@@        const h = hex(rk), i = h.indexOf('4105');\n        if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;@@test-uitpakken.js@@de testrun pakt zijn koelwater-anker weer zelf uit"
+# ── de ene plek waar de app het net op gaat (#117) ──
+# Elk van deze vier is een beslissing die plFetch juist wegneemt.
+"public/pidlane-plfetch.js@@  return b + (p.charAt(0)==='/' ? p : '/'+p);@@  return b + p;@@test-plfetch.js@@een pad zonder beginslash plakt weer aan de host vast"
+"public/pidlane-plfetch.js@@  if(!zonder && t && !kop['X-App-Token']) kop['X-App-Token']=t;@@  if(!zonder && t) kop['X-App-Token']=t;@@test-plfetch.js@@de helper overschrijft een tokenkop die de aanroeper zelf meegaf"
+"public/pidlane-plfetch.js@@  try{ if(window.PLCredits && PLCredits.volgServer) PLCredits.volgServer(resp.headers, null); }@@  try{ if(false) PLCredits.volgServer(resp.headers, null); }@@test-plfetch.js@@het serversaldo uit X-PidLane-Saldo blijft weer liggen"
+"public/pidlane-plfetch.js@@  if(resp.status===401) diag('Server weigert (401) bij '+pad+' — sessie verlopen of ongeldig','warn');@@@@test-plfetch.js@@een verlopen sessie is weer stil"
+"public/pidlane-klant.js@@    const r = await plFetch(pad, { method: 'POST', geenToken: !metToken, json: body || {} });@@    const r = await fetch(_base() + pad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });@@test-plfetch.js@@een module doet zijn serveraanroep weer zelf, buiten de helper om"
 )
 
 echo

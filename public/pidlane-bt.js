@@ -2092,7 +2092,7 @@ async function rdwLookup(showOverview, opties){
   if(kent.length<4){ if(st) st.textContent='Voer een geldig kenteken in (minimaal 4 tekens)'; return {ok:false,reason:'invalid'}; }
   if(st) st.textContent='RDW opzoeken...';
   try{
-    const r=await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`),{headers:{'X-App-Token':APP_TOKEN}});
+    const r=await plFetch('/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`));
     if(!r.ok){ if(st) st.textContent='RDW antwoordde niet goed — probeer het zo opnieuw'; return {ok:false,reason:'http'}; }
     const data=await r.json();
     if(!data||!data.length){
@@ -2110,7 +2110,7 @@ async function rdwLookup(showOverview, opties){
     // Brandstof staat in een APARTE RDW-tabel (8ys7-d773), niet in m9d7-ebf2.
     // Zonder deze call blijft brandstof leeg -> 'diesel bij benzine' + verkeerde kenteken-info.
     try{
-      const rb=await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/8ys7-d773.json?kenteken=${encodeURIComponent(kent)}`),{headers:{'X-App-Token':APP_TOKEN}});
+      const rb=await plFetch('/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/8ys7-d773.json?kenteken=${encodeURIComponent(kent)}`));
       if(rb.ok){
         const bd=await rb.json();
         if(Array.isArray(bd)&&bd.length){
@@ -2333,7 +2333,7 @@ async function tryReadVIN(){
     // zodat PID-filtering en rapporten ook zonder kenteken kloppen.
     if(!info.merk||info.merk==='Onbekend merk'){
       try{
-        const resp=await fetch(PROXY_URL+'/proxy?url='+encodeURIComponent(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`),{headers:{'X-App-Token':APP_TOKEN}});
+        const resp=await plFetch('/proxy?url='+encodeURIComponent(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`));
         if(resp.ok){
           const data=await resp.json();
           const get=v=>(data.Results||[]).find(r=>r.Variable===v)?.Value||'';

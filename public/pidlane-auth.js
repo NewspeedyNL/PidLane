@@ -124,10 +124,12 @@ async function serverLogin(user, pass){
   const kap = ctl ? setTimeout(function(){ ctl.abort(); }, LOGIN_TIMEOUT_MS) : null;
   let r;
   try{
-    r = await fetch(base+'/auth/login',{
+    // geenToken: dit IS het inloggen. Een kop uit een oude sessie hoort hier
+    // niet mee te gaan.
+    r = await plFetch('/auth/login',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({user:String(user||''), pass:String(pass||'')}),
+      geenToken:true,
+      json:{user:String(user||''), pass:String(pass||'')},
       signal: ctl ? ctl.signal : undefined
     });
   }catch(e){
@@ -392,19 +394,15 @@ async function testApiKey(){
   // Proxy-modus: geen sk-ant- sleutel meer nodig in de app — de Worker houdt 'm server-side.
 
   try{
-    const resp=await fetch(PROXY_URL+'/v1/messages',{
+    const resp=await plFetch('/v1/messages',{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'X-App-Token':APP_TOKEN
-      },
-      body:JSON.stringify({
+      json:{
         model:'claude-sonnet-5',
         max_tokens:20,
         system:'Reply only: yes',
         messages:[{role:'user',content:'ping'}],
         thinking:{ type:'disabled' }
-      })
+      }
     });
     if(resp.ok){
       const data=await resp.json();
@@ -767,14 +765,12 @@ async function flushAirtable(){
   if(typeof AIRTABLE_URL==='undefined'||!AIRTABLE_URL) return;
   const batch=_atBuffer.splice(0,10);
   try{
-    const resp=await fetch(AIRTABLE_URL,{
+    // AIRTABLE_URL is een absolute URL en gaat door plFetch heen zoals hij is;
+    // de tokenkop komt er wel bij.
+    const resp=await plFetch(AIRTABLE_URL,{
       method:'POST',
-      headers:{
-        'X-App-Token':APP_TOKEN,
-        'Content-Type':'application/json'
-      },
       // Airtable verwacht: {"records":[{"fields":{...}},{"fields":{...}}]}
-      body:JSON.stringify({records:batch,typecast:true})
+      json:{records:batch,typecast:true}
     });
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
@@ -871,9 +867,8 @@ async function submitBugReport(btn){
   let ok=false;
   try{
     if(typeof AIRTABLE_URL!=='undefined' && AIRTABLE_URL){
-      const resp=await fetch(AIRTABLE_URL,{ method:'POST',
-        headers:{'X-App-Token':(typeof APP_TOKEN!=='undefined'?APP_TOKEN:''),'Content-Type':'application/json'},
-        body:JSON.stringify({records:[rec],typecast:true}) });
+      const resp=await plFetch(AIRTABLE_URL,{ method:'POST',
+        json:{records:[rec],typecast:true} });
       ok=resp.ok;
     }
   }catch(e){ ok=false; }

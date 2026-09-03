@@ -176,9 +176,8 @@ async function vlAtFlush(){
       let q=[]; try{ q=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
       if(!q.length){ if(guard>0){ try{ log('☁ Veldlab → Airtable gesynchroniseerd','ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ } } return; }
       const batch=q.slice(0,10);
-      const res=await fetch(ep,{
-        method:'POST', headers:{'Content-Type':'application/json','X-App-Token':(typeof APP_TOKEN!=='undefined'&&APP_TOKEN)||''},
-        body:JSON.stringify({records:batch.map(f=>({fields:f}))})});
+      const res=await plFetch(ep,{
+        method:'POST', json:{records:batch.map(f=>({fields:f}))}});
       if(!res.ok) throw new Error('sync HTTP '+res.status);
       const sent=new Set(batch.map(_vlAtRecId));
       let fresh=[]; try{ fresh=JSON.parse(localStorage.getItem(VL_AT.qKey)||'[]'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
