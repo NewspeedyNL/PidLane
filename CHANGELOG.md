@@ -11,6 +11,48 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — DE BUSPOORT: ÉÉN SLOT, ÉÉN
+                               PARSER, ÉÉN FETCH
+
+       • 🔒 #115: VIJF PLEKKEN CLAIMDEN HET BUSSLOT ZELF, elk
+         met een handgeschreven finally eromheen — de pollus, de
+         monitor, de waakronde, de uitgebreide probe en een
+         hersteltik in de testrun. Wie dat finally vergeet houdt
+         de bus vast tot het einde van de sessie, buiten élke
+         noodrem van PLBus om. withBusOfNiets() kan het niet
+         vergeten; PLBus.claim() staat nu alleen nog in
+         pidlane-data.js.
+
+       • 🧩 #116: ELF PLEKKEN ZOCHTEN ZELF NAAR EEN 41-KOP in
+         plaats van via splitBatchResponse() — de plek waar een
+         antwoord in stukken valt én de meetkwaliteit geteld
+         wordt. Elf, niet acht: de telling zelf liep een lijstje
+         bestandsnamen af waar de testrun en voertuigdata niet
+         in stonden.
+
+       • 🛣 EN ER ZAT EEN ECHTE FOUT ONDER. PID A6 (odometer)
+         ontbrak in PID_BYTE_LEN, dus viel de lengte terug op de
+         bodem van één byte. Zolang veldlab dat PID met de hand
+         uitpakte viel dat niet op — via de helper is die ene
+         tabelregel het verschil tussen 248.000 km en 24 km.
+
+       • 🌐 #117: ZESENTWINTIG LOSSE FETCH-AANROEPEN over elf
+         modules, die elk zelf beslisten over de basis-URL, de
+         kop X-App-Token, wat er bij een 401 gebeurt en of er
+         iets gelogd wordt. plFetch() (pidlane-plfetch.js) neemt
+         die vier. Gevolg: X-PidLane-Saldo wordt nu op élk
+         antwoord van de Worker gevolgd in plaats van alleen in
+         de AI-haak, en een verlopen sessie is nooit meer stil.
+
+       • 🧪 Testrun 7.2. Drie nieuwe proeven in blok 5, twee
+         nieuwe testbestanden (test-uitpakken.js, test-plfetch.js),
+         en plmutate.sh staat op 63 nagebouwde fouten — alle 63
+         gevangen. Blok 11 leest zijn modulelijst voortaan uit de
+         script-regels van index.html, zodat die telling niet
+         meer naast kan meten.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — ÉÉN KLOK VOOR WIE MEELEEST
 
        • 🕐 #17: RECORDER EN LOGBOEK LIEPEN TWEE UUR UIT ELKAAR.
