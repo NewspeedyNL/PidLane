@@ -2983,6 +2983,76 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── blijven de onderste vellen boven de navigatiebalk? ──
+  // bproef-schermranden.js meet dit ook, maar met een NAGEBOOTSTE inset van
+  // 48px: in een browser is --pl-sab altijd 0px. Op dit toestel is hij echt —
+  // Capacitor leest hem uit WindowInsetsCompat — en dat maakt dit de enige
+  // plek waar de vraag over dít scherm beantwoord wordt, met dít lettertype
+  // en déze knophoogtes. Vandaar hier én daar, en niet alleen daar.
+  {
+    issue: '#71',
+    naam: 'De onderste vellen blijven boven de navigatiebalk',
+    waarom: 'Alleen op een toestel is --pl-sab echt gevuld; in een browser is hij 0px en ziet elk vel er goed uit.',
+    proef: function () {
+      const sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pl-sab')) || 0;
+      if (sab <= 0)
+        return { staat: 'LET OP', detail: '--pl-sab is 0px op dit toestel — er is hier geen navigatiebalk om ' +
+          'achter te vallen, dus deze proef kan niets vaststellen. bproef-schermranden.js meet het na met 48px' };
+
+      const VELLEN = [
+        { naam: 'demo-autokiezer', open: 'openDemoCarChooser', id: 'demoCarModal' },
+        { naam: 'rijsituatie', open: 'openSituatie', id: 'situatieSheet' },
+        { naam: 'voertuigoverzicht', open: 'openVehicleOverview', id: 'vehOverview' }
+      ];
+      const krap = [], gemeten = [], over = [];
+
+      for (const v of VELLEN) {
+        if (typeof window[v.open] !== 'function') { over.push(v.naam + ' (' + v.open + '() bestaat niet)'); continue; }
+
+        // De stand van vóór de proef onthouden. Een vel dat er al stond mag
+        // hier niet dicht- of opengaan: dan verandert deze proef het scherm
+        // van de gebruiker, en dat is geen meten meer.
+        const bestond = document.getElementById(v.id);
+        const oudeStand = bestond ? bestond.style.display : null;
+
+        try { window[v.open](); }
+        catch (e) { over.push(v.naam + ' (openen mislukte: ' + e.message + ')'); continue; }
+
+        const m = document.getElementById(v.id);
+        if (!m) { over.push(v.naam + ' (bouwde geen #' + v.id + ' — functie uitgeschakeld?)'); continue; }
+
+        // Naar beneden scrollen zoals een gebruiker doet om de onderste knop
+        // te bereiken; wat daarna nog onder de onderrand hangt is niet in beeld
+        // en zegt dus niets.
+        m.querySelectorAll('*').forEach(function (e) { if (e.scrollHeight > e.clientHeight + 2) e.scrollTop = e.scrollHeight; });
+        let laagste = null, onder = -1e9;
+        m.querySelectorAll('button,input,textarea,select,a').forEach(function (e) {
+          const r = e.getBoundingClientRect();
+          if (r.height <= 0 || r.top > window.innerHeight) return;
+          if (r.bottom > onder) { onder = r.bottom; laagste = e; }
+        });
+
+        if (bestond) m.style.display = oudeStand;
+        else m.style.display = 'none';
+
+        if (!laagste) { over.push(v.naam + ' (geen zichtbare knop)'); continue; }
+        const ruimte = Math.round(window.innerHeight - onder);
+        const knop = String(laagste.textContent || laagste.id || laagste.tagName).trim().slice(0, 20);
+        gemeten.push(v.naam + ' ' + ruimte + 'px');
+        if (ruimte < sab) krap.push(v.naam + ': ' + ruimte + 'px onder "' + knop + '"');
+      }
+
+      if (!gemeten.length)
+        return { staat: 'LET OP', detail: 'geen enkel vel gemeten — ' + (over.join('; ') || 'onbekende reden') };
+
+      const kop = 'navigatiebalk ' + Math.round(sab) + 'px; ruimte onder de laagste knop: ' + gemeten.join(', ');
+      if (krap.length)
+        return { staat: 'FOUT', detail: kop + ' — te krap bij ' + krap.join(' en ') +
+          '. Die knop zit deels achter de Android-knoppen (#71)' };
+      return kop + (over.length ? ' (niet gemeten: ' + over.join('; ') + ')' : '');
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -4521,6 +4591,10 @@ const CAMPAGNE = {
     'BEDRADING — sppReconnectGuard staat in KRITIEK. Dat is niet uit voorzorg: de bedradingscontrole gaf zelf FOUT toen de nieuwe module hem achter een typeof-guard aanriep. Verdwijnt die functie, dan doet de controle niets en komt de app weer per ongeluk achter een dode socket.',
 
     'BLOK 5 en STAP 7 — allebei lezen ze nu PLAchtergrond naast PLRit. plmutate.sh staat op 36 mutaties; twee nieuwe maken test-achtergrond.js rood.',
+
+    '#71 — DE ONDERSTE VELLEN. De demo-autokiezer, Rijsituatie en Voertuigoverzicht bouwen zichzelf met inline styles op en droegen geen --pl-sab; hun onderste knop viel daardoor deels achter de drie Android-knoppen. Het waren er drie en niet één, en dat is niet gegrept maar gemeten: bproef-schermranden.js opent elk vel in de draaiende app met een nagebootste navigatiebalk van 48px. Vóór de reparatie bleef er 14, 12 en 12px over; nu 62, 60 en 60px.',
+
+    'DAT HARNAS IS ECHTER BLIND VOOR HET ECHTE TOESTEL — in een browser is --pl-sab altijd 0px. Vandaar de proef in blok 5 met hetzelfde onderwerp: die meet met de inset die Capacitor van Android krijgt, op dit scherm, met deze knophoogtes. Is --pl-sab hier 0, dan zegt hij LET OP en niet ok.',
 
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden — komt er een proef bij, dan staat hij hier vanzelf.',
 

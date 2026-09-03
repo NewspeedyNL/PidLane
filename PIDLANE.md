@@ -700,6 +700,54 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+### Onderste vellen vielen achter de Android-knoppen — 03-09-2026 (#71)
+
+**Wat er gebeurde.** De demo-autokiezer liet zijn kentekenveld en Start-knop
+half achter de drie Android-navigatieknoppen vallen. `openDemoCarChooser()`
+bouwt `#demoCarModal` met een eigen `style.cssText`, los van de
+`.modal`-klasse, en droeg nergens `--pl-sab`. De #58-ronde van 01-09 gaf
+veilige marge aan `.app`, `body`, `#fabLane`, `.ov`, `.modal` en de
+bottom-sheets — dit vel zat daar niet bij, omdat het met inline styles is
+gebouwd en geen klasse draagt.
+
+**Wat de conclusie in het issue miste: het waren er drie.** Het issue vroeg na
+te kijken of `openDemoCarChooser()` de enige met dit patroon is. Dat is niet
+met `grep` beantwoord maar gemeten, in `plbrowser.js` met de insets aan zoals
+Capacitor ze op Android zet (`--safe-area-inset-bottom: 48px`), door elk vel te
+openen, helemaal naar beneden te scrollen en de laagste knop op te meten:
+
+| vel | ruimte onder de laagste knop | nodig |
+|---|---|---|
+| `openDemoCarChooser` (#demoCarModal) | 14px | 48px |
+| `openSituatie` (#situatieSheet) | 12px | 48px |
+| `openVehicleOverview` (#vehOverview) | 12px | 48px |
+
+Alle drie dus, en alle drie om dezelfde reden: `align-items:flex-end` met een
+vaste `padding` onderin. De reparatie is per vel één waarde —
+`calc(14px + var(--pl-sab))` op de scrollende `div` bij de demo-kiezer, en
+`calc(12px + var(--pl-sab))` op de voetbalk bij de andere twee. Nagemeten:
+62px, 60px en 60px.
+
+**En een conclusie die fout bleek.** `test-schermranden.js` sloot de
+onderaan-uitschuivende vellen bewust uit, met deze reden:
+
+> Gecentreerde dialogen en onderaan-uitschuivende vellen staan er BEWUST niet
+> in: daarboven of -onder blijft alleen de halfdoorzichtige achtergrond staan,
+> en die mag prima onder de statusbalk doorlopen.
+
+Voor een gecentreerde dialoog klopt dat. Voor een onderste vel niet: dat staat
+op `flex-end`, ligt dus zélf tegen de onderrand, en er blijft daaronder geen
+achtergrond over. Die regel is herzien in de kop van `test-schermranden.js`,
+niet weggehaald.
+
+**Waarom dit een gedragsproef werd en geen broncontrole.**
+`test-schermranden.js` leest de bron en vraagt of `var(--pl-sab)` in de buurt
+van een declaratie staat. Dat zegt niets over de vraag die telt — is de
+onderste knop te raken? — en in een gewone browser is `--pl-sab` 0px, dus
+zonder insets ziet elk vel er goed uit. `bproef-schermranden.js` meet het in de
+draaiende app, met een eigen tegenproef: hij zet de marge bij één vel terug op
+een vast getal en toetst dat de meting dan rood wordt.
+
 ### Verbergen is geen uitzetten — 02-09-2026
 
 **Wat er gevraagd werd:** scheiding tussen de PID-keuze en de live view. "Nu is

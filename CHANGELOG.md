@@ -11,6 +11,29 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — DRIE VELLEN, NIET ÉÉN
+
+       • 📱 #71: DE DEMO-AUTOKIEZER VIEL ACHTER DE ANDROID-KNOPPEN.
+         Het kentekenveld en de Start-knop zaten half onder de drie
+         navigatieknoppen. Het vel wordt met inline styles gebouwd
+         en draagt geen .modal-klasse, dus liep het buiten de
+         veilige-zoneronde van #58 om.
+
+       • 🔎 HET WAREN ER DRIE. Niet gegrept maar gemeten, in de
+         draaiende app met de Android-insets aan: onder de laagste
+         knop bleef 14px over bij de demo-kiezer, 12px bij
+         Rijsituatie en 12px bij Voertuigoverzicht — tegenover een
+         navigatiebalk van 48px. Na de reparatie 62, 60 en 60px.
+
+       • 📐 EEN NIEUWE BROWSERPROEF METEN IN PLAATS VAN LEZEN.
+         bproef-schermranden.js opent elk onderste vel, scrolt naar
+         beneden en meet de laagste knop op. Met tegenproef: zet de
+         marge terug op een vast getal en de proef wordt rood.
+         test-schermranden.js sloot deze vellen bewust uit met een
+         reden die niet klopte; die is herzien, niet weggehaald.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — WIE WACHT, KRIJGT DE BEURT
 
        • 🚦 #98: MET VIER AANVRAGERS KREEG DE SWEEP HET BUSSLOT NIET.

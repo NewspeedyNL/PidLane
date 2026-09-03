@@ -21,9 +21,20 @@
 // Dit bestand somt de vensters op die met het oog ECHT tegen de bovenrand
 // aan liggen (het venster zelf is de eerste laag onder de systeembalk, geen
 // backdrop ertussen) en toetst dat hun opening naar --pl-sat/--pl-sab wijst.
-// Gecentreerde dialogen en onderaan-uitschuivende vellen staan er BEWUST
-// niet in: daarboven of -onder blijft alleen de halfdoorzichtige achtergrond
-// staan, en die mag prima onder de statusbalk doorlopen.
+// Gecentreerde dialogen staan er BEWUST niet in: daarboven en -onder blijft
+// alleen de halfdoorzichtige achtergrond staan, en die mag prima onder de
+// statusbalk doorlopen.
+//
+// HERZIEN 03-09-2026 — de onderaan-uitschuivende vellen stonden hier op
+// dezelfde grond buiten, en dat klopte niet. Die vellen staan op
+// `align-items:flex-end`: het vel zelf ligt tegen de onderrand en er blijft
+// daaronder geen achtergrond over. Issue #71 is precies dat geval. Bij het
+// nameten bleken het er drie (demo-autokiezer, rijsituatie,
+// voertuigoverzicht), met 12 tot 14px onder de laagste knop tegenover een
+// navigatiebalk van 48px. Ze worden nu gemeten in plaats van gelezen:
+// bproef-schermranden.js opent elk vel in de draaiende app met de insets
+// aan. Broncontrole zou hier ook te weinig zijn — `var(--pl-sab)` in de
+// bron zegt niets over of de onderste knop te raken is.
 //
 // WAAROM BRONCONTROLE EN GEEN GEDRAGSTEST
 // Playwright kan dit gedrag meten — en heeft dat voor het Logboek ook echt
