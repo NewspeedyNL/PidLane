@@ -3271,6 +3271,83 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── zet de beheerdersschakelaar béide demoknoppen weg? ──
+  // De reviewnotitie in PLAY-INZENDING.md wijst naar één knop: "Try demo — no
+  // adapter needed" op het loginscherm. Die knop hing tot 03-09 buiten
+  // FEATURE_TOGGLES.feat_demo, dat alleen '[id="btnDemo"]' noemde — de knop in
+  // het verbindscherm. Met feat_demo=false verdween dus de ene en bleef de
+  // andere staan: zichtbaar, en bij aanraken alleen een toast "uitgeschakeld
+  // door beheerder". Voor een reviewer die de notitie volgt is dat erger dan
+  // geen knop.
+  //
+  // test-demo-toegang.js leest of beide id's in de lijst staan. Deze proef
+  // doet iets anders en dat is de reden dat hij er is: hij DRAAIT de
+  // schakelaar in de echte app en kijkt wat de CSS er werkelijk mee doet. Een
+  // selector die er wel staat maar niets raakt — een hernoemd id, een regel
+  // die door iets specifiekers wordt overstemd — komt alleen zo aan het licht.
+  {
+    issue: '#42',
+    naam: 'De beheerdersschakelaar zet beide demoknoppen weg, of geen van beide',
+    waarom: 'Alleen in de draaiende app is te zien wat de gegenereerde CSS werkelijk raakt; de bronlijst zegt dat niet.',
+    proef: function () {
+      if (typeof applyFeatureToggles !== 'function')
+        return { staat: 'FOUT', detail: 'applyFeatureToggles() ontbreekt — dan doet geen enkele featureschakelaar nog iets' };
+
+      const KNOPPEN = [
+        { id: 'btnDemoLogin', waar: 'loginscherm (de knop uit de reviewnotitie)' },
+        { id: 'btnDemo',      waar: 'verbindscherm' }
+      ];
+      const weg = [];
+      for (const k of KNOPPEN) {
+        if (!document.getElementById(k.id)) weg.push(k.id + ' (' + k.waar + ')');
+      }
+      if (weg.length)
+        return { staat: 'FOUT', detail: 'demoknop niet in de DOM: ' + weg.join(', ') +
+          ' — de reviewnotitie wijst naar een knop die er niet staat (#42)' };
+
+      // De stand van vóór de proef, inclusief het geval dat de sleutel
+      // helemaal niet in PID_CONFIG stond: dan moet hij daarna ook weer weg.
+      const cfg = (window.PID_CONFIG = window.PID_CONFIG || {});
+      const stond = Object.prototype.hasOwnProperty.call(cfg, 'feat_demo');
+      const oud = cfg.feat_demo;
+      const zichtbaar = function (id) {
+        return getComputedStyle(document.getElementById(id)).display !== 'none';
+      };
+
+      let uit, na;
+      try {
+        cfg.feat_demo = false;
+        applyFeatureToggles();
+        uit = KNOPPEN.map(function (k) { return { id: k.id, waar: k.waar, zichtbaar: zichtbaar(k.id) }; });
+      } finally {
+        // Altijd terugzetten. Blijft feat_demo op false staan omdat deze proef
+        // ergens klapte, dan heeft de testrun de demo uitgezet op het toestel
+        // waarop de reviewer hem straks zoekt.
+        if (stond) cfg.feat_demo = oud; else delete cfg.feat_demo;
+        try { applyFeatureToggles(); } catch (e) {
+          console.warn('Testrun: featureschakelaars niet teruggezet na de demoknop-proef', e);
+        }
+        na = KNOPPEN.map(function (k) { return zichtbaar(k.id); });
+      }
+
+      const blijven = uit.filter(function (k) { return k.zichtbaar; });
+      if (blijven.length && blijven.length < uit.length)
+        return { staat: 'FOUT', detail: 'met feat_demo=false bleef ' +
+          blijven.map(function (k) { return '#' + k.id + ' op het ' + k.waar; }).join(' en ') +
+          ' staan terwijl de andere verdween — een halve schakelaar laat een dode knop achter (#42)' };
+      if (blijven.length === uit.length)
+        return { staat: 'FOUT', detail: 'met feat_demo=false bleven beide demoknoppen staan — ' +
+          'de schakelaar raakt niets; zijn de id\'s hernoemd?' };
+
+      if (na.indexOf(false) >= 0)
+        return { staat: 'FOUT', detail: 'na het terugzetten is een demoknop verborgen gebleven — ' +
+          'deze proef heeft de demo uitgezet op dit toestel. Herlaad de app vóór de review' };
+
+      return 'feat_demo=false verbergt beide demoknoppen (loginscherm én verbindscherm), ' +
+        'en na het terugzetten staan ze allebei weer';
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -4839,59 +4916,57 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 03-09 (derde) — de buspoort: één slot, één parser, één fetch (#115/#116/#117)',
+  titel: 'OPLEVERING 03-09 (vierde) — klaar voor de Play Store: het scherm dat de reviewer ziet',
   vragen: [
-    '── WAAROM DEZE RONDE ────────────────',
+    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'Drie issues die op 03-09 uit #15 zijn losgemaakt, en alle drie hetzelfde patroon: niet twee plekken die hetzelfde moeten WETEN, maar twee vormen die hetzelfde moeten DOEN. Geen van drieën had een bekende bug onder zich. Het zijn vormen die er een kunnen verbergen — en bij twee van de drie bleek dat ook zo te zijn, alleen niet waar het issue hem zocht.',
+    'Deze ronde gaat niet over meten maar over inzenden. De vraag is smal en die smalheid is het punt: wat ziet een Play-reviewer, die geen auto heeft, geen OBD2-adapter, geen account, en die tien minuten aan deze app besteedt? Alles wat hij in die tien minuten tegenkomt en niet begrijpt, kost een afwijzing waar weken op gewacht wordt.',
 
-    '#115 — HET BUSSLOT. Vijf plekken claimden PLBus zelf, met een handgeschreven finally eromheen: de pollus, de monitor, de waakronde, de uitgebreide probe en een hersteltik in blok 10. Ze deden alle vijf hetzelfde: proberen, bij bezet de beurt overslaan, aan het eind vrijgeven. Vier keer hetzelfde met de hand naschrijven is vier kansen om die laatste stap te vergeten, en een houder die nooit vrijgeeft valt buiten élke noodrem die PLBus heeft — MAX_HOLD_MS breekt hem pas na drie minuten open, en WACHT_MAX_MS (#98) gaat over wachters, niet over houders.',
+    'DE EERSTE BEVINDING WAS DAT ER GEEN SCHERM WAS. capacitor.config.json zet server.url op app.pidlane.nl; de APK is een schil om die site. Komt de site niet \u2014 geen netwerk, een gastnetwerk dat nog om een inlog vraagt, of Cloudflare even stil \u2014 dan toont de Android-WebView zijn eigen scherm: net::ERR_NAME_NOT_RESOLVED op een wit vlak. Dat leest niet als "geen verbinding" maar als een kapotte app, en de reviewer heeft geen tweede scherm om zich op te baseren. server.errorPath wijst nu naar een eigen foutpagina in de webDir.',
 
-    'withBusOfNiets() doet dat nu, met dezelfde slotgarantie als withBus() maar zonder wachten: dit zijn ronde-lussen die elke tik terugkomen, en wachten zou de bus dichthouden voor werk dat over 100 ms net zo goed kan. De hersteltik in blok 10 wilde juist wél doorgaan op een bezette bus — die meet hoe snel de bus na een trap herstelt — en gebruikt withBus met wachttijd 0.',
+    'DE TWEEDE ZAT IN EEN LIJSTJE VAN \u00c9\u00c9N REGEL. FEATURE_TOGGLES.feat_demo dekte alleen [id="btnDemo"], de demoknop in het verbindscherm. De knop op het loginscherm kwam er op 21-08 bij v\u00f3\u00f3r de Play-review, maar niet in die lijst. Met feat_demo=false in de AppConfig-tabel verdween dus de ene knop en bleef de andere staan \u2014 zichtbaar, en bij aanraken alleen een toast "uitgeschakeld door beheerder". Juist de knop waar de reviewnotitie naar wijst. Aan of uit mag de beheerder bepalen; half niet.',
 
-    '#116 — HET UITPAKKEN. Acht plekken zochten zelf naar een 41-antwoordkop in plaats van via splitBatchResponse(), en gingen daarmee om de ene plek heen waar de meetkwaliteit geteld wordt. DE TELLING ZELF ZAT ERNAAST: blok 11 liep een met de hand bijgehouden lijstje bestandsnamen af, en pidlane-testrun.js en pidlane-voertuigdata.js stonden er niet in. Het waren er elf over zeven modules, niet acht over vijf.',
+    'EN ER WAS EEN TWEEDE LIJST ONTSTAAN. De reviewnotitie en de Data safety-tabel stonden even in ANDROID-PLAYSTORE.md \u00e9n in het nieuwe PLAY-INZENDING.md. Dat is dezelfde vorm die PIDLANE-WERK.md en \u00a711 de kop kostte. Opgelost zoals CLAUDE.md het voorschrijft: \u00e9\u00e9n plek. PLAY-INZENDING.md draagt de tekst die geplakt wordt, ANDROID-PLAYSTORE.md de redenering eromheen. test-demo-toegang.js ving de verhuizing meteen op \u2014 die las de belofte nog uit het oude bestand.',
 
-    'EN ER ZAT ÉÉN ECHTE FOUT ONDER. PID A6 (odometer) stond niet in PID_BYTE_LEN, dus pidByteLen() viel terug op de bodem van één byte. Zolang veldlab dat PID zelf uitpakte viel dat niet op — hij las de bytes met de hand. Door de helper is die ene ontbrekende tabelregel het verschil tussen 248.000 km en 24 km. Dat is precies wat het issue bedoelde met "een vorm die er een kan verbergen".',
+    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    '#117 — HET NET OP. Zesentwintig losse fetch-aanroepen over elf modules (ook hier telde blok 11 er achttien over zeven: bt, recall, uihelpers en testrun stonden niet in het lijstje). Elke aanroep besliste zelf over vier dingen: de basis-URL, de kop X-App-Token, wat er bij een 401 gebeurt, en of er iets gelogd wordt. plFetch() neemt die vier — en daarmee gaat X-PidLane-Saldo nu op élk antwoord langs PLCredits.volgServer(), in plaats van alleen in de AI-haak.',
+    'STAP 0. Deze ronde vraagt de NIEUWE APK, geen "Nieuwste versie laden". De wijziging aan errorPath zit in de schil, niet in de webcode: op de oude APK meet je een oude schil om een nieuwe website.',
 
-    '── STAP VOOR STAP ─────────────────',
+    'STAP A \u2014 DE PROEF DIE DE GATE NIET KAN DOEN. Zet de vliegtuigmodus aan en start de app koud. Er hoort nu een eigen scherm te komen: kop "Geen verbinding", de naam app.pidlane.nl erin, drie dingen om te proberen, en een knop "Opnieuw proberen". Zie je in plaats daarvan een wit vlak met net::ERR_..., dan doet errorPath niets op deze Capacitor-versie en is dat de bevinding van deze ronde. Zet daarna het netwerk aan en druk op de knop: hij hoort de app alsnog te laden.',
 
-    'STAP 0 VOOR DEZE RONDE. Zet in stap 3 weer alle vier de aanvragers aan, net als vorige ronde: zonder een drukke bus zegt #115 niets. Kijk in blok 3 naar de regel Busslot — daar hoort ok te staan met de wachttijd erbij. Dat getal is de tegenproef op #115: de pollus loopt nu door withBusOfNiets() en de sweep wacht nog steeds via wait(), dus de voorrangsregel van #98 hoort ongewijzigd te werken. Staat er LET OP met "niet vrijgekomen binnen 8 s", dan is de poort in de weg gaan zitten en is dat de bevinding van deze rit.',
+    'STAP B \u2014 LOOP DE REVIEW NA ALS DE REVIEWER. Wis de app-gegevens, start op, en doe precies wat \u00a77 van PLAY-INZENDING.md belooft: de knop "Try demo \u2014 no adapter needed" staat op het startscherm, onder de verbindknop, zonder in te loggen. Voorbeeldvoertuig kiezen, en dan door naar sensorwaarden, foutcodes, grafiek en rapport. Loopt daar iets vast, dan loopt het bij de reviewer ook vast.',
 
-    'STAP A. Doe de begeleide rit weer helemaal, dertien stappen. Reken op een kwartier.',
+    'STAP C \u2014 DE DISCLOSURE, OP EEN SCHOON TOESTEL. Druk op verbinden. Het eigen uitlegscherm hoort te verschijnen V\u00d3\u00d3R het Android-dialoog over "apparaten in de buurt", niet erna. Druk daarna op weigeren: er hoort geen permissieverzoek te komen, geen verbinding, en de app hoort heel te blijven. Deze volgorde is een harde eis van Google en hij is alleen op een schoon toestel te zien.',
 
-    'STAP B. Kijk onderweg naar de PID-sweep in blok 3: duur en tempo per PID staan er sinds vorige ronde bij. Vorige rit hoorde dat rond 12 s en 200 ms te liggen. Wijkt het fors af, dan is de pollus door de nieuwe poort trager geworden — en dat is een echte bevinding, want die lus draait elke 100 ms.',
+    'STAP D \u2014 BLOK 5, DE NIEUWE PROEF. "De beheerdersschakelaar zet beide demoknoppen weg" draait feat_demo in de echte app om en kijkt wat de CSS er werkelijk mee doet. Hij zet zichzelf terug; staat er toch FOUT met "de demo uitgezet op dit toestel", herlaad de app dan v\u00f3\u00f3r je iets anders doet.',
 
-    'STAP C. Lees in blok 5 de drie nieuwe proeven. "De buspoort geeft het slot terug" claimt zelf even het slot; hij slaat over met LET OP als de bus op dat moment bezet is, dus draai hem desnoods nog eens als er niets anders loopt. "plFetch bouwt de URL en de tokenkop van dit toestel" doet één echte call naar /api/config — die kost niets, maar hij bewijst wel dat de tokenkop die plFetch erop zet ook geaccepteerd wordt. Zonder login staat daar LET OP, en dan is die helft niet gemeten.',
+    'STAP E \u2014 DE RANDEN, DE VIJF DIE NOG OPEN STAAN. Topbalk en Logboek zijn gemeten. Testrunpaneel, Veldlab, diepe diagnose, neon-HUD en rittracker nog niet, en dit is edge-to-edge op targetSdk 36. Doe ze op de SM-S947B, want op een tablet klopt de proef per definitie.',
 
-    'STAP D. Blok 11, de twee regels van punt 6. Daar hoort nu te staan dat geen enkele module nog zelf een 41-header uitpakt, en dat geen enkele module nog zijn eigen fetch doet — met twee uitzonderingen die hun reden bij zich dragen. Staat er iets anders, dan is er tussen deze oplevering en de rit code bijgekomen die er weer omheen gaat.',
+    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
-    'STAP E. Doe iets dat écht het net op gaat, want dat is de enige manier om #117 te toetsen: verbind, laat het kenteken opzoeken (RDW via de proxy), en vraag daarna één AI-rapport aan. Kijk of de tokenteller ná dat rapport hetzelfde getal toont als je account. Die twee gingen tot nu toe via verschillende paden; nu gaan ze allebei door plFetch.',
+    'capacitor.config.json \u2014 server.errorPath = error.html. build-apk.yml schrijft die pagina naast de bestaande www-stub. De pagina haalt NIETS van het net: geen lettertype, geen stylesheet, geen plaatje. Een foutpagina die iets moet ophalen laadt niet op het enige moment waarop hij nodig is \u2014 dezelfde fout als de Google-Fonts-regel die de browserproef maandenlang tegenhield.',
 
-    '── WAT ER IS VERANDERD ──────────────',
+    'NIEUW \u2014 test-foutpagina.js. De naam van de pagina staat op twee plekken (config en workflow), dus die koppeling wordt getoetst in plaats van vertrouwd. Plus: is het een echte pagina, staat er een weg terug op, en houdt hij rekening met de veilige zone. Wat hij NIET kan: of Capacitor die pagina ook werkelijk laadt. Dat is stap A.',
 
-    'PLBus (pidlane-data.js) — withBusOfNiets() naast withBus(), en wait() heeft een afslag voor wachttijd 0: eenmalig proberen, geen plek in de wachtrij, en geen "niet vrij na 0ms" in het logboek. Een los slot claimen kan daarmee alleen nog in pidlane-data.js.',
+    'NIEUW \u2014 test-playteksten.js. PLAY-INZENDING.md is kopieerwerk, en de Console knipt niet af maar weigert. Deze toets meet elk veld tegen zijn grens, controleert dat de privacy-URL en de verwijder-URL naar bestaande bestanden op dezelfde host wijzen, en dat het document nergens BEWEERT dat gegevens anoniem zijn \u2014 dat woord mag alleen in een ontkenning staan, want pseudonimisering is geen anonimisering.',
 
-    'test-busslot.js toetst niet of de poort claimt, maar het enige dat een handgeschreven finally fout kan doen: springt het werk er met een fout uit, dan komt het slot tóch terug. Plus een vormcontrole die rood wordt zodra er ergens weer een eigen claim bijkomt — alles daarboven blijft namelijk groen als dat gebeurt.',
+    'pidlane-fuel.js \u2014 feat_demo dekt nu beide demoknoppen. test-demo-toegang.js leest de lijst; de nieuwe proef in blok 5 draait de schakelaar echt om, want een selector die er staat maar niets raakt komt alleen zo aan het licht.',
 
-    'NIEUW — pidlane-plfetch.js. Geen wrapper die het antwoord voor je uitleest: plFetch() geeft de gewone Response terug, want 410 betekent "code verlopen" bij remote, 402 "onvoldoende tegoed" bij de AI-haak en 429 "te veel pogingen" bij het inloggen. Die betekenis hoort bij de aanroeper. Wat er wél in hoort is wat voor iedereen hetzelfde is. apiFetch() in pidlane-fuel.js blijft wat het was — de AI-haak met contextinjectie en vervolgcalls — en zit nu bovenóp plFetch.',
+    'plmutate.sh staat op 67 mutaties, alle 67 gevangen.',
 
-    'NIEUW — test-uitpakken.js en test-plfetch.js. Allebei op de echte bron, allebei met de gevallen die onderscheiden in plaats van alleen kloppen: dezelfde bytes in drie verpakkingen (kaal, CAN-header, framemarkers) geven hetzelfde getal, en een 401 is nooit meer stil. plmutate.sh staat op 63 mutaties, alle 63 gevangen.',
+    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.',
 
-    'BLOK 11 — de modulelijst komt uit de script-regels van index.html en niet meer uit een lijstje in de code, commentaar telt niet meer als code, en splitBatchResponse wordt zichzelf niet meer aangerekend. Antwoorden buiten mode 01 (de freeze frame van de monitor, de foutcodes in graph) staan er apart bij: splitBatchResponse spreekt alleen mode 01, dus die kán hij niet overnemen. Dat is stand, geen bevinding.',
+    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500',
 
-    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden — komt er een proef bij, dan staat hij hier vanzelf.',
+    '#113 \u2014 HET PROEFTEGOED HANGT AAN HET TOESTEL. gratisStart: 25 staat in localStorage, dus app-gegevens wissen levert opnieuw 25 credits op. Dit raakt de Play-review niet: een reviewer komt er niet bij en Google kijkt er niet naar. Maar het is w\u00e9l het grootste gat dat er nog is, en elke analyse kost echt geld bij de modelaanbieder. Het hoort aan een account te hangen en dat is Worker-werk plus een migratie voor wie zijn 25 al kreeg \u2014 een eigen ronde, niet iets om tussen de inzending door te doen.',
 
-    '── WAT DEZE RONDE NIET OPLOST ─────────',
+    '#18 \u2014 DE APP BEVRIEST OP DE ACHTERGROND. Ook geen reviewvraag: die doet geen rit van 28 minuten. Het is native werk (foreground service plus wake lock) en blijft de zwaarste openstaande post voor de gebruiker die w\u00e9l rijdt.',
 
-    'DE DRIE DTC-DECODERS. graph.realScanDTC(), PLMon._parseDTC() en _svDtc() in veldlab ontleden alle drie een mode-03-antwoord, elk op hun eigen manier. Dat is hetzelfde patroon als #116 maar één mode verderop, en splitBatchResponse kan het niet overnemen. Bewust niet in deze ronde meegenomen: één onderwerp per PR. Staat in §11.',
+    'DE VRAAG OVER DE BETAALREGELS. #42 is gesloten met een besluit, niet met een antwoord: geen koopknop in de app, tokens per mail, tot boven de tien klanten. Dat is een verdedigbare stand voor de inzending \u2014 er is niets te betalen in de app, dus er valt niets langs Play Billing te leiden. Het antwoord van Play Console-support blijft nuttig v\u00f3\u00f3r de koopknop ooit aangaat.',
 
-    '_bitAan() in de testrun zoekt nog wél zelf naar een 41-kop, maar met een SAMENGESTELDE kop ("41" plus het bitmapnummer) in een antwoord dat meerdere bitmapblokken kan dragen. splitBatchResponse parseert sequentieel en zou dat tweede blok niet vinden — daar zou de reparatie dus een regressie zijn. Ook §11.',
+    'DE SCREENSHOTS EN DE FEATURE GRAPHIC. Geen code, wel blokkerend: zonder feature graphic van 1024\u00d7500 en minstens twee schermafbeeldingen kun je niet inzenden. Het plan staat in \u00a74 van PLAY-INZENDING.md; schiet ze in demomodus op een echt toestel, dan staat er echte meetdata op en geen mockup.',
 
-    '#79 — de veilige zones. De rit van 22:15 liep op de tablet, waar de proef per definitie klopt; de twee FOUT-runs liepen op de telefoon. Doe stap 10 nog eens op de SM-S947B, dan is die vraag beslist.',
-
-    'FILTERED_PIDS — laag 2+3 staan nog steeds uit voor álle PIDs. Onveranderd, en nog steeds een eigen rit waard.'
+    'FILTERED_PIDS \u2014 laag 2+3 staan nog steeds uit voor \u00e1lle PIDs. Onveranderd, en nog steeds een eigen rit waard.'
   ]
 };
 

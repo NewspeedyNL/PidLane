@@ -26,7 +26,13 @@
 const fs = require('fs');
 const index = fs.readFileSync('index.html', 'utf8');
 const demo = fs.readFileSync('pidlane-demo.js', 'utf8');
-const doc = fs.readFileSync('../ANDROID-PLAYSTORE.md', 'utf8');
+// De reviewnotitie staat in PLAY-INZENDING.md, niet in ANDROID-PLAYSTORE.md.
+// Tot 03-09-2026 stond hij in dat tweede bestand; hij is verhuisd toen de
+// tekst even in allebei stond en dat de bekende tweede lijst opleverde.
+// ANDROID-PLAYSTORE.md bewaart sindsdien de redenering, dit bestand de tekst
+// die de reviewer daadwerkelijk te lezen krijgt — en dus is dít het bestand
+// waar de knoptekst gelijk aan moet zijn.
+const doc = fs.readFileSync('../PLAY-INZENDING.md', 'utf8');
 let fout = 0;
 
 function toets(naam, ok, detail) {

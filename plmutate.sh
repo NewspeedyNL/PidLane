@@ -137,6 +137,13 @@ MUTATIES=(
 # De halve schakelaar: één van de twee demoknoppen gedekt. Dat is precies hoe
 # hij er tot 03-09 in stond, en de fout is onzichtbaar zolang feat_demo aan is.
 "public/pidlane-fuel.js@@  feat_demo:         ['[id=\"btnDemo\"]','[id=\"btnDemoLogin\"]'],@@  feat_demo:         ['[id=\"btnDemo\"]'],@@test-demo-toegang.js@@feat_demo laat de demoknop op het loginscherm als dode knop staan"
+# ── de tekst die in de Play Console geplakt wordt ──
+# Drie fouten in een markdownbestand waar niets in de repo op afgaat: een
+# dode link in een verplicht veld, een afvinklijst die een oude versie
+# bevestigt, en het woord dat de hele Data safety-form onjuist maakt.
+"PLAY-INZENDING.md@@\`\`\`\nhttps://app.pidlane.nl/privacy.html\n\`\`\`@@\`\`\`\nhttps://pidlane.nl/privacy.html\n\`\`\`@@test-playteksten.js@@de privacy-URL wijst naar een andere host dan de app zelf gebruikt"
+"package.json@@  \"version\": \"3.0.0\",@@  \"version\": \"3.1.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
+"PLAY-INZENDING.md@@## 8. Ads@@De gedeelde meetdata is geanonimiseerd.\n\n## 8. Ads@@test-playteksten.js@@het inzenddocument noemt de meetdata weer anoniem in plaats van gepseudonimiseerd"
 )
 
 echo

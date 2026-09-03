@@ -11,6 +11,55 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — KLAAR VOOR DE PLAY STORE:
+                               HET SCHERM DAT DE REVIEWER ZIET
+
+       • 📵 DE SCHIL HAD GEEN SCHERM ALS DE APP NIET LAADT.
+         De APK is een schil om app.pidlane.nl. Kwam die site
+         niet — vliegtuigmodus, parkeergarage, een gastnetwerk
+         dat eerst om een inlogpagina vraagt — dan nam de
+         Android-WebView het over met net::ERR_NAME_NOT_RESOLVED
+         op een wit vlak. Dat leest niet als "geen verbinding"
+         maar als een kapotte app. server.errorPath wijst nu naar
+         een eigen pagina: de host bij naam, drie dingen om te
+         proberen, en een knop die herlaadt. Hij haalt niets van
+         het net — een foutpagina met een lettertype van Google
+         laadt niet op het enige moment waarop hij nodig is.
+
+       • ▷ DE DEMOKNOP IS HEEL OF WEG, NIET HALF. De schakelaar
+         feat_demo dekte alleen de knop in het verbindscherm. De
+         knop op het loginscherm — waar de reviewnotitie letterlijk
+         naar wijst — bleef met feat_demo=false gewoon staan en
+         deed niets meer dan een toast tonen. Een zichtbare knop
+         die niets doet is erger dan geen knop. Beide zitten nu in
+         dezelfde schakelaar.
+
+       • 📋 NIEUW: PLAY-INZENDING.md. Alle tekst die de Play
+         Console als invulveld vraagt, kopieerklaar: naam,
+         beschrijvingen, reviewnotitie, Data safety veld voor
+         veld, contentclassificatie, releasenotities en het
+         screenshotplan. Eén plek — de reviewnotitie stond even in
+         twee bestanden, en dat is de vorm die PIDLANE-WERK.md en
+         §11 eerder de kop kostte. ANDROID-PLAYSTORE.md houdt de
+         redenering, dit document de tekst.
+
+       • 🧪 TWEE NIEUWE CONTROLES. test-foutpagina.js koppelt de
+         naam van de foutpagina in capacitor.config.json aan het
+         bestand dat de workflow werkelijk schrijft, en eist dat
+         die pagina zelfstandig is. test-playteksten.js meet elk
+         invulveld tegen de grens van de Console, controleert dat
+         de privacy- en verwijder-URL naar bestaande bestanden op
+         dezelfde host wijzen, en dat het document nergens BEWEERT
+         dat gegevens anoniem zijn — pseudonimisering is dat niet.
+         plmutate.sh staat op 67 mutaties, alle 67 gevangen.
+
+       • ⚠️ WAT DE GATE NIET KAN ZIEN. Of Capacitor die foutpagina
+         ook werkelijk laadt, is de werking van de schil en vraagt
+         een APK op een toestel zonder netwerk. Dat staat als stap
+         A in CAMPAGNE en is tot die proef een aanname.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — DE BUSPOORT: ÉÉN SLOT, ÉÉN
                                PARSER, ÉÉN FETCH
 
