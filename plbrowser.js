@@ -149,10 +149,48 @@ async function startApp(opties) {
     const m = /ws:\/\/[^\s]+/.exec(stderr);
     if (m && !wsUrl) wsUrl = m[0];
   });
-  for (let i = 0; i < 120 && !wsUrl; i++) await new Promise(r => setTimeout(r, 250));
+
+  // WAAROM 90 SECONDEN EN NIET 30 — gemeten op de CI-runner van 03-09-2026.
+  //
+  // In die run brak de EERSTE browserproef af op precies 30 s, terwijl de vier
+  // proeven daarna in de ZELFDE job elk in ongeveer 3 s startten, op dezelfde
+  // Chromium. Het is dus geen kapotte browser en geen ontbrekende poort: het is
+  // een koude start. De eerste keer betaalt de runner voor het inlezen van het
+  // binaire bestand en zijn bibliotheken en voor het aanmaken van het profiel;
+  // daarna staat dat in de paginacache van de kernel en is het weg.
+  //
+  // Dat maakt dit een grens die per definitie alleen de eerste proef raakt, en
+  // die dus willekeurig lijkt: op een warme runner haalt hij het wél. "Flake"
+  // is hier geen oorzaak maar een naam voor niet gekeken hebben.
+  //
+  // Ophogen kost niets als het goed gaat: de lus stopt zodra de ws-regel er is,
+  // dus een warme start blijft ~3 s. De enige prijs is dat een Chromium die
+  // écht niet kan starten er langer over doet om dat te melden, en dat is de
+  // goedkopere kant om fout te zitten dan een reeks die om de zoveel run rood
+  // staat zonder dat er iets stuk is.
+  const WACHT_START_MS = 90000;
+  const TIK = 250;
+  for (let i = 0; i < WACHT_START_MS / TIK && !wsUrl; i++) await new Promise(r => setTimeout(r, TIK));
+
   if (!wsUrl) {
-    ch.kill(); srv.close();
-    throw new Error('Chromium gaf geen debugpoort binnen 30 s. Meldingen:\n' + stderr.slice(0, 800));
+    // SIGTERM en, als dat niet aankomt, SIGKILL. Een Chromium die nog aan het
+    // opstarten is pakt het eerste signaal niet altijd op: in de run van
+    // 03-09 meldde de runner na afloop "Terminate orphan process: chrome" voor
+    // precies deze mislukte start. Dat proces liep dus nog dóór tijdens de vier
+    // proeven erna en vocht daar om dezelfde processor — een mislukte eerste
+    // proef maakte de rest van de reeks zo trager dan nodig.
+    ch.kill();
+    setTimeout(() => { try { ch.kill('SIGKILL'); } catch (e) {
+      console.warn('plbrowser: Chromium liet zich niet afsluiten na een mislukte start —', e.message);
+    } }, 2000).unref();
+    srv.close();
+
+    // De dbus-regels hieronder zijn op een headless runner normaal en zeggen
+    // niets over de oorzaak. Dat er expliciet bij, want ze staan bovenaan de
+    // melding en sturen je anders een uur de verkeerde kant op.
+    throw new Error('Chromium gaf geen debugpoort binnen ' + (WACHT_START_MS / 1000) + ' s.\n' +
+      'Meldingen hieronder; "Failed to connect to the bus" is normaal zonder desktop\n' +
+      'en is niet de oorzaak.\n' + stderr.slice(0, 800));
   }
 
   const sock = new WebSocket(wsUrl);

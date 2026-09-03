@@ -771,6 +771,58 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+### De browserproeven vielen om op hun eigen koude start — 03-09-2026 (opgelost)
+
+`main` stond na de merge van 03-09 rood, en de melding wees de verkeerde kant
+op.
+
+**Wat het logboek zei.** `bproef-meetketen.js`, de eerste van de vijf, brak af
+met *"Chromium gaf geen debugpoort binnen 30 s"*, met daaronder vier regels
+`Failed to connect to the bus: Could not parse server address`. Die dbus-regels
+zijn op een headless runner volstrekt normaal en zeggen niets, maar ze stonden
+bovenaan de melding — en dat is precies het soort spoor waar je een uur aan
+kwijt bent.
+
+**Wat er werkelijk stond, één scherm lager.** De vier proeven ná die eerste
+draaiden in dezelfde job, op dezelfde Chromium, en startten elk in ongeveer
+**drie seconden**. Het was dus geen kapotte browser, geen ontbrekende poort en
+geen ontbrekende bibliotheek. Het was een **koude start**: de eerste launch op
+een verse runner betaalt voor het inlezen van het binaire bestand en zijn
+bibliotheken en voor het aanmaken van het profiel. Daarna staat dat in de
+paginacache van de kernel en is het weg.
+
+**Waarom dit zo lang goed ging.** De grens raakt per definitie alleen de eerste
+proef, en of die het haalt hangt af van hoe warm de runner toevallig is. Dat
+maakt hem willekeurig rood: de run een half uur eerder (#119) was groen op
+dezelfde code. Dat is de vorm waarin een reeks stilletjes waardeloos wordt —
+niet doordat hij faalt, maar doordat hij zó vaak zonder oorzaak faalt dat
+niemand de melding nog leest. **"Flake" was hier geen oorzaak maar een naam
+voor niet gekeken hebben**; het getal stond gewoon in het logboek.
+
+**Wat er is veranderd**, alle drie in `plbrowser.js`:
+
+1. De grens van 30 naar 90 seconden, met de meting erbij in het commentaar.
+   Ophogen kost niets als het goed gaat — de lus stopt zodra de ws-regel er is,
+   dus een warme start blijft drie seconden. De enige prijs is dat een Chromium
+   die écht niet kan starten er langer over doet om dat te zeggen, en dat is de
+   goedkopere kant om fout te zitten.
+2. De melding zegt nu hoeveel seconden er gewacht is en zet erbij dat de
+   dbus-regels normaal zijn en niet de oorzaak.
+3. `SIGKILL` als vangnet achter `ch.kill()`. De runner meldde na afloop
+   *"Terminate orphan process: chrome"* voor precies deze mislukte start: de
+   Chromium die niet opstartte pakte SIGTERM niet op en liep dóór tijdens de
+   vier proeven erna, om dezelfde processor vechtend. Een mislukte eerste proef
+   maakte de rest van de reeks dus trager — en daarmee zichzelf waarschijnlijker
+   de volgende keer.
+
+**De tegenproef.** De fouttak is de code die in een groene run nooit draait, dus
+die is apart afgedwongen: met `PL_CHROME=/bin/cat` en de grens tijdelijk op twee
+seconden breekt hij af op exact die twee seconden, met de nieuwe melding en de
+echte stderr eronder. Twee eerdere pogingen daartoe maten niets — Chromium start
+op deze machine binnen een halve seconde, dus een lage grens alléén raakt de tak
+niet. Dat is dezelfde les als bij de andere toetsen: een proef die niet
+onderscheidt, bewijst niets.
+
 ### De schil had geen scherm voor "de app laadt niet" — 03-09-2026 (opgelost)
 
 Gevonden bij de Play Store-ronde, en het is een blinde vlek die er vanaf de
