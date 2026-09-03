@@ -425,9 +425,15 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
     // Zonder dit anker zou de lus over nul codes lopen en vanzelf groen staan.
     toets('de route stuurt foutcodes mee', codes.length >= 3,
           'gevonden: ' + JSON.stringify(codes));
+    // Op de AFHANDELING kijken en niet op het woord. "Staat de naam ergens in
+    // het bestand" was de eerste opzet, en plmutate.sh liet zien wat daar mis
+    // mee is: één commentaarregel die de code noemt houdt de toets groen
+    // terwijl de afhandeling hernoemd is. Precies de stille fout die deze
+    // kruiscontrole moest vangen.
     codes.forEach((c) => {
+      const afhandeling = new RegExp("code\\s*===\\s*'" + c + "'");
       toets("admin.html handelt '" + c + "' af",
-            admin.indexOf("'" + c + "'") !== -1,
+            afhandeling.test(admin),
             'de pagina valt terug op "Onverwachte fout" voor deze code');
     });
   }
