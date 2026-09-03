@@ -14,6 +14,20 @@
      Build: 2026-09-03 (CET) — KLAAR VOOR DE PLAY STORE:
                                HET SCHERM DAT DE REVIEWER ZIET
 
+       • ✅ DE FOUTPAGINA IS OP EEN TOESTEL BEWEZEN. 03-09
+         20:16, vliegtuigmodus aan, koud gestart op build #424:
+         het eigen scherm komt, met "Geen verbinding",
+         app.pidlane.nl erbij en een knop die herlaadt. Geen wit
+         vlak, geen net::ERR_. Daarmee is de laatste onbewezen
+         aanname van deze reeks weg.
+
+         De weg ernaartoe was leerzamer dan de uitkomst: de
+         eerste proef om 18:45 toonde wél de kale WebView-fout.
+         De verleiding was te concluderen dat errorPath niet
+         werkt; wat er werkelijk aan de hand was zat twee lagen
+         dieper. Een mislukte proef is een waarneming over de
+         hele keten, niet over het ding dat je toetste.
+
        • 📦 DE BUILD KOMT NU BIJ DE TELEFOON. De APK ging naar
          de artefacten van de workflow-run; /download/pidlane.apk
          serveert uit R2; niets verbond die twee. Build #424

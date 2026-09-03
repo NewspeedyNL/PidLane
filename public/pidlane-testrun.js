@@ -4932,7 +4932,7 @@ const CAMPAGNE = {
 
     'STAP 0. Deze ronde vraagt de NIEUWE APK, geen "Nieuwste versie laden". De wijziging aan errorPath zit in de schil, niet in de webcode: op de oude APK meet je een oude schil om een nieuwe website.',
 
-    'STAP A \u2014 DE PROEF DIE DE GATE NIET KAN DOEN. Zet de vliegtuigmodus aan en start de app koud. Er hoort nu een eigen scherm te komen: kop "Geen verbinding", de naam app.pidlane.nl erin, drie dingen om te proberen, en een knop "Opnieuw proberen". Zie je in plaats daarvan een wit vlak met net::ERR_..., dan doet errorPath niets op deze Capacitor-versie en is dat de bevinding van deze ronde. Zet daarna het netwerk aan en druk op de knop: hij hoort de app alsnog te laden.',
+    'STAP A \u2014 AFGEROND OP 03-09-2026 OM 20:16, EN HIJ SLAAGDE. Vliegtuigmodus aan, app koud gestart op de APK van build #424: het eigen scherm kwam, met kop "Geen verbinding", app.pidlane.nl erin, de drie tips en de knop "Opnieuw proberen". Geen wit vlak, geen net::ERR_. Deze stap hoeft niet opnieuw tenzij de Capacitor-versie of server.errorPath verandert \u2014 dan is het weer een aanname.',
 
     'STAP B \u2014 LOOP DE REVIEW NA ALS DE REVIEWER. Wis de app-gegevens, start op, en doe precies wat \u00a77 van PLAY-INZENDING.md belooft: de knop "Try demo \u2014 no adapter needed" staat op het startscherm, onder de verbindknop, zonder in te loggen. Voorbeeldvoertuig kiezen, en dan door naar sensorwaarden, foutcodes, grafiek en rapport. Loopt daar iets vast, dan loopt het bij de reviewer ook vast.',
 
