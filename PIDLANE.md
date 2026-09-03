@@ -437,22 +437,39 @@ onthouden, want de eerste fix wekte de indruk dat het klaar was:
 |---|---|---|
 | Veldlab-sessies → `Sessies` | `_vlSchoonVoorVerzending()` in `pidlane-veldlab.js` | 25-08-2026 |
 | Logregels → `Logs` | `_plVinVoorLog()` in `pidlane-auth.js` | 27-08-2026 |
-| App-logbuffer → testrunverslag | — | **nog open, zie `#102`** |
+| App-logbuffer → testrunverslag | `_plVinVoorLog()` op de schrijvers | 03-09-2026 |
 
 Het tweede pad was het ergere van de twee en werd bij de eerste ronde gemist:
 `logToSheets()` schreef de volledige VIN in een **eigen kolom**, op élke
 logregel, met de kolom `User` in dezelfde rij. Niet weggestopt in een JSON-blob
 zoals bij Veldlab, maar gewoon zichtbaar in de tabel.
 
-**Het derde pad is op 02-09-2026 gevonden en staat nog open.** Deze tabel was
-twee keer compleet en was het geen van beide keren. `_plVinVoorLog()` beschermt
-de route naar Airtable, niet de logbuffer waar die route uit put: twee aanroepen
-(`pidlane-bt.js:2289`, `pidlane-pids.js:1097`) schrijven de ruwe VIN daar
-rechtstreeks in, en het testrunverslag exporteert de buffer integraal. Het is
-ook het pad met de ruimste bestemming — bij de andere twee gaat er een kolom
-naar een tabel die alleen ik zie, hier kiest de gebruiker zelf waar het bestand
-heen gaat. Zolang de ruwe VIN in de buffer staat is elke nieuwe afnemer ervan
-weer een nieuw pad. Zie `#102` en §11.
+**Het derde pad is op 02-09-2026 gevonden en op 03-09 gedicht** (`#102`). Deze
+tabel was twee keer compleet en was het geen van beide keren. `_plVinVoorLog()`
+beschermde de route naar Airtable, niet de logbuffer waar die route uit put —
+en het testrunverslag exporteert die buffer integraal. Het is ook het pad met
+de ruimste bestemming: bij de andere twee gaat er een kolom naar een tabel die
+alleen ik zie, hier kiest de gebruiker zelf waar het bestand heen gaat.
+
+Er bleken **drie** schrijvers te zijn, niet twee. Naast `pidlane-bt.js` en
+`pidlane-pids.js` drukte de profielproef van blok 1 bij een FOUT de huidige VIN
+áf plus die van élk profiel dat ooit op het toestel was opgeslagen — één
+melding die niet één auto lekt maar alle auto's die dat toestel heeft gezien.
+
+De vorm die er nu staat is `…766507 (JMZ:9f2c…)`: de laatste zes tekens zodat je
+je eigen auto herkent, en het pseudoniem dat hetzelfde staartje draagt als de
+Airtable-logkolom, zodat een logregel te koppelen blijft aan een
+Veldlab-sessie.
+
+**Nog niet gedicht, en bewust niet in dezelfde ronde:** `_voertuigRegels()` in
+`pidlane-export.js` zet de volledige VIN in de kop van élk geëxporteerd rapport
+en élke PDF. Dat is geen vergissing maar een ontwerpkeuze — een werkplaatsrapport
+over de auto van een klant kan die VIN nodig hebben — en dus een besluit en geen
+reparatie. Zie `#109`.
+
+`bproef-vinlek.js` bewaakt dit voortaan op de manier die bij de les hoort: hij
+toetst niet de drie aanroepen maar **de buffer**. Dat is de enige vorm die ook
+een vierde schrijver vangt die nog niet bestaat.
 
 Beide paden delen één functie, `_vlVinPseudoniem()`: `SHA-256(zout + VIN)`,
 eerste 16 hextekens. Dezelfde auto krijgt daardoor in beide tabellen hetzelfde
@@ -1240,8 +1257,33 @@ bestemming kiest.
 **De les is niet "nog een pad dichtzetten".** Het is dat "uitgaand pad" hier
 twee keer verkeerd is afgebakend: eerst als *de verzendfunctie*, nu als *de
 route naar Airtable*. De buffer zelf was steeds de plek waar het misging, en
-zolang de ruwe VIN daarin staat is de volgende afnemer weer een nieuw pad. Zie
-`#102`.
+zolang de ruwe VIN daarin staat is de volgende afnemer weer een nieuw pad.
+
+**Gedicht op 03-09-2026, en er waren drie schrijvers.** Het issue noemde er
+twee. De derde stond in de testrun zelf: de profielproef van blok 1 drukte bij
+een FOUT de huidige VIN áf plus die van élk profiel dat ooit op het toestel was
+opgeslagen. Eén melding die niet één auto lekt maar alle auto's die dat toestel
+heeft gezien — en hij stond in het bestand dat over lekken zou moeten
+rapporteren.
+
+Dat die derde er was, is het bewijs voor de les hierboven. Ik had twee
+aanroepen gevonden door te zoeken naar `log(...vin...)` in de modules; deze
+stond in een string-concatenatie in een proef, waar ik niet keek. **Daarom
+toetst `bproef-vinlek.js` niet de aanroepen maar de buffer**: hij vult die met
+de echte codepaden (`tryReadVIN()` via een nep-ECU, `saveVinProfile()`) en
+zoekt de ruwe VIN dan terug in `plLokaalLog()`. Dat is de enige vorm die ook
+een vierde schrijver vangt die nog niet bestaat.
+
+Met tegenproef aan allebei de kanten: één ruwe VIN in de buffer schrijven en
+eisen dat de scan hem ziet, én de reparatie in `pidlane-bt.js` terugdraaien en
+zien dat de proef rood wordt met de gemeten waarde erbij.
+
+**Wat bewust is blijven staan.** `_voertuigRegels()` in `pidlane-export.js` zet
+de volledige VIN in de kop van elk geëxporteerd rapport. Dat is geen vergissing
+maar een ontwerpkeuze — een rapport over een auto knoopt zich juist aan de VIN
+vast — en dus een besluit (`#109`), niet iets om in deze PR mee te nemen. Dat
+het in §7 staat is het punt: een bewust opengelaten pad dat niet in de tabel
+staat, is over een maand niet te onderscheiden van een vergeten pad.
 
 ### Vier ritten, nul gesloten issues — 02-09-2026
 
