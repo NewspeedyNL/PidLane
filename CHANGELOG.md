@@ -14,6 +14,16 @@
      Build: 2026-09-03 (CET) — KLAAR VOOR DE PLAY STORE:
                                HET SCHERM DAT DE REVIEWER ZIET
 
+       • 🧊 DE BROWSERPROEVEN VIELEN OM OP HUN EIGEN KOUDE
+         START. main stond na de merge rood: de eerste van de
+         vijf proeven haalde de 30 s niet, terwijl de vier daarna
+         in dezelfde job elk in ~3 s startten. Geen kapotte
+         browser maar een koude runner. Grens naar 90 s, de
+         melding zegt nu hoelang er gewacht is en dat de
+         dbus-regels eronder normaal zijn, en een SIGKILL-vangnet
+         zodat een mislukte start niet als weesproces dóórdraait
+         tijdens de rest van de reeks.
+
        • 📵 DE SCHIL HAD GEEN SCHERM ALS DE APP NIET LAADT.
          De APK is een schil om app.pidlane.nl. Kwam die site
          niet — vliegtuigmodus, parkeergarage, een gastnetwerk
