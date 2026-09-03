@@ -461,11 +461,43 @@ je eigen auto herkent, en het pseudoniem dat hetzelfde staartje draagt als de
 Airtable-logkolom, zodat een logregel te koppelen blijft aan een
 Veldlab-sessie.
 
-**Nog niet gedicht, en bewust niet in dezelfde ronde:** `_voertuigRegels()` in
-`pidlane-export.js` zet de volledige VIN in de kop van élk geëxporteerd rapport
-en élke PDF. Dat is geen vergissing maar een ontwerpkeuze — een werkplaatsrapport
-over de auto van een klant kan die VIN nodig hebben — en dus een besluit en geen
-reparatie. Zie `#109`.
+**Het vierde pad blijft open, en dat is besloten op 03-09-2026 (#109).**
+`_voertuigRegels()` in `pidlane-export.js` zet de volledige VIN in de kop van
+élk geëxporteerd rapport en élke PDF. Dat is **geen vergeten pad maar een
+opengelaten pad**, en het staat hier zodat die twee niet meer door elkaar te
+halen zijn — dat is de hele les van #102, waar deze tabel twee keer "compleet"
+was en het geen van beide keren was.
+
+| Pad | Functie | Stand |
+|---|---|---|
+| Rapport-/PDF-export → bestand | `_voertuigRegels()` in `pidlane-export.js` | **volledige VIN, met opzet** |
+
+De reden. Een geëxporteerd rapport is een **werkstuk over een auto**, geen
+diagnosebestand over de app. Gaat het naar een klant, een garage of een
+keuring, dan is de VIN precies het veld dat het rapport aan díé auto
+vastknoopt; maskeren maakt het onbruikbaar voor waarschijnlijk het
+belangrijkste gebruik dat het heeft. Bij #102 lag dat andersom: daar voegde de
+VIN niets toe aan een testrunverslag, en deden de laatste zes tekens plus het
+pseudoniem hetzelfde werk.
+
+Wat dit besluit **niet** zegt. Het rekt de regel uit `CLAUDE.md` niet op: een
+VIN gaat nooit ruw naar Airtable of naar een van onze eigen bestemmingen. Het
+verschil is de bestemming — hier kiest de gebruiker zelf waar het bestand heen
+gaat, en hij weet dat hij een rapport over zijn auto exporteert. Zou er ooit
+een pad bij komen dat een rapport automatisch ergens heen stuurt, dan valt dat
+niet onder dit besluit en is het een nieuwe vraag.
+
+De afgewogen alternatieven staan in #109 en zijn niet gekozen: maskeren zoals
+#102 (kost de koppeling aan het voertuig) en een vinkje bij het exporteren
+(inhoudelijk het beste, maar een extra stand die in elk exportpad mee moet en
+onderhoudslast is hier een harde ontwerprandvoorwaarde).
+
+**Eén randgeval uit dezelfde zoektocht, bewust blijven staan.**
+`pidlane-bt.js` rond regel 2292 logt bij een mislukte VIN-lezing de ruwe
+ELM-antwoorden, en die hex kan een VIN bevatten die de parser net niet
+accepteerde. Zwakker dan een leesbare VIN, en de regel heeft echte
+diagnosewaarde — hij bestaat om te kunnen zien of de auto zwijgt of de parser
+faalt. Genoemd zodat hij niet ongemerkt blijft, niet omdat hij weg moet.
 
 `bproef-vinlek.js` bewaakt dit voortaan op de manier die bij de les hoort: hij
 toetst niet de drie aanroepen maar **de buffer**. Dat is de enige vorm die ook
