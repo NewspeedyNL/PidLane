@@ -211,6 +211,16 @@ async function startApp(opties) {
   await cmd('Page.enable');
   await cmd('Runtime.enable');
   await cmd('Network.enable');
+  /* De vensterbreedte instellen via het debugprotocol en niet via
+     --window-size. Nagemeten op 03-09-2026: met alleen die vlag rapporteerde
+     window.innerWidth 500 in plaats van 412, en dat is precies het soort stille
+     fout waar dit harnas voor bestaat — een proef die een tekstlabel opmeet zou
+     dan de verkeerde telefoon meten en te ruim concluderen.
+     412x915 is een gangbare telefoon; deviceScaleFactor 2 en mobile:true zorgen
+     dat media queries en rem-maten zich ook als telefoon gedragen. */
+  await cmd('Emulation.setDeviceMetricsOverride',
+            { width: o.breedte || 412, height: o.hoogte || 915,
+              deviceScaleFactor: 2, mobile: true });
   await cmd('Network.setBlockedURLs', { urls: GEBLOKKEERD });
   await cmd('Page.navigate', { url: appUrl });
 

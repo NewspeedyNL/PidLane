@@ -104,6 +104,92 @@ function _appLogRegels() {
 //
 // Apart en zuiver, zodat test-opruimmelding.js hem kan draaien zonder een
 // browser en zonder testrun-context. Knippad: tussen de twee ankers hieronder.
+// ── STILLE SENSOREN (blok 11) ─────────────────────────────────────
+// Apart en zuiver zodat test-stille-selectie.js hem kan draaien zonder browser
+// en zonder testrun-context. `actief` wordt BEWUST doorgegeven in plaats van
+// hier opgehaald: welke selectie de juiste is, is precies wat #90 fout had, en
+// een functie die zijn eigen bron kiest kun je daar niet op toetsen.
+// Knippad: tussen de twee ankers hieronder.
+function _stilleSensorenStand(h, actief) {
+  const sleutels = Object.keys(h || {});
+  if (!sleutels.length) return { staat: 'LET OP', detail: 'geen health-oordelen — nog niet lang genoeg gepolld' };
+
+  const perStaat = {};
+  const stilInSelectie = [];
+  sleutels.forEach(function (p) {
+    const st = String(h[p] && h[p].staat ? h[p].staat : h[p]);
+    perStaat[st] = (perStaat[st] || 0) + 1;
+    if (st !== 'ok' && actief && actief.has && actief.has(p)) stilInSelectie.push(p);
+  });
+
+  const verdeling = Object.keys(perStaat).map(function (k) { return k + ': ' + perStaat[k]; }).join(', ');
+  if (!stilInSelectie.length)
+    return sleutels.length + ' beoordeeld (' + verdeling + '), geen enkele niet-ok PID staat in je selectie';
+  return { staat: 'LET OP', detail: sleutels.length + ' beoordeeld (' + verdeling + '). ' +
+    stilInSelectie.length + ' NIET-OK maar wél in de actieve selectie: ' + stilInSelectie.join(', ') +
+    '  — dit is de populatie waar punt 3 een drempel voor moet kiezen' };
+}
+// ── einde stille-sensoren-blok ────────────────────────────────────
+
+// ── HET PROFIELOORDEEL (blok 1) ───────────────────────────────────
+// WAAROM DIT EEN EIGEN FUNCTIE IS (#86, 03-09-2026)
+// Dit oordeel zat in een anonieme functie in _blok1() en was daarmee alleen te
+// toetsen door een hele testrun te draaien. Apart en zuiver, zodat
+// test-profielmelding.js hem kan draaien zonder browser en zonder testrun-
+// context. Knippad: tussen de twee ankers hieronder.
+//
+// WAT ER MIS WAS. De vraag "had dit profiel bij het verbinden geladen moeten
+// worden?" hing aan een leeftijdsdrempel: jonger dan 0.1 uur = zes minuten
+// betekende "tijdens deze sessie ontstaan, dus terecht niet geladen". Bij een
+// begeleide rit zit er een kwartier tussen verbinden en meten, dus sloeg die
+// proef vals alarm — en precies in de sessies waarin je een verse oplevering
+// uitprobeert (nieuwe versie, schone opslag), wat de sessies zijn waarin je
+// hem het hardst nodig hebt.
+//
+// De marge oprekken verschuift dat alleen: bij een rit van veertig minuten is
+// het weer mis. De vraag is niet hoe OUD het profiel is maar of het ná dit
+// verbinden is ontstaan, en daar is een tijdstip voor nodig en geen drempel.
+// `window._plVerbondenT` wordt gezet in connectSerial().
+//
+// De leeftijdsregel blijft staan als terugval voor het geval dat stempel
+// ontbreekt — een sessie die al verbonden was voordat deze versie werd
+// geladen, bijvoorbeeld. Dat staat er dan bij, zodat je aan de melding ziet
+// waarop hij is beoordeeld.
+function _profielOordeel(prof, geladen, verbondenT, nuOverride) {
+  const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
+  const uur = prof && prof.ts ? Math.round((nu - prof.ts) / 36e5 * 10) / 10 : null;
+  const health = prof && prof.health ? Object.keys(prof.health).length : 0;
+  const basis = (prof && prof.pids ? prof.pids.length : 0) + ' PIDs' +
+    (health ? ', ' + health + ' health-oordelen' : ', GEEN health') +
+    (uur == null ? '' : ', ' + uur + ' uur oud');
+
+  // Tot 21-08 stond hier onvoorwaardelijk "dit had bij het verbinden geladen
+  // moeten worden". Die zin controleerde niets: hij keek alleen of er een
+  // profiel in de opslag lag, niet of het gebruikt was. profielHealth() is de
+  // betrouwbare vlag: die wordt gezet door applyVinProfileIfKnown() en blijft
+  // null bij een volle discovery.
+  if (geladen === undefined)
+    return basis + ' — of het geladen is, is niet vast te stellen (profielHealth ontbreekt)';
+  if (geladen)
+    return basis + ' — bij het verbinden geladen, snelle start';
+
+  // Ná het verbinden aangemaakt? Dan kán het bij dít verbinden niet geladen
+  // zijn, hoeveel tijd er sindsdien ook verstreken is. Dit is het antwoord op
+  // #86 en het heeft geen drempel.
+  if (prof && prof.ts && typeof verbondenT === 'number' && prof.ts >= verbondenT)
+    return basis + ' — ná het verbinden van deze sessie aangemaakt, dus terecht niet geladen bij het verbinden';
+
+  // Terugval zonder stempel: dan is leeftijd het enige dat er is, met de reden
+  // erbij zodat de melding niet stelliger klinkt dan hij kan zijn.
+  if (typeof verbondenT !== 'number' && uur !== null && uur <= 0.1)
+    return basis + ' — nog maar een paar minuten oud, dus vermoedelijk tijdens déze sessie ontstaan ' +
+      '(het verbindingsmoment is niet vastgelegd, dus beoordeeld op leeftijd)';
+
+  return { staat: 'LET OP', detail: basis +
+    ' — staat in de opslag maar is bij het verbinden NIET geladen; de app deed een volle discovery' };
+}
+// ── einde profieloordeel-blok ─────────────────────────────────────
+
 // Eén gebeurtenis, één regel. (#104, 03-09-2026)
 //
 // pidOpruimen() schrijft dezelfde opruiming TWEE keer weg: via btDiag() naar de
@@ -201,6 +287,45 @@ async function _doe(blok, naam, fn) {
 // finally, en een kopie in localStorage zodat een crash of een weggezwiepte
 // app de selectie niet permanent kwijtmaakt.
 const HERSTEL_SLEUTEL = 'pl_testrun_herstel';
+
+/* ── WAT HAD DE GEBRUIKER AANSTAAN? (#90, 03-09-2026) ──────────────
+   Blok 3 overschrijft `activePIDs` voor de duur van de PID-sweep, en het
+   herstel gebeurt pas in het `finally` van runTestrun() — dus aan het einde
+   van de HELE run. Alles wat daartussen draait en `activePIDs` leest, meet de
+   sweep en niet de gebruiker.
+
+   Wat dat oplevert, uit de run van 02-09 13:14:
+
+     13:13:59  Selectie bewaard — 28 actieve PIDs
+     13:14:00  PID-sweep — 46 PIDs, selectie tijdelijk overschreven
+     13:14:12  Stille sensoren leest activePIDs → ziet er 46
+     13:14:23  Selectie hersteld — 28 PIDs teruggezet
+
+   De melding die eruit kwam noemde 016D en 019D als "NIET-OK maar wél in de
+   actieve selectie". De busstatistiek van diezelfde run laat zien dat de
+   pollus er 28 heeft uitgevraagd en die twee daar niet bij zaten: ze stonden
+   in de selectie van de SWEEP. De proef wees dus een populatie aan die niet
+   bestond — en juist die proef zegt van zichzelf dat hij de populatie aanwijst
+   waar een drempel op gekozen moet worden.
+
+   Erger dan fout is dat hij STIL fout is: in de run van 12:05 gaf dezelfde
+   proef "geen enkele niet-ok PID staat in je selectie", en dat was net zo goed
+   de sweep-selectie. Hij klopte daar alleen toevallig.
+
+   Eén bron voor de vraag "wat had de gebruiker aanstaan": tijdens een run is
+   dat het herstelpunt, daarbuiten de live selectie. Het `finally` blijft het
+   vangnet voor een afgebroken run — dat is met opzet niet verplaatst. */
+function _gebruikersSelectie() {
+  if (typeof _trBezig !== 'undefined' && _trBezig &&
+      _trHerstel && Array.isArray(_trHerstel.actief))
+    return new Set(_trHerstel.actief);
+  try {
+    if (typeof activePIDs !== 'undefined' && activePIDs) return new Set(activePIDs);
+  } catch (e) {
+    console.warn('Testrun: activePIDs onleesbaar bij het bepalen van de gebruikersselectie', e);
+  }
+  return new Set();
+}
 
 function _bewaarSelectie() {
   const s = {
@@ -715,36 +840,12 @@ async function _blok1() {
     if (!prof || !prof.pids || !prof.pids.length)
       return { staat: 'FOUT', detail: 'profiel bestaat maar bevat geen PIDs — daarom valt de app terug op discovery' };
 
-    const uur = prof.ts ? Math.round((Date.now() - prof.ts) / 36e5 * 10) / 10 : null;
-    const health = prof.health ? Object.keys(prof.health).length : 0;
-    const basis = prof.pids.length + ' PIDs' + (health ? ', ' + health + ' health-oordelen' : ', GEEN health') +
-      (uur == null ? '' : ', ' + uur + ' uur oud');
-
-    // Tot 21-08 stond hier onvoorwaardelijk "dit had bij het verbinden geladen
-    // moeten worden". Die zin controleerde niets: hij keek alleen of er een
-    // profiel in de opslag lag, niet of het gebruikt was. Op 21-08 stond hij
-    // twee runs lang in het log terwijl de app netjes een snelle start deed —
-    // een melding die vals alarm slaat leer je binnen een week negeren, en dan
-    // mis je de echte. profielHealth() is de betrouwbare vlag: die wordt gezet
-    // door applyVinProfileIfKnown() en blijft null bij een volle discovery.
     let geladen = null;
-    try { geladen = (typeof profielHealth === 'function') ? profielHealth() : undefined; } catch (e) { geladen = undefined; }
-    if (geladen === undefined)
-      return basis + ' — of het geladen is, is niet vast te stellen (profielHealth ontbreekt)';
-    if (geladen)
-      return basis + ' — bij het verbinden geladen, snelle start';
-
-    // HERZIEN 26-08: geladen===false betekende hier altijd LET OP, ook vlak
-    // nadat een eerste volle discovery het profiel zojuist zélf heeft
-    // aangemaakt — precies de situatie uit het log van 25-08 (opgeslagen om
-    // 20:34:18, en de controle die er meteen overheen liep meldde alsnog
-    // "niet geladen"). Zo'n vers profiel kán bij dít verbinden niet geladen
-    // zijn, want het bestond toen nog niet. `uur` (hierboven al berekend)
-    // onderscheidt dat van een profiel dat er al stond en genegeerd is.
-    if (uur !== null && uur <= 0.1)
-      return basis + ' — nog maar een paar minuten oud: dit profiel is tijdens déze sessie zelf ontstaan, dus terecht niet geladen bij het verbinden';
-    return { staat: 'LET OP', detail: basis +
-      ' — staat in de opslag maar is bij het verbinden NIET geladen; de app deed een volle discovery' };
+    try { geladen = (typeof profielHealth === 'function') ? profielHealth() : undefined; }
+    catch (e) { geladen = undefined; console.warn('Testrun: profielHealth() gaf een fout', e); }
+    const verbT = (typeof window !== 'undefined' && typeof window._plVerbondenT === 'number')
+      ? window._plVerbondenT : null;
+    return _profielOordeel(prof, geladen, verbT);
   });
 
   await _doe(1, 'Opslag', function () {
@@ -3138,9 +3239,9 @@ function _meetStand(e) {
 // het enige dat je hierna kunt doen, dus dat moet erbij.
 function _waaromNiet(pid) {
   const gevraagd = _ritGevraagd.indexOf(pid) > -1;
-  let inSelectie = false;
-  try { inSelectie = !!(typeof activePIDs !== 'undefined' && activePIDs && activePIDs.has && activePIDs.has(pid)); }
-  catch (e) { console.warn('activePIDs niet leesbaar bij het duiden van een niet-gemeten PID', e); }
+  // De selectie van de GEBRUIKER, niet die van de sweep (#90). Blok 14 draait
+  // ná blok 3, dus activePIDs staat hier vol met de sweeplijst.
+  const inSelectie = _gebruikersSelectie().has(pid);
   if (gevraagd && inSelectie) return 'staat sinds stap 2 in de selectie en levert tóch niets — dát is een bevinding';
   if (inSelectie) return 'staat wél in de selectie maar kwam niet aan de beurt — kijk naar het pollbudget (blok 7)';
   return 'stond niet in de selectie; start de begeleide run, stap 2 zet hem erbij';
@@ -3343,26 +3444,9 @@ async function _blok11() {
   await _doe(11, 'Stille sensoren: hoeveel en hoe hardnekkig', function () {
     let h = {};
     try { h = (typeof _pidHealth !== 'undefined' && _pidHealth) ? _pidHealth : {}; } catch (e) { throw new Error('_pidHealth onleesbaar'); }
-    const sleutels = Object.keys(h);
-    if (!sleutels.length) return { staat: 'LET OP', detail: 'geen health-oordelen — nog niet lang genoeg gepolld' };
-
-    let actief = new Set();
-    try { if (typeof activePIDs !== 'undefined') actief = activePIDs; } catch (e) { /* stil: valt terug op een lege set */ }
-
-    const perStaat = {};
-    const stilInSelectie = [];
-    sleutels.forEach(function (p) {
-      const st = String(h[p] && h[p].staat ? h[p].staat : h[p]);
-      perStaat[st] = (perStaat[st] || 0) + 1;
-      if (st !== 'ok' && actief.has && actief.has(p)) stilInSelectie.push(p);
-    });
-
-    const verdeling = Object.keys(perStaat).map(function (k) { return k + ': ' + perStaat[k]; }).join(', ');
-    if (!stilInSelectie.length)
-      return sleutels.length + ' beoordeeld (' + verdeling + '), geen enkele niet-ok PID staat in je selectie';
-    return { staat: 'LET OP', detail: sleutels.length + ' beoordeeld (' + verdeling + '). ' +
-      stilInSelectie.length + ' NIET-OK maar wél in de actieve selectie: ' + stilInSelectie.join(', ') +
-      '  — dit is de populatie waar punt 3 een drempel voor moet kiezen' };
+    // Niet activePIDs (#90): blok 3 heeft die overschreven met de sweeplijst en
+    // herstelt hem pas aan het eind van de run.
+    return _stilleSensorenStand(h, _gebruikersSelectie());
   });
 
   // Bijbehorende vraag uit punt 3: hoe komt een opgeruimde sensor ooit terug?
