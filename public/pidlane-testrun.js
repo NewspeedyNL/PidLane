@@ -104,6 +104,65 @@ function _appLogRegels() {
 //
 // Apart en zuiver, zodat test-opruimmelding.js hem kan draaien zonder een
 // browser en zonder testrun-context. Knippad: tussen de twee ankers hieronder.
+// ── HET PROFIELOORDEEL (blok 1) ───────────────────────────────────
+// WAAROM DIT EEN EIGEN FUNCTIE IS (#86, 03-09-2026)
+// Dit oordeel zat in een anonieme functie in _blok1() en was daarmee alleen te
+// toetsen door een hele testrun te draaien. Apart en zuiver, zodat
+// test-profielmelding.js hem kan draaien zonder browser en zonder testrun-
+// context. Knippad: tussen de twee ankers hieronder.
+//
+// WAT ER MIS WAS. De vraag "had dit profiel bij het verbinden geladen moeten
+// worden?" hing aan een leeftijdsdrempel: jonger dan 0.1 uur = zes minuten
+// betekende "tijdens deze sessie ontstaan, dus terecht niet geladen". Bij een
+// begeleide rit zit er een kwartier tussen verbinden en meten, dus sloeg die
+// proef vals alarm — en precies in de sessies waarin je een verse oplevering
+// uitprobeert (nieuwe versie, schone opslag), wat de sessies zijn waarin je
+// hem het hardst nodig hebt.
+//
+// De marge oprekken verschuift dat alleen: bij een rit van veertig minuten is
+// het weer mis. De vraag is niet hoe OUD het profiel is maar of het ná dit
+// verbinden is ontstaan, en daar is een tijdstip voor nodig en geen drempel.
+// `window._plVerbondenT` wordt gezet in connectSerial().
+//
+// De leeftijdsregel blijft staan als terugval voor het geval dat stempel
+// ontbreekt — een sessie die al verbonden was voordat deze versie werd
+// geladen, bijvoorbeeld. Dat staat er dan bij, zodat je aan de melding ziet
+// waarop hij is beoordeeld.
+function _profielOordeel(prof, geladen, verbondenT, nuOverride) {
+  const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
+  const uur = prof && prof.ts ? Math.round((nu - prof.ts) / 36e5 * 10) / 10 : null;
+  const health = prof && prof.health ? Object.keys(prof.health).length : 0;
+  const basis = (prof && prof.pids ? prof.pids.length : 0) + ' PIDs' +
+    (health ? ', ' + health + ' health-oordelen' : ', GEEN health') +
+    (uur == null ? '' : ', ' + uur + ' uur oud');
+
+  // Tot 21-08 stond hier onvoorwaardelijk "dit had bij het verbinden geladen
+  // moeten worden". Die zin controleerde niets: hij keek alleen of er een
+  // profiel in de opslag lag, niet of het gebruikt was. profielHealth() is de
+  // betrouwbare vlag: die wordt gezet door applyVinProfileIfKnown() en blijft
+  // null bij een volle discovery.
+  if (geladen === undefined)
+    return basis + ' — of het geladen is, is niet vast te stellen (profielHealth ontbreekt)';
+  if (geladen)
+    return basis + ' — bij het verbinden geladen, snelle start';
+
+  // Ná het verbinden aangemaakt? Dan kán het bij dít verbinden niet geladen
+  // zijn, hoeveel tijd er sindsdien ook verstreken is. Dit is het antwoord op
+  // #86 en het heeft geen drempel.
+  if (prof && prof.ts && typeof verbondenT === 'number' && prof.ts >= verbondenT)
+    return basis + ' — ná het verbinden van deze sessie aangemaakt, dus terecht niet geladen bij het verbinden';
+
+  // Terugval zonder stempel: dan is leeftijd het enige dat er is, met de reden
+  // erbij zodat de melding niet stelliger klinkt dan hij kan zijn.
+  if (typeof verbondenT !== 'number' && uur !== null && uur <= 0.1)
+    return basis + ' — nog maar een paar minuten oud, dus vermoedelijk tijdens déze sessie ontstaan ' +
+      '(het verbindingsmoment is niet vastgelegd, dus beoordeeld op leeftijd)';
+
+  return { staat: 'LET OP', detail: basis +
+    ' — staat in de opslag maar is bij het verbinden NIET geladen; de app deed een volle discovery' };
+}
+// ── einde profieloordeel-blok ─────────────────────────────────────
+
 // Eén gebeurtenis, één regel. (#104, 03-09-2026)
 //
 // pidOpruimen() schrijft dezelfde opruiming TWEE keer weg: via btDiag() naar de
@@ -715,36 +774,12 @@ async function _blok1() {
     if (!prof || !prof.pids || !prof.pids.length)
       return { staat: 'FOUT', detail: 'profiel bestaat maar bevat geen PIDs — daarom valt de app terug op discovery' };
 
-    const uur = prof.ts ? Math.round((Date.now() - prof.ts) / 36e5 * 10) / 10 : null;
-    const health = prof.health ? Object.keys(prof.health).length : 0;
-    const basis = prof.pids.length + ' PIDs' + (health ? ', ' + health + ' health-oordelen' : ', GEEN health') +
-      (uur == null ? '' : ', ' + uur + ' uur oud');
-
-    // Tot 21-08 stond hier onvoorwaardelijk "dit had bij het verbinden geladen
-    // moeten worden". Die zin controleerde niets: hij keek alleen of er een
-    // profiel in de opslag lag, niet of het gebruikt was. Op 21-08 stond hij
-    // twee runs lang in het log terwijl de app netjes een snelle start deed —
-    // een melding die vals alarm slaat leer je binnen een week negeren, en dan
-    // mis je de echte. profielHealth() is de betrouwbare vlag: die wordt gezet
-    // door applyVinProfileIfKnown() en blijft null bij een volle discovery.
     let geladen = null;
-    try { geladen = (typeof profielHealth === 'function') ? profielHealth() : undefined; } catch (e) { geladen = undefined; }
-    if (geladen === undefined)
-      return basis + ' — of het geladen is, is niet vast te stellen (profielHealth ontbreekt)';
-    if (geladen)
-      return basis + ' — bij het verbinden geladen, snelle start';
-
-    // HERZIEN 26-08: geladen===false betekende hier altijd LET OP, ook vlak
-    // nadat een eerste volle discovery het profiel zojuist zélf heeft
-    // aangemaakt — precies de situatie uit het log van 25-08 (opgeslagen om
-    // 20:34:18, en de controle die er meteen overheen liep meldde alsnog
-    // "niet geladen"). Zo'n vers profiel kán bij dít verbinden niet geladen
-    // zijn, want het bestond toen nog niet. `uur` (hierboven al berekend)
-    // onderscheidt dat van een profiel dat er al stond en genegeerd is.
-    if (uur !== null && uur <= 0.1)
-      return basis + ' — nog maar een paar minuten oud: dit profiel is tijdens déze sessie zelf ontstaan, dus terecht niet geladen bij het verbinden';
-    return { staat: 'LET OP', detail: basis +
-      ' — staat in de opslag maar is bij het verbinden NIET geladen; de app deed een volle discovery' };
+    try { geladen = (typeof profielHealth === 'function') ? profielHealth() : undefined; }
+    catch (e) { geladen = undefined; console.warn('Testrun: profielHealth() gaf een fout', e); }
+    const verbT = (typeof window !== 'undefined' && typeof window._plVerbondenT === 'number')
+      ? window._plVerbondenT : null;
+    return _profielOordeel(prof, geladen, verbT);
   });
 
   await _doe(1, 'Opslag', function () {

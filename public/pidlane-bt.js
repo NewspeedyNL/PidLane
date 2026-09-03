@@ -87,6 +87,18 @@ async function connectSerial(){
   catch(e){ console.warn('Busstatistieken resetten mislukt: '+(e.message||e)); }
   connected = false;
   window._btGen = (window._btGen || 0) + 1;   // oude commando's ongeldig maken
+  /* Wanneer begon deze verbindingspoging? (#86, 03-09-2026)
+     Blok 1 van de testrun vraagt of een voertuigprofiel bij het verbinden
+     geladen had moeten worden. Dat hing aan een leeftijdsdrempel van 0.1 uur,
+     en die drempel is bij een begeleide rit altijd te krap: tussen verbinden
+     en meten zit dan een kwartier rijden. De marge oprekken verschuift het
+     probleem alleen — bij een rit van veertig minuten is het weer mis.
+     De vraag is niet hoe oud het profiel is maar of het ná dit verbinden is
+     ontstaan, en dat is precies wat dit stempel beantwoordt. Hier gezet en
+     niet bij `connected = true`: een profiel dat ná het BEGIN van de poging is
+     weggeschreven kan bij díé poging niet geladen zijn, en dat is de grens die
+     de proef nodig heeft. */
+  window._plVerbondenT = Date.now();
   window._batchSupported = undefined;         // multi-PID opnieuw testen bij nieuwe auto
   _btQueue = Promise.resolve();               // commandowachtrij leegmaken
 
