@@ -97,6 +97,12 @@ MUTATIES=(
 "worker.js@@      if (uitkomst.bezet)\n        return json({ ok: false, code: \"saldo_bezet\", error: \"Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens.\" }, 409);@@@@test-bijboeken.js@@een bezet saldo-slot laat het bijboeken toch doorlopen"
 "worker.js@@      if (!email)\n        return json({ ok: false, code: \"saldo_geen_email\", error: \"Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden.\" }, 409);@@@@test-bijboeken.js@@bijboeken zet het slot op een leeg e-mailadres in plaats van te weigeren"
 "admin/admin.html@@  if (body?.code==='saldo_bezet') {@@  if (body?.code==='saldo_bezet_oud') {@@test-bijboeken.js@@admin.html kent de code voor een bezet saldo-slot niet meer"
+
+# ── saldo ZETTEN door hetzelfde slot (03-09-2026, #93) ──
+"worker.js@@          if (saldoWas !== null && huidig !== saldoWas)@@          if (saldoWas !== null && huidig === saldoWas)@@test-bijboeken.js@@de voorwaarde bij saldo zetten staat omgekeerd: een verschoven saldo wordt juist overschreven"
+"worker.js@@          const z1 = await fetch(zetUrl, { headers: hdr });\n          if (!z1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
+"admin/admin.html@@saldoWas:huidig,door:beheerderNaam()@@door:beheerderNaam()@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
+"admin/admin.html@@  if (body?.code==='saldo_verschoven') {@@  if (body?.code==='saldo_verschoven_oud') {@@test-bijboeken.js@@admin.html kent de code voor een verschoven saldo niet"
 "worker.js@@if (a.length !== b.length) return false;@@if (a.length !== b.length) return true;@@test-token.js@@safeEqual keurt ongelijke lengtes goed"
 "worker.js@@if (!safeEqual(sig, await hmacSign(env.SESSION_SECRET, payload))) return null;\\n    const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@test-token.js@@verifyToken controleert de handtekening niet meer"
 "worker.js@@if (!p.exp || Math.floor(Date.now() / 1e3) >= p.exp) return null;@@@@test-token.js@@een verlopen sessietoken blijft geldig"

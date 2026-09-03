@@ -574,6 +574,18 @@ function diagnose(where, status, bodyText){
         '• Blijft het staan, kijk dan of de binding REMOTE_SESSION nog in\n'+
         '  wrangler.toml staat en of de laatste worker.js gedeployed is.' };
   }
+  if (body?.code==='saldo_verschoven') {
+    return { kind:'warn',
+      title:'⚠ Het saldo is veranderd sinds deze lijst geladen werd.',
+      detail:
+        'Er is NIETS gewijzigd. "Saldo zetten" overschrijft een getal, en het\n'+
+        'getal waar jij vanuit ging is niet meer het getal dat er staat — dus\n'+
+        'ook het verschil in het bevestigingsvenster klopte niet.\n\n'+
+        (body.huidig !== undefined ? '• Het saldo staat nu op ' + body.huidig + ' tokens.\n' : '')+
+        '• Meestal betekent dit dat de klant net een analyse draaide.\n'+
+        '• Ververs de lijst en beslis opnieuw. Wilde je optellen in plaats van\n'+
+        '  overschrijven, gebruik dan "Bijboeken" — die rekent zelf.' };
+  }
   if (body?.code==='saldo_geen_email') {
     return { kind:'err',
       title:'❌ Deze klant heeft geen e-mailadres.',
@@ -1160,6 +1172,17 @@ function kBijboeken(id, huidig){
         `${d>0?'+':''}${d} tokens bijgeboekt.`);
 }
 
+/* HET VERSCHIL DAT HIER GETOOND WORDT, IS EEN BELOFTE (#93). `huidig` komt
+   uit de klantenlijst zoals die geladen is — mogelijk minuten geleden — en
+   daar werd een delta mee uitgerekend: "een verschil van +50". Staat de klant
+   intussen op 150 in plaats van 180, dan wordt het in werkelijkheid +80. Je
+   bevestigt dan precies het getal dat je aan het afwegen bent, en het klopt
+   niet.
+   Het verschil is nu geen schatting meer maar een voorwaarde: `saldoWas` gaat
+   mee, en de Worker leest binnen het saldo-slot na of dat nog klopt. Zo niet,
+   dan schrijft hij niets en komt de code 'saldo_verschoven' terug met het
+   verse getal. De delta mag dus blijven staan — hij is nu waar, of de
+   wijziging gaat niet door. */
 function kSaldo(id, huidig){
   const v=prompt('Saldo ZETTEN op een vast getal.\n\n' +
                  'Let op: dit overschrijft het saldo, het telt er niet bij op.\n' +
@@ -1168,8 +1191,10 @@ function kSaldo(id, huidig){
   const n=parseInt(v,10);
   if(!isFinite(n)||n<0){ alert('Vul een getal van 0 of hoger in.'); return; }
   if(n!==huidig && !confirm(`Saldo van ${huidig} naar ${n} zetten?\n\n` +
-     `Dat is een verschil van ${n-huidig>0?'+':''}${n-huidig} tokens.`)) return;
-  kPost({actie:'update',id,saldo:n,door:beheerderNaam()},`Saldo op ${n} gezet.`);
+     `Dat is een verschil van ${n-huidig>0?'+':''}${n-huidig} tokens, gerekend\n` +
+     `vanaf de ${huidig} uit deze lijst. Staat er inmiddels iets anders, dan\n` +
+     `wordt er niets gewijzigd en krijg je het verse getal te zien.`)) return;
+  kPost({actie:'update',id,saldo:n,saldoWas:huidig,door:beheerderNaam()},`Saldo op ${n} gezet.`);
 }
 
 function kStatus(id, huidig){

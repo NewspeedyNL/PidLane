@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.2 (03-09-2026)';
+const TESTRUN_VERSIE = '7.3 (03-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -4916,7 +4916,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 03-09 (vierde) — klaar voor de Play Store: het scherm dat de reviewer ziet',
+  titel: 'OPLEVERING 03-09 (vijfde) — saldo zetten loopt door het saldo-slot (#93)',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
@@ -4943,6 +4943,12 @@ const CAMPAGNE = {
     'STAP E \u2014 DE RANDEN, DE VIJF DIE NOG OPEN STAAN. Topbalk en Logboek zijn gemeten. Testrunpaneel, Veldlab, diepe diagnose, neon-HUD en rittracker nog niet, en dit is edge-to-edge op targetSdk 36. Doe ze op de SM-S947B, want op een tablet klopt de proef per definitie.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+
+    'SALDO ZETTEN LOOPT DOOR HET SALDO-SLOT (#93). Bij #82 gingen vier van de vijf saldoschrijvers door metSaldoSlot() en bleef "zetten" er bewust buiten, met een reden die opgeschreven was en er goed uitzag: daar stuurt de beheerder het eindbedrag, dus valt er niets te rekenen. Dat klopt, en het is de verkeerde vraag. Zetten rekent niet maar OVERSCHRIJFT: draait de klant op dat moment een analyse, dan boekt die binnen het slot af en schrijft terug, waarna deze PATCH er het oude getal overheen zet. Dezelfde fout als #82, in dezelfde week, in spiegelbeeld \u2014 en beide keren stond er een uitleg die het geval afdekte dat niet voorkwam.',
+
+    'EN DE KNOP BELOOFDE IETS DAT HIJ NIET WAAR KON MAKEN. "Saldo zetten" vulde het veld voor met het saldo uit de klantenlijst en rekende daar een verschil mee uit: "een verschil van +50 tokens". Die lijst kan minuten oud zijn. Staat de klant intussen op 150 in plaats van 180, dan is het in werkelijkheid +80 \u2014 en juist dat verschil is wat je aan het afwegen bent. Het gaat nu als voorwaarde mee (saldoWas) en de Worker telt het binnen het slot na; klopt het niet, dan wordt er niets geschreven en komt saldo_verschoven terug met het verse getal.',
+
+    'HIER STAAT DAAROVER GEEN PROEF IN BLOK 5, EN DAT IS EXPRES \u2014 dezelfde reden als bij #82. Een proef die iets zou toevoegen moet een echte saldowijziging op een echte klant doen, en dat is precies wat je niet wilt uitproberen; de beheerpagina zit bovendien niet in deze app. Het bewijs ligt in test-bijboeken.js, dat nu ook zetten dekt: de volgorde rond het slot, de tegenproef met een verschoven saldo, dat een kloppende voorwaarde gewoon doorgaat, en dat een update zonder saldo het slot niet aanraakt. Vier nieuwe mutaties in plmutate.sh maken die delen rood.',
 
     'capacitor.config.json \u2014 server.errorPath = error.html. build-apk.yml schrijft die pagina naast de bestaande www-stub. De pagina haalt NIETS van het net: geen lettertype, geen stylesheet, geen plaatje. Een foutpagina die iets moet ophalen laadt niet op het enige moment waarop hij nodig is \u2014 dezelfde fout als de Google-Fonts-regel die de browserproef maandenlang tegenhield.',
 
