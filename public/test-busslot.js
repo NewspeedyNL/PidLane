@@ -156,6 +156,95 @@ ctx.window._pollBusy = false;
   toets('het spook geeft zelf 0 terug', await metGrens(spook, 3000), 0);
   B.release(na);
 
+  // ══════════════════════════════════════════════════════════════════
+  // DE POORT EROMHEEN (#115) — withBusOfNiets() en withBus(..., 0)
+  // ──────────────────────────────────────────────────────────────────
+  // Tot 03-09-2026 stond op vijf plekken een eigen PLBus.claim() met een
+  // handgeschreven finally eromheen. De vraag die hier getoetst wordt is niet
+  // "claimt hij", maar het enige dat een handgeschreven finally fout kan doen:
+  // GEEFT HIJ ALTIJD TERUG. Ook als het werk eronder er met een fout
+  // uitspringt — want dat is het geval waarin een vergeten release het slot
+  // tot het einde van de sessie vasthoudt, buiten élke noodrem van PLBus om
+  // (MAX_HOLD_MS breekt hem pas na drie minuten, WACHT_MAX_MS gaat alleen over
+  // wachters).
+  console.log('\n— de poort om het slot heen (#115) —');
+  B.breek('opruimen voor de poorttoets');
+  ctx.window._pollBusy = false;
+
+  // ── withBusOfNiets: vrije bus → werk draait, slot komt terug ──
+  let liep = 0;
+  const uit1 = await ctx.withBusOfNiets('poll', async function () { liep++; return 'klaar'; });
+  toets('op een vrije bus draait het werk', [liep, uit1], [1, 'klaar']);
+  toets('en het slot is daarna vrij', B.busy(), false);
+
+  // ── withBusOfNiets: bezette bus → werk draait NIET, alsBezet wel ──
+  const houder2 = B.claim('survey');
+  let liep2 = 0, bezet2 = 0;
+  const uit2 = await ctx.withBusOfNiets('poll',
+    async function () { liep2++; return 'gemeten'; },
+    function () { bezet2++; return 'overgeslagen'; });
+  toets('op een bezette bus draait het werk niet', liep2, 0);
+  toets('en komt de alsBezet-uitweg terug', [bezet2, uit2], [1, 'overgeslagen']);
+  toets('het slot van de ander blijft van de ander', B.owner(), 'survey');
+  B.release(houder2);
+
+  // Zonder alsBezet hoort er gewoon undefined uit te komen, geen fout: de
+  // pollus en de monitor geven niets terug en mogen daar niet op klappen.
+  const houder3 = B.claim('survey');
+  toets('zonder alsBezet komt er undefined terug',
+    await ctx.withBusOfNiets('poll', async function () { return 'nooit'; }) === undefined, true);
+  B.release(houder3);
+
+  // ── DE KERN: een fout in het werk mag het slot niet gijzelen ──
+  let geknald = false;
+  try { await ctx.withBusOfNiets('poll', async function () { throw new Error('bus-hik'); }); }
+  catch (e) { geknald = true; }
+  toets('een fout in het werk komt naar buiten', geknald, true);
+  toets('maar het slot is tóch teruggegeven', B.busy(), false);
+
+  // ── withBus met wachttijd 0: pakken als het kan, meten hoe dan ook ──
+  // Dit is de hersteltik in blok 10 van de testrun. Hij MOET doorgaan als de
+  // bus bezet is (anders vallen er metingen weg), maar mag het slot van een
+  // ander niet vrijgeven.
+  //
+  // MET metGrens eromheen, om dezelfde reden als bij de wachtrij hierboven:
+  // gaat de nul-afslag in wait() stuk, dan valt deze aanroep terug op de lus
+  // van 50 ms — en die loopt op de bevroren testklok nooit af. Dan HANGT deze
+  // test in plaats van rood te worden.
+  const houder4 = B.claim('poll');
+  let liep4 = 0;
+  const uit4 = await metGrens(
+    ctx.withBus('testrun-snelheid-prik', async function () { liep4++; }, 0), 3000);
+  toets('withBus met wachttijd 0 wacht niet', uit4, undefined);
+  toets('en meet ook op een bezette bus', liep4, 1);
+  toets('en laat het slot bij de eigenaar', B.owner(), 'poll');
+  toets('zonder in de rij te gaan staan', B.wachtenden(), []);
+  B.release(houder4);
+
+  // Tegenproef: op een vrije bus pakt diezelfde aanroep het slot wél, en geeft
+  // het ook weer terug. Anders zou "doe nooit een claim" hierboven ook groen
+  // staan.
+  let eigenaarTijdens = null;
+  await ctx.withBus('testrun-snelheid-prik', async function () { eigenaarTijdens = B.owner(); }, 0);
+  toets('op een vrije bus pakt hij het slot wel', eigenaarTijdens, 'testrun-snelheid-prik');
+  toets('en geeft het daarna terug', B.busy(), false);
+
+  // ── en blijft het bij ÉÉN vorm? ──
+  // De winst van #115 verdampt zodra er ergens weer een eigen claim met een
+  // handgeschreven finally bijkomt: alles hierboven blijft dan groen, want het
+  // toetst de helper en niet zijn gebruikers. Dit is de enige toets die dát
+  // merkt — dezelfde soort vormcontrole als de bedradingscontrole.
+  // Regels die met // of * beginnen tellen niet mee: er staat op drie plekken
+  // commentaar OVER PLBus.claim, en dat is geen aanroep.
+  const eigenClaims = fs.readdirSync(__dirname)
+    .filter(function (f) { return /^pidlane-.*\.js$/.test(f) && f !== 'pidlane-data.js'; })
+    .filter(function (f) {
+      return fs.readFileSync(__dirname + '/' + f, 'utf8').split('\n')
+        .filter(function (r) { return !/^\s*(\/\/|\*|\/\*)/.test(r); })
+        .some(function (r) { return /PLBus\s*\.\s*claim\s*\(/.test(r); });
+    });
+  toets('alleen pidlane-data.js claimt het slot zelf (#115)', eigenClaims, []);
+
   console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
   process.exit(fout ? 1 : 0);
 })();

@@ -427,9 +427,11 @@ function startPoll(){
     // Echt busslot (fase 1): geen kale boolean meer. Houdt een zware lezer
     // (sweep/survey/verificatie) de bus vast, dan slaan we deze tik over —
     // en geven we NOOIT per ongeluk hún slot vrij.
-    const _busTok=PLBus.claim('poll');
-    if(!_busTok) return;
-    try{
+    // Sinds #115 via withBusOfNiets() in plaats van een eigen claim/finally:
+    // dit is de plek waar een vergeten vrijgave zich niet als storing maar als
+    // traagheid voordoet, en dat is precies hoe #98 zes seconden onopgemerkt
+    // bleef. De poort kan het nu niet meer vergeten.
+    await withBusOfNiets('poll', async()=>{
       if(demoMode){
         // Demo: respecteer dezelfde scheduling zodat het tempo realistisch oogt
         const due=pidsDueNow();
@@ -553,9 +555,7 @@ function startPoll(){
       // Regelkring: meet de verzadiging en stel het pollbudget bij (fase 4).
       // Zelf-afgeregeld op cfg.tickMs, dus elke ronde aanroepen is prima.
       try{ PLLoad.tick(); }catch(e){ console.warn('PLLoad.tick mislukt:', e); }
-    }finally{
-      PLBus.release(_busTok);
-    }
+    });
   },100);
 }
 

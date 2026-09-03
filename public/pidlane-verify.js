@@ -212,14 +212,18 @@ const PLVerify = {
   },
 
   // Minimale decoder voor focus-samples (respons '41 PP ...').
+  // Het uitpakken zelf gaat sinds #116 via splitBatchResponse(): dat is de
+  // ene plek waar een antwoord in stukken valt, en die kent de framemarkers,
+  // de CAN-headers en de padding die deze decoder zelf nooit heeft gekend.
+  // Alleen de schaling hieronder blijft van deze module — die is met opzet
+  // minimaal en los van de tabellen van de app.
   _decode(pid, r){
     if (!r || /NO DATA|ERROR|UNABLE/i.test(r)) return null;
     const pp=pid.slice(2).toUpperCase();
-    const hex=String(r).replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
-    const i=hex.indexOf('41'+pp);
-    if (i<0 || hex.length<i+6) return null;
-    const A=parseInt(hex.slice(i+4,i+6),16);
-    const B=hex.length>=i+8 ? parseInt(hex.slice(i+6,i+8),16) : 0;
+    const b=splitBatchResponse(String(r), ['01'+pp])['01'+pp];
+    if (!b || !b.length) return null;
+    const A=b[0];
+    const B=b.length>=2 ? b[1] : 0;
     if (isNaN(A)) return null;
     switch(pp){
       case '0C': return Math.round((A*256+B)/4);

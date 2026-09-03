@@ -213,9 +213,8 @@ async function loadRemoteConfig(){
   let _tok='';
   try{ _tok = window.APP_TOKEN || (tokLoad()?.token) || ''; }catch(e){ _tok = window.APP_TOKEN || ''; }
   try{
-    const url=(window.PROXY_URL||'').replace(/\/$/,'')+'/api/config';
     if(!_tok){ try{ log('Config: nog geen sessietoken — wordt na login opgehaald','info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } return false; }
-    const r=await fetch(url,{ headers:{ 'X-App-Token':_tok } });
+    const r=await plFetch('/api/config',{ headers:{ 'X-App-Token':_tok } });
     if(!r.ok){
       try{ log('Config niet geladen — HTTP '+r.status+' (app draait op standaardinstellingen)','warn'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
       return false;
@@ -454,14 +453,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
       // Haiku 4.5 kent het type 'disabled' niet → daar het veld weglaten
       // (zonder thinking-veld draait Haiku sowieso zonder thinking).
       if(!/haiku/i.test(mdl)) body.thinking = { type: 'disabled' };
-      const resp = await fetch(PROXY_URL+'/v1/messages',{
-        method: 'POST',
-        headers:{
-          'Content-Type': 'application/json',
-          'X-App-Token': APP_TOKEN
-        },
-        body: JSON.stringify(body)
-      });
+      const resp = await plFetch('/v1/messages',{ method: 'POST', json: body });
 
       if(!resp.ok){
         const err=await resp.json().catch(()=>({}));

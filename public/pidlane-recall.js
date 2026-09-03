@@ -106,11 +106,7 @@
 
   async function rdw(dataset, query) {
     const doel = `https://opendata.rdw.nl/resource/${dataset}.json?${query}`;
-    const url = (typeof PROXY_URL !== 'undefined' ? PROXY_URL : '') +
-                '/proxy?url=' + encodeURIComponent(doel);
-    const headers = {};
-    try { if (typeof APP_TOKEN !== 'undefined' && APP_TOKEN) headers['X-App-Token'] = APP_TOKEN; } catch(e){ /* stil: APP_TOKEN kan nog niet gezet zijn */ }
-    const r = await fetch(url, { headers });
+    const r = await plFetch('/proxy?url=' + encodeURIComponent(doel));
     if (!r.ok) throw new Error(`RDW ${dataset}: HTTP ${r.status}`);
     return r.json();
   }

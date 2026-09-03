@@ -21,6 +21,7 @@
 <script src="config.js"></script>
 <script src="pidlane-data.js"></script><!-- statische referentiedata (PIDs/DTC/kennisbank) -->
 <script src="pidlane-assets.js"></script><!-- ingebedde media (base64) -->
+<script src="pidlane-plfetch.js"></script><!-- plFetch: basis-URL, tokenkop, 401 en het serversaldo op één plek (#117) -->
 <script>
   if(typeof ALL_PID_DEFS==='undefined'){ alert('pidlane-data.js ontbreekt of laadt niet — zet het bestand naast index.html en herlaad.'); }
   /* Vangnet: als config.js achterloopt of niet laadt, val terug op het juiste

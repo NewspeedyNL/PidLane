@@ -97,11 +97,7 @@
 
   // ── Serveraanroepen ──────────────────────────────────────────────────
   async function _post(pad, body, metToken) {
-    const b = _base();
-    if (!b) throw new Error('PROXY_URL ontbreekt');
-    const h = { 'Content-Type': 'application/json' };
-    if (metToken && _tok()) h['X-App-Token'] = _tok();
-    const r = await fetch(b + pad, { method: 'POST', headers: h, body: JSON.stringify(body || {}) });
+    const r = await plFetch(pad, { method: 'POST', geenToken: !metToken, json: body || {} });
     const ruw = await r.text();
     let d = {}; try { d = JSON.parse(ruw); } catch(e){ /* stil: JSON kan corrupt of leeg zijn */ }
     return { status: r.status, ok: r.ok && d && d.ok !== false, data: d || {}, ruw: ruw };
@@ -131,7 +127,7 @@
     const b = _base();
     if (!b || !_tok()) return null;
     try {
-      const r = await fetch(b + '/klant/mij', { headers: { 'X-App-Token': _tok() } });
+      const r = await plFetch('/klant/mij');
       const d = await r.json();
       return (r.ok && d && d.ok) ? d.klant : null;
     } catch (e) { return null; }

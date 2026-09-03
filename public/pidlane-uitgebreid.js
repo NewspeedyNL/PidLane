@@ -195,17 +195,18 @@
     // claim, dan boekte één ongelukkig getimede probe de hele PID-set voorgoed
     // als "geen antwoord" — hij kwam immers nooit meer terug. Een overgeslagen
     // probe is geen gedraaide probe.
-    let tok = 0;
-    try { tok = (window.PLBus && PLBus.claim) ? PLBus.claim('uitgebreid-probe') : 0; } catch (e) { tok = 0; }
-    if (window.PLBus && PLBus.claim && !tok) {
-      try { btDiag('Uitgebreide probe uitgesteld — bus bezet door "' + (PLBus.owner ? PLBus.owner() : '?') + '"', 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
+    //
+    // Sinds #115 loopt dat via withBusOfNiets() in plaats van een eigen
+    // claim met een handgeschreven finally: dezelfde poort als de pollus, de
+    // monitor en de waakronde.
+    const bezet = () => {
+      try { btDiag('Uitgebreide probe uitgesteld — bus bezet door "' + (window.PLBus && PLBus.owner ? PLBus.owner() : '?') + '"', 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
       return { nieuw: 0, overgeslagen: true, busBezet: true };
-    }
+    };
+    const werk = async () => {
+      _gedraaid = true;
 
-    _gedraaid = true;
-
-    let nieuw = 0;
-    try {
+      let nieuw = 0;
       for (const pid of lijst) {
         if (!connected) break;
         let raw = '';
@@ -231,13 +232,21 @@
         }
         try { await delay(60); } catch(e){ console.warn('delay mislukt:', e); }
       }
-    } finally {
-      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
-    }
+      return { nieuw, geprobeerd: lijst.length };
+    };
 
-    if (nieuw) {
+    // Geen PLBus, geen slot om te pakken: dan draait de probe gewoon door —
+    // net als voorheen, toen de skip achter `window.PLBus && PLBus.claim` zat.
+    const uit = (typeof withBusOfNiets === 'function')
+      ? await withBusOfNiets('uitgebreid-probe', werk, bezet)
+      : await werk();
+    // Bus was bezet: niets gemeten, dus ook niets te melden.
+    if (uit.busBezet) return uit;
+
+    // Buiten het slot: dit is schermwerk en hoort de bus niet bezet te houden.
+    if (uit.nieuw) {
       try { buildDiscoveredPIDList(); } catch(e){ console.warn('buildDiscoveredPIDList mislukt:', e); }
-      log(`🔎 Fabrikant-PIDs: ${nieuw} van ${lijst.length} beschikbaar`, 'ok');
+      log(`🔎 Fabrikant-PIDs: ${uit.nieuw} van ${lijst.length} beschikbaar`, 'ok');
       // Hier stond een regel die meldde dat de olietemperatuur op 2101 zit in
       // plaats van 015C. Weg op 19-08: 2101 antwoordt niet op deze auto, dus
       // die melding stuurde een monteur een doodlopende weg in. Zodra blok 9
@@ -245,7 +254,7 @@
     } else {
       btDiag(`Uitgebreid: ${lijst.length} kandidaten geprobeerd, geen enkele beschikbaar`, 'info');
     }
-    return { nieuw, geprobeerd: lijst.length };
+    return uit;
   }
 
   window.probeUitgebreid = probeUitgebreid;

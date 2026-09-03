@@ -85,7 +85,7 @@ var KRITIEK = [
   'togglePID','tokSave',
   'uitlogBezig','uitlogVlagAan',
   'updPID','updateSLToggleIcon',
-  'validateAndSmooth','vehicleFuelType','vlFullSurvey','withBus',
+  'validateAndSmooth','vehicleFuelType','vlFullSurvey','withBus','withBusOfNiets',
   // Pseudonimiseren van de VIN (pidlane-veldlab.js). logToSheets in
   // pidlane-auth.js zit achter een guard omdat auth.js eerder laadt dan
   // veldlab.js; bij de aanroep staat de functie er wel. Verdwijnt hij, dan
@@ -117,6 +117,11 @@ var KRITIEK = [
   'openBulkRecorder',
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
   'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf',
+  // De ene plek waar de app het net op gaat (#117, pidlane-plfetch.js). Elf
+  // modules roepen hem aan, de meeste zonder guard -- verdwijnt hij, dan valt
+  // de app om op elke serveraanroep. Hij staat hier omdat dat dan meteen
+  // zichtbaar is in plaats van pas bij de eerste inlogpoging.
+  'plFetch','plFetchUrl',
   'profielTegenSteunbits','saveVinProfile','actiefPollProfiel','setPollProfile',
   // Het run-paneel (pidlane-run.js) schakelt deze vijf aan en uit. Ze stonden
   // er nog niet in omdat ze tot 21-08 alleen vanuit hun eigen scherm werden
@@ -205,7 +210,11 @@ var GEEN_GLOBALE = {
   // → window.PLRemote.openShare) en controleert onderweg of wat hij vasthoudt
   // een functie is. `obj` is die lus-variabele, geen naam die een module van een
   // andere verwacht.
-  'obj': 'lokale lusvariabele in de dode-knoppencontrole (pidlane-testrun.js)'
+  'obj': 'lokale lusvariabele in de dode-knoppencontrole (pidlane-testrun.js)',
+  // De derde parameter van withBusOfNiets() in pidlane-data.js (#115): wat er
+  // moet gebeuren als de bus al vergeven is. Optioneel, dus met een guard --
+  // maar het is een argument van de aanroeper, geen globale functie.
+  'alsBezet': 'parameter van withBusOfNiets() in pidlane-data.js, geen globale functie'
 };
 
 function controleer(){

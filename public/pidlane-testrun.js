@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.1 (03-09-2026)';
+const TESTRUN_VERSIE = '7.2 (03-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1535,8 +1535,10 @@ async function _blok8() {
     try {
       const rk = await sendCmd('0105', 2500);
       if (!leeg(rk)) {
-        const h = hex(rk), i = h.indexOf('4105');
-        if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
+        // Uitpakken via splitBatchResponse() sinds #116: de testrun mag niet
+        // zijn eigen parser hebben naast die van de app — dan meet hij zichzelf.
+        const b = splitBatchResponse(String(rk), ['0105'])['0105'];
+        if (b && b.length) koel = b[0] - 40;
       }
     } catch (e) { console.warn('Koelwater-anker niet gelezen — de plausibiliteitscheck van de olietemperatuur draait dan zonder ijkpunt', e); }
     _boek(8, 'Koelwater (0105)', koel == null ? 'LET OP' : 'ok',
@@ -1702,8 +1704,9 @@ async function _blok9() {
     // Koelwater als ijkpunt: een olietemperatuur moet daar in de buurt liggen.
     let koel = null;
     try {
-      const rk = await sendCmd('0105', 2500), h = hex(rk), i = h.indexOf('4105');
-      if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
+      const rk = await sendCmd('0105', 2500);
+      const b = splitBatchResponse(String(rk || ''), ['0105'])['0105'];   // #116
+      if (b && b.length) koel = b[0] - 40;
     } catch (e) { console.warn('Koelwater-anker niet gelezen — de DID-scan draait dan zonder ijkpunt voor de temperatuur-verdachten', e); }
 
     _boek(9, 'Scan gestart', 'ok', 'reeks 2211xx op header 7E0, 256 identifiers' +
@@ -1955,10 +1958,15 @@ async function _blok10() {
     while (_nu() < rustEind && !_trStop) {
       await _wacht(5000);
       if (_trStop) break;
-      let ptok = 0;
-      try { ptok = (window.PLBus && PLBus.claim) ? PLBus.claim('testrun-snelheid-prik') : 0; } catch (e) { console.warn('Busslot-claim voor een hersteltik gaf een fout', e); }
-      const r = await _snelheidVraag(set[0]);
-      try { if (ptok && window.PLBus && PLBus.release) PLBus.release(ptok); } catch(e){ /* stil: opruimen: kan al gebeurd zijn */ }
+      // Slot pakken als het vrij is, maar NIET wachten: deze prik meet hoe snel
+      // de bus na een trap herstelt, en dat is ook een meting waard als een
+      // ander er net op zit. Vandaar withBus met wachttijd 0 in plaats van de
+      // eigen claim met een handgeschreven release die hier tot #115 stond —
+      // withBus() kan het teruggeven niet vergeten, ook niet als de vraag
+      // hieronder er met een fout uitspringt.
+      const r = (typeof withBus === 'function')
+        ? await withBus('testrun-snelheid-prik', () => _snelheidVraag(set[0]), 0)
+        : await _snelheidVraag(set[0]);
       if (r.ok) {
         prikken.push(r.ms);
         if (eersteHerstel === null && basis && r.ms <= basis * 1.25)
@@ -2275,11 +2283,7 @@ const PROEVEN_B5 = [
       const code = 'PIDL-B5' + String(Date.now()).slice(-6);
       let r;
       try {
-        r = await fetch(String(PROXY_URL).replace(/\/$/, '') + '/credits/redeem', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-App-Token': window.APP_TOKEN },
-          body: JSON.stringify({ code: code })
-        });
+        r = await plFetch('/credits/redeem', { method: 'POST', json: { code: code } });
       } catch (e) {
         return { staat: 'LET OP', detail: 'Worker niet bereikbaar: ' + ((e && e.message) || e) };
       }
@@ -3132,6 +3136,141 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── #115: geeft de buspoort het slot altijd terug? ──
+  // De reparatie van deze ronde is niet "er staat een helper", maar dat het
+  // slot niet meer met de hand teruggegeven hoeft te worden. Het enige wat een
+  // handgeschreven finally fout kan doen is hem vergeten — en dan hangt de bus
+  // tot het einde van de sessie, buiten élke noodrem van PLBus om. Dit meet dat
+  // op het ECHTE slot van dit toestel, niet op een nagebouwde.
+  {
+    issue: '#115',
+    naam: 'De buspoort geeft het slot terug, ook als het werk klapt',
+    waarom: 'Toetst het echte PLBus van deze sessie; een nagebouwd slot zou alleen zichzelf bewijzen.',
+    proef: async function () {
+      if (typeof withBusOfNiets !== 'function')
+        return { staat: 'FOUT', detail: 'withBusOfNiets() ontbreekt — dan claimt elke ronde-lus weer met de hand (#115)' };
+      if (!window.PLBus) return { staat: 'FOUT', detail: 'PLBus ontbreekt' };
+      if (PLBus.busy())
+        return { staat: 'LET OP', detail: 'de bus is nu van "' + PLBus.owner() + '" — deze proef claimt zelf en zou een lopende meting storen' };
+
+      const uit = [];
+      // 1. Vrije bus: het werk draait en het slot komt terug.
+      let liep = 0;
+      await withBusOfNiets('blok5-poort', async function () { liep++; });
+      if (liep !== 1 || PLBus.busy())
+        return { staat: 'FOUT', detail: 'op een vrije bus liep het werk ' + liep + 'x en het slot is ' +
+          (PLBus.busy() ? 'NIET' : 'wel') + ' teruggegeven' };
+      uit.push('vrije bus: werk draait, slot terug');
+
+      // 2. DE KERN: een fout in het werk mag het slot niet gijzelen.
+      let geknald = false;
+      try { await withBusOfNiets('blok5-poort', async function () { throw new Error('proef'); }); }
+      catch (e) { geknald = true; }
+      if (!geknald)
+        return { staat: 'FOUT', detail: 'een fout in het werk kwam niet naar buiten — dan verdwijnt een busstoring stil' };
+      if (PLBus.busy())
+        return { staat: 'FOUT', detail: 'na een fout in het werk houdt "' + PLBus.owner() + '" het slot vast — ' +
+          'dat is precies de vergeten finally waar #115 over gaat, en geen noodrem vangt hem' };
+      uit.push('fout in het werk: slot tóch terug');
+
+      // 3. Bezette bus: de beurt wordt overgeslagen, niet afgepakt.
+      // De houder is hier de poort zélf, geen losse claim met een eigen
+      // finally: die staat sinds #115 alleen nog in pidlane-data.js, en deze
+      // proef hoort daar geen uitzondering op te zijn.
+      let liep2 = 0, bezet = 0;
+      const gelukt = await withBusOfNiets('blok5-houder', async function () {
+        await withBusOfNiets('blok5-poort', async function () { liep2++; }, function () { bezet++; });
+        return true;
+      });
+      if (!gelukt) return { staat: 'LET OP', detail: uit.join('  |  ') + '  |  bezet-tak niet gemeten: het slot was niet te pakken' };
+      if (liep2 !== 0 || bezet !== 1)
+        return { staat: 'FOUT', detail: 'op een bezette bus liep het werk ' + liep2 + 'x en de uitweg ' + bezet + 'x — ' +
+          'de poort praat dwars door een lopende lezer heen' };
+      if (PLBus.busy())
+        return { staat: 'FOUT', detail: 'na de bezet-proef houdt "' + PLBus.owner() + '" het slot nog vast' };
+      uit.push('bezette bus: beurt overgeslagen');
+
+      return uit.join('  |  ') + ' — en een los slot claimen kan alleen nog in pidlane-data.js';
+    }
+  },
+
+  // ── #116: leest élke module een 41-antwoord met dezelfde parser? ──
+  // Geen broncodetelling (die doet blok 11), maar de vraag eronder: geeft de
+  // decoder ná de verhuizing hetzelfde getal, óók bij de antwoordvormen waar
+  // zijn eigen indexOf-lus op stukliep? Dit draait op de echte PLVerify van
+  // deze build, met de echte PID_BYTE_LEN van dit toestel.
+  {
+    issue: '#116',
+    naam: 'De focus-decoder leest een antwoord met framemarkers goed',
+    waarom: 'Draait op de geladen PLVerify en de geleerde bytelengtes van dit toestel — niet op een kopie.',
+    proef: function () {
+      if (!window.PLVerify || typeof PLVerify._decode !== 'function')
+        return { staat: 'FOUT', detail: 'PLVerify._decode() ontbreekt' };
+      if (typeof splitBatchResponse !== 'function')
+        return { staat: 'FOUT', detail: 'splitBatchResponse() ontbreekt — dan is er geen ene plek om door te lopen' };
+
+      // Dezelfde bytes, drie verpakkingen. 0x0B95 / 4 = 741 toeren.
+      const kaal = PLVerify._decode('010C', '41 0C 0B 95');
+      const metHdr = PLVerify._decode('010C', '7E8 04 41 0C 0B 95');
+      const metFrames = PLVerify._decode('010C', '004 0:410C 1:0B95');
+      if (kaal !== 741)
+        return { staat: 'FOUT', detail: 'een kaal antwoord 410C0B95 gaf ' + kaal + ' in plaats van 741 toeren' };
+      if (metHdr !== kaal || metFrames !== kaal)
+        return { staat: 'FOUT', detail: 'zelfde bytes, andere uitkomst: kaal ' + kaal + ', met CAN-header ' + metHdr +
+          ', met framemarkers ' + metFrames + ' — de decoder gaat om splitBatchResponse heen (#116)' };
+
+      // De odometer: zonder PID_BYTE_LEN['A6'] valt de helper terug op één byte
+      // en wordt 248.000 km ineens 24.
+      const odo = splitBatchResponse('41 A6 00 25 D7 90', ['01A6'])['01A6'];
+      if (!odo || odo.length !== 4)
+        return { staat: 'FOUT', detail: '01A6 kwam terug met ' + (odo ? odo.length : 0) +
+          ' byte(s) in plaats van 4 — de odometer leest dan een fractie van de kilometerstand' };
+
+      return '741 toeren uit alle drie de verpakkingen (kaal, CAN-header, framemarkers) en 01A6 in vier bytes';
+    }
+  },
+
+  // ── #117: doet de ene fetch-helper wat hij belooft, op DIT toestel? ──
+  // De basis-URL is hier geen testwaarde maar de echte PROXY_URL van deze
+  // build, en de tokenkop hangt aan de sessie die nu ingelogd is. Dat is
+  // precies het stuk dat een node-test niet kan zien.
+  {
+    issue: '#117',
+    naam: 'plFetch bouwt de URL en de tokenkop van dit toestel',
+    waarom: 'PROXY_URL en APP_TOKEN zijn hier de echte van deze sessie; een node-test kent alleen verzonnen waarden.',
+    proef: async function () {
+      if (typeof plFetch !== 'function' || typeof plFetchUrl !== 'function')
+        return { staat: 'FOUT', detail: 'plFetch() ontbreekt — dan beslist elke aanroep weer zelf over URL, token en 401 (#117)' };
+      if (typeof PROXY_URL === 'undefined' || !PROXY_URL)
+        return { staat: 'LET OP', detail: 'geen PROXY_URL op dit toestel — niets te bouwen' };
+
+      const basis = String(PROXY_URL).replace(/\/$/, '');
+      const met = plFetchUrl('/klant/mij'), zonder = plFetchUrl('klant/mij');
+      if (met !== basis + '/klant/mij' || zonder !== met)
+        return { staat: 'FOUT', detail: 'URL-opbouw klopt niet: "/klant/mij" → ' + met + ', "klant/mij" → ' + zonder };
+      const abs = 'https://api.airtable.com/v0/x/y';
+      if (plFetchUrl(abs) !== abs)
+        return { staat: 'FOUT', detail: 'een absolute URL werd verbouwd tot ' + plFetchUrl(abs) + ' — dan is Airtable onbereikbaar' };
+
+      // En dan de echte ketting. /api/config is een GET die niets verandert en
+      // niets kost, maar hij gaat wél door de Worker heen — dus hij bewijst dat
+      // de tokenkop die plFetch erop zet ook geaccepteerd wordt.
+      if (!window.APP_TOKEN)
+        return { staat: 'LET OP', detail: 'URL-opbouw klopt (' + met + '), maar zonder sessietoken is de tokenkop niet te toetsen — log in en draai opnieuw' };
+      let r;
+      try { r = await plFetch('/api/config'); }
+      catch (e) {
+        return { staat: 'LET OP', detail: 'URL-opbouw klopt, maar de Worker is niet bereikbaar: ' + ((e && e.message) || e) };
+      }
+      if (r.status === 401)
+        return { staat: 'FOUT', detail: 'de Worker weigerde /api/config met 401 terwijl er een sessietoken is — ' +
+          'plFetch zet de kop X-App-Token niet of niet goed' };
+      if (!r.ok)
+        return { staat: 'LET OP', detail: 'URL-opbouw klopt; /api/config gaf HTTP ' + r.status + ' (geen tokenprobleem, wel iets anders)' };
+      return 'URL-opbouw klopt (' + met + ') en /api/config antwoordt met de kop die plFetch erop zette';
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -3171,6 +3310,56 @@ async function _blok5() {
 //            uit, en hoeveel doen hun eigen fetch?
 //   punt 12  bytelengtes → staan 0155/0156 er nog steeds naast?
 const _bronCache = {};
+/* De modulelijst voor blok 11 komt uit de DOM en niet uit een lijst hier.
+   ─────────────────────────────────────────────────────────────────────
+   Tot #116 liep punt 6 twee met de hand bijgehouden lijstjes van bestandsnamen
+   af. Die liepen uit de pas, precies zoals CLAUDE.md over elke tweede lijst
+   zegt: pidlane-testrun.js en pidlane-voertuigdata.js pakten allebei zelf een
+   41-header uit en stonden in geen van beide. De telling meldde daardoor acht
+   plekken over vijf modules terwijl het er elf over zeven waren — en de
+   inventarisatie die de maat moest zijn, mat naast.
+   De <script>-regels in index.html zijn de enige lijst die niet kan verouderen:
+   staat een module er niet in, dan draait hij ook niet. */
+function _appModules() {
+  const uit = [];
+  try {
+    const el = document.querySelectorAll('script[src]');
+    for (let i = 0; i < el.length; i++) {
+      const src = String(el[i].getAttribute('src') || '').split('?')[0];
+      if (/(^|\/)pidlane-[^/]+\.js$/.test(src) && uit.indexOf(src) === -1) uit.push(src);
+    }
+  } catch (e) { console.warn('Testrun: de modulelijst is niet uit de DOM te lezen — blok 11 telt dan niets', e); }
+  return uit;
+}
+
+function _modNaam(pad) {
+  return String(pad).replace(/^.*\//, '').replace('pidlane-', '').replace('.js', '');
+}
+
+/* Regels die met // of * beginnen zijn commentaar en geen code. Zonder deze
+   zeef telt een zin ÓVER een aanroep mee als de aanroep zelf — en dan wordt
+   het uitleggen van een reparatie een bevinding. */
+function _zonderCommentaar(bron) {
+  return String(bron).split('\n').filter(function (r) { return !/^\s*(\/\/|\*|\/\*)/.test(r); }).join('\n');
+}
+
+/* splitBatchResponse() zelf telt niet mee: dát indexOf('41') IS het uitpakken,
+   en de helper die de telling meet als overtreder aanrekenen maakt de telling
+   onhaalbaar. De ankers zijn dezelfde als die test-parser.js gebruikt om die
+   functie los in te laden; verdwijnt er een, dan geeft dit null terug en meldt
+   blok 11 het bestand als niet gelezen in plaats van stilletjes goed. */
+function _zonderParser(bron) {
+  const t = String(bron);
+  const a = t.indexOf('function splitBatchResponse');
+  if (a < 0) return _zonderCommentaar(t);
+  const b = t.indexOf('window.plMeetPidLengte', a);
+  if (b < 0) return null;
+  return _zonderCommentaar(t.slice(0, a) + t.slice(b));
+}
+
+/* GEEN plFetch (#117): dit haalt geen server op maar een eigen bronbestand van
+   dezelfde map — geen basis-URL, geen tokenkop, geen 401. Zou dit door plFetch
+   lopen, dan kreeg elk bestandsnaampje er PROXY_URL voor geplakt. */
 async function _bron(naam) {
   if (Object.prototype.hasOwnProperty.call(_bronCache, naam)) return _bronCache[naam];
   let t = null;
@@ -3612,42 +3801,69 @@ async function _blok11() {
 
   // ── PUNT 6: verspreide logica, de inventarisatie die dat punt als eerste vraagt ──
   await _doe(11, 'Punt 6: wie pakt zelf een 41-header uit', async function () {
-    const mods = ['pidlane-bt.js', 'pidlane-diagbundel.js', 'pidlane-graph.js', 'pidlane-monitor.js',
-                  'pidlane-uitgebreid.js', 'pidlane-veldlab.js', 'pidlane-verify.js', 'pidlane-waakronde.js'];
-    const eigen = [], viaHelper = [], onleesbaar = [];
+    const mods = _appModules();
+    if (!mods.length) return { staat: 'LET OP', detail: 'geen modules uit de DOM te lezen — deze telling zegt niets' };
+    const eigen = [], anderModus = [], viaHelper = [], onleesbaar = [];
     for (const m of mods) {
+      const naam = _modNaam(m);
       const bron = await _bron(m);
-      if (bron == null) { onleesbaar.push(m.replace('pidlane-', '').replace('.js', '')); continue; }
-      const helper = (bron.match(/splitBatchResponse/g) || []).length;
-      // Ruwe maat: een eigen zoekactie naar een 41-antwoordkop.
-      const zelf = (bron.match(/indexOf\(\s*['"]4[0-9A-F]/gi) || []).length;
-      const naam = m.replace('pidlane-', '').replace('.js', '');
+      if (bron == null) { onleesbaar.push(naam); continue; }
+      const romp = _zonderParser(bron);
+      if (romp == null) { onleesbaar.push(naam + ' (ankers van de parser weg)'); continue; }
+      const helper = (romp.match(/splitBatchResponse/g) || []).length;
+      // Mode 01: een eigen zoekactie naar de 41-echo. Dít is wat
+      // splitBatchResponse() doet, dus dit hoort op nul te staan.
+      const zelf = (romp.match(/indexOf\(\s*['"]41/gi) || []).length;
+      // Andere modes: 42 (freeze frame) en 43/47/4A (foutcodes).
+      // splitBatchResponse() spreekt alléén mode 01 — zijn sleutels zijn
+      // '01'+suffix en zijn lengtetabel is PID_BYTE_LEN. Die antwoorden kán
+      // hij dus niet overnemen; ze staan hier als stand, niet als bevinding.
+      const anders = (romp.match(/indexOf\(\s*['"]4[23789A]/gi) || []).length;
       if (helper) viaHelper.push(naam + '(' + helper + ')');
       if (zelf) eigen.push(naam + '(' + zelf + ')');
+      if (anders) anderModus.push(naam + '(' + anders + ')');
     }
-    const staart = onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '';
+    const staart = (anderModus.length ? '  |  buiten mode 01 (niet door de helper te doen): ' + anderModus.join(', ') : '') +
+                   (onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '');
     if (!eigen.length && !onleesbaar.length)
-      return 'geen enkele module pakt nog zelf uit — punt 6 is op dit onderdeel klaar';
-    return { staat: 'LET OP', detail: 'eigen uitpakwerk: ' + (eigen.join(', ') || 'geen') +
+      return 'geen enkele module pakt nog zelf een 41-header uit — punt 6 is op dit onderdeel klaar' + staart;
+    return { staat: 'LET OP', detail: 'eigen uitpakwerk in mode 01: ' + (eigen.join(', ') || 'geen') +
       '  |  via splitBatchResponse: ' + (viaHelper.join(', ') || 'geen') + staart };
   });
 
   await _doe(11, 'Punt 6: hoeveel modules doen hun eigen fetch', async function () {
-    const mods = ['pidlane-auth.js', 'pidlane-fuel.js', 'pidlane-koopcheck.js', 'pidlane-remote.js',
-                  'pidlane-veldlab.js', 'pidlane-credits.js', 'pidlane-klant.js', 'pidlane-export.js'];
-    const rij = [], onleesbaar = [];
-    let totaal = 0;
+    const mods = _appModules();
+    if (!mods.length) return { staat: 'LET OP', detail: 'geen modules uit de DOM te lezen — deze telling zegt niets' };
+    // Twee bestanden mógen hun eigen fetch doen, en waaróm staat erbij. Meer
+    // uitzonderingen dan deze twee horen er niet te komen: elke extra is weer
+    // een plek die zelf over de basis-URL, de tokenkop en een 401 beslist.
+    const magZelf = {
+      'pidlane-plfetch.js': 'is de helper zelf',
+      'pidlane-testrun.js': 'leest eigen bronbestanden in voor deze telling — geen server, geen token'
+    };
+    const rij = [], metReden = [], onleesbaar = [];
+    let totaal = 0, viaHelper = 0;
     for (const m of mods) {
+      const naam = _modNaam(m), best = String(m).replace(/^.*\//, '');
       const bron = await _bron(m);
-      if (bron == null) { onleesbaar.push(m.replace('pidlane-', '').replace('.js', '')); continue; }
-      const n = (bron.match(/[^.\w]fetch\s*\(/g) || []).length;
-      if (n) { rij.push(m.replace('pidlane-', '').replace('.js', '') + ': ' + n); totaal += n; }
+      if (bron == null) { onleesbaar.push(naam); continue; }
+      const code = _zonderCommentaar(bron);
+      viaHelper += (code.match(/[^.\w]plFetch\s*\(/g) || []).length;
+      const n = (code.match(/[^.\w]fetch\s*\(/g) || []).length;
+      if (!n) continue;
+      if (magZelf[best]) { metReden.push(naam + '(' + n + '): ' + magZelf[best]); continue; }
+      rij.push(naam + ': ' + n); totaal += n;
     }
     const heeftHelper = (typeof window.plFetch === 'function');
-    const staart = onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '';
-    return { staat: totaal > 1 && !heeftHelper ? 'LET OP' : 'ok',
-      detail: totaal + ' losse fetch-aanroepen over ' + rij.length + ' modules (' + (rij.join(', ') || 'geen') + ')' +
-        '  |  plFetch-helper: ' + (heeftHelper ? 'bestaat' : 'NOG NIET') + staart };
+    const staart = (metReden.length ? '  |  met reden: ' + metReden.join('; ') : '') +
+                   (onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '');
+    if (!heeftHelper)
+      return { staat: 'LET OP', detail: 'plFetch bestaat NIET — ' + totaal + ' losse fetch-aanroepen beslissen elk zelf ' +
+        'over basis-URL, tokenkop en 401 (' + (rij.join(', ') || 'geen') + ')' + staart };
+    if (totaal)
+      return { staat: 'LET OP', detail: totaal + ' losse fetch-aanroepen buiten plFetch om (' + rij.join(', ') + ')' +
+        '  |  via plFetch: ' + viaHelper + staart };
+    return viaHelper + ' aanroepen via plFetch, geen enkele module doet nog zijn eigen fetch' + staart;
   });
 
   // ── PUNT 6 (deelvraag): de merkGroep-asymmetrie, live te toetsen ──
@@ -4623,67 +4839,55 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 03-09 (tweede) — wie op het busslot wacht, krijgt de eerstvolgende beurt (#98)',
+  titel: 'OPLEVERING 03-09 (derde) — de buspoort: één slot, één parser, één fetch (#115/#116/#117)',
   vragen: [
     '── WAAROM DEZE RONDE ────────────────',
 
-    '#98 kwam uit de vorige rit en had zijn eigen bewijs al bij zich: met vier aanvragers kreeg de sweep het busslot in acht seconden niet en mat hij daarna náást de pollus — 1250 ms per PID in plaats van 200, en 73 seconden in plaats van 12. Alle 46 PIDs kwamen binnen, dus het viel niet op als storing; het viel op als traagheid.',
+    'Drie issues die op 03-09 uit #15 zijn losgemaakt, en alle drie hetzelfde patroon: niet twee plekken die hetzelfde moeten WETEN, maar twee vormen die hetzelfde moeten DOEN. Geen van drieën had een bekende bug onder zich. Het zijn vormen die er een kunnen verbergen — en bij twee van de drie bleek dat ook zo te zijn, alleen niet waar het issue hem zocht.',
 
-    'IK HAD DE OORZAAK VERKEERD GERADEN. In het issue schreef ik dat 8 seconden te krap was en dat de wachttijd met de bezetting mee moest schalen. Dat is niet zo, en langer wachten had het ook niet opgelost. wait() kijkt elke 50 ms of het slot vrij is; de pollus geeft het vrij en pakt het in dezelfde tel weer terug. Het slot is dan een paar milliseconden vrij en de wachter kijkt er net naast. Dat is geen kwestie van duur maar van eerlijkheid: langer wachten maakt de kans groter, nooit zeker.',
+    '#115 — HET BUSSLOT. Vijf plekken claimden PLBus zelf, met een handgeschreven finally eromheen: de pollus, de monitor, de waakronde, de uitgebreide probe en een hersteltik in blok 10. Ze deden alle vijf hetzelfde: proberen, bij bezet de beurt overslaan, aan het eind vrijgeven. Vier keer hetzelfde met de hand naschrijven is vier kansen om die laatste stap te vergeten, en een houder die nooit vrijgeeft valt buiten élke noodrem die PLBus heeft — MAX_HOLD_MS breekt hem pas na drie minuten open, en WACHT_MAX_MS (#98) gaat over wachters, niet over houders.',
 
-    'PLBus houdt nu een wachtrij bij. Wie via wait() binnenkomt staat erin, en een losse claim() gaat niet meer voor. De noodrem eronder is dezelfde als bij de verweesde _pollBusy: een wachter die zijn beurt na vijftien seconden niet gepakt heeft wordt vergeten, zodat één module de bus niet kan gijzelen.',
+    'withBusOfNiets() doet dat nu, met dezelfde slotgarantie als withBus() maar zonder wachten: dit zijn ronde-lussen die elke tik terugkomen, en wachten zou de bus dichthouden voor werk dat over 100 ms net zo goed kan. De hersteltik in blok 10 wilde juist wél doorgaan op een bezette bus — die meet hoe snel de bus na een trap herstelt — en gebruikt withBus met wachttijd 0.',
 
-    '#18 is de zwaarste bug die openstond (ernst:2) en hij is op 02-09 om 22:04 voor het eerst met opzet nagemeten: twee minuten weg uit de app, en de meetlus stond 190 seconden stil. Daarmee ging hij van vermoeden naar bevinding. Deze ronde doet er iets aan — niet alles.',
+    '#116 — HET UITPAKKEN. Acht plekken zochten zelf naar een 41-antwoordkop in plaats van via splitBatchResponse(), en gingen daarmee om de ene plek heen waar de meetkwaliteit geteld wordt. DE TELLING ZELF ZAT ERNAAST: blok 11 liep een met de hand bijgehouden lijstje bestandsnamen af, en pidlane-testrun.js en pidlane-voertuigdata.js stonden er niet in. Het waren er elf over zeven modules, niet acht over vijf.',
 
-    'WAT ER NIET GEBEURT. De bevriezing zelf blijft. Android bevriest de timers van een WebView en daar is vanuit JavaScript niets tegen te doen; dat is richting 1 uit het issue en dat is native werk (foreground service plus wake lock). Wie dat verwacht van deze oplevering, wordt teleurgesteld.',
+    'EN ER ZAT ÉÉN ECHTE FOUT ONDER. PID A6 (odometer) stond niet in PID_BYTE_LEN, dus pidByteLen() viel terug op de bodem van één byte. Zolang veldlab dat PID zelf uitpakte viel dat niet op — hij las de bytes met de hand. Door de helper is die ene ontbrekende tabelregel het verschil tussen 248.000 km en 24 km. Dat is precies wat het issue bedoelde met "een vorm die er een kan verbergen".',
 
-    'WAT ER WÉL GEBEURT — richting 2 uit het issue. De app WEET voortaan dat hij weg is geweest, hoe lang, en komt met opzet terug. Dat laatste is het dure deel: uit het log van 23-08 hervat de app om 23:31:00 en meldt zestien seconden later "socket dood na 012E1". Android had de socket allang opgeruimd, maar dat bleek pas toen de pollus er een commando in probeerde te schrijven — met de ELM-interpreter in een andere staat dan de app dacht. Die zestien seconden zijn rommel.',
-
-    'EN ER WAS AL VIJF KEER EEN HALF ANTWOORD. In de app stonden vijf luisteraars op visibilitychange — btflow, bulk, fuel, koopcheck, neon en rit — die elk voor zichzelf beslissen wat "weg" betekent en geen van alle het gat vastleggen. Precies wat CLAUDE.md verbiedt met "één ding heeft één betekenis". Ze blijven hun eigen werk doen (flushen, pauzeren); het OORDEEL over de onderbreking staat nu op één plek.',
+    '#117 — HET NET OP. Zesentwintig losse fetch-aanroepen over elf modules (ook hier telde blok 11 er achttien over zeven: bt, recall, uihelpers en testrun stonden niet in het lijstje). Elke aanroep besliste zelf over vier dingen: de basis-URL, de kop X-App-Token, wat er bij een 401 gebeurt, en of er iets gelogd wordt. plFetch() neemt die vier — en daarmee gaat X-PidLane-Saldo nu op élk antwoord langs PLCredits.volgServer(), in plaats van alleen in de AI-haak.',
 
     '── STAP VOOR STAP ─────────────────',
 
-    'STAP 0 VOOR DEZE RONDE. Zet in stap 3 weer alle vier de aanvragers aan — zonder die vierde is de bus niet druk genoeg en bewijst deze rit niets over #98. Kijk daarna in blok 3 naar de regel Busslot. Daar hoort nu ok te staan mét het aantal milliseconden dat er gewacht is; een paar honderd is één pollcyclus en dus goed. Staat er LET OP met "niet vrijgekomen binnen 8 s", dan dringt er nog iets voor.',
+    'STAP 0 VOOR DEZE RONDE. Zet in stap 3 weer alle vier de aanvragers aan, net als vorige ronde: zonder een drukke bus zegt #115 niets. Kijk in blok 3 naar de regel Busslot — daar hoort ok te staan met de wachttijd erbij. Dat getal is de tegenproef op #115: de pollus loopt nu door withBusOfNiets() en de sweep wacht nog steeds via wait(), dus de voorrangsregel van #98 hoort ongewijzigd te werken. Staat er LET OP met "niet vrijgekomen binnen 8 s", dan is de poort in de weg gaan zitten en is dat de bevinding van deze rit.',
 
-    'EN DE ANDERE HELFT: de regel PID-sweep klaar draagt nu de duur en het tempo. Vorige rit was dat 73 s en 1250 ms per PID, zonder slot. Met slot hoort het rond de 12 s en 200 ms te liggen. Staat er (ZONDER slot) achter, dan zeggen die tijden niets over de bus en is dat meteen het antwoord.',
+    'STAP A. Doe de begeleide rit weer helemaal, dertien stappen. Reken op een kwartier.',
 
-    'STAP A. Doe de begeleide rit weer helemaal, dertien stappen. Reken op een kwartier: tien minuten rijden plus twee minuten achtergrond.',
+    'STAP B. Kijk onderweg naar de PID-sweep in blok 3: duur en tempo per PID staan er sinds vorige ronde bij. Vorige rit hoorde dat rond 12 s en 200 ms te liggen. Wijkt het fors af, dan is de pollus door de nieuwe poort trager geworden — en dat is een echte bevinding, want die lus draait elke 100 ms.',
 
-    'STAP B. Stap 7 is deze ronde het onderwerp. Ga twee minuten weg uit de app en blíjf rijden. Kom terug en kijk wat er in het logboek staat: er hoort nu één regel te staan die zegt hoe lang je weg was, met "socket nagekeken" erachter. Stond die regel er niet, dan vuurde de luisteraar niet en is dat de bevinding.',
+    'STAP C. Lees in blok 5 de drie nieuwe proeven. "De buspoort geeft het slot terug" claimt zelf even het slot; hij slaat over met LET OP als de bus op dat moment bezet is, dus draai hem desnoods nog eens als er niets anders loopt. "plFetch bouwt de URL en de tokenkop van dit toestel" doet één echte call naar /api/config — die kost niets, maar hij bewijst wel dat de tokenkop die plFetch erop zet ook geaccepteerd wordt. Zonder login staat daar LET OP, en dan is die helft niet gemeten.',
 
-    'STAP C. Lees daarna in blok 5 de proef "#18 — weet de app dat hij weg was". Die legt twee bronnen naast elkaar: PLRit LEIDT een gat af uit zijn eigen tikken, PLAchtergrond WEET het van visibilitychange. Wijzen ze dezelfde kant op, dan klopt het beeld. Ziet PLRit wél een gat en PLAchtergrond niet, dan is dat FOUT — dan lag de lus stil zonder dat de app het doorhad, en dat is exact wat deze ronde moest wegnemen.',
+    'STAP D. Blok 11, de twee regels van punt 6. Daar hoort nu te staan dat geen enkele module nog zelf een 41-header uitpakt, en dat geen enkele module nog zijn eigen fetch doet — met twee uitzonderingen die hun reden bij zich dragen. Staat er iets anders, dan is er tussen deze oplevering en de rit code bijgekomen die er weer omheen gaat.',
 
-    'STAP D. Kijk of de herverbinding sneller ging dan vroeger. Vroeger: zestien seconden rommel na terugkomst. Nu hoort de socketcontrole er meteen te staan. Staat er "Herverbonden ✓" vlak na de achtergrondregel, dan werkte hij; staat er niets, dan leefde de socket nog — ook goed, want de controle grijpt met opzet alleen in als het nodig is.',
+    'STAP E. Doe iets dat écht het net op gaat, want dat is de enige manier om #117 te toetsen: verbind, laat het kenteken opzoeken (RDW via de proxy), en vraag daarna één AI-rapport aan. Kijk of de tokenteller ná dat rapport hetzelfde getal toont als je account. Die twee gingen tot nu toe via verschillende paden; nu gaan ze allebei door plFetch.',
 
     '── WAT ER IS VERANDERD ──────────────',
 
-    'PLBus (pidlane-data.js) — een wachtrij met noodrem. test-busslot.js toetst hem op de echte module: de pollus krijgt geen nieuwe beurt zolang er iemand wacht, ook niet op het moment dat het slot vrijkomt, en een verlopen wachter wordt vergeten. Met een tegenproef vooraf, want zonder wachters hoort de pollus gewoon te mogen — anders zou "weiger altijd" ook groen geven.',
+    'PLBus (pidlane-data.js) — withBusOfNiets() naast withBus(), en wait() heeft een afslag voor wachttijd 0: eenmalig proberen, geen plek in de wachtrij, en geen "niet vrij na 0ms" in het logboek. Een los slot claimen kan daarmee alleen nog in pidlane-data.js.',
 
-    'DIE TEST HING EERST in plaats van rood te worden: wait() draait op de bevroren testklok, dus zijn eigen vervaltijd loopt nooit af. Er staat nu een echte klok naast. Een hangende test is erger dan een falende — plmutate wacht er net zo lang op en in CI is het niet te onderscheiden van een trage runner.',
+    'test-busslot.js toetst niet of de poort claimt, maar het enige dat een handgeschreven finally fout kan doen: springt het werk er met een fout uit, dan komt het slot tóch terug. Plus een vormcontrole die rood wordt zodra er ergens weer een eigen claim bijkomt — alles daarboven blijft namelijk groen als dat gebeurt.',
 
-    'BLOK 3 — de Busslot-regel draagt de wachttijd, de sweep-regel de duur en het tempo per PID. plmutate.sh: 38 mutaties, alles gevangen.',
+    'NIEUW — pidlane-plfetch.js. Geen wrapper die het antwoord voor je uitleest: plFetch() geeft de gewone Response terug, want 410 betekent "code verlopen" bij remote, 402 "onvoldoende tegoed" bij de AI-haak en 429 "te veel pogingen" bij het inloggen. Die betekenis hoort bij de aanroeper. Wat er wél in hoort is wat voor iedereen hetzelfde is. apiFetch() in pidlane-fuel.js blijft wat het was — de AI-haak met contextinjectie en vervolgcalls — en zit nu bovenóp plFetch.',
 
-    'NIEUW — pidlane-achtergrond.js. PLAchtergrond legt elke onderbreking vast met duur, negeert korte vensterwissels onder de drie seconden (anders staat de lijst vol met de bestandskiezer), en kijkt vanaf tien seconden de SPP-socket na. Die controle draait met force UIT: de guard doet dan eerst isConnected() en grijpt alleen in als de socket écht dood is. Een gezonde verbinding mag een achtergrondpauze overleven.',
+    'NIEUW — test-uitpakken.js en test-plfetch.js. Allebei op de echte bron, allebei met de gevallen die onderscheiden in plaats van alleen kloppen: dezelfde bytes in drie verpakkingen (kaal, CAN-header, framemarkers) geven hetzelfde getal, en een 401 is nooit meer stil. plmutate.sh staat op 63 mutaties, alle 63 gevangen.',
 
-    'NIEUW — test-achtergrond.js (30 toetsen). De module wordt geladen, niet nagebouwd: de drempels, de lijst en de socketbeslissing komen uit de bron. Met tegenproeven aan allebei de kanten — een korte vensterwissel mag geen bevriezing heten, en een lange mag niet met force=true de verbinding slopen. De test draait op een stuurbare klok; op de echte tijd landden twee overgangen in dezelfde milliseconde en was hij soms groen.',
-
-    'BEDRADING — sppReconnectGuard staat in KRITIEK. Dat is niet uit voorzorg: de bedradingscontrole gaf zelf FOUT toen de nieuwe module hem achter een typeof-guard aanriep. Verdwijnt die functie, dan doet de controle niets en komt de app weer per ongeluk achter een dode socket.',
-
-    'BLOK 5 en STAP 7 — allebei lezen ze nu PLAchtergrond naast PLRit. plmutate.sh staat op 36 mutaties; twee nieuwe maken test-achtergrond.js rood.',
-
-    '#17 — DE RECORDER EN HET LOGBOEK LOPEN NU OP DEZELFDE KLOK. Het sessie-id werd met toISOString() gebouwd, dus in UTC, terwijl de app-log ernaast lokale tijd schrijft: twee keer gemeten, twee uur verschil, en dezelfde rit leek uit twee bestanden te komen die niet bij elkaar horen. plStempelLokaal() en plDatumLokaal() (pidlane-uihelpers.js) zijn nu de ene plek waar epoch naar kloktijd gaat, en de Z is eraf — die letter betekent UTC en dat was het niet.',
-
-    '#95 — "ABS. MOTO" IS GEEN NAAM. hudShortLabel() zette het eerste woord op zes tekens en het tweede op vier, dus bij "Abs. motorbelasting" bleef de bepaling heel en verdween de grootheid. Alle 146 PID-namen zijn in de draaiende app nagemeten: 45 eindigden midden in een woord, nu nog één. De grens is bovendien een parameter geworden — elf voor de HUD-hoekmeter (één regel), dertien voor de tellerplaat (twee regels), en die dertien is opgemeten en niet gekozen.',
-
-    '#71 — DE ONDERSTE VELLEN. De demo-autokiezer, Rijsituatie en Voertuigoverzicht bouwen zichzelf met inline styles op en droegen geen --pl-sab; hun onderste knop viel daardoor deels achter de drie Android-knoppen. Het waren er drie en niet één, en dat is niet gegrept maar gemeten: bproef-schermranden.js opent elk vel in de draaiende app met een nagebootste navigatiebalk van 48px. Vóór de reparatie bleef er 14, 12 en 12px over; nu 62, 60 en 60px.',
-
-    'DAT HARNAS IS ECHTER BLIND VOOR HET ECHTE TOESTEL — in een browser is --pl-sab altijd 0px. Vandaar de proef in blok 5 met hetzelfde onderwerp: die meet met de inset die Capacitor van Android krijgt, op dit scherm, met deze knophoogtes. Is --pl-sab hier 0, dan zegt hij LET OP en niet ok.',
+    'BLOK 11 — de modulelijst komt uit de script-regels van index.html en niet meer uit een lijstje in de code, commentaar telt niet meer als code, en splitBatchResponse wordt zichzelf niet meer aangerekend. Antwoorden buiten mode 01 (de freeze frame van de monitor, de foutcodes in graph) staan er apart bij: splitBatchResponse spreekt alleen mode 01, dus die kán hij niet overnemen. Dat is stand, geen bevinding.',
 
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden — komt er een proef bij, dan staat hij hier vanzelf.',
 
     '── WAT DEZE RONDE NIET OPLOST ─────────',
 
-    '#98 — met vier aanvragers kreeg de sweep het busslot niet binnen 8 s en mat hij naast de pollus: 1250 ms per PID in plaats van 200. Gevonden in de rit van 22:15 en nog open. Blok 3 meldt het zelf met LET OP, dus je ziet het in het verslag terug.',
+    'DE DRIE DTC-DECODERS. graph.realScanDTC(), PLMon._parseDTC() en _svDtc() in veldlab ontleden alle drie een mode-03-antwoord, elk op hun eigen manier. Dat is hetzelfde patroon als #116 maar één mode verderop, en splitBatchResponse kan het niet overnemen. Bewust niet in deze ronde meegenomen: één onderwerp per PR. Staat in §11.',
+
+    '_bitAan() in de testrun zoekt nog wél zelf naar een 41-kop, maar met een SAMENGESTELDE kop ("41" plus het bitmapnummer) in een antwoord dat meerdere bitmapblokken kan dragen. splitBatchResponse parseert sequentieel en zou dat tweede blok niet vinden — daar zou de reparatie dus een regressie zijn. Ook §11.',
 
     '#79 — de veilige zones. De rit van 22:15 liep op de tablet, waar de proef per definitie klopt; de twee FOUT-runs liepen op de telefoon. Doe stap 10 nog eens op de SM-S947B, dan is die vraag beslist.',
 

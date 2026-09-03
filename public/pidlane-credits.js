@@ -702,13 +702,9 @@
       return { ok: false, bericht: 'Log eerst in met je account \u2014 een code wordt daarop bijgeschreven. Zo raakt hij niet verloren.' };
     }
     try {
-      const basis = (typeof PROXY_URL !== 'undefined' && PROXY_URL) ? PROXY_URL : '';
-      const kop = { 'Content-Type': 'application/json' };
-      try { if (window.APP_TOKEN) kop['X-App-Token'] = window.APP_TOKEN; } catch(e){ /* stil: APP_TOKEN kan nog niet gezet zijn */ }
-      const resp = await fetch(basis + CFG.verzilverPad, {
+      const resp = await plFetch(CFG.verzilverPad, {
         method: 'POST',
-        headers: kop,
-        body: JSON.stringify({ code: code })
+        json: { code: code }
       });
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok || !d.ok) {

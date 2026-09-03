@@ -771,6 +771,87 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+### De buspoort: drie vormen die hetzelfde deden — 03-09-2026 (#115/#116/#117)
+
+Drie issues die uit #15 zijn losgemaakt, en alle drie hetzelfde patroon: niet
+twee plekken die hetzelfde moeten *weten*, maar twee vormen die hetzelfde
+moeten *doen*. Geen van drieën had een bekende bug onder zich — dat stond ook
+zo in de issues. Bij twee van de drie bleek er tóch een te zitten, en bij geen
+van beide waar het issue hem zocht. Dat is de reden dat deze drie hier samen
+staan en niet als drie losse regels: het is één les.
+
+**#115 — vijf handgeschreven sloten.** De pollus, de monitor, de waakronde, de
+uitgebreide probe en een hersteltik in blok 10 claimden `PLBus` zelf, elk met
+een eigen `finally`. Wat een handgeschreven `finally` fout kan doen is precies
+één ding: hem vergeten. En een houder die nooit vrijgeeft valt buiten élke
+noodrem die `PLBus` heeft — `MAX_HOLD_MS` breekt hem pas na drie minuten open,
+en `WACHT_MAX_MS` (#98) gaat over wáchters, niet over houders.
+
+`withBusOfNiets()` staat nu naast `withBus()`. Dat is geen tweede vorm maar de
+tweede *helft*: de vijf plekken wachtten bewust niet, want het zijn ronde-lussen
+die elke tik terugkomen, en wachten zou de bus dichthouden voor werk dat over
+100 ms net zo goed kan. De hersteltik in blok 10 wilde juist wél doorgaan op een
+bezette bus — die meet hoe snel de bus na een trap herstelt, en een meting náást
+een andere lezer is óók een meting — en gebruikt `withBus` met wachttijd 0.
+`wait()` heeft daarvoor een afslag gekregen: eenmalig proberen, geen plek in de
+wachtrij (wie niet wacht hoort geen voorrang te krijgen), en geen "niet vrij na
+0 ms" in het logboek, want er is niet gewacht.
+
+**#116 — de meetlat mat naast.** Acht plekken zochten zelf naar een
+41-antwoordkop in plaats van via `splitBatchResponse()`. Dat was de meting van
+blok 11, en die klopte niet: hij liep een met de hand bijgehouden lijstje
+bestandsnamen af, en `pidlane-testrun.js` en `pidlane-voertuigdata.js` stonden
+er niet in. Het waren er elf over zeven modules. De inventarisatie die de maat
+moest zijn, was zélf de tweede lijst waar `CLAUDE.md` voor waarschuwt — nu leest
+blok 11 de `<script>`-regels van `index.html`, en dat is de enige lijst die niet
+kan verouderen: staat een module er niet in, dan draait hij ook niet.
+
+En er zat één echte fout onder. **PID `A6` (odometer) ontbrak in
+`PID_BYTE_LEN`**, dus `pidByteLen('A6')` viel terug op de bodem van één byte.
+Zolang `pidlane-veldlab.js` dat PID met de hand uitpakte viel dat niet op — die
+las de vier bytes zelf met `slice(i+4, i+12)`. Door de helper is die ene
+ontbrekende tabelregel het verschil tussen 248.000 km en 24 km. Dít is wat het
+issue bedoelde met "een vorm die er een kan verbergen", en het is leerzaam dat
+het omgekeerd uitpakte van wat je verwacht: het uitpakwerk zelf was niet fout,
+de tabel eronder was leeg, en de eigen kopie dekte dat toe.
+
+**#117 — vier beslissingen, zesentwintig keer genomen.** De basis-URL, de kop
+`X-App-Token`, wat er bij een 401 gebeurt, en of er iets gelogd wordt. Ook hier
+telde blok 11 te laag (achttien over zeven; `bt`, `recall`, `uihelpers` en
+`testrun` ontbraken in het lijstje). `plFetch()` in `pidlane-plfetch.js` neemt
+die vier en géén vijfde: hij geeft de gewone `Response` terug, want 410 betekent
+"code verlopen" bij remote, 402 "onvoldoende tegoed" bij de AI-haak en 429 "te
+veel pogingen" bij het inloggen. Die betekenis hoort bij de aanroeper. De winst
+waar het issue om vroeg is meteen zichtbaar: `X-PidLane-Saldo` komt op élk
+antwoord van de Worker mee en werd op één plek uitgelezen — nu gaat elk antwoord
+langs `PLCredits.volgServer()`.
+
+**Wat er bewust NIET gerepareerd is, met de reden.**
+
+- **Drie DTC-decoders.** `realScanDTC()` in `pidlane-graph.js`, `_parseDTC()` in
+  `pidlane-monitor.js` en `_svDtc()` in `pidlane-veldlab.js` ontleden alle drie
+  een mode-03-antwoord, elk op hun eigen manier. Dat is #116 één mode verderop.
+  `splitBatchResponse()` kan het niet overnemen: zijn sleutels zijn `'01'+suffix`
+  en zijn lengtetabel is `PID_BYTE_LEN` — hij spreekt alleen mode 01. Een eigen
+  helper ernaast is een sessie op zich, en één onderwerp per PR.
+- **De freeze frame van de monitor** (`indexOf('42'+pid)`) om dezelfde reden:
+  mode 02. Blok 11 telt die twee sinds deze ronde apart, als stand en niet als
+  bevinding, zodat het zichtbaar blijft zonder elke rit als LET OP te melden.
+- **`_bitAan()` in `pidlane-testrun.js`** zoekt wél naar een 41-kop, maar naar
+  een *samengestelde* (`'41'` plus het bitmapnummer) in een antwoord dat
+  meerdere bitmapblokken kan dragen. `splitBatchResponse()` parseert sequentieel
+  en stopt bij het eerste blok dat niet in de verwachtingslijst staat — hij zou
+  dat tweede blok dus niet vinden. Daar zou de reparatie een regressie zijn.
+- **Het inlezen van eigen bronbestanden** door blok 11 (`_bron()`) blijft een
+  kale `fetch()`: geen server, geen token, geen basis-URL. Zou dat door
+  `plFetch()` lopen, dan kreeg elke bestandsnaam er `PROXY_URL` voor geplakt.
+
+**De les die overblijft** is niet "trek dubbele code samen". Dat wisten we. Het
+is dat een *inventarisatie van dubbele code zelf ook dubbele code is*: blok 11
+hield twee lijstjes bij van bestanden die het moest bekijken, en allebei liepen
+ze achter. Een telling die naast meet is erger dan geen telling, want hij ziet
+er groen uit. Beide lijstjes komen nu uit de app zelf.
+
 ### De verwijderroute stond in de tekst maar niet in het menu — 03-09-2026 (#69)
 
 **Waar het over ging.** #69 meldde dat "👤 Mijn account" ontbreekt in het
