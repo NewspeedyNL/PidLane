@@ -93,15 +93,50 @@ console.log('\n2. De twee URL\'s die een reviewer aanklikt, bestaan echt');
 const host = String((cfg.server && cfg.server.url) || '').replace(/\/+$/, '');
 toets('server.url bekend uit capacitor.config.json', /^https:\/\/\S+/.test(host), host);
 
+// LET OP DE VORM VAN DEZE CONTROLE, want de eerste versie deugde niet.
+// Die vroeg of de URL érgens in het document stond. Dat is te ruim: de URL
+// wordt op drie plekken genoemd — het invulveld, de afvinklijst en de lopende
+// tekst — dus bleef de toets groen terwijl uitgerekend het veld dat geplakt
+// wordt naar een andere host wees. plmutate.sh liet die mutatie ontsnappen,
+// en dat is precies waarvoor dat script bestaat.
+//
+// De vraag is dus niet "komt deze URL voor" maar "staat hij in het VELD".
+// Vandaar dat de tekst per kopje wordt afgebakend en daarbinnen elke URL
+// gecontroleerd wordt: het veld mag nergens naar een andere host wijzen.
+function urlsOnder(kop) {
+  const i = doc.indexOf(kop);
+  if (i < 0) return null;
+  const rest = doc.slice(i + kop.length);
+  const eind = rest.indexOf('\n## ');
+  const stuk = eind < 0 ? rest : rest.slice(0, eind);
+  return stuk.match(/https?:\/\/[^\s`'"<>)|]+/g) || [];
+}
+
 const paden = [
-  { naam: 'privacyverklaring', bestand: 'privacy.html' },
-  { naam: 'verwijderpagina',   bestand: 'verwijderen.html' }
+  { naam: 'privacyverklaring', bestand: 'privacy.html',    kop: '## 6. Privacy policy URL' },
+  { naam: 'verwijderpagina',   bestand: 'verwijderen.html', kop: '## 12. Data deletion' }
 ];
 
 for (const p of paden) {
   const url = host + '/' + p.bestand;
-  toets(p.naam + ': ' + url + ' staat in het document', doc.indexOf(url) >= 0,
-        'het document noemt hem niet, of op een andere host dan server.url');
+  const gevonden = urlsOnder(p.kop);
+
+  if (gevonden === null) {
+    toets(p.naam + ': kopje ' + p.kop + ' bestaat', false,
+          'hernoemd of weggehaald — dan is niet meer te zien welk veld deze URL draagt');
+    continue;
+  }
+
+  toets(p.naam + ': het veld onder "' + p.kop.replace('## ', '') + '" noemt ' + url,
+        gevonden.indexOf(url) >= 0,
+        'gevonden onder dat kopje: ' + (gevonden.join(', ') || 'geen enkele URL'));
+
+  // En geen enkele ANDERE host onder datzelfde kopje. Twee URL's in één veld
+  // is óók fout, en dan is de vraag welke er geplakt wordt.
+  const vreemd = gevonden.filter(u => u.indexOf(host + '/') !== 0);
+  toets(p.naam + ': geen andere host in datzelfde veld', vreemd.length === 0,
+        'ook gevonden: ' + vreemd.join(', '));
+
   toets(p.naam + ': public/' + p.bestand + ' bestaat',
         fs.existsSync(path.join(__dirname, p.bestand)),
         'de URL zou een 404 geven — een dode privacy-URL is op zichzelf een afwijzing');
