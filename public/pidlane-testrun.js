@@ -694,8 +694,19 @@ async function _blok1() {
     if (!raw) {
       // Het profiel bestaat wél, maar onder een andere sleutel. Dat is de
       // interessante uitkomst: dan wijkt de VIN van nu af van die bij opslaan.
-      return { staat: 'FOUT', detail: 'huidige VIN ' + vin + ' heeft geen profiel; wél opgeslagen: ' +
-        alle.map(function (k) { return k.replace('pl_vinprof_', ''); }).join(', ') };
+      // Gemaskeerd sinds 03-09-2026 (#102). Hier stond de volledige huidige VIN
+      // én de volledige VIN van élk profiel dat ooit op dit toestel is
+      // opgeslagen — in een verslag dat bedoeld is om te delen. Dat is meer
+      // dan de twee logregels waar het issue over ging: het lekt niet één auto
+      // maar alle auto's die dit toestel ooit heeft gezien.
+      //
+      // De laatste zes tekens zijn genoeg voor wat deze proef moet laten zien,
+      // namelijk DAT de VIN van nu afwijkt van die bij het opslaan. Blok 1
+      // toont de auto al in dezelfde vorm ("VIN 766507"), dus dit is ook de
+      // vorm waarin je ze naast elkaar kunt leggen.
+      const kort = function (v) { return '…' + String(v || '').slice(-6); };
+      return { staat: 'FOUT', detail: 'huidige VIN ' + kort(vin) + ' heeft geen profiel; wél opgeslagen: ' +
+        alle.map(function (k) { return kort(k.replace('pl_vinprof_', '')); }).join(', ') };
     }
     let prof = null;
     try { prof = JSON.parse(raw); } catch (e) {

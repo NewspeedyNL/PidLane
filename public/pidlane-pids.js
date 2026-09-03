@@ -1065,7 +1065,12 @@ function b1s1Line(){
 // ══════════════════════════════════════════════════════
 function vinProfileKey(vin){ return 'pl_vinprof_'+String(vin||'').toUpperCase(); }
 
-function saveVinProfile(vin){
+// async sinds 03-09-2026 (#102): de slotregel maskeert de VIN via
+// _plVinVoorLog(), en dat is een SHA-256 en dus asynchroon. Alle opslag hierin
+// gebeurt vóór de eerste await, dus de twee aanroepers — die het resultaat
+// negeren — merken er niets van: een async functie loopt synchroon door tot
+// het eerste await.
+async function saveVinProfile(vin){
   if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(String(vin||''))) return;
   try{
     const prof={
@@ -1094,7 +1099,9 @@ function saveVinProfile(vin){
       try{ btDiag('setItem('+sleutel+') gooide niet, maar getItem geeft null','err'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
       return;
     }
-    log(`💾 Voertuigprofiel opgeslagen (${prof.pids.length} PIDs) voor ${vin}`,'ok');
+    // Niet de ruwe VIN (#102) — deze regel belandt in de logbuffer en die
+    // wordt integraal in het testrunverslag geëxporteerd. Zie pidlane-bt.js.
+    log(`💾 Voertuigprofiel opgeslagen (${prof.pids.length} PIDs) voor …${String(vin).slice(-6)} (${await _plVinVoorLog(vin)})`,'ok');
   }catch(e){
     // Quota vol is een verwachte fout; hem stil opeten is dat niet.
     try{ log('⚠️ Voertuigprofiel opslaan mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }

@@ -2294,7 +2294,17 @@ async function tryReadVIN(){
       }catch(e){ /* stil: dit is alleen de logweergave van de ruwe VIN-pogingen */ }
       return null;
     }
-    log('VIN: '+vin,'ok');
+    // De VIN gaat NIET ruw de logbuffer in (#102, 03-09-2026). Die buffer wordt
+    // integraal geëxporteerd in het testrunverslag, en dat verslag is bedoeld
+    // om gedeeld te worden — naar een issue, een chat, een bestand op een pc.
+    // §7 kende twee uitgaande paden; dit was het derde, en het is het pad waar
+    // de GEBRUIKER de bestemming kiest in plaats van ik.
+    //
+    // Wat er wél in staat is genoeg om je eigen auto te herkennen (de laatste
+    // zes tekens, zoals blok 1 van de testrun al deed) plus het pseudoniem, dat
+    // hetzelfde staartje draagt als de Airtable-logkolom — zo blijft een
+    // logregel te koppelen aan een Veldlab-sessie.
+    log('VIN: …'+String(vin).slice(-6)+' ('+(await _plVinVoorLog(vin))+')','ok');
     // Bron-tracking alleen resetten bij een AANTOONBAAR ander voertuig. Stond
     // hier onvoorwaardelijk: dan verloor een RDW-lookup die vóór de VIN liep
     // (de kentekenstap) zijn rang, en overschreef het zwakkere WMI-merk uit de
