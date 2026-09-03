@@ -139,6 +139,34 @@
     return await toonDisclosure();
   }
 
+  /* De verwijderroute verschilt per rol, en die tekst moet dat volgen.
+
+     Tot 03-09-2026 stond hier één zin voor iedereen: "Je account verwijder je
+     onder Mijn account met de knop Account verwijderen". Die knop staat in
+     openMijnTokens() ACHTER de isKlant()-poort, en sinds het besluit bij #49
+     is het menu-item "Mijn account" weg voor personeel. Een beheeraccount
+     kreeg dus een route te lezen die er voor hem niet is — precies de fout die
+     #41 al een keer opleverde, alleen toen voor iedereen.
+
+     De vorm is bewust een functie en geen tweede vaste tekst: twee zinnen die
+     allebei "de verwijderroute" heten is dezelfde valkuil een trede lager. */
+  function _verwijderTekst() {
+    const basis = 'Metingen op dit toestel wis je met "Alles wissen" hieronder. ';
+    let klant = false;
+    try { klant = !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant()); }
+    catch (e) { console.warn('PLKlant.isKlant() faalde — de verwijdertekst valt terug op de beheervorm:', e); }
+    if (klant)
+      return basis + 'Je account verwijder je onder Mijn account met de knop ' +
+        '"Account verwijderen": je kunt dan meteen niet meer inloggen, en binnen ' +
+        '30 dagen wissen wij het definitief.';
+    // Personeel (rol `user`) heeft geen klantrecord en dus geen knop; dat account
+    // beheert de eigenaar van de omgeving. Verwijzen naar de publieke pagina in
+    // plaats van naar een knop die er niet is.
+    return basis + 'Dit is een beheeraccount en geen klantaccount: dat beheert de ' +
+      'eigenaar van deze PidLane-omgeving. Wil je het laten verwijderen, dan staat ' +
+      'op app.pidlane.nl/verwijderen hoe dat gaat, ook zonder de app.';
+  }
+
   // ── Teruglezen via het menu ───────────────────────────────────────
   // Dit is NIET de prominente disclosure — die zit in de flow hierboven.
   // Dit is de plek waar je hem terugvindt als je hem nog eens wilt zien,
@@ -160,10 +188,7 @@
             'border-radius:8px;padding:6px 13px;font:600 12px var(--f);cursor:pointer">Sluiten</button>' +
         '</div>' +
         REGELS.map(function (r) { return _regel(r[0], r[1], r[2]); }).join('') +
-        _regel('🗑️', 'Je gegevens verwijderen',
-          'Metingen op dit toestel wis je met "Alles wissen" hieronder. Je account verwijder je ' +
-          'onder Mijn account met de knop "Account verwijderen": je kunt dan meteen niet meer ' +
-          'inloggen, en binnen 30 dagen wissen wij het definitief.') +
+        _regel('🗑️', 'Je gegevens verwijderen', _verwijderTekst()) +
         '<div style="font-size:11px;color:var(--tx3,#5b6783);line-height:1.5;margin:11px 0 13px">' +
           'Volledige verklaring: <a href="' + PRIVACY_URL + '" target="_blank" rel="noopener" ' +
           'style="color:var(--bl,#4d82ff)">app.pidlane.nl/privacy</a><br>' +

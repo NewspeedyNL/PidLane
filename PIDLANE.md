@@ -516,6 +516,45 @@ rekent dat uit als `akkoordActueel` (§11, "Opgelost op 27-08"), getest in
   een zieke auto.
 - AI-contextinjectie is gecentraliseerd in `apiFetch`, met deduplicatie.
 
+### Twee accountsoorten, één verdienmodel — besluit 03-09-2026 (#49)
+
+**Vastgelegd, niet meer open.** `Klanten` + credits is het model voor iedereen
+die zich van buiten registreert — consument én garage. `Users` is wat het
+feitelijk al was: **personeel**. De beheerder, een monteur, de noodingang. Een
+beheerrol, geen klantcategorie. Een zakelijke garage krijgt een klantaccount
+met een grote of periodiek bijgevulde bundel: zelfde mechanisme, ander bedrag.
+
+**Het doorslaggevende argument is niet de omzet maar de kostenblootstelling.**
+Bij tien garages die je persoonlijk kent is een onbegrensd account prima. Bij
+vijfhonderd geregistreerde gebruikers kan één enthousiaste gebruiker — of één
+lus in onze eigen code — in een nacht meer kosten dan een maand omzet, en dat
+merk je pas op de factuur. Credits maken dat structureel onmogelijk: niemand
+kan meer kosten dan hij gekocht heeft. Dat is geen prijsmodel maar een
+veiligheidsklep. De marge (ruwweg 19×, ~95% bruto) is een gevolg, geen reden.
+
+**Wat dit in de code betekent, en wat níét.** De grens staat in één regel in
+`handleMessages`: `if (session.r === "klant" && !clientKey)`. Een `user` valt
+daarbuiten en zijn calls lopen op de sleutel van de Worker — dat is precies de
+bedoeling, want personeel is geen klant. Wat er dus **niet** komt is een tweede
+betaalmodel voor `Users`; dat was juist de variatie die dit besluit wegneemt.
+
+**Play beslist dit niet.** Credits verkopen in de app raakt Play's
+betaalregels (#42), maar een abonnement is ook digitale content, dus dat
+ontsnapt er niet aan. Het enige model dat de regels volledig vermijdt is
+"gratis app, de beheerder betaalt de rekening" — en dat is nou juist het
+onbegrensde model. Play beslist dus niet credits-versus-vast, Play beslist hoe
+het geld binnenkomt. Die vraag ligt er in beide gevallen.
+
+**Zichtbaar gevolg in de app.** "👤 Mijn account" staat achter `isKlant()` en
+is dus weg bij rol `user` — dat is dit besluit, geen bug. Zie #69, dat op deze
+grond gesloten is.
+
+**Twee gaten die dit besluit niet dicht** en die daarom hun eigen issue hebben
+gekregen in plaats van met #49 mee te sluiten: het proeftegoed van 25 credits
+staat in localStorage en groeit terug bij het wissen van app-gegevens, en
+promptcaching staat uit terwijl de systeemprompt plus `AUTO_KENNIS` bij elke
+analyse opnieuw meegaat.
+
 ### Tegoed — waar wordt er geteld
 
 **Afrekenen gebeurt in de Worker, niet in de app** (sinds 31-07-2026). Daarvóór
@@ -699,6 +738,41 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+### De verwijderroute stond in de tekst maar niet in het menu — 03-09-2026 (#69)
+
+**Waar het over ging.** #69 meldde dat "👤 Mijn account" ontbreekt in het
+kebabmenu bij rol `user`. Nagemeten in de draaiende app, alle vier de rollen
+door `pasMenuAan()`: bij `klant` staat het item er, bij `admin`, `user` en
+`demo` niet. Dat is geen defect maar de reparatie van 29-08 bij #49 — een
+beheeraccount heeft geen record in `Klanten` en geen tegoed, dus het item
+opende een scherm dat alleen kon uitleggen dat er niets te zien was. Met #49
+op 03-09 vastgelegd is dit het bedoelde gedrag, en #69 is op die grond
+gesloten.
+
+**Wat er wél stuk was, en niet in het issue stond.** De privacytekst zei tegen
+íédereen: *"Je account verwijder je onder Mijn account met de knop Account
+verwijderen."* Die knop staat in `openMijnTokens()` achter dezelfde
+`isKlant()`-poort. Personeel las dus een route die voor hem niet bestaat.
+
+Dat is exact de fout van #41 — toen beloofde `privacy.html` "verwijder je via
+Mijn account" terwijl die knop nergens bestond — alleen nu voor één groep in
+plaats van voor iedereen. En het is een fout die pas ontstond doordat het menu
+per rol ging verschillen: de tekst is niet meeverhuisd met de poort die eronder
+kwam. **Een tekst die naar een knop wijst, hoort dezelfde voorwaarde te dragen
+als die knop.**
+
+`_verwijderTekst()` in `pidlane-privacy.js` splitst nu op `isKlant()`: een
+klant krijgt de knop en de bewaartermijn, personeel krijgt de publieke pagina
+`app.pidlane.nl/verwijderen` — die bestaat al en legt uit hoe het zonder de app
+gaat. Bewust een functie en geen tweede vaste tekst: twee zinnen die allebei
+"de verwijderroute" heten is dezelfde valkuil een trede lager.
+
+Blok 8 van `test-account-verwijderen.js` laadt die functie en toetst beide
+takken, met de tegenproef erbij (verschillen ze werkelijk?) en met wat voor
+állebei moet gelden: het wissen op het toestel mag bij het splitsen niet uit
+één van de twee vallen. `plmutate.sh` zet de rolsplitsing uit en de test wordt
+dan rood.
 
 ### Recorder en logboek liepen op twee klokken — 03-09-2026 (#17)
 
