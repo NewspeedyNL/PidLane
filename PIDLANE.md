@@ -1056,11 +1056,22 @@ Drie mutaties in `plmutate.sh` houden dat scherp.
 
 Wat hij **niet** kan zien is of Capacitor die pagina ook werkelijk laadt. Dat
 is de werking van de schil, niet van deze repo, en het vraagt een APK op een
-toestel zonder netwerk. Het staat daarom als stap A in `CAMPAGNE`: vliegtuigmodus
-aan, app koud starten, en kijken welk van de twee schermen er komt. **Tot die
-rit is dit een aanname**, geen gemeten feit — de vorige keer dat hier een
-aanname als conclusie werd genoteerd (de Cloudflare-bot en "Deployment
-successful") kostte dat drie PR's aan documentatie die niets verbeterde.
+toestel zonder netwerk. Het stond daarom als stap A in `CAMPAGNE`.
+
+**GEMETEN OP 03-09-2026 OM 20:16 — hij werkt.** Vliegtuigmodus aan, app koud
+gestart op de APK van build #424: het eigen scherm verschijnt. Kop "Geen
+verbinding", `app.pidlane.nl` bij naam genoemd, de drie dingen om te proberen,
+de regel over Bluetooth, en de knop "Opnieuw proberen". Geen wit vlak, geen
+`net::ERR_`. De tekst staat bovendien netjes onder de statusbalk, dus de
+`viewport-fit`-regel doet ook wat hij moet.
+
+Daarmee is de laatste onbewezen aanname van deze reeks weg. Dat is het
+vermelden waard, want de weg ernaartoe was leerzamer dan de uitkomst: de
+eerste proef, om 18:45, tóónde de kale WebView-fout. De verleiding was toen om
+te concluderen dat `errorPath` niet werkt. Wat er werkelijk aan de hand was,
+stond twee lagen dieper — de build kwam nooit bij de telefoon (zie het kopje
+hieronder). **Een mislukte proef is een waarneming over de hele keten, niet
+over het ding dat je aan het toetsen was.**
 
 ### De featureschakelaar dekte één van twee knoppen — 03-09-2026 (opgelost)
 

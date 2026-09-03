@@ -508,7 +508,9 @@ Code en repo:
 - [x] `.aab` ondertekend, `versionCode` loopt mee met `run_number`
 - [x] `versionName` gelijk in `package.json` en `public/config.js` (3.0.0), CI bewaakt dat
 - [x] Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde
-- [x] Foutpagina in de schil als de app niet laadt (`server.errorPath`)
+- [x] Foutpagina in de schil als de app niet laadt (`server.errorPath`) —
+      **op een toestel bewezen** op 03-09-2026 om 20:16: vliegtuigmodus aan,
+      koud gestart, eigen scherm in plaats van `net::ERR_`
 - [x] `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm
 - [x] Geen koopknop in de app (`tikkie_kopen` leeg), geen APK-distributie in de app
 
@@ -519,11 +521,16 @@ Buiten de repo, en dit is de helft die blijft liggen:
 - [ ] `https://app.pidlane.nl/verwijderen.html` opent in een private venster
 - [ ] `feat_demo` staat AAN in de AppConfig-tabel (Airtable) — staat hij uit, dan
       klopt §7 niet meer
-- [ ] Testaccount aangemaakt mét tegoed, en de inloggegevens staan in *App access*
+- [x] Testaccount mét tegoed bestaat — 140 tokens, bijgeboekt via de adminpagina
+      en meteen zichtbaar in de app
+- [ ] De inloggegevens van dat account staan in *App access*. **Let op:** het
+      tegoed staat nu op een persoonlijk adres. Voor de Console is een apart
+      review-account netter — dat wachtwoord gaat naar Google en je wilt niet
+      dat het je eigen inlog is
 - [ ] Demo één keer helemaal doorlopen op een schoon toestel zonder adapter
 - [ ] Disclosure getest op een schoon toestel: hij verschijnt vóór het
       Android-permissiedialoog, niet erna
 - [ ] Weigerknop getest: geen permissieverzoek, geen verbinding, app blijft heel
-- [ ] Feature graphic gemaakt (1024×500)
-- [ ] Minimaal twee screenshots, geschoten in demomodus op een echt toestel
+- [x] Feature graphic gemaakt (1024×500)
+- [x] Twee schermafbeeldingen met echte meetwaarden, op een echt toestel
 - [ ] Data safety-formulier ingevuld volgens §11, met "anonymized" NERGENS aangevinkt
