@@ -1045,6 +1045,45 @@ kent, is erger dan een tegel te veel.
 wordt gewoon gevraagd. Wil je de ronde korter, dan is dat de sensorkeuze. Dat
 is precies waarom die twee nu uit elkaar staan.
 
+### Fase 2 van de slimme weergave komt er niet — besluit 03-09-2026 (#94)
+
+**Wat er gevraagd was.** Tegels met de hand groot/klein/verbergen kunnen zetten,
+bewaard per auto. De tweede helft van de fijnafstemming van 02-09; fase 1
+(`slimMaat()`, het vak "Rustig", korte namen op de tellerplaat) staat er wél.
+
+**Het besluit is: niet bouwen.** De automatische indeling voldoet. Dat scheelt
+blijvende staat per voertuig — en daarmee de vraag wat er gebeurt bij een andere
+auto, een gewiste opslag of een nieuwe versie, het patroon dat bij #86 een vals
+alarm opleverde. Het scheelt ook een vijfde modus op een scherm dat er al vier
+draagt plus de waakronde.
+
+**Wat hier bewaard moet blijven is niet de wens maar de grenzen.** Dit is het
+deel dat over een half jaar opnieuw ter tafel komt, en dan hoort de redenering
+er nog te staan:
+
+- **Geen schakelaar auto/handmatig.** Twee standen maken twee bronnen voor één
+  scherm, en dan is onbeantwoordbaar waar een sensor hoort die vanavond nieuw
+  ontdekt wordt: in de handlijst staat hij niet, dus hij valt nergens. Wie dit
+  ooit bouwt, doet het als *uitzonderingen bovenop de automaat* — automatisch
+  rekent altijd, alleen de afwijkingen worden bewaard.
+- **Geen min/max met de hand.** Het puntje op een tegel is een
+  veiligheidsoordeel uit `dH`, `wH` en `PID_HARD_LIMITS`. Een handmatige grens
+  die een tegel groen kleurt is het gevaarlijkste knopje dat deze app zou
+  kunnen krijgen. Wat er onder die wens zit is #66 (de grove schaal), en het
+  betere antwoord daarop is het *waargenomen* bereik per auto leren.
+- **Geen keuze tussen trend liggend of staand.** Liggend betekent "marge tot de
+  grens", staand "stand binnen het bereik". Dat verschil draagt betekenis; een
+  gebruiker die het omzet breekt het stilletjes.
+- **Geen actief/niet-actief in een bewerkscherm.** Dat is de PID-keuze, en een
+  dubbeltik op een tegel doet het al (zie "Verbergen is geen uitzetten"
+  hieronder). Een derde deur naar dezelfde kamer.
+
+**Wat er wél openstaat en er los van is.** Bij een naambotsing valt
+`slimMeterLabels()` terug op de volledige naam, en die loopt op een kolom van
+54px over drie regels en wordt na twee afgekapt. Gemeten bij #95, en dat is een
+vraag over die terugval — niet over of tegels met de hand verzet moeten kunnen
+worden.
+
 ### De maat van een tegel volgt zijn gedrag — 02-09-2026 (#61, #68)
 
 **Wat er gevraagd werd:** fijnafstemming van de slimme weergave. Concreet:
