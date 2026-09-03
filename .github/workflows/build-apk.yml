@@ -39,7 +39,16 @@ on:
      - 'public/config.js'
      - 'package.json'
      - 'capacitor.config.json'
+     # ALLE DRIE de plekken waar de stap "App-icoon" hieronder zoekt, en dat
+     # is geen slordigheid maar een koppeling. Hier stond tot 03-09-2026
+     # alleen 'icon-512.png' (de wortel), terwijl het bestand in public/
+     # staat. De build vond hem wel — de `ls` daar valt terug op public/ —
+     # maar een gewijzigd icoon startte geen build. Je zag dus een groene
+     # historie en een APK met het oude logo, en niets dat daarover klaagde.
+     # public/test-icoonpad.js bewaakt dat deze lijst de zoeklijst dekt.
      - 'icon-512.png'
+     - 'public/icon-512.png'
+     - 'icon-1024.png'
      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 

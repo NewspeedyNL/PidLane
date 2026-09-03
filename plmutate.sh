@@ -154,6 +154,13 @@ MUTATIES=(
 "automerge-besluit.js@@  if (f.headRepo !== f.eigenRepo) {@@  if (false) {@@test-automerge.js@@een PR uit een fork wordt weer samengevoegd door de bot"
 "automerge-besluit.js@@  if (typeof f.achterstand === 'number' && f.achterstand > 0) {@@  if (false) {@@test-automerge.js@@een verlopen groene vlag telt weer: de basis mag opgeschoven zijn"
 "automerge-besluit.js@@             melden: true, sleutel: 'geen-klaar' };@@             melden: false, sleutel: 'geen-klaar' };@@test-automerge.js@@een PR zonder label blijft stil liggen in plaats van het te zeggen"
+# ── het icoon en de buildtrigger (03-09-2026) ──
+# Twee lijsten over hetzelfde, en de koppeling moet van beide kanten kloppen:
+# een pad dat uit de trigger valt, én een kandidaat die erbij komt zonder dat
+# de trigger meegaat. Allebei leveren een APK met het oude logo op zonder dat
+# er iets rood staat.
+".github/workflows/build-apk.yml@@     - 'public/icon-512.png'\n@@@@test-icoonpad.js@@het icoon in public/ start weer geen build (de fout zoals hij was)"
+".github/workflows/build-apk.yml@@ICON=\$(ls icon-512.png public/icon-512.png icon-1024.png@@ICON=\$(ls icon-512.png public/icon-512.png icon-1024.png public/logo.png@@test-icoonpad.js@@er komt een iconkandidaat bij die geen build start"
 )
 
 echo
