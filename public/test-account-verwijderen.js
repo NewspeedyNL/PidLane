@@ -293,7 +293,63 @@ const deel7 = deel6.then(function () {
   toets('met een scheduled() die hem opvangt', /async scheduled\(/.test(src));
 });
 
-deel7.then(function () {
+// ══════════════════════════════════════════════════════════════════
+const deel8 = deel7.then(function () {
+  console.log('\n8. De verwijderroute in de app past bij de rol (#69)');
+  // WAAROM. Tot 03-09-2026 zei de privacytekst tegen iedereen: "Je account
+  // verwijder je onder Mijn account met de knop Account verwijderen". Die knop
+  // staat achter isKlant(), en sinds het besluit bij #49 is het menu-item weg
+  // voor personeel. Een beheeraccount las dus een route die er niet is —
+  // dezelfde fout als #41, alleen voor een andere groep.
+  //
+  // De echte functie wordt geladen, niet nagebouwd: een tweede kopie van deze
+  // tekst is precies waar dit issue over ging.
+  const vm = require('vm');
+  const bron = fs.readFileSync(path.join(__dirname, 'pidlane-privacy.js'), 'utf8');
+  const i = bron.indexOf('function _verwijderTekst() {');
+  if (i < 0) {
+    toets('_verwijderTekst() bestaat in pidlane-privacy.js', false,
+          'hernoemd of weggehaald — dan is de tekst weer één vorm voor iedereen');
+    return;
+  }
+  const j = bron.indexOf('\n  }', i);
+  const fn = bron.slice(i, j + 4);
+
+  function tekstVoor(isKlant) {
+    const ctx = { console: { warn: function () { } } };
+    ctx.window = ctx;
+    ctx.PLKlant = { isKlant: function () { return isKlant; } };
+    vm.createContext(ctx);
+    vm.runInContext(fn + '\n_verwijderTekst();', ctx, { filename: 'pidlane-privacy.js (verwijdertekst)' });
+    return vm.runInContext('_verwijderTekst()', ctx);
+  }
+
+  const klant = tekstVoor(true);
+  const personeel = tekstVoor(false);
+
+  toets('een klant wordt naar de knop gestuurd die hij ook heeft',
+        /Mijn account/.test(klant) && /Account verwijderen/.test(klant), klant);
+  toets('en krijgt de bewaartermijn te horen', /30\s+dagen/.test(klant), klant);
+
+  // De kern: personeel mag NIET naar een knop verwezen worden die achter
+  // isKlant() staat en dus voor hem niet bestaat.
+  toets('personeel wordt niet naar "Mijn account" gestuurd',
+        !/Mijn account/.test(personeel),
+        'de tekst verwijst naar een knop die bij rol `user` niet in het menu staat: ' + personeel);
+  toets('maar krijgt wél een route te horen',
+        /verwijderen/.test(personeel) && /pidlane\.nl/.test(personeel), personeel);
+
+  // Tegenproef: zonder de rolsplitsing zouden beide teksten gelijk zijn, en dan
+  // zegt de toets hierboven niets.
+  toets('de twee teksten verschillen ook echt (tegenproef)', klant !== personeel,
+        'beide rollen krijgen dezelfde zin — dan is de splitsing weg');
+  // En allebei moeten ze het wissen op het toestel noemen; dat geldt voor
+  // iedereen en mag bij het splitsen niet uit één van de twee vallen.
+  toets('allebei noemen ze "Alles wissen" op het toestel',
+        /Alles wissen/.test(klant) && /Alles wissen/.test(personeel));
+});
+
+deel8.then(function () {
   console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));
   process.exit(fouten ? 1 : 0);
 }).catch(function (e) {

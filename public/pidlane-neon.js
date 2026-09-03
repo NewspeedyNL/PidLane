@@ -70,9 +70,15 @@ function renderHudPresets(){
 // minst informatieve woorden weg te laten, en pas als laatste redmiddel
 // een nette afkapping op een woordgrens.
 // → HUD_LABEL_DICT verplaatst naar pidlane-data.js
-function hudShortLabel(name){
+//
+// De grens staat standaard op elf tekens. Dat is de HUD-hoekmeter: één regel,
+// smal. De tellerplaat van de slimme weergave heeft er twee, en gaf die grens
+// dus de helft van zijn ruimte weg — met "ABS. MOTO" als resultaat (#95).
+// Daarom is de grens sinds 03-09-2026 een parameter en geen vaste waarde; wie
+// hem niet meegeeft krijgt de HUD-grens, dus de hoekmeters veranderen niet.
+function hudShortLabel(name, max){
   if(!name) return '';
-  const MAX=11;
+  const MAX=(typeof max==='number' && max>=4) ? Math.floor(max) : 11;
   let n=name.trim();
   if(n.length<=MAX) return n.toUpperCase();
   // 1) woord-voor-woord vertalen via woordenboek, met bank-nummers behouden
@@ -108,18 +114,38 @@ function hudShortLabel(name){
   const drop=new Set(['VAN','MET','DE','HET','EN','OP','IN','ABS']);
   const trimmed=mapped.filter((w,i)=>i===0||!drop.has(w)).join(' ');
   if(trimmed.length<=MAX) return trimmed;
-  // 3) eerste twee woorden, elk ingekort
+  // 3) inkorten — maar niet in het woord dat zegt WAT er gemeten wordt.
+  //    Tot 03-09-2026 stond hier "eerste woord op zes tekens, tweede op vier".
+  //    Van "ABS. MOTORBELAST" bleef daardoor "ABS. MOTO" over: de bepaling
+  //    overleefde heel en de grootheid werd afgekapt, precies andersom dan je
+  //    wilt (#95). De ruimte gaat nu eerst naar het LAATSTE woord — dat noemt
+  //    de grootheid — en wat overblijft is voor de woorden ervoor, die de
+  //    variant aanduiden. Onder de drie tekens korten we niet in: "MOT" zegt
+  //    niets meer, en dan is weglaten eerlijker dan suggereren.
   if(mapped.length>=2){
-    const a=mapped[0].slice(0,6), b=mapped[1].slice(0,4);
-    const combo=(a+' '+b);
-    if(combo.length<=MAX+1) return combo;
+    const laatst=mapped[mapped.length-1];
+    const eerder=mapped.slice(0,-1);
+    const over=MAX-laatst.length-eerder.length;      // de spaties meegerekend
+    const perWoord=Math.floor(over/eerder.length);
+    if(perWoord>=3){
+      const combo=eerder.map(function(w){ return w.slice(0,perWoord); }).join(' ')+' '+laatst;
+      if(combo.length<=MAX) return combo;
+    }
   }
-  // 4) laatste redmiddel: afkappen op woordgrens, nooit midden in een woord
+  // 4) laatste redmiddel: afkappen op woordgrens, nooit midden in een woord.
+  //    Reikt die opsomming niet tot het laatste woord, dan zegt het label niet
+  //    meer WAT er gemeten wordt — bij "Abs. motorbelasting" hield je dan
+  //    alleen "ABS." over. Dat laatste woord alleen is dan het betere antwoord:
+  //    het noemt de grootheid en is een echte naam. Dragen twee meters daardoor
+  //    dezelfde naam, dan valt slimMeterLabels() terug op de volledige naam;
+  //    die botsingscontrole is de plek die dat al beslist.
   let acc='';
   for(const w of mapped){
     if((acc+(acc?' ':'')+w).length>MAX) break;
     acc+=(acc?' ':'')+w;
   }
+  const grootheid=mapped[mapped.length-1];
+  if(acc.indexOf(grootheid)<0 && grootheid.length<=MAX) return grootheid;
   return acc||mapped[0].slice(0,MAX);
 }
 

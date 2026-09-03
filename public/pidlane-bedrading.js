@@ -157,6 +157,13 @@ var KRITIEK = [
   // volledige namen en valt de vijfde meter weer van de rij — precies de
   // klacht uit #68, alleen dan zonder dat iemand ziet waaróm.
   'hudShortLabel',
+  // Zet een epoch-moment om naar de kloktijd van het scherm
+  // (pidlane-uihelpers.js). De bulk-recorder bouwt zijn sessie-id ermee en
+  // blok 5 toetst dat id ertegen. Ontbreekt hij, dan valt de recorder terug op
+  // een naam met UTC erin terwijl het logboek ernaast lokale tijd schrijft —
+  // twee uur verschil, en dat is aan niets te zien tot iemand de twee
+  // bestanden van dezelfde rit naast elkaar legt (#17).
+  'plStempelLokaal',
   // Verbergen en tonen (pidlane-pids.js). Blok 5 toetst ze met een guard, en
   // die guard is de plek waar het stil zou blijven: ontbreken ze, dan valt de
   // app terug op het gedrag van vóór 02-09-2026 — een dubbeltik die de sensor

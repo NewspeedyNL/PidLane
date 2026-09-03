@@ -79,8 +79,8 @@ const SLIM_BRON = knip(PIDS_BRON, 'const SLIM_BEWEEG_DEEL', '\nfunction updPID('
 // een nagebouwde afkorter zou die belofte niet getoetst worden.
 const NEON_BRON = (function () {
   const bron = fs.readFileSync('pidlane-neon.js', 'utf8');
-  const i = bron.indexOf('function hudShortLabel(name){');
-  if (i < 0) throw new Error('hudShortLabel() niet gevonden in pidlane-neon.js — hernoemd?');
+  const i = bron.indexOf('function hudShortLabel(name, max){');
+  if (i < 0) throw new Error('hudShortLabel(name, max) niet gevonden in pidlane-neon.js — hernoemd of van handtekening veranderd?');
   const j = bron.indexOf('\nfunction ', i + 10);
   if (j < 0) throw new Error('het einde van hudShortLabel() is niet te vinden');
   return bron.slice(i, j);

@@ -7,6 +7,43 @@
 // ════════════════════════════════════════
 // UI HELPERS
 // ════════════════════════════════════════
+
+// ── Kloktijd voor mensen ──────────────────────────────────────────
+// PIDLANE-CONTRACT.md §6: alle tijden zijn epoch-milliseconden in UTC, en
+// omrekenen naar lokale tijd gebeurt pas op het scherm en in de export. Deze
+// twee helpers zijn die omrekening — en alleen die. Ze horen NOOIT in
+// opgeslagen data terecht te komen: daar hoort het epoch-getal.
+//
+// Waarom ze bestaan (#17). De bulk-recorder bouwde zijn sessie-id met
+// toISOString(), dus met UTC, terwijl de app-log ernaast lokale tijd schrijft.
+// Op 02-09-2026 gemeten: dezelfde seconde stond in het log als 23:16:03 en in
+// de bestandsnaam als 21-16-03. Twee uur verschil, en wie die twee naast
+// elkaar legt concludeert eerst dat ze niet bij elkaar horen. De fout was niet
+// de opslag maar het ETIKET: een kloktijd die op het scherm komt hoort dezelfde
+// klok te gebruiken als alles wat de gebruiker verder ziet.
+//
+// Bewust geen 'Z' erachter. Die letter betekent UTC, en dat is dit niet — dat
+// was precies de leugen in de oude naam. Wie het exacte moment nodig heeft,
+// heeft het epoch-getal: dat staat naast elk blok (van/tot) en in de meta.
+function _plTweeCijfers(n){ return (n<10?'0':'') + n; }
+
+// '2026-09-02T23-16-03-568' — sorteerbaar, veilig in een bestandsnaam, en
+// dezelfde klok als de regel in het logboek ernaast.
+function plStempelLokaal(ms){
+  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);
+  return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate()) +
+         'T' + _plTweeCijfers(d.getHours()) + '-' + _plTweeCijfers(d.getMinutes()) + '-' + _plTweeCijfers(d.getSeconds()) +
+         '-' + String(d.getMilliseconds()).padStart(3,'0');
+}
+
+// '2026-09-02' — voor een bestandsnaam waar alleen de dag in hoort. Met
+// toISOString() geeft die om 00:30 lokaal nog de dag ervóór, en dan lijkt een
+// export van vannacht van gisteren te zijn.
+function plDatumLokaal(ms){
+  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);
+  return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate());
+}
+
 // ── Voertuig-blok en demo-balk inklapbaar ──
 // Op het PID-keuzescherm eten "Voertuig" (kaart + demo-balk) samen zoveel
 // vaste ruimte op dat de scrollbare PID-lijst eronder nauwelijks hoogte

@@ -2796,24 +2796,38 @@ const PROEVEN_B5 = [
   // toe stond het alleen als beschrijving in het issue.
   {
     issue: '#17',
-    naam: '#17 — schrijft de bulk-recorder een andere tijd dan de logger?',
-    waarom: 'Het bewijs ligt in het sessie-id van de recorder en op de klok van het toestel.',
+    naam: '#17 — schrijft de bulk-recorder dezelfde tijd als de logger?',
+    waarom: 'Het bewijs ligt in het sessie-id van de recorder naast het epoch-moment waarop hij begon.',
     proef: function () {
       if (!window.PLBulk || !PLBulk.status) return { staat: 'LET OP', detail: 'PLBulk ontbreekt' };
+      if (typeof plStempelLokaal !== 'function')
+        return { staat: 'FOUT', detail: 'plStempelLokaal() ontbreekt — dan bouwt de recorder zijn id weer met UTC (#17)' };
       let st = {};
       try { st = PLBulk.status() || {}; } catch (e) { return { staat: 'LET OP', detail: 'PLBulk.status() gaf een fout' }; }
       if (!st.sessie) return { staat: 'LET OP', detail: 'geen sessie-id — de recorder heeft deze rit niet gelopen' };
-      // 'blk-2026-09-02T11-11-08-165Z' → de ISO-tijd staat er in UTC in.
-      const m = /^blk-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})/.exec(String(st.sessie));
-      if (!m) return { staat: 'LET OP', detail: 'sessie-id "' + st.sessie + '" heeft niet de verwachte vorm — deze proef kan niets vergelijken' };
+      if (!st.gestart) return { staat: 'FOUT', detail: 'PLBulk.status() geeft geen `gestart` mee — zonder dat epoch-getal ' +
+        'is het etiket nergens meer aan te toetsen (#17)' };
+
+      // Het epoch-moment is de waarheid (PIDLANE-CONTRACT.md §6); het id is er
+      // het etiket van. Ze horen exact hetzelfde moment te noemen, in de klok
+      // die de gebruiker op het scherm ziet. Niet vergelijken met de klok van
+      // NU: de recorder kan uren geleden begonnen zijn.
+      const hoort = 'blk-' + plStempelLokaal(st.gestart);
       const offsetMin = -new Date().getTimezoneOffset();
-      const kop = 'recorder-id "' + st.sessie.slice(0, 24) + '…" draagt ' + m[4] + ':' + m[5] + ' (UTC), de klok van dit toestel staat ' +
-        (offsetMin >= 0 ? '+' : '') + (offsetMin / 60) + ' uur';
+      const kop = 'recorder-id "' + String(st.sessie) + '", gestart ' +
+        new Date(st.gestart).toTimeString().slice(0, 8) + ' lokaal (klok ' +
+        (offsetMin >= 0 ? '+' : '') + (offsetMin / 60) + ' uur t.o.v. UTC)';
+
+      if (/Z$/.test(String(st.sessie)))
+        return { staat: 'FOUT', detail: kop + ' — het id eindigt op Z en claimt daarmee UTC. Dat was de leugen ' +
+          'uit #17: de app-log ernaast schrijft lokale tijd' };
+      if (String(st.sessie) !== hoort)
+        return { staat: 'FOUT', detail: kop + ' — verwacht "' + hoort + '". Het etiket loopt niet gelijk met het ' +
+          'moment waarop de recorder begon, en dan zijn twee bestanden van dezelfde rit niet naast elkaar te leggen (#17)' };
       if (offsetMin === 0)
-        return { staat: 'LET OP', detail: kop + ' — dit toestel stáát op UTC, dus het verschil uit #17 is hier niet zichtbaar. ' +
-          'Meet dit nog eens in de zomertijd of met een andere tijdzone' };
-      return { staat: 'LET OP', detail: kop + ' — dat is ' + Math.abs(offsetMin / 60) + ' uur verschil met de app-log, die lokale tijd schrijft. ' +
-        '#17 is hiermee hard gemeten in plaats van beschreven: twee bestanden van dezelfde rit zijn niet naast elkaar te leggen' };
+        return kop + ' — het id klopt met het startmoment, maar dit toestel stáát op UTC, dus het verschil uit #17 ' +
+          'zou hier hoe dan ook niet zichtbaar zijn. Meet dit nog eens in de zomertijd of met een andere tijdzone';
+      return kop + ' — het id draagt exact dat moment in dezelfde klok als het logboek';
     }
   },
 
@@ -2980,6 +2994,141 @@ const PROEVEN_B5 = [
       //    wat je niet groot in beeld wilt hebben?
       const stil = inhoud.rustig.map(naamVan);
       return kop + (stil.length ? ' — stil deze rit: ' + stil.join(', ') : ' — niets ligt stil; alles beweegt of heeft nog te weinig historie');
+    }
+  },
+
+  // ── passen de namen op de tellerplaat op DIT scherm? ──
+  // bproef-plaatnamen.js meet dit ook, en preciezer: alle 146 namen. Maar hij
+  // meet ze op de standaard tekstgrootte, in één vensterbreedte, met een
+  // demo-auto. Hier staat de plaat zoals hij nu is: de sensoren die déze auto
+  // levert, de tekstgrootte die deze gebruiker koos (S/M/L schaalt de hele
+  // app), en het lettertype dat dit toestel werkelijk gebruikt. Dat is een
+  // andere vraag dan "past het in het harnas", en alleen hier te stellen.
+  {
+    issue: '#95',
+    naam: 'De namen op de tellerplaat passen op dit scherm',
+    waarom: 'De kolombreedte hangt aan het aantal meters van déze auto en de tekstgrootte van deze gebruiker.',
+    proef: function () {
+      const labels = document.querySelectorAll('.slim-meter .gn2');
+      if (!labels.length)
+        return { staat: 'LET OP', detail: 'geen tellerplaat in beeld — de live view staat niet in de slimme ' +
+          'weergave, of er staan geen meters op' };
+
+      const lh = parseFloat(getComputedStyle(labels[0]).lineHeight) || 0;
+      if (!lh) return { staat: 'LET OP', detail: 'de regelhoogte is niet uit te lezen — dan valt er niets te meten' };
+
+      const teveel = [], terugval = [], namen = {}, dubbel = [];
+      let breedte = 0;
+      labels.forEach(function (el) {
+        const t = String(el.textContent || '').trim();
+        if (!t) return;
+        breedte = Math.round(el.getBoundingClientRect().width);
+        // De CSS geeft de naam twee regels (-webkit-line-clamp:2). Meer dan dat
+        // wordt afgekapt, en juist het staartje van een naam is wat hem van de
+        // meter ernaast onderscheidt.
+        const regels = Math.round(el.scrollHeight / lh);
+        if (regels > 2) {
+          // Twee heel verschillende oorzaken, en ze mogen niet op één hoop.
+          // slimMeterLabels() zet bij een BOTSING met opzet de volledige naam
+          // terug — "leesbaar verkeerd is erger dan lang", en die keuze staat
+          // los van deze grens. Zo'n naam kan best over drie regels lopen; dat
+          // is een bekend gevolg, geen fout. Loopt een AFGEKORTE naam eroverheen,
+          // dan is de grens zelf te ruim voor dit scherm, en dat is #95.
+          const kaart = el.closest ? el.closest('.gc') : null;
+          const pid = kaart ? String(kaart.id).slice(3) : '';
+          let vol = '';
+          try { const d = getPidDef(pid); vol = (d && d.name) || ''; } catch (e) { vol = ''; }
+          if (vol && vol.toUpperCase() === t.toUpperCase()) terugval.push('"' + t + '"');
+          else teveel.push('"' + t + '" (' + regels + ' regels)');
+        }
+        const sleutel = t.toUpperCase();
+        if (namen[sleutel]) dubbel.push('"' + t + '"');
+        namen[sleutel] = true;
+      });
+
+      const kop = labels.length + ' meters, kolom ' + breedte + 'px, regelhoogte ' + Math.round(lh * 10) / 10 + 'px';
+      if (dubbel.length)
+        return { staat: 'FOUT', detail: kop + ' — twee meters dragen dezelfde naam: ' + dubbel.join(', ') +
+          '. De plaat wijst dan een signaal aan zonder te zeggen welk (#68)' };
+      if (teveel.length)
+        return { staat: 'FOUT', detail: kop + ' — een AFGEKORTE naam loopt over twee regels heen: ' +
+          teveel.join(', ') + '. Op dit scherm is SLIM_METER_MAX dus te ruim (#95)' };
+      const staart = terugval.length
+        ? ' (' + terugval.join(', ') + ' viel terug op de volledige naam bij een botsing en wordt na twee regels ' +
+          'afgekapt — bekend gevolg van die terugval, de volledige naam staat in de tooltip)'
+        : '';
+      return kop + ' — alle afgekorte namen passen binnen twee regels: ' +
+        Object.keys(namen).length + ' verschillende' + staart;
+    }
+  },
+
+  // ── blijven de onderste vellen boven de navigatiebalk? ──
+  // bproef-schermranden.js meet dit ook, maar met een NAGEBOOTSTE inset van
+  // 48px: in een browser is --pl-sab altijd 0px. Op dit toestel is hij echt —
+  // Capacitor leest hem uit WindowInsetsCompat — en dat maakt dit de enige
+  // plek waar de vraag over dít scherm beantwoord wordt, met dít lettertype
+  // en déze knophoogtes. Vandaar hier én daar, en niet alleen daar.
+  {
+    issue: '#71',
+    naam: 'De onderste vellen blijven boven de navigatiebalk',
+    waarom: 'Alleen op een toestel is --pl-sab echt gevuld; in een browser is hij 0px en ziet elk vel er goed uit.',
+    proef: function () {
+      const sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pl-sab')) || 0;
+      if (sab <= 0)
+        return { staat: 'LET OP', detail: '--pl-sab is 0px op dit toestel — er is hier geen navigatiebalk om ' +
+          'achter te vallen, dus deze proef kan niets vaststellen. bproef-schermranden.js meet het na met 48px' };
+
+      const VELLEN = [
+        { naam: 'demo-autokiezer', open: 'openDemoCarChooser', id: 'demoCarModal' },
+        { naam: 'rijsituatie', open: 'openSituatie', id: 'situatieSheet' },
+        { naam: 'voertuigoverzicht', open: 'openVehicleOverview', id: 'vehOverview' }
+      ];
+      const krap = [], gemeten = [], over = [];
+
+      for (const v of VELLEN) {
+        if (typeof window[v.open] !== 'function') { over.push(v.naam + ' (' + v.open + '() bestaat niet)'); continue; }
+
+        // De stand van vóór de proef onthouden. Een vel dat er al stond mag
+        // hier niet dicht- of opengaan: dan verandert deze proef het scherm
+        // van de gebruiker, en dat is geen meten meer.
+        const bestond = document.getElementById(v.id);
+        const oudeStand = bestond ? bestond.style.display : null;
+
+        try { window[v.open](); }
+        catch (e) { over.push(v.naam + ' (openen mislukte: ' + e.message + ')'); continue; }
+
+        const m = document.getElementById(v.id);
+        if (!m) { over.push(v.naam + ' (bouwde geen #' + v.id + ' — functie uitgeschakeld?)'); continue; }
+
+        // Naar beneden scrollen zoals een gebruiker doet om de onderste knop
+        // te bereiken; wat daarna nog onder de onderrand hangt is niet in beeld
+        // en zegt dus niets.
+        m.querySelectorAll('*').forEach(function (e) { if (e.scrollHeight > e.clientHeight + 2) e.scrollTop = e.scrollHeight; });
+        let laagste = null, onder = -1e9;
+        m.querySelectorAll('button,input,textarea,select,a').forEach(function (e) {
+          const r = e.getBoundingClientRect();
+          if (r.height <= 0 || r.top > window.innerHeight) return;
+          if (r.bottom > onder) { onder = r.bottom; laagste = e; }
+        });
+
+        if (bestond) m.style.display = oudeStand;
+        else m.style.display = 'none';
+
+        if (!laagste) { over.push(v.naam + ' (geen zichtbare knop)'); continue; }
+        const ruimte = Math.round(window.innerHeight - onder);
+        const knop = String(laagste.textContent || laagste.id || laagste.tagName).trim().slice(0, 20);
+        gemeten.push(v.naam + ' ' + ruimte + 'px');
+        if (ruimte < sab) krap.push(v.naam + ': ' + ruimte + 'px onder "' + knop + '"');
+      }
+
+      if (!gemeten.length)
+        return { staat: 'LET OP', detail: 'geen enkel vel gemeten — ' + (over.join('; ') || 'onbekende reden') };
+
+      const kop = 'navigatiebalk ' + Math.round(sab) + 'px; ruimte onder de laagste knop: ' + gemeten.join(', ');
+      if (krap.length)
+        return { staat: 'FOUT', detail: kop + ' — te krap bij ' + krap.join(' en ') +
+          '. Die knop zit deels achter de Android-knoppen (#71)' };
+      return kop + (over.length ? ' (niet gemeten: ' + over.join('; ') + ')' : '');
     }
   },
 
@@ -4522,6 +4671,14 @@ const CAMPAGNE = {
 
     'BLOK 5 en STAP 7 — allebei lezen ze nu PLAchtergrond naast PLRit. plmutate.sh staat op 36 mutaties; twee nieuwe maken test-achtergrond.js rood.',
 
+    '#17 — DE RECORDER EN HET LOGBOEK LOPEN NU OP DEZELFDE KLOK. Het sessie-id werd met toISOString() gebouwd, dus in UTC, terwijl de app-log ernaast lokale tijd schrijft: twee keer gemeten, twee uur verschil, en dezelfde rit leek uit twee bestanden te komen die niet bij elkaar horen. plStempelLokaal() en plDatumLokaal() (pidlane-uihelpers.js) zijn nu de ene plek waar epoch naar kloktijd gaat, en de Z is eraf — die letter betekent UTC en dat was het niet.',
+
+    '#95 — "ABS. MOTO" IS GEEN NAAM. hudShortLabel() zette het eerste woord op zes tekens en het tweede op vier, dus bij "Abs. motorbelasting" bleef de bepaling heel en verdween de grootheid. Alle 146 PID-namen zijn in de draaiende app nagemeten: 45 eindigden midden in een woord, nu nog één. De grens is bovendien een parameter geworden — elf voor de HUD-hoekmeter (één regel), dertien voor de tellerplaat (twee regels), en die dertien is opgemeten en niet gekozen.',
+
+    '#71 — DE ONDERSTE VELLEN. De demo-autokiezer, Rijsituatie en Voertuigoverzicht bouwen zichzelf met inline styles op en droegen geen --pl-sab; hun onderste knop viel daardoor deels achter de drie Android-knoppen. Het waren er drie en niet één, en dat is niet gegrept maar gemeten: bproef-schermranden.js opent elk vel in de draaiende app met een nagebootste navigatiebalk van 48px. Vóór de reparatie bleef er 14, 12 en 12px over; nu 62, 60 en 60px.',
+
+    'DAT HARNAS IS ECHTER BLIND VOOR HET ECHTE TOESTEL — in een browser is --pl-sab altijd 0px. Vandaar de proef in blok 5 met hetzelfde onderwerp: die meet met de inset die Capacitor van Android krijgt, op dit scherm, met deze knophoogtes. Is --pl-sab hier 0, dan zegt hij LET OP en niet ok.',
+
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden — komt er een proef bij, dan staat hij hier vanzelf.',
 
     '── WAT DEZE RONDE NIET OPLOST ─────────',
@@ -4529,8 +4686,6 @@ const CAMPAGNE = {
     '#98 — met vier aanvragers kreeg de sweep het busslot niet binnen 8 s en mat hij naast de pollus: 1250 ms per PID in plaats van 200. Gevonden in de rit van 22:15 en nog open. Blok 3 meldt het zelf met LET OP, dus je ziet het in het verslag terug.',
 
     '#79 — de veilige zones. De rit van 22:15 liep op de tablet, waar de proef per definitie klopt; de twee FOUT-runs liepen op de telefoon. Doe stap 10 nog eens op de SM-S947B, dan is die vraag beslist.',
-
-    '#17 — de recorder schrijft UTC en de logger lokale tijd. Hard gemeten in de vorige rit, nog niet gerepareerd. Blok 5 meldt het als LET OP.',
 
     'FILTERED_PIDS — laag 2+3 staan nog steeds uit voor álle PIDs. Onveranderd, en nog steeds een eigen rit waard.'
   ]

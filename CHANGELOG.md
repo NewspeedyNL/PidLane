@@ -11,6 +11,95 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — ÉÉN KLOK VOOR WIE MEELEEST
+
+       • 🕐 #17: RECORDER EN LOGBOEK LIEPEN TWEE UUR UIT ELKAAR.
+         Het sessie-id werd met toISOString() gebouwd (UTC), de
+         app-log ernaast schrijft lokale tijd. Dezelfde seconde
+         stond in het log als 23:16:03 en in de bestandsnaam als
+         21-16-03 — twee bestanden van dezelfde rit die niet bij
+         elkaar leken te horen.
+
+       • 📍 DE FOUT ZAT IN HET ETIKET, NIET IN DE OPSLAG. De
+         blokken dragen epoch-milliseconden en dat was altijd al
+         goed. Wat scheefliep was de omrekening naar kloktijd:
+         één keer UTC, één keer lokaal. Die omrekening staat nu
+         op één plek — plStempelLokaal() en plDatumLokaal().
+
+       • 🅩 DE Z IS ERAF. Die letter betekent UTC, en dat was het
+         niet. Ook de datum van een exportbestand volgt nu de
+         lokale dag: met toISOString() kreeg een export om half
+         één 's nachts die van gisteren.
+
+       • 🌍 GETOETST MET EEN ECHTE TIJDZONE. Op een CI-runner in
+         UTC is deze fout onzichtbaar. test-tijdklok.js en
+         bproef-tijdklok.js zetten daarom zelf TZ=Europe/Amsterdam
+         — de browserproef vóórdat Chromium start, want die erft
+         hem mee — en meten twee uur verschil in plaats van erover
+         te redeneren.
+
+       • 🔬 BLOK 5 IS VAN MELDER TOETS GEWORDEN. Hij meldde alleen
+         dát er verschil was; hij vergelijkt nu het sessie-id met
+         het epoch-moment waarop de recorder begon.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — "ABS. MOTO" IS GEEN NAAM
+
+       • ✂️ #95: DE AFKORTER KAPTE HET VERKEERDE WEG.
+         hudShortLabel() zette het eerste woord op zes tekens en
+         het tweede op vier, dus van "Abs. motorbelasting" bleef
+         de bepaling heel en verdween de grootheid: "ABS. MOTO".
+         Naast "MOTORBELAST" van 0104 op dezelfde plaat.
+
+       • 📊 HET WAREN ER 45. Alle 146 PID-namen zijn in de
+         draaiende app door de functie gehaald: 45 eindigden
+         midden in een woord (TURBOD (RAU, WARMLO SIND,
+         RAILDR (REL). Nu nog één — "Referentiekoppel", één
+         samengesteld woord waar niets aan weg te laten valt.
+
+       • 📐 DE GRENS IS EEN PARAMETER EN GEMETEN. Elf tekens is de
+         HUD-hoekmeter: één regel. De tellerplaat heeft er twee en
+         gaf de helft van zijn ruimte weg. Bij zeven meters is een
+         kolom 54px; tot en met dertien tekens past elke naam in
+         twee regels, vanaf veertien niet meer. Dertien dus — en
+         de HUD blijft op elf, want die parameter is optioneel.
+
+       • 🧭 STAP 3 VERDEELT DE RUIMTE ANDERSOM. Het laatste woord
+         noemt de grootheid en krijgt de ruimte eerst. Blijft er
+         alleen de bepaling over, dan is de grootheid alleen het
+         antwoord: "MOTORBELAST" is een naam, "ABS." niet.
+
+       • 🔬 bproef-plaatnamen.js meet alle 146 namen in het echte
+         element, met tegenproef: bij één teken meer moet er wél
+         iets uitvallen. Blok 5 doet hetzelfde op het toestel —
+         daar telt de tekstgrootte van de gebruiker mee.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — DRIE VELLEN, NIET ÉÉN
+
+       • 📱 #71: DE DEMO-AUTOKIEZER VIEL ACHTER DE ANDROID-KNOPPEN.
+         Het kentekenveld en de Start-knop zaten half onder de drie
+         navigatieknoppen. Het vel wordt met inline styles gebouwd
+         en draagt geen .modal-klasse, dus liep het buiten de
+         veilige-zoneronde van #58 om.
+
+       • 🔎 HET WAREN ER DRIE. Niet gegrept maar gemeten, in de
+         draaiende app met de Android-insets aan: onder de laagste
+         knop bleef 14px over bij de demo-kiezer, 12px bij
+         Rijsituatie en 12px bij Voertuigoverzicht — tegenover een
+         navigatiebalk van 48px. Na de reparatie 62, 60 en 60px.
+
+       • 📐 EEN NIEUWE BROWSERPROEF METEN IN PLAATS VAN LEZEN.
+         bproef-schermranden.js opent elk onderste vel, scrolt naar
+         beneden en meet de laagste knop op. Met tegenproef: zet de
+         marge terug op een vast getal en de proef wordt rood.
+         test-schermranden.js sloot deze vellen bewust uit met een
+         reden die niet klopte; die is herzien, niet weggehaald.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — WIE WACHT, KRIJGT DE BEURT
 
        • 🚦 #98: MET VIER AANVRAGERS KREEG DE SWEEP HET BUSSLOT NIET.

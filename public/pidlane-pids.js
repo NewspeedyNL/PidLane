@@ -913,6 +913,16 @@ function slimHerweegPlannen(){
 // lang. Dat de terugval de hele groep raakt en niet alleen de tweede is met
 // opzet — twee meters waarvan er één afgekort is en één niet, lezen als twee
 // verschillende soorten.
+// De grens voor de plaat, gemeten en niet geraden (03-09-2026, #95). Bij zeven
+// meters is een kolom 54px breed en staat de naam op 8,5px; de CSS geeft hem
+// twee regels (-webkit-line-clamp:2). Alle 146 namen zijn in de draaiende app
+// door hudShortLabel() gehaald en daarna opgemeten: tot en met dertien tekens
+// past élke uitkomst binnen die twee regels, vanaf veertien vallen de eerste
+// eruit (LAM DOELWAARDE, ETH PERCENTAGE, NOX DOSEERPOMP). Dertien is dus de
+// ruimste grens die de plaat draagt — en dat is de helft meer dan de elf van
+// de HUD-hoekmeter, die maar één regel heeft.
+const SLIM_METER_MAX = 13;
+
 function slimMeterLabels(pids){
   const uit={}, tel={};
   (pids||[]).forEach(function(pid){
@@ -920,7 +930,7 @@ function slimMeterLabels(pids){
     if(((typeof slimGroep==='function')?slimGroep(pid,d):'rest')!=='meter') return;
     const naam=d.name||pid;
     let kort=naam;
-    try{ if(typeof hudShortLabel==='function') kort=hudShortLabel(naam)||naam; }
+    try{ if(typeof hudShortLabel==='function') kort=hudShortLabel(naam, SLIM_METER_MAX)||naam; }
     catch(e){ console.warn('hudShortLabel mislukt:', e); }
     uit[pid]=kort;
     (tel[kort]=tel[kort]||[]).push(pid);

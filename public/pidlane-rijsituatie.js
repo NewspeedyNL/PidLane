@@ -179,7 +179,7 @@ function openSituatie(){
       '<button onclick="closeSituatie()" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>'+
     '</div>'+
     '<div id="sitSheetBody" style="overflow-y:auto;padding:14px 16px"></div>'+
-    '<div style="padding:12px 16px;border-top:1px solid var(--bd)">'+
+    '<div style="padding:12px 16px calc(12px + var(--pl-sab));border-top:1px solid var(--bd)">'+
       '<button onclick="closeSituatie()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">Klaar</button>'+
     '</div></div>';
   m.style.display='flex';

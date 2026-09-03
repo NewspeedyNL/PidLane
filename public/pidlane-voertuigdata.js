@@ -278,7 +278,7 @@ function openVehicleOverview(){
       ${row('Distributieriem/-ketting',inp('uvDistr',userVehicleData.distributie,'bv. vervangen bij 120.000 km / n.v.t.'))}
       ${row('Bijzonderheden',`<textarea id="uvBijz" rows="2" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px;resize:vertical" placeholder="bv. schade linksvoor, nieuwe accu 2025">${esc(userVehicleData.bijz)}</textarea>`)}
     </div>
-    <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--bd)">
+    <div style="display:flex;gap:8px;padding:12px 16px calc(12px + var(--pl-sab));border-top:1px solid var(--bd)">
       <button onclick="document.getElementById('vehOverview').style.display='none'" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">Sluiten</button>
       <button onclick="saveVehicleOverview()" style="flex:2;padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">💾 Opslaan</button>
     </div>

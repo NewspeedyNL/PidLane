@@ -461,11 +461,43 @@ je eigen auto herkent, en het pseudoniem dat hetzelfde staartje draagt als de
 Airtable-logkolom, zodat een logregel te koppelen blijft aan een
 Veldlab-sessie.
 
-**Nog niet gedicht, en bewust niet in dezelfde ronde:** `_voertuigRegels()` in
-`pidlane-export.js` zet de volledige VIN in de kop van élk geëxporteerd rapport
-en élke PDF. Dat is geen vergissing maar een ontwerpkeuze — een werkplaatsrapport
-over de auto van een klant kan die VIN nodig hebben — en dus een besluit en geen
-reparatie. Zie `#109`.
+**Het vierde pad blijft open, en dat is besloten op 03-09-2026 (#109).**
+`_voertuigRegels()` in `pidlane-export.js` zet de volledige VIN in de kop van
+élk geëxporteerd rapport en élke PDF. Dat is **geen vergeten pad maar een
+opengelaten pad**, en het staat hier zodat die twee niet meer door elkaar te
+halen zijn — dat is de hele les van #102, waar deze tabel twee keer "compleet"
+was en het geen van beide keren was.
+
+| Pad | Functie | Stand |
+|---|---|---|
+| Rapport-/PDF-export → bestand | `_voertuigRegels()` in `pidlane-export.js` | **volledige VIN, met opzet** |
+
+De reden. Een geëxporteerd rapport is een **werkstuk over een auto**, geen
+diagnosebestand over de app. Gaat het naar een klant, een garage of een
+keuring, dan is de VIN precies het veld dat het rapport aan díé auto
+vastknoopt; maskeren maakt het onbruikbaar voor waarschijnlijk het
+belangrijkste gebruik dat het heeft. Bij #102 lag dat andersom: daar voegde de
+VIN niets toe aan een testrunverslag, en deden de laatste zes tekens plus het
+pseudoniem hetzelfde werk.
+
+Wat dit besluit **niet** zegt. Het rekt de regel uit `CLAUDE.md` niet op: een
+VIN gaat nooit ruw naar Airtable of naar een van onze eigen bestemmingen. Het
+verschil is de bestemming — hier kiest de gebruiker zelf waar het bestand heen
+gaat, en hij weet dat hij een rapport over zijn auto exporteert. Zou er ooit
+een pad bij komen dat een rapport automatisch ergens heen stuurt, dan valt dat
+niet onder dit besluit en is het een nieuwe vraag.
+
+De afgewogen alternatieven staan in #109 en zijn niet gekozen: maskeren zoals
+#102 (kost de koppeling aan het voertuig) en een vinkje bij het exporteren
+(inhoudelijk het beste, maar een extra stand die in elk exportpad mee moet en
+onderhoudslast is hier een harde ontwerprandvoorwaarde).
+
+**Eén randgeval uit dezelfde zoektocht, bewust blijven staan.**
+`pidlane-bt.js` rond regel 2292 logt bij een mislukte VIN-lezing de ruwe
+ELM-antwoorden, en die hex kan een VIN bevatten die de parser net niet
+accepteerde. Zwakker dan een leesbare VIN, en de regel heeft echte
+diagnosewaarde — hij bestaat om te kunnen zien of de auto zwijgt of de parser
+faalt. Genoemd zodat hij niet ongemerkt blijft, niet omdat hij weg moet.
 
 `bproef-vinlek.js` bewaakt dit voortaan op de manier die bij de les hoort: hij
 toetst niet de drie aanroepen maar **de buffer**. Dat is de enige vorm die ook
@@ -515,6 +547,45 @@ rekent dat uit als `akkoordActueel` (§11, "Opgelost op 27-08"), getest in
   referentiebereiken. Zonder die context beoordeelt de AI een caravanrit als
   een zieke auto.
 - AI-contextinjectie is gecentraliseerd in `apiFetch`, met deduplicatie.
+
+### Twee accountsoorten, één verdienmodel — besluit 03-09-2026 (#49)
+
+**Vastgelegd, niet meer open.** `Klanten` + credits is het model voor iedereen
+die zich van buiten registreert — consument én garage. `Users` is wat het
+feitelijk al was: **personeel**. De beheerder, een monteur, de noodingang. Een
+beheerrol, geen klantcategorie. Een zakelijke garage krijgt een klantaccount
+met een grote of periodiek bijgevulde bundel: zelfde mechanisme, ander bedrag.
+
+**Het doorslaggevende argument is niet de omzet maar de kostenblootstelling.**
+Bij tien garages die je persoonlijk kent is een onbegrensd account prima. Bij
+vijfhonderd geregistreerde gebruikers kan één enthousiaste gebruiker — of één
+lus in onze eigen code — in een nacht meer kosten dan een maand omzet, en dat
+merk je pas op de factuur. Credits maken dat structureel onmogelijk: niemand
+kan meer kosten dan hij gekocht heeft. Dat is geen prijsmodel maar een
+veiligheidsklep. De marge (ruwweg 19×, ~95% bruto) is een gevolg, geen reden.
+
+**Wat dit in de code betekent, en wat níét.** De grens staat in één regel in
+`handleMessages`: `if (session.r === "klant" && !clientKey)`. Een `user` valt
+daarbuiten en zijn calls lopen op de sleutel van de Worker — dat is precies de
+bedoeling, want personeel is geen klant. Wat er dus **niet** komt is een tweede
+betaalmodel voor `Users`; dat was juist de variatie die dit besluit wegneemt.
+
+**Play beslist dit niet.** Credits verkopen in de app raakt Play's
+betaalregels (#42), maar een abonnement is ook digitale content, dus dat
+ontsnapt er niet aan. Het enige model dat de regels volledig vermijdt is
+"gratis app, de beheerder betaalt de rekening" — en dat is nou juist het
+onbegrensde model. Play beslist dus niet credits-versus-vast, Play beslist hoe
+het geld binnenkomt. Die vraag ligt er in beide gevallen.
+
+**Zichtbaar gevolg in de app.** "👤 Mijn account" staat achter `isKlant()` en
+is dus weg bij rol `user` — dat is dit besluit, geen bug. Zie #69, dat op deze
+grond gesloten is.
+
+**Twee gaten die dit besluit niet dicht** en die daarom hun eigen issue hebben
+gekregen in plaats van met #49 mee te sluiten: het proeftegoed van 25 credits
+staat in localStorage en groeit terug bij het wissen van app-gegevens, en
+promptcaching staat uit terwijl de systeemprompt plus `AUTO_KENNIS` bij elke
+analyse opnieuw meegaat.
 
 ### Tegoed — waar wordt er geteld
 
@@ -700,6 +771,210 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+### De verwijderroute stond in de tekst maar niet in het menu — 03-09-2026 (#69)
+
+**Waar het over ging.** #69 meldde dat "👤 Mijn account" ontbreekt in het
+kebabmenu bij rol `user`. Nagemeten in de draaiende app, alle vier de rollen
+door `pasMenuAan()`: bij `klant` staat het item er, bij `admin`, `user` en
+`demo` niet. Dat is geen defect maar de reparatie van 29-08 bij #49 — een
+beheeraccount heeft geen record in `Klanten` en geen tegoed, dus het item
+opende een scherm dat alleen kon uitleggen dat er niets te zien was. Met #49
+op 03-09 vastgelegd is dit het bedoelde gedrag, en #69 is op die grond
+gesloten.
+
+**Wat er wél stuk was, en niet in het issue stond.** De privacytekst zei tegen
+íédereen: *"Je account verwijder je onder Mijn account met de knop Account
+verwijderen."* Die knop staat in `openMijnTokens()` achter dezelfde
+`isKlant()`-poort. Personeel las dus een route die voor hem niet bestaat.
+
+Dat is exact de fout van #41 — toen beloofde `privacy.html` "verwijder je via
+Mijn account" terwijl die knop nergens bestond — alleen nu voor één groep in
+plaats van voor iedereen. En het is een fout die pas ontstond doordat het menu
+per rol ging verschillen: de tekst is niet meeverhuisd met de poort die eronder
+kwam. **Een tekst die naar een knop wijst, hoort dezelfde voorwaarde te dragen
+als die knop.**
+
+`_verwijderTekst()` in `pidlane-privacy.js` splitst nu op `isKlant()`: een
+klant krijgt de knop en de bewaartermijn, personeel krijgt de publieke pagina
+`app.pidlane.nl/verwijderen` — die bestaat al en legt uit hoe het zonder de app
+gaat. Bewust een functie en geen tweede vaste tekst: twee zinnen die allebei
+"de verwijderroute" heten is dezelfde valkuil een trede lager.
+
+Blok 8 van `test-account-verwijderen.js` laadt die functie en toetst beide
+takken, met de tegenproef erbij (verschillen ze werkelijk?) en met wat voor
+állebei moet gelden: het wissen op het toestel mag bij het splitsen niet uit
+één van de twee vallen. `plmutate.sh` zet de rolsplitsing uit en de test wordt
+dan rood.
+
+### Recorder en logboek liepen op twee klokken — 03-09-2026 (#17)
+
+**Wat er gebeurde.** De bulk-recorder bouwde zijn sessie-id met
+`toISOString()`, dus in UTC, terwijl `log()` ernaast lokale tijd schrijft. Uit
+de rit van 02-09, twee regels over hetzelfde moment:
+
+```
+{"ts":"23:16:03", ... "msg":"📼 bulk-recorder gestart (blk-2026-09-02T21-16-03-568Z)"}
+```
+
+Zelfde seconde, twee uur verschil. Wie die twee bestanden naast elkaar legt
+concludeert eerst dat ze niet bij elkaar horen — en dat is precies wat er twee
+keer gebeurde.
+
+**De fout zat niet in de opslag maar in het etiket.** De blokken van de
+recorder dragen `van`/`tot` als epoch-milliseconden, en het app-log draagt
+`t: Date.now()` naast zijn `ts`. Allebei volgen ze
+`PIDLANE-CONTRACT.md` §6 gewoon. Wat scheefliep was de omrekening naar een
+kloktijd die de gebruiker leest: die gebeurde één keer in UTC en één keer
+lokaal.
+
+Er is nu één plek waar epoch naar kloktijd gaat: `plStempelLokaal()` en
+`plDatumLokaal()` in `pidlane-uihelpers.js`. De `Z` is eraf — die letter
+betekent UTC, en dat was de leugen in de oude naam.
+
+**Wat er nog niet mee opgelost is.** Vijftien andere plekken bouwen een
+exportbestandsnaam met `toISOString().slice(0,10)`, en die geven om half één
+'s nachts de datum van gisteren mee — `pidlane-fuel.js`, `pidlane-rit.js`,
+`pidlane-koopcheck.js`, `pidlane-caravan.js`, `pidlane-dossier.js` en
+`pidlane-rijsituatie.js` onder meer. Dat is dezelfde fout, maar het overzetten
+is mechanisch werk over zes bestanden, en dat hoort niet in dezelfde commit als
+een gedragswijziging. Het `export`-veld ín het bulkbestand blijft bewust
+`toISOString()`: dat is machinegegeven met een `Z` erachter en dus ondubbelzinnig.
+
+**Waarom een browserproef en niet alleen een node-test.** Een CI-runner staat
+op UTC, en dáár geeft `toISOString()` precies dezelfde tijd als de lokale klok:
+de fout is er onzichtbaar. `test-tijdklok.js` zet daarom `process.env.TZ` vóór
+de eerste `Date` en toetst de helpers op vaste momenten, met de oude vorm
+ernaast als tegenproef. `bproef-tijdklok.js` doet hetzelfde een laag hoger: hij
+zet `TZ` vóórdat Chromium start — die variabele erft de browser mee — start de
+echte recorder met een echte IndexedDB eronder, en legt het sessie-id naast de
+regel die `log()` op datzelfde moment schreef. Zonder die tijdzone meet geen
+van beide iets.
+
+**En blok 5 is van melder naar toets geworden.** De proef meldde tot nu toe
+alleen dát er verschil was. Hij vergelijkt nu het sessie-id met
+`plStempelLokaal(st.gestart)` — het epoch-moment waarop de recorder begon, dat
+`PLBulk.status()` daarvoor is gaan meegeven. Niet met de klok van dít moment:
+de recorder kan uren eerder begonnen zijn, en dan zou elke proef falen om de
+verkeerde reden.
+
+### "ABS. MOTO" is geen naam — de afkorter kapte het verkeerde weg — 03-09-2026 (#95)
+
+**Wat er gebeurde.** `hudShortLabel('Abs. motorbelasting')` gaf `ABS. MOTO`.
+Stap 3 van die functie zette het eerste woord op zes tekens en het tweede op
+vier; van `["ABS.", "MOTORBELAST"]` bleef daardoor de bepaling heel en werd de
+grootheid afgekapt — precies andersom dan je wilt. Op de tellerplaat stond dat
+fragment naast `MOTORBELAST` van 0104: twee meters die hetzelfde meten, waarvan
+er één een naam had.
+
+**Hoe groot het was.** Niet één naam. Alle 146 PID-namen zijn in de draaiende
+app door de functie gehaald: **45 daarvan eindigden midden in een woord**
+(`TURBOD (RAU`, `WARMLO SIND`, `RAILDR (REL`, `O2-SEN AANW`, …). Na de
+reparatie is dat er **één**: `Referentiekoppel` → `REFERENTIEKOP`. Dat is één
+samengesteld woord zonder woordenboektreffer, en daar valt niets weg te laten —
+afkappen is dan het enige wat rest.
+
+**Twee ingrepen, allebei klein.**
+
+1. *De grens is een parameter geworden.* Elf tekens is de maat van de
+   HUD-hoekmeter: één regel, smal. De tellerplaat heeft er twee
+   (`-webkit-line-clamp:2`) en gaf met diezelfde elf de helft van zijn ruimte
+   weg. `hudShortLabel(name, max)` gebruikt elf als je niets meegeeft, dus de
+   HUD verandert niet.
+2. *Stap 3 verdeelt de ruimte anders.* Het laatste woord noemt de grootheid en
+   krijgt de ruimte eerst; wat overblijft is voor de woorden ervoor, en onder de
+   drie tekens korten we niet in. Reikt de opsomming in stap 4 niet tot dat
+   laatste woord, dan is dat woord alleen het antwoord — `MOTORBELAST` is een
+   naam, `ABS.` niet.
+
+**De grens van de plaat is gemeten, niet gekozen.** Bij zeven meters is een
+kolom 54px breed en staat de naam op 8,5px. Elke uitkomst is in het echte
+element opgemeten:
+
+| grens | namen die niet in twee regels passen |
+|---|---|
+| 11 t/m 13 | 0 |
+| 14 | 3 (`LAM DOELWAARDE`, `ETH PERCENTAGE`, `NOX DOSEERPOMP`) |
+| 16 | 13 |
+| 20 | 50 |
+
+Dertien is dus de ruimste grens die de plaat draagt, en dat is `SLIM_METER_MAX`
+in `pidlane-pids.js`. `bproef-plaatnamen.js` bewaakt hem met de tegenproef
+erbij: bij één teken meer moet er wél iets uitvallen. Wordt de grens ooit te
+laag gezet, dan zegt die proef dat met de gemeten waarde erbij in plaats van
+groen te blijven.
+
+**Wat er niet mee opgelost is.** Bij 0104 en 0143 komen beide korte namen op
+`MOTORBELAST` uit, en dan valt `slimMeterLabels()` met opzet terug op de
+volledige naam — "leesbaar verkeerd is erger dan lang". Die volledige naam
+(`Abs. motorbelasting`) loopt over drie regels en wordt na twee afgekapt, met
+een beletselteken. Dat is beter dan wat er stond — `ABS. MOTO` zag er compleet
+uit en was het niet — maar het is geen volledige oplossing: op 54px past die
+naam gewoon niet. De proef in blok 5 telt dat geval apart en meldt het als
+waarneming, niet als fout, zodat het zichtbaar blijft zonder de proef
+permanent rood te zetten.
+
+**Waarom er zowel een browserproef als een blok 5-proef is.**
+`bproef-plaatnamen.js` meet alle 146 namen, maar op de standaardtekstgrootte,
+in één vensterbreedte, met een demo-auto. De proef in blok 5 meet de plaat
+zoals hij op dat moment is: de sensoren die déze auto levert, de tekstgrootte
+die de gebruiker koos (S/M/L schaalt de hele app) en het lettertype van dat
+toestel. Dat is een andere vraag, en alleen daar te stellen.
+
+**Terzijde, gemeten en niet gebruikt.** Het label van de HUD-hoekmeter is op
+een 412px-scherm 107px breed bij 7,4px lettergrootte; daar past vijftien tekens
+op één regel. De elf van de HUD is dus zelf ook aan de krappe kant. Niet
+aangeraakt: `.hudMini` is 26% van de HUD-breedte en de lettergrootte is een
+`clamp()`, dus op een smaller toestel valt die ruimte weg. Wie dat wil
+verruimen, meet het eerst op het smalste toestel dat telt.
+
+### Onderste vellen vielen achter de Android-knoppen — 03-09-2026 (#71)
+
+**Wat er gebeurde.** De demo-autokiezer liet zijn kentekenveld en Start-knop
+half achter de drie Android-navigatieknoppen vallen. `openDemoCarChooser()`
+bouwt `#demoCarModal` met een eigen `style.cssText`, los van de
+`.modal`-klasse, en droeg nergens `--pl-sab`. De #58-ronde van 01-09 gaf
+veilige marge aan `.app`, `body`, `#fabLane`, `.ov`, `.modal` en de
+bottom-sheets — dit vel zat daar niet bij, omdat het met inline styles is
+gebouwd en geen klasse draagt.
+
+**Wat de conclusie in het issue miste: het waren er drie.** Het issue vroeg na
+te kijken of `openDemoCarChooser()` de enige met dit patroon is. Dat is niet
+met `grep` beantwoord maar gemeten, in `plbrowser.js` met de insets aan zoals
+Capacitor ze op Android zet (`--safe-area-inset-bottom: 48px`), door elk vel te
+openen, helemaal naar beneden te scrollen en de laagste knop op te meten:
+
+| vel | ruimte onder de laagste knop | nodig |
+|---|---|---|
+| `openDemoCarChooser` (#demoCarModal) | 14px | 48px |
+| `openSituatie` (#situatieSheet) | 12px | 48px |
+| `openVehicleOverview` (#vehOverview) | 12px | 48px |
+
+Alle drie dus, en alle drie om dezelfde reden: `align-items:flex-end` met een
+vaste `padding` onderin. De reparatie is per vel één waarde —
+`calc(14px + var(--pl-sab))` op de scrollende `div` bij de demo-kiezer, en
+`calc(12px + var(--pl-sab))` op de voetbalk bij de andere twee. Nagemeten:
+62px, 60px en 60px.
+
+**En een conclusie die fout bleek.** `test-schermranden.js` sloot de
+onderaan-uitschuivende vellen bewust uit, met deze reden:
+
+> Gecentreerde dialogen en onderaan-uitschuivende vellen staan er BEWUST niet
+> in: daarboven of -onder blijft alleen de halfdoorzichtige achtergrond staan,
+> en die mag prima onder de statusbalk doorlopen.
+
+Voor een gecentreerde dialoog klopt dat. Voor een onderste vel niet: dat staat
+op `flex-end`, ligt dus zélf tegen de onderrand, en er blijft daaronder geen
+achtergrond over. Die regel is herzien in de kop van `test-schermranden.js`,
+niet weggehaald.
+
+**Waarom dit een gedragsproef werd en geen broncontrole.**
+`test-schermranden.js` leest de bron en vraagt of `var(--pl-sab)` in de buurt
+van een declaratie staat. Dat zegt niets over de vraag die telt — is de
+onderste knop te raken? — en in een gewone browser is `--pl-sab` 0px, dus
+zonder insets ziet elk vel er goed uit. `bproef-schermranden.js` meet het in de
+draaiende app, met een eigen tegenproef: hij zet de marge bij één vel terug op
+een vast getal en toetst dat de meting dan rood wordt.
+
 ### Verbergen is geen uitzetten — 02-09-2026
 
 **Wat er gevraagd werd:** scheiding tussen de PID-keuze en de live view. "Nu is
@@ -769,6 +1044,45 @@ kent, is erger dan een tegel te veel.
 **Wat het níét sneller maakt.** Verbergen scheelt niets in de pollus: de PID
 wordt gewoon gevraagd. Wil je de ronde korter, dan is dat de sensorkeuze. Dat
 is precies waarom die twee nu uit elkaar staan.
+
+### Fase 2 van de slimme weergave komt er niet — besluit 03-09-2026 (#94)
+
+**Wat er gevraagd was.** Tegels met de hand groot/klein/verbergen kunnen zetten,
+bewaard per auto. De tweede helft van de fijnafstemming van 02-09; fase 1
+(`slimMaat()`, het vak "Rustig", korte namen op de tellerplaat) staat er wél.
+
+**Het besluit is: niet bouwen.** De automatische indeling voldoet. Dat scheelt
+blijvende staat per voertuig — en daarmee de vraag wat er gebeurt bij een andere
+auto, een gewiste opslag of een nieuwe versie, het patroon dat bij #86 een vals
+alarm opleverde. Het scheelt ook een vijfde modus op een scherm dat er al vier
+draagt plus de waakronde.
+
+**Wat hier bewaard moet blijven is niet de wens maar de grenzen.** Dit is het
+deel dat over een half jaar opnieuw ter tafel komt, en dan hoort de redenering
+er nog te staan:
+
+- **Geen schakelaar auto/handmatig.** Twee standen maken twee bronnen voor één
+  scherm, en dan is onbeantwoordbaar waar een sensor hoort die vanavond nieuw
+  ontdekt wordt: in de handlijst staat hij niet, dus hij valt nergens. Wie dit
+  ooit bouwt, doet het als *uitzonderingen bovenop de automaat* — automatisch
+  rekent altijd, alleen de afwijkingen worden bewaard.
+- **Geen min/max met de hand.** Het puntje op een tegel is een
+  veiligheidsoordeel uit `dH`, `wH` en `PID_HARD_LIMITS`. Een handmatige grens
+  die een tegel groen kleurt is het gevaarlijkste knopje dat deze app zou
+  kunnen krijgen. Wat er onder die wens zit is #66 (de grove schaal), en het
+  betere antwoord daarop is het *waargenomen* bereik per auto leren.
+- **Geen keuze tussen trend liggend of staand.** Liggend betekent "marge tot de
+  grens", staand "stand binnen het bereik". Dat verschil draagt betekenis; een
+  gebruiker die het omzet breekt het stilletjes.
+- **Geen actief/niet-actief in een bewerkscherm.** Dat is de PID-keuze, en een
+  dubbeltik op een tegel doet het al (zie "Verbergen is geen uitzetten"
+  hieronder). Een derde deur naar dezelfde kamer.
+
+**Wat er wél openstaat en er los van is.** Bij een naambotsing valt
+`slimMeterLabels()` terug op de volledige naam, en die loopt op een kolom van
+54px over drie regels en wordt na twee afgekapt. Gemeten bij #95, en dat is een
+vraag over die terugval — niet over of tegels met de hand verzet moeten kunnen
+worden.
 
 ### De maat van een tegel volgt zijn gedrag — 02-09-2026 (#61, #68)
 
