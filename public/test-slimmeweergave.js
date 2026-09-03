@@ -647,16 +647,16 @@ function keurAsymmetrie(slimBron) {
 // functie vandaag doet.
 const NEON_BRON = (function () {
   const bron = fs.readFileSync('pidlane-neon.js', 'utf8');
-  const i = bron.indexOf('function hudShortLabel(name){');
-  if (i < 0) throw new Error('hudShortLabel() niet gevonden in pidlane-neon.js — hernoemd?');
+  const i = bron.indexOf('function hudShortLabel(name, max){');
+  if (i < 0) throw new Error('hudShortLabel(name, max) niet gevonden in pidlane-neon.js — hernoemd of van handtekening veranderd?');
   const j = bron.indexOf('\nfunction ', i + 10);
   if (j < 0) throw new Error('het einde van hudShortLabel() is niet te vinden');
   return bron.slice(i, j);
 })();
-function metKorteNamen(actief, slimBron) {
+function metKorteNamen(actief, slimBron, neonBron) {
   const ctx = maakOmgeving(actief, null, slimBron);
   ctx.HUD_LABEL_DICT = D.HUD_LABEL_DICT;
-  vm.runInContext(NEON_BRON, ctx, { filename: 'pidlane-neon.js (labels)' });
+  vm.runInContext(neonBron || NEON_BRON, ctx, { filename: 'pidlane-neon.js (labels)' });
   return ctx;
 }
 function keurMeterNamen(slimBron) {
@@ -689,6 +689,88 @@ function keurMeterNamen(slimBron) {
   return uit;
 }
 
+// ── 7b. geen enkele naam eindigt midden in een woord (#95) ───────
+// Waar dit over gaat: hudShortLabel('Abs. motorbelasting') gaf 'ABS. MOTO'.
+// De bepaling bleef heel en de grootheid werd afgekapt — precies andersom dan
+// je wilt, en op de plaat stond dat fragment naast 'MOTORBELAST' van 0104:
+// twee meters die hetzelfde meten, waarvan er één een naam had.
+//
+// De regel die hier getoetst wordt is smal en met opzet niet ruimer: een naam
+// van MEER DAN ÉÉN WOORD mag nooit eindigen in een halve versie van een van
+// die woorden. Bij één samengesteld woord zónder woordenboektreffer valt er
+// niets weg te laten en is afkappen het enige wat rest ('Referentiekoppel');
+// dat als fout boeken zou een altijd-rode toets opleveren, en die wordt
+// genegeerd.
+//
+// De namen komen uit pidlane-data.js en worden niet hier verzonnen — anders
+// toets je een lijstje dat de app niet heeft. Alle 146 gaan erdoorheen, bij
+// beide grenzen: die van de HUD-hoekmeter en die van de tellerplaat.
+function alleNamen() {
+  const uit = {};
+  (D.PIDS || []).forEach(function (d) { if (d && d.name) uit[d.pid] = d.name; });
+  Object.keys(D.ALL_PID_DEFS || {}).forEach(function (p) {
+    const d = D.ALL_PID_DEFS[p];
+    if (d && d.name && !uit[p]) uit[p] = d.name;
+  });
+  return uit;
+}
+function keurGeenFragmenten(neonBron) {
+  const ctx = metKorteNamen(['010C', '0104'], null, neonBron);
+  const uit = [];
+  if (typeof ctx.hudShortLabel !== 'function') return ['hudShortLabel() is niet geladen; deze toets meet niets'];
+  // SLIM_METER_MAX is een `const` op het hoogste niveau, en die wordt geen
+  // eigenschap van het globale object — hem via ctx.SLIM_METER_MAX opvragen
+  // geeft undefined terwijl hij er wél staat. Vandaar dat we hem in de context
+  // zelf uitlezen. De grens komt uit de bron en niet uit deze test: staat er
+  // morgen een ander getal, dan toetst dit mee.
+  const plaatMax = vm.runInContext(
+    "typeof SLIM_METER_MAX === 'number' ? SLIM_METER_MAX : null", ctx);
+  if (typeof plaatMax !== 'number')
+    return ['SLIM_METER_MAX staat niet in pidlane-pids.js — de plaat heeft dan geen eigen grens meer'];
+
+  // De waarden uit het woordenboek zijn BEDOELDE afkortingen ('POS', 'SENS',
+  // 'STAT'). Die tellen niet als fragment, anders keurt deze toets juist de
+  // stap af die het probleem oplost.
+  const bedoeld = {};
+  Object.keys(D.HUD_LABEL_DICT || {}).forEach(function (k) {
+    bedoeld[String(D.HUD_LABEL_DICT[k]).toUpperCase()] = true;
+  });
+  const namen = alleNamen();
+  if (Object.keys(namen).length < 100)
+    return ['maar ' + Object.keys(namen).length + ' namen geladen — pidlane-data.js komt niet binnen'];
+
+  [11, plaatMax].forEach(function (max) {
+    Object.keys(namen).forEach(function (pid) {
+      const naam = namen[pid];
+      const woorden = naam.toUpperCase().split(/[\s.]+/).filter(Boolean);
+      if (woorden.length < 2) return;                       // zie de kop hierboven
+      const kort = String(ctx.hudShortLabel(naam, max));
+      const staart = kort.split(/[ .]/).filter(Boolean).pop() || '';
+      if (bedoeld[staart] || woorden.indexOf(staart) > -1) return;
+      const heel = woorden.filter(function (w) { return w.length > staart.length && w.indexOf(staart) === 0; })[0];
+      if (heel)
+        uit.push('grens ' + max + ': "' + naam + '" wordt "' + kort + '" — dat eindigt midden in "' + heel + '"');
+    });
+  });
+  return uit;
+}
+
+// En het geval uit het issue zelf, apart benoemd zodat het verslag hem noemt:
+// twee meters die allebei de motorbelasting meten mogen niet als naam en
+// fragment naast elkaar staan.
+function keurBelastingPaar(neonBron) {
+  const plaat = ['0104', '0143'];
+  const ctx = metKorteNamen(plaat, null, neonBron);
+  const namen = ctx.slimMeterLabels(plaat);
+  const uit = [];
+  const abs = String(namen['0143'] || '');
+  if (/^ABS\.? MOTO$/i.test(abs))
+    uit.push('0143 heet op de plaat "' + abs + '" — dat is het fragment uit #95, geen naam');
+  if (abs && abs.toUpperCase().indexOf('MOTO') === 0 && abs.length < 8)
+    uit.push('0143 heet op de plaat "' + abs + '" en dat is te kort om een grootheid te noemen');
+  return uit;
+}
+
 // ── draaien ──────────────────────────────────────────────────────
 console.log('Slimme weergave — standaard, tellerplaat, temperatuurbalken, trend waar het beweegt (#61, #66, #68)\n');
 
@@ -706,6 +788,8 @@ toetsSchoon('de maat volgt het gedrag, en een waarschuwing wint van stilstand', 
 toetsSchoon('de herweging verhuist de tegels, en een tegel staat nooit in twee vakken', keurHerweging());
 toetsSchoon('omhoog mag altijd, omlaag alleen bij de herweging', keurAsymmetrie());
 toetsSchoon('elke meter op de tellerplaat heeft een eigen, korte naam', keurMeterNamen());
+toetsSchoon('geen enkele naam eindigt midden in een woord (#95)', keurGeenFragmenten());
+toetsSchoon('de absolute motorbelasting heet geen "ABS. MOTO" meer (#95)', keurBelastingPaar());
 
 // ── tegenproef ───────────────────────────────────────────────────
 console.log('');
@@ -754,6 +838,18 @@ toetsMeldt('een ongemarkeerde grove schaal valt door de mand (tegenproef)',
 
 // 5. En de kern van deze ronde, twee keer: de standaard terug op puntjes, en
 //    de opgeslagen voorkeur weer genegeerd zoals hij dat maandenlang was.
+// 6. #95 — de oude stap 3 terug: eerste woord op zes tekens, tweede op vier.
+//    Dat is de code die 'ABS. MOTO' maakte. Beide toetsen hierboven moeten er
+//    rood van worden; blijft er één groen, dan meet die niets.
+const NEON_OUD = bouw(NEON_BRON,
+  "    const laatst=mapped[mapped.length-1];\n    const eerder=mapped.slice(0,-1);\n    const over=MAX-laatst.length-eerder.length;      // de spaties meegerekend\n    const perWoord=Math.floor(over/eerder.length);\n    if(perWoord>=3){\n      const combo=eerder.map(function(w){ return w.slice(0,perWoord); }).join(' ')+' '+laatst;\n      if(combo.length<=MAX) return combo;\n    }",
+  "    const a=mapped[0].slice(0,6), b=mapped[1].slice(0,4);\n    const combo=(a+' '+b);\n    if(combo.length<=MAX+1) return combo;",
+  'stap 3 van hudShortLabel');
+toetsMeldt('de oude stap 3 kapt weer in het informatieve woord (tegenproef, #95)',
+  keurGeenFragmenten(NEON_OUD), 'eindigt midden in');
+toetsMeldt('en levert opnieuw "ABS. MOTO" op (tegenproef, #95)',
+  keurBelastingPaar(NEON_OUD), 'ABS. MOTO');
+
 toetsMeldt('een andere standaardweergave valt door de mand (tegenproef)',
   keurStandaardWeergave(bouw(VIEW_BRON,
     "const PID_VIEW_STANDAARD = 'slim';", "const PID_VIEW_STANDAARD = 'dots';", 'standaard')),

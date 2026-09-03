@@ -700,6 +700,76 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+### "ABS. MOTO" is geen naam — de afkorter kapte het verkeerde weg — 03-09-2026 (#95)
+
+**Wat er gebeurde.** `hudShortLabel('Abs. motorbelasting')` gaf `ABS. MOTO`.
+Stap 3 van die functie zette het eerste woord op zes tekens en het tweede op
+vier; van `["ABS.", "MOTORBELAST"]` bleef daardoor de bepaling heel en werd de
+grootheid afgekapt — precies andersom dan je wilt. Op de tellerplaat stond dat
+fragment naast `MOTORBELAST` van 0104: twee meters die hetzelfde meten, waarvan
+er één een naam had.
+
+**Hoe groot het was.** Niet één naam. Alle 146 PID-namen zijn in de draaiende
+app door de functie gehaald: **45 daarvan eindigden midden in een woord**
+(`TURBOD (RAU`, `WARMLO SIND`, `RAILDR (REL`, `O2-SEN AANW`, …). Na de
+reparatie is dat er **één**: `Referentiekoppel` → `REFERENTIEKOP`. Dat is één
+samengesteld woord zonder woordenboektreffer, en daar valt niets weg te laten —
+afkappen is dan het enige wat rest.
+
+**Twee ingrepen, allebei klein.**
+
+1. *De grens is een parameter geworden.* Elf tekens is de maat van de
+   HUD-hoekmeter: één regel, smal. De tellerplaat heeft er twee
+   (`-webkit-line-clamp:2`) en gaf met diezelfde elf de helft van zijn ruimte
+   weg. `hudShortLabel(name, max)` gebruikt elf als je niets meegeeft, dus de
+   HUD verandert niet.
+2. *Stap 3 verdeelt de ruimte anders.* Het laatste woord noemt de grootheid en
+   krijgt de ruimte eerst; wat overblijft is voor de woorden ervoor, en onder de
+   drie tekens korten we niet in. Reikt de opsomming in stap 4 niet tot dat
+   laatste woord, dan is dat woord alleen het antwoord — `MOTORBELAST` is een
+   naam, `ABS.` niet.
+
+**De grens van de plaat is gemeten, niet gekozen.** Bij zeven meters is een
+kolom 54px breed en staat de naam op 8,5px. Elke uitkomst is in het echte
+element opgemeten:
+
+| grens | namen die niet in twee regels passen |
+|---|---|
+| 11 t/m 13 | 0 |
+| 14 | 3 (`LAM DOELWAARDE`, `ETH PERCENTAGE`, `NOX DOSEERPOMP`) |
+| 16 | 13 |
+| 20 | 50 |
+
+Dertien is dus de ruimste grens die de plaat draagt, en dat is `SLIM_METER_MAX`
+in `pidlane-pids.js`. `bproef-plaatnamen.js` bewaakt hem met de tegenproef
+erbij: bij één teken meer moet er wél iets uitvallen. Wordt de grens ooit te
+laag gezet, dan zegt die proef dat met de gemeten waarde erbij in plaats van
+groen te blijven.
+
+**Wat er niet mee opgelost is.** Bij 0104 en 0143 komen beide korte namen op
+`MOTORBELAST` uit, en dan valt `slimMeterLabels()` met opzet terug op de
+volledige naam — "leesbaar verkeerd is erger dan lang". Die volledige naam
+(`Abs. motorbelasting`) loopt over drie regels en wordt na twee afgekapt, met
+een beletselteken. Dat is beter dan wat er stond — `ABS. MOTO` zag er compleet
+uit en was het niet — maar het is geen volledige oplossing: op 54px past die
+naam gewoon niet. De proef in blok 5 telt dat geval apart en meldt het als
+waarneming, niet als fout, zodat het zichtbaar blijft zonder de proef
+permanent rood te zetten.
+
+**Waarom er zowel een browserproef als een blok 5-proef is.**
+`bproef-plaatnamen.js` meet alle 146 namen, maar op de standaardtekstgrootte,
+in één vensterbreedte, met een demo-auto. De proef in blok 5 meet de plaat
+zoals hij op dat moment is: de sensoren die déze auto levert, de tekstgrootte
+die de gebruiker koos (S/M/L schaalt de hele app) en het lettertype van dat
+toestel. Dat is een andere vraag, en alleen daar te stellen.
+
+**Terzijde, gemeten en niet gebruikt.** Het label van de HUD-hoekmeter is op
+een 412px-scherm 107px breed bij 7,4px lettergrootte; daar past vijftien tekens
+op één regel. De elf van de HUD is dus zelf ook aan de krappe kant. Niet
+aangeraakt: `.hudMini` is 26% van de HUD-breedte en de lettergrootte is een
+`clamp()`, dus op een smaller toestel valt die ruimte weg. Wie dat wil
+verruimen, meet het eerst op het smalste toestel dat telt.
+
 ### Onderste vellen vielen achter de Android-knoppen — 03-09-2026 (#71)
 
 **Wat er gebeurde.** De demo-autokiezer liet zijn kentekenveld en Start-knop

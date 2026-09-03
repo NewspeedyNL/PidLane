@@ -2983,6 +2983,71 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── passen de namen op de tellerplaat op DIT scherm? ──
+  // bproef-plaatnamen.js meet dit ook, en preciezer: alle 146 namen. Maar hij
+  // meet ze op de standaard tekstgrootte, in één vensterbreedte, met een
+  // demo-auto. Hier staat de plaat zoals hij nu is: de sensoren die déze auto
+  // levert, de tekstgrootte die deze gebruiker koos (S/M/L schaalt de hele
+  // app), en het lettertype dat dit toestel werkelijk gebruikt. Dat is een
+  // andere vraag dan "past het in het harnas", en alleen hier te stellen.
+  {
+    issue: '#95',
+    naam: 'De namen op de tellerplaat passen op dit scherm',
+    waarom: 'De kolombreedte hangt aan het aantal meters van déze auto en de tekstgrootte van deze gebruiker.',
+    proef: function () {
+      const labels = document.querySelectorAll('.slim-meter .gn2');
+      if (!labels.length)
+        return { staat: 'LET OP', detail: 'geen tellerplaat in beeld — de live view staat niet in de slimme ' +
+          'weergave, of er staan geen meters op' };
+
+      const lh = parseFloat(getComputedStyle(labels[0]).lineHeight) || 0;
+      if (!lh) return { staat: 'LET OP', detail: 'de regelhoogte is niet uit te lezen — dan valt er niets te meten' };
+
+      const teveel = [], terugval = [], namen = {}, dubbel = [];
+      let breedte = 0;
+      labels.forEach(function (el) {
+        const t = String(el.textContent || '').trim();
+        if (!t) return;
+        breedte = Math.round(el.getBoundingClientRect().width);
+        // De CSS geeft de naam twee regels (-webkit-line-clamp:2). Meer dan dat
+        // wordt afgekapt, en juist het staartje van een naam is wat hem van de
+        // meter ernaast onderscheidt.
+        const regels = Math.round(el.scrollHeight / lh);
+        if (regels > 2) {
+          // Twee heel verschillende oorzaken, en ze mogen niet op één hoop.
+          // slimMeterLabels() zet bij een BOTSING met opzet de volledige naam
+          // terug — "leesbaar verkeerd is erger dan lang", en die keuze staat
+          // los van deze grens. Zo'n naam kan best over drie regels lopen; dat
+          // is een bekend gevolg, geen fout. Loopt een AFGEKORTE naam eroverheen,
+          // dan is de grens zelf te ruim voor dit scherm, en dat is #95.
+          const kaart = el.closest ? el.closest('.gc') : null;
+          const pid = kaart ? String(kaart.id).slice(3) : '';
+          let vol = '';
+          try { const d = getPidDef(pid); vol = (d && d.name) || ''; } catch (e) { vol = ''; }
+          if (vol && vol.toUpperCase() === t.toUpperCase()) terugval.push('"' + t + '"');
+          else teveel.push('"' + t + '" (' + regels + ' regels)');
+        }
+        const sleutel = t.toUpperCase();
+        if (namen[sleutel]) dubbel.push('"' + t + '"');
+        namen[sleutel] = true;
+      });
+
+      const kop = labels.length + ' meters, kolom ' + breedte + 'px, regelhoogte ' + Math.round(lh * 10) / 10 + 'px';
+      if (dubbel.length)
+        return { staat: 'FOUT', detail: kop + ' — twee meters dragen dezelfde naam: ' + dubbel.join(', ') +
+          '. De plaat wijst dan een signaal aan zonder te zeggen welk (#68)' };
+      if (teveel.length)
+        return { staat: 'FOUT', detail: kop + ' — een AFGEKORTE naam loopt over twee regels heen: ' +
+          teveel.join(', ') + '. Op dit scherm is SLIM_METER_MAX dus te ruim (#95)' };
+      const staart = terugval.length
+        ? ' (' + terugval.join(', ') + ' viel terug op de volledige naam bij een botsing en wordt na twee regels ' +
+          'afgekapt — bekend gevolg van die terugval, de volledige naam staat in de tooltip)'
+        : '';
+      return kop + ' — alle afgekorte namen passen binnen twee regels: ' +
+        Object.keys(namen).length + ' verschillende' + staart;
+    }
+  },
+
   // ── blijven de onderste vellen boven de navigatiebalk? ──
   // bproef-schermranden.js meet dit ook, maar met een NAGEBOOTSTE inset van
   // 48px: in een browser is --pl-sab altijd 0px. Op dit toestel is hij echt —
@@ -4591,6 +4656,8 @@ const CAMPAGNE = {
     'BEDRADING — sppReconnectGuard staat in KRITIEK. Dat is niet uit voorzorg: de bedradingscontrole gaf zelf FOUT toen de nieuwe module hem achter een typeof-guard aanriep. Verdwijnt die functie, dan doet de controle niets en komt de app weer per ongeluk achter een dode socket.',
 
     'BLOK 5 en STAP 7 — allebei lezen ze nu PLAchtergrond naast PLRit. plmutate.sh staat op 36 mutaties; twee nieuwe maken test-achtergrond.js rood.',
+
+    '#95 — "ABS. MOTO" IS GEEN NAAM. hudShortLabel() zette het eerste woord op zes tekens en het tweede op vier, dus bij "Abs. motorbelasting" bleef de bepaling heel en verdween de grootheid. Alle 146 PID-namen zijn in de draaiende app nagemeten: 45 eindigden midden in een woord, nu nog één. De grens is bovendien een parameter geworden — elf voor de HUD-hoekmeter (één regel), dertien voor de tellerplaat (twee regels), en die dertien is opgemeten en niet gekozen.',
 
     '#71 — DE ONDERSTE VELLEN. De demo-autokiezer, Rijsituatie en Voertuigoverzicht bouwen zichzelf met inline styles op en droegen geen --pl-sab; hun onderste knop viel daardoor deels achter de drie Android-knoppen. Het waren er drie en niet één, en dat is niet gegrept maar gemeten: bproef-schermranden.js opent elk vel in de draaiende app met een nagebootste navigatiebalk van 48px. Vóór de reparatie bleef er 14, 12 en 12px over; nu 62, 60 en 60px.',
 
