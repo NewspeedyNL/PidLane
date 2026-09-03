@@ -823,6 +823,108 @@ op deze machine binnen een halve seconde, dus een lage grens alléén raakt de t
 niet. Dat is dezelfde les als bij de andere toetsen: een proef die niet
 onderscheidt, bewijst niets.
 
+### Automerge voegde samen in 29 seconden — 03-09-2026 (strategie omgekeerd)
+
+Niet één bevinding maar een meting, en die meting is de reden dat de strategie
+om is.
+
+**Wat er gemeten is.** Over 56 samengevoegde PR's was de mediaan van openen
+tot samenvoegen **29 seconden**. 43 ervan gingen binnen 40 seconden, de
+snelste in 9. Daar bovenop: **14 keer** volgde er binnen twee uur nóg een PR
+op dezelfde branch — `rico-test` zes keer, `testrun-log-prep` vier keer, met
+gaten van 12 en 17 minuten.
+
+**Waarom die 29 seconden het probleem zijn en niet de prestatie.** Elke merge
+op dit project is een deploy naar 100% van het verkeer; er zit geen mens
+tussen die merge en de klant. Bij 29 seconden is er dus geen toestand waarin
+iets "eraan komt" en je het nog kunt tegenhouden. Je ziet het pas als het live
+staat.
+
+De 14 vervolg-PR's zijn deels legitiem nieuw werk op een lange branch. Maar
+PR #80 van 01-09 is dezelfde vorm en dat was het niet: geopend om 20:52:56,
+gemerged om 20:53:08, op één van de twee commits. De PR zág er compleet uit —
+de titel was die van de eerste commit. Testrun 6.0 bleef achter op de branch
+terwijl `main` op 5.9 stond, en de deploy die eruit volgde bevatte alleen een
+bijgewerkte `PIDLANE.md`.
+
+**Wat er toen gebeurde, en waarom dat niet werkte.** Er kwam een gedragsregel
+in `CLAUDE.md`: *"af, groen, gepusht, dán pas de PR."* Die regel is juist. Hij
+draait op oplettendheid, en over de dagen erna ging dat te vaak mis — vandaar
+het verzoek op 03-09 om het anders te doen. Dat is het patroon dat in deze
+repo al drie keer is teruggekomen: **een regel die op oplettendheid draait,
+verliest van een mechanisme.** Zie ook `plmutate.sh` (de gate die groen stond
+op vier nagebouwde fouten) en `PIDLANE-WERK.md` (de lijst die zichzelf bijhield).
+
+**De omkering.** `handmatig` was de rem op een standaard die "samenvoegen"
+was. Nu is de standaard "niets doen" en is `klaar` het gaspedaal. Dat label
+betekent precies één ding: dit werk is af en álles staat gepusht. `handmatig`
+blijft bestaan als hard veto en wint van `klaar` — dat is een ánder ding dan
+"nog niet af", en twee labels die elkaar tegenspreken is geen patstelling: nee
+gaat voor ja.
+
+**De prijs, en die is echt.** Een PR zonder label blijft liggen, en dat is
+precies de toestand waar automerge op 26-08 voor gebouwd is: vier uur wachten
+terwijl de gate na drie minuten groen stond. Daarom meldt de workflow op de PR
+zelf waarom er niets gebeurt. Zwijgend laten liggen zou de kwaal erger maken
+dan het middel.
+
+**De poort die er nog niet was: een verlopen groene vlag.** Een testrun op een
+pull_request toetst je branch samengevoegd met `main` *zoals `main` toen was*.
+Landt er daarna iets anders, dan zegt die groene vlag niets meer over de
+combinatie die nu zou ontstaan — en op dit project landen PR's kort na elkaar
+(#120 en #121 21 minuten, de rico-test-PR's 17). De workflow blokkeert nu op
+`behind_by > 0` en vraagt om **Update branch**.
+
+Hij werkt de branch **met opzet niet zelf bij**, en de reden daarvoor is
+dezelfde vondst als hieronder: een push met `GITHUB_TOKEN` start geen nieuwe
+testrun. Zelf bijwerken zou dus een branch opleveren met een head die nooit
+getoetst is — erger dan het probleem.
+
+**Wat er van deze vondst het meest waard is.** Niet de omkering maar dit: de
+beslissing stond als inline script in `automerge.yml` en was daarmee **niet te
+toetsen**. Je merkt een fout in die logica pas als er iets verkeerds is
+samengevoegd, en dat is hier meteen een deploy. Hij staat nu in
+`automerge-besluit.js` als gewone functie zonder netwerk;
+`public/test-automerge.js` voert hem uit met de gevallen die er echt zijn
+geweest (#80 staat er als eigen proef in), en vier mutaties in `plmutate.sh`
+bouwen de fouten na. De subtielste van die vier is niet "de poort staat open"
+maar **"de poort blijft dicht en zegt het niet meer"** — dan blijft een PR
+liggen zoals vóór automerge, en dat is de fout die je maanden niet ziet.
+
+**Eén ding is nog een aanname.** `actions/checkout` zonder `ref` pakt bij een
+`workflow_run` de standaardbranch, en dáár hangt een veiligheidseigenschap
+aan: zou de PR-head uitgecheckt worden, dan kan een PR zijn eigen mergeregels
+meebrengen — `automerge-besluit.js` herschrijven naar "altijd ja" en zichzelf
+binnenlaten. Dit is gedocumenteerd gedrag van de action, niet gemeten op deze
+repo. Wie hier ooit een `ref:` toevoegt, haalt die eigenschap weg.
+
+### Een automerge laat geen spoor na op `main` — 03-09-2026
+
+Gevonden doordat `main` rood bleef staan op een run die niet meer over de code
+ging, en dat is precies de vorm waar §11 al een kopje over heeft.
+
+**Wat er aan de hand is.** GitHub start geen workflows voor pushes die met de
+standaard `GITHUB_TOKEN` gedaan zijn — de rem tegen oneindige lussen. De
+automerge-workflow gebruikt die token, dus een automerge geeft **geen
+Tests-run op `main`**.
+
+Meetbaar naast elkaar op 03-09: PR #120 werd door een mens gemerged en gaf run
+173; PR #121 ging via automerge en gaf niets. Cloudflare Workers Builds is een
+aparte integratie en deployt in beide gevallen wél.
+
+**Waarom dit geen dekkingsgat is, en waar het wél op knelt.** De PR-run toetst
+het samenvoegresultaat, dus de inhoud die op `main` belandt ís getoetst — mits
+de basis niet is opgeschoven, en dat is precies waarom de achterstand-poort
+hierboven bestaat. Wat er wél knelt is het lezen: **de laatste Tests-run op
+`main` gaat niet per se over wat er nu op `main` staat.** Op 03-09 stond daar
+een rood kruis van een commit die al twee merges oud was.
+
+Dat is dezelfde fout als de Cloudflare-bot met zijn "✅ Deployment
+successful" (§11, #35): een melding is een waarneming, geen conclusie. Toen
+kostte het drie PR's aan documentatie die niets verbeterde; nu is het één
+regel in `CLAUDE.md` en de wetenschap dat je *Tests* met de hand via
+`workflow_dispatch` op `main` kunt starten als je het echt wil zien.
+
 ### De schil had geen scherm voor "de app laadt niet" — 03-09-2026 (opgelost)
 
 Gevonden bij de Play Store-ronde, en het is een blinde vlek die er vanaf de

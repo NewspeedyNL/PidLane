@@ -49,6 +49,18 @@ if [ -f "$REPO/worker.js" ]; then
     stuk=$((stuk+1))
   fi
 fi
+# automerge-besluit.js hoort er sinds 03-09-2026 bij. Hij staat buiten public/
+# en zou dus door de lus hierboven gemist worden — terwijl een syntaxfout
+# erin de automerge-workflow laat klappen NA een groene testgate. Dat is de
+# stilste plek in de hele opzet om iets stuk te hebben.
+if [ -f "$REPO/automerge-besluit.js" ]; then
+  n=$((n+1))
+  if ! node --check "$REPO/automerge-besluit.js" >/dev/null 2>&1; then
+    echo "${ROOD}  SYNTAXFOUT${UIT}  automerge-besluit.js"
+    node --check "$REPO/automerge-besluit.js" 2>&1 | head -3 | sed 's/^/              /'
+    stuk=$((stuk+1))
+  fi
+fi
 [ $stuk -eq 0 ] && echo "${GROEN}  ok${UIT}  syntax — $n bestanden" || fout=$((fout+stuk))
 
 # ── 2. tests ──

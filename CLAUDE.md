@@ -151,23 +151,60 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
 
 - Werk op een eigen branch. Nooit rechtstreeks naar `main`, nooit force-pushen.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
-- `automerge.yml` voegt de PR samen zodra de workflow *Tests* groen afrondt.
-  Remmen: het label `handmatig`, of de PR in draft laten.
-- **Push élke commit vóórdat je de PR opent.** Automerge kijkt niet of je nog
-  bezig bent: hij merget de branch zoals die op dat moment is en sluit de PR.
-  Een tweede commit die daarna binnenkomt blijft achter op de branch, en de
-  PR kan hem niet meer dragen — een gemergede PR is klaar.
+- **Automerge is opt-in sinds 03-09-2026: het label `klaar`.** Zonder dat
+  label wordt er niets samengevoegd, hoe groen de gate ook staat. `klaar`
+  betekent één ding: **dit werk is af en álles staat gepusht.** Wie het label
+  zet, zegt dat.
 
-  **Nagemeten op 01-09-2026.** PR #80 werd om 20:52:56 geopend en om 20:53:08
-  gemerged: twaalf seconden, op één van de twee commits. De titel was die van
-  de eerste commit, en dat is precies wat het zo makkelijk maakt om te missen —
-  de PR zag er compleet uit. Testrun 6.0 bleef achter op de branch terwijl
-  `main` op 5.9 stond, en de deploy die eruit volgde bevatte alleen een
-  bijgewerkte `PIDLANE.md`.
+  | label | betekenis |
+  |---|---|
+  | `klaar` | af en gepusht — samenvoegen zodra *Tests* groen is |
+  | `handmatig` | hard veto, wint van `klaar` |
+  | (geen label) | blijft liggen; de workflow zegt dat op de PR |
 
-  De les is niet "let beter op" maar de volgorde: **af, groen, gepusht, dán
-  pas de PR.** Bij twijfel de PR in draft openen; hem vrijgeven is één klik,
-  een gemergede PR terugdraaien niet.
+  Een draft blijft ook liggen, en een PR uit een fork wordt nooit door de bot
+  samengevoegd.
+
+  **Waarom omgekeerd, nagemeten op 03-09-2026 over 56 samengevoegde PR's.**
+  De mediaan van openen tot samenvoegen was **29 seconden**; 43 ervan gingen
+  binnen 40 seconden, de snelste in 9. Er was dus geen moment waarop iemand
+  kon ingrijpen — en elke merge is hier een deploy naar 100% van het verkeer.
+  Daar bovenop volgde er **14 keer binnen twee uur nóg een PR op dezelfde
+  branch** (`rico-test` zes keer, `testrun-log-prep` vier keer, met gaten van
+  12 en 17 minuten). Deels legitiem nieuw werk, maar PR #80 hieronder is
+  dezelfde vorm en dat was het niet.
+
+  **PR #80, 01-09-2026.** Geopend om 20:52:56, gemerged om 20:53:08: twaalf
+  seconden, op één van de twee commits. De titel was die van de eerste commit,
+  en dat is precies wat het zo makkelijk maakt om te missen — de PR zag er
+  compleet uit. Testrun 6.0 bleef achter op de branch terwijl `main` op 5.9
+  stond, en de deploy die eruit volgde bevatte alleen een bijgewerkte
+  `PIDLANE.md`.
+
+  Daar stond tot 03-09 een gedragsregel onder — *"af, groen, gepusht, dán pas
+  de PR"* — en die regel is goed. Maar hij draaide op oplettendheid, en dat
+  ging te vaak mis. Nu is het een mechanisme: geen label, geen merge.
+- **De basis mag niet zijn opgeschoven.** Een testrun op een PR toetst je
+  branch samengevoegd met `main` *zoals `main` toen was*. Landt er daarna iets
+  anders, dan is die groene vlag verlopen. De workflow blokkeert daarop en
+  vraagt om **Update branch**; hij werkt de branch met opzet niet zelf bij,
+  want een push met `GITHUB_TOKEN` start geen nieuwe testrun (zie hieronder).
+- **Het besluit staat in `automerge-besluit.js`, niet in de YAML.** Als inline
+  script was het niet te toetsen, en een fout daar merk je pas als er iets
+  verkeerds live staat. `public/test-automerge.js` voert de echte functie uit;
+  vier mutaties in `plmutate.sh` houden hem scherp. Verandert de strategie, dan
+  verandert die test mee — en de tabel hierboven.
+- **Een automerge levert géén Tests-run op `main`.** Nagemeten op 03-09-2026:
+  GitHub start geen workflows voor pushes die met de standaard `GITHUB_TOKEN`
+  gedaan zijn (de rem tegen oneindige lussen). PR #120 werd door een mens
+  gemerged en gaf run 173; #121 ging via automerge en gaf niets. Cloudflare
+  Workers Builds is een aparte integratie en deployt wél.
+
+  Gevolg voor het lezen van de Actions-pagina: **de laatste Tests-run op `main`
+  gaat niet per se over wat er nu op `main` staat.** Dat is geen gat in de
+  dekking — de PR-run toetst het samenvoegresultaat, en daarom is de
+  achterstand-poort hierboven de poort die dát waar houdt. Wil je `main` zelf
+  getoetst zien, start *Tests* met de hand via `workflow_dispatch`.
 - **Elke push naar `main` is deployen.** Cloudflare Workers Builds bouwt en
   draait `wrangler deploy`; die deployment krijgt meteen 100% van het verkeer.
   Er zit geen mens tussen die merge en de klant — dat is de reden dat de gate

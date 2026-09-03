@@ -14,6 +14,35 @@
      Build: 2026-09-03 (CET) — KLAAR VOOR DE PLAY STORE:
                                HET SCHERM DAT DE REVIEWER ZIET
 
+       • 🔒 AUTOMERGE IS OPT-IN GEWORDEN. Nagemeten over 56
+         samengevoegde PR's: de mediaan van openen tot mergen was
+         29 SECONDEN, 43 ervan binnen 40 seconden. Er was dus geen
+         moment om in te grijpen — en elke merge is hier een
+         deploy naar 100% van het verkeer. Daarbovenop volgde er
+         14 keer binnen twee uur nóg een PR op dezelfde branch.
+         Vanaf nu: geen label `klaar`, geen merge. `handmatig`
+         blijft als hard veto en wint van `klaar`.
+
+       • ⏱️ EEN VERLOPEN GROENE VLAG TELT NIET MEER. Een PR-run
+         toetst je branch samengevoegd met main zoals main TOEN
+         was. Landt er daarna iets anders, dan zegt dat groene
+         vinkje niets meer over de combinatie die ontstaat — en
+         PR's landen hier 17 minuten na elkaar. De workflow
+         blokkeert nu op een opgeschoven basis en vraagt om
+         Update branch. Zelf bijwerken doet hij met opzet niet:
+         een push met GITHUB_TOKEN start geen testrun, dus dan
+         had je een branch met een ongetoetste head.
+
+       • 🧪 HET BESLUIT STAAT NIET MEER IN DE YAML. Als inline
+         script was het niet te toetsen, en een fout daar merk je
+         pas als er iets verkeerds live staat.
+         automerge-besluit.js is een gewone functie;
+         test-automerge.js voert hem uit met de echte gevallen
+         (#80 als eigen proef) en vier mutaties houden hem
+         scherp. De subtielste: de poort blijft dicht maar zégt
+         het niet meer — dan blijft een PR liggen zoals vóór
+         automerge.
+
        • 🧊 DE BROWSERPROEVEN VIELEN OM OP HUN EIGEN KOUDE
          START. main stond na de merge rood: de eerste van de
          vijf proeven haalde de 30 s niet, terwijl de vier daarna
