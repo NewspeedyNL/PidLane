@@ -161,6 +161,13 @@ MUTATIES=(
 # er iets rood staat.
 ".github/workflows/build-apk.yml@@     - 'public/icon-512.png'\n@@@@test-icoonpad.js@@het icoon in public/ start weer geen build (de fout zoals hij was)"
 ".github/workflows/build-apk.yml@@ICON=\$(ls icon-512.png public/icon-512.png icon-1024.png@@ICON=\$(ls icon-512.png public/icon-512.png icon-1024.png public/logo.png@@test-icoonpad.js@@er komt een iconkandidaat bij die geen build start"
+# ── de weg van de build naar de telefoon (03-09-2026) ──
+# Drie fouten die allemaal een groene buildhistorie naast een oude app
+# opleveren, en de derde is de ergste: een branch-build wordt de publieke
+# download, dus ongetoetste code als \"de app\".
+".github/workflows/build-apk.yml@@zet \"apk/pidlane.apk\"@@zet \"apk/app.apk\"@@test-apkpad.js@@de build schrijft een andere R2-sleutel dan de Worker leest"
+".github/workflows/build-apk.yml@@          npx --yes wrangler@4 r2 object get \"\$BUCKET/apk/pidlane.apk\" \\\n            --file=/tmp/terug.apk --remote@@          true@@test-apkpad.js@@de upload wordt niet meer teruggelezen: \"ok\" van het gereedschap telt weer als bewijs"
+".github/workflows/build-apk.yml@@        if: github.ref == 'refs/heads/main'\n@@@@test-apkpad.js@@een branch-build mag de publieke APK-download overschrijven"
 )
 
 echo

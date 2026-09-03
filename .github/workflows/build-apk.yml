@@ -565,3 +565,85 @@ jobs:
           # twee het geworden is. Zie ANDROID-PLAYSTORE.md.
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
+
+      # ════════════════════════════════════════════════════════════
+      #  DE APK NAAR R2 — waarom deze stap er sinds 03-09-2026 is
+      # ════════════════════════════════════════════════════════════
+      #  De twee stappen hierboven zetten de APK in de ARTEFACTEN van deze
+      #  workflow-run. Dat is een prima archief, maar het is niet waar iemand
+      #  hem vandaan haalt: de Worker serveert /download/pidlane.apk uit R2
+      #  (sleutel `apk/pidlane.apk`, zie handleApkDownload in worker.js), en
+      #  niets vulde die bucket. Wie de app installeerde kreeg dus wat er ooit
+      #  met de hand in R2 was gezet.
+      #
+      #  Nagemeten op 03-09-2026 en dat is de reden dat dit er staat: build
+      #  #424 draaide om 14:37 volledig door, ondertekend en al, met de nieuwe
+      #  foutpagina erin. Om 18:45 toonde het toestel nog steeds de kale
+      #  WebView-fout — niet omdat die pagina niet werkt, maar omdat er geen
+      #  weg was waarlangs die APK op een telefoon kon komen. Een groene
+      #  buildhistorie en een oude app naast elkaar, en niets dat klaagde.
+      #
+      #  ALLEEN VANAF main. Een branch-build hoort nooit de publieke download
+      #  te worden; dat zou ongetoetste code tot "de app" maken.
+      #
+      #  ZONDER SECRET SLAAT HIJ OVER, maar hard zichtbaar. Dezelfde vorm als
+      #  "Prepare signing": doorbouwen mag, stil doen niet.
+      - name: Publiceer de APK naar R2 (alleen main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          BUCKET=pidlane-files
+
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "::warning title=APK niet gepubliceerd::CLOUDFLARE_API_TOKEN of CLOUDFLARE_ACCOUNT_ID ontbreekt. De build is klaar, maar /download/pidlane.apk blijft de OUDE versie serveren."
+            echo "Zet beide als repository secret om dit aan te zetten. Zie ANDROID-PLAYSTORE.md."
+            exit 0
+          fi
+
+          VN=$(node -p "require('./package.json').version")
+          VC=${{ github.run_number }}
+          SOM=$(sha256sum "$APK" | cut -d' ' -f1)
+          GROOTTE=$(stat -c%s "$APK")
+
+          # version.json draagt genoeg om van buiten te zien WELKE build er
+          # ligt — dat was precies wat vandaag ontbrak toen de vraag was of
+          # het toestel de nieuwe APK had.
+          cat > /tmp/version.json <<JSON
+          {
+            "versionName": "$VN",
+            "versionCode": $VC,
+            "commit": "${{ github.sha }}",
+            "run": "${{ github.run_id }}",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "sha256": "$SOM",
+            "bytes": $GROOTTE
+          }
+          JSON
+          echo "── version.json ──"; cat /tmp/version.json
+
+          zet() {
+            npx --yes wrangler@4 r2 object put "$BUCKET/$1" --file="$2" --content-type="$3" --remote
+          }
+          zet "apk/pidlane.apk"   "$APK"           "application/vnd.android.package-archive"
+          zet "apk/version.json"  /tmp/version.json "application/json"
+
+          # ── VERIFIËREN, en niet op de melding van de vorige stap vertrouwen.
+          # Dit project heeft een eigen regel voor waarom: een geruststellende
+          # melding van gereedschap is een waarneming, geen bewijs (zie de
+          # Cloudflare-bot in CLAUDE.md). Hier halen we het object terug en
+          # vergelijken de checksum. Landde er niets, of iets anders, dan valt
+          # de build om — niet de volgende gebruiker.
+          npx --yes wrangler@4 r2 object get "$BUCKET/apk/pidlane.apk" \
+            --file=/tmp/terug.apk --remote
+          TERUG=$(sha256sum /tmp/terug.apk | cut -d' ' -f1)
+          if [ "$TERUG" != "$SOM" ]; then
+            echo "FOUT: wat er in R2 staat is niet wat we uploadden."
+            echo "      geüpload: $SOM"
+            echo "      terug:    $TERUG"
+            exit 1
+          fi
+          echo "APK gepubliceerd en teruggelezen — sha256 $SOM, versionCode $VC."

@@ -823,6 +823,84 @@ op deze machine binnen een halve seconde, dus een lage grens alléén raakt de t
 niet. Dat is dezelfde les als bij de andere toetsen: een proef die niet
 onderscheidt, bewijst niets.
 
+### De build kwam nooit bij de telefoon — 03-09-2026 (opgelost)
+
+De duidelijkste vondst van de dag, en hij verklaart een proef die op niets
+leek te slaan.
+
+**Wat er gebeurde.** De vliegtuigmodus-proef uit `CAMPAGNE` (stap A) werd om
+18:45 gedaan en toonde de kale WebView-fout, precies wat de nieuwe foutpagina
+moest vervangen. De eerste conclusie lag voor de hand: `errorPath` werkt niet.
+
+Dat bleek onjuist, en het uitzoeken loonde. De Android-bron van Capacitor
+8.5.0 is opgehaald en nagelezen: `BridgeWebViewClient.onReceivedError()` vuurt
+bij elke hoofdframe-fout — `ERR_NAME_NOT_RESOLVED` is er één — en laadt dan
+`Bridge.getErrorUrl()`. Die bouwt `scheme://hostname/error.html`, en
+`hostname` staat op de standaard `localhost` omdat wij `server.hostname` niet
+zetten. De pagina komt dus uit de APK zelf en heeft geen netwerk nodig. De
+opzet klopte.
+
+**Waar het wél op stukliep.** `build-apk.yml` zette de APK in de ARTEFACTEN
+van de workflow-run. De Worker serveert `/download/pidlane.apk` uit R2
+(`apk/pidlane.apk`, zie `handleApkDownload`). Niets verbond die twee. Wie de
+app installeerde kreeg dus wat er ooit met de hand in R2 was gezet.
+
+Build #424 draaide om 14:37 volledig door — ondertekend, met de nieuwe
+foutpagina erin. Vier uur later stond op het toestel nog de oude schil, en er
+was geen weg waarlangs die nieuwe APK daar had kunnen komen.
+
+**Waarom dit zo lang onzichtbaar bleef.** Alles wat je normaal controleert
+stond groen: de build slaagde, de handtekening klopte, de artefacten waren
+geüpload. Er was geen enkel signaal dat "gebouwd" en "geïnstalleerd" over
+verschillende dingen gingen. Dat is dezelfde vorm als de Cloudflare-bot met
+zijn "✅ Deployment successful" (#35): een groene melding die een andere vraag
+beantwoordt dan de vraag die je stelde.
+
+**Wat er nu staat.** Een publicatiestap die de APK en een `version.json` naar
+R2 schrijft — alléén vanaf `main`, want een branch-build als publieke download
+zou ongetoetste code tot "de app" maken. Zonder Cloudflare-secret slaat hij
+over met een `::warning`, niet stil: doorbouwen mag, zwijgen niet.
+
+De stap **leest het object terug en vergelijkt de checksum**. Dat is geen
+overdaad maar dezelfde les als de lege `signingConfig` waarmee Gradle stil
+doortekent: een melding van gereedschap is een waarneming, geen bewijs. Landt
+er niets of iets anders, dan valt de build om in plaats van de volgende
+gebruiker.
+
+`version.json` draagt versionName, versionCode, commit, run-id, bouwtijd,
+sha256 en grootte. Dat was precies wat vandaag ontbrak toen de vraag was
+*welke* build er op het toestel stond: die vraag was van buitenaf niet te
+beantwoorden.
+
+**Bewaakt door `public/test-apkpad.js`**: de sleutel die de build schrijft is
+die de Worker leest, de bucket komt uit `wrangler.toml`, de stap is
+main-only, hij verifieert zichzelf, en hij slaat zichtbaar over zonder
+secret. Drie mutaties in `plmutate.sh`.
+
+**Onbewezen tot de eerste echte run.** Of `wrangler r2 object put` in deze
+vorm slaagt, is hier niet te draaien: dat vraagt een bucket en een token. De
+terugleescontrole is er juist om dat niet op vertrouwen te laten aankomen —
+de eerste build op `main` mét secret zegt het, en anders valt hij om.
+
+### Het icoon startte geen build — 03-09-2026 (opgelost)
+
+Klein, en dezelfde vorm als hierboven: twee lijsten die elkaar niet kenden.
+
+De `paths:`-trigger van `build-apk.yml` noemde `icon-512.png` in de wortel van
+de repo; het bestand staat in `public/`. De build vond het logo wel — de
+`ls`-zoeklijst in de icoonstap valt terug op `public/` — maar een gewijzigd
+icoon startte geen build. Groene historie, draaiende APK, en het logo van
+vorige maand er nog in.
+
+`public/test-icoonpad.js` koppelt de twee lijsten nu: elk bestand dat als
+icoon gebruikt kán worden, moet ook een build starten. Hij kijkt en passant of
+het gekozen icoon bestaat, een echte PNG is, vierkant, en minstens 432px — dat
+is de grootste Android-mipmap, daaronder wordt er opgeschaald en dat zie je.
+
+Twee mutaties, want deze koppeling breekt van twee kanten: een pad dat uit de
+trigger valt, en een kandidaat die aan de zoeklijst wordt toegevoegd zonder
+dat de trigger meegaat.
+
 ### Automerge voegde samen in 29 seconden — 03-09-2026 (strategie omgekeerd)
 
 Niet één bevinding maar een meting, en die meting is de reden dat de strategie

@@ -189,6 +189,37 @@ werkt het niet.
 
 Verwijder daarna `~/keystore.b64` van je toestel. De keystore zelf houd je.
 
+### Stap 3b — de secrets voor de APK-download (03-09-2026)
+
+Los van de ondertekening, en om een andere reden: **zonder deze twee blijft
+`/download/pidlane.apk` de oude versie serveren.**
+
+De build zette de APK tot 03-09 alleen in de artefacten van de workflow-run.
+De Worker haalt hem uit R2 (`apk/pidlane.apk`). Niets verbond die twee, dus
+een nieuwe build kwam nooit bij een gebruiker — zie `PIDLANE.md` §11.
+
+Twee secrets erbij, op dezelfde plek als de KEYSTORE-secrets:
+
+| naam | waarde |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | een API-token met **Object Read & Write** op de bucket `pidlane-files` |
+| `CLOUDFLARE_ACCOUNT_ID` | het account-id uit het Cloudflare-dashboard (rechterkolom, of in de URL) |
+
+Het token maak je in Cloudflare → **My Profile → API Tokens → Create Token**.
+Geef hem niet meer rechten dan R2 op die ene bucket: dit token staat in een
+CI-omgeving en hoeft niets anders te kunnen.
+
+Staan ze niet, dan bouwt alles gewoon door en zegt de stap *Publiceer de APK
+naar R2* in het logboek dat hij overslaat — met een `::warning`, zodat je het
+in de samenvatting van de run ziet staan en niet alleen ergens halverwege een
+logboek.
+
+Staan ze wél, dan uploadt hij en **leest hij het object daarna terug om de
+checksum te vergelijken**. Dat is met opzet: een upload die "ok" meldt maar
+niets deed is precies de vorm waar Gradle het eerder liet afweten met een lege
+signingConfig. Klopt de checksum niet, dan valt de build om in plaats van de
+volgende gebruiker.
+
 ### Stap 4 — bouwen en controleren
 
 Push, of start de workflow handmatig. In het logboek hoort te staan:
