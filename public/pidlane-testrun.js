@@ -4958,7 +4958,7 @@ const CAMPAGNE = {
 
     'pidlane-fuel.js \u2014 feat_demo dekt nu beide demoknoppen. test-demo-toegang.js leest de lijst; de nieuwe proef in blok 5 draait de schakelaar echt om, want een selector die er staat maar niets raakt komt alleen zo aan het licht.',
 
-    'plmutate.sh staat op 71 mutaties, alle 71 gevangen.',
+    'plmutate.sh staat op 88 mutaties, alle 88 gevangen.',
 
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.',
 
