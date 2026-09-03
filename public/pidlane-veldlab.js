@@ -364,10 +364,11 @@ function _svDtc(raw, hdr){
 // Readiness-monitors decoderen uit een ruwe 0101-respons (J1979 bytes A-D)
 function _svReadiness(raw){
   try{
-    const h=_svNormHex(raw); const i=h.indexOf('4101');
-    if(i===-1||h.length<i+12) return null;
-    const A=parseInt(h.slice(i+4,i+6),16), B=parseInt(h.slice(i+6,i+8),16),
-          C=parseInt(h.slice(i+8,i+10),16), D=parseInt(h.slice(i+10,i+12),16);
+    // Uitpakken via splitBatchResponse() sinds #116 — zelf naar '4101' zoeken
+    // ging om de ene plek heen waar een antwoord in stukken valt.
+    const b=splitBatchResponse(String(raw||''), ['0101'])['0101'];
+    if(!b||b.length<4) return null;
+    const A=b[0], B=b[1], C=b[2], D=b[3];
     if([A,B,C,D].some(isNaN)) return null;
     const diesel=!!(B&0x08);
     const mons=[];
@@ -575,14 +576,20 @@ async function vlFullSurvey(){
     // ── Extra identiteits-PIDs (buiten supportedPIDs om proberen) ──
     _vlSvUI('Extra PIDs (brandstoftype, odometer)…');
     // 0151: brandstoftype volgens de ECU zelf — kruischeck tegen RDW/gebruiker
+    // Allebei via splitBatchResponse() sinds #116. Voor 01A6 stond de
+    // bytelengte niet in PID_BYTE_LEN; die staat er nu bij (4, J1979), want
+    // zonder tabelwaarde valt de helper terug op één byte en dan is een
+    // kilometerstand van 248.000 ineens 24.
     try{
-      const r=await sendCmd('01511',2000); const h=_svNormHex(r); const i=h.indexOf('4151');
-      if(i!==-1&&h.length>=i+6){ const c=parseInt(h.slice(i+4,i+6),16); if(!isNaN(c)) sv.ecuFuel={code:c, naam:_SV_FUELTYPES[c]||'onbekend ('+c+')'}; }
+      const r=await sendCmd('01511',2000);
+      const b=splitBatchResponse(String(r||''), ['0151'])['0151'];
+      if(b&&b.length>=1){ const c=b[0]; if(!isNaN(c)) sv.ecuFuel={code:c, naam:_SV_FUELTYPES[c]||'onbekend ('+c+')'}; }
     }catch(e){ /* stil: 01A6 odometer — vooral 2019+, ouder geeft NO DATA */ }
     // 01A6: echte odometer via OBD (veel voertuigen 2019+; oudere geven NO DATA)
     try{
-      const r=await sendCmd('01A61',2500); const h=_svNormHex(r); const i=h.indexOf('41A6');
-      if(i!==-1&&h.length>=i+12){ const v=parseInt(h.slice(i+4,i+12),16); if(!isNaN(v)&&v>0) sv.odoKm=Math.round(v/10); }
+      const r=await sendCmd('01A61',2500);
+      const b=splitBatchResponse(String(r||''), ['01A6'])['01A6'];
+      if(b&&b.length>=4){ const v=((b[0]*256+b[1])*256+b[2])*256+b[3]; if(!isNaN(v)&&v>0) sv.odoKm=Math.round(v/10); }
     }catch(e){ console.warn('Survey: stabiliteitsmeting mislukt:', e); }
 
     // ── Variantie-sampling: ruisprofiel van dynamische sensoren ──

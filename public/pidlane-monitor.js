@@ -138,14 +138,20 @@ const PLMon = {
   async _readStatus(){
     const r = await sendCmd('0101', 4000);
     if (!r || /NO DATA|ERROR|UNABLE/i.test(r)) return null;
-    // Multi-ECU: pak de eerste regel met 4101; teller = hoogste over ECU's.
+    // Multi-ECU: elke ECU stuurt zijn eigen 4101-regel, dus per regel door
+    // splitBatchResponse(); teller = hoogste over ECU's.
+    //
+    // Dat uitpakken gebeurde hier tot #116 met een eigen zoekactie naar de
+    // 41-echo, en daarmee ging deze module om de ene plek heen waar een
+    // antwoord in stukken valt én de meetkwaliteit geteld wordt. Wat deze lus niet kende
+    // maar de helper wél: framemarkers midden in een regel, 29-bits
+    // CAN-headers, en ISO-TP-padding achteraan.
     let mil=null, count=null, ready='';
     for (const line of String(r).split(/[\r\n]+/)){
-      const hex = line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
-      const i = hex.indexOf('4101');
-      if (i<0 || hex.length < i+12) continue;
-      const A = parseInt(hex.slice(i+4,  i+6),16);
-      const rdy = hex.slice(i+6, i+12);              // bytes B,C,D
+      const b = splitBatchResponse(line, ['0101'])['0101'];
+      if (!b || b.length < 4) continue;
+      const A = b[0];
+      const rdy = b.slice(1,4).map(x=>x.toString(16).toUpperCase().padStart(2,'0')).join('');  // bytes B,C,D
       const m = (A & 0x80) !== 0;
       const c = A & 0x7F;
       if (count===null || c>count){ count=c; mil=m; }

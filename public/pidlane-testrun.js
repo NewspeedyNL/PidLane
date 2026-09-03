@@ -1535,8 +1535,10 @@ async function _blok8() {
     try {
       const rk = await sendCmd('0105', 2500);
       if (!leeg(rk)) {
-        const h = hex(rk), i = h.indexOf('4105');
-        if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
+        // Uitpakken via splitBatchResponse() sinds #116: de testrun mag niet
+        // zijn eigen parser hebben naast die van de app — dan meet hij zichzelf.
+        const b = splitBatchResponse(String(rk), ['0105'])['0105'];
+        if (b && b.length) koel = b[0] - 40;
       }
     } catch (e) { console.warn('Koelwater-anker niet gelezen — de plausibiliteitscheck van de olietemperatuur draait dan zonder ijkpunt', e); }
     _boek(8, 'Koelwater (0105)', koel == null ? 'LET OP' : 'ok',
@@ -1702,8 +1704,9 @@ async function _blok9() {
     // Koelwater als ijkpunt: een olietemperatuur moet daar in de buurt liggen.
     let koel = null;
     try {
-      const rk = await sendCmd('0105', 2500), h = hex(rk), i = h.indexOf('4105');
-      if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;
+      const rk = await sendCmd('0105', 2500);
+      const b = splitBatchResponse(String(rk || ''), ['0105'])['0105'];   // #116
+      if (b && b.length) koel = b[0] - 40;
     } catch (e) { console.warn('Koelwater-anker niet gelezen — de DID-scan draait dan zonder ijkpunt voor de temperatuur-verdachten', e); }
 
     _boek(9, 'Scan gestart', 'ok', 'reeks 2211xx op header 7E0, 256 identifiers' +
@@ -3176,6 +3179,53 @@ async function _blok5() {
 //            uit, en hoeveel doen hun eigen fetch?
 //   punt 12  bytelengtes → staan 0155/0156 er nog steeds naast?
 const _bronCache = {};
+/* De modulelijst voor blok 11 komt uit de DOM en niet uit een lijst hier.
+   ─────────────────────────────────────────────────────────────────────
+   Tot #116 liep punt 6 twee met de hand bijgehouden lijstjes van bestandsnamen
+   af. Die liepen uit de pas, precies zoals CLAUDE.md over elke tweede lijst
+   zegt: pidlane-testrun.js en pidlane-voertuigdata.js pakten allebei zelf een
+   41-header uit en stonden in geen van beide. De telling meldde daardoor acht
+   plekken over vijf modules terwijl het er elf over zeven waren — en de
+   inventarisatie die de maat moest zijn, mat naast.
+   De <script>-regels in index.html zijn de enige lijst die niet kan verouderen:
+   staat een module er niet in, dan draait hij ook niet. */
+function _appModules() {
+  const uit = [];
+  try {
+    const el = document.querySelectorAll('script[src]');
+    for (let i = 0; i < el.length; i++) {
+      const src = String(el[i].getAttribute('src') || '').split('?')[0];
+      if (/(^|\/)pidlane-[^/]+\.js$/.test(src) && uit.indexOf(src) === -1) uit.push(src);
+    }
+  } catch (e) { console.warn('Testrun: de modulelijst is niet uit de DOM te lezen — blok 11 telt dan niets', e); }
+  return uit;
+}
+
+function _modNaam(pad) {
+  return String(pad).replace(/^.*\//, '').replace('pidlane-', '').replace('.js', '');
+}
+
+/* Regels die met // of * beginnen zijn commentaar en geen code. Zonder deze
+   zeef telt een zin ÓVER een aanroep mee als de aanroep zelf — en dan wordt
+   het uitleggen van een reparatie een bevinding. */
+function _zonderCommentaar(bron) {
+  return String(bron).split('\n').filter(function (r) { return !/^\s*(\/\/|\*|\/\*)/.test(r); }).join('\n');
+}
+
+/* splitBatchResponse() zelf telt niet mee: dát indexOf('41') IS het uitpakken,
+   en de helper die de telling meet als overtreder aanrekenen maakt de telling
+   onhaalbaar. De ankers zijn dezelfde als die test-parser.js gebruikt om die
+   functie los in te laden; verdwijnt er een, dan geeft dit null terug en meldt
+   blok 11 het bestand als niet gelezen in plaats van stilletjes goed. */
+function _zonderParser(bron) {
+  const t = String(bron);
+  const a = t.indexOf('function splitBatchResponse');
+  if (a < 0) return _zonderCommentaar(t);
+  const b = t.indexOf('window.plMeetPidLengte', a);
+  if (b < 0) return null;
+  return _zonderCommentaar(t.slice(0, a) + t.slice(b));
+}
+
 async function _bron(naam) {
   if (Object.prototype.hasOwnProperty.call(_bronCache, naam)) return _bronCache[naam];
   let t = null;
@@ -3617,36 +3667,47 @@ async function _blok11() {
 
   // ── PUNT 6: verspreide logica, de inventarisatie die dat punt als eerste vraagt ──
   await _doe(11, 'Punt 6: wie pakt zelf een 41-header uit', async function () {
-    const mods = ['pidlane-bt.js', 'pidlane-diagbundel.js', 'pidlane-graph.js', 'pidlane-monitor.js',
-                  'pidlane-uitgebreid.js', 'pidlane-veldlab.js', 'pidlane-verify.js', 'pidlane-waakronde.js'];
-    const eigen = [], viaHelper = [], onleesbaar = [];
+    const mods = _appModules();
+    if (!mods.length) return { staat: 'LET OP', detail: 'geen modules uit de DOM te lezen — deze telling zegt niets' };
+    const eigen = [], anderModus = [], viaHelper = [], onleesbaar = [];
     for (const m of mods) {
+      const naam = _modNaam(m);
       const bron = await _bron(m);
-      if (bron == null) { onleesbaar.push(m.replace('pidlane-', '').replace('.js', '')); continue; }
-      const helper = (bron.match(/splitBatchResponse/g) || []).length;
-      // Ruwe maat: een eigen zoekactie naar een 41-antwoordkop.
-      const zelf = (bron.match(/indexOf\(\s*['"]4[0-9A-F]/gi) || []).length;
-      const naam = m.replace('pidlane-', '').replace('.js', '');
+      if (bron == null) { onleesbaar.push(naam); continue; }
+      const romp = _zonderParser(bron);
+      if (romp == null) { onleesbaar.push(naam + ' (ankers van de parser weg)'); continue; }
+      const helper = (romp.match(/splitBatchResponse/g) || []).length;
+      // Mode 01: een eigen zoekactie naar de 41-echo. Dít is wat
+      // splitBatchResponse() doet, dus dit hoort op nul te staan.
+      const zelf = (romp.match(/indexOf\(\s*['"]41/gi) || []).length;
+      // Andere modes: 42 (freeze frame) en 43/47/4A (foutcodes).
+      // splitBatchResponse() spreekt alléén mode 01 — zijn sleutels zijn
+      // '01'+suffix en zijn lengtetabel is PID_BYTE_LEN. Die antwoorden kán
+      // hij dus niet overnemen; ze staan hier als stand, niet als bevinding.
+      const anders = (romp.match(/indexOf\(\s*['"]4[23789A]/gi) || []).length;
       if (helper) viaHelper.push(naam + '(' + helper + ')');
       if (zelf) eigen.push(naam + '(' + zelf + ')');
+      if (anders) anderModus.push(naam + '(' + anders + ')');
     }
-    const staart = onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '';
+    const staart = (anderModus.length ? '  |  buiten mode 01 (niet door de helper te doen): ' + anderModus.join(', ') : '') +
+                   (onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '');
     if (!eigen.length && !onleesbaar.length)
-      return 'geen enkele module pakt nog zelf uit — punt 6 is op dit onderdeel klaar';
-    return { staat: 'LET OP', detail: 'eigen uitpakwerk: ' + (eigen.join(', ') || 'geen') +
+      return 'geen enkele module pakt nog zelf een 41-header uit — punt 6 is op dit onderdeel klaar' + staart;
+    return { staat: 'LET OP', detail: 'eigen uitpakwerk in mode 01: ' + (eigen.join(', ') || 'geen') +
       '  |  via splitBatchResponse: ' + (viaHelper.join(', ') || 'geen') + staart };
   });
 
   await _doe(11, 'Punt 6: hoeveel modules doen hun eigen fetch', async function () {
-    const mods = ['pidlane-auth.js', 'pidlane-fuel.js', 'pidlane-koopcheck.js', 'pidlane-remote.js',
-                  'pidlane-veldlab.js', 'pidlane-credits.js', 'pidlane-klant.js', 'pidlane-export.js'];
+    const mods = _appModules();
+    if (!mods.length) return { staat: 'LET OP', detail: 'geen modules uit de DOM te lezen — deze telling zegt niets' };
     const rij = [], onleesbaar = [];
     let totaal = 0;
     for (const m of mods) {
+      const naam = _modNaam(m);
       const bron = await _bron(m);
-      if (bron == null) { onleesbaar.push(m.replace('pidlane-', '').replace('.js', '')); continue; }
-      const n = (bron.match(/[^.\w]fetch\s*\(/g) || []).length;
-      if (n) { rij.push(m.replace('pidlane-', '').replace('.js', '') + ': ' + n); totaal += n; }
+      if (bron == null) { onleesbaar.push(naam); continue; }
+      const n = (_zonderCommentaar(bron).match(/[^.\w]fetch\s*\(/g) || []).length;
+      if (n) { rij.push(naam + ': ' + n); totaal += n; }
     }
     const heeftHelper = (typeof window.plFetch === 'function');
     const staart = onleesbaar.length ? '  |  niet gelezen: ' + onleesbaar.join(', ') : '';

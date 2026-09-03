@@ -370,10 +370,12 @@ async function brandstofPoort(){
   // ── 2. De auto zelf vragen ──
   try{
     const r = await sendCmd('0151', 2500);
-    const h = String(r||'').replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
-    const i = h.indexOf('4151');
-    if(i >= 0){
-      const code = parseInt(h.substr(i+4,2), 16);
+    // Uitpakken via splitBatchResponse() sinds #116. Deze module en
+    // pidlane-veldlab.js stelden allebei dezelfde vraag (0151, brandstoftype)
+    // en pakten hem allebei zelf uit; nu doet één plek dat werk.
+    const b = splitBatchResponse(String(r||''), ['0151'])['0151'];
+    if(b && b.length){
+      const code = b[0];
       if(isFinite(code) && code >= 1){
         // In pidVals zetten: vehicleFuelType() leest die als terugval, dus
         // hiermee weten de gate en de health-scan het meteen.

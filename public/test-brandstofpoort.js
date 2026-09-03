@@ -5,6 +5,29 @@ const fs=require('fs');
 let ok=0,fout=0;
 function t(n,v,d){ if(v){ok++;console.log('  ok    '+n);} else {fout++;console.log('  FOUT  '+n+(d?' — '+d:''));} }
 
+// ── de echte meetketen erbij (#116) ──────────────────────────────────
+// brandstofPoort() pakte zijn 4151-antwoord zelf uit met indexOf. Sinds #116
+// gaat dat door splitBatchResponse(), en die functie wordt hier UIT DE BRON
+// geladen en niet nagebouwd: een eigen kopie kan per definitie niet rood
+// worden en loopt uit de pas zonder dat iemand het ziet. De bytelengtes komen
+// om dezelfde reden uit pidlane-data.js en niet uit een tabelletje hier.
+// pidByteLen() is wél nagebouwd, met dezelfde reden als in test-parser.js: die
+// woont in pidlane-rijsituatie.js, en die module hangt de halve app aan het
+// scherm terwijl splitBatchResponse er alleen de tabelopzoeking van nodig heeft.
+function laadMeetketen(){
+  const dataSrc=fs.readFileSync('pidlane-data.js','utf8');
+  const a=dataSrc.indexOf('window.PID_BYTE_LEN');
+  const ha=dataSrc.indexOf('{',a), hb=dataSrc.indexOf('};',ha);
+  if(a<0||ha<0||hb<0) throw new Error('PID_BYTE_LEN niet uit pidlane-data.js te knippen');
+  global.PID_BYTE_LEN=eval('('+dataSrc.slice(ha,hb+1)+')');
+  global.pidByteLen=function(sfx){ return global.PID_BYTE_LEN[String(sfx).toUpperCase()]||1; };
+  const dsrc=fs.readFileSync('pidlane-diagbundel.js','utf8');
+  const p=dsrc.indexOf('function splitBatchResponse'), q=dsrc.indexOf('function parsePID',p);
+  if(p<0||q<0) throw new Error('splitBatchResponse niet uit pidlane-diagbundel.js te knippen');
+  global.splitBatchResponse=eval('('+dsrc.slice(p,q)+')');
+}
+laadMeetketen();
+
 function stel(opties){
   global.window={};
   global.vehicleInfo={merk:'',model:'',year:'',vin:'',brandstof:opties.brandstof||'',motor:''};

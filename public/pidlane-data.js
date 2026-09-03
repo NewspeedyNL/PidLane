@@ -922,7 +922,13 @@ window.PID_BYTE_LEN ={
   '5A':1,'5B':1,'5C':1,'5D':2,'5E':2,'5F':1,'60':4,'61':1,'62':1,'63':2,
   '64':5,'65':2,'66':5,'67':3,'68':7,'69':7,'6A':5,'6B':5,'6C':5,'6D':11,
   '6E':9,'6F':3,'70':9,'71':5,'72':5,'73':5,'74':5,'75':7,'76':7,'77':5,
-  '78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,'80':4,'A0':4,'C0':4
+  '78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,'80':4,'A0':4,'C0':4,
+  // A6 = odometer, 4 bytes (J1979). Stond er niet in, en daardoor viel
+  // pidByteLen('A6') terug op de bodem van één byte. Zolang veldlab dat PID
+  // zelf uitpakte viel dat niet op; sinds #116 loopt het via
+  // splitBatchResponse() en dan is die ene byte het verschil tussen 248.000 km
+  // en 24 km.
+  'A6':4
 };
 
 // ── PLPidLen — zelfcorrigerende bytelengtes (2026-07-26) ──────────────

@@ -110,6 +110,14 @@ MUTATIES=(
 "public/pidlane-data.js@@  if(!tok) return (typeof alsBezet==='function')?await alsBezet():undefined;@@@@test-busslot.js@@de poort negeert een bezette bus en praat er dwars doorheen"
 "public/pidlane-data.js@@    if(lim<=0) return this.claim(naam);@@@@test-busslot.js@@de hersteltik gaat tóch staan wachten in plaats van eenmalig te proberen"
 "public/pidlane-monitor.js@@    return await withBusOfNiets('monitor', ()=>this._cycleWerk());@@    const t = PLBus.claim('monitor'); if (!t) return; return await this._cycleWerk();@@test-busslot.js@@een module claimt het busslot weer met de hand, buiten de poort om"
+# ── het uitpakken van een 41-antwoord (#116) ──
+# De fout die hier telt is niet "de decoder rekent verkeerd" maar "de decoder
+# gaat om de helper heen". Dat valt alleen op bij antwoordvormen die zijn
+# eigen indexOf-lus niet kende: framemarkers midden in de regel.
+"public/pidlane-verify.js@@    const b=splitBatchResponse(String(r), ['01'+pp])['01'+pp];\n    if (!b || !b.length) return null;\n    const A=b[0];\n    const B=b.length>=2 ? b[1] : 0;@@    const hex=String(r).replace(/[^0-9A-Fa-f]/g,'').toUpperCase();\n    const i=hex.indexOf('41'+pp);\n    if (i<0 || hex.length<i+6) return null;\n    const A=parseInt(hex.slice(i+4,i+6),16);\n    const B=hex.length>=i+8 ? parseInt(hex.slice(i+6,i+8),16) : 0;@@test-uitpakken.js@@de focus-decoder pakt zijn antwoord weer zelf uit"
+"public/pidlane-veldlab.js@@    const b=splitBatchResponse(String(raw||''), ['0101'])['0101'];\n    if(!b||b.length<4) return null;\n    const A=b[0], B=b[1], C=b[2], D=b[3];@@    const h=_svNormHex(raw); const i=h.indexOf('4101');\n    if(i===-1||h.length<i+12) return null;\n    const A=parseInt(h.slice(i+4,i+6),16), B=parseInt(h.slice(i+6,i+8),16),\n          C=parseInt(h.slice(i+8,i+10),16), D=parseInt(h.slice(i+10,i+12),16);@@test-uitpakken.js@@de readiness-decoder pakt zijn 0101 weer zelf uit"
+"public/pidlane-data.js@@  'A6':4\n};@@  'A6':1\n};@@test-uitpakken.js@@de odometer krijgt weer één byte in plaats van vier"
+"public/pidlane-testrun.js@@        const b = splitBatchResponse(String(rk), ['0105'])['0105'];\n        if (b \&\& b.length) koel = b[0] - 40;@@        const h = hex(rk), i = h.indexOf('4105');\n        if (i >= 0) koel = parseInt(h.substr(i + 4, 2), 16) - 40;@@test-uitpakken.js@@de testrun pakt zijn koelwater-anker weer zelf uit"
 )
 
 echo
