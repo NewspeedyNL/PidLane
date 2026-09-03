@@ -14,6 +14,28 @@
      Build: 2026-09-03 (CET) — KLAAR VOOR DE PLAY STORE:
                                HET SCHERM DAT DE REVIEWER ZIET
 
+       • 📦 DE BUILD KOMT NU BIJ DE TELEFOON. De APK ging naar
+         de artefacten van de workflow-run; /download/pidlane.apk
+         serveert uit R2; niets verbond die twee. Build #424
+         draaide om 14:37 door met de nieuwe foutpagina erin, en
+         om 18:45 stond op het toestel nog de oude schil — er was
+         geen weg waarlangs die APK daar kon komen. Nu publiceert
+         de build naar R2, alleen vanaf main, en hij leest het
+         object terug en vergelijkt de checksum. Zonder
+         Cloudflare-secret slaat hij over met een waarschuwing,
+         niet stilletjes.
+
+       • 🔎 EN DAARMEE IS errorPath NIET WEERLEGD. De bron van
+         Capacitor 8.5.0 is nagelezen: onReceivedError laadt de
+         foutpagina uit de APK zelf (hostname blijft localhost),
+         dus zonder netwerk. De proef mat een oude APK, niet een
+         kapotte opzet.
+
+       • 🖼️ EEN GEWIJZIGD ICOON START WEER EEN BUILD. De trigger
+         noemde icon-512.png in de wortel; het bestand staat in
+         public/. test-icoonpad.js koppelt de trigger aan de
+         zoeklijst van de icoonstap.
+
        • 🔒 AUTOMERGE IS OPT-IN GEWORDEN. Nagemeten over 56
          samengevoegde PR's: de mediaan van openen tot mergen was
          29 SECONDEN, 43 ervan binnen 40 seconden. Er was dus geen
