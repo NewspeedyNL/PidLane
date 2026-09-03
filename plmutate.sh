@@ -150,7 +150,11 @@ MUTATIES=(
 # besluit hier voegt iets samen wat niet af is, en elke merge is een deploy.
 # De vierde is de subtielste en daarom belangrijk: de poort blijft dicht maar
 # zegt het niet meer, en dan blijft een PR liggen zoals vóór automerge.
-"automerge-besluit.js@@  if (labels.indexOf(LABEL_KLAAR) < 0) {@@  if (false) {@@test-automerge.js@@de klaar-poort staat open: alles wordt weer vanzelf samengevoegd"
+"automerge-besluit.js@@  if (!heeftLabel(labels, LABEL_KLAAR)) {@@  if (false) {@@test-automerge.js@@de klaar-poort staat open: alles wordt weer vanzelf samengevoegd"
+"automerge-besluit.js@@  return (labels || []).some(l => String(l).trim().toLowerCase() === gezocht);@@  return (labels || []).indexOf(naam) >= 0;@@test-automerge.js@@labels weer hoofdlettergevoelig: `Klaar` doet niets meer"
+"automerge-besluit.js@@  if (f.testsGroen !== true) {@@  if (false) {@@test-automerge.js@@via de labelroute wordt er samengevoegd zonder dat de testgate groen staat"
+".github/workflows/automerge.yml@@        with:\n          ref: \${{ github.event.repository.default_branch }}@@@@test-automerge.js@@de checkout pakt bij een label-event de PR-head: een PR schrijft zijn eigen mergeregels"
+".github/workflows/automerge.yml@@  pull_request:\n    types: [labeled]@@@@test-automerge.js@@het label doet niets meer als je het ná de testrun zet"
 "automerge-besluit.js@@  if (f.headRepo !== f.eigenRepo) {@@  if (false) {@@test-automerge.js@@een PR uit een fork wordt weer samengevoegd door de bot"
 "automerge-besluit.js@@  if (typeof f.achterstand === 'number' && f.achterstand > 0) {@@  if (false) {@@test-automerge.js@@een verlopen groene vlag telt weer: de basis mag opgeschoven zijn"
 "automerge-besluit.js@@             melden: true, sleutel: 'geen-klaar' };@@             melden: false, sleutel: 'geen-klaar' };@@test-automerge.js@@een PR zonder label blijft stil liggen in plaats van het te zeggen"

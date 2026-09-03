@@ -46,6 +46,28 @@
 const LABEL_KLAAR = 'klaar';
 const LABEL_VETO  = 'handmatig';
 
+/* ── Labels vergelijken: hoofdletterongevoelig, en dat is een correctie ──
+   De eerste versie van 03-09-2026 vergeleek exact, met een toets die er
+   expliciet bij zei dat `Klaar` NIET als `klaar` telt. De redenering was "een
+   tikfout mag geen toestemming zijn". Dat was fout, en het ging dezelfde dag
+   nog mis: het label werd als `Klaar` aangemaakt, de PR bleef liggen, en de
+   merge ging alsnog met de hand — precies het gedrag dat deze poort moest
+   vervangen.
+
+   Waarom de oorspronkelijke redenering niet klopte: GitHub behandelt
+   labelnamen zélf hoofdletterongevoelig. Je kunt geen `klaar` én `Klaar`
+   naast elkaar hebben; het ís één label, en welke schrijfwijze je ziet hangt
+   af van wie hem aanmaakte. Exact vergelijken toetst dus niet op een tikfout
+   maar op iets wat GitHub niet als verschil erkent — en dat levert een label
+   op dat er goed uitziet en niets doet.
+
+   Wat wél een ander label is, blijft een ander label: `af`, `ready`,
+   `klaar!`. Alleen de schrijfwijze wordt vergeven, niets anders. */
+function heeftLabel(labels, naam) {
+  const gezocht = String(naam).toLowerCase();
+  return (labels || []).some(l => String(l).trim().toLowerCase() === gezocht);
+}
+
 /**
  * @param {object} f  de feiten over deze PR:
  *   nummer        {number}
@@ -56,6 +78,8 @@ const LABEL_VETO  = 'handmatig';
  *   headSha       {string}  waar de PR NU staat
  *   getesteSha    {string}  waar de groene testrun op draaide
  *   mergeable     {boolean|null}  null = GitHub rekent nog
+ *   testsGroen    {boolean|null}  staat *Tests* groen op headSha? null =
+ *                                 niet vast te stellen, en dat telt als nee
  *   achterstand   {number|null}   commits die base voorloopt op head
  *   baseRef       {string}
  * @returns {{samenvoegen:boolean, reden:string, melden:boolean, sleutel:string}}
@@ -79,7 +103,7 @@ function besluit(f) {
 
   // 2. HARD VETO — wint van `klaar`. Twee labels die elkaar tegenspreken is
   // geen patstelling: nee gaat voor ja.
-  if (labels.indexOf(LABEL_VETO) >= 0) {
+  if (heeftLabel(labels, LABEL_VETO)) {
     return { samenvoegen: false, reden: 'label `' + LABEL_VETO + '` staat erop',
              melden: false, sleutel: 'veto' };
   }
@@ -93,7 +117,7 @@ function besluit(f) {
   // 4. GEEN `klaar` — de nieuwe standaard, en het enige geval waarin een PR
   // blijft liggen zonder dat er iets mis is. Daarom MOET dit op de PR staan:
   // stil laten liggen is precies de toestand die automerge moest opheffen.
-  if (labels.indexOf(LABEL_KLAAR) < 0) {
+  if (!heeftLabel(labels, LABEL_KLAAR)) {
     return { samenvoegen: false,
              reden: 'wacht op het label `' + LABEL_KLAAR + '`',
              melden: true, sleutel: 'geen-klaar' };
@@ -107,6 +131,30 @@ function besluit(f) {
              reden: 'doorgepusht na de geteste commit (' +
                     String(f.getesteSha).slice(0, 7) + ' → ' + String(f.headSha).slice(0, 7) + ')',
              melden: false, sleutel: 'verschoven' };
+  }
+
+  // 5b. STAAT DE TESTGATE GROEN OP DEZE COMMIT?
+  //
+  // Bij de eerste opzet was dit impliciet: de workflow vuurde alléén op het
+  // afronden van *Tests*, dus groen was een gegeven. Dat had een gat dat
+  // dezelfde dag opdook — zet je het label ERNA, dan gebeurt er niets meer,
+  // want er komt geen tweede Tests-run. De PR blijft liggen tot je opnieuw
+  // pusht, en in de praktijk merge je dan met de hand. Precies het gedrag dat
+  // deze poort moest vervangen.
+  //
+  // Daarom draait de workflow nu óók op het zetten van een label, en langs
+  // die weg is groen géén gegeven meer: hij zoekt de Tests-run bij deze
+  // commit op en geeft het antwoord hier door. Onbekend (null) telt als niet
+  // groen — bij twijfel niet samenvoegen.
+  //
+  // Geen melding: draait de gate nog, dan komt de workflow_run-route hier
+  // vanzelf weer langs zodra hij klaar is.
+  if (f.testsGroen !== true) {
+    return { samenvoegen: false,
+             reden: f.testsGroen === false
+               ? 'de testgate staat niet groen op ' + String(f.headSha).slice(0, 7)
+               : 'geen afgeronde testrun gevonden op ' + String(f.headSha).slice(0, 7),
+             melden: false, sleutel: 'niet-groen' };
   }
 
   // 6. GITHUB REKENT NOG — mergeable is dan null. Geen bevinding en geen
