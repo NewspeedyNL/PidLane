@@ -40,7 +40,12 @@ var KRITIEK = [
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo',
   'ensurePIDListActive','ensurePIDsActive',
-  'featOn','finishLogin','fv',
+  // applyFeatureToggles erbij op 03-09-2026. Blok 5 draait de schakelaar
+  // feat_demo echt om om te zien of beide demoknoppen verdwijnen; dat gaat
+  // achter een typeof-guard omdat de proef ook draait als pidlane-fuel.js niet
+  // geladen is. Ontbreekt die functie, dan meldt de proef dat en zwijgt hij
+  // niet — maar zonder deze regel zou de guard zelf de stille fout zijn.
+  'applyFeatureToggles','featOn','finishLogin','fv',
   'getPidDef','getVehicle','goHome',
   'ecuSteunt','hasTesterConsent','healthUitProfiel',
   // De twee helften van #78 (02-09-2026). plHealthHerzien() laat een negatief

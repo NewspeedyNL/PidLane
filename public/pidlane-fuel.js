@@ -267,7 +267,13 @@ const FEATURE_TOGGLES = {
   feat_situatie:     ['#situatieBtn','#sitBlok','#vtagSit','#situatieSheet'],
   feat_pdf:          ['button[onclick^="exportAIReportPDF"]','#pdfReadyModal'],
   feat_ai_reply:     ['#aiReplyWrap'],
-  feat_demo:         ['[id="btnDemo"]'],
+  // BEIDE demoknoppen, en dat is geen dubbelop. #btnDemo staat in het
+  // verbindscherm, #btnDemoLogin op het loginscherm — die tweede kwam er bij
+  // de Play Store-ronde van 21-08 bij, maar niet hier. Gevolg: met
+  // feat_demo=false verdween de ene knop en bleef de andere staan als dode
+  // knop die alleen "uitgeschakeld door beheerder" toonde. Precies de knop
+  // waar de reviewnotitie naar verwijst.
+  feat_demo:         ['[id="btnDemo"]','[id="btnDemoLogin"]'],
   feat_tokens:       ['#tokPill']
 };
 function featOn(key){ try{ return _cfgBool((window.PID_CONFIG||{})[key], true); }catch(e){ return true; } }

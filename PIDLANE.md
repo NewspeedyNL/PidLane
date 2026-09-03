@@ -755,7 +755,7 @@ voor.
 
 ## 11. Bekende problemen — nog niet opgelost
 
-Bijgewerkt 02-09-2026. `PLAN.md`, `OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan
+Bijgewerkt 03-09-2026. `PLAN.md`, `OVERDRACHT.md` en `PIDLANE-WERK.md` bestaan
 niet meer. **Wat er open staat, staat in de issues** — dit hoofdstuk noemt geen
 enkele stand van zaken en bewaart alleen de uitleg eromheen: waarom iets stuk
 was, wat er al geprobeerd is, en welke conclusie achteraf fout bleek. Dat
@@ -770,6 +770,122 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+### De schil had geen scherm voor "de app laadt niet" — 03-09-2026 (opgelost)
+
+Gevonden bij de Play Store-ronde, en het is een blinde vlek die er vanaf de
+eerste APK in zat.
+
+`capacitor.config.json` zet `server.url` op `https://app.pidlane.nl`. De APK is
+dus een schil om een live site: alles wat je ziet komt van die URL. Dat is een
+bewuste keuze en hij is goed — een wijziging in de webcode staat meteen op elk
+toestel, zonder nieuwe build. Wat er niet bij bedacht was, is wat er gebeurt
+als die URL níét komt.
+
+**Dan neemt de Android-WebView het over**, met zijn eigen foutpagina:
+`net::ERR_NAME_NOT_RESOLVED` op een wit vlak. Er staat geen naam op, geen
+uitleg, geen knop. Wie dat ziet concludeert niet "ik heb geen internet" maar
+"deze app is stuk", en er is geen tweede scherm dat hem op andere gedachten
+brengt.
+
+De gevallen waarin dit gebeurt zijn niet exotisch: vliegtuigmodus, een
+parkeergarage, een gastnetwerk dat eerst om een inlogpagina vraagt, of
+Cloudflare die even stil is. Voor een Play-reviewer op een kantoornetwerk is
+het laatste geval genoeg om de app als kapot af te schrijven — en dat is een
+afwijzing waar weken op gewacht wordt, op een oorzaak die niets met de app te
+maken heeft.
+
+**Waarom dit niet eerder opviel.** Elke test die er is draait op een machine
+mét netwerk. `plbrowser.sh` start de echte `index.html` in Chromium, en die
+laadt van schijf. De browserproeven meten dus de app, nooit de schil eromheen.
+Dat is geen gat in de proeven maar in de vraag: er wás geen proef die "en als
+er niets komt?" stelde.
+
+**Wat er nu staat.** `server.errorPath` wijst naar `error.html` in de webDir;
+Capacitor laadt dat bestand zodra de hoofdpagina niet komt. `build-apk.yml`
+schrijft die pagina naast de bestaande stub. Hij noemt `app.pidlane.nl` bij
+naam, geeft drie dingen om te proberen, zegt erbij dat de adapter zelf geen
+internet nodig heeft — dat is de vraag die een gebruiker hier stelt — en heeft
+een knop die herlaadt.
+
+De pagina haalt **niets** van het net. Geen lettertype, geen stylesheet, geen
+plaatje. Dat klinkt vanzelfsprekend en is het niet: precies deze fout hield de
+browserproef maandenlang tegen, waar één `<link>` naar Google Fonts in de
+`<head>` ervoor zorgde dat elk `<script>` op openstaande CSS bleef wachten die
+zonder internet nooit kwam. Een foutpagina met een externe verwijzing laadt
+niet op het enige moment waarop hij getoond wordt.
+
+**Wat de gate hiervan wél en niet kan zien.** De naam `error.html` staat op
+twee plekken — in `capacitor.config.json` en in `build-apk.yml` — en dat is de
+vorm waar dit project al drie keer op is stukgelopen. `test-foutpagina.js`
+koppelt ze: hij haalt de heredocs uit de workflow, kijkt of het bestand dat
+`errorPath` noemt er echt bij zit, en toetst dat de pagina zelfstandig is.
+Drie mutaties in `plmutate.sh` houden dat scherp.
+
+Wat hij **niet** kan zien is of Capacitor die pagina ook werkelijk laadt. Dat
+is de werking van de schil, niet van deze repo, en het vraagt een APK op een
+toestel zonder netwerk. Het staat daarom als stap A in `CAMPAGNE`: vliegtuigmodus
+aan, app koud starten, en kijken welk van de twee schermen er komt. **Tot die
+rit is dit een aanname**, geen gemeten feit — de vorige keer dat hier een
+aanname als conclusie werd genoteerd (de Cloudflare-bot en "Deployment
+successful") kostte dat drie PR's aan documentatie die niets verbeterde.
+
+### De featureschakelaar dekte één van twee knoppen — 03-09-2026 (opgelost)
+
+`FEATURE_TOGGLES.feat_demo` in `pidlane-fuel.js` noemde één selector:
+`[id="btnDemo"]`, de demoknop in het verbindscherm. Op 21-08 kwam er een tweede
+demoknop bij, `#btnDemoLogin` op het loginscherm, en wel om een goede reden:
+een reviewer zonder account zag daarvoor alleen een loginformulier. Die knop
+werd toen niet aan deze lijst toegevoegd.
+
+Het gevolg is de vervelendste soort: niet kapot, maar half. Met `feat_demo` op
+`false` in de AppConfig-tabel verbergt `applyFeatureToggles()` de ene knop en
+laat de andere staan. Die andere doet dan niets meer dan een toast tonen —
+`plDemoZonderLogin()` weigert immers netjes. Een zichtbare knop die niets doet
+is voor een reviewer erger dan een knop die er niet is: de reviewnotitie wijst
+er letterlijk naar, dus hij zoekt hem, vindt hem, en drukt op iets doods.
+
+**Het patroon erachter is bekend in dit project**: één ding, twee plekken. De
+demoknop is één functie met twee ingangen, en er was één plek die dat wist en
+één die het niet wist. Aan of uit mag de beheerder bepalen; half niet.
+
+**Twee toetsen, en ze doen expres iets anders.**
+`test-demo-toegang.js` leest de lijst en eist dat beide id's erin staan — dat
+vangt de fout zoals hij ontstond. De nieuwe proef in blok 5 draait de
+schakelaar in de draaiende app werkelijk om en kijkt wat de gegenereerde CSS
+raakt. Dat is het geval dat de eerste niet ziet: een selector die netjes in de
+lijst staat maar niets treft, doordat een id hernoemd is of een specifiekere
+regel hem overstemt.
+
+### De reviewnotitie stond even in twee bestanden — 03-09-2026
+
+Klein, maar het hoort hier omdat het dezelfde fout is als twee eerdere.
+
+Bij het opstellen van `PLAY-INZENDING.md` — het kopieerdocument voor de Play
+Console — kwamen de reviewnotitie, de Data safety-tabel en de afvinklijst in
+dat nieuwe bestand te staan terwijl ze ook in `ANDROID-PLAYSTORE.md` bleven.
+Twee lijsten van hetzelfde, en dat is precies waar `PIDLANE-WERK.md` (27-08) en
+§11 zelf (02-09) op zijn stukgelopen.
+
+Bij een reviewnotitie is de schade bovendien uitgesteld en gericht: je merkt
+pas dat de twee uit de pas lopen wanneer een reviewer een knop zoekt die sinds
+de vorige ronde anders heet. Dan staat er in het ene bestand de oude tekst, in
+het andere de nieuwe, en in de Console wat je toevallig het laatst hebt
+geplakt.
+
+**Opgelost langs de regel die er al stond.** `PLAY-INZENDING.md` draagt de
+tekst, `ANDROID-PLAYSTORE.md` de redenering eromheen — wat er tussen jou en een
+goedkeuring staat, waarom een keuze zo gemaakt is, wat er misging. Het tweede
+verwijst naar het eerste en herhaalt het niet.
+
+**Wat hier het vermelden waard is: de gate ving het zelf.**
+`test-demo-toegang.js` las de belofte "Try demo — no adapter needed" uit
+`ANDROID-PLAYSTORE.md` om te toetsen dat de knoptekst in `index.html` er
+woordelijk gelijk aan is. Zodra die tekst verhuisde werd die toets rood, met de
+naam van de controle erbij. Dat is het verschil tussen een koppeling die
+bewaakt wordt en een afspraak die op oplettendheid draait — en het is de reden
+dat die toets nu naar het nieuwe bestand wijst in plaats van dat de controle is
+weggehaald.
 
 ### De buspoort: drie vormen die hetzelfde deden — 03-09-2026 (#115/#116/#117)
 

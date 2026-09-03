@@ -72,17 +72,73 @@ jobs:
 
       - name: Create www stub (webDir)
         run: |
-          # De echte app laadt live via server.url (GitHub Pages).
+          # De echte app laadt live via server.url (app.pidlane.nl, Cloudflare).
           # Capacitor heeft alleen een bestaande webDir nodig om te kunnen syncen.
+          #
+          # TWEE bestanden, en het tweede is er voor de reviewer.
+          #
+          # index.html  — de schil laadt hem nooit zolang server.url antwoordt.
+          # error.html  — WEL, en dat is het punt. Capacitor laadt server.errorPath
+          #               uit de lokale webDir zodra de hoofdpagina niet komt: geen
+          #               netwerk, DNS stuk, of app.pidlane.nl plat. Zonder die
+          #               pagina ziet de gebruiker de kale WebView-fout
+          #               ("net::ERR_NAME_NOT_RESOLVED" op een wit vlak), en dat
+          #               leest als een kapotte app in plaats van als een
+          #               ontbrekende verbinding. Voor een Play-reviewer op een
+          #               haperend gastnetwerk is dat het verschil tussen
+          #               "werkt niet" en "ik zet mijn wifi aan".
+          #
+          # De naam error.html staat OOK in capacitor.config.json (server.errorPath).
+          # Dat zijn twee plekken, en daarom bewaakt public/test-foutpagina.js dat
+          # ze hetzelfde zeggen — anders bouwt dit stilzwijgend een schil met een
+          # errorPath die nergens heen wijst, en valt de gebruiker alsnog op de
+          # kale WebView-fout terug.
           mkdir -p www
           cat > www/index.html <<'HTML'
           <!doctype html><html lang="nl"><head><meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>PidLane</title></head>
           <body style="background:#0D1117;color:#fff;font-family:sans-serif;text-align:center;padding-top:40vh">
-          PidLane laadt live via GitHub Pages…</body></html>
+          PidLane laadt…</body></html>
           HTML
-          echo "www/index.html aangemaakt"
+          cat > www/error.html <<'HTML'
+          <!doctype html>
+          <html lang="nl"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+          <title>Geen verbinding — PidLane</title>
+          <style>
+            :root{color-scheme:dark}
+            body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+                 background:#0D1117;color:#e6edf3;
+                 font:400 15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+                 padding:24px env(safe-area-inset-right) 24px env(safe-area-inset-left);box-sizing:border-box}
+            main{max-width:400px;text-align:center}
+            h1{font-size:20px;margin:0 0 10px;color:#fff}
+            p{color:#c9d1d9;margin:0 0 14px}
+            .k{background:#161b22;border:1px solid #21262d;border-radius:10px;
+               padding:12px 14px;margin:18px 0;text-align:left;font-size:13.5px;color:#8b949e}
+            ul{margin:6px 0 0;padding-left:18px}
+            li{margin-bottom:5px}
+            button{background:#1f6feb;color:#fff;border:0;border-radius:9px;
+                   padding:12px 22px;font-size:15px;font-weight:600;cursor:pointer}
+          </style></head>
+          <body><main>
+            <h1>Geen verbinding</h1>
+            <p>PidLane kon zichzelf niet laden. De app haalt zijn schermen van
+               <strong>app.pidlane.nl</strong>, en dat lukt nu niet.</p>
+            <div class="k">Probeer dit:
+              <ul>
+                <li>Zet wifi of mobiel internet aan.</li>
+                <li>Staat de vliegtuigmodus uit?</li>
+                <li>Op een gastnetwerk: is de inlogpagina al langsgekomen?</li>
+              </ul>
+            </div>
+            <p style="font-size:13px;color:#8b949e">Verbinden met de OBD2-adapter gaat
+               via Bluetooth en heeft geen internet nodig — het laden van de app zelf wel.</p>
+            <button onclick="location.reload()">Opnieuw proberen</button>
+          </main></body></html>
+          HTML
+          echo "www/index.html en www/error.html aangemaakt"
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4.4.0

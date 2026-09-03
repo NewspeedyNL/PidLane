@@ -5,7 +5,8 @@
   "server": {
     "androidScheme": "https",
     "url": "https://app.pidlane.nl",
-    "cleartext": false
+    "cleartext": false,
+    "errorPath": "error.html"
   },
   "plugins": {
     "BluetoothLe": {

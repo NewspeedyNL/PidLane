@@ -1,6 +1,9 @@
 # ANDROID-PLAYSTORE.md — wat er nog tussen jou en een goedkeuring staat
 
-Bijgewerkt: 28-08-2026. Nagelopen op de repo zoals hij nu is.
+Bijgewerkt: 03-09-2026. Nagelopen op de repo zoals hij nu is.
+
+De invulteksten voor de Play Console staan in `PLAY-INZENDING.md`; dit bestand
+legt uit waaróm ze zo luiden. Zie het kopje onderaan.
 
 Dit gaat alleen over de Android-kant en de review. Voor de app zelf:
 `PIDLANE.md`. Voor wat er nu speelt: de GitHub-issues.
@@ -303,111 +306,45 @@ dat de inhoud meeschuift, en dat zie je op één schermbreedte niet.
 
 ---
 
-## Reviewnotitie en storebeschrijving
+## De teksten zelf staan ergens anders
 
-Vier plekken moeten hetzelfde verhaal vertellen. Loopt er één uiteen, dan is
-dat precies wat een reviewer opmerkt — en het kost je een afwijzing waar je
-weken op wacht.
+Alles wat de Play Console als **invulveld** vraagt — app-naam, korte en
+volledige beschrijving, reviewnotitie, Data safety veld voor veld,
+contentclassificatie, releasenotities, het screenshotplan — staat in
+**`PLAY-INZENDING.md`**. Eén bestand, kopieerklaar.
 
-| plek | waar | wat |
-|---|---|---|
-| Reviewnotitie | Play Console → release → *App access* | hoe je zonder hardware bij de functionaliteit komt |
-| Storebeschrijving | Play Console → *Store listing* | Bluetooth-diagnose als kernfunctie |
-| Data safety-form | Play Console → *App content* | gelijk aan `privacy.html` |
-| In de app | `pidlane-privacy.js` + `privacy.html` | onderling gelijk |
+Waarom het daar staat en niet hier: die tekst stond op 03-09-2026 even in
+allebei, en dat is dezelfde vorm die `PIDLANE-WERK.md` en §11 van
+`PIDLANE.md` de kop kostte. Twee lijsten van hetzelfde lopen uit de pas, en
+bij een reviewnotitie merk je dat pas als de reviewer een knop zoekt die
+sinds de vorige ronde anders heet.
 
-### De reviewnotitie zelf
+De taakverdeling is dus:
 
-Een reviewer heeft geen auto en geen OBD2-adapter. Zonder uitleg krijgt hij een
-app die blijft hangen op "verbinden", en dat leest als kapot in plaats van als
-ontbrekende hardware. De demoknop is hier je sterkste kaart. Tekst om te
-plakken in *App access*:
+| bestand | waarvoor |
+|---|---|
+| dit bestand | wat er tussen jou en een goedkeuring stáát — de blokkades, waarom een keuze zo gemaakt is, wat er misging |
+| `PLAY-INZENDING.md` | de uitkomst: de tekst die je plakt, en de afvinklijst vóór de knop |
 
-> PidLane leest de boordcomputer van een auto uit via een OBD2-adapter in de
-> diagnosepoort. De hoofdfunctie vereist die hardware en een voertuig, en is
-> daarom niet volledig te beoordelen zonder beide.
->
-> Voor de review is er een demomodus die zonder adapter en zonder auto werkt.
-> Op het startscherm staat de knop "Try demo — no adapter needed", direct
-> onder de verbindknop. Daarna kies je een voorbeeldvoertuig (of vult een
-> Nederlands kenteken in) en draait de app op opgenomen meetdata: live
-> sensorwaarden, foutcodes, grafieken en het diagnoserapport.
->
-> Er is geen account nodig voor de demo.
->
-> De Bluetooth-permissie wordt uitsluitend gebruikt om de OBD2-adapter te
-> vinden en ermee te communiceren. De scanpermissie is aangevraagd met
-> neverForLocation; de app bepaalt geen locatie via Bluetooth. Vóór het eerste
-> verbinden toont de app hiervoor een aparte uitleg met een weigeroptie.
->
-> Vragen: info@pidlane.nl
+**De regel die eronder ligt blijft gelden.** Vier plekken vertellen hetzelfde
+verhaal: `PLAY-INZENDING.md`, `public/privacy.html`, `public/verwijderen.html`
+en het disclosurescherm in `public/pidlane-privacy.js`. Loopt er één uiteen,
+dan is dat precies wat een reviewer opmerkt.
 
-**Controleer vóór de inzending dat de demo aanstaat.** `startDemo()` zit achter
-`featOn('feat_demo')`, en die leest `PID_CONFIG` uit Airtable (AppConfig-tabel).
-Staat `feat_demo` daar op `false`, dan verbergt `applyFeatureToggles()` de knop
-zelfs met CSS — de reviewer ziet hem dan niet eens, terwijl je notitie ernaar
-verwijst. Standaard staat hij aan; het risico zit in een oude configregel.
+Twee dingen die de gate daarvan bewaakt, zodat ze niet op oplettendheid
+hoeven te draaien:
 
-### Storebeschrijving
+- `public/test-demo-toegang.js` — de knoptekst in `index.html` is woordelijk
+  gelijk aan wat de reviewnotitie in `PLAY-INZENDING.md` belooft, de knop
+  staat vóór de inlogmuur, en de beheerdersschakelaar `feat_demo` dekt beide
+  demoknoppen.
+- `public/test-playteksten.js` — de invulvelden passen binnen de limieten van
+  de Console, en de URL's in het inzenddocument zijn dezelfde als die de app
+  en `privacy.html` noemen.
 
-Tegen de "minimum functionality"-toets moet de beschrijving expliciet maken dat
-er native hardwarefunctionaliteit in zit die een browser niet kan. Noem in de
-eerste alinea:
+Wat de gate *niet* kan zien, en wat dus met de hand langs moet vóór het
+inzenden, staat als open vinkje in §16 van `PLAY-INZENDING.md`.
 
-- verbinding met een OBD2-adapter via Bluetooth
-- uitlezen van foutcodes en live sensorwaarden uit het voertuig
-- dat het om diagnose van een echte auto gaat, niet om een informatie-app
-
-## Data safety-form
-
-Wat je aankruist moet kloppen met `privacy.html` én met de disclosure in de app.
-Een tegenstrijdigheid tussen die drie is een afwijzing waar je lang op wacht.
-
-| categorie | verzameld | gedeeld | reden |
-|---|---|---|---|
-| E-mailadres | ja | nee | account en inloggen |
-| App-activiteit (diagnoses) | ja | nee | rapporten bewaren bij het account |
-| Apparaat-/andere gegevens (VIN, sensorwaarden) | ja | ja | AI-analyse via Anthropic |
-| Locatie | **nee** | nee | niet verzameld — zie blokkade 1 |
-| Foto's/media, contacten, agenda, sms | nee | nee | — |
-
-Vermeld bij "gedeeld" dat meetwaarden naar de aanbieder van het taalmodel gaan.
-Dat is echt delen met een derde partij, ook al staat er geen naam bij.
-
----
-
-## Vóór je op inzenden drukt
-
-- [x] Keuze gemaakt bij blokkade 1 (geen locatie), manifest en code komen overeen
-- [x] `.aab` gebouwd en ondertekend (build #405); `versionCode` loopt mee met
-      `run_number`, dus hoger dan de vorige inzending
-- [ ] `.aab` opnieuw gebouwd op Capacitor 8 — de bundel van #405 staat op
-      API 34 en wordt bij de upload geweigerd
-- [x] SPP-verbinding getoetst met een echte adapter ná de plugin-wisseling —
-      testrun 5.2, 28-08-2026 19:08: OBDLink MX+ op een Mazda CX-5, Android 16,
-      volledige sweep 45 gelezen / 0 geen data / 0 parserprobleem, foutgraad 0%
-- [ ] Topbalk en onderranden bekeken op een Android 15+-toestel (edge-to-edge) —
-      topbalk en Logboek zijn gemeten (37px marge); de andere vijf vensters
-      (testrunpaneel, Veldlab, diepe diagnose, neon-HUD, rittracker) nog niet
-- [ ] `versionName` in de Play Console komt overeen met `package.json` én
-      `public/config.js` — die twee liepen tot 21-08 acht versies uiteen; de CI
-      faalt nu hard als dat opnieuw gebeurt
-- [ ] `info@pidlane.nl` bestaat en wordt gelezen
-- [ ] `privacy.html` bereikbaar op de publieke URL
-- [ ] Disclosure getest op een schoon toestel: hij hoort te verschijnen vóór het
-      Android-permissiedialoog, niet erna
-- [ ] Weigerknop getest: geen permissieverzoek, geen verbinding, app blijft heel
-- [ ] Data safety-form ingevuld en gelijk aan `privacy.html`
-- [ ] Verwijder-URL ingevuld bij *App content → Data deletion* (zie #41 —
-      `privacy.html` belooft nu iets wat de app niet heeft)
-- [ ] Betaalregels nagelezen voor de Tikkie-route (#42)
-- [ ] Reviewnotitie ingevuld in *App access* (tekst hierboven)
-- [ ] `feat_demo` staat AAN in de AppConfig-tabel — anders is de demoknop
-      verborgen en klopt je reviewnotitie niet
-- [ ] Demo één keer doorlopen op een schoon toestel zonder adapter
-- [ ] Storebeschrijving noemt de Bluetooth-diagnosefunctie als kernfunctie
-
----
 
 ## Wat er verder opviel
 

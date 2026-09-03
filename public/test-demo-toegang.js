@@ -26,7 +26,13 @@
 const fs = require('fs');
 const index = fs.readFileSync('index.html', 'utf8');
 const demo = fs.readFileSync('pidlane-demo.js', 'utf8');
-const doc = fs.readFileSync('../ANDROID-PLAYSTORE.md', 'utf8');
+// De reviewnotitie staat in PLAY-INZENDING.md, niet in ANDROID-PLAYSTORE.md.
+// Tot 03-09-2026 stond hij in dat tweede bestand; hij is verhuisd toen de
+// tekst even in allebei stond en dat de bekende tweede lijst opleverde.
+// ANDROID-PLAYSTORE.md bewaart sindsdien de redenering, dit bestand de tekst
+// die de reviewer daadwerkelijk te lezen krijgt — en dus is dít het bestand
+// waar de knoptekst gelijk aan moet zijn.
+const doc = fs.readFileSync('../PLAY-INZENDING.md', 'utf8');
 let fout = 0;
 
 function toets(naam, ok, detail) {
@@ -65,6 +71,33 @@ const belofte = 'Try demo — no adapter needed';
 toets('knoptekst staat zo in index.html', index.indexOf(belofte) > -1);
 toets('reviewnotitie belooft exact diezelfde tekst', doc.indexOf(belofte) > -1,
   'loopt de tekst uiteen, dan zoekt de reviewer naar een knop die er niet staat');
+
+// ── de beheerdersschakelaar pakt allebei de knoppen ──
+// feat_demo komt uit de AppConfig-tabel en verbergt de demo met CSS. Er zijn
+// TWEE demoknoppen: #btnDemo in het verbindscherm en #btnDemoLogin op het
+// loginscherm. Dekt de schakelaar er maar één, dan zet "demo uit" de ene weg
+// en laat de andere staan als dode knop — die toont dan alleen een toast
+// "uitgeschakeld door beheerder". Voor een reviewer die de reviewnotitie
+// volgt is dat erger dan geen knop: hij ziet wat hem beloofd is en het doet
+// niets. Aan of uit mag de beheerder bepalen; half niet.
+const fuel = fs.readFileSync('pidlane-fuel.js', 'utf8');
+// Let op de vorm van het anker: de selectors zijn attribuutselectors, dus er
+// staan blokhaken IN de lijst ('[id="btnDemo"]'). Een regex die tot de eerste
+// ] leest, leest maar de helft en meldt een fout die er niet is. Vandaar de
+// hele regel.
+const mTog = fuel.match(/^\s*feat_demo:\s*(.+)$/m);
+toets('feat_demo staat in de featureschakelaars', !!mTog,
+  'hernoemd of verdwenen uit FEATURE_TOGGLES?');
+if (mTog) {
+  toets('feat_demo dekt de knop in het verbindscherm', mTog[1].indexOf('btnDemo"') > -1);
+  toets('feat_demo dekt óók de knop op het loginscherm', mTog[1].indexOf('btnDemoLogin') > -1,
+    'anders blijft de knop van de reviewnotitie staan terwijl hij niets meer doet');
+}
+
+// En de weigering zelf moet er blijven: de knop mag nooit een demo starten
+// die de beheerder heeft uitgezet, ook niet als de CSS-regel ooit sneuvelt.
+toets('plDemoZonderLogin weigert als feat_demo uit staat', /featOn\(\s*'feat_demo'\s*\)/.test(body),
+  'de CSS-regel is de eerste poort, deze controle is de tweede');
 
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);
