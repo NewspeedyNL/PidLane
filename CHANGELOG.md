@@ -51,7 +51,7 @@
          de privacy- en verwijder-URL naar bestaande bestanden op
          dezelfde host wijzen, en dat het document nergens BEWEERT
          dat gegevens anoniem zijn — pseudonimisering is dat niet.
-         plmutate.sh staat op 67 mutaties, alle 67 gevangen.
+         plmutate.sh staat op 71 mutaties, alle 71 gevangen.
 
        • ⚠️ WAT DE GATE NIET KAN ZIEN. Of Capacitor die foutpagina
          ook werkelijk laadt, is de werking van de schil en vraagt
