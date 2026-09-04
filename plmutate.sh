@@ -198,8 +198,8 @@ MUTATIES=(
 # hier tellen zijn niet rekenfouten maar weggevallen grendels: ze geven geen
 # foutmelding, ze geven méér dan de bedoeling was.
 "worker.js@@    if (geheim.indexOf(k) >= 0) {@@    if (false) {@@test-adminbron.js@@de wachtwoordhash en het resettoken gaan mee naar de beheerpagina"
-"worker.js@@    if (verboden.indexOf(n) >= 0)\n      return `Het veld \"${n}\" is hier afgeschermd en wordt via zijn eigen route gewijzigd.`;@@@@test-adminbron.js@@Saldo en PassHash zijn hierlangs tóch te schrijven, buiten het saldoslot om"
-"worker.js@@  if (!b.def.schrijven) return json({ ok: false, error: `De bron \"${b.def.naam}\" is alleen-lezen.` }, 403);@@@@test-adminbron.js@@AppConfig is hierlangs te schrijven, langs de cacheverversing van /api/config heen"
+"worker.js@@  const verboden = (def.beschermd || []).concat(def.geheim || []);@@  const verboden = [];@@test-adminbron.js@@Saldo en PassHash zijn hierlangs tóch te schrijven, buiten het saldoslot om"
+"worker.js@@    schrijven: false, beschermd: [], geheim: []@@    schrijven: true, beschermd: [], geheim: []@@test-adminbron.js@@AppConfig is hierlangs te schrijven, langs de cacheverversing van /api/config heen"
 "worker.js@@      if (ids.length > 10) return json({ ok: false, error: \"Maximaal 10 records per keer wissen.\" }, 400);@@@@test-adminbron.js@@meer dan tien records tegelijk wissen wordt stil half uitgevoerd"
 "worker.js@@  if (veld && !VELDNAAM_OK.test(veld)) return json({ ok: false, error: \"Ongeldige veldnaam.\" }, 400);@@@@test-adminbron.js@@een veldnaam met formuletekens gaat ongefilterd de Airtable-formule in"
 
