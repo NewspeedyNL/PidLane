@@ -11,6 +11,54 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04c (CET) — DE KAART NA DE EERSTE RIT
+
+       • ✅ HIJ WERKTE. 04-09 om 11:49 op de CX-5: 171 s, 1260
+         commando's, ACHTTIEN stuurapparaten gevonden door
+         waarneming. De VIN uit 22F190 op adres 70E, plus
+         Mazda-onderdeelnummers (B61L-67XK6-B), serienummer en
+         hardwareversie. Op 7E8 vijftig mode 01-PIDs met ruwe
+         bytes. En 01A6 staat er NIET bij — de generieke
+         odometer bestaat op deze auto niet, precies zoals de
+         km-check voorspelde.
+
+       • 🚨 MAAR HET VERSLAG LOOG OVER ZEVENTIEN MODULES. De
+         scan liep per module de hele trap af en brak af bij
+         193 van de 2944 op de EERSTE. De andere zeventien
+         waren nooit aangeraakt — en van elk stond er "geen
+         enkele identifier bestaat hier". Afwezigheid als
+         bewijs, in de module die daar juist tegen is.
+
+       • 🔄 BREEDTE VÓÓR DIEPTE. De buitenste lus is nu de
+         TREDE, de binnenste de module. Dezelfde 171 seconden
+         leveren nu het identificatieblok van álle achttien.
+         Elke module houdt per trede bij of hij volledig,
+         afgebroken na n van m, of NIET BEREIKT is — en het
+         verslag zegt dat met zoveel woorden.
+
+       • 🔌 HET HERSTEL WERD NOOIT BEWEZEN. sendCmd() gooit
+         niet als de ELM-poort dicht staat na een socketdood;
+         hij geeft een lege string. De try/catch ving dus
+         niets en het verslag meldde een geslaagd herstel
+         terwijl geen van de vijf commando's was aangekomen.
+         Nu wordt elke bevestiging gecontroleerd.
+
+       • ⏱️ DE SCHATTING WAS EEN FACTOR VIER MIS. Vooraf wordt
+         met zes modules gerekend; deze auto heeft er achttien,
+         en 136 ms per commando in plaats van 85. "27 min"
+         had ~120 moeten zijn. De schatting wordt nu ná de
+         ontdekking opnieuw gemaakt, met het echte aantal en
+         de gemeten snelheid, vóórdat de trap begint.
+
+       • ⏳ 7F xx 78 IS GEEN WEIGERING maar "antwoord volgt
+         later" (gezien op 73F). Er wordt nu één keer opnieuw
+         gelezen.
+
+       • 📋 test-kaart.js staat op 67 toetsen, plmutate.sh op
+         108 mutaties — alle 108 gevangen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-04b (CET) — DE DATAPUNTENKAART
 
        • 🗺️ KNOP "KAART MAKEN" IN DE TESTRUN (blok 15). Neemt

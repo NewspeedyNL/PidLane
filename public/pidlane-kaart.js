@@ -554,46 +554,105 @@
         }
       }
 
-      // ── FASE 5: de DID-trap ──────────────────────────────────────
+      // ── FASE 5: de DID-trap, BREEDTE VÓÓR DIEPTE ────────────────
+      // Gemeten op de CX-5 (04-09-2026, 11:49): achttien stuurapparaten.
+      // De eerste opzet liep per module de hele trap af — 2944 identifiers
+      // op 70E vóórdat 728 aan de beurt kwam. De scan brak na 171 s af op
+      // een weggevallen socket en stond toen op 193 van de 2944, bij de
+      // EERSTE module. Zeventien modules waren nooit aangeraakt.
+      //
+      // Diezelfde tijd, breedtegewijs besteed, levert het complete
+      // identificatieblok van álle achttien op. Vandaar de omkering: de
+      // buitenste lus is de TREDE, de binnenste de module. Wat er dan
+      // afgebroken wordt, is de minst waardevolle trede — niet zeventien
+      // stuurapparaten.
       var trap = opties.volledig
         ? [{ naam: 'alles', van: 0x0000, tot: 0xFFFF, bron: 'volledige sweep' }]
         : (opties.trap || DID_TRAP);
       K.trap = trap.map(function (t) { return { naam: t.naam, van: t.van, tot: t.tot, bron: t.bron }; });
-      var dids = didLijst(trap);
 
-      for (var mj = 0; mj < K.modules.length && !_stop; mj++) {
-        var m2 = K.modules[mj];
-        if (!m2.tx) continue;
-        if (!(m2.services['22'] && m2.services['22'].soort !== 'stil')) {
-          m2.didOvergeslagen = 'mode 22 gaf niets — geen UDS-server op dit adres';
-          continue;
-        }
-        await _richt(stuur, m2.tx, m2.rx, K.bits);
-        _voortgang.totaal = dids.length; _voortgang.gedaan = 0;
-        for (var di = 0; di < dids.length && !_stop; di++) {
-          _voortgang.gedaan = di + 1;
-          var did = dids[di].toString(16).toUpperCase().padStart(4, '0');
-          var res = _eersteVoor(splitsRegels(await stuur('22' + did), K.bits), m2.rx);
-          if (!res) continue;
-          var d = duid(ontpak(res.data).bytes, '22');
-          if (d.soort === 'positief') {
-            m2.dids.push({ did: did, bytes: byteHex(d.payload.slice(2)), len: Math.max(0, d.payload.length - 2) });
-          } else if (d.soort === 'geweigerd' && d.nrc !== '31' && d.nrc !== '11') {
-            m2.dids.push({ did: did, geweigerd: d.nrc, reden: d.nrcTekst });
-          }
-          if (di % 64 === 0) meld('dids', m2.rx + ' — identifier ' + did + ', ' +
-            m2.dids.length + ' treffers', { module: m2.rx, gedaan: di + 1, totaal: dids.length });
-        }
-        if (m2.services['21'] && m2.services['21'].soort !== 'stil') {
-          for (var p21 = 0; p21 <= 0xFF && !_stop; p21++) {
-            var r21 = _eersteVoor(splitsRegels(await stuur('21' + hex2(p21)), K.bits), m2.rx);
-            if (!r21) continue;
-            var d21 = duid(ontpak(r21.data).bytes, '21');
-            if (d21.soort === 'positief') {
-              m2.mode21.push({ pid: hex2(p21), bytes: byteHex(d21.payload.slice(1)) });
+      // Welke modules doen mee, en waarom de rest niet. Een 7F 22 11 is
+      // "deze service bestaat hier niet"; alles daarboven — ook 7F 22 31 —
+      // betekent dat mode 22 leeft en alleen deze identifier onbekend is.
+      var udsModules = [];
+      K.modules.forEach(function (m) {
+        if (!m.tx) { m.didOvergeslagen = 'geen zendadres bekend'; return; }
+        var sv = m.services['22'];
+        if (!sv || sv.soort === 'stil') { m.didOvergeslagen = 'mode 22 gaf niets terug'; return; }
+        if (sv.soort === 'geweigerd' && sv.nrc === '11') { m.didOvergeslagen = 'mode 22 wordt hier niet ondersteund (7F 22 11)'; return; }
+        m.trede = {};
+        udsModules.push(m);
+      });
+
+      // De schatting opnieuw, nu met het ECHTE aantal modules. Vooraf stond
+      // er 6 als aanname en dat is op deze auto een factor drie mis: de
+      // gebruiker kreeg "27 min" te zien waar het er ~120 zouden worden.
+      var perCmd = K.commandos > 40 ? (Date.now() - t0) / K.commandos : CFG.msPerCmd;
+      K.msPerCmd = Math.round(perCmd);
+      var nogCmds = udsModules.length * didLijst(trap).length;
+      K.schattingNa = { commandos: nogCmds, ms: Math.round(nogCmds * perCmd), tekst: _duur(nogCmds * perCmd) };
+      meld('dids', 'gemeten ' + K.msPerCmd + ' ms per commando; de volledige trap over ' +
+        udsModules.length + ' stuurapparaten kost nog ' + K.schattingNa.tekst +
+        ' — de treden gaan van waardevol naar speculatief, dus stoppen mag altijd',
+        { schatting: K.schattingNa });
+
+      for (var ti = 0; ti < trap.length && !_stop; ti++) {
+        var trede = trap[ti];
+        var tredeDids = didLijst([trede]);
+        for (var mj = 0; mj < udsModules.length && !_stop; mj++) {
+          var m2 = udsModules[mj];
+          await _richt(stuur, m2.tx, m2.rx, K.bits);
+          _voortgang.totaal = tredeDids.length; _voortgang.gedaan = 0;
+          var gedaan = 0;
+          for (var di = 0; di < tredeDids.length && !_stop; di++) {
+            _voortgang.gedaan = di + 1; gedaan = di + 1;
+            var did = tredeDids[di].toString(16).toUpperCase().padStart(4, '0');
+            var res = _eersteVoor(splitsRegels(await stuur('22' + did), K.bits), m2.rx);
+            if (!res) continue;
+            var d = duid(ontpak(res.data).bytes, '22');
+            // NRC 78 = "antwoord volgt later". Dat is geen weigering maar een
+            // belofte; op 73F kwam hij in de rit van 04-09 op service 19. Eén
+            // keer opnieuw lezen is genoeg — blijft het 78, dan pas noteren.
+            if (d.soort === 'geweigerd' && d.nrc === '78') {
+              await pauze(120);
+              var her = _eersteVoor(splitsRegels(await stuur('22' + did), K.bits), m2.rx);
+              if (her) d = duid(ontpak(her.data).bytes, '22');
             }
+            if (d.soort === 'positief') {
+              m2.dids.push({ did: did, trede: trede.naam, bytes: byteHex(d.payload.slice(2)), len: Math.max(0, d.payload.length - 2) });
+            } else if (d.soort === 'geweigerd' && d.nrc !== '31' && d.nrc !== '11') {
+              m2.dids.push({ did: did, trede: trede.naam, geweigerd: d.nrc, reden: d.nrcTekst });
+            }
+            if (di % 64 === 0) meld('dids', trede.naam + ' op ' + m2.rx + ' — identifier ' + did +
+              ', ' + m2.dids.length + ' treffers', { module: m2.rx, gedaan: di + 1, totaal: tredeDids.length });
+          }
+          // WAT ER IS GEDAAN, EN WAT NIET. Zonder deze regel meldt het verslag
+          // "geen enkele identifier bestaat hier" voor een module die nooit
+          // aan de beurt kwam — afwezigheid als bewijs, precies wat deze
+          // module hoort uit te bannen.
+          m2.trede[trede.naam] = (gedaan >= tredeDids.length) ? 'volledig'
+            : (gedaan ? 'afgebroken na ' + gedaan + ' van ' + tredeDids.length : 'niet bereikt');
+        }
+      }
+
+      // Mode 21 pas ná de hele trap: hij is speculatiever dan de genormeerde
+      // identifiers en mag dus als eerste sneuvelen bij een afbreking.
+      for (var mk2 = 0; mk2 < udsModules.length && !_stop; mk2++) {
+        var m21 = udsModules[mk2];
+        if (!(m21.services['21'] && m21.services['21'].soort !== 'stil')) continue;
+        if (m21.services['21'].soort === 'geweigerd' && m21.services['21'].nrc === '11') continue;
+        await _richt(stuur, m21.tx, m21.rx, K.bits);
+        var g21 = 0;
+        for (var p21 = 0; p21 <= 0xFF && !_stop; p21++) {
+          g21 = p21 + 1;
+          var r21 = _eersteVoor(splitsRegels(await stuur('21' + hex2(p21)), K.bits), m21.rx);
+          if (!r21) continue;
+          var d21 = duid(ontpak(r21.data).bytes, '21');
+          if (d21.soort === 'positief') {
+            m21.mode21.push({ pid: hex2(p21), bytes: byteHex(d21.payload.slice(1)) });
           }
         }
+        m21.mode21Gedaan = g21;
       }
 
       // ── FASE 6: welke datapunten BEWEGEN? ────────────────────────
@@ -630,13 +689,28 @@
       // De adapter ALTIJD terug in de staat waarin de rest van de app hem
       // verwacht. Blijft ATH1 of een gezet header staan, dan krijgt elke
       // andere module vanaf nu antwoorden die hij niet kan parsen.
+      // HERSTEL MOET BEWEZEN WORDEN, NIET AANGENOMEN.
+      // sendCmd() GOOIT niet als de ELM-poort dicht staat (herinitialisatie
+      // na een socketdood) — hij geeft een lege string terug. Een try/catch
+      // ving dus niets, en het verslag meldde een geslaagd herstel terwijl er
+      // geen enkel commando de adapter bereikt had. Gemeten op 04-09: de
+      // socket viel om 11:52:01 weg, de scan brak twee seconden later af, en
+      // alle vijf de herstelcommando's zijn stilzwijgend geweigerd. Dat de
+      // adapter tóch goed stond, kwam door de ELM-herinitialisatie die
+      // toevallig hetzelfde zet — geluk, geen ontwerp.
       var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', 'ATST' + CFG.stHerstel];
+      var mislukt = [];
       for (var h = 0; h < herstel.length; h++) {
-        try { await sendCmd(herstel[h], CFG.atTimeoutMs); }
-        catch (e2) {
-          K.herstelFout = (K.herstelFout || '') + herstel[h] + ' mislukt; ';
-          diag('PLKaart: herstel "' + herstel[h] + '" mislukt — verbreek en verbind opnieuw', 'err');
-        }
+        var antw = '';
+        try { antw = String(await sendCmd(herstel[h], CFG.atTimeoutMs) || ''); }
+        catch (e2) { antw = ''; }
+        // Een ELM327 bevestigt elk AT-commando. Leeg = niet aangekomen;
+        // een '?' = niet begrepen. Allebei is "niet hersteld".
+        if (!antw.trim() || /\?/.test(antw)) mislukt.push(herstel[h] + (antw.trim() ? ' → "' + antw.trim().slice(0, 12) + '"' : ' → geen antwoord'));
+      }
+      if (mislukt.length) {
+        K.herstelFout = mislukt.join('; ');
+        diag('PLKaart: herstel NIET bevestigd (' + K.herstelFout + ') — verbreek en verbind opnieuw', 'err');
       }
       window._plScanActief = false;
       try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); }
@@ -774,8 +848,14 @@
       : K.headersAan === null ? 'niet vast te stellen — de functionele 0100 bleef stil'
       : 'NEE — antwoorden zijn NIET aan een stuurapparaat toe te wijzen'));
     r.push(K.commandos + ' commando\'s in ' + Math.round(K.duurMs / 1000) + ' s' +
+      (K.msPerCmd ? ' (' + K.msPerCmd + ' ms per commando)' : '') +
       (K.afgebroken ? '  |  AFGEBROKEN: ' + K.afgebroken : '') +
       (K.gestopt ? '  |  met de hand gestopt' : ''));
+    if (K.schattingNa) {
+      r.push('schatting nà de ontdekking: ' + K.schattingNa.commandos.toLocaleString('nl-NL') +
+        ' commando\'s voor de volledige trap over alle stuurapparaten = ' + K.schattingNa.tekst +
+        '  (de schatting vooraf rekent met 6 modules en klopt dus alleen op een kleine auto)');
+    }
     if (K.herstelFout) r.push('LET OP — adapterherstel: ' + K.herstelFout);
     if (K.geweigerd && K.geweigerd.length) {
       r.push('geweigerd door de leespoort: ' + K.geweigerd.length + ' commando(s) — ' +
@@ -805,15 +885,40 @@
         m.mode21.forEach(function (x) { r.push('     21' + x.pid + '  ' + x.bytes); });
       }
       if (m.didOvergeslagen) r.push('   mode 22: ' + m.didOvergeslagen);
-      else if ((m.dids || []).length) {
-        var beweegt = m.dids.filter(function (d) { return d.beweegt; });
-        r.push('   mode 22 — ' + m.dids.length + ' identifiers, waarvan ' + beweegt.length + ' bewegend:');
-        m.dids.forEach(function (d) {
-          if (d.geweigerd) { r.push('     22' + d.did + '  geweigerd ' + d.geweigerd + ' — ' + d.reden); return; }
-          r.push('     22' + d.did + '  ' + d.bytes + ' (' + d.len + ' bytes)' +
-            (d.beweegt ? '   ← BEWEEGT, tweede pas: ' + d.bytes2 : (d.bytes2 != null ? '   (stabiel)' : '')));
-        });
-      } else r.push('   mode 22 — geen enkele identifier uit de trap bestaat hier');
+      else {
+        // Eerst WAT ER GEDAAN IS, dan pas wat er gevonden is. Een module die
+        // nooit aan de beurt kwam mag nooit als "hier bestaat niets" in het
+        // verslag komen — dat is afwezigheid als bewijs, en daar is deze hele
+        // module tegen. Op 04-09 stond dat er zeventien keer.
+        var td = m.trede || {};
+        var namen = Object.keys(td);
+        var af = namen.filter(function (n) { return td[n] === 'volledig'; });
+        var niet = namen.filter(function (n) { return td[n] === 'niet bereikt'; });
+        var half = namen.filter(function (n) { return td[n] !== 'volledig' && td[n] !== 'niet bereikt'; });
+        (K.trap || []).forEach(function (t) { if (namen.indexOf(t.naam) < 0) niet.push(t.naam); });
+
+        r.push('   mode 22 — afgezocht: ' + (af.length ? af.join(', ') : 'niets volledig') +
+          (half.length ? '  |  half: ' + half.map(function (n) { return n + ' (' + td[n] + ')'; }).join(', ') : '') +
+          (niet.length ? '  |  NIET BEREIKT: ' + niet.join(', ') : ''));
+
+        if ((m.dids || []).length) {
+          var beweegt = m.dids.filter(function (d) { return d.beweegt; });
+          r.push('   mode 22 — ' + m.dids.length + ' identifiers, waarvan ' + beweegt.length + ' bewegend:');
+          m.dids.forEach(function (d) {
+            if (d.geweigerd) { r.push('     22' + d.did + '  geweigerd ' + d.geweigerd + ' — ' + d.reden); return; }
+            r.push('     22' + d.did + '  ' + d.bytes + ' (' + d.len + ' bytes)' +
+              (d.beweegt ? '   ← BEWEEGT, tweede pas: ' + d.bytes2 : (d.bytes2 != null ? '   (stabiel)' : '')));
+          });
+        } else if (af.length) {
+          r.push('   mode 22 — geen enkele identifier bestaat hier in ' + (af.length === namen.length ? 'de trap' : 'de afgezochte treden'));
+        } else {
+          r.push('   mode 22 — nog niets afgezocht op dit adres');
+        }
+      }
+      if ((m.mode21 || []).length === 0 && m.mode21Gedaan == null && m.services && m.services['21'] &&
+          m.services['21'].soort !== 'stil' && m.services['21'].nrc !== '11') {
+        r.push('   mode 21 — niet bereikt');
+      }
       r.push('');
     });
     r.push('TOTAAL: ' + telDatapunten(K) + ' datapunten over ' + (K.modules || []).length + ' stuurapparaten.');

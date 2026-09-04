@@ -862,10 +862,75 @@ snel de adapter ook is. Bij 65.536 identifiers is dat uren. Dat is een
 verbouwing van de transportlaag en hoort niet in dezelfde commit; de
 tijdschatting vóór de scan rekent er voorlopig met 85 ms per commando.
 
-**Nog ongemeten.** De sweep 700-7FF is nooit op een echte auto gedraaid. Ik
-verwacht dat de meeste adressen stil blijven en dat is de bedoeling — maar of
-`ATCRA` op niet-7Ex-adressen doet wat het belooft, en of `3E00` op deze bus
-werkelijk elk stuurapparaat wakker maakt, weet ik pas na stap G van `CAMPAGNE`.
+**Gemeten op de CX-5, 04-09-2026 om 11:49 — en hij werkte.** 171 seconden, 1260
+commando's, **achttien stuurapparaten**, gevonden door waarneming:
+
+```
+706/70E  720/728  726/72E  730/738  731/739  733/73B  734/73C  736/73E
+737/73F  756/75E  760/768  784/78C  7B7/7BF  7C1/7C9  7C4/7CC  7C6/7CE
+7DF/7E8  7F1/7F9
+```
+
+Elk antwoordadres is precies zender+8, dus de conventie klopt op deze auto —
+maar dat is nu *gemeten* in plaats van aangenomen, en dat was het hele punt.
+Op 70E stond de oogst:
+
+| DID | bytes → tekst | wat het is |
+|---|---|---|
+| `F190` | `JMZKF6W7600766507` | de VIN, en hij klopt met wat `0902` gaf |
+| `F180` | `01` + `B61L-67XK6-B` | Mazda-onderdeelnummer |
+| `F188` | `B61L-67XK2-T` | tweede onderdeelnummer |
+| `F18C` | `031816401145B1` | serienummer |
+| `F191` | `202758AB` | hardwareversie |
+| `F40D` | `00` | de OBD-spiegel van PID 0D (snelheid), dus F4xx léé́ft hier |
+
+Op 7E8 kwamen 50 mode 01-PIDs met ruwe bytes, negen mode 06-monitors en vijf
+mode 09-items. **`01A6` staat er niet bij** — de generieke odometer bestaat op
+deze auto niet, precies zoals bij de km-check voorspeld.
+
+**En de rit legde vijf fouten bloot, waarvan één ernstig.**
+
+*Het verslag loog over zeventien stuurapparaten.* De scan liep per module de
+hele trap af: 2944 identifiers op 70E vóórdat 728 aan de beurt kwam. Hij brak
+na 171 s af bij **193 van de 2944, op de eerste module**. De andere zeventien
+waren nooit aangeraakt — en het verslag zei van elk *"geen enkele identifier
+uit de trap bestaat hier"*. Dat is afwezigheid als bewijs, in de module die
+daar juist tegen is. Nu is de buitenste lus de TREDE en de binnenste de module
+(breedte vóór diepte), en elke module houdt per trede bij of hij `volledig`,
+`afgebroken na n van m`, of `niet bereikt` is. Wat er nu sneuvelt bij een
+afbreking is de minst waardevolle trede, niet zeventien stuurapparaten.
+
+*Het herstel werd nooit bewezen.* `sendCmd()` **gooit niet** als de ELM-poort
+dicht staat na een socketdood — hij geeft een lege string. De `try/catch`
+eromheen ving dus niets, en het verslag meldde een geslaagd herstel terwijl
+geen van de vijf commando's de adapter had bereikt. Dat de adapter tóch goed
+stond, kwam doordat de ELM-herinitialisatie om 11:52:16 toevallig hetzelfde
+zet. Geluk, geen ontwerp. Nu wordt elk herstelcommando op zijn bevestiging
+gecontroleerd; leeg of `?` telt als mislukt en komt boven in het verslag.
+
+*De tijdschatting was een factor vier mis.* `schatting()` rekent vooraf met
+zes modules omdat het aantal dan nog onbekend is. Deze auto heeft er achttien,
+en de gemeten snelheid was 136 ms per commando in plaats van de aangenomen 85.
+De gebruiker kreeg "27 min" te zien waar de volledige trap er ~120 zou kosten.
+De schatting wordt nu **na de ontdekking opnieuw gemaakt**, met het echte
+aantal modules en de gemeten snelheid, en gemeld voordat de trap begint.
+
+*NRC 78 werd als weigering gelezen.* Op 73F kwam `7F 19 78` — "antwoord volgt
+later", een belofte en geen afwijzing. Nu wordt er één keer opnieuw gelezen.
+
+*De afbreking zelf was correct gedrag.* De app-log toont `📴 De app was 53 s
+weg` en `31 s weg` (#18): de WebView werd op de achtergrond bevroren, de
+SPP-socket viel om 11:52:01 weg, en de ATI-hartslag brak de scan twee seconden
+later af. Dat is precies waarvoor die hartslag bestaat. De oorzaak is #18 en
+die is native werk — maar het maakt de breedte-eerst-volgorde des te
+belangrijker, want een scan van twee uur op dit toestel gaat het niet halen.
+
+**Wat er nog steeds ongemeten is.** Of `ATCRA` op de niet-7Ex-adressen
+werkelijk filtert, is niet apart aangetoond: alle achttien antwoordden op
+zender+8, dus een verkeerd filter zou hier hetzelfde beeld geven. En de OEM-
+blokken van de trap zijn op géén enkele module afgelopen — de rit stopte in
+het identificatieblok.
+
 
 ### De km-stand stond in de app als "niet uitleesbaar" — 04-09-2026 (nieuw, ongemeten)
 
