@@ -3452,6 +3452,58 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── de VIN-poort van de kaartmaker, in de geladen app ────────────
+  // De kaartrit van 04-09 om 11:49 vond vier stuurapparaten die 22F190
+  // beantwoorden, en het verslag drukte die VIN vier keer als ruwe hex af —
+  // in het testrunlogboek, dat geplakt en gedeeld wordt. Dat is het derde
+  // VIN-pad uit §11, door de kaartmaker opnieuw geopend.
+  //
+  // test-kaart.js dekt de poort met een nagebouwde bus. Wat node NIET kan
+  // zien: of de geladen kopie van PLKaart de poort van PLKm ook werkelijk
+  // vindt. Die twee modules hangen los in index.html, en een hernoemde
+  // interne functie zou de poort stilzwijgend openzetten — de bytes gaan dan
+  // gewoon door, zonder fout, met de VIN erin.
+  {
+    issue: '§7',
+    naam: 'De kaartmaker houdt de VIN buiten de kaart',
+    waarom: 'Alleen in de draaiende app is te zien of PLKaart de VIN-poort van PLKm werkelijk vindt.',
+    proef: async function () {
+      if (!window.PLKaart) return { staat: 'FOUT', detail: 'PLKaart ontbreekt' };
+      if (!window.PLKm || !PLKm._intern) return { staat: 'FOUT', detail: 'PLKm ontbreekt — dan is er geen VIN-poort' };
+      if (typeof PLKm._intern.isVin !== 'function' || typeof PLKm._intern.bytesNaarTekst !== 'function')
+        return { staat: 'FOUT', detail: 'PLKm._intern.isVin/bytesNaarTekst ontbreekt — de kaartmaker zoekt daarnaar ' +
+          'achter een guard, dus zonder deze twee gaat de VIN ongemerkt de kaart in (§7)' };
+      if (typeof PLKm.vinConsistentie !== 'function')
+        return { staat: 'FOUT', detail: 'PLKm.vinConsistentie() ontbreekt — dan draagt de kaart wel VIN-metingen maar geen oordeel' };
+
+      const proef = 'JMZKF6W7600766507';
+      if (!PLKm._intern.isVin(proef))
+        return { staat: 'FOUT', detail: 'de geladen kopie herkent een geldige VIN niet — de poort staat dan open' };
+      if (PLKm._intern.isVin('B61L-67XK6-B'))
+        return { staat: 'FOUT', detail: 'de geladen kopie ziet een onderdeelnummer aan voor een VIN' };
+
+      const k = await PLKm._intern.vinKenmerk(proef);
+      if (!k || !k.staart || k.staart.indexOf(proef.slice(-6)) < 0)
+        return { staat: 'FOUT', detail: 'vinKenmerk() levert geen leesbare staart' };
+      if (JSON.stringify(k).indexOf(proef) >= 0)
+        return { staat: 'FOUT', detail: 'vinKenmerk() geeft de RUWE VIN terug — dat is precies wat niet mag (§7)' };
+      if (!k.id)
+        return { staat: 'LET OP', detail: 'geen pseudoniem (staat _vlVinPseudoniem klaar?) — de kaart maskeert dan wél, ' +
+          'maar twee stuurapparaten zijn niet meer met elkaar te vergelijken' };
+
+      const oud = PLKm.vinConsistentie([
+        { rol: 'vin', module: 'proef A', groep: '7E0', vinId: 'x1', vinStaart: '…111111' },
+        { rol: 'vin', module: 'proef B', groep: '720', vinId: 'x2', vinStaart: '…222222' }
+      ]);
+      if (oud.niveau !== 'kritiek')
+        return { staat: 'FOUT', detail: 'twee verschillende voertuignummers leveren hier "' + oud.niveau +
+          '" op in plaats van kritiek — de geladen kopie oordeelt anders dan de toets op schijf' };
+
+      return 'VIN-poort staat: een geldige VIN wordt herkend, een onderdeelnummer niet, het kenmerk draagt ' +
+        'alleen ' + k.staart + ' plus een pseudoniem, en twee verschillende nummers geven kritiek';
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -4972,6 +5024,7 @@ function openTestrun() {
         // stand en duurt minuten. Dat is geen meting maar een expeditie.
         '<button onclick="kaartStart(false)" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bl);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">🗺️ Kaart maken</button>' +
         '<button onclick="kaartStart(true)" style="background:var(--sur2);color:var(--tx3);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">🗺️ Volledig (uren)</button>' +
+        '<button onclick="kaartGericht()" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">🎯 Gericht</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
         '<button onclick="plMarkeer(\'losse markering\', \'met de hand gezet\')" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bl);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">📍 Markeer nu</button>' +
         '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
@@ -4996,14 +5049,22 @@ function openTestrun() {
 // scanlogica is met test-kaart.js te toetsen, een knop niet.
 let _kaartBezig = false;
 
-async function kaartStart(volledig) {
+async function kaartStart(volledig, extra) {
+  extra = extra || {};
   if (!window.PLKaart) { _boek(15, 'Kaart', 'FOUT', 'PLKaart ontbreekt — pidlane-kaart.js hangt niet in index.html', null); return; }
   if (_kaartBezig) { try { showToast('De kaartmaker loopt al'); } catch (e) { /* stil: melding mag nooit de stroom breken */ } return; }
   if (typeof connected === 'undefined' || !connected) { _boek(15, 'Kaart', 'overgeslagen', 'geen verbinding met de adapter', null); return; }
   if (typeof demoMode !== 'undefined' && demoMode) { _boek(15, 'Kaart', 'overgeslagen', 'demomodus levert geen echte kaart', null); return; }
 
-  const sch = PLKaart.schatting({ volledig: !!volledig });
-  const waarschuwing = 'De kaartmaker neemt de verbinding helemaal over: de gewone metingen staan stil, ' +
+  const gericht = Array.isArray(extra.modules) && extra.modules.length;
+  const sch = PLKaart.schatting({
+    volledig: !!volledig,
+    trap: extra.trap ? PLKaart.trapVan(extra.trap) : null,
+    modules: gericht ? extra.modules.length : undefined,
+    hergebruikAdressen: !!extra.hergebruikAdressen
+  });
+  const waarschuwing = (gericht ? 'GERICHT op ' + extra.modules.join(', ') + ' — blok "' + (extra.trap || 'alles') + '".\n\n' : '') +
+    'De kaartmaker neemt de verbinding helemaal over: de gewone metingen staan stil, ' +
     'de adapter gaat in scanstand en er gaan ongeveer ' + sch.commandos.toLocaleString('nl-NL') +
     ' commando\'s de bus op.\n\nGeschatte duur: ' + sch.tekst + '.\n\n' +
     (volledig ? 'Dit is de VOLLEDIGE sweep over alle 65.536 identifiers per stuurapparaat. ' +
@@ -5015,13 +5076,18 @@ async function kaartStart(volledig) {
   }
 
   _kaartBezig = true;
-  _boek(15, 'Kaart gestart', 'ok', (volledig ? 'volledige sweep' : 'getrapte sweep') +
+  _boek(15, 'Kaart gestart', 'ok', (volledig ? 'volledige sweep'
+      : gericht ? 'gericht op ' + extra.modules.join(', ') + ', blok "' + (extra.trap || 'alles') + '"'
+      : 'getrapte sweep') +
     ' — schatting ' + sch.tekst + ', ' + sch.commandos + ' commando\'s', null);
   const t0 = _nu();
   let laatsteFase = '';
   try {
     const K = await PLKaart.scan({
       volledig: !!volledig,
+      modules: extra.modules || null,
+      trap: extra.trap || null,
+      hergebruikAdressen: !!extra.hergebruikAdressen,
       onStap: function (st) {
         // Niet elke stap boeken: dat zijn er duizenden. Wel elke faseovergang,
         // plus de tussenstanden die de module zelf de moeite waard vindt.
@@ -5052,6 +5118,65 @@ async function kaartStart(volledig) {
     _kaartBezig = false;
   }
 }
+
+/* ── GERICHT ZOEKEN ────────────────────────────────────────────────
+   De volledige trap kostte op de CX-5 van 04-09 bijna twee uur: achttien
+   stuurapparaten maal 2944 identifiers, gemeten op 127 ms per commando. De
+   vraag is bijna nooit "alles". Na die rit was hij heel precies: de
+   OEM-blokken op ALLEEN het instrumentenpaneel — 1792 identifiers, ruim vier
+   minuten.
+
+   Daar was geen knop voor: de kaartmaker deed alle modules of niets. Deze
+   kiezer vult dat gat. Hij leest de adressen uit de vorige scan (die worden
+   onder het VIN-pseudoniem bewaard), zodat de sweep over 256 adressen — 89
+   van de 171 seconden van de eerste rit — wordt overgeslagen.
+
+   Geen adressen bekend? Dan eerst een gewone kaart draaien. Dat zeggen we,
+   in plaats van stilletjes de hele sweep alsnog te doen. */
+function kaartGericht() {
+  if (!window.PLKaart) { _boek(15, 'Gericht', 'FOUT', 'PLKaart ontbreekt', null); return; }
+  const box = document.getElementById('testrunBody');
+  if (!box) return;
+
+  const bekend = PLKaart.bekendeAdressen();
+  const kaart = PLKaart.kaart();
+  const adressen = bekend || ((kaart && kaart.modules) || []).map(function (m) { return { rx: m.rx, tx: m.tx }; });
+
+  if (!adressen.length) {
+    _boek(15, 'Gericht', 'overgeslagen',
+      'nog geen adressen bekend van deze auto — draai eerst één keer "Kaart maken"; ' +
+      'de adressen worden daarna onthouden en de sweep over 256 adressen kan dan overgeslagen worden', null);
+    return;
+  }
+
+  // Wat de kaart al van dit adres weet, zodat de keuze niet blind is.
+  const weet = {};
+  ((kaart && kaart.modules) || []).forEach(function (m) {
+    const n = (m.dids || []).length;
+    weet[m.rx] = n ? n + ' identifiers gevonden' : 'nog niets gevonden';
+  });
+
+  let h = '<div class="pl-km pl-km-ok"><div class="pl-km-kop">🎯 Gericht zoeken — kies één stuurapparaat</div>' +
+    '<div class="pl-m06-note">De adressen komen uit de vorige scan, dus de sweep over 256 adressen ' +
+    'wordt overgeslagen. Kies daarna welk blok je wilt aflopen.</div><ul class="pl-km-bev">';
+  adressen.forEach(function (a) {
+    h += '<li><b>' + a.rx + '</b> <span style="opacity:.7">(zenden op ' + (a.tx || '?') + ')</span> ' +
+      '<span style="opacity:.6">' + (weet[a.rx] || '') + '</span><br>' +
+      '<button onclick="kaartStartGericht(\'' + a.rx + '\',\'oem\')" style="margin:5px 5px 0 0;background:var(--sur2);color:var(--bl);border:1px solid var(--bl);border-radius:7px;padding:6px 10px;font:700 11px var(--f);cursor:pointer">OEM-blokken (1792)</button>' +
+      '<button onclick="kaartStartGericht(\'' + a.rx + '\',\'genormeerd\')" style="margin:5px 5px 0 0;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;font:600 11px var(--f);cursor:pointer">Genormeerd (1152)</button>' +
+      '<button onclick="kaartStartGericht(\'' + a.rx + '\',\'alles\')" style="margin:5px 5px 0 0;background:var(--sur2);color:var(--tx3);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;font:600 11px var(--f);cursor:pointer">Alles (2944)</button>' +
+      '</li>';
+  });
+  h += '</ul></div>';
+  box.innerHTML = h + box.innerHTML;
+}
+
+async function kaartStartGericht(rx, trap) {
+  await kaartStart(false, { modules: [rx], trap: trap, hergebruikAdressen: true });
+}
+
+window.kaartGericht = kaartGericht;
+window.kaartStartGericht = kaartStartGericht;
 
 // Voortgang zonder het logboek vol te schrijven: één regel die zichzelf
 // overschrijft. Duizend regels "adres 7A3" helpen niemand.
@@ -5143,6 +5268,20 @@ const CAMPAGNE = {
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
+    'DE TWEEDE KAARTRIT SLAAGDE — 04-09 OM 13:43, 969 s, 5378 commando\u0027s, 18 stuurapparaten, 114 datapunten, met de hand gestopt en zonder \u00e9\u00e9n afbreking. Alle vijf reparaties waren in het log terug te zien: de eerlijke schatting (127 ms per commando, 1.9 uur voor de rest), "NIET BEREIKT" per trede, "afgebroken na 454 van 768" op 72E, en geen herstelfout. Wat eruit kwam: alle achttien met onderdeelnummer, en de VIN op vier adressen (70E, 73F, 7E8, 7F9) \u2014 allemaal dezelfde.',
+
+    'MAAR HET VERSLAG DRUKTE DIE VIN VIER KEER RAUW AF. Dat is het derde VIN-pad uit \u00a711, door de kaartmaker opnieuw geopend: het testrunlogboek wordt geplakt en gedeeld. De reparatie zit niet bij het tonen maar bij het OPSLAAN \u2014 wat de kaart nooit vasthoudt kan hij niet lekken. Elke reeks bytes gaat nu door \u00e9\u00e9n poort; ziet die er een geldig voertuignummer in, dan bewaart hij de staart plus het pseudoniem in plaats van de bytes. Kijk in het verslag van deze ronde na dat er nergens meer een VIN van 17 tekens staat, alleen \u2026766507.',
+
+    'EN "WAARVAN 0 BEWEGEND" STOND ER ACHTTIEN KEER TERWIJL DE TWEEDE PAS NOOIT LIEP. Die pas zit achter !_stop, en de rit was met de hand gestopt. Niet-gemeten als gemeten gepresenteerd \u2014 dezelfde fout als "geen enkele identifier bestaat hier" van de rit ervoor, \u00e9\u00e9n laag hoger. Er staat nu "tweede pas niet gedraaid", en per datapunt "(niet herlezen)".',
+
+    'NIEUW \u2014 DE KNOP "\ud83c\udfaf GERICHT". De volledige trap kost op deze auto 1,9 uur; de vraag na de vorige rit was veel smaller. Deze knop toont de adressen uit de vorige scan (die worden onder het VIN-pseudoniem bewaard) en laat je per stuurapparaat kiezen: OEM-blokken, genormeerd, of alles. De sweep over 256 adressen \u2014 89 van de 171 seconden van de eerste rit \u2014 wordt dan overgeslagen.',
+
+    'STAP I \u2014 DE GERICHTE VRAAG, EN DIT IS DE BELANGRIJKSTE VAN DEZE RONDE. Druk op "\ud83c\udfaf Gericht", kies 728 (het instrumentenpaneel, KL2K-554K2-A) en dan "OEM-blokken". Dat zijn 1792 identifiers, ruim vier minuten. Het blok 60xx is het dashboardblok en is op geen enkele module ooit aangeraakt; als er een tellerstand in deze auto uit te lezen is, staat hij daar. Levert het niets op, dan is dat ook een antwoord \u2014 mits het verslag "afgezocht: ..." zegt en niet "NIET BEREIKT".',
+
+    'WAT DE VORIGE RIT AL BESLIST HEEFT: F4A6 BESTAAT NIET. Het OBD-spiegelblok (F400-F6FF) is volledig afgelopen op 70E en op 728, en tot F5C0 op 72E. De spiegel van de odometer zit op positie 167 van 768, dus hij is op alle drie gevraagd en op alle drie geweigerd. Alleen F40D (snelheid) en F467 antwoordden. Die draad is dood; ga hem niet opnieuw aflopen.',
+
+    'NIEUW \u2014 DE VIN-CONTROLE IN DE KOOPCHECK. De kaartrit leverde een controle op die ik niet zocht: vier stuurapparaten dragen 22F190 en alle vier hetzelfde nummer, terwijl 7CC en 7CE er een van louter nullen hebben. Twee VERSCHILLENDE nummers in \u00e9\u00e9n auto kan maar op \u00e9\u00e9n manier \u2014 \u00e9\u00e9n module komt ergens anders vandaan, en bij een teruggezette teller is een vervangen instrumentenpaneel de gebruikelijke weg. PLKm vraagt 22F190 nu op alle vijf zijn adressen; een blanco nummer is LET OP en geen beschuldiging, want veel modules krijgen er nooit een.',
+
     'DE KAARTMAKER (PLKaart) IS ER, EN DIT IS DE RIT DIE HEM MOET WAARMAKEN. Knop "Kaart maken" in dit paneel. Hij neemt de verbinding hélemaal over: busslot, ATH1, ATAT0, korte ATST, en hij zet alles daarna terug. Wat hij oplevert is een lijst van elk stuurapparaat dat antwoordt, met per stuurapparaat de diensten die leven, de mode 01-PIDs die de ECU zélf declareert, de mode 22-identifiers die bestaan, en van elk datapunt de ruwe bytes. Geen enkele gok.',
 
     'WAAROM ELKE VORIGE SCAN MISLUKTE, EN DAT LAG NIET AAN DE ADRESSEN. Vier dingen in de laag eronder. (1) ATH0 stond in beide init-reeksen: zonder headers is een antwoord anoniem, dus blok 9 kon nooit vaststellen WELK stuurapparaat iets zei. (2) PLBus.MAX_HOLD_MS brak de houder na drie minuten af, dus elke scan die langer duurde werd halverwege onteigend. (3) trackBtQuality telt zes lege antwoorden op rij als een dode socket en herverbindt \u2014 een sweep over 256 adressen waarvan er 250 niet bestaan haalt dat moeiteloos, dus de scan verbrak zichzelf. (4) PLBus.note telde elke NO DATA als fout, waarna PLBusGate dichtging en de waakronde sensoren als uitgevallen meldde. Alle vier zijn nu weg; het busslot heeft raak() gekregen en de twee detectoren kijken naar window._plScanActief.',
@@ -5184,7 +5323,7 @@ const CAMPAGNE = {
 
     'pidlane-fuel.js \u2014 feat_demo dekt nu beide demoknoppen. test-demo-toegang.js leest de lijst; de nieuwe proef in blok 5 draait de schakelaar echt om, want een selector die er staat maar niets raakt komt alleen zo aan het licht.',
 
-    'plmutate.sh staat op 108 mutaties, alle 108 gevangen \u2014 dertien over de kaartmaker (de vier structurele blokkades in bt.js en data.js, plus vier die de rit van 04-09 zelf opleverde) en zeven over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
+    'plmutate.sh staat op 115 mutaties, alle 115 gevangen \u2014 twintig over de kaartmaker en de VIN-poort (de vier structurele blokkades in bt.js en data.js, plus vier die de rit van 04-09 zelf opleverde) en zeven over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
 
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.',
 

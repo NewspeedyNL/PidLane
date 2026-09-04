@@ -174,18 +174,31 @@ function ecu(spec) {
   };
 }
 
-function laad(adapter, plbus) {
+const opslag = {};
+function laad(adapter, plbus, vinId) {
   const s = {
     console: { warn() { }, error() { }, log() { } },
     setTimeout: (fn) => { fn(); return 0; },
     clearTimeout: () => { }, setInterval: () => 1, clearInterval: () => { },
     connected: true, demoMode: false, btDiag: () => { },
-    JSON: JSON, Date: Date, Math: Math
+    JSON: JSON, Date: Date, Math: Math,
+    localStorage: {
+      getItem: k => (k in opslag ? opslag[k] : null),
+      setItem: (k, v) => { opslag[k] = String(v); },
+      removeItem: k => { delete opslag[k]; }
+    },
+    // Het pseudoniem is in de app een SHA-256 over zout+VIN. Hier een
+    // deterministische stand-in: gelijke VIN → gelijk id, en de VIN zelf komt
+    // er niet in terug. Dat is precies wat de vergelijking nodig heeft.
+    _vlVinPseudoniem: async (vin) => 'pd' + String(vin).split('').reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 7).toString(16)
   };
   s.window = s;
   s.sendCmd = adapter ? adapter.sendCmd : undefined;
   s.PLBus = plbus || null;
+  if (vinId) s.vehicleInfo = { vinId: vinId };
   vm.createContext(s);
+  // PLKm eerst: de kaartmaker leent daar de VIN-poort en het VIN-oordeel van.
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-kmcheck.js', 'utf8'), s, { filename: 'pidlane-kmcheck.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-kaart.js', 'utf8'), s, { filename: 'pidlane-kaart.js' });
   if (!s.PLKaart) throw new Error('PLKaart niet gevonden — de module hangt niet meer naar buiten');
   return s;
@@ -498,6 +511,19 @@ console.log('\n— 4. de hele scan op een nagebouwde auto —');
       eis(!/geen enkele identifier bestaat hier in de trap/.test(tekst),
         'en nergens "geen enkele identifier bestaat hier" voor iets dat niet is afgezocht');
 
+      // "waarvan 0 bewegend" is een METING. Deze scan is met de hand gestopt,
+      // dus de tweede pas liep nooit — en dan is dat getal geen nul maar
+      // niets. Op 04-09 stond die nul achttien keer in het verslag.
+      eis(/overgeslagen/.test(K7.tweedePas || ''),
+        'een gestopte scan zegt dat de tweede pas is overgeslagen', K7.tweedePas);
+      eis(/tweede pas niet gedraaid/.test(tekst),
+        'en het verslag zegt dat bij elke module, in plaats van "0 bewegend"');
+      eis(!/bewegend \(/.test(tekst),
+        'er staat nergens een bewegingstelling die niet gemeten is',
+        (tekst.match(/.*bewegend.*/g) || []).slice(0, 2).join(' | '));
+      eis(/\(niet herlezen\)/.test(tekst),
+        'en per datapunt staat er dat het niet herlezen is');
+
       eis(K7.schattingNa && K7.schattingNa.commandos === 3 * 3,
         'de schatting wordt na de ontdekking herrekend met het ECHTE aantal stuurapparaten',
         JSON.stringify(K7.schattingNa));
@@ -546,10 +572,103 @@ console.log('\n— 4. de hele scan op een nagebouwde auto —');
                 eis(d && d.bytes === 'C0FFEE',
                   '7F 22 78 betekent "antwoord volgt later" — één keer opnieuw lezen levert het datapunt alsnog',
                   JSON.stringify(d || null));
-                deel6();
+                deel5d();
               });
           });
       }).catch(e => { console.log('  FOUT deel 5c: ' + e.stack); fouten++; klaar(); });
+  }
+
+  function deel5d() {
+    console.log('\n— 5d. de VIN mag de kaart niet in —');
+    // De rit van 04-09 vond vier stuurapparaten met 22F190, en het verslag
+    // drukte de VIN vier keer als ruwe hex af — in een logboek dat geplakt en
+    // gedeeld wordt. Dat is het derde VIN-pad uit §11, opnieuw geopend.
+    const VIN = 'JMZKF6W7600766507';
+    const naarHex = t => t.split('').map(c => c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')).join('');
+    const vinbus = {
+      '7E8': ecu({ tx: '7E0', diensten: ['22', '3E'], pids: [], dids: { 'F190': naarHex(VIN) } }),
+      '728': ecu({ tx: '720', functioneel: false, diensten: ['22', '3E'], pids: [], dids: { 'F190': naarHex(VIN) } }),
+      '72E': ecu({ tx: '726', functioneel: false, diensten: ['22', '3E'], pids: [], dids: { 'F190': '00'.repeat(17) } })
+    };
+    const adV = maakAdapter(vinbus);
+    const sV = laad(adV, plbus, 'proefauto1');
+    sV.PLKaart.scan({ trap: [{ naam: 't', van: 0xF190, tot: 0xF190, bron: 'test' }], tussenpauzeMs: 0 })
+      .then(KV => {
+        const alles = JSON.stringify(KV) + '\n' + sV.PLKaart.naarTekst(KV) + '\n' + sV.PLKaart.render(KV);
+        eis(alles.indexOf(VIN) < 0, 'de ruwe VIN staat NERGENS in de kaart, het verslag of de weergave');
+        eis(alles.indexOf(naarHex(VIN)) < 0, 'en ook niet als hex — de bytes worden niet bewaard');
+        eis(/…766507/.test(alles), 'wel de laatste zes tekens, zoals de rest van de app doet');
+
+        const d = KV.modules.filter(m => m.rx === '7E8')[0].dids[0];
+        eis(d.vin === true && d.bytes === null && !!d.vinId,
+          'de meting draagt het pseudoniem in plaats van de bytes', JSON.stringify(d));
+
+        eis(KV.vinOordeel && KV.vinOordeel.niveau === 'let-op',
+          'twee gelijke VIN\'s plus één blanco → let op, geen beschuldiging',
+          JSON.stringify(KV.vinOordeel && KV.vinOordeel.niveau));
+        eis(/leeg voertuignummer/.test(sV.PLKaart.naarTekst(KV)),
+          'en het blanco voertuignummer wordt benoemd');
+
+        // Tegenproef: een module met een ÁNDERE VIN moet kritiek zijn.
+        const anders = {
+          '7E8': ecu({ tx: '7E0', diensten: ['22', '3E'], pids: [], dids: { 'F190': naarHex(VIN) } }),
+          '728': ecu({ tx: '720', functioneel: false, diensten: ['22', '3E'], pids: [], dids: { 'F190': naarHex('JMZKF6W7600799999') } })
+        };
+        const adW = maakAdapter(anders);
+        const sW = laad(adW, plbus, 'proefauto2');
+        return sW.PLKaart.scan({ trap: [{ naam: 't', van: 0xF190, tot: 0xF190, bron: 'test' }], tussenpauzeMs: 0 })
+          .then(KW => {
+            eis(KW.vinOordeel.niveau === 'kritiek',
+              'twee stuurapparaten met een VERSCHILLENDE VIN → kritiek', KW.vinOordeel.niveau);
+            eis(/dezelfde auto/.test(sW.PLKaart.naarTekst(KW)),
+              'en het verslag zegt waaróm dat erg is');
+            deel5e();
+          });
+      }).catch(e => { console.log('  FOUT deel 5d: ' + e.stack); fouten++; klaar(); });
+  }
+
+  function deel5e() {
+    console.log('\n— 5e. gericht zoeken en onthouden —');
+    const drie2 = {
+      '7E8': ecu({ tx: '7E0', diensten: ['22', '3E'], pids: [], dids: { '0201': 'AA' } }),
+      '728': ecu({ tx: '720', functioneel: false, diensten: ['22', '3E'], pids: [], dids: { '0201': 'BB' } }),
+      '72E': ecu({ tx: '726', functioneel: false, diensten: ['22', '3E'], pids: [], dids: { '0201': 'CC' } })
+    };
+    const trapK = [{ naam: 'k', van: 0x0201, tot: 0x0201, bron: 'test' }];
+    const adX = maakAdapter(drie2);
+    const sX = laad(adX, plbus, 'proefauto3');
+    sX.PLKaart.scan({ trap: trapK, tussenpauzeMs: 0 }).then(KX => {
+      eis(KX.modules.length === 3 && sX.PLKaart.bekendeAdressen().length === 3,
+        'een gewone scan onthoudt de adressen van deze auto');
+
+      // Nu gericht op één module, mét hergebruik. De 256-adressensweep hoort
+      // helemaal over te slaan.
+      const adY = maakAdapter(drie2);
+      const sY = laad(adY, plbus, 'proefauto3');
+      return sY.PLKaart.scan({ trap: trapK, modules: ['728'], hergebruikAdressen: true, tussenpauzeMs: 0 })
+        .then(KY => {
+          eis(adY.log.filter(c => /^ATSH7[0-9A-F]{2}$/.test(c)).length < 20,
+            'de sweep over 256 adressen wordt overgeslagen: ' +
+            adY.log.filter(c => /^ATSH/.test(c)).length + ' headerwissels in plaats van 256+');
+          // Relatief, niet absoluut: wat telt is dat de gerichte herhaling een
+          // fractie kost van de volledige scan, niet een precies getal dat bij
+          // elke nieuwe dienstprobe verschuift.
+          eis(KY.commandos * 5 < KX.commandos,
+            'en dat scheelt echt: ' + KY.commandos + ' tegen ' + KX.commandos + ' commando\'s');
+
+          const per = {};
+          KY.modules.forEach(m => { per[m.rx] = m; });
+          eis((per['728'].dids || []).length === 1,
+            'het gekozen stuurapparaat is wél afgezocht');
+          eis(/niet gevraagd/.test(per['7E8'].didOvergeslagen || '') &&
+              /niet gevraagd/.test(per['72E'].didOvergeslagen || ''),
+            'en de rest krijgt "niet gevraagd" — geen halve uitspraak over wat er niet gemeten is',
+            JSON.stringify([per['7E8'].didOvergeslagen, per['72E'].didOvergeslagen]));
+          eis(/GERICHT OP: 728/.test(sY.PLKaart.naarTekst(KY)),
+            'het verslag zegt bovenaan waar deze scan over ging');
+          deel6();
+        });
+    }).catch(e => { console.log('  FOUT deel 5e: ' + e.stack); fouten++; klaar(); });
   }
 
   function deel6() {

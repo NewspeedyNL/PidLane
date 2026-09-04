@@ -46,7 +46,8 @@ function laad(adapter) {
     clearTimeout: () => { },
     connected: true,
     demoMode: false,
-    btDiag: () => { }
+    btDiag: () => { },
+    _vlVinPseudoniem: async (vin) => 'pd' + String(vin).split('').reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 7).toString(16)
   };
   s.window = s;
   s.sendCmd = adapter ? adapter.sendCmd : undefined;
@@ -248,6 +249,55 @@ console.log('\n— 3. het oordeel —');
   o = PLKm.oordeel([meting('7E0', 3000), meting('720', 3000), sinds(65535)], null);
   eis(o.niveau === 'ok',
     'een teller op zijn maximum (65535) levert geen conclusie op');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+console.log('\n— 3b. de VIN per stuurapparaat —');
+{
+  const PLKm = laad(null);
+  const bron = (groep, vinId, staart) => ({ rol: 'vin', module: 'module ' + groep, groep, vinId, vinStaart: staart });
+  const blanco = groep => ({ rol: 'vin', module: 'module ' + groep, groep, vinId: null, vinBlanco: true });
+
+  let v = PLKm.vinConsistentie([]);
+  eis(v.niveau === 'onbekend' && !v.bevindingen.length,
+    'geen enkele VIN gelezen → geen oordeel, geen bevinding');
+
+  v = PLKm.vinConsistentie([bron('7E0', 'pdaaa', '…766507')]);
+  eis(v.niveau === 'onbevestigd',
+    'één VIN is niets om tegen af te zetten');
+
+  v = PLKm.vinConsistentie([bron('7E0', 'pdaaa', '…766507'), bron('720', 'pdaaa', '…766507')]);
+  eis(v.niveau === 'ok' && !v.bevindingen.length,
+    'twee stuurapparaten met hetzelfde voertuignummer → in orde');
+
+  // DE TOETS DIE ERTOE DOET. Twee verschillende nummers in één auto kan maar
+  // op één manier: één stuurapparaat komt ergens anders vandaan.
+  v = PLKm.vinConsistentie([bron('7E0', 'pdaaa', '…766507'), bron('720', 'pdbbb', '…999999')]);
+  eis(v.niveau === 'kritiek' && /dezelfde auto/.test(v.bevindingen[0].kop),
+    'twee VERSCHILLENDE voertuignummers → kritiek, met de reden erbij',
+    JSON.stringify(v.bevindingen[0] || {}));
+  eis(/766507/.test(v.bevindingen[0].tekst) && /999999/.test(v.bevindingen[0].tekst),
+    'en beide staarten staan erin zodat je ziet wélke module afwijkt');
+
+  // Een blanco VIN is een aandachtspunt, geen beschuldiging — dat onderscheid
+  // is het verschil tussen een bruikbaar signaal en een vals alarm.
+  v = PLKm.vinConsistentie([bron('7E0', 'pdaaa', '…766507'), bron('720', 'pdaaa', '…766507'), blanco('726')]);
+  eis(v.niveau === 'let-op' && /geen bewijs|Dat is géén bewijs/.test(v.bevindingen[0].tekst),
+    'een blanco voertuignummer is let op, en het verslag zegt er zelf bij dat het geen bewijs is',
+    v.niveau + ' / ' + JSON.stringify(v.bevindingen[0] || {}));
+
+  // En de VIN kan een oordeel dragen zónder één kilometer.
+  const o = PLKm.oordeel([bron('7E0', 'pdaaa', '…766507'), bron('720', 'pdbbb', '…999999')], null);
+  eis(o.niveau === 'kritiek',
+    'op een auto die geen tellerstand vrijgeeft is de VIN-controle het enige oordeel dat er is',
+    o.niveau);
+
+  // De maskering: nooit de ruwe VIN vasthouden.
+  const K = laad(null)._intern;
+  eis(K.isVin('JMZKF6W7600766507') && !K.isVin('B61L-67XK6-B') && !K.isVin('JMZKF6W76007665O7'),
+    'een VIN herkennen: 17 tekens uit de ISO-3779-set, dus geen O en geen streepje');
+  eis(K.bytesNaarTekst([0x4A, 0x4D, 0x5A, 0x00, 0x00]) === 'JMZ',
+    'nulopvulling telt niet mee in de tekst');
 }
 
 // ═══════════════════════════════════════════════════════════════════

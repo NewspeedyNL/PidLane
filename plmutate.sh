@@ -95,6 +95,18 @@ MUTATIES=(
 "public/pidlane-kaart.js@@          m2.trede[trede.naam] = (gedaan >= tredeDids.length) ? 'volledig'@@          m2.trede[trede.naam] = 'volledig' || (gedaan >= tredeDids.length) ? 'volledig'@@test-kaart.js@@een afgebroken trede meldt zich als volledig afgezocht"
 "public/pidlane-kaart.js@@        if (!antw.trim() || /\\?/.test(antw)) mislukt.push(@@        if (false) mislukt.push(@@test-kaart.js@@een geweigerd herstelcommando telt weer als geslaagd"
 "public/pidlane-kaart.js@@            if (d.soort === 'geweigerd' && d.nrc === '78') {@@            if (false) {@@test-kaart.js@@\"antwoord volgt later\" wordt weer als weigering weggegooid"
+
+# ── De ronde na de tweede rit (04-09, 13:43). De VIN stond vier keer rauw
+# in het testrunlogboek — het derde VIN-pad uit §11, opnieuw geopend. En
+# "waarvan 0 bewegend" stond er achttien keer terwijl de tweede pas nooit
+# liep: niet-gemeten als gemeten, één laag hoger dan de vorige keer.
+"public/pidlane-kaart.js@@    if (!tekst) return { bytes: hex, len: bytes.length };@@    if (true) return { bytes: hex, len: bytes.length };@@test-kaart.js@@de VIN-poort laat alles door: de ruwe VIN komt weer in de kaart"
+"public/pidlane-kaart.js@@    return { bytes: null, len: bytes.length, vin: true, vinStaart: k.staart, vinId: k.id };@@    return { bytes: hex, len: bytes.length, vin: true, vinStaart: k.staart, vinId: k.id };@@test-kaart.js@@de VIN wordt gemaskeerd getoond maar tóch bewaard"
+"public/pidlane-kaart.js@@          var herlezen = m.dids.filter(function (d) { return d.bytes2 != null; });@@          var herlezen = m.dids;@@test-kaart.js@@een niet-gedraaide tweede pas meldt zich als 0 bewegend"
+"public/pidlane-kaart.js@@        if (keuze && keuze.indexOf(m.rx) < 0) { m.didOvergeslagen = 'niet gevraagd@@        if (false) { m.didOvergeslagen = 'niet gevraagd@@test-kaart.js@@een gerichte scan loopt alsnog alle stuurapparaten af"
+"public/pidlane-kmcheck.js@@    if (sleutels.length > 1) {@@    if (false) {@@test-kmcheck.js@@twee verschillende voertuignummers in één auto leveren geen bevinding op"
+"public/pidlane-kmcheck.js@@      if (uit.niveau === 'ok' || uit.niveau === 'onbevestigd') uit.niveau = 'let-op';@@      if (false) uit.niveau = 'let-op';@@test-kmcheck.js@@een blanco voertuignummer verdwijnt uit het oordeel"
+"public/pidlane-kmcheck.js@@  var VIN_TEKENS = /^[A-HJ-NPR-Z0-9]{17}$/;@@  var VIN_TEKENS = /^[A-Z0-9]{17}$/;@@test-kmcheck.js@@de VIN-herkenning accepteert een O en een I, die in geen enkele VIN voorkomen"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"

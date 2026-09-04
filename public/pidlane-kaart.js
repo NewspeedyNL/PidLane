@@ -303,6 +303,41 @@
 
   var byteHex = function (b) { return b.map(hex2).join(''); };
 
+  /* ── DE VIN MAG DEZE KAART NIET IN ────────────────────────────────
+     Op 04-09-2026 vond de eerste kaartrit vier stuurapparaten die 22F190
+     beantwoorden, en het verslag drukte die VIN vier keer als ruwe hex af —
+     in het testrunlogboek, dat geplakt en gedeeld wordt. Dat is exact het
+     derde VIN-pad uit §11, door deze module opnieuw geopend.
+
+     De reparatie zit niet bij het TONEN maar bij het OPSLAAN: wat de kaart
+     nooit vasthoudt, kan hij ook niet lekken via een render, een export, een
+     AI-prompt of een logboek. Elke reeks bytes gaat door deze poort; ziet hij
+     er een geldig voertuignummer in, dan bewaart hij de staart en het
+     pseudoniem in plaats van de bytes.
+
+     Het pseudoniem komt van dezelfde SHA-256 als de rest van de app, dus twee
+     stuurapparaten met dezelfde VIN krijgen hetzelfde id — en dát is wat de
+     vergelijking verderop nodig heeft. Zie §7. */
+  async function bewaarBytes(bytes) {
+    var hex = byteHex(bytes);
+    var tekst = '';
+    try {
+      if (window.PLKm && PLKm._intern && typeof PLKm._intern.bytesNaarTekst === 'function') {
+        tekst = PLKm._intern.bytesNaarTekst(bytes);
+        if (!PLKm._intern.isVin(tekst)) tekst = '';
+      }
+    } catch (e) { console.warn('PLKaart: VIN-poort kon de bytes niet lezen', e); tekst = ''; }
+    if (!tekst) return { bytes: hex, len: bytes.length };
+    var k = { staart: '', id: null };
+    try { k = await PLKm._intern.vinKenmerk(tekst); }
+    catch (e) { console.warn('PLKaart: VIN niet gepseudonimiseerd', e); }
+    // GEEN hex terug. Ook niet als het pseudonimiseren mislukte — dan is er
+    // minder informatie, en dat is de goede kant om op te falen.
+    return { bytes: null, len: bytes.length, vin: true, vinStaart: k.staart, vinId: k.id };
+  }
+
+
+
   // ═══════════════════════════════════════════════════════════════════
   // DE ADRESPLANNEN
   // ═══════════════════════════════════════════════════════════════════
@@ -344,6 +379,26 @@
     { naam: 'OEM-blok 60xx', van: 0x6000, tot: 0x60FF,
       bron: 'veldwaarneming — dashboardtellers' }
   ];
+
+  /* NAAMBARE DELEN VAN DE TRAP. De volledige trap kost op een auto met
+     achttien stuurapparaten bijna twee uur (gemeten 04-09: 127 ms per
+     commando, 52.992 commando's). De vraag is bijna nooit "alles" maar
+     "dit blok op dát stuurapparaat" — de OEM-blokken op de teller kosten
+     zo 1792 identifiers, ruim vier minuten.
+
+     De namen zijn wat een mens kiest; de inhoud blijft de tabel hierboven. */
+  var TRAP_GROEPEN = {
+    alles:      function () { return DID_TRAP.slice(); },
+    genormeerd: function () { return DID_TRAP.filter(function (t) { return /genormeerd/.test(t.bron); }); },
+    oem:        function () { return DID_TRAP.filter(function (t) { return /veldwaarneming/.test(t.bron); }); },
+    identificatie: function () { return DID_TRAP.slice(0, 1); }
+  };
+
+  function trapVan(keuze) {
+    if (Array.isArray(keuze)) return keuze;
+    var f = TRAP_GROEPEN[String(keuze || 'alles')];
+    return f ? f() : DID_TRAP.slice();
+  }
 
   function didLijst(trap) {
     var uit = [];
@@ -497,6 +552,23 @@
       }
       meld('ontdekking', Object.keys(gezien).length + ' stuurapparaten via de functionele vraag');
 
+      // DE SWEEP OVERSLAAN ALS DE ADRESSEN AL BEKEND ZIJN. Op 04-09 kostte
+      // de ontdekking 89 van de 171 seconden — meer dan de helft van de rit.
+      // Voor een tweede, gerichte scan op dezelfde auto is dat weggegooid
+      // werk: de adressen veranderen niet. Ze worden bewaard onder het
+      // VIN-pseudoniem, zodat een ándere auto zijn eigen kaart krijgt.
+      var bewaard = opties.hergebruikAdressen ? _bekendeAdressen() : null;
+      if (bewaard && bewaard.length) {
+        bewaard.forEach(function (a) {
+          noteer(a.rx, 'onthouden van een eerdere scan');
+          gezien[a.rx].tx = a.tx;
+          if (a.txAangenomen) gezien[a.rx].txAangenomen = true;
+        });
+        meld('ontdekking', bewaard.length + ' adressen hergebruikt uit een eerdere scan — ' +
+          'de sweep over 256 adressen wordt overgeslagen');
+        plan = { functioneel: plan.functioneel, adressen: [] };
+      }
+
       // Fysieke sweep. TesterPresent verandert niets en elke UDS-server
       // hoort erop te antwoorden; wie stil blijft krijgt nog 22F190.
       _voortgang.totaal = plan.adressen.length; _voortgang.gedaan = 0;
@@ -530,6 +602,7 @@
       });
 
       K.modules = Object.keys(gezien).sort().map(function (id) { return gezien[id]; });
+      _onthoudAdressen(K);
       meld('ontdekking', 'klaar: ' + K.modules.length + ' stuurapparaten',
         { modules: K.modules.map(function (m) { return m.rx; }) });
 
@@ -568,14 +641,22 @@
       // stuurapparaten.
       var trap = opties.volledig
         ? [{ naam: 'alles', van: 0x0000, tot: 0xFFFF, bron: 'volledige sweep' }]
-        : (opties.trap || DID_TRAP);
+        : trapVan(opties.trap || 'alles');
       K.trap = trap.map(function (t) { return { naam: t.naam, van: t.van, tot: t.tot, bron: t.bron }; });
 
       // Welke modules doen mee, en waarom de rest niet. Een 7F 22 11 is
       // "deze service bestaat hier niet"; alles daarboven — ook 7F 22 31 —
       // betekent dat mode 22 leeft en alleen deze identifier onbekend is.
+      // GERICHT ZOEKEN. `opties.modules` beperkt de sweep tot de opgegeven
+      // antwoordadressen. Alles daarbuiten krijgt geen halve uitspraak maar
+      // een reden: "niet gevraagd" is geen "niets gevonden".
+      var keuze = Array.isArray(opties.modules) && opties.modules.length
+        ? opties.modules.map(function (x) { return String(x).toUpperCase(); }) : null;
+      K.gerichtOp = keuze;
+
       var udsModules = [];
       K.modules.forEach(function (m) {
+        if (keuze && keuze.indexOf(m.rx) < 0) { m.didOvergeslagen = 'niet gevraagd — deze scan was gericht op ' + keuze.join(', '); return; }
         if (!m.tx) { m.didOvergeslagen = 'geen zendadres bekend'; return; }
         var sv = m.services['22'];
         if (!sv || sv.soort === 'stil') { m.didOvergeslagen = 'mode 22 gaf niets terug'; return; }
@@ -619,7 +700,8 @@
               if (her) d = duid(ontpak(her.data).bytes, '22');
             }
             if (d.soort === 'positief') {
-              m2.dids.push({ did: did, trede: trede.naam, bytes: byteHex(d.payload.slice(2)), len: Math.max(0, d.payload.length - 2) });
+              var bew = await bewaarBytes(d.payload.slice(2));
+              m2.dids.push(Object.assign({ did: did, trede: trede.naam }, bew));
             } else if (d.soort === 'geweigerd' && d.nrc !== '31' && d.nrc !== '11') {
               m2.dids.push({ did: did, trede: trede.naam, geweigerd: d.nrc, reden: d.nrcTekst });
             }
@@ -649,7 +731,7 @@
           if (!r21) continue;
           var d21 = duid(ontpak(r21.data).bytes, '21');
           if (d21.soort === 'positief') {
-            m21.mode21.push({ pid: hex2(p21), bytes: byteHex(d21.payload.slice(1)) });
+            m21.mode21.push(Object.assign({ pid: hex2(p21) }, await bewaarBytes(d21.payload.slice(1))));
           }
         }
         m21.mode21Gedaan = g21;
@@ -660,6 +742,30 @@
       // verandert is een sensor; een die stilstaat is configuratie. Dat
       // onderscheid is met geen enkele lijst te raden en kost hier één
       // ronde.
+      // WEL OF NIET GEDRAAID, EN DAT ZEGGEN. Op 04-09 stopte de rit met de
+      // hand; deze pas werd dus overgeslagen — en tóch meldde elke module
+      // "waarvan 0 bewegend". Niet-gemeten als gemeten gepresenteerd, precies
+      // de fout die één laag hoger net gerepareerd was.
+      // ── VIN-CONSISTENTIE OVER ALLE STUURAPPARATEN ───────────────
+      // De kaartmaker ziet er achttien waar de km-check er vijf ziet, maar
+      // het OORDEEL hoort op één plek te staan — anders lopen twee lezingen
+      // van hetzelfde uit de pas. vinConsistentie() woont in pidlane-kmcheck.js,
+      // want daar zit de betekenis: dit is een fraudesignaal, geen meting.
+      K.vin = _vinBronnen(K.modules);
+      try {
+        if (window.PLKm && typeof PLKm.vinConsistentie === 'function') {
+          K.vinOordeel = PLKm.vinConsistentie(K.vin);
+          meld('vin', K.vinOordeel.tekst, { niveau: K.vinOordeel.niveau });
+        } else {
+          K.vinOordeel = { niveau: 'onbekend', tekst: 'PLKm niet geladen — geen VIN-oordeel', bevindingen: [] };
+        }
+      } catch (e) {
+        K.vinOordeel = { niveau: 'onbekend', tekst: 'VIN-oordeel mislukt: ' + (e.message || e), bevindingen: [] };
+        console.warn('PLKaart: VIN-oordeel mislukt', e);
+      }
+
+      K.tweedePas = opties.tweedePas === false ? 'uitgezet'
+        : _stop ? 'overgeslagen — met de hand gestopt' : 'gedraaid';
       if (opties.tweedePas !== false && !_stop) {
         meld('tweede pas', 'kijken welke datapunten bewegen');
         await pauze(opties.tussenpauzeMs != null ? opties.tussenpauzeMs : 1500);
@@ -670,6 +776,10 @@
           for (var dk = 0; dk < m3.dids.length && !_stop; dk++) {
             var it = m3.dids[dk];
             if (it.geweigerd) continue;
+            // Een gemaskeerde VIN heeft geen bytes om mee te vergelijken, en
+            // hij hoort ook niet te bewegen. Overslaan is hier het antwoord,
+            // niet "onveranderd".
+            if (it.vin) { it.tweedePas = 'niet vergeleken (voertuignummer)'; continue; }
             var r2 = _eersteVoor(splitsRegels(await stuur('22' + it.did), K.bits), m3.rx);
             if (!r2) { it.tweedePas = 'stil'; continue; }
             var d2 = duid(ontpak(r2.data).bytes, '22');
@@ -677,8 +787,10 @@
             var nu2 = byteHex(d2.payload.slice(2));
             it.beweegt = (nu2 !== it.bytes);
             it.bytes2 = nu2;
+            it.tweedePas = 'gelezen';
           }
         }
+        if (_stop && K.tweedePas === 'gedraaid') K.tweedePas = 'halverwege gestopt';
       }
 
     } catch (e) {
@@ -728,6 +840,62 @@
     return K;
   }
 
+  /* ── DE ADRESKAART ONTHOUDEN ──────────────────────────────────
+     Onder het VIN-pseudoniem, niet onder de VIN zelf: die staat hier al
+     nergens meer en hoort ook niet in localStorage. Een andere auto krijgt
+     een andere sleutel en dus zijn eigen kaart; is er geen pseudoniem, dan
+     wordt er niets bewaard — liever opnieuw sweepen dan de adressen van de
+     ene auto op de andere loslaten. */
+  var ADRES_SLEUTEL = 'pl_kaart_adressen';
+
+  function _adresSleutel() {
+    try {
+      var v = window.vehicleInfo && vehicleInfo.vinId;
+      return v ? ADRES_SLEUTEL + '_' + v : null;
+    } catch (e) { console.warn('PLKaart: voertuigsleutel niet leesbaar', e); return null; }
+  }
+
+  function _onthoudAdressen(K) {
+    var sl = _adresSleutel();
+    if (!sl) return;
+    try {
+      localStorage.setItem(sl, JSON.stringify({
+        t: Date.now(), bits: K.bits,
+        adressen: K.modules.map(function (m) { return { rx: m.rx, tx: m.tx, txAangenomen: !!m.txAangenomen }; })
+      }));
+    } catch (e) { console.warn('PLKaart: adreskaart niet bewaard', e); }
+  }
+
+  function _bekendeAdressen() {
+    var sl = _adresSleutel();
+    if (!sl) return null;
+    try {
+      var raw = localStorage.getItem(sl);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      return (o && Array.isArray(o.adressen) && o.adressen.length) ? o.adressen : null;
+    } catch (e) { console.warn('PLKaart: adreskaart niet leesbaar', e); return null; }
+  }
+
+  /* De VIN-waarnemingen uit de kaart, in de vorm die PLKm.vinConsistentie()
+     verwacht. Alleen F190 telt: dat is de genormeerde identifier voor het
+     voertuignummer. Een module die louter nullen teruggaf krijgt vinBlanco —
+     dat is iets anders dan "niet gevraagd" en iets anders dan "een VIN". */
+  function _vinBronnen(modules) {
+    var uit = [];
+    (modules || []).forEach(function (m) {
+      (m.dids || []).forEach(function (d) {
+        if (d.did !== 'F190') return;
+        uit.push({
+          rol: 'vin', module: m.rx, groep: m.rx,
+          vinId: d.vinId || null, vinStaart: d.vinStaart || '',
+          vinBlanco: !d.vin && /^0*$/.test(String(d.bytes || ''))
+        });
+      });
+    });
+    return uit;
+  }
+
   /* Richten op één stuurapparaat: zendadres én ontvangstfilter. Het
      filter komt uit de WAARNEMING (het id dat werkelijk antwoordde), niet
      uit de aanname zender+8 — dat is het hele verschil met blok 9. */
@@ -771,7 +939,7 @@
       var r = _eersteVoor(splitsRegels(await stuur('01' + pid), bits), rx);
       if (!r) { uit.push({ pid: pid, stil: true }); continue; }
       var d = duid(ontpak(r.data).bytes, '01');
-      if (d.soort === 'positief') uit.push({ pid: pid, bytes: byteHex(d.payload.slice(1)), len: Math.max(0, d.payload.length - 1) });
+      if (d.soort === 'positief') uit.push(Object.assign({ pid: pid }, await bewaarBytes(d.payload.slice(1))));
       else uit.push({ pid: pid, soort: d.soort, nrc: d.nrc || null });
     }
     return uit;
@@ -823,6 +991,10 @@
     var dids = 0;
     trap.forEach(function (t) { dids += (t.tot - t.van + 1); });
     var modules = opties.modules || 6;
+    // Een gerichte herhaling slaat de ontdekking over: op 04-09 was dat 89 van
+    // de 171 seconden. Die eruit laten is het verschil tussen een eerlijke
+    // opgave en een die standaard een minuut te hoog staat.
+    if (opties.hergebruikAdressen) adressen = 0;
     var cmds = 12 + adressen * perAdres + modules * (10 + 40) + modules * dids + modules * 30;
     var ms = cmds * CFG.msPerCmd;
     return { commandos: cmds, ms: ms, tekst: _duur(ms) };
@@ -861,7 +1033,13 @@
       r.push('geweigerd door de leespoort: ' + K.geweigerd.length + ' commando(s) — ' +
         K.geweigerd.slice(0, 3).map(function (g) { return g.cmd + ' (' + g.reden + ')'; }).join(', '));
     }
-    r.push('trap: ' + (K.trap || []).map(function (t) { return t.naam; }).join(' → '));
+    r.push('trap: ' + (K.trap || []).map(function (t) { return t.naam; }).join(' → ') +
+      (K.gerichtOp ? '   GERICHT OP: ' + K.gerichtOp.join(', ') : ''));
+    if (K.vinOordeel) r.push('voertuignummer: ' + K.vinOordeel.tekst);
+    (K.vinOordeel && K.vinOordeel.bevindingen || []).forEach(function (b) {
+      r.push('   ' + b.ernst.toUpperCase() + ' — ' + b.kop + ': ' + b.tekst);
+    });
+    r.push('tweede pas (wat beweegt): ' + (K.tweedePas || 'onbekend'));
     r.push('');
 
     (K.modules || []).forEach(function (m) {
@@ -875,14 +1053,17 @@
       if ((m.pids || []).length) {
         r.push('   mode 01 — ' + m.pids.length + ' PIDs:');
         m.pids.forEach(function (p) {
-          r.push('     01' + p.pid + '  ' + (p.bytes != null ? p.bytes + ' (' + p.len + ' bytes)' : (p.stil ? 'stil' : p.soort)));
+          r.push('     01' + p.pid + '  ' + (p.vin ? 'voertuignummer ' + (p.vinStaart || '') + ' — niet bewaard (§7)'
+            : p.bytes != null ? p.bytes + ' (' + p.len + ' bytes)' : (p.stil ? 'stil' : p.soort)));
         });
       }
       if ((m.mids || []).length) r.push('   mode 06 — monitors: ' + m.mids.join(' '));
       if ((m.info09 || []).length) r.push('   mode 09 — info: ' + m.info09.join(' '));
       if ((m.mode21 || []).length) {
         r.push('   mode 21 — ' + m.mode21.length + ' treffers:');
-        m.mode21.forEach(function (x) { r.push('     21' + x.pid + '  ' + x.bytes); });
+        m.mode21.forEach(function (x) {
+          r.push('     21' + x.pid + '  ' + (x.vin ? 'voertuignummer ' + (x.vinStaart || '') + ' — niet bewaard (§7)' : x.bytes));
+        });
       }
       if (m.didOvergeslagen) r.push('   mode 22: ' + m.didOvergeslagen);
       else {
@@ -902,12 +1083,26 @@
           (niet.length ? '  |  NIET BEREIKT: ' + niet.join(', ') : ''));
 
         if ((m.dids || []).length) {
+          // "waarvan 0 bewegend" is een METING en mag er alleen staan als er
+          // ook echt een tweede keer gelezen is. Stond de scan halverwege
+          // stil, dan is dat getal geen nul maar niets — en op 04-09 stond
+          // die nul er achttien keer terwijl de tweede pas nooit liep.
+          var herlezen = m.dids.filter(function (d) { return d.bytes2 != null; });
           var beweegt = m.dids.filter(function (d) { return d.beweegt; });
-          r.push('   mode 22 — ' + m.dids.length + ' identifiers, waarvan ' + beweegt.length + ' bewegend:');
+          r.push('   mode 22 — ' + m.dids.length + ' identifiers' +
+            (herlezen.length ? ', waarvan ' + beweegt.length + ' bewegend (' + herlezen.length + ' herlezen)'
+                             : ' — tweede pas niet gedraaid, dus over bewegen valt hier niets te zeggen') + ':');
           m.dids.forEach(function (d) {
             if (d.geweigerd) { r.push('     22' + d.did + '  geweigerd ' + d.geweigerd + ' — ' + d.reden); return; }
+            if (d.vin) {
+              r.push('     22' + d.did + '  voertuignummer ' + (d.vinStaart || '(onleesbaar)') +
+                (d.vinId ? '  [' + d.vinId + ']' : '  [niet gepseudonimiseerd]') +
+                ' — ruwe VIN bewust niet bewaard (§7)');
+              return;
+            }
             r.push('     22' + d.did + '  ' + d.bytes + ' (' + d.len + ' bytes)' +
-              (d.beweegt ? '   ← BEWEEGT, tweede pas: ' + d.bytes2 : (d.bytes2 != null ? '   (stabiel)' : '')));
+              (d.beweegt ? '   ← BEWEEGT, tweede pas: ' + d.bytes2
+                         : (d.bytes2 != null ? '   (stabiel)' : '   (niet herlezen)')));
           });
         } else if (af.length) {
           r.push('   mode 22 — geen enkele identifier bestaat hier in ' + (af.length === namen.length ? 'de trap' : 'de afgezochte treden'));
@@ -942,6 +1137,9 @@
     kaart: function () { return _laatsteKaart; },
     naarTekst: naarTekst, render: render,
     trap: function () { return DID_TRAP.slice(); },
+    trapGroepen: function () { return Object.keys(TRAP_GROEPEN); },
+    trapVan: trapVan,
+    bekendeAdressen: _bekendeAdressen,
     magVerzenden: magVerzenden,
     cfg: CFG,
     _intern: {
