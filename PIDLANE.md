@@ -210,6 +210,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 46 | `pidlane-run.js` | 15 | `PLRun` — de Run-chip in de topbar: één plek waar staat wat er op de achtergrond draait (rit-monitor, bulk-recorder, waakronde, caravan, rit-analyse) en waar het uit kan. Leest de staat bij het tekenen uit de bron; wrapt niets. Caravan en rit-analyse vragen bevestiging bij stoppen. **Let op:** `caravanActive` en `ritActive` staan in script-scope, niet op `window` — zie `test-run.js` |
 | 47 | `pidlane-mode06.js` | 16 | mode 06 — testresultaten van de boordmonitors |
 | 47b | `pidlane-kmcheck.js` | 26 | `PLKm` — de kilometerstand-check. Vraagt 01A6 en 0131 functioneel, en mode 22 per stuurapparaat met een eigen `ATSH`/`ATCRA` (7E0 PCM, 720 IPC, 726 BCM, 760/7B0 ABS). Kruist de antwoorden op **CAN-adres**, niet op identifier: twee DIDs uit dezelfde doos bevestigen elkaar niet. Zet de adapter in een `finally` terug op 7DF. Vereist `sendCmd` + `withBus`; hangt in `index.html` direct ná `pidlane-mode06.js`. Knop in stap 2 van de koopcheck |
+| 47c | `pidlane-kaart.js` | 27 | `PLKaart` — de datapuntenkaart. **Neemt de verbinding over**: busslot met `PLBus.raak()`-hartslag, `ATH1`, `ATAT0`, korte `ATST`, en zet alles in een `finally` terug. Ontdekt stuurapparaten door de sweep 700-7FF (of 18DAxxF1 bij 29-bit) en leest het antwoordadres **uit de header**, niet uit zender+8. Enumereert daarna per module de mode 01/06/09-bitmaps, de mode 22-identifiers uit een getrapte lijst, en mode 21. Tweede pas markeert wat beweegt. `magVerzenden()` is één leespoort: niets dat schrijft komt erdoor. Knop in het testrunpaneel (blok 15) |
 | 48 | `pidlane-export.js` | 20 | `plOpslaan`/`plMaakPdf` — jsPDF in huisstijl |
 | 49 | `pidlane-testrun.js` | 76 | één knop, één rit, één logboek. Vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot — zie §20 |
 | 50 | `pidlane-logboek.js` | 16 | `PLLogboek` — voegt vier logbronnen samen in één tijdlijn: `log()` (500 regels, via `plLokaalLog()`), `btDiag()` (1400, met kopie in localStorage), de diagbundel-ring (400) en de live-log-spiegel. Kebab → Logboek. **Trekt** data op bij openen; hangt zich niet in `log()` of `btDiag()` — die codebase heeft al één laag wrappers (`pidlane-remote.js`) en een tweede zou broncode-inspectie onbruikbaar maken |
@@ -804,6 +805,67 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### Elke scan mislukte, en dat lag niet aan de adressen — 04-09-2026
+
+De jacht op datapunten liep hier al maanden op raden. Blok 9 gokte 256
+identifiers in de 11xx-reeks op 7E0 en vond niets; de km-check gokt
+Ford-nummers op Mazda-adressen. De conclusie was steeds "verkeerde lijst,
+volgende keer een betere lijst". Die conclusie was fout.
+
+**De omgeving liet geen enkele lange scan overleven.** Vier oorzaken, geen
+ervan in de scan zelf:
+
+| # | wat | gevolg |
+|---|---|---|
+| 1 | `ATH0` staat in béide init-reeksen van `pidlane-bt.js` | een antwoord is anoniem — blok 9 kon niet vaststellen wélk stuurapparaat sprak |
+| 2 | `PLBus.MAX_HOLD_MS` = 180 s | een scan die langer duurt wordt onteigend, midden in een `ATSH`-reeks |
+| 3 | `trackBtQuality()`: 6× leeg = socket dood | een sweep over 256 adressen waarvan 250 niet bestaan verbreekt zijn eigen verbinding |
+| 4 | `PLBus.note()` telt NO DATA als fout | `foutPct` → ~100%, `PLBusGate` dicht, waakronde meldt sensoren als uitgevallen |
+
+Oorzaak 1 is de fundamentele: **zonder headers is er geen kaart, alleen een
+lijst.** De andere drie zorgden ervoor dat je nooit lang genoeg mocht meten om
+dat te merken.
+
+**Wat er is veranderd.** `PLBus.raak()` erbij: een houder die zich blijft
+melden hangt per definitie niet, dus de noodrem meet vanaf de laatste melding
+in plaats van vanaf de claim — en een houder die stópt met melden valt
+onveranderd na drie minuten om (`test-busslot.js` toetst beide helften).
+`window._plScanActief` zet oorzaak 3 en 4 uit voor de duur van een scan; in
+ruil daarvoor bewaakt `PLKaart` de verbinding zélf met een `ATI`-hartslag en
+breekt af als die twee keer stil blijft. Een `write()`-fout (`force`) gaat
+onveranderd door de reconnect-guard: dát is wél een kapotte socket.
+
+**Twee bugs die de test bij zijn eerste run vond.**
+
+*Geen ISO-TP-hersamenstelling.* Met de headers UIT plakt de adapter een lang
+antwoord zelf aan elkaar en zet er `0:` / `1:` voor. Met de headers AAN doet
+hij dat niet: je krijgt losse CAN-frames, elk met hetzelfde id en een eigen
+stuurbyte. Een VIN is 20 bytes en past nooit in één frame. De eerste versie
+las daar zes bytes van en hield de rest voor twee extra stuurapparaten. Dat is
+geen randgeval — `F190` is de identifier waar je mee begint.
+
+*De bitmap telde zichzelf mee.* Het laatste bit van een mode 01-bitmap zegt
+"er volgt nog een bitmap"; dat is PID `0x20`, `0x40`, … De eerste versie zette
+die als datapunt in de kaart. Een verzonnen datapunt in een module die
+verzinsels moet uitbannen.
+
+**Wat de kaart wél en niet zegt.** Hij zegt wat er BESTAAT (het stuurapparaat
+declareert het zelf, of antwoordt met `62` in plaats van `7F 22 31`) en wat er
+BEWEEGT — een tweede pas leest elke treffer opnieuw en markeert wat veranderde,
+wat sensoren van configuratie scheidt zonder één gok. Hij zegt niet wat de
+bytes betekenen. Dat is handwerk achteraf, met koelwater en toerental ernaast.
+
+**Wat er niet gerepareerd is.** `_sendBTOnce()` pollt de SPP-socket elke 50 ms
+op een prompt. Daarmee ligt de bodem van één commando rond de 60-110 ms, hoe
+snel de adapter ook is. Bij 65.536 identifiers is dat uren. Dat is een
+verbouwing van de transportlaag en hoort niet in dezelfde commit; de
+tijdschatting vóór de scan rekent er voorlopig met 85 ms per commando.
+
+**Nog ongemeten.** De sweep 700-7FF is nooit op een echte auto gedraaid. Ik
+verwacht dat de meeste adressen stil blijven en dat is de bedoeling — maar of
+`ATCRA` op niet-7Ex-adressen doet wat het belooft, en of `3E00` op deze bus
+werkelijk elk stuurapparaat wakker maakt, weet ik pas na stap G van `CAMPAGNE`.
 
 ### De km-stand stond in de app als "niet uitleesbaar" — 04-09-2026 (nieuw, ongemeten)
 

@@ -151,6 +151,33 @@ function ok(voorwaarde, omschrijving){
     } finally { Date.now = echteNow; }
   }
 
+  // ── de scanvlag: een scan mag zijn eigen verbinding niet slopen ──
+  // _emptyStreak telt écht lege responses; zes op rij betekent "socket dood"
+  // en start een volledige herverbinding. Een adresscan over 700-7FF levert er
+  // moeiteloos 250. Dat is de reden dat elke lange scan tot nu toe halverwege
+  // omviel, en de reden dat window._plScanActief bestaat.
+  {
+    const { api, win, scope } = bouwSandbox();
+    win._webSerialWrite = true;
+    api.zetTransport(async () => '');            // adres bestaat niet: niets terug
+
+    win._plScanActief = false;
+    win._emptyStreak = 0;
+    for (let i = 0; i < 5; i++) await api.sendCmd('0100');
+    ok(win._emptyStreak === 5,
+      'zonder scanvlag telt elke lege respons mee richting "socket dood"');
+
+    win._plScanActief = true;
+    win._emptyStreak = 0;
+    for (let i = 0; i < 40; i++) await api.sendCmd('0100');
+    ok(win._emptyStreak === 0,
+      'met de scanvlag aan tellen veertig lege responses niet mee — de scan bewaakt zelf');
+    ok(scope.connected === true,
+      'en de verbinding wordt niet doodverklaard midden in een sweep');
+
+    win._plScanActief = false;
+  }
+
   // ── 6. handmatig openen werkt en is idempotent ──
   {
     const { api, win } = bouwSandbox();

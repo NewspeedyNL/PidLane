@@ -205,6 +205,12 @@ var KRITIEK = [
 // functie zijn — met reden, want de test vraagt erom.
 var GEEN_GLOBALE = {
   'onAnnuleer': 'parameter van showBusyPill(), geen globale functie',
+  // Erbij op 04-09-2026 met de kaartmaker. `confirm` is een browserfunctie en
+  // geen eigen code, dus hij hoort niet in KRITIEK — maar de guard eromheen is
+  // wél terecht: in een WebView kan de host dialogen uitzetten, en dan bestaat
+  // hij niet. Zonder guard zou de kaartmaker daar stilvallen op zijn eigen
+  // waarschuwing.
+  'confirm': 'browserfunctie (window.confirm), geen eigen module — kan in een WebView ontbreken',
   // Gemeld door de runtime-controle op de rit van 16-08: stond in KRITIEK maar
   // is een lokale const in pidlane-waakronde.js die window.setConn vasthoudt.
   // Les: een typeof-guard op een LOKALE naam is geen bedradingspunt. De lijst

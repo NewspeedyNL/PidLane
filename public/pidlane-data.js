@@ -1431,6 +1431,24 @@ window.PLBus={
     return S.token;
   },
 
+  /* RAAK — de houder meldt dat hij nog leeft.
+
+     MAX_HOLD_MS is een noodrem tegen een houder die HANGT, niet tegen werk
+     dat lang duurt. Dat onderscheid bestond niet: een adresscan die vijf
+     minuten legitiem bezig is, werd na drie minuten door de volgende
+     aanvrager afgebroken — midden in een ATSH-reeks, met de adapter op een
+     enkel stuurapparaat. De scan merkte daar niets van en mat verder aan een
+     bus die hij niet meer bezat.
+
+     Een houder die zich blijft melden is per definitie niet vastgelopen. De
+     noodrem blijft dus staan en meet vanaf de laatste melding in plaats van
+     vanaf de claim. Wie niet raakt, valt onveranderd na drie minuten om. */
+  raak(tok){
+    if(!S.owner || !tok || tok!==S.token) return false;
+    S.since=nu();
+    return true;
+  },
+
   release(tok){ return this._release(tok,false); },
 
   _release(tok,forceer){
@@ -1493,6 +1511,12 @@ window.PLBus={
 
   /* ── telemetrie (voedt het busdiagnose-scherm) ── */
   note(cmd,ms,bad){
+    // Een adresscan vraagt duizenden adressen die niet bestaan. Die tellen
+    // hier als 'bad', schieten foutPct naar ~100% en zetten PLBusGate dicht —
+    // waarna de waakronde en de watchers sensoren als uitgevallen melden
+    // terwijl er niets uitgevallen is. Een scan meet zijn eigen kwaliteit
+    // zelf; deze statistiek gaat over de gewone pollus.
+    if(window._plScanActief) return;
     S.tx++; if(bad) S.bad++; else S.ok++;
     if(ms>0){ S.msSom+=ms; S.msN++; }
     S.hist.push({t:nu(),ms:ms||0,bad:!!bad});

@@ -11,6 +11,56 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04b (CET) — DE DATAPUNTENKAART
+
+       • 🗺️ KNOP "KAART MAKEN" IN DE TESTRUN (blok 15). Neemt
+         de verbinding hélemaal over en levert een volledig
+         overzicht: elk stuurapparaat dat antwoordt, met per
+         stuurapparaat de diensten die leven, de mode 01-PIDs
+         die de ECU zélf declareert, de mode 22-identifiers die
+         bestaan, mode 21, en van elk datapunt de ruwe bytes.
+
+       • 🔍 NIETS WORDT GERADEN. De sweep 700-7FF (of 18DAxxF1
+         bij 29-bit CAN) vraagt elk adres en leest het
+         antwoordadres UIT DE HEADER — niet uit de aanname
+         zender+8. Een module die op 768 antwoordt terwijl je
+         720 vroeg, wordt zo gevonden; met de aanname was hij
+         onzichtbaar.
+
+       • ⚠️ WAAROM ELKE VORIGE SCAN MISLUKTE. Vier oorzaken,
+         geen ervan in de scan zelf. ATH0 stond in beide
+         init-reeksen, dus een antwoord was anoniem. Het
+         busslot brak de houder na drie minuten af. De
+         dode-socket-detectie zag zes lege antwoorden als een
+         kapotte verbinding — een sweep haalt er 250. En de
+         busstatistiek ging naar 100% fout, waarna de waakronde
+         gezonde sensoren als uitgevallen meldde. Alle vier
+         opgelost; zie §11 van PIDLANE.md.
+
+       • 🔒 ALLES IS LEZEND. Eén leespoort (magVerzenden) laat
+         alleen 01/02/03/06/07/09/0A/19/21/22/3E door. Sessie
+         wisselen, resetten, wissen, schrijven, routines,
+         beveiliging: er komt niets van doorheen, ook niet als
+         je het erin duwt.
+
+       • 📈 EN WAT BEWEEGT? Een tweede pas leest elke treffer
+         opnieuw. Wat verandert is een sensor, wat stilstaat is
+         configuratie — dat onderscheid is met geen enkele
+         lijst te raden en kost één ronde.
+
+       • ✅ test-kaart.js: 53 toetsen met een nagebouwde ELM327
+         en CAN-bus eronder (meerdere ECU's, headers aan/uit,
+         ontvangstfilter, ISO-TP-frames, 7F-antwoorden). Vond
+         bij de eerste run twee echte bugs: geen ISO-TP-
+         hersamenstelling en de bitmap-PID die zichzelf als
+         datapunt telde. Negen nieuwe mutaties in plmutate.sh.
+
+       • ⏱️ De volledige sweep over alle 65.536 identifiers
+         wordt vooraf als uren opgegeven, niet stilzwijgend
+         gestart. Begin met de getrapte.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-04 (CET) — DE KILOMETERSTAND-CHECK
 
        • 🧭 DE APP ZEI DAT DIT NIET KON. Onder het km-veld van

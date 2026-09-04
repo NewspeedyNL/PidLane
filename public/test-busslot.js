@@ -229,6 +229,36 @@ ctx.window._pollBusy = false;
   toets('op een vrije bus pakt hij het slot wel', eigenaarTijdens, 'testrun-snelheid-prik');
   toets('en geeft het daarna terug', B.busy(), false);
 
+  // ── raak(): lang werk is niet hetzelfde als vastgelopen werk ──
+  // MAX_HOLD_MS breekt een houder af die drie minuten niets doet. Dat is een
+  // noodrem tegen hangen, maar hij trof óók werk dat legitiem lang duurt: een
+  // adresscan over 256 adressen en duizenden identifiers werd halverwege
+  // onteigend, met de adapter op een gezet header en zonder dat de scan het
+  // merkte. Een houder die zich blijft melden hangt per definitie niet.
+  {
+    const houder = B.claim('lange-scan');
+    toets('de lange houder heeft het slot', B.busy(), true);
+
+    NU += 170000;                                  // bijna drie minuten
+    toets('raak() met het juiste token slaagt', B.raak(houder), true);
+    toets('een vreemd token raakt niets', B.raak(houder + 99), false);
+
+    NU += 170000;                                  // samen ruim boven MAX_HOLD_MS
+    // Zonder raak() zou de noodrem hier toeslaan. Mét raak() telt de klok vanaf
+    // de laatste melding, dus een nieuwe aanvrager komt er NIET tussen.
+    toets('een verversende houder wordt niet onteigend', B.claim('indringer'), 0);
+    toets('en houdt het slot gewoon', B.owner(), 'lange-scan');
+
+    // Tegenproef: houdt hij op met melden, dan grijpt de noodrem alsnog. Zonder
+    // deze helft zou "raak() werkt" ook groen staan als de noodrem helemaal weg
+    // was — en dan is een écht vastgelopen houder onsterfelijk.
+    NU += 200000;
+    const na = B.claim('indringer2');
+    toets('wie stopt met melden wordt na drie minuten alsnog afgebroken', na > 0, true);
+    toets('en het slot is dan van de nieuwe houder', B.owner(), 'indringer2');
+    B.release(na);
+  }
+
   // ── en blijft het bij ÉÉN vorm? ──
   // De winst van #115 verdampt zodra er ergens weer een eigen claim met een
   // handgeschreven finally bijkomt: alles hierboven blijft dan groen, want het

@@ -3404,6 +3404,54 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── de kaartmaker: hangt hij erin, en staat de scanvlag uit? ──────
+  // De vlag window._plScanActief zet de dode-socket-detectie in
+  // pidlane-bt.js uit. Blijft hij per ongeluk aanstaan — een scan die klapte
+  // vóór zijn finally, een tweede scan die de vlag van de eerste wist — dan
+  // merkt de app de rest van de sessie niet meer dat de verbinding wegvalt.
+  // Dat is precies het soort stille toestand dat alleen in de draaiende app
+  // te zien is: op schijf staat de vlag nergens aan.
+  {
+    issue: '§21',
+    naam: 'De kaartmaker hangt erin en laat geen scanvlag achter',
+    waarom: 'Een blijven hangende scanvlag zet de dode-socket-detectie uit, en dat is alleen in de draaiende app te zien.',
+    proef: function () {
+      if (!window.PLKaart)
+        return { staat: 'FOUT', detail: 'PLKaart ontbreekt — pidlane-kaart.js hangt niet in index.html' };
+      if (typeof window.kaartStart !== 'function')
+        return { staat: 'FOUT', detail: 'kaartStart() ontbreekt — de knoppen in dit paneel roepen iets aan dat niet bestaat' };
+
+      const knoppen = Array.prototype.slice.call(document.querySelectorAll('#testrunOv button'))
+        .filter(function (b) { return /Kaart maken|Volledig/.test(b.textContent || ''); });
+      if (knoppen.length < 2)
+        return { staat: 'FOUT', detail: 'de kaartknoppen staan niet in het testrunpaneel (' + knoppen.length + ' gevonden)' };
+
+      if (window._plScanActief)
+        return { staat: 'FOUT', detail: 'window._plScanActief staat AAN terwijl er geen scan loopt — ' +
+          'de dode-socket-detectie in pidlane-bt.js is daarmee uitgeschakeld; verbreek en verbind opnieuw' };
+      if (PLKaart.staat().bezig)
+        return { staat: 'FOUT', detail: 'PLKaart meldt zichzelf als bezig terwijl er geen scan loopt' };
+
+      // De leespoort van de gelááden kopie, niet die op schijf.
+      const verboden = ['1101', '2EF19012', '31010203', '14FFFFFF', '2703'];
+      const door = verboden.filter(function (c) { return PLKaart.magVerzenden(c).mag; });
+      if (door.length)
+        return { staat: 'FOUT', detail: 'de leespoort laat schrijvende commando\'s door: ' + door.join(', ') +
+          ' — een scan mag de auto nooit veranderen' };
+      if (!PLKaart.magVerzenden('22F190').mag)
+        return { staat: 'FOUT', detail: 'de leespoort weigert een gewone leesvraag (22F190) — dan scant hij niets' };
+
+      const zonderBron = PLKaart.trap().filter(function (t) { return !t.bron; });
+      if (zonderBron.length)
+        return { staat: 'FOUT', detail: zonderBron.length + ' trede(n) van de DID-trap zeggen niet waar ze vandaan komen — ' +
+          'dan is niet te zien wat genormeerd is en wat ooit gegokt is' };
+
+      const sch = PLKaart.schatting({ volledig: true });
+      return 'PLKaart geladen, ' + PLKaart.trap().length + ' treden met bronvermelding, twee knoppen in dit paneel, ' +
+        'scanvlag uit; de volledige sweep wordt vooraf opgegeven als ' + sch.tekst;
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -4172,7 +4220,11 @@ async function startTestrun(blokken) {
   }
 }
 
-function stopTestrun() { _trStop = true; _boek(0, 'Stoppen gevraagd', 'gestopt', '', null); }
+function stopTestrun() {
+  // Eén stopknop, één betekenis: stop wat er draait. Draait de kaartmaker,
+  // dan is dát wat er draait — die heeft de bus en de adapter in handen.
+  try { if (window.PLKaart && typeof PLKaart.stop === 'function') PLKaart.stop(); }
+  catch (e) { console.warn('Stopverzoek aan de kaartmaker mislukt', e); } _trStop = true; _boek(0, 'Stoppen gevraagd', 'gestopt', '', null); }
 
 function _telling() {
   const t = { ok: 0, fout: 0, letop: 0, rest: 0 };
@@ -4915,6 +4967,11 @@ function openTestrun() {
         '<button onclick="startTestrun({b14:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Ritverslag</button>' +
         // Alleen tellen, geen bus: mag ook los, bijvoorbeeld thuis op de bank.
         '<button onclick="startTestrun({b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Inventarisatie</button>' +
+        // DE KAARTMAKER (blok 15). Staat bewust náást de meetknoppen en niet
+        // ertussen: hij neemt de verbinding over, zet de adapter in een andere
+        // stand en duurt minuten. Dat is geen meting maar een expeditie.
+        '<button onclick="kaartStart(false)" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bl);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">🗺️ Kaart maken</button>' +
+        '<button onclick="kaartStart(true)" style="background:var(--sur2);color:var(--tx3);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">🗺️ Volledig (uren)</button>' +
         '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
         '<button onclick="plMarkeer(\'losse markering\', \'met de hand gezet\')" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bl);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">📍 Markeer nu</button>' +
         '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
@@ -4925,6 +4982,92 @@ function openTestrun() {
   ov.style.display = 'flex';
   _teken();
 }
+// ══════════════════════════════════════════════════════════════════
+// BLOK 15 — DE DATAPUNTENKAART
+// ══════════════════════════════════════════════════════════════════
+// Draait NIET mee in de gewone run: dit is geen meting maar een expeditie.
+// De scan neemt de verbinding over (busslot, ATH1, korte timeout) en duurt
+// minuten tot uren. Alles wat hij vindt komt in het testrunlogboek terecht,
+// dus één keer "Logboek" na afloop en de hele kaart zit in het verslag.
+//
+// De uitvoering zit in pidlane-kaart.js; hier staat alleen wat een mens
+// nodig heeft: een waarschuwing vooraf met de geschatte duur, de voortgang
+// terwijl het loopt, en het verslag erna. Die scheiding is met opzet — de
+// scanlogica is met test-kaart.js te toetsen, een knop niet.
+let _kaartBezig = false;
+
+async function kaartStart(volledig) {
+  if (!window.PLKaart) { _boek(15, 'Kaart', 'FOUT', 'PLKaart ontbreekt — pidlane-kaart.js hangt niet in index.html', null); return; }
+  if (_kaartBezig) { try { showToast('De kaartmaker loopt al'); } catch (e) { /* stil: melding mag nooit de stroom breken */ } return; }
+  if (typeof connected === 'undefined' || !connected) { _boek(15, 'Kaart', 'overgeslagen', 'geen verbinding met de adapter', null); return; }
+  if (typeof demoMode !== 'undefined' && demoMode) { _boek(15, 'Kaart', 'overgeslagen', 'demomodus levert geen echte kaart', null); return; }
+
+  const sch = PLKaart.schatting({ volledig: !!volledig });
+  const waarschuwing = 'De kaartmaker neemt de verbinding helemaal over: de gewone metingen staan stil, ' +
+    'de adapter gaat in scanstand en er gaan ongeveer ' + sch.commandos.toLocaleString('nl-NL') +
+    ' commando\'s de bus op.\n\nGeschatte duur: ' + sch.tekst + '.\n\n' +
+    (volledig ? 'Dit is de VOLLEDIGE sweep over alle 65.536 identifiers per stuurapparaat. ' +
+      'Laat de motor draaien of het contact aan staan, en de telefoon aan de lader.\n\n' : '') +
+    'Alles is lezend; er wordt niets in de auto veranderd.\n\nDoorgaan?';
+  if (typeof confirm === 'function' && !confirm(waarschuwing)) {
+    _boek(15, 'Kaart', 'overgeslagen', 'afgebroken bij de bevestiging', null);
+    return;
+  }
+
+  _kaartBezig = true;
+  _boek(15, 'Kaart gestart', 'ok', (volledig ? 'volledige sweep' : 'getrapte sweep') +
+    ' — schatting ' + sch.tekst + ', ' + sch.commandos + ' commando\'s', null);
+  const t0 = _nu();
+  let laatsteFase = '';
+  try {
+    const K = await PLKaart.scan({
+      volledig: !!volledig,
+      onStap: function (st) {
+        // Niet elke stap boeken: dat zijn er duizenden. Wel elke faseovergang,
+        // plus de tussenstanden die de module zelf de moeite waard vindt.
+        if (st.fase !== laatsteFase) { laatsteFase = st.fase; _boek(15, st.fase, 'ok', st.tekst, null); return; }
+        if (st.totaal && st.gedaan) _voortgangKaart(st);
+      }
+    });
+    const n = (K.modules || []).length;
+    _boek(15, 'Kaart klaar', K.afgebroken ? 'FOUT' : 'ok',
+      n + ' stuurapparaten, ' + PLKaart._intern.telDatapunten(K) + ' datapunten, ' +
+      K.commandos + ' commando\'s' + (K.afgebroken ? '  |  AFGEBROKEN: ' + K.afgebroken : '') +
+      (K.gestopt ? '  |  met de hand gestopt' : ''), _nu() - t0);
+    if (K.herstelFout) {
+      _boek(15, 'Adapterherstel', 'FOUT', K.herstelFout +
+        '— verbreek en verbind opnieuw voordat je verder meet, anders praat de app tegen één stuurapparaat', null);
+    }
+    if (K.headersAan !== true) {
+      _boek(15, 'Headers', 'LET OP',
+        'de adapter gaf geen bruikbare CAN-id\'s terug; antwoorden zijn dan niet aan een ' +
+        'stuurapparaat toe te wijzen en de kaart is een lijst zonder adressen', null);
+    }
+    // De hele kaart als één regel in het logboek: dat is het spoor dat
+    // achteraf herlezen moet kunnen worden, met de ruwe bytes erin.
+    _boek(15, 'Kaart', 'ok', '\n' + PLKaart.naarTekst(K), null);
+  } catch (e) {
+    _boek(15, 'Kaart', 'FOUT', 'de scan liep niet af: ' + (e.message || e), _nu() - t0);
+  } finally {
+    _kaartBezig = false;
+  }
+}
+
+// Voortgang zonder het logboek vol te schrijven: één regel die zichzelf
+// overschrijft. Duizend regels "adres 7A3" helpen niemand.
+function _voortgangKaart(st) {
+  const laatste = _trLog[_trLog.length - 1];
+  const tekst = st.tekst + '  (' + st.gedaan + '/' + st.totaal + ')';
+  if (laatste && laatste.blok === 15 && laatste.naam === 'voortgang') {
+    laatste.detail = tekst;
+    try { _teken(); } catch (e) { console.warn('Testrun-log niet hertekend tijdens de kaartscan', e); }
+  } else {
+    _boek(15, 'voortgang', 'ok', tekst, null);
+  }
+}
+
+window.kaartStart = kaartStart;
+
 function closeTestrun() { const ov = document.getElementById('testrunOv'); if (ov) ov.style.display = 'none'; }
 
 function _teken() {
@@ -5000,6 +5143,18 @@ const CAMPAGNE = {
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
+    'DE KAARTMAKER (PLKaart) IS ER, EN DIT IS DE RIT DIE HEM MOET WAARMAKEN. Knop "Kaart maken" in dit paneel. Hij neemt de verbinding hélemaal over: busslot, ATH1, ATAT0, korte ATST, en hij zet alles daarna terug. Wat hij oplevert is een lijst van elk stuurapparaat dat antwoordt, met per stuurapparaat de diensten die leven, de mode 01-PIDs die de ECU zélf declareert, de mode 22-identifiers die bestaan, en van elk datapunt de ruwe bytes. Geen enkele gok.',
+
+    'WAAROM ELKE VORIGE SCAN MISLUKTE, EN DAT LAG NIET AAN DE ADRESSEN. Vier dingen in de laag eronder. (1) ATH0 stond in beide init-reeksen: zonder headers is een antwoord anoniem, dus blok 9 kon nooit vaststellen WELK stuurapparaat iets zei. (2) PLBus.MAX_HOLD_MS brak de houder na drie minuten af, dus elke scan die langer duurde werd halverwege onteigend. (3) trackBtQuality telt zes lege antwoorden op rij als een dode socket en herverbindt \u2014 een sweep over 256 adressen waarvan er 250 niet bestaan haalt dat moeiteloos, dus de scan verbrak zichzelf. (4) PLBus.note telde elke NO DATA als fout, waarna PLBusGate dichtging en de waakronde sensoren als uitgevallen meldde. Alle vier zijn nu weg; het busslot heeft raak() gekregen en de twee detectoren kijken naar window._plScanActief.',
+
+    'STAP G \u2014 DE KAART MAKEN. Contact aan of motor stationair, telefoon aan de lader. Druk op "Kaart maken" en bevestig de waarschuwing (die noemt de geschatte duur). Laat hem lopen. Kijk tijdens de ontdekkingsfase mee WELKE adressen antwoorden: dat is de lijst die tot nu toe altijd geraden werd. Aan het eind staat de hele kaart als \u00e9\u00e9n blok in het testrunlogboek \u2014 \u00e9\u00e9n keer "Logboek" en je hebt hem.',
+
+    'STAP H \u2014 KIJK NA AFLOOP OF DE APP NOG MEET. De scan zet ATH1 en een header om, en zet ze in een finally terug. Tonen de sensortegels daarna gewoon weer waarden, dan is dat goed gegaan. Vallen ze uit, dan staat er "Adapterherstel" als FOUT in blok 15 \u2014 verbreek en verbind opnieuw voordat je verder meet.',
+
+    'WAT DE KAART NIET IS. Hij zegt wat er BESTAAT en wat er BEWEEGT (de tweede pas leest elke treffer nog eens en markeert wat veranderde), maar niet wat het BETEKENT. Een identifier die antwoordt bestaat; wat de bytes voorstellen is handwerk achteraf, met koelwater en toerental ernaast. Dat is bewust: een verzonnen betekenis is erger dan geen betekenis.',
+
+    'EN LET OP DE TIJD. De getrapte sweep loopt de genormeerde blokken eerst (F180-F1FF identificatie, F400-F8FF de OBD-spiegel) en daarna de OEM-blokken uit veldwaarnemingen. De knop "Volledig (uren)" doet alle 65.536 identifiers per stuurapparaat en wordt vooraf als uren opgegeven. Begin met de getrapte; pas als die niets oplevert is de volledige de moeite waard.',
+
     'DE KILOMETERSTAND-CHECK (PLKm) IS NIEUW, EN DIT IS DE RIT DIE HEM MOET IJKEN. De koopcheck zei tot nu toe dat OBD2 de echte tellerstand niet vrijgeeft. Dat klopt voor mode 01 zoals die in 1996 bedoeld was, maar niet meer: 01 A6 is de generieke totale afstand (J1979-2) en mode 22 vraagt per stuurapparaat, elk op zijn eigen CAN-adres. Het punt is niet de stand zelf maar het VERSCHIL: wie de teller terugdraait, vergeet het motorblok of de ABS.',
 
     'STAP F \u2014 DE KM-CHECK OP DE AUTO. Open de koopcheck, type de stand van het dashboard in stap 2 over en druk op "Tellerstand narekenen bij de stuurapparaten". Kijk stap voor stap mee. Noteer WELKE adressen antwoorden (7E0, 720, 726, 760, 7B0) en met welke ruwe bytes \u2014 die staan in de tabel. Op deze CX-5 is de verwachting dat 01 A6 stil blijft en dat de mode-22-identifiers uit de lijst niet kloppen: het zijn Ford-nummers, geen Mazda-nummers. Dat is geen mislukking maar de meting die de tabel moet vullen.',
@@ -5022,7 +5177,7 @@ const CAMPAGNE = {
 
     'pidlane-fuel.js \u2014 feat_demo dekt nu beide demoknoppen. test-demo-toegang.js leest de lijst; de nieuwe proef in blok 5 draait de schakelaar echt om, want een selector die er staat maar niets raakt komt alleen zo aan het licht.',
 
-    'plmutate.sh staat op 95 mutaties, alle 95 gevangen \u2014 zeven nieuwe over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
+    'plmutate.sh staat op 104 mutaties, alle 104 gevangen \u2014 negen nieuwe over de kaartmaker (waaronder de vier structurele blokkades in bt.js en data.js) en zeven over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
 
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.',
 

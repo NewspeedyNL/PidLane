@@ -1010,6 +1010,10 @@ async function _sendBTOnce(cmd, timeoutMs){
 // Max 1 herverbindpoging per 10 sec om loops te voorkomen.
 async function sppReconnectGuard(spp,address,cmd,force){
   try{
+    // Zelfde reden als in trackBtQuality: een lege buffer op een adres dat
+    // niet bestaat is een meetresultaat, geen kapotte socket. Een write()-fout
+    // (force) is dat wél, en die blijft dus ook tijdens een scan doorgaan.
+    if(window._plScanActief && !force) return;
     const now=Date.now();
     if(window._lastSppReconnect&&now-window._lastSppReconnect<10000) return;
 
@@ -1116,6 +1120,14 @@ async function sendCmd(cmd, timeoutMs){
 const _btQual=[]; let _qualWarned=false;
 function trackBtQuality(cmd, r){
   if(!connected || demoMode) return;
+  // EEN SCAN VRAAGT ADRESSEN DIE NIET BESTAAN, EN DAT IS GEEN DODE SOCKET.
+  // _emptyStreak telt écht lege responses; zes op rij betekent hier "de
+  // verbinding is weg" en trekt een volledige herverbinding op gang. Een
+  // adresscan over 700-7FF levert die zes moeiteloos op — de scan sloopte
+  // dus zijn eigen verbinding, halverwege, met de adapter op een gezet
+  // header. Wie scant, bewaakt de verbinding zelf: PLKaart doet dat met een
+  // ATI-hartslag en breekt af als die óók stil blijft.
+  if(window._plScanActief) return;
   // Alleen data-PIDs tellen. LET OP: echte polls zijn '010C1' ('1'-suffix voor
   // snelle terugkeer) en batches '010C0D05...' — de oude regex /^01XX$/ matchte
   // die nooit, waardoor kwaliteitspill én dode-socket-detectie nooit draaiden.
