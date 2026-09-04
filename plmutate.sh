@@ -192,6 +192,21 @@ MUTATIES=(
 ".github/workflows/build-apk.yml@@zet \"apk/pidlane.apk\"@@zet \"apk/app.apk\"@@test-apkpad.js@@de build schrijft een andere R2-sleutel dan de Worker leest"
 ".github/workflows/build-apk.yml@@          npx --yes wrangler@4 r2 object get \"\$BUCKET/apk/pidlane.apk\" \\\n            --file=/tmp/terug.apk --remote@@          true@@test-apkpad.js@@de upload wordt niet meer teruggelezen: \"ok\" van het gereedschap telt weer als bewijs"
 ".github/workflows/build-apk.yml@@        if: github.ref == 'refs/heads/main'\n@@@@test-apkpad.js@@een branch-build mag de publieke APK-download overschrijven"
+
+# ── de adminbrowser: /admin/tabel (04-09-2026) ──
+# Eén route die in zeven tabellen leest en in vijf schrijft. De fouten die
+# hier tellen zijn niet rekenfouten maar weggevallen grendels: ze geven geen
+# foutmelding, ze geven méér dan de bedoeling was.
+"worker.js@@    if (geheim.indexOf(k) >= 0) {@@    if (false) {@@test-adminbron.js@@de wachtwoordhash en het resettoken gaan mee naar de beheerpagina"
+"worker.js@@  const verboden = (def.beschermd || []).concat(def.geheim || []);@@  const verboden = [];@@test-adminbron.js@@Saldo en PassHash zijn hierlangs tóch te schrijven, buiten het saldoslot om"
+"worker.js@@    schrijven: false, beschermd: [], geheim: []@@    schrijven: true, beschermd: [], geheim: []@@test-adminbron.js@@AppConfig is hierlangs te schrijven, langs de cacheverversing van /api/config heen"
+"worker.js@@      if (ids.length > 10) return json({ ok: false, error: \"Maximaal 10 records per keer wissen.\" }, 400);@@@@test-adminbron.js@@meer dan tien records tegelijk wissen wordt stil half uitgevoerd"
+"worker.js@@  if (veld && !VELDNAAM_OK.test(veld)) return json({ ok: false, error: \"Ongeldige veldnaam.\" }, 400);@@@@test-adminbron.js@@een veldnaam met formuletekens gaat ongefilterd de Airtable-formule in"
+
+# ── een klant aanmaken vanuit het beheer (04-09-2026) ──
+"worker.js@@      if (await klantZoek(env, email))\n        return json({ ok: false, error: \"Dit e-mailadres is al geregistreerd.\" }, 409);@@@@test-klant-aanmaken.js@@hetzelfde adres levert een tweede klantrij op: login pakt de eerste, jij boekt op de tweede bij"
+"worker.js@@      if (pass) velden.PassHash = await hashPassword(pass, env);@@      if (pass) velden.PassHash = pass;@@test-klant-aanmaken.js@@het wachtwoord gaat ruw naar Airtable in plaats van gehasht"
+"worker.js@@  if (actie !== \"opruimen\" && actie !== \"aanmaken\" && !/^rec[A-Za-z0-9]{14}$/.test(id))@@  if (false)@@test-klant-aanmaken.js@@de uitzondering op de id-eis is te ruim: bijboeken zonder id wordt een PATCH op niets"
 )
 
 echo

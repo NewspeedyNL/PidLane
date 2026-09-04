@@ -122,3 +122,59 @@ matcht niet op `http://localhost`.
 
 Alleen loopback, alleen `http`. Een pagina op een ander adres kan die Origin
 niet vervalsen — de browser zet hem, niet de pagina.
+
+## Twee pagina's: `admin.html` en `beheer.html`
+
+Sinds 04-09-2026 staat er een tweede beheerpagina naast de eerste:
+
+| bestand | openen op | wat het is |
+|---|---|---|
+| `admin.html` | `http://127.0.0.1:8788/admin.html` | de vertrouwde pagina, ongewijzigd |
+| `beheer.html` | `http://127.0.0.1:8788/beheer.html` | tweede generatie |
+
+`npm run admin` serveert de hele map, dus allebei draaien ze zonder extra
+stappen. Ze praten met dezelfde Worker en dezelfde routes.
+
+**Waarom een tweede bestand en geen verbouwing.** `admin.html` werkt en beheert
+echt geld. Hem openbreken voor een tabellenbrowser en een logvisualisatie
+betekent dat één fout in de verbouwing ook de saldoknoppen raakt die het al
+deden. Valt er in `beheer.html` iets om, dan pak je de oude en gaat het beheer
+door.
+
+### Wat `beheer.html` erbij kan
+
+- **Klanten aanmaken.** Was er niet: een klant kon alleen zichzelf registreren.
+  Het wachtwoord is optioneel — laat je het leeg, dan bestaat het account wel
+  maar kan er nog niet op ingelogd worden en zet de klant er zelf een via
+  "wachtwoord vergeten". Dat is de veiligste variant, want dan heb jij er nooit
+  een gekend.
+- **Het logboek ophalen en uittekenen.** Per dag, per type, en de koplijstjes
+  van gebruiker, app-versie en merk. Let op wat er onder de grafiek staat: die
+  telt *wat je opgehaald hebt*. Haal je 300 regels op, dan gaat "laatste 14
+  dagen" over die 300 regels en niet over de hele tabel.
+- **Elke bekende Airtable-tabel doorbladeren**, rijen wijzigen en wissen.
+  Sommige velden zijn afgeschermd en staan grijs met een 🔒: `Saldo` hoort door
+  het saldoslot (via de klantenkaart), `PassHash` door de wachtwoordroute, en
+  `Email` is de sleutel waar dat slot op staat. Een wachtwoordhash en een
+  resettoken worden niet eens getoond — die verlaten de Worker niet.
+  `AppConfig` is alleen-lezen: schrijven gaat via de instellingenkaart, want
+  die gooit ook de randcache weg.
+- **CSV van elke lijst** die je op het scherm hebt (puntkomma en een BOM, dus
+  Excel opent hem zonder importvenster).
+- **Gereedschap**: de poorttest, de verwijderwachtrij, een lijst van de routes
+  waar de pagina mee praat, en een ruwe GET om te zien wat de Worker werkelijk
+  antwoordt.
+- Sneltoetsen **1 t/m 8** springen tussen de tabbladen zolang je niet in een
+  invoerveld staat.
+
+### Wat er hetzelfde blijft
+
+Dezelfde oefenmodus (🧪 op de toegangspoort, geen token nodig, geen enkel
+verzoek naar de Worker), dezelfde ❔-uitleg per scherm, dezelfde uitleg bij een
+weigering, en dezelfde regel over de auditregel: de naam erbij is
+zelf-opgegeven en bewijst niets.
+
+**De nieuwe Worker is nodig.** De tabellenbrowser en het logboek draaien op
+`/admin/tabel`; klanten aanmaken op `actie=aanmaken` in `/admin/klanten`. Staat
+er nog een oudere Worker live, dan geeft de poorttest onder *Gereedschap* dat
+als enige rode stap terug met "deze Worker kent /admin/tabel nog niet".

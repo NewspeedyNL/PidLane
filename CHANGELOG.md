@@ -11,6 +11,51 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04 (CET) — DE TWEEDE BEHEERPAGINA
+
+       • 🗂️ admin/beheer.html STAAT NAAST admin.html, NIET IN
+         DE PLAATS ERVAN. De oude pagina werkt en beheert echt
+         geld; hem openbreken voor een tabellenbrowser betekent
+         dat één fout in de verbouwing ook de saldoknoppen raakt
+         die het al deden. Openen op
+         http://127.0.0.1:8788/beheer.html na npm run admin.
+         Acht tabbladen, sneltoetsen 1 t/m 8.
+
+       • ➕ KLANTEN AANMAKEN VANUIT HET BEHEER. Dat kon niet: een
+         klant kon alleen zichzelf registreren, en met de hand in
+         Airtable levert een rij op zonder Aangemaakt, zonder
+         Status en met een PassHash die niemand kan invullen —
+         hashPassword() zit in de Worker. Nieuwe actie aanmaken
+         op /admin/klanten. Het wachtwoord is optioneel: laat je
+         het leeg, dan zet de klant er zelf een via "wachtwoord
+         vergeten" en heb jij er nooit een gekend.
+
+       • 📜 HET LOGBOEK IS OP TE HALEN EN UIT TE TEKENEN. Per dag,
+         per type, en de koplijstjes van gebruiker, app-versie en
+         merk — met de eerlijke mededeling erbij dat de grafiek
+         telt wát je opgehaald hebt, en niet de hele tabel.
+         Regels zijn te selecteren en te wissen, tien per keer.
+
+       • 🔒 EEN TABELLENBROWSER MET GRENDELS, GEEN VRIJE TOEGANG.
+         Nieuwe route /admin/tabel leest zeven bekende tabellen —
+         geen vrije base- of tabelnaam, want dat maakt van één
+         gelekte ADMIN_TOKEN een sleutel tot het hele Airtable-
+         account. Saldo, PassHash en Email zijn hierlangs niet te
+         schrijven (die horen door het saldoslot en door
+         hashPassword); een wachtwoordhash en een resettoken
+         worden niet eens getoond. AppConfig is alleen-lezen,
+         want /api/config gooit ook de randcache weg.
+
+       • 🧪 DEZELFDE OEFENMODUS, NU MET EEN LOGBOEK. Geen token,
+         geen enkel verzoek naar de Worker, 140 verzonnen
+         logregels zodat de grafieken iets te tekenen hebben.
+         Nieuw: bproef-beheerpagina.js start de échte pagina in
+         Chromium en meet dat de schermen tekenen en de grendels
+         staan — nagemeten door de grendel weg te halen, en dan
+         wordt hij rood.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-04 (CET) — DE KILOMETERSTAND-CHECK
 
        • 🧭 DE APP ZEI DAT DIT NIET KON. Onder het km-veld van

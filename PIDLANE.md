@@ -114,8 +114,11 @@ PidLane/
 │  ├─ tests.yml                     testgate: plcheck.sh, plmutate.sh, sleutelscan
 │  └─ automerge.yml                 voegt een PR samen zodra de testgate groen is
 ├─ admin/
-│  ├─ admin.html          (49 KB)  admin-, gebruikers-, klant- en codebeheer
-│  └─ LEESMIJ.md                    hoe je hem lokaal draait
+│  ├─ admin.html          (85 KB)  admin-, gebruikers-, klant- en codebeheer
+│  ├─ beheer.html         (95 KB)  tweede generatie: idem + klanten aanmaken,
+│  │                               logboek uittekenen, tabellenbrowser, CSV
+│  ├─ serve.js                      lokale server voor allebei (npm run admin)
+│  └─ LEESMIJ.md                    hoe je ze lokaal draait
 └─ public/                          ← alles hier wordt PUBLIEK geserveerd
    ├─ index.html           (203 KB) HTML-structuur + bootstrap + script-tags
    ├─ config.js            (3 KB)   PROXY_URL, AIRTABLE_URL, APP_VERSION
@@ -343,9 +346,36 @@ als een routingfout):
 | `/admin/klanten` | klantbeheer voor admin.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
+| `/admin/tabel` | de bekende Airtable-tabellen lezen (GET), één record wijzigen of maximaal tien wissen (POST) — zie **De adminbrowser** hieronder |
 | `/proxy` | generieke uitgaande proxy (RDW/NHTSA), whitelist op host |
 | `/download/*`, `/version.json` | APK uit R2 |
 | `/health` | statuscheck |
+
+**De adminbrowser — `/admin/tabel` (04-09-2026).** Er waren drie leesroutes
+voor het beheer (klanten, codes, gebruikers) en geen enkele voor het logboek of
+het veldlab. Wie wilde weten wat de app de afgelopen week gemeld had, moest in
+Airtable zelf gaan kijken — en dat is het moment waarop iemand met een
+browsersessie in de verkeerde base belandt. Deze route leest elke tabel die het
+beheer nodig heeft, achter dezelfde `ADMIN_TOKEN`, en geeft de ruwe velden
+terug zodat `admin/beheer.html` er een lijst of een grafiek van maakt.
+
+Drie ontwerpkeuzes, en alle drie zijn ze een grendel en geen netheid:
+
+| begrip | wat het doet | waarom |
+|---|---|---|
+| **witte lijst** | `ADMIN_BRONNEN` koppelt een sleutel (`log`, `klanten`, …) aan de base- en tabelsleutels die de rest van de Worker ook gebruikt | een route die een vrije base- en tabelnaam aanneemt, is met één gelekte `ADMIN_TOKEN` een sleutel tot het hele Airtable-account — ook tot bases buiten PidLane |
+| **`beschermd`** | die velden zijn hier niet te schrijven: `Saldo`, `PassHash`, `ResetToken`, `ResetVerloopt`, `Email` (klanten) en `PassHash`, `User` (gebruikers) | `Saldo` hoort door `metSaldoSlot()` (#82, #93) — een PATCH hierlangs brengt precies die race terug. `PassHash` hoort door `hashPassword()`: een met de hand ingetikte waarde is een hash die op niets slaat, en dan kan niemand meer inloggen |
+| **`geheim`** | die velden verlaten de Worker niet; er komt `••• verborgen` voor in de plaats | een hash en een resettoken zijn genoeg om een account over te nemen. `••• verborgen` in plaats van leeg, zodat je wél ziet dát er een wachtwoord staat |
+
+`AppConfig` staat bewust op alleen-lezen: `/api/config` schrijft daar én gooit
+daarna de randcache weg. Een PATCH langs die route heen laat een oude waarde in
+de cache achter, en dan staat er dagen iets anders live dan wat de tabel zegt.
+
+Gedekt door `test-adminbron.js` (witte lijst, masker, grendels, wisgrenzen,
+zoekformule-ontsnapping, de terugval bij een onbekend sorteerveld) en door vijf
+mutaties in `plmutate.sh`. `test-klant-aanmaken.js` dekt de nieuwe actie
+`aanmaken` op `/admin/klanten` — inclusief de tegenproef dat een ruw wachtwoord
+nergens in de verzendbody terechtkomt.
 
 **Secrets** (nooit in de repo): `AIRTABLE_TOKEN`, `ADMIN_TOKEN`,
 `SESSION_SECRET`, `USERS_JSON`, `ANTHROPIC_API_KEY`, en voor wachtwoordherstel
