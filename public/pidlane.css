@@ -2110,17 +2110,30 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
    de app — rood is handelen, oranje is opletten, groen is klaar.
    ═══════════════════════════════════════════════════════════════════ */
 
-.pl-rc, .pl-m06 { margin-top: 8px; font-size: 12px; line-height: 1.45; }
+.pl-rc, .pl-m06, .pl-km { margin-top: 8px; font-size: 12px; line-height: 1.45; }
 
-.pl-rc-kop, .pl-m06-kop {
+.pl-rc-kop, .pl-m06-kop, .pl-km-kop {
   font-weight: 700; padding: 8px 10px; border-radius: 6px 6px 0 0;
   border-left: 4px solid var(--pl-rc-kleur, #64748b);
   background: rgba(148, 163, 184, .10); color: var(--pl-rc-kleur, #94a3b8);
 }
-.pl-rc-kritiek,  .pl-m06-kritiek  { --pl-rc-kleur: #ef4444; }
-.pl-rc-let-op,   .pl-m06-let-op   { --pl-rc-kleur: #f59e0b; }
-.pl-rc-ok,       .pl-m06-ok       { --pl-rc-kleur: #22c55e; }
-.pl-m06-onbekend                  { --pl-rc-kleur: #64748b; }
+.pl-rc-kritiek,  .pl-m06-kritiek,  .pl-km-kritiek { --pl-rc-kleur: #ef4444; }
+.pl-rc-let-op,   .pl-m06-let-op,   .pl-km-let-op  { --pl-rc-kleur: #f59e0b; }
+.pl-rc-ok,       .pl-m06-ok,       .pl-km-ok      { --pl-rc-kleur: #22c55e; }
+.pl-m06-onbekend, .pl-km-onbekend, .pl-km-onbevestigd { --pl-rc-kleur: #64748b; }
+
+/* ── Kilometerstand-check ──
+   Eén lijst met bevindingen boven de tabel met ruwe antwoorden. De kleur
+   per regel zegt hetzelfde als de kop: rood is handelen, oranje is opletten,
+   grijs is context die geen oordeel draagt. */
+.pl-km-bev { list-style: none; margin: 0; padding: 0; }
+.pl-km-bev li {
+  padding: 7px 10px; border-left: 4px solid transparent;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+}
+.pl-km-bev li.pl-km-kritiek { border-left-color: #ef4444; background: rgba(239, 68, 68, .07); }
+.pl-km-bev li.pl-km-let-op  { border-left-color: #f59e0b; background: rgba(245, 158, 11, .06); }
+.pl-km-bev li.pl-km-info    { opacity: .72; }
 
 /* ── Terugroepacties ── */
 .pl-rc-lijst { list-style: none; margin: 0; padding: 0; }

@@ -11,6 +11,58 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04 (CET) — DE KILOMETERSTAND-CHECK
+
+       • 🧭 DE APP ZEI DAT DIT NIET KON. Onder het km-veld van
+         de koopcheck stond "OBD2 geeft de echte tellerstand
+         niet vrij". Dat is de stand van 1996. 01 A6 is de
+         generieke totale afstand (SAE J1979-2), en mode 22
+         vraagt per stuurapparaat op zijn eigen CAN-adres:
+         7E0 motorblok, 720 instrumentenpaneel, 726 carrosserie,
+         760/7B0 ABS. Nieuwe knop in stap 2: "Tellerstand
+         narekenen bij de stuurapparaten".
+
+       • 🔍 HET GAAT NIET OM DE STAND MAAR OM HET VERSCHIL.
+         Terugdraaien gebeurt op het instrumentenpaneel; het
+         motorblok en de ABS tellen door. Staat de teller lager
+         dan een rekenende module, dan is dat het patroon — en
+         dat wordt met zoveel woorden gemeld, niet alleen als
+         getal.
+
+       • 📏 TWEE STAPPEN, NIET ÉÉN. Bij een OEM-identifier ligt
+         de schaal niet vast: dezelfde vier bytes zijn kilometers
+         óf tienden. Eerst valt af wat fysiek niet kan (1 –
+         1.600.000 km); blijven er twee over, dan wijst een anker
+         alleen de ORDE VAN GROOTTE aan — precies één kandidaat
+         binnen een factor 5. Lukt dat niet, dan telt de meting
+         niet mee en staat hij mét zijn ruwe bytes in het
+         verslag. Nooit een gok die eruitziet als een meting.
+
+       • 🤐 AFWEZIGHEID IS GEEN BEWIJS. Een stuurapparaat dat
+         niet antwoordt, kent die identifier niet — dat zegt
+         niets over de auto. Een stille bus levert "onbekend"
+         op en geen enkele verdenking. Twee identifiers op
+         hetzelfde adres bevestigen elkaar niet: de kruis-
+         vergelijking groepeert op CAN-adres.
+
+       • 🔌 DE ADAPTER GAAT ALTIJD TERUG. De check zet ATSH en
+         ATCRA om, en zet ze in een finally terug op 7DF. Blijft
+         7E0 staan, dan praat de hele app daarna alleen nog
+         tegen het motorblok — en dat merk je pas veel later.
+         Mislukt het terugzetten, dan staat dát in het verslag.
+
+       • ✅ test-kmcheck.js: 50 toetsen op de geladen module,
+         met een gestuurde nep-adapter eronder. Zeven nieuwe
+         mutaties in plmutate.sh maken ze rood. Blok 5 toetst
+         wat node niet kan zien: hangt de module in de pagina
+         en wijst de knop ergens op.
+
+       • ⚠️ ONGEMETEN: ATCRA is op geen enkele adapter
+         nagemeten, en de identifiers zijn Ford-nummers. Zie
+         CAMPAGNE stap F en §11 van PIDLANE.md.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-03 (CET) — SALDO ZETTEN DOOR HET
                                SALDO-SLOT
 

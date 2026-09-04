@@ -3348,6 +3348,62 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── de km-check: zit hij in DEZE app, en oordeelt hij hier hetzelfde? ──
+  // test-kmcheck.js dekt de rekenkant met 50 toetsen, en dat is de plek waar
+  // die hoort. Wat node niet kan zien: of de module ook echt in de pagina
+  // hangt, of de knop in de koopcheck naar een bestaande functie wijst, en of
+  // het oordeel dat de geladen kopie geeft hetzelfde is als het oordeel dat
+  // de test op schijf toetst. Precies die drie zijn hier stil kapot te maken —
+  // een vergeten scripttag, een hernoemde functie, een tweede kopie.
+  //
+  // Geen bus nodig: PLKm.oordeel() is puur. Dat is met opzet zo gebouwd.
+  {
+    issue: '§4',
+    naam: 'De km-check hangt in de app en oordeelt daar hetzelfde',
+    waarom: 'Alleen de draaiende app laat zien of de module geladen is en of de knop in de koopcheck ergens op uitkomt.',
+    proef: function () {
+      if (!window.PLKm)
+        return { staat: 'FOUT', detail: 'PLKm ontbreekt — pidlane-kmcheck.js hangt niet in index.html' };
+      if (typeof PLKm.oordeel !== 'function' || typeof PLKm.check !== 'function')
+        return { staat: 'FOUT', detail: 'PLKm mist oordeel() of check()' };
+      if (typeof PLKm.draaiUI !== 'function')
+        return { staat: 'FOUT', detail: 'PLKm.draaiUI() ontbreekt — de knop in de koopcheck roept iets aan dat niet bestaat' };
+
+      const knop = document.getElementById('koopKmCheckBtn');
+      const vak = document.getElementById('koopKmCheckUit');
+      if (!knop || !vak)
+        return { staat: 'FOUT', detail: 'de knop (#koopKmCheckBtn) of het uitvoervak (#koopKmCheckUit) staat niet in de koopcheck' };
+
+      // Een teruggedraaide teller: motorblok 214.050, dashboard 118.000.
+      const m = function (groep, km) {
+        return { rol: 'odo', groep: groep, module: 'proef ' + groep, cmd: '220201', km: km, zeker: true };
+      };
+      const fraude = PLKm.oordeel([m('7E0', 214050), m('720', 118000)], null);
+      if (fraude.niveau !== 'kritiek')
+        return { staat: 'FOUT', detail: '96.000 km verschil tussen motorblok en dashboard levert hier "' +
+          fraude.niveau + '" op in plaats van kritiek — de geladen module oordeelt anders dan de toets op schijf' };
+      if (fraude.bevindingen[0].patroon !== 'teller-lager')
+        return { staat: 'FOUT', detail: 'het verschil wordt gezien, maar niet als het patroon van een ' +
+          'teruggedraaide teller — dan mist de koper de reden waarom het erg is' };
+
+      // En de tegenkant: een gezonde auto mag hier geen alarm geven, anders
+      // is een groene uitslag niets waard.
+      const gezond = PLKm.oordeel([m('7E0', 89240), m('720', 89230)], null);
+      if (gezond.niveau !== 'ok')
+        return { staat: 'FOUT', detail: '10 km verschil op 89.240 levert "' + gezond.niveau +
+          '" op — dat is een vals alarm bij een koper' };
+
+      const stil = PLKm.oordeel([], null);
+      if (stil.niveau !== 'onbekend' || stil.bevindingen.length)
+        return { staat: 'FOUT', detail: 'een stille bus levert "' + stil.niveau + '" met ' +
+          stil.bevindingen.length + ' bevinding(en) — afwezigheid mag nooit een verdenking worden' };
+
+      return 'PLKm geladen met ' + PLKm.bronnen().length + ' bronnen, knop en uitvoervak aanwezig; ' +
+        'de geladen kopie meldt de teruggedraaide teller als kritiek, de gezonde auto als ok en de ' +
+        'stille bus als onbekend';
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -4944,6 +5000,14 @@ const CAMPAGNE = {
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
 
+    'DE KILOMETERSTAND-CHECK (PLKm) IS NIEUW, EN DIT IS DE RIT DIE HEM MOET IJKEN. De koopcheck zei tot nu toe dat OBD2 de echte tellerstand niet vrijgeeft. Dat klopt voor mode 01 zoals die in 1996 bedoeld was, maar niet meer: 01 A6 is de generieke totale afstand (J1979-2) en mode 22 vraagt per stuurapparaat, elk op zijn eigen CAN-adres. Het punt is niet de stand zelf maar het VERSCHIL: wie de teller terugdraait, vergeet het motorblok of de ABS.',
+
+    'STAP F \u2014 DE KM-CHECK OP DE AUTO. Open de koopcheck, type de stand van het dashboard in stap 2 over en druk op "Tellerstand narekenen bij de stuurapparaten". Kijk stap voor stap mee. Noteer WELKE adressen antwoorden (7E0, 720, 726, 760, 7B0) en met welke ruwe bytes \u2014 die staan in de tabel. Op deze CX-5 is de verwachting dat 01 A6 stil blijft en dat de mode-22-identifiers uit de lijst niet kloppen: het zijn Ford-nummers, geen Mazda-nummers. Dat is geen mislukking maar de meting die de tabel moet vullen.',
+
+    'WAT ER AAN DE KM-CHECK NIET GEMETEN IS. ATCRA \u2014 het ontvangstfilter \u2014 is op geen enkele adapter nagemeten. Voor 7Ex zet een ELM327 dat filter zelf; voor 720/726/760/7B0 is dat niet gegarandeerd, en zonder filter kan het antwoord van een ander stuurapparaat ertussen komen. Weigert de OBDLink het commando, dan gaat de meting door zonder filter en staat dat in het verslag. Let er tijdens de rit op: staat er "ATCRA geweigerd" bij een adres, dan is elk antwoord van dat adres verdacht en hoort het NIET in een oordeel.',
+
+    'EN LET OP DE ADAPTER NA AFLOOP. De check zet ATSH om en zet hem in een finally terug op 7DF. Blijft de app na de check sensoren tonen, dan is dat goed gegaan. Vallen er ineens PIDs uit, dan is het terugzetten mislukt \u2014 dat hoort dan als FOUT in het verslag te staan, en niet alleen in de app zichtbaar te zijn.',
+
     'SALDO ZETTEN LOOPT DOOR HET SALDO-SLOT (#93). Bij #82 gingen vier van de vijf saldoschrijvers door metSaldoSlot() en bleef "zetten" er bewust buiten, met een reden die opgeschreven was en er goed uitzag: daar stuurt de beheerder het eindbedrag, dus valt er niets te rekenen. Dat klopt, en het is de verkeerde vraag. Zetten rekent niet maar OVERSCHRIJFT: draait de klant op dat moment een analyse, dan boekt die binnen het slot af en schrijft terug, waarna deze PATCH er het oude getal overheen zet. Dezelfde fout als #82, in dezelfde week, in spiegelbeeld \u2014 en beide keren stond er een uitleg die het geval afdekte dat niet voorkwam.',
 
     'EN DE KNOP BELOOFDE IETS DAT HIJ NIET WAAR KON MAKEN. "Saldo zetten" vulde het veld voor met het saldo uit de klantenlijst en rekende daar een verschil mee uit: "een verschil van +50 tokens". Die lijst kan minuten oud zijn. Staat de klant intussen op 150 in plaats van 180, dan is het in werkelijkheid +80 \u2014 en juist dat verschil is wat je aan het afwegen bent. Het gaat nu als voorwaarde mee (saldoWas) en de Worker telt het binnen het slot na; klopt het niet, dan wordt er niets geschreven en komt saldo_verschoven terug met het verse getal.',
@@ -4958,7 +5022,7 @@ const CAMPAGNE = {
 
     'pidlane-fuel.js \u2014 feat_demo dekt nu beide demoknoppen. test-demo-toegang.js leest de lijst; de nieuwe proef in blok 5 draait de schakelaar echt om, want een selector die er staat maar niets raakt komt alleen zo aan het licht.',
 
-    'plmutate.sh staat op 88 mutaties, alle 88 gevangen.',
+    'plmutate.sh staat op 95 mutaties, alle 95 gevangen \u2014 zeven nieuwe over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
 
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.',
 

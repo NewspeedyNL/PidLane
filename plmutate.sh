@@ -58,6 +58,20 @@ MUTATIES=(
 "public/pidlane-waakronde.js@@const marge = (d.max - d.min) * 0.02;@@const marge = 0;@@test-waakronde.js@@de 2%-marge op het verwachte bereik is weg"
 "public/pidlane-rijsituatie.js@@_pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';@@_pidHealth[pid] = h;@@test-healthgate.js@@een onbekende sensor wordt uitgegrijsd in plaats van kiesbaar"
 "public/pidlane-rijsituatie.js@@if(ok===0 && geen<pids.length){@@if(false){@@test-healthgate.js@@de veiligheidsfallback van de gezondheidscheck staat uit"
+
+# ── De km-check (PLKm). Zes fouten die je écht kunt maken in een module die
+# uit vier bytes een oordeel over fraude trekt: de schaal verkeerd vastzetten,
+# het fysieke bereik loslaten, het verschil niet meer wegen, de speling
+# oprekken, het patroon omdraaien, en de adapter op één stuurapparaat laten
+# staan. Die laatste is de stilste: de check klopt, en de rést van de app
+# krijgt daarna niets meer terug.
+"public/pidlane-kmcheck.js@@      if (binnen.length === 1) {@@      if (binnen.length >= 1) {@@test-kmcheck.js@@het anker zet een schaal vast terwijl beide lezingen passen"
+"public/pidlane-kmcheck.js@@plausibel: km >= CFG.kmMin && km <= CFG.kmMax@@plausibel: true@@test-kmcheck.js@@de fysieke grens aan een tellerstand staat uit, dus geen enkele schaal valt af"
+"public/pidlane-kmcheck.js@@      if (groepen.length >= 2 && verschil > tol) {@@      if (false) {@@test-kmcheck.js@@twee stuurapparaten die elkaar tegenspreken leveren geen bevinding op"
+"public/pidlane-kmcheck.js@@    return Math.max(CFG.tolVastKm, Math.round(hoogste * CFG.tolPct));@@    return Math.max(CFG.tolVastKm, Math.round(hoogste * CFG.tolPct * 100));@@test-kmcheck.js@@de speling tussen twee stuurapparaten is honderd keer zo ruim"
+"public/pidlane-kmcheck.js@@        if (TELLERGROEPEN[laagste.groep] && !TELLERGROEPEN[hoogste.groep]) {@@        if (TELLERGROEPEN[hoogste.groep] && !TELLERGROEPEN[laagste.groep]) {@@test-kmcheck.js@@het patroon van een teruggedraaide teller staat omgekeerd"
+"public/pidlane-kmcheck.js@@      try { await sendCmd('ATSH7DF', CFG.atTimeoutMs); }@@      try { if (0) await sendCmd('ATSH7DF', CFG.atTimeoutMs); }@@test-kmcheck.js@@de adapter blijft op het laatste stuurapparaat staan"
+"public/pidlane-kmcheck.js@@      var n = h.indexOf('7F' + vraagSid);@@      var n = h.indexOf('7F' + kop.slice(0, 2));@@test-kmcheck.js@@een geweigerde identifier wordt niet als weigering herkend"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"
