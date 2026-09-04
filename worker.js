@@ -2808,15 +2808,81 @@ async function handleAdminKlantenPost(request, env) {
   try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
   const actie = String(b.actie || "");
   const id = String(b.id || "");
-  // "opruimen" gaat over de hele wachtrij en heeft dus geen record-id. Alle
-  // andere acties wél, en die eis blijft staan: een ontbrekend id zou daar
-  // een PATCH op een willekeurig record worden.
-  if (actie !== "opruimen" && !/^rec[A-Za-z0-9]{14}$/.test(id))
+  // "opruimen" gaat over de hele wachtrij en "aanmaken" maakt het record juist
+  // aan; die twee hebben dus geen record-id. Alle andere acties wél, en die eis
+  // blijft staan: een ontbrekend id zou daar een PATCH op een willekeurig
+  // record worden.
+  if (actie !== "opruimen" && actie !== "aanmaken" && !/^rec[A-Za-z0-9]{14}$/.test(id))
     return json({ ok: false, error: "Ongeldig record-id." }, 400);
 
   const { base, table, hdr } = klantTabel(env);
 
   try {
+    // ── aanmaken: een klantaccount vanuit het beheer ───────────────
+    // WAAROM DEZE ER IS
+    // Een klant kon alleen zichzelf registreren via /klant/registreer. Dat is
+    // het normale pad, maar het dekt de garage niet die aan de telefoon een
+    // account wil hebben, en het dekt de beheerder niet die een proefaccount
+    // nodig heeft. Die deed dat tot nu toe in Airtable met de hand — en dan
+    // staat er een rij zonder Aangemaakt, zonder Status en met een PassHash
+    // die niemand kan invullen omdat hashPassword() in de Worker zit.
+    //
+    // HET WACHTWOORD IS OPTIONEEL, EN DAT IS EEN KEUZE.
+    // Zonder wachtwoord bestaat het account wel maar kan er niet op ingelogd
+    // worden: er is geen PassHash om tegenaan te vergelijken. De klant zet er
+    // zelf een via "wachtwoord vergeten", en dan heeft de beheerder er nooit
+    // een gekend. Wie liever meteen een wachtwoord meegeeft, kan dat — het
+    // loopt dan door dezelfde eisen als een gewone registratie.
+    //
+    // Het beginsaldo gaat hier bewust niet door metSaldoSlot(). Het record
+    // bestaat op dat moment nog niet, dus er is niets om tegen te botsen: de
+    // eerste schrijver is deze. Vanaf de tweede wijziging geldt het slot weer,
+    // want dan loopt het via `bijboeken` of `update`.
+    if (actie === "aanmaken") {
+      const email = String(b.email || "").trim().toLowerCase();
+      const naam = String(b.naam || "").trim().slice(0, 80);
+      const pass = String(b.pass || "");
+      const saldo = Math.round(Number(b.saldo) || 0);
+      const status = ["actief", "ongeverifieerd", "geblokkeerd"].includes(String(b.status || "actief"))
+        ? String(b.status || "actief") : "";
+
+      if (!klantEmailOk(email)) return json({ ok: false, error: "Vul een geldig e-mailadres in." }, 400);
+      if (!status) return json({ ok: false, error: "Onbekende status." }, 400);
+      if (!isFinite(saldo) || saldo < 0 || saldo > 1e6) return json({ ok: false, error: "Beginsaldo buiten bereik." }, 400);
+      if (pass) {
+        const probleem = klantWachtwoordProbleem(pass, email);
+        if (probleem) return json({ ok: false, error: probleem }, 400);
+      }
+      // Airtable dwingt uniekheid niet af. Twee rijen met hetzelfde adres is
+      // geen beveiligingsprobleem maar wel een raadsel: login pakt de eerste
+      // en jij boekt op de tweede bij.
+      if (await klantZoek(env, email))
+        return json({ ok: false, error: "Dit e-mailadres is al geregistreerd." }, 409);
+
+      const nu = new Date().toISOString();
+      const velden = {
+        Email: email, Naam: naam, Saldo: saldo, TotaalGekocht: 0,
+        Status: status, Aangemaakt: nu
+      };
+      if (pass) velden.PassHash = await hashPassword(pass, env);
+      const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+        method: "POST", headers: hdr,
+        body: JSON.stringify({ records: [{ fields: velden }], typecast: true })
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(() => "");
+        return json({ ok: false, error: "Aanmaken mislukt.", detail: t.slice(0, 300) }, 502);
+      }
+      const d = await r.json();
+      const nieuwId = ((d.records || [])[0] || {}).id || "";
+      const vast = nieuwId
+        ? await klantAudit(env, nieuwId,
+            `account aangemaakt door beheerder (saldo ${saldo}, status ${status}, ` +
+            `${pass ? "met" : "zonder"} wachtwoord)`, b.door)
+        : false;
+      return json({ ok: true, id: nieuwId, email, saldo, status, metWachtwoord: !!pass, vastgelegd: vast }, 201);
+    }
+
     // ── bijboeken: +50 in plaats van "zet op 230" ──────────────────
     // WAAROM SERVER-SIDE EN NIET IN DE PAGINA
     // De pagina zou het oude saldo kunnen optellen en het nieuwe totaal
@@ -3212,6 +3278,285 @@ async function handleAdminCodesPost(request, env) {
 }
 __name(handleAdminCodesPost, "handleAdminCodesPost");
 
+// ═══════════════════════════════════════════════════════════════════
+// ADMINBROWSER — Airtable-tabellen lezen, bijwerken en wissen
+// ═══════════════════════════════════════════════════════════════════
+// WAAROM DIT ER IS
+// Er waren drie leesroutes voor het beheer (klanten, codes, gebruikers) en
+// geen enkele voor het logboek of het veldlab. Wie wilde weten wat de app de
+// afgelopen week gemeld had, moest in Airtable zelf gaan kijken — en dat is
+// precies het moment waarop iemand met een browsersessie in de verkeerde base
+// belandt. Deze route leest élke tabel die het beheer nodig heeft, achter
+// dezelfde ADMIN_TOKEN, en geeft de ruwe velden terug zodat de pagina er zelf
+// een lijst of een grafiek van kan maken.
+//
+// WAAROM EEN WITTE LIJST EN GEEN VRIJE base/table-PARAMETER
+// Een route die elke base en elke tabelnaam aanneemt die je erin stopt, is met
+// één gelekte ADMIN_TOKEN een sleutel tot het hele Airtable-account — ook tot
+// bases die niets met PidLane te maken hebben. De sleutels hieronder wijzen
+// naar dezelfde DEFAULTS/env-namen die de rest van de Worker gebruikt; er is
+// geen manier om er iets anders in te schuiven.
+//
+// WAAROM SOMMIGE VELDEN NIET TE SCHRIJVEN ZIJN
+// `beschermd` is geen netheid maar een grendel. Saldo hoort door
+// metSaldoSlot() (zie #82 en #93): een PATCH langs deze route heen zou precies
+// de race terugbrengen die daar is dichtgezet. PassHash hoort door
+// hashPassword(); een ruwe waarde die je hier intikt zou een wachtwoordhash
+// zijn die op niets slaat, en dan kan niemand meer inloggen. Email is de
+// sleutel waarop het saldoslot staat en waarop klantZoek() zoekt.
+//
+// `geheim` gaat de andere kant op: die velden gáán niet mee naar de pagina.
+// Een hash en een resettoken zijn genoeg om een account over te nemen, en een
+// beheerpagina hoort ze niet in beeld te hebben — ook niet "even kijken".
+var ADMIN_BRONNEN = {
+  log: {
+    naam: "Logboek (app)", baseKey: "AIRTABLE_LOG_BASE", baseFallback: "AIRTABLE_BASE",
+    tableKey: "AIRTABLE_LOG_TABLE", sorteer: "Timestamp",
+    zoekvelden: ["Message", "Type", "User", "Merk", "AppVersion"],
+    schrijven: true, beschermd: [], geheim: []
+  },
+  veldlab: {
+    naam: "Veldlab (meetwaarden)", baseKey: "AIRTABLE_VL_BASE",
+    tableKey: "AIRTABLE_VL_TABLE", sorteer: "",
+    zoekvelden: [], schrijven: true, beschermd: [], geheim: []
+  },
+  referentie: {
+    naam: "Referentiewaarden", baseKey: "AIRTABLE_VL_BASE",
+    tableKey: "AIRTABLE_REF_TABLE", sorteer: "",
+    zoekvelden: [], schrijven: true, beschermd: [], geheim: []
+  },
+  klanten: {
+    naam: "Klanten", baseKey: "AIRTABLE_CONFIG_BASE",
+    tableKey: "AIRTABLE_KLANTEN_TABLE", sorteer: "Aangemaakt",
+    zoekvelden: ["Email", "Naam", "Status"],
+    schrijven: true,
+    beschermd: ["Saldo", "PassHash", "ResetToken", "ResetVerloopt", "Email"],
+    geheim: ["PassHash", "ResetToken"]
+  },
+  codes: {
+    naam: "Activatiecodes", baseKey: "AIRTABLE_CONFIG_BASE",
+    tableKey: "AIRTABLE_CODES_TABLE", sorteer: "Aangemaakt",
+    zoekvelden: ["Code", "Batch", "GebruiktDoor"],
+    schrijven: true, beschermd: [], geheim: []
+  },
+  users: {
+    naam: "Gebruikers", baseKey: "AIRTABLE_CONFIG_BASE",
+    tableKey: "AIRTABLE_USERS_TABLE", sorteer: "",
+    zoekvelden: ["User", "Label", "Role"],
+    schrijven: true, beschermd: ["PassHash", "User"], geheim: ["PassHash"]
+  },
+  config: {
+    naam: "AppConfig", baseKey: "AIRTABLE_CONFIG_BASE",
+    tableKey: "AIRTABLE_CONFIG_TABLE", sorteer: "",
+    zoekvelden: ["Key"],
+    // Bewust niet schrijfbaar: /api/config schrijft hier én gooit daarna de
+    // randcache weg. Een PATCH langs deze route heen laat een oude waarde
+    // achter in die cache, en dan staat er dagen iets anders live dan wat de
+    // tabel zegt. Wijzigen doe je op de configkaart.
+    schrijven: false, beschermd: [], geheim: []
+  }
+};
+
+// Airtable-veldnamen mogen van alles bevatten, maar wat hier binnenkomt gaat
+// ongewijzigd in een formule of een sort-parameter. Alles buiten deze tekenset
+// weigeren is goedkoper dan achteraf ontsnappen.
+var VELDNAAM_OK = /^[A-Za-z0-9 _.\-]{1,60}$/;
+
+function adminBron(env, sleutel) {
+  const def = ADMIN_BRONNEN[String(sleutel || "")];
+  if (!def) return null;
+  return {
+    def,
+    base: resolveBase(env, def.baseKey, def.baseFallback),
+    table: cfg(env, def.tableKey),
+    hdr: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" }
+  };
+}
+__name(adminBron, "adminBron");
+
+// Geheime velden verlaten de Worker niet. Niet leeglaten maar vervangen: dan
+// ziet de beheerder dát er een hash staat (en dus dat de klant kan inloggen)
+// zonder de hash zelf te krijgen.
+function bronMasker(def, fields) {
+  const uit = {};
+  const geheim = def.geheim || [];
+  for (const k of Object.keys(fields || {})) {
+    if (geheim.indexOf(k) >= 0) {
+      const v = fields[k];
+      uit[k] = v === undefined || v === null || v === "" ? "" : "••• verborgen";
+      continue;
+    }
+    uit[k] = fields[k];
+  }
+  return uit;
+}
+__name(bronMasker, "bronMasker");
+
+// Wat er in een PATCH mag. Geeft een foutmelding terug (string) of null.
+// De naam van het geweigerde veld staat erbij: "niet toegestaan" zonder te
+// zeggen wát maakt van een grendel een raadsel.
+function bronSchrijfProbleem(def, velden) {
+  if (!def.schrijven) return `De bron "${def.naam}" is alleen-lezen.`;
+  if (!velden || typeof velden !== "object" || Array.isArray(velden)) return "Geen velden om te schrijven.";
+  const namen = Object.keys(velden);
+  if (!namen.length) return "Geen velden om te schrijven.";
+  if (namen.length > 40) return "Te veel velden in één bewerking (maximaal 40).";
+  const verboden = (def.beschermd || []).concat(def.geheim || []);
+  for (const n of namen) {
+    if (!VELDNAAM_OK.test(n)) return `Ongeldige veldnaam: ${String(n).slice(0, 40)}`;
+    if (verboden.indexOf(n) >= 0)
+      return `Het veld "${n}" is hier afgeschermd en wordt via zijn eigen route gewijzigd.`;
+  }
+  return null;
+}
+__name(bronSchrijfProbleem, "bronSchrijfProbleem");
+
+// ── GET /admin/tabel?bron=log&limiet=50&offset=…&q=…&veld=…&sorteer=… ──
+async function handleAdminTabelGet(request, env) {
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  const sp = new URL(request.url).searchParams;
+  const sleutel = String(sp.get("bron") || "");
+  const b = adminBron(env, sleutel);
+  if (!b) return json({ ok: false, error: "Onbekende bron.", bronnen: Object.keys(ADMIN_BRONNEN) }, 400);
+
+  const limiet = Math.min(100, Math.max(1, Math.round(Number(sp.get("limiet")) || 50)));
+  const offset = String(sp.get("offset") || "");
+  const q = String(sp.get("q") || "").trim().toLowerCase();
+  const veld = String(sp.get("veld") || "").trim();
+  const sorteer = String(sp.get("sorteer") || b.def.sorteer || "").trim();
+  const richting = String(sp.get("richting") || "desc") === "asc" ? "asc" : "desc";
+  if (veld && !VELDNAAM_OK.test(veld)) return json({ ok: false, error: "Ongeldige veldnaam." }, 400);
+  if (sorteer && !VELDNAAM_OK.test(sorteer)) return json({ ok: false, error: "Ongeldig sorteerveld." }, 400);
+
+  const stam = `https://api.airtable.com/v0/${b.base}/${encodeURIComponent(b.table)}?pageSize=${limiet}`;
+  let vraag = stam;
+  if (offset) vraag += `&offset=${encodeURIComponent(offset)}`;
+  if (q) {
+    const zoekIn = veld ? [veld] : (b.def.zoekvelden || []);
+    if (zoekIn.length) {
+      const e = q.replace(/'/g, "\\'");
+      // &'' erachter: LOWER() op een getal- of datumveld geeft anders een
+      // formulefout, en dan valt de hele lijst weg in plaats van dat ene veld.
+      const formule = zoekIn.length === 1
+        ? `SEARCH('${e}',LOWER({${zoekIn[0]}}&''))`
+        : `OR(${zoekIn.map((v) => `SEARCH('${e}',LOWER({${v}}&''))`).join(",")})`;
+      vraag += `&filterByFormula=${encodeURIComponent(formule)}`;
+    }
+  }
+  const sortDeel = sorteer
+    ? `&sort%5B0%5D%5Bfield%5D=${encodeURIComponent(sorteer)}&sort%5B0%5D%5Bdirection%5D=${richting}`
+    : "";
+
+  try {
+    let gesorteerd = !!sorteer;
+    let r = await fetch(vraag + sortDeel, { headers: b.hdr });
+    // Een sorteerveld dat in deze tabel niet bestaat geeft 422 en dus een lege
+    // pagina. Dat is de verkeerde uitkomst: de gegevens zijn er wel, alleen de
+    // volgorde niet. Eén keer opnieuw zonder sortering, en de pagina krijgt te
+    // horen dat er niet gesorteerd is.
+    if (!r.ok && sortDeel) {
+      r = await fetch(vraag, { headers: b.hdr });
+      gesorteerd = false;
+    }
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      return json({ ok: false, error: "airtable_" + r.status, detail: t.slice(0, 300) }, 502);
+    }
+    const d = await r.json();
+    const records = (d.records || []).map((rec) => ({
+      id: rec.id,
+      createdTime: rec.createdTime || "",
+      fields: bronMasker(b.def, rec.fields || {})
+    }));
+    // De unie van alle veldnamen in deze pagina. Airtable geeft per record
+    // alleen de gevulde velden terug, dus zonder deze unie mist de tabelkop
+    // precies de kolommen die maar bij een deel van de rijen staan.
+    const velden = [];
+    for (const rec of records)
+      for (const k of Object.keys(rec.fields))
+        if (velden.indexOf(k) < 0) velden.push(k);
+    return json({
+      ok: true, bron: sleutel, naam: b.def.naam, tabel: b.table, records, velden,
+      offset: d.offset || "", gesorteerd, sorteer: gesorteerd ? sorteer : "",
+      schrijven: !!b.def.schrijven, beschermd: b.def.beschermd || [], geheim: b.def.geheim || []
+    });
+  } catch (e) {
+    return klantFout(e, "Ophalen mislukt.");
+  }
+}
+__name(handleAdminTabelGet, "handleAdminTabelGet");
+
+// ── POST /admin/tabel  { bron, actie:'wijzig'|'wis', id|ids, velden } ──
+async function handleAdminTabelPost(request, env) {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const rl = await adminWriteLimited(env, ip);
+  if (rl.limited) return rateLimitResponse(rl);
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+
+  let b0 = {};
+  try { b0 = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b0 blijft {}, hieronder gevalideerd */ }
+  const sleutel = String(b0.bron || "");
+  const b = adminBron(env, sleutel);
+  if (!b) return json({ ok: false, error: "Onbekende bron.", bronnen: Object.keys(ADMIN_BRONNEN) }, 400);
+  if (!b.def.schrijven) return json({ ok: false, error: `De bron "${b.def.naam}" is alleen-lezen.` }, 403);
+
+  const actie = String(b0.actie || "");
+  const stam = `https://api.airtable.com/v0/${b.base}/${encodeURIComponent(b.table)}`;
+
+  try {
+    if (actie === "wijzig") {
+      const id = String(b0.id || "");
+      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id." }, 400);
+      const velden = b0.velden;
+      const probleem = bronSchrijfProbleem(b.def, velden);
+      if (probleem) return json({ ok: false, error: probleem }, 400);
+      // Airtable neemt geen tekstwaarde boven de 100k aan; afkappen op 95k is
+      // wat /airtable/log ook doet, zodat één te lange plakactie geen 422 geeft.
+      const schoon = {};
+      for (const k of Object.keys(velden))
+        schoon[k] = typeof velden[k] === "string" && velden[k].length > 95e3 ? velden[k].slice(0, 95e3) : velden[k];
+      const r = await fetch(stam, {
+        method: "PATCH", headers: b.hdr,
+        body: JSON.stringify({ records: [{ id, fields: schoon }], typecast: true })
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(() => "");
+        return json({ ok: false, error: "airtable_" + r.status, detail: t.slice(0, 300) }, 502);
+      }
+      const d = await r.json();
+      const rec = (d.records || [])[0] || {};
+      return json({ ok: true, id, velden: bronMasker(b.def, rec.fields || {}) });
+    }
+
+    if (actie === "wis") {
+      // Eén id of een lijstje: de pagina wist een selectie in één klik, en
+      // Airtable neemt er maximaal tien per verzoek. Meer dan tien weigeren in
+      // plaats van stil afkappen — half wissen is het ergste antwoord.
+      const ids = Array.isArray(b0.ids) ? b0.ids.map(String) : (b0.id ? [String(b0.id)] : []);
+      if (!ids.length) return json({ ok: false, error: "Geen record-id opgegeven." }, 400);
+      if (ids.length > 10) return json({ ok: false, error: "Maximaal 10 records per keer wissen." }, 400);
+      for (const id of ids)
+        if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id: " + id.slice(0, 24) }, 400);
+      const qs = ids.map((id) => `records[]=${encodeURIComponent(id)}`).join("&");
+      const r = await fetch(`${stam}?${qs}`, { method: "DELETE", headers: b.hdr });
+      if (!r.ok) {
+        const t = await r.text().catch(() => "");
+        return json({ ok: false, error: "airtable_" + r.status, detail: t.slice(0, 300) }, 502);
+      }
+      return json({ ok: true, gewist: ids });
+    }
+
+    return json({ ok: false, error: "Onbekende actie." }, 400);
+  } catch (e) {
+    return klantFout(e, "Bewerking mislukt.");
+  }
+}
+__name(handleAdminTabelPost, "handleAdminTabelPost");
+
+
 // ── POST /klant/onboarding  { survey, anon, nieuwsbrief } ───────────
 // Legt de akkoorden vast en keert daarna eenmalig het proeftegoed uit.
 //
@@ -3476,6 +3821,10 @@ var worker_default = {
         return lockOrigin(request, await handleAdminCodesGet(request, env));
       if (url.pathname === "/admin/codes" && request.method === "POST")
         return lockOrigin(request, await handleAdminCodesPost(request, env));
+      if (url.pathname === "/admin/tabel" && request.method === "GET")
+        return lockOrigin(request, await handleAdminTabelGet(request, env));
+      if (url.pathname === "/admin/tabel" && request.method === "POST")
+        return lockOrigin(request, await handleAdminTabelPost(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
         return lockOrigin(request, await handleKlantRegistreer(request, env));
       if (url.pathname === "/klant/login" && request.method === "POST")
