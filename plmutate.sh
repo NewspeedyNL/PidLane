@@ -72,6 +72,20 @@ MUTATIES=(
 "public/pidlane-kmcheck.js@@        if (TELLERGROEPEN[laagste.groep] && !TELLERGROEPEN[hoogste.groep]) {@@        if (TELLERGROEPEN[hoogste.groep] && !TELLERGROEPEN[laagste.groep]) {@@test-kmcheck.js@@het patroon van een teruggedraaide teller staat omgekeerd"
 "public/pidlane-kmcheck.js@@      try { await sendCmd('ATSH7DF', CFG.atTimeoutMs); }@@      try { if (0) await sendCmd('ATSH7DF', CFG.atTimeoutMs); }@@test-kmcheck.js@@de adapter blijft op het laatste stuurapparaat staan"
 "public/pidlane-kmcheck.js@@      var n = h.indexOf('7F' + vraagSid);@@      var n = h.indexOf('7F' + kop.slice(0, 2));@@test-kmcheck.js@@een geweigerde identifier wordt niet als weigering herkend"
+
+# ── De kaartmaker (PLKaart) en de laag eronder. Geen verzonnen fouten: dit
+# zijn precies de vier die elke vorige scan lieten mislukken, plus de twee
+# die test-kaart.js bij zijn eerste run zelf vond. Ze staan hier zodat ze
+# niet nog een keer stilletjes terug kunnen komen.
+"public/pidlane-kaart.js@@      await stuur('ATH1', CFG.atTimeoutMs);      // DE belangrijkste regel van dit bestand@@      await stuur('ATH0', CFG.atTimeoutMs);      // DE belangrijkste regel van dit bestand@@test-kaart.js@@de headers staan uit: een antwoord is weer anoniem"
+"public/pidlane-kaart.js@@        if ((p & 0xF0) === 0x20) uit += fr.slice(2);@@        if ((p & 0xF0) === 0x20) uit += fr;@@test-kaart.js@@de ISO-TP-teller gaat als databyte mee en verschuift elk lang antwoord"
+"public/pidlane-kaart.js@@        if (nr % 0x20 === 0) continue;@@        if (false) continue;@@test-kaart.js@@de bitmap-PID zelf wordt als datapunt geteld"
+"public/pidlane-kaart.js@@    if (LEZEND.indexOf(sid) < 0) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@    if (false) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@test-kaart.js@@de leeslijst beslist niet meer: een onbekende service mag de bus op"
+"public/pidlane-kaart.js@@      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', 'ATST' + CFG.stHerstel];@@      var herstel = ['ATCRA'];@@test-kaart.js@@de adapter blijft na de scan in scanstand staan"
+"public/pidlane-kaart.js@@        if (!levend) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@        if (false) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@test-kaart.js@@een dode adapter wordt niet meer opgemerkt: de scan draait door op niets"
+"public/pidlane-kaart.js@@        for (var di = 0; di < dids.length && !_stop; di++) {@@        for (var di = 0; di < dids.length; di++) {@@test-kaart.js@@de stopknop doet niets meer tijdens de DID-sweep"
+"public/pidlane-bt.js@@  if(window._plScanActief) return;@@  if(false) return;@@test-elmpoort.js@@een scan telt zijn eigen lege antwoorden weer als een dode socket"
+"public/pidlane-data.js@@    S.since=nu();\n    return true;@@    return true;@@test-busslot.js@@raak() vernieuwt niets: lang werk wordt weer als vastgelopen afgebroken"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"
