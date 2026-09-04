@@ -78,7 +78,7 @@ rm -f /tmp/plcheck_$$.log
 [ $gefaald -eq 0 ] && echo "${GROEN}  ok${UIT}  tests — $t stuks, allemaal exit 0" || fout=$((fout+gefaald))
 
 # ── 3. div-balans ──
-for h in index.html ../admin/admin.html; do
+for h in index.html ../admin/admin.html ../admin/beheer.html; do
   [ -e "$h" ] || continue
   op=$(grep -o '<div\b' "$h" | wc -l)
   dicht=$(grep -o '</div>' "$h" | wc -l)

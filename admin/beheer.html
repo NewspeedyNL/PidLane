@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<!-- ════════════════════════════════════════════════════════════
+     PidLane — BEHEER (admin.html, tweede generatie)
+
+     Draait lokaal en staat bewust NIET in public/. Zie admin/LEESMIJ.md
+     voor het waarom en voor `npm run admin`.
+
+     WAAROM EEN TWEEDE BESTAND EN GEEN VERBOUWING
+     admin.html werkt en beheert echt geld. Hem openbreken voor een
+     tabellenbrowser en een logvisualisatie betekent dat één fout in de
+     verbouwing ook de saldoknoppen raakt die het al deden. Deze pagina staat
+     ernaast: valt er hier iets om, dan pak je de oude en gaat het beheer door.
+     Ze praten met dezelfde Worker en dezelfde routes.
+
+     WAT HIER BIJ KOMT TEN OPZICHTE VAN admin.html
+       • klanten AANMAKEN vanuit het beheer (POST /admin/klanten actie=aanmaken)
+       • het logboek ophalen én uittekenen (GET /admin/tabel?bron=log)
+       • elke bekende Airtable-tabel doorbladeren, rijen wijzigen en wissen
+       • CSV-uitvoer van elke lijst die je op het scherm hebt
+       • één plek voor de statuscontrole, de poorttest en de opruimwachtrij
+
+     WAT ER BEWUST NIET IS
+     Geen framework, geen buildstap, geen npm — net als de rest van dit
+     project. Eén bestand dat je kunt openen en lezen.
+     ════════════════════════════════════════════════════════════ -->
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PidLane Beheer</title>
+<style>
+  :root{
+    --bg:#080b12; --sur:#111826; --sur2:#18202f; --sur3:#1f293b;
+    --bd:#26304a; --bd2:#334063;
+    --tx:#e8edf6; --tx2:#98a4bb; --tx3:#6b7794;
+    --bl:#2563ff; --bl2:#4c82ff; --gn:#06b36b; --or:#f2820c; --rd:#ef4444; --pp:#a855f7;
+    --r:12px; --f:system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'DM Mono','SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--f);font-size:14px;line-height:1.5}
+  h1{font-size:19px;margin:0}
+  h2{font-size:14px;margin:0 0 12px}
+  h3{font-size:13px;margin:0 0 8px;color:var(--tx2)}
+  a{color:var(--bl2)}
+
+  /* ── poort ── */
+  .gate{max-width:440px;margin:56px auto;padding:24px;background:var(--sur);
+        border:1px solid var(--bd);border-radius:var(--r)}
+  .gate h1{margin-bottom:6px}
+
+  /* ── schil ── */
+  .top{position:sticky;top:0;z-index:30;background:rgba(8,11,18,.94);
+       backdrop-filter:blur(8px);border-bottom:1px solid var(--bd)}
+  .top-in{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;
+          align-items:center;gap:12px;flex-wrap:wrap}
+  .tabs{max-width:1080px;margin:0 auto;padding:0 10px;display:flex;gap:2px;
+        overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:9px 13px;font-size:13px;font-weight:600;color:var(--tx2);
+       background:none;border:none;border-bottom:2px solid transparent;
+       cursor:pointer;white-space:nowrap;border-radius:0}
+  .tab:hover{color:var(--tx)}
+  .tab.aan{color:var(--tx);border-bottom-color:var(--bl2)}
+  .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 80px}
+  .paneel{display:none}
+  .paneel.aan{display:block}
+
+  /* ── kaarten ── */
+  .card{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);
+        padding:16px;margin-bottom:14px}
+  .card.strak{padding:0;overflow:hidden}
+  .card-kop{display:flex;align-items:center;justify-content:space-between;
+            gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .card-kop h2{margin:0}
+
+  /* ── formulieren ── */
+  label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;color:var(--tx2)}
+  input[type=text],input[type=password],input[type=number],input[type=date],
+  textarea,select{
+    width:100%;padding:9px 10px;background:var(--sur2);border:1.5px solid var(--bd);
+    border-radius:8px;color:var(--tx);font-size:13px;font-family:var(--f);outline:none}
+  input:focus,textarea:focus,select:focus{border-color:var(--bl2)}
+  textarea{resize:vertical;min-height:78px;font-family:var(--mono);font-size:12.5px}
+  button{padding:9px 14px;border:none;border-radius:9px;font-size:13.5px;
+         font-weight:700;cursor:pointer;font-family:var(--f)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .btn-pri{background:var(--bl);color:#fff}
+  .btn-sec{background:var(--sur2);color:var(--tx2);border:1px solid var(--bd)}
+  .btn-ok{background:var(--gn);color:#04160e}
+  .btn-waar{background:var(--or);color:#231204}
+  .btn-del{background:transparent;color:var(--rd);border:1px solid #7f1d1d}
+  .btn-sm{padding:6px 10px;font-size:12px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .bar.rechts{justify-content:flex-end}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:720px){.grid3,.grid4{grid-template-columns:1fr 1fr}}
+  @media(max-width:460px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+
+  /* ── meldingen ── */
+  .msg{font-size:13px;min-height:18px;margin-top:8px;white-space:pre-wrap}
+  .msg.ok{color:var(--gn)} .msg.err{color:var(--rd)}
+  .msg.warn{color:var(--or)} .msg.info{color:var(--tx2)}
+  .hint{font-size:12px;color:var(--tx3);margin-top:6px}
+  .waarschuwing{background:#3a1a0a;border:1px solid var(--or);border-radius:9px;
+                padding:10px 12px;font-size:12.5px;color:#ffd0a0;margin-bottom:12px}
+  .gevaar{background:#3a0d0d;border:1px solid #7f1d1d;border-radius:9px;
+          padding:10px 12px;font-size:12.5px;color:#ffc2c2;margin-bottom:12px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);
+         background:var(--sur3);border:1px solid var(--bd2);color:var(--tx);
+         padding:11px 16px;border-radius:10px;font-size:13px;z-index:80;
+         opacity:0;pointer-events:none;transition:.18s;max-width:90vw}
+  #toast.aan{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ── pillen & cijfers ── */
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;
+        border-radius:20px;vertical-align:middle}
+  .p-ok{background:#0d2a1e;color:#6fe0aa;border:1px solid #1c6b48}
+  .p-uit{background:#2a1414;color:#ff9a9a;border:1px solid #6b1c1c}
+  .p-wacht{background:#2a2410;color:#e0cf6f;border:1px solid #6b5c1c}
+  .p-info{background:#141b2a;color:#8fa6d6;border:1px solid #2c3a5c}
+  .p-admin{background:#2a1440;color:#c9a3ff;border:1px solid #6b3fa0}
+  .kpi{background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:12px}
+  .kpi .n{font-size:22px;font-weight:800;line-height:1.15}
+  .kpi .l{font-size:11.5px;color:var(--tx3);margin-top:2px}
+  code{background:var(--sur2);padding:1px 5px;border-radius:4px;font-size:12px;
+       font-family:var(--mono)}
+
+  /* ── tabellen ── */
+  .tabelbox{overflow:auto;max-height:62vh;border-top:1px solid var(--bd)}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th{position:sticky;top:0;background:var(--sur3);text-align:left;padding:8px 10px;
+     font-size:11.5px;color:var(--tx2);white-space:nowrap;border-bottom:1px solid var(--bd2);z-index:2}
+  td{padding:7px 10px;border-bottom:1px solid var(--bd);vertical-align:top;
+     max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  tr:hover td{background:rgba(255,255,255,.025)}
+  tr.gekozen td{background:rgba(37,99,255,.12)}
+  td.mono,th.mono{font-family:var(--mono)}
+  .leeg{padding:22px;text-align:center;color:var(--tx3);font-size:13px}
+
+  /* ── lijstrijen ── */
+  .rij{display:flex;align-items:center;justify-content:space-between;gap:10px;
+       padding:10px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap}
+  .rij:last-child{border-bottom:none}
+  .rij .lbl{font-weight:600}
+  .rij .desc{font-size:12px;color:var(--tx3);margin-top:2px}
+  .klantrij{background:var(--sur2);border:1px solid var(--bd);border-radius:10px;
+            padding:11px 12px;margin-bottom:8px}
+  .klantrij .kop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+  .klantrij .adres{font-weight:700}
+  .klantrij .meta{font-size:12px;color:var(--tx3);margin-top:3px}
+  .saldo{font-size:17px;font-weight:800}
+
+  /* ── schakelaars ── */
+  .switch{position:relative;width:44px;height:25px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;cursor:pointer;inset:0;background:var(--bd2);
+          border-radius:25px;transition:.18s}
+  .slider:before{content:"";position:absolute;height:19px;width:19px;left:3px;bottom:3px;
+                 background:#fff;border-radius:50%;transition:.18s}
+  .switch input:checked+.slider{background:var(--gn)}
+  .switch input:checked+.slider:before{transform:translateX(19px)}
+
+  /* ── grafiek (puur css, geen bibliotheek) ── */
+  .staaf-rij{display:flex;align-items:flex-end;gap:3px;height:120px;
+             padding:6px 0;overflow-x:auto}
+  .staaf{flex:1 0 14px;min-width:9px;background:linear-gradient(180deg,var(--bl2),var(--bl));
+         border-radius:3px 3px 0 0;position:relative;cursor:default}
+  .staaf.rood{background:linear-gradient(180deg,#ff7b7b,var(--rd))}
+  .staaf span{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);
+              font-size:9.5px;color:var(--tx3);white-space:nowrap}
+  .staafas{height:18px}
+  .balk{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12.5px}
+  .balk .naam{width:150px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .balk .spoor{flex:1;height:9px;background:var(--sur2);border-radius:9px;overflow:hidden}
+  .balk .vul{height:100%;background:var(--bl2);border-radius:9px}
+  .balk .vul.gn{background:var(--gn)} .balk .vul.or{background:var(--or)}
+  .balk .vul.rd{background:var(--rd)} .balk .vul.pp{background:var(--pp)}
+  .balk .n{width:52px;text-align:right;color:var(--tx2);font-family:var(--mono);font-size:11.5px}
+
+  /* ── uitleg ── */
+  details.uitleg{margin:8px 0 2px;border:1px solid var(--bd);border-radius:9px;
+                 background:rgba(255,255,255,.02)}
+  details.uitleg>summary{cursor:pointer;padding:7px 11px;font-size:12px;
+                         color:var(--tx2);font-weight:600;list-style:none}
+  details.uitleg>summary::-webkit-details-marker{display:none}
+  details.uitleg>summary::before{content:'❔ ';opacity:.8}
+  details.uitleg[open]>summary{border-bottom:1px solid var(--bd)}
+  details.uitleg .body{padding:9px 12px;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+  details.uitleg .body b{color:var(--tx)}
+
+  .oefen-balk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#2a2410;color:#e0cf6f;border:1px solid #6b5c1c;border-radius:10px;
+    padding:9px 13px;margin-bottom:14px;font-size:13px}
+  .oefen-balk button{margin-left:auto}
+  .hidden{display:none}
+  .rekbaar{white-space:normal!important;overflow:visible!important;
+           text-overflow:clip!important;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+
+<!-- ══ TOEGANGSPOORT ══════════════════════════════════════════ -->
+<div id="gate" class="gate">
+  <h1>🔒 PidLane Beheer</h1>
+  <div class="hint" style="margin-bottom:16px">Tweede generatie van de adminpagina. De oude staat er nog: <code>admin.html</code>.</div>
+
+  <label for="adminTok">ADMIN_TOKEN</label>
+  <input type="password" id="adminTok" placeholder="ADMIN_TOKEN…" autocomplete="off">
+
+  <label for="workerUrl" style="margin-top:12px">Worker-URL</label>
+  <input type="text" id="workerUrl" value="https://pidlane-proxy.newspeedynl.workers.dev">
+
+  <label for="beheerNaam" style="margin-top:12px">Jouw naam (komt in de auditregel)</label>
+  <input type="text" id="beheerNaam" placeholder="bijv. nico" autocomplete="off">
+
+  <div class="bar" style="margin-top:16px">
+    <button class="btn-pri" onclick="enter()">Openen</button>
+    <button class="btn-sec" onclick="poortTest()">Verbinding testen</button>
+  </div>
+  <div id="gateMsg" class="msg"></div>
+
+  <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--bd)">
+    <button class="btn-sec" onclick="oefenStart()">🧪 Oefenen met voorbeelden</button>
+    <div class="hint">Geen token nodig. Er gaat geen enkel verzoek naar de Worker: alle
+      antwoorden komen uit voorbeeldgegevens in deze pagina. Verversen zet alles terug.</div>
+  </div>
+</div>
+
+<!-- ══ SCHIL ═════════════════════════════════════════════════ -->
+<div id="app" class="hidden">
+  <div class="top">
+    <div class="top-in">
+      <h1>PidLane Beheer</h1>
+      <span class="pill p-info" id="omgevingPil">—</span>
+      <span style="flex:1"></span>
+      <span class="hint" id="wieChip" style="margin:0"></span>
+      <button class="btn-sec btn-sm" onclick="allesHerladen()">↻ Herladen</button>
+      <button class="btn-sec btn-sm" onclick="logout()">Uitloggen</button>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+
+  <div class="wrap">
+    <div id="oefenBalk" class="oefen-balk hidden">
+      <b>🧪 Oefenmodus</b> — niets gaat naar de Worker; alle gegevens zijn verzonnen.
+      <button class="btn-sec btn-sm" onclick="location.reload()">Afsluiten</button>
+    </div>
+
+    <!-- ══ OVERZICHT ══════════════════════════════════════════ -->
+    <div class="paneel" id="p-overzicht">
+      <div class="card">
+        <div class="card-kop"><h2>🩺 Status van de keten</h2>
+          <button class="btn-sec btn-sm" onclick="checkStatus()">Opnieuw meten</button></div>
+        <div id="statusLijst"></div>
+        <details class="uitleg"><summary>Wat meet dit?</summary><div class="body">
+          Drie losse vragen, zodat "het doet het niet" uiteenvalt in iets dat je kunt oplossen.
+          <b>Worker bereikbaar</b> gaat over de URL en CORS. <b>Gebruikers</b> gaat over de
+          Airtable-token en de Config-base. <b>AI-route</b> gaat over de Anthropic-sleutel — die
+          kost een paar tokens per meting, dus hij draait alleen als je erom vraagt.
+        </div></details>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>📊 Kerncijfers</h2>
+          <span class="hint" id="cijfersVers" style="margin:0"></span></div>
+        <div class="grid4" id="kpiGrid"></div>
+        <div class="hint">Klanten en codes komen uit de eerste 100 records die Airtable teruggeeft —
+          bij meer dan 100 zijn dit dus de meest recente, niet het totaal.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>📈 Logactiviteit — laatste 14 dagen</h2>
+          <button class="btn-sec btn-sm" onclick="toon('logboek')">Naar het logboek →</button></div>
+        <div id="miniGrafiek"><div class="leeg">Nog niet geladen.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>⚡ Snel iets doen</h2>
+        <div class="bar">
+          <button class="btn-pri btn-sm" onclick="toon('klanten');document.getElementById('nkEmail').focus()">➕ Klant aanmaken</button>
+          <button class="btn-pri btn-sm" onclick="toon('codes')">🎟️ Codes genereren</button>
+          <button class="btn-sec btn-sm" onclick="toon('logboek');logLaden()">📜 Logboek ophalen</button>
+          <button class="btn-sec btn-sm" onclick="toon('gereedschap');opruimBekijken()">🧹 Verwijderwachtrij</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ KLANTEN ════════════════════════════════════════════ -->
+    <div class="paneel" id="p-klanten">
+      <div class="card">
+        <div class="card-kop"><h2>➕ Nieuwe klant</h2></div>
+        <details class="uitleg"><summary>Wat gebeurt hier, en wat gaat er mis als je het fout doet</summary><div class="body">
+          Dit maakt een <b>echt klantaccount</b> aan in de Klanten-tabel — hetzelfde soort rij als
+          wanneer iemand zich via de app registreert.<br><br>
+          <b>Het wachtwoord is optioneel.</b> Laat je het leeg, dan bestaat het account wel maar kan
+          er nog niet op ingelogd worden; de klant zet er zelf een via "wachtwoord vergeten". Dat is
+          de veiligste variant: jij hebt er dan nooit een gekend. Vul je er wel een in, geef hem dan
+          door via een ander kanaal dan waar hij vandaan kwam.<br><br>
+          <b>Beginsaldo</b> is tegoed dat je weggeeft. Het telt niet mee in "ooit gekocht", want er
+          is niets gekocht. Twijfel je? Zet hem op 0 en boek daarna bij met een reden erbij — dan
+          staat het in de auditregel.<br><br>
+          Een adres dat al bestaat wordt geweigerd (409). Dat is met opzet: twee rijen met hetzelfde
+          adres is geen foutmelding maar een raadsel — de login pakt de eerste, en jij boekt op de tweede bij.
+        </div></details>
+        <div class="grid2" style="margin-top:10px">
+          <div><label for="nkEmail">E-mailadres *</label>
+            <input type="text" id="nkEmail" placeholder="klant@voorbeeld.nl" autocomplete="off"></div>
+          <div><label for="nkNaam">Naam of bedrijf</label>
+            <input type="text" id="nkNaam" placeholder="Autobedrijf Pieters" autocomplete="off"></div>
+          <div><label for="nkSaldo">Beginsaldo (tokens)</label>
+            <input type="text" id="nkSaldo" value="0" inputmode="numeric"></div>
+          <div><label for="nkStatus">Status</label>
+            <select id="nkStatus">
+              <option value="actief">actief</option>
+              <option value="ongeverifieerd">ongeverifieerd</option>
+              <option value="geblokkeerd">geblokkeerd</option>
+            </select></div>
+          <div><label for="nkPass">Wachtwoord (mag leeg)</label>
+            <input type="text" id="nkPass" placeholder="minimaal 8 tekens" autocomplete="off"></div>
+        </div>
+        <div class="bar" style="margin-top:12px">
+          <button class="btn-pri" onclick="klantAanmaken()">Klant aanmaken</button>
+          <button class="btn-sec btn-sm" onclick="nkLeeg()">Formulier leegmaken</button>
+        </div>
+        <div id="nkMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>👥 Klanten</h2>
+          <div class="bar">
+            <button class="btn-sec btn-sm" onclick="csvKlanten()">⇩ CSV</button>
+            <button class="btn-sec btn-sm" onclick="loadKlanten()">↻ Herladen</button>
+          </div></div>
+        <div class="bar" style="margin-bottom:10px">
+          <input type="text" id="kZoek" placeholder="Zoek op e-mail of naam" style="flex:1;min-width:170px"
+                 onkeydown="if(event.key==='Enter')loadKlanten()">
+          <select id="kSorteer" onchange="tekenKlanten()" style="width:auto">
+            <option value="nieuw">Nieuwste eerst</option>
+            <option value="saldo">Hoogste saldo</option>
+            <option value="saldo-op">Laagste saldo</option>
+            <option value="login">Laatst ingelogd</option>
+            <option value="naam">Op adres</option>
+          </select>
+          <button class="btn-pri btn-sm" onclick="loadKlanten()">Zoeken</button>
+        </div>
+        <div id="kStats" class="hint"></div>
+        <div id="kLijst"></div>
+        <div id="kMsg" class="msg"></div>
+      </div>
+    </div>
+
+    <!-- ══ CODES ══════════════════════════════════════════════ -->
+    <div class="paneel" id="p-codes">
+      <div class="card">
+        <div class="card-kop"><h2>🎟️ Activatiecodes genereren</h2></div>
+        <details class="uitleg"><summary>Hoe dit werkt</summary><div class="body">
+          Een code is <b>tegoed dat nog niet van iemand is</b>. Zodra een klant hem verzilvert
+          (<code>/credits/redeem</code>) worden de tokens bij zijn saldo geteld en is de code op.
+          <b>Waarde</b> is wat jij ervoor rekent; die telt mee in de omzetregel hieronder en verandert
+          niets aan het tegoed. Codes zijn na aanmaken <b>niet meer op te vragen</b> in leesbare vorm
+          dan hier — kopieer ze meteen of haal ze uit de lijst eronder.
+        </div></details>
+        <div class="grid4" style="margin-top:10px">
+          <div><label for="cAantal">Aantal</label><input type="text" id="cAantal" value="10" inputmode="numeric"></div>
+          <div><label for="cCredits">Tokens per code</label><input type="text" id="cCredits" value="100" inputmode="numeric"></div>
+          <div><label for="cPrijs">Waarde (€)</label><input type="text" id="cPrijs" placeholder="4.99" inputmode="decimal"></div>
+          <div><label for="cBatch">Batchnaam</label><input type="text" id="cBatch" placeholder="2026-09-tikkie"></div>
+        </div>
+        <div class="grid2" style="margin-top:10px">
+          <div><label for="cVervalt">Vervaldatum (optioneel)</label><input type="date" id="cVervalt"></div>
+        </div>
+        <div class="bar" style="margin-top:12px">
+          <button class="btn-pri" onclick="genCodes()">Genereren</button>
+        </div>
+        <div id="cNieuw" class="hidden" style="margin-top:12px"></div>
+        <div id="cGenMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>Uitgegeven codes</h2>
+          <div class="bar">
+            <select id="cFilter" onchange="loadCodes()" style="width:auto">
+              <option value="alle">Alle</option><option value="open">Alleen open</option>
+              <option value="gebruikt">Alleen gebruikt</option>
+            </select>
+            <button class="btn-sec btn-sm" onclick="csvCodes()">⇩ CSV</button>
+            <button class="btn-sec btn-sm" onclick="loadCodes()">↻</button>
+          </div></div>
+        <div id="cStats" class="hint"></div>
+        <div id="cLijst"></div>
+        <div id="cMsg" class="msg"></div>
+      </div>
+    </div>
+
+    <!-- ══ GEBRUIKERS ═════════════════════════════════════════ -->
+    <div class="paneel" id="p-gebruikers">
+      <div class="card">
+        <div class="card-kop"><h2>👤 App-gebruikers</h2>
+          <button class="btn-sec btn-sm" onclick="loadUsers()">↻ Herladen</button></div>
+        <details class="uitleg"><summary>Het verschil met klanten</summary><div class="body">
+          <b>Gebruikers</b> loggen in op de app zelf (monteur, admin, demo) en staan in de tabel
+          <code>Users</code>. <b>Klanten</b> zijn accounts met tokentegoed en staan in
+          <code>Klanten</code>. Een gebruiker heeft geen saldo; een klant heeft geen rol.<br><br>
+          Wachtwoorden zijn nergens uitleesbaar — ook hier niet. Je kunt ze alleen overschrijven.
+          Accounts uit het Worker-secret <code>USERS_JSON</code> (de noodingang) staan er wel bij
+          maar zijn niet te wijzigen: zo kun je jezelf nooit buitensluiten.
+        </div></details>
+        <input type="text" id="uZoek" placeholder="Filter op naam, inlognaam of rol"
+               oninput="tekenUsers()" style="margin:10px 0">
+        <div id="userLijst"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2 id="uFormTitel">➕ Nieuwe gebruiker</h2></div>
+        <div class="grid2">
+          <div><label for="uUser">Inlognaam *</label><input type="text" id="uUser" autocomplete="off"></div>
+          <div><label for="uLabel">Weergavenaam</label><input type="text" id="uLabel" autocomplete="off"></div>
+          <div><label for="uRol">Rol</label>
+            <select id="uRol"><option value="user">user</option><option value="admin">admin</option>
+              <option value="demo">demo</option></select></div>
+          <div><label for="uPass">Wachtwoord</label>
+            <input type="text" id="uPass" autocomplete="off" placeholder="minimaal 8 tekens">
+            <div class="hint" id="uPassHint">Bij bewerken: leeg laten = ongewijzigd.</div></div>
+        </div>
+        <div class="rij" style="margin-top:8px">
+          <div><div class="lbl">Actief</div><div class="desc">Uit = kan niet inloggen, account blijft bestaan</div></div>
+          <label class="switch"><input type="checkbox" id="uActief" checked><span class="slider"></span></label>
+        </div>
+        <div class="bar" style="margin-top:12px">
+          <button class="btn-pri" onclick="saveUser()">Opslaan</button>
+          <button class="btn-sec btn-sm" onclick="resetUserForm()">Nieuw / leegmaken</button>
+        </div>
+        <div id="uMsg" class="msg"></div>
+      </div>
+    </div>
+
+    <!-- ══ LOGBOEK ════════════════════════════════════════════ -->
+    <div class="paneel" id="p-logboek">
+      <div class="card">
+        <div class="card-kop"><h2>📜 Logboek van de app</h2>
+          <div class="bar">
+            <button class="btn-sec btn-sm" onclick="csvLog()">⇩ CSV</button>
+            <button class="btn-pri btn-sm" onclick="logLaden()">Ophalen</button>
+          </div></div>
+        <details class="uitleg"><summary>Wat staat hier, en wat juist niet</summary><div class="body">
+          Dit is de tabel waar de app zelf in schrijft via <code>/airtable/log</code>: opstarten,
+          verbindingen, foutmeldingen en bugmeldingen. Elke regel draagt het toestel, de app-versie,
+          de rol en — als er een auto aan hing — merk, bouwjaar en protocol.<br><br>
+          <b>Er staat geen ruwe VIN in.</b> Het VIN-veld bevat een pseudoniem
+          (<code>SHA-256(zout + VIN)</code>, eerste 16 tekens) of alleen de WMI. Dat is
+          pseudonimisering en geen anonimisering: het zout staat in clientcode, dus noem het nooit
+          "anoniem".<br><br>
+          De grafieken hieronder tellen alléén wat je opgehaald hebt. Haal je 200 regels op, dan gaat
+          "laatste 14 dagen" over die 200 regels — niet over alles wat er staat.
+        </div></details>
+        <div class="grid4" style="margin-top:10px">
+          <div><label for="lgPeriode">Periode</label>
+            <select id="lgPeriode"><option value="1">Vandaag</option><option value="7">7 dagen</option>
+              <option value="14" selected>14 dagen</option><option value="30">30 dagen</option>
+              <option value="0">Alles wat ik ophaal</option></select></div>
+          <div><label for="lgPaginas">Hoeveel ophalen</label>
+            <select id="lgPaginas"><option value="1">100 regels</option><option value="3" selected>300 regels</option>
+              <option value="6">600 regels</option><option value="10">1000 regels</option></select></div>
+          <div><label for="lgType">Type</label><select id="lgType" onchange="logTeken()"><option value="">alle</option></select></div>
+          <div><label for="lgZoek">Zoeken in bericht</label>
+            <input type="text" id="lgZoek" placeholder="bijv. timeout" onkeydown="if(event.key==='Enter')logLaden()"></div>
+        </div>
+        <div id="lgMsg" class="msg"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card"><h2>Per dag</h2><div id="lgPerDag"><div class="leeg">Nog niets opgehaald.</div></div></div>
+        <div class="card"><h2>Per type</h2><div id="lgPerType"><div class="leeg">Nog niets opgehaald.</div></div></div>
+      </div>
+      <div class="grid3">
+        <div class="card"><h2>Meeste meldingen — gebruiker</h2><div id="lgTopUser"></div></div>
+        <div class="card"><h2>App-versies</h2><div id="lgTopVersie"></div></div>
+        <div class="card"><h2>Merken</h2><div id="lgTopMerk"></div></div>
+      </div>
+      <div class="card">
+        <h2>Meest voorkomende meldingen</h2>
+        <div id="lgTopBericht"></div>
+      </div>
+
+      <div class="card strak">
+        <div style="padding:14px 16px" class="card-kop">
+          <h2 style="margin:0">Regels <span class="hint" id="lgTelling" style="margin:0"></span></h2>
+          <div class="bar">
+            <button class="btn-sec btn-sm" onclick="lgKiesAlles()">Alles selecteren</button>
+            <button class="btn-del btn-sm" onclick="lgWisSelectie()">🗑 Selectie wissen</button>
+          </div>
+        </div>
+        <div class="tabelbox" id="lgTabel"><div class="leeg">Nog niets opgehaald.</div></div>
+      </div>
+    </div>
+
+    <!-- ══ TABELLEN ═══════════════════════════════════════════ -->
+    <div class="paneel" id="p-tabellen">
+      <div class="card">
+        <div class="card-kop"><h2>🗂️ Airtable-tabellen</h2>
+          <div class="bar">
+            <button class="btn-sec btn-sm" onclick="tbCsv()">⇩ CSV</button>
+            <button class="btn-pri btn-sm" onclick="tbLaden(true)">Ophalen</button>
+          </div></div>
+        <details class="uitleg"><summary>Wat je hier wel en niet kunt</summary><div class="body">
+          Dit leest de tabellen die de Worker kent — je kunt hier geen willekeurige base of tabelnaam
+          invullen. Dat is met opzet: met één gelekte admintoken zou zo'n route een sleutel tot het
+          hele Airtable-account zijn.<br><br>
+          <b>Sommige velden zijn afgeschermd</b> en staan grijs. <code>Saldo</code> hoort door het
+          saldoslot (via de klantenkaart), <code>PassHash</code> door de wachtwoordroute, en
+          <code>Email</code> is de sleutel waar dat slot op staat. Een wachtwoordhash en een
+          resettoken worden hier niet eens getóónd — die verlaten de Worker niet.<br><br>
+          <b>AppConfig is alleen-lezen.</b> Schrijven gaat via de instellingenkaart, want die gooit
+          ook de randcache weg. Doe je het hier, dan staat er dagen iets anders live dan in de tabel.<br><br>
+          <b>Wissen kan niet ongedaan gemaakt worden.</b> Airtable heeft wel een prullenbak, maar dit
+          scherm heeft geen knop terug.
+        </div></details>
+        <div class="grid4" style="margin-top:10px">
+          <div><label for="tbBron">Tabel</label>
+            <select id="tbBron" onchange="tbBronGewisseld()">
+              <option value="log">Logboek (app)</option>
+              <option value="klanten">Klanten</option>
+              <option value="codes">Activatiecodes</option>
+              <option value="users">Gebruikers</option>
+              <option value="veldlab">Veldlab (meetwaarden)</option>
+              <option value="referentie">Referentiewaarden</option>
+              <option value="config">AppConfig (alleen-lezen)</option>
+            </select></div>
+          <div><label for="tbZoek">Zoeken</label>
+            <input type="text" id="tbZoek" placeholder="zoekterm" onkeydown="if(event.key==='Enter')tbLaden(true)"></div>
+          <div><label for="tbVeld">Alleen in veld</label>
+            <input type="text" id="tbVeld" placeholder="leeg = standaardvelden"></div>
+          <div><label for="tbLimiet">Per pagina</label>
+            <select id="tbLimiet"><option>25</option><option selected>50</option><option>100</option></select></div>
+        </div>
+        <div id="tbMsg" class="msg"></div>
+      </div>
+
+      <div class="card strak">
+        <div style="padding:14px 16px" class="card-kop">
+          <h2 style="margin:0" id="tbTitel">Nog niets opgehaald</h2>
+          <div class="bar">
+            <button class="btn-sec btn-sm" id="tbMeer" onclick="tbLaden(false)" disabled>Volgende 50 →</button>
+            <button class="btn-del btn-sm" onclick="tbWisSelectie()">🗑 Selectie wissen</button>
+          </div>
+        </div>
+        <div class="tabelbox" id="tbTabel"><div class="leeg">Kies een tabel en klik op Ophalen.</div></div>
+      </div>
+
+      <div class="card hidden" id="tbDetailKaart">
+        <div class="card-kop"><h2 id="tbDetailTitel">Record</h2>
+          <div class="bar">
+            <button class="btn-sec btn-sm" onclick="tbDetailSluiten()">Sluiten</button>
+            <button class="btn-del btn-sm" onclick="tbWisHuidige()">🗑 Wissen</button>
+          </div></div>
+        <div id="tbDetail"></div>
+        <div class="bar" style="margin-top:12px">
+          <button class="btn-pri" onclick="tbOpslaan()">Wijzigingen opslaan</button>
+        </div>
+        <div id="tbDetailMsg" class="msg"></div>
+      </div>
+    </div>
+
+    <!-- ══ INSTELLINGEN ═══════════════════════════════════════ -->
+    <div class="paneel" id="p-instellingen">
+      <div class="card">
+        <div class="card-kop"><h2>🚪 Deuren aan/uit</h2></div>
+        <div class="rij"><div><div class="lbl">Deur 1 — Diagnose &amp; onderhoud</div>
+          <div class="desc"><code>door_saving_active</code></div></div>
+          <label class="switch"><input type="checkbox" id="t_door_saving_active"><span class="slider"></span></label></div>
+        <div class="rij"><div><div class="lbl">Deur 2 — Koop &amp; verkoop</div>
+          <div class="desc"><code>door_deal_active</code></div></div>
+          <label class="switch"><input type="checkbox" id="t_door_deal_active"><span class="slider"></span></label></div>
+        <div class="rij"><div><div class="lbl">Deur 3 — Verbruik &amp; rit</div>
+          <div class="desc"><code>door_prep_active</code></div></div>
+          <label class="switch"><input type="checkbox" id="t_door_prep_active"><span class="slider"></span></label></div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>🧩 Functies aan/uit</h2>
+          <span class="hint" style="margin:0">Ontbrekende sleutel = aan</span></div>
+        <div id="featGrid"></div>
+      </div>
+
+      <div class="card">
+        <h2>📢 Mededeling / banner</h2>
+        <div class="rij"><div><div class="lbl">Banner tonen</div>
+          <div class="desc"><code>banner_active</code></div></div>
+          <label class="switch"><input type="checkbox" id="t_banner_active"><span class="slider"></span></label></div>
+        <label for="banner_text" style="margin-top:10px">Tekst</label>
+        <textarea id="banner_text" placeholder="Onderhoud vanavond 20:00–21:00"></textarea>
+      </div>
+
+      <div class="card">
+        <h2>💶 Betaallinks</h2>
+        <label for="tikkie_kopen">Tokens kopen</label>
+        <input type="text" id="tikkie_kopen" placeholder="https://tikkie.me/pay/…">
+        <label for="tikkie_donatie" style="margin-top:10px">Donatie</label>
+        <input type="text" id="tikkie_donatie" placeholder="https://tikkie.me/pay/…">
+      </div>
+
+      <div class="card">
+        <h2>🤖 AI-basisinstructie (override)</h2>
+        <div class="hint" style="margin-bottom:8px">Leeg = de instructie uit de app zelf. Wat je hier
+          zet, gaat vóór alles wat de app meestuurt — een fout hier raakt élk AI-antwoord.</div>
+        <textarea id="ai_system_override" style="min-height:130px" placeholder="Leeg laten tenzij je weet wat je doet"></textarea>
+        <div class="bar" style="margin-top:10px">
+          <button class="btn-waar btn-sm" onclick="testPrompt()">Testvraag sturen</button>
+        </div>
+        <div id="testMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <div class="bar">
+          <button class="btn-pri" onclick="saveAll()">Alles opslaan</button>
+          <button class="btn-sec btn-sm" onclick="loadConfig()">Terugzetten naar wat er staat</button>
+        </div>
+        <div id="saveMsg" class="msg"></div>
+      </div>
+    </div>
+
+    <!-- ══ GEREEDSCHAP ════════════════════════════════════════ -->
+    <div class="paneel" id="p-gereedschap">
+      <div class="card">
+        <div class="card-kop"><h2>🧹 Verwijderwachtrij</h2>
+          <button class="btn-sec btn-sm" onclick="opruimBekijken()">Bekijken</button></div>
+        <details class="uitleg"><summary>Waarom deze knop bestaat</summary><div class="body">
+          Een klant die zijn account laat verwijderen krijgt <code>Status=verwijderd</code> en een
+          <code>VerwijderdOp</code>-datum. Een cron in de Worker wist die records zodra de
+          bewaartermijn voorbij is. Een cron is onzichtbaar: hij draait of hij draait niet, en het
+          verschil merk je pas als iemand vraagt waarom zijn gegevens er nog staan. Deze knop roept
+          exact dezelfde functie aan, zodat de automaat controleerbaar is.<br><br>
+          <b>Nu opruimen wist alleen wat de termijn al voorbij is.</b> "0 gewist" is dus meestal geen
+          storing maar de goede uitkomst.
+        </div></details>
+        <div id="opruimUit" style="margin-top:10px"></div>
+        <div class="bar" style="margin-top:10px">
+          <button class="btn-waar btn-sm" onclick="opruimNu()">Nu opruimen</button>
+        </div>
+        <div id="opruimMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>🔌 Poorttest</h2>
+          <button class="btn-sec btn-sm" onclick="poortTestIn()">Draaien</button></div>
+        <div class="hint">Loopt de keten stap voor stap na, zodat "de sleutel weigert" uiteenvalt in
+          één rood kruisje: URL → CORS → leesroute → schrijfroute.</div>
+        <div id="poortUit" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <h2>🧾 Waar praat deze pagina mee</h2>
+        <div id="routeLijst"></div>
+      </div>
+
+      <div class="card">
+        <h2>🔍 Ruwe leesroute uitproberen</h2>
+        <div class="hint" style="margin-bottom:8px">Alleen GET, alleen routes die deze pagina zelf
+          ook gebruikt. Het antwoord komt onbewerkt in beeld — handig als een lijst iets anders toont
+          dan je verwacht.</div>
+        <div class="bar">
+          <select id="ruwPad" style="flex:1;min-width:200px">
+            <option value="/api/config">/api/config</option>
+            <option value="/admin/klanten">/admin/klanten</option>
+            <option value="/admin/codes">/admin/codes</option>
+            <option value="/admin/users">/admin/users</option>
+            <option value="/admin/tabel?bron=log&amp;limiet=5">/admin/tabel?bron=log&amp;limiet=5</option>
+            <option value="/admin/tabel?bron=veldlab&amp;limiet=5">/admin/tabel?bron=veldlab&amp;limiet=5</option>
+            <option value="/admin/tabel?bron=config&amp;limiet=25">/admin/tabel?bron=config&amp;limiet=25</option>
+            <option value="/health">/health</option>
+          </select>
+          <button class="btn-sec btn-sm" onclick="ruwHalen()">Ophalen</button>
+        </div>
+        <textarea id="ruwUit" readonly style="margin-top:10px;min-height:180px"></textarea>
+      </div>
+
+      <div class="card">
+        <h2>ℹ️ Deze sessie</h2>
+        <div id="sessieInfo"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   KERN — toestand, helpers, en de enige plek die de Worker aanroept
+   ════════════════════════════════════════════════════════════════ */
+let TOKEN = '', WURL = '', WIE = '', OEFEN = false;
+
+const $ = (id) => document.getElementById(id);
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function H(extra){ return Object.assign({ 'X-Admin-Token': TOKEN }, extra || {}); }
+function HJ(){ return H({ 'Content-Type':'application/json' }); }
+
+function toon_msg(el, kind, tekst, detail){
+  if(!el) return;
+  el.className = 'msg ' + (kind || 'info');
+  el.textContent = detail ? (tekst + '\n' + detail) : tekst;
+}
+let _toastT = null;
+function toast(tekst){
+  const t = $('toast'); if(!t) return;
+  t.textContent = tekst; t.classList.add('aan');
+  clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('aan'), 2600);
+}
+
+/* Datum kort, en "—" als er niets staat. Een lege cel is duidelijker dan
+   "Invalid Date", en dat laatste is hier twee keer voorbijgekomen. */
+function dt(s){
+  if(!s) return '—';
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return String(s).slice(0,10);
+  return d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+function dtu(s){
+  if(!s) return '—';
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return String(s).slice(0,16);
+  return d.toLocaleString('nl-NL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+function eur(n){ return '€ ' + (Number(n)||0).toFixed(2).replace('.',','); }
+
+/* ── CSV ──────────────────────────────────────────────────────────
+   Puntkomma en een BOM: dat is wat Excel in Nederland zonder gedoe opent.
+   Een komma-CSV komt hier in één kolom binnen en dan gaat iemand alsnog
+   knippen en plakken. */
+function csvDownload(naam, kolommen, rijen){
+  const veld = (v) => {
+    const s = String(v == null ? '' : v).replace(/"/g,'""');
+    return /[";\n]/.test(s) ? '"' + s + '"' : s;
+  };
+  const tekst = '﻿' + [kolommen.join(';')].concat(
+    rijen.map(r => kolommen.map((k,i) => veld(Array.isArray(r) ? r[i] : r[k])).join(';'))
+  ).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([tekst], { type:'text/csv;charset=utf-8' }));
+  a.download = naam + '-' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('CSV gedownload');
+}
+
+/* ── Diagnose: van een mislukt verzoek naar iets waar je wat mee kunt ──
+   Overgenomen uit admin.html en aangevuld met de bronfouten van
+   /admin/tabel. De 403-uitleg toont de vórm van de token (lengte, eerste en
+   laatste tekens) en niet de token zelf: genoeg om een plakfout te zien,
+   te weinig om iets mee te doen. */
+function diagnose(where, status, bodyText){
+  let body = {}; try{ body = JSON.parse(bodyText); }catch(e){ /* geen JSON: raw hieronder */ }
+  const raw = String(bodyText || '');
+  const code = (body && body.error) || '';
+  const detail = (body && typeof body.detail === 'string' ? body.detail : '') || raw;
+
+  if(status === 429 || code === 'rate_limited')
+    return { kind:'warn', title:'⏳ Te veel schrijfacties achter elkaar.',
+             detail:'De Worker houdt de rem erop. Wacht een minuut en probeer opnieuw.' };
+
+  if(status === 403 || code === 'forbidden'){
+    const t = typeof TOKEN === 'string' ? TOKEN : '';
+    const vorm = t ? (t.length + ' tekens, begint met "' + t.slice(0,3) + '…", eindigt op "…' + t.slice(-2) + '"') : 'leeg';
+    const raar = /\s/.test(t) ? '\n⚠ De token bevat een SPATIE of regeleinde — dat is bijna zeker de oorzaak.' : '';
+    return { kind:'err', title:'❌ Admin-token wordt geweigerd (403).',
+      detail:'De Worker vergelijkt met het secret ADMIN_TOKEN in Cloudflare.\n' +
+             'Wat deze pagina meestuurt: ' + vorm + raar +
+             '\n\nControleer in Cloudflare → Workers → pidlane-proxy → Settings → Variables\n' +
+             'of ADMIN_TOKEN bestaat en exact deze waarde heeft.' };
+  }
+  if(/TABLE_NOT_FOUND|INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND/i.test(raw) || code === 'airtable_list_failed')
+    return { kind:'err', title:'❌ Airtable weigert de toegang of kent de tabel niet.',
+      detail:'Dit los je in Airtable op, niet hier:\n' +
+             '1. airtable.com/create/tokens\n' +
+             '2. open de token die in het Worker-secret AIRTABLE_TOKEN staat\n' +
+             '3. voeg de betreffende base toe onder Access\n' +
+             '4. scopes data.records:read én data.records:write\n\n' + detail.slice(0,200) };
+  if(/^airtable_/.test(code))
+    return { kind:'err', title:'❌ Airtable gaf ' + code.replace('airtable_','HTTP ') + '.',
+             detail: detail.slice(0,300) };
+  if(code === 'no_airtable_token')
+    return { kind:'err', title:'❌ De Worker heeft geen AIRTABLE_TOKEN.',
+             detail:'Zet het secret in Cloudflare; zonder die sleutel kan de Worker nergens lezen.' };
+  if(code === 'locked_user')
+    return { kind:'err', title:'❌ Deze naam is beschermd.',
+             detail:'Dit account staat in het Worker-secret USERS_JSON (de noodingang) en wordt daar beheerd.' };
+  if(code === 'pass_required')  return { kind:'err', title:'❌ Wachtwoord verplicht.', detail:'Een nieuwe gebruiker heeft een wachtwoord nodig.' };
+  if(code === 'pass_too_short') return { kind:'err', title:'❌ Wachtwoord te kort.', detail:'Minimaal 8 tekens.' };
+  if(code === 'invalid_user')   return { kind:'err', title:'❌ Ongeldige inlognaam.', detail:'2–40 tekens; letters, cijfers, spatie, punt, streepje of underscore.' };
+  if(code === 'saldo_bezet')    return { kind:'warn', title:'⏳ Er loopt al een tegoedwijziging voor deze klant.', detail:'Even wachten en opnieuw proberen.' };
+  if(code === 'saldo_verschoven') return { kind:'warn', title:'⚠ Het saldo is inmiddels veranderd.', detail:(body && body.error) || 'Herlaad de lijst en kijk opnieuw.' };
+  if(code === 'saldo_slot_stuk') return { kind:'err', title:'❌ Het tegoedslot was niet bereikbaar.', detail:'Er is niets gewijzigd. Probeer het zo nog eens.' };
+  if(status === 404) return { kind:'err', title:'❌ Niet gevonden (404).', detail:'De route bestaat niet op deze Worker — draait er een oude versie?\n' + (body.path || '') };
+  if(body && body.error) return { kind:'err', title:'❌ ' + String(body.error).slice(0,200), detail: detail === String(body.error) ? '' : detail.slice(0,240) };
+  return { kind:'err', title:'❌ Onverwachte fout (' + status + ').', detail: detail.slice(0,300) };
+}
+
+/* ── De enige plek die naar buiten gaat ──────────────────────────
+   Oefenmodus onderschept hier, en alleen hier. Komt er ooit een aanroep bij
+   die callWorker overslaat, dan lekt die in oefenmodus wél naar productie. */
+async function callWorker(where, path, opts){
+  if(OEFEN){
+    await new Promise(r => setTimeout(r, 180));
+    return { ok:true, status:200, data: oefenAntwoord(path, opts) };
+  }
+  let r;
+  try{
+    r = await fetch(WURL + path, opts);
+  }catch(netErr){
+    const e = new Error('network');
+    e.diag = { kind:'err', title:'❌ Geen verbinding met de Worker.',
+      detail:'Het verzoek bereikte de Worker niet.\n' +
+             '• Worker-URL: ' + WURL + '\n' +
+             '• Deze pagina draait op ' + location.origin + ' — staat die herkomst in ALLOWED_ORIGINS?\n' +
+             '• Of er is geen internet.\n' +
+             'Details: ' + netErr.message };
+    throw e;
+  }
+  const tekst = await r.text();
+  let data = {}; try{ data = JSON.parse(tekst); }catch(e){ /* geen JSON — diagnose leest de ruwe tekst */ }
+  if(!r.ok || (data && data.ok === false)){
+    const e = new Error('http');
+    e.diag = diagnose(where, r.status, tekst);
+    e.status = r.status; e.data = data;
+    throw e;
+  }
+  return { ok:true, status:r.status, data };
+}
+/* Eén plek waar een mislukte aanroep in beeld komt. Scheelt in elke
+   knopfunctie drie regels try/catch die net iets anders waren. */
+async function veilig(el, werk, bezigTekst){
+  if(el && bezigTekst) toon_msg(el, 'info', bezigTekst);
+  try{
+    const uit = await werk();
+    return { ok:true, uit };
+  }catch(e){
+    const d = e.diag || { kind:'err', title:'❌ ' + (e.message || e), detail:'' };
+    toon_msg(el, d.kind, d.title, d.detail);
+    return { ok:false, fout:e };
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🧪 OEFENMODUS
+   ────────────────────────────────────────────────────────────────
+   Deze pagina beheert echte klanten, echt saldo en echte gebruikers, en elke
+   knop werkt meteen op productie. Zonder oefenmodus leer je de pagina dus
+   kennen op de gegevens van betalende klanten.
+
+   Er gaat hier geen enkel verzoek naar de Worker. Wijzigingen landen in de
+   voorbeelden zelf: verhoog je een saldo, dan beweegt het totaal mee.
+   Verversen zet alles terug.
+
+   Bewust niet onthouden in localStorage: er hoort geen toestand te bestaan
+   waarin je denkt live te werken terwijl je oefent — of andersom. Om dezelfde
+   reden staat er een balk over de volle breedte zolang hij aanstaat.
+
+   De voorbeelden zijn met opzet niet netjes: een geblokkeerde klant, iemand
+   met saldo 0, een openstaand wachtwoordherstel, een gebruiker zonder
+   wachtwoord en een logboek met echte fouten erin. Dat zijn de gevallen waar
+   je op wilt kunnen oefenen en die je in een schone lijst nooit tegenkomt.
+   ════════════════════════════════════════════════════════════════ */
+function oefenLogregels(){
+  const typen  = ['info','info','info','verbinding','fout','fout','bug'];
+  const berichten = {
+    info:['App gestart','Voertuig herkend','Rapport gegenereerd','Sessie gesloten'],
+    verbinding:['Adapter verbonden (ELM327 v1.5)','Herverbinden na wegvallen','Bluetooth geweigerd door toestel'],
+    fout:['NO DATA op 010C na 3 pogingen','Timeout op initialisatie ATZ','Onbekende PID 0x8A genegeerd','AI-antwoord afgekapt'],
+    bug:['Grafiek blijft leeg na tabwissel','Knop Onderhoud reageert niet']
+  };
+  const users = ['nico','monteur@pidlane.nl','stagiair','klant-demo'];
+  const merken = ['Volkswagen','Toyota','Renault','Ford','BMW',''];
+  const versies = ['6.6','6.6','6.5','6.4'];
+  const uit = [];
+  for(let i = 0; i < 140; i++){
+    const t = typen[Math.floor(Math.random()*typen.length)];
+    const b = berichten[t][Math.floor(Math.random()*berichten[t].length)];
+    // Zwaartepunt op de laatste dagen: een logboek loopt nooit gelijkmatig.
+    const dagen = Math.floor(Math.pow(Math.random(), 1.7) * 14);
+    const d = new Date(Date.now() - dagen*864e5 - Math.random()*82e6);
+    uit.push({ id:'recL' + String(i).padStart(12,'0'), createdTime:d.toISOString(), fields:{
+      Timestamp:d.toISOString(), Type:t, Message:b,
+      User:users[Math.floor(Math.random()*users.length)],
+      Role:'user', Merk:merken[Math.floor(Math.random()*merken.length)],
+      Year:String(2012 + Math.floor(Math.random()*12)),
+      Protocol:'ISO 15765-4 CAN', AppVersion:versies[Math.floor(Math.random()*versies.length)],
+      VIN:'wvw' + Math.random().toString(16).slice(2,15)
+    }});
+  }
+  return uit.sort((a,b) => a.fields.Timestamp < b.fields.Timestamp ? 1 : -1);
+}
+
+const OEFEN_START = {
+  klanten:[
+    { id:'rec001', email:'j.dekker@gmail.com', naam:'Jan Dekker', status:'actief',
+      saldo:180, totaal:250, aangemaakt:'2026-06-14', laatsteLogin:'2026-08-26', heeftReset:false,
+      audit:'[2026-08-14 09:12] nico: saldo +100 (80 → 180) — code PIDL-1QA9-5RT4 verzilverd' },
+    { id:'rec002', email:'garage.pieters@ziggo.nl', naam:'Autobedrijf Pieters', status:'actief',
+      saldo:0, totaal:500, aangemaakt:'2026-05-02', laatsteLogin:'2026-08-27', heeftReset:false, audit:'' },
+    { id:'rec003', email:'m.visser@outlook.com', naam:'Marieke Visser', status:'actief',
+      saldo:25, totaal:25, aangemaakt:'2026-08-25', laatsteLogin:'2026-08-25', heeftReset:true, audit:'' },
+    { id:'rec004', email:'testrit@voorbeeld.nl', naam:'', status:'geblokkeerd',
+      saldo:40, totaal:100, aangemaakt:'2026-03-11', laatsteLogin:'2026-07-02', heeftReset:false, audit:'' },
+    { id:'rec005', email:'oud.account@voorbeeld.nl', naam:'Weggaande klant', status:'verwijderd',
+      saldo:0, totaal:150, aangemaakt:'2026-01-08', laatsteLogin:'2026-08-01', heeftReset:false,
+      verwijderdOp:'2026-08-20T10:00:00Z', definitiefOp:'2026-09-19T10:00:00Z', audit:'' }
+  ],
+  users:[
+    { user:'nico', label:'Nico', role:'admin', active:true, hasPass:true },
+    { user:'monteur@pidlane.nl', label:'Werkplaats', role:'user', active:true, hasPass:true },
+    { user:'stagiair', label:'Stagiair (tijdelijk)', role:'user', active:false, hasPass:false }
+  ],
+  locked:[{ user:'noodingang', label:'Noodingang', role:'admin' }],
+  codes:[
+    { id:'recC01', code:'PIDL-4KJ2-9XQ1', credits:100, gebruikt:false, waarde:9.95,  batch:'2026-08-tikkie', gebruiktDoor:'', gebruiktOp:'', vervalt:'' },
+    { id:'recC02', code:'PIDL-7HB3-2MZ8', credits:250, gebruikt:false, waarde:19.95, batch:'2026-08-tikkie', gebruiktDoor:'', gebruiktOp:'', vervalt:'' },
+    { id:'recC03', code:'PIDL-1QA9-5RT4', credits:100, gebruikt:true,  waarde:9.95,  batch:'2026-07-proef',  gebruiktDoor:'j.dekker@gmail.com', gebruiktOp:'2026-08-14', vervalt:'' }
+  ],
+  config:{ door_saving_active:true, door_deal_active:true, door_prep_active:false,
+           banner_active:false, banner_text:'', ai_system_override:'',
+           tikkie_kopen:'https://tikkie.me/pay/voorbeeld', tikkie_donatie:'' }
+};
+
+let OEFEN_DATA = null;
+function oefenReset(){
+  OEFEN_DATA = JSON.parse(JSON.stringify(OEFEN_START));
+  OEFEN_DATA.log = oefenLogregels();
+  OEFEN_DATA.veldlab = [{ id:'recV000000000001', fields:{ Merk:'Volkswagen', PID:'010C', Waarde:842, Eenheid:'rpm' } }];
+  OEFEN_DATA.referentie = [{ id:'recR000000000001', fields:{ Merk:'Volkswagen', PID:'0105', Min:78, Max:98 } }];
+  OEFEN_DATA.appconfig = Object.keys(OEFEN_DATA.config).map((k,i) =>
+    ({ id:'recF' + String(i).padStart(12,'0'), fields:{ Key:k, Value:String(OEFEN_DATA.config[k]) } }));
+}
+
+/* Het antwoord dat de Worker zou hebben gegeven. Eén plek, zodat er geen
+   tweede waarheid ontstaat naast callWorker(). */
+function oefenAntwoord(path, opts){
+  const methode = ((opts && opts.method) || 'GET').toUpperCase();
+  let b = {};
+  try{ if(opts && opts.body) b = JSON.parse(opts.body); }catch(e){ /* niet elke body is JSON */ }
+  const D = OEFEN_DATA;
+  const sp = new URLSearchParams((path.split('?')[1] || ''));
+
+  if(path.indexOf('/api/config') === 0){
+    if(methode === 'GET') return Object.assign({}, D.config);
+    Object.assign(D.config, b || {}); return { ok:true };
+  }
+  if(path.indexOf('/health') === 0) return { ok:true, service:'pidlane-proxy (oefen)', ts:new Date().toISOString() };
+  if(path.indexOf('/v1/messages') === 0)
+    return { content:[{ type:'text', text:'(oefenmodus) Voorbeeldantwoord. De AI-route is niet aangeroepen en er zijn geen tokens verbruikt.' }] };
+
+  if(path.indexOf('/admin/klanten') === 0){
+    if(methode === 'GET'){
+      const q = (sp.get('q') || '').toLowerCase();
+      const lijst = q ? D.klanten.filter(k => (k.email + ' ' + k.naam).toLowerCase().indexOf(q) >= 0) : D.klanten;
+      return { ok:true, klanten:lijst,
+               stats:{ aantal:D.klanten.length, totaalSaldo:D.klanten.reduce((a,k) => a + k.saldo, 0) } };
+    }
+    if(b.actie === 'aanmaken'){
+      const email = String(b.email||'').trim().toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return { ok:false, error:'Vul een geldig e-mailadres in.' };
+      if(D.klanten.some(k => k.email === email)) return { ok:false, error:'Dit e-mailadres is al geregistreerd.' };
+      const id = 'rec' + Math.random().toString(36).slice(2,16).padEnd(14,'0');
+      D.klanten.unshift({ id, email, naam:String(b.naam||''), status:String(b.status||'actief'),
+        saldo:Number(b.saldo)||0, totaal:0, aangemaakt:new Date().toISOString(),
+        laatsteLogin:'', heeftReset:false,
+        audit:'[' + new Date().toISOString().slice(0,16).replace('T',' ') + '] ' + (b.door||'onbekend') +
+              ': account aangemaakt door beheerder (saldo ' + (Number(b.saldo)||0) + ')' });
+      return { ok:true, id, email, saldo:Number(b.saldo)||0, metWachtwoord:!!b.pass, vastgelegd:true };
+    }
+    if(b.actie === 'opruimen'){
+      const nu = Date.now();
+      const rijp  = D.klanten.filter(k => k.status === 'verwijderd' && k.definitiefOp && new Date(k.definitiefOp) <= nu);
+      const wacht = D.klanten.filter(k => k.status === 'verwijderd' && k.definitiefOp && new Date(k.definitiefOp) > nu);
+      D.klanten = D.klanten.filter(k => rijp.indexOf(k) < 0);
+      return { ok:true, bekeken:rijp.length + wacht.length, verwijderd:rijp.map(k => k.id),
+               wacht:wacht.map(k => ({ id:k.id, definitiefOp:k.definitiefOp })), mislukt:[], bewaardagen:30 };
+    }
+    const k = D.klanten.find(x => x.id === b.id);
+    if(!k) return { ok:false, error:'Klant niet gevonden.' };
+    const stempel = (t) => { k.audit = '[' + new Date().toISOString().slice(0,16).replace('T',' ') + '] ' +
+      (String(b.door||'').trim() || 'onbekend') + ': ' + t + (k.audit ? '\n' + k.audit : ''); };
+    if(b.actie === 'verwijder'){ D.klanten = D.klanten.filter(x => x.id !== b.id); return { ok:true }; }
+    if(b.actie === 'bijboeken'){
+      const d = Number(b.delta||0), van = k.saldo;
+      if(van + d < 0) return { ok:false, error:'Saldo zou ' + (van+d) + ' worden; het staat nu op ' + van + '.' };
+      k.saldo = van + d;
+      stempel('saldo ' + (d>0?'+':'') + d + ' (' + van + ' → ' + k.saldo + ')' + (b.reden ? ' — ' + b.reden : ''));
+      return { ok:true, van, naar:k.saldo, vastgelegd:true };
+    }
+    if(b.actie === 'wachtwoord'){ k.heeftReset = false; stempel('wachtwoord door beheerder gezet'); return { ok:true, vastgelegd:true }; }
+    const deel = [];
+    if(b.saldo !== undefined){
+      if(b.saldoWas !== undefined && Number(b.saldoWas) !== k.saldo)
+        return { ok:false, code:'saldo_verschoven', error:'Het saldo staat inmiddels op ' + k.saldo + ' en niet meer op ' + b.saldoWas + '.' };
+      const van = k.saldo; k.saldo = Number(b.saldo); deel.push('Saldo gezet (' + van + ' → ' + k.saldo + ')');
+    }
+    if(b.status !== undefined){ k.status = b.status; k.verwijderdOp = ''; k.definitiefOp = ''; deel.push('Status=' + k.status); }
+    if(b.naam !== undefined){ k.naam = b.naam; deel.push('Naam=' + k.naam); }
+    if(deel.length) stempel(deel.join(', '));
+    return { ok:true, vastgelegd:true };
+  }
+
+  if(path.indexOf('/admin/users') === 0){
+    if(methode === 'GET') return { users:D.users, locked:D.locked };
+    if(b.action === 'delete'){ D.users = D.users.filter(u => u.user !== b.user); return { ok:true, deleted:b.user }; }
+    const bestaand = D.users.find(u => u.user === b.user);
+    if(bestaand) Object.assign(bestaand, { label:b.label || bestaand.label, role:b.role || bestaand.role,
+      active:b.active !== false, hasPass:b.pass ? true : bestaand.hasPass });
+    else D.users.push({ user:b.user, label:b.label || b.user, role:b.role || 'user',
+      active:b.active !== false, hasPass:!!b.pass });
+    return { ok:true, user:b.user, created:!bestaand, passChanged:!!b.pass };
+  }
+
+  if(path.indexOf('/admin/codes') === 0){
+    if(methode === 'GET'){
+      const f = sp.get('status') || 'alle';
+      const lijst = f === 'open' ? D.codes.filter(c => !c.gebruikt)
+                  : f === 'gebruikt' ? D.codes.filter(c => c.gebruikt) : D.codes;
+      const open = D.codes.filter(c => !c.gebruikt), geb = D.codes.filter(c => c.gebruikt);
+      return { ok:true, codes:lijst, stats:{ totaal:D.codes.length, open:open.length, gebruikt:geb.length,
+        openCredits:open.reduce((a,c) => a + c.credits, 0), omzet:geb.reduce((a,c) => a + (c.waarde||0), 0) } };
+    }
+    if(b.actie === 'verwijder'){ D.codes = D.codes.filter(c => c.id !== b.id); return { ok:true }; }
+    const n = Math.max(1, Math.min(200, Number(b.aantal)||1)), gemaakt = [];
+    for(let i = 0; i < n; i++){
+      const blok = () => Math.random().toString(36).slice(2,6).toUpperCase();
+      const code = 'PIDL-' + blok() + '-' + blok();
+      gemaakt.push(code);
+      D.codes.unshift({ id:'recC' + Math.random().toString(36).slice(2,14), code, credits:Number(b.credits)||100,
+        gebruikt:false, waarde:Number(b.prijs)||0, batch:b.batch || 'oefen', gebruiktDoor:'', gebruiktOp:'', vervalt:b.vervalt||'' });
+    }
+    return { ok:true, aantal:n, batch:b.batch, credits:Number(b.credits)||100, codes:gemaakt };
+  }
+
+  if(path.indexOf('/admin/tabel') === 0){
+    const naar = { log:'log', klanten:'klanten', codes:'codes', users:'users',
+                   veldlab:'veldlab', referentie:'referentie', config:'appconfig' };
+    const bron = sp.get('bron') || (b && b.bron) || '';
+    if(!naar[bron]) return { ok:false, error:'Onbekende bron.' };
+    const rijen = () => {
+      if(bron === 'klanten') return D.klanten.map(k => ({ id:k.id, fields:{ Email:k.email, Naam:k.naam,
+        Saldo:k.saldo, TotaalGekocht:k.totaal, Status:k.status, Aangemaakt:k.aangemaakt,
+        LaatsteLogin:k.laatsteLogin, PassHash:'••• verborgen', Opmerking:'' } }));
+      if(bron === 'codes') return D.codes.map(c => ({ id:c.id, fields:{ Code:c.code, Credits:c.credits,
+        Gebruikt:c.gebruikt, Waarde:c.waarde, Batch:c.batch, GebruiktDoor:c.gebruiktDoor, GebruiktOp:c.gebruiktOp } }));
+      if(bron === 'users') return D.users.map((u,i) => ({ id:'recU' + String(i).padStart(12,'0'),
+        fields:{ User:u.user, Label:u.label, Role:u.role, Active:u.active, PassHash:u.hasPass ? '••• verborgen' : '' } }));
+      return D[naar[bron]] || [];
+    };
+    const beschermd = { klanten:['Saldo','PassHash','ResetToken','ResetVerloopt','Email'], users:['PassHash','User'] };
+    if(methode === 'GET'){
+      const limiet = Math.min(100, Math.max(1, Number(sp.get('limiet')) || 50));
+      const q = (sp.get('q') || '').toLowerCase();
+      let lijst = rijen();
+      if(q) lijst = lijst.filter(r => JSON.stringify(r.fields).toLowerCase().indexOf(q) >= 0);
+      const deel = lijst.slice(0, limiet);
+      const velden = [];
+      deel.forEach(r => Object.keys(r.fields).forEach(k => { if(velden.indexOf(k) < 0) velden.push(k); }));
+      return { ok:true, bron, naam:bron, tabel:'(oefen)', records:deel, velden, offset:'',
+               gesorteerd:true, sorteer:'', schrijven:bron !== 'config',
+               beschermd:beschermd[bron] || [], geheim:bron === 'klanten' || bron === 'users' ? ['PassHash'] : [] };
+    }
+    if(bron === 'config') return { ok:false, error:'De bron "AppConfig" is alleen-lezen.' };
+    if(b.actie === 'wis'){
+      const ids = b.ids || [b.id];
+      D[naar[bron]] = (D[naar[bron]] || []).filter(r => ids.indexOf(r.id) < 0);
+      if(bron === 'klanten') D.klanten = D.klanten.filter(k => ids.indexOf(k.id) < 0);
+      if(bron === 'codes') D.codes = D.codes.filter(c => ids.indexOf(c.id) < 0);
+      return { ok:true, gewist:ids };
+    }
+    if(b.actie === 'wijzig'){
+      for(const v of Object.keys(b.velden || {}))
+        if((beschermd[bron] || []).indexOf(v) >= 0)
+          return { ok:false, error:'Het veld "' + v + '" is hier afgeschermd en wordt via zijn eigen route gewijzigd.' };
+      const r = (D[naar[bron]] || []).find(x => x.id === b.id);
+      if(r) Object.assign(r.fields, b.velden || {});
+      return { ok:true, id:b.id, velden:(r && r.fields) || {} };
+    }
+    return { ok:false, error:'Onbekende actie.' };
+  }
+  return { ok:true, oefen:true };
+}
+
+/* ════════════════════════════════════════════════════════════════
+   POORT, TABBLADEN EN OPSTART
+   ════════════════════════════════════════════════════════════════ */
+const TABBLADEN = [
+  ['overzicht','🩺 Overzicht'], ['klanten','👥 Klanten'], ['codes','🎟️ Codes'],
+  ['gebruikers','👤 Gebruikers'], ['logboek','📜 Logboek'], ['tabellen','🗂️ Tabellen'],
+  ['instellingen','⚙️ Instellingen'], ['gereedschap','🧰 Gereedschap']
+];
+let TAB = 'overzicht';
+function tekenTabs(){
+  $('tabs').innerHTML = TABBLADEN.map(t =>
+    `<button class="tab${t[0] === TAB ? ' aan' : ''}" id="tab-${t[0]}" onclick="toon('${t[0]}')">${t[1]}</button>`).join('');
+}
+function toon(naam){
+  TAB = naam;
+  TABBLADEN.forEach(t => {
+    const p = $('p-' + t[0]), k = $('tab-' + t[0]);
+    if(p) p.classList.toggle('aan', t[0] === naam);
+    if(k) k.classList.toggle('aan', t[0] === naam);
+  });
+  try{ location.hash = naam; }catch(e){ /* stil: hash zetten mag nooit de pagina breken */ }
+  window.scrollTo(0, 0);
+}
+
+function enter(){
+  // .trim() is niet genoeg: plakken uit een wachtwoordmanager levert soms een
+  // newline of een non-breaking space op, en die geeft een 403 die eruitziet
+  // als een verkeerde sleutel.
+  TOKEN = $('adminTok').value.replace(/[\s ​]+/g, '');
+  WURL  = $('workerUrl').value.trim().replace(/\/$/, '');
+  WIE   = $('beheerNaam').value.trim().slice(0, 40);
+  const m = $('gateMsg');
+  if(!TOKEN){ toon_msg(m, 'err', 'Vul je admin-token in.'); return; }
+  if(!/^https?:\/\//.test(WURL)){ toon_msg(m, 'err', 'Worker-URL moet met https:// beginnen.'); return; }
+  try{
+    localStorage.setItem('pl_beheer_wurl', WURL);          // de URL onthouden
+    if(WIE) localStorage.setItem('pl_beheer_naam', WIE);   // de token bewust NIET
+  }catch(e){ /* stil: opslag kan geblokkeerd zijn, dat mag niets tegenhouden */ }
+  start();
+}
+function oefenStart(){
+  OEFEN = true; oefenReset();
+  TOKEN = '(oefenmodus)'; WURL = '(geen worker)';
+  WIE = $('beheerNaam').value.trim() || 'oefenaar';
+  $('oefenBalk').classList.remove('hidden');
+  start();
+}
+function start(){
+  $('gate').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('omgevingPil').textContent = OEFEN ? '🧪 oefenmodus' : (WURL.indexOf('workers.dev') >= 0 ? 'workers.dev' : 'productie');
+  $('omgevingPil').className = 'pill ' + (OEFEN ? 'p-wacht' : 'p-ok');
+  $('wieChip').textContent = WIE ? 'ingelogd als ' + WIE : 'geen naam ingevuld — auditregels zeggen "onbekend"';
+  tekenTabs();
+  const uitHash = String(location.hash || '').replace('#','');
+  toon(TABBLADEN.some(t => t[0] === uitHash) ? uitHash : 'overzicht');
+  renderFeatures(); tekenRoutes(); tekenSessie();
+  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers();
+}
+function logout(){
+  TOKEN = ''; $('adminTok').value = '';
+  $('app').classList.add('hidden');
+  $('gate').classList.remove('hidden');
+}
+function allesHerladen(){
+  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers();
+  if(LOG_RIJEN.length) logLaden();
+  toast('Alles opnieuw opgehaald');
+}
+function beheerder(){ return WIE || 'onbekend'; }
+
+/* ── Poorttest ───────────────────────────────────────────────────
+   Vier losse stappen, zodat "de sleutel weigert" niet één ondeelbaar
+   probleem is maar een rij met precies één rood kruisje. Stap 1 en 2 falen
+   anders dan stap 3, en dat verschil bepaalt of je in Cloudflare naar de
+   secret of naar ALLOWED_ORIGINS moet kijken. */
+async function poortTestKern(uitEl, tok, url){
+  const r = [];
+  r.push('Herkomst van deze pagina: ' + location.origin);
+  r.push('Worker-URL: ' + (url || '(leeg)'));
+  r.push(tok ? ('Token: ' + tok.length + ' tekens' + (/\s/.test(tok) ? '  ⚠ BEVAT EEN SPATIE OF REGELEINDE' : '')) : 'Token: leeg');
+  toon_msg(uitEl, 'info', r.join('\n') + '\n\nBezig met testen…');
+  const stap = async (naam, fn) => {
+    try{ const u = await fn(); r.push('✅ ' + naam + (u ? ' — ' + u : '')); }
+    catch(e){ r.push('❌ ' + naam + ' — ' + (e && e.message || e)); }
+    toon_msg(uitEl, 'info', r.join('\n'));
+  };
+  await stap('Worker bereikbaar (zonder token)', async () => {
+    const resp = await fetch(url + '/health');
+    return 'HTTP ' + resp.status + (resp.status === 200 ? ' — bereikbaar en CORS in orde' : '');
+  });
+  await stap('Token op een leesroute', async () => {
+    const resp = await fetch(url + '/api/config', { headers:{ 'X-Admin-Token':tok, 'X-App-Token':tok } });
+    if(resp.status === 403) throw new Error('HTTP 403 — de Worker kent deze token niet. Kijk naar het secret ADMIN_TOKEN in Cloudflare.');
+    return 'HTTP ' + resp.status;
+  });
+  await stap('Token op een adminroute', async () => {
+    const resp = await fetch(url + '/admin/users', { headers:{ 'X-Admin-Token':tok } });
+    if(resp.status === 403) throw new Error('HTTP 403 — leesroute mag wel, adminroute niet. Dan is ADMIN_TOKEN leeg of anders.');
+    if(resp.status === 429) throw new Error('HTTP 429 — snelheidslimiet, wacht een minuut.');
+    return 'HTTP ' + resp.status;
+  });
+  await stap('De nieuwe tabelroute', async () => {
+    const resp = await fetch(url + '/admin/tabel?bron=log&limiet=1', { headers:{ 'X-Admin-Token':tok } });
+    if(resp.status === 404) throw new Error('HTTP 404 — deze Worker kent /admin/tabel nog niet. Deploy de nieuwe worker.js.');
+    if(resp.status === 403) throw new Error('HTTP 403 — token geweigerd op /admin/tabel.');
+    return 'HTTP ' + resp.status;
+  });
+  r.push('');
+  r.push('Faalt stap 1 → Worker-URL of deploy. Faalt alleen 2 en 3 → de token.');
+  r.push('Faalt alleen stap 4 → de Worker draait nog een oude versie.');
+  toon_msg(uitEl, 'info', r.join('\n'));
+}
+function poortTest(){
+  poortTestKern($('gateMsg'),
+    $('adminTok').value.replace(/[\s ​]+/g,''),
+    $('workerUrl').value.trim().replace(/\/$/,''));
+}
+function poortTestIn(){
+  if(OEFEN){ toon_msg($('poortUit'), 'warn', 'Oefenmodus: er is niets om te testen — er gaat geen verzoek naar buiten.'); return; }
+  poortTestKern($('poortUit'), TOKEN, WURL);
+}
+
+/* ── Lokaal geopend? Dan stopt het hier ─────────────────────────
+   Vanuit Downloads geopend is de herkomst file:// (of content://), stuurt de
+   browser Origin: null en sneuvelt élk verzoek op CORS vóórdat de Worker het
+   ziet. Het foutbeeld is "Failed to fetch" en dat lijkt sprekend op een
+   geweigerde sleutel — terwijl de token nooit is meegekeken. */
+(function(){
+  if(location.protocol === 'http:' || location.protocol === 'https:') return;
+  const g = $('gate'); if(!g) return;
+  const b = document.createElement('div');
+  b.className = 'gevaar';
+  b.innerHTML = '<b>⛔ Deze pagina is lokaal geopend (' + esc(location.protocol) + '//)</b><br>' +
+    'Zo werkt hij niet: de browser blokkeert elk verzoek naar de Worker op CORS, nog vóór je token ' +
+    'wordt meegestuurd. Dat ziet eruit als een geweigerde sleutel, maar is het niet.<br><br>' +
+    'Start hem via een lokale server — vanuit de repo:<br>' +
+    '<code>npm run admin</code><br>en open dan <b>http://127.0.0.1:8788/beheer.html</b>. Zie admin/LEESMIJ.md.';
+  g.insertBefore(b, g.firstChild);
+  const k = g.querySelector('.btn-pri');
+  if(k){ k.disabled = true; k.title = 'Open de pagina eerst via http://localhost'; }
+})();
+
+// Laatst gebruikte Worker-URL en beheerdersnaam voorvullen
+try{
+  const w = localStorage.getItem('pl_beheer_wurl') || localStorage.getItem('pl_admin_wurl');
+  if(w) $('workerUrl').value = w;
+  const n = localStorage.getItem('pl_beheer_naam') || localStorage.getItem('pl_admin_naam');
+  if(n) $('beheerNaam').value = n;
+}catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
+
+/* ════════════════════════════════════════════════════════════════
+   🩺 STATUS EN KERNCIJFERS
+   ════════════════════════════════════════════════════════════════ */
+async function checkStatus(){
+  const el = $('statusLijst'); if(!el) return;
+  const items = [
+    { id:'st_worker', naam:'Worker bereikbaar', hint:'/api/config',
+      run:() => callWorker('read','/api/config',{ headers:H({ 'X-App-Token':TOKEN }) }) },
+    { id:'st_users', naam:'Gebruikers (Airtable Config-base)', hint:'/admin/users',
+      run:() => callWorker('users','/admin/users',{ headers:H() }) },
+    { id:'st_tabel', naam:'Tabelroute (nieuw)', hint:'/admin/tabel?bron=log',
+      run:() => callWorker('tabel','/admin/tabel?bron=log&limiet=1',{ headers:H() }) }
+  ];
+  el.innerHTML = items.map(i =>
+    `<div class="rij"><div><div class="lbl">${esc(i.naam)}</div><div class="desc"><code>${esc(i.hint)}</code></div></div>
+     <span class="pill p-wacht" id="${i.id}">…</span></div>`).join('') +
+    `<div class="rij"><div><div class="lbl">AI-route (Anthropic)</div>
+      <div class="desc">Kost een paar tokens — draait alleen op verzoek</div></div>
+      <button class="btn-sec btn-sm" onclick="testAi()">Meten</button></div>`;
+  // In oefenmodus is er niets gemeten. Een groene vink zou hier een werkende
+  // keten suggereren die niet is aangeraakt — precies de valse geruststelling
+  // waar deze kaart tegen bedoeld is.
+  if(OEFEN){
+    items.forEach(i => { const p = $(i.id); p.textContent = 'niet gemeten'; p.className = 'pill p-wacht';
+      p.title = 'Oefenmodus: er is geen verzoek naar de Worker gestuurd.'; });
+    return;
+  }
+  for(const i of items){
+    const p = $(i.id);
+    try{ await i.run(); p.textContent = '✓ ok'; p.className = 'pill p-ok'; p.title = ''; }
+    catch(e){ p.textContent = '✗ fout'; p.className = 'pill p-uit';
+              p.title = (e.diag && (e.diag.title + '\n' + (e.diag.detail||''))) || e.message; }
+  }
+}
+async function testAi(){
+  const r = await veilig($('saveMsg'), () => callWorker('ai','/v1/messages',{
+    method:'POST', headers:{ 'Content-Type':'application/json', 'X-App-Token':TOKEN },
+    body:JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:16,
+      messages:[{ role:'user', content:'ping' }], thinking:{ type:'disabled' } })
+  }));
+  toast(r.ok ? '✓ AI-route antwoordt' : '✗ AI-route gaf een fout — zie Instellingen');
+}
+
+function tekenKpi(){
+  const k = KLANTEN_CACHE, c = CODES_CACHE;
+  const nu = Date.now();
+  const logDag = LOG_RIJEN.filter(r => nu - new Date(r.fields.Timestamp || r.createdTime).getTime() < 864e5);
+  const fouten = logDag.filter(r => /fout|bug|error/i.test(String(r.fields.Type||'')));
+  const kpis = [
+    ['Klanten', k.length, 'in beeld'],
+    ['Tokens uitstaand', k.reduce((a,x) => a + (x.saldo||0), 0), 'som van alle saldi'],
+    ['Codes open', c.filter(x => !x.gebruikt).length, c.filter(x => !x.gebruikt).reduce((a,x) => a + (x.credits||0), 0) + ' tokens'],
+    ['Omzet uit codes', eur(c.filter(x => x.gebruikt).reduce((a,x) => a + (x.waarde||0), 0)), 'verzilverd'],
+    ['Geblokkeerd', k.filter(x => x.status === 'geblokkeerd').length, 'klantaccounts'],
+    ['In verwijderwachtrij', k.filter(x => x.status === 'verwijderd' || x.verwijderdOp).length, 'wacht op de termijn'],
+    ['Logregels 24 u', logDag.length, LOG_RIJEN.length ? 'van ' + LOG_RIJEN.length + ' opgehaald' : 'nog niets opgehaald'],
+    ['Fouten 24 u', fouten.length, 'type fout of bug']
+  ];
+  $('kpiGrid').innerHTML = kpis.map(x =>
+    `<div class="kpi"><div class="n">${esc(x[1])}</div><div class="l">${esc(x[0])}</div>
+     <div class="l" style="opacity:.7">${esc(x[2])}</div></div>`).join('');
+  $('cijfersVers').textContent = 'bijgewerkt ' + new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ════════════════════════════════════════════════════════════════
+   👥 KLANTEN
+   ════════════════════════════════════════════════════════════════ */
+let KLANTEN_CACHE = [];
+
+async function loadKlanten(){
+  const el = $('kLijst'), m = $('kMsg');
+  el.innerHTML = '<div class="leeg">Bezig…</div>';
+  const q = ($('kZoek').value || '').trim();
+  const r = await veilig(m, () => callWorker('klanten','/admin/klanten?q=' + encodeURIComponent(q), { headers:H() }), '');
+  if(!r.ok){ el.innerHTML = '<div class="leeg">Niet geladen.</div>'; return; }
+  KLANTEN_CACHE = r.uit.data.klanten || [];
+  const s = r.uit.data.stats || {};
+  $('kStats').textContent = (s.aantal != null ? s.aantal + ' klanten' : KLANTEN_CACHE.length + ' klanten') +
+    ' · ' + (s.totaalSaldo != null ? s.totaalSaldo : KLANTEN_CACHE.reduce((a,k) => a + k.saldo, 0)) + ' tokens uitstaand' +
+    (q ? ' · gefilterd op "' + q + '"' : '');
+  toon_msg(m, 'info', '');
+  tekenKlanten(); tekenKpi();
+}
+
+function tekenKlanten(){
+  const el = $('kLijst');
+  const hoe = $('kSorteer').value;
+  const lijst = KLANTEN_CACHE.slice();
+  const tijd = (s) => { const d = new Date(s || 0).getTime(); return isNaN(d) ? 0 : d; };
+  if(hoe === 'saldo')      lijst.sort((a,b) => b.saldo - a.saldo);
+  if(hoe === 'saldo-op')   lijst.sort((a,b) => a.saldo - b.saldo);
+  if(hoe === 'login')      lijst.sort((a,b) => tijd(b.laatsteLogin) - tijd(a.laatsteLogin));
+  if(hoe === 'naam')       lijst.sort((a,b) => String(a.email).localeCompare(String(b.email)));
+  if(hoe === 'nieuw')      lijst.sort((a,b) => tijd(b.aangemaakt) - tijd(a.aangemaakt));
+  if(!lijst.length){ el.innerHTML = '<div class="leeg">Geen klanten gevonden.</div>'; return; }
+  el.innerHTML = lijst.map(k => {
+    const pil = k.status === 'actief' ? 'p-ok' : k.status === 'geblokkeerd' ? 'p-uit' : 'p-wacht';
+    const merk = [];
+    if(k.heeftReset) merk.push('<span class="pill p-wacht">herstel open</span>');
+    if(k.verwijderdOp) merk.push('<span class="pill p-uit">wordt gewist ' + esc(dt(k.definitiefOp)) + '</span>');
+    return `<div class="klantrij">
+      <div class="kop">
+        <div>
+          <div class="adres">${esc(k.email || '(geen adres)')} <span class="pill ${pil}">${esc(k.status)}</span> ${merk.join(' ')}</div>
+          <div class="meta">${esc(k.naam || '—')} · aangemaakt ${esc(dt(k.aangemaakt))} · laatste login ${esc(dt(k.laatsteLogin))} · ooit gekocht ${esc(k.totaal)}</div>
+        </div>
+        <div style="text-align:right"><div class="saldo">${esc(k.saldo)}</div><div class="meta">tokens</div></div>
+      </div>
+      <div class="bar" style="margin-top:9px">
+        <button class="btn-ok btn-sm" onclick="kBijboeken('${k.id}',${k.saldo})">+ Bijboeken</button>
+        <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo zetten</button>
+        <button class="btn-sec btn-sm" onclick="kStatus('${k.id}','${esc(k.status)}')">Status</button>
+        <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
+        <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
+        <button class="btn-del btn-sm" onclick="kVerwijder('${k.id}','${esc(k.email)}')">Wissen</button>
+      </div>
+      <div id="kd_${k.id}" class="hidden" style="margin-top:10px"></div>
+    </div>`;
+  }).join('');
+}
+
+/* Details: waar zijn de tokens gebleven, en wat is er met de hand gewijzigd.
+   Wat hier NIET staat is verbruik over tijd — daar is geen bron voor. De
+   Klanten-tabel houdt een stand bij, geen historie; een grafiek uit twee
+   getallen zou een precisie suggereren die er niet is. */
+function kDetail(id){
+  const k = KLANTEN_CACHE.find(x => x.id === id);
+  const el = $('kd_' + id);
+  if(!k || !el) return;
+  if(!el.classList.contains('hidden')){ el.classList.add('hidden'); return; }
+  const verbruikt = Math.max(0, (k.totaal || 0) - (k.saldo || 0));
+  const audit = String(k.audit || '').trim();
+  el.innerHTML = `<div style="background:var(--sur);border:1px solid var(--bd);border-radius:9px;padding:11px">
+    <div class="grid3">
+      <div class="kpi"><div class="n">${esc(k.saldo)}</div><div class="l">nu op saldo</div></div>
+      <div class="kpi"><div class="n">${esc(k.totaal || 0)}</div><div class="l">ooit gekocht</div></div>
+      <div class="kpi"><div class="n">${esc(verbruikt)}</div><div class="l">verschil (verbruikt of weggegeven)</div></div>
+    </div>
+    <h3 style="margin-top:12px">Record-id</h3><code>${esc(k.id)}</code>
+    <h3 style="margin-top:12px">Auditregels — nieuwste eerst</h3>
+    ${audit ? '<pre style="white-space:pre-wrap;font-size:12px;color:var(--tx2);margin:0">' + esc(audit) + '</pre>'
+            : '<div class="hint">Nog geen regels. Bestaat het veld <code>Audit</code> wel in de Klanten-tabel? Zonder dat veld werkt alles door, alleen de vastlegging niet.</div>'}
+    <div class="hint" style="margin-top:8px">De naam bij een regel is zelf-opgegeven: er is één ADMIN_TOKEN en die draagt geen identiteit.</div>
+  </div>`;
+  el.classList.remove('hidden');
+}
+
+async function kPost(body, gelukt){
+  const m = $('kMsg');
+  const r = await veilig(m, () => callWorker('klanten','/admin/klanten',{
+    method:'POST', headers:HJ(), body:JSON.stringify(Object.assign({ door:beheerder() }, body))
+  }), 'Bezig…');
+  if(!r.ok) return null;
+  const d = r.uit.data;
+  toon_msg(m, 'ok', gelukt(d) + (d.vastgelegd === false ? '\n⚠ De auditregel is NIET vastgelegd — bestaat het veld Audit in de Klanten-tabel?' : ''));
+  toast('Gelukt');
+  await loadKlanten();
+  return d;
+}
+
+/* Bijboeken is de gewone handeling: "klant heeft 50 gekocht" → 50. De Worker
+   leest het saldo binnen het slot vlak vóór het schrijven en telt daar bij op.
+   De pagina rekent dus niet — anders zou een lijst van tien minuten oud het
+   verbruik van elke analyse sindsdien terugschrijven. */
+function kBijboeken(id, huidig){
+  const t = prompt('Hoeveel tokens bijboeken?\nEen negatief getal boekt af.\n\nHuidig saldo: ' + huidig, '100');
+  if(t === null) return;
+  const d = Math.round(Number(t));
+  if(!isFinite(d) || d === 0){ toon_msg($('kMsg'), 'err', 'Vul een getal in dat niet 0 is.'); return; }
+  const reden = prompt('Reden (komt in de auditregel, mag leeg):', d > 0 ? 'betaald' : 'correctie') || '';
+  kPost({ actie:'bijboeken', id, delta:d, reden }, r => 'Saldo ' + r.van + ' → ' + r.naar + '.');
+}
+
+/* Zetten overschrijft. Dat is de gevaarlijke variant — een rekenfout in je
+   hoofd schrijft rechtstreeks geld weg — dus: bevestiging met het verschil
+   erbij, én `saldoWas` mee zodat de Worker weigert als het saldo intussen
+   verschoven is. Zonder dat laatste is het slot alleen het schrijven aan het
+   beschermen, niet het besluit. */
+function kSaldo(id, huidig){
+  const t = prompt('Saldo ZETTEN op (overschrijft):\n\nStaat nu op: ' + huidig, String(huidig));
+  if(t === null) return;
+  const n = Math.round(Number(t));
+  if(!isFinite(n) || n < 0){ toon_msg($('kMsg'), 'err', 'Vul een geldig getal in (0 of hoger).'); return; }
+  const v = n - huidig;
+  if(!confirm('Saldo van ' + huidig + ' naar ' + n + ' zetten?\nVerschil: ' + (v > 0 ? '+' : '') + v +
+              '\n\nDit overschrijft; het telt niet op.')) return;
+  kPost({ actie:'update', id, saldo:n, saldoWas:huidig }, r => 'Saldo gezet op ' + (r.naar != null ? r.naar : n) + '.');
+}
+function kStatus(id, huidig){
+  const n = prompt('Nieuwe status: actief, ongeverifieerd of geblokkeerd\n\nStaat nu op: ' + huidig, huidig);
+  if(n === null) return;
+  const s = String(n).trim().toLowerCase();
+  if(['actief','ongeverifieerd','geblokkeerd'].indexOf(s) < 0){
+    toon_msg($('kMsg'), 'err', 'Alleen actief, ongeverifieerd of geblokkeerd.\n"verwijderd" zet je hier niet: dan mist VerwijderdOp en blijft het record eeuwig in de wachtrij hangen.');
+    return;
+  }
+  kPost({ actie:'update', id, status:s }, () => 'Status is nu ' + s + '.');
+}
+function kWachtwoord(id, email){
+  const p = prompt('Nieuw wachtwoord voor ' + email + ':\nMinimaal 8 tekens. De klant kan dit daarna zelf wijzigen.');
+  if(p === null) return;
+  if(String(p).length < 8){ toon_msg($('kMsg'), 'err', 'Minimaal 8 tekens.'); return; }
+  kPost({ actie:'wachtwoord', id, pass:p }, () => 'Wachtwoord gezet. Geef het door via een ander kanaal dan waar het verzoek vandaan kwam.');
+}
+/* Wissen vraagt om het adres over te typen. Een ja/nee-venster klik je weg
+   zonder te lezen; iets overtypen niet. */
+function kVerwijder(id, email){
+  const in_ = prompt('Dit wist het klantrecord DEFINITIEF uit Airtable — saldo, historie en auditregels gaan mee.\n\n' +
+    'Typ het e-mailadres over om te bevestigen:\n' + email);
+  if(in_ === null) return;
+  if(String(in_).trim().toLowerCase() !== String(email).trim().toLowerCase()){
+    toon_msg($('kMsg'), 'warn', 'Niet gewist: wat je intypte kwam niet overeen.');
+    return;
+  }
+  kPost({ actie:'verwijder', id }, () => 'Klant gewist.');
+}
+
+async function klantAanmaken(){
+  const m = $('nkMsg');
+  const email = $('nkEmail').value.trim().toLowerCase();
+  const pass  = $('nkPass').value;
+  if(!email){ toon_msg(m, 'err', 'Een e-mailadres is verplicht.'); return; }
+  if(pass && pass.length < 8){ toon_msg(m, 'err', 'Het wachtwoord moet minimaal 8 tekens hebben — of laat het leeg.'); return; }
+  const saldo = Math.round(Number($('nkSaldo').value) || 0);
+  const body = { actie:'aanmaken', door:beheerder(), email,
+    naam:$('nkNaam').value.trim(), saldo, status:$('nkStatus').value };
+  if(pass) body.pass = pass;
+  const r = await veilig(m, () => callWorker('klanten','/admin/klanten',{
+    method:'POST', headers:HJ(), body:JSON.stringify(body) }), 'Bezig met aanmaken…');
+  if(!r.ok) return;
+  const d = r.uit.data;
+  toon_msg(m, 'ok', '✓ ' + email + ' aangemaakt met ' + saldo + ' tokens.' +
+    (d.metWachtwoord ? '\nEr is een wachtwoord gezet — geef het door via een ander kanaal dan waar het verzoek vandaan kwam.'
+                     : '\nEr is geen wachtwoord gezet: de klant zet er zelf een via "wachtwoord vergeten".') +
+    (d.vastgelegd === false ? '\n⚠ De auditregel is niet vastgelegd — bestaat het veld Audit?' : ''));
+  toast('Klant aangemaakt');
+  nkLeeg();
+  await loadKlanten();
+}
+function nkLeeg(){
+  ['nkEmail','nkNaam','nkPass'].forEach(i => { $(i).value = ''; });
+  $('nkSaldo').value = '0'; $('nkStatus').value = 'actief';
+}
+function csvKlanten(){
+  if(!KLANTEN_CACHE.length){ toast('Niets om te exporteren'); return; }
+  csvDownload('pidlane-klanten',
+    ['email','naam','status','saldo','totaalGekocht','aangemaakt','laatsteLogin','id'],
+    KLANTEN_CACHE.map(k => [k.email, k.naam, k.status, k.saldo, k.totaal, k.aangemaakt, k.laatsteLogin, k.id]));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🎟️ ACTIVATIECODES
+   ════════════════════════════════════════════════════════════════ */
+let CODES_CACHE = [];
+
+async function loadCodes(){
+  const el = $('cLijst'), m = $('cMsg');
+  el.innerHTML = '<div class="leeg">Bezig…</div>';
+  const r = await veilig(m, () => callWorker('codes','/admin/codes?status=' + encodeURIComponent($('cFilter').value), { headers:H() }));
+  if(!r.ok){ el.innerHTML = '<div class="leeg">Niet geladen.</div>'; return; }
+  CODES_CACHE = r.uit.data.codes || [];
+  const s = r.uit.data.stats || {};
+  $('cStats').textContent = (s.totaal || CODES_CACHE.length) + ' codes · ' + (s.open || 0) + ' open (' +
+    (s.openCredits || 0) + ' tokens uitstaand) · ' + (s.gebruikt || 0) + ' verzilverd · omzet ' + eur(s.omzet || 0);
+  toon_msg(m, 'info', '');
+  if(!CODES_CACHE.length){ el.innerHTML = '<div class="leeg">Geen codes in deze selectie.</div>'; tekenKpi(); return; }
+  el.innerHTML = '<div class="tabelbox" style="max-height:44vh"><table><thead><tr>' +
+    ['Code','Tokens','Waarde','Batch','Status','Verzilverd door','Op',''].map(h => '<th>' + h + '</th>').join('') +
+    '</tr></thead><tbody>' + CODES_CACHE.map(c =>
+      `<tr><td class="mono">${esc(c.code)}</td><td>${esc(c.credits)}</td><td>${esc(c.waarde ? eur(c.waarde) : '—')}</td>
+       <td>${esc(c.batch || '—')}</td>
+       <td>${c.gebruikt ? '<span class="pill p-uit">gebruikt</span>' : '<span class="pill p-ok">open</span>'}</td>
+       <td>${esc(c.gebruiktDoor || '—')}</td><td>${esc(dt(c.gebruiktOp))}</td>
+       <td><button class="btn-del btn-sm" onclick="cVerwijder('${c.id}','${esc(c.code)}')">🗑</button></td></tr>`).join('') +
+    '</tbody></table></div>';
+  tekenKpi();
+}
+async function genCodes(){
+  const m = $('cGenMsg');
+  const aantal = Math.round(Number($('cAantal').value) || 0);
+  const credits = Math.round(Number($('cCredits').value) || 0);
+  if(aantal < 1 || aantal > 200){ toon_msg(m, 'err', 'Aantal moet tussen 1 en 200 liggen.'); return; }
+  if(credits < 1){ toon_msg(m, 'err', 'Tokens per code moet minstens 1 zijn.'); return; }
+  if(!confirm(aantal + ' codes van elk ' + credits + ' tokens aanmaken?\n\nDat is ' + (aantal * credits) +
+              ' tokens aan tegoed dat straks verzilverd kan worden.')) return;
+  const r = await veilig(m, () => callWorker('codes','/admin/codes',{
+    method:'POST', headers:HJ(), body:JSON.stringify({ actie:'genereer', aantal, credits,
+      prijs:Number(String($('cPrijs').value).replace(',','.')) || 0,
+      batch:$('cBatch').value.trim(), vervalt:$('cVervalt').value })
+  }), 'Bezig met genereren…');
+  if(!r.ok) return;
+  const d = r.uit.data;
+  toon_msg(m, 'ok', '✓ ' + d.aantal + ' codes aangemaakt in batch "' + (d.batch || '—') + '".');
+  const lijst = (d.codes || []).join('\n');
+  $('cNieuw').classList.remove('hidden');
+  $('cNieuw').innerHTML = '<div class="waarschuwing">Kopieer deze lijst nu — daarna staan ze alleen nog in de tabel hieronder.</div>' +
+    '<textarea readonly style="min-height:120px">' + esc(lijst) + '</textarea>' +
+    '<div class="bar" style="margin-top:8px">' +
+    '<button class="btn-sec btn-sm" onclick="kopieer(' + JSON.stringify(lijst).replace(/"/g,'&quot;') + ')">Kopiëren</button>' +
+    '<button class="btn-sec btn-sm" onclick="csvNieuweCodes()">⇩ CSV</button></div>';
+  NIEUWE_CODES = d.codes || [];
+  await loadCodes();
+}
+let NIEUWE_CODES = [];
+function csvNieuweCodes(){
+  csvDownload('pidlane-nieuwe-codes', ['code','tokens','batch'],
+    NIEUWE_CODES.map(c => [c, $('cCredits').value, $('cBatch').value]));
+}
+function kopieer(t){
+  try{ navigator.clipboard.writeText(t); toast('Gekopieerd'); }
+  catch(e){ toast('Kopiëren lukte niet — selecteer de tekst zelf'); }
+}
+function cVerwijder(id, code){
+  if(!confirm('Code ' + code + ' verwijderen?\n\nIs hij al uitgegeven maar nog niet verzilverd, dan werkt hij daarna niet meer.')) return;
+  veilig($('cMsg'), async () => {
+    await callWorker('codes','/admin/codes',{ method:'POST', headers:HJ(), body:JSON.stringify({ actie:'verwijder', id }) });
+    toast('Code verwijderd'); await loadCodes();
+  }, 'Bezig…');
+}
+function csvCodes(){
+  if(!CODES_CACHE.length){ toast('Niets om te exporteren'); return; }
+  csvDownload('pidlane-codes', ['code','tokens','waarde','batch','gebruikt','gebruiktDoor','gebruiktOp','vervalt'],
+    CODES_CACHE.map(c => [c.code, c.credits, c.waarde, c.batch, c.gebruikt ? 'ja' : 'nee', c.gebruiktDoor, c.gebruiktOp, c.vervalt]));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   👤 APP-GEBRUIKERS
+   ════════════════════════════════════════════════════════════════ */
+let USERS_CACHE = { users:[], locked:[] };
+function rolPil(rol){
+  const c = rol === 'admin' ? 'p-admin' : rol === 'demo' ? 'p-wacht' : 'p-ok';
+  return '<span class="pill ' + c + '">' + esc(rol) + '</span>';
+}
+async function loadUsers(){
+  const el = $('userLijst');
+  el.innerHTML = '<div class="leeg">Bezig…</div>';
+  const r = await veilig($('uMsg'), () => callWorker('users','/admin/users',{ headers:H() }));
+  if(!r.ok){ el.innerHTML = '<div class="leeg">Niet geladen.</div>'; return; }
+  USERS_CACHE = { users:r.uit.data.users || [], locked:r.uit.data.locked || [] };
+  tekenUsers();
+}
+function tekenUsers(){
+  const f = ($('uZoek').value || '').toLowerCase();
+  const past = (u) => !f || (u.user + ' ' + (u.label||'') + ' ' + (u.role||'')).toLowerCase().indexOf(f) >= 0;
+  const rijen = USERS_CACHE.users.filter(past).map(u =>
+    `<div class="rij"><div>
+      <div class="lbl">${esc(u.label || u.user)} ${rolPil(u.role)}
+        ${u.active ? '' : '<span class="pill p-uit">uit</span>'}
+        ${u.hasPass ? '' : '<span class="pill p-wacht">geen wachtwoord</span>'}</div>
+      <div class="desc">${esc(u.user)}</div></div>
+     <div class="bar">
+       <button class="btn-sec btn-sm" onclick="editUser('${esc(u.user)}','${esc(u.label||'')}','${esc(u.role)}',${!!u.active})">Bewerken</button>
+       <button class="btn-del btn-sm" onclick="delUser('${esc(u.user)}')">🗑</button></div></div>`).join('');
+  const slot = USERS_CACHE.locked.filter(past).map(u =>
+    `<div class="rij"><div><div class="lbl">${esc(u.label || u.user)} ${rolPil(u.role)}
+       <span class="pill p-info">noodingang</span></div>
+      <div class="desc">${esc(u.user)} — staat in USERS_JSON en wordt daar beheerd</div></div></div>`).join('');
+  $('userLijst').innerHTML = (rijen + slot) || '<div class="leeg">Geen gebruikers gevonden.</div>';
+}
+function editUser(user, label, rol, actief){
+  $('uUser').value = user; $('uLabel').value = label; $('uRol').value = rol;
+  $('uActief').checked = !!actief; $('uPass').value = '';
+  $('uFormTitel').textContent = '✏️ ' + user + ' bewerken';
+  $('uPassHint').textContent = 'Leeg laten = wachtwoord ongewijzigd.';
+  $('uUser').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+function resetUserForm(){
+  ['uUser','uLabel','uPass'].forEach(i => { $(i).value = ''; });
+  $('uRol').value = 'user'; $('uActief').checked = true;
+  $('uFormTitel').textContent = '➕ Nieuwe gebruiker';
+  $('uPassHint').textContent = 'Nieuwe gebruiker: verplicht, minimaal 8 tekens.';
+  toon_msg($('uMsg'), 'info', '');
+}
+async function saveUser(){
+  const m = $('uMsg');
+  const user = $('uUser').value.trim();
+  if(!user){ toon_msg(m, 'err', 'Een inlognaam is verplicht.'); return; }
+  const body = { user, label:$('uLabel').value.trim() || user, role:$('uRol').value, active:$('uActief').checked };
+  if($('uPass').value) body.pass = $('uPass').value;
+  const r = await veilig(m, () => callWorker('users','/admin/users',{
+    method:'POST', headers:HJ(), body:JSON.stringify(body) }), 'Bezig…');
+  if(!r.ok) return;
+  const d = r.uit.data;
+  toon_msg(m, 'ok', '✓ ' + user + (d.created ? ' aangemaakt.' : ' bijgewerkt.') + (d.passChanged ? ' Wachtwoord gezet.' : ''));
+  toast('Opgeslagen');
+  resetUserForm(); await loadUsers();
+}
+async function delUser(user){
+  if(!confirm('Gebruiker "' + user + '" verwijderen?\n\nHij kan daarna niet meer inloggen. Alleen uitzetten kan ook: zet "Actief" uit.')) return;
+  const r = await veilig($('uMsg'), () => callWorker('users','/admin/users',{
+    method:'POST', headers:HJ(), body:JSON.stringify({ action:'delete', user }) }), 'Bezig…');
+  if(!r.ok) return;
+  toast('Verwijderd'); toon_msg($('uMsg'), 'ok', '✓ ' + user + ' verwijderd.');
+  await loadUsers();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   📜 LOGBOEK — ophalen en uittekenen
+   ────────────────────────────────────────────────────────────────
+   De grafieken tellen alléén wat er is opgehaald. Dat staat er ook bij: een
+   staafje "per dag" over 300 regels is iets anders dan over de hele tabel, en
+   wie dat verschil niet ziet trekt conclusies over een steekproef alsof het
+   het geheel is.
+   ════════════════════════════════════════════════════════════════ */
+let LOG_RIJEN = [], LOG_KEUZE = new Set();
+
+async function logLaden(){
+  const m = $('lgMsg');
+  const paginas = Number($('lgPaginas').value) || 3;
+  const dagen = Number($('lgPeriode').value) || 0;
+  const q = $('lgZoek').value.trim();
+  const grens = dagen ? Date.now() - dagen * 864e5 : 0;
+  let offset = '', rijen = [], stop = false;
+  toon_msg(m, 'info', 'Bezig met ophalen…');
+  for(let p = 0; p < paginas && !stop; p++){
+    const pad = '/admin/tabel?bron=log&limiet=100' +
+      (offset ? '&offset=' + encodeURIComponent(offset) : '') +
+      (q ? '&q=' + encodeURIComponent(q) : '');
+    const r = await veilig(m, () => callWorker('tabel', pad, { headers:H() }));
+    if(!r.ok) return;
+    const d = r.uit.data;
+    rijen = rijen.concat(d.records || []);
+    offset = d.offset || '';
+    // Aflopend gesorteerd: is de oudste van deze pagina al buiten de periode,
+    // dan zit de rest daar ook buiten en is doorbladeren zonde van de tijd.
+    if(grens && rijen.length){
+      const oudste = new Date(rijen[rijen.length-1].fields.Timestamp || rijen[rijen.length-1].createdTime).getTime();
+      if(oudste && oudste < grens) stop = true;
+    }
+    if(!offset) stop = true;
+  }
+  if(grens) rijen = rijen.filter(r => {
+    const t = new Date(r.fields.Timestamp || r.createdTime).getTime();
+    return !t || isNaN(t) ? true : t >= grens;
+  });
+  LOG_RIJEN = rijen; LOG_KEUZE = new Set();
+  const typen = [];
+  rijen.forEach(r => { const t = String(r.fields.Type || '—'); if(typen.indexOf(t) < 0) typen.push(t); });
+  $('lgType').innerHTML = '<option value="">alle</option>' + typen.sort().map(t => `<option>${esc(t)}</option>`).join('');
+  toon_msg(m, 'ok', '✓ ' + rijen.length + ' regels opgehaald' + (offset ? ' (er is nog meer — verhoog "hoeveel ophalen")' : '') + '.');
+  logTeken(); tekenKpi(); miniGrafiek();
+}
+
+function logZichtbaar(){
+  const t = $('lgType').value;
+  return t ? LOG_RIJEN.filter(r => String(r.fields.Type || '—') === t) : LOG_RIJEN;
+}
+
+/* Een staafgrafiek zonder bibliotheek: divs met een hoogte in procenten. Dat
+   is genoeg voor "wanneer piekte het", en het scheelt een CDN-afhankelijkheid
+   in een pagina die verder nergens op wacht. */
+function staafgrafiek(el, punten, kleurRegel){
+  if(!punten.length){ el.innerHTML = '<div class="leeg">Geen gegevens.</div>'; return; }
+  const max = Math.max.apply(null, punten.map(p => p[1])) || 1;
+  el.innerHTML = '<div class="staaf-rij">' + punten.map(p => {
+    const h = Math.max(2, Math.round(p[1] / max * 100));
+    const rood = kleurRegel && kleurRegel(p);
+    return `<div class="staaf${rood ? ' rood' : ''}" style="height:${h}%" title="${esc(p[0])}: ${esc(p[1])}"><span>${esc(p[2] != null ? p[2] : '')}</span></div>`;
+  }).join('') + '</div><div class="staafas"></div>';
+}
+function balken(el, paren, kleur){
+  if(!paren.length){ el.innerHTML = '<div class="leeg">Geen gegevens.</div>'; return; }
+  const max = Math.max.apply(null, paren.map(p => p[1])) || 1;
+  el.innerHTML = paren.map(p =>
+    `<div class="balk"><div class="naam" title="${esc(p[0])}">${esc(p[0])}</div>
+      <div class="spoor"><div class="vul ${kleur || ''}" style="width:${Math.round(p[1]/max*100)}%"></div></div>
+      <div class="n">${esc(p[1])}</div></div>`).join('');
+}
+function tel(rijen, sleutel){
+  const m = {};
+  rijen.forEach(r => { const v = String((typeof sleutel === 'function' ? sleutel(r) : r.fields[sleutel]) || '—').trim() || '—'; m[v] = (m[v]||0) + 1; });
+  return Object.keys(m).map(k => [k, m[k]]).sort((a,b) => b[1] - a[1]);
+}
+
+function logTeken(){
+  const rijen = logZichtbaar();
+  // per dag — de laatste 14 dagen, ook de dagen zonder meldingen. Een gat in
+  // de reeks weglaten zou een rustige dag onzichtbaar maken.
+  const perDag = {};
+  rijen.forEach(r => { const d = String(r.fields.Timestamp || r.createdTime || '').slice(0,10); if(d) perDag[d] = (perDag[d]||0) + 1; });
+  const dagen = [];
+  for(let i = 13; i >= 0; i--){
+    const d = new Date(Date.now() - i*864e5).toISOString().slice(0,10);
+    dagen.push([d, perDag[d] || 0, d.slice(8,10)]);
+  }
+  staafgrafiek($('lgPerDag'), dagen);
+  const fout = (t) => /fout|bug|error/i.test(t);
+  const perType = tel(rijen, 'Type');
+  $('lgPerType').innerHTML = perType.map(p => {
+    const max = perType[0][1] || 1;
+    return `<div class="balk"><div class="naam">${esc(p[0])}</div>
+      <div class="spoor"><div class="vul ${fout(p[0]) ? 'rd' : 'gn'}" style="width:${Math.round(p[1]/max*100)}%"></div></div>
+      <div class="n">${esc(p[1])}</div></div>`;
+  }).join('') || '<div class="leeg">Geen gegevens.</div>';
+  balken($('lgTopUser'), tel(rijen, 'User').slice(0,8), 'pp');
+  balken($('lgTopVersie'), tel(rijen, 'AppVersion').slice(0,8), '');
+  balken($('lgTopMerk'), tel(rijen, 'Merk').slice(0,8), 'or');
+  balken($('lgTopBericht'), tel(rijen, (r) => String(r.fields.Message || '').slice(0,70)).slice(0,10), '');
+
+  $('lgTelling').textContent = rijen.length + ' regels in beeld' +
+    ($('lgType').value ? ' (gefilterd op type ' + $('lgType').value + ')' : '') +
+    (LOG_KEUZE.size ? ' · ' + LOG_KEUZE.size + ' geselecteerd' : '');
+  const kol = ['Tijd','Type','Bericht','Gebruiker','Merk','Jaar','Versie','Protocol'];
+  $('lgTabel').innerHTML = !rijen.length ? '<div class="leeg">Geen regels.</div>' :
+    '<table><thead><tr><th style="width:26px"></th>' + kol.map(k => '<th>' + k + '</th>').join('') +
+    '<th></th></tr></thead><tbody>' + rijen.map(r => {
+      const f = r.fields;
+      return `<tr class="${LOG_KEUZE.has(r.id) ? 'gekozen' : ''}" id="lgr_${esc(r.id)}">
+        <td><input type="checkbox" ${LOG_KEUZE.has(r.id) ? 'checked' : ''} onchange="lgKies('${esc(r.id)}',this.checked)"></td>
+        <td class="mono">${esc(dtu(f.Timestamp || r.createdTime))}</td>
+        <td>${fout(String(f.Type||'')) ? '<span class="pill p-uit">' + esc(f.Type) + '</span>' : esc(f.Type || '—')}</td>
+        <td title="${esc(f.Message || '')}">${esc(f.Message || '—')}</td>
+        <td>${esc(f.User || '—')}</td><td>${esc(f.Merk || '—')}</td><td>${esc(f.Year || '—')}</td>
+        <td>${esc(f.AppVersion || '—')}</td><td>${esc(f.Protocol || '—')}</td>
+        <td><button class="btn-sec btn-sm" onclick="lgRegel('${esc(r.id)}')">…</button></td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+function lgKies(id, aan){
+  if(aan) LOG_KEUZE.add(id); else LOG_KEUZE.delete(id);
+  const tr = $('lgr_' + id); if(tr) tr.classList.toggle('gekozen', aan);
+  $('lgTelling').textContent = logZichtbaar().length + ' regels in beeld' + (LOG_KEUZE.size ? ' · ' + LOG_KEUZE.size + ' geselecteerd' : '');
+}
+function lgKiesAlles(){
+  const rijen = logZichtbaar();
+  const allesAl = rijen.every(r => LOG_KEUZE.has(r.id));
+  rijen.forEach(r => { if(allesAl) LOG_KEUZE.delete(r.id); else LOG_KEUZE.add(r.id); });
+  logTeken();
+}
+function lgRegel(id){
+  const r = LOG_RIJEN.find(x => x.id === id); if(!r) return;
+  alert('Logregel ' + id + '\n\n' + Object.keys(r.fields).map(k => k + ': ' + r.fields[k]).join('\n'));
+}
+async function lgWisSelectie(){
+  if(!LOG_KEUZE.size){ toast('Niets geselecteerd'); return; }
+  await wisRecords('log', Array.from(LOG_KEUZE), $('lgMsg'), 'logregels');
+  LOG_RIJEN = LOG_RIJEN.filter(r => !LOG_KEUZE.has(r.id));
+  LOG_KEUZE = new Set();
+  logTeken(); tekenKpi(); miniGrafiek();
+}
+function csvLog(){
+  const rijen = logZichtbaar();
+  if(!rijen.length){ toast('Niets om te exporteren'); return; }
+  const kol = ['Timestamp','Type','Message','User','Role','Merk','Year','Protocol','AppVersion','VIN','id'];
+  csvDownload('pidlane-log', kol, rijen.map(r => kol.map(k => k === 'id' ? r.id : r.fields[k])));
+}
+function miniGrafiek(){
+  const perDag = {};
+  LOG_RIJEN.forEach(r => { const d = String(r.fields.Timestamp || r.createdTime || '').slice(0,10); if(d) perDag[d] = (perDag[d]||0) + 1; });
+  const punten = [];
+  for(let i = 13; i >= 0; i--){
+    const d = new Date(Date.now() - i*864e5).toISOString().slice(0,10);
+    punten.push([d, perDag[d] || 0, d.slice(8,10)]);
+  }
+  if(!LOG_RIJEN.length){ $('miniGrafiek').innerHTML = '<div class="leeg">Nog niets opgehaald — <a href="#logboek" onclick="toon(\'logboek\');logLaden()">haal het logboek op</a>.</div>'; return; }
+  staafgrafiek($('miniGrafiek'), punten);
+}
+
+/* Wissen loopt via de Worker, tien tegelijk — dat is wat Airtable per verzoek
+   aanneemt. De Worker weigert een grotere lijst in plaats van hem af te
+   kappen; hier wordt hij daarom in stukjes van tien opgeknipt. */
+async function wisRecords(bron, ids, msgEl, wat){
+  if(!confirm(ids.length + ' ' + wat + ' definitief wissen?\n\nDit kan niet ongedaan gemaakt worden vanuit deze pagina.')) return false;
+  let gewist = 0;
+  for(let i = 0; i < ids.length; i += 10){
+    const groep = ids.slice(i, i + 10);
+    const r = await veilig(msgEl, () => callWorker('tabel','/admin/tabel',{
+      method:'POST', headers:HJ(), body:JSON.stringify({ bron, actie:'wis', ids:groep })
+    }), 'Bezig met wissen… (' + gewist + '/' + ids.length + ')');
+    if(!r.ok){ toon_msg(msgEl, 'err', 'Gestopt na ' + gewist + ' van ' + ids.length + '. De rest staat er nog.'); return false; }
+    gewist += groep.length;
+  }
+  toon_msg(msgEl, 'ok', '✓ ' + gewist + ' ' + wat + ' gewist.');
+  toast(gewist + ' gewist');
+  return true;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🗂️ TABELLENBROWSER
+   ════════════════════════════════════════════════════════════════ */
+let TB = { bron:'log', records:[], velden:[], offset:'', schrijven:true, beschermd:[], geheim:[], keuze:new Set(), huidig:null };
+
+function tbBronGewisseld(){
+  TB = { bron:$('tbBron').value, records:[], velden:[], offset:'', schrijven:true,
+         beschermd:[], geheim:[], keuze:new Set(), huidig:null };
+  $('tbTabel').innerHTML = '<div class="leeg">Klik op Ophalen.</div>';
+  $('tbTitel').textContent = 'Nog niets opgehaald';
+  $('tbMeer').disabled = true;
+  tbDetailSluiten();
+}
+async function tbLaden(opnieuw){
+  const m = $('tbMsg');
+  const bron = $('tbBron').value;
+  if(opnieuw || TB.bron !== bron){ TB.records = []; TB.offset = ''; TB.keuze = new Set(); TB.bron = bron; }
+  const limiet = $('tbLimiet').value;
+  const pad = '/admin/tabel?bron=' + encodeURIComponent(bron) + '&limiet=' + encodeURIComponent(limiet) +
+    (TB.offset ? '&offset=' + encodeURIComponent(TB.offset) : '') +
+    ($('tbZoek').value.trim() ? '&q=' + encodeURIComponent($('tbZoek').value.trim()) : '') +
+    ($('tbVeld').value.trim() ? '&veld=' + encodeURIComponent($('tbVeld').value.trim()) : '');
+  const r = await veilig(m, () => callWorker('tabel', pad, { headers:H() }), 'Bezig met ophalen…');
+  if(!r.ok) return;
+  const d = r.uit.data;
+  TB.records = TB.records.concat(d.records || []);
+  TB.velden = d.velden || [];
+  TB.offset = d.offset || '';
+  TB.schrijven = !!d.schrijven;
+  TB.beschermd = d.beschermd || [];
+  TB.geheim = d.geheim || [];
+  $('tbMeer').disabled = !TB.offset;
+  $('tbMeer').textContent = TB.offset ? 'Volgende ' + limiet + ' →' : 'Alles opgehaald';
+  toon_msg(m, 'ok', '✓ ' + TB.records.length + ' records' +
+    (d.gesorteerd === false ? '\nLet op: er kon niet gesorteerd worden — het sorteerveld bestaat niet in deze tabel. De volgorde is die van Airtable zelf.' : '') +
+    (TB.schrijven ? '' : '\nDeze tabel is alleen-lezen.'));
+  tbTeken();
+}
+function tbTeken(){
+  $('tbTitel').textContent = TB.records.length + ' records uit ' + $('tbBron').selectedOptions[0].textContent +
+    (TB.keuze.size ? ' · ' + TB.keuze.size + ' geselecteerd' : '');
+  if(!TB.records.length){ $('tbTabel').innerHTML = '<div class="leeg">Geen records.</div>'; return; }
+  // Hoogstens tien kolommen: daarboven wordt het een muur en scrol je toch
+  // horizontaal langs de kolom die je zocht. De rest staat in het detail.
+  const kol = TB.velden.slice(0, 10);
+  $('tbTabel').innerHTML = '<table><thead><tr><th style="width:26px"></th><th>id</th>' +
+    kol.map(k => '<th>' + esc(k) + (TB.beschermd.indexOf(k) >= 0 ? ' 🔒' : '') + '</th>').join('') +
+    '<th></th></tr></thead><tbody>' + TB.records.map(r =>
+      `<tr class="${TB.keuze.has(r.id) ? 'gekozen' : ''}" id="tbr_${esc(r.id)}">
+        <td><input type="checkbox" ${TB.keuze.has(r.id) ? 'checked' : ''} onchange="tbKies('${esc(r.id)}',this.checked)"></td>
+        <td class="mono">${esc(r.id)}</td>` +
+        kol.map(k => `<td title="${esc(waarde(r.fields[k]))}">${esc(waarde(r.fields[k]))}</td>`).join('') +
+        `<td><button class="btn-sec btn-sm" onclick="tbOpen('${esc(r.id)}')">Openen</button></td></tr>`).join('') +
+    '</tbody></table>';
+}
+function waarde(v){
+  if(v === undefined || v === null) return '';
+  if(typeof v === 'boolean') return v ? 'ja' : 'nee';
+  if(Array.isArray(v)) return v.join(', ');
+  if(typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+function tbKies(id, aan){
+  if(aan) TB.keuze.add(id); else TB.keuze.delete(id);
+  const tr = $('tbr_' + id); if(tr) tr.classList.toggle('gekozen', aan);
+  $('tbTitel').textContent = TB.records.length + ' records' + (TB.keuze.size ? ' · ' + TB.keuze.size + ' geselecteerd' : '');
+}
+function tbOpen(id){
+  const r = TB.records.find(x => x.id === id); if(!r) return;
+  TB.huidig = id;
+  $('tbDetailKaart').classList.remove('hidden');
+  $('tbDetailTitel').textContent = id;
+  const namen = TB.velden.slice();
+  Object.keys(r.fields).forEach(k => { if(namen.indexOf(k) < 0) namen.push(k); });
+  $('tbDetail').innerHTML = namen.map(k => {
+    const op_slot = TB.beschermd.indexOf(k) >= 0 || TB.geheim.indexOf(k) >= 0 || !TB.schrijven;
+    const v = waarde(r.fields[k]);
+    const lang = v.length > 60;
+    return `<div style="margin-bottom:9px">
+      <label for="tbv_${esc(k)}">${esc(k)} ${op_slot ? '<span class="pill p-info">afgeschermd</span>' : ''}</label>
+      ${lang ? `<textarea id="tbv_${esc(k)}" ${op_slot ? 'readonly' : ''}>${esc(v)}</textarea>`
+             : `<input type="text" id="tbv_${esc(k)}" value="${esc(v)}" ${op_slot ? 'readonly' : ''}>`}
+    </div>`;
+  }).join('') + (TB.schrijven ? '' : '<div class="waarschuwing">Deze tabel is alleen-lezen. Wijzigen gaat via zijn eigen kaart.</div>');
+  toon_msg($('tbDetailMsg'), 'info', '');
+  $('tbDetailKaart').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function tbDetailSluiten(){ $('tbDetailKaart').classList.add('hidden'); TB.huidig = null; }
+async function tbOpslaan(){
+  const m = $('tbDetailMsg');
+  const r = TB.records.find(x => x.id === TB.huidig);
+  if(!r){ toon_msg(m, 'err', 'Geen record open.'); return; }
+  // Alleen wat werkelijk veranderd is meesturen. Alles terugsturen zou elk
+  // getalveld als tekst overschrijven en elke lege cel vullen met "".
+  const velden = {};
+  TB.velden.concat(Object.keys(r.fields)).forEach(k => {
+    if(TB.beschermd.indexOf(k) >= 0 || TB.geheim.indexOf(k) >= 0) return;
+    const el = $('tbv_' + k); if(!el) return;
+    const oud = waarde(r.fields[k]);
+    if(el.value === oud) return;
+    const was = r.fields[k];
+    velden[k] = typeof was === 'number' && el.value !== '' && !isNaN(Number(el.value)) ? Number(el.value)
+              : typeof was === 'boolean' ? /^(ja|true|1)$/i.test(el.value)
+              : el.value;
+  });
+  if(!Object.keys(velden).length){ toon_msg(m, 'warn', 'Er is niets gewijzigd.'); return; }
+  const uit = await veilig(m, () => callWorker('tabel','/admin/tabel',{
+    method:'POST', headers:HJ(), body:JSON.stringify({ bron:TB.bron, actie:'wijzig', id:TB.huidig, velden })
+  }), 'Bezig met opslaan…');
+  if(!uit.ok) return;
+  Object.assign(r.fields, uit.uit.data.velden || velden);
+  toon_msg(m, 'ok', '✓ Opgeslagen: ' + Object.keys(velden).join(', '));
+  toast('Opgeslagen'); tbTeken();
+}
+async function tbWisHuidige(){
+  if(!TB.huidig) return;
+  const ok = await wisRecords(TB.bron, [TB.huidig], $('tbDetailMsg'), 'record');
+  if(!ok) return;
+  TB.records = TB.records.filter(x => x.id !== TB.huidig);
+  tbDetailSluiten(); tbTeken();
+}
+async function tbWisSelectie(){
+  if(!TB.keuze.size){ toast('Niets geselecteerd'); return; }
+  const ids = Array.from(TB.keuze);
+  const ok = await wisRecords(TB.bron, ids, $('tbMsg'), 'records');
+  if(!ok) return;
+  TB.records = TB.records.filter(x => ids.indexOf(x.id) < 0);
+  TB.keuze = new Set(); tbTeken();
+}
+function tbCsv(){
+  if(!TB.records.length){ toast('Niets om te exporteren'); return; }
+  const kol = ['id'].concat(TB.velden);
+  csvDownload('pidlane-' + TB.bron, kol, TB.records.map(r => kol.map(k => k === 'id' ? r.id : waarde(r.fields[k]))));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ⚙️ INSTELLINGEN
+   ════════════════════════════════════════════════════════════════ */
+const FEATURES = [
+  ['feat_ai_monteur','AI-Monteur','Deur 1 — klachtdiagnose met live data'],
+  ['feat_deepdiag','Diepe storingsanalyse','Deur 1 — uitgebreide intake + datalog'],
+  ['feat_pidrecorder','PID-recorder','Deur 1 — zelf sensoren opnemen tijdens rijden'],
+  ['feat_conditiecheck','Conditiecheck','Deur 1 — foutcodes + sensoren in één foto'],
+  ['feat_foutcodes','Foutcodes uitlezen','Deur 1 — DTC-lijst met uitleg en wissen'],
+  ['feat_rijtest','Zelf rijden & analyseren','Deur 1 + 3 — ±10 min rijden, volledig rapport'],
+  ['feat_onderhoud','Onderhoud plannen','Deur 1 — onderhoudsschema + sensordata'],
+  ['feat_koopcheck','Koopcheck','Deur 2 — historie, staat en waarde'],
+  ['feat_proefrit','Proefrit-check','Deur 2 — meten tijdens proefrit'],
+  ['feat_verbruik','Verbruiksanalyse','Deur 3 — waar gaat brandstof/energie verloren'],
+  ['feat_caravan','Caravan-rittracker','Deur 3/4 — live brandstofcoach tijdens de rit'],
+  ['feat_basiccheck','Basic system check','Deur 1 — live trendtests met slaag-banden'],
+  ['feat_monitor','Passieve foutbewaking','Achtergrond — monitor + watchers tijdens de rit'],
+  ['feat_langerit','Lange rit-voorbereiding','Deur 4'],
+  ['feat_seizoen','Seizoenscheck (winter/airco)','Deur 4'],
+  ['feat_ev','EV/hybride-check','Deur 4'],
+  ['feat_live_spec','Live PID-data (hub-regel)','Snelkoppeling voor de specialist op de hub'],
+  ['feat_grafiek','Grafiek-tab','Groepstrends en grafieken in Live view'],
+  ['feat_pid_keuze','PID-keuze-knop','Onderbalk — sensorkeuze-paneel'],
+  ['feat_dossier','Voertuigoverzicht & dossier-%','Badge naast voertuignaam + invulscherm'],
+  ['feat_situatie','Rijsituatie / bijzonderheden','Caravan, belading e.d. — corrigeert de AI-beoordeling'],
+  ['feat_pdf','PDF-export','Download PDF-knop + PDF-venster'],
+  ['feat_ai_reply','Herzie rapport','Reageer-op-rapport-blok onder AI-rapporten'],
+  ['feat_demo','Demo-modus','Demo-knoppen (zonder adapter)'],
+  ['feat_tokens','Token/kosten-teller','Kosten-pil linksonder']
+];
+function renderFeatures(){
+  const g = $('featGrid'); if(!g || g.children.length) return;
+  g.innerHTML = FEATURES.map(f =>
+    `<div class="rij"><div><div class="lbl">${esc(f[1])}</div>
+      <div class="desc"><code>${esc(f[0])}</code> — ${esc(f[2])}</div></div>
+     <label class="switch"><input type="checkbox" id="t_${esc(f[0])}"><span class="slider"></span></label></div>`).join('');
+}
+function zetToggle(id, val, standaardAan){
+  const el = $('t_' + id); if(!el) return;
+  el.checked = (val === undefined || val === null || val === '') ? !!standaardAan : (val === true || val === 'true' || val === 1 || val === '1');
+}
+async function loadConfig(){
+  const m = $('saveMsg');
+  const r = await veilig(m, () => callWorker('read','/api/config',{ headers:H({ 'X-App-Token':TOKEN }) }));
+  if(!r.ok) return;
+  const c = r.uit.data || {};
+  ['door_saving_active','door_deal_active','door_prep_active','banner_active'].forEach(k => zetToggle(k, c[k], false));
+  // Ontbrekende functiesleutel = AAN. Dat is de afspraak met FEATURE_TOGGLES in
+  // index.html: een functie die nog nooit is uitgezet, staat aan.
+  FEATURES.forEach(f => zetToggle(f[0], c[f[0]], true));
+  ['banner_text','ai_system_override','tikkie_kopen','tikkie_donatie'].forEach(k => { if($(k)) $(k).value = c[k] || ''; });
+  toon_msg(m, 'info', '');
+}
+async function saveAll(){
+  const m = $('saveMsg');
+  const body = {
+    door_saving_active:$('t_door_saving_active').checked,
+    door_deal_active:$('t_door_deal_active').checked,
+    door_prep_active:$('t_door_prep_active').checked,
+    banner_active:$('t_banner_active').checked,
+    banner_text:$('banner_text').value,
+    ai_system_override:$('ai_system_override').value,
+    tikkie_kopen:$('tikkie_kopen').value.trim(),
+    tikkie_donatie:$('tikkie_donatie').value.trim()
+  };
+  FEATURES.forEach(f => { const el = $('t_' + f[0]); if(el) body[f[0]] = el.checked; });
+  const r = await veilig(m, () => callWorker('config','/api/config',{
+    method:'POST', headers:HJ(), body:JSON.stringify(body) }), 'Bezig met opslaan…');
+  if(!r.ok) return;
+  toon_msg(m, 'ok', '✓ Opgeslagen. De app haalt dit op bij de volgende start; ' +
+    'op een toestel dat al open staat kan het even duren door de randcache.');
+  toast('Instellingen opgeslagen');
+}
+async function testPrompt(){
+  const m = $('testMsg');
+  const r = await veilig(m, () => callWorker('ai','/v1/messages',{
+    method:'POST', headers:{ 'Content-Type':'application/json', 'X-App-Token':TOKEN },
+    body:JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:120,
+      system:$('ai_system_override').value || undefined,
+      messages:[{ role:'user', content:'Zeg in één zin wie je bent en waarvoor je er bent.' }],
+      thinking:{ type:'disabled' } })
+  }), 'Bezig met een testvraag…');
+  if(!r.ok) return;
+  const d = r.uit.data;
+  const tekst = (d.content && d.content[0] && d.content[0].text) || JSON.stringify(d).slice(0,300);
+  toon_msg(m, 'ok', 'Antwoord:\n' + tekst);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🧰 GEREEDSCHAP
+   ════════════════════════════════════════════════════════════════ */
+async function opruimBekijken(){
+  const m = $('opruimMsg'), el = $('opruimUit');
+  el.innerHTML = '<div class="leeg">Bezig…</div>';
+  const r = await veilig(m, () => callWorker('klanten','/admin/klanten?q=', { headers:H() }));
+  if(!r.ok){ el.innerHTML = '<div class="leeg">Niet geladen.</div>'; return; }
+  const wachtrij = (r.uit.data.klanten || []).filter(k => k.verwijderdOp || k.status === 'verwijderd');
+  if(!wachtrij.length){ el.innerHTML = '<div class="leeg">Niemand in de wachtrij.</div>'; return; }
+  const nu = Date.now();
+  el.innerHTML = wachtrij.map(k => {
+    const rijp = k.definitiefOp && new Date(k.definitiefOp).getTime() <= nu;
+    return `<div class="rij"><div><div class="lbl">${esc(k.email || k.id)}</div>
+      <div class="desc">gemarkeerd ${esc(dt(k.verwijderdOp))} · ${k.definitiefOp ? 'definitief ' + esc(dt(k.definitiefOp)) : 'geen bruikbare VerwijderdOp'}</div></div>
+      <span class="pill ${rijp ? 'p-uit' : 'p-wacht'}">${rijp ? 'rijp' : 'binnen de termijn'}</span></div>`;
+  }).join('');
+}
+async function opruimNu(){
+  if(!confirm('De opruimronde nu draaien?\n\nHij wist alleen accounts waarvan de bewaartermijn voorbij is. Wie er nog in zit blijft staan.')) return;
+  const r = await veilig($('opruimMsg'), () => callWorker('klanten','/admin/klanten',{
+    method:'POST', headers:HJ(), body:JSON.stringify({ actie:'opruimen', door:beheerder() }) }), 'Bezig…');
+  if(!r.ok) return;
+  const d = r.uit.data;
+  toon_msg($('opruimMsg'), 'ok',
+    '✓ ' + (d.bekeken || 0) + ' bekeken · ' + ((d.verwijderd||[]).length) + ' gewist · ' +
+    ((d.wacht||[]).length) + ' nog binnen de termijn (' + (d.bewaardagen || '?') + ' dagen) · ' +
+    ((d.mislukt||[]).length) + ' mislukt' +
+    ((d.mislukt||[]).length ? '\n' + d.mislukt.map(x => x.id + ': ' + x.reden).join('\n') : ''));
+  await opruimBekijken(); await loadKlanten();
+}
+function tekenRoutes(){
+  const routes = [
+    ['GET /api/config','de app-instellingen die deze pagina beheert'],
+    ['POST /api/config','opslaan van diezelfde instellingen (gooit ook de randcache weg)'],
+    ['GET /admin/klanten','klantaccounts met saldo'],
+    ['POST /admin/klanten','aanmaken, bijboeken, zetten, status, wachtwoord, wissen, opruimen'],
+    ['GET /admin/codes','activatiecodes'],
+    ['POST /admin/codes','genereren en verwijderen'],
+    ['GET /admin/users','app-gebruikers uit de Config-base'],
+    ['POST /admin/users','opslaan en verwijderen'],
+    ['GET /admin/tabel','ruwe records uit een van de bekende tabellen'],
+    ['POST /admin/tabel','één record wijzigen of maximaal tien wissen'],
+    ['POST /v1/messages','de AI-route — alleen voor de statuscheck en de testvraag']
+  ];
+  $('routeLijst').innerHTML = routes.map(r =>
+    `<div class="rij"><div><div class="lbl mono"><code>${esc(r[0])}</code></div>
+      <div class="desc">${esc(r[1])}</div></div></div>`).join('') +
+    '<div class="hint">Alles achter <code>X-Admin-Token</code>. De AI-route gebruikt <code>X-App-Token</code>.</div>';
+}
+async function ruwHalen(){
+  const uit = $('ruwUit');
+  uit.value = 'Bezig…';
+  const pad = $('ruwPad').value;
+  try{
+    const r = await callWorker('read', pad, { headers:H({ 'X-App-Token':TOKEN }) });
+    uit.value = JSON.stringify(r.data, null, 2);
+  }catch(e){
+    const d = e.diag || {};
+    uit.value = (d.title || e.message) + '\n\n' + (d.detail || '');
+  }
+}
+function tekenSessie(){
+  const t = typeof TOKEN === 'string' ? TOKEN : '';
+  $('sessieInfo').innerHTML = [
+    ['Worker-URL', WURL],
+    ['Herkomst van deze pagina', location.origin],
+    ['Beheerder in auditregels', beheerder()],
+    ['Token', OEFEN ? 'geen (oefenmodus)' : t.length + ' tekens, begint met "' + t.slice(0,3) + '…"'],
+    ['Modus', OEFEN ? '🧪 oefenmodus — er gaat niets naar buiten' : 'live — elke knop werkt op productie']
+  ].map(r => `<div class="rij"><div class="lbl">${esc(r[0])}</div><div class="desc">${esc(r[1])}</div></div>`).join('') +
+  '<div class="hint">De token wordt bewust niet onthouden. De Worker-URL en je naam wel.</div>';
+}
+
+// Sneltoetsen: 1–8 springen tussen de tabbladen zolang je niet in een veld
+// staat. Handig bij het beheren; nooit storend tijdens het typen.
+document.addEventListener('keydown', function(e){
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const a = document.activeElement;
+  if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+  const n = Number(e.key);
+  if(n >= 1 && n <= TABBLADEN.length && !$('app').classList.contains('hidden')) toon(TABBLADEN[n-1][0]);
+});
+</script>
+</body>
+</html>

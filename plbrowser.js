@@ -115,6 +115,11 @@ function nepAdapterCode(tabel, vertraagMs) {
 async function startApp(opties) {
   const o = opties || {};
   const root = path.resolve(o.root || 'public');
+  // Welke pagina er gestart wordt. Standaard de app zelf; de adminpagina
+  // staat buiten public/ en heeft dus een eigen wortel én een eigen pad.
+  // Zonder deze twee knoppen zou een proef op admin/beheer.html de hele boot
+  // moeten namaken — precies de redenering die dit harnas moest vervangen.
+  const pagina = o.pagina || '/index.html';
   const chrome = vindChromium();
   if (!chrome) {
     const e = new Error('GEEN_CHROMIUM');
@@ -126,7 +131,7 @@ async function startApp(opties) {
   const verzoeken = [], gemist = [];
   const srv = http.createServer((rq, rs) => {
     let p = decodeURIComponent(rq.url.split('?')[0]);
-    if (p === '/') p = '/index.html';
+    if (p === '/') p = pagina;
     verzoeken.push(p);
     fs.readFile(path.join(root, p), (err, data) => {
       if (err) { gemist.push(p); rs.writeHead(404); rs.end('niet gevonden'); return; }
@@ -135,7 +140,7 @@ async function startApp(opties) {
     });
   });
   await new Promise(r => srv.listen(0, '127.0.0.1', r));
-  const appUrl = 'http://127.0.0.1:' + srv.address().port + '/index.html';
+  const appUrl = 'http://127.0.0.1:' + srv.address().port + pagina;
 
   const profiel = fs.mkdtempSync(path.join(require('os').tmpdir(), 'plbrowser-'));
   const ch = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu',
