@@ -186,7 +186,31 @@
     { id: '726-0202', rol: 'odo',   cmd: '220202', kop: '620202', bytes: 3, schaal: [1, 0.1],
       header: '726', groep: '726',
       module: 'BCM / carrosseriemodule',
-      uitleg: 'afstands- en servicegeheugen, drie bytes' }
+      uitleg: 'afstands- en servicegeheugen, drie bytes' },
+
+    /* ── DE VIN PER STUURAPPARAAT ─────────────────────────────────
+       Toegevoegd 04-09-2026, na de kaartrit van 13:43. Die vond op deze
+       CX-5 vier stuurapparaten die 22F190 beantwoorden — en alle vier
+       met dezelfde VIN. Twee andere gaven een VIN van louter nullen.
+
+       Dat is een controle die niets extra's kost en die geen enkele
+       tellerstand nodig heeft: een stuurapparaat met een ANDERE VIN is
+       ergens anders vandaan gekomen. Bij een auto waarvan de teller
+       terug is gezet, is een vervangen instrumentenpaneel de meest
+       voorkomende manier waarop dat gebeurt.
+
+       17 bytes, geen schaal, geen kilometers — vandaar rol 'vin'. Het
+       oordeel eroverheen staat in vinConsistentie(). */
+    { id: 'vin-7E0', rol: 'vin', cmd: '22F190', kop: '62F190', bytes: 17, schaal: [],
+      header: '7E0', groep: '7E0', module: 'PCM / motorstuurapparaat', uitleg: 'VIN zoals dit stuurapparaat hem kent' },
+    { id: 'vin-720', rol: 'vin', cmd: '22F190', kop: '62F190', bytes: 17, schaal: [],
+      header: '720', groep: '720', module: 'IPC / instrumentenpaneel', uitleg: 'VIN zoals de teller hem kent' },
+    { id: 'vin-726', rol: 'vin', cmd: '22F190', kop: '62F190', bytes: 17, schaal: [],
+      header: '726', groep: '726', module: 'BCM / carrosseriemodule', uitleg: 'VIN zoals de carrosseriemodule hem kent' },
+    { id: 'vin-760', rol: 'vin', cmd: '22F190', kop: '62F190', bytes: 17, schaal: [],
+      header: '760', groep: '760', module: 'IPC of ABS op 760', uitleg: 'VIN op dit adres' },
+    { id: 'vin-7B0', rol: 'vin', cmd: '22F190', kop: '62F190', bytes: 17, schaal: [],
+      header: '7B0', groep: '7B0', module: 'ABS / ESP op 7B0', uitleg: 'VIN op dit adres' }
   ];
 
   // Adressen waarvan de teller op het dashboard komt. Staat een van deze
@@ -351,6 +375,108 @@
              reden: 'meerdere schalen mogelijk (' + lijst + ' km) en geen anker' };
   }
 
+  /* ── DE VIN: MASKEREN AAN DE BRON ──────────────────────────────
+     §7 is hard: een VIN gaat NOOIT ruw de telefoon uit, en §11 beschrijft
+     hoe het testrunverslag daar op 03-09 het derde lek voor bleek. Deze
+     module leest de VIN nu op vijf adressen, en de kaartmaker op achttien —
+     dus de regel moet hier staan en niet bij de uitvoer.
+
+     Niet maskeren bij het TONEN maar bij het OPSLAAN. Een meting die de
+     ruwe VIN nooit vasthoudt, kan hem ook niet lekken via een render, een
+     export, een AI-prompt of een logboek dat later ergens geplakt wordt.
+     Wat er overblijft is precies wat de app elders ook toont: de laatste
+     zes tekens plus het pseudoniem. */
+  var VIN_TEKENS = /^[A-HJ-NPR-Z0-9]{17}$/;    // ISO 3779: geen I, O of Q
+
+  function bytesNaarTekst(bytes) {
+    var t = '';
+    for (var i = 0; i < bytes.length; i++) {
+      var c = bytes[i] & 0xFF;
+      if (c === 0x00) continue;
+      t += String.fromCharCode(c);
+    }
+    return t.trim();
+  }
+
+  function isVin(tekst) { return VIN_TEKENS.test(String(tekst || '').toUpperCase()); }
+
+  /* Geeft {staart, id} terug — nooit de VIN zelf. Het pseudoniem komt van
+     _vlVinPseudoniem() zodat twee stuurapparaten met dezelfde VIN hier ook
+     hetzelfde id krijgen: dat is wat de vergelijking hieronder nodig heeft,
+     en het is precies hetzelfde pseudoniem als in de logs. */
+  async function vinKenmerk(vin) {
+    var v = String(vin || '').toUpperCase();
+    var uit = { staart: v ? '…' + v.slice(-6) : '', id: '' };
+    try {
+      if (typeof _vlVinPseudoniem === 'function') uit.id = await _vlVinPseudoniem(v) || '';
+    } catch (e) {
+      console.warn('PLKm: VIN niet gepseudonimiseerd — vergelijken tussen stuurapparaten valt weg', e);
+    }
+    // Zonder pseudoniem valt er niets te vergelijken. Terugvallen op de ruwe
+    // VIN als sleutel is precies wat er niet mag, dus dan liever geen oordeel.
+    if (!uit.id) uit.id = null;
+    return uit;
+  }
+
+  /* ── HET OORDEEL OVER DE VIN'S ─────────────────────────────────
+     Puur, en met opzet los: de kaartmaker ziet achttien stuurapparaten en
+     deze module vijf. Beide moeten tot hetzelfde oordeel komen, dus staat
+     dat oordeel op één plek.
+
+     Wat het WEL zegt: twee stuurapparaten in deze auto dragen een
+     verschillende VIN. Dat kan maar op één manier — één ervan komt ergens
+     anders vandaan.
+     Wat het NIET zegt: dat een blanco VIN fout is. Veel modules krijgen er
+     nooit een. Dat is een aandachtspunt en geen beschuldiging. */
+  function vinConsistentie(bronnen) {
+    var lijst = (bronnen || []).filter(function (b) { return b.rol === 'vin'; });
+    var metVin = lijst.filter(function (b) { return b.vinId; });
+    var blanco = lijst.filter(function (b) { return b.vinBlanco; });
+    var uit = { niveau: 'onbekend', bevindingen: [], aantal: metVin.length, blanco: blanco.length, tekst: '' };
+
+    if (!metVin.length) {
+      uit.tekst = 'geen enkel stuurapparaat gaf een VIN terug';
+      return uit;
+    }
+
+    var ids = {};
+    metVin.forEach(function (b) { (ids[b.vinId] = ids[b.vinId] || []).push(b); });
+    var sleutels = Object.keys(ids);
+
+    if (sleutels.length > 1) {
+      uit.niveau = 'kritiek';
+      uit.tekst = 'stuurapparaten dragen VERSCHILLENDE voertuignummers';
+      uit.bevindingen.push({
+        ernst: 'kritiek', kop: 'Niet alle stuurapparaten horen bij dezelfde auto',
+        tekst: sleutels.map(function (k) {
+          return ids[k].map(function (b) { return b.module + ' (' + b.groep + ')'; }).join(' + ') +
+                 ' → ' + (ids[k][0].vinStaart || 'onbekend');
+        }).join('  |  ') + '. Twee verschillende voertuignummers in één auto betekent dat ' +
+          'minstens één stuurapparaat ergens anders vandaan komt. Bij een teruggezette teller ' +
+          'is een vervangen instrumentenpaneel de gebruikelijke manier waarop dat gebeurt.'
+      });
+    } else if (metVin.length >= 2) {
+      uit.niveau = 'ok';
+      uit.tekst = metVin.length + ' stuurapparaten dragen hetzelfde voertuignummer (' +
+        (metVin[0].vinStaart || '') + ')';
+    } else {
+      uit.niveau = 'onbevestigd';
+      uit.tekst = 'maar één stuurapparaat gaf een VIN — niets om tegen af te zetten';
+    }
+
+    if (blanco.length) {
+      if (uit.niveau === 'ok' || uit.niveau === 'onbevestigd') uit.niveau = 'let-op';
+      uit.bevindingen.push({
+        ernst: 'let-op', kop: blanco.length + ' stuurapparaat(en) met een leeg voertuignummer',
+        tekst: blanco.map(function (b) { return b.module + ' (' + b.groep + ')'; }).join(', ') +
+          ' antwoordt wél op de vraag maar geeft alleen nullen terug. Dat is géén bewijs: veel ' +
+          'modules krijgen nooit een VIN ingeprogrammeerd. Het is wel het beeld dat een vervangen ' +
+          'module achterlaat, dus het is de moeite waard te weten wat er op die adressen zit.'
+      });
+    }
+    return uit;
+  }
+
   function tolerantie(hoogste) {
     return Math.max(CFG.tolVastKm, Math.round(hoogste * CFG.tolPct));
   }
@@ -380,9 +506,18 @@
     var groepen = Object.keys(perGroep).map(function (g) { return perGroep[g]; });
 
     if (!odo.length) {
-      return { niveau: 'onbekend', km: null, bevindingen: [],
-               tekst: 'Geen enkel stuurapparaat gaf een tellerstand terug — geen oordeel mogelijk',
-               groepen: [], onzeker: bronnen.filter(function (b) { return b.km != null && !b.zeker; }) };
+      // Geen tellerstand betekent niet: geen oordeel. De VIN-controle heeft
+      // er geen kilometers voor nodig, en op een auto waar mode 22 de teller
+      // niet vrijgeeft is dat het enige dat er nog te zeggen valt.
+      var vinAlleen = vinConsistentie(bronnen);
+      return {
+        niveau: vinAlleen.niveau === 'kritiek' ? 'kritiek' : (vinAlleen.niveau === 'let-op' ? 'let-op' : 'onbekend'),
+        km: null, bevindingen: vinAlleen.bevindingen, vin: vinAlleen,
+        tekst: 'Geen enkel stuurapparaat gaf een tellerstand terug' +
+          (vinAlleen.niveau === 'onbekend' ? ' — geen oordeel mogelijk' : '; wel: ' + vinAlleen.tekst),
+        groepen: [], onafhankelijkeBronnen: 0, tolerantieKm: CFG.tolVastKm,
+        onzeker: bronnen.filter(function (b) { return b.km != null && !b.zeker; })
+      };
     }
 
     // De gerapporteerde stand: de hoogste bruikbare. Een teller loopt op;
@@ -482,6 +617,14 @@
       }
     }
 
+    // De VIN-controle staat los van de kilometers en kan ook een oordeel
+    // dragen als er geen enkele tellerstand gelezen is. Vandaar dat hij
+    // hier meedoet en niet pas na de vroege 'onbekend'-uitgang hierboven.
+    var vin = vinConsistentie(bronnen);
+    if (vin.niveau === 'kritiek') til('kritiek');
+    else if (vin.niveau === 'let-op') til('let-op');
+    vin.bevindingen.forEach(function (b) { bev.push(b); });
+
     var onzeker = bronnen.filter(function (b) { return b.km != null && !b.zeker; });
     if (onzeker.length) {
       bev.push({ ernst: 'info', kop: onzeker.length + ' meting(en) zonder vaste schaal',
@@ -508,6 +651,7 @@
       hoogste: hoogste, laagste: laagste,
       tolerantieKm: tol,
       groepen: groepen,
+      vin: vin,
       onafhankelijkeBronnen: groepen.length,
       bevindingen: bev,
       onzeker: onzeker
@@ -699,6 +843,36 @@
       return m;
     }
 
+    // ── ROL 'VIN': maskeren vóórdat er iets wordt opgeslagen ──
+    // De ruwe VIN komt hier binnen en gaat NIET verder dan deze regels.
+    // Wat er in de meting terechtkomt is de staart plus het pseudoniem —
+    // hetzelfde als wat de app elders logt. Zie §7 en §11.
+    if (br.rol === 'vin') {
+      var tekst = bytesNaarTekst(lees.bytes);
+      if (!tekst) {
+        m.vinBlanco = true;
+        m.reden = 'antwoordt met louter nullen — geen VIN geprogrammeerd';
+        stap(br.module + ' — VIN', 'ok', m.reden);
+        return m;
+      }
+      if (!isVin(tekst)) {
+        m.reden = 'antwoord is geen geldig voertuignummer (' + lees.bytes.length + ' bytes)';
+        stap(br.module + ' — VIN', 'let-op', m.reden);
+        return m;
+      }
+      var kenmerk = await vinKenmerk(tekst);
+      m.vinStaart = kenmerk.staart;
+      m.vinId = kenmerk.id;
+      m.hex = null;                       // de ruwe bytes zijn de VIN: weg ermee
+      if (!m.vinId) {
+        m.reden = 'VIN gelezen maar niet te pseudonimiseren — niet vergelijkbaar';
+        stap(br.module + ' — VIN', 'let-op', m.reden);
+        return m;
+      }
+      stap(br.module + ' — VIN', 'ok', 'voertuignummer ' + m.vinStaart + ' gelezen');
+      return m;
+    }
+
     m.waarde = naarWaarde(lees.bytes);
     m.kandidaten = kandidaten(m.waarde, br.schaal);
     var keuze = kiesSchaal(m.kandidaten, anker);
@@ -821,10 +995,12 @@
     render: render,
     naarPromptRegels: naarPromptRegels,
     bronnen: function () { return BRONNEN.slice(); },
+    vinConsistentie: vinConsistentie,
     cfg: CFG,
     _intern: {
       naarHex: naarHex, leesDid: leesDid, naarWaarde: naarWaarde, isVulling: isVulling,
       kandidaten: kandidaten, kiesSchaal: kiesSchaal, kiesAnker: kiesAnker,
+      bytesNaarTekst: bytesNaarTekst, isVin: isVin, vinKenmerk: vinKenmerk,
       rxVan: rxVan, tolerantie: tolerantie
     }
   };

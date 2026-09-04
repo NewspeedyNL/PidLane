@@ -925,6 +925,102 @@ later af. Dat is precies waarvoor die hartslag bestaat. De oorzaak is #18 en
 die is native werk — maar het maakt de breedte-eerst-volgorde des te
 belangrijker, want een scan van twee uur op dit toestel gaat het niet halen.
 
+**De tweede rit, 04-09-2026 om 13:43 — en die liep helemaal door.** 969 s,
+5378 commando's, 18 stuurapparaten, 114 datapunten, met de hand gestopt en
+zónder afbreking of herstelfout. Alle vijf reparaties waren in het log terug te
+zien: `gemeten 127 ms per commando … kost nog 1.9 uur`, `NIET BEREIKT` per
+trede, en `half: OBD-spiegel (afgebroken na 454 van 768)` op 72E. Achttien
+modules met onderdeelnummer:
+
+| adres | onderdeelnummer | waarschijnlijk |
+|---|---|---|
+| 706/70E | `B61L-67XK2-T` | draagt de VIN én `F40D` |
+| 720/728 | `KL2K-554K2-A` | instrumentenpaneel (554 = meter, én het klassieke IPC-adres) |
+| 726/72E | `TK52-675X2-C-00` | carrosserie/BCM |
+| 730/738 | `KJ01-3210X-G-00` | stuurbekrachtiging |
+| 731/739 | `GMB6-675S1-A-07` | carrosserie |
+| 733/73B | `K123-61190-0200-Q5690` | klimaat |
+| 734/73C | — | antwoordt, geeft geen identificatie |
+| 736/73E | `180711-00063` | alleen een serienummer |
+| 737/73F | `K123-57KK2-B0` | draagt de VIN |
+| 756/75E | `K123-430K2-D` | ABS/DSC |
+| 760/768 | `KL2K-437K2-A` | remmen |
+| 784/78C | `MAZ_CMU-150_70.00.021` | infotainment (zegt het zelf) |
+| 7B7/7BF | `TK52-675Y0-D-00` | carrosserie |
+| 7C1/7C9 | `KB9G-67RK2-B` | — |
+| 7C4/7CC + 7C6/7CE | `KB8C-67YK2-H` (tweeling) | zelfde nummer, ander serienummer |
+| 7DF/7E8 | `PA97-188K2-A` | motor-ECU |
+| 7F1/7F9 | — | draagt alleen de VIN |
+
+De duiding komt uit Mazda's nummerschema (de middengroep codeert het systeem)
+en is dus aannemelijk, niet bewezen. De nummers zelf zijn gemeten.
+
+**`F4A6` bestaat niet — die draad is dicht.** Het OBD-spiegelblok (F400–F6FF)
+is vólledig afgelopen op 70E en op 728, en tot F5C0 op 72E. `F4A6` zit op
+positie 167 van 768, dus hij is op alle drie gevraagd en op alle drie
+geweigerd. Alleen `F40D` (snelheid, op 70E en 72E) en `F467` (op 72E)
+antwoordden. Belangrijkst: het instrumentenpaneel op 728 liep het hele blok af
+en levert in de héle identificatie- plus spiegelreeks maar twee identifiers op.
+Die teller is dicht. Wat nog openstaat is het OEM-blok `60xx` — het
+dashboardblok, op geen enkele module ooit aangeraakt.
+
+### De kaartmaker heropende het derde VIN-pad — 04-09-2026 (opgelost)
+
+Die rit vond vier stuurapparaten die `22F190` beantwoorden (70E, 73F, 7E8, 7F9)
+en het verslag drukte de VIN vier keer als **ruwe hex** af. Het testrunlogboek
+wordt geplakt en gedeeld; dat is precies het pad dat §11 op 03-09 gesloten had,
+door deze module opnieuw geopend.
+
+De reparatie zit niet bij het **tonen** maar bij het **opslaan**: wat de kaart
+nooit vasthoudt, kan hij ook niet lekken via een render, een export, een
+AI-prompt of een logboek. Elke reeks bytes gaat door `bewaarBytes()`; ziet die
+er een geldig voertuignummer in (17 tekens uit de ISO 3779-set — geen I, O of
+Q, dus een onderdeelnummer met streepjes valt af), dan bewaart hij de staart
+plus het pseudoniem in plaats van de bytes. Mislukt het pseudonimiseren, dan
+gaan de bytes er alsnog niet in: minder informatie is de goede kant om op te
+falen.
+
+**En dat leverde een controle op die niemand zocht.** Alle vier de VIN's waren
+gelijk; 7CC en 7CE dragen er een van louter nullen. Twee *verschillende*
+nummers in één auto kan maar op één manier — één stuurapparaat komt ergens
+anders vandaan, en bij een teruggezette teller is een vervangen
+instrumentenpaneel de gebruikelijke weg. Het oordeel staat in
+`PLKm.vinConsistentie()` (de betekenis hoort bij de fraudemodule, niet bij de
+scanner) en wordt door zowel PLKm — die `22F190` nu op zijn vijf adressen
+vraagt — als PLKaart gebruikt. Een blanco nummer is **LET OP en geen
+beschuldiging**: veel modules krijgen er nooit een.
+
+### "Waarvan 0 bewegend" was geen nul maar niets — 04-09-2026 (opgelost)
+
+De tweede pas zit achter `!_stop`. De rit was met de hand gestopt, dus die pas
+liep nooit — en tóch meldde elke module *"6 identifiers, waarvan 0 bewegend"*.
+Achttien keer een meting die niet gedaan was. Dezelfde fout als *"geen enkele
+identifier bestaat hier"* van de rit ervoor, één laag hoger: de eerste ging
+over niet-gevraagde identifiers, deze over een niet-gedraaide tweede pas.
+
+Er staat nu `tweede pas niet gedraaid, dus over bewegen valt hier niets te
+zeggen`, per datapunt `(niet herlezen)`, en `K.tweedePas` draagt of hij
+gedraaid, uitgezet, overgeslagen of halverwege gestopt is. Dat er twee keer
+achter elkaar dezelfde soort fout in zat, is de reden dat `plmutate.sh` er nu
+mutaties voor draagt in plaats van alleen een regel commentaar.
+
+### Gericht zoeken — 04-09-2026
+
+De volledige trap kost op deze auto 1,9 uur (18 × 2944 identifiers × 127 ms).
+De vraag na de tweede rit was veel smaller: de OEM-blokken op *alleen* het
+instrumentenpaneel, 1792 identifiers, ruim vier minuten. Daar was geen knop
+voor — de kaartmaker deed alle modules of niets.
+
+`PLKaart.scan({modules:['728'], trap:'oem', hergebruikAdressen:true})` doet dat
+nu, met de knop **🎯 Gericht** in het testrunpaneel ervoor. De adreskaart wordt
+onder het **VIN-pseudoniem** bewaard, niet onder de VIN: een andere auto krijgt
+een andere sleutel, en zonder pseudoniem wordt er niets bewaard — liever
+opnieuw sweepen dan de adressen van de ene auto op de andere loslaten. Dat
+scheelt de 256-adressensweep, 89 van de 171 seconden van de eerste rit.
+
+Modules die buiten de keuze vallen krijgen `niet gevraagd — deze scan was
+gericht op …`, en niet de indruk dat er niets te vinden was.
+
 **Wat er nog steeds ongemeten is.** Of `ATCRA` op de niet-7Ex-adressen
 werkelijk filtert, is niet apart aangetoond: alle achttien antwoordden op
 zender+8, dus een verkeerd filter zou hier hetzelfde beeld geven. En de OEM-

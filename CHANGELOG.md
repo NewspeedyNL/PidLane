@@ -11,6 +11,64 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04d (CET) — DE VIN, HET GERICHTE
+                                ZOEKEN EN EEN HALVE
+                                WAARHEID MINDER
+
+       • 🔒 DE KAART DRUKTE DE VIN VIER KEER RAUW AF. De
+         tweede kaartrit (04-09, 13:43) vond vier stuur-
+         apparaten die 22F190 beantwoorden, en zette dat
+         nummer als hex in het testrunlogboek — dat geplakt
+         en gedeeld wordt. Precies het VIN-pad dat op 03-09
+         gesloten was. Nu gaat elke reeks bytes door één
+         poort: ziet die er een geldig voertuignummer in,
+         dan bewaart de kaart de staart plus het pseudoniem
+         in plaats van de bytes. Wat je niet vasthoudt, kun
+         je niet lekken.
+
+       • 🆔 EN DAT LEVERDE EEN NIEUWE CONTROLE OP. Alle vier
+         de VIN's waren gelijk; twee andere modules hadden er
+         een van louter nullen. Twee VERSCHILLENDE nummers in
+         één auto kan maar op één manier — één stuurapparaat
+         komt ergens anders vandaan, en bij een teruggezette
+         teller is een vervangen instrumentenpaneel de
+         gebruikelijke weg. De km-check vraagt 22F190 nu op
+         al zijn vijf adressen. Een blanco nummer is LET OP
+         en geen beschuldiging: veel modules krijgen er nooit
+         een.
+
+       • 📊 "WAARVAN 0 BEWEGEND" WAS GEEN NUL MAAR NIETS. De
+         tweede pas zit achter de stopvlag; de rit was met de
+         hand gestopt, dus die pas liep nooit — en tóch stond
+         die nul achttien keer in het verslag. Dezelfde soort
+         fout als "geen enkele identifier bestaat hier" van de
+         rit ervoor, één laag hoger. Er staat nu "tweede pas
+         niet gedraaid" en per datapunt "(niet herlezen)".
+
+       • 🎯 NIEUWE KNOP: GERICHT. De volledige trap kost op een
+         auto met achttien modules 1,9 uur. Deze knop toont de
+         adressen uit de vorige scan en laat je per stuur-
+         apparaat kiezen: OEM-blokken, genormeerd of alles. De
+         adreskaart wordt onder het VIN-PSEUDONIEM bewaard, dus
+         een andere auto krijgt zijn eigen kaart. De sweep over
+         256 adressen — 89 van de 171 seconden van de eerste
+         rit — vervalt dan.
+
+       • 🚫 F4A6 BESTAAT NIET. Het OBD-spiegelblok is volledig
+         afgelopen op 70E en 728 en tot F5C0 op 72E; de
+         odometer-spiegel is op alle drie geweigerd. Alleen
+         F40D en F467 antwoordden. Die draad is dicht — wat nog
+         openstaat is het OEM-blok 60xx op het instrumenten-
+         paneel.
+
+       • ✅ test-kaart.js 85 toetsen, test-kmcheck.js 59,
+         plmutate.sh 115 mutaties — alle 115 gevangen. Blok 5
+         toetst de VIN-poort in de draaiende app, want twee
+         losse modules die elkaars interne functie zoeken is
+         precies waar een hernoeming stil doorheen glipt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-04c (CET) — DE KAART NA DE EERSTE RIT
 
        • ✅ HIJ WERKTE. 04-09 om 11:49 op de CX-5: 171 s, 1260
