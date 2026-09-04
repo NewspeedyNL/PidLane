@@ -209,6 +209,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 45 | `pidlane-recall.js` | 16 | terugroepacties en servicebulletins per voertuig |
 | 46 | `pidlane-run.js` | 15 | `PLRun` — de Run-chip in de topbar: één plek waar staat wat er op de achtergrond draait (rit-monitor, bulk-recorder, waakronde, caravan, rit-analyse) en waar het uit kan. Leest de staat bij het tekenen uit de bron; wrapt niets. Caravan en rit-analyse vragen bevestiging bij stoppen. **Let op:** `caravanActive` en `ritActive` staan in script-scope, niet op `window` — zie `test-run.js` |
 | 47 | `pidlane-mode06.js` | 16 | mode 06 — testresultaten van de boordmonitors |
+| 47b | `pidlane-kmcheck.js` | 26 | `PLKm` — de kilometerstand-check. Vraagt 01A6 en 0131 functioneel, en mode 22 per stuurapparaat met een eigen `ATSH`/`ATCRA` (7E0 PCM, 720 IPC, 726 BCM, 760/7B0 ABS). Kruist de antwoorden op **CAN-adres**, niet op identifier: twee DIDs uit dezelfde doos bevestigen elkaar niet. Zet de adapter in een `finally` terug op 7DF. Vereist `sendCmd` + `withBus`; hangt in `index.html` direct ná `pidlane-mode06.js`. Knop in stap 2 van de koopcheck |
 | 48 | `pidlane-export.js` | 20 | `plOpslaan`/`plMaakPdf` — jsPDF in huisstijl |
 | 49 | `pidlane-testrun.js` | 76 | één knop, één rit, één logboek. Vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot — zie §20 |
 | 50 | `pidlane-logboek.js` | 16 | `PLLogboek` — voegt vier logbronnen samen in één tijdlijn: `log()` (500 regels, via `plLokaalLog()`), `btDiag()` (1400, met kopie in localStorage), de diagbundel-ring (400) en de live-log-spiegel. Kebab → Logboek. **Trekt** data op bij openen; hangt zich niet in `log()` of `btDiag()` — die codebase heeft al één laag wrappers (`pidlane-remote.js`) en een tweede zou broncode-inspectie onbruikbaar maken |
@@ -802,6 +803,77 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+
+### De km-stand stond in de app als "niet uitleesbaar" — 04-09-2026 (nieuw, ongemeten)
+
+De koopcheck droeg onder het invoerveld de tekst *"OBD2 geeft de echte
+tellerstand niet vrij"*. Dat is de stand van 1996 en al jaren niet meer waar:
+
+| bron | vorm | wat het is |
+|---|---|---|
+| `01A6` | mode 01, 4 bytes, ÷10 | SAE J1979-2 / WWH-OBD totale afstand, functioneel gevraagd |
+| `0131` | mode 01, 2 bytes | afstand sinds het wissen van storingen — géén tellerstand |
+| `22 xxxx` | UDS, per CAN-adres | wat één stuurapparaat zelf onthoudt |
+
+`pidlane-kmcheck.js` (`PLKm`) leest die drie en trekt er één oordeel uit. Het
+punt is niet de stand maar het **verschil**: terugdraaien gebeurt op het
+instrumentenpaneel, en het motorblok en de ABS tellen door.
+
+**Wat er onderweg fout ging, en waarom het hier staat.**
+
+*Onafhankelijkheid zit in het adres, niet in de identifier.* De eerste opzet
+groepeerde op modulenaam. Dan bevestigen `220201` en `220200` op 7E0 elkaar —
+terwijl dat één doos is die twee keer hetzelfde zegt. De kruisvergelijking
+groepeert daarom op CAN-adres. `01A6` gaat functioneel de bus op en wordt in de
+praktijk door het motorblok beantwoord; die krijgt de groep `broadcast` mét de
+aantekening dat hij dezelfde doos kán zijn als 7E0. Vallen alleen die twee
+samen, dan is de uitkomst `onbevestigd` en niet `ok`.
+
+*De ankerregel gooide eerst juist de fraude weg.* Voor een OEM-identifier ligt
+de schaal niet vast: dezelfde vier bytes zijn kilometers óf tienden daarvan.
+De eerste regel koos de kandidaat die het dichtst bij een anker lag, mits
+minstens vier keer dichterbij dan de andere. Die regel werkt precies in het
+geval waarin niets aan de hand is, en faalt in het geval waarvoor de module
+bestaat: 118.000 naast een anker van 214.000 geeft afstanden 96.000 en
+202.200 — ratio 2,1, dus "te dicht bij elkaar", dus geen oordeel. De
+teruggedraaide teller viel uit de meting.
+
+Wat een anker wél mag beslissen is de **orde van grootte**: de kandidaten
+schelen een factor 10, twee stuurapparaten in dezelfde auto nooit een factor 5.
+Precies één kandidaat binnen dat venster → de schaal staat vast, en het
+vérschil met het anker blijft daarna gewoon staan om beoordeeld te worden.
+Schaalkeuze en oordeel zijn twee stappen, en dat moeten ze blijven.
+
+*Een negatief antwoord draagt de SID van het verzoek.* De weigering is
+`7F 22 31`, niet `7F 62 31`. De eerste versie zocht op `'7F' + kop.slice(0,2)`
+en vond dus nooit iets: "identifier bestaat niet op dit adres" viel stil in de
+bak *geen antwoord*, waarmee het niet meer te onderscheiden was van "dit
+stuurapparaat is er niet". `test-kmcheck.js` ving dat bij de eerste run.
+
+**Wat er níét gemeten is, en dus openstaat.**
+
+1. **`ATCRA` is op geen enkele adapter nagemeten.** Een ELM327 zet het
+   ontvangstfilter zelf voor 7Ex; voor 720/726/760/7B0 is dat niet
+   gegarandeerd, en zonder filter kan het antwoord van een ander stuurapparaat
+   ertussen komen. Weigert de adapter het commando (`?`), dan meet de module
+   door zónder filter en zet dat in het verslag — nooit stil overslaan. Staat
+   er "ATCRA geweigerd" bij een adres, dan is elk antwoord van dat adres
+   verdacht.
+2. **De identifiers in `BRONNEN` zijn Ford-nummers.** Op de CX-5 is de
+   verwachting dat de meeste `7F 22 31` teruggeven. Dat is de meting die de
+   tabel moet vullen, geen mislukking — en daarom logt elke bron zijn ruwe
+   bytes.
+3. **De speling van 1% (minimaal 500 km) is beredeneerd, niet gemeten.** Een
+   ABS rekent uit wielomtrek, een motorblok uit snelheid maal tijd. Hoe ver die
+   op 200.000 km werkelijk uiteenlopen, weet ik pas na een auto waarvan de
+   historie vaststaat.
+
+Waarom dit géén browserproef heeft: `PLKm.oordeel()` is puur en `check()`
+praat alleen met `sendCmd`. Dat is node-werk, en `test-kmcheck.js` doet het met
+50 toetsen plus zeven mutaties in `plmutate.sh`. Wat node niet kan zien — hangt
+de module in de pagina, wijst de knop in de koopcheck ergens op — staat als
+proef in blok 5.
 
 ### De browserproeven vielen om op hun eigen koude start — 03-09-2026 (opgelost)
 

@@ -1456,7 +1456,9 @@ function closeConnOv(){
             <input id="koopKmInput" class="api-inp" type="number" placeholder="bijv. 87500" min="0" max="999999" style="flex:1;font-size:14px;font-weight:700">
             <span style="font-size:12px;color:var(--tx2);white-space:nowrap">km</span>
           </div>
-          <div style="font-size:11px;color:var(--tx3);margin-top:4px" id="koopKmHint">Voer de kilometerstand van de teller in (OBD2 geeft de echte tellerstand niet vrij)</div>
+          <div style="font-size:11px;color:var(--tx3);margin-top:4px" id="koopKmHint">Voer de kilometerstand van de teller in zoals die op het dashboard staat</div>
+          <button id="koopKmCheckBtn" class="btn-sec" style="width:100%;margin-top:8px;font-size:12px;font-weight:700" onclick="PLKm.draaiUI(this)">🧭 Tellerstand narekenen bij de stuurapparaten</button>
+          <div id="koopKmCheckUit"></div>
         </div>
 
         <!-- Stap 3: Servicehistorie -->
@@ -1797,6 +1799,7 @@ function closeConnOv(){
 <script src="pidlane-plload.js"></script>
 <script src="pidlane-recall.js"></script><!-- terugroepacties met detail (PLRecall) -->
 <script src="pidlane-mode06.js"></script><!-- on-board monitortests (PLM06) — vereist sendCmd + PLBus -->
+<script src="pidlane-kmcheck.js"></script><!-- kilometerstand-check (PLKm) — vereist sendCmd + withBus -->
 <script src="pidlane-demo.js"></script>
 <script src="pidlane-uihelpers.js"></script>
 <script src="pidlane-motortype.js"></script>
