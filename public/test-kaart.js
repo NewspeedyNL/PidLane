@@ -90,6 +90,10 @@ function maakAdapter(bus, opt) {
 
       const c = String(cmd).toUpperCase();
       if (/^AT/.test(c)) {
+        // Een commando dat de adapter niet bereikt geeft NIETS terug — en de
+        // ELM-staat verandert dan ook niet. Dit staat bovenaan de AT-tak,
+        // want anders beantwoordt de afhandelaar eronder hem alsnog.
+        if (opt.atStil && opt.atStil.indexOf(c) >= 0) return '';
         if (/^ATH([01])$/.test(c)) { st.h = opt.negeertATH ? '0' : RegExp.$1; return 'OK'; }
         if (/^ATSH(.+)$/.test(c)) { st.hdr = RegExp.$1; return 'OK'; }
         if (/^ATCRA$/.test(c)) { st.cra = null; return 'OK'; }
@@ -154,6 +158,7 @@ function ecu(spec) {
         const w = spec.dids && spec.dids[did];
         if (w == null) return '7F2231';
         if (w === 'LOCKED') return '7F2233';
+        if (w === 'PENDING') { spec._pending = (spec._pending || 0) + 1; return spec._pending === 1 ? '7F2278' : '62' + did + 'C0FFEE'; }
         return '6222' === '' ? null : '62' + did + (typeof w === 'function' ? w() : w);
       }
       if (sid === '21') {
@@ -426,11 +431,125 @@ console.log('\n— 4. de hele scan op een nagebouwde auto —');
                       'een scan die halverwege klapt laat de adapter niet op een gezet header staan');
                     eis(s5.window._plScanActief === false,
                       'en de scanvlag blijft niet hangen — anders blijft de dode-socket-detectie uit');
-                    deel6();
+                    deel5b();
                   });
               });
           });
       }).catch(e => { console.log('  FOUT deel 5: ' + e.stack); fouten++; klaar(); });
+  }
+
+  function deel5b() {
+    console.log('\n— 5b. breedte vóór diepte (de rit van 04-09) —');
+    // Op de CX-5 stonden er achttien stuurapparaten. De eerste opzet liep per
+    // module de hele trap af en brak af bij 193 van de 2944 op de EERSTE —
+    // zeventien modules waren nooit aangeraakt, en het verslag zei van elk
+    // "geen enkele identifier bestaat hier". Dat is afwezigheid als bewijs.
+    const drie = {
+      '7E8': ecu({ tx: '7E0', diensten: ['01', '22', '3E'], pids: ['0C'], pidData: { '0C': '0FA0' },
+                   dids: { 'F190': 'AA', '0201': 'BB' } }),
+      '728': ecu({ tx: '720', functioneel: false, diensten: ['22', '3E'], pids: [],
+                   dids: { 'F190': 'CC', '0201': 'DD' } }),
+      '72E': ecu({ tx: '726', functioneel: false, diensten: ['22', '3E'], pids: [],
+                   dids: { 'F190': 'EE', '0202': 'PENDING' } })
+    };
+    const trapTwee = [
+      { naam: 'identificatie', van: 0xF190, tot: 0xF190, bron: 'genormeerd' },
+      { naam: 'oem', van: 0x0201, tot: 0x0202, bron: 'veldwaarneming' }
+    ];
+    const ad7 = maakAdapter(drie);
+    const s7 = laad(ad7, plbus);
+    let gezien = 0;
+    s7.PLKaart.scan({
+      trap: trapTwee, tussenpauzeMs: 0,
+      // Stoppen zodra de EERSTE trede rond is: dat is precies het geval dat op
+      // de auto gebeurde, alleen daar deed een weggevallen socket het.
+      onStap: st => { if (st.fase === 'dids' && /^oem/.test(st.tekst)) { gezien++; if (gezien === 1) s7.PLKaart.stop(); } }
+    }).then(K7 => {
+      const per = {};
+      K7.modules.forEach(m => { per[m.rx] = m; });
+      const idTreffers = ['7E8', '728', '72E'].filter(rx => (per[rx].dids || []).some(d => d.did === 'F190'));
+      eis(idTreffers.length === 3,
+        'de identificatie is op ALLE drie de stuurapparaten gelezen vóórdat de tweede trede begon',
+        JSON.stringify(idTreffers));
+
+      eis(['7E8', '728', '72E'].every(rx => per[rx].trede['identificatie'] === 'volledig'),
+        'en elke module weet dat die trede volledig is afgezocht',
+        JSON.stringify(['7E8', '728', '72E'].map(rx => per[rx].trede)));
+
+      // Drie toestanden die uit elkaar moeten blijven, want ze betekenen alle
+      // drie iets anders: volledig afgezocht, halverwege gestopt, en nooit
+      // aangeraakt. De middelste is de gevaarlijkste — die zag er in het
+      // verslag van 04-09 uit als de eerste.
+      // De modules worden op adres afgelopen, dus welk adres als eerste aan de
+      // tweede trede begint hangt van de sortering af. Wat vaststaat is dat er
+      // precies ÉÉN halverwege stopt en de rest die trede nooit krijgt.
+      const halve = ['7E8', '728', '72E'].filter(rx => per[rx].trede['oem'] !== undefined);
+      eis(halve.length === 1 && /^afgebroken na 1 van 2$/.test(per[halve[0]].trede['oem']),
+        'een trede die halverwege stopte meldt zich als afgebroken, met het aantal erbij',
+        JSON.stringify(['7E8', '728', '72E'].map(rx => [rx, per[rx].trede])));
+      eis(['7E8', '728', '72E'].filter(rx => per[rx].trede['oem'] === undefined).length === 2,
+        'en de twee die daarna kwamen hebben die trede helemaal niet gehad');
+
+      const tekst = s7.PLKaart.naarTekst(K7);
+      eis(/NIET BEREIKT: oem/.test(tekst),
+        'het verslag zegt van de niet-afgezochte trede dat hij NIET BEREIKT is');
+      eis(/oem \(afgebroken na 1 van 2\)/.test(tekst),
+        'en van de halve trede dat hij half is', tekst.split('\n').filter(l => /mode 22 — afgezocht/.test(l)).join(' | '));
+      eis(!/geen enkele identifier bestaat hier in de trap/.test(tekst),
+        'en nergens "geen enkele identifier bestaat hier" voor iets dat niet is afgezocht');
+
+      eis(K7.schattingNa && K7.schattingNa.commandos === 3 * 3,
+        'de schatting wordt na de ontdekking herrekend met het ECHTE aantal stuurapparaten',
+        JSON.stringify(K7.schattingNa));
+      // In deze sandbox kost een commando bijna niets, dus de gemeten waarde
+      // ligt ver onder de 85 ms die de schatting vóóraf aanneemt. Precies dát
+      // maakt de toets onderscheidend: bij een teruggevallen aanname zou hier
+      // 85 staan.
+      eis(K7.msPerCmd < 50 && K7.msPerCmd < s7.PLKaart.cfg.msPerCmd,
+        'en met de GEMETEN snelheid, niet met de aanname vooraf', 'gemeten ' + K7.msPerCmd + ' ms');
+
+      deel5c();
+    }).catch(e => { console.log('  FOUT deel 5b: ' + e.stack); fouten++; klaar(); });
+  }
+
+  function deel5c() {
+    console.log('\n— 5c. herstel moet bewezen worden —');
+    // sendCmd() gooit niet als de ELM-poort dicht staat; hij geeft een lege
+    // string. Een try/catch ving dus niets en het verslag meldde een geslaagd
+    // herstel terwijl er niets was aangekomen. Precies wat er op 04-09 om
+    // 11:52:01 gebeurde toen de socket wegviel.
+    const een = { '7E8': ecu({ tx: '7E0', diensten: ['22', '3E'], pids: [], dids: { 'F190': 'AA' } }) };
+    const ad8 = maakAdapter(een, { atStil: ['ATH0', 'ATSH7DF'] });
+    const s8 = laad(ad8, plbus);
+    s8.PLKaart.scan({ trap: [{ naam: 't', van: 0xF190, tot: 0xF190, bron: 'test' }], tussenpauzeMs: 0 })
+      .then(K8 => {
+        eis(/ATH0/.test(K8.herstelFout || '') && /ATSH7DF/.test(K8.herstelFout || ''),
+          'een herstelcommando dat niet wordt bevestigd, telt als mislukt',
+          K8.herstelFout || 'geen herstelFout gemeld');
+        eis(/LET OP — adapterherstel/.test(s8.PLKaart.naarTekst(K8)),
+          'en dat staat boven in het verslag, niet alleen in de console');
+
+        // Tegenproef: een adapter die alles bevestigt geeft géén herstelfout.
+        const ad9 = maakAdapter(een);
+        const s9 = laad(ad9, plbus);
+        return s9.PLKaart.scan({ trap: [{ naam: 't', van: 0xF190, tot: 0xF190, bron: 'test' }], tussenpauzeMs: 0 })
+          .then(K9 => {
+            eis(!K9.herstelFout, 'en een adapter die netjes bevestigt levert geen valse alarmering op');
+
+            // NRC 78 = "antwoord volgt later", geen weigering.
+            const laat = { '7E8': ecu({ tx: '7E0', diensten: ['22', '3E'], pids: [], dids: { '0202': 'PENDING' } }) };
+            const adA = maakAdapter(laat);
+            const sA = laad(adA, plbus);
+            return sA.PLKaart.scan({ trap: [{ naam: 't', van: 0x0202, tot: 0x0202, bron: 'test' }], tussenpauzeMs: 0 })
+              .then(KA => {
+                const d = (KA.modules[0].dids || [])[0];
+                eis(d && d.bytes === 'C0FFEE',
+                  '7F 22 78 betekent "antwoord volgt later" — één keer opnieuw lezen levert het datapunt alsnog',
+                  JSON.stringify(d || null));
+                deel6();
+              });
+          });
+      }).catch(e => { console.log('  FOUT deel 5c: ' + e.stack); fouten++; klaar(); });
   }
 
   function deel6() {

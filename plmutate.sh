@@ -83,9 +83,18 @@ MUTATIES=(
 "public/pidlane-kaart.js@@    if (LEZEND.indexOf(sid) < 0) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@    if (false) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@test-kaart.js@@de leeslijst beslist niet meer: een onbekende service mag de bus op"
 "public/pidlane-kaart.js@@      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', 'ATST' + CFG.stHerstel];@@      var herstel = ['ATCRA'];@@test-kaart.js@@de adapter blijft na de scan in scanstand staan"
 "public/pidlane-kaart.js@@        if (!levend) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@        if (false) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@test-kaart.js@@een dode adapter wordt niet meer opgemerkt: de scan draait door op niets"
-"public/pidlane-kaart.js@@        for (var di = 0; di < dids.length && !_stop; di++) {@@        for (var di = 0; di < dids.length; di++) {@@test-kaart.js@@de stopknop doet niets meer tijdens de DID-sweep"
+"public/pidlane-kaart.js@@          for (var di = 0; di < tredeDids.length && !_stop; di++) {@@          for (var di = 0; di < tredeDids.length; di++) {@@test-kaart.js@@de stopknop doet niets meer tijdens de DID-sweep"
 "public/pidlane-bt.js@@  if(window._plScanActief) return;@@  if(false) return;@@test-elmpoort.js@@een scan telt zijn eigen lege antwoorden weer als een dode socket"
 "public/pidlane-data.js@@    S.since=nu();\n    return true;@@    return true;@@test-busslot.js@@raak() vernieuwt niets: lang werk wordt weer als vastgelopen afgebroken"
+
+# ── Wat de rit van 04-09-2026 op de CX-5 blootlegde. Achttien
+# stuurapparaten, afgebroken na 171 s bij 193 van de 2944 identifiers op de
+# eerste module — en het verslag zei van de zeventien andere "geen enkele
+# identifier bestaat hier". Deze drie houden die lessen vast.
+"public/pidlane-kaart.js@@      for (var ti = 0; ti < trap.length && !_stop; ti++) {@@      for (var ti = trap.length - 1; ti >= 0 && !_stop; ti--) {@@test-kaart.js@@de trap loopt achterstevoren: het speculatiefste blok gaat voor de identificatie"
+"public/pidlane-kaart.js@@          m2.trede[trede.naam] = (gedaan >= tredeDids.length) ? 'volledig'@@          m2.trede[trede.naam] = 'volledig' || (gedaan >= tredeDids.length) ? 'volledig'@@test-kaart.js@@een afgebroken trede meldt zich als volledig afgezocht"
+"public/pidlane-kaart.js@@        if (!antw.trim() || /\\?/.test(antw)) mislukt.push(@@        if (false) mislukt.push(@@test-kaart.js@@een geweigerd herstelcommando telt weer als geslaagd"
+"public/pidlane-kaart.js@@            if (d.soort === 'geweigerd' && d.nrc === '78') {@@            if (false) {@@test-kaart.js@@\"antwoord volgt later\" wordt weer als weigering weggegooid"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"

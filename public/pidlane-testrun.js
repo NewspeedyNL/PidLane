@@ -5147,7 +5147,14 @@ const CAMPAGNE = {
 
     'WAAROM ELKE VORIGE SCAN MISLUKTE, EN DAT LAG NIET AAN DE ADRESSEN. Vier dingen in de laag eronder. (1) ATH0 stond in beide init-reeksen: zonder headers is een antwoord anoniem, dus blok 9 kon nooit vaststellen WELK stuurapparaat iets zei. (2) PLBus.MAX_HOLD_MS brak de houder na drie minuten af, dus elke scan die langer duurde werd halverwege onteigend. (3) trackBtQuality telt zes lege antwoorden op rij als een dode socket en herverbindt \u2014 een sweep over 256 adressen waarvan er 250 niet bestaan haalt dat moeiteloos, dus de scan verbrak zichzelf. (4) PLBus.note telde elke NO DATA als fout, waarna PLBusGate dichtging en de waakronde sensoren als uitgevallen meldde. Alle vier zijn nu weg; het busslot heeft raak() gekregen en de twee detectoren kijken naar window._plScanActief.',
 
-    'STAP G \u2014 DE KAART MAKEN. Contact aan of motor stationair, telefoon aan de lader. Druk op "Kaart maken" en bevestig de waarschuwing (die noemt de geschatte duur). Laat hem lopen. Kijk tijdens de ontdekkingsfase mee WELKE adressen antwoorden: dat is de lijst die tot nu toe altijd geraden werd. Aan het eind staat de hele kaart als \u00e9\u00e9n blok in het testrunlogboek \u2014 \u00e9\u00e9n keer "Logboek" en je hebt hem.',
+    'STAP G \u2014 DE KAART, TWEEDE POGING. De eerste draaide op 04-09 om 11:49 en hij WERKTE: achttien stuurapparaten gevonden, de VIN uit 22F190 op 70E, Mazda-onderdeelnummers B61L-67XK6-B, en 50 mode 01-PIDs met ruwe bytes op 7E8. Hij brak na 171 s af omdat de app op de achtergrond bevroor (#18) en de socket wegviel \u2014 de ATI-hartslag ving dat, precies zoals bedoeld. Wat er sindsdien veranderd is: de trap loopt nu in de BREEDTE, dus het identificatieblok van alle achttien komt binnen v\u00f3\u00f3rdat er \u00e9\u00e9n module diep wordt uitgevraagd.',
+
+    'HOU DEZE KEER HET SCHERM AAN EN DE APP OP DE VOORGROND. Dat is geen vrijblijvend advies: de vorige rit verloor de socket twee keer (53 s en 31 s weg) en dat is #18, niet iets wat de kaartmaker kan oplossen. Telefoon aan de lader, scherm niet laten dimmen, niet naar een andere app.',
+
+    'WAT JE DEZE KEER MOET AFLEZEN. (1) De regel "gemeten X ms per commando" die vlak v\u00f3\u00f3r de trap verschijnt \u2014 die noemt het ECHTE aantal stuurapparaten en de resterende duur. Vorige keer stond er 27 min terwijl het er ~120 waren; nu klopt die opgave pas. (2) Of er onder een module "NIET BEREIKT" staat: dat betekent dat die trede niet is afgezocht, en dat is iets anders dan "hier bestaat niets". (3) Of er "LET OP \u2014 adapterherstel" bovenaan staat.',
+
+    'DE INTERESSANTSTE DRAAD UIT DE VORIGE RIT. Op 70E antwoordde 22F40D met \u00e9\u00e9n byte. F40D is de OBD-spiegel van PID 0D (snelheid), dus het F4xx-blok LEEFT op dat adres. 01A6 bestaat op deze auto niet \u2014 dat is nu gemeten en niet meer verondersteld \u2014 maar F4A6 zou de spiegel van diezelfde odometer kunnen zijn. De trap loopt F400-F6FF, dus als hij bestaat komt hij er deze keer uit.',
+
 
     'STAP H \u2014 KIJK NA AFLOOP OF DE APP NOG MEET. De scan zet ATH1 en een header om, en zet ze in een finally terug. Tonen de sensortegels daarna gewoon weer waarden, dan is dat goed gegaan. Vallen ze uit, dan staat er "Adapterherstel" als FOUT in blok 15 \u2014 verbreek en verbind opnieuw voordat je verder meet.',
 
@@ -5177,7 +5184,7 @@ const CAMPAGNE = {
 
     'pidlane-fuel.js \u2014 feat_demo dekt nu beide demoknoppen. test-demo-toegang.js leest de lijst; de nieuwe proef in blok 5 draait de schakelaar echt om, want een selector die er staat maar niets raakt komt alleen zo aan het licht.',
 
-    'plmutate.sh staat op 104 mutaties, alle 104 gevangen \u2014 negen nieuwe over de kaartmaker (waaronder de vier structurele blokkades in bt.js en data.js) en zeven over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
+    'plmutate.sh staat op 108 mutaties, alle 108 gevangen \u2014 dertien over de kaartmaker (de vier structurele blokkades in bt.js en data.js, plus vier die de rit van 04-09 zelf opleverde) en zeven over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
 
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.',
 
