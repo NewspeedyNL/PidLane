@@ -1,0 +1,14 @@
+{
+  "name": "ai-bug-fixer",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "latest"
+  },
+  "devDependencies": {
+    "wrangler": "latest"
+  }
+}
