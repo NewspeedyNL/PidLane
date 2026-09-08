@@ -169,6 +169,24 @@ console.log('\n3. De app-schil zelf — issue #58 (29-08-2026)');
         /\.ai-sheet-f \{[^}]*var\(--pl-sab\)/.test(css),
         'de sheet schuift vanaf de onderrand op; zonder dit liggen de knoppen achter de knoppenbalk');
 
+  // 08-09-2026 — de drie gaten die de #71-ronde niet raakte. Elk is in de
+  // browserproef gemeten (14px, 29px en 24px onder een navigatiebalk van 48px);
+  // deze drie regels houden de reparatie vast op de toestellen waar die proef
+  // niet draait, en ze worden rood zodra iemand de regel weghaalt.
+  toets('.ai-sheet-b zonder voettekst draagt de marge zelf',
+        /\.ai-sheet-b:last-child \{[^}]*var\(--pl-sab\)/.test(css),
+        'drie vellen (Rapporten #134, Bevindingen, PID-recorder) bouwen alleen een kop en een romp; ' +
+        'zonder deze regel hangt hun onderste knop achter de knoppenbalk');
+
+  toets('.rem-card (de twee deel-vellen) gebruikt --pl-sab',
+        /\.rem-card\{[^}]*calc\(22px \+ var\(--pl-sab\)\)/.test(html),
+        'deze twee staan in index.html en droegen geen enkele klasse uit de #58-ronde');
+
+  toets('de scrollinhoud van het keuzescherm houdt de knoppenbalk vrij (#135)',
+        /#welcomeScreen \.welcome-scroll \{ padding-bottom:calc\(24px \+ var\(--pl-sab\)\)/.test(css),
+        '#welcomeScreen loopt met opzet tot ónder de veilige zone door; de padding daar compenseert ' +
+        'alleen die overhang, dus de scrollende inhoud heeft zijn eigen marge nodig');
+
   toets('.ov (gedeelde overlay) houdt boven én onder ruimte vrij',
         /^\.ov \{[^}]*padding:calc\(12px \+ var\(--pl-sat\)\) 12px calc\(12px \+ var\(--pl-sab\)\)/m.test(css));
 
