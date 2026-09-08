@@ -11,6 +11,41 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08c (CET) — TWEE WACHTERS DIE NET NIET
+                                VER GENOEG REIKTEN
+
+       • 🔐 EEN ZOEKTERM KAN GEEN FORMULE MEER WORDEN (#142).
+         Op vier plekken ging een tekst als letterlijke
+         waarde een Airtable-filterByFormula in, geëscaped
+         met alleen een quote-vervanging. Die vervanging wás
+         globaal — daar zat het niet. De backslash zelf werd
+         niet ontsnapt, en dus sloot invoer als `a\` plus een
+         quote de string alsnog. Wat erachter stond ging als
+         formule-syntax mee naar Airtable: schrijven kan
+         zo'n formule niet, maar filteren wel, en daarmee is
+         het een orakel dat per verzoek één ja/nee over een
+         afgeschermd veld prijsgeeft. Eén gedeelde
+         formuleTekst() doet het nu in de goede volgorde:
+         backslash eerst, quote daarna. Zoeken op een naam
+         met een apostrof blijft gewoon werken.
+
+       • 🖥 DE OPNAMETABEL VAN DE EXPERT BOUWT GEEN HTML MEER
+         UIT PEER-DATA (#142). esc() stond al op de
+         sensornaam en de eenheid, maar de vier
+         cijferkolommen gingen ruw de innerHTML in — en die
+         rijen komen van de andere kant van de
+         remote-sessie. Alles wat als getal getoond wordt
+         moet nu eerst een getal blijken; lukt dat niet, dan
+         staat er een streepje. Meetwaarden, negatieve
+         getallen en nul veranderen niet.
+
+       • 🧪 EN DE TEGENPROEF ERONDER. Twee nieuwe tests plus
+         een elfde deel in test-adminbron.js, die niet
+         kijken óf er geëscaped is — dat deed de kapotte
+         regel ook — maar of de string dichtgaat en of het
+         syntaxskelet van de uitgaande formule gelijk blijft
+         aan dat van een onschuldige zoekterm. Vier mutaties
+         in plmutate.sh houden dat vast.
      Build: 2026-09-08c (CET) — DE BEHEERPAGINA SLAAT
                                 WEER OP
 

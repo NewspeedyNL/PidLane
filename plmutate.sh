@@ -271,6 +271,14 @@ MUTATIES=(
 "worker.js@@      if (pass) velden.PassHash = await hashPassword(pass, env);@@      if (pass) velden.PassHash = pass;@@test-klant-aanmaken.js@@het wachtwoord gaat ruw naar Airtable in plaats van gehasht"
 "worker.js@@  if (actie !== \"opruimen\" && actie !== \"aanmaken\" && !/^rec[A-Za-z0-9]{14}$/.test(id))@@  if (false)@@test-klant-aanmaken.js@@de uitzondering op de id-eis is te ruim: bijboeken zonder id wordt een PATCH op niets"
 
+# ── De escaping naar Airtable en naar de HTML van de expert (#142, 08-09-2026).
+# Allebei dezelfde vorm: er stáát een wachter, maar hij dekt net niet alles af.
+# Dat is het soort fout dat groen blijft staan, want de gewone invoer gaat er
+# gewoon doorheen — alleen de rand niet.
+"worker.js@@return metBackslash.replace(/'/g@@return String(s == null ? \"\" : s).replace(/'/g@@test-formule-escape.js@@de backslash wordt niet meer ontsnapt, dus een zoekterm kan de formule-string alsnog sluiten"
+"worker.js@@const e = formuleTekst(q);\n      // &'' erachter@@const e = q;\n      // &'' erachter@@test-adminbron.js@@de zoekterm van /admin/tabel gaat ongeëscaped de filterByFormula in"
+"public/pidlane-remote.js@@+getal(r.mn)+@@+r.mn+@@test-remote-tabel.js@@een cijferkolom van de opnametabel gaat weer ruw de HTML in"
+"public/pidlane-remote.js@@+getal(r.n)+@@+r.n+@@test-remote-tabel.js@@het aantal metingen gaat weer ruw de HTML in"
 # ── het proeftegoed hangt aan het account, niet aan het toestel (#113, 08-09-2026) ──
 # StartTegoedGegeven is de hele grendel. Legt iemand alGehad plat, dan keert
 # elke onboarding-call opnieuw KLANT_START_SALDO uit — hetzelfde gat als het

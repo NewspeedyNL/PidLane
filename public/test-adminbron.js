@@ -67,7 +67,16 @@ function bouw(opties) {
       if (a) return a;
       return { ok: true, status: 200, json: async () => ({ records: [] }), text: async () => '{}' };
     },
-    __name: () => {}
+    __name: () => {},
+    // formuleTekst() staat buiten het geknipte blok maar wordt er wél door
+    // aangeroepen. Niet nabouwen maar dezelfde functie uit worker.js knippen:
+    // een nagemaakte escaper zou hier precies het gat verbergen dat #142 was.
+    formuleTekst: (() => {
+      const a = bron.indexOf('function formuleTekst(s) {');
+      const b = bron.indexOf('__name(formuleTekst, "formuleTekst");');
+      if (a < 0 || b < 0) { console.error('FOUT: formuleTekst() niet gevonden in worker.js.'); process.exit(1); }
+      return new Function(bron.slice(a, b) + '\nreturn formuleTekst;')();
+    })()
   };
   const maak = new Function(...Object.keys(omg),
     src + '\nreturn { get: handleAdminTabelGet, post: handleAdminTabelPost, bronnen: ADMIN_BRONNEN, masker: bronMasker, probleem: bronSchrijfProbleem };');
@@ -329,6 +338,78 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
       Object.keys(B).every((k) => !/^app[A-Za-z0-9]{10,}$/.test(String(B[k].baseKey))));
     toets('elk geheim veld is ook beschermd tegen schrijven',
       Object.keys(B).every((k) => (B[k].geheim || []).every((v) => !B[k].schrijven || B[k].beschermd.indexOf(v) >= 0)));
+  }
+
+  // ── 11. de zoekterm wordt geen formule ──────────────────────────
+  // #142. De vorige twee delen kijken naar wat er teruggaat; dit deel kijkt
+  // naar wat er de deur UIT gaat, want daar zit het gat. De zoekterm belandt
+  // als letterlijke waarde in een filterByFormula. Sluit die string ergens
+  // open, dan staat de rest als formule-syntax in de vraag aan Airtable — en
+  // een formule kan niet schrijven, maar wel filteren, en dus per verzoek één
+  // ja/nee over een afgeschermd veld prijsgeven.
+  //
+  // Het oordeel komt niet van "staat er een backslash voor" — dat deed de oude
+  // regel ook. Er wordt gelezen zoals een formule-parser leest.
+  console.log('\n11. Een zoekterm sluit de stringliteral niet (#142)');
+  {
+    // Ontleedt een formule in wat er als SYNTAX staat en wat er binnen quotes
+    // staat. Een backslash dekt het volgende teken af, een losse quote opent
+    // of sluit een literal. `open` blijft true als de formule eindigt terwijl
+    // er nog een string openstaat.
+    const ontleed = (f) => {
+      let syntax = '', inStr = false;
+      for (let i = 0; i < f.length; i++) {
+        const c = f[i];
+        if (inStr) {
+          if (c === '\\') { i++; continue; }
+          if (c === "'") { inStr = false; continue; }
+        } else if (c === "'") { inStr = true; } else { syntax += c; }
+      }
+      return { syntax, open: inStr };
+    };
+    const formuleVan = async (b, q) => {
+      const t = bouw();
+      await t.get('bron=' + b + '&q=' + encodeURIComponent(q));
+      const url = (t.staat.verzoeken[0] || {}).url || '';
+      return decodeURIComponent(String(url).split('filterByFormula=')[1] || '');
+    };
+
+    const kwaad = [
+      "a'",
+      "a\\'",
+      "x\\',SEARCH('a',{PassHash}),'",
+      "',LOWER({PassHash}),'",
+      'a\\'
+    ];
+    // Het oordeel: het skelet dat overblijft als je de literalen weghaalt moet
+    // TEKEN VOOR TEKEN gelijk zijn aan dat van een onschuldige zoekterm. Lukt
+    // het een zoekterm om ook maar één teken syntax toe te voegen, dan valt
+    // hij hier om — en dat is precies de vraag, want die ene toegevoegde
+    // SEARCH() over {PassHash} is het hele lek.
+    //
+    // Twee bronnen: `config` heeft één zoekveld (de enkelvoudige formule),
+    // `klanten` er drie (de OR-tak). Die takken bouwen de formule apart op,
+    // dus een fix in maar één ervan wordt hier rood.
+    for (const b of ['config', 'klanten']) {
+      const ijk = ontleed(await formuleVan(b, 'onschuldig')).syntax;
+      for (const q of kwaad) {
+        const formule = await formuleVan(b, q);
+        const d = ontleed(formule);
+        toets(b + ' — ' + JSON.stringify(q),
+          formule !== '' && !d.open && d.syntax === ijk,
+          'skelet: ' + d.syntax + (d.open ? ' [string blijft open]' : '') + ' · formule: ' + formule);
+      }
+    }
+    // En de gewone kant: zonder dit haalt een fix die de zoekterm weggooit
+    // bovenstaande ook, en dan kan de beheerder niets meer vinden.
+    const g = bouw();
+    await g.get('bron=klanten&q=' + encodeURIComponent('jan@voorbeeld.nl'));
+    const gf = decodeURIComponent(String((g.staat.verzoeken[0] || {}).url || '').split('filterByFormula=')[1] || '');
+    toets('een gewone zoekterm staat er nog gewoon in', gf.indexOf('jan@voorbeeld.nl') > 0, gf);
+    const o = bouw();
+    await o.get('bron=klanten&q=' + encodeURIComponent("o'brien"));
+    const of_ = decodeURIComponent(String((o.staat.verzoeken[0] || {}).url || '').split('filterByFormula=')[1] || '');
+    toets('een naam met apostrof blijft zoekbaar', of_.indexOf('brien') > 0, of_);
   }
 
   console.log('\n' + (fouten ? fouten + ' FOUT(EN)' : 'Alles goed'));
