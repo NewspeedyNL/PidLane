@@ -549,7 +549,7 @@ Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
 
       const row=document.createElement('div'); row.style.cssText='display:flex;gap:6px;margin-top:8px';
       const dl=document.createElement('button'); dl.className='btn'; dl.style.cssText='flex:1;justify-content:center'; dl.textContent='💾 Tekst';
-      dl.onclick=()=>{ try{ download(`caravan-rit-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); } };
+      dl.onclick=()=>{ try{ download(`caravan-rit-${plDatumLokaal()}.txt`,lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); } };
       const pdf=document.createElement('button'); pdf.className='btn'; pdf.style.cssText='flex:1;justify-content:center'; pdf.textContent='📄 PDF';
       pdf.onclick=function(){ try{ exportAIReportPDF(this); }catch(e){ console.warn('exportAIReportPDF mislukt:', e); } };
       row.appendChild(dl); row.appendChild(pdf); host.appendChild(row);
@@ -559,7 +559,7 @@ Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
   // overlay sluiten en naar home; tekstrapport ook meteen wegschrijven
   const ov=document.getElementById('caravanDash'); if(ov) ov.style.display='none';
   _removeCaravanPill();
-  try{ download(`caravan-rit-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
+  try{ download(`caravan-rit-${plDatumLokaal()}.txt`,lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
   log('🚐 Caravan-rapport klaar','ok');
   try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
 }

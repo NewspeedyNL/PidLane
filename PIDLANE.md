@@ -836,6 +836,119 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Twee schermfoto's, dertien vensters, drie echte gaten — 08-09-2026 (#134, #135)
+
+#134 ("Rapporten", uit het ☰-menu) en #135 (de deur "Wat is er met mijn auto?")
+kwamen binnen als twee foto's met dezelfde klacht: de onderkant is weg. De
+#71-ronde van 03-09 had drie onderste vellen gerepareerd, maar allebei deze
+schermen zijn een ándere vorm — en dat is de reden dat ze eromheen liepen:
+
+| vorm | wie | waarom hij buiten #71 viel |
+|---|---|---|
+| `.ai-sheet` zonder voettekst | Rapporten, Bevindingen, PID-recorder | de veilige marge zat in `.ai-sheet-f`, en die drie bouwen alleen een kop en een romp |
+| `.rem-card` in `index.html` | Deel mijn data, Expert op afstand | staat in de HTML en droeg dus geen klasse uit de #58-ronde |
+| het keuzescherm zelf | de vijf deuren | `#welcomeScreen` heeft sinds 04-08 een eigen regeling — en juist die maakte het gat |
+
+Een bronscan over álle vensters met `position:fixed;inset:0` gaf zes
+kandidaten zonder `var(--pl-sab)`. De meting in `bproef-schermranden.js` (met
+een navigatiebalk van 48px) wees uit welke daarvan het ook echt waren:
+
+```
+PID-recorder            14px  →  62px
+Expert op afstand       29px  →  77px
+Keuzescherm, laatste kaart   24px  →  72px
+```
+
+De vier volschermvensters uit `pidlane-koopcheck.js` en het Run-venster stonden
+niet in de bron maar waren tóch ruim (269 tot 541px): ze eindigen met een knop
+hoog in een lang paneel. Broncontrole alleen had daar dus vier keer werk
+opgeleverd dat niets oplost.
+
+**Waarom het keuzescherm juist door zijn eigen reparatie omviel.**
+`#welcomeScreen` loopt met opzet tot ónder de veilige zone door
+(`bottom: calc(0px - var(--pl-sab))`) zodat er geen strook overblijft waar de
+live view doorheen schemert — dat was de reparatie van 04-08. De
+`padding-bottom` daar compenseert precies die overhang, dus de inhoud eindigt op
+de onderrand van de layout-viewport, en dát is op Android edge-to-edge exact
+waar de drie knoppen liggen. De scrollende inhoud had die marge dus zélf nodig.
+Een reparatie die zijn eigen randgeval maakt.
+
+**Twee meetlessen, allebei duur betaald in deze ronde.**
+
+1. **De animatie meet mee.** `.ai-sheet` schuift omhoog (`animation: sheetUp
+   .25s`). Meteen na het openen meten gaf voor de PID-recorder "26px ONDER de
+   onderrand" — dat was het vel dat nog omhoog moest. De inline gebouwde vellen
+   hebben die animatie niet en kwamen er wél goed uit, waardoor het verschil
+   juist overtuigend leek. De proef wacht nu 400 ms.
+2. **De laagste knop is niet altijd de maat.** Bij #135 stond de laagste knop op
+   153px en was er niets aan de hand; het was de laatste KAART die 24px boven de
+   rand eindigde. Een scherm vol tekst heeft een inhoudsmaat nodig, een vel met
+   een knoppenrij onderin niet. De proef meet nu allebei.
+
+`test-schermranden.js` bewaakt de drie CSS-regels op de toestellen waar geen
+Chromium staat; `plmutate.sh` maakt ze rood als iemand ze weghaalt.
+
+### Het logboek had de tijd wél, en pakte de andere helft — 08-09-2026 (#140)
+
+Gemeld op 05-09: "items van 22:00 staan onderaan en nieuwe regels komen na
+middernacht daarboven". Dat klopt, en de oorzaak stond in de kop van
+`pidlane-logboek.js` zelf opgeschreven:
+
+> Elke bron levert `{t, bron, type, msg}`. `t` is een tijdstring HH:MM:SS zoals
+> de bronnen hem zelf maken — **geen enkele bewaart een echte timestamp**, dus
+> sorteren gaat op die string.
+
+Die zin was al onwaar toen hij er stond. `log()` in `pidlane-auth.js` en
+`btDiag()` in `pidlane-btflow.js` zetten sinds **#75** `t: Date.now()` naast de
+kloktijd, met in het commentaar erbij precies de reden: *"`ts` is alleen
+HH:MM:SS en dus niet te vergelijken met een starttijd"*. Het logboek las de
+verkeerde helft van hetzelfde object. Als string is `"00:15:03"` kleiner dan
+`"22:14:07"`, dus alles van na twaalven schoof naar boven.
+
+**Wat dit laat zien is niet de bug maar de vorm.** Een module die een tweede
+module leest, herhaalt in zijn eigen kop wat die eerste module doet — en dat is
+een kopie die veroudert zonder dat er iets rood wordt. Hier stond de correctie
+(#75, augustus) in de bron, en de verouderde samenvatting in de lezer. Dezelfde
+vorm als de tabel die §11 op 02-09 de kop kostte, één laag lager.
+
+De regels worden nu op het epoch gesorteerd; de kloktijd blijft wat hij was —
+de string voor het scherm, het zoekveld en de export. Twee bronnen hebben geen
+epoch (de tekstspiegel is platte tekst, de diagring bewaart alleen een
+kloktijd); die krijgen er een afgeleid uit hun eigen volgorde, want beide worden
+alleen aangevuld en nooit herschikt. Dat geeft geen exacte datum en pretendeert
+dat ook niet — het geeft de juiste volgorde. `test-logboeksort.js` toetst het op
+de echte module, met de oude sortering als tegenproef op hetzelfde materiaal.
+
+**Onderweg gevonden, en op 08-09 alsnog gerepareerd.** `_uitDiagRing()` las
+`r.ts || r.tijd`, terwijl `_diagRing` zijn kloktijd in `r.t` zet
+(`pidlane-diagbundel.js`, rond regel 22). Die twee namen zijn elkaar nooit
+tegengekomen, dus élke PID-regel kwam zonder tijd binnen en belandde onderaan
+het logboek in plaats van op de tijdlijn — precies de regels waarvoor je dit
+scherm opent ("wat gebeurde er rond 14:38:25"). De ring schrijft nu ook een
+epoch mee, net als `log()` en `btDiag()` sinds #75; blok 5 van
+`test-logboeksort.js` toetst het met de oude veldnaam als tegenproef.
+
+### De extensie was niet de oorzaak — het opslagvenster ís #18 — 08-09-2026 (#132)
+
+Het issue vermoedt de bestandsextensie: het opslagvenster van de Bulk Recorder
+zou een dialoog geven waar andere opslaanknoppen rechtstreeks wegschrijven. Bij
+het nalopen bleek die aanname niet te houden. **Alle twaalf modules die een
+bestand wegschrijven lopen door dezelfde `download()`** in
+`pidlane-motortype.js`, en die bouwt zijn Blob altijd als `text/plain` —
+de extensie komt er niet in voor. Wat die functie wél doet is eerst
+`nativeShareFile()` proberen, en dat opent de Android-deelkaart.
+
+Daarmee is dit hetzelfde mechanisme als #18: een venster dat de WebView naar de
+achtergrond duwt, waar Android de JS-timers bevriest en de socket opruimt. Dat
+het juist hier opvalt is te verklaren zonder een tweede oorzaak: de
+bulk-export is het grootste bestand (NDJSON, lineair groeiend) én de enige
+opslagknop die je typisch indrukt terwijl de verbinding nog staat. De andere
+exports gebruik je ná een rit, en dan is er geen verbinding meer om te verliezen.
+
+**Nog niet gemeten, en dat is de volgende stap:** doe een andere exportknop
+tijdens een lopende BT-sessie. Verbreekt die óók, dan hoort #132 bij #18 en is
+een aparte reparatie voor de recorder verspilde moeite.
+
 ### Elke scan mislukte, en dat lag niet aan de adressen — 04-09-2026
 
 De jacht op datapunten liep hier al maanden op raden. Blok 9 gokte 256

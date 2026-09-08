@@ -243,7 +243,7 @@ function _lcFullText(){
 }
 async function lcSave(btn){
   const txt=_lcFullText();
-  const basis='PidLane_logs_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+  const basis='PidLane_logs_'+plStempelLokaal().slice(0,16);
   // Formaatkeuze via pidlane-export.js — zie daar waarom.
   if(typeof plOpslaan==='function'){ plOpslaan(basis, txt, {titel:'Logboek'}); return; }
   const o=btn?btn.textContent:''; if(btn){ btn.textContent='⏳'; btn.disabled=true; }

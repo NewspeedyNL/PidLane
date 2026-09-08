@@ -238,10 +238,56 @@
            '</div>';
   }
 
+  /* ── Weergave-schakelaars (#123) ──────────────────────────────────
+     Bewust een EIGEN blok en niet een zesde regel in ITEMS. Alles in die lijst
+     draait op de achtergrond en kost buscapaciteit — dat staat er letterlijk
+     boven. De bevindingenbalk doet geen van beide: hij bepaalt alleen of de
+     balk in de live view verschijnt, en de engine eronder draait door, ook als
+     hij uit staat. Hem tussen de vijf zetten zou die zin onwaar maken voor één
+     regel, en dat is precies het soort dubbele betekenis dat hier al drie keer
+     een bug is geweest.
+
+     De knop-id's zijn die van het oude kebab-menu-item. bevindingenMenuBij() in
+     pidlane-correlatie.js zet daar de 'on'-klasse op; door ze te hergebruiken
+     verhuist de schakelaar zonder dat die module iets hoeft te weten. */
+  function _weergaveBlok() {
+    let aan = true;
+    try { if (typeof bevindingenAan === 'function') aan = !!bevindingenAan(); }
+    catch (e) { console.warn('bevindingenAan() mislukt:', e); }
+    if (typeof bevindingenZet !== 'function') return '';
+    return '<div style="margin-top:12px;border-top:1px solid var(--bd);padding-top:11px">' +
+             '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:7px">IN BEELD</div>' +
+             '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--sur);' +
+               'border:1px solid ' + (aan ? 'var(--gn)' : 'var(--bd)') + ';border-radius:10px">' +
+               '<span style="font-size:17px;flex-shrink:0">🔗</span>' +
+               '<div style="flex:1;min-width:0">' +
+                 '<div style="font:700 13px var(--f);color:var(--tx)">Bevindingenbalk</div>' +
+                 '<div style="font:400 11px var(--f);color:var(--tx3);margin-top:1px">samenhang tussen sensoren, in de live view</div>' +
+                 '<div style="font:600 11px var(--f);color:var(--tx3);margin-top:3px">staat de balk uit, dan krijgt de AI ze nog steeds mee</div>' +
+               '</div>' +
+               '<span style="display:flex;gap:4px;flex-shrink:0">' +
+                 // PLRun.teken() erachteraan: bevindingenZet() zet de knopklasse,
+                 // maar de rand van dit blok kleurt mee met de stand en die wordt
+                 // hier getekend. Zonder deze tik blijft die tot de volgende
+                 // tikkerronde (4 s) op de oude kleur staan.
+                 '<button class="kb-seg" id="bevAanBtn" onclick="bevindingenZet(true);PLRun.teken()">Aan</button>' +
+                 '<button class="kb-seg" id="bevUitBtn" onclick="bevindingenZet(false);PLRun.teken()">Uit</button>' +
+               '</span>' +
+             '</div>' +
+           '</div>';
+  }
+
   function teken() {
     const box = document.getElementById('runLijst');
     if (!box) return;
     box.innerHTML = ITEMS.map(_regel).join('');
+    const weer = document.getElementById('runWeergave');
+    if (weer) {
+      weer.innerHTML = _weergaveBlok();
+      // De knoppen zijn zojuist opnieuw gemaakt; de 'on'-klasse zet de eigenaar.
+      try { if (typeof bevindingenMenuBij === 'function') bevindingenMenuBij(); }
+      catch (e) { console.warn('bevindingenMenuBij() mislukt:', e); }
+    }
     verversDot();
   }
 
@@ -259,6 +305,7 @@
           '</div>' +
           '<div style="font:400 11px var(--f);color:var(--tx3);margin-bottom:11px">Alles hieronder loopt op de achtergrond en kost buscapaciteit. Wat uit staat, meet niet mee.</div>' +
           '<div id="runLijst" style="display:flex;flex-direction:column;gap:8px"></div>' +
+          '<div id="runWeergave"></div>' +
         '</div>';
       document.body.appendChild(ov);
       ov.addEventListener('click', function (e) { if (e.target === ov) sluit(); });

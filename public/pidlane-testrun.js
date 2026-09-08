@@ -3504,6 +3504,111 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── staat het logboek op tijd, of op tekst? ──
+  // Het logboek sorteerde op de tijdstring "HH:MM:SS" terwijl BT en APP er sinds
+  // #75 een epoch naast zetten. Binnen één dag valt dat niet op; over
+  // middernacht zet het de nacht bovenaan (#140). Alleen hier te meten: node
+  // heeft geen gevulde ringen, en de fout zit juist in de VOLGORDE van wat er
+  // werkelijk in staat.
+  {
+    issue: '#140',
+    naam: 'Het logboek staat op tijdvolgorde, ook over middernacht',
+    waarom: 'De ringen zijn hier gevuld; de fout zat in de volgorde van échte regels, niet in een nagebouwde lijst.',
+    proef: function () {
+      if (!window.PLLogboek || typeof PLLogboek.verzamel !== 'function')
+        return { staat: 'FOUT', detail: 'PLLogboek.verzamel() ontbreekt — dan is de volgorde van het logboek niet te meten' };
+      const rijen = PLLogboek.verzamel();
+      if (!rijen.length) return { staat: 'LET OP', detail: 'nog geen logregels — niets te sorteren' };
+
+      const met = rijen.filter(function (r) { return typeof r.ms === 'number'; });
+      if (!met.length)
+        return { staat: 'FOUT', detail: rijen.length + ' regels en geen enkele met een epoch — het logboek sorteert dan ' +
+          'weer op de kloktijd, en die loopt over middernacht terug (#140)' };
+
+      for (let i = 1; i < met.length; i++) {
+        if (met[i].ms < met[i - 1].ms)
+          return { staat: 'FOUT', detail: 'regel ' + i + ' (' + met[i].t + ', ' + met[i].bron + ') staat ná ' +
+            met[i - 1].t + ' terwijl hij ouder is — het logboek staat niet op tijdvolgorde' };
+      }
+
+      // Hoeveel dagen staan er in? Dat is precies het geval waarin de oude
+      // sortering omviel, dus het is de moeite van het melden waard.
+      const dagen = {};
+      met.forEach(function (r) { dagen[new Date(r.ms).toDateString()] = 1; });
+      const n = Object.keys(dagen).length;
+      return met.length + ' van ' + rijen.length + ' regels dragen een epoch en staan op volgorde' +
+        (n > 1 ? ', verdeeld over ' + n + ' dagen' : '');
+    }
+  },
+
+  // ── staat de bevindingenschakelaar waar hij hoort? ──
+  // Verhuisd uit het ☰-menu naar het Run-venster (#123). Twee dingen kunnen hier
+  // stil misgaan: het knopje tekent niet (dan is de schakelaar onbereikbaar), of
+  // het oude exemplaar staat er nog (dan zijn er twee plekken voor één stand).
+  {
+    issue: '#123',
+    naam: 'De bevindingenschakelaar staat in het Run-venster en nergens anders',
+    waarom: 'Alleen de DOM van de draaiende app laat zien of het knopje daadwerkelijk getekend wordt.',
+    proef: function () {
+      if (!window.PLRun || typeof PLRun.teken !== 'function')
+        return { staat: 'FOUT', detail: 'PLRun.teken() ontbreekt — dan tekent het Run-venster niets' };
+      if (typeof bevindingenZet !== 'function')
+        return { staat: 'FOUT', detail: 'bevindingenZet() ontbreekt — de schakelaar zou dan niets doen' };
+
+      const kebab = document.getElementById('kebabMenu');
+      if (kebab && /bevindingenZet\(/.test(kebab.innerHTML))
+        return { staat: 'FOUT', detail: 'het ☰-menu draagt de schakelaar nog steeds — twee plekken voor één stand (#123)' };
+
+      // Het venster tekenen zonder het te openen: teken() vult de containers,
+      // open() zet alleen display. Zo blijft het scherm van de gebruiker staan.
+      const eerder = document.getElementById('runOv');
+      const zichtbaar = !!(eerder && eerder.style.display === 'flex');
+      if (!eerder) PLRun.open();
+      PLRun.teken();
+      const aan = document.getElementById('bevAanBtn'), uit = document.getElementById('bevUitBtn');
+      if (!eerder && !zichtbaar) PLRun.sluit();
+
+      if (!aan || !uit)
+        return { staat: 'FOUT', detail: 'het Run-venster tekent geen Aan/Uit-knop voor de bevindingenbalk — ' +
+          'de schakelaar is uit het ☰-menu weg en hier niet aangekomen (#123)' };
+
+      const stand = (typeof bevindingenAan === 'function') ? (bevindingenAan() ? 'aan' : 'uit') : '?';
+      const gemarkeerd = aan.classList.contains('on') || uit.classList.contains('on');
+      if (!gemarkeerd)
+        return { staat: 'LET OP', detail: 'de knoppen staan er maar geen van beide is gemarkeerd — ' +
+          'bevindingenMenuBij() kleurt de stand niet' };
+
+      return 'de schakelaar staat in het Run-venster (stand: ' + stand + ') en niet meer in het ☰-menu';
+    }
+  },
+
+  // ── belooft een tegel nog dat een dubbeltik de sensor uitzet? ──
+  // Sinds 02-09 verbergt een dubbeltik alleen; uitzetten is het kruisje in de
+  // strook. De tooltip op de tegels bleef "sensor uitzetten" beloven — de enige
+  // uitleg die er stond, en die was onjuist (#124).
+  {
+    issue: '#124',
+    naam: 'De uitleg op een tegel klopt met wat een dubbeltik doet',
+    waarom: 'De tegels bestaan pas als er gemeten wordt; hun tekst is alleen hier te lezen.',
+    proef: function () {
+      const tegels = document.querySelectorAll('.gc[id^="gc-"], .vast-item[id^="vt-"]');
+      if (!tegels.length) return { staat: 'LET OP', detail: 'geen tegels in beeld — niets om te lezen' };
+
+      let leeg = 0;
+      for (let i = 0; i < tegels.length; i++) {
+        const tip = tegels[i].title || '';
+        if (!tip) { leeg++; continue; }
+        if (/uitzetten/i.test(tip) && !/verbergen/i.test(tip))
+          return { staat: 'FOUT', detail: 'tegel ' + tegels[i].id + ' belooft "' + tip + '" terwijl een dubbeltik ' +
+            'alleen verbergt — de sensor blijft gemeten worden (#124)' };
+      }
+      if (leeg === tegels.length)
+        return { staat: 'FOUT', detail: 'geen enkele van de ' + tegels.length + ' tegels draagt uitleg over de dubbeltik' };
+
+      return tegels.length + ' tegels gelezen; de uitleg zegt verbergen en niet uitzetten';
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is

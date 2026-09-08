@@ -27,7 +27,7 @@ function downloadScanLog(){
       return `[${ts}] [${type}] ${msg}`;
     }))
   ];
-  download(`pidlane-scanlog-${new Date().toISOString().slice(0,10)}.txt`, lines.join('\n'));
+  download(`pidlane-scanlog-${plDatumLokaal()}.txt`, lines.join('\n'));
 }
 
 // ── TESTER-CONSENT ──────────────────────────────────────────────
@@ -92,7 +92,7 @@ async function liveLogStart(opts={}){
   if(resuming && storedMode==='fsapi') resuming=false;
   let path = resuming ? localStorage.getItem('pl_livelog_path') : null;
   if(!path){
-    const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    const stamp=plStempelLokaal().slice(0,19);
     path=`pidlane-livelog-${stamp}.txt`;
   }
   let mode = native ? 'native' : 'localstorage';
@@ -227,7 +227,7 @@ function exportAllLogs(){
     '', '### 3. SCAN-LOG (Koopcheck/RDW) ###',
     ...(_scanLog.length ? _scanLog.map(e=>`[${e.ts||''}] [${(e.type||'info').toUpperCase()}] ${e.msg||JSON.stringify(e)}`) : ['(geen scan-log)']),
   ];
-  download(`pidlane-alle-logs-${now.toISOString().slice(0,16).replace(/[:T]/g,'-')}.txt`, lines.join('\n'));
+  download(`pidlane-alle-logs-${plStempelLokaal(now.getTime()).slice(0,16)}.txt`, lines.join('\n'));
   log('📦 Alle logs geëxporteerd','ok');
 }
 

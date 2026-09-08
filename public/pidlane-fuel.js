@@ -863,7 +863,7 @@ async function exportAIReportPDF(btn){
         '='.repeat(50), '',
         String(r.text).replace(/\*\*/g,'')
       ].filter(Boolean).join('\n');
-      download(`PidLane-rapport-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.txt`, txt);
+      download(`PidLane-rapport-${plStempelLokaal().slice(0,16)}.txt`, txt);
     }catch(_){ log('Ook de TXT-fallback is mislukt — er is geen rapportbestand beschikbaar','err'); }
   }finally{
     if(btn){btn.textContent=orig; btn.disabled=false;}
@@ -909,7 +909,7 @@ function showPdfReadyModal(){
 function _niceReportName(ext){
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)?vehicleInfo:{};
   const parts=[v.merk,v.model].filter(Boolean).join('-').replace(/[^A-Za-z0-9-]/g,'') || 'rapport';
-  const d=new Date().toISOString().slice(0,10);
+  const d=plDatumLokaal();
   return `PidLane_${parts}_${d}.${ext}`;
 }
 

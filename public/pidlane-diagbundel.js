@@ -19,7 +19,12 @@ function _diagNote(cmd, raw, expect, out){
     const gevraagd=Array.from(expect||[]);
     const gekregen={}; Object.keys(out||{}).forEach(k=>{ gekregen[k]=hex(out[k]); });
     _diagRing.push({
+      // `t` is de kloktijd voor het scherm; het testrunverslag drukt hem zo af.
+      // `ms` is het epoch ernaast, net als bij log() en btDiag() sinds #75 —
+      // zonder dat getal is een regel niet met een andere bron te vergelijken
+      // en valt hij over middernacht op de verkeerde plek in het logboek (#140).
       t:new Date().toTimeString().slice(0,8),
+      ms:Date.now(),
       tx:String(cmd||''),
       rx:String(raw==null?'':raw).replace(/[\r\n]+/g,' ').trim().slice(0,160),
       gevraagd,

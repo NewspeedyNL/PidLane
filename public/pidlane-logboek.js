@@ -42,10 +42,22 @@
   const LOGBOEK_VERSIE = '1.0 (20-08-2026)';
 
   // ── 1. BRONNEN OPHALEN ────────────────────────────────────────────
-  // Elke bron levert {t, bron, type, msg}. `t` is een tijdstring HH:MM:SS
-  // zoals de bronnen hem zelf maken — geen enkele bewaart een echte
-  // timestamp, dus sorteren gaat op die string. Dat werkt binnen een dag
-  // en breekt rond middernacht; daarom staat de datum in de kop.
+  // Elke bron levert {t, ms, bron, type, msg}. `t` is de tijdstring HH:MM:SS
+  // zoals de bron hem zelf maakt — die gaat naar het scherm en naar de export.
+  // `ms` is het epoch-getal waarop gesorteerd wordt, en dat is nieuw (#140).
+  //
+  // Hier stond: "geen enkele bewaart een echte timestamp, dus sorteren gaat op
+  // die string. Dat werkt binnen een dag en breekt rond middernacht; daarom
+  // staat de datum in de kop." Die conclusie klopte niet meer. Sinds #75 zetten
+  // log() én btDiag() er `t: Date.now()` naast, precies omdat "HH:MM:SS" niet te
+  // vergelijken is — dit scherm pakte alleen de verkeerde helft. Gevolg,
+  // gemeld op 05-09-2026: een sessie die middernacht passeert zet de regels van
+  // ná twaalven bóven die van 22:00, want als string is "00:15" kleiner dan
+  // "22:14". De datum in de kop maakt dat zichtbaar maar niet minder fout.
+  //
+  // Twee bronnen leveren nu dus een echt epoch aan; de andere twee hebben er
+  // geen (de tekstspiegel is platte tekst, de diagring bewaart alleen een
+  // kloktijd). Voor die twee wordt het epoch afgeleid — zie _vulEpoch().
 
   function _uitBtLog() {
     const uit = [];
@@ -59,9 +71,13 @@
     if (!Array.isArray(bron)) return uit;
     for (const r of bron) {
       if (!r) continue;
-      uit.push({ t: r.ts || '', bron: 'BT', type: r.type || 'info', msg: String(r.msg == null ? r : r.msg) });
+      // `r.t` is het epoch dat btDiag() sinds #75 meeschrijft. Regels die uit
+      // localStorage zijn teruggezet hebben hem niet — die krijgen er in
+      // _vulEpoch() een afgeleide bij.
+      uit.push({ t: r.ts || '', ms: (typeof r.t === 'number' ? r.t : null),
+                 bron: 'BT', type: r.type || 'info', msg: String(r.msg == null ? r : r.msg) });
     }
-    return uit;
+    return _vulEpoch(uit);
   }
 
   function _uitAppLog() {
@@ -71,9 +87,10 @@
     if (!Array.isArray(bron)) return uit;
     for (const r of bron) {
       if (!r) continue;
-      uit.push({ t: r.ts || '', bron: 'APP', type: r.type || 'info', msg: String(r.msg == null ? r : r.msg) });
+      uit.push({ t: r.ts || '', ms: (typeof r.t === 'number' ? r.t : null),
+                 bron: 'APP', type: r.type || 'info', msg: String(r.msg == null ? r : r.msg) });
     }
-    return uit;
+    return _vulEpoch(uit);
   }
 
   function _uitDiagRing() {
@@ -92,13 +109,22 @@
       if (r.ms != null) stuk.push(r.ms + ' ms');
       if (r.note) stuk.push(r.note);
       uit.push({
-        t: r.ts || r.tijd || '',
+        // Hier stond `r.ts || r.tijd`, en de diagring heeft geen van beide: hij
+        // zet zijn kloktijd in `r.t`. Die twee namen zijn elkaar nooit
+        // tegengekomen, dus élke PID-regel kwam zonder tijd binnen en belandde
+        // in de bak "geen tijd" onderaan het logboek — niet op de tijdlijn waar
+        // hij hoort, en precies bij de regels waarvoor je dit scherm opent.
+        // Gevonden op 08-09-2026 bij het sorteren op epoch (#140).
+        t: r.t || '',
+        ms: (typeof r.ms === 'number' ? r.ms : null),
         bron: 'PID',
         type: r.fout || r.err ? 'err' : 'info',
         msg: stuk.length ? stuk.join('  ') : JSON.stringify(r).slice(0, 160)
       });
     }
-    return uit;
+    // Regels van vóór de epoch-toevoeging krijgen er hier alsnog een afgeleid:
+    // de ring is chronologisch (push + shift), dus de dagsprong is af te lezen.
+    return _vulEpoch(uit);
   }
 
   function _uitLiveSpiegel() {
@@ -111,10 +137,55 @@
     const regels = tekst.split('\n').filter(Boolean).slice(-600);
     for (const r of regels) {
       const m = r.match(/^\[(?:BT\])?\[?(\d{2}:\d{2}:\d{2})\]\s*\[([A-Z]+)\]\s*([\s\S]*)$/);
-      if (m) uit.push({ t: m[1], bron: 'SPIEGEL', type: m[2].toLowerCase(), msg: m[3] });
-      else uit.push({ t: '', bron: 'SPIEGEL', type: 'info', msg: r });
+      if (m) uit.push({ t: m[1], ms: null, bron: 'SPIEGEL', type: m[2].toLowerCase(), msg: m[3] });
+      else uit.push({ t: '', ms: null, bron: 'SPIEGEL', type: 'info', msg: r });
     }
-    return uit;
+    // De spiegel is platte tekst met alleen een kloktijd erin: het epoch is bij
+    // het schrijven al weg. Wat er wél is, is de volgorde — dit bestand wordt
+    // alleen aangevuld, nooit herschikt. Daar valt de dag uit af te leiden.
+    return _vulEpoch(uit);
+  }
+
+  // ── Kale kloktijd → epoch ─────────────────────────────────────────
+  // "22:14:07" is niet te sorteren zodra een sessie middernacht passeert: als
+  // string is "00:15:03" kleiner dan "22:14:07", en dan staat de nacht bovenaan
+  // (#140). Een bron die alleen zo'n kale tijd levert is wél chronologisch
+  // opgeschreven, dus lopen we hem van achter naar voren af: de laatste regel is
+  // de jongste, en loopt de klok terugkijkend juist vooruit, dan lag alles
+  // daarvóór een dag eerder.
+  //
+  // Dit geeft geen exacte datum en pretendeert dat ook niet. Het geeft de juiste
+  // VOLGORDE, en dat is wat een tijdlijn nodig heeft. Regels die al een echt
+  // epoch hebben blijven ongemoeid — die zijn altijd beter dan een afleiding;
+  // ze doen alleen mee als ijkpunt voor de regels eromheen.
+  function _seconden(tekst) {
+    const m = /^(\d{2}):(\d{2}):(\d{2})$/.exec(String(tekst == null ? '' : tekst).trim());
+    if (!m) return null;
+    return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]);
+  }
+
+  function _vulEpoch(rijen) {
+    const DAG = 86400000;
+    // Anker: het jongste echte epoch in deze bron, anders nu. De regels zonder
+    // epoch liggen daar vóór, nooit erna — ze komen uit de opslag of uit een
+    // tekstbestand dat al geschreven was.
+    let anker = null;
+    for (let i = rijen.length - 1; i >= 0; i--) {
+      if (typeof rijen[i].ms === 'number') { anker = rijen[i].ms; break; }
+    }
+    if (anker === null) anker = Date.now();
+    const d = new Date(anker); d.setHours(0, 0, 0, 0);
+    const middernacht = d.getTime();
+
+    let dagen = 0, vorige = null;
+    for (let i = rijen.length - 1; i >= 0; i--) {
+      const sec = _seconden(rijen[i].t);
+      if (sec === null) continue;                 // geen leesbare tijd: overslaan
+      if (vorige !== null && sec > vorige) dagen++;  // klok liep terugkijkend vooruit
+      vorige = sec;
+      if (typeof rijen[i].ms !== 'number') rijen[i].ms = middernacht - dagen * DAG + sec * 1000;
+    }
+    return rijen;
   }
 
   // Alles samen, op tijd gesorteerd. Regels zonder tijd blijven achteraan
@@ -123,9 +194,12 @@
   function verzamel() {
     let alles = [].concat(_uitBtLog(), _uitAppLog(), _uitDiagRing());
     if (alles.length < 40) alles = alles.concat(_uitLiveSpiegel());
-    const met = alles.filter(function (r) { return r.t; });
-    const zonder = alles.filter(function (r) { return !r.t; });
-    met.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });
+    const met = alles.filter(function (r) { return typeof r.ms === 'number'; });
+    const zonder = alles.filter(function (r) { return typeof r.ms !== 'number'; });
+    // Sorteren op het epoch, niet op de kloktijd (#140). Twee regels in dezelfde
+    // milliseconde houden de volgorde waarin ze binnenkwamen: `sort` is sinds
+    // ES2019 stabiel, en de bronnen leveren zelf al chronologisch aan.
+    met.sort(function (a, b) { return a.ms - b.ms; });
     return met.concat(zonder);
   }
 
@@ -166,7 +240,22 @@
         '  (gefilterd: bron ' + _st.bron + ', niveau ' + _st.niveau + (_st.zoek ? ', zoek "' + _st.zoek + '"' : '') + ')' : ''));
     r.push('');
     r.push('────────────────────────────────────────────────');
-    for (const x of g) r.push('[' + (x.t || '        ') + '] [' + x.bron.padEnd(7) + '] [' + String(x.type || 'info').toUpperCase().padEnd(5) + '] ' + x.msg);
+    // Een dagscheiding zodra de kalenderdag wisselt. De regels dragen alleen
+    // "HH:MM:SS", dus zonder deze markering staat 23:58 en 00:03 onder elkaar
+    // zonder dat te zien is dat er een nacht tussen zit — de tweede helft van
+    // #140. Alleen in de export: op het scherm scrol je zelf en is de kop er.
+    let vorigeDag = null;
+    for (const x of g) {
+      if (typeof x.ms === 'number') {
+        const dag = (typeof plDatumLokaal === 'function') ? plDatumLokaal(x.ms) : new Date(x.ms).toDateString();
+        if (dag !== vorigeDag) {
+          if (vorigeDag !== null) r.push('');
+          r.push('──── ' + dag + ' ────');
+          vorigeDag = dag;
+        }
+      }
+      r.push('[' + (x.t || '        ') + '] [' + x.bron.padEnd(7) + '] [' + String(x.type || 'info').toUpperCase().padEnd(5) + '] ' + x.msg);
+    }
     r.push('');
     r.push('════════════════════════════════════════════════');
     r.push('Bronnen: BT = btDiag (transport), APP = log (applicatie), ');
