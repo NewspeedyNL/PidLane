@@ -874,6 +874,73 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De wachter mat de knop en niet de tekst — 08-09-2026 (#144)
+
+Een schermfoto: de onderkant van het Run-venster valt weg achter de drie
+Android-knoppen. Met de opmerking erbij dat er al meerdere vensters voor
+gerepareerd zijn, en of er niet een test van te maken viel.
+
+**Die test bestond al, en dit venster stond er al in.** `bproef-schermranden.js`
+bewaakt sinds #71 dat elk onderste vel boven de navigatiebalk blijft, en de
+ronde van #134/#135 had het Run-venster expliciet nagelopen. De conclusie die
+daar is opgeschreven:
+
+> De vier volschermvensters uit koopcheck.js en het Run-venster hadden geen
+> `--pl-sab` in de bron en waren tóch ruim: ze eindigen met een knop hoog in
+> een lang paneel. Nog een reden om te meten en niet te lezen.
+
+Die laatste zin is goed en klopt nog steeds. De conclusie eromheen was een
+meting op één toestelmaat, en is als eigenschap van het venster opgeschreven.
+Twee dingen maakten hem onwaar:
+
+1. **Het paneel groeide.** #123 verhuisde diezelfde dag de
+   bevindingenschakelaar mét zijn uitleg van het ☰-menu naar dit venster. Op
+   een kort scherm gaat `#runOv` daardoor scrollen, en pas dán komt de
+   onderrand tegen de knoppenbalk aan.
+2. **De proef mat de verkeerde maat** — en dat is de kant die het waard is te
+   onthouden, want de les stond al ín het bestand. Onder "twee meetlessen,
+   allebei duur betaald" staat sinds #135 letterlijk: *de laagste knop is niet
+   altijd de maat.* Die les was daar toegepast op het keuzescherm, en nergens
+   anders. Nagemeten op 360×640 met een balk van 48px:
+
+   | maat | Run-venster |
+   |---|---|
+   | laagste **knop** ("Aan") | 65px — ruim |
+   | laagste **tekst** ("staat de balk uit, dan…") | 43px — eronder |
+
+   De knop was te raken; de zin die uitlegt wat hij doet, niet te lezen.
+
+**De reparatie is één regel** — de onderrand van `#runOv` telt `--pl-sab` mee,
+zoals elk ander vel dat doet. Dat is de kleinste helft.
+
+**De andere helft is dat de wachter nu twee maten heeft, en op twee maten
+kijkt.** Elk van de dertien vellen wordt sindsdien óók op zijn laagste
+*zichtbare tekst* gemeten, en de hele reeks draait een tweede keer op 360×640.
+
+Bij het bouwen van die tekstmaat viel de voor de hand liggende variant meteen
+om: "het laagste element" gaf voor twaalf van de dertien vellen exact 0px. Een
+vel is een volschermwikkel met `inset:0` waarin een kaart hangt, en die wikkel
+lóópt tot de onderrand — dat mag, hij is de halfdoorzichtige achtergrond. Een
+maat die overal hetzelfde antwoord geeft, onderscheidt niets. Tekst is wel de
+klacht: "komt niet geheel in beeld" gaat over iets dat je moet kunnen lezen.
+Een `Range` om de tekstknoop meet de regel zelf in plaats van de doos eromheen,
+en dan is er precies één vel rood — het vel uit het issue.
+
+Het korte scherm is de tweede helft daarvan, en even belangrijk. Op 412×915 had
+dit paneel 257px over: daar valt niets te zien, hoe je ook meet. Een paneel dat
+moet scrollen is de voorwaarde waaronder deze fout bestaat, en die voorwaarde
+hoort de proef zélf te maken in plaats van te wachten tot iemand er een
+schermfoto van stuurt. `plbrowser.js` kan het venster daarvoor nu verkleinen
+zonder opnieuw op te starten.
+
+**De vorm om te onthouden.** Dit is dezelfde als bij #142 (*"beide keren stónd
+de wachter er al"*) en bij #116 (*"de meetlat mat naast"*), en dat is nu drie
+keer in één week. Een groene proef zegt: wat ik meet, is in orde. Hij zegt niet
+dat ik meet wat er misgaat. De vraag bij een bevinding die langs een bestaande
+wachter kwam, is daarom nooit alleen "waarom is dit stuk" maar ook **"wat kijkt
+die wachter aan, en waar houdt dat op"** — en die vraag stond hier drie regels
+boven het antwoord.
+
 ### De melding beweerde wat hij niet gemeten had — 08-09-2026 (#18)
 
 `PLAchtergrond` schreef bij elke terugkomst één regel in het logboek:

@@ -11,8 +11,33 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-09-08d (CET) — DE MELDING BEWEERDE WAT HIJ
-                                NIET GEMETEN HAD
+     Build: 2026-09-08e (CET) — DE WACHTER MAT DE KNOP EN
+                                NIET DE TEKST
+
+       • 📐 DE ONDERSTE REGEL VAN HET RUN-VENSTER VALT NIET
+         MEER ACHTER DE ANDROID-KNOPPEN (#144). De onderrand
+         van dat paneel stond op een vaste 16px en telde de
+         knoppenbalk niet mee. Sinds #123 hangt de
+         bevindingenschakelaar mét zijn uitleg onderaan, en
+         op een kort scherm gaat de bak daardoor scrollen —
+         dan lag die laatste regel er deels achter.
+
+       • 🔍 EN WAAROM DE PROEF DIE ER AL WAS HEM LIET LOPEN.
+         bproef-schermranden.js bewaakt dit sinds #71, en
+         het Run-venster stond er al in, met de conclusie
+         "had geen --pl-sab in de bron en was tóch ruim".
+         Die conclusie klopte op 412×915 en op twee punten
+         niet meer: het paneel groeide (#123), en de proef
+         mat alleen de laagste KNOP. Gemeten op 360×640 met
+         een balk van 48px: de knop stond op 65px (ruim),
+         de tekst eronder op 43px (eronder). Elk vel wordt
+         nu óók op zijn laagste zichtbare TEKST gemeten —
+         dat is wat een mens leest — en de hele reeks van
+         dertien draait een tweede keer op een kort scherm,
+         want een paneel dat moet scrollen is de voorwaarde
+         waaronder deze fout überhaupt bestaat. Blok 5 meet
+         hetzelfde op het echte toestel, waar --pl-sab niet
+         nagebootst is.
 
        • 📴 DE APP MEET NU HOE LANG HIJ ÉCHT STILLAG (#18).
          Bij elke terugkomst stond er "de app was 120 s weg
