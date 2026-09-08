@@ -62,6 +62,26 @@
          wel. Een schakelaar die terugveert zonder uitleg
          leest als kapot.
 
+       • 📱 DRIE VENSTERS VIELEN NOG ACHTER DE ANDROID-
+         KNOPPEN. Twee schermfoto's (#134, #135) bleken twee
+         vormen die de #71-ronde allebei niet raakte, en een
+         scan over alle vensters vond de derde. Gemeten met
+         een navigatiebalk van 48px: de PID-recorder hield
+         14px over onder zijn startknop, het expertvel 29px,
+         en de laatste kaart van het keuzescherm eindigde
+         24px boven de rand. Nu 62, 77 en 72px. De vier
+         volschermvensters uit de koopcheck stonden niet in
+         de bron maar waren wél ruim — vandaar dat dit
+         gemeten is en niet gelezen.
+
+       • 🕵️ EN DE PID-REGELS STONDEN NOOIT OP DE TIJDLIJN.
+         Het logboek las bij de diagnosering een veldnaam
+         die daar niet bestaat, dus élke TX/RX-regel kwam
+         zonder tijd binnen en zakte naar de bak onderaan —
+         precies de regels waarvoor je dat scherm opent. De
+         ring schrijft nu ook een epoch mee, zoals de andere
+         twee bronnen sinds #75.
+
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-04d (CET) — DE VIN, HET GERICHTE

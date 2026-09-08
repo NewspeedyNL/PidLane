@@ -126,6 +126,10 @@ MUTATIES=(
 "public/pidlane-veldlab.js@@      a.download='pidlane-survey-'+plDatumLokaal(t0)+'.json';@@      a.download='pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json';@@test-tijdklok.js@@een exportnaam bouwt zichzelf weer op de UTC-klok (#112)"
 "public/pidlane-logboek.js@@    met.sort(function (a, b) { return a.ms - b.ms; });@@    met.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });@@test-logboeksort.js@@het logboek sorteert weer op de kloktijd en keert de nacht om (#140)"
 "public/pidlane-logboek.js@@      if (vorige !== null && sec > vorige) dagen++;  // klok liep terugkijkend vooruit@@      if (false) dagen++;@@test-logboeksort.js@@een bron zonder epoch verliest de dagsprong weer (#140)"
+# ── de veiligemarge-ronde van 08-09-2026 (#134, #135) ──
+"public/pidlane.css@@.ai-sheet-b:last-child { padding-bottom:calc(14px + var(--pl-sab)); }@@.ai-sheet-b:last-child { padding-bottom:14px; }@@test-schermranden.js@@een vel zonder voettekst verliest zijn marge onder de knoppenbalk (#134)"
+"public/pidlane.css@@#welcomeScreen .welcome-scroll { padding-bottom:calc(24px + var(--pl-sab)); }@@#welcomeScreen .welcome-scroll { padding-bottom:24px; }@@test-schermranden.js@@de onderste kaart van het keuzescherm valt weer achter de knoppenbalk (#135)"
+"public/pidlane-logboek.js@@        t: r.t || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@        t: r.ts || r.tijd || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@test-logboeksort.js@@de PID-regels lezen weer een veldnaam die de diagring niet heeft"
 # ── de vier reparaties van 03-09-2026 (#103 t/m #106) ──
 "public/pidlane-testrun.js@@    if (gezien.has(sleutel)) return;@@@@test-opruimmelding.js@@dezelfde opruiming in beide logs telt weer dubbel (#104)"
 "public/pidlane-testrun.js@@      if (vorigVerbonden === false) return false;   // tik() heeft de val gezien en telt hem zelf@@@@test-rit.js@@een gemelde herverbinding komt bovenop de bemonstering (#103)"
