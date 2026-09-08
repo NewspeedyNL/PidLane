@@ -174,6 +174,12 @@ var KRITIEK = [
   // twee uur verschil, en dat is aan niets te zien tot iemand de twee
   // bestanden van dezelfde rit naast elkaar legt (#17).
   'plStempelLokaal',
+  // Dezelfde helper, maar alleen de dag (pidlane-uihelpers.js). Het logboek zet
+  // er sinds #140 een dagscheiding mee in de export: zonder die scheiding staan
+  // 23:58 en 00:03 onder elkaar zonder dat er een nacht tussen te zien is.
+  // Ontbreekt hij, dan valt de export terug op toDateString() en is dat het
+  // enige wat je merkt — de regels zelf blijven kloppen.
+  'plDatumLokaal',
   // Verbergen en tonen (pidlane-pids.js). Blok 5 toetst ze met een guard, en
   // die guard is de plek waar het stil zou blijven: ontbreken ze, dan valt de
   // app terug op het gedrag van vóór 02-09-2026 — een dubbeltik die de sensor
@@ -186,6 +192,12 @@ var KRITIEK = [
   // #60 t/m #68 staan er nog bij: hun eigen guards staan verspreid door de
   // modules, ook nu blok 5 over #74 en de begeleide rit gaat.
   'renderCorrelationBanner','bevindingenAan',     // pidlane-correlatie.js — #60
+  // De schakelaar zelf plus de knop-synchronisatie. Sinds #123 (08-09-2026)
+  // tekent pidlane-run.js dat knopje in het Run-venster in plaats van het
+  // ☰-menu, en dus staat de aanroep nu in een andere module dan de definitie.
+  // Ontbreken ze, dan tekent het venster het blok niet — zichtbaar, niet stil —
+  // maar de guard eromheen hoort hier geregistreerd te staan.
+  'bevindingenZet','bevindingenMenuBij',          // pidlane-correlatie.js — #123
   'setPidView',                                   // pidlane-pids.js       — #61
   // Zet de live view bij het opstarten in de opgeslagen of de standaard
   // weergave (pidlane-pids.js, aangeroepen uit pidlane-theme.js). Ontbreekt
