@@ -99,7 +99,7 @@ async function exportVehicleDossier(btn){
       doc.text(`PidLane voertuigdossier — ${new Date().toLocaleString('nl-NL')}`,M,290);
       doc.text(`Pagina ${i} van ${n}`,W-M,290,{align:'right'}); }
 
-    const fname=`PidLane-voertuigdossier-${(kent||vin||'auto')}-${new Date().toISOString().slice(0,10)}.pdf`;
+    const fname=`PidLane-voertuigdossier-${(kent||vin||'auto')}-${plDatumLokaal()}.pdf`;
     window._lastPdf={blob:doc.output('blob'), fname};
     try{ registerSessionReport({type:'pdf', title:fname, text:'', blob:window._lastPdf.blob, fname}); }catch(e){ console.warn('registerSessionReport mislukt:', e); }
     showPdfReadyModal();

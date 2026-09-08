@@ -106,5 +106,52 @@ if (typeof ctx.plDatumLokaal === 'function') {
   eis('een gewone dag blijft gewoon', ctx.plDatumLokaal(Date.UTC(2026, 8, 2, 10, 0, 0)) === '2026-09-02');
 }
 
+// ── 4. GEBRUIKEN DE EXPORTS DIE HELPERS OOK ECHT? (#112) ──────────
+// Dit blok leest bronCODE, en dat mag hier met de reden erbij: de bestandsnaam
+// ontstaat binnen een download()-aanroep die node niet uitvoert (er is geen
+// Blob, geen anchor en geen Capacitor). Wat wél te meten is, is of er nog
+// ergens een naam met toISOString() wordt gebouwd — en dat was precies de fout:
+// wie tussen middernacht en 02:00 exporteerde kreeg de dag van gisteren.
+//
+// De scan kijkt ALLEEN naar namen die een mens leest. Een tijd die als VELD in
+// opgeslagen data gaat hoort juist UTC te blijven, met Z erachter; die staat
+// hieronder in TOEGESTAAN en moet daar blijven staan.
+console.log('\n4. Geen enkele exportnaam wordt nog met de UTC-klok gebouwd (#112)');
+{
+  const BESTANDEN = [
+    'pidlane-caravan.js', 'pidlane-dossier.js', 'pidlane-fuel.js', 'pidlane-koopcheck.js',
+    'pidlane-rijsituatie.js', 'pidlane-rit.js', 'pidlane-veldlab.js', 'pidlane-bulk.js'
+  ];
+  // Een regel telt als "bouwt een naam" als er een van deze woorden in staat
+  // naast een toISOString(). Bewust ruim: liever een vals alarm dat je met een
+  // vinkje afdoet dan een gemiste naam.
+  const NAAM = /(download\(|\.download\s*=|fname|filename|\bnaam\b|\bname\b|basis|stamp|path\s*=)/i;
+
+  let raak = [];
+  for (const b of BESTANDEN) {
+    const regels = fs.readFileSync(b, 'utf8').split('\n');
+    regels.forEach(function (r, i) {
+      if (r.trim().startsWith('//')) return;          // commentaar noemt de oude vorm met opzet
+      if (!/toISOString\(\)/.test(r)) return;
+      if (!NAAM.test(r)) return;                       // een veld in data, geen naam
+      raak.push(b + ':' + (i + 1) + '  ' + r.trim().slice(0, 90));
+    });
+  }
+  eis('geen bestandsnaam meer op de UTC-klok', raak.length === 0,
+      raak.length + ' plek(ken):\n        ' + raak.join('\n        '));
+
+  // Tegenproef: de vorm van vóór de reparatie moet door deze scan WEL gevangen
+  // worden. Zonder dit weet je alleen dat de scan groen kan staan.
+  const oud = "  download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\\n'));";
+  eis('de oude vorm valt wél door de mand (tegenproef)',
+      /toISOString\(\)/.test(oud) && NAAM.test(oud),
+      'de scan herkent de oude regel niet — dan meet de toets hierboven niets');
+
+  // En de andere kant: een tijd die als VELD in data gaat mag blijven staan.
+  const veld = "  uit.push(JSON.stringify({ type:'pidlane-bulk', export: new Date().toISOString() }));";
+  eis('een tijdveld in opgeslagen data blijft buiten schot', !NAAM.test(veld),
+      'de scan pakt ook datavelden — dan dwingt hij lokale tijd af waar UTC hoort');
+}
+
 console.log(fout === 0 ? '\nalle tests geslaagd' : '\n' + fout + ' test(s) gefaald');
 process.exit(fout === 0 ? 0 : 1);

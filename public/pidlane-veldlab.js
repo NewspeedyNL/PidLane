@@ -639,7 +639,7 @@ async function vlFullSurvey(){
     try{
       const blob=new Blob([JSON.stringify(sv,null,2)],{type:'application/json'});
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-      a.download='pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json';
+      a.download='pidlane-survey-'+plDatumLokaal(t0)+'.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(a.href),2000);
     }catch(e){ console.warn('Survey-bestand downloaden mislukt:', e); }
@@ -858,7 +858,7 @@ function vlOpenDash(){
   document.body.appendChild(ov);
   document.getElementById('vlX').onclick=function(){ ov.remove(); };
   document.getElementById('vlExp').onclick=function(){
-    var name='pidlane-veldlab-export-'+new Date().toISOString().slice(0,10)+'.json';
+    var name='pidlane-veldlab-export-'+plDatumLokaal()+'.json';
     var body=JSON.stringify({export:'pidlane-veldlab',v:1,t:Date.now(),sessies:S},null,1);
     try{ if(typeof download==='function'){ download(name,body); return; } }
     catch(e){ console.warn('download() mislukt, terugvallen op blob:', e); }

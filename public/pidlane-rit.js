@@ -586,7 +586,7 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     const dlBtn=document.createElement('button');
     dlBtn.className='btn'; dlBtn.style.cssText='flex:1;justify-content:center;';
     dlBtn.textContent='💾 Tekst';
-    dlBtn.onclick=()=>download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
+    dlBtn.onclick=()=>download(`rit-analyse-${plDatumLokaal()}.txt`,lines.join('\n'));
     const pdfBtn=document.createElement('button');
     pdfBtn.className='btn'; pdfBtn.style.cssText='flex:1;justify-content:center;';
     pdfBtn.textContent='📄 PDF';
@@ -601,6 +601,6 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
   }
 
   // Auto download rapport
-  download(`rit-analyse-${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'));
+  download(`rit-analyse-${plDatumLokaal()}.txt`,lines.join('\n'));
   log('🚗 Rit rapport gedownload','ok');
 }
