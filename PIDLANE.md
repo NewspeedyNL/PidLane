@@ -874,6 +874,34 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De beheerpagina sloeg niet op: de nep-worker was een tweede waarheid — 08-09-2026 (#146, opgelost)
+
+"Opslaan" op de instellingenkaart van `admin/beheer.html` gaf **"no_items"**.
+`saveAll()` stuurde een plat object (`{door_saving_active:true, feat_demo:…}`)
+naar `POST /api/config`, terwijl de Worker (`handleConfigPost`) een
+`items:[{Key,Value,Description}]`-array verwacht en op een lege `payload.items`
+met `no_items` (400) afkapt. Het oude, werkende `admin.html` bouwde die array
+wél — bij de overstap naar `beheer.html` (#139) is die vorm niet meegekomen.
+
+**Waarom niemand het zag tot een klant het meldde.** De oefenmodus in
+`beheer.html` heeft een eigen nep-worker (`oefenAntwoord`) die de echte route
+naspeelt, zodat de pagina te leren valt zonder op productie te werken. Die nep
+deed voor `/api/config` POST een `Object.assign(D.config, body)` — hij *mergede
+een plat object*. Daarmee "werkte" opslaan in oefenmodus precies zolang
+`saveAll` het verkeerd deed: de nep en de fout pasten bij elkaar, en de echte
+Worker was de enige die de mismatch liet zien. Dat is dezelfde vorm als de
+gewaarschuwde "tweede waarheid" uit CLAUDE.md: een testdubbel dat soepeler is
+dan het origineel bewijst niets.
+
+De reparatie is dus twee kanten: `saveAll()` bouwt weer een `items`-array (met
+`String()`-waarden, zoals GET ze ook teruggeeft), én de nep eist nu net zo hard
+`items:[…]` en geeft anders `no_items`. Pas daarmee kan een browserproef de
+fout vangen: `bproef-beheerpagina.js` deel 6 zet een schakelaar om, bewaart, en
+kijkt of `OEFEN_DATA.config` de waarde echt draagt — met de oude platte body
+blijft die `undefined` en wordt de proef rood. Een detail dat bij die proef
+hoort: `callWorker()` gooit in oefenmodus niet op `ok:false`, dus `saveMsg`
+toont sowieso "opgeslagen" — het enige eerlijke signaal is de config zelf.
+
 ### Twee schermfoto's, dertien vensters, drie echte gaten — 08-09-2026 (#134, #135)
 
 #134 ("Rapporten", uit het ☰-menu) en #135 (de deur "Wat is er met mijn auto?")
