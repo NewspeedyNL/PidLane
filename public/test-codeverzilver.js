@@ -52,7 +52,7 @@ function bouw(opties) {
   const o = opties || {};
   const staat = {
     afgestempeld: false, gebruiktDoor: null, saldo: o.saldo === undefined ? 30 : o.saldo,
-    bijgeboekt: 0, slotGebruikt: false, patches: []
+    bijgeboekt: 0, slotGebruikt: false, patches: [], kasboek: []
   };
   const codeRec = {
     id: 'recCODE0000000001',
@@ -79,6 +79,10 @@ function bouw(opties) {
       if (o.slotBezet) return { bezet: true };
       return { bezet: false, result: await fn() };
     },
+    // Sinds #83 legt elke inwisseling — geslaagd én afgestempeld-maar-niet-
+    // bijgeboekt — een kasboekregel vast. Hier alleen opvangen; de inhoud van
+    // die regel toetst test-kasboek.js.
+    tegoedLog: async (env, ctx, regel) => { staat.kasboek.push(regel); },
     // Alles wat rechtstreeks naar Airtable gaat: het opzoeken van de code, het
     // teruglezen binnen het slot, en de PATCH die hem afstempelt.
     fetch: async (url, init) => {

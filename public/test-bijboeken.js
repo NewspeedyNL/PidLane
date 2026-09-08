@@ -70,7 +70,7 @@ function bouw(saldoInAirtable, opties) {
   const slotStand = o.slot || 'open';
   const email = o.email === undefined ? 'klant@example.com' : o.email;
   const staat = {
-    saldo: saldoInAirtable, geschreven: [], audits: [], gelezen: 0,
+    saldo: saldoInAirtable, geschreven: [], audits: [], kasboek: [], gelezen: 0,
     // De volgorde van gebeurtenissen. Hierop toetst deel 6: staat het lezen
     // en schrijven werkelijk TUSSEN dicht en open, of ernaast?
     stappen: [], slotOp: null, binnenSlot: false
@@ -85,6 +85,10 @@ function bouw(saldoInAirtable, opties) {
       if (f.Saldo !== undefined) staat.saldo = f.Saldo;
     },
     klantAudit: async (env, id, tekst, door) => { staat.audits.push({ tekst, door }); return o.auditLukt === false ? false : true; },
+    // Sinds #83 schrijft elke saldomutatie ook een kasboekregel. Hier alleen
+    // opvangen zodat de handler niet over een onbekende naam struikelt; wát er
+    // in die regel hoort te staan, toetst test-kasboek.js.
+    tegoedLog: async (env, ctx, regel) => { staat.kasboek.push(regel); },
     klantFout: (e, m) => ({ body: { ok: false, error: m }, status: 500 }),
     hashPassword: async () => 'hash',
     klantWachtwoordProbleem: () => '',

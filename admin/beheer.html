@@ -515,6 +515,11 @@
           resettoken worden hier niet eens getóónd — die verlaten de Worker niet.<br><br>
           <b>AppConfig is alleen-lezen.</b> Schrijven gaat via de instellingenkaart, want die gooit
           ook de randcache weg. Doe je het hier, dan staat er dagen iets anders live dan in de tabel.<br><br>
+          <b>Het kasboek is ook alleen-lezen</b>, en om een andere reden: het bestaat om te kunnen
+          nazoeken waar tokens gebleven zijn. Een boek dat je hier kunt bijstellen bewijst alleen nog
+          wat erin staat. Regels komen uitsluitend van de Worker, bij elke saldomutatie. Staat er een
+          regel met <code>Credits 0</code>, dan is er AI verbruikt of een code afgestempeld terwijl het
+          saldo níét meebewoog — dat is de regel die je zoekt.<br><br>
           <b>Wissen kan niet ongedaan gemaakt worden.</b> Airtable heeft wel een prullenbak, maar dit
           scherm heeft geen knop terug.
         </div></details>
@@ -524,6 +529,7 @@
               <option value="log">Logboek (app)</option>
               <option value="klanten">Klanten</option>
               <option value="codes">Activatiecodes</option>
+              <option value="kasboek">Kasboek (tokenmutaties, alleen-lezen)</option>
               <option value="users">Gebruikers</option>
               <option value="veldlab">Veldlab (meetwaarden)</option>
               <option value="referentie">Referentiewaarden</option>
@@ -939,6 +945,24 @@ function oefenReset(){
   OEFEN_DATA.referentie = [{ id:'recR000000000001', fields:{ Merk:'Volkswagen', PID:'0105', Min:78, Max:98 } }];
   OEFEN_DATA.appconfig = Object.keys(OEFEN_DATA.config).map((k,i) =>
     ({ id:'recF' + String(i).padStart(12,'0'), fields:{ Key:k, Value:String(OEFEN_DATA.config[k]) } }));
+  /* Kasboek: alle vier de bronnen, en bewust óók de regel waarvoor dit boek
+     gebouwd is — AI verbruikt terwijl de afboeking mislukte (Credits 0). Wie
+     hier oefent, moet die regel een keer gezien hebben; hij is de reden dat
+     een verdwenen token nu geen leesklus meer is (#83). */
+  OEFEN_DATA.kasboek = [
+    { id:'recK000000000005', fields:{ Moment:'2026-08-27T14:02:11Z', Klant:'garage.pieters@ziggo.nl', Soort:'ai-call',
+      Credits:0, SaldoNa:0, TokensIn:9120, TokensUit:1450, Model:'claude-sonnet-4-6',
+      Details:'afboeken van 11 credits MISLUKT, AI wel verbruikt :: airtable_patch_502' } },
+    { id:'recK000000000004', fields:{ Moment:'2026-08-27T13:55:40Z', Klant:'garage.pieters@ziggo.nl', Soort:'ai-call',
+      Credits:-8, SaldoNa:0, TokensIn:6300, TokensUit:980, Model:'claude-sonnet-4-6',
+      Details:'analyse afgeboekt — kosten waren 8, saldo stond op 8 en is afgekapt op 0' } },
+    { id:'recK000000000003', fields:{ Moment:'2026-08-26T10:31:02Z', Klant:'j.dekker@gmail.com', Soort:'ai-call',
+      Credits:-6, SaldoNa:174, TokensIn:4880, TokensUit:720, Model:'claude-sonnet-4-6', Details:'analyse afgeboekt' } },
+    { id:'recK000000000002', fields:{ Moment:'2026-08-14T09:12:00Z', Klant:'j.dekker@gmail.com', Soort:'code-ingewisseld',
+      Credits:100, SaldoNa:180, TokensIn:0, TokensUit:0, Model:'', Details:'code PIDL-1QA9-5RT4 ingewisseld' } },
+    { id:'recK000000000001', fields:{ Moment:'2026-08-25T08:04:19Z', Klant:'m.visser@outlook.com', Soort:'proeftegoed',
+      Credits:25, SaldoNa:25, TokensIn:0, TokensUit:0, Model:'', Details:'welkomsttegoed bij onboarding' } }
+  ];
 }
 
 /* Het antwoord dat de Worker zou hebben gegeven. Eén plek, zodat er geen
@@ -1044,7 +1068,14 @@ function oefenAntwoord(path, opts){
 
   if(path.indexOf('/admin/tabel') === 0){
     const naar = { log:'log', klanten:'klanten', codes:'codes', users:'users',
-                   veldlab:'veldlab', referentie:'referentie', config:'appconfig' };
+                   veldlab:'veldlab', referentie:'referentie', config:'appconfig',
+                   kasboek:'kasboek' };
+    /* Twee bronnen zijn alleen-lezen, elk om zijn eigen reden: AppConfig omdat
+       schrijven daar de randcache moet wissen, het kasboek omdat een
+       corrigeerbaar kasboek niets meer bewijst. In de Worker staat dat in
+       ADMIN_BRONNEN; hier moet het meebewegen, anders belooft de oefenstand
+       een knop die live geweigerd wordt. */
+    const alleenLezen = ['config','kasboek'];
     const bron = sp.get('bron') || (b && b.bron) || '';
     if(!naar[bron]) return { ok:false, error:'Onbekende bron.' };
     const rijen = () => {
@@ -1067,10 +1098,11 @@ function oefenAntwoord(path, opts){
       const velden = [];
       deel.forEach(r => Object.keys(r.fields).forEach(k => { if(velden.indexOf(k) < 0) velden.push(k); }));
       return { ok:true, bron, naam:bron, tabel:'(oefen)', records:deel, velden, offset:'',
-               gesorteerd:true, sorteer:'', schrijven:bron !== 'config',
+               gesorteerd:true, sorteer:'', schrijven:alleenLezen.indexOf(bron) < 0,
                beschermd:beschermd[bron] || [], geheim:bron === 'klanten' || bron === 'users' ? ['PassHash'] : [] };
     }
-    if(bron === 'config') return { ok:false, error:'De bron "AppConfig" is alleen-lezen.' };
+    if(alleenLezen.indexOf(bron) >= 0)
+      return { ok:false, error:'De bron "' + (bron === 'config' ? 'AppConfig' : 'Kasboek (tokenmutaties)') + '" is alleen-lezen.' };
     if(b.actie === 'wis'){
       const ids = b.ids || [b.id];
       D[naar[bron]] = (D[naar[bron]] || []).filter(r => ids.indexOf(r.id) < 0);
