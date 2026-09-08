@@ -943,8 +943,44 @@ Twee dingen maken dat erger, en ze zijn allebei het opschrijven waard:
 De volgorde die daaruit volgt: **eerst de schatting losmaken van het plafond**
 (schatten op waargenomen uitvoer in plaats van op de bovengrens), en pas daarna
 het plafond verhogen. Andersom zet je de saldopoort dicht voor klanten die niets
-verkeerd doen. Niet in deze ronde gebouwd: het raakt `worker.js` en `public/`
-tegelijk, en dat hoort in één push met een eigen tegenproef.
+verkeerd doen.
+
+**Die eerste stap is gebouwd (08-09-2026).** `_uitSchat()` in
+`pidlane-credits.js` kalibreert nu op absolute waargenomen uitvoer in plaats van
+op een fractie van het plafond, met drie bronnen in deze volgorde: het
+gemiddelde voor dít plafond, anders het algemene gemiddelde afgetopt op het
+plafond, anders — alleen bij een koude start zonder metingen — de oude vorm. Die
+derde stap is er met opzet: de eerste analyse op een vers toestel raamt precies
+zoals hij deed.
+
+Twee ontwerpkeuzes die het waard zijn te onthouden:
+
+- **Per plafond een eigen gemiddelde.** Eén gemiddelde over alles zou de
+  hulpvragen (plafond 600–900) en de volle rapporten (4000) door elkaar halen:
+  de een trekt de ander omhoog, de ander de een omlaag. De aftopping op het
+  plafond doet de rest — een hulpcall kan nooit meer ramen dan hij mag uitvoeren.
+- **Een bodem van 0,05 op het bijstelgewicht**, die `uf` niet heeft. Zonder
+  bodem zakt `1/(n+2)` naar nul en volgt de raming een veranderde rapportlengte
+  nooit meer. 0,05 is effectief een venster van ~20 metingen.
+
+De sleutel `pl_credits_kalib` migreert vanzelf: een opslag met alleen
+`{tpt, uf, n}` krijgt de nieuwe velden erbij en valt tot de eerste meting terug
+op de oude vorm. Dat aanvullen is geen netheid — zonder die regel rekent
+`_uitSchat()` `max * undefined` = `NaN`, en een `NaN`-vergelijking in
+`preflight()` is altijd false, dus dan laat de saldopoort stilletjes álles door.
+Daar staat een eigen toets op, en het is ook de vierde mutatie in `plmutate.sh`.
+
+`test-uitvoerschatting.js` (19 toetsen) laadt de echte module en stuurt de
+kalibratie aan via de publieke `PLCredits.boek()` — dezelfde weg als de app na
+elke AI-call. De tegenproef zet de oude formule terug in de bron en eist dat de
+raming dán wél viervoudigt. Blok 5 meet hetzelfde op het toestel, waar een écht
+gegroeide kalibratie in localStorage staat; bij nul metingen meldt hij LET OP in
+plaats van FOUT, want dan is meeschalen juist het goede gedrag.
+
+**Wat hiermee nog niet opgelost is:** het plafond zelf staat nog op 4000. Dat
+verhogen is stap twee en hoort een eigen ronde te krijgen, met de vraag erbij
+hoe vaak rapporten werkelijk afkappen — te tellen in het kasboek, zoals
+hieronder beschreven.
 
 **Hoe vaak het gebeurt, weten we niet.** `PidLaneEvalLog.log()` begint met
 `if(!s) return;` — buiten een actieve veldlabsessie wordt er niets vastgelegd,
