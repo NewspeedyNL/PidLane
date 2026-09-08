@@ -3242,6 +3242,90 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── #144: het Run-venster, en waarom de knopmaat hier niet volstaat ──
+  // De proef hierboven meet de laagste KNOP. Dat is precies de maat die #144
+  // liet lopen: bij het Run-venster stond de knop met 65px ruim boven de balk
+  // terwijl de uitleg eronder op 43px lag — leesbaar noch te raken. Sinds #123
+  // hangt de bevindingenschakelaar met zijn tekst onderaan dit paneel, en op
+  // een kort scherm gaat de bak daardoor scrollen.
+  //
+  // Waarom óók hier en niet alleen in bproef-schermranden.js: daar is de inset
+  // nagebootst op 48px. Op dít toestel is hij echt, en de tekst wordt met dít
+  // lettertype gezet — een regel die in de browser net past, kan hier omslaan
+  // en dan is de onderste regel een andere.
+  {
+    issue: '#144',
+    naam: 'De onderste regel van het Run-venster blijft leesbaar',
+    waarom: 'De knopmaat stond hier groen terwijl de tekst eronder achter de balk lag; alleen op een toestel is --pl-sab echt.',
+    proef: function () {
+      const sab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pl-sab')) || 0;
+      if (sab <= 0)
+        return { staat: 'LET OP', detail: '--pl-sab is 0px op dit toestel — geen navigatiebalk om achter te ' +
+          'vallen. bproef-schermranden.js meet het na met 48px op een kort scherm' };
+      if (typeof openRunPaneel !== 'function')
+        return { staat: 'FOUT', detail: 'openRunPaneel() ontbreekt — dan is het Run-venster niet te openen (#144)' };
+
+      // Stond hij al open, dan laten we hem open: deze proef hoort het scherm
+      // van de gebruiker niet te veranderen.
+      const bestond = document.getElementById('runOv');
+      const stondOpen = !!bestond && bestond.style.display !== 'none';
+
+      try { openRunPaneel(); }
+      catch (e) { return { staat: 'FOUT', detail: 'Run-venster openen mislukte: ' + e.message }; }
+
+      const m = document.getElementById('runOv');
+      if (!m) return { staat: 'FOUT', detail: 'openRunPaneel() bouwde geen #runOv' };
+
+      // De bak ZELF scrollen, niet alleen wat eronder hangt: #runOv draagt de
+      // overflow. Zonder deze regel meet je de bovenkant van een paneel dat je
+      // nooit hebt uitgescrold.
+      if (m.scrollHeight > m.clientHeight + 2) m.scrollTop = m.scrollHeight;
+      m.querySelectorAll('*').forEach(function (e) { if (e.scrollHeight > e.clientHeight + 2) e.scrollTop = e.scrollHeight; });
+
+      let knopOnder = -1e9;
+      m.querySelectorAll('button,input,textarea,select,a').forEach(function (e) {
+        const r = e.getBoundingClientRect();
+        if (r.height <= 0 || r.top > window.innerHeight) return;
+        if (r.bottom > knopOnder) knopOnder = r.bottom;
+      });
+
+      // De laagste zichtbare TEKST. Een Range om de tekstknoop geeft de regel
+      // zelf en niet de doos eromheen — anders meet je de volschermwikkel, en
+      // die loopt per definitie tot de onderrand.
+      const loper = document.createTreeWalker(m, NodeFilter.SHOW_TEXT);
+      const bereik = document.createRange();
+      let tekstOnder = -1e9, tekst = null;
+      for (let n = loper.nextNode(); n; n = loper.nextNode()) {
+        if (!n.nodeValue || !n.nodeValue.trim()) continue;
+        const ouder = n.parentElement;
+        if (!ouder) continue;
+        const st = getComputedStyle(ouder);
+        if (st.visibility === 'hidden' || st.display === 'none' || parseFloat(st.opacity) === 0) continue;
+        bereik.selectNodeContents(n);
+        const r = bereik.getBoundingClientRect();
+        if (r.height <= 0 || r.top > window.innerHeight) continue;
+        if (r.bottom > tekstOnder) { tekstOnder = r.bottom; tekst = n.nodeValue.trim().slice(0, 24); }
+      }
+
+      const scrolde = m.scrollHeight > m.clientHeight + 2;
+      if (!stondOpen) { try { PLRun.sluit(); } catch (e) { m.style.display = 'none'; } }
+
+      if (tekstOnder === -1e9)
+        return { staat: 'LET OP', detail: 'geen zichtbare tekst in het Run-venster — niets te meten' };
+
+      const ruimteTekst = Math.round(window.innerHeight - tekstOnder);
+      const ruimteKnop = knopOnder === -1e9 ? null : Math.round(window.innerHeight - knopOnder);
+      const kop = 'navigatiebalk ' + Math.round(sab) + 'px; onderste regel "' + tekst + '" op ' +
+        ruimteTekst + 'px' + (ruimteKnop === null ? '' : ', laagste knop op ' + ruimteKnop + 'px') +
+        (scrolde ? '; het paneel scrolde' : '; het paneel paste in beeld');
+
+      if (ruimteTekst < sab)
+        return { staat: 'FOUT', detail: kop + ' — die regel ligt ' + Math.round(sab - ruimteTekst) +
+          'px achter de Android-knoppen (#144)' };
+      return kop;
+    }
+  },
+
   // ── #115: geeft de buspoort het slot altijd terug? ──
   // De reparatie van deze ronde is niet "er staat een helper", maar dat het
   // slot niet meer met de hand teruggegeven hoeft te worden. Het enige wat een

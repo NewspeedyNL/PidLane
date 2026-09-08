@@ -296,7 +296,13 @@
     if (!ov) {
       ov = document.createElement('div');
       ov.id = 'runOv';
-      ov.style.cssText = 'position:fixed;inset:0;z-index:9976;background:rgba(8,11,17,.92);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto';
+      /* De onderrand telt de knoppenbalk mee (#144). Dit paneel groeit met
+         wat er draait, en sinds #123 hangt de bevindingenschakelaar met zijn
+         uitleg onderaan. Op een kort scherm gaat de bak scrollen en eindigde
+         de laatste regel 16px boven de rand — precies de padding, dus achter
+         de drie Android-knoppen. De laagste KNOP had daar nog 65px en zag er
+         dus goed uit; het was de tekst eronder die wegviel. */
+      ov.style.cssText = 'position:fixed;inset:0;z-index:9976;background:rgba(8,11,17,.92);display:flex;align-items:flex-start;justify-content:center;padding:16px 16px calc(16px + var(--pl-sab,0px));overflow-y:auto';
       ov.innerHTML =
         '<div style="background:var(--sur2);border:1px solid var(--bd);border-radius:14px;padding:14px;max-width:420px;width:100%;margin-top:44px">' +
           '<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px">' +
