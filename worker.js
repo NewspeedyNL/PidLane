@@ -2091,7 +2091,7 @@ async function handleCreditsRedeem(request, env, ctx) {
   const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
   const table = cfg(env, "AIRTABLE_CODES_TABLE");
   const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
-  const esc = code.replace(/'/g, "\\'");
+  const esc = formuleTekst(code);
 
   // Zonder Durable Object geen atomair slot, en zonder slot kan dezelfde code
   // bij twee gelijktijdige verzoeken twee keer worden ingewisseld. Bewust
@@ -2310,6 +2310,31 @@ function klantWachtwoordProbleem(pass, email) {
 }
 __name(klantWachtwoordProbleem, "klantWachtwoordProbleem");
 
+// Een tekst veilig als letterlijke waarde in een Airtable-formule zetten.
+//
+// DE VOLGORDE IS DE HELE FIX. Er stond op vier plekken `.replace(/'/g, "\\'")`
+// en verder niets. Die vervanging is globaal, dus de klassieke "alleen het
+// eerste voorkomen"-fout is het niet — het gat zit een laag dieper: de
+// backslash zelf werd niet ontsnapt. Typt iemand `a\` en dan een quote, dan
+// maakt de oude regel er `a\\'` van. In de formule is `\\` een ontsnapte
+// backslash, en de quote dáárna sluit de string alsnog:
+//
+//   q = a\'  →  SEARCH('a\\'  ,LOWER({Email}))   ← string dicht na de \\
+//
+// Daarmee staat de rest van de zoekterm als formule-syntax in de vraag aan
+// Airtable. Schrijven kan een formule niet, maar filteren wel: je bouwt er
+// een orakel mee dat per verzoek één ja/nee over een willekeurig veld
+// prijsgeeft. Backslash eerst, quote daarna — dan is er geen volgorde meer
+// waarin de escape zichzelf opheft. Zie #142.
+// In twee stappen en niet in één geketende regel, zodat de volgorde te zien
+// is én los na te bouwen valt: plmutate.sh laat de tweede stap op de ruwe
+// tekst werken en dan hoort test-formule-escape.js rood te worden.
+function formuleTekst(s) {
+  const metBackslash = String(s == null ? "" : s).replace(/\\/g, "\\\\");
+  return metBackslash.replace(/'/g, "\\'");
+}
+__name(formuleTekst, "formuleTekst");
+
 function klantTabel(env) {
   return {
     base: resolveBase(env, "AIRTABLE_CONFIG_BASE"),
@@ -2321,7 +2346,7 @@ __name(klantTabel, "klantTabel");
 
 async function klantZoek(env, email) {
   const { base, table, hdr } = klantTabel(env);
-  const e = String(email || "").trim().toLowerCase().replace(/'/g, "\\'");
+  const e = formuleTekst(String(email || "").trim().toLowerCase());
   const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
     `?maxRecords=1&filterByFormula=${encodeURIComponent(`LOWER({Email})='${e}'`)}`;
   const r = await fetch(url, { headers: hdr });
@@ -2877,7 +2902,7 @@ async function handleAdminKlantenGet(request, env) {
   let url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100` +
     `&sort%5B0%5D%5Bfield%5D=Aangemaakt&sort%5B0%5D%5Bdirection%5D=desc`;
   if (q) {
-    const e = q.replace(/'/g, "\\'");
+    const e = formuleTekst(q);
     url += `&filterByFormula=${encodeURIComponent(
       `OR(SEARCH('${e}',LOWER({Email})),SEARCH('${e}',LOWER({Naam})))`
     )}`;
@@ -3583,7 +3608,7 @@ async function handleAdminTabelGet(request, env) {
   if (q) {
     const zoekIn = veld ? [veld] : (b.def.zoekvelden || []);
     if (zoekIn.length) {
-      const e = q.replace(/'/g, "\\'");
+      const e = formuleTekst(q);
       // &'' erachter: LOWER() op een getal- of datumveld geeft anders een
       // formulefout, en dan valt de hele lijst weg in plaats van dat ene veld.
       const formule = zoekIn.length === 1
