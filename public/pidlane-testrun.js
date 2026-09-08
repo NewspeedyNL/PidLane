@@ -5434,8 +5434,6 @@ const CAMPAGNE = {
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500',
 
-    '#113 \u2014 HET PROEFTEGOED HANGT AAN HET TOESTEL. gratisStart: 25 staat in localStorage, dus app-gegevens wissen levert opnieuw 25 credits op. Dit raakt de Play-review niet: een reviewer komt er niet bij en Google kijkt er niet naar. Maar het is w\u00e9l het grootste gat dat er nog is, en elke analyse kost echt geld bij de modelaanbieder. Het hoort aan een account te hangen en dat is Worker-werk plus een migratie voor wie zijn 25 al kreeg \u2014 een eigen ronde, niet iets om tussen de inzending door te doen.',
-
     '#18 \u2014 DE APP BEVRIEST OP DE ACHTERGROND. Ook geen reviewvraag: die doet geen rit van 28 minuten. Het is native werk (foreground service plus wake lock) en blijft de zwaarste openstaande post voor de gebruiker die w\u00e9l rijdt.',
 
     'DE VRAAG OVER DE BETAALREGELS. #42 is gesloten met een besluit, niet met een antwoord: geen koopknop in de app, tokens per mail, tot boven de tien klanten. Dat is een verdedigbare stand voor de inzending \u2014 er is niets te betalen in de app, dus er valt niets langs Play Billing te leiden. Het antwoord van Play Console-support blijft nuttig v\u00f3\u00f3r de koopknop ooit aangaat.',

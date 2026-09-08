@@ -270,6 +270,12 @@ MUTATIES=(
 "worker.js@@      if (await klantZoek(env, email))\n        return json({ ok: false, error: \"Dit e-mailadres is al geregistreerd.\" }, 409);@@@@test-klant-aanmaken.js@@hetzelfde adres levert een tweede klantrij op: login pakt de eerste, jij boekt op de tweede bij"
 "worker.js@@      if (pass) velden.PassHash = await hashPassword(pass, env);@@      if (pass) velden.PassHash = pass;@@test-klant-aanmaken.js@@het wachtwoord gaat ruw naar Airtable in plaats van gehasht"
 "worker.js@@  if (actie !== \"opruimen\" && actie !== \"aanmaken\" && !/^rec[A-Za-z0-9]{14}$/.test(id))@@  if (false)@@test-klant-aanmaken.js@@de uitzondering op de id-eis is te ruim: bijboeken zonder id wordt een PATCH op niets"
+
+# ── het proeftegoed hangt aan het account, niet aan het toestel (#113, 08-09-2026) ──
+# StartTegoedGegeven is de hele grendel. Legt iemand alGehad plat, dan keert
+# elke onboarding-call opnieuw KLANT_START_SALDO uit — hetzelfde gat als het
+# oude localStorage-tegoed, alleen verplaatst van het toestel naar de route.
+"worker.js@@      const alGehad = f.StartTegoedGegeven === true;@@      const alGehad = false;@@test-onboarding-tegoed.js@@de vlag doet niets meer: elke onboarding keert opnieuw proeftegoed uit"
 )
 
 echo

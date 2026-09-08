@@ -874,6 +874,80 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De beheerpagina sloeg niet op: de nep-worker was een tweede waarheid — 08-09-2026 (#146, opgelost)
+
+"Opslaan" op de instellingenkaart van `admin/beheer.html` gaf **"no_items"**.
+`saveAll()` stuurde een plat object (`{door_saving_active:true, feat_demo:…}`)
+naar `POST /api/config`, terwijl de Worker (`handleConfigPost`) een
+`items:[{Key,Value,Description}]`-array verwacht en op een lege `payload.items`
+met `no_items` (400) afkapt. Het oude, werkende `admin.html` bouwde die array
+wél — bij de overstap naar `beheer.html` (#139) is die vorm niet meegekomen.
+
+**Waarom niemand het zag tot een klant het meldde.** De oefenmodus in
+`beheer.html` heeft een eigen nep-worker (`oefenAntwoord`) die de echte route
+naspeelt, zodat de pagina te leren valt zonder op productie te werken. Die nep
+deed voor `/api/config` POST een `Object.assign(D.config, body)` — hij *mergede
+een plat object*. Daarmee "werkte" opslaan in oefenmodus precies zolang
+`saveAll` het verkeerd deed: de nep en de fout pasten bij elkaar, en de echte
+Worker was de enige die de mismatch liet zien. Dat is dezelfde vorm als de
+gewaarschuwde "tweede waarheid" uit CLAUDE.md: een testdubbel dat soepeler is
+dan het origineel bewijst niets.
+
+De reparatie is dus twee kanten: `saveAll()` bouwt weer een `items`-array (met
+`String()`-waarden, zoals GET ze ook teruggeeft), én de nep eist nu net zo hard
+`items:[…]` en geeft anders `no_items`. Pas daarmee kan een browserproef de
+fout vangen: `bproef-beheerpagina.js` deel 6 zet een schakelaar om, bewaart, en
+kijkt of `OEFEN_DATA.config` de waarde echt draagt — met de oude platte body
+blijft die `undefined` en wordt de proef rood. Een detail dat bij die proef
+hoort: `callWorker()` gooit in oefenmodus niet op `ok:false`, dus `saveMsg`
+toont sowieso "opgeslagen" — het enige eerlijke signaal is de config zelf.
+
+### Proeftegoed aan het account: de kolom bestáát écht — 08-09-2026 (#113, opgelost)
+
+#113 was het zwaarste open punt in de credits-hoek: het proeftegoed hing aan
+het toestel (`gratisStart: 25` in localStorage), dus app-gegevens wissen of een
+tweede profiel gaf telkens opnieuw credits. De **code** loste dat al op bij #49
+(29-08): de client deelt niets meer uit, en `handleKlantOnboarding` in
+`worker.js` boekt `KLANT_START_SALDO` (20) bij en zet het vinkje
+`StartTegoedGegeven` — één keer per account, binnen `metSaldoSlot()`. `alGehad =
+f.StartTegoedGegeven === true` is de hele grendel.
+
+**De vergissing die bewaard hoort te blijven.** Zowel de issue-tekst als
+`CAMPAGNE` bleven ná #49 nog zeggen *"gratisStart: 25 staat in localStorage"*.
+Dat was toen al onjuist. Een beschrijving die ooit klopte en het niet meer doet
+leest even dwingend als een die klopt — precies de vorm waar CLAUDE.md voor
+waarschuwt. De `CAMPAGNE`-regel is er in deze ronde uit; hij hoorde niet meer in
+"wat deze ronde niet oplost".
+
+**De enige echt open vraag, nu beantwoord.** De vorige analyse (03-09) kon van
+buitenaf niet zien of de kolom `StartTegoedGegeven` in de Airtable-tabel
+`Klanten` bestond. Bestond hij niet, dan zou `klantPatch` (met `typecast:true`)
+het veld kwijtraken, las `f.StartTegoedGegeven` altijd `undefined`, bleef
+`alGehad` op `false` en keerde **elke** onboarding-call opnieuw 20 uit —
+hetzelfde gat, verplaatst van het toestel naar de route. Op 08-09 nagekeken in
+de base *PidLane Config* (`appUAuyRxK18T7ImK`): het veld bestaat
+(`fldmAOV9iBsHrMepW`, type checkbox, met de beschrijving die zegt waarvoor het
+dient). De grendel wordt dus niet stil ondergraven.
+
+**Wat er nog getoetst moest worden, is er nu.** `test-saldo-slot.js` bewees met
+een bronscan dát de functie binnen het slot schrijft; dat is niet hetzelfde als
+bewijzen dat de grendel wérkt. `test-onboarding-tegoed.js` draait nu de echte
+handler: eerste call kent 20 toe en zet de vlag, tweede call kent 0 toe en laat
+het saldo staan, en de tegenproef laat zien dat de **vlag** beslist en niet het
+saldo (vlag aan + saldo 0 → niets erbij; vlag uit + saldo 500 → tóch de
+eenmalige 20). Een mutatie in `plmutate.sh` legt `alGehad` plat en maakt die
+delen rood.
+
+**De migratie uit "Klaar als" is grotendeels een non-issue.** Wie in het oude
+model zijn 25 kreeg, had geen `Klanten`-account — dat tegoed leefde op
+localStorage zónder registratie (zie de tabelbeschrijving). Er is dus geen
+serversaldo dat "stilletjes verloren" kan gaan. Een account dat al bestond vóór
+de vlag er was, krijgt bij zijn eerstvolgende onboarding eenmalig 20 (de vlag
+stond nog niet aan) en daarna nooit meer — mild, geen herhaalbaar gat. Wil je
+dat ook dat eenmalige restje dichtgaat, dan is dat één handmatige zet
+`StartTegoedGegeven: true` over de bestaande rijen; dat is een bewuste
+productie-ingreep en staat los van deze fix.
+
 ### Twee schermfoto's, dertien vensters, drie echte gaten — 08-09-2026 (#134, #135)
 
 #134 ("Rapporten", uit het ☰-menu) en #135 (de deur "Wat is er met mijn auto?")
