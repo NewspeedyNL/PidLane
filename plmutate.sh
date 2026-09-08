@@ -122,6 +122,10 @@ MUTATIES=(
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"
 "public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
 "public/pidlane-uihelpers.js@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate());@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.toISOString().slice(0,10);@@test-tijdklok.js@@de exportdatum staat weer op de UTC-dag (#17)"
+# ── de ronde van 08-09-2026 (#112, #140) ──
+"public/pidlane-veldlab.js@@      a.download='pidlane-survey-'+plDatumLokaal(t0)+'.json';@@      a.download='pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json';@@test-tijdklok.js@@een exportnaam bouwt zichzelf weer op de UTC-klok (#112)"
+"public/pidlane-logboek.js@@    met.sort(function (a, b) { return a.ms - b.ms; });@@    met.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });@@test-logboeksort.js@@het logboek sorteert weer op de kloktijd en keert de nacht om (#140)"
+"public/pidlane-logboek.js@@      if (vorige !== null && sec > vorige) dagen++;  // klok liep terugkijkend vooruit@@      if (false) dagen++;@@test-logboeksort.js@@een bron zonder epoch verliest de dagsprong weer (#140)"
 # ── de vier reparaties van 03-09-2026 (#103 t/m #106) ──
 "public/pidlane-testrun.js@@    if (gezien.has(sleutel)) return;@@@@test-opruimmelding.js@@dezelfde opruiming in beide logs telt weer dubbel (#104)"
 "public/pidlane-testrun.js@@      if (vorigVerbonden === false) return false;   // tik() heeft de val gezien en telt hem zelf@@@@test-rit.js@@een gemelde herverbinding komt bovenop de bemonstering (#103)"
