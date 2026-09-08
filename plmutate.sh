@@ -117,7 +117,7 @@ MUTATIES=(
 # ── #18, de hartslag (08-09-2026). De reparatie van deze ronde is dat "weg" en
 #    "stil" twee getallen zijn. Elke mutatie hieronder gooit dat onderscheid op
 #    één van de manieren om waarop het werkelijk fout ging of kon gaan.
-"public/pidlane-achtergrond.js@@      p.stil = Math.round(stilMs / 1000);@@      p.stil = Math.round((tot - van) / 1000);@@test-achtergrond.js@@de melding boekt de afwezigheid weer als stilte \u2014 precies de fout van 02-09"
+"public/pidlane-achtergrond.js@@      p.stil = Math.round(stilMs / 1000);@@      p.stil = Math.round((tot - van) / 1000);@@test-achtergrond.js@@de melding boekt de afwezigheid weer als stilte, precies de fout van 02-09"
 "public/pidlane-achtergrond.js@@              door: null, stil: null, na: null };@@              door: 0, stil: 0, na: 0 };@@test-achtergrond.js@@een niet-gemeten stilte leest als nul, dus als \"er was niets aan de hand\""
 "public/pidlane-achtergrond.js@@    if (staart >= _stilMs) return { ms: staart, van: _laatste };@@    if (false) return { ms: staart, van: _laatste };@@test-achtergrond.js@@de staart telt niet mee: een bevriezing die tot het eind duurt wordt nul"
 "public/pidlane-achtergrond.js@@    try { if (_timer !== null && typeof clearInterval === 'function') clearInterval(_timer); }@@    try { if (false) clearInterval(_timer); }@@test-achtergrond.js@@de hartslag blijft doorlopen als de app weer in beeld is"
