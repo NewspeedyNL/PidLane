@@ -295,6 +295,17 @@ MUTATIES=(
 # elke onboarding-call opnieuw KLANT_START_SALDO uit — hetzelfde gat als het
 # oude localStorage-tegoed, alleen verplaatst van het toestel naar de route.
 "worker.js@@      const alGehad = f.StartTegoedGegeven === true;@@      const alGehad = false;@@test-onboarding-tegoed.js@@de vlag doet niets meer: elke onboarding keert opnieuw proeftegoed uit"
+
+# ── De kostenraming hangt aan de uitvoer, niet aan het plafond (08-09-2026) ──
+# Vier fouten die je bij deze verbouwing écht kunt maken. Ze delen één gevolg:
+# de raming gaat weer met het plafond mee, en dan blokkeert de saldopoort
+# klanten zodra iemand max_tokens verhoogt — precies wat deze wijziging moest
+# wegnemen. De laatste is de stilste van de vier: geen verkeerd getal maar een
+# NaN, en een NaN-vergelijking in preflight() is altijd false.
+"public/pidlane-credits.js@@    if (k.uitN > 0) return Math.round(Math.min(max, k.uitGem));@@    if (k.uitN > 0) return Math.round(k.uitGem);@@test-uitvoerschatting.js@@het plafond is geen bovengrens meer voor de raming"
+"public/pidlane-credits.js@@    const bak = k.perMax && k.perMax[String(max)];@@    const bak = null;@@test-uitvoerschatting.js@@elk plafond deelt weer één gemiddelde, dus een hulpvraag trekt het rapport omlaag"
+"public/pidlane-credits.js@@          gem: bak && bak.n > 0 ? (bak.gem * (1 - wb) + uitTok * wb) : uitTok,@@          gem: bak && bak.n > 0 ? (bak.gem * (1 - wb) + (uitTok / maxTokens) * wb) : (uitTok / maxTokens),@@test-uitvoerschatting.js@@er wordt weer een verhouding tot het plafond opgeslagen in plaats van de echte uitvoer"
+"public/pidlane-credits.js@@        if (!isFinite(o.uf) || o.uf <= 0) o.uf = CFG.uitvoerFactor;@@        if (false) o.uf = CFG.uitvoerFactor;@@test-uitvoerschatting.js@@een opslag van vóór deze wijziging geeft NaN in plaats van een raming"
 )
 
 echo

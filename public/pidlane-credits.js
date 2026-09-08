@@ -233,9 +233,60 @@
   function _kalib() {
     try {
       const o = JSON.parse(_lsGet(CFG.lsKalib) || 'null');
-      if (o && isFinite(o.tpt) && o.tpt > 1.5 && o.tpt < 8) return o;
+      if (o && isFinite(o.tpt) && o.tpt > 1.5 && o.tpt < 8) {
+        /* Een opslag van vóór 08-09-2026 draagt alleen {tpt, uf, n}. De velden
+           erbij worden hier aangevuld en niet verondersteld: zonder deze regel
+           rekent _uitSchat() bij een koude start `max * undefined` = NaN, en
+           een NaN-kostenraming blokkeert stilletjes elke analyse. */
+        if (!isFinite(o.uf) || o.uf <= 0) o.uf = CFG.uitvoerFactor;
+        if (!isFinite(o.uitGem) || !isFinite(o.uitN)) { o.uitGem = 0; o.uitN = 0; }
+        if (!o.perMax || typeof o.perMax !== 'object') o.perMax = {};
+        return o;
+      }
     } catch(e){ /* stil: JSON kan corrupt of leeg zijn */ }
-    return { tpt: CFG.tekensPerToken, uf: CFG.uitvoerFactor, n: 0 };
+    return { tpt: CFG.tekensPerToken, uf: CFG.uitvoerFactor, n: 0,
+             uitGem: 0, uitN: 0, perMax: {} };
+  }
+
+  /* Hoeveel uitvoer verwachten we bij dit plafond?
+     ─────────────────────────────────────────────────────────────────────
+     WAAROM DIT NIET MEER `maxTokens × uf` IS (gemeten 08-09-2026)
+
+     De schatting hing aan het PLAFOND in plaats van aan wat er werkelijk
+     uitkomt. Dat is een probleem zodra je dat plafond wilt verhogen — en dat
+     is precies wat de hervraag-lus bij `max_tokens` nodig heeft: kapt een
+     rapport af, dan stuurt apiFetch() de volledige invoer nog een of twee
+     keer opnieuw (gemeten: 2,21× en 3,64×), elk als eigen afboeking.
+
+     Maar `ontleed()` voedt met dit getal óók de kostenpreview én de
+     saldopoort die een analyse blokkeert bij onvoldoende tegoed. Van 4000
+     naar 16000 zou de geschatte kosten dus verviervoudigen en klanten
+     buitensluiten voor een analyse die in werkelijkheid niets duurder is —
+     want je betaalt op wérkelijke uitvoer, niet op het plafond.
+
+     Twee dingen maakten het erger, en allebei zijn ze hier weg:
+       • `uf = min(1, uitTok/maxTokens)` gaat bij een afgekapt rapport naar
+         1,0, want dan ís uitTok gelijk aan maxTokens. Een te laag plafond
+         leerde de schatter dat de uitvoer altijd het plafond haalt.
+       • Het gewicht `1/(n+2)` bevriest: na honderd calls ~0,01, dus een
+         gewijzigd plafond zou honderden analyses lang verkeerd geschat
+         blijven.
+
+     Nu wordt er op ABSOLUTE waargenomen uitvoer gekalibreerd, per plafond.
+     Het plafond is daarmee weer wat het is: een bovengrens, geen voorspelling.
+
+     De volgorde per bron is bewust:
+       1. het gemiddelde voor DIT plafond — het scherpst;
+       2. anders het algemene gemiddelde, afgetopt op het plafond — dit is
+          de reden dat een NIEUW plafond niet meer meeschaalt;
+       3. anders de oude vorm, alleen bij een koude start zonder metingen.
+     Stap 3 houdt de eerste analyse op een vers toestel precies zoals hij was. */
+  function _uitSchat(maxTokens, k) {
+    const max = maxTokens || 1500;
+    const bak = k.perMax && k.perMax[String(max)];
+    if (bak && bak.n > 0) return Math.round(Math.min(max, bak.gem));
+    if (k.uitN > 0) return Math.round(Math.min(max, k.uitGem));
+    return Math.round(max * k.uf);
   }
 
   function _kalibreer(tekensIn, usage, maxTokens) {
@@ -250,7 +301,34 @@
       }
       if (uitTok > 20 && maxTokens > 0) {
         const uf = Math.min(1, uitTok / maxTokens);
-        k.uf = k.uf * (1 - w) + uf * w;
+        k.uf = k.uf * (1 - w) + uf * w;                  // nog alleen koude start
+
+        /* De absolute uitvoer, algemeen en per plafond. Het gewicht heeft hier
+           een BODEM van 0,05 waar `uf` die niet heeft: zonder bodem zakt hij
+           naar nul en dan volgt de schatting een veranderde rapportlengte nooit
+           meer. Een bodem van 0,05 is effectief een venster van ~20 metingen —
+           scherp genoeg om te convergeren, los genoeg om mee te bewegen. */
+        const wu = Math.min(0.25, Math.max(0.05, 1 / ((k.uitN || 0) + 2)));
+        k.uitGem = (k.uitN > 0) ? (k.uitGem * (1 - wu) + uitTok * wu) : uitTok;
+        k.uitN = (k.uitN || 0) + 1;
+
+        if (!k.perMax) k.perMax = {};
+        const sleutel = String(maxTokens);
+        const bak = k.perMax[sleutel];
+        const wb = bak && bak.n > 0 ? Math.min(0.25, Math.max(0.05, 1 / (bak.n + 2))) : 1;
+        k.perMax[sleutel] = {
+          gem: bak && bak.n > 0 ? (bak.gem * (1 - wb) + uitTok * wb) : uitTok,
+          n: (bak && bak.n || 0) + 1
+        };
+        /* Niet onbeperkt laten groeien: elk aanroeppunt heeft zijn eigen
+           plafond (600, 900, 1400, 2200, 4000...), dus dit blijft klein — maar
+           een tikfout in een aanroep zou er anders eindeloos sleutels bij
+           zetten. Bij overschrijding gaat de minst gemeten bak eruit. */
+        const sleutels = Object.keys(k.perMax);
+        if (sleutels.length > 12) {
+          sleutels.sort((a, b) => k.perMax[a].n - k.perMax[b].n);
+          delete k.perMax[sleutels[0]];
+        }
       }
       k.n = (k.n || 0) + 1;
       _lsSet(CFG.lsKalib, JSON.stringify(k));
@@ -376,7 +454,8 @@
 
     const totTekens = P.length + S.length;
     const inTok = _schatTokens(P) + _schatTokens(S);
-    const uitTok = Math.round((maxTokens || 1500) * k.uf);
+    // Op waargenomen uitvoer, niet op het plafond — zie _uitSchat().
+    const uitTok = _uitSchat(maxTokens, k);
     const credits = _credits(inTok, uitTok);
 
     blokken.forEach((b) => {
