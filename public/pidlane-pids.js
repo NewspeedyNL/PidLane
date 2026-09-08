@@ -268,7 +268,7 @@ function renderGauges(){
       const row=document.createElement('div');
       row.className='vast-item'+(t.vast?'':' live');
       row.id='vt-'+pid;
-      row.title=(t.vast?'Vast gegeven':'Live status')+' — dubbeltik = sensor uitzetten';
+      row.title=(t.vast?'Vast gegeven':'Live status')+' — dubbeltik = verbergen, er wordt dan nog gemeten';
       const lbl=document.createElement('span'); lbl.className='vast-lbl'; lbl.textContent=d.name;
       const val=document.createElement('span'); val.className='vast-val'; val.id='vv-'+pid;
       val.textContent=(pidVals[pid]!==undefined)?pidTekstWaarde(pid,pidVals[pid]):'—';
@@ -290,7 +290,7 @@ function renderGauges(){
       <div class="gn2"${meterNaam[pid]?` title="${d.name.replace(/"/g,'&quot;')}"`:''}>${meterNaam[pid]||d.name}${manTag}${altTag}</div>
       <div class="gval"><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
-    c.style.cursor='pointer'; c.title='Dubbeltik = sensor uitzetten';
+    c.style.cursor='pointer'; c.title='Dubbeltik = tegel verbergen, er wordt dan nog gemeten';
     c.onclick=function(){ pidTileTap(pid); };
     if(slim){
       const groep=(typeof slimGroep==='function')?slimGroep(pid,d):'rest';
@@ -343,6 +343,32 @@ function renderGauges(){
   // die de verkeerde oorzaak noemt stuurt je naar het verkeerde scherm.
   if(!getoond && !vastAantal && verborgen)
     g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">🙈</div><h3>Alles verborgen</h3><p>${verborgen} sensor${verborgen===1?'':'en'} worden nog gemeten. Dubbeltik onderaan op een naam om hem terug te halen.</p></div>`;
+  if(getoond) _tegelTipEenmalig();
+}
+
+// ── De dubbeltik één keer uitleggen (#124) ────────────────────────
+// De tegels dragen een `title`, en dat is precies de plek waar het op een
+// telefoon niet aankomt: er is geen muis, dus er is geen hover. Wie het gebaar
+// niet kent, vindt het alleen per ongeluk — en dan met de toast als enige
+// uitleg achteraf. Eén keer per toestel de zin tonen is genoeg; vaker is
+// bemoeizucht, en een balk die blijft staan kost schermruimte die in een
+// rijdende auto duurder is dan de tip.
+//
+// Bewust gekoppeld aan de eerste keer dat er ook echt tegels staan: een tip
+// over een gebaar op een tegel die er niet is, is ruis.
+const TEGELTIP_SLEUTEL = 'pl_tip_dubbeltik';
+function _tegelTipEenmalig(){
+  try{
+    if(localStorage.getItem(TEGELTIP_SLEUTEL)==='1') return;
+    localStorage.setItem(TEGELTIP_SLEUTEL,'1');
+  }catch(e){ console.warn('Tip-voorkeur niet op te slaan — de tip komt dan vaker terug:', e); return; }
+  // Iets later dan de eerste tekening: tijdens het opbouwen van het scherm
+  // staan er al meldingen over verbinden en sensorkeuze, en dan verdwijnt deze
+  // ertussen.
+  setTimeout(function(){
+    try{ showToast?.('💡 Tip: dubbeltik een tegel om hem te verbergen — hij wordt dan nog gewoon gemeten.'); }
+    catch(e){ console.warn('Tip tonen mislukt:', e); }
+  }, 1500);
 }
 // ══════════════════════════════════════════════════════════════════
 // VERBERGEN IS GEEN UITZETTEN
