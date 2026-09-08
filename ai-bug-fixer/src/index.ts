@@ -20,28 +20,28 @@ export default {
     const url = new URL(req.url);
 
     if (url.pathname === "/analyze" && req.method === "POST") {
-      const body = await req.json<{ url: string }>();
-      if (!body.url) {
-        return new Response(JSON.stringify({ error: "Missing 'url' in body" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-      const report = await analyzePage(env, body.url);
-      return new Response(JSON.stringify(report, null, 2), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    if (req.method === "GET") {
-      return new Response(HTML_UI, {
-        headers: { "Content-Type": "text/html;charset=utf-8" },
-      });
-    }
-
-    return new Response("Not found", { status: 404 });
-  },
-};
+  const body = await req.json();
+  if (!body.url) {
+    return new Response(JSON.stringify({ error: "Missing 'url' in body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  try {
+    const report2 = await analyzePage(env, body.url);
+    return new Response(JSON.stringify(report2, null, 2), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ 
+      error: "Analysis failed", 
+      message: err instanceof Error ? err.message : String(err) 
+    }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
 
 async function analyzePage(env: Env, targetUrl: string): Promise<BugReport> {
   const browser = await puppeteer.launch(env.BROWSER);
