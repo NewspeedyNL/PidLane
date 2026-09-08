@@ -874,6 +874,67 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Twee wachters die net niet ver genoeg reikten — 08-09-2026 (#142)
+
+#142 kwam binnen als een CodeQL-samenvatting van buiten: elf bevindingen,
+waarvan zes "CRITICAL, fix now". Nagemeten in de bron bleven er twee over die
+werkelijk iets waren, en die twee hadden dezelfde vorm — en dát is het punt
+van dit kopje, niet de fixes zelf.
+
+**Beide keren stónd de wachter er al.** Dat is precies waarom ze bleven staan.
+
+*Airtable-formules.* Op vier plekken ging een tekst als letterlijke waarde een
+`filterByFormula` in, geëscaped met `.replace(/'/g, "\\'")`. Die vervanging is
+globaal, dus de bekende "alleen het eerste voorkomen"-fout was het niet — daar
+had ik bij de eerste lezing dan ook op gekeken en hem goedgekeurd. Het gat zat
+een laag dieper: de **backslash zelf** werd niet ontsnapt. Bij invoer `a\` plus
+een quote maakt de oude regel er `a\\'` van, en in de formule is `\\` een
+ontsnapte backslash met daarna een quote die de string alsnog sluit. Alles wat
+er dan volgt staat als formule-syntax in de vraag aan Airtable. Schrijven kan
+een formule niet, maar filteren wel — en daarmee is het een orakel dat per
+verzoek één ja/nee over een afgeschermd veld prijsgeeft, `PassHash` incluis.
+
+*De opnametabel van de expert.* `_recRowsHtml()` in `pidlane-remote.js` zette
+`esc()` netjes op `r.name` en `r.unit`, maar de vier cijferkolommen gingen ruw
+de `innerHTML` in, met alleen een null-controle ervoor. Die rijen komen van de
+andere kant van de remote-sessie. Een peer die in plaats van een meetwaarde een
+stukje markup stuurt, schreef dat rechtstreeks in het venster van de expert.
+
+**De les zit in wat de eerste beoordeling wél en niet zag.** Ik heb #142 eerst
+per punt afgelopen en de Airtable-bevinding afgedaan als "deels reëel,
+medium-laag: de replace is wél globaal". Dat klopte, en het was toch het
+verkeerde antwoord — ik had de bevinding getoetst aan de fout die ik verwáchtte
+(niet-globale replace) in plaats van aan de vraag die ertoe doet: *gaat de
+string ergens open?* Pas bij het bouwen van de test kwam die vraag boven, en
+toen viel het gat in één keer om. Een externe scanner die de goede plek
+aanwijst met de verkeerde reden erbij, is nog steeds de goede plek.
+
+Dat is meteen de reden dat de toetsen hier niet kijken of er geëscaped is maar
+of de string dichtgaat. `test-formule-escape.js` leest een stringliteral zoals
+een formule-parser dat doet; `test-adminbron.js` deel 11 vergelijkt het
+**syntaxskelet** van de uitgaande formule met dat van een onschuldige zoekterm
+— lukt het een zoekterm om ook maar één teken syntax toe te voegen, dan valt
+hij om. Bij de eerste opzet had ik daar een zwakkere controle staan die de
+oude, kapotte regel gewoon goedkeurde; dat bleek pas door de tegenproef met de
+hand te draaien, vóór de mutaties in `plmutate.sh` stonden. Vier mutaties
+houden het nu vast.
+
+**Wat er níét gerepareerd is, en waarom.** De negen andere punten uit #142
+staan beoordeeld in de issue zelf. Twee ervan zijn het noemen waard omdat de
+conclusie tegen de scan in gaat: de sleutel in `localStorage` is een bewuste
+afweging (de standaardmodus is proxy, en `sessionStorage` botst met het
+herladen van de Android-WebView), en de "stack trace exposure" zit uitsluitend
+in `test-*.js`-harnassen — `worker.js` geeft naar buiten alleen `error.message`.
+Het pad-traversalpunt in `plbrowser.js` is echt maar draagt geen risico: die
+server bindt op `127.0.0.1`, draait alleen tijdens een testrun en heeft als
+enige client de Chromium die het script zelf start.
+
+Los daarvan gevonden en met opzet laten staan: `esc(r.name)` toont bij een
+ontbrekende naam nog steeds het woord "undefined" in de naamkolom. Dat is een
+weergavenetheid in een tekstkolom, geen injectiepad, en hoort dus niet in
+dezelfde wijziging. Vastgelegd in `test-remote-tabel.js` deel 6 zodat het niet
+zoekraakt.
+
 ### Twee schermfoto's, dertien vensters, drie echte gaten — 08-09-2026 (#134, #135)
 
 #134 ("Rapporten", uit het ☰-menu) en #135 (de deur "Wat is er met mijn auto?")
