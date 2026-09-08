@@ -439,9 +439,11 @@ solo-project. Als er ooit echt SQL nodig is: **Cloudflare D1**, niet MariaDB.
 | Logs | `appdRasY8ZVJCMkPJ` |
 
 Tabellen: Referentie `tblkfxKcjR6gf0Ahe`, Sessies `tblwbyWN1L6AKwgoy`,
-en in de Config-base `Users`, `Klanten` en `TokenCodes`. `TokenLog`
-(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026) staat er ook, maar er schrijft
-niets in — zie het kasboek-kader in §8 en issue #83.
+en in de Config-base `Users`, `Klanten`, `TokenCodes` en `TokenLog`
+(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026). Die laatste stond hier tot
+08-09-2026 als "staat er wel, maar er schrijft niets in"; sinds #83 schrijft
+`tegoedLog()` er bij elke saldomutatie een regel in — zie het kasboek-kader
+in §8.
 
 **Twee soorten accounts, bewust gescheiden.** `Users` zijn logins op
 gebruikersnaam voor **personeel** — de beheerder, een monteur, de noodingang.
@@ -651,30 +653,66 @@ het dat wél doen, dan betaalt de klant dubbel.
 voor de echte afboeking. Wijzig je er één, pas de ander aan — of zet de tarieven
 via Worker-variabelen zodat alleen de schatting nog in de app staat.
 
-### Kasboek — TokenLog: ONTWORPEN, NIET GEBOUWD
+### Kasboek — TokenLog
 
-**Herzien op 02-09-2026 (#83).** Hier stond een volledige beschrijving van een
-kasboek: tabel `TokenLog`, negen velden, vier bronnen, twee regels die
-vastliggen, en de zin "geschreven door `tegoedLog()` in `worker.js`". Die
-functie bestaat niet, en blijkens `git log -S tegoedLog` heeft ze nooit in dit
-bestand gestaan. Er wordt bij een saldomutatie nergens iets weggeschreven.
+**Gebouwd op 08-09-2026 (#83), en deze alinea staat nu terecht in de
+tegenwoordige tijd.** Elke mutatie op een tokensaldo krijgt een regel in
+`TokenLog` (Config-base), geschreven door `tegoedLog()` in `worker.js`. Vier
+bronnen, zes aanroepen: `ai-call` (afgeboekt én mislukt), `code-ingewisseld`
+(bijgeboekt én afgestempeld-maar-niet-bijgeboekt), `proeftegoed` en
+`admin-mutatie` (bijboeken en zetten).
 
-De tekst is bewaard in de geschiedenis en het ontwerp staat als issue #83; het
-staat hier niet meer als beschrijving, want dat is precies wat het onzichtbaar
-hield: wie §8 las, kruiste dit punt af.
+Velden: `Moment`, `Klant`, `Soort`, `Credits` (negatief bij afboeken),
+`SaldoNa`, `TokensIn`, `TokensUit`, `Model`, `Details`.
 
-Waarom het er hoort te komen: op 31-07-2026 verdwenen er tokens zonder
+**Drie regels die vastliggen**, en die alle drie in `test-kasboek.js` een
+tegenproef hebben:
+
+1. **Het kasboek is administratie, geen bron van waarheid.** Het saldo staat in
+   `Klanten.Saldo`. Een mislukte logregel mag een call daarom nooit laten
+   stranden: alles staat in een `try` en het wegschrijven gaat via
+   `ctx.waitUntil`. Die `ctx` had geen van de vier handlers — dat was het eerste
+   wat je tegenkwam, en het is nu doorgegeven vanuit `worker_default.fetch`.
+2. **Een mislukte mutatie krijgt óók een regel**, met `Credits: 0` en een
+   `Details` die zegt wat er misging. Dat is het geval waarvoor dit boek
+   bestaat: AI verbruikt (of een code afgestempeld) terwijl het saldo níét
+   meebewoog. Zonder die regel is het kasboek juist blind voor de situatie die
+   hem zijn bestaansrecht geeft.
+3. **`Credits` is wat er wérkelijk af ging, niet wat de call kostte.** Staat er
+   3 op de teller en kost de analyse er 9, dan kapt het saldo af op 0 en gaat er
+   3 af; het verschil staat in `Details`. Zou er -9 staan, dan telt de kolom
+   niet meer op tegen `SaldoNa` en is de eerste vraag die je het boek ooit stelt
+   meteen fout beantwoord.
+
+Het proeftegoed wijkt bewust af: een tweede onboarding kent niets toe en levert
+dus géén regel op. Bij de AI-call en de activatiecode is er iets verbruikt
+terwijl het saldo stil bleef staan — dáár valt iets recht te zetten. Bij het
+toekennen is de patch zelf de mutatie: lukt hij niet, dan is er niets gebeurd.
+
+**Te lezen zonder Airtable open te doen.** `ADMIN_BRONNEN.kasboek` zet de tabel
+op de beheerpagina onder Tabellen, **alleen-lezen** — en dat is geen netheid.
+Een boek dat je vanaf een pagina kunt bijstellen of waar je een regel uit kunt
+halen, bewijst alleen nog wat erin staat, en dan is de enige vraag die je eraan
+stelt niet meer te beantwoorden.
+
+**Waarom het er moest komen.** Op 31-07-2026 verdwenen er tokens zonder
 analyses. Oorzaak bleek `testApiKey()`, die bij élke app-start een echte call
 deed. Dat was alleen te achterhalen door de code te lezen — met een kasboek was
-het één blik geweest. Die aanleiding klopt nog steeds, en zolang er geen kasboek
-is blijft een verdwenen token een leesklus.
+het één blik geweest. Sindsdien raken er vijf schrijvers aan het saldo, en drie
+daarvan hebben een foutpad waarin de mutatie mislukt terwijl de verbruikte kant
+doorgaat. Precies die gevallen waren onzichtbaar.
 
-**De les is niet de ontbrekende functie maar de vorm.** Documentatie die een
-ontwerp in de tegenwoordige tijd beschrijft, leest als een beschrijving van wat
-er staat. Twee dingen zijn er zo blijven liggen: dit kasboek, en het uitlezen
-van `X-PidLane-Saldo` (punt 3 hierboven), dat sinds juli beschreven stond en pas
-op 02-09-2026 gebouwd is. Wat nog niet bestaat, staat vanaf nu als issue met een
-vooruitwijzing hier — niet als alinea in de tegenwoordige tijd.
+**De les is niet de ontbrekende functie maar de vorm, en die blijft staan.**
+Hier stond tussen juli en 02-09-2026 exact de beschrijving die je hierboven
+leest — negen velden, vier bronnen, een functienaam — terwijl `tegoedLog` nooit
+in `worker.js` had gestaan; `git log -S tegoedLog` gaf geen enkele commit. Wie
+§8 las, kruiste dit punt af. Twee dingen zijn er zo blijven liggen: dit kasboek,
+en het uitlezen van `X-PidLane-Saldo` (punt 3 hierboven), dat sinds juli
+beschreven stond en pas op 02-09-2026 gebouwd is. **Wat nog niet bestaat, staat
+als issue met een vooruitwijzing hier — niet als alinea in de tegenwoordige
+tijd.** Dat het bovenstaande er nu weer in staat, is alleen goed omdat
+`test-kasboek.js` het waar houdt: acht mutaties in `plmutate.sh` maken deze
+alinea rood zodra ze niet meer klopt.
 
 **Achtergrondcalls kosten geld.** Sinds de Worker afrekent is élke call naar
 `/v1/messages` billable, ook calls die nooit langs `PLCredits.preflight` gaan

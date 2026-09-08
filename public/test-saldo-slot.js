@@ -205,11 +205,18 @@ function maakHarnas() {
       /REMOTE_SESSION-binding/.test(foutmelding), 'kreeg: ' + foutmelding);
   }
 
-  // ── 3. Bronscan: alle drie de Saldo-schrijvers zitten in het slot ──
+  // ── 3. Bronscan: deze drie Saldo-schrijvers zitten in het slot ──
+  // De twee andere schrijvers — handleAdminKlantenPost met "bijboeken" (#82)
+  // en "update" (#93) — hebben hun eigen dekking in test-bijboeken.js, waar de
+  // vólgorde rond het slot draaiend getoetst wordt in plaats van in de bron.
+  //
+  // De derde parameter is ctx, en die staat er sinds #83: het kasboek schrijft
+  // zijn regel via ctx.waitUntil weg. Verdwijnt hij weer uit de signatuur, dan
+  // valt deze scan om — en dat is precies de bedoeling van een anker.
   const FUNCTIES = [
-    ['handleMessages', 'async function handleMessages(request, env) {', '__name(handleMessages, "handleMessages");'],
-    ['handleCreditsRedeem', 'async function handleCreditsRedeem(request, env) {', '__name(handleCreditsRedeem, "handleCreditsRedeem");'],
-    ['handleKlantOnboarding', 'async function handleKlantOnboarding(request, env) {', '__name(handleKlantOnboarding, "handleKlantOnboarding");']
+    ['handleMessages', 'async function handleMessages(request, env, ctx) {', '__name(handleMessages, "handleMessages");'],
+    ['handleCreditsRedeem', 'async function handleCreditsRedeem(request, env, ctx) {', '__name(handleCreditsRedeem, "handleCreditsRedeem");'],
+    ['handleKlantOnboarding', 'async function handleKlantOnboarding(request, env, ctx) {', '__name(handleKlantOnboarding, "handleKlantOnboarding");']
   ];
   for (const [naam, startM, eindM] of FUNCTIES) {
     const i = src.indexOf(startM);

@@ -160,16 +160,42 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   }
 
   // ── 4. alleen-lezen bronnen ─────────────────────────────────────
-  // AppConfig gaat via /api/config, want die route gooit ook de randcache weg.
-  console.log('\n4. AppConfig is hier alleen-lezen');
+  // Twee stuks, elk om zijn eigen reden. AppConfig gaat via /api/config, want
+  // die route gooit ook de randcache weg. Het kasboek (#83) is alleen-lezen
+  // omdat het bestaat om na te kunnen zoeken waar tokens gebleven zijn: een
+  // boek dat je vanaf een pagina kunt bijstellen bewijst alleen nog wat erin
+  // staat. Beide grendels zitten in dezelfde `schrijven: false`, dus beide
+  // horen hier getoetst — anders dekt deze toets straks de helft.
+  console.log('\n4. AppConfig en het kasboek zijn hier alleen-lezen');
   {
-    const t = bouw();
-    const r = await t.post({ bron: 'config', actie: 'wijzig', id: 'rec0123456789abcd', velden: { Value: 'x' } });
-    toets('wijzigen wordt geweigerd', r.status === 403 && r.body.ok === false, 'status ' + r.status);
-    toets('en er ging niets naar Airtable', schrijf(t.staat.verzoeken).length === 0);
-    const l = bouw({ antwoorden: [okAntwoord([{ id: 'rec1', fields: { Key: 'banner_active' } }])] });
-    const rl = await l.get('bron=config');
-    toets('lezen mag wel', rl.body.ok === true && rl.body.schrijven === false);
+    for (const geval of [
+      { bron: 'config', veld: 'Value', rij: { Key: 'banner_active' } },
+      { bron: 'kasboek', veld: 'Credits', rij: { Klant: 'a@b.nl', Soort: 'ai-call', Credits: -6 } }
+    ]) {
+      const t = bouw();
+      const r = await t.post({ bron: geval.bron, actie: 'wijzig', id: 'rec0123456789abcd', velden: { [geval.veld]: 'x' } });
+      toets(geval.bron + ': wijzigen wordt geweigerd', r.status === 403 && r.body.ok === false, 'status ' + r.status);
+      toets(geval.bron + ': en er ging niets naar Airtable', schrijf(t.staat.verzoeken).length === 0);
+
+      const w = bouw();
+      const rw = await w.post({ bron: geval.bron, actie: 'wis', id: 'rec0123456789abcd' });
+      toets(geval.bron + ': wissen ook niet', rw.body.ok === false && schrijf(w.staat.verzoeken).length === 0,
+        'status ' + rw.status + ' — een regel die je kunt weghalen maakt het boek waardeloos');
+
+      const l = bouw({ antwoorden: [okAntwoord([{ id: 'rec1', fields: geval.rij }])] });
+      const rl = await l.get('bron=' + geval.bron);
+      toets(geval.bron + ': lezen mag wel', rl.body.ok === true && rl.body.schrijven === false,
+        JSON.stringify(rl.body).slice(0, 120));
+    }
+    // En het kasboek moet wél de TokenLog-tabel lezen. Zonder deze toets zou
+    // een verwisselde tableKey een lege of totaal andere tabel opleveren en
+    // toch groen blijven staan: "leest niets" ziet er hetzelfde uit als "er is
+    // niets gebeurd", en dat is precies de verwarring die #83 opheft.
+    const k = bouw({ antwoorden: [okAntwoord([])] });
+    await k.get('bron=kasboek');
+    toets('het kasboek leest de TokenLog-tabel',
+      (k.staat.verzoeken[0] || {}).url && k.staat.verzoeken[0].url.indexOf('tbl_AIRTABLE_TOKENLOG_TABLE') >= 0,
+      (k.staat.verzoeken[0] || {}).url);
   }
 
   // ── 5. wissen ───────────────────────────────────────────────────

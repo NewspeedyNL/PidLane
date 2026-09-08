@@ -11,6 +11,49 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08b (CET) — HET KASBOEK BESTAAT NU
+                                ECHT
+
+       • 📒 ELKE TOKENMUTATIE LAAT EEN SPOOR NA. Tot nu toe
+         werd er bij een saldowijziging nergens iets
+         weggeschreven (#83). Verdween er tegoed, dan was de
+         enige weg: code lezen — precies wat het op
+         31-07-2026 al een keer kostte, toen testApiKey() bij
+         elke app-start een echte call deed. tegoedLog()
+         schrijft nu bij elke mutatie een regel in TokenLog:
+         moment, klant, soort, credits, saldo erna, het echte
+         tokenverbruik en het model. Vier bronnen: de
+         AI-afboeking, een ingewisselde code, het
+         proeftegoed en een mutatie door de beheerder.
+
+       • ⚠️ OOK — JUIST — ALS HET MISGING. Mislukt de
+         afboeking terwijl de AI al gedraaid heeft, dan komt
+         er een regel met Credits 0 en de reden erbij. Dat is
+         het geval waarvoor dit boek bestaat: verbruikt
+         zonder dat er iets af ging. Hetzelfde geldt voor een
+         code die is afgestempeld maar niet bijgeboekt.
+
+       • 🧾 EN CREDITS IS WAT ER ÉCHT AF GING. Staat er 3 op
+         de teller en kost de analyse er 9, dan gaat er 3 af
+         en staat dat er ook zo in, met het verschil in de
+         details. Anders telt de kolom niet meer op tegen het
+         saldo erna.
+
+       • 👀 TE LEZEN IN BEHEER. Het kasboek staat in
+         beheer.html onder Tabellen, alleen-lezen — een boek
+         dat je kunt bijstellen bewijst alleen nog wat erin
+         staat. De oefenstand toont vijf regels, met de
+         mislukte afboeking erbij.
+
+       • 🛟 HET MAG NOOIT IETS BREKEN. Valt Airtable weg
+         terwijl er net een analyse liep, dan krijgt de klant
+         gewoon zijn antwoord: het schrijven gaat via
+         ctx.waitUntil en alles staat in een try. Het saldo
+         blijft de bron van waarheid; het kasboek is
+         administratie.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-08a (CET) — DE KLOK IN DE NAAM, DE
                                 VOLGORDE IN HET LOGBOEK
                                 EN TWEE UITLEGGEN

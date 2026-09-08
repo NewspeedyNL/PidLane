@@ -160,6 +160,23 @@ MUTATIES=(
 "worker.js@@          const z1 = await fetch(zetUrl, { headers: hdr });\n          if (!z1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
 "admin/admin.html@@saldoWas:huidig,door:beheerderNaam()@@door:beheerderNaam()@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
 "admin/admin.html@@  if (body?.code==='saldo_verschoven') {@@  if (body?.code==='saldo_verschoven_oud') {@@test-bijboeken.js@@admin.html kent de code voor een verschoven saldo niet"
+
+# ── het kasboek TokenLog (08-09-2026, #83) ──
+# Acht fouten die je bij een kasboek écht maakt. De eerste drie gaan over
+# rékenen: wie -kosten boekt in plaats van wat er werkelijk af ging, krijgt een
+# kolom die niet meer optelt tegen SaldoNa — en dat merk je pas als je hem
+# nodig hebt. De vierde is de belangrijkste: een kasboek dat de call meesleurt
+# als Airtable hapert, is erger dan geen kasboek, want dan kost de administratie
+# de klant zijn analyse. De laatste twee bewaken de leeskant: een boek dat je
+# vanaf de beheerpagina kunt bijstellen bewijst alleen nog wat erin staat.
+"worker.js@@credits: -afgeboekt, saldoNa, details: \"analyse afgeboekt\" + tekort@@credits: -kosten, saldoNa, details: \"analyse afgeboekt\" + tekort@@test-kasboek.js@@het kasboek boekt de volle prijs terwijl er minder van het saldo af ging (#83)"
+"worker.js@@credits: 0, saldoNa: saldoVoor,@@credits: -kosten, saldoNa: saldoVoor,@@test-kasboek.js@@een mislukte afboeking wordt geboekt alsof hij gelukt is (#83)"
+"worker.js@@if (na !== null) velden.SaldoNa = na;@@velden.SaldoNa = na || 0;@@test-kasboek.js@@een onbekend saldo komt als 0 in het kasboek en leest later als een leeg account (#83)"
+"worker.js@@    } catch (e) {\n      try {\n        console.error(\"[kasboek] regel niet weggeschreven :: \" + String(e && e.message || e));\n      } catch (_) { /* stil: melden mag de stroom nooit breken */ }\n    }\n  })();@@    } catch (e) {\n      throw e;\n    }\n  })();@@test-kasboek.js@@een kapot kasboek sleurt de analyse mee: administratie kost de klant zijn antwoord (#83)"
+"worker.js@@if (uit && uit.kasboek) await tegoedLog(env, ctx, uit.kasboek);@@@@test-kasboek.js@@de AI-afboeking laat geen spoor meer na — precies de toestand van vóór #83"
+"worker.js@@if (res && res.body && res.body.ok && Number(res.body.toegekend) > 0)@@if (res && res.body && res.body.ok && Number(res.body.toegekend) >= 0)@@test-kasboek.js@@elke tweede onboarding schrijft een lege regel van 0 credits (#83)"
+"worker.js@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: false,@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: true,@@test-adminbron.js@@het kasboek is vanaf de beheerpagina te bewerken (#83)"
+"worker.js@@tableKey: \"AIRTABLE_TOKENLOG_TABLE\", sorteer: \"Moment\",@@tableKey: \"AIRTABLE_KLANTEN_TABLE\", sorteer: \"Moment\",@@test-adminbron.js@@de kasboekbron leest de Klanten-tabel; \"leeg\" ziet er hetzelfde uit als \"niets gebeurd\" (#83)"
 "worker.js@@if (a.length !== b.length) return false;@@if (a.length !== b.length) return true;@@test-token.js@@safeEqual keurt ongelijke lengtes goed"
 "worker.js@@if (!safeEqual(sig, await hmacSign(env.SESSION_SECRET, payload))) return null;\\n    const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@test-token.js@@verifyToken controleert de handtekening niet meer"
 "worker.js@@if (!p.exp || Math.floor(Date.now() / 1e3) >= p.exp) return null;@@@@test-token.js@@een verlopen sessietoken blijft geldig"

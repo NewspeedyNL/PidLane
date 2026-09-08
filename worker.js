@@ -50,6 +50,8 @@ var DEFAULTS = {
   // prepaid activatiecodes voor de tegoedmodule (Config-base)
   AIRTABLE_KLANTEN_TABLE: "Klanten",
   // consumentenaccounts met tokensaldo (Config-base) — nog niet in gebruik
+  AIRTABLE_TOKENLOG_TABLE: "TokenLog",
+  // kasboek: één regel per saldomutatie (Config-base) — zie tegoedLog()
   AIRTABLE_VL_BASE: "apphsUwG4WAeWjEwH",
   AIRTABLE_VL_TABLE: "tblwbyWN1L6AKwgoy",
   AIRTABLE_REF_TABLE: "tblkfxKcjR6gf0Ahe"
@@ -577,7 +579,79 @@ function tegoedKosten(usage, tarief) {
   return Math.max(tarief.min, Math.ceil(ruw));
 }
 __name(tegoedKosten, "tegoedKosten");
-async function handleMessages(request, env) {
+// ── Kasboek: één regel per saldomutatie ─────────────────────────────
+// WAAROM DIT ER IS (#83). Op 31-07-2026 verdwenen er tokens zonder analyses.
+// De oorzaak — testApiKey(), die bij élke app-start een echte call deed — was
+// alleen te achterhalen door de code te lezen. Met een kasboek was het één
+// blik geweest. Sindsdien raken er vijf schrijvers aan het saldo, en drie
+// daarvan hebben een foutpad waarin de mutatie mislukt terwijl de verbruikte
+// kant wél doorgaat. Juist die gevallen waren onzichtbaar.
+//
+// HET KASBOEK IS ADMINISTRATIE, GEEN BRON VAN WAARHEID. Het saldo staat in
+// Klanten.Saldo en nergens anders; deze tabel legt alleen vast wat eraan
+// gebeurd is. Daaruit volgt de belangrijkste eigenschap van deze functie: ze
+// mag nooit iets laten stranden. Alles staat in een try, en het wegschrijven
+// gaat via ctx.waitUntil zodat het antwoord niet op Airtable wacht. Ontbreekt
+// ctx, dan wordt er wél gewacht — een fetch die na het antwoord nog loopt
+// wordt door de runtime afgekapt, en een kasboekregel die "misschien" geschreven
+// is, is erger dan een die traag is.
+//
+// EEN MISLUKTE MUTATIE KRIJGT ÓÓK EEN REGEL, met Credits 0 en een Details die
+// zegt wat er niet gelukt is. Dat is precies het geval waarin er AI verbruikt
+// is (of een code afgestempeld) zonder dat het saldo meebewoog — het duurste
+// geval om later niet terug te kunnen vinden.
+//
+// NIET STIL BIJ EEN MISLUKKING. Een kasboek dat zwijgend niets wegschrijft is
+// een kasboek dat liegt: je leest er later "geen mutaties" in waar er wel
+// degelijk iets gebeurd is. Vandaar de console.error in beide takken.
+async function tegoedLog(env, ctx, regel) {
+  const job = (async () => {
+    try {
+      if (!env || !env.AIRTABLE_TOKEN) return;
+      const r = regel || {};
+      const getal = (v) => Number.isFinite(Number(v)) ? Math.round(Number(v)) : null;
+      const velden = {
+        Moment: new Date().toISOString(),
+        Klant: String(r.klant || "onbekend").trim().toLowerCase().slice(0, 120),
+        Soort: String(r.soort || "onbekend").slice(0, 40),
+        Credits: getal(r.credits) || 0,
+        TokensIn: getal(r.tokensIn) || 0,
+        TokensUit: getal(r.tokensUit) || 0,
+        Model: String(r.model || "").slice(0, 80),
+        Details: String(r.details || "").slice(0, 500)
+      };
+      // SaldoNa alleen als het bekend is. Een 0 die "onbekend" betekent leest
+      // later als een leeg account, en dat is de verkeerde conclusie.
+      const na = getal(r.saldoNa);
+      if (na !== null) velden.SaldoNa = na;
+
+      const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
+      const table = cfg(env, "AIRTABLE_TOKENLOG_TABLE");
+      const resp = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ records: [{ fields: velden }], typecast: true })
+      });
+      if (!resp.ok) {
+        const t = await resp.text().catch(() => "");
+        try {
+          console.error("[kasboek] regel niet weggeschreven (" + velden.Soort + ", " + velden.Klant + ") :: " + resp.status + " " + t.slice(0, 200));
+        } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      }
+    } catch (e) {
+      try {
+        console.error("[kasboek] regel niet weggeschreven :: " + String(e && e.message || e));
+      } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+    }
+  })();
+  if (ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil(job);
+    return;
+  }
+  await job;
+}
+__name(tegoedLog, "tegoedLog");
+async function handleMessages(request, env, ctx) {
   const session = await auth(request, env);
   if (!session) return json({ error: "unauthorized" }, 401);
   if (session.r === "demo" || session.u === "legacy")
@@ -690,11 +764,16 @@ async function handleMessages(request, env) {
         // Mislukt de schrijfactie, dan gaat het antwoord alsnog naar de
         // klant: de call is al betaald bij Anthropic en achterhouden helpt
         // niemand. Het gemis gaat naar de logs.
+        let kasboek = null;
         if (r.ok) {
           let kosten = tarief.min;
+          let usage = null;
+          let model = "";
           try {
             const d = JSON.parse(text);
-            kosten = tegoedKosten(d && d.usage, tarief);
+            usage = d && d.usage || null;
+            model = d && typeof d.model === "string" ? d.model : "";
+            kosten = tegoedKosten(usage, tarief);
           } catch (e) {
             // Antwoord van Anthropic was geen geldige JSON ondanks r.ok — dan
             // valt kosten terug op het minimumtarief. Dat kan de klant te
@@ -704,9 +783,23 @@ async function handleMessages(request, env) {
             try { console.error("[tegoed] verbruik niet af te lezen voor " + session.u + " :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
           }
           const saldoNa = Math.max(0, saldoVoor - kosten);
+          // Wat er WERKELIJK af ging, en dat is niet altijd `kosten`: staat er
+          // 3 op de teller en kost de call er 10, dan kapt saldoNa af op 0 en
+          // gaat er 3 af. Zou het kasboek hier -10 noteren, dan telt de kolom
+          // niet meer op tegen SaldoNa en is de eerste vraag die je er ooit
+          // aan stelt meteen fout beantwoord.
+          const afgeboekt = saldoVoor - saldoNa;
+          const tekort = afgeboekt < kosten
+            ? ` — kosten waren ${kosten}, saldo stond op ${saldoVoor} en is afgekapt op 0`
+            : "";
+          const meting = {
+            klant: session.u, soort: "ai-call", model,
+            tokensIn: usage && usage.input_tokens, tokensUit: usage && usage.output_tokens
+          };
           try {
             await klantPatch(env, klantRec.id, { Saldo: saldoNa });
             kop["X-PidLane-Saldo"] = String(saldoNa);
+            kasboek = { ...meting, credits: -afgeboekt, saldoNa, details: "analyse afgeboekt" + tekort };
           } catch (e) {
             try {
               console.error("[tegoed] afboeken mislukt voor " + session.u + " (" + kosten + " credits) :: " + String(e && e.message || e));
@@ -714,9 +807,16 @@ async function handleMessages(request, env) {
               /* stil: melden mag de stroom nooit breken */
             }
             kop["X-PidLane-Saldo"] = String(saldoVoor);
+            // Credits 0 en niet -kosten: er is niets van het saldo af gegaan.
+            // Dit is de regel waar het kasboek voor gebouwd is — AI verbruikt,
+            // saldo onaangeroerd — dus de reden gaat mee.
+            kasboek = {
+              ...meting, credits: 0, saldoNa: saldoVoor,
+              details: `afboeken van ${kosten} credits MISLUKT, AI wel verbruikt :: ` + String(e && e.message || e)
+            };
           }
         }
-        return { raw: new Response(text, { status: r.status, headers: kop }) };
+        return { raw: new Response(text, { status: r.status, headers: kop }), kasboek };
       });
     } catch (e) {
       // metSaldoSlot zelf gooide: het slot kon niet aangevraagd worden
@@ -741,6 +841,11 @@ async function handleMessages(request, env) {
         error: { message: "Er loopt al een analyse voor dit account. Wacht tot die klaar is." }
       }, 409);
     const uit = uitkomst.result;
+    // Het kasboek gaat er BUITEN het slot in. Het is administratie, dus het
+    // mag de volgende aanvraag van deze klant niet laten wachten — en een
+    // Airtable die traag is mag het slot niet langer dichthouden dan de
+    // afboeking zelf nodig had.
+    if (uit && uit.kasboek) await tegoedLog(env, ctx, uit.kasboek);
     return uit.raw || json(uit.body, uit.status);
   }
 
@@ -1354,12 +1459,14 @@ __name(saldoStub, "saldoStub");
 // Voert fn() uit terwijl het Saldo-slot van deze klant vast staat, en geeft
 // het los in een finally — ook als fn() gooit. fn() hoort zelf een VERSE
 // klantZoek() te doen zodra hij binnen is: dat is de eigenlijke
-// racebeveiliging, niet het slot op zich. Vier plekken gebruiken dit, en dat
-// zijn alle plekken die Saldo lezen en terugschrijven: handleMessages
-// (AI-afboeking), handleCreditsRedeem (activatiecode), handleKlantOnboarding
-// (proeftegoed) en handleAdminKlantenPost actie "bijboeken". Die laatste ging
-// er tot 02-09-2026 buitenom (#82); staat er ooit een vijfde schrijver bij,
-// dan hoort hij hier ook door.
+// racebeveiliging, niet het slot op zich. VIJF plekken gebruiken dit, en dat
+// zijn alle plekken die Saldo schrijven: handleMessages (AI-afboeking),
+// handleCreditsRedeem (activatiecode), handleKlantOnboarding (proeftegoed) en
+// handleAdminKlantenPost met de acties "bijboeken" en "update". Die laatste
+// twee gingen er buitenom tot 02-09-2026 (#82) respectievelijk 03-09-2026
+// (#93); komt er ooit een zesde schrijver bij, dan hoort hij hier ook door —
+// én door tegoedLog(), want elke mutatie hoort een kasboekregel te krijgen
+// (#83).
 //
 // Lukt het niet om het slot zelf aan te vragen (REMOTE_SESSION ontbreekt, de
 // DO is onbereikbaar), dan gooit dit door in plaats van fn() zonder
@@ -1957,7 +2064,7 @@ var RemoteSessionDO = class {
 // compare-and-set: we schrijven eerst een unieke stempel weg, lezen daarna
 // terug, en boeken ALLEEN bij wanneer onze eigen stempel er nog staat. Bij een
 // race wint precies één verzoek; de ander ziet een vreemde stempel en stopt.
-async function handleCreditsRedeem(request, env) {
+async function handleCreditsRedeem(request, env, ctx) {
   if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
 
   // Brute-force-rem: een code is kort, dus raden moet duur zijn.
@@ -2122,12 +2229,24 @@ async function handleCreditsRedeem(request, env) {
       try {
         console.error("[credits] code " + code + " afgestempeld maar niet bijgeboekt voor " + door + " :: " + String(e && e.message || e));
       } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      // Dezelfde regel als bij een mislukte AI-afboeking, gespiegeld: de code
+      // is verbruikt maar het saldo bewoog niet. Credits 0, want er is niets
+      // bijgeschreven — de waarde van de code staat in Details, zodat je later
+      // ziet hoeveel er rechtgezet moet worden.
+      await tegoedLog(env, ctx, {
+        klant: door, soort: "code-ingewisseld", credits: 0,
+        details: `code ${code} (${credits} credits) afgestempeld maar bijboeken MISLUKT :: ` + String(e && e.message || e)
+      });
       return json({
         ok: false,
         error: "Code is geldig, maar bijboeken op je account is mislukt. Neem contact op — de code is nu verbruikt."
       }, 500);
     }
 
+    await tegoedLog(env, ctx, {
+      klant: door, soort: "code-ingewisseld", credits, saldoNa: saldo,
+      details: `code ${code} ingewisseld`
+    });
     return json({ ok: true, credits, code, saldo });
   } catch (e) {
     return klantFout(e, "Onverwachte fout bij inwisselen.");
@@ -2800,7 +2919,7 @@ async function handleAdminKlantenGet(request, env) {
 __name(handleAdminKlantenGet, "handleAdminKlantenGet");
 
 // ── POST /admin/klanten  { actie, ... } ─────────────────────────────
-async function handleAdminKlantenPost(request, env) {
+async function handleAdminKlantenPost(request, env, ctx) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
   if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
 
@@ -2959,6 +3078,15 @@ async function handleAdminKlantenPost(request, env) {
       const vast = await klantAudit(env, id,
         `saldo ${d > 0 ? "+" : ""}${d} (${huidig} → ${nieuw})` + (b.reden ? ` — ${String(b.reden).slice(0, 120)}` : ""),
         b.door);
+      // klantAudit schrijft een leesregel bij de klant; het kasboek schrijft
+      // dezelfde mutatie als tel-bare rij naast die van de AI-call en de
+      // activatiecode. Twee bestemmingen, twee vragen: "wat is er met dit
+      // account gebeurd" tegenover "waar zijn de tokens gebleven".
+      await tegoedLog(env, ctx, {
+        klant: email, soort: "admin-mutatie", credits: nieuw - huidig, saldoNa: nieuw,
+        details: `bijgeboekt door ${String(b.door || "onbekend").slice(0, 40)}` +
+          (b.reden ? ` — ${String(b.reden).slice(0, 120)}` : "")
+      });
       return json({ ok: true, van: huidig, naar: nieuw, vastgelegd: vast });
     }
 
@@ -3082,6 +3210,14 @@ async function handleAdminKlantenPost(request, env) {
       const delen = Object.keys(f).map((k) => `${k}=${f[k]}`);
       delen.push(`Saldo gezet (${zet.huidig} \u2192 ${zet.nieuw})`);
       const vastZet = await klantAudit(env, id, delen.join(", "), b.door);
+      // Ook als het getal niet beweegt: hier is bewust op een eindbedrag gezet,
+      // en d\u00e1t een beheerder aan dit saldo zat is precies wat je later terug
+      // wilt kunnen vinden. Anders dan bij het proeftegoed is een regel met
+      // Credits 0 hier dus geen ruis maar de mutatie zelf.
+      await tegoedLog(env, ctx, {
+        klant: zetEmail, soort: "admin-mutatie", credits: zet.nieuw - zet.huidig, saldoNa: zet.nieuw,
+        details: `saldo gezet op ${zet.nieuw} (was ${zet.huidig}) door ${String(b.door || "onbekend").slice(0, 40)}`
+      });
       return json({ ok: true, van: zet.huidig, naar: zet.nieuw, vastgelegd: vastZet });
     }
 
@@ -3339,6 +3475,17 @@ var ADMIN_BRONNEN = {
     zoekvelden: ["Code", "Batch", "GebruiktDoor"],
     schrijven: true, beschermd: [], geheim: []
   },
+  kasboek: {
+    naam: "Kasboek (tokenmutaties)", baseKey: "AIRTABLE_CONFIG_BASE",
+    tableKey: "AIRTABLE_TOKENLOG_TABLE", sorteer: "Moment",
+    zoekvelden: ["Klant", "Soort", "Model", "Details"],
+    // BEWUST NIET SCHRIJFBAAR, en dat is geen netheid. Het kasboek bestaat om
+    // één vraag te beantwoorden: waar zijn die tokens gebleven (#83). Een
+    // tabel waarin je met de hand een regel kunt bijstellen of weghalen kan
+    // die vraag per definitie niet meer beantwoorden — dan bewijst hij alleen
+    // nog wat er in staat. Regels komen uitsluitend uit tegoedLog().
+    schrijven: false, beschermd: [], geheim: []
+  },
   users: {
     naam: "Gebruikers", baseKey: "AIRTABLE_CONFIG_BASE",
     tableKey: "AIRTABLE_USERS_TABLE", sorteer: "",
@@ -3587,7 +3734,7 @@ __name(handleAdminTabelPost, "handleAdminTabelPost");
 //     een beloning eraan koppelen maakt haar aanvechtbaar. De vraag staat
 //     daarom in hetzelfde scherm, maar het vinkje is optioneel en het
 //     tegoed komt er hoe dan ook.
-async function handleKlantOnboarding(request, env) {
+async function handleKlantOnboarding(request, env, ctx) {
   const p = await klantAuth(request, env);
   if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
   if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
@@ -3629,7 +3776,23 @@ async function handleKlantOnboarding(request, env) {
     });
     if (uitkomst.bezet)
       return json({ ok: false, error: "Je keuzes worden al vastgelegd. Probeer het over een paar seconden opnieuw." }, 409);
-    return json(uitkomst.result.body, uitkomst.result.status);
+    const res = uitkomst.result;
+    // Alleen als er werkelijk iets is toegekend. Een tweede onboarding van
+    // hetzelfde account raakt het saldo niet — StartTegoedGegeven staat dan al
+    // aan — en hoort dus geen regel op te leveren; anders vult de tabel zich
+    // met mutaties van 0 en wordt juist de kolom die je wilt optellen
+    // onleesbaar.
+    //
+    // Er is hier géén mislukte-mutatieregel zoals bij de AI-call en de
+    // activatiecode. Daar was er iets verbruikt terwijl het saldo stil bleef
+    // staan; hier is het toekennen zelf de mutatie, dus mislukt de patch, dan
+    // is er niets gebeurd en valt er ook niets recht te zetten.
+    if (res && res.body && res.body.ok && Number(res.body.toegekend) > 0)
+      await tegoedLog(env, ctx, {
+        klant: p.u, soort: "proeftegoed", credits: Number(res.body.toegekend),
+        saldoNa: Number(res.body.saldo), details: "welkomsttegoed bij onboarding"
+      });
+    return json(res.body, res.status);
   } catch (e) {
     return klantFout(e, "Vastleggen van je keuzes mislukte.");
   }
@@ -3784,7 +3947,7 @@ var worker_default = {
       if (url.pathname === "/auth/login" && request.method === "POST")
         return lockOrigin(request, await handleLogin(request, env, ctx));
       if (url.pathname === "/v1/messages" && request.method === "POST")
-        return lockOrigin(request, await handleMessages(request, env));
+        return lockOrigin(request, await handleMessages(request, env, ctx));
       if (url.pathname === "/copilot" && request.method === "POST")
         return lockOrigin(request, await handleCopilot(request, env));
       if (url.pathname === "/airtable/log" && request.method === "POST")
@@ -3816,7 +3979,7 @@ var worker_default = {
       if (url.pathname === "/admin/klanten" && request.method === "GET")
         return lockOrigin(request, await handleAdminKlantenGet(request, env));
       if (url.pathname === "/admin/klanten" && request.method === "POST")
-        return lockOrigin(request, await handleAdminKlantenPost(request, env));
+        return lockOrigin(request, await handleAdminKlantenPost(request, env, ctx));
       if (url.pathname === "/admin/codes" && request.method === "GET")
         return lockOrigin(request, await handleAdminCodesGet(request, env));
       if (url.pathname === "/admin/codes" && request.method === "POST")
@@ -3830,7 +3993,7 @@ var worker_default = {
       if (url.pathname === "/klant/login" && request.method === "POST")
         return lockOrigin(request, await handleKlantLogin(request, env, ctx));
       if (url.pathname === "/klant/onboarding" && request.method === "POST")
-        return lockOrigin(request, await handleKlantOnboarding(request, env));
+        return lockOrigin(request, await handleKlantOnboarding(request, env, ctx));
       if (url.pathname === "/klant/mij" && request.method === "GET")
         return lockOrigin(request, await handleKlantMij(request, env));
       if (url.pathname === "/klant/verwijder" && request.method === "POST")
@@ -3844,7 +4007,7 @@ var worker_default = {
       if (url.pathname === "/klant/admin-wachtwoord" && request.method === "POST")
         return lockOrigin(request, await handleKlantAdminWachtwoord(request, env));
       if (url.pathname === "/credits/redeem" && request.method === "POST")
-        return lockOrigin(request, await handleCreditsRedeem(request, env));
+        return lockOrigin(request, await handleCreditsRedeem(request, env, ctx));
       if (url.pathname === "/proxy" && request.method === "GET")
         return lockOrigin(request, await handleProxy(request, env));
       if (url.pathname === "/api/config") {

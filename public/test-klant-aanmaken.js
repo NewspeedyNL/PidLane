@@ -55,6 +55,10 @@ function bouw(opties) {
     klantWachtwoordProbleem: (p) => (String(p).length < 8 ? 'Minimaal 8 tekens.' : ''),
     hashPassword: async (p) => 'HASH(' + String(p).length + ')',
     metSaldoSlot: async (env, adres, fn) => ({ bezet: false, result: await fn() }),
+    // Sinds #83 kent deze handler ook tegoedLog(). "aanmaken" schrijft geen
+    // kasboekregel — het record bestaat op dat moment nog niet — maar de andere
+    // acties in dezelfde functie wel, en zonder deze naam valt de hele slice om.
+    tegoedLog: async () => {},
     fetch: async (url, init) => {
       staat.verzoeken.push({ url: String(url), method: (init && init.method) || 'GET', body: init && init.body });
       if (o.airtableStuk) return { ok: false, status: 422, text: async () => 'INVALID_VALUE_FOR_COLUMN', json: async () => ({}) };
