@@ -167,7 +167,52 @@ console.log('\n4. De kloktijd op het scherm verandert niet mee');
       'zonder die regel is in een log van twee dagen niet te zien waar de nacht zit');
 }
 
-console.log('\n5. Regels zonder bruikbare tijd blijven achteraan staan');
+console.log('\n5. De PID-regels staan op de tijdlijn en niet in de bak eronder');
+{
+  // Gevonden op 08-09-2026 bij het sorteren op epoch. _uitDiagRing() las
+  // `r.ts || r.tijd`, terwijl de diagring zijn kloktijd in `r.t` zet en zijn
+  // epoch in `r.ms`. Die namen zijn elkaar nooit tegengekomen, dus élke
+  // PID-regel kwam zonder tijd binnen — en zonder tijd staat een regel
+  // onderaan, precies waar je hem niet zoekt als je vraagt "wat gebeurde er
+  // rond 14:38:25".
+  const s = laad({
+    bt: [{ ts: klok(D1), t: D1, msg: 'socket open', type: 'ok' },
+         { ts: klok(D4), t: D4, msg: 'socket dood', type: 'err' }],
+    diag: [{ t: klok(D2), ms: D2, tx: '0105', rx: '41055A', gevraagd: ['0105'], gekregen: { '0105': '5A' }, mist: [] },
+           { t: klok(D3), ms: D3, tx: '010C', rx: 'NO DATA', gevraagd: ['010C'], gekregen: {}, mist: ['010C'] }]
+  });
+  const rijen = s.PLLogboek.verzamel();
+  const pid = rijen.filter(function (r) { return r.bron === 'PID'; });
+  eis('de twee PID-regels komen binnen', pid.length === 2, 'kreeg er ' + pid.length);
+  eis('ze dragen hun kloktijd', pid.every(function (r) { return /^\d{2}:\d{2}:\d{2}$/.test(r.t); }),
+      'gekregen: ' + JSON.stringify(pid.map(function (r) { return r.t; })));
+  eis('en hun epoch', pid.every(function (r) { return typeof r.ms === 'number'; }));
+
+  const volgorde = rijen.map(function (r) { return r.bron; }).join(' → ');
+  eis('ze staan tussen de andere bronnen in plaats van erachter',
+      volgorde === 'BT → PID → PID → BT', volgorde);
+
+  // Tegenproef: met de oude veldnaam is er geen tijd, en dan schuift de regel
+  // naar de bak onderaan. Zonder dit weet je niet of blok 5 iets meet.
+  const oud = { ts: undefined, tijd: undefined, t: klok(D2) };
+  eis('de oude veldnaam levert hier wél niets op (tegenproef)',
+      !(oud.ts || oud.tijd) && !!oud.t,
+      'als `ts` hier gevuld is, meet de toets hierboven niets');
+
+  // En een ring zonder epoch (regels van vóór deze ronde) moet er alsnog een
+  // afgeleid krijgen, anders verplaatst de fout alleen.
+  const s2 = laad({ diag: [{ t: klok(D1), tx: 'A', rx: 'a', gevraagd: [], gekregen: {}, mist: [] },
+                           { t: klok(D3), tx: 'B', rx: 'b', gevraagd: [], gekregen: {}, mist: [] }] });
+  const r2 = s2.PLLogboek.verzamel();
+  eis('een ring zonder epoch krijgt er een afgeleid',
+      r2.length === 2 && r2.every(function (r) { return typeof r.ms === 'number'; }),
+      JSON.stringify(r2.map(function (r) { return r.ms; })));
+  eis('en de nacht ertussen wordt herkend',
+      r2.length === 2 && s2.plDatumLokaal(r2[0].ms) !== s2.plDatumLokaal(r2[1].ms),
+      'beide regels vallen op dezelfde dag — dan is de dagsprong niet gezien');
+}
+
+console.log('\n6. Regels zonder bruikbare tijd blijven achteraan staan');
 {
   const s = laad({
     bt: [{ ts: klok(D1), t: D1, msg: 'met tijd', type: 'info' },

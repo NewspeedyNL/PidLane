@@ -109,13 +109,22 @@
       if (r.ms != null) stuk.push(r.ms + ' ms');
       if (r.note) stuk.push(r.note);
       uit.push({
-        t: r.ts || r.tijd || '',
+        // Hier stond `r.ts || r.tijd`, en de diagring heeft geen van beide: hij
+        // zet zijn kloktijd in `r.t`. Die twee namen zijn elkaar nooit
+        // tegengekomen, dus élke PID-regel kwam zonder tijd binnen en belandde
+        // in de bak "geen tijd" onderaan het logboek — niet op de tijdlijn waar
+        // hij hoort, en precies bij de regels waarvoor je dit scherm opent.
+        // Gevonden op 08-09-2026 bij het sorteren op epoch (#140).
+        t: r.t || '',
+        ms: (typeof r.ms === 'number' ? r.ms : null),
         bron: 'PID',
         type: r.fout || r.err ? 'err' : 'info',
         msg: stuk.length ? stuk.join('  ') : JSON.stringify(r).slice(0, 160)
       });
     }
-    return uit;
+    // Regels van vóór de epoch-toevoeging krijgen er hier alsnog een afgeleid:
+    // de ring is chronologisch (push + shift), dus de dagsprong is af te lezen.
+    return _vulEpoch(uit);
   }
 
   function _uitLiveSpiegel() {
