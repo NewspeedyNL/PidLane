@@ -874,6 +874,86 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Waar de AI-rekening werkelijk zit — gemeten 08-09-2026 (na #114)
+
+Vervolg op #114. Toen bleek caching niet te kunnen; de vraag daarna was waar de
+kosten dán zitten. Twee metingen, en de eerste keert het beeld om waar #114 op
+gebouwd was.
+
+**1. De invoer is zes keer kleiner dan aangenomen.** #114 rekende met *"een
+realistische analyse van 8k invoer + 1,5k uitvoer"*. Nagemeten met de échte
+`runQuickAI()` — 20 actieve sensoren, twee DTC's, `plFetch` vervangen om de
+uitgaande body op te vangen:
+
+| deel | tekens | aandeel |
+|---|---:|---:|
+| systeemprompt | 2049 | 43% |
+| vaste opmaakinstructie in de user-prompt | 1481 | 31% |
+| **werkelijke meetdata (sensoren + DTC's)** | **1239** | **26%** |
+| totaal | 4769 | ~1289 tokens |
+
+Geen 8k maar ~1,3k tokens. **Daarmee is de hele invoerkant ongeveer een tiende
+van de rekening**, want de uitvoer staat op `maxTokens` 4000 × `uitvoerFactor`
+0,55 ≈ 2200 tokens: 7,7 credits tegen 0,9 voor de invoer. De uitvoer is ~90%.
+
+Dat zet #114 in verhouding: dat issue mikte op de systeemprompt, ~3,6% van een
+analyse. Maar het zet óók de voor de hand liggende opvolger in verhouding — de
+meetdata snoeien raakt 26% van 10%. **Wat de rekening bepaalt is de lengte van
+het rapport, en dat is een productbesluit, geen technische ingreep.**
+
+Bijvangst: van de user-prompt is 54% vaste opmaakinstructie en 46% data. De
+grootste post in het "snoeien"-hoekje is dus niet de meetdata maar de
+sjabloontekst — en die staat er met reden, want hij dwingt de rapportstructuur af.
+
+**2. De hervraag-lus bij `max_tokens` stuurt de invoer opnieuw.** Kapt een
+rapport af, dan doet `apiFetch()` tot twee vervolgcalls met "ga exact verder", en
+elke call draagt de volledige invoer plus alles wat er al beantwoord is:
+
+| | invoer totaal | factor |
+|---|---:|---:|
+| niet afgekapt | 26.780 tekens | 1,00× |
+| 1× afgekapt | 59.234 | 2,21× |
+| 2× afgekapt | 97.362 | 3,64× |
+
+(gemeten met een prompt van 24.700 tekens, zodat de factor los van de promptmaat
+te lezen is). Elke vervolgcall is een eigen `handleMessages` en dus een eigen
+afboeking binnen het saldo-slot. Bij de werkelijke promptmaat hierboven is dat
+in absolute zin bescheiden — ~2,3 credits per dubbel afgekapte analyse — juist
+omdát de invoer klein is.
+
+**En hier zit de val, want de voor de hand liggende fix is niet gratis.**
+`max_tokens` verhogen lijkt kosteloos: een plafond kost niets zolang het niet
+gehaald wordt, en er wordt op werkelijke uitvoer afgerekend. Maar deze app
+koppelt dat plafond aan haar eigen kostenpreview: `ontleed()` schat de uitvoer
+als `maxTokens × uitvoerFactor`, en dat getal voedt zowel het previewvenster als
+de saldopoort die een analyse blokkeert bij onvoldoende tegoed. Van 4000 naar
+16000 gaan verviervoudigt dus de geschatte kosten en kan klanten buitensluiten
+voor een analyse die in werkelijkheid niets duurder is.
+
+Twee dingen maken dat erger, en ze zijn allebei het opschrijven waard:
+
+- **Afkappen leert de schatter precies het verkeerde.** `uf` wordt bijgesteld
+  met `min(1, uitTok / maxTokens)`. Bij een afgekapt rapport ís `uitTok` gelijk
+  aan `maxTokens`, dus elke afkapping duwt `uf` naar 1,0. Het te lage plafond
+  leert de schatter dat de uitvoer altijd het plafond haalt.
+- **De bijstelling bevriest.** Het gewicht is `min(0,25, 1/(n+2))`. Na honderd
+  calls is dat ~0,01, dus een verhoogd plafond zou honderden analyses lang een
+  te dure schatting geven voordat `uf` meezakt.
+
+De volgorde die daaruit volgt: **eerst de schatting losmaken van het plafond**
+(schatten op waargenomen uitvoer in plaats van op de bovengrens), en pas daarna
+het plafond verhogen. Andersom zet je de saldopoort dicht voor klanten die niets
+verkeerd doen. Niet in deze ronde gebouwd: het raakt `worker.js` en `public/`
+tegelijk, en dat hoort in één push met een eigen tegenproef.
+
+**Hoe vaak het gebeurt, weten we niet.** `PidLaneEvalLog.log()` begint met
+`if(!s) return;` — buiten een actieve veldlabsessie wordt er niets vastgelegd,
+en `vlDerive()` laat `part` en `stop` sowieso uit de afgeleide vallen. De
+persistente bron is sinds #83 het kasboek: elke vervolgcall is een eigen
+`handleMessages` en dus een eigen `TokenLog`-regel, dus meerdere `ai-call`-regels
+van dezelfde klant binnen enkele seconden zijn een afgekapt rapport. Dat is de
+plek om het te tellen zodra er productiedata staat.
+
 ### Promptcaching kan hier niet aan — gemeten 08-09-2026 (#114)
 
 #114 vroeg om promptcaching aan te zetten: de systeemprompt en `AUTO_KENNIS`
@@ -934,6 +1014,17 @@ scheelt ~500 tokens invoer per analyse. Tegen het tarief uit het issue (0,7
 credits per 1k invoer) is dat ~0,35 credit, op een realistische analyse van 8k
 invoer plus 1,5k uitvoer (~10,9 credits): **ruim 3%.** Dat is de theoretische
 bovengrens van iets dat niet kan.
+
+**De sterkste tegenwerping, en waarom die het ook niet haalt.** Nagemeten op
+08-09: van de 2054 tekens systeemprompt is ~1775 identiek tussen twee
+verschillende auto's (~480 tokens) — er varieert veel minder dan de karige
+gedeelde prefix van 142 tekens doet vermoeden; het vaste zit alleen dóór het
+variabele heen. Daar komt bij dat de user-prompt nog 1481 tekens vaste
+opmaakinstructie draagt (~400 tokens), die je naar de systeemprompt zou kunnen
+verhuizen. De maximale herordening is dus: alles wat vast is naar voren, de
+opmaakinstructie erbij, al het variabele erachter. Dat komt uit op **~880
+tokens** — nog altijd 14% onder de 1024 van `claude-sonnet-5`. Het scheelt niet
+veel, en het haalt het niet.
 
 **Wanneer dit herzien moet worden — en dat is het enige wat hier open blijft.**
 De uitkomst hangt aan het model, niet aan onze code: `claude-opus-5` heeft een
