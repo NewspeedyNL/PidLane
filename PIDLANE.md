@@ -874,6 +874,75 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Promptcaching kan hier niet aan — gemeten 08-09-2026 (#114)
+
+#114 vroeg om promptcaching aan te zetten: de systeemprompt en `AUTO_KENNIS`
+gaan bij elke analyse opnieuw als verse invoer mee. Het issue zei er zelf bij:
+**meten vóór bouwen**, en *"levert dat weinig op, dan is 'niet doen, met dat
+getal erbij' ook een goede uitkomst."* Dat is het geworden.
+
+**Hoe er gemeten is.** `plFetch` vervangen — het laagste punt, net als de
+nep-adapter bij de browserproeven — zodat de échte promptopbouw in `apiFetch()`
+onveranderd draait en alleen het uitgaande `body.system` wordt opgevangen. Daarna
+drie keer een analyse: zelfde auto met andere live toestand, en een andere auto.
+
+| meting | tekens | tokens (÷ 3,7) |
+|---|---:|---:|
+| systeemprompt totaal | 2054 | ~555 |
+| gedeelde prefix — zelfde auto, andere toestand | 1339 | ~362 |
+| gedeelde prefix — andere auto | 142 | ~38 |
+
+De 3,7 is niet gegokt: dat is `CFG.tekensPerToken` uit `pidlane-credits.js`, en
+die wordt na elke call op de echte `usage` bijgeijkt.
+
+**Het getal dat de vraag beslist: de minimum cachebare prefix van
+`claude-sonnet-5` is 1024 tokens.** Onder die grens cachet de API niet — zonder
+foutmelding, met `cache_creation_input_tokens: 0`. De hele systeemprompt is
+~555 tokens en zit daar 46% onder. De stabiele prefix die er werkelijk is, zit
+er 65% onder.
+
+**Dat maakt dit geen "nog niet doen" maar een "kan niet".** Zelfs de perfecte
+verbouwing — alles wat varieert naar achteren, zodat 100% van de systeemprompt
+één vaste prefix wordt — komt uit op ~555 tokens en cachet nog steeds niet. Er
+valt hier geen herordening te bedenken die de drempel haalt, want de drempel
+ligt boven het totaal.
+
+**Waarom de prefix sowieso vroeg breekt, voor wie het later toch nameet.** De
+vaste en variabele stukken staan door elkaar, niet na elkaar:
+
+1. vaste aanhef (`Jij bent PidLane AI-Monteur…`)
+2. **`VOERTUIG: …` plus de dossierregel** — per auto
+3. `pidlaneBasisRegels()` — de HARDE REGELS zijn vast, maar de brandstofregel
+   erbovenop hangt aan het voertuig
+4. regel 6 — vast
+5. **regel 7 met `GEMETEN TOESTAND NU: …`** — toerental en snelheid, dus per call
+
+Daar komen `_situatiePromptLine()`, het rapportenblok en
+`plMeetcontextPromptLine()` achteraan, alle drie variabel. Vandaar 142 tekens
+tussen twee auto's: dat is de aanhef plus het begin van "VOERTUIG: ".
+
+**Eén aanname uit het issue klopte niet.** *"systeemprompt + AUTO_KENNIS gaan
+bij elke analyse opnieuw mee."* De bank telt 14 merken en 3679 tekens, maar
+`autoKennisVoorMerk()` geeft alleen de gevonden merkregel terug, gefilterd op
+brandstof. Er gaat dus nooit meer dan één merk mee — en dat stuk is per
+definitie voertuigafhankelijk, dus het zou ook na een verbouwing buiten elke
+gedeelde prefix vallen.
+
+**En de bovengrens van de winst, voor het geval het wél had gecachet.** Een
+cache-read kost 0,1× de gewone invoerprijs, dus caching van de volle 555 tokens
+scheelt ~500 tokens invoer per analyse. Tegen het tarief uit het issue (0,7
+credits per 1k invoer) is dat ~0,35 credit, op een realistische analyse van 8k
+invoer plus 1,5k uitvoer (~10,9 credits): **ruim 3%.** Dat is de theoretische
+bovengrens van iets dat niet kan.
+
+**Wanneer dit herzien moet worden — en dat is het enige wat hier open blijft.**
+De uitkomst hangt aan het model, niet aan onze code: `claude-opus-5` heeft een
+minimum van 512 tokens. Een volledig herordende systeemprompt van ~555 tokens
+zou daar nét overheen komen, met 8% speling en alleen als de prefix 100% vast
+is — wat hij niet kan zijn, want de voertuigregel hoort erin. Stapt de app ooit
+over op een model met een lagere drempel én groeit de vaste tekst, dan is dit
+opnieuw een vraag. Nu niet.
+
 ### De wachter mat de knop en niet de tekst — 08-09-2026 (#144)
 
 Een schermfoto: de onderkant van het Run-venster valt weg achter de drie
