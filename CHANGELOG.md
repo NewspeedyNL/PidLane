@@ -11,6 +11,60 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08d (CET) — DE MELDING BEWEERDE WAT HIJ
+                                NIET GEMETEN HAD
+
+       • 📴 DE APP MEET NU HOE LANG HIJ ÉCHT STILLAG (#18).
+         Bij elke terugkomst stond er "de app was 120 s weg
+         — de meetlus stond in die tijd stil". Het eerste is
+         een meting, het tweede een oordeel dat er nooit bij
+         gemeten is: PLAchtergrond hangt aan
+         visibilitychange en weet alleen hoe lang de app
+         onzichtbaar was. Op de rit van 02-09 was dat
+         oordeel aantoonbaar fout — de app deed daarna nog
+         36 seconden werk (een herverbinding met ELM-init,
+         een sensoruitval, een verificatie) voordat Android
+         hem bevroor. Werkelijk stil: 84 s. Er loopt nu een
+         hartslag die alleen tikt terwijl de app weg is; de
+         grootste stilte tussen twee tikken ís de
+         bevriezing. Liep de lus door, dan staat dat er zo,
+         en als bericht in plaats van als waarschuwing.
+
+       • ⏱ DE AANLOOPTIJD STAAT IN HET VERSLAG (#18). Hoe
+         lang blijft de app na het wegschakelen nog draaien
+         voordat Android hem stilzet? Op 02-09 was dat ~36 s,
+         en dat getal kwam er met de hand uit door twee logs
+         naast elkaar te leggen. Nu meet de app het zelf.
+         Het bepaalt welke oplossing zin heeft: een
+         foreground service hoeft geen milliseconden te
+         winnen maar een gat van deze orde te overbruggen.
+         Erbij: afknijpen (Chromium zet een verborgen tab op
+         één tik per minuut) wordt apart gemeld van
+         bevriezen — twee oorzaken met twee oplossingen.
+
+       • 🔍 BLOK 5 VERGELIJKT DE JUISTE TWEE GETALLEN (#18).
+         De proef legde het gat van PLRit naast de
+         afwezigheid van PLAchtergrond en sloeg alarm zodra
+         die een kwart uiteenliepen. Dat is geen bevinding
+         maar de normale uitkomst: de aanlooptijd zit er per
+         definitie tussen. Het BESTAAN blijft het alarm — een
+         gat dat de app niet kent is nog steeds FOUT — maar
+         de DUUR wordt vergeleken tussen twee getallen die
+         hetzelfde meten.
+
+       • 🧭 BLOK 14 WIJST GATEN TOE IN PLAATS VAN ZE TOE TE
+         SCHRIJVEN (#18). Er stond "een gat betekent dat de
+         meetlus niet liep (Android bevriest
+         WebView-timers)" — waar voor het eerste deel, een
+         oorzaak die aan élk gat werd toegekend voor het
+         tweede. Een gat door een dode adapter of een
+         vastgelopen sweep las precies hetzelfde. Elk gat
+         wordt nu naast de vastgelegde achtergrondperioden
+         gelegd; valt het erbuiten, dan lag de lus stil
+         terwijl de app in beeld stond en is het #18 niet.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-08c (CET) — TWEE WACHTERS DIE NET NIET
                                 VER GENOEG REIKTEN
 
