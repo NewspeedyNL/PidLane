@@ -137,13 +137,36 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     await rust(700);
     toets('AppConfig meldt zich als alleen-lezen', await app.ev('TB.schrijven') === false);
 
-    // ── 6. de statuskaart liegt niet in oefenmodus ──────────────
-    console.log('\n6. In oefenmodus staat er geen groene vink');
+    // ── 6. opslaan van instellingen komt echt aan ───────────────
+    // #146: saveAll() stuurde een plat object terwijl /api/config POST
+    // items:[{Key,Value}] verwacht en anders "no_items" geeft. De oefen-nep is
+    // nu net zo streng, dus deze rondgang wordt rood zodra de body-vorm afwijkt
+    // — of saveAll nu plat stuurt, óf de nep een plat object zou mergen.
+    console.log('\n6. Opslaan van instellingen landt in de config');
+    await app.ev('toon("instellingen");loadConfig()');
+    await rust(500);
+    // Een functieschakelaar omzetten en een tekstveld invullen, dan bewaren.
+    const nieuw = await app.ev('var e=document.getElementById("t_feat_demo");e.checked=!e.checked;String(e.checked)');
+    await app.ev('document.getElementById("banner_text").value="proefbanner 146"');
+    await app.ev('saveAll()');
+    await rust(500);
+    // In oefenmodus is OEFEN_DATA.config het enige eerlijke signaal: callWorker
+    // gooit hier niet op ok:false, dus saveMsg toont sowieso "opgeslagen". Wat
+    // wél onderscheidt is of de sleutels echt aankwamen — dat kan alleen als de
+    // body items:[{Key,Value}] droeg én de nep die vorm eist.
+    const bewaardeSchakelaar = await app.ev('String(OEFEN_DATA.config.feat_demo)');
+    toets('een omgezette schakelaar landt in de config', bewaardeSchakelaar === nieuw,
+      'schakelaar staat op ' + nieuw + ', config op ' + bewaardeSchakelaar + ' — saveAll stuurde vermoedelijk geen items:[...]');
+    toets('ook een tekstveld gaat mee', await app.ev('OEFEN_DATA.config.banner_text') === 'proefbanner 146',
+      'config.banner_text: ' + await app.ev('JSON.stringify(OEFEN_DATA.config.banner_text)'));
+
+    // ── 7. de statuskaart liegt niet in oefenmodus ──────────────
+    console.log('\n7. In oefenmodus staat er geen groene vink');
     const stat = await app.ev('document.getElementById("st_worker").textContent');
     toets('de status zegt "niet gemeten"', stat === 'niet gemeten', 'er staat: ' + stat);
 
-    // ── 7. geen enkele uitzondering onderweg ────────────────────
-    console.log('\n7. Wat de browser onderweg meldde');
+    // ── 8. geen enkele uitzondering onderweg ────────────────────
+    console.log('\n8. Wat de browser onderweg meldde');
     toets('geen uitzonderingen', app.fouten.length === 0, app.fouten.join(' | '));
     toets('geen onverwachte dialogen', app.dialogen.length === 0, app.dialogen.join(' | '));
     const gemist = app.gemist.filter(p => !/favicon/.test(p));

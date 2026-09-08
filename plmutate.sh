@@ -279,6 +279,11 @@ MUTATIES=(
 "worker.js@@const e = formuleTekst(q);\n      // &'' erachter@@const e = q;\n      // &'' erachter@@test-adminbron.js@@de zoekterm van /admin/tabel gaat ongeëscaped de filterByFormula in"
 "public/pidlane-remote.js@@+getal(r.mn)+@@+r.mn+@@test-remote-tabel.js@@een cijferkolom van de opnametabel gaat weer ruw de HTML in"
 "public/pidlane-remote.js@@+getal(r.n)+@@+r.n+@@test-remote-tabel.js@@het aantal metingen gaat weer ruw de HTML in"
+# ── het proeftegoed hangt aan het account, niet aan het toestel (#113, 08-09-2026) ──
+# StartTegoedGegeven is de hele grendel. Legt iemand alGehad plat, dan keert
+# elke onboarding-call opnieuw KLANT_START_SALDO uit — hetzelfde gat als het
+# oude localStorage-tegoed, alleen verplaatst van het toestel naar de route.
+"worker.js@@      const alGehad = f.StartTegoedGegeven === true;@@      const alGehad = false;@@test-onboarding-tegoed.js@@de vlag doet niets meer: elke onboarding keert opnieuw proeftegoed uit"
 )
 
 echo

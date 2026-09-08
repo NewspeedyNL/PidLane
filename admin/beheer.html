@@ -976,7 +976,13 @@ function oefenAntwoord(path, opts){
 
   if(path.indexOf('/api/config') === 0){
     if(methode === 'GET') return Object.assign({}, D.config);
-    Object.assign(D.config, b || {}); return { ok:true };
+    // Zelfde contract als de Worker: items:[{Key,Value}], anders no_items. Zou
+    // dit een plat object mergen, dan bleef #146 (saveAll stuurde plat) hier
+    // onzichtbaar — de nep moet net zo streng zijn als de echte route.
+    const items = Array.isArray(b.items) ? b.items : [];
+    if(!items.length) return { ok:false, error:'no_items' };
+    items.forEach(it => { if(it && it.Key) D.config[it.Key] = it.Value ?? ''; });
+    return { ok:true };
   }
   if(path.indexOf('/health') === 0) return { ok:true, service:'pidlane-proxy (oefen)', ts:new Date().toISOString() };
   if(path.indexOf('/v1/messages') === 0)
@@ -2040,19 +2046,23 @@ async function loadConfig(){
 }
 async function saveAll(){
   const m = $('saveMsg');
-  const body = {
-    door_saving_active:$('t_door_saving_active').checked,
-    door_deal_active:$('t_door_deal_active').checked,
-    door_prep_active:$('t_door_prep_active').checked,
-    banner_active:$('t_banner_active').checked,
-    banner_text:$('banner_text').value,
-    ai_system_override:$('ai_system_override').value,
-    tikkie_kopen:$('tikkie_kopen').value.trim(),
-    tikkie_donatie:$('tikkie_donatie').value.trim()
-  };
-  FEATURES.forEach(f => { const el = $('t_' + f[0]); if(el) body[f[0]] = el.checked; });
+  // De Worker (/api/config POST) verwacht items:[{Key,Value,Description}] en
+  // slaat elke sleutel als string op — een plat object gaf "no_items" (#146).
+  // Waarden zijn strings, want GET geeft ze ook als string terug en zetToggle
+  // leest 'true'/'false'.
+  const items = [
+    { Key:'door_saving_active', Value:String($('t_door_saving_active').checked), Description:'Deur Verbruik & besparen aan/uit' },
+    { Key:'door_deal_active',   Value:String($('t_door_deal_active').checked),   Description:'Deur Kopen of verkopen aan/uit' },
+    { Key:'door_prep_active',   Value:String($('t_door_prep_active').checked),   Description:'Deur Voorbereiden op… aan/uit' },
+    { Key:'banner_active',      Value:String($('t_banner_active').checked),      Description:'Banner tonen ja/nee' },
+    { Key:'banner_text',        Value:$('banner_text').value,                    Description:'Banner-tekst' },
+    { Key:'ai_system_override', Value:$('ai_system_override').value,             Description:'AI system-instructie override (leeg = standaard)' },
+    { Key:'tikkie_kopen',       Value:$('tikkie_kopen').value.trim(),            Description:'Tikkie-link tokens kopen (leeg = mailknop)' },
+    { Key:'tikkie_donatie',     Value:$('tikkie_donatie').value.trim(),          Description:'Tikkie-link vrijwillige bijdrage (leeg = knop weg)' },
+    ...FEATURES.map(f => ({ Key:f[0], Value:String($('t_' + f[0])?.checked ?? true), Description:f[1] + ' aan/uit' }))
+  ];
   const r = await veilig(m, () => callWorker('config','/api/config',{
-    method:'POST', headers:HJ(), body:JSON.stringify(body) }), 'Bezig met opslaan…');
+    method:'POST', headers:HJ(), body:JSON.stringify({ items }) }), 'Bezig met opslaan…');
   if(!r.ok) return;
   toon_msg(m, 'ok', '✓ Opgeslagen. De app haalt dit op bij de volgende start; ' +
     'op een toestel dat al open staat kan het even duren door de randcache.');

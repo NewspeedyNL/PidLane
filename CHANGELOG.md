@@ -46,6 +46,26 @@
          syntaxskelet van de uitgaande formule gelijk blijft
          aan dat van een onschuldige zoekterm. Vier mutaties
          in plmutate.sh houden dat vast.
+     Build: 2026-09-08c (CET) — DE BEHEERPAGINA SLAAT
+                                WEER OP
+
+       • 💾 "OPSLAAN" GAF "NO_ITEMS". De instellingenkaart
+         van de beheerpagina kreeg opslaan niet voor elkaar
+         (#146). saveAll() stuurde een plat object naar
+         POST /api/config, terwijl de Worker een
+         items:[{Key,Value}]-array wil — en die anders met
+         no_items afkapt. Het oude admin.html bouwde die
+         array wel; bij de overstap naar beheer.html (#139)
+         is de vorm niet meegekomen. Nu weer als items.
+
+       • 🧪 DE OEFEN-NEP WAS TE SOEPEL. Waarom niemand het
+         zag: de nep-worker in oefenmodus mergede gewoon een
+         plat object, dus opslaan "werkte" daar precies
+         zolang de fout bestond. De nep eist nu net zo hard
+         items:[…] als de echte route, en bproef-
+         beheerpagina.js meet dat de omgezette schakelaar
+         echt in de config landt — met de oude body wordt
+         die proef rood.
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
