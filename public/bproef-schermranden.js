@@ -56,6 +56,42 @@
 // meetelt), maar zonder meting is hij niet te controleren: --pl-sab is in
 // een gewone browser 0px, en dan ziet elk vel er goed uit.
 //
+// DERDE RONDE — #144, en waarom deze proef hem eerst LIET LOPEN
+//
+// "Venster achter run knop komt niet geheel in beeld aan de onderkant", met
+// de opmerking erbij: reeds meerdere vensters gefixed, maak er een test voor.
+// Die test stond hier al, en het Run-venster stond er al in — sinds de vorige
+// ronde, met de conclusie "had geen --pl-sab in de bron en was tóch ruim".
+//
+// Die conclusie klopte op 412x915. Twee dingen maakten hem onwaar:
+//
+// 1. HET PANEEL GROEIT MEE. Sinds #123 hangt de bevindingenschakelaar mét
+//    zijn uitleg onderaan het Run-venster. Op een kort scherm gaat de bak
+//    daardoor scrollen, en dan komt de onderrand er wél tegenaan.
+// 2. DE PROEF MAT DE VERKEERDE MAAT — dezelfde meetles die hierboven als
+//    les 2 staat, en die deze proef zélf niet toepaste buiten het keuzescherm.
+//    Gemeten op 360x640 met een navigatiebalk van 48px:
+//
+//       laagste KNOP  ("Aan")                65px  → groen
+//       laagste TEKST ("staat de balk uit…") 43px  → valt achter de balk
+//
+//    De knop stond ruim; de uitleg eronder niet. Blok 2 keek alleen naar de
+//    knop en zette een vinkje.
+//
+// Twee dingen zijn daarom veranderd, en ze zijn allebei algemeen:
+//
+//   • Elk vel wordt nu óók op zijn laagste ZICHTBARE TEKST gemeten, niet
+//     alleen op zijn laagste knop. Tekst is wat een mens leest — een
+//     volschermwikkel draagt er geen en telt dus vanzelf niet mee, terwijl de
+//     ruwe "laagste element"-maat juist die wikkel opmat en voor twaalf van de
+//     dertien vellen 0px gaf. Nagemeten: met de tekstmaat is er precies één
+//     vel rood, en dat is het vel uit het issue.
+//   • De hele reeks draait een tweede keer op een KORT scherm (360x640). Op
+//     412x915 had het Run-venster 257px over — daar is niets te zien. Een
+//     paneel dat moet scrollen is de voorwaarde waaronder deze fout ontstaat,
+//     en die voorwaarde hoort de proef zelf te maken in plaats van af te
+//     wachten tot iemand er een schermfoto van stuurt.
+//
 // WAAROM DEZE PROEF NIET IN plmutate.sh STAAT
 //
 // Blok 3 hieronder is zijn eigen tegenproef, en dat is met opzet de enige.
@@ -127,6 +163,19 @@ const REMOTE_VELLEN = [
   { naam: 'Expert op afstand', open: 'PLRemote.openExpert', id: 'remExpertOv' }
 ];
 
+// Hoe een vel weer dicht gaat. De deel-module luistert naar een klasse; er
+// display:none op zetten laat een inline stijl staan die een volgende open()
+// niet weghaalt, en dan meet blok 3 een vel dat er niet is.
+const SLUIT_VEL    = `e.style.display = 'none';`;
+const SLUIT_REMOTE = `e.classList.remove('open');`;
+
+/* Het korte scherm. 360x640 is een gangbare kleine Android, en vooral: het is
+   kort genoeg om het Run-venster te laten scrollen. Dát is de voorwaarde
+   waaronder #144 ontstaat — op 412x915 had datzelfde paneel 257px over, en
+   dan meet je niets. Een proef die alleen op het ruime toestel kijkt, kan een
+   onderrand die de knoppenbalk niet meetelt per definitie niet zien. */
+const KORT_B = 360, KORT_H = 640;
+
 /* Meet de laagste knop die een vinger kan raken.
 
    Eerst alles naar beneden scrollen: dat is wat een gebruiker doet om de
@@ -137,6 +186,12 @@ const REMOTE_VELLEN = [
 const METER = `(function(id){
   const m = document.getElementById(id);
   if (!m) return { fout: 'element ' + id + ' bestaat niet' };
+  /* Eerst de bak ZELF, dan alles eronder. Die eerste regel is er sinds #144:
+     bij het Run-venster is de scrollbak het gemeten element zelf (#runOv
+     draagt overflow-y:auto), en querySelectorAll('*') levert alleen de
+     afstammelingen. Zonder deze regel meet je daar de bovenkant van een
+     paneel dat je nooit hebt uitgescrold. */
+  if (m.scrollHeight > m.clientHeight + 2) m.scrollTop = m.scrollHeight;
   m.querySelectorAll('*').forEach(e => { if (e.scrollHeight > e.clientHeight + 2) e.scrollTop = e.scrollHeight; });
   let laagste = null, onder = -1e9;
   m.querySelectorAll('button,input,textarea,select,a').forEach(e => {
@@ -148,6 +203,75 @@ const METER = `(function(id){
   return { knop: (laagste.textContent || laagste.id || laagste.tagName).trim().slice(0, 24),
            ruimteOnder: Math.round(window.innerHeight - onder) };
 })`;
+
+/* Meet de laagste ZICHTBARE TEKST — de tweede maat, sinds #144.
+
+   Waarom tekst en niet "het laagste element": een vel is een volschermwikkel
+   met `inset:0` waarin een kaart hangt. Die wikkel loopt per definitie tot de
+   onderrand, en dat mág — hij is de halfdoorzichtige achtergrond. Meet je het
+   laagste element, dan meet je hem, en dan geeft elk vel 0px. Nagemeten op
+   08-09-2026: twaalf van de dertien vellen gaven zo 0px, en dat is een maat
+   die niets onderscheidt.
+
+   Tekst is wél de klacht. "Komt niet geheel in beeld" gaat over iets dat je
+   moet kunnen lezen. Een Range om de tekstknoop geeft de regel zelf, niet de
+   doos eromheen — een <div> die tot onderaan doorloopt met één regel bovenin
+   telt dus mee met die regel, en niet met zijn hoogte. */
+const TEKSTMETER = `(function(id){
+  const m = document.getElementById(id);
+  if (!m) return { fout: 'element ' + id + ' bestaat niet' };
+  if (m.scrollHeight > m.clientHeight + 2) m.scrollTop = m.scrollHeight;
+  m.querySelectorAll('*').forEach(e => { if (e.scrollHeight > e.clientHeight + 2) e.scrollTop = e.scrollHeight; });
+  const loper = document.createTreeWalker(m, NodeFilter.SHOW_TEXT);
+  const bereik = document.createRange();
+  let onder = -1e9, tekst = null;
+  for (let n = loper.nextNode(); n; n = loper.nextNode()) {
+    if (!n.nodeValue || !n.nodeValue.trim()) continue;
+    const ouder = n.parentElement;
+    if (!ouder) continue;
+    const st = getComputedStyle(ouder);
+    if (st.visibility === 'hidden' || st.display === 'none' || parseFloat(st.opacity) === 0) continue;
+    bereik.selectNodeContents(n);
+    const r = bereik.getBoundingClientRect();
+    // Buiten beeld telt niet mee: dat is geen bewijs voor of tegen, net als
+    // bij de knoppen hierboven.
+    if (r.height <= 0 || r.top > window.innerHeight) continue;
+    if (r.bottom > onder) { onder = r.bottom; tekst = n.nodeValue.trim().slice(0, 24); }
+  }
+  if (onder === -1e9) return { fout: 'geen zichtbare tekst in ' + id };
+  return { tekst: tekst, ruimteOnder: Math.round(window.innerHeight - onder) };
+})`;
+
+/* Eén vel openen en langs beide maten leggen. Sinds #144 is dat er twee: de
+   laagste knop (kun je hem raken?) en de laagste tekst (kun je hem lezen?).
+   De eerste alleen was niet genoeg — zie de derde ronde in de kop.
+
+   `sluit` verschilt per soort en staat daarom in de lijst en niet hier: de
+   vellen van de deel-module gaan met een klasse open, en er `display:none`
+   op zetten laat een inline stijl achter waar een volgende open() overheen
+   moet. Dat is precies het soort stille rommel waar blok 3 later op meet. */
+async function keurVel(app, v, waar, sluit) {
+  const bij = waar ? ' [' + waar + ']' : '';
+  const bestaat = await app.ev(`(function(){ try { return typeof ${v.open} === 'function'; } catch (e) { return false; } })()`);
+  if (!bestaat) { toets(v.naam + bij + ': ' + v.open + '() bestaat', false, 'hernoemd of verdwenen?'); return; }
+  await app.ev(`${v.open}(); true`);
+  await rust(ANIMATIE_MS);
+
+  const k = await app.ev(`${METER}('${v.id}')`);
+  if (k.fout) toets(v.naam + bij + ': meetbaar', false, k.fout);
+  else toets(v.naam + bij + ': ' + k.ruimteOnder + 'px onder knop "' + k.knop + '"',
+             k.ruimteOnder >= NAVBALK,
+             'minder dan de navigatiebalk (' + NAVBALK + 'px) — die knop zit er deels achter');
+
+  const t = await app.ev(`${TEKSTMETER}('${v.id}')`);
+  if (t.fout) toets(v.naam + bij + ': tekst meetbaar', false, t.fout);
+  else toets(v.naam + bij + ': ' + t.ruimteOnder + 'px onder tekst "' + t.tekst + '"',
+             t.ruimteOnder >= NAVBALK,
+             'de onderste regel ligt ' + (NAVBALK - t.ruimteOnder) + 'px achter de knoppenbalk — ' +
+             'onleesbaar, ook al staat de laagste knop vrij (#144)');
+
+  await app.ev(`(function(){ const e = document.getElementById('${v.id}'); if (e) { ${sluit} } return true; })()`);
+}
 
 (async () => {
   let app;
@@ -169,33 +293,11 @@ const METER = `(function(id){
     // Zonder deze controle zou elke toets hieronder groen staan om de
     // verkeerde reden: bij --pl-sab = 0px is er niets om overheen te vallen.
 
-    console.log('\n2. Elk onderste vel houdt zijn laagste knop boven de navigatiebalk');
-    for (const v of VELLEN) {
-      const bestaat = await app.ev(`typeof ${v.open} === 'function'`);
-      if (!bestaat) { toets(v.naam + ': ' + v.open + '() bestaat', false, 'hernoemd of verdwenen?'); continue; }
-      await app.ev(`${v.open}(); true`);
-      await rust(ANIMATIE_MS);
-      const m = await app.ev(`${METER}('${v.id}')`);
-      if (m.fout) { toets(v.naam + ': meetbaar', false, m.fout); continue; }
-      toets(v.naam + ': ' + m.ruimteOnder + 'px onder "' + m.knop + '"',
-            m.ruimteOnder >= NAVBALK,
-            'minder dan de navigatiebalk (' + NAVBALK + 'px) — die knop zit er deels achter');
-      await app.ev(`document.getElementById('${v.id}').style.display='none'; true`);
-    }
+    console.log('\n2. Elk onderste vel houdt zijn laagste knop én zijn onderste regel vrij');
+    for (const v of VELLEN) await keurVel(app, v, '', SLUIT_VEL);
 
     console.log('\n2b. De twee vellen van de deel-module');
-    for (const v of REMOTE_VELLEN) {
-      const bestaat = await app.ev(`typeof PLRemote === 'object' && PLRemote && typeof ${v.open} === 'function'`);
-      if (!bestaat) { toets(v.naam + ': ' + v.open + '() bestaat', false, 'hernoemd of verdwenen?'); continue; }
-      await app.ev(`${v.open}(); true`);
-      await rust(ANIMATIE_MS);
-      const m = await app.ev(`${METER}('${v.id}')`);
-      if (m.fout) { toets(v.naam + ': meetbaar', false, m.fout); continue; }
-      toets(v.naam + ': ' + m.ruimteOnder + 'px onder "' + m.knop + '"',
-            m.ruimteOnder >= NAVBALK,
-            'minder dan de navigatiebalk (' + NAVBALK + 'px) — die knop zit er deels achter');
-      await app.ev(`document.getElementById('${v.id}').classList.remove('open'); true`);
-    }
+    for (const v of REMOTE_VELLEN) await keurVel(app, v, '', SLUIT_REMOTE);
 
     /* Het keuzescherm is geen vel maar een scherm, en het heeft sinds 04-08 een
        eigen veilige-zoneregeling (#welcomeScreen krijgt bottom en padding).
@@ -266,7 +368,51 @@ const METER = `(function(id){
       }
     }
 
+    /* Dezelfde reeks, maar op een scherm dat kort genoeg is om panelen te
+       laten scrollen. Dit blok is de reden dat #144 gevonden zou zijn: hij
+       bestond alleen onder deze voorwaarde, en tot nu toe maakte de proef die
+       voorwaarde nooit. Een vel dat hier valt, valt op een echte kleine
+       telefoon ook. */
+    console.log(`\n2d. Dezelfde reeks op een kort scherm (${KORT_B}x${KORT_H}) — daar moet een paneel scrollen (#144)`);
+    const vh = await app.venster(KORT_B, KORT_H);
+    toets('het venster ging mee naar ' + KORT_B + 'x' + KORT_H, vh === KORT_H,
+          'window.innerHeight = ' + vh + ' — dan meet dit blok het ruime scherm nog een keer');
+    const sabKort = await app.ev(`getComputedStyle(document.documentElement).getPropertyValue('--pl-sab').trim()`);
+    toets('--pl-sab overleeft het verkleinen', sabKort === NAVBALK + 'px', 'gemeten: ' + sabKort);
+    for (const v of VELLEN) await keurVel(app, v, 'kort', SLUIT_VEL);
+    for (const v of REMOTE_VELLEN) await keurVel(app, v, 'kort', SLUIT_REMOTE);
+
     console.log('\n3. Tegenproef — meet deze proef werkelijk iets?');
+    /* Het Run-venster eerst, want dat is de reparatie van deze ronde en de
+       enige die alleen op het korte scherm te meten is. De onderrand terug op
+       de vaste 16px van vóór #144 — de padding zoals hij was, zonder
+       --pl-sab. Blijft de tekstmaat dan groen, dan bewijst blok 2d niets.
+
+       Let op dat dit de TEKSTmaat is en niet de knopmaat: met de oude padding
+       stond de laagste knop op 65px en dus ruim boven de balk. Die maat zou
+       hier groen blijven, en precies daarom liet de vorige ronde dit lopen. */
+    await app.ev(`openRunPaneel(); true`);
+    await rust(ANIMATIE_MS);
+    const runVoor = await app.ev(`${TEKSTMETER}('runOv')`);
+    await app.ev(`(function(){ document.getElementById('runOv').style.paddingBottom = '16px'; return true; })()`);
+    const runNa = await app.ev(`${TEKSTMETER}('runOv')`);
+    const runKnop = await app.ev(`${METER}('runOv')`);
+    toets('zonder --pl-sab valt de onderste regel van het Run-venster achter de balk: ' + runNa.ruimteOnder + 'px',
+          runNa.ruimteOnder < NAVBALK,
+          'met de vaste 16px bleef er ' + runNa.ruimteOnder + 'px over — dan meet blok 2d de marge niet');
+    toets('en de marge scheelde ook echt iets: ' + runVoor.ruimteOnder + 'px → ' + runNa.ruimteOnder + 'px',
+          runVoor.ruimteOnder > runNa.ruimteOnder,
+          'mét marge ' + runVoor.ruimteOnder + 'px, zonder ' + runNa.ruimteOnder + 'px');
+    toets('en de laagste KNOP bleef daarbij vrij (' + runKnop.ruimteOnder + 'px) — de knopmaat alleen ziet dit niet',
+          runKnop.ruimteOnder >= NAVBALK,
+          'de knop viel hier óók achter de balk; dan toont deze tegenproef niet ' +
+          'waarom de tekstmaat erbij moest');
+    await app.ev(`(function(){ const e = document.getElementById('runOv');
+      if (e) { e.style.paddingBottom = ''; e.style.display = 'none'; } return true; })()`);
+
+    /* Terug naar het ruime toestel: de tegenproeven hieronder zijn op 412x915
+       nagemeten en dragen getallen uit die meting. */
+    await app.venster(412, 915);
     /* De veilige marge weer weghalen bij één vel, precies zoals hij vóór de
        reparatie was (padding-bottom een vast getal, zonder --pl-sab). Wordt
        de meting dán niet rood, dan bewijst blok 2 niets. */

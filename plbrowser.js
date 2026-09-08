@@ -299,6 +299,17 @@ async function startApp(opties) {
       await ev(nepAdapterCode(tabel || {}, vertraagMs || 0));
       return Object.keys(tabel || {}).length;
     },
+    /* Het venster onder de app vandaan verkleinen, zonder opnieuw op te
+       starten. Een paneel dat op 412x915 ruim in beeld staat, kan op een korter
+       scherm moeten scrollen — en pas dán blijkt of de onderrand de
+       knoppenbalk meetelt (#144). Opnieuw opstarten kost vijftien seconden per
+       maat; dit kost niets. Geeft de gemeten window.innerHeight terug, zodat
+       de aanroeper kan controleren dát het venster werkelijk meeging. */
+    async venster(breedte, hoogte) {
+      await cmd('Emulation.setDeviceMetricsOverride',
+                { width: breedte, height: hoogte, deviceScaleFactor: 2, mobile: true });
+      return await ev('window.innerHeight');
+    },
     async stop() {
       try { sock.close(); } catch (e) { console.warn('plbrowser: socket sluiten mislukt — ' + e.message); }
       // Wachten tot Chromium echt weg is voordat de profielmap weggaat: hij

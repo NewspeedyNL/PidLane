@@ -210,8 +210,11 @@ var KRITIEK = [
   // overschrijving onopgemerkt blijven.
   'toggleLade',                                   // pidlane-archief.js    — #68
   'plVoorAnalyse','plMeetcontextPromptLine','plMeetStabielVoorstel',  // pidlane-archief.js — #62
-  
-  
+  // Opent het Run-venster (pidlane-run.js). Blok 5 meet daar sinds #144 de
+  // onderste regel tegen --pl-sab. Ontbreekt de functie, dan slaat die proef
+  // stil over — en dan is juist de maat weg die de vorige ronde miste: de
+  // laagste knop stond ruim, de tekst eronder lag achter de knoppenbalk.
+  'openRunPaneel',                                // pidlane-run.js        — #144
 ];
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.
