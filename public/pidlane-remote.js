@@ -8,6 +8,13 @@ window.PLRemote=(function(){
            ews:null,expJoin:null,expStop:false,expClosed:false,backoffE:1000,recTE:null,expMeta:null,vals:{},lastExpN:0,pending:{},vstate:null};
   const $=id=>document.getElementById(id);
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  // De tegenhanger van esc() voor de cijferkolommen. esc() stond wél op de
+  // tekstvelden van de opnametabel, maar de getallen gingen er ruw langs — en
+  // die komen net zo goed van de peer als de namen. Een peer die in plaats van
+  // een meetwaarde een stukje HTML stuurt, schreef dat zo rechtstreeks in de
+  // tabel. Alles wat als getal de HTML in gaat, moet hier eerst een getal
+  // blijken; lukt dat niet, dan is het een streepje. Zie #142.
+  const getal=v=>(v==null||v===''||!isFinite(v))?'—':String(Number(v));
   function hb(){return String(window.PROXY_URL||'').replace(/\/$/,'');}
   function wb(){return hb().replace(/^http/i,'ws');}
   function tok(){return (typeof window.APP_TOKEN==='string'&&window.APP_TOKEN)||'';}
@@ -719,10 +726,10 @@ window.PLRemote=(function(){
     if(s3)s3.disabled=rec||!hasData;if(s4)s4.disabled=rec||!hasData;
   }
   function _recRowsHtml(rows,dur,n){
-    let h='<div class="rem-stat" style="margin-bottom:4px">✓ '+dur+'s · '+n+' metingen (opgenomen op de local)</div>';
+    let h='<div class="rem-stat" style="margin-bottom:4px">✓ '+getal(dur)+'s · '+getal(n)+' metingen (opgenomen op de local)</div>';
     h+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
     h+='<tr><th style="text-align:left;padding:3px;border-bottom:1px solid #232c40">Sensor</th><th style="padding:3px;border-bottom:1px solid #232c40">n</th><th style="padding:3px;border-bottom:1px solid #232c40">Min</th><th style="padding:3px;border-bottom:1px solid #232c40">Max</th><th style="padding:3px;border-bottom:1px solid #232c40">Gem.</th></tr>';
-    (rows||[]).forEach(r=>{h+='<tr><td style="padding:3px">'+esc(r.name)+'</td><td style="padding:3px;text-align:center">'+r.n+'</td><td style="padding:3px;text-align:center">'+(r.mn==null?'—':r.mn)+'</td><td style="padding:3px;text-align:center">'+(r.mx==null?'—':r.mx)+'</td><td style="padding:3px;text-align:center">'+(r.av==null?'—':r.av)+' '+esc(r.unit||'')+'</td></tr>';});
+    (rows||[]).forEach(r=>{h+='<tr><td style="padding:3px">'+esc(r.name)+'</td><td style="padding:3px;text-align:center">'+getal(r.n)+'</td><td style="padding:3px;text-align:center">'+getal(r.mn)+'</td><td style="padding:3px;text-align:center">'+getal(r.mx)+'</td><td style="padding:3px;text-align:center">'+getal(r.av)+' '+esc(r.unit||'')+'</td></tr>';});
     return h+'</table>';
   }
   function _csvDone(){
