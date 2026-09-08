@@ -874,6 +874,118 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De melding beweerde wat hij niet gemeten had — 08-09-2026 (#18)
+
+`PLAchtergrond` schreef bij elke terugkomst één regel in het logboek:
+
+```
+📴 De app was 120 s weg — de meetlus stond in die tijd stil (#18)
+```
+
+Het eerste deel is een meting. Het tweede is een oordeel, en dat is er
+anderhalve week lang stilzwijgend bij gezet. De module hangt aan
+`visibilitychange` en weet daarmee precies één ding: hoe lang de app
+onzichtbaar was. Of de meetlus in die tijd ook werkelijk stillag, weet hij
+niet.
+
+**Op de rit van 02-09 om 23:22 was dat oordeel aantoonbaar fout, en het log
+eronder sprak het in dezelfde seconde tegen.**
+
+| tijd | wat |
+|---|---|
+| 23:17:59 | app verborgen |
+| 23:18:05 | `SPP automatisch herverbonden` |
+| 23:18:18 | `ELM327 initialisatie klaar` |
+| 23:18:20 | `Monitor: UITVAL:0105 — levert geen data meer` |
+| 23:18:32 | `0105 hersteld na ~34s uitval` |
+| 23:18:35 | `Verificatie: Niet gereproduceerd` |
+| *stilte* | |
+| 23:19:59 | terug — "de app was 120 s weg, de meetlus stond stil" |
+
+De app deed in de eerste ~36 seconden ná het verbergen een volledige
+herverbinding mét ELM-init, zag een sensoruitval, startte een verificatie en
+rondde die af. Pas dáárna heeft Android hem bevroren. Werkelijk stil: ~84 s.
+Gemeld: 120 s.
+
+**En dat verkeerde getal werd doorgegeven.** Blok 5 legde het gat dat `PLRit`
+uit zijn eigen tikken afleidt (64 s) naast de afwezigheid die `PLAchtergrond`
+kent (120 s), en zette LET OP zodra die meer dan een kwart uiteenliepen —
+*"een van beide meet iets anders dan de onderbreking zelf"*. Dat was ook zo, en
+het was geen bevinding: de aanlooptijd tot de bevriezing zit er per definitie
+tussen. De proef sloeg dus alarm op precies het getal dat hij hoorde te
+rapporteren.
+
+**De reparatie is een hartslag die alleen loopt terwijl de app weg is.** Elke
+seconde één tik die niets doet behalve `Date.now()` opschrijven. Vuurt hij, dan
+liep de lus; vuurt hij niet, dan lag hij stil. De grootste stilte tussen twee
+tikken ís de bevriezing — gemeten, niet aangenomen. Kosten: één `setInterval`
+tijdens een vensterwissel, en die staat stil zodra de pollus stilstaat, wat
+juist het punt is.
+
+Dat levert in één keer de getallen op waar richting B van het issue om vraagt:
+
+| veld | wat het zegt |
+|---|---|
+| `door` | hoe lang de app na het verbergen nog doorliep — de aanlooptijd |
+| `stil` | hoe lang de meetlus werkelijk niets deed |
+| `na` | liep hij daarna uit zichzelf weer? Dan was het **afknijpen**, geen bevriezing |
+| `slagen` | hoe vaak de hartslag vuurde; nul betekent meteen bevroren |
+
+**`na` is niet de minst belangrijke van de vier.** Chromium knijpt een
+verborgen tab eerst af naar één tik per minuut vóórdat Android het proces
+stilzet. Dat leest als een bevriezing van een minuut, maar de lus komt uit
+zichzelf terug — en dat vraagt om een andere oplossing dan een foreground
+service. Zonder dit getal zijn die twee niet uit elkaar te houden.
+
+**Drie plekken die nu het onderscheid volhouden.**
+
+1. *De melding.* Noemt de duur zonder het oordeel, of het gemeten oordeel mét
+   de duur. Liep de lus door, dan is dat `info` en geen `warn`: het log-niveau
+   is daarmee zelf een meetwaarde geworden.
+2. *Blok 5.* Het **bestaan** blijft het alarm — ziet `PLRit` een gat waar
+   `PLAchtergrond` niets van weet, dan lag de lus stil zonder dat de app het
+   doorhad, en dat is FOUT. De **duur** is een meetwaarde, en die vergelijking
+   loopt nu tussen twee getallen die hetzelfde meten: het gat van `PLRit` tegen
+   de gemeten stilte. De aanlooptijd staat als getal in het verslag.
+3. *Blok 14.* Stond *"een gat betekent dat de meetlus zelf niet liep (Android
+   bevriest WebView-timers op de achtergrond)"* — waar voor het eerste deel, een
+   toegeschreven oorzaak voor het tweede. `plGatDuiding()` legt nu elk gat naast
+   de perioden die `PLAchtergrond` werkelijk heeft vastgelegd. Valt het
+   erbuiten, dan lag de lus stil terwijl de app in beeld stond, en dat is #18
+   niet — dan is het de adapter, de bus of een vastgelopen sweep.
+
+**`null` is geen nul, en dat is de kern.** Startte de hartslag niet, dan staat
+`stil` op `null` en niet op `0`. Nul betekent "de lus liep door" — een
+uitspraak. Niet-gemeten is iets anders dan niet-gebeurd, en die twee als
+hetzelfde lezen is exact de fout die dit issue anderhalve week open hield, één
+laag hoger. Hetzelfde geldt in `plGatDuiding()`: `null` (geen module) is
+"niet te zeggen", `[]` (module, geen perioden) is "de app was niet weg".
+
+**Wat dit voor richting 1 betekent.** De aanlooptijd van ~36 s was het
+bruikbaarste getal van de hele rit van 02-09, en het kwam er met de hand uit
+door twee logs naast elkaar te leggen. Nu meet de app het zelf, elke keer. Twee
+dingen worden daarmee concreter: een korte vensterwissel kost waarschijnlijk
+niets (de drempel van 10 s waarop de socket wordt nagekeken zit ruim binnen die
+36 s, en is daarmee onderbouwd in plaats van gekozen), en een foreground service
+hoeft geen milliseconden te winnen maar een gat van deze orde te overbruggen.
+
+**Wat er níét mee opgelost is.** De bevriezing zelf. Dat blijft richting 1
+(foreground service plus wake lock) of de vierde richting uit het issue
+(picture-in-picture), en dat is native werk. Deze ronde levert de getallen
+waarmee die keuze onderbouwd wordt in plaats van gegokt — dat was punt B van de
+route die op 01-09 gekozen is. Punt A, de vensterwissel bij het opslaan
+weghalen, loopt via #132: alle twaalf exportknoppen lopen door dezelfde
+`download()` die eerst `nativeShareFile()` probeert, en dát is de vensterwissel.
+
+**Twee toetsen erbij, en ze zijn allebei nieuw van vorm.**
+`test-achtergrondproef.js` speelt de rit van 02-09 na met béide echte modules
+in één sandbox op één gestuurde klok — `PLRit` krijgt zijn gaten via
+`tik(nuOverride)`, `PLAchtergrond` zijn stilte via de hartslag — en eist dat
+dezelfde rit die toen LET OP opleverde nu groen is, mét de aanlooptijd erbij.
+`test-gatduiding.js` toetst de toewijzing in blok 14 los, want dat blok heeft
+een halve testrun nodig om te draaien en een oordeel dat alleen in de auto te
+toetsen is, wordt niet getoetst.
+
 ### Twee wachters die net niet ver genoeg reikten — 08-09-2026 (#142)
 
 #142 kwam binnen als een CodeQL-samenvatting van buiten: elf bevindingen,

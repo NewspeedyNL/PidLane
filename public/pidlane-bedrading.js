@@ -223,6 +223,14 @@ var GEEN_GLOBALE = {
   // hij niet. Zonder guard zou de kaartmaker daar stilvallen op zijn eigen
   // waarschuwing.
   'confirm': 'browserfunctie (window.confirm), geen eigen module — kan in een WebView ontbreken',
+  // Erbij op 08-09-2026 met de hartslag van pidlane-achtergrond.js (#18). Die
+  // module wordt ook zonder browser geladen — test-achtergrond.js draait hem
+  // in een vm-sandbox — en moet dan MERKEN dat er geen timer is in plaats van
+  // om te vallen: zonder hartslag meldt hij de stilte als niet-gemeten, en dat
+  // is een ander antwoord dan nul. De guard is dus de meting zelf en niet een
+  // stille terugval. Browserfuncties, geen eigen code, dus niet in KRITIEK.
+  'setInterval': 'browserfunctie — pidlane-achtergrond.js meet met de guard of de hartslag kán lopen (#18)',
+  'clearInterval': 'browserfunctie — idem, de hartslag wordt bij terugkomst gestopt (#18)',
   // Gemeld door de runtime-controle op de rit van 16-08: stond in KRITIEK maar
   // is een lokale const in pidlane-waakronde.js die window.setConn vasthoudt.
   // Les: een typeof-guard op een LOKALE naam is geen bedradingspunt. De lijst

@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.3 (03-09-2026)';
+const TESTRUN_VERSIE = '7.4 (08-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -737,6 +737,51 @@ const PLRit = (function () {
   };
 })();
 
+/* ELK GAT TOEWIJZEN IN PLAATS VAN HET TOE TE SCHRIJVEN (08-09-2026, #18).
+
+   In blok 14 stond "een gat betekent dat de meetlus zelf niet liep (Android
+   bevriest WebView-timers op de achtergrond)". Het eerste deel is waar — een
+   gat IS een lus die niet liep. Het tweede is een OORZAAK, en die werd aan élk
+   gat toegekend zonder ernaar te kijken. Een gat door een dode adapter, een
+   vastgelopen sweep of een trage bus las precies hetzelfde, en dat stuurt je
+   op de verkeerde jacht.
+
+   PLAchtergrond weet welke perioden de app werkelijk weg was. Valt een gat
+   binnen zo'n periode, dan is het de achtergrondkwestie; valt het erbuiten,
+   dan lag de lus stil terwijl de app gewoon in beeld stond — en dat is een
+   heel ander en veel interessanter probleem.
+
+   `perioden` is NULL als PLAchtergrond er niet is. Dat is met opzet iets
+   anders dan een lege lijst: geen module betekent "niet te zeggen", een lege
+   lijst betekent "gemeten, en de app was niet weg". Die twee als hetzelfde
+   lezen is dezelfde fout als stil=0 tegen stil=null in pidlane-achtergrond.js.
+
+   Los gehouden en naar buiten gebracht omdat blok 14 zelf een halve testrun
+   nodig heeft om te draaien, en een oordeel dat alleen in de auto te toetsen
+   is, wordt niet getoetst. test-gatduiding.js draait hem zonder browser. */
+function plGatDuiding(gaten, perioden) {
+  var g = gaten || [];
+  // Twee tikken speling: PLRit meet van tik tot tik, PLAchtergrond van
+  // gebeurtenis tot gebeurtenis. Die randen vallen nooit precies samen.
+  var SPELING = 12000;
+  var kent = !!perioden;
+  var inBg = function (x) {
+    return kent && perioden.some(function (b) { return x.van >= b.van - SPELING && x.tot <= b.tot + SPELING; });
+  };
+  var buiten = kent ? g.filter(function (x) { return !inBg(x); }) : [];
+  var lijst = g.slice(0, 5).map(function (x) { return x.s + ' s' + (inBg(x) ? ' (app weg)' : ''); }).join(', ');
+  var duiding = !kent
+    ? ' — PLAchtergrond ontbreekt, dus er valt niet te zeggen wélke gaten van de achtergrond kwamen.'
+    : !g.length
+      ? ''
+      : !buiten.length
+        ? ' — alle gaten vallen binnen een periode waarin de app aantoonbaar weg was: dat is #18 en niet de bus.'
+        : ' — ' + buiten.length + ' van de ' + g.length + ' gaten vielen BUITEN elke achtergrondperiode (grootste ' +
+          buiten.reduce(function (a, x) { return Math.max(a, x.s || 0); }, 0) + ' s). De lus lag daar stil terwijl de app ' +
+          'in beeld stond, en dat is #18 niet — kijk naar de adapter, de bus of een vastgelopen sweep.';
+  return { lijst: lijst, buiten: buiten, duiding: duiding };
+}
+window.plGatDuiding = plGatDuiding;
 window.PLRit = PLRit;
 try { PLRit.start(); } catch (e) { console.warn('PLRit niet gestart — blok 14 (de rit) blijft dan leeg', e); }
 
@@ -2744,7 +2789,7 @@ const PROEVEN_B5 = [
   {
     issue: '#18',
     naam: '#18 — weet de app dat hij weg was, en komt hij met opzet terug?',
-    waarom: 'De bevriezing zelf is niet vanuit JavaScript te repareren. Wat wél kan is ervan weten — en dat is wat 7.0 toevoegt.',
+    waarom: 'De bevriezing zelf is niet vanuit JavaScript te repareren. Wat wél kan is ervan weten én hem meten — hoe lang de app na het verbergen nog doorliep, en hoe lang hij daarna werkelijk stillag.',
     proef: function () {
       const m = _markeringen.filter(function (x) { return /achtergrond in/i.test(x.tekst); }).pop();
       if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — stap 7 van de begeleide rit is niet gedaan, ' +
@@ -2761,26 +2806,87 @@ const PROEVEN_B5 = [
       let bgs = [];
       try { bgs = PLAchtergrond.sinds(m.ms - 2000) || []; } catch (e) { return { staat: 'LET OP', detail: 'PLAchtergrond.sinds() gaf een fout' }; }
       const bgGrootste = bgs.reduce(function (a, p) { return Math.max(a, p.s || 0); }, 0);
+      const bgStil = (typeof PLAchtergrond.stilsteS === 'function') ? PLAchtergrond.stilsteS(m.ms - 2000) : null;
+      const bgGemeten = (typeof PLAchtergrond.gemeten === 'function') ? PLAchtergrond.gemeten(m.ms - 2000) : 0;
       const kop = 'markering om ' + m.t + '  |  PLRit leidt ' + sinds.length + ' onderbreking(en) af, grootste ' + grootste +
-        ' s  |  PLAchtergrond wéét er ' + bgs.length + ', grootste ' + bgGrootste + ' s';
+        ' s  |  PLAchtergrond wéét er ' + bgs.length + ', langste afwezigheid ' + bgGrootste + ' s' +
+        (bgStil === null ? '' : ', langste gemeten stilte ' + bgStil + ' s');
 
-      // DE KERN VAN 7.0. Twee bronnen die langs verschillende weg naar
-      // hetzelfde moeten wijzen: PLRit leidt het gat af uit zijn eigen tikken,
-      // PLAchtergrond hangt aan visibilitychange. Lopen ze uiteen, dan is dat
-      // interessanter dan of er een gat was.
+      // DE KERN, HERZIEN OP 08-09-2026. Twee bronnen die langs verschillende
+      // weg naar hetzelfde moeten wijzen: PLRit LEIDT het gat af uit zijn
+      // eigen tikken, PLAchtergrond WEET van visibilitychange dat de app weg
+      // was en meet sindsdien met een hartslag hoe lang de lus werkelijk
+      // stillag.
+      //
+      // WAT HIER TOT 7.3 FOUT AAN WAS. De proef vergeleek `grootste` (het gat
+      // in de meetlus) met `bgGrootste` (hoe lang de app weg was) en zette
+      // LET OP zodra die meer dan een kwart uiteenliepen. Dat is geen
+      // bevinding maar de normale uitkomst: tussen "app verborgen" en "Android
+      // bevriest de app" zit een aanlooptijd, op 02-09 gemeten op ~36 s. De
+      // proef sloeg dus alarm op precies het verschil dat hij hoorde te
+      // rapporteren, en op de rit van 02-09 deed hij dat ook — met een log
+      // eronder dat de aanlooptijd regel voor regel liet zien.
+      //
+      // Wat blijft alarmeren is het BESTAAN: ziet PLRit een gat waar
+      // PLAchtergrond niets van weet, dan lag de lus stil zonder dat de app
+      // het doorhad. Dat is de stille vorm die deze module moest wegnemen.
+      // Wat een meetwaarde wordt is de DUUR, en die vergelijking loopt nu
+      // tussen twee getallen die hetzelfde meten: het gat van PLRit tegen de
+      // gemeten stilte van de hartslag.
       if (!bgs.length && grootste >= 30)
         return { staat: 'FOUT', detail: kop + ' — de meetlus stond ' + grootste + ' s stil maar PLAchtergrond legde niets vast. ' +
           'De luisteraar op visibilitychange vuurde dus niet: precies de stille vorm die 7.0 moest wegnemen' };
       if (bgs.length && !sinds.length)
         return { staat: 'LET OP', detail: kop + ' — PLAchtergrond zag een pauze waar PLRit geen gat afleidt. ' +
           'Dat kan: kort weg, of de pollus liep door. Geen bevinding, wel het vermelden waard' };
-      if (bgs.length && grootste >= 30 && Math.abs(bgGrootste - grootste) > Math.max(15, grootste * 0.25))
-        return { staat: 'LET OP', detail: kop + ' — de twee bronnen verschillen meer dan een kwart. ' +
-          'Een van beide meet iets anders dan de onderbreking zelf' };
-
-      // En de tweede helft: is de socket bij terugkomst nagekeken?
+      if (bgs.length && grootste >= 30 && !bgGemeten)
+        return { staat: 'LET OP', detail: kop + ' — PLAchtergrond weet dát de app weg was maar heeft de stilte niet gemeten ' +
+          '(de hartslag startte niet). Dan is er niets om het gat van PLRit naast te leggen' };
+      /* DE MEETWAARDE VAN DEZE PROEF, EN DE REDEN DAT HIJ SINDS 08-09 BESTAAT.
+         De aanlooptijd: hoeveel seconden bleef de app na het verbergen nog
+         dóórlopen voordat Android hem stilzette. Op 02-09 was dat ~36 s, en
+         dat getal is het bruikbaarste dat de hele rit opleverde — het bepaalt
+         welke oplossing überhaupt zin heeft. Een foreground service hoeft geen
+         milliseconden te winnen; hij moet een gat van deze orde overbruggen.
+         Tot 7.3 kwam dat getal alleen uit met de hand naast elkaar gelegde
+         logregels. Nu meet de hartslag het, en staat het in het verslag. */
+      // De tweede helft van deze proef: is de socket bij terugkomst nagekeken?
+      // Staat hier bovenaan omdat elke uitkomst hieronder hem meldt — de
+      // achtergrondpauze en de dode socket zijn twee kanten van hetzelfde.
       const laatste = bgs.length ? bgs[bgs.length - 1] : null;
       const sock = laatste ? (laatste.socket || 'niet nagekeken (korter dan de drempel)') : '—';
+
+      const aanloop = bgs.filter(function (x) { return typeof x.door === 'number' && x.stil; });
+      const meet = aanloop.length
+        ? '  |  aanlooptijd tot de bevriezing: ' + aanloop.map(function (x) { return x.door + ' s'; }).join(', ') +
+          ' (daarna ' + aanloop.map(function (x) { return x.stil + ' s'; }).join(', ') + ' stil)'
+        : '';
+
+      /* AFKNIJPEN KOMT VÓÓR DE VERGELIJKING, EN DAT IS GEEN VOLGORDE MAAR EEN
+         REDENERING. Knijpt Chromium een verborgen tab af naar één tik per
+         minuut, dan ziet de hartslag een reeks stiltes van een minuut terwijl
+         PLRit — die om de vijf seconden tikt — er één lang gat van maakt. Die
+         twee getallen lopen dan per definitie uiteen, en de vergelijking
+         hieronder zou daar LET OP op zetten met "een van beide telt iets
+         anders mee". Dat is precies de vorm van de fout die deze ronde
+         wegneemt: alarm slaan op een verschil waar de verklaring al bekend is.
+         Staat de verklaring vast, dan hoort die er te staan — en niet het
+         alarm eronder. */
+      const afgeknepen = bgs.filter(function (x) { return typeof x.na === 'number' && x.na >= 3; });
+      if (afgeknepen.length)
+        return { staat: 'LET OP', detail: kop + meet + '  |  socket: ' + sock + ' — de meetlus is ' + afgeknepen.length +
+          ' keer uit zichzelf weer gaan lopen terwijl de app nog weg was. Dat is Chromium die een verborgen tab AFKNIJPT ' +
+          '(één tik per minuut), niet Android die het proces bevriest. Twee verschillende oorzaken met twee verschillende ' +
+          'oplossingen; noteer het merk en de Android-versie erbij' };
+
+      // Pas hier vergelijken, en alleen tussen twee getallen die hetzelfde
+      // meten. Een kwart speling is ruim: PLRit tikt om de vijf seconden en
+      // de hartslag om de seconde, dus een paar seconden verschil is de
+      // resolutie en geen meetfout.
+      if (bgStil >= 30 && grootste >= 30 && Math.abs(bgStil - grootste) > Math.max(15, grootste * 0.25))
+        return { staat: 'LET OP', detail: kop + ' — het gat van PLRit (' + grootste + ' s) en de gemeten stilte (' + bgStil +
+          ' s) lopen meer dan een kwart uiteen, terwijl ze hetzelfde horen te meten. Een van beide telt iets anders mee' };
+
       if (laatste && /ontbreekt/.test(String(laatste.socket)))
         return { staat: 'FOUT', detail: kop + '  |  socket: ' + sock + ' — de haak naar sppReconnectGuard is weg, ' +
           'dus de app komt weer per ongeluk achter een dode socket in plaats van met opzet' };
@@ -2789,8 +2895,8 @@ const PROEVEN_B5 = [
         return { staat: 'LET OP', detail: kop + ' — geen van beide bronnen zag een onderbreking. Ben je wel echt ' +
           'twee minuten weg geweest, en bleef de app draaien?' };
 
-      return kop + '  |  socket: ' + sock + ' — beide bronnen wijzen dezelfde kant op: de app weet dat hij weg was ' +
-        'en komt met opzet terug. Dat is wat 7.0 aan #18 toevoegt; de bevriezing zelf blijft native werk';
+      return kop + meet + '  |  socket: ' + sock + ' — beide bronnen wijzen dezelfde kant op: de app weet dat hij weg was, ' +
+        'meet hoe lang hij stillag en komt met opzet terug. De bevriezing zelf blijft native werk';
     }
   },
 
@@ -4103,10 +4209,25 @@ async function _blok14() {
     const kop = Math.round(duur / 60) + ' min waargenomen, ' + R.tikken() + ' tikken, hoogste PID-telling ' +
       R.monsters() + ' verversingen, ' + g.length + ' gat(en), ' + hv + ' herverbinding(en)';
     if (!g.length && !hv) return kop + ' — ononderbroken';
-    const lijst = g.slice(0, 5).map(function (x) { return x.s + ' s'; }).join(', ');
-    return { staat: 'LET OP', detail: kop + (g.length ? '. Stiltes: ' + lijst : '') +
-      ' — een gat betekent dat de meetlus zelf niet liep (Android bevriest WebView-timers op de achtergrond). ' +
-      'Volgt elke herverbinding op een gat, dan is dat de achtergrondkwestie en niet de bus. ' +
+
+    /* ELK GAT TOEWIJZEN IN PLAATS VAN HET TOE TE SCHRIJVEN (08-09-2026, #18).
+       Hier stond "een gat betekent dat de meetlus zelf niet liep (Android
+       bevriest WebView-timers op de achtergrond)". Het eerste deel is waar —
+       een gat IS een lus die niet liep. Het tweede is een oorzaak, en die werd
+       aan élk gat toegekend zonder ernaar te kijken. Een gat door een dode
+       adapter, een vastgelopen sweep of een trage bus las precies hetzelfde,
+       en dat stuurt je op de verkeerde jacht.
+
+       PLAchtergrond weet welke perioden de app werkelijk weg was. Valt een gat
+       binnen zo'n periode, dan is het de achtergrondkwestie; valt het erbuiten,
+       dan lag de lus stil terwijl de app gewoon in beeld stond — en dat is een
+       heel ander en veel interessanter probleem. */
+    let bgp = null;
+    try { bgp = (window.PLAchtergrond && PLAchtergrond.perioden) ? PLAchtergrond.perioden() : null; }
+    catch (e) { console.warn('blok 14: PLAchtergrond onleesbaar bij het toewijzen van de gaten', e); }
+    const d = plGatDuiding(g, bgp);
+    return { staat: 'LET OP', detail: kop + (g.length ? '. Stiltes: ' + d.lijst : '') + d.duiding +
+      ' Volgt elke herverbinding op een gat, dan is dat de achtergrondkwestie en niet de bus. ' +
       'De eerste verbinding van een sessie telt sinds 02-09-2026 niet meer mee (#77), dus elke ' +
       'herverbinding hierboven is er ook echt een.' };
   });
@@ -4797,8 +4918,18 @@ const _STAPPEN = [
       let bg = null;
       try { bg = (window.PLAchtergrond && PLAchtergrond.laatste) ? PLAchtergrond.laatste() : null; }
       catch (e) { console.warn('PLAchtergrond onleesbaar bij de achtergrondstap', e); }
+      // SINDS 08-09 STAAT DE GEMETEN STILTE ERBIJ. `bg.s` is hoe lang de app
+      // weg was; dat wist deze stap al. `bg.door` en `bg.stil` komen van de
+      // hartslag en zeggen hoe lang de lus daarvan werkelijk niets deed. Juist
+      // dat eerste getal — de aanlooptijd — is wat je hier op het toestel wilt
+      // zien, want het is de maat waarop een oplossing gebouwd moet worden.
+      const bgMeet = !bg ? ''
+        : (bg.stil === null ? ' (stilte niet gemeten — de hartslag startte niet)'
+          : !bg.stil ? ' weg, en de meetlus liep dóór'
+          : ' weg, waarvan ' + bg.door + ' s doorgelopen en ' + bg.stil + ' s stil' +
+            (bg.na >= 3 ? ', daarna zelf weer ' + bg.na + ' s aan — afgeknepen, niet bevroren' : ''));
       const bgTekst = !window.PLAchtergrond ? 'PLAchtergrond ontbreekt — dan weet de app nog steeds niets van zijn eigen pauze (#18)'
-        : (!bg ? 'PLAchtergrond legde niets vast' : 'PLAchtergrond: ' + bg.s + ' s' + (bg.socket ? ', ' + bg.socket : ''));
+        : (!bg ? 'PLAchtergrond legde niets vast' : 'PLAchtergrond: ' + bg.s + ' s' + bgMeet + (bg.socket ? ', ' + bg.socket : ''));
       // Allebei de uitkomsten zijn een meting. Dat is het punt: tot nu toe was
       // er alleen een vermoeden, en een vermoeden sluit geen issue.
       if (grootste >= 30)
@@ -5369,6 +5500,8 @@ const CAMPAGNE = {
 
     'STAP D \u2014 BLOK 5, DE NIEUWE PROEF. "De beheerdersschakelaar zet beide demoknoppen weg" draait feat_demo in de echte app om en kijkt wat de CSS er werkelijk mee doet. Hij zet zichzelf terug; staat er toch FOUT met "de demo uitgezet op dit toestel", herlaad de app dan v\u00f3\u00f3r je iets anders doet.',
 
+    'STAP D2 \u2014 DE ACHTERGRONDPROEF, EN LET OP WAT ER NU BIJ STAAT (#18). Stap 7 van de begeleide rit is niet veranderd \u2014 twee minuten weg, en blijf rijden \u2014 maar het antwoord wel. Het logboek noemt voortaan drie getallen in plaats van \u00e9\u00e9n: hoe lang de app weg was, hoeveel daarvan hij nog doorliep, en hoe lang hij werkelijk stillag. Staat er "afgeknepen, niet bevroren", dan is dat een andere bevinding dan een bevriezing en hoort het merk en de Android-versie erbij. Blok 5 slaat geen alarm meer op het verschil tussen die eerste twee getallen; doet hij dat toch, dan is er iets anders aan de hand dan de aanlooptijd.',
+
     'STAP E \u2014 DE RANDEN, DE VIJF DIE NOG OPEN STAAN. Topbalk en Logboek zijn gemeten. Testrunpaneel, Veldlab, diepe diagnose, neon-HUD en rittracker nog niet, en dit is edge-to-edge op targetSdk 36. Doe ze op de SM-S947B, want op een tablet klopt de proef per definitie.',
 
     '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
@@ -5434,7 +5567,7 @@ const CAMPAGNE = {
 
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500',
 
-    '#18 \u2014 DE APP BEVRIEST OP DE ACHTERGROND. Ook geen reviewvraag: die doet geen rit van 28 minuten. Het is native werk (foreground service plus wake lock) en blijft de zwaarste openstaande post voor de gebruiker die w\u00e9l rijdt.',
+    '#18 \u2014 DE BEVRIEZING ZELF. Ook geen reviewvraag: die doet geen rit van 28 minuten. Het blijft native werk (foreground service plus wake lock, of picture-in-picture) en de zwaarste openstaande post voor de gebruiker die w\u00e9l rijdt. Wat 7.4 er w\u00e9l aan doet is hem M\u00c9TEN: hoe lang de app na het wegschakelen nog doorliep, hoe lang hij daarna werkelijk stillag, en of hij uit zichzelf weer aanging (afknijpen) of niet (bevriezen). Dat zijn de getallen waarmee de keuze tussen die twee oplossingen onderbouwd wordt in plaats van gegokt \u2014 punt B van de route uit het issue.',
 
     'DE VRAAG OVER DE BETAALREGELS. #42 is gesloten met een besluit, niet met een antwoord: geen koopknop in de app, tokens per mail, tot boven de tien klanten. Dat is een verdedigbare stand voor de inzending \u2014 er is niets te betalen in de app, dus er valt niets langs Play Billing te leiden. Het antwoord van Play Console-support blijft nuttig v\u00f3\u00f3r de koopknop ooit aangaat.',
 

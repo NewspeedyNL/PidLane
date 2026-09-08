@@ -114,6 +114,17 @@ MUTATIES=(
 "public/pidlane-data.js@@if(this._iemandWacht(naam)) return 0;@@@@test-busslot.js@@de pollus dringt weer voor: een wachter op het busslot verhongert"
 "public/pidlane-data.js@@S.wacht=S.wacht.filter(w=>t-w.sinds < this.WACHT_MAX_MS);@@@@test-busslot.js@@een wachter die zijn beurt niet pakt gijzelt de bus voor altijd"
 "public/pidlane-achtergrond.js@@sppReconnectGuard(c.spp, c.address, 'terug na ' + s + ' s achtergrond')@@sppReconnectGuard(c.spp, c.address, 'terug na ' + s + ' s achtergrond', true)@@test-achtergrond.js@@de socketcontrole sloopt een gezonde verbinding in plaats van hem na te kijken"
+# ── #18, de hartslag (08-09-2026). De reparatie van deze ronde is dat "weg" en
+#    "stil" twee getallen zijn. Elke mutatie hieronder gooit dat onderscheid op
+#    één van de manieren om waarop het werkelijk fout ging of kon gaan.
+"public/pidlane-achtergrond.js@@      p.stil = Math.round(stilMs / 1000);@@      p.stil = Math.round((tot - van) / 1000);@@test-achtergrond.js@@de melding boekt de afwezigheid weer als stilte \u2014 precies de fout van 02-09"
+"public/pidlane-achtergrond.js@@              door: null, stil: null, na: null };@@              door: 0, stil: 0, na: 0 };@@test-achtergrond.js@@een niet-gemeten stilte leest als nul, dus als \"er was niets aan de hand\""
+"public/pidlane-achtergrond.js@@    if (staart >= _stilMs) return { ms: staart, van: _laatste };@@    if (false) return { ms: staart, van: _laatste };@@test-achtergrond.js@@de staart telt niet mee: een bevriezing die tot het eind duurt wordt nul"
+"public/pidlane-achtergrond.js@@    try { if (_timer !== null && typeof clearInterval === 'function') clearInterval(_timer); }@@    try { if (false) clearInterval(_timer); }@@test-achtergrond.js@@de hartslag blijft doorlopen als de app weer in beeld is"
+"public/pidlane-testrun.js@@PLAchtergrond.stilsteS(m.ms - 2000) : null;@@PLAchtergrond.totaalS(m.ms - 2000) : null;@@test-achtergrondproef.js@@blok 5 vergelijkt het gat weer met de afwezigheid in plaats van met de stilte"
+"public/pidlane-testrun.js@@return typeof x.na === 'number' && x.na >= 3; });@@return typeof x.na === 'number' && x.na >= 99999; });@@test-achtergrondproef.js@@afknijpen wordt niet meer herkend en gaat als bevriezing het verslag in"
+"public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
+"public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
