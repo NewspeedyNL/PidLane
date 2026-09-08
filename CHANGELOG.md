@@ -11,6 +11,59 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08a (CET) — DE KLOK IN DE NAAM, DE
+                                VOLGORDE IN HET LOGBOEK
+                                EN TWEE UITLEGGEN
+
+       • 🕛 HET LOGBOEK ZETTE DE NACHT BOVENAAN. Een sessie
+         die middernacht passeert kreeg de regels van na
+         twaalven bóven die van 22:00 (#140). Het logboek
+         sorteerde op de kloktijd die voor het SCHERM
+         gemaakt wordt — "HH:MM:SS", zonder datum, en als
+         string is "00:15" kleiner dan "22:14". De tijd was
+         er wél: log() en btDiag() zetten sinds #75 een
+         epoch mee, en dit scherm pakte de andere helft.
+         Nu sorteert het op dat epoch. De twee bronnen die
+         geen epoch hebben (de tekstspiegel en de diagring)
+         krijgen er een afgeleid uit hun eigen volgorde, en
+         de export zet een dagscheiding tussen twee dagen.
+
+       • 📁 DERTIEN EXPORTNAMEN DROEGEN DE VERKEERDE DAG.
+         Wie tussen middernacht en 02:00 een rapport,
+         scanlog, dossier of survey opsloeg, kreeg de datum
+         van gisteren in de bestandsnaam (#112) — precies
+         het venster waarin een testrun vaak eindigt. Ze
+         lopen nu allemaal door plDatumLokaal() en
+         plStempelLokaal(), de helpers die sinds #17 al
+         bestonden. Tijden die als VELD in opgeslagen data
+         gaan blijven UTC, met Z erachter: dat onderscheid
+         is de hele regel.
+
+       • 💡 "DUBBELTIK = SENSOR UITZETTEN" WAS NIET WAAR.
+         Sinds 02-09 verbergt een dubbeltik alleen — de
+         sensor blijft gemeten worden — maar de tekst op de
+         tegels beloofde nog het oude gedrag (#124). Die
+         tekst klopt nu, en omdat een tooltip op een
+         telefoon nooit verschijnt komt de uitleg één keer
+         per toestel als tip in beeld zodra er tegels staan.
+
+       • 🔗 DE BEVINDINGENSCHAKELAAR STAAT NU BIJ DE REST.
+         Hij zat in het ☰-menu en hoort bij wat er in de
+         live view verschijnt, dus staat hij nu in het
+         Run-venster rechtsboven (#123) — met een eigen
+         kopje, want anders dan de vijf erboven draait hij
+         niets op de achtergrond en kost hij geen
+         buscapaciteit.
+
+       • ⚙️ BEHEER: DE SCHAKELAARS ZEGGEN NU WAAR OPSLAAN
+         ZIT. In beheer.html stond bij "Functies aan/uit"
+         niet dat de wijziging pas met "Alles opslaan"
+         onderaan meegaat (#139). admin.html had die regel
+         wel. Een schakelaar die terugveert zonder uitleg
+         leest als kapot.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-04d (CET) — DE VIN, HET GERICHTE
                                 ZOEKEN EN EEN HALVE
                                 WAARHEID MINDER

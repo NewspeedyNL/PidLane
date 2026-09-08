@@ -836,6 +836,65 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Het logboek had de tijd wél, en pakte de andere helft — 08-09-2026 (#140)
+
+Gemeld op 05-09: "items van 22:00 staan onderaan en nieuwe regels komen na
+middernacht daarboven". Dat klopt, en de oorzaak stond in de kop van
+`pidlane-logboek.js` zelf opgeschreven:
+
+> Elke bron levert `{t, bron, type, msg}`. `t` is een tijdstring HH:MM:SS zoals
+> de bronnen hem zelf maken — **geen enkele bewaart een echte timestamp**, dus
+> sorteren gaat op die string.
+
+Die zin was al onwaar toen hij er stond. `log()` in `pidlane-auth.js` en
+`btDiag()` in `pidlane-btflow.js` zetten sinds **#75** `t: Date.now()` naast de
+kloktijd, met in het commentaar erbij precies de reden: *"`ts` is alleen
+HH:MM:SS en dus niet te vergelijken met een starttijd"*. Het logboek las de
+verkeerde helft van hetzelfde object. Als string is `"00:15:03"` kleiner dan
+`"22:14:07"`, dus alles van na twaalven schoof naar boven.
+
+**Wat dit laat zien is niet de bug maar de vorm.** Een module die een tweede
+module leest, herhaalt in zijn eigen kop wat die eerste module doet — en dat is
+een kopie die veroudert zonder dat er iets rood wordt. Hier stond de correctie
+(#75, augustus) in de bron, en de verouderde samenvatting in de lezer. Dezelfde
+vorm als de tabel die §11 op 02-09 de kop kostte, één laag lager.
+
+De regels worden nu op het epoch gesorteerd; de kloktijd blijft wat hij was —
+de string voor het scherm, het zoekveld en de export. Twee bronnen hebben geen
+epoch (de tekstspiegel is platte tekst, de diagring bewaart alleen een
+kloktijd); die krijgen er een afgeleid uit hun eigen volgorde, want beide worden
+alleen aangevuld en nooit herschikt. Dat geeft geen exacte datum en pretendeert
+dat ook niet — het geeft de juiste volgorde. `test-logboeksort.js` toetst het op
+de echte module, met de oude sortering als tegenproef op hetzelfde materiaal.
+
+**Onderweg gevonden, bewust niet gerepareerd.** `_uitDiagRing()` leest
+`r.ts || r.tijd`, terwijl `_diagRing` zijn kloktijd in `r.t` zet
+(`pidlane-diagbundel.js`, rond regel 22). Die twee namen zijn elkaar nooit
+tegengekomen, dus élke PID-regel komt zonder tijd binnen en belandt onderaan het
+logboek in plaats van op de tijdlijn. Dat is een eigen bug met een eigen
+oorzaak; hij hoort in een eigen ronde en niet in deze commit.
+
+### De extensie was niet de oorzaak — het opslagvenster ís #18 — 08-09-2026 (#132)
+
+Het issue vermoedt de bestandsextensie: het opslagvenster van de Bulk Recorder
+zou een dialoog geven waar andere opslaanknoppen rechtstreeks wegschrijven. Bij
+het nalopen bleek die aanname niet te houden. **Alle twaalf modules die een
+bestand wegschrijven lopen door dezelfde `download()`** in
+`pidlane-motortype.js`, en die bouwt zijn Blob altijd als `text/plain` —
+de extensie komt er niet in voor. Wat die functie wél doet is eerst
+`nativeShareFile()` proberen, en dat opent de Android-deelkaart.
+
+Daarmee is dit hetzelfde mechanisme als #18: een venster dat de WebView naar de
+achtergrond duwt, waar Android de JS-timers bevriest en de socket opruimt. Dat
+het juist hier opvalt is te verklaren zonder een tweede oorzaak: de
+bulk-export is het grootste bestand (NDJSON, lineair groeiend) én de enige
+opslagknop die je typisch indrukt terwijl de verbinding nog staat. De andere
+exports gebruik je ná een rit, en dan is er geen verbinding meer om te verliezen.
+
+**Nog niet gemeten, en dat is de volgende stap:** doe een andere exportknop
+tijdens een lopende BT-sessie. Verbreekt die óók, dan hoort #132 bij #18 en is
+een aparte reparatie voor de recorder verspilde moeite.
+
 ### Elke scan mislukte, en dat lag niet aan de adressen — 04-09-2026
 
 De jacht op datapunten liep hier al maanden op raden. Blok 9 gokte 256
