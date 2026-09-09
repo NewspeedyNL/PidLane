@@ -11,6 +11,41 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-09b (CET) — ÉÉN LIJST DIE DE RIT STUURT
+
+       • 🧭 DE MEETCONTEXT EN HET ADAPTERGAT ZIJN NU STAPPEN
+         IN DE BEGELEIDE RUN. Ze stonden als tekst in CAMPAGNE
+         en gebeurden daarom niet: de rit van 09-09 volgde de
+         begeleide run — dertien eigen stappen, waar deze twee
+         niet in zaten. Gevolg: #64 meldde "het venster is niet
+         beantwoord" en #133 kwam op "ok" zonder ooit onder
+         spanning te staan. De meetcontextstap opent het venster
+         los (kost geen tokens) en toetst of een gegeven antwoord
+         de promptregel haalt; de adapterstap laat je de stekker
+         er met opzet uittrekken en kijkt of het gat doorkomt in
+         het oordeel over de meetkwaliteit.
+
+       • 📐 EN DE VOLGORDE IS EEN EIS GEWORDEN. meetcontext vóór
+         adapterlos (de vragen beantwoord je met een verbinding
+         die nog heel is), slimweergave vóór adapterlos (het
+         zelfgemaakte gat vervuilt precies de reeks waarop #66
+         beoordeeld is), en allebei vóór het meten. Vastgelegd
+         in test-begeleid.js, met twee tegenproeven. CAMPAGNE
+         somt ze niet meer op maar wijst ernaar — twee lijsten
+         met ritstappen naast elkaar is de vorm die §11 al twee
+         keer de kop kostte.
+
+       • 🔧 #66: DE IJKVRAAG SCHEIDT NU EEN STILSTAANDE REEKS
+         VAN EEN TE GROVE DREMPEL. De proef sloeg op zijn eerste
+         rit alarm en had ongelijk: stationair op 652 rpm gaf
+         het toerental 108 bereik tegen een drempel van 160 —
+         geen kapotte reeks maar een normale stationairloop.
+         Bereik nul bij draaiende motor blijft FOUT; bereik
+         onder de drempel is voortaan LET OP met het getal
+         erbij, want dat is de meetwaarde waar #66 om vroeg.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-09a (CET) — DE RIT SCHRIJFT ZICHZELF OP
 
        • 📋 DRIE PROEVEN IN BLOK 5 LEGGEN VAST WAT TOT NU TOE

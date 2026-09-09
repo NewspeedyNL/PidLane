@@ -924,6 +924,27 @@ het gevraagde cijfer) en is de adapter niet bewust losgetrokken (#133 kwam op
 naast elkaar is dezelfde vorm waar dit hoofdstuk al twee keer aan ten onder
 ging; de volgende ronde hoort te kiezen welke van de twee de rit stuurt.
 
+**Die keuze is gemaakt, dezelfde dag: de begeleide run stuurt.** De twee
+stappen zijn erin verhuisd (`meetcontext` en `adapterlos`), en `CAMPAGNE` zegt
+dat nu ook met zoveel woorden in plaats van ze een tweede keer op te sommen. De
+reden dat het die kant op gaat en niet andersom is bewijsbaar: de begeleide run
+is degene die gevolgd wérd, en hij dwingt af wat `CAMPAGNE` alleen kon vragen —
+elke stap doet wat de app zelf kan, laat zien wat er gebeurde, en overslaan kost
+een reden die in het verslag komt.
+
+Wat er bewust in `CAMPAGNE` blijft staan, is precies wat de run niet kan
+afdwingen: de leesbaarheidsronde (#141, een oordeel met daglicht erbij) en de
+A/B-proef van #64, want die kost twee betaalde analyses. De stap in de run toont
+het venster los en toetst of een antwoord de promptregel haalt — dat is gratis;
+of het antwoord het *rapport* verandert is een andere vraag en een andere prijs.
+
+De volgorde binnen het staartje is niet vrij, en dat staat nu als eis in
+`test-begeleid.js`: `meetcontext` vóór `adapterlos` (de vragen beantwoord je met
+een verbinding die nog heel is), `slimweergave` vóór `adapterlos` (het
+zelfgemaakte gat vervuilt precies de reeks waarop #66 beoordeeld is), en beide
+vóór `meten` (anders leest blok 5 ze niet). Twee tegenproeven laten zien dat die
+eisen rood kunnen worden.
+
 ### Zes issues wachtten op een rit, en de rit leverde herinneringen — 08-09-2026
 
 Er stonden negen issues open en zes daarvan wachtten op iets dat alleen achter
