@@ -46,7 +46,8 @@
 //
 // 1. WACHT DE ANIMATIE AF. `.ai-sheet` schuift omhoog (`animation: sheetUp`).
 //    Meteen meten gaf "26px ONDER de rand" voor de PID-recorder — dat was de
-//    animatie, niet de marge. Zie `rust()` hieronder.
+//    animatie, niet de marge. Sinds 09-09-2026 wacht `wachtTotStil()` tot twee
+//    metingen hetzelfde zeggen, in plaats van een vast aantal milliseconden.
 // 2. DE LAAGSTE KNOP IS NIET ALTIJD DE MAAT. Bij #135 stond de laagste knop
 //    op 153px en was er niets aan de hand; het was de laatste KAART die 24px
 //    boven de rand eindigde en dus half achter de knoppenbalk lag. Een scherm
@@ -117,15 +118,44 @@ function toets(naam, waar, uitleg) {
   else { console.log('  FOUT ' + naam + (uitleg ? ' — ' + uitleg : '')); fouten++; }
 }
 
-/* Even wachten na het openen, en dit is geen luiheid maar een meetfout die we
-   op 08-09-2026 in de val liepen. .ai-sheet draagt `animation: sheetUp .25s`:
-   het vel schuift van onder het beeld omhoog. Meet je meteen, dan meet je de
+/* Wachten na het openen is geen luiheid maar een meetfout die we op
+   08-09-2026 in de val liepen. .ai-sheet draagt `animation: sheetUp .25s`: het
+   vel schuift van onder het beeld omhoog. Meet je meteen, dan meet je de
    animatie — de PID-recorder gaf zo "26px ONDER de onderrand" terwijl het vel
    40px van zijn weg omhoog nog moest afleggen. De inline gebouwde vellen
    hebben die animatie niet, dus die kwamen er wél goed uit; juist daardoor
    leek het verschil een echte bevinding. */
 const rust = (ms) => new Promise(function (r) { setTimeout(r, ms); });
-const ANIMATIE_MS = 400;
+
+/* WACHTEN TOT HET STILSTAAT, NIET EEN VAST AANTAL MILLISECONDEN.
+   ────────────────────────────────────────────────────────────────────
+   Hierboven staat als meetles 1: wacht de animatie af. Dat werd 400 ms, en
+   dat is een gok die het meestal haalt. Op 09-09-2026 haalde hij het niet:
+   dezelfde commit gaf twee runs, één rood en één groen, en de rode meldde
+   "PID-recorder: 22px onder de knop" terwijl datzelfde vel even verderop in
+   diezelfde run 62px gaf. Het vel was nog aan het omhoogschuiven.
+
+   Een proef die soms rood staat is net zo waardeloos als een die altijd rood
+   staat: hij wordt na twee keer weggeklikt als "die doet dat wel vaker". De
+   400 ms zijn daarom vervangen door de vraag zelf: meet net zo lang tot twee
+   metingen achter elkaar hetzelfde zeggen. Dan is het vel uitgeschoven, hoe
+   traag de runner ook is — en op een snelle runner kost het één meting extra
+   in plaats van 400 ms wachten.
+
+   De bovengrens blijft bestaan zodat een vel dat nooit tot rust komt de proef
+   niet laat hangen; die situatie is zelf een bevinding en komt als afwijkende
+   maat vanzelf in blok 2 terecht. */
+async function wachtTotStil(app, id) {
+  let vorig = null;
+  for (let poging = 0; poging < 40; poging++) {       // ruim 3 s bovengrens
+    const m = await app.ev(`${TEKSTMETER}('${id}')`);
+    const nu = (m && !m.fout && typeof m.ruimteOnder === 'number') ? m.ruimteOnder : null;
+    if (nu !== null && nu === vorig) return nu;       // twee gelijke metingen = stil
+    vorig = nu;
+    await rust(80);
+  }
+  return vorig;
+}
 
 // De onderaan-uitschuivende vellen: naam, de functie die hem opent, en het
 // id van het element dat hij bouwt. Komt er een vel bij, dan hoort het hier.
@@ -255,7 +285,7 @@ async function keurVel(app, v, waar, sluit) {
   const bestaat = await app.ev(`(function(){ try { return typeof ${v.open} === 'function'; } catch (e) { return false; } })()`);
   if (!bestaat) { toets(v.naam + bij + ': ' + v.open + '() bestaat', false, 'hernoemd of verdwenen?'); return; }
   await app.ev(`${v.open}(); true`);
-  await rust(ANIMATIE_MS);
+  await wachtTotStil(app, v.id);
 
   const k = await app.ev(`${METER}('${v.id}')`);
   if (k.fout) toets(v.naam + bij + ': meetbaar', false, k.fout);
@@ -317,7 +347,7 @@ async function keurVel(app, v, waar, sluit) {
           openDoor('diag');
           return true;
         })()`);
-        await rust(ANIMATIE_MS);
+        await wachtTotStil(app, 'dp-diag');
         // Eerst helemaal naar beneden scrollen. De scrollbak (.welcome-scroll)
         // is hier een VOORVADER van het paneel, en de meter scrolt alleen wat
         // eronder hangt — zonder deze stap meet je de kaart die toevallig op de
@@ -392,7 +422,7 @@ async function keurVel(app, v, waar, sluit) {
        stond de laagste knop op 65px en dus ruim boven de balk. Die maat zou
        hier groen blijven, en precies daarom liet de vorige ronde dit lopen. */
     await app.ev(`openRunPaneel(); true`);
-    await rust(ANIMATIE_MS);
+    await wachtTotStil(app, 'runOv');
     const runVoor = await app.ev(`${TEKSTMETER}('runOv')`);
     await app.ev(`(function(){ document.getElementById('runOv').style.paddingBottom = '16px'; return true; })()`);
     const runNa = await app.ev(`${TEKSTMETER}('runOv')`);
@@ -447,7 +477,7 @@ async function keurVel(app, v, waar, sluit) {
     ];
     for (const t of TERUG) {
       await app.ev(`${t.open}; true`);
-      await rust(ANIMATIE_MS);
+      await wachtTotStil(app, t.id);
       await app.ev(`${t.zet}; true`);
       const m = await app.ev(`${METER}('${t.id}')`);
       toets(t.naam + ': valt terug op ' + m.ruimteOnder + 'px',
