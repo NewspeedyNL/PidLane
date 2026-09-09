@@ -199,6 +199,12 @@ var KRITIEK = [
   // maar de guard eromheen hoort hier geregistreerd te staan.
   'bevindingenZet','bevindingenMenuBij',          // pidlane-correlatie.js — #123
   'setPidView',                                   // pidlane-pids.js       — #61
+  // Beslist of een tegel een trendlijn krijgt (pidlane-pids.js). Blok 5 meet
+  // sinds 08-09-2026 de drempel eronder na, met een guard eromheen. Ontbreekt
+  // de functie, dan slaat die proef stil over — en dan is juist de meting weg
+  // waarmee #66 te beantwoorden is, terwijl de slimme weergave er intussen
+  // geen enkele lijn meer tekent.
+  'slimBeweegt',                                  // pidlane-pids.js       — #66
   // Zet de live view bij het opstarten in de opgeslagen of de standaard
   // weergave (pidlane-pids.js, aangeroepen uit pidlane-theme.js). Ontbreekt
   // hij, dan start de app in wat pidViewMode toevallig is en is de

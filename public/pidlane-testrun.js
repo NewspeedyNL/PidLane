@@ -3326,6 +3326,180 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ══════════════════════════════════════════════════════════════
+  // DRIE PROEVEN DIE DE RIT LATEN VASTLEGGEN WAT NU VAN OPLETTEN AFHANGT
+  // ──────────────────────────────────────────────────────────────
+  // #66, #64 en #133 staan alle drie open met dezelfde vorm: het antwoord is
+  // alleen tijdens een rit te geven, en het staat in de issues als "kijk of
+  // het klopt". Kijken is geen meten — wat er dan van een rit terugkomt is een
+  // herinnering, en die is er de volgende ronde niet meer.
+  //
+  // Deze drie zetten het in het verslag, met een echte faaltoestand erin; een
+  // blok dat alleen kán rapporteren wordt na twee ritten niet meer gelezen.
+  // ══════════════════════════════════════════════════════════════
+
+  // ── #66: is 2% van het bereik de goede drempel voor "beweegt"? ──
+  // Het issue vraagt om een oordeel dat een machine niet kan geven: staat er
+  // een lijn waar je er een wilt. Wat de machine wél kan is de meting eronder
+  // opschrijven — per sensor het bereik tegen de drempel — zodat die vraag ná
+  // de rit met getallen te beantwoorden is in plaats van uit het hoofd. De
+  // faaltoestand is de ijkvraag uit het issue zelf: draait de motor, dan MOET
+  // het toerental bewegen. Doet het dat niet, dan is niet de drempel verkeerd
+  // maar de reeks eronder stuk.
+  {
+    issue: '#66',
+    naam: 'De drempel voor "beweegt" scheidt beweging van stilstand',
+    waarom: 'Alleen tijdens een rit beweegt er iets; stilstaand is de vraag niet te beantwoorden.',
+    proef: function () {
+      if (typeof slimBeweegt !== 'function' || typeof SLIM_BEWEEG_DEEL !== 'number')
+        return { staat: 'FOUT', detail: 'slimBeweegt() of SLIM_BEWEEG_DEEL ontbreekt — dan tekent de ' +
+          'slimme weergave geen enkele trendlijn meer (#66)' };
+
+      let lijst = [];
+      try { lijst = [...(activePIDs || [])]; } catch (e) { return { staat: 'LET OP', detail: 'activePIDs onleesbaar' }; }
+
+      // Twee cijfers is genoeg en houdt de regel leesbaar: een drempel van
+      // 0,0032 zegt evenveel als 0,003 en een bereik van 812,4 als 812.
+      const afr = function (x) { return (Math.abs(x) >= 10) ? Math.round(x) : Math.round(x * 100) / 100; };
+
+      const beweegt = [], stil = [], krap = [];
+      lijst.forEach(function (pid) {
+        let d = null;
+        try { d = (typeof getPidDef === 'function') ? getPidDef(pid) : null; } catch (e) { return; }
+        const h = (typeof pidHist !== 'undefined') && pidHist[pid];
+        if (!Array.isArray(h) || h.length < 4) return;
+        const v = h.slice(-24).map(function (x) { return x.v; })
+                   .filter(function (x) { return typeof x === 'number' && isFinite(x); });
+        if (v.length < 4) return;
+        const rg = Math.max.apply(null, v) - Math.min.apply(null, v);
+        const span = (d && typeof d.max === 'number' && typeof d.min === 'number') ? (d.max - d.min) : 0;
+        const gem = v.reduce(function (a, b) { return a + b; }, 0) / v.length;
+        const drempel = span > 0 ? span * SLIM_BEWEEG_DEEL : Math.abs(gem) * SLIM_BEWEEG_DEEL;
+        let uit = false;
+        try { uit = !!slimBeweegt(pid, d); } catch (e) { return; }
+        const naam = (d && d.name) || pid;
+        const regel = naam + ' ' + afr(rg) + '/' + afr(drempel);
+        if (uit) beweegt.push(regel); else stil.push(regel);
+        // Wat vlak onder de drempel zit is de interessantste groep: dáár
+        // beslist die 2% werkelijk iets, en dáár hoort de vraag "te hoog of
+        // te laag?" thuis.
+        if (!uit && drempel > 0 && rg > drempel * 0.5) krap.push(regel);
+      });
+
+      if (!beweegt.length && !stil.length)
+        return { staat: 'LET OP', detail: 'geen enkele sensor heeft genoeg geschiedenis — ' +
+          'stilstaand of net verbonden valt hier niets over te zeggen' };
+
+      let rpm = null;
+      try { rpm = (typeof pidVals !== 'undefined') ? pidVals['010C'] : null; } catch (e) { /* stil: pidVals kan ontbreken */ }
+      const rpmH = (typeof pidHist !== 'undefined') && pidHist['010C'];
+      const rpmGemeten = Array.isArray(rpmH) && rpmH.length >= 4;
+      let rpmBeweegt = false;
+      try { rpmBeweegt = !!slimBeweegt('010C', (typeof getPidDef === 'function') ? getPidDef('010C') : null); }
+      catch (e) { console.warn('slimBeweegt() op het toerental mislukte bij de #66-proef', e); }
+
+      const kop = 'drempel ' + (Math.round(SLIM_BEWEEG_DEEL * 1000) / 10) + '% van het bereik; ' +
+        beweegt.length + ' bewegen, ' + stil.length + ' stil' +
+        (beweegt.length ? '. Beweegt: ' + beweegt.slice(0, 6).join(', ') : '') +
+        (krap.length ? '. Vlak onder de drempel: ' + krap.slice(0, 6).join(', ') : '');
+
+      if (typeof rpm === 'number' && rpm > 400 && rpmGemeten && !rpmBeweegt)
+        return { staat: 'FOUT', detail: kop + ' — de motor draait (' + Math.round(rpm) +
+          ' rpm) maar het toerental telt niet als bewegend. Dan is niet de drempel verkeerd ' +
+          'maar de reeks eronder (#66)' };
+
+      if (typeof rpm !== 'number' || rpm <= 400)
+        return { staat: 'LET OP', detail: kop + ' — motor uit, dus de ijkvraag ' +
+          '(beweegt het toerental?) is niet gesteld' };
+
+      return kop;
+    }
+  },
+
+  // ── #64: komt het antwoord op de meetcontext werkelijk in de prompt? ──
+  // De kern van dat issue in één zin: "verandert er niets, dan komt de regel
+  // niet aan en is de hele vraag versiering". Dat is precies wat hier getoetst
+  // wordt — niet of het venster mooi is, maar of een gegeven antwoord de
+  // promptregel haalt. En is er niets beantwoord, dan is DAT het cijfer waar
+  // het issue om vraagt: hoe vaak wordt het venster werkelijk ingevuld?
+  {
+    issue: '#64',
+    naam: 'Een beantwoorde meetcontext haalt de AI-prompt',
+    waarom: 'Alleen op een toestel waar een mens de vragen echt beantwoord heeft, is dit te meten.',
+    proef: function () {
+      if (typeof plMeetcontextPromptLine !== 'function')
+        return { staat: 'FOUT', detail: 'plMeetcontextPromptLine() ontbreekt — dan gaat de meetcontext ' +
+          'nooit mee, hoe vaak een gebruiker de vragen ook beantwoordt (#64)' };
+
+      let m = null;
+      try { m = window._plMeetcontext; } catch (e) { console.warn('_plMeetcontext onleesbaar bij de #64-proef', e); }
+      let regel = '';
+      try { regel = plMeetcontextPromptLine() || ''; } catch (e) {
+        return { staat: 'FOUT', detail: 'plMeetcontextPromptLine() gooide een fout: ' + (e.message || e) };
+      }
+
+      if (!m)
+        return { staat: 'LET OP', detail: 'het meetcontextvenster is deze sessie niet beantwoord — ' +
+          'en juist dat is het getal waar #64 om vraagt: hoe vaak wordt er werkelijk geantwoord?' };
+
+      const vragen = (typeof PL_VOORVRAGEN !== 'undefined') ? PL_VOORVRAGEN : [];
+      let gegeven = [];
+      try {
+        gegeven = vragen.filter(function (v) { return m[v.key]; })
+                        .map(function (v) { return v.key + '=' + m[v.key]; });
+      } catch (e) { console.warn('PL_VOORVRAGEN niet af te lopen bij de #64-proef', e); }
+      const extra = String((m && m.extra) || '').trim();
+
+      if (!gegeven.length && !extra)
+        return { staat: 'LET OP', detail: 'het venster is geopend maar alles bleef op "weet ik niet" — ' +
+          'ook dat is een antwoord op #64' };
+
+      // DIT is de toets. Er is iets ingevuld, dus er hoort iets in de prompt te
+      // staan. Staat daar niets, dan is de vraag inderdaad versiering.
+      if (!regel.trim())
+        return { staat: 'FOUT', detail: 'beantwoord (' + gegeven.join(', ') +
+          (extra ? ', plus een opmerking' : '') + ') maar de promptregel is leeg — ' +
+          'het antwoord bereikt de AI niet (#64)' };
+
+      return gegeven.length + ' van de ' + vragen.length + ' vragen beantwoord (' + gegeven.join(', ') + ')' +
+        (extra ? ' plus een vrije opmerking' : '') + '; de promptregel draagt ' +
+        regel.trim().split('\n').length + ' regel(s) mee';
+    }
+  },
+
+  // ── #133: weet de analyse dat de verbinding is weggevallen? ──
+  // Het issue in één zin: valt de verbinding weg, dan moet de analyse dóór
+  // krijgen dat de auto niet raar doet maar de data. plMeetStabielVoorstel()
+  // (#62) telt de gaten en vult daarmee de vraag "stabiele meting" voor. De
+  // faaltoestand is de tegenspraak: PLRit ziet een gat en de voorstelregel
+  // zegt "ja, stabiel" — dan krijgt de AI te horen dat de meting schoon was.
+  {
+    issue: '#133',
+    naam: 'Een weggevallen verbinding komt in het oordeel over de meting terecht',
+    waarom: 'Alleen tijdens een rit vallen er gaten; nagebouwd bewijst dit niets over deze auto.',
+    proef: function () {
+      if (typeof plMeetStabielVoorstel !== 'function')
+        return { staat: 'FOUT', detail: 'plMeetStabielVoorstel() ontbreekt — dan gaat er geen enkel ' +
+          'oordeel over de meetkwaliteit mee naar de analyse (#133)' };
+
+      let v = null;
+      try { v = plMeetStabielVoorstel() || {}; }
+      catch (e) { return { staat: 'FOUT', detail: 'plMeetStabielVoorstel() gooide een fout: ' + (e.message || e) }; }
+
+      let gaten = [];
+      try { gaten = (window.PLRit && PLRit.gaten) ? (PLRit.gaten() || []) : []; }
+      catch (e) { console.warn('PLRit.gaten() onleesbaar bij de #133-proef', e); }
+
+      const kop = 'voorstel "stabiele meting": ' + (v.waarde || '(leeg)') + ' — ' + (v.reden || '?') +
+        '; PLRit telt ' + gaten.length + ' gat(en) in deze rit';
+
+      if (gaten.length && v.waarde === 'ja')
+        return { staat: 'FOUT', detail: kop + ' — de rit zag een onderbreking en de analyse krijgt ' +
+          'te horen dat de meting schoon was. Dan wijt de AI het aan de auto (#133)' };
+
+      if (!gaten.length && !v.waarde)
+        return { staat: 'LET OP', detail: kop + ' — nog geen oordeel te geven; rijd door of wacht ' +
+          'tot de datastroom als stabiel gemeld is' };
   // ── de kostenraming hangt aan de uitvoer, niet aan het plafond ──
   // test-uitvoerschatting.js toetst de rekenregel op een verse, nagemaakte
   // opslag. Dit toestel heeft iets wat die test niet kan hebben: een ECHT
@@ -5614,104 +5788,29 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 03-09 (vijfde) — saldo zetten loopt door het saldo-slot (#93)',
+  titel: 'OPLEVERING 08-09 (zesde) — één rit die zes open issues moet voeden',
   vragen: [
-    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-
-    'Deze ronde gaat niet over meten maar over inzenden. De vraag is smal en die smalheid is het punt: wat ziet een Play-reviewer, die geen auto heeft, geen OBD2-adapter, geen account, en die tien minuten aan deze app besteedt? Alles wat hij in die tien minuten tegenkomt en niet begrijpt, kost een afwijzing waar weken op gewacht wordt.',
-
-    'DE EERSTE BEVINDING WAS DAT ER GEEN SCHERM WAS. capacitor.config.json zet server.url op app.pidlane.nl; de APK is een schil om die site. Komt de site niet \u2014 geen netwerk, een gastnetwerk dat nog om een inlog vraagt, of Cloudflare even stil \u2014 dan toont de Android-WebView zijn eigen scherm: net::ERR_NAME_NOT_RESOLVED op een wit vlak. Dat leest niet als "geen verbinding" maar als een kapotte app, en de reviewer heeft geen tweede scherm om zich op te baseren. server.errorPath wijst nu naar een eigen foutpagina in de webDir.',
-
-    'DE TWEEDE ZAT IN EEN LIJSTJE VAN \u00c9\u00c9N REGEL. FEATURE_TOGGLES.feat_demo dekte alleen [id="btnDemo"], de demoknop in het verbindscherm. De knop op het loginscherm kwam er op 21-08 bij v\u00f3\u00f3r de Play-review, maar niet in die lijst. Met feat_demo=false in de AppConfig-tabel verdween dus de ene knop en bleef de andere staan \u2014 zichtbaar, en bij aanraken alleen een toast "uitgeschakeld door beheerder". Juist de knop waar de reviewnotitie naar wijst. Aan of uit mag de beheerder bepalen; half niet.',
-
-    'EN ER WAS EEN TWEEDE LIJST ONTSTAAN. De reviewnotitie en de Data safety-tabel stonden even in ANDROID-PLAYSTORE.md \u00e9n in het nieuwe PLAY-INZENDING.md. Dat is dezelfde vorm die PIDLANE-WERK.md en \u00a711 de kop kostte. Opgelost zoals CLAUDE.md het voorschrijft: \u00e9\u00e9n plek. PLAY-INZENDING.md draagt de tekst die geplakt wordt, ANDROID-PLAYSTORE.md de redenering eromheen. test-demo-toegang.js ving de verhuizing meteen op \u2014 die las de belofte nog uit het oude bestand.',
-
-    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-
-    'STAP 0. Deze ronde vraagt de NIEUWE APK, geen "Nieuwste versie laden". De wijziging aan errorPath zit in de schil, niet in de webcode: op de oude APK meet je een oude schil om een nieuwe website.',
-
-    'STAP A \u2014 AFGEROND OP 03-09-2026 OM 20:16, EN HIJ SLAAGDE. Vliegtuigmodus aan, app koud gestart op de APK van build #424: het eigen scherm kwam, met kop "Geen verbinding", app.pidlane.nl erin, de drie tips en de knop "Opnieuw proberen". Geen wit vlak, geen net::ERR_. Deze stap hoeft niet opnieuw tenzij de Capacitor-versie of server.errorPath verandert \u2014 dan is het weer een aanname.',
-
-    'STAP B \u2014 LOOP DE REVIEW NA ALS DE REVIEWER. Wis de app-gegevens, start op, en doe precies wat \u00a77 van PLAY-INZENDING.md belooft: de knop "Try demo \u2014 no adapter needed" staat op het startscherm, onder de verbindknop, zonder in te loggen. Voorbeeldvoertuig kiezen, en dan door naar sensorwaarden, foutcodes, grafiek en rapport. Loopt daar iets vast, dan loopt het bij de reviewer ook vast.',
-
-    'STAP C \u2014 DE DISCLOSURE, OP EEN SCHOON TOESTEL. Druk op verbinden. Het eigen uitlegscherm hoort te verschijnen V\u00d3\u00d3R het Android-dialoog over "apparaten in de buurt", niet erna. Druk daarna op weigeren: er hoort geen permissieverzoek te komen, geen verbinding, en de app hoort heel te blijven. Deze volgorde is een harde eis van Google en hij is alleen op een schoon toestel te zien.',
-
-    'STAP D \u2014 BLOK 5, DE NIEUWE PROEF. "De beheerdersschakelaar zet beide demoknoppen weg" draait feat_demo in de echte app om en kijkt wat de CSS er werkelijk mee doet. Hij zet zichzelf terug; staat er toch FOUT met "de demo uitgezet op dit toestel", herlaad de app dan v\u00f3\u00f3r je iets anders doet.',
-
-    'STAP D2 \u2014 DE ACHTERGRONDPROEF, EN LET OP WAT ER NU BIJ STAAT (#18). Stap 7 van de begeleide rit is niet veranderd \u2014 twee minuten weg, en blijf rijden \u2014 maar het antwoord wel. Het logboek noemt voortaan drie getallen in plaats van \u00e9\u00e9n: hoe lang de app weg was, hoeveel daarvan hij nog doorliep, en hoe lang hij werkelijk stillag. Staat er "afgeknepen, niet bevroren", dan is dat een andere bevinding dan een bevriezing en hoort het merk en de Android-versie erbij. Blok 5 slaat geen alarm meer op het verschil tussen die eerste twee getallen; doet hij dat toch, dan is er iets anders aan de hand dan de aanlooptijd.',
-
-    'STAP E \u2014 DE RANDEN, DE VIJF DIE NOG OPEN STAAN. Topbalk en Logboek zijn gemeten. Testrunpaneel, Veldlab, diepe diagnose, neon-HUD en rittracker nog niet, en dit is edge-to-edge op targetSdk 36. Doe ze op de SM-S947B, want op een tablet klopt de proef per definitie.',
-
-    '\u2500\u2500 WAT ER IS VERANDERD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-
-    'DE TWEEDE KAARTRIT SLAAGDE — 04-09 OM 13:43, 969 s, 5378 commando\u0027s, 18 stuurapparaten, 114 datapunten, met de hand gestopt en zonder \u00e9\u00e9n afbreking. Alle vijf reparaties waren in het log terug te zien: de eerlijke schatting (127 ms per commando, 1.9 uur voor de rest), "NIET BEREIKT" per trede, "afgebroken na 454 van 768" op 72E, en geen herstelfout. Wat eruit kwam: alle achttien met onderdeelnummer, en de VIN op vier adressen (70E, 73F, 7E8, 7F9) \u2014 allemaal dezelfde.',
-
-    'MAAR HET VERSLAG DRUKTE DIE VIN VIER KEER RAUW AF. Dat is het derde VIN-pad uit \u00a711, door de kaartmaker opnieuw geopend: het testrunlogboek wordt geplakt en gedeeld. De reparatie zit niet bij het tonen maar bij het OPSLAAN \u2014 wat de kaart nooit vasthoudt kan hij niet lekken. Elke reeks bytes gaat nu door \u00e9\u00e9n poort; ziet die er een geldig voertuignummer in, dan bewaart hij de staart plus het pseudoniem in plaats van de bytes. Kijk in het verslag van deze ronde na dat er nergens meer een VIN van 17 tekens staat, alleen \u2026766507.',
-
-    'EN "WAARVAN 0 BEWEGEND" STOND ER ACHTTIEN KEER TERWIJL DE TWEEDE PAS NOOIT LIEP. Die pas zit achter !_stop, en de rit was met de hand gestopt. Niet-gemeten als gemeten gepresenteerd \u2014 dezelfde fout als "geen enkele identifier bestaat hier" van de rit ervoor, \u00e9\u00e9n laag hoger. Er staat nu "tweede pas niet gedraaid", en per datapunt "(niet herlezen)".',
-
-    'NIEUW \u2014 DE KNOP "\ud83c\udfaf GERICHT". De volledige trap kost op deze auto 1,9 uur; de vraag na de vorige rit was veel smaller. Deze knop toont de adressen uit de vorige scan (die worden onder het VIN-pseudoniem bewaard) en laat je per stuurapparaat kiezen: OEM-blokken, genormeerd, of alles. De sweep over 256 adressen \u2014 89 van de 171 seconden van de eerste rit \u2014 wordt dan overgeslagen.',
-
-    'STAP I \u2014 DE GERICHTE VRAAG, EN DIT IS DE BELANGRIJKSTE VAN DEZE RONDE. Druk op "\ud83c\udfaf Gericht", kies 728 (het instrumentenpaneel, KL2K-554K2-A) en dan "OEM-blokken". Dat zijn 1792 identifiers, ruim vier minuten. Het blok 60xx is het dashboardblok en is op geen enkele module ooit aangeraakt; als er een tellerstand in deze auto uit te lezen is, staat hij daar. Levert het niets op, dan is dat ook een antwoord \u2014 mits het verslag "afgezocht: ..." zegt en niet "NIET BEREIKT".',
-
-    'WAT DE VORIGE RIT AL BESLIST HEEFT: F4A6 BESTAAT NIET. Het OBD-spiegelblok (F400-F6FF) is volledig afgelopen op 70E en op 728, en tot F5C0 op 72E. De spiegel van de odometer zit op positie 167 van 768, dus hij is op alle drie gevraagd en op alle drie geweigerd. Alleen F40D (snelheid) en F467 antwoordden. Die draad is dood; ga hem niet opnieuw aflopen.',
-
-    'NIEUW \u2014 DE VIN-CONTROLE IN DE KOOPCHECK. De kaartrit leverde een controle op die ik niet zocht: vier stuurapparaten dragen 22F190 en alle vier hetzelfde nummer, terwijl 7CC en 7CE er een van louter nullen hebben. Twee VERSCHILLENDE nummers in \u00e9\u00e9n auto kan maar op \u00e9\u00e9n manier \u2014 \u00e9\u00e9n module komt ergens anders vandaan, en bij een teruggezette teller is een vervangen instrumentenpaneel de gebruikelijke weg. PLKm vraagt 22F190 nu op alle vijf zijn adressen; een blanco nummer is LET OP en geen beschuldiging, want veel modules krijgen er nooit een.',
-
-    'DE KAARTMAKER (PLKaart) IS ER, EN DIT IS DE RIT DIE HEM MOET WAARMAKEN. Knop "Kaart maken" in dit paneel. Hij neemt de verbinding hélemaal over: busslot, ATH1, ATAT0, korte ATST, en hij zet alles daarna terug. Wat hij oplevert is een lijst van elk stuurapparaat dat antwoordt, met per stuurapparaat de diensten die leven, de mode 01-PIDs die de ECU zélf declareert, de mode 22-identifiers die bestaan, en van elk datapunt de ruwe bytes. Geen enkele gok.',
-
-    'WAAROM ELKE VORIGE SCAN MISLUKTE, EN DAT LAG NIET AAN DE ADRESSEN. Vier dingen in de laag eronder. (1) ATH0 stond in beide init-reeksen: zonder headers is een antwoord anoniem, dus blok 9 kon nooit vaststellen WELK stuurapparaat iets zei. (2) PLBus.MAX_HOLD_MS brak de houder na drie minuten af, dus elke scan die langer duurde werd halverwege onteigend. (3) trackBtQuality telt zes lege antwoorden op rij als een dode socket en herverbindt \u2014 een sweep over 256 adressen waarvan er 250 niet bestaan haalt dat moeiteloos, dus de scan verbrak zichzelf. (4) PLBus.note telde elke NO DATA als fout, waarna PLBusGate dichtging en de waakronde sensoren als uitgevallen meldde. Alle vier zijn nu weg; het busslot heeft raak() gekregen en de twee detectoren kijken naar window._plScanActief.',
-
-    'STAP G \u2014 DE KAART, TWEEDE POGING. De eerste draaide op 04-09 om 11:49 en hij WERKTE: achttien stuurapparaten gevonden, de VIN uit 22F190 op 70E, Mazda-onderdeelnummers B61L-67XK6-B, en 50 mode 01-PIDs met ruwe bytes op 7E8. Hij brak na 171 s af omdat de app op de achtergrond bevroor (#18) en de socket wegviel \u2014 de ATI-hartslag ving dat, precies zoals bedoeld. Wat er sindsdien veranderd is: de trap loopt nu in de BREEDTE, dus het identificatieblok van alle achttien komt binnen v\u00f3\u00f3rdat er \u00e9\u00e9n module diep wordt uitgevraagd.',
-
-    'HOU DEZE KEER HET SCHERM AAN EN DE APP OP DE VOORGROND. Dat is geen vrijblijvend advies: de vorige rit verloor de socket twee keer (53 s en 31 s weg) en dat is #18, niet iets wat de kaartmaker kan oplossen. Telefoon aan de lader, scherm niet laten dimmen, niet naar een andere app.',
-
-    'WAT JE DEZE KEER MOET AFLEZEN. (1) De regel "gemeten X ms per commando" die vlak v\u00f3\u00f3r de trap verschijnt \u2014 die noemt het ECHTE aantal stuurapparaten en de resterende duur. Vorige keer stond er 27 min terwijl het er ~120 waren; nu klopt die opgave pas. (2) Of er onder een module "NIET BEREIKT" staat: dat betekent dat die trede niet is afgezocht, en dat is iets anders dan "hier bestaat niets". (3) Of er "LET OP \u2014 adapterherstel" bovenaan staat.',
-
-    'DE INTERESSANTSTE DRAAD UIT DE VORIGE RIT. Op 70E antwoordde 22F40D met \u00e9\u00e9n byte. F40D is de OBD-spiegel van PID 0D (snelheid), dus het F4xx-blok LEEFT op dat adres. 01A6 bestaat op deze auto niet \u2014 dat is nu gemeten en niet meer verondersteld \u2014 maar F4A6 zou de spiegel van diezelfde odometer kunnen zijn. De trap loopt F400-F6FF, dus als hij bestaat komt hij er deze keer uit.',
-
-
-    'STAP H \u2014 KIJK NA AFLOOP OF DE APP NOG MEET. De scan zet ATH1 en een header om, en zet ze in een finally terug. Tonen de sensortegels daarna gewoon weer waarden, dan is dat goed gegaan. Vallen ze uit, dan staat er "Adapterherstel" als FOUT in blok 15 \u2014 verbreek en verbind opnieuw voordat je verder meet.',
-
-    'WAT DE KAART NIET IS. Hij zegt wat er BESTAAT en wat er BEWEEGT (de tweede pas leest elke treffer nog eens en markeert wat veranderde), maar niet wat het BETEKENT. Een identifier die antwoordt bestaat; wat de bytes voorstellen is handwerk achteraf, met koelwater en toerental ernaast. Dat is bewust: een verzonnen betekenis is erger dan geen betekenis.',
-
-    'EN LET OP DE TIJD. De getrapte sweep loopt de genormeerde blokken eerst (F180-F1FF identificatie, F400-F8FF de OBD-spiegel) en daarna de OEM-blokken uit veldwaarnemingen. De knop "Volledig (uren)" doet alle 65.536 identifiers per stuurapparaat en wordt vooraf als uren opgegeven. Begin met de getrapte; pas als die niets oplevert is de volledige de moeite waard.',
-
-    'DE KILOMETERSTAND-CHECK (PLKm) IS NIEUW, EN DIT IS DE RIT DIE HEM MOET IJKEN. De koopcheck zei tot nu toe dat OBD2 de echte tellerstand niet vrijgeeft. Dat klopt voor mode 01 zoals die in 1996 bedoeld was, maar niet meer: 01 A6 is de generieke totale afstand (J1979-2) en mode 22 vraagt per stuurapparaat, elk op zijn eigen CAN-adres. Het punt is niet de stand zelf maar het VERSCHIL: wie de teller terugdraait, vergeet het motorblok of de ABS.',
-
-    'STAP F \u2014 DE KM-CHECK OP DE AUTO. Open de koopcheck, type de stand van het dashboard in stap 2 over en druk op "Tellerstand narekenen bij de stuurapparaten". Kijk stap voor stap mee. Noteer WELKE adressen antwoorden (7E0, 720, 726, 760, 7B0) en met welke ruwe bytes \u2014 die staan in de tabel. Op deze CX-5 is de verwachting dat 01 A6 stil blijft en dat de mode-22-identifiers uit de lijst niet kloppen: het zijn Ford-nummers, geen Mazda-nummers. Dat is geen mislukking maar de meting die de tabel moet vullen.',
-
-    'WAT ER AAN DE KM-CHECK NIET GEMETEN IS. ATCRA \u2014 het ontvangstfilter \u2014 is op geen enkele adapter nagemeten. Voor 7Ex zet een ELM327 dat filter zelf; voor 720/726/760/7B0 is dat niet gegarandeerd, en zonder filter kan het antwoord van een ander stuurapparaat ertussen komen. Weigert de OBDLink het commando, dan gaat de meting door zonder filter en staat dat in het verslag. Let er tijdens de rit op: staat er "ATCRA geweigerd" bij een adres, dan is elk antwoord van dat adres verdacht en hoort het NIET in een oordeel.',
-
-    'EN LET OP DE ADAPTER NA AFLOOP. De check zet ATSH om en zet hem in een finally terug op 7DF. Blijft de app na de check sensoren tonen, dan is dat goed gegaan. Vallen er ineens PIDs uit, dan is het terugzetten mislukt \u2014 dat hoort dan als FOUT in het verslag te staan, en niet alleen in de app zichtbaar te zijn.',
-
-    'SALDO ZETTEN LOOPT DOOR HET SALDO-SLOT (#93). Bij #82 gingen vier van de vijf saldoschrijvers door metSaldoSlot() en bleef "zetten" er bewust buiten, met een reden die opgeschreven was en er goed uitzag: daar stuurt de beheerder het eindbedrag, dus valt er niets te rekenen. Dat klopt, en het is de verkeerde vraag. Zetten rekent niet maar OVERSCHRIJFT: draait de klant op dat moment een analyse, dan boekt die binnen het slot af en schrijft terug, waarna deze PATCH er het oude getal overheen zet. Dezelfde fout als #82, in dezelfde week, in spiegelbeeld \u2014 en beide keren stond er een uitleg die het geval afdekte dat niet voorkwam.',
-
-    'EN DE KNOP BELOOFDE IETS DAT HIJ NIET WAAR KON MAKEN. "Saldo zetten" vulde het veld voor met het saldo uit de klantenlijst en rekende daar een verschil mee uit: "een verschil van +50 tokens". Die lijst kan minuten oud zijn. Staat de klant intussen op 150 in plaats van 180, dan is het in werkelijkheid +80 \u2014 en juist dat verschil is wat je aan het afwegen bent. Het gaat nu als voorwaarde mee (saldoWas) en de Worker telt het binnen het slot na; klopt het niet, dan wordt er niets geschreven en komt saldo_verschoven terug met het verse getal.',
-
-    'HIER STAAT DAAROVER GEEN PROEF IN BLOK 5, EN DAT IS EXPRES \u2014 dezelfde reden als bij #82. Een proef die iets zou toevoegen moet een echte saldowijziging op een echte klant doen, en dat is precies wat je niet wilt uitproberen; de beheerpagina zit bovendien niet in deze app. Het bewijs ligt in test-bijboeken.js, dat nu ook zetten dekt: de volgorde rond het slot, de tegenproef met een verschoven saldo, dat een kloppende voorwaarde gewoon doorgaat, en dat een update zonder saldo het slot niet aanraakt. Vier nieuwe mutaties in plmutate.sh maken die delen rood.',
-
-    'capacitor.config.json \u2014 server.errorPath = error.html. build-apk.yml schrijft die pagina naast de bestaande www-stub. De pagina haalt NIETS van het net: geen lettertype, geen stylesheet, geen plaatje. Een foutpagina die iets moet ophalen laadt niet op het enige moment waarop hij nodig is \u2014 dezelfde fout als de Google-Fonts-regel die de browserproef maandenlang tegenhield.',
-
-    'NIEUW \u2014 test-foutpagina.js. De naam van de pagina staat op twee plekken (config en workflow), dus die koppeling wordt getoetst in plaats van vertrouwd. Plus: is het een echte pagina, staat er een weg terug op, en houdt hij rekening met de veilige zone. Wat hij NIET kan: of Capacitor die pagina ook werkelijk laadt. Dat is stap A.',
-
-    'NIEUW \u2014 test-playteksten.js. PLAY-INZENDING.md is kopieerwerk, en de Console knipt niet af maar weigert. Deze toets meet elk veld tegen zijn grens, controleert dat de privacy-URL en de verwijder-URL naar bestaande bestanden op dezelfde host wijzen, en dat het document nergens BEWEERT dat gegevens anoniem zijn \u2014 dat woord mag alleen in een ontkenning staan, want pseudonimisering is geen anonimisering.',
-
-    'pidlane-fuel.js \u2014 feat_demo dekt nu beide demoknoppen. test-demo-toegang.js leest de lijst; de nieuwe proef in blok 5 draait de schakelaar echt om, want een selector die er staat maar niets raakt komt alleen zo aan het licht.',
-
-    'plmutate.sh staat op 115 mutaties, alle 115 gevangen \u2014 twintig over de kaartmaker en de VIN-poort (de vier structurele blokkades in bt.js en data.js, plus vier die de rit van 04-09 zelf opleverde) en zeven over de km-check: de schaalkeuze, de fysieke grens, het wegen van het verschil, de speling, het patroon van de teruggedraaide teller, het terugzetten van de adapter en het herkennen van een geweigerde identifier.',
-
-    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.',
-
-    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500',
-
-    '#18 \u2014 DE BEVRIEZING ZELF. Ook geen reviewvraag: die doet geen rit van 28 minuten. Het blijft native werk (foreground service plus wake lock, of picture-in-picture) en de zwaarste openstaande post voor de gebruiker die w\u00e9l rijdt. Wat 7.4 er w\u00e9l aan doet is hem M\u00c9TEN: hoe lang de app na het wegschakelen nog doorliep, hoe lang hij daarna werkelijk stillag, en of hij uit zichzelf weer aanging (afknijpen) of niet (bevriezen). Dat zijn de getallen waarmee de keuze tussen die twee oplossingen onderbouwd wordt in plaats van gegokt \u2014 punt B van de route uit het issue.',
-
-    'DE VRAAG OVER DE BETAALREGELS. #42 is gesloten met een besluit, niet met een antwoord: geen koopknop in de app, tokens per mail, tot boven de tien klanten. Dat is een verdedigbare stand voor de inzending \u2014 er is niets te betalen in de app, dus er valt niets langs Play Billing te leiden. Het antwoord van Play Console-support blijft nuttig v\u00f3\u00f3r de koopknop ooit aangaat.',
-
-    'DE SCREENSHOTS EN DE FEATURE GRAPHIC. Geen code, wel blokkerend: zonder feature graphic van 1024\u00d7500 en minstens twee schermafbeeldingen kun je niet inzenden. Het plan staat in \u00a74 van PLAY-INZENDING.md; schiet ze in demomodus op een echt toestel, dan staat er echte meetdata op en geen mockup.',
-
-    'FILTERED_PIDS \u2014 laag 2+3 staan nog steeds uit voor \u00e1lle PIDs. Onveranderd, en nog steeds een eigen rit waard.'
+    '── WAAROM DEZE RONDE ────────',
+    'Deze ronde voegt niets toe aan de app. Hij bestaat om de rit zelf iets te laten opleveren. Er staan negen issues open en zes daarvan wachten op iets dat alleen achter het stuur gebeurt — op sommige al twee weken, omdat er per rit één ding tegelijk werd nagekeken.',
+    'WAT ER MIS WAS AAN DE VORIGE OPZET. In de issues stond bij die zes steeds "kijk of het klopt". Kijken is geen meten: wat er van een rit terugkomt is dan een herinnering, en die is er de volgende ronde niet meer. Drie nieuwe proeven in blok 5 schrijven daarom op wat tot nu toe van opletten afhing — de beweeg-drempel per sensor (#66), of een beantwoorde meetcontext de prompt haalt (#64), en of een weggevallen verbinding in het oordeel over de meting terechtkomt (#133). Alle drie met een echte faaltoestand erin, want een blok dat alleen kán rapporteren wordt na twee ritten niet meer gelezen.',
+    'DE RIT IS ZO GEORDEND DAT ÉÉN RIT ZE ALLEMAAL RAAKT: zes momenten in één rit, in de volgorde waarin ze elkaar niet in de weg zitten. Eerst wat stilstaand kan, dan wat rijdend moet, en de twee die de verbinding bewust stukmaken helemaal aan het eind — want daarna is de meetreeks niet meer schoon.',
+    '── STAP VOOR STAP ────────',
+    'STAP 0 — VOORAF, THUIS. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden) en druk in het testrunpaneel op "ritwaarnemer op nul". Zonder dat nulstellen gaat blok 14 over alles sinds het opstarten in plaats van over deze rit, en dan is het gat dat je bij stap 6 zelf maakt niet meer terug te vinden.',
+    'STAP 1 — STILSTAAND, MOTOR UIT: DE LEESBAARHEID (#141). Ga in de auto zitten zoals je hem gebruikt, met het daglicht van dat moment. Loop de schermen langs die je tijdens een rit werkelijk opent: live view, tellerplaat, rapport, logboek. Noteer per scherm wat je NIET kunt lezen zonder de telefoon dichterbij te halen, en of dat aan de lettergrootte ligt, aan het contrast of aan de opbouw. Dat onderscheid is het hele punt: er staat nu één regel "niet in orde", en daar kan niemand iets mee. Zet daarna de tekstgrootte een stap groter (☰ → Tekstgrootte → L) en kijk of het probleem weg is of alleen verschuift.',
+    'STAP 2 — MOTOR AAN, STATIONAIR: DE MEETCONTEXT (#64). Vraag een AI-rapport aan. Het meetcontextvenster hoort te verschijnen. BEANTWOORD DE DRIE VRAGEN ECHT — niet overslaan, want juist "overslaan" is de uitkomst die het issue vreest. Heeft deze auto start/stop, zet die vraag dan op ja. Blok 5 legt daarna vast of dat antwoord de prompt heeft gehaald; staat er FOUT met "de promptregel is leeg", dan is de vraag versiering en kan hij weg.',
+    'STAP 2b — DE A/B-PROEF UIT #64, EN DIE KOST ÉÉN EXTRA ANALYSE. Laat de motor bij een stoplicht afslaan door start/stop. Vraag daarna een analyse met start/stop op "ja". Het rapport mag dat afslaan niet als storing of accuprobleem melden. Doe dezelfde meting nog eens met het antwoord op "nee" en leg de twee rapporten naast elkaar. Verschillen ze niet, dan komt de regel niet aan — en dat is het antwoord op #64, ook al is het het teleurstellende.',
+    'STAP 3 — RIJDEND: DE SLIMME WEERGAVE (#66). Zet de weergave op 🧠 Slim en rijd een stuk met wisselend gas. Twee dingen om te bekijken, en blok 5 schrijft de getallen erbij. (1) De temperatuurbalken: staat koelwater op 90 °C hóger dan omgevingslucht op 20 °C, en staat uitlaatgas op 500 °C juist NIET vol? (2) Het vak "Beweegt": hebben toerental, motorbelasting en pedaalstand een trendlijn? Staat er een rechte streep, dan is de drempel te laag; mist er een lijn die je wél wilde zien, dan te hoog. Blok 5 noemt per sensor het gemeten bereik tegen de drempel, en apart de groep die er vlak onder zit — dat is de groep waar die 2% werkelijk iets beslist.',
+    'STAP 4 — RIJDEND: DE ACHTERGROND (#18). Schakel twee minuten weg naar een andere app en blijf rijden. Kom terug en lees de melding. Er staan drie getallen in: hoe lang de app weg was, hoeveel daarvan hij nog doorliep, en hoe lang hij werkelijk stillag. Staat er "afgeknepen, niet bevroren", dan kwam de lus uit zichzelf terug en is dat een andere bevinding dan een bevriezing — noteer dan merk en Android-versie erbij, want die keuze bepaalt of een foreground service of picture-in-picture de goede oplossing is.',
+    'STAP 5 — RIJDEND: HET OPSLAGVENSTER VAN DE BULK-RECORDER (#132). Start de bulk-recorder, laat hem een minuut lopen en druk op Opslaan. Kijk wat er gebeurt: komt er een bestandskiezer of deelvenster, of wordt het bestand rechtstreeks weggeschreven? Komt dat venster, dan schakelt de app weg en volgt er een herverbinding — dezelfde oorzaak als stap 4, alleen zelf uitgelokt. Noteer of de opname na terugkeer doorliep of stilstond. Dit is punt A van de route uit #18, en de grootste winst in de praktijk.',
+    'STAP 6 — HELEMAAL AAN HET EIND: DE VERBINDING BEWUST STUK (#133). Trek de adapter er tijdens het rijden uit, wacht een halve minuut, steek hem er weer in. Vraag daarna een analyse aan. De vraag is niet of de app herverbindt — dat doet hij — maar of de ANALYSE doorkrijgt dat het gat aan de meting lag en niet aan de auto. Blok 5 zet FOUT zodra de rit een gat telt terwijl het voorstel "stabiele meting" op ja staat: dan krijgt de AI te horen dat de meting schoon was en wijt hij het aan het voertuig. Doe dit als laatste, want hierna is de meetreeks van deze rit niet meer bruikbaar voor stap 3.',
+    'STAP 7 — NA AFLOOP: HET VERSLAG. Draai de testrun en bewaar het logboek. Lees blok 5 na op de drie nieuwe regels (#66, #64, #133) en blok 14 op de gatduiding. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop — een heel verslag hoort niet in een issue.',
+    '── WAT DEZE RONDE NIET OPLOST ────────',
+    'DE DID-DRAAD GAAT OP DE LANGE BAAN. De kaartmaker en de mode 22-sweep staan bewust NIET in de stappen hierboven. De volledige trap kost op deze auto 1,9 uur, de vorige twee ritten hebben hem grotendeels afgelopen, en F4A6 is gemeten en bestaat niet. Wat er nog te halen valt weegt niet op tegen een rit die verder niets oplevert. Wil je hem toch draaien, doe dat op een eigen rit en niet naast de zes stappen hierboven — hij neemt de verbinding hélemaal over.',
+    'DE KM-STAND-MODULE (#138) VRAAGT GEEN MEETRIT. Die pagina wordt een checklist: controlepunten met een wegingsfactor, af te vinken met ja/misschien/nee/nvt. Wat er aan diagnostiek onder hangt (de ECU-vergelijking, het freeze frame) bestaat al in PLKm. Er hoeft dus niets diepers gezocht te worden, en deze rit hoeft er geen data voor te verzamelen.',
+    '#18 ZELF BLIJFT STAAN. Stap 4 en 5 leveren de getallen waarmee de keuze tussen foreground service en picture-in-picture onderbouwd wordt, maar de bevriezing zelf is native werk en niet vanuit JavaScript te repareren. Deze rit meet hem; hij lost hem niet op.',
+    '#139 EN #145 HOEVEN GEEN AUTO. Het verwijderen van admin.html wacht op pariteit van beheer.html, en de tooltip-timing is in een browserproef te toetsen. Geen ritstappen dus, en ze horen ook niet in dit verslag.',
+    'DE RAPPORTLENGTE IS DE ENIGE KNOP DIE DE AI-REKENING ECHT BEWEEGT — gemeten op 08-09: de uitvoer is ~90% van de kosten en de hele invoerkant ~10%. Dat is een productbesluit (hoe lang mag een rapport zijn?) en geen meetvraag, dus er staat geen ritstap voor.',
+    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };
 
