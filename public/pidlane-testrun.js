@@ -3403,14 +3403,48 @@ const PROEVEN_B5 = [
         (beweegt.length ? '. Beweegt: ' + beweegt.slice(0, 6).join(', ') : '') +
         (krap.length ? '. Vlak onder de drempel: ' + krap.slice(0, 6).join(', ') : '');
 
-      if (typeof rpm === 'number' && rpm > 400 && rpmGemeten && !rpmBeweegt)
-        return { staat: 'FOUT', detail: kop + ' — de motor draait (' + Math.round(rpm) +
-          ' rpm) maar het toerental telt niet als bewegend. Dan is niet de drempel verkeerd ' +
-          'maar de reeks eronder (#66)' };
+      /* DE IJKVRAAG, HERZIEN NA DE RIT VAN 09-09-2026.
+
+         Hier stond: draait de motor en telt het toerental niet als bewegend,
+         dan is FOUT — "dan is niet de drempel verkeerd maar de reeks eronder".
+         Die proef sloeg op zijn eerste rit meteen alarm, en hij had ongelijk.
+         Gemeten om 13:27, stationair op 652 rpm: het toerental had een bereik
+         van 108 tegen een drempel van 160. Dat is geen kapotte reeks — dat is
+         een motor die stationair 108 toeren op en neer gaat, precies zoals
+         hoort. De bestuurder antwoordde bij stap 9 van de begeleide run dan
+         ook "balken én lijnen kloppen".
+
+         De fout zat in de gevolgtrekking, niet in de meting: de melding gaf een
+         OORZAAK ("de reeks eronder") die nergens uit bleek. Dat is dezelfde
+         vorm als #18, waar de melding beweerde wat hij niet gemeten had — en
+         die staat één kopje verderop in §11 opgeschreven.
+
+         Nu wordt er onderscheiden wat werkelijk verschilt:
+           • bereik nul terwijl de motor draait → de reeks staat stil, en dát is
+             een defect dat niets met de drempel te maken heeft;
+           • bereik onder de drempel → precies de vraag van #66, met het getal
+             erbij. Dat is een meetwaarde, geen bevinding. */
+      const rpmBereik = (function () {
+        if (!rpmGemeten) return null;
+        const w = rpmH.slice(-24).map(function (x) { return x.v; })
+                     .filter(function (x) { return typeof x === 'number' && isFinite(x); });
+        return w.length >= 4 ? (Math.max.apply(null, w) - Math.min.apply(null, w)) : null;
+      })();
 
       if (typeof rpm !== 'number' || rpm <= 400)
         return { staat: 'LET OP', detail: kop + ' — motor uit, dus de ijkvraag ' +
           '(beweegt het toerental?) is niet gesteld' };
+
+      if (rpmBereik === 0)
+        return { staat: 'FOUT', detail: kop + ' — de motor draait (' + Math.round(rpm) +
+          ' rpm) en het toerental staat over de laatste 24 metingen exact stil. Dat is de reeks ' +
+          'eronder, niet de drempel (#66)' };
+
+      if (rpmGemeten && !rpmBeweegt)
+        return { staat: 'LET OP', detail: kop + ' — het toerental beweegt ' + afr(rpmBereik) +
+          ' bij ' + Math.round(rpm) + ' rpm en haalt de drempel niet. De reeks is in orde; ' +
+          'dit is het getal waar #66 om vraagt: bij dit motortoerental is 2% van het volle ' +
+          'bereik te grof om een trendlijn te krijgen' };
 
       return kop;
     }
