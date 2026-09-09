@@ -3500,6 +3500,11 @@ const PROEVEN_B5 = [
       if (!gaten.length && !v.waarde)
         return { staat: 'LET OP', detail: kop + ' — nog geen oordeel te geven; rijd door of wacht ' +
           'tot de datastroom als stabiel gemeld is' };
+
+      return kop;
+    }
+  },
+
   // ── de kostenraming hangt aan de uitvoer, niet aan het plafond ──
   // test-uitvoerschatting.js toetst de rekenregel op een verse, nagemaakte
   // opslag. Dit toestel heeft iets wat die test niet kan hebben: een ECHT
