@@ -5340,6 +5340,106 @@ const _STAPPEN = [
     markering: 'logboek nagelopen',
     controle: function () { return { ok: true, tekst: 'jouw oordeel staat hieronder in het verslag' }; }
   },
+  // ── DE TWEE STAPPEN DIE OP 09-09-2026 IN CAMPAGNE STONDEN EN NIET GEBEURDEN ──
+  // Ze stonden als losse tekst in CAMPAGNE, en de bestuurder liep de begeleide
+  // run af — dertien eigen stappen, waar deze twee niet in zaten. Gevolg: #64
+  // meldde "het venster is niet beantwoord" en #133 kwam op "ok" zonder dat de
+  // proef ooit onder spanning stond. Twee lijsten met ritstappen naast elkaar
+  // is dezelfde vorm die §11 en PIDLANE-WERK.md eerder de kop kostte; de lijst
+  // die gevolgd wordt is deze, dus hier horen ze.
+  {
+    id: 'meetcontext',
+    titel: 'De meetcontext — beantwoord de drie vragen',
+    waarom: '#64 vraagt twee dingen die alleen een mens kan geven: wordt dit venster werkelijk ingevuld, en komt een gegeven antwoord er aan de andere kant weer uit in de AI-prompt? Het venster staat normaal vlak vóór een betaalde analyse, en op 09-09 bleek wat er dan gebeurt — geen analyse gevraagd, dus venster nooit gezien, dus de vraag nog steeds open.',
+    wat: 'Doe dit stilstaand. Druk op de knop, beantwoord de drie vragen écht (niet overslaan), en kom terug. Dit kost geen tokens: het venster gaat los open, er vertrekt geen analyse.',
+    actie: { label: '📝 Meetcontextvragen openen', fn: function () {
+      if (typeof plVoorAnalyse !== 'function') return 'plVoorAnalyse() ontbreekt — het venster is niet te openen (#64)';
+      try { plVoorAnalyse(false); } catch (e) { return 'het venster gaf een fout: ' + ((e && e.message) || e); }
+      return 'venster geopend — beantwoord de drie vragen en kom hier terug';
+    } },
+    knop: 'Beantwoord — verder',
+    markering: 'meetcontext beantwoord',
+    controle: function () {
+      if (typeof plMeetcontextPromptLine !== 'function')
+        return { ok: false, tekst: 'plMeetcontextPromptLine() ontbreekt — dan gaat de meetcontext nooit mee naar de AI (#64)' };
+      let m = null, regel = '';
+      try { m = window._plMeetcontext; } catch (e) { console.warn('_plMeetcontext onleesbaar bij de meetcontextstap', e); }
+      try { regel = plMeetcontextPromptLine() || ''; }
+      catch (e) { return { ok: false, tekst: 'plMeetcontextPromptLine() gaf een fout: ' + ((e && e.message) || e) }; }
+
+      if (!m) return { ok: false, tekst: 'het venster is niet beantwoord — dan blijft #64 open, en dát is precies de uitkomst die het issue vreest' };
+
+      const vragen = (typeof PL_VOORVRAGEN !== 'undefined' && PL_VOORVRAGEN) ? PL_VOORVRAGEN : [];
+      let gegeven = [];
+      try {
+        gegeven = vragen.filter(function (v) { return m[v.key]; })
+                        .map(function (v) { return v.key + '=' + m[v.key]; });
+      } catch (e) { console.warn('PL_VOORVRAGEN niet af te lopen bij de meetcontextstap', e); }
+      const extra = String((m && m.extra) || '').trim();
+
+      if (!gegeven.length && !extra)
+        return { ok: false, tekst: 'het venster is geopend maar alles bleef op "weet ik niet" — dat telt als niet beantwoord voor #64' };
+
+      // DIT is de vraag van het issue: komt het antwoord aan de andere kant
+      // weer terug? Zo niet, dan is de hele vraag versiering.
+      if (!regel.trim())
+        return { ok: false, tekst: 'beantwoord (' + gegeven.join(', ') + (extra ? ', plus een opmerking' : '') +
+          ') maar de promptregel is leeg — het antwoord bereikt de AI niet (#64)' };
+
+      return { ok: true, tekst: gegeven.length + ' van de ' + vragen.length + ' vragen beantwoord (' + gegeven.join(', ') + ')' +
+        (extra ? ' plus een vrije opmerking' : '') + '; de promptregel draagt ' + regel.trim().split('\n').length + ' regel(s) mee' };
+    }
+  },
+  {
+    id: 'adapterlos',
+    titel: 'Trek de adapter er even uit',
+    waarom: '#133 gaat niet over of de app herverbindt — dat doet hij — maar of de ANALYSE doorkrijgt dat een gat aan de meting lag en niet aan de auto. Dat is alleen vast te stellen met een gat dat je zelf gemaakt hebt, want dan weet je wat het antwoord hoort te zijn. Op 09-09 kwam deze proef op "ok" zonder ooit onder spanning te staan.',
+    wat: 'Doe dit als laatste vóór het meten, en stilstaand. Druk op de knop, trek de OBD-adapter uit de poort, wacht een halve minuut, steek hem terug en wacht tot de app weer verbonden is. Hierna heeft de meetreeks een gat — dat is de bedoeling.',
+    actie: { label: '🔌 Ik trek hem er nu uit', fn: function () {
+      plMarkeer('adapter los', 'adapter er met opzet uit — het gat hierna is de meting voor #133');
+      return 'moment vastgelegd; trek hem er nu uit en steek hem na een halve minuut terug';
+    } },
+    knop: 'Weer verbonden — verder',
+    markering: 'adapter losgetrokken en teruggeplaatst',
+    leeft: function () {
+      const m = _markeringen.filter(function (x) { return /adapter los/i.test(x.tekst); }).pop();
+      if (!m) return 'nog niet gemarkeerd — druk eerst op de knop hierboven';
+      const s = Math.round((_nu() - m.ms) / 1000);
+      const verb = (typeof connected !== 'undefined' && connected) ? 'weer verbonden' : 'NOG NIET verbonden';
+      return s + ' s sinds de markering, ' + verb;
+    },
+    controle: function () {
+      const m = _markeringen.filter(function (x) { return /adapter los/i.test(x.tekst); }).pop();
+      if (!m) return { ok: false, tekst: 'geen markering gezet — dan is er geen gat om aan af te meten en blijft #133 open' };
+      if (typeof connected !== 'undefined' && !connected)
+        return { ok: false, tekst: 'de app is nog niet opnieuw verbonden — wacht daarop, anders meet blok 5 een verbinding die er niet is' };
+
+      let gaten = [];
+      try { gaten = (window.PLRit && PLRit.gaten) ? (PLRit.gaten() || []) : []; }
+      catch (e) { return { ok: false, tekst: 'PLRit.gaten() onbereikbaar — de proef kan niets vaststellen' }; }
+      const sinds = gaten.filter(function (g) { return g.van >= m.ms - 2000; });
+      const grootste = sinds.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0);
+
+      let v = null;
+      try { v = (typeof plMeetStabielVoorstel === 'function') ? (plMeetStabielVoorstel() || {}) : null; }
+      catch (e) { console.warn('plMeetStabielVoorstel() gaf een fout bij de adapterstap', e); }
+      const vTekst = !v ? 'plMeetStabielVoorstel() ontbreekt — dan gaat er geen oordeel over de meetkwaliteit mee (#133)'
+        : 'voorstel "stabiele meting": ' + (v.waarde || '(leeg)') + ' — ' + (v.reden || '?');
+
+      if (!sinds.length)
+        return { ok: false, tekst: 'de adapter is losgetrokken maar PLRit ziet geen gat — dan meet de ritwaarnemer ' +
+          'de onderbreking niet, en kan de analyse er ook niets van weten.  |  ' + vTekst };
+
+      // DE KERN VAN #133: het gat is er, dus het oordeel over de meetkwaliteit
+      // mag niet "schoon" zijn. Staat het er tóch, dan wijt de AI het aan de auto.
+      if (v && v.waarde === 'ja')
+        return { ok: false, tekst: 'gat van ' + grootste + ' s gemeten over ' + sinds.length + ' onderbreking(en), ' +
+          'maar de analyse krijgt te horen dat de meting schoon was. Dan wijt de AI dit aan het voertuig (#133).  |  ' + vTekst };
+
+      return { ok: true, tekst: 'gat van ' + grootste + ' s gemeten over ' + sinds.length + ' onderbreking(en), ' +
+        'en het oordeel over de meting geeft dat door.  |  ' + vTekst };
+    }
+  },
   {
     id: 'meten',
     titel: 'De metingen draaien',
@@ -5836,13 +5936,14 @@ const CAMPAGNE = {
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF, THUIS. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden) en druk in het testrunpaneel op "ritwaarnemer op nul". Zonder dat nulstellen gaat blok 14 over alles sinds het opstarten in plaats van over deze rit, en dan is het gat dat je bij stap 6 zelf maakt niet meer terug te vinden.',
     'STAP 1 — STILSTAAND, MOTOR UIT: DE LEESBAARHEID (#141). Ga in de auto zitten zoals je hem gebruikt, met het daglicht van dat moment. Loop de schermen langs die je tijdens een rit werkelijk opent: live view, tellerplaat, rapport, logboek. Noteer per scherm wat je NIET kunt lezen zonder de telefoon dichterbij te halen, en of dat aan de lettergrootte ligt, aan het contrast of aan de opbouw. Dat onderscheid is het hele punt: er staat nu één regel "niet in orde", en daar kan niemand iets mee. Zet daarna de tekstgrootte een stap groter (☰ → Tekstgrootte → L) en kijk of het probleem weg is of alleen verschuift.',
-    'STAP 2 — MOTOR AAN, STATIONAIR: DE MEETCONTEXT (#64). Vraag een AI-rapport aan. Het meetcontextvenster hoort te verschijnen. BEANTWOORD DE DRIE VRAGEN ECHT — niet overslaan, want juist "overslaan" is de uitkomst die het issue vreest. Heeft deze auto start/stop, zet die vraag dan op ja. Blok 5 legt daarna vast of dat antwoord de prompt heeft gehaald; staat er FOUT met "de promptregel is leeg", dan is de vraag versiering en kan hij weg.',
-    'STAP 2b — DE A/B-PROEF UIT #64, EN DIE KOST ÉÉN EXTRA ANALYSE. Laat de motor bij een stoplicht afslaan door start/stop. Vraag daarna een analyse met start/stop op "ja". Het rapport mag dat afslaan niet als storing of accuprobleem melden. Doe dezelfde meting nog eens met het antwoord op "nee" en leg de twee rapporten naast elkaar. Verschillen ze niet, dan komt de regel niet aan — en dat is het antwoord op #64, ook al is het het teleurstellende.',
+    'STAP 2 — DE MEETCONTEXT EN HET ADAPTERGAT STAAN NU IN DE BEGELEIDE RUN. Op 09-09 stonden ze hier als tekst, en ze gebeurden niet: de bestuurder liep de begeleide run af — dertien eigen stappen, waar deze twee niet in zaten. Gevolg: #64 meldde \'het venster is niet beantwoord\' en #133 kwam op \'ok\' zonder ooit onder spanning te staan. Twee lijsten met ritstappen naast elkaar is de vorm die §11 al twee keer de kop kostte, dus ze zijn verhuisd naar de lijst die werkelijk gevolgd wordt. Deze tekst stuurt de rit niet meer; de begeleide run doet dat.',
+
     'STAP 3 — RIJDEND: DE SLIMME WEERGAVE (#66). Zet de weergave op 🧠 Slim en rijd een stuk met wisselend gas. Twee dingen om te bekijken, en blok 5 schrijft de getallen erbij. (1) De temperatuurbalken: staat koelwater op 90 °C hóger dan omgevingslucht op 20 °C, en staat uitlaatgas op 500 °C juist NIET vol? (2) Het vak "Beweegt": hebben toerental, motorbelasting en pedaalstand een trendlijn? Staat er een rechte streep, dan is de drempel te laag; mist er een lijn die je wél wilde zien, dan te hoog. Blok 5 noemt per sensor het gemeten bereik tegen de drempel, en apart de groep die er vlak onder zit — dat is de groep waar die 2% werkelijk iets beslist.',
     'STAP 4 — RIJDEND: DE ACHTERGROND (#18). Schakel twee minuten weg naar een andere app en blijf rijden. Kom terug en lees de melding. Er staan drie getallen in: hoe lang de app weg was, hoeveel daarvan hij nog doorliep, en hoe lang hij werkelijk stillag. Staat er "afgeknepen, niet bevroren", dan kwam de lus uit zichzelf terug en is dat een andere bevinding dan een bevriezing — noteer dan merk en Android-versie erbij, want die keuze bepaalt of een foreground service of picture-in-picture de goede oplossing is.',
     'STAP 5 — RIJDEND: HET OPSLAGVENSTER VAN DE BULK-RECORDER (#132). Start de bulk-recorder, laat hem een minuut lopen en druk op Opslaan. Kijk wat er gebeurt: komt er een bestandskiezer of deelvenster, of wordt het bestand rechtstreeks weggeschreven? Komt dat venster, dan schakelt de app weg en volgt er een herverbinding — dezelfde oorzaak als stap 4, alleen zelf uitgelokt. Noteer of de opname na terugkeer doorliep of stilstond. Dit is punt A van de route uit #18, en de grootste winst in de praktijk.',
-    'STAP 6 — HELEMAAL AAN HET EIND: DE VERBINDING BEWUST STUK (#133). Trek de adapter er tijdens het rijden uit, wacht een halve minuut, steek hem er weer in. Vraag daarna een analyse aan. De vraag is niet of de app herverbindt — dat doet hij — maar of de ANALYSE doorkrijgt dat het gat aan de meting lag en niet aan de auto. Blok 5 zet FOUT zodra de rit een gat telt terwijl het voorstel "stabiele meting" op ja staat: dan krijgt de AI te horen dat de meting schoon was en wijt hij het aan het voertuig. Doe dit als laatste, want hierna is de meetreeks van deze rit niet meer bruikbaar voor stap 3.',
     'STAP 7 — NA AFLOOP: HET VERSLAG. Draai de testrun en bewaar het logboek. Lees blok 5 na op de drie nieuwe regels (#66, #64, #133) en blok 14 op de gatduiding. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop — een heel verslag hoort niet in een issue.',
+    'WAT WEL EEN MENS VRAAGT EN NIET IN DE BEGELEIDE RUN PAST: DE A/B-PROEF VAN #64. De stap in de run toont het venster los en toetst of een gegeven antwoord de promptregel haalt — dat kost geen tokens. Of het antwoord het RAPPORT verandert is een andere vraag, en die kost twee betaalde analyses: één met start/stop op \'ja\' en één op \'nee\', na een stoplicht waar de motor afsloeg. Lezen ze hetzelfde, dan komt de regel niet aan. Doe dit als je toch analyses draait; het is geen verplichte ritstap.',
+
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'DE DID-DRAAD GAAT OP DE LANGE BAAN. De kaartmaker en de mode 22-sweep staan bewust NIET in de stappen hierboven. De volledige trap kost op deze auto 1,9 uur, de vorige twee ritten hebben hem grotendeels afgelopen, en F4A6 is gemeten en bestaat niet. Wat er nog te halen valt weegt niet op tegen een rit die verder niets oplevert. Wil je hem toch draaien, doe dat op een eigen rit en niet naast de zes stappen hierboven — hij neemt de verbinding hélemaal over.',
     'DE KM-STAND-MODULE (#138) VRAAGT GEEN MEETRIT. Die pagina wordt een checklist: controlepunten met een wegingsfactor, af te vinken met ja/misschien/nee/nvt. Wat er aan diagnostiek onder hangt (de ECU-vergelijking, het freeze frame) bestaat al in PLKm. Er hoeft dus niets diepers gezocht te worden, en deze rit hoeft er geen data voor te verzamelen.',

@@ -101,7 +101,18 @@ function keurVolgorde(stappen) {
     ['rijden', 'slimweergave', 'stilstaand beweegt er niets en liggen de temperaturen tegen elkaar aan (#66)'],
     ['slimweergave', 'meten', 'het oordeel over de weergave hoort in het verslag van déze run'],
     ['rijden', 'zones', 'de veilige zones beoordeel je met de app in gebruik, niet op de oprit (#79)'],
-    ['zones', 'meten', 'blok 5 meldt #58 zelf; jouw oordeel hoort ernaast te staan, niet erna']
+    ['zones', 'meten', 'blok 5 meldt #58 zelf; jouw oordeel hoort ernaast te staan, niet erna'],
+    // De twee stappen van 09-09. Ze stonden als tekst in CAMPAGNE en gebeurden
+    // daarom niet; nu staan ze in de lijst die werkelijk gevolgd wordt.
+    ['meetcontext', 'meten', 'blok 5 leest de meetcontext uit; is die nog niet beantwoord, dan zegt #64 niets'],
+    ['rijden', 'adapterlos', 'een gat is alleen een gat als de meetlus liep — dus na de rijstap'],
+    ['adapterlos', 'meten', 'blok 5 leest het gat uit; staat het er nog niet, dan komt #133 op "ok" zonder onder spanning te staan'],
+    // En deze twee zijn de reden dat de volgorde binnen het staartje uitmaakt:
+    // het gat dat je met opzet maakt, vervuilt de reeks waar het oordeel over
+    // de slimme weergave (#66) op rust, en het venster beantwoord je liever
+    // met een verbinding die nog heel is.
+    ['slimweergave', 'adapterlos', 'het zelfgemaakte gat vervuilt de reeks waarop #66 beoordeeld is'],
+    ['meetcontext', 'adapterlos', 'de vragen beantwoord je met een verbinding die nog heel is']
   ];
   eis.forEach(function (e) {
     if (idx[e[0]] === undefined) { uit.push('stap "' + e[0] + '" ontbreekt'); return; }
@@ -260,6 +271,33 @@ toetsSchoon('nulstellen ná het rijden wordt gezien',
     const r = keurVolgorde(omgedraaid);
     return r.some(function (x) { return x.indexOf('nulmeting') > -1; }) ? []
       : ['keurVolgorde accepteerde nulstellen ná het rijden: ' + (r.join(' | ') || '(niets)')];
+  })());
+
+// De twee stappen van 09-09 hebben hun eigen volgorde-eisen gekregen, en die
+// zijn data in dezelfde functie. Twee tegenproeven, want het gaat om twee
+// verschillende redenen: het gat moet ná het rijden ontstaan (anders is er
+// geen lus om een gat in te maken) en vóór het meten (anders leest blok 5 het
+// niet, en komt #133 op "ok" zonder onder spanning te staan).
+toetsSchoon('een zelfgemaakt gat vóór de rijstap wordt gezien',
+  (function () {
+    const fout = [
+      { id: 'verbinding' }, { id: 'pids' }, { id: 'nulmeting' }, { id: 'adapterlos' },
+      { id: 'rijden' }, { id: 'slimweergave' }, { id: 'meetcontext' }, { id: 'meten' }, { id: 'afronden' }
+    ];
+    const r = keurVolgorde(fout);
+    return r.some(function (x) { return x.indexOf('adapterlos') > -1; }) ? []
+      : ['keurVolgorde accepteerde het adaptergat vóór de rijstap: ' + (r.join(' | ') || '(niets)')];
+  })());
+
+toetsSchoon('de meetcontext ná het meten wordt gezien',
+  (function () {
+    const fout = [
+      { id: 'verbinding' }, { id: 'pids' }, { id: 'nulmeting' }, { id: 'rijden' },
+      { id: 'slimweergave' }, { id: 'adapterlos' }, { id: 'meten' }, { id: 'meetcontext' }, { id: 'afronden' }
+    ];
+    const r = keurVolgorde(fout);
+    return r.some(function (x) { return x.indexOf('meetcontext') > -1; }) ? []
+      : ['keurVolgorde accepteerde de meetcontext ná het meten: ' + (r.join(' | ') || '(niets)')];
   })());
 
 toetsSchoon('een verslag zonder open stappen wordt gezien',
