@@ -11,6 +11,34 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-09a (CET) — DE RIT SCHRIJFT ZICHZELF OP
+
+       • 📋 DRIE PROEVEN IN BLOK 5 LEGGEN VAST WAT TOT NU TOE
+         VAN OPLETTEN AFHING. Zes open issues wachtten op een
+         rit, en in alle zes stond het gevraagde als "kijk of
+         het klopt". Kijken is geen meten: wat er van zo'n rit
+         terugkomt is een herinnering, en die is er de volgende
+         ronde niet meer. Blok 5 noteert nu per sensor het
+         gemeten bereik tegen de beweeg-drempel (#66), of een
+         beantwoorde meetcontext de AI-prompt werkelijk haalt
+         (#64), en of een weggevallen verbinding in het oordeel
+         over de meetkwaliteit terechtkomt (#133). Alle drie
+         met een echte faaltoestand erin — een blok dat alleen
+         kán rapporteren wordt na twee ritten niet meer gelezen.
+
+       • 🗺️ EN DE CAMPAGNE IS ÉÉN RIT GEWORDEN IN PLAATS VAN
+         ZES. Zes momenten in één rit, geordend op wat elkaar
+         niet in de weg zit: eerst wat stilstaand kan, dan wat
+         rijdend moet, en de twee die de verbinding bewust
+         stukmaken helemaal aan het eind — want daarna is de
+         meetreeks niet meer schoon voor de stap ervoor. De
+         DID-sweep van de kaartmaker gaat op de lange baan
+         (1,9 uur, en F4A6 is gemeten en bestaat niet); de
+         km-standmodule wordt een checklist en vraagt geen
+         meetrit.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-08e (CET) — DE WACHTER MAT DE KNOP EN
                                 NIET DE TEKST
 

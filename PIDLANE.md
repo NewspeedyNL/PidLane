@@ -874,6 +874,50 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Zes issues wachtten op een rit, en de rit leverde herinneringen — 08-09-2026
+
+Er stonden negen issues open en zes daarvan wachtten op iets dat alleen achter
+het stuur gebeurt: #18, #64, #66, #132, #133 en #141. Sommige al twee weken.
+
+**Wat ze deelden was niet het onderwerp maar de vórm.** In alle zes stond het
+gevraagde als *"kijk of het klopt"*. Kijk of de trendlijn staat waar je er een
+wilt. Kijk of het rapport het afslaan niet als storing meldt. Kijk of de
+onderste regel leesbaar is.
+
+Kijken is geen meten. Wat er van zo'n rit terugkomt is een herinnering, en die
+is er bij de volgende ronde niet meer — en dan staat het issue er nóg een keer
+met dezelfde zin in. Dat is precies waarom er per rit één ding tegelijk werd
+nagekeken: elk ding kostte aandacht die niet vastgelegd werd.
+
+**De ingreep is dat de rit zichzelf opschrijft.** Drie proeven in blok 5 leggen
+nu vast wat tot nu toe van opletten afhing:
+
+| proef | wat hij vastlegt | wanneer hij FOUT geeft |
+|---|---|---|
+| #66 | per sensor het gemeten bereik tegen de drempel, en apart de groep die er vlak onder zit | de motor draait maar het toerental telt niet als bewegend |
+| #64 | welke meetcontextvragen beantwoord zijn en hoeveel regels dat de prompt oplevert | er is geantwoord en de promptregel is leeg |
+| #133 | het voorstel "stabiele meting" naast het aantal gaten dat `PLRit` telt | de rit zag een gat en het voorstel zegt "ja, stabiel" |
+
+**Alle drie hebben met opzet een echte faaltoestand.** Een blok dat alleen kán
+rapporteren wordt een melder, en melders worden na twee ritten niet meer
+gelezen — dat staat niet voor niets al in `CLAUDE.md` over altijd-rode tests, en
+het geldt net zo hard voor altijd-groene. De faaltoestand is bij alle drie de
+tegenspraak, niet het oordeel: de machine beslist niet of 2% de goede drempel
+is (dat kan hij niet), maar wel dat een draaiende motor hoort te bewegen.
+
+**En `CAMPAGNE` is één rit geworden in plaats van zes.** Zes momenten in één
+rit, geordend op wat elkaar niet in de weg zit: eerst wat stilstaand kan
+(leesbaarheid, meetcontext), dan wat rijdend moet (slimme weergave,
+achtergrond, bulk-recorder), en de twee die de verbinding bewust stukmaken
+helemaal aan het eind — want daarna is de meetreeks van die rit niet meer
+schoon voor de stap ervoor. Die volgorde is het halve werk: in de oude opzet
+kon stap 6 stap 3 ongeldig maken zonder dat iemand dat merkte.
+
+Bewust buiten deze rit gehouden: de DID-sweep van de kaartmaker (1,9 uur, de
+vorige twee ritten liepen hem grotendeels af, en F4A6 is gemeten en bestaat
+niet) en de km-standmodule (#138), die een checklist wordt en geen diepere data
+nodig heeft.
+
 ### Waar de AI-rekening werkelijk zit — gemeten 08-09-2026 (na #114)
 
 Vervolg op #114. Toen bleek caching niet te kunnen; de vraag daarna was waar de
