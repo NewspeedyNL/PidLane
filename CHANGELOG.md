@@ -36,6 +36,34 @@
          (1,9 uur, en F4A6 is gemeten en bestaat niet); de
          km-standmodule wordt een checklist en vraagt geen
          meetrit.
+     Build: 2026-09-08f (CET) — DE KOSTENRAMING HING AAN HET
+                                PLAFOND
+
+       • 💶 DE GESCHATTE KOSTEN VOLGEN NU DE UITVOER IN
+         PLAATS VAN HET MAX_TOKENS-PLAFOND. Die raming staat
+         in het kostenvenster én is de poort die een analyse
+         blokkeert bij te weinig tegoed. Hij rekende met
+         plafond × uitvoerfactor, dus het plafond verhogen
+         verviervoudigde de geschatte kosten en zou klanten
+         buitensluiten voor een analyse die in werkelijkheid
+         niets duurder is — je betaalt op wérkelijke uitvoer.
+         Twee dingen maakten dat erger: een afgekapt rapport
+         duwde die factor naar 1,0 (dan ís de uitvoer gelijk
+         aan het plafond), en het bijstelgewicht 1/(n+2)
+         bevriest na honderd calls op ~0,01. Er wordt nu op
+         absolute gemeten uitvoer gekalibreerd, per plafond,
+         met een bodem onder het gewicht. Een vers toestel
+         raamt precies zoals eerst; een bestaande opslag
+         vult zichzelf aan.
+
+       • 🔎 WAAROM DIT ER MOEST KOMEN VOORDAT ER IETS ANDERS
+         KAN. Gemeten: kapt een rapport af op het plafond,
+         dan stuurt de app de volledige invoer nog een of
+         twee keer opnieuw — 2,21× en 3,64× — elk als eigen
+         afboeking. De fix daarvoor is het plafond verhogen,
+         en dat kon niet zolang datzelfde plafond de
+         kostenraming stuurde. Het plafond zelf blijft deze
+         ronde staan.
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven

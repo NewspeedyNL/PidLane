@@ -3500,6 +3500,55 @@ const PROEVEN_B5 = [
       if (!gaten.length && !v.waarde)
         return { staat: 'LET OP', detail: kop + ' — nog geen oordeel te geven; rijd door of wacht ' +
           'tot de datastroom als stabiel gemeld is' };
+  // ── de kostenraming hangt aan de uitvoer, niet aan het plafond ──
+  // test-uitvoerschatting.js toetst de rekenregel op een verse, nagemaakte
+  // opslag. Dit toestel heeft iets wat die test niet kan hebben: een ECHT
+  // gegroeide kalibratie in localStorage, opgebouwd uit de analyses die hier
+  // gedraaid zijn. Juist daar zou de migratie stil kunnen mislukken — een
+  // opslag van vóór 08-09-2026 draagt alleen {tpt, uf, n}, en als het aanvullen
+  // daarvan niet werkt is de raming NaN. Een NaN-vergelijking in preflight() is
+  // altijd false, dus dan blokkeert de saldopoort niets meer en merkt niemand
+  // het tot er een rekening komt.
+  {
+    issue: '#114',
+    naam: 'De kostenraming schaalt niet mee met het max_tokens-plafond',
+    waarom: 'Alleen dit toestel heeft een echt gegroeide kalibratie; een verse opslag zou de migratie niet toetsen.',
+    proef: function () {
+      if (!window.PLCredits || typeof PLCredits.ontleed !== 'function')
+        return { staat: 'FOUT', detail: 'PLCredits.ontleed() ontbreekt — dan is de kostenraming niet te meten' };
+
+      const p = 'x'.repeat(4000), s = 'y'.repeat(500);
+      let laag, hoog;
+      try {
+        laag = PLCredits.ontleed(p, s, 4000);
+        hoog = PLCredits.ontleed(p, s, 16000);
+      } catch (e) {
+        return { staat: 'FOUT', detail: 'ontleed() gooide een fout: ' + (e.message || e) };
+      }
+
+      // Eerst het stille geval: een raming die geen getal is.
+      if (!isFinite(laag.uitTok) || !isFinite(laag.credits))
+        return { staat: 'FOUT', detail: 'de raming is geen getal (uitTok=' + laag.uitTok +
+          ', credits=' + laag.credits + ') — dan laat de saldopoort alles door (#114)' };
+
+      let kalib = null;
+      try { kalib = JSON.parse(localStorage.getItem('pl_credits_kalib') || 'null'); } catch (e) { /* stil: opslag kan corrupt zijn */ }
+      const metingen = (kalib && kalib.uitN) || 0;
+
+      const kop = 'raming bij plafond 4000: ' + laag.uitTok + ' tokens (' + laag.credits +
+        ' credits), bij 16000: ' + hoog.uitTok + ' (' + hoog.credits + '); ' +
+        metingen + ' uitvoermeting(en) op dit toestel';
+
+      // Zonder metingen valt de raming bewust terug op de oude vorm, en dán
+      // hoort hij wél mee te schalen. Dat is geen fout maar een koude start.
+      if (metingen === 0)
+        return { staat: 'LET OP', detail: kop + ' — nog geen enkele analyse gemeten, dus de ' +
+          'raming staat nog op de koude-startvorm (maxTokens x uitvoerFactor) en schaalt terecht mee' };
+
+      if (hoog.uitTok > laag.uitTok)
+        return { staat: 'FOUT', detail: kop + ' — een ruimer plafond geeft een hogere raming, ' +
+          'dus het plafond stuurt de kosten nog steeds. Dan sluit een verhoging van max_tokens ' +
+          'klanten buiten op tegoed dat ze niet nodig hebben (#114)' };
 
       return kop;
     }
