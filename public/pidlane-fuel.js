@@ -1287,7 +1287,11 @@ function plKernStatus(profile){
     const heeftDiscovery=(typeof supportedPIDs!=='undefined'&&supportedPIDs&&supportedPIDs.size>0);
 
     const items=kern.map(pid=>{
-      const traag=traagSet.has(pid.slice(2).toUpperCase());
+      // Sinds #158 staat FILTERED_PIDS op volledige PIDs, net als elke andere
+      // tabel in de app. De .slice(2) die hier stond compenseerde de suffixvorm
+      // en moest dus mee weg — anders zoekt deze regel '05' in een lijst die
+      // '0105' bevat, en is elke kernsensor ineens "dynamisch".
+      const traag=traagSet.has(pid);
       const n=((typeof pidHist!=='undefined'&&pidHist[pid])||[]).length;
       // Zonder discovery weten we niet wat de auto kan; dan niets uitsluiten.
       const ondersteund = demo || !heeftDiscovery || supportedPIDs.has(pid);

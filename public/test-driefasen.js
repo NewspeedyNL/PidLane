@@ -58,7 +58,7 @@ const omgeving = {
   BASIS_PIDS: ['010C', '0105', '0104', '010F', '0142'],
   ANALYSE_PIDS: { basis: ['010C', '0105', '0104', '0111', '010D', '0142', '010F', '010B'],
                   accu: ['0142', '010C', '0104', '0105', '0146', '015B'] },
-  FILTERED_PIDS: new Set(['05', '0F', '46', '5C', '2F', '42', '33', '07', '09']),
+  FILTERED_PIDS: new Set(['0105', '010F', '0146', '015C', '012F', '0142', '0133', '0107', '0109']),
   getPidDef: pid => ({ name: 'PID' + pid }),
   pidGate: () => true,
   ensurePIDsActive: async p => { ensureAanroepen.push(p); },

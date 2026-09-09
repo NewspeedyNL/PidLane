@@ -2560,19 +2560,20 @@ const PROEVEN_B5 = [
   },
 
   // ── is laag 2+3 wel bereikbaar? ──
-  // Gevonden op 02-09 bij het schrijven van test-parser.js. FILTERED_PIDS is
-  // gevuld met SUFFIXEN ('05'), maar pidlane-datalog.js regel 75 toetst de
-  // VOLLEDIGE pid ('0105') — en dat is de vorm waarin parsePID() en
-  // applyParsedBytes() hem doorgeven. pidlane-fuel.js regel 1287 doet het
-  // met .slice(2) wél goed. Gevolg: spike-filter en smoothing staan uit.
+  // Gevonden op 02-09 bij het schrijven van test-parser.js, gemeten op de rit
+  // van 09-09 en gerepareerd in #158: FILTERED_PIDS stond op SUFFIXEN ('05')
+  // terwijl pidlane-datalog.js `FILTERED_PIDS.has(pid)` doet en de meetketen
+  // de VOLLEDIGE pid doorgeeft ('0105'). Die opzoeking miste dus altijd en
+  // spike-filter en smoothing draaiden nergens.
   //
-  // LET OP en geen FOUT: dit is een vastgelegde bevinding (PIDLANE.md §11) die
-  // bewust niet in dezelfde oplevering gerepareerd wordt — één onderwerp per
-  // PR. Wordt regel 75 gerepareerd, dan slaat deze proef vanzelf om naar ok.
+  // Dit stond een week als LET OP met de reden erbij dat het niet in dezelfde
+  // oplevering gerepareerd werd. Nu het gerepareerd is, is het een FOUT: valt
+  // deze proef om, dan staat laag 2+3 opnieuw uit voor álle PIDs, en dat is
+  // een stille meetfout en geen bekende bevinding meer.
   {
-    issue: '§11',
+    issue: '#158',
     naam: 'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept',
-    waarom: 'Vastgelegde bevinding, bewust niet in deze oplevering gerepareerd — LET OP tot regel 75 klopt.',
+    waarom: 'Alleen op een draaiende app is te zien of het filter werkelijk aanslaat op de vorm die de keten doorgeeft.',
     proef: function () { return _zonderSporen('Laag 2+3', function () {
       if (typeof validateAndSmooth !== 'function')
         return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt' };
@@ -2595,10 +2596,10 @@ const PROEVEN_B5 = [
         }
       }
 
-      if (uit === null) return 'een sprong op een traag signaal wacht op bevestiging — laag 2+3 draait';
-      return { staat: 'LET OP', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
-        'FILTERED_PIDS is gevuld met ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
-        'dus spike-filter en smoothing worden voor álle PIDs overgeslagen. Vastgelegd in PIDLANE.md §11.' };
+      if (uit === null) return 'een sprong op een traag signaal wacht op bevestiging — laag 2+3 draait (sleutelvorm: ' + vorm + ')';
+      return { staat: 'FOUT', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
+        'FILTERED_PIDS draagt ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
+        'dus spike-filter en smoothing worden voor álle PIDs overgeslagen — dat is #158 terug' };
     }); }
   },
 

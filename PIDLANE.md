@@ -874,6 +874,59 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Laag 2+3 stonden uit voor álle PIDs, een week lang zichtbaar — 09-09-2026 (#158)
+
+`FILTERED_PIDS` in `pidlane-datalog.js` droeg **suffixen** (`'05'`), terwijl
+`validateAndSmooth()` twee regels verderop `FILTERED_PIDS.has(pid)` doet en de
+meetketen de **volledige** pid doorgeeft (`'0105'`). Die opzoeking miste dus
+altijd, en laag 2 (spike-filter) en laag 3 (smoothing) draaiden nergens.
+
+Gemeten in blok 2 van de rit van 09-09: `validateAndSmooth("0105",200)` gaf
+`200`. Tweehonderd graden koelwater kwam er ongefilterd doorheen — laag 1 vangt
+alleen wat fysiek onmogelijk is, en 200 valt binnen −40…215.
+
+**De reparatie gaat de andere kant op dan je zou gokken.** Niet `.slice(2)` in
+`datalog.js` erbij, maar de tabel op volledige PIDs zetten. Reden: elke andere
+tabel die diezelfde functie in dezelfde regels aanraakt — `PID_HARD_LIMITS`,
+`pidVals`, `pidHist`, `getPidDef()` — is op de volledige pid gesleuteld.
+`FILTERED_PIDS` was de enige uitzondering. Eén ding heeft één betekenis.
+
+Er zat een tweede winst in die pas bij het schrijven opviel: een suffix is
+dubbelzinnig over modes heen. `'05'` is zowel `0105` (live koelwater) als
+`0205` (dezelfde waarde uit een freeze frame), en smoothing over een freeze
+frame is zinloos — dat is één momentopname, geen reeks. Met de volledige pid
+kan dat niet meer per ongeluk gebeuren.
+
+`pidlane-fuel.js` compenseerde de suffixvorm met `traagSet.has(pid.slice(2))`
+en werkte dus wél goed; die slice moest mee weg, anders zoekt hij `'05'` in een
+lijst met `'0105'` en telt elke trage sensor ineens als dynamisch.
+
+**Wat het inschakelen zichtbaar maakte, is het vermelden waard.** Twee bestaande
+toetsen vielen om zodra laag 3 ging draaien, en allebei terecht:
+
+- `test-parser.js` — *"koelwater precies op 215 mag door"* gaf 152,5. Dat is het
+  gemiddelde van 90 en 215: laag 3 doet zijn werk. De toets meet nu op een verse
+  reeks, zodat hij weer laag 1 meet in plaats van laag 3.
+- `bproef-meetketen.js` — *"laag 1 laat 90 °C door"* gaf 91,5, want de 93 uit de
+  parserproef erboven stond nog in `pidSmooth`. Dezelfde oorzaak, dezelfde fix.
+
+Dat twee toetsen omvielen bij het aanzetten van een filter is het beste bewijs
+dat het filter daarvoor niets deed.
+
+**Hoe lang dit zichtbaar heeft gestaan, is de eigenlijke les.** De bevinding
+stond sinds 02-09 in `test-parser.js` als LET OP, met de reden erbij dat hij
+niet in diezelfde PR gerepareerd werd — één onderwerp per PR, en dat is een
+goede regel. Ook blok 2 van de testrun meldde hem elke rit, en
+`bproef-meetketen.js` schreef er zelfs bij: *"DIT IS VERANDERD: werk §11 en deze
+proef bij"*. Drie plekken die het wisten, een week lang, en niemand die het
+oppakte tot het als issue op de lijst kwam.
+
+Een LET OP met een goede reden is geen bewaarplaats. Wat blijft staan hoort een
+issue te zijn, want dat is de enige lijst die nagelopen wordt — dat staat al
+bovenaan `CLAUDE.md` en dit is er de duurste illustratie van tot nu toe. Alle
+drie de plekken zijn nu een toets die rood wordt in plaats van een melding die
+je kunt lezen en laten staan.
+
 ### De nieuwe proef sloeg op zijn eerste rit alarm, en hij had ongelijk — 09-09-2026 (#66)
 
 De rit van 09-09 (Mazda CX-5, 10 minuten gereden, 97 km/u, alle vier de

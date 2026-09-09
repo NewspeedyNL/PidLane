@@ -296,6 +296,14 @@ MUTATIES=(
 # oude localStorage-tegoed, alleen verplaatst van het toestel naar de route.
 "worker.js@@      const alGehad = f.StartTegoedGegeven === true;@@      const alGehad = false;@@test-onboarding-tegoed.js@@de vlag doet niets meer: elke onboarding keert opnieuw proeftegoed uit"
 
+# ── FILTERED_PIDS op de vorm die de meetketen doorgeeft (#158, 09-09-2026) ──
+# De tabel stond op suffixen ('05') terwijl validateAndSmooth() de volledige
+# pid toetst, dus laag 2+3 draaiden nergens. Twee kanten om het terug te
+# breken, en allebei zijn ze plausibel: één regel in de oude vorm terugzetten,
+# of de .slice(2) in fuel.js weer opvoeren die de suffixvorm compenseerde.
+"public/pidlane-datalog.js@@  '0105', // koelwatertemperatuur@@  '05', // koelwatertemperatuur@@test-parser.js@@FILTERED_PIDS staat weer op een suffix, dus laag 2+3 slaan over voor koelwater"
+"public/pidlane-fuel.js@@      const traag=traagSet.has(pid);@@      const traag=traagSet.has(pid.slice(2).toUpperCase());@@test-kerndekking.js@@de kerndekking zoekt weer een suffix in een lijst met volledige PIDs, dus elke trage sensor telt als dynamisch"
+
 # ── De kostenraming hangt aan de uitvoer, niet aan het plafond (08-09-2026) ──
 # Vier fouten die je bij deze verbouwing écht kunt maken. Ze delen één gevolg:
 # de raming gaat weer met het plafond mee, en dan blokkeert de saldopoort

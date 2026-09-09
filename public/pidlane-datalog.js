@@ -12,15 +12,34 @@ let outlierCount={};
 // O2-sensoren die bewust oscilleren, lambda-doel dat naar 2.0 springt bij
 // brandstofafsluiting, gas/pedaal, belasting, toeren) springen van nature —
 // filteren geeft valse meldingen en vertraagt de weergave met één meetcyclus.
+/* VOLLEDIGE PIDs, GEEN SUFFIXEN — gerepareerd 09-09-2026 (#158).
+   ───────────────────────────────────────────────────────────────────
+   Deze lijst stond op suffixen ('05'), terwijl validateAndSmooth() hieronder
+   `FILTERED_PIDS.has(pid)` doet en de meetketen de VOLLEDIGE pid doorgeeft
+   ('0105'). Die opzoeking miste dus altijd, en laag 2+3 — het spike-filter en
+   de smoothing — draaiden nergens. Gemeten op de rit van 09-09:
+   `validateAndSmooth("0105",200)` gaf 200 in plaats van null, dus 200 °C
+   koelwater kwam er ongefilterd doorheen.
+
+   De lijst voegt zich naar de rest en niet andersom: PID_HARD_LIMITS,
+   pidVals, pidHist en getPidDef() zijn allemaal op de volledige pid
+   gesleuteld, en deze functie gebruikt ze alle vier in dezelfde regels.
+   Eén ding heeft één betekenis.
+
+   Er zit nog een tweede winst in. Een suffix is dubbelzinnig over modes heen:
+   '05' is zowel 0105 (live koelwater) als 0205 (dezelfde waarde uit een
+   freeze frame). Smoothing over een freeze frame is zinloos — dat is één
+   momentopname, geen reeks — en met de volledige pid kan dat niet meer per
+   ongeluk gebeuren. */
 const FILTERED_PIDS=new Set([
-  '05', // koelwatertemperatuur
-  '0F', // inlaatluchttemperatuur
-  '46', // buitentemperatuur
-  '5C', // olietemperatuur
-  '2F', // brandstofpeil
-  '42', // accuspanning (ECU)
-  '33', // barometerdruk
-  '07','09' // brandstoftrim lang B1/B2
+  '0105', // koelwatertemperatuur
+  '010F', // inlaatluchttemperatuur
+  '0146', // buitentemperatuur
+  '015C', // olietemperatuur
+  '012F', // brandstofpeil
+  '0142', // accuspanning (ECU)
+  '0133', // barometerdruk
+  '0107','0109' // brandstoftrim lang B1/B2
 ]);
 function validateAndSmooth(pid,rawVal){
   if(rawVal===null||rawVal===undefined||isNaN(rawVal)) return null;

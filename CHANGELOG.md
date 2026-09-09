@@ -11,6 +11,34 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-09c (CET) — HET SPIKE-FILTER STOND UIT
+                                VOOR ÁLLE SENSOREN
+
+       • 🧪 LAAG 2 EN 3 VAN DE MEETKETEN DRAAIEN WEER (#158).
+         FILTERED_PIDS stond op suffixen ('05') terwijl
+         validateAndSmooth() de volledige pid toetst ('0105')
+         en de meetketen die vorm doorgeeft. De opzoeking miste
+         dus altijd: spike-filter en smoothing draaiden nergens.
+         Gemeten op de rit van 09-09 — 200 °C koelwater kwam er
+         ongefilterd doorheen, want laag 1 vangt alleen wat
+         fysiek onmogelijk is en 200 valt binnen -40…215.
+
+       • 🔑 DE TABEL VOEGT ZICH NAAR DE REST, NIET ANDERSOM.
+         Niet een .slice(2) erbij in datalog.js, maar de tabel
+         op volledige PIDs: PID_HARD_LIMITS, pidVals, pidHist
+         en getPidDef() zijn dat allemaal al, en die vier worden
+         in dezelfde regels gebruikt. Bijvangst: een suffix is
+         dubbelzinnig over modes heen ('05' is 0105 én 0205), en
+         smoothing over een freeze frame is zinloos.
+
+       • 🔍 TWEE TOETSEN VIELEN OM TOEN HET FILTER AANGING, EN
+         DAT IS HET BEWIJS DAT HET DAARVOOR NIETS DEED. "Koel-
+         water precies op 215 mag door" gaf 152,5 — het gemid-
+         delde van 90 en 215. Allebei meten nu op een verse
+         reeks, zodat ze weer laag 1 meten in plaats van laag 3.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-09b (CET) — ÉÉN LIJST DIE DE RIT STUURT
 
        • 🧭 DE MEETCONTEXT EN HET ADAPTERGAT ZIJN NU STAPPEN
