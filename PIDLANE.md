@@ -874,6 +874,56 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De nieuwe proef sloeg op zijn eerste rit alarm, en hij had ongelijk — 09-09-2026 (#66)
+
+De rit van 09-09 (Mazda CX-5, 10 minuten gereden, 97 km/u, alle vier de
+aanvragers aan, busbelasting 93%) leverde precies wat de ronde ervan verwachtte:
+131 proeven, één FOUT. Die ene FOUT was de proef die ik er de dag ervoor zelf in
+had gezet.
+
+```
+FOUT De drempel voor "beweegt" scheidt beweging van stilstand
+     drempel 2% van het bereik; 13 bewegen, 19 stil.
+     Vlak onder de drempel: Motortoerental 108/160, …
+     — de motor draait (652 rpm) maar het toerental telt niet als bewegend.
+       Dan is niet de drempel verkeerd maar de reeks eronder (#66)
+```
+
+**De meting klopte; de gevolgtrekking niet.** Gemeten om 13:27, stationair op
+652 rpm: het toerental had een bereik van 108 tegen een drempel van 160. Dat is
+geen kapotte reeks maar een motor die stationair 108 toeren op en neer gaat. De
+bestuurder antwoordde bij stap 9 van de begeleide run dan ook *"balken én lijnen
+kloppen"* — mens en proef spraken elkaar tegen, en de mens had gelijk.
+
+**De vorm is het punt, niet de fix.** De melding gaf een OORZAAK die nergens uit
+bleek: *"dan is niet de drempel verkeerd maar de reeks eronder"*. Dat is
+letterlijk dezelfde fout als #18 — de melding die beweerde wat hij niet gemeten
+had — en die staat één kopje verderop in dit hoofdstuk beschreven. Ik heb hem
+opnieuw gemaakt in een proef die er juist was om van opletten naar meten te gaan.
+
+Wat de proef wél kon vaststellen: dát het toerental de drempel niet haalt. Wat
+hij niet kon vaststellen: waaróm. Die twee zijn nu gescheiden:
+
+- **bereik nul terwijl de motor draait** → FOUT. Dan staat de reeks werkelijk
+  stil, en dat is een defect dat losstaat van de drempel.
+- **bereik onder de drempel** → LET OP met het getal erbij. Dat is geen
+  bevinding maar de meetwaarde waar #66 om vroeg.
+
+**En daarmee heeft #66 zijn antwoord**, na twee weken wachten: bij stationair
+toerental is 2% van het volle bereik (160 rpm op een schaal tot ~8000) te grof
+om een trendlijn te geven, terwijl er 108 rpm échte beweging is. De vraag uit
+het issue — te hoog of te laag — is daarmee een getal geworden in plaats van een
+gevoel. Wat er níét uit volgt is welke drempel dan wél goed is; dat blijft een
+ontwerpkeuze, nu met een gemeten ondergrens eronder.
+
+**Losse waarneming over de rit zelf.** De bestuurder liep de *begeleide run* af
+(13 stappen), niet de stappen uit `CAMPAGNE`. Daardoor is het
+meetcontextvenster nooit beantwoord (#64 meldt dat zelf als LET OP, en dat ís
+het gevraagde cijfer) en is de adapter niet bewust losgetrokken (#133 kwam op
+"ok" zonder dat de proef ooit onder spanning stond). Twee lijsten met stappen
+naast elkaar is dezelfde vorm waar dit hoofdstuk al twee keer aan ten onder
+ging; de volgende ronde hoort te kiezen welke van de twee de rit stuurt.
+
 ### Zes issues wachtten op een rit, en de rit leverde herinneringen — 08-09-2026
 
 Er stonden negen issues open en zes daarvan wachtten op iets dat alleen achter
