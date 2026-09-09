@@ -267,7 +267,11 @@ console.log('\n── laag 1: harde fysieke limieten ──');
   toets('koelwater 300 °C wordt geweigerd', s.validateAndSmooth('0105', 300), null);
   toets('koelwater -60 °C wordt geweigerd', s.validateAndSmooth('0105', -60), null);
   toets('koelwater 90 °C mag door', s.validateAndSmooth('0105', 90), 90);
-  toets('koelwater precies op 215 mag door', s.validateAndSmooth('0105', 215), 215);
+  // Verse instantie, en dat is sinds #158 nodig: 0105 loopt nu ook door laag 3,
+  // dus een tweede waarde in dezelfde reeks komt er GEMIDDELD uit (90 en 215
+  // geven 152,5). Dat is precies het gedrag dat #158 aanzette; het maakt deze
+  // laag-1-grens alleen onmeetbaar in dezelfde reeks. Los meten dus.
+  toets('koelwater precies op 215 mag door', bouw().validateAndSmooth('0105', 215), 215);
   toets('boordspanning 2V wordt geweigerd', s.validateAndSmooth('0142', 2), null);
   toets('boordspanning 14.2V mag door', s.validateAndSmooth('0142', 14.2), 14.2);
   toets('null blijft null', s.validateAndSmooth('0105', null), null);
@@ -299,39 +303,43 @@ console.log('\n── laag 2+3: het spike-filter ──');
   s.pidVals['010C'] = 800;
   toets('toerental 800 -> 6000 wordt niet gefilterd', s.validateAndSmooth('010C', 6000), 6000);
 
-  // Het filter zelf, aangeroepen op de sleutel die FILTERED_PIDS kent.
+  // Het filter zelf, aangeroepen zoals de meetketen hem aanroept: met de
+  // VOLLEDIGE pid. Tot #158 stond FILTERED_PIDS op suffixen en moest hier '05'
+  // staan om het filter überhaupt te raken — precies de reden dat laag 2+3
+  // voor álle PIDs oversloeg zonder dat een test dat merkte.
   const s2 = bouw();
-  s2.pidVals['05'] = 50;
+  s2.pidVals['0105'] = 50;
   toets('een sprong op een traag signaal wacht op bevestiging',
-    s2.validateAndSmooth('05', 200), null);
+    s2.validateAndSmooth('0105', 200), null);
   // Tweede meting binnen 5 s die de sprong bevestigt → alsnog accepteren.
   toets('de bevestiging erna wordt geaccepteerd',
-    s2.validateAndSmooth('05', 200), 200);
+    s2.validateAndSmooth('0105', 200), 200);
 }
 
 console.log('\n── laag 2+3: is het filter bereikbaar zoals de app hem aanroept? ──');
 {
-  // parsePID() en applyParsedBytes() geven de VOLLEDIGE PID door ('0105').
-  // FILTERED_PIDS is gevuld met SUFFIXEN ('05'). pidlane-fuel.js regel 1287
-  // doet daarom `traagSet.has(pid.slice(2))`; pidlane-datalog.js regel 75
-  // doet `FILTERED_PIDS.has(pid)` — zonder slice.
+  // parsePID() en applyParsedBytes() geven de VOLLEDIGE pid door ('0105').
+  // FILTERED_PIDS stond tot 09-09-2026 op SUFFIXEN ('05'), terwijl
+  // pidlane-datalog.js `FILTERED_PIDS.has(pid)` doet — zonder slice. Die
+  // opzoeking miste dus altijd en laag 2+3 draaide nergens; op de rit van
+  // 09-09 gaf validateAndSmooth("0105",200) gewoon 200 terug (#158).
   //
-  // Dit is bewust een LET OP en geen FOUT: de bevinding is vastgelegd in
-  // PIDLANE.md §11 en wordt niet in deze PR gerepareerd (één onderwerp per
-  // PR). Wordt regel 75 gerepareerd, dan verdwijnt deze melding vanzelf en
-  // toetst de regel hieronder gewoon mee.
+  // Dit stond hier een week als LET OP, met de reden erbij dat het niet in
+  // diezelfde PR gerepareerd werd. Nu het gerepareerd ís, is het een gewone
+  // toets: valt hij om, dan staan spike-filter en smoothing weer uit voor
+  // álle PIDs, en dat is een FOUT en geen waarschuwing.
   const s = bouw();
   s.pidVals['0105'] = 50;
-  const uit = s.validateAndSmooth('0105', 200);
-  if (uit === null) {
-    toets('laag 2+3 is bereikbaar vanaf de volledige PID-vorm', uit, null);
-  } else {
-    waarschuw('laag 2+3 wordt overgeslagen bij de volledige PID-vorm',
-      'validateAndSmooth("0105",200) gaf ' + uit + ' i.p.v. null — FILTERED_PIDS ' +
-      'is gevuld met suffixen ("05"), maar pidlane-datalog.js regel 75 toetst ' +
-      'de volledige PID. Spike-filter en smoothing staan daardoor uit voor ' +
-      'álle PIDs. Zie PIDLANE.md §11.');
-  }
+  toets('laag 2+3 is bereikbaar vanaf de volledige PID-vorm',
+    s.validateAndSmooth('0105', 200), null);
+
+  // En de tegenproef eronder: een PID die NIET in de lijst staat hoort er wél
+  // ongefilterd doorheen te komen. Zonder deze regel zou "alles geeft null"
+  // ook groen staan, en dan meet de toets hierboven niets.
+  const s3 = bouw();
+  s3.pidVals['010C'] = 800;
+  toets('een PID buiten de lijst blijft ongefilterd',
+    s3.validateAndSmooth('010C', 6000), 6000);
 }
 
 console.log('\n── de hele keten: ruwe regel in, meetwaarde uit ──');

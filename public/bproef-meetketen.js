@@ -68,9 +68,21 @@ function toets(naam, waar, uitleg) {
 
     // ── 3. LAAG 1: DE FYSIEKE GRENS ──────────────────────────────
     // 0105 staat in PID_HARD_LIMITS op -40…215. 300 hoort geweigerd, 90 niet.
-    const hard = await app.ev(`JSON.stringify({
-      teHoog:   validateAndSmooth('0105', 300),
-      normaal:  validateAndSmooth('0105', 90) })`);
+    //
+    // De buffers gaan er eerst uit, en dat is sinds #158 nodig. Toen ging 0105
+    // door laag 3 lopen, en dan is de tweede waarde in een reeks een GEMIDDELDE:
+    // deze toets gaf 91,5, want de 93 uit de parserproef hierboven stond nog in
+    // pidSmooth. Dat is gewenst gedrag — blok 3b hieronder toetst het expliciet
+    // — maar het maakt laag 1 onmeetbaar in diezelfde reeks.
+    const hard = await app.ev(`(function(){
+      const bS = pidSmooth['0105'], bV = pidVals['0105'];
+      const schoon = function(){ delete pidSmooth['0105']; delete pidVals['0105']; };
+      schoon(); const teHoog  = validateAndSmooth('0105', 300);
+      schoon(); const normaal = validateAndSmooth('0105', 90);
+      if (bS === undefined) delete pidSmooth['0105']; else pidSmooth['0105'] = bS;
+      if (bV === undefined) delete pidVals['0105']; else pidVals['0105'] = bV;
+      return JSON.stringify({ teHoog: teHoog, normaal: normaal });
+    })()`);
     const h = JSON.parse(hard);
     toets('laag 1 weigert 300 °C koelwater', h.teHoog === null, 'kreeg ' + h.teHoog);
     toets('laag 1 laat 90 °C door', h.normaal === 90, 'kreeg ' + h.normaal);
@@ -134,16 +146,39 @@ function toets(naam, waar, uitleg) {
     toets('en de tegenproef laat zien dat er wél een spoor zou zijn geweest',
           rauw === 'SPOOR', 'validateAndSmooth liet niets achter — dan bewijst de toets hierboven niets');
 
-    // ── WAARNEMING, GEEN OORDEEL ─────────────────────────────────
-    // Laag 2+3 staat uit voor álle PIDs (§11, FILTERED_PIDS met
-    // suffix-sleutels). Dat is een OPEN bevinding, dus hij hoort hier niet
-    // als FOUT: dan zou deze proef vanaf nu altijd rood staan en daarmee
-    // genegeerd worden. Hij wordt wel gemeld, met de gemeten waarde erbij,
-    // zodat de dag dat het gerepareerd is meteen zichtbaar is.
-    const l23 = await app.ev(`validateAndSmooth('0105', 200)`);
-    console.log('  LET OP  laag 2+3 (§11): validateAndSmooth("0105",200) geeft ' + l23 +
-                (l23 === 200 ? ' — het spike-filter staat nog uit voor alle PIDs'
-                             : ' — DIT IS VERANDERD: werk §11 en deze proef bij'));
+    // ── LAAG 2+3, EN DIT WAS EEN WAARNEMING TOT 09-09-2026 ───────
+    // Hier stond een LET OP met de gemeten waarde erbij, want laag 2+3 stond
+    // uit voor álle PIDs: FILTERED_PIDS droeg suffixen ('05') terwijl de keten
+    // de volledige pid doorgeeft. Er stond bij: "DIT IS VERANDERD: werk §11 en
+    // deze proef bij". Dat is nu gebeurd (#158), dus het is een toets geworden.
+    //
+    // De vorm van de sleutels wordt er apart bij gemeten. Zonder die tweede
+    // regel zou "alles geeft null" ook groen staan — bijvoorbeeld doordat laag
+    // 1 iets weigert — en dan bewijst de eerste regel niet dat het spike-filter
+    // draait maar alleen dat er íéts null teruggeeft.
+    // Een sprong heeft een VORIGE waarde nodig — zonder die 50 valt er niets te
+    // springen en komt 200 er terecht gewoon doorheen. Dat is precies waarom
+    // deze proef hem zelf zet in plaats van te hopen dat er data staat: er
+    // hangt geen auto aan deze browser.
+    const l23 = await app.ev(`(function(){
+      const bS = pidSmooth['0105'], bV = pidVals['0105'], bP = window._pidPending;
+      delete pidSmooth['0105']; pidVals['0105'] = 50; window._pidPending = {};
+      const uit = validateAndSmooth('0105', 200);
+      window._pidPending = bP;
+      if (bS === undefined) delete pidSmooth['0105']; else pidSmooth['0105'] = bS;
+      if (bV === undefined) delete pidVals['0105']; else pidVals['0105'] = bV;
+      return uit;
+    })()`);
+    toets('laag 2+3 draait: een sprong van 50 naar 200 °C wacht op bevestiging',
+          l23 === null, 'validateAndSmooth("0105",200) gaf ' + l23 +
+          ' in plaats van null — spike-filter en smoothing staan weer uit voor alle PIDs (#158)');
+
+    const vorm = await app.ev(`(function(){
+      if (typeof FILTERED_PIDS === 'undefined') return 'ontbreekt';
+      return FILTERED_PIDS.has('0105') ? 'volledig' : (FILTERED_PIDS.has('05') ? 'suffix' : 'onbekend');
+    })()`);
+    toets('en FILTERED_PIDS draagt de vorm die de meetketen doorgeeft',
+          vorm === 'volledig', 'sleutelvorm is "' + vorm + '" — de keten geeft de volledige pid door');
   } finally {
     if (app) await app.stop();
   }
