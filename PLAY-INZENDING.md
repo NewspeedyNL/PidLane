@@ -1,6 +1,6 @@
 # PLAY-INZENDING.md — alle tekst die de Play Console vraagt
 
-Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7 en §16). Dit bestand is
+Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7, §16 en de taalkeuze). Dit bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
 
@@ -10,6 +10,18 @@ de redenering, wat er misging. Dit document is de **uitkomst**: de tekst zelf.
 Twee verschillende vragen, en ze lopen anders uit de pas als ze in één bestand
 staan.
 
+> **De inzending is nl-NL only — besluit 10-09-2026 (#177).** Elk veld
+> hieronder staat er één keer in, in het Nederlands. Dat is geen slordigheid
+> maar de goedkoopste kant van een keuze: §3 is 3102 tekens en zou vertaald
+> moeten worden, terwijl §15 Countries toch al op Nederland zet omdat de
+> RDW-kentekenfunctie regiogebonden is. Tot vandaag hadden §2 en §14 wél een
+> en-US-blok en §3 niet — zet je in de Console een tweede taal aan, dan krijgt
+> een reviewer een Engelse regel onder de titel en Engelse release notes met
+> een Nederlandse volledige beschrijving eronder, uitgerekend het veld waar de
+> "minimum functionality"-toets op leunt. **Zet er dus geen tweede taal bij
+> zonder §3 mee te vertalen**; `test-playteksten.js` telt de blokken van §1,
+> §2, §3 en §14 en wordt rood zodra ze niet meer gelijk lopen.
+>
 > **De regel die alles bij elkaar houdt.** Vier plekken vertellen hetzelfde
 > verhaal: deze teksten, `public/privacy.html`, `public/verwijderen.html` en
 > het disclosurescherm in `public/pidlane-privacy.js`. Wijkt er één af, dan is
@@ -63,12 +75,6 @@ het is de enige tekst die iedereen leest.
 
 ```
 Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.
-```
-
-**Engels (en-US), als je een tweede taal aanzet:**
-
-```
-Read your car through an OBD2 adapter and get a diagnosis in plain language.
 ```
 
 ---
@@ -484,10 +490,8 @@ naam genoemd worden bestaan als eigen module (`pidlane-monitor.js`,
 regel wordt woordelijk bewaakt door `test-demo-toegang.js` — dat is de zin die
 een reviewer zonder auto als eerste probeert.
 
-**Zet je en-US aan, kijk dan eerst naar §3.** Dat veld heeft nog geen Engelse
-versie, terwijl §1, §2 en dit veld die wel hebben (#177).
-
-**nl-NL:**
+**Eén taal, en dat is een besluit** — zie de regel onder §0. Dit veld had tot
+10-09-2026 ook een en-US-blok, net als §2, terwijl §3 er geen had (#177).
 
 ```
 Eerste versie in de Play Store.
@@ -497,19 +501,6 @@ auto uit: foutcodes, live sensorwaarden, grafieken en een diagnoserapport in
 gewone taal. Met ritmonitor, koopcheck en diagnose op afstand.
 
 Geen adapter? Probeer de demomodus op het startscherm — geen account nodig.
-```
-
-**en-US:**
-
-```
-First release on the Play Store.
-
-Connects to an OBD2 adapter over Bluetooth and reads your car's on-board
-computer: fault codes, live sensor values, graphs and a diagnostic report in
-plain language. Includes trip monitoring, pre-purchase check and remote
-diagnosis.
-
-No adapter? Try the demo on the start screen — no account needed.
 ```
 
 ---

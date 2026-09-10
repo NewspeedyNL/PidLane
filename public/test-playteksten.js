@@ -280,8 +280,10 @@ console.log('\n6. Wat de release notes beloven, staat ook in de beschrijving');
       return koppen.some(function (k) { return k === naam || k.indexOf(naam) === 0; });
     }
 
-    // Het Nederlandse blok tegen de Nederlandse beschrijving. Het Engelse
-    // blok blijft erbuiten zolang §3 geen en-US-versie heeft (#177).
+    // Het eerste blok van §14 tegen dat van §3. Sinds het besluit van
+    // 10-09-2026 is dat ook het énige blok van allebei: de inzending is
+    // nl-NL only (#177). Deel 7 hieronder bewaakt dat er niet stilletjes een
+    // tweede taal bij komt in het ene veld en niet in het andere.
     const zin = notes[0].match(/\bMet ([^.]+)\./);
     toets('§14 noemt zijn functies nog in één "Met ..."-zin', !!zin,
           'die zin is de plek waar dit veld functies belooft; is hij weg, dan vergelijkt deze toets niets');
@@ -310,6 +312,52 @@ console.log('\n6. Wat de release notes beloven, staat ook in de beschrijving');
   }
 }
 
+
+// ── 7. Alle vier de velden dragen evenveel talen (#177) ───────────
+// De inzending is nl-NL only, besloten op 10-09-2026. Maar dit deel toetst
+// niet "er is precies één blok" — het toetst dat de vier velden GELIJK lopen.
+// Dat is de fout die #177 was: §1, §2 en §14 hadden een en-US-blok en §3 niet,
+// dus wie in de Console een tweede taal aanzette kreeg een Engelse titel,
+// een Engelse regel eronder en Engelse release notes, met een Nederlandse
+// volledige beschrijving ertussen — uitgerekend het veld waar de
+// "minimum functionality"-toets op leunt.
+//
+// Zo geschreven blijft de controle ook gelden als er ooit wél vertaald wordt:
+// dan gaan alle vier de velden naar twee, en dit deel blijft groen. Een test
+// die op "precies één" staat, zou dan in de weg lopen en weggehaald worden —
+// en dan is er niets meer dat de scheefstand vangt.
+console.log('\n7. Elk invulveld draagt evenveel taalblokken');
+{
+  const telling = VELDEN.map(function (v) {
+    return { kop: v.kop.replace('## ', ''), n: (blokkenOnder(v.kop) || []).length };
+  });
+
+  // Losse functie, zodat de tegenproef eronder hem echt kan uitvoeren op een
+  // scheve lijst. Een vergelijking die alleen op het echte document draait,
+  // heeft nooit laten zien dát hij kan afkeuren.
+  function gelijkGeteld(lijst) {
+    if (!lijst.length) return false;
+    const eerste = lijst[0].n;
+    if (eerste < 1) return false;
+    return lijst.every(function (v) { return v.n === eerste; });
+  }
+
+  toets('alle vier de velden hebben er evenveel (' +
+        telling.map(function (v) { return v.kop + ': ' + v.n; }).join(', ') + ')',
+        gelijkGeteld(telling),
+        'een veld draagt een taal die een ander veld niet heeft — dat is #177, en een ' +
+        'reviewer leest dan half Engels');
+
+  toets('en het zijn er nu één per veld (nl-NL only, besluit 10-09-2026)',
+        telling.every(function (v) { return v.n === 1; }),
+        'er staat een tweede taal in het document; klopt dat, werk dan de regel onder §0 bij');
+
+  // TEGENPROEF: dezelfde functie moet een scheve telling afkeuren. Zonder dit
+  // weet je alleen dat hij groen kán staan.
+  toets('een scheef document zou hij afkeuren (tegenproef)',
+        !gelijkGeteld([{ kop: '1', n: 2 }, { kop: '2', n: 2 }, { kop: '3', n: 1 }, { kop: '14', n: 2 }]),
+        'gelijkGeteld() keurt alles goed — dan bewaakt de controle hierboven niets');
+}
 
 console.log('');
 if (fouten) { console.log('test-playteksten: ' + fouten + ' fout(en)'); process.exit(1); }

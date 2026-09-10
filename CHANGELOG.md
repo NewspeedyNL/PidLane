@@ -11,6 +11,36 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10f (CET) — INLOGGEN KOST GEEN TOKENS
+
+       • 💳 ELKE LOGIN KOSTTE PRECIES ÉÉN CREDIT. Het saldo
+         stond op 40 en na het inloggen op 39, zonder dat er
+         één analyse gedraaid was. Inloggen zelf raakt het
+         tegoed niet — de controle erachter wel: die deed een
+         echte AI-call om "🤖 AI-sleutel ✓" te kunnen tonen,
+         en een AI-call kost minstens één credit, ook eentje
+         die drie woorden terugkrijgt.
+
+       • 🔑 DE CONTROLE GAAT NU LANGS /v1/ping. Die loopt door
+         dezelfde poorten — is er een sessie, mag deze rol AI
+         gebruiken, staat de sleutel in de Worker — maar raakt
+         het model niet aan. De chip belooft daarmee nog
+         precies hetzelfde en kost structureel niets.
+
+       • 🧾 WAAROM DAT NU PAS OPVIEL. Het reviewaccount voor
+         de Play-review krijgt tegoed mee, en een reviewer
+         logt vaker in dan hij analyseert. Dat is het saldo
+         dat op zijn moment niet leeg mag zijn.
+
+       • 🧪 EÉN LOGIN DOOR DE ECHTE KETEN, met tegenproef.
+         De test laat de app, de router en de handler alle
+         drie echt draaien en kijkt naar het saldo; ernaast
+         gaat dezelfde login via de oude route, en dan staat
+         er 39. Zonder die tweede helft bewijst de eerste
+         alleen dat er niets gemeten is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10e (CET) — KUN JE ERBIJ, OF PAST HET
 
        • 📏 DE ONDERRAND-PROEF MELDDE ELKE RIT FOUT terwijl er
