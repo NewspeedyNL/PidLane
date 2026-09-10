@@ -893,9 +893,24 @@ kreeg.
 ingedikte volledige beschrijving, met de hand. Twee velden die hetzelfde
 beloven en allebei door een reviewer gelezen worden — dat is de vorm die dit
 hoofdstuk twee keer eerder de kop kostte. `test-playteksten.js` vergelijkt ze
-nu: elke functie die §14 bij naam noemt moet ook in §3 staan. Andersom niet,
-want §3 mag 4000 tekens en noemt meer. Een mutatie in `plmutate.sh` zet er een
-functie in die §3 niet kent en verwacht rood.
+nu, één kant op: elke functie die §14 belooft moet in §3 opgesomd staan.
+Andersom niet, want §3 mag 4000 tekens en noemt meer.
+
+**De eerste versie van die vergelijking deugde niet, en `plmutate.sh` liet dat
+binnen één run zien.** Hij hield een lijstje functienamen bij dat ik zelf had
+opgeschreven, en toetste daarmee mijn woordenschat in plaats van het document:
+een functie die niet op dat lijstje stond glipte er per definitie doorheen. De
+mutatie die dat had moeten aantonen ontsnapte bovendien om een tweede reden —
+ik had er "kenteken" in gezet, en dat stáát in §3. Twee fouten in één regel,
+allebei van de soort waar de tegenproef voor bestaat. De lijst komt nu uit §3
+zelf: dat veld somt zijn functies op als `• Naam — uitleg`, en §14 noemt ze in
+één `Met A, B en C.`-zin. Verdwijnt een van die twee vormen, dan stopt de toets
+met een FOUT in plaats van met een lege lijst stilletjes door te gaan.
+
+Twee mutaties houden het scherp, in allebei de richtingen: §14 belooft een
+functie die §3 niet opsomt, en §3 hernoemt een functie terwijl §14 de oude naam
+blijft beloven. Die tweede is de stillere — je verbetert de beschrijving en
+raakt het veld ernaast niet aan.
 
 **En er kwam een echte bevinding uit die vergelijking (#177).** §1, §2 en §14
 hebben een en-US-blok, §3 niet. Zet je Engels aan in de Console, dan krijgt een
