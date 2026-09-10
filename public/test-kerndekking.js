@@ -12,6 +12,22 @@ if (van < 0 || tot < 0 || tot < van) {
   console.error('FOUT: knipbereik niet gevonden in pidlane-fuel.js'); process.exit(1);
 }
 
+/* Knip FILTERED_PIDS uit pidlane-datalog.js in plaats van hem over te typen.
+   Het anker is de declaratie zelf: verdwijnt of hernoemt die, dan stopt deze
+   test met een duidelijke reden in plaats van stilletjes met een lege set door
+   te draaien — een lege set maakt élke sensor "dynamisch" en dat zou hier als
+   een gedragsfout lezen. */
+function leesFilteredPids() {
+  const dl = fs.readFileSync(__dirname + '/pidlane-datalog.js', 'utf8');
+  const m = dl.match(/const FILTERED_PIDS\s*=\s*new Set\(\[[\s\S]*?\]\);/);
+  if (!m) { console.error('FOUT: FILTERED_PIDS niet gevonden in pidlane-datalog.js'); process.exit(1); }
+  const uit = new Function('return ' + m[0].replace(/^const FILTERED_PIDS\s*=\s*/, '').replace(/;$/, ''))();
+  if (!(uit instanceof Set) || uit.size === 0) {
+    console.error('FOUT: FILTERED_PIDS is leeg gelezen — dan toetst deze test niets'); process.exit(1);
+  }
+  return uit;
+}
+
 let pidHist = {}, window_ = {};
 const omgeving = {
   BASIS_PIDS: ['010C', '0105', '0104', '010F', '0142'],
@@ -19,7 +35,15 @@ const omgeving = {
     brandstof: ['010C', '010D', '0104', '0106', '0107', '0110', '010B', '010F', '0144', '0124', '0115', '015E', '012F'],
     accu: ['0142', '010C', '0104', '0105', '0146', '015B']
   },
-  FILTERED_PIDS: new Set(['0105', '010F', '0146', '015C', '012F', '0142', '0133', '0107', '0109']),
+  // DE ECHTE LIJST, GELADEN UIT DE BRON — 10-09-2026.
+  // Hier stond een overgetypte kopie, en die is door plmutate.sh gevonden: de
+  // mutatie die FILTERED_PIDS terugzet op een suffix ('42') ontsnapte, want
+  // deze test keek naar zijn eigen set en niet naar die van de app. Precies de
+  // fout uit CLAUDE.md — "verzin geen tabellen die de app ook heeft". Sinds
+  // laag 2+3 weg zijn is pidlane-fuel.js de énige lezer van deze lijst, dus
+  // deze test is ook de enige plek waar een verkeerde sleutelvorm nog rood kan
+  // worden.
+  FILTERED_PIDS: leesFilteredPids(),
   getPidDef: pid => ({ name: 'PID' + pid }),
   plMeetStatus: () => ({ sec: 600, maxN: 400, dekking: 0.9, rijSec: 0 }),
   Math, Set

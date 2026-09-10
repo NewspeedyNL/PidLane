@@ -309,7 +309,12 @@ MUTATIES=(
 # pid toetst, dus laag 2+3 draaiden nergens. Twee kanten om het terug te
 # breken, en allebei zijn ze plausibel: één regel in de oude vorm terugzetten,
 # of de .slice(2) in fuel.js weer opvoeren die de suffixvorm compenseerde.
-"public/pidlane-datalog.js@@  '0105', // koelwatertemperatuur@@  '05', // koelwatertemperatuur@@test-parser.js@@FILTERED_PIDS staat weer op een suffix, dus laag 2+3 slaan over voor koelwater"
+# ── Deze mutatie wees tot 10-09-2026 naar test-parser.js, want een suffix in
+# FILTERED_PIDS liet laag 2+3 overslaan. Die lagen zijn weg, en toen ontsnapte
+# hij: de lijst heeft nog één lezer, pidlane-fuel.js, en de test dáárvan had een
+# overgetypte kopie van de tabel. Die kopie is nu de echte lijst uit de bron, en
+# daarmee is dit weer een fout die gevangen wordt.
+"public/pidlane-datalog.js@@  '0105', // koelwatertemperatuur@@  '05', // koelwatertemperatuur@@test-kerndekking.js@@FILTERED_PIDS staat weer op een suffix, dus een trage sensor telt als dynamisch en heeft ineens een volle reeks nodig"
 "public/pidlane-fuel.js@@      const traag=traagSet.has(pid);@@      const traag=traagSet.has(pid.slice(2).toUpperCase());@@test-kerndekking.js@@de kerndekking zoekt weer een suffix in een lijst met volledige PIDs, dus elke trage sensor telt als dynamisch"
 
 # ── De kostenraming hangt aan de uitvoer, niet aan het plafond (08-09-2026) ──
