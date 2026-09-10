@@ -371,6 +371,15 @@ MUTATIES=(
 "public/pidlane-testrun.js@@      const sindsLoop = sindsM(gaten), sindsMeet = sindsM(meetgaten);@@      const sindsLoop = sindsM(gaten), sindsMeet = [];@@test-begeleid.js@@de adapterstap is weer blind voor het meetgat, en dat is het enige gat dat er valt"
 "public/pidlane-testrun.js@@        ? ' — alle meetgaten vallen binnen een periode waarin de app weg was: dan is dit de afgeknepen '@@        ? ' — alle meetgaten vallen buiten elke periode waarin de app weg was: dan is dit de '@@test-gatduiding.js@@een meetgat in de achtergrond wordt weer aan de bus toegeschreven"
 "public/pidlane-testrun.js@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');\n      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');@@test-blok5lijst.js@@de tien minuten staan weer als drempel in de #19-proef"
+
+# ── Geen wachtwoord in de Play-inzending (#174, 10-09-2026) ──
+# Deze repository is PUBLIEK, en §7 van PLAY-INZENDING.md vraagt om een
+# reviewaccount met tegoed erop. De sleutelscan in CI zoekt naar API-sleutels
+# en tokens, niet naar een wachtwoord in lopende tekst — die vangt dit dus
+# niet. De fout die je hier echt maakt is de regex zo smal maken dat hij alleen
+# het verzonnen voorbeeld uit zijn eigen tegenproef nog herkent; de controle
+# staat dan groen op een document dat wel degelijk lekt.
+"public/test-playteksten.js@@[:|=]\\s*([^\\s|*_\\x60]{8,})/i.test(nep);@@[:|=]\\s*(NOOITZOGENOEMD)/i.test(nep);@@test-playteksten.js@@de wachtwoordwachter herkent een echt wachtwoord niet meer"
 )
 
 echo

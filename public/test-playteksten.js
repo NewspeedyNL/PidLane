@@ -201,6 +201,43 @@ versies.forEach(v => {
         'de afvinklijst bevestigt dan een versie die niet meer gebouwd wordt');
 });
 
+console.log('\n5. Er staat geen wachtwoord in dit document');
+
+// WAAROM DIT ER IS (10-09-2026). Deze repository is PUBLIEK. §7 vraagt om een
+// reviewaccount met tegoed erop, en het wachtwoord daarvan hoort in het
+// Console-veld — niet in een gecommit bestand, waar het binnen een minuut
+// wereldwijd leesbaar is. Het document waarschuwt daar zelf voor, maar een
+// waarschuwing draait op oplettendheid en dat is hier al vaker misgegaan.
+//
+// De sleutelscan in CI vangt dit NIET: die zoekt naar API-sleutels en tokens,
+// niet naar een wachtwoord in lopende tekst. Vandaar een eigen controle.
+//
+// Wat hij zoekt is een REGEL die een wachtwoord toekent, niet het woord
+// "wachtwoord" zelf — dat staat er juist als uitleg, en dat moet zo blijven.
+{
+  const verdacht = [];
+  doc.split('\n').forEach(function (regel, i) {
+    // "Password | Iets", "wachtwoord: Iets", "pass = Iets" — met iets erachter
+    // dat op een echt wachtwoord lijkt: geen spaties, minstens acht tekens.
+    const m = regel.match(/(?:password|wachtwoord|passwd|pwd)\s*[:|=]\s*([^\s|*_\x60]{8,})/i);
+    if (!m) return;
+    // Cursief of tussen backticks is uitleg ("*niet in dit bestand*"), en een
+    // verwijzing naar een veld ook. Alleen kale tekst telt als een lek.
+    if (/^[*_\x60]/.test(m[1])) return;
+    verdacht.push('regel ' + (i + 1) + ': ' + regel.trim().slice(0, 70));
+  });
+  toets('geen wachtwoordregel in PLAY-INZENDING.md',
+        verdacht.length === 0,
+        'deze repo is publiek — zet het in het Console-veld App access:\n        ' + verdacht.join('\n        '));
+
+  // TEGENPROEF: de controle moet een echt lek ook echt zien. Zonder dit weet
+  // je alleen dat hij groen kán staan.
+  const nep = '| Password | DemoTester@2026 |';
+  const ziet = /(?:password|wachtwoord|passwd|pwd)\s*[:|=]\s*([^\s|*_\x60]{8,})/i.test(nep);
+  toets('en een echt wachtwoord zou hij zien (tegenproef)', ziet,
+        'de regex is te smal — dan bewaakt controle hierboven niets');
+}
+
 console.log('');
 if (fouten) { console.log('test-playteksten: ' + fouten + ' fout(en)'); process.exit(1); }
 console.log('test-playteksten: alles goed');
