@@ -876,6 +876,13 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 
 ### Laag 2+3 stonden uit voor álle PIDs, een week lang zichtbaar — 09-09-2026 (#158)
 
+> **HERZIEN OP 10-09-2026.** Wat hieronder staat over de sleutelvorm klopt en
+> blijft staan. De conclusie die eruit getrokken werd — *dus moeten laag 2 en 3
+> aan* — was fout, en de lagen zijn een dag later weer weggehaald. De meting die
+> dat besliste staat in het kopje hierna. Deze tekst blijft ongewijzigd omdat de
+> fout leerzamer is dan de correctie.
+
+
 `FILTERED_PIDS` in `pidlane-datalog.js` droeg **suffixen** (`'05'`), terwijl
 `validateAndSmooth()` twee regels verderop `FILTERED_PIDS.has(pid)` doet en de
 meetketen de **volledige** pid doorgeeft (`'0105'`). Die opzoeking miste dus
@@ -926,6 +933,103 @@ issue te zijn, want dat is de enige lijst die nagelopen wordt — dat staat al
 bovenaan `CLAUDE.md` en dit is er de duurste illustratie van tot nu toe. Alle
 drie de plekken zijn nu een toets die rood wordt in plaats van een melding die
 je kunt lezen en laten staan.
+
+### Laag 2 en 3 zijn weggehaald, en dit is waarom — 10-09-2026
+
+Ze stonden één dag aan. Dit is wat er in die dag gemeten is, en waarom het
+antwoord "weg" is en niet "beter afstellen".
+
+**Eerst de basis, want die was ouder dan gedacht.** `FILTERED_PIDS` draagt
+suffixen sinds `0135e85`, de **eerste commit in deze repo**. Laag 2 (spike-filter)
+en laag 3 (middeling over twee monsters) hebben in de hele levensduur van deze
+app nooit één keer gedraaid. Er is dus geen versie geweest die er beter van werd,
+en geen klacht die eruit voortkwam.
+
+**Wat het probleem eigenlijk was.** Niet "laag 2+3 staat uit". Wat er op 02-09
+gevonden werd is dat `test-parser.js` beweerde de meetketen te dekken en dat niet
+deed. Dat is een testprobleem. "Laag 2+3 draait nooit" was een *vondst van* dat
+testprobleem, geen symptoom dat iemand ooit gezien had. Het onderscheid is niet
+academisch: het bepaalt of je iets repareert of iets aanzet.
+
+**Wat aanzetten opleverde, gemeten.**
+
+| PID | bereik over de rit van 09-09 (10 min, 97 km/u) | laag 2 vuurt bij |
+|---|---|---|
+| Koelwater temp | 5 °C | sprong 89,3 of 26,8 van het gemiddelde |
+| Inlaatlucht temp | 3 °C | 66,5 of 19,9 |
+| Brandstoftrim lang B1 | 5,47 | 21,0 of 6,3 |
+| **Accuspanning** | **2,76 V** | 2,8 of **0,8** |
+
+Op zeven van de negen is laag 2 dus inert: de drempel ligt een orde van grootte
+boven wat het signaal doet. De rit van 10-09 bevestigt het van de andere kant —
+in vier minuten over 31 sensoren sloeg het filter **één keer** aan, en dat was de
+testrun die er zelf 200 °C in duwde. Nul echte metingen geraakt.
+
+Accuspanning is de uitzondering, en juist daar gaat het de verkeerde kant op: een
+uitschieterdrempel van 0,8 V tegen een gemeten ritswing van 2,76 V. Daar vuurt
+het filter wél, herhaaldelijk, zodra er gereden wordt — op precies de dips die je
+in een diagnose-app wílt zien.
+
+**En dan de gevolgketen die niemand had nagelopen.** `pidlane-plload.js`, de
+hoofdmeetlus:
+
+```js
+const r = applyParsedBytes(pid, parsed[pid]);
+if (r != null) { markPidData(pid); updPID(pid, r); checkStability(pid, r); … }
+else markPidNoData(pid);
+```
+
+Een waarde die laag 2 weggooit wordt geboekt als **NO DATA van de ECU**. Er is
+geen derde uitkomst. Gevolg: geen `_pidLastUpd`-stempel, dus PLRit telt `gemist`,
+dus een gat in de reeks, dus `plMeetStabielVoorstel()` meldt dat de meting niet
+stabiel was. En `markPidNoData()` voedt `_noDataStreak` en de kwaliteitsscore,
+die via `pidOpruimen()` de sensor uit de selectie kan gooien.
+
+**Een filter dat een echte meting weggooit is dus niet te onderscheiden van een
+dode bus.** Dat is exact de verwarring waar #133 over gaat, en aanzetten bouwde
+er een tweede bron voor.
+
+**Laag 3 was niet inert.** Die verving elke opgeslagen waarde van die negen PIDs
+door het gemiddelde van de laatste twee. Koelwater komt als hele graden van de
+ECU (`A−40`), dus de app sloeg 89,5 op — een waarde die de sensor niet kán geven.
+Op een signaal met 5 °C bereik over tien minuten viel er niets te ontruisen; wat
+er wél veranderde is de meetgetrouwheid, en een krimpend bereik op precies de
+PIDs die #66 al niet "bewegend" kan noemen.
+
+**Wat blijft staan.** Laag 1 (harde fysieke limieten) en laag 1b (opvallend maar
+echt: melden, onthouden, doorlaten) doen wél iets, en het goede. `FILTERED_PIDS`
+blijft ook, maar heeft nog één lezer: `pidlane-fuel.js` gebruikt hem om trage van
+dynamische sensoren te scheiden. Dat is een eerlijke tweede rol voor een lijst
+die "welke signalen bewegen langzaam" betekent.
+
+**De les zit niet in de uitkomst maar in de volgorde.** Drie kopjes hierboven,
+op 02-09, stond het antwoord al opgeschreven:
+
+> *"Laag 2 en 3 aanzetten is een gedragswijziging in de meetketen … Of de
+> drempels (35 % sprong, 3,5σ, de 5-seconden bevestiging) na maanden uitstaan
+> nog kloppen, is niet vanaf een bureau te zeggen. Dat verdient een eigen rit en
+> een eigen PR."*
+
+Die regel klopte. #158 deed het alsnog vanaf het bureau, op een syntactisch
+argument — elke andere tabel is op de volledige pid gesleuteld, dus deze ook. Dat
+is een goed argument voor consistentie en géén meting van wat er gebeurt als het
+filter loopt. Elke merge hier is een deploy naar 100% van het verkeer.
+
+Wat daarna volgde is de vorm om te herkennen: twee toetsen die omvielen, een
+valse FOUT op de eerste rit, vervuilde reeksen in de testrun, en een PR om dat te
+repareren. **Vier reparaties op een verandering die niemand gevraagd had.** Het
+signaal dat je op het verkeerde niveau bezig bent, is dat elke fix een nieuwe
+fix nodig heeft. Dan is de vraag niet "hoe repareer ik dit" maar "waarom doe ik
+dit".
+
+**Wat de toetsen nu bewaken.** Omgekeerd aan wat er stond: niet *wordt er
+gefilterd* maar *komt de meting ongewijzigd door*. `test-parser.js` toetst dat
+twee metingen op een traag signaal allebei onveranderd terugkomen — dat vangt een
+teruggekeerde middeling, wat een null-of-niet-null-toets niet zou doen — en dat
+een sensor met hele graden geen halve graad oplevert. Blok 5 doet hetzelfde op de
+draaiende app, want juist een reeks die er al staat maakte de middeling zichtbaar.
+`plmutate.sh` bouwt allebei de lagen terug als mutatie: dat is geen verzonnen
+fout, die code stond er tot vandaag.
 
 ### De nieuwe proef sloeg op zijn eerste rit alarm, en hij had ongelijk — 09-09-2026 (#66)
 
@@ -3415,6 +3519,12 @@ een eigen rit en een eigen PR.
 
 Blok 5 van testrun 6.3 meldt dit als **LET OP** zolang het zo is, en slaat
 vanzelf om naar ok zodra regel 75 gerepareerd is.
+
+> **AFGELOOP, 10-09-2026.** Regel 75 is op 09-09 gerepareerd (#158) en de lagen
+> zijn een dag later weggehaald. De waarschuwing hierboven — *"niet vanaf een
+> bureau te zeggen, dat verdient een eigen rit en een eigen PR"* — bleek precies
+> goed, en werd genegeerd. Zie het kopje *"Laag 2 en 3 zijn weggehaald, en dit is
+> waarom"* bovenaan §11.
 
 ### Wat er open staat
 

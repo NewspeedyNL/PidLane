@@ -54,6 +54,14 @@ MUTATIES=(
 "public/pidlane-diagbundel.js@@if(/[0-9A-Fa-f]\s*:/.test(line)){@@if(false){@@test-parser.js@@de batch-splitser ziet de framemarkers niet meer"
 "public/pidlane-datalog.js@@if(lim&&(rawVal<lim.min||rawVal>lim.max)){@@if(false){@@test-parser.js@@laag 1 laat fysiek onmogelijke waarden door"
 "public/pidlane-data.js@@'0105':{min:-40,max:215},@@'0105':{min:-400,max:2150},@@test-parser.js@@de harde limiet van koelwater is opgerekt"
+
+# ── Laag 2+3 zijn op 10-09-2026 weggehaald (zie §11). Deze twee mutaties
+# bouwen precies terug wat er weg is: de middeling over twee monsters, en het
+# tegenhouden van een sprong op een traag signaal. Ze staan hier omdat het
+# geen verzonnen fouten zijn — die code stond er tot vandaag, en een
+# "voorzichtige" hand zet zoiets zo weer terug.
+"public/pidlane-datalog.js@@  return Math.round(rawVal*100)/100;\n}@@  if(FILTERED_PIDS.has(pid)){ pidSmooth[pid]=(pidSmooth[pid]||[]).concat(rawVal).slice(-2); return Math.round(pidSmooth[pid].reduce((a,b)=>a+b,0)/pidSmooth[pid].length*100)/100; }\n  return Math.round(rawVal*100)/100;\n}@@test-parser.js@@de middeling van laag 3 is terug: de app slaat weer een waarde op die de sensor niet kan geven"
+"public/pidlane-datalog.js@@  return Math.round(rawVal*100)/100;\n}@@  if(FILTERED_PIDS.has(pid)&&pidVals[pid]!=null&&Math.abs(rawVal-pidVals[pid])/Math.max(1e-6,(def?.max??255)-(def?.min??0))*100>35) return null;\n  return Math.round(rawVal*100)/100;\n}@@test-parser.js@@het spike-filter van laag 2 is terug: een echte sprong wordt weer als NO DATA geboekt"
 "public/pidlane-waakronde.js@@if (/NO DATA|ERROR|UNABLE|STOPPED|SEARCHING|\?/i.test(s)) return false;@@if (false) return false;@@test-waakronde.js@@de waakronde leest een foutmelding als een antwoord"
 "public/pidlane-waakronde.js@@const marge = (d.max - d.min) * 0.02;@@const marge = 0;@@test-waakronde.js@@de 2%-marge op het verwachte bereik is weg"
 "public/pidlane-rijsituatie.js@@_pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';@@_pidHealth[pid] = h;@@test-healthgate.js@@een onbekende sensor wordt uitgegrijsd in plaats van kiesbaar"
