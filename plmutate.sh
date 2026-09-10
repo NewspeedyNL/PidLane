@@ -284,6 +284,15 @@ MUTATIES=(
 ".github/workflows/build-apk.yml@@android/app/build/intermediates/merged_manifests@@android/app/src@@test-geen-gps.js@@de poort kijkt weer naar het app-manifest en dus langs alles wat een plugin meebrengt"
 ".github/workflows/build-apk.yml@@              if not regels:\n                  print(\"FOUT: %s staat niet in het samengevoegde manifest.\" % naam)@@              if False:\n                  print(\"FOUT: %s ontbreekt.\" % naam)@@test-geen-gps.js@@de poort staat weer groen als hij niets vindt: geen bewijs telt weer als bewijs"
 
+# ── de schilgrenzen van de Play-app (10-09-2026) ──
+# Twee dingen die §16a beloofde en die niemand nakeek. De eerste twee mutaties
+# zetten de betaalroute buiten Play weer open vanuit een Airtable-veld; de
+# derde zet een APK-download in de app, en dat is distributie buiten Play om
+# door een app die Play zelf distribueert.
+"public/pidlane-klant.js@@      if (c && c.isNativePlatform && c.isNativePlatform()) return '';@@      if (false) return '';@@test-schilgrenzen.js@@de koopknop kan weer vanuit Airtable in de Play-schil aangezet worden"
+"public/pidlane-klant.js@@      console.warn('schildetectie mislukt — betaallink blijft uit', e);\n      return '';@@      console.warn('schildetectie mislukt — betaallink blijft uit', e);@@test-schilgrenzen.js@@een kapotte schildetectie laat de betaallink door in plaats van hem dicht te houden"
+"public/pidlane-btflow.js@@'Een nieuwe APK-build (met Filesystem- en Share-plugins) lost dit definitief op.<br><br>'+@@'Een nieuwe APK-build (met Filesystem- en Share-plugins) lost dit definitief op. <a href=\"/download/pidlane.apk\">Nu downloaden</a><br><br>'+@@test-schilgrenzen.js@@de app biedt zelf een APK aan: een Play-app die buiten Play om distribueert"
+
 # ── de adminbrowser: /admin/tabel (04-09-2026) ──
 # Eén route die in zeven tabellen leest en in vijf schrijft. De fouten die
 # hier tellen zijn niet rekenfouten maar weggevallen grendels: ze geven geen

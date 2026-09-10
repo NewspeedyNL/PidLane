@@ -67,6 +67,36 @@
   // getoetste toestand: het scherm toont dan "Tokens aanvragen" per mail in
   // plaats van een koopknop.
   function _betaallink(sleutel) {
+    // ── DE SCHILGRENS (10-09-2026) ───────────────────────────────
+    // In de Play-schil komt hier nooit een link uit, wat er ook in de
+    // Config-tabel staat.
+    //
+    // WAAROM DIT EEN GRENS IN CODE IS EN GEEN AFSPRAAK. De waarde komt uit
+    // Airtable, via /api/config. Wie die tabel vult, kan de knop "N tokens
+    // kopen — €X" laten verschijnen in dezelfde app die Play beoordeeld
+    // heeft: geen commit, geen plcheck.sh, geen nieuwe build, niets dat het
+    // ziet. Tokens zijn digitale content die in de app verbruikt wordt, en
+    // daar wil Google zijn eigen betaalsysteem voor. Een beleidswijziging die
+    // van buiten de repo aangezet kan worden is geen beleid.
+    //
+    // De browser houdt de link wél. Die versie wordt niet door Play
+    // gedistribueerd, dus daar speelt de vraag niet. Dat is meteen de reden
+    // dat de grens hier zit en niet bij de knoppen: dit is het enige punt
+    // waar zo'n link de app binnenkomt, en het geldt daarmee voor beide —
+    // kopen én doneren. Een tweede plek zou een tweede waarheid zijn.
+    //
+    // Wat de schil overhoudt is wat er nu al staat als de tabel leeg is:
+    // "Tokens aanvragen" per mail, met de code met de hand terug (#42).
+    try {
+      const c = window.Capacitor;
+      if (c && c.isNativePlatform && c.isNativePlatform()) return '';
+    } catch (e) {
+      // Bij twijfel dicht. Een knop die ten onrechte wegblijft kost een
+      // mailtje; een knop die ten onrechte verschijnt kost de inzending.
+      console.warn('schildetectie mislukt — betaallink blijft uit', e);
+      return '';
+    }
+
     let v = '';
     try { v = String((window.PID_CONFIG || {})[sleutel] || '').trim(); }
     catch (e) { return ''; }

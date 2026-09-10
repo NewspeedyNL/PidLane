@@ -540,13 +540,34 @@ Deze punten hoef je niet opnieuw na te lopen. Ze worden bij elke commit
 gecontroleerd door `plcheck.sh`; gaat er iets stuk, dan wordt CI rood vóór er
 iets gebouwd wordt. Vink ze één keer af en laat ze staan.
 
+**Twee regels in deze tabel logen, en dat is op 10-09-2026 gerepareerd.**
+
+De regel *"Geen koopknop in de app, geen APK-distributie in de app"* noemde
+`test-playteksten.js` als wachter. Dat bestand toetst tekenlimieten, URL's,
+anonimisering, versienummer, wachtwoorden, release notes en taalblokken —
+koopknop noch APK komt erin voor. Er stond dus een vinkje onder "blijft vanzelf
+waar" boven iets wat niemand nakeek. `test-schilgrenzen.js` doet het nu wél, en
+`pidlane-klant.js` houdt de betaallink in de schil dicht ongeacht wat er in de
+Config-tabel staat — want die knop was vanuit Airtable aan te zetten, zonder
+commit, zonder gate en zonder build.
+
+De regel over locatie stond er terecht, maar de toets eronder liep met
+`.every()` over een lege lijst en stond daarom groen op nul regels, terwijl de
+BT-plugins de permissie ongegrensd meebrachten. Zie `PIDLANE.md` §11.
+
+Dat is dezelfde fout als 16b hieronder beschrijft: **een vinkje dat je
+geruststelt over iets wat niet nagekeken is, is erger dan geen vinkje.** Staat
+er een test bij een regel, dan hoort die regel in die test terug te vinden te
+zijn.
+
 | punt | bewaakt door |
 |---|---|
 | `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.0.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
-| Geen koopknop in de app, geen APK-distributie in de app | `test-playteksten.js` |
+| Geen koopknop en geen APK-download in de Play-schil | `test-schilgrenzen.js` |
+| Geen locatie zonder grens in de bundel zelf | `test-geen-gps.js` + de poort op het samengevoegde manifest |
 | Privacy- en verwijder-URL wijzen naar dezelfde host als de app | `test-playteksten.js` |
 | Elk invulveld past binnen de tekengrens van de Console | `test-playteksten.js` |
 | Het document beweert nergens dat gegevens *anoniem* zijn | `test-playteksten.js` |
