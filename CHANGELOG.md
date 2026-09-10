@@ -11,6 +11,44 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10b (CET) — HET MEETGAT NAAST HET LOOPGAT
+
+       • 🔌 EEN ADAPTER DIE ZIJN VOEDING VERLIEST, GEEFT NU
+         EEN MEETGAT. Op de rit van 10-09 bleef `connected`
+         true terwijl de adapter 39 s weg was — een BT-SPP-
+         socket sterft niet, dus de meetlus (PLRit) bleef
+         gewoon om de 5 s tikken. Het bestaande loopgat meet
+         alleen of díe lus zelf stilstond en zag er daarom
+         niets van: 0 gaten bij een echte onderbreking (#133).
+
+       • 📊 GEEN NIEUWE BRON, ALLEEN ÉÉN NIVEAU HOGER OPGETELD.
+         Een tik waarin geen enkele al bekende PID-stempel
+         verschuift is nu een meetgat, uit dezelfde telling
+         die er al stond. Blok 14 meldt loopgat en meetgat
+         voortaan apart en zegt welke van de twee bij een
+         herverbinding hoort: de achtergrondkwestie (#18) of
+         de adapter en de bus (#133).
+
+       • 🧊 EEN BEVRIEZING IS GEEN MEETGAT. Bij bevriezen staan
+         de pollus en de tiklus samen stil, dus de eerste tik
+         terug leest oude stempels. Nagemeten: 90 s bevriezing
+         gaf een loopgat van 90 s én een meetgat van 5 s — en
+         dan wijst het verslag tegelijk naar de achtergrond en
+         naar de bus. De tik die zelf een loopgat boekt,
+         oordeelt niet meer over de data.
+
+       • 🧪 DE #133-PROEF IN BLOK 5 TELT NU OOK MEE. Die toetste
+         eerst alleen het loopgat tegen het oordeel over de
+         meetkwaliteit, en had de rit van 10-09 zelf niet
+         gevangen. De #75-regel eronder ("herverbinding zonder
+         enig gat") kende ook alleen het loopgat en noemt nu
+         allebei. plmutate.sh bouwt drie nagemaakte fouten
+         terug: de openingstik die zichzelf als meetgat meldt,
+         een meetgat dat na herstel blijft doorgroeien, en de
+         bevriezing die alsnog naar de bus wijst.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10c (CET) — DE RIT KOST ALLEEN NOG WAT
                                 EEN RIT KOST
 
