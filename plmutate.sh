@@ -388,6 +388,16 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md    merge=union@@PIDLANE.md    -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md  merge=union@@CHANGELOG.md  merge=union\n*.js          merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── §14 belooft iets wat §3 niet kent (10-09-2026) ──
+# De release notes zijn een ingedikte §3, met de hand. Een functie erbij zetten
+# zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
+# kostte: twee velden die een reviewer allebei leest, met verschillende
+# beloftes. Het valt niemand op tot het in de Console staat.
+"PLAY-INZENDING.md@@Met ritmonitor, koopcheck en diagnose op afstand.@@Met ritmonitor, koopcheck en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+# En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
+# de stillere van de twee — je verbetert de beschrijving en raakt het veld
+# ernaast niet aan.
+"PLAY-INZENDING.md@@• Koopcheck — een vaste doorloop@@• Aankoopkeuring — een vaste doorloop@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
 )
 
 echo

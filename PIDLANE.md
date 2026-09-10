@@ -874,6 +874,52 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### §14 was 03-09 geschreven en nooit meer nagelezen — 10-09-2026 (#177)
+
+Dezelfde vorm als #174, één kopje verderop. §16 stond vol vinkjes van build
+#423; §14 was op diezelfde dag geschreven en sindsdien niet meer aangeraakt,
+terwijl er negen builds bij kwamen en de meetketen en de begeleide run
+verbouwd zijn.
+
+**De tekst bleek te kloppen, en dat is niet hetzelfde als in orde.** De drie
+functies die §14 bij naam noemt bestaan als eigen module (`pidlane-monitor.js`,
+`pidlane-koopcheck.js`, `pidlane-remote.js`), en de demobelofte op de laatste
+regel wordt woordelijk bewaakt door `test-demo-toegang.js`. Maar niets in het
+document zei dat, en niets zou het gezegd hebben als het níét meer klopte. Er
+staat nu bij tegen welke build hij is nagelezen — dezelfde reparatie die §16
+kreeg.
+
+**Wat er wél stuk was, is de koppeling met §3.** De release notes zijn een
+ingedikte volledige beschrijving, met de hand. Twee velden die hetzelfde
+beloven en allebei door een reviewer gelezen worden — dat is de vorm die dit
+hoofdstuk twee keer eerder de kop kostte. `test-playteksten.js` vergelijkt ze
+nu, één kant op: elke functie die §14 belooft moet in §3 opgesomd staan.
+Andersom niet, want §3 mag 4000 tekens en noemt meer.
+
+**De eerste versie van die vergelijking deugde niet, en `plmutate.sh` liet dat
+binnen één run zien.** Hij hield een lijstje functienamen bij dat ik zelf had
+opgeschreven, en toetste daarmee mijn woordenschat in plaats van het document:
+een functie die niet op dat lijstje stond glipte er per definitie doorheen. De
+mutatie die dat had moeten aantonen ontsnapte bovendien om een tweede reden —
+ik had er "kenteken" in gezet, en dat stáát in §3. Twee fouten in één regel,
+allebei van de soort waar de tegenproef voor bestaat. De lijst komt nu uit §3
+zelf: dat veld somt zijn functies op als `• Naam — uitleg`, en §14 noemt ze in
+één `Met A, B en C.`-zin. Verdwijnt een van die twee vormen, dan stopt de toets
+met een FOUT in plaats van met een lege lijst stilletjes door te gaan.
+
+Twee mutaties houden het scherp, in allebei de richtingen: §14 belooft een
+functie die §3 niet opsomt, en §3 hernoemt een functie terwijl §14 de oude naam
+blijft beloven. Die tweede is de stillere — je verbetert de beschrijving en
+raakt het veld ernaast niet aan.
+
+**En er kwam een echte bevinding uit die vergelijking (#177).** §1, §2 en §14
+hebben een en-US-blok, §3 niet. Zet je Engels aan in de Console, dan krijgt een
+reviewer een Engelse titel en Engelse release notes met een Nederlandse
+volledige beschrijving eronder — uitgerekend het veld waar de
+"minimum functionality"-toets op leunt. Niet in dezelfde PR opgelost: het is een
+besluit over de inzending (Engels erbij, of Engels eruit), geen reparatie.
+Daarom vergelijkt de test voorlopig alleen het Nederlandse blok.
+
 ### Zes van de zeven inhaalmerges waren met de hand, en niemand had daar iets te kiezen — 10-09-2026
 
 Er stonden deze week telkens twee PR's tegelijk open, en telkens moest de
