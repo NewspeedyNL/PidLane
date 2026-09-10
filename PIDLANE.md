@@ -918,6 +918,14 @@ had kunnen samenvoegen, en dan meet hij niets. Twee mutaties in `plmutate.sh`
 houden het scherp: union weghalen bij `PIDLANE.md`, en union uitbreiden naar
 `*.js`.
 
+**Nagemeten tegen een tak die op dat moment openstond.** PR #173 en deze tak,
+in beide richtingen samengevoegd: vanuit de tak die `.gitattributes` heeft botst
+alleen `plmutate.sh`, vanuit de tak die het niet heeft botst `PIDLANE.md` er
+nog bij. Git leest de attributen namelijk uit de werkmap waarin hij samenvoegt,
+niet uit wat er binnenkomt. Een tak van vóór vandaag botst dus nog één keer op
+§11 — die ene merge haalt het bestand binnen — en daarna niet meer. Dat is de
+hele overgangskost, en hij is eenmalig per tak.
+
 **Wat dit niet oplost.** Botst een tak op `pidlane-testrun.js` of op
 `plmutate.sh`, dan is dat nog steeds handwerk — terecht. En union is geen reden
 om drie PR's tegelijk open te zetten: de werkregel in `CLAUDE.md` blijft dat een

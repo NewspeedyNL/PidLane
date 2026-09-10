@@ -167,6 +167,11 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
   - **Lees na een inhaalmerge de diff van die twee bestanden.** Union verliest
     nooit tekst maar kan hem verdubbelen; raakten beide takken dezelfde alinea,
     dan staat die er nu twee keer.
+  - **De tak moet `.gitattributes` zélf hebben.** Git leest de attributen uit
+    de werkmap waarin hij samenvoegt, niet uit wat er binnenkomt. Nagemeten op
+    10-09-2026 tegen PR #173: dezelfde twee takken, `PIDLANE.md` botst niet
+    vanuit de tak die het bestand heeft en botst wél vanuit de tak die het niet
+    heeft. Een tak van vóór 10-09 botst dus nog één keer; daarna niet meer.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
 - **Automerge is opt-in sinds 03-09-2026: het label `klaar`.** Zonder dat
   label wordt er niets samengevoegd, hoe groen de gate ook staat. `klaar`
