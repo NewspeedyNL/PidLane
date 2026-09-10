@@ -327,6 +327,16 @@ MUTATIES=(
 "public/pidlane-credits.js@@    const bak = k.perMax && k.perMax[String(max)];@@    const bak = null;@@test-uitvoerschatting.js@@elk plafond deelt weer één gemiddelde, dus een hulpvraag trekt het rapport omlaag"
 "public/pidlane-credits.js@@          gem: bak && bak.n > 0 ? (bak.gem * (1 - wb) + uitTok * wb) : uitTok,@@          gem: bak && bak.n > 0 ? (bak.gem * (1 - wb) + (uitTok / maxTokens) * wb) : (uitTok / maxTokens),@@test-uitvoerschatting.js@@er wordt weer een verhouding tot het plafond opgeslagen in plaats van de echte uitvoer"
 "public/pidlane-credits.js@@        if (!isFinite(o.uf) || o.uf <= 0) o.uf = CFG.uitvoerFactor;@@        if (false) o.uf = CFG.uitvoerFactor;@@test-uitvoerschatting.js@@een opslag van vóór deze wijziging geeft NaN in plaats van een raming"
+
+# ── Het meetgat naast het loopgat (#133, 10-09-2026) ──
+# De rit van 10-09: de adapter viel 39 s weg terwijl `connected` true bleef,
+# en PLRit.gaten() (het loopgat) zag er niets van. Het meetgat vangt dat op
+# door te tellen of een al bekende PID deze tik een verschoven stempel had.
+# Twee fouten die je hier echt kunt maken: de bekendeTik-guard weglaten (dan
+# meldt de openingstik van elke rit zichzelf als meetgat), en het sluiten van
+# het interval weglaten (dan groeit een meetgat door tot ver na het herstel).
+"public/pidlane-testrun.js@@if (bekendeTik > 0 && gemetenTik === 0) {@@if (gemetenTik === 0) {@@test-rit.js@@de openingstik van een rit telt zichzelf als meetgat"
+"public/pidlane-testrun.js@@} else if (meetgatSinds) {@@} else if (false) {@@test-rit.js@@een meetgat sluit niet meer af en groeit door tot na het herstel"
 )
 
 echo

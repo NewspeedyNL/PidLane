@@ -153,6 +153,72 @@ function keurNormaalGeenGat(s) {
   return g.length === 0 ? [] : [g.length + ' gat(en) gemeld bij een ononderbroken rit'];
 }
 
+// ── #133 — HET MEETGAT ──────────────────────────────────────────
+// De rit van 10-09-2026: de adapter viel 39 s weg, maar een BT-SPP-socket
+// sterft niet als de voeding wegvalt. `connected` bleef true, de lus bleef om
+// de 5 s tikken, en PLRit.gaten() (het loopgat) zag er niets van — 0 gaten bij
+// een echte onderbreking. Wat wél stilviel: geen enkele PID-stempel in
+// `_pidLastUpd` verschoof. Dat is het meetgat.
+//
+// Nagespeeld door tijdens de "adapter los"-fase niets naar pidVals te
+// schrijven: de sandbox-proxy zet een stempel alleen bij een schrijfactie
+// (zie laadPLRit hierboven), dus niet schrijven is precies "de bus levert
+// niets terug".
+function keurMeetgatTellen(s) {
+  const uit = [];
+  s.PLRit.wis();
+  let t = T0;
+  const stap = function (waarde) {
+    t += 5000; s._klokNu = t;
+    if (waarde !== null) s.pidVals['010C'] = waarde;
+    s.PLRit.tik(t);
+  };
+  stap(800); stap(801); stap(802);         // eerst drie echte verversingen
+  for (let i = 0; i < 8; i++) stap(null);  // adapter los: connected blijft true, er komt niets binnen
+  stap(900); stap(901);                    // en weer terug
+
+  const mg = s.PLRit.meetgaten();
+  if (mg.length !== 1) { uit.push(mg.length + ' meetgat(en) gemeld, verwacht 1: ' + JSON.stringify(mg)); return uit; }
+  if (mg[0].s !== 40) uit.push('meetgat van ' + mg[0].s + ' s gemeld, verwacht 40 s (8 tikken van 5 s)');
+  // En dit gebeurde zonder dat de lus zelf ooit stilstond: geen loopgat.
+  if (s.PLRit.gaten().length)
+    uit.push('er werd ook een loopgat gemeld — deze proef simuleert alleen een dode databron, niet een bevroren lus');
+  return uit;
+}
+
+// Een meetgat dat nog bezig is (de adapter is NU weg, de rit loopt door) moet
+// al zichtbaar zijn — blok 14 hoeft niet te wachten tot de adapter terugkomt
+// om iets te melden.
+function keurMeetgatLopendZichtbaar(s) {
+  const uit = [];
+  s.PLRit.wis();
+  let t = T0;
+  const stap = function (waarde) {
+    t += 5000; s._klokNu = t;
+    if (waarde !== null) s.pidVals['010C'] = waarde;
+    s.PLRit.tik(t);
+  };
+  stap(800); stap(801);
+  for (let i = 0; i < 5; i++) stap(null);   // nog steeds weg op het moment van uitlezen
+  const mg = s.PLRit.meetgaten();
+  if (mg.length !== 1) uit.push(mg.length + ' lopend(e) meetgat(en) gemeld, verwacht 1');
+  else if (mg[0].s !== 20) uit.push('lopend meetgat van ' + mg[0].s + ' s, verwacht 20 s');
+  return uit;
+}
+
+// De EERSTE tikken van een rit mogen nooit als meetgat tellen. Bij de eerste
+// waarneming van een PID is er nog geen bekend stempel om tegen te toetsen —
+// neem() geeft dan per definitie nooit 'gemeten' terug (zie keurNeemUitkomsten
+// hieronder) — en zonder deze uitzondering zou élke rit met een meetgat
+// beginnen, ook een die vlekkeloos verliep.
+function keurEersteTikGeenMeetgat(s) {
+  const uit = [];
+  s.PLRit.wis();
+  rijd(s, 3, function (sb, i) { sb.pidVals['010C'] = 800 + i; });
+  const mg = s.PLRit.meetgaten();
+  return mg.length === 0 ? [] : [mg.length + ' meetgat(en) gemeld op de openingstik van een rit'];
+}
+
 // Een herverbinding is verbonden=false gevolgd door verbonden=true.
 function keurHerverbindingTellen(s) {
   const uit = [];
@@ -282,6 +348,7 @@ function keurWisIsSchoon(s) {
   s.PLRit.wis();
   if (Object.keys(s.PLRit.per()).length) uit.push('per() niet leeg na wis()');
   if (s.PLRit.gaten().length) uit.push('gaten niet leeg na wis()');
+  if (s.PLRit.meetgaten().length) uit.push('meetgaten niet leeg na wis()');
   if (s.PLRit.herverbindingen() !== 0) uit.push('herverbindingen niet op 0 na wis()');
   if (s.PLRit.duurS() !== 0) uit.push('duur niet op 0 na wis()');
   if (s.PLRit.monsters() !== 0) uit.push('monsters niet op 0 na wis()');
@@ -405,6 +472,9 @@ toetsSchoon('er wordt bemonsterd onder normale omstandigheden',
 toetsSchoon('bewegende en vastgevroren sensoren worden onderscheiden', keurBewegingTellen(S));
 toetsSchoon('een gat in de meetlus wordt geteld', keurGatenTellen(S));
 toetsSchoon('een normale rit levert geen gaten op', keurNormaalGeenGat(S));
+toetsSchoon('een meetgat wordt geteld terwijl de lus doortikt (#133)', keurMeetgatTellen(S));
+toetsSchoon('een lopend meetgat is al zichtbaar vóór het herstel', keurMeetgatLopendZichtbaar(S));
+toetsSchoon('de openingstik van een rit telt nooit als meetgat', keurEersteTikGeenMeetgat(S));
 toetsSchoon('herverbindingen worden geteld', keurHerverbindingTellen(S));
 toetsSchoon('de eerste verbinding van een sessie telt niet mee (#77)', keurEersteVerbindingGeenHerverbinding());
 toetsSchoon('"Rit nulstellen" laat de verbindingsvlag staan (#77)', keurWisResetVlagNiet());
@@ -434,6 +504,7 @@ function nepWaarnemer(over) {
     wis: function () { },
     per: function () { return {}; },
     gaten: function () { return []; },
+    meetgaten: function () { return []; },
     herverbindingen: function () { return 0; },
     monsters: function () { return 0; },
     duurS: function () { return 0; }
@@ -458,6 +529,10 @@ toetsSchoon('een vastzittende sensor die als bewegend geboekt wordt, wordt gezie
 toetsSchoon('de gaten-controle kan rood worden',
   keurNormaalGeenGat({ PLRit: nepWaarnemer({ gaten: function () { return [{ s: 90 }]; } }), pidVals: {} }).length
     ? [] : ['keurNormaalGeenGat bleef stil bij een gemeld gat']);
+
+toetsSchoon('de meetgat-controle kan rood worden',
+  keurMeetgatTellen({ PLRit: nepWaarnemer({ meetgaten: function () { return []; } }), pidVals: {} }).length
+    ? [] : ['keurMeetgatTellen bleef stil bij een nepwaarnemer die nooit een meetgat meldt']);
 
 // De broncontrole moet de drie manieren vinden waarop de guard stuk kan gaan:
 // weg, verkeerd van vorm, of ná de bemonsteringslus.
