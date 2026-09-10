@@ -882,6 +882,31 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De mutatietabel is bash, en bash leest backticks — 10-09-2026 (#180, opgelost)
+
+`plmutate.sh` bewaart zijn tabel als bash-array met dubbele aanhalingstekens.
+Daarin voert een backtick een commando uit. Regel 253 droeg `` `Klaar` `` zonder
+ontsnapping, dus draaide bash dat bij het inlezen van de array: een
+`command not found` op stderr die in een groene run wegvalt, en een
+omschrijving waaruit stilletjes twee woorden verdwenen waren.
+
+**De onschuldige variant, en dat is niet de reden dat het gerepareerd is.** Zit
+zo'n backtick in het zóekanker — een template literal uit een `.js`, of ` ``` `
+uit een `.md` — dan wordt dat anker door de substitutie korter en schuiven de
+`@@`-velden op. Bij de twee nieuwe mutaties op `PLAY-INZENDING.md` van vandaag
+gebeurde precies dat: plmutate meldde *"test-playteksten.js bestaat niet"*
+terwijl dat bestand er gewoon stond, want het vierde veld was inmiddels de
+omschrijving. Exit 1 met een reden die nergens klopt, in een bestand dat
+niemand als code leest.
+
+**Waarom de tegenproef in dit ene geval niet in `plmutate.sh` staat.**
+`plmutate.sh` schrijft in het bestand dat op dat moment zelf draait, en bash
+leest een script per stuk op byte-positie: een mutatie die de lengte verandert
+laat de rest van het script op een verschoven punt verder lezen. De controles
+zitten daarom als losse functies in `test-mutatietabel.js`, met deel 5 dat ze
+op verzonnen regels loslaat. Die test draait mee in `plcheck.sh` — de tabel
+wordt zo bij de commit gelezen als wat hij is: uitvoerbare shell.
+
 ### Elke login kostte precies één credit — 10-09-2026 (#179, opgelost)
 
 Het saldo stond op 40 en direct na het inloggen op 39. Elke keer 1, ook zonder
