@@ -874,6 +874,44 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De afvinklijst voor de Play Store vinkte een build af die je niet uploadt — 10-09-2026 (#174)
+
+`PLAY-INZENDING.md` §16 stond vol gezette vinkjes. Ze waren allemaal waar — op
+**build #423 van 03-09-2026**. Sindsdien staat de teller op build #432 en is er
+fors verbouwd: laag 2 en 3 uit de meetketen weg, de begeleide run herbouwd tot
+twee rondes, de ritwaarnemer uitgebreid.
+
+**Een vinkje dat over een andere build gaat is erger dan geen vinkje**, want het
+stelt je gerust over iets wat niet nagekeken is. Twee regels laten zien wat dat
+concreet betekende: *"Foutpagina op een toestel bewezen op 03-09 om 20:16"* en
+*"Demo één keer helemaal doorlopen op een schoon toestel"*. Dat tweede punt gaat
+over het scherm dat een reviewer als eerste opent, en dat scherm is sindsdien
+verbouwd.
+
+**De lijst staat nu in drie delen, en dat onderscheid is de hele reparatie.**
+16a is wat een test bewaakt — met de testnaam erbij, want die punten blijven
+vanzelf waar en hoeven nooit opnieuw. 16b is wat een mens op een toestel moet
+zien, met het **buildnummer** erbij in plaats van een kaal hokje: staat daar een
+ouder nummer dan de build die je uploadt, dan is dat punt zichtbaar niet
+nagekeken. 16c is wat buiten de repo ligt.
+
+Elf punten bleken in 16a te horen. Die waren dus al die tijd dubbel geborgd —
+door een test én door een handmatig hokje — terwijl de zes punten die alleen op
+oplettendheid draaiden er precies zo uitzagen. Dat is dezelfde vorm als de
+onderrandproef hierboven: een geruststelling die niemand meer naleest.
+
+**En er lag een gat dat niets bewaakte.** §7 vraagt om een reviewaccount met
+tegoed erop, en deze repository is **publiek**. De sleutelscan in CI zoekt naar
+API-sleutels en tokens, niet naar een wachtwoord in lopende tekst — een
+wachtwoord in dit document zou er ongehinderd in zijn gegaan en binnen een
+minuut wereldwijd leesbaar zijn geweest. Het document waarschuwde er zelf voor,
+maar een waarschuwing draait op oplettendheid. `test-playteksten.js` bewaakt het
+nu, met een tegenproef op een echt wachtwoordpatroon en een mutatie eronder.
+
+Twee documenten die hetzelfde beweerden liepen ook uit de pas: §4 zei dat de
+feature graphic *"nog gemaakt moet worden"* terwijl §16 hem afgevinkt had. De
+stand staat nu op één plek.
+
 ### Vier lezers van hetzelfde gat, en een gat dat de testrun zelf maakte — 10-09-2026 (#170)
 
 De eerste twee ritten met de oogstpoort (#166) en het meetgat (#133) erin.
