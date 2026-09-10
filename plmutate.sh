@@ -336,7 +336,7 @@ MUTATIES=(
 # ladderfout die #64 op 10-09 de kop kostte: het venster opent achter het
 # testrunscherm. De vierde is de stille: de poort gaat open op een auto die
 # nooit gereden heeft, omdat één waarneming al meetelt.
-"public/pidlane-testrun.js@@    ronde: 'toestel', nodig: 'stilstaand', opent: 'venster', issues: ['#64'],@@    ronde: 'rit', nodig: 'stilstaand', opent: 'venster', issues: ['#64'],@@test-begeleid.js@@de meetcontextvragen kosten weer ritminuten terwijl ze stilstaand kunnen"
+"public/pidlane-testrun.js@@    ronde: 'toestel', nodig: 'toestel', opent: 'venster', issues: ['#64'],@@    ronde: 'rit', nodig: 'toestel', opent: 'venster', issues: ['#64'],@@test-begeleid.js@@de meetcontextvragen kosten weer ritminuten terwijl ze stilstaand kunnen"
 "public/pidlane-testrun.js@@        ? { naam: 'belasting', klaar: false, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@        ? { naam: 'belasting', klaar: true, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@test-begeleid.js@@de oogstpoort gaat open zonder dat er ooit onder belasting gemeten is"
 "public/pidlane-testrun.js@@  if (s.opent === 'venster') {\n    try { _bgWijk(true); }@@  if (false) {\n    try { _bgWijk(true); }@@test-begeleid.js@@het testrunscherm gaat niet meer opzij, dus het vragenvenster opent erachter"
 "public/pidlane-testrun.js@@  punten.push(!e10D || e10D.n < 2@@  punten.push(!e10D || e10D.n < 1@@test-begeleid.js@@één enkele snelheidswaarneming telt weer als bewijs dat er gereden is"
