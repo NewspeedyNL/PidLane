@@ -855,6 +855,45 @@ async function handleMessages(request, env, ctx) {
   return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
 }
 __name(handleMessages, "handleMessages");
+// ── /v1/ping — dezelfde poort als /v1/messages, zonder het model ────
+// WAAROM DIT ER IS (#179). testApiKey() deed bij élke login een echte
+// /v1/messages-call: "ping" heen, drie woorden terug — en tóch precies één
+// credit, want tegoedTarief() heeft een ondergrens van 1 per call. Inloggen
+// zelf raakt het saldo niet; de keten-test erachter wel. Op het reviewaccount
+// voor de Play-inzending is dat het tegoed dat op zijn moment niet leeg mag
+// zijn, en een reviewer logt vaker in dan hij analyseert.
+//
+// Deze route beantwoordt dezelfde vraag zonder Anthropic aan te raken: is er
+// een sessie, mag deze rol AI gebruiken, en staat er een sleutel in de Worker.
+// De poorten hieronder staan met opzet in dezelfde volgorde en met dezelfde
+// statuscodes als in handleMessages hierboven — een ping die groen meldt waar
+// /v1/messages 401 of 403 geeft, is een chip die iets belooft wat de eerste
+// echte analyse niet waarmaakt.
+//
+// WAT HIJ NIET TOETST IS HET SALDO, en dat is een keuze. Het saldo staat in
+// Airtable, dus meelezen kost een lezing per login, terwijl /klant/mij die na
+// het inloggen toch al doet (PLKlant.verversSaldo) en het tegoed zijn eigen
+// chip heeft. Deze chip gaat over de sleutel en de weg ernaartoe.
+//
+// HIER HOORT GEEN fetch NAAR api.anthropic.com. Dat is de hele reden dat deze
+// functie bestaat. Wie er ooit een echte call bij zet "om zeker te weten dat
+// het model antwoordt", zet #179 terug onder een andere naam.
+async function handlePing(request, env) {
+  const session = await auth(request, env);
+  if (!session) return json({ ok: false, error: "unauthorized" }, 401);
+  if (session.r === "demo" || session.u === "legacy")
+    return json({ ok: false, error: "forbidden_role", hint: "Dit account heeft geen AI-toegang." }, 403);
+  const clientKey = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "") || request.headers.get("x-api-key") || "";
+  const apiKey = clientKey || resolveAnthropicKey(env);
+  if (!apiKey)
+    return json({ ok: false, error: { message: "Geen API-key beschikbaar in de Worker (check ANTHROPIC_API_KEY secret)" } }, 401);
+  // `sleutel` zegt WELKE kant de sleutel levert: brengt de klant er zelf een
+  // mee, dan betaalt hij Anthropic rechtstreeks en gaat er hier ook niets van
+  // een tegoed af. `kosten: 0` staat er als belofte aan de aanroeper, en is
+  // wat test-inlogkosten.js naleest.
+  return json({ ok: true, sleutel: clientKey ? "app" : "worker", rol: session.r, kosten: 0 });
+}
+__name(handlePing, "handlePing");
 async function handleAirtableLog(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
@@ -3973,6 +4012,8 @@ var worker_default = {
         return lockOrigin(request, await handleLogin(request, env, ctx));
       if (url.pathname === "/v1/messages" && request.method === "POST")
         return lockOrigin(request, await handleMessages(request, env, ctx));
+      if (url.pathname === "/v1/ping" && request.method === "GET")
+        return lockOrigin(request, await handlePing(request, env));
       if (url.pathname === "/copilot" && request.method === "POST")
         return lockOrigin(request, await handleCopilot(request, env));
       if (url.pathname === "/airtable/log" && request.method === "POST")

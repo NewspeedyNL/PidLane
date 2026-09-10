@@ -393,21 +393,18 @@ async function testApiKey(){
 
   // Proxy-modus: geen sk-ant- sleutel meer nodig in de app — de Worker houdt 'm server-side.
 
+  // NAAR /v1/ping EN NIET NAAR /v1/messages (#179). Deze controle draait bij
+  // elke login, en élke call naar /v1/messages kost minstens één credit — ook
+  // eentje die "ping" stuurt en drie woorden terugkrijgt, want de Worker heeft
+  // een minimumtarief. Het saldo van het reviewaccount zakte daardoor met 1 per
+  // login. /v1/ping loopt door dezelfde poorten (sessie, rol, sleutel) maar
+  // raakt het model niet aan, en kost dus structureel niets.
   try{
-    const resp=await plFetch('/v1/messages',{
-      method:'POST',
-      json:{
-        model:'claude-sonnet-5',
-        max_tokens:20,
-        system:'Reply only: yes',
-        messages:[{role:'user',content:'ping'}],
-        thinking:{ type:'disabled' }
-      }
-    });
+    const resp=await plFetch('/v1/ping');
     if(resp.ok){
-      const data=await resp.json();
-      const reply=(extractAIText(data)||'').trim();
-      log(`API key OK ✅ — antwoord: "${reply}"`,'ok');
+      const data=await resp.json().catch(()=>({}));
+      const waar=(data&&data.sleutel==='app')?'de app':'de Worker';
+      log(`AI-keten OK ✅ — sleutel staat server-side bij ${waar}, geen tokens verbruikt`,'ok');
       // Sla werkende key op
       window.anthropicKey=key;
       try{localStorage.setItem('ns_api_key',key);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
@@ -415,13 +412,13 @@ async function testApiKey(){
       if(pill){pill.textContent='🤖 AI-sleutel ✓';pill.className='api-pill kebab-item set';}
     } else {
       const errData=await resp.json().catch(()=>({}));
-      const errMsg=errData?.error?.message||`HTTP ${resp.status}`;
-      log(`API key fout (${resp.status}): ${errMsg}`,'err');
+      const errMsg=errData?.error?.message||errData?.error||`HTTP ${resp.status}`;
+      log(`AI-keten fout (${resp.status}): ${errMsg}`,'err');
       const pill=document.getElementById('apiPill');
       if(pill){pill.textContent='🤖 AI-sleutel ❌';pill.className='api-pill kebab-item unset';}
     }
   }catch(e){
-    log('API netwerk fout: '+e.message,'warn');
+    log('AI-keten niet te bereiken: '+e.message,'warn');
   }
 }
 

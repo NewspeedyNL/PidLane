@@ -407,6 +407,18 @@ MUTATIES=(
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
 "PLAY-INZENDING.md@@• Koopcheck — een vaste doorloop@@• Aankoopkeuring — een vaste doorloop@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
+# ── Inloggen kost geen credit meer (#179, 10-09-2026) ──
+# Vijf fouten die deze reparatie ongedaan maken, en ze zijn geen van vijven
+# verzonnen: de eerste is precies hoe het er tot vandaag in stond, en de
+# tweede is de verleiding die hem terugbrengt ("even zeker weten dat het
+# model antwoordt"). De laatste drie zijn de stille kant: de ping blijft
+# gratis maar gaat groen melden waar /v1/messages weigert, en dan belooft de
+# chip een keten die de eerste echte analyse niet waarmaakt.
+"public/pidlane-auth.js@@    const resp=await plFetch('/v1/ping');@@    const resp=await plFetch('/v1/messages',{method:'POST',json:{model:'claude-sonnet-5',max_tokens:20,messages:[{role:'user',content:'ping'}]}});@@test-inlogkosten.js@@testApiKey() doet bij elke login weer een echte AI-call (#179)"
+"worker.js@@  return json({ ok: true, sleutel: clientKey ? \"app\" : \"worker\", rol: session.r, kosten: 0 });@@  await fetch(\"https://api.anthropic.com/v1/messages\", { method: \"POST\", headers: { \"x-api-key\": apiKey }, body: \"{}\" });\n  return json({ ok: true, sleutel: clientKey ? \"app\" : \"worker\", rol: session.r, kosten: 0 });@@test-inlogkosten.js@@de ping toetst de keten weer door het model écht aan te roepen (#179)"
+"worker.js@@  if (session.r === \"demo\" || session.u === \"legacy\")\n    return json({ ok: false, error: \"forbidden_role\", hint: \"Dit account heeft geen AI-toegang.\" }, 403);@@@@test-inlogkosten.js@@de ping meldt een werkende AI-keten aan een account dat geen AI mag gebruiken (#179)"
+"worker.js@@  if (!apiKey)\n    return json({ ok: false, error: { message: \"Geen API-key beschikbaar in de Worker (check ANTHROPIC_API_KEY secret)\" } }, 401);@@@@test-inlogkosten.js@@de ping meldt groen terwijl er geen sleutel in de Worker staat (#179)"
+"worker.js@@      if (url.pathname === \"/v1/ping\" && request.method === \"GET\")\n        return lockOrigin(request, await handlePing(request, env));\n@@@@test-inlogkosten.js@@de pingroute hangt niet meer in de router, dus elke login zet de chip op rood (#179)"
 )
 
 echo
