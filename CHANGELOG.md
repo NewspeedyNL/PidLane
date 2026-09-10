@@ -11,6 +11,34 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10b (CET) — HET MEETGAT NAAST HET LOOPGAT
+
+       • 🔌 EEN ADAPTER DIE ZIJN VOEDING VERLIEST, GEEFT NU
+         EEN MEETGAT. Op de rit van 10-09 bleef `connected`
+         true terwijl de adapter 39 s weg was — een BT-SPP-
+         socket sterft niet, dus de meetlus (PLRit) bleef
+         gewoon om de 5 s tikken. Het bestaande loopgat meet
+         alleen of díe lus zelf stilstond en zag er daarom
+         niets van: 0 gaten bij een echte onderbreking (#133).
+
+       • 📊 GEEN NIEUWE BRON, ALLEEN ÉÉN NIVEAU HOGER OPGETELD.
+         Een tik waarin geen enkele al bekende PID-stempel
+         verschuift is nu een meetgat, uit dezelfde telling
+         die er al stond. Blok 14 meldt loopgat en meetgat
+         voortaan apart en zegt welke van de twee bij een
+         herverbinding hoort: de achtergrondkwestie (#18) of
+         de adapter en de bus (#133).
+
+       • 🧪 DE #133-PROEF IN BLOK 5 TELT NU OOK MEE. Die toetste
+         eerst alleen het loopgat tegen het oordeel over de
+         meetkwaliteit, en had de rit van 10-09 zelf niet
+         gevangen. plmutate.sh bouwt twee nagemaakte fouten
+         terug: de openingstik van een rit die zichzelf als
+         meetgat meldt, en een meetgat dat na herstel blijft
+         doorgroeien.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10a (CET) — DE METING BLIJFT DE METING
 
        • ✂️ LAAG 2 EN 3 VAN DE MEETKETEN ZIJN WEGGEHAALD.

@@ -874,6 +874,60 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Het loopgat was blind voor een adapter die zijn voeding verliest — 10-09-2026 (#133)
+
+Gemeten op de rit van 10-09-2026, met de stekker er echt uit. Blok 14 meldde
+`0 gat(en), 2 herverbinding(en)` over een onderbreking van 39 s, terwijl blok
+5 in dezelfde rit al wist dat het mis was: `plMeetStabielVoorstel()` (#62) zag
+28 van de 31 sensoren met een gat in `pidHist` en oordeelde "niet stabiel". De
+twee metingen spraken elkaar tegen op precies het punt waar #133 om gaat.
+
+**Waarom `PLRit.gaten()` niets zag.** Een BT-SPP-socket sterft niet als de
+adapter zijn voeding verliest — de verzoeken lopen in een buffer en komen
+terug als niets. `connected` bleef de hele 39 s `true`. `PLRit.tik()` telt een
+gat alleen als de lus zelf een tik miste (`laatstT` niet bijgewerkt omdat
+`!verbonden` de tik overslaat); hier bleef de lus gewoon om de 5 s tikken.
+`PLRit.gaten()` meet dus niet "viel de data weg" maar "lag de lus zelf stil"
+— eerlijk gedocumenteerd in het commentaar erboven, maar die tweede vraag had
+nooit een eigen meting. Voor #18 (de achtergrondkwestie, Android die
+WebView-timers bevriest) is dat precies de goede meting. Voor #133 was het de
+verkeerde, en er stond niets naast.
+
+**De reparatie: het meetgat naast het loopgat.** Geen nieuwe bron — `neem()`
+in `PLRit` telt per PID al op wanneer een stempel niet verschuift (`gemist`).
+Een tik waarin elke al bekende PID `gemist` oplevert (dus geen enkele
+`gemeten`) is nu een meetgat. Opeenvolgende meetgat-tikken worden tot één
+interval samengevoegd, exposed via `PLRit.meetgaten()`, met dezelfde
+`{van, tot, s}`-vorm als `gaten()`. De eerste waarneming van een PID telt
+bewust niet mee (die geeft nooit `gemeten` terug, zie `neem()`): anders zou de
+openingstik van élke rit zichzelf als meetgat melden. `test-rit.js` speelt de
+rit van 10-09 na door tijdens de "adapter los"-fase niets naar `pidVals` te
+schrijven, en `plmutate.sh` bouwt beide foutmodi terug — de bekendeTik-guard
+weg (valse meetgaten bij elke ritstart) en het sluiten van het interval weg
+(een meetgat dat na herstel blijft doorgroeien).
+
+Blok 14 ("Liep de app door tijdens de rit?") meldt loopgat en meetgat nu
+apart en zegt bij een herverbinding welke van de twee eraan voorafging: een
+loopgat wijst naar de achtergrondkwestie, een meetgat naar de adapter of de
+bus, en geen van beide betekent een socket die stierf en herstelde tussen
+twee tikken. De blok-5-proef van #133 toetste eerst alleen `PLRit.gaten()`
+tegen `plMeetStabielVoorstel()` en zou de rit van 10-09 zelf niet gevangen
+hebben — 0 loopgaten, dus geen tegenspraak om op te reageren. Hij telt nu
+`gaten().length + meetgaten().length` mee.
+
+**Wat dit niet oplost.** `plMeetStabielVoorstel()` werkte al vóór deze
+wijziging en gaf de AI-analyse het juiste oordeel over de meetkwaliteit — dat
+mechanisme leest rechtstreeks uit `pidHist`, los van `PLRit`. Dit issue ging
+over het ritbeeld (blok 14) en de duiding eronder, de tweede lezer van
+dezelfde onderbreking, niet over de eerste.
+
+Aanvullend gemeten op 10-09-2026 (#164): een tweede, ongerelateerde bron van
+dezelfde verwarring lag in laag 2 van de meetketen — een gefilterde meting
+werd geboekt als NO DATA van de ECU, niet te onderscheiden van een dode bus.
+Die laag is dezelfde dag weggehaald (zie hieronder); de bevinding hierboven
+komt daar niet vandaan en blijft ongewijzigd staan.
+
+
 ### Laag 2+3 stonden uit voor álle PIDs, een week lang zichtbaar — 09-09-2026 (#158)
 
 > **HERZIEN OP 10-09-2026.** Wat hieronder staat over de sleutelvorm klopt en
