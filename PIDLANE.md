@@ -874,6 +874,74 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De begeleide run kostte ritminuten aan issues die dicht waren — 10-09-2026 (#166)
+
+Geteld op 10-09: de begeleide run had vijftien stappen, en negen daarvan
+noemden een issue als reden. **Zeven van die negen waren gesloten** — #19, #15,
+#29, #68, #66, #79 en #58. Er werd nergens iets rood van, want de koppeling
+tussen een stap en zijn issue stond in proza.
+
+De duurste was de rijstap. Die eiste tien minuten (`minS: 600`) met als enige
+onderbouwing: *"De opruimregel heeft vijf pogingen plus vijf herkansingen
+nodig"* — dat is #29, gesloten op 02-09 mét `test-opruimmelding.js` als
+tegenproef. Die tien minuten kochten dus niets meer, en ze stonden vóór álles
+wat daarna nog moest.
+
+**Waarom dit meer is dan opruimen.** De rit is de schaarse grondstof. Wat een
+rit kost en niets oplevert, kost ook de stappen die er niet meer bij passen: op
+08-09 stonden er zes issues te wachten op een rit, en werd er één ronde
+gereden. Daar kwam bij dat elf van de vijftien stappen helemaal geen *rijdende*
+auto nodig hadden — ze hadden de app nodig, of de app met de motor aan.
+
+**Wat er nu staat.** Eén lijst, twee rondes. Elke stap draagt `nodig`
+(`rijden`, `auto` of `toestel`), `ronde` en `issues` als data. De meetrit bevat
+alleen wat een rijdende auto nodig heeft plus de voorbereiding die eraan
+vastzit; de toestelronde draait stilstaand. Geen tweede lijst — twee filters op
+dezelfde lijst, want een tweede lijst is precies wat `PIDLANE-WERK.md` en §11
+eerder de kop kostte.
+
+**De as die het onderscheid draagt, is bij het toetsen pas scherp geworden.**
+Eerst stond er `nodig: 'rijden' | 'stilstaand'`, met de regel "iets stilstaands
+mag in de rit als het een open issue dient". `plmutate.sh` liet zien dat die
+regel niets afdwingt: de meetcontextvragen dienen #64, dus die mochten er onder
+die regel gewoon in blijven staan — en dat is nu juist wat weg moest. Met drie
+waarden klopt het wel. Het adaptergat (#133) heeft de **auto** nodig, want het
+gat moet in déze meetreeks vallen; de meetcontextvragen hebben aan het
+**toestel** genoeg. Een open issue is geen vrijbrief voor ritminuten.
+
+**De optrekstap is weg.** Hij vroeg om een stevige acceleratie plus een druk op
+een markeerknop, voor "de turbo-vraag en de sleepwijzer van #68". #68 is dicht,
+en de turbovraag had die markering sowieso nooit nodig: blok 14 leidt hem af
+uit de min/max die `PLRit` over de hele rit bijhoudt, niet uit een moment in
+het log. Wat de stap wél deed — de bestuurder laten weten dát er onder
+belasting gemeten moest worden — staat nu als punt in de oogstpoort.
+
+**De rijstap sluit op de oogst en niet op de klok.** `_ritOogst()` noemt drie
+dingen: is er gereden (snelheid bewezen, niet uit het geheugen), is er onder
+belasting gemeten (spreiding op de MAP), en zijn de meet-PIDs uit de selectie
+twee keer ververst. Tien minuten stapvoets in de file leverden minder op dan
+drie minuten met wisselend gas, en de bestuurder kreeg in beide gevallen
+hetzelfde antwoord. Een punt dat op deze auto niet te halen is — de MAP staat
+niet in de selectie — blokkeert bewust niet, anders is de poort een muur.
+
+**En een ladderfout die er los onder lag.** Het testrunscherm staat op
+`z-index:9980`; de vensters die de begeleide run vanuit dat scherm opent staan
+eronder — de meetcontextvragen op 9920, het logboek op 9975. Ze openden dus
+achter het scherm waar de stap in staat. Zo mislukte de #64-proef op de rit van
+10-09: de drie vragen wáren geopend, alleen onzichtbaar, en de stap meldde
+daarna "het venster is niet beantwoord" — een bevinding over het issue, terwijl
+het de ladder was. Het scherm zakt nu onder een venster zolang die stap loopt.
+Voor stappen die je naar de app zélf sturen helpt dat niet (die zit onder álle
+overlays) en daar blijft sluiten de goede zet; dat verschil staat als
+`opent: 'venster'` of `opent: 'app'` in de stap.
+
+**Wat hiervan nog onbewezen is.** De drempels van de oogstpoort — 15 km/u voor
+"gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet
+gemeten. `test-begeleid.js` toetst dat de poort sluit en opent op de juiste
+punten, maar niet of dat in een echte auto op het goede moment gebeurt. Sluit
+hij te vroeg, dan levert de rit minder op dan hij kan; te laat, en de tien
+minuten zijn terug onder een andere naam.
+
 ### Laag 2+3 stonden uit voor álle PIDs, een week lang zichtbaar — 09-09-2026 (#158)
 
 > **HERZIEN OP 10-09-2026.** Wat hieronder staat over de sleutelvorm klopt en
