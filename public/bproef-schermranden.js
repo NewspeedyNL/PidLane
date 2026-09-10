@@ -46,8 +46,11 @@
 //
 // 1. WACHT DE ANIMATIE AF. `.ai-sheet` schuift omhoog (`animation: sheetUp`).
 //    Meteen meten gaf "26px ONDER de rand" voor de PID-recorder — dat was de
-//    animatie, niet de marge. Sinds 09-09-2026 wacht `wachtTotStil()` tot twee
-//    metingen hetzelfde zeggen, in plaats van een vast aantal milliseconden.
+//    animatie, niet de marge. Dat werd eerst 400 ms, toen "wacht tot twee
+//    metingen hetzelfde zeggen", en sinds 10-09-2026 wordt de animatie zélf
+//    afgewacht via `getAnimations()` — zie #168 en de uitleg bij
+//    `wachtAnimatiesKlaar()`. De eerste twee waren allebei een gok op frames,
+//    en allebei verloren ze die gok een keer in CI.
 // 2. DE LAAGSTE KNOP IS NIET ALTIJD DE MAAT. Bij #135 stond de laagste knop
 //    op 153px en was er niets aan de hand; het was de laatste KAART die 24px
 //    boven de rand eindigde en dus half achter de knoppenbalk lag. Een scherm
@@ -144,7 +147,40 @@ const rust = (ms) => new Promise(function (r) { setTimeout(r, ms); });
 
    De bovengrens blijft bestaan zodat een vel dat nooit tot rust komt de proef
    niet laat hangen; die situatie is zelf een bevinding en komt als afwijkende
-   maat vanzelf in blok 2 terecht. */
+   maat vanzelf in blok 2 terecht.
+
+   EN OP 10-09-2026 BLEEK DAT NOG STEEDS NIET GENOEG (#168). Dezelfde film,
+   derde keer: één run rood met "PID-recorder: 22px onder de knop", dezelfde
+   commit groen in de run ernaast en groen op dit toestel. 62 − 22 = 40, en 40
+   is precies wat het commentaar hierboven noemt als het stuk weg dat het vel
+   nog moest afleggen.
+
+   Waarom "twee gelijke metingen" geen bewijs is: het is een GOK op frames, en
+   die gok verliest op twee manieren. Meet je twee keer vóórdat de animatie zijn
+   eerste frame heeft gehad, dan zijn ze gelijk en meet je de beginstand; hapert
+   de runner tussen twee monsters, dan zijn ze óók gelijk en meet je het midden.
+   Beide keren staat er een getal dat niets met de marge te maken heeft.
+
+   De browser weet zelf wanneer een animatie klaar is, en dat is geen gok maar
+   een belofte: `element.getAnimations()` geeft ze, en elke animatie heeft een
+   `finished`-promise. Daar wachten we nu op. `wachtTotStil()` blijft daarna
+   staan voor wat er ná de animatie nog verschuift (lettertypen, een regel die
+   omvalt) — maar hij begint pas als het vel écht stilstaat. */
+async function wachtAnimatiesKlaar(app, id) {
+  // De promise komt uit de pagina zelf; app.ev() wacht hem af. Een animatie die
+  // wordt afgebroken verwerpt zijn finished-promise, en dat is hier geen fout
+  // maar precies zo goed een eindpunt — vandaar de lege catch per animatie.
+  return app.ev(`(async function () {
+    const el = document.getElementById('${id}');
+    if (!el) return { n: 0, fout: 'geen element' };
+    let an = [];
+    try { an = el.getAnimations ? el.getAnimations({ subtree: true }) : []; }
+    catch (e) { return { n: 0, fout: 'getAnimations() gaf ' + e.message }; }
+    await Promise.all(an.map(function (a) { return a.finished.catch(function () { }); }));
+    return { n: an.length };
+  })()`);
+}
+
 async function wachtTotStil(app, id) {
   let vorig = null;
   for (let poging = 0; poging < 40; poging++) {       // ruim 3 s bovengrens
@@ -155,6 +191,13 @@ async function wachtTotStil(app, id) {
     await rust(80);
   }
   return vorig;
+}
+
+// De twee stappen horen bij elkaar en worden nergens los gebruikt: eerst de
+// animatie uitzitten, dan pas kijken of het beeld nog verschuift.
+async function wachtTotVelStaat(app, id) {
+  await wachtAnimatiesKlaar(app, id);
+  return wachtTotStil(app, id);
 }
 
 // De onderaan-uitschuivende vellen: naam, de functie die hem opent, en het
@@ -285,7 +328,7 @@ async function keurVel(app, v, waar, sluit) {
   const bestaat = await app.ev(`(function(){ try { return typeof ${v.open} === 'function'; } catch (e) { return false; } })()`);
   if (!bestaat) { toets(v.naam + bij + ': ' + v.open + '() bestaat', false, 'hernoemd of verdwenen?'); return; }
   await app.ev(`${v.open}(); true`);
-  await wachtTotStil(app, v.id);
+  await wachtTotVelStaat(app, v.id);
 
   const k = await app.ev(`${METER}('${v.id}')`);
   if (k.fout) toets(v.naam + bij + ': meetbaar', false, k.fout);
@@ -347,7 +390,7 @@ async function keurVel(app, v, waar, sluit) {
           openDoor('diag');
           return true;
         })()`);
-        await wachtTotStil(app, 'dp-diag');
+        await wachtTotVelStaat(app, 'dp-diag');
         // Eerst helemaal naar beneden scrollen. De scrollbak (.welcome-scroll)
         // is hier een VOORVADER van het paneel, en de meter scrolt alleen wat
         // eronder hangt — zonder deze stap meet je de kaart die toevallig op de
@@ -413,6 +456,46 @@ async function keurVel(app, v, waar, sluit) {
     for (const v of REMOTE_VELLEN) await keurVel(app, v, 'kort', SLUIT_REMOTE);
 
     console.log('\n3. Tegenproef — meet deze proef werkelijk iets?');
+
+    /* EERST DE WACHTREGEL ZELF (#168). De rest van dit blok toetst of de
+       MARGES iets voorstellen; dit toetst of de MEETING dat doet. Zonder deze
+       controle is een wachtregel die stilletjes niets meer doet onzichtbaar —
+       en dan komt de flake van 09-09 en 10-09 gewoon terug.
+
+       Het geval dat onderscheidt: meet hetzelfde vel meteen na het openen,
+       zónder de animatie uit te zitten. Komt daar dezelfde maat uit als na het
+       wachten, dan zat er niets te wachten en zegt `wachtTotVelStaat()` niets.
+       De PID-recorder is hier het vel bij uitstek — hij droeg de fout in alle
+       drie de rondes. */
+    await app.ev(`(function(){ const o=document.getElementById('pidRecOv'); if(o) o.remove(); return true; })()`);
+    await app.ev('openPidRecorder(); true');
+    const animTijdens = await app.ev(`${METER}('pidRecOv')`);
+    const animStil = await wachtTotVelStaat(app, 'pidRecOv');
+    const animNa = await app.ev(`${METER}('pidRecOv')`);
+    const anim = await wachtAnimatiesKlaar(app, 'pidRecOv');
+
+    toets('de browser meldt animaties op het vel — daar valt dus op te wachten',
+      !anim.fout && typeof anim.n === 'number',
+      'getAnimations() gaf: ' + (anim.fout || 'geen bruikbaar antwoord'));
+
+    // Meet je midden in de animatie, dan staat het vel LAGER: minder ruimte
+    // onder de knop. Is dat verschil er niet, dan meet blok 2 een vel dat toch
+    // al stilstond en bewijst de wachtregel niets.
+    const verschil = (animTijdens && !animTijdens.fout && animNa && !animNa.fout)
+      ? animNa.ruimteOnder - animTijdens.ruimteOnder : null;
+    toets('meteen meten geeft een ándere maat dan meten na de animatie',
+      verschil !== null && verschil > 0,
+      verschil === null ? 'een van beide metingen mislukte'
+        : 'tijdens ' + animTijdens.ruimteOnder + 'px, erna ' + animNa.ruimteOnder +
+          'px — geen verschil, dus er viel niets te wachten en de wachtregel is niet getoetst');
+    if (verschil !== null && verschil > 0)
+      console.log('      tijdens de animatie ' + animTijdens.ruimteOnder + 'px, uitgeschoven ' +
+                  animNa.ruimteOnder + 'px — precies het verschil dat drie rondes lang als bevinding las');
+    if (typeof animStil === 'number' && animNa && !animNa.fout)
+      toets('en na het wachten staat het vel stil',
+        animStil === (await app.ev(`${TEKSTMETER}('pidRecOv')`)).ruimteOnder,
+        'de maat verschuift nog steeds na wachtTotVelStaat()');
+    await app.ev(`(function(){ const o=document.getElementById('pidRecOv'); if(o) o.remove(); return true; })()`);
     /* Het Run-venster eerst, want dat is de reparatie van deze ronde en de
        enige die alleen op het korte scherm te meten is. De onderrand terug op
        de vaste 16px van vóór #144 — de padding zoals hij was, zonder
@@ -422,7 +505,7 @@ async function keurVel(app, v, waar, sluit) {
        stond de laagste knop op 65px en dus ruim boven de balk. Die maat zou
        hier groen blijven, en precies daarom liet de vorige ronde dit lopen. */
     await app.ev(`openRunPaneel(); true`);
-    await wachtTotStil(app, 'runOv');
+    await wachtTotVelStaat(app, 'runOv');
     const runVoor = await app.ev(`${TEKSTMETER}('runOv')`);
     await app.ev(`(function(){ document.getElementById('runOv').style.paddingBottom = '16px'; return true; })()`);
     const runNa = await app.ev(`${TEKSTMETER}('runOv')`);
@@ -477,7 +560,7 @@ async function keurVel(app, v, waar, sluit) {
     ];
     for (const t of TERUG) {
       await app.ev(`${t.open}; true`);
-      await wachtTotStil(app, t.id);
+      await wachtTotVelStaat(app, t.id);
       await app.ev(`${t.zet}; true`);
       const m = await app.ev(`${METER}('${t.id}')`);
       toets(t.naam + ': valt terug op ' + m.ruimteOnder + 'px',
