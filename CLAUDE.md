@@ -150,6 +150,28 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
 ## Branch, PR, deploy
 
 - Werk op een eigen branch. Nooit rechtstreeks naar `main`, nooit force-pushen.
+- **Snijd elke nieuwe branch van de huidige `main`**, niet van waar je toevallig
+  stond: `git fetch origin main && git checkout -B <naam> origin/main`. Een
+  branch waarvan de PR al samengevoegd is, is klaar — daar komt geen tweede PR
+  op. Stapelen levert een PR op die commits toont die al lang live staan, en dat
+  is precies hoe #80 er compleet uitzag terwijl hij het niet was.
+- **De conflicten in `PIDLANE.md` en `CHANGELOG.md` lossen zichzelf op.**
+  `.gitattributes` zet die twee op `merge=union`: bij een botsing bewaart git
+  beide kanten in plaats van te stoppen. Gemeten op 10-09-2026 was dat zes van
+  de zeven inhaalmerges van die week — altijd hetzelfde blok bovenaan, altijd
+  dezelfde oplossing. Twee dingen horen erbij:
+
+  - **Union geldt alleen voor proza.** Op code zou een botsing stil een regel
+    verdubbelen. Botst `plmutate.sh` of een `.js`, dan is dat handwerk, en dat
+    hoort zo. `public/test-gitattributes.js` bewaakt die grens.
+  - **Lees na een inhaalmerge de diff van die twee bestanden.** Union verliest
+    nooit tekst maar kan hem verdubbelen; raakten beide takken dezelfde alinea,
+    dan staat die er nu twee keer.
+  - **De tak moet `.gitattributes` zélf hebben.** Git leest de attributen uit
+    de werkmap waarin hij samenvoegt, niet uit wat er binnenkomt. Nagemeten op
+    10-09-2026 tegen PR #173: dezelfde twee takken, `PIDLANE.md` botst niet
+    vanuit de tak die het bestand heeft en botst wél vanuit de tak die het niet
+    heeft. Een tak van vóór 10-09 botst dus nog één keer; daarna niet meer.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
 - **Automerge is opt-in sinds 03-09-2026: het label `klaar`.** Zonder dat
   label wordt er niets samengevoegd, hoe groen de gate ook staat. `klaar`
