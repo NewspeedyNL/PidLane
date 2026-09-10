@@ -874,6 +874,42 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De browserproef mat drie keer de animatie in plaats van de marge — 10-09-2026 (#168)
+
+PR #165 kreeg een rode browserproef op een scherm dat die PR niet aanraakt:
+`PID-recorder: 22px onder knop`, vier keer. Dezelfde commit werd in de run
+ernáást groen, en op het ontwikkeltoestel drie keer achter elkaar met 62px.
+
+**Het verschil is beide keren exact 40px** — 62 → 22 en 74 → 34. Dat getal
+stond al in de kop van `bproef-schermranden.js`: `.ai-sheet` draagt
+`animation: sheetUp .25s`, en het vel moest nog 40px omhoog. Het scenario stond
+er ook al, van 09-09, mét hetzelfde getal 22. Dit was dus de derde ronde van
+dezelfde film.
+
+**Waarom de reparatie van 09-09 niet genoeg was.** `wachtTotStil()` meet tot
+twee metingen achter elkaar hetzelfde zeggen. Dat lijkt op "het staat stil",
+maar het is een gok op frames, en die verliest op twee manieren: twee monsters
+vóórdat de animatie zijn eerste frame kreeg zijn gelijk (je meet de beginstand),
+en hapert de runner tussen twee monsters dan zijn ze óók gelijk (je meet het
+midden). Beide keren staat er een getal dat niets met de marge te maken heeft.
+
+De browser weet zelf wanneer een animatie klaar is, en dat is geen gok maar een
+belofte: `getAnimations()` geeft ze en elke animatie heeft een `finished`.
+`wachtAnimatiesKlaar()` wacht die af; `wachtTotStil()` blijft daarna staan voor
+wat er ná de animatie nog verschuift, maar begint pas als het vel stilstaat.
+
+**De tegenproef is deterministisch geworden, en dat is de winst.** Blok 3 meet
+de PID-recorder twee keer — meteen en na het wachten — en meldt *"tijdens de
+animatie 22px, uitgeschoven 62px"*. Precies het getal uit de rode CI-run. De
+fout is daarmee niet meer "soms" maar op commando na te maken, en een wachtregel
+die stilletjes niets meer doet laat die controle omvallen.
+
+**De les is niet de fix maar de vorm.** Twee keer is hier een tijdsgok gebruikt
+waar de browser een gebeurtenis had: eerst 400 ms, toen "twee gelijke metingen".
+Allebei haalden ze het meestal, en dat is precies wat een flake is. Wachten op
+wat je wilt weten is bijna altijd mogelijk; wachten op de klok is een gok die
+in CI vroeg of laat verliest.
+
 ### Laag 2+3 stonden uit voor álle PIDs, een week lang zichtbaar — 09-09-2026 (#158)
 
 > **HERZIEN OP 10-09-2026.** Wat hieronder staat over de sleutelvorm klopt en
