@@ -874,6 +874,37 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### §14 was 03-09 geschreven en nooit meer nagelezen — 10-09-2026 (#177)
+
+Dezelfde vorm als #174, één kopje verderop. §16 stond vol vinkjes van build
+#423; §14 was op diezelfde dag geschreven en sindsdien niet meer aangeraakt,
+terwijl er negen builds bij kwamen en de meetketen en de begeleide run
+verbouwd zijn.
+
+**De tekst bleek te kloppen, en dat is niet hetzelfde als in orde.** De drie
+functies die §14 bij naam noemt bestaan als eigen module (`pidlane-monitor.js`,
+`pidlane-koopcheck.js`, `pidlane-remote.js`), en de demobelofte op de laatste
+regel wordt woordelijk bewaakt door `test-demo-toegang.js`. Maar niets in het
+document zei dat, en niets zou het gezegd hebben als het níét meer klopte. Er
+staat nu bij tegen welke build hij is nagelezen — dezelfde reparatie die §16
+kreeg.
+
+**Wat er wél stuk was, is de koppeling met §3.** De release notes zijn een
+ingedikte volledige beschrijving, met de hand. Twee velden die hetzelfde
+beloven en allebei door een reviewer gelezen worden — dat is de vorm die dit
+hoofdstuk twee keer eerder de kop kostte. `test-playteksten.js` vergelijkt ze
+nu: elke functie die §14 bij naam noemt moet ook in §3 staan. Andersom niet,
+want §3 mag 4000 tekens en noemt meer. Een mutatie in `plmutate.sh` zet er een
+functie in die §3 niet kent en verwacht rood.
+
+**En er kwam een echte bevinding uit die vergelijking (#177).** §1, §2 en §14
+hebben een en-US-blok, §3 niet. Zet je Engels aan in de Console, dan krijgt een
+reviewer een Engelse titel en Engelse release notes met een Nederlandse
+volledige beschrijving eronder — uitgerekend het veld waar de
+"minimum functionality"-toets op leunt. Niet in dezelfde PR opgelost: het is een
+besluit over de inzending (Engels erbij, of Engels eruit), geen reparatie.
+Daarom vergelijkt de test voorlopig alleen het Nederlandse blok.
+
 ### Zes van de zeven inhaalmerges waren met de hand, en niemand had daar iets te kiezen — 10-09-2026
 
 Er stonden deze week telkens twee PR's tegelijk open, en telkens moest de

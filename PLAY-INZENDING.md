@@ -467,7 +467,25 @@ mee, plus `privacy.html` en `verwijderen.html`.
 
 ## 14. Release notes
 
-Maximaal 500 tekens per taal. Voor de eerste inzending:
+Maximaal 500 tekens per taal. `test-playteksten.js` telt dat mee, dus korten
+gebeurt hier en niet tijdens het plakken.
+
+**Dit wordt de eerste inzending**, en dat maakt dit veld iets anders dan een
+changelog: er is niets "nieuw", dus de tekst beschrijft wat de app ís. Dat
+betekent ook dat hij dezelfde belofte doet als §3 — en twee velden die met de
+hand hetzelfde beschrijven, lopen hier uit de pas. Dat is de fout die §16 op
+10-09 de kop kostte en die §11 twee keer eerder maakte. **`test-playteksten.js`
+controleert daarom dat elke functie die dit veld noemt óók in §3 staat**; noem
+je hier iets nieuws, dan hoort het daar eerst.
+
+**Nagelezen tegen build #432, 10-09-2026.** De drie functies die hieronder bij
+naam genoemd worden bestaan als eigen module (`pidlane-monitor.js`,
+`pidlane-koopcheck.js`, `pidlane-remote.js`), en de demobelofte op de laatste
+regel wordt woordelijk bewaakt door `test-demo-toegang.js` — dat is de zin die
+een reviewer zonder auto als eerste probeert.
+
+**Zet je en-US aan, kijk dan eerst naar §3.** Dat veld heeft nog geen Engelse
+versie, terwijl §1, §2 en dit veld die wel hebben (#177).
 
 **nl-NL:**
 

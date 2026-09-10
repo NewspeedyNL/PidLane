@@ -238,6 +238,60 @@ console.log('\n5. Er staat geen wachtwoord in dit document');
         'de regex is te smal — dan bewaakt controle hierboven niets');
 }
 
+// ── 6. §14 en §3 beloven hetzelfde ────────────────────────────────
+// De release notes zijn een ingedikte §3. Twee velden die met de hand
+// hetzelfde beschrijven lopen hier uit de pas — dat is wat §16 op 10-09 de
+// kop kostte en wat §11 twee keer eerder overkwam. Een reviewer leest ze
+// allebei, en het veld dat een functie belooft die de beschrijving niet kent
+// is het veld dat opvalt.
+//
+// De toets kijkt één kant op, en dat is met opzet: alles wat §14 noemt moet
+// in §3 staan. Andersom niet — §3 mag 4000 tekens en noemt meer.
+console.log('\n6. Wat de release notes beloven, staat ook in de beschrijving');
+{
+  const notes = blokkenOnder('## 14. Release notes');
+  const vol = blokkenOnder('## 3. Full description');
+
+  if (!notes || !notes.length || !vol || !vol.length) {
+    toets('§14 en §3 hebben allebei tekst', false,
+          'een van de twee kopjes is hernoemd of leeggehaald');
+  } else {
+    // Het Nederlandse blok tegen de Nederlandse beschrijving. Het Engelse
+    // blok blijft buiten beschouwing zolang §3 geen en-US-versie heeft (#177).
+    const nl = notes[0];
+    const beschrijving = vol[0].toLowerCase();
+
+    // De functienamen die dit veld bij naam belooft. Niet elk woord: alleen
+    // wat een reviewer als functie leest en dus in de app zoekt.
+    const FUNCTIES = ['ritmonitor', 'koopcheck', 'diagnose op afstand',
+                      'foutcodes', 'freeze frame', 'onderdeelaanwijzer',
+                      'kenteken'];
+    const genoemd = FUNCTIES.filter(function (f) { return nl.toLowerCase().indexOf(f) !== -1; });
+
+    toets('§14 noemt minstens één functie bij naam', genoemd.length > 0,
+          'staat er geen enkele functienaam in, dan bewaakt deze controle niets');
+
+    genoemd.forEach(function (f) {
+      toets('"' + f + '" uit §14 staat ook in §3',
+            beschrijving.indexOf(f) !== -1,
+            'de release notes beloven iets wat de beschrijving niet kent');
+    });
+
+    // TEGENPROEF: draai de vergelijking op een verzonnen §14 die een functie
+    // belooft die §3 niet kent. Alleen "dat woord staat niet in §3" bewijst
+    // te weinig — dan weet je nog niet of de vergelijking hierboven ooit iets
+    // afkeurt. Dit voert hem uit en eist dat hij rood wordt.
+    const nepNotes = 'Met ritmonitor, koopcheck en wielophangingsscanner.';
+    const nepLijst = FUNCTIES.concat(['wielophangingsscanner']);
+    const nepGenoemd = nepLijst.filter(function (f) { return nepNotes.toLowerCase().indexOf(f) !== -1; });
+    const nepMist = nepGenoemd.filter(function (f) { return beschrijving.indexOf(f) === -1; });
+    toets('een §14 die iets belooft dat §3 niet kent, valt door de mand (tegenproef)',
+          nepGenoemd.length === 3 && nepMist.length === 1 && nepMist[0] === 'wielophangingsscanner',
+          'de vergelijking keurt niets af — gevonden: ' + nepGenoemd.join(', ') +
+          ' / gemist: ' + nepMist.join(', '));
+  }
+}
+
 console.log('');
 if (fouten) { console.log('test-playteksten: ' + fouten + ' fout(en)'); process.exit(1); }
 console.log('test-playteksten: alles goed');
