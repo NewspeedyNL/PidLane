@@ -980,7 +980,28 @@ reviewer een Engelse titel en Engelse release notes met een Nederlandse
 volledige beschrijving eronder — uitgerekend het veld waar de
 "minimum functionality"-toets op leunt. Niet in dezelfde PR opgelost: het is een
 besluit over de inzending (Engels erbij, of Engels eruit), geen reparatie.
-Daarom vergelijkt de test voorlopig alleen het Nederlandse blok.
+Daarom vergeleek de test voorlopig alleen het Nederlandse blok.
+
+**Besluit 10-09-2026: de inzending is nl-NL only (#177, opgelost).** De en-US-
+blokken van §2 en §14 zijn weg, §3 wordt niet vertaald. §1 had er nooit een —
+de titel is in beide talen dezelfde, en dat is precies waarom de telling in het
+issue daar geen tweede blok vond. De keuze is de goedkoopste kant van iets wat
+toch al vaststond: §15 zet Countries op Nederland omdat de RDW-kentekenfunctie
+regiogebonden is, dus een Engelse etalage bedient niemand die de app kan
+gebruiken.
+
+**Wat de test nu bewaakt is niet "één taal" maar "even veel talen".** De
+verleiding was om te toetsen dat elk veld precies één blok heeft. Dat zou
+kloppen tot de dag dat er wél vertaald wordt — en dan wordt zo'n test
+weggehaald in plaats van bijgewerkt, want hij staat het werk in de weg. Deel 7
+van `test-playteksten.js` telt daarom de blokken van §1, §2, §3 en §14 en eist
+dat ze gelijk zijn. Bij één taal is dat 1-1-1-1, bij twee talen 2-2-2-2, en de
+scheefstand die #177 wás (2-2-1-2) valt in beide werelden af. Twee mutaties
+houden het scherp, één per richting: een tweede taal terug in §2 zonder §3, en
+§3 als enige vertaald.
+
+De regel zelf staat nu bovenaan `PLAY-INZENDING.md` en niet alleen hier: dat is
+het document dat iemand openslaat als hij in de Console een taal aanzet.
 
 ### Zes van de zeven inhaalmerges waren met de hand, en niemand had daar iets te kiezen — 10-09-2026
 
