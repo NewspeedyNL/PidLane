@@ -11,6 +11,31 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10e (CET) — KUN JE ERBIJ, OF PAST HET
+
+       • 📏 DE ONDERRAND-PROEF MELDDE ELKE RIT FOUT terwijl er
+         niets aan de hand was. Hij vroeg of het werkscherm
+         binnen de vouw PASTE; op een pagina die scrollt is
+         dat altijd onwaar en nooit iets waard. De bestuurder
+         zag in de toestelronde van 10-09 "Alles vrij — er
+         valt niets weg", en dat was het antwoord waar de
+         proef zelf sinds 01-09 om vroeg.
+
+       • 🔎 DE SCROLLRUIMTE TELT NU MEE. Kun je nog omlaag,
+         dan komt de onderrand mee omhoog. Alleen wat ook
+         volledig uitgescrold achter de navigatiebalk blijft
+         staan, is nog een bevinding — dat is #58 zoals het
+         ooit gemeld werd.
+
+       • 🧪 DE TWEE HELFTEN ZIJN APART GETOETST. De regel in
+         node, met de echte getallen van de rit en een
+         tegenproef; de meting in de browser, waar de proef
+         de situatie zelf forceert met 600px vulling. Een
+         scrollmeting die stilletjes 0 teruggeeft laat elke
+         pagina weer rood staan, en dat is nu zichtbaar.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10d (CET) — WELK GAT BETEKENT WAT, EN
                                 WIE LEEST HET
 
