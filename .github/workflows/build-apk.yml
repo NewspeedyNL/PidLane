@@ -265,9 +265,23 @@ jobs:
               # BLUETOOTH_SCAN met neverForLocation het werk. Op Android 11 en
               # ouder eist het systeem ACCESS_FINE_LOCATION om te mogen scannen,
               # en daar is @ascentio-it/capacitor-bluetooth-serial van afhankelijk.
-              # Vandaar dat de permissie blijft staan MET maxSdkVersion=30: hij
-              # geldt alleen op API 30 en lager, en verschijnt op moderne
-              # toestellen niet eens in de permissielijst.
+              # BEIDE PLUGINS DECLAREREN DIE PERMISSIE ZELF, ZONDER GRENS.
+              # Nagemeten op 10-09-2026 op het echte template:
+              # @capacitor-community/bluetooth-le en
+              # @ascentio-it/capacitor-bluetooth-serial zetten allebei
+              # ACCESS_FINE_LOCATION en ACCESS_COARSE_LOCATION in hun
+              # bibliotheekmanifest zonder maxSdkVersion. De merge neemt die
+              # ongewijzigd over zolang het app-manifest ze niet noemt, en dan
+              # staat er in de .aab een locatiepermissie die op elke
+              # Android-versie geldt.
+              #
+              # Ze staan hier daarom WEL, met maxSdkVersion=30. Het app-manifest
+              # heeft voorrang bij de merge, dus dan geldt de grens: de permissie
+              # bestaat alleen op API 30 en lager en verschijnt op moderne
+              # toestellen niet eens in de permissielijst. Tegenproef gedraaid
+              # met de manifest-merger: zonder deze twee regels komt de
+              # ongegrensde variant in het samengevoegde manifest, met deze twee
+              # regels de begrensde. Zie PIDLANE.md §11.
               #
               # Wat er wél veranderd is: de app leest zelf geen locatie meer.
               # pidlane-gps.js is verwijderd en de bulk-recorder neemt geen
@@ -279,8 +293,11 @@ jobs:
               # Gevolg voor de Play Store: locatie hoeft NIET in de Data
               # safety-form als gedeeld of verzameld gegeven. Komt er ooit
               # geolocation-code terug in de app, dan klopt die verklaring niet
-              # meer — test-geen-gps.js bewaakt dat, en de controle hieronder
-              # faalt als de permissie zonder maxSdkVersion in het manifest komt.
+              # meer — test-geen-gps.js bewaakt dat, en de controle op het
+              # SAMENGEVOEGDE manifest verderop faalt als de permissie zonder
+              # maxSdkVersion in de bundel belandt.
+              '\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />'
+              '\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />'
               '\n    <uses-permission android:name="android.permission.CAMERA" />'
               '\n    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />'
               '\n    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />'
@@ -303,6 +320,16 @@ jobs:
           # Harde controles. Een build die doorloopt met een halve permissieset
           # levert een APK op die het pas in de auto laat afweten — of pas bij
           # de review. Beide keren duurder dan hier stoppen.
+          #
+          # LET OP WAT DEZE STAP WEL EN NIET KAN ZIEN. Hij leest het
+          # APP-manifest, en dat is de invoer van de merge, niet de uitkomst.
+          # Wat de bibliotheken van de plugins meebrengen staat hier nog niet
+          # in. Deze controles gaan daarom uitsluitend over de vraag of de
+          # injectie hierboven geland is. Wat er uiteindelijk in de .aab staat
+          # wordt na de build getoetst — zie "Controleer het samengevoegde
+          # manifest". Dat onderscheid is niet cosmetisch: tot 10-09-2026
+          # stonden de verbodenlijst en de locatiegrens hiér, en die konden
+          # per definitie niets vinden dat via manifest-merge binnenkwam.
           moet = [
               ('BLUETOOTH_SCAN', 'scannen naar de adapter'),
               ('neverForLocation', 'verklaring dat scan niet voor plaatsbepaling is'),
@@ -313,30 +340,10 @@ jobs:
               if naam not in xml:
                   print("FOUT: %s ontbreekt (%s)" % (naam, waarvoor)); sys.exit(1)
 
-          # Mag er NIET in: achtergrondlocatie. Die vraagt een aparte
-          # Play-verklaring met video-onderbouwing, en de app gebruikt hem niet.
-          # Als een plugin hem ooit meesmokkelt via manifest-merge wil je dat
-          # hier zien en niet in de reviewmail.
-          for verboden in ('ACCESS_BACKGROUND_LOCATION', 'READ_PHONE_STATE',
-                           'QUERY_ALL_PACKAGES', 'REQUEST_INSTALL_PACKAGES'):
-              if verboden in xml:
-                  print("FOUT: %s staat in het manifest en hoort er niet in" % verboden); sys.exit(1)
-
-          # Locatie mag alleen bestaan als legacy-BT-permissie, dus uitsluitend
-          # met maxSdkVersion=30. Zonder die grens is het een sensitive
-          # permission die om een eigen disclosure en een Data safety-verklaring
-          # vraagt — en de app leest sinds 21-08 helemaal geen locatie meer.
-          import re as _re
-          for _p in ('ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'):
-              for _m in _re.finditer(r'<uses-permission[^>]*' + _p + r'[^>]*/>', xml):
-                  if 'maxSdkVersion="30"' not in _m.group(0):
-                      print("FOUT: %s zonder maxSdkVersion=30 — dat is een sensitive permission" % _p)
-                      print("      gevonden: %s" % _m.group(0)); sys.exit(1)
-
           if 'android.permission.CAMERA' not in xml:
               print("FOUT: CAMERA-permissie-injectie mislukt")
               sys.exit(1)
-          print("OK: permissieset compleet, niets verbodens gevonden")
+          print("OK: de injectie is geland — de bundel zelf wordt na de build getoetst")
           PY
 
       - name: Generate app icons from PidLane logo
@@ -531,6 +538,112 @@ jobs:
           PL_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           PL_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
         run: cd android && ./gradlew bundleRelease --no-daemon
+
+      # ════════════════════════════════════════════════════════════
+      #  WAT ER ÉCHT IN DE BUNDEL STAAT — nagemeten op 10-09-2026
+      # ════════════════════════════════════════════════════════════
+      #  De stap "Add Bluetooth + Camera permissions" leest het APP-manifest.
+      #  Dat is de INVOER van de manifest-merge. Wat de plugins meebrengen komt
+      #  er pas bij tijdens de build, en precies daar zat het gat:
+      #
+      #    @capacitor-community/bluetooth-le  en
+      #    @ascentio-it/capacitor-bluetooth-serial
+      #
+      #  declareren allebei ACCESS_FINE_LOCATION en ACCESS_COARSE_LOCATION
+      #  ZONDER maxSdkVersion. Het app-manifest noemde ze niet, dus de merge nam
+      #  de ongegrensde variant over en de .aab vroeg locatie op elke
+      #  Android-versie — terwijl PLAY-INZENDING.md §11 locatie nergens aanvinkt
+      #  in Data safety. Dat verschil tussen gevraagde permissies en het
+      #  ingevulde formulier is een afwijsgrond.
+      #
+      #  De oude controle stond in de injectiestap en zocht in het app-manifest.
+      #  Daar stond de permissie niet in, dus hij vond nul regels en meldde OK.
+      #  Een controle die groen staat omdat hij niets ziet is geen controle.
+      #
+      #  Deze stap leest daarom het SAMENGEVOEGDE manifest, na de build. Dat is
+      #  het manifest dat in app-release.aab zit en dat de Play Console
+      #  uitleest. Hij draait ná bundleRelease en vóór de upload-stappen, zodat
+      #  een bundel die niet door deze poort komt de artefacten nooit haalt.
+      - name: Controleer het samengevoegde manifest
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+
+          wortel = pathlib.Path("android/app/build/intermediates/merged_manifests")
+          treffers = sorted(wortel.glob("release/**/AndroidManifest.xml"))
+          if not treffers:
+              # Nooit stilzwijgend overslaan. Hernoemt AGP dit pad bij een
+              # volgende versie, dan wil je een rode build en geen controle die
+              # zichzelf uitzet — dat is dezelfde val als hierboven.
+              print("FOUT: geen samengevoegd release-manifest gevonden onder %s" % wortel)
+              print("      AGP kan het pad hernoemd hebben. Zoek het op met:")
+              print("      find android/app/build/intermediates -name AndroidManifest.xml")
+              sys.exit(1)
+          pad = treffers[0]
+          xml = pad.read_text()
+          print("Gelezen: %s" % pad)
+
+          # De merger schrijft attributen over meerdere regels; vandaar re.S en
+          # het platslaan van witruimte voor de leesbaarheid van het logboek.
+          knopen = [' '.join(m.group(0).split())
+                    for m in re.finditer(r'<uses-(?:permission|feature)\b.*?/>', xml, re.S)]
+          print("── Wat de Play Console van deze bundel te zien krijgt ──")
+          for k in knopen:
+              print("   " + k)
+
+          fout = 0
+
+          # 1. Wat er niet in mag. Achtergrondlocatie vraagt een aparte
+          #    Play-verklaring met video-onderbouwing; de andere drie zijn
+          #    permissies waar een reviewer een reden voor wil die deze app
+          #    niet heeft. Een plugin kan ze via manifest-merge meebrengen —
+          #    dat is nu juist wat hier zichtbaar wordt.
+          for verboden in ('ACCESS_BACKGROUND_LOCATION', 'READ_PHONE_STATE',
+                           'QUERY_ALL_PACKAGES', 'REQUEST_INSTALL_PACKAGES'):
+              for k in knopen:
+                  if verboden in k:
+                      print("FOUT: %s staat in de bundel en hoort er niet in" % verboden)
+                      print("      gevonden: %s" % k); fout += 1
+
+          # 2. Locatie mag alleen bestaan als legacy-BT-permissie, dus
+          #    uitsluitend met maxSdkVersion=30. En hij MOET er staan: de
+          #    plugins brengen hem toch mee, dus "niet gevonden" betekent hier
+          #    dat deze controle langs het verkeerde bestand kijkt en niet dat
+          #    de permissie weg is.
+          for naam in ('ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'):
+              regels = [k for k in knopen if naam in k]
+              if not regels:
+                  print("FOUT: %s staat niet in het samengevoegde manifest." % naam)
+                  print("      De BT-plugins declareren hem, dus dit betekent dat er")
+                  print("      een ander bestand gelezen wordt dan bedoeld."); fout += 1
+              for k in regels:
+                  if 'maxSdkVersion="30"' not in k:
+                      print("FOUT: %s zonder maxSdkVersion=30 — dat is een sensitive permission" % naam)
+                      print("      gevonden: %s" % k); fout += 1
+
+          # 3. En wat er wél in moet staan, in de vorm die de app nodig heeft.
+          moet = [
+              ('android.permission.BLUETOOTH_SCAN',   'scannen naar de adapter'),
+              ('neverForLocation',                    'verklaring dat scan niet voor plaatsbepaling is'),
+              ('android.permission.BLUETOOTH_CONNECT','praten met een gekoppelde adapter'),
+              ('android.permission.CAMERA',           'QR-scanner local <-> expert'),
+              ('android.permission.INTERNET',         'de app laadt zichzelf van app.pidlane.nl'),
+          ]
+          for naam, waarvoor in moet:
+              if not any(naam in k for k in knopen):
+                  print("FOUT: %s ontbreekt in de bundel (%s)" % (naam, waarvoor)); fout += 1
+
+          # neverForLocation hoort op BLUETOOTH_SCAN te zitten en nergens
+          # anders — los in het manifest zegt het niets.
+          for k in knopen:
+              if 'BLUETOOTH_SCAN' in k and 'neverForLocation' not in k:
+                  print("FOUT: BLUETOOTH_SCAN zonder neverForLocation: %s" % k); fout += 1
+
+          if fout:
+              print("\n%d probleem/problemen in het samengevoegde manifest — deze bundel gaat niet naar Play." % fout)
+              sys.exit(1)
+          print("\nOK: de bundel vraagt precies de permissieset die PLAY-INZENDING.md verklaart.")
+          PY
 
       - name: Verify signature
         if: steps.signing.outputs.getekend == 'ja'

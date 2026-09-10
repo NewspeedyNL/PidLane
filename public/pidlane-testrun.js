@@ -2476,22 +2476,36 @@ const PROEVEN_B5 = [
     }
   },
 
-  // ── staat de app in de handmatige eerste fase? ──
+  // ── houdt de schil de betaalroute buiten Play dicht? ──
   // Tokens verkopen ín de app is precies wat Google's betaalregels raakt, en
-  // die vraag is niet beantwoord. Zolang `tikkie_kopen` leeg is in de
-  // Config-tabel is er geen koopknop en loopt het aanvragen per mail. Dit is
-  // de enige plek waar de ECHTE configuratie van dit toestel te zien is — in
-  // node is PID_CONFIG altijd leeg en klopt alles vanzelf.
+  // die vraag is niet beantwoord (#42). Tot 10-09-2026 hing dat op één lege
+  // Airtable-sleutel: wie `tikkie_kopen` vulde zette een koopknop in dezelfde
+  // app die Play beoordeeld heeft, zonder commit en zonder build. Sinds die
+  // dag houdt _betaallink() de link in de schil hoe dan ook tegen.
+  //
+  // Dit is de enige plek waar dat te méten valt. Een node-test draait zonder
+  // Capacitor en met een lege PID_CONFIG: daar klopt de grens vanzelf, want er
+  // is geen schil en er is geen link. Hier staan ze allebei echt.
   {
     issue: '#42',
-    naam: 'Geen koopknop in de app; de aanvraag loopt per mail (#42)',
-    waarom: 'Alleen op een toestel staat de echte Config; in node is PID_CONFIG leeg en klopt alles vanzelf.',
+    naam: 'Geen koopknop in de Play-schil, wat er ook in de Config staat (#42)',
+    waarom: 'Alleen op een toestel staan de echte Config én de echte schil naast elkaar; in node ontbreken ze allebei en klopt de grens vanzelf.',
     proef: function () {
       if (!window.PLKlant) return { staat: 'FOUT', detail: 'PLKlant ontbreekt' };
+
+      const schil = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+      let ruw = '';
+      try { ruw = String((window.PID_CONFIG || {}).tikkie_kopen || '').trim(); }
+      catch (e) { return { staat: 'FOUT', detail: 'PID_CONFIG niet leesbaar, dus deze proef meet niets: ' + e.message }; }
       const link = PLKlant.CFG.tikkieKopen;
-      if (link)
-        return { staat: 'FOUT', detail: 'er staat een koopknop in de app (tikkie_kopen is gevuld) terwijl de eerste ' +
+
+      if (schil && link)
+        return { staat: 'FOUT', detail: 'de Play-schil toont een koopknop (' + String(link).slice(0, 40) + ') — ' +
+          'de schilgrens in _betaallink() doet niets, en dan staat er een betaalroute buiten Play in een Play-app' };
+      if (!schil && ruw)
+        return { staat: 'FOUT', detail: 'er staat een koopknop in de browserversie (tikkie_kopen is gevuld) terwijl de eerste ' +
           'fase handmatig is — zet de sleutel leeg in admin.html, of sluit #42 met de uitkomst erbij' };
+
       if (typeof PLKlant.aanvraagMail !== 'function')
         return { staat: 'FOUT', detail: 'PLKlant.aanvraagMail() ontbreekt — dan opent de knop een lege mail zonder account' };
       const mail = PLKlant.aanvraagMail();
@@ -2502,7 +2516,14 @@ const PROEVEN_B5 = [
       if (klant && adres && mail.indexOf(encodeURIComponent(adres)) < 0)
         return { staat: 'FOUT', detail: 'de aanvraagmail draagt het account niet — dan begint elke handmatige ' +
           'aanvraag met "en wie ben jij?"' };
-      return 'geen koopknop; de aanvraag gaat per mail' + (klant ? ' met het account erin' : ' (geen klant ingelogd, dus zonder account)');
+      const staart = 'de aanvraag gaat per mail' + (klant ? ' met het account erin' : ' (geen klant ingelogd, dus zonder account)');
+      if (schil && ruw)
+        return 'de Config draagt een koopknop en de schil geeft hem niet door — de grens is hier echt gemeten; ' + staart;
+      if (schil)
+        return { staat: 'LET OP', detail: 'geen koopknop, maar tikkie_kopen is leeg in de Config, dus de schilgrens is ' +
+          'hier niet op de proef gesteld. Zet de sleutel tijdelijk in admin.html en draai deze blok opnieuw als je ' +
+          'de grens wilt zien werken. ' + staart };
+      return 'geen koopknop; ' + staart;
     }
   },
 
@@ -6439,6 +6460,7 @@ const CAMPAGNE = {
     'DE OOGSTPOORT IS NOG NOOIT IN EEN AUTO GEDRAAID. De drempels — 15 km/u voor "gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet gemeten. Ze staan in test-begeleid.js met een tegenproef eronder, maar of ze in de praktijk op het goede moment groen worden, weet je pas na een rit. Blijkt de poort te vroeg of te laat te sluiten, dan is dát de bevinding van deze ronde.',
     '#18 ZELF BLIJFT STAAN. De achtergrondstap levert de getallen waarmee de keuze tussen foreground service en picture-in-picture onderbouwd wordt, maar de bevriezing zelf is native werk en niet vanuit JavaScript te repareren.',
     '#161 KRIJGT GEEN BESLUIT UIT EEN RIT. Welke drempel "beweegt" moet krijgen is een ontwerpkeuze, geen meetvraag — blok 5 meet de getallen elke ronde en die staan er al. Het oordeel in de toestelronde gaat alleen over of het BEELD klopt.',
+    'DE SCHILGRENS OP DE KOOPKNOP KAN OP DIT TOESTEL ONGEMETEN BLIJVEN. Sinds 10-09 houdt _betaallink() de Tikkie-link in de Play-schil tegen, wat er ook in de Config-tabel staat. Blok 5 meet dat, maar alleen als `tikkie_kopen` op dat moment GEVULD is: staat de sleutel leeg, dan geeft de proef LET OP in plaats van een uitkomst, en dat is geen bevinding maar een ontbrekende voorwaarde. Wil je de grens echt zien werken, zet de sleutel dan tijdelijk in admin.html en draai blok 5 opnieuw.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };
