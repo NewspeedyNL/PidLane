@@ -540,6 +540,7 @@ const PLRit = (function () {
   const GAT_MS = 20000;      // >20 s tussen twee tikken = de app lag stil
   let per = {};              // pid -> {n,tikken,gemist,min,max,laatst,veranderingen,tLaatsteVer,stempel}
   let start = 0, laatstT = 0, gaten = [], herverbindingen = 0;
+  let laatstLoop = 0;        // wanneer de lus voor het laatst LIEP — #170, zie tik()
   let vorigVerbonden = null, _aan = false;
   let zonderBron = 0;        // tikken waarin er geen versheidsbron was (#74)
   let meetgaten = [], meetgatSinds = 0;   // #133, zie de uitleg bij tik() hieronder
@@ -630,20 +631,48 @@ const PLRit = (function () {
         }
         return;
       }
-      if (typeof demoMode !== 'undefined' && demoMode) return;
-      if (typeof _trBezig !== 'undefined' && _trBezig) return;   // niet tijdens een run
+      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
+
+      /* EEN TIK DIE WIJ ZELF OVERSLAAN IS GEEN GAT (10-09-2026, #170).
+
+         Deze twee guards slaan het bemonsteren over omdat wij dat willen: in
+         demo zijn de waarden verzonnen, en tijdens een testrun vraagt de sweep
+         45 PIDs achter elkaar op. De LUS liep daar gewoon door — hij besloot
+         alleen niets te meten. Tot vandaag returnden ze vóór `laatstT = nu`, en
+         dan zag de eerstvolgende tik ná de run een gat ter grootte van die hele
+         run staan. Nagemeten met een run van 70 s: één loopgat van 75 s.
+
+         Dat is geen cosmetisch getal. Blok 14 legt elk loopgat naast
+         PLAchtergrond, en zo'n zelfgemaakt gat valt buiten elke
+         achtergrondperiode — waarna er in het verslag van 10-09 stond: "de lus
+         lag daar stil terwijl de app in beeld stond … kijk naar de adapter, de
+         bus of een vastgelopen sweep." Precies de verkeerde jacht.
+
+         `laatstLoop` houdt daarom bij wanneer de lus voor het laatst LIEP, en
+         daar meet het loopgat tegen. `laatstT` blijft wat het was — de laatste
+         tik waarin er werkelijk bemonsterd is — want dat is de klok waar het
+         meetgat zijn einde aan ontleent, en tijdens een run weten we juist
+         niets over de datastroom.
+
+         DE VERBROKEN VERBINDING HIERBOVEN IS BEWUST NIET MEEGENOMEN. Ook daar
+         loopt de lus door, dus strikt genomen is dat óók geen loopgat. Maar een
+         onderbreking van tien minuten zou dan alleen nog als "1 herverbinding"
+         zichtbaar zijn, en dat is minder dan er nu staat. Dat vraagt een eigen
+         soort gat en een eigen meting; zie #170. */
+      const zelfOvergeslagen = (typeof demoMode !== 'undefined' && demoMode) ||
+                               (typeof _trBezig !== 'undefined' && _trBezig);
+      if (zelfOvergeslagen) { laatstLoop = nu; return; }
       if (typeof pidVals === 'undefined' || !pidVals) return;
 
-      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
       if (!start) start = nu;
       // Een gat betekent dat deze lus zelf niet liep — precies het bewijs uit de
       // rit van 23-08 (het logboek zweeg op dezelfde kloktijden).
       let loopgatNu = false;
-      if (laatstT && (nu - laatstT) > GAT_MS) {
-        gaten.push({ van: laatstT, tot: nu, s: Math.round((nu - laatstT) / 1000) });
+      if (laatstLoop && (nu - laatstLoop) > GAT_MS) {
+        gaten.push({ van: laatstLoop, tot: nu, s: Math.round((nu - laatstLoop) / 1000) });
         loopgatNu = true;
       }
-      laatstT = nu;
+      laatstT = nu; laatstLoop = nu;
 
       // De versheidsbron. Ontbreekt hij, dan wordt er NIET stilzwijgend
       // teruggevallen op de oude telling: dan is deze rit niet te beoordelen en
@@ -798,7 +827,7 @@ const PLRit = (function () {
     },
     // Zet de teller op nul aan het begin van een rit, zodat het beeld over déze
     // rit gaat en niet over alles sinds het opstarten van de app.
-    wis: function () { per = {}; start = 0; laatstT = 0; gaten = []; herverbindingen = 0; zonderBron = 0;
+    wis: function () { per = {}; start = 0; laatstT = 0; laatstLoop = 0; gaten = []; herverbindingen = 0; zonderBron = 0;
                        meetgaten = []; meetgatSinds = 0; }
   };
 })();
@@ -825,7 +854,23 @@ const PLRit = (function () {
    Los gehouden en naar buiten gebracht omdat blok 14 zelf een halve testrun
    nodig heeft om te draaien, en een oordeel dat alleen in de auto te toetsen
    is, wordt niet getoetst. test-gatduiding.js draait hem zonder browser. */
-function plGatDuiding(gaten, perioden) {
+/* DE SPLITSING ZELF, ÉÉN KEER (10-09-2026, #170). Loopgaten kregen sinds
+   08-09 hun duiding tegen PLAchtergrond; meetgaten kregen tot vandaag alleen
+   een duur. Op de rit van 10-09 stond er daardoor `Meetgaten: 15 s, 35 s, 75 s`
+   zonder dat te zien was welke daarvan de adapter was en welke de achtergrond.
+
+   Dat is geen cosmetisch verschil: tijdens een AFGEKNEPEN achtergrond (gemeten
+   op die rit: 146 s weg, waarvan 60 s doorgelopen en 86 s stil) blijft de lus
+   tikken zonder loopgat te boeken, maar ververst de data niet. Er opent dan een
+   meetgat, en de regel eronder wees dat toe aan "de adapter of de bus" —
+   dezelfde verwisseling van #18 met de bus die het meetgat juist moest
+   wegnemen.
+
+   De overlapregel staat daarom op één plek. Twee plekken met dezelfde regel is
+   in dit project al drie keer een bug geweest, en de duiding eronder verschilt
+   nu juist per soort gat: een loopgat in de achtergrond is de bevriezing, een
+   meetgat in de achtergrond is de afknijping. */
+function _plGatenSplits(gaten, perioden) {
   var g = gaten || [];
   // Twee tikken speling: PLRit meet van tik tot tik, PLAchtergrond van
   // gebeurtenis tot gebeurtenis. Die randen vallen nooit precies samen.
@@ -834,8 +879,17 @@ function plGatDuiding(gaten, perioden) {
   var inBg = function (x) {
     return kent && perioden.some(function (b) { return x.van >= b.van - SPELING && x.tot <= b.tot + SPELING; });
   };
-  var buiten = kent ? g.filter(function (x) { return !inBg(x); }) : [];
-  var lijst = g.slice(0, 5).map(function (x) { return x.s + ' s' + (inBg(x) ? ' (app weg)' : ''); }).join(', ');
+  return {
+    g: g,
+    kent: kent,
+    buiten: kent ? g.filter(function (x) { return !inBg(x); }) : [],
+    lijst: g.slice(0, 5).map(function (x) { return x.s + ' s' + (inBg(x) ? ' (app weg)' : ''); }).join(', ')
+  };
+}
+
+function plGatDuiding(gaten, perioden) {
+  var sp = _plGatenSplits(gaten, perioden);
+  var g = sp.g, kent = sp.kent, buiten = sp.buiten, lijst = sp.lijst;
   var duiding = !kent
     ? ' — PLAchtergrond ontbreekt, dus er valt niet te zeggen wélke gaten van de achtergrond kwamen.'
     : !g.length
@@ -847,7 +901,29 @@ function plGatDuiding(gaten, perioden) {
           'in beeld stond, en dat is #18 niet — kijk naar de adapter, de bus of een vastgelopen sweep.';
   return { lijst: lijst, buiten: buiten, duiding: duiding };
 }
+
+/* Hetzelfde, maar voor het MEETGAT — de lus tikte, de data niet (#133/#170).
+   De kanten wisselen hier van betekenis: valt een meetgat binnen een periode
+   waarin de app weg was, dan is het de afgeknepen achtergrond (#18) en niet de
+   bus; valt het erbuiten, dan stond de app gewoon in beeld en kwam er tóch
+   niets binnen — en dát is de adapter of de bus. */
+function plMeetgatDuiding(meetgaten, perioden) {
+  var sp = _plGatenSplits(meetgaten, perioden);
+  var g = sp.g, kent = sp.kent, buiten = sp.buiten, lijst = sp.lijst;
+  var duiding = !g.length
+    ? ''
+    : !kent
+      ? ' — PLAchtergrond ontbreekt, dus er valt niet te zeggen wélke meetgaten van de achtergrond kwamen.'
+      : !buiten.length
+        ? ' — alle meetgaten vallen binnen een periode waarin de app weg was: dan is dit de afgeknepen ' +
+          'achtergrond (#18) en niet de bus.'
+        : ' — ' + buiten.length + ' van de ' + g.length + ' meetgaten vielen BUITEN elke achtergrondperiode ' +
+          '(grootste ' + buiten.reduce(function (a, x) { return Math.max(a, x.s || 0); }, 0) + ' s). De app stond ' +
+          'in beeld en de lus tikte, en er kwam tóch niets binnen: dat is de adapter of de bus (#133).';
+  return { lijst: lijst, buiten: buiten, duiding: duiding };
+}
 window.plGatDuiding = plGatDuiding;
+window.plMeetgatDuiding = plMeetgatDuiding;
 window.PLRit = PLRit;
 try { PLRit.start(); } catch (e) { console.warn('PLRit niet gestart — blok 14 (de rit) blijft dan leeg', e); }
 
@@ -2728,7 +2804,11 @@ const PROEVEN_B5 = [
     proef: function () {
       if (!window.PLRit) return { staat: 'LET OP', detail: 'PLRit ontbreekt — geen ritbeeld' };
       let duur = 0, per = {};
-      try { duur = PLRit.duurS(); per = PLRit.per() || {}; } catch (e) { return { staat: 'LET OP', detail: 'ritstand onleesbaar' }; }
+      // Via window en niet via de closure-const, zodat test-blok5lijst.js hem
+      // met een nagemaakte ritstand kan voeden. In de app is het hetzelfde
+      // object; het verschil bestaat alleen buiten de browser.
+      try { duur = window.PLRit.duurS(); per = window.PLRit.per() || {}; }
+      catch (e) { return { staat: 'LET OP', detail: 'ritstand onleesbaar' }; }
       const aan = _aanvragersNu();
       // _meetStand() is dezelfde bron als blok 14 gebruikt. Bewust niet hier
       // opnieuw uitgerekend: "wanneer telt een PID als gemeten" is één regel, en
@@ -2743,16 +2823,31 @@ const PROEVEN_B5 = [
         if (!e.veranderingen) stil.push(p);
       });
       const kop = rij.join('  |  ') + '  |  ' + Math.round(duur / 60) + ' min, ' + aan.length + ' aanvrager(s): ' + (aan.join(', ') || '—');
+
+      /* DE TIEN MINUTEN ZIJN HIER OOK WEG (10-09-2026, #170).
+
+         Deze proef eiste tien minuten én vier aanvragers. Sinds #166 sluit de
+         rijstap op de OOGST en niet op de klok, en dat maakte deze lat op de
+         rit van 10-09 onhaalbaar voor élke ronde: de meetrit viel af op
+         "maar 7 min gereden van de tien", de toestelronde op "maar 3 van de 4
+         aanvragers aan". Geen van beide rondes kan hem nog halen, en een proef
+         die altijd LET OP staat wordt genegeerd — dat staat zo in CLAUDE.md.
+
+         Wat overblijft is wat deze proef werkelijk moet zeggen: bewegen die
+         twee sensoren, en onder welke omstandigheden is dat gemeten. Het
+         aantal aanvragers blijft er als CONTEXT bij staan, want dat is wat de
+         meting kleurt — maar het is geen lat meer die de proef laat zakken.
+         #19 is bovendien dicht; wat hier nog toe doet is dat het antwoord
+         waar blijft. */
       const tekort = [];
       if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');
-      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');
-      if (aan.length < 4) tekort.push('maar ' + aan.length + ' van de 4 aanvragers aan');
       if (stil.length && !blind.length)
         return { staat: 'LET OP', detail: kop + ' — ' + stil.join(' en ') + ' stond STIL terwijl hij wél werd uitgevraagd. ' +
           'Op directe inspuiting kan dat niet: dit is de kandidaat voor moetBewegen:\'draait\' uit PIDLANE-CONTRACT.md §4 (#19)' };
       if (tekort.length)
-        return { staat: 'LET OP', detail: kop + ' — nog niet genoeg om #19 te sluiten: ' + tekort.join('; ') };
-      return kop + ' — allebei in beweging over een volle rit met vier aanvragers: #19 KAN DICHT';
+        return { staat: 'LET OP', detail: kop + ' — nog niets over te zeggen: ' + tekort.join('; ') };
+      return kop + ' — allebei in beweging, gemeten en wel. Dat is het antwoord waar #19 om vroeg, ' +
+        'en het aantal aanvragers hierboven zegt onder welke belasting het gemeten is';
     }
   },
 
@@ -2777,7 +2872,7 @@ const PROEVEN_B5 = [
       // niet in — en het weglaten zonder het te melden hoort ook niet. Vandaar
       // allebei: eruit, en met het aantal erbij.
       let gaten = [];
-      try { gaten = (window.PLRit && PLRit.gaten) ? (PLRit.gaten() || []) : []; } catch (e) { console.warn('PLRit.gaten() onleesbaar bij de #15-proef', e); }
+      try { gaten = (window.PLRit && window.PLRit.gaten) ? (window.PLRit.gaten() || []) : []; } catch (e) { console.warn('PLRit.gaten() onleesbaar bij de #15-proef', e); }
       const inGat = function (m) {
         return gaten.some(function (g) { return typeof m.t === 'number' && m.t >= g.van && m.t <= g.tot + 5000; });
       };
@@ -2888,7 +2983,10 @@ const PROEVEN_B5 = [
     waarom: 'De bevriezing zelf is niet vanuit JavaScript te repareren. Wat wél kan is ervan weten én hem meten — hoe lang de app na het verbergen nog doorliep, en hoe lang hij daarna werkelijk stillag.',
     proef: function () {
       const m = _markeringen.filter(function (x) { return /achtergrond in/i.test(x.tekst); }).pop();
-      if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — stap 7 van de begeleide rit is niet gedaan, ' +
+      // Geen hard stapnummer meer (#170): sinds #166 is de achtergrondstap van
+      // 7 naar 6 geschoven en bleef deze tekst naar de oude plek wijzen. De
+      // stap heet altijd zo; het nummer verschuift met de lijst mee.
+      if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — de achtergrondstap van de meetrit is niet gedaan, ' +
         'dus over #18 zegt deze rit niets' };
       if (!window.PLAchtergrond || typeof PLAchtergrond.sinds !== 'function')
         return { staat: 'FOUT', detail: 'PLAchtergrond ontbreekt — dan weet de app nog steeds niets van zijn eigen pauze, ' +
@@ -3625,9 +3723,9 @@ const PROEVEN_B5 = [
       catch (e) { return { staat: 'FOUT', detail: 'plMeetStabielVoorstel() gooide een fout: ' + (e.message || e) }; }
 
       let gaten = [], meetgaten = [];
-      try { gaten = (window.PLRit && PLRit.gaten) ? (PLRit.gaten() || []) : []; }
+      try { gaten = (window.PLRit && window.PLRit.gaten) ? (window.PLRit.gaten() || []) : []; }
       catch (e) { console.warn('PLRit.gaten() onleesbaar bij de #133-proef', e); }
-      try { meetgaten = (window.PLRit && PLRit.meetgaten) ? (PLRit.meetgaten() || []) : []; }
+      try { meetgaten = (window.PLRit && window.PLRit.meetgaten) ? (window.PLRit.meetgaten() || []) : []; }
       catch (e) { console.warn('PLRit.meetgaten() onleesbaar bij de #133-proef', e); }
       const onderbroken = gaten.length + meetgaten.length;
 
@@ -4692,16 +4790,22 @@ async function _blok14() {
        één verschoven stempel, want een BT-SPP-socket sterft niet als de
        adapter zijn voeding verliest. Dat wijst naar de adapter of de bus, niet
        naar de achtergrond, en zonder deze telling zag PLRit.gaten() er niets
-       van. */
-    const mgLijst = mg.length ? mg.slice(0, 5).map(function (x) { return x.s + ' s'; }).join(', ') +
-      (mg.length > 5 ? ' …' : '') : '';
+       van.
+
+       EN SINDS 10-09 KRIJGT HET MEETGAT DEZELFDE DUIDING (#170). Er stond
+       alleen een duur, en op de rit van 10-09 leverde dat `Meetgaten: 15 s,
+       35 s, 75 s` op zonder dat te zien was welke de adapter was. Een meetgat
+       binnen een achtergrondperiode is de AFGEKNEPEN achtergrond — de lus
+       tikt door zonder loopgat te boeken, maar de data staat stil — en dat is
+       #18 en niet de bus. */
+    const md = plMeetgatDuiding(mg, bgp);
 
     return { staat: 'LET OP', detail: kop +
-      (g.length ? '. Loopgaten: ' + d.lijst : '') + (g.length ? d.duiding : '') +
-      (mg.length ? '. Meetgaten: ' + mgLijst : '') +
+      (g.length ? '. Loopgaten: ' + d.lijst + d.duiding : '') +
+      (mg.length ? '. Meetgaten: ' + md.lijst + md.duiding : '') +
       ' Volgt een herverbinding op een loopgat, dan is dat de achtergrondkwestie; volgt hij op een ' +
-      'meetgat, dan is dat de adapter of de bus; komt er geen van beide aan te pas, dan stierf een ' +
-      'socket en herstelde hij tussen twee tikken. ' +
+      'meetgat buiten de achtergrond, dan is dat de adapter of de bus; komt er geen van beide aan ' +
+      'te pas, dan stierf een socket en herstelde hij tussen twee tikken. ' +
       'De eerste verbinding van een sessie telt sinds 02-09-2026 niet meer mee (#77), dus elke ' +
       'herverbinding hierboven is er ook echt een.' };
   });
@@ -5648,11 +5752,30 @@ const _STAPPEN = [
       if (typeof connected !== 'undefined' && !connected)
         return { ok: false, tekst: 'de app is nog niet opnieuw verbonden — wacht daarop, anders meet blok 5 een verbinding die er niet is' };
 
-      let gaten = [];
-      try { gaten = (window.PLRit && PLRit.gaten) ? (PLRit.gaten() || []) : []; }
+      /* DEZE STAP LAS ALLEEN HET LOOPGAT (10-09-2026, #170) — en dat is precies
+         het gat dat een losgetrokken adapter NIET maakt. Een BT-SPP-socket
+         sterft niet als de voeding wegvalt, dus `connected` blijft true en de
+         lus blijft tikken: geen loopgat. Daar is bij #133 het meetgat voor
+         gebouwd, en blok 14 en twee proeven in blok 5 zijn toen omgezet — deze
+         stap, juist de stap die #133 moet toetsen, bleef achter.
+
+         Gemeten op de rit van 10-09 19:11: blok 14 meldde een meetgat van 35 s
+         over dezelfde adaptertrek, terwijl deze stap "PLRit ziet geen gat"
+         zei. Het verslag boekte #133 daarna als AANGERAAKT MAAR NIET BINNEN,
+         terwijl de meting geslaagd was. */
+      let gaten = [], meetgaten = [];
+      try { gaten = (window.PLRit && window.PLRit.gaten) ? (window.PLRit.gaten() || []) : []; }
       catch (e) { return { ok: false, tekst: 'PLRit.gaten() onbereikbaar — de proef kan niets vaststellen' }; }
-      const sinds = gaten.filter(function (g) { return g.van >= m.ms - 2000; });
-      const grootste = sinds.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0);
+      try { meetgaten = (window.PLRit && window.PLRit.meetgaten) ? (window.PLRit.meetgaten() || []) : []; }
+      catch (e) { console.warn('PLRit.meetgaten() onleesbaar bij de adapterstap', e); }
+      const sindsM = function (lijst) { return lijst.filter(function (g) { return g.van >= m.ms - 2000; }); };
+      const sindsLoop = sindsM(gaten), sindsMeet = sindsM(meetgaten);
+      const grootsteVan = function (lijst) { return lijst.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0); };
+      const grootste = Math.max(grootsteVan(sindsLoop), grootsteVan(sindsMeet));
+      const aantal = sindsLoop.length + sindsMeet.length;
+      const soort = sindsMeet.length
+        ? (sindsLoop.length ? 'loop- én meetgat' : 'meetgat')
+        : 'loopgat';
 
       let v = null;
       try { v = (typeof plMeetStabielVoorstel === 'function') ? (plMeetStabielVoorstel() || {}) : null; }
@@ -5660,17 +5783,17 @@ const _STAPPEN = [
       const vTekst = !v ? 'plMeetStabielVoorstel() ontbreekt — dan gaat er geen oordeel over de meetkwaliteit mee (#133)'
         : 'voorstel "stabiele meting": ' + (v.waarde || '(leeg)') + ' — ' + (v.reden || '?');
 
-      if (!sinds.length)
-        return { ok: false, tekst: 'de adapter is losgetrokken maar PLRit ziet geen gat — dan meet de ritwaarnemer ' +
-          'de onderbreking niet, en kan de analyse er ook niets van weten.  |  ' + vTekst };
+      if (!aantal)
+        return { ok: false, tekst: 'de adapter is losgetrokken maar PLRit ziet geen enkel gat — loopgat noch meetgat. ' +
+          'Dan meet de ritwaarnemer de onderbreking niet, en kan de analyse er ook niets van weten.  |  ' + vTekst };
 
       // DE KERN VAN #133: het gat is er, dus het oordeel over de meetkwaliteit
       // mag niet "schoon" zijn. Staat het er tóch, dan wijt de AI het aan de auto.
       if (v && v.waarde === 'ja')
-        return { ok: false, tekst: 'gat van ' + grootste + ' s gemeten over ' + sinds.length + ' onderbreking(en), ' +
+        return { ok: false, tekst: soort + ' van ' + grootste + ' s gemeten over ' + aantal + ' onderbreking(en), ' +
           'maar de analyse krijgt te horen dat de meting schoon was. Dan wijt de AI dit aan het voertuig (#133).  |  ' + vTekst };
 
-      return { ok: true, tekst: 'gat van ' + grootste + ' s gemeten over ' + sinds.length + ' onderbreking(en), ' +
+      return { ok: true, tekst: soort + ' van ' + grootste + ' s gemeten over ' + aantal + ' onderbreking(en), ' +
         'en het oordeel over de meting geeft dat door.  |  ' + vTekst };
     }
   },

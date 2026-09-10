@@ -11,6 +11,42 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10d (CET) — WELK GAT BETEKENT WAT, EN
+                                WIE LEEST HET
+
+       • 🚗 EERST WAT WERKTE. Twee ritten met de oogstpoort en
+         het meetgat erin. De rijstap sloot na 2 minuten in
+         plaats van tien af te dwingen; blok 14 wees 89 s
+         loopgat aan de achtergrond toe en 35 s meetgat aan de
+         adaptertrek; en de drie meetcontextvragen kwamen vóór
+         het scherm en haalden de prompt (#64 beantwoord).
+
+       • 🔌 DE ADAPTERSTAP LAS ALLEEN HET LOOPGAT — juist het
+         gat dat een losgetrokken adapter níét maakt. Hij
+         meldde "PLRit ziet geen gat" terwijl er 35 s meetgat
+         stond. Vierde lezer van dezelfde teller; nu telt hij
+         allebei mee.
+
+       • ⏱️ DE #19-PROEF EISTE NOG TIEN MINUTEN én vier
+         aanvragers. De rit viel af op de klok, de toestel-
+         ronde op de aanvragers: geen enkele ronde haalde hem
+         nog. De omstandigheden staan er nu als context bij
+         in plaats van als drempel.
+
+       • 🌫️ MEETGATEN KREGEN GEEN DUIDING. Bij een afgeknepen
+         achtergrond tikt de lus door zonder loopgat, maar
+         staat de data stil — en dat werd aan "de adapter of
+         de bus" toegeschreven. Binnen de achtergrond is het
+         nu de afknijping (#18), erbuiten pas de bus.
+
+       • 🧪 EN DE TESTRUN MAAKTE ZIJN EIGEN GAT. De guard die
+         tijdens een run niet bemonstert, returnde vóór de
+         kloktik werd bijgewerkt: na een run van 70 s stond er
+         een loopgat van 75 s, en het verslag stuurde je naar
+         de bus. Nagemeten en met een tegenproef vastgelegd.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10b (CET) — HET MEETGAT NAAST HET LOOPGAT
 
        • 🔌 EEN ADAPTER DIE ZIJN VOEDING VERLIEST, GEEFT NU

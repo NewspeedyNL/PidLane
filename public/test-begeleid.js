@@ -405,6 +405,55 @@ toetsSchoon('elke ronde is bezet zoals afgesproken',
 toetsSchoon('een stap die een venster opent, zegt dat ook (#166)',
   keurVensterstappenGemarkeerd(STAPPEN, fs.readFileSync('pidlane-testrun.js', 'utf8')));
 toetsSchoon('de rijstap sluit op de oogst en niet op de klok (#166)', keurOogstpoort(S));
+// ── #170 — DE ADAPTERSTAP MOET HET MEETGAT MEETELLEN ─────────────
+// Die stap bestaat om #133 te toetsen, en #133 gaat juist over de onderbreking
+// die GEEN loopgat maakt: een BT-SPP-socket sterft niet als de adapter zijn
+// voeding verliest, dus `connected` blijft true en de lus blijft tikken.
+//
+// Op de rit van 10-09 19:11 meldde blok 14 een meetgat van 35 s over de
+// adaptertrek, terwijl deze stap "PLRit ziet geen gat" zei — hij las alleen
+// PLRit.gaten(). Het verslag boekte #133 daarna als "aangeraakt maar niet
+// binnen", terwijl de meting geslaagd was.
+function keurAdapterstapZietMeetgat(s) {
+  const uit = [];
+  const stap = s.PLBegeleid.stappen().filter(function (x) { return x.id === 'adapterlos'; })[0];
+  if (!stap) return ['de adapterlos-stap bestaat niet meer'];
+
+  const bewaard = s.PLRit;
+  s.connected = true;
+  s.plMarkeer('adapter los', 'proef');
+  const merk = s.PLBegeleid.markeringen().filter(function (m) { return /adapter los/i.test(m.tekst); }).pop();
+  if (!merk) { s.PLRit = bewaard; return ['de markering is niet gezet — de proef kan niets vaststellen']; }
+
+  // PRECIES HET GEVAL UIT DE RIT: geen loopgat, wél een meetgat, en het
+  // oordeel over de meetkwaliteit staat op "nee".
+  s.PLRit = {
+    gaten: function () { return []; },
+    meetgaten: function () { return [{ van: merk.ms + 1000, tot: merk.ms + 36000, s: 35 }]; }
+  };
+  s.plMeetStabielVoorstel = function () { return { waarde: 'nee', reden: '30 van de 32 sensoren heeft een gat' }; };
+  let r = stap.controle();
+  if (!r.ok) uit.push('de stap ziet een meetgat van 35 s niet als onderbreking: ' + r.tekst);
+  if (r.ok && !/meetgat/.test(r.tekst)) uit.push('de stap noemt het meetgat niet in zijn uitkomst: ' + r.tekst);
+
+  // En de tegenhanger: helemaal geen gat blijft een bezwaar.
+  s.PLRit = { gaten: function () { return []; }, meetgaten: function () { return []; } };
+  r = stap.controle();
+  if (r.ok) uit.push('de stap gaat op groen terwijl er loopgat noch meetgat is: ' + r.tekst);
+
+  // En het oordeel dat "schoon" zegt terwijl er een gat is, blijft de kern.
+  s.PLRit = { gaten: function () { return []; },
+              meetgaten: function () { return [{ van: merk.ms + 1000, tot: merk.ms + 36000, s: 35 }]; } };
+  s.plMeetStabielVoorstel = function () { return { waarde: 'ja', reden: 'stabiel' }; };
+  r = stap.controle();
+  if (r.ok) uit.push('een meetgat naast "meting was schoon" komt er ongezien doorheen — dat is #133 zelf');
+
+  s.PLRit = bewaard;
+  return uit;
+}
+
+toetsSchoon('de adapterstap telt het meetgat mee (#170)', keurAdapterstapZietMeetgat(S));
+
 toetsSchoon('de optrekstap is weg en komt niet terug (#166)',
   STAPPEN.some(function (s) { return s.id === 'optrekken'; })
     ? ['de optrekstap staat er weer in — blok 14 leidt de turbovraag af uit de min/max van PLRit en heeft geen markering nodig']

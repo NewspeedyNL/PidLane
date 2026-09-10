@@ -138,7 +138,7 @@ function draai(s) {
 }
 
 /* De rit van 02-09 nagespeeld, in vier bewegingen:
-   1. de markering van stap 7 van de begeleide rit
+   1. de markering van de achtergrondstap van de begeleide meetrit
    2. de app loopt, PLRit tikt
    3. de app gaat naar de achtergrond en loopt nog `door` ms dóór — allebei de
       lussen draaien, want dat is wat er die avond werkelijk gebeurde
@@ -256,13 +256,22 @@ console.log('\n── afgeknepen in plaats van bevroren wordt apart gemeld ─�
 
 console.log('\n── zonder markering zegt de proef niets ──');
 {
-  // Blijft staan: stap 7 van de begeleide rit is de enige plek waar dit moment
-  // vandaan komt, en een proef zonder dat moment hoort dat te zeggen in plaats
-  // van iets te concluderen.
+  // Blijft staan: de achtergrondstap van de meetrit is de enige plek waar dit
+  // moment vandaan komt, en een proef zonder dat moment hoort dat te zeggen in
+  // plaats van iets te concluderen.
+  //
+  // NIET MEER OP HET STAPNUMMER (10-09-2026, #170). Hier stond /stap 7/, en
+  // daarmee legde de toets het nummer vast in plaats van de verwijzing. Toen de
+  // achtergrondstap bij #166 van 7 naar 6 schoof, hield deze regel de foute
+  // tekst overeind: de proef bleef naar stap 7 wijzen en de toets vond dat
+  // goed. Een verwijzing hoort naar de STAP te wijzen, niet naar zijn plek in
+  // een lijst die verandert.
   const s = bouw();
   const r = draai(s);
   toets('LET OP zonder achtergrondmarkering', r.staat === 'LET OP', r.staat + ': ' + r.detail);
-  toets('en hij verwijst naar stap 7', /stap 7/.test(r.detail || ''), r.detail);
+  toets('en hij verwijst naar de achtergrondstap', /achtergrondstap/.test(r.detail || ''), r.detail);
+  toets('en niet naar een hard stapnummer, dat met de lijst meeschuift (#170)',
+    !/stap\s*\d/.test(r.detail || ''), r.detail);
 }
 
 console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));

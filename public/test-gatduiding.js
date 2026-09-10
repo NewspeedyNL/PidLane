@@ -152,5 +152,60 @@ console.log('\n── geen gaten, geen duiding ──');
   toets('en een lege stiltelijst', r.lijst === '', JSON.stringify(r.lijst));
 }
 
+// ── #170 — HET MEETGAT KRIJGT DEZELFDE BEHANDELING ───────────────
+// Loopgaten werden sinds 08-09 tegen PLAchtergrond gelegd; meetgaten droegen
+// tot 10-09 alleen een duur. Op de rit van die dag stond er `Meetgaten: 15 s,
+// 35 s, 75 s` en was niet te zien welke daarvan de adapter was.
+//
+// En de kanten betekenen hier het OMGEKEERDE van bij een loopgat. Een loopgat
+// in de achtergrond is de bevriezing; een MEETGAT in de achtergrond is de
+// afknijping — de lus tikt door, maar de data staat stil. Buiten de
+// achtergrond is het juist wél de adapter of de bus.
+const M = s.plMeetgatDuiding;
+if (typeof M !== 'function') {
+  console.error('FOUT: plMeetgatDuiding() niet gevonden — meetgaten krijgen geen duiding (#170)');
+  process.exit(1);
+}
+
+console.log('\n── een meetgat binnen een achtergrondperiode is de afknijping ──');
+{
+  const r = M([gat(136, 84)], [weg(100, 120)]);
+  toets('geen enkel meetgat valt buiten', r.buiten.length === 0, JSON.stringify(r.buiten));
+  toets('de duiding wijst naar de afgeknepen achtergrond',
+    /afgeknepen achtergrond \(#18\) en niet de bus/.test(r.duiding), r.duiding);
+  toets('en NIET naar de adapter of de bus', !/dat is de adapter of de bus/.test(r.duiding), r.duiding);
+  toets('de lijst zegt erbij dat de app weg was', /84 s \(app weg\)/.test(r.lijst), r.lijst);
+}
+
+console.log('\n── een meetgat buiten elke achtergrondperiode is de adapter of de bus ──');
+{
+  const r = M([gat(400, 35)], [weg(100, 120)]);
+  toets('het meetgat valt buiten', r.buiten.length === 1, JSON.stringify(r.buiten));
+  toets('de duiding wijst naar de adapter of de bus', /dat is de adapter of de bus \(#133\)/.test(r.duiding), r.duiding);
+  toets('en niet naar #18 als oorzaak', !/afgeknepen achtergrond/.test(r.duiding), r.duiding);
+}
+
+console.log('\n── de twee soorten spreken elkaar niet na ──');
+{
+  // Het geval dat ONDERSCHEIDT: hetzelfde gat, dezelfde periode, twee soorten.
+  // Zonder deze toets zou plMeetgatDuiding() een kopie van plGatDuiding()
+  // kunnen zijn en toch groen staan.
+  const binnen = gat(136, 84), periode = [weg(100, 120)];
+  const loop = D([binnen], periode), meet = M([binnen], periode);
+  toets('het loopgat noemt de bevriezing', /dat is #18 en niet de bus/.test(loop.duiding), loop.duiding);
+  toets('het meetgat noemt de afknijping', /afgeknepen achtergrond/.test(meet.duiding), meet.duiding);
+  toets('en ze zeggen niet hetzelfde', loop.duiding !== meet.duiding,
+    'beide duidingen zijn identiek — dan is er één van de twee overbodig');
+}
+
+console.log('\n── zonder PLAchtergrond zegt ook het meetgat niets ──');
+{
+  const r = M([gat(400, 35)], null);
+  toets('null geeft "niet te zeggen"', /PLAchtergrond ontbreekt/.test(r.duiding), r.duiding);
+  toets('en trekt geen conclusie', !/adapter of de bus/.test(r.duiding), r.duiding);
+  const leeg = M([], [weg(100, 120)]);
+  toets('geen meetgaten geeft een lege duiding', leeg.duiding === '', JSON.stringify(leeg.duiding));
+}
+
 console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
 process.exit(fout ? 1 : 0);

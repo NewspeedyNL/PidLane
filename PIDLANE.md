@@ -874,6 +874,69 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Vier lezers van hetzelfde gat, en een gat dat de testrun zelf maakte — 10-09-2026 (#170)
+
+De eerste twee ritten met de oogstpoort (#166) en het meetgat (#133) erin.
+**Allebei die dingen werkten meteen**, en dat staat hier omdat het de eerste
+keer is dat ze in een auto gedraaid hebben: de rijstap sloot na **2 minuten**
+(`gereden tot 31 km/u; MAP 19–81 kPa; alle 9 meet-PIDs twee keer ververst`) in
+plaats van tien af te dwingen, en blok 14 scheidde de twee oorzaken —
+89 s loopgat → *"dat is #18 en niet de bus"*, 35 s meetgat bij de adaptertrek.
+Ook de z-index-fix hield: `3 van de 3 vragen beantwoord … de promptregel draagt
+4 regel(s) mee`, waarmee #64 voor het eerst echt beantwoord is.
+
+De vier bevindingen eronder delen één vorm: **een gat dat door de verkeerde
+lezer wordt uitgelegd.**
+
+**1. De adapterstap las alleen het loopgat.** Stap 7 van de meetrit meldde *"de
+adapter is losgetrokken maar PLRit ziet geen gat"* terwijl blok 14 in dezelfde
+run een meetgat van 35 s meldde over dezelfde trek. Bij #133 zijn blok 14, de
+#133-proef en de #75-proef omgezet — juist de stap die #133 moet toetsen bleef
+achter, de vierde lezer van die teller. Het verslag boekte #133 daarna als
+`AANGERAAKT MAAR NIET BINNEN` terwijl de meting geslaagd was.
+
+**2. De #19-proef hield een lat vast die niemand meer haalt.** Hij eiste tien
+minuten én vier aanvragers. De meetrit viel af op *"maar 7 min gereden van de
+tien"*, de toestelronde op *"maar 3 van de 4 aanvragers aan"* — twee rondes,
+twee verschillende halve eisen, en geen van beide kan hem nog halen sinds de
+rijstap op de oogst sluit. Een proef die altijd LET OP staat wordt genegeerd.
+De omstandigheden staan er nu als context bij in plaats van als drempel.
+
+**3. Meetgaten kregen geen duiding, loopgaten wel.** Er stond `Meetgaten: 15 s,
+35 s, 75 s` zonder te zien welke de adapter was. Dat is niet cosmetisch: bij een
+**afgeknepen** achtergrond (gemeten: 146 s weg, waarvan 60 s doorgelopen en 86 s
+stil) blijft de lus tikken zonder loopgat te boeken, maar staat de data stil —
+er opent dan een meetgat, en de regel eronder wees dat toe aan "de adapter of de
+bus". Precies de verwisseling die het meetgat moest wegnemen, één laag hoger
+teruggekomen. De kanten betekenen bij een meetgat het omgekeerde van bij een
+loopgat: binnen de achtergrond is het de afknijping, erbuiten pas de bus. De
+overlapregel staat nu op één plek, de twee duidingen erboven.
+
+**4. De testrun fabriceerde zijn eigen loopgat.** Nagemeten met de echte
+`PLRit`, een run van 70 s waarin de meetlus wordt overgeslagen: één loopgat van
+75 s. De `_trBezig`- en `demoMode`-guards returnden vóór `laatstT = nu`, dus zag
+de eerstvolgende tik na de run een gat ter grootte van die hele run. In het
+verslag van 19:17 stond daardoor *"de lus lag daar stil terwijl de app in beeld
+stond … kijk naar de adapter, de bus of een vastgelopen sweep"* — een jacht op
+iets wat de guard van de testrun zelf veroorzaakte. `laatstLoop` houdt nu bij
+wanneer de lus voor het laatst LIEP; `laatstT` blijft de laatste tik waarin er
+werkelijk bemonsterd is, want dat is de klok waar het meetgat zijn einde aan
+ontleent.
+
+**Wat bewust NIET is meegenomen.** Bij een verbroken verbinding loopt de lus
+óók door, dus strikt genomen is dat evenmin een loopgat. Maar een onderbreking
+van tien minuten zou dan alleen nog als "1 herverbinding" zichtbaar zijn, en dat
+is minder dan er nu staat. Dat vraagt een derde soort gat en een eigen meting;
+het staat als open punt in #170.
+
+**Twee dingen die het toetsen zelf opleverde.** De broncontrole op de
+`_trBezig`-guard toetste de *spelling* (`if (... _trBezig) return`) in plaats
+van de belofte, en viel om toen die guard er een deelgenoot bij kreeg. En
+`test-achtergrondproef.js` pinde `/stap 7/` vast; toen de achtergrondstap bij
+#166 naar stap 6 schoof, hield die toets de foute verwijzing overeind in plaats
+van hem te vangen. Een toets die een nummer vastlegt in plaats van een
+verwijzing, bewaakt de rot.
+
 ### De browserproef mat drie keer de animatie in plaats van de marge — 10-09-2026 (#168)
 
 PR #165 kreeg een rode browserproef op een scherm dat die PR niet aanraakt:
