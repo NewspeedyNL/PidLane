@@ -69,17 +69,16 @@ function toets(naam, waar, uitleg) {
     // ── 3. LAAG 1: DE FYSIEKE GRENS ──────────────────────────────
     // 0105 staat in PID_HARD_LIMITS op -40…215. 300 hoort geweigerd, 90 niet.
     //
-    // De buffers gaan er eerst uit, en dat is sinds #158 nodig. Toen ging 0105
-    // door laag 3 lopen, en dan is de tweede waarde in een reeks een GEMIDDELDE:
-    // deze toets gaf 91,5, want de 93 uit de parserproef hierboven stond nog in
-    // pidSmooth. Dat is gewenst gedrag — blok 3b hieronder toetst het expliciet
-    // — maar het maakt laag 1 onmeetbaar in diezelfde reeks.
+    // Deze toets heeft één dag lang de buffers moeten wissen, en dat is de
+    // moeite van het onthouden waard. Toen #158 laag 3 aanzette gaf "laag 1
+    // laat 90 °C door" opeens 91,5 terug: de 93 uit de parserproef hierboven
+    // stond nog in pidSmooth en werd meegemiddeld. Een toets die alleen groen
+    // stond omdat er geen middeling was. Nu laag 3 weg is meet hij weer wat er
+    // boven staat, zonder dat er een reeks omheen opgeruimd hoeft te worden.
     const hard = await app.ev(`(function(){
-      const bS = pidSmooth['0105'], bV = pidVals['0105'];
-      const schoon = function(){ delete pidSmooth['0105']; delete pidVals['0105']; };
-      schoon(); const teHoog  = validateAndSmooth('0105', 300);
-      schoon(); const normaal = validateAndSmooth('0105', 90);
-      if (bS === undefined) delete pidSmooth['0105']; else pidSmooth['0105'] = bS;
+      const bV = pidVals['0105'];
+      delete pidVals['0105']; const teHoog  = validateAndSmooth('0105', 300);
+      delete pidVals['0105']; const normaal = validateAndSmooth('0105', 90);
       if (bV === undefined) delete pidVals['0105']; else pidVals['0105'] = bV;
       return JSON.stringify({ teHoog: teHoog, normaal: normaal });
     })()`);
@@ -120,7 +119,7 @@ function toets(naam, waar, uitleg) {
     // zien als je er één uit zijn verband knipt.
     const sporen = await app.ev(`(function(){
       const naam = ['Laag 1 houdt een fysiek onmogelijke waarde tegen',
-                    'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept'];
+                    'De meting van de auto komt ongewijzigd bij de opslag aan'];
       const lijst = PLBlok5.proeven().filter(p => naam.indexOf(p.naam) >= 0);
       const voor = JSON.stringify(window._pidLetOp || null);
       lijst.forEach(p => { try { p.proef(); } catch(e){ /* de uitslag doet er hier niet toe */ } });
@@ -146,39 +145,46 @@ function toets(naam, waar, uitleg) {
     toets('en de tegenproef laat zien dat er wél een spoor zou zijn geweest',
           rauw === 'SPOOR', 'validateAndSmooth liet niets achter — dan bewijst de toets hierboven niets');
 
-    // ── LAAG 2+3, EN DIT WAS EEN WAARNEMING TOT 09-09-2026 ───────
-    // Hier stond een LET OP met de gemeten waarde erbij, want laag 2+3 stond
-    // uit voor álle PIDs: FILTERED_PIDS droeg suffixen ('05') terwijl de keten
-    // de volledige pid doorgeeft. Er stond bij: "DIT IS VERANDERD: werk §11 en
-    // deze proef bij". Dat is nu gebeurd (#158), dus het is een toets geworden.
+    // ── MEETGETROUWHEID, EN DIT WAS TOT 10-09-2026 EEN LAAG 2+3-TOETS ──
+    // De geschiedenis in drie zinnen. FILTERED_PIDS droeg suffixen ('05')
+    // terwijl de keten de volledige pid doorgeeft, vanaf de eerste commit in
+    // deze repo — laag 2 en 3 hebben nooit gedraaid. Op 09-09 is dat
+    // gelijkgetrokken (#158) en stonden ze één dag aan. Op 10-09 zijn ze
+    // weggehaald, omdat de meting liet zien dat ze op zeven van de negen PIDs
+    // niets deden en op de achtste echte spanningsdips weggooiden; §11 heeft
+    // de cijfers.
     //
-    // De vorm van de sleutels wordt er apart bij gemeten. Zonder die tweede
-    // regel zou "alles geeft null" ook groen staan — bijvoorbeeld doordat laag
-    // 1 iets weigert — en dan bewijst de eerste regel niet dat het spike-filter
-    // draait maar alleen dat er íéts null teruggeeft.
-    // Een sprong heeft een VORIGE waarde nodig — zonder die 50 valt er niets te
-    // springen en komt 200 er terecht gewoon doorheen. Dat is precies waarom
-    // deze proef hem zelf zet in plaats van te hopen dat er data staat: er
-    // hangt geen auto aan deze browser.
-    const l23 = await app.ev(`(function(){
-      const bS = pidSmooth['0105'], bV = pidVals['0105'], bP = window._pidPending;
-      delete pidSmooth['0105']; pidVals['0105'] = 50; window._pidPending = {};
-      const uit = validateAndSmooth('0105', 200);
-      window._pidPending = bP;
-      if (bS === undefined) delete pidSmooth['0105']; else pidSmooth['0105'] = bS;
+    // De toets is daarmee omgedraaid: niet "wordt er gefilterd" maar "komt de
+    // meting ongewijzigd door". Een sprong heeft een VORIGE waarde nodig, dus
+    // die zet de proef zelf — er hangt geen auto aan deze browser.
+    const trouw = await app.ev(`(function(){
+      const bV = pidVals['0105'];
+      pidVals['0105'] = 50;
+      const sprong = validateAndSmooth('0105', 200);
+      const tweede = validateAndSmooth('0105', 90);
       if (bV === undefined) delete pidVals['0105']; else pidVals['0105'] = bV;
-      return uit;
+      return JSON.stringify({ sprong: sprong, tweede: tweede });
     })()`);
-    toets('laag 2+3 draait: een sprong van 50 naar 200 °C wacht op bevestiging',
-          l23 === null, 'validateAndSmooth("0105",200) gaf ' + l23 +
-          ' in plaats van null — spike-filter en smoothing staan weer uit voor alle PIDs (#158)');
+    const t = JSON.parse(trouw);
+    toets('een sprong op een traag signaal komt ongewijzigd door',
+          t.sprong === 200, 'validateAndSmooth("0105",200) gaf ' + t.sprong +
+          ' — bij null is het spike-filter terug, en dan boekt de meetlus dit als NO DATA van de ECU');
+    toets('en de meting erna wordt niet met de vorige gemiddeld',
+          t.tweede === 90, 'gaf ' + t.tweede + ' in plaats van 90 — dat is de middeling van laag 3');
 
+    // De tegenproef hierop staat in blok 3: laag 1 weigert 300 °C. Zonder die
+    // regel zou "alles komt er ongewijzigd door" ook groen staan als
+    // validateAndSmooth() domweg zijn invoer teruggaf.
+
+    // De lijst zelf blijft bestaan, maar heeft nog één lezer: pidlane-fuel.js
+    // gebruikt hem om trage van dynamische sensoren te scheiden. Verdwijnt hij,
+    // dan valt die scheiding stil terug op "alles is dynamisch".
     const vorm = await app.ev(`(function(){
       if (typeof FILTERED_PIDS === 'undefined') return 'ontbreekt';
       return FILTERED_PIDS.has('0105') ? 'volledig' : (FILTERED_PIDS.has('05') ? 'suffix' : 'onbekend');
     })()`);
-    toets('en FILTERED_PIDS draagt de vorm die de meetketen doorgeeft',
-          vorm === 'volledig', 'sleutelvorm is "' + vorm + '" — de keten geeft de volledige pid door');
+    toets('FILTERED_PIDS staat er nog, in de vorm die pidlane-fuel.js opzoekt',
+          vorm === 'volledig', 'sleutelvorm is "' + vorm + '" — fuel.js zoekt op de volledige pid');
   } finally {
     if (app) await app.stop();
   }

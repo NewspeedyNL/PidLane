@@ -2551,55 +2551,77 @@ const PROEVEN_B5 = [
       if (validateAndSmooth('0105', 300) !== null)
         return { staat: 'FOUT', detail: 'koelwater van 300 °C werd geaccepteerd terwijl de harde limiet op ' +
           PID_HARD_LIMITS['0105'].max + ' staat — laag 1 filtert niet' };
-      if (validateAndSmooth('0105', 90) !== 90)
-        return { staat: 'FOUT', detail: 'koelwater van 90 °C werd NIET geaccepteerd — laag 1 filtert te veel' };
+      /* HERZIEN OP 10-09-2026 NA DE RIT VAN 12:41. Hier stond `!== 90`, en dat
+         werd op die rit een FOUT met de tekst "laag 1 filtert te veel" —
+         terwijl laag 1 de waarde gewoon doorliet en laag 3 hem middelde met de
+         vorige koelwatermeting van de draaiende motor. De proef mat dus laag 3
+         en wees de schuld aan laag 1 toe.
 
-      return 'laag 1 weigert 300 °C en laat 90 °C door, meetlat ' +
+         Laag 3 is intussen weg, dus `!== 90` zou het nu weer doen. Toch blijft
+         het bij deze vorm: de vraag van laag 1 ís null of niet-null, en een
+         proef die precies vraagt wat zijn onderwerp beslist kan niet nog eens
+         omvallen op iets dat een laag verderop gebeurt. Het exacte getal is de
+         vraag van de meetgetrouwheidsproef hieronder. */
+      const door = validateAndSmooth('0105', 90);
+      if (door === null)
+        return { staat: 'FOUT', detail: 'koelwater van 90 °C werd tegengehouden terwijl het binnen de meetlat ' +
+          PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max + ' valt — laag 1 filtert te veel' };
+      if (typeof door !== 'number' || !isFinite(door))
+        return { staat: 'FOUT', detail: 'koelwater van 90 °C gaf ' + door + ' terug in plaats van een getal' };
+
+      return 'laag 1 weigert 300 °C en laat 90 °C door (kwam er als ' + door + ' uit), meetlat ' +
         PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max;
     }); }
   },
 
-  // ── is laag 2+3 wel bereikbaar? ──
-  // Gevonden op 02-09 bij het schrijven van test-parser.js, gemeten op de rit
-  // van 09-09 en gerepareerd in #158: FILTERED_PIDS stond op SUFFIXEN ('05')
-  // terwijl pidlane-datalog.js `FILTERED_PIDS.has(pid)` doet en de meetketen
-  // de VOLLEDIGE pid doorgeeft ('0105'). Die opzoeking miste dus altijd en
-  // spike-filter en smoothing draaiden nergens.
+  // ── blijft de meting van de auto de meting van de auto? ──
+  // Hier stond een proef die toetste of laag 2+3 bereikbaar was. Die lagen zijn
+  // op 10-09-2026 weggehaald, dus die vraag bestaat niet meer. Wat er voor in
+  // de plaats komt is de omgekeerde vraag, en die is op een rit méér waard: komt
+  // wat de ECU zei ook ongewijzigd bij de opslag aan?
   //
-  // Dit stond een week als LET OP met de reden erbij dat het niet in dezelfde
-  // oplevering gerepareerd werd. Nu het gerepareerd is, is het een FOUT: valt
-  // deze proef om, dan staat laag 2+3 opnieuw uit voor álle PIDs, en dat is
-  // een stille meetfout en geen bekende bevinding meer.
+  // Waarom dat een rit nodig heeft en test-parser.js het niet kan: in node staat
+  // er één functie met een verzonnen reeks eromheen. Hier draait de app met de
+  // echte meetgeschiedenis van dít moment, en juist een reeks die er al staat
+  // was wat een middeling zichtbaar maakte. Op de rit van 10-09 gaf de proef
+  // hierboven een FOUT op laag 1 die in werkelijkheid laag 3 was.
   {
     issue: '#158',
-    naam: 'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept',
-    waarom: 'Alleen op een draaiende app is te zien of het filter werkelijk aanslaat op de vorm die de keten doorgeeft.',
-    proef: function () { return _zonderSporen('Laag 2+3', function () {
+    naam: 'De meting van de auto komt ongewijzigd bij de opslag aan',
+    waarom: 'Alleen op een draaiende app staat er een echte meetreeks omheen — en juist een bestaande reeks maakte de middeling zichtbaar.',
+    proef: function () { return _zonderSporen('Meetgetrouwheid', function () {
       if (typeof validateAndSmooth !== 'function')
-        return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt' };
-      if (typeof FILTERED_PIDS === 'undefined')
-        return { staat: 'FOUT', detail: 'FILTERED_PIDS ontbreekt — dan is er geen lijst met trage signalen' };
+        return { staat: 'FOUT', detail: 'validateAndSmooth() ontbreekt — dan loopt de meetketen zonder laag 1' };
 
-      const vorm = FILTERED_PIDS.has('0105') ? 'volledig' : (FILTERED_PIDS.has('05') ? 'suffix' : 'onbekend');
-
-      // Een sprong van 50 naar 200 °C op een traag signaal hoort op bevestiging
-      // te wachten (null). Komt de waarde er ongefilterd doorheen, dan is laag
-      // 2+3 overgeslagen.
+      // 200 °C koelwater is opvallend (laag 1b meldt het) maar fysiek mogelijk,
+      // dus het is een METING. Kwam er null uit, dan staat het spike-filter van
+      // laag 2 terug — en dan boekt de meetlus dit als NO DATA van de ECU.
       const bewaar = (typeof pidVals !== 'undefined') ? pidVals['0105'] : undefined;
-      let uit;
+      let sprong, tweede;
       try {
         if (typeof pidVals !== 'undefined') pidVals['0105'] = 50;
-        uit = validateAndSmooth('0105', 200);
+        sprong = validateAndSmooth('0105', 200);
+        tweede = validateAndSmooth('0105', 90);
       } finally {
         if (typeof pidVals !== 'undefined') {
           if (bewaar === undefined) delete pidVals['0105']; else pidVals['0105'] = bewaar;
         }
       }
 
-      if (uit === null) return 'een sprong op een traag signaal wacht op bevestiging — laag 2+3 draait (sleutelvorm: ' + vorm + ')';
-      return { staat: 'FOUT', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
-        'FILTERED_PIDS draagt ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
-        'dus spike-filter en smoothing worden voor álle PIDs overgeslagen — dat is #158 terug' };
+      if (sprong === null)
+        return { staat: 'FOUT', detail: 'validateAndSmooth("0105",200) gaf null terwijl 200 °C binnen ' +
+          'de fysieke grenzen valt. Dan is het spike-filter terug, en de meetlus boekt zo\'n waarde ' +
+          'als NO DATA van de ECU — niet te onderscheiden van een dode bus (#133)' };
+      if (sprong !== 200)
+        return { staat: 'FOUT', detail: 'validateAndSmooth("0105",200) gaf ' + sprong +
+          ' in plaats van 200 — er zit weer een bewerking tussen de ECU en de opslag' };
+      if (tweede !== 90)
+        return { staat: 'FOUT', detail: 'de meting erna gaf ' + tweede + ' in plaats van 90. ' +
+          'Dat is het gemiddelde van twee monsters: de middeling van laag 3 is terug, en dan slaat ' +
+          'de app een waarde op die de sensor niet kán geven' };
+
+      return 'twee metingen op een traag signaal (200 en 90 °C) komen allebei ongewijzigd terug — ' +
+        'geen filter en geen middeling tussen de ECU en de opslag';
     }); }
   },
 

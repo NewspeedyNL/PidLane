@@ -414,7 +414,7 @@ function pidsDueNow(){
 
 function startPoll(){
   clearInterval(pollTimer);
-  dataStable=false; stabilityCount={}; pidSmooth={}; outlierCount={}; window._stabilityT0=null;
+  dataStable=false; stabilityCount={}; outlierCount={}; window._stabilityT0=null;
   _pidNextPoll={};
   try{ PLLoad.reset(); }catch(e){ console.warn('PLLoad.reset mislukt:', e); }   // nieuwe PID-set = budget opnieuw ijken
   document.getElementById('aiContent').innerHTML=`<div class="ai-ph"><div class="pi">📡</div><p>Data valideren...<br><br>Even geduld — outliers worden gefilterd voor betrouwbare analyse.</p></div>`;

@@ -543,7 +543,7 @@ const YEARS=Array.from({length:22},(_,i)=>(2024-i).toString());
 // ════════════════════════════════════════
 let port=null, reader=null, writer=null, connected=false, demoMode=false;
 
-let activePIDs=new Set(), pidVals={}, pidHist={}, pidSmooth={};
+let activePIDs=new Set(), pidVals={}, pidHist={};
 // ── P4: handmatige PID-keuzes scheiden van analyse-toevoegingen ──
 // manualPIDs = door de gebruiker zelf aangevinkte sensoren; die blijven
 // altijd staan, ook als een analyse de set naar zijn eigen profiel reset.

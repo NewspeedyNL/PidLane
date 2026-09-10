@@ -8,29 +8,43 @@
 // 3-LAAGS DATA VALIDATIE & FILTERING
 // ════════════════════════════════════════
 let outlierCount={};
-// Alleen TRAGE signalen door de spike-filter. Snelle signalen (EVAP-klep 0↔100%,
-// O2-sensoren die bewust oscilleren, lambda-doel dat naar 2.0 springt bij
-// brandstofafsluiting, gas/pedaal, belasting, toeren) springen van nature —
-// filteren geeft valse meldingen en vertraagt de weergave met één meetcyclus.
-/* VOLLEDIGE PIDs, GEEN SUFFIXEN — gerepareerd 09-09-2026 (#158).
+
+/* DE TRAGE SIGNALEN. Eén lijst, één betekenis: dit zijn de PIDs waarvan de
+   waarde van nature langzaam beweegt. Snelle signalen (EVAP-klep 0↔100%,
+   O2-sensoren die bewust oscilleren, lambda-doel dat naar 2.0 springt bij
+   brandstofafsluiting, gas/pedaal, belasting, toeren) springen van nature.
+
+   HIER STOND EEN SPIKE-FILTER ACHTER, EN DIE IS OP 10-09-2026 WEGGEHAALD.
    ───────────────────────────────────────────────────────────────────
-   Deze lijst stond op suffixen ('05'), terwijl validateAndSmooth() hieronder
-   `FILTERED_PIDS.has(pid)` doet en de meetketen de VOLLEDIGE pid doorgeeft
-   ('0105'). Die opzoeking miste dus altijd, en laag 2+3 — het spike-filter en
-   de smoothing — draaiden nergens. Gemeten op de rit van 09-09:
-   `validateAndSmooth("0105",200)` gaf 200 in plaats van null, dus 200 °C
-   koelwater kwam er ongefilterd doorheen.
+   De lijst droeg suffixen ('05') terwijl `FILTERED_PIDS.has(pid)` de volledige
+   pid kreeg ('0105'), vanaf de éérste commit in deze repo. Laag 2 (spike-filter)
+   en laag 3 (smoothing) hebben dus nooit één keer gedraaid. Op 09-09 is die
+   sleutelvorm gelijkgetrokken (#158) en stonden ze een dag aan; wat dat deed
+   staat in §11 van PIDLANE.md. De korte versie:
 
-   De lijst voegt zich naar de rest en niet andersom: PID_HARD_LIMITS,
-   pidVals, pidHist en getPidDef() zijn allemaal op de volledige pid
-   gesleuteld, en deze functie gebruikt ze alle vier in dezelfde regels.
-   Eén ding heeft één betekenis.
+   - Laag 2 was inert op zeven van de negen. Koelwater vuurt pas bij een sprong
+     van 89,3 °C of 26,8 °C van het gemiddelde; de rit van 09-09 bewoog 5 °C in
+     tien minuten. In vier minuten over 31 sensoren sloeg hij één keer aan, en
+     dat was de testrun die er zelf 200 °C in duwde.
+   - Op accuspanning was hij níét inert, en juist daar verkeerd: drempel 0,8 V
+     tegen een gemeten ritswing van 2,76 V. Dat gooit echte spanningsdips weg.
+   - En weggooien betekent hier iets ergers dan het klinkt. De meetlus doet
+     `if(r!=null){...} else markPidNoData(pid)`, dus een gefilterde waarde wordt
+     geboekt als NO DATA van de ECU: geen stempel, een gat in de reeks, en via
+     de kwaliteitsscore uiteindelijk pidOpruimen(). Een filter dat een echte
+     meting weggooit is dan niet te onderscheiden van een dode bus — precies de
+     verwarring waar #133 over gaat.
+   - Laag 3 middelde over twee metingen. Koelwater komt als hele graden van de
+     ECU (A−40); de app sloeg daarna 89,5 op, een waarde die de sensor niet kán
+     geven. Dat is meetgetrouwheid inleveren voor ruisonderdrukking die op een
+     signaal met 5 °C bereik niets te onderdrukken had.
 
-   Er zit nog een tweede winst in. Een suffix is dubbelzinnig over modes heen:
-   '05' is zowel 0105 (live koelwater) als 0205 (dezelfde waarde uit een
-   freeze frame). Smoothing over een freeze frame is zinloos — dat is één
-   momentopname, geen reeks — en met de volledige pid kan dat niet meer per
-   ongeluk gebeuren. */
+   Laag 1 en 1b blijven staan: die doen wél iets, en het goede.
+
+   DE LIJST ZELF BLIJFT, want pidlane-fuel.js gebruikt hem los van dit bestand
+   om trage van dynamische sensoren te scheiden. Dat is zijn enige lezer nu,
+   en de volledige pid is daar de goede vorm — een suffix is dubbelzinnig over
+   modes heen ('05' is zowel 0105 als 0205 uit een freeze frame). */
 const FILTERED_PIDS=new Set([
   '0105', // koelwatertemperatuur
   '010F', // inlaatluchttemperatuur
@@ -90,51 +104,16 @@ function validateAndSmooth(pid,rawVal){
     // bewust GEEN markOutlier en GEEN return: de waarde loopt gewoon door.
   }
 
-  // Snel signaal? Direct doorlaten — geen filter, geen smoothing.
-  if(!FILTERED_PIDS.has(pid)) return Math.round(rawVal*100)/100;
+  /* EN DAT IS ALLES. Hier stond laag 2 (spike-filter met bevestiging) en laag
+     3 (gemiddelde over twee metingen); ze zijn op 10-09-2026 weggehaald met de
+     reden bij FILTERED_PIDS hierboven en de meting in §11 van PIDLANE.md.
 
-  // LAAG 2+3 — Spike-filter MET herstel, alleen voor trage signalen.
-  const prev=pidVals[pid];
-  const range=Math.max(1e-6,(def?.max??255)-(def?.min??0));
-  let suspect=false, reason='';
-  if(prev!==undefined&&prev!==null){
-    if(Math.abs(rawVal-prev)/range*100>35){ suspect=true; reason='sprong'; }
-  }
-  if(!suspect&&pidHist[pid]&&pidHist[pid].length>=8){
-    const recent=pidHist[pid].slice(-10).map(x=>x.v);
-    const mean=recent.reduce((a,b)=>a+b,0)/recent.length;
-    const std=Math.sqrt(recent.reduce((a,b)=>a+(b-mean)**2,0)/recent.length);
-    const minStd=range*0.03; // vloer: 3% van het meetbereik
-    if(Math.abs(rawVal-mean)>3.5*Math.max(std,minStd)){ suspect=true; reason='outlier'; }
-  }
-  if(suspect){
-    const p=window._pidPending=window._pidPending||{};
-    const pd=p[pid];
-    if(pd&&Date.now()-pd.t<5000&&Math.abs(rawVal-pd.v)<=range*0.15){
-      // Tweede meting bevestigt — echte verandering: accepteren, stats verversen
-      delete p[pid];
-      if(pidHist[pid]) pidHist[pid]=pidHist[pid].slice(-2);
-      pidSmooth[pid]=[];
-    } else {
-      p[pid]={v:rawVal,t:Date.now()};
-      // Max 1 logregel per PID per 10 sec — geen log-flood meer
-      const lw=window._outlierLogged=window._outlierLogged||{};
-      if(!lw[pid]||Date.now()-lw[pid]>10000){
-        lw[pid]=Date.now();
-        log(`⚠ ${def?.name||pid}: ${fv(rawVal)} wijkt af (${reason}) — wacht op bevestiging`,'warn');
-      }
-      markOutlier(pid,rawVal,reason);
-      return null;
-    }
-  }
-
-  // Lichte smoothing — max 2 metingen (was 4) voor snelle respons
-  if(!pidSmooth[pid]) pidSmooth[pid]=[];
-  pidSmooth[pid].push(rawVal);
-  if(pidSmooth[pid].length>2) pidSmooth[pid].shift();
-  // Simpel gemiddelde — geen gewogen smoothing (was te traag)
-  const smoothed=pidSmooth[pid].reduce((a,b)=>a+b,0)/pidSmooth[pid].length;
-  return Math.round(smoothed*100)/100;
+     Wat de app teruggeeft is nu wat de ECU zei, afgerond op twee decimalen.
+     Voor een diagnose-app is dat de bedoeling: een meting die de sensor niet
+     kán produceren is geen verbetering, en een echte uitschieter is juist het
+     signaal waarvoor je de PID leest. Laag 1 houdt tegen wat natuurkundig niet
+     kan, laag 1b meldt wat opvalt en laat het staan. */
+  return Math.round(rawVal*100)/100;
 }
 
 function markOutlier(pid,val,reason){

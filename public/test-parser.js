@@ -295,51 +295,56 @@ console.log('\n── laag 1b: opvallend maar echt (melden, niet weggooien) ─�
   toets('laag 1b telt hem niet als uitschieter', s.lees('outlierCount["0105"]||0'), 0);
 }
 
-console.log('\n── laag 2+3: het spike-filter ──');
+console.log('\n── na laag 1b houdt de keten op: geen filter, geen middeling ──');
 {
-  const s = bouw();
-  // Snelle signalen horen ongefilterd door te lopen: een toerental dat van
-  // 800 naar 6000 springt is geen meetfout maar een optrekker.
-  s.pidVals['010C'] = 800;
-  toets('toerental 800 -> 6000 wordt niet gefilterd', s.validateAndSmooth('010C', 6000), 6000);
+  /* HIER STONDEN TWEE BLOKKEN OVER LAAG 2+3, EN DIE LAGEN ZIJN WEG (10-09-2026).
 
-  // Het filter zelf, aangeroepen zoals de meetketen hem aanroept: met de
-  // VOLLEDIGE pid. Tot #158 stond FILTERED_PIDS op suffixen en moest hier '05'
-  // staan om het filter überhaupt te raken — precies de reden dat laag 2+3
-  // voor álle PIDs oversloeg zonder dat een test dat merkte.
+     De korte geschiedenis, want die verklaart waarom deze toets omgekeerd is
+     komen te staan. FILTERED_PIDS droeg suffixen ('05') terwijl
+     `FILTERED_PIDS.has(pid)` de volledige pid kreeg, vanaf de eerste commit in
+     deze repo: laag 2 en 3 hebben nooit gedraaid. Op 09-09 is die sleutelvorm
+     gelijkgetrokken (#158) en stonden ze één dag aan. Wat toen gemeten is staat
+     in §11 van PIDLANE.md; de kern is dat de meetlus een gefilterde waarde als
+     NO DATA van de ECU boekt, en dat laag 3 waarden opsloeg die de sensor niet
+     kan produceren.
+
+     Wat deze toets nu bewaakt is dus het tegenovergestelde: tussen laag 1b en
+     de return staat níéts meer. Komt daar ooit weer een filter, dan wordt dit
+     rood. */
+  const s = bouw();
+  s.pidVals['010C'] = 800;
+  toets('een springend snel signaal komt er ongefilterd door',
+    s.validateAndSmooth('010C', 6000), 6000);
+
+  // Het geval waar laag 2 op vuurde: een traag signaal dat 150 °C springt.
+  // Dat is nu gewoon de meting, want laag 1 laat 200 door (−40…215) en laag 1b
+  // meldt hem alleen. Wie hier weer null krijgt, heeft het spike-filter terug.
   const s2 = bouw();
   s2.pidVals['0105'] = 50;
-  toets('een sprong op een traag signaal wacht op bevestiging',
-    s2.validateAndSmooth('0105', 200), null);
-  // Tweede meting binnen 5 s die de sprong bevestigt → alsnog accepteren.
-  toets('de bevestiging erna wordt geaccepteerd',
+  toets('een sprong op een traag signaal wordt niet meer tegengehouden',
     s2.validateAndSmooth('0105', 200), 200);
-}
 
-console.log('\n── laag 2+3: is het filter bereikbaar zoals de app hem aanroept? ──');
-{
-  // parsePID() en applyParsedBytes() geven de VOLLEDIGE pid door ('0105').
-  // FILTERED_PIDS stond tot 09-09-2026 op SUFFIXEN ('05'), terwijl
-  // pidlane-datalog.js `FILTERED_PIDS.has(pid)` doet — zonder slice. Die
-  // opzoeking miste dus altijd en laag 2+3 draaide nergens; op de rit van
-  // 09-09 gaf validateAndSmooth("0105",200) gewoon 200 terug (#158).
-  //
-  // Dit stond hier een week als LET OP, met de reden erbij dat het niet in
-  // diezelfde PR gerepareerd werd. Nu het gerepareerd ís, is het een gewone
-  // toets: valt hij om, dan staan spike-filter en smoothing weer uit voor
-  // álle PIDs, en dat is een FOUT en geen waarschuwing.
-  const s = bouw();
-  s.pidVals['0105'] = 50;
-  toets('laag 2+3 is bereikbaar vanaf de volledige PID-vorm',
-    s.validateAndSmooth('0105', 200), null);
-
-  // En de tegenproef eronder: een PID die NIET in de lijst staat hoort er wél
-  // ongefilterd doorheen te komen. Zonder deze regel zou "alles geeft null"
-  // ook groen staan, en dan meet de toets hierboven niets.
+  /* En de toets die laag 3 zou vangen. Twee metingen achter elkaar op hetzelfde
+     trage signaal: met de oude middeling over twee monsters gaf de tweede
+     (50+200)/2 = 125 terug. Nu hoort er tweemaal de gemeten waarde uit te komen.
+     Dit is het onderscheid dat de vorige opzet niet maakte — die keek alleen
+     naar null of niet-null, en had een teruggekeerde smoothing niet gezien. */
   const s3 = bouw();
-  s3.pidVals['010C'] = 800;
-  toets('een PID buiten de lijst blijft ongefilterd',
-    s3.validateAndSmooth('010C', 6000), 6000);
+  toets('de eerste meting komt onveranderd terug', s3.validateAndSmooth('0105', 50), 50);
+  toets('en de tweede ook — er wordt niet gemiddeld', s3.validateAndSmooth('0105', 200), 200);
+
+  // Meetgetrouwheid op een sensor met hele graden: koelwater komt als A−40 van
+  // de ECU en kan dus geen halve graden geven. Met laag 3 sloeg de app 89,5 op.
+  const s4 = bouw();
+  s4.validateAndSmooth('0105', 89);
+  toets('een sensor met hele graden levert geen halve graad op',
+    Number.isInteger(s4.validateAndSmooth('0105', 90)), true);
+
+  // Tegenproef op de tegenproef: laag 1 moet nog wél tegenhouden, anders zegt
+  // "alles komt er ongefilterd door" niets over de keten die eronder hoort.
+  const s5 = bouw();
+  toets('laag 1 houdt fysiek onmogelijk koelwater nog steeds tegen',
+    s5.validateAndSmooth('0105', 300), null);
 }
 
 console.log('\n── de hele keten: ruwe regel in, meetwaarde uit ──');
