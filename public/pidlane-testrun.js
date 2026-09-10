@@ -922,8 +922,66 @@ function plMeetgatDuiding(meetgaten, perioden) {
           'in beeld en de lus tikte, en er kwam tóch niets binnen: dat is de adapter of de bus (#133).';
   return { lijst: lijst, buiten: buiten, duiding: duiding };
 }
+/* IS DE ONDERRAND BEREIKBAAR, OF LIGT HIJ VAST ACHTER DE BALK? (10-09-2026, #172)
+
+   De proef die dit gebruikt meldde vanaf 01-09 elke rit FOUT: "#appGrid loopt
+   door tot onder de navigatiebalk". Op 10-09 zei de bestuurder in dezelfde
+   sessie "Alles vrij — er valt niets weg", en dat was het antwoord waar die
+   proef zelf om vroeg.
+
+   Dat #appGrid LANGER is dan het scherm is op ≤760px met opzet zo: `.app`
+   krijgt daar `height:auto` en de pagina scrollt. De oude regel mat of het
+   element binnen de vouw paste; de vraag is of een mens bij de onderste regel
+   kan. Op een pagina die scrollt vallen die twee nooit samen, en dan is de
+   melding altijd waar en nooit iets waard — precies de "test die altijd rood
+   staat" uit CLAUDE.md.
+
+   De scrollruimte is wat het onderscheid maakt. Kun je nog `rest` pixels
+   omlaag, dan komt de onderrand `rest` omhoog. Wat dán nog achter de balk
+   staat, staat er vast — en dát is #58.
+
+   Los gehouden en naar buiten gebracht omdat het oordeel zonder browser te
+   toetsen hoort te zijn: de DOM-kant (welke maten) blijft in de proef, de
+   regel (wat betekenen ze) staat hier. */
+function plOnderrandOordeel(onder, grens, scrollRest) {
+  var tekort = onder - grens;                       // wat er nu achter de balk zit
+  var rest = Math.max(0, scrollRest || 0);          // hoeveel er nog te scrollen valt
+  var vast = tekort - rest;                         // wat er ook uitgescrold blijft staan
+  var maat = 'werkscherm eindigt op ' + Math.round(onder) + ' van ' + Math.round(grens) + 'px';
+  if (tekort <= 1)
+    return { ok: true, tekort: tekort, rest: rest, vast: vast, tekst: maat + ' — past binnen het scherm' };
+  if (vast <= 1)
+    return { ok: true, tekort: tekort, rest: rest, vast: vast,
+             tekst: maat + ' — loopt ' + Math.round(tekort) + 'px door onder de balk, maar er is nog ' +
+                    Math.round(rest) + 'px scrollruimte: bereikbaar' };
+  return { ok: false, tekort: tekort, rest: rest, vast: vast,
+           tekst: maat + ' — ' + Math.round(vast) + 'px blijft achter de navigatiebalk staan, ook volledig ' +
+                  'uitgescrold (' + Math.round(tekort) + 'px eronder, ' + Math.round(rest) + 'px scrollruimte)' };
+}
+
+/* Hoeveel er onder een element nog weg te scrollen valt. De pagina zelf kan
+   scrollen, maar ook een bak eromheen — welke van de twee het is, verschilt
+   per scherm, dus we nemen de ruimste. */
+function _plScrollRestOnder(el) {
+  var rest = 0;
+  var doc = document.scrollingElement || document.documentElement;
+  if (doc) rest = Math.max(rest, doc.scrollHeight - doc.clientHeight - doc.scrollTop);
+  for (var n = el; n && n !== document.body; n = n.parentElement) {
+    var ov = '';
+    try { ov = getComputedStyle(n).overflowY; }
+    catch (e) { console.warn('overflowY onleesbaar bij het meten van de scrollruimte', e); continue; }
+    if (ov === 'auto' || ov === 'scroll')
+      rest = Math.max(rest, n.scrollHeight - n.clientHeight - n.scrollTop);
+  }
+  return rest;
+}
+
 window.plGatDuiding = plGatDuiding;
 window.plMeetgatDuiding = plMeetgatDuiding;
+window.plOnderrandOordeel = plOnderrandOordeel;
+// Ook de meetkant naar buiten: welke bak er scrollt is een DOM-vraag, en die
+// is alleen in een echte browser te beantwoorden (bproef-schermranden.js).
+window._plScrollRestOnder = _plScrollRestOnder;
 window.PLRit = PLRit;
 try { PLRit.start(); } catch (e) { console.warn('PLRit niet gestart — blok 14 (de rit) blijft dan leeg', e); }
 
@@ -2591,13 +2649,22 @@ const PROEVEN_B5 = [
   },
 
   // ── kloppen de veilige zones op dit toestel? ──
-  // Deze gaf op 01-09 de enige FOUT van de run, en het is nog onbeslist of
-  // de melding klopt of de meting: op ≤760px krijgt .app height:auto en mág
-  // #appGrid langer zijn dan het scherm. Stap 7 van de begeleide run zet er
-  // een oog op; tot dat antwoord er is blijft deze proef staan (#79).
   // Dit is de enige plek waar dit écht te meten valt: in een browser zijn
   // beide zones 0 en klopt álles. Op een toestel met een statusbalk en drie
   // knoppen komen de getallen pas uit elkaar. Vandaar meten en niet lezen.
+  //
+  // HET OORDEEL OVER DE ONDERRAND IS OP 10-09-2026 HERZIEN (#172). Hier stond
+  // dat het "nog onbeslist" was of de melding klopte of de meting, en dat een
+  // oog dat moest beslissen. Dat oog heeft gesproken: in de toestelronde van
+  // 10-09 beoordeelde de bestuurder de onderrand met "Alles vrij — er valt
+  // niets weg", terwijl deze proef in dezelfde sessie twee keer FOUT meldde
+  // (41px en 46px). De melding klopte niet.
+  //
+  // De meting stelde de verkeerde vraag: of #appGrid binnen de vouw PAST, in
+  // plaats van of een mens bij de onderste regel KAN. Op ≤760px krijgt .app
+  // bewust height:auto en scrollt de pagina — dan is "loopt door tot onder de
+  // balk" per definitie waar en per definitie betekenisloos. Zie
+  // plOnderrandOordeel() voor de regel die er nu onder ligt.
   {
     issue: '#79',
     naam: 'De app past tussen de statusbalk en de navigatiebalk',
@@ -2627,12 +2694,10 @@ const PROEVEN_B5 = [
       if (!app) return { staat: 'LET OP', detail: '#appGrid niet gevonden' };
       const onder = app.getBoundingClientRect().bottom;
       const grens = window.innerHeight - sab;
-      if (onder > grens + 1)
-        return { staat: 'FOUT', detail: 'het werkscherm loopt tot ' + onder.toFixed(0) + 'px door terwijl er op ' +
-          grens.toFixed(0) + 'px een navigatiebalk begint — de onderste ' + (onder - grens).toFixed(0) +
-          'px valt daarachter weg (issue #58)' };
-      return 'statusbalk ' + sat.toFixed(0) + 'px, navigatiebalk ' + sab.toFixed(0) +
-             'px, werkscherm eindigt op ' + onder.toFixed(0) + ' van ' + grens.toFixed(0) + 'px' +
+      const o = plOnderrandOordeel(onder, grens, _plScrollRestOnder(app));
+      const zones = 'statusbalk ' + sat.toFixed(0) + 'px, navigatiebalk ' + sab.toFixed(0) + 'px';
+      if (!o.ok) return { staat: 'FOUT', detail: zones + ' — ' + o.tekst + ' (issue #58)' };
+      return zones + ' — ' + o.tekst +
              (sat + sab === 0 ? ' (browser: geen zones, dus deze proef zegt hier weinig)' : '');
     }
   },

@@ -372,6 +372,15 @@ MUTATIES=(
 "public/pidlane-testrun.js@@        ? ' — alle meetgaten vallen binnen een periode waarin de app weg was: dan is dit de afgeknepen '@@        ? ' — alle meetgaten vallen buiten elke periode waarin de app weg was: dan is dit de '@@test-gatduiding.js@@een meetgat in de achtergrond wordt weer aan de bus toegeschreven"
 "public/pidlane-testrun.js@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');\n      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');@@test-blok5lijst.js@@de tien minuten staan weer als drempel in de #19-proef"
 
+# ── De onderrand: bereikbaar of vast achter de balk (#172, 10-09-2026) ──
+# Deze proef meldde vanaf 01-09 elke rit FOUT, terwijl de bestuurder op 10-09
+# in de toestelronde "Alles vrij — er valt niets weg" antwoordde. De meting
+# vroeg of #appGrid PASTE in plaats van of je erbij KUNT, en op een pagina die
+# scrollt is dat altijd waar en nooit iets waard. De twee fouten die je hier
+# echt kunt maken zijn allebei een terugval naar die oude vraag: de
+# scrollruimte niet meewegen, of hem wél lezen maar niet aftrekken.
+"public/pidlane-testrun.js@@  var vast = tekort - rest;                         // wat er ook uitgescrold blijft staan@@  var vast = tekort;                                // wat er ook uitgescrold blijft staan@@test-schermranden.js@@de scrollruimte telt niet meer mee: elke scrollende pagina is weer een bevinding"
+"public/pidlane-testrun.js@@  var rest = Math.max(0, scrollRest || 0);          // hoeveel er nog te scrollen valt@@  var rest = 1e9;                                   // hoeveel er nog te scrollen valt@@test-schermranden.js@@er is altijd genoeg scrollruimte, dus een echt onbereikbare onderrand valt weg"
 # ── Geen wachtwoord in de Play-inzending (#174, 10-09-2026) ──
 # Deze repository is PUBLIEK, en §7 van PLAY-INZENDING.md vraagt om een
 # reviewaccount met tegoed erop. De sleutelscan in CI zoekt naar API-sleutels

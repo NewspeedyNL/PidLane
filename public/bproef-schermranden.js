@@ -455,6 +455,78 @@ async function keurVel(app, v, waar, sluit) {
     for (const v of VELLEN) await keurVel(app, v, 'kort', SLUIT_VEL);
     for (const v of REMOTE_VELLEN) await keurVel(app, v, 'kort', SLUIT_REMOTE);
 
+    /* ── 2e. DE ONDERRAND VAN HET WERKSCHERM (#172) ──────────────────
+       De blok 5-proef "De app past tussen de statusbalk en de navigatiebalk"
+       meldde vanaf 01-09 elke rit FOUT, terwijl de bestuurder op 10-09
+       "Alles vrij — er valt niets weg" antwoordde. De regel is herzien: niet
+       "past #appGrid binnen de vouw" maar "kun je bij de onderste regel".
+
+       Die regel zelf staat in test-schermranden.js, zonder browser. Wat DAAR
+       niet te toetsen valt is de meetkant: vindt `_plScrollRestOnder()` de bak
+       die werkelijk scrollt? Een functie die stilletjes 0 teruggeeft laat elke
+       scrollende pagina weer als bevinding lezen, en dan is er niets opgelost.
+
+       Op dit scherm past #appGrid gewoon, dus de situatie moet gemaakt worden:
+       we duwen er een hoog blok in en kijken of de meting meegroeit. */
+    console.log('\n2e. De onderrand van het werkscherm — bereikbaar of vast? (#172)');
+    await app.venster(KORT_B, KORT_H);
+    await rust(120);
+
+    const onderrand = `(function (extra) {
+      const g = document.getElementById('appGrid');
+      if (!g) return { fout: 'geen #appGrid' };
+      let vul = document.getElementById('plProefVulling');
+      if (extra > 0) {
+        if (!vul) { vul = document.createElement('div'); vul.id = 'plProefVulling'; g.appendChild(vul); }
+        vul.style.cssText = 'height:' + extra + 'px';
+      } else if (vul) { vul.remove(); }
+      const meet = function (t) {
+        const p = document.createElement('div');
+        p.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:' + t;
+        document.body.appendChild(p); const h = p.getBoundingClientRect().height; p.remove(); return h;
+      };
+      const sab = meet('var(--pl-sab)');
+      const onder = g.getBoundingClientRect().bottom;
+      const grens = window.innerHeight - sab;
+      const rest = window._plScrollRestOnder(g);
+      return { onder: Math.round(onder), grens: Math.round(grens), rest: Math.round(rest),
+               oudeRegel: onder > grens + 1 ? 'FOUT' : 'ok',
+               oordeel: window.plOnderrandOordeel(onder, grens, rest) };
+    })`;
+
+    toets('de meetkant hangt naar buiten',
+      await app.ev(`typeof window._plScrollRestOnder === 'function' && typeof window.plOnderrandOordeel === 'function'`),
+      'zonder die twee is er niets van dit oordeel in een browser te meten');
+
+    const rustig = await app.ev(`${onderrand}(0)`);
+    toets('zonder vulling past het werkscherm', !rustig.fout && rustig.oordeel && rustig.oordeel.ok,
+      JSON.stringify(rustig));
+
+    // Nu 600px erbij: het werkscherm loopt gegarandeerd onder de balk door, en
+    // de pagina kan dat wegscrollen. Dat is het geval van de rit van 10-09.
+    const vol = await app.ev(`${onderrand}(600)`);
+    toets('met 600px extra loopt het werkscherm wél onder de balk door',
+      !vol.fout && vol.oudeRegel === 'FOUT', JSON.stringify(vol));
+    toets('en de meting ziet dat er scrollruimte is', !vol.fout && vol.rest > 0,
+      'scrollruimte gemeten: ' + (vol.rest) + 'px — een 0 hier laat elke scrollende pagina weer rood staan');
+    toets('dus het oordeel blijft groen: bereikbaar', !vol.fout && vol.oordeel && vol.oordeel.ok,
+      JSON.stringify(vol.oordeel));
+    if (!vol.fout)
+      console.log('      ' + vol.onder + 'px werkscherm, balk op ' + vol.grens + 'px, ' + vol.rest + 'px scrollruimte');
+
+    // TEGENPROEF: zet het scrollen uit. Dezelfde maten, en dan hóórt het wél
+    // een bevinding te zijn — anders zegt dit blok niets.
+    await app.ev(`(function(){ const d=document.scrollingElement||document.documentElement;
+      d.dataset.plProefOv = d.style.overflow || ''; d.style.overflow='hidden';
+      document.body.style.overflow='hidden'; return true; })()`);
+    const klem = await app.ev(`${onderrand}(600)`);
+    toets('zonder scrollruimte is dezelfde situatie wél een bevinding (tegenproef)',
+      !klem.fout && klem.oordeel && klem.oordeel.ok === false,
+      JSON.stringify(klem));
+    await app.ev(`(function(){ const d=document.scrollingElement||document.documentElement;
+      d.style.overflow = d.dataset.plProefOv || ''; document.body.style.overflow='';
+      const v=document.getElementById('plProefVulling'); if(v) v.remove(); return true; })()`);
+
     console.log('\n3. Tegenproef — meet deze proef werkelijk iets?');
 
     /* EERST DE WACHTREGEL ZELF (#168). De rest van dit blok toetst of de

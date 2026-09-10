@@ -227,5 +227,87 @@ console.log('\n4. Tegenproef — wordt een teruggedraaide regel ook echt rood?')
         'als dit WEL matcht is de regex hierboven te ruim en meet hij niets');
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 5. DE ONDERRAND: BEREIKBAAR OF VAST ACHTER DE BALK? (#172)
+// ══════════════════════════════════════════════════════════════════
+// De blok 5-proef "De app past tussen de statusbalk en de navigatiebalk"
+// meldde vanaf 01-09 elke rit FOUT. Op 10-09 beoordeelde de bestuurder in de
+// toestelronde dezelfde onderrand met "Alles vrij — er valt niets weg",
+// terwijl blok 5 in die sessie twee keer FOUT gaf (41px en 46px). De melding
+// klopte niet; de meting stelde de verkeerde vraag.
+//
+// Dat #appGrid langer is dan het scherm is op ≤760px met OPZET zo (.app krijgt
+// height:auto en de pagina scrollt). Wat een mens hindert is niet dat er iets
+// onder de vouw ligt, maar dat er iets achter de balk ligt waar je niet bij
+// kunt. plOnderrandOordeel() weegt daarom de scrollruimte mee.
+//
+// De regel is hier los te toetsen; de DOM-kant (welke maten erin gaan) blijft
+// in de proef zelf. Hij wordt GELADEN uit de bron — geen kopie, dus verdwijnt
+// hij, dan stopt deze test in plaats van iets van zichzelf te toetsen.
+console.log('\n5. De onderrand: bereikbaar of vast achter de balk? (#172)');
+{
+  const vm = require('vm');
+  const zand = {};
+  zand.window = zand;
+  zand.connected = false; zand.demoMode = false;
+  zand.pidVals = {}; zand._pidLastUpd = {}; zand.activePIDs = new Set();
+  zand.console = { warn() { }, error() { }, log() { } };
+  zand.localStorage = { getItem() { return null; }, setItem() { }, key() { return null; }, length: 0 };
+  zand.document = {
+    getElementById() { return null; },
+    createElement() { return { style: {}, classList: { add() { }, remove() { } } }; },
+    querySelectorAll() { return []; }, addEventListener() { }, body: { appendChild() { } }
+  };
+  zand.navigator = { userAgent: 'node' };
+  zand.setInterval = function () { return 0; };
+  zand.clearInterval = function () { };
+  zand.setTimeout = function () { return 0; };
+  zand.PLBus = { stats() { return { belasting: 70, perSec: 5, venGemMs: 120, foutPct: 0 }; } };
+  zand.PLLoad = { staat() { return { mult: 1, tempoPct: 100 }; }, cfg: {} };
+  vm.createContext(zand);
+  vm.runInContext(lees('pidlane-testrun.js'), zand, { filename: 'pidlane-testrun.js' });
+
+  const O = zand.plOnderrandOordeel;
+  toets('plOnderrandOordeel() bestaat', typeof O === 'function',
+        'zonder die functie oordeelt blok 5 weer op "past het" in plaats van "kun je erbij"');
+
+  if (typeof O === 'function') {
+    // HET GEVAL UIT DE RIT. 830px werkscherm, balk begint op 784: 46px eronder,
+    // maar de pagina kan nog ruim scrollen. Dat is wat de bestuurder zag.
+    const rit = O(830, 784, 300);
+    toets('de rit van 10-09 is géén bevinding meer', rit.ok === true, rit.tekst);
+    toets('en de uitkomst zegt waaróm: er is scrollruimte', /bereikbaar/.test(rit.tekst), rit.tekst);
+
+    // HET GEVAL DAT WEL EEN BEVINDING IS: niets meer te scrollen, en er blijft
+    // iets onder de balk staan. Dat is #58 zoals het gemeld werd.
+    const vast = O(830, 784, 0);
+    toets('zonder scrollruimte is dezelfde maat wél een bevinding', vast.ok === false, vast.tekst);
+    toets('en hij noemt wat er vast blijft staan', /46px blijft achter de navigatiebalk/.test(vast.tekst), vast.tekst);
+
+    // DE RAND ERTUSSEN, en die is het punt van deze hele reparatie: net genoeg
+    // scrollruimte is genoeg, net te weinig niet.
+    toets('precies genoeg scrollruimte is genoeg', O(830, 784, 46).ok === true, JSON.stringify(O(830, 784, 46)));
+    toets('tien pixels te weinig is een bevinding', O(830, 784, 36).ok === false, JSON.stringify(O(830, 784, 36)));
+
+    // En het gewone geval: alles past, geen scrollen nodig.
+    const past = O(700, 784, 0);
+    toets('een scherm dat gewoon past is ok', past.ok === true, past.tekst);
+    toets('en zegt dat het past', /past binnen het scherm/.test(past.tekst), past.tekst);
+
+    // TEGENPROEF OP DE REGEL ZELF. Zonder de scrollruimte mee te wegen zouden
+    // de eerste en de tweede casus hetzelfde antwoord geven — en dan meet deze
+    // hele controle niets. Het verschil MOET er zijn.
+    toets('scrollruimte maakt aantoonbaar verschil (tegenproef)',
+          O(830, 784, 300).ok !== O(830, 784, 0).ok,
+          'met en zonder scrollruimte geeft hetzelfde oordeel — dan telt de scrollruimte niet mee');
+
+    // En een negatieve/onzin-scrollruimte mag niet stiekem een bevinding
+    // wegpoetsen; die hoort als 0 te tellen.
+    toets('een onzinnige scrollruimte telt als nul',
+          O(830, 784, -500).ok === false && O(830, 784, null).ok === false,
+          JSON.stringify([O(830, 784, -500), O(830, 784, null)]));
+  }
+}
+
 console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));
 process.exit(fouten ? 1 : 0);

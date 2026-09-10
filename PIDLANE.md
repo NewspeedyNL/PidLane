@@ -1016,6 +1016,48 @@ Twee documenten die hetzelfde beweerden liepen ook uit de pas: §4 zei dat de
 feature graphic *"nog gemaakt moet worden"* terwijl §16 hem afgevinkt had. De
 stand staat nu op één plek.
 
+### De onderrand-proef vroeg of het paste, niet of je erbij kon — 10-09-2026 (#172)
+
+Boven deze blok-5-proef stond sinds 01-09 met zoveel woorden dat het onbeslist
+was *"of de melding klopt of de meting"*, en dat een oog dat moest beslissen.
+Dat oog heeft gesproken: in de toestelronde van 10-09 beoordeelde de bestuurder
+de onderrand met **"Alles vrij — er valt niets weg"**, terwijl de proef in
+dezelfde sessie twee keer FOUT meldde (41px en 46px). Het was de enige harde
+FOUT in beide verslagen, en hij stond er al een handvol ritten.
+
+**De melding klopte niet — de meting stelde de verkeerde vraag.** De regel was:
+
+```js
+if (app.getBoundingClientRect().bottom > window.innerHeight - sab + 1) → FOUT
+```
+
+Dat `#appGrid` langer is dan het scherm is op ≤760px **met opzet** zo: `.app`
+krijgt daar `height:auto` en de pagina scrollt. De proef mat of het element
+binnen de vouw paste; wat een mens hindert is of hij bij de onderste regel kan.
+Op een pagina die scrollt vallen die twee nooit samen — en dan is de melding
+altijd waar en nooit iets waard.
+
+**Wat het onderscheid maakt is de scrollruimte.** Kun je nog `rest` pixels
+omlaag, dan komt de onderrand `rest` omhoog. Wat dán nog achter de balk staat,
+staat er vast, en dát is #58. `plOnderrandOordeel(onder, grens, scrollRest)`
+draagt die regel; de DOM-kant (welke maten) blijft in de proef.
+
+**De twee helften zijn apart getoetst, en dat is hier het punt.** De regel staat
+in `test-schermranden.js` met de echte getallen van de rit (830 tegen 784) en
+een tegenproef: met en zonder scrollruimte móét het oordeel verschillen, anders
+weegt de scrollruimte niet mee. De meetkant is in `bproef-schermranden.js`
+getoetst, want "welke bak scrollt hier eigenlijk" is een DOM-vraag die node niet
+kan beantwoorden — een `_plScrollRestOnder()` die stilletjes 0 teruggeeft laat
+elke scrollende pagina weer rood staan. Op het korte scherm forceert die proef
+de situatie met 600px vulling: 892px werkscherm, balk op 592px, 300px
+scrollruimte → bereikbaar; scrollen uitgezet → wél een bevinding.
+
+**De les.** Deze proef heeft maandenlang eerlijk in zijn eigen commentaar gezet
+dat hij onbeslist was, en is intussen elke rit afgegaan. Een FOUT met een
+kanttekening blijft een FOUT in het verslag, en na een paar ritten leest niemand
+de kanttekening meer. De vraag "meet dit wat de gebruiker hindert" is goedkoper
+vooraf dan een openstaande melding die je elke rit opnieuw wegdenkt.
+
 ### Vier lezers van hetzelfde gat, en een gat dat de testrun zelf maakte — 10-09-2026 (#170)
 
 De eerste twee ritten met de oogstpoort (#166) en het meetgat (#133) erin.
