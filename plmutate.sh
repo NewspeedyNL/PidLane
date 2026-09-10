@@ -414,6 +414,14 @@ MUTATIES=(
 # model antwoordt"). De laatste drie zijn de stille kant: de ping blijft
 # gratis maar gaat groen melden waar /v1/messages weigert, en dan belooft de
 # chip een keten die de eerste echte analyse niet waarmaakt.
+# ── De inzending is nl-NL only (#177, 10-09-2026) ──
+# Niet "er staat een Engels blok in het document" is de fout, maar "de velden
+# lopen niet gelijk": dat is precies hoe #177 eruitzag — §1, §2 en §14 met een
+# en-US-blok en §3 zonder. Vandaar twee mutaties, één per richting. De tweede
+# is de stillere: je vertaalt de volledige beschrijving en vergeet de twee
+# velden ernaast, en dan leest een reviewer alsnog twee talen door elkaar.
+"PLAY-INZENDING.md@@Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.\n\`\`\`\n@@Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.\n\`\`\`\n\n**Engels (en-US), als je een tweede taal aanzet:**\n\n\`\`\`\nRead your car through an OBD2 adapter and get a diagnosis in plain language.\n\`\`\`\n@@test-playteksten.js@@§2 krijgt een tweede taal terug terwijl §3 er geen heeft (#177)"
+"PLAY-INZENDING.md@@De volledige privacyverklaring: app.pidlane.nl/privacy.html\nVragen: info@pidlane.nl\n\`\`\`\n@@De volledige privacyverklaring: app.pidlane.nl/privacy.html\nVragen: info@pidlane.nl\n\`\`\`\n\n**en-US:**\n\n\`\`\`\nPidLane connects over Bluetooth to an OBD2 adapter in your car.\n\`\`\`\n@@test-playteksten.js@@§3 wordt als enige vertaald en loopt weg bij de velden ernaast (#177)"
 "public/pidlane-auth.js@@    const resp=await plFetch('/v1/ping');@@    const resp=await plFetch('/v1/messages',{method:'POST',json:{model:'claude-sonnet-5',max_tokens:20,messages:[{role:'user',content:'ping'}]}});@@test-inlogkosten.js@@testApiKey() doet bij elke login weer een echte AI-call (#179)"
 "worker.js@@  return json({ ok: true, sleutel: clientKey ? \"app\" : \"worker\", rol: session.r, kosten: 0 });@@  await fetch(\"https://api.anthropic.com/v1/messages\", { method: \"POST\", headers: { \"x-api-key\": apiKey }, body: \"{}\" });\n  return json({ ok: true, sleutel: clientKey ? \"app\" : \"worker\", rol: session.r, kosten: 0 });@@test-inlogkosten.js@@de ping toetst de keten weer door het model écht aan te roepen (#179)"
 "worker.js@@  if (session.r === \"demo\" || session.u === \"legacy\")\n    return json({ ok: false, error: \"forbidden_role\", hint: \"Dit account heeft geen AI-toegang.\" }, 403);@@@@test-inlogkosten.js@@de ping meldt een werkende AI-keten aan een account dat geen AI mag gebruiken (#179)"
