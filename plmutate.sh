@@ -356,6 +356,21 @@ MUTATIES=(
 "public/pidlane-testrun.js@@        ? { naam: 'belasting', klaar: false, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@        ? { naam: 'belasting', klaar: true, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@test-begeleid.js@@de oogstpoort gaat open zonder dat er ooit onder belasting gemeten is"
 "public/pidlane-testrun.js@@  if (s.opent === 'venster') {\n    try { _bgWijk(true); }@@  if (false) {\n    try { _bgWijk(true); }@@test-begeleid.js@@het testrunscherm gaat niet meer opzij, dus het vragenvenster opent erachter"
 "public/pidlane-testrun.js@@  punten.push(!e10D || e10D.n < 2@@  punten.push(!e10D || e10D.n < 1@@test-begeleid.js@@één enkele snelheidswaarneming telt weer als bewijs dat er gereden is"
+
+# ── Vier lezers van hetzelfde gat (#170, 10-09-2026) ──
+# Alle vier komen uit de twee verslagen van 10-09 en zijn daar gemeten, niet
+# bedacht. De eerste is de oudste en de stilste: de guard die tijdens een run
+# het bemonsteren overslaat, returnde vóór `laatstT = nu`, dus boekte de tik ná
+# de run een gat ter grootte van die run — en blok 14 stuurde je daarmee naar
+# "de adapter, de bus of een vastgelopen sweep". De tweede is de stap die #133
+# moet toetsen en alleen het loopgat las, precies het gat dat een losgetrokken
+# adapter NIET maakt. De derde draait de duiding van een meetgat om: binnen de
+# achtergrond is het de afknijping (#18), niet de bus. De vierde zet de lat van
+# tien minuten terug in de #19-proef, die daarmee voor elke ronde onhaalbaar werd.
+"public/pidlane-testrun.js@@if (zelfOvergeslagen) { laatstLoop = nu; return; }@@if (zelfOvergeslagen) { return; }@@test-rit.js@@een testrun boekt weer zijn eigen loopgat en stuurt je naar de bus"
+"public/pidlane-testrun.js@@      const sindsLoop = sindsM(gaten), sindsMeet = sindsM(meetgaten);@@      const sindsLoop = sindsM(gaten), sindsMeet = [];@@test-begeleid.js@@de adapterstap is weer blind voor het meetgat, en dat is het enige gat dat er valt"
+"public/pidlane-testrun.js@@        ? ' — alle meetgaten vallen binnen een periode waarin de app weg was: dan is dit de afgeknepen '@@        ? ' — alle meetgaten vallen buiten elke periode waarin de app weg was: dan is dit de '@@test-gatduiding.js@@een meetgat in de achtergrond wordt weer aan de bus toegeschreven"
+"public/pidlane-testrun.js@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');\n      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');@@test-blok5lijst.js@@de tien minuten staan weer als drempel in de #19-proef"
 )
 
 echo

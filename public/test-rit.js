@@ -240,6 +240,48 @@ function keurBevriezingGeenMeetgat(s) {
   return uit;
 }
 
+// ── #170 — EEN TIK DIE WIJ ZELF OVERSLAAN IS GEEN GAT ────────────
+// Tijdens een testrun (of in demo) slaat tik() het bemonsteren over. De LUS
+// liep daar gewoon door; hij besloot alleen niets te meten. Tot 10-09 werd
+// `laatstT` op zo'n tik niet bijgewerkt, en zag de eerstvolgende tik ná de run
+// een gat ter grootte van die hele run.
+//
+// Dat is geen cosmetisch getal: blok 14 legt elk loopgat naast PLAchtergrond,
+// en zo'n zelfgemaakt gat valt buiten elke achtergrondperiode. In het verslag
+// van 10-09 19:17 stond daardoor "de lus lag daar stil terwijl de app in beeld
+// stond … kijk naar de adapter, de bus of een vastgelopen sweep" — de
+// verkeerde jacht, veroorzaakt door de guard van de testrun zelf.
+//
+// `demoMode` is hier de bestuurbare helft van dat paar (zie de uitleg bovenaan
+// over _trBezig, dat van buiten de IIFE niet te zetten is). Allebei lopen ze
+// door dezelfde regel, dus wat hier groen staat geldt voor allebei.
+function keurOvergeslagenTikGeenGat(s) {
+  const uit = [];
+  s.PLRit.wis();
+  let t = T0;
+  const stap = function (waarde) {
+    t += 5000; s._klokNu = t;
+    if (waarde !== null) s.pidVals['010C'] = waarde;
+    s.PLRit.tik(t);
+  };
+  stap(800); stap(801); stap(802);
+  s.demoMode = true;                        // een run van 70 s: veertien tikken
+  for (let i = 0; i < 14; i++) stap(null);
+  s.demoMode = false;
+  stap(900); stap(901);
+
+  const g = s.PLRit.gaten();
+  if (g.length)
+    uit.push(g.length + ' loopgat(en) na een run waarin de lus gewoon doortikte (' +
+      JSON.stringify(g) + ') — dat gat heeft de testrun zelf gemaakt');
+  // En de tegenhanger: er is tijdens die run niets gemeten, dus er mag ook geen
+  // meetgat uit komen — over de datastroom weten we in die periode niets.
+  const mg = s.PLRit.meetgaten();
+  if (mg.length)
+    uit.push(mg.length + ' meetgat(en) over een periode waarin er bewust niet bemonsterd is');
+  return uit;
+}
+
 // De EERSTE tikken van een rit mogen nooit als meetgat tellen. Bij de eerste
 // waarneming van een PID is er nog geen bekend stempel om tegen te toetsen —
 // neem() geeft dan per definitie nooit 'gemeten' terug (zie keurNeemUitkomsten
@@ -339,8 +381,21 @@ function keurNietTijdensRun(bron) {
   if (iLus === -1) uit.push('de bemonsteringslus (Object.keys(pidVals)) is niet gevonden');
   if (iGuard > -1 && iLus > -1 && iGuard > iLus)
     uit.push('de _trBezig-guard staat NA de bemonsteringslus — dan filtert hij niets meer');
-  if (!/if\s*\([^)]*_trBezig\s*\)\s*return/.test(blok))
-    uit.push('_trBezig komt voor maar niet als "if (... _trBezig) return" — controleer de vorm');
+  /* DE VORM VAN DE GUARD, EN WAAROM ER TWEE ZIJN TOEGESTAAN (#170).
+     Tot 10-09 stond er letterlijk `if (... _trBezig) return;`. Sindsdien
+     deelt _trBezig zijn guard met demoMode onder één naam, omdat allebei
+     hetzelfde betekenen: wij slaan deze tik zelf over, dus dit is geen gat in
+     de lus. Wat de controle moet vasthouden is niet de spelling maar de
+     belofte — _trBezig zit in een voorwaarde die tot een `return` leidt, vóór
+     de bemonstering. Allebei de vormen dragen die belofte; een losse `var x =
+     _trBezig` die nergens op uitkomt niet. */
+  const directeGuard = /if\s*\([^)]*_trBezig\s*\)\s*(\{[^}]*)?return/.test(blok);
+  const viaVlag = (function () {
+    const naam = blok.match(/(?:const|let|var)\s+(\w+)\s*=[^;]*_trBezig[^;]*;/);
+    return !!naam && new RegExp('if\\s*\\(\\s*' + naam[1] + '\\s*\\)\\s*(\\{[^}]*)?return').test(blok);
+  })();
+  if (!directeGuard && !viaVlag)
+    uit.push('_trBezig komt voor maar leidt niet tot een return vóór de bemonstering — controleer de vorm');
   return uit;
 }
 
@@ -510,6 +565,7 @@ toetsSchoon('een meetgat wordt geteld terwijl de lus doortikt (#133)', keurMeetg
 toetsSchoon('een lopend meetgat is al zichtbaar vóór het herstel', keurMeetgatLopendZichtbaar(S));
 toetsSchoon('een bevriezing is een loopgat en geen meetgat (#18 tegen #133)', keurBevriezingGeenMeetgat(S));
 toetsSchoon('de openingstik van een rit telt nooit als meetgat', keurEersteTikGeenMeetgat(S));
+toetsSchoon('een tik die de app zelf overslaat is geen gat (#170)', keurOvergeslagenTikGeenGat(S));
 toetsSchoon('herverbindingen worden geteld', keurHerverbindingTellen(S));
 toetsSchoon('de eerste verbinding van een sessie telt niet mee (#77)', keurEersteVerbindingGeenHerverbinding());
 toetsSchoon('"Rit nulstellen" laat de verbindingsvlag staan (#77)', keurWisResetVlagNiet());
@@ -590,7 +646,7 @@ toetsSchoon('een guard met de verkeerde vorm wordt gezien',
     const r = keurNietTijdensRun('const PLRit = (function () {\n' +
       '  function tik(){ var x = _trBezig;\n' +
       '    Object.keys(pidVals).forEach(function(p){}); }\n})();');
-    return r.some(function (x) { return x.indexOf('niet als') > -1; }) ? []
+    return r.some(function (x) { return x.indexOf('leidt niet tot een return') > -1; }) ? []
       : ['de broncontrole accepteerde een guard die niets afdwingt: ' + (r.join(' | ') || '(niets)')];
   })());
 

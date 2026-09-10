@@ -121,6 +121,41 @@ if (dekregel) {
   });
 }
 
+// ── #170 — DE #19-PROEF HIELD EEN LAT DIE NIEMAND MEER HAALT ─────
+// Deze proef eiste tien minuten rijden én vier aanvragers. Sinds #166 sluit de
+// rijstap op de OOGST en niet op de klok, en daarmee werd die lat op de rit van
+// 10-09 voor élke ronde onhaalbaar: de meetrit viel af op "maar 7 min gereden
+// van de tien", de toestelronde op "maar 3 van de 4 aanvragers aan". Een proef
+// die altijd LET OP staat wordt genegeerd — dat staat zo in CLAUDE.md.
+//
+// Wat hier vastgepind wordt is dus niet een getal maar een belofte: met twee
+// bewegende raildruksensoren geeft deze proef een antwoord, ook als de rit kort
+// was en er niet vier aanvragers liepen. De omstandigheden horen er als CONTEXT
+// bij te staan, niet als drempel.
+console.log('6. de #19-proef sluit op de meting, niet op de klok (#170)');
+{
+  const p19 = proeven.filter(function (p) { return p.issue === '#19'; })[0];
+  eis(!!p19, 'de #19-proef staat in de lijst');
+  if (p19) {
+    const bewaard = s.PLRit;
+    // Twee sensoren die ruim bewogen hebben — de cijfers van de rit van 10-09.
+    const beweegt = { n: 98, tikken: 117, gemist: 19, min: 8770, max: 20220,
+                      laatst: 20220, veranderingen: 94, tLaatsteVer: 0, stempel: 1 };
+    s.PLRit = {
+      duurS: function () { return 150; },          // tweeënhalve minuut: de nieuwe rit
+      per: function () { return { '0123': beweegt, '0159': beweegt }; }
+    };
+    const r = p19.proef();
+    const tekst = (r && r.detail) ? r.detail : String(r);
+    eis(typeof r === 'string' || r.staat !== 'LET OP',
+      'een korte rit met bewegende raildruk geeft geen LET OP meer: ' + tekst);
+    eis(!/van de tien/.test(tekst), 'de tien minuten staan niet meer als drempel in de uitkomst');
+    eis(!/van de 4 aanvragers/.test(tekst), 'het aantal aanvragers is geen drempel meer');
+    eis(/aanvrager/.test(tekst), 'maar het aantal aanvragers staat er wél als context bij: ' + tekst);
+    s.PLRit = bewaard;
+  }
+}
+
 console.log('');
 if (fouten) { console.log('FOUT — ' + fouten + ' eis(en) niet gehaald'); process.exit(1); }
 console.log('Alles goed — blok 5 is een lijst die iets belooft.');
