@@ -11,6 +11,39 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10g (CET) — DE BUNDEL VRAAGT WAT HIJ VERKLAART
+
+       • 📍 DE .AAB VROEG LOCATIE OP ELKE ANDROID-VERSIE.
+         Beide BT-plugins declareren ACCESS_FINE_LOCATION en
+         ACCESS_COARSE_LOCATION zonder maxSdkVersion. Het
+         app-manifest noemde ze niet, dus nam de merge die
+         variant over — terwijl Data safety geen locatie
+         verklaart. De injectie zet ze er nu bij met
+         maxSdkVersion=30.
+
+       • 🔍 EN TWEE TOETSEN ZEIDEN VAN NIET. De CI-controle
+         las het app-manifest, dus de invoer van de merge:
+         nul regels gevonden, "OK" gemeld. test-geen-gps.js
+         liep met .every() over diezelfde lege lijst. De
+         controle staat nu na bundleRelease op het
+         samengevoegde manifest en eist dát de permissie er
+         is; de test eist beide regels en draagt zijn eigen
+         tegenproef.
+
+       • 💶 GEEN KOOPKNOP MEER IN DE PLAY-SCHIL. De
+         Tikkie-link komt uit Airtable, dus één veld kon een
+         betaalroute buiten Play om in de beoordeelde app
+         zetten — zonder commit, gate of build. _betaallink()
+         houdt hem in de schil tegen, ook als de detectie
+         stukgaat. De browser houdt de link.
+
+       • ✅ §16A BELOOFT ALLEEN WAT EEN TEST DEKT. De regel
+         over koopknop en APK-distributie noemde een bestand
+         dat daar niets van toetst. test-schilgrenzen.js doet
+         het nu wel, met tegenproeven.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10f (CET) — INLOGGEN KOST GEEN TOKENS
 
        • 💳 ELKE LOGIN KOSTTE PRECIES ÉÉN CREDIT. Het saldo

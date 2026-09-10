@@ -882,6 +882,158 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De .aab vroeg locatie op elke Android-versie, en twee toetsen zeiden van niet — 10-09-2026 (opgelost)
+
+`build-apk.yml` injecteert de permissieset in `android/app/src/main/AndroidManifest.xml`.
+Daar stonden BLUETOOTH_SCAN met `neverForLocation`, BLUETOOTH_CONNECT, de twee
+legacy-BT-permissies en CAMERA. Er stond een uitvoerig commentaarblok bij over
+locatie — *"vandaar dat de permissie blijft staan MET maxSdkVersion=30"* — maar
+in de geïnjecteerde tekst zelf stond geen enkele locatieregel.
+
+Dat was geen slordigheid met alleen documentaire gevolgen. Beide BT-plugins
+declareren de permissie zélf, in hun bibliotheekmanifest, zonder grens:
+
+```
+node_modules/@capacitor-community/bluetooth-le/android/src/main/AndroidManifest.xml
+node_modules/@ascentio-it/capacitor-bluetooth-serial/android/src/main/AndroidManifest.xml
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+```
+
+Noemt het app-manifest een permissie niet, dan neemt de manifest-merge die van
+de bibliotheek ongewijzigd over. De bundel vroeg dus locatie op élke
+Android-versie, terwijl §11 van `PLAY-INZENDING.md` locatie nergens aanvinkt in
+Data safety. Dat verschil tussen gevraagde permissies en het ingevulde
+formulier is een afwijsgrond, en het haalt `neverForLocation` onderuit: de app
+verklaart dat een scan niet voor plaatsbepaling is en vraagt er tegelijk
+onbeperkt locatie bij.
+
+**Waarom niets dit zag, en dat is het eigenlijke punt.** Er stonden twee
+wachters, en allebei keken ze naar het verkeerde bestand.
+
+De CI-controle stond ín de injectiestap:
+
+```python
+for _p in ('ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'):
+    for _m in _re.finditer(r'<uses-permission[^>]*' + _p + r'[^>]*/>', xml):
+        if 'maxSdkVersion="30"' not in _m.group(0):
+            ...
+```
+
+`xml` is daar het APP-manifest, dus de INVOER van de merge. Wat een plugin
+meebrengt staat daar per definitie niet in. De lus vond nul regels en meldde
+`OK: permissieset compleet, niets verbodens gevonden`. Hetzelfde gold voor de
+verbodenlijst eronder (ACCESS_BACKGROUND_LOCATION, READ_PHONE_STATE,
+QUERY_ALL_PACKAGES, REQUEST_INSTALL_PACKAGES) — met in het commentaar erbij:
+*"Als een plugin hem ooit meesmokkelt via manifest-merge wil je dat hier
+zien."* Precies dat kon hij niet.
+
+`test-geen-gps.js` deed het in zijn eigen vorm nog een keer:
+
+```js
+const locRegels = (wf.match(/uses-permission[^\n]*ACCESS_(FINE|COARSE)_LOCATION[^\n]*/g) || [])
+toets('locatiepermissie staat alleen met maxSdkVersion=30 in het manifest',
+  locRegels.every(r => /maxSdkVersion="30"/.test(r)));
+```
+
+De workflow injecteerde geen locatieregels, dus `locRegels` was leeg, en
+`[].every(...)` is `true`. Nagemeten: `aantal gevonden regels: 0`,
+`every() op lege lijst => true`. De toets ernaast — *"de CI controleert dat zelf
+ook"* — stond groen omdat de tekst van die vacuüme controle in de workflow te
+vinden was.
+
+**Wat er is nagemeten.** Er is geen Android-SDK op de machine waar dit
+onderzocht is, dus er is geen echte `.aab` gebouwd. Het template is wel
+gegenereerd (`npx cap add android`: minSdk 24, compileSdk 36, targetSdk 36) en
+de merge is gedraaid met de standalone `manifest-merger`. Uitkomst zonder de
+twee regels: `ACCESS_COARSE_LOCATION` en `ACCESS_FINE_LOCATION` kaal in het
+samengevoegde manifest. Met de twee regels erbij: allebei met
+`maxSdkVersion="30"`, en geen dubbele. Het app-manifest heeft voorrang bij de
+merge, dus de grens wint.
+
+Eén waarneming uit die proef hoort hier als vergissing bij bewaard te worden:
+de eerste run toonde ook `WRITE_EXTERNAL_STORAGE`, `READ_PHONE_STATE` en
+`READ_EXTERNAL_STORAGE`. Dat leek een tweede vondst en was het niet — het is de
+legacy-regel van de merger die die permissies toevoegt als een bibliotheek geen
+`uses-sdk` draagt. Zodra de plugin-manifesten er een kregen, verdwenen ze.
+AGP levert die informatie in een echte build uit de AAR. Een gereedschap dat
+buiten zijn gewone omgeving draait, meet ook zijn eigen omgeving mee.
+
+**Wat er veranderd is.** De injectie zet de twee regels er nu bij, met
+`maxSdkVersion=30`. De controle is verplaatst naar een eigen stap ná
+`bundleRelease`, die het SAMENGEVOEGDE manifest leest uit
+`android/app/build/intermediates/merged_manifests/`, de hele permissielijst in
+het logboek zet, en hard omvalt als dat pad niet bestaat — een controle die
+zichzelf uitzet omdat AGP een map hernoemt, is dezelfde val als hierboven. Die
+stap eist bovendien dát de locatiepermissie er ís: de plugins brengen hem toch
+mee, dus "niet gevonden" betekent daar dat er een verkeerd bestand gelezen
+wordt. `test-geen-gps.js` eist nu beide regels (`r.length === 2`) en draagt zijn
+eigen tegenproef; vier mutaties in `plmutate.sh` houden het geheel scherp.
+
+**De les is niet "beter opletten".** Het is dat een controle die over een
+verzameling loopt eerst moet eisen dát die verzameling gevuld is. `every()`,
+`all()` en `for x in []` geven alle drie groen op niets, en dan meet je de
+afwezigheid van bewijs en noemt dat bewijs van afwezigheid. Dezelfde vorm zit
+in `test-healthgate.js` (§11 hieronder) en in `test-waakronde.js`: een toets die
+groen kán staan is nog geen toets die iets onderscheidt.
+
+---
+
+### De koopknop was vanuit Airtable aan te zetten, in een app die Play beoordeeld had — 10-09-2026 (#42)
+
+`PLKlant.CFG.tikkieKopen` leest `tikkie_kopen` uit de Config-tabel in Airtable,
+via `/api/config`. Staat daar een geldige `https://tikkie.me/…`-link, dan
+verschijnt in "Mijn tokens" de knop *"100 tokens kopen — €4,99"*. Dat was sinds
+28-08 met opzet zo: de link hoorde te wisselen zonder deploy (#24).
+
+Wat daar niet bij bedacht was: de Play-schil laadt `app.pidlane.nl` live. Die
+knop verschijnt dus in dezelfde app die Play beoordeeld heeft, en tokens zijn
+digitale content die in de app verbruikt wordt — het terrein van Google's
+betaalregels. Eén veld in een Airtable-tabel kon de app in overtreding brengen:
+geen commit, geen `plcheck.sh`, geen build, niets dat het ziet. Een
+beleidskeuze die van buiten de repo aangezet kan worden is geen beleidskeuze.
+
+De code was zich van de vraag wél bewust — `pidlane-klant.js` droeg er een
+comment over, en blok 5 had een proef die eiste dat `tikkie_kopen` leeg was.
+Maar dat was een afspraak, geen grens: de proef draait alleen als iemand op een
+toestel een testrun start, en de knop stond dan allang in de app.
+
+`_betaallink()` geeft nu niets terug zodra `Capacitor.isNativePlatform()` waar
+is. Bij een fout in die detectie ook niet: een knop die ten onrechte wegblijft
+kost een mailtje, andersom kost het de inzending. De browserversie houdt de
+link — die wordt niet door Play gedistribueerd, dus daar speelt de vraag niet.
+De grens zit op het punt waar zo'n link de app binnenkomt en geldt daarmee voor
+kopen én doneren; een tweede plek zou een tweede waarheid zijn.
+
+**Dit sluit #42 niet.** De vraag of tokens ín de app verkocht mogen worden en
+onder welke voorwaarde, is nog steeds niet beantwoord. Wat hier veranderd is,
+is alleen dat het antwoord niet meer per ongeluk gegeven kan worden.
+
+---
+
+### §16a van de inzendlijst noemde een wachter die niet bestond — 10-09-2026
+
+De tabel *"Wat een test bewaakt (blijft vanzelf waar)"* zette achter de regel
+*"Geen koopknop in de app, geen APK-distributie in de app"* het bestand
+`test-playteksten.js`. Dat bestand toetst tekenlimieten, URL's, anonimisering,
+versienummer, wachtwoorden, release notes en taalblokken. Koopknop noch APK
+komt erin voor.
+
+Die tabel is op 10-09 gemaakt om precies deze fout op te lossen: §16 stond vol
+vinkjes over een build van 03-09 die je niet meer uploadt. De reparatie
+scheidde "wat een test bewaakt" van "wat op een toestel bewezen moet zijn" —
+en in de eerste categorie belandde meteen een regel die geen test had. De vorm
+van de fout overleefde de reparatie van de fout.
+
+`test-schilgrenzen.js` dekt beide claims nu wel: de betaallink in de schil (met
+als tegenproef dat hij in de browser juist wél doorkomt, anders meet de toets
+niets) en een scan over `index.html`, `privacy.html`, `verwijderen.html` en alle
+`pidlane-*.js` op verwijzingen naar een APK. `worker.js` valt er bewust buiten:
+die mag `/download/pidlane.apk` blijven serveren voor wie naast Play om
+installeert — de grens is dat de app er niet naartoe wijst.
+
+---
+
 ### De mutatietabel is bash, en bash leest backticks — 10-09-2026 (#180, opgelost)
 
 `plmutate.sh` bewaart zijn tabel als bash-array met dubbele aanhalingstekens.
