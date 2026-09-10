@@ -577,9 +577,14 @@ zijn.
 
 ### 16b — Wat op een TOESTEL bewezen moet zijn, en op wélke build
 
-Deze punten kan geen enkele test dekken: er moet een mens met een telefoon
-aan te pas komen. Ze verlopen dus bij elke nieuwe build, en daarom staat het
-buildnummer erbij in plaats van een kaal vinkje.
+Deze punten verlopen bij elke nieuwe build, en daarom staat het buildnummer
+erbij in plaats van een kaal vinkje. Bij vijf van de zes moet er een mens met
+een telefoon aan te pas komen; geen enkele test dekt ze.
+
+De eerste regel is de uitzondering en staat hier om de andere reden: die wordt
+door de build zélf bewezen — *Verify signature* en de stap *Controleer het
+samengevoegde manifest* draaien op elke run — maar hij verloopt net zo hard,
+want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 
 > **Vul hier de build in die je gaat uploaden**, en zet er per regel het
 > buildnummer bij waarop je het gezien hebt. Staat er een ouder nummer dan de
@@ -589,7 +594,7 @@ buildnummer erbij in plaats van een kaal vinkje.
 
 | punt | laatst bewezen op |
 |---|---|
-| `.aab` gebouwd én ondertekend, `versionCode` loopt mee met `run_number` | build #423, 03-09-2026 |
+| `.aab` gebouwd én ondertekend, `versionCode` loopt mee met `run_number` | build #435, 10-09-2026 — `versionCode 435` bij `run_number` 435, en *Verify signature* meldde "Bundle is ondertekend" |
 | Foutpagina doet het echt: vliegtuigmodus aan, koud gestart, eigen scherm in plaats van `net::ERR_` | build #423, 03-09-2026 om 20:16 |
 | Demo één keer helemaal doorlopen op een schoon toestel zonder adapter | build #423, 03-09-2026 |
 | Disclosure verschijnt vóór het Android-permissiedialoog, niet erna | nog niet bewezen |
