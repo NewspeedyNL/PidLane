@@ -201,6 +201,116 @@ versies.forEach(v => {
         'de afvinklijst bevestigt dan een versie die niet meer gebouwd wordt');
 });
 
+console.log('\n5. Er staat geen wachtwoord in dit document');
+
+// WAAROM DIT ER IS (10-09-2026). Deze repository is PUBLIEK. §7 vraagt om een
+// reviewaccount met tegoed erop, en het wachtwoord daarvan hoort in het
+// Console-veld — niet in een gecommit bestand, waar het binnen een minuut
+// wereldwijd leesbaar is. Het document waarschuwt daar zelf voor, maar een
+// waarschuwing draait op oplettendheid en dat is hier al vaker misgegaan.
+//
+// De sleutelscan in CI vangt dit NIET: die zoekt naar API-sleutels en tokens,
+// niet naar een wachtwoord in lopende tekst. Vandaar een eigen controle.
+//
+// Wat hij zoekt is een REGEL die een wachtwoord toekent, niet het woord
+// "wachtwoord" zelf — dat staat er juist als uitleg, en dat moet zo blijven.
+{
+  const verdacht = [];
+  doc.split('\n').forEach(function (regel, i) {
+    // "Password | Iets", "wachtwoord: Iets", "pass = Iets" — met iets erachter
+    // dat op een echt wachtwoord lijkt: geen spaties, minstens acht tekens.
+    const m = regel.match(/(?:password|wachtwoord|passwd|pwd)\s*[:|=]\s*([^\s|*_\x60]{8,})/i);
+    if (!m) return;
+    // Cursief of tussen backticks is uitleg ("*niet in dit bestand*"), en een
+    // verwijzing naar een veld ook. Alleen kale tekst telt als een lek.
+    if (/^[*_\x60]/.test(m[1])) return;
+    verdacht.push('regel ' + (i + 1) + ': ' + regel.trim().slice(0, 70));
+  });
+  toets('geen wachtwoordregel in PLAY-INZENDING.md',
+        verdacht.length === 0,
+        'deze repo is publiek — zet het in het Console-veld App access:\n        ' + verdacht.join('\n        '));
+
+  // TEGENPROEF: de controle moet een echt lek ook echt zien. Zonder dit weet
+  // je alleen dat hij groen kán staan.
+  const nep = '| Password | DemoTester@2026 |';
+  const ziet = /(?:password|wachtwoord|passwd|pwd)\s*[:|=]\s*([^\s|*_\x60]{8,})/i.test(nep);
+  toets('en een echt wachtwoord zou hij zien (tegenproef)', ziet,
+        'de regex is te smal — dan bewaakt controle hierboven niets');
+}
+
+// ── 6. §14 belooft niets wat §3 niet kent ─────────────────────────
+// De release notes zijn een ingedikte §3, met de hand. Twee velden die
+// hetzelfde beloven en allebei door een reviewer gelezen worden — dat is de
+// vorm die §11 twee keer de kop kostte, en die §16 op 10-09 nog een keer.
+//
+// De eerste versie van deze controle deugde niet, en plmutate.sh liet dat
+// zien: hij hield een lijstje functienamen bij dat ik zelf had opgeschreven.
+// Daarmee toetste hij mijn woordenschat, niet het document — een functie die
+// niet op mijn lijstje stond, glipte er per definitie doorheen. Precies wat
+// CLAUDE.md bedoelt met "verzin geen tabellen die de app ook heeft".
+//
+// Nu komt de lijst uit §3 zelf: dat veld somt de functies op als "• Naam —
+// uitleg", en dat is de claim van de app. §14 noemt ze in één zin ("Met A, B
+// en C."). Elk item uit die zin moet een opsommingskop van §3 zijn.
+//
+// Eén kant op, met opzet: §3 mag 4000 tekens en noemt meer dan §14.
+console.log('\n6. Wat de release notes beloven, staat ook in de beschrijving');
+{
+  const notes = blokkenOnder('## 14. Release notes');
+  const vol = blokkenOnder('## 3. Full description');
+
+  if (!notes || !notes.length || !vol || !vol.length) {
+    toets('§14 en §3 hebben allebei tekst', false,
+          'een van de twee kopjes is hernoemd of leeggehaald');
+  } else {
+    // De opsommingskoppen van §3. Verdwijnt die vorm, dan stopt deze toets
+    // met een FOUT in plaats van stilletjes met een lege lijst door te gaan.
+    const koppen = [];
+    const reKop = /^[•*-]\s*([^—\n]+)—/gm;
+    let m;
+    while ((m = reKop.exec(vol[0])) !== null) koppen.push(m[1].trim().toLowerCase());
+
+    toets('§3 somt zijn functies nog op als "• Naam — uitleg" (' + koppen.length + ' stuks)',
+          koppen.length >= 5,
+          'de opsomming is van vorm veranderd; zonder die koppen vergelijkt deze toets niets');
+
+    // Noemt een §14-item een functie die §3 kent? Een kop mag langer zijn dan
+    // wat §14 ervan maakt ("kenteken" hoort bij "Kenteken invullen (Nederland)").
+    function kentDeApp(naam) {
+      return koppen.some(function (k) { return k === naam || k.indexOf(naam) === 0; });
+    }
+
+    // Het Nederlandse blok tegen de Nederlandse beschrijving. Het Engelse
+    // blok blijft erbuiten zolang §3 geen en-US-versie heeft (#177).
+    const zin = notes[0].match(/\bMet ([^.]+)\./);
+    toets('§14 noemt zijn functies nog in één "Met ..."-zin', !!zin,
+          'die zin is de plek waar dit veld functies belooft; is hij weg, dan vergelijkt deze toets niets');
+
+    if (zin) {
+      const genoemd = zin[1].toLowerCase().split(/,| en /)
+        .map(function (x) { return x.trim(); })
+        .filter(function (x) { return x; });
+
+      toets('die zin noemt er minstens twee (' + genoemd.join(', ') + ')', genoemd.length >= 2,
+            'met minder valt er weinig te vergelijken');
+
+      genoemd.forEach(function (naam) {
+        toets('"' + naam + '" uit §14 is een functie die §3 opsomt',
+              kentDeApp(naam),
+              'de release notes beloven iets wat de beschrijving niet kent — zet het eerst in §3');
+      });
+
+      // TEGENPROEF: dezelfde vergelijking op een verzonnen functie moet hem
+      // afkeuren. Alleen "de echte namen kloppen" bewijst te weinig: dan weet
+      // je nog niet of kentDeApp() ooit false teruggeeft.
+      toets('een verzonnen functie zou hij afkeuren (tegenproef)',
+            !kentDeApp('wielophangingsscanner'),
+            'kentDeApp() keurt alles goed — dan bewaakt de controle hierboven niets');
+    }
+  }
+}
+
+
 console.log('');
 if (fouten) { console.log('test-playteksten: ' + fouten + ' fout(en)'); process.exit(1); }
 console.log('test-playteksten: alles goed');

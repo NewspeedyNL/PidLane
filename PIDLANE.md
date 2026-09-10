@@ -874,6 +874,148 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### §14 was 03-09 geschreven en nooit meer nagelezen — 10-09-2026 (#177)
+
+Dezelfde vorm als #174, één kopje verderop. §16 stond vol vinkjes van build
+#423; §14 was op diezelfde dag geschreven en sindsdien niet meer aangeraakt,
+terwijl er negen builds bij kwamen en de meetketen en de begeleide run
+verbouwd zijn.
+
+**De tekst bleek te kloppen, en dat is niet hetzelfde als in orde.** De drie
+functies die §14 bij naam noemt bestaan als eigen module (`pidlane-monitor.js`,
+`pidlane-koopcheck.js`, `pidlane-remote.js`), en de demobelofte op de laatste
+regel wordt woordelijk bewaakt door `test-demo-toegang.js`. Maar niets in het
+document zei dat, en niets zou het gezegd hebben als het níét meer klopte. Er
+staat nu bij tegen welke build hij is nagelezen — dezelfde reparatie die §16
+kreeg.
+
+**Wat er wél stuk was, is de koppeling met §3.** De release notes zijn een
+ingedikte volledige beschrijving, met de hand. Twee velden die hetzelfde
+beloven en allebei door een reviewer gelezen worden — dat is de vorm die dit
+hoofdstuk twee keer eerder de kop kostte. `test-playteksten.js` vergelijkt ze
+nu, één kant op: elke functie die §14 belooft moet in §3 opgesomd staan.
+Andersom niet, want §3 mag 4000 tekens en noemt meer.
+
+**De eerste versie van die vergelijking deugde niet, en `plmutate.sh` liet dat
+binnen één run zien.** Hij hield een lijstje functienamen bij dat ik zelf had
+opgeschreven, en toetste daarmee mijn woordenschat in plaats van het document:
+een functie die niet op dat lijstje stond glipte er per definitie doorheen. De
+mutatie die dat had moeten aantonen ontsnapte bovendien om een tweede reden —
+ik had er "kenteken" in gezet, en dat stáát in §3. Twee fouten in één regel,
+allebei van de soort waar de tegenproef voor bestaat. De lijst komt nu uit §3
+zelf: dat veld somt zijn functies op als `• Naam — uitleg`, en §14 noemt ze in
+één `Met A, B en C.`-zin. Verdwijnt een van die twee vormen, dan stopt de toets
+met een FOUT in plaats van met een lege lijst stilletjes door te gaan.
+
+Twee mutaties houden het scherp, in allebei de richtingen: §14 belooft een
+functie die §3 niet opsomt, en §3 hernoemt een functie terwijl §14 de oude naam
+blijft beloven. Die tweede is de stillere — je verbetert de beschrijving en
+raakt het veld ernaast niet aan.
+
+**En er kwam een echte bevinding uit die vergelijking (#177).** §1, §2 en §14
+hebben een en-US-blok, §3 niet. Zet je Engels aan in de Console, dan krijgt een
+reviewer een Engelse titel en Engelse release notes met een Nederlandse
+volledige beschrijving eronder — uitgerekend het veld waar de
+"minimum functionality"-toets op leunt. Niet in dezelfde PR opgelost: het is een
+besluit over de inzending (Engels erbij, of Engels eruit), geen reparatie.
+Daarom vergelijkt de test voorlopig alleen het Nederlandse blok.
+
+### Zes van de zeven inhaalmerges waren met de hand, en niemand had daar iets te kiezen — 10-09-2026
+
+Er stonden deze week telkens twee PR's tegelijk open, en telkens moest de
+tweede na de eerste merge met de hand worden bijgetrokken. Dat voelde als pech
+tot het geteld werd.
+
+**Gemeten over de laatste 40 samenvoegingen op `main`.** Zeven daarvan zijn
+geen PR maar een reparatie: `Merge branch 'main' into <tak>`. Zes van die zeven
+hadden `PIDLANE.md` in het conflict, drie `CHANGELOG.md`, drie `plmutate.sh`.
+Over de laatste twintig PR's raakte `PIDLANE.md` er negentien en `CHANGELOG.md`
+veertien.
+
+**De oorzaak is de vorm, niet de slordigheid.** Elke PR zet bovenaan §11 en
+bovenaan de changelog een nieuw blok. Twee takken die tegelijk openstaan
+botsen dus per definitie — op dezelfde plek, met altijd dezelfde oplossing:
+allebei houden, nieuwste boven. Dat is geen besluit. Het was alleen een
+handeling die er telkens tussen zat, en die hier duur is: elke reparatie kost
+een ronde die niet over de app gaat.
+
+**Wat er nu staat.** Een `.gitattributes` zet `CHANGELOG.md` en `PIDLANE.md` op
+`merge=union` — de ingebouwde driver van git die bij een botsing beide kanten
+bewaart in plaats van te stoppen. In een proef met twee takken die allebei
+bovenaan invoegen komt het resultaat er compleet uit, zonder markeringen, met
+de eigen tak boven de binnengehaalde.
+
+**Waarom `plmutate.sh` er níét bij staat, terwijl hij drie keer in het conflict
+zat.** Union verliest nooit tekst, maar kan tekst *verdubbelen*: raken twee
+takken dezelfde regel, dan staan beide regels in het resultaat. In proza is dat
+zichtbaar bij de eerste blik op de diff. In een script is het een stille breuk,
+en dat is precies de klasse fout die hier maanden blijft staan (§19). De grens
+loopt dus langs proza en code, niet langs "hoe vaak botst het".
+
+**`test-gitattributes.js` bewaakt die grens**, en doet dat in drie lagen:
+`git check-attr` vraagt aan git zélf of de twee documenten onder union vallen —
+niet met een eigen naspelling van zijn patroonregels, zodat een ander maar
+geldig patroon (`*.md`) hier terecht groen blijft. Daarnaast wordt elk
+union-patroon nagelopen op codebestanden. En tot slot draait er een echte merge
+in een wegwerprepo. Die laatste laag draagt zijn eigen tegenproef mee: een
+`controle.js` met exact dezelfde invoeging **moet** botsen. Zonder dat punt zou
+de proef ook groen staan als git de twee invoegingen om een heel andere reden
+had kunnen samenvoegen, en dan meet hij niets. Twee mutaties in `plmutate.sh`
+houden het scherp: union weghalen bij `PIDLANE.md`, en union uitbreiden naar
+`*.js`.
+
+**Nagemeten tegen een tak die op dat moment openstond.** PR #173 en deze tak,
+in beide richtingen samengevoegd: vanuit de tak die `.gitattributes` heeft botst
+alleen `plmutate.sh`, vanuit de tak die het niet heeft botst `PIDLANE.md` er
+nog bij. Git leest de attributen namelijk uit de werkmap waarin hij samenvoegt,
+niet uit wat er binnenkomt. Een tak van vóór vandaag botst dus nog één keer op
+§11 — die ene merge haalt het bestand binnen — en daarna niet meer. Dat is de
+hele overgangskost, en hij is eenmalig per tak.
+
+**Wat dit niet oplost.** Botst een tak op `pidlane-testrun.js` of op
+`plmutate.sh`, dan is dat nog steeds handwerk — terecht. En union is geen reden
+om drie PR's tegelijk open te zetten: de werkregel in `CLAUDE.md` blijft dat een
+nieuwe tak van de *huidige* `main` wordt gesneden en dat een tak waarvan de PR
+al samengevoegd is niet hergebruikt wordt.
+
+### De afvinklijst voor de Play Store vinkte een build af die je niet uploadt — 10-09-2026 (#174)
+
+`PLAY-INZENDING.md` §16 stond vol gezette vinkjes. Ze waren allemaal waar — op
+**build #423 van 03-09-2026**. Sindsdien staat de teller op build #432 en is er
+fors verbouwd: laag 2 en 3 uit de meetketen weg, de begeleide run herbouwd tot
+twee rondes, de ritwaarnemer uitgebreid.
+
+**Een vinkje dat over een andere build gaat is erger dan geen vinkje**, want het
+stelt je gerust over iets wat niet nagekeken is. Twee regels laten zien wat dat
+concreet betekende: *"Foutpagina op een toestel bewezen op 03-09 om 20:16"* en
+*"Demo één keer helemaal doorlopen op een schoon toestel"*. Dat tweede punt gaat
+over het scherm dat een reviewer als eerste opent, en dat scherm is sindsdien
+verbouwd.
+
+**De lijst staat nu in drie delen, en dat onderscheid is de hele reparatie.**
+16a is wat een test bewaakt — met de testnaam erbij, want die punten blijven
+vanzelf waar en hoeven nooit opnieuw. 16b is wat een mens op een toestel moet
+zien, met het **buildnummer** erbij in plaats van een kaal hokje: staat daar een
+ouder nummer dan de build die je uploadt, dan is dat punt zichtbaar niet
+nagekeken. 16c is wat buiten de repo ligt.
+
+Elf punten bleken in 16a te horen. Die waren dus al die tijd dubbel geborgd —
+door een test én door een handmatig hokje — terwijl de zes punten die alleen op
+oplettendheid draaiden er precies zo uitzagen. Dat is dezelfde vorm als de
+onderrandproef hierboven: een geruststelling die niemand meer naleest.
+
+**En er lag een gat dat niets bewaakte.** §7 vraagt om een reviewaccount met
+tegoed erop, en deze repository is **publiek**. De sleutelscan in CI zoekt naar
+API-sleutels en tokens, niet naar een wachtwoord in lopende tekst — een
+wachtwoord in dit document zou er ongehinderd in zijn gegaan en binnen een
+minuut wereldwijd leesbaar zijn geweest. Het document waarschuwde er zelf voor,
+maar een waarschuwing draait op oplettendheid. `test-playteksten.js` bewaakt het
+nu, met een tegenproef op een echt wachtwoordpatroon en een mutatie eronder.
+
+Twee documenten die hetzelfde beweerden liepen ook uit de pas: §4 zei dat de
+feature graphic *"nog gemaakt moet worden"* terwijl §16 hem afgevinkt had. De
+stand staat nu op één plek.
+
 ### De onderrand-proef vroeg of het paste, niet of je erbij kon — 10-09-2026 (#172)
 
 Boven deze blok-5-proef stond sinds 01-09 met zoveel woorden dat het onbeslist

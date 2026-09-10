@@ -1,6 +1,15 @@
 # ANDROID-PLAYSTORE.md — wat er nog tussen jou en een goedkeuring staat
 
-Bijgewerkt: 03-09-2026. Nagelopen op de repo zoals hij nu is.
+Bijgewerkt: 10-09-2026. De blokkades hieronder zijn nagelopen op 03-09-2026 en
+sindsdien niet opnieuw gemeten — er is aan de Android-kant ook niets veranderd:
+geen nieuwe permissie, geen wijziging aan de schil, geen nieuwe targetSDK.
+Wat er wél veranderde zit in de app zelf, en dat staat in `CHANGELOG.md`.
+
+> **De afvinklijst staat niet hier maar in `PLAY-INZENDING.md` §16**, en die is
+> op 10-09 opnieuw ingedeeld: wat een test bewaakt blijft vanzelf waar, wat op
+> een toestel bewezen moet zijn draagt het buildnummer waarop dat gebeurde.
+> Een vinkje zonder buildnummer stelde je gerust over een build die je niet
+> uploadt.
 
 De invulteksten voor de Play Console staan in `PLAY-INZENDING.md`; dit bestand
 legt uit waaróm ze zo luiden. Zie het kopje onderaan.

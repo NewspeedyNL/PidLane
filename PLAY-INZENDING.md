@@ -1,6 +1,7 @@
 # PLAY-INZENDING.md — alle tekst die de Play Console vraagt
 
-Opgesteld 03-09-2026. Dit bestand is **kopieerwerk**: elk kopje hieronder is
+Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7 en §16). Dit bestand is
+**kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
 
 Waarom dit een eigen bestand is en niet in `ANDROID-PLAYSTORE.md` staat: dat
@@ -156,9 +157,15 @@ Vragen: info@pidlane.nl
 | wat | eis | stand |
 |---|---|---|
 | App icon | 512×512 PNG, 32-bit, geen transparantie | `icon-512.png` staat in de repo |
-| Feature graphic | 1024×500 PNG/JPG, **verplicht** | **moet nog gemaakt** |
-| Telefoonschermen | 2 t/m 8, 16:9 of 9:16, korte zijde 320–3840 px | **moeten nog gemaakt** |
+| Feature graphic | 1024×500 PNG/JPG, **verplicht** | zie §16c — staat niet in de repo |
+| Telefoonschermen | 2 t/m 8, 16:9 of 9:16, korte zijde 320–3840 px | zie §16c — staan niet in de repo |
 | Tabletschermen | optioneel | overslaan |
+
+> **Deze drie zijn vanuit de repo niet te controleren.** Ze worden rechtstreeks
+> in de Console geüpload en staan hier niet als bestand. Tot 10-09-2026 zei
+> deze tabel "moet nog gemaakt" terwijl de afvinklijst ze al afgevinkt had —
+> twee plekken die hetzelfde beweerden en uit de pas liepen. De stand staat nu
+> op één plek: §16c.
 
 ### Feature graphic
 
@@ -259,12 +266,13 @@ server en vraagt een geldig sessietoken. Ziet een reviewer de kernfunctie uit
 je storebeschrijving niet werken, dan is dat een afwijzing op "incomplete
 access" — en die is volledig te voorkomen.
 
-Maak vóór het inzenden een account aan met tegoed erop en vul het hier in:
+Maak vóór het inzenden een account aan met tegoed erop en vul het hier in.
+Gebruik **niet** je eigen inlog: dat wachtwoord gaat naar Google.
 
 | veld | waarde |
 |---|---|
-| Username | `review@pidlane.nl` (of het adres dat je aanmaakt) |
-| Password | *het wachtwoord — niet in dit bestand, niet in de repo* |
+| Username | `demo@pidlane.nl` |
+| Password | *staat alleen in het Console-veld — niet hier, zie de kader hieronder* |
 | Any other instructions | zie hieronder |
 
 Instructions:
@@ -280,8 +288,14 @@ Het account bevat geen persoonsgegevens en is uitsluitend voor de review
 aangemaakt.
 ```
 
-> **Zet het wachtwoord nooit in deze repo.** Het gaat rechtstreeks in het
-> Console-veld. Deze repo is de bron van de app, niet van de sleutels.
+> **Zet het wachtwoord nooit in deze repo — deze repository is PUBLIEK.**
+> Een wachtwoord in een gecommit bestand staat binnen een minuut wereldwijd
+> online, op een account waar tegoed op staat. Het hoort alleen in het
+> Console-veld *App access*: dat gaat naar Google en verder nergens heen.
+> Deze repo is de bron van de app, niet van de sleutels.
+>
+> `test-playteksten.js` bewaakt dit sinds 10-09-2026: staat er alsnog een
+> wachtwoordregel in dit document, dan wordt CI rood vóór het gepusht is.
 
 ---
 
@@ -453,7 +467,25 @@ mee, plus `privacy.html` en `verwijderen.html`.
 
 ## 14. Release notes
 
-Maximaal 500 tekens per taal. Voor de eerste inzending:
+Maximaal 500 tekens per taal. `test-playteksten.js` telt dat mee, dus korten
+gebeurt hier en niet tijdens het plakken.
+
+**Dit wordt de eerste inzending**, en dat maakt dit veld iets anders dan een
+changelog: er is niets "nieuw", dus de tekst beschrijft wat de app ís. Dat
+betekent ook dat hij dezelfde belofte doet als §3 — en twee velden die met de
+hand hetzelfde beschrijven, lopen hier uit de pas. Dat is de fout die §16 op
+10-09 de kop kostte en die §11 twee keer eerder maakte. **`test-playteksten.js`
+controleert daarom dat elke functie die dit veld noemt óók in §3 staat**; noem
+je hier iets nieuws, dan hoort het daar eerst.
+
+**Nagelezen tegen build #432, 10-09-2026.** De drie functies die hieronder bij
+naam genoemd worden bestaan als eigen module (`pidlane-monitor.js`,
+`pidlane-koopcheck.js`, `pidlane-remote.js`), en de demobelofte op de laatste
+regel wordt woordelijk bewaakt door `test-demo-toegang.js` — dat is de zin die
+een reviewer zonder auto als eerste probeert.
+
+**Zet je en-US aan, kijk dan eerst naar §3.** Dat veld heeft nog geen Engelse
+versie, terwijl §1, §2 en dit veld die wel hebben (#177).
 
 **nl-NL:**
 
@@ -502,35 +534,74 @@ toont, en of de bovenrand en onderrand op Android 15+ overal kloppen.
 
 ## 16. Vóór je op inzenden drukt
 
-Code en repo:
+**Deze lijst had één fout, en die is op 10-09-2026 gerepareerd.** Hij stond vol
+vinkjes die gezet waren op build #423 van 03-09. Sinds die dag zijn er negen
+builds bij gekomen en is er fors verbouwd — laag 2 en 3 uit de meetketen weg,
+de begeleide run herbouwd tot twee rondes, de ritwaarnemer uitgebreid. Een
+aangevinkt hokje dat over een build gaat die je niet uploadt, is erger dan geen
+hokje: het stelt je gerust over iets wat niet nagekeken is.
 
-- [x] `.aab` gebouwd op Capacitor 8 (targetSdk 36) — build #423, 03-09-2026
-- [x] `.aab` ondertekend, `versionCode` loopt mee met `run_number`
-- [x] `versionName` gelijk in `package.json` en `public/config.js` (3.0.0), CI bewaakt dat
-- [x] Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde
-- [x] Foutpagina in de schil als de app niet laadt (`server.errorPath`) —
-      **op een toestel bewezen** op 03-09-2026 om 20:16: vliegtuigmodus aan,
-      koud gestart, eigen scherm in plaats van `net::ERR_`
-- [x] `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm
-- [x] Geen koopknop in de app (`tikkie_kopen` leeg), geen APK-distributie in de app
+De lijst staat daarom in twee delen, en dat onderscheid is de hele reparatie.
 
-Buiten de repo, en dit is de helft die blijft liggen:
+### 16a — Wat een test bewaakt (blijft vanzelf waar)
+
+Deze punten hoef je niet opnieuw na te lopen. Ze worden bij elke commit
+gecontroleerd door `plcheck.sh`; gaat er iets stuk, dan wordt CI rood vóór er
+iets gebouwd wordt. Vink ze één keer af en laat ze staan.
+
+| punt | bewaakt door |
+|---|---|
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.0.0) | `test-playteksten.js` |
+| Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
+| Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
+| `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
+| Geen koopknop in de app, geen APK-distributie in de app | `test-playteksten.js` |
+| Privacy- en verwijder-URL wijzen naar dezelfde host als de app | `test-playteksten.js` |
+| Elk invulveld past binnen de tekengrens van de Console | `test-playteksten.js` |
+| Het document beweert nergens dat gegevens *anoniem* zijn | `test-playteksten.js` |
+| Het icoon staat op een pad dat een build start | `test-icoonpad.js` |
+| De APK-sleutel die de build schrijft, is die de Worker leest | `test-apkpad.js` |
+| De toestemmingstekst noemt pseudonimisering, geen anonimisering | `test-toestemmingstekst.js` |
+
+### 16b — Wat op een TOESTEL bewezen moet zijn, en op wélke build
+
+Deze punten kan geen enkele test dekken: er moet een mens met een telefoon
+aan te pas komen. Ze verlopen dus bij elke nieuwe build, en daarom staat het
+buildnummer erbij in plaats van een kaal vinkje.
+
+> **Vul hier de build in die je gaat uploaden**, en zet er per regel het
+> buildnummer bij waarop je het gezien hebt. Staat er een ouder nummer dan de
+> build hierboven, dan is dat punt niet nagekeken.
+>
+> **Upload-build: `#___`  (datum: __-__-2026)**
+
+| punt | laatst bewezen op |
+|---|---|
+| `.aab` gebouwd én ondertekend, `versionCode` loopt mee met `run_number` | build #423, 03-09-2026 |
+| Foutpagina doet het echt: vliegtuigmodus aan, koud gestart, eigen scherm in plaats van `net::ERR_` | build #423, 03-09-2026 om 20:16 |
+| Demo één keer helemaal doorlopen op een schoon toestel zonder adapter | build #423, 03-09-2026 |
+| Disclosure verschijnt vóór het Android-permissiedialoog, niet erna | nog niet bewezen |
+| Weigerknop: geen permissieverzoek, geen verbinding, app blijft heel | nog niet bewezen |
+| De begeleide run opent en loopt door — dit is het scherm dat een reviewer als eerste ziet na de demo | nog niet bewezen |
+
+**Let op bij de demo-doorloop.** De begeleide run is op 10-09 verbouwd tot twee
+rondes (meetrit en toestelronde). Een doorloop van vóór die datum zegt niets
+meer over wat een reviewer nu ziet.
+
+### 16c — Buiten de repo, en dit is de helft die blijft liggen
+
+Hier kan de code niets aan doen; dit is handwerk in andere systemen.
 
 - [ ] `info@pidlane.nl` bestaat en wordt gelezen — een reviewer mag erop mailen
 - [ ] `https://app.pidlane.nl/privacy.html` opent in een private venster
 - [ ] `https://app.pidlane.nl/verwijderen.html` opent in een private venster
-- [ ] `feat_demo` staat AAN in de AppConfig-tabel (Airtable) — staat hij uit, dan
-      klopt §7 niet meer
-- [x] Testaccount mét tegoed bestaat — 140 tokens, bijgeboekt via de adminpagina
-      en meteen zichtbaar in de app
-- [ ] De inloggegevens van dat account staan in *App access*. **Let op:** het
-      tegoed staat nu op een persoonlijk adres. Voor de Console is een apart
-      review-account netter — dat wachtwoord gaat naar Google en je wilt niet
-      dat het je eigen inlog is
-- [ ] Demo één keer helemaal doorlopen op een schoon toestel zonder adapter
-- [ ] Disclosure getest op een schoon toestel: hij verschijnt vóór het
-      Android-permissiedialoog, niet erna
-- [ ] Weigerknop getest: geen permissieverzoek, geen verbinding, app blijft heel
+- [ ] `feat_demo` staat AAN in de AppConfig-tabel (Airtable) — staat hij uit,
+      dan klopt §7 niet meer
+- [ ] Het reviewaccount `demo@pidlane.nl` bestaat, heeft tegoed, en is
+      **niet** je eigen inlog — zie §7
+- [ ] Het wachtwoord van dat account staat in het Console-veld *App access*
+      en **nergens in deze repo**: dit is een publieke repository
+- [ ] Data safety-formulier ingevuld volgens §11, met "anonymized" NERGENS
+      aangevinkt
 - [x] Feature graphic gemaakt (1024×500)
 - [x] Twee schermafbeeldingen met echte meetwaarden, op een echt toestel
-- [ ] Data safety-formulier ingevuld volgens §11, met "anonymized" NERGENS aangevinkt

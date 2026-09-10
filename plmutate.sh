@@ -381,6 +381,32 @@ MUTATIES=(
 # scrollruimte niet meewegen, of hem wél lezen maar niet aftrekken.
 "public/pidlane-testrun.js@@  var vast = tekort - rest;                         // wat er ook uitgescrold blijft staan@@  var vast = tekort;                                // wat er ook uitgescrold blijft staan@@test-schermranden.js@@de scrollruimte telt niet meer mee: elke scrollende pagina is weer een bevinding"
 "public/pidlane-testrun.js@@  var rest = Math.max(0, scrollRest || 0);          // hoeveel er nog te scrollen valt@@  var rest = 1e9;                                   // hoeveel er nog te scrollen valt@@test-schermranden.js@@er is altijd genoeg scrollruimte, dus een echt onbereikbare onderrand valt weg"
+# ── Geen wachtwoord in de Play-inzending (#174, 10-09-2026) ──
+# Deze repository is PUBLIEK, en §7 van PLAY-INZENDING.md vraagt om een
+# reviewaccount met tegoed erop. De sleutelscan in CI zoekt naar API-sleutels
+# en tokens, niet naar een wachtwoord in lopende tekst — die vangt dit dus
+# niet. De fout die je hier echt maakt is de regex zo smal maken dat hij alleen
+# het verzonnen voorbeeld uit zijn eigen tegenproef nog herkent; de controle
+# staat dan groen op een document dat wel degelijk lekt.
+"public/test-playteksten.js@@[:|=]\\s*([^\\s|*_\\x60]{8,})/i.test(nep);@@[:|=]\\s*(NOOITZOGENOEMD)/i.test(nep);@@test-playteksten.js@@de wachtwoordwachter herkent een echt wachtwoord niet meer"
+# ── Union op de verkeerde bestanden (10-09-2026) ──
+# .gitattributes haalt de handmatige conflictreparatie weg die op 10-09 in zes
+# van zeven inhaalmerges nodig was. Beide fouten hieronder zijn stil: de eerste
+# brengt die reparaties terug zonder dat er iets rood wordt, de tweede laat git
+# bij een botsing twee keer dezelfde regel JS wegschrijven — en dat is precies
+# de klasse fout die hier maanden blijft staan.
+".gitattributes@@PIDLANE.md    merge=union@@PIDLANE.md    -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
+".gitattributes@@CHANGELOG.md  merge=union@@CHANGELOG.md  merge=union\n*.js          merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── §14 belooft iets wat §3 niet kent (10-09-2026) ──
+# De release notes zijn een ingedikte §3, met de hand. Een functie erbij zetten
+# zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
+# kostte: twee velden die een reviewer allebei leest, met verschillende
+# beloftes. Het valt niemand op tot het in de Console staat.
+"PLAY-INZENDING.md@@Met ritmonitor, koopcheck en diagnose op afstand.@@Met ritmonitor, koopcheck en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+# En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
+# de stillere van de twee — je verbetert de beschrijving en raakt het veld
+# ernaast niet aan.
+"PLAY-INZENDING.md@@• Koopcheck — een vaste doorloop@@• Aankoopkeuring — een vaste doorloop@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
 )
 
 echo
