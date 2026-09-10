@@ -335,8 +335,14 @@ MUTATIES=(
 # Twee fouten die je hier echt kunt maken: de bekendeTik-guard weglaten (dan
 # meldt de openingstik van elke rit zichzelf als meetgat), en het sluiten van
 # het interval weglaten (dan groeit een meetgat door tot ver na het herstel).
+# De derde is de duurste en is met de hand nagemeten: bij een bevriezing staan
+# de pollus en de tiklus samen stil, dus de eerste tik terug leest oude
+# stempels. Zonder de loopgat-uitzondering geeft 90 s bevriezing een loopgat
+# van 90 s én een meetgat van 5 s — en dan wijst blok 14 tegelijk naar de
+# achtergrondkwestie en naar de bus. Dat is de vorm van #77 en #103.
 "public/pidlane-testrun.js@@if (bekendeTik > 0 && gemetenTik === 0) {@@if (gemetenTik === 0) {@@test-rit.js@@de openingstik van een rit telt zichzelf als meetgat"
 "public/pidlane-testrun.js@@} else if (meetgatSinds) {@@} else if (false) {@@test-rit.js@@een meetgat sluit niet meer af en groeit door tot na het herstel"
+"public/pidlane-testrun.js@@if (!loopgatNu) {@@if (true) {@@test-rit.js@@een achtergrondbevriezing opent ook een meetgat en wijst zo naar de bus"
 )
 
 echo

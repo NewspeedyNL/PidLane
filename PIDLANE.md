@@ -906,6 +906,19 @@ schrijven, en `plmutate.sh` bouwt beide foutmodi terug — de bekendeTik-guard
 weg (valse meetgaten bij elke ritstart) en het sluiten van het interval weg
 (een meetgat dat na herstel blijft doorgroeien).
 
+**En de spiegelfout die er meteen in zat.** De eerste versie van deze meting
+opende óók een meetgat bij een pure achtergrondbevriezing. Bij bevriezen staan
+de pollus en de tiklus namelijk samen stil — dat is wat bevriezen ís — dus de
+eerste tik terug boekt terecht een loopgat en leest daarna stempels die nog
+van vóór de stilte zijn. Nagemeten: 90 s bevriezing gaf een loopgat van 90 s
+**én** een meetgat van 5 s, en blok 14 wees daarmee tegelijk naar de
+achtergrondkwestie en naar de bus. Precies de vorm van #77 (één herverbinding
+te veel) en #103 (één te weinig): een signaal dat je bij de meting die #18 moet
+beantwoorden de verkeerde kant op stuurt. De tik die zelf een loopgat boekt
+oordeelt daarom niet meer over de data — hij opent geen meetgat en sluit er ook
+geen. `test-rit.js` speelt die bevriezing na en `plmutate.sh` bouwt de fout
+terug.
+
 Blok 14 ("Liep de app door tijdens de rit?") meldt loopgat en meetgat nu
 apart en zegt bij een herverbinding welke van de twee eraan voorafging: een
 loopgat wijst naar de achtergrondkwestie, een meetgat naar de adapter of de
@@ -914,6 +927,13 @@ twee tikken. De blok-5-proef van #133 toetste eerst alleen `PLRit.gaten()`
 tegen `plMeetStabielVoorstel()` en zou de rit van 10-09 zelf niet gevangen
 hebben — 0 loopgaten, dus geen tegenspraak om op te reageren. Hij telt nu
 `gaten().length + meetgaten().length` mee.
+
+Er was nóg een lezer van dezelfde teller, en die is meegegaan: de #75-proef in
+blok 5 meldde *"herverbinding(en) zonder enig gat in de meetlus … of de app is
+heropgestart"* op basis van alleen het loopgat. Op de rit van 10-09 zou die
+regel je dus naar een heropstart hebben gestuurd. Hij noemt loopgat en meetgat
+nu apart, en "zonder allebei" is daar wat het is: een socket die stierf en
+herstelde tussen twee tikken (#103).
 
 **Wat dit niet oplost.** `plMeetStabielVoorstel()` werkte al vóór deze
 wijziging en gaf de AI-analyse het juiste oordeel over de meetkwaliteit — dat

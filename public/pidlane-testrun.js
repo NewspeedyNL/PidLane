@@ -638,8 +638,11 @@ const PLRit = (function () {
       if (!start) start = nu;
       // Een gat betekent dat deze lus zelf niet liep — precies het bewijs uit de
       // rit van 23-08 (het logboek zweeg op dezelfde kloktijden).
-      if (laatstT && (nu - laatstT) > GAT_MS)
+      let loopgatNu = false;
+      if (laatstT && (nu - laatstT) > GAT_MS) {
         gaten.push({ van: laatstT, tot: nu, s: Math.round((nu - laatstT) / 1000) });
+        loopgatNu = true;
+      }
       laatstT = nu;
 
       // De versheidsbron. Ontbreekt hij, dan wordt er NIET stilzwijgend
@@ -680,12 +683,25 @@ const PLRit = (function () {
          Geen nieuwe bron nodig: neem() telt dat al per PID op in `gemist`.
          Een tik waarin elke al bekende PID `gemist` oplevert (dus geen
          enkele 'gemeten') is een meetgat. Opeenvolgende meetgat-tikken worden
-         tot één interval samengevoegd, net als bij `gaten`. */
-      if (bekendeTik > 0 && gemetenTik === 0) {
-        if (!meetgatSinds) meetgatSinds = nu;
-      } else if (meetgatSinds) {
-        meetgaten.push({ van: meetgatSinds, tot: nu, s: Math.round((nu - meetgatSinds) / 1000) });
-        meetgatSinds = 0;
+         tot één interval samengevoegd, net als bij `gaten`.
+
+         EEN BEVRIEZING IS GEEN MEETGAT, en dat is de uitzondering hieronder.
+         Bij een bevriezing staan de pollus en deze tiklus SAMEN stil — dat is
+         wat bevriezen is. De eerste tik terug boekt hierboven terecht een
+         loopgat, maar leest daarna stempels die nog van vóór de stilte zijn en
+         zou dus ook een meetgat openen. Nagemeten: 90 s bevriezing gaf een
+         loopgat van 90 s én een meetgat van 5 s, en blok 14 wijst je dan
+         tegelijk naar de achtergrondkwestie en naar de bus. Dat is de vorm van
+         #77 en #103 — één signaal te veel dat je de verkeerde kant op stuurt.
+         Een lopend meetgat blijft op zo'n tik staan zoals het stond: deze tik
+         weet niets over de data, dus hij opent en sluit er ook niets mee. */
+      if (!loopgatNu) {
+        if (bekendeTik > 0 && gemetenTik === 0) {
+          if (!meetgatSinds) meetgatSinds = nu;
+        } else if (meetgatSinds) {
+          meetgaten.push({ van: meetgatSinds, tot: nu, s: Math.round((nu - meetgatSinds) / 1000) });
+          meetgatSinds = 0;
+        }
       }
     } catch (e) {
       // Bewust stil: een waarnemer op vreemde objecten mag de rit nooit
@@ -2470,11 +2486,18 @@ const PROEVEN_B5 = [
       // #77 — een herverbinding zonder gat was tot vandaag de normale eerste
       // verbinding. Nu hoort dat een echte onderbreking te zijn.
       if (window.PLRit) {
+        // Sinds #133 zijn er twee soorten gat, en deze regel moet ze allebei
+        // kennen: op de rit van 10-09 stond het loopgat op 0 terwijl de adapter
+        // 39 s weg was, en dan wees "zonder enig gat" je naar een heropstart.
         const hv = PLRit.herverbindingen(), g = PLRit.gaten().length;
-        if (hv > 0 && g === 0)
-          uit.push('LET OP: ' + hv + ' herverbinding(en) zonder enig gat in de meetlus. Sinds #77 telt de eerste ' +
-                   'verbinding niet meer mee, dus dit is er dan ook echt een — of de app is heropgestart');
-        else uit.push(hv + ' herverbinding(en) bij ' + g + ' gat(en)');
+        let mg = 0;
+        try { mg = (PLRit.meetgaten ? (PLRit.meetgaten() || []) : []).length; }
+        catch (e) { console.warn('PLRit.meetgaten() onleesbaar bij de #75-proef', e); }
+        if (hv > 0 && g === 0 && mg === 0)
+          uit.push('LET OP: ' + hv + ' herverbinding(en) zonder loopgat én zonder meetgat. Sinds #77 telt de eerste ' +
+                   'verbinding niet meer mee, dus dit is er dan ook echt een — een socket die stierf en herstelde ' +
+                   'tussen twee tikken, of de app is heropgestart');
+        else uit.push(hv + ' herverbinding(en) bij ' + g + ' loopgat(en) en ' + mg + ' meetgat(en)');
       }
       // #75/#72 — de app-log moet dateerbaar zijn, anders telt de meldingenregel
       // in blok 11 altijd nul.

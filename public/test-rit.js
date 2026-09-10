@@ -206,6 +206,40 @@ function keurMeetgatLopendZichtbaar(s) {
   return uit;
 }
 
+// Een BEVRIEZING is een loopgat en géén meetgat. Bij een bevriezing staan de
+// pollus en de tiklus samen stil — dat is wat bevriezen is — dus de eerste tik
+// terug leest stempels die nog van vóór de stilte zijn. Zonder de uitzondering
+// in tik() opent élke achtergrondbevriezing daarmee ook een meetgat, en dan
+// zegt blok 14 tegelijk "achtergrondkwestie (#18)" en "adapter of de bus
+// (#133)" over één gebeurtenis. Dat is de vorm van #77 en #103: één signaal te
+// veel, dat je precies bij de meting die #18 moet beantwoorden de verkeerde
+// kant op stuurt.
+//
+// Nagemeten vóór de reparatie: 90 s bevriezing gaf een loopgat van 90 s én een
+// meetgat van 5 s.
+function keurBevriezingGeenMeetgat(s) {
+  const uit = [];
+  s.PLRit.wis();
+  let t = T0;
+  const stap = function (waarde) {
+    t += 5000; s._klokNu = t;
+    if (waarde !== null) s.pidVals['010C'] = waarde;
+    s.PLRit.tik(t);
+  };
+  stap(800); stap(801); stap(802);
+  t += 85000;            // bovenop de 5 s van stap(): 90 s waarin niets tikt en niets polt
+  stap(null);            // eerste tik terug — de stempels staan nog op vóór de stilte
+  stap(803); stap(804);  // en de pollus hervat
+
+  const g = s.PLRit.gaten(), mg = s.PLRit.meetgaten();
+  if (g.length !== 1) uit.push(g.length + ' loopgat(en) gemeld, verwacht 1');
+  else if (g[0].s !== 90) uit.push('loopgat van ' + g[0].s + ' s gemeld, verwacht 90');
+  if (mg.length)
+    uit.push(mg.length + ' meetgat(en) gemeld bij een pure bevriezing (' + JSON.stringify(mg) +
+      ') — dan wijst blok 14 tegelijk naar de achtergrond en naar de bus');
+  return uit;
+}
+
 // De EERSTE tikken van een rit mogen nooit als meetgat tellen. Bij de eerste
 // waarneming van een PID is er nog geen bekend stempel om tegen te toetsen —
 // neem() geeft dan per definitie nooit 'gemeten' terug (zie keurNeemUitkomsten
@@ -474,6 +508,7 @@ toetsSchoon('een gat in de meetlus wordt geteld', keurGatenTellen(S));
 toetsSchoon('een normale rit levert geen gaten op', keurNormaalGeenGat(S));
 toetsSchoon('een meetgat wordt geteld terwijl de lus doortikt (#133)', keurMeetgatTellen(S));
 toetsSchoon('een lopend meetgat is al zichtbaar vóór het herstel', keurMeetgatLopendZichtbaar(S));
+toetsSchoon('een bevriezing is een loopgat en geen meetgat (#18 tegen #133)', keurBevriezingGeenMeetgat(S));
 toetsSchoon('de openingstik van een rit telt nooit als meetgat', keurEersteTikGeenMeetgat(S));
 toetsSchoon('herverbindingen worden geteld', keurHerverbindingTellen(S));
 toetsSchoon('de eerste verbinding van een sessie telt niet mee (#77)', keurEersteVerbindingGeenHerverbinding());
