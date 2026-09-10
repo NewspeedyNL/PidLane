@@ -327,6 +327,19 @@ MUTATIES=(
 "public/pidlane-credits.js@@    const bak = k.perMax && k.perMax[String(max)];@@    const bak = null;@@test-uitvoerschatting.js@@elk plafond deelt weer één gemiddelde, dus een hulpvraag trekt het rapport omlaag"
 "public/pidlane-credits.js@@          gem: bak && bak.n > 0 ? (bak.gem * (1 - wb) + uitTok * wb) : uitTok,@@          gem: bak && bak.n > 0 ? (bak.gem * (1 - wb) + (uitTok / maxTokens) * wb) : (uitTok / maxTokens),@@test-uitvoerschatting.js@@er wordt weer een verhouding tot het plafond opgeslagen in plaats van de echte uitvoer"
 "public/pidlane-credits.js@@        if (!isFinite(o.uf) || o.uf <= 0) o.uf = CFG.uitvoerFactor;@@        if (false) o.uf = CFG.uitvoerFactor;@@test-uitvoerschatting.js@@een opslag van vóór deze wijziging geeft NaN in plaats van een raming"
+
+# ── De begeleide run kost alleen nog wat een rit kost (#166, 10-09-2026) ──
+# Vier fouten die je bij precies deze verbouwing maakt. De eerste twee zijn de
+# terugval: een stilstaande stap weer in de ritronde zetten "omdat het er toch
+# bij hoort", en de oogstpoort laten sluiten zonder dat er onder belasting
+# gemeten is — dan was de optrekstap voor niets weggehaald. De derde is de
+# ladderfout die #64 op 10-09 de kop kostte: het venster opent achter het
+# testrunscherm. De vierde is de stille: de poort gaat open op een auto die
+# nooit gereden heeft, omdat één waarneming al meetelt.
+"public/pidlane-testrun.js@@    ronde: 'toestel', nodig: 'toestel', opent: 'venster', issues: ['#64'],@@    ronde: 'rit', nodig: 'toestel', opent: 'venster', issues: ['#64'],@@test-begeleid.js@@de meetcontextvragen kosten weer ritminuten terwijl ze stilstaand kunnen"
+"public/pidlane-testrun.js@@        ? { naam: 'belasting', klaar: false, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@        ? { naam: 'belasting', klaar: true, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@test-begeleid.js@@de oogstpoort gaat open zonder dat er ooit onder belasting gemeten is"
+"public/pidlane-testrun.js@@  if (s.opent === 'venster') {\n    try { _bgWijk(true); }@@  if (false) {\n    try { _bgWijk(true); }@@test-begeleid.js@@het testrunscherm gaat niet meer opzij, dus het vragenvenster opent erachter"
+"public/pidlane-testrun.js@@  punten.push(!e10D || e10D.n < 2@@  punten.push(!e10D || e10D.n < 1@@test-begeleid.js@@één enkele snelheidswaarneming telt weer als bewijs dat er gereden is"
 )
 
 echo
