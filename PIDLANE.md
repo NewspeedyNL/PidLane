@@ -333,6 +333,7 @@ als een routingfout):
 |---|---|
 | `/auth/login` | zakelijke login; valideert tegen Airtable `Users` + `USERS_JSON`-secret, geeft HMAC-token (12u) |
 | `/v1/messages` | Anthropic-proxy **+ tegoedcontrole en afboeking voor klantaccounts** (zie §8) |
+| `/v1/ping` | dezelfde poorten als `/v1/messages` (sessie, rol, sleutel) **zonder het model aan te roepen**; GET, kost niets — de keten-test na het inloggen (#179) |
 | `/copilot` | in-app ontwikkelassistent, admin-only |
 | `/airtable/log`, `/airtable/veldlab`, `/airtable/reference` | Airtable-opslag |
 | `/session/create,connect,state,telemetry,close` | remote-sessies (Durable Object) |
@@ -717,8 +718,15 @@ alinea rood zodra ze niet meer klopt.
 **Achtergrondcalls kosten geld.** Sinds de Worker afrekent is élke call naar
 `/v1/messages` billable, ook calls die nooit langs `PLCredits.preflight` gaan
 en die de gebruiker niet als analyse ziet. Voeg je een AI-call toe die vanzelf
-afgaat, bedenk dan eerst wie hem betaalt. `testApiKey()` draait daarom niet
-meer voor klantaccounts.
+afgaat, bedenk dan eerst wie hem betaalt.
+
+**Hier stond tot 10-09-2026 dat `testApiKey()` "daarom niet meer voor
+klantaccounts draait", en die zin heeft nooit geklopt** — er stond geen enkele
+rolcontrole omheen, en het saldo zakte bij elke login met precies 1. Sinds
+10-09-2026 klopt de conclusie wél, maar op een andere manier dan die zin
+beweerde: de functie draait voor iedereen en gaat langs `/v1/ping`, dat het
+model niet aanroept (#179). Waarom die vergissing hier bleef staan, staat in
+§11.
 
 **Die grens is er niet meer, op één plek na.** Hier stond dat Airtable geen
 transacties kent en dat twee gelijktijdige calls van hetzelfde account elkaars
@@ -873,6 +881,60 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### Elke login kostte precies één credit — 10-09-2026 (#179, opgelost)
+
+Het saldo stond op 40 en direct na het inloggen op 39. Elke keer 1, ook zonder
+één analyse te draaien.
+
+**De keten.** `finishLogin()` roept `testApiKey()` aan, en die deed een echte
+`POST /v1/messages` naar de proxy om "🤖 AI-sleutel ✓" te kunnen tonen. De
+Worker rekent daar af op écht verbruik — 8 tokens in, 3 uit voor "ping" → "yes"
+— maar `tegoedTarief()` heeft een ondergrens: `min: Math.max(1, …)`. Het
+antwoord is drie woorden lang; voor het minimumtarief maakt dat niets uit.
+Inloggen zélf raakt het saldo dus niet, de controle erachter wel.
+
+**Waarom het uitgerekend nu opviel.** Het reviewaccount `demo@pidlane.nl`
+krijgt tegoed mee voor de Play-review, en **een reviewer logt vaker in dan hij
+analyseert**. Dat is precies het saldo dat op zijn moment niet leeg mag zijn.
+
+**Dit is de tweede keer dat deze functie geld kostte.** Op 31-07-2026
+verdwenen er tokens zonder analyses; de oorzaak was dezelfde functie, die toen
+bij élke app-start vuurde (#83, §8). Die ronde leverde het kasboek op en
+verplaatste de call naar de login — en daarmee was hij niet weg maar
+goedkoper. De reparatie van vandaag haalt de AI-call zelf weg in plaats van hem
+minder vaak te doen: `/v1/ping` loopt door dezelfde drie poorten (sessie, rol,
+sleutel) en raakt het model niet aan. Dat was richting 2 van de drie in het
+issue; richting 1 (de uitkomst onthouden in `localStorage`) was de goedkopere
+tussenstap en is overgeslagen, omdat hij de kosten spreidt in plaats van
+wegneemt.
+
+**De conclusie in §8 was fout, en dat is de duurdere helft van dit kopje.**
+Daar stond sinds 03-09-2026: *"`testApiKey()` draait daarom niet meer voor
+klantaccounts."* Er stond geen enkele rolcontrole omheen — niet in
+`pidlane-auth.js`, nergens. `git log -S` laat zien dat die zin bij een grote
+documentatieronde is geschreven en nooit bij een codewijziging hoorde. Het is
+dezelfde vorm als het kasboek dat in §8 in de tegenwoordige tijd beschreven
+stond terwijl `tegoedLog` niet bestond: **een geruststellende zin over geld,
+die niemand nameet.** De zin is nu herzien vastgelegd en niet weggepoetst.
+
+**Wat het onherhaalbaar maakt.** `test-inlogkosten.js` laat één login door de
+echte keten lopen — de echte `testApiKey()`, de echte router, de echte
+`handlePing` — en kijkt daarna naar het saldo. Dat bewijst op zichzelf niets,
+dus staat de tegenproef er in dezelfde opzet naast: dezelfde drie woorden via
+`/v1/messages`, en dan staat er 39. Zonder die tweede helft meet deel 6 alleen
+dat er niets gemeten is. Deel 4 zet de statuscodes van `handlePing` en
+`handleMessages` naast elkaar voor vier weigeringen: een ping die groen meldt
+waar de echte analyse 401 of 403 geeft, is een chip die liegt. Vijf mutaties in
+`plmutate.sh` houden het scherp, en de eerste daarvan is precies de code zoals
+hij vanmorgen nog in de app stond.
+
+**Wat de ping bewust níét toetst, is het saldo.** Dat kost een Airtable-lezing
+per login terwijl `/klant/mij` die na het inloggen toch al doet, en het tegoed
+heeft zijn eigen chip. Een klant met 0 credits ziet dus een groene AI-chip en
+loopt bij de eerste analyse tegen 402 aan. Dat is de bestaande verdeling —
+sleutelchip zegt iets over de sleutel, tokenchip over het tegoed — en geen
+nieuwe onduidelijkheid.
 
 ### §14 was 03-09 geschreven en nooit meer nagelezen — 10-09-2026 (#177)
 
