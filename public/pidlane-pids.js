@@ -518,7 +518,7 @@ function resetDataStream(auto){
   try{
     Object.keys(pidHist||{}).forEach(k=>{ if(Array.isArray(pidHist[k])) pidHist[k]=pidHist[k].slice(-5); });
     stabilityCount={}; outlierCount={}; dataStable=false; window._stabilityT0=null;
-    _pidLastUpd={}; _pidLastUpdPause={}; pidSmooth={};
+    _pidLastUpd={}; _pidLastUpdPause={};
     try{ if(typeof window._rxBuf==='string') window._rxBuf=''; }catch(e){ /* stil: buffer-reset; ontbreekt hij dan is er ook niets te wissen */ }
     try{ if(typeof window._sppBuf==='string') window._sppBuf=''; }catch(e){ /* stil: buffer-reset; ontbreekt hij dan is er ook niets te wissen */ }
     try{ if(typeof btBuffer==='string') btBuffer=''; }catch(e){ /* stil: buffer-reset; ontbreekt hij dan is er ook niets te wissen */ }

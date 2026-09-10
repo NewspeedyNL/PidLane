@@ -317,7 +317,7 @@ async function handleConnect(){
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false);
     try{ const _vt=document.getElementById('vtag'); if(_vt){ _vt.style.display='none'; _vt.dataset.naam=''; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
-    pidVals={}; pidHist={}; pidSmooth={}; stabilityCount={}; dataStable=false; window._stabilityT0=null;
+    pidVals={}; pidHist={}; stabilityCount={}; dataStable=false; window._stabilityT0=null;
     log('Verbinding verbroken','warn');
   } else {
     document.getElementById('connOv').classList.remove('hidden');
