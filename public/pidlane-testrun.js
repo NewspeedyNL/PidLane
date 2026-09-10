@@ -5103,7 +5103,12 @@ function markeringen() { return _markeringen.slice(); }
 // en niets oplevert, kost ook de stappen die er niet meer bij passen.
 //
 // Elke stap draagt daarom twee velden. `nodig` zegt wat hij van de wereld
-// vraagt ('rijden' of 'stilstaand') en `ronde` in welke ronde hij meeloopt. De
+// vraagt — 'rijden' (de auto moet bewegen), 'auto' (stilstaand, maar mét
+// adapter of draaiende motor) of 'toestel' (alleen de app) — en `ronde` in
+// welke ronde hij meeloopt. Die middelste is het onderscheid dat telt: een
+// zelfgemaakt adaptergat hoort in de rit omdat het gat in DEZE meetreeks moet
+// vallen, en de drie meetcontextvragen horen dat niet, want die hebben aan de
+// app genoeg. De
 // lijst blijft één lijst — twee filters, geen tweede lijst, want dat is precies
 // de vorm die CAMPAGNE en §11 eerder de kop kostte.
 //
@@ -5204,7 +5209,7 @@ function _ritOogst() {
 const _STAPPEN = [
   {
     id: 'verbinding',
-    ronde: 'beide', nodig: 'stilstaand', voorwaarde: true, issues: [],
+    ronde: 'beide', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'Staat alles klaar om te meten?',
     waarom: 'Zonder versheidsbron meet de ritwaarnemer het geheugen in plaats van de auto (#74). Dat wil je vóór de rit weten, niet erna.',
     wat: 'Niets — de app kijkt zelf. Zie je hieronder een kruisje, los dat dan eerst op.',
@@ -5222,7 +5227,7 @@ const _STAPPEN = [
   },
   {
     id: 'pids',
-    ronde: 'rit', nodig: 'stilstaand', voorwaarde: true, issues: [],
+    ronde: 'rit', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'De meet-PIDs in de selectie',
     waarom: 'Een PID die niet in de pollronde staat, wordt niet gemeten — en over zijn gedrag valt dan niets te zeggen. Dit is waarom #19 drie ritten lang de verkeerde uitkomst gaf.',
     wat: 'Niets. Kijk alleen of er iets geweigerd is; dan staat de reden erbij.',
@@ -5246,7 +5251,7 @@ const _STAPPEN = [
   },
   {
     id: 'aanvragers',
-    ronde: 'rit', nodig: 'stilstaand', issues: ['#159'],
+    ronde: 'rit', nodig: 'auto', issues: ['#159'],
     titel: 'Zet de bus vol — alle aanvragers aan',
     waarom: 'Blok 7 en de STPX-vraag (#15) gaan over een DRUKKE bus. Bij stilstand met één aanvrager is dat het gunstigste geval, en dan zegt de meting niets over de vraag die openstaat. #19 vraagt bovendien met zoveel woorden om alle VIER tegelijk — dat is de rit die er nog niet is geweest.',
     wat: 'De app zet ze alle vier aan: waakronde, rit-monitor, bulk-recorder en caravan-tracker. Lukt de caravan-tracker niet, dan staat de reden hieronder — meestal is dat de knop 🔌 Check connectie die nog niet is ingedrukt.',
@@ -5298,7 +5303,7 @@ const _STAPPEN = [
   },
   {
     id: 'nulmeting',
-    ronde: 'rit', nodig: 'stilstaand', voorwaarde: true, issues: [],
+    ronde: 'rit', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'Nulmeting — hier begint de rit',
     waarom: 'Zonder nulstellen gaat het ritbeeld over alles sinds het opstarten van de app. Op 01-09 is deze stap overgeslagen en liep de meting vanaf het verbinden.',
     wat: 'Druk op de knop hieronder. Dat wist de ritwaarnemer én het pollbudget-spoor, zodat beide over déze rit gaan.',
@@ -5418,7 +5423,7 @@ const _STAPPEN = [
   },
   {
     id: 'liveview',
-    ronde: 'toestel', nodig: 'stilstaand', opent: 'app', issues: ['#141'],
+    ronde: 'toestel', nodig: 'auto', opent: 'app', issues: ['#141'],
     titel: 'Bekijk de live view',
     waarom: 'Blok 5 meet de app-schil maar kan niet zien of de tellerplaat iets ZEGT. Dat oordeel kan alleen jij geven. Het hoefde nooit rijdend: gas geven met de auto stil laat pedaal, klep en belasting net zo goed bewegen, en dat scheelt de rit een stop.',
     wat: 'Doe dit stilstaand, bij voorkeur vlak na een rit met de motor nog warm. Sluit dit scherm, geef een paar keer rustig gas en kijk naar de tellerplaat (toeren, pedaal, gasklep, belasting naast elkaar). Gaan pedaal en klep samen omhoog met de belasting erachteraan?',
@@ -5430,7 +5435,7 @@ const _STAPPEN = [
   },
   {
     id: 'slimweergave',
-    ronde: 'toestel', nodig: 'stilstaand', opent: 'app', issues: ['#161'],
+    ronde: 'toestel', nodig: 'auto', opent: 'app', issues: ['#161'],
     titel: 'Slimme weergave — kloppen de balken en de lijnen?',
     waarom: '#66 is gesloten; wat er nog ligt is #161: de drempel voor "beweegt" is 2% van het definitiebereik, en het toerental haalt die stationair niet (108 tegen 160 gemeten op 09-09). Juist het STILSTAANDE geval is dus de vraag — deze stap hoorde nooit in de rit thuis. Blok 5 meet de getallen elke ronde; jouw oordeel gaat over of het beeld ook klopt.',
     wat: 'Doe dit stilstaand met een warme motor, vlak na een rit. Zet de weergave op 🧠 Slim. Twee dingen: (1) staat koelwater op 90 °C hóger in beeld dan de buitenlucht op 20 °C, en staat uitlaatgas op 500 °C juist NIET vol? (2) heeft het toerental een trendlijn als je gas geeft — en blijven de stille sensoren stil?',
@@ -5442,7 +5447,7 @@ const _STAPPEN = [
   },
   {
     id: 'zones',
-    ronde: 'toestel', nodig: 'stilstaand', opent: 'app', issues: ['#141'],
+    ronde: 'toestel', nodig: 'toestel', opent: 'app', issues: ['#141'],
     titel: 'Valt de onderkant achter de Android-knoppen?',
     waarom: '#79 en #58 zijn dicht, maar de vraag eronder leeft door in #141: de run kan zelf niet kiezen of de MELDING klopt of de METING, want op ≤760px mag #appGrid bewust langer zijn dan het scherm. Alleen jouw oog beslist dit, en de Android-knoppen zijn in geen enkele browserproef na te bootsen — dit toestel is dus de meetbank, niet de weg.',
     wat: 'Stilstaand. Sluit dit scherm, scroll de live view helemaal naar beneden en kijk naar de onderste regel. Blijft die vrij van de drie Android-knoppen, of valt er iets achter?',
@@ -5454,7 +5459,7 @@ const _STAPPEN = [
   },
   {
     id: 'logboek',
-    ronde: 'toestel', nodig: 'stilstaand', opent: 'venster', issues: [],
+    ronde: 'toestel', nodig: 'toestel', opent: 'venster', issues: [],
     titel: 'Kijk in het logboek',
     waarom: 'De staart van het logboek is de enige plek waar een melding staat die je nog nooit gezien hebt. Achteraf in het verslag lees je hem niet meer, want dan is de buffer al afgekapt (#72).',
     wat: 'Open het logboek en scroll door de laatste meldingen. Zie je iets nieuws, druk dan op de markeerknop — dan is het tijdstip vastgelegd.',
@@ -5476,7 +5481,7 @@ const _STAPPEN = [
   // die gevolgd wordt is deze, dus hier horen ze.
   {
     id: 'meetcontext',
-    ronde: 'toestel', nodig: 'stilstaand', opent: 'venster', issues: ['#64'],
+    ronde: 'toestel', nodig: 'toestel', opent: 'venster', issues: ['#64'],
     titel: 'De meetcontext — beantwoord de drie vragen',
     waarom: '#64 vraagt twee dingen die alleen een mens kan geven: wordt dit venster werkelijk ingevuld, en komt een gegeven antwoord er aan de andere kant weer uit in de AI-prompt? Het venster staat normaal vlak vóór een betaalde analyse, en op 09-09 bleek wat er dan gebeurt — geen analyse gevraagd, dus venster nooit gezien, dus de vraag nog steeds open.',
     wat: 'Druk op de knop, beantwoord de drie vragen écht (niet overslaan), en kom terug. Dit kost geen tokens: het venster gaat los open, er vertrekt geen analyse. Het testrunscherm zakt er even onder, zodat de vragen ook werkelijk in beeld komen (#166).',
@@ -5520,7 +5525,7 @@ const _STAPPEN = [
   },
   {
     id: 'adapterlos',
-    ronde: 'rit', nodig: 'stilstaand', issues: ['#133'],
+    ronde: 'rit', nodig: 'auto', issues: ['#133'],
     titel: 'Trek de adapter er even uit',
     waarom: '#133 gaat niet over of de app herverbindt — dat doet hij — maar of de ANALYSE doorkrijgt dat een gat aan de meting lag en niet aan de auto. Dat is alleen vast te stellen met een gat dat je zelf gemaakt hebt, want dan weet je wat het antwoord hoort te zijn. Op 09-09 kwam deze proef op "ok" zonder ooit onder spanning te staan.',
     wat: 'Doe dit als laatste vóór het meten, en stilstaand. Druk op de knop, trek de OBD-adapter uit de poort, wacht een halve minuut, steek hem terug en wacht tot de app weer verbonden is. Hierna heeft de meetreeks een gat — dat is de bedoeling.',
@@ -5571,7 +5576,7 @@ const _STAPPEN = [
   },
   {
     id: 'meten',
-    ronde: 'beide', nodig: 'stilstaand', voorwaarde: true, issues: [],
+    ronde: 'beide', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'De metingen draaien',
     waarom: 'Nu pas, want de sweep en blok 6 belasten de bus zelf en horen niet in het ritbeeld. De ritwaarnemer staat tijdens de run stil.',
     wat: 'Zet de auto bij voorkeur stil of laat een bijrijder dit doen. De run duurt ongeveer een halve minuut.',
@@ -5587,7 +5592,7 @@ const _STAPPEN = [
   },
   {
     id: 'afronden',
-    ronde: 'beide', nodig: 'stilstaand', voorwaarde: true, issues: [],
+    ronde: 'beide', nodig: 'toestel', voorwaarde: true, issues: [],
     titel: 'Verslag wegschrijven',
     waarom: 'Het verslag is het enige dat terug hoeft. Alles wat je hierboven hebt bevestigd, overgeslagen of beantwoord staat erin.',
     wat: 'Druk op afronden. Je krijgt het bestand meteen te downloaden.',

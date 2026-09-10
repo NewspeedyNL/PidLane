@@ -129,31 +129,33 @@ function keurVolgorde(stappen) {
 function keurRondes(stappen, lijstVan) {
   const uit = [];
   const geldig = { rit: 1, toestel: 1, beide: 1 };
+  const nodigOk = { rijden: 1, auto: 1, toestel: 1 };
   stappen.forEach(function (s) {
     if (!geldig[s.ronde]) uit.push('stap "' + s.id + '" heeft ronde "' + s.ronde + '" — kies rit, toestel of beide');
-    if (s.nodig !== 'rijden' && s.nodig !== 'stilstaand')
-      uit.push('stap "' + s.id + '" zegt niet wat hij nodig heeft (nodig: rijden of stilstaand)');
+    if (!nodigOk[s.nodig])
+      uit.push('stap "' + s.id + '" zegt niet wat hij nodig heeft (nodig: rijden, auto of toestel)');
     if (!Array.isArray(s.issues)) uit.push('stap "' + s.id + '" draagt geen issues-lijst — dan verjaart zijn reden ongemerkt');
   });
 
-  // DE KERN. Een stap die een rijdende auto nodig heeft, hoort niet in een
-  // ronde die je stilstaand draait.
+  // DE KERN. Een stap die de auto moet zien BEWEGEN, hoort niet in een ronde
+  // die je op de parkeerplaats draait.
   const toestel = lijstVan('toestel');
   toestel.forEach(function (s) {
     if (s.nodig === 'rijden')
       uit.push('stap "' + s.id + '" heeft een rijdende auto nodig maar staat in de toestelronde');
   });
 
-  // EN ANDERSOM, en dit is waar de ritminuten weglekten: staat er iets in de
-  // rit dat niets rijdends nodig heeft, dan moet dat te verantwoorden zijn —
-  // als voorwaarde voor de rit, of met een open issue dat er baat bij heeft.
+  // EN ANDERSOM, en dit is waar de ritminuten weglekten: een stap die aan de
+  // APP genoeg heeft, kost in de rit tijd die hij niet waard is. Dat een stap
+  // een open issue dient, is daarvoor géén vrijbrief — de meetcontextvragen
+  // dienen #64 en kunnen tóch prima op de bank. De uitzondering is de stap die
+  // de rit zelf draagt (afronden schrijft het verslag weg).
   const rit = lijstVan('rit');
   rit.forEach(function (s) {
-    if (s.nodig === 'rijden') return;
+    if (s.nodig !== 'toestel') return;
     if (s.voorwaarde) return;
-    if (s.issues && s.issues.length) return;
-    uit.push('stap "' + s.id + '" kost ritminuten zonder een rijdende auto nodig te hebben, ' +
-             'en is geen voorwaarde en dient geen issue — dat is precies wat #166 weghaalde');
+    uit.push('stap "' + s.id + '" heeft alleen de app nodig maar kost ritminuten — ' +
+             'dat is precies wat #166 weghaalde, en een open issue is daarvoor geen vrijbrief');
   });
 
   if (!rit.length) uit.push('de ritronde is leeg');
@@ -236,9 +238,13 @@ function keurOogstpoort(s) {
   if (o.klaar) uit.push('de poort gaat open zonder dat er onder belasting gemeten is — dan is de optrekstap voor niets weggehaald');
 
   // Snelheid uit het geheugen (n < 2) telt niet als gereden.
+  // 010D gaat hier uit de SELECTIE, zodat het meet-PID-punt hem niet meetelt.
+  // Anders zakt de poort sowieso op dát punt en zegt deze proef niets over de
+  // vraag die hij stelt — nagemeten met plmutate.sh: zonder deze truc glipt een
+  // versie waarin één waarneming al als "gereden" telt er ongezien doorheen.
   const stil = JSON.parse(JSON.stringify(vol));
   stil['010D'] = { n: 1, min: 0, max: 80 };
-  zet(stil, RP);
+  zet(stil, RP.filter(function (p) { return p !== '010D'; }));
   if (s.PLBegeleid.oogst().klaar) uit.push('één enkele snelheidswaarneming telt als "gereden"');
 
   // En het geval dat NIET mag blokkeren: de MAP staat niet in de selectie.
@@ -373,13 +379,28 @@ toetsSchoon('elke stap vertelt wat, waarom en wat jij doet', keurStappenCompleet
 toetsSchoon('de volgorde draagt de meting (ritronde)', keurVolgorde(S.PLBegeleid.lijst('rit')));
 toetsSchoon('de volgorde draagt de meting (toestelronde)', keurVolgorde(S.PLBegeleid.lijst('toestel')));
 toetsSchoon('de ritronde kost geen minuten aan stilstaand werk (#166)', keurRondes(STAPPEN, S.PLBegeleid.lijst));
-toetsSchoon('de ritronde bevat de stappen die een rit dragen',
+// WAAROM DIT EEN EIGEN CONTROLE IS EN NIET IN keurVolgorde ZIT. Die functie
+// toetst sinds #166 alleen nog de onderlinge volgorde van stappen die er zijn,
+// want een eis over 'adapterlos' zegt niets in een toestelronde waar die stap
+// niet in zit. Daarmee zou een HERNOEMDE stap stilzwijgend uit alle regels
+// vallen — precies de mutatie die plmutate.sh hier draait. De bezetting van
+// elke ronde staat daarom als eigen lijst, en die is óók de plek waar je ziet
+// wat een ronde eigenlijk ís.
+toetsSchoon('elke ronde is bezet zoals afgesproken',
   (function () {
-    const heeft = {};
-    S.PLBegeleid.lijst('rit').forEach(function (s) { heeft[s.id] = true; });
-    return ['verbinding', 'pids', 'nulmeting', 'rijden', 'meten', 'afronden']
-      .filter(function (id) { return !heeft[id]; })
-      .map(function (id) { return 'de ritronde mist "' + id + '"'; });
+    const rooster = {
+      rit: ['verbinding', 'pids', 'aanvragers', 'nulmeting', 'rijden', 'achtergrond', 'adapterlos', 'meten', 'afronden'],
+      toestel: ['verbinding', 'liveview', 'slimweergave', 'zones', 'logboek', 'meetcontext', 'meten', 'afronden']
+    };
+    const uit = [];
+    Object.keys(rooster).forEach(function (soort) {
+      const heeft = {};
+      S.PLBegeleid.lijst(soort).forEach(function (s) { heeft[s.id] = true; });
+      rooster[soort].forEach(function (id) {
+        if (!heeft[id]) uit.push('de ' + soort + '-ronde mist "' + id + '" — hernoemd, verplaatst of weggevallen');
+      });
+    });
+    return uit;
   })());
 toetsSchoon('een stap die een venster opent, zegt dat ook (#166)',
   keurVensterstappenGemarkeerd(STAPPEN, fs.readFileSync('pidlane-testrun.js', 'utf8')));
@@ -456,19 +477,32 @@ toetsSchoon('een verslag zonder open stappen wordt gezien',
 toetsSchoon('een rijdende stap in de toestelronde wordt gezien',
   (function () {
     const nep = [{ id: 'x', ronde: 'toestel', nodig: 'rijden', issues: [] },
-                 { id: 'afronden', ronde: 'beide', nodig: 'stilstaand', issues: [], voorwaarde: true }];
+                 { id: 'afronden', ronde: 'beide', nodig: 'toestel', issues: [], voorwaarde: true }];
     const r = keurRondes(nep, function (soort) { return nep.filter(function (s) { return s.ronde === soort || s.ronde === 'beide'; }); });
     return r.some(function (x) { return x.indexOf('rijdende auto nodig') > -1; }) ? []
       : ['keurRondes liet een rijdende stap in de toestelronde staan: ' + (r.join(' | ') || '(niets)')];
   })());
 
-toetsSchoon('een stilstaande stap die ritminuten kost zonder reden, wordt gezien',
+// En de scherpere helft: een stap die alleen de app nodig heeft mag ook mét
+// een open issue niet in de rit staan. Dat onderscheid is de hele reden dat
+// 'auto' naast 'toestel' bestaat — het adaptergat (#133) hoort wél in de rit,
+// de meetcontextvragen (#64) niet.
+toetsSchoon('een app-stap die ritminuten kost wordt gezien, ook mét een open issue',
   (function () {
-    const nep = [{ id: 'x', ronde: 'rit', nodig: 'stilstaand', issues: [] },
-                 { id: 'afronden', ronde: 'beide', nodig: 'stilstaand', issues: [], voorwaarde: true }];
+    const nep = [{ id: 'x', ronde: 'rit', nodig: 'toestel', issues: ['#64'] },
+                 { id: 'afronden', ronde: 'beide', nodig: 'toestel', issues: [], voorwaarde: true }];
     const r = keurRondes(nep, function (soort) { return nep.filter(function (s) { return s.ronde === soort || s.ronde === 'beide'; }); });
     return r.some(function (x) { return x.indexOf('kost ritminuten') > -1; }) ? []
-      : ['keurRondes accepteerde een stilstaande stap in de rit zonder voorwaarde of issue: ' + (r.join(' | ') || '(niets)')];
+      : ['keurRondes accepteerde een app-stap in de rit omdat hij een issue noemde: ' + (r.join(' | ') || '(niets)')];
+  })());
+
+toetsSchoon('een stap die de auto nodig heeft mag wél in de rit staan',
+  (function () {
+    const nep = [{ id: 'adapterlos', ronde: 'rit', nodig: 'auto', issues: ['#133'] },
+                 { id: 'afronden', ronde: 'beide', nodig: 'toestel', issues: [], voorwaarde: true }];
+    const r = keurRondes(nep, function (soort) { return nep.filter(function (s) { return s.ronde === soort || s.ronde === 'beide'; }); });
+    return r.some(function (x) { return x.indexOf('kost ritminuten') > -1; })
+      ? ['keurRondes gooide het adaptergat uit de rit, terwijl dat gat juist in DEZE meetreeks moet vallen'] : [];
   })());
 
 toetsSchoon('een vensterstap zonder opent-vlag wordt gezien',
