@@ -11,6 +11,43 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10a (CET) — DE METING BLIJFT DE METING
+
+       • ✂️ LAAG 2 EN 3 VAN DE MEETKETEN ZIJN WEGGEHAALD.
+         Ze stonden één dag aan (2026-09-09c hieronder) en
+         hebben daarvóór, sinds de eerste commit in deze repo,
+         nooit gedraaid. Wat die dag opleverde beslist dit:
+         laag 2 is inert op zeven van de negen PIDs — koelwater
+         vuurt pas bij een sprong van 89,3 °C terwijl de rit van
+         09-09 5 °C bewoog, en in vier minuten over 31 sensoren
+         sloeg het filter één keer aan: de testrun die er zelf
+         200 °C in duwde.
+
+       • 🔌 EN WEGGOOIEN BETEKENT HIER MEER DAN HET LIJKT. De
+         meetlus kent maar twee uitkomsten: een waarde, of NO
+         DATA van de ECU. Een gefilterde meting werd dus als NO
+         DATA geboekt — geen stempel, een gat in de reeks, en
+         via de kwaliteitsscore uiteindelijk opruimen van de
+         sensor. Niet te onderscheiden van een dode bus, precies
+         de verwarring van #133. Op accuspanning was het filter
+         niet inert maar verkeerd: drempel 0,8 V tegen een
+         gemeten ritswing van 2,76 V.
+
+       • 🌡️ LAAG 3 MIDDELDE OVER TWEE MONSTERS. Koelwater komt
+         als hele graden van de ECU (A−40); de app sloeg daarna
+         89,5 op — een waarde die de sensor niet kán geven. Dat
+         is meetgetrouwheid inleveren voor ruisonderdrukking die
+         op een signaal met 5 °C bereik niets te onderdrukken
+         had. Laag 1 (fysieke grenzen) en 1b (opvallend maar
+         echt) blijven; die doen wél iets.
+
+       • 🔁 DE TOETSEN ZIJN OMGEDRAAID: niet "wordt er gefilterd"
+         maar "komt de meting ongewijzigd door". plmutate.sh
+         bouwt allebei de lagen terug als mutatie — geen
+         verzonnen fout, die code stond er tot vandaag.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-09c (CET) — HET SPIKE-FILTER STOND UIT
                                 VOOR ÁLLE SENSOREN
 
