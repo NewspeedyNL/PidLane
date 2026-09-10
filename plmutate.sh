@@ -380,6 +380,14 @@ MUTATIES=(
 # het verzonnen voorbeeld uit zijn eigen tegenproef nog herkent; de controle
 # staat dan groen op een document dat wel degelijk lekt.
 "public/test-playteksten.js@@[:|=]\\s*([^\\s|*_\\x60]{8,})/i.test(nep);@@[:|=]\\s*(NOOITZOGENOEMD)/i.test(nep);@@test-playteksten.js@@de wachtwoordwachter herkent een echt wachtwoord niet meer"
+# ── Union op de verkeerde bestanden (10-09-2026) ──
+# .gitattributes haalt de handmatige conflictreparatie weg die op 10-09 in zes
+# van zeven inhaalmerges nodig was. Beide fouten hieronder zijn stil: de eerste
+# brengt die reparaties terug zonder dat er iets rood wordt, de tweede laat git
+# bij een botsing twee keer dezelfde regel JS wegschrijven — en dat is precies
+# de klasse fout die hier maanden blijft staan.
+".gitattributes@@PIDLANE.md    merge=union@@PIDLANE.md    -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
+".gitattributes@@CHANGELOG.md  merge=union@@CHANGELOG.md  merge=union\n*.js          merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
 )
 
 echo

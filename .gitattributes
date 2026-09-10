@@ -1,0 +1,32 @@
+# ══════════════════════════════════════════════════════════════════
+# .gitattributes — waar samenvoegen vanzelf mag
+# ──────────────────────────────────────────────────────────────────
+# GEMETEN OP 10-09-2026, over de laatste 40 samenvoegingen op main.
+#
+# Zeven daarvan waren geen PR maar een reparatie: "Merge branch 'main'
+# into <tak>", met de hand gedaan omdat de tak niet meer paste. Zes van
+# die zeven hadden PIDLANE.md in het conflict, drie CHANGELOG.md.
+# Over de laatste twintig PR's raakte PIDLANE.md er 19, CHANGELOG.md 14.
+#
+# De oorzaak is de vorm, niet de slordigheid: élke PR zet er een nieuw
+# blok bovenaan. Twee takken die tegelijk openstaan botsen dus per
+# definitie, altijd op dezelfde plek, en altijd met dezelfde oplossing —
+# allebei houden, nieuwste boven. Dat is precies wat de ingebouwde
+# union-driver van git doet, en het is de enige reden dat dit bestand
+# bestaat: een handeling die nooit een besluit was, weghalen.
+#
+# WAAROM ALLEEN PROZA, EN GEEN CODE.
+# Union verliest nooit tekst, maar kan tekst verdubbelen: raken twee
+# takken dezelfde regel, dan komen béide regels in het resultaat. In een
+# document is dat zichtbaar en onschuldig — je leest het bij de eerste
+# blik op de diff. In een script of in JS is het een stille breuk: twee
+# keer dezelfde regel draait, of draait juist niet, en niets zegt er iets
+# van. plmutate.sh zat drie van die zes keer in het conflict en staat hier
+# tóch niet: die mutatietabel is code, en een conflict daar hoort een mens
+# te lezen.
+#
+# public/test-gitattributes.js bewaakt die grens.
+# ══════════════════════════════════════════════════════════════════
+
+CHANGELOG.md  merge=union
+PIDLANE.md    merge=union

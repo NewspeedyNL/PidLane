@@ -874,6 +874,56 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Zes van de zeven inhaalmerges waren met de hand, en niemand had daar iets te kiezen — 10-09-2026
+
+Er stonden deze week telkens twee PR's tegelijk open, en telkens moest de
+tweede na de eerste merge met de hand worden bijgetrokken. Dat voelde als pech
+tot het geteld werd.
+
+**Gemeten over de laatste 40 samenvoegingen op `main`.** Zeven daarvan zijn
+geen PR maar een reparatie: `Merge branch 'main' into <tak>`. Zes van die zeven
+hadden `PIDLANE.md` in het conflict, drie `CHANGELOG.md`, drie `plmutate.sh`.
+Over de laatste twintig PR's raakte `PIDLANE.md` er negentien en `CHANGELOG.md`
+veertien.
+
+**De oorzaak is de vorm, niet de slordigheid.** Elke PR zet bovenaan §11 en
+bovenaan de changelog een nieuw blok. Twee takken die tegelijk openstaan
+botsen dus per definitie — op dezelfde plek, met altijd dezelfde oplossing:
+allebei houden, nieuwste boven. Dat is geen besluit. Het was alleen een
+handeling die er telkens tussen zat, en die hier duur is: elke reparatie kost
+een ronde die niet over de app gaat.
+
+**Wat er nu staat.** Een `.gitattributes` zet `CHANGELOG.md` en `PIDLANE.md` op
+`merge=union` — de ingebouwde driver van git die bij een botsing beide kanten
+bewaart in plaats van te stoppen. In een proef met twee takken die allebei
+bovenaan invoegen komt het resultaat er compleet uit, zonder markeringen, met
+de eigen tak boven de binnengehaalde.
+
+**Waarom `plmutate.sh` er níét bij staat, terwijl hij drie keer in het conflict
+zat.** Union verliest nooit tekst, maar kan tekst *verdubbelen*: raken twee
+takken dezelfde regel, dan staan beide regels in het resultaat. In proza is dat
+zichtbaar bij de eerste blik op de diff. In een script is het een stille breuk,
+en dat is precies de klasse fout die hier maanden blijft staan (§19). De grens
+loopt dus langs proza en code, niet langs "hoe vaak botst het".
+
+**`test-gitattributes.js` bewaakt die grens**, en doet dat in drie lagen:
+`git check-attr` vraagt aan git zélf of de twee documenten onder union vallen —
+niet met een eigen naspelling van zijn patroonregels, zodat een ander maar
+geldig patroon (`*.md`) hier terecht groen blijft. Daarnaast wordt elk
+union-patroon nagelopen op codebestanden. En tot slot draait er een echte merge
+in een wegwerprepo. Die laatste laag draagt zijn eigen tegenproef mee: een
+`controle.js` met exact dezelfde invoeging **moet** botsen. Zonder dat punt zou
+de proef ook groen staan als git de twee invoegingen om een heel andere reden
+had kunnen samenvoegen, en dan meet hij niets. Twee mutaties in `plmutate.sh`
+houden het scherp: union weghalen bij `PIDLANE.md`, en union uitbreiden naar
+`*.js`.
+
+**Wat dit niet oplost.** Botst een tak op `pidlane-testrun.js` of op
+`plmutate.sh`, dan is dat nog steeds handwerk — terecht. En union is geen reden
+om drie PR's tegelijk open te zetten: de werkregel in `CLAUDE.md` blijft dat een
+nieuwe tak van de *huidige* `main` wordt gesneden en dat een tak waarvan de PR
+al samengevoegd is niet hergebruikt wordt.
+
 ### De afvinklijst voor de Play Store vinkte een build af die je niet uploadt — 10-09-2026 (#174)
 
 `PLAY-INZENDING.md` §16 stond vol gezette vinkjes. Ze waren allemaal waar — op
