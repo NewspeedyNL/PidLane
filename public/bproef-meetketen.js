@@ -118,19 +118,50 @@ function toets(naam, waar, uitleg) {
     // "Opvallende metingen: 0105 uiterste 200" rapporteert. De vraag gaat over
     // wat twee modules bij elkáár achterlaten, en dat is per definitie niet te
     // zien als je er één uit zijn verband knipt.
+    //
+    // UITGEBREID OP 10-09-2026. Tot vandaag keek deze toets alleen naar
+    // `_pidLetOp`. Dat was genoeg zolang FILTERED_PIDS suffixen droeg, want dan
+    // kwam geen enkele proef verder dan laag 1 en viel er in de reeksen niets
+    // te vervuilen. Sinds #158 draait laag 2+3 wél, en schrijft dezelfde proef
+    // in `pidSmooth`, `pidHist` en `_pidPending` — de reeksen waar de rit zelf
+    // op rekent. Dat is wat de rit van 10-09 zichtbaar maakte, en daarom staan
+    // ze hier nu alle vier in dezelfde vergelijking.
     const sporen = await app.ev(`(function(){
       const naam = ['Laag 1 houdt een fysiek onmogelijke waarde tegen',
                     'Laag 2+3 is bereikbaar zoals de app de meetketen aanroept'];
       const lijst = PLBlok5.proeven().filter(p => naam.indexOf(p.naam) >= 0);
-      const voor = JSON.stringify(window._pidLetOp || null);
+      const beeld = () => JSON.stringify({
+        letOp:  window._pidLetOp || null,
+        smooth: (typeof pidSmooth !== 'undefined' && pidSmooth) ? (pidSmooth['0105'] || null) : null,
+        hist:   (typeof pidHist   !== 'undefined' && pidHist)   ? (pidHist['0105']   || null) : null,
+        pend:   (window._pidPending || {})['0105'] || null
+      });
+      const voor = beeld();
       lijst.forEach(p => { try { p.proef(); } catch(e){ /* de uitslag doet er hier niet toe */ } });
-      const na = JSON.stringify(window._pidLetOp || null);
+      const na = beeld();
       return JSON.stringify({ gevonden: lijst.length, gelijk: voor === na, voor: voor, na: na });
     })()`);
     const sp = JSON.parse(sporen);
     toets('beide meetketenproeven zitten in blok 5', sp.gevonden === 2, 'gevonden: ' + sp.gevonden);
     toets('blok 5 laat de meetgeschiedenis achter zoals hij hem vond (#105)',
           sp.gelijk, 'vóór ' + sp.voor + ' → ná ' + sp.na);
+
+    // TEGENPROEF OP DE REEKSEN. Dezelfde vraag als hierboven, maar dan zonder
+    // _zonderSporen(): één rechtstreekse aanroep hoort pidSmooth['0105'] wél te
+    // veranderen. Slaat dit niet aan, dan bewijst de toets erboven niets over de
+    // reeksen — dan is er gewoon niets te vervuilen.
+    const reeksSpoor = await app.ev(`(function(){
+      const voorS = JSON.stringify(pidSmooth['0105'] || null);
+      const voorP = JSON.stringify((window._pidPending || {})['0105'] || null);
+      validateAndSmooth('0105', 88);
+      const naS = JSON.stringify(pidSmooth['0105'] || null);
+      if (voorS === naS) return 'GEEN_SPOOR';
+      if (voorS === 'null') delete pidSmooth['0105']; else pidSmooth['0105'] = JSON.parse(voorS);
+      const q = window._pidPending; if (q) { if (voorP === 'null') delete q['0105']; else q['0105'] = JSON.parse(voorP); }
+      return 'SPOOR';
+    })()`);
+    toets('en de tegenproef laat zien dat de reeks wél zou zijn veranderd',
+          reeksSpoor === 'SPOOR', 'pidSmooth bleef gelijk — dan zegt de toets hierboven niets over de reeksen');
 
     // TEGENPROEF: zonder _zonderSporen() zou 200 °C blijven staan. Dat maken we
     // hier expliciet na door validateAndSmooth rechtstreeks aan te roepen — als

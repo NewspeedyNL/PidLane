@@ -927,6 +927,50 @@ bovenaan `CLAUDE.md` en dit is er de duurste illustratie van tot nu toe. Alle
 drie de plekken zijn nu een toets die rood wordt in plaats van een melding die
 je kunt lezen en laten staan.
 
+### De derde nalatenschap van #158: blok 5 mat opeens laag 3 — 10-09-2026
+
+Twee toetsen vielen om bij het aanzetten van laag 2+3, en die staan hierboven.
+Er was een **derde**, en die viel niet om in CI maar pas op de rit van 10-09
+12:41 — als een FOUT, met de verkeerde schuldige erbij:
+
+```
+FOUT Laag 1 houdt een fysiek onmogelijke waarde tegen
+     koelwater van 90 °C werd NIET geaccepteerd — laag 1 filtert te veel
+```
+
+Laag 1 liet 90 °C gewoon door. Laag 3 middelde hem daarna met de vorige
+koelwatermeting van de draaiende motor, en de proef eiste `=== 90`. Zolang
+`FILTERED_PIDS` suffixen droeg kwam er altijd exact 90 uit, dus de proef stond
+maandenlang groen op een vergelijking die alleen klopte omdat het filter uit
+stond. Nu meet dezelfde regel laag 3 en wijst de schuld aan laag 1 toe.
+
+De proef vraagt voortaan wat laag 1 werkelijk beslist — `null` of niet-`null` —
+en zet de teruggekomen waarde in de tekst, want dat verschil is juist het bewijs
+dat laag 3 draait. Waar het getal precies uitkomt is de vraag van de proef
+eronder.
+
+**Het stillere gevolg zat in `_zonderSporen()`.** Die helper bestaat sinds #105
+om de meetgeschiedenis terug te zetten na een proef die met opzet onmogelijke
+waarden voedt, en hij bewaarde `_pidLetOp`, `_letOpGelogd` en `outlierCount`.
+Dat was genoeg zolang geen enkele proef verder kwam dan laag 1. Sinds #158
+schrijven diezelfde twee proeven in `pidSmooth`, `pidHist` en `_pidPending` —
+en `_pidPending['0105']` op 200 °C laten staan betekent dat de eerstvolgende
+echte koelwatermeting als afwijking wordt weggegooid. De testrun verstoorde dus
+de meting die hij hoort te beoordelen.
+
+`_zonderSporen()` krijgt nu de PIDs mee waarvan een proef de reeks aanraakt, en
+zet die per PID terug. Per PID en niet in één keer heel `pidHist`, want dat is
+de complete meetgeschiedenis van de rit.
+
+**De vorm van de fout is het bewaren waard.** Een filter aanzetten dat nooit
+gedraaid heeft, laat niet alleen zien of het werkt — het laat zien welke toetsen
+stiekem op de uitgeschakelde toestand leunden. Twee daarvan vond CI meteen. De
+derde stond in blok 5, en blok 5 draait alleen op een rit. Dat is precies waar
+`plbrowser.sh` voor bestaat, en daarom staat de vergelijking in
+`bproef-meetketen.js` nu over alle vier de sporen in plaats van alleen over
+`_pidLetOp` — met de tegenproef ernaast dat één rechtstreekse aanroep de reeks
+wél verandert.
+
 ### De nieuwe proef sloeg op zijn eerste rit alarm, en hij had ongelijk — 09-09-2026 (#66)
 
 De rit van 09-09 (Mazda CX-5, 10 minuten gereden, 97 km/u, alle vier de

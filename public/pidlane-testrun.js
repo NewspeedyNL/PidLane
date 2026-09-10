@@ -2170,7 +2170,21 @@ function _aanvragersNu() {
    in de app schrijft, zet terug. De log-regels blijven staan — die zijn waar,
    de proef heeft echt gedraaid — maar er staat nu een markering omheen zodat
    ze te plaatsen zijn. */
-function _zonderSporen(naam, fn) {
+/* `pids` is de lijst PIDs waarvan deze proef de MEETREEKS aanraakt.
+   Toegevoegd op 10-09-2026, en de reden staat in de rit van die ochtend.
+
+   Tot #158 stond FILTERED_PIDS op suffixen, zodat laag 2+3 nergens aansloeg:
+   een proef die validateAndSmooth() voedde kwam niet verder dan de harde
+   limiet en liet dus niets achter. Sinds die sleutel klopt schrijft dezelfde
+   aanroep wél in `pidSmooth`, `pidHist` en `_pidPending` — en dat zijn precies
+   de reeksen waar de rest van de rit op rekent. Een proef die 200 °C koelwater
+   voedt zet daarmee een pending-waarde neer waar de eerstvolgende echte meting
+   op stukloopt.
+
+   Vandaar: wie een meetreeks aanraakt, noemt hem hier, en krijgt hem terug
+   zoals hij was. Per PID en niet in één keer heel `pidHist`, want dat is de
+   hele meetgeschiedenis van de rit. */
+function _zonderSporen(naam, fn, pids) {
   const bewaard = {};
   const pak = function (sleutel, lees) {
     try { bewaard[sleutel] = JSON.stringify(lees()); }
@@ -2180,6 +2194,13 @@ function _zonderSporen(naam, fn) {
   pak('letOp',    function () { return window._pidLetOp || null; });
   pak('letOpLog', function () { return window._letOpGelogd || null; });
   pak('outlier',  function () { return (typeof outlierCount !== 'undefined') ? outlierCount : null; });
+
+  const reeksen = Array.isArray(pids) ? pids : [];
+  reeksen.forEach(function (p) {
+    pak('smooth:' + p, function () { return (typeof pidSmooth !== 'undefined' && pidSmooth) ? (pidSmooth[p] || null) : null; });
+    pak('hist:' + p,   function () { return (typeof pidHist   !== 'undefined' && pidHist)   ? (pidHist[p]   || null) : null; });
+    pak('pend:' + p,   function () { return (window._pidPending || {})[p] || null; });
+  });
 
   try { if (typeof log === 'function') log('🔬 Testrun: proef "' + naam + '" voedt met opzet onmogelijke waarden in — de meldingen hierna tot "proef klaar" komen niet uit de auto', 'info'); }
   catch (e) { console.warn('Testrun: markering vóór de proef niet gelogd', e); }
@@ -2195,6 +2216,11 @@ function _zonderSporen(naam, fn) {
     zet('letOp',    function (v) { if (v === null) delete window._pidLetOp;   else window._pidLetOp = v; });
     zet('letOpLog', function (v) { if (v === null) delete window._letOpGelogd; else window._letOpGelogd = v; });
     zet('outlier',  function (v) { if (v !== null && typeof outlierCount !== 'undefined') outlierCount = v; });
+    reeksen.forEach(function (p) {
+      zet('smooth:' + p, function (v) { if (typeof pidSmooth !== 'undefined' && pidSmooth) { if (v === null) delete pidSmooth[p]; else pidSmooth[p] = v; } });
+      zet('hist:' + p,   function (v) { if (typeof pidHist   !== 'undefined' && pidHist)   { if (v === null) delete pidHist[p];   else pidHist[p]   = v; } });
+      zet('pend:' + p,   function (v) { const q = window._pidPending; if (!q) return; if (v === null) delete q[p]; else q[p] = v; });
+    });
     try { if (typeof log === 'function') log('🔬 Testrun: proef "' + naam + '" klaar — de meetgeschiedenis staat terug zoals hij was', 'info'); }
     catch (e) { console.warn('Testrun: markering ná de proef niet gelogd', e); }
   }
@@ -2551,12 +2577,28 @@ const PROEVEN_B5 = [
       if (validateAndSmooth('0105', 300) !== null)
         return { staat: 'FOUT', detail: 'koelwater van 300 °C werd geaccepteerd terwijl de harde limiet op ' +
           PID_HARD_LIMITS['0105'].max + ' staat — laag 1 filtert niet' };
-      if (validateAndSmooth('0105', 90) !== 90)
-        return { staat: 'FOUT', detail: 'koelwater van 90 °C werd NIET geaccepteerd — laag 1 filtert te veel' };
+      /* HERZIEN OP 10-09-2026 NA DE RIT VAN 12:41. Hier stond `!== 90`, en dat
+         werd een FOUT met de tekst "laag 1 filtert te veel" — terwijl laag 1
+         de waarde gewoon doorliet. Wat er gebeurde: sinds #158 draait laag 3
+         wél op 0105, en die middelt 90 met de vorige koelwatermeting van de
+         auto tot bijvoorbeeld 89,6. De proef mat dus laag 3 en wees de schuld
+         aan laag 1 toe.
 
-      return 'laag 1 weigert 300 °C en laat 90 °C door, meetlat ' +
+         De vraag van déze proef is null of niet-null: laat de harde limiet de
+         waarde erdoor. Wat er daarna met het getal gebeurt is de proef
+         hieronder. De uitkomst gaat wel mee in de tekst, want een verschil
+         tussen 90 en wat eruit komt is precies het bewijs dat laag 3 draait. */
+      const door = validateAndSmooth('0105', 90);
+      if (door === null)
+        return { staat: 'FOUT', detail: 'koelwater van 90 °C werd tegengehouden terwijl het binnen de meetlat ' +
+          PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max + ' valt — laag 1 filtert te veel' };
+      if (typeof door !== 'number' || !isFinite(door))
+        return { staat: 'FOUT', detail: 'koelwater van 90 °C gaf ' + door + ' terug in plaats van een getal' };
+
+      return 'laag 1 weigert 300 °C en laat 90 °C door (kwam er als ' + door +
+        ' uit: het verschil is de middeling van laag 3), meetlat ' +
         PID_HARD_LIMITS['0105'].min + '…' + PID_HARD_LIMITS['0105'].max;
-    }); }
+    }, ['0105']); }
   },
 
   // ── is laag 2+3 wel bereikbaar? ──
@@ -2600,7 +2642,7 @@ const PROEVEN_B5 = [
       return { staat: 'FOUT', detail: 'validateAndSmooth("0105",200) gaf ' + uit + ' in plaats van null. ' +
         'FILTERED_PIDS draagt ' + vorm + '-sleutels terwijl de meetketen de volledige PID doorgeeft, ' +
         'dus spike-filter en smoothing worden voor álle PIDs overgeslagen — dat is #158 terug' };
-    }); }
+    }, ['0105']); }
   },
 
   // ════════════════════════════════════════════════════════════
