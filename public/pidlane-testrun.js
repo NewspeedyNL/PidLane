@@ -5195,17 +5195,121 @@ function markeringen() { return _markeringen.slice(); }
 //  3. Pauzeren en afronden kan bij elke stap. Een rit die halverwege moet
 //     stoppen levert een half verslag op — dat is oneindig veel meer waard dan
 //     een verloren rit, en de reden dat de afrondknop overal staat.
+//
+// TWEE RONDES UIT ÉÉN LIJST (10-09-2026, #166). Van de vijftien stappen hadden
+// er elf geen RIJDENDE auto nodig — ze hadden de app nodig, of de app met de
+// motor aan, en dat kan stilstaand. Ze stonden alleen in de ritvolgorde omdat
+// de lijst zo gegroeid was. Een rit is de schaarse grondstof: wat een rit kost
+// en niets oplevert, kost ook de stappen die er niet meer bij passen.
+//
+// Elke stap draagt daarom twee velden. `nodig` zegt wat hij van de wereld
+// vraagt — 'rijden' (de auto moet bewegen), 'auto' (stilstaand, maar mét
+// adapter of draaiende motor) of 'toestel' (alleen de app) — en `ronde` in
+// welke ronde hij meeloopt. Die middelste is het onderscheid dat telt: een
+// zelfgemaakt adaptergat hoort in de rit omdat het gat in DEZE meetreeks moet
+// vallen, en de drie meetcontextvragen horen dat niet, want die hebben aan de
+// app genoeg. De
+// lijst blijft één lijst — twee filters, geen tweede lijst, want dat is precies
+// de vorm die CAMPAGNE en §11 eerder de kop kostte.
+//
+// EN `issues` IS DATA GEWORDEN, om dezelfde reden. Negen stappen noemden een
+// issue in hun `waarom`, en zeven daarvan waren dicht: #19, #15, #29, #68, #66,
+// #79 en #58. Niets werd daar rood van, want de koppeling stond in proza. Nu
+// staat er per stap wat hij voedt, en sluit het verslag af met wat déze ronde
+// werkelijk opgeleverd heeft.
 const _BG = {
   aan: false, i: 0, gepauzeerd: false, gestart: 0, timer: null,
+  soort: 'rit',      // welke ronde er loopt
+  lijst: [],         // de stappen van díé ronde — _STAPPEN blijft de bron
   gedaan: [],        // per stap: {id, titel, t, uitkomst, opm}
   laatsteActie: ''   // wat de app zojuist zelf deed, zodat de stap dat kan tonen
 };
 
+const _RONDES = {
+  rit:     { naam: 'Meetrit',      uitleg: 'alles waar een rijdende auto voor nodig is' },
+  toestel: { naam: 'Toestelronde', uitleg: 'stilstaand — op de parkeerplaats of thuis' }
+};
+
+/* DE OOGSTPOORT (10-09-2026, #166) — wat een rit moet opleveren, niet hoe
+   lang hij moet duren.
+
+   De rijstap eiste tien minuten. De onderbouwing daarvoor was #29: "vijf
+   pogingen plus vijf herkansingen kosten meer dan vijf minuten". Dat issue is
+   op 02-09 gesloten, mét `test-opruimmelding.js` als tegenproef — die minuten
+   kochten dus niets meer, en ze stonden vóór álles wat daarna nog moest.
+
+   Een klok meet ook het verkeerde ding. Tien minuten stapvoets in de file
+   leveren minder op dan drie minuten met wisselend gas, en de bestuurder kreeg
+   in beide gevallen hetzelfde antwoord. Wat de rit moet opleveren is te
+   benoemen, en dus te meten:
+
+     1. is er echt gereden (snelheid bewezen, niet uit het geheugen)
+     2. is er onder belasting gemeten (de MAP heeft spreiding) — dit is wat de
+        losse optrekstap deed, nu zonder aparte stop
+     3. zijn de meet-PIDs die in de selectie staan ook twee keer ververst
+
+   Los gehouden en naar buiten gebracht zodat test-begeleid.js hem zonder
+   browser kan draaien; de stap zelf toont hem live én sluit erop af, zodat je
+   tijdens het rijden ziet wat er nog mist.
+
+   EEN PUNT DAT NIET TE HALEN IS, BLOKKEERT NIET. Staat de MAP niet in de
+   selectie, dan is "onder belasting gemeten" geen eis maar een mededeling —
+   anders is de poort een muur op een auto die die sensor niet levert. */
+function _ritOogst() {
+  const punten = [];
+  let per = {}, actief = null;
+  // Bewust via window en niet via de closure-const: dan kan test-begeleid.js
+  // hem met een nagemaakte ritstand voeden. In de app zijn het hetzelfde object.
+  try { per = (window.PLRit && window.PLRit.per) ? (window.PLRit.per() || {}) : {}; }
+  catch (e) { console.warn('PLRit.per() onleesbaar bij de oogstpoort', e); }
+  try { actief = (typeof activePIDs !== 'undefined' && activePIDs) ? activePIDs : null; }
+  catch (e) { console.warn('activePIDs onleesbaar bij de oogstpoort', e); }
+
+  const inSelectie = function (p) { return !actief || actief.has(p); };
+  const e10D = per['010D'] || null, e10B = per['010B'] || null;
+
+  // 1. Er is gereden. Zonder dit gaat elke uitspraak hieronder over stilstand.
+  punten.push(!e10D || e10D.n < 2
+    ? { naam: 'snelheid', klaar: false, tekst: 'snelheid nog niet gemeten (010D niet ververst)' }
+    : e10D.max < 15
+      ? { naam: 'snelheid', klaar: false, tekst: 'hoogste snelheid ' + e10D.max + ' km/u — nog niet echt gereden' }
+      : { naam: 'snelheid', klaar: true, tekst: 'gereden tot ' + e10D.max + ' km/u' });
+
+  // 2. Onder belasting gemeten. Spreiding op de MAP is het bewijs dat er meer
+  //    gebeurd is dan stationair rollen; blok 14 haalt de turbovraag uit
+  //    dezelfde min/max, dus dit is precies het getal dat straks telt.
+  const spreiding = e10B && e10B.n >= 2 ? (e10B.max - e10B.min) : null;
+  punten.push(!inSelectie('010B') && (!e10B || e10B.n < 2)
+    ? { naam: 'belasting', klaar: null, tekst: 'MAP (010B) staat niet in de selectie — over belasting zegt deze rit niets' }
+    : spreiding === null
+      ? { naam: 'belasting', klaar: false, tekst: 'MAP (010B) nog niet ververst — nog niets over belasting te zeggen' }
+      : spreiding < 10
+        ? { naam: 'belasting', klaar: false, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +
+            ') — nog niet onder belasting; trek een keer stevig op' }
+        : { naam: 'belasting', klaar: true, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa, onder belasting gemeten' });
+
+  // 3. De meet-PIDs die de rit heeft aangezet, moeten ook echt gelezen zijn.
+  //    Wat de gate geweigerd heeft telt hier niet mee: dat is de melding van de
+  //    PID-stap en niet iets waar de bestuurder op kan wachten.
+  const wil = RIT_PIDS.filter(inSelectie);
+  const mist = wil.filter(function (p) { return !per[p] || per[p].n < 2; });
+  punten.push(!wil.length
+    ? { naam: 'meet-PIDs', klaar: null, tekst: 'geen enkele meet-PID staat in de selectie' }
+    : mist.length
+      ? { naam: 'meet-PIDs', klaar: false, tekst: (wil.length - mist.length) + ' van de ' + wil.length +
+          ' meet-PIDs twee keer ververst — nog open: ' + mist.join(', ') }
+      : { naam: 'meet-PIDs', klaar: true, tekst: 'alle ' + wil.length + ' meet-PIDs twee keer ververst' });
+
+  return { klaar: punten.every(function (p) { return p.klaar !== false; }), punten: punten };
+}
+
 // Elke stap: wat de APP doet (doe), wat JIJ doet (wat), waar we op letten
-// (controle) en wat er in het log komt (markering).
+// (controle) en wat er in het log komt (markering). Plus `ronde`, `nodig` en
+// `issues` — zie de uitleg hierboven.
 const _STAPPEN = [
   {
     id: 'verbinding',
+    ronde: 'beide', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'Staat alles klaar om te meten?',
     waarom: 'Zonder versheidsbron meet de ritwaarnemer het geheugen in plaats van de auto (#74). Dat wil je vóór de rit weten, niet erna.',
     wat: 'Niets — de app kijkt zelf. Zie je hieronder een kruisje, los dat dan eerst op.',
@@ -5223,6 +5327,7 @@ const _STAPPEN = [
   },
   {
     id: 'pids',
+    ronde: 'rit', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'De meet-PIDs in de selectie',
     waarom: 'Een PID die niet in de pollronde staat, wordt niet gemeten — en over zijn gedrag valt dan niets te zeggen. Dit is waarom #19 drie ritten lang de verkeerde uitkomst gaf.',
     wat: 'Niets. Kijk alleen of er iets geweigerd is; dan staat de reden erbij.',
@@ -5246,6 +5351,7 @@ const _STAPPEN = [
   },
   {
     id: 'aanvragers',
+    ronde: 'rit', nodig: 'auto', issues: ['#159'],
     titel: 'Zet de bus vol — alle aanvragers aan',
     waarom: 'Blok 7 en de STPX-vraag (#15) gaan over een DRUKKE bus. Bij stilstand met één aanvrager is dat het gunstigste geval, en dan zegt de meting niets over de vraag die openstaat. #19 vraagt bovendien met zoveel woorden om alle VIER tegelijk — dat is de rit die er nog niet is geweest.',
     wat: 'De app zet ze alle vier aan: waakronde, rit-monitor, bulk-recorder en caravan-tracker. Lukt de caravan-tracker niet, dan staat de reden hieronder — meestal is dat de knop 🔌 Check connectie die nog niet is ingedrukt.',
@@ -5297,6 +5403,7 @@ const _STAPPEN = [
   },
   {
     id: 'nulmeting',
+    ronde: 'rit', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'Nulmeting — hier begint de rit',
     waarom: 'Zonder nulstellen gaat het ritbeeld over alles sinds het opstarten van de app. Op 01-09 is deze stap overgeslagen en liep de meting vanaf het verbinden.',
     wat: 'Druk op de knop hieronder. Dat wist de ritwaarnemer én het pollbudget-spoor, zodat beide over déze rit gaan.',
@@ -5317,48 +5424,46 @@ const _STAPPEN = [
   },
   {
     id: 'rijden',
-    titel: 'Rijden — minstens tien minuten',
-    waarom: 'De opruimregel heeft vijf pogingen plus vijf herkansingen nodig; dat kost meer dan vijf minuten. Op 01-09 werd er vijf minuten gereden en bleef #29 daardoor onbeantwoord.',
-    wat: 'Rijd. Kijk ondertussen naar de teller hieronder: die laat zien of er ECHT gemeten wordt en niet alleen geteld. Laat het scherm aan.',
-    knop: 'Genoeg gereden, verder',
+    ronde: 'rit', nodig: 'rijden', voorwaarde: true, issues: [],
+    titel: 'Rijden — tot de oogst binnen is',
+    waarom: 'Hier stond "minstens tien minuten", voor #29. Dat issue is op 02-09 gesloten met een node-test als tegenproef, dus die klok kocht niets meer. Wat een rit moet opleveren is wél te benoemen: gereden, onder belasting gemeten, en de meet-PIDs echt ververst. Dat sluit op een goede rit ruim binnen tien minuten, en op een slechte rit zegt het wát er nog mist.',
+    wat: 'Rijd met wisselend gas, en trek onderweg één keer stevig op (veilig — dat vervangt de losse optrekstap). Hieronder zie je live wat er nog ontbreekt; zodra alles groen staat mag je verder.',
+    knop: 'Verder',
     markering: 'rijfase afgesloten',
-    minS: 600,
     leeft: function () {
-      // Tijdens deze stap live tonen; dit is de enige plek waar je tijdens de
-      // rit kunt zien dat de meting werkt in plaats van het achteraf te lezen.
-      let d = 0, dk = { gemeten: [], eenmalig: [], nietGemeten: [] }, kmh = '—';
-      try { d = PLRit.duurS(); dk = PLRit.dekking(); } catch (e) { console.warn('ritstand onleesbaar tijdens de rijstap', e); }
-      try { if (typeof pidVals !== 'undefined' && typeof pidVals['010D'] === 'number') kmh = pidVals['010D'] + ' km/u'; }
-      catch (e) { console.warn('snelheid onleesbaar tijdens de rijstap', e); }
-      return Math.floor(d / 60) + ' min ' + (d % 60) + ' s gereden  ·  ' + kmh +
-        '  ·  ' + dk.gemeten.length + ' PID(s) worden echt ververst, ' + dk.nietGemeten.length + ' staan alleen in het geheugen';
+      // Tijdens deze stap live tonen: dit is de enige plek waar je tijdens de
+      // rit ziet dat de meting werkt in plaats van het achteraf te lezen. De
+      // duur staat er als mededeling bij en niet als eis.
+      let d = 0;
+      try { d = PLRit.duurS(); } catch (e) { console.warn('ritduur onleesbaar tijdens de rijstap', e); }
+      const o = _ritOogst();
+      const teken = function (p) { return (p.klaar === true ? '✓ ' : p.klaar === null ? '– ' : '· ') + p.tekst; };
+      return Math.floor(d / 60) + ' min ' + (d % 60) + ' s onderweg' +
+        (o.klaar ? '  ·  OOGST BINNEN' : '') + '\n' + o.punten.map(teken).join('\n');
     },
     controle: function () {
-      let d = 0, sp = null;
-      try { d = PLRit.duurS(); sp = PLRit.per()['010D'] || null; } catch (e) { return { ok: false, tekst: 'ritstand onbereikbaar' }; }
-      const uit = [];
-      if (d < 600) uit.push('pas ' + Math.round(d / 60) + ' min gereden van de tien die #29 nodig heeft');
-      if (!sp || sp.n < 2) uit.push('geen snelheidsmetingen — 010D is niet ververst');
-      else if (sp.max < 15) uit.push('hoogste snelheid ' + sp.max + ' km/u: er is niet echt gereden');
-      return uit.length ? { ok: false, tekst: uit.join('; ') } : { ok: true, tekst: Math.round(d / 60) + ' min gereden, hoogste snelheid ' + sp.max + ' km/u' };
+      let d = 0;
+      try { d = PLRit.duurS(); } catch (e) { return { ok: false, tekst: 'ritstand onbereikbaar' }; }
+      const o = _ritOogst();
+      const kop = Math.round(d / 60) + ' min gereden';
+      const open = o.punten.filter(function (p) { return p.klaar === false; });
+      if (open.length)
+        return { ok: false, tekst: kop + ' — de oogst is nog niet binnen: ' +
+          open.map(function (p) { return p.tekst; }).join('; ') };
+      return { ok: true, tekst: kop + ' — ' + o.punten.map(function (p) { return p.tekst; }).join('; ') };
     }
   },
-  {
-    id: 'optrekken',
-    titel: 'Eén keer stevig optrekken',
-    waarom: 'De turbo-vraag en de sleepwijzer van #68 hebben een piek nodig. Zonder markering is die piek achteraf niet terug te vinden in duizend logregels.',
-    wat: 'Trek één keer stevig op (veilig, en bij voorkeur op een oprit). Druk daarna op de knop — de markering krijgt de snelheid en het toerental van dat moment mee.',
-    actie: { label: '📍 Markeer het optrekken', fn: function () { plMarkeer('optrekken', 'stevige acceleratie voor turbo/MAP en de sleepwijzer'); return 'markering gezet'; } },
-    knop: 'Gedaan, verder',
-    markering: 'optrekstap afgesloten',
-    controle: function () {
-      const raak = _markeringen.filter(function (m) { return /optrekken/i.test(m.tekst); });
-      return raak.length ? { ok: true, tekst: raak.length + ' optrekmarkering(en) gezet' }
-                         : { ok: false, tekst: 'geen optrekmarkering — de MAP- en sleepwijzervragen blijven onbeantwoord' };
-    }
-  },
+  /* DE OPTREKSTAP IS WEG (10-09-2026, #166). Hij vroeg om één stevige
+     acceleratie plus een druk op een markeerknop, "voor de turbo-vraag en de
+     sleepwijzer van #68". #68 is gesloten, en de turbovraag had die markering
+     sowieso nooit nodig: blok 14 leidt hem af uit de min/max die PLRit over de
+     hele rit bijhoudt, niet uit een moment in het log. Wat de stap wél deed —
+     de bestuurder laten weten dát er onder belasting gemeten moet worden —
+     staat nu in de oogstlijst van de rijstap hierboven, waar het geen aparte
+     stop en geen extra knop kost. */
   {
     id: 'achtergrond',
+    ronde: 'rit', nodig: 'rijden', issues: ['#18'],
     titel: 'Zet de app twee minuten op de achtergrond',
     waarom: '#18 zegt dat de pollus, de recorder en de logger tegelijk stoppen zodra de app naar de achtergrond gaat. Dat is niet vanaf een bureau te meten en ook niet uit een log te reconstrueren: het moet gebeuren terwijl de ritwaarnemer loopt, want alleen dan is het gat van dít moment.',
     wat: 'Druk op de knop hieronder, ga daarna naar het beginscherm van de telefoon (of open een andere app) en laat PidLane twee minuten met rust. Kom dan terug en druk op Verder. Blijf rijden — een gat bij stilstand zegt minder.',
@@ -5418,9 +5523,10 @@ const _STAPPEN = [
   },
   {
     id: 'liveview',
+    ronde: 'toestel', nodig: 'auto', opent: 'app', issues: ['#141'],
     titel: 'Bekijk de live view',
-    waarom: 'Blok 5 meet de app-schil maar kan niet zien of de tellerplaat iets ZEGT. Dat oordeel kan alleen jij geven, en alleen tijdens het rijden.',
-    wat: 'Sluit dit scherm even, kijk naar de tellerplaat (toeren, pedaal, gasklep, belasting naast elkaar) en naar de temperatuurbalken. Gaan pedaal en klep samen omhoog met de belasting erachteraan?',
+    waarom: 'Blok 5 meet de app-schil maar kan niet zien of de tellerplaat iets ZEGT. Dat oordeel kan alleen jij geven. Het hoefde nooit rijdend: gas geven met de auto stil laat pedaal, klep en belasting net zo goed bewegen, en dat scheelt de rit een stop.',
+    wat: 'Doe dit stilstaand, bij voorkeur vlak na een rit met de motor nog warm. Sluit dit scherm, geef een paar keer rustig gas en kijk naar de tellerplaat (toeren, pedaal, gasklep, belasting naast elkaar). Gaan pedaal en klep samen omhoog met de belasting erachteraan?',
     actie: { label: '👁 Live view openen', fn: function () { closeTestrun(); return 'testrunscherm gesloten — open het straks weer via ☰ → Testrun'; } },
     keuzes: ['Klopt — ze lopen gelijk op', 'Klopt niet — ze lopen uiteen', 'Niet kunnen kijken'],
     knop: 'Verder',
@@ -5429,28 +5535,31 @@ const _STAPPEN = [
   },
   {
     id: 'slimweergave',
+    ronde: 'toestel', nodig: 'auto', opent: 'app', issues: ['#161'],
     titel: 'Slimme weergave — kloppen de balken en de lijnen?',
-    waarom: '#66 gaat over twee getallen die gekozen zijn en niet gemeten: waar de temperatuurbalk vol loopt (slimTempSchaal) en vanaf wanneer een signaal "beweegt" (2% van het eigen bereik). Stilstaand is daar niets van te zien — de temperaturen liggen dan tegen elkaar aan en er beweegt niets.',
-    wat: 'Zet de weergave op 🧠 Slim. Twee dingen: (1) staat koelwater op 90 °C hóger in beeld dan de buitenlucht op 20 °C, en staat uitlaatgas op 500 °C juist NIET vol? (2) hebben toerental, motorbelasting en pedaalstand een trendlijn, en de stille sensoren niet?',
+    waarom: '#66 is gesloten; wat er nog ligt is #161: de drempel voor "beweegt" is 2% van het definitiebereik, en het toerental haalt die stationair niet (108 tegen 160 gemeten op 09-09). Juist het STILSTAANDE geval is dus de vraag — deze stap hoorde nooit in de rit thuis. Blok 5 meet de getallen elke ronde; jouw oordeel gaat over of het beeld ook klopt.',
+    wat: 'Doe dit stilstaand met een warme motor, vlak na een rit. Zet de weergave op 🧠 Slim. Twee dingen: (1) staat koelwater op 90 °C hóger in beeld dan de buitenlucht op 20 °C, en staat uitlaatgas op 500 °C juist NIET vol? (2) heeft het toerental een trendlijn als je gas geeft — en blijven de stille sensoren stil?',
     actie: { label: '👁 Live view openen', fn: function () { closeTestrun(); return 'testrunscherm gesloten — open het straks weer via ☰ → Testrun'; } },
     keuzes: ['Allebei goed — balken én lijnen kloppen', 'Balken kloppen niet (volgorde of vulling)', 'Lijnen kloppen niet (te veel of te weinig)', 'Allebei niet — of niet kunnen kijken'],
     knop: 'Verder',
     markering: 'slimme weergave beoordeeld',
-    controle: function () { return { ok: true, tekst: 'jouw oordeel staat hieronder in het verslag (#66)' }; }
+    controle: function () { return { ok: true, tekst: 'jouw oordeel staat hieronder in het verslag (#161)' }; }
   },
   {
     id: 'zones',
+    ronde: 'toestel', nodig: 'toestel', opent: 'app', issues: ['#141'],
     titel: 'Valt de onderkant achter de Android-knoppen?',
-    waarom: 'Blok 5 meldt hier al drie ritten FOUT op (#58), en de run kan zelf niet kiezen of de MELDING klopt of de METING: op ≤760px mag #appGrid bewust langer zijn dan het scherm. #79 zegt met zoveel woorden dat alleen jouw oog dit beslist — en die stap is nog nooit uitgevoerd.',
-    wat: 'Sluit dit scherm, scroll de live view helemaal naar beneden en kijk naar de onderste regel. Blijft die vrij van de drie Android-knoppen, of valt er iets achter?',
+    waarom: '#79 en #58 zijn dicht, maar de vraag eronder leeft door in #141: de run kan zelf niet kiezen of de MELDING klopt of de METING, want op ≤760px mag #appGrid bewust langer zijn dan het scherm. Alleen jouw oog beslist dit, en de Android-knoppen zijn in geen enkele browserproef na te bootsen — dit toestel is dus de meetbank, niet de weg.',
+    wat: 'Stilstaand. Sluit dit scherm, scroll de live view helemaal naar beneden en kijk naar de onderste regel. Blijft die vrij van de drie Android-knoppen, of valt er iets achter?',
     actie: { label: '👁 Live view openen', fn: function () { closeTestrun(); return 'testrunscherm gesloten — open het straks weer via ☰ → Testrun'; } },
     keuzes: ['Alles vrij — er valt niets weg', 'Er valt wel iets achter de knoppen', 'Niet kunnen kijken'],
     knop: 'Verder',
     markering: 'veilige zones beoordeeld',
-    controle: function () { return { ok: true, tekst: 'jouw oordeel staat hieronder in het verslag (#79/#58)' }; }
+    controle: function () { return { ok: true, tekst: 'jouw oordeel staat hieronder in het verslag (#141)' }; }
   },
   {
     id: 'logboek',
+    ronde: 'toestel', nodig: 'toestel', opent: 'venster', issues: [],
     titel: 'Kijk in het logboek',
     waarom: 'De staart van het logboek is de enige plek waar een melding staat die je nog nooit gezien hebt. Achteraf in het verslag lees je hem niet meer, want dan is de buffer al afgekapt (#72).',
     wat: 'Open het logboek en scroll door de laatste meldingen. Zie je iets nieuws, druk dan op de markeerknop — dan is het tijdstip vastgelegd.',
@@ -5472,9 +5581,10 @@ const _STAPPEN = [
   // die gevolgd wordt is deze, dus hier horen ze.
   {
     id: 'meetcontext',
+    ronde: 'toestel', nodig: 'toestel', opent: 'venster', issues: ['#64'],
     titel: 'De meetcontext — beantwoord de drie vragen',
     waarom: '#64 vraagt twee dingen die alleen een mens kan geven: wordt dit venster werkelijk ingevuld, en komt een gegeven antwoord er aan de andere kant weer uit in de AI-prompt? Het venster staat normaal vlak vóór een betaalde analyse, en op 09-09 bleek wat er dan gebeurt — geen analyse gevraagd, dus venster nooit gezien, dus de vraag nog steeds open.',
-    wat: 'Doe dit stilstaand. Druk op de knop, beantwoord de drie vragen écht (niet overslaan), en kom terug. Dit kost geen tokens: het venster gaat los open, er vertrekt geen analyse.',
+    wat: 'Druk op de knop, beantwoord de drie vragen écht (niet overslaan), en kom terug. Dit kost geen tokens: het venster gaat los open, er vertrekt geen analyse. Het testrunscherm zakt er even onder, zodat de vragen ook werkelijk in beeld komen (#166).',
     actie: { label: '📝 Meetcontextvragen openen', fn: function () {
       if (typeof plVoorAnalyse !== 'function') return 'plVoorAnalyse() ontbreekt — het venster is niet te openen (#64)';
       try { plVoorAnalyse(false); } catch (e) { return 'het venster gaf een fout: ' + ((e && e.message) || e); }
@@ -5515,6 +5625,7 @@ const _STAPPEN = [
   },
   {
     id: 'adapterlos',
+    ronde: 'rit', nodig: 'auto', issues: ['#133'],
     titel: 'Trek de adapter er even uit',
     waarom: '#133 gaat niet over of de app herverbindt — dat doet hij — maar of de ANALYSE doorkrijgt dat een gat aan de meting lag en niet aan de auto. Dat is alleen vast te stellen met een gat dat je zelf gemaakt hebt, want dan weet je wat het antwoord hoort te zijn. Op 09-09 kwam deze proef op "ok" zonder ooit onder spanning te staan.',
     wat: 'Doe dit als laatste vóór het meten, en stilstaand. Druk op de knop, trek de OBD-adapter uit de poort, wacht een halve minuut, steek hem terug en wacht tot de app weer verbonden is. Hierna heeft de meetreeks een gat — dat is de bedoeling.',
@@ -5565,6 +5676,7 @@ const _STAPPEN = [
   },
   {
     id: 'meten',
+    ronde: 'beide', nodig: 'auto', voorwaarde: true, issues: [],
     titel: 'De metingen draaien',
     waarom: 'Nu pas, want de sweep en blok 6 belasten de bus zelf en horen niet in het ritbeeld. De ritwaarnemer staat tijdens de run stil.',
     wat: 'Zet de auto bij voorkeur stil of laat een bijrijder dit doen. De run duurt ongeveer een halve minuut.',
@@ -5580,6 +5692,7 @@ const _STAPPEN = [
   },
   {
     id: 'afronden',
+    ronde: 'beide', nodig: 'toestel', voorwaarde: true, issues: [],
     titel: 'Verslag wegschrijven',
     waarom: 'Het verslag is het enige dat terug hoeft. Alles wat je hierboven hebt bevestigd, overgeslagen of beantwoord staat erin.',
     wat: 'Druk op afronden. Je krijgt het bestand meteen te downloaden.',
@@ -5589,7 +5702,7 @@ const _STAPPEN = [
   }
 ];
 
-function _bgStap() { return _STAPPEN[_BG.i] || null; }
+function _bgStap() { return _BG.lijst[_BG.i] || null; }
 
 /* De overgang, apart en zonder scherm eromheen. Test-begeleid.js draait hem
    zonder browser: dit is de enige plek waar besloten wordt of een stap als
@@ -5600,11 +5713,21 @@ function _bgUitkomst(controle, gedwongen) {
   return gedwongen ? 'overgeslagen' : 'gedaan-met-bezwaar';
 }
 
-function begeleidStart() {
+// Welke stappen horen bij welke ronde. Los gehouden zodat test-begeleid.js hem
+// zonder browser kan draaien: dat een ritronde geen stilstaande stappen meesleept
+// is de hele winst van #166, en dat hoort een toets te zijn en geen belofte.
+function _bgLijst(soort) {
+  return _STAPPEN.filter(function (s) { return s.ronde === soort || s.ronde === 'beide'; });
+}
+
+function begeleidStart(soort) {
   if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch (e) { console.warn('toast mislukt', e); } return; }
+  const s = _RONDES[soort] ? soort : 'rit';
+  _BG.soort = s; _BG.lijst = _bgLijst(s);
   _BG.aan = true; _BG.i = 0; _BG.gepauzeerd = false; _BG.gestart = _nu(); _BG.gedaan = []; _BG.laatsteActie = '';
   _markeringen = [];
-  plMarkeer('BEGELEIDE RUN GESTART', 'testrun ' + TESTRUN_VERSIE + ' — ' + _STAPPEN.length + ' stappen');
+  plMarkeer('BEGELEIDE RUN GESTART', 'testrun ' + TESTRUN_VERSIE + ' — ' + _RONDES[s].naam.toLowerCase() +
+    ', ' + _BG.lijst.length + ' stappen (' + _RONDES[s].uitleg + ')');
   _bgBinnen();
   if (_BG.timer) clearInterval(_BG.timer);
   // Alleen hertekenen zolang de begeleide run loopt en niet gepauzeerd is; een
@@ -5627,9 +5750,38 @@ function _bgBinnen() {
   catch (e) { _BG.laatsteActie = 'de automatische stap gaf een fout: ' + ((e && e.message) || e); }
 }
 
+/* HET TESTRUNSCHERM GAAT OPZIJ (10-09-2026, #166).
+
+   Het testrunscherm staat op z-index 9980, hoog in de ladder omdat het over de
+   hele app heen moet. Maar de begeleide run stuurt je vanuit dát scherm naar
+   ándere vensters, en die staan er onder: de meetcontextvragen op 9920, het
+   logboek op 9975. Ze openden dus ACHTER het scherm waar de stap in staat.
+
+   Zo mislukte de meetcontextproef van #64 op de rit van 10-09: de drie vragen
+   waren geopend, maar onzichtbaar. De stap meldde daarna "het venster is niet
+   beantwoord" — een bevinding over het issue, terwijl het de ladder was.
+
+   Eén regel, op één plek: opent een stap een ander venster, dan zakt dit scherm
+   eronder tot de stap klaar is. Voor stappen die je naar de APP zelf sturen
+   (de live view) helpt dat niet — die zit onder álle overlays — en daar blijft
+   sluiten de goede zet; dat verschil staat als `opent: 'venster'` of
+   `opent: 'app'` in de stap zelf. */
+const _BG_WIJK_Z = '9900';    // onder de meetcontextvragen (9920) en het logboek (9975)
+function _bgWijk(opzij) {
+  const ov = document.getElementById('testrunOv');
+  if (!ov) return false;
+  ov.style.zIndex = opzij ? _BG_WIJK_Z : '9980';
+  return true;
+}
+
 function begeleidActie() {
   const s = _bgStap();
   if (!s || !s.actie) return;
+  // Vóór de knop, niet erna: het venster gaat in fn() open en moet dan al
+  // ruimte hebben.
+  if (s.opent === 'venster') {
+    try { _bgWijk(true); } catch (e) { console.warn('testrunscherm ging niet opzij — het venster opent mogelijk erachter', e); }
+  }
   try { _BG.laatsteActie = String(s.actie.fn() || 'gedaan'); }
   catch (e) { _BG.laatsteActie = 'de knop gaf een fout: ' + ((e && e.message) || e); }
   _teken();
@@ -5658,8 +5810,13 @@ function begeleidVolgende(gedwongen) {
   const uitkomst = _bgUitkomst(c, !!gedwongen);
   const opm = (c ? c.tekst : '') + (_BG.antwoord ? '  |  antwoord: ' + _BG.antwoord : '') +
               (_BG.laatsteActie ? '  |  app deed: ' + _BG.laatsteActie : '');
+  // Het scherm terug naar zijn eigen plek in de ladder; de stap is klaar, dus
+  // het venster dat ervoor stond is dat ook.
+  if (s.opent === 'venster') {
+    try { _bgWijk(false); } catch (e) { console.warn('testrunscherm niet teruggezet in de ladder', e); }
+  }
   _BG.gedaan.push({ id: s.id, titel: s.titel, t: _klok(), uitkomst: uitkomst, opm: opm });
-  plMarkeer('stap ' + (_BG.i + 1) + '/' + _STAPPEN.length + ' — ' + s.markering, uitkomst.toUpperCase() + ': ' + opm);
+  plMarkeer('stap ' + (_BG.i + 1) + '/' + _BG.lijst.length + ' — ' + s.markering, uitkomst.toUpperCase() + ': ' + opm);
   _BG.antwoord = null;
 
   if (s.id === 'afronden') { begeleidAfronden('alle stappen doorlopen'); return; }
@@ -5675,7 +5832,7 @@ function begeleidPauze() {
   _BG.gepauzeerd = !_BG.gepauzeerd;
   plMarkeer(_BG.gepauzeerd ? 'PAUZE' : 'HERVAT', _BG.gepauzeerd
     ? 'de begeleide run staat stil; de ritwaarnemer loopt gewoon door'
-    : 'verder bij stap ' + (_BG.i + 1) + '/' + _STAPPEN.length);
+    : 'verder bij stap ' + (_BG.i + 1) + '/' + _BG.lijst.length);
   _teken();
 }
 
@@ -5687,9 +5844,12 @@ function begeleidAfronden(reden) {
   if (_BG.aan && laatste && laatste.id !== 'afronden')
     _BG.gedaan.push({ id: laatste.id, titel: laatste.titel, t: _klok(), uitkomst: 'niet-bereikt',
                       opm: 'de run is hier afgerond: ' + (reden || 'vroegtijdig afgerond') });
-  plMarkeer('BEGELEIDE RUN AFGEROND', (reden || 'afgerond') + ' — ' + _BG.gedaan.length + ' van ' + _STAPPEN.length + ' stappen doorlopen');
+  plMarkeer('BEGELEIDE RUN AFGEROND', (reden || 'afgerond') + ' — ' + _BG.gedaan.length + ' van ' + _BG.lijst.length + ' stappen doorlopen');
   _BG.aan = false;
   if (_BG.timer) { clearInterval(_BG.timer); _BG.timer = null; }
+  // Ook hier terug in de ladder: afronden kan midden in een stap die een
+  // venster geopend had, en dan blijft het scherm anders weggezakt.
+  try { _bgWijk(false); } catch (e) { console.warn('testrunscherm niet teruggezet bij het afronden', e); }
   _teken();
   try { testrunOpslaan(); }
   catch (e) { console.warn('Verslag niet weggeschreven bij het afronden van de begeleide run', e); }
@@ -5702,15 +5862,33 @@ function _bgVerslag() {
   if (!_BG.gedaan.length && !_markeringen.length) return r;
   r.push('DE BEGELEIDE RUN — WAT ER IS GEDAAN');
   r.push('────────────────────────────────────────────────');
-  if (_BG.gestart) r.push('Gestart om ' + new Date(_BG.gestart).toLocaleTimeString('nl-NL') + ', ' +
-    _BG.gedaan.length + ' van ' + _STAPPEN.length + ' stappen doorlopen');
+  if (_BG.gestart) r.push('Ronde: ' + ((_RONDES[_BG.soort] || {}).naam || _BG.soort) +
+    '. Gestart om ' + new Date(_BG.gestart).toLocaleTimeString('nl-NL') + ', ' +
+    _BG.gedaan.length + ' van ' + _BG.lijst.length + ' stappen doorlopen');
   const merk = { 'gedaan': '  ok  ', 'gedaan-met-bezwaar': 'LETOP ', 'overgeslagen': 'OVERG ', 'niet-bereikt': '  --  ' };
   _BG.gedaan.forEach(function (g, i) {
     r.push('[' + g.t + ']' + (merk[g.uitkomst] || '  ·   ') + (i + 1) + '. ' + g.titel);
     if (g.opm) r.push('                ' + g.opm);
   });
-  const open = _STAPPEN.slice(_BG.gedaan.length).map(function (s) { return s.titel; });
+  const open = _BG.lijst.slice(_BG.gedaan.length).map(function (s) { return s.titel; });
   if (open.length) { r.push(''); r.push('NIET MEER AAN TOEGEKOMEN: ' + open.join('; ')); }
+
+  /* WAT DEZE RONDE HEEFT OPGELEVERD (10-09-2026, #166). De aanleiding is de
+     telling van dat issue: zeven van de negen stappen dienden een issue dat al
+     dicht was, en niets werd daar rood van. Nu draagt elke stap zijn issues als
+     data, en sluit het verslag af met de vraag die ertoe doet — welke open
+     vragen zijn er met déze rit werkelijk gevoed, en welke niet? */
+  const gehaald = {}, gemist = {};
+  _BG.gedaan.forEach(function (g) {
+    const st = _STAPPEN.filter(function (s) { return s.id === g.id; })[0];
+    if (!st || !st.issues || !st.issues.length) return;
+    const naar = (g.uitkomst === 'gedaan') ? gehaald : gemist;
+    st.issues.forEach(function (q) { naar[q] = true; });
+  });
+  const lijst = function (o) { return Object.keys(o).sort().join(', '); };
+  r.push('');
+  r.push('WAT DEZE RONDE VOEDT: ' + (lijst(gehaald) || '(niets — geen enkele stap met een open vraag is gehaald)'));
+  if (lijst(gemist)) r.push('AANGERAAKT MAAR NIET BINNEN: ' + lijst(gemist));
   if (_markeringen.length) {
     r.push('');
     r.push('MARKERINGEN (' + _markeringen.length + ')');
@@ -5742,7 +5920,9 @@ function _bgTeken() {
 
   let h = '<div style="background:var(--sur);border:2px solid var(--ac);border-radius:12px;padding:13px 14px;margin-bottom:11px">';
   h += '<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">' +
-    '<span style="font:800 11px var(--f);color:var(--ac);letter-spacing:.5px">STAP ' + (_BG.i + 1) + ' VAN ' + _STAPPEN.length + '</span>' +
+    '<span style="font:800 11px var(--f);color:var(--ac);letter-spacing:.5px">' +
+      veilig((_RONDES[_BG.soort] || {}).naam || _BG.soort).toUpperCase() +
+      ' — STAP ' + (_BG.i + 1) + ' VAN ' + _BG.lijst.length + '</span>' +
     (_BG.gepauzeerd ? '<span style="font:800 11px var(--f);color:var(--or)">⏸ GEPAUZEERD</span>' : '') +
     '<span style="margin-left:auto;font-size:11px;color:var(--tx3)">' + _markeringen.length + ' markering(en)</span></div>';
   h += '<div style="font:800 15px var(--f);color:var(--tx);margin-bottom:5px">' + veilig(s.titel) + '</div>';
@@ -5810,7 +5990,12 @@ function openTestrun() {
         // De begeleide run staat vooraan: hij is sinds 6.0 de manier waarop een
         // meetrit hoort te lopen. "Start" ernaast blijft voor wie alleen even
         // wil meten zonder rit eromheen.
-        '<button onclick="begeleidStart()" style="background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 13px var(--f);cursor:pointer">🧭 Begeleide rit</button>' +
+        '<button onclick="begeleidStart(\'rit\')" style="background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 13px var(--f);cursor:pointer">🧭 Meetrit</button>' +
+        // De toestelronde (#166). Alles wat geen RIJDENDE auto nodig heeft
+        // staat hier, zodat het geen ritminuten kost: de schermoordelen, het
+        // logboek en de meetcontextvragen. Stilstaand op de parkeerplaats of
+        // thuis op de bank.
+        '<button onclick="begeleidStart(\'toestel\')" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--ac);border-radius:8px;padding:10px 14px;font:700 12px var(--f);cursor:pointer">📱 Toestelronde</button>' +
         '<button onclick="startTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">▶ Alleen meten</button>' +
         '<button onclick="startTestrun({b5:true,b1:true,b4:true,b7:true,b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
         // Weg op 24-08: "DID-scan (45 s)" (blok 9) en "Budget + olie" (blok 7+8).
@@ -6050,29 +6235,22 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 08-09 (zesde) — één rit die zes open issues moet voeden',
+  titel: 'OPLEVERING 10-09 (zevende) — de rit kost alleen nog wat een rit kost',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'Deze ronde voegt niets toe aan de app. Hij bestaat om de rit zelf iets te laten opleveren. Er staan negen issues open en zes daarvan wachten op iets dat alleen achter het stuur gebeurt — op sommige al twee weken, omdat er per rit één ding tegelijk werd nagekeken.',
-    'WAT ER MIS WAS AAN DE VORIGE OPZET. In de issues stond bij die zes steeds "kijk of het klopt". Kijken is geen meten: wat er van een rit terugkomt is dan een herinnering, en die is er de volgende ronde niet meer. Drie nieuwe proeven in blok 5 schrijven daarom op wat tot nu toe van opletten afhing — de beweeg-drempel per sensor (#66), of een beantwoorde meetcontext de prompt haalt (#64), en of een weggevallen verbinding in het oordeel over de meting terechtkomt (#133). Alle drie met een echte faaltoestand erin, want een blok dat alleen kán rapporteren wordt na twee ritten niet meer gelezen.',
-    'DE RIT IS ZO GEORDEND DAT ÉÉN RIT ZE ALLEMAAL RAAKT: zes momenten in één rit, in de volgorde waarin ze elkaar niet in de weg zitten. Eerst wat stilstaand kan, dan wat rijdend moet, en de twee die de verbinding bewust stukmaken helemaal aan het eind — want daarna is de meetreeks niet meer schoon.',
+    'Deze ronde voegt niets toe aan de app. Hij haalt weg. De begeleide run had vijftien stappen, en negen daarvan noemden een issue als reden — zeven van die negen waren dicht (#19, #15, #29, #68, #66, #79, #58). De duurste was de rijstap: die eiste tien minuten omdat de opruimregel vijf pogingen plus vijf herkansingen nodig heeft, en dát issue (#29) is op 02-09 gesloten met een node-test als tegenproef.',
+    'WAT DAT KOSTTE. Een rit is de schaarse grondstof. Alles wat een rit kost en niets oplevert, kost ook de stappen die er niet meer bij passen — op 08-09 stonden er zes issues te wachten op een rit en werd er één ronde gereden. Elf van de vijftien stappen hadden bovendien helemaal geen RIJDENDE auto nodig; ze stonden alleen in de ritvolgorde omdat de lijst zo gegroeid was.',
+    'WAT ER VERANDERD IS. Er zijn nu twee rondes uit één lijst. De MEETRIT bevat alleen wat een rijdende auto nodig heeft plus de voorbereiding die eraan vastzit. De TOESTELRONDE draait stilstaand — op de parkeerplaats of thuis — en bevat de schermoordelen, het logboek en de meetcontextvragen. De optrekstap is weg: blok 14 leidt de turbovraag al af uit de min/max van PLRit en had die markering nooit nodig.',
+    'EN DE RIJSTAP SLUIT NU OP DE OOGST. Niet "hoe lang reed je" maar "is het binnen": snelheid bewezen, spreiding op de MAP gezien (dat is wat de optrekstap deed), en elke meet-PID uit de selectie twee keer ververst. Tien minuten stapvoets in de file leverden minder op dan drie minuten met wisselend gas, en de bestuurder kreeg in beide gevallen hetzelfde antwoord.',
     '── STAP VOOR STAP ────────',
-    'STAP 0 — VOORAF, THUIS. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden) en druk in het testrunpaneel op "ritwaarnemer op nul". Zonder dat nulstellen gaat blok 14 over alles sinds het opstarten in plaats van over deze rit, en dan is het gat dat je bij stap 6 zelf maakt niet meer terug te vinden.',
-    'STAP 1 — STILSTAAND, MOTOR UIT: DE LEESBAARHEID (#141). Ga in de auto zitten zoals je hem gebruikt, met het daglicht van dat moment. Loop de schermen langs die je tijdens een rit werkelijk opent: live view, tellerplaat, rapport, logboek. Noteer per scherm wat je NIET kunt lezen zonder de telefoon dichterbij te halen, en of dat aan de lettergrootte ligt, aan het contrast of aan de opbouw. Dat onderscheid is het hele punt: er staat nu één regel "niet in orde", en daar kan niemand iets mee. Zet daarna de tekstgrootte een stap groter (☰ → Tekstgrootte → L) en kijk of het probleem weg is of alleen verschuift.',
-    'STAP 2 — DE MEETCONTEXT EN HET ADAPTERGAT STAAN NU IN DE BEGELEIDE RUN. Op 09-09 stonden ze hier als tekst, en ze gebeurden niet: de bestuurder liep de begeleide run af — dertien eigen stappen, waar deze twee niet in zaten. Gevolg: #64 meldde \'het venster is niet beantwoord\' en #133 kwam op \'ok\' zonder ooit onder spanning te staan. Twee lijsten met ritstappen naast elkaar is de vorm die §11 al twee keer de kop kostte, dus ze zijn verhuisd naar de lijst die werkelijk gevolgd wordt. Deze tekst stuurt de rit niet meer; de begeleide run doet dat.',
-
-    'STAP 3 — RIJDEND: DE SLIMME WEERGAVE (#66). Zet de weergave op 🧠 Slim en rijd een stuk met wisselend gas. Twee dingen om te bekijken, en blok 5 schrijft de getallen erbij. (1) De temperatuurbalken: staat koelwater op 90 °C hóger dan omgevingslucht op 20 °C, en staat uitlaatgas op 500 °C juist NIET vol? (2) Het vak "Beweegt": hebben toerental, motorbelasting en pedaalstand een trendlijn? Staat er een rechte streep, dan is de drempel te laag; mist er een lijn die je wél wilde zien, dan te hoog. Blok 5 noemt per sensor het gemeten bereik tegen de drempel, en apart de groep die er vlak onder zit — dat is de groep waar die 2% werkelijk iets beslist.',
-    'STAP 4 — RIJDEND: DE ACHTERGROND (#18). Schakel twee minuten weg naar een andere app en blijf rijden. Kom terug en lees de melding. Er staan drie getallen in: hoe lang de app weg was, hoeveel daarvan hij nog doorliep, en hoe lang hij werkelijk stillag. Staat er "afgeknepen, niet bevroren", dan kwam de lus uit zichzelf terug en is dat een andere bevinding dan een bevriezing — noteer dan merk en Android-versie erbij, want die keuze bepaalt of een foreground service of picture-in-picture de goede oplossing is.',
-    'STAP 5 — RIJDEND: HET OPSLAGVENSTER VAN DE BULK-RECORDER (#132). Start de bulk-recorder, laat hem een minuut lopen en druk op Opslaan. Kijk wat er gebeurt: komt er een bestandskiezer of deelvenster, of wordt het bestand rechtstreeks weggeschreven? Komt dat venster, dan schakelt de app weg en volgt er een herverbinding — dezelfde oorzaak als stap 4, alleen zelf uitgelokt. Noteer of de opname na terugkeer doorliep of stilstond. Dit is punt A van de route uit #18, en de grootste winst in de praktijk.',
-    'STAP 7 — NA AFLOOP: HET VERSLAG. Draai de testrun en bewaar het logboek. Lees blok 5 na op de drie nieuwe regels (#66, #64, #133) en blok 14 op de gatduiding. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop — een heel verslag hoort niet in een issue.',
-    'WAT WEL EEN MENS VRAAGT EN NIET IN DE BEGELEIDE RUN PAST: DE A/B-PROEF VAN #64. De stap in de run toont het venster los en toetst of een gegeven antwoord de promptregel haalt — dat kost geen tokens. Of het antwoord het RAPPORT verandert is een andere vraag, en die kost twee betaalde analyses: één met start/stop op \'ja\' en één op \'nee\', na een stoplicht waar de motor afsloeg. Lezen ze hetzelfde, dan komt de regel niet aan. Doe dit als je toch analyses draait; het is geen verplichte ritstap.',
-
+    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Verder hoef je niets te onthouden: beide rondes staan in het testrunscherm als eigen knop, en elke stap zegt zelf wat hij wil.',
+    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op — de rijstap laat live zien wat er nog ontbreekt en gaat vanzelf op groen. Daarna twee minuten naar de achtergrond (#18) en als laatste de adapter er even uit (#133). Het meten en het verslag doet de run zelf.',
+    'DE TOESTELRONDE (📱). Doe deze vlak na de rit, stilstaand met een warme motor — dan zijn de temperaturen uit elkaar getrokken en beweegt er iets als je gas geeft. Vier oordelen die alleen een mens kan geven (live view, slimme weergave, onderrand, logboek) plus de drie meetcontextvragen (#64). Die vragen openden tot vandaag ACHTER het testrunscherm; dat is gerepareerd, het scherm zakt er nu onder.',
+    'NA AFLOOP. Het verslag sluit af met "WAT DEZE RONDE VOEDT" — de open issues die deze ronde werkelijk geraakt heeft. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop; een heel verslag hoort niet in een issue.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'DE DID-DRAAD GAAT OP DE LANGE BAAN. De kaartmaker en de mode 22-sweep staan bewust NIET in de stappen hierboven. De volledige trap kost op deze auto 1,9 uur, de vorige twee ritten hebben hem grotendeels afgelopen, en F4A6 is gemeten en bestaat niet. Wat er nog te halen valt weegt niet op tegen een rit die verder niets oplevert. Wil je hem toch draaien, doe dat op een eigen rit en niet naast de zes stappen hierboven — hij neemt de verbinding hélemaal over.',
-    'DE KM-STAND-MODULE (#138) VRAAGT GEEN MEETRIT. Die pagina wordt een checklist: controlepunten met een wegingsfactor, af te vinken met ja/misschien/nee/nvt. Wat er aan diagnostiek onder hangt (de ECU-vergelijking, het freeze frame) bestaat al in PLKm. Er hoeft dus niets diepers gezocht te worden, en deze rit hoeft er geen data voor te verzamelen.',
-    '#18 ZELF BLIJFT STAAN. Stap 4 en 5 leveren de getallen waarmee de keuze tussen foreground service en picture-in-picture onderbouwd wordt, maar de bevriezing zelf is native werk en niet vanuit JavaScript te repareren. Deze rit meet hem; hij lost hem niet op.',
-    '#139 EN #145 HOEVEN GEEN AUTO. Het verwijderen van admin.html wacht op pariteit van beheer.html, en de tooltip-timing is in een browserproef te toetsen. Geen ritstappen dus, en ze horen ook niet in dit verslag.',
-    'DE RAPPORTLENGTE IS DE ENIGE KNOP DIE DE AI-REKENING ECHT BEWEEGT — gemeten op 08-09: de uitvoer is ~90% van de kosten en de hele invoerkant ~10%. Dat is een productbesluit (hoe lang mag een rapport zijn?) en geen meetvraag, dus er staat geen ritstap voor.',
+    'DE OOGSTPOORT IS NOG NOOIT IN EEN AUTO GEDRAAID. De drempels — 15 km/u voor "gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet gemeten. Ze staan in test-begeleid.js met een tegenproef eronder, maar of ze in de praktijk op het goede moment groen worden, weet je pas na een rit. Blijkt de poort te vroeg of te laat te sluiten, dan is dát de bevinding van deze ronde.',
+    '#18 ZELF BLIJFT STAAN. De achtergrondstap levert de getallen waarmee de keuze tussen foreground service en picture-in-picture onderbouwd wordt, maar de bevriezing zelf is native werk en niet vanuit JavaScript te repareren.',
+    '#161 KRIJGT GEEN BESLUIT UIT EEN RIT. Welke drempel "beweegt" moet krijgen is een ontwerpkeuze, geen meetvraag — blok 5 meet de getallen elke ronde en die staan er al. Het oordeel in de toestelronde gaat alleen over of het BEELD klopt.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };
@@ -6137,6 +6315,14 @@ window.PLBlok5 = {
 
 window.PLBegeleid = {
   stappen: function () { return _STAPPEN; },
+  // De rondes en de filterregel erbij (#166): dat een ritronde niets
+  // stilstaands meesleept is de hele winst, en die hoort getoetst te worden
+  // in plaats van beloofd.
+  rondes: function () { return Object.keys(_RONDES); },
+  lijst: _bgLijst,
+  // De oogstpoort los, zodat test-begeleid.js hem op een nagemaakte ritstand
+  // kan draaien zonder browser en zonder auto.
+  oogst: _ritOogst,
   // De meet-PIDs erbij sinds 6.5. Ze staan hier niet voor de app maar voor
   // test-begeleid.js: welke sensoren een rit moet aanzetten is een afspraak met
   // de issues (#19 de raildruk, #40 de twee bytelengtes), en zo'n afspraak die

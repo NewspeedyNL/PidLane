@@ -343,6 +343,19 @@ MUTATIES=(
 "public/pidlane-testrun.js@@if (bekendeTik > 0 && gemetenTik === 0) {@@if (gemetenTik === 0) {@@test-rit.js@@de openingstik van een rit telt zichzelf als meetgat"
 "public/pidlane-testrun.js@@} else if (meetgatSinds) {@@} else if (false) {@@test-rit.js@@een meetgat sluit niet meer af en groeit door tot na het herstel"
 "public/pidlane-testrun.js@@if (!loopgatNu) {@@if (true) {@@test-rit.js@@een achtergrondbevriezing opent ook een meetgat en wijst zo naar de bus"
+
+# ── De begeleide run kost alleen nog wat een rit kost (#166, 10-09-2026) ──
+# Vier fouten die je bij precies deze verbouwing maakt. De eerste twee zijn de
+# terugval: een stilstaande stap weer in de ritronde zetten "omdat het er toch
+# bij hoort", en de oogstpoort laten sluiten zonder dat er onder belasting
+# gemeten is — dan was de optrekstap voor niets weggehaald. De derde is de
+# ladderfout die #64 op 10-09 de kop kostte: het venster opent achter het
+# testrunscherm. De vierde is de stille: de poort gaat open op een auto die
+# nooit gereden heeft, omdat één waarneming al meetelt.
+"public/pidlane-testrun.js@@    ronde: 'toestel', nodig: 'toestel', opent: 'venster', issues: ['#64'],@@    ronde: 'rit', nodig: 'toestel', opent: 'venster', issues: ['#64'],@@test-begeleid.js@@de meetcontextvragen kosten weer ritminuten terwijl ze stilstaand kunnen"
+"public/pidlane-testrun.js@@        ? { naam: 'belasting', klaar: false, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@        ? { naam: 'belasting', klaar: true, tekst: 'MAP ' + e10B.min + '–' + e10B.max + ' kPa (spreiding ' + spreiding +@@test-begeleid.js@@de oogstpoort gaat open zonder dat er ooit onder belasting gemeten is"
+"public/pidlane-testrun.js@@  if (s.opent === 'venster') {\n    try { _bgWijk(true); }@@  if (false) {\n    try { _bgWijk(true); }@@test-begeleid.js@@het testrunscherm gaat niet meer opzij, dus het vragenvenster opent erachter"
+"public/pidlane-testrun.js@@  punten.push(!e10D || e10D.n < 2@@  punten.push(!e10D || e10D.n < 1@@test-begeleid.js@@één enkele snelheidswaarneming telt weer als bewijs dat er gereden is"
 )
 
 echo

@@ -49,6 +49,45 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10c (CET) — DE RIT KOST ALLEEN NOG WAT
+                                EEN RIT KOST
+
+       • ⏱️ DE TIEN MINUTEN ZIJN WEG. De rijstap eiste ze voor
+         #29 — "vijf pogingen plus vijf herkansingen" — en dat
+         issue is op 02-09 gesloten mét een node-test als
+         tegenproef. Geteld over alle vijftien stappen: negen
+         noemden een issue als reden, en zeven daarvan waren
+         dicht (#19, #15, #29, #68, #66, #79, #58).
+
+       • 🌾 DE RIJSTAP SLUIT NU OP DE OOGST. Niet "hoe lang
+         reed je" maar "is het binnen": snelheid bewezen,
+         spreiding op de MAP gezien, en elke meet-PID uit de
+         selectie twee keer ververst. Je ziet tijdens het
+         rijden wat er nog mist. Een punt dat op deze auto
+         niet te halen is, blokkeert niet.
+
+       • 🚗📱 TWEE RONDES UIT ÉÉN LIJST. De meetrit bevat
+         alleen wat een rijdende auto nodig heeft. De rest —
+         de schermoordelen, het logboek en de meetcontext-
+         vragen — is een toestelronde die stilstaand draait.
+         Elke stap zegt zelf wat hij nodig heeft en welke
+         issues hij voedt, en het verslag sluit af met wat
+         déze ronde werkelijk heeft opgeleverd.
+
+       • ✂️ DE OPTREKSTAP IS WEG. Blok 14 leidt de turbovraag
+         al af uit de min/max van PLRit en had die markering
+         nooit nodig. Wat de stap wél deed, staat nu als punt
+         in de oogstpoort — zonder aparte stop.
+
+       • 🪟 DE DRIE MEETCONTEXTVRAGEN OPENDEN ACHTER HET
+         TESTRUNSCHERM. Dat scherm staat op z-index 9980, het
+         vragenvenster op 9920 en het logboek op 9975. De
+         proef van #64 mislukte daarop: de vragen wáren
+         geopend, alleen onzichtbaar. Het scherm zakt nu
+         onder een venster zolang die stap loopt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10a (CET) — DE METING BLIJFT DE METING
 
        • ✂️ LAAG 2 EN 3 VAN DE MEETKETEN ZIJN WEGGEHAALD.
