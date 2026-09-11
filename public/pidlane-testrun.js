@@ -4503,15 +4503,21 @@ const PROEVEN_B5 = [
         return { staat: 'FOUT', detail: 'PLAchtergrond kent ' + wegEcht + ' periode(n), de aanlevering meldt ' +
           ob.perioden + ' (#188)' };
 
-      // En de haak zelf. Een gedragstoets zou hier een echte AI-call vragen en
-      // dus tokens van de klant kosten; dit is de uitzondering waarvoor
-      // broncode lezen mag, en dit is de reden.
-      let haak = '';
-      try { haak = String(apiFetch); }
-      catch (e) { return { staat: 'FOUT', detail: 'apiFetch() is niet leesbaar: ' + (e.message || e) }; }
-      if (!/PLAanlevering\.blok/.test(haak))
-        return { staat: 'FOUT', detail: 'apiFetch() plakt het aanleveringsblok niet aan de systeemprompt — ' +
-          'de module draait wel maar bereikt de AI niet (#188)' };
+      /* DE HAAK ZELF WORDT HIER NIET GEMETEN, EN DAT IS EEN BESLUIT.
+
+         Er stond hier eerst een broncodecontrole: staat de tekst
+         "PLAanlevering.blok" in apiFetch. Die is op 11-09 nagemeten door de haak
+         op `if(false)` te zetten — en hij bleef groen. Hij bewees dat er een
+         regel stond, niet dat die regel iets deed, en dat is precies de proef
+         die CLAUDE.md waardeloos noemt.
+
+         De echte vraag is gedrag: komt het blok in de systeemprompt die
+         verstuurd wordt. Dat is te meten door plFetch te onderscheppen, maar
+         niet hier: deze proef draait midden in een rit in de app van een klant,
+         en de verzendlaag onderuit halen om te kijken of hij het goed doet is
+         een risico dat niet bij een testrun hoort. Het staat in
+         bproef-aanlevering.js, dat bij elke push in CI draait en waar de
+         tegenproef ook echt rood wordt. */
 
       const blok = PLAanlevering.blok({ set: 'monteur' });
       if (!blok)

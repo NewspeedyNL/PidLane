@@ -981,12 +981,25 @@ een aanroeper wél wat hij wil laten analyseren (`vraag` of `set`), dan komt het
 blok er altijd — juist dan, want *"je vraagt een oordeel over een meting die er
 niet is"* is op dat moment het nuttigste dat een model kan horen.
 
+**En een tegenproef die eerst niet deugde.** De eerste versie van de controle op
+de haak keek of de tekst `PLAanlevering.blok` in `apiFetch` stond. Die is
+nagemeten door de haak op `if(false)` te zetten, en hij bleef groen: hij bewees
+dat er een regel stond, niet dat die regel iets deed — precies de proef die
+CLAUDE.md waardeloos noemt. `bproef-aanlevering.js` doet het nu als gedrag:
+`plFetch` wordt onderschept, `apiFetch()` draait voor het overige echt, en er
+wordt gekeken of het blok in de `system` staat die verstuurd zou worden. Geen
+byte naar Anthropic, geen tegoed. Diezelfde ingreep maakt hem nu wél rood.
+
+Blok 5 doet daarom alleen nog wat alleen daar kan: op een echte rit de
+gatentelling van de aanlevering naast die van `PLRit` en `PLAchtergrond` leggen.
+De verzendlaag onderuit halen midden in de app van een klant hoort niet bij een
+testrun.
+
 **Wat dit niet oplost.** Of een rápport er werkelijk anders van wordt, is hier
 niet te meten. `test-aanlevering.js` toetst de regels in node (34 toetsen, vijf
-mutaties in `plmutate.sh`), blok 5 toetst in de draaiende app dat het blok
-meegaat en dat de gatentelling klopt met het verslag. Wat een model met die
-tekst doet, staat alleen in de tekst die eruit komt — dat is een vraag voor
-`CAMPAGNE` en staat daar.
+mutaties in `plmutate.sh`) en `bproef-aanlevering.js` de koppeling in de
+draaiende app (19 toetsen). Wat een model met die tekst doet, staat alleen in de
+tekst die eruit komt — dat is een vraag voor `CAMPAGNE` en staat daar.
 
 ---
 
