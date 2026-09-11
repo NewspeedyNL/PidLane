@@ -596,7 +596,7 @@ MUTATIES=(
 
 # De toestemmingstekst. Beide zijn een redactionele verbetering die de
 # juridische lading omgooit — en een eerder gegeven akkoord ongeldig maakt.
-"public/pidlane-klant.js@@'Dat is pseudonimisering en geen anonimisering: wie ' +@@'Dat is volledig anoniem: wie ' +@@test-toestemmingstekst.js@@het akkoordscherm belooft anonimisering die de app niet levert"
+"public/pidlane-klant.js@@Dat is pseudonimisering en geen anonimisering: wie ' +@@Dat is volledig anoniem: wie ' +@@test-toestemmingstekst.js@@het akkoordscherm belooft anonimisering die de app niet levert"
 "public/pidlane-klant.js@@_vink('onbAnon', 'Meetdata delen onder een pseudoniem',@@_vink('onbAnon', 'Meetdata anoniem delen',@@test-toestemmingstekst.js@@de kop van het vinkje zegt anoniem terwijl de uitleg eronder pseudoniem zegt"
 )
 
