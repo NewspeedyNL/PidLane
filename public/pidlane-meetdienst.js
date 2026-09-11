@@ -56,6 +56,12 @@
 
   var _laatsteReden = null;   // waarom draait de dienst niet — voor het verslag
   var _draait = false;        // wat de native kant het laatst zei
+  /* Eén keer per sessie vragen om de meldingpermissie, en niet bij elke start.
+     De dienst start bij ELKE verbinding, en #18 laat zelf zien dat er
+     onderweg herverbonden wordt — de rit van 02-09 deed een volledige
+     herverbinding mét ELM-init midden in een afwezigheid. Zonder deze vlag
+     krijgt de bestuurder dat dialoog dus tijdens het rijden opnieuw. */
+  var _meldingGevraagd = false;
 
   function _log(m, niveau) {
     try { if (typeof log === 'function') log(m, niveau || 'info'); }
@@ -115,7 +121,10 @@
        door. Er op wachten zou het starten van de meting afhankelijk maken van
        een dialoog, en dan valt de meting stil om een reden die niets met meten
        te maken heeft. */
-    try { vraagMelding(); } catch (e) { console.warn('meetdienst: meldingpermissie niet gevraagd (#18)', e); }
+    if (!_meldingGevraagd) {
+      _meldingGevraagd = true;
+      try { vraagMelding(); } catch (e) { console.warn('meetdienst: meldingpermissie niet gevraagd (#18)', e); }
+    }
     return Promise.resolve(p.start())
       .then(function (r) {
         r = r || {};

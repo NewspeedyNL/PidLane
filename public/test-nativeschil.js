@@ -168,6 +168,18 @@ console.log('\n── de app laadt de module ──');
     html.indexOf('src="pidlane-meetdienst.js"') > html.indexOf('src="pidlane-uihelpers.js"'), true);
 }
 
+console.log('\n── de dienst stopt als de app weg is ──');
+{
+  /* Swipet de gebruiker de app uit het overzicht, dan is er geen WebView meer
+     en dus niets te meten. Zonder onTaskRemoved blijft de dienst staan — en
+     START_STICKY zet hem zelfs terug — met een melding die doormeten belooft
+     terwijl er niets meer is. Die melding is dan ook niet weg te krijgen
+     zonder de app opnieuw te openen. */
+  const blok = (dienst.match(/onTaskRemoved[\s\S]{0,400}?\n    \}/) || [''])[0];
+  toets('de service vangt onTaskRemoved af', blok.length > 0, true);
+  bevat('en stopt zichzelf', blok, 'stopSelf()');
+}
+
 console.log('\n── geen stille catch in de native code ──');
 {
   /* Dezelfde regel als voor de rest van dit project, en hier weegt hij extra:

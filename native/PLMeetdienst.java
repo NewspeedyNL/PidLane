@@ -223,6 +223,21 @@ public class PLMeetdienst extends Service {
         super.onDestroy();
     }
 
+    /* De app uit het overzicht geveegd. Dan is er geen WebView meer, dus geen
+       meting, dus ook geen reden om nog te draaien.
+
+       Zonder deze override blijft de dienst staan — en START_STICKY zet hem
+       zelfs terug — met een melding die zegt dat PidLane doormeet terwijl er
+       niets meer is om mee te meten. Een melding die iets belooft wat er niet
+       staat is in dit project al vaker de fout geweest; hier zou hij bovendien
+       niet weg te krijgen zijn zonder de app opnieuw te openen. */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        Log.i(TAG, "app uit het overzicht geveegd — de meetdienst stopt mee (#18)");
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         // Niet te binden. De plugin praat via de statische teller hierboven en

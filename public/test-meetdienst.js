@@ -87,6 +87,8 @@ function bouw(opties) {
           },
           stop: function () { s.aanroepen.push('stop'); return Promise.resolve({ draait: false, reden: 'gestopt' }); },
           nulstel: function () { s.aanroepen.push('nulstel'); return Promise.resolve({ draait: true }); },
+          vraagMelding: function () { s.aanroepen.push('vraagMelding'); return Promise.resolve({ melding: 'granted' }); },
+          status: function () { s.aanroepen.push('status'); return Promise.resolve({ beschikbaar: true, draait: true, hartslagMs: 1000, sdk: 36 }); },
           rapport: function () { s.aanroepen.push('rapport'); return Promise.resolve(o.rapport || null); }
         }
       }
@@ -138,6 +140,22 @@ async function main() {
       /geen native meetdienst/.test(s.PLMeetdienst.reden()), true);
   }
 
+  console.log('\n── de meldingpermissie wordt één keer gevraagd, niet elke verbinding ──');
+  {
+    /* De dienst start bij ELKE verbinding, en #18 laat zelf zien dat er
+       onderweg herverbonden wordt — de rit van 02-09 deed een volledige
+       herverbinding mét ELM-init midden in een afwezigheid. Zonder de vlag
+       krijgt de bestuurder dat dialoog dus tijdens het rijden opnieuw. */
+    const s = bouw();
+    await s.PLMeetdienst.start();
+    await s.PLMeetdienst.start();
+    await s.PLMeetdienst.start();
+    const vragen = s.aanroepen.filter(function (a) { return a === 'vraagMelding'; });
+    toets('drie keer starten, één keer vragen', vragen.length, 1);
+    toets('en er is wel drie keer gestart',
+      s.aanroepen.filter(function (a) { return a === 'start'; }).length, 3);
+  }
+
   console.log('\n── de dienst volgt de verbinding ──');
   {
     const s = bouw();
@@ -145,12 +163,14 @@ async function main() {
     toets('en geeft door wat de echte setConn teruggaf', s.setConn(true), 'origineel');
     toets('de echte setConn is één keer gedraaid', s.echteSetConn, 1);
     await null; await null;
-    toets('verbinden start de dienst', s.aanroepen, ['start']);
+    // Alleen de levensloop telt hier; de meldingvraag is hierboven al getoetst.
+    const loop = function () { return s.aanroepen.filter(function (a) { return a === 'start' || a === 'stop'; }); };
+    toets('verbinden start de dienst', loop(), ['start']);
     toets('en dat staat in het logboek', s.logs.length, 1);
     bevat('met het issue erbij', s.logs[0].m, '#18');
     s.setConn(false);
     await null; await null;
-    toets('verbreken stopt hem', s.aanroepen, ['start', 'stop']);
+    toets('verbreken stopt hem', loop(), ['start', 'stop']);
   }
 
   console.log('\n── in demo draait er niets ──');
@@ -160,7 +180,8 @@ async function main() {
     const s = bouw({ demoMode: true });
     s.setConn(true);
     await null; await null;
-    toets('demo start geen dienst', s.aanroepen, ['stop']);
+    toets('demo start geen dienst',
+      s.aanroepen.filter(function (a) { return a === 'start' || a === 'stop'; }), ['stop']);
     toets('nodig() zegt nee', s.PLMeetdienst.nodig(), false);
   }
 
