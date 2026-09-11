@@ -180,6 +180,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 20 | `pidlane-rijsituatie.js` | 44 | rijsituatie/bijzonderheden — context voor de AI |
 | 22 | `pidlane-diagbundel.js` | 17 | diagnosebundel: ruwe TX/RX mét parser-uitkomst |
 | 22b | `pidlane-busgate.js` | 6 | `PLBusGate` — **de bus-poort**: één ladder `adapter → ecu → betrouwbaar` voor "leeft de bus, mag ik hier een oordeel op bouwen". Vereist `PLBus` uit `pidlane-data.js` |
+| 22d | `pidlane-aanlevering.js` | 25 | `PLAanlevering` — **wat de AI over de MEETKWALITEIT hoort** (#188). Eén blok aan de systeemprompt via `apiFetch`: de vraag, het meetvenster, de dekking (welke sensoren nodig waren, welke ontbreken en waaróm), de onderbrekingen mét hun naam (telefoon of bus, via `plGatDuiding()`), het `DATAKWALITEIT`-blok en de weegregels. Leest alles bij de aanroep uit `PLRit`/`PLAchtergrond`/`buildQualityReport`; velt zelf geen enkel oordeel dat elders al staat. Tests: `test-aanlevering.js`, blok 5 |
 | 22c | `pidlane-bedrading.js` | 1 | **bedradingscontrole** — lijst van functies die modules van elkaar verwachten + controle of ze bestaan. **Moet als laatste script geladen worden.** Zie §19 |
 | 22f | `pidlane-testrun.js` | 1 | **de testrun** — één admin-knop die de app in vier blokken nameet (bedrading, schermen, PID-sweep over álles, bus en regelkringen) en één logboek oplevert. Overschrijft de PID-selectie tijdelijk en herstelt die in een `finally` én na een crash. Vervangt busdiagnose, zelftest, opdracht, diagnosebundel-UI, logscherm en copiloot |
 | 22g | `pidlane-export.js` | 1 | **opslaan** — `plOpslaan()` vraagt eerst tekst of PDF en maakt in beide gevallen hetzelfde bestand. De PDF krijgt de huisstijl van het AI-rapport: blauwe kopband op elke pagina, voertuigblok, monospace inhoud met statuskleuren, paginanummers. Gebruikt door testrun, logboek en sessierapporten. Test: `test-export.js` |
@@ -604,6 +605,11 @@ rekent dat uit als `akkoordActueel` (§11, "Opgelost op 27-08"), getest in
   referentiebereiken. Zonder die context beoordeelt de AI een caravanrit als
   een zieke auto.
 - AI-contextinjectie is gecentraliseerd in `apiFetch`, met deduplicatie.
+- **De aanlevering** (`PLAanlevering`, 11-09-2026, #188) hangt als zesde blok
+  aan diezelfde haak: dekking (welke sensoren deze analyse nodig had en welke
+  ontbreken, mét reden), de onderbrekingen met hun naam, het kwaliteitsblok en
+  vijf weegregels. Standaard aan, leeg als er niets gemeten is, uit te zetten
+  met `{meet:false}` als vijfde parameter van `apiFetch`. Zie §11 11-09.
 
 ### Twee accountsoorten, één verdienmodel — besluit 03-09-2026 (#49)
 
@@ -903,6 +909,86 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### Alles wat de app over zijn meting wist, ging naar één lezer — 11-09-2026 (#188)
+
+De app weet sinds weken hoe goed zijn eigen meting was. `PLRit` telt loopgaten,
+meetgaten en herverbindingen. `PLAchtergrond` weet hoe lang de app weg was en —
+sinds de hartslag van 08-09 — hoeveel daarvan de meetlus wérkelijk stillag.
+`plGatDuiding()` legt die twee naast elkaar en beantwoordt daarmee de vraag
+*waardoor* een gat er is: de telefoon die bevroor, of de bus die niets gaf.
+`buildQualityReport()` zegt per sensor of de waarde te vertrouwen is.
+`supportedPIDs` zegt wat de auto überhaupt kan.
+
+**Dat ging allemaal naar precies één lezer: het testrunverslag.** De AI-analyse
+kreeg er niets van mee. Een rapport kon dus geschreven worden over een reeks met
+een gat van twee minuten erin, zonder dat er in de prompt stond dat dat gat er
+was — laat staan waardoor.
+
+**Vier vormen waarin dat misgaat, en de tweede is de duurste.**
+
+1. Een gat leest als een sensor die uitvalt; een waarde die na een herverbinding
+   springt leest als een defect. Dat is een vals alarm met een factuur eronder.
+2. Een sensor die niet in de selectie stond leest als *"niets gevonden, dus in
+   orde"*. Dat is het spiegelbeeld — een gemist defect — en het ziet er precies
+   zo uit als een goede uitslag.
+3. De vraag zelf stond nergens. Elk van de twintig aanroepplekken schreef met de
+   hand in proza op wat er geanalyseerd moest worden.
+4. Het `DATAKWALITEIT`-blok ging mee als de aanroeper eraan dácht. Dat is geen
+   dekking maar een gewoonte.
+
+**De oplossing is geen zesde promptregel maar één eigenaar.**
+`pidlane-aanlevering.js` (`PLAanlevering`) is de enige plek die antwoord geeft
+op *"wat weet de AI over de kwaliteit van deze meting"*, en hij hangt op één
+punt in — in `apiFetch()`, naast de rijsituatie en de meetcontext — zodat geen
+aanroepplek hem kan vergeten. Zelfde vorm als `pidlane-achtergrond.js` koos voor
+de vijf `visibilitychange`-luisteraars: de deelnemers doen hun eigen werk, het
+oordeel staat op één plek.
+
+Het blok draagt zeven delen: de vraag, het meetvenster, de **dekking** (welke
+sensoren deze analyse nodig had en welke daarvan ontbreken, mét de reden), de
+**onderbrekingen** met hun naam, het bestaande kwaliteitsblok, de
+correlatiebevindingen, en vijf weegregels die zeggen wat er per geval níét
+geconcludeerd mag worden.
+
+**Drie beslissingen die de moeite van het onthouden waard zijn.**
+
+- **De reden waaróm een sensor ontbreekt is de hele waarde van dat blok.**
+  Niet-ondersteund, niet-geselecteerd en geen-antwoord leiden tot drie
+  verschillende adviezen, en de volgorde van de controles ligt daarom vast:
+  eerst ondersteuning, dan selectie, dan het antwoord. Andersom zou een sensor
+  die de auto niet heeft een monteur naar een knop sturen die niets oplost.
+- **Is `supportedPIDs` leeg, dan wéten we het niet.** `ondersteuningBekend` is
+  dan `null` en niet `false`, en het blok zegt het erbij. Een lege verzameling
+  als *"de auto kan niets"* lezen verklaart elke ontbrekende sensor weg, en dat
+  is de gevaarlijkste kant om op te vallen.
+- **Of een wáárde bruikbaar is, vragen we aan `assessPidQuality()` en niet aan
+  `_pidHealth`.** Die twee lijken hetzelfde maar beantwoorden een andere vraag:
+  `_pidHealth` gaat over of de sensor er ís (het oordeel van de
+  gezondheidscheck bij het verbinden, soms minuten oud), `assessPidQuality()`
+  over de waarde die er nú staat. Zonder dat onderscheid zegt de dekking
+  "geleverd" over een waarde die het kwaliteitsblok drie regels verderop
+  uitsluit.
+
+**Standaard aan, met een opt-out — en dat is met opzet omgekeerd.** Promptcaching
+staat hier uit (§8), dus elke regel gaat bij elke analyse opnieuw over de lijn en
+kost geld. De verleiding is dus het blok alleen mee te sturen waar de aanroeper
+zegt dat het nodig is — en dat is exact de gewoonte die onder punt 4 hierboven
+misging. De module beslist het daarom zelf, op één meetbaar gegeven: **is er
+gemeten.** Staat er niets in de selectie en is er geen historie, dan is het blok
+leeg en betaalt de verbindingsvraag uit `pidlane-btflow.js` er niet voor. Zegt
+een aanroeper wél wat hij wil laten analyseren (`vraag` of `set`), dan komt het
+blok er altijd — juist dan, want *"je vraagt een oordeel over een meting die er
+niet is"* is op dat moment het nuttigste dat een model kan horen.
+
+**Wat dit niet oplost.** Of een rápport er werkelijk anders van wordt, is hier
+niet te meten. `test-aanlevering.js` toetst de regels in node (34 toetsen, vijf
+mutaties in `plmutate.sh`), blok 5 toetst in de draaiende app dat het blok
+meegaat en dat de gatentelling klopt met het verslag. Wat een model met die
+tekst doet, staat alleen in de tekst die eruit komt — dat is een vraag voor
+`CAMPAGNE` en staat daar.
+
+---
 
 ### De scanvlag was op één plek aangesloten — 11-09-2026 (#191)
 

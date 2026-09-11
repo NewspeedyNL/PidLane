@@ -508,6 +508,17 @@ MUTATIES=(
 "worker.js@@  if (session.r === \"demo\" || session.u === \"legacy\")\n    return json({ ok: false, error: \"forbidden_role\", hint: \"Dit account heeft geen AI-toegang.\" }, 403);@@@@test-inlogkosten.js@@de ping meldt een werkende AI-keten aan een account dat geen AI mag gebruiken (#179)"
 "worker.js@@  if (!apiKey)\n    return json({ ok: false, error: { message: \"Geen API-key beschikbaar in de Worker (check ANTHROPIC_API_KEY secret)\" } }, 401);@@@@test-inlogkosten.js@@de ping meldt groen terwijl er geen sleutel in de Worker staat (#179)"
 "worker.js@@      if (url.pathname === \"/v1/ping\" && request.method === \"GET\")\n        return lockOrigin(request, await handlePing(request, env));\n@@@@test-inlogkosten.js@@de pingroute hangt niet meer in de router, dus elke login zet de chip op rood (#179)"
+
+# ── De aanlevering naar de AI (#188, 11-09-2026). Deze module is de enige plek
+# die een model vertelt hoe goed de meting was waar hij een oordeel over geeft.
+# Een fout hier levert geen foutmelding op maar een verkeerd rapport, en dat is
+# de duurste soort: er staat een factuur onder. Vijf fouten die je hier echt kunt
+# maken, en die alle vijf stil zijn.
+"public/pidlane-aanlevering.js@@      uit.stilsteS = (uit.gemetenPerioden) ? A.stilsteS(0) : null;@@      uit.stilsteS = A.stilsteS(0);@@test-aanlevering.js@@een niet-gemeten stilte gaat als 0 naar de AI: niet gemeten wordt niets aan de hand (#18)"
+"public/pidlane-aanlevering.js@@      if (sup && !sup.has(pid)) reden = 'deze auto ondersteunt de sensor niet';\n      else if (act && !act.has(pid))@@      if (act && !act.has(pid)) reden = 'staat niet in de PID-selectie en is dus niet uitgevraagd';\n      else if (sup \&\& !sup.has(pid))@@test-aanlevering.js@@een sensor die de auto niet heeft wordt gemeld als niet-geselecteerd, en de monteur zoekt een knop die niet helpt"
+"public/pidlane-aanlevering.js@@      ondersteuningBekend: sup ? true : null,@@      ondersteuningBekend: !!sup,@@test-aanlevering.js@@een ongescande auto leest als een auto die de sensor niet kan: elke ontbrekende sensor wordt weggeverklaard"
+"public/pidlane-aanlevering.js@@    if (!m.vraag \&\& !m.set \&\& !m.dekking \&\& !m.gemeten) return '';@@    if (!m.gemeten) return '';@@test-aanlevering.js@@een analyse over een meting die er niet is krijgt geen enkele waarschuwing mee"
+"public/pidlane-aanlevering.js@@            if (q \&\& q.status === 'onzin') reden = 'gemeten, maar uitgesloten: ' + q.reden;@@            if (false) reden = q.reden;@@test-aanlevering.js@@een fysiek onmogelijke waarde telt als geleverde dekking terwijl het kwaliteitsblok hem uitsluit"
 )
 
 echo

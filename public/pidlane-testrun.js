@@ -4469,6 +4469,65 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── hoort de AI wat er met DEZE meting mis was? ──
+  // Tot 11-09 ging alles wat de app over zijn eigen meetkwaliteit wist naar
+  // precies één lezer: dit verslag. De betaalde analyse kreeg er niets van mee,
+  // en een gat van twee minuten leest dan als een sensor die uitvalt (#188).
+  //
+  // test-aanlevering.js toetst de regels in node. Wat dáár niet te zien is, is
+  // of de module in de DRAAIENDE app dezelfde bronnen leest als de rest: PLRit
+  // en PLAchtergrond bestaan in node niet, en juist die koppeling was de
+  // bevinding. Deze proef legt de twee lezers van hetzelfde feit naast elkaar —
+  // lopen ze uiteen, dan leest er één de verkeerde bron.
+  {
+    issue: '#188',
+    naam: 'De AI hoort de gaten in deze meting',
+    waarom: 'PLRit en PLAchtergrond bestaan alleen in de draaiende app; hun koppeling is alleen hier te meten.',
+    proef: function () {
+      if (!window.PLAanlevering)
+        return { staat: 'FOUT', detail: 'PLAanlevering ontbreekt — de AI krijgt dan niets over de meetkwaliteit te horen (#188)' };
+
+      const ob = PLAanlevering.onderbrekingen();
+      if (ob === null)
+        return { staat: 'LET OP', detail: 'noch PLRit noch PLAchtergrond is bereikbaar — er valt niets te vergelijken' };
+
+      // Twee lezers van hetzelfde feit. Dit is de hele proef: de module mag
+      // geen eigen telling hebben, hij hoort die van PLRit door te geven.
+      const echt = window.PLRit ? PLRit.gaten().length : null;
+      if (echt !== null && ob.loopgaten !== echt)
+        return { staat: 'FOUT', detail: 'PLRit telt ' + echt + ' gat(en), de aanlevering meldt ' + ob.loopgaten +
+          ' — de module leest een andere bron dan het verslag (#188)' };
+
+      const wegEcht = window.PLAchtergrond ? PLAchtergrond.perioden().length : null;
+      if (wegEcht !== null && ob.perioden !== null && ob.perioden !== wegEcht)
+        return { staat: 'FOUT', detail: 'PLAchtergrond kent ' + wegEcht + ' periode(n), de aanlevering meldt ' +
+          ob.perioden + ' (#188)' };
+
+      // En de haak zelf. Een gedragstoets zou hier een echte AI-call vragen en
+      // dus tokens van de klant kosten; dit is de uitzondering waarvoor
+      // broncode lezen mag, en dit is de reden.
+      let haak = '';
+      try { haak = String(apiFetch); }
+      catch (e) { return { staat: 'FOUT', detail: 'apiFetch() is niet leesbaar: ' + (e.message || e) }; }
+      if (!/PLAanlevering\.blok/.test(haak))
+        return { staat: 'FOUT', detail: 'apiFetch() plakt het aanleveringsblok niet aan de systeemprompt — ' +
+          'de module draait wel maar bereikt de AI niet (#188)' };
+
+      const blok = PLAanlevering.blok({ set: 'monteur' });
+      if (!blok)
+        return { staat: 'LET OP', detail: 'er is nog niets gemeten, dus het blok is leeg — dat is de bedoeling' };
+
+      const stukken = [];
+      if (ob.perioden) stukken.push(ob.perioden + '\u00d7 achtergrond');
+      if (ob.loopgaten) stukken.push(ob.loopgaten + ' loopgat(en)');
+      if (ob.meetgaten) stukken.push(ob.meetgaten + ' meetgat(en)');
+      if (ob.herverbindingen) stukken.push(ob.herverbindingen + ' herverbinding(en)');
+      return blok.length + ' tekens gaan mee naar de AI' +
+        (stukken.length ? ', met ' + stukken.join(', ') : ', zonder onderbrekingen') +
+        '; de tellingen komen overeen met het verslag';
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -6580,6 +6639,7 @@ const CAMPAGNE = {
     'DE UITSLAG "NIET GENOEG" IS GEEN FOUT. Blok 5 boekt de vergelijking als LET OP en niet als FOUT zolang er iets stillag. Alle drie de uitkomsten zijn een geldige meting; twee ervan wijzen alleen een andere kant op dan gehoopt. Er een bevinding van maken zou de meting met het oordeel verwarren — dezelfde fout die de #18-proef op 08-09 kwam repareren.',
     'DE AANLOOPTIJD IS NOG STEEDS MAAR TWEE METINGEN OP ÉÉN TOESTEL. 36 s en 50 s, allebei op een SM-S947B. Dat de dienst het gat moet overbruggen weten we; hoe lang dat gat op een ander merk is, niet.',
     'DE OOGSTPOORT IS NOG NOOIT IN EEN AUTO GEDRAAID. De drempels — 15 km/u voor "gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet gemeten. Ze staan in test-begeleid.js met een tegenproef eronder, maar of ze in de praktijk op het goede moment groen worden, weet je pas na een rit.',
+    'DE AANLEVERING NAAR DE AI IS NOG NOOIT DOOR EEN MODEL GELEZEN (#188). Blok 5 meet dat het blok meegaat en dat de gatentelling klopt met dit verslag; of een rapport er werkelijk anders van wordt, staat alleen in het rapport zelf. VRAAG NA DE RIT \u00c9\u00c9N ANALYSE AAN en kijk of er in de tekst staat welke sensoren niet beoordeeld zijn en of een onderbreking als meetartefact benoemd wordt. Staat dat er niet, dan is dat de bevinding.',
     '#161 KRIJGT GEEN BESLUIT UIT EEN RIT. Welke drempel "beweegt" moet krijgen is een ontwerpkeuze, geen meetvraag — blok 5 meet de getallen elke ronde en die staan er al. Het oordeel in de toestelronde gaat alleen over of het BEELD klopt.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]

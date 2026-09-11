@@ -350,7 +350,13 @@ function extractAIText(data){
   return '';
 }
 
-async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
+// De vijfde parameter `aanlevering` is nieuw op 11-09-2026 (#188) en optioneel.
+// Zonder hem levert PLAanlevering het blok af op wat de app zelf kan vaststellen;
+// een aanroeper die wél weet wat hij laat analyseren geeft {vraag, set} mee en
+// krijgt er de dekkingscontrole bij: welke sensoren deze analyse nodig heeft en
+// welke daarvan ontbreken. {meet:false} zet het blok uit voor een call die niets
+// met sensordata te maken heeft.
+async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
   try{
@@ -416,6 +422,17 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null){
   // leest de AI een start/stop-motor als een motor die afslaat.
   try{ sys += plMeetcontextPromptLine(); }
   catch(e){ console.warn('Meetcontext niet aan de AI-prompt toegevoegd — start/stop kan dan als afslaan gelezen worden', e); }
+  // ── De aanlevering (#188) ────────────────────────────────────────
+  // Wat de app zelf over de KWALITEIT van deze meting weet: welke sensoren de
+  // analyse nodig had en welke daarvan ontbreken, waar de gaten zaten en
+  // waardoor, welke waarden niet te vertrouwen zijn. Dat stond tot 11-09-2026
+  // alleen in het testrunverslag; de betaalde analyse kreeg er niets van mee,
+  // en een gat van twee minuten leest zonder die regels als een sensor die
+  // uitvalt. Eén haak, net als de rijsituatie en de meetcontext hierboven —
+  // zodat geen van de twintig aanroepplekken hem kan vergeten. De module
+  // beslist zelf of er iets te melden valt en geeft anders een lege tekst.
+  try{ if(window.PLAanlevering) sys += PLAanlevering.blok(aanlevering); }
+  catch(e){ console.warn('Aanlevering niet aan de AI-prompt toegevoegd — de AI weet dan niet welke sensoren ontbreken of waar de gaten in de meting zaten (#188)', e); }
 
   const mdl = model || 'claude-sonnet-5';
 

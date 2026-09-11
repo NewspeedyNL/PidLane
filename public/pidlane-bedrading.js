@@ -229,6 +229,16 @@ var KRITIEK = [
   // stil over — en dan is juist de maat weg die de vorige ronde miste: de
   // laagste knop stond ruim, de tekst eronder lag achter de knoppenbalk.
   'openRunPaneel',                                // pidlane-run.js        — #144
+  // De twee bronnen die pidlane-aanlevering.js achter een guard aanroept
+  // (#188). Ze stonden hier nog niet omdat hun aanroepers ze tot 11-09-2026
+  // blind gebruikten — en dat is precies waarom dit ontbrak: een blinde
+  // aanroep valt hard om en wordt gezien, een guard faalt stil. Ontbreekt
+  // buildQualityReport(), dan gaat de analyse door zonder enig oordeel over de
+  // betrouwbaarheid van de sensoren; ontbreekt correlationLines(), dan verliest
+  // het rapport de bevindingen die de app zelf al berekend had. Allebei zonder
+  // dat er iets rood wordt, en dat is wat deze regel tegenhoudt.
+  'buildQualityReport',                           // pidlane-kwaliteit.js  — #188
+  'correlationLines',                             // pidlane-correlatie.js — #188
 ];
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.
