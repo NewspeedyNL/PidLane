@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.5 (11-09-2026)';
+const TESTRUN_VERSIE = '7.6 (11-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -4553,6 +4553,60 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── kwam het ritrapport er, en stonden de twee soorten regels uit elkaar? ──
+  // #196 was geen rekenfout maar een vormfout: ritLogs droeg fase-regels mét
+  // stats en onderbrekingsregels zonder, en het rapport las ze allebei als
+  // fases. In node is dat nu getoetst met een nagebouwde rit, en in de browser
+  // met een gezette lijst. Wat op geen van beide plekken kan: een ECHTE rit,
+  // waar de onderbreking ontstaat doordat Android de app wegzet en niet doordat
+  // een test visibilitychange afvuurt. Alleen hier staat de lijst zoals hij na
+  // een rit werkelijk is.
+  {
+    issue: '#196',
+    naam: 'De onderbrekingen van de rit staan buiten de fase-lijst',
+    waarom: 'Alleen een gereden rit vult ritLogs; in node en in de browserproef is die lijst gezet in plaats van gemeten.',
+    proef: function () {
+      if (typeof ritLogs === 'undefined' || typeof ritPauzeLog === 'undefined')
+        return { staat: 'FOUT', detail: 'ritLogs of ritPauzeLog bestaat niet — pidlane-rit.js is niet geladen' };
+      if (!ritLogs.length)
+        return { staat: 'LET OP', detail: 'er is deze sessie geen rit-analyse afgerond, dus er is niets om de vorm van af te lezen' };
+
+      // 1. De vormfout zelf. Eén regel zonder stats is genoeg om het rapport
+      //    om te gooien, en dat kostte op 11-09 dertien minuten meetdata.
+      const zonder = ritLogs.filter(function (l) { return !l || !l.stats; });
+      if (zonder.length)
+        return { staat: 'FOUT', detail: zonder.length + ' van de ' + ritLogs.length +
+          ' regels in ritLogs heeft geen stats' +
+          (zonder[0] && zonder[0].type ? ' (type "' + zonder[0].type + '")' : '') +
+          ' — generateRitRapport() valt daarop om vóór de AI-call (#196)' };
+
+      // 2. En de andere kant: de onderbrekingen horen wél ergens te staan.
+      //    Waren ze er (PLRit/PLAchtergrond weten dat onafhankelijk) maar is
+      //    ritPauzeLog leeg, dan zijn ze bij het splitsen kwijtgeraakt en weet
+      //    het rapport niet meer waar de gaten zaten.
+      var achtergrond = null;
+      try { achtergrond = (window.PLAchtergrond && PLAchtergrond.perioden) ? PLAchtergrond.perioden().length : null; }
+      catch (e) { return { staat: 'FOUT', detail: 'PLAchtergrond.perioden() faalde: ' + (e && e.message) }; }
+      if (achtergrond && !ritPauzeLog.length)
+        return { staat: 'LET OP', detail: 'PLAchtergrond telde ' + achtergrond + ' achtergrondperiode(n) maar ritPauzeLog is leeg — ' +
+          'die vielen buiten de rit, of de onderbreking is niet geregistreerd' };
+
+      // 3. Hangt elk gat aan een fase die bestaat? Een index buiten de lijst
+      //    verdwijnt stil: de seconden staan nergens meer in het rapport.
+      const buiten = ritPauzeLog.filter(function (p) {
+        return typeof p.faseIdx !== 'number' || p.faseIdx < 0 || p.faseIdx >= ritLogs.length;
+      });
+      if (buiten.length)
+        return { staat: 'FOUT', detail: buiten.length + ' onderbreking(en) wijzen naar een fase die niet in ritLogs staat — ' +
+          'die seconden komen in geen enkele fase van het rapport terecht (#196)' };
+
+      const sec = ritPauzeLog.reduce(function (a, p) { return a + (p.sec || 0); }, 0);
+      return ritLogs.length + ' fases, alle met stats; ' + ritPauzeLog.length +
+        ' onderbreking(en) van samen ' + sec + ' s, elk toegewezen aan een bestaande fase' +
+        (achtergrond === null ? '' : ' (PLAchtergrond telde ' + achtergrond + ' periode(n))');
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -6646,13 +6700,13 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 11-09 (negende) — de meetdienst draaide, nu de twee vragen die openbleven (#18, #188)',
+  titel: 'OPLEVERING 11-09 (tiende) — het ritrapport staat weer overeind, dus nu de analyse zelf (#196, #188, #18)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'DE VORIGE RONDE IS GEREDEN EN LEVERDE TWEE ONAFGEMAAKTE ANTWOORDEN. De meetdienst draaide voor het eerst op een toestel: Android accepteerde de service, de brug antwoordde, en het oordeel stond in het logboek. Maar de onderbreking duurde 38 s, en de aanlooptijd die we eerder maten is 36 s en 50 s — de app is dus nooit in het venster geweest waar het misging. Die meting zegt daarmee niets over de bevriezing zelf. En het ritrapport viel om vóór de AI-call (#196), dus het aanleveringsblok uit #188 is nog steeds door geen enkel model gelezen.',
+    'DE VORIGE RONDE IS GEREDEN EN LEVERDE TWEE ONAFGEMAAKTE ANTWOORDEN. De meetdienst draaide voor het eerst op een toestel: Android accepteerde de service, de brug antwoordde, en het oordeel stond in het logboek. Maar de onderbreking duurde 38 s, en de aanlooptijd die we eerder maten is 36 s en 50 s — de app is dus nooit in het venster geweest waar het misging. Die meting zegt daarmee niets over de bevriezing zelf. En het ritrapport viel om vóór de AI-call (#196), dus het aanleveringsblok uit #188 is nog steeds door geen enkel model gelezen. Dat tweede is deze ronde gerepareerd: ritLogs draagt nog maar één soort regel, het rapport krijgt min, max en het aantal metingen mee, en per fase staat erbij hoeveel seconden er weggevallen zijn.',
     'DEZE RONDE HEEFT DUS TWEE VRAGEN, EN GEEN VAN BEIDE IS EEN BOUWVRAAG. Eén: houdt de foreground service het proces wakker als de app er LANG genoeg uit is. Twee: wordt een AI-rapport werkelijk beter nu het weet waar de gaten zaten en welke sensoren ontbraken. Allebei alleen te beantwoorden door het te doen.',
     'DE ACHTERGRONDPROEF MOET MINSTENS DRIE MINUTEN DUREN. De vergelijkingsmetingen zijn 120 s (02-09) en 182 s (09-09); korter dan dat valt binnen de aanlooptijd en zegt niets. Scherm uit, en de app niet als laatste in de recents-lijst — Android houdt de bovenste taak langer warm.',
-    'EN ER MOET ÉÉN ANALYSE UIT. Vraag na de rit één rapport aan en lees de tekst: staat erin welke sensoren niet beoordeeld zijn, en wordt een onderbreking als meetartefact benoemd in plaats van als defect? Staat dat er niet, dan is dát de bevinding van deze ronde. Let op: loopt #196 nog, dan geeft het RITrapport niets — neem dan de AI-monteur of Total Check, want die lopen niet over ritLogs.',
+    'EN ER MOET ÉÉN ANALYSE UIT. Vraag na de rit één rapport aan en lees de tekst: staat erin welke sensoren niet beoordeeld zijn, en wordt een onderbreking als meetartefact benoemd in plaats van als defect? Staat dat er niet, dan is dát de bevinding van deze ronde. NEEM DAARVOOR HET RITRAPPORT: dat is het pad dat tot deze ronde omviel, en het enige dat de gaten per fase meestuurt. Komt er niets uit, dan is dát de bevinding van deze ronde.',
     '#18 STAAT SINDS 27-08 OPEN EN IS TWEE KEER HARD GEMETEN. 02-09 stationair: 120 s weg, waarvan ~36 s doorgelopen en ~84 s stil. 09-09 rijdend met de bus op 93%: 182 s weg, waarvan 50 s doorgelopen en 132 s stil. Geen fout, geen poging, geen watchdog — het proces liep niet. Wat daarna openbleef was niet WAT er gebeurt maar WAARDOOR, en die vraag is met redeneren niet te beantwoorden.',
     'ER ZIJN NAMELIJK TWEE MECHANISMEN DIE HETZELFDE OPLEVEREN. Android bevriest een proces dat in de cached-toestand terechtkomt: dan staat alles stil, JavaScript én native code. Chromium knijpt een verborgen pagina af: dan loopt het proces door en ligt alleen de WebView stil. Van buiten zien die twee er identiek uit — de meetlus doet niets — en ze vragen om een compleet andere oplossing. Een foreground service helpt tegen de eerste en doet tegen de tweede niets, want die throttelt op zichtbaarheid en niet op procesprioriteit.',
     'DEZE RONDE ZET DAAROM EEN TWEEDE HARTSLAG NAAST DE EERSTE. De app telde al hoe lang de WEBVIEW stillag (de hartslag in pidlane-achtergrond.js, sinds 08-09). Er draait nu een native foreground service mee die hetzelfde doet voor het PROCES. Twee tellers over hetzelfde venster, en het verschil ertussen is het antwoord: liep native door terwijl de webview stillag, dan is dit niet genoeg en is picture-in-picture of een native meetlus de volgende stap. Lagen ze allebei stil, dan hield de dienst het proces niet wakker. Liepen ze allebei door, dan is #18 opgelost.',
@@ -6667,9 +6721,9 @@ const CAMPAGNE = {
     'DAT DE MEETDIENST DRAAIT IS GEEN ANTWOORD OP #18. Hij is op 11-09 voor het eerst op een toestel gedraaid en de keten werkt end-to-end. Of hij het proces wakker HOUDT is daarmee niet gemeten: de onderbreking was 38 s en viel binnen de aanlooptijd. Zolang er geen meting van drie minuten of meer is, blijft #18 open en is elke groene regel hierover een uitspraak over de duur en niet over de dienst.',
     'DE UITSLAG "NIET GENOEG" IS GEEN FOUT. Blok 5 boekt de vergelijking als LET OP en niet als FOUT zolang er iets stillag. Alle drie de uitkomsten zijn een geldige meting; twee ervan wijzen alleen een andere kant op dan gehoopt. Er een bevinding van maken zou de meting met het oordeel verwarren — dezelfde fout die de #18-proef op 08-09 kwam repareren.',
     'DE AANLOOPTIJD IS NOG STEEDS MAAR TWEE METINGEN OP ÉÉN TOESTEL. 36 s en 50 s, allebei op een SM-S947B. Dat de dienst het gat moet overbruggen weten we; hoe lang dat gat op een ander merk is, niet. De 38 s van 11-09 telt hier niet mee: daar werd niets bevroren, dus er is geen aanloop gemeten.',
-    'HET RITRAPPORT KAN DEZE RONDE NOG STEEDS OMVALLEN (#196). Ging de app tijdens de rit naar de achtergrond, dan levert het ritrapport niets op. Dat is bekend en het wordt niet in deze ronde gerepareerd; het is de reden dat de analyse-vraag hierboven een ander pad noemt.',
+    'DAT HET RITRAPPORT ER KOMT, IS NIET HETZELFDE ALS DAT HET KLOPT (#196). De crash is bij de bron weggenomen en in node, in de browser en straks hier gemeten. Wat daarmee niet gemeten is: of de tekst die eruit komt beter is. Een rapport dat netjes verschijnt en een gat als defect uitlegt, is nog steeds fout — alleen minder zichtbaar fout dan geen rapport.',
     'DE OOGSTPOORT IS NOG NOOIT IN EEN AUTO GEDRAAID. De drempels — 15 km/u voor "gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet gemeten. Ze staan in test-begeleid.js met een tegenproef eronder, maar of ze in de praktijk op het goede moment groen worden, weet je pas na een rit.',
-    'DE AANLEVERING NAAR DE AI IS NOG NOOIT DOOR EEN MODEL GELEZEN (#188). Blok 5 meet dat het blok meegaat en dat de gatentelling klopt met dit verslag; of een rapport er werkelijk anders van wordt, staat alleen in het rapport zelf. VRAAG NA DE RIT \u00c9\u00c9N ANALYSE AAN en kijk of er in de tekst staat welke sensoren niet beoordeeld zijn en of een onderbreking als meetartefact benoemd wordt. Staat dat er niet, dan is dat de bevinding.',
+    'DE AANLEVERING NAAR DE AI IS NOG NOOIT DOOR EEN MODEL GELEZEN (#188). bproef-ritrapport.js laat zien dat het blok in de systeemprompt staat die verstuurd zóu worden — dat is de koppeling, niet de uitkomst. Blok 5 meet dat de gatentelling klopt met dit verslag; of een rapport er werkelijk anders van wordt, staat alleen in het rapport zelf. VRAAG NA DE RIT \u00c9\u00c9N ANALYSE AAN en kijk of er in de tekst staat welke sensoren niet beoordeeld zijn en of een onderbreking als meetartefact benoemd wordt. Staat dat er niet, dan is dat de bevinding.',
     '#161 KRIJGT GEEN BESLUIT UIT EEN RIT. Welke drempel "beweegt" moet krijgen is een ontwerpkeuze, geen meetvraag — blok 5 meet de getallen elke ronde en die staan er al. Het oordeel in de toestelronde gaat alleen over of het BEELD klopt.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
