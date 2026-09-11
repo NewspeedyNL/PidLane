@@ -46,12 +46,23 @@ toets('de tegelcontainer is uit de bron af te lezen', !!container,
 const tegelClass = (pids.match(/c\.className\s*=\s*'(gc)'/) || [])[1];
 toets('en de class van een tegel ook', !!tegelClass, 'anker versleten: een tegel heet niet meer .gc');
 
-if (container && tegelClass) {
+/* ALLEEN BINNEN DE FUNCTIE KIJKEN. De eerste versie zocht deze twee in het
+   hele bestand, en dat is precies één mutatie te laat betrapt: de tegelbouwer
+   noemt `gGrid` zélf ook, dus de container van de típ op iets anders zetten
+   liet deze test vrolijk groen. plmutate.sh meldde hem als ONTSNAPT, en dat
+   is waar dat script voor bestaat. */
+const tipVan = pids.indexOf('function _tegelTipEenmalig()');
+const tipTot = tipVan < 0 ? -1 : pids.indexOf('\n}', pids.indexOf('setTimeout(function', tipVan));
+const tipBody = (tipVan >= 0 && tipTot > tipVan) ? pids.slice(tipVan, tipTot) : '';
+toets('de body van _tegelTipEenmalig() is af te bakenen', !!tipBody,
+      'anker versleten — zonder afbakening kijkt deze test weer in het hele bestand');
+
+if (container && tegelClass && tipBody) {
   toets('de tip kijkt in diezelfde container (' + container + ')',
-        new RegExp("getElementById\\('" + container + "'\\)").test(pids),
+        new RegExp("getElementById\\('" + container + "'\\)").test(tipBody),
         'de tip zoekt in een container die niet bestaat en verschijnt dan stil nooit meer');
   toets('en naar diezelfde class (.' + tegelClass + ')',
-        new RegExp("querySelectorAll\\('\\." + tegelClass + "'\\)").test(pids),
+        new RegExp("querySelectorAll\\('\\." + tegelClass + "'\\)").test(tipBody),
         'de tip telt tegels die niet bestaan — hij vuurt dan nooit, zonder foutmelding');
 }
 
