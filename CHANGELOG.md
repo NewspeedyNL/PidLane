@@ -11,6 +11,28 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11f (CET) — ELKE ANALYSE ZEGT NU WAT ZE WILDE METEN
+
+       • 🎯 DE DEKKING PER ANALYSE (#188). Twaalf analyses
+         geven nu door welke sensorset ze wilden meten — de
+         naam die ze tóch al noemden. Het rapport krijgt
+         daardoor te horen: dit had ik nodig, dit kreeg ik,
+         en van de rest waaróm niet.
+
+       • 🚫 TWEE PADEN MET OPZET NIET. De verbindingsvraag
+         gaat niet over sensordata. En de oorzakenlijst van
+         Smart Diagnose vraagt om pure JSON — daar zou een
+         model dat netjes uitlegt wat het niet beoordeeld
+         heeft, een antwoord opleveren dat de app weggooit.
+
+       • 🔤 EEN TYPEFOUT IN EEN PROFIELNAAM IS NU ZICHTBAAR.
+         Die verliest anders stil de hele dekking van dat
+         pad, tot iemand die ene knop indrukt. De tests
+         lezen de bron en betrappen hem; blok 5 doet
+         hetzelfde op de rit.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11e (CET) — DE AI HOORT NU HOE GOED DE METING WAS
 
        • 📦 DE AANLEVERING (#188). De app wist allang hoe goed

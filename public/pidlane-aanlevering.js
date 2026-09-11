@@ -77,10 +77,29 @@
 // het geval van de verbindingsvraag in pidlane-btflow.js, die niets met
 // sensordata te maken heeft en er dus ook niet voor betaalt.
 //
-// Zegt een aanroeper wél wat hij wil laten analyseren (`vraag` of `set`), dan
-// komt het blok er altijd, óók als er niets gemeten is. Juist dan: "je vraagt
-// een oordeel over een meting die er niet is" is het nuttigste dat een model
-// op dat moment kan horen.
+// Zegt een aanroeper wél wat hij wil laten analyseren (`vraag`, `profiel` of
+// `set`), dan komt het blok er altijd, óók als er niets gemeten is. Juist dan:
+// "je vraagt een oordeel over een meting die er niet is" is het nuttigste dat een
+// model op dat moment kan horen.
+//
+// ──────────────────────────────────────────────────────────────────
+// WAT EEN AANROEPER MEEGEEFT, EN WAAROM DAT ZO WEINIG IS
+//
+//   apiFetch(prompt, tokens, sys, model, { vraag: '…', profiel: 'brandstof' })
+//
+// `profiel` is de naam die de aanroeper tóch al noemt, één regel hoger, in
+// ensurePIDsActive('brandstof'). Daarmee is de dekking geen tweede lijst die
+// iemand moet bijhouden maar een gevolg van de keuze die er al stond: verandert
+// ANALYSE_PIDS, dan verandert de dekking mee. `pids` kan ook, voor een pad met
+// een eigen lijst; `set` leest uit ANALYSE_PID_SETS.
+//
+// TWEE SOORTEN AANROEP KRIJGEN MET OPZET {meet:false}. De verbindingsvraag in
+// pidlane-btflow.js gaat niet over sensordata. En de oorzakenlijst in
+// pidlane-diagnose.js vraagt om UITSLUITEND een JSON-array; de weegregels
+// hieronder vragen om uitleg in woorden, en die twee opdrachten sluiten elkaar
+// uit — een model dat netjes "dit is niet beoordeeld" toelicht, levert JSON op
+// die de parser weggooit. Dat pad bouwt zijn eigen dekkingslijst al op en
+// verliest er dus niets mee.
 // ══════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
@@ -106,6 +125,35 @@
     var bron = (typeof window !== 'undefined' && window) || {};
     var s = (bron.ANALYSE_PID_SETS || {})[naam] || (bron.ANALYSE_PIDS || {})[naam];
     return Array.isArray(s) ? s.slice() : null;
+  }
+
+  /* DE KERNSET VAN EEN ANALYSEPROFIEL — en waarom dit de beste bron is.
+
+     Elke analyse in deze app zegt al wat hij wil meten, en zegt het maar op één
+     plek: `ensurePIDsActive('brandstof')`, `('totaal')`, `('rit')`. Dat is geen
+     lijst die iemand hier hoeft over te schrijven maar een naam die er al staat,
+     dus een aanroeper geeft die naam door en niets meer.
+
+     Wat die naam betekent, staat in relevantSupportedPIDs(): BASIS_PIDS loopt bij
+     élke analyse mee (motorcontext) en het profiel gaat eroverheen. Dezelfde twee
+     tabellen, dezelfde vereniging — één regel, geen tweede waarheid.
+
+     WAT ER MET OPZET NIET BIJ ZIT. relevantSupportedPIDs() vult die kern aan met
+     wat de auto verder nog levert in de juiste categorieën, en filtert het geheel
+     daarna door de PID-gate. Dat is de goede lijst om te MÉTEN — het is de
+     verkeerde om dekking aan af te lezen, want alles wat de auto niet heeft of
+     wat de gate afkeurt is er dan al uit. Precies de sensoren die in het blok
+     horen te staan zouden dan onzichtbaar zijn, en dan meldt de dekking vrolijk
+     "compleet" over een analyse die de helft mist. De kern is ongefilterd; de
+     drie redenen worden hieronder in dekking() gesteld. */
+  function profielSet(naam) {
+    var bron = (typeof window !== 'undefined' && window) || {};
+    var prof = (bron.ANALYSE_PIDS || {})[naam];
+    if (!Array.isArray(prof)) return null;
+    var basis = Array.isArray(bron.BASIS_PIDS) ? bron.BASIS_PIDS : [];
+    var uit = [];
+    basis.concat(prof).forEach(function (p) { if (uit.indexOf(p) < 0) uit.push(p); });
+    return uit;
   }
 
   // De namen die een aanroeper mag opgeven. Bewust uit de tabellen zelf
@@ -162,7 +210,9 @@
      sensor wegverklaren, en dat is de gevaarlijkste kant om op te vallen. */
   function dekking(opties) {
     var o = opties || {};
-    var nodig = Array.isArray(o.pids) ? o.pids.slice() : (o.set ? _set(o.set) : null);
+    var nodig = Array.isArray(o.pids) ? o.pids.slice()
+              : o.profiel ? profielSet(o.profiel)
+              : o.set ? _set(o.set) : null;
     if (!nodig || !nodig.length) return null;
 
     var sup = null, act = null, vals = {}, health = {};
@@ -202,7 +252,8 @@
     });
 
     return {
-      set: o.set || null,
+      set: o.set || o.profiel || null,
+      profiel: o.profiel || null,
       nodig: nodig,
       geleverd: geleverd,
       ontbreekt: ontbreekt,
@@ -350,7 +401,7 @@
     var dek = dekking(o);
     return {
       vraag: (o.vraag ? String(o.vraag).trim() : null) || null,
-      set: o.set || null,
+      set: o.set || o.profiel || null,
       gemeten: ergensGemeten(),
       dekking: dek,
       venster: venster(),
@@ -398,7 +449,8 @@
     // ── dekking ──
     if (m.dekking) {
       var d = m.dekking;
-      var kop = '\nDEKKING' + (d.set ? ' (analyseset "' + d.set + '")' : '') + ': ' +
+      var kop = '\nDEKKING' + (d.profiel ? ' (analyseprofiel "' + d.profiel + '")'
+                                : d.set ? ' (analyseset "' + d.set + '")' : '') + ': ' +
         d.geleverd.length + ' van de ' + d.nodig.length + ' sensoren die deze analyse nodig heeft, leveren data.';
       r.push(kop);
       if (d.ontbreekt.length) {
@@ -474,6 +526,7 @@
     blok: blok,
     meet: meet,
     dekking: dekking,
+    profielSet: profielSet,
     venster: venster,
     onderbrekingen: onderbrekingen,
     kwaliteit: kwaliteit,

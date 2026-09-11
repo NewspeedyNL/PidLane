@@ -244,7 +244,9 @@ Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbere
 
 AANBEVOLEN VERVOLGONDERZOEK
 Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen..\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
-  await callAI(prompt,document.getElementById('aiContent'));
+  await callAI(prompt,document.getElementById('aiContent'),{
+    vraag:'Volledige doorlichting: beoordeel de staat van het voertuig op alle uitgelezen systemen.',
+    profiel:'totaal'});
   btn.disabled=false;
 }
 function exportCheckReport(){

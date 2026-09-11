@@ -522,7 +522,12 @@ RIJGEDRAG MET CARAVAN
 TOP 3 ACTIES VOOR DE VOLGENDE BERGRIT (🔴/🟡/🟢)
 
 Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
-      3000
+      3000, null, null,
+      // Een caravanrit is lang en de app gaat onderweg gegarandeerd een keer
+      // naar de achtergrond. Juist hier moet de AI weten waar de gaten zaten,
+      // anders leest een bevroren koelwatertemperatuur als een defecte sensor.
+      { vraag: 'Lange caravanrit door bergachtig terrein: zuiniger rijden plus de technische staat onder zware belasting.',
+        profiel: 'rit' }
     );
   }catch(e){
     ai='(AI niet beschikbaar — hierboven staat de volledige meet- en coachingsamenvatting.)';

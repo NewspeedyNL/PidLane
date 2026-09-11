@@ -154,7 +154,14 @@ Formaat (exact deze sleutels):
     let causes=null, fromCache=false;
     if(!force){ const c=diagCacheGet(_sig); if(c&&c.length){ causes=c; fromCache=true; } }
     if(!causes){
-      const text=await apiFetch(prompt,2200);
+      // {meet:false} met opzet (#188). Deze aanroep vraagt om UITSLUITEND een
+      // JSON-array; de weegregels van de aanlevering vragen om uitleg in
+      // woorden, en die twee opdrachten sluiten elkaar uit — een model dat
+      // netjes toelicht dat iets niet beoordeeld is, levert JSON op die
+      // parseCausesJSON() weggooit. Dit pad zet zijn dekking bovendien zelf al
+      // in de prompt (✅ beschikbaar / ⚠ alternatief / ❌ ontbreekt hierboven),
+      // dus er gaat niets verloren.
+      const text=await apiFetch(prompt,2200,null,null,{meet:false});
       causes=parseCausesJSON(text);
       if(!causes.length){ causes=[{naam:'Analyse',kans:'med',frequentie:'',uitleg:String(text).replace(/```json|```/g,'').trim().slice(0,300),check_pids:[],check_uitleg:'',check_waarden:{},bewijs_logica:''}]; }
       try{ fillCausePids(causes, (available||[]).map(p=>p.pid).concat((withAlt||[]).map(p=>p.alt))); }catch(e){ console.warn('fillCausePids mislukt:', e); }
@@ -324,7 +331,9 @@ async function runDiagAI(causeName){
   const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${formatDtcCodes(dtcCodes)}${qBlok}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
   const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const diagOut=document.getElementById('aiContentDiag');
-  await callAI(prompt,diagOut);
+  await callAI(prompt,diagOut,{
+    vraag:'Bevestig of ontkracht deze oorzaak met de gemeten sensordata, en geef de reparatiestappen.',
+    profiel:'emissie'});
   try{ diagOut.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   if(btn) btn.disabled=false;
 }

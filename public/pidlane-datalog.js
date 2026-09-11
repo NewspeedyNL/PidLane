@@ -291,7 +291,9 @@ AANBEVOLEN VERVOLGONDERZOEK
 Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.`;
 
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
-  await callAI(prompt,document.getElementById('aiContent'));
+  await callAI(prompt,document.getElementById('aiContent'),{
+    vraag:'Datalog-analyse: wat laat de opgenomen reeks zien over de staat van het voertuig?',
+    profiel:'rit'});
   btn.disabled=false;
   log('Datalog AI analyse klaar','ok');
 }
