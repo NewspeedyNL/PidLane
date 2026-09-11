@@ -25,7 +25,19 @@
 html.dark {
   --bg:#0a0e17; --sur:#131926; --sur2:#1b2333;
   --bd:#28324a; --bd2:#3a4663;
-  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#8b97b2;
+  /* --tx2 en --tx3 zijn op 11-09-2026 opgetrokken op melding uit het gebruik:
+     de zwakke tekst was op een telefoon slecht te lezen. Ze haalden 4,5:1 al
+     ruim (tx2 6,4-7,9; tx3 5,4-6,6) -- de norm was dus niet het probleem, en
+     dat is precies waarom deze klacht boven een getal gaat. Nu 9,9-12,2 en
+     8,4-10,3, nog altijd duidelijk onder --tx (14,0-17,2) zodat het verschil
+     tussen hoofdtekst en bijtekst blijft bestaan.
+     DEZELFDE DRIE STAAN OOK OP #loginOv verderop: dat scherm is altijd donker,
+     ongeacht het thema. Wie hier iets verandert, verandert daar mee -- anders
+     leest het loginscherm anders dan de rest van de app.
+     Het LICHTE thema is met opzet niet meegegaan: daar zou "helderder" de
+     tekst juist lichter op wit maken, dus slechter. Wil je die ook sterker,
+     dan is dat donkerder, en dat is een eigen afweging. */
+  --tx:#eef2fa; --tx2:#c3cee2; --tx3:#b2bed6;
   --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16); --blv:#2f5fd0;
   --gn:#1fd189; --gns:rgba(31,209,137,.14);
   --or:#ff9f2e; --ors:rgba(255,159,46,.14);
@@ -78,7 +90,9 @@ html, body { overflow-x:clip; }
   /* altijd donker (zoals de splash), ongeacht licht/donker thema */
   --bg:#0a0e17; --sur:#131926; --sur2:#1b2333;
   --bd:#28324a; --bd2:#3a4663;
-  --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#8b97b2;
+  /* Zelfde tinten als html.dark hierboven, inclusief de opgetrokken zwakke
+     tekst van 11-09-2026 -- zie de uitleg daar. */
+  --tx:#eef2fa; --tx2:#c3cee2; --tx3:#b2bed6;
   --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16); --rd:#ff5a5a;
   align-items:stretch; justify-content:flex-start; padding:0;
   background:var(--bg); backdrop-filter:none; overflow-y:auto;
@@ -1916,8 +1930,27 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   margin:0 0 10px; padding:15px 16px; border-radius:16px; cursor:pointer;
   font-family:var(--f); color:var(--tx);
   border:1.6px solid transparent;
+  /* HET VERLOOP IS DE RAND, NIET DE VULLING -- en dat ging mis.
+
+     Dit is het standaardrecept voor een verlooprand: een ondoorzichtige laag
+     op de padding-box, het verloop op de border-box, en een transparante
+     border van 1,6px waar dat verloop doorheen kijkt. Het werkt alleen als die
+     eerste laag ECHT dekt. Hier stond rgba(255,255,255,.045) -- 4,5% wit, dus
+     vrijwel doorzichtig -- en daardoor vulde het verloop de hele kaart.
+
+     Gemeten in de draaiende app op 11-09-2026: de beschrijving (--tx3) stond
+     daardoor op cyaan met 1,62:1. Helderder maken zou dat VERERGEREN tot
+     1,11:1, want je beweegt dan naar de kleur van de ondergrond toe. Alleen
+     donkere tekst haalt daar iets (10,68:1) of, zoals bedoeld, een donkere
+     kaart -- en dan staat deze tekst op 9,4:1 zoals al het andere.
+
+     bproef-contrast.js heeft dit nooit gezien, en niet omdat het een verloop
+     is: die proef VERBERGT #welcomeScreen om bij het hoofdscherm te komen
+     (`w.classList.add('hidden')`), en meet daarna #appGrid plus zes
+     modulevensters. Het keuzescherm -- het eerste dat je na inloggen ziet --
+     zit in geen enkele sweep. Nagemeten op 11-09-2026; apart vastgelegd. */
   background:
-    linear-gradient(rgba(255,255,255,.045),rgba(255,255,255,.045)) padding-box,
+    linear-gradient(var(--sur),var(--sur)) padding-box,
     linear-gradient(100deg,#00ff88,#22d3ee 55%,#3b82f6) border-box;
   box-shadow:0 0 26px rgba(0,255,136,.12);
 }
