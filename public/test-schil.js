@@ -40,6 +40,25 @@ function toets(naam, gemeten, verwacht) {
       '\n        verwacht ' + JSON.stringify(verwacht));
   }
 }
+/* STRIKT NULL, EN DAAR IS EEN REDEN VOOR. toets() vergelijkt met
+   JSON.stringify, en `JSON.stringify(NaN)` is de tekst "null". Een achterstand
+   die per ongeluk NaN wordt — bijvoorbeeld doordat de poort op twee geldige
+   getallen wegvalt — glipt daar dus doorheen als "null".
+
+   plmutate.sh ving dat op 11-09-2026: de mutatie die `if (hier === null ||
+   !isFinite(daar)) return null;` uitzet bleef groen. Precies de vorm die dit
+   project overal weert — een controle die niets ziet. Vandaar deze helper voor
+   elk getal dat ONBEKEND hoort te zijn. */
+function strikt(naam, waarde, verwacht) {
+  n++;
+  if (Object.is(waarde, verwacht)) console.log('  ok    ' + naam);
+  else {
+    fout++;
+    console.log('  FOUT  ' + naam +
+      '\n        kreeg    ' + String(waarde) + ' (' + typeof waarde + ')' +
+      '\n        verwacht ' + String(verwacht));
+  }
+}
 function bevat(naam, tekst, stuk) {
   n++;
   if (String(tekst).indexOf(stuk) !== -1) console.log('  ok    ' + naam);
@@ -92,12 +111,12 @@ async function main() {
   {
     const s = bouw({ capacitor: false });
     await rust();
-    toets('bouw() is null', s.PLSchil.bouw(), null);
+    strikt('bouw() is null', s.PLSchil.bouw(), null);
     toets('en er is niets aan de bridge gevraagd', s.gevraagd.length, 0);
     bevat('de regel zegt het zonder omhaal', s.PLSchil.regel(), 'geen APK');
     // NIET-GEMETEN IS GEEN NUL. Een achterstand van 0 zou hier lezen als "je
     // bent bij", terwijl er niets te vergelijken viel.
-    toets('achterstand blijft null', s.PLSchil.achterstand(), null);
+    strikt('achterstand blijft null (en geen NaN)', s.PLSchil.achterstand(), null);
   }
 
   console.log('\n── in de schil staat de build in het verslag ──');
@@ -114,21 +133,21 @@ async function main() {
   {
     const s = bouw({ infoStuk: true });
     await rust();
-    toets('bouw() blijft null', s.PLSchil.bouw(), null);
+    strikt('bouw() blijft null', s.PLSchil.bouw(), null);
     bevat('met de fout erbij', s.PLSchil.reden(), 'bridge weg');
     bevat('en de regel zegt onbekend', s.PLSchil.regel(), 'onbekend');
   }
   {
     const s = bouw({ geenInfo: true });
     await rust();
-    toets('getInfo() zonder antwoord → null', s.PLSchil.bouw(), null);
+    strikt('getInfo() zonder antwoord → null', s.PLSchil.bouw(), null);
     bevat('met een reden', s.PLSchil.reden(), 'gaf niets terug');
   }
   {
     // Een schil die wél antwoordt maar geen bruikbare build meegeeft.
     const s = bouw({ info: { name: 'PidLane', version: '3.0.0' } });
     await rust();
-    toets('zonder build blijft bouw() null', s.PLSchil.bouw(), null);
+    strikt('zonder build blijft bouw() null, geen NaN', s.PLSchil.bouw(), null);
   }
 
   console.log('\n── de nieuwste build komt van de Worker ──');
@@ -152,7 +171,7 @@ async function main() {
     await rust();
     toets('haalNieuwste() geeft null', await s.PLSchil.haalNieuwste(), null);
     bevat('met de reden erbij', s.PLSchil.nieuwsteReden(), 'niet bereikbaar');
-    toets('en de achterstand blijft null', s.PLSchil.achterstand(), null);
+    strikt('en de achterstand blijft null (en geen NaN)', s.PLSchil.achterstand(), null);
   }
   {
     const s = bouw({ status: 404 });
@@ -174,9 +193,9 @@ async function main() {
     s.PLSchil._zetNieuwste({ versionCode: 430 });
     toets('vooruit → negatief', s.PLSchil.achterstand(), -8);
     s.PLSchil._zetNieuwste({ versionCode: 'onzin' });
-    toets('onleesbaar getal → null, geen 0', s.PLSchil.achterstand(), null);
+    strikt('onleesbaar getal → null, geen 0 en geen NaN', s.PLSchil.achterstand(), null);
     s.PLSchil._zetNieuwste(null);
-    toets('niets opgehaald → null', s.PLSchil.achterstand(), null);
+    strikt('niets opgehaald → null, geen NaN', s.PLSchil.achterstand(), null);
   }
 
   console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
