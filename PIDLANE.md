@@ -910,6 +910,76 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De eerste rit met de meetdienst leverde geen rapport — 11-09-2026 (#196, #18)
+
+Verse installatie na het samenvoegen van #194 en #195, Mazda CX-5, rit-analyse
+van 15:12 tot 15:21. De gebruiker schreef bovenaan het logboek: *"Geen rapport
+na analyse"*. Drie dingen kwamen uit deze dertien minuten, en ze wijzen alle
+drie een andere kant op.
+
+**1. De meetdienst draaide, voor het eerst op een echt toestel.**
+
+```
+[15:15:37] 📴 De app was 38 s weg en de meetlus liep gewoon door (37 hartslagen)
+[15:15:37] 🛰️ native: 38 s doorgelopen, 0 s stil (37 slagen) | webview: 0 s stil
+           — beide liepen door: de meting overleeft het wegschakelen
+```
+
+`CAMPAGNE` zei: *"DE MEETDIENST IS NOG NOOIT OP EEN TOESTEL GEDRAAID."* Dat is
+niet meer waar. Android accepteert de service, de Capacitor-brug antwoordt,
+`PLMeetdienst.oordeel()` levert een oordeel en `PLAchtergrond` zet het naast zijn
+eigen hartslag in één regel. De hele keten van Java tot logregel werkt.
+
+**En toch zegt die regel niets over #18.** 38 seconden is te kort. De aanlooptijd
+die we eerder maten was 36 s (02-09) en 50 s (09-09) — de tijd die de app nog
+doorliep vóórdat Android hem stilzette. Deze onderbreking valt daar middenin, dus
+de app is waarschijnlijk nooit in het venster geweest waar het eerder misging.
+Dat de webview 0 s stillag is een uitspraak over de duur van de onderbreking en
+niet over de foreground service. De drie uitkomsten die `CAMPAGNE` beschreef zijn
+geen van drieën aangetoond.
+
+Dit is precies de vorm waar dit hoofdstuk vol mee staat: een groene meting die
+over iets anders gaat dan waar hij op lijkt te slaan. Een volgende meting heeft
+minstens drie minuten nodig, want de vergelijkingsgetallen zijn 120 s en 182 s.
+
+**2. Het ritrapport viel om, op diezelfde onderbreking.**
+
+```
+[15:21:14] Rit analyse gestopt — rapporttype kiezen
+[15:21:16] App fout: Cannot convert undefined or null to object
+```
+
+`ritLogs` draagt twee soorten regels. De fase-regel heeft `stats`, de
+onderbrekingsregel (`{t, type:'onderbreking', sec}`) niet — en
+`generateRitRapport()` leest ze allebei alsof het fases zijn. `Object.values(undefined)`
+gooit, en het rapport is weg vóór de AI-call. Uitwerking in #196.
+
+`git blame` zet beide regels op 03-09, de basis van de huidige historie. Het is
+dus geen regressie van vandaag maar een bestaande fout die nu pas opviel —
+vermoedelijk omdat er zelden een hele rit mét achtergrondperiode werd afgemaakt.
+
+**De wrange kant is het vermelden waard.** #188 is er net op gebouwd om die
+onderbreking aan de AI door te geven. Hier haalt het rapport de AI-call niet eens,
+door diezelfde onderbreking. De aanlevering is daarmee nog steeds door geen enkel
+model gelezen: dat was de enige openstaande vraag van #188 en hij staat er nog.
+
+**3. Twee lambdasensoren gaven niets, en dat is nu zichtbaar.**
+
+```
+[15:17:49] 🧹 Sensor 0124 (Lambda B1S1 (breedband)) opgeruimd: 5 pogingen plus 5 herkansingen
+[15:18:50] 🧹 Sensor 0114 (O2 sensor B1S1) opgeruimd: 5 pogingen plus 5 herkansingen
+```
+
+De opruimer deed wat hij hoort te doen. Wat er nieuw aan is: dit zijn precies de
+sensoren die `ANALYSE_PIDS.brandstof` en `.emissie` nodig hebben, en de dekking
+uit #195 zou ze nu bij `ONTBREEKT` zetten met *"uitgevraagd, maar de sensor
+antwoordt niet"*. Dat is de eerste keer dat zo'n uitval een analyse zou bereiken
+in plaats van alleen het logboek — als het rapport er was gekomen. `AUTO_KENNIS`
+noteert voor Mazda dat B1S1 daar de breedband (0124) is en niet 0113, dus dat de
+app hem uitvroeg klopt.
+
+---
+
 ### Alles wat de app over zijn meting wist, ging naar één lezer — 11-09-2026 (#188)
 
 De app weet sinds weken hoe goed zijn eigen meting was. `PLRit` telt loopgaten,
