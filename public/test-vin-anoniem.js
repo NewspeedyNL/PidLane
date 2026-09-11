@@ -90,6 +90,25 @@ const VIN = 'JM3KFBCL8J0123456';          // Mazda CX-5, het testvoertuig
   toets('streepjes en spaties maken niet uit',
         (await _vlVinPseudoniem(' jm3-kfbcl8j0123456 ')) === a);
 
+  // ── 4b. het zout doet werk ──
+  // Dit is de helft waar de hele belofte op rust en die tot 11-09-2026 niet
+  // getoetst werd. De toetsen hierboven blijven allemaal groen als het zout
+  // wegvalt: de uitkomst is dan nog steeds 16 hextekens, nog steeds hetzelfde
+  // voor dezelfde VIN, en nog steeds anders voor een andere. Alleen is hij
+  // dan een kale SHA-256 van de VIN — en een VIN heeft zo weinig entropie
+  // (WMI, modeljaar, fabriek, volgnummer) dat een tabel hem terugrekent.
+  //
+  // Pseudonimisering is geen hashing; het zout is het verschil. Dus toetsen
+  // we niet dát er gehasht wordt, maar dat de uitkomst NIET die van de kale
+  // hash is. Dat maakt een weggevallen of leeggemaakt zout meteen rood.
+  const schoon = VIN.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '');
+  const zoutloos = [...new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(schoon))
+  )].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  toets('het pseudoniem is niet de kale SHA-256 van de VIN', a !== zoutloos,
+        'zonder zout is een VIN met een tabel terug te rekenen — dat is geen '
+        + 'pseudonimisering meer, en de toestemmingstekst klopt dan niet');
+
   // ── 5. randgevallen ──
   toets('lege VIN geeft null', (await _vlVinPseudoniem('')) === null);
   toets('te korte VIN geeft null', (await _vlVinPseudoniem('ABC123')) === null);

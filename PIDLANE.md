@@ -910,6 +910,38 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Het zout van de VIN werd niet getoetst — 11-09-2026
+
+`test-vin-anoniem.js` is een van de zwaarste tests in deze repo: hij bewaakt de
+regel die niet buigt. Hij toetste dat het pseudoniem 16 hextekens is, dat
+dezelfde VIN hetzelfde id geeft, dat een andere VIN een ander id geeft, en dat
+de ruwe VIN nergens meer in het verzonden record staat. Allemaal terecht.
+
+**Allemaal ook groen zonder zout.** Valt `VL_VIN_ZOUT` weg uit
+`_vlVinPseudoniem()`, dan is de uitkomst nog steeds 16 hextekens, nog steeds
+stabiel per VIN en nog steeds uniek per auto. Elke toets blijft staan. Alleen
+is hij dan een kale `SHA-256` van het chassisnummer — en een VIN heeft zo
+weinig entropie (WMI, modeljaar, fabriek, volgnummer) dat een tabel hem
+terugrekent. Dat is geen pseudonimisering meer, en dan klopt de
+toestemmingstekst niet meer die de gebruiker heeft aangeklikt.
+
+Dit is dezelfde vorm als de regel die er al staat: *de toets moet
+onderscheiden, niet alleen kloppen*. Vier toetsen over hetzelfde onderwerp
+zeggen niets als ze alle vier meebewegen met de fout. De vraag was nooit "komt
+er een hash uit" maar "wat maakt deze hash anders dan de hash die iedereen kan
+maken".
+
+De toets die erbij kwam rekent de kale `SHA-256` in de test zelf uit en eist
+dat het pseudoniem er níét gelijk aan is. De mutatie in `plmutate.sh` haalt het
+zout weg en maakt hem rood.
+
+**En dat gold breder.** Van de 107 tests hadden er 49 geen tegenproef. Daar
+zaten de vier bij waar een stille fout niet "een knop doet het niet" betekent
+maar "de klant betaalt dubbel" of "een chassisnummer verlaat het toestel": het
+saldoslot, het proeftegoed, de VIN en de toestemmingstekst. Die vier hebben er
+nu acht samen. De overige 45 zijn nog open werk; ze staan groen, maar of ze
+rood kúnnen worden is voor die 45 nog steeds niet gemeten.
+
 ### Licht ging aan en meteen weer uit — 11-09-2026 (#141)
 
 De knop hieronder is dezelfde dag teruggedraaid. Op het toestel bleek binnen
