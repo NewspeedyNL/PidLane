@@ -527,6 +527,17 @@ MUTATIES=(
 "public/pidlane-aanlevering.js@@    basis.concat(prof).forEach@@    [].concat(prof).forEach@@test-aanlevering.js@@BASIS_PIDS loopt niet meer mee: de dekking mist de motorcontext die elke analyse gebruikt"
 "public/pidlane-aanlevering.js@@    if (!Array.isArray(prof)) return null;@@    if (!Array.isArray(prof)) return [];@@test-aanlevering.js@@een onbekende profielnaam levert een lege dekking in plaats van geen dekking"
 "public/pidlane-fuel.js@@      profiel:'brandstof'});@@      profiel:'brandstoff'});@@test-aanlevering.js@@een typefout in een profielnaam: de brandstofanalyse verliest stil haar dekking"
+
+# ── Het ritrapport (#196, 11-09-2026). Hier eindigt de keten: de aanlevering
+# hierboven bereikt pas een model als dit rapport overeind blijft. Op de rit van
+# 11-09 deed het dat niet — dertien minuten meten, en één regel in het logboek.
+# Vijf fouten die alle vijf geen foutmelding opleveren maar een slechter rapport.
+"public/pidlane-rit.js@@  ritPauzeLog.push({t:Date.now(), sec:s, faseIdx:ritFaseIdx});@@  ritLogs.push({t:Date.now(), type:'onderbreking', sec:s});@@test-ritrapport.js@@de onderbrekingsregel staat weer tussen de fases: het rapport valt om op Object.values(undefined) (#196)"
+"public/pidlane-rit.js@@ (min \${fv(s.min)}, max \${fv(s.max)}, \${s.count} metingen\${!s.ok?', BUITEN NORM':''})\`@@\`@@test-ritrapport.js@@de AI krijgt alleen het gemiddelde: een piek van 4200 rpm onder een gemiddelde van 1500 is onzichtbaar"
+"public/pidlane-rit.js@@  const g=(ritPauzeLog||[]).filter(p=>p.faseIdx===i);@@  const g=[];@@test-ritrapport.js@@de weggevallen seconden worden aan geen enkele fase meer toegewezen: een dunne fase leest als een sensor die uitvalt"
+"public/pidlane-rit.js@@faseIdx:ritFaseIdx});@@faseIdx:ritFaseIdx+1});@@test-ritrapport.js@@het gat hangt aan de volgende fase: het rapport wijst de verkeerde reeks aan als onbetrouwbaar"
+"public/pidlane-rit.js@@    log(\`Rit rapport: de AI-analyse mislukte — \${msg}\`,'err');@@    ;@@test-ritrapport.js@@de stille catch is terug: een mislukte analyse zegt alleen dat er geen rapport is, niet waarom"
+"public/pidlane-rit.js@@        .map(l=>l.aiAnalyse ? \`\${l.fase}: \${l.aiAnalyse}\` : '')@@        .map(l=>\`\${l.fase}: \${l.samenvatting||l.desc||''}\`)@@test-ritrapport.js@@de proefrit geeft de koopcheck weer fasenamen zonder bevindingen — een lege uitslag die er gevuld uitziet"
 )
 
 echo

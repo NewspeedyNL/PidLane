@@ -11,6 +11,39 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11g (CET) — HET RITRAPPORT KOMT ER, OOK NA EEN ONDERBREKING
+
+       • 🚗 GEEN RAPPORT NA EEN RIT MET EEN GAT (#196). Ging de
+         app tijdens de rit naar de achtergrond, dan viel het
+         ritrapport om vóór de AI-call: dertien minuten meten
+         en één regel in het logboek. De onderbrekingen staan
+         nu in hun eigen lijst, los van de fases.
+
+       • 📊 DE AI KRIJGT DE CIJFERS DIE IN HET RAPPORT STAAN.
+         Tot nu ging alleen het gemiddelde per sensor mee,
+         terwijl het tekstbestand min en max wél had. Een
+         piek van 4200 rpm onder een gemiddelde van 1500 was
+         voor het model onzichtbaar. Nu min, max én het
+         aantal metingen.
+
+       • 📍 EN WAAR HET GAT ZAT. Per fase staat erbij hoeveel
+         seconden er weggevallen zijn. Zonder die plaats
+         leest een dun gemeten fase als een sensor die
+         uitvalt — een vals alarm met een factuur eronder.
+
+       • 🔍 DE PROEFRIT VOOR DE KOOPCHECK GAF LEGE BEVINDINGEN
+         DOOR. Hij las twee velden die nooit gevuld worden,
+         dus het aankoopoordeel kreeg fasenamen zonder
+         inhoud — en omdat die regel niet leeg was, viel het
+         niet op. Nu gaat de echte fase-duiding mee.
+
+       • 🔊 EEN MISLUKTE ANALYSE ZEGT NU WAAROM. Het foutblok
+         schreef bij élke fout "geen AI beschikbaar", ook bij
+         een crash. Daardoor was deze bug anderhalve dag
+         alleen als één logregel zichtbaar.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11f (CET) — ELKE ANALYSE ZEGT NU WAT ZE WILDE METEN
 
        • 🎯 DE DEKKING PER ANALYSE (#188). Twaalf analyses

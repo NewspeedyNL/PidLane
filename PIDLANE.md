@@ -190,7 +190,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 27 | `pidlane-motortype.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
 | 28 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
 | 29 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
-| 30 | `pidlane-rit.js` | 29 | ritanalyse |
+| 30 | `pidlane-rit.js` | 29 | ritanalyse — fases meten, `generateRitRapport()` bouwt het rapport en stuurt het naar de AI. Twee lijsten met elk één betekenis: `ritLogs` draagt de fases (mét `stats`), `ritPauzeLog` de onderbrekingen (mét de fase waarin ze vielen). Tests: `test-ritpauze.js`, `test-ritrapport.js`, `bproef-ritrapport.js`, blok 5 |
 | 31 | `pidlane-koopcheck.js` | 133 | koopcheck / aankoopkeuring, proefritmodule |
 | 32 | `pidlane-dossier.js` | 7 | export voertuigdossier |
 
@@ -909,6 +909,102 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### De keten is rond: het rapport haalt nu een model — 11-09-2026 (#196, #188)
+
+De ronde hierboven leverde de bevinding; dit is wat ermee gedaan is. Twee rondes
+bouwden de aanlevering en hingen hem in `apiFetch()`, en §11 noteerde erbij dat
+hij **nog door geen enkel model gelezen** was. Dat lag niet aan de aanlevering.
+Het ritrapport viel om vóór de AI-call, en dat is het pad waar de gaten en de
+dekking het meest te vertellen hebben.
+
+**Waarom `ritLogs` gesplitst is en niet gefilterd.** Het issue bood twee wegen:
+de onderbrekingsregel weghalen, of eromheen filteren op de plekken waar fases
+verwacht worden. Geen van beide is gekozen.
+
+Weghalen gooit het enige weg dat `ritPauzeTotaal` en `ritOnderbrekingen` níét
+weten: **wannéér** het gat viel, dus in welke fase. Juist die plaats is wat een
+dun gemeten fase onderscheidt van een sensor die uitvalt — vals alarm nummer 1
+uit #188 hierboven.
+
+Filteren lost de crash op en laat de oorzaak staan. Er zouden dan drie
+leesplekken zijn die moeten ONTHOUDEN dat er twee soorten regels in één lijst
+zitten, en het vergeten daarvan is precies deze bug. Dat is de vorm die CLAUDE.md
+met *"één ding heeft één betekenis"* verbiedt, en die in dit project al drie keer
+een bug was.
+
+Dus: `ritLogs` draagt fases, `ritPauzeLog` draagt onderbrekingen — met de
+fase-index erbij. De leesplekken kloppen nu van constructie. En omdat
+`ritOnderbrekingen` een tweede teller van precies die lijstlengte was, is hij
+vervangen door `ritPauzeLog.length`: één teller minder die uit de pas kan lopen.
+
+**Wat er onderweg nog meer bleek te ontbreken, en dat is de duurdere helft.**
+De crash was zichtbaar. Dit niet: naar het model ging alleen het **gemiddelde**
+per sensor, terwijl het tekstbestand dat de gebruiker leest min en max wél had.
+
+```
+in het bestand:  • Toerental: gem=1500 rpm, min=800, max=4200
+naar het model:  Toerental=1500rpm
+```
+
+Een gemiddelde verstopt de piek waar een analyse over hoort te gaan. 88 °C
+gemiddeld met een uitschieter naar 118 °C leest als *"koelwater in orde"*. Mens
+en model lezen nu dezelfde cijfers, inclusief het aantal metingen per sensor —
+want een fase met 12 metingen draagt een ander gewicht dan een met 118.
+
+Het weggevallen deel staat er per fase bij als **feit**, niet als oordeel: het
+wegen gebeurt door de weegregels die `PLAanlevering` al meestuurt, en dat oordeel
+twee keer uitrekenen zou dezelfde fout zijn als hierboven.
+
+**En de stille catch die dit anderhalve dag onzichtbaar hield.** Het
+foutafhandelingsblok rond de AI-call schreef bij élke fout *"Rapport klaar (geen
+AI beschikbaar)"* — een tegoedfout, een netwerkfout en een crash in de opbouw
+kregen alle drie dezelfde geruststellende tekst. Daardoor stond #196 als één
+regel in het logboek en zag de gebruiker alleen dat er niets kwam. De boodschap
+van de fout gaat nu mee, in het log én in het tekstbestand.
+
+Er staat nu ook een vangnet om de opbouw heen. Niet om de crash te verbergen —
+die is bij de bron weg — maar omdat een rit dertien minuten kost en die data weg
+is zodra het scherm dicht gaat. Valt de opbouw alsnog om, dan komt het
+tekstbestand er en gaat de reden het log in.
+
+**Waar dit getoetst is, en waar met opzet niet.** `test-ritrapport.js` rijdt in
+node een hele rit met een echte onderbreking (via `visibilitychange`, niet via
+een nagebouwde lijst) en toetst de vorm, de cijfers en de gattoewijzing — 25
+toetsen, vijf mutaties in `plmutate.sh`. `bproef-ritrapport.js` doet in de
+draaiende app wat in node niet kan: `generateRitRapport()` tot aan de
+verzendlaag, met `plFetch` als opvangbak. Dáár is voor het eerst te zien dat het
+`AANLEVERING`-blok in de systeemprompt van een ritrapport staat. Nagemeten door
+de haak in `apiFetch()` op `if(false)` te zetten: dan wordt hij rood, met de
+gemeten systeemprompt erbij.
+
+**En de tweede lezer van dezelfde rit, die al die tijd niets kreeg.** Naast het
+ritrapport is er een tweede consument van `ritLogs`: de proefrit vanuit de
+koopcheck. Die las per fase `l.samenvatting || l.desc` — twee velden die
+**niets in deze app ooit zet**. `analyseRitFase()` schrijft `fase`, `duur`,
+`stats` en `aiAnalyse`.
+
+```
+wat de koopcheck kreeg:  "Stationair:  | Optrekken: "
+```
+
+Fasenamen met niets erachter, in het eindoordeel over een aankoop. De vangregel
+eronder — `tech || 'Proefrit voltooid (geen afwijkingen geregistreerd)'` — sloeg
+nooit aan, want `tech` was niet leeg: er stonden fasenamen in. **Een lege uitslag
+die er gevuld uitziet** is dezelfde vorm die #188 duur maakt: een gemist defect
+ziet er precies zo uit als een goede uitslag. Er staat nu `aiAnalyse` in, de
+duiding die `_faseLokaleDuiding()` per fase toch al berekende.
+
+Dat dit naast de crash stond is geen toeval. Beide zijn dezelfde soort fout —
+een leesplek die aannames doet over de vorm van `ritLogs` — en beide waren stil.
+
+**Wat dit niet oplost, en het is de vraag die ertoe doet.** Dat het blok in de
+prompt staat, is de koppeling — niet de uitkomst. Of een rapport er werkelijk
+anders van wordt, staat alleen in de tekst die eruit komt, en dat is een vraag
+voor een rit. Een rapport dat netjes verschijnt en een gat als defect uitlegt is
+nog steeds fout, alleen minder zichtbaar fout dan geen rapport.
+
+---
 
 ### De eerste rit met de meetdienst leverde geen rapport — 11-09-2026 (#196, #18)
 
