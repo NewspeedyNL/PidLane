@@ -902,6 +902,109 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De renderer wordt stilgezet, niet afgeknepen — en de wake lock ontbrak — 11-09-2026 (#18)
+
+De meetdienst van gisteren heeft zijn eerste rit gedaan, en hij heeft de vraag
+beantwoord waar hij voor gebouwd is. Drie afwezigheden in één sessie, SM-S947B
+op Android 16, APK build #437, melding zichtbaar in de statusbalk.
+
+| tijd | app weg | proces (native hartslag) | webview |
+|---|---:|---|---|
+| 10:46 | 77 s | 77 s door, 0 s stil (78 slagen) | 59 s door, 18 s stil |
+| 10:52 | 310 s | 310 s door, **0 s stil** (310 slagen) | 59 s door, **251 s stil** |
+| 11:02 | 485 s | 222 s door, **34 s stil** (373 slagen) | 60 s door, 426 s stil |
+
+**De procesbevriezing is weg.** 310 slagen over 310 seconden zonder één gat, op
+hetzelfde toestel dat op 09-09 na 50 seconden volledig stilviel. Richting 1
+werkt voor de helft waar hij over gaat: een proces met een draaiende foreground
+service komt niet in de cached-toestand en wordt niet bevroren.
+
+**En de tweede helft is nu ook beslist.** De meting van 10:52 is de lange
+afwezigheid die daarvoor nodig was: 251 seconden aaneengesloten stilte in de
+WebView. Was het throttling naar één tik per minuut geweest, dan was de
+grootste stilte ongeveer 60 s — herhaalde gaten van een minuut, niet één van
+ruim vier. De renderer wordt dus **stilgezet**, niet afgeknepen.
+
+De aanlooptijd daarheen is opvallend hard: **59, 59 en 60 seconden**, bij
+afwezigheden van 77, 310 en 485 s. Drie metingen, één getal, ongeacht hoe lang
+de app wegblijft. Dat is een drempel en geen toeval — en het is een andere klok
+dan de 36 s en 50 s van de procesbevriezing van vóór de meetdienst.
+
+**Wat daaruit volgt voor richting C.** Picture-in-picture is de kandidaat, en
+het is de kleine variant: in PiP blijft de WebView zichtbaar, dus blijft de
+renderer voorgrond. Een zwaardere of tweede service voegt niets toe — het
+app-proces was aantoonbaar niet het probleem. Een volledig native meetlus in
+Kotlin, de dure kant van richting C, lijkt daarmee overbodig. Dat is precies de
+keuze die deze opzet moest onderbouwen in plaats van gokken.
+
+#### De derde meting wees op iets anders: de wake lock ontbrak
+
+373 slagen waar er ongeveer 485 hoorden te staan, met het grootste gat (34 s)
+vanaf 222 s. Naast dat ene gat zijn er verspreid nog eens ~78 seconden aan
+slagen gemist. De dienst draaide, maar het proces werd onderbroken.
+
+Het issue schrijft richting 1 als *"foreground service **plus wake lock**"*, en
+die tweede helft stond er niet. Een foreground service houdt het proces uit de
+cached-toestand; hij houdt de **CPU** niet wakker. Gaat het scherm uit en gaat
+het toestel slapen, dan vuurt de handler van de hartslag niet meer.
+
+`PLWake` in `index.html` lost dat niet op en is iets anders: dat is een
+**scherm**-wake-lock via de Screen Wake Lock API, en het OS geeft die vrij
+zodra de app verborgen raakt — je ziet in het log dat hij bij elke terugkomst
+opnieuw geclaimd wordt. Juist tijdens de afwezigheid is hij er dus niet.
+
+De knik op ~3,7 minuten past bij een gebruikelijke schermtime-out gevolgd door
+een slapend toestel. De twee kortere afwezigheden bleven daarbinnen en hadden
+er geen last van.
+
+`PLMeetdienst` neemt daarom sinds vandaag een `PARTIAL_WAKE_LOCK`, met
+`WAKE_LOCK` in het manifest en een poort op het samengevoegde manifest ernaast
+— zonder die permissie gooit `acquire()` een `SecurityException`, draait de
+dienst gewoon door en hapert de hartslag pas na minuten. Dat is het soort
+uitval dat je pas terugvindt in een rit die je al gereden hebt.
+
+**Geen time-out op de lock, en dat is een keuze.** Een `acquire()` met
+tijdslimiet stopt midden in een rit met beschermen zonder dat iets dat meldt —
+precies de stille vorm waar dit hele issue over gaat. De lock leeft exact zo
+lang als de dienst, en de dienst zo lang als er een echte adapterverbinding is.
+
+**De prijs is batterij.** Zolang je verbonden bent blijft de CPU wakker, ook
+met het scherm uit. In de auto hangt het toestel meestal aan de lader; staat
+het dat niet, dan kost een lange rit merkbaar lading.
+
+#### En de melding beweerde alweer wat hij niet gemeten had
+
+De derde meting kwam het logboek in als:
+
+```
+native: 222 s doorgelopen, 34 s stil (373 slagen) — allebei stil:
+het hele proces is bevroren, ondanks de meetdienst
+```
+
+Dat draagt de meting niet. Het proces liep 222 seconden, viel 34 seconden stil,
+en tikte daarna nog ruim 150 keer. *"Het hele proces is bevroren"* is een
+uitspraak over 485 seconden op grond van 34. De drempel in `duiding()` stond op
+drie seconden, en daarboven volgde meteen het zwaarste verdict.
+
+**Dit is letterlijk dezelfde vorm als de bevinding van 08-09 hieronder** — een
+melding die beweert wat hij niet gemeten heeft — en hij stond drie dagen later
+alweer in nieuwe code, geschreven door dezelfde hand die de vorige repareerde.
+Dat is de reden dat deze notitie er staat: de fout is niet "een verkeerde
+drempel" maar de neiging om een meting als een oordeel te formuleren.
+
+De duiding noemt nu een **verhouding**: 34 s van 485 s, 373 van de ~485 slagen.
+Lag het proces meer dan de helft van het venster stil, dan heet dat nog steeds
+zo; daaronder heet het een hapering, met de verklaring erbij die erbij past.
+`test-meetdienst.js` toetst allebei de kanten met de echte getallen van deze
+rit, en `plmutate.sh` maakt ze rood.
+
+#### Wat er nog niet gemeten is
+
+De wake lock zelf. De aanleiding is gemeten, de reparatie niet — een
+afwezigheid van acht minuten of langer op een niet-opgeladen toestel is de
+proef, en die staat nog open.
+
+
 ### De native meetdienst: een oplossing die tegelijk een meting is — 11-09-2026 (#18)
 
 `#18` stond sinds 27-08 open en is twee keer hard gemeten. Wat openbleef was

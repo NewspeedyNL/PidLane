@@ -168,6 +168,45 @@ console.log('\n── de app laadt de module ──');
     html.indexOf('src="pidlane-meetdienst.js"') > html.indexOf('src="pidlane-uihelpers.js"'), true);
 }
 
+console.log('\n── de wake lock en zijn permissie horen bij elkaar ──');
+{
+  /* GEMETEN OP 11-09-2026, EN DAAROM STAAT DIT ER. Met alleen de foreground
+     service liep de native hartslag perfect bij afwezigheden van 77 en 310 s
+     (78/78 en 310/310 slagen), maar bij 485 s haalde hij er 373 van de ~485
+     met een gat van 34 s vanaf 222 s. Een service houdt het PROCES uit de
+     cached-toestand; hij houdt de CPU niet wakker.
+
+     De permissie is de stille helft: zonder WAKE_LOCK in het manifest gooit
+     newWakeLock().acquire() een SecurityException. De dienst draait dan
+     gewoon door en de hartslag hapert pas na minuten — je ziet het niet aan
+     de app, je ziet het aan een rit die je al gereden hebt. */
+  bevat('de service neemt een partial wake lock', dienst, 'PARTIAL_WAKE_LOCK');
+  bevat('en geeft hem vrij als hij stopt', dienst, 'wakeUit()');
+  // Op de INJECTIEVORM en niet op de kale naam: die staat ook in de
+  // bundelpoort hieronder, en dan blijft deze toets groen terwijl de
+  // injectie verdwenen is. Een controle die niets ziet is geen controle.
+  bevat('de workflow injecteert de permissie', wf,
+    '<uses-permission android:name="android.permission.WAKE_LOCK" />');
+  bevat('en de bundelpoort eist hem', wf, 'de partial wake lock van de meetdienst (#18)');
+  // De lock wordt geclaimd vóór de teller op nul gaat: anders meet het eerste
+  // stuk van het venster een CPU die nog kan gaan slapen.
+  const claim = dienst.indexOf('wakeAan();');
+  const nul = dienst.indexOf('nulstel();', claim > -1 ? claim : 0);
+  toets('de lock is er vóór het meetvenster begint', claim > -1 && nul > claim, true);
+  /* Geen time-out: die stopt midden in een rit met beschermen zonder dat iets
+     dat meldt, en dat is precies de stille vorm waar #18 over gaat.
+
+     EN DEZE TOETS LAS ZICHZELF. Hij zocht eerst op `acquire()` en matchte
+     daarmee op het COMMENTAARBLOK in PLMeetdienst.java, waar de zin "een
+     acquire() met tijdslimiet stopt midden in een rit" staat. De mutatie die
+     er `acquire(60000L)` van maakte bleef daardoor groen — plmutate.sh ving
+     hem op 11-09-2026 als ONTSNAPT. Vandaar dat hier nu op de AANROEP gekeken
+     wordt, met de ontvanger ervoor, én dat de tegenvorm expliciet afwezig moet
+     zijn. Een toets die op zijn eigen uitleg kan slagen, toetst niets. */
+  toets('zonder tijdslimiet',
+    /wakeLock\.acquire\(\s*\)\s*;/.test(dienst) && !/wakeLock\.acquire\(\s*[^)\s]/.test(dienst), true);
+}
+
 console.log('\n── de dienst stopt als de app weg is ──');
 {
   /* Swipet de gebruiker de app uit het overzicht, dan is er geen WebView meer

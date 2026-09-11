@@ -471,7 +471,7 @@ jobs:
           # herhaalbaar is en niet stilletjes verdubbelt.
           xml = re.sub(r'\s*<!-- PidLane meetdienst \(#18\).*?-->', '', xml)
           xml = re.sub(r'\s*<uses-permission[^>]*android\.permission\.'
-                       r'(FOREGROUND_SERVICE[A-Z_]*|POST_NOTIFICATIONS)[^>]*/>', '', xml)
+                       r'(FOREGROUND_SERVICE[A-Z_]*|POST_NOTIFICATIONS|WAKE_LOCK)[^>]*/>', '', xml)
           xml = re.sub(r'\s*<service[^>]*PLMeetdienst[^>]*/>', '', xml)
 
           perms = (
@@ -484,6 +484,12 @@ jobs:
               # Zonder toestemming onderdrukt Android 13+ alleen de MELDING; de
               # service draait door. Daarom staat de app er niet op te wachten.
               '\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />'
+              # WAKE_LOCK hoort bij de partial wake lock in PLMeetdienst.java.
+              # Zonder deze regel gooit newWakeLock().acquire() een
+              # SecurityException, valt de dienst terug op alleen de service, en
+              # hapert de hartslag pas na minuten -- gemeten op 11-09-2026: 373
+              # van de ~485 slagen over een afwezigheid van acht minuten.
+              '\n    <uses-permission android:name="android.permission.WAKE_LOCK" />'
           )
           m = re.search(r'<manifest\b[^>]*>', xml)
           if not m:
@@ -506,6 +512,7 @@ jobs:
           for naam, waarvoor in [
               ('FOREGROUND_SERVICE_CONNECTED_DEVICE', 'het servicetype dat bij een gekoppelde adapter hoort'),
               ('POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort'),
+              ('WAKE_LOCK', 'de partial wake lock die de CPU wakker houdt'),
               ('foregroundServiceType="connectedDevice"', 'het type op de service zelf'),
               ('%s.PLMeetdienst' % pakket, 'de service-klasse'),
           ]:
@@ -844,6 +851,7 @@ jobs:
           for naam, waarvoor in [
               ('android.permission.FOREGROUND_SERVICE', 'de meetdienst mag op de voorgrond draaien (#18)'),
               ('android.permission.POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort (#18)'),
+              ('android.permission.WAKE_LOCK', 'de partial wake lock van de meetdienst (#18)'),
           ]:
               if not any(naam in k for k in knopen):
                   print("FOUT: %s ontbreekt in de bundel (%s)" % (naam, waarvoor)); fout += 1

@@ -62,6 +62,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -72,6 +73,10 @@ public class PLMeetdienst extends Service {
     // 18 als in issue #18. Een willekeurig getal zou hier net zo goed werken,
     // maar dit maakt in een bugreport meteen duidelijk waar de melding vandaan komt.
     public static final int MELDING_ID = 18;
+    // Het etiket dat in `dumpsys power` en in de batterijstatistieken van het
+    // toestel terechtkomt. Een herkenbare naam is hier het verschil tussen
+    // "PidLane houdt de CPU wakker" en een anonieme regel.
+    public static final String WAKE_TAG = "PidLane:meetdienst";
     // Dezelfde seconde als de JavaScript-hartslag in pidlane-achtergrond.js.
     // Ze moeten hetzelfde tempo hebben, anders is "native deed 100 slagen en JS
     // 3" geen vergelijking maar een verschil in instelling.
@@ -97,6 +102,7 @@ public class PLMeetdienst extends Service {
 
     private HandlerThread draad = null;
     private Handler klopper = null;
+    private PowerManager.WakeLock wakeLock = null;
 
     /* Eén hartslag. Net als aan de JavaScript-kant doet hij met opzet niets
        anders dan opschrijven dát hij vuurde: elke regel code hierin is een
@@ -196,6 +202,7 @@ public class PLMeetdienst extends Service {
             return START_NOT_STICKY;
         }
 
+        wakeAan();
         synchronized (SLOT) { sDraait = true; }
         nulstel();
         if (klopper != null) {
@@ -208,9 +215,75 @@ public class PLMeetdienst extends Service {
         return START_STICKY;
     }
 
+    /* DE PARTIAL WAKE LOCK — erbij op 11-09-2026, en dat is gemeten werk.
+
+       Het issue schrijft richting 1 als "foreground service PLUS wake lock".
+       Tot vandaag stond alleen de service er. Wat dat opleverde, uit het
+       logboek van 11-09 11:11, drie afwezigheden op hetzelfde toestel:
+
+         77 s weg  -> native 78 van de 78 slagen,  0 s stil
+        310 s weg  -> native 310 van de 310 slagen, 0 s stil
+        485 s weg  -> native 373 van de ~485 slagen, grootste gat 34 s vanaf 222 s
+
+       De eerste twee zijn perfect. De derde niet, en de knik zit op ~3,7
+       minuten: ruim na een gebruikelijke schermtime-out. Een foreground
+       service houdt het PROCES uit de cached-toestand, maar hij houdt de CPU
+       niet wakker. Gaat het scherm uit en gaat het toestel slapen, dan vuurt
+       deze handler niet meer — en dan meet de meter zijn eigen slaap.
+
+       PLWake in index.html is iets anders en lost dit niet op: dat is een
+       SCHERM-wake-lock via de Screen Wake Lock API, en het OS geeft die vrij
+       zodra de app verborgen raakt. Juist dan is hij nodig.
+
+       GEEN TIME-OUT, en dat is een keuze. Een acquire() met tijdslimiet stopt
+       midden in een rit met beschermen, zonder dat iets dat meldt — precies de
+       stille vorm waar dit hele issue over gaat. De lock leeft daarom exact zo
+       lang als de dienst, en de dienst leeft zo lang als er een echte
+       adapterverbinding is.
+
+       DE PRIJS IS BATTERIJ. Zolang je verbonden bent blijft de CPU wakker,
+       ook met het scherm uit. In de auto hangt het toestel meestal aan de
+       lader; staat het dat niet, dan kost een lange rit merkbaar lading. Dat
+       staat zo in PIDLANE.md paragraaf 11. */
+    private void wakeAan() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) return;
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm == null) {
+                Log.w(TAG, "geen PowerManager — de CPU blijft niet wakker en de hartslag hapert bij een slapend toestel (#18)");
+                return;
+            }
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_TAG);
+            // Niet meetellen: onStartCommand kan vaker langskomen (een tweede
+            // verbinding, een herstart door het systeem) en dan zou een geteld
+            // slot na één release nog vastzitten.
+            wakeLock.setReferenceCounted(false);
+            wakeLock.acquire();
+            Log.i(TAG, "wake lock geclaimd — de CPU blijft wakker zolang de meting loopt (#18)");
+        } catch (Exception e) {
+            // Geen stille catch: zonder lock loopt de dienst door en hapert de
+            // hartslag pas na minuten. Dat is precies het soort uitval dat
+            // niemand terugvindt zonder deze regel.
+            Log.e(TAG, "wake lock niet geclaimd — de hartslag kan haperen zodra het toestel slaapt (#18)", e);
+        }
+    }
+
+    private void wakeUit() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+                Log.i(TAG, "wake lock vrijgegeven (#18)");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "wake lock niet netjes vrijgegeven (#18)", e);
+        }
+        wakeLock = null;
+    }
+
     @Override
     public void onDestroy() {
         synchronized (SLOT) { sDraait = false; }
+        wakeUit();
         try {
             if (klopper != null) klopper.removeCallbacks(tik);
             if (draad != null) draad.quitSafely();

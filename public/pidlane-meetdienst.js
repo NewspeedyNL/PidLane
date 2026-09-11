@@ -220,6 +220,12 @@
     return {
       gemeten: true,
       reden: null,
+      // De lengte van het meetvenster. Zonder dit getal kan de duiding
+      // hieronder geen VERHOUDING noemen, en dan weegt een hapering van drie
+      // seconden even zwaar als een stilte van vier minuten. Dat was op
+      // 11-09-2026 precies de fout: 34 s stilte in een afwezigheid van 485 s
+      // werd gemeld als "het hele proces is bevroren".
+      venster: Math.round((r.nu - r.van) / 1000),
       // Hoe lang het proces na het wegschakelen nog doorliep: de aanlooptijd.
       door: Math.round((stilMs ? st.van - r.van : r.nu - r.van) / 1000),
       // Hoe lang het werkelijk stillag.
@@ -252,9 +258,39 @@
       return kern + ' — het PROCES liep door maar de WEBVIEW lag stil. Een foreground service is dan niet ' +
         'genoeg: dit is Chromium die een verborgen pagina afknijpt, en daar helpt picture-in-picture of een ' +
         'native meetlus tegen (#18, richting C)';
-    if (nat.stil > grens && jsStil > grens)
-      return kern + ' — allebei stil: het hele proces is bevroren, ondanks de meetdienst. Noteer merk, ' +
-        'Android-versie en of de melding in de statusbalk stond (#18)';
+    if (nat.stil > grens && jsStil > grens) {
+      /* HIER STOND EEN OORDEEL DAT DE METING NIET DROEG, EN DAT IS OP
+         11-09-2026 GEMETEN. De regel luidde "allebei stil: het hele proces is
+         bevroren, ondanks de meetdienst", en hij vuurde bij élke native stilte
+         boven drie seconden. Wat er werkelijk gemeten was:
+
+           native: 222 s doorgelopen, 34 s stil (373 slagen) in 485 s
+
+         Het proces liep dus 222 seconden, viel 34 seconden stil, en tikte
+         daarna nog ruim 150 keer. "Het hele proces is bevroren" is een
+         uitspraak over 485 seconden op grond van 34.
+
+         Dat is dezelfde vorm als de bug van 08-09 in pidlane-achtergrond.js —
+         een melding die beweert wat hij niet gemeten heeft — en hij stond hier
+         drie dagen later alweer, in nieuwe code. Vandaar dat de duiding nu een
+         VERHOUDING noemt en niet alleen een drempel: een hapering in een lange
+         afwezigheid en een proces dat werkelijk stillag zijn twee dingen, en
+         ze vragen om een andere oplossing. */
+      var venster = nat.venster || 0;
+      var verwacht = (venster && nat.hartslagMs) ? Math.round(venster * 1000 / nat.hartslagMs) : 0;
+      var telling = verwacht ? ' (' + nat.slagen + ' van de ~' + verwacht + ' slagen)' : '';
+      // De helft van het venster als grens. Lag het proces langer stil dan dat,
+      // dan is "hij lag stil" de beste samenvatting; daaronder liep hij met
+      // onderbrekingen en is dat het nieuws.
+      if (!venster || nat.stil * 2 >= venster)
+        return kern + ' — het proces lag het grootste deel van de afwezigheid stil (' + nat.stil + ' s van ' +
+          venster + ' s)' + telling + ': de meetdienst hield hem niet wakker. Noteer merk, Android-versie en ' +
+          'of de melding in de statusbalk stond (#18)';
+      return kern + ' — de native hartslag HAPERDE ' + nat.stil + ' s in een afwezigheid van ' + venster + ' s' +
+        telling + '. Het proces leefde dus met onderbrekingen en was niet bevroren: dat past bij een toestel ' +
+        'dat gaat slapen (scherm uit) en niet bij de cached-app freezer. De dienst neemt sinds 11-09 een ' +
+        'partial wake lock; hapert hij tóch, dan is die lock niet toegekend of niet genoeg (#18)';
+    }
     return kern + ' — de webview liep door terwijl de native hartslag stillag. Dat hoort niet te kunnen; ' +
       'noteer het, want dan meet een van de twee iets anders dan hij denkt (#18)';
   }
