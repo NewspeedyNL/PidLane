@@ -86,6 +86,14 @@ var KRITIEK = [
   // hebben. Deze regel is toegevoegd omdat de bedradingscontrole er zelf FOUT
   // op gaf, precies zoals bij sppReconnectGuard hierboven.
   'pidByteLen',
+  // De native meetdienst volgt de verbinding (#18, 10-09-2026).
+  // pidlane-meetdienst.js wikkelt setConn achter een typeof-guard, want die
+  // functie woont in pidlane-uihelpers.js en dat bestand laadt eerder.
+  // Verdwijnt hij, dan doet de guard niets: de foreground service start nooit,
+  // de meting valt op de achtergrond stil en de app meldt dat niet -- want er
+  // is niets misgegaan, er is alleen niets gebeurd. Precies de stille vorm van
+  // #18 zelf, en daarom hier en niet in GEEN_GLOBALE.
+  'setConn',
   'selectCategoryPIDs','sendCmd','splitBatchResponse','steunbitsRuw','setLeftPanelForMode','showToast','showVtag','startPoll',
   'togglePID','tokSave',
   'uitlogBezig','uitlogVlagAan',

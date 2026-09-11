@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.4 (08-09-2026)';
+const TESTRUN_VERSIE = '7.5 (11-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -3180,6 +3180,78 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── #18: doet de native meetdienst wat hij belooft? ───────────
+  // De vorige proef meet wat de WEBVIEW deed. Deze meet wat het PROCES deed,
+  // en dat verschil is de hele reden dat de meetdienst bestaat: van buiten
+  // zien een bevroren proces en een afgeknepen pagina er hetzelfde uit, en ze
+  // vragen om een andere oplossing.
+  {
+    issue: '#18',
+    naam: '#18 — houdt de native meetdienst het proces aan de praat?',
+    waarom: 'Of een foreground service de bevriezing wegneemt, is met redeneren niet te beantwoorden — Chromium throttelt op zichtbaarheid en niet op procesprioriteit. Alleen twee hartslagen naast elkaar zeggen welk van de twee mechanismen de meting stilzette.',
+    proef: async function () {
+      const schil = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+      if (!window.PLMeetdienst)
+        return { staat: 'FOUT', detail: 'PLMeetdienst ontbreekt — dan is er niets dat het proces wakker houdt ' +
+          'en niets dat meet of dat zou helpen (#18)' };
+      if (!schil)
+        return { staat: 'LET OP', detail: 'geen Capacitor-schil (browser of PWA) — een foreground service bestaat hier niet, ' +
+          'dus over #18 zegt deze proef niets' };
+      if (!PLMeetdienst.beschikbaar())
+        return { staat: 'FOUT', detail: 'de schil heeft geen native meetdienst: ' + (PLMeetdienst.reden() || 'reden onbekend') +
+          '. Dit is een APK van vóór de meetdienst, óf de plugin is niet geregistreerd — en die twee zijn van binnenuit ' +
+          'niet te onderscheiden (#18)' };
+
+      let st = {};
+      try { st = (await PLMeetdienst.status()) || {}; }
+      catch (e) { return { staat: 'LET OP', detail: 'PLMeetdienst.status() gaf een fout: ' + (e.message || e) }; }
+
+      const moet = PLMeetdienst.nodig();
+      const kop = 'schil met meetdienst (Android SDK ' + (st.sdk || '?') + '), hartslag ' + (st.hartslagMs || '?') + ' ms  |  ' +
+        'verbonden: ' + (moet ? 'ja' : 'nee') + ', dienst draait: ' + (st.draait ? 'ja' : 'nee');
+
+      // DE HARDE POORT. Er is een echte adapterverbinding, dus de dienst hoort
+      // te draaien. Doet hij dat niet, dan valt de meting bij het eerste
+      // wegschakelen stil op precies de manier waar #18 over gaat — en de
+      // reden staat klaar, want die is bij het starten bewaard.
+      if (moet && !st.draait)
+        return { staat: 'FOUT', detail: kop + ' — er is verbinding maar de meetdienst draait niet: ' +
+          (PLMeetdienst.reden() || 'geen reden vastgelegd') + '. Op de achtergrond valt de meting dan stil (#18)' };
+      if (!moet && st.draait)
+        return { staat: 'LET OP', detail: kop + ' — de dienst draait zonder verbinding. Dat is een melding in de ' +
+          'statusbalk zonder meting eronder; hij hoort mee te stoppen met de verbinding' };
+
+      // En dan de meting zelf, als de achtergrondstap gedaan is.
+      const m = _markeringen.filter(function (x) { return /achtergrond in/i.test(x.tekst); }).pop();
+      if (!m) return kop + ' — de dienst staat goed; de achtergrondstap is niet gedaan, dus over de bevriezing ' +
+        'zegt deze rit nog niets';
+
+      let bgs = [];
+      try { bgs = (window.PLAchtergrond && PLAchtergrond.sinds(m.ms - 2000)) || []; }
+      catch (e) { return { staat: 'LET OP', detail: kop + ' — PLAchtergrond.sinds() gaf een fout' }; }
+      const metNative = bgs.filter(function (x) { return x.native && x.native.gemeten; });
+      if (!bgs.length)
+        return { staat: 'LET OP', detail: kop + ' — geen onderbreking sinds de markering. Ben je wel echt weg geweest?' };
+      if (!metNative.length)
+        return { staat: 'LET OP', detail: kop + ' — de app was weg, maar er is geen native meting bij die periode ' +
+          'terechtgekomen: ' + ((bgs[bgs.length - 1].native && bgs[bgs.length - 1].native.reden) || 'reden onbekend') +
+          '. Dan valt er niets naast de hartslag van de webview te leggen (#18)' };
+
+      /* DIT IS DE UITKOMST WAAR DE HELE RONDE OM DRAAIT, en hij wordt met
+         opzet niet als FOUT geboekt. Alle drie de mogelijkheden zijn een
+         geldig meetresultaat; twee ervan wijzen alleen een andere kant op dan
+         gehoopt. Een bevinding maken van "het werkte niet" zou de meting
+         verwarren met het oordeel — dezelfde fout die deze proef bij zijn
+         buurman hierboven op 08-09 kwam repareren. */
+      const p = metNative[metNative.length - 1];
+      const zin = PLMeetdienst.duiding(p.native, p);
+      const rest = metNative.length > 1 ? '  |  ' + (metNative.length - 1) + ' eerdere periode(n) ook gemeten' : '';
+      const opgelost = p.native.stil <= 3 && typeof p.stil === 'number' && p.stil <= 3;
+      if (opgelost) return kop + '  |  ' + zin + rest;
+      return { staat: 'LET OP', detail: kop + '  |  ' + zin + rest };
+    }
+  },
+
   // ── #17: UTC in de recorder, lokale tijd in de logger ──────────
   // Dit is de goedkoopste van de zes en had er allang moeten staan: het bewijs
   // ligt in het sessie-id van de recorder en op de klok van het toestel. Tot nu
@@ -5656,7 +5728,7 @@ const _STAPPEN = [
     ronde: 'rit', nodig: 'rijden', issues: ['#18'],
     titel: 'Zet de app twee minuten op de achtergrond',
     waarom: '#18 zegt dat de pollus, de recorder en de logger tegelijk stoppen zodra de app naar de achtergrond gaat. Dat is niet vanaf een bureau te meten en ook niet uit een log te reconstrueren: het moet gebeuren terwijl de ritwaarnemer loopt, want alleen dan is het gat van dít moment.',
-    wat: 'Druk op de knop hieronder, ga daarna naar het beginscherm van de telefoon (of open een andere app) en laat PidLane twee minuten met rust. Kom dan terug en druk op Verder. Blijf rijden — een gat bij stilstand zegt minder.',
+    wat: 'Druk op de knop hieronder, ga daarna naar het beginscherm van de telefoon (of open een andere app) en laat PidLane twee minuten met rust. Kom dan terug en druk op Verder. Blijf rijden — een gat bij stilstand zegt minder. KIJK ONDERWEG ÉÉN KEER NAAR DE STATUSBALK: staat er een PidLane-melding dat de meting doorloopt? Dat is de nieuwe meetdienst (#18), en of die melding er stond is het enige dat de app zelf niet kan vaststellen.',
     actie: { label: '📴 Ik ga nu naar de achtergrond', fn: function () {
       plMarkeer('achtergrond in', 'app naar de achtergrond — het gat hierna is de meting voor #18');
       return 'moment vastgelegd; ga nu weg en kom over twee minuten terug';
@@ -6444,23 +6516,25 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 10-09 (zevende) — de rit kost alleen nog wat een rit kost',
+  titel: 'OPLEVERING 11-09 (achtste) — de eerste rit met een native meetdienst (#18)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'Deze ronde voegt niets toe aan de app. Hij haalt weg. De begeleide run had vijftien stappen, en negen daarvan noemden een issue als reden — zeven van die negen waren dicht (#19, #15, #29, #68, #66, #79, #58). De duurste was de rijstap: die eiste tien minuten omdat de opruimregel vijf pogingen plus vijf herkansingen nodig heeft, en dát issue (#29) is op 02-09 gesloten met een node-test als tegenproef.',
-    'WAT DAT KOSTTE. Een rit is de schaarse grondstof. Alles wat een rit kost en niets oplevert, kost ook de stappen die er niet meer bij passen — op 08-09 stonden er zes issues te wachten op een rit en werd er één ronde gereden. Elf van de vijftien stappen hadden bovendien helemaal geen RIJDENDE auto nodig; ze stonden alleen in de ritvolgorde omdat de lijst zo gegroeid was.',
-    'WAT ER VERANDERD IS. Er zijn nu twee rondes uit één lijst. De MEETRIT bevat alleen wat een rijdende auto nodig heeft plus de voorbereiding die eraan vastzit. De TOESTELRONDE draait stilstaand — op de parkeerplaats of thuis — en bevat de schermoordelen, het logboek en de meetcontextvragen. De optrekstap is weg: blok 14 leidt de turbovraag al af uit de min/max van PLRit en had die markering nooit nodig.',
-    'EN DE RIJSTAP SLUIT NU OP DE OOGST. Niet "hoe lang reed je" maar "is het binnen": snelheid bewezen, spreiding op de MAP gezien (dat is wat de optrekstap deed), en elke meet-PID uit de selectie twee keer ververst. Tien minuten stapvoets in de file leverden minder op dan drie minuten met wisselend gas, en de bestuurder kreeg in beide gevallen hetzelfde antwoord.',
+    '#18 STAAT SINDS 27-08 OPEN EN IS TWEE KEER HARD GEMETEN. 02-09 stationair: 120 s weg, waarvan ~36 s doorgelopen en ~84 s stil. 09-09 rijdend met de bus op 93%: 182 s weg, waarvan 50 s doorgelopen en 132 s stil. Geen fout, geen poging, geen watchdog — het proces liep niet. Wat daarna openbleef was niet WAT er gebeurt maar WAARDOOR, en die vraag is met redeneren niet te beantwoorden.',
+    'ER ZIJN NAMELIJK TWEE MECHANISMEN DIE HETZELFDE OPLEVEREN. Android bevriest een proces dat in de cached-toestand terechtkomt: dan staat alles stil, JavaScript én native code. Chromium knijpt een verborgen pagina af: dan loopt het proces door en ligt alleen de WebView stil. Van buiten zien die twee er identiek uit — de meetlus doet niets — en ze vragen om een compleet andere oplossing. Een foreground service helpt tegen de eerste en doet tegen de tweede niets, want die throttelt op zichtbaarheid en niet op procesprioriteit.',
+    'DEZE RONDE ZET DAAROM EEN TWEEDE HARTSLAG NAAST DE EERSTE. De app telde al hoe lang de WEBVIEW stillag (de hartslag in pidlane-achtergrond.js, sinds 08-09). Er draait nu een native foreground service mee die hetzelfde doet voor het PROCES. Twee tellers over hetzelfde venster, en het verschil ertussen is het antwoord: liep native door terwijl de webview stillag, dan is dit niet genoeg en is picture-in-picture of een native meetlus de volgende stap. Lagen ze allebei stil, dan hield de dienst het proces niet wakker. Liepen ze allebei door, dan is #18 opgelost.',
+    'DE MEETDIENST IS DUS TEGELIJK DE KANDIDAAT-OPLOSSING EN HET MEETINSTRUMENT. Dat is met opzet: de keuze tussen die drie richtingen kost bij de verkeerde uitslag weken werk, en het issue zegt zelf dat een plausibele redenering geen bewijs is.',
     '── STAP VOOR STAP ────────',
-    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Verder hoef je niets te onthouden: beide rondes staan in het testrunscherm als eigen knop, en elke stap zegt zelf wat hij wil.',
-    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op — de rijstap laat live zien wat er nog ontbreekt en gaat vanzelf op groen. Daarna twee minuten naar de achtergrond (#18) en als laatste de adapter er even uit (#133). Het meten en het verslag doet de run zelf.',
-    'DE TOESTELRONDE (📱). Doe deze vlak na de rit, stilstaand met een warme motor — dan zijn de temperaturen uit elkaar getrokken en beweegt er iets als je gas geeft. Vier oordelen die alleen een mens kan geven (live view, slimme weergave, onderrand, logboek) plus de drie meetcontextvragen (#64). Die vragen openden tot vandaag ACHTER het testrunscherm; dat is gerepareerd, het scherm zakt er nu onder.',
-    'NA AFLOOP. Het verslag sluit af met "WAT DEZE RONDE VOEDT" — de open issues die deze ronde werkelijk geraakt heeft. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop; een heel verslag hoort niet in een issue.',
+    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden) EN installeer de nieuwe APK. Dit is de eerste ronde waarbij dat tweede echt moet: de meetdienst zit in de schil, niet in de webpagina. Draai je de nieuwe pagina op een oude APK, dan meldt blok 5 "de schil heeft geen native meetdienst" en zegt deze ronde niets.',
+    'BIJ HET VERBINDEN. Android 13+ vraagt eenmalig toestemming voor meldingen. Geef die — de dienst draait ook zonder, maar dan is er geen melding om naar te kijken, en juist die melding is het enige dat de app zelf niet kan vaststellen.',
+    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op — de rijstap laat live zien wat er nog ontbreekt en gaat vanzelf op groen. Daarna twee minuten naar de achtergrond (#18): KIJK IN DIE TWEE MINUTEN ÉÉN KEER NAAR DE STATUSBALK en onthoud of de PidLane-melding er stond. Als laatste de adapter er even uit (#133). Het meten en het verslag doet de run zelf.',
+    'DE TOESTELRONDE (📱). Doe deze vlak na de rit, stilstaand met een warme motor — dan zijn de temperaturen uit elkaar getrokken en beweegt er iets als je gas geeft. Vier oordelen die alleen een mens kan geven (live view, slimme weergave, onderrand, logboek) plus de drie meetcontextvragen (#64).',
+    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, en zet er twee dingen bij die niet in het verslag staan: STOND DE MELDING IN DE STATUSBALK, en wat het toestel is (merk, Android-versie). De aanlooptijd verschilt per fabrikant, en zonder die twee is een getal niet te vergelijken met de metingen van 02-09 en 09-09.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'DE OOGSTPOORT IS NOG NOOIT IN EEN AUTO GEDRAAID. De drempels — 15 km/u voor "gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet gemeten. Ze staan in test-begeleid.js met een tegenproef eronder, maar of ze in de praktijk op het goede moment groen worden, weet je pas na een rit. Blijkt de poort te vroeg of te laat te sluiten, dan is dát de bevinding van deze ronde.',
-    '#18 ZELF BLIJFT STAAN. De achtergrondstap levert de getallen waarmee de keuze tussen foreground service en picture-in-picture onderbouwd wordt, maar de bevriezing zelf is native werk en niet vanuit JavaScript te repareren.',
+    'DE MEETDIENST IS NOG NOOIT OP EEN TOESTEL GEDRAAID. Hij compileert, het manifest wordt bij elke build op drie punten nagekeken en de app-kant is in node getoetst tot aan de plugin-aanroep. Wat daarachter gebeurt — of Android de service accepteert, of de melding verschijnt, of het proces werkelijk wakker blijft — is niet na te bouwen zonder toestel. DIT IS DE BEVINDING VAN DEZE RONDE, welke kant hij ook op valt.',
+    'DE UITSLAG "NIET GENOEG" IS GEEN FOUT. Blok 5 boekt de vergelijking als LET OP en niet als FOUT zolang er iets stillag. Alle drie de uitkomsten zijn een geldige meting; twee ervan wijzen alleen een andere kant op dan gehoopt. Er een bevinding van maken zou de meting met het oordeel verwarren — dezelfde fout die de #18-proef op 08-09 kwam repareren.',
+    'DE AANLOOPTIJD IS NOG STEEDS MAAR TWEE METINGEN OP ÉÉN TOESTEL. 36 s en 50 s, allebei op een SM-S947B. Dat de dienst het gat moet overbruggen weten we; hoe lang dat gat op een ander merk is, niet.',
+    'DE OOGSTPOORT IS NOG NOOIT IN EEN AUTO GEDRAAID. De drempels — 15 km/u voor "gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet gemeten. Ze staan in test-begeleid.js met een tegenproef eronder, maar of ze in de praktijk op het goede moment groen worden, weet je pas na een rit.',
     '#161 KRIJGT GEEN BESLUIT UIT EEN RIT. Welke drempel "beweegt" moet krijgen is een ontwerpkeuze, geen meetvraag — blok 5 meet de getallen elke ronde en die staan er al. Het oordeel in de toestelronde gaat alleen over of het BEELD klopt.',
-    'DE SCHILGRENS OP DE KOOPKNOP KAN OP DIT TOESTEL ONGEMETEN BLIJVEN. Sinds 10-09 houdt _betaallink() de Tikkie-link in de Play-schil tegen, wat er ook in de Config-tabel staat. Blok 5 meet dat, maar alleen als `tikkie_kopen` op dat moment GEVULD is: staat de sleutel leeg, dan geeft de proef LET OP in plaats van een uitkomst, en dat is geen bevinding maar een ontbrekende voorwaarde. Wil je de grens echt zien werken, zet de sleutel dan tijdelijk in admin.html en draai blok 5 opnieuw.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };

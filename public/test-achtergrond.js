@@ -90,6 +90,25 @@ function bouw(opties) {
     s.setInterval = function (fn) { s.timers.gestart++; s.timers.fn = fn; return ++s.timers.id; };
     s.clearInterval = function () { s.timers.gestopt++; s.timers.fn = null; };
   }
+  /* DE NATIVE MEETDIENST, NAGEMAAKT TOT DE GRENS DIE IN DE APP OOK DE GRENS IS
+     (#18). pidlane-achtergrond.js hoort de teller van de meetdienst op nul te
+     zetten zodra de app verdwijnt, en bij terugkomst het rapport op te halen.
+     Ontbreekt die koppeling, dan meet de native hartslag over een venster dat
+     nergens bij hoort — en dat levert een getal op dat er goed uitziet en niets
+     betekent. `o.meetdienst=false` bootst een browser na: dan hoort deze module
+     precies niets te doen en `native` op null te laten staan. */
+  s.meet = { nulstel: 0, rapport: 0 };
+  if (o.meetdienst !== false) {
+    s.PLMeetdienst = {
+      nulstel: function () { s.meet.nulstel++; return Promise.resolve(true); },
+      rapport: function () { s.meet.rapport++; return Promise.resolve(o.rapport || null); },
+      oordeel: function (r) {
+        return r ? { gemeten: true, reden: null, door: r.door, stil: r.stil, na: 0, slagen: r.slagen, hartslagMs: 1000 }
+                 : { gemeten: false, reden: 'geen native meetdienst in deze schil', door: null, stil: null, na: null, slagen: null };
+      },
+      duiding: function (nat) { return nat.gemeten ? 'native: ' + nat.door + ' s door, ' + nat.stil + ' s stil' : 'native niet gemeten'; }
+    };
+  }
   vm.createContext(s);
   // Een stuurbare klok, vóór de module. Zonder dit hangt de test aan de echte
   // tijd: twee overgangen vlak na elkaar landen dan in dezelfde milliseconde en
@@ -363,5 +382,54 @@ console.log('\n── de luisteraar hangt aan visibilitychange ──');
   toets('visible zet hem uit', s.PLAchtergrond.weg(), false);
 }
 
-console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
-process.exit(fout ? 1 : 0);
+/* De laatste sectie is async, en dat is geen stijlkeuze. De native kant
+   antwoordt met een belofte; terug() blijft synchroon omdat hij aan
+   visibilitychange hangt. De periode wordt dus AANGEVULD zodra het antwoord er
+   is, en dat valt alleen te toetsen door de microtaken te laten lopen. */
+(async function () {
+
+  console.log('\n── de native meetdienst wordt op nul gezet bij het weggaan (#18) ──');
+  {
+    const s = bouw();
+    toets('nog niets gebeurd', s.meet.nulstel, 0);
+    s.PLAchtergrond._heen();
+    // DIT is het moment waarop het kan: vanaf hier is er geen garantie meer
+    // dat er nog JavaScript draait. Gebeurt het later, dan meet de native
+    // hartslag over een venster dat niet bij deze afwezigheid hoort.
+    toets('heen() zet de native teller op nul', s.meet.nulstel, 1);
+    loopt(s, 5000);
+    s.PLAchtergrond._terug();
+    toets('en terug() vraagt het rapport op', s.meet.rapport, 1);
+  }
+
+  console.log('\n── zonder native kant blijft native null, en niet nul ──');
+  {
+    // Een browser, een PWA, of elke APK van vóór deze ronde. "Niet gemeten"
+    // als nul lezen is de fout die #18 anderhalve week een verkeerd getal
+    // liet rapporteren.
+    const s = bouw({ meetdienst: false });
+    const r = wegGeweest(s, 60000);
+    toets('er is een periode', r.nieuw, 1);
+    toets('native blijft null', r.p.native, null);
+    toets('en er is niets opgevraagd', s.meet.rapport, 0);
+  }
+
+  console.log('\n── het native oordeel wordt aan de periode geplakt ──');
+  {
+    const s = bouw({ rapport: { door: 50, stil: 132, slagen: 50 } });
+    const r = wegGeweest(s, 182000);
+    toets('meteen na terug() staat het er nog niet', r.p.native, null);
+    await null; await null; await null;
+    // Blok 5 en blok 14 lezen de lijst aan het eind van een rit; dan staat hij
+    // er allang in. Deze toets bewijst dat hij er ooit in komt.
+    toets('en daarna wel', r.p.native && r.p.native.gemeten, true);
+    toets('met de aanlooptijd erbij', r.p.native.door, 50);
+    toets('en de gemeten stilte', r.p.native.stil, 132);
+    const nat = s.logs.filter(function (x) { return /native/.test(x.m); });
+    toets('er staat één native regel in het logboek', nat.length, 1);
+    toets('en die is een waarschuwing, want er lag iets stil', nat[0].niveau, 'warn');
+  }
+
+  console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
+  process.exit(fout ? 1 : 0);
+})();
