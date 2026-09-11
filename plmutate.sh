@@ -570,6 +570,34 @@ MUTATIES=(
 # stil: de tip verschijnt gewoon niet.
 "public/pidlane-pids.js@@  var g = document.getElementById('gGrid');@@  var g = document.getElementById('gauges');@@test-tegeltip.js@@de tip zoekt een container die niet bestaat en verschijnt stil nooit meer"
 "public/pidlane-uihelpers.js@@  if(name==='live'){ try{ _tegelTipEenmalig(); }catch(e){ console.warn('Dubbeltik-tip niet getoond:', e); } }@@@@test-tegeltip.js@@de haak op de Live view is weg en niets roept de tip nog aan"
+
+# ── Geld en privacy hadden geen tegenproef (11-09-2026) ──
+# Vier van de zwaarste tests in deze repo stonden groen zonder dat iemand ooit
+# gemeten had of ze rood kúnnen worden: het saldoslot, het proeftegoed, de
+# VIN-pseudonimisering en de toestemmingstekst. Dat zijn precies de vier waar
+# een stille fout niet "een knop doet het niet" betekent maar "de klant betaalt
+# dubbel" of "een chassisnummer verlaat het toestel".
+
+# Het saldoslot. Beide fouten hieronder zijn de vriendelijke soort: iemand die
+# een harde stop wegneemt omdat hij hem overdreven vindt.
+"worker.js@@  if (!env.REMOTE_SESSION) throw new Error(\"geen REMOTE_SESSION-binding — saldo kan niet veilig gemuteerd worden\");@@  if (!env.REMOTE_SESSION) return { bezet: false, result: await fn() };@@test-saldo-slot.js@@zonder binding gaat de saldomutatie onbeschermd door in plaats van te stoppen"
+"worker.js@@  if (!grendel.ok) return { bezet: true, result: void 0 };@@  if (!grendel.ok) console.log(\"slot bezet, toch proberen\");@@test-saldo-slot.js@@een mislukte grendel wordt genegeerd: twee verzoeken muteren tegelijk hetzelfde saldo"
+
+# Het proeftegoed. De eerste is letterlijk de bug van #49 terug: onbekend saldo
+# als proeftegoed lezen, waarna elke wis-actie 25 tokens uitdeelt.
+"public/pidlane-credits.js@@    if (raw === null || raw === '') return 0;@@    if (raw === null || raw === '') return 25;@@test-proeftegoed.js@@onbekend saldo leest weer als proeftegoed: wissen deelt tokens uit (#49)"
+"public/pidlane-credits.js@@    return !(raw === null || raw === '');@@    return true;@@test-proeftegoed.js@@de derde toestand valt weg: een toestel dat nooit een saldo zag denkt dat het er een heeft"
+
+# De VIN. De tweede is de fout die je niet ziet: alles blijft werken, het
+# pseudoniem blijft 16 hextekens en blijft stabiel — maar zonder zout rekent
+# een tabel een VIN terug, en dan klopt de toestemmingstekst niet meer.
+"public/pidlane-veldlab.js@@    delete v.vin;@@@@test-vin-anoniem.js@@het chassisnummer blijft in het verzonden record staan"
+"public/pidlane-veldlab.js@@  const buf=new TextEncoder().encode(VL_VIN_ZOUT+':'+schoon);@@  const buf=new TextEncoder().encode(schoon);@@test-vin-anoniem.js@@het zout valt weg: het pseudoniem is een kale SHA-256 van de VIN en dus terug te rekenen"
+
+# De toestemmingstekst. Beide zijn een redactionele verbetering die de
+# juridische lading omgooit — en een eerder gegeven akkoord ongeldig maakt.
+"public/pidlane-klant.js@@'Dat is pseudonimisering en geen anonimisering: wie ' +@@'Dat is volledig anoniem: wie ' +@@test-toestemmingstekst.js@@het akkoordscherm belooft anonimisering die de app niet levert"
+"public/pidlane-klant.js@@_vink('onbAnon', 'Meetdata delen onder een pseudoniem',@@_vink('onbAnon', 'Meetdata anoniem delen',@@test-toestemmingstekst.js@@de kop van het vinkje zegt anoniem terwijl de uitleg eronder pseudoniem zegt"
 )
 
 echo
