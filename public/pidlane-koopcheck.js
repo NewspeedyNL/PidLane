@@ -747,7 +747,7 @@ function openDeepDiag(){
     '<div style="display:flex;align-items:center;gap:12px;padding:calc(18px + var(--pl-sat,0px)) 18px 10px;flex-shrink:0">'+
       '<div id="ddProgRow" style="display:flex;align-items:center;gap:12px;flex:1">'+
         '<div id="ddProgTxt" style="font-size:15px;font-weight:800;color:#7aa2ff;white-space:nowrap"></div>'+
-        '<div style="flex:1;height:6px;background:#1a2030;border-radius:3px;overflow:hidden"><div id="ddProg" style="height:100%;width:0;background:#2f6bff;transition:width .3s"></div></div>'+
+        '<div style="flex:1;height:6px;background:#1a2030;border-radius:3px;overflow:hidden"><div id="ddProg" style="height:100%;width:0;background:var(--blv);transition:width .3s"></div></div>'+
       '</div>'+
       '<button id="ddClose" onclick="closeDeepDiag()" style="background:none;border:none;color:#8a93a6;font-size:26px;cursor:pointer;line-height:1;flex-shrink:0;padding:0 4px">\u2715</button>'+
     '</div>'+
@@ -759,7 +759,7 @@ function openDeepDiag(){
     '</div>'+
     '<div id="ddFoot" style="display:flex;gap:12px;padding:14px 18px calc(20px + var(--pl-sab,0px));flex-shrink:0;border-top:1px solid #1a2030">'+
       '<button id="ddPrev" onclick="ddPrev()" style="padding:16px 22px;border-radius:12px;border:1px solid #2a3550;background:transparent;color:#cdd5e5;font-family:var(--f);font-size:18px;font-weight:800;cursor:pointer">\u2190</button>'+
-      '<button id="ddNext" onclick="ddNext()" style="flex:1;padding:16px;border-radius:12px;border:none;background:#2f6bff;color:#fff;font-family:var(--f);font-size:17px;font-weight:800;cursor:pointer">Volgende \u2192</button>'+
+      '<button id="ddNext" onclick="ddNext()" style="flex:1;padding:16px;border-radius:12px;border:none;background:var(--blv);color:#fff;font-family:var(--f);font-size:17px;font-weight:800;cursor:pointer">Volgende \u2192</button>'+
     '</div>';
   ov.style.display='flex';
   ddRender();

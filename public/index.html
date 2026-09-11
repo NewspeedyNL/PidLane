@@ -877,6 +877,7 @@ function closeConnOv(){
       <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
       <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
+      <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">🎨 Thema<span style="margin-left:auto;display:flex;gap:4px"><button class="kb-seg" id="thLicht" onclick="plThemaZet('licht')">Licht</button><button class="kb-seg" id="thDonker" onclick="plThemaZet('donker')">Donker</button></span></div>
       <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
       <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot
            08-09-2026 en zit nu in het Run-venster rechtsboven (#123). Reden: hij

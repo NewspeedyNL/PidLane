@@ -446,7 +446,7 @@ function _vraagKenteken(){
           'style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:9px;' +
           'border:1px solid var(--bd,#28324a);background:var(--sur2,#1b2333);color:var(--tx,#eef2fa);' +
           'font:600 15px var(--f);text-transform:uppercase;letter-spacing:.06em;text-align:center">' +
-        '<button id="bpOk" style="width:100%;margin-top:10px;background:var(--ac,#4d82ff);color:#fff;border:0;' +
+        '<button id="bpOk" style="width:100%;margin-top:10px;background:var(--bl);color:#fff;border:0;' +
           'border-radius:9px;padding:12px;font:700 14px var(--f);cursor:pointer">Opzoeken bij de RDW</button>' +
         '<button id="bpSkip" style="width:100%;margin-top:7px;background:var(--sur2,#1b2333);' +
           'color:var(--tx2,#9aa6bd);border:1px solid var(--bd,#28324a);border-radius:9px;padding:11px;' +

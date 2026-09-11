@@ -114,7 +114,7 @@
             'De volledige privacyverklaring staat op ' +
             '<a href="' + PRIVACY_URL + '" target="_blank" rel="noopener" style="color:var(--bl,#4d82ff)">app.pidlane.nl/privacy</a>. ' +
             'Je kunt deze uitleg later teruglezen via het menu.</div>' +
-          '<button id="btDiscOk" style="width:100%;background:var(--ac,#4d82ff);color:#fff;border:0;border-radius:9px;' +
+          '<button id="btDiscOk" style="width:100%;background:var(--bl);color:#fff;border:0;border-radius:9px;' +
             'padding:13px;font:700 14px var(--f);cursor:pointer;margin-bottom:8px">Akkoord, verbind met mijn auto</button>' +
           '<button id="btDiscNee" style="width:100%;background:var(--sur2,#1b2333);color:var(--tx2,#9aa6bd);' +
             'border:1px solid var(--bd,#28324a);border-radius:9px;padding:12px;font:600 13px var(--f);cursor:pointer">' +

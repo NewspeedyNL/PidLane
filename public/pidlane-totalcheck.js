@@ -29,7 +29,7 @@ function pickOnderdelen(title, options){
     ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
     const rows=options.map(o=>`
       <label style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--bd);border-radius:9px;margin-bottom:6px;cursor:pointer">
-        <input type="checkbox" data-k="${o.key}" checked style="width:18px;height:18px;accent-color:var(--ac,#4a9eff)">
+        <input type="checkbox" data-k="${o.key}" checked style="width:18px;height:18px;accent-color:var(--bl)">
         <span style="font-size:18px;width:22px;text-align:center">${o.icon||'•'}</span>
         <span style="flex:1;font-size:14px;font-weight:600">${o.label}</span>
         ${o.sub?`<span style="font-size:12px;color:var(--tx3)">${o.sub}</span>`:''}

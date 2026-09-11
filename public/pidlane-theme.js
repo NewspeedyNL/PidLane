@@ -7,12 +7,47 @@
 // ════════════════════════════════════════
 // THEME / FONT / ZOOM
 // ════════════════════════════════════════
+/* ══ THEMA — EEN KEUZE, GEEN VASTE STAND (#141, 11-09-2026) ══
+   Hier stond `isDark = true` met "thema-knop verwijderd: altijd donker
+   thema" erachter. `ns_theme` werd wél uitgelezen en daarna weggegooid.
+
+   DRIE PLEKKEN BEWEERDEN IETS ANDERS, en dat is hoe dit anderhalve maand
+   onopgemerkt bleef:
+
+     pidlane-theme.js  regel 12   "altijd donker thema"        ← wat de code deed
+     pidlane-theme.js  regel 213  "app gebruikt standaard het lichte thema"
+     pidlane.css       regel 3    "LIGHT THEME (default)"
+
+   Het lichte thema is compleet uitgewerkt — alle tokens staan er — en was
+   onbereikbaar. #141 vraagt "een light thema zou kunnen"; dat thema lag er
+   dus al, achter één regel.
+
+   NAGEMETEN VOORDAT HET BEREIKBAAR WERD. Een contrastmeting over het
+   hoofdscherm en zes dashboards in beide thema's gaf één tekst onder 4,5:1
+   per thema — niet meer. Het lichte thema is dus niet half af; het is
+   alleen nooit aangezet. Zie bproef-contrast.js.
+
+   DE STANDAARD BLIJFT DONKER. Iedereen die de app nu gebruikt heeft een
+   donkere app, en die bij een update stilletjes laten omslaan is geen
+   verbetering maar een schrik. Wie licht wil, kiest het. */
+var PL_THEMA_SLEUTEL = 'ns_theme';
+function plThemaZet(naam){
+  var licht = (naam === 'licht');
+  isDark = !licht;
+  document.documentElement.classList.toggle('dark', isDark);
+  try{ localStorage.setItem(PL_THEMA_SLEUTEL, licht ? 'licht' : 'donker'); }
+  catch(e){ console.warn('Themakeuze niet opgeslagen — hij valt terug op donker:', e); }
+  try{
+    ['thLicht','thDonker'].forEach(function(id){ var b=document.getElementById(id); if(b) b.classList.remove('on'); });
+    var aan = document.getElementById(licht ? 'thLicht' : 'thDonker'); if(aan) aan.classList.add('on');
+  }catch(e){ console.warn('Themaknoppen niet bijgewerkt:', e); }
+}
+window.plThemaZet = plThemaZet;
 (function initThemeDefault(){
-  var saved=null; try{ saved=localStorage.getItem('ns_theme'); }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
-  isDark = true;            // thema-knop verwijderd: altijd donker thema
-  document.documentElement.classList.toggle('dark',isDark);
-  function setBtn(){ /* #themeBtn bestaat niet meer; het thema wisselt via het kebabmenu. */ }
-  setBtn(); try{ document.addEventListener('DOMContentLoaded',setBtn); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+  var saved=null; try{ saved=localStorage.getItem(PL_THEMA_SLEUTEL); }catch(e){ console.warn('Themavoorkeur onleesbaar — donker:', e); }
+  plThemaZet(saved === 'licht' ? 'licht' : 'donker');
+  try{ document.addEventListener('DOMContentLoaded', function(){ plThemaZet(isDark ? 'donker' : 'licht'); }); }
+  catch(e){ console.warn('Themaknoppen niet gekoppeld aan DOMContentLoaded:', e); }
 })();
 // ── BUSY-INDICATOR: duidelijke animatie bij hoog busverkeer ──
 // Toont een pill onder de topbar zolang discovery/health-scan/Full Survey de
@@ -210,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // Restore opgeslagen voorkeuren
   try{
-    // donker/licht-toggle verwijderd — app gebruikt standaard het lichte thema
+    // Het thema staat hierboven (plThemaZet) en wordt uit ns_theme hersteld.
     const sf=localStorage.getItem('ns_font');
     if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';const _fl=document.getElementById('fontLbl');if(_fl)_fl.textContent=currentFont;}
     // ns_zoom NIET meer herstellen (2026-07-15): de zoombalk is verwijderd,
