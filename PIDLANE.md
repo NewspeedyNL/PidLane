@@ -994,6 +994,18 @@ alleen een andere kant op dan gehoopt. Er een bevinding van maken zou de meting
 met het oordeel verwarren — dezelfde fout die de #18-proef op 08-09 kwam
 repareren.
 
+**Onderweg gevonden, en niet in deze ronde gerepareerd: `window.connected`
+zetten doet niets.** `connected` en `demoMode` staan in `pidlane-auth.js` met
+`let` op het hoogste niveau. Dat maakt ze globaal maar géén eigenschap van
+`window` — een lexicale binding en een window-property zijn twee verschillende
+dingen. Code die de kale naam leest ziet een `window.connected = true` dus
+niet. `bproef-meetdienst.js` liep daar bij het schrijven op vast (de dienst
+kreeg `stop()` waar `start()` hoorde) en zet ze nu zonder voorvoegsel.
+`bproef-vinlek.js` zet ze nog wél met `window.` — die proef staat groen, maar
+die ene regel doet daar niets, en een regel die niets doet terwijl hij iets
+lijkt te doen is hier al vaker het begin van een dud geweest. Vastgelegd als
+issue, niet in deze ronde aangeraakt: één onderwerp per PR.
+
 **Eén ding kan de app niet zelf vaststellen: stond de melding in de
 statusbalk.** Zonder `POST_NOTIFICATIONS` onderdrukt Android 13+ de melding
 terwijl de service gewoon doorloopt, en van binnenuit is dat verschil niet te
