@@ -343,7 +343,6 @@ function renderGauges(){
   // die de verkeerde oorzaak noemt stuurt je naar het verkeerde scherm.
   if(!getoond && !vastAantal && verborgen)
     g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">🙈</div><h3>Alles verborgen</h3><p>${verborgen} sensor${verborgen===1?'':'en'} worden nog gemeten. Dubbeltik onderaan op een naam om hem terug te halen.</p></div>`;
-  if(getoond) _tegelTipEenmalig();
 }
 
 // ── De dubbeltik één keer uitleggen (#124) ────────────────────────
@@ -356,8 +355,21 @@ function renderGauges(){
 //
 // Bewust gekoppeld aan de eerste keer dat er ook echt tegels staan: een tip
 // over een gebaar op een tegel die er niet is, is ruis.
+//
+// EN AAN DE LIVE VIEW, NIET AAN HET TEKENEN (#145, 11-09-2026). Dit hing aan
+// renderGauges(), en die draait al bij het opstarten — de tip kwam dus in
+// beeld op het keuzescherm, waar geen enkele tegel te zien is, en juist níét
+// op het moment dat je de tegels voor het eerst vóór je hebt. Eén keer per
+// toestel betekent dan: één keer op het verkeerde moment, en daarna nooit
+// meer. sw('live') is de enige plek waar het middenscherm werkelijk de Live-
+// tab wordt — openLiveView(), de tabknop en de deur lopen er alle drie langs.
 const TEGELTIP_SLEUTEL = 'pl_tip_dubbeltik';
 function _tegelTipEenmalig(){
+  // De voorwaarde "er staan tegels" staat nu hier en niet bij de aanroeper:
+  // hij hoort bij de tip en niet bij het moment, en zo geldt hij voor elke
+  // route naar de Live view.
+  var g = document.getElementById('gGrid');
+  if(!g || !g.querySelectorAll('.gc').length) return;
   try{
     if(localStorage.getItem(TEGELTIP_SLEUTEL)==='1') return;
     localStorage.setItem(TEGELTIP_SLEUTEL,'1');

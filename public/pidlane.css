@@ -6,6 +6,11 @@
   --bd:#e4e8f0; --bd2:#cfd6e3;
   --tx:#10151f; --tx2:#475067; --tx3:#5f6a7d;
   --bl:#2563ff; --bl2:#1a4fe0; --bls:#e8efff;
+  /* --blv: blauw waar WIT bovenop komt (een gevulde knop). --bl zelf moet in
+     het donkere thema juist lícht zijn, want daar staat hij als tekst op een
+     donkere grond. Één token voor twee tegengestelde eisen gaf "🧠 Slim" wit
+     op #4d82ff: 3,53:1, de enige tekst op het hoofdscherm onder de norm (#141). */
+  --blv:#2563ff;
   --gn:#06b36b; --gns:#e3f8ef;
   --or:#f2820c; --ors:#fff2e2;
   --rd:#ef4444; --rds:#fdecec;
@@ -21,7 +26,7 @@ html.dark {
   --bg:#0a0e17; --sur:#131926; --sur2:#1b2333;
   --bd:#28324a; --bd2:#3a4663;
   --tx:#eef2fa; --tx2:#9aa6bd; --tx3:#8b97b2;
-  --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16);
+  --bl:#4d82ff; --bl2:#3a6fff; --bls:rgba(77,130,255,.16); --blv:#2f5fd0;
   --gn:#1fd189; --gns:rgba(31,209,137,.14);
   --or:#ff9f2e; --ors:rgba(255,159,46,.14);
   --rd:#ff5a5a; --rds:rgba(255,90,90,.14);
@@ -1003,7 +1008,7 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .pidview-switch { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
 .pidview-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--tx3); margin-right:2px; }
 .pidview-btn { font-family:var(--f); font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; transition:all .15s; }
-.pidview-btn.active { background:var(--bl); border-color:var(--bl); color:#fff; }
+.pidview-btn.active { background:var(--blv); border-color:var(--blv); color:#fff; }
 /* GETALLEN — compacte kaart, geen sparkline */
 .gg.view-numbers { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:7px; }
 .gg.view-numbers .gc { padding:9px 10px; }
@@ -2072,9 +2077,12 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 
 .pidview-scheid{display:inline-block;width:1px;height:20px;margin:0 3px;
   background:linear-gradient(180deg,transparent,#2c4a7e,transparent);vertical-align:middle}
-.pidview-btn.waak{border-color:#24406e;color:#7f93b8}
-.pidview-btn.waak.active{border-color:#2e6f52;color:#8fe3ac;
-  background:linear-gradient(180deg,rgba(79,156,90,.20),rgba(79,156,90,.08))}
+/* Stond op #24406e/#7f93b8: kleuren uit het donkere palet, met de hand
+   opgeschreven. In het lichte thema gaf dat 2,87:1 — de enige tekst op het
+   hoofdscherm die daar onder de norm viel (#141). Tokens volgen het thema. */
+.pidview-btn.waak{border-color:var(--bd2);color:var(--tx3)}
+.pidview-btn.waak.active{border-color:var(--gn);color:var(--gn);
+  background:var(--gns)}
 
 #wkStrook{margin:0 0 11px;padding:9px 12px 10px;border-radius:13px;
   border:1px solid #1b2942;background:rgba(255,255,255,.022);font-family:var(--f)}

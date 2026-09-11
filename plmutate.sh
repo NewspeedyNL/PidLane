@@ -553,6 +553,23 @@ MUTATIES=(
 "public/pidlane.css@@  zoom: var(--pl-zoom);@@  zoom: 1;@@test-schermranden.js@@de zoomfactor en het getal staan los van elkaar: S en L schalen niets meer, of straks weer het verkeerde"
 "public/pidlane.css@@height:var(--pl-top); display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky;@@height:calc(46px + var(--pl-sat)); display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky;@@test-schermranden.js@@de topbalk schrijft zijn hoogte weer apart op, dus .app wordt precies het verschil te lang (#58)"
 "public/pidlane.css@@body.uiS{ --pl-zoom:0.9; } body.uiL{ --pl-zoom:1.13; --pl-topbar:42px; }@@body.uiS{ --pl-zoom:0.9; } body.uiL{ --pl-zoom:1.13; }@@test-schermranden.js@@tekstgrootte L rekent met een balk van 46px terwijl hij er 42 tekent"
+
+# ── De opslagroute (#132, 11-09-2026). De deelkaart van Android duwt de app
+# naar de achtergrond, en dat kost binnen 2 tot 7 seconden de SPP-socket —
+# zeven van de zeven afwezigheden in de logboeken van 11-09. Staat er een
+# verbinding, dan gaat het bestand daarom rechtstreeks naar een map. Drie
+# fouten die geen foutmelding geven maar een herverbinding of een zoekgeraakt
+# bestand.
+"public/pidlane-motortype.js@@  if(_plVerbindingStaat()){@@  if(false){@@test-opslagroute.js@@de deelkaart gaat weer open tijdens een rit: elke export kost een herverbinding (#132)"
+"public/pidlane-motortype.js@@    if(typeof demoMode!=='undefined' && demoMode) return false;@@@@test-opslagroute.js@@demo telt als verbinding: in demo verdwijnt de deelkaart terwijl er geen socket te verliezen is"
+"public/pidlane-motortype.js@@    if(pad){@@    if(true){@@test-opslagroute.js@@een mislukt rechtstreeks schrijven meldt succes: het bestand landt nergens en niemand ziet het"
+
+# ── De dubbeltik-tip (#145, 11-09-2026). Hij hing aan renderGauges() en kwam
+# dus op het keuzescherm voorbij, waar geen tegel staat — en daarna nooit meer,
+# want het slot in localStorage staat dan dicht. Beide fouten hieronder zijn
+# stil: de tip verschijnt gewoon niet.
+"public/pidlane-pids.js@@  var g = document.getElementById('gGrid');@@  var g = document.getElementById('gauges');@@test-tegeltip.js@@de tip zoekt een container die niet bestaat en verschijnt stil nooit meer"
+"public/pidlane-uihelpers.js@@  if(name==='live'){ try{ _tegelTipEenmalig(); }catch(e){ console.warn('Dubbeltik-tip niet getoond:', e); } }@@@@test-tegeltip.js@@de haak op de Live view is weg en niets roept de tip nog aan"
 )
 
 echo
