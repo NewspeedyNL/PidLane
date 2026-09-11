@@ -428,9 +428,32 @@ async function stopRitAnalyse(){
     log('Proefrit (koopcheck) klaar — technisch rapport','info');
     await generateRitRapport('techniek');
     try{
-      const tech=(ritLogs||[]).map(l=>`${l.fase}: ${l.samenvatting||l.desc||''}`).filter(Boolean).join(' | ');
+      // DE TWEEDE LEZER VAN DEZE RIT, EN HIJ KREEG NIETS (11-09-2026). Hier
+      // stond `l.samenvatting || l.desc`, en geen van beide velden wordt in
+      // deze app ooit op een ritLogs-regel gezet — analyseRitFase() schrijft
+      // fase, duur, stats en aiAnalyse. De koopcheck kreeg dus letterlijk
+      // "Stationair:  | Optrekken: ": fasenamen met niets erachter, die in het
+      // eindoordeel over een aankoop terechtkwamen als een proefrit zonder
+      // afwijkingen.
+      //
+      // Waarom dat zo lang stil bleef: de vangregel eronder sloeg nooit aan.
+      // `tech` was niet leeg — er stonden fasenamen in — dus de || vond een
+      // waarde en de "geen afwijkingen geregistreerd" verscheen nooit. Een lege
+      // uitslag die er gevuld uitziet is precies de vorm die #188 duur maakt:
+      // een gemist defect ziet er hetzelfde uit als een goede uitslag.
+      //
+      // aiAnalyse is de duiding die _faseLokaleDuiding() per fase al berekende,
+      // inclusief de afwijkingen. Die hoort hier te staan.
+      const tech=(ritLogs||[])
+        .map(l=>l.aiAnalyse ? `${l.fase}: ${l.aiAnalyse}` : '')
+        .filter(Boolean).join(' | ');
       koopProefritKlaar(tech || 'Proefrit voltooid (geen afwijkingen geregistreerd)');
-    }catch(e){ koopProefritKlaar('Proefrit voltooid'); }
+    }catch(e){
+      // Geen stille catch: zonder deze regel verdwijnt een fout in de
+      // overdracht achter een uitslag die "voltooid" zegt.
+      log(`Proefrit: de technische uitslag kwam niet rond — ${e&&e.message?e.message:e}`,'err');
+      koopProefritKlaar('Proefrit voltooid');
+    }
     return;
   }
   // Rit gestart vanuit Onderhoud Plannen → terug en analyse draaien

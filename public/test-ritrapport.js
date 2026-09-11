@@ -89,6 +89,7 @@ const ctx = {
   vehicleFuelType: () => 'benzine',
   buildQualityReport: () => ({ promptBlok: '' }),
   renderAIText: () => {}, activateAIPane: () => {}, exportAIReportPDF: () => {},
+  koopProefritKlaar: () => {},
   plDatumLokaal: () => '2026-09-11', goHome: () => {},
   RAPPORT_DISCLAIMER: 'Let op: deze analyse is gebaseerd op live OBD2-sensordata.',
   PLMon: null, PLWizard: null
@@ -100,6 +101,7 @@ globalThis.__rit = {
   get faseIdx(){return ritFaseIdx}, get logs(){return ritLogs},
   get pauzeLog(){return ritPauzeLog},
   rapport: function(focus){ return generateRitRapport(focus); },
+  stop: function(){ return stopRitAnalyse(); },
   startRit: function(fasen){
     RIT_FASEN_ACTIEF=fasen; RIT_TOTAAL=fasen.reduce((a,f)=>a+f.duur,0);
     ritActive=true; ritStartTime=Date.now(); ritLogs=[]; ritFaseData={};
@@ -204,6 +206,26 @@ console.log('\n— een mislukte AI-call is geen stille catch —');
   toets('het tekstbestand komt er alsnog', bestanden.length > 0, true);
   toets('met de reden erin', /AI-ANALYSE NIET GELUKT: tegoed op/.test(t), true);
   toets('en met de fasegegevens nog steeds erin', /FASE 1: Fase A/.test(t), true);
+}
+
+console.log('\n— de proefrit geeft de koopcheck haar bevindingen door —');
+{
+  // Hier stond `l.samenvatting || l.desc`: twee velden die niets in deze app
+  // ooit zet. De koopcheck kreeg fasenamen met niets erachter, en omdat die
+  // string niet leeg was sloeg de vangregel eronder nooit aan — een lege
+  // uitslag die er gevuld uitziet, in een oordeel over een aankoop.
+  await ritMetGat();
+  let doorgegeven = null;
+  ctx.koopProefritKlaar = t => { doorgegeven = t; };
+  ctx.window._koopProefritActief = true;
+  await R.stop();
+  ctx.window._koopProefritActief = false;
+  toets('de koopcheck krijgt iets door', typeof doorgegeven === 'string' && doorgegeven.length > 0, true);
+  toets('met de fasenaam erin', /Fase A/.test(doorgegeven || ''), true);
+  toets('en met de duiding erachter, niet een kale dubbelepunt',
+        /Fase A: \S/.test(doorgegeven || ''), true);
+  toets('de duiding is de echte fase-duiding',
+        /binnen normaal bereik|Afwijking in deze fase/.test(doorgegeven || ''), true);
 }
 
 console.log('\n' + n + ' toetsen, ' + fout + ' fout');

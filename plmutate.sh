@@ -537,6 +537,7 @@ MUTATIES=(
 "public/pidlane-rit.js@@  const g=(ritPauzeLog||[]).filter(p=>p.faseIdx===i);@@  const g=[];@@test-ritrapport.js@@de weggevallen seconden worden aan geen enkele fase meer toegewezen: een dunne fase leest als een sensor die uitvalt"
 "public/pidlane-rit.js@@faseIdx:ritFaseIdx});@@faseIdx:ritFaseIdx+1});@@test-ritrapport.js@@het gat hangt aan de volgende fase: het rapport wijst de verkeerde reeks aan als onbetrouwbaar"
 "public/pidlane-rit.js@@    log(\`Rit rapport: de AI-analyse mislukte — \${msg}\`,'err');@@    ;@@test-ritrapport.js@@de stille catch is terug: een mislukte analyse zegt alleen dat er geen rapport is, niet waarom"
+"public/pidlane-rit.js@@        .map(l=>l.aiAnalyse ? \`\${l.fase}: \${l.aiAnalyse}\` : '')@@        .map(l=>\`\${l.fase}: \${l.samenvatting||l.desc||''}\`)@@test-ritrapport.js@@de proefrit geeft de koopcheck weer fasenamen zonder bevindingen — een lege uitslag die er gevuld uitziet"
 )
 
 echo

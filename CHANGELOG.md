@@ -31,6 +31,12 @@
          leest een dun gemeten fase als een sensor die
          uitvalt — een vals alarm met een factuur eronder.
 
+       • 🔍 DE PROEFRIT VOOR DE KOOPCHECK GAF LEGE BEVINDINGEN
+         DOOR. Hij las twee velden die nooit gevuld worden,
+         dus het aankoopoordeel kreeg fasenamen zonder
+         inhoud — en omdat die regel niet leeg was, viel het
+         niet op. Nu gaat de echte fase-duiding mee.
+
        • 🔊 EEN MISLUKTE ANALYSE ZEGT NU WAAROM. Het foutblok
          schreef bij élke fout "geen AI beschikbaar", ook bij
          een crash. Daardoor was deze bug anderhalve dag

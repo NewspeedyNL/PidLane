@@ -978,6 +978,26 @@ verzendlaag, met `plFetch` als opvangbak. Dáár is voor het eerst te zien dat h
 de haak in `apiFetch()` op `if(false)` te zetten: dan wordt hij rood, met de
 gemeten systeemprompt erbij.
 
+**En de tweede lezer van dezelfde rit, die al die tijd niets kreeg.** Naast het
+ritrapport is er een tweede consument van `ritLogs`: de proefrit vanuit de
+koopcheck. Die las per fase `l.samenvatting || l.desc` — twee velden die
+**niets in deze app ooit zet**. `analyseRitFase()` schrijft `fase`, `duur`,
+`stats` en `aiAnalyse`.
+
+```
+wat de koopcheck kreeg:  "Stationair:  | Optrekken: "
+```
+
+Fasenamen met niets erachter, in het eindoordeel over een aankoop. De vangregel
+eronder — `tech || 'Proefrit voltooid (geen afwijkingen geregistreerd)'` — sloeg
+nooit aan, want `tech` was niet leeg: er stonden fasenamen in. **Een lege uitslag
+die er gevuld uitziet** is dezelfde vorm die #188 duur maakt: een gemist defect
+ziet er precies zo uit als een goede uitslag. Er staat nu `aiAnalyse` in, de
+duiding die `_faseLokaleDuiding()` per fase toch al berekende.
+
+Dat dit naast de crash stond is geen toeval. Beide zijn dezelfde soort fout —
+een leesplek die aannames doet over de vorm van `ritLogs` — en beide waren stil.
+
 **Wat dit niet oplost, en het is de vraag die ertoe doet.** Dat het blok in de
 prompt staat, is de koppeling — niet de uitkomst. Of een rapport er werkelijk
 anders van wordt, staat alleen in de tekst die eruit komt, en dat is een vraag
