@@ -3180,6 +3180,46 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── draait deze meting op de schil die je denkt? ──────────────
+  // Twee keer op 11-09-2026 was dit de vraag, en beide keren pas achteraf.
+  // Een native wijziging zit alleen in de APK; de webpagina laadt los bij.
+  {
+    issue: '#18',
+    naam: 'De schil is de nieuwste die er ligt',
+    waarom: 'Een native wijziging zit alleen in de APK. Draait de nieuwe pagina op een oude schil, dan meet je oude code terwijl het verslag er nieuw uitziet — en dat is een hele rit voor niets.',
+    proef: async function () {
+      if (!window.PLSchil) return { staat: 'FOUT', detail: 'PLSchil ontbreekt — dan staat er niet in het verslag welke schil deze meting opleverde (#18)' };
+      const hier = PLSchil.bouw();
+      if (hier === null)
+        return { staat: 'LET OP', detail: 'geen schil-build te lezen: ' + PLSchil.reden() +
+          ' — in een browser klopt dat, in de APK niet' };
+
+      let daar = null;
+      try { daar = await PLSchil.haalNieuwste(true); }
+      catch (e) { return { staat: 'LET OP', detail: 'build ' + hier + '  |  de nieuwste build is niet op te halen: ' + (e.message || e) }; }
+      if (!daar)
+        return { staat: 'LET OP', detail: 'build ' + hier + '  |  niet te vergelijken: ' + PLSchil.nieuwsteReden() +
+          '. Zonder /version.json is er niets om naast te leggen' };
+
+      const achter = PLSchil.achterstand();
+      const kop = 'schil build ' + hier + ', nieuwste in R2 ' + daar.versionCode +
+        (daar.builtAt ? ' (gebouwd ' + daar.builtAt + ')' : '');
+      if (achter === null)
+        return { staat: 'LET OP', detail: kop + ' — de vergelijking leverde geen getal op' };
+      // VOORUIT LOPEN MAG. Een build die zelf gemaakt en geïnstalleerd is
+      // loopt vóór op R2; dat is geen bevinding maar het vermelden waard,
+      // want dan meet je iets wat niemand anders heeft.
+      if (achter < 0)
+        return { staat: 'LET OP', detail: kop + ' — deze schil loopt ' + (-achter) + ' build(s) VOOR op wat er in R2 ligt. ' +
+          'Dat kan (zelf gebouwd), maar wat je hier meet staat dan bij niemand anders' };
+      if (achter > 0)
+        return { staat: 'LET OP', detail: kop + ' — de schil loopt ' + achter + ' build(s) achter. Native wijzigingen ' +
+          'uit die builds zitten NIET in deze meting; de webpagina is wel bij. Installeer de nieuwe APK ' +
+          'vóór je een native bevinding uit deze rit trekt (#18)' };
+      return kop + ' — gelijk, dus wat er gemeten wordt is wat er gebouwd is';
+    }
+  },
+
   // ── #18: doet de native meetdienst wat hij belooft? ───────────
   // De vorige proef meet wat de WEBVIEW deed. Deze meet wat het PROCES deed,
   // en dat verschil is de hele reden dat de meetdienst bestaat: van buiten
@@ -5285,6 +5325,12 @@ function testrunTekst() {
   r.push('Verbonden   : ' + ((typeof connected !== 'undefined' && connected) ? 'ja' : 'nee') +
     ((typeof demoMode !== 'undefined' && demoMode) ? '  (DEMO)' : ''));
   r.push('Toestel     : ' + navigator.userAgent);
+  /* WELKE SCHIL DIT IS (#18, 11-09-2026). TESTRUN_VERSIE en APP_VERSION
+     komen allebei uit de webpagina en zijn dus op elke APK gelijk. Een
+     native wijziging zit ALLEEN in de schil, en op 11-09 stond twee keer
+     op één dag de vraag of een meting op de nieuwe of de oude draaide —
+     zonder dat het verslag antwoord gaf. Nu wel. */
+  r.push('APK         : ' + ((window.PLSchil && PLSchil.regel) ? PLSchil.regel() : 'onbekend (PLSchil ontbreekt)'));
   // Is er nog niet gemeten, dan is de duur die van de begeleide rit — anders
   // rekent dit vanaf epoch en staat er een getal van 56 jaar in de kop.
   const duurBasis = _trStart || _BG.gestart;

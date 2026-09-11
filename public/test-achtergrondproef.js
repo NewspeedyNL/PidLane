@@ -125,15 +125,22 @@ function hartslagen(s, ms) {
 // Bevroren: de klok loopt, geen van beide lussen doet iets.
 function bevroren(s, ms) { verstrijk(s, ms); }
 
-// De proef van #18 uit de echte lijst halen. Niet op index, want dan verschuift
-// deze test bij elke opruimactie in PROEVEN_B5.
-function proefVan(s, issue) {
-  const p = s.PLBlok5.proeven().filter(function (x) { return x.issue === issue; })[0];
-  if (!p) { console.error('FOUT: geen blok 5-proef voor ' + issue); process.exit(1); }
-  return p.proef;
+/* De proef uit de echte lijst halen. Niet op index, want dan verschuift deze
+   test bij elke opruimactie in PROEVEN_B5 — en sinds 11-09-2026 ook niet meer
+   op issue alleen: er staan drie proeven onder #18 (deze, de meetdienst en de
+   schilcontrole), en dan pakt een filter op issue de eerste die toevallig
+   bovenaan staat. Op naam is eenduidig, en test-blok5lijst.js bewaakt dat
+   namen uniek zijn. */
+function proefVan(s, naamDeel) {
+  const p = s.PLBlok5.proeven().filter(function (x) { return x.naam.indexOf(naamDeel) !== -1; });
+  if (p.length !== 1) {
+    console.error('FOUT: ' + p.length + ' blok 5-proeven met "' + naamDeel + '" in de naam (moet 1 zijn)');
+    process.exit(1);
+  }
+  return p[0].proef;
 }
 function draai(s) {
-  const r = proefVan(s, '#18')();
+  const r = proefVan(s, 'weet de app dat hij weg was')();
   return (typeof r === 'string') ? { staat: 'ok', detail: r } : r;
 }
 
