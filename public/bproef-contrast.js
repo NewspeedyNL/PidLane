@@ -121,9 +121,14 @@ function zeg(m) {
   try {
     await app.venster(412, 915);
 
-    console.log('\n1. Het thema is weer een keuze (#141)');
+    console.log('\n1. Het themamechaniek klopt — de weg erheen is dicht (#141)');
     toets('plThemaZet() bestaat', await app.ev(`typeof plThemaZet === 'function'`),
-          'zonder die functie is het lichte thema onbereikbaar, en dat wás de bevinding');
+          'de functie blijft staan; alleen de knoppen in het menu zijn weg tot licht af is');
+    toets('de app start donker, ook met een opgeslagen lichte voorkeur',
+          await app.ev(`(function(){
+            try{ localStorage.setItem('ns_theme','licht'); }catch(e){}
+            return document.documentElement.classList.contains('dark'); })()`),
+          'wie vandaag op Licht klikte zou anders morgen nog naar donkere tekst op donker kijken');
     await app.ev(`plThemaZet('licht'); true`);
     toets('licht zet de dark-class uit',
           await app.ev(`!document.documentElement.classList.contains('dark')`));
@@ -156,8 +161,19 @@ function zeg(m) {
     toets('er staan tegels om aan te meten', tegels > 0,
           'zonder tegels meet blok 2 een leeg scherm en staat hij groen om de verkeerde reden');
 
-    for (const thema of ['donker', 'licht']) {
-      console.log('\n2' + (thema === 'donker' ? 'a' : 'b') + '. Elke tekst haalt ' + NORM + ':1 — thema ' + thema);
+    /* ALLEEN DONKER, EN DAT IS EEN CORRECTIE OP DEZELFDE DAG.
+       Hier stond ['donker','licht'], en beide kwamen groen uit. Op het toestel
+       bleek licht toch onleesbaar: koppen donker op donker, want een groot deel
+       van de app schildert zijn eigen donkere achtergrond terwijl de tekst wél
+       meeschakelt. Die teksten liggen boven een verloop en telde deze proef als
+       ONMEETBAAR — en op grond van dat groen is de knop bereikbaar gemaakt.
+
+       Een thema dat niet te bereiken is, hoort hier niet als groen te staan:
+       dan leest de volgende lezer het als "licht is getoetst". Licht komt terug
+       zodra de panelen hun eigen kleur niet meer opschrijven (#141), en dan met
+       een meting die door een verloop heen kijkt. */
+    for (const thema of ['donker']) {
+      console.log('\n2a. Elke tekst haalt ' + NORM + ':1 — thema ' + thema);
       await app.ev(`plThemaZet('${thema}'); true`);
       await rust(200);
 
