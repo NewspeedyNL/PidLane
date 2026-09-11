@@ -187,8 +187,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 23 | `pidlane-plload.js` | 22 | `PLLoad` — automatische busbelastingsregeling (AIMD) |
 | 25 | `pidlane-demo.js` | 11 | demomodus met gesimuleerde data |
 | 26 | `pidlane-uihelpers.js` | 18 | kebabmenu, overlays, toasts, topbalkstatus — `updateTopbarStatus()`/`updateSysDot()`, zie de topbar-paragraaf in §4 |
-| 27 | `pidlane-motortype.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup` |
-| 28 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot** |
+| 27 | `pidlane-motortype.js` | 26 | motortype-splitsing poll-scheduler, `autoExpertAsk`, `wizRdwLookup`. Ook `download()` — de enige uitgang voor elk exportbestand: mét verbinding rechtstreeks naar `Documenten/PidLane/` (#132), zonder verbinding via de deelkaart. Test: `test-opslagroute.js` |
+| 28 | `pidlane-theme.js` | 14 | thema, lettertype, zoom, **sessieherstel bij boot**. `plThemaZet('licht'\|'donker')` is de enige plek die het thema zet; de keuze staat in `ns_theme` en de standaard is donker (#141). Proef: `bproef-contrast.js` |
 | 29 | `pidlane-neon.js` | 12 | neon dashboard — ronde meters |
 | 30 | `pidlane-rit.js` | 29 | ritanalyse — fases meten, `generateRitRapport()` bouwt het rapport en stuurt het naar de AI. Twee lijsten met elk één betekenis: `ritLogs` draagt de fases (mét `stats`), `ritPauzeLog` de onderbrekingen (mét de fase waarin ze vielen). Tests: `test-ritpauze.js`, `test-ritrapport.js`, `bproef-ritrapport.js`, blok 5 |
 | 31 | `pidlane-koopcheck.js` | 133 | koopcheck / aankoopkeuring, proefritmodule |
@@ -909,6 +909,126 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### Het lichte thema bestond en was onbereikbaar — 11-09-2026 (#141)
+
+#141 vraagt: *"hoe kunnen de waardes en woorden beter leesbaar"*, en noemt twee
+richtingen — een light thema, of een groter lettertype. **Beide bestonden al, en
+geen van beide werkte.** De lettergrootte is hierboven opgelost (#192). Dit is de
+andere.
+
+Het lichte thema is volledig uitgewerkt in `pidlane.css`, alle tokens staan er.
+Het was onbereikbaar door één regel:
+
+```js
+isDark = true;            // thema-knop verwijderd: altijd donker thema
+```
+
+`ns_theme` werd er drie regels boven wél uitgelezen, en daarna weggegooid.
+
+**Drie plekken beweerden iets anders, en dat is waarom dit anderhalve maand
+bleef staan.**
+
+| plek | zegt |
+|---|---|
+| `pidlane-theme.js:12` | *"altijd donker thema"* ← wat de code deed |
+| `pidlane-theme.js:213` | *"app gebruikt standaard het lichte thema"* |
+| `pidlane.css:3` | `/* LIGHT THEME (default) */` |
+
+Twee van de drie waren onwaar. Dit is dezelfde vorm als §11 en
+`PIDLANE-WERK.md` de kop kostte: meerdere plekken die hetzelfde beweren, en dan
+is de vraag welke klopt.
+
+**De standaard blijft donker.** Iedereen die de app nu gebruikt heeft een donkere
+app; die bij een update stilletjes laten omslaan is geen verbetering maar een
+schrik. Wie licht wil, kiest het in het ☰-menu, naast de tekstgrootte.
+
+**Nagemeten vóórdat het bereikbaar werd, en dat was de hele vraag.** Een thema
+aanzetten dat half stuk is, is erger dan een thema dat uitstaat. Een
+contrastmeting over het hoofdscherm en zes dashboards, in beide thema's, gaf
+**één tekst onder 4,5:1 per thema** — niet meer:
+
+```
+donker   "🧠 Slim"        wit op #4d82ff     3,53:1
+licht    "◉ Waakronde"   #7f93b8 op #f4f6fb  2,87:1
+```
+
+Allebei dezelfde oorzaak: een kleur met de hand opgeschreven in plaats van een
+token. De waakronde-knop stond op twee kleuren uit het donkere palet. En "Slim"
+liep op `--bl`, een token met twee tegengestelde eisen: in het donkere thema
+moet hij **licht** zijn (hij staat daar als tekst op een donkere grond) en op
+een gevulde knop moet hij **donker** genoeg zijn voor witte letters. Dat is
+precies het "één ding heeft één betekenis" uit CLAUDE.md, en het kostte hier
+3,53:1. Er is nu een tweede token, `--blv`, voor blauw waar wit bovenop komt.
+
+Onderweg bleek ook `var(--ac, #4d82ff)` op drie plekken te staan, en **`--ac`
+bestaat nergens**. De fallback wint dus altijd, en dat is een vaste kleur uit
+het donkere palet — onzichtbaar zolang de app toch donker was.
+
+**Twee keer mat de proef het verkeerde, en dat is de les die blijft.**
+
+1. De eerste versie nam de eerste laag met alpha > 0 als ondergrond.
+   `rgba(255,255,255,.04)` werd zo *"wit"*, terwijl het een sluier van 4% over
+   een donkere grond is. Uitkomst: **22 bevindingen die geen van alle
+   bestonden**, met kleuren en verhoudingen erbij die er overtuigend uitzagen.
+2. De tweede versie liep dwars door een `linear-gradient` heen naar de body,
+   want een verloop staat in `background-image` en niet in `backgroundColor`.
+   In het donkere thema kwam dat toevallig goed uit; in het lichte gaf het tien
+   nieuwe fantomen op panelen die juist een donker verloop dragen.
+
+Beide keren zag de meting er groen en precies uit. Een getal met twee decimalen
+is geen bewijs dat het de goede grootheid meet. `bproef-contrast.js` telt een
+tekst boven een verloop daarom als **onmeetbaar** en niet als goed, en blok 3
+zet een echte fout terug om te laten zien dat hij rood wordt.
+
+**Wat dit niet dekt.** Op de vier dashboards is maar één tot vijf teksten
+werkelijk gemeten; de rest ligt boven een verloop en telt als onmeetbaar. Daar
+zegt deze proef dus weinig. Een meting die wél door een verloop heen kijkt zou
+de gerenderde pixels moeten lezen, en dat is een andere proef.
+
+---
+
+### De deelkaart kostte de verbinding — 11-09-2026 (#132)
+
+Zeven van de zeven afwezigheden in de logboeken van 11-09 lieten hetzelfde zien:
+de SPP-socket valt om binnen 2 tot 7 seconden ná het wegschakelen, en de app
+herverbindt meteen — terwijl het proces aantoonbaar doorliep, want hij logde die
+herverbinding zelf.
+
+Het opslagvenster van Android **is** zo'n wegschakeling. De meetdienst uit #18
+neemt dit niet weg: die houdt het proces in leven, niet de socket.
+
+Daarom gaat een bestand nu rechtstreeks naar `Documenten/PidLane/` zodra er een
+verbinding staat. Staat er geen verbinding, dan blijft de deelkaart wat hij was
+— met *"Opslaan in Bestanden/Drive"* erin, en dat is een mogelijkheid die we niet
+weggooien voor een probleem dat op dat moment niet bestaat.
+
+Mislukt het rechtstreeks schrijven, dan valt hij terug op de deelkaart. Een
+herverbinding is vervelend; een bestand dat nergens landt is erger.
+
+**Nog steeds niet gemeten: het opslagvenster zelf.** Alle zeven waarnemingen
+komen van de achtergrondstap, niet van een druk op Opslaan. Het mechanisme is
+hetzelfde en de voorspelling is helder, maar voorspellen is geen meten. Die
+proef kost niets: sla tijdens een rit één keer op en kijk of er nog een
+herverbinding volgt.
+
+---
+
+### Blok 3 wist niet achter wie het wachtte — 11-09-2026 (#159)
+
+De meting van 09-09 meldde *"bus geclaimd, maar pas na 2098 ms wachten"* zonder
+te kunnen zeggen achter wie. De reden stond in de meting zelf: de houder werd
+pas **ná** `wait()` uitgelezen, en bij een geslaagde claim is dat per definitie
+`testrun-sweep` — de eigen naam, elke keer.
+
+De houder wordt nu vóór het wachten vastgelegd én tijdens het wachten
+bemonsterd. Dat tweede is nodig omdat het slot binnen die twee seconden van hand
+kan wisselen: één naam aan het begin zegt dan niet waar de tijd heen ging. De
+rij vóór ons gaat er ook bij, want een lange wachttijd achter een legitiem lange
+lezer is geen defect maar de prijs van een volle bus — en dat onderscheid was
+precies wat #159 openhield.
+
+---
 
 ### Tekstgrootte L sneed de onderkant af — 11-09-2026 (#192, #141)
 

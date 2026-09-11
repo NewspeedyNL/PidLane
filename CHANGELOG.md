@@ -11,6 +11,39 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11i (CET) — THEMAKEUZE TERUG, EN OPSLAAN KOST DE VERBINDING NIET MEER
+
+       • 🎨 LICHT OF DONKER, JE KIEST HET ZELF (#141). Het
+         lichte thema was volledig uitgewerkt en onbereikbaar:
+         één regel zette de app altijd op donker. Nu staat de
+         keuze in het ☰-menu, naast de tekstgrootte. Donker
+         blijft de standaard — niemands app slaat zomaar om.
+
+       • 👁 ELKE TEKST HAALT NU 4,5:1. Nagemeten over het
+         hoofdscherm en zes vensters, in beide thema's. Er
+         waren er twee die het niet haalden, allebei een
+         kleur die met de hand was opgeschreven in plaats
+         van uit het thema kwam.
+
+       • 💾 OPSLAAN TIJDENS EEN RIT KOST DE VERBINDING NIET
+         MEER (#132). De deelkaart van Android duwt de app
+         naar de achtergrond, en dat sloopt de adapter-
+         verbinding binnen seconden — zeven van de zeven keer
+         gemeten. Staat er een verbinding, dan gaat het
+         bestand nu rechtstreeks naar Documenten/PidLane.
+         Zonder verbinding blijft de deelkaart gewoon.
+
+       • 💡 DE TIP OVER DUBBELTIKKEN KOMT OP HET JUISTE
+         MOMENT (#145). Hij verscheen bij het opstarten, op
+         een scherm zonder tegels — en daarna nooit meer.
+         Nu bij het openen van de Live view.
+
+       • 🔎 HET TESTVERSLAG NOEMT DE BUSHOUDER (#159). Bij een
+         lange wachttijd op de bus stond er wel hoeveel
+         milliseconden, maar niet achter wie. Nu allebei.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11h (CET) — TEKSTGROOTTE L SNIJDT NIETS MEER AF
 
        • 🔠 DE ONDERKANT VIEL WEG BIJ L (#192). Op een scherm
