@@ -262,7 +262,12 @@ var GEEN_GLOBALE = {
   // De derde parameter van withBusOfNiets() in pidlane-data.js (#115): wat er
   // moet gebeuren als de bus al vergeven is. Optioneel, dus met een guard --
   // maar het is een argument van de aanroeper, geen globale functie.
-  'alsBezet': 'parameter van withBusOfNiets() in pidlane-data.js, geen globale functie'
+  'alsBezet': 'parameter van withBusOfNiets() in pidlane-data.js, geen globale functie',
+  // Het werk dat PLScanSlot.doe() moet draaien (#191, 11-09-2026). Precies
+  // dezelfde vorm als alsBezet hierboven: een argument van de aanroeper, met
+  // een guard erop omdat een scan zonder werk niets betekent -- maar geen
+  // naam die de ene module van de andere verwacht.
+  'werk': 'parameter van PLScanSlot.doe() in pidlane-scanslot.js, geen globale functie'
 };
 
 function controleer(){
