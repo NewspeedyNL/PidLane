@@ -910,6 +910,72 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Tekstgrootte L sneed de onderkant af — 11-09-2026 (#192, #141)
+
+S/M/L schalen de hele app met `zoom` op `body`. Dat werkt, op één soort lengte
+na. **`zoom` vermenigvuldigt de uitkomst van een berekening, maar `100dvh`
+blijft de hele viewport.** Alles wat zijn hoogte rechtstreeks uit de viewport
+haalt is bij L dus 13% te lang, en dat teveel valt er onderaan uit.
+
+Gemeten op 360×640 met een navigatiebalk van 48px:
+
+```
+M   zoom 1      .app eindigt op 592px    48px vrij       ok
+S   zoom 0,9    .app eindigt op 533px   107px vrij       ok, maar 59px verspild
+L   zoom 1,13   .app eindigt op 723px    83px TE LAAG    FOUT
+```
+
+De rekensom eronder: bij L stond er `calc(100vh - 42px)` = 598px, en daar
+tekende de browser 598 × 1,13 = 676px van, op een scherm van 640.
+
+**Dit is #58, één laag hoger.** De basisregel bij `.app` draagt al sinds 29-08
+een commentaarblok met precies deze fout erin: *"`.app` werd net zoveel te lang
+als de balk hoger was, en die overlengte viel er onderaan uit."* De reparatie
+daarvan was `--pl-top` plus `100dvh` plus `--pl-sab`. En daarboven stond, sinds
+een eerdere ronde, deze regel:
+
+```css
+body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
+```
+
+Die overschrijfregel bracht alle drie de dingen terug die de basisregel had
+opgelost: `100vh` in plaats van `100dvh`, geen `--pl-sab`, en de balkhoogte met
+de hand. **Een override die een gerepareerde regel omzeilt, herstelt de bug** —
+en hij doet dat onzichtbaar, want de basisregel eronder bleef kloppen en de test
+die hem bewaakte keek naar die basisregel.
+
+**De reparatie is niet per regel compenseren maar één coördinatenstelsel.**
+Binnen een `zoom: Z` leeft alles in gezoomde px. Dan is de viewport daar
+`100dvh / Z` en zijn de veilige zones `--pl-*-fysiek / Z`. Met die twee
+omrekeningen — `--pl-vh`, en `--pl-sat`/`--pl-sab` gedeeld door `--pl-zoom` —
+kloppen álle bestaande formules ongewijzigd en is er niets per-L te regelen. De
+override is weg, en de balkhoogte is een token (`--pl-topbar`) zodat `.topbar`
+en `--pl-top` niet meer uit elkaar kunnen lopen.
+
+Nagerekend voor L: 566,4 − 63,2 − 42,5 = 460,7 × 1,13 = **520,6px**, en de
+werkelijk beschikbare ruimte is 640 − 71,5 − 48 = **520,5px**.
+
+**S won er trouwens ook bij.** Daar bleef 59px onderaan ongebruikt — geen
+zichtbare fout, wel schermruimte die je op een telefoon niet hebt. Alle drie de
+maten eindigen nu op precies dezelfde rand.
+
+**En wat de proef eerst verkeerd deed, want dat is de duurste les.**
+`bproef-schermranden.js` meet nu op S/M/L. De eerste versie las de grens waar de
+navigatiebalk begint uit `--pl-sab`. Toen dat als tegenproef werd nagemeten met
+een `--pl-sab` die de zoom níét meerekent, bleef hij groen: de app schoof mee én
+de grens schoof mee, 586 tegen 586. **Die proef mat of de app met zichzelf
+klopte, niet of hij boven de balk bleef** — precies de vorm die CLAUDE.md
+waardeloos noemt. De grens komt nu uit de navbalkhoogte die de proef zelf zet;
+met dezelfde mutatie wordt hij dan 586 tegen 592 en dus rood.
+
+**Wat dit niet oplost.** #141 noemt twee richtingen: een groter lettertype én een
+light thema. Dit is de eerste. Het tweede raakt `pidlane.css` in de volle
+breedte en is een eigen ronde waard. Of de stap van 1,13 gróót genoeg is voor wie
+hem nodig heeft, is bovendien geen meetvraag maar een oordeel van de gebruiker —
+tot nu toe was hij onbruikbaar, dus dat oordeel is er nog niet.
+
+---
+
 ### De keten is rond: het rapport haalt nu een model — 11-09-2026 (#196, #188)
 
 De ronde hierboven leverde de bevinding; dit is wat ermee gedaan is. Twee rondes

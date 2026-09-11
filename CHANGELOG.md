@@ -11,6 +11,25 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11h (CET) — TEKSTGROOTTE L SNIJDT NIETS MEER AF
+
+       • 🔠 DE ONDERKANT VIEL WEG BIJ L (#192). Op een scherm
+         van 640px tekende de app er 723 — 83px buiten beeld,
+         inclusief de knop "start analyse" na het verbinden.
+         Oorzaak: de zoom vermenigvuldigt het resultaat van
+         een berekening, maar de schermhoogte erin niet.
+
+       • 📏 S WON ER OOK BIJ. Daar bleef 59px onderaan
+         ongebruikt. Alle drie de maten eindigen nu op
+         precies dezelfde rand, boven de navigatiebalk.
+
+       • 🧱 ÉÉN TOKEN VOOR DE BALKHOOGTE. De topbalk en de
+         ruimte eronder rekenden met verschillende getallen
+         zodra L aanstond. Dat verschil was exact wat er
+         onderaan wegviel.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11g (CET) — HET RITRAPPORT KOMT ER, OOK NA EEN ONDERBREKING
 
        • 🚗 GEEN RAPPORT NA EEN RIT MET EEN GAT (#196). Ging de
