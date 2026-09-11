@@ -40,7 +40,7 @@
 <main>
 
   <h1>Privacyverklaring</h1>
-  <div class="sub">PidLane — laatst bijgewerkt: 27 augustus 2026</div>
+  <div class="sub">PidLane — laatst bijgewerkt: 11 september 2026</div>
 
   <p>PidLane leest de boordcomputer van je auto uit via een OBD2-adapter en maakt daar een
   diagnose van. Deze verklaring beschrijft welke gegevens daarbij worden verwerkt, waarom,
@@ -95,6 +95,37 @@
     ze bewust geen anonieme gegevens, want dat zijn ze niet.
   </div>
 
+  <h2>Camera en QR-codes</h2>
+  <p>PidLane vraagt toegang tot de camera voor één ding: het scannen van een QR-code
+  waarmee je een sessie koppelt aan iemand die op afstand meekijkt. De camera gaat alleen
+  aan op het moment dat je die scanner zelf opent.</p>
+  <p><strong>Er wordt geen beeld opgeslagen en geen beeld verzonden.</strong> Het camerabeeld
+  blijft in het geheugen van je toestel en wordt alleen gelezen om de code erin te herkennen.
+  Zodra de code gelezen is of je het scherm sluit, stopt de camera. Koppelen kan ook zonder
+  camera: je kunt de code met de hand overnemen. Daarom staat de camera in de app als
+  optioneel — de app installeert en werkt ook op een toestel zonder.</p>
+
+  <h2>Meten terwijl de app op de achtergrond staat</h2>
+  <p>Een meting loopt vaak door terwijl je iets anders doet op je telefoon. Android zet apps
+  op de achtergrond stil, en dan valt de meting midden in een rit weg. Om dat te voorkomen
+  draait PidLane tijdens een verbinding een <em>voorgronddienst</em>: een achtergrondtaak die
+  het systeem niet stopzet.</p>
+  <p>Daar hoort verplicht een <strong>zichtbare melding</strong> bij — "PidLane meet door" —
+  zolang de verbinding met de adapter staat. Die melding is geen reclame en geen tracking:
+  hij is er zodat je altijd kunt zien dát de app meet. De dienst start bij het verbinden en
+  stopt bij het verbreken, en ook als je de app uit het overzicht veegt. Zolang hij loopt
+  houdt de app de processor wakker, want anders slaapt het toestel en stopt de meting alsnog.
+  Dat kost extra accu.</p>
+  <p><strong>Er worden hierdoor geen andere gegevens verwerkt.</strong> Het gaat uitsluitend
+  om dezelfde sensorwaarden uit je auto die hierboven beschreven staan; de dienst verzamelt
+  niets extra's en verstuurt uit zichzelf niets.</p>
+
+  <h2>Bestanden op je toestel</h2>
+  <p>Rapporten en meetopnamen die je opslaat komen in de map <code>Documents/PidLane</code>
+  op je eigen toestel. Ze blijven daar staan tot je ze zelf verwijdert of deelt; er gaat
+  niets automatisch de deur uit. PidLane heeft geen toegang tot je overige documenten,
+  foto's of downloads.</p>
+
   <h2>Wat er niet gebeurt</h2>
   <ul>
     <li>Geen advertenties en geen advertentie-identificatie.</li>
@@ -103,6 +134,7 @@
     <li>Geen locatiebepaling, punt. PidLane vraagt je positie niet op en slaat hem niet op.
     Tot augustus 2026 kon de ritopname optioneel de hoogte meenemen; die functie is
     verwijderd.</li>
+    <li>Geen opslag of verzending van camerabeeld — de scanner leest alleen de QR-code.</li>
     <li>Geen toegang tot je contacten, agenda, foto's, sms of belgeschiedenis.</li>
   </ul>
 
