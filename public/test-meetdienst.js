@@ -285,14 +285,58 @@ async function main() {
     bevat('en de vervolgstap staat erbij',
       D(beide, { stil: 132 }), 'picture-in-picture');
 
+    // De getallen van de rit van 09-09: 182 s weg, 50 s doorgelopen, 132 s
+    // stil. Dat is een proces dat het grootste deel van het venster stillag,
+    // en dat hoort ook zo te heten — de reparatie van 11-09 mag een echte
+    // bevriezing niet wegschrijven als hapering.
     const bevroren = O(rap({ nu: T0 + 182000, laatste: T0 + 50000, slagen: 50 }));
-    bevat('allebei stil → het hele proces was bevroren',
-      D(bevroren, { stil: 132 }), 'hele proces is bevroren');
+    bevat('allebei stil → het proces lag het grootste deel stil',
+      D(bevroren, { stil: 132 }), 'het grootste deel van de afwezigheid stil');
+    bevat('met de gemeten verhouding erbij',
+      D(bevroren, { stil: 132 }), '132 s van 182 s');
 
     bevat('webview gemeten op null → geen vergelijking',
       D(beide, { stil: null }), 'niets naast te leggen');
     bevat('niet gemeten → dat staat er, zonder oordeel',
       D(O(null), { stil: 12 }), 'native niet gemeten');
+  }
+
+  console.log('\n── een hapering is geen bevriezing (gemeten 11-09-2026) ──');
+  {
+    /* DE FOUT DIE DEZE SECTIE VASTHOUDT. De duiding meldde "het hele proces is
+       bevroren" bij élke native stilte boven drie seconden. Op de rit van
+       11-09 leverde dat op: 222 s doorgelopen, 34 s stil, 373 slagen — in een
+       afwezigheid van 485 s. Een uitspraak over 485 seconden op grond van 34.
+
+       Dat is dezelfde vorm als de bug van 08-09 in pidlane-achtergrond.js, en
+       hij stond drie dagen later in nieuwe code. Vandaar dat hier de ECHTE
+       getallen van die rit staan: verandert de drempel, dan verandert deze
+       toets mee en niet andersom. */
+    const s = bouw({ plugin: false });
+    const D = s.PLMeetdienst.duiding, O = s.PLMeetdienst.oordeel;
+
+    const echt = O(rap({ nu: T0 + 485000, laatste: T0 + 485000, slagen: 373,
+                         stilMs: 34000, stilVan: T0 + 222000 }));
+    toets('het venster staat in het oordeel', echt.venster, 485);
+    toets('222 s doorgelopen', echt.door, 222);
+    toets('34 s stil', echt.stil, 34);
+
+    const zin = D(echt, { stil: 426 });
+    toets('dit heet geen bevriezing meer', /bevroren, ondanks/.test(zin), false);
+    bevat('maar een hapering', zin, 'HAPERDE 34 s');
+    bevat('met het venster erbij', zin, 'afwezigheid van 485 s');
+    bevat('en de verhouding in slagen', zin, '373 van de ~485 slagen');
+    bevat('met de verklaring die erbij past', zin, 'toestel dat gaat slapen');
+
+    // En de andere kant: lag het proces werkelijk het grootste deel stil, dan
+    // hoort dat er ook te staan. Anders praat deze reparatie een echte
+    // bevriezing goed, en dat is de fout in spiegelbeeld.
+    const plat = O(rap({ nu: T0 + 120000, laatste: T0 + 20000, slagen: 20,
+                         stilMs: 100000, stilVan: T0 + 20000 }));
+    const zin2 = D(plat, { stil: 110 });
+    bevat('een echte bevriezing heet nog steeds zo', zin2, 'het grootste deel van de afwezigheid stil');
+    bevat('met de gemeten verhouding', zin2, '100 s van 120 s');
+    bevat('en de meetdienst krijgt de schuld', zin2, 'hield hem niet wakker');
   }
 
   console.log('\n── de brug naar de plugin gebruikt de echte namen ──');

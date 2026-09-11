@@ -11,6 +11,36 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11b (CET) — DE CPU BLIJFT NU OOK WAKKER
+
+       • 🔋 EEN WAKE LOCK ERBIJ (#18). De meetdienst hield het
+         proces uit de cached-toestand, maar niet de CPU
+         wakker. Gemeten op de eerste rit: bij 77 s en 310 s
+         weg liep de hartslag perfect (78/78 en 310/310
+         slagen), bij 485 s haalde hij er 373 van de ~485 met
+         een gat vanaf 3,7 minuten — ruim na de
+         schermtime-out. De dienst neemt nu een partial wake
+         lock. Prijs: met het scherm uit blijft de CPU wakker
+         zolang je verbonden bent.
+
+       • 📏 DE RENDERER WORDT STILGEZET, NIET AFGEKNEPEN. 310 s
+         weg, 251 s aaneengesloten stilte in de WebView — bij
+         throttling was de grootste stilte ~60 s geweest. De
+         aanlooptijd is drie keer gemeten op 59, 59 en 60 s,
+         ongeacht hoe lang de app wegblijft. Daarmee is
+         picture-in-picture de volgende stap en een volledig
+         native meetlus waarschijnlijk niet nodig.
+
+       • ⚖️ DE MELDING BEWEERDE ALWEER TE VEEL. 34 s stilte in
+         een afwezigheid van 485 s werd gemeld als "het hele
+         proces is bevroren", terwijl het proces 222 s liep en
+         daarna nog 150 keer tikte. Dezelfde vorm als de fout
+         van 08-09, drie dagen later in nieuwe code. De duiding
+         noemt nu de verhouding en houdt een hapering en een
+         bevriezing uit elkaar.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11a (CET) — DE METING LOOPT DOOR ALS JE WEGSCHAKELT
 
        • 🛰️ EEN NATIVE MEETDIENST ACHTER DE APP (#18).

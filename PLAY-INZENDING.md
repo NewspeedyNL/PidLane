@@ -495,6 +495,14 @@ opname waarin de functie te zien is. Toon: verbinden met de adapter, de melding
 die verschijnt, wegschakelen naar een andere app, en terugkomen met de meting
 nog intact.
 
+**En met `WAKE_LOCK`.** Sinds 11-09-2026 neemt de service ook een
+`PARTIAL_WAKE_LOCK`, zodat de meting doorloopt als het scherm uitgaat en het
+toestel wil gaan slapen. Dat is een *normal permission*: geen aparte verklaring,
+geen Data safety-gevolg, en de gebruiker krijgt er geen dialoog voor. Hij staat
+hier omdat een reviewer die hem in de permissielijst ziet er een reden bij wil,
+en die reden is dezelfde als hierboven: een meetreeks met een gat van minuten
+is geen meetreeks.
+
 **Let op de koppeling met `POST_NOTIFICATIONS`.** Die permissie zit óók in de
 bundel en hoort bij deze service: zonder toestemming onderdrukt Android 13+ de
 melding terwijl de service doorloopt. Dat is geen aparte verklaring waard, maar

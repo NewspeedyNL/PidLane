@@ -155,6 +155,16 @@ MUTATIES=(
 "public/index.html@@<script src=\"pidlane-meetdienst.js\"></script>@@@@test-nativeschil.js@@de module hangt niet meer in index.html en de dienst start dus nooit"
 "native/PLMeetdienst.java@@        stopSelf();\n        super.onTaskRemoved(rootIntent);@@        super.onTaskRemoved(rootIntent);@@test-nativeschil.js@@de melding blijft staan nadat de app uit het overzicht is geveegd"
 "public/pidlane-meetdienst.js@@    if (!_meldingGevraagd) {@@    if (true) {@@test-meetdienst.js@@de meldingpermissie wordt bij elke herverbinding opnieuw gevraagd, dus tijdens het rijden"
+
+# ── #18, de wake lock en de duiding (11-09-2026). Allebei gemeten werk: de
+#    hartslag haperde bij een afwezigheid van acht minuten, en de melding
+#    daarover beweerde meer dan hij gemeten had.
+"native/PLMeetdienst.java@@        wakeAan();\n        synchronized (SLOT) { sDraait = true; }@@        synchronized (SLOT) { sDraait = true; }@@test-nativeschil.js@@de wake lock wordt niet meer geclaimd: de hartslag hapert zodra het toestel slaapt"
+"native/PLMeetdienst.java@@            wakeLock.setReferenceCounted(false);\n            wakeLock.acquire();@@            wakeLock.setReferenceCounted(false);\n            wakeLock.acquire(60000L);@@test-nativeschil.js@@de lock krijgt een tijdslimiet en stopt midden in een rit stilletjes met beschermen"
+".github/workflows/build-apk.yml@@<uses-permission android:name=\"android.permission.WAKE_LOCK\" />@@<uses-permission android:name=\"android.permission.NIETS\" />@@test-nativeschil.js@@de WAKE_LOCK-permissie valt uit het manifest: acquire() gooit een SecurityException"
+"public/pidlane-meetdienst.js@@      venster: Math.round((r.nu - r.van) / 1000),@@      venster: 0,@@test-meetdienst.js@@het meetvenster is weg, dus de duiding kan geen verhouding meer noemen"
+"public/pidlane-meetdienst.js@@      if (!venster || nat.stil * 2 >= venster)@@      if (true)@@test-meetdienst.js@@elke hapering heet weer een bevriezing, de fout van 11-09 terug"
+"public/pidlane-meetdienst.js@@      if (!venster || nat.stil * 2 >= venster)@@      if (false)@@test-meetdienst.js@@een proces dat wél het grootste deel stillag wordt weggeschreven als hapering"
 "public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
 "public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"
