@@ -1220,17 +1220,64 @@ async function _blok3() {
   // pollus het na elke cyclus meteen terugpakte. PLBus houdt nu een wachtrij
   // bij; werkt die, dan hoort dit een paar honderd milliseconden te zijn — één
   // pollcyclus. Loopt het in de seconden, dan dringt er nog iets voor.
+  /* WIE HIELD HET SLOT VAST, EN HOE LANG AL? (#159)
+
+     Dit blok las de houder tot 11-09 pas NA de wait(). Bij een geslaagde
+     claim is dat per definitie 'testrun-sweep' zelf — de eigen naam, elke
+     keer. De meting van 09-09 meldde daarom "pas na 2098 ms wachten" zonder
+     te kunnen zeggen achter wie, en precies die drie vragen hield #159 open:
+     wie hield hem vast, hoe lang had die hem al, en stond er een rij voor.
+
+     De houder wordt nu vóór het wachten vastgelegd en tijdens het wachten
+     bemonsterd. Dat tweede is nodig omdat het slot binnen die twee seconden
+     van hand kan wisselen: één naam aan het begin zegt dan niet waar de tijd
+     heen ging. */
+  let _houderStart = null, _houderMs = 0, _rijVoor = [];
+  try {
+    if (window.PLBus) {
+      _houderStart = PLBus.owner ? PLBus.owner() : null;
+      _houderMs = PLBus.heldMs ? PLBus.heldMs() : 0;
+      _rijVoor = PLBus.wachtenden ? PLBus.wachtenden().slice() : [];
+    }
+  } catch (e) { console.warn('Bushouder onleesbaar vóór de sweep', e); }
+
+  // Elke houder die we tijdens het wachten voorbij zien komen, met de langste
+  // tijd die hij op dat moment had staan.
+  const _gezien = Object.create(null);
+  const _noteer = function () {
+    try {
+      if (!window.PLBus || !PLBus.owner) return;
+      const n = PLBus.owner();
+      if (!n || n === 'testrun-sweep') return;
+      const h = PLBus.heldMs ? PLBus.heldMs() : 0;
+      if (!(n in _gezien) || h > _gezien[n]) _gezien[n] = h;
+    } catch (e) { /* niet stil: de lus mag doorlopen, maar de reden hoort gelogd */
+      console.warn('Bushouder niet te bemonsteren tijdens het wachten', e); }
+  };
+  if (_houderStart) _gezien[_houderStart] = _houderMs;
+
   const _slotT0 = _nu();
+  const _bemonster = setInterval(_noteer, 100);
   try { _busTok = (window.PLBus && PLBus.wait) ? await PLBus.wait('testrun-sweep', 8000) : 0; } catch (e) { console.warn('Busslot-claim voor de sweep gaf een fout (niet alleen bezet)', e); }
+  clearInterval(_bemonster);
   const _slotMs = _nu() - _slotT0;
-  let _houder = null;
-  try { _houder = (window.PLBus && PLBus.owner) ? PLBus.owner() : null; } catch (e) { console.warn('Bushouder onleesbaar bij de sweep', e); }
+
+  // De houders op een rij, langste vasthoudtijd eerst.
+  const _namen = Object.keys(_gezien).sort(function (a, b) { return _gezien[b] - _gezien[a]; });
+  const _wie = _namen.length
+    ? _namen.map(function (n) { return '"' + n + '" (had hem al ' + Math.round(_gezien[n]) + ' ms)'; }).join(', ')
+    : null;
+  const _rij = _rijVoor.length ? ' Er stonden er ' + _rijVoor.length + ' vóór ons in de rij: ' + _rijVoor.join(', ') + '.' : '';
+
   if (!_busTok) _boek(3, 'Busslot', 'LET OP', 'bus niet vrijgekomen binnen 8 s — sweep loopt naast de pollus' +
-    (_houder ? ' (vastgehouden door "' + _houder + '")' : '') +
-    '. De wachtrij van PLBus hoort dit te voorkomen; staat dit er nog, dan dringt er iets voor (#98)', null);
+    (_wie ? ' (vastgehouden door ' + _wie + ')' : '') + _rij +
+    ' De wachtrij van PLBus hoort dit te voorkomen; staat dit er nog, dan dringt er iets voor (#98)', null);
   else if (_slotMs > 2000) _boek(3, 'Busslot', 'LET OP', 'bus geclaimd, maar pas na ' + _slotMs + ' ms wachten — ' +
-    'met de wachtrij hoort dat een pollcyclus te zijn, geen seconden (#98)', null);
-  else _boek(3, 'Busslot', 'ok', 'bus geclaimd voor de sweep na ' + _slotMs + ' ms wachten', null);
+    'met de wachtrij hoort dat een pollcyclus te zijn, geen seconden (#98). ' +
+    (_wie ? 'Vastgehouden door ' + _wie + '.' : 'Geen houder gezien tijdens het wachten — dan zat de vertraging niet in een andere houder maar in de wachtrij zelf.') +
+    _rij, null);
+  else _boek(3, 'Busslot', 'ok', 'bus geclaimd voor de sweep na ' + _slotMs + ' ms wachten' +
+    (_wie && _slotMs > 200 ? ', achter ' + _wie : ''), null);
 
   // Selectie verbreden zodat de pollus ze ook echt aanraakt.
   try {
