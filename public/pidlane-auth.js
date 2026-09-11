@@ -460,29 +460,12 @@ async function logout(){
   try{ window.PLCredits?.vergeetKlant?.(); }
   catch(e){ console.warn('saldo van de vorige gebruiker wissen mislukt:', e); }
 
-  try{
-    if(currentUser?.role==='admin'){
-      const bewaar = window.confirm(
-        'Uitloggen als admin.\n\n'+
-        'Volledige log (Bluetooth + app + scan) opslaan vóór je uitlogt?\n\n'+
-        'OK = log opslaan/delen, daarna uitloggen\n'+
-        'Annuleren = direct uitloggen zonder opslaan'
-      );
-      if(bewaar){
-        log('🛠 Log wordt bewaard/gedeeld vóór uitloggen','info');
-        // Live-log actief? Stop netjes (flush) en deel dat bestand. Anders een
-        // eenmalige gebundelde export. Await zodat opslaan/delen klaar is vóór
-        // we de verbinding verbreken en de sessie wissen.
-        if(localStorage.getItem('pl_livelog')==='1' || _liveLog.active){
-          await liveLogStop({share:true});
-        } else {
-          exportAllLogs();
-        }
-      } else {
-        log('Uitgelogd zonder log op te slaan','info');
-      }
-    }
-  }catch(e){ try{ log('Log opslaan bij uitloggen mislukt: '+(e.message||e),'warn'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
+  // Geen vraag meer bij uitloggen (11-09-2026, op verzoek). Hier stond een
+  // window.confirm die de admin aanbood de volledige log te bewaren vóór het
+  // uitloggen. In de Android-APK bleef dat venster staan en werd er dus nooit
+  // uitgelogd. De log bewaren kan gewoon vooraf met de hand, via Admin → log
+  // delen; uitloggen hoeft daar niet naar te vragen. Gedrag is nu gelijk aan
+  // wat "Annuleren" deed: direct uitloggen, niets exporteren.
   currentUser = null;
   window.currentUser = null;
   // Chip opnieuw beoordelen, en pas HIER (#52). vergeetKlant() hierboven doet

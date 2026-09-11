@@ -11,6 +11,17 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11k (CET) — UITLOGGEN VRAAGT NIETS MEER
+
+       • 🚪 UITLOGGEN GAAT WEER. Als admin kwam er eerst een
+         venster met de vraag of de volledige log bewaard
+         moest worden. In de Android-APK bleef dat venster
+         staan, waardoor er nooit werd uitgelogd. De vraag is
+         weg: uitloggen logt uit. De log bewaren doe je vooraf
+         met de hand als je hem nodig hebt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11j (CET) — LICHT THEMA WEER UIT
 
        • 🌓 DE THEMAKEUZE IS TERUGGEDRAAID (#141). Licht
