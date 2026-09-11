@@ -219,7 +219,27 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 50 | `pidlane-logboek.js` | 16 | `PLLogboek` — voegt vier logbronnen samen in één tijdlijn: `log()` (500 regels, via `plLokaalLog()`), `btDiag()` (1400, met kopie in localStorage), de diagbundel-ring (400) en de live-log-spiegel. Kebab → Logboek. **Trekt** data op bij openen; hangt zich niet in `log()` of `btDiag()` — die codebase heeft al één laag wrappers (`pidlane-remote.js`) en een tweede zou broncode-inspectie onbruikbaar maken |
 | 51 | `pidlane-privacy.js` | 12 | `PLPrivacy` — prominente Bluetooth-disclosure vóór `connectSerial()`, plus privacyscherm in het menu. Play Store-eis, zie `ANDROID-PLAYSTORE.md` |
 | 52 | `pidlane-start.js` | 20 | `PLStart` — startscherm: adapterprofielen per type, geheugen van eerdere verbindingen, verbindingscascade als live voortgang. Stuurt óók de ketenvolgorde in `connectSerial()` |
+| 53 | `pidlane-meetdienst.js` | 11 | `PLMeetdienst` — de app-kant van de **native foreground service** (#18). Start/stopt de dienst met de adapterverbinding mee (wikkelt `setConn`, net als `PLWake`), zet de native hartslagteller op nul bij het wegschakelen en vertaalt het ruwe native rapport naar een oordeel: hoeveel liep het proces door, hoe lang lag het stil, kwam het uit zichzelf terug. Het **oordeel staat hier en niet in Java** — daar is het zonder toestel te toetsen. Geen schil met dienst? Dan is de uitkomst `gemeten: false` met de reden erbij, en nooit nul. Tests: `test-meetdienst.js`, `test-nativeschil.js` |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
+
+### `native/` — de enige map met code die niet in de browser draait (11-09-2026)
+
+Twee Java-bestanden, `PLMeetdienst.java` (de foreground service met zijn eigen
+hartslag) en `PLMeetdienstPlugin.java` (de Capacitor-brug ernaartoe). Ze horen
+in `android/app/src/main/java/app/pidlane/obd/`, en die map bestaat niet in de
+repo: hij wordt elke build opnieuw gegenereerd uit het Capacitor-template.
+`build-apk.yml` kopieert de bestanden er dus bij elke build in, leidt de doelmap
+af uit de `package`-regel in de bestanden zelf, registreert de plugin in
+`MainActivity` en injecteert de service plus zijn permissies in het manifest.
+
+**Waarom ze hier staan en niet in de workflow.** Een heredoc in de YAML werkt
+net zo goed en is onleesbaar: geen diff die iets zegt, geen test die hem
+nakijkt, en native code die niemand ooit terugleest. `public/test-nativeschil.js`
+legt deze bestanden naast de workflow en naast `pidlane-meetdienst.js`.
+
+Dit is géén buildstap voor de web-app — die heeft er nog steeds geen. Het is de
+enige plek in de repo waar code staat die op Android draait in plaats van in de
+WebView. Zie §11, 11-09-2026.
 
 ### De topbar-statuschip — vier bolletjes achter één (27-08-2026)
 
@@ -880,6 +900,117 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+
+### De native meetdienst: een oplossing die tegelijk een meting is — 11-09-2026 (#18)
+
+`#18` stond sinds 27-08 open en is twee keer hard gemeten. Wat openbleef was
+niet *wat* er gebeurt maar *waardoor*, en die vraag houdt de keuze van de
+oplossing gegijzeld.
+
+| rit | app weg | nog doorgelopen | werkelijk stil |
+|---|---:|---:|---:|
+| 02-09 (stationair) | 120 s | ~36 s | ~84 s |
+| 09-09 (rijdend, 4 aanvragers, bus 93%) | 182 s | ~50 s | ~132 s |
+
+**Twee mechanismen leveren exact dit beeld op, en ze vragen om een andere
+oplossing.** Android zet een proces dat in de cached-toestand komt helemaal
+stil (de freezer): dan staat álles stil, JavaScript én native code. Chromium
+knijpt een verborgen pagina af: dan loopt het proces door en ligt alleen de
+WebView stil. Van buiten is het verschil onzichtbaar — de meetlus doet niets —
+en een foreground service helpt tegen het eerste en niets tegen het tweede,
+want die throttelt op zichtbaarheid en niet op procesprioriteit.
+
+Dat stond op 01-09 al in het issue, als *lezing* en met het voorbehoud erbij
+dat een plausibele redenering geen bewijs is (de #35-les). Een jaar architectuur
+bouwen op de verkeerde helft van die tweedeling kost weken: richting C is de
+hele meetketen een tweede keer bouwen in Kotlin, tegen de harde randvoorwaarde
+onderhoudslast.
+
+**De uitweg is niet kiezen maar meten, en dat kan met precies hetzelfde bouwsel
+als de oplossing zelf.** Er draait nu een foreground service
+(`FOREGROUND_SERVICE_CONNECTED_DEVICE`, zolang er een echte adapterverbinding
+is) met een eigen hartslag van één seconde — dezelfde seconde als de hartslag
+die `pidlane-achtergrond.js` sinds 08-09 in de WebView laat lopen. Twee tellers
+over hetzelfde venster, genulstel op hetzelfde moment (`visibilitychange` →
+hidden, want dán loopt de app aantoonbaar nog), en het verschil ertussen is het
+antwoord:
+
+| native hartslag | webview-hartslag | wat dat betekent |
+|---|---|---|
+| liep | liep | opgelost |
+| liep | lag stil | het proces leefde, Chromium kneep de pagina af — dan is dit niet genoeg en volgt picture-in-picture of een native meetlus |
+| lag stil | lag stil | het hele proces is bevroren, ondanks de dienst |
+
+**Het oordeel staat in JavaScript en niet in Java**, en dat is geen
+smaakkwestie. De native kant levert ruwe getallen: wanneer begon het venster,
+wanneer vuurde de hartslag voor het laatst, hoe vaak, wat was de grootste
+stilte. Wat dat *betekent* — aanlooptijd, stilte, kwam hij uit zichzelf terug —
+rekent `pidlane-meetdienst.js` uit, met dezelfde staartregel als de
+JS-hartslag. Daarmee is het in node te toetsen zonder toestel, en is er één
+plek waar het staat. Twee plekken die hetzelfde uitrekenen is hier al drie keer
+een bug geweest.
+
+**De staartregel is de reden dat die code niet triviaal is.** De hartslag stopt
+niet uit zichzelf op het moment dat de app terugkomt. Ontdooit het proces een
+fractie vóór het uitlezen, dan zit de bevriezing in `stilMs`; ontdooit het
+niet, dan zit hij in de afstand tussen de laatste slag en nu. Zonder de staart
+meet de module soms nul terwijl het proces twee minuten stillag — afhankelijk
+van de volgorde van twee gebeurtenissen waar niemand invloed op heeft. Dat is
+precies de stille meetfout die een teller onbruikbaar maakt, en hij is aan
+beide kanten (JS en native) hetzelfde opgelost.
+
+**Waarom de Java in `native/` staat en niet in de workflow.** De `android/`-map
+wordt elke build opnieuw gegenereerd uit het Capacitor-template, dus native code
+moet er bij elke build in gezet worden. Dat kan met een heredoc in
+`build-apk.yml` — en dan leest niemand hem ooit terug, zegt de diff niets en kan
+geen test hem nakijken. De twee bestanden staan daarom in de repo; de workflow
+kopieert ze, registreert de plugin in `MainActivity` (vóór `super.onCreate()`,
+want de bridge leest die lijst tijdens het opstarten) en injecteert service en
+permissies in het manifest.
+
+**Wat hier stil kan falen, en wat daartegen staat.** Een plugin die in de app
+zelf woont staat niet in `capacitor.plugins.json` — dat bestand gaat alleen over
+`node_modules`. Zonder `registerPlugin` bestaat `Capacitor.Plugins.PLMeetdienst`
+niet, en dan zegt de app *"geen native meetdienst in deze schil"*: exact dezelfde
+zin als een browser. Je ziet het dus niet aan het logboek, je ziet het pas als
+er een rit voor niets gereden is. Vier plekken die elkaar niet kennen moeten
+daarvoor gelijk blijven — de pluginnaam, de servicenaam, het servicetype en de
+hartslagfrequentie — en `public/test-nativeschil.js` legt ze naast elkaar.
+Daarnaast eist de poort op het **samengevoegde** manifest (na `bundleRelease`,
+dus op wat er werkelijk in de `.aab` staat) de service, `exported="false"`,
+`foregroundServiceType="connectedDevice"` en de permissie die bij dat type
+hoort. Android 14 weigert `startForeground()` als die laatste twee niet bij
+elkaar passen, en dat merk je anders pas op het moment dat iemand verbindt.
+
+**Wat er níét gemeten is.** De dienst compileert en het manifest wordt bij elke
+build op drie punten nagekeken, maar hij heeft nog nooit op een toestel
+gedraaid. Of Android de service accepteert, of de melding verschijnt, of het
+proces werkelijk wakker blijft: dat is niet na te bouwen zonder toestel, en het
+is de bevinding van de eerstvolgende rit — welke kant hij ook op valt. Blok 5
+boekt de uitslag daarom als LET OP en niet als FOUT zolang er iets stillag:
+alle drie de uitkomsten hierboven zijn een geldige meting, twee ervan wijzen
+alleen een andere kant op dan gehoopt. Er een bevinding van maken zou de meting
+met het oordeel verwarren — dezelfde fout die de #18-proef op 08-09 kwam
+repareren.
+
+**Onderweg gevonden, en niet in deze ronde gerepareerd: `window.connected`
+zetten doet niets.** `connected` en `demoMode` staan in `pidlane-auth.js` met
+`let` op het hoogste niveau. Dat maakt ze globaal maar géén eigenschap van
+`window` — een lexicale binding en een window-property zijn twee verschillende
+dingen. Code die de kale naam leest ziet een `window.connected = true` dus
+niet. `bproef-meetdienst.js` liep daar bij het schrijven op vast (de dienst
+kreeg `stop()` waar `start()` hoorde) en zet ze nu zonder voorvoegsel.
+`bproef-vinlek.js` zet ze nog wél met `window.` — die proef staat groen, maar
+die ene regel doet daar niets, en een regel die niets doet terwijl hij iets
+lijkt te doen is hier al vaker het begin van een dud geweest. Vastgelegd als
+issue, niet in deze ronde aangeraakt: één onderwerp per PR.
+
+**Eén ding kan de app niet zelf vaststellen: stond de melding in de
+statusbalk.** Zonder `POST_NOTIFICATIONS` onderdrukt Android 13+ de melding
+terwijl de service gewoon doorloopt, en van binnenuit is dat verschil niet te
+zien. De achtergrondstap van de begeleide rit vraagt er daarom om, en dat is
+de enige waarneming van deze ronde die een mens moet doen.
 
 
 ### De .aab vroeg locatie op elke Android-versie, en twee toetsen zeiden van niet — 10-09-2026 (opgelost)

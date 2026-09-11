@@ -50,6 +50,10 @@ on:
      - 'public/icon-512.png'
      - 'icon-1024.png'
      - '.github/workflows/build-apk.yml'
+     # De native meetdienst (#18). Zonder deze regel bouwt een wijziging aan
+     # de Java-kant niets, en staat de oude dienst in de volgende APK terwijl
+     # de diff iets anders laat zien.
+     - 'native/**'
   workflow_dispatch:
 
 # Annuleer lopende builds als er een nieuwe push komt — voorkomt 4x builden
@@ -346,6 +350,170 @@ jobs:
           print("OK: de injectie is geland — de bundel zelf wordt na de build getoetst")
           PY
 
+      # ════════════════════════════════════════════════════════════
+      #  DE NATIVE MEETDIENST — #18, erbij op 10-09-2026
+      # ════════════════════════════════════════════════════════════
+      #  Android bevriest een app die naar de achtergrond gaat. Twee metingen
+      #  in het issue: 36 s doorgelopen en toen 84 s stil (02-09, stationair),
+      #  50 s doorgelopen en toen 132 s stil (09-09, rijdend). Geen fout, geen
+      #  poging, geen watchdog — het proces liep niet.
+      #
+      #  Een foreground service houdt het proces uit de cached-toestand en
+      #  daarmee buiten het bereik van de freezer die dat veroorzaakt. Of dat
+      #  genoeg is, is een OPEN VRAAG: Chromium knijpt een verborgen pagina ook
+      #  af op zichtbaarheid, en daar doet een service niets tegen. Daarom heeft
+      #  de dienst een eigen hartslag: naast die van de WebView valt uit elkaar
+      #  te houden welk van de twee mechanismen de meting stilzette. Zie
+      #  native/PLMeetdienst.java en public/pidlane-meetdienst.js.
+      #
+      #  WAAROM DE JAVA IN DE REPO STAAT EN NIET HIER. De android/-map wordt
+      #  elke build opnieuw gegenereerd, dus native code moet erin gezet
+      #  worden. Dat kan met een heredoc in deze YAML — en dan leest niemand
+      #  hem ooit terug, is er geen diff die iets zegt en kan geen test hem
+      #  nakijken. De bestanden staan daarom in native/ en worden hier alleen
+      #  gekopieerd. public/test-nativeschil.js bewaakt de koppeling tussen die
+      #  bestanden, deze stap en het manifest.
+      - name: Injecteer de native meetdienst (#18)
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, shutil, sys
+
+          bron = pathlib.Path("native")
+          javas = sorted(bron.glob("*.java"))
+          if not javas:
+              print("FOUT: geen .java in native/ — de meetdienst kan niet geinjecteerd worden (#18)")
+              sys.exit(1)
+
+          # Het pakket komt uit de bestanden zelf, niet uit deze workflow. Zo is
+          # er een plek waar het staat; wijkt het af van waar MainActivity
+          # woont, dan stopt de build hier in plaats van een klasse te bouwen
+          # die Capacitor nooit vindt.
+          pakketten = set()
+          for j in javas:
+              m = re.search(r'^\s*package\s+([\w.]+)\s*;', j.read_text(), re.M)
+              if not m:
+                  print("FOUT: %s heeft geen package-regel" % j.name); sys.exit(1)
+              pakketten.add(m.group(1))
+          if len(pakketten) != 1:
+              print("FOUT: de native bestanden zitten in verschillende pakketten: %s" % sorted(pakketten))
+              sys.exit(1)
+          pakket = pakketten.pop()
+          doel = pathlib.Path("android/app/src/main/java") / pakket.replace(".", "/")
+          if not doel.exists():
+              print("FOUT: %s bestaat niet — het pakket in native/ past niet bij de gegenereerde app." % doel)
+              print("      appId in capacitor.config.json en de package-regel in native/*.java horen gelijk te zijn.")
+              sys.exit(1)
+
+          for j in javas:
+              shutil.copy2(j, doel / j.name)
+              print("gekopieerd: %s -> %s" % (j, doel / j.name))
+
+          # ── De plugin registreren in MainActivity ────────────────────────
+          # Een plugin die in de app zelf woont (en niet in een npm-pakket)
+          # wordt niet automatisch gevonden: capacitor.plugins.json gaat alleen
+          # over node_modules. Zonder deze registratie bestaat
+          # Capacitor.Plugins.PLMeetdienst niet, valt de app stil terug op "geen
+          # native meetdienst in deze schil", en is dat het enige spoor.
+          kandidaten = [doel / "MainActivity.java", doel / "MainActivity.kt"]
+          hoofd = next((k for k in kandidaten if k.exists()), None)
+          if hoofd is None:
+              print("FOUT: geen MainActivity gevonden in %s" % doel); sys.exit(1)
+          src = hoofd.read_text()
+          print("── MainActivity VOOR ──"); print(src)
+
+          if "PLMeetdienstPlugin" in src:
+              print("PLMeetdienstPlugin stond er al — niets gedaan")
+          elif hoofd.suffix == ".java":
+              # registerPlugin() moet VOOR super.onCreate(): de bridge leest de
+              # lijst tijdens het opstarten, en wat er daarna bij komt ziet hij
+              # niet meer.
+              blok = "\n".join([
+                  "{",
+                  "    @Override",
+                  "    public void onCreate(android.os.Bundle savedInstanceState) {",
+                  "        registerPlugin(PLMeetdienstPlugin.class);",
+                  "        super.onCreate(savedInstanceState);",
+                  "    }",
+                  "}",
+              ])
+              nieuw, n = re.subn(r'class\s+MainActivity\s+extends\s+BridgeActivity\s*\{\s*\}',
+                                 'class MainActivity extends BridgeActivity ' + blok, src, count=1)
+              if not n:
+                  print("FOUT: de MainActivity-vorm is veranderd; de registratie past niet meer.")
+                  print("      Verwacht: class MainActivity extends BridgeActivity {}")
+                  sys.exit(1)
+              hoofd.write_text(nieuw); src = nieuw
+          else:
+              blok = "\n".join([
+                  "{",
+                  "    override fun onCreate(savedInstanceState: android.os.Bundle?) {",
+                  "        registerPlugin(PLMeetdienstPlugin::class.java)",
+                  "        super.onCreate(savedInstanceState)",
+                  "    }",
+                  "}",
+              ])
+              nieuw, n = re.subn(r'class\s+MainActivity\s*:\s*BridgeActivity\(\)\s*\{\s*\}',
+                                 'class MainActivity : BridgeActivity() ' + blok, src, count=1)
+              if not n:
+                  print("FOUT: de Kotlin-MainActivity-vorm is veranderd; de registratie past niet meer.")
+                  sys.exit(1)
+              hoofd.write_text(nieuw); src = nieuw
+
+          print("── MainActivity NA ──"); print(src)
+          if "registerPlugin(PLMeetdienstPlugin" not in src:
+              print("FOUT: registratie niet geland"); sys.exit(1)
+
+          # ── Manifest: permissies plus de service zelf ────────────────────
+          pad = pathlib.Path("android/app/src/main/AndroidManifest.xml")
+          xml = pad.read_text()
+
+          # Eerst weg wat er (van een vorige injectie) al stond, zodat deze stap
+          # herhaalbaar is en niet stilletjes verdubbelt.
+          xml = re.sub(r'\s*<!-- PidLane meetdienst \(#18\).*?-->', '', xml)
+          xml = re.sub(r'\s*<uses-permission[^>]*android\.permission\.'
+                       r'(FOREGROUND_SERVICE[A-Z_]*|POST_NOTIFICATIONS)[^>]*/>', '', xml)
+          xml = re.sub(r'\s*<service[^>]*PLMeetdienst[^>]*/>', '', xml)
+
+          perms = (
+              '\n    <!-- PidLane meetdienst (#18) — geinjecteerd door CI -->'
+              # FOREGROUND_SERVICE_CONNECTED_DEVICE hoort bij het type hieronder.
+              # Android 14 weigert startForeground() als die twee niet bij elkaar
+              # passen, met een SecurityException tijdens het verbinden.
+              '\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />'
+              '\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />'
+              # Zonder toestemming onderdrukt Android 13+ alleen de MELDING; de
+              # service draait door. Daarom staat de app er niet op te wachten.
+              '\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />'
+          )
+          m = re.search(r'<manifest\b[^>]*>', xml)
+          if not m:
+              print("FOUT: <manifest> tag niet gevonden"); sys.exit(1)
+          xml = xml[:m.end()] + perms + xml[m.end():]
+
+          dienst = (
+              '\n        <!-- PidLane meetdienst (#18) — geinjecteerd door CI -->'
+              '\n        <service'
+              '\n            android:name="%s.PLMeetdienst"'
+              '\n            android:exported="false"'
+              '\n            android:foregroundServiceType="connectedDevice" />\n    ' % pakket
+          )
+          if "</application>" not in xml:
+              print("FOUT: </application> niet gevonden"); sys.exit(1)
+          xml = xml.replace("</application>", dienst + "</application>", 1)
+          pad.write_text(xml)
+          print("── Manifest NA de meetdienst-injectie ──"); print(xml)
+
+          for naam, waarvoor in [
+              ('FOREGROUND_SERVICE_CONNECTED_DEVICE', 'het servicetype dat bij een gekoppelde adapter hoort'),
+              ('POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort'),
+              ('foregroundServiceType="connectedDevice"', 'het type op de service zelf'),
+              ('%s.PLMeetdienst' % pakket, 'de service-klasse'),
+          ]:
+              if naam not in xml:
+                  print("FOUT: %s ontbreekt na injectie (%s)" % (naam, waarvoor)); sys.exit(1)
+          print("OK: de meetdienst staat in het app-manifest — de bundel zelf wordt na de build getoetst")
+          PY
+
       - name: Generate app icons from PidLane logo
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin imagemagick
@@ -638,6 +806,47 @@ jobs:
           for k in knopen:
               if 'BLUETOOTH_SCAN' in k and 'neverForLocation' not in k:
                   print("FOUT: BLUETOOTH_SCAN zonder neverForLocation: %s" % k); fout += 1
+
+          # 4. DE MEETDIENST (#18). Drie dingen die bij elkaar horen en die
+          #    Android 14 tegen elkaar aanhoudt: de service met een type, de
+          #    permissie die bij dat type hoort, en FOREGROUND_SERVICE zelf.
+          #    Klopt een van de drie niet, dan gooit startForeground() een
+          #    SecurityException op het moment dat de gebruiker verbindt — en
+          #    dan valt de meting stil op precies de plek die dit moest
+          #    repareren. Dat is niet iets om in de auto te ontdekken.
+          diensten = [' '.join(m.group(0).split())
+                      for m in re.finditer(r'<service\b.*?(?:/>|</service>)', xml, re.S)]
+          meet = [d for d in diensten if 'PLMeetdienst' in d]
+          print("── Diensten in de bundel ──")
+          for d in diensten:
+              print("   " + d)
+          if not meet:
+              print("FOUT: de meetdienst staat niet in de bundel — dan bevriest de app nog steeds (#18)")
+              fout += 1
+          for d in meet:
+              if 'android:foregroundServiceType="connectedDevice"' not in d:
+                  print("FOUT: PLMeetdienst zonder foregroundServiceType=connectedDevice: %s" % d); fout += 1
+              if 'android:exported="false"' not in d:
+                  print("FOUT: PLMeetdienst is exported — een meetdienst hoort niet van buiten startbaar te zijn: %s" % d)
+                  fout += 1
+
+          # De permissie die bij het type hoort. Deze koppeling is de reden dat
+          # dit hier staat en niet alleen in de injectiestap: het type kan via
+          # manifest-merge uit een plugin komen, de permissie uit een andere.
+          typen = re.findall(r'android:foregroundServiceType="([^"]+)"', xml)
+          bij_type = {'connectedDevice': 'android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE'}
+          for t in set(typen):
+              nodig = bij_type.get(t)
+              if nodig and not any(nodig in k for k in knopen):
+                  print("FOUT: foregroundServiceType=%s zonder %s — Android 14 weigert startForeground()" % (t, nodig))
+                  fout += 1
+
+          for naam, waarvoor in [
+              ('android.permission.FOREGROUND_SERVICE', 'de meetdienst mag op de voorgrond draaien (#18)'),
+              ('android.permission.POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort (#18)'),
+          ]:
+              if not any(naam in k for k in knopen):
+                  print("FOUT: %s ontbreekt in de bundel (%s)" % (naam, waarvoor)); fout += 1
 
           if fout:
               print("\n%d probleem/problemen in het samengevoegde manifest — deze bundel gaat niet naar Play." % fout)

@@ -181,6 +181,14 @@
     } catch (e) {
       console.warn('achtergrond: hartslag niet gestart — dan blijft de bevriezing een aanname (#18)', e);
     }
+    /* En de native teller op nul, als er een schil met meetdienst omheen zit.
+       Dit is het laatste moment waarop dat kan: vanaf hier is er geen garantie
+       meer dat er nog JavaScript draait. */
+    try {
+      if (window.PLMeetdienst && typeof PLMeetdienst.nulstel === 'function') PLMeetdienst.nulstel();
+    } catch (e) {
+      console.warn('achtergrond: native meetdienst niet op nul gezet — dan is er niets om de hartslag naast te leggen (#18)', e);
+    }
     return _weg;
   }
 
@@ -201,7 +209,11 @@
               // door/stil/na blijven NULL als de hartslag niet liep. Nul zou
               // hier "niets aan de hand" betekenen, en dat is een uitspraak
               // die deze module dan niet gedaan heeft.
-              door: null, stil: null, na: null };
+              door: null, stil: null, na: null,
+              // En wat de NATIVE hartslag in dezelfde periode deed (#18). Blijft
+              // null zolang er geen antwoord is — in de browser is dat voorgoed,
+              // in de schil tot de belofte hieronder terugkomt.
+              native: null };
     if (_aan) {
       var stilMs = st.ms >= STIL_MINIMAAL ? st.ms : 0;
       p.stil = Math.round(stilMs / 1000);
@@ -218,7 +230,38 @@
     var kern = _zin(p);
     _log('📴 ' + kern + ' (#18)' + (p.socket ? '. ' + p.socket : ''), p.stil ? 'warn' : 'info');
     _bt('achtergrond: ' + kern + (p.socket ? ' — ' + p.socket : ''), p.stil ? 'warn' : 'info');
+    _nativeErbij(p);
     return p;
+  }
+
+  /* HET NATIVE RAPPORT KOMT ERNA, EN DAT IS GEEN SLORDIGHEID.
+
+     terug() moet synchroon zijn: hij hangt aan visibilitychange en zijn
+     uitkomst gaat rechtstreeks naar de aanroeper. De native kant antwoordt via
+     een belofte. Die twee aan elkaar knopen zou terug() async maken, en dat
+     rimpelt door tot in de luisteraar.
+
+     De periode wordt daarom aangevuld zodra het antwoord er is. Blok 5 en blok
+     14 lezen de lijst aan het eind van een rit, en dan staat hij er allang in.
+     Staat hij er niet, dan blijft `native` null — en dat betekent hier hetzelfde
+     als overal in deze module: niet gemeten, en dus geen uitspraak. */
+  function _nativeErbij(p) {
+    try {
+      if (!window.PLMeetdienst || typeof PLMeetdienst.rapport !== 'function') return;
+      Promise.resolve(PLMeetdienst.rapport()).then(function (r) {
+        var o = PLMeetdienst.oordeel(r);
+        p.native = o;
+        if (!o || !o.gemeten) return;
+        var zin = (typeof PLMeetdienst.duiding === 'function') ? PLMeetdienst.duiding(o, p) : '';
+        // Alleen melden als er iets te melden is. Liep alles door, dan is dat
+        // nieuws en geen waarschuwing; lag er iets stil, dan is het dat wel.
+        _log('🛰️ ' + zin, (o.stil || (typeof p.stil === 'number' && p.stil)) ? 'warn' : 'info');
+      }).catch(function (e) {
+        console.warn('achtergrond: native rapport niet verwerkt (#18)', e);
+      });
+    } catch (e) {
+      console.warn('achtergrond: native rapport niet opgevraagd (#18)', e);
+    }
   }
 
   /* De melding in woorden. Los gehouden omdat hier de hele bevinding van 02-09

@@ -11,6 +11,40 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11a (CET) — DE METING LOOPT DOOR ALS JE WEGSCHAKELT
+
+       • 🛰️ EEN NATIVE MEETDIENST ACHTER DE APP (#18).
+         Android bevriest de app op de achtergrond: 02-09
+         stationair 36 s doorgelopen en toen 84 s stil, 09-09
+         rijdend 50 s en 132 s. Er draait nu een foreground
+         service zolang de adapter verbonden is, met een
+         melding in de statusbalk. Die houdt het proces uit
+         de cached-toestand, en daarmee buiten het bereik van
+         de freezer die dit veroorzaakt.
+
+       • 💓 EN HIJ MEET ZICHZELF NA. Een foreground service
+         helpt tegen een bevroren PROCES, niet tegen een
+         WebView die Chromium afknijpt — en van buiten zien
+         die twee er identiek uit. De dienst heeft daarom een
+         eigen hartslag naast die van de pagina. Twee tellers
+         over hetzelfde venster: liep native door terwijl de
+         webview stillag, dan is dit niet genoeg en volgt
+         picture-in-picture. Dat is een meting en geen gok.
+
+       • 🧾 EN DE BUNDEL WORDT EROP NAGEKEKEN. De poort op
+         het samengevoegde manifest eist de service, zijn
+         type (connectedDevice), exported=false en de
+         permissie die bij dat type hoort. Android 14 weigert
+         startForeground() als die niet kloppen — dat merk je
+         anders pas als iemand verbindt.
+
+       • 📱 WAT NOG NIET GEMETEN IS: of het op een toestel
+         werkt. Dat is de bevinding van de eerstvolgende rit.
+         De achtergrondstap vraagt er nu naar, en om het enige
+         dat de app zelf niet kan zien: stond de melding er.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-10g (CET) — DE BUNDEL VRAAGT WAT HIJ VERKLAART
 
        • 📍 DE .AAB VROEG LOCATIE OP ELKE ANDROID-VERSIE.

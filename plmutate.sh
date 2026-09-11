@@ -126,11 +126,35 @@ MUTATIES=(
 #    "stil" twee getallen zijn. Elke mutatie hieronder gooit dat onderscheid op
 #    één van de manieren om waarop het werkelijk fout ging of kon gaan.
 "public/pidlane-achtergrond.js@@      p.stil = Math.round(stilMs / 1000);@@      p.stil = Math.round((tot - van) / 1000);@@test-achtergrond.js@@de melding boekt de afwezigheid weer als stilte, precies de fout van 02-09"
-"public/pidlane-achtergrond.js@@              door: null, stil: null, na: null };@@              door: 0, stil: 0, na: 0 };@@test-achtergrond.js@@een niet-gemeten stilte leest als nul, dus als \"er was niets aan de hand\""
+"public/pidlane-achtergrond.js@@              door: null, stil: null, na: null,@@              door: 0, stil: 0, na: 0,@@test-achtergrond.js@@een niet-gemeten stilte leest als nul, dus als \"er was niets aan de hand\""
 "public/pidlane-achtergrond.js@@    if (staart >= _stilMs) return { ms: staart, van: _laatste };@@    if (false) return { ms: staart, van: _laatste };@@test-achtergrond.js@@de staart telt niet mee: een bevriezing die tot het eind duurt wordt nul"
 "public/pidlane-achtergrond.js@@    try { if (_timer !== null && typeof clearInterval === 'function') clearInterval(_timer); }@@    try { if (false) clearInterval(_timer); }@@test-achtergrond.js@@de hartslag blijft doorlopen als de app weer in beeld is"
 "public/pidlane-testrun.js@@PLAchtergrond.stilsteS(m.ms - 2000) : null;@@PLAchtergrond.totaalS(m.ms - 2000) : null;@@test-achtergrondproef.js@@blok 5 vergelijkt het gat weer met de afwezigheid in plaats van met de stilte"
 "public/pidlane-testrun.js@@return typeof x.na === 'number' && x.na >= 3; });@@return typeof x.na === 'number' && x.na >= 99999; });@@test-achtergrondproef.js@@afknijpen wordt niet meer herkend en gaat als bevriezing het verslag in"
+
+# ── #18, de native meetdienst (11-09-2026). De dienst is tegelijk de
+#    kandidaat-oplossing en het meetinstrument dat moet zeggen of hij werkt.
+#    Elke mutatie hieronder laat hem er nog steeds uitzien alsof hij meet,
+#    terwijl er iets anders gemeten wordt of niets. Dat is de vorm die hier
+#    telt: #18 ging anderhalve week fout omdat een getal ergens anders over
+#    ging dan de melding beweerde.
+"public/pidlane-meetdienst.js@@    if (staart >= r.stilMs) return { ms: staart, van: r.laatste };@@    if (false) return { ms: staart, van: r.laatste };@@test-meetdienst.js@@de staart telt niet mee: een proces dat bevroren blijft tot het eind meet nul"
+"public/pidlane-meetdienst.js@@    var leeg = { gemeten: false, reden: null, door: null, stil: null, na: null, slagen: null, hartslagMs: null };@@    var leeg = { gemeten: false, reden: null, door: 0, stil: 0, na: 0, slagen: 0, hartslagMs: null };@@test-meetdienst.js@@een niet-gemeten native periode leest als nul, dus als \"er was niets aan de hand\""
+"public/pidlane-meetdienst.js@@    return nodig() ? start() : stop();@@    return start();@@test-meetdienst.js@@de meetdienst blijft draaien zonder verbinding, ook in demo"
+"public/pidlane-meetdienst.js@@        _laatsteReden = r.reden || null;@@        _laatsteReden = null;@@test-meetdienst.js@@een geweigerde foreground service valt stil weg zonder reden"
+"public/pidlane-meetdienst.js@@    var stilMs = st.ms >= SLAGEN_MINIMAAL * hb ? st.ms : 0;@@    var stilMs = st.ms;@@test-meetdienst.js@@de gewone speling van een timer wordt als bevriezing geboekt"
+"public/pidlane-achtergrond.js@@      if (window.PLMeetdienst && typeof PLMeetdienst.nulstel === 'function') PLMeetdienst.nulstel();@@      if (false) PLMeetdienst.nulstel();@@test-achtergrond.js@@de native teller wordt niet op nul gezet en meet over een vreemd venster"
+"public/pidlane-achtergrond.js@@              native: null };@@              native: { gemeten: true, door: 0, stil: 0, na: 0 } };@@test-achtergrond.js@@een periode zonder native meting doet alsof er wel een is"
+"native/PLMeetdienst.java@@public static final long HARTSLAG_MS = 1000L;@@public static final long HARTSLAG_MS = 5000L;@@test-nativeschil.js@@de twee hartslagen tikken verschillend, dus het aantal slagen is niet meer te vergelijken"
+"native/PLMeetdienst.java@@                startForeground(MELDING_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);@@                startForeground(MELDING_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);@@test-nativeschil.js@@het servicetype in de code past niet meer bij het manifest: SecurityException bij het verbinden"
+"native/PLMeetdienst.java@@            Log.w(TAG, \"hartslagdraad niet netjes gestopt (#18)\", e);@@            /* stil */@@test-nativeschil.js@@een catch in de service zwijgt, en in een foreground service is dat onzichtbaar"
+"native/PLMeetdienstPlugin.java@@    name = \"PLMeetdienst\",@@    name = \"PLMeting\",@@test-nativeschil.js@@de plugin heet anders dan wat de app opzoekt: Capacitor.Plugins.PLMeetdienst bestaat niet"
+"native/PLMeetdienstPlugin.java@@    public void rapport(PluginCall call) {@@    public void verslag(PluginCall call) {@@test-nativeschil.js@@de app roept een methode aan die niet meer bestaat en krijgt een belofte die niets doet"
+".github/workflows/build-apk.yml@@     - 'native/**'@@     - 'native-uit/**'@@test-nativeschil.js@@een wijziging aan de native meetdienst start geen build meer"
+".github/workflows/build-apk.yml@@              print(\"FOUT: de meetdienst staat niet in de bundel — dan bevriest de app nog steeds (#18)\")@@              print(\"let op: geen meetdienst gevonden\")@@test-nativeschil.js@@de bundelpoort laat een .aab zonder meetdienst door"
+"public/index.html@@<script src=\"pidlane-meetdienst.js\"></script>@@@@test-nativeschil.js@@de module hangt niet meer in index.html en de dienst start dus nooit"
+"native/PLMeetdienst.java@@        stopSelf();\n        super.onTaskRemoved(rootIntent);@@        super.onTaskRemoved(rootIntent);@@test-nativeschil.js@@de melding blijft staan nadat de app uit het overzicht is geveegd"
+"public/pidlane-meetdienst.js@@    if (!_meldingGevraagd) {@@    if (true) {@@test-meetdienst.js@@de meldingpermissie wordt bij elke herverbinding opnieuw gevraagd, dus tijdens het rijden"
 "public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
 "public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"
