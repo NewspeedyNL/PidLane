@@ -193,9 +193,18 @@ console.log('\n── de wake lock en zijn permissie horen bij elkaar ──');
   const claim = dienst.indexOf('wakeAan();');
   const nul = dienst.indexOf('nulstel();', claim > -1 ? claim : 0);
   toets('de lock is er vóór het meetvenster begint', claim > -1 && nul > claim, true);
-  // Geen time-out: die stopt midden in een rit met beschermen zonder dat iets
-  // dat meldt, en dat is precies de stille vorm waar #18 over gaat.
-  toets('zonder tijdslimiet', /acquire\(\s*\)/.test(dienst), true);
+  /* Geen time-out: die stopt midden in een rit met beschermen zonder dat iets
+     dat meldt, en dat is precies de stille vorm waar #18 over gaat.
+
+     EN DEZE TOETS LAS ZICHZELF. Hij zocht eerst op `acquire()` en matchte
+     daarmee op het COMMENTAARBLOK in PLMeetdienst.java, waar de zin "een
+     acquire() met tijdslimiet stopt midden in een rit" staat. De mutatie die
+     er `acquire(60000L)` van maakte bleef daardoor groen — plmutate.sh ving
+     hem op 11-09-2026 als ONTSNAPT. Vandaar dat hier nu op de AANROEP gekeken
+     wordt, met de ontvanger ervoor, én dat de tegenvorm expliciet afwezig moet
+     zijn. Een toets die op zijn eigen uitleg kan slagen, toetst niets. */
+  toets('zonder tijdslimiet',
+    /wakeLock\.acquire\(\s*\)\s*;/.test(dienst) && !/wakeLock\.acquire\(\s*[^)\s]/.test(dienst), true);
 }
 
 console.log('\n── de dienst stopt als de app weg is ──');
