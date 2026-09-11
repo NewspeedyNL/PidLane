@@ -150,9 +150,14 @@ function zeg(m) {
     await app.ev(`(function(){
       const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
       try{ sw('live', document.querySelector('.tabs .tab')); }catch(e){}
-      ['010C','0105','0104','010D','0111','0142'].forEach(function(p){
+      ['010C','0105','0104','010D','0111','0142'].forEach(function(p,i){
         try{ activePIDs.add(p); }catch(e){}
-        try{ pidVals[p] = 40 + Math.random()*60; }catch(e){}
+        /* VASTE WAARDEN, GEEN Math.random(). Met willekeur hing het van het
+           toeval af of een tegel over een waarschuwingsdrempel viel en dus
+           oranje werd -- en dan faalde blok 3 hieronder soms wel en soms niet,
+           op iets dat niets met de proef te maken had. Een toets die per run
+           een ander antwoord geeft, wordt genegeerd. */
+        try{ pidVals[p] = 42 + i*9; }catch(e){}
       });
       try{ renderGauges(); }catch(e){ return String(e.message); }
       return true; })()`);
@@ -204,6 +209,20 @@ function zeg(m) {
        tekstkleur uit het donkere palet, met de hand opgeschreven, op een
        lichte grond. */
     await app.ev(`plThemaZet('licht'); true`);
+    await rust(200);
+    /* EERST DE BASISLIJN, EN DAT IS EEN REPARATIE VAN 11-09-2026.
+
+       De tweede helft van dit blok eiste een SCHOON scherm na het weghalen van
+       de ingebouwde fout. Dat kan hier niet: dit blok meet in het LICHTE thema,
+       en blok 2 hierboven meet licht met opzet niet omdat dat thema nog niet af
+       is -- "een groot deel van de app schildert zijn eigen donkere achtergrond".
+       De eis was dus strenger dan wat het project zelf waar houdt, en hij viel
+       om zodra een tegel toevallig oranje werd.
+
+       Wat dit blok moet bewijzen is niet dat het lichte scherm smetteloos is,
+       maar dat DEZE proef een fout ziet komen en weer gaan. Dat is een verschil
+       ten opzichte van de stand van vlak ervoor. */
+    const basis = await app.ev(`${METER}('appGrid', ${NORM})`);
     await app.ev(`(function(){
       const st = document.createElement('style'); st.id = 'plProefSlechtContrast';
       st.textContent = '.pidview-btn.waak{ color:#7f93b8 !important; }';
@@ -211,15 +230,18 @@ function zeg(m) {
     await rust(200);
     const kapot = await app.ev(`${METER}('appGrid', ${NORM})`);
     toets('een handgeschreven donkere tekstkleur op een lichte grond wordt betrapt',
-          !kapot.fout && kapot.aantal > 0,
-          'de meting ziet hem niet — dan zegt blok 2 niets (gemeten: ' + JSON.stringify(kapot) + ')');
+          !kapot.fout && kapot.aantal > basis.aantal,
+          'de meting ziet hem niet — dan zegt blok 2 niets (basis ' + basis.aantal +
+          ', met de fout erin ' + JSON.stringify(kapot) + ')');
     await app.ev(`(function(){ const e=document.getElementById('plProefSlechtContrast'); if(e) e.remove(); return true; })()`);
 
     // En de andere kant: zonder die regel is hij weer schoon. Anders zou blok 3
     // groen kunnen staan om een fout die er sowieso al was.
     await rust(200);
     const heel = await app.ev(`${METER}('appGrid', ${NORM})`);
-    toets('en zonder die regel is het scherm weer schoon', !heel.fout && heel.aantal === 0, zeg(heel));
+    toets('en zonder die regel is hij weer op de basislijn',
+          !heel.fout && heel.aantal === basis.aantal,
+          'basis was ' + basis.aantal + ', nu ' + heel.aantal + ' — ' + zeg(heel));
     await app.ev(`plThemaZet('donker'); true`);
 
   } finally { await app.stop(); }
