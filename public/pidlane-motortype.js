@@ -299,17 +299,63 @@ function toggleSR(){
 // De Capacitor WebView heeft géén download-afhandeling: blob-links en
 // navigator.share met bestanden doen daar niets. Het Android-deelmenu
 // (met daarin ook "Opslaan in Bestanden/Drive") is de betrouwbare route.
+//
+// ── MAAR NIET TIJDENS EEN VERBINDING (#132, 11-09-2026) ──────────────
+// De deelkaart duwt de app naar de achtergrond, en dat kost binnen seconden
+// de SPP-socket. Zeven van de zeven afwezigheden in de logboeken van 11-09
+// lieten dat zien, elke keer met een herverbinding 2 tot 7 seconden ná het
+// wegschakelen:
+//
+//   10:44:51  weg (77 s)    → 10:44:53 herverbonden   +2 s
+//   10:47:29  weg (310 s)   → 10:47:32 herverbonden   +3 s
+//   10:54:24  weg (485 s)   → 10:54:28 herverbonden   +4 s
+//   12:30:02  weg (123 s)   → 12:30:05 herverbonden   +3 s
+//   … en drie meer, alle binnen 7 s
+//
+// De meetdienst uit #18 neemt dit niet weg: die houdt het PROCES in leven,
+// niet de socket. Het proces liep aantoonbaar door — de app logde de
+// herverbinding zelf, en dat kan alleen als hij draaide.
+//
+// Daarom: staat er een verbinding, dan gaat het bestand RECHTSTREEKS naar een
+// vaste map en komt er geen venster tussen. Staat er geen verbinding, dan is
+// de deelkaart gratis en blijft hij wat hij was — met "Opslaan in
+// Bestanden/Drive" erin, en dat is een mogelijkheid die we niet weggooien
+// voor een probleem dat op dat moment niet bestaat.
+const PL_OPSLAGMAP = 'PidLane';
+
+async function _blobNaarB64(blob){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('Lezen mislukt'));
+    r.readAsDataURL(blob);
+  });
+}
+
+/* Rechtstreeks wegschrijven, zonder deelkaart en dus zonder vensterwissel.
+   Geeft het pad terug als het lukt, anders null — de aanroeper valt dan terug
+   op de deelkaart, want een bestand dat nergens landt is erger dan een
+   herverbinding. */
+async function nativeSchrijfDirect(blob,fname){
+  const FS=window.Capacitor?.Plugins?.Filesystem;
+  if(!FS) return null;
+  try{
+    const b64=await _blobNaarB64(blob);
+    await FS.writeFile({ path:PL_OPSLAGMAP+'/'+fname, data:b64,
+                         directory:'DOCUMENTS', recursive:true });
+    return 'Documenten/'+PL_OPSLAGMAP+'/'+fname;
+  }catch(e){
+    log('Rechtstreeks opslaan mislukt ('+(e.message||e)+') — terug naar de deelkaart','warn');
+    return null;
+  }
+}
+
 async function nativeShareFile(blob,fname){
   const C=window.Capacitor;
   const FS=C?.Plugins?.Filesystem, SH=C?.Plugins?.Share;
   if(!FS||!SH) return false; // plugins niet aanwezig → web-fallback
   try{
-    const b64=await new Promise((res,rej)=>{
-      const r=new FileReader();
-      r.onload=()=>res(r.result.split(',')[1]);
-      r.onerror=()=>rej(new Error('Lezen mislukt'));
-      r.readAsDataURL(blob);
-    });
+    const b64=await _blobNaarB64(blob);
     const w=await FS.writeFile({path:fname,data:b64,directory:'CACHE'});
     await SH.share({title:fname,files:[w.uri]});
     return true;
@@ -320,8 +366,25 @@ async function nativeShareFile(blob,fname){
   }
 }
 
+/* Staat er een verbinding die een vensterwissel zou kosten? Demo telt niet:
+   daar is geen socket om kwijt te raken. */
+function _plVerbindingStaat(){
+  try{
+    if(typeof demoMode!=='undefined' && demoMode) return false;
+    return typeof connected!=='undefined' && !!connected;
+  }catch(e){ console.warn('Verbindingsstand onleesbaar bij het opslaan', e); return false; }
+}
+
 async function download(name,content){
   const blob=new Blob([content],{type:'text/plain'});
+  if(_plVerbindingStaat()){
+    const pad=await nativeSchrijfDirect(blob,name);
+    if(pad){
+      log('💾 Opgeslagen in '+pad+' — geen deelvenster, dus de verbinding blijft staan (#132)','ok');
+      try{ showToast?.('💾 Opgeslagen in '+pad); }catch(e){ console.warn('Opslagmelding niet getoond:', e); }
+      return;
+    }
+  }
   if(await nativeShareFile(blob,name)) return;
   if(window.Capacitor?.isNativePlatform?.()){ showNeedsUpdate(); return; }
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
