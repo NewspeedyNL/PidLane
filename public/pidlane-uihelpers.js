@@ -342,6 +342,10 @@ function sw(name,el){
   const pane=document.getElementById('pane-'+name);
   if(pane) pane.classList.add('active');
   if(name==='graph') setTimeout(drawGraph,50);
+  // De dubbeltik-tip hoort bij het zíén van de tegels (#145). Hier en niet in
+  // renderGauges(): die draait al tijdens het opstarten, en dan kwam de tip op
+  // het keuzescherm voorbij waar geen tegel staat.
+  if(name==='live'){ try{ _tegelTipEenmalig(); }catch(e){ console.warn('Dubbeltik-tip niet getoond:', e); } }
   // PID-selectie alleen bij live/graph; andere panes vergrendeld verbergen
   if(typeof setLeftPanelForMode==='function') setLeftPanelForMode(name);
 }
