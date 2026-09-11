@@ -468,6 +468,38 @@ mee, plus `privacy.html` en `verwijderen.html`.
 | Data safety (zie §11) | ingevuld |
 | Advertising ID | **Niet gebruikt** — de app vraagt hem niet op en er zit geen SDK in die dat doet |
 | Photo and Video permissions | Niet van toepassing — geen `READ_MEDIA_*` in het manifest |
+| Foreground service permissions | **Ja, één type: `connectedDevice`** — zie hieronder |
+
+
+### De foreground service-verklaring (sinds 11-09-2026)
+
+Android 14 eist dat elke foreground service een **type** draagt, en Google Play
+eist sinds die versie dat je per type verklaart waaróm de app hem nodig heeft.
+Dit formulier staat onder *App content → Foreground service permissions* en
+wordt pas zichtbaar zodra er een bundel is geüpload die zo'n permissie vraagt.
+Sla je het over, dan blokkeert de release — en de melding wijst niet naar dit
+formulier maar naar "je hebt nog openstaande verklaringen".
+
+De bundel vraagt er precies één: `FOREGROUND_SERVICE_CONNECTED_DEVICE`.
+
+| veld | wat je invult |
+|---|---|
+| Type | Connected device |
+| Wat doet de functie | De app meet live sensorwaarden uit een OBD2-adapter die via Bluetooth aan de auto hangt. De service houdt die meting en de Bluetooth-verbinding in leven terwijl de bestuurder rijdt en het scherm uit staat of een andere app op de voorgrond komt. |
+| Waarom kan het niet anders | Zonder de service zet Android het app-proces stil zodra de app naar de achtergrond gaat. De meting valt dan midden in een rit uit en de Bluetooth-socket wordt opgeruimd; de meetreeks heeft daarna een gat van minuten. Gemeten op 02-09 en 09-09-2026: 84 en 132 seconden volledige stilte. |
+| Wanneer draait hij | Uitsluitend zolang er een echte adapterverbinding is. Hij start bij het verbinden en stopt bij het verbreken. |
+| Zichtbaar voor de gebruiker | Ja — een doorlopende melding ("PidLane meet door") zolang de service draait. |
+
+**Bij dit formulier hoort een schermopname.** Play vraagt om een korte video of
+opname waarin de functie te zien is. Toon: verbinden met de adapter, de melding
+die verschijnt, wegschakelen naar een andere app, en terugkomen met de meting
+nog intact.
+
+**Let op de koppeling met `POST_NOTIFICATIONS`.** Die permissie zit óók in de
+bundel en hoort bij deze service: zonder toestemming onderdrukt Android 13+ de
+melding terwijl de service doorloopt. Dat is geen aparte verklaring waard, maar
+het is wél de reden dat de permissie er staat — en dat is wat een reviewer
+vraagt als hij hem ziet.
 
 ---
 
@@ -573,6 +605,7 @@ zijn.
 | Het document beweert nergens dat gegevens *anoniem* zijn | `test-playteksten.js` |
 | Het icoon staat op een pad dat een build start | `test-icoonpad.js` |
 | De APK-sleutel die de build schrijft, is die de Worker leest | `test-apkpad.js` |
+| De meetdienst zit in de bundel, met het juiste type én de permissie erbij | `test-nativeschil.js` + de poort op het samengevoegde manifest |
 | De toestemmingstekst noemt pseudonimisering, geen anonimisering | `test-toestemmingstekst.js` |
 
 ### 16b — Wat op een TOESTEL bewezen moet zijn, en op wélke build
