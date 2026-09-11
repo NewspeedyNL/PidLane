@@ -177,6 +177,20 @@ MUTATIES=(
 "public/pidlane-schil.js@@    return window.plFetch('/version.json', { geenToken: true })@@    return window.plFetch('/version.json')@@test-schil.js@@de versiecheck stuurt het sessietoken mee waar dat niet hoort"
 "public/pidlane-testrun.js@@      if (achter > 0)@@      if (false)@@test-schilproef.js@@een achterlopende schil levert geen waarschuwing meer op"
 "public/pidlane-testrun.js@@      if (achter < 0)@@      if (false)@@test-schilproef.js@@een zelf gebouwde schil die voorloopt wordt niet meer gemeld"
+
+# ── #191, het scanslot (11-09-2026). Gemeld uit het gebruik: diep zoeken gaf
+#    een dip met valse waarschuwingen. De reparatie zet twee bewakers stil, en
+#    dat mag alleen mét vangnet. Elke mutatie hieronder haalt een van de twee
+#    helften weg -- de vlag die de dip wegneemt, of het vangnet dat hem
+#    vervangt. De tweede soort is de stilste en daarom de belangrijkste.
+"public/pidlane-scanslot.js@@    window._plScanActief = true;@@    window._plScanActief = alAan;@@test-scanslot.js@@de scanvlag gaat niet meer aan: de dip met valse waarschuwingen is terug"
+"public/pidlane-scanslot.js@@      if (!alAan) window._plScanActief = false;@@      if (false) window._plScanActief = false;@@test-scanslot.js@@de scanvlag blijft na afloop aan en de bewakers zijn voorgoed doof"
+"public/pidlane-scanslot.js@@    var alAan = !!window._plScanActief;@@    var alAan = false;@@test-scanslot.js@@een geneste scan zet het vangnet van de lopende scan terug"
+"public/pidlane-scanslot.js@@        if (!levend) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@        if (false) throw new Error('x');@@test-scanslot.js@@de scan ploetert stilletjes door op een dode socket"
+"public/pidlane-scanslot.js@@      if (!String(r || '').trim()) leegReeks++; else leegReeks = 0;@@      leegReeks = 0;@@test-scanslot.js@@lege antwoorden tellen niet meer, dus de hartslag komt er nooit aan te pas"
+"public/pidlane-scanslot.js@@      try { if (raakTimer !== null) clearInterval(raakTimer); }@@      try { if (false) clearInterval(raakTimer); }@@test-scanslot.js@@de raak-timer blijft lopen en tikt een slot aan dat al vergeven is"
+"public/pidlane-scanslot.js@@      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); }@@      try { if (false) PLBus.release(tok); }@@test-scanslot.js@@het busslot wordt nooit teruggegeven: elke houder valt buiten de noodrem"
+"public/pidlane-rijsituatie.js@@      await PLScanSlot.doe('diep zoeken', {}, sweep);@@      await sweep(async (pid,t)=>await sendCmd(pid,t));@@test-diepzoeken.js@@diep zoeken gaat weer buiten het scanslot om (de fout zoals hij gemeld is)"
 "public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
 "public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"

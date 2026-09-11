@@ -220,6 +220,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 51 | `pidlane-privacy.js` | 12 | `PLPrivacy` — prominente Bluetooth-disclosure vóór `connectSerial()`, plus privacyscherm in het menu. Play Store-eis, zie `ANDROID-PLAYSTORE.md` |
 | 52 | `pidlane-start.js` | 20 | `PLStart` — startscherm: adapterprofielen per type, geheugen van eerdere verbindingen, verbindingscascade als live voortgang. Stuurt óók de ketenvolgorde in `connectSerial()` |
 | 53 | `pidlane-meetdienst.js` | 11 | `PLMeetdienst` — de app-kant van de **native foreground service** (#18). Start/stopt de dienst met de adapterverbinding mee (wikkelt `setConn`, net als `PLWake`), zet de native hartslagteller op nul bij het wegschakelen en vertaalt het ruwe native rapport naar een oordeel: hoeveel liep het proces door, hoe lang lag het stil, kwam het uit zichzelf terug. Het **oordeel staat hier en niet in Java** — daar is het zonder toestel te toetsen. Geen schil met dienst? Dan is de uitkomst `gemeten: false` met de reden erbij, en nooit nul. Tests: `test-meetdienst.js`, `test-nativeschil.js` |
+| 55 | `pidlane-scanslot.js` | 6 | `PLScanSlot` — **één plek waar een scan de bus overneemt** (#191). `doe(naam, opties, werk)` claimt het busslot (en tikt het aan met `PLBus.raak()`), zet `window._plScanActief`, en geeft het werk een bewaakte `stuur()` mee met een `ATI`-hartslag. Die drie horen bij elkaar: de vlag zet de dode-socket-detectie uit, dus wie hem aanzet moet zelf merken dat de verbinding weg is. Nestelt veilig — een geneste scan zet de vlag van de lopende niet uit. Gebruikt door `deepRefreshPIDs()`; `PLKaart` heeft nog zijn eigen, in een rit getoetste uitvoering. Tests: `test-scanslot.js`, `test-diepzoeken.js` |
 | 54 | `pidlane-schil.js` | 5 | `PLSchil` — **welke APK draait dit** (#18). Leest de `versionCode` van de schil via Capacitor `App.getInfo()` en de nieuwste uit `/version.json` (die de Worker uit R2 serveert), en legt die twee naast elkaar. De kop van het testrunverslag draagt de regel `APK : build N`; blok 5 waarschuwt vóór de rit als de schil achterloopt. Ontbreekt één van beide getallen, dan is `achterstand()` **null** en nooit 0. Tests: `test-schil.js`, `test-schilproef.js` |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
 
@@ -901,6 +902,67 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+
+### De scanvlag was op één plek aangesloten — 11-09-2026 (#191)
+
+Gemeld uit het gebruik: *bij diep zoeken op de PID-keuzepagina gaat de ECU
+tijdelijk veel lege antwoorden teruggeven, en die dip genereert meerdere
+waarschuwingen in rapporten.*
+
+Dat is precies het mechanisme van de adresscan hierboven (04-09, *"Elke scan
+mislukte, en dat lag niet aan de adressen"*), oorzaken 3 en 4 — alleen was de
+reparatie daar nooit op dit pad aangesloten.
+
+`deepRefreshPIDs()` pollt na de twee discovery-rondes nog **96 PIDs** los
+(`0x01`–`0x60`). De meeste bestaan op een gegeven auto niet, dus die lege
+antwoorden zijn het meetresultaat. Twee bewakers lezen ze anders:
+
+| bewaker | wat hij ervan maakt |
+|---|---|
+| `PLBus.note()` | telt ze als fout → `foutPct` naar ~100% → `PLBusGate` dicht → waakronde en watchers melden gezonde sensoren als uitgevallen |
+| `trackBtQuality()` | zes lege op rij = "socket dood" → volledige herverbinding, midden in de scan |
+
+Allebei houden zich stil zodra `window._plScanActief` aan staat. Die vlag
+bestond sinds 04-09 en werkte — maar hij stond op precies één plek, in
+`PLKaart`.
+
+**De val zit niet in de vlag maar in wat hij wegneemt.** `_plScanActief` zet de
+dode-socket-detectie uit. Wie hem aanzet en verder niets doet, ruilt valse
+waarschuwingen in voor een scan die stilletjes doorploetert op een verbinding
+die al weg is: dezelfde fout in spiegelbeeld, en stiller — je merkt hem pas als
+de rit voorbij is. `PLKaart` loste dat op met een `ATI`-hartslag (elke 60
+commando's, of na 25 lege op rij; afbreken na twee stille).
+
+`pidlane-scanslot.js` maakt van die drie dingen één plek, en ze zijn niet los
+te krijgen: je kunt de vlag niet aanzetten zonder het vangnet mee te krijgen.
+`doe()` geeft je een `stuur()`, en dát is het enige punt waar een commando de
+bus op gaat — wie eromheen `sendCmd()` aanroept doet dat zichtbaar.
+
+1. busslot claimen, en blijven aantikken met `PLBus.raak()` zodat de noodrem
+   (`MAX_HOLD_MS`, drie minuten) het slot niet halverwege onteigent — 96 PIDs
+   × tot 800 ms komt daarbij in de buurt
+2. `window._plScanActief` aan, en in een `finally` weer uit
+3. de `ATI`-hartslag als vervanging voor het vangnet dat punt 2 weghaalt
+
+**Nestelen moet kloppen.** Draait er al een scan, dan stond de vlag al aan en
+zet deze `finally` hem níét uit — anders zet de ene scan het vangnet van de
+andere terug terwijl die nog midden in een adressweep zit. Daarom onthoudt
+`doe()` wat er stond.
+
+**Alleen de 96-sweep gaat erdoorheen.** `discoverPIDsBitmap()` en
+`discoverPIDsDirect()` vragen tien bekende PIDs, hebben het probleem niet, en
+houden dus hun gewone bescherming. Een vlag aanzetten voor code die hem niet
+nodig heeft is vangnet weggeven voor niets.
+
+**`PLKaart` staat nog op zijn eigen uitvoering.** Die is in een rit getoetst, en
+verhuist pas als daar een reden voor is die groter is dan netheid. Wat er nu
+staat is de plek voor elke nieuwe scan; dat er twee uitvoeringen zijn is
+bekend en opgeschreven in plaats van stilzwijgend.
+
+**Wat er niet mee gemeten is:** of de dip werkelijk uit de rapporten verdwijnt.
+Dat leest af aan de blok 5-proef op `PLBusGate` en aan de waakrondemeldingen,
+en het vraagt een rit met een druk op *Diep zoeken*.
 
 
 ### Twee keer op één dag de vraag: welke schil draait dit? — 11-09-2026 (#18)

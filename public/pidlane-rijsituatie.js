@@ -531,15 +531,46 @@ async function deepRefreshPIDs(){
     await discoverPIDsBitmap();
     if(st) st.textContent='Directe poll van bekende PIDs...';
     await discoverPIDsDirect();
-    // Extra: poll óók range 01 01..60 één voor één
+    /* Extra: poll óók range 01 01..60 één voor één — 96 stuks, en de meeste
+       bestaan op een gegeven auto niet.
+
+       DIT LOOPT SINDS #191 VIA PLScanSlot, en dat is geen netheid maar een
+       reparatie. De lege antwoorden die deze sweep met opzet oplevert werden
+       door PLBus.note() als fout geteld (foutPct naar ~100% → PLBusGate dicht
+       → waakronde en watchers melden sensoren als uitgevallen) en door
+       trackBtQuality() als een dode socket gelezen (zes lege op rij → volledige
+       herverbinding, midden in de scan). Gemeld uit het gebruik: de dip
+       leverde meerdere waarschuwingen in rapporten op.
+
+       Het slot doet drie dingen die bij elkaar horen: de bus claimen (zodat de
+       pollus er niet doorheen meet én andersom), de scanvlag zetten die die
+       twee bewakers stil houdt, en een ATI-hartslag als vangnet — want die
+       vlag zet de dode-socket-detectie uit, en dan moet je zelf merken dat de
+       verbinding weg is.
+
+       Alleen DEZE sweep gaat erdoorheen. discoverPIDsBitmap() en
+       discoverPIDsDirect() hierboven vragen tien bekende PIDs en houden hun
+       gewone bescherming; die hebben het probleem niet en hoeven het vangnet
+       dus ook niet kwijt. */
     if(st) st.textContent='Diepe poll extra PIDs...';
     const extra=[];
     for(let n=0x01;n<=0x60;n++){ extra.push('01'+n.toString(16).toUpperCase().padStart(2,'0')); }
-    for(const pid of extra){
-      if(supportedPIDs.has(pid)) continue;
-      const resp=await sendCmd(pid,800);
-      if(resp&&resp.includes('41')&&!/NO DATA|ERROR|UNABLE/.test(resp)){ supportedPIDs.add(pid); }
-      await delay(30);
+    const sweep = async (stuur)=>{
+      for(const pid of extra){
+        if(supportedPIDs.has(pid)) continue;
+        const resp=await stuur(pid,800);
+        if(resp&&resp.includes('41')&&!/NO DATA|ERROR|UNABLE/.test(resp)){ supportedPIDs.add(pid); }
+      }
+    };
+    if(window.PLScanSlot && typeof PLScanSlot.doe==='function'){
+      await PLScanSlot.doe('diep zoeken', {}, sweep);
+    }else{
+      // Geen slot geladen: dan nog liever de sweep dan geen diep zoeken — maar
+      // wél met de melding erbij, want dit is de stand waarin de dip terugkomt.
+      console.warn('PLScanSlot ontbreekt — de diepe poll draait zonder busslot en zonder scanvlag (#191)');
+      try{ btDiag('PLScanSlot ontbreekt: de diepe poll kan valse waarschuwingen geven (#191)','warn'); }
+      catch(e){ console.warn('melding niet gelogd', e); }
+      await sweep(async (pid,t)=>{ const r=await sendCmd(pid,t); await delay(30); return r; });
     }
     // Namen invullen voor naamloze PIDs via SAE-tabel
     if(st) st.textContent='Namen opzoeken...';

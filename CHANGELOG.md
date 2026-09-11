@@ -11,6 +11,30 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11d (CET) — DIEP ZOEKEN GEEFT GEEN VALSE DIP MEER
+
+       • 🔎 DE DIP BIJ DIEP ZOEKEN (#191). De sweep over 96
+         PIDs levert met opzet lege antwoorden op — de meeste
+         bestaan niet op jouw auto. PLBus telde ze als fout
+         (PLBusGate dicht, waakronde meldde gezonde sensoren
+         als uitgevallen) en de BT-laag las ze als een dode
+         socket. Gemeld uit het gebruik: dat gaf meerdere
+         waarschuwingen in rapporten.
+
+       • 🔒 DE SWEEP CLAIMT NU DE BUS EN ZET DE SCANVLAG. Die
+         vlag bestond al sinds 04-09 maar was op één plek
+         aangesloten. Nu ook hier — en de pollus meet er niet
+         meer doorheen, en andersom.
+
+       • 🫀 MET EEN HARTSLAG ALS VANGNET. De scanvlag zet de
+         dode-socket-detectie uit, dus stuurt het slot elke
+         60 commando's (of na 25 lege op rij) een ATI en
+         breekt af als die twee keer niets teruggeeft. Zonder
+         dat ruil je valse waarschuwingen in voor een scan
+         die stil doorploetert op een verbinding die weg is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11c (CET) — HET VERSLAG ZEGT WELKE APK HET IS
 
        • 📦 EEN REGEL "APK : build N" IN DE KOP (#18). Twee
