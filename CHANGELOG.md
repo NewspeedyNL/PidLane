@@ -11,6 +11,38 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11e (CET) — DE AI HOORT NU HOE GOED DE METING WAS
+
+       • 📦 DE AANLEVERING (#188). De app wist allang hoe goed
+         zijn eigen meting was — gaten, herverbindingen, de
+         tijd dat hij op de achtergrond stond, welke sensor
+         te vertrouwen is. Dat ging naar één lezer: het
+         testrunverslag. De AI-analyse kreeg er niets van
+         mee, en een gat van twee minuten leest dan als een
+         sensor die uitvalt.
+
+       • 🔍 WELKE SENSOREN ONTBRAKEN, EN WAAROM. Elke analyse
+         krijgt nu een dekkingslijst mee: wat had ik nodig,
+         wat leverde data, en van de rest de reden — de auto
+         heeft hem niet, hij stond niet in je selectie, of
+         hij gaf geen antwoord. Die drie vragen om een ander
+         advies. En de harde regel eronder: een sensor die
+         ontbreekt is NIET beoordeeld, dus daar hoort geen
+         "in orde" over te staan.
+
+       • 🕳️ EEN GAT KRIJGT ZIJN NAAM. Viel het terwijl de app
+         op de achtergrond stond, dan is het de telefoon;
+         stond de app in beeld, dan is het de adapter of de
+         bus. Een sprong of een nul rond een herverbinding
+         gaat als MEETARTEFACT mee en niet als defect.
+
+       • 💶 EN HET KOST NIETS ALS ER NIETS TE MELDEN VALT. Is
+         er niet gemeten en vraagt niemand een analyse, dan
+         blijft het blok leeg — een verbindingsvraag betaalt
+         niet voor meetcontext die er niet is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11d (CET) — DIEP ZOEKEN GEEFT GEEN VALSE DIP MEER
 
        • 🔎 DE DIP BIJ DIEP ZOEKEN (#191). De sweep over 96
