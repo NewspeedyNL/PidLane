@@ -140,8 +140,47 @@ console.log('\n3. De app-schil zelf — issue #58 (29-08-2026)');
   };
 
   toets('--pl-top bestaat en telt --pl-sat mee',
-        /--pl-top:\s*calc\(46px \+ var\(--pl-sat\)\)/.test(css),
+        /--pl-top:\s*calc\(var\(--pl-topbar\) \+ var\(--pl-sat\)\)/.test(css),
         'zonder dit token staat de hoogte van de topbalk weer op twee plekken');
+
+  // Sinds 11-09 is ook die 46 een token, en dat is geen opsmuk: bij
+  // tekstgrootte L is de balk 42px, en zolang .topbar zijn hoogte apart
+  // opschreef werd .app precies het verschil te lang. Dat is #58, en bij L
+  // was het #192.
+  toets('.topbar leest zijn hoogte uit datzelfde token',
+        /\.topbar \{[^}]*height:var\(--pl-top\)/.test(css),
+        'staat die hoogte apart, dan lopen de balk en de ruimte eronder uit de pas');
+  toets('tekstgrootte L verzet alleen het token en niet de hoogte zelf',
+        /body\.uiL\{[^}]*--pl-topbar:\s*42px/.test(css),
+        'een eigen .topbar-regel voor L brengt precies dezelfde ontkoppeling terug');
+
+  /* ── DE VIEWPORT BINNEN EEN ZOOM (#192, 11-09-2026) ───────────────
+     S/M/L schalen de app met `zoom` op body. `zoom` vermenigvuldigt de
+     UITKOMST van een berekening, maar 100dvh blijft de hele viewport — dus
+     elke hoogte die rechtstreeks uit de viewport komt is bij L 13% te lang en
+     valt er onderaan uit. --pl-vh doet die deling één keer.
+
+     Waarom dit een broncontrole is en geen gedragstoets: bproef-schermranden.js
+     meet het gedrag al, maar meet alleen de vensters die hij kent. Een NIEUWE
+     regel met 100dvh erin zou daar buiten vallen en pas opvallen als iemand
+     hem op L opent. De vraag is hier dus of een verboden vorm ergens in het
+     bestand staat, en dat is een statisch feit. */
+  const cssKaal = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  toets('--pl-vh rekent de zoom eruit',
+        /--pl-vh:\s*calc\(100dvh\s*\/\s*var\(--pl-zoom\)\)/.test(cssKaal),
+        'zonder deze deling is elke viewport-hoogte bij L 13% te lang');
+  toets('de zoomfactor staat op één plek',
+        /body\s*\{[^}]*--pl-zoom:\s*1;[^}]*zoom:\s*var\(--pl-zoom\)/.test(cssKaal),
+        'staat het getal los van de factor, dan lopen die twee bij de volgende wijziging uit de pas');
+
+  const viewportRegels = cssKaal
+    .split('\n')
+    .map((r, i) => ({ nr: i + 1, r }))
+    .filter(x => /(?:^|[\s:(])(?:100dvh|100vh)\b/.test(x.r) && !/--pl-vh:/.test(x.r));
+  toets('geen enkele regel haalt zijn maat nog rechtstreeks uit de viewport',
+        viewportRegels.length === 0,
+        viewportRegels.map(x => x.r.trim().slice(0, 80)).join(' | ') +
+        ' — gebruik var(--pl-vh), anders klopt die maat alleen op tekstgrootte M (#192)');
 
   const rApp = regel('.app', css, '^\\.app \\{[^}]*\\}');
   toets('.app-hoogte gebruikt --pl-top én --pl-sab',

@@ -538,6 +538,21 @@ MUTATIES=(
 "public/pidlane-rit.js@@faseIdx:ritFaseIdx});@@faseIdx:ritFaseIdx+1});@@test-ritrapport.js@@het gat hangt aan de volgende fase: het rapport wijst de verkeerde reeks aan als onbetrouwbaar"
 "public/pidlane-rit.js@@    log(\`Rit rapport: de AI-analyse mislukte — \${msg}\`,'err');@@    ;@@test-ritrapport.js@@de stille catch is terug: een mislukte analyse zegt alleen dat er geen rapport is, niet waarom"
 "public/pidlane-rit.js@@        .map(l=>l.aiAnalyse ? \`\${l.fase}: \${l.aiAnalyse}\` : '')@@        .map(l=>\`\${l.fase}: \${l.samenvatting||l.desc||''}\`)@@test-ritrapport.js@@de proefrit geeft de koopcheck weer fasenamen zonder bevindingen — een lege uitslag die er gevuld uitziet"
+
+# ── Tekstgrootte en de onderrand (#192, 11-09-2026). S/M/L schalen de app met
+# `zoom` op body. `zoom` vermenigvuldigt de UITKOMST van een berekening terwijl
+# 100dvh de hele viewport blijft, dus elke hoogte die rechtstreeks uit de
+# viewport komt is bij L 13% te lang en valt er onderaan uit. Vier fouten die
+# geen foutmelding geven maar een half scherm.
+#
+# De gedragskant staat in bproef-schermranden.js en NIET hier: plmutate kent
+# geen overslaan, en op een toestel zonder Chromium zou die proef exit 0 geven
+# en als ONTSNAPT geboekt worden. Die proef draagt zijn eigen tegenproef, zoals
+# het commentaar bovenin hem uitlegt. Wat hieronder staat is de broncontrole.
+"public/pidlane.css@@  --pl-vh:  calc(100dvh / var(--pl-zoom));@@  --pl-vh:  100dvh;@@test-schermranden.js@@de viewport wordt niet meer door de zoom gedeeld: bij tekstgrootte L is elke schermhoge maat 13% te lang"
+"public/pidlane.css@@  zoom: var(--pl-zoom);@@  zoom: 1;@@test-schermranden.js@@de zoomfactor en het getal staan los van elkaar: S en L schalen niets meer, of straks weer het verkeerde"
+"public/pidlane.css@@height:var(--pl-top); display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky;@@height:calc(46px + var(--pl-sat)); display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky;@@test-schermranden.js@@de topbalk schrijft zijn hoogte weer apart op, dus .app wordt precies het verschil te lang (#58)"
+"public/pidlane.css@@body.uiS{ --pl-zoom:0.9; } body.uiL{ --pl-zoom:1.13; --pl-topbar:42px; }@@body.uiS{ --pl-zoom:0.9; } body.uiL{ --pl-zoom:1.13; }@@test-schermranden.js@@tekstgrootte L rekent met een balk van 46px terwijl hij er 42 tekent"
 )
 
 echo

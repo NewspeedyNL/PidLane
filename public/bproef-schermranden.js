@@ -527,6 +527,93 @@ async function keurVel(app, v, waar, sluit) {
       d.style.overflow = d.dataset.plProefOv || ''; document.body.style.overflow='';
       const v=document.getElementById('plProefVulling'); if(v) v.remove(); return true; })()`);
 
+    /* ── 2f. DEZELFDE RANDEN BIJ TEKSTGROOTTE S EN L (#192) ─────────
+       Deze proef mat tot 11-09 altijd op tekstgrootte M, en dat is precies de
+       stand waarin #192 niet bestaat. S/M/L schalen de app met `zoom` op body,
+       en `zoom` vermenigvuldigt de uitkomst van een berekening terwijl 100dvh
+       de hele viewport blijft. Alles wat zijn hoogte uit de viewport haalt
+       wordt daardoor bij L 13% te lang, en dat teveel valt er onderaan uit.
+
+       Gemeten op 360x640 met een navigatiebalk van 48px, vóór de reparatie:
+
+         M   .app eindigt op 592px   48px vrij      ok
+         S   .app eindigt op 533px  107px vrij      ok, maar 59px verspild
+         L   .app eindigt op 723px   83px te laag   FOUT
+
+       De maat is hier de onderkant van het werkscherm en niet een knop: bij L
+       schuift alles mee naar beneden, dus het is de hele onderrand die wegvalt
+       en niet één element. */
+    console.log('\n2f. De onderrand klopt bij élke tekstgrootte (#192)');
+    await app.venster(KORT_B, KORT_H);
+    toets('setUiScale() bestaat', await app.ev(`typeof setUiScale === 'function'`),
+          'zonder die functie is de tekstgrootte niet te zetten en meet dit blok niets');
+
+    const RAND = `(function(){
+      const g = document.getElementById('appGrid') || document.querySelector('.app');
+      if (!g) return { fout: 'geen werkscherm' };
+      const p = document.createElement('div');
+      p.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:var(--pl-sab)';
+      document.body.appendChild(p);
+      const sab = p.getBoundingClientRect().height; p.remove();
+      const onder = g.getBoundingClientRect().bottom;
+      /* DE GRENS KOMT UIT DE NAVBALK EN NIET UIT --pl-sab. Die eerste versie
+         las hem uit dezelfde variabele die de app zelf gebruikt, en dan
+         bewegen beide kanten mee: een --pl-sab die de zoom niet meerekent gaf
+         54px aan weerszijden en bleef groen. Zo'n proef meet of de app met
+         zichzelf klopt, niet of hij boven de balk blijft — precies de vorm die
+         CLAUDE.md waardeloos noemt. Gemeten met de mutatie erin: 586 tegen 586
+         (groen) met --pl-sab als grens, 586 tegen 592 (rood) met de balk. */
+      return { onder: Math.round(onder), grens: window.innerHeight - NAVBALK_PX,
+               sab: Math.round(sab), zoom: getComputedStyle(document.body).zoom };
+    })`.replace('NAVBALK_PX', String(NAVBALK));
+
+    for (const g of ['m', 's', 'l']) {
+      await app.ev(`setUiScale('${g}'); true`);
+      await rust(150);
+      const r = await app.ev(`${RAND}()`);
+      if (r.fout) { toets('tekstgrootte ' + g.toUpperCase() + ': meetbaar', false, r.fout); continue; }
+      toets('tekstgrootte ' + g.toUpperCase() + ' (zoom ' + r.zoom + '): werkscherm eindigt op ' +
+            r.onder + 'px, balk begint op ' + r.grens + 'px',
+            r.onder <= r.grens + 1,
+            'de onderste ' + (r.onder - r.grens) + 'px liggen achter de navigatiebalk — ' +
+            'daar zit onder meer de knop "start analyse" na het verbinden (#192)');
+      // En de andere kant op: veel te kort is ook fout. Bij S bleef er 59px
+      // ongebruikt, en dat is schermruimte die je op een telefoon niet hebt.
+      // Marge 4px en niet ruimer: een --pl-sab die de zoom NIET meerekent
+      // reserveert bij L 54px voor een balk van 48, en dat verschil van ~6px
+      // is precies wat hier doorheen zou glippen.
+      toets('tekstgrootte ' + g.toUpperCase() + ' vult het scherm ook echt',
+            r.grens - r.onder <= 4,
+            (r.grens - r.onder) + 'px ongebruikt onder het werkscherm');
+    }
+
+    /* De vellen bij L. Ze bleken bij het meten niet stuk — een fixed element
+       met inset:0 rekent de zoom zelf goed in — maar dat is een uitkomst van
+       de meting en geen eigenschap die vastligt. Zonder deze ronde zou een
+       volgende hoogteregel in een vel bij L stil kunnen omvallen. */
+    console.log('\n2g. Dezelfde dertien vellen op tekstgrootte L');
+    await app.ev(`setUiScale('l'); true`);
+    for (const v of VELLEN) await keurVel(app, v, 'L', SLUIT_VEL);
+    for (const v of REMOTE_VELLEN) await keurVel(app, v, 'L', SLUIT_REMOTE);
+
+    /* TEGENPROEF OP 2f. Zonder dit bewijst het blok hierboven alleen dat er
+       getallen uit komen. We zetten de regel terug die #192 wás — de
+       overschrijfregel die de basisregel omzeilde — en dan hoort L rood te
+       worden. Blijft hij groen, dan meet 2f de verkeerde maat. */
+    await app.ev(`(function(){
+      const st = document.createElement('style'); st.id = 'plProefOudeL';
+      st.textContent = 'body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }';
+      document.head.appendChild(st); return true; })()`);
+    await rust(150);
+    const terug = await app.ev(`${RAND}()`);
+    toets('met de oude uiL-regel terug valt de onderrand er wél uit (tegenproef)',
+          !terug.fout && terug.onder > terug.grens + 1,
+          'werkscherm op ' + terug.onder + 'px, balk op ' + terug.grens +
+          'px — 2f meet dan niet wat het zegt te meten');
+    await app.ev(`(function(){ const e=document.getElementById('plProefOudeL'); if(e) e.remove(); return true; })()`);
+    await app.ev(`setUiScale('m'); true`);
+    await rust(150);
+
     console.log('\n3. Tegenproef — meet deze proef werkelijk iets?');
 
     /* EERST DE WACHTREGEL ZELF (#168). De rest van dit blok toetst of de

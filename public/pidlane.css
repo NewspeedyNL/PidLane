@@ -37,7 +37,7 @@ html { font-size:14px; }
 /* padding-bottom: op een telefoon scrollt de PAGINA (zie de media query bij
    .app), dus de laatste regel van het document eindigt op de onderrand van
    het scherm — en die onderrand ligt achter de drie Android-knoppen. */
-body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:100dvh; padding-bottom:var(--pl-sab); display:flex; flex-direction:column; transition:background .2s, color .2s; }
+body { font-family:var(--f); background:var(--bg); color:var(--tx); min-height:var(--pl-vh); padding-bottom:var(--pl-sab); display:flex; flex-direction:column; transition:background .2s, color .2s; }
 /* TABLET-FIX (build 2026-07-15): een oud opgeslagen ns_zoom paste
    transform:scale() toe op #appScale ZONDER transform-origin — bij zoom<1
    werd het element breder dan de viewport en schaalde het om zijn middelpunt:
@@ -193,7 +193,7 @@ html, body { overflow-x:clip; }
       als doel en niet #appScale zelf. Zelfde :has()-patroon als de
       bestaande .lade-handles-regel verderop. */
 #welcomeScreen {
-  min-height: calc(100dvh - var(--pl-top));
+  min-height: calc(var(--pl-vh) - var(--pl-top));
   bottom: calc(0px - var(--pl-sab));
   padding-bottom: var(--pl-sab);
 }
@@ -665,8 +665,12 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
      toevoegt gebruikt --pl-sat/--pl-sab en niet zijn eigen env()-regel.
      Verandert de manier waarop we aan die getallen komen, dan is dat hier
      twee regels en niet twaalf. */
-  --pl-sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-  --pl-sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --pl-sat-fysiek: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --pl-sab-fysiek: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  /* Op :root staan ze ongeschaald — dat is wat het toestel meldt. Binnen body
+     worden ze omgerekend naar gezoomde px; zie het blok bij --pl-zoom. */
+  --pl-sat: var(--pl-sat-fysiek);
+  --pl-sab: var(--pl-sab-fysiek);
 
   /* De ONDERKANT van de topbalk. Die balk is 46px hoog PLUS de veilige zone
      erboven, maar op negen plekken stond alleen dat getal 46 als offset —
@@ -676,7 +680,38 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
      lang als de balk hoger was, en die overlengte viel er onderaan uit —
      precies wat issue #58 laat zien. Eén token, zodat een volgende
      hoogtewijziging van de balk niet weer negen plekken raakt. */
-  --pl-top: calc(46px + var(--pl-sat));
+  --pl-topbar: 46px;
+  --pl-top: calc(var(--pl-topbar) + var(--pl-sat));
+}
+
+/* ══ TEKSTGROOTTE — ÉÉN COÖRDINATENSTELSEL ══
+   S/M/L schalen de hele app met `zoom` op body. Dat werkt, op één soort lengte
+   na: `zoom` vermenigvuldigt de UITKOMST van een berekening, maar `100dvh`
+   blijft de hele viewport. Bij L rekende .app dus 598px uit en tekende er
+   598 × 1,13 = 676px van, op een scherm van 640. Die 83px vielen er onderaan
+   uit — inclusief de knop "start analyse" na het verbinden (#192).
+
+   Gemeten op 360x640 met een navigatiebalk van 48px, vóór deze regels:
+
+     M   zoom 1      .app 546px   48px vrij onder
+     S   zoom 0,9    .app 491px  107px vrij onder
+     L   zoom 1,13   .app 676px   83px BUITEN het scherm
+
+   De oplossing is niet per regel compenseren maar één stelsel kiezen. Binnen
+   de zoom leeft alles in gezoomde px, dus daar is de viewport 100dvh / zoom en
+   zijn de veilige zones --pl-*-fysiek / zoom. Met die twee omrekeningen kloppen
+   ALLE bestaande formules ongewijzigd — er is verder niets per-L te regelen.
+
+   Waarom --pl-zoom en niet het getal: het staat anders op vier plekken, en
+   twee daarvan gaan bij de volgende wijziging uit de pas lopen. Dat is in dit
+   project al drie keer een bug geweest. */
+body {
+  --pl-zoom: 1;
+  zoom: var(--pl-zoom);
+  --pl-vh:  calc(100dvh / var(--pl-zoom));
+  --pl-sat: calc(var(--pl-sat-fysiek) / var(--pl-zoom));
+  --pl-sab: calc(var(--pl-sab-fysiek) / var(--pl-zoom));
+  --pl-top: calc(var(--pl-topbar) + var(--pl-sat));
 }
 
 /* ══ TOPBAR ══ */
@@ -692,7 +727,7 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
    weergavefout. De volgorde is nu expliciet: chips gaan vóór het ☰/🏠-paar, en
    die twee gaan vóór het logo. Onder 480px is er per definitie te weinig
    ruimte, dus verdwijnt het logo daar in zijn geheel (zie de media query). */
-.topbar { background:var(--sur); border-bottom:1px solid var(--bd); padding:var(--pl-sat) 14px 0; height:calc(46px + var(--pl-sat)); display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky; top:0; z-index:var(--z-topbar); box-shadow:var(--ss); overflow:hidden; }
+.topbar { background:var(--sur); border-bottom:1px solid var(--bd); padding:var(--pl-sat) 14px 0; height:var(--pl-top); display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky; top:0; z-index:var(--z-topbar); box-shadow:var(--ss); overflow:hidden; }
 .topbar > * { min-width:0; }
 .topbar > div:first-child { flex:0 0 auto; }
 .logo { display:flex; align-items:center; gap:7px; font-weight:700; font-size:14px; flex:0 1 auto; min-width:0; overflow:hidden; white-space:nowrap; }
@@ -759,7 +794,7 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
   display:none; flex-direction:column; gap:2px; z-index:60;
   /* Met de Admin-groep uitgeklapt kan het menu langer worden dan het scherm;
      zonder deze begrenzing viel de onderkant (Uitloggen) buiten beeld. */
-  max-height:calc(100vh - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  max-height:calc(var(--pl-vh) - 64px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
 .kebab-menu.open { display:flex; }
 /* ── 🛠️ Admin-groep: uitklapbare topregel ── */
 .kebab-item.kebab-group { display:flex; align-items:center; gap:6px; color:var(--tx); }
@@ -774,19 +809,24 @@ html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
 .kebab-item:hover { background:var(--sur2); color:var(--tx); }
 .kebab-item.api-pill { border:none!important; animation:none; }
 .kebab-item.api-pill.unset { color:var(--or); }
-body.uiS{ zoom:0.9; } body.uiL{ zoom:1.13; }
+body.uiS{ --pl-zoom:0.9; } body.uiL{ --pl-zoom:1.13; --pl-topbar:42px; }
 /* Tekstgrootte L vergroot de hele app (zoom op body). De topbalk heeft echter
    een vaste hoogte en een vaste set chips: die past dan niet meer, en de balk
    is bewust niet horizontaal scrollbaar. Daarom groeit alleen de topbalk niet
    mee — de rest van de app wel. Zo blijft alles bovenaan altijd zichtbaar. */
-body.uiL .topbar{ height:calc(42px + var(--pl-sat)); padding:var(--pl-sat) 9px 0; gap:6px; }
+body.uiL .topbar{ padding:var(--pl-sat) 9px 0; gap:6px; }
 body.uiL .topbar .kebab-btn{ width:29px; height:27px; font-size:15px; }
 body.uiL .topbar .tchip{ height:27px; padding:0 8px; gap:5px; font-size:10.5px; }
 body.uiL .topbar .tdot, body.uiL #obdChip .dot{ width:8px; height:8px; }
 body.uiL .topbar .logo{ font-size:0; gap:0; }
 body.uiL .topbar .logo-i{ width:23px; height:23px; }
 body.uiL #vtag{ font-size:10px; padding:1px 5px; }
-body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
+/* Hier stond: body.uiL .app{ height:calc(100vh - 42px); min-height:… }
+   Dat was #192. Die regel omzeilde de basisregel bij .app en bracht daarmee
+   alles terug wat die had opgelost — 100vh in plaats van 100dvh, geen
+   --pl-sab, en de balkhoogte met de hand — precies de fout die het
+   commentaar bij --pl-top als #58 beschrijft. De basisregel klopt nu ook bij
+   L, want --pl-vh en --pl-sab rekenen de zoom zelf mee. Geen override nodig. */
 .uiscale-btn{ width:26px;height:24px;border-radius:6px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer; }
 .uiscale-btn.on{ background:var(--bl);color:#fff;border-color:var(--bl); }
 /* Zelfde segmentknopje, maar met een woord erin in plaats van één letter —
@@ -835,7 +875,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 /* Hoogte = scherm min de topbalk (inclusief zijn veilige zone) min de
    navigatiebalk onderin. Stond hier calc(100vh - 46px): dat is precies
    --pl-sat + --pl-sab te lang, en dat teveel valt er onderaan uit. */
-.app { display:grid; grid-template-columns:1fr; height:calc(100dvh - var(--pl-top) - var(--pl-sab)); transition:grid-template-columns .25s; }
+.app { display:grid; grid-template-columns:1fr; height:calc(var(--pl-vh) - var(--pl-top) - var(--pl-sab)); transition:grid-template-columns .25s; }
 .app.sl-col { grid-template-columns:1fr; }
 .app.sr-col { grid-template-columns:1fr; }
 .app.sl-col.sr-col { grid-template-columns:1fr; }
@@ -847,7 +887,7 @@ body.uiL .app{ height:calc(100vh - 42px); min-height:calc(100vh - 42px); }
 @media (max-width:760px){
   /* topbalk past altijd: logo-tekst weg (icoon blijft), chips krijgen ruimte */
   .logo{ font-size:0; gap:2px; }
-  .app{ display:flex; flex-direction:column; height:auto; min-height:calc(100dvh - var(--pl-top) - var(--pl-sab)); }
+  .app{ display:flex; flex-direction:column; height:auto; min-height:calc(var(--pl-vh) - var(--pl-top) - var(--pl-sab)); }
   .app .cc{ order:1; width:100%; min-width:0; }
   .app .sl{ order:2; }
   .app .sr{ order:3; }
