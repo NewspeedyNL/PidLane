@@ -995,11 +995,81 @@ gatentelling van de aanlevering naast die van `PLRit` en `PLAchtergrond` leggen.
 De verzendlaag onderuit halen midden in de app van een klant hoort niet bij een
 testrun.
 
-**Wat dit niet oplost.** Of een rápport er werkelijk anders van wordt, is hier
-niet te meten. `test-aanlevering.js` toetst de regels in node (34 toetsen, vijf
-mutaties in `plmutate.sh`) en `bproef-aanlevering.js` de koppeling in de
-draaiende app (19 toetsen). Wat een model met die tekst doet, staat alleen in de
-tekst die eruit komt — dat is een vraag voor `CAMPAGNE` en staat daar.
+### De aanroepkant: twaalf analyses zeggen nu wat ze wilden meten — 11-09-2026 (#188)
+
+De ronde hierboven bouwde de aanlevering en hing hem in `apiFetch`. Daarmee
+kreeg elke analyse het meetvenster, de onderbrekingen, de datakwaliteit en de
+bevindingen — maar **niet de dekking**, want die hangt af van wat de aanroeper
+wilde meten en dat wist niemand. Dit is het tweede deel: de aanroepplekken
+zeggen het.
+
+**Ze zeiden het trouwens al.** Elke analyse in deze app noemt zijn PID-set één
+regel hoger: `ensurePIDsActive('brandstof')`, `('totaal')`, `('rit')`,
+`('accu')`, `('emissie')`. Een aanroeper geeft nu die naam door en niets meer:
+
+```js
+await callAI(prompt, el, { vraag: '…', profiel: 'totaal' });
+```
+
+Daardoor is de dekking geen tweede lijst die iemand moet bijhouden maar een
+gevolg van een keuze die er al stond. Verandert `ANALYSE_PIDS`, dan verandert de
+dekking mee. `PLAanlevering.profielSet()` vertaalt de naam op precies één
+manier — `BASIS_PIDS ∪ ANALYSE_PIDS[profiel]`, dezelfde vereniging die
+`relevantSupportedPIDs()` als basis neemt.
+
+**De kern is ongefilterd, en dat is het hele punt.**
+`relevantSupportedPIDs()` filtert die basis daarna door de PID-gate en vult hem
+aan met wat de auto verder nog levert. Dat is de goede lijst om te **meten** en
+de verkeerde om dekking aan af te lezen: alles wat de auto niet heeft of wat de
+gate afkeurt, is er dan al uit. De sensoren die in het blok hóren te staan zouden
+onzichtbaar zijn, en dan meldt de dekking vrolijk "compleet" over een analyse die
+de helft mist.
+
+**Twaalf paden wél, twee met opzet niet.** Wél: brandstofanalyse, AI-monteur,
+Total Check, datalog, diepe storingscheck, ritrapport, caravanrapport,
+onderhoudsadvies, EV/accu-check, lange-rit-check, koopcheck en de
+AI-Automonteur (die laatste zonder profiel — hij draait op wat er op dát moment
+in de selectie staat, en een profielnaam zou daar een dekking beloven over een
+set die de vraag nooit opvroeg; een verkeerde dekking is erger dan geen).
+
+Niet: de verbindingsvraag in `pidlane-btflow.js` — die gaat niet over
+sensordata. En de oorzakenlijst in `pidlane-diagnose.js`, en dáár zit een echte
+botsing: die aanroep vraagt om **uitsluitend een JSON-array**, terwijl de
+weegregels om uitleg in woorden vragen. Een model dat netjes toelicht dat iets
+niet beoordeeld is, levert JSON op die `parseCausesJSON()` weggooit. Dat pad
+bouwt zijn eigen dekkingslijst al in de prompt (✅/⚠/❌) en verliest er dus
+niets mee. Allebei krijgen `{meet:false}`, met de reden erbij in de code.
+
+**Een typefout in een profielnaam is de stille fout van deze ronde**, en de enige
+die niet met gedrag te vangen is: `profielSet()` geeft dan `null`, `dekking()`
+geeft `null`, en het blok gaat gewoon mee — zonder dekking, zonder melding, tot
+iemand dat ene knopje indrukt. `test-aanlevering.js` leest daarom de bron en
+toetst dat elke `profiel:'x'` in de modules ook in `ANALYSE_PIDS` staat. Dat is
+broncode lezen, en het is hier de juiste vorm: de vraag is of een naam in een
+tabel voorkomt, en dat is een statisch feit. Blok 5 doet hetzelfde op de rit met
+`window._laatstProfiel`, dus daar wordt het ook op de echte naam betrapt.
+
+De eerste versie van die scan sloeg trouwens meteen alarm — op
+`'Pollprofiel: ' + p.emoji` in `pidlane-diagbundel.js`. De regex was te los en
+las een stuk tekst in een string als een sleutel. Vandaar dat hij nu een
+object-context én een kale kleine-letternaam eist.
+
+---
+
+**Wat deze twee rondes samen niet oplossen.** Of een rápport er werkelijk anders
+van wordt, is hier niet te meten. `test-aanlevering.js` toetst de regels in node
+(43 toetsen, acht mutaties in `plmutate.sh`) en `bproef-aanlevering.js` de
+koppeling in de draaiende app (27 toetsen, met de haak én de trechter `callAI()`
+als gedrag). Wat een model met die tekst doet, staat alleen in de tekst die eruit
+komt — dat is een vraag voor `CAMPAGNE` en staat daar.
+
+En acht aanroepplekken draaien nog op de standaard: ze krijgen wél het
+meetvenster, de onderbrekingen, de datakwaliteit en de weegregels, maar geen
+dekking. Dat is voor de meeste terecht — een herzien rapport, een lease-check, de
+klimaatcheck — maar de twee deep-log-paden in `pidlane-koopcheck.js` analyseren
+een ópgenomen dataset, en wat dáár de dekking van is, is een andere vraag dan wat
+er nu in de selectie staat. Dat is niet opgelost en het heeft geen issue: het
+wacht op de vraag of een opname zijn eigen dekking hoort te dragen.
 
 ---
 

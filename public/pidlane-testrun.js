@@ -4523,6 +4523,25 @@ const PROEVEN_B5 = [
       if (!blok)
         return { staat: 'LET OP', detail: 'er is nog niets gemeten, dus het blok is leeg — dat is de bedoeling' };
 
+      /* EN DE DEKKING OVER HET PROFIEL DAT NU DRAAIT. De aanroepplekken geven
+         geen PID-lijst mee maar de profielnaam die ze tóch al noemen in
+         ensurePIDsActive(). relevantSupportedPIDs() schrijft die naam op in
+         window._laatstProfiel, dus hier valt te zien wat de laatste analyse
+         werkelijk vroeg — en of de dekking daar iets over te zeggen heeft.
+         Levert die niets op terwijl er wel een profiel liep, dan is de naam
+         verkeerd gespeld en verdwijnt de dekking stil uit elke analyse. */
+      const prof = window._laatstProfiel || '';
+      let dekTxt = 'nog geen analyseprofiel opgevraagd deze rit';
+      if (prof) {
+        const kern = PLAanlevering.profielSet(prof);
+        if (!kern)
+          return { staat: 'FOUT', detail: 'profiel "' + prof + '" staat niet in ANALYSE_PIDS — ' +
+            'een analyse met deze naam levert stil geen dekking op (#188)' };
+        const dek = PLAanlevering.dekking({ profiel: prof });
+        dekTxt = 'profiel "' + prof + '": ' + dek.geleverd.length + ' van ' + dek.nodig.length +
+          ' sensoren leveren data' + (dek.ontbreekt.length ? ', ' + dek.ontbreekt.length + ' ontbreekt' : '');
+      }
+
       const stukken = [];
       if (ob.perioden) stukken.push(ob.perioden + '\u00d7 achtergrond');
       if (ob.loopgaten) stukken.push(ob.loopgaten + ' loopgat(en)');
@@ -4530,7 +4549,7 @@ const PROEVEN_B5 = [
       if (ob.herverbindingen) stukken.push(ob.herverbindingen + ' herverbinding(en)');
       return blok.length + ' tekens gaan mee naar de AI' +
         (stukken.length ? ', met ' + stukken.join(', ') : ', zonder onderbrekingen') +
-        '; de tellingen komen overeen met het verslag';
+        '; de tellingen komen overeen met het verslag. ' + dekTxt;
     }
   },
 

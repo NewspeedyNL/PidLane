@@ -139,7 +139,12 @@ async function autoExpertAsk(mode){
   const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde live sensordata, foutcodes en merk-kennis. Structureer met korte kopjes waar nuttig. Respecteer de meegeleverde DATAKWALITEIT-sectie strikt.\n'+pidlaneBasisRegels();
   const prompt=`${context}\n\nVRAAG VAN DE DEALER: ${vraag}`;
   try{
-    const txt=await apiFetch(prompt, 1100, sys);
+    // Geen profiel: de AI-Automonteur draait op wat er op DIT moment in de
+    // selectie staat, welke dat ook is. Een profielnaam zou hier een dekking
+    // beloven over een set die deze vraag nooit heeft opgevraagd — en een
+    // verkeerde dekking is erger dan geen. De onderbrekingen, de datakwaliteit
+    // en de weegregels gaan wél gewoon mee (#188).
+    const txt=await apiFetch(prompt, 1100, sys, null, { vraag: vraag });
     ansEl.innerHTML='';
     if(typeof renderAIText==='function'){ renderAIText(txt, ansEl); }
     else ansEl.textContent=txt;

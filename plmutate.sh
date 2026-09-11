@@ -519,6 +519,14 @@ MUTATIES=(
 "public/pidlane-aanlevering.js@@      ondersteuningBekend: sup ? true : null,@@      ondersteuningBekend: !!sup,@@test-aanlevering.js@@een ongescande auto leest als een auto die de sensor niet kan: elke ontbrekende sensor wordt weggeverklaard"
 "public/pidlane-aanlevering.js@@    if (!m.vraag && !m.set && !m.dekking && !m.gemeten) return '';@@    if (!m.gemeten) return '';@@test-aanlevering.js@@een analyse over een meting die er niet is krijgt geen enkele waarschuwing mee"
 "public/pidlane-aanlevering.js@@            if (q && q.status === 'onzin') reden = 'gemeten, maar uitgesloten: ' + q.reden;@@            if (false) reden = q.reden;@@test-aanlevering.js@@een fysiek onmogelijke waarde telt als geleverde dekking terwijl het kwaliteitsblok hem uitsluit"
+
+# ── En de aanroepkant ervan (#188, tweede ronde). De aanroepplekken geven geen
+# PID-lijst mee maar de profielnaam die ze tóch al noemen in ensurePIDsActive().
+# Die vertaling van naam naar set is de plek waar het stil misgaat: klopt hij
+# niet, dan meldt de dekking iets over andere sensoren dan de analyse gebruikte.
+"public/pidlane-aanlevering.js@@    basis.concat(prof).forEach@@    [].concat(prof).forEach@@test-aanlevering.js@@BASIS_PIDS loopt niet meer mee: de dekking mist de motorcontext die elke analyse gebruikt"
+"public/pidlane-aanlevering.js@@    if (!Array.isArray(prof)) return null;@@    if (!Array.isArray(prof)) return [];@@test-aanlevering.js@@een onbekende profielnaam levert een lege dekking in plaats van geen dekking"
+"public/pidlane-fuel.js@@      profiel:'brandstof'});@@      profiel:'brandstoff'});@@test-aanlevering.js@@een typefout in een profielnaam: de brandstofanalyse verliest stil haar dekking"
 )
 
 echo

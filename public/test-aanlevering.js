@@ -87,6 +87,7 @@ function bouw(t) {
   // De echte tabellen
   s.ANALYSE_PID_SETS = data.ANALYSE_PID_SETS;
   s.ANALYSE_PIDS = data.ANALYSE_PIDS;
+  s.BASIS_PIDS = data.BASIS_PIDS;
   s.ALL_PID_DEFS = data.ALL_PID_DEFS;
   s.PID_HARD_LIMITS = data.PID_HARD_LIMITS;
   s.PID_NUL_NORMAAL = data.PID_NUL_NORMAAL;
@@ -360,6 +361,72 @@ console.log('\n8. De bevindingen die de app zelf al berekende gaan mee');
     /laadspanning blijft onder 13,5 V/.test(t), t);
   toets('en staat aangemerkt als door de app berekend, niet als AI-oordeel',
     /geen AI-oordeel/.test(t));
+}
+
+console.log('\n9. Een analyseprofiel levert de kernset die de analyse ook echt opvraagt');
+// De aanroepplekken geven geen lijst mee maar de profielnaam die ze tóch al
+// noemen in ensurePIDsActive(). Klopt de vertaling van naam naar set niet, dan
+// meldt de dekking iets over andere sensoren dan de analyse gebruikte — en dat
+// is erger dan geen dekking.
+{
+  const A = bouw({});
+  const prof = 'brandstof';
+  const kern = A.profielSet(prof);
+  const basis = data.BASIS_PIDS, eigen = data.ANALYSE_PIDS[prof];
+  toets('BASIS_PIDS loopt mee, net als in relevantSupportedPIDs()',
+    basis.every(function (p) { return kern.indexOf(p) >= 0; }),
+    JSON.stringify(kern));
+  toets('het profiel zelf zit er volledig in',
+    eigen.every(function (p) { return kern.indexOf(p) >= 0; }));
+  toets('en er staat niets in dat uit geen van beide komt',
+    kern.every(function (p) { return basis.indexOf(p) >= 0 || eigen.indexOf(p) >= 0; }));
+  toets('elke PID staat er één keer in',
+    kern.length === new Set(kern).size, JSON.stringify(kern));
+  toets('een onbekend profiel levert null en geen lege dekking',
+    A.profielSet('bestaat-niet') === null);
+
+  // En de kern is ONGEFILTERD: een sensor die de auto niet heeft hoort juist in
+  // de dekking te staan, met de reden erbij. Zou de module de gefilterde lijst
+  // van relevantSupportedPIDs() nemen, dan was hij daar al uit.
+  const B = bouw({ supported: [kern[0]], active: [kern[0]], vals: { [kern[0]]: 800 } });
+  const d = B.dekking({ profiel: prof });
+  toets('de dekking meldt de sensoren die deze auto niet heeft',
+    d.ontbreekt.some(function (x) { return /ondersteunt de sensor niet/.test(x.reden); }),
+    JSON.stringify(d.ontbreekt.slice(0, 3)));
+  toets('en het blok noemt het profiel bij naam',
+    /analyseprofiel "brandstof"/.test(B.blok({ profiel: prof })));
+}
+
+console.log('\n10. Elke profielnaam in de aanroepplekken bestaat ook echt');
+/* DIT IS BRONCODE LEZEN, EN DAT IS HIER DE JUISTE VORM.
+
+   De vraag is niet wat de code doet maar of een naam in een tabel voorkomt, en
+   dat is een statisch feit. Het alternatief is er niet: een profielnaam met een
+   typefout levert géén foutmelding op. profielSet() geeft dan null, dekking()
+   geeft null, en het blok gaat gewoon mee — zonder dekking. Precies de stille
+   vorm waar dit hele issue over gaat, en met geen enkele gedragstest te vangen
+   zolang niemand die ene knop indrukt. */
+{
+  const bronnen = fs.readdirSync(dir).filter(function (f) {
+    return /^pidlane-.*\.js$/.test(f);
+  });
+  const gevonden = [];
+  bronnen.forEach(function (f) {
+    const tekst = fs.readFileSync(dir + '/' + f, 'utf8');
+    // Alleen een profiel-sleutel in een object-literal met een kale naam als
+    // waarde. Losser mag niet: de eerste versie hiervan vond "Pollprofiel: " +
+    // p.emoji in pidlane-diagbundel.js en meldde dat als onbekend profiel — een
+    // test die op zijn eerste run alarm sloeg over iets dat niet bestond.
+    const rx = /[{,]\s*profiel\s*:\s*'([a-z]+)'/g;
+    let m;
+    while ((m = rx.exec(tekst)) !== null) gevonden.push({ bestand: f, naam: m[1] });
+  });
+  toets('er zijn aanroepplekken die een profiel meegeven',
+    gevonden.length >= 5, gevonden.length + ' gevonden');
+  const onbekend = gevonden.filter(function (g) { return !data.ANALYSE_PIDS[g.naam]; });
+  toets('en elke opgegeven profielnaam staat in ANALYSE_PIDS',
+    onbekend.length === 0,
+    onbekend.map(function (g) { return g.bestand + ' → "' + g.naam + '"'; }).join(', '));
 }
 
 console.log('\n─────────────────────────────────');

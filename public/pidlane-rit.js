@@ -539,7 +539,14 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
       : _ftr==='diesel' ? '\nDit is een diesel — let op DPF/roetfilter en AdBlue/SCR waar relevant.' : '';
     const totalAnalysis=await apiFetch(
       `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
-      3000
+      3000, null, null,
+      // De onderbrekingen tellen hier dubbel: dit rapport gaat over een reeks
+      // over tijd, en juist daar leest een gat als een sensor die uitvalt (#188).
+      { vraag: focusLabel + ' over een rit van ' + mins + ' minuten — ' +
+               (focus==='techniek' ? 'uitsluitend de technische staat.'
+                : focus==='rijgedrag' ? 'uitsluitend de rijstijl van de bestuurder.'
+                : 'techniek én rijgedrag.'),
+        profiel: 'rit' }
     );
     // Rapport beschikbaar maken voor PDF-export
     lines.push('═══════════════════════════════════');

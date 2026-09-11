@@ -221,7 +221,10 @@ Antwoord met ALLEEN geldige JSON, geen andere tekst:
 {"optimize":true/false,"reason":"korte uitleg in het Nederlands","commands":[{"cmd":"ATxx","why":"reden"}]}
 Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"optimize":false,"reason":"..."}`;
 
-    const raw=await apiFetch(prompt,600);
+    // {meet:false} met opzet (#188): dit gaat over de verbinding met de
+    // adapter, niet over sensordata. De aanlevering zou hier een blok meesturen
+    // dat nergens over gaat, en promptcaching staat uit — dat is geld.
+    const raw=await apiFetch(prompt,600,null,null,{meet:false});
     // Robuuste JSON-extractie: pak alles tussen eerste { en laatste }
     // (AI zet er soms tekst of ```fences omheen)
     let plan;

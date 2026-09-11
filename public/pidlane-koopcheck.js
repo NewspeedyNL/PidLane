@@ -1224,7 +1224,9 @@ BINNENKORT: [wat op korte termijn aankomt op basis van interval/km]
 GEVONDEN GEBREKEN: [afwijkingen uit de sensordata, of "geen"]
 ADVIES: [1-2 zinnen; benadruk serviceboekje compleet houden]`;
   try{
-    const text=await apiFetch(prompt,900)||'Geen reactie';
+    const text=await apiFetch(prompt,900,null,null,{
+      vraag:'Onderhoudsadvies: wat is er nu nodig en wat komt er op korte termijn aan?',
+      profiel:'totaal'})||'Geen reactie';
     const _tw=_plSensorTwijfel?_plSensorTwijfel.wat:null;   // vlag lezen vóór de banner hem wist
     res.innerHTML=_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'onderhoud',msg:`${v.merk} ${v.model} ${v.km}km: ${text.slice(0,180)}`});
@@ -1291,7 +1293,9 @@ LADEN/REGENERATIE: [wat zichtbaar is, of "niet uitleesbaar via OBD2"]
 AANDACHTSPUNTEN: [afwijkingen of foutcodes, of "geen"]
 ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
   try{
-    const text=await apiFetch(prompt,900)||'Geen reactie';
+    const text=await apiFetch(prompt,900,null,null,{
+      vraag:'Accu- en systeemconditie van dit elektrische of hybride voertuig.',
+      profiel:'accu'})||'Geen reactie';
     const _tw=_plSensorTwijfel?_plSensorTwijfel.wat:null;
     res.innerHTML=_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'ev-check',msg:`${v.merk} ${v.model} (${ft}): ${text.slice(0,180)}`});
@@ -1358,7 +1362,9 @@ GO / NO-GO: [duidelijk oordeel]
 KRITISCHE PUNTEN: [wat eerst gecheckt/verholpen moet, of "geen"]
 ADVIES: [concrete stappen voor vertrek]`;
   try{
-    const text=await apiFetch(prompt,900)||'Geen reactie';
+    const text=await apiFetch(prompt,900,null,null,{
+      vraag:'Go/no-go voor een lange rit: kan deze auto zonder risico op pad?',
+      profiel:'totaal'})||'Geen reactie';
     res.innerHTML=_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line;margin-bottom:12px">${text.replace(/</g,'&lt;')}</div>`+langeRitChecklistHTML();
     scanLogAdd?.({type:'lange-rit',msg:`${v.merk} ${v.model}: ${text.slice(0,150)}`});
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`+langeRitChecklistHTML(); }
@@ -1839,7 +1845,9 @@ async function runKoopcheck(){
   // ── Onderhoudcheck AI call ──
   try {
     const prompt1 = buildOnderhoudPrompt(merk, model, jaar, km, boekje, laagsteBeurt);
-    const text1 = await apiFetch(prompt1, 900) || 'Geen reactie';
+    const text1 = await apiFetch(prompt1, 900, null, null, {
+      vraag:'Aankoopkeuring — onderhoudsstaat: wat is er aan deze auto te verwachten?',
+      profiel:'totaal'}) || 'Geen reactie';
     document.getElementById('koopOnderhoudRes').innerHTML = formatKoopAI(text1, 'onderhoud');
 
     // Kosten uit response extraheren

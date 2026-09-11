@@ -55,7 +55,9 @@ async function runFuelAnalysis(){
   const mData=measurements.filter(m=>m.val!==null&&m.val!==undefined).map(m=>`• ${m.name}: ${fv(m.val)} ${m.unit} [${m.status.toUpperCase()}] — ${m.desc}`).join('\n');
   const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${formatDtcCodes(dtcCodes)}\n\nLIVE METINGEN:\n${mData||'(geen data)'}${q.promptBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
   try{
-    const text=await apiFetch(prompt,1400);
+    const text=await apiFetch(prompt,1400,null,null,{
+      vraag:'Brandstofefficiëntie: waar gaat er brandstof verloren en wat levert het op om dat te verhelpen?',
+      profiel:'brandstof'});
     const secs=[{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'GEVONDEN INEFFICIËNTIES',i:'🔍',c:'orange'},{k:'BESPAARTIPS',i:'💡',c:'green'},{k:'TOTALE BESPARING',i:'💶',c:'purple'},{k:'RIJSTIJL TIPS',i:'🚗',c:'blue'}];
     const found=[];
     secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
@@ -1134,14 +1136,19 @@ function plVerifyAugment(el){
   }catch(e){ console.warn('Verifiëer-knoppen niet toegevoegd aan het rapport', e); }
 }
 
-async function callAI(prompt,contentEl){
+// De gedeelde trechter voor vier analysepaden: AI-monteur, Total Check, de
+// datalog-analyse en de diepe storingscheck. De derde parameter is de
+// aanlevering (#188) en gaat ongewijzigd door naar apiFetch — hier hoort geen
+// tweede beslissing over wat er wel of niet in mag, want dan weet de aanroeper
+// niet meer wat hij verstuurt.
+async function callAI(prompt,contentEl,aanlevering){
   contentEl.innerHTML='<div class="ai-ld"><div class="spin"></div> AI analyseert...</div>';
   try{
     if(!dataStable&&connected&&!demoMode&&activePIDs.size>0){
       contentEl.innerHTML=`<div class="ai-sec"><div class="ai-sh orange">⏳ Data stabiliseert</div><div class="ai-sb">Even geduld — app valideert sensorwaarden voor betrouwbare analyse.</div></div>`;
       return;
     }
-    const text=await apiFetch(prompt);
+    const text=await apiFetch(prompt,4000,null,null,aanlevering);
     renderAIText(text,contentEl);   // toont verdict + View/Share/Download
     try{ plVerifyAugment(contentEl); }catch(e){ console.warn('Verifiëer-knoppen niet toegevoegd aan het AI-rapport', e); }   // 🔍 knoppen bij Direct aandacht
     log('AI analyse klaar','ok');
@@ -1640,6 +1647,8 @@ Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbere
 AANBEVOLEN VERVOLGONDERZOEK
 Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
-  await callAI(prompt,document.getElementById('aiContent'));
+  await callAI(prompt,document.getElementById('aiContent'),{
+    vraag:'Algehele staat van het voertuig: wat valt op in de live sensordata en wat vraagt aandacht?',
+    profiel:'basis'});
   btn.disabled=false;
 }

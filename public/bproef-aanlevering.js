@@ -158,6 +158,41 @@ function toets(naam, waar, uitleg) {
     toets('de opvangbak ziet ook de bestaande systeemprompt',
           /PidLane AI-Monteur/.test(gevangen.sys), String(gevangen.sys).slice(0, 200));
 
+    // ── 4c. DE TRECHTER callAI() ─────────────────────────────────
+    // Vier analysepaden — AI-monteur, Total Check, de datalog-analyse en de
+    // diepe storingscheck — lopen niet rechtstreeks naar apiFetch maar via
+    // callAI(). Laat die de derde parameter vallen, dan verliezen alle vier hun
+    // dekking in één klap, zonder foutmelding: het blok gaat nog steeds mee,
+    // alleen zonder het deel dat zegt welke sensoren ontbraken. Dat is niet in
+    // node te zien — callAI woont in de app en schrijft in de DOM.
+    const viaCallAI = JSON.parse(await app.ev(`(async function(){
+      const echtFetch = window.plFetch, echtCred = window.PLCredits;
+      const echtCtx = window._plMeetcontext, echtSr = window._srUseContext;
+      window._plMeetcontext = {}; window._srUseContext = false; window.PLCredits = null;
+      let body = null;
+      window.plFetch = async function(pad, opt){
+        body = (opt && opt.json) || null;
+        return { ok: true, headers: { get: function(){ return null; } },
+                 json: async function(){ return { content: [{type:'text', text:'proef'}],
+                        stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } }; } };
+      };
+      const bak = document.createElement('div');
+      let fout = null;
+      try { await callAI('Toets de trechter.', bak, {profiel:'totaal', vraag:'Volledige doorlichting.'}); }
+      catch(e){ fout = String(e && e.message || e); }
+      window.plFetch = echtFetch; window.PLCredits = echtCred;
+      window._plMeetcontext = echtCtx; window._srUseContext = echtSr;
+      return JSON.stringify({ fout: fout, sys: (body && body.system) || '' });
+    })()`));
+    toets('callAI() komt zonder fout tot aan de verzendlaag',
+          viaCallAI.fout === null, String(viaCallAI.fout));
+    toets('callAI() geeft de aanlevering door aan apiFetch',
+          /AANLEVERING — wat er over DEZE meting bekend is/.test(viaCallAI.sys),
+          'vier analysepaden verliezen hier hun meetcontext in één klap (#188)');
+    toets('en het profiel dat de aanroeper meegaf komt eruit',
+          /analyseprofiel "totaal"/.test(viaCallAI.sys),
+          'de derde parameter van callAI komt niet bij PLAanlevering aan');
+
     // ── 5. TEGENPROEF ────────────────────────────────────────────
     // Zonder dit bewijst stap 4 alleen dat er tekst uit komt, niet dat die tekst
     // de meettoestand vólgt. Alles aanzetten met een geldige waarde: dan hoort
