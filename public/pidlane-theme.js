@@ -43,11 +43,33 @@ function plThemaZet(naam){
   }catch(e){ console.warn('Themaknoppen niet bijgewerkt:', e); }
 }
 window.plThemaZet = plThemaZet;
+/* ══ EN WAAROM LICHT ER WEER UIT IS — 11-09-2026, dezelfde dag ══
+   Het thema werd hierboven een keuze, en op het toestel bleek meteen waarom
+   dat te vroeg was: de topbalk en de kaarten volgden het thema netjes, maar
+   een groot deel van de app schildert zijn EIGEN donkere achtergrond terwijl
+   de tekst erop wél meeschakelt naar bijna-zwart. Resultaat: koppen als
+   "Welk onderdeel?", "Waarom kijk je naar deze auto?" en "Logboek" donker op
+   donker, dus onleesbaar.
+
+   Geteld na de melding: 26 harde donkere achtergronden in pidlane.css en 31
+   in acht modules. Dat is een themaronde en geen reparatie.
+
+   DE FOUT ZAT IN MIJN AFWEGING, NIET IN DE METING. bproef-contrast.js telde
+   die teksten als ONMEETBAAR — ze liggen boven een verloop, en daar kan de
+   probe niet doorheen kijken. Dat stond ook zo in de PR. En toch is de knop
+   bereikbaar gemaakt: ik heb "onmeetbaar" als "waarschijnlijk in orde"
+   gelezen, terwijl het hele punt van die categorie is dat je het niet weet.
+   Onmeetbaar is geen groen.
+
+   plThemaZet() blijft staan — het lichte palet klopt, de tokens kloppen, en
+   de proef gebruikt de functie. Alleen de weg ernaartoe is dicht tot de
+   panelen hun eigen kleur niet meer opschrijven. Zie #141. */
 (function initThemeDefault(){
-  var saved=null; try{ saved=localStorage.getItem(PL_THEMA_SLEUTEL); }catch(e){ console.warn('Themavoorkeur onleesbaar — donker:', e); }
-  plThemaZet(saved === 'licht' ? 'licht' : 'donker');
-  try{ document.addEventListener('DOMContentLoaded', function(){ plThemaZet(isDark ? 'donker' : 'licht'); }); }
-  catch(e){ console.warn('Themaknoppen niet gekoppeld aan DOMContentLoaded:', e); }
+  // Een eerder gemaakte keuze wordt opgeruimd: anders staat iemand die vandaag
+  // op Licht klikte morgen nog steeds naar donkere tekst op donker te kijken.
+  try{ if(localStorage.getItem(PL_THEMA_SLEUTEL)==='licht') localStorage.removeItem(PL_THEMA_SLEUTEL); }
+  catch(e){ console.warn('Oude themakeuze niet op te ruimen:', e); }
+  plThemaZet('donker');
 })();
 // ── BUSY-INDICATOR: duidelijke animatie bij hoog busverkeer ──
 // Toont een pill onder de topbar zolang discovery/health-scan/Full Survey de

@@ -910,6 +910,50 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Licht ging aan en meteen weer uit — 11-09-2026 (#141)
+
+De knop hieronder is dezelfde dag teruggedraaid. Op het toestel bleek binnen
+minuten wat de meting niet zag: de topbalk en de kaarten volgden het thema
+netjes, maar **een groot deel van de app schildert zijn eigen donkere
+achtergrond** terwijl de tekst erop wél meeschakelt naar bijna-zwart. Koppen als
+*"Welk onderdeel?"*, *"Waarom kijk je naar deze auto?"* en *"Logboek"* stonden
+donker op donker.
+
+Geteld na de melding: **26 harde donkere achtergronden in `pidlane.css` en 31 in
+acht modules.** Dat is een themaronde en geen reparatie, dus de weg naar licht is
+dicht tot die er is. `plThemaZet()` en het lichte palet blijven staan — die
+kloppen; alleen de knoppen in het menu zijn weg. Een eerder gemaakte keuze wordt
+bij het starten opgeruimd, anders kijkt iemand morgen nog naar donkere tekst.
+
+**De fout zat in de afweging, niet in de meting.** `bproef-contrast.js` telde
+precies die teksten als **ONMEETBAAR** — ze liggen boven een `linear-gradient`,
+en daar kan de probe niet doorheen kijken. Dat stond zo in de proef, zo in de PR
+en zo in dit hoofdstuk: *"de dashboards zijn dun gedekt"*. En toch is de knop
+bereikbaar gemaakt.
+
+**Ik heb "onmeetbaar" gelezen als "waarschijnlijk in orde", terwijl het hele punt
+van die categorie is dat je het niet weet.** Dat is dezelfde denkfout als de twee
+fantoommetingen hieronder, alleen een laag hoger: daar mat ik de verkeerde
+grootheid, hier wist ik dat ik iets niet mat en gaf ik het toch groen. De
+categorie was er juist om dat te voorkomen.
+
+Wat dat had moeten zijn: een categorie "onmeetbaar" is een **blokkade** voor een
+feature die van die schermen afhangt, niet een voetnoot eronder. De proef meldt
+het aantal nog steeds per scherm — 11, 8, 7, 18 — en die getallen waren groot
+genoeg om de vraag te stellen.
+
+**Wat er nodig is voordat licht terugkomt**, en dat is nu de inhoud van #141:
+
+1. De 57 harde achtergronden vervangen door tokens, of de panelen die bewust
+   donker zijn expliciet het donkere palet geven — zoals `#loginOv` dat al doet
+   met een eigen tokenblok. Dat patroon staat er, het is alleen nooit
+   doorgetrokken.
+2. Een meting die dóór een verloop heen kijkt. Dat betekent gerenderde pixels
+   lezen in plaats van `getComputedStyle` stapelen, en dat is een andere proef
+   dan deze.
+
+---
+
 ### Het lichte thema bestond en was onbereikbaar — 11-09-2026 (#141)
 
 #141 vraagt: *"hoe kunnen de waardes en woorden beter leesbaar"*, en noemt twee

@@ -11,6 +11,23 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11j (CET) — LICHT THEMA WEER UIT
+
+       • 🌓 DE THEMAKEUZE IS TERUGGEDRAAID (#141). Licht
+         aanzetten maakte koppen onleesbaar: een groot deel
+         van de app schildert zijn eigen donkere achtergrond,
+         terwijl de tekst erop wel meeschakelt naar zwart.
+         57 plekken, dus dat is een eigen ronde. Wie vandaag
+         Licht koos, start weer gewoon donker.
+
+       • ✅ DE REST VAN DE VORIGE OPLEVERING BLIJFT. Opslaan
+         zonder deelvenster, de tip op het juiste moment, de
+         bushouder in het verslag en de contrastreparaties
+         staan er gewoon — die zijn in het donkere thema
+         gemeten en beter geworden.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11i (CET) — THEMAKEUZE TERUG, EN OPSLAAN KOST DE VERBINDING NIET MEER
 
        • 🎨 LICHT OF DONKER, JE KIEST HET ZELF (#141). Het
