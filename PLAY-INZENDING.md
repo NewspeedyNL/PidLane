@@ -229,6 +229,25 @@ zonder ingelogd te zijn**. Hij wordt door `wrangler.toml` als statisch bestand
 geserveerd en staat niet in `run_worker_first`, dus hij hoort publiek te zijn —
 maar dat is een aanname tot je hem hebt aangeklikt.
 
+**En: de pagina moet dekken wat er in de bundel zit.** Op 11-09-2026 stond
+`android.permission.CAMERA` in het samengevoegde manifest terwijl het woord
+"camera" nul keer in `privacy.html` voorkwam. Play leest die pagina bij de
+beoordeling naast het manifest; een permissie die in de bundel zit en niet in
+de verklaring staat, is een afkeurgrond op zichzelf — en dit is er een die je
+niet ziet, want de app doet het gewoon.
+
+Het gat kon ontstaan omdat de twee kanten los van elkaar groeiden: het
+manifest wordt door een workflow-stap samengesteld, de verklaring met de hand
+geschreven. Dezelfde vorm die §11 al drie keer beschrijft. `test-privacydekking.js`
+is nu de brug: hij leest de permissies uit `build-apk.yml` en eist per stuk een
+woord in `privacy.html` waarmee een lezer de alinea erover vindt. Een permissie
+die er nieuw bij komt en niet in zijn tabel staat, is ook fout — anders dekt
+die test alleen wat er vandaag is.
+
+De verklaring kreeg er daarom op 11-09 drie kopjes bij: *Camera en QR-codes*,
+*Meten terwijl de app op de achtergrond staat* (de meetdienst van #18, met de
+melding en het wakker houden van de processor) en *Bestanden op je toestel*.
+
 ---
 
 ## 7. App access
@@ -426,9 +445,9 @@ opgeslagen meetsessies
 | Financial info | Geen betaling in de app |
 | Health and fitness | — |
 | Messages | De remote-sessie stuurt meetdata, geen berichten |
-| Photos and videos | De camera scant een QR-code; er wordt geen beeld opgeslagen of verzonden |
+| Photos and videos | De camera scant een QR-code; er wordt geen beeld opgeslagen of verzonden. De verklaring zegt dat nu met zoveel woorden — zie het kopje *Camera en QR-codes* in `privacy.html` |
 | Audio files | — |
-| Files and docs | Rapporten blijven op het toestel tot de gebruiker ze zelf deelt |
+| Files and docs | Rapporten schrijft de app naar `Documents/PidLane/` op het toestel zelf. Ze gaan nergens heen tot de gebruiker ze deelt, en de app leest geen bestanden die hij niet zelf geschreven heeft |
 | Calendar, Contacts | — |
 | Web browsing history | — |
 | App info and performance → Crash logs / Diagnostics | Er gaat geen crashrapportage naar een dienst |
@@ -615,6 +634,7 @@ zijn.
 | De APK-sleutel die de build schrijft, is die de Worker leest | `test-apkpad.js` |
 | De meetdienst zit in de bundel, met het juiste type én de permissie erbij | `test-nativeschil.js` + de poort op het samengevoegde manifest |
 | De toestemmingstekst noemt pseudonimisering, geen anonimisering | `test-toestemmingstekst.js` |
+| Elke permissie in de bundel wordt in `privacy.html` uitgelegd | `test-privacydekking.js` |
 
 ### 16b — Wat op een TOESTEL bewezen moet zijn, en op wélke build
 
@@ -641,6 +661,8 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | Disclosure verschijnt vóór het Android-permissiedialoog, niet erna | nog niet bewezen |
 | Weigerknop: geen permissieverzoek, geen verbinding, app blijft heel | nog niet bewezen |
 | De begeleide run opent en loopt door — dit is het scherm dat een reviewer als eerste ziet na de demo | nog niet bewezen |
+| De meetdienst-melding verschijnt bij het meten en verdwijnt als de meting stopt — een foreground service zonder zichtbare melding is een afkeurgrond | build #438, 11-09-2026 — melding stond er tijdens de rit |
+| Het weigeren van de meldingspermissie laat de app heel: meten gaat door, alleen zonder melding | nog niet bewezen |
 
 **Let op bij de demo-doorloop.** De begeleide run is op 10-09 verbouwd tot twee
 rondes (meetrit en toestelronde). Een doorloop van vóór die datum zegt niets

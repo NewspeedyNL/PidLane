@@ -343,6 +343,8 @@ MUTATIES=(
 ".github/workflows/build-apk.yml@@android:name=\"android.permission.ACCESS_FINE_LOCATION\" android:maxSdkVersion=\"30\"@@android:name=\"android.permission.ACCESS_FINE_LOCATION\"@@test-geen-gps.js@@de grens valt van de locatiepermissie af: sensitive permission zonder disclosure"
 ".github/workflows/build-apk.yml@@android/app/build/intermediates/merged_manifests@@android/app/src@@test-geen-gps.js@@de poort kijkt weer naar het app-manifest en dus langs alles wat een plugin meebrengt"
 ".github/workflows/build-apk.yml@@              if not regels:\n                  print(\"FOUT: %s staat niet in het samengevoegde manifest.\" % naam)@@              if False:\n                  print(\"FOUT: %s ontbreekt.\" % naam)@@test-geen-gps.js@@de poort staat weer groen als hij niets vindt: geen bewijs telt weer als bewijs"
+".github/workflows/build-apk.yml@@<uses-permission android:name=\"android.permission.CAMERA\" />'@@<uses-permission android:name=\"android.permission.CAMERA\" />'\n              '\\n    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />'@@test-privacydekking.js@@er komt een permissie in de bundel die de privacyverklaring niet noemt (de fout zoals CAMERA hem was)"
+"public/privacy.html@@houdt de app de processor wakker@@houdt de app de processor in bedrijf@@test-privacydekking.js@@het woord waarmee een lezer de WAKE_LOCK-alinea vindt verdwijnt uit de verklaring"
 
 # ── de schilgrenzen van de Play-app (10-09-2026) ──
 # Twee dingen die §16a beloofde en die niemand nakeek. De eerste twee mutaties

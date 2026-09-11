@@ -910,6 +910,38 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De camera zat in de bundel en niet in de privacyverklaring — 11-09-2026
+
+`build-apk.yml` zette `android.permission.CAMERA` in het samengevoegde
+manifest — terecht, want de QR-scanner koppelt de sessie met een expert. In
+`public/privacy.html` kwam het woord "camera" nul keer voor. Play leest die
+pagina bij de beoordeling náást het manifest, dus dat is een afkeurgrond op
+zichzelf, en wel de vervelendste soort: er gaat niets stuk, de app doet het
+gewoon, en je hoort het pas als de inzending terugkomt.
+
+Hetzelfde gold voor wat er op 11-09 bij kwam: de meetdienst van #18 brengt
+`FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOTIFICATIONS` en `WAKE_LOCK` mee.
+Drie permissies, nul woorden in de verklaring.
+
+**Waarom het kon ontstaan.** Het manifest wordt door een workflow-stap
+samengesteld, de verklaring is met de hand geschreven, en niets koppelde de
+twee. Dat is de vorm die dit hoofdstuk al drie keer beschrijft — twee lijsten
+van hetzelfde zonder brug ertussen — alleen liepen ze hier niet uit de pas op
+een getal maar op een permissie.
+
+**Wat de brug is.** `test-privacydekking.js` leest de permissies uit
+`build-apk.yml` zelf en eist per stuk een woord in `privacy.html` waarmee een
+lezer de alinea erover terugvindt. Niet de permissienaam: die zegt een lezer
+niets. De helft die het waard maakt is de andere kant op: een permissie die de
+workflow injecteert en die níét in de dekkingstabel staat, is ook fout. Zonder
+dat zou de test alleen dekken wat er op de dag van schrijven stond, en glipt de
+vólgende toevoeging er net zo stil doorheen als CAMERA deed. Hij vond meteen
+`INTERNET`, die ik zelf vergeten was op te schrijven.
+
+De twee tegenproeven in `plmutate.sh` zetten allebei een echte fout terug: een
+permissie erbij die nergens uitgelegd wordt, en het ene woord waarmee je de
+WAKE_LOCK-alinea vindt dat bij een herschrijving verdwijnt.
+
 ### Licht ging aan en meteen weer uit — 11-09-2026 (#141)
 
 De knop hieronder is dezelfde dag teruggedraaid. Op het toestel bleek binnen
