@@ -42,7 +42,24 @@ let ritStartTime=null, ritLogs=[], ritFaseData={};
 
    ritFaseEind is wandkloktijd, niet een resterende duur: dat is het enige wat
    een bevroren tab overleeft.                                              */
-let ritFaseEind=0, ritPauzeSinds=0, ritPauzeTotaal=0, ritOnderbrekingen=0;
+let ritFaseEind=0, ritPauzeSinds=0, ritPauzeTotaal=0;
+
+/* ritPauzeLog — elke onderbreking apart, MET de fase waarin hij viel.
+
+   Dit stond tot 11-09-2026 als {t,type,sec} tussen de fase-regels in ritLogs,
+   en dat was #196: het rapport las beide soorten alsof het fases waren, en
+   Object.values(undefined) gooide "Cannot convert undefined or null to object"
+   — vóór de AI-call. Dertien minuten meten, geen rapport, één regel in het log.
+
+   Waarom een eigen lijst en niet een filter op ritLogs: een filter is een
+   derde plek die moet ONTHOUDEN dat er twee soorten in één lijst zitten, en
+   dat is precies wat hier misging. Nu heeft één lijst één betekenis — ritLogs
+   is fases, ritPauzeLog is onderbrekingen — en kloppen de leesplekken van
+   constructie in plaats van van oplettendheid.
+
+   Hij telt ook: ritOnderbrekingen was een tweede teller van precies deze
+   lengte, en twee tellers van hetzelfde lopen hier vroeg of laat uit de pas. */
+let ritPauzeLog=[];
 
 function openRitAnalyse(mode='10min'){
   document.getElementById('welcomeScreen')?.classList.add('hidden');
@@ -119,7 +136,7 @@ function resetRitUI(){
       </div>`;
   }
   ritLogs=[]; ritFaseData={}; ritFaseIdx=0;
-  ritFaseEind=0; ritPauzeSinds=0; ritPauzeTotaal=0; ritOnderbrekingen=0;
+  ritFaseEind=0; ritPauzeSinds=0; ritPauzeTotaal=0; ritPauzeLog=[];
 }
 
 // 10-min uitgebreide analyse: lees ALLE ondersteunde sensoren één keer uit en
@@ -196,7 +213,7 @@ async function startRitAnalyse(){
     ensurePIDListActive(actief);
   }
   ritActive=true; ritStartTime=Date.now(); ritFaseIdx=0; ritLogs=[]; ritFaseData={};
-  ritPauzeSinds=0; ritPauzeTotaal=0; ritOnderbrekingen=0; ritFaseEind=0;
+  ritPauzeSinds=0; ritPauzeTotaal=0; ritPauzeLog=[]; ritFaseEind=0;
   document.getElementById('ritStartBtn').style.display='none';
   document.getElementById('ritStopBtn').style.display='block';
   document.getElementById('ritStatus').textContent = ritMode==='2min'
@@ -287,11 +304,14 @@ function _ritHervat(){
   // kosten geen meetdata van betekenis en zouden het rapport vervuilen.
   if(weg<3000){ _ritStartVerzamelen(); _ritPlanFaseTimer(); return; }
   ritPauzeTotaal+=weg;
-  ritOnderbrekingen++;
   ritFaseEind+=weg;
   const s=Math.round(weg/1000);
   log(`⏸ Rit stond ${s>90?Math.round(s/60)+' min':s+' s'} stil — app was op de achtergrond. Fase gaat verder waar hij was.`,'warn');
-  ritLogs.push({t:Date.now(), type:'onderbreking', sec:s});
+  // De fase-index gaat mee. Zonder die plaats weet het rapport wel DAT er een
+  // gat was — dat telt PLAanlevering al — maar niet WAAR in de reeks. Juist
+  // die plaats scheidt een fase die dun gemeten is van een sensor die uitvalt,
+  // en dat is vals alarm nummer 1 uit #188.
+  ritPauzeLog.push({t:Date.now(), sec:s, faseIdx:ritFaseIdx});
   // Terug uit de achtergrond met een dode verbinding heeft geen zin: dan
   // vult de fase zich met niets en levert het rapport lege grafieken.
   if(typeof connected!=='undefined' && !connected && !(typeof demoMode!=='undefined'&&demoMode)){
@@ -460,6 +480,16 @@ function showRitFocusModal(){
   }
   m.style.display='flex';
 }
+/* Welke onderbrekingen vielen in fase i, en hoeveel meettijd kostten ze?
+   ritPauzeLog draagt de fase waarin hervat werd en ritLogs staat in diezelfde
+   volgorde, dus de index is de koppeling. Dit telt alleen; wat een gat
+   BETEKENT wordt gewogen door de weegregels van PLAanlevering, en dat oordeel
+   hoort niet op twee plekken te staan. */
+function _ritFaseGat(i){
+  const g=(ritPauzeLog||[]).filter(p=>p.faseIdx===i);
+  return { aantal:g.length, sec:g.reduce((a,p)=>a+p.sec,0) };
+}
+
 async function ritFocusChosen(focus){
   document.getElementById('ritFocusModal').style.display='none';
   document.getElementById('ritStatus').textContent='Analyse klaar — rapport wordt gegenereerd...';
@@ -481,7 +511,7 @@ async function generateRitRapport(focus='beide'){
     `Datum: ${new Date().toLocaleString('nl')}`,
     `Voertuig: ${v.merk||'?'} ${v.year||''} ${v.vin||''}`,
     `Rit duur: ${mins}:${secs.toString().padStart(2,'0')} minuten (werkelijk gemeten)`,
-    ...(ritOnderbrekingen ? [`LET OP: ${ritOnderbrekingen}× onderbroken doordat de app op de achtergrond stond; ` +
+    ...(ritPauzeLog.length ? [`LET OP: ${ritPauzeLog.length}× onderbroken doordat de app op de achtergrond stond; ` +
         `${Math.round(ritPauzeTotaal/1000)} s zonder meetdata. Beoordeel de reeksen met die gaten in gedachten.`] : []),
     `Fases geanalyseerd: ${ritLogs.length}`,
     '',
@@ -490,10 +520,19 @@ async function generateRitRapport(focus='beide'){
     '',
   ];
 
+  // Vangnet om de opbouw heen. De bekende crash (#196) is hierboven bij de
+  // bron weggenomen; dit staat er voor de vólgende. Het kost een rit dertien
+  // minuten meten als het rapport halverwege omvalt, en die data is weg zodra
+  // het scherm dicht gaat — het tekstbestand onderaan moet er dus hoe dan ook
+  // komen. Geen stille catch: de fout gaat met zijn boodschap het log in.
+  let sweepBlok='', allStats='';
+  try{
   ritLogs.forEach((log,i)=>{
-    lines.push(`FASE ${i+1}: ${log.fase} (${log.duur}s)`);
+    const g=_ritFaseGat(i);
+    lines.push(`FASE ${i+1}: ${log.fase} (${log.duur}s)` +
+      (g.sec ? ` — ${g.sec} s zonder meetdata (${g.aantal}× op de achtergrond)` : ''));
     Object.values(log.stats).forEach(s=>{
-      lines.push(`  • ${s.name}: gem=${fv(s.avg)} ${s.unit}, min=${fv(s.min)}, max=${fv(s.max)}${!s.ok?' ⚠ AFWIJKING':''}`);
+      lines.push(`  • ${s.name}: gem=${fv(s.avg)} ${s.unit}, min=${fv(s.min)}, max=${fv(s.max)}, n=${s.count}${!s.ok?' ⚠ AFWIJKING':''}`);
     });
     if(log.aiAnalyse) lines.push(`  → AI: ${log.aiAnalyse.slice(0,200)}`);
     lines.push('');
@@ -501,7 +540,6 @@ async function generateRitRapport(focus='beide'){
 
   // 10-min uitgebreide analyse: volledige sensor-sweep meenemen,
   // mét plausibiliteitscheck zodat meetfouten niet als defect gelden.
-  let sweepBlok='';
   if(ritMode==='10min' && ritSweepFindings.length){
     const sweepPairs=ritSweepFindings.map(f=>[f.pid,f.val]);
     const sq=buildQualityReport(sweepPairs);
@@ -515,9 +553,31 @@ async function generateRitRapport(focus='beide'){
     sweepBlok='\n\nVOLLEDIGE SENSOR-SWEEP: alle ondersteunde sensoren 1x uitgelezen, geen waarden buiten norm.';
   }
 
+  // WAT DE AI KRIJGT, IS WAT ER IN HET RAPPORT STAAT. Tot 11-09-2026 ging hier
+  // alleen het gemiddelde per sensor over de lijn, terwijl het tekstbestand
+  // dat de gebruiker leest min, max en het aantal metingen wél had. Een
+  // gemiddelde verstopt precies de piek waar een analyse over hoort te gaan:
+  // 88 °C gemiddeld met een uitschieter naar 118 °C leest als "koelwater in
+  // orde". Mens en model lezen nu dezelfde cijfers.
+  //
+  // Het weggevallen deel staat per fase erbij. Dat is een FEIT, geen oordeel —
+  // het wegen gebeurt door de weegregels die PLAanlevering meestuurt (#188).
+  allStats=ritLogs.map((l,i)=>{
+    const g=_ritFaseGat(i);
+    const kop=`${l.fase} (${l.duur}s` +
+      (g.sec ? `, waarvan ${g.sec}s zonder meetdata door ${g.aantal}× achtergrond` : '') + ')';
+    const cijfers=Object.values(l.stats).map(s=>
+      `${s.name}=${fv(s.avg)}${s.unit} (min ${fv(s.min)}, max ${fv(s.max)}, ${s.count} metingen${!s.ok?', BUITEN NORM':''})`
+    ).join(', ');
+    return `${kop}: ${cijfers||'geen meetdata'}`;
+  }).join('\n');
+  }catch(e){
+    log(`Rit rapport: de opbouw liep vast — ${e&&e.message?e.message:e}`,'err');
+    lines.push(`LET OP: de opbouw van dit rapport liep vast (${e&&e.message?e.message:e}). De hierboven bewaarde meetdata is wat er gered is.`);
+  }
+
   // Totaalanalyse via AI — opdracht afgestemd op het gekozen publiek
   document.getElementById('ritStatus').textContent='AI totaalanalyse...';
-  const allStats=ritLogs.map(l=>`${l.fase}: ${Object.values(l.stats).map(s=>`${s.name}=${fv(s.avg)}${s.unit}${!s.ok?' (!)':''}`).join(', ')}`).join('\n');
 
   const focusPrompt={
     techniek:`Schrijf een TECHNISCH conditierapport van het voertuig voor een garage of wegenwacht.
@@ -602,8 +662,18 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     aiContent.appendChild(btnRow);
 
   }catch(e){
+    // GEEN STILLE CATCH. Dit blok schreef tot 11-09-2026 bij élke fout
+    // "geen AI beschikbaar" — een tegoedfout, een netwerkfout en een bug in de
+    // opbouw kregen alle drie dezelfde geruststellende tekst. Daardoor stond
+    // #196 als één regel in het logboek en zag de gebruiker alleen dat er geen
+    // rapport kwam. De boodschap van de fout gaat nu mee.
+    const msg=(e&&e.message)?e.message:String(e);
+    log(`Rit rapport: de AI-analyse mislukte — ${msg}`,'err');
+    lines.push('═══════════════════════════════════');
+    lines.push(`AI-ANALYSE NIET GELUKT: ${msg}`);
+    lines.push('De gemeten fasegegevens hierboven zijn wél bewaard.');
     const el=document.getElementById('ritStatus');
-    if(el) el.textContent='Rapport klaar (geen AI beschikbaar)';
+    if(el) el.textContent='Rapport klaar zonder AI-analyse — zie logboek voor de reden';
     closeRitAnalyse();
   }
 

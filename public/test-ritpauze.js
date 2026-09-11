@@ -76,12 +76,13 @@ const BRUG = `
 globalThis.__rit = {
   get actief(){return ritActive}, get faseIdx(){return ritFaseIdx},
   get faseEind(){return ritFaseEind}, get pauzeSinds(){return ritPauzeSinds},
-  get pauzeTotaal(){return ritPauzeTotaal}, get onderbrekingen(){return ritOnderbrekingen},
+  get pauzeTotaal(){return ritPauzeTotaal}, get onderbrekingen(){return ritPauzeLog.length},
+  get pauzeLog(){return ritPauzeLog}, get logs(){return ritLogs},
   get startTime(){return ritStartTime},
   startRit: function(fasen){
     RIT_FASEN_ACTIEF=fasen; RIT_TOTAAL=fasen.reduce((a,f)=>a+f.duur,0);
     ritActive=true; ritStartTime=Date.now(); ritLogs=[]; ritFaseData={};
-    ritPauzeSinds=0; ritPauzeTotaal=0; ritOnderbrekingen=0; ritFaseEind=0;
+    ritPauzeSinds=0; ritPauzeTotaal=0; ritPauzeLog=[]; ritFaseEind=0;
     startRitFase(0);
   }
 };`;
