@@ -165,6 +165,18 @@ MUTATIES=(
 "public/pidlane-meetdienst.js@@      venster: Math.round((r.nu - r.van) / 1000),@@      venster: 0,@@test-meetdienst.js@@het meetvenster is weg, dus de duiding kan geen verhouding meer noemen"
 "public/pidlane-meetdienst.js@@      if (!venster || nat.stil * 2 >= venster)@@      if (true)@@test-meetdienst.js@@elke hapering heet weer een bevriezing, de fout van 11-09 terug"
 "public/pidlane-meetdienst.js@@      if (!venster || nat.stil * 2 >= venster)@@      if (false)@@test-meetdienst.js@@een proces dat wél het grootste deel stillag wordt weggeschreven als hapering"
+
+# ── #18, welke schil draait dit (11-09-2026). Twee keer op een dag was de
+#    vraag of een meting op de nieuwe of de oude APK draaide, en het verslag
+#    gaf geen antwoord. Elke mutatie hieronder maakt dat antwoord weer stil
+#    onbetrouwbaar in plaats van afwezig -- dat is de gevaarlijke vorm.
+"public/pidlane-schil.js@@    return isFinite(b) ? b : null;@@    return isFinite(b) ? b : 0;@@test-schil.js@@een onleesbare build leest als 0 in plaats van als onbekend"
+"public/pidlane-schil.js@@    if (hier === null || !isFinite(daar)) return null;@@    if (false) return null;@@test-schil.js@@de achterstand wordt berekend zonder dat er twee getallen zijn"
+"public/pidlane-schil.js@@    if (_nieuwste && !opnieuw) return Promise.resolve(_nieuwste);@@    if (false) return Promise.resolve(_nieuwste);@@test-schil.js@@elke vraag naar de nieuwste build doet een eigen netwerkaanroep"
+"public/pidlane-schil.js@@        if (!r || !r.ok) {@@        if (!r) {@@test-schil.js@@een 404 van de Worker gaat door als geldig antwoord"
+"public/pidlane-schil.js@@    return window.plFetch('/version.json', { geenToken: true })@@    return window.plFetch('/version.json')@@test-schil.js@@de versiecheck stuurt het sessietoken mee waar dat niet hoort"
+"public/pidlane-testrun.js@@      if (achter > 0)@@      if (false)@@test-schilproef.js@@een achterlopende schil levert geen waarschuwing meer op"
+"public/pidlane-testrun.js@@      if (achter < 0)@@      if (false)@@test-schilproef.js@@een zelf gebouwde schil die voorloopt wordt niet meer gemeld"
 "public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
 "public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"

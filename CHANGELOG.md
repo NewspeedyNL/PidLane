@@ -11,6 +11,28 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11c (CET) — HET VERSLAG ZEGT WELKE APK HET IS
+
+       • 📦 EEN REGEL "APK : build N" IN DE KOP (#18). Twee
+         keer op één dag stond de vraag of een meting op de
+         nieuwe schil of op de oude draaide, en het verslag
+         gaf geen antwoord: TESTRUN_VERSIE en APP_VERSION
+         komen allebei uit de webpagina en zijn op elke APK
+         gelijk. Een native wijziging zit alleen in de schil.
+
+       • ⚠️ EN BLOK 5 ZEGT HET VÓÓRAF. Loopt de schil achter
+         op wat er in R2 ligt, dan is dat een LET OP met het
+         aantal builds erbij — een kop lees je pas als de rit
+         al gereden is. Een zelf gebouwde schil die vóórloopt
+         wordt ook gemeld: dat mag, maar wat je meet heeft
+         dan niemand anders.
+
+       • 🚫 EN "NIET TE VERGELIJKEN" IS GEEN "JE BENT BIJ".
+         Ontbreekt de build of antwoordt de Worker niet, dan
+         is de achterstand null en geen 0, met de reden erbij.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11b (CET) — DE CPU BLIJFT NU OOK WAKKER
 
        • 🔋 EEN WAKE LOCK ERBIJ (#18). De meetdienst hield het

@@ -220,6 +220,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 51 | `pidlane-privacy.js` | 12 | `PLPrivacy` — prominente Bluetooth-disclosure vóór `connectSerial()`, plus privacyscherm in het menu. Play Store-eis, zie `ANDROID-PLAYSTORE.md` |
 | 52 | `pidlane-start.js` | 20 | `PLStart` — startscherm: adapterprofielen per type, geheugen van eerdere verbindingen, verbindingscascade als live voortgang. Stuurt óók de ketenvolgorde in `connectSerial()` |
 | 53 | `pidlane-meetdienst.js` | 11 | `PLMeetdienst` — de app-kant van de **native foreground service** (#18). Start/stopt de dienst met de adapterverbinding mee (wikkelt `setConn`, net als `PLWake`), zet de native hartslagteller op nul bij het wegschakelen en vertaalt het ruwe native rapport naar een oordeel: hoeveel liep het proces door, hoe lang lag het stil, kwam het uit zichzelf terug. Het **oordeel staat hier en niet in Java** — daar is het zonder toestel te toetsen. Geen schil met dienst? Dan is de uitkomst `gemeten: false` met de reden erbij, en nooit nul. Tests: `test-meetdienst.js`, `test-nativeschil.js` |
+| 54 | `pidlane-schil.js` | 5 | `PLSchil` — **welke APK draait dit** (#18). Leest de `versionCode` van de schil via Capacitor `App.getInfo()` en de nieuwste uit `/version.json` (die de Worker uit R2 serveert), en legt die twee naast elkaar. De kop van het testrunverslag draagt de regel `APK : build N`; blok 5 waarschuwt vóór de rit als de schil achterloopt. Ontbreekt één van beide getallen, dan is `achterstand()` **null** en nooit 0. Tests: `test-schil.js`, `test-schilproef.js` |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
 
 ### `native/` — de enige map met code die niet in de browser draait (11-09-2026)
@@ -901,6 +902,53 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### Twee keer op één dag de vraag: welke schil draait dit? — 11-09-2026 (#18)
+
+Bij de meetdienst en later bij de wake lock stond dezelfde vraag op tafel:
+*draait deze meting op de nieuwe APK of op de oude?* Beide keren was dat uit
+het testrunverslag niet te halen. Er staan twee versienummers in de kop —
+`TESTRUN_VERSIE` en `APP_VERSION` — en die komen allebei uit de **webpagina**.
+Op elke schil zijn ze gelijk.
+
+**Dat is geen schoonheidsfoutje.** Een native wijziging zit uitsluitend in de
+APK, terwijl de pagina los bijlaadt. Draai je de nieuwe pagina op een oude
+schil, dan meet je oude native code terwijl het verslag er nieuw uitziet. De
+tweede keer kostte dat bijna een verkeerde conclusie: de rit van 12:33 leek een
+meting mét wake lock, en de enige reden dat dat klopte was dat de bestuurder de
+APK inderdaad had bijgewerkt — niet iets wat het verslag zei.
+
+De build-workflow schrijft `apk/version.json` naar R2 met precies dit doel. Het
+commentaar daar zegt het letterlijk: *"dat was precies wat vandaag ontbrak toen
+de vraag was of het toestel de nieuwe APK had"*. De Worker serveert het al op
+`/version.json`. Alleen keek de app er nooit in.
+
+`pidlane-schil.js` legt daarom twee getallen naast elkaar:
+
+| | waar het vandaan komt |
+|---|---|
+| `bouw()` | de `versionCode` van de draaiende schil, via Capacitor `App.getInfo()` |
+| `nieuwste()` | de `versionCode` die de Worker uit R2 serveert |
+
+De kop van het verslag draagt vanaf nu een regel `APK : build 438 (3.0.0)`, en
+blok 5 zegt het **vóór** de rit als de schil achterloopt — een kop lees je pas
+als er al gereden is.
+
+**De valkuil zit in het derde antwoord, niet in de eerste twee.** Een
+achterstand van nul omdat er niets op te halen viel, leest als "je bent bij".
+Daarom is `achterstand()` `null` zodra één van beide getallen ontbreekt, geeft
+`bouw()` `null` in plaats van 0 bij een onleesbare build, en boekt de proef
+"niet te vergelijken" als LET OP met de reden erbij. Dat is dezelfde regel als
+overal in dit dossier: niet-gemeten is geen nul.
+
+**Vooruitlopen is expliciet geen fout.** Een zelf gebouwde schil ligt vóór op
+R2; dat mag, maar het hoort zichtbaar te zijn, want wat je dan meet heeft
+niemand anders.
+
+Onderweg gerepareerd: `test-achtergrondproef.js` zocht zijn proef met een
+filter op issue en nam daarvan de eerste. Er staan nu drie proeven onder #18,
+dus dat filter pakte de eerste die toevallig bovenaan stond. Hij zoekt nu op
+naam, en `test-blok5lijst.js` bewaakt al dat namen uniek zijn.
 
 ### De renderer wordt stilgezet, niet afgeknepen — en de wake lock ontbrak — 11-09-2026 (#18)
 
