@@ -11,6 +11,25 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-12a (CET) — DE BUNDEL HEET COM.PIDLANE.APP
+
+       • 📦 DE PAKKETNAAM IS COM.PIDLANE.APP. De Play Console
+         weigerde de inzending met "Voer een geldige pakket-
+         naam in". De bouwketen bleek in orde — hij zette
+         netjes door wat er in de config stond — maar die
+         naam was `app.pidlane.obd`, en `app` als eerste deel
+         bootst de .app-TLD na van een domein dat niet van
+         ons is. Play wil omgekeerd domein.
+
+       • 🚧 EN ER STAAT NU EEN POORT OP. De pakketnaam ligt na
+         de eerste geslaagde upload onomkeerbaar vast, en was
+         het enige veld in de bundel waar niets naar keek.
+         `test-nativeschil.js` toetst de vorm vóór elke commit;
+         de bundelstap leest hem uit het samengevoegde manifest
+         en legt hem naast `capacitor.config.json`.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-11k (CET) — UITLOGGEN VRAAGT NIETS MEER
 
        • 🚪 UITLOGGEN GAAT WEER. Als admin kwam er eerst een

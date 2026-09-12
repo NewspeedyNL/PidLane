@@ -83,7 +83,7 @@ function bouw(opties) {
             s.gevraagd.push('getInfo');
             if (o.infoStuk) return Promise.reject(new Error('bridge weg'));
             if (o.geenInfo) return Promise.resolve(null);
-            return Promise.resolve(o.info || { name: 'PidLane', id: 'app.pidlane.obd', build: '438', version: '3.0.0' });
+            return Promise.resolve(o.info || { name: 'PidLane', id: 'com.pidlane.app', build: '438', version: '3.0.0' });
           }
         }
       }

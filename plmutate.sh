@@ -600,6 +600,14 @@ MUTATIES=(
 # juridische lading omgooit — en een eerder gegeven akkoord ongeldig maakt.
 "public/pidlane-klant.js@@Dat is pseudonimisering en geen anonimisering: wie ' +@@Dat is volledig anoniem: wie ' +@@test-toestemmingstekst.js@@het akkoordscherm belooft anonimisering die de app niet levert"
 "public/pidlane-klant.js@@_vink('onbAnon', 'Meetdata delen onder een pseudoniem',@@_vink('onbAnon', 'Meetdata anoniem delen',@@test-toestemmingstekst.js@@de kop van het vinkje zegt anoniem terwijl de uitleg eronder pseudoniem zegt"
+
+# De pakketnaam (12-09-2026). Het enige veld in de bundel dat na de eerste
+# Play-upload onomkeerbaar vastligt, en tot vandaag keek er niets naar. De
+# eerste mutatie is de fout die de inzending tegenhield; de tweede haalt de
+# poort weg die dat voortaan vóór de upload zichtbaar maakt.
+"capacitor.config.json@@\"appId\": \"com.pidlane.app\",@@\"appId\": \"com.PidLane.app\",@@test-nativeschil.js@@een hoofdletter in de pakketnaam: Play weigert de bundel met \"Voer een geldige pakketnaam in\""
+"capacitor.config.json@@\"appId\": \"com.pidlane.app\",@@\"appId\": \"pidlane\",@@test-nativeschil.js@@een pakketnaam van één deel, en dat is geen pakketnaam"
+".github/workflows/build-apk.yml@@              print(\"── Pakketnaam in de bundel ──\")@@              print(\"── pakket ──\")@@test-nativeschil.js@@de bundelpoort leest de pakketnaam niet meer uit het gebouwde manifest"
 )
 
 echo

@@ -742,7 +742,7 @@ jobs:
       - name: Controleer het samengevoegde manifest
         run: |
           python3 - <<'PY'
-          import pathlib, re, sys
+          import json, pathlib, re, sys
 
           wortel = pathlib.Path("android/app/build/intermediates/merged_manifests")
           treffers = sorted(wortel.glob("release/**/AndroidManifest.xml"))
@@ -767,6 +767,67 @@ jobs:
               print("   " + k)
 
           fout = 0
+
+          # 0. DE PAKKETNAAM. Dit is het enige veld in de bundel dat na de
+          #    eerste geslaagde Play-upload NOOIT meer te wijzigen is: Play
+          #    knoopt er de app-vermelding en de ondertekensleutel aan vast.
+          #    Alle andere poorten hieronder bewaken iets dat je morgen nog
+          #    kunt repareren; deze bewaakt het enige dat onomkeerbaar is.
+          #
+          #    Hij stond er tot 12-09-2026 niet, en dat was een gat van dezelfde
+          #    vorm als de locatiepermissie hierboven: de naam werd nergens
+          #    gelezen, dus niets kon er iets van vinden. De inzending strandde
+          #    op "Voer een geldige pakketnaam in" en er was geen stap in deze
+          #    workflow die kon zeggen welke naam er eigenlijk uit kwam.
+          #
+          #    EEN BRON: capacitor.config.json. Capacitor schrijft de appId bij
+          #    `cap add` in build.gradle (namespace + applicationId) en daar komt
+          #    hij via de manifest-merge in de bundel. Deze poort leest de twee
+          #    uiteinden van die keten en legt ze naast elkaar. Een tweede
+          #    waarheid — de naam hier hardcoderen — zou precies het soort
+          #    dubbele lijst zijn dat dit project elders al opgeruimd heeft.
+          m = re.search(r'<manifest\b[^>]*\bpackage="([^"]*)"', xml, re.S)
+          if not m:
+              print("FOUT: het samengevoegde manifest heeft geen package-attribuut.")
+              print("      Zonder pakketnaam leest de Play Console de bundel niet uit.")
+              fout += 1
+              pakket = None
+          else:
+              pakket = m.group(1)
+              print("── Pakketnaam in de bundel ──")
+              print("   " + pakket)
+
+          appid = json.loads(pathlib.Path("capacitor.config.json").read_text())["appId"]
+          if pakket is not None and pakket != appid:
+              print("FOUT: de bundel draagt %r maar capacitor.config.json zegt %r." % (pakket, appid))
+              print("      Dan heeft iets tussen `cap add` en de build de naam overschreven.")
+              fout += 1
+
+          # De vorm die Play eist: minstens twee delen, elk deel begint met een
+          # kleine letter, verder alleen letters, cijfers en liggende streepjes,
+          # en hoogstens 150 tekens. Een naam die hier doorheen komt wordt niet
+          # op de vorm geweigerd — dat is wat deze controle belooft, niet meer.
+          # Of Play hem ook inhoudelijk accepteert (een eerste deel dat een TLD
+          # nabootst van een domein dat je niet bezit, bijvoorbeeld) staat niet
+          # in een regex te vangen; daarvoor is de keuze omkeerbaar domein.
+          for naam, waarde in (("capacitor.config.json", appid),
+                               ("de bundel", pakket)):
+              if waarde is None:
+                  continue
+              if len(waarde) > 150:
+                  print("FOUT: de pakketnaam in %s is %d tekens; Play staat er 150 toe"
+                        % (naam, len(waarde))); fout += 1
+              delen = waarde.split(".")
+              if len(delen) < 2:
+                  print("FOUT: de pakketnaam in %s (%r) heeft maar één deel; Play eist er minstens twee"
+                        % (naam, waarde)); fout += 1
+              for deel in delen:
+                  if not re.fullmatch(r'[a-z][a-z0-9_]*', deel):
+                      print("FOUT: %r in de pakketnaam van %s deugt niet — elk deel begint met"
+                            % (deel, naam))
+                      print("      een kleine letter en bevat verder alleen a-z, 0-9 en _")
+                      fout += 1
+
 
           # 1. Wat er niet in mag. Achtergrondlocatie vraagt een aparte
           #    Play-verklaring met video-onderbouwing; de andere drie zijn
