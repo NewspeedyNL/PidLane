@@ -2449,6 +2449,42 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── draagt de schil een pakketnaam die Play accepteert? ──
+  // De inzending van 12-09 strandde op "Voer een geldige pakketnaam in". De
+  // bouwketen bleek in orde; de naam zelf deugde niet. Er staan nu twee
+  // poorten omheen (test-nativeschil.js en de bundelstap), maar allebei kijken
+  // naar de BEDOELING in de repo. Dit is de enige plek die kijkt naar de schil
+  // die op dit toestel staat te draaien — en dus de enige die kan zeggen of
+  // deze rit op de nieuwe naam gemeten is of nog op de oude.
+  //
+  // De naam staat hier BEWUST niet letterlijk in. Dat zou een tweede waarheid
+  // naast capacitor.config.json zijn, en dan is bij de volgende wijziging niet
+  // te zien welke van de twee wint. Wat hier getoetst wordt is de vorm die
+  // Play eist, plus dat de naam er überhaupt is.
+  {
+    issue: '§11',
+    naam: 'De schil draagt een pakketnaam die Play accepteert',
+    waarom: 'Alleen de draaiende schil weet zijn eigen pakketnaam; de repo kent alleen de bedoeling.',
+    proef: function () {
+      if (!window.PLSchil)
+        return { staat: 'FOUT', detail: 'PLSchil ontbreekt — dan staat er geen schilgegeven in dit verslag' };
+      var info = PLSchil.info();
+      if (!info)
+        return { staat: 'LET OP', detail: 'geen schilgegevens (' + PLSchil.reden() +
+          ') — in een browser is er geen pakketnaam, dus hier valt niets te meten' };
+      var id = info.id;
+      if (!id)
+        return { staat: 'FOUT', detail: 'App.getInfo() gaf geen id terug — een schil zonder pakketnaam bestaat niet' };
+      var delen = String(id).split('.');
+      var slecht = delen.filter(function (d) { return !/^[a-z][a-z0-9_]*$/.test(d); });
+      if (delen.length < 2 || slecht.length)
+        return { staat: 'FOUT', detail: 'pakketnaam "' + id + '" voldoet niet aan de vorm die Play eist' +
+          (slecht.length ? ' (fout deel: ' + slecht.join(', ') + ')' : ' (minder dan twee delen)') +
+          ' — deze schil komt niet door de upload' };
+      return 'schil "' + id + '", build ' + (info.build || 'onbekend');
+    }
+  },
+
   // ── hoort de chip bij de rol die nu ingelogd is? ──
   // De fout van 29-08 in één zin: de chip werd getekend vóór de login en
   // daarna keek er niets meer naar. Een beheerder hield zo een chip die niet
@@ -6760,6 +6796,7 @@ const CAMPAGNE = {
     'DE MEETDIENST IS DUS TEGELIJK DE KANDIDAAT-OPLOSSING EN HET MEETINSTRUMENT. Dat is met opzet: de keuze tussen die drie richtingen kost bij de verkeerde uitslag weken werk, en het issue zegt zelf dat een plausibele redenering geen bewijs is.',
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden) EN installeer de nieuwe APK. Dit is de eerste ronde waarbij dat tweede echt moet: de meetdienst zit in de schil, niet in de webpagina. Draai je de nieuwe pagina op een oude APK, dan meldt blok 5 "de schil heeft geen native meetdienst" en zegt deze ronde niets.',
+    'STAP 0b — DE NIEUWE APK IS EEN ANDERE APP. De pakketnaam is op 12-09 gewijzigd van app.pidlane.obd naar com.pidlane.app, omdat Play de eerste weigerde. Android ziet een gewijzigde pakketnaam als een compleet andere app: de nieuwe APK installeert ERNAAST de oude in plaats van eroverheen, met hetzelfde icoon en dezelfde naam. VERWIJDER DE OUDE EERST, anders meet je zonder het te merken op de verkeerde. Blok 5 noemt de pakketnaam van de schil waarop deze run draait \u2014 lees die regel voor je begint.',
     'BIJ HET VERBINDEN. Android 13+ vraagt eenmalig toestemming voor meldingen. Geef die — de dienst draait ook zonder, maar dan is er geen melding om naar te kijken, en juist die melding is het enige dat de app zelf niet kan vaststellen.',
     'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op — de rijstap laat live zien wat er nog ontbreekt en gaat vanzelf op groen. Daarna MINSTENS DRIE MINUTEN naar de achtergrond (#18), scherm uit, en schakel daarna nog een andere app open zodat PidLane niet bovenaan de recents-lijst blijft staan. Twee minuten was het tot 11-09 en dat bleek te kort: 38 s viel binnen de aanlooptijd en mat niets. KIJK ER ÉÉN KEER NAAR DE STATUSBALK en onthoud of de PidLane-melding er stond. Als laatste de adapter er even uit (#133). Het meten en het verslag doet de run zelf.',
     'DE TOESTELRONDE (📱). Doe deze vlak na de rit, stilstaand met een warme motor — dan zijn de temperaturen uit elkaar getrokken en beweegt er iets als je gas geeft. Vier oordelen die alleen een mens kan geven (live view, slimme weergave, onderrand, logboek) plus de drie meetcontextvragen (#64).',

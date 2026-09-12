@@ -81,7 +81,7 @@ want dat vraagt een protocolwissel en die hoort niet in een rijdende testrun.
 | App-repo | `NewspeedyNL/PidLane` |
 | Deploy | **Cloudflare Workers Builds via `git push`** — enige deploypad |
 | APK | R2-bucket `pidlane-files`, gebouwd met Capacitor + GitHub Actions |
-| App-ID | `app.pidlane.obd` |
+| App-ID | `com.pidlane.app` |
 
 > **Geen lokale wrangler.** De werklaptop blokkeert Node.js. Secrets gaan via
 > Dashboard → Worker → Settings → Variables and Secrets, niet via CLI.
@@ -229,7 +229,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 
 Twee Java-bestanden, `PLMeetdienst.java` (de foreground service met zijn eigen
 hartslag) en `PLMeetdienstPlugin.java` (de Capacitor-brug ernaartoe). Ze horen
-in `android/app/src/main/java/app/pidlane/obd/`, en die map bestaat niet in de
+in `android/app/src/main/java/com/pidlane/app/`, en die map bestaat niet in de
 repo: hij wordt elke build opnieuw gegenereerd uit het Capacitor-template.
 `build-apk.yml` kopieert de bestanden er dus bij elke build in, leidt de doelmap
 af uit de `package`-regel in de bestanden zelf, registreert de plugin in
@@ -909,6 +909,51 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### De pakketnaam was nooit gecontroleerd — 12-09-2026
+
+De inzending bij de Play Console strandde op *"Voer een geldige pakketnaam in.
+Bijvoorbeeld com.example.myapp."* De eerste reflex was de bouwketen
+verdenken — er komt een bestand uit en dat bestand deugde blijkbaar niet. Dat
+bleek niet te kloppen, en dat is het leerzame deel.
+
+**Nagemeten door `npx cap add android` met de eigen `capacitor.config.json`
+na te draaien.** Capacitor zet de `appId` op drie plekken tegelijk:
+
+```
+android/app/build.gradle      namespace = "…"  en  applicationId "…"
+android/app/src/main/java/…   de map waarin MainActivity landt
+res/values/strings.xml        package_name en custom_url_scheme
+```
+
+Alle drie klopten, en droegen `app.pidlane.obd` — precies wat er in de config
+stond. Er ging onderweg dus niets stuk. De naam zelf was het probleem: `app`
+als eerste deel bootst de `.app`-TLD na, en `pidlane.app` is niet van ons.
+Play wil omgekeerde domeinnotatie van een domein dat je bezit. Het is nu
+`com.pidlane.app`.
+
+**Waarom dit hier staat en niet alleen in de changelog.** De naamwijziging is
+een regel; het gat eronder is het punt. `build-apk.yml` had harde poorten op
+targetSdk, op de permissieset, op de meetdienst en op de handtekening — en
+géén op de pakketnaam. Uitgerekend het enige veld in de bundel dat **na de
+eerste geslaagde upload onomkeerbaar vastligt**: Play knoopt er de vermelding
+en de ondertekensleutel aan vast. Alles wat wél bewaakt werd is morgen nog te
+repareren.
+
+Dat is dezelfde vorm als de locatiepermissie van 10-09: een controle die niet
+bestaat en een controle die niets ziet leveren hetzelfde op — een groene build
+en een verrassing bij de upload. Er staan nu twee poorten:
+`test-nativeschil.js` toetst de vorm van de `appId` vóór elke commit, en de
+bundelstap leest de pakketnaam uit het **samengevoegde** manifest en legt hem
+naast `capacitor.config.json`. Eén bron blijft de config; de poort vergelijkt
+de twee uiteinden van de keten in plaats van de naam een tweede keer op te
+schrijven.
+
+**Wat deze poort níét belooft.** Hij toetst de vórm (twee delen of meer, elk
+deel begint met een kleine letter, verder `a-z0-9_`, hoogstens 150 tekens).
+Of Play een naam inhoudelijk accepteert — een eerste deel dat een TLD nabootst
+van een domein dat je niet bezit — staat niet in een regex te vangen. Daarvoor
+is de regel: omgekeerd domein, en een domein dat van jou is.
 
 ### De camera zat in de bundel en niet in de privacyverklaring — 11-09-2026
 

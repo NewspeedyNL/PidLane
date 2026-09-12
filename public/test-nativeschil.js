@@ -72,6 +72,25 @@ console.log('\n── het pakket is één pakket ──');
   toets('de plugin zit in het pakket van de appId', pak, cfg.appId);
   toets('en de service in hetzelfde pakket',
     (dienst.match(/^\s*package\s+([\w.]+)\s*;/m) || [])[1], cfg.appId);
+
+  // En de appId zelf moet een pakketnaam ZIJN. Play weigert een bundel waarvan
+  // de naam niet aan deze vorm voldoet met "Voer een geldige pakketnaam in" —
+  // een melding die niets zegt over welk teken het probleem is, en die je pas
+  // ziet als je de .aab al aan het uploaden bent. De vorm: minstens twee
+  // delen, elk deel begint met een kleine letter, verder alleen a-z, 0-9 en _.
+  // Dezelfde toets staat in build-apk.yml op de GEBOUWDE bundel; deze staat
+  // hier omdat plcheck.sh voor elke commit draait en de APK-build niet.
+  const delen = String(cfg.appId).split('.');
+  toets('de appId heeft minstens twee delen', delen.length >= 2, true);
+  toets('elk deel van de appId is een geldige pakketcomponent',
+    delen.filter(d => !/^[a-z][a-z0-9_]*$/.test(d)), []);
+
+  // De poort op de GEBOUWDE bundel. Deze toets hierboven leest de bedoeling;
+  // die poort leest wat er werkelijk uit de manifest-merge komt. Valt hij weg,
+  // dan is de bedoeling nog steeds bewaakt maar het resultaat niet meer — en
+  // dat is precies het gat waar de inzending van 12-09-2026 op strandde.
+  bevat('de bundelpoort leest de pakketnaam uit het manifest', wf, 'Pakketnaam in de bundel');
+  bevat('en legt hem naast capacitor.config.json', wf, 'maar capacitor.config.json zegt');
 }
 
 console.log('\n── de naam waaronder de app de plugin zoekt ──');
