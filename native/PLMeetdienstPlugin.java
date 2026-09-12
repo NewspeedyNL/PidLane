@@ -19,7 +19,7 @@
 //  lukte niet". De app moet kunnen MELDEN waarom de meting niet loopt, want
 //  een meting die stil niet loopt is precies de vorm van #18 zelf.
 // ══════════════════════════════════════════════════════════════════
-package app.pidlane.obd;
+package com.pidlane.app;
 
 import android.Manifest;
 import android.content.Intent;
