@@ -81,7 +81,7 @@ want dat vraagt een protocolwissel en die hoort niet in een rijdende testrun.
 | App-repo | `NewspeedyNL/PidLane` |
 | Deploy | **Cloudflare Workers Builds via `git push`** — enige deploypad |
 | APK | R2-bucket `pidlane-files`, gebouwd met Capacitor + GitHub Actions |
-| App-ID | `com.pidlane.app` |
+| App-ID | `nl.pidlane.app` |
 
 > **Geen lokale wrangler.** De werklaptop blokkeert Node.js. Secrets gaan via
 > Dashboard → Worker → Settings → Variables and Secrets, niet via CLI.
@@ -229,7 +229,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 
 Twee Java-bestanden, `PLMeetdienst.java` (de foreground service met zijn eigen
 hartslag) en `PLMeetdienstPlugin.java` (de Capacitor-brug ernaartoe). Ze horen
-in `android/app/src/main/java/com/pidlane/app/`, en die map bestaat niet in de
+in `android/app/src/main/java/nl/pidlane/app/`, en die map bestaat niet in de
 repo: hij wordt elke build opnieuw gegenereerd uit het Capacitor-template.
 `build-apk.yml` kopieert de bestanden er dus bij elke build in, leidt de doelmap
 af uit de `package`-regel in de bestanden zelf, registreert de plugin in
@@ -930,7 +930,7 @@ Alle drie klopten, en droegen `app.pidlane.obd` — precies wat er in de config
 stond. Er ging onderweg dus niets stuk. De naam zelf was het probleem: `app`
 als eerste deel bootst de `.app`-TLD na, en `pidlane.app` is niet van ons.
 Play wil omgekeerde domeinnotatie van een domein dat je bezit. Het is nu
-`com.pidlane.app`.
+`nl.pidlane.app`.
 
 **Waarom dit hier staat en niet alleen in de changelog.** De naamwijziging is
 een regel; het gat eronder is het punt. `build-apk.yml` had harde poorten op

@@ -605,8 +605,8 @@ MUTATIES=(
 # Play-upload onomkeerbaar vastligt, en tot vandaag keek er niets naar. De
 # eerste mutatie is de fout die de inzending tegenhield; de tweede haalt de
 # poort weg die dat voortaan vóór de upload zichtbaar maakt.
-"capacitor.config.json@@\"appId\": \"com.pidlane.app\",@@\"appId\": \"com.PidLane.app\",@@test-nativeschil.js@@een hoofdletter in de pakketnaam: Play weigert de bundel met \"Voer een geldige pakketnaam in\""
-"capacitor.config.json@@\"appId\": \"com.pidlane.app\",@@\"appId\": \"pidlane\",@@test-nativeschil.js@@een pakketnaam van één deel, en dat is geen pakketnaam"
+"capacitor.config.json@@\"appId\": \"nl.pidlane.app\",@@\"appId\": \"nl.PidLane.app\",@@test-nativeschil.js@@een hoofdletter in de pakketnaam: Play weigert de bundel met \"Voer een geldige pakketnaam in\""
+"capacitor.config.json@@\"appId\": \"nl.pidlane.app\",@@\"appId\": \"pidlane\",@@test-nativeschil.js@@een pakketnaam van één deel, en dat is geen pakketnaam"
 ".github/workflows/build-apk.yml@@              print(\"── Pakketnaam in de bundel ──\")@@              print(\"── pakket ──\")@@test-nativeschil.js@@de bundelpoort leest de pakketnaam niet meer uit het gebouwde manifest"
 )
 

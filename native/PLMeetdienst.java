@@ -49,7 +49,7 @@
 //  uit `cap add android`), dit bestand wél — anders staat er native code in
 //  een YAML-heredoc en leest niemand hem ooit terug.
 // ══════════════════════════════════════════════════════════════════
-package com.pidlane.app;
+package nl.pidlane.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
