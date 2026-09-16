@@ -789,7 +789,22 @@ function beoordeel(){
     // Ondergrens: minder dan een kwart van het haalbare is geen aanwijzing
     // maar ruis, en die hoort niet als verdachte op het scherm.
     var deel=score/Math.max(1,maxScore);
-    if(voor.length && score>0 && deel>=0.25) uit.push({
+    // TWEEDE ONDERGRENS, gemeten op 16-09-2026 in de browserproef: op een
+    // kerngezonde demo-auto stond "EGR-klep — zwakke aanwijzing" op het
+    // scherm, gedragen door precies één voorwaarde van gewicht 2 ("inlaatdruk
+    // stationair verhoogd"). Twee gedeeld door zeven is 0,29 en dus boven de
+    // kwartgrens, terwijl er niets meer onder ligt dan één hint.
+    //
+    // De regel is daarom niet "een hoger percentage" — dat zou de zware
+    // aanwijzingen ook raken — maar: er moet iets dragen. Ofwel twee
+    // voorwaarden die elkaar steunen, ofwel één die op zichzelf zwaar genoeg
+    // is (gewicht 3 of meer; dat is elke foutcode en elke meting die op zichzelf
+    // ergens over gaat). Eén losse hint van gewicht 2 is een vermoeden en
+    // geen verdachte.
+    var zwaarste=0;
+    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });
+    var draagt = voor.length>=2 || zwaarste>=3;
+    if(voor.length && draagt && score>0 && deel>=0.25) uit.push({
       id:r.id, naam:r.naam, hint:r.hint,
       score:score, max:maxScore, deel:deel, voor:voor, tegen:tegen, onbekend:onbekend
     });

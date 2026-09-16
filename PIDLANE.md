@@ -1007,6 +1007,31 @@ nokkenasverstelling apart van de distributieketting, wervelkleppen, secundaire
 lucht, de automaat, U-codes (die gaan over het netwerk en niet over een
 onderdeel) en het stuurapparaat zelf.
 
+**En toen wees de browserproef er nog één aan.** Dit alles is eerst met node
+getoetst (`test-onderdeel.js`, elf gevallen met elk hun tegenproef), maar één
+fout kón daar per definitie niet uitkomen: in node zet de test zijn eigen
+globals klaar, dus de module vindt altijd wat de test bedoelde — en juist het
+*niet* kunnen vinden van `dtcCodes` was de grootste fout van dit bestand.
+`bproef-onderdeel.js` start daarom de echte app en meet daar twee dingen die
+alleen daar bestaan: of deze module `dtcCodes` werkelijk ziet vanuit zijn
+eigen scope in de echte laadvolgorde, en wat er op het scherm komt te staan.
+
+Die proef leverde meteen een bevinding op waar niemand naar op zoek was: op de
+demo-auto, die per definitie niets mankeert, stond **"EGR-klep — zwakke
+aanwijzing"**, gedragen door precies één voorwaarde van gewicht 2. Twee
+gedeeld door zeven is 29% en dus boven de kwartgrens: de ondergrens keek naar
+het áándeel en niet naar wat eronder lag. Er staat nu een tweede grens naast:
+óf twee voorwaarden die elkaar steunen, óf één die op zichzelf zwaar genoeg is
+(gewicht 3 of meer). Een hint van gewicht 2 in zijn eentje is een vermoeden,
+en dat hoort niet als verdachte op iemands telefoon.
+
+Dezelfde proef legde ook vast wat in demomodus niet kan: daar loopt geen
+verkeer over de bus, dus `PLBus.stats()` meldt te weinig metingen en het
+paneel weigert elke uitspraak over uitval. Dat is goed gedrag, maar het
+betekent ook dat de render-kant van die kaart in demo nooit draait — de proef
+legt er daarom een gezonde busstatus onder en tekent opnieuw, zodat die kaart
+wél gemeten wordt.
+
 **Wat dit niet oplost.** De drempels in de live-voorwaarden — 46 kPa
 stationair, 13,2 V, 0,5 V sprei op de achterste sonde — komen uit
 redeneerwerk en uit wat gangbaar is, niet uit metingen aan deze auto's. Ze

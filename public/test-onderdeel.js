@@ -436,6 +436,43 @@ console.log('\n11. De cadansregels komen uit PLWatch en niet uit een tweede kopi
     '60 s stilte bij factor 9 (drempel 90 s) is geen uitval');
 }
 
+// ══════════════════════════════════════════════════════════════════
+console.log('\n12. Eén losse hint is een vermoeden, geen verdachte');
+// ══════════════════════════════════════════════════════════════════
+{
+  // Gemeten in bproef-onderdeel.js op de demo-auto, die niets mankeert: daar
+  // stond "EGR-klep — zwakke aanwijzing" op het scherm, gedragen door precies
+  // één voorwaarde van gewicht 2 (inlaatdruk stationair verhoogd). Twee
+  // gedeeld door zeven is 29% en dus boven de kwartgrens — de grens keek naar
+  // het aandeel en niet naar wat eronder lag.
+  const s = laad();
+  s._didDTCScan = true;
+  sensor(s, '010C', 800, 300);
+  sensor(s, '010B', 50, 300);
+  const ids = s.PLOnderdeel.beoordeel().map(r => r.id);
+  toets('een verhoogde inlaatdruk alléén maakt de EGR-klep geen verdachte',
+    ids.indexOf('egr') < 0, 'gevonden: ' + ids.join(', '));
+
+  // TEGENPROEF 1: mét de bijbehorende foutcode draagt het wel.
+  const met = laad();
+  met._didDTCScan = true; met.dtcCodes = ['P0401'];
+  sensor(met, '010C', 800, 300);
+  sensor(met, '010B', 50, 300);
+  const idsMet = met.PLOnderdeel.beoordeel().map(r => r.id);
+  toets('TEGENPROEF: met P0401 erbij wél', idsMet.indexOf('egr') >= 0, 'gevonden: ' + idsMet.join(', '));
+
+  // TEGENPROEF 2: één voorwaarde die op zichzelf zwaar genoeg is (gewicht 3
+  // of meer) mag nog steeds alleen staan — anders zou deze grens juist de
+  // zware aanwijzingen wegnemen.
+  const zwaar = laad();
+  zwaar._didDTCScan = true;
+  sensor(zwaar, '010C', 800, 300);
+  sensor(zwaar, '0107', 18, 1000);
+  const idsZwaar = zwaar.PLOnderdeel.beoordeel().map(r => r.id);
+  toets('TEGENPROEF: een trim van +18% draagt op zijn eentje wel (gewicht 4)',
+    idsZwaar.indexOf('vacuumlek') >= 0, 'gevonden: ' + idsZwaar.join(', '));
+}
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
                         : 'goed: alle ' + n + ' controles') + '\n');
 process.exit(fout ? 1 : 0);

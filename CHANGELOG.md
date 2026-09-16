@@ -49,6 +49,13 @@
          meer. Er wordt over een reeks gekeken, en dat meettempo
          van de sensor bepaalt hoe lang die reeks moet zijn.
 
+       • 🧪 EN DE PROEF IN DE ECHTE BROWSER VOND ER NOG EEN.
+         Op de demo-auto, die niets mankeert, stond "EGR-klep
+         — zwakke aanwijzing" op het scherm, gedragen door één
+         enkele hint. Er moet nu iets dragen: twee aanwijzingen
+         die elkaar steunen, of één die op zichzelf zwaar genoeg
+         is.
+
        • ➕ TWAALF ONDERDELEN ERBIJ. De verwarming van een
          lambdasonde (eigen zekering — een koude sonde ziet eruit
          als een dode sonde), de achterste sonde apart van de

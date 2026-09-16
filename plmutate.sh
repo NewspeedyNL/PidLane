@@ -662,6 +662,11 @@ MUTATIES=(
 "public/pidlane-onderdeel.js@@      var tol=(typeof r.tol==='number')?r.tol:RAIL_TOL;@@      var tol=RAIL_TOL;@@test-onderdeel.js@@de speling van 0,6 geldt weer voor een signaal dat tot 1,275 loopt: een vette meting is een kortsluiting"
 "public/pidlane-onderdeel.js@@        return c.ect===null?null:(c.ect<75);\n      }, {xor:'temp'}),@@        return c.ect===null?null:(c.ect<75);\n      }),@@test-onderdeel.js@@te koud en te warm straffen elkaar weer af, dus de thermostaatregel haalt de ondergrens nooit"
 "public/pidlane-onderdeel.js@@  if(eis==='warmbelast') return c.draait===true && c.warm===true &&\n                                c.belasting!==null && c.belasting>=20;@@  if(eis==='warmbelast') return c.draait===true && c.warm===true;@@test-onderdeel.js@@uitrollen met afgesloten inspuiting levert weer een dode lambdasonde op"
+# De ruisdrempel is uit de browserproef gekomen en niet uit het hoofd: op de
+# demo-auto, die niets mankeert, stond "EGR-klep" op het scherm op grond van
+# één voorwaarde van gewicht 2. Zet hem terug en die kaart komt terug.
+"public/pidlane-onderdeel.js@@    var draagt = voor.length>=2 || zwaarste>=3;@@    var draagt = true;@@test-onderdeel.js@@één losse hint van gewicht 2 maakt weer een verdachte"
+"public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 )
 
 echo
