@@ -124,6 +124,14 @@
   // zet ze weer aan.
   const LANG_MS = 550;        // indrukduur die "gezien" tot "negeer" maakt
   let _genegeerd = {};        // pid → true, sessiebreed
+  // HISTORIE — wat er over de hele sessie gemeten is, niet alleen deze ronde.
+  // _lijst wordt bij elke nieuweRonde() weggegooid; dat is goed voor de strook
+  // (die toont de ronde die nu loopt) maar maakt de vraag "wat heb je al
+  // gemeten" onbeantwoordbaar. Zonder dit blok kan het waakvenster alleen de
+  // huidige ronde laten zien, en is een sensor die drie rondes geleden
+  // buiten bereik lag onzichtbaar. pid → tellingen + laatste oordeel + bereik.
+  let _historie = {};
+  let _sinds = 0;             // epoch-ms van de eerste start deze sessie
   let _drukTimer = null, _drukPid = null, _drukLang = false, _drukEl = null;
   let _vangnet = false;       // document-brede pointerup maar één keer aanhaken
 
@@ -139,6 +147,29 @@
   function toonWaarde(v, pid) {
     if (v === undefined || v === null || !isFinite(v)) return '—';
     try { return (typeof fv === 'function') ? fv(v, pid) : String(v); } catch (e) { return String(v); }
+  }
+
+  // Eén gelezen sensor bijschrijven in de sessiehistorie. Bewust apart van
+  // _lijst: die hoort bij één ronde, dit hoort bij de hele sessie.
+  function boekHistorie(pid, o, tijd) {
+    let h = _historie[pid];
+    if (!h) {
+      h = _historie[pid] = { pid: pid, ok: 0, let: 0, stil: 0, n: 0,
+        eerst: tijd, laatst: 0, staat: '', waarde: undefined, reden: '',
+        min: undefined, max: undefined, rondes: 0 };
+    }
+    h.n++;
+    if (o.staat === 'ok' || o.staat === 'let' || o.staat === 'stil') h[o.staat]++;
+    h.laatst = tijd;
+    h.staat  = o.staat;
+    h.waarde = o.v;
+    h.reden  = o.reden;
+    h.rondes = _ronde;
+    if (typeof o.v === 'number' && isFinite(o.v)) {
+      if (h.min === undefined || o.v < h.min) h.min = o.v;
+      if (h.max === undefined || o.v > h.max) h.max = o.v;
+    }
+    return h;
   }
 
   // Kandidaten: alles wat de auto levert en wat NIET al gepollt wordt.
@@ -283,6 +314,7 @@
         rij.staat  = o.staat;
         rij.reden  = o.reden;
         rij.tijd   = Date.now();
+        boekHistorie(rij.pid, o, rij.tijd);
         try { await delay(40); } catch(e){ console.warn('delay mislukt:', e); }
       }
       _cursor += BATCH;
@@ -545,6 +577,9 @@
   function start() {
     if (_aan) return true;
     _aan = true;
+    if (!_sinds) _sinds = Date.now();   // loopt door over stop/start heen: de
+                                        // historie doet dat ook, dus de duur
+                                        // die het waakvenster toont moet hem volgen
     const n = nieuweRonde();
     strook(); teken();
     if (_pols) clearInterval(_pols);
@@ -597,7 +632,26 @@
     gezien: gezien, negeer: negeer, herstel: herstel,
     genegeerd: function () { return Object.keys(_genegeerd); },
     actief: function () { return _aan; },
-    lijst: function () { return _lijst.map(function (r) { return { pid: r.pid, staat: r.staat, waarde: r.waarde }; }); },
+    // reden en tijd stonden al in _lijst maar kwamen er niet uit. Het
+    // waakvenster kan zonder die twee niet zeggen WAAROM iets een bevinding
+    // is of HOE OUD de meting is — en dat is precies wat een lijst met
+    // oordelen bruikbaar maakt in plaats van alleen kleurrijk.
+    lijst: function () {
+      return _lijst.map(function (r) {
+        return { pid: r.pid, staat: r.staat, waarde: r.waarde, reden: r.reden, tijd: r.tijd };
+      });
+    },
+    // De hele sessie, niet alleen de ronde die nu loopt.
+    historie: function () {
+      return Object.keys(_historie).map(function (p) {
+        var h = _historie[p];
+        return { pid: h.pid, n: h.n, ok: h.ok, let: h.let, stil: h.stil,
+                 eerst: h.eerst, laatst: h.laatst, staat: h.staat, waarde: h.waarde,
+                 reden: h.reden, min: h.min, max: h.max, rondes: h.rondes };
+      });
+    },
+    ronde: function () { return _ronde; },
+    sinds: function () { return _sinds; },
     bevindingen: function () { return _lijst.filter(function (r) { return r.staat === 'let'; }).map(function (r) { return r.pid; }); },
     _kandidaten: kandidaten,
     _beoordeel: beoordeel
