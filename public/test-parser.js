@@ -396,6 +396,18 @@ console.log('\n── splitBatchResponse: de adapter herhaalt frames (#210) ─�
   toets('een afgekapt antwoord levert een gat op, geen gok',
     Object.keys(uitAf).sort(), ['010C', '010D']);
 
+  /* DEZELFDE ECHO, MAAR OP ÉÉN REGEL.
+     Niet elke adapter zet de lengte op een eigen regel; het commentaar boven
+     splitBatchResponse() noemt juist de vorm "008 0:41430034067F 1:0782…".
+     Komt de tweede lengte dan mee als voorvoegsel van een frameregel, dan moet
+     de stop dáár ook aanslaan. Gemeten gat: zonder die tweede stop bleef
+     test-parser groen terwijl de echo er gewoon doorheen liep (plmutate,
+     16-09-2026). */
+  const ECHO_EEN_REGEL = '008 0:410B1E0E8B10\r008 1:410B\r2:00760000000000\r\r>';
+  toets('een tweede lengte vóór een framemarker stopt óók',
+    Object.keys(s.splitBatchResponse(ECHO_EEN_REGEL, ['010B', '010E', '0110'])).sort(),
+    ['010B', '010E']);
+
   // ── DE TEGENKANT ────────────────────────────────────────────────
   // Een stop die te vroeg toeslaat is net zo fout als geen stop. Deze drie
   // moeten onveranderd door de parser komen.
@@ -433,10 +445,21 @@ console.log('\n── splitBatchResponse: de adapter herhaalt frames (#210) ─�
     toets('een schoon antwoord telt niet mee', t.PLBus.stats().echoTot - voor, 2);
   }
 
-  // De CAN-header mag géén tweede lengte zijn. Zonder die uitzondering slaat
-  // de stop bij headers-aan al bij frame 0 toe en komt er niets meer door.
-  toets('een 11-bit CAN-header telt niet als lengte-indicator',
+  /* DE CAN-HEADER MAG GÉÉN TWEEDE LENGTE ZIJN.
+     Met ATH1 draagt élke frameregel zijn header, en "7E8" staat op precies
+     dezelfde plek als een lengte-indicator. Zonder de uitzondering in
+     _pakLen() telt de tweede frameregel dus als een tweede bericht en slaat de
+     stop toe voordat er iets gelezen is.
+
+     Eén regel mét header is hier niet genoeg om dat te bewijzen: bij de eerste
+     staat `hex` nog leeg en stopt er niets. Het moeten er twee zijn — en zo
+     ziet een multiframe-antwoord met headers aan er ook werkelijk uit. Die
+     eerste versie liet de mutatie ontsnappen. */
+  toets('één regel met een 11-bit header parst gewoon',
     s.splitBatchResponse('7E8 0:410C0A98410D 1:50410584000000', ['010C', '010D', '0105']),
+    { '010C': [0x0A, 0x98], '010D': [0x50], '0105': [0x84] });
+  toets('en twee frameregels mét header ook — de header is geen tweede bericht',
+    s.splitBatchResponse('7E8 0:410C0A98410D\r7E8 1:50410584000000\r\r>', ['010C', '010D', '0105']),
     { '010C': [0x0A, 0x98], '010D': [0x50], '0105': [0x84] });
 }
 

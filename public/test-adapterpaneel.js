@@ -192,6 +192,26 @@ console.log('\n── de handmatige stand ──');
   waar('maar hij blijft wél meten', L.staat().code === 'dood',
        'staat is "' + L.staat().code + '" — de automaat hoort door te meten terwijl hij niet ingrijpt');
 
+  /* EN DAT IS MEER DAN ALLEEN DE MULTIPLIER.
+     De eerste versie hierboven keek alleen naar mult(), en die geeft in de
+     handmatige stand toch al `_handMult` — dus hij bleef groen ook als tick()
+     gewoon doorregelde. Dat kwam uit plmutate op 16-09-2026: de mutatie die de
+     handmatige poort weghaalde ontsnapte.
+
+     Wat er dan werkelijk misgaat is dit: de automaat verkleint de groep en
+     schrijft stappen in het logboek terwijl het paneel "handmatig" toont. Een
+     logboek dat handelingen claimt die niemand koos is erger dan geen
+     logboek — dus dat is waar deze toets nu op kijkt. */
+  L.wisActies();
+  const groepVoor = s.PLBus.batchGroep();
+  let echoLoopt = 0;
+  s.PLBus.stats = () => ({ perSec: 3, foutPct: 90, belasting: 100, venGemMs: 900, gemMs: 900,
+                           onvolPct: 40, echoTot: (echoLoopt += 6), echoSinds: 1, echoPct: 40,
+                           reqTot: 100, reqOnvol: 40 });
+  for (let i = 0; i < 4; i++) { L._laatstTick = 0; L.tick(); }
+  toets('de automaat boekt geen stappen in de handmatige stand', L.acties().length, 0);
+  toets('en hij verkleint de groep niet achter je rug om', s.PLBus.batchGroep(), groepVoor);
+
   // Teruggeven levert de automaat zijn eigen stand terug.
   L.handmatig(false, 'proef terug');
   toets('teruggeven aan de automaat neemt de handmatige stand over', L.mult(), voor);
