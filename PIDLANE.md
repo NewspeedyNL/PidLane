@@ -912,6 +912,45 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Vier modules tegelijk in storing — waarom dat niet "de adapter is stuk" betekent (16-09-2026, #217)
+
+Na ritten met de goedkope ELM327-kloon stonden er vijf waarschuwingen tegelijk
+in de auto: DSC, keyless entry, SCBS (twee keer) en het parkeerremsysteem. De
+eerste reactie was de logische: de adapter veroorzaakt storingen, wegdoen.
+
+Dat is één stap verder dan het bewijs draagt, en die stap is het opschrijven
+waard. **Die vier modules hebben functioneel niets met elkaar te maken.** Ze
+delen alleen het net en de voeding. Een brede waaier van onafhankelijke
+modules die tegelijk een storing vastlegt is het bekende beeld van
+onderspanning: een module die even te weinig spanning krijgt boekt een
+communicatiefout en gaat in veilige stand. Vier modules, vier storingen, één
+oorzaak — en die oorzaak is dan de voeding, niet de databus.
+
+De adapter zit er wel in, maar anders dan gedacht: een adapter die de bus
+wakker houdt trekt de accu leeg, en een lege accu geeft precies dit beeld. Dat
+is een indirecte keten, en het verschil is niet academisch — het bepaalt of je
+een adapter wegdoet of een accu vervangt. Wie hier "adapter stuk" concludeert,
+laat een mogelijk zwakke accu staan.
+
+**Dit is dezelfde vorm als #35**, en dat is de reden dat het hier staat en niet
+alleen in het issue. Daar werd een geruststellende bottekst ("✅ Deployment
+successful") als conclusie gelezen in plaats van als waarneming, en dat kostte
+drie PR's aan documentatie die niets verbeterde. Hier is het een alarmerende
+melding in plaats van een geruststellende, maar de fout is identiek: **een
+melding zegt dát er iets is, niet wát.** De bron opzoeken — hier: de
+boordspanning meten — hoort vóór het omgooien van een werkregel.
+
+Wat er níét vastgesteld is, en wat in #217 openstaat: of het pollen van de app
+zelf bijdraagt. Mode 01-verzoeken zijn leesacties en horen elders geen DTC te
+zetten. Maar van deze kloon is alleen gemeten wat er aan de *seriële* kant
+uitkwam — dat hij frames herhaalt (#210) — en niet wat hij daarbij op de
+CAN-kant doet. Zolang die meting er niet naast ligt, is "de app kan dit niet
+veroorzaken" een aanname.
+
+De werkregel die eruit volgt staat in `CAMPAGNE`: de adapter blijft het
+meetinstrument van deze ronde, maar gaat eruit zodra je niet rijdt, en de
+boordspanning (`0142`) gaat mee in de meting.
+
 ### Twee gereedschappen die maten zonder iets te kunnen zeggen (16-09-2026)
 
 De waakronde draaide al lang, de bulk-recorder ook, en allebei deden hun werk
