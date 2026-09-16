@@ -444,10 +444,15 @@
           'dat is een gat in de meting en geen defect aan de auto.' +
         '</div></div>';
     }
+    // Twee keer "onbekend" naast elkaar zegt minder dan één keer. Weet de app
+    // het protocol niet, dan blijft de rechterkant leeg in plaats van het
+    // woord te herhalen dat links al staat.
+    const proto = protocol();
     return '<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:10px 11px">' +
       '<div style="display:flex;gap:8px;align-items:baseline">' +
         '<span style="font:800 13px var(--f);color:var(--tx)">' + adapterNaam() + '</span>' +
-        '<span style="margin-left:auto;font:600 10px var(--f);color:var(--tx3)">' + protocol() + '</span>' +
+        (proto === 'onbekend' ? '' :
+          '<span style="margin-left:auto;font:600 10px var(--f);color:var(--tx3)">' + proto + '</span>') +
       '</div>' +
       '<div style="font:400 11px var(--m);color:var(--tx3);margin-top:3px">' +
         (_ati === null ? 'ATI wordt opgevraagd…' : _ati) + '</div>' +
@@ -491,8 +496,11 @@
         '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
           stappen.map(function (p) {
             const aan = Math.abs(p - nu) < 4;
+            // 13px boven en onder, niet 8. Gemeten in Chromium op 360px breed:
+            // met 8px werden deze knoppen 31px hoog, en dat is te klein voor
+            // een duim in een rijdende auto. Nu 41px.
             return '<button onclick="PLAdapter.zetTempo(' + p + ')" style="flex:1;min-width:44px;border-radius:7px;' +
-              'padding:8px 4px;font:800 11px var(--m);cursor:pointer;border:1px solid ' +
+              'padding:13px 4px;font:800 11px var(--m);cursor:pointer;border:1px solid ' +
               (aan ? 'var(--bl);background:var(--blv);color:#fff' : 'var(--bd);background:var(--sur);color:var(--tx2)') +
               '">' + p + '%</button>';
           }).join('') +
@@ -502,7 +510,7 @@
           [1, 2, 3].map(function (g) {
             let nuG = 3; try { nuG = PLBus.batchGroep(); } catch (e) { console.warn('PLBus.batchGroep mislukt:', e); }
             const aan = nuG === g;
-            return '<button onclick="PLAdapter.zetGroep(' + g + ')" style="flex:1;border-radius:7px;padding:8px 4px;' +
+            return '<button onclick="PLAdapter.zetGroep(' + g + ')" style="flex:1;border-radius:7px;padding:13px 4px;' +
               'font:800 11px var(--m);cursor:pointer;border:1px solid ' +
               (aan ? 'var(--bl);background:var(--blv);color:#fff' : 'var(--bd);background:var(--sur);color:var(--tx2)') +
               '">' + g + '</button>';

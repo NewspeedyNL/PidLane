@@ -155,7 +155,36 @@ function toets(naam, waar, uitleg) {
     toets('met het aantal erbij', metEcho.indexOf('12 keer') >= 0);
     toets('en het percentage onvolledige antwoorden', metEcho.indexOf('35%') >= 0);
 
-    console.log('\n── 7. sluiten laat niets achter ──');
+    console.log('\n── 7. de knoppen zijn met een duim te raken ──');
+    /* Dit paneel wordt in een auto gebruikt, vaak stilstaand maar met de
+       motor aan en een telefoon in een houder. De tempo- en groepsknoppen
+       staan naast elkaar in een rij van zes en zijn daardoor smal; dan is de
+       hoogte het enige dat ze raakbaar houdt. Gemeten op 360px breed kwamen ze
+       er bij het bouwen op 31px uit — dat is te klein, en dat zie je niet aan
+       de code. */
+    await app.venster(360, 640);
+    await app.ev(`PLAdapter.zetModus(true); PLAdapter.teken(); 'ok'`);
+    const klein = await app.ev(`(function(){
+      return [...document.getElementById('plAdapterBody').querySelectorAll('button')]
+        .map(b=>({t:b.textContent.trim().slice(0,14), h:Math.round(b.getBoundingClientRect().height)}))
+        .filter(x=>x.h<32)
+        .map(x=>x.t+' '+x.h+'px');
+    })()`);
+    toets('geen enkele knop is lager dan 32px', klein.length === 0, klein.join(', '));
+    const breed = await app.ev(`(function(){
+      const body=document.getElementById('plAdapterBody');
+      const p=body.parentElement.getBoundingClientRect();
+      return [...body.querySelectorAll('*')].filter(function(el){
+        const b=el.getBoundingClientRect();
+        return b.width>0 && (b.right>p.right+1 || b.left<p.left-1);
+      }).length;
+    })()`);
+    toets('niets loopt buiten het paneel op telefoonbreedte', breed === 0, breed + ' elementen');
+    toets('en de pagina krijgt geen horizontale schuifbalk',
+          await app.ev(`document.documentElement.scrollWidth <= window.innerWidth`) === true);
+    await app.ev(`PLAdapter.zetModus(false); 'ok'`);
+
+    console.log('\n── 8. sluiten laat niets achter ──');
     await app.ev(`PLAdapter.sluit(); 'ok'`);
     toets('het paneel is dicht',
           await app.ev(`getComputedStyle(document.getElementById('plAdapterOv')).display`) === 'none');
