@@ -225,7 +225,11 @@ const VELLEN = [
   { naam: 'EV-check',              open: 'openEVCheck',         id: 'evDash' },
   { naam: 'Lange rit',             open: 'openLangeRit',        id: 'langeRitDash' },
   { naam: 'Klimaat',               open: 'openClimateCheck',    id: 'climateDash' },
-  { naam: 'Run-venster',           open: 'openRunPaneel',       id: 'runOv' }
+  { naam: 'Run-venster',           open: 'openRunPaneel',       id: 'runOv' },
+  // Erbij op 16-09-2026. Dit paneel is het langste van allemaal — negen
+  // tegels, twee grafieken, drie lijsten en onderaan twee knoppen — en gaat
+  // op elk telefoonscherm scrollen. Precies de vorm waar #144 op stukliep.
+  { naam: 'Adapterpaneel',         open: 'openAdapterPaneel',   id: 'plAdapterOv' }
 ];
 
 /* De twee vellen van de deel-module staan in index.html en gaan open met een

@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.6 (11-09-2026)';
+const TESTRUN_VERSIE = '7.7 (16-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -57,7 +57,10 @@ function _klok() { return new Date().toTimeString().slice(0, 8); }
 function _wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 function _boek(blok, naam, staat, detail, ms) {
-  _trLog.push({ t: _klok(), blok: blok, naam: naam, staat: staat, detail: detail || '', ms: ms == null ? null : Math.round(ms) });
+  // `epoch` erbij op 16-09-2026 (#214). `t` is "HH:MM:SS" en daarmee niet van
+  // een ander tijdstip af te trekken; de kop van het verslag had precies dat
+  // nodig om te kunnen zeggen hoe oud de meetblokken zijn.
+  _trLog.push({ t: _klok(), epoch: Date.now(), blok: blok, naam: naam, staat: staat, detail: detail || '', ms: ms == null ? null : Math.round(ms) });
   try { _teken(); } catch (e) { console.warn('Testrun-log niet herteken op het scherm (het onderliggende logboek is wel bijgewerkt)', e); }
 }
 
@@ -2214,12 +2217,25 @@ async function _blok10() {
 
     const tijden = [];
     let n = 0, mis = 0, i = 0;
+    /* ── VIEL DE VERBINDING WEG TIJDENS DEZE TRAP? (#213, 16-09-2026) ──────
+       Op 16-09 herverbond de SPP-socket om 16:08:58, midden in de rust na trap
+       1, en het verslag meldde over datzelfde venster "hersteld binnen 20 s".
+       Blok 10 keek nergens naar `connected`, dus een meting kon een volledige
+       herverbinding mét ELM-initialisatie overspannen zonder dat er iets van
+       in de regel stond. Eén vlag, en het oordeel weet voortaan waar het
+       overheen keek. */
+    let losgeraakt = false;
+    const _kijkVerbinding = function () {
+      try { if (typeof connected !== 'undefined' && !connected) losgeraakt = true; }
+      catch (e) { /* stil: `connected` is een lexicale binding; ontbreekt hij, dan valt er niets te zien */ }
+    };
     const eind = _nu() + trap.sec * 1000;
     try {
       while (_nu() < eind && !_trStop) {
         const r = await _snelheidVraag(set[i % set.length]);
         i++; n++;
         if (r.ok) tijden.push(r.ms); else mis++;
+        _kijkVerbinding();
         if (trap.pauze) await _wacht(trap.pauze);
       }
     } finally {
@@ -2236,17 +2252,18 @@ async function _blok10() {
     // Alleen de trap zelf is FOUT-waardig als er missers vallen: na de ijking
     // hoort elk verzoek een antwoord te krijgen.
     _boek(10, trap.naam + ' — ' + (trap.pauze ? 'per ' + trap.pauze + ' ms' : 'zo snel mogelijk'),
-      misPct > 0 ? 'LET OP' : 'ok',
+      (misPct > 0 || losgeraakt) ? 'LET OP' : 'ok',
       n + ' verzoeken (' + perSec + '/s), ' + mis + ' mis (' + misPct + '%), ' +
       'mediaan ' + med + ' ms, p90 ' + p90 + ' ms, traagste ' + max + ' ms' +
-      (basis && med ? ', ' + (med >= basis ? '+' : '') + Math.round((med - basis) / basis * 100) + '% tegenover trap 1' : ''),
+      (basis && med ? ', ' + (med >= basis ? '+' : '') + Math.round((med - basis) / basis * 100) + '% tegenover trap 1' : '') +
+      (losgeraakt ? ' — LET OP: de verbinding was tijdens deze trap even weg, dus deze getallen lopen over een herverbinding heen' : ''),
       null);
 
     // ── rust ──
     const rustSec = (t === SNELHEID_TRAPPEN.length - 1) ? SNELHEID_NARUST_S : SNELHEID_RUST_S;
     const prikken = [];
     const rustEind = _nu() + rustSec * 1000;
-    let eersteHerstel = null;
+    let eersteHerstel = null, prikTotaal = 0;
     while (_nu() < rustEind && !_trStop) {
       await _wacht(5000);
       if (_trStop) break;
@@ -2259,6 +2276,14 @@ async function _blok10() {
       const r = (typeof withBus === 'function')
         ? await withBus('testrun-snelheid-prik', () => _snelheidVraag(set[0]), 0)
         : await _snelheidVraag(set[0]);
+      /* Elke prik telt mee, ook de mislukte (#213, 16-09-2026). Hier stond
+         alleen de `if (r.ok)`-tak, zonder else: een prik die niets opleverde
+         verdween spoorloos. Juist tijdens een herstelmeting is dát het
+         interessantste dat er kan gebeuren — en op 16-09 stonden er na trap 1
+         drie prikken waar er vijf hoorden, precies rond een herverbinding, met
+         niets in de regel dat dat verried. */
+      prikTotaal++;
+      _kijkVerbinding();
       if (r.ok) {
         prikken.push(r.ms);
         if (eersteHerstel === null && basis && r.ms <= basis * 1.25)
@@ -2278,13 +2303,22 @@ async function _blok10() {
       const nu = _pctl(staart, 0.5);
       const alles = _pctl(prikken, 0.5);
       const terug = (basis && nu <= basis * 1.25);
-      _boek(10, 'rust na ' + trap.naam, terug ? 'ok' : 'LET OP',
-        rustSec + ' s stil, ' + prikken.length + ' prikken: ' + prikken.join(', ') + ' ms' +
+      const kwijt = prikTotaal - prikken.length;
+      _boek(10, 'rust na ' + trap.naam, (terug && !kwijt && !losgeraakt) ? 'ok' : 'LET OP',
+        rustSec + ' s stil, ' + prikken.length + ' van ' + prikTotaal + ' prikken gelukt: ' + prikken.join(', ') + ' ms' +
         ' — mediaan ' + alles + ' ms, laatste drie ' + nu + ' ms' +
         (basis ? ', trap 1 zat op ' + basis + ' ms: ' +
           (terug ? 'hersteld' + (eersteHerstel === null ? '' : ' binnen ' + eersteHerstel + ' s')
-                 : 'blijft ' + Math.round((nu - basis) / basis * 100) + '% hoger') : ''),
+                 : 'blijft ' + Math.round((nu - basis) / basis * 100) + '% hoger') : '') +
+        (kwijt ? ' — ' + kwijt + ' prik' + (kwijt === 1 ? '' : 'ken') + ' gaven niets terug, dus dit oordeel staat op minder metingen dan het lijkt' : '') +
+        (losgeraakt ? ' — en de verbinding was in dit venster even weg' : ''),
         null);
+    } else if (prikTotaal) {
+      // Alle prikken mislukt. Dat is geen "geen meting" maar een meting met een
+      // duidelijke uitkomst, en zonder deze tak stond er over dit venster niets.
+      _boek(10, 'rust na ' + trap.naam, 'LET OP',
+        rustSec + ' s stil, 0 van ' + prikTotaal + ' prikken gelukt — de bus gaf tijdens de rust niets terug' +
+        (losgeraakt ? ' en de verbinding was even weg' : ''), null);
     }
   }
 
@@ -2325,13 +2359,32 @@ async function _blok10() {
       let oordeel = 'ok';
       if (ld && snel && bs && bs.foutPct === 0 && ld.tempoPct < 50)
         oordeel = 'LET OP';
+      /* ── HET DERDE GETAL (#212, 16-09-2026) ──────────────────────────────
+         Deze regel toonde tempo, bezetting, foutgraad en responstijd, en
+         concludeerde daaruit dat de app te voorzichtig was. Op 16-09 klopte
+         die conclusie niet: de app had gelijk en de proef keek de verkeerde
+         kant op. Blok 10 vraagt namelijk één PID per verzoek terwijl de app in
+         groepen van drie polt, en op een adapter die frames herhaalt is dat
+         precies het verschil tussen "niets aan de hand" en "een derde van de
+         batches verliest zijn laatste PID".
+
+         `onvolPct` en de echoteller bestonden al in PLBus.stats() maar stonden
+         in het hele verslag nergens. Nu wel — en dan leest de tegenspraak
+         zichzelf in plaats van dat iemand hem achteraf uit de TX/RX-staart moet
+         halen. Dat de proef zelf ook in batchvorm hoort te meten blijft open;
+         het adapterpaneel doet dat inmiddels wél (PLAdapter.meet()). */
       _boek(10, 'Stand van de app na de proef', oordeel,
-        (ld ? 'tempo ' + ld.tempoPct + '%' : '') +
+        (ld ? 'tempo ' + ld.tempoPct + '%' + (ld.handmatig ? ' (handmatig)' : '') : '') +
         (bs ? ', bus ' + bs.belasting + '% bezet, fout ' + bs.foutPct + '%, gem ' + bs.gemMs +
-              ' ms (venster ' + bs.venGemMs + ' ms)' : '') +
+              ' ms (venster ' + bs.venGemMs + ' ms), onvolledig ' + bs.onvolPct + '%' +
+              (bs.echoTot ? ', ' + bs.echoTot + ' herhaalde antwoorden' : '') : '') +
         (oordeel === 'LET OP' && snel
           ? ' — de app staat op ' + ld.tempoPct + '% terwijl de verbinding zonder één misser ' +
-            snel.perSec + '/s aankan. Terugschroeven op bezetting terwijl de foutgraad 0 is.'
+            snel.perSec + '/s aankan. Terugschroeven op bezetting terwijl de foutgraad 0 is.' +
+            (bs && bs.onvolPct > 8
+              ? ' LET OP: ' + bs.onvolPct + '% van de batches kwam onvolledig terug — deze proef vraagt solo, ' +
+                'dus zij ziet dat niet en de foutgraad telt het met opzet niet mee.'
+              : '')
           : ''),
         null);
     }
@@ -4690,6 +4743,149 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── stopt de parser bij een tweede bericht? ──
+  // De opgenomen regel van 16-09-2026, uit het BT-log van een goedkope
+  // ELM327-kloon. Zonder de stop uit #210 vulden de echobytes (41 0B) de
+  // opgegeven lengte precies af en kwam 0110 eruit op 166,51 g/s — een schone,
+  // complete parse volgens de parser zelf, terwijl een losse 0110 in diezelfde
+  // seconde 1,45 g/s gaf. Geen MIST, geen melding, en binnen de harde limiet
+  // van 0-655, dus dat getal komt overal doorheen.
+  //
+  // Dit is gedrag en geen broncode: de échte functie krijgt de échte bytes.
+  {
+    issue: '#210',
+    naam: 'Een herhaald frame levert een gat op en geen verzonnen getal',
+    waarom: 'De parser draait hier met de tabellen en geleerde bytelengtes van DEZE auto; in node zijn die leeg.',
+    proef: function () {
+      if (typeof splitBatchResponse !== 'function')
+        return { staat: 'FOUT', detail: 'splitBatchResponse ontbreekt — de parser waar de hele app op draait is niet geladen' };
+
+      var echo = '008\r0:410B1E0E8B10\r008\r1:410B\r2:00760000000000\r\r>';
+      var uit = splitBatchResponse(echo, ['010B', '010E', '0110']);
+
+      if ('0110' in uit) {
+        var b = uit['0110'];
+        var g = (b && b.length >= 2) ? ((b[0] * 256 + b[1]) / 100) : null;
+        return { staat: 'FOUT', detail: '0110 kwam uit een geëchood antwoord terug' +
+          (g === null ? '' : ' op ' + g.toFixed(2) + ' g/s') +
+          ' — de stop bij het tweede bericht werkt niet (#210)' };
+      }
+      if (!('010B' in uit) || !('010E' in uit))
+        return { staat: 'FOUT', detail: 'de twee PIDs vóór de echo vielen ook weg (' +
+          Object.keys(uit).join(', ') + ') — er wordt te vroeg gestopt' };
+      if (uit['010B'][0] !== 0x1E)
+        return { staat: 'FOUT', detail: '010B las ' + uit['010B'][0] + ' in plaats van 30 — de bytes schuiven op' };
+
+      // En de tegenkant: een schoon antwoord mag hier niets van merken.
+      var schoon = splitBatchResponse('008\r0:410C08A50D00\r1:111C\r\r>', ['010C', '010D', '0111']);
+      if (!('0111' in schoon))
+        return { staat: 'FOUT', detail: 'een SCHOON multiframe-antwoord verliest nu zijn laatste PID — de stop slaat te vroeg toe' };
+
+      var s = null;
+      try { s = (window.PLBus && PLBus.stats) ? PLBus.stats() : null; } catch (e) { s = null; }
+      return 'echo levert een gat op (0110 ontbreekt), schoon antwoord blijft compleet' +
+             (s ? '; deze sessie ' + s.echoTot + ' herhaalde antwoorden op de echte bus' : '');
+    }
+  },
+
+  // ── doet de handmatige stand werkelijk iets? ──
+  // Een schuifje dat het tempo niet verzet is erger dan geen schuifje: het
+  // wekt vertrouwen dat er niets onder zit. Deze proef zet de stand écht om,
+  // meet het effect op de multiplier, en zet alles terug zoals het stond.
+  // Draait tijdens een rit, dus het terugzetten is geen nettigheid maar een
+  // voorwaarde.
+  {
+    issue: '#211',
+    naam: 'De handmatige stand van het adapterpaneel verzet het tempo echt',
+    waarom: 'Alleen in de draaiende app hangt pidPollInterval() aan PLLoad; in node is die koppeling er niet.',
+    proef: function () {
+      if (!window.PLAdapter) return { staat: 'FOUT', detail: 'PLAdapter ontbreekt — het verbindingspaneel is niet geladen' };
+      if (!window.PLLoad || typeof PLLoad.handmatig !== 'function')
+        return { staat: 'FOUT', detail: 'PLLoad.handmatig() ontbreekt — de knop in het paneel kan dan niets omzetten' };
+      if (typeof pidPollInterval !== 'function')
+        return { staat: 'FOUT', detail: 'pidPollInterval() ontbreekt — dan is niet te meten of het tempo doorwerkt' };
+
+      var warenHandmatig = PLLoad.isHandmatig();
+      var oudTempo = PLLoad.staat().tempoPct;
+      var oudGroep = 3, oudVast = false;
+      try { oudGroep = PLBus.batchGroep(); oudVast = PLBus.batchVast(); } catch (e) { /* stil: dan blijft de terugzet-stand de standaard */ }
+      var fout = null, gemeten = '';
+      try {
+        var basis = pidPollInterval('010C');
+        PLLoad.handmatig(true, 'blok 5');
+        PLLoad.zetTempo(50);
+        var half = pidPollInterval('010C');
+        if (!(half > basis * 1.5))
+          fout = 'op 50% tempo bleef het interval van 010C op ' + half + ' ms staan (was ' + basis +
+                 ' ms) — de handmatige multiplier komt niet in pidPollInterval() aan';
+
+        // En de groep: vastzetten moet de automaat buiten de deur houden.
+        if (!fout && window.PLBus && typeof PLBus.batchZet === 'function') {
+          PLBus.batchZet(2, true);
+          if (PLBus.batchKleiner() !== false)
+            fout = 'PLBus.batchKleiner() verzette een vastgezette groep — de automaat regelt een handmatige keuze weg';
+          else gemeten = 'groep 2 vastgezet: de automaat komt er niet aan; ';
+        }
+        if (!fout) gemeten += 'tempo 50% → 010C van ' + basis + ' naar ' + half + ' ms';
+      } catch (e) {
+        fout = 'de proef zelf viel om: ' + ((e && e.message) || e);
+      } finally {
+        // Terugzetten gebeurt hoe dan ook. Een proef die de app in een andere
+        // stand achterlaat dan hij hem aantrof, meet de volgende ronde iets
+        // anders dan hij denkt.
+        try {
+          PLLoad.zetTempo(oudTempo);
+          PLLoad.handmatig(warenHandmatig, 'blok 5 zet terug');
+          if (window.PLBus && typeof PLBus.batchZet === 'function') PLBus.batchZet(oudGroep, oudVast);
+        } catch (e) { console.warn('Blok 5 kon de tempostand niet terugzetten:', e); }
+      }
+      if (fout) return { staat: 'FOUT', detail: fout };
+      return gemeten;
+    }
+  },
+
+  // ── wijst het advies de goede kant op? ──
+  // De meting zelf heeft een adapter nodig, het oordeel niet. Dit voert het
+  // geval van 16-09 in — een verbinding die op elke trap frames herhaalt — en
+  // controleert dat het advies dan over de GROEP gaat en niet over het tempo.
+  // Harder pollen maakt een echo vaker; dat advies zou de fout vergroten.
+  {
+    issue: '#212',
+    naam: 'Het snelheidsadvies wijst bij herhaalde frames naar de groep, niet naar het tempo',
+    waarom: 'Het oordeel hoort los van de meting te draaien; alleen hier staat hij naast de echte PLBus-cijfers.',
+    proef: function () {
+      if (!window.PLAdapter || typeof PLAdapter.advies !== 'function')
+        return { staat: 'FOUT', detail: 'PLAdapter.advies() ontbreekt — dan geeft de snelheidstest geen oordeel' };
+
+      var metEcho = [
+        { naam: 'rustig', n: 14, perSec: 1.4, medMs: 180, soloMisPct: 0, batchOnvolPct: 30, echo: 4 },
+        { naam: 'vol gas', n: 50, perSec: 5.0, medMs: 190, soloMisPct: 0, batchOnvolPct: 35, echo: 9 }
+      ];
+      var a = PLAdapter.advies(metEcho, { perSec: 3, tempoPct: 60 });
+      if (a.tempoPct !== null && a.tempoPct !== undefined)
+        return { staat: 'FOUT', detail: 'bij 13 herhaalde antwoorden adviseert hij tempo ' + a.tempoPct +
+          '% — harder pollen maakt een echo juist vaker (#211)' };
+      if (a.groep !== 2)
+        return { staat: 'FOUT', detail: 'bij herhaalde antwoorden adviseert hij geen kleinere groep maar "' + a.kop + '"' };
+
+      // De tegenkant: zonder echo's hoort er wél een tempo uit te komen, en
+      // dat moet rekenwerk zijn. 60% op 3/s, schoon tot 6/s → 120, afgekapt
+      // op 100. Een advies dat altijd hetzelfde zegt, zegt niets.
+      var schoon = [
+        { naam: 'rustig', n: 14, perSec: 1.4, medMs: 180, soloMisPct: 0, batchOnvolPct: 0, echo: 0 },
+        { naam: 'vol gas', n: 60, perSec: 6.0, medMs: 200, soloMisPct: 0, batchOnvolPct: 0, echo: 0 }
+      ];
+      var b = PLAdapter.advies(schoon, { perSec: 3, tempoPct: 60 });
+      if (b.tempoPct !== 100)
+        return { staat: 'FOUT', detail: 'schoon tot 6/s bij 3/s op 60% hoort 100% te adviseren, kreeg ' + b.tempoPct };
+
+      var laatste = PLAdapter.laatsteMeting();
+      return 'echo → groep 2, schoon → tempo 100%' +
+             (laatste ? '; laatste echte test om ' + new Date(laatste.t).toTimeString().slice(0, 8) +
+                        ': ' + laatste.advies.kop : '; nog geen echte test gedraaid deze sessie');
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -5536,11 +5732,29 @@ function testrunTekst() {
   const gestart = new Date(_trStart || _BG.gestart || Date.now());
   r.push('Run gestart : ' + gestart.toLocaleString('nl-NL'));
   r.push('Opgeslagen  : ' + opgeslagen.toLocaleString('nl-NL'));
-  const kloof = Math.round((opgeslagen - gestart) / 60000);
+  /* ── DE KLOOF REKENT VANAF DE LAATSTE METING (#214, 16-09-2026) ─────────
+     Hier stond `opgeslagen - gestart`, en dat is de duur van de run PLUS de
+     vertraging bij het opslaan. Op 16-09 meldde de kop daardoor "10 minuten na
+     de run opgeslagen" terwijl er 39 seconden tussen de laatste meetregel en
+     het opslaan zat: de run zelf duurde 532 s. Elke lange run droeg die
+     waarschuwing dus automatisch, ook als je meteen opsloeg.
+
+     De waarschuwing zelf klopt en is nuttig — de TX/RX-staart en de logs
+     hieronder zijn wél van "nu". Maar een waarschuwing die bij elke lange run
+     vanzelf verschijnt wordt een waarschuwing die niemand meer leest, en dan
+     is hij weg op het moment dat hij iets betekent.
+
+     Is er niets gemeten, dan is `gestart` het enige ijkpunt dat er is — zelfde
+     terugval als bij `gestart` zelf een paar regels hierboven. */
+  const _laatsteMeting = (function () {
+    for (let i = _trLog.length - 1; i >= 0; i--) if (_trLog[i] && _trLog[i].epoch) return _trLog[i].epoch;
+    return null;
+  })();
+  const kloof = Math.round((opgeslagen - (_laatsteMeting || gestart)) / 60000);
   if (kloof >= 2) {
-    r.push('              ⚠ ' + kloof + ' minuten na de run opgeslagen. De meetblokken');
-    r.push('                hieronder zijn van de run; de TX/RX-staart en de logs');
-    r.push('                onderaan zijn van NU en horen er niet bij.');
+    r.push('              ⚠ ' + kloof + ' minuten na de laatste meting opgeslagen. De');
+    r.push('                meetblokken hieronder zijn van de run; de TX/RX-staart en');
+    r.push('                de logs onderaan zijn van NU en horen er niet bij.');
   }
   r.push('Voertuig    : ' + ([v.merk, v.model, v.year || v.bouwjaar, v.brandstof].filter(Boolean).join(' ') || 'onbekend'));
   r.push('Verbonden   : ' + ((typeof connected !== 'undefined' && connected) ? 'ja' : 'nee') +
@@ -6783,32 +6997,30 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 11-09 (tiende) — het ritrapport staat weer overeind, dus nu de analyse zelf (#196, #188, #18)',
+  titel: 'OPLEVERING 16-09 (elfde) — de goedkope adapter, en een scherm dat de verbinding eindelijk laat zien (#210, #211, #212)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'DE VORIGE RONDE IS GEREDEN EN LEVERDE TWEE ONAFGEMAAKTE ANTWOORDEN. De meetdienst draaide voor het eerst op een toestel: Android accepteerde de service, de brug antwoordde, en het oordeel stond in het logboek. Maar de onderbreking duurde 38 s, en de aanlooptijd die we eerder maten is 36 s en 50 s — de app is dus nooit in het venster geweest waar het misging. Die meting zegt daarmee niets over de bevriezing zelf. En het ritrapport viel om vóór de AI-call (#196), dus het aanleveringsblok uit #188 is nog steeds door geen enkel model gelezen. Dat tweede is deze ronde gerepareerd: ritLogs draagt nog maar één soort regel, het rapport krijgt min, max en het aantal metingen mee, en per fase staat erbij hoeveel seconden er weggevallen zijn.',
-    'DEZE RONDE HEEFT DUS TWEE VRAGEN, EN GEEN VAN BEIDE IS EEN BOUWVRAAG. Eén: houdt de foreground service het proces wakker als de app er LANG genoeg uit is. Twee: wordt een AI-rapport werkelijk beter nu het weet waar de gaten zaten en welke sensoren ontbraken. Allebei alleen te beantwoorden door het te doen.',
-    'DE ACHTERGRONDPROEF MOET MINSTENS DRIE MINUTEN DUREN. De vergelijkingsmetingen zijn 120 s (02-09) en 182 s (09-09); korter dan dat valt binnen de aanlooptijd en zegt niets. Scherm uit, en de app niet als laatste in de recents-lijst — Android houdt de bovenste taak langer warm.',
-    'EN ER MOET ÉÉN ANALYSE UIT. Vraag na de rit één rapport aan en lees de tekst: staat erin welke sensoren niet beoordeeld zijn, en wordt een onderbreking als meetartefact benoemd in plaats van als defect? Staat dat er niet, dan is dát de bevinding van deze ronde. NEEM DAARVOOR HET RITRAPPORT: dat is het pad dat tot deze ronde omviel, en het enige dat de gaten per fase meestuurt. Komt er niets uit, dan is dát de bevinding van deze ronde.',
-    '#18 STAAT SINDS 27-08 OPEN EN IS TWEE KEER HARD GEMETEN. 02-09 stationair: 120 s weg, waarvan ~36 s doorgelopen en ~84 s stil. 09-09 rijdend met de bus op 93%: 182 s weg, waarvan 50 s doorgelopen en 132 s stil. Geen fout, geen poging, geen watchdog — het proces liep niet. Wat daarna openbleef was niet WAT er gebeurt maar WAARDOOR, en die vraag is met redeneren niet te beantwoorden.',
-    'ER ZIJN NAMELIJK TWEE MECHANISMEN DIE HETZELFDE OPLEVEREN. Android bevriest een proces dat in de cached-toestand terechtkomt: dan staat alles stil, JavaScript én native code. Chromium knijpt een verborgen pagina af: dan loopt het proces door en ligt alleen de WebView stil. Van buiten zien die twee er identiek uit — de meetlus doet niets — en ze vragen om een compleet andere oplossing. Een foreground service helpt tegen de eerste en doet tegen de tweede niets, want die throttelt op zichtbaarheid en niet op procesprioriteit.',
-    'DEZE RONDE ZET DAAROM EEN TWEEDE HARTSLAG NAAST DE EERSTE. De app telde al hoe lang de WEBVIEW stillag (de hartslag in pidlane-achtergrond.js, sinds 08-09). Er draait nu een native foreground service mee die hetzelfde doet voor het PROCES. Twee tellers over hetzelfde venster, en het verschil ertussen is het antwoord: liep native door terwijl de webview stillag, dan is dit niet genoeg en is picture-in-picture of een native meetlus de volgende stap. Lagen ze allebei stil, dan hield de dienst het proces niet wakker. Liepen ze allebei door, dan is #18 opgelost.',
-    'DE MEETDIENST IS DUS TEGELIJK DE KANDIDAAT-OPLOSSING EN HET MEETINSTRUMENT. Dat is met opzet: de keuze tussen die drie richtingen kost bij de verkeerde uitslag weken werk, en het issue zegt zelf dat een plausibele redenering geen bewijs is.',
+    'ER IS VOOR HET EERST MET EEN ANDERE ADAPTER GEMETEN. Op 16-09 hing er geen MX+ aan maar een goedkope ELM327-kloon van AliExpress. Blok 10 meldde "zonder één misser tot 3.2 verzoeken/s" terwijl de app op datzelfde moment op 19% pollbudget stond. Die twee kunnen niet allebei waar zijn, en het antwoord stond niet in de meetblokken maar in de TX/RX-staart eronder: tien van de zestig antwoorden misten een PID, en negen van de negen keer was dat de LAATSTE PID van de batch.',
+    'DE OORZAAK IS EEN TWEEDE LENGTE-INDICATOR MIDDEN IN HET ANTWOORD. De kloon herhaalt frames: "008 0:410C08670D00 008 1:410C 2:111C…". De parser gooide die tweede 008 weg en plakte het frame erachter aan dezelfde hexstroom, en kapte daarna af op de eerste opgegeven lengte. Meestal koste dat één PID. Eén keer was het duurder: bij 010B0E10 vulden de echobytes de lengte precies af en kwam 0110 eruit op 166,51 g/s, terwijl een losse 0110 in dezelfde seconde 1,45 g/s gaf. Geen MIST, geen melding, en binnen de harde limiet — dus dat getal komt overal doorheen.',
+    'DAT IS GEREPAREERD (#210). De parser stopt nu bij het tweede bericht, en op een afgekapt antwoord mag hij een PID niet meer korter maken om hem passend te krijgen. Beide gevallen van 16-09 leveren daardoor een eerlijk gat op in plaats van een verzonnen getal. Blok 5 voert de opgenomen regels erdoorheen.',
+    'EN ER IS EEN SCHERM BIJ GEKOMEN. Tik op de OBD-chip en je ziet wat de verbinding doet: verzoeken per seconde, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken, en wat de automaat deed mét de reden. Je kunt het tempo overnemen, de groepsgrootte vastzetten, en een snelheidstest van veertig seconden draaien die solo én batch meet.',
+    'DEZE RONDE HEEFT DUS DRIE VRAGEN, EN ALLE DRIE VRAGEN ZE EEN ADAPTER. Eén: verdwijnen de rare waarden op de goedkope adapter. Twee: klopt wat het paneel toont met wat de auto doet. Drie: geeft de snelheidstest een advies dat ergens op slaat.',
     '── STAP VOOR STAP ────────',
-    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden) EN installeer de nieuwe APK. Dit is de eerste ronde waarbij dat tweede echt moet: de meetdienst zit in de schil, niet in de webpagina. Draai je de nieuwe pagina op een oude APK, dan meldt blok 5 "de schil heeft geen native meetdienst" en zegt deze ronde niets.',
-    'STAP 0b — DE NIEUWE APK IS EEN ANDERE APP. De pakketnaam is op 12-09 gewijzigd van app.pidlane.obd naar nl.pidlane.app, omdat Play de eerste weigerde. Android ziet een gewijzigde pakketnaam als een compleet andere app: de nieuwe APK installeert ERNAAST de oude in plaats van eroverheen, met hetzelfde icoon en dezelfde naam. VERWIJDER DE OUDE EERST, anders meet je zonder het te merken op de verkeerde. Blok 5 noemt de pakketnaam van de schil waarop deze run draait \u2014 lees die regel voor je begint.',
-    'BIJ HET VERBINDEN. Android 13+ vraagt eenmalig toestemming voor meldingen. Geef die — de dienst draait ook zonder, maar dan is er geen melding om naar te kijken, en juist die melding is het enige dat de app zelf niet kan vaststellen.',
-    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op — de rijstap laat live zien wat er nog ontbreekt en gaat vanzelf op groen. Daarna MINSTENS DRIE MINUTEN naar de achtergrond (#18), scherm uit, en schakel daarna nog een andere app open zodat PidLane niet bovenaan de recents-lijst blijft staan. Twee minuten was het tot 11-09 en dat bleek te kort: 38 s viel binnen de aanlooptijd en mat niets. KIJK ER ÉÉN KEER NAAR DE STATUSBALK en onthoud of de PidLane-melding er stond. Als laatste de adapter er even uit (#133). Het meten en het verslag doet de run zelf.',
-    'DE TOESTELRONDE (📱). Doe deze vlak na de rit, stilstaand met een warme motor — dan zijn de temperaturen uit elkaar getrokken en beweegt er iets als je gas geeft. Vier oordelen die alleen een mens kan geven (live view, slimme weergave, onderrand, logboek) plus de drie meetcontextvragen (#64).',
-    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, en zet er twee dingen bij die niet in het verslag staan: STOND DE MELDING IN DE STATUSBALK, en wat het toestel is (merk, Android-versie). De aanlooptijd verschilt per fabrikant, en zonder die twee is een getal niet te vergelijken met de metingen van 02-09 en 09-09.',
+    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Een nieuwe APK is deze ronde NIET nodig: alles zit in de webpagina. Draai je nog op de oude schil van vóór 12-09, kijk dan wel of de pakketnaam in blok 5 nl.pidlane.app is.',
+    'STAP 1 — DOE HET MET DE GOEDKOPE ADAPTER. Dit is de ronde waarin die adapter het meetinstrument is. Gaat het niet, doe hem dan met de MX+ en zeg dat erbij — dan is dit een controle dat er niets kapot is gegaan, en geen antwoord op de vraag.',
+    'STAP 2 — OPEN HET PANEEL VÓÓR DE RIT. Tik op de chip linksboven (Systeem → OBD). Lees de bovenste regel: staat er "Deze adapter herhaalt frames"? Onthoud het getal. Kijk of de naam en het ATI-antwoord kloppen met wat er in de auto zit.',
+    'STAP 3 — DRUK OP DE SNELHEIDSTEST, STILSTAAND MET DRAAIENDE MOTOR. Veertig seconden. Lees de tabel: de kolom "solo" en de kolom "batch" horen op deze adapter uit elkaar te lopen. Onthoud het advies bovenaan.',
+    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op. Daarna minstens drie minuten naar de achtergrond met het scherm uit (#202), en schakel nog een andere app open. Als laatste de adapter er even uit (#133).',
+    'STAP 4 — KIJK NA DE RIT NOG EENS IN HET PANEEL. Hoeveel herhaalde antwoorden staan er nu? Wat deed de automaat, en staat er bij elke stap een reden die klopt? Is de groep vanzelf naar 2 gegaan?',
+    'DE TOESTELRONDE (📱). Vlak na de rit, stilstaand met een warme motor. Vier oordelen die alleen een mens kan geven plus de drie meetcontextvragen (#64).',
+    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, en zet er drie dingen bij die er niet in staan: WELKE ADAPTER erin zat, wat het paneel als advies gaf, en of de getallen in het paneel klopten met wat je zag.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'DAT DE MEETDIENST DRAAIT IS GEEN ANTWOORD OP #18. Hij is op 11-09 voor het eerst op een toestel gedraaid en de keten werkt end-to-end. Of hij het proces wakker HOUDT is daarmee niet gemeten: de onderbreking was 38 s en viel binnen de aanlooptijd. Zolang er geen meting van drie minuten of meer is, blijft #18 open en is elke groene regel hierover een uitspraak over de duur en niet over de dienst.',
-    'DE UITSLAG "NIET GENOEG" IS GEEN FOUT. Blok 5 boekt de vergelijking als LET OP en niet als FOUT zolang er iets stillag. Alle drie de uitkomsten zijn een geldige meting; twee ervan wijzen alleen een andere kant op dan gehoopt. Er een bevinding van maken zou de meting met het oordeel verwarren — dezelfde fout die de #18-proef op 08-09 kwam repareren.',
-    'DE AANLOOPTIJD IS NOG STEEDS MAAR TWEE METINGEN OP ÉÉN TOESTEL. 36 s en 50 s, allebei op een SM-S947B. Dat de dienst het gat moet overbruggen weten we; hoe lang dat gat op een ander merk is, niet. De 38 s van 11-09 telt hier niet mee: daar werd niets bevroren, dus er is geen aanloop gemeten.',
-    'DAT HET RITRAPPORT ER KOMT, IS NIET HETZELFDE ALS DAT HET KLOPT (#196). De crash is bij de bron weggenomen en in node, in de browser en straks hier gemeten. Wat daarmee niet gemeten is: of de tekst die eruit komt beter is. Een rapport dat netjes verschijnt en een gat als defect uitlegt, is nog steeds fout — alleen minder zichtbaar fout dan geen rapport.',
-    'DE OOGSTPOORT IS NOG NOOIT IN EEN AUTO GEDRAAID. De drempels — 15 km/u voor "gereden", 10 kPa spreiding voor "onder belasting" — zijn gekozen en niet gemeten. Ze staan in test-begeleid.js met een tegenproef eronder, maar of ze in de praktijk op het goede moment groen worden, weet je pas na een rit.',
-    'DE AANLEVERING NAAR DE AI IS NOG NOOIT DOOR EEN MODEL GELEZEN (#188). bproef-ritrapport.js laat zien dat het blok in de systeemprompt staat die verstuurd zóu worden — dat is de koppeling, niet de uitkomst. Blok 5 meet dat de gatentelling klopt met dit verslag; of een rapport er werkelijk anders van wordt, staat alleen in het rapport zelf. VRAAG NA DE RIT \u00c9\u00c9N ANALYSE AAN en kijk of er in de tekst staat welke sensoren niet beoordeeld zijn en of een onderbreking als meetartefact benoemd wordt. Staat dat er niet, dan is dat de bevinding.',
-    '#161 KRIJGT GEEN BESLUIT UIT EEN RIT. Welke drempel "beweegt" moet krijgen is een ontwerpkeuze, geen meetvraag — blok 5 meet de getallen elke ronde en die staan er al. Het oordeel in de toestelronde gaat alleen over of het BEELD klopt.',
+    'DAT DE ECHO WEG IS UIT DE METING BETEKENT NIET DAT DE METING COMPLEET IS. De reparatie van #210 verandert een verzonnen getal in een gat. Dat is beter, maar het gat blijft: op 16-09 miste 0111 zeven van de twintig keer. De kleinere groep (#211) moet dat terugbrengen, en of dat werkelijk gebeurt is deze ronde de meting.',
+    'DE ECHO-KRIMP GAAT NIET TOT GROEP 1. Groep 1 verdrievoudigt het aantal verzoeken en de meting die dat zou rechtvaardigen bestaat niet — bij groep 2 is niet gemeten hoeveel er overblijft. Wie tot 1 wil, zet het paneel op handmatig. Blijft het gat bij groep 2 groot, dan is dát de bevinding.',
+    'DE SNELHEIDSTEST IS GEEN BLOK 10. Veertig seconden tegenover negen en een halve minuut, vier trappen tegenover vijf, en geen rustmeting ertussen. Voor "kan ik nu harder" is dat genoeg; voor "loopt er een buffer vol die niet meer leegloopt" niet. Juist dat laatste sloeg op 16-09 aan: vier van de vijf rustmetingen bleven LET OP en de latentie zakte na trap 2 niet meer terug.',
+    'HET ADVIES IS REKENWERK EN GEEN BELOFTE. "Bij 6/s hoort 100%" volgt uit de verhouding met wat de app nu doet. Of de bus dat een half uur volhoudt staat er niet in — dat is precies wat de rustmeting van blok 10 wél toetst.',
+    'DAT DE MX+ DEZE ECHO NOOIT GEEFT IS NIET NAGEMETEN. Aannemelijk, want in geen van de eerdere runs stond er één, maar er is van die adapter geen TX/RX-staart met dezelfde batches naast gelegd. Rijd je deze ronde met de MX+, kijk dan of de echoteller op nul blijft — dan is dat alsnog gemeten.',
+    '#202 EN #161 KRIJGEN DEZE RONDE GEEN ANTWOORD. De renderer die na 59-60 s stilvalt vraagt picture-in-picture, en dat is een eigen bouwronde. De drempel voor "beweegt" is een ontwerpbesluit en geen meetvraag.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };
