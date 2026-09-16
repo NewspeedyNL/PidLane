@@ -1041,6 +1041,24 @@ staat nu een tweede bron onder, die niets extra's vraagt: tien minuten
 onafgebroken koelwater onder de 75 °C in de eigen meetgeschiedenis, gemeten
 terwijl de motor draait.
 
+**En de proef vond er zelf nog twee.** Bij het opsplitsen van de regels is er
+een toets bij gekomen die per foutcode vraagt of hij naar één onderdeel wijst
+en naar niet meer dan één. Die sloeg meteen twee keer aan:
+
+- `P2004` (wervelkleppen in het inlaatspruitstuk) viel óók onder AdBlue, want
+  dat blok stond als `P20xx` in de code. Dat loopt van P2000 tot P20FF en
+  bevat veel meer dan de nabehandeling — op een benzineauto leverde die code
+  dus een AdBlue-systeem op dat er niet eens is. Nu staan de blokken die
+  werkelijk over SCR en NOx gaan er los in.
+- `P034x` stond zowel onder de nokkenassensor als onder de
+  distributieketting. Dat zijn de circuitcodes van de sensor zelf; de ketting
+  herken je aan de correlatiecodes P0016-P0019. En `P0015`/`P0025` (nokkenas B
+  te ver terug) vielen tussen beide regels door en kwamen nergens uit.
+
+Dat een code twee onderdelen aanwijst is geen schoonheidsfout: dit paneel
+bestaat om de keuze voor de lezer kleiner te maken, en twee verdachten uit één
+code doen precies het omgekeerde.
+
 **Wat dit niet oplost.** De drempels in de live-voorwaarden — 46 kPa
 stationair, 13,2 V, 0,5 V sprei op de achterste sonde — komen uit
 redeneerwerk en uit wat gangbaar is, niet uit metingen aan deze auto's. Ze

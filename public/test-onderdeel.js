@@ -276,7 +276,8 @@ console.log('\n6. De foutcodes worden werkelijk gelezen');
   // drie verschillende reparaties.
   const paren = [
     ['P0135', 'lambdaverwarming'], ['P0136', 'lambdaachter'], ['P0131', 'lambdavoor'],
-    ['P0455', 'evap'], ['P0521', 'oliedruk'], ['P0011', 'vvt'], ['P0016', 'distributie'],
+    ['P0455', 'evap'], ['P0521', 'oliedruk'], ['P0011', 'vvt'], ['P0015', 'vvt'],
+    ['P0016', 'distributie'], ['P0340', 'krukas_nok'],
     ['U0100', 'communicatie'], ['P0700', 'automaat'], ['P2004', 'swirl'], ['P0380', 'gloeibougie']
   ];
   paren.forEach(function (p) {
@@ -284,6 +285,11 @@ console.log('\n6. De foutcodes worden werkelijk gelezen');
     c.dtcCodes = [p[0]]; c._didDTCScan = true;
     const ids = c.PLOnderdeel.beoordeel().map(r => r.id);
     toets(p[0] + ' wijst naar "' + p[1] + '"', ids.indexOf(p[1]) >= 0, 'gevonden: ' + ids.join(', '));
+    // En naar niets anders. Een code die twee onderdelen aanwijst maakt de
+    // keuze voor de lezer niet kleiner maar groter, en dat is het enige dat
+    // dit paneel te bieden heeft. P0340 stond tot 16-09 zowel onder de
+    // nokkenassensor als onder de distributieketting.
+    toets(p[0] + ' wijst nergens anders naar', ids.length === 1, 'gevonden: ' + ids.join(', '));
   });
 }
 

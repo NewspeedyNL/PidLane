@@ -660,7 +660,13 @@ var REGELS = [
     id:'adblue', naam:'AdBlue-systeem (SCR)',
     hint:'Waarschuwing over startblokkering, of een NOx-code.',
     vc:[
-      C('SCR-/NOx-code aanwezig (P20xx / P2BAx)', 5, dtcProef(/^P20[0-9A-F]{2}$|^P2BA[0-9]$/))
+      // P20xx was hier veel te ruim: dat blok loopt van P2000 tot P20FF en
+      // bevat behalve de nabehandeling ook de wervelkleppen van het
+      // inlaatspruitstuk (P2004-P200F). Eén foutcode wees zo twee onderdelen
+      // aan — op een benzineauto zelfs een AdBlue-systeem dat er niet is.
+      // Dit zijn de blokken die werkelijk over SCR en NOx gaan.
+      C('SCR-/NOx-code aanwezig (P2000-P2003 / P204x-P205x / P20Ex-P20Fx / P22xx / P2BAx)', 5,
+        dtcProef(/^P200[0-3]$|^P20[45EF][0-9A-F]$|^P22(0[0-9A-F]|1[0-3])$|^P2BA[0-9A-F]$/))
     ]
   },
   {
@@ -687,10 +693,16 @@ var REGELS = [
     id:'distributie', naam:'Distributieketting of -spanner',
     hint:'Ratelen bij koude start dat na een paar seconden minder wordt.',
     vc:[
-      // P0011-P0014 zijn verplaatst naar de VVT-regel hieronder: die gaan
+      // P0010-P0015 zijn verplaatst naar de VVT-regel hieronder: die gaan
       // over de verstelling zelf (olie, magneetklep) en niet over de
-      // ketting. P0016-P0019 zijn de correlatiecodes en dát is de ketting.
-      C('Correlatiecode krukas/nokkenas (P0016-P0019, P034x)', 5, dtcProef(/^P001[6-9]$|^P034[0-9]$/)),
+      // ketting. P0016-P0019 zijn de correlatiecodes en dát is de ketting:
+      // krukas en nokkenas staan niet meer in dezelfde stand ten opzichte
+      // van elkaar, en dat is precies wat een opgerekte ketting doet.
+      //
+      // P034x stond hier ook, en dat was fout: dat zijn de circuitcodes van
+      // de nokkenassensor zelf. Die staan al onder 'krukas_nok', dus één
+      // foutcode wees twee onderdelen aan.
+      C('Correlatiecode krukas/nokkenas (P0016-P0019)', 5, dtcProef(/^P001[6-9]$/)),
       C('Ontstekingsvervroeging springt heen en weer', 3, function(c){
         if(c.draait!==true) return null;
         var a=V('010E');
@@ -702,14 +714,14 @@ var REGELS = [
     id:'vvt', naam:'Nokkenasverstelling (VVT) of zijn magneetklep',
     hint:'Ruw stationair of minder trekkracht. Vaak vervuilde olie of een vastzittende klep — niet de ketting.',
     vc:[
-      C('Verstellingscode aanwezig (P0010-P0014 / P0020-P0024)', 5, dtcProef(/^P001[0-4]$|^P002[0-4]$/))
+      C('Verstellingscode aanwezig (P0010-P0015 / P0020-P0025)', 5, dtcProef(/^P001[0-5]$|^P002[0-5]$/))
     ]
   },
   {
     id:'swirl', naam:'Wervelkleppen in het inlaatspruitstuk',
     hint:'Bekend op diesels: roet zet de kleppen vast en de stang loopt door.',
     vc:[
-      C('Spruitstukcode aanwezig (P2004-P2009 / P1xxx spruitstuk)', 5, dtcProef(/^P200[4-9]$/))
+      C('Spruitstukcode aanwezig (P2004-P200F)', 5, dtcProef(/^P200[4-9A-F]$/))
     ]
   },
   {
