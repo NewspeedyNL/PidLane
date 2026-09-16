@@ -76,7 +76,16 @@ function toets(naam, waar, uitleg) {
         if (c.indexOf('0902') === 0) return ${JSON.stringify(ANTWOORD_0902)};
         return 'NO DATA';
       };
-      window.connected = true; window.demoMode = false;
+      // Kaal en niet via window (#186). connected en demoMode staan in
+      // pidlane-auth.js als let op het hoogste niveau: dat is een lexicale
+      // binding en geen eigenschap van window. Code die de kale naam leest,
+      // ziet een window.connected dus niet -- de regel leek iets te doen en
+      // deed niets. Hier maakt het voor de uitkomst niet uit (tryReadVIN
+      // heeft de vlag niet nodig), maar een regel die niets doet terwijl hij
+      // iets lijkt te doen is in deze repo al vaker het begin van een dud
+      // geweest. Geen accenttekens in dit blok: het staat binnen een template
+      // literal, en een accent-grave sluit die af.
+      connected = true; demoMode = false;
       return true;
     })()`);
 
