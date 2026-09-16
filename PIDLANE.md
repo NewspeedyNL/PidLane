@@ -912,6 +912,110 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Een valse verdenking in "Welk onderdeel?" (16-09-2026)
+
+Gemeld uit het gebruik, met een schermafdruk erbij. Het paneel zei **"Sensor
+levert niets meer — STERKE AANWIJZING"** en noemde er twee bij naam:
+brandstofpeil (012F) en afstand met MIL aan (0121), allebei met *"draadbreuk,
+stekker of sensor"*. De auto mankeerde niets.
+
+Dit is de duurste soort fout die deze app kan maken. Niet omdat er iets
+stukging — alles draaide — maar omdat de tekst iemand naar de garage stuurt
+voor een onderdeel dat het gewoon doet, en omdat hij er zó zeker uitziet dat
+je hem niet gaat natrekken. Een melding die "sterke aanwijzing" zegt, moet
+dat waar kunnen maken.
+
+**De eerste oorzaak was een drempel die de app zelf al beter wist.**
+`STIL_MS = 8000` gold voor élke sensor. Maar `pidPollInterval()` geeft
+koelwater 10 s, brandstofpeil 60 s, de MIL-tellers 60 s en toerental 120 ms —
+de hele TRAAG- en ZELDEN-klasse was dus per definitie "meer dan 8 seconden
+stil", elke keer dat je het paneel opende.
+
+Het pijnlijke is dat die fout in dit project al een keer gemaakt én opgelost
+was. `pidlane-watchers.js` heeft hem in fase 4 weggehaald; in de kop van dat
+bestand staat letterlijk *"een vaste 8s-drempel maakte de hele TRAAG-klasse
+(10s) gegarandeerd vals"*. Die oplossing is alleen nooit naar deze module
+gelopen, en niets wees erop dat dat nodig was. **Een tweede module met
+dezelfde vraag erft de fout niet automatisch mee, maar de oplossing ook
+niet.** Vandaar dat de drempelregel nu uit `PLWatch.cfg` komt en de cadans uit
+`PLSched`: één bron, en een volgende verbouwing daaraan werkt hier vanzelf
+door.
+
+**De tweede oorzaak: stilte is geen uitval.** Niet gevraagd worden ziet er van
+buiten precies zo uit als gevraagd worden en niets terugsturen. `PLSched` is
+daar in fase 4 voor gemaakt (`laatstePoging` naast `laatsteSucces`), en deze
+module keek er niet in. Nu wel, en zonder dat register doet ze geen enkele
+uitspraak meer over uitval — zwijgen is hier goedkoper dan gokken.
+
+**De derde: een teller is geen sensor.** 0121 is een kilometerstand die het
+stuurapparaat zelf bijhoudt. Daar zit geen draad, geen stekker en geen sensor
+aan, dus "draadbreuk, stekker of sensor" kón niet kloppen, hoe stil hij ook
+was. `TELLER_PIDS` houdt die groep (0101, 011F, 0121, 0130, 0131, 014D, 014E
+en de bitmaps) uit de verdenking.
+
+**En toen bleek de helft van de module nooit gedraaid te hebben.** Bij het
+nakijken van de DTC-kant stond er:
+
+```js
+var l = (window._laatsteDTC || window.lastDTCs || []);
+```
+
+Geen van beide bestaat in deze app, en heeft nooit bestaan — de foutcodes
+staan in `dtcCodes` (pidlane-auth.js). Élke DTC-voorwaarde in dit bestand gaf
+dus sinds 27-07-2026 `null` (= onbekend), en het paneel draaide al die tijd op
+uitsluitend live meetwaarden. Dat verklaart achteraf ook waarom de kaarten die
+je wél te zien kreeg altijd uit de sensorkant kwamen: de andere helft kón niet
+aanslaan.
+
+De vorm hiervan is bekender dan de fout: **een lege bron leest als een gezonde
+bron die niets te melden heeft.** `||[]` maakt van "die variabele bestaat
+niet" stilletjes "er zijn geen foutcodes". Er staat nu één bron, en
+`_didDTCScan` erbij zodat *"nog niet uitgelezen"* en *"uitgelezen, geen
+codes"* twee verschillende antwoorden zijn — het paneel zegt het eerste nu
+zelf, bovenaan, in plaats van minder te vinden zonder te zeggen waarom.
+
+**De motor stond stil, en geen enkele regel wist dat.** Zes voorwaarden
+rekenden aan metingen die alleen bij een dráaiende motor iets betekenen. Met
+het contact aan en de motor uit — precies de stand waarin je foutcodes
+uitleest — leest de inlaatdruk de buitenluchtdruk (~101 kPa, dus "vacuümlek"
+én "EGR-klep"), de luchtmassa 0 g/s (dus "draadbreuk"), en het koelwater staat
+koud (dus "thermostaat"). De thermostaatregel zei zelfs *"terwijl de motor al
+draait"* in zijn eigen tekst, zonder dat er iets werd nagekeken. **Een
+voorwaarde die zijn context in de tekst noemt en niet in de code, is een
+aanname met een bijschrift.**
+
+Twee dingen die daarbij hoorden en die er los het opschrijven waard zijn:
+
+- **Te koud en te warm straften elkaar af.** De twee koelwatervoorwaarden
+  sluiten elkaar uit, maar stonden niet als `xor`. Eén van de twee is dus
+  altijd onwaar, en trok de regel elke keer onder de ondergrens — de
+  thermostaatregel kón niet aanslaan. `dynamo` had dezelfde vorm en dáár stond
+  de `xor` wél. Twee plekken, één regel, één ervan vergeten.
+- **Eén meting is geen oordeel.** De achterste lambdasonde werd "schommelt net
+  zo hard als de voorste" genoemd op grond van één momentwaarde, en de
+  laadspanning "te laag" op grond van één meting — terwijl die inzakt zodra er
+  een zware verbruiker bijkomt. Beide lopen nu over een reeks
+  (`aanhoudend()`), en die reeks is cadans-onafhankelijk: een vast tijdvenster
+  zou de sensoren die elke 30 s verversen opnieuw onmeetbaar maken, en dat is
+  dezelfde fout als de vaste 8-secondendrempel, één laag lager.
+
+**Wat er verder bij is gekomen.** Twaalf regels die er niet waren: de
+verwarming van een lambdasonde (eigen circuit, eigen zekering — een koude
+sonde meldt zich als een dode sonde), de achterste sonde apart van de
+regelsonde, EVAP en de tankdop, oliedruk, koelventilator, gloeibougies, de
+nokkenasverstelling apart van de distributieketting, wervelkleppen, secundaire
+lucht, de automaat, U-codes (die gaan over het netwerk en niet over een
+onderdeel) en het stuurapparaat zelf.
+
+**Wat dit niet oplost.** De drempels in de live-voorwaarden — 46 kPa
+stationair, 13,2 V, 0,5 V sprei op de achterste sonde — komen uit
+redeneerwerk en uit wat gangbaar is, niet uit metingen aan deze auto's. Ze
+staan nu wel elk achter een poort die zegt wanneer ze überhaupt iets mogen
+betekenen, en dat is de winst van deze ronde. Of ze op de goede plek liggen is
+een vraag voor een rit, en blok 5 draagt hem mee: die proef kijkt bij elke
+oplevering na of elke aangewezen sensor volgens het register werkelijk
+gevraagd is zonder te antwoorden.
+
 ### Twee gereedschappen die maten zonder iets te kunnen zeggen (16-09-2026)
 
 De waakronde draaide al lang, de bulk-recorder ook, en allebei deden hun werk

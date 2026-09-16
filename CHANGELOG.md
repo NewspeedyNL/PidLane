@@ -11,6 +11,55 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-16c (CET) — "WELK ONDERDEEL?" WEES DE
+     VERKEERDE AAN
+
+       • 🔩 EEN TRAGE SENSOR IS NIET KAPOT. Het paneel meldde
+         "Sensor levert niets meer — sterke aanwijzing" over het
+         brandstofpeil, met "draadbreuk, stekker of sensor"
+         erbij. Die sensor wordt elke 60 seconden gevraagd, en
+         alles wat langer dan 8 seconden zweeg heette hier een
+         defect. De drempel volgt nu het meettempo van de sensor
+         zelf, en alleen "gevraagd én niets teruggekregen" telt
+         als uitval — stil zijn omdat je nog niet aan de beurt
+         bent, niet.
+
+       • 🧮 EEN TELLER HEEFT GEEN DRAAD OM TE BREKEN. "Afstand
+         met MIL aan" is een kilometerstand die het stuurapparaat
+         zelf bijhoudt. Die en zijn soortgenoten worden niet meer
+         als kapot onderdeel aangewezen.
+
+       • 🔑 DE FOUTCODES WORDEN NU ÉCHT GELEZEN. Het paneel keek
+         sinds 27-07 in een variabele die niet bestaat. Elke
+         controle op een foutcode stond daardoor permanent op
+         "onbekend": de halve module deed niets, en dat was van
+         buiten niet te zien. Staat er nog geen scan, dan zegt
+         het paneel dat nu zelf bovenaan.
+
+       • 🚗 MOTOR UIT IS EEN ANDERE AUTO DAN MOTOR AAN. Met het
+         contact aan en de motor uit leest de inlaatdruk de
+         buitenlucht, de luchtmassa 0 en het koelwater koud — en
+         dat leverde "vacuümlek", "EGR-klep" en "thermostaat" op
+         in precies de stand waarin je foutcodes uitleest. Elke
+         regel kijkt nu eerst of de motor draait, en hoe lang.
+
+       • 📏 ÉÉN METING IS GEEN OORDEEL. Een laadspanning die even
+         inzakt als de koplampen aangaan, of één misgelezen frame
+         tegen de eindwaarde van een sensor, is geen diagnose
+         meer. Er wordt over een reeks gekeken, en dat meettempo
+         van de sensor bepaalt hoe lang die reeks moet zijn.
+
+       • ➕ TWAALF ONDERDELEN ERBIJ. De verwarming van een
+         lambdasonde (eigen zekering — een koude sonde ziet eruit
+         als een dode sonde), de achterste sonde apart van de
+         regelsonde, tankdop/EVAP, oliedruk, koelventilator,
+         gloeibougies, nokkenasverstelling apart van de
+         distributieketting, wervelkleppen, secundaire lucht, de
+         automaat, U-codes (het netwerk, geen onderdeel) en het
+         stuurapparaat zelf.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-16b (CET) — TWEE MOTORKAPPEN GAAN OPEN
 
        • ◉ DE WAAKRONDE HEEFT EEN SCHERM. Hij meet al lang de
