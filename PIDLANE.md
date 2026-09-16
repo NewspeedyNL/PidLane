@@ -912,6 +912,51 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Drie besluiten in plaats van drie reparaties (16-09-2026, #161 #202 #139)
+
+Drie issues stonden open die geen bouwopdracht waren maar een keuze. Ze zijn
+met een reden gesloten; dat is hier vastgelegd zodat de vraag niet over drie
+maanden opnieuw opkomt.
+
+**#161 — de drempel voor "beweegt" blijft 2%.** Gemeten op 09-09: stationair
+mist het toerental de drempel met 108 tegen 160, en koelwater en inlaatdruk
+zitten er met 5 tegen 5,1 nog dichter tegenaan. De verleiding is één getal
+verlagen. Dat is niet gedaan, om twee redenen. Er stonden **19 sensoren stil**,
+en die horen stil te blijven — een drempel die het toerental stationair een
+lijn geeft, geeft ruis op een rustige sensor er misschien ook een. En de
+alternatieven kosten meer dan ze opleveren: een tabel per PID botst frontaal
+met "geen tweede lijst", en meten tegen het waargenomen bereik vraagt een
+ondergrens voor het begin van een rit, waar dat bereik nog nul is.
+
+Doorslaggevend was waar de klacht vandaan kwam: **niet uit het gebruik, maar
+uit een proef.** De bestuurder beoordeelde de weergave op 09-09 met "balken én
+lijnen kloppen". Heropenen als een echte gebruiker een ontbrekende trendlijn
+mist — dan is er een geval, en nu is er alleen een getal.
+
+**#202 — de renderer die na 59–60 s stilvalt wordt geaccepteerd.** Acht
+metingen op 11-09 gaven één getal over een bereik van 77 tot 663 seconden weg,
+dus het staat vast. De kandidaat-oplossing is picture-in-picture, en die kost
+drie dingen: native werk dat nergens met Capacitor is nagemeten, een zichtbaar
+zwevend venster in plaats van een app die verdwijnt, en dekking die alleen
+geldt bij Home of een appwissel — niet bij schermvergrendeling. Daar staat
+tegenover dat alles eromheen dankzij #18 al doorloopt (proces, CPU, melding,
+socket) en dat **de app van elk gat afweet en dat sinds 11-09 aan de AI
+doorgeeft.**
+
+De schade is dus begrensd en zichtbaar, en ze raakt vooral het
+testrunprotocol — dat vraagt zélf om drie minuten wegschakelen — en niet het
+normale rijden. Afgezet tegen "onderhoudslast is een harde
+ontwerprandvoorwaarde" valt dat de andere kant op. Heropenen als er een functie
+komt die écht in de achtergrond moet doormeten; dan is het een eis en geen
+ongemak.
+
+**#139 — `admin.html` blijft staan.** Het issue stelde voor hem te verwijderen
+omdat `beheer.html` de vervanger is. Dat is niet gebeurd: `beheer.html` is de
+werkpagina geworden, maar `admin.html` blijft ernaast bestaan. De Opslaan-knop
+die in de reactie op dat issue werd gemist, is inmiddels geplaatst. Daarmee is
+er niets meer open — en het verwijderen van een bestand is hier hoe dan ook een
+vraag en geen actie.
+
 ### Vier modules tegelijk in storing — waarom dat niet "de adapter is stuk" betekent (16-09-2026, #217)
 
 Na ritten met de goedkope ELM327-kloon stonden er vijf waarschuwingen tegelijk
