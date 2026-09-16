@@ -67,6 +67,18 @@ MUTATIES=(
 "public/pidlane-rijsituatie.js@@_pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';@@_pidHealth[pid] = h;@@test-healthgate.js@@een onbekende sensor wordt uitgegrijsd in plaats van kiesbaar"
 "public/pidlane-rijsituatie.js@@if(ok===0 && geen<pids.length){@@if(false){@@test-healthgate.js@@de veiligheidsfallback van de gezondheidscheck staat uit"
 
+# ── De twee vensters bij de achtergrondgereedschappen. Zes fouten die je in
+# een scherm maakt zonder dat iemand het ziet: een balkje staat altijd ergens,
+# een grafiek ziet er altijd uit als een grafiek, en een zin met een getal
+# erin leest als een meting. De VIN-mutatie staat er apart bij — dat is geen
+# weergavefout maar een privacylek, en de enige regel hier die niet buigt.
+"public/pidlane-waakvenster.js@@    var pos = Math.max(0, Math.min(1, frac)) * 100;@@    var pos = frac * 100;@@test-waakvenster.js@@de bereikmeter klemt niet meer: de marker schuift buiten zijn baan"
+"public/pidlane-waakvenster.js@@    var frac = (v - d.min) / (d.max - d.min);@@    var frac = v / d.max;@@test-waakvenster.js@@de bereikmeter negeert de ondergrens en schaalt alles op max"
+"public/pidlane-waakvenster.js@@        veh = { merk: vehicleInfo.merk || '', model: vehicleInfo.model || '',@@        veh = { vin: vehicleInfo.vin || '', merk: vehicleInfo.merk || '', model: vehicleInfo.model || '',@@test-waakvenster.js@@de VIN lekt ruw mee in de waakronde-export"
+"public/pidlane-bulkvenster.js@@      var lo = blok[0], hi = blok[0];@@      var lo = blok[0], hi = blok[0]; if (1) { uit.push(blok[0]); continue; }@@test-bulkvenster.js@@het uitdunnen pakt elke n-de meting en eet de koelwaterpiek op"
+"public/pidlane-bulkvenster.js@@      } else gatLoop = 0;@@      } else { }@@test-bulkvenster.js@@het langste gat wordt nooit teruggezet en telt de hele rit door"
+"public/pidlane-bulkvenster.js@@  var MIN_KLIMREGELS = 50;@@  var MIN_KLIMREGELS = 0;@@test-bulkvenster.js@@de klimvergelijking meldt een verschil uit een handvol regels"
+
 # ── De km-check (PLKm). Zes fouten die je écht kunt maken in een module die
 # uit vier bytes een oordeel over fraude trekt: de schaal verkeerd vastzetten,
 # het fysieke bereik loslaten, het verschil niet meer wegen, de speling

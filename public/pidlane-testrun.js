@@ -2502,6 +2502,92 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── kan de waakronde vertellen wat ze gemeten heeft? ──
+  // De strook boven het raster toont de ronde die nú loopt; _lijst wordt bij
+  // elke nieuweRonde() weggegooid. Tot 16-09 was dat álles wat er was, en dus
+  // was "welke sensor lag drie rondes geleden buiten bereik" onbeantwoordbaar.
+  // De historie is er sindsdien, maar die leeft in de draaiende app en niet in
+  // de repo: alleen een rit kan zeggen of hij ook echt vult. Deze proef kijkt
+  // niet of er iets ín staat (op een koude start hoort dat leeg te zijn) maar
+  // of de haken bestaan en de vorm klopt — dat is wat het waakvenster nodig
+  // heeft en wat stilletjes kan breken bij een wijziging aan PLWaak.
+  {
+    issue: '§11',
+    naam: 'De waakronde geeft zijn sessiehistorie door',
+    waarom: 'Het waakvenster leest PLWaak.historie(); breekt die vorm, dan staat het scherm leeg zonder foutmelding.',
+    proef: function () {
+      if (!window.PLWaak)   return { staat: 'FOUT', detail: 'PLWaak ontbreekt' };
+      if (!window.PLWaakUI) return { staat: 'FOUT', detail: 'PLWaakUI ontbreekt — het waakvenster is niet geladen' };
+      var mist = ['historie', 'ronde', 'sinds', 'lijst'].filter(function (k) {
+        return typeof PLWaak[k] !== 'function';
+      });
+      if (mist.length)
+        return { staat: 'FOUT', detail: 'PLWaak mist ' + mist.join(', ') + ' — het waakvenster kan niets tonen' };
+
+      var h = PLWaak.historie();
+      if (!Array.isArray(h)) return { staat: 'FOUT', detail: 'historie() gaf geen lijst terug' };
+
+      // lijst() moet reden en tijd dragen; tot 16-09 deed hij dat niet en was
+      // niet te zien WAAROM iets een bevinding was.
+      var l = PLWaak.lijst();
+      if (l.length && !('reden' in l[0] && 'tijd' in l[0]))
+        return { staat: 'FOUT', detail: 'lijst() draagt geen reden/tijd — bevindingen zijn dan niet te duiden' };
+
+      if (!h.length)
+        return { staat: 'LET OP', detail: 'historie is leeg — de waakronde heeft deze sessie nog niets gemeten' +
+          (PLWaak.actief() ? ' (hij staat wel aan; de eerste groep komt na ~12 s)' : ' (hij staat uit)') };
+
+      var stuk = h.filter(function (r) { return !r.pid || typeof r.n !== 'number'; });
+      if (stuk.length) return { staat: 'FOUT', detail: stuk.length + ' historieregels missen pid of telling' };
+
+      var bev = h.filter(function (r) { return r.staat === 'let'; });
+      return { staat: 'OK', detail: h.length + ' sensoren in de historie over ' + PLWaak.ronde() +
+        ' rondes, ' + bev.length + ' nu buiten bereik' };
+    }
+  },
+
+  // ── kan de bulk-analyse de opname terugvinden? ──
+  // PLBulk schreef tot 16-09 alleen wég. Het leesluik (PLBulk.lees) is nieuw en
+  // is het enige pad naar de opslag; valt dat om, dan staat het analysevenster
+  // met een lege lijst zonder dat iemand het merkt. Een rit is de enige plek
+  // waar er echt data in IndexedDB staat om dat op te toetsen.
+  {
+    issue: '§11',
+    naam: 'De bulk-opname is terug te lezen en te analyseren',
+    waarom: 'Zonder werkend leesluik toont de analyse een lege rit in plaats van een fout.',
+    proef: async function () {
+      if (!window.PLBulk)   return { staat: 'FOUT', detail: 'PLBulk ontbreekt' };
+      if (!window.PLBulkUI) return { staat: 'FOUT', detail: 'PLBulkUI ontbreekt — het analysevenster is niet geladen' };
+      if (typeof PLBulk.lees !== 'function')
+        return { staat: 'FOUT', detail: 'PLBulk.lees ontbreekt — de analyse heeft geen pad naar de opslag' };
+      if (typeof PLBulkUI._analyseer !== 'function')
+        return { staat: 'FOUT', detail: 'PLBulkUI._analyseer ontbreekt' };
+
+      var blokken;
+      try { blokken = await PLBulk.lees(); }
+      catch (e) { return { staat: 'FOUT', detail: 'lezen mislukt: ' + (e && e.message || e) }; }
+      if (!Array.isArray(blokken)) return { staat: 'FOUT', detail: 'lees() gaf geen lijst terug' };
+      if (!blokken.length)
+        return { staat: 'LET OP', detail: 'geen opname in de opslag — de recorder heeft deze telefoon nog niet gedraaid' };
+
+      var regels = [];
+      blokken.forEach(function (b) { (b.regels || []).forEach(function (r) { regels.push(r); }); });
+      if (!regels.length) return { staat: 'FOUT', detail: blokken.length + ' blokken zonder één regel erin' };
+
+      var a = PLBulkUI._analyseer('proef', regels);
+      if (a.regels !== regels.length)
+        return { staat: 'FOUT', detail: 'analyse telde ' + a.regels + ' van ' + regels.length + ' regels' };
+
+      var segs = Object.keys(a.segTel);
+      if (!segs.length) return { staat: 'FOUT', detail: 'geen enkel segment herkend in ' + regels.length + ' regels' };
+
+      var pidN = Object.keys(a.pids).length;
+      return { staat: 'OK', detail: regels.length + ' regels over ' + blokken.length + ' blokken, ' +
+        pidN + ' sensoren, ' + segs.length + ' segmentsoorten, ' + a.gaten + ' gatregels, ' +
+        Math.round(a.afstandKm) + ' km' };
+    }
+  },
+
   // ── draagt de schil een pakketnaam die Play accepteert? ──
   // De inzending van 12-09 strandde op "Voer een geldige pakketnaam in". De
   // bouwketen bleek in orde; de naam zelf deugde niet. Er staan nu twee
@@ -6997,13 +7083,14 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 16-09 (elfde) — de goedkope adapter, en een scherm dat de verbinding eindelijk laat zien (#210, #211, #212)',
+  titel: 'OPLEVERING 16-09 (elfde) — de goedkope adapter, een scherm voor de verbinding, en twee gereedschappen die eindelijk iets terugzeggen (#210, #211, #212)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
     'ER IS VOOR HET EERST MET EEN ANDERE ADAPTER GEMETEN. Op 16-09 hing er geen MX+ aan maar een goedkope ELM327-kloon van AliExpress. Blok 10 meldde "zonder één misser tot 3.2 verzoeken/s" terwijl de app op datzelfde moment op 19% pollbudget stond. Die twee kunnen niet allebei waar zijn, en het antwoord stond niet in de meetblokken maar in de TX/RX-staart eronder: tien van de zestig antwoorden misten een PID, en negen van de negen keer was dat de LAATSTE PID van de batch.',
     'DE OORZAAK IS EEN TWEEDE LENGTE-INDICATOR MIDDEN IN HET ANTWOORD. De kloon herhaalt frames: "008 0:410C08670D00 008 1:410C 2:111C…". De parser gooide die tweede 008 weg en plakte het frame erachter aan dezelfde hexstroom, en kapte daarna af op de eerste opgegeven lengte. Meestal koste dat één PID. Eén keer was het duurder: bij 010B0E10 vulden de echobytes de lengte precies af en kwam 0110 eruit op 166,51 g/s, terwijl een losse 0110 in dezelfde seconde 1,45 g/s gaf. Geen MIST, geen melding, en binnen de harde limiet — dus dat getal komt overal doorheen.',
     'DAT IS GEREPAREERD (#210). De parser stopt nu bij het tweede bericht, en op een afgekapt antwoord mag hij een PID niet meer korter maken om hem passend te krijgen. Beide gevallen van 16-09 leveren daardoor een eerlijk gat op in plaats van een verzonnen getal. Blok 5 voert de opgenomen regels erdoorheen.',
     'EN ER IS EEN SCHERM BIJ GEKOMEN. Tik op de OBD-chip en je ziet wat de verbinding doet: verzoeken per seconde, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken, en wat de automaat deed mét de reden. Je kunt het tempo overnemen, de groepsgrootte vastzetten, en een snelheidstest van veertig seconden draaien die solo én batch meet.',
+    'EN ER ZIJN TWEE MOTORKAPPEN OPENGEGAAN. De waakronde meet al lang de sensoren die je niet aanvinkt, en de bulk-recorder legt tien uur rijden weg op 1 Hz — maar van geen van beide was een scherm. De waakronde paste in één strook stipjes en gooide bij elke ronde alles weg; de recorder kon alleen een NDJSON-bestand maken voor iemand met een script. Allebei hebben nu een eigen pagina in het ☰-menu: de waakronde met sessiehistorie, bereikmeters en export, de recorder met een analyse die in gewone zinnen vertelt wat er in de rit staat.',
     'DEZE RONDE HEEFT DUS DRIE VRAGEN, EN ALLE DRIE VRAGEN ZE EEN ADAPTER. Eén: verdwijnen de rare waarden op de goedkope adapter. Twee: klopt wat het paneel toont met wat de auto doet. Drie: geeft de snelheidstest een advies dat ergens op slaat.',
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Een nieuwe APK is deze ronde NIET nodig: alles zit in de webpagina. Draai je nog op de oude schil van vóór 12-09, kijk dan wel of de pakketnaam in blok 5 nl.pidlane.app is.',
@@ -7011,8 +7098,10 @@ const CAMPAGNE = {
     'STAP 2 — OPEN HET PANEEL VÓÓR DE RIT. Tik op de chip linksboven (Systeem → OBD). Lees de bovenste regel: staat er "Deze adapter herhaalt frames"? Onthoud het getal. Kijk of de naam en het ATI-antwoord kloppen met wat er in de auto zit.',
     'STAP 3 — DRUK OP DE SNELHEIDSTEST, STILSTAAND MET DRAAIENDE MOTOR. Veertig seconden. Lees de tabel: de kolom "solo" en de kolom "batch" horen op deze adapter uit elkaar te lopen. Onthoud het advies bovenaan.',
     'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op. Daarna minstens drie minuten naar de achtergrond met het scherm uit (#202), en schakel nog een andere app open. Als laatste de adapter er even uit (#133).',
+    'STAP 3B — ZET DE WAAKRONDE AAN EN DE BULK-RECORDER OOK, VÓÓR DE RIT. Waakronde: ☰ → Waakronde → aanzetten. Bulk: ☰ → Admin → Bulk-recorder → start. Allebei lopen ze passief mee; ze horen de rest van de meting niet te raken. Merk je onderweg dat de app trager ververst, dan is dát de bevinding.',
     'STAP 4 — KIJK NA DE RIT NOG EENS IN HET PANEEL. Hoeveel herhaalde antwoorden staan er nu? Wat deed de automaat, en staat er bij elke stap een reden die klopt? Is de groep vanzelf naar 2 gegaan?',
     'DE TOESTELRONDE (📱). Vlak na de rit, stilstaand met een warme motor. Vier oordelen die alleen een mens kan geven plus de drie meetcontextvragen (#64).',
+    'STAP 5 — LEES DE TWEE NIEUWE SCHERMEN NA DE RIT. Waakronde: klopt wat er bij “wat er gemeten is” staat met wat de auto doet, en staat er een bevinding tussen die je herkent? Bulk-analyse (☰ → Admin → Bulk-analyse): klopt de afstand ongeveer met je kilometerteller, klopt de tijdbalk met hoe de rit ging, en zeggen de conclusies iets dat je zelf ook gezien had? Een conclusie die niet klopt is waardevoller dan een die klopt — schrijf hem over.',
     'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, en zet er drie dingen bij die er niet in staan: WELKE ADAPTER erin zat, wat het paneel als advies gaf, en of de getallen in het paneel klopten met wat je zag.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'DAT DE ECHO WEG IS UIT DE METING BETEKENT NIET DAT DE METING COMPLEET IS. De reparatie van #210 verandert een verzonnen getal in een gat. Dat is beter, maar het gat blijft: op 16-09 miste 0111 zeven van de twintig keer. De kleinere groep (#211) moet dat terugbrengen, en of dat werkelijk gebeurt is deze ronde de meting.',
@@ -7021,6 +7110,9 @@ const CAMPAGNE = {
     'HET ADVIES IS REKENWERK EN GEEN BELOFTE. "Bij 6/s hoort 100%" volgt uit de verhouding met wat de app nu doet. Of de bus dat een half uur volhoudt staat er niet in — dat is precies wat de rustmeting van blok 10 wél toetst.',
     'DAT DE MX+ DEZE ECHO NOOIT GEEFT IS NIET NAGEMETEN. Aannemelijk, want in geen van de eerdere runs stond er één, maar er is van die adapter geen TX/RX-staart met dezelfde batches naast gelegd. Rijd je deze ronde met de MX+, kijk dan of de echoteller op nul blijft — dan is dat alsnog gemeten.',
     '#202 EN #161 KRIJGEN DEZE RONDE GEEN ANTWOORD. De renderer die na 59-60 s stilvalt vraagt picture-in-picture, en dat is een eigen bouwronde. De drempel voor "beweegt" is een ontwerpbesluit en geen meetvraag.',
+    'DE AFSTAND IN DE BULK-ANALYSE IS EEN SCHATTING, EN BIJ GATEN TE LAAG. Hij telt de snelheid per seconde op; valt de adapter weg, dan loopt de tijd door en de afstand niet. Het venster noemt het aantal gatregels erbij, maar hoeveel kilometer dat scheelt is niet nagemeten — daarvoor moet er een kilometerstand naast.',
+    'DE KLIMVERGELIJKING IS NOG NOOIT OP EEN ECHTE KLIM GEDRAAID. Hij zwijgt onder vijftig regels per kant, en in Nederland haal je die zelden. De drempel van 8 °C verschil komt uit redeneren, niet uit een meting: tot er een zware rit met caravan door de bergen onder ligt, is dat een aanname in de code en geen grens die iets bewezen heeft.',
+    'DE WAAKRONDE-HISTORIE OVERLEEFT HET HERLADEN VAN DE PAGINA NIET. Hij staat in het geheugen, niet in localStorage. Dat is met opzet — een oordeel van twee ritten geleden zegt niets over nu — maar het betekent ook dat “Nieuwste versie laden” je sessieoverzicht wist. Wil je het bewaren, exporteer dan vóór het herladen.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };

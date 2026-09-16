@@ -669,6 +669,18 @@ window.PLBulk = {
   hervat   : hervat,
   markeer  : markeer,
   exporteer: exporteer,
+  // LEZEN — nodig voor het analysevenster (pidlane-bulkvenster.js). Zonder
+  // dit luik kon je de opname alleen als bestand naar buiten krijgen: de app
+  // schreef tien uur data weg en kon er zelf niets over zeggen. Een tweede
+  // IndexedDB-opener naast deze module zou twee waarheden over hetzelfde
+  // bestand maken, dus het gaat hierlangs. Eerst flushen, anders mist de
+  // analyse precies de laatste minuut — de minuut waar je meestal naar zoekt.
+  lees     : async function () {
+    try { await flush(); } catch (e) { console.warn('flush voor lezen mislukt:', e); }
+    await dbKlaar();
+    return await dbAlles();
+  },
+  wis      : async function () { await dbKlaar(); return await dbWis(); },
   open     : openDash,
   sluit    : sluitDash,
   status   : function () {
