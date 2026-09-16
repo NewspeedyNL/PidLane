@@ -11,6 +11,58 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-16b (CET) — TWEE MOTORKAPPEN GAAN OPEN
+
+       • ◉ DE WAAKRONDE HEEFT EEN SCHERM. Hij meet al lang de
+         sensoren die je niet hebt aangevinkt, maar alles wat
+         hij wist paste in één strook stipjes. Nu een eigen
+         pagina in het ☰-menu: wat hij is en doet, elke sensor
+         die deze sessie gemeten is met zijn laatste waarde en
+         het bereik waarin die viel, de bevindingen met reden
+         erbij, hoe je hem bedient, en een uitgang — JSON, CSV
+         of klembord.
+
+       • 📊 EEN BEREIKMETER PER SENSOR. "87" zegt niets als je
+         niet weet of dat bij 0-120 of bij 80-90 hoort. Achter
+         elke sensor staat nu een balkje dat de laatste waarde
+         tussen de min en max van de definitie zet. Buiten het
+         bereik klemt de marker tegen de rand en kleurt oranje.
+
+       • 🧠 DE WAAKRONDE ONTHOUDT NU DE HELE SESSIE. Tot nu toe
+         ging bij elke nieuwe ronde alles op de vloer: een
+         sensor die drie rondes geleden buiten bereik lag, was
+         onvindbaar. Per sensor blijven nu de tellingen, het
+         laatste oordeel en het gemeten bereik staan.
+
+       • 📈 DE BULK-RECORDER LEEST ZICHZELF TERUG. Hij legde
+         tien uur rijden weg op 1 Hz en kon daar precies één
+         ding mee: een NDJSON-bestand maken voor iemand met een
+         script. Nu vertelt de app zelf wat erin staat — duur,
+         afstand, waar de tijd in ging, gaten in de log, en per
+         sensor min/gemiddeld/max met dekkingsgraad.
+
+       • 🗣️ CONCLUSIES IN GEWONE ZINNEN, MET HET GETAL ERBIJ.
+         "Tijdens klim was het koelwater gemiddeld 103 °C (200
+         regels), tijdens gewoon rijden 88 °C (200 regels) — een
+         stijging van 15 °C." Een oordeel zonder het getal
+         erachter is niet te controleren, dus dat schrijft hij
+         niet. Onder vijftig regels per kant zwijgt de
+         klimvergelijking helemaal.
+
+       • 📉 EEN TIJDBALK DIE OP VOLGORDE LOOPT. Rijden, klim,
+         stilstand en motor-uit als gekleurde balk in de
+         volgorde van de rit — je ziet dus wannéér de klim viel,
+         niet alleen hoeveel het er was. Plus een lijngrafiek
+         voor snelheid, toerental, koelwater en belasting.
+
+       • 🔒 DE VIN GAAT NIET MEE. De waakronde-export is een
+         nieuw uitgaand pad; het voertuigdossier gaat er zonder
+         VIN in. Een test met een volledig dossier mét VIN
+         bewaakt dat, en plmutate.sh zet het lek terug als
+         tegenproef.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-16a (CET) — DE VERBINDING HEEFT EEN SCHERM
 
        • 🔌 TIK OP DE OBD-CHIP EN JE ZIET DE VERBINDING.

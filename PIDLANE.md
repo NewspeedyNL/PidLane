@@ -912,6 +912,66 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Twee gereedschappen die maten zonder iets te kunnen zeggen (16-09-2026)
+
+De waakronde draaide al lang, de bulk-recorder ook, en allebei deden hun werk
+goed. Toch was er van geen van tweeën een scherm. Dat is geen vergeten
+oplevering maar een patroon dat het opschrijven waard is: **een module die
+meet is af in de ogen van degene die hem bouwde, en niet in de ogen van
+degene die hem gebruikt.**
+
+**Waakronde.** Alles wat hij wist paste in één smalle strook boven het
+raster: een rij stipjes, één regel tekst, een telling rechtsboven. Tijdens
+het rijden is dat precies genoeg — dat was ook het ontwerp, en dat blijft
+staan. Maar buiten de rit kon de strook drie vragen niet beantwoorden. Wat
+ís dit (de schakelaar stond tussen de weergaveknoppen, zonder één woord
+uitleg). Wat heb je al gemeten (`_lijst` wordt bij elke `nieuweRonde()`
+weggegooid, dus een sensor die drie rondes geleden buiten bereik lag was
+onvindbaar). En: mag ik dat meenemen (er was geen enkele uitgang; wat de
+waakronde zag ging bij het sluiten van de tab verloren).
+
+Bij het bouwen van het venster bleek de derde vraag de goedkoopste en de
+tweede de duurste. `reden` en `tijd` stonden al in `_lijst` maar kwamen niet
+door `lijst()` heen — twee regels. De historie moest er echt bij: `_historie`
+houdt nu per pid de tellingen, het laatste oordeel met reden, en het bereik
+waarbinnen de waardes vielen, en overleeft `nieuweRonde()`.
+
+**Bulk-recorder.** Die kon precies één ding met tien uur data op 1 Hz: er een
+NDJSON-bestand van maken. Dat bestand is goed, maar het veronderstelt dat er
+verderop iemand met een script klaarstaat. Op de telefoon in de auto is dat
+niemand. De app schreef dus 36.000 regels vol en kon er zelf niets over
+zeggen.
+
+Het analysevenster leest dezelfde opslag terug via `PLBulk.lees()` — één
+luik, geen tweede IndexedDB-opener, want twee modules die allebei uitrekenen
+hoe lang een rit duurde geven vroeg of laat twee antwoorden. Het flusht eerst
+de buffer: zonder dat mist de analyse precies de laatste minuut, en dat is de
+minuut waar je meestal naar zoekt.
+
+**Wat de conclusies waard zijn.** Elke zin in "wat deze rit je vertelt" rust
+op een telling en noemt die telling er zelf bij. Dat is met opzet: een
+oordeel zonder het getal erachter is niet te controleren, en dat is in dit
+project al eerder de reden geweest dat een test "slaagde" op een geval dat
+niet bestond. Twee getallen dragen een expliciete waarschuwing in de code.
+De afstand is geïntegreerde snelheid en wordt bij gaten in de log eerder te
+laag dan te hoog — het venster noemt het aantal gatregels erbij. En de
+klimvergelijking (koelwater tijdens 'klim' naast 'rijden') blijft wég onder
+vijftig regels per kant, in plaats van een verschil te melden dat toeval kan
+zijn.
+
+**De stilste fout die hier gevangen is.** Het uitdunnen van een reeks voor de
+grafiek. Elke n-de meting nemen levert een lijn op die er volstrekt normaal
+uitziet en precies de koelwaterpiek weglaat waarvoor je kijkt. De uitdunning
+neemt daarom per emmer de hoogste én de laagste waarde mee, en er staat een
+mutatie in `plmutate.sh` die de naïeve variant terugzet — `test-bulkvenster.js`
+wordt daar rood van op één uitschieter in duizend regels.
+
+**Privacy.** De waakronde-export is een nieuw uitgaand pad. De VIN gaat daar
+niet in mee, ook niet gepseudonimiseerd: voor het lezen van een
+waakrondeverslag voegt hij niets toe. `test-waakvenster.js` bewaakt dat met
+een volledig voertuigdossier mét VIN erin, en `plmutate.sh` zet het lek terug
+als tegenproef.
+
 ### Wat er met de goedkope adapter gedaan is — 16-09-2026
 
 De bevinding hieronder is diezelfde dag gerepareerd, en de reparatie is groter
