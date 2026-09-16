@@ -85,7 +85,16 @@ function laad(opt) {
     const t = { '012F': 'Brandstofpeil', '0121': 'Afstand met MIL aan', '0105': 'Koelwater temp' };
     return { name: t[pid] || pid, unit: '' };
   };
-  s.document = { getElementById() { return null; }, createElement() { return { style: {} }; }, body: { appendChild() { } } };
+  // Een dun DOM-laagje, alleen zo veel dat render() er echt in schrijft. De
+  // tekst op het scherm is hier het onderwerp: twee blokken die elkaar
+  // tegenspreken zijn geen zichtbare fout in beoordeel(), maar wel op de
+  // telefoon.
+  s.odBody = { innerHTML: '' };
+  s.document = {
+    getElementById(id) { return id === 'odBody' ? s.odBody : null; },
+    createElement() { return { style: {} }; },
+    body: { appendChild() { } }
+  };
   vm.createContext(s);
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-onderdeel.js', 'utf8'), s,
     { filename: 'pidlane-onderdeel.js' });
@@ -333,6 +342,25 @@ console.log('\n8. Koud is pas koud als de motor lang genoeg gedraaid heeft');
   const th = t.PLOnderdeel.beoordeel().filter(r => r.id === 'thermostaat');
   toets('TEGENPROEF: 60 °C na een half uur is dat wél', th.length === 1,
     'gevonden: ' + JSON.stringify(t.PLOnderdeel.beoordeel().map(x => x.id)));
+  // ZONDER 011F. Motorlooptijd is een sensor die je kunt uitvinken, en dan
+  // zou deze regel nooit meer aanslaan. De meetgeschiedenis van het koelwater
+  // zelf is de tweede bron: tien minuten onafgebroken onder de 75 °C.
+  const geen = laad();
+  geen._didDTCScan = true;
+  sensor(geen, '010C', 850, 300);
+  sensor(geen, '0105', 60, 5000, { n: 80 });     // 80 × 10 s = ruim 13 minuten
+  toets('zonder motorlooptijd doet de meetgeschiedenis het werk',
+    geen.PLOnderdeel.beoordeel().some(r => r.id === 'thermostaat'),
+    'gevonden: ' + JSON.stringify(geen.PLOnderdeel.beoordeel().map(x => x.id)));
+
+  const kort = laad();
+  kort._didDTCScan = true;
+  sensor(kort, '010C', 850, 300);
+  sensor(kort, '0105', 60, 5000, { n: 8 });      // 8 × 10 s = ruim een minuut
+  toets('TEGENPROEF: met één minuut geschiedenis zegt hij nog niets',
+    kort.PLOnderdeel.beoordeel().every(r => r.id !== 'thermostaat'),
+    'te weinig gemeten is geen oordeel');
+
   // De twee temperatuurvoorwaarden sluiten elkaar uit; zonder xor trok de ene
   // de andere altijd omlaag en haalde deze regel de ondergrens nooit.
   toets('... en "te koud" en "te warm" tellen samen voor één keer in het maximum',
@@ -471,6 +499,39 @@ console.log('\n12. Eén losse hint is een vermoeden, geen verdachte');
   const idsZwaar = zwaar.PLOnderdeel.beoordeel().map(r => r.id);
   toets('TEGENPROEF: een trim van +18% draagt op zijn eentje wel (gewicht 4)',
     idsZwaar.indexOf('vacuumlek') >= 0, 'gevonden: ' + idsZwaar.join(', '));
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n13. Het scherm spreekt zichzelf niet tegen');
+// ══════════════════════════════════════════════════════════════════
+{
+  // In de schermafdruk van 16-09 stond bovenaan "Geen enkel onderdeel aan te
+  // wijzen" en daaronder een rode kaart met "Sensor levert niets meer —
+  // sterke aanwijzing". Allebei getekend door dezelfde functie, in dezelfde
+  // seconde. Het lege-melding-blok werd berekend vóórdat de sensorkant aan
+  // bod kwam en kon er dus niets van weten.
+  const s = laad();
+  s._didDTCScan = true;
+  sensor(s, '012F', 71, 200000, { gevraagd: true });
+  // Vier sensoren die wél doorlopen: onder de 30% uitval blijft het een
+  // sensorprobleem, daarboven noemt de module het een busprobleem. Met één
+  // levende sensor ernaast zou dit dus de andere kaart geven, en dan toetst
+  // deze proef iets anders dan hij zegt.
+  ['010C', '0105', '010B', '0104'].forEach(function (p) { sensor(s, p, 50, 300); });
+  s.openOnderdeelCheck();
+  const t = s.odBody.innerHTML;
+  toets('bij een echte uitvaller staat de kaart er', /levert niets meer/.test(t));
+  toets('... en dan NIET ook "geen enkel onderdeel aan te wijzen"',
+    !/Geen enkel onderdeel/.test(t),
+    'het scherm zei allebei — precies de schermafdruk van 16-09');
+
+  // TEGENPROEF: is er werkelijk niets, dan hoort die zin er juist wél te staan.
+  const leeg = laad();
+  leeg._didDTCScan = true;
+  sensor(leeg, '010C', 820, 300);
+  leeg.openOnderdeelCheck();
+  toets('TEGENPROEF: zonder enige bevinding staat de zin er wel',
+    /Geen enkel onderdeel/.test(leeg.odBody.innerHTML));
 }
 
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'

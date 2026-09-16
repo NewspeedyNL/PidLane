@@ -137,7 +137,6 @@ function dtcBron(){
   try{ gescand=!!(typeof window!=='undefined' && window._didDTCScan); }catch(e){ gescand=false; }
   return { gescand:gescand, codes:codes.map(function(d){ return String((d&&d.code)||d).toUpperCase(); }) };
 }
-function dtcLijst(){ return dtcBron().codes; }
 /* Een DTC-voorwaarde. Niet uitgelezen = onbekend (null), want dan wéét je
    niets. Uitgelezen en afwezig blijft óók onbekend en geen tegenbewijs:
    lang niet elk defect zet een code, en een live bevinding wegstrepen omdat
@@ -148,10 +147,6 @@ function dtcProef(re){
     if(!b.gescand || !b.codes.length) return null;
     return b.codes.some(function(c){ return re.test(c); });
   };
-}
-function heeftDTC(re){
-  var b=dtcBron();
-  return b.codes.some(function(c){ return re.test(c); });
 }
 
 /* ── DE MOTORSTAND ─────────────────────────────────────────────────────
@@ -510,11 +505,20 @@ var REGELS = [
       C('Koelwater blijft onder 75 °C terwijl de motor al lang draait', 4, function(c){
         // "terwijl de motor al draait" stond er, maar er werd niet gekeken
         // of hij draaide, laat staan hoe lang. Elke koude start was dus een
-        // kapotte thermostaat. Tien minuten looptijd is de ondergrens
-        // waaronder ook een gezonde motor nog koud kan zijn.
+        // kapotte thermostaat. Tien minuten is de ondergrens waaronder ook
+        // een gezonde motor nog koud kan zijn.
+        //
+        // "Hoe lang draait hij al" heeft twee bronnen, en de tweede is er
+        // omdat de eerste een sensor is die je kunt uitvinken: zonder 011F
+        // in de selectie zou deze regel nooit meer aanslaan, en dat is een
+        // valse gerustheid in ruil voor een valse verdenking. De
+        // meetgeschiedenis van het koelwater zelf zegt hetzelfde: tien
+        // minuten onafgebroken onder de 75 °C, gemeten terwijl hij draait.
         if(c.draait!==true) return null;
-        if(c.looptijd===null || c.looptijd<600) return null;
-        return c.ect===null?null:(c.ect<75);
+        if(c.ect===null) return null;
+        if(c.ect>=75) return false;
+        if(c.looptijd!==null) return c.looptijd>=600;
+        return reeksOordeel(aanhoudend('0105', function(v){ return v<75; }, 600000, 10));
       }, {xor:'temp'}),
       C('Koelwater boven 105 °C', 4, function(c){
         if(c.draait!==true) return null;
@@ -842,6 +846,16 @@ function render(){
   var c=context();
   var h='';
 
+  // Eerst alles verzamelen, dan pas tekenen. In de schermafdruk van 16-09
+  // stond "Geen enkel onderdeel aan te wijzen" bovenaan en een kaart met
+  // "Sensor levert niets meer — sterke aanwijzing" eronder. Die twee zinnen
+  // spreken elkaar tegen, en het paneel kon dat niet weten omdat het de
+  // sensorkant pas ná het lege-melding-blok uitrekende.
+  var bus=busBetrouwbaar(), beeld=stilteBeeld(), rails=railTreffers(c);
+  var totaalStil=beeld.stil.length+beeld.levend.length;
+  var deelStil=beeld.stil.length/Math.max(1,totaalStil);
+  var uitvalKaart = beeld.register && bus.ok && beeld.stil.length>0 && deelStil<=0.30;
+
   h+='<div class="od-bron">Gekeken naar <b>'+
      (!bron.gescand ? 'nog geen foutcodes'
                     : (bron.codes.length ? bron.codes.length+' foutcode'+(bron.codes.length===1?'':'s')
@@ -856,7 +870,7 @@ function render(){
        '(knop "Foutcodes scannen") en kijk daarna opnieuw — de helft van wat hier staat, staat daarin.</div>';
   }
 
-  if(!R.length){
+  if(!R.length && !rails.length && !uitvalKaart){
     h+='<div class="od-leeg"><b>Geen enkel onderdeel aan te wijzen.</b><br>'+
        'Er is niets in de foutcodes of de meetwaarden dat naar een specifiek onderdeel wijst. '+
        'Dat is op zich goed nieuws voor de elektronica, maar het betekent ook dat een geluid of trilling '+
@@ -878,7 +892,6 @@ function render(){
   }
 
   // ── Sensoruitval, mét de uitleesfout-poort ervoor ──
-  var bus=busBetrouwbaar(), beeld=stilteBeeld(), rails=railTreffers(c);
   if(rails.length){
     h+='<div class="od-kaart" style="border-left-color:#ef4444">'+
        '<div class="od-kop"><b>Sensor leest een onmogelijke waarde</b><span style="color:#ef4444">sterke aanwijzing</span></div>'+
@@ -903,12 +916,10 @@ function render(){
        'Een sensor die stil lijkt te vallen kan dan net zo goed een gemist antwoord zijn. '+
        'Rijd even door of verbind opnieuw, dan kijk ik er wél naar.</div>';
   } else if(beeld.stil.length){
-    var totaal=beeld.stil.length+beeld.levend.length;
-    var deelStil=beeld.stil.length/Math.max(1,totaal);
-    if(deelStil>0.30){
+    if(!uitvalKaart){
       h+='<div class="od-grens" style="border-left-color:#94a3b8;background:rgba(148,163,184,.07)">'+
          '<b>Meerdere sensoren tegelijk stil — dit is geen defect</b><br>'+
-         beeld.stil.length+' van de '+totaal+' opgevraagde sensoren zwijgt tegelijk. '+
+         beeld.stil.length+' van de '+totaalStil+' opgevraagde sensoren zwijgt tegelijk. '+
          'Eén kapotte sensor doet dat niet; dit wijst op de verbinding, de adapter of een overbelaste bus.</div>';
     } else {
       h+='<div class="od-kaart" style="border-left-color:#ef4444">'+

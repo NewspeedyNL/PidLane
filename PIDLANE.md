@@ -1032,6 +1032,15 @@ betekent ook dat de render-kant van die kaart in demo nooit draait — de proef
 legt er daarom een gezonde busstatus onder en tekent opnieuw, zodat die kaart
 wél gemeten wordt.
 
+**Eén reparatie maakte bijna een nieuw gat.** De thermostaatregel werd
+opgehangen aan motorlooptijd (011F) — het directe antwoord op "hoe lang draait
+hij al". Maar dat is een sensor die je in de sensorkeuze kunt uitvinken, en dan
+zou die regel stilletjes nooit meer aanslaan: een valse gerustheid in ruil voor
+een valse verdenking, en dat is dezelfde fout met het teken omgedraaid. Er
+staat nu een tweede bron onder, die niets extra's vraagt: tien minuten
+onafgebroken koelwater onder de 75 °C in de eigen meetgeschiedenis, gemeten
+terwijl de motor draait.
+
 **Wat dit niet oplost.** De drempels in de live-voorwaarden — 46 kPa
 stationair, 13,2 V, 0,5 V sprei op de achterste sonde — komen uit
 redeneerwerk en uit wat gangbaar is, niet uit metingen aan deze auto's. Ze
