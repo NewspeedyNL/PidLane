@@ -347,6 +347,99 @@ console.log('\n── na laag 1b houdt de keten op: geen filter, geen middeling 
     s5.validateAndSmooth('0105', 300), null);
 }
 
+console.log('\n── splitBatchResponse: de adapter herhaalt frames (#210) ──');
+{
+  /* DE GEVALLEN ZIJN OPGENOMEN, NIET BEDACHT.
+     Alle vier de strings hieronder komen letterlijk uit het BT-log van
+     16-09-2026, een Mazda CX-5 met een goedkope ELM327-kloon. Die adapter zet
+     soms een tweede lengte-indicator midden in een multiframe-antwoord, met
+     daarna een frame dat opnieuw met 41 begint.
+
+     Waarom dat tot vandaag gevaarlijk was: de parser gooide die tweede
+     lengteregel weg en plakte het frame erachter aan dezelfde hexstroom.
+     Meestal viel daardoor de laatste PID van de batch weg — vervelend maar
+     eerlijk. Bij 010B0E10 gebeurde iets ergers: de echobytes (41 0B) vulden de
+     opgegeven lengte precies af, dus de parse "eindigde precies op het eind"
+     en gold als schoon en compleet. Er kwam 0110 = 166,51 g/s uit terwijl een
+     losse 0110 in dezelfde seconde 1,45 g/s gaf, en de harde limiet van MAF
+     staat op 0-655.
+
+     Dit blok legt beide kanten vast: de echo levert een GAT op, en een schoon
+     antwoord merkt er niets van. */
+  const s = bouw();
+
+  const ECHO_MAF = '008\r0:410B1E0E8B10\r008\r1:410B\r2:00760000000000\r\r>';
+  const uitMaf = s.splitBatchResponse(ECHO_MAF, ['010B', '010E', '0110']);
+  toets('de echo levert geen 0110 meer op (was 166,51 g/s)',
+    Object.prototype.hasOwnProperty.call(uitMaf, '0110'), false);
+  toets('de twee PIDs vóór de echo blijven staan',
+    { '010B': uitMaf['010B'], '010E': uitMaf['010E'] }, { '010B': [0x1E], '010E': [0x8B] });
+
+  const ECHO_RPM = '008\r0:410C08670D00\r008\r1:410C\r2:111C0000000000\r3:111C0000000000\r\r>';
+  const uitRpm = s.splitBatchResponse(ECHO_RPM, ['010C', '010D', '0111']);
+  toets('0111 ontbreekt na een echo', Object.prototype.hasOwnProperty.call(uitRpm, '0111'), false);
+  toets('het toerental vóór de echo klopt nog', uitRpm['010C'], [0x08, 0x67]);
+
+  // 0134 is vier bytes. Er liggen er twee. Zonder de `kort`-regel koos de
+  // parser dan één byte omdat dat nog paste — een getal dat nergens op slaat
+  // en nergens als fout opvalt.
+  const ECHO_LAM = '00B\r0:4115A380347F\r00B\r1:4115A38034\r2:C980022E380000\r\r>';
+  const uitLam = s.splitBatchResponse(ECHO_LAM, ['0115', '0134', '012E']);
+  toets('0134 wordt niet ingekort om te passen',
+    Object.prototype.hasOwnProperty.call(uitLam, '0134'), false);
+  toets('0115 komt er nog wel uit', uitLam['0115'], [0xA3, 0x80]);
+
+  // Afgekapt zónder echo: dezelfde uitkomst, want dat is precies wat er aan de
+  // hand is — de adapter zette de prompt neer vóór het laatste frame binnen was.
+  const AFGEKAPT = '008\r0:410C08980D00\r\r>';
+  const uitAf = s.splitBatchResponse(AFGEKAPT, ['010C', '010D', '0111']);
+  toets('een afgekapt antwoord levert een gat op, geen gok',
+    Object.keys(uitAf).sort(), ['010C', '010D']);
+
+  // ── DE TEGENKANT ────────────────────────────────────────────────
+  // Een stop die te vroeg toeslaat is net zo fout als geen stop. Deze drie
+  // moeten onveranderd door de parser komen.
+  const SCHOON = '008\r0:410C08A50D00\r1:111C\r\r>';
+  toets('een schoon multiframe-antwoord blijft compleet',
+    s.splitBatchResponse(SCHOON, ['010C', '010D', '0111']),
+    { '010C': [0x08, 0xA5], '010D': [0x00], '0111': [0x1C] });
+
+  // Herhalingen ná de opgegeven lengte hoort de afkapregel al weg te halen;
+  // die mogen geen stop worden.
+  const NA_DE_LENGTE = '008\r0:410C08A00D00\r1:111C\r2:111C0000000000\r3:111C0000000000\r\r>';
+  toets('herhaalde frames ná de lengte kosten niets',
+    s.splitBatchResponse(NA_DE_LENGTE, ['010C', '010D', '0111']),
+    { '010C': [0x08, 0xA0], '010D': [0x00], '0111': [0x1C] });
+
+  // En een dubbel antwoord zónder lengteregels: geen enkele lengte-indicator,
+  // dus niets om op te stoppen, en de bestaande route doet zijn werk.
+  toets('een dubbel antwoord zonder lengteregel parst gewoon door',
+    s.splitBatchResponse('4104430B1D0E8C\r4104430B1D0E8C\r\r>', ['0104', '010B', '010E']),
+    { '0104': [0x43], '010B': [0x1D], '010E': [0x8C] });
+
+  // ── EN DE TELLER ────────────────────────────────────────────────
+  // Een echo mag niet stil verdwijnen. Er komt geen logregel per geval — dat
+  // zou op deze adapter een paar keer per seconde zijn — maar de teller in
+  // PLBus moet oplopen, want dáár leest het adapterpaneel hem uit. Zonder
+  // deze toets kan de stop blijven werken terwijl niemand meer ziet dát hij
+  // werkt, en dat is precies de stille vorm waar §19 over gaat.
+  {
+    const t = bouw();
+    const voor = t.PLBus.stats().echoTot;
+    t.splitBatchResponse(ECHO_MAF, ['010B', '010E', '0110']);
+    t.splitBatchResponse(ECHO_RPM, ['010C', '010D', '0111']);
+    toets('twee echo\u2019s tellen als twee', t.PLBus.stats().echoTot - voor, 2);
+    t.splitBatchResponse(SCHOON, ['010C', '010D', '0111']);
+    toets('een schoon antwoord telt niet mee', t.PLBus.stats().echoTot - voor, 2);
+  }
+
+  // De CAN-header mag géén tweede lengte zijn. Zonder die uitzondering slaat
+  // de stop bij headers-aan al bij frame 0 toe en komt er niets meer door.
+  toets('een 11-bit CAN-header telt niet als lengte-indicator',
+    s.splitBatchResponse('7E8 0:410C0A98410D 1:50410584000000', ['010C', '010D', '0105']),
+    { '010C': [0x0A, 0x98], '010D': [0x50], '0105': [0x84] });
+}
+
 console.log('\n── de hele keten: ruwe regel in, meetwaarde uit ──');
 {
   // Wat de pollus doet: batch splitsen, dan per PID de bytes toepassen.

@@ -47,6 +47,12 @@ var KRITIEK = [
   // niet — maar zonder deze regel zou de guard zelf de stille fout zijn.
   'applyFeatureToggles','featOn','finishLogin','fv',
   'getPidDef','getVehicle','goHome',
+  // Erbij op 16-09-2026. Het adapterpaneel (pidlane-adapter.js) heeft de
+  // verbreek-knop van de OBD-chip overgenomen en roept handleConnect() achter
+  // een guard aan, want dat bestand laadt later dan pidlane-uihelpers.js.
+  // Ontbreekt die functie, dan doet de knop niets en zegt niets -- precies de
+  // stille vorm waarvoor deze lijst bestaat.
+  'handleConnect',
   'ecuSteunt','hasTesterConsent','healthUitProfiel',
   // De twee helften van #78 (02-09-2026). plHealthHerzien() laat een negatief
   // gezondheidsoordeel vervallen zodra er alsnog een geldige meting binnenkomt;

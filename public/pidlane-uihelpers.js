@@ -286,9 +286,22 @@ async function checkAiReachable(){
   catch(e){ _aiReach=false; }
   try{ updateTopbarStatus(); }catch(e){ console.warn('updateTopbarStatus mislukt:', e); }
 }
-// Tik op OBD-dot: niet verbonden → verbindscherm; verbonden → verbreken bevestigen
+/* Tik op de OBD-dot: niet verbonden → verbindscherm; verbonden → het
+   adapterpaneel.
+
+   Tot 16-09-2026 stond hier een confirm() met "OBD-verbinding verbreken?" en
+   twee getallen in de aanhef. Dat was de énige plek waar de verbinding zichzelf
+   toonde, en de vraag die eroverheen lag was de enige die je níét wilde stellen:
+   je tikt op een groene dot omdat je wilt weten hoe het ermee staat, niet om
+   hem uit te zetten.
+
+   Het paneel toont nu de cijfers die de app al had (PLBus, PLLoad) en zet
+   verbreken onderaan als knop, met dezelfde bevestiging. Zie pidlane-adapter.js. */
 function obdChipTap(){
   if(connected||demoMode){
+    if(window.PLAdapter && typeof PLAdapter.open==='function'){ PLAdapter.open(); return; }
+    // Vangnet: zonder het paneel blijft de oude vraag over. Niet stil terugvallen
+    // op niets — dan is de chip een dode knop, en daar controleert blok 5 op.
     const info=_connSpeed?('⚡ '+_connSpeed.readsPerSec+' reads/s · 📡 '+_connSpeed.pids+' PIDs\n\n'):'';
     if(confirm(info+(demoMode?'Demo modus stoppen?':'OBD-verbinding verbreken?'))) handleConnect();
   } else {

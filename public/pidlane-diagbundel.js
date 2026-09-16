@@ -57,20 +57,67 @@ function splitBatchResponse(raw, expectPids){
   // informatie die de parser nodig had: de ECU zegt er exact mee hoeveel bytes
   // hij stuurt, en daarmee ligt bij een batch de lengte van een onbekend PID
   // dwingend vast (zie route 1). Hij wordt nu bewaard in `declared`.
-  let hex='', declared=null;
+  let hex='', declared=null, lenGezien=0, echo=false;
   // `min` beschermt tegen twee valkuilen. (1) Een losse korte regel kan óók de
   // PCI-byte van een single frame zijn ("03" = 3 databytes); die is geen
   // First-Frame lengte en zou de respons te vroeg afkappen. Een echte FF komt
   // alleen voor bij meer dan 7 bytes, vandaar min 8. (2) Vóór de lengte kan
   // nog een CAN-header staan ("7E8 015 0:"), dus we nemen de LAATSTE hexgroep,
   // niet de eerste — anders lazen we 0x7E8 als lengte.
+  //
+  // Geeft nu terug ÓF er een lengte-indicator herkend is, niet alleen of het de
+  // eerste was. Die tweede vraag is sinds 16-09-2026 het hele punt — zie de
+  // stop hieronder. `lenGezien` telt ze; `declared` blijft de eerste.
+  //
+  // EN EEN CAN-HEADER TELT NIET MEE (16-09-2026). "7E8" staat op precies
+  // dezelfde plek als een lengte en heeft dezelfde vorm, dus zonder deze regel
+  // zou elke frameregel met headers aan als een nieuw bericht gelden en zou de
+  // stop hieronder meteen bij frame 0 toeslaan. Hij werd tot vandaag als lengte
+  // 2024 gelezen — onschadelijk, want zo'n lengte kapt nooit iets af, maar
+  // daarmee ook nooit opgemerkt.
   const _pakLen=(t,min)=>{
-    if(declared!=null) return;
     const m=String(t||'').match(/[0-9A-Fa-f]{1,4}/g);
-    if(!m) return;
-    const d=parseInt(m[m.length-1],16);
-    if(d>=(min||2)&&d<=4095) declared=d;
+    if(!m) return false;
+    const laatste=String(m[m.length-1]).toUpperCase();
+    if(/^7E[0-9A-F]$/.test(laatste)) return false;
+    const d=parseInt(laatste,16);
+    if(!(d>=(min||2)&&d<=4095)) return false;
+    lenGezien++;
+    if(declared==null) declared=d;
+    return true;
   };
+  /* ── EEN TWEEDE LENGTE-INDICATOR IS EEN TWEEDE BERICHT (16-09-2026) ──────
+     Gemeten met een goedkope ELM327-kloon op een Mazda CX-5. Die adapter zet
+     soms midden in een multiframe-antwoord een nieuwe lengteregel neer,
+     gevolgd door een frame dat opnieuw met 41 begint:
+
+       goed    008  0:410C08A50D00  1:111C
+       kapot   008  0:410C08670D00  008  1:410C  2:111C0000000000
+
+     Tot vandaag gooide _pakLen() die tweede regel weg (hij keerde terug zodra
+     `declared` gezet was) en plakte de lus het frame erachter gewoon aan
+     dezelfde hexstroom. Daarna kapte de regel hieronder af op de EERSTE
+     opgegeven lengte — en dan zit de echo van twee bytes bínnen die acht en
+     duwt hij de laatste PID van de batch eruit.
+
+     Meestal kostte dat één PID: 7 van de 20 batches 010C0D11 misten 0111. Eén
+     keer was het duurder. Bij 010B0E10 vulden de echobytes (41 0B) de
+     opgegeven lengte precies af, en "eindigt precies op het eind" is juist het
+     kenmerk waarop route 1 haar beste kandidaat kiest:
+
+       008 0:410B1E0E8B10 008 1:410B 2:00760000000000
+         → 010B=30 kPa  010E=5,5°  0110=166,51 g/s   (geen MIST, geen melding)
+
+     Een losse 0110 gaf in dezelfde seconde 1,45 g/s, en de harde limiet van
+     MAF staat op 0-655, dus dat getal komt overal doorheen. Dit is letterlijk
+     de fout die het commentaar hierboven sinds 26-07 aankondigt, alleen levert
+     de adapter het materiaal aan in plaats van onze eigen parser.
+
+     Vandaar: stoppen zodra er een tweede lengte-indicator langskomt terwijl er
+     al data verzameld is. Wat daarna komt hoort bij een ander bericht en is
+     niet ons antwoord. Een herhaling ZONDER lengteregel (410442 410442 410442)
+     raakt hier niets: die parst vandaag goed en blijft dat doen, want de
+     afkapregel hieronder haalt hem alsnog weg. Zie PIDLANE.md §11 en #210. */
   for(let line of String(raw).split(/[\r\n]+/)){
     // ── Framemarkers eerst (fase 4-fix) ────────────────────────────
     // Een ISO-TP multiframe respons komt op deze adapter op ÉÉN regel binnen:
@@ -87,7 +134,9 @@ function splitBatchResponse(raw, expectPids){
     // alleen de payload erna. Deel 0 is de lengte-indicator en vervalt.
     if(/[0-9A-Fa-f]\s*:/.test(line)){
       const delen=line.split(/[0-9A-Fa-f]\s*:/);
-      _pakLen(delen[0], 2);                        // deel 0 = de lengte-indicator
+      // deel 0 = de lengte-indicator. Is het de tweede en staat er al data,
+      // dan begint hier een tweede bericht en houdt het antwoord op.
+      if(_pakLen(delen[0], 2) && lenGezien>1 && hex){ echo=true; break; }
       for(let k=1;k<delen.length;k++) hex+=delen[k].replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
       continue;
     }
@@ -95,9 +144,20 @@ function splitBatchResponse(raw, expectPids){
     if(!h) continue;
     if(/^18DA/.test(h)) h=h.slice(8);              // 29-bit CAN header
     else if(/^7E[89A-F]/.test(h)) h=h.slice(3);    // 11-bit CAN header
-    if(!/41/.test(h)&&h.length<=4){ _pakLen(h, 8); continue; }   // losse lengte-regel "00E"
+    if(!/41/.test(h)&&h.length<=4){                              // losse lengte-regel "00E"
+      if(_pakLen(h, 8) && lenGezien>1 && hex){ echo=true; break; }
+      continue;
+    }
     hex+=h;
   }
+  /* Eén teller naar buiten, geen logregel per geval. Dit gebeurt op een
+     echoënde adapter een paar keer per seconde; een btDiag() erbij zou het
+     BT-log onleesbaar maken. Het adapterpaneel (PLAdapter) toont de teller, en
+     daar is hij precies wat de gebruiker moet weten: deze adapter herhaalt
+     frames. Stil wegkijken is het niet — hij staat op het scherm en in de
+     testrun. */
+  if(echo){ try{ if(window.PLBus && typeof PLBus.noteEcho==='function') PLBus.noteEcho(); }
+            catch(e){ console.warn('PLBus.noteEcho mislukt — de echoteller van deze adapter loopt niet mee', e); } }
   // ISO-TP eerste-frame lengte-indicator (bijv "00E"=14 bytes) vooraan wegknippen
   const _mPre=hex.match(/^0[0-9A-F]{2}(?=41)/);
   if(_mPre){ _pakLen(_mPre[0], 8); hex=hex.slice(3); }
@@ -111,6 +171,25 @@ function splitBatchResponse(raw, expectPids){
     hex=hex.slice(0, i+declared*2);
     eind=hex.length;
   }
+  /* ── DE ECU BELOOFDE MEER BYTES DAN ER LIGGEN (16-09-2026) ──────────────
+     `kort` betekent: er is een lengte opgegeven en we hebben er minder. Dat
+     gebeurt bij een afgekapt antwoord (de adapter zet de prompt neer vóór het
+     laatste frame binnen is) en sinds de stop hierboven ook bij een echo.
+
+     Waarom dat de kandidatenlijst hieronder raakt. Die lijst probeert naast de
+     tabelwaarde ook 1, 2 en 4 bytes, omdat voertuigen van J1979 afwijken — op
+     deze Mazda zijn 0155/0156 één byte in plaats van twee. Dat aftasten heeft
+     alleen betekenis op een COMPLEET bericht: dan is "de parse eindigt precies
+     op de opgegeven lengte" het bewijs dat de gekozen indeling klopt. Op een
+     afgekapt bericht bestaat dat bewijs niet, en dan wint altijd de kortste
+     gok die nog past.
+
+     Gemeten op het echo-geval van 00B 0:4115A380347F: 0134 is vier bytes, er
+     liggen er twee, en zonder deze regel komt 0134 als één byte (127) terug —
+     een getal dat nergens op slaat en nergens als fout opvalt. Mét deze regel
+     valt 0134 weg en staat hij als MIST in het verslag. Dat is het verschil
+     tussen een gat dat je ziet en een gat dat je gelooft. */
+  const kort=(declared!=null && eind===null);
   i+=2;
 
   // ── Route 1: verwachte PID-lijst bekend → adaptieve backtracking-parser ──
@@ -145,7 +224,9 @@ function splitBatchResponse(raw, expectPids){
         rec(pos+2,remaining,acc,depth+1);
       }
       if(remaining.includes(suf)){
-        const kand=[pidByteLen(suf),1,2,4];
+        // Afgekapt bericht → alleen de bekende lengte. Zie `kort` hierboven:
+        // aftasten zonder eindpunt levert de kortste gok op, niet de juiste.
+        const kand=kort?[pidByteLen(suf)]:[pidByteLen(suf),1,2,4];
         // ── De lengtevergelijking ──────────────────────────────────
         // De ECU gaf het totaal aantal bytes. Nemen we voor de óverige
         // gevraagde PIDs de bekende lengte aan, dan ligt de lengte van dít

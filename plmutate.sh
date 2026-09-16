@@ -608,6 +608,28 @@ MUTATIES=(
 "capacitor.config.json@@\"appId\": \"nl.pidlane.app\",@@\"appId\": \"nl.PidLane.app\",@@test-nativeschil.js@@een hoofdletter in de pakketnaam: Play weigert de bundel met \"Voer een geldige pakketnaam in\""
 "capacitor.config.json@@\"appId\": \"nl.pidlane.app\",@@\"appId\": \"pidlane\",@@test-nativeschil.js@@een pakketnaam van één deel, en dat is geen pakketnaam"
 ".github/workflows/build-apk.yml@@              print(\"── Pakketnaam in de bundel ──\")@@              print(\"── pakket ──\")@@test-nativeschil.js@@de bundelpoort leest de pakketnaam niet meer uit het gebouwde manifest"
+# ── de ronde van 16-09-2026 (#210, #211, #212) ──
+# Voor het eerst met een andere adapter gemeten: een goedkope ELM327-kloon
+# herhaalt frames binnen één antwoord. De parser plakte die echo aan dezelfde
+# hexstroom en leverde daardoor niet alleen gaten op maar ook één plausibel
+# verkeerd getal — 0110 op 166,51 g/s terwijl een losse 0110 in dezelfde
+# seconde 1,45 gaf, binnen de harde limiet en zonder MIST. De eerste vier
+# mutaties bouwen elk één helft van die reparatie terug af.
+"public/pidlane-diagbundel.js@@if(_pakLen(h, 8) && lenGezien>1 && hex){ echo=true; break; }@@_pakLen(h, 8);@@test-parser.js@@een tweede lengteregel wordt weer genegeerd: de echo schuift de laatste PID eruit"
+"public/pidlane-diagbundel.js@@if(_pakLen(delen[0], 2) && lenGezien>1 && hex){ echo=true; break; }@@_pakLen(delen[0], 2);@@test-parser.js@@een lengte vóór een framemarker stopt niet meer: dezelfde echo op één regel glipt erdoor"
+"public/pidlane-diagbundel.js@@const kand=kort?[pidByteLen(suf)]:[pidByteLen(suf),1,2,4];@@const kand=[pidByteLen(suf),1,2,4];@@test-parser.js@@op een afgekapt antwoord wordt een PID weer ingekort tot hij past (0134 als één byte)"
+"public/pidlane-diagbundel.js@@if(/^7E[0-9A-F]$/.test(laatste)) return false;@@@@test-parser.js@@een CAN-header telt weer als lengte-indicator en de stop slaat bij frame 0 toe"
+"public/pidlane-diagbundel.js@@if(echo){ try{ if(window.PLBus && typeof PLBus.noteEcho==='function') PLBus.noteEcho(); }@@if(false){ try{ if(window.PLBus && typeof PLBus.noteEcho==='function') PLBus.noteEcho(); }@@test-parser.js@@de echoteller loopt niet meer: de stop werkt, maar niemand kan zien dát hij werkt"
+# En de regelkring eromheen. Het gevaarlijkste hier is niet dat een knop niet
+# werkt maar dat hij wél lijkt te werken: een handmatige stand die stilletjes
+# weggeregeld wordt, of een advies dat bij een echoënde adapter juist harder
+# gaat pollen.
+"public/pidlane-plload.js@@mult(){ return this._handmatig ? this._handMult : this._mult; },@@mult(){ return this._mult; },@@test-adapterpaneel.js@@de handmatige stand komt nergens aan: het schuifje beweegt en het tempo niet"
+"public/pidlane-plload.js@@    if(this._handmatig){\n      this._vorigEcho=s.echoTot; this._vorigVenMs=s.venGemMs;@@    if(false){\n      this._vorigEcho=s.echoTot; this._vorigVenMs=s.venGemMs;@@test-adapterpaneel.js@@de automaat regelt een handmatige keuze binnen twee tikken weer weg"
+"public/pidlane-plload.js@@    echoBodem:2,        // hier stopt de automatische krimp@@    echoBodem:1,        // hier stopt de automatische krimp@@test-adapterpaneel.js@@de echo-krimp zakt door naar groep 1 en derdeelt het tempo zonder dat iemand dat koos"
+"public/pidlane-plload.js@@    if(erbij>=this.cfg.echoOp){@@    if(erbij>=1){@@test-adapterpaneel.js@@één herhaling is al genoeg om te krimpen: de groep staat binnen een minuut altijd op 2"
+"public/pidlane-adapter.js@@    if (metEcho.length === st.length) {@@    if (false) {@@test-adapterpaneel.js@@het advies negeert herhaalde frames en adviseert harder pollen — precies de verkeerde kant op"
+"public/pidlane-data.js@@  batchKleiner(){\n    if(S.batchVast) return false;@@  batchKleiner(){@@test-adapterpaneel.js@@een vastgezette groep wordt alsnog door de automaat verkleind"
 )
 
 echo

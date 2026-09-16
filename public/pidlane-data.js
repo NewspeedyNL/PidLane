@@ -1379,7 +1379,13 @@ const S={
   tx:0, ok:0, bad:0, msSom:0, msN:0,
   perPid:Object.create(null),
   reqTot:0, reqOnvol:0,      // requests totaal / met ontbrekende PIDs
-  batchGroep:3, batchGoed:0,
+  // Antwoorden waarin splitBatchResponse() een TWEEDE bericht aantrof (#210,
+  // 16-09-2026). Dat is geen busfout en geen ECU-eigenschap maar een
+  // adaptereigenschap: een goedkope ELM-kloon die frames herhaalt. Hij hoort
+  // dus niet in foutPct en niet in onvolPct, maar hij moet wel érgens staan,
+  // want hij is de oorzaak onder een deel van die onvolledige antwoorden.
+  echoTot:0, echoSinds:0,
+  batchGroep:3, batchGoed:0, batchVast:false,
   hist:[]
 };
 const nu=()=>Date.now();
@@ -1549,6 +1555,15 @@ window.PLBus={
     // vervuilen.
     S.reqTot++; if(ontbrak) S.reqOnvol++;
   },
+
+  /* De parser trof een tweede lengte-indicator aan en heeft daar gestopt.
+     Alleen tellen, niet loggen: op een echoënde adapter gebeurt dit een paar
+     keer per seconde. `echoSinds` bewaart het eerste moment, zodat het paneel
+     "sinds 14:02" kan zeggen in plaats van alleen een kaal getal. */
+  noteEcho(){
+    if(!S.echoSinds) S.echoSinds=nu();
+    S.echoTot++;
+  },
   stats(){
     const t=nu(), w=S.hist.filter(h=>t-h.t<10000);
     const n=w.length, badN=w.filter(h=>h.bad).length;
@@ -1564,11 +1579,14 @@ window.PLBus={
       batchGroep:S.batchGroep,
       reqTot:S.reqTot, reqOnvol:S.reqOnvol,
       onvolPct: S.reqTot?Math.round(S.reqOnvol/S.reqTot*100):0,
+      echoTot:S.echoTot, echoSinds:S.echoSinds,
+      echoPct: S.reqTot?Math.round(S.echoTot/S.reqTot*100):0,
       perPid:S.perPid
     };
   },
   resetStats(){
     S.tx=S.ok=S.bad=S.msSom=S.msN=0; S.reqTot=S.reqOnvol=0;
+    S.echoTot=0; S.echoSinds=0;
     S.perPid=Object.create(null); S.hist=[];
     // Ook de geleerde bytelengtes en structuurverdenkingen wissen: die horen
     // bij dít voertuig en deze sessie. Zonder deze weg terug bleef een eenmaal
@@ -1579,17 +1597,35 @@ window.PLBus={
 
   /* ── adaptieve batchgrootte (fase 2) ── */
   batchGroep(){ return S.batchGroep; },
+  /* Staat de groep met de hand vast (#211, 16-09-2026), dan houdt de automaat
+     zijn handen eraf. Zonder deze vlag zou een handmatige keuze binnen twee
+     tikken weer weggeregeld zijn en zou het paneel een knop tonen die niets
+     doet — precies de vorm van dode knop waar blok 5 op controleert. */
+  batchVast(){ return !!S.batchVast; },
+  batchZet(n, vast){
+    // `Number(n)||3` stond hier, en dat maakte van groep 0 een groep 3: nul is
+    // falsy. Buiten 1..3 bestaat er geen groep, dus afkappen is goed — maar
+    // afkappen naar de MAXIMUMwaarde bij een te lage invoer is het tegendeel
+    // van wat er gevraagd werd. Gevonden door test-adapterpaneel.js.
+    const ruw=Number(n);
+    const g=Math.max(1,Math.min(3,Math.round(isFinite(ruw)?ruw:3)));
+    S.batchGroep=g; S.batchGoed=0; S.batchVast=!!vast;
+    diag('Multi-PID groep '+(vast?'handmatig':'automatisch')+' op '+g,'info');
+    return g;
+  },
   batchKleiner(){
+    if(S.batchVast) return false;
     S.batchGoed=0;
     if(S.batchGroep>1){ S.batchGroep--; diag('Multi-PID groep verkleind naar '+S.batchGroep,'warn'); return true; }
     return false;
   },
   batchGroter(){
+    if(S.batchVast) return false;
     if(S.batchGroep>=3) return false;
     if(++S.batchGoed<25) return false;
     S.batchGoed=0; S.batchGroep++; diag('Multi-PID groep terug omhoog naar '+S.batchGroep,'ok'); return true;
   },
-  batchReset(){ S.batchGroep=3; S.batchGoed=0; }
+  batchReset(){ if(S.batchVast) return; S.batchGroep=3; S.batchGoed=0; }
 };
 
 /* Handige wrapper: alles binnen fn() draait met de bus geclaimd. Lukt het

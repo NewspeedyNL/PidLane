@@ -25,6 +25,24 @@ const PLLoad={
   _mult:1.0, _laatstTick:0, _sinds:0, _staat:'normaal', _gelogdeMult:undefined,
   // Vorige responstijd, om te zien of hij OPLOOPT. Zie het blok bij `druk`.
   _vorigVenMs:null, _laatstOvergeslagen:0,
+  /* ── HANDMATIG (16-09-2026) ───────────────────────────────────────────
+     Tot vandaag was dit een meting en geen keuze — staat() zegt dat er
+     letterlijk bij. Dat klopte zolang niemand het tempo kon zien: een keuze
+     aanbieden zonder de cijfers erbij is een schuifje waarmee je iets
+     verpest zonder te weten wat.
+
+     Met het adapterpaneel staan die cijfers er wél, en dan verandert de
+     afweging. Op een adapter die frames herhaalt (#210) regelt de automaat op
+     signalen die de verkeerde kant op wijzen, en dan wil je hem opzij kunnen
+     zetten. `_handmatig` doet precies één ding: tick() regelt niet meer en
+     mult() geeft `_handMult`. De automaat blijft verder gewoon meten, zodat
+     het paneel kan laten zien wát hij zou hebben gedaan. */
+  _handmatig:false, _handMult:1.0,
+  // Ring met wat de automaat gedaan heeft, mét de reden. Dit was er niet: de
+  // redenen stonden in btDiag-regels die tussen duizend andere verdwenen, en
+  // "waarom staat de app op 17%" was daardoor niet te beantwoorden zonder het
+  // hele BT-log door te lezen.
+  _acties:[], _vorigEcho:null, _echoRust:0,
   MIN:1.0, MAX:6.0,
   cfg:{
     tickMs:2000,        // niet vaker bijregelen dan dit
@@ -46,10 +64,79 @@ const PLLoad={
     // is aftasten, geen regelen.
     omlaagTraag:0.03,
     // Alleen aftasten als de bus écht rustig is, niet zodra hij niet druk is.
-    kalmFoutPct:5
+    kalmFoutPct:5,
+    /* ── ECHO-KRIMP (#211, 16-09-2026) ────────────────────────────────
+       Een goedkope ELM-kloon herhaalt frames binnen één antwoord. De parser
+       stopt daar sinds #210 op, en dan valt de laatste PID van de batch weg —
+       7 van de 20 keer in de gemeten staart van 16-09.
+
+       De lever om dat te vermijden bestond al: een kleinere groep. Drie PIDs
+       van elk één databyte geven 8 bytes en dat past niet in de 7 databytes
+       van één CAN-frame, dus wordt het een multiframe-antwoord — en precies
+       daarop struikelt deze adapter. Bij twee PIDs past het meestal wél in
+       één frame en bestaat het foutbeeld niet.
+
+       Maar die lever hing aan het verkeerde signaal: batchOk() vuurt zodra er
+       ≥1 PID terugkomt, dus 2-van-3 gold als succes en de groep bleef op 3.
+       De echoteller is wél een eenduidig signaal, want hij zegt iets over de
+       ADAPTER en niet over de auto. Een PID die deze auto niet heeft, levert
+       geen echo op.
+
+       NIET tot 1. Groep 1 verdrievoudigt het aantal verzoeken, en de meting
+       die dat zou rechtvaardigen bestaat niet — bij groep 2 is niet gemeten
+       hoeveel er overblijft. Wie tot 1 wil, zet het paneel op handmatig; dan
+       is het een keuze met een naam eronder in plaats van een regelkring die
+       stilletjes het tempo derdeelt. */
+    echoOp:2,           // herhaalde antwoorden binnen één tick → te veel
+    echoBodem:2,        // hier stopt de automatische krimp
+    echoRustTikken:30   // 30 tikken van 2 s zonder echo → één stap terug
   },
 
-  mult(){ return this._mult; },
+  mult(){ return this._handmatig ? this._handMult : this._mult; },
+
+  /* ── de handmatige stand ── */
+  isHandmatig(){ return !!this._handmatig; },
+  handmatig(aan, waarom){
+    const nieuwStand=!!aan;
+    if(nieuwStand===this._handmatig) return this._handmatig;
+    // Overnemen op de stand die er NU is, niet op 1.0. Anders springt het
+    // tempo bij het omzetten, en dan meet je na het omschakelen iets anders
+    // dan waar je naar keek.
+    if(nieuwStand) this._handMult=this._mult;
+    else this._mult=this._handMult;
+    this._handmatig=nieuwStand;
+    this.boekActie(nieuwStand?'handmatig':'automaat',
+      Math.round(100/(nieuwStand?this._mult:this._handMult)),
+      Math.round(100/this.mult()),
+      waarom || (nieuwStand?'met de hand overgenomen':'weer overgelaten aan de automaat'));
+    return this._handmatig;
+  },
+  // Tempo in procenten (100 = vol tempo), want dat is wat er op het scherm
+  // staat. De multiplier is het omgekeerde en dat is voor een schuifje een
+  // valstrik: hoger is daar juist langzamer.
+  zetTempo(pct){
+    // Niet `Number(pct)||100`: nul is falsy en zou dan het VOLLE tempo geven,
+    // precies andersom dan gevraagd. Zelfde vorm als in PLBus.batchZet().
+    const ruw=Number(pct);
+    const p=Math.max(Math.round(100/this.MAX), Math.min(100, Math.round(isFinite(ruw)?ruw:100)));
+    const m=Math.round((100/p)*100)/100;
+    const van=Math.round(100/this._handMult);
+    this._handMult=Math.max(this.MIN, Math.min(this.MAX, m));
+    if(this._handmatig) this.boekActie('tempo', van, Math.round(100/this._handMult), 'met de hand gezet');
+    return Math.round(100/this._handMult);
+  },
+
+  /* ── het actielogboek ── */
+  boekActie(wat, van, naar, reden, s){
+    this._acties.push({
+      t:Date.now(), wat:wat, van:van, naar:naar, reden:String(reden||''),
+      bezet:s?s.belasting:null, fout:s?s.foutPct:null,
+      onvol:s?s.onvolPct:null, venMs:s?s.venGemMs:null
+    });
+    if(this._acties.length>60) this._acties.shift();
+  },
+  acties(){ return this._acties.slice(); },
+  wisActies(){ this._acties=[]; },
 
   /* ── WELKE ZONE HOORT BIJ DEZE CIJFERS ────────────────────────────────
      Uitgeknipt uit tick() op 02-09-2026 (#76), zonder de regel zelf aan te
@@ -95,6 +182,17 @@ const PLLoad={
     let s=null;
     try{ s=(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null; }catch(e){ console.warn('PLBus.stats mislukt:', e); }
     if(!s) return;
+    /* Handmatig: wél meten, niet regelen. `_staat` blijft dus kloppen, zodat
+       het paneel kan laten zien in welke zone de automaat de bus ziet — dat is
+       juist wat je wilt weten terwijl je het zelf doet. `_vorigEcho` en
+       `_vorigVenMs` lopen mee zodat er bij het teruggeven aan de automaat geen
+       sprong uit een oude meting komt. */
+    if(this._handmatig){
+      this._vorigEcho=s.echoTot; this._vorigVenMs=s.venGemMs;
+      this._staat=this._bepaalStaat(s);
+      return;
+    }
+    this._echoKrimp(s);
     /* ── BEZETTING ALLEEN IS GEEN TEGENDRUK (23-08-2026) ──────────────────
        Hier stond `belasting>=bezetOp || foutPct>=foutOp`. Die OF was de fout:
        een hoge bezetting sloeg op zichzelf al aan, ongeacht of er iets
@@ -166,6 +264,9 @@ const PLLoad={
     if(Math.abs(this._mult-vorig)>=0.2){
       btDiag(`Pollbudget ${this._mult>vorig?'verlaagd':'verhoogd'} naar ${(100/this._mult).toFixed(0)}% `+
              `(bezet ${s.belasting}%, fout ${s.foutPct}%, ${s.venGemMs}ms)`, this._mult>vorig?'warn':'info');
+      // Dezelfde stap, maar nu ook opzoekbaar. De reden is de zone die hem
+      // veroorzaakte; zoneVan() is daar de enige bron van (#76).
+      this.boekActie('tempo', Math.round(100/vorig), Math.round(100/this._mult), _redenVanZone(_zone, s), s);
       this._gelogdeMult=this._mult;
     } else if(this._gelogdeMult!==undefined && Math.abs(this._mult-this._gelogdeMult)>=0.5){
       btDiag(`Pollbudget stapsgewijs ${this._mult>this._gelogdeMult?'verlaagd':'verhoogd'} naar `+
@@ -184,6 +285,8 @@ const PLLoad={
       this._laatstOvergeslagen=nu;
       btDiag(`Pollbudget vastgehouden op ${(100/this._mult).toFixed(0)}% — bezet ${s.belasting}% `+
              `maar responstijd ${s.venGemMs}ms (vorige ${this._vorigVenMs==null?'—':this._vorigVenMs+'ms'}), fout ${s.foutPct}%`,'warn');
+      this.boekActie('vastgehouden', Math.round(100/this._mult), Math.round(100/this._mult),
+        `bezetting ${s.belasting}% maar de responstijd loopt niet op — bezetting alleen is geen tegendruk`, s);
     /* 'warn' en niet 'info' (24-08). Op info-niveau haalde deze regel de
        logboek-export niet: na de rit van 23-08 was hij alleen terug te
        vinden in de diagbundel bínnen de testrun. Uitgerekend de regel die
@@ -196,11 +299,48 @@ const PLLoad={
     this._staat=this._bepaalStaat(s);
   },
 
+  /* ── DE ECHO-KRIMP ────────────────────────────────────────────────────
+     Eén stap per tick, en alleen op wat er sinds de vorige tick bijkwam. De
+     teller is cumulatief over de sessie; zou hij op het totaal regelen, dan
+     bleef hij krimpen op echo's van tien minuten geleden. */
+  _echoKrimp(s){
+    const tot=(s && typeof s.echoTot==='number')?s.echoTot:0;
+    if(this._vorigEcho==null){ this._vorigEcho=tot; return; }
+    const erbij=tot-this._vorigEcho;
+    this._vorigEcho=tot;
+    let groep=3;
+    try{ groep=(window.PLBus&&typeof PLBus.batchGroep==='function')?PLBus.batchGroep():3; }
+    catch(e){ console.warn('PLBus.batchGroep mislukt — de echo-krimp kan zijn stand niet lezen', e); return; }
+    if(erbij>=this.cfg.echoOp){
+      this._echoRust=0;
+      if(groep>this.cfg.echoBodem){
+        let ok=false;
+        try{ ok=PLBus.batchKleiner(); }catch(e){ console.warn('PLBus.batchKleiner mislukt:', e); }
+        if(ok) this.boekActie('groep', groep, groep-1,
+          `de adapter herhaalde ${erbij} antwoorden in ${Math.round(this.cfg.tickMs/1000)} s — kleinere groep past vaker in één frame`, s);
+      }
+      return;
+    }
+    if(erbij>0){ this._echoRust=0; return; }
+    this._echoRust++;
+    if(this._echoRust>=this.cfg.echoRustTikken && groep<3){
+      this._echoRust=0;
+      let ok=false;
+      try{ ok=PLBus.batchGroter(); }catch(e){ console.warn('PLBus.batchGroter mislukt:', e); }
+      // batchGroter() heeft zijn eigen teller van 25 schone rondes; komt hij
+      // daar nog niet doorheen, dan is er niets gebeurd en hoort er ook niets
+      // in het logboek te staan.
+      if(ok) this.boekActie('groep', groep, groep+1,
+        `${Math.round(this.cfg.echoRustTikken*this.cfg.tickMs/1000)} s zonder herhaalde antwoorden`, s);
+    }
+  },
+
   _bepaalStaat(s){
+    const m=this.mult();
     if(s.foutPct>=this.cfg.doodPct || (s.perSec===0&&connected)) return 'dood';
     if(s.venGemMs>=this.cfg.traagMs && s.foutPct<20)             return 'bufferend';
-    if(this._mult>=1.5)                                          return 'langzaam';
-    if(this._mult<=1.0 && s.belasting<this.cfg.bezetAf)          return 'snel';
+    if(m>=1.5)                                                   return 'langzaam';
+    if(m<=1.0 && s.belasting<this.cfg.bezetAf)                   return 'snel';
     return 'normaal';
   },
 
@@ -216,16 +356,35 @@ const PLLoad={
     };
     const m=M[this._staat]||M.normaal;
     return { code:this._staat, label:m[0], kleur:m[1], uitleg:m[2],
-             tempoPct:Math.round(100/this._mult), mult:this._mult };
+             tempoPct:Math.round(100/this.mult()), mult:this.mult(),
+             handmatig:this._handmatig, automaatMult:this._mult };
   },
 
   // _vorigVenMs moet hier mee: na een protocolherstel is de oude responstijd
   // van vóór de storing geen geldig ijkpunt meer. Bleef hij staan, dan zou de
   // eerste tick na herstel een "daling" zien tegenover een waarde uit een
   // heel andere toestand.
+  /* De handmatige stand overleeft een reset MET OPZET. reset() wordt
+     aangeroepen na een protocolherstel, en dat is precies het moment waarop
+     een gebruiker die het tempo zelf vastzette dat niet stilletjes kwijt wil
+     zijn. Het paneel heeft er een eigen knop voor. */
   reset(){ this._mult=1.0; this._staat='normaal'; this._laatstTick=0; this._gelogdeMult=undefined;
-           this._vorigVenMs=null; this._laatstOvergeslagen=0; }
+           this._vorigVenMs=null; this._laatstOvergeslagen=0;
+           this._vorigEcho=null; this._echoRust=0; }
 };
+
+/* De zone in één zin, voor het actielogboek. Bewust hier en niet in zoneVan():
+   die functie beslist, deze beschrijft, en dat moeten twee dingen blijven —
+   een oordeel dat zijn eigen uitleg schrijft is niet meer na te rekenen. */
+function _redenVanZone(zone, s){
+  if(zone==='druk'){
+    if(s && s.foutPct>=PLLoad.cfg.foutOp) return `foutgraad ${s.foutPct}% — de bus duwt terug`;
+    return `bezet ${s?s.belasting:'?'}% én de responstijd loopt op (${s?s.venGemMs:'?'} ms)`;
+  }
+  if(zone==='ruim')  return `ruimte over — bezet ${s?s.belasting:'?'}%, fout ${s?s.foutPct:'?'}%`;
+  if(zone==='kalm')  return 'rustige bus — aftasten waar de grens ligt';
+  return 'dode zone';
+}
 window.PLLoad=PLLoad;
 
 function pidPollInterval(pid){

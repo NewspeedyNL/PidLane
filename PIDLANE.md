@@ -144,8 +144,9 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 ## 4. Modules — laadvolgorde en verantwoordelijkheid
 
 > **De volgorde is functioneel, niet cosmetisch.** Zie §5.
-> 52 script-tags: `capacitor.js`, `config.js` en 50 `pidlane-*.js`-modules.
-> (21-08: `pidlane-gps.js` eruit, `pidlane-run.js` erbij — telling ongewijzigd.)
+> 53 script-tags: `capacitor.js`, `config.js` en 51 `pidlane-*.js`-modules.
+> (21-08: `pidlane-gps.js` eruit, `pidlane-run.js` erbij — telling ongewijzigd.
+> 16-09: `pidlane-adapter.js` erbij, één tag meer.)
 > `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
 > `pidlane-bedrading.js` achteraan staat.
 
@@ -223,6 +224,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 53 | `pidlane-meetdienst.js` | 11 | `PLMeetdienst` — de app-kant van de **native foreground service** (#18). Start/stopt de dienst met de adapterverbinding mee (wikkelt `setConn`, net als `PLWake`), zet de native hartslagteller op nul bij het wegschakelen en vertaalt het ruwe native rapport naar een oordeel: hoeveel liep het proces door, hoe lang lag het stil, kwam het uit zichzelf terug. Het **oordeel staat hier en niet in Java** — daar is het zonder toestel te toetsen. Geen schil met dienst? Dan is de uitkomst `gemeten: false` met de reden erbij, en nooit nul. Tests: `test-meetdienst.js`, `test-nativeschil.js` |
 | 55 | `pidlane-scanslot.js` | 6 | `PLScanSlot` — **één plek waar een scan de bus overneemt** (#191). `doe(naam, opties, werk)` claimt het busslot (en tikt het aan met `PLBus.raak()`), zet `window._plScanActief`, en geeft het werk een bewaakte `stuur()` mee met een `ATI`-hartslag. Die drie horen bij elkaar: de vlag zet de dode-socket-detectie uit, dus wie hem aanzet moet zelf merken dat de verbinding weg is. Nestelt veilig — een geneste scan zet de vlag van de lopende niet uit. Gebruikt door `deepRefreshPIDs()`; `PLKaart` heeft nog zijn eigen, in een rit getoetste uitvoering. Tests: `test-scanslot.js`, `test-diepzoeken.js` |
 | 54 | `pidlane-schil.js` | 5 | `PLSchil` — **welke APK draait dit** (#18). Leest de `versionCode` van de schil via Capacitor `App.getInfo()` en de nieuwste uit `/version.json` (die de Worker uit R2 serveert), en legt die twee naast elkaar. De kop van het testrunverslag draagt de regel `APK : build N`; blok 5 waarschuwt vóór de rit als de schil achterloopt. Ontbreekt één van beide getallen, dan is `achterstand()` **null** en nooit 0. Tests: `test-schil.js`, `test-schilproef.js` |
+| 56 | `pidlane-adapter.js` | 10 | `PLAdapter` — **het verbindingspaneel achter de OBD-chip** (#210/#211/#212, 16-09-2026). Toont wat de app al wist maar nergens liet zien: verzoeken/s, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken over twaalf minuten, en het actielogboek van `PLLoad` mét de reden per stap. Kan het tempo en de groepsgrootte laten overnemen door een mens (`PLLoad.handmatig()`, `PLBus.batchZet()`), en heeft een eigen snelheidstest van 40 s die **solo én batch** meet — dat verschil is precies wat blok 10 niet ziet. Regelt zelf niets: de automaat blijft `PLLoad`, de statistiek blijft `PLBus`. `advies()` is een pure functie en staat los van de meting. Tests: `test-adapterpaneel.js`, `bproef-adapterpaneel.js`, `bproef-schermranden.js` |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
 
 ### `native/` — de enige map met code die niet in de browser draait (11-09-2026)
@@ -909,6 +911,89 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
 
+
+### Wat er met de goedkope adapter gedaan is — 16-09-2026
+
+De bevinding hieronder is diezelfde dag gerepareerd, en de reparatie is groter
+dan de fout. Dat is met opzet: het gat dat de bevinding blootlegde zat niet in
+de parser maar in de zichtbaarheid. De cijfers wáren er, ze stonden alleen
+nergens op een scherm.
+
+**De parser stopt bij het tweede bericht.** `_pakLen()` keerde terug zodra
+`declared` gezet was en gooide een tweede lengte-indicator dus weg; nu telt hij
+ze en stopt de lus zodra er een tweede langskomt terwijl er al data ligt. Twee
+dingen horen erbij:
+
+- **Een CAN-header telt niet als lengte.** `7E8` staat op precies dezelfde plek
+  en heeft dezelfde vorm. Zonder die uitzondering zou de stop met headers aan
+  al bij frame 0 toeslaan en zou er niets meer doorkomen. Hij werd tot vandaag
+  als lengte 2024 gelezen — onschadelijk, want zo'n lengte kapt nooit iets af,
+  en daarmee ook nooit opgemerkt.
+- **Op een afgekapt bericht mag een PID niet meer ingekort worden.** De
+  kandidatenlijst probeert naast de tabelwaarde ook 1, 2 en 4 bytes omdat
+  voertuigen van J1979 afwijken. Dat aftasten heeft alleen betekenis op een
+  compleet bericht: dán is "eindigt precies op de opgegeven lengte" het bewijs
+  dat de indeling klopt. Op een afgekapt bericht bestaat dat bewijs niet en
+  wint altijd de kortste gok die nog past. Gemeten op het echo-geval van
+  `00B 0:4115A380347F`: 0134 is vier bytes, er liggen er twee, en zonder deze
+  regel komt 0134 als één byte terug — 127, een getal dat nergens op slaat en
+  nergens als fout opvalt.
+
+Beide gevallen van 16-09 leveren nu een eerlijk gat op. De opgenomen regels
+staan als vaste gevallen in `test-parser.js`, met vijf mutaties eronder in
+`plmutate.sh`.
+
+**En er is een teller.** Er komt géén logregel per geval: op deze adapter
+gebeurt dit een paar keer per seconde en dan is het BT-log onleesbaar. In
+plaats daarvan telt `PLBus.noteEcho()` ze, en staat het getal op het scherm en
+in het testrunverslag. Stil wegkijken is het dus niet — maar het is ook geen
+regel die je moet overslaan om bij de rest te komen.
+
+**De groep krimpt nu op de echo en niet op de foutgraad.** De lever bestond al
+(`PLBus.batchKleiner()`) maar hing aan `batchOk()`, en die vuurt zodra er ≥1
+PID terugkomt — 2-van-3 gold dus als succes. De echoteller is wél eenduidig,
+want hij zegt iets over de adapter en niet over de auto: een PID die deze auto
+niet heeft levert geen echo op. **Niet tot 1**: dat verdrievoudigt het aantal
+verzoeken en de meting die dat zou rechtvaardigen bestaat niet — bij groep 2 is
+niet gemeten hoeveel er overblijft. Wie tot 1 wil, doet dat met de hand.
+
+**Het adapterpaneel is de eigenlijke opbrengst.** Tik op de OBD-chip en je ziet
+de verbinding: de negen getallen uit `PLBus.stats()`, twee grafieken, wat de
+automaat deed mét de reden, de laatste waarschuwingen uit het BT-log, en een
+snelheidstest van veertig seconden die solo én batch meet. Tot vandaag stond
+daar een `confirm()` met "OBD-verbinding verbreken?" — de enige plek waar de
+verbinding zichzelf toonde, en uitgerekend met de vraag die je niet wilde
+stellen.
+
+Drie keuzes daarin verdienen een reden:
+
+1. **Twee grafieken en niet één.** Verzoeken per seconde en milliseconden zijn
+   twee maten van verschillende schaal. In één beeld met twee y-assen bepaalt
+   de keuze van de assen het verband dat je ziet, en dat verband hoeft er niet
+   te zijn. Twee kleine grafieken onder elkaar op dezelfde tijdas zeggen
+   hetzelfde zonder die suggestie.
+2. **Het tempo is nu een keuze, en dat was het met opzet niet.** `PLLoad.staat()`
+   zei het letterlijk: "bewust NIET instelbaar — het is een meting, geen keuze".
+   Dat klopte zolang niemand de cijfers zag; een schuifje zonder cijfers is een
+   manier om iets te verpesten zonder te weten wat. Met de cijfers ernaast
+   verandert de afweging — op een adapter die frames herhaalt regelt de
+   automaat op signalen die de verkeerde kant op wijzen.
+3. **De groep vastzetten zet de stand op handmatig.** Anders zou het paneel
+   "Automaat" tonen boven een groep waar de automaat niet meer aan mag komen:
+   één ding met twee betekenissen, en dat is hier al drie keer een bug geweest.
+
+**Drie kleinere dingen uit dezelfde meting.** Blok 10 vermeldt nu ook
+`onvolPct` en de echoteller, zodat de tegenspraak van 16-09 zichzelf leest in
+plaats van dat iemand hem uit de TX/RX-staart moet halen. De rustmeting gooit
+mislukte prikken niet meer stil weg en meldt het als de verbinding tijdens een
+trap wegviel — na trap 1 stonden er drie prikken waar er vijf hoorden, precies
+rond een herverbinding, en de regel zei "hersteld binnen 20 s". En de
+waarschuwing in de kop rekent vanaf de laatste meetregel in plaats van vanaf de
+start van de run; hij meldde tien minuten waar het er 39 seconden waren.
+
+**Wat hiermee niet opgelost is.** De reparatie verandert een verzonnen getal in
+een gat, en dat is beter, maar het gat blijft: 0111 miste zeven van de twintig
+keer. Of groep 2 dat werkelijk terugbrengt is de meting van de volgende rit.
 
 ### Een tweede adapter, en de meetketen gaf plausibele verkeerde waarden — 16-09-2026
 

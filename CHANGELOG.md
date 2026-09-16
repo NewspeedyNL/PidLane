@@ -11,6 +11,60 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-16a (CET) — DE VERBINDING HEEFT EEN SCHERM
+
+       • 🔌 TIK OP DE OBD-CHIP EN JE ZIET DE VERBINDING.
+         Verzoeken per seconde, responstijd, bezetting, fout-
+         graad, onvolledige antwoorden, herhaalde frames, twee
+         grafieken over twaalf minuten, en wat de automaat deed
+         mét de reden per stap. Daar stond tot nu toe één vraag:
+         "OBD-verbinding verbreken?" — de enige plek waar de
+         verbinding zichzelf toonde, en uitgerekend met de vraag
+         die je niet wilde stellen. Verbreken zit nu onderaan
+         het paneel.
+
+       • ✋ HET TEMPO KAN OVER. Automaat blijft de standaard,
+         maar je kunt hem overnemen: tempo in zes stappen en
+         het aantal PIDs per verzoek op 1, 2 of 3. De automaat
+         blijft ondertussen meten, dus je ziet wat hij van de
+         bus vindt terwijl hij niet ingrijpt.
+
+       • ⏱ EN ER ZIT EEN SNELHEIDSTEST IN. Veertig seconden,
+         vier trappen, en hij meet solo én batch. Dat verschil
+         is de hele reden dat hij bestaat: op een goedkope
+         adapter was het eerste getal 0% en het tweede 35%.
+         Daarna volgt een advies met het rekenwerk erbij.
+
+       • 🩹 EEN HERHAALD FRAME LEVERT GEEN VERZONNEN GETAL MEER
+         OP (#210). Een goedkope ELM327-kloon zet soms een
+         tweede lengte-indicator midden in een antwoord. De
+         parser plakte dat frame aan dezelfde hexstroom, en één
+         keer vulden die echobytes de opgegeven lengte precies
+         af: er kwam 166,51 g/s luchtmassa uit terwijl een losse
+         meting in dezelfde seconde 1,45 gaf. Geen waarschuwing,
+         binnen de harde limiet, dus overal doorheen. Hij stopt
+         nu bij het tweede bericht, en op een afgekapt antwoord
+         mag een sensor niet meer ingekort worden om te passen.
+         Een gat dat je ziet in plaats van een getal dat je
+         gelooft.
+
+       • 📉 DE GROEP KRIMPT OP DE ECHO (#211). Drie PIDs van één
+         byte passen niet in één CAN-frame; twee meestal wel.
+         De automaat verkleint nu op herhaalde frames — niet op
+         de foutgraad, want die telt een ontbrekende PID met
+         opzet niet mee. Hij zakt niet door naar 1: dat
+         verdrievoudigt het aantal verzoeken en die keuze hoort
+         bij een mens.
+
+       • 📋 EN DRIE DINGEN IN HET TESTRUNVERSLAG. Blok 10 noemt
+         nu ook het percentage onvolledige antwoorden (#212),
+         de rustmeting gooit mislukte prikken niet meer stil weg
+         en meldt een herverbinding middenin (#213), en de
+         waarschuwing in de kop rekent vanaf de laatste meting
+         in plaats van vanaf de start van de run (#214).
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-12a (CET) — DE BUNDEL HEET COM.PIDLANE.APP
 
        • 📦 DE PAKKETNAAM IS COM.PIDLANE.APP. De Play Console
