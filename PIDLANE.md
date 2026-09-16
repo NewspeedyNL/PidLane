@@ -910,6 +910,114 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Een tweede adapter, en de meetketen gaf plausibele verkeerde waarden — 16-09-2026
+
+Testrun 7.6 op dezelfde Mazda CX-5, maar voor het eerst niet met de MX+: een
+goedkope ELM327-kloon van AliExpress. Alleen blok 10 is gedraaid — 10 ok,
+0 fout, 6 let op — en dat blok zei dat er niets aan de hand was: *"zonder één
+misser tot 3.2 verzoeken/s"*. Op hetzelfde moment stond de app zelf op 17–19%
+pollbudget. Die twee kunnen niet allebei waar zijn, en het antwoord staat niet
+in de meetblokken maar in de TX/RX-staart eronder.
+
+**De staart is hier het bewijsstuk en geen bijvangst.** Hij is 39 s na de
+laatste meetregel opgeslagen en toont dus de gewone pollus met 20 actieve
+PIDs — geen blok 10-verkeer. Zestig gevallen, tien daarvan misten een PID:
+
+| batch | gevraagd | kwijt | hoe vaak |
+|---|---|---|---|
+| `010C0D11` | toerental, snelheid, gasklep | **0111** | 7 van 20 |
+| `0115342E` | O2 B1S2, lambda B1S1, EVAP-spoelklep | **012E** | 1 van 4 |
+| `01100607` | MAF, trim kort, trim lang | **0107** | 1 van 2 |
+| `01040B0E` | — | alles (lege RX) | 1 van 10 |
+
+Negen van de negen gedeeltelijke verliezen zijn **de laatste PID van de
+batch**. Nooit de eerste, nooit de middelste. Dat is geen ruis.
+
+**De adapter zet een tweede lengte-indicator midden in het antwoord.** Zo ziet
+een goed antwoord eruit en zo een kapot (uit het BT-log, `\r` als regeleinde):
+
+```
+goed    008  0:410C08A50D00  1:111C
+kapot   008  0:410C08670D00  008  1:410C  2:111C0000000000  3:111C000…
+```
+
+Die `008` zegt: hierna komen acht databytes. In het kapotte geval staat er een
+tweede `008` in, gevolgd door een frame dat opnieuw met `41` begint.
+`splitBatchResponse()` gooit die tweede lengteregel weg — `_pakLen()` keert
+meteen terug zodra `declared` een waarde heeft — en plakt het frame erachter
+gewoon aan dezelfde hexstroom. Daarna kapt hij af op de éérste opgegeven
+lengte. De echo van twee bytes zit dan binnen die acht en duwt de laatste PID
+eruit. Herhalingen ná de opgegeven lengte doen niets, want die kapt dezelfde
+regel er weer af: alleen een echo die vóór het einde binnenkomt kost een PID.
+
+**En dan de dure variant.** Bij `010B0E10` deed diezelfde echo iets ergers dan
+een PID laten vallen. De echte functie, gevoerd met de opgenomen regel:
+
+```
+008 0:410B1E0E8B10 008 1:410B 2:00760000000000
+  → 010B = 30 kPa   010E = 5,5°   0110 = 166,51 g/s
+```
+
+Er is geen `MIST`, geen waarschuwing, en de parser boekt dit als een **schone,
+complete** parse: de bytes van de echo (`41 0B`) vulden de opgegeven lengte
+precies af, en "eindigt precies op het eind" is juist het kenmerk waarop route
+1 haar beste kandidaat kiest. In dezelfde seconde gaf een losse `0110` 1,45
+g/s. De harde limiet van MAF staat op 0–655, dus 166 komt overal doorheen.
+Hetzelfde bij `0115342E`: `0134` werd `127/65/21/163` waar het `127/211/128/9`
+moest zijn — lambda 0,994 in plaats van 0,998, en dat is een verschil dat je op
+een tegel niet ziet en in een rapport wél leest.
+
+Dit is precies de fout die het commentaar boven deze functie sinds 26-07
+aankondigt: *"of — erger — het framecijfer vormde toevallig een geldig
+PID-nummer en er kwam een plausibele maar VERKEERDE waarde uit"*. Dat stond er
+over onze eigen parsefout. Hier levert de adapter het materiaal aan.
+
+**Waarom geen van de drie bestaande metingen dit ziet.**
+
+- **Blok 10 vraagt solo.** `_snelheidVraag()` stuurt één PID per verzoek; de
+  app polt in groepen van drie. De kloon struikelt alleen over
+  multiframe-antwoorden, en die komen er bij één PID niet uit. Het oordeel
+  *"de adapter is niet de beperking"* gaat dus over verkeer dat de app niet
+  stuurt.
+- **`foutPct` telt dit met opzet niet mee.** `notePids()` zegt het zelf: een
+  ontbrekende PID is geen transportfout. Terecht — maar `onvolPct`, de teller
+  die er wél voor bedoeld is, wordt in het hele testrunverslag nergens
+  afgedrukt. Hij bestaat alleen als drempel in `pidlane-busgate.js` (40%) en
+  `pidlane-onderdeel.js` (8%).
+- **De groepsgrootte krimpt niet.** `batchOk()` wordt aangeroepen zodra er ≥1
+  PID terugkomt, dus 2-van-3 geldt als succes en `batchGroep` blijft op 3
+  staan. Uitgerekend drie is wat het antwoord over de zeven bytes van één
+  CAN-frame duwt.
+
+**Wat dit voor de kwaliteitsscore betekent.** `_qualBump()` doet +4 bij goed en
+−12 bij mis. Bij 35% verlies is de verwachte drift 0,65·4 − 0,35·12 = −1,6 per
+poll: de score van `0111` zakt naar 0 en blijft daar. Snoeien vraagt daarnaast
+vijf missers áchter elkaar, en die vallen bij 35% ongeveer één keer per
+tweehonderd polls. Dit is rekenwerk en geen meting — het staat hier omdat het
+de volgende rit voorspelt en dus te toetsen is: verdwijnt de gasklep op deze
+adapter uit de selectie met "geen data", dan is dat de adapter en niet de auto.
+
+**Wat blok 10 wél goed zag.** Vier van de vijf rustmetingen bleven LET OP: na
+trap 2 zat de latentie 78% boven trap 1 en hij zakte niet meer terug (35%, 61%
+en 68% na de volgende trappen). Dat is exact waar die rustmeting voor gebouwd
+is — *"een adapter die daarna niet meer bijkomt is een buffer die volloopt"* —
+en het is de eerste keer dat hij op een tweede adapter aanslaat. De MX+ haalde
+deze proef op 21-08 en 09-09 zonder blijvende oploop.
+
+**Eén meting in het verslag klopte niet, en dat lag niet aan de adapter.** De
+kop meldde *"10 minuten na de run opgeslagen"* terwijl er 39 seconden tussen de
+laatste meetregel en het opslaan zat. `kloof` rekent vanaf de start van de run,
+dus elke run die zelf lang duurt draagt die waarschuwing automatisch — en dan
+gaat een terechte waarschuwing ruis betekenen.
+
+**Wat er níét gemeten is.** Eén adapter, één auto, één stilstaande run van tien
+minuten. Of dit onder rijbelasting erger wordt is onbekend. Dat de MX+ deze
+echo nooit geeft is aannemelijk maar niet nagemeten: er is van die adapter geen
+TX/RX-staart met dezelfde batches naast gelegd. En of groepsgrootte 2 het
+werkelijk oplost volgt voor de meeste paren uit de bytetelling (`010C0D` is zes
+bytes en past in één frame) maar niet voor alle: `0115`+`0134` is negen bytes
+en blijft multiframe.
+
 ### De pakketnaam was nooit gecontroleerd — 12-09-2026
 
 De inzending bij de Play Console strandde op *"Voer een geldige pakketnaam in.
