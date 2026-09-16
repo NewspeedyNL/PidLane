@@ -242,6 +242,40 @@ async function _bewaar(blob, naam, tekstAlsFallback) {
 
 // ── de keuze ───────────────────────────────────────────────────────
 // basisnaam zonder extensie; die zetten we er zelf achter.
+/* ═══════════════════ DE BESTANDSNAAM ═══════════════════ */
+/* #207 — je kunt de naam nu zelf intikken, en dat is precies waarom hier
+   iets tussen moet staan. Een naam die een mens typt bevat vroeg of laat een
+   schuine streep ("rit 12/9"), een dubbele punt ("meting 10:45") of een
+   geplakte regel met een tab erin. Op Android levert dat een bestand op dat
+   niet te openen is, en op Windows er helemaal geen.
+
+   Bewust GEEN witte lijst van toegestane tekens: dan sneuvelen é, ü en ø, en
+   dat is precies het soort stille verminking waar niemand op bedacht is. Wat
+   eruit moet is de korte lijst die bestandssystemen breekt.
+
+   De terugval is de naam die de aanroeper al had. Typt iemand het veld leeg,
+   of alleen leestekens, dan krijgt hij het bestand dat hij zonder dit veld
+   ook gekregen zou hebben — nooit een bestand met een lege naam. */
+function _veiligeNaam(ruw, terugval) {
+  var t = String(ruw == null ? '' : ruw).trim();
+  // Een zelf getypte extensie eraf, anders wordt het rapport.txt.txt — de
+  // knop bepaalt de extensie, niet het veld.
+  t = t.replace(/\.(txt|pdf)$/i, '');
+  // Padscheiders, de Windows-verbodenlijst en stuurtekens (een geplakte
+  // regel draagt een \n mee die je in het veld niet ziet staan).
+  t = t.replace(/[\/\\:*?"<>|\u0000-\u001f]/g, '-');
+  // Een naam die met een punt begint is op Android een verborgen bestand.
+  t = t.replace(/^\.+/, '');
+  t = t.replace(/\s+/g, ' ');
+  // Punten en spaties aan het eind: Windows kapt die zelf af en dan klopt de
+  // naam in de app niet meer met de naam op de schijf.
+  t = t.replace(/[. ]+$/, '');
+  t = t.slice(0, 80).replace(/[. ]+$/, '').trim();
+  // Alleen streepjes over? Dan is er niets bruikbaars getypt.
+  if (!/[a-z0-9]/i.test(t)) return terugval;
+  return t;
+}
+
 function plOpslaan(basisnaam, tekst, opties) {
   const o = opties || {};
   const bestaand = document.getElementById('plExportOv');
@@ -254,6 +288,17 @@ function plOpslaan(basisnaam, tekst, opties) {
     '<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:18px;max-width:340px;width:100%">' +
       '<div style="font-size:15px;font-weight:800;color:var(--tx);margin-bottom:4px">Hoe wil je dit opslaan?</div>' +
       '<div style="font-size:12px;color:var(--tx3);margin-bottom:12px">' + (o.titel || 'Rapport') + '</div>' +
+      // Bestandsnaam (#207). Voorgevuld met wat de aanroeper koos, zodat
+      // niets doen hetzelfde bestand oplevert als voorheen. De extensie staat
+      // er als vast label naast: die volgt uit de knop die je kiest, niet uit
+      // wat je hier typt.
+      '<div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:4px">Bestandsnaam</div>' +
+      '<div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">' +
+        '<input id="plExpNaam" type="text" value="' + String(basisnaam).replace(/"/g, '&quot;') + '" ' +
+          'style="flex:1;min-width:0;background:var(--sur2);color:var(--tx);border:1px solid var(--bd);' +
+          'border-radius:9px;padding:9px 10px;font:600 12px var(--f)">' +
+        '<span style="font-size:11px;color:var(--tx3);white-space:nowrap">.txt / .pdf</span>' +
+      '</div>' +
       // Het opmerkingveld. Een log zonder context kost aan de andere kant een
       // ronde vragen: was dit stationair of rijdend, wat viel er op, waarom is
       // deze run bewaard. Dat weet je nú, niet meer als je het bestand
@@ -272,6 +317,15 @@ function plOpslaan(basisnaam, tekst, opties) {
   // Wat er in het veld staat op het moment dat je op een knop drukt. Apart
   // uitgelezen per klik, niet bij het openen: anders mist de laatste zin die
   // je nog intikte voordat je op PDF drukte.
+  // Zelfde reden als _opm() hieronder: per klik uitlezen, niet bij het openen.
+  // Anders mist de naam die je nog aanpaste voordat je op PDF drukte.
+  function _naam() {
+    try {
+      const el = document.getElementById('plExpNaam');
+      return _veiligeNaam(el ? el.value : '', basisnaam);
+    } catch (e) { console.warn('bestandsnaam onleesbaar, terugval op de standaard:', e); return basisnaam; }
+  }
+
   function _opm() {
     try {
       const el = document.getElementById('plExpOpm');
@@ -295,32 +349,37 @@ function plOpslaan(basisnaam, tekst, opties) {
 
   document.getElementById('plExpTxt').onclick = function () {
     const uit = _metOpmerking(tekst, _opm());
+    const naam = _naam();
     sluit();
     // _bewaar meldt zelf waar het bestand terecht is gekomen.
-    _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit);
+    _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), naam + '.txt', uit);
   };
 
   document.getElementById('plExpPdf').onclick = async function () {
     const knop = this;
     const opm = _opm();
+    const naam = _naam();
     knop.disabled = true;
     knop.innerHTML = '⏳ PDF maken…';
     try {
-      const blob = await plMaakPdf(basisnaam + '.pdf', tekst, Object.assign({}, o, { opmerking: opm }));
+      const blob = await plMaakPdf(naam + '.pdf', tekst, Object.assign({}, o, { opmerking: opm }));
       sluit();
-      await _bewaar(blob, basisnaam + '.pdf', null);
+      await _bewaar(blob, naam + '.pdf', null);
     } catch (e) {
       // Geen internet of bibliotheek stuk: dan is tekst beter dan niets, maar
       // wel zeggen waarom — anders lijkt het of de knop niets doet.
       sluit();
       try { showToast('PDF lukte niet (' + (e.message || e) + ') — als tekst opgeslagen'); } catch(e2){ /* stil: melding mag nooit de stroom breken */ }
       const uit = _metOpmerking(tekst, opm);
-      await _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), basisnaam + '.txt', uit);
+      await _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), naam + '.txt', uit);
     }
   };
 }
 
 window.plOpslaan = plOpslaan;
 window.plMaakPdf = plMaakPdf;
+// Los ontsloten zodat test-export.js de schoonmaak op de echte functie kan
+// toetsen in plaats van op een kopie ervan.
+window._plVeiligeNaam = _veiligeNaam;
 
 })();

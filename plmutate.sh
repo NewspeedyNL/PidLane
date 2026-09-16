@@ -79,6 +79,15 @@ MUTATIES=(
 "public/pidlane-bulkvenster.js@@      } else gatLoop = 0;@@      } else { }@@test-bulkvenster.js@@het langste gat wordt nooit teruggezet en telt de hele rit door"
 "public/pidlane-bulkvenster.js@@  var MIN_KLIMREGELS = 50;@@  var MIN_KLIMREGELS = 0;@@test-bulkvenster.js@@de klimvergelijking meldt een verschil uit een handvol regels"
 
+# ── De bestandsnaam (#207). Vier fouten die je maakt in code die een mens laat
+# typen: de verbodenlijst vergeten, de terugval vergeten, de extensie dubbel
+# laten staan, en de lengte niet afkappen. Alle vier leveren een bestand op dat
+# niet opent of niet terug te vinden is, en geen van vier geeft een foutmelding.
+"public/pidlane-export.js@@  if (!/[a-z0-9]/i.test(t)) return terugval;@@  if (false) return terugval;@@test-export.js@@een leeggetypte bestandsnaam levert een bestand zonder naam op"
+"public/pidlane-export.js@@  t = t.slice(0, 80).replace(/[. ]+$/, '').trim();@@  t = t.trim();@@test-export.js@@een geplakte alinea wordt een bestandsnaam van vierhonderd tekens"
+"public/pidlane-export.js@@  t = t.replace(/\.(txt|pdf)$/i, '');@@  t = t;@@test-export.js@@een zelf getypte extensie blijft staan en het bestand heet rapport.txt.txt"
+"public/pidlane-export.js@@  t = t.replace(/^\.+/, '');@@  t = t;@@test-export.js@@een naam die met een punt begint blijft een verborgen bestand"
+
 # ── De km-check (PLKm). Zes fouten die je écht kunt maken in een module die
 # uit vier bytes een oordeel over fraude trekt: de schaal verkeerd vastzetten,
 # het fysieke bereik loslaten, het verschil niet meer wegen, de speling
