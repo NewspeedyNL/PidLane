@@ -54,8 +54,15 @@ var DEFAULTS = {
   // kasboek: één regel per saldomutatie (Config-base) — zie tegoedLog()
   AIRTABLE_VL_BASE: "apphsUwG4WAeWjEwH",
   AIRTABLE_VL_TABLE: "tblwbyWN1L6AKwgoy",
-  AIRTABLE_REF_TABLE: "tblkfxKcjR6gf0Ahe"
+  AIRTABLE_REF_TABLE: "tblkfxKcjR6gf0Ahe",
   // Referentie-tabel (zelfde Veldlab-base)
+  AIRTABLE_OPDRACHT_TABLE: "Meetopdracht"
+  // De meetopdracht voor de volgende testrun (#241), in de LOG-base. Data en
+  // geen code: welke sensoren, hoe lang, welke vragen, welke drempels. Wat de
+  // app ermee doet staat in public/pidlane-opdracht.js, en de grens die
+  // bepaalt wat er doorgelaten wordt staat daar ook -- niet hier. Deze Worker
+  // kent de vorm met opzet niet; hij haalt op, begrenst de grootte en geeft
+  // door.
 };
 function cfg(env, key) {
   return env && env[key] || DEFAULTS[key];
@@ -973,6 +980,68 @@ async function handleAirtableVeldlab(request, env) {
   });
 }
 __name(handleAirtableVeldlab, "handleAirtableVeldlab");
+// ══════════════════════════════════════════════════════════════════
+//  DE MEETOPDRACHT VOOR DE VOLGENDE TESTRUN (#241)
+// ──────────────────────────────────────────────────────────────────
+//  WAAROM DIT LEZEN IS EN VERDER NIETS. De lus die dit sluit: de testrun
+//  schrijft tijdens de rit naar de logtabel, die tabel wordt buiten de app
+//  gelezen, en daaruit volgt een volgende meting. Zonder deze route kost dat
+//  elke keer een deploy naar 100% van het verkeer.
+//
+//  WAT HIER NIET GEBEURT, en dat is de kern: deze Worker kent de VORM van een
+//  opdracht niet en wil hem niet kennen. Hij haalt de actieve rij op, kapt af
+//  op een harde grens en geeft de tekst door. Het keuren gebeurt in
+//  public/pidlane-opdracht.js, op één plek, met een witte lijst -- want daar
+//  is het te toetsen zonder netwerk en daar staat ook de code die de opdracht
+//  uitvoert. Twee plekken die hetzelfde keuren lopen uit de pas, en dan is de
+//  vraag welke van de twee klopt.
+//
+//  GEEN CODE. De app voert niets uit wat hier langskomt; een opdracht is een
+//  lijst sensoren, een duur, vragen en drempels. Dat is precies de reden dat
+//  deze route bestaat en er geen /script-route naast staat.
+// ══════════════════════════════════════════════════════════════════
+async function handleOpdracht(request, env) {
+  if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
+  if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
+  const base = resolveBase(env, "AIRTABLE_LOG_BASE", "AIRTABLE_BASE");
+  const table = cfg(env, "AIRTABLE_OPDRACHT_TABLE");
+  // Alleen de actieve, nieuwste. Meer dan één actieve rij is een fout van de
+  // schrijver; dan wint de laatst gewijzigde en zegt het antwoord hoeveel er
+  // stonden -- stil de eerste pakken zou betekenen dat je een opdracht aanzet
+  // en er een andere gaat draaien.
+  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
+    `?filterByFormula=${encodeURIComponent("{Actief}=1")}` +
+    `&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=5`;
+  let r;
+  try {
+    r = await fetch(url, { headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` } });
+  } catch (e) {
+    return json({ error: "opdracht_onbereikbaar", detail: String(e && e.message || e) }, 502);
+  }
+  if (!r.ok) {
+    const t = await r.text();
+    return json({ error: "opdracht_lezen_mislukt", status: r.status, detail: t.slice(0, 300) }, 502);
+  }
+  const d = await r.json();
+  const rijen = Array.isArray(d.records) ? d.records : [];
+  if (!rijen.length) return json({ ok: true, opdracht: null, reden: "geen actieve opdracht" });
+  const rij = rijen[0];
+  const f = rij.fields || {};
+  const ruw = typeof f.Opdracht === "string" ? f.Opdracht : "";
+  // De harde grens staat hier én in de app. Hier omdat een tekst van een
+  // megabyte anders eerst de telefoon in gaat voordat iemand hem afkeurt.
+  if (ruw.length > 8192)
+    return json({ ok: true, opdracht: null, reden: `de opdracht is ${ruw.length} tekens; meer dan 8192 gaat niet mee` });
+  return json({
+    ok: true,
+    id: rij.id,
+    naam: typeof f.Naam === "string" ? f.Naam.slice(0, 200) : "",
+    gewijzigd: f.Gewijzigd || rij.createdTime || "",
+    meer: rijen.length > 1 ? rijen.length : 0,
+    opdracht: ruw
+  });
+}
+__name(handleOpdracht, "handleOpdracht");
 async function handleAirtableReference(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
@@ -4022,6 +4091,8 @@ var worker_default = {
         return lockOrigin(request, await handleAirtableVeldlab(request, env));
       if (url.pathname === "/airtable/reference" && request.method === "POST")
         return lockOrigin(request, await handleAirtableReference(request, env));
+      if (url.pathname === "/airtable/opdracht" && request.method === "GET")
+        return lockOrigin(request, await handleOpdracht(request, env));
       if (url.pathname === "/session/create" && request.method === "POST")
         return lockOrigin(request, await handleSessionCreate(request, env));
       if (url.pathname === "/session/telemetry" && request.method === "POST")
