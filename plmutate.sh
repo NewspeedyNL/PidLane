@@ -732,6 +732,21 @@ MUTATIES=(
 "public/pidlane-pip.js@@      p.addListener('pipModus', function (ev) { modus(!!(ev && ev.in)); });@@      p.addListener('pipMode', function (ev) { modus(!!(ev && ev.in)); });@@test-pip.js@@de gebeurtenis heet anders dan wat java stuurt: het kleine venster verschijnt nooit en de volle weergave staat in 240x135"
 "native/PLPip.java@@        if (!gewenst) return;@@        if (false) return;@@test-nativeschil.js@@het venster komt op ongeacht wat de app besloot — ook met de functie uitgezet in de Config"
 ".github/workflows/build-apk.yml@@                  \"        PLPip.leaveHint(this);\",@@                  \"        // haak eruit\",@@test-nativeschil.js@@de enige haak waarop Android PiP toestaat valt weg: alles lijkt in orde en het venster gaat nooit aan"
+
+# ── DE MEETOPDRACHT VAN BUITEN (#241, 17-09-2026). De keurder is het enige wat
+# tussen een rij in Airtable en een meting op een rijdende auto staat. Elke
+# fout hieronder laat iets door dat daarna wordt uitgevoerd, en geen ervan
+# geeft een foutmelding: de rit draait, het verslag komt binnen, en alleen de
+# waarden kloppen niet met wat er gevraagd was.
+"public/pidlane-opdracht.js@@      if (TOEGESTAAN.indexOf(k) === -1) fouten.push('onbekende sleutel \`' + k + '\`');@@      void k;@@test-opdracht.js@@de witte lijst laat alles door: een sleutel die deze app niet kent glipt mee naar de uitvoering"
+"public/pidlane-opdracht.js@@    if (o.schema !== SCHEMA)@@    if (false)@@test-opdracht.js@@een opdracht uit een ander schema wordt alsnog uitgevoerd"
+"public/pidlane-opdracht.js@@        if (!PID_VORM.test(String(p))) { fouten.push('\`' + p + '\` is geen PID-code'); return; }@@        if (false) { return; }@@test-opdracht.js@@een sensor die geen PID-code is komt door"
+"public/pidlane-opdracht.js@@    var binnen = (w >= lo && w <= hi);@@    var binnen = true;@@test-opdracht.js@@elke gemeten waarde valt binnen de band: de opdracht kan niet meer rood worden"
+"public/pidlane-opdracht.js@@          // NIET stil terugvallen op de vorige opdracht: dan meet de rit iets\n          // anders dan er in Airtable staat en is het verschil onzichtbaar.\n          _actief = null; _herkomst = null;@@          void 0;@@test-opdracht.js@@een afgekeurde opdracht laat de vorige staan: de rit meet iets anders dan er in de tabel staat"
+"public/pidlane-opdracht.js@@    if (!toggleAan()) {@@    if (false) {@@test-opdracht.js@@de uitzetknop houdt het verkeer niet meer tegen"
+"worker.js@@  if (ruw.length > 8192)@@  if (false)@@test-opdrachtroute.js@@de groottegrens valt weg: een tekst van een megabyte gaat eerst de telefoon in"
+"worker.js@@&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=5\`;@@&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=asc&pageSize=5\`;@@test-opdrachtroute.js@@bij twee actieve rijen wint de OUDSTE: je zet een opdracht aan en er draait een andere"
+"worker.js@@    meer: rijen.length > 1 ? rijen.length : 0,@@    meer: 0,@@test-opdrachtroute.js@@twee actieve rijen worden niet meer gemeld: stil draait er een andere opdracht dan je bedoelde"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de
