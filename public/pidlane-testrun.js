@@ -4273,9 +4273,22 @@ const PROEVEN_B5 = [
         return { staat: 'FOUT', detail: 'plMeetcontextPromptLine() gooide een fout: ' + (e.message || e) };
       }
 
+      // Wat de app zélf al zou invullen. Sinds 17-09-2026 vult het venster de
+      // start/stop-vraag voor uit de aandrijfstatus; is er niets beantwoord,
+      // dan is dát nog steeds het cijfer waar #64 om vraagt, maar het voorstel
+      // erbij zegt of die voorvulling op deze auto werkelijk iets oplevert.
+      var voorstel = '';
+      try {
+        if (typeof plMeetStartStopVoorstel === 'function') {
+          var vs = plMeetStartStopVoorstel();
+          voorstel = ' Het venster zou start/stop nu voorstellen op "' +
+            (vs.waarde || 'weet ik niet') + '" (' + vs.reden + ').';
+        }
+      } catch (e) { console.warn('plMeetStartStopVoorstel() gooide een fout bij de #64-proef', e); }
+
       if (!m)
         return { staat: 'LET OP', detail: 'het meetcontextvenster is deze sessie niet beantwoord — ' +
-          'en juist dat is het getal waar #64 om vraagt: hoe vaak wordt er werkelijk geantwoord?' };
+          'en juist dat is het getal waar #64 om vraagt: hoe vaak wordt er werkelijk geantwoord?' + voorstel };
 
       const vragen = (typeof PL_VOORVRAGEN !== 'undefined') ? PL_VOORVRAGEN : [];
       let gegeven = [];
@@ -4287,7 +4300,7 @@ const PROEVEN_B5 = [
 
       if (!gegeven.length && !extra)
         return { staat: 'LET OP', detail: 'het venster is geopend maar alles bleef op "weet ik niet" — ' +
-          'ook dat is een antwoord op #64' };
+          'ook dat is een antwoord op #64.' + voorstel };
 
       // DIT is de toets. Er is iets ingevuld, dus er hoort iets in de prompt te
       // staan. Staat daar niets, dan is de vraag inderdaad versiering.
@@ -4296,8 +4309,19 @@ const PROEVEN_B5 = [
           (extra ? ', plus een opmerking' : '') + ') maar de promptregel is leeg — ' +
           'het antwoord bereikt de AI niet (#64)' };
 
+      /* Met hoeveel handelingen. Een voorgevuld antwoord dat blijft staan is
+         een antwoord voor de AI maar geen keuze van een mens, en juist dat
+         onderscheid is wat #64 punt 3 wil weten. */
+      var bron = (m && m.bron) || {};
+      var perBron = { klik: 0, voorstel: 0, eerder: 0 };
+      Object.keys(bron).forEach(function (k) { if (perBron[bron[k]] !== undefined) perBron[bron[k]]++; });
+      var herkomst = (m && m.bron)
+        ? '; ' + perBron.klik + ' aangeklikt, ' + perBron.voorstel + ' uit de meting overgenomen' +
+          (perBron.eerder ? ', ' + perBron.eerder + ' uit een eerdere ronde' : '')
+        : '; herkomst niet vastgelegd (venster van vóór 17-09)';
+
       return gegeven.length + ' van de ' + vragen.length + ' vragen beantwoord (' + gegeven.join(', ') + ')' +
-        (extra ? ' plus een vrije opmerking' : '') + '; de promptregel draagt ' +
+        (extra ? ' plus een vrije opmerking' : '') + herkomst + '; de promptregel draagt ' +
         regel.trim().split('\n').length + ' regel(s) mee';
     }
   },

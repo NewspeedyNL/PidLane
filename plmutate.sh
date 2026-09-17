@@ -697,6 +697,16 @@ MUTATIES=(
 "public/pidlane-aandrijving.js@@    var dood = (nu.ecuLeeft === false) || rpm === null || spd === null ||\n      (_getal(nu.ouderdomMs) !== null && nu.ouderdomMs > D.versMs);@@    var dood = false;@@test-aandrijving.js@@een wegvallende bus wordt als motor-uit gelezen in plaats van als onbekend"
 "public/pidlane-aandrijving.js@@      motorDraait = (v && v.motorDraait) ? (rpm > D.rpmUit) : (rpm >= D.rpmAan);@@      motorDraait = (rpm >= D.rpmAan);@@test-aandrijving.js@@de hysterese op het toerental is weg: de balk knippert rond de drempel"
 "public/pidlane-aandrijving.js@@      } else if (v.kandidaat === rauw && (t - v.kandidaatSinds) >= D.stabielMs) {@@      } else if (true) {@@test-aandrijving.js@@de stabilisatie staat uit: één mislukt monster verandert de getoonde toestand"
+
+# ── De start/stop-waarneming die het meetcontextvenster voorvult (#64,
+# 17-09-2026). Die vraag stond tot vandaag blind in een venster vlak vóór een
+# betaalde analyse; nu vult de app hem voor uit wat hij zelf gezien heeft. Drie
+# fouten die geen foutmelding geven maar een prompt die iets beweert dat
+# niemand gemeten heeft — en dat is precies wat die vraag moest voorkomen.
+"public/pidlane-aandrijving.js@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP'),@@      startStopGezien: toestand === 'STARTSTOP',@@test-aandrijving.js@@de waarneming verdwijnt zodra de motor weer aanslaat: het venster stelt alleen 'ja' voor als je toevallig bij een stoplicht op Analyseer drukt"
+"public/pidlane-aandrijving.js@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP'),@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP' || toestand === 'UIT_VOOR_START'),@@test-aandrijving.js@@'motor uit vóór de eerste start' telt als start/stop: contact aan is genoeg voor een 'ja' in de prompt"
+"public/pidlane-archief.js@@    return {waarde:'', reden:'geen start/stop-stop gezien; dat kan ook betekenen dat je niet lang genoeg stilstond met een warme motor'};@@    return {waarde:'nee', reden:'geen start/stop-stop gezien'};@@test-meetcontext.js@@niets-gezien wordt als 'nee' voorgesteld, en dan leest de AI een normale start/stop-stop als afslaan"
+"public/pidlane-archief.js@@        gekozen[v]=b.dataset.waarde;\n        geklikt[v]=true;@@        gekozen[v]=b.dataset.waarde;@@test-meetcontext.js@@een aangeklikt antwoord is niet meer van een blijven-staand voorstel te onderscheiden: punt 3 van #64 meet zichzelf kapot"
 )
 
 echo

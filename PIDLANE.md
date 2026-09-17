@@ -912,6 +912,53 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De start/stop-vraag hoeft niet meer blind gesteld te worden (#64, 17-09-2026)
+
+`PL_VOORVRAGEN` stelt vlak vóór een betaalde analyse drie vragen. Twee daarvan
+kan alleen een mens beantwoorden — deed de klacht zich voor, zat de adapter
+tussendoor los. De derde, start/stop, kon dat tot vandaag ook niet anders, en
+dat was de zwakke plek van #64 punt 3: *"het venster staat vlak vóór een
+betaalde analyse. Wordt het weggeklikt zonder lezen, dan is het schadelijker
+dan geen vraag."*
+
+**Wat er veranderde is niet het venster maar wat de app weet.** Sinds de
+aandrijfstatus van 17-09 (`pidlane-aandrijving.js`) is `STARTSTOP` een toestand
+die de app zelf herkent: motor stil, auto stil, en de motor heeft deze sessie
+aantoonbaar gedraaid. Dat is precies het antwoord op de vraag. De module houdt
+die waarneming nu vast in `startStopGezien`, naast de vlag `bewijstHybride` die
+er al zo in stond, en `plMeetStartStopVoorstel()` in `pidlane-archief.js` vult
+de vraag daarmee voor — met de reden eronder in het venster, zoals
+`plMeetStabielVoorstel()` dat al deed.
+
+**Het bewijs is asymmetrisch, en dat is de hele regel.**
+
+| | wat het betekent | hoe hard |
+|---|---|---|
+| start/stop-stop gezien | het systeem is actief op deze auto | bewijs |
+| niets gezien | de auto heeft het niet, óf je stond nooit stil met een warme motor | géén bewijs |
+
+Daarom stelt dit nooit `nee` voor. Een voorstel dat "nee" durft te zeggen op
+grond van niets-gezien zou de AI vertellen dat een normale start/stop-stop een
+bevinding is — exact de fout die deze vraag moest voorkomen. Dezelfde vorm als
+`heeftGedraaid` twintig regels verderop in dezelfde module, en om dezelfde
+reden.
+
+**En toen bleek het meetprobleem te verschuiven.** Voorvullen maakt punt 3 van
+#64 onmeetbaar als je niets verandert: een voorstel dat blijft staan komt in
+`_plMeetcontext` terecht en telt dan als "beantwoord", terwijl er niemand naar
+gekeken heeft. Het antwoord draagt daarom sinds vandaag zijn herkomst mee
+(`_plMeetcontext.bron`, per vraag `klik` / `voorstel` / `eerder`), en blok 5
+telt die drie apart. Zonder die ring zou de eerstvolgende run melden dat de
+vragen beantwoord worden en zou niemand merken dat de app zichzelf antwoordt.
+
+**Wat dit NIET oplost.** De A/B-proef van punt 1 — één analyse met start/stop
+op "ja", één met "nee", en leest het rapport werkelijk anders — staat nog
+steeds open en heeft een rit nodig. Voorvullen maakt die vraag zelfs
+belangrijker: als de regel niet aankomt, vult de app voortaan iets voor dat
+nergens toe leidt. En of de voorvulling zelf klopt is één waarneming per rit:
+staat er "ja" voorgesteld op een auto zonder start/stop, dan is dat een
+bevinding over `startStopGezien` en niet over de auto.
+
 ### Blok 5 meldde een dood schuifje dat gewoon werkte (17-09-2026)
 
 De testrun van 17-09 om 06:51 gaf één FOUT, en die ging niet over de app:
