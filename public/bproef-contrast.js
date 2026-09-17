@@ -146,21 +146,35 @@ function zeg(m) {
             return !!d && !!l && d!==l; })()`),
           'staan beide thema\'s op dezelfde kleur, dan schakelt er niets');
 
-    // Tegels vullen: zonder data staat het hoofdscherm leeg en meet blok 2 niets.
-    await app.ev(`(function(){
+    /* Tegels vullen: zonder data staat het hoofdscherm leeg en meet blok 2 niets.
+
+       GEEN STILLE CATCH MEER — 17-09-2026, #236. Hier stond drie keer
+       `try{ ... }catch(e){}` omheen. Mislukte de tabwissel of het vullen van
+       `activePIDs`, dan ging de proef gewoon door en mat hij een scherm dat
+       niet stond zoals hij dacht. In CI leverde dat een FOUT op in blok 3 die
+       over contrast leek te gaan en in werkelijkheid over een onzichtbare
+       knop ging; dat kostte een uur uitzoeken. De regel uit CLAUDE.md —
+       geen stille catch-blokken — geldt ook voor het gereedschap. */
+    const opzet = await app.ev(`(function(){
       const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
-      try{ sw('live', document.querySelector('.tabs .tab')); }catch(e){}
+      const tab = document.querySelector('.tabs .tab');
+      if (!tab) return 'de tabbalk staat er niet: .tabs .tab vond niets';
+      if (typeof sw !== 'function') return 'sw() bestaat niet in de app';
+      try{ sw('live', tab); }catch(e){ return 'sw(live) mislukte: ' + (e.message||e); }
+      if (typeof activePIDs === 'undefined') return 'activePIDs bestaat nog niet';
       ['010C','0105','0104','010D','0111','0142'].forEach(function(p,i){
-        try{ activePIDs.add(p); }catch(e){}
+        activePIDs.add(p);
         /* VASTE WAARDEN, GEEN Math.random(). Met willekeur hing het van het
            toeval af of een tegel over een waarschuwingsdrempel viel en dus
            oranje werd -- en dan faalde blok 3 hieronder soms wel en soms niet,
            op iets dat niets met de proef te maken had. Een toets die per run
            een ander antwoord geeft, wordt genegeerd. */
-        try{ pidVals[p] = 42 + i*9; }catch(e){}
+        pidVals[p] = 42 + i*9;
       });
-      try{ renderGauges(); }catch(e){ return String(e.message); }
+      if (!activePIDs.size) return 'activePIDs bleef leeg na het vullen';
+      try{ renderGauges(); }catch(e){ return 'renderGauges mislukte: ' + (e.message||e); }
       return true; })()`);
+    toets('de opzet is gelukt', opzet === true, String(opzet));
     await rust(300);
     const tegels = await app.ev(`document.querySelectorAll('#gGrid .gc').length`);
     toets('er staan tegels om aan te meten', tegels > 0,
@@ -222,6 +236,36 @@ function zeg(m) {
        Wat dit blok moet bewijzen is niet dat het lichte scherm smetteloos is,
        maar dat DEZE proef een fout ziet komen en weer gaan. Dat is een verschil
        ten opzichte van de stand van vlak ervoor. */
+    /* EERST: STAAT DE KNOP WAAR DE FOUT OP KOMT EIGENLIJK OP HET SCHERM?
+       (#236, 17-09-2026.) Dit blok zet zijn fout op `.pidview-btn.waak`. Die
+       knop zit in `#pidViewSwitch`, en die rij staat in index.html op
+       `display:none`; alleen `renderGauges()` zet hem aan, en alleen zolang
+       `activePIDs` gevuld is. De opzet hierboven vult die selectie zelf —
+       maar dit blok draait seconden later, en rondt de app-boot in die tijd
+       alsnog iets af dat de selectie wist, dan verbergt `renderGauges()` de
+       rij weer.
+
+       Wat je dan krijgt is geen lege uitslag maar een misleidende: de
+       ingespoten kleur doet niets (het element is onzichtbaar), er blijven
+       drie zichtbare teksten over in #appGrid — de tabbladlabels — en die
+       vallen in het lichte thema op contrast om. De melding gaat dan over
+       contrast terwijl het over zichtbaarheid ging.
+
+       `querySelectorAll` had dit niet gevangen: die vindt een element ook als
+       zijn container verborgen is. `offsetParent === null` is wél de vraag
+       die hier gesteld moet worden. Zelfde regel als #227: niet gemeten is
+       iets anders dan gemeten en niets gevonden. */
+    const knopZichtbaar = await app.ev(`(function(){
+      const b = document.querySelector('.pidview-btn.waak');
+      if (!b) return 'de knop .pidview-btn.waak bestaat niet in de DOM';
+      if (b.offsetParent === null) return 'de knop staat er wel maar is onzichtbaar' +
+        ' (#pidViewSwitch display=' + (document.getElementById('pidViewSwitch')||{style:{}}).style.display +
+        ', activePIDs=' + (typeof activePIDs !== 'undefined' ? activePIDs.size : '?') + ')';
+      return true; })()`);
+    toets('de knop waarop de tegenproef zijn fout zet staat op het scherm',
+          knopZichtbaar === true,
+          String(knopZichtbaar) + ' — dan meet dit blok iets anders dan het zegt te meten');
+
     const basis = await app.ev(`${METER}('appGrid', ${NORM})`);
     await app.ev(`(function(){
       const st = document.createElement('style'); st.id = 'plProefSlechtContrast';
@@ -243,6 +287,52 @@ function zeg(m) {
           !heel.fout && heel.aantal === basis.aantal,
           'basis was ' + basis.aantal + ', nu ' + heel.aantal + ' — ' + zeg(heel));
     await app.ev(`plThemaZet('donker'); true`);
+
+    /* ── 4. Tegenproef op de poort van blok 3 (#236) ──────────────────
+       De poort hierboven is er omdat CI twee keer rood stond op een geval
+       dat níét over contrast ging. Zonder deze tegenproef zou die poort
+       alleen maar groen kúnnen staan — precies de fout die dit hele bestand
+       moet vermijden.
+
+       Hier wordt de situatie uit CI nagebouwd: de knoppenrij verdwijnt
+       (zoals renderGauges() hem verbergt zodra activePIDs leeg is) en dan
+       moet blijken dat (a) de poort dat ziet, en (b) de meting eronder
+       zonder die poort inderdaad stilletjes iets anders zou meten. */
+    console.log('\n4. Tegenproef — ziet de poort van blok 3 een verborgen knop?');
+    const verstopt = await app.ev(`(function(){
+      const r = document.getElementById('pidViewSwitch');
+      if (!r) return 'pidViewSwitch bestaat niet';
+      r.dataset.plWas = r.style.display; r.style.display = 'none';
+      const b = document.querySelector('.pidview-btn.waak');
+      return { erNog: !!b, zichtbaar: !!(b && b.offsetParent !== null) }; })()`);
+    toets('de knop staat er dan nog wél in de DOM', verstopt.erNog === true,
+          'anders toetst de tegenproef iets anders dan het geval uit CI');
+    toets('maar hij is onzichtbaar — en dát is wat de poort meet',
+          verstopt.zichtbaar === false, JSON.stringify(verstopt));
+
+    // En de kern: met de rij verborgen verandert de ingespoten fout niets
+    // meer aan de telling. Dat is het beeld uit de rode CI-run, hier
+    // opzettelijk nagebouwd.
+    await app.ev(`plThemaZet('licht'); true`);
+    await rust(200);
+    const vBasis = await app.ev(`${METER}('appGrid', ${NORM})`);
+    await app.ev(`(function(){
+      const st = document.createElement('style'); st.id = 'plProefSlechtContrast2';
+      st.textContent = '.pidview-btn.waak{ color:#7f93b8 !important; }';
+      document.head.appendChild(st); return true; })()`);
+    await rust(200);
+    const vKapot = await app.ev(`${METER}('appGrid', ${NORM})`);
+    toets('met de rij verborgen doet de ingespoten fout niets — precies het beeld uit CI',
+          !vKapot.fout && vKapot.aantal === vBasis.aantal,
+          'basis ' + vBasis.aantal + ', met de fout erin ' + vKapot.aantal +
+          ' — als dit verschilt, dan meet blok 3 niet wat #236 beschrijft');
+
+    // Opruimen: stijl weg, rij terug, thema terug.
+    await app.ev(`(function(){
+      const e=document.getElementById('plProefSlechtContrast2'); if(e) e.remove();
+      const r=document.getElementById('pidViewSwitch');
+      if (r) { r.style.display = r.dataset.plWas || ''; delete r.dataset.plWas; }
+      plThemaZet('donker'); return true; })()`);
 
   } finally { await app.stop(); }
 
