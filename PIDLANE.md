@@ -912,6 +912,90 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Drie besluiten in plaats van drie reparaties (16-09-2026, #161 #202 #139)
+
+Drie issues stonden open die geen bouwopdracht waren maar een keuze. Ze zijn
+met een reden gesloten; dat is hier vastgelegd zodat de vraag niet over drie
+maanden opnieuw opkomt.
+
+**#161 — de drempel voor "beweegt" blijft 2%.** Gemeten op 09-09: stationair
+mist het toerental de drempel met 108 tegen 160, en koelwater en inlaatdruk
+zitten er met 5 tegen 5,1 nog dichter tegenaan. De verleiding is één getal
+verlagen. Dat is niet gedaan, om twee redenen. Er stonden **19 sensoren stil**,
+en die horen stil te blijven — een drempel die het toerental stationair een
+lijn geeft, geeft ruis op een rustige sensor er misschien ook een. En de
+alternatieven kosten meer dan ze opleveren: een tabel per PID botst frontaal
+met "geen tweede lijst", en meten tegen het waargenomen bereik vraagt een
+ondergrens voor het begin van een rit, waar dat bereik nog nul is.
+
+Doorslaggevend was waar de klacht vandaan kwam: **niet uit het gebruik, maar
+uit een proef.** De bestuurder beoordeelde de weergave op 09-09 met "balken én
+lijnen kloppen". Heropenen als een echte gebruiker een ontbrekende trendlijn
+mist — dan is er een geval, en nu is er alleen een getal.
+
+**#202 — de renderer die na 59–60 s stilvalt wordt geaccepteerd.** Acht
+metingen op 11-09 gaven één getal over een bereik van 77 tot 663 seconden weg,
+dus het staat vast. De kandidaat-oplossing is picture-in-picture, en die kost
+drie dingen: native werk dat nergens met Capacitor is nagemeten, een zichtbaar
+zwevend venster in plaats van een app die verdwijnt, en dekking die alleen
+geldt bij Home of een appwissel — niet bij schermvergrendeling. Daar staat
+tegenover dat alles eromheen dankzij #18 al doorloopt (proces, CPU, melding,
+socket) en dat **de app van elk gat afweet en dat sinds 11-09 aan de AI
+doorgeeft.**
+
+De schade is dus begrensd en zichtbaar, en ze raakt vooral het
+testrunprotocol — dat vraagt zélf om drie minuten wegschakelen — en niet het
+normale rijden. Afgezet tegen "onderhoudslast is een harde
+ontwerprandvoorwaarde" valt dat de andere kant op. Heropenen als er een functie
+komt die écht in de achtergrond moet doormeten; dan is het een eis en geen
+ongemak.
+
+**#139 — `admin.html` blijft staan.** Het issue stelde voor hem te verwijderen
+omdat `beheer.html` de vervanger is. Dat is niet gebeurd: `beheer.html` is de
+werkpagina geworden, maar `admin.html` blijft ernaast bestaan. De Opslaan-knop
+die in de reactie op dat issue werd gemist, is inmiddels geplaatst. Daarmee is
+er niets meer open — en het verwijderen van een bestand is hier hoe dan ook een
+vraag en geen actie.
+
+### Vier modules tegelijk in storing — waarom dat niet "de adapter is stuk" betekent (16-09-2026, #217)
+
+Na ritten met de goedkope ELM327-kloon stonden er vijf waarschuwingen tegelijk
+in de auto: DSC, keyless entry, SCBS (twee keer) en het parkeerremsysteem. De
+eerste reactie was de logische: de adapter veroorzaakt storingen, wegdoen.
+
+Dat is één stap verder dan het bewijs draagt, en die stap is het opschrijven
+waard. **Die vier modules hebben functioneel niets met elkaar te maken.** Ze
+delen alleen het net en de voeding. Een brede waaier van onafhankelijke
+modules die tegelijk een storing vastlegt is het bekende beeld van
+onderspanning: een module die even te weinig spanning krijgt boekt een
+communicatiefout en gaat in veilige stand. Vier modules, vier storingen, één
+oorzaak — en die oorzaak is dan de voeding, niet de databus.
+
+De adapter zit er wel in, maar anders dan gedacht: een adapter die de bus
+wakker houdt trekt de accu leeg, en een lege accu geeft precies dit beeld. Dat
+is een indirecte keten, en het verschil is niet academisch — het bepaalt of je
+een adapter wegdoet of een accu vervangt. Wie hier "adapter stuk" concludeert,
+laat een mogelijk zwakke accu staan.
+
+**Dit is dezelfde vorm als #35**, en dat is de reden dat het hier staat en niet
+alleen in het issue. Daar werd een geruststellende bottekst ("✅ Deployment
+successful") als conclusie gelezen in plaats van als waarneming, en dat kostte
+drie PR's aan documentatie die niets verbeterde. Hier is het een alarmerende
+melding in plaats van een geruststellende, maar de fout is identiek: **een
+melding zegt dát er iets is, niet wát.** De bron opzoeken — hier: de
+boordspanning meten — hoort vóór het omgooien van een werkregel.
+
+Wat er níét vastgesteld is, en wat in #217 openstaat: of het pollen van de app
+zelf bijdraagt. Mode 01-verzoeken zijn leesacties en horen elders geen DTC te
+zetten. Maar van deze kloon is alleen gemeten wat er aan de *seriële* kant
+uitkwam — dat hij frames herhaalt (#210) — en niet wat hij daarbij op de
+CAN-kant doet. Zolang die meting er niet naast ligt, is "de app kan dit niet
+veroorzaken" een aanname.
+
+De werkregel die eruit volgt staat in `CAMPAGNE`: de adapter blijft het
+meetinstrument van deze ronde, maar gaat eruit zodra je niet rijdt, en de
+boordspanning (`0142`) gaat mee in de meting.
+
 ### Twee gereedschappen die maten zonder iets te kunnen zeggen (16-09-2026)
 
 De waakronde draaide al lang, de bulk-recorder ook, en allebei deden hun werk

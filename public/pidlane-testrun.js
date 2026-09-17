@@ -2502,6 +2502,80 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #217: wat deed de boordspanning deze rit? ──
+  // Na ritten met de goedkope kloon stonden er vier storingen tegelijk in de
+  // auto (DSC, keyless, SCBS, parkeerrem). Vier onafhankelijke modules die
+  // tegelijk klagen is het beeld van ONDERSPANNING en niet van een verstoorde
+  // bus \u2014 en dan is dit de meting die het uitmaakt. Eén rit met deze proef
+  // erin sluit #217, of laat zien dat de spanning het niet was.
+  //
+  // Twee bronnen, in die volgorde. Staat 0142 aangevinkt, dan komt het uit
+  // PLRit.per() \u2014 dezelfde bron als blok 14, zodat er geen tweede telling
+  // ontstaat. Staat hij niet aangevinkt (het normale geval: niemand zet de
+  // accuspanning in zijn selectie), dan pakt de waakronde hem op en leest
+  // deze proef PLWaak.historie(). Dat is precies waar die historie voor is.
+  //
+  // De grenzen komen uit PID_LET_OP en de PID-definitie, niet uit deze proef.
+  // Een eigen tabel hier zou bewijzen over een geval dat niet bestaat \u2014 dat
+  // is de fout die test-waakronde.js in zijn voorganger vond.
+  {
+    issue: '#217',
+    naam: 'De boordspanning bleef binnen het laadbereik',
+    waarom: 'Vier modules tegelijk in storing wijst op onderspanning; alleen een rit met een echte accu en dynamo meet dat.',
+    proef: function () {
+      var laag = null, hoog = null;
+      try {
+        var L = window.PID_LET_OP && window.PID_LET_OP['0142'];
+        if (L) { laag = L.min; hoog = L.max; }
+      } catch (e) { console.warn('PID_LET_OP onleesbaar bij de #217-proef', e); }
+      if (laag === null)
+        return { staat: 'FOUT', detail: 'PID_LET_OP["0142"] ontbreekt \u2014 dan is er geen laadbereik om tegen te toetsen' };
+
+      var min, max, n = 0, bron = '';
+
+      // 1. Aangevinkt? Dan telt blok 14 hem al mee.
+      try {
+        var e = (window.PLRit && PLRit.per) ? (PLRit.per() || {})['0142'] : null;
+        var m = e ? _meetStand(e) : null;
+        if (m && m.stand === 'gemeten') {
+          min = e.min; max = e.max; n = e.n; bron = 'ritbeeld, ' + m.tekst;
+        }
+      } catch (e2) { console.warn('ritbeeld onleesbaar bij de #217-proef', e2); }
+
+      // 2. Niet aangevinkt? Dan heeft de waakronde hem gelezen.
+      if (min === undefined) {
+        try {
+          var h = (window.PLWaak && PLWaak.historie) ? PLWaak.historie() : [];
+          var r = h.filter(function (x) { return x.pid === '0142'; })[0];
+          if (r && typeof r.min === 'number') {
+            min = r.min; max = r.max; n = r.n;
+            bron = 'waakronde, ' + r.n + ' meting(en)';
+          }
+        } catch (e3) { console.warn('waakronde-historie onleesbaar bij de #217-proef', e3); }
+      }
+
+      if (min === undefined)
+        return { staat: 'LET OP', detail: 'de boordspanning (0142) is deze rit niet gemeten \u2014 vink hem aan, ' +
+          'of zet de waakronde aan, anders blijft #217 onbeantwoord' };
+
+      var tekst = min + '\u2013' + max + ' V (' + bron + '), normaal is ' + laag + '\u2013' + hoog + ' V';
+
+      // Onder de ondergrens is precies het beeld dat bij #217 hoort. Dat is
+      // hier een BEVINDING en geen fout in de app: de app meet goed, de auto
+      // doet iets. Vandaar LET OP met de uitleg erbij en niet FOUT.
+      if (min < laag)
+        return { staat: 'LET OP', detail: tekst + ' \u2014 de spanning zakte onder het laadbereik. ' +
+          'Dat is het beeld waar #217 naar zoekt: te weinig spanning verklaart vier modules die tegelijk ' +
+          'een storing vastleggen. Kijk of de storingen terugkomen zonder adapter in de stekker.' };
+      if (max > hoog)
+        return { staat: 'LET OP', detail: tekst + ' \u2014 de spanning liep boven het laadbereik uit; ' +
+          'dat wijst eerder op de spanningsregelaar dan op de adapter (#217)' };
+
+      return { staat: 'OK', detail: tekst + ' \u2014 binnen bereik over ' + n +
+        ' meting(en); onderspanning is hiermee g\u00e9\u00e9n verklaring voor de storingen uit #217' };
+    }
+  },
+
   // ── kan de waakronde vertellen wat ze gemeten heeft? ──
   // De strook boven het raster toont de ronde die nú loopt; _lijst wordt bij
   // elke nieuweRonde() weggegooid. Tot 16-09 was dat álles wat er was, en dus
@@ -7092,9 +7166,16 @@ const CAMPAGNE = {
     'EN ER IS EEN SCHERM BIJ GEKOMEN. Tik op de OBD-chip en je ziet wat de verbinding doet: verzoeken per seconde, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken, en wat de automaat deed mét de reden. Je kunt het tempo overnemen, de groepsgrootte vastzetten, en een snelheidstest van veertig seconden draaien die solo én batch meet.',
     'EN ER ZIJN TWEE MOTORKAPPEN OPENGEGAAN. De waakronde meet al lang de sensoren die je niet aanvinkt, en de bulk-recorder legt tien uur rijden weg op 1 Hz — maar van geen van beide was een scherm. De waakronde paste in één strook stipjes en gooide bij elke ronde alles weg; de recorder kon alleen een NDJSON-bestand maken voor iemand met een script. Allebei hebben nu een eigen pagina in het ☰-menu: de waakronde met sessiehistorie, bereikmeters en export, de recorder met een analyse die in gewone zinnen vertelt wat er in de rit staat.',
     'DEZE RONDE HEEFT DUS DRIE VRAGEN, EN ALLE DRIE VRAGEN ZE EEN ADAPTER. Eén: verdwijnen de rare waarden op de goedkope adapter. Twee: klopt wat het paneel toont met wat de auto doet. Drie: geeft de snelheidstest een advies dat ergens op slaat.',
+    '── WAT ÉÉN RUN DEZE RONDE MOET SLUITEN ────────',
+    'DEZE RONDE IS ZO INGERICHT DAT ÉÉN RIT MEERDERE ISSUES AFMAAKT. Niet omdat er meer gemeten wordt, maar omdat blok 5 nu de gegevens oplevert waarop een besluit rust. Rijd één keer goed, lees het verslag, en er kunnen er drie dicht.',
+    '#217 (boordspanning) — SLUIT OP DE METING. Blok 5 leest 0142 uit het ritbeeld, of uit de waakronde als je hem niet aangevinkt hebt. Blijft de spanning binnen 11,5–15,2 V, dan is onderspanning geén verklaring voor de vier storingen en is de adapter de verdachte. Zakt hij eronder, dan is het de accu. Beide uitkomsten sluiten het issue — alleen “niet gemeten” doet dat niet.',
+    '#212 (blok 10 in batchvorm) — SLUIT OP EEN OORDEEL. De reparatie is al gedaan; wat overblijft is de vraag of blok 10 zélf ook in batchvorm hoort te meten. Kijk in het adapterpaneel of de solo- en batchkolom noemenswaardig uit elkaar lopen. Doen ze dat niet op deze adapter, dan is het antwoord nee en kan hij dicht.',
+    '#64 (meetcontext) — SLUIT ALS JE DE A/B-PROEF DOET. Vraag één analyse met start/stop op “ja” en één met “nee”, en lees of het rapport werkelijk anders leest. Leest het hetzelfde, dan is de vraag versiering en gaat hij eruit. Dat is een antwoord en geen mislukking.',
+    'WAT NIET MEER OPEN STAAT. #161 (de drempel voor “beweegt”) en #202 (de renderer na 59–60 s) zijn op 16-09 met een besluit gesloten en niet met een reparatie; de reden staat in §11. Ze hoeven deze rit dus niets te bewijzen — de proeven eromheen blijven wel meelopen, zodat een verandering opvalt.',
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Een nieuwe APK is deze ronde NIET nodig: alles zit in de webpagina. Draai je nog op de oude schil van vóór 12-09, kijk dan wel of de pakketnaam in blok 5 nl.pidlane.app is.',
-    'STAP 1 — DOE HET MET DE GOEDKOPE ADAPTER. Dit is de ronde waarin die adapter het meetinstrument is. Gaat het niet, doe hem dan met de MX+ en zeg dat erbij — dan is dit een controle dat er niets kapot is gegaan, en geen antwoord op de vraag.',
+    'STAP 1 — DOE HET MET DE GOEDKOPE ADAPTER, MAAR HAAL HEM ER DAARNA UIT (#217). Dit is de ronde waarin die adapter het meetinstrument is. Gaat het niet, doe hem dan met de MX+ en zeg dat erbij — dan is dit een controle dat er niets kapot is gegaan, en geen antwoord op de vraag. Nieuw sinds 16-09: laat hem NIET zitten als je niet rijdt. Na ritten met deze kloon stonden er vier storingen tegelijk in de auto (DSC, keyless entry, SCBS, parkeerrem), en dat is het beeld van onderspanning — een adapter die de bus wakker houdt, trekt de accu leeg.',
+    'STAP 1B — VINK DE BOORDSPANNING AAN (0142). Dat is de één meting die #217 beslist: is het de accu, de adapter, of allebei. Rustend onder ~12,2 V of een diepe dip bij het starten, en je hebt je antwoord. De waakronde pakt hem ook vanzelf op — het is precies zo\'n sensor die niemand aanvinkt.',
     'STAP 2 — OPEN HET PANEEL VÓÓR DE RIT. Tik op de chip linksboven (Systeem → OBD). Lees de bovenste regel: staat er "Deze adapter herhaalt frames"? Onthoud het getal. Kijk of de naam en het ATI-antwoord kloppen met wat er in de auto zit.',
     'STAP 3 — DRUK OP DE SNELHEIDSTEST, STILSTAAND MET DRAAIENDE MOTOR. Veertig seconden. Lees de tabel: de kolom "solo" en de kolom "batch" horen op deze adapter uit elkaar te lopen. Onthoud het advies bovenaan.',
     'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op. Daarna minstens drie minuten naar de achtergrond met het scherm uit (#202), en schakel nog een andere app open. Als laatste de adapter er even uit (#133).',
@@ -7110,6 +7191,7 @@ const CAMPAGNE = {
     'HET ADVIES IS REKENWERK EN GEEN BELOFTE. "Bij 6/s hoort 100%" volgt uit de verhouding met wat de app nu doet. Of de bus dat een half uur volhoudt staat er niet in — dat is precies wat de rustmeting van blok 10 wél toetst.',
     'DAT DE MX+ DEZE ECHO NOOIT GEEFT IS NIET NAGEMETEN. Aannemelijk, want in geen van de eerdere runs stond er één, maar er is van die adapter geen TX/RX-staart met dezelfde batches naast gelegd. Rijd je deze ronde met de MX+, kijk dan of de echoteller op nul blijft — dan is dat alsnog gemeten.',
     '#202 EN #161 KRIJGEN DEZE RONDE GEEN ANTWOORD. De renderer die na 59-60 s stilvalt vraagt picture-in-picture, en dat is een eigen bouwronde. De drempel voor "beweegt" is een ontwerpbesluit en geen meetvraag.',
+    'OF DE APP ZELF AAN DE STORINGEN IN #217 BIJDRAAGT, IS NIET GEMETEN. Mode 01-verzoeken zijn leesacties en horen in andere modules geen DTC te zetten. Maar van deze kloon is alleen gemeten wat er aan de SERIËLE kant uitkwam — dat hij frames herhaalt (#210) — en niet wat hij daarbij op de CAN-kant doet. Zolang dat er niet naast ligt, is “de app kan dit niet veroorzaken” een aanname en geen bevinding.',
     'DE AFSTAND IN DE BULK-ANALYSE IS EEN SCHATTING, EN BIJ GATEN TE LAAG. Hij telt de snelheid per seconde op; valt de adapter weg, dan loopt de tijd door en de afstand niet. Het venster noemt het aantal gatregels erbij, maar hoeveel kilometer dat scheelt is niet nagemeten — daarvoor moet er een kilometerstand naast.',
     'DE KLIMVERGELIJKING IS NOG NOOIT OP EEN ECHTE KLIM GEDRAAID. Hij zwijgt onder vijftig regels per kant, en in Nederland haal je die zelden. De drempel van 8 °C verschil komt uit redeneren, niet uit een meting: tot er een zware rit met caravan door de bergen onder ligt, is dat een aanname in de code en geen grens die iets bewezen heeft.',
     'DE WAAKRONDE-HISTORIE OVERLEEFT HET HERLADEN VAN DE PAGINA NIET. Hij staat in het geheugen, niet in localStorage. Dat is met opzet — een oordeel van twee ritten geleden zegt niets over nu — maar het betekent ook dat “Nieuwste versie laden” je sessieoverzicht wist. Wil je het bewaren, exporteer dan vóór het herladen.',
