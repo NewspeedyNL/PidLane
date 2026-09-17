@@ -699,6 +699,26 @@ MUTATIES=(
 "public/pidlane-testrun.js@@  if (blok !== _liveBlok) {\n    _liveBlokKlaar();@@  if (blok !== _liveBlok) {@@test-livelog.js@@een blok wordt nooit afgesloten: er valt onderweg niets af te vinken"
 "public/pidlane-testrun.js@@      Demo: !!(typeof demoMode !== 'undefined' && demoMode)@@      Demo: false@@test-livelog.js@@een demo-run komt als echte meting in de tabel"
 "public/pidlane-testrun.js@@  } catch (e) {\n    console.warn('Testrun: regel niet naar de live-log gestuurd — de run gaat gewoon door', e);\n    return false;\n  }@@  } finally { }@@test-livelog.js@@een kapotte log sleurt de hele testrun mee"
+
+# ── KWAM HET AAN? (#235, 17-09-2026, nagemeten aan de andere kant van de lijn)
+# De logtabel telde die avond 722 regels en nul daarvan kwam van een testrun,
+# terwijl gewone regels er diezelfde avond nog in kwamen. Het live-pad was dus
+# opgeleverd en niemand kon zien dat er niets doorheen kwam: een mislukte batch
+# ging alleen naar console.warn, op een telefoon, tijdens een rit.
+# Blok 5 vraagt het nu aan plLiveLogStatus(). Deze vijf fouten laten die vraag
+# allemaal een geruststellend antwoord geven dat nergens op slaat.
+"public/pidlane-auth.js@@      _atNoteer(true,resp.status,batch.length,'');@@      void 0;@@test-livelog.js@@een geslaagde verzending laat geen spoor na: blok 5 ziet nooit een uitslag en kan niets onderscheiden"
+"public/pidlane-auth.js@@_atNoteer(false,resp.status,batch.length,@@_atNoteer(true,resp.status,batch.length,@@test-livelog.js@@een 422 van Airtable wordt als geslaagd vastgelegd — precies de fout die de hele log platlegt, nu met groen ervoor"
+"public/pidlane-auth.js@@      _atNoteer(false,null,batch.length,e.message||'netwerkfout');@@      void 0;@@test-livelog.js@@een netwerkfout laat de vorige uitslag staan: de log is weg en blok 5 meldt de verzending van tien minuten geleden"
+"public/pidlane-auth.js@@function plLiveLogStatus(){ return _atLaatste?Object.assign({},_atLaatste):null; }@@function plLiveLogStatus(){ return _atLaatste; }@@test-livelog.js@@de beller krijgt de toestand zelf in handen en kan zijn eigen uitslag groen maken"
+"public/pidlane-auth.js@@  if(!_atBuffer.length) return;@@  if(false) return;@@test-livelog.js@@een lege buffer telt als geslaagde verzending: 'er stond niets klaar' leest als 'het is aangekomen'"
+
+# En de andere helft: de proef zelf. Deze drie laten hem iets zeggen dat niet
+# klopt zonder dat er ook maar iets omvalt — een vals alarm of een vals groen
+# tijdens een rit, en dat is precies het soort proef dat genegeerd gaat worden.
+"public/pidlane-testrun.js@@      if (na.status === 401 || na.status === 403)@@      if (false)@@test-livelog.js@@een sessie zonder app-token levert FOUT in plaats van LET OP: de proef staat rood op elke run zonder login"
+"public/pidlane-testrun.js@@      while ((!na || (voor && na.tijd === voor.tijd)) && gewacht < 5000) {@@      while (!na && gewacht < 5000) {@@test-livelog.js@@een geslaagde verzending van vóór deze proef telt als bewijs: de proef keurt zijn eigen regel goed zonder dat die verstuurd is"
+"public/pidlane-testrun.js@@        return { staat: 'LET OP', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@        return { staat: 'FOUT', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@test-livelog.js@@een ontbrekende voorwaarde wordt als kapot kanaal gemeld"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de

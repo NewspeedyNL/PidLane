@@ -221,6 +221,223 @@ function deel2() {
   toets('een kapotte log laat de testrun niet omvallen', !omgevallen,
     'een run die stukloopt op zijn eigen verslaglegging is erger dan een run zonder');
 
+  deel3();
+}
+
+// ══════════════════════════════════════════════════════════════════
+async function deel3() {
+  console.log('\n3. flushAirtable() zegt wat er van de verzending terechtkwam');
+  // ══════════════════════════════════════════════════════════════════
+// NAGEMETEN OP 17-09-2026, en dat is waarom dit stuk bestaat. De logtabel
+// telde 722 regels en nul daarvan kwam van een testrun, terwijl gewone
+// regels er diezelfde avond nog in kwamen. Dat verschil was van binnenuit
+// niet te zien: een mislukte batch ging alleen naar console.warn op een
+// telefoon tijdens een rit, en de aanroeper kreeg niets terug.
+//
+// Blok 5 van de testrun rust nu op plLiveLogStatus(). Faalt dit stuk, dan
+// is die proef een proef die niets meer kan onderscheiden.
+  const bron = fs.readFileSync(__dirname + '/pidlane-auth.js', 'utf8');
+  const noteer = bron.match(/let _atLaatste=null;[\s\S]*?function plLiveLogStatus\(\)\{[^\n]*\n/);
+  const flush = bron.match(/async function flushAirtable\(\)\{[\s\S]*?\n\}/);
+  if (!noteer) { console.error('FOUT: _atLaatste/_atNoteer/plLiveLogStatus niet gevonden in pidlane-auth.js'); process.exit(1); }
+  if (!flush) { console.error('FOUT: flushAirtable() niet gevonden in pidlane-auth.js'); process.exit(1); }
+
+  const s = { console: { warn() { } } };
+  s.window = s;
+  s.AIRTABLE_URL = 'https://voorbeeld/airtable/log';
+  s._atBuffer = [];
+  s._atTimer = null;
+  s.setTimeout = function () { return 0; };
+  s.clearTimeout = function () { };
+  s.Object = Object;
+  vm.createContext(s);
+  vm.runInContext(noteer[0] + '\n' + flush[0], s, { filename: 'flushAirtable' });
+
+  const vul = function (aantal) {
+    s._atBuffer.length = 0;
+    for (let i = 0; i < aantal; i++) s._atBuffer.push({ fields: { Message: 'regel ' + i } });
+  };
+
+  toets('zonder poging is er geen uitslag — geen verzonnen groen',
+    s.plLiveLogStatus() === null,
+    'een proef die op null groen wordt, staat groen vóór er iets verstuurd is');
+
+  // 1. HET GAAT GOED.
+  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({}) }; };
+  vul(2);
+  await s.flushAirtable();
+  let u = s.plLiveLogStatus();
+  toets('een geslaagde verzending wordt vastgelegd met status en aantal',
+    u && u.ok === true && u.status === 200 && u.aantal === 2 && u.fout === '',
+    'gaf: ' + JSON.stringify(u));
+  toets('... en de buffer is dan leeg', s._atBuffer.length === 0,
+    'gaf: ' + s._atBuffer.length + ' regel(s) — dan wordt dezelfde batch straks opnieuw gestuurd');
+
+  // 2. AIRTABLE WEIGERT. Dit is het geval dat de hele log plat kan leggen:
+  //    één onbekende veldnaam geeft een 422 en de batch komt terug.
+  s.plFetch = async function () {
+    return { ok: false, status: 422, json: async () => ({ error: { message: 'Unknown field name: "Zeur"' } }) };
+  };
+  vul(3);
+  await s.flushAirtable();
+  u = s.plLiveLogStatus();
+  toets('een geweigerde batch wordt vastgelegd als mislukt, mét de reden van Airtable',
+    u && u.ok === false && u.status === 422 && /Unknown field name/.test(u.fout),
+    'gaf: ' + JSON.stringify(u));
+  toets('... en de geweigerde regels staan terug in de buffer',
+    s._atBuffer.length === 3,
+    'gaf: ' + s._atBuffer.length + ' — anders is de meting van die batch weg zonder dat iemand het ziet');
+
+  // 3. HET NETWERK IS WEG. Geen status, wel een reden.
+  s.plFetch = async function () { throw new Error('netwerk weg'); };
+  vul(1);
+  await s.flushAirtable();
+  u = s.plLiveLogStatus();
+  toets('een netwerkfout wordt vastgelegd zonder status, mét de melding',
+    u && u.ok === false && u.status === null && /netwerk weg/.test(u.fout),
+    'gaf: ' + JSON.stringify(u));
+
+  // 4. DE UITSLAG IS VAN DE LOG, NIET VAN DE BELLER. Blok 5 leest hem; een
+  //    proef die hem kan verzetten kan zichzelf groen maken.
+  const kopie = s.plLiveLogStatus();
+  kopie.ok = true; kopie.status = 200;
+  toets('plLiveLogStatus geeft een kopie terug, geen greep op de toestand',
+    s.plLiveLogStatus().ok === false && s.plLiveLogStatus().status === null,
+    'gaf: ' + JSON.stringify(s.plLiveLogStatus()));
+
+  // 5. ELKE POGING IS EEN NIEUW MOMENT. Blok 5 vergelijkt `tijd` om een oude
+  //    geslaagde verzending niet voor de zijne aan te zien.
+  const voor = s.plLiveLogStatus().tijd;
+  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({}) }; };
+  vul(1);
+  await new Promise(r => setTimeout(r, 2));
+  await s.flushAirtable();
+  toets('een volgende poging draagt een nieuwer tijdstip',
+    s.plLiveLogStatus().tijd > voor,
+    'zonder dat kan blok 5 een uitslag van tien minuten geleden voor de zijne aanzien');
+
+  // 6. TEGENPROEF OP DE POORT ZELF. Een lege buffer is geen verzending, dus
+  //    hij hoort de vorige uitslag niet te overschrijven met groen.
+  const laatste = s.plLiveLogStatus().tijd;
+  s._atBuffer.length = 0;
+  await s.flushAirtable();
+  toets('TEGENPROEF: een lege buffer levert geen nieuwe uitslag op',
+    s.plLiveLogStatus().tijd === laatste,
+    'anders leest "er stond niets klaar" als "het is aangekomen"');
+
+  await deel4();
+}
+
+// ══════════════════════════════════════════════════════════════════
+async function deel4() {
+  console.log('\n4. de blok 5-proef onderscheidt aangekomen van niet-aangekomen');
+  // ══════════════════════════════════════════════════════════════════
+  // Hierboven is getoetst dat de log vastlegt wat er gebeurde. Dit is de
+  // andere helft: doet de proef er het goede mee? Dat is de helft die tijdens
+  // een rit een vals alarm kan geven, en een proef die om de zoveel run
+  // onterecht rood staat wordt genegeerd (CLAUDE.md).
+  //
+  // De echte entry wordt uit de lijst gehaald en uitgevoerd — geen nagebouwde
+  // kopie. Verdwijnt hij, dan stopt deze test hier.
+  const s = {};
+  s.window = s;
+  s.connected = false;
+  s.demoMode = false;
+  s.pidVals = {}; s._pidLastUpd = {}; s.activePIDs = new Set(); s.pidHist = {};
+  s.console = { warn() { }, error() { }, log() { } };
+  s.localStorage = { getItem() { return null; }, setItem() { }, key() { return null; }, length: 0 };
+  s.document = { getElementById() { return null; }, querySelectorAll() { return []; },
+                 createElement() { return { style: {}, classList: { add() { }, remove() { } } }; },
+                 addEventListener() { }, body: { appendChild() { } } };
+  s.navigator = { userAgent: 'node' };
+  s.setInterval = function () { return 0; }; s.clearInterval = function () { };
+  // LET OP — hier géén setTimeout die niets doet. De proef wacht op de
+  // verzending met _wacht(), en met een setTimeout die zijn callback nooit
+  // aanroept blijft die belofte voor eeuwig open staan: de test hangt dan in
+  // plaats van te falen.
+  s.setTimeout = function (fn) { setImmediate(fn); return 0; };
+  s.clearTimeout = function () { };
+  s.PLBus = { stats() { return { belasting: 0, perSec: 0, venGemMs: 0, foutPct: 0 }; } };
+  s.PLLoad = { staat() { return { mult: 1, tempoPct: 100 }; }, cfg: {} };
+  s.logToSheets = function () { };
+  vm.createContext(s);
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s,
+    { filename: 'pidlane-testrun.js' });
+
+  if (!s.PLBlok5 || typeof s.PLBlok5.proeven !== 'function') {
+    console.error('FOUT: PLBlok5 hangt niet meer naar buiten — de lijst is niet te bereiken');
+    process.exit(1);
+  }
+  const entry = s.PLBlok5.proeven().filter(p => p.issue === '#235')[0];
+  if (!entry || typeof entry.proef !== 'function') {
+    console.error('FOUT: de proef van #235 staat niet meer in PROEVEN_B5');
+    process.exit(1);
+  }
+
+  // Eén opstelling waarin alles goed gaat; per geval wordt er één ding aan
+  // veranderd. Dat is wat de gevallen vergelijkbaar maakt.
+  let klok = 1000;
+  function opstelling(uitslag) {
+    s.AIRTABLE_URL = 'https://voorbeeld/airtable/log';
+    s.logToSheets = function () { };
+    s.flushAirtable = async function () { if (uitslag) uitslag.tijd = ++klok; };
+    s.plLiveLogStatus = function () { return uitslag ? Object.assign({}, uitslag) : null; };
+  }
+
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 3, fout: '' });
+  let r = await entry.proef();
+  toets('aangekomen → ok, met het aantal regels erbij',
+    r.staat === 'ok' && /3 regel/.test(r.detail) && /200/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
+  toets('... en de uitslag belooft niet meer dan hij weet',
+    /niet dat de regel in de tabel staat/.test(r.detail),
+    'HTTP 200 van de Worker is geen bewijs dat Airtable het veld accepteerde');
+
+  opstelling({ tijd: klok, ok: false, status: 422, aantal: 3, fout: 'Unknown field name: "Zeur"' });
+  r = await entry.proef();
+  toets('geweigerd door Airtable → FOUT, met status en reden',
+    r.staat === 'FOUT' && /422/.test(r.detail) && /Unknown field name/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
+
+  opstelling({ tijd: klok, ok: false, status: null, aantal: 1, fout: 'netwerk weg' });
+  r = await entry.proef();
+  toets('netwerk weg → FOUT, en hij noemt het netwerk',
+    r.staat === 'FOUT' && /netwerkfout/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
+
+  // 401/403 is iets anders dan een kapot kanaal: dan ontbreekt een
+  // voorwaarde, en dat hoort LET OP te zijn. Zo staat het in CLAUDE.md, en
+  // zonder dat onderscheid staat deze proef rood op elke run zonder login.
+  opstelling({ tijd: klok, ok: false, status: 401, aantal: 1, fout: 'unauthorized' });
+  r = await entry.proef();
+  toets('niet ingelogd (401) → LET OP en geen FOUT',
+    r.staat === 'LET OP' && /401/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
+
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 1, fout: '' });
+  s.AIRTABLE_URL = '';
+  r = await entry.proef();
+  toets('geen logadres ingesteld → LET OP, want de voorwaarde ontbreekt',
+    r.staat === 'LET OP' && /AIRTABLE_URL/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
+
+  // DE ONDERSCHEIDENDE: er wordt niets verstuurd. Een proef die alleen naar
+  // de laatste uitslag kijkt zou hier groen blijven op de geslaagde
+  // verzending van daarvóór — precies de fout die deze proef moet vangen.
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 5, fout: '' });
+  s.flushAirtable = async function () { /* stuurt niets: de uitslag blijft staan */ };
+  r = await entry.proef();
+  toets('er wordt niets verstuurd → FOUT, ondanks een geslaagde poging van daarvóór',
+    r.staat === 'FOUT' && /geen enkele uitslag/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
+
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 1, fout: '' });
+  s.plLiveLogStatus = undefined;
+  r = await entry.proef();
+  toets('zonder plLiveLogStatus → FOUT en niet stilletjes groen',
+    r.staat === 'FOUT' && /plLiveLogStatus/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
+
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
                             : 'goed: alle ' + n + ' controles') + '\n');
   process.exit(fout ? 1 : 0);

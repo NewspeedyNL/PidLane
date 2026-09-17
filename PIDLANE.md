@@ -913,6 +913,60 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De live-log was opgeleverd en kwam nooit aan (#235, 17-09-2026)
+
+Het live-pad van de testrun is op 17-09 om 17:26 samengevoegd: elke bevinding
+en elk blok gaat tijdens de rit naar de Airtable-logtabel, zodat je onderweg
+kunt meekijken zonder te stoppen en te lezen. Diezelfde avond is aan de ándere
+kant van de lijn gekeken wat daar binnenkwam, en dat is de reden dat dit kopje
+bestaat:
+
+| vraag | antwoord |
+|---|---|
+| regels in de logtabel | 722 |
+| daarvan met een `SessionId` (dus van een testrun) | **0** |
+| daarvan met "blok" in het bericht | **0** |
+| gewone regels diezelfde avond | ja — "Data stabiel · pidCount=17" om 18:44 |
+
+Het kanaal deed het dus wél, en de testrun kwam er niet doorheen. Wat er
+precies misging is van hieruit niet vast te stellen — en dát is de bevinding.
+
+**Waarom het onzichtbaar was.** `flushAirtable()` meldde een mislukte batch met
+`console.warn`, op een telefoon, tijdens een rit. Naar de aanroeper ging er
+niets terug: geen uitzondering, geen retourwaarde. Wie de tabel leeg zag kon
+niet weten of er niets gemeten was of niets aangekomen, en dat zijn twee heel
+verschillende dingen. Dit is de vorm van §19 — een fout die niemand ziet blijft
+staan — nu op de plek waar het verslag van een rit vandaan moet komen.
+
+**Wat er tegen gedaan is.** `flushAirtable()` legt de uitkomst van elke poging
+vast (`_atNoteer`), en `plLiveLogStatus()` geeft die uitkomst terug als kopie.
+Blok 5 heeft er een proef bij die een regel in de buffer zet, de verzending
+afdwingt en vraagt wat de Worker antwoordde. Drie uitkomsten, en het verschil
+ertussen is het punt:
+
+* **ok** — de Worker nam de regels aan. Dat is bewijs dat de lijn er is en
+  niet dat de regel in de tabel staat: een onbekende veldnaam geeft een 422
+  van Airtable zelf, en die zie je pas dáár. De uitslag zegt dat er ook bij.
+* **LET OP** — er is geen logadres ingesteld, of de Worker weigerde met 401/403.
+  Dat is een ontbrekende voorwaarde en geen kapot kanaal; een proef die daarop
+  rood staat wordt binnen twee ritten genegeerd.
+* **FOUT** — er kwam een echte weigering terug, het netwerk was weg, of er werd
+  binnen vijf seconden helemaal niets verstuurd.
+
+**Wat deze proef niet doet.** Hij leest de tabel niet terug. Dat zou een tweede
+verbinding vragen vanaf een telefoon in een auto, en het antwoord op "staat het
+er echt in" is goedkoper aan de andere kant te halen — zoals hier ook gebeurd
+is. Wat hij wél waarmaakt is de vraag die tijdens een rit telt: gaat er iets
+weg, en wat kwam daarop terug.
+
+**Nagemeten.** `test-livelog.js` voert de echte `flushAirtable()` en de echte
+blok 5-entry uit (geen kopie) over acht mutaties in `plmutate.sh`: van "een
+geslaagde verzending laat geen spoor na" tot "een 422 wordt als geslaagd
+vastgelegd". Wat niet nagemeten is: of de tabel de velden van een testrun
+accepteert. Dat blijkt uit de eerste rit die deze proef groen ziet — en als
+het misgaat, staat het er nu bij.
+
+
 ### Een stille catch in een proef maakte een timingfout onherkenbaar (#236, 17-09-2026)
 
 `bproef-contrast.js` stond twee keer rood in CI op een PR die geen thema, geen
