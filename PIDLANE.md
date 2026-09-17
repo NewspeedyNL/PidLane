@@ -913,6 +913,63 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De labelpoort keek naar de verkeerde testrun (#238, 17-09-2026)
+
+Een PR die rood stond is die middag automatisch samengevoegd, en dus
+gedeployd. Niet doordat een poort ontbrak — de poort stond er en stelde de
+verkeerde vraag.
+
+Op elke commit van een tak met een open PR staan **twee** afgeronde
+Tests-runs, en ze toetsen niet hetzelfde:
+
+| run | event | wat hij toetst |
+|---|---|---|
+| push-run | `push` | de tak zoals hij is |
+| PR-run | `pull_request` | de tak **samengevoegd met `main`** |
+
+Wat er live gaat is het tweede. De labelroute in `automerge.yml` haalde alle
+runs op die commit op en vroeg `some(r => r.conclusion === 'success')` — dus
+één groene run volstond, ongeacht welke. Op commit `6b0dace` van PR #235 stond
+push-run [35251097932](https://github.com/NewspeedyNL/PidLane/actions/runs/35251097932)
+groen en PR-run [35251158093](https://github.com/NewspeedyNL/PidLane/actions/runs/35251158093)
+rood, ook na een re-run. Om 17:26:49 voegde de bot samen. De poort die het
+samenvoegresultaat moet bewaken ging open op een run die dat resultaat nooit
+gezien heeft.
+
+**Dat de rode run zelf een wankele proef was (#236) is geen verzachting.** De
+poort wist dat niet en kon het niet weten; hij kreeg toevallig gelijk. Was de
+rode run een echte fout geweest, dan stond die fout nu bij de klant — er zit
+niemand tussen de merge en de deploy.
+
+**Waarom alleen de labelroute.** De andere ingang stelde de eis al: bij
+`workflow_run` filtert de job-conditie op `workflow_run.event ==
+'pull_request'`. De labelroute is er op 03-09 bij gekomen omdat het label
+zetten ná een groene run anders niets deed, en die route kreeg de filterregel
+niet mee. Twee ingangen naar dezelfde poort, waarvan er één de eis kende — dat
+is de vorm waar dit soort gaten in zitten.
+
+**De reparatie zit in `automerge-besluit.js`, niet in de YAML**, en dat is de
+regel uit CLAUDE.md die precies dit geval dekt: een besluit in een inline
+script merk je pas als er iets verkeerds live staat. `testsGroenUitRuns()`
+krijgt de ruwe runlijst en beantwoordt drie dingen:
+
+* alleen `pull_request`-runs mogen antwoorden — een push-run en een
+  `workflow_dispatch`-run toetsen de tak los;
+* ze moeten **allemaal** groen zijn. `some` was ook binnen de PR-runs de
+  verkeerde vraag: één groene run naast een rode betekent niet dat het goed is;
+* geen enkele afgeronde PR-run → `null`, en dat telt als niet groen. Een tak
+  met alleen een push-run glipt er dus niet langs de andere kant doorheen.
+
+Nagemeten met vier mutaties in `plmutate.sh`, waaronder de fout zelf en de
+variant die het oordeel terugzet in de YAML — die laatste is de gevaarlijkste,
+want dan staat `testsGroenUitRuns()` er getoetst bij terwijl niemand hem nog
+iets vraagt. Dat is de vorm van `test-healthgate.js`.
+
+**Wat dit níét repareert.** De andere bevindingen van #238 staan er nog: er
+draait geen Tests-run op `main` na een automerge, `main` is niet beschermd,
+Cloudflare bouwt op elke tak, en het bijwerken van een achterstand is handwerk.
+Die wachten op hun beurt in dat issue.
+
 ### Een tak rijden zonder deploy: de preview-bron en zijn banner (#242, 17-09-2026)
 
 De app is een WebView op `app.pidlane.nl` en haalt zijn code élke start op

@@ -108,7 +108,7 @@ jobs:
         uses: actions/github-script@v7.0.1
         with:
           script: |
-            const { besluit, meldtekst, LABEL_KLAAR } =
+            const { besluit, meldtekst, testsGroenUitRuns, LABEL_KLAAR } =
               require(`${process.env.GITHUB_WORKSPACE}/automerge-besluit.js`);
             const { owner, repo } = context.repo;
 
@@ -122,19 +122,24 @@ jobs:
             core.info(`Wakker via ${viaLabel ? 'een label' : 'een afgeronde testrun'} op ${sha.slice(0, 7)}.`);
 
             // Staat de testgate groen op déze commit?
-            //   via workflow_run  — ja, daar filtert de job-conditie al op.
+            //   via workflow_run  — ja, daar filtert de job-conditie al op,
+            //                       inclusief de eis dat het de PR-run is.
             //   via een label     — onbekend, dus opzoeken. Lukt dat niet, dan
             //                       gaat er null door en houdt het besluit de
             //                       poort dicht: bij twijfel niet samenvoegen.
+            //
+            // WELKE VAN DE RUNS TELT, dat is de vraag die hier op 17-09-2026
+            // fout stond en waar PR #235 rood doorheen is gegaan. Het antwoord
+            // staat in testsGroenUitRuns() in automerge-besluit.js, met de
+            // meting erbij — niet hier, want een besluit in deze YAML is niet
+            // te toetsen. Deze stap haalt alleen de feiten op.
             async function testsGroenOp(commit) {
               if (!viaLabel) return true;
               try {
                 const { data } = await github.rest.actions.listWorkflowRuns({
                   owner, repo, workflow_id: 'tests.yml', head_sha: commit, per_page: 20
                 });
-                const afgerond = (data.workflow_runs || []).filter(r => r.status === 'completed');
-                if (!afgerond.length) return null;
-                return afgerond.some(r => r.conclusion === 'success');
+                return testsGroenUitRuns(data.workflow_runs || []);
               } catch (e) {
                 core.warning(`Testuitslag van ${commit.slice(0, 7)} niet op te halen (${e.message}) — poort blijft dicht.`);
                 return null;

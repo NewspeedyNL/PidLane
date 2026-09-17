@@ -27,7 +27,7 @@
 // ══════════════════════════════════════════════════════════════════
 'use strict';
 const path = require('path');
-const { besluit, meldtekst, LABEL_KLAAR, LABEL_VETO } =
+const { besluit, meldtekst, testsGroenUitRuns, LABEL_KLAAR, LABEL_VETO } =
   require(path.join(__dirname, '..', 'automerge-besluit.js'));
 
 let fouten = 0;
@@ -140,6 +140,71 @@ toets('en dat is een ander besluit dan "niet groen"',
       groenOnbekend.reden !== nietGroen.reden,
       'anders lees je "geen run gevonden" als "gate rood" en ga je iets zoeken wat er niet is');
 
+console.log('\n4c. Welke testrun telt: alleen die van de pull request');
+
+// Dit is het geval van 17-09-2026, met de echte runs erin. PR #235 is om
+// 17:26:49 via de labelroute samengevoegd terwijl de PR-run rood stond; de
+// groene push-run op dezelfde commit overstemde hem.
+//
+// De vraag die deze proeven moeten onderscheiden is niet "herkent hij groen"
+// maar "wélke run mag antwoorden". Een toets met alleen een groene PR-run zou
+// ook op de kapotte versie groen staan.
+function run(anders) {
+  return Object.assign({
+    event: 'pull_request', status: 'completed', conclusion: 'success'
+  }, anders || {});
+}
+
+const gevalPR235 = [
+  run({ event: 'push' }),                         // 35251097932 — groen
+  run({ conclusion: 'failure' })                  // 35251158093 — rood, ook na re-run
+];
+toets('het geval van PR #235: groene push-run naast rode PR-run → NIET groen',
+      testsGroenUitRuns(gevalPR235) === false,
+      'dit is precies de merge die op 17-09 om 17:26:49 doorging');
+toets('en dat is een hard nee, geen "onbekend"',
+      testsGroenUitRuns(gevalPR235) !== null,
+      'null zou hetzelfde besluit geven maar een andere reden — dan zoek je een run die er wel is');
+
+// De tegenkant: de push-run mag ook niet BLOKKEREN. Zonder deze regel is de
+// reparatie een poort die te veel dichthoudt, en dat wordt weggehaald.
+toets('rode push-run naast groene PR-run → wél groen',
+      testsGroenUitRuns([run({ event: 'push', conclusion: 'failure' }), run()]) === true,
+      'de push-run toetst de tak los; die uitslag gaat niet over wat er live komt');
+
+// En de push-run mag de vraag ook niet BEANTWOORDEN als hij de enige is.
+toets('alleen een groene push-run, geen PR-run → onbekend',
+      testsGroenUitRuns([run({ event: 'push' })]) === null,
+      'anders telt de tak-uitslag alsnog als toestemming, alleen langs een andere weg');
+toets('alleen een groene workflow_dispatch-run → onbekend',
+      testsGroenUitRuns([run({ event: 'workflow_dispatch' })]) === null,
+      'met de hand gestart op de tak, dus niet over het samenvoegresultaat');
+
+// `some` was ook binnen de PR-runs de verkeerde vraag.
+toets('twee PR-runs, één rood → NIET groen',
+      testsGroenUitRuns([run(), run({ conclusion: 'failure' })]) === false,
+      'één groene run naast een rode betekent niet dat het goed is');
+
+// Een lopende run is geen uitslag.
+toets('een PR-run die nog draait telt niet mee → onbekend',
+      testsGroenUitRuns([run({ status: 'in_progress', conclusion: null })]) === null,
+      'anders leest "nog bezig" als een antwoord');
+toets('een afgebroken PR-run telt als niet groen',
+      testsGroenUitRuns([run({ conclusion: 'cancelled' })]) === false);
+
+toets('geen runs → onbekend', testsGroenUitRuns([]) === null);
+toets('geen lijst → onbekend', testsGroenUitRuns(undefined) === null,
+      'de API kan workflow_runs weglaten; dan is dit niet de plek die omvalt');
+
+// En de koppeling met het besluit: onbekend en rood houden allebei de poort
+// dicht. Zonder deze twee regels toetst het bovenstaande een functie die
+// niemand iets vraagt.
+toets('uit deze uitslag volgt dat #235 was blijven liggen',
+      besluit(pr({ testsGroen: testsGroenUitRuns(gevalPR235) })).samenvoegen === false,
+      'dit is de hele reden dat deze functie bestaat');
+toets('en een tak met alleen een push-run ook',
+      besluit(pr({ testsGroen: testsGroenUitRuns([run({ event: 'push' })]) })).samenvoegen === false);
+
 console.log('\n5. De basis mag niet zijn opgeschoven (de nieuwe poort)');
 
 // Dit is het gat dat er tot 03-09 open stond. Een pull_request-run toetst head
@@ -213,7 +278,7 @@ toets('en de rest zwijgt: draft, fork, niet-groen, ok, onbekend, verschoven, vet
       JSON.stringify(stil) === JSON.stringify(['draft', 'fork', 'niet-groen', 'ok', 'onbekend', 'verschoven', 'veto']),
       'gevonden: ' + JSON.stringify(stil));
 
-console.log('\n9. De workflow zelf: twee eigenschappen die het besluit niet kan bewaken');
+console.log('\n9. De workflow zelf: drie eigenschappen die het besluit niet kan bewaken');
 
 // Deze twee zitten in de YAML en niet in de functie, maar ze zijn te
 // belangrijk om onbewaakt te laten.
@@ -238,6 +303,21 @@ if (mRef) {
   toets('en die ref is niet de PR-head',
         !/pull_request|head/.test(mRef[1]), 'gevonden: ' + mRef[1].trim());
 }
+
+// (c) EN HET OORDEEL OVER DE RUNS BLIJFT IN DE GETOETSTE FUNCTIE.
+// testsGroenUitRuns() staat in automerge-besluit.js met zijn proeven erbij.
+// Komt het filter hier terug als inline script, dan is het weer onzichtbaar —
+// en dan staat die functie er getoetst bij terwijl niemand hem iets vraagt.
+// Dat is de vorm van test-healthgate.js, die maanden groen stond op een
+// functie die de app niet meer had.
+toets('de workflow laat testsGroenUitRuns beslissen welke run telt',
+      /testsGroenUitRuns\(data\.workflow_runs/.test(wf),
+      'een filter in deze YAML is niet te toetsen, en daar is PR #235 doorheen gegaan');
+
+const scriptBlok = wf.slice(wf.indexOf('script: |'));
+toets('en de YAML velt zelf geen oordeel meer over de losse runs',
+      !/\.conclusion/.test(scriptBlok),
+      'twee plekken die hetzelfde beslissen lopen uit de pas, en de stille van de twee is deze');
 
 console.log('');
 if (fouten) { console.log('test-automerge: ' + fouten + ' fout(en)'); process.exit(1); }

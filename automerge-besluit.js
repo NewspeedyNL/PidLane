@@ -68,6 +68,50 @@ function heeftLabel(labels, naam) {
   return (labels || []).some(l => String(l).trim().toLowerCase() === gezocht);
 }
 
+/* ── WELKE TESTRUN TELT: alleen die van de pull request ──
+   Gemeten op 17-09-2026, en dit is geen redenering vooraf: PR #235 is om
+   17:26:49 via de labelroute samengevoegd terwijl zijn PR-run rood stond.
+
+   Op commit 6b0dace staan altijd twee afgeronde Tests-runs, en ze toetsen
+   niet hetzelfde:
+
+     push-run  35251097932  event push          ✅ — de tak zoals hij is
+     PR-run    35251158093  event pull_request  ❌ — de tak SAMENGEVOEGD MET
+                                                    main, ook na een re-run
+
+   Wat er live gaat is het tweede. De workflow vroeg `some(conclusion ===
+   'success')` over allebei, dus de groene push-run overstemde de rode
+   PR-run: de poort die het samenvoegresultaat moet bewaken ging open op een
+   run die dat resultaat nooit gezien heeft.
+
+   Dat de rode run zelf een wankele proef was (#236) verandert daar niets aan.
+   De poort wist dat niet en kon het niet weten — en een poort die per ongeluk
+   gelijk krijgt is nog steeds stuk.
+
+   Twee dingen veranderen hier dus tegelijk, en allebei met reden:
+
+   1. ALLEEN `pull_request`. Een push-run en een workflow_dispatch-run toetsen
+      de tak los, niet de combinatie die op main zou ontstaan. Ze mogen die
+      vraag niet beantwoorden.
+   2. `every` IN PLAATS VAN `some`. Eén groene run naast een rode betekent
+      niet dat het goed is; het betekent dat er iets rood staat. `some` was
+      ook zonder de push-run de verkeerde vraag.
+
+   Geen enkele afgeronde PR-run gevonden → null. Dat is "niet vast te
+   stellen", en dat telt in besluit() als niet groen: bij twijfel niet
+   samenvoegen. Een tak die alleen een push-run heeft glipt er dus niet
+   doorheen, hij blijft liggen.
+
+   De andere ingang stelde deze eis al: bij `workflow_run` filtert de
+   job-conditie in de YAML op `workflow_run.event == 'pull_request'`. Deze
+   functie is de labelroute die hem miste. */
+function testsGroenUitRuns(runs) {
+  const vanDePR = (runs || []).filter(r =>
+    r && r.event === 'pull_request' && r.status === 'completed');
+  if (!vanDePR.length) return null;
+  return vanDePR.every(r => r.conclusion === 'success');
+}
+
 /**
  * @param {object} f  de feiten over deze PR:
  *   nummer        {number}
@@ -226,4 +270,4 @@ function meldtekst(b) {
   return kop;
 }
 
-module.exports = { besluit, meldtekst, LABEL_KLAAR, LABEL_VETO };
+module.exports = { besluit, meldtekst, testsGroenUitRuns, LABEL_KLAAR, LABEL_VETO };

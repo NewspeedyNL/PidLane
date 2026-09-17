@@ -338,6 +338,15 @@ MUTATIES=(
 "automerge-besluit.js@@  if (f.headRepo !== f.eigenRepo) {@@  if (false) {@@test-automerge.js@@een PR uit een fork wordt weer samengevoegd door de bot"
 "automerge-besluit.js@@  if (typeof f.achterstand === 'number' && f.achterstand > 0) {@@  if (false) {@@test-automerge.js@@een verlopen groene vlag telt weer: de basis mag opgeschoven zijn"
 "automerge-besluit.js@@             melden: true, sleutel: 'geen-klaar' };@@             melden: false, sleutel: 'geen-klaar' };@@test-automerge.js@@een PR zonder label blijft stil liggen in plaats van het te zeggen"
+# ── welke testrun de poort mag beantwoorden (17-09-2026) ──
+# Deze vier bouwen na wat er die middag écht misging: PR #235 ging om 17:26:49
+# via de labelroute mee terwijl zijn PR-run rood stond, omdat de groene
+# push-run op dezelfde commit meetelde. De eerste is die fout zelf; de laatste
+# zet het oordeel terug in de YAML, waar het niet te toetsen is.
+"automerge-besluit.js@@    r && r.event === 'pull_request' && r.status === 'completed');@@    r && r.status === 'completed');@@test-automerge.js@@de push-run telt weer mee: een groene tak overstemt een rode PR-run"
+"automerge-besluit.js@@  return vanDePR.every(r => r.conclusion === 'success');@@  return vanDePR.some(r => r.conclusion === 'success');@@test-automerge.js@@één groene run naast een rode telt weer als groen"
+"automerge-besluit.js@@  if (!vanDePR.length) return null;@@  if (!vanDePR.length) return true;@@test-automerge.js@@geen PR-run gevonden geldt weer als toestemming in plaats van als twijfel"
+".github/workflows/automerge.yml@@                return testsGroenUitRuns(data.workflow_runs || []);@@                const a = (data.workflow_runs || []).filter(r => r.status === 'completed');\n                return a.length ? a.some(r => r.conclusion === 'success') : null;@@test-automerge.js@@de workflow beslist weer zelf welke run telt, buiten het bereik van de toets"
 # ── het icoon en de buildtrigger (03-09-2026) ──
 # Twee lijsten over hetzelfde, en de koppeling moet van beide kanten kloppen:
 # een pad dat uit de trigger valt, én een kandidaat die erbij komt zonder dat
