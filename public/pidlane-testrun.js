@@ -5067,6 +5067,13 @@ const PROEVEN_B5 = [
   // meet het effect op de multiplier, en zet alles terug zoals het stond.
   // Draait tijdens een rit, dus het terugzetten is geen nettigheid maar een
   // voorwaarde.
+  //
+  // HET IJKPUNT LIGT IN DE HANDMATIGE STAND ZELF (17-09-2026). Tot vandaag
+  // las deze proef het interval vóór het overnemen en eiste daarna een
+  // verdubbeling. Dat gaat alleen op als de automaat toevallig op 100% staat:
+  // `handmatig(true)` neemt met opzet de stand over die er stond, dus op een
+  // teruggeschroefde bus meet je 55% tegen 50% en dat is geen verdubbeling.
+  // Zie §11.
   {
     issue: '#211',
     naam: 'De handmatige stand van het adapterpaneel verzet het tempo echt',
@@ -5082,24 +5089,49 @@ const PROEVEN_B5 = [
       var oudTempo = PLLoad.staat().tempoPct;
       var oudGroep = 3, oudVast = false;
       try { oudGroep = PLBus.batchGroep(); oudVast = PLBus.batchVast(); } catch (e) { /* stil: dan blijft de terugzet-stand de standaard */ }
-      var fout = null, gemeten = '';
+      var fout = null, letop = null, gemeten = '';
       try {
-        var basis = pidPollInterval('010C');
+        // Eerst overnemen, dán pas het ijkpunt lezen — anders meet je de
+        // automaat en niet het schuifje.
         PLLoad.handmatig(true, 'blok 5');
-        PLLoad.zetTempo(50);
-        var half = pidPollInterval('010C');
-        if (!(half > basis * 1.5))
-          fout = 'op 50% tempo bleef het interval van 010C op ' + half + ' ms staan (was ' + basis +
-                 ' ms) — de handmatige multiplier komt niet in pidPollInterval() aan';
+        PLLoad.zetTempo(100);
+
+        /* Een PID die op de bodem van 80 ms ligt kan hier niets bewijzen:
+           Math.max() knijpt het verschil weg en dan geeft een wérkende
+           multiplier tóch geen verdubbeling. Focus-PIDs (vast op 120 ms) en
+           PIDs die de EV-modus uitzet (999999) vallen om dezelfde reden af.
+           Vandaar een lijstje en niet één vaste PID. */
+        var kandidaten = ['010C', '010D', '0104', '010B', '0111', '0105', '010F'];
+        var probe = null, vol = 0;
+        for (var i = 0; i < kandidaten.length; i++) {
+          var kpid = kandidaten[i];
+          if (typeof _focusPIDs !== 'undefined' && _focusPIDs && typeof _focusPIDs.has === 'function'
+              && _focusPIDs.has(kpid)) continue;
+          var ms = pidPollInterval(kpid);
+          if (ms > 80 && ms < 99999) { probe = kpid; vol = ms; break; }
+        }
+        if (!probe) {
+          letop = 'geen bruikbare PID om op te meten — alles lag op de bodem van 80 ms, stond op focus, ' +
+                  'of was door de EV-modus uitgezet';
+        } else {
+          PLLoad.zetTempo(50);
+          var half = pidPollInterval(probe);
+          // Halve snelheid hoort het interval exact te verdubbelen. `vol` en
+          // `half` zijn afgeronde hele milliseconden, en die afronding is met
+          // twee ms gedekt — meer speling zou een halve fout doorlaten.
+          if (Math.abs(half - vol * 2) > 2)
+            fout = 'op 50% tempo ging ' + probe + ' van ' + vol + ' naar ' + half + ' ms terwijl ' +
+                   (vol * 2) + ' ms hoort — de handmatige multiplier komt niet in pidPollInterval() aan';
+          else gemeten = 'tempo 100% → 50%: ' + probe + ' van ' + vol + ' naar ' + half + ' ms; ';
+        }
 
         // En de groep: vastzetten moet de automaat buiten de deur houden.
-        if (!fout && window.PLBus && typeof PLBus.batchZet === 'function') {
+        if (!fout && !letop && window.PLBus && typeof PLBus.batchZet === 'function') {
           PLBus.batchZet(2, true);
           if (PLBus.batchKleiner() !== false)
             fout = 'PLBus.batchKleiner() verzette een vastgezette groep — de automaat regelt een handmatige keuze weg';
-          else gemeten = 'groep 2 vastgezet: de automaat komt er niet aan; ';
+          else gemeten += 'groep 2 vastgezet: de automaat komt er niet aan';
         }
-        if (!fout) gemeten += 'tempo 50% → 010C van ' + basis + ' naar ' + half + ' ms';
       } catch (e) {
         fout = 'de proef zelf viel om: ' + ((e && e.message) || e);
       } finally {
@@ -5113,6 +5145,7 @@ const PROEVEN_B5 = [
         } catch (e) { console.warn('Blok 5 kon de tempostand niet terugzetten:', e); }
       }
       if (fout) return { staat: 'FOUT', detail: fout };
+      if (letop) return { staat: 'LET OP', detail: letop };
       return gemeten;
     }
   },
