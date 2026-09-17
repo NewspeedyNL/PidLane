@@ -11,6 +11,27 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17d (CET) — DE APP VULT DE START/STOP-
+     VRAAG ZELF IN
+
+       • Ⓢ HET VENSTER VÓÓR DE ANALYSE VRAAGT MINDER BLIND.
+         Van de drie vragen is start/stop de enige die de app
+         zelf kan waarnemen — en sinds de aandrijfbalk dat doet,
+         vult hij hem voor, met de reden eronder. Zag hij deze
+         sessie een start/stop-stop, dan staat "Ja, actief" al
+         aan; zag hij er geen, dan blijft het "weet ik niet".
+         Nooit "nee": niet gezien hebben is geen bewijs dat de
+         auto het niet heeft.
+
+       • 🧾 EN HET ANTWOORD ONTHOUDT WIE HET GAF. Een voorstel
+         dat blijft staan is een antwoord voor de AI maar geen
+         keuze van een mens. Het rapport telt die twee nu apart,
+         zodat de vraag "wordt dit venster werkelijk ingevuld?"
+         (#64) een antwoord houdt in plaats van er een te
+         verzinnen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17c (CET) — DE PROEF SCHOOF, NIET DE APP
 
        • 🎯 BLOK 5 WEES EEN WERKEND SCHUIFJE AAN ALS DEFECT. De
