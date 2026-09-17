@@ -1385,6 +1385,15 @@ betekenen, en dat is de winst van deze ronde. Of ze op de goede plek liggen is
 een vraag voor een rit, en blok 5 draagt hem mee: die proef kijkt bij elke
 oplevering na of elke aangewezen sensor volgens het register werkelijk
 gevraagd is zonder te antwoorden.
+
+**Besluit 17-09-2026: niet bijstellen, eerst meten** (#231). Draaien aan een
+grens omdat hij "wat laag lijkt" levert precies op wat deze ronde repareerde,
+alleen een ronde later: een getal dat er redelijk uitziet en waarvan niemand
+kan nazien waar het vandaan komt. Eén van die grenzen is bovendien niet
+alleen ongemeten maar ook motorafhankelijk — de luchtmassa-vuistregel rekent
+met een viercilinder van twee liter terwijl de app het motortype gewoon weet
+(#232). Ook die wacht met opzet op de meting: een reparatie die zelf weer
+redeneerwerk is, is geen reparatie.
 ### Drie besluiten in plaats van drie reparaties (16-09-2026, #161 #202 #139)
 
 Drie issues stonden open die geen bouwopdracht waren maar een keuze. Ze zijn
