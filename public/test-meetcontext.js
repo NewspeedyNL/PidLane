@@ -102,6 +102,13 @@ function maakOmgeving(opties) {
     dataStable: opties.stabiel !== false,
     _sessionReports: []
   };
+  // De aandrijfstatus, zoals pidlane-aandrijving.js hem aanlevert. Niet de
+  // hele module: het voorstel leest één uitkomst van laatste(), en dát is wat
+  // hier nagebootst wordt. Laat `opties.stand` weg en er is geen module —
+  // precies het geval "de balk is nog niet geladen".
+  if (opties.stand !== undefined) {
+    ctx.PLAandrijving = { laatste: function () { return opties.stand; } };
+  }
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(opties.bron || BRON, ctx, { filename: 'pidlane-archief.js (voor de analyse)' });
@@ -181,6 +188,49 @@ function keurStabielVoorstel() {
   return uit;
 }
 
+// ── 2b. het voorstel voor de start/stop-vraag (#64) ──────────────
+// Deze vraag werd tot 17-09-2026 blind gesteld. Sinds er een aandrijfstatus
+// is, weet de app het vaak zelf — maar alleen één kant op. Wat hier moet
+// onderscheiden worden is precies die asymmetrie: "gezien" mag "ja" opleveren,
+// "niet gezien" mag NOOIT "nee" opleveren.
+function keurStartStopVoorstel() {
+  const uit = [];
+
+  const zonder = maakOmgeving();
+  if (zonder.plMeetStartStopVoorstel().waarde !== '')
+    uit.push('zonder aandrijfmodule wordt er tóch een antwoord voorgesteld');
+
+  const nietsGemeten = maakOmgeving({ stand: null });
+  if (nietsGemeten.plMeetStartStopVoorstel().waarde !== '')
+    uit.push('zonder aandrijfstand wordt er tóch een antwoord voorgesteld');
+
+  const nu = maakOmgeving({ stand: { toestand: 'STARTSTOP', startStopGezien: true, heeftGedraaid: true } });
+  const a = nu.plMeetStartStopVoorstel();
+  if (a.waarde !== 'ja') uit.push('een lopende start/stop-stop levert voorstel "' + a.waarde + '"');
+  if (a.reden.indexOf('stilstaat') < 0) uit.push('de reden zegt niet waaróp het voorstel rust: "' + a.reden + '"');
+
+  // DE KERN. De stop is voorbij, de motor draait weer — en dat is het
+  // gewone geval, want je drukt op Analyseer nadat je gereden hebt.
+  const eerder = maakOmgeving({ stand: { toestand: 'DRAAIT_RIJDT', startStopGezien: true, heeftGedraaid: true } });
+  if (eerder.plMeetStartStopVoorstel().waarde !== 'ja')
+    uit.push('een eerder waargenomen start/stop-stop telt niet meer zodra de motor weer draait');
+
+  // DE ASYMMETRIE. Niets gezien is geen bewijs van het tegendeel: dit mag
+  // "weet ik niet" worden en nooit "nee".
+  const gereden = maakOmgeving({ stand: { toestand: 'DRAAIT_RIJDT', startStopGezien: false, heeftGedraaid: true } });
+  const g = gereden.plMeetStartStopVoorstel();
+  if (g.waarde !== '') uit.push('niets gezien levert voorstel "' + g.waarde + '" in plaats van geen oordeel');
+  if (g.reden.indexOf('stilstond') < 0)
+    uit.push('de reden legt niet uit dat niet-zien geen bewijs is: "' + g.reden + '"');
+
+  const koud = maakOmgeving({ stand: { toestand: 'UIT_VOOR_START', startStopGezien: false, heeftGedraaid: false } });
+  const k = koud.plMeetStartStopVoorstel();
+  if (k.waarde !== '') uit.push('met een motor die nooit draaide wordt er tóch iets voorgesteld');
+  if (k.reden.indexOf('nog niet gedraaid') < 0)
+    uit.push('de reden noemt niet dat de motor nog niet gedraaid heeft: "' + k.reden + '"');
+  return uit;
+}
+
 // ── 3. het venster: alleen vragen wat er te vragen valt ──────────
 function keurGeenVensterZonderVraag() {
   const ctx = maakOmgeving();
@@ -244,10 +294,68 @@ function keurAntwoordenKomenAan() {
   // te blijven staan, anders is voorvullen alleen versiering.
   if (m.stabiel !== 'ja') uit.push('het voorstel voor stabiliteit ("ja") is niet overgenomen, maar "' + m.stabiel + '"');
   if (m.extra.indexOf('aanhanger') < 0) uit.push('het vrije tekstveld is niet opgeslagen');
+  /* En wie het antwoord gaf. Zonder dat onderscheid telt een blijven-staand
+     voorstel als een antwoord, en dan meet punt 3 van #64 zichzelf kapot. */
+  if (!m.bron) uit.push('er wordt niet vastgelegd waar de antwoorden vandaan komen');
+  else {
+    if (m.bron.startstop !== 'klik')
+      uit.push('een aangeklikt antwoord staat als "' + m.bron.startstop + '" in plaats van "klik"');
+    if (m.bron.stabiel !== 'voorstel')
+      uit.push('een overgenomen voorstel staat als "' + m.bron.stabiel + '" in plaats van "voorstel"');
+  }
 
   const t = ctx.plMeetcontextPromptLine();
   if (!/start\/stop/i.test(t)) uit.push('de aangeklikte start/stop komt niet in de promptregel');
   if (t.indexOf('aanhanger') < 0) uit.push('de opmerking komt niet in de promptregel');
+  return uit;
+}
+
+/* Wat voorgevuld staat, telt ook als er niets aangeklikt wordt. Een voorstel
+   dat je eerst moet bevestigen is geen voorstel maar een extra handeling.
+   Deze proef opent het venster met een waargenomen start/stop-stop, klikt
+   NIETS aan, en drukt op Analyseer. */
+function keurVoorvullenStartStop() {
+  const ctx = maakOmgeving({ stand: { toestand: 'DRAAIT_RIJDT', startStopGezien: true, heeftGedraaid: true } });
+  const go = new Element('button'), skip = new Element('button');
+  const echteCreate = ctx.document.createElement;
+  ctx.document.createElement = function (t) {
+    const e = echteCreate(t);
+    e._sel['.pl-vk'] = []; e._sel['#srCtxGo'] = [go]; e._sel['#srCtxSkip'] = [skip];
+    ctx.reg['srCtxAsk'] = e;
+    return e;
+  };
+  ctx.plVoorAnalyse(false);
+  if (!go.onclick) return ['het venster heeft geen Analyseer-knop gekregen'];
+  go.onclick();
+
+  const uit = [];
+  const m = ctx.window._plMeetcontext;
+  if (!m) return ['na Analyseer is er geen meetcontext vastgelegd'];
+  if (m.startstop !== 'ja')
+    uit.push('de waargenomen start/stop is niet voorgevuld: "' + m.startstop + '"');
+  if (!/start\/stop is actief/i.test(ctx.plMeetcontextPromptLine()))
+    uit.push('en hij komt dus ook niet in de promptregel terecht');
+  if (!m.bron || m.bron.startstop !== 'voorstel')
+    uit.push('een niet-aangeklikt voorstel wordt als antwoord van de gebruiker geboekt: "' +
+      (m.bron ? m.bron.startstop : 'geen bron') + '"');
+
+  // TEGENPROEF: zonder waarneming mag er niets voorgevuld staan. Zonder deze
+  // helft blijft de controle hierboven ook groen op een venster dat altijd
+  // "ja" invult.
+  const blind = maakOmgeving({ stand: { toestand: 'DRAAIT_RIJDT', startStopGezien: false, heeftGedraaid: true } });
+  const go2 = new Element('button');
+  const echteCreate2 = blind.document.createElement;
+  blind.document.createElement = function (t) {
+    const e = echteCreate2(t);
+    e._sel['.pl-vk'] = []; e._sel['#srCtxGo'] = [go2]; e._sel['#srCtxSkip'] = [new Element('button')];
+    blind.reg['srCtxAsk'] = e;
+    return e;
+  };
+  blind.plVoorAnalyse(false);
+  if (go2.onclick) go2.onclick();
+  if (blind.window._plMeetcontext && blind.window._plMeetcontext.startstop !== '')
+    uit.push('zonder waarneming staat start/stop tóch voorgevuld op "' +
+      blind.window._plMeetcontext.startstop + '"');
   return uit;
 }
 
@@ -280,8 +388,10 @@ console.log('Voor de analyse — de vragen komen bij de AI aan (issue #62)\n');
 
 toetsSchoon('de antwoorden worden promptregels, "weet ik niet" niet', keurPromptregel());
 toetsSchoon('het voorstel voor "stabiele meting" komt uit de meting zelf', keurStabielVoorstel());
+toetsSchoon('het voorstel voor start/stop komt uit de aandrijfstatus, en durft geen "nee"', keurStartStopVoorstel());
 toetsSchoon('is alles al beantwoord, dan komt er geen venster', keurGeenVensterZonderVraag().uit);
 toetsSchoon('klikken → opslaan → promptregel', keurAntwoordenKomenAan());
+toetsSchoon('een voorgevulde start/stop telt ook zonder klik', keurVoorvullenStartStop());
 toetsSchoon('overslaan mag, en blijft dan ook weg', keurOverslaan());
 
 // ── tegenproef ───────────────────────────────────────────────────

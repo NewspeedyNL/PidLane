@@ -210,6 +210,38 @@ function plMeetStabielVoorstel(){
   }catch(e){ return {waarde:'', reden:'niet vast te stellen'}; }
 }
 
+/* Voorstel voor de start/stop-vraag (#64, 17-09-2026). Tot vandaag was dit de
+   enige van de drie vragen die de app niet zelf kon beantwoorden, en dus blind
+   gesteld werd vlak vóór een betaalde analyse. Sinds er een aandrijfstatus is
+   (`pidlane-aandrijving.js`) weet de app het vaak wél: een start/stop-stop is
+   een toestand die hij herkent en die blijft staan zodra hij één keer gezien
+   is.
+
+   HET BEWIJS IS ASYMMETRISCH, net als bij `heeftGedraaid` in diezelfde module:
+
+       gezien      start/stop is actief op deze auto     hard bewijs
+       niet gezien de auto heeft het niet, óf je stond
+                   nooit stil met een warme motor        géén bewijs
+
+   Daarom stelt dit nooit "nee" voor. Een voorstel dat "nee" durft te zeggen op
+   grond van niets-gezien zou de AI vertellen dat een normale start/stop-stop
+   een bevinding is — precies de fout die deze vraag moest voorkomen. */
+function plMeetStartStopVoorstel(){
+  try{
+    if(!window.PLAandrijving || typeof PLAandrijving.laatste!=='function')
+      return {waarde:'', reden:'de aandrijfstatus is niet geladen'};
+    const r=PLAandrijving.laatste();
+    if(!r) return {waarde:'', reden:'nog geen aandrijfstand gemeten'};
+    if(r.startStopGezien)
+      return {waarde:'ja', reden: r.toestand==='STARTSTOP'
+        ? 'de motor staat nu uit terwijl de auto stilstaat en eerder heeft gedraaid'
+        : 'deze sessie is een start/stop-stop waargenomen'};
+    if(!r.heeftGedraaid)
+      return {waarde:'', reden:'de motor heeft deze sessie nog niet gedraaid — over start/stop valt dan niets te zeggen'};
+    return {waarde:'', reden:'geen start/stop-stop gezien; dat kan ook betekenen dat je niet lang genoeg stilstond met een warme motor'};
+  }catch(e){ return {waarde:'', reden:'niet vast te stellen'}; }
+}
+
 // De regel die aan élke AI-prompt geplakt wordt.
 function plMeetcontextPromptLine(){
   try{
@@ -252,10 +284,17 @@ function plVoorAnalyse(heeftRapporten){
     let ov=document.getElementById('srCtxAsk');
     if(!ov){ ov=document.createElement('div'); ov.id='srCtxAsk'; ov.className='ai-sheet-ov'; ov.style.zIndex='9920'; document.body.appendChild(ov); }
 
-    const voorstel = plMeetStabielVoorstel();
-    // Voorvullen met wat er al bekend is: het voorstel voor stabiliteit, en
+    // Per vraag wat de app zelf al gemeten heeft. Een vraag die de app kan
+    // beantwoorden hoort niet blind gesteld te worden — dat is punt 3 van #64:
+    // het venster staat vlak vóór een betaalde analyse, en wordt het
+    // weggeklikt, dan is het schadelijker dan geen vraag. Blijft een VOORSTEL
+    // en geen automatisch antwoord: alleen de gebruiker weet of de adapter
+    // tussendoor los zat, en of dit de auto is waar de klacht over gaat.
+    const voorstellen = { stabiel: plMeetStabielVoorstel(), startstop: plMeetStartStopVoorstel() };
+    // Voorvullen met wat er al bekend is: de voorstellen uit de meting, en
     // voor de rest wat er in een eerdere ronde is geantwoord.
-    const staat = Object.assign({startstop:'', klacht:'', stabiel:voorstel.waarde, extra:''}, window._plMeetcontext||{});
+    const staat = Object.assign({startstop:voorstellen.startstop.waarde, klacht:'',
+                                stabiel:voorstellen.stabiel.waarde, extra:''}, window._plMeetcontext||{});
 
     const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const n=(window._sessionReports||[]).filter(r=>r.text&&r.type!=='pdf').length;
@@ -263,8 +302,9 @@ function plVoorAnalyse(heeftRapporten){
     const vraagHtml=v=>{
       const knoppen=v.opties.map(o=>
         '<button type="button" class="pl-vk'+(staat[v.key]===o[0]?' on':'')+'" data-vraag="'+v.key+'" data-waarde="'+esc(o[0])+'">'+esc(o[1])+'</button>').join('');
-      const tip=(v.key==='stabiel'&&voorstel.reden)
-        ? '<div style="font-size:10.5px;color:var(--tx3);margin-top:4px">Voorstel uit de meting: '+esc(voorstel.reden)+'</div>' : '';
+      const vs=voorstellen[v.key];
+      const tip=(vs&&vs.reden)
+        ? '<div style="font-size:10.5px;color:var(--tx3);margin-top:4px">Voorstel uit de meting: '+esc(vs.reden)+'</div>' : '';
       return '<div style="padding:9px 0;border-top:1px solid var(--bd)">'+
         '<div style="font-size:12px;font-weight:700;color:var(--tx)">'+esc(v.vraag)+'</div>'+
         '<div style="font-size:11px;color:var(--tx3);margin:2px 0 6px">'+esc(v.uitleg)+'</div>'+
@@ -304,10 +344,16 @@ function plVoorAnalyse(heeftRapporten){
     // De keuzeknoppen: één antwoord per vraag, direct zichtbaar.
     const gekozen={_rap:'ja'};
     Object.keys(staat).forEach(k=>{ gekozen[k]=staat[k]; });
+    /* Wie heeft dit antwoord gegeven — de gebruiker of de meting? Zonder deze
+       ring is punt 3 van #64 ("hoe vaak wordt er werkelijk geantwoord?") niet
+       meer te beantwoorden zodra er voorgevuld wordt: een voorstel dat blijft
+       staan telt anders als een antwoord. Blok 5 leest dit uit. */
+    const geklikt={};
     ov.querySelectorAll('.pl-vk').forEach(b=>{
       b.onclick=()=>{
         const v=b.dataset.vraag;
         gekozen[v]=b.dataset.waarde;
+        geklikt[v]=true;
         ov.querySelectorAll('.pl-vk[data-vraag="'+v+'"]').forEach(x=>x.classList.remove('on'));
         b.classList.add('on');
       };
@@ -324,9 +370,17 @@ function plVoorAnalyse(heeftRapporten){
       }
       if(bewaarContext && vraagContext){
         const extraEl=document.getElementById('plVaExtra');
+        const bron={};
+        PL_VOORVRAGEN.forEach(v=>{
+          if(!gekozen[v.key]) return;
+          bron[v.key]= geklikt[v.key] ? 'klik'
+                     : (voorstellen[v.key] && voorstellen[v.key].waarde===gekozen[v.key]) ? 'voorstel'
+                     : 'eerder';
+        });
         window._plMeetcontext={
           startstop:gekozen.startstop||'', klacht:gekozen.klacht||'', stabiel:gekozen.stabiel||'',
-          extra:String((extraEl&&extraEl.value)||'').trim()
+          extra:String((extraEl&&extraEl.value)||'').trim(),
+          bron:bron
         };
         try{ logUsage?.('meetcontext', plMeetcontextKort()); }catch(e){ console.warn('logUsage mislukt:', e); }
       }
@@ -339,7 +393,7 @@ function plVoorAnalyse(heeftRapporten){
     // venster bij elke volgende analyse opnieuw in de weg — en dat is precies
     // hoe een nuttige vraag een klik wordt die niemand meer leest.
     ov.querySelector('#srCtxSkip').onclick=()=>{
-      if(vraagContext) window._plMeetcontext={startstop:'',klacht:'',stabiel:'',extra:''};
+      if(vraagContext) window._plMeetcontext={startstop:'',klacht:'',stabiel:'',extra:'',bron:{}};
       done(false);
     };
     // Wegklikken / hardware-back = deze keer niets meenemen, niets onthouden.
