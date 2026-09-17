@@ -90,7 +90,6 @@ function toets(naam, waar, uitleg) {
     toets('geen echowaarschuwing zonder echo', tekst.indexOf('herhaalt frames') < 0);
 
     console.log('\n── 4. de knop Handmatig verzet het tempo echt ──');
-    const voor = await app.ev(`pidPollInterval('010C')`);
     // Via de DOM, niet via de API: een knop die niet aan zijn functie hangt is
     // precies wat blok 5 een "dode knop" noemt.
     const geklikt = await app.ev(`(function(){
@@ -102,15 +101,25 @@ function toets(naam, waar, uitleg) {
     toets('er staat een knop "Handmatig"', geklikt === 'geklikt', geklikt);
     toets('en de stand staat daarna op handmatig', await app.ev('PLLoad.isHandmatig()') === true);
 
-    const halveerd = await app.ev(`(function(){
+    /* Het ijkpunt is de handmatige stand op 100%, niet wat er vóór het
+       overnemen stond. `handmatig(true)` neemt met opzet de stand over die er
+       was, dus vanaf een teruggeschroefde automaat is 50% maar een paar
+       procent verschil. Hier in de browser staat de automaat op 1.0 en viel
+       dat niet op — in de auto van 17-09 wél, en dat kostte blok 5 een FOUT
+       die er geen was. Zie §11. */
+    const knopTempo = (pct, pid) => app.ev(`(function(){
       const knoppen=[...document.getElementById('plAdapterBody').querySelectorAll('button')];
-      const k=knoppen.find(b=>b.textContent.trim()==='50%');
-      if(!k) return 'geen 50%-knop';
-      k.click(); return pidPollInterval('010C');
+      const k=knoppen.find(b=>b.textContent.trim()==='${pct}%');
+      if(!k) return 'geen ${pct}%-knop';
+      k.click(); return pidPollInterval('${pid}');
     })()`);
+    const vol = await knopTempo(100, '010C');
+    toets('er staat een 100%-knop in de handmatige stand', typeof vol === 'number', String(vol));
+    const halveerd = await knopTempo(50, '010C');
     toets('er staat een 50%-knop in de handmatige stand', typeof halveerd === 'number', String(halveerd));
     toets('en die verdubbelt het pollinterval van 010C',
-          typeof halveerd === 'number' && halveerd > voor * 1.5, voor + ' ms → ' + halveerd + ' ms');
+          typeof vol === 'number' && typeof halveerd === 'number' && Math.abs(halveerd - vol * 2) <= 2,
+          vol + ' ms → ' + halveerd + ' ms (verwacht ' + (vol * 2) + ' ms)');
 
     const geboekt = await app.ev(`PLLoad.acties().slice(-2).map(a=>a.wat+':'+a.reden).join(' | ')`);
     toets('de standwissel staat in het actielogboek met een reden',

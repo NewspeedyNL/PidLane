@@ -652,6 +652,14 @@ MUTATIES=(
 "public/pidlane-adapter.js@@    if (metEcho.length === st.length) {@@    if (false) {@@test-adapterpaneel.js@@het advies negeert herhaalde frames en adviseert harder pollen — precies de verkeerde kant op"
 "public/pidlane-data.js@@  batchKleiner(){\n    if(S.batchVast) return false;@@  batchKleiner(){@@test-adapterpaneel.js@@een vastgezette groep wordt alsnog door de automaat verkleind"
 
+# En de laatste meter van die keten: van PLLoad.mult() naar het interval dat de
+# scheduler werkelijk gebruikt. Blok 5 dacht op 17-09-2026 dat die meter stuk
+# was en meldde FOUT; in werkelijkheid mat de proef tegen de automaat in plaats
+# van tegen de handmatige stand (zie §11). Deze twee mutaties zetten vast wat
+# er dan wél kapot zou zijn geweest.
+"public/pidlane-plload.js@@  const lm=(window.PLLoad&&typeof PLLoad.mult==='function')?PLLoad.mult():1;@@  const lm=1;@@test-adapterpaneel.js@@het schuifje verzet de multiplier wel maar pidPollInterval() kijkt er niet naar"
+"public/pidlane-plload.js@@    if(nieuwStand) this._handMult=this._mult;@@    if(nieuwStand) this._handMult=1.0;@@test-adapterpaneel.js@@overnemen springt naar vol tempo in plaats van de stand over te nemen die er stond"
+
 # ── "Welk onderdeel?" wees een gezonde sensor aan (16-09-2026) ──
 # De melding kwam uit het gebruik met een schermafdruk erbij: brandstofpeil en
 # afstand-met-MIL-aan als "sterke aanwijzing: draadbreuk, stekker of sensor".
