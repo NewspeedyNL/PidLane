@@ -2604,6 +2604,65 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── blijft de meting in beeld als je wegschakelt? (#228, 17-09-2026) ──
+  // De split-screenproef van vanavond wees zichtbaarheid aan als de trekker:
+  // zichtbaar en niet vooraan liep de lus 99 s door zonder één gat, verborgen
+  // viel hij na ~60 s stil. Picture-in-picture houdt de WebView zichtbaar, en
+  // dat is wat deze ronde erbij is gekomen.
+  //
+  // Het VENSTER zelf kan deze proef niet aanzetten — dat mag alleen op het
+  // moment dat de gebruiker wegschakelt, en dat moment is hier niet. Wat hij
+  // wél kan is de stille fout vangen die eromheen zit: de app denkt dat de
+  // vlag aanstaat en de native kant houdt iets anders vast. Dan gebeurt er bij
+  // het wegschakelen niets, en niets zegt waarom.
+  {
+    issue: '#228',
+    naam: 'De meting blijft in beeld: app en schil houden dezelfde vlag vast',
+    waarom: 'PiP wordt aangevraagd door de native kant op een moment dat JavaScript niet kan halen. Staat daar een andere vlag dan de app denkt, dan valt de meetlus stil zoals voorheen en is er geen enkel spoor.',
+    proef: async function () {
+      if (!window.PLPip || typeof PLPip.besluit !== 'function')
+        return { staat: 'FOUT', detail: 'PLPip ontbreekt — de meting valt dan stil zodra je wegschakelt, precies zoals vóór #228' };
+
+      var b = PLPip.besluit(PLPip.feiten());
+
+      // Uitgezet in de Config is een besluit van een mens en geen storing.
+      if (b.sleutel === 'uit')
+        return { staat: 'LET OP', detail: 'picture-in-picture staat uit in de Config (`feat_pip`) — ' +
+          'de app gaat bij wegschakelen gewoon naar de achtergrond en de meetlus valt na ~60 s stil (#228). Dat is hier een keuze, geen fout.' };
+
+      if (!PLPip.beschikbaar())
+        return { staat: 'LET OP', detail: 'deze schil heeft geen picture-in-picture — browser, PWA of een APK van vóór deze ronde. ' +
+          'Het besluit zegt: ' + b.reden };
+
+      var st = null;
+      try { st = await PLPip.status(); }
+      catch (e) { return { staat: 'FOUT', detail: 'de schil antwoordt niet op de PiP-status: ' + ((e && e.message) || e) }; }
+      st = st || {};
+
+      if (!st.ondersteund)
+        return { staat: 'LET OP', detail: 'dit toestel of deze Android-versie kent picture-in-picture niet (nodig: Android 8+ met de systeemfunctie). ' +
+          'Dan blijft voor #228 alleen een native meetlus over.' };
+
+      // DE STILLE BREUK. De app heeft een besluit genomen en náár native
+      // gestuurd; houdt native iets anders vast, dan is die vlag onderweg
+      // blijven hangen. Alles blijft werken, er komt geen melding, en het
+      // enige wat je merkt is dat het venster niet opkomt — tijdens een rit,
+      // als je er niet naar kijkt.
+      if (!!st.gewenst !== !!b.aan)
+        return { staat: 'FOUT', detail: 'de app besloot "' + (b.aan ? 'aan' : 'uit') + '" (' + b.reden + ') ' +
+          'maar de schil houdt "' + (st.gewenst ? 'aan' : 'uit') + '" vast — de vlag is niet aangekomen, ' +
+          'dus bij wegschakelen gebeurt er iets anders dan de app denkt (#228)' };
+
+      if (b.aan)
+        return { staat: 'ok', detail: 'PiP staat scherp: er wordt gemeten en de schil weet het. ' +
+          'Schakel je nu weg, dan blijft het kleine venster in beeld en loopt de lus door. ' +
+          'Dat dit ook werkelijk zo is, is een vraag voor de rit — hier staat alleen dat beide kanten hetzelfde vasthouden.' };
+
+      return { staat: 'LET OP', detail: 'PiP staat klaar maar is nu niet gewenst: ' + b.reden +
+        '. App en schil zijn het eens, dus de keten is heel — er is alleen niets te meten.' };
+    }
+  },
+
   // ── komt de live-log werkelijk aan? (#235, 17-09-2026) ──
   // Het live-pad is op 17-09 opgeleverd en dezelfde avond nagemeten aan de
   // andere kant van de lijn: de logtabel telde 722 regels en NUL daarvan

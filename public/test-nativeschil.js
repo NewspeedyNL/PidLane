@@ -61,6 +61,9 @@ const plugin = lees('native/PLMeetdienstPlugin.java');
 const dienst = lees('native/PLMeetdienst.java');
 const wf     = lees('.github/workflows/build-apk.yml');
 const js     = lees('public/pidlane-meetdienst.js');
+const pip       = lees('native/PLPip.java');
+const pipPlugin = lees('native/PLPipPlugin.java');
+const pipJs     = lees('public/pidlane-pip.js');
 const cfg    = JSON.parse(lees('capacitor.config.json'));
 
 console.log('\n── het pakket is één pakket ──');
@@ -244,7 +247,8 @@ console.log('\n── geen stille catch in de native code ──');
      een uitzondering in een foreground service is onzichtbaar — er is geen
      scherm om hem op te zetten. Zonder Log.* in het blok is de enige uitkomst
      dat de meting niet loopt en dat niemand weet waarom. */
-  [['PLMeetdienst.java', dienst], ['PLMeetdienstPlugin.java', plugin]].forEach(function (paar) {
+  [['PLMeetdienst.java', dienst], ['PLMeetdienstPlugin.java', plugin],
+   ['PLPip.java', pip], ['PLPipPlugin.java', pipPlugin]].forEach(function (paar) {
     const src = paar[1];
     const stil = [];
     const re = /catch\s*\(([^)]*)\)\s*\{([\s\S]*?)\n(\s*)\}/g;
@@ -254,6 +258,92 @@ console.log('\n── geen stille catch in de native code ──');
     }
     toets(paar[0] + ': elk catch-blok logt', stil, []);
   });
+}
+
+console.log('\n── de tweede plugin: de meting in beeld houden (#228) ──');
+{
+  /* PiP heeft dezelfde vorm als de meetdienst en dus dezelfde stille fouten.
+     Eén verschil weegt hier zwaarder: het venster gaat aan vanuit
+     onUserLeaveHint() en nergens anders. Ontbreekt die haak, dan is alles
+     eromheen in orde — de plugin bestaat, de vlag staat aan, de app meldt
+     niets — en gaat het venster gewoon nooit aan. */
+  toets('PLPip zit in het pakket van de appId',
+    (pip.match(/^\s*package\s+([\w.]+)\s*;/m) || [])[1], cfg.appId);
+  toets('en de plugin ook',
+    (pipPlugin.match(/^\s*package\s+([\w.]+)\s*;/m) || [])[1], cfg.appId);
+
+  const naam = (pipPlugin.match(/@CapacitorPlugin\s*\(\s*name\s*=\s*"([^"]+)"/) || [])[1];
+  toets('@CapacitorPlugin draagt een naam', typeof naam, 'string');
+  bevat('en de app zoekt exact die naam op', pipJs, 'Plugins.' + naam);
+  toets('de klassenaam volgt de pluginnaam', pipPlugin.indexOf('class ' + naam + 'Plugin ') !== -1, true);
+
+  /* Beide kanten op, net als bij de meetdienst. addListener en
+     removeAllListeners komen van Capacitor zelf en staan dus NIET in de
+     plugin — die horen hier niet als "roept iets aan dat niet bestaat" te
+     tellen, anders wordt deze toets genegeerd omdat hij vals alarm geeft. */
+  const VAN_CAPACITOR = ['addListener', 'removeAllListeners'];
+  const inJava = [];
+  const reJava = /@PluginMethod\s+public\s+void\s+(\w+)\s*\(/g;
+  let mj;
+  while ((mj = reJava.exec(pipPlugin))) inJava.push(mj[1]);
+  inJava.sort();
+  const inJs = Array.from(new Set((pipJs.match(/\bp\.(\w+)\(/g) || [])
+    .map(function (m) { return m.slice(2, -1); })))
+    .filter(function (m) { return VAN_CAPACITOR.indexOf(m) === -1; }).sort();
+  toets('er staan @PluginMethod-methoden in PLPipPlugin', inJava.length > 0, true);
+  toets('de app roept niets aan wat niet bestaat',
+    inJs.filter(function (m) { return inJava.indexOf(m) === -1; }), []);
+  toets('en java biedt niets aan wat niemand gebruikt',
+    inJava.filter(function (m) { return inJs.indexOf(m) === -1; }), []);
+
+  /* DE GEBEURTENIS. Vertrekt hij onder een andere naam dan waarop geluisterd
+     wordt, dan is er geen foutmelding: het kleine venster verschijnt nooit en
+     de app staat met de VOLLE weergave in een venster van 240x135. */
+  const ev = (pipPlugin.match(/notifyListeners\(\s*"([^"]+)"/) || [])[1];
+  toets('de plugin stuurt een gebeurtenis', typeof ev, 'string');
+  bevat('en de app luistert naar diezelfde naam', pipJs, "addListener('" + ev + "'");
+
+  /* Het enige moment waarop Android PiP toestaat, en de weg terug. */
+  bevat('de workflow registreert de PiP-plugin', wf, 'registerPlugin(PLPipPlugin');
+  /* De haken staan er TWEE keer: één keer voor een Java-MainActivity en één
+     keer voor een Kotlin-MainActivity. Welke van de twee Capacitor genereert
+     ligt niet vast, dus ze moeten er allebei zijn — en ze moeten hier ook
+     allebei apart getoetst worden. Zoeken op de kale naam telt de Kotlin-regel
+     mee als de Java-regel weg is, en dan blijft deze toets groen terwijl het
+     venster in een Java-schil nooit meer opkomt. Nagemeten met plmutate.sh op
+     17-09-2026: precies zo glipte die mutatie er de eerste keer doorheen. */
+  [['Java', ';'], ['Kotlin', '']].forEach(function (taal) {
+    bevat(taal[0] + ': haakt op onUserLeaveHint', wf, '"        PLPip.leaveHint(this)' + taal[1] + '",');
+    bevat(taal[0] + ': geeft de moduswissel door', wf, '"        PLPip.modus(inPip)' + taal[1] + '",');
+  });
+  bevat('java vraagt het venster pas aan als de vlag aanstaat', pip, 'if (!gewenst) return;');
+  bevat('de registratie faalt hard als een haak ontbreekt', wf, 'ontbreekt in MainActivity');
+
+  /* Het manifest. Zonder supportsPictureInPicture weigert het systeem zonder
+     uitleg; zonder de schermwaarden in configChanges HERSTART de activiteit
+     bij de wissel — en dan verbreekt de socket en is de meting juist weg. */
+  bevat('de workflow zet supportsPictureInPicture in het manifest', wf, 'android:supportsPictureInPicture="true"');
+  bevat('en vult configChanges aan', wf, 'smallestScreenSize');
+  bevat('de bundelpoort leest het terug uit de merge', wf, 'mag geen picture-in-picture in de bundel');
+  bevat('en betrapt een herstart bij de wissel', wf, 'herstart bij de wissel naar PiP');
+
+  /* De app-kant: de module moet hangen, en na de twee functies die hij wikkelt. */
+  const html = lees('public/index.html');
+  bevat('pidlane-pip.js hangt in index.html', html, 'src="pidlane-pip.js"');
+  toets('en staat ná pidlane-uihelpers.js (setConn)',
+    html.indexOf('src="pidlane-pip.js"') > html.indexOf('src="pidlane-uihelpers.js"'), true);
+  toets('en ná pidlane-pids.js (updPID)',
+    html.indexOf('src="pidlane-pip.js"') > html.indexOf('src="pidlane-pids.js"'), true);
+  toets('en vóór de bedradingscontrole',
+    html.indexOf('src="pidlane-pip.js"') < html.indexOf('src="pidlane-bedrading.js"'), true);
+
+  /* DE UITZETKNOP. Eén sleutel, twee plekken: de module leest hem en
+     beheer.html toont hem. Lopen die uit de pas, dan staat er een schakelaar
+     in het beheerscherm die niets doet — en dat is erger dan geen schakelaar,
+     want je denkt dat je hem hebt omgezet. */
+  const sleutel = (pipJs.match(/var SLEUTEL = '([^']+)'/) || [])[1];
+  toets('de module noemt zijn Config-sleutel', typeof sleutel, 'string');
+  bevat('en beheer.html toont diezelfde sleutel', lees('admin/beheer.html'), "['" + sleutel + "'");
 }
 
 console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
