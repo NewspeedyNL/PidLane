@@ -660,6 +660,37 @@ function showToast(msg, duration=3000){
 const _atBuffer=[];
 let _atTimer=null;
 
+/* ── WAT DE LAATSTE POGING DEED ──────────────────────────────────────
+   NAGEMETEN OP 17-09-2026, EN DAT IS DE REDEN DAT DIT ER STAAT.
+   De logtabel telde die avond 722 regels en NUL daarvan kwam van een
+   testrun, terwijl het live-pad diezelfde middag was opgeleverd (#235).
+   Gewone regels kwamen wél binnen — "Data stabiel" stond er om 18:44 nog
+   in — dus het kanaal deed het en de testrun kwam er niet doorheen.
+
+   Dat verschil was van buiten niet te zien. flushAirtable() meldde een
+   mislukte batch alleen met console.warn, op een telefoon waar niemand bij
+   kan, en gaf de aanroeper niets terug: geen uitzondering, geen retour,
+   niets. Precies de vorm uit §19 — een fout die niemand ziet blijft staan.
+
+   Dit is geen tweede logkanaal en geen tweede lijst. Het is één veld met
+   de laatste poging erin, zodat blok 5 van de testrun kan vragen of de
+   verbinding werkelijk aankomt in plaats van aan te nemen dat hij het doet.
+   Wat hier NIET in staat is wat er verstuurd is: dat staat in Airtable, en
+   twee plekken met dezelfde inhoud lopen uit de pas. */
+let _atLaatste=null;
+function _atNoteer(ok,status,aantal,fout){
+  _atLaatste={
+    tijd:   Date.now(),
+    ok:     !!ok,
+    status: (status==null?null:Number(status)),
+    aantal: Number(aantal)||0,
+    fout:   fout?String(fout).slice(0,200):''
+  };
+}
+/* De enige manier om er van buiten bij te komen. Een kopie, want de beller
+   hoort de toestand van de log niet te kunnen verzetten. */
+function plLiveLogStatus(){ return _atLaatste?Object.assign({},_atLaatste):null; }
+
 // Lichte usage-event helper bovenop logToSheets — geen nieuwe Airtable-kolommen
 // nodig, hergebruikt Type='usage' + Message. Best-effort, faalt nooit hardop.
 function logUsage(action, detail){
@@ -790,11 +821,15 @@ async function flushAirtable(){
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
       console.warn('Airtable fout:',resp.status,err?.error?.message||'');
+      _atNoteer(false,resp.status,batch.length,err?.error?.message||('HTTP '+resp.status));
       // Zet terug in buffer bij fout
       _atBuffer.unshift(...batch);
+    }else{
+      _atNoteer(true,resp.status,batch.length,'');
     }
   }catch(e){
     console.warn('Airtable netwerk fout:',e.message);
+    _atNoteer(false,null,batch.length,e.message||'netwerkfout');
     // Netwerkfout: batch niet weggooien maar terugzetten (was: stil verlies)
     _atBuffer.unshift(...batch);
   }

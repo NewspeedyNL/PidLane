@@ -2604,6 +2604,75 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── komt de live-log werkelijk aan? (#235, 17-09-2026) ──
+  // Het live-pad is op 17-09 opgeleverd en dezelfde avond nagemeten aan de
+  // andere kant van de lijn: de logtabel telde 722 regels en NUL daarvan
+  // kwam van een testrun. Gewone regels kwamen wél binnen ("Data stabiel",
+  // 18:44), dus het kanaal deed het en de testrun kwam er niet doorheen.
+  //
+  // Waarom dat kon blijven staan: flushAirtable() meldde een mislukte batch
+  // alleen met console.warn — op een telefoon, tijdens een rit, waar niemand
+  // bij kan. De run zag niets, het verslag zei niets, en wie meekeek zag een
+  // lege tabel zonder te weten of er niets gemeten was of niets aangekomen.
+  //
+  // Deze proef toetst het enige dat van binnenuit te toetsen is: zet een
+  // regel in de buffer, dwing de verzending af, en vraag wat de Worker
+  // antwoordde. Wat hij NIET bewijst staat in de uitslag zelf — zie de
+  // tekst bij 'ok'.
+  {
+    issue: '#235',
+    naam: 'De live-log komt werkelijk aan bij Airtable',
+    waarom: 'Een kanaal dat stil faalt is erger dan geen kanaal: je leest een lege tabel als "niets bijzonders" terwijl er niets is aangekomen. Op 17-09 was dat precies de toestand.',
+    proef: async function () {
+      if (typeof logToSheets !== 'function')
+        return { staat: 'FOUT', detail: 'logToSheets ontbreekt — de testrun schrijft dan niets meer weg en niemand kan tijdens de rit meekijken (#235)' };
+      if (typeof plLiveLogStatus !== 'function')
+        return { staat: 'FOUT', detail: 'plLiveLogStatus ontbreekt — dan is de uitkomst van een verzending weer onzichtbaar en is dit precies de toestand van 17-09' };
+      if (typeof flushAirtable !== 'function')
+        return { staat: 'FOUT', detail: 'flushAirtable ontbreekt — de buffer loopt dan vol zonder dat er ooit iets verstuurd wordt' };
+      if (typeof AIRTABLE_URL === 'undefined' || !AIRTABLE_URL)
+        return { staat: 'LET OP', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg) — het kanaal is hier niet te toetsen. Dat is geen fout van de meting maar een ontbrekende voorwaarde.' };
+
+      // De uitkomst van vóór deze proef onthouden: zonder dat zou een oude
+      // geslaagde verzending van tien minuten geleden deze proef groen maken.
+      var voor = plLiveLogStatus();
+
+      if (!_liveSchrijf('info', 'blok 5: proefregel — komt de live-log aan?'))
+        return { staat: 'FOUT', detail: 'de proefregel kwam niet eens in de buffer — logToSheets weigerde hem, en dan gaat er tijdens een rit ook niets weg' };
+
+      // logToSheets() is async (het pseudonimiseren van de VIN duurt een tick)
+      // en wordt bewust niet afgewacht door de aanroeper. Even ruimte geven,
+      // anders is de buffer nog leeg als de verzending wordt afgedwongen.
+      await _wacht(300);
+      try { await flushAirtable(); } catch (e) {
+        return { staat: 'FOUT', detail: 'flushAirtable wierp een fout in plaats van hem vast te leggen: ' + ((e && e.message) || e) };
+      }
+
+      // Was de buffer net door de eigen timer geleegd, dan komt de uitslag van
+      // díé verzending — vandaar wachten op een uitkomst die nieuwer is dan
+      // wat er bij binnenkomst stond, en niet op de eerste de beste.
+      var na = plLiveLogStatus(), gewacht = 0;
+      while ((!na || (voor && na.tijd === voor.tijd)) && gewacht < 5000) {
+        await _wacht(200); gewacht += 200; na = plLiveLogStatus();
+      }
+      if (!na || (voor && na.tijd === voor.tijd))
+        return { staat: 'FOUT', detail: 'de proefregel staat in de buffer maar er kwam binnen ' +
+          Math.round((gewacht + 300) / 100) / 10 + ' s geen enkele uitslag terug — er wordt dus niets verstuurd' };
+
+      if (na.ok)
+        return { staat: 'ok', detail: 'de Worker nam ' + na.aantal + ' regel(s) aan (HTTP ' + na.status + '). ' +
+          'Dat is bewijs dat de lijn er is, niet dat de regel in de tabel staat: wat Airtable met een onbekende veldnaam doet zie je pas dáár.' };
+
+      if (na.status === 401 || na.status === 403)
+        return { staat: 'LET OP', detail: 'de Worker weigerde de regel (HTTP ' + na.status + ') — geen geldig app-token in deze sessie. ' +
+          'Dat is een ontbrekende voorwaarde en geen kapot kanaal; log in en draai dit blok opnieuw.' };
+
+      return { staat: 'FOUT', detail: 'de live-log komt niet aan: ' +
+        (na.status ? 'HTTP ' + na.status : 'netwerkfout') + (na.fout ? ' — ' + na.fout : '') +
+        '. ' + na.aantal + ' regel(s) staan terug in de buffer; tijdens een rit ziet niemand daar iets van.' };
+    }
+  },
+
   // ── klopt de aandrijfbalk met wat de sensoren zeggen? ──
   // De balk bovenin de Live-weergave zegt in één regel wat de auto doet. Dat
   // leest als een feit, dus hij moet het waar kunnen maken uit de waarden die

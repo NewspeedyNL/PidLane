@@ -11,6 +11,31 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17g (CET) — DE LIVE-LOG ZEGT NU OF
+     HIJ IS AANGEKOMEN
+
+       • 📡 HET KANAAL WERD NAGEMETEN AAN DE ANDERE KANT.
+         De logtabel telde 722 regels en nul daarvan kwam
+         van een testrun, terwijl gewone regels er die
+         avond nog in kwamen. Een mislukte verzending ging
+         alleen naar de console van een telefoon in een
+         rijdende auto — de run zag niets, het verslag zei
+         niets, en een lege tabel las als "niets gemeten".
+
+       • ✅ ELKE VERZENDING LAAT NU EEN SPOOR NA. Geslaagd
+         of niet, met status, aantal en reden. Blok 5 zet
+         een regel klaar, dwingt de verzending af en vraagt
+         wat de Worker antwoordde. Niet ingelogd of geen
+         logadres is LET OP en geen FOUT: dat is een
+         ontbrekende voorwaarde, geen kapot kanaal.
+
+       • 🔍 EN WAT HET NIET BEWIJST STAAT ERBIJ. HTTP 200
+         van de Worker zegt dat de lijn er is, niet dat de
+         regel in de tabel staat — een onbekende veldnaam
+         weigert Airtable zelf.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17f (CET) — EEN STAP DIE DE
      ACHTERGRONDKWESTIE BESLIST
 

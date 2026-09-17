@@ -73,6 +73,13 @@ var KRITIEK = [
   // komt alleen nooit meer iets binnen bij wie meekijkt. Niemand die rijdt
   // merkt dat, en dat is precies de stille vorm waarvoor deze lijst bestaat.
   'logToSheets',
+  // De twee helften van de vraag "kwam het aan?" (#235, 17-09-2026).
+  // flushAirtable verstuurt de buffer, plLiveLogStatus zegt wat daar uit
+  // kwam. Blok 5 vraagt allebei achter een typeof-guard, want ze wonen in
+  // pidlane-auth.js en dat bestand laadt eerder. Ontbreekt er een, dan meldt
+  // de proef dat en zwijgt hij niet -- maar zonder deze regels zou die guard
+  // zelf de stille fout zijn, en dat is precies wat deze lijst moet vangen.
+  'flushAirtable','plLiveLogStatus',
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
