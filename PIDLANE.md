@@ -225,6 +225,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 55 | `pidlane-scanslot.js` | 6 | `PLScanSlot` — **één plek waar een scan de bus overneemt** (#191). `doe(naam, opties, werk)` claimt het busslot (en tikt het aan met `PLBus.raak()`), zet `window._plScanActief`, en geeft het werk een bewaakte `stuur()` mee met een `ATI`-hartslag. Die drie horen bij elkaar: de vlag zet de dode-socket-detectie uit, dus wie hem aanzet moet zelf merken dat de verbinding weg is. Nestelt veilig — een geneste scan zet de vlag van de lopende niet uit. Gebruikt door `deepRefreshPIDs()`; `PLKaart` heeft nog zijn eigen, in een rit getoetste uitvoering. Tests: `test-scanslot.js`, `test-diepzoeken.js` |
 | 54 | `pidlane-schil.js` | 5 | `PLSchil` — **welke APK draait dit** (#18). Leest de `versionCode` van de schil via Capacitor `App.getInfo()` en de nieuwste uit `/version.json` (die de Worker uit R2 serveert), en legt die twee naast elkaar. De kop van het testrunverslag draagt de regel `APK : build N`; blok 5 waarschuwt vóór de rit als de schil achterloopt. Ontbreekt één van beide getallen, dan is `achterstand()` **null** en nooit 0. Tests: `test-schil.js`, `test-schilproef.js` |
 | 56 | `pidlane-adapter.js` | 10 | `PLAdapter` — **het verbindingspaneel achter de OBD-chip** (#210/#211/#212, 16-09-2026). Toont wat de app al wist maar nergens liet zien: verzoeken/s, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken over twaalf minuten, en het actielogboek van `PLLoad` mét de reden per stap. Kan het tempo en de groepsgrootte laten overnemen door een mens (`PLLoad.handmatig()`, `PLBus.batchZet()`), en heeft een eigen snelheidstest van 40 s die **solo én batch** meet — dat verschil is precies wat blok 10 niet ziet. Regelt zelf niets: de automaat blijft `PLLoad`, de statistiek blijft `PLBus`. `advies()` is een pure functie en staat los van de meting. Tests: `test-adapterpaneel.js`, `bproef-adapterpaneel.js`, `bproef-schermranden.js` |
+| 57 | `pidlane-waarneming.js` | 8 | `PLWaarneming` — **de autolaag** (#225, 17-09-2026): wat er op DÉZE auto is waargenomen, over ritten heen. `meld()` kan maar één ding zeggen — *gezien* — want "gemeten dat het er niet is" bestaat niet; `weerleg()` is de enige bron die *nee* mag zeggen en dat is een mens. Bij tegenspraak beslist het moment: een waarneming van vóór een weerlegging is juist wat er weerlegd is, een van erná is nieuw bewijs. Sleutel als `PLPidLen` (`vin \|\| merk\|model\|jaar`); geen sleutel = geen opslag, en dan zegt `reikwijdte` `sessie`. `PLAandrijving.tik()` promoveert de start/stop-stop erheen. Tests: `test-waarneming.js`, `test-meetcontext.js`, blok 5 |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
 
 ### `native/` — de enige map met code die niet in de browser draait (11-09-2026)
@@ -910,6 +911,78 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+
+### Een eigenschap van de auto werd bewaard als eigenschap van de meting (#225, 17-09-2026)
+
+De voorvulling van vanochtend werkt, en liet daarmee zien waar de echte
+kwestie zat. `startStopGezien` leeft in `PLAandrijving`, en die stand wordt bij
+elke nieuwe verbinding terecht gewist — *"de motor heeft gedraaid" mag geen
+feit worden dat een herverbinding overleeft*. Maar er stonden **twee** dingen
+in die ene vlag:
+
+| | verandert het? | waar hoort het |
+|---|---|---|
+| deze auto **heeft** start/stop | nooit | bij de auto |
+| start/stop was **actief tijdens deze meting** | elke rit | bij de sessie |
+
+Het eerste werd bewaard alsof het het tweede was, en dus elke sessie
+weggegooid. Dat is de reden dat het venster die vraag elke keer opnieuw stelde
+— en de vraag zelf zegt het letterlijk, met twee vragen achter één antwoordknop:
+*"Zet de motor zichzelf uit bij stilstand, **en** stond dat aan tijdens deze
+meting?"*
+
+**Dit patroon stond al drie keer in de repo.** `PLPidLen` (bytelengtes),
+`PLPidVorm` (byte-statistiek) en `loadSessions`/`vehicleBaseline` (geleerde
+normalen) bewaren alle drie per voertuig, met dezelfde sleutel en met dezelfde
+reden in hun eigen commentaar: *anders begint een andere auto met andermans
+afwijkingen*. De meetcontext was de vierde van die rij en de enige die niets
+onthield — niet omdat dat beter is, maar omdat hij als vragenlijst geboren is
+en niet als waarneming.
+
+`pidlane-waarneming.js` is die laag, met één bewoner om te beginnen.
+
+**De asymmetrie staat nu in de API en niet in een regel die je moet onthouden.**
+`meld()` kan maar één ding zeggen: *gezien*. Er is geen manier om "gemeten dat
+het er niet is" op te schrijven, want die meting bestaat niet. Dat is een
+zwaardere vorm dan een vlag met een afspraak eromheen: een vlag met twee
+kanten nodigt uit om de stilte als "nee" te lezen, en dat is precies de fout
+waar #62 voor bestaat.
+
+**Wie wint bij tegenspraak: het moment.** Een weerlegging corrigeert de
+waarnemingen die er op dat moment lagen, niet de toekomst.
+
+| | uitkomst | waarom |
+|---|---|---|
+| waarneming vóór de weerlegging | weerlegging blijft | dát is wat er weerlegd is |
+| waarneming ná de weerlegging | waarneming wint | nieuw bewijs gaat vóór een bewering |
+
+Zonder die volgorderegel krijg je één van twee: een gebruiker die de app niet
+kan corrigeren omdat de volgende tik zijn correctie terugzet, of een app die
+zich nooit kan herstellen van een foute correctie. Beide zijn erger dan de
+regel.
+
+**Wat er níét in zit.** De stabiliteitsvraag hoort hier niet thuis: die gaat
+over déze meting en `PLAanlevering` meet hem al fijner dan een mens hem kan
+beantwoorden. En de weerlegknop zelf staat er nog niet — `weerleg()` bestaat en
+is getoetst, maar het venster gebruikt hem nog niet. Dat is de volgende snee,
+en hij hangt aan het besluit in #64 over hoe dat venster eruit gaat zien.
+
+**Wat dit kan kosten, en wat dat tegenhoudt.** Een register onthoudt ook een
+fóúte waarneming. Daarom draagt elk feit zijn bewijs (toerental, snelheid,
+011F, de bron van "heeft gedraaid"), blijft het moment van de eerste
+waarneming staan in plaats van mee te schuiven, en overleeft het bewijs een
+weerlegging in `gecorrigeerd` — de vergissing is leerzamer dan de correctie, en
+zonder dat bewijs is achteraf niet te zien waar de app naar keek toen hij het
+misdeed.
+
+**De schuld die hierbij hoort, genoteerd en niet verstopt.** De sleutel is
+dezelfde als die van `PLPidLen`: `vin || merk|model|jaar`, met de VIN ruw in de
+opslagsleutel. Op het toestel is dat geen schending van §7 — die gaat over de
+uitgaande paden — maar het is de vierde plek waar dat nu staat. Alle vier
+tegelijk naar `_vlVinPseudoniem()` verhuizen is mechanisch werk en dus een
+eigen commit, en het moment dat het écht gaat tellen is zodra een profiel de
+telefoon verlaat. Staat in #225.
 
 
 ### De start/stop-vraag hoeft niet meer blind gesteld te worden (#64, 17-09-2026)

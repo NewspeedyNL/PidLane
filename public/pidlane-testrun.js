@@ -2551,6 +2551,59 @@ const PROEVEN_B5 = [
     }
   },
 
+  // \u2500\u2500 weet deze auto volgende rit nog wat hij liet zien? (#225) \u2500\u2500
+  // De aandrijfstatus hierboven is een SESSIElaag: bij elke herverbinding
+  // begint hij terecht op nul, want "de motor heeft gedraaid" zegt niets over
+  // de volgende rit. Maar "deze auto HEEFT start/stop" is geen eigenschap van
+  // de meting \u2014 die verandert nooit, en werd tot vandaag toch elke sessie
+  // weggegooid. Dat is de reden dat het meetcontextvenster die vraag elke keer
+  // opnieuw stelde.
+  //
+  // test-waarneming.js toetst het register en de promotie op verzonnen
+  // monsters. Wat daar niet te maken is, is een ECHTE auto met een echte
+  // sleutel en een echte opslag: of `vehicleInfo` op tijd een VIN draagt, of
+  // localStorage op dit toestel werkt, en of de waarneming van vorige week er
+  // nog staat. Dat is precies wat hier gemeten wordt.
+  {
+    issue: '#225',
+    naam: 'Wat deze auto liet zien, weet hij volgende rit nog',
+    waarom: 'Een eigenschap van de auto die als eigenschap van de meting bewaard wordt, is elke sessie opnieuw een vraag aan de gebruiker \u2014 vlak v\u00f3\u00f3r een betaalde analyse.',
+    proef: function () {
+      if (!window.PLWaarneming || typeof PLWaarneming.lees !== 'function')
+        return { staat: 'FOUT', detail: 'PLWaarneming ontbreekt \u2014 dan begint elke sessie weer op nul en komt de start/stop-vraag elke rit terug (#225)' };
+
+      var w = PLWaarneming.lees('startstop');
+      var stand = (window.PLAandrijving && typeof PLAandrijving.laatste === 'function') ? PLAandrijving.laatste() : null;
+
+      // DE STILLE BREUK. De sessie heeft de stop gezien en het register weet
+      // het niet: dan is de promotie in tik() eruit gevallen. Alles blijft
+      // werken, de balk klopt, en het enige wat je merkt is dat de vraag
+      // volgende rit terug is \u2014 en dat merk je pas volgende rit.
+      if (stand && stand.startStopGezien && w.status !== 'gezien')
+        return { staat: 'FOUT', detail: 'de sessie zag een start/stop-stop maar het register staat op "' + w.status +
+          '" \u2014 de promotie van sessie naar auto is eruit gevallen (#225)' };
+
+      var sleutel = PLWaarneming.sleutel();
+      var waar = !sleutel ? 'nog geen auto herkend (geen VIN en geen merk), dus dit blijft bij deze sessie'
+        : (w.reikwijdte === 'auto' ? 'vastgelegd bij deze auto' : 'de opslag doet het niet \u2014 het blijft bij deze sessie');
+
+      if (w.status === 'gezien') {
+        var b = w.bewijs || {};
+        return { staat: 'ok', detail: 'start/stop: GEZIEN op ' + new Date(w.wanneer).toLocaleString('nl-NL') +
+          ' (' + (w.bron || 'onbekende bron') + ')' +
+          (b.looptijd != null ? ', 011F ' + b.looptijd + ' s' : '') +
+          (b.rpm != null ? ', ' + b.rpm + ' tpm' : '') + ' \u2014 ' + waar +
+          '. Het venster stelt hier "ja" voor, ook als deze rit geen stop oplevert.' };
+      }
+      if (w.status === 'weerlegd')
+        return { staat: 'ok', detail: 'start/stop: door de gebruiker weerlegd op ' + new Date(w.wanneer).toLocaleString('nl-NL') +
+          ' \u2014 ' + waar + '. Een nieuwe waarneming van n\u00e1 dat moment wint alsnog.' };
+
+      return { staat: 'LET OP', detail: 'over start/stop is op deze auto nog niets vastgelegd \u2014 ' + waar +
+        '. Niet-weten is hier de juiste uitkomst: niets-zien bewijst niet dat de auto het niet heeft. Sta \u00e9\u00e9n keer stil met een warme motor en dit vult zichzelf.' };
+    }
+  },
+
   // ── wijst "Welk onderdeel?" alleen sensoren aan die écht zwijgen? ──
   // Gemeld met een schermafdruk erbij: brandstofpeil en afstand-met-MIL-aan
   // als "sterke aanwijzing — draadbreuk, stekker of sensor", op een auto waar

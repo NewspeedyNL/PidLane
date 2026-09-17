@@ -707,6 +707,18 @@ MUTATIES=(
 "public/pidlane-aandrijving.js@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP'),@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP' || toestand === 'UIT_VOOR_START'),@@test-aandrijving.js@@'motor uit vóór de eerste start' telt als start/stop: contact aan is genoeg voor een 'ja' in de prompt"
 "public/pidlane-archief.js@@    return {waarde:'', reden:'geen start/stop-stop gezien; dat kan ook betekenen dat je niet lang genoeg stilstond met een warme motor'};@@    return {waarde:'nee', reden:'geen start/stop-stop gezien'};@@test-meetcontext.js@@niets-gezien wordt als 'nee' voorgesteld, en dan leest de AI een normale start/stop-stop als afslaan"
 "public/pidlane-archief.js@@        gekozen[v]=b.dataset.waarde;\n        geklikt[v]=true;@@        gekozen[v]=b.dataset.waarde;@@test-meetcontext.js@@een aangeklikt antwoord is niet meer van een blijven-staand voorstel te onderscheiden: punt 3 van #64 meet zichzelf kapot"
+
+# ── Het register van waarnemingen per auto (#225, 17-09-2026). De autolaag
+# naast de sessielaag: "deze auto HEEFT start/stop" verandert nooit en hoort
+# dus niet elke verbinding weggegooid te worden. Vijf fouten die geen
+# foutmelding geven — alleen een venster dat weer iets vraagt wat de app al
+# wist, of erger, iets beweert wat niemand gemeten heeft.
+"public/pidlane-waarneming.js@@        wat: wat, status: 'onbekend', bron: null, wanneer: null, bewijs: null,@@        wat: wat, status: 'weerlegd', bron: null, wanneer: null, bewijs: null,@@test-waarneming.js@@een leeg register leest als 'deze auto heeft het niet' — niet-gemeten wordt stilletjes nee"
+"public/pidlane-waarneming.js@@      if (oud.weerlegdOp && nieuw.wanneer <= oud.weerlegdOp) return;@@      if (false) return;@@test-waarneming.js@@een oudere waarneming heropent de weerlegging: de gebruiker kan de app niet meer corrigeren"
+"public/pidlane-waarneming.js@@      if (oud.status === 'gezien') return;@@      if (false) return;@@test-waarneming.js@@elke volgende waarneming schuift het moment op, en dan is een valse positief achteraf niet meer te herkennen"
+"public/pidlane-waarneming.js@@    _sleutel = k;\n    _bewaard = false;\n    _reg = k ? _laad(k) : {};@@    _sleutel = k;\n    _bewaard = false;@@test-waarneming.js@@de volgende auto begint met de waarnemingen van de vorige — in een werkplaats is dat de normale gang van zaken"
+"public/pidlane-aandrijving.js@@    if (_stand.startStopGezien && !gezienWas) _promoveer(_stand, nu);@@    if (false) _promoveer(_stand, nu);@@test-waarneming.js@@de waarneming wordt niet meer naar de auto gepromoveerd: alles blijft groen en de vraag komt volgende rit gewoon terug"
+"public/pidlane-archief.js@@    if(w && w.status==='weerlegd')@@    if(w && w.status!=='gezien')@@test-meetcontext.js@@een register dat niets weet levert 'nee' op, en dan leest de AI een normale start/stop-stop als afslaan"
 )
 
 echo

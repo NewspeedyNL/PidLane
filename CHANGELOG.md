@@ -11,6 +11,27 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17e (CET) — DE AUTO ONTHOUDT WAT HIJ
+     LIET ZIEN
+
+       • Ⓢ START/STOP HOEF JE NOG MAAR ÉÉN KEER TE ZIEN.
+         Zag de app op deze auto ooit een start/stop-stop, dan
+         weet hij dat volgende rit nog — ook als je die rit
+         nergens lang genoeg stilstaat. Tot nu toe begon die
+         kennis bij elke verbinding weer op nul, terwijl het
+         een eigenschap van de AUTO is en niet van de meting.
+       • 🧭 HET VENSTER VÓÓR DE ANALYSE VRAAGT DUS MINDER.
+         Het voorstel bij start/stop zegt er nu bij wanneer de
+         waarneming gedaan is. Nooit "nee" uit stilte: niets
+         gezien hebben blijft geen bewijs.
+       • 🔒 PER AUTO GESCHEIDEN. Koppel je in de werkplaats
+         achter elkaar aan, dan begint de volgende auto schoon —
+         net als bij de geleerde bytelengtes en de geleerde
+         normalen. Zonder herkende auto blijft alles bij deze
+         sessie en wordt er niets weggeschreven.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17d (CET) — DE APP VULT DE START/STOP-
      VRAAG ZELF IN
 

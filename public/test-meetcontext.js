@@ -109,6 +109,13 @@ function maakOmgeving(opties) {
   if (opties.stand !== undefined) {
     ctx.PLAandrijving = { laatste: function () { return opties.stand; } };
   }
+  // Het register van waarnemingen per auto (#225). Ook hier alleen wat het
+  // voorstel werkelijk leest: één uitkomst van lees(). Laat `opties.waarneming`
+  // weg en er is geen register — dat is elke schil van vóór 17-09, en het
+  // voorstel hoort dan te doen wat het daarvoor deed.
+  if (opties.waarneming !== undefined) {
+    ctx.PLWaarneming = { lees: function () { return opties.waarneming; } };
+  }
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(opties.bron || BRON, ctx, { filename: 'pidlane-archief.js (voor de analyse)' });
@@ -228,6 +235,31 @@ function keurStartStopVoorstel() {
   if (k.waarde !== '') uit.push('met een motor die nooit draaide wordt er tóch iets voorgesteld');
   if (k.reden.indexOf('nog niet gedraaid') < 0)
     uit.push('de reden noemt niet dat de motor nog niet gedraaid heeft: "' + k.reden + '"');
+
+  /* HET REGISTER PER AUTO (#225). Tot vandaag begon deze vraag elke sessie
+     opnieuw op nul, terwijl het antwoord een eigenschap van de AUTO is die
+     nooit verandert. Drie gevallen, en het middelste is het gewone: je rijdt,
+     je staat deze rit niet lang genoeg stil, en de app weet het toch. */
+  const gisteren = { status: 'gezien', wanneer: Date.now() - 86400000, bron: 'meting', reikwijdte: 'auto' };
+  const rijdt = { toestand: 'DRAAIT_RIJDT', startStopGezien: false, heeftGedraaid: true };
+
+  const bekend = maakOmgeving({ stand: rijdt, waarneming: gisteren });
+  const b = bekend.plMeetStartStopVoorstel();
+  if (b.waarde !== 'ja') uit.push('een waarneming van een eerdere rit op deze auto telt niet mee: voorstel "' + b.waarde + '"');
+  if (b.reden.indexOf('eerder') < 0) uit.push('de reden zegt niet dat het om een eerdere waarneming gaat: "' + b.reden + '"');
+
+  // De enige bron die 'nee' mag zeggen is een mens, en die hoeft dat per auto
+  // één keer te doen.
+  const weerlegd = maakOmgeving({ stand: rijdt, waarneming: { status: 'weerlegd', wanneer: Date.now() - 3600000, bron: 'mens', reikwijdte: 'auto' } });
+  const wl = weerlegd.plMeetStartStopVoorstel();
+  if (wl.waarde !== 'nee') uit.push('een weerlegging van de gebruiker levert voorstel "' + wl.waarde + '" in plaats van "nee"');
+
+  // EN DE ASYMMETRIE HOUDT OOK MÉT REGISTER STAND. Een register dat niets
+  // weet mag nooit als 'nee' gelezen worden — dat is dezelfde fout als
+  // hierboven, alleen een laag dieper.
+  const leeg = maakOmgeving({ stand: rijdt, waarneming: { status: 'onbekend', wanneer: null, bron: null, reikwijdte: 'auto' } });
+  if (leeg.plMeetStartStopVoorstel().waarde !== '')
+    uit.push('een leeg register levert een antwoord op in plaats van geen oordeel');
   return uit;
 }
 

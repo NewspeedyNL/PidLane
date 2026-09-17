@@ -226,12 +226,35 @@ function plMeetStabielVoorstel(){
    Daarom stelt dit nooit "nee" voor. Een voorstel dat "nee" durft te zeggen op
    grond van niets-gezien zou de AI vertellen dat een normale start/stop-stop
    een bevinding is — precies de fout die deze vraag moest voorkomen. */
+// Een datum die een mens in één oogopslag plaatst. Alleen voor het venster —
+// wat er in de prompt komt hangt aan het antwoord en niet aan deze tekst.
+function _plWaarnemingDatum(ms){
+  if(typeof ms!=='number' || !(ms>0)) return '';
+  try{ return ' (' + new Date(ms).toLocaleDateString('nl-NL', {day:'numeric', month:'short'}) + ')'; }
+  catch(e){ console.warn('waarnemingsdatum niet op te maken:', e); return ''; }
+}
+
 function plMeetStartStopVoorstel(){
   try{
+    /* HET REGISTER EERST (#225). Een start/stop-stop die vorige week op DEZE
+       auto gezien is, is net zo hard bewijs als een van vandaag — het systeem
+       verdwijnt niet tussen twee ritten. En een weerlegging is de enige bron
+       die 'nee' mag zeggen: meten kan dat niet, want niets-zien bewijst niets.
+       Ontbreekt het register, dan valt alles hieronder terug op de sessie en
+       is het gedrag precies als vóór 17-09. */
+    const w = (window.PLWaarneming && typeof PLWaarneming.lees==='function')
+      ? PLWaarneming.lees('startstop') : null;
+    if(w && w.status==='weerlegd')
+      return {waarde:'nee', reden:'je hebt eerder gemeld dat deze auto geen start/stop heeft'+_plWaarnemingDatum(w.wanneer)};
+
     if(!window.PLAandrijving || typeof PLAandrijving.laatste!=='function')
       return {waarde:'', reden:'de aandrijfstatus is niet geladen'};
     const r=PLAandrijving.laatste();
+    if(!r && w && w.status==='gezien')
+      return {waarde:'ja', reden:'op deze auto is eerder een start/stop-stop waargenomen'+_plWaarnemingDatum(w.wanneer)};
     if(!r) return {waarde:'', reden:'nog geen aandrijfstand gemeten'};
+    if(!r.startStopGezien && w && w.status==='gezien')
+      return {waarde:'ja', reden:'op deze auto is eerder een start/stop-stop waargenomen'+_plWaarnemingDatum(w.wanneer)+' — deze rit nog niet'};
     if(r.startStopGezien)
       return {waarde:'ja', reden: r.toestand==='STARTSTOP'
         ? 'de motor staat nu uit terwijl de auto stilstaat en eerder heeft gedraaid'

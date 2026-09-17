@@ -301,6 +301,33 @@
   // feit worden dat een herverbinding overleeft.
   var _stand = null;
 
+  /* Van sessie naar auto (#225). `bepaal()` blijft zuiver en weet van geen
+     register; `tik()` houdt de sessiestand al bij en is dus de plek waar de
+     overgang zichtbaar is. Alleen de OMSLAG wordt gemeld — één keer per
+     sessie, op het moment dat de vlag omgaat — en niet elke tik daarna.
+
+     Het moment dat meegaat is `startStopSinds` en niet "nu": dat is wanneer
+     de stop gezien is, en dat verschil is precies wat je achteraf nodig hebt
+     om een valse positief uit te sluiten. De adaptertrek van 17-09 staat in
+     het verslag; zonder dit getal is niet te zeggen of de waarneming ervóór
+     of erná viel. */
+  function _promoveer(res, nu) {
+    if (!window.PLWaarneming || typeof window.PLWaarneming.meld !== 'function') {
+      console.warn('PLWaarneming ontbreekt — de start/stop-waarneming blijft bij deze sessie en de vraag komt volgende rit terug (#225)');
+      return;
+    }
+    window.PLWaarneming.meld('startstop', {
+      wanneer: (typeof res.startStopSinds === 'number') ? res.startStopSinds : nu.t,
+      bewijs: {
+        rpm: _getal(nu.rpm),
+        snelheid: _getal(nu.snelheid),
+        looptijd: res.looptijd,
+        bronGedraaid: res.bronGedraaid,
+        zekerheid: res.zekerheid
+      }
+    });
+  }
+
   function tik(bron, opties) {
     var o = opties || {};
     // Hoe oud is de meting werkelijk? Dat weet de scheduler, niet pidVals —
@@ -311,7 +338,10 @@
       var ok = window.PLSched.laatsteSucces('010C') || 0;
       o = Object.assign({}, o, { ouderdomMs: ok ? (nuMs - ok) : (D.versMs + 1) });
     }
-    _stand = bepaal(uitPidVals(bron, o), _stand);
+    var nu = uitPidVals(bron, o);
+    var gezienWas = !!(_stand && _stand.startStopGezien);
+    _stand = bepaal(nu, _stand);
+    if (_stand.startStopGezien && !gezienWas) _promoveer(_stand, nu);
     return _stand;
   }
   function laatste() { return _stand; }
