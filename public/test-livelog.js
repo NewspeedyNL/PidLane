@@ -318,12 +318,16 @@ async function deel3() {
 
   // 6. TEGENPROEF OP DE POORT ZELF. Een lege buffer is geen verzending, dus
   //    hij hoort de vorige uitslag niet te overschrijven met groen.
-  const laatste = s.plLiveLogStatus().tijd;
+  //    Vergelijken op de héle uitslag en niet op het tijdstip alleen: twee
+  //    pogingen binnen dezelfde milliseconde dragen hetzelfde tijdstip, en dan
+  //    stond deze tegenproef groen op een toeval van de klok.
+  const laatste = JSON.stringify(s.plLiveLogStatus());
   s._atBuffer.length = 0;
+  await new Promise(r => setTimeout(r, 2));
   await s.flushAirtable();
   toets('TEGENPROEF: een lege buffer levert geen nieuwe uitslag op',
-    s.plLiveLogStatus().tijd === laatste,
-    'anders leest "er stond niets klaar" als "het is aangekomen"');
+    JSON.stringify(s.plLiveLogStatus()) === laatste,
+    'anders leest "er stond niets klaar" als "het is aangekomen" — gaf: ' + s.plLiveLogStatus());
 
   await deel4();
 }
@@ -430,6 +434,22 @@ async function deel4() {
   toets('er wordt niets verstuurd → FOUT, ondanks een geslaagde poging van daarvóór',
     r.staat === 'FOUT' && /geen enkele uitslag/.test(r.detail),
     'gaf: ' + JSON.stringify(r));
+
+  // EN DE ANDERE KANT VAN DAT WACHTEN: de uitslag komt wél, maar pas na een
+  // paar tikken. Wie hier niet wacht keurt een werkende verbinding af, en een
+  // proef die om de zoveel rit onterecht rood staat wordt genegeerd.
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 2, fout: '' });
+  const oud = { tijd: klok, ok: true, status: 200, aantal: 2, fout: '' };
+  let beurten = 0;
+  s.flushAirtable = async function () { /* verstuurt wel, maar traag */ };
+  s.plLiveLogStatus = function () {
+    beurten++;
+    return beurten > 3 ? { tijd: klok + 5, ok: true, status: 200, aantal: 2, fout: '' }
+                       : Object.assign({}, oud);
+  };
+  r = await entry.proef();
+  toets('een trage verzending wordt afgewacht in plaats van te vroeg afgekeurd',
+    r.staat === 'ok', 'gaf: ' + JSON.stringify(r) + ' — na ' + beurten + ' keer kijken');
 
   opstelling({ tijd: klok, ok: true, status: 200, aantal: 1, fout: '' });
   s.plLiveLogStatus = undefined;
