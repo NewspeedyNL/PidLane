@@ -11,6 +11,39 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17b (CET) — WAT DOET DE AUTO NU?
+
+       • 🅢 EEN AANDRIJFBALK BOVENIN DE LIVE-WEERGAVE. Eén
+         regel die zegt wat de auto op dit moment doet:
+         stationair, rijdt op motor, rijdt op accu, start/stop
+         actief, motor uit, motor start — of eerlijk "onbekend"
+         als de bus wegviel. Bij een hybride staat het
+         brandstofdebiet erbij, zodat "rijdt op accu" een
+         meting is en geen gevolgtrekking.
+
+       • 🧠 START/STOP EN "NOG NIET GESTART" ZIJN UIT ELKAAR
+         GEHAALD. Op één momentopname zijn die identiek: nul
+         toerental, nul snelheid, een ECU die netjes antwoordt.
+         Het verschil is of de motor deze sessie al gedraaid
+         heeft, en dat wordt nu onthouden. Koppel je aan terwijl
+         de auto al voor een stoplicht staat, dan weet de app
+         het alsnog via de motorlooptijd (011F).
+
+       • 🔋 DE EV-MODUS KLEMDE VAST. Zodra de app vaststelde dat
+         er op de accu gereden werd, pauzeerde hij de
+         verbrandingsmotor-PIDs — inclusief het toerental,
+         terwijl dat juist de enige uitgang uit die modus was.
+         De motor kon weer aanslaan zonder dat de app het zag,
+         tot de auto stilstond. Toerental en snelheid blijven nu
+         altijd meedraaien.
+
+       • ⚖️ DE METING BESLIST, NIET HET KENTEKENVELD. De oude
+         EV-detectie sloeg zichzelf over zodra de RDW-gegevens
+         "benzine" zeiden, waardoor start/stop er per
+         constructie nooit uit kon komen. Dat is omgedraaid.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17a (CET) — "WELK ONDERDEEL?" WEES DE
      VERKEERDE AAN
 

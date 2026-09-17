@@ -678,6 +678,17 @@ MUTATIES=(
 # één voorwaarde van gewicht 2. Zet hem terug en die kaart komt terug.
 "public/pidlane-onderdeel.js@@    var draagt = voor.length>=2 || zwaarste>=3;@@    var draagt = true;@@test-onderdeel.js@@één losse hint van gewicht 2 maakt weer een verdachte"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
+
+# ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de
+# Live-weergave stil verkeerd laten staan — en "stil" is hier het punt: een
+# toestandsbalk ziet er altijd uit alsof hij iets weet. De eerste is een
+# regressie en geen verzinsel: die klem zat er tot vandaag in.
+"public/pidlane-plload.js@@     && !(typeof EV_ANKER_SUFFIX!=='undefined' && EV_ANKER_SUFFIX.has(suf))) return 999999;@@     ) return 999999;@@test-aandrijving.js@@de EV-klem is terug: toerental wordt meegepauzeerd en de EV-modus kan zichzelf niet meer opheffen"
+"public/pidlane-aandrijving.js@@    return g.heeftGedraaid ? 'STARTSTOP' : 'UIT_VOOR_START';@@    return 'UIT_VOOR_START';@@test-aandrijving.js@@de voorgeschiedenis doet niet meer mee: een start/stop-stop leest als een auto die nog niet gestart is"
+"public/pidlane-aandrijving.js@@    if (lt !== null && lt > 0) { uit.heeftGedraaid = true; uit.bronGedraaid = 'looptijd'; return uit; }@@    if (false) { uit.heeftGedraaid = true; uit.bronGedraaid = 'looptijd'; return uit; }@@test-aandrijving.js@@motorlooptijd telt niet meer mee, dus aankoppelen tijdens een start/stop-stop wordt 'motor uit'"
+"public/pidlane-aandrijving.js@@    var dood = (nu.ecuLeeft === false) || rpm === null || spd === null ||\n      (_getal(nu.ouderdomMs) !== null && nu.ouderdomMs > D.versMs);@@    var dood = false;@@test-aandrijving.js@@een wegvallende bus wordt als motor-uit gelezen in plaats van als onbekend"
+"public/pidlane-aandrijving.js@@      motorDraait = (v && v.motorDraait) ? (rpm > D.rpmUit) : (rpm >= D.rpmAan);@@      motorDraait = (rpm >= D.rpmAan);@@test-aandrijving.js@@de hysterese op het toerental is weg: de balk knippert rond de drempel"
+"public/pidlane-aandrijving.js@@      } else if (v.kandidaat === rauw && (t - v.kandidaatSinds) >= D.stabielMs) {@@      } else if (true) {@@test-aandrijving.js@@de stabilisatie staat uit: één mislukt monster verandert de getoonde toestand"
 )
 
 echo

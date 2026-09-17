@@ -1055,6 +1055,13 @@ function closeConnOv(){
       <!-- LIVE -->
       <div class="pane active" id="pane-live">
         <!-- ("Analyseer wat je nu ziet"-balk verwijderd op verzoek — analyse start via de deuren) -->
+        <!-- Aandrijfstatus: wat doet de auto NU. Eén regel, één toestand, alle
+             aandrijvingen — start/stop, rijden op de accu, stationair, of
+             eerlijk "onbekend" als de bus wegviel. Gevuld door
+             pidlane-aandrijfbalk.js; het oordeel komt uit
+             pidlane-aandrijving.js. Staat leeg tot er verbinding is, want een
+             toestandsregel zonder meting eronder hoort er niet te staan. -->
+        <div id="aandrijfBalk" style="display:none"></div>
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
           <span class="pidview-lbl">Weergave:</span>
           <button class="pidview-btn" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
@@ -1982,6 +1989,8 @@ function closeConnOv(){
 <script src="pidlane-start.js"></script><!-- startscherm: adapterprofielen, geheugen, cascade-voortgang -->
 <script src="pidlane-run.js"></script><!-- run-chip: één plek waar staat wat er op de achtergrond draait -->
 <script src="pidlane-adapter.js"></script><!-- PLAdapter (#210/#211/#212): het verbindingspaneel achter de OBD-chip; vereist ná pidlane-data.js (PLBus), pidlane-plload.js (PLLoad) en pidlane-uihelpers.js (obdChipTap) -->
+<script src="pidlane-aandrijving.js"></script><!-- aandrijfstatus: de toestandsmachine (PLAandrijving) — zuiver, kent het scherm niet -->
+<script src="pidlane-aandrijfbalk.js"></script><!-- het scherm bij de aandrijfstatus (PLAandrijfbalk) — vereist ná pidlane-aandrijving.js -->
 <script src="pidlane-bedrading.js"></script><!-- bedradingscontrole: bestaat alles wat modules van elkaar verwachten — MOET als laatste -->
 
 <script>

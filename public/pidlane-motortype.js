@@ -21,6 +21,20 @@ const ICE_PIDS_SUFFIX = new Set([
   '0C','0B','10','0A','0E','06','07','08','09','13','14','15','2C','12',
   '3C','3D','3E','3F','34','35','24','25','28','69','6A'
 ]);
+
+// PIDs die NOOIT mogen wegvallen zolang de EV-modus loopt. Toerental is de
+// enige uitgang uit die modus: `_evModeActive` blijft waar zolang 010C onder
+// de drempel staat, en dat oordeel komt uit 010C zelf. Wie hem meepauzeert
+// maakt van de EV-modus een klem — pidVals['010C'] bevriest dan op zijn
+// laatste waarde (onder de drempel), en alleen een snelheid onder 2 km/h kan
+// de modus nog openen. Start de verbrandingsmotor terwijl je optrekt, dan
+// blijft de app in EV-modus hangen met RPM, MAF, belasting en lambda uit.
+// Gemeten 17-09-2026 door de code te lezen; zie PIDLANE.md §11.
+//
+// Dat de bedoeling er al was blijkt uit pidlane-plload.js zelf: twee regels
+// onder het EV-filter staat `['0C','0D'] -> 150` met de opmerking "RPM/
+// snelheid altijd snel". Die regel was onbereikbaar.
+const EV_ANKER_SUFFIX = new Set(['0C', '0D']);
 let _evModeActive = false;
 
 function detectEngineType(){
@@ -32,25 +46,63 @@ function detectEngineType(){
   return 'benzine';
 }
 
+// De vorige getoonde toestand, alleen om één logregel per overgang te maken.
+let _laatsteToestand = null;
+
+/* Eén tik van de aandrijfstatus. Wordt door de pollronde aangeroepen zodra er
+   iets binnenkwam (pidlane-plload.js) en door de remote-data-tak.
+
+   DIT WAS TOT 17-09-2026 EEN ANDERE FUNCTIE, en het verschil is de moeite van
+   het lezen waard. Hij deed één ding — een vlag zetten die ICE-PIDs pauzeert —
+   en begon met:
+
+       const engineType = detectEngineType();
+       if(engineType !== 'hybride' && engineType !== 'ev') { _evModeActive = false; return; }
+
+   `detectEngineType()` leest `vehicleInfo.brandstof`: een DECLARATIE uit
+   RDW-data. Op een benzineauto stopte de functie daar, en dus kon er nooit
+   iets over start/stop uitkomen, hoe goed 010C en 010D ook binnenkwamen. De
+   meting is nu de bron en de declaratie hoogstens een beginschatting —
+   omgekeerd bewijst één waarneming van rijden-met-stille-motor dat er een
+   tweede aandrijfbron is, en dat is harder dan wat het kentekenveld zegt.
+
+   De demo-tak deed hetzelfde vanaf de andere kant: `if(!connected || demoMode)
+   return;` liet de balk in demo leeg. In demo komt er geen antwoord langs de
+   scheduler, dus daar wordt de ouderdom op 0 gezet — anders zou élke
+   demowaarde als "te oud" gelden en ONBEKEND opleveren. */
 function updateEVMode(){
-  if(!connected || demoMode) return;
-  const engineType = detectEngineType();
-  if(engineType !== 'hybride' && engineType !== 'ev') {
+  if(!window.PLAandrijving){ _evModeActive = false; return null; }
+
+  // Geen verbinding: de volgende keer is een NIEUWE sessie. "De motor heeft
+  // gedraaid" mag geen feit worden dat een herverbinding overleeft.
+  if(typeof connected !== 'undefined' && !connected){
+    PLAandrijving.reset();
+    _laatsteToestand = null;
     _evModeActive = false;
-    return;
+    if(window.PLAandrijfbalk) PLAandrijfbalk.ververs(null);
+    return null;
   }
-  const rpm = pidVals['010C'];
-  const spd = pidVals['010D'];
+
+  const inDemo = (typeof demoMode !== 'undefined' && demoMode);
+  const res = PLAandrijving.tik((typeof pidVals !== 'undefined') ? pidVals : {},
+    inDemo ? { ouderdomMs: 0 } : {});
+
   const wasEV = _evModeActive;
-  // EV-modus: motor staat stil (RPM < 50) maar auto rijdt (snelheid > 2 km/h)
-  _evModeActive = (rpm !== undefined && rpm < 50) && (spd !== undefined && spd > 2);
+  // De pauzeerrem zit in de module: accurijden moet even aanhouden voordat de
+  // pollronde krimpt. Eén verkeerd gelezen monster hoort geen halve
+  // sensorlijst uit de ronde te snoeien.
+  _evModeActive = PLAandrijving.evPauzeGerust(res);
   if(_evModeActive !== wasEV){
-    if(_evModeActive){
-      btDiag('🔋 EV-modus — verbrandingsmotor-PIDs gepauzeerd', 'info');
-    } else {
-      btDiag('🔥 Verbrandingsmotor actief — alle PIDs hervatten', 'info');
-    }
+    btDiag(_evModeActive
+      ? '🔋 EV-modus — verbrandingsmotor-PIDs gepauzeerd (toerental en snelheid blijven)'
+      : '🔥 Verbrandingsmotor actief — alle PIDs hervatten', 'info');
   }
+  if(res.toestand !== _laatsteToestand){
+    _laatsteToestand = res.toestand;
+    btDiag('⚙️ Aandrijving: ' + res.label + (res.waarom ? ' (' + res.waarom + ')' : ''), 'info');
+  }
+  if(window.PLAandrijfbalk) PLAandrijfbalk.ververs(res);
+  return res;
 }
 
 // (pidPollInterval met motortype-logica is samengevoegd in de hoofddefinitie hierboven)
