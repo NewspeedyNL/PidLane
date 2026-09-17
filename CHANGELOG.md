@@ -119,6 +119,37 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17b (CET) — DE TESTRUN PRAAT TERUG
+     TERWIJL JE RIJDT
+
+       • 📡 ELKE BEVINDING GAAT METEEN NAAR BUITEN. De testrun
+         leverde één ding op: een verslag ná afloop, met de hand
+         geplakt. Wie onderweg wilde weten of blok 7 al goed was,
+         moest stoppen en lezen. Nu schrijft hij tijdens de rit
+         weg: het ritnummer bij de start, elke FOUT en LET OP
+         zodra hij valt, en per blok een regel met de telling.
+         Iemand die meekijkt kan dus zeggen "sla stap 4 over" of
+         "rijd nog een keer stevig op" terwijl je nog rijdt.
+
+       • 🔢 ELKE RIT HEEFT EEN NUMMER. Het staat als eigen regel
+         in het verslag en gaat met elke weggeschreven regel mee.
+         Dat is waarmee je later terugvindt wat er die rit
+         gemeten is, en wat je doorgeeft als iemand meeleest.
+
+       • 🧾 NIET ALLES, MET OPZET. Een volle run doet vijftig
+         stappen. Die allemaal wegschrijven vult het logboek
+         binnen een paar ritten met "ok". Alleen wat je onderweg
+         nodig hebt gaat eruit.
+
+       • 🔌 EN HET DERDE ARGUMENT VAN DE LOG DOET EINDELIJK IETS.
+         `logToSheets(type, bericht, extra)` nam dat derde stuk al
+         sinds het begin aan en gebruikte het nergens. Vijf
+         plekken gaven er context in mee — de PID en de reden bij
+         een uitschieter, het adapteradres bij een verbinding — en
+         dat verdween stilletijd. Nu staat het erbij.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17a (CET) — "WELK ONDERDEEL?" WEES DE
      VERKEERDE AAN
 

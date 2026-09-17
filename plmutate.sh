@@ -685,6 +685,20 @@ MUTATIES=(
 # demo-auto, die niets mankeert, stond "EGR-klep" op het scherm op grond van
 # één voorwaarde van gewicht 2. Zet hem terug en die kaart komt terug.
 "public/pidlane-onderdeel.js@@    var draagt = voor.length>=2 || zwaarste>=3;@@    var draagt = true;@@test-onderdeel.js@@één losse hint van gewicht 2 maakt weer een verdachte"
+
+# ── De testrun levert tijdens de rit aan (17-09-2026, fase 1) ──
+# Twee kanten, en de gevaarlijkste is niet "er komt niets" maar "er komt te
+# veel": een onbekende veldnaam levert een 422 van Airtable op, waarna de hele
+# batch van tien terugkomt in de buffer en elke vijftien seconden opnieuw
+# faalt. Dan legt één verkeerde sleutel de hele log plat en niet één regel.
+"public/pidlane-auth.js@@        if(AT_KOLOMMEN.has(k)) velden[k]=(typeof w==='boolean'||typeof w==='number')?w:String(w);\n        else staart.push(k+'='+(typeof w==='object'?JSON.stringify(w):String(w)));@@        velden[k]=w;@@test-livelog.js@@elke sleutel gaat als veld naar Airtable: één onbekende naam legt de hele log plat"
+"public/pidlane-auth.js@@    const bericht=String(message||'')+(staart.length?' · '+staart.join(' '):'');@@    const bericht=String(message||'');@@test-livelog.js@@de context achter het bericht valt weer weg — precies de stille fout van vóór vandaag"
+"public/pidlane-auth.js@@        Message:    bericht.slice(0,500),@@        Message:    bericht,@@test-livelog.js@@een lange staart omzeilt de grens van 500 tekens"
+"public/pidlane-testrun.js@@  if (st === 'FOUT' || st === 'LET OP' || st === 'LETOP') {@@  if (true) {@@test-livelog.js@@elke stap gaat naar de live-log: vijftig regels per rit en de tabel loopt vol"
+"public/pidlane-testrun.js@@    _liveSchrijf(st === 'FOUT' ? 'error' : 'opvallend',@@    if (st === 'FOUT') _liveSchrijf('error',@@test-livelog.js@@een LET OP komt onderweg niet meer naar buiten"
+"public/pidlane-testrun.js@@  if (blok !== _liveBlok) {\n    _liveBlokKlaar();@@  if (blok !== _liveBlok) {@@test-livelog.js@@een blok wordt nooit afgesloten: er valt onderweg niets af te vinken"
+"public/pidlane-testrun.js@@      Demo: !!(typeof demoMode !== 'undefined' && demoMode)@@      Demo: false@@test-livelog.js@@een demo-run komt als echte meting in de tabel"
+"public/pidlane-testrun.js@@  } catch (e) {\n    console.warn('Testrun: regel niet naar de live-log gestuurd — de run gaat gewoon door', e);\n    return false;\n  }@@  } finally { }@@test-livelog.js@@een kapotte log sleurt de hele testrun mee"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de

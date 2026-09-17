@@ -1286,6 +1286,71 @@ tegenproef — *"met EV-modus wordt MAF wél gepauzeerd"* — kon dat laten zien
 Een proef zonder tegenproef had hier vier groene regels opgeleverd die niets
 maten.
 
+### De testrun sprak pas als hij klaar was (17-09-2026)
+
+Gevraagd uit het gebruik: *"is het mogelijk tijdens de rit data aan te leveren,
+waarna we tests anders kunnen doen of juist kunnen afvinken?"* Het antwoord
+bleek ja, en het interessante is waaróm: **het kanaal lag er al en werd door de
+testrun niet gebruikt.**
+
+`logToSheets()` bufferde en stuurde elke vijftien seconden een batch naar
+Airtable, en deed dat elke rit al voor uitschieters, verbindingen en opvallende
+metingen. Op 17-09 stonden daar 719 regels in, met duiding en al — bijvoorbeeld
+*"Ontstekingstiming: -13° buiten het gebruikelijke bereik (-10–55) — sterke
+terugregeling van de ontsteking"*. Alleen: `pidlane-testrun.js` riep die functie
+**nul keer** aan. De testrun leverde één ding op, een tekstverslag ná afloop,
+dat met de hand geplakt moest worden.
+
+Dat is geen ontbrekend systeem maar een ontbrekende verbinding, en dat is een
+terugkerende vorm in dit project: `PLBulk` schreef tien uur rijden weg zonder
+iets terug te kunnen zeggen (16-09), de waakronde mat een sessie lang zonder
+scherm (16-09), en hier levert de app al aan zonder dat het deel dat het meest
+te melden heeft meedoet.
+
+**Wat er nu weggeschreven wordt, en waarom niet alles.** Een volle run doet
+vijftig stappen. Alles wegschrijven geeft vijftig regels per rit in een tabel
+die al op 719 stond, en dan is het kanaal binnen een paar ritten vol met "ok".
+Er gaan daarom drie soorten regels uit:
+
+- een startregel met het ritnummer, zodat er iets te zoeken valt;
+- elke FOUT en elke LET OP zodra hij valt — dat is waar je tijdens een rit op
+  kunt bijsturen;
+- één regel per blok zodra het vólgende blok begint, met de telling erin. Dat
+  is het afvinken: *"blok 7 klaar, 9 ok, 0 fout"*.
+
+Die laatste grens is met opzet afgeleid en niet aangeroepen: een blok is klaar
+zodra er een regel van een ander blok binnenkomt. `_boek()` is de enige
+trechter waar elke stap doorheen gaat, dus dat is één plek in plaats van
+veertien aanroepen in `runTestrun()` die stuk voor stuk vergeten kunnen worden.
+
+**En onderweg bleek het derde argument nooit gebruikt te zijn.** De
+handtekening is `logToSheets(type, message, extra)` en `extra` werd nergens
+uitgepakt. Vijf aanroepers gaven er iets in mee — de PID en de reden bij een
+uitschieter, het adapteradres bij een verbinding, de telling bij "data stabiel"
+— en dat verdween allemaal zonder één foutmelding. De log toonde een zin zonder
+de meetwaarde erachter, en niets wees erop dat er iets weg was.
+
+Dat is precies de vorm uit de vorige ronde (`window._laatsteDTC`, §11
+hieronder): **een parameter of bron die niet bestaat, leest als een bron die
+niets te melden heeft.** Het verschil is dat dit er niet toevallig bij lag —
+het live-pad rust er nu op, dus het moest eerst werken.
+
+**Waarom er een witte lijst omheen staat.** Het lag voor de hand om `extra`
+gewoon mee te sturen. Dat kan niet: Airtable weigert een onbekende veldnaam met
+een 422, en de client zet een mislukte batch terug in de buffer en probeert het
+elke vijftien seconden opnieuw. Eén verkeerde sleutel legt dan niet één regel
+plat maar de hele log, stilletjes en voor de rest van de rit. `AT_KOLOMMEN`
+noemt daarom de kolommen die de tabel echt heeft; wat daar niet in staat gaat
+als tekst achter het bericht aan. Verloren gaat er niets meer, en kapot kan het
+niet.
+
+**Wat dit niet oplost.** De tabel stond op 17-09 op 719 regels. Hoeveel er in
+mogen voordat Airtable de base dichtzet is een instelling buiten deze repo, net
+als bij Cloudflare Workers Builds — bij twijfel is dat iets om na te kijken
+vóór een reeks meetritten, niet erna. En dit is fase 1 van drie: de tekst en de
+stappen van `CAMPAGNE` en het testrunscherm zelf zijn nog van vóór deze
+verandering, en gaan uit van een verslag achteraf.
+
 ### Een valse verdenking in "Welk onderdeel?" (16-09-2026)
 
 Gemeld uit het gebruik, met een schermafdruk erbij. Het paneel zei **"Sensor
