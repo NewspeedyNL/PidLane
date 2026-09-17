@@ -178,6 +178,15 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
   betekent één ding: **dit werk is af en álles staat gepusht.** Wie het label
   zet, zegt dat.
 
+  **Claude zet dat label niet uit zichzelf — besluit 17-09-2026.** Dit is de
+  enige rem tussen "de gate staat groen" en een deploy naar 100% van het
+  verkeer, en een rem hoort bij een andere partij dan degene die het werk
+  deed. Zet ik hem zelf, dan staat er weer niemand tussen de merge en de
+  klant — precies de toestand die op 03-09 gemeten werd en die deze omkering
+  moest wegnemen. De uitzondering is even smal als de regel: zeg je in díé
+  sessie dat dit werk af is, dan mag ik hem zetten. Niet op grond van een
+  eerdere keer, en niet omdat de testrun groen staat.
+
   | label | betekenis |
   |---|---|
   | `klaar` | af en gepusht — samenvoegen zodra *Tests* groen is |
