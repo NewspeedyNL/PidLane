@@ -305,8 +305,17 @@ console.log('\n── de tweede plugin: de meting in beeld houden (#228) ──'
 
   /* Het enige moment waarop Android PiP toestaat, en de weg terug. */
   bevat('de workflow registreert de PiP-plugin', wf, 'registerPlugin(PLPipPlugin');
-  bevat('en haakt op onUserLeaveHint', wf, 'PLPip.leaveHint(this)');
-  bevat('en op de moduswissel', wf, 'PLPip.modus(inPip)');
+  /* De haken staan er TWEE keer: één keer voor een Java-MainActivity en één
+     keer voor een Kotlin-MainActivity. Welke van de twee Capacitor genereert
+     ligt niet vast, dus ze moeten er allebei zijn — en ze moeten hier ook
+     allebei apart getoetst worden. Zoeken op de kale naam telt de Kotlin-regel
+     mee als de Java-regel weg is, en dan blijft deze toets groen terwijl het
+     venster in een Java-schil nooit meer opkomt. Nagemeten met plmutate.sh op
+     17-09-2026: precies zo glipte die mutatie er de eerste keer doorheen. */
+  [['Java', ';'], ['Kotlin', '']].forEach(function (taal) {
+    bevat(taal[0] + ': haakt op onUserLeaveHint', wf, '"        PLPip.leaveHint(this)' + taal[1] + '",');
+    bevat(taal[0] + ': geeft de moduswissel door', wf, '"        PLPip.modus(inPip)' + taal[1] + '",');
+  });
   bevat('java vraagt het venster pas aan als de vlag aanstaat', pip, 'if (!gewenst) return;');
   bevat('de registratie faalt hard als een haak ontbreekt', wf, 'ontbreekt in MainActivity');
 
