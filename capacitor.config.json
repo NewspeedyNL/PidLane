@@ -6,7 +6,11 @@
     "androidScheme": "https",
     "url": "https://app.pidlane.nl",
     "cleartext": false,
-    "errorPath": "error.html"
+    "errorPath": "error.html",
+    "allowNavigation": [
+      "app.pidlane.nl",
+      "*.workers.dev"
+    ]
   },
   "plugins": {
     "BluetoothLe": {

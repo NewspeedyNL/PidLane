@@ -747,6 +747,16 @@ MUTATIES=(
 "worker.js@@  if (ruw.length > 8192)@@  if (false)@@test-opdrachtroute.js@@de groottegrens valt weg: een tekst van een megabyte gaat eerst de telefoon in"
 "worker.js@@&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=5\`;@@&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=asc&pageSize=5\`;@@test-opdrachtroute.js@@bij twee actieve rijen wint de OUDSTE: je zet een opdracht aan en er draait een andere"
 "worker.js@@    meer: rijen.length > 1 ? rijen.length : 0,@@    meer: 0,@@test-opdrachtroute.js@@twee actieve rijen worden niet meer gemeld: stil draait er een andere opdracht dan je bedoelde"
+# ── OP WELKE BRON DRAAIT DE APP (#242, 17-09-2026). Een preview draait dezelfde
+# app met andere code; van buiten is het verslag van de twee niet te
+# onderscheiden. Elke fout hieronder haalt precies dat onderscheid weg, en geen
+# ervan geeft een foutmelding -- je merkt het pas bij het lezen van een rit die
+# je opnieuw moet doen.
+"public/pidlane-bron.js@@  function isProductie() { return huidige() === PRODUCTIE; }@@  function isProductie() { return huidige().indexOf('pidlane') >= 0; }@@test-bron.js@@een adres met pidlane in de naam telt als productie: de banner blijft weg op een preview"
+"public/pidlane-bron.js@@    if (!/^https:\/\/[a-z0-9.-]+(\/|$)/i.test(ruw)) {@@    if (false) {@@test-bron.js@@elk stuk tekst uit de Config wordt een navigatie, ook javascript: en data:"
+"public/pidlane-bron.js@@    if (isProductie()) return null;@@    if (false) return null;@@test-bron.js@@de previewbanner staat ook op productie: een waarschuwing die er altijd staat wordt genegeerd"
+"public/pidlane-bron.js@@    var doel = isProductie() ? preview() : PRODUCTIE;@@    var doel = preview();@@test-bron.js@@vanaf een preview kom je niet meer terug naar de live-app"
+"public/pidlane-bron.js@@      b.textContent = '⚠ PREVIEW — ' + huidige() + ' · dit is niet de live app';@@      b.textContent = 'PREVIEW';@@test-bron.js@@de banner noemt het adres niet meer: je ziet dat het een preview is maar niet welke"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de

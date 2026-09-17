@@ -913,6 +913,64 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Een tak rijden zonder deploy: de preview-bron en zijn banner (#242, 17-09-2026)
+
+De app is een WebView op `app.pidlane.nl` en haalt zijn code élke start op
+afstand. Dat is comfortabel — de meeste rondes hebben geen nieuwe APK nodig —
+maar het heeft een keerzijde die pas opvalt als je een vraag hebt die alleen in
+de auto te beantwoorden is: een nieuwe proef is pas te rijden als hij op `main`
+staat, en elke push naar `main` is een deploy naar 100% van het verkeer. De
+vraag stellen kost dus een deploy.
+
+Cloudflare zet voor een niet-productietak een eigen preview-adres neer. Daar
+draait dezelfde app met de code van die tak — een tak die de volledige gate
+heeft gehad (`plcheck.sh`, `plmutate.sh`, de browserproeven), alleen niet de
+merge. Er komt met deze module dus **geen tweede deploy-route bij**: er wordt
+alleen ergens anders naartoe genavigeerd.
+
+**De banner is het punt, niet de knop.** Een preview ziet er precies hetzelfde
+uit als de live-app. Dat is een uitstekende manier om een rit weg te gooien: je
+meet een uur, je leest het verslag, en dan pas blijkt dat je op de verkeerde
+code zat. Dat is op 26-08 gebeurd met een versienummer — het toestel draaide
+4.8 terwijl de vraag over 4.9 ging — en dat is de reden dat de versie sindsdien
+op het inlogscherm staat. Hetzelfde geldt voor de bron, en daarom:
+
+* zodra `location.origin` niet de productiebron is, staat er een oranje balk
+  bovenin met het adres erbij, de hele sessie, niet weg te klikken;
+* hij **verschuift de opmaak niet**, en dat is gemeten. De eerste versie zette
+  `body.paddingTop` zodat de app eronder schoof; `bproef-schermranden.js` werd
+  daar meteen rood van — het werkscherm eindigde 46px (M), 41px (S) en 52px (L)
+  áchter de navigatiebalk, precies de bevinding van #192 maar dan veroorzaakt
+  door de banner zelf. Een preview bestaat om te meten hoe de app zich
+  gedraagt; legt de banner er een eigen schermbug bovenop, dan meet je de
+  banner. Hij ligt er dus overheen en dekt een strook van de bovenbalk af. Dat
+  is de prijs, en die is bewust betaald;
+* de testrun zet de bron in zijn startregel en dus in de live-log. Zonder die
+  regel is een verslag van een preview niet van een verslag van productie te
+  onderscheiden, en dat is precies wat deze module moet voorkomen.
+
+**Wat als productie telt, is één adres en niets dat erop lijkt.** De
+vergelijking is exact. `https://app.pidlane.nl.iets-anders`, `http://` in
+plaats van `https://`, een poortnummer erachter: allemaal preview, allemaal
+banner. Een soepele vergelijking laat de banner weg op precies het moment dat
+hij nodig is, en dat is erger dan geen banner.
+
+**Wat er uit de Config als adres geaccepteerd wordt.** `bron_preview` wordt een
+navigatie, dus daar geldt dezelfde strengheid: alleen een volledig
+https-adres. `javascript:`, `data:`, een kale hostnaam of een halve URL worden
+genegeerd met een melding — niet uitgevoerd.
+
+**Wie er mag wisselen.** Een beheerder, en alleen als er een adres in de Config
+staat: de aanwezigheid van dat adres ÍS de schakelaar, en dat scheelt een
+tweede vlag die hetzelfde zegt. Eén uitzondering, met opzet: de weg terug is er
+altijd. Zit je op een preview, dan mag je terug ook als het veld intussen leeg
+is — anders strand je op een tak zodra iemand de Config opruimt.
+
+**Voor de APK is er één regel bijgekomen.** `capacitor.config.json` krijgt
+`server.allowNavigation` met `app.pidlane.nl` en `*.workers.dev`. Zonder die
+lijst opent Capacitor een ander adres in de systeembrowser in plaats van in de
+app zelf, en dan draait de preview buiten de schil — zonder Bluetooth, en dus
+zonder meting.
 ### De weg terug: een meetopdracht als data, en geen script (#241, 17-09-2026)
 
 Sinds #235 schrijft de testrun tijdens de rit naar de logtabel, en die tabel is
