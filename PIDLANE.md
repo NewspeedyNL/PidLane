@@ -913,6 +913,78 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Zichtbaarheid is de trekker, en daarom staat er nu een klein venster (#228, 17-09-2026)
+
+Op 11-09 stond vast dát de meetlus stilvalt als de app weg is, en dat het
+app-proces ondertussen gewoon doortikt (310 native slagen over 310 s). Wat níét
+vaststond was **waaróm** de WebView stilviel: het procesbeheer van het toestel,
+of de zichtbaarheid van de pagina. Die twee vragen om een andere oplossing —
+een native meetlus tegenover picture-in-picture — en het verschil was met
+redeneren niet te halen.
+
+**De split-screenproef van 17-09 haalt ze uit elkaar.** In split-screen is de
+WebView zichtbaar en staat de app niet vooraan; op de achtergrond is hij
+verborgen en staat de app niet vooraan. Eén verschil:
+
+| toestand | uitkomst |
+|---|---|
+| achtergrond (11-09, drie metingen) | stil na 59, 59 en 60 s; daarna 18, 251 en 426 s niets |
+| split-screen (17-09, SM-S947B, Android 16, build 452) | **99 s, nul onderbrekingen, grootste gat 0 s** |
+
+De controlevraag viel de goede kant op: `PLAchtergrond` meldde geen enkele
+verborgen periode, dus Android noemde de pagina in split-screen werkelijk
+zichtbaar. Daarmee is **zichtbaarheid de trekker** en is picture-in-picture
+geen gok meer maar de kandidaat die past.
+
+**Het voorbehoud hoort erbij en is niet weggewerkt.** 99 seconden is voorbij de
+drempel van ~60 s, maar de tegenhanger van 11-09 was 251 s stilte over 310 s
+afwezigheid. Eén meting op één toestel. Een herhaling op vijf minuten maakt het
+onweerspreekbaar; tot die er is, is dit een sterke aanwijzing en geen bewijs.
+
+**Wat er gebouwd is, en waar de grens ligt.** Android laat PiP alleen aanzetten
+zolang de activiteit nog vooraan staat — in de praktijk vanuit
+`onUserLeaveHint()`. Vanuit JavaScript is dat moment niet te halen:
+`visibilitychange` komt ná de wissel en dan weigert het systeem. Daarom is het
+besluit gescheiden van de uitvoering, precies zoals bij de meetdienst (#18):
+
+* `pidlane-pip.js` rekent uit óf PiP nu gewenst is en zet die uitkomst als vlag
+  in de native kant. Vijf oorzaken, elk met een eigen sleutel: uitgezet,
+  geen native schil, geen adapter, demo, geen sensoren. Dat onderscheid is geen
+  versiering — "PiP staat niet aan" zonder reden stuurt de volgende naar het
+  verkeerde onderzoek, en dat is precies hoe #18 anderhalve week de verkeerde
+  kant op keek.
+* `native/PLPip.java` leest die vlag op het enige moment dat het mag, en
+  interpreteert verder niets.
+* Het kleine venster is ongeveer 240×135 dp. De gewone Live-weergave past daar
+  niet in, dus er is een kale weergave: drie waarden en een hartslagstip. Die
+  stip hangt aan `updPID()` en niet aan een eigen klok — een venster dat "vers"
+  blijft staan terwijl er niets binnenkomt zou precies de vraag verbergen waar
+  dit issue over gaat.
+
+**De uitzetknop is een eis en geen extraatje.** `feat_pip` in de Config
+(Airtable → beheer.html) zet de functie uit zonder nieuwe build. De reden staat
+in #228 zelf: het gebruiksgeval ís de navigatie op het scherm, en een venster
+dat daar bovenop komt te staan kan in de weg zitten. Die poort valt vóór alle
+andere, zodat "uitgezet" ook "uitgezet" heet en niet toevallig "geen native
+schil".
+
+**Twee dingen die in het manifest moeten en stil kunnen verdwijnen.** Zonder
+`android:supportsPictureInPicture` weigert het systeem het venster zonder
+uitleg. Zonder `screenSize|smallestScreenSize|screenLayout|orientation` in
+`configChanges` **herstart** Android de activiteit bij de wissel naar PiP — en
+dan begint de app opnieuw op, verbreekt de socket en is de meting juist weg.
+De injectiestap controleert wat erin gaat, de bundelpoort leest terug wat er
+na de manifest-merge uitkomt.
+
+**Wat hier niet getoetst is.** Het venster zelf. Er staat geen Android in CI:
+`test-pip.js` toetst het besluit en de vlag, `bproef-pip.js` de koppeling in de
+draaiende app en de weg terug uit de PiP-weergave, `test-nativeschil.js` de
+koppeling tussen module, plugin, workflow en manifest. Of het venster
+werkelijk opkomt en of de lus er werkelijk in doorloopt is een vraag voor de
+eerste rit met deze APK — en het bezwaar uit #228 (het venster staat over de
+kaart) is een ontwerpvraag die een mens moet beantwoorden, geen meting.
+
+
 ### De live-log was opgeleverd en kwam nooit aan (#235, 17-09-2026)
 
 Het live-pad van de testrun is op 17-09 om 17:26 samengevoegd: elke bevinding

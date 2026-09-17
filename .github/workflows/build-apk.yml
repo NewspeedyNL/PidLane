@@ -432,7 +432,26 @@ jobs:
                   "    @Override",
                   "    public void onCreate(android.os.Bundle savedInstanceState) {",
                   "        registerPlugin(PLMeetdienstPlugin.class);",
+                  "        registerPlugin(PLPipPlugin.class);",
                   "        super.onCreate(savedInstanceState);",
+                  "    }",
+                  "",
+                  # onUserLeaveHint is het ENIGE moment waarop Android PiP
+                  # toestaat: de gebruiker schakelt weg en de activiteit is dan
+                  # nog net vooraan. Vanuit JavaScript is dat niet te halen.
+                  "    @Override",
+                  "    public void onUserLeaveHint() {",
+                  "        PLPip.leaveHint(this);",
+                  "        super.onUserLeaveHint();",
+                  "    }",
+                  "",
+                  # En de weg terug: zonder deze haak weet de app niet dat hij
+                  # in PiP staat, en blijft het volledige scherm in een venster
+                  # van 240x135 staan.
+                  "    @Override",
+                  "    public void onPictureInPictureModeChanged(boolean inPip, android.content.res.Configuration nieuweCfg) {",
+                  "        super.onPictureInPictureModeChanged(inPip, nieuweCfg);",
+                  "        PLPip.modus(inPip);",
                   "    }",
                   "}",
               ])
@@ -448,7 +467,18 @@ jobs:
                   "{",
                   "    override fun onCreate(savedInstanceState: android.os.Bundle?) {",
                   "        registerPlugin(PLMeetdienstPlugin::class.java)",
+                  "        registerPlugin(PLPipPlugin::class.java)",
                   "        super.onCreate(savedInstanceState)",
+                  "    }",
+                  "",
+                  "    override fun onUserLeaveHint() {",
+                  "        PLPip.leaveHint(this)",
+                  "        super.onUserLeaveHint()",
+                  "    }",
+                  "",
+                  "    override fun onPictureInPictureModeChanged(inPip: Boolean, nieuweCfg: android.content.res.Configuration) {",
+                  "        super.onPictureInPictureModeChanged(inPip, nieuweCfg)",
+                  "        PLPip.modus(inPip)",
                   "    }",
                   "}",
               ])
@@ -462,6 +492,18 @@ jobs:
           print("── MainActivity NA ──"); print(src)
           if "registerPlugin(PLMeetdienstPlugin" not in src:
               print("FOUT: registratie niet geland"); sys.exit(1)
+          # PiP (#228): zonder registratie bestaat Capacitor.Plugins.PLPip niet
+          # en meldt de app "deze schil heeft geen picture-in-picture" -- wat
+          # niet van een oude APK te onderscheiden is. En zonder de twee haken
+          # gaat het venster nooit aan: onUserLeaveHint is het enige moment
+          # waarop Android het toestaat.
+          for stuk, waarvoor in [
+              ("registerPlugin(PLPipPlugin", "de PiP-plugin registreren (#228)"),
+              ("onUserLeaveHint", "het enige moment waarop PiP aangevraagd mag worden (#228)"),
+              ("onPictureInPictureModeChanged", "de weg terug: het kleine venster aan en uit (#228)"),
+          ]:
+              if stuk not in src:
+                  print("FOUT: %s ontbreekt in MainActivity (%s)" % (stuk, waarvoor)); sys.exit(1)
 
           # ── Manifest: permissies plus de service zelf ────────────────────
           pad = pathlib.Path("android/app/src/main/AndroidManifest.xml")
@@ -509,7 +551,35 @@ jobs:
           pad.write_text(xml)
           print("── Manifest NA de meetdienst-injectie ──"); print(xml)
 
+          # ── De activiteit mag picture-in-picture (#228) ──────────────────
+          # Twee attributen, en ze zijn allebei nodig. Zonder
+          # supportsPictureInPicture weigert het systeem het venster zonder
+          # uitleg. Zonder de drie schermwaarden in configChanges HERSTART
+          # Android de activiteit bij de wissel naar PiP -- en dan begint de
+          # app opnieuw op, verbreekt de socket en is de meting juist weg.
+          # Precies de fout die deze functie moest voorkomen.
+          nodigCfg = ["screenSize", "smallestScreenSize", "screenLayout", "orientation"]
+          m = re.search(r'<activity\b[^>]*android:name="[^"]*MainActivity"[^>]*>', xml)
+          if not m:
+              print("FOUT: de MainActivity-activiteit staat niet in het manifest (#228)"); sys.exit(1)
+          tag = m.group(0)
+          nieuwTag = tag
+          if 'android:supportsPictureInPicture' not in nieuwTag:
+              nieuwTag = nieuwTag[:-1].rstrip() + '\n            android:supportsPictureInPicture="true">'
+          mc = re.search(r'android:configChanges="([^"]*)"', nieuwTag)
+          if mc:
+              heeft = [x for x in mc.group(1).split("|") if x]
+              for c in nodigCfg:
+                  if c not in heeft: heeft.append(c)
+              nieuwTag = nieuwTag[:mc.start()] + 'android:configChanges="%s"' % "|".join(heeft) + nieuwTag[mc.end():]
+          else:
+              nieuwTag = nieuwTag[:-1].rstrip() + '\n            android:configChanges="%s">' % "|".join(nodigCfg)
+          xml = xml.replace(tag, nieuwTag, 1)
+          pad.write_text(xml)
+          print("── MainActivity-activiteit NA de PiP-injectie ──"); print(nieuwTag)
+
           for naam, waarvoor in [
+              ('android:supportsPictureInPicture="true"', 'de activiteit mag in een klein venster (#228)'),
               ('FOREGROUND_SERVICE_CONNECTED_DEVICE', 'het servicetype dat bij een gekoppelde adapter hoort'),
               ('POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort'),
               ('WAKE_LOCK', 'de partial wake lock die de CPU wakker houdt'),
@@ -907,6 +977,22 @@ jobs:
               nodig = bij_type.get(t)
               if nodig and not any(nodig in k for k in knopen):
                   print("FOUT: foregroundServiceType=%s zonder %s — Android 14 weigert startForeground()" % (t, nodig))
+                  fout += 1
+
+          # 4b. PICTURE-IN-PICTURE (#228). De injectiestap controleert wat er
+          #     IN gaat; dit leest wat er UIT de manifest-merge komt. Een
+          #     plugin of een library kan de activiteit overschrijven, en dan
+          #     staat het attribuut er niet meer -- het venster gaat dan nooit
+          #     aan en niets zegt waarom.
+          if 'android:supportsPictureInPicture="true"' not in xml:
+              print("FOUT: de activiteit mag geen picture-in-picture in de bundel — dan valt de meetlus stil zodra je wegschakelt (#228)")
+              fout += 1
+          for act in re.findall(r'<activity\b[^>]*android:name="[^"]*MainActivity"[^>]*>', xml):
+              mcfg = re.search(r'android:configChanges="([^"]*)"', act)
+              mist = [c for c in ["screenSize", "smallestScreenSize", "screenLayout", "orientation"]
+                      if not mcfg or c not in mcfg.group(1)]
+              if mist:
+                  print("FOUT: MainActivity herstart bij de wissel naar PiP — configChanges mist %s (#228)" % "|".join(mist))
                   fout += 1
 
           for naam, waarvoor in [

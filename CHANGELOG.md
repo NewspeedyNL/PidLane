@@ -11,6 +11,29 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17h (CET) — DE METING BLIJFT IN BEELD
+
+       • ◱ EEN KLEIN VENSTER IN PLAATS VAN EEN STILLE LUS.
+         Schakel je weg terwijl er gemeten wordt, dan blijft
+         PidLane als klein venster in beeld: toerental,
+         snelheid, koelwater en een stip die met de meting
+         meetikt. Zolang hij zichtbaar is, loopt de lus door.
+
+       • 📐 WAAROM DIT WERKT, EN HOE DAT GEMETEN IS. Op de
+         achtergrond viel de meting na ~60 s stil; in
+         split-screen liep hij 99 s door zonder één gat. Het
+         verschil tussen die twee is zichtbaarheid, en dat is
+         precies wat dit venster vasthoudt (#228).
+
+       • 🔕 EN HIJ KAN UIT. In het beheerscherm staat
+         "Meting in beeld houden (PiP)". Uit betekent: de app
+         gaat bij wegschakelen gewoon naar de achtergrond,
+         zoals voorheen. Geen nieuwe build nodig — het venster
+         staat over de navigatie heen en dat hoort een keuze
+         te zijn.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17g (CET) — DE LIVE-LOG ZEGT NU OF
      HIJ IS AANGEKOMEN
 

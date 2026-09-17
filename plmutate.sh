@@ -719,6 +719,19 @@ MUTATIES=(
 "public/pidlane-testrun.js@@      if (na.status === 401 || na.status === 403)@@      if (false)@@test-livelog.js@@een sessie zonder app-token levert FOUT in plaats van LET OP: de proef staat rood op elke run zonder login"
 "public/pidlane-testrun.js@@      while ((!na || (voor && na.tijd === voor.tijd)) && gewacht < 5000) {@@      while (!na && gewacht < 5000) {@@test-livelog.js@@een geslaagde verzending van vóór deze proef telt als bewijs: de proef keurt zijn eigen regel goed zonder dat die verstuurd is"
 "public/pidlane-testrun.js@@        return { staat: 'LET OP', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@        return { staat: 'FOUT', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@test-livelog.js@@een ontbrekende voorwaarde wordt als kapot kanaal gemeld"
+
+# ── DE METING IN BEELD HOUDEN (#228, 17-09-2026). Acht fouten die het venster
+# stil laten uitvallen of juist stil laten opkomen. Geen ervan geeft een
+# foutmelding: het enige symptoom is dat de meetlus tijdens een rit alsnog
+# stilvalt, en dat merk je pas bij het lezen van het verslag.
+"public/pidlane-pip.js@@    if (!f.toggleAan)@@    if (false)@@test-pip.js@@de uitzetknop in de Config doet niets meer: de beheerder zet hem om en het venster komt toch op"
+"public/pidlane-pip.js@@      if (v === undefined || v === null || v === '') return true;@@      if (v === undefined || v === null || v === '') return false;@@test-pip.js@@een Config zonder de sleutel leest als UIT: de functie staat nergens aan tot iemand hem expliciet inschakelt"
+"public/pidlane-pip.js@@    if (_laatsteVlag === b.aan) return Promise.resolve(b);@@    if (false) return Promise.resolve(b);@@test-pip.js@@elke sync stuurt opnieuw naar de bridge, ook als er niets veranderd is"
+"public/pidlane-pip.js@@    return Promise.resolve(p.zetGewenst({ aan: b.aan }))@@    return Promise.resolve(p.zetGewenst({ aan: true }))@@test-pip.js@@de vlag gaat nooit meer uit: de app springt in een klein venster terwijl er niets gemeten wordt"
+"public/pidlane-pip.js@@      if (document.body) document.body.classList[_inPip ? 'add' : 'remove']('pl-pip');@@      if (document.body) document.body.classList.add('pl-pip');@@test-pip.js@@de PiP-weergave gaat er nooit meer af: na een keer wegschakelen is de app een zwart scherm met drie getallen"
+"public/pidlane-pip.js@@      p.addListener('pipModus', function (ev) { modus(!!(ev && ev.in)); });@@      p.addListener('pipMode', function (ev) { modus(!!(ev && ev.in)); });@@test-pip.js@@de gebeurtenis heet anders dan wat java stuurt: het kleine venster verschijnt nooit en de volle weergave staat in 240x135"
+"native/PLPip.java@@        if (!gewenst) return;@@        if (false) return;@@test-nativeschil.js@@het venster komt op ongeacht wat de app besloot — ook met de functie uitgezet in de Config"
+".github/workflows/build-apk.yml@@                  \"        PLPip.leaveHint(this);\",@@                  \"        // haak eruit\",@@test-nativeschil.js@@de enige haak waarop Android PiP toestaat valt weg: alles lijkt in orde en het venster gaat nooit aan"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de
