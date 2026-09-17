@@ -398,8 +398,11 @@ function pidPollInterval(pid){
   // dus één vaste trage klasse volstaat.
   if(!/^01/i.test(String(pid))) return 10000;
   const suf=pid.slice(2).toUpperCase();
-  // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen
-  if(typeof _evModeActive!=='undefined' && _evModeActive && typeof ICE_PIDS_SUFFIX!=='undefined' && ICE_PIDS_SUFFIX.has(suf)) return 999999;
+  // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen. De ankers
+  // (EV_ANKER_SUFFIX) blijven er buiten — zonder toerental kan de EV-modus
+  // niet meer vaststellen dat de motor wéér draait en klemt hij vast.
+  if(typeof _evModeActive!=='undefined' && _evModeActive && typeof ICE_PIDS_SUFFIX!=='undefined' && ICE_PIDS_SUFFIX.has(suf)
+     && !(typeof EV_ANKER_SUFFIX!=='undefined' && EV_ANKER_SUFFIX.has(suf))) return 999999;
   const prof=(window.POLL_PROFIELEN||{})[actiefPollProfiel()]||{mult:1,ovr:{}};
   let basis=null;
   // 1) Profiel-override wint: dit ís de reden dat profielen bestaan

@@ -21,6 +21,20 @@ const ICE_PIDS_SUFFIX = new Set([
   '0C','0B','10','0A','0E','06','07','08','09','13','14','15','2C','12',
   '3C','3D','3E','3F','34','35','24','25','28','69','6A'
 ]);
+
+// PIDs die NOOIT mogen wegvallen zolang de EV-modus loopt. Toerental is de
+// enige uitgang uit die modus: `_evModeActive` blijft waar zolang 010C onder
+// de drempel staat, en dat oordeel komt uit 010C zelf. Wie hem meepauzeert
+// maakt van de EV-modus een klem — pidVals['010C'] bevriest dan op zijn
+// laatste waarde (onder de drempel), en alleen een snelheid onder 2 km/h kan
+// de modus nog openen. Start de verbrandingsmotor terwijl je optrekt, dan
+// blijft de app in EV-modus hangen met RPM, MAF, belasting en lambda uit.
+// Gemeten 17-09-2026 door de code te lezen; zie PIDLANE.md §11.
+//
+// Dat de bedoeling er al was blijkt uit pidlane-plload.js zelf: twee regels
+// onder het EV-filter staat `['0C','0D'] -> 150` met de opmerking "RPM/
+// snelheid altijd snel". Die regel was onbereikbaar.
+const EV_ANKER_SUFFIX = new Set(['0C', '0D']);
 let _evModeActive = false;
 
 function detectEngineType(){
