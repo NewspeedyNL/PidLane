@@ -56,12 +56,114 @@ function _nu() { return Date.now(); }
 function _klok() { return new Date().toTimeString().slice(0, 8); }
 function _wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+/* ══════════════════════════════════════════════════════════════════
+   MEEKIJKEN TIJDENS DE RIT (17-09-2026)
+   ──────────────────────────────────────────────────────────────────
+   Tot vandaag leverde een testrun één ding op: een tekstverslag ná afloop,
+   dat met de hand geplakt moest worden. Wie onderweg wilde weten of blok 7
+   al goed was, moest stoppen en lezen.
+
+   Het kanaal daarvoor lag er al en werd alleen niet gebruikt: `logToSheets()`
+   bufferde en stuurde elke vijftien seconden naar Airtable, en deed dat elke
+   rit al voor uitschieters en verbindingen. `pidlane-testrun.js` riep hem
+   nul keer aan.
+
+   WAT ER WEL EN NIET WEGGESCHREVEN WORDT, en waarom dat een keuze is.
+   Een volle run doet vijftig stappen. Alles wegschrijven geeft vijftig
+   regels per rit in een tabel die op 17-09 al 719 regels telde, en dan is
+   het kanaal binnen een paar ritten vol met "ok". Daarom drie soorten:
+
+     • één startregel met het ritnummer, zodat er iets te zoeken valt;
+     • elke FOUT en elke LET OP meteen als hij valt — dat is waar je tijdens
+       een rit op wilt kunnen bijsturen;
+     • één regel per blok zodra het volgende blok begint, met de telling.
+       Dat is het afvinken: "blok 7 klaar, 9 ok, 0 fout".
+
+   Een blok is klaar als er een regel van een ánder blok binnenkomt. Dat is
+   hier de goedkoopste grens: `_boek()` is de enige trechter waar elke stap
+   doorheen gaat, dus er is één plek nodig in plaats van veertien aanroepen
+   in `runTestrun()` die stuk voor stuk vergeten kunnen worden.
+
+   Het ritnummer is met opzet leesbaar en niet willekeurig: het is waarnaar
+   gezocht wordt als er later gevraagd wordt "wat deed hij die rit". */
+const LIVE_SCHEMA = 1;
+let _liveRit = null, _liveBlok = null, _liveTel = null;
+
+function _liveRitId() {
+  if (_liveRit) return _liveRit;
+  const d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  _liveRit = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+             '-' + p(d.getHours()) + p(d.getMinutes());
+  return _liveRit;
+}
+
+/* Eén regel naar Airtable. Faalt dit, dan mag de run er niets van merken:
+   een testrun die stukloopt op zijn eigen verslaglegging is erger dan een
+   run zonder verslaglegging. */
+function _liveSchrijf(type, bericht, extra) {
+  try {
+    if (typeof logToSheets !== 'function') return false;
+    const mee = Object.assign({
+      RecordType: 'testrun',
+      SchemaVersion: LIVE_SCHEMA,
+      SessionId: _liveRitId(),
+      // Een demo-run hoort herkenbaar te zijn, anders staat er straks een
+      // meetreeks in de tabel die nooit een auto gezien heeft.
+      Demo: !!(typeof demoMode !== 'undefined' && demoMode)
+    }, extra || {});
+    logToSheets(type, bericht, mee);
+    return true;
+  } catch (e) {
+    console.warn('Testrun: regel niet naar de live-log gestuurd — de run gaat gewoon door', e);
+    return false;
+  }
+}
+
+/* Het vorige blok afsluiten met zijn telling. */
+function _liveBlokKlaar() {
+  if (_liveBlok === null || !_liveTel) return;
+  const t = _liveTel;
+  _liveSchrijf(t.fout ? 'opvallend' : 'info',
+    'blok ' + _liveBlok + ' klaar — ' + t.ok + ' ok, ' + t.letop + ' let op, ' + t.fout + ' fout');
+  _liveBlok = null; _liveTel = null;
+}
+
+/* Wordt vanuit _boek() aangeroepen, dus bij élke stap. Goedkoop gehouden:
+   tellen, en alleen schrijven bij een blokwissel of een bevinding. */
+function _liveTik(blok, naam, staat, detail) {
+  const st = String(staat || '').toUpperCase();
+  if (blok !== _liveBlok) {
+    _liveBlokKlaar();
+    _liveBlok = blok;
+    _liveTel = { ok: 0, letop: 0, fout: 0 };
+  }
+  if (st === 'FOUT') _liveTel.fout++;
+  else if (st === 'LET OP' || st === 'LETOP') _liveTel.letop++;
+  else _liveTel.ok++;
+
+  if (st === 'FOUT' || st === 'LET OP' || st === 'LETOP') {
+    _liveSchrijf(st === 'FOUT' ? 'error' : 'opvallend',
+      'blok ' + blok + ' ' + st + ' — ' + naam + (detail ? ': ' + detail : ''));
+  }
+}
+
+/* De run is klaar: het laatste blok afsluiten en de tak sluiten. Apart van
+   _liveBlokKlaar(), want een run kan ook afgebroken worden en dan hoort er
+   te staan dát hij afgebroken is. */
+function _liveEinde(reden) {
+  _liveBlokKlaar();
+  _liveSchrijf('info', 'testrun ' + (reden || 'klaar') + ' — ' +
+    (typeof TESTRUN_VERSIE !== 'undefined' ? TESTRUN_VERSIE : '?'));
+  _liveRit = null;
+}
+
 function _boek(blok, naam, staat, detail, ms) {
   // `epoch` erbij op 16-09-2026 (#214). `t` is "HH:MM:SS" en daarmee niet van
   // een ander tijdstip af te trekken; de kop van het verslag had precies dat
   // nodig om te kunnen zeggen hoe oud de meetblokken zijn.
   _trLog.push({ t: _klok(), epoch: Date.now(), blok: blok, naam: naam, staat: staat, detail: detail || '', ms: ms == null ? null : Math.round(ms) });
   try { _teken(); } catch (e) { console.warn('Testrun-log niet herteken op het scherm (het onderliggende logboek is wel bijgewerkt)', e); }
+  try { _liveTik(blok, naam, staat, detail); } catch (e) { console.warn('Testrun: live-regel overgeslagen', e); }
 }
 
 /* De app-log ophalen. (#29, 28-08-2026)
@@ -6026,7 +6128,16 @@ async function startTestrun(blokken) {
   const b = blokken || { b5: true, b1: true, b2: true, b3: true, b4: true, b6: true, b7: true, b11: true, b12: true, b13: true, b14: true };
 
   _trBezig = true; _trStop = false; _trLog = []; _trStart = _nu();
+  // Nieuw ritnummer per run, vóór de eerste _boek(): die maakt hem anders
+  // aan bij de eerste stap en dan draagt de startregel een ander nummer dan
+  // de rest.
+  _liveRit = null; _liveBlok = null; _liveTel = null;
+  _liveSchrijf('info', 'testrun gestart — ' + TESTRUN_VERSIE + ' · ' + CAMPAGNE.titel);
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
+  // Het ritnummer als eigen regel in het verslag: dat is waarmee je later
+  // terugvindt wat er die rit gemeten is, en wat je doorgeeft als iemand
+  // meekijkt terwijl je rijdt.
+  _boek(0, 'Ritnummer', 'ok', _liveRitId(), null);
 
   const bewaard = _bewaarSelectie();
   _boek(0, 'Selectie bewaard', 'ok', bewaard.actief.length + ' actieve PIDs, profiel ' + (bewaard.profiel || '—'), null);
@@ -6071,6 +6182,11 @@ async function startTestrun(blokken) {
     _trBezig = false;
     _trDuur = Math.round((_nu() - _trStart) / 1000);
     _boek(0, 'Klaar', 'klaar', 'duur ' + _trDuur + ' s', null);
+    // In het finally-blok: een afgebroken run hoort net zo goed een slotregel
+    // te krijgen, anders eindigt de tak in de tabel zonder dat iemand kan
+    // zien of hij klaar was of onderweg gestopt.
+    try { _liveEinde(_trStop ? 'afgebroken' : 'klaar'); }
+    catch (e) { console.warn('Testrun: slotregel niet naar de live-log gestuurd', e); }
   }
 }
 
@@ -7541,6 +7657,18 @@ function ritNulstellen() {
 // 26-08 is een hele rit verloren gegaan omdat het toestel 4.8 draaide terwijl
 // 4.9 al klaar stond; dat was op het inlogscherm niet te zien.
 window.TESTRUN_VERSIE = TESTRUN_VERSIE;
+
+/* Het live-pad naar buiten (17-09-2026). Twee redenen, en de tweede is de
+   belangrijkste: het ritnummer is wat je doorgeeft aan wie meekijkt terwijl
+   je rijdt, en zonder uitgang is dat alleen uit het verslag te vissen. De
+   eerste is dat een gedragstest anders niets aan te roepen heeft — dit
+   bestand is één IIFE, dus wat hier niet staat bestaat buiten niet. */
+window.PLTestrunLive = {
+  ritId: _liveRitId,
+  tik: _liveTik,
+  einde: _liveEinde,
+  schema: LIVE_SCHEMA
+};
 
 window.openTestrun = openTestrun;
 window.closeTestrun = closeTestrun;

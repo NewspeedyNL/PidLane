@@ -65,7 +65,15 @@ var KRITIEK = [
   // niet te zien: precies de stille vorm waarvoor deze lijst bestaat.
   'assessPidQuality','plHealthHerzien',
   'initialHealthScan','isAdmin','isMode01','isPIDOkVal',
-  'log','magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
+  'log',
+  // De live-log van de testrun (17-09-2026). pidlane-testrun.js schrijft elke
+  // bevinding tijdens de rit weg via logToSheets, achter een typeof-guard,
+  // want die functie woont in pidlane-auth.js en dat bestand laadt eerder.
+  // Verdwijnt hij, dan doet de guard niets: de run loopt gewoon door en er
+  // komt alleen nooit meer iets binnen bij wie meekijkt. Niemand die rijdt
+  // merkt dat, en dat is precies de stille vorm waarvoor deze lijst bestaat.
+  'logToSheets',
+  'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
