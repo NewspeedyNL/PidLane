@@ -2604,6 +2604,86 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de meetopdracht van buiten (#241, 17-09-2026) ──
+  // De lus: de testrun schrijft tijdens de rit naar de logtabel, die tabel
+  // wordt buiten de app gelezen, en daaruit volgt een volgende meting. Zonder
+  // deze proef kost die volgende meting elke keer een deploy naar 100% van
+  // het verkeer.
+  //
+  // Wat er binnenkomt is DATA en geen code: sensoren, een duur, vragen,
+  // drempels, en proeven van de vorm "PID X, maat Y, tussen A en B". Het
+  // keuren gebeurt in pidlane-opdracht.js, vóór er iets mee gebeurt.
+  //
+  // DE UITSLAG GAAT MET NAAM EN AL DE LIVE-LOG IN. Dat is de terugweg: wie de
+  // tabel leest ziet niet alleen dát er gemeten is maar ook WELKE opdracht dat
+  // deed. Zonder die koppeling staan er straks uitslagen in de tabel waarvan
+  // niemand meer weet bij welke vraag ze hoorden.
+  {
+    issue: '#241',
+    naam: 'De meetopdracht van buiten is uitgevoerd',
+    waarom: 'Een opdracht die stil niet aankomt of stil wordt afgekeurd, is een rit die iets anders meet dan er gevraagd is — en dat merk je pas bij het lezen van het verslag.',
+    proef: async function () {
+      if (!window.PLOpdracht || typeof PLOpdracht.haal !== 'function')
+        return { staat: 'FOUT', detail: 'PLOpdracht ontbreekt — dan is er geen weg meer van buiten naar de meting (#241)' };
+
+      if (!PLOpdracht.toggleAan())
+        return { staat: 'LET OP', detail: 'het ophalen van meetopdrachten staat uit in de Config (`feat_opdracht`) — ' +
+          'de testrun draait zoals hij in de build staat. Dat is hier een keuze, geen fout.' };
+
+      var o = null;
+      try { o = await PLOpdracht.haal(); }
+      catch (e) { return { staat: 'FOUT', detail: 'de opdracht kon niet opgehaald worden: ' + ((e && e.message) || e) }; }
+
+      if (!o) {
+        var r = PLOpdracht.reden() || 'onbekend';
+        // Afgekeurd is iets anders dan er-staat-niets. Het eerste is een fout
+        // in wat er klaargezet is en moet opvallen; het tweede is de normale
+        // stand tussen twee rondes in.
+        if (/afgekeurd/i.test(r))
+          return { staat: 'FOUT', detail: 'er stond een opdracht klaar en die is AFGEKEURD — ' + r +
+            '. De rit meet nu dus iets anders dan er in de tabel staat.' };
+        return { staat: 'LET OP', detail: 'geen opdracht uitgevoerd: ' + r };
+      }
+
+      var h = PLOpdracht.herkomst() || {};
+      var kop = '"' + o.naam + '"' + (h.id ? ' (' + h.id + ')' : '') + (o.reden ? ' — ' + o.reden : '');
+
+      // De sensoren van de opdracht moeten aan hebben gestaan; staat er een
+      // pas nú bij, dan is er deze rit over die PID niets gemeten en zegt de
+      // proef dat in plaats van een leeg getal te melden.
+      var laat = PLOpdracht.zetSensoren();
+
+      var uitslagen = o.proeven.map(function (p) {
+        var u = PLOpdracht.meet(p);
+        return { naam: p.naam, issue: p.issue, staat: u.staat, detail: u.detail };
+      });
+
+      // DE TERUGWEG. Elke uitslag apart naar de live-log, met de naam van de
+      // opdracht erbij, zodat de tabel buiten de app leesbaar blijft zonder
+      // dit verslag ernaast.
+      uitslagen.forEach(function (u) {
+        _liveSchrijf(u.staat === 'FOUT' ? 'error' : (u.staat === 'ok' ? 'info' : 'opvallend'),
+          'opdracht ' + o.naam + ' — ' + u.naam + ': ' + u.staat + ' — ' + u.detail,
+          { Outcome: u.staat, Repro: u.issue || '' });
+      });
+
+      var fout = uitslagen.filter(function (u) { return u.staat === 'FOUT'; });
+      var letop = uitslagen.filter(function (u) { return u.staat === 'LET OP'; });
+      var staart = uitslagen.map(function (u) { return u.naam + ': ' + u.detail; }).join(' | ');
+      var laatst = laat.length ? ' [' + laat.join(', ') + ' stond(en) niet aan en zijn nu pas aangezet — over deze rit zeggen ze niets]' : '';
+
+      if (!o.proeven.length)
+        return { staat: 'LET OP', detail: kop + ' — de opdracht draagt geen proeven, dus er valt hier niets te toetsen. ' +
+          'De sensoren en de vragen zijn wel gezet.' + laatst };
+
+      if (fout.length)
+        return { staat: 'FOUT', detail: kop + ' — ' + fout.length + ' van de ' + uitslagen.length + ' buiten de band: ' + staart + laatst };
+      if (letop.length)
+        return { staat: 'LET OP', detail: kop + ' — ' + letop.length + ' van de ' + uitslagen.length + ' niet te meten: ' + staart + laatst };
+      return { staat: 'ok', detail: kop + ' — alle ' + uitslagen.length + ' binnen de band: ' + staart + laatst };
+    }
+  },
+
   // ── blijft de meting in beeld als je wegschakelt? (#228, 17-09-2026) ──
   // De split-screenproef van vanavond wees zichtbaarheid aan als de trekker:
   // zichtbaar en niet vooraan liep de lus 99 s door zonder één gat, verborgen

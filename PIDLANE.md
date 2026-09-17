@@ -971,6 +971,68 @@ is — anders strand je op een tak zodra iemand de Config opruimt.
 lijst opent Capacitor een ander adres in de systeembrowser in plaats van in de
 app zelf, en dan draait de preview buiten de schil — zonder Bluetooth, en dus
 zonder meting.
+### De weg terug: een meetopdracht als data, en geen script (#241, 17-09-2026)
+
+Sinds #235 schrijft de testrun tijdens de rit naar de logtabel, en die tabel is
+van buiten de app te lezen. Daarmee is er één kant van een lus: meting eruit.
+De vraag was hoe de andere kant eruit moet zien — hoe komt een VOLGENDE meting
+de app in zonder dat daar een deploy tussen zit?
+
+**Het voorstel was een script uit Airtable, en dat is afgewezen.** Niet omdat
+het niet kan: de app is een WebView op `app.pidlane.nl` en laadt zijn code élke
+start op afstand, en `plHardReload()` haalt elk bestand opnieuw op. Een script
+uit een tabel laden is technisch een kleine stap. Maar het is een **tweede
+deploy-route zonder poort**: langs `plcheck.sh`, langs `plmutate.sh`, langs de
+browserproeven en langs het label `klaar` — precies de rem die #238 diezelfde
+dag beschreef. En zo'n script draait met alle rechten van de pagina: het
+klanttegoed, de sessie, het zout onder het VIN-pseudoniem.
+
+**Wat er werkelijk verstuurd moet worden is ook geen code.** Het is een
+opdracht: meet deze sensoren, zo lang, vraag dit aan de bestuurder, en meld het
+als deze waarde buiten die band valt. Dat is data. De uitvoering staat in de
+app en is door de poort gegaan. Dezelfde scheiding als bij de meetdienst en bij
+PiP: de ene kant levert feiten of opdrachten, de andere kant oordeelt en voert
+uit, en de grens ertussen is toetsbaar zonder toestel.
+
+**Wat een opdracht wél kan.** Sensoren aanzetten, een duur en een tempo
+voorstellen, vragen stellen die als tekst in het verslag komen, en proeven van
+de vorm *"PID X, maat Y, verwacht tussen A en B"*. De maten zijn precies wat
+`PLRit.per()` bijhoudt — min, max, laatst, aantal, veranderingen — en met opzet
+niet meer: een `gemiddelde` aanbieden dat de ritwaarnemer niet bijhoudt zou
+dezelfde fout zijn als de verzonnen tabel in `test-waakronde.js`.
+
+**Wat hij níét kan:** code laten draaien, een endpoint aanroepen, een scherm
+bouwen of iets naar de ECU schrijven. Dat is de hele lijst, en hij is met opzet
+kort.
+
+**De keurder is de grens, en hij sluit bij twijfel.** `keur()` in
+`pidlane-opdracht.js` werkt met een witte lijst: een sleutel die deze app niet
+kent is een AFWIJZING en geen waarschuwing. Want zo'n sleutel betekent dat de
+schrijver iets bedoelde wat hier niet gebeurt, en dan is doorgaan met de rest
+een meting die iets anders doet dan er staat. Een opdracht wordt in zijn geheel
+afgewezen of in zijn geheel uitgevoerd — half is hier het gevaarlijkst.
+
+**De Worker keurt niet.** `/airtable/opdracht` haalt de actieve rij op, kapt af
+op 8 KB en geeft de tekst door. Twee keurders die hetzelfde zouden moeten
+vinden lopen uit de pas, en dan is de vraag welke van de twee klopt. De
+groottegrens staat er wél, en die staat er twee keer met opzet: hier omdat een
+tekst van een megabyte anders eerst een telefoon in gaat.
+
+**Wat er stil mis kan gaan, en daarom apart getoetst is.** Een afgekeurde
+opdracht mag niet terugvallen op de vorige. Doet hij dat wel, dan meet de rit
+iets anders dan er in de tabel staat en is dat verschil van buiten onzichtbaar
+— je leest een verslag dat klopt bij een opdracht die je niet meer hebt.
+`bproef-opdracht.js` toetst precies dat in de draaiende app.
+
+**En de terugweg is rond.** Elke uitslag van een opdracht-proef gaat met de
+naam van de opdracht de live-log in. Wie de tabel leest ziet dus niet alleen
+dát er gemeten is maar ook welke opdracht dat deed — zonder die koppeling staan
+er straks uitslagen in de logtabel waarvan niemand meer weet bij welke vraag ze
+hoorden.
+
+**Uitzetten:** `feat_opdracht` in de Config (Airtable → beheer.html). Uit
+betekent dat er geen verzoek de deur uitgaat en de testrun draait zoals hij in
+de build staat.
 
 
 ### Zichtbaarheid is de trekker, en daarom staat er nu een klein venster (#228, 17-09-2026)

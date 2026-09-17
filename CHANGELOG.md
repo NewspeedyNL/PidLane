@@ -27,6 +27,28 @@
          klikken, en de testrun zet de bron ook in zijn
          verslag — een rit op de verkeerde versie is een rit
          die je opnieuw moet doen.
+     Build: 2026-09-17i (CET) — DE VOLGENDE METING KOMT
+     UIT DE TABEL
+
+       • 📋 EEN MEETOPDRACHT ZONDER DEPLOY. De testrun haalt
+         voor de rit op wat er gemeten moet worden: welke
+         sensoren, hoe lang, welke vragen aan de bestuurder,
+         en welke waarden binnen welke band horen te vallen.
+         Dat staat in de tabel Meetopdracht en niet in de
+         build — zo kan er tussen twee ritten iets veranderen
+         zonder dat er een versie naar alle gebruikers gaat.
+
+       • 🧱 HET IS DATA EN GEEN SCRIPT, EN DAT IS DE KERN.
+         Een opdracht kan sensoren aanzetten en grenzen
+         noemen. Hij kan geen code draaien, niets aanroepen
+         en niets naar de auto schrijven. Wat er binnenkomt
+         wordt eerst gekeurd; een onbekend veld is een
+         afwijzing, geen waarschuwing.
+
+       • 🔁 EN DE UITSLAG GAAT TERUG. Elke opdrachtproef
+         schrijft zijn uitkomst met de naam van de opdracht
+         naar de live-log, zodat buiten de app te lezen is
+         welke vraag welk antwoord kreeg.
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
