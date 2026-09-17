@@ -913,6 +913,60 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Drie kandidaten voor de bevroren WebView vielen af achter een bureau (#228, 17-09-2026)
+
+De meetdienst van 11-09 heeft de eerste helft van #18 beslist: het app-proces
+leeft, 310 native slagen over 310 seconden. De tweede helft bleef staan — de
+WebView valt stil na **59, 59 en 60 s**, drie metingen, één getal, ongeacht hoe
+lang de app wegblijft. #18 is daarna gesloten, en sindsdien zendt de app elke
+rit een bevinding uit die naar een gesloten issue wijst. Die helft heeft nu een
+eigen nummer.
+
+**Wat er is nagezocht, en wat dat kostte: geen rit.**
+
+| kandidaat | wat de bron zegt |
+|---|---|
+| de renderer staat op lage prioriteit als hij verborgen is | omgekeerd: de standaard is `RENDERER_PRIORITY_IMPORTANT` **ongeacht zichtbaarheid**, en dat is het maximum. Er is geen knop om hoger te zetten |
+| Chromium bevriest de pagina | die functie **raakt WebView niet**, en het getal is 5 minuten en geen 60 seconden |
+| Capacitor zet de timers zelf stil | `BridgeActivity.onPause/onStop` roept alleen `bridge.onPause()` aan; nergens `pauseTimers()` of `webView.onPause()` |
+
+Ik had de eerste zelf als hypothese in het issue gezet, met een eenregelige
+reparatie erbij. Die regel was een no-op. Dat staat er nu bij, herzien en niet
+weggepoetst — de redenering was plausibel en precies daarom is hij het
+opschrijven waard.
+
+**Wat overblijft zijn twee richtingen, en één stap kiest ertussen.** De app
+zichtbaar houden (picture-in-picture), of de meetlus uit de renderer halen
+(native). Het verschil tussen de achtergrond en split-screen is precies één
+ding:
+
+| | zichtbaar | vooraan |
+|---|---|---|
+| achtergrond | nee | nee |
+| split-screen | **ja** | nee |
+
+Loopt de lus in split-screen door, dan is zichtbaarheid de trekker en is
+picture-in-picture een oplossing in plaats van een gok. Stopt hij alsnog, dan
+is het procesbeheer van het toestel en helpt alleen native. De stap
+`splitscreen` in de begeleide run (toestelronde, stilstaand, twee minuten)
+leest daarvoor twee instrumenten die er al stonden: `PLRit.gaten()` voor de
+gaten en `PLAchtergrond.sinds()` voor de controlevraag *meldde Android de
+pagina überhaupt als verborgen*. Meldt hij dat wél, dan is split-screen op dit
+toestel geen ander geval dan de achtergrond, en dan zegt de stap dat in plaats
+van stil de verkeerde conclusie te dragen.
+
+**En hoe anderen het opgelost hebben, want dat scheelt het wiel.** De
+achtergrond-geolocatieplugins voor Capacitor beschrijven dezelfde faalvorm —
+*posities worden in JavaScript verzameld, JavaScript stopt zodra het OS de
+webview opschort, en je houdt een spoor met gaten over* — en kiezen allemaal
+dezelfde vorm: een native wachtrij die app-herstarts overleeft, met het
+JS-event als aftakking daarop. Niet andersom. AndrOBD, de open-source
+referentie in deze categorie, is volledig native met een foreground service van
+het type `connectedDevice`; dat type doen wij al precies zo, en het verschil
+zit één laag hoger: bij hen woont de meetlus in dezelfde native laag als de
+verbinding, bij ons in de renderer.
+
+
 ### Een eigenschap van de auto werd bewaard als eigenschap van de meting (#225, 17-09-2026)
 
 De voorvulling van vanochtend werkt, en liet daarmee zien waar de echte

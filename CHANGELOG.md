@@ -11,6 +11,18 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17f (CET) — EEN STAP DIE DE
+     ACHTERGRONDKWESTIE BESLIST
+
+       • ◧ SPLIT-SCREENPROEF IN DE BEGELEIDE RUN. Twee minuten
+         met PidLane naast een andere app, stilstaand. Blijft de
+         meting lopen terwijl de app zichtbaar is maar niet
+         vooraan, dan is beeld-in-beeld een echte oplossing voor
+         de bevroren meetlus; stopt hij alsnog, dan helpt alleen
+         een native meetlus. Kost geen rit en geen tokens.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17e (CET) — DE AUTO ONTHOUDT WAT HIJ
      LIET ZIEN
 
