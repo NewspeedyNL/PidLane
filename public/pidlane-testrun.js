@@ -2502,6 +2502,55 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── klopt de aandrijfbalk met wat de sensoren zeggen? ──
+  // De balk bovenin de Live-weergave zegt in één regel wat de auto doet. Dat
+  // leest als een feit, dus hij moet het waar kunnen maken uit de waarden die
+  // op datzelfde moment binnenkomen. test-aandrijving.js toetst de
+  // toestandsmachine op verzonnen monsters; dit toetst hem op een echte auto,
+  // en vergelijkt bovendien wat de MODULE zegt met wat er in de DOM staat.
+  //
+  // Zonder bevinding is de opbrengst de waarneming zelf: die regel is precies
+  // wat de rit moet opleveren voor de i-stop-vraag van deze CX-5 — is er een
+  // start/stop-stop gezien, en wat deed 011F daarbij.
+  {
+    issue: '§11',
+    naam: 'De aandrijfbalk beweert niets dat de meetwaarden niet dragen',
+    waarom: 'Een toestandsregel bovenin het scherm leest als een feit. Zegt hij "start/stop actief" terwijl de motor draait, dan is alles eronder ook verdacht.',
+    proef: function () {
+      if (!window.PLAandrijving || !window.PLAandrijfbalk)
+        return { staat: 'FOUT', detail: 'PLAandrijving of PLAandrijfbalk ontbreekt \u2014 de balk is niet geladen' };
+      var r = PLAandrijving.laatste();
+      if (!r) return { staat: 'LET OP', detail: 'nog geen aandrijfstand \u2014 updateEVMode() is nog niet langsgekomen' };
+
+      var D = PLAandrijving.drempels, fout = [];
+      var rpm = (typeof pidVals !== 'undefined') ? pidVals['010C'] : undefined;
+      var spd = (typeof pidVals !== 'undefined') ? pidVals['010D'] : undefined;
+
+      if ((r.toestand === 'DRAAIT_STIL' || r.toestand === 'DRAAIT_RIJDT') && rpm !== undefined && rpm <= D.rpmUit)
+        fout.push('toont "' + r.label + '" bij ' + rpm + ' tpm');
+      if ((r.toestand === 'STARTSTOP' || r.toestand === 'UIT_VOOR_START') && rpm !== undefined && rpm >= D.rpmAan)
+        fout.push('toont "' + r.label + '" terwijl de motor op ' + rpm + ' tpm draait');
+      if (r.toestand === 'ACCU_RIJDT' && spd !== undefined && spd < D.vStil)
+        fout.push('toont "rijdt op accu" bij ' + spd + ' km/h');
+      if (r.toestand === 'STARTSTOP' && !r.heeftGedraaid)
+        fout.push('toont start/stop terwijl de motor deze sessie nooit gedraaid heeft');
+
+      var el = document.getElementById('aandrijfBalk');
+      if (!el) fout.push('het element aandrijfBalk staat niet in de pagina');
+      else if (el.getAttribute('data-toestand') && el.getAttribute('data-toestand') !== r.toestand)
+        fout.push('het scherm toont ' + el.getAttribute('data-toestand') + ' terwijl de module ' + r.toestand + ' zegt');
+
+      if (fout.length) return { staat: 'FOUT', detail: fout.join('; ') };
+
+      var d = 'nu: ' + r.label + ' (' + r.zekerheid + ')' +
+        ', motor heeft gedraaid: ' + (r.heeftGedraaid ? 'ja via ' + r.bronGedraaid : 'nee') +
+        ', 011F: ' + (r.looptijd === null || r.looptijd === undefined ? 'niet beschikbaar' : r.looptijd + ' s') +
+        ', hybride bewezen: ' + (r.bewijstHybride ? 'ja' : 'nee');
+      if (r.toestand === 'STARTSTOP') return { staat: 'ok', detail: 'START/STOP GEZIEN \u2014 ' + d };
+      return { staat: 'LET OP', detail: d + '. Een start/stop-stop is deze sessie nog niet waargenomen \u2014 dat vraagt stilstand met een warme motor.' };
+    }
+  },
+
   // ── wijst "Welk onderdeel?" alleen sensoren aan die écht zwijgen? ──
   // Gemeld met een schermafdruk erbij: brandstofpeil en afstand-met-MIL-aan
   // als "sterke aanwijzing — draadbreuk, stekker of sensor", op een auto waar

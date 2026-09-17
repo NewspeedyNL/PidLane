@@ -912,6 +912,90 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De EV-modus klemde vast, en de aandrijfstatus die eruit volgde (17-09-2026)
+
+Gevonden door de code te lezen, niet door een storing: er was geen melding en
+er stond niets fout op het scherm. Dat is precies waarom het er zo lang in kon
+zitten.
+
+**De klem.** `pidPollInterval()` in `pidlane-plload.js` gaf elke PID uit
+`ICE_PIDS_SUFFIX` een interval van 999999 ms zodra `_evModeActive` waar was.
+In die lijst staat `'0C'` — het toerental. En het toerental is nu juist de
+enige uitgang uit de EV-modus: `updateEVMode()` besloot met
+`rpm < 50 && spd > 2`, en die `rpm` kwam uit `pidVals['010C']`. Zodra de modus
+aanging werd 010C dus nog eens per zeventien minuten gevraagd, bleef
+`pidVals['010C']` op zijn laatste waarde onder de drempel staan, en was de
+enige overgebleven uitgang een snelheid onder 2 km/h. Slaat de verbrandingsmotor
+aan terwijl je optrekt, dan blijft de app in EV-modus hangen met toerental,
+MAF, belasting en lambda uit — tot je stilstaat.
+
+Dat de bedoeling er al was staat twee regels lager in hetzelfde bestand:
+`['0C','0D'].includes(suf) → basis = 150` met de opmerking *"RPM/snelheid altijd
+snel"*. Die regel was onbereikbaar. De reparatie is een ankerlijst
+(`EV_ANKER_SUFFIX`) die het EV-filter overslaat, en niet het weghalen van `'0C'`
+uit de ICE-lijst: toerental *is* een verbrandingsmotor-PID, het is alleen ook de
+meting waar het oordeel zelf op rust.
+
+**Wat er bij het repareren bovenop kwam.** `updateEVMode()` beantwoordde al de
+vraag "rijden we op de accu", maar kon er niets mee. De uitkomst was een vlag
+plus een regel in het diagnoselog; het scherm zag er nooit iets van. En hij
+stond uit op het merendeel van de auto's, want hij begon met:
+
+```js
+const engineType = detectEngineType();
+if(engineType !== 'hybride' && engineType !== 'ev') { _evModeActive = false; return; }
+```
+
+`detectEngineType()` leest `vehicleInfo.brandstof` — een **declaratie uit
+RDW-data**, geen meting. Op een benzineauto stopte de functie daar. Er kon dus
+per constructie nooit iets over start/stop uitkomen, hoe goed 010C en 010D ook
+binnenkwamen. Dat is omgedraaid: de meting is nu de bron, de declaratie
+hoogstens een beginschatting. Eén waarneming van rijden-met-stille-motor
+bewijst dat er een tweede aandrijfbron is, en dat is harder dan wat het
+kentekenveld zegt.
+
+**De kern van het ontwerp: geschiedenis, geen momentopname.** Deze twee zijn op
+één moment niet te scheiden — geen enkele PID doet dat:
+
+| | toerental | snelheid | ECU |
+|---|---|---|---|
+| contact aan, motor nog niet gestart | 0 | 0 | antwoordt |
+| start/stop heeft de motor afgezet | 0 | 0 | antwoordt |
+
+Het verschil is uitsluitend of de motor deze sessie al gedraaid heeft. Daarom
+draagt `PLAandrijving.bepaal(nu, vorige)` zijn eigen voorgeschiedenis mee. Die
+vlag mag door drie bronnen **gezet** worden en door geen enkele **gewist**:
+de eigen waarneming, `011F > 0`, en een teruggevallen `011F` (de teller is
+gereset, dus er is gestart). Het bewijs is asymmetrisch: `> 0` is hard, `= 0`
+zegt niets, want een nul kan een net gereset tellertje zijn.
+
+Bron B bestaat omdat A faalt in een alledaags geval: aankoppelen terwijl de
+auto al voor een stoplicht staat met een afgezette motor. Zonder 011F leest de
+balk dan "Motor uit" terwijl de motor net nog liep. Hetzelfde tweebronnenpatroon
+staat al bij de thermostaatregel in `pidlane-onderdeel.js`, met dezelfde reden:
+motorlooptijd is een sensor die je kunt uitvinken.
+
+**Stilte is geen motor-uit.** Drie dingen lijken op elkaar — de adapter is de
+bus kwijt, de ECU antwoordt `NO DATA`, en de ECU antwoordt netjes met nul — en
+alleen het laatste is motor uit. De eerste twee leveren `ONBEKEND` op. De
+ouderdom komt uit `PLSched.laatsteSucces('010C')` en niet uit `pidVals`, want
+daar blijft een waarde staan tot er een nieuwe overheen komt.
+
+**Wat hier bewust níét in zit.** "Motor én accu tegelijk" en regeneratie zijn op
+generieke OBD niet te scheiden van gewoon rijden; er is geen mode 01-PID voor.
+En de balk zegt *dát* start/stop actief is, niet waarom hij uitblijft — die
+inhibit-reden zit achter mode 22, en de identifiers die daarvoor circuleren
+zijn op deze CX-5 al één keer onderuit gegaan (22111F gaf op 19-08
+requestOutOfRange). Beide staan als zodanig in `CAMPAGNE`.
+
+**Een conclusie die achteraf bijgesteld is.** Bij het toetsen bleek de eerste
+opzet van `test-aandrijving.js` groen te staan op een EV-modus die nooit
+aanging: `_evModeActive` is in de bron een script-scoped `let`, en een property
+op het globale object van de sandbox raakt die binding niet. Alleen de
+tegenproef — *"met EV-modus wordt MAF wél gepauzeerd"* — kon dat laten zien.
+Een proef zonder tegenproef had hier vier groene regels opgeleverd die niets
+maten.
+
 ### Een valse verdenking in "Welk onderdeel?" (16-09-2026)
 
 Gemeld uit het gebruik, met een schermafdruk erbij. Het paneel zei **"Sensor
