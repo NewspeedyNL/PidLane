@@ -937,9 +937,14 @@ op het inlogscherm staat. Hetzelfde geldt voor de bron, en daarom:
 
 * zodra `location.origin` niet de productiebron is, staat er een oranje balk
   bovenin met het adres erbij, de hele sessie, niet weg te klikken;
-* de app schuift eronder (`paddingTop`) in plaats van eronder te verdwijnen —
-  anders ontstaat er een schermbug die alleen op een preview bestaat, en juist
-  daar wil je zuiver meten;
+* hij **verschuift de opmaak niet**, en dat is gemeten. De eerste versie zette
+  `body.paddingTop` zodat de app eronder schoof; `bproef-schermranden.js` werd
+  daar meteen rood van — het werkscherm eindigde 46px (M), 41px (S) en 52px (L)
+  áchter de navigatiebalk, precies de bevinding van #192 maar dan veroorzaakt
+  door de banner zelf. Een preview bestaat om te meten hoe de app zich
+  gedraagt; legt de banner er een eigen schermbug bovenop, dan meet je de
+  banner. Hij ligt er dus overheen en dekt een strook van de bovenbalk af. Dat
+  is de prijs, en die is bewust betaald;
 * de testrun zet de bron in zijn startregel en dus in de live-log. Zonder die
   regel is een verslag van een preview niet van een verslag van productie te
   onderscheiden, en dat is precies wat deze module moet voorkomen.

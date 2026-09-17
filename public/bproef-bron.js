@@ -10,9 +10,11 @@
 //
 //   * De banner staat op `position:fixed` bovenaan. De app heeft daar zelf
 //     ook een balk; welke van de twee wint is een vraag over echte CSS.
-//   * `document.body.style.paddingTop` moet de app eronder schuiven. Gebeurt
-//     dat niet, dan valt de eerste regel van het scherm weg — een bug die
-//     alléén op een preview ontstaat, en daar wil je juist zuiver meten.
+//   * De banner mag de opmaak NIET verschuiven. De eerste versie zette
+//     `body.paddingTop`, en daar werd bproef-schermranden.js meteen rood van:
+//     het werkscherm eindigde 41 tot 52px achter de navigatiebalk, afhankelijk
+//     van de tekstgrootte. Een preview die anders ligt dan productie meet zijn
+//     eigen banner in plaats van de app.
 //   * De menuknop wordt in het ECHTE Admin-menu gehangen (`#admGroup`).
 //     Bestaat dat element niet meer of heet het anders, dan verschijnt de
 //     knop nergens en zegt niets dat er iets mis is.
@@ -54,7 +56,7 @@ function toets(naam, waar, uitleg) {
     toets('en weet dat dit geen productie is', (await app.ev(`PLBron.isProductie()`)) === false,
       'deze proef draait lokaal; zou hij hier "productie" zeggen, dan zegt de banner nooit iets');
 
-    console.log('\n2. De banner staat er, zichtbaar, en de app schuift eronder');
+    console.log('\n2. De banner staat er, zichtbaar, en verschuift niets');
     const b = JSON.parse(await app.ev(`(function(){
       PLBron.teken();
       var el = document.getElementById('bronBanner');
@@ -75,7 +77,9 @@ function toets(naam, waar, uitleg) {
     toets('hij is zichtbaar', b.zichtbaar, JSON.stringify(b));
     toets('hij staat bovenaan en is breed genoeg om te zien', b.boven && b.breed && b.hoog, JSON.stringify(b));
     toets('hij noemt het woord PREVIEW', /PREVIEW/.test(b.tekst || ''), b.tekst);
-    toets('en de app is eronder geschoven', /^\d+px$/.test(b.padding || ''), 'paddingTop: ' + b.padding);
+    toets('en hij verschuift de opmaak van de app niet', !b.padding,
+      'paddingTop: ' + b.padding + ' — bproef-schermranden.js wordt daar rood van, en terecht: ' +
+      'een preview die anders ligt dan productie meet zijn eigen banner');
 
     console.log('\n3. De knop hangt in het ECHTE Admin-menu');
     const k = JSON.parse(await app.ev(`(function(){

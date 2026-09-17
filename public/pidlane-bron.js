@@ -105,7 +105,7 @@
       b = document.createElement('div');
       b.id = 'bronBanner';
       b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9990;background:#f2820c;color:#1b1b1b;' +
-        'font:700 12px/1.35 var(--f,system-ui);padding:5px 10px;text-align:center;letter-spacing:.2px';
+        'font:700 11px/1.3 var(--f,system-ui);padding:3px 8px;text-align:center;letter-spacing:.2px';
       b.textContent = '⚠ PREVIEW — ' + huidige() + ' · dit is niet de live app';
       var knop = document.createElement('button');
       knop.type = 'button';
@@ -114,10 +114,19 @@
       knop.addEventListener('click', function () { location.href = PRODUCTIE; });
       b.appendChild(knop);
       document.body.appendChild(b);
-      // De banner dekt de bovenrand af; de app schuift eronder in plaats van
-      // eroverheen. Anders valt de eerste regel van het scherm weg en is dat
-      // een bug die op een preview ontstaat en op productie niet.
-      document.body.style.paddingTop = (b.offsetHeight || 24) + 'px';
+      /* DE BANNER VERSCHUIFT DE OPMAAK NIET, EN DAT IS GEMETEN.
+         De eerste versie zette `body.paddingTop` op de hoogte van de balk,
+         zodat de app eronder schoof. `bproef-schermranden.js` werd daar
+         meteen rood van: het werkscherm eindigde 46px (M), 41px (S) en 52px
+         (L) áchter de navigatiebalk — precies de bevinding van #192, maar
+         dan veroorzaakt door de banner zelf.
+
+         Dat is erger dan het lijkt. Een preview bestaat om te meten hoe de
+         app zich gedraagt; legt de banner er een eigen schermbug bovenop,
+         dan meet je de banner en niet de app. Daarom ligt hij er nu
+         overheen: hij dekt een strook van de bovenbalk af (de systeemchip
+         schuift er deels onder) en dat is de prijs. Wie de chip nodig heeft,
+         gaat terug naar live — precies waar de knop hiernaast voor is. */
     } catch (e) {
       console.warn('Bron: de previewbanner kon niet getekend worden (#242)', e);
       return null;

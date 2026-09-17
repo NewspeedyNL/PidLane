@@ -171,8 +171,13 @@ console.log('\n5. de banner: alleen buiten productie, en niet weg te klikken');
   toets('met een knop terug naar live',
     prev.gemaakt.some(function (e) { return /terug naar live/.test(e.textContent); }),
     JSON.stringify(prev.gemaakt.map(e => e.textContent)));
-  toets('de app schuift eronder in plaats van eroverheen',
-    /px$/.test(String(prev.document.body.style.paddingTop || '')), prev.document.body.style.paddingTop);
+  /* En hij verschuift de opmaak NIET. Zie de uitleg in pidlane-bron.js: de
+     eerste versie deed dat wél, en daar werd bproef-schermranden.js rood van
+     omdat het werkscherm dan achter de navigatiebalk viel. Een preview die
+     anders ligt dan productie is geen preview. */
+  toets('en hij verschuift de opmaak niet',
+    !prev.document.body.style.paddingTop,
+    'paddingTop: ' + prev.document.body.style.paddingTop + ' — dan meet je op een preview de banner en niet de app');
 
   // TEGENPROEF: twee keer tekenen levert geen tweede banner op. Anders staat
   // er na een paar rondes een stapel balken en verdwijnt het scherm.
