@@ -651,6 +651,33 @@ MUTATIES=(
 "public/pidlane-plload.js@@    if(erbij>=this.cfg.echoOp){@@    if(erbij>=1){@@test-adapterpaneel.js@@één herhaling is al genoeg om te krimpen: de groep staat binnen een minuut altijd op 2"
 "public/pidlane-adapter.js@@    if (metEcho.length === st.length) {@@    if (false) {@@test-adapterpaneel.js@@het advies negeert herhaalde frames en adviseert harder pollen — precies de verkeerde kant op"
 "public/pidlane-data.js@@  batchKleiner(){\n    if(S.batchVast) return false;@@  batchKleiner(){@@test-adapterpaneel.js@@een vastgezette groep wordt alsnog door de automaat verkleind"
+
+# ── "Welk onderdeel?" wees een gezonde sensor aan (16-09-2026) ──
+# De melding kwam uit het gebruik met een schermafdruk erbij: brandstofpeil en
+# afstand-met-MIL-aan als "sterke aanwijzing: draadbreuk, stekker of sensor".
+# Elke mutatie hieronder zet één van de vier poorten terug waarop dat misging.
+# Ze delen één vorm: de module blijft precies zo overtuigd klinken, maar het
+# bewijs eronder is weg -- en dat is de dure kant, want deze tekst stuurt
+# iemand naar de garage voor een onderdeel dat het doet.
+"public/pidlane-onderdeel.js@@      var drempel=Math.max(R.min, iv*R.factor);@@      var drempel=R.min;@@test-onderdeel.js@@de vaste 8-secondendrempel is terug: elke trage sensor is weer kapot (de fout zoals hij gemeld is)"
+"public/pidlane-onderdeel.js@@      if(!gevraagd){ uit.wacht.push(pid); return; }@@      if(false){ uit.wacht.push(pid); return; }@@test-onderdeel.js@@stilte telt weer als uitval, ook zonder dat er iets gevraagd is"
+"public/pidlane-onderdeel.js@@      if(TELLER_PIDS.has(pid)){ uit.tellers.push(pid); return; }@@      if(false){ uit.tellers.push(pid); return; }@@test-onderdeel.js@@een teller van de ECU krijgt weer een draadbreuk toegedicht"
+"public/pidlane-onderdeel.js@@      var stilMs=nu-t-busKrediet(pid);@@      var stilMs=nu-t;@@test-onderdeel.js@@de bus-pauze telt weer als stilte van de sensor: elke sweep levert defecte sensoren op"
+"public/pidlane-onderdeel.js@@  if(!S || typeof S.interval!=='function' || typeof S.laatstePoging!=='function') return uit;@@  if(!S){ S={interval:function(){return 1000;},laatstePoging:function(){return Date.now();},laatsteSucces:function(){return 0;},dood:function(){return false;}}; }@@test-onderdeel.js@@zonder cadansregister wordt er alsnog geoordeeld, op een verzonnen tempo"
+"public/pidlane-onderdeel.js@@  try{ if(typeof dtcCodes!=='undefined' && Array.isArray(dtcCodes)) codes=dtcCodes.slice(); }@@  try{ if(typeof window._laatsteDTC!=='undefined') codes=window._laatsteDTC.slice(); }@@test-onderdeel.js@@de foutcodes komen weer uit een bron die niet bestaat: de halve module doet niets"
+"public/pidlane-onderdeel.js@@        if(c.draait!==true) return null;\n        var map=V('010B');\n        if(map===null||c.rpm===null) return null;\n        if(c.rpm>1200) return null;@@        var map=V('010B');\n        if(map===null||c.rpm===null) return null;\n        if(c.rpm>1200) return null;@@test-onderdeel.js@@met de motor uit leest de inlaatdruk de buitenlucht en dat heet weer een vacuümlek"
+"public/pidlane-onderdeel.js@@        if(c.looptijd!==null) return c.looptijd>=600;@@        if(c.looptijd!==null) return true;@@test-onderdeel.js@@elke koude start is weer een kapotte thermostaat"
+"public/pidlane-onderdeel.js@@        return reeksOordeel(aanhoudend('0105', function(v){ return v<75; }, 600000, 10));@@        return true;@@test-onderdeel.js@@zonder motorlooptijd wordt koud koelwater weer zonder meer een thermostaat"
+"public/pidlane-onderdeel.js@@  if(!R.length && !rails.length && !uitvalKaart){@@  if(!R.length){@@test-onderdeel.js@@het scherm zegt weer \"geen enkel onderdeel aan te wijzen\" boven een rode kaart die er wel een aanwijst"
+"public/pidlane-onderdeel.js@@      var n=aanhoudend(pid, function(w){ return Math.abs(w-r.v)<tol; }, RAIL_MIN_MS, RAIL_MIN_N);\n      if(!n) return;@@      var n=1;@@test-onderdeel.js@@één misgelezen frame tegen de eindwaarde is weer genoeg voor een diagnose"
+"public/pidlane-onderdeel.js@@      var tol=(typeof r.tol==='number')?r.tol:RAIL_TOL;@@      var tol=RAIL_TOL;@@test-onderdeel.js@@de speling van 0,6 geldt weer voor een signaal dat tot 1,275 loopt: een vette meting is een kortsluiting"
+"public/pidlane-onderdeel.js@@        return c.ect===null?null:(c.ect>105);\n      }, {xor:'temp'})@@        return c.ect===null?null:(c.ect>105);\n      })@@test-onderdeel.js@@te koud en te warm straffen elkaar weer af, dus de thermostaatregel haalt de ondergrens nooit"
+"public/pidlane-onderdeel.js@@  if(eis==='warmbelast') return c.draait===true && c.warm===true &&\n                                c.belasting!==null && c.belasting>=20;@@  if(eis==='warmbelast') return c.draait===true && c.warm===true;@@test-onderdeel.js@@uitrollen met afgesloten inspuiting levert weer een dode lambdasonde op"
+# De ruisdrempel is uit de browserproef gekomen en niet uit het hoofd: op de
+# demo-auto, die niets mankeert, stond "EGR-klep" op het scherm op grond van
+# één voorwaarde van gewicht 2. Zet hem terug en die kaart komt terug.
+"public/pidlane-onderdeel.js@@    var draagt = voor.length>=2 || zwaarste>=3;@@    var draagt = true;@@test-onderdeel.js@@één losse hint van gewicht 2 maakt weer een verdachte"
+"public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 )
 
 echo

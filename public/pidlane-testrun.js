@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.7 (16-09-2026)';
+const TESTRUN_VERSIE = '7.8 (16-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2501,6 +2501,70 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── wijst "Welk onderdeel?" alleen sensoren aan die écht zwijgen? ──
+  // Gemeld met een schermafdruk erbij: brandstofpeil en afstand-met-MIL-aan
+  // als "sterke aanwijzing — draadbreuk, stekker of sensor", op een auto waar
+  // niets mis mee was. De oorzaak was een vaste drempel van 8 seconden over
+  // sensoren die elke 60 seconden aan de beurt komen.
+  //
+  // test-onderdeel.js toetst die scheiding op verzonnen data. Wat daar niet
+  // te maken is, is een échte pollronde met een échte bus eronder: wie er
+  // wanneer aan de beurt was, hoeveel de bus stilstond voor een sweep, en
+  // welke sensor deze auto werkelijk traag levert. Daarom deze proef, en
+  // daarom draait hij op wat de app op dít moment zegt.
+  //
+  // Hij toetst geen broncode maar de uitkomst: elke sensor die de module als
+  // uitgevallen aanwijst moet volgens het scheduler-register gevraagd zijn
+  // zónder antwoord. Kan de module dat niet waarmaken, dan staat er een valse
+  // verdenking op het scherm en is dat een FOUT — ook al draait alles verder.
+  {
+    issue: '§11',
+    naam: 'Welk onderdeel wijst geen sensor aan die alleen op zijn beurt wacht',
+    waarom: 'Deze tekst stuurt iemand naar de garage. Een sensor die binnen zijn eigen meettempo zwijgt is niet kapot.',
+    proef: function () {
+      if (!window.PLOnderdeel) return { staat: 'FOUT', detail: 'PLOnderdeel ontbreekt — het paneel is niet geladen' };
+      var mist = ['stilteBeeld', 'beoordeel', 'railTreffers', 'dtcBron'].filter(function (k) {
+        return typeof PLOnderdeel[k] !== 'function';
+      });
+      if (mist.length) return { staat: 'FOUT', detail: 'PLOnderdeel mist ' + mist.join(', ') };
+
+      var b = PLOnderdeel.stilteBeeld();
+      if (!b.register)
+        return { staat: 'LET OP', detail: 'geen cadansregister (PLSched) — de module zwijgt dan over uitval, en dat is de bedoeling' };
+
+      var S = window.PLSched, R = PLOnderdeel.cadansRegels(), fout = [];
+      b.stil.forEach(function (x) {
+        if (PLOnderdeel.tellers.has(x.pid))
+          { fout.push(x.pid + ' is een teller van de ECU, geen sensor'); return; }
+        var drempel = Math.max(R.min, S.interval(x.pid) * R.factor);
+        var pog = S.laatstePoging(x.pid) || 0, ok = S.laatsteSucces(x.pid) || 0;
+        if (!(S.dood(x.pid) || (pog > 0 && (pog - ok) > drempel * 0.5)))
+          fout.push(x.pid + ' is aangewezen terwijl er sinds het laatste antwoord niet naar gevraagd is');
+        if (x.stilMs <= drempel)
+          fout.push(x.pid + ' is aangewezen na ' + Math.round(x.stilMs / 1000) + ' s stilte terwijl zijn eigen tempo ' +
+            Math.round(drempel / 1000) + ' s toelaat');
+      });
+      if (fout.length)
+        return { staat: 'FOUT', detail: 'valse verdenking: ' + fout.join('; ') };
+
+      // De foutcodekant. Tot 16-09 las deze module een bron die niet bestaat
+      // (window._laatsteDTC), en dan staat er nooit iets — precies het soort
+      // stilte dat je niet ziet.
+      var bron = PLOnderdeel.dtcBron();
+      var echt = (typeof dtcCodes !== 'undefined' && Array.isArray(dtcCodes)) ? dtcCodes.length : null;
+      if (echt !== null && bron.codes.length !== echt)
+        return { staat: 'FOUT', detail: 'de module ziet ' + bron.codes.length + ' foutcodes terwijl de app er ' +
+          echt + ' heeft — de DTC-bron is weer losgeraakt' };
+
+      var verdacht = PLOnderdeel.beoordeel();
+      var deel = verdacht.length ? (' Kandidaten: ' + verdacht.map(function (r) { return r.naam; }).join(', ') + '.') : '';
+      return { staat: 'OK', detail: b.stil.length + ' als uitgevallen aangewezen, ' + b.levend.length +
+        ' binnen hun tempo, ' + b.wacht.length + ' nog niet aan de beurt, ' + b.tellers.length +
+        ' tellers overgeslagen, ' + PLOnderdeel.railTreffers().length + ' railtreffers.' +
+        ' Foutcodes ' + (bron.gescand ? 'gelezen (' + bron.codes.length + ')' : 'nog niet uitgelezen') + '.' + deel };
+    }
+  },
 
   // ── #217: wat deed de boordspanning deze rit? ──
   // Na ritten met de goedkope kloon stonden er vier storingen tegelijk in de
@@ -7182,6 +7246,7 @@ const CAMPAGNE = {
     'STAP 3B — ZET DE WAAKRONDE AAN EN DE BULK-RECORDER OOK, VÓÓR DE RIT. Waakronde: ☰ → Waakronde → aanzetten. Bulk: ☰ → Admin → Bulk-recorder → start. Allebei lopen ze passief mee; ze horen de rest van de meting niet te raken. Merk je onderweg dat de app trager ververst, dan is dát de bevinding.',
     'STAP 4 — KIJK NA DE RIT NOG EENS IN HET PANEEL. Hoeveel herhaalde antwoorden staan er nu? Wat deed de automaat, en staat er bij elke stap een reden die klopt? Is de groep vanzelf naar 2 gegaan?',
     'DE TOESTELRONDE (📱). Vlak na de rit, stilstaand met een warme motor. Vier oordelen die alleen een mens kan geven plus de drie meetcontextvragen (#64).',
+    'STAP 4B — OPEN \u201cWELK ONDERDEEL?\u201d, TWEE KEER. E\u00e9n keer met het contact aan en de motor UIT, en daarna met een draaiende warme motor. V\u00f3\u00f3r vandaag noemde dat scherm op een gezonde auto het brandstofpeil kapot; staat er nu nog iets dat je niet herkent, schrijf het over met de meetwaarde die eronder staat. Lees ook de foutcodes uit v\u00f3\u00f3r je kijkt \u2014 zonder scan doet de halve module niets, en dat zegt het scherm nu zelf.',
     'STAP 5 — LEES DE TWEE NIEUWE SCHERMEN NA DE RIT. Waakronde: klopt wat er bij “wat er gemeten is” staat met wat de auto doet, en staat er een bevinding tussen die je herkent? Bulk-analyse (☰ → Admin → Bulk-analyse): klopt de afstand ongeveer met je kilometerteller, klopt de tijdbalk met hoe de rit ging, en zeggen de conclusies iets dat je zelf ook gezien had? Een conclusie die niet klopt is waardevoller dan een die klopt — schrijf hem over.',
     'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, en zet er drie dingen bij die er niet in staan: WELKE ADAPTER erin zat, wat het paneel als advies gaf, en of de getallen in het paneel klopten met wat je zag.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
@@ -7195,6 +7260,7 @@ const CAMPAGNE = {
     'DE AFSTAND IN DE BULK-ANALYSE IS EEN SCHATTING, EN BIJ GATEN TE LAAG. Hij telt de snelheid per seconde op; valt de adapter weg, dan loopt de tijd door en de afstand niet. Het venster noemt het aantal gatregels erbij, maar hoeveel kilometer dat scheelt is niet nagemeten — daarvoor moet er een kilometerstand naast.',
     'DE KLIMVERGELIJKING IS NOG NOOIT OP EEN ECHTE KLIM GEDRAAID. Hij zwijgt onder vijftig regels per kant, en in Nederland haal je die zelden. De drempel van 8 °C verschil komt uit redeneren, niet uit een meting: tot er een zware rit met caravan door de bergen onder ligt, is dat een aanname in de code en geen grens die iets bewezen heeft.',
     'DE WAAKRONDE-HISTORIE OVERLEEFT HET HERLADEN VAN DE PAGINA NIET. Hij staat in het geheugen, niet in localStorage. Dat is met opzet — een oordeel van twee ritten geleden zegt niets over nu — maar het betekent ook dat “Nieuwste versie laden” je sessieoverzicht wist. Wil je het bewaren, exporteer dan vóór het herladen.',
+    'DE DREMPELS IN \u201cWELK ONDERDEEL?\u201d ZIJN NIET NAGEMETEN. 46 kPa stationair, 13,2 V laadspanning, 0,5 V sprei op de achterste lambdasonde: dat is redeneerwerk en gangbare praktijk, geen meting aan d\u00e9ze auto. Wat deze ronde wel vaststaat is wann\u00e9\u00e9r ze \u00fcberhaupt iets mogen betekenen \u2014 motor draaiend, warm, lang genoeg. Een kandidaat die opduikt terwijl je niets merkt is dus een bevinding over de drempel, niet over de auto.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };
