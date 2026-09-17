@@ -236,18 +236,32 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
   dekking — de PR-run toetst het samenvoegresultaat, en daarom is de
   achterstand-poort hierboven de poort die dát waar houdt. Wil je `main` zelf
   getoetst zien, start *Tests* met de hand via `workflow_dispatch`.
-- **Elke push naar `main` is deployen.** Cloudflare Workers Builds bouwt en
-  draait `wrangler deploy`; die deployment krijgt meteen 100% van het verkeer.
-  Er zit geen mens tussen die merge en de klant — dat is de reden dat de gate
-  vóór de push groen moet zijn. Geldt ook voor een directe commit op `main`
-  (bijvoorbeeld via de webeditor), niet alleen voor een merge.
+- **Elke push naar `main` die code raakt is deployen.** Cloudflare Workers
+  Builds bouwt en draait `wrangler deploy`; die deployment krijgt meteen 100%
+  van het verkeer. Er zit geen mens tussen die merge en de klant — dat is de
+  reden dat de gate vóór de push groen moet zijn. Geldt ook voor een directe
+  commit op `main` (bijvoorbeeld via de webeditor), niet alleen voor een merge.
+
+  **"Die code raakt" is sinds 17-09-2026 een echte voorwaarde.** De build watch
+  paths staan op Include `*`, Exclude `*.md`, dus een commit die alleen
+  `PIDLANE.md`, `CHANGELOG.md` of dit bestand raakt bouwt niet en deployt niet.
+  Dat is hier ruwweg de helft van de commits. Reken er niet omgekeerd op: een
+  PR die proza én code draagt is één commit op `main` die wél deployt.
 
   **Een push naar een branch bouwt wél, maar deployt niet.** Workers Builds
-  draait op élke branch en ongeacht welke bestanden veranderden — een commit
-  die alleen `CLAUDE.md` raakt geeft ook een build. Maar zo'n build wordt geen
-  deployment. Nagemeten op 28-08-2026: zeven builds sinds middernacht, vier
-  deployments, en die vier vallen exact samen met de vier keer dat er iets op
-  `main` kwam.
+  draait op élke branch, met sinds 17-09 dezelfde `*.md`-uitzondering. Maar
+  zo'n build wordt geen deployment. Nagemeten op 28-08-2026: zeven builds
+  sinds middernacht, vier deployments, en die vier vallen exact samen met de
+  vier keer dat er iets op `main` kwam.
+
+  **Dat branch-builds aanstaan is geen restje — de preview-bron (#242) hangt
+  eraan.** Het adres in `bron_preview` is de preview-URL die Cloudflare bij
+  een branch-build neerzet. Zet je *Builds for non-production branches* uit,
+  dan komt er voor een nieuwe tak geen adres meer en is "een tak rijden zonder
+  deploy" er niet meer — zonder dat er ergens iets rood wordt. Dat is op 17-09
+  bijna gebeurd: het vinkje ging uit om bouwtijd te besparen, een halve dag
+  nadat #242 gemerged was. De besparing zit in de `*.md`-exclude hierboven;
+  dit vinkje is de prijs van de preview en die is betaald.
 
   **Waar dit twee keer misging** (#35, gesloten): de Cloudflare-bot zet onder
   elke PR "✅ Deployment successful", óók voor een branch-build die nooit
