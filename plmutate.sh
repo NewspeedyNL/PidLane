@@ -709,7 +709,7 @@ MUTATIES=(
 # allemaal een geruststellend antwoord geven dat nergens op slaat.
 "public/pidlane-auth.js@@      _atNoteer(true,resp.status,batch.length,'');@@      void 0;@@test-livelog.js@@een geslaagde verzending laat geen spoor na: blok 5 ziet nooit een uitslag en kan niets onderscheiden"
 "public/pidlane-auth.js@@_atNoteer(false,resp.status,batch.length,@@_atNoteer(true,resp.status,batch.length,@@test-livelog.js@@een 422 van Airtable wordt als geslaagd vastgelegd — precies de fout die de hele log platlegt, nu met groen ervoor"
-"public/pidlane-auth.js@@      _atNoteer(false,null,batch.length,e.message||'netwerkfout');@@      void 0;@@test-livelog.js@@een netwerkfout laat de vorige uitslag staan: de log is weg en blok 5 meldt de verzending van tien minuten geleden"
+"public/pidlane-auth.js@@    _atNoteer(false,null,batch.length,e.message||'netwerkfout');@@    void 0;@@test-livelog.js@@een netwerkfout laat de vorige uitslag staan: de log is weg en blok 5 meldt de verzending van tien minuten geleden"
 "public/pidlane-auth.js@@function plLiveLogStatus(){ return _atLaatste?Object.assign({},_atLaatste):null; }@@function plLiveLogStatus(){ return _atLaatste; }@@test-livelog.js@@de beller krijgt de toestand zelf in handen en kan zijn eigen uitslag groen maken"
 "public/pidlane-auth.js@@  if(!_atBuffer.length) return;@@  if(false) return;@@test-livelog.js@@een lege buffer telt als geslaagde verzending: 'er stond niets klaar' leest als 'het is aangekomen'"
 
