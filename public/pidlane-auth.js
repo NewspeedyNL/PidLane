@@ -704,6 +704,28 @@ async function _plVinVoorLog(vin){
   }
 }
 
+/* ── DE KOLOMMEN DIE DE LOGTABEL ECHT HEEFT ────────────────────────
+   `logToSheets(type, message, extra)` nam dat derde argument al sinds het
+   begin aan, en gebruikte het nergens. Vijf aanroepers geven er iets in mee
+   — de PID en de reden bij een uitschieter, het adapteradres bij een
+   verbinding, de telling bij "data stabiel" — en dat verdween allemaal
+   stilletjes. De log toonde een zin zonder de meetwaarde erachter, en niets
+   wees erop dat er iets weg was.
+
+   Waarom het niet zomaar meegestuurd kan worden: Airtable weigert een
+   onbekende veldnaam met een 422, en dan komt de hele batch van tien regels
+   terug de buffer in. Die probeert het elke vijftien seconden opnieuw, dus
+   één verkeerde sleutel legt niet één regel maar de hele log plat. Vandaar
+   deze lijst: wat erin staat gaat als veld mee, de rest gaat als tekst
+   achter het bericht aan. Verloren gaat er niets meer.
+
+   Verandert de tabel, dan verandert deze lijst mee — hij staat hier en niet
+   in de Worker, want de Worker laat met opzet alles door (hij kent de tabel
+   niet en hoort hem niet te kennen). */
+const AT_KOLOMMEN = new Set(['RecordType','SchemaVersion','SessionId','UserId','Model',
+  'VinHash','Adapter','DTC','PIDs','AiQuery','AiDiagnose','Outcome','Feedback',
+  'Demo','Repro','Device']);
+
 async function logToSheets(type, message, extra={}){
   // Controleer of Airtable geconfigureerd is. NB: verzending loopt via de
   // Worker (X-App-Token) — de Airtable-token hoort server-side en de client
@@ -717,11 +739,23 @@ async function logToSheets(type, message, extra={}){
     // regel werd gelogd.
     const ts=new Date().toISOString();
     const vinId=await _plVinVoorLog(v.vin);
+    // Het derde argument uitpakken: bekende kolommen als veld, de rest als
+    // staart achter het bericht. Zie AT_KOLOMMEN hierboven.
+    const velden={}, staart=[];
+    try{
+      Object.keys(extra||{}).forEach(function(k){
+        const w=extra[k];
+        if(w===undefined||w===null) return;
+        if(AT_KOLOMMEN.has(k)) velden[k]=(typeof w==='boolean'||typeof w==='number')?w:String(w);
+        else staart.push(k+'='+(typeof w==='object'?JSON.stringify(w):String(w)));
+      });
+    }catch(e){ console.warn('Extra logvelden niet uitgepakt — de regel gaat zonder die context mee', e); }
+    const bericht=String(message||'')+(staart.length?' · '+staart.join(' '):'');
     _atBuffer.push({
       fields:{
         Timestamp:  ts,
         Type:       String(type||'info'),
-        Message:    String(message||'').slice(0,500),
+        Message:    bericht.slice(0,500),
         Merk:       String(v.merk||''),
         Year:       String(v.year||''),
         VIN:        vinId,
@@ -733,6 +767,7 @@ async function logToSheets(type, message, extra={}){
         AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
         User:       String(currentUser?.name||''),
         Role:       String(currentUser?.role||''),
+        ...velden,
       }
     });
     clearTimeout(_atTimer);
