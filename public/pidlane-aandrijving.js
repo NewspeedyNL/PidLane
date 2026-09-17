@@ -83,7 +83,8 @@
     vStil: 1,         // km/h — hieronder staan we stil
     stabielMs: 700,   // zo lang moet een nieuwe toestand aanhouden
     startMs: 1500,    // zo lang blijft "Motor start" staan
-    versMs: 4000      // ouder dan dit is geen meting meer
+    versMs: 4000,     // ouder dan dit is geen meting meer
+    evPauzeMs: 3000   // zo lang moet accurijden aanhouden vóór de pollronde krimpt
   };
 
   var LABELS = {
@@ -281,11 +282,51 @@
     return s;
   }
 
+  // ── De sessiestand ─────────────────────────────────────────────────
+  // bepaal() is zuiver en onthoudt niets; deze drie regels doen dat. Ze staan
+  // hier en niet in de balk, want de stand is geen weergave: de EV-modus in de
+  // pollronde leest dezelfde uitkomst. Eén stand, één betekenis.
+  //
+  // `reset()` hoort bij een NIEUWE verbinding. De voorgeschiedenis van de
+  // vorige rit zegt niets over deze, en "de motor heeft gedraaid" mag geen
+  // feit worden dat een herverbinding overleeft.
+  var _stand = null;
+
+  function tik(bron, opties) {
+    var o = opties || {};
+    // Hoe oud is de meting werkelijk? Dat weet de scheduler, niet pidVals —
+    // daar blijft een waarde staan tot er een nieuwe overheen komt. Zonder
+    // deze regel zou een stilgevallen bus als "motor uit" lezen.
+    if (o.ouderdomMs === undefined && window.PLSched && typeof window.PLSched.laatsteSucces === 'function') {
+      var nuMs = (typeof o.t === 'number') ? o.t : Date.now();
+      var ok = window.PLSched.laatsteSucces('010C') || 0;
+      o = Object.assign({}, o, { ouderdomMs: ok ? (nuMs - ok) : (D.versMs + 1) });
+    }
+    _stand = bepaal(uitPidVals(bron, o), _stand);
+    return _stand;
+  }
+  function laatste() { return _stand; }
+  function reset() { _stand = null; }
+
+  /* Mag de pollronde nú ICE-PIDs laten vallen? Alleen als het accurijden even
+     heeft aangehouden. Eén verkeerd gelezen monster hoort geen halve
+     sensorlijst uit de ronde te snoeien — dat is precies de soort stille
+     schade die §11 vol staat. */
+  function evPauzeGerust(res, nuMs) {
+    if (!res || res.toestand !== 'ACCU_RIJDT') return false;
+    var t = (typeof nuMs === 'number') ? nuMs : Date.now();
+    return (t - res.sinds) >= D.evPauzeMs;
+  }
+
   window.PLAandrijving = {
     bepaal: bepaal,
     uitPidVals: uitPidVals,
     looptijdGewenst: looptijdGewenst,
     balkTekst: balkTekst,
+    tik: tik,
+    laatste: laatste,
+    reset: reset,
+    evPauzeGerust: evPauzeGerust,
     drempels: D,
     labels: LABELS
   };
