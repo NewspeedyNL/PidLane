@@ -912,6 +912,113 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De start/stop-vraag hoeft niet meer blind gesteld te worden (#64, 17-09-2026)
+
+`PL_VOORVRAGEN` stelt vlak vóór een betaalde analyse drie vragen. Twee daarvan
+kan alleen een mens beantwoorden — deed de klacht zich voor, zat de adapter
+tussendoor los. De derde, start/stop, kon dat tot vandaag ook niet anders, en
+dat was de zwakke plek van #64 punt 3: *"het venster staat vlak vóór een
+betaalde analyse. Wordt het weggeklikt zonder lezen, dan is het schadelijker
+dan geen vraag."*
+
+**Wat er veranderde is niet het venster maar wat de app weet.** Sinds de
+aandrijfstatus van 17-09 (`pidlane-aandrijving.js`) is `STARTSTOP` een toestand
+die de app zelf herkent: motor stil, auto stil, en de motor heeft deze sessie
+aantoonbaar gedraaid. Dat is precies het antwoord op de vraag. De module houdt
+die waarneming nu vast in `startStopGezien`, naast de vlag `bewijstHybride` die
+er al zo in stond, en `plMeetStartStopVoorstel()` in `pidlane-archief.js` vult
+de vraag daarmee voor — met de reden eronder in het venster, zoals
+`plMeetStabielVoorstel()` dat al deed.
+
+**Het bewijs is asymmetrisch, en dat is de hele regel.**
+
+| | wat het betekent | hoe hard |
+|---|---|---|
+| start/stop-stop gezien | het systeem is actief op deze auto | bewijs |
+| niets gezien | de auto heeft het niet, óf je stond nooit stil met een warme motor | géén bewijs |
+
+Daarom stelt dit nooit `nee` voor. Een voorstel dat "nee" durft te zeggen op
+grond van niets-gezien zou de AI vertellen dat een normale start/stop-stop een
+bevinding is — exact de fout die deze vraag moest voorkomen. Dezelfde vorm als
+`heeftGedraaid` twintig regels verderop in dezelfde module, en om dezelfde
+reden.
+
+**En toen bleek het meetprobleem te verschuiven.** Voorvullen maakt punt 3 van
+#64 onmeetbaar als je niets verandert: een voorstel dat blijft staan komt in
+`_plMeetcontext` terecht en telt dan als "beantwoord", terwijl er niemand naar
+gekeken heeft. Het antwoord draagt daarom sinds vandaag zijn herkomst mee
+(`_plMeetcontext.bron`, per vraag `klik` / `voorstel` / `eerder`), en blok 5
+telt die drie apart. Zonder die ring zou de eerstvolgende run melden dat de
+vragen beantwoord worden en zou niemand merken dat de app zichzelf antwoordt.
+
+**Wat dit NIET oplost.** De A/B-proef van punt 1 — één analyse met start/stop
+op "ja", één met "nee", en leest het rapport werkelijk anders — staat nog
+steeds open en heeft een rit nodig. Voorvullen maakt die vraag zelfs
+belangrijker: als de regel niet aankomt, vult de app voortaan iets voor dat
+nergens toe leidt. En of de voorvulling zelf klopt is één waarneming per rit:
+staat er "ja" voorgesteld op een auto zonder start/stop, dan is dat een
+bevinding over `startStopGezien` en niet over de auto.
+
+### Blok 5 meldde een dood schuifje dat gewoon werkte (17-09-2026)
+
+De testrun van 17-09 om 06:51 gaf één FOUT, en die ging niet over de app:
+
+> `De handmatige stand van het adapterpaneel verzet het tempo echt` — *op 50%
+> tempo bleef het interval van 010C op 308 ms staan (was 280 ms) — de
+> handmatige multiplier komt niet in `pidPollInterval()` aan.*
+
+**Hij kwam er wél aan.** De proef las het ijkpunt vóór het overnemen:
+
+```js
+var basis = pidPollInterval('010C');   // ← de AUTOMAAT, niet het schuifje
+PLLoad.handmatig(true, 'blok 5');
+PLLoad.zetTempo(50);
+var half = pidPollInterval('010C');
+if (!(half > basis * 1.5)) …           // eist meer dan de helft erbij
+```
+
+`handmatig(true)` neemt met opzet de stand over die er stond — het commentaar
+erboven in `pidlane-plload.js` zegt dat er letterlijk bij: *"Anders springt het
+tempo bij het omzetten, en dan meet je na het omschakelen iets anders dan waar
+je naar keek."* En de automaat stond op dat moment op 55%. Blok 4 noteerde
+achttien seconden later `{"tempoPct":57,"mult":1.76,"handmatig":false}`; op het
+moment van de proef was het 1.82. Het schuifje ging dus van 55% naar 50%, en
+dat is 10% verschil waar de proef er meer dan 50% van eiste.
+
+De getallen sluiten op de milliseconde. Profiel `caravan` geeft 010C een
+override van 200 ms bij `mult 1.1`, de verbindingsstrategie stond op "snel"
+(`_pollMult 0.7`), en dat maakt de onverkorte 154 ms:
+
+| | multiplier | interval |
+|---|---|---|
+| automaat, 55% | 1.82 | 154 × 1.82 = **280 ms** |
+| met de hand, 50% | 2.00 | 154 × 2.00 = **308 ms** |
+
+**Wat er verandert.** Niet de app — die deed precies wat er bedoeld was. Het
+ijkpunt van de proef verhuist naar de handmatige stand zelf: eerst overnemen,
+dan 100%, dán 50%, en het interval hoort exact te verdubbelen (twee ms speling
+voor de afronding, meer niet). De oude vorm kon alleen groen staan als de
+automaat toevallig op 100% zat — en precies daar draaide hij tot nu toe.
+`bproef-adapterpaneel.js` doet dezelfde vergelijking in een browser zonder bus,
+waar `_mult` per definitie 1.0 blijft, dus die stond groen vanaf de dag dat het
+paneel er kwam. De eerste keer dat de vorm in een auto belandde, was het meteen
+raak. Een proef die alleen in het gunstigste geval iets meet, meet niets —
+dezelfde vorm als `test-healthgate.js` (§11, elders in dit hoofdstuk).
+
+**En daarom staat hij nu ook in node.** `test-adapterpaneel.js` bouwt de stand
+van 17-09 na — caravan, "snel", automaat op 1.82 — en legt beide kanten vast:
+het interval volgt de handmatige multiplier, en overnemen laat het interval
+staan waar het stond. Twee mutaties in `plmutate.sh` houden dat scherp: `lm`
+vastzetten op 1 (`pidPollInterval()` kijkt niet meer naar `PLLoad.mult()`), en
+`handmatig(true)` naar 1.0 laten springen in plaats van de stand over te nemen.
+
+**De les zit in de vorm, niet in de uitkomst.** Deze proef vergeleek twee
+metingen uit verschillende toestanden en noemde het verschil een bewijs. Een
+FOUT die de app aanwijst terwijl de proef zelf schuift is duurder dan geen
+proef: hij kost een ronde aan zoeken in code die niets mankeert. De vraag bij
+een verschilmeting is dus niet alleen "meet ik het goede getal" maar "liggen
+mijn twee metingen in dezelfde toestand".
+
 ### De EV-modus klemde vast, en de aandrijfstatus die eruit volgde (17-09-2026)
 
 Gevonden door de code te lezen, niet door een storing: er was geen melding en

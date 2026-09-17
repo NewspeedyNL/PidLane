@@ -232,6 +232,15 @@
       // een tweede aandrijfbron heeft. Dat is harder dan wat het kentekenveld
       // zegt, dus het blijft staan zodra het één keer gezien is.
       bewijstHybride: !!((v && v.bewijstHybride) || toestand === 'ACCU_RIJDT'),
+      // Zelfde vorm, andere vraag: één waargenomen start/stop-stop bewijst dat
+      // dit systeem op deze auto actief IS. Niet-zien bewijst niets — je kunt
+      // ook gewoon nooit stil hebben gestaan met een warme motor. Daarom staat
+      // hier een vlag die gezet wordt en nooit gewist, en geen oordeel dat
+      // beide kanten op kan. Het meetcontextvenster leest hem (#64).
+      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP'),
+      startStopSinds: (v && v.startStopSinds !== undefined && v.startStopSinds !== null)
+        ? v.startStopSinds
+        : (toestand === 'STARTSTOP' ? sinds : null),
       brandstofLu: _getal(nu.fuelRate),
       looptijd: (lt !== null) ? lt : (v ? v.looptijd : null),
       spanning: _getal(nu.spanning),

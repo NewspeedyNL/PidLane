@@ -189,6 +189,35 @@ waar('een zwakke zekerheid staat in de balktekst',
 waar('een harde zekerheid niet', A.balkTekst(naRijden).indexOf('(') < 0,
   'kreeg: ' + A.balkTekst(naRijden));
 
+console.log('\n── de waarneming die het meetcontextvenster leest (#64) ──');
+/* Dezelfde asymmetrie als bij `heeftGedraaid`, en om dezelfde reden: gezien is
+   bewijs, niet-gezien is niets. Het venster vóór de analyse vult de
+   start/stop-vraag hiermee voor, dus een vlag die te makkelijk aan of weer uit
+   gaat vertelt de AI iets dat niemand gemeten heeft. */
+waar('zonder waarneming staat de vlag uit', koud.startStopGezien === false,
+  'toestand ' + koud.toestand);
+waar('een start/stop-stop zet hem aan', naRijden.startStopGezien === true,
+  'toestand ' + naRijden.toestand);
+waar('en met het moment erbij', typeof naRijden.startStopSinds === 'number',
+  'startStopSinds: ' + naRijden.startStopSinds);
+// DE KERN: hij blijft staan als de motor weer aanslaat. Anders zou het venster
+// alleen "ja" voorstellen als je toevallig bij een stoplicht staat op het
+// moment dat je op Analyseer drukt.
+// Ruim langer dan startMs, anders staat hij nog op START en toetst deze
+// proef de overgang en niet de vlag.
+const naHerstart = reeks(vast({ rpm: 1900, v: 60 }, 20000, 16), naRijden);
+waar('en hij blijft staan als de motor weer aanslaat',
+  naHerstart.startStopGezien === true && naHerstart.toestand === 'DRAAIT_RIJDT',
+  'toestand ' + naHerstart.toestand + ', gezien ' + naHerstart.startStopGezien);
+waar('het moment van de eerste stop blijft ook staan',
+  naHerstart.startStopSinds === naRijden.startStopSinds,
+  naHerstart.startStopSinds + ' tegen ' + naRijden.startStopSinds);
+// TEGENPROEF op het onderscheid: "motor uit vóór de eerste start" is géén
+// start/stop, hoe lang je er ook naar kijkt. Zou deze vlag aan UIT_VOOR_START
+// hangen, dan stelde het venster "ja" voor op een auto met contact aan.
+waar('"motor uit vóór de eerste start" zet hem NIET aan',
+  reeks(vast({ rpm: 0, v: 0, lt: 0 }, 9000), null).startStopGezien === false);
+
 console.log('\n── uitPidVals leest de echte sleutels ──');
 const nu = A.uitPidVals({ '010C': 1850, '010D': 63, '011F': 900, '015E': 7.4, '0142': 14.1 }, { t: 1 });
 t('toerental uit 010C', nu.rpm, 1850);

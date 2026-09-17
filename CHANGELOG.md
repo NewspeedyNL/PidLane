@@ -11,6 +11,48 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17d (CET) — DE APP VULT DE START/STOP-
+     VRAAG ZELF IN
+
+       • Ⓢ HET VENSTER VÓÓR DE ANALYSE VRAAGT MINDER BLIND.
+         Van de drie vragen is start/stop de enige die de app
+         zelf kan waarnemen — en sinds de aandrijfbalk dat doet,
+         vult hij hem voor, met de reden eronder. Zag hij deze
+         sessie een start/stop-stop, dan staat "Ja, actief" al
+         aan; zag hij er geen, dan blijft het "weet ik niet".
+         Nooit "nee": niet gezien hebben is geen bewijs dat de
+         auto het niet heeft.
+
+       • 🧾 EN HET ANTWOORD ONTHOUDT WIE HET GAF. Een voorstel
+         dat blijft staan is een antwoord voor de AI maar geen
+         keuze van een mens. Het rapport telt die twee nu apart,
+         zodat de vraag "wordt dit venster werkelijk ingevuld?"
+         (#64) een antwoord houdt in plaats van er een te
+         verzinnen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17c (CET) — DE PROEF SCHOOF, NIET DE APP
+
+       • 🎯 BLOK 5 WEES EEN WERKEND SCHUIFJE AAN ALS DEFECT. De
+         testrun van 17-09 meldde dat het handmatige tempo niet
+         in pidPollInterval() aankwam: 280 ms werd 308 ms waar
+         een verdubbeling hoorde. Het schuifje deed precies wat
+         het moest; de proef las zijn ijkpunt bij de automaat en
+         die stond al op 55%. Van 55% naar 50% is 10%. Het
+         ijkpunt ligt nu in de handmatige stand zelf — eerst
+         overnemen, dan 100%, dán 50% — en het interval hoort
+         exact te verdubbelen.
+
+       • 🧪 DIE PROEF KON ALLEEN GROEN STAAN BIJ TOEVAL. Dezelfde
+         vergelijking stond in de browserproef, en die draait
+         zonder bus waar de automaat per definitie op 100%
+         staat. Daarom staat de meting nu óók in node, met de
+         stand van 17-09 nagebouwd, en houden twee mutaties in
+         plmutate.sh hem scherp.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17b (CET) — WAT DOET DE AUTO NU?
 
        • 🅢 EEN AANDRIJFBALK BOVENIN DE LIVE-WEERGAVE. Eén
