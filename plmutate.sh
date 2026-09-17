@@ -742,7 +742,7 @@ MUTATIES=(
 "public/pidlane-bron.js@@    if (!/^https:\/\/[a-z0-9.-]+(\/|$)/i.test(ruw)) {@@    if (false) {@@test-bron.js@@elk stuk tekst uit de Config wordt een navigatie, ook javascript: en data:"
 "public/pidlane-bron.js@@    if (isProductie()) return null;@@    if (false) return null;@@test-bron.js@@de previewbanner staat ook op productie: een waarschuwing die er altijd staat wordt genegeerd"
 "public/pidlane-bron.js@@    var doel = isProductie() ? preview() : PRODUCTIE;@@    var doel = preview();@@test-bron.js@@vanaf een preview kom je niet meer terug naar de live-app"
-"public/pidlane-bron.js@@      b.textContent = '\u26a0 PREVIEW \u2014 ' + huidige() + ' \u00b7 dit is niet de live app';@@      b.textContent = '\u26a0 PREVIEW';@@test-bron.js@@de banner noemt het adres niet meer: je ziet dat het een preview is maar niet wélke"
+"public/pidlane-bron.js@@      b.textContent = '⚠ PREVIEW — ' + huidige() + ' · dit is niet de live app';@@      b.textContent = 'PREVIEW';@@test-bron.js@@de banner noemt het adres niet meer: je ziet dat het een preview is maar niet welke"
 
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 
