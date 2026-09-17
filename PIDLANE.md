@@ -913,6 +913,62 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Een stille catch in een proef maakte een timingfout onherkenbaar (#236, 17-09-2026)
+
+`bproef-contrast.js` stond twee keer rood in CI op een PR die geen thema, geen
+CSS en geen tabbladen raakte. Het uitsluiten was deze keer ongewoon hard, en
+dat is wat het geval interessant maakt:
+
+| waar | uitkomst |
+|---|---|
+| lokaal, vier runs achter elkaar | 4x groen |
+| lokaal op de basis | groen |
+| CI push-run op **dezelfde commit** | groen |
+| CI PR-run op dezelfde commit | 2x rood |
+| `refs/pull/N/merge` naast die tak | `git diff` leeg |
+
+Zelfde bestanden, andere uitkomst. Geen codewijziging dus, maar een toestand.
+
+**De keten.** `#pidViewSwitch` — de rij met weergaveknoppen waar
+`.pidview-btn.waak` in zit — staat in `index.html` op `display:none`. Eén plek
+zet hem aan, `renderGauges()`, en alleen zolang `activePIDs` gevuld is. De
+proef vult die selectie zelf in zijn opzet; blok 3 draait seconden later. Wist
+de app-boot in de tussentijd alsnog de selectie, dan verbergt `renderGauges()`
+de rij weer en is de knop waarop blok 3 zijn fout zet onzichtbaar.
+
+Wat je dan krijgt is geen lege uitslag maar een **misleidende**: de ingespoten
+kleur doet niets, er blijven drie zichtbare teksten over in `#appGrid` — de
+tabbladlabels — en die vallen in het lichte thema op contrast om. De melding
+ging dus over contrast terwijl het over zichtbaarheid ging.
+
+**Waarom niemand het zag.** Er stond een controle die dit had moeten vangen:
+*"er staan tegels om aan te meten"*. Die gebruikt `querySelectorAll`, en die
+vindt een element ook als zijn container verborgen is. In de rode run stond
+dat vinkje gewoon groen. `offsetParent === null` is de vraag die gesteld moest
+worden en die er niet stond.
+
+**En de oorzaak eronder was een stille catch — in het gereedschap zelf.** De
+opzet deed drie keer `try{ ... }catch(e){}`: de tabwissel, het vullen van
+`activePIDs`, en het zetten van de waarden. Mislukte er één, dan ging de proef
+door en mat hij een scherm dat niet stond zoals hij dacht. Dat is dezelfde
+regel als §19 (626 stille catches), maar dan op de plek waar je hem het minst
+verwacht: **een proef die zijn eigen voorwaarden stilletjes laat mislukken,
+meet iets anders dan hij zegt te meten, en meldt dat als een bevinding over de
+app.** Het kostte een uur om die melding te ontrafelen.
+
+De reparatie is dan ook tweeledig en niet "beter wachten": de opzet geeft nu
+een reden terug in plaats van te zwijgen, en blok 3 controleert zijn eigen
+voorwaarde vóór hij meet. Blok 4 bouwt de CI-situatie opzettelijk na — rij
+verborgen, en dan moet blijken dat de ingespoten fout niets meer verandert.
+Dat is de tegenproef op de poort; zonder die zou de poort alleen maar groen
+kúnnen staan.
+
+**Wat dit niet oplost.** In CI faalden drie tabbladlabels in het lichte thema
+op contrast; lokaal zijn dat er nul. Dat verschil is niet nagemeten en blijft
+staan: blok 2 meet het lichte thema met opzet niet, omdat dat thema nog niet
+af is (#141). De poort zorgt er alleen voor dat die drie niet meer als
+andermans foutmelding naar buiten komen.
+
 ### Drie kandidaten voor de bevroren WebView vielen af achter een bureau (#228, 17-09-2026)
 
 De meetdienst van 11-09 heeft de eerste helft van #18 beslist: het app-proces
