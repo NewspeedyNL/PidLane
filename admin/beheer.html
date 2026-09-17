@@ -606,6 +606,15 @@
       </div>
 
       <div class="card">
+        <h2>🧪 Preview-bron (#242)</h2>
+        <div class="hint" style="margin-bottom:8px">Het adres van een tak-build bij Cloudflare. Staat hier iets,
+          dan krijgt een beheerder in het Admin-menu van de app een knop om daarheen te gaan — en zolang de app
+          daarop draait staat er een oranje balk bovenin. Leeg = geen knop, iedereen zit op de live-app.</div>
+        <label for="bron_preview">Preview-adres</label>
+        <input type="text" id="bron_preview" placeholder="https://tak-naam-pidlane-proxy.voorbeeld.workers.dev">
+      </div>
+
+      <div class="card">
         <h2>💶 Betaallinks</h2>
         <label for="tikkie_kopen">Tokens kopen</label>
         <input type="text" id="tikkie_kopen" placeholder="https://tikkie.me/pay/…">
@@ -2042,7 +2051,7 @@ async function loadConfig(){
   // Ontbrekende functiesleutel = AAN. Dat is de afspraak met FEATURE_TOGGLES in
   // index.html: een functie die nog nooit is uitgezet, staat aan.
   FEATURES.forEach(f => zetToggle(f[0], c[f[0]], true));
-  ['banner_text','ai_system_override','tikkie_kopen','tikkie_donatie'].forEach(k => { if($(k)) $(k).value = c[k] || ''; });
+  ['banner_text','ai_system_override','tikkie_kopen','tikkie_donatie','bron_preview'].forEach(k => { if($(k)) $(k).value = c[k] || ''; });
   toon_msg(m, 'info', '');
 }
 async function saveAll(){
@@ -2060,6 +2069,7 @@ async function saveAll(){
     { Key:'ai_system_override', Value:$('ai_system_override').value,             Description:'AI system-instructie override (leeg = standaard)' },
     { Key:'tikkie_kopen',       Value:$('tikkie_kopen').value.trim(),            Description:'Tikkie-link tokens kopen (leeg = mailknop)' },
     { Key:'tikkie_donatie',     Value:$('tikkie_donatie').value.trim(),          Description:'Tikkie-link vrijwillige bijdrage (leeg = knop weg)' },
+    { Key:'bron_preview',       Value:$('bron_preview').value.trim(),            Description:'Preview-adres van een tak (#242); leeg = geen wisselknop in de app' },
     ...FEATURES.map(f => ({ Key:f[0], Value:String($('t_' + f[0])?.checked ?? true), Description:f[1] + ' aan/uit' }))
   ];
   const r = await veilig(m, () => callWorker('config','/api/config',{

@@ -6260,7 +6260,15 @@ async function startTestrun(blokken) {
   // aan bij de eerste stap en dan draagt de startregel een ander nummer dan
   // de rest.
   _liveRit = null; _liveBlok = null; _liveTel = null;
-  _liveSchrijf('info', 'testrun gestart — ' + TESTRUN_VERSIE + ' · ' + CAMPAGNE.titel);
+  /* De BRON hoort in de startregel (#242). Een preview draait dezelfde app met
+     andere code, en van buiten is het verslag van de twee niet te
+     onderscheiden — dat is precies hoe je een rit weggooit. Ontbreekt PLBron
+     (een oude schil), dan staat er niets in plaats van een verzonnen
+     "productie". */
+  var _bron = '';
+  try { _bron = (window.PLBron && typeof PLBron.stempel === 'function') ? ' · ' + PLBron.stempel() : ''; }
+  catch (e) { console.warn('Testrun: bron niet vast te stellen voor de live-log (#242)', e); }
+  _liveSchrijf('info', 'testrun gestart — ' + TESTRUN_VERSIE + _bron + ' · ' + CAMPAGNE.titel);
   _boek(0, 'Testrun ' + TESTRUN_VERSIE, 'start', CAMPAGNE.titel, null);
   // Het ritnummer als eigen regel in het verslag: dat is waarmee je later
   // terugvindt wat er die rit gemeten is, en wat je doorgeeft als iemand

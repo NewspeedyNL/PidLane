@@ -11,6 +11,25 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17j (CET) — EEN TAK RIJDEN ZONDER
+     HEM LIVE TE ZETTEN
+
+       • 🧪 PREVIEW-BRON. Staat er een preview-adres in het
+         beheerscherm, dan kan een beheerder in het
+         Admin-menu naar die versie springen. Daar draait de
+         code van één tak — getoetst, maar niet live. Zo is
+         een nieuwe proef te rijden zonder dat er iets naar
+         alle gebruikers gaat.
+
+       • ⚠ EN JE ZIET WAAR JE ZIT. Zolang de app niet op de
+         live-bron draait staat er een oranje balk bovenin
+         met het adres en een knop terug. Hij is niet weg te
+         klikken, en de testrun zet de bron ook in zijn
+         verslag — een rit op de verkeerde versie is een rit
+         die je opnieuw moet doen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17h (CET) — DE METING BLIJFT IN BEELD
 
        • ◱ EEN KLEIN VENSTER IN PLAATS VAN EEN STILLE LUS.

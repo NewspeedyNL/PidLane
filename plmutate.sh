@@ -732,6 +732,18 @@ MUTATIES=(
 "public/pidlane-pip.js@@      p.addListener('pipModus', function (ev) { modus(!!(ev && ev.in)); });@@      p.addListener('pipMode', function (ev) { modus(!!(ev && ev.in)); });@@test-pip.js@@de gebeurtenis heet anders dan wat java stuurt: het kleine venster verschijnt nooit en de volle weergave staat in 240x135"
 "native/PLPip.java@@        if (!gewenst) return;@@        if (false) return;@@test-nativeschil.js@@het venster komt op ongeacht wat de app besloot — ook met de functie uitgezet in de Config"
 ".github/workflows/build-apk.yml@@                  \"        PLPip.leaveHint(this);\",@@                  \"        // haak eruit\",@@test-nativeschil.js@@de enige haak waarop Android PiP toestaat valt weg: alles lijkt in orde en het venster gaat nooit aan"
+
+# ── OP WELKE BRON DRAAIT DE APP (#242, 17-09-2026). Een preview draait dezelfde
+# app met andere code; van buiten is het verslag van de twee niet te
+# onderscheiden. Elke fout hieronder haalt precies dat onderscheid weg, en geen
+# ervan geeft een foutmelding -- je merkt het pas bij het lezen van een rit die
+# je opnieuw moet doen.
+"public/pidlane-bron.js@@  function isProductie() { return huidige() === PRODUCTIE; }@@  function isProductie() { return huidige().indexOf('pidlane') >= 0; }@@test-bron.js@@een adres met pidlane in de naam telt als productie: de banner blijft weg op een preview"
+"public/pidlane-bron.js@@    if (!/^https:\/\/[a-z0-9.-]+(\/|$)/i.test(ruw)) {@@    if (false) {@@test-bron.js@@elk stuk tekst uit de Config wordt een navigatie, ook javascript: en data:"
+"public/pidlane-bron.js@@    if (isProductie()) return null;@@    if (false) return null;@@test-bron.js@@de previewbanner staat ook op productie: een waarschuwing die er altijd staat wordt genegeerd"
+"public/pidlane-bron.js@@    var doel = isProductie() ? preview() : PRODUCTIE;@@    var doel = preview();@@test-bron.js@@vanaf een preview kom je niet meer terug naar de live-app"
+"public/pidlane-bron.js@@      document.body.style.paddingTop = (b.offsetHeight || 24) + 'px';@@      void 0;@@test-bron.js@@de banner dekt de bovenrand af: de eerste regel van het scherm valt weg, maar alleen op een preview"
+
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de
