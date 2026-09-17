@@ -225,6 +225,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 55 | `pidlane-scanslot.js` | 6 | `PLScanSlot` — **één plek waar een scan de bus overneemt** (#191). `doe(naam, opties, werk)` claimt het busslot (en tikt het aan met `PLBus.raak()`), zet `window._plScanActief`, en geeft het werk een bewaakte `stuur()` mee met een `ATI`-hartslag. Die drie horen bij elkaar: de vlag zet de dode-socket-detectie uit, dus wie hem aanzet moet zelf merken dat de verbinding weg is. Nestelt veilig — een geneste scan zet de vlag van de lopende niet uit. Gebruikt door `deepRefreshPIDs()`; `PLKaart` heeft nog zijn eigen, in een rit getoetste uitvoering. Tests: `test-scanslot.js`, `test-diepzoeken.js` |
 | 54 | `pidlane-schil.js` | 5 | `PLSchil` — **welke APK draait dit** (#18). Leest de `versionCode` van de schil via Capacitor `App.getInfo()` en de nieuwste uit `/version.json` (die de Worker uit R2 serveert), en legt die twee naast elkaar. De kop van het testrunverslag draagt de regel `APK : build N`; blok 5 waarschuwt vóór de rit als de schil achterloopt. Ontbreekt één van beide getallen, dan is `achterstand()` **null** en nooit 0. Tests: `test-schil.js`, `test-schilproef.js` |
 | 56 | `pidlane-adapter.js` | 10 | `PLAdapter` — **het verbindingspaneel achter de OBD-chip** (#210/#211/#212, 16-09-2026). Toont wat de app al wist maar nergens liet zien: verzoeken/s, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken over twaalf minuten, en het actielogboek van `PLLoad` mét de reden per stap. Kan het tempo en de groepsgrootte laten overnemen door een mens (`PLLoad.handmatig()`, `PLBus.batchZet()`), en heeft een eigen snelheidstest van 40 s die **solo én batch** meet — dat verschil is precies wat blok 10 niet ziet. Regelt zelf niets: de automaat blijft `PLLoad`, de statistiek blijft `PLBus`. `advies()` is een pure functie en staat los van de meting. Tests: `test-adapterpaneel.js`, `bproef-adapterpaneel.js`, `bproef-schermranden.js` |
+| 57 | `pidlane-waarneming.js` | 8 | `PLWaarneming` — **de autolaag** (#225, 17-09-2026): wat er op DÉZE auto is waargenomen, over ritten heen. `meld()` kan maar één ding zeggen — *gezien* — want "gemeten dat het er niet is" bestaat niet; `weerleg()` is de enige bron die *nee* mag zeggen en dat is een mens. Bij tegenspraak beslist het moment: een waarneming van vóór een weerlegging is juist wat er weerlegd is, een van erná is nieuw bewijs. Sleutel als `PLPidLen` (`vin \|\| merk\|model\|jaar`); geen sleutel = geen opslag, en dan zegt `reikwijdte` `sessie`. `PLAandrijving.tik()` promoveert de start/stop-stop erheen. Tests: `test-waarneming.js`, `test-meetcontext.js`, blok 5 |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
 
 ### `native/` — de enige map met code die niet in de browser draait (11-09-2026)
@@ -910,6 +911,132 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
 2. Afgehandeld én ouder dan twee weken gaat naar `PIDLANE-ARCHIEF.md`. Niet
    weggegooid — verplaatst naar een bestand dat je gericht doorzoekt in plaats
    van standaard laadt.
+
+
+### Drie kandidaten voor de bevroren WebView vielen af achter een bureau (#228, 17-09-2026)
+
+De meetdienst van 11-09 heeft de eerste helft van #18 beslist: het app-proces
+leeft, 310 native slagen over 310 seconden. De tweede helft bleef staan — de
+WebView valt stil na **59, 59 en 60 s**, drie metingen, één getal, ongeacht hoe
+lang de app wegblijft. #18 is daarna gesloten, en sindsdien zendt de app elke
+rit een bevinding uit die naar een gesloten issue wijst. Die helft heeft nu een
+eigen nummer.
+
+**Wat er is nagezocht, en wat dat kostte: geen rit.**
+
+| kandidaat | wat de bron zegt |
+|---|---|
+| de renderer staat op lage prioriteit als hij verborgen is | omgekeerd: de standaard is `RENDERER_PRIORITY_IMPORTANT` **ongeacht zichtbaarheid**, en dat is het maximum. Er is geen knop om hoger te zetten |
+| Chromium bevriest de pagina | die functie **raakt WebView niet**, en het getal is 5 minuten en geen 60 seconden |
+| Capacitor zet de timers zelf stil | `BridgeActivity.onPause/onStop` roept alleen `bridge.onPause()` aan; nergens `pauseTimers()` of `webView.onPause()` |
+
+Ik had de eerste zelf als hypothese in het issue gezet, met een eenregelige
+reparatie erbij. Die regel was een no-op. Dat staat er nu bij, herzien en niet
+weggepoetst — de redenering was plausibel en precies daarom is hij het
+opschrijven waard.
+
+**Wat overblijft zijn twee richtingen, en één stap kiest ertussen.** De app
+zichtbaar houden (picture-in-picture), of de meetlus uit de renderer halen
+(native). Het verschil tussen de achtergrond en split-screen is precies één
+ding:
+
+| | zichtbaar | vooraan |
+|---|---|---|
+| achtergrond | nee | nee |
+| split-screen | **ja** | nee |
+
+Loopt de lus in split-screen door, dan is zichtbaarheid de trekker en is
+picture-in-picture een oplossing in plaats van een gok. Stopt hij alsnog, dan
+is het procesbeheer van het toestel en helpt alleen native. De stap
+`splitscreen` in de begeleide run (toestelronde, stilstaand, twee minuten)
+leest daarvoor twee instrumenten die er al stonden: `PLRit.gaten()` voor de
+gaten en `PLAchtergrond.sinds()` voor de controlevraag *meldde Android de
+pagina überhaupt als verborgen*. Meldt hij dat wél, dan is split-screen op dit
+toestel geen ander geval dan de achtergrond, en dan zegt de stap dat in plaats
+van stil de verkeerde conclusie te dragen.
+
+**En hoe anderen het opgelost hebben, want dat scheelt het wiel.** De
+achtergrond-geolocatieplugins voor Capacitor beschrijven dezelfde faalvorm —
+*posities worden in JavaScript verzameld, JavaScript stopt zodra het OS de
+webview opschort, en je houdt een spoor met gaten over* — en kiezen allemaal
+dezelfde vorm: een native wachtrij die app-herstarts overleeft, met het
+JS-event als aftakking daarop. Niet andersom. AndrOBD, de open-source
+referentie in deze categorie, is volledig native met een foreground service van
+het type `connectedDevice`; dat type doen wij al precies zo, en het verschil
+zit één laag hoger: bij hen woont de meetlus in dezelfde native laag als de
+verbinding, bij ons in de renderer.
+
+
+### Een eigenschap van de auto werd bewaard als eigenschap van de meting (#225, 17-09-2026)
+
+De voorvulling van vanochtend werkt, en liet daarmee zien waar de echte
+kwestie zat. `startStopGezien` leeft in `PLAandrijving`, en die stand wordt bij
+elke nieuwe verbinding terecht gewist — *"de motor heeft gedraaid" mag geen
+feit worden dat een herverbinding overleeft*. Maar er stonden **twee** dingen
+in die ene vlag:
+
+| | verandert het? | waar hoort het |
+|---|---|---|
+| deze auto **heeft** start/stop | nooit | bij de auto |
+| start/stop was **actief tijdens deze meting** | elke rit | bij de sessie |
+
+Het eerste werd bewaard alsof het het tweede was, en dus elke sessie
+weggegooid. Dat is de reden dat het venster die vraag elke keer opnieuw stelde
+— en de vraag zelf zegt het letterlijk, met twee vragen achter één antwoordknop:
+*"Zet de motor zichzelf uit bij stilstand, **en** stond dat aan tijdens deze
+meting?"*
+
+**Dit patroon stond al drie keer in de repo.** `PLPidLen` (bytelengtes),
+`PLPidVorm` (byte-statistiek) en `loadSessions`/`vehicleBaseline` (geleerde
+normalen) bewaren alle drie per voertuig, met dezelfde sleutel en met dezelfde
+reden in hun eigen commentaar: *anders begint een andere auto met andermans
+afwijkingen*. De meetcontext was de vierde van die rij en de enige die niets
+onthield — niet omdat dat beter is, maar omdat hij als vragenlijst geboren is
+en niet als waarneming.
+
+`pidlane-waarneming.js` is die laag, met één bewoner om te beginnen.
+
+**De asymmetrie staat nu in de API en niet in een regel die je moet onthouden.**
+`meld()` kan maar één ding zeggen: *gezien*. Er is geen manier om "gemeten dat
+het er niet is" op te schrijven, want die meting bestaat niet. Dat is een
+zwaardere vorm dan een vlag met een afspraak eromheen: een vlag met twee
+kanten nodigt uit om de stilte als "nee" te lezen, en dat is precies de fout
+waar #62 voor bestaat.
+
+**Wie wint bij tegenspraak: het moment.** Een weerlegging corrigeert de
+waarnemingen die er op dat moment lagen, niet de toekomst.
+
+| | uitkomst | waarom |
+|---|---|---|
+| waarneming vóór de weerlegging | weerlegging blijft | dát is wat er weerlegd is |
+| waarneming ná de weerlegging | waarneming wint | nieuw bewijs gaat vóór een bewering |
+
+Zonder die volgorderegel krijg je één van twee: een gebruiker die de app niet
+kan corrigeren omdat de volgende tik zijn correctie terugzet, of een app die
+zich nooit kan herstellen van een foute correctie. Beide zijn erger dan de
+regel.
+
+**Wat er níét in zit.** De stabiliteitsvraag hoort hier niet thuis: die gaat
+over déze meting en `PLAanlevering` meet hem al fijner dan een mens hem kan
+beantwoorden. En de weerlegknop zelf staat er nog niet — `weerleg()` bestaat en
+is getoetst, maar het venster gebruikt hem nog niet. Dat is de volgende snee,
+en hij hangt aan het besluit in #64 over hoe dat venster eruit gaat zien.
+
+**Wat dit kan kosten, en wat dat tegenhoudt.** Een register onthoudt ook een
+fóúte waarneming. Daarom draagt elk feit zijn bewijs (toerental, snelheid,
+011F, de bron van "heeft gedraaid"), blijft het moment van de eerste
+waarneming staan in plaats van mee te schuiven, en overleeft het bewijs een
+weerlegging in `gecorrigeerd` — de vergissing is leerzamer dan de correctie, en
+zonder dat bewijs is achteraf niet te zien waar de app naar keek toen hij het
+misdeed.
+
+**De schuld die hierbij hoort, genoteerd en niet verstopt.** De sleutel is
+dezelfde als die van `PLPidLen`: `vin || merk|model|jaar`, met de VIN ruw in de
+opslagsleutel. Op het toestel is dat geen schending van §7 — die gaat over de
+uitgaande paden — maar het is de vierde plek waar dat nu staat. Alle vier
+tegelijk naar `_vlVinPseudoniem()` verhuizen is mechanisch werk en dus een
+eigen commit, en het moment dat het écht gaat tellen is zodra een profiel de
+telefoon verlaat. Staat in #225.
 
 
 ### De start/stop-vraag hoeft niet meer blind gesteld te worden (#64, 17-09-2026)

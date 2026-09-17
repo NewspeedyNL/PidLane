@@ -2551,6 +2551,59 @@ const PROEVEN_B5 = [
     }
   },
 
+  // \u2500\u2500 weet deze auto volgende rit nog wat hij liet zien? (#225) \u2500\u2500
+  // De aandrijfstatus hierboven is een SESSIElaag: bij elke herverbinding
+  // begint hij terecht op nul, want "de motor heeft gedraaid" zegt niets over
+  // de volgende rit. Maar "deze auto HEEFT start/stop" is geen eigenschap van
+  // de meting \u2014 die verandert nooit, en werd tot vandaag toch elke sessie
+  // weggegooid. Dat is de reden dat het meetcontextvenster die vraag elke keer
+  // opnieuw stelde.
+  //
+  // test-waarneming.js toetst het register en de promotie op verzonnen
+  // monsters. Wat daar niet te maken is, is een ECHTE auto met een echte
+  // sleutel en een echte opslag: of `vehicleInfo` op tijd een VIN draagt, of
+  // localStorage op dit toestel werkt, en of de waarneming van vorige week er
+  // nog staat. Dat is precies wat hier gemeten wordt.
+  {
+    issue: '#225',
+    naam: 'Wat deze auto liet zien, weet hij volgende rit nog',
+    waarom: 'Een eigenschap van de auto die als eigenschap van de meting bewaard wordt, is elke sessie opnieuw een vraag aan de gebruiker \u2014 vlak v\u00f3\u00f3r een betaalde analyse.',
+    proef: function () {
+      if (!window.PLWaarneming || typeof PLWaarneming.lees !== 'function')
+        return { staat: 'FOUT', detail: 'PLWaarneming ontbreekt \u2014 dan begint elke sessie weer op nul en komt de start/stop-vraag elke rit terug (#225)' };
+
+      var w = PLWaarneming.lees('startstop');
+      var stand = (window.PLAandrijving && typeof PLAandrijving.laatste === 'function') ? PLAandrijving.laatste() : null;
+
+      // DE STILLE BREUK. De sessie heeft de stop gezien en het register weet
+      // het niet: dan is de promotie in tik() eruit gevallen. Alles blijft
+      // werken, de balk klopt, en het enige wat je merkt is dat de vraag
+      // volgende rit terug is \u2014 en dat merk je pas volgende rit.
+      if (stand && stand.startStopGezien && w.status !== 'gezien')
+        return { staat: 'FOUT', detail: 'de sessie zag een start/stop-stop maar het register staat op "' + w.status +
+          '" \u2014 de promotie van sessie naar auto is eruit gevallen (#225)' };
+
+      var sleutel = PLWaarneming.sleutel();
+      var waar = !sleutel ? 'nog geen auto herkend (geen VIN en geen merk), dus dit blijft bij deze sessie'
+        : (w.reikwijdte === 'auto' ? 'vastgelegd bij deze auto' : 'de opslag doet het niet \u2014 het blijft bij deze sessie');
+
+      if (w.status === 'gezien') {
+        var b = w.bewijs || {};
+        return { staat: 'ok', detail: 'start/stop: GEZIEN op ' + new Date(w.wanneer).toLocaleString('nl-NL') +
+          ' (' + (w.bron || 'onbekende bron') + ')' +
+          (b.looptijd != null ? ', 011F ' + b.looptijd + ' s' : '') +
+          (b.rpm != null ? ', ' + b.rpm + ' tpm' : '') + ' \u2014 ' + waar +
+          '. Het venster stelt hier "ja" voor, ook als deze rit geen stop oplevert.' };
+      }
+      if (w.status === 'weerlegd')
+        return { staat: 'ok', detail: 'start/stop: door de gebruiker weerlegd op ' + new Date(w.wanneer).toLocaleString('nl-NL') +
+          ' \u2014 ' + waar + '. Een nieuwe waarneming van n\u00e1 dat moment wint alsnog.' };
+
+      return { staat: 'LET OP', detail: 'over start/stop is op deze auto nog niets vastgelegd \u2014 ' + waar +
+        '. Niet-weten is hier de juiste uitkomst: niets-zien bewijst niet dat de auto het niet heeft. Sta \u00e9\u00e9n keer stil met een warme motor en dit vult zichzelf.' };
+    }
+  },
+
   // ── wijst "Welk onderdeel?" alleen sensoren aan die écht zwijgen? ──
   // Gemeld met een schermafdruk erbij: brandstofpeil en afstand-met-MIL-aan
   // als "sterke aanwijzing — draadbreuk, stekker of sensor", op een auto waar
@@ -6645,6 +6698,95 @@ const _STAPPEN = [
     markering: 'logboek nagelopen',
     controle: function () { return { ok: true, tekst: 'jouw oordeel staat hieronder in het verslag' }; }
   },
+  /* ── SPLIT-SCREEN: IS HET ZICHTBAARHEID OF IS HET HET TOESTEL? (#228) ──
+
+     De meetdienst heeft de eerste helft van #18 beslist: het app-proces leeft
+     (310 native slagen over 310 s). De tweede helft bleef staan — de WEBVIEW
+     valt na 59, 59 en 60 s stil, drie keer hetzelfde getal ongeacht hoe lang
+     de app wegblijft.
+
+     WAT ER OP 17-09 IS AFGEVALLEN, ZONDER RIT:
+
+       de renderer-prioriteit   de Android-documentatie zegt dat de standaard
+                                al RENDERER_PRIORITY_IMPORTANT is, ongeacht
+                                zichtbaarheid. Er is geen knop om hoger te
+                                zetten; IMPORTANT is het maximum.
+       Chromium's bevriezing    die raakt WebView niet, en het getal is 5
+                                minuten en geen 60 seconden.
+       het framework            Capacitor 8 roept nergens pauseTimers() of
+                                webView.onPause() aan.
+
+     Wat overblijft zijn TWEE richtingen, en deze stap kiest ertussen. In
+     split-screen blijft de WebView ZICHTBAAR terwijl een andere app de focus
+     heeft. Loopt de lus dan door, dan is zichtbaarheid de trekker en is
+     picture-in-picture een echte oplossing. Stopt hij alsnog, dan is het
+     procesbeheer van het toestel en helpt alleen een native meetlus.
+
+     DE PROEF KOST NIETS: geen rit, geen tokens, geen nieuwe schil. Hij leest
+     twee instrumenten die er al zijn — PLRit voor de gaten en PLAchtergrond
+     voor de vraag óf Android de pagina überhaupt als verborgen meldde. Dat
+     tweede is geen bijvangst maar de controlevraag: meldt Android split-screen
+     tóch als verborgen, dan meet deze stap de oude vraag opnieuw en niet de
+     nieuwe, en dan hoort dat er met zoveel woorden te staan. */
+  {
+    id: 'splitscreen',
+    ronde: 'toestel', nodig: 'auto', issues: ['#228'],
+    titel: 'Split-screen — blijft de meting lopen als de app zichtbaar is maar niet vooraan?',
+    waarom: '#228 heeft nog twee kandidaten over en dit is het enige dat ze scheidt. Op de achtergrond is de WebView verborgen én staat de app niet vooraan; in split-screen is hij zichtbaar en staat hij niet vooraan. Precies één verschil, en dus een antwoord in plaats van een vermoeden.',
+    wat: 'Stilstaand, met de adapter verbonden. Druk op de knop, zet PidLane daarna in split-screen (veeg omhoog, houd het app-icoon vast → "Split screen view") en open er een andere app naast — bijvoorbeeld de navigatie, want dat is het echte gebruiksgeval. Zorg dat PidLane ZICHTBAAR blijft en tik in de andere app. Wacht twee minuten, kom terug en druk op Verder.',
+    actie: { label: '◧ Ik ga nu naar split-screen', fn: function () {
+      plMarkeer('split-screen in', 'app naar split-screen — zichtbaar maar niet vooraan; dit scheidt de twee kandidaten van #228');
+      return 'moment vastgelegd; zet nu split-screen aan en kom over twee minuten terug';
+    } },
+    knop: 'Terug — verder',
+    markering: 'split-screenproef afgesloten',
+    leeft: function () {
+      const m = _markeringen.filter(function (x) { return /split-screen in/i.test(x.tekst); }).pop();
+      if (!m) return 'nog niet gemarkeerd — druk eerst op de knop hierboven';
+      const weg = Math.round((_nu() - m.ms) / 1000);
+      return Math.floor(weg / 60) + ' min ' + (weg % 60) + ' s sinds de markering';
+    },
+    controle: function () {
+      const m = _markeringen.filter(function (x) { return /split-screen in/i.test(x.tekst); }).pop();
+      if (!m) return { ok: false, tekst: 'geen split-screenmarkering gezet — dan is er niets om een gat aan af te meten en blijft #228 op twee kandidaten staan' };
+      const weg = Math.round((_nu() - m.ms) / 1000);
+      // De drie metingen van 11-09 kwamen op 59, 59 en 60 s aanlooptijd. Korter
+      // dan anderhalve minuut bewijst dus niets: dan was je binnen de drempel.
+      if (weg < 90) return { ok: false, tekst: 'pas ' + weg + ' s in split-screen; de stilte begon op 11-09 drie keer pas na ~60 s, dus korter dan anderhalve minuut zegt niets' };
+
+      let gaten = [];
+      try { gaten = PLRit.gaten() || []; } catch (e) { return { ok: false, tekst: 'PLRit.gaten() onbereikbaar — de proef kan niets zeggen' }; }
+      const sinds = gaten.filter(function (g) { return g.van >= m.ms - 2000; });
+      const grootste = sinds.reduce(function (a, g) { return Math.max(a, g.s || 0); }, 0);
+
+      // DE CONTROLEVRAAG. PLAchtergrond hangt aan visibilitychange. Meldt hij
+      // een periode, dan noemde Android deze app verborgen en is split-screen
+      // hier geen ander geval dan de achtergrond — dan meet deze stap de oude
+      // vraag opnieuw, en dat hoort er te staan in plaats van stil de conclusie
+      // te vervuilen.
+      let bg = [];
+      try { bg = (window.PLAchtergrond && typeof PLAchtergrond.sinds === 'function') ? (PLAchtergrond.sinds(m.ms - 2000) || []) : []; }
+      catch (e) { console.warn('PLAchtergrond onleesbaar bij de split-screenstap', e); }
+
+      const staart = ' | ' + weg + ' s split-screen, ' + sinds.length + ' onderbreking(en), grootste ' + grootste + ' s';
+
+      if (bg.length)
+        return { ok: true, tekst: 'ANDROID MELDDE DE PAGINA TOCH ALS VERBORGEN (' + bg.length + ' periode(n)). Split-screen is op dit toestel dus geen ander geval dan de achtergrond, ' +
+          'en deze proef scheidt de twee kandidaten van #228 hier niet. Noteer merk en Android-versie erbij — dat de app zichtbaar op het scherm stond en tóch als verborgen telt, is zelf de bevinding.' + staart };
+
+      if (grootste >= 30)
+        return { ok: true, tekst: 'ZICHTBAAR EN TOCH STIL: de WebView stond in beeld, Android meldde geen enkele verborgen periode, en de meetlus viel alsnog ' + grootste + ' s stil. ' +
+          'Dan is zichtbaarheid NIET de trekker en helpt picture-in-picture niet — #228 gaat richting een native meetlus.' + staart };
+
+      if (!sinds.length)
+        return { ok: true, tekst: 'ZICHTBAAR EN DOORGELOPEN: geen enkel gat terwijl een andere app de focus had. Dan is ZICHTBAARHEID de trekker, ' +
+          'en is picture-in-picture een echte oplossing voor #228 in plaats van een gok.' + staart };
+
+      return { ok: true, tekst: 'zichtbaar gebleven en grootste gat ' + grootste + ' s — te klein voor de stilte uit #228 (die duurt minuten), maar de lus haperde wel. ' +
+        'Herhaal deze stap voordat je er een richting op bouwt.' + staart };
+    }
+  },
+
   // ── DE TWEE STAPPEN DIE OP 09-09-2026 IN CAMPAGNE STONDEN EN NIET GEBEURDEN ──
   // Ze stonden als losse tekst in CAMPAGNE, en de bestuurder liep de begeleide
   // run af — dertien eigen stappen, waar deze twee niet in zaten. Gevolg: #64
