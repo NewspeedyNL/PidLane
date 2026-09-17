@@ -11,7 +11,7 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-09-16c (CET) — "WELK ONDERDEEL?" WEES DE
+     Build: 2026-09-17a (CET) — "WELK ONDERDEEL?" WEES DE
      VERKEERDE AAN
 
        • 🔩 EEN TRAGE SENSOR IS NIET KAPOT. Het paneel meldde
@@ -64,6 +64,37 @@
          distributieketting, wervelkleppen, secundaire lucht, de
          automaat, U-codes (het netwerk, geen onderdeel) en het
          stuurapparaat zelf.
+     Build: 2026-09-16c (CET) — KLEIN GRUT, EN ÉÉN RIT DIE MEER SLUIT
+
+       • 📝 JE KIEST NU ZELF DE BESTANDSNAAM. In het opslaan-
+         venster staat een veld boven de opmerking, voorgevuld
+         met de naam die je anders ook gekregen had. De extensie
+         volgt uit de knop. Een getypte schuine streep, dubbele
+         punt of geplakte regel wordt opgeruimd zonder é en ü te
+         slopen; leeg laten valt netjes terug in plaats van een
+         bestand zonder naam op te leveren (#207).
+
+       • 🔋 BLOK 5 MEET DE BOORDSPANNING. Nieuw: één rit zegt nu
+         of de spanning binnen 11,5–15,2 V bleef. Staat 0142 niet
+         in je selectie, dan leest de proef hem uit de waakronde.
+         Dat is de meting die #217 sluit — vier modules die
+         tegelijk in storing gaan is het beeld van onderspanning,
+         niet van een verstoorde bus.
+
+       • 🎯 DE CAMPAGNE ZEGT WAT ÉÉN RUN AFMAAKT. Bovenaan staat
+         nu welke issues met deze ene rit dicht kunnen en waarop
+         dat rust, in plaats van alleen wat er gemeten wordt.
+
+       • 🧹 EEN TESTREGEL DIE NIETS DEED IS WEG. bproef-vinlek.js
+         zette window.connected, maar dat is een lexicale binding
+         en geen window-eigenschap — de regel leek iets te doen
+         en deed niets (#186).
+
+       • ✅ DRIE ISSUES GESLOTEN MET EEN BESLUIT, NIET MET CODE.
+         De drempel voor "beweegt" blijft 2%, de renderer die na
+         59–60 s stilvalt wordt geaccepteerd, en admin.html blijft
+         staan. De redenen staan in §11 — met de heropen-trigger
+         erbij, zodat het geen stilzwijgen is (#161, #202, #139).
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven

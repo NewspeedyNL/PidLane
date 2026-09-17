@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// test-export.js — de PDF-opbouw van pidlane-export.js
+// test-export.js — de PDF-opbouw en de bestandsnaam van pidlane-export.js
 // ──────────────────────────────────────────────────────────────────
 // Draait plMaakPdf() met een nagemaakte jsPDF en kijkt welke tekenopdrachten
 // eruit komen. Zo is te toetsen wat je anders alleen met je ogen op een
@@ -44,6 +44,54 @@ global.Blob=function(){}; global.URL={createObjectURL:()=>'',revokeObjectURL(){}
 
 eval(fs.readFileSync(path.join(__dirname,'pidlane-export.js'),'utf8'));
 
+// ══════════════════════════════════════════════════════════════════
+// DE BESTANDSNAAM (#207)
+// ──────────────────────────────────────────────────────────────────
+// Sinds #207 typt een mens de naam zelf, en dan komt er vroeg of laat een
+// schuine streep, een dubbele punt of een geplakte regel met een tab in.
+// _veiligeNaam() moet dat opruimen zonder é en ü te slopen, en moet nooit
+// een lege naam teruggeven — dan heet het bestand ".txt" en is het weg.
+//
+// Op de échte functie: window._plVeiligeNaam komt uit de module hierboven.
+var naamFout = 0;
+{
+  const V = window._plVeiligeNaam;
+  if (typeof V !== 'function') {
+    console.log('  FOUT  _plVeiligeNaam ontbreekt — is de export gewijzigd?');
+    process.exit(1);
+  }
+  const T = 'pidlane-rapport';
+  const nt = (naam, gemeten, verwacht) => {
+    if (String(gemeten) === String(verwacht)) { console.log('  ok    ' + naam); }
+    else { naamFout++; console.log('  FOUT  ' + naam + '\n        kreeg "' + gemeten + '", wilde "' + verwacht + '"'); }
+  };
+
+  console.log('\n— de bestandsnaam —');
+  nt('een gewone naam blijft heel',        V('rit naar Zwolle', T), 'rit naar Zwolle');
+  nt('accenten overleven',                 V('meting café ü ø', T), 'meting café ü ø');
+  nt('een schuine streep wordt een streepje', V('rit 12/9', T), 'rit 12-9');
+  nt('een dubbele punt ook',               V('meting 10:45', T), 'meting 10-45');
+  nt('backslash ook',                      V('map\\rit', T), 'map-rit');
+  nt('een geplakte regel met een tab',     V('rit\tnaar\nhuis', T), 'rit-naar-huis');
+  nt('zelf getypte .txt gaat eraf',        V('rapport.txt', T), 'rapport');
+  nt('zelf getypte .PDF ook',              V('rapport.PDF', T), 'rapport');
+  nt('maar een punt middenin blijft',      V('rit 12.9 naar huis', T), 'rit 12.9 naar huis');
+  nt('een beginpunt gaat eraf (verborgen bestand)', V('.verborgen', T), 'verborgen');
+  nt('een punt aan het eind gaat eraf',    V('rapport.', T), 'rapport');
+  nt('dubbele spaties worden er een',      V('rit    naar   huis', T), 'rit naar huis');
+
+  // De twee die het ergst zijn: een naam die verdwijnt.
+  nt('leeg valt terug op de standaard',    V('', T), T);
+  nt('alleen spaties ook',                 V('   ', T), T);
+  nt('alleen leestekens ook',              V('///:::', T), T);
+  nt('null valt terug',                    V(null, T), T);
+
+  // Lengte: een geplakte alinea mag geen bestandsnaam van 4 kB worden.
+  const lang = V('x'.repeat(400), T);
+  nt('een te lange naam wordt afgekapt op 80', lang.length, 80);
+}
+
+
 const tekst=[
  'PIDLANE TESTRUN 1.1 (17-08-2026)',
  '════════════════════════════════════════════════',
@@ -82,6 +130,7 @@ window.plMaakPdf('proef.pdf',tekst,{titel:'Testrun 1.1',ondertitel:'Koude start'
   toets('emoji zijn eruit gefilterd', !teksten.some(t=>/[\u{1F000}-\u{1FAFF}]/u.test(t)));
   toets('scheidingslijnen als lijn, niet als streepjes', !teksten.some(t=>/^-{10,}$/.test(t.trim())));
 
-  console.log('\n'+(fout?fout+' test(s) gefaald':'alle tests geslaagd'));
-  process.exit(fout?1:0);
+  const totaal = fout + naamFout;
+  console.log('\n'+(totaal?totaal+' test(s) gefaald':'alle tests geslaagd'));
+  process.exit(totaal?1:0);
 }).catch(function(e){ console.log('  FOUT  plMaakPdf gooide: '+e.message); process.exit(1); });
