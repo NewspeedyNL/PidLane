@@ -933,10 +933,10 @@ if (!(half > basis * 1.5)) …           // eist meer dan de helft erbij
 `handmatig(true)` neemt met opzet de stand over die er stond — het commentaar
 erboven in `pidlane-plload.js` zegt dat er letterlijk bij: *"Anders springt het
 tempo bij het omzetten, en dan meet je na het omschakelen iets anders dan waar
-je naar keek."* En de automaat stond op dat moment op 55%. Blok 10 noteerde
-zeventien seconden later `mult 1.76` bij `handmatig:false`; op het moment van
-de proef was het 1.82. Het schuifje ging dus van 55% naar 50%, en dat is 10%
-verschil waar de proef er meer dan 50% van eiste.
+je naar keek."* En de automaat stond op dat moment op 55%. Blok 4 noteerde
+achttien seconden later `{"tempoPct":57,"mult":1.76,"handmatig":false}`; op het
+moment van de proef was het 1.82. Het schuifje ging dus van 55% naar 50%, en
+dat is 10% verschil waar de proef er meer dan 50% van eiste.
 
 De getallen sluiten op de milliseconde. Profiel `caravan` geeft 010C een
 override van 200 ms bij `mult 1.1`, de verbindingsstrategie stond op "snel"
@@ -951,11 +951,12 @@ override van 200 ms bij `mult 1.1`, de verbindingsstrategie stond op "snel"
 ijkpunt van de proef verhuist naar de handmatige stand zelf: eerst overnemen,
 dan 100%, dán 50%, en het interval hoort exact te verdubbelen (twee ms speling
 voor de afronding, meer niet). De oude vorm kon alleen groen staan als de
-automaat toevallig op 100% zat, en dát is wat hem drie weken groen hield:
-`bproef-adapterpaneel.js` draaide dezelfde vergelijking in een browser zonder
-bus, waar `_mult` per definitie 1.0 is. Een proef die alleen in het gunstigste
-geval iets meet, meet niets — dezelfde vorm als `test-healthgate.js` (§11,
-elders in dit hoofdstuk).
+automaat toevallig op 100% zat — en precies daar draaide hij tot nu toe.
+`bproef-adapterpaneel.js` doet dezelfde vergelijking in een browser zonder bus,
+waar `_mult` per definitie 1.0 blijft, dus die stond groen vanaf de dag dat het
+paneel er kwam. De eerste keer dat de vorm in een auto belandde, was het meteen
+raak. Een proef die alleen in het gunstigste geval iets meet, meet niets —
+dezelfde vorm als `test-healthgate.js` (§11, elders in dit hoofdstuk).
 
 **En daarom staat hij nu ook in node.** `test-adapterpaneel.js` bouwt de stand
 van 17-09 na — caravan, "snel", automaat op 1.82 — en legt beide kanten vast:
