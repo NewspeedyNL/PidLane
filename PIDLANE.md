@@ -912,6 +912,65 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Blok 5 meldde een dood schuifje dat gewoon werkte (17-09-2026)
+
+De testrun van 17-09 om 06:51 gaf één FOUT, en die ging niet over de app:
+
+> `De handmatige stand van het adapterpaneel verzet het tempo echt` — *op 50%
+> tempo bleef het interval van 010C op 308 ms staan (was 280 ms) — de
+> handmatige multiplier komt niet in `pidPollInterval()` aan.*
+
+**Hij kwam er wél aan.** De proef las het ijkpunt vóór het overnemen:
+
+```js
+var basis = pidPollInterval('010C');   // ← de AUTOMAAT, niet het schuifje
+PLLoad.handmatig(true, 'blok 5');
+PLLoad.zetTempo(50);
+var half = pidPollInterval('010C');
+if (!(half > basis * 1.5)) …           // eist meer dan de helft erbij
+```
+
+`handmatig(true)` neemt met opzet de stand over die er stond — het commentaar
+erboven in `pidlane-plload.js` zegt dat er letterlijk bij: *"Anders springt het
+tempo bij het omzetten, en dan meet je na het omschakelen iets anders dan waar
+je naar keek."* En de automaat stond op dat moment op 55%. Blok 10 noteerde
+zeventien seconden later `mult 1.76` bij `handmatig:false`; op het moment van
+de proef was het 1.82. Het schuifje ging dus van 55% naar 50%, en dat is 10%
+verschil waar de proef er meer dan 50% van eiste.
+
+De getallen sluiten op de milliseconde. Profiel `caravan` geeft 010C een
+override van 200 ms bij `mult 1.1`, de verbindingsstrategie stond op "snel"
+(`_pollMult 0.7`), en dat maakt de onverkorte 154 ms:
+
+| | multiplier | interval |
+|---|---|---|
+| automaat, 55% | 1.82 | 154 × 1.82 = **280 ms** |
+| met de hand, 50% | 2.00 | 154 × 2.00 = **308 ms** |
+
+**Wat er verandert.** Niet de app — die deed precies wat er bedoeld was. Het
+ijkpunt van de proef verhuist naar de handmatige stand zelf: eerst overnemen,
+dan 100%, dán 50%, en het interval hoort exact te verdubbelen (twee ms speling
+voor de afronding, meer niet). De oude vorm kon alleen groen staan als de
+automaat toevallig op 100% zat, en dát is wat hem drie weken groen hield:
+`bproef-adapterpaneel.js` draaide dezelfde vergelijking in een browser zonder
+bus, waar `_mult` per definitie 1.0 is. Een proef die alleen in het gunstigste
+geval iets meet, meet niets — dezelfde vorm als `test-healthgate.js` (§11,
+elders in dit hoofdstuk).
+
+**En daarom staat hij nu ook in node.** `test-adapterpaneel.js` bouwt de stand
+van 17-09 na — caravan, "snel", automaat op 1.82 — en legt beide kanten vast:
+het interval volgt de handmatige multiplier, en overnemen laat het interval
+staan waar het stond. Twee mutaties in `plmutate.sh` houden dat scherp: `lm`
+vastzetten op 1 (`pidPollInterval()` kijkt niet meer naar `PLLoad.mult()`), en
+`handmatig(true)` naar 1.0 laten springen in plaats van de stand over te nemen.
+
+**De les zit in de vorm, niet in de uitkomst.** Deze proef vergeleek twee
+metingen uit verschillende toestanden en noemde het verschil een bewijs. Een
+FOUT die de app aanwijst terwijl de proef zelf schuift is duurder dan geen
+proef: hij kost een ronde aan zoeken in code die niets mankeert. De vraag bij
+een verschilmeting is dus niet alleen "meet ik het goede getal" maar "liggen
+mijn twee metingen in dezelfde toestand".
+
 ### De EV-modus klemde vast, en de aandrijfstatus die eruit volgde (17-09-2026)
 
 Gevonden door de code te lezen, niet door een storing: er was geen melding en

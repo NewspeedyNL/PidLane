@@ -22,6 +22,8 @@
 //   4. De echo-krimp (#211) — verkleint de groep op herhaalde antwoorden, en
 //      stopt hij bij 2 in plaats van door te zakken naar 1?
 //   5. Een vastgezette groep — houdt die de automaat buiten de deur?
+//   6. pidPollInterval() — komt de handmatige multiplier daar werkelijk
+//      aan, en laat overnemen het tempo staan waar het stond? (17-09-2026)
 //
 // WAT HIER NIET TE TOETSEN VALT: of het paneel er goed uitziet en of de
 // grafiek klopt. Dat is de DOM, en die kant staat in bproef-adapterpaneel.js.
@@ -215,6 +217,52 @@ console.log('\n── de handmatige stand ──');
   // Teruggeven levert de automaat zijn eigen stand terug.
   L.handmatig(false, 'proef terug');
   toets('teruggeven aan de automaat neemt de handmatige stand over', L.mult(), voor);
+}
+
+console.log('\n── het schuifje komt aan in pidPollInterval() ──');
+/* WAT HIER IS MISGEGAAN, 17-09-2026. Blok 5 meldde FOUT: "op 50% tempo bleef
+   het interval van 010C op 308 ms staan (was 280 ms) — de handmatige
+   multiplier komt niet in pidPollInterval() aan". De app deed niets verkeerd.
+   Die proef las het ijkpunt vóór het overnemen, en de automaat stond op dat
+   moment op 55% (mult 1.82, profiel caravan, strategie "snel"). Van 55% naar
+   50% is 10% verschil, en de proef eiste er meer dan 50% bij.
+
+   Deze sectie legt beide kanten vast met de getallen van die run: het interval
+   volgt de handmatige multiplier, en overnemen laat het tempo met opzet staan
+   waar het stond — dáárom hoort het ijkpunt in de handmatige stand te liggen.
+   Zie §11. */
+{
+  const s = bouw();
+  // De stand van 17-09 nagebouwd: profiel caravan, strategie "snel".
+  vm.runInContext('actiefPollProfiel = function(){ return "caravan"; }; _pollMult = 0.7;', s);
+  const L = s.PLLoad;
+  waar('pidPollInterval() is uit de bron geladen', typeof s.pidPollInterval === 'function',
+    'kreeg ' + typeof s.pidPollInterval + ' — is de functie hernoemd of naar een andere module verhuisd?');
+
+  L._mult = 1.82;
+  toets('de automaat op 55% geeft het interval van 17-09', s.pidPollInterval('010C'), 280);
+
+  L.handmatig(true, 'proef');
+  L.zetTempo(100);
+  const vol = s.pidPollInterval('010C');
+  L.zetTempo(50);
+  const half = s.pidPollInterval('010C');
+  toets('100% tempo geeft het onverkorte interval', vol, 154);
+  toets('en 50% tempo verdubbelt dat', half, 308);
+  waar('het schuifje komt dus wél aan', Math.abs(half - vol * 2) <= 2,
+    vol + ' ms → ' + half + ' ms, verwacht ' + (vol * 2) + ' ms');
+}
+{
+  // En dit is waaróm het ijkpunt in de handmatige stand hoort: overnemen laat
+  // het tempo staan waar het stond. Het interval mag op het moment van
+  // omzetten niet springen — wie hier vóór het overnemen meet, meet de
+  // automaat en niet het schuifje.
+  const s = bouw();
+  vm.runInContext('actiefPollProfiel = function(){ return "caravan"; }; _pollMult = 0.7;', s);
+  s.PLLoad._mult = 1.82;
+  const voorOmzetten = s.pidPollInterval('010C');
+  s.PLLoad.handmatig(true, 'proef');
+  toets('overnemen laat het interval staan waar het stond', s.pidPollInterval('010C'), voorOmzetten);
 }
 
 console.log('\n── het actielogboek ──');
