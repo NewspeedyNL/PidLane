@@ -1,42 +1,54 @@
 // ══════════════════════════════════════════════════════════════════
-// pidlane-meetkamer.js — de lus in beeld (#246)
+// pidlane-meetkamer.js — de vraag van deze rit, in beeld (#246)
 // ──────────────────────────────────────────────────────────────────
 // WAAROM DIT ER IS.
 // Sinds #241 en #235 loopt er een lus: een meetopdracht komt als DATA uit
 // Airtable binnen, de rit meet hem, de uitslagen gaan met naam en al terug de
-// logtabel in, en daarbuiten wordt dat gelezen en volgt de volgende opdracht.
-// Die lus werkt — op 18-09 is hij voor het eerst helemaal rondgekomen.
+// logtabel in, en daarbuiten wordt dat gelezen. Op 18-09 kwam die lus voor het
+// eerst helemaal rond — en leverde tóch geen antwoord op: de auto stond stil,
+// `010D max = 0`, en dat bleek pas achteraf uit een FOUT-regel tussen 130
+// andere regels in een verslag dat op een telefoon gelezen wordt.
 //
-// Maar hij is ONZICHTBAAR. Wie de testrun opende zag een muur van knoppen en
-// daaronder een platte regenlijst van logregels. Dat er een opdracht van
-// buiten binnen was gekomen, welke vraag hij stelde, of de meting binnen de
-// band viel, en of het antwoord de tabel weer had gehaald: dat stond alleen
-// in het verslag, ná afloop, tussen 130 andere regels.
+// De opdracht wíst dat al tijdens de rit. Er was alleen niets dat het liet zien.
 //
-// Het gevolg is niet alleen ongemak. Een rit van 18-09 stond stil (0 km/u) en
-// dat bleek pas achteraf uit een FOUT-regel — terwijl de opdracht "er is
-// werkelijk gereden" als proef draagt en dat tijdens de rit al wist. Een uur
-// meten leverde daardoor een antwoord op de vraag "reed je?" in plaats van een
-// antwoord op #217.
+// ── DE EERSTE VERSIE WAS ONLEESBAAR, EN DAT IS LEERZAAM ───────────
+// Die zette vier even grote tegels naast elkaar en daaronder élk issue dat
+// blok 5 dekt: 43 chips, waaronder §11, §21, §4, §7 en §8 — hoofdstukken uit
+// PIDLANE.md, geen issues. Het scherm toonde WAT BLOK 5 ALLEMAAL DEKT in
+// plaats van WAAR DEZE RIT OVER GAAT.
 //
-// DIT SCHERM TOONT DE LUS TERWIJL HIJ LOOPT: welke opdracht binnen is, welke
-// issues deze ronde open staan, waar elke proef staat ten opzichte van zijn
-// band, en of de terugweg naar Airtable het doet.
+// Dat is geen opmaakfout maar een denkfout, en hij heeft een naam die in dit
+// project vaker terugkomt: alles even zwaar tonen is hetzelfde als niets
+// tonen. Vier gelijkwaardige kaarten geven geen rangorde, dus je leest ze
+// geen van alle.
+//
+// DE REGEL DIE DAARUIT VOLGT: rustig als er niets aan de hand is, luid als er
+// wél iets is. Eén ding is groot — de vraag die deze rit moet beantwoorden —
+// en de rest krimpt tot het iets te melden heeft. De lus is vier stipjes
+// zolang hij loopt en wordt pas een blok zodra er iets stukgaat.
+//
+// ── WAT "DEZE RONDE" IS, EN WAAROM HET AFGELEID WORDT ─────────────
+// De issues die hier staan komen uit twee bronnen die allebei al de waarheid
+// zijn: de proeven van de Airtable-opdracht (dat is per definitie de vraag
+// van deze rit), en de issues waar blok 5 déze run werkelijk iets over te
+// melden had. De andere veertig lopen mee als bewaking en staan achter één
+// regel met een telling.
+//
+// De verleiding was om `CAMPAGNE` te gebruiken — daar staat al "wat één run
+// deze ronde moet sluiten". Maar die lijst wordt met de hand bijgehouden, en
+// dat is precies de vorm die §11 en PIDLANE-WERK.md de kop kostte: een tweede
+// lijst die uit de pas loopt. Afgeleid is smaller maar altijd waar.
 //
 // ── DE HARDE REGEL: DIT SCHERM MEET NIETS ─────────────────────────
-// Elke tegel hier leest een bron die er al is — PLOpdracht, PLRit, PLBron,
-// plLiveLogStatus(), PLTestrunLive. Er wordt hier geen enkele waarde zélf
-// berekend, geen band zelf beoordeeld, en geen lijst issues zelf bijgehouden.
+// Elke tegel leest een bron die er al is — PLOpdracht, PLRit, PLBron,
+// plLiveLogStatus(), PLTestrunLive, getPidDef(). Er wordt hier geen waarde
+// zelf berekend, geen band zelf beoordeeld en geen lijst zelf bijgehouden.
 //
-// Dat is geen netheid maar noodzaak. Een scherm met een eigen kopie van het
-// oordeel gaat uit de pas lopen met het oordeel zelf, en dan wijst het groen
-// aan waar het verslag rood zegt. §11 staat vol met die vorm (test-healthgate,
-// test-waakronde, de twee lijsten van PIDLANE-WERK.md). De balk die je hier
-// ziet en de FOUT-regel in het verslag komen daarom uit dezelfde aanroep:
-// PLOpdracht.meet(), die sinds #246 naast `staat` ook de getallen teruggeeft.
-//
-// Ontbreekt een bron, dan zegt de tegel dát — hij verzint geen stand. "Niet
-// gemeten" is hier een uitkomst en geen leegte, precies zoals in blok 5.
+// Een scherm met een eigen kopie van het oordeel loopt uit de pas met het
+// oordeel zelf, en wijst dan groen aan waar het verslag rood zegt — en dan
+// stop je met het verslag lezen. De balk en de FOUT-regel komen daarom uit
+// dezelfde aanroep: PLOpdracht.meet(), die sinds #246 ook de getallen draagt.
+// Blok 5 legt de twee elke run naast elkaar.
 // ══════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
@@ -44,21 +56,27 @@
   var TIK_MS = 1000;        // hoe vaak de live tegels ververst worden
   var _tikker = null;
   var _open = false;
-  var _toonAlles = false;   // logfilter: alleen bevindingen, of alles
+  var _uit = {};            // welke secties de gebruiker heeft opengeklapt
 
-  /* De vier stations van de lus, in de volgorde waarin ze gebeuren. Eén lijst,
-     want de tekening en de toestandsbepaling moeten niet los van elkaar kunnen
-     verschuiven. */
+  /* WAT ALS ISSUE TELT. `#123` wel, `§11` niet: dat laatste is een hoofdstuk
+     uit PIDLANE.md dat als herkomst in het `issue`-veld van PROEVEN_B5 staat.
+     Ze als issuechip tonen leverde vijf chips op die naar niets verwijzen.
+
+     Hier wordt dat gefilterd en niet in PROEVEN_B5 omgedoopt: dat veld heet
+     `issue` en draagt twee soorten verwijzingen, en dat rechtzetten is een
+     mechanische wijziging over 54 regels — een eigen commit, en niet deze.
+     Tot dan is dit de plek waar het onderscheid gemaakt wordt. */
+  var ISSUE_VORM = /^#\d+$/;
+  var DEEL_VORM = /^§/;
+
+  /* De vier stations van de lus, in de volgorde waarin ze gebeuren. */
   var STATIONS = [
-    { sleutel: 'binnen', titel: 'Opdracht binnen', teken: '📥' },
-    { sleutel: 'meten',  titel: 'De rit meet',     teken: '📈' },
-    { sleutel: 'terug',  titel: 'Naar Airtable',   teken: '📤' },
-    { sleutel: 'lezen',  titel: 'Claude leest',    teken: '🤖' }
+    { sleutel: 'binnen', titel: 'Opdracht' },
+    { sleutel: 'meten',  titel: 'Meten' },
+    { sleutel: 'terug',  titel: 'Airtable' },
+    { sleutel: 'lezen',  titel: 'Claude' }
   ];
 
-  /* De vijf standen die een tegel kan hebben, met hun kleur. Meer standen
-     verzinnen betekent hier bijna altijd dat er iets anders mis is: een tegel
-     die "misschien" moet kunnen zeggen, leest de verkeerde bron. */
   var KLEUR = {
     'ja':     'var(--gn)',
     'bezig':  'var(--bl)',
@@ -66,6 +84,7 @@
     'let op': 'var(--or)',
     'fout':   'var(--rd)'
   };
+  var RANG = { 'fout': 3, 'let op': 2, 'ja': 1, 'wacht': 0 };
 
   function _kleur(st) { return KLEUR[st] || KLEUR.wacht; }
 
@@ -75,9 +94,16 @@
       .replace(/"/g, '&quot;');
   }
 
-  /* Hoe lang geleden, in mensentaal. Geeft '' terug op onleesbare invoer in
-     plaats van "NaN geleden" — een tegel die onzin toont is erger dan een
-     tegel die zwijgt. */
+  /* Een getal zoals een Nederlander het leest, en zonder een precisie te
+     suggereren die er niet is: 13.77 wordt 13,77 maar 100000 blijft 100000. */
+  function getal(v) {
+    if (v === null || v === undefined || v === '') return '';
+    var n = Number(v);
+    if (isNaN(n)) return String(v);
+    var s = (Math.abs(n) < 1000 && Math.round(n) !== n) ? n.toFixed(2).replace(/0$/, '') : String(n);
+    return s.replace('.', ',');
+  }
+
   function ouderdom(tijd, nu) {
     var t = (typeof tijd === 'number') ? tijd : Date.parse(tijd);
     if (!t || isNaN(t)) return '';
@@ -90,10 +116,9 @@
   }
 
   // ── DE VIER STATIONS ──────────────────────────────────────────────
-  /* Zuiver: krijgt een momentopname mee en geeft de vier tegels terug. Geen
+  /* Zuiver: krijgt een momentopname mee en geeft de vier standen terug. Geen
      window, geen DOM, geen klok — zodat test-meetkamer.js elke stand kan
-     nabouwen zonder browser. Wat hier fout gaat is een redeneerfout en geen
-     tekenfout, en die twee horen apart toetsbaar te zijn. */
+     nabouwen zonder browser. */
   function stations(snap) {
     snap = snap || {};
     var nu = snap.nu || Date.now();
@@ -103,29 +128,25 @@
     var live = snap.live || null;
     var uit = {};
 
-    // 1 — kwam er een opdracht binnen, en welke?
     if (snap.toggleAan === false) {
-      uit.binnen = { staat: 'wacht', regel: 'het ophalen staat uit in de Config (feat_opdracht) — de rit draait zoals hij in de build staat' };
+      uit.binnen = { staat: 'wacht', regel: 'het ophalen staat uit in de Config (feat_opdracht)' };
     } else if (o) {
-      uit.binnen = { staat: 'ja', regel: o.naam + (o.reden ? ' · ' + o.reden : ''),
+      uit.binnen = { staat: 'ja', regel: o.naam,
         bij: (h && h.gewijzigd) ? 'klaargezet ' + ouderdom(h.gewijzigd, nu) : '' };
     } else {
       var r = String(snap.reden || 'nog niet opgehaald');
-      // Afgekeurd is een fout in wat er klaarstaat en moet opvallen; niets
-      // klaarstaan is de normale stand tussen twee rondes in.
       uit.binnen = /afgekeurd/i.test(r)
         ? { staat: 'fout', regel: 'er stond een opdracht klaar en die is AFGEKEURD — ' + r }
         : { staat: 'wacht', regel: r };
     }
 
-    // 2 — meet de rit, en met welke uitkomst tot nu toe?
     var fout = u.filter(function (x) { return x.staat === 'FOUT'; }).length;
     var letop = u.filter(function (x) { return x.staat === 'LET OP'; }).length;
     if (!o) {
-      uit.meten = { staat: 'wacht', regel: 'zonder opdracht valt er hier niets te meten' };
+      uit.meten = { staat: 'wacht', regel: 'zonder opdracht valt er niets te meten' };
     } else if (!u.length) {
       uit.meten = { staat: snap.bezig ? 'bezig' : 'wacht',
-        regel: snap.bezig ? 'de run loopt — nog geen proef gemeten' : 'nog niet gemeten; start een meetrit' };
+        regel: snap.bezig ? 'de run loopt' : 'nog niet gemeten' };
     } else if (fout) {
       uit.meten = { staat: 'fout', regel: fout + ' van de ' + u.length + ' buiten de band' };
     } else if (letop) {
@@ -134,65 +155,91 @@
       uit.meten = { staat: 'ja', regel: 'alle ' + u.length + ' binnen de band' };
     }
 
-    // 3 — haalde het antwoord de tabel? Dit is de tegel die #235 opleverde:
-    // vóór die meting verdween een mislukte verzending in een console.warn.
     if (!live) {
-      uit.terug = { staat: 'wacht', regel: 'nog niets verstuurd naar de logtabel' };
+      uit.terug = { staat: 'wacht', regel: 'nog niets verstuurd' };
     } else if (live.ok) {
-      uit.terug = { staat: 'ja', regel: live.aantal + ' regel(s) aangekomen' + (live.status ? ' (HTTP ' + live.status + ')' : ''),
-        bij: ouderdom(live.tijd, nu) };
+      uit.terug = { staat: 'ja', regel: live.aantal + ' regel(s) aangekomen', bij: ouderdom(live.tijd, nu) };
     } else {
-      uit.terug = { staat: 'fout', regel: 'de laatste zending MISLUKTE' + (live.status ? ' (HTTP ' + live.status + ')' : '') +
-        (live.fout ? ' — ' + live.fout : ''), bij: ouderdom(live.tijd, nu) };
+      uit.terug = { staat: 'fout',
+        regel: 'de laatste zending MISLUKTE' + (live.status ? ' (HTTP ' + live.status + ')' : '') +
+               (live.fout ? ' — ' + live.fout : ''),
+        bij: ouderdom(live.tijd, nu) };
     }
 
-    // 4 — de terugweg buiten de app. Hier kan het scherm niets meten: of er
-    // gelezen is, weet alleen de andere kant. Wat het WEL kan zeggen is of er
-    // iets te lezen valt, en dat is precies het nuttige signaal.
     if (u.length && uit.terug.staat === 'ja') {
-      uit.lezen = { staat: 'ja', regel: 'de uitslag staat in de tabel — de volgende opdracht kan erop volgen' };
+      uit.lezen = { staat: 'ja', regel: 'de uitslag staat in de tabel' };
     } else if (o && h && h.gewijzigd) {
-      uit.lezen = { staat: 'wacht', regel: 'deze opdracht is ' + (ouderdom(h.gewijzigd, nu) || 'onbekend oud') + ' klaargezet en nog niet beantwoord' };
+      uit.lezen = { staat: 'wacht', regel: 'nog niet beantwoord' };
     } else {
-      uit.lezen = { staat: 'wacht', regel: 'wacht op een uitslag om terug te melden' };
+      uit.lezen = { staat: 'wacht', regel: 'wacht op een uitslag' };
     }
 
     return STATIONS.map(function (s) {
       var d = uit[s.sleutel] || { staat: 'wacht', regel: '' };
-      return { sleutel: s.sleutel, titel: s.titel, teken: s.teken, staat: d.staat, regel: d.regel, bij: d.bij || '' };
+      return { sleutel: s.sleutel, titel: s.titel, staat: d.staat, regel: d.regel, bij: d.bij || '' };
     });
   }
 
+  // ── HET OORDEEL: ÉÉN GETAL BOVENAAN ───────────────────────────────
+  /* Wat je tijdens het rijden wilt weten is niet "hoe staat station 3" maar
+     "gaat deze rit iets opleveren". Dat is één breuk plus één zin eronder die
+     zegt wat er nog ontbreekt.
+
+     De zin komt uit de zwaarste uitslag zelf, niet uit een eigen tekst: de
+     opdracht schrijft de naam van zijn proeven, en die naam is wat een mens
+     moet lezen. Hier iets eigens verzinnen zou een tweede beschrijving zijn
+     van hetzelfde. */
+  function oordeel(snap) {
+    snap = snap || {};
+    var u = Array.isArray(snap.uitslagen) ? snap.uitslagen : [];
+    if (!snap.opdracht) return { staat: 'wacht', goed: 0, totaal: 0, kop: '', regel: '' };
+    if (!u.length) {
+      return { staat: snap.bezig ? 'bezig' : 'wacht', goed: 0, totaal: snap.opdracht.proeven.length,
+        kop: snap.bezig ? 'meten…' : 'nog niet gemeten',
+        regel: snap.bezig ? 'de eerste monsters komen binnen' : 'start een meetrit om deze vraag te beantwoorden' };
+    }
+
+    var goed = u.filter(function (x) { return x.staat === 'ok'; }).length;
+    var fout = u.filter(function (x) { return x.staat === 'FOUT'; });
+    var letop = u.filter(function (x) { return x.staat === 'LET OP'; });
+    var staat = fout.length ? 'fout' : (letop.length ? 'let op' : 'ja');
+
+    var regel;
+    if (fout.length) regel = fout[0].detail || fout[0].naam;
+    else if (letop.length) regel = letop.length === 1
+      ? letop[0].naam + ' — nog niet te meten'
+      : letop.length + ' proeven zijn nog niet te meten';
+    else regel = 'deze rit beantwoordt de vraag';
+
+    return { staat: staat, goed: goed, totaal: u.length, kop: 'binnen bereik', regel: regel };
+  }
+
   // ── DE METER VAN ÉÉN PROEF ────────────────────────────────────────
-  /* De balk tekent niet de rauwe waarde maar de POSITIE in het venster
-     lo−marge … hi+marge, met marge = een kwart van de band. De band beslaat
-     daardoor altijd precies het middelste stuk (20%–80%) van de balk, hoe
-     groot of klein hij ook is.
+  /* De balk tekent de POSITIE in het venster lo−marge … hi+marge, met marge
+     een kwart van de band. De band beslaat daardoor altijd het middelste stuk
+     (20%–80%), hoe groot of klein hij ook is — zodat twee proeven naast
+     elkaar te lezen zijn zonder de assen erbij.
 
-     Dat is met opzet: een vaste bandbreedte maakt twee proeven naast elkaar
-     vergelijkbaar zonder de assen te lezen. Een waarde ver buiten de band
-     plakt tegen de rand — dat leest als "ver weg", en dat klopt ook.
-
-     Een band met lo === hi (één punt) heeft geen breedte; dan is de marge 1,
-     anders wordt er door nul gedeeld en staat er stil NaN op het scherm. */
-  var RAND = 0.2;          // waar de band begint en eindigt op de balk
+     Een waarde ver buiten de band plakt tegen de rand: dat leest als "ver
+     weg", en dat klopt ook. */
+  var RAND = 0.2;
 
   /* Ontbrekend is iets anders dan nul, en JavaScript vindt van niet:
      `Number(null)` is 0 en `Number('')` ook. Zonder deze poort werd een
      opdracht zonder band stil een band van 0 tot 0, en dan stond de meting
-     keurig in het midden van een band die niet bestaat. Gevonden door
-     test-meetkamer.js voordat hij een rit kostte. */
-  function _getal(v) {
+     keurig in het midden van een band die niet bestaat. */
+  function _g(v) {
     if (v === null || v === undefined || v === '') return NaN;
     return Number(v);
   }
 
   function meter(u) {
     u = u || {};
-    var lo = _getal(u.lo), hi = _getal(u.hi);
+    var lo = _g(u.lo), hi = _g(u.hi);
     var basis = { staat: u.staat || 'LET OP', pid: u.pid || '', maat: u.maat || '',
-                  waarde: (u.waarde === undefined ? null : u.waarde), lo: u.lo, hi: u.hi, n: u.n || 0, pos: null, bandVan: RAND, bandTot: 1 - RAND };
-    if (isNaN(_getal(u.waarde))) return basis;
+                  waarde: (u.waarde === undefined ? null : u.waarde),
+                  lo: u.lo, hi: u.hi, n: u.n || 0, pos: null, bandVan: RAND, bandTot: 1 - RAND };
+    if (isNaN(_g(u.waarde))) return basis;
     if (isNaN(lo) || isNaN(hi)) return basis;
 
     var span = hi - lo;
@@ -203,33 +250,29 @@
     return basis;
   }
 
-  // ── DE ISSUEBAAN ──────────────────────────────────────────────────
-  /* Welke issues raakt deze ronde, en wat is er per issue uitgekomen?
+  // ── WAT DEZE RONDE MOET SLUITEN ───────────────────────────────────
+  /* Afgeleid uit twee bronnen die allebei al de waarheid zijn:
 
-     De lijst wordt AFGELEID en niet bijgehouden: hij komt uit PROEVEN_B5 (via
-     PLTestrunLive.proeven()) plus de proeven van de opdracht die binnenkwam.
-     Dat is dezelfde regel als "BLOK 5 DEKT DEZE RONDE" in CAMPAGNE, en om
-     dezelfde reden — een met de hand bijgehouden tweede lijst noemde #65 open
-     terwijl hij al gesloten was.
+       1. de proeven van de Airtable-opdracht — dat ÍS de vraag van deze rit;
+       2. de issues waar blok 5 déze run iets over meldde (FOUT of LET OP) —
+          want dat is wat er nu aandacht vraagt.
 
-     De uitkomst per issue komt uit de geboekte logregels, gekoppeld op de
-     NAAM van de proef. Dat is een exacte koppeling en geen gok: blok 5 boekt
-     met `_doe(5, PROEVEN_B5[i].naam, …)`, dus de naam in het log ís de naam
-     in de lijst. Verandert die koppeling, dan valt de baan leeg — zichtbaar,
-     in plaats van stil verkeerd.
+     Alles wat blok 5 verder dekt loopt mee als bewaking en wordt geteld, niet
+     opgesomd. Dat is de correctie op de eerste versie: 43 chips waren geen
+     overzicht maar een muur.
 
-     Draagt één issue meer proeven, dan wint de zwaarste uitkomst: één FOUT
-     maakt het issue rood, ook al stonden de andere twee op groen. Een issue
-     dat half goed is, is niet af. */
-  var RANG = { 'fout': 3, 'let op': 2, 'ja': 1, 'wacht': 0 };
+     Groen uit de vaste lijst komt er NIET bij. Een proef die het gewoon doet
+     is geen nieuws — die hoort bij de veertig die meelopen. Rood en oranje
+     wel: daar moet je naar kijken.
 
-  function issuebaan(snap) {
+     De uitkomst per issue is de ZWAARSTE van zijn proeven. Een issue dat half
+     goed is, is niet af. */
+  function ronde(snap) {
     snap = snap || {};
     var proeven = Array.isArray(snap.proeven) ? snap.proeven : [];
     var log = Array.isArray(snap.log) ? snap.log : [];
     var o = snap.opdracht || null;
 
-    // naam → staat, uit de geboekte regels van blok 5.
     var geboekt = {};
     log.forEach(function (r) {
       if (!r || r.blok !== 5 || !r.naam) return;
@@ -237,33 +280,60 @@
       geboekt[r.naam] = (st === 'FOUT') ? 'fout' : (st === 'LET OP' || st === 'LETOP') ? 'let op' : 'ja';
     });
 
-    var perIssue = {};
+    var deze = {};
     function draag(issue, naam, staat, herkomst) {
-      if (!issue || issue === '—') return;
-      var b = perIssue[issue] || (perIssue[issue] = { issue: issue, staat: 'wacht', proeven: [], herkomst: herkomst });
+      var b = deze[issue] || (deze[issue] = { issue: issue, staat: 'wacht', proeven: [], herkomst: herkomst });
       b.proeven.push({ naam: naam, staat: staat });
       if (RANG[staat] > RANG[b.staat]) b.staat = staat;
-      // Een issue dat zowel in de vaste lijst als in de opdracht zit, is het
-      // interessantst: daar wordt van buiten aan gestuurd.
       if (herkomst === 'opdracht') b.herkomst = 'opdracht';
     }
 
-    proeven.forEach(function (p) { draag(p.issue, p.naam, geboekt[p.naam] || 'wacht', 'blok5'); });
+    // 1 — de opdracht van buiten
     if (o && Array.isArray(o.proeven)) {
       var uit = {};
       (snap.uitslagen || []).forEach(function (x) { if (x && x.naam) uit[x.naam] = x.staat; });
       o.proeven.forEach(function (p) {
+        if (!ISSUE_VORM.test(String(p.issue || ''))) return;
         var st = uit[p.naam];
-        draag(p.issue, p.naam, st === 'FOUT' ? 'fout' : st === 'LET OP' ? 'let op' : st === 'ok' ? 'ja' : 'wacht', 'opdracht');
+        draag(p.issue, p.naam,
+          st === 'FOUT' ? 'fout' : st === 'LET OP' ? 'let op' : st === 'ok' ? 'ja' : 'wacht', 'opdracht');
       });
     }
 
-    return Object.keys(perIssue)
+    // 2 — wat blok 5 deze run te melden had, plus de telling van de rest
+    var bewaking = 0, delen = 0, stil = {};
+    proeven.forEach(function (p) {
+      var q = String(p.issue || '');
+      if (DEEL_VORM.test(q)) { delen++; return; }
+      if (!ISSUE_VORM.test(q)) return;          // '—' en wat er verder niet als issue leest
+      var st = geboekt[p.naam];
+      if (st === 'fout' || st === 'let op') { draag(q, p.naam, st, 'blok5'); return; }
+      if (!deze[q]) stil[q] = 1;
+    });
+    bewaking = Object.keys(stil).length;
+
+    var lijst = Object.keys(deze)
       .sort(function (a, b) {
-        var v = RANG[perIssue[b].staat] - RANG[perIssue[a].staat];
+        var v = RANG[deze[b].staat] - RANG[deze[a].staat];
         return v || a.localeCompare(b);
       })
-      .map(function (k) { return perIssue[k]; });
+      .map(function (k) { return deze[k]; });
+
+    return { deze: lijst, bewaking: bewaking, delen: delen };
+  }
+
+  // ── HET LOGBOEK IN ÉÉN REGEL ──────────────────────────────────────
+  function logtelling(log) {
+    var t = { n: 0, ok: 0, fout: 0, letop: 0 };
+    (Array.isArray(log) ? log : []).forEach(function (r) {
+      if (!r) return;
+      t.n++;
+      var st = String(r.staat || '').toUpperCase();
+      if (st === 'FOUT') t.fout++;
+      else if (st === 'LET OP' || st === 'LETOP') t.letop++;
+      else if (st === 'OK') t.ok++;
+    });
+    return t;
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -288,9 +358,9 @@
       }
     } catch (e) { console.warn('Meetkamer: de opdracht is niet te lezen (#246)', e); s.reden = 'de opdracht is niet te lezen'; }
 
-    // De proeven van de opdracht NU meten, met dezelfde functie waarmee blok 5
-    // ze straks beoordeelt. Dat is de hele reden dat dit scherm tijdens de rit
-    // iets waard is: je ziet het oordeel aankomen in plaats van te wachten.
+    // De proeven NU meten, met dezelfde functie waarmee blok 5 ze straks
+    // beoordeelt. Dat is de hele reden dat dit scherm tijdens de rit iets
+    // waard is: je ziet het oordeel aankomen in plaats van te wachten.
     try {
       if (s.opdracht && window.PLOpdracht && typeof PLOpdracht.meet === 'function') {
         s.uitslagen = s.opdracht.proeven.map(function (p) {
@@ -319,116 +389,240 @@
     return s;
   }
 
+  /* De eenheid bij een PID uit de echte PID-tabel. Niet zelf bijhouden: dat
+     zou een tweede tabel zijn naast pidlane-data.js, en die loopt uit de pas
+     (zie test-waakronde.js in CLAUDE.md, dat met een eigen HARD-tabel een
+     geval bewees dat niet bestond). Onbekend geeft leeg terug. */
+  function eenheid(pid) {
+    try {
+      if (typeof getPidDef !== 'function') return '';
+      var d = getPidDef(pid);
+      return (d && d.unit) ? String(d.unit) : '';
+    } catch (e) { console.warn('Meetkamer: eenheid van ' + pid + ' niet op te halen (#246)', e); return ''; }
+  }
+
   // ══════════════════════════════════════════════════════════════════
   // TEKENEN
   // ══════════════════════════════════════════════════════════════════
-  function _tegel(st) {
-    var kl = _kleur(st.staat);
-    var puls = (st.staat === 'bezig') ? 'animation:plmkPuls 1.4s ease-in-out infinite;' : '';
-    return '<div style="flex:1 1 128px;min-width:128px;background:var(--sur);border:1px solid var(--bd);' +
-        'border-left:3px solid ' + kl + ';border-radius:9px;padding:8px 10px;' + puls + '">' +
-      '<div style="font:800 10px var(--f);letter-spacing:.4px;text-transform:uppercase;color:var(--tx3);margin-bottom:3px">' +
-        st.teken + ' ' + veilig(st.titel) + '</div>' +
-      '<div style="font:700 11.5px var(--f);color:' + kl + ';line-height:1.35">' + veilig(st.regel) + '</div>' +
-      (st.bij ? '<div style="font:500 10px var(--f);color:var(--tx3);margin-top:3px">' + veilig(st.bij) + '</div>' : '') +
-    '</div>';
+  /* DE STIJL GAAT ÉÉN KEER IN DE <head> EN NIET IN ELKE TEKENRONDE.
+     Hij stond eerst vooraan de innerHTML, en die wordt elke seconde opnieuw
+     gezet: dan parseert de browser 60 keer per minuut hetzelfde stijlblok.
+     Erger nog voor het toetsen — `textContent` van het paneel begon met 3 kB
+     CSS, dus een proef die op een woord zocht las de opmaak in plaats van het
+     scherm. */
+  var STIJL =
+    '<style id="plmkStijl">' +
+    '#meetkamerBox .mk-v{background:linear-gradient(160deg,var(--sur) 0%,rgba(0,0,0,.14) 100%);' +
+      'border:1px solid var(--bd2);border-radius:13px;padding:13px;margin-bottom:10px}' +
+    '#meetkamerBox .mk-v.rust{border-style:dashed;border-color:var(--bd);background:var(--sur)}' +
+    '#meetkamerBox .mk-bron{display:flex;gap:6px;align-items:center;font:700 9.5px var(--f);' +
+      'letter-spacing:.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:6px}' +
+    '#meetkamerBox .mk-bron em{font-style:normal;background:var(--bls);color:var(--bl);border-radius:4px;padding:1px 5px}' +
+    '#meetkamerBox .mk-v h2{font:800 16.5px/1.25 var(--f);margin:0 0 3px;color:var(--tx)}' +
+    '#meetkamerBox .mk-sub{font:500 12px var(--f);color:var(--tx2);margin-bottom:11px}' +
+    '#meetkamerBox .mk-oor{display:flex;align-items:baseline;gap:9px;padding-top:10px;border-top:1px solid var(--bd)}' +
+    '#meetkamerBox .mk-cijfer{font:800 29px/1 var(--f)}' +
+    '#meetkamerBox .mk-cijfer i{font:600 15px var(--f);color:var(--tx3);font-style:normal}' +
+    '#meetkamerBox .mk-wat{font:700 12.5px/1.35 var(--f);color:var(--tx2)}' +
+    '#meetkamerBox .mk-wat u{text-decoration:none;display:block;font-weight:500;font-size:11px;color:var(--tx3);margin-top:2px}' +
+    '#meetkamerBox .mk-lus{display:flex;margin:11px 0 1px;padding:9px 2px 0;border-top:1px solid var(--bd)}' +
+    '#meetkamerBox .mk-stap{flex:1;text-align:center;position:relative}' +
+    '#meetkamerBox .mk-bol{width:11px;height:11px;border-radius:50%;margin:0 auto 5px;background:var(--sur2);' +
+      'border:2px solid var(--bd2);position:relative;z-index:2}' +
+    '#meetkamerBox .mk-stap b{font:700 9px var(--f);letter-spacing:.3px;text-transform:uppercase;' +
+      'color:var(--tx3);display:block;line-height:1.3}' +
+    '#meetkamerBox .mk-stap:not(:last-child):after{content:"";position:absolute;top:5px;left:calc(50% + 8px);' +
+      'right:calc(-50% + 8px);height:2px;background:var(--bd);z-index:1}' +
+    '#meetkamerBox .mk-stap.s-ja .mk-bol{background:var(--gn);border-color:var(--gn)}' +
+    '#meetkamerBox .mk-stap.s-ja:not(:last-child):after{background:var(--gn)}' +
+    '#meetkamerBox .mk-stap.s-bezig .mk-bol{background:var(--bl);border-color:var(--bl);animation:mkPols 1.3s ease-in-out infinite}' +
+    '#meetkamerBox .mk-stap.s-fout .mk-bol{background:var(--rd);border-color:var(--rd)}' +
+    '#meetkamerBox .mk-stap.s-ja b,#meetkamerBox .mk-stap.s-bezig b{color:var(--tx2)}' +
+    '#meetkamerBox .mk-stap.s-fout b{color:var(--rd)}' +
+    '@keyframes mkPols{0%,100%{box-shadow:0 0 0 0 rgba(77,130,255,.5)}50%{box-shadow:0 0 0 5px rgba(77,130,255,0)}}' +
+    '#meetkamerBox .mk-kaart{background:var(--sur);border:1px solid var(--bd);border-radius:13px;padding:4px 13px 10px;margin-bottom:10px}' +
+    '#meetkamerBox .mk-k{font:800 10px var(--f);letter-spacing:.5px;text-transform:uppercase;color:var(--tx3);padding:11px 0 3px}' +
+    '#meetkamerBox .mk-m{padding:9px 0;border-top:1px solid var(--bd)}' +
+    '#meetkamerBox .mk-m:first-of-type{border-top:0}' +
+    '#meetkamerBox .mk-r1{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}' +
+    '#meetkamerBox .mk-nm{font:600 12.5px/1.3 var(--f);color:var(--tx);flex:1}' +
+    '#meetkamerBox .mk-w{font:800 15px var(--f);font-variant-numeric:tabular-nums}' +
+    '#meetkamerBox .mk-eh{font:600 10px var(--f);color:var(--tx3);margin-left:-4px}' +
+    '#meetkamerBox .mk-baan{position:relative;height:7px;border-radius:4px;background:var(--sur2);border:1px solid var(--bd)}' +
+    '#meetkamerBox .mk-band{position:absolute;top:0;bottom:0;background:var(--gns);' +
+      'border-left:1px solid var(--gn);border-right:1px solid var(--gn)}' +
+    '#meetkamerBox .mk-dot{position:absolute;top:-4px;bottom:-4px;width:3px;border-radius:2px}' +
+    '#meetkamerBox .mk-r2{display:flex;justify-content:space-between;gap:6px;font:500 9.5px var(--f);color:var(--tx3);margin-top:4px}' +
+    '#meetkamerBox .mk-m.leeg .mk-w{color:var(--tx3);font-size:11.5px;font-weight:600}' +
+    '#meetkamerBox .mk-m.leeg .mk-baan{opacity:.3}' +
+    '#meetkamerBox .mk-chips{display:flex;gap:6px;flex-wrap:wrap}' +
+    '#meetkamerBox .mk-chip{display:inline-flex;align-items:center;gap:5px;background:var(--sur2);' +
+      'border:1px solid var(--bd2);border-radius:8px;padding:6px 10px;font:700 11.5px var(--f);color:var(--tx2)}' +
+    '#meetkamerBox .mk-chip s{width:6px;height:6px;border-radius:50%;background:var(--tx3);text-decoration:none}' +
+    '#meetkamerBox .mk-chip em{font-style:normal;font-weight:500;font-size:10px;opacity:.75}' +
+    '#meetkamerBox .mk-rest{display:flex;align-items:center;gap:6px;margin-top:9px;padding-top:9px;' +
+      'border-top:1px solid var(--bd);font:500 11px var(--f);color:var(--tx3);cursor:pointer}' +
+    '#meetkamerBox .mk-rest b{color:var(--tx2);font-weight:700}' +
+    '#meetkamerBox .mk-rest i{margin-left:auto;font-style:normal}' +
+    '#meetkamerBox .mk-alarm{background:var(--rds);border:1px solid var(--rd);border-radius:13px;padding:11px 13px;margin-bottom:10px}' +
+    '#meetkamerBox .mk-alarm b{display:block;font:800 10px var(--f);letter-spacing:.5px;' +
+      'text-transform:uppercase;color:var(--rd);margin-bottom:5px}' +
+    '#meetkamerBox .mk-alarm span{font:600 12.5px/1.45 var(--f);color:var(--tx2)}' +
+    '#meetkamerBox .mk-alarm u{text-decoration:none;display:block;font-weight:500;color:var(--tx3);margin-top:4px}' +
+    '</style>';
+
+  /* Eén keer inhangen, en nooit meer. Ontbreekt de <head> (kan niet in een
+     browser, wel in een sandbox), dan blijft de stijl weg en staat het paneel
+     er kaal bij — leesbaar, alleen niet mooi. Dat is beter dan klappen. */
+  function stijlErin() {
+    try {
+      if (!document.head || document.getElementById('plmkStijl')) return false;
+      var d = document.createElement('div');
+      d.innerHTML = STIJL;
+      var el = d.firstChild;
+      if (el) document.head.appendChild(el);
+      return true;
+    } catch (e) { console.warn('Meetkamer: het stijlblok kon niet ingehangen worden (#246)', e); return false; }
+  }
+
+  function _lus(st) {
+    return '<div class="mk-lus">' + st.map(function (s) {
+      return '<div class="mk-stap s-' + s.staat.replace(' ', '') + '" title="' + veilig(s.regel) + '">' +
+        '<span class="mk-bol"></span><b>' + veilig(s.titel) + '</b></div>';
+    }).join('') + '</div>';
+  }
+
+  /* DE VRAAG. Het enige grote element op dit scherm, en dat is de hele
+     ordening: je kijkt tijdens het rijden naar één ding — gaat deze rit iets
+     opleveren. */
+  function _vraag(s, st, oor) {
+    if (!s.opdracht) {
+      var r = stations(s)[0];
+      return '<div class="mk-v rust">' +
+        '<div class="mk-bron">Deze rit beantwoordt' +
+          (s.ritId ? '<span style="margin-left:auto;font-weight:600">rit ' + veilig(s.ritId) + '</span>' : '') + '</div>' +
+        '<h2 style="color:var(--tx3)">' + (r.staat === 'fout' ? 'De opdracht is afgekeurd' : 'Nog geen meetopdracht') + '</h2>' +
+        '<div class="mk-sub">' + veilig(r.regel) + '</div>' +
+        _lus(st) + '</div>';
+    }
+
+    var kl = _kleur(oor.staat);
+    return '<div class="mk-v"' + (oor.staat === 'fout' ? ' style="border-color:var(--rd)"' : '') + '>' +
+      '<div class="mk-bron">Deze rit beantwoordt' +
+        (s.opdracht.reden ? '<em>' + veilig(String(s.opdracht.reden).split(' ')[0]) + '</em>' : '') +
+        (s.ritId ? '<span style="margin-left:auto;font-weight:600">rit ' + veilig(s.ritId) + '</span>' : '') + '</div>' +
+      '<h2>' + veilig(s.opdracht.naam) + '</h2>' +
+      (s.opdracht.reden ? '<div class="mk-sub">' + veilig(s.opdracht.reden) + '</div>' : '') +
+      '<div class="mk-oor">' +
+        (oor.totaal
+          ? '<span class="mk-cijfer" style="color:' + kl + '">' + oor.goed + '<i>/' + oor.totaal + '</i></span>'
+          : '<span class="mk-cijfer" style="color:var(--tx3);font-size:20px">—</span>') +
+        '<span class="mk-wat">' + veilig(oor.kop) + '<u>' + veilig(oor.regel) + '</u></span>' +
+      '</div>' +
+      _lus(st) + '</div>';
   }
 
   function _meterRij(m, naam) {
     var kl = m.staat === 'ok' ? 'var(--gn)' : m.staat === 'FOUT' ? 'var(--rd)' : 'var(--or)';
-    var h = '<div style="padding:7px 0;border-top:1px solid var(--bd)">' +
-      '<div style="display:flex;gap:7px;align-items:baseline;margin-bottom:5px">' +
-        '<span style="font:700 11.5px var(--f);color:var(--tx);flex:1">' + veilig(naam) + '</span>' +
-        '<span style="font:800 12px var(--f);color:' + kl + '">' +
-          (m.waarde === null ? 'niet gemeten' : veilig(m.waarde)) + '</span>' +
-      '</div>';
+    var eh = eenheid(m.pid);
+    var h = '<div class="mk-m' + (m.pos === null ? ' leeg' : '') + '">' +
+      '<div class="mk-r1"><span class="mk-nm">' + veilig(naam) + '</span>';
 
-    if (m.pos === null) {
-      // Geen balk zonder waarde. Een lege balk tekenen zou suggereren dat de
-      // meting op nul staat, en dat is iets heel anders dan niet gemeten.
-      h += '<div style="font:500 10.5px var(--f);color:var(--tx3)">' +
-        veilig(m.pid + ' ' + m.maat) + ' — nog geen monster in het ritbeeld</div>';
-    } else {
-      h += '<div style="position:relative;height:9px;border-radius:5px;background:var(--sur2);overflow:hidden">' +
-          // de band zelf: het stuk waar de waarde in hoort te vallen
-          '<div style="position:absolute;top:0;bottom:0;left:' + (m.bandVan * 100) + '%;right:' + ((1 - m.bandTot) * 100) + '%;' +
-            'background:var(--gns);border-left:1px solid var(--gn);border-right:1px solid var(--gn)"></div>' +
-          // de meting
-          '<div style="position:absolute;top:-2px;bottom:-2px;left:calc(' + (m.pos * 100) + '% - 2px);width:4px;border-radius:2px;background:' + kl + '"></div>' +
-        '</div>' +
-        '<div style="display:flex;justify-content:space-between;font:500 10px var(--f);color:var(--tx3);margin-top:3px">' +
-          '<span>' + veilig(m.lo) + '</span>' +
-          '<span>' + veilig(m.pid + ' ' + m.maat + ' · ' + m.n + ' monster(s)') + '</span>' +
-          '<span>' + veilig(m.hi) + '</span>' +
-        '</div>';
-    }
+    if (m.pos === null) h += '<span class="mk-w">niet gemeten</span>';
+    else h += '<span class="mk-w" style="color:' + kl + '">' + veilig(getal(m.waarde)) + '</span>' +
+              (eh ? '<span class="mk-eh">' + veilig(eh) + '</span>' : '');
+    h += '</div>';
+
+    h += '<div class="mk-baan"><div class="mk-band" style="left:' + (m.bandVan * 100) + '%;right:' +
+           ((1 - m.bandTot) * 100) + '%"></div>' +
+         // Geen stip zonder waarde. Een stip op nul zou "ver buiten de band"
+         // zeggen, en dat is iets heel anders dan "er is niets gemeten".
+         (m.pos === null ? '' : '<div class="mk-dot" style="left:calc(' + (m.pos * 100) + '% - 1.5px);background:' + kl + '"></div>') +
+         '</div>';
+
+    h += '<div class="mk-r2"><span>' + veilig(getal(m.lo)) + '</span>' +
+      '<span>' + veilig(m.pid + ' · ' + m.maat + (m.n ? ' · ' + m.n + ' monster(s)' : ' · niet in de selectie')) + '</span>' +
+      '<span>' + veilig(getal(m.hi)) + '</span></div>';
     return h + '</div>';
   }
 
-  function _issueChip(b) {
+  function _chip(b) {
     var kl = _kleur(b.staat);
-    var teken = b.staat === 'ja' ? '✓' : b.staat === 'fout' ? '✕' : b.staat === 'let op' ? '!' : '·';
-    var titel = b.proeven.map(function (p) { return p.naam; }).join(' · ');
-    return '<span title="' + veilig(titel) + '" style="display:inline-flex;align-items:center;gap:4px;' +
-      'background:var(--sur2);border:1px solid ' + kl + ';border-radius:20px;padding:3px 9px;' +
-      'font:700 11px var(--f);color:' + kl + '">' +
-      teken + ' ' + veilig(b.issue) +
-      (b.herkomst === 'opdracht' ? '<span style="font-size:9px;opacity:.75">van buiten</span>' : '') +
-      '</span>';
+    var kort = b.proeven.length === 1 ? b.proeven[0].naam : b.proeven.length + ' proeven';
+    return '<span class="mk-chip" title="' + veilig(b.proeven.map(function (p) { return p.naam; }).join(' · ')) + '"' +
+      ' style="border-color:' + kl + ';color:' + kl + '">' +
+      '<s style="background:' + kl + '"></s>' + veilig(b.issue) +
+      '<em>' + veilig(kort.length > 26 ? kort.slice(0, 24) + '…' : kort) + '</em></span>';
   }
 
   /* Het hele paneel. Geeft HTML terug in plaats van zelf te schrijven, zodat
      de browserproef hem kan opvragen zonder de testrun te openen. */
   function html(s) {
     s = s || momentopname();
-    var h = '<style>@keyframes plmkPuls{0%,100%{opacity:1}50%{opacity:.55}}</style>';
+    var st = stations(s);
+    var oor = oordeel(s);
+    stijlErin();
+    var h = '';
 
-    // ── kop: waar draait dit, en onder welk ritnummer
-    h += '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px">' +
-      '<span style="font:800 11px var(--f);letter-spacing:.4px;text-transform:uppercase;color:var(--tx3)">De lus</span>' +
-      (s.bron ? '<span style="font:600 10.5px var(--f);color:' + (/PREVIEW/.test(s.bron) ? 'var(--or)' : 'var(--tx3)') + '">' + veilig(s.bron) + '</span>' : '') +
-      (s.ritId ? '<span style="margin-left:auto;font:600 10.5px var(--f);color:var(--tx3)">rit ' + veilig(s.ritId) + '</span>' : '') +
-    '</div>';
+    // 1 — de vraag: het enige grote element
+    h += _vraag(s, st, oor);
 
-    // ── de vier stations
-    h += '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px">' +
-      stations(s).map(_tegel).join('') + '</div>';
-
-    // ── de opdracht met zijn meters
-    if (s.opdracht) {
-      var o = s.opdracht;
-      h += '<div style="background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:11px">' +
-        '<div style="font:800 12.5px var(--f);color:var(--tx);margin-bottom:2px">🎯 ' + veilig(o.naam) + '</div>' +
-        (o.reden ? '<div style="font:500 11px var(--f);color:var(--tx2);margin-bottom:7px">' + veilig(o.reden) + '</div>' : '') +
-        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">' +
-          o.sensoren.map(function (p) {
-            return '<span style="background:var(--sur2);border:1px solid var(--bd);border-radius:5px;padding:2px 6px;font:700 10px var(--f);color:var(--tx2)">' + veilig(p) + '</span>';
-          }).join('') +
-          '<span style="font:500 10px var(--f);color:var(--tx3);align-self:center;margin-left:4px">' +
-            Math.round(o.duurS / 60) + ' min · elke ' + o.tikS + ' s</span>' +
-        '</div>' +
-        s.uitslagen.map(function (u) { return _meterRij(meter(u), u.naam); }).join('') +
-      '</div>';
+    // 2 — luid worden als er iets stuk is. Dit blok verschijnt alleen als de
+    // terugweg het niet doet: dan wordt er wél gemeten maar niets teruggemeld,
+    // en dan is de hele rit buiten de app onzichtbaar.
+    var terug = st[2];
+    if (terug.staat === 'fout') {
+      h += '<div class="mk-alarm"><b>⚠ De uitslag komt niet aan</b><span>' + veilig(terug.regel) +
+        '<u>Deze rit wordt wel gemeten maar niet teruggemeld — buiten de app is er dus niets van te lezen.</u></span></div>';
     }
 
-    // ── de issuebaan
-    var baan = issuebaan(s);
-    if (baan.length) {
-      h += '<div style="margin-bottom:11px">' +
-        '<div style="font:800 11px var(--f);letter-spacing:.4px;text-transform:uppercase;color:var(--tx3);margin-bottom:5px">' +
-          'Waar deze rit aan werkt · ' + baan.length + ' issue(s)</div>' +
-        '<div style="display:flex;gap:5px;flex-wrap:wrap">' + baan.map(_issueChip).join('') + '</div>' +
-      '</div>';
+    // 3 — de meters: de hoofdinhoud
+    if (s.opdracht && s.uitslagen.length) {
+      h += '<div class="mk-kaart"><div class="mk-k">De ' + s.uitslagen.length + ' proeven van deze opdracht</div>' +
+        s.uitslagen.map(function (u) { return _meterRij(meter(u), u.naam); }).join('') + '</div>';
+    }
+
+    // 4 — wat deze ronde moet sluiten: drie chips, geen drieënveertig
+    var r = ronde(s);
+    if (r.deze.length || r.bewaking) {
+      h += '<div class="mk-kaart" style="padding:11px 13px">' +
+        '<div class="mk-k" style="padding:0 0 8px">' +
+          (r.deze.length ? 'Wat deze rit moet sluiten' : 'Deze rit heeft nog geen bevinding') + '</div>';
+      if (r.deze.length) h += '<div class="mk-chips">' + r.deze.map(_chip).join('') + '</div>';
+      if (r.bewaking) {
+        h += '<div class="mk-rest" onclick="PLMeetkamer.klap(\'bewaking\')">' +
+          '<b>' + r.bewaking + '</b> andere proeven lopen mee als bewaking' +
+          (r.delen ? ' · <b>' + r.delen + '</b> hoofdstukcontroles' : '') +
+          '<i>' + (_uit.bewaking ? '▾' : '›') + '</i></div>';
+        if (_uit.bewaking) {
+          h += '<div style="font:500 11px/1.7 var(--f);color:var(--tx3);margin-top:7px">' +
+            'Ze staan groen of zijn deze run nog niet geboekt. Wordt er één rood, dan schuift hij vanzelf ' +
+            'naar boven — daar hoef je dus niet op te wachten.</div>';
+        }
+      }
+      h += '</div>';
+    }
+
+    // 5 — het logboek als één regel met een telling
+    var t = logtelling(s.log);
+    if (t.n) {
+      h += '<div class="mk-kaart" style="padding:10px 13px;margin-bottom:0;cursor:pointer" ' +
+             'onclick="PLMeetkamer.klap(\'log\')">' +
+        '<div style="display:flex;align-items:center;gap:7px;font:600 11.5px var(--f);color:var(--tx3)">' +
+          '📋 <b style="color:var(--tx2)">' + t.n + '</b> regels geboekt' +
+          ' · <b style="color:' + (t.fout ? 'var(--rd)' : 'var(--tx2)') + '">' + t.fout + ' fout</b>' +
+          ' · <b style="color:' + (t.letop ? 'var(--or)' : 'var(--tx2)') + '">' + t.letop + ' let op</b>' +
+          '<i style="margin-left:auto;font-style:normal">' + (_uit.log ? '▾' : '›') + '</i></div></div>';
     }
 
     return h;
   }
 
   // ── de lijm met het testrunscherm ─────────────────────────────────
-  /* Het paneel hangt bovenin de bestaande testrunoverlay. Eigen bakje, zodat
-     _teken() van de testrun zijn eigen helft kan blijven overschrijven zonder
-     dit weg te gooien — twee functies die in hetzelfde element schrijven is
-     hier al eerder een bug geweest. */
+  /* Het paneel hangt bovenin de bestaande testrunoverlay, in een EIGEN
+     element. _teken() van de testrun zet innerHTML op #testrunBody bij elke
+     geboekte regel; zaten ze in hetzelfde element, dan knipperde het paneel
+     weg zodra er iets gemeten wordt — precies op het moment dat je kijkt. */
   function bak() {
     var ov = document.getElementById('testrunOv');
     if (!ov) return null;
@@ -452,10 +646,21 @@
     catch (e) { console.warn('Meetkamer: het paneel kon niet getekend worden (#246)', e); return false; }
   }
 
+  /* Een sectie open- of dichtklappen. De stand overleeft de verversing van
+     elke seconde, want hij staat hier en niet in de DOM — anders klapte een
+     opengezette sectie na één tik weer dicht. */
+  function klap(wat) {
+    _uit[wat] = !_uit[wat];
+    // Het logboek zelf staat in de testrun; die kent zijn eigen filter niet,
+    // dus voorlopig klapt dit alleen de eigen uitleg open. Het volle logboek
+    // staat eronder in #testrunBody.
+    teken();
+    return !!_uit[wat];
+  }
+
   /* De lus loopt alleen terwijl het scherm open staat. Een tikker die
-     doordraait op een gesloten overlay meet niets en kost wél bus- en
-     accutijd — en dit is een app die tijdens het rijden aan de lader hangt
-     omdat elke milliampère telt. */
+     doordraait op een gesloten overlay meet niets en kost wél accutijd — en
+     dit is een app die tijdens het rijden aan de lader hangt. */
   function start() {
     if (_tikker) return;
     _open = true;
@@ -474,18 +679,23 @@
 
   window.PLMeetkamer = {
     stations: stations,
+    oordeel: oordeel,
     meter: meter,
-    issuebaan: issuebaan,
+    ronde: ronde,
+    logtelling: logtelling,
     ouderdom: ouderdom,
+    getal: getal,
     momentopname: momentopname,
     html: html,
+    stijlErin: stijlErin,
     teken: teken,
+    klap: klap,
     start: start,
     stop: stop,
     open: function () { return _open; },
     _stations: function () { return STATIONS.map(function (s) { return s.sleutel; }); },
     _rand: function () { return RAND; },
     _tikMs: function () { return TIK_MS; },
-    _filter: function (aan) { if (aan !== undefined) _toonAlles = !!aan; return _toonAlles; }
+    _issueVorm: function () { return ISSUE_VORM.source; }
   };
 })();

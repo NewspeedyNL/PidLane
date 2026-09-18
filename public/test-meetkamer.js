@@ -220,88 +220,122 @@ console.log('\n5. de balk volgt de band, ook op de randgevallen');
 }
 
 // ══════════════════════════════════════════════════════════════════
-console.log('\n6. de issuebaan wordt afgeleid, niet bijgehouden');
+console.log('\n6. "deze ronde" is afgeleid en blijft klein');
 // ══════════════════════════════════════════════════════════════════
 {
+  // De eerste versie zette ELK issue dat blok 5 dekt op het scherm: 43 chips,
+  // waarvan vijf naar hoofdstukken uit PIDLANE.md verwezen. Dat was geen
+  // overzicht maar een muur. Wat hier getoetst wordt is de correctie: alleen
+  // wat deze rit werkelijk aangaat, de rest geteld.
   const proeven = [
     { issue: '#241', naam: 'De meetopdracht van buiten is uitgevoerd' },
     { issue: '#228', naam: 'De meting blijft in beeld' },
-    { issue: '—', naam: 'een proef zonder issue' }
+    { issue: '#235', naam: 'De live-log komt aan' },
+    { issue: '§11',  naam: 'een hoofdstukcontrole' },
+    { issue: '§4',   naam: 'nog een hoofdstukcontrole' },
+    { issue: '\u2014', naam: 'een proef zonder issue' }
   ];
 
-  const leeg = M.issuebaan({ proeven: proeven });
-  toets('een proef zonder issuenummer komt niet in de baan',
-    leeg.every(function (b) { return b.issue !== '—'; }));
-  toets('de andere twee staan er wel', leeg.length === 2, String(leeg.length));
-  toets('zonder log staat alles op wachten',
-    leeg.every(function (b) { return b.staat === 'wacht'; }));
+  const stil = M.ronde({ proeven: proeven });
+  toets('zonder bevinding staat er geen enkele chip', stil.deze.length === 0,
+    JSON.stringify(stil.deze.map(function (b) { return b.issue; })));
+  toets('de drie echte issues worden geteld als bewaking', stil.bewaking === 3, String(stil.bewaking));
+  toets('de hoofdstukken worden apart geteld', stil.delen === 2, String(stil.delen));
+  toets('en tellen dus niet mee als issue', stil.bewaking !== 5, String(stil.bewaking));
 
-  // De koppeling loopt via de NAAM waarmee blok 5 boekt.
-  const log = [
+  // EEN § IS GEEN ISSUE. Dit is de fout uit de schermafdruk van 18-09: §11,
+  // §21, §4, §7 en §8 stonden als issuechip op het scherm en verwijzen naar
+  // niets. Een filter dat alleen op "niet leeg" kijkt, laat ze er alle vijf in.
+  const metDeel = M.ronde({ proeven: proeven, log: [{ blok: 5, naam: 'een hoofdstukcontrole', staat: 'FOUT' }] });
+  toets('een hoofdstukcontrole komt zelfs met een FOUT niet in de chips',
+    metDeel.deze.every(function (b) { return !/^§/.test(b.issue); }),
+    JSON.stringify(metDeel.deze.map(function (b) { return b.issue; })));
+
+  // ALLEEN WAT AANDACHT VRAAGT. Een proef die gewoon groen staat is geen
+  // nieuws en hoort bij de veertig die meelopen — anders is de muur terug.
+  const gemengd = M.ronde({ proeven: proeven, log: [
     { blok: 5, naam: 'De meetopdracht van buiten is uitgevoerd', staat: 'FOUT' },
-    { blok: 5, naam: 'De meting blijft in beeld', staat: 'ok' },
-    { blok: 14, naam: 'Is er gereden?', staat: 'LET OP' }
-  ];
-  const baan = M.issuebaan({ proeven: proeven, log: log });
-  const bij = function (q) { return baan.filter(function (b) { return b.issue === q; })[0]; };
+    { blok: 5, naam: 'De meting blijft in beeld', staat: 'LET OP' },
+    { blok: 5, naam: 'De live-log komt aan', staat: 'ok' }
+  ]});
+  const qs = gemengd.deze.map(function (b) { return b.issue; });
+  toets('een FOUT komt in de chips', qs.indexOf('#241') >= 0, JSON.stringify(qs));
+  toets('een LET OP ook', qs.indexOf('#228') >= 0, JSON.stringify(qs));
+  toets('maar een groene proef NIET', qs.indexOf('#235') === -1, JSON.stringify(qs));
+  toets('die telt als bewaking', gemengd.bewaking === 1, String(gemengd.bewaking));
+  toets('rood staat vóór oranje', gemengd.deze[0].issue === '#241', gemengd.deze[0].issue);
 
-  toets('een FOUT-regel kleurt zijn issue rood', bij('#241').staat === 'fout', bij('#241').staat);
-  toets('een ok-regel kleurt zijn issue groen', bij('#228').staat === 'ja', bij('#228').staat);
-  toets('rood staat vooraan in de baan', baan[0].issue === '#241', baan[0].issue);
-
-  // REGELS VAN EEN ANDER BLOK TELLEN NIET MEE, EN DAT MOET BLIJKEN UIT EEN
-  // BOTSING. Een blok-14-regel met een naam die níét in de lijst staat, wordt
-  // sowieso genegeerd — die bewijst dus niets over de blokfilter. Alleen een
-  // regel met DEZELFDE naam als een blok-5-proef laat zien of de filter iets
-  // doet: zonder filter overschrijft blok 14 hier het oordeel van blok 5.
-  const botsing = M.issuebaan({
-    proeven: [{ issue: '#241', naam: 'De meetopdracht van buiten is uitgevoerd' }],
-    log: [
-      { blok: 5, naam: 'De meetopdracht van buiten is uitgevoerd', staat: 'FOUT' },
-      { blok: 14, naam: 'De meetopdracht van buiten is uitgevoerd', staat: 'ok' }
-    ]
+  // Regels van een ander blok mogen niets kleuren, en dat moet blijken uit een
+  // BOTSING: een blok-14-regel met een naam die toch al niet in de lijst staat
+  // bewijst niets over de filter.
+  const botsing = M.ronde({
+    proeven: [{ issue: '#241', naam: 'X' }],
+    log: [{ blok: 5, naam: 'X', staat: 'FOUT' }, { blok: 14, naam: 'X', staat: 'ok' }]
   });
   toets('een blok-14-regel overschrijft het oordeel van blok 5 niet',
-    botsing[0].staat === 'fout', botsing[0].staat);
+    botsing.deze.length === 1 && botsing.deze[0].staat === 'fout',
+    JSON.stringify(botsing.deze));
 
-  // DE AFLEIDING MOET BREKEN ALS DE KOPPELING BREEKT. Dit is de toets die
-  // "geen tweede lijst" waar houdt: verandert de naam waarmee blok 5 boekt,
-  // dan valt de baan terug op wachten in plaats van een oude stand te tonen.
-  const scheef = M.issuebaan({ proeven: proeven, log: [{ blok: 5, naam: 'De meetopdracht van buiten is UITGEVOERD', staat: 'ok' }] });
-  toets('een naam die niet meer past kleurt niets groen',
-    scheef.every(function (b) { return b.staat === 'wacht'; }),
-    JSON.stringify(scheef.map(function (b) { return b.issue + '=' + b.staat; })));
-
-  // EÉN ISSUE MET MEER PROEVEN: DE ZWAARSTE WINT, NIET DE LAATSTE.
-  // De volgorde is hier het bewijs. Staat de FOUT vooraan en de ok erachter,
-  // dan geeft "de laatste wint" groen en "de zwaarste wint" rood — alleen zó
-  // laat deze toets zien welke van de twee er in de code staat. Andersom
-  // geven ze allebei rood en bewijst hij niets.
-  const twee = M.issuebaan({
-    proeven: [{ issue: '#217', naam: 'a' }, { issue: '#217', naam: 'b' }],
-    log: [{ blok: 5, naam: 'a', staat: 'FOUT' }, { blok: 5, naam: 'b', staat: 'ok' }]
-  });
-  toets('half goed is niet goed, ook als de goede proef als laatste komt',
-    twee[0].staat === 'fout', twee[0].staat);
-  toets('en beide proeven hangen eronder', twee[0].proeven.length === 2);
-
-  // Dezelfde vraag met LET OP erachter: die mag een FOUT ook niet verzachten.
-  const zacht = M.issuebaan({
-    proeven: [{ issue: '#217', naam: 'a' }, { issue: '#217', naam: 'b' }],
-    log: [{ blok: 5, naam: 'a', staat: 'FOUT' }, { blok: 5, naam: 'b', staat: 'LET OP' }]
-  });
-  toets('een LET OP erna verzacht een FOUT niet', zacht[0].staat === 'fout', zacht[0].staat);
-
-  // De opdracht van buiten levert eigen issues aan, en die zijn herkenbaar.
-  const vanBuiten = M.issuebaan({
+  // DE OPDRACHT VAN BUITEN STAAT ER ALTIJD OP, ook als hij groen is: dat is
+  // per definitie de vraag van deze rit.
+  const vanBuiten = M.ronde({
     proeven: proeven, log: [],
     opdracht: opdracht(),
     uitslagen: [{ naam: 'spanning binnen bereik', staat: 'ok' }]
   });
-  const q217 = vanBuiten.filter(function (b) { return b.issue === '#217'; })[0];
-  toets('een issue uit de opdracht staat in de baan', !!q217);
-  toets('en is gemerkt als van buiten gekomen', q217 && q217.herkomst === 'opdracht', q217 && q217.herkomst);
+  const q217 = vanBuiten.deze.filter(function (b) { return b.issue === '#217'; })[0];
+  toets('een groen issue uit de opdracht staat er wél op', !!q217);
+  toets('gemerkt als van buiten gekomen', q217 && q217.herkomst === 'opdracht', q217 && q217.herkomst);
   toets('met de uitslag van de opdracht erin', q217 && q217.staat === 'ja', q217 && q217.staat);
+
+  // Eén issue met twee proeven: de zwaarste wint, niet de laatste. De volgorde
+  // is hier het bewijs — andersom geven beide regels hetzelfde antwoord.
+  const twee = M.ronde({
+    proeven: [{ issue: '#217', naam: 'a' }, { issue: '#217', naam: 'b' }],
+    log: [{ blok: 5, naam: 'a', staat: 'FOUT' }, { blok: 5, naam: 'b', staat: 'LET OP' }]
+  });
+  toets('een LET OP erna verzacht een FOUT niet', twee.deze[0].staat === 'fout', twee.deze[0].staat);
+  toets('en beide proeven hangen eronder', twee.deze[0].proeven.length === 2);
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n6b. het oordeel bovenaan vat samen zonder te verzachten');
+// ══════════════════════════════════════════════════════════════════
+{
+  toets('zonder opdracht is er geen oordeel', M.oordeel({}).totaal === 0);
+
+  const bezig = M.oordeel({ opdracht: opdracht(), bezig: true });
+  toets('bezig zonder uitslag meldt dat het loopt', bezig.staat === 'bezig', bezig.staat);
+
+  const alles = M.oordeel({ opdracht: opdracht(), uitslagen: [uitslag('ok', 13.7), uitslag('ok', 13.9)] });
+  toets('alles goed geeft 2/2 groen', alles.goed === 2 && alles.totaal === 2 && alles.staat === 'ja',
+    JSON.stringify(alles));
+
+  const twee3 = M.oordeel({ opdracht: opdracht(),
+    uitslagen: [uitslag('ok', 13.7), uitslag('ok', 13.9), uitslag('LET OP', null, { naam: 'er is gereden' })] });
+  toets('2 van de 3 telt de goede, niet alle', twee3.goed === 2 && twee3.totaal === 3, JSON.stringify(twee3));
+  toets('en de regel eronder noemt wat er ontbreekt', /gereden/.test(twee3.regel), twee3.regel);
+
+  // ÉÉN FOUT WINT VAN TWEE KEER GOED.
+  const stuk = M.oordeel({ opdracht: opdracht(),
+    uitslagen: [uitslag('ok', 13.7), uitslag('ok', 13.9), uitslag('FOUT', 9.1, { detail: '0142 min = 9.1 — buiten de band' })] });
+  toets('één FOUT maakt het oordeel rood', stuk.staat === 'fout', stuk.staat);
+  toets('en de regel toont de detailtekst van die proef', /9\.1/.test(stuk.regel), stuk.regel);
+  toets('de teller blijft eerlijk: 2 van de 3', stuk.goed === 2 && stuk.totaal === 3, JSON.stringify(stuk));
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n6c. de logtelling telt wat er staat');
+// ══════════════════════════════════════════════════════════════════
+{
+  const t = M.logtelling([
+    { staat: 'ok' }, { staat: 'ok' }, { staat: 'FOUT' }, { staat: 'LET OP' }, { staat: 'overgeslagen' }
+  ]);
+  toets('alle regels geteld', t.n === 5, String(t.n));
+  toets('fout apart', t.fout === 1, String(t.fout));
+  toets('let op apart', t.letop === 1, String(t.letop));
+  toets('een lege log geeft nul', M.logtelling([]).n === 0);
+  toets('en onzin geeft ook nul', M.logtelling(null).n === 0);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -321,6 +355,14 @@ console.log('\n7. de ouderdom leest als mensentaal en verzint niets');
   toets('onzin geeft niets', M.ouderdom('gisteren', nu) === '');
   toets('null geeft niets', M.ouderdom(null, nu) === '');
   toets('een toekomstige tijd heet "zojuist"', M.ouderdom(nu + 5000, nu) === 'zojuist');
+
+  // Getallen lezen als een Nederlander ze schrijft, zonder een precisie te
+  // suggereren die er niet is.
+  toets('een komma in plaats van een punt', M.getal(13.77) === '13,77', M.getal(13.77));
+  toets('een rond getal blijft rond', M.getal(12) === '12', M.getal(12));
+  toets('een groot getal krijgt geen decimalen', M.getal(100000) === '100000', M.getal(100000));
+  toets('nul is nul en niet leeg', M.getal(0) === '0', M.getal(0));
+  toets('niets geeft leeg', M.getal(null) === '');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -338,8 +380,10 @@ console.log('\n8. het paneel tekent zonder bronnen, en zegt dat dan ook');
   toets('het paneel tekent zonder te klappen', (function () {
     try { h = kaal.html(s); return true; } catch (e) { return false; }
   })());
-  toets('en bevat de vier stations',
-    /Opdracht binnen/.test(h) && /De rit meet/.test(h) && /Naar Airtable/.test(h) && /Claude leest/.test(h));
+  toets('en bevat de vier stations van de lus',
+    /Opdracht/.test(h) && /Meten/.test(h) && /Airtable/.test(h) && /Claude/.test(h));
+  toets('zonder opdracht staat er geen muur maar één uitnodiging',
+    /Nog geen meetopdracht/.test(h), h.slice(0, 200));
 
   // Met een opdracht erbij hoort de vraag zelf op het scherm te staan.
   const vol = laad().html({
@@ -350,8 +394,21 @@ console.log('\n8. het paneel tekent zonder bronnen, en zegt dat dan ook');
   });
   toets('de naam van de opdracht staat op het scherm', /Boordspanning tijdens de rit/.test(vol));
   toets('het ritnummer ook', /2026-09-18-0807/.test(vol));
-  toets('de sensoren staan er als chips', /0142/.test(vol) && /010D/.test(vol));
-  toets('de gemeten waarde staat erbij', /9\.2/.test(vol));
+  toets('de PID van de proef staat erbij', /0142/.test(vol));
+  // Het getal leest als een Nederlander het schrijft: 9,2 en niet 9.2.
+  toets('de gemeten waarde staat erbij, met een komma', /9,2/.test(vol));
+  toets('en de bandgrenzen eromheen', /11,5/.test(vol) && /15,2/.test(vol));
+
+  // DE MUUR MAG NIET TERUGKOMEN. Veertig issues als chip was de bevinding van
+  // 18-09; een paneel met een handvol proeven hoort een handvol chips te geven.
+  const veel = laad().html({
+    nu: Date.now(), toggleAan: true, uitslagen: [], log: [],
+    proeven: Array.from({ length: 44 }, function (_, i) { return { issue: '#' + (100 + i), naam: 'p' + i }; })
+  });
+  const chips = (veel.match(/class="mk-chip"/g) || []).length;
+  toets('44 gedekte issues leveren geen 44 chips op', chips === 0, String(chips));
+  toets('ze worden geteld in plaats van opgesomd', /44<\/b> andere proeven/.test(veel),
+    (veel.match(/andere proeven[^<]*/) || [''])[0]);
 
   // TEKST UIT AIRTABLE WORDT NIET ALS HTML UITGEVOERD. De naam en de reden
   // komen uit een tabel die buiten de app bewerkt wordt.

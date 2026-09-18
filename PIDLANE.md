@@ -969,6 +969,38 @@ als laatste in de volgordetoets, waardoor "de laatste wint" en "de zwaarste
 wint" hetzelfde antwoord gaven. Dat is de vraag uit CLAUDE.md die elke toets
 moet doorstaan: *welke fout zou hier rood worden, en welke glipt erdoor?*
 
+**De eerste versie was onleesbaar, en dat is de leerzaamste helft.** Hij zette
+vier even grote tegels naast elkaar en daaronder élk issue dat blok 5 dekt:
+43 chips, waaronder `§11`, `§21`, `§4`, `§7` en `§8` — hoofdstukken uit dit
+document, geen issues. Het scherm toonde *wat blok 5 allemaal dekt* in plaats
+van *waar deze rit over gaat*.
+
+Dat is geen opmaakfout maar een denkfout, en hij heeft een vorm die hier vaker
+terugkomt: **alles even zwaar tonen is hetzelfde als niets tonen.** Vier
+gelijkwaardige kaarten geven geen rangorde, dus je leest ze geen van alle. De
+werkregel die eruit volgt: *rustig als er niets aan de hand is, luid als er wél
+iets is.* Eén ding is groot — de vraag die deze rit moet beantwoorden — en de
+rest krimpt tot het iets te melden heeft. De lus is vier stipjes zolang hij
+loopt en wordt pas een blok zodra de terugweg stukgaat.
+
+**Waar "deze ronde" vandaan komt, en waarom niet uit `CAMPAGNE`.** De issues op
+het scherm zijn afgeleid uit twee bronnen die allebei al de waarheid zijn: de
+proeven van de Airtable-opdracht, en de issues waar blok 5 déze run werkelijk
+iets over meldde. Groen uit de vaste lijst komt er niet bij — een proef die het
+gewoon doet is geen nieuws. De andere veertig worden geteld, niet opgesomd.
+
+`CAMPAGNE` lag voor de hand: daar staat al "wat één run deze ronde moet
+sluiten" (#217, #212, #64). Maar die lijst wordt met de hand bijgehouden, en
+dat is precies de vorm die `PIDLANE-WERK.md` en dit hoofdstuk de kop kostte.
+Afgeleid is smaller maar altijd waar.
+
+**`§`-verwijzingen horen niet in het `issue`-veld.** Vijf van de 54 entries in
+`PROEVEN_B5` dragen een hoofdstuk in plaats van een issuenummer. De meetkamer
+filtert daarop (`/^#\d+$/`) en telt ze apart als hoofdstukcontroles. Dat is een
+pleister: het veld heet `issue` en draagt twee soorten verwijzingen. Rechtzetten
+is een mechanische wijziging over 54 regels en hoort in een eigen commit — een
+issue waard, geen sluipwerk in deze PR.
+
 **Wat dit niet oplost.** Het scherm toont wat de app meet, niet wat de auto
 doet. Dat `010D` op nul staat kan ook een adapter zijn die de snelheid niet
 levert; de meetkamer zegt alleen dát de meting buiten de band valt, en dat is

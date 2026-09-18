@@ -7615,11 +7615,16 @@ function openTestrun() {
       // HET PANEEL VAN DE MEETKAMER KOMT HIER TUSSEN (#246). Het wordt door
       // pidlane-meetkamer.js zelf ingehangen vóór #testrunBody, zodat de twee
       // niet in hetzelfde element schrijven.
-      '<div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
-        // De begeleide run staat vooraan: hij is sinds 6.0 de manier waarop een
-        // meetrit hoort te lopen. "Start" ernaast blijft voor wie alleen even
-        // wil meten zonder rit eromheen.
-        '<button onclick="begeleidStart(\'rit\')" style="background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:700 13px var(--f);cursor:pointer">🧭 Meetrit</button>' +
+      // DE PRIMAIRE KNOP STAAT ALLEEN (#246). Er stonden er dertien op een
+      // rij, allemaal even zwaar, vóór alles wat er te zien was — dus je
+      // scrolde langs een muur om bij het antwoord te komen. Wat je in de auto
+      // doet is één ding: een meetrit starten. De rest is gereedschap en zit
+      // achter ⚙; niets is weg, het staat alleen niet meer vóór de vraag.
+      '<div style="display:flex;gap:7px;flex-shrink:0;align-items:stretch">' +
+        '<button onclick="begeleidStart(\'rit\')" style="flex:1;background:var(--ac);color:#fff;border:0;border-radius:11px;padding:13px;font:700 14px var(--f);cursor:pointer">🧭 Meetrit</button>' +
+        '<button onclick="testrunGereedschap()" id="trMeerBtn" title="Meer gereedschap" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:11px;padding:13px 16px;font:700 14px var(--f);cursor:pointer">⚙</button>' +
+      '</div>' +
+      '<div id="trGereedschap" style="display:none;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
         // De toestelronde (#166). Alles wat geen RIJDENDE auto nodig heeft
         // staat hier, zodat het geen ritminuten kost: de schermoordelen, het
         // logboek en de meetcontextvragen. Stilstaand op de parkeerplaats of
@@ -7822,6 +7827,23 @@ function _voortgangKaart(st) {
 
 window.kaartStart = kaartStart;
 
+/* De gereedschapslade open- en dichtklappen (#246). Twaalf knoppen die je
+   zelden nodig hebt, maar die je wél nodig hebt: de kaartmaker, de
+   snelheidsproef, de losse blokken. Ze stonden vóór het antwoord en staan nu
+   erachter — verplaatst en niet verwijderd, want wat je een keer per maand
+   gebruikt moet je nog steeds kunnen vinden. */
+function testrunGereedschap() {
+  const la = document.getElementById('trGereedschap');
+  if (!la) return false;
+  const open = la.style.display !== 'none';
+  la.style.display = open ? 'none' : 'flex';
+  const knop = document.getElementById('trMeerBtn');
+  // De knop zegt zijn eigen stand: een ⚙ die niets verandert aan zijn uiterlijk
+  // laat je twee keer drukken om te zien of er iets gebeurd is.
+  if (knop) knop.textContent = open ? '⚙' : '✕';
+  return !open;
+}
+
 function closeTestrun() {
   const ov = document.getElementById('testrunOv');
   if (ov) ov.style.display = 'none';
@@ -7982,6 +8004,7 @@ window.PLTestrunLive = {
 };
 
 window.openTestrun = openTestrun;
+window.testrunGereedschap = testrunGereedschap;
 window.closeTestrun = closeTestrun;
 window.startTestrun = startTestrun;
 window.ritNulstellen = ritNulstellen;

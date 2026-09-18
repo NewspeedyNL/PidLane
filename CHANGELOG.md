@@ -11,26 +11,40 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
-     Build: 2026-09-18a (CET) — DE LUS IN BEELD
+     Build: 2026-09-18a (CET) — DE VRAAG VAN DE RIT
+     IN BEELD
 
        • 🔬 HET TESTRUNSCHERM IS HERBOUWD. Bovenaan staat nu
-         de lus zelf: welke meetopdracht uit Airtable
-         binnenkwam, of de rit hem meet, of het antwoord de
-         logtabel weer haalde, en of er buiten de app iets
-         te lezen valt. Vier tegels, elk met een echte bron
-         eronder.
+         één ding groot: de vraag die deze rit moet
+         beantwoorden. Welke meetopdracht uit Airtable
+         binnenkwam, en hoeveel proeven er binnen bereik
+         vallen — 2/3, met de zin eronder die zegt wat er
+         nog ontbreekt.
 
-       • 📊 ELKE PROEF HEEFT EEN BALK. Per proef uit de
-         opdracht zie je tijdens de rit waar de meting in
-         zijn band staat — de band beslaat altijd het
-         middelste stuk, dus twee proeven zijn naast elkaar
-         te lezen zonder de assen erbij. Niet gemeten tekent
-         géén balk: dat is iets anders dan nul.
+       • 📊 ELKE PROEF HEEFT EEN BALK. Je ziet tijdens de
+         rit waar de meting in zijn band staat. De band
+         beslaat altijd het middelste stuk, dus twee proeven
+         zijn naast elkaar te lezen zonder de assen erbij.
+         Niet gemeten tekent géén stip: dat is iets anders
+         dan nul.
 
-       • 🎯 DE ISSUES STAAN EROP. Waar deze rit aan werkt,
-         als chips die meekleuren zodra blok 5 zijn oordeel
-         boekt. Die lijst wordt afgeleid uit de proeven en
-         de opdracht — niet met de hand bijgehouden.
+       • ⚪ DE LUS IS VIER STIPJES. Opdracht → meten →
+         Airtable → Claude, met een lijn ertussen die
+         meekleurt. Hij is context, geen nieuws — tot de
+         terugweg stukgaat, dan komt er een eigen rood blok
+         dat zegt dat er wel gemeten maar niets teruggemeld
+         wordt.
+
+       • 🎯 DRIE ISSUES, GEEN DRIEËNVEERTIG. Alleen waar
+         deze rit werkelijk over gaat: de vraag uit Airtable
+         en wat blok 5 déze run te melden had. De andere
+         veertig lopen mee als bewaking en staan achter één
+         regel met een telling.
+
+       • ⚙ DE KNOPPEN ZIJN OPGERUIMD. Eén knop om een
+         meetrit te starten; het andere gereedschap zit
+         achter ⚙. Niets is weg — het staat alleen niet
+         meer vóór het antwoord.
 
        • WAAROM. De rit van 18-09 stond stil, en dat bleek
          pas achteraf uit een FOUT-regel tussen 130 andere,

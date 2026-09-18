@@ -814,20 +814,20 @@ MUTATIES=(
 "public/pidlane-aandrijving.js@@    if (_stand.startStopGezien && !gezienWas) _promoveer(_stand, nu);@@    if (false) _promoveer(_stand, nu);@@test-waarneming.js@@de waarneming wordt niet meer naar de auto gepromoveerd: alles blijft groen en de vraag komt volgende rit gewoon terug"
 "public/pidlane-archief.js@@    if(w && w.status==='weerlegd')@@    if(w && w.status!=='gezien')@@test-meetcontext.js@@een register dat niets weet levert 'nee' op, en dan leest de AI een normale start/stop-stop als afslaan"
 
-# ── De meetkamer (#246, 18-09-2026). Het scherm dat de lus toont is
-# gevaarlijker dan geen scherm zodra het iets anders zegt dan het verslag: je
-# stopt met het verslag lezen. Deze acht bouwen precies die stille afwijking
-# na — een tegel die een afgekeurde opdracht groen laat, een balk die
-# niet-gemeten als nul tekent, en een issuebaan die op een oude stand blijft
-# staan.
+# ── De meetkamer (#246, 18-09-2026). Het scherm dat de vraag van de rit
+# toont is gevaarlijker dan geen scherm zodra het iets anders zegt dan het
+# verslag: je stopt met het verslag lezen. Deze tien bouwen die stille
+# afwijking na — plus de fout die de eerste versie onleesbaar maakte: elk
+# issue tonen in plaats van alleen wat deze rit aangaat.
 "public/pidlane-meetkamer.js@@      uit.binnen = /afgekeurd/i.test(r)@@      uit.binnen = /nooit-waar-xyz/i.test(r)@@test-meetkamer.js@@een AFGEKEURDE opdracht leest als 'er stond niets klaar': de rit meet iets anders dan de tabel zegt en niemand ziet het"
-"public/pidlane-meetkamer.js@@    } else if (fout) {@@    } else if (false) {@@test-meetkamer.js@@een proef buiten de band kleurt de tegel niet meer rood: het scherm meldt de rit als geslaagd terwijl het verslag FOUT zegt"
-"public/pidlane-meetkamer.js@@    } else if (live.ok) {@@    } else if (true) {@@test-meetkamer.js@@een mislukte zending naar Airtable leest als geslaagd — precies het gat dat #235 maanden onzichtbaar hield"
-"public/pidlane-meetkamer.js@@    if (isNaN(_getal(u.waarde))) return basis;@@    if (false) return basis;@@test-meetkamer.js@@een niet-gemeten proef krijgt een balk op nul: een rit zonder meting leest als een rit ver buiten de band"
+"public/pidlane-meetkamer.js@@    if (isNaN(_g(u.waarde))) return basis;@@    if (false) return basis;@@test-meetkamer.js@@een niet-gemeten proef krijgt een balk op nul: een rit zonder meting leest als een rit ver buiten de band"
 "public/pidlane-meetkamer.js@@    if (v === null || v === undefined || v === '') return NaN;@@    if (v === undefined) return NaN;@@test-meetkamer.js@@een ontbrekende band wordt stil een band van 0 tot 0 en de meting staat keurig in het midden van iets dat niet bestaat"
-"public/pidlane-meetkamer.js@@    var marge = (span > 0) ? span * (RAND / (1 - 2 * RAND)) : 1;@@    var marge = span * (RAND / (1 - 2 * RAND));@@test-meetkamer.js@@een band van \u00e9\u00e9n punt deelt door nul en zet NaN op het scherm"
-"public/pidlane-meetkamer.js@@      if (!r || r.blok !== 5 || !r.naam) return;@@      if (!r || !r.naam) return;@@test-meetkamer.js@@regels uit andere blokken kleuren de issuebaan: een issue wordt groen op werk dat er niet over ging"
-"public/pidlane-meetkamer.js@@      if (RANG[staat] > RANG[b.staat]) b.staat = staat;@@      b.staat = staat;@@test-meetkamer.js@@de laatste proef wint in plaats van de zwaarste: een issue met \u00e9\u00e9n FOUT en twee keer ok kleurt groen"
+"public/pidlane-meetkamer.js@@    var marge = (span > 0) ? span * (RAND / (1 - 2 * RAND)) : 1;@@    var marge = span * (RAND / (1 - 2 * RAND));@@test-meetkamer.js@@een band van één punt deelt door nul en zet NaN op het scherm"
+"public/pidlane-meetkamer.js@@      if (!r || r.blok !== 5 || !r.naam) return;@@      if (!r || !r.naam) return;@@test-meetkamer.js@@regels uit andere blokken kleuren de chips: een issue wordt groen op werk dat er niet over ging"
+"public/pidlane-meetkamer.js@@      if (RANG[staat] > RANG[b.staat]) b.staat = staat;@@      b.staat = staat;@@test-meetkamer.js@@de laatste proef wint in plaats van de zwaarste: een issue met één FOUT en daarna een LET OP kleurt oranje"
+"public/pidlane-meetkamer.js@@      if (DEEL_VORM.test(q)) { delen++; return; }@@      if (false) { delen++; return; }@@test-meetkamer.js@@§11 en §4 staan weer als issuechip op het scherm en verwijzen naar niets"
+"public/pidlane-meetkamer.js@@      if (st === 'fout' || st === 'let op') { draag(q, p.naam, st, 'blok5'); return; }@@      { draag(q, p.naam, st || 'wacht', 'blok5'); return; }@@test-meetkamer.js@@elk gedekt issue komt weer als chip op het scherm: 43 pillen in plaats van wat deze rit aangaat"
+"public/pidlane-meetkamer.js@@    if (fout.length) regel = fout[0].detail || fout[0].naam;@@    if (false) regel = fout[0].detail || fout[0].naam;@@test-meetkamer.js@@het oordeel bovenaan noemt de fout niet meer: er staat een rood cijfer zonder te zeggen wat er mis is"
 "public/pidlane-meetkamer.js@@    if (_tikker) return;@@    if (false) return;@@test-meetkamer.js@@elke keer openen zet er een tikker bij, en die ververst daarna onzichtbaar door tijdens het rijden"
 "public/pidlane-opdracht.js@@    return binnen ? _uit('ok', staart, proef, w, r.n)@@    return binnen ? _uit('ok', staart, proef, null, r.n)@@test-meetkamer.js@@de uitslag draagt de gemeten waarde niet meer: het scherm tekent geen enkele balk en niemand merkt het"
 )
