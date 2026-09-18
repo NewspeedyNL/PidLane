@@ -7552,6 +7552,9 @@ function openTestrun() {
         '<span style="font-size:11px;color:var(--tx3)">' + TESTRUN_VERSIE + '</span>' +
         '<button onclick="closeTestrun()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:7px 14px;font:600 12px var(--f);cursor:pointer">Sluiten</button>' +
       '</div>' +
+      // HET PANEEL VAN DE MEETKAMER KOMT HIER TUSSEN (#246). Het wordt door
+      // pidlane-meetkamer.js zelf ingehangen vóór #testrunBody, zodat de twee
+      // niet in hetzelfde element schrijven.
       '<div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
         // De begeleide run staat vooraan: hij is sinds 6.0 de manier waarop een
         // meetrit hoort te lopen. "Start" ernaast blijft voor wie alleen even
@@ -7595,6 +7598,11 @@ function openTestrun() {
   }
   ov.style.display = 'flex';
   _teken();
+  // De meetkamer ververst zichzelf elke seconde zolang dit scherm open staat
+  // (#246). Ontbreekt de module, dan draait de testrun gewoon door zoals
+  // hiervoor — het paneel is een venster op de lus, geen onderdeel ervan.
+  try { if (window.PLMeetkamer) PLMeetkamer.start(); }
+  catch (e) { console.warn('De meetkamer is niet gestart — de testrun werkt verder normaal (#246)', e); }
 }
 // ══════════════════════════════════════════════════════════════════
 // BLOK 15 — DE DATAPUNTENKAART
@@ -7754,7 +7762,14 @@ function _voortgangKaart(st) {
 
 window.kaartStart = kaartStart;
 
-function closeTestrun() { const ov = document.getElementById('testrunOv'); if (ov) ov.style.display = 'none'; }
+function closeTestrun() {
+  const ov = document.getElementById('testrunOv');
+  if (ov) ov.style.display = 'none';
+  // De tikker van de meetkamer moet mee uit: een verversing die doorloopt op
+  // een verborgen scherm kost accu en meet niets (#246).
+  try { if (window.PLMeetkamer) PLMeetkamer.stop(); }
+  catch (e) { console.warn('De meetkamer is niet gestopt — hij blijft dan ververen op een gesloten scherm (#246)', e); }
+}
 
 function _teken() {
   const box = document.getElementById('testrunBody');
@@ -7883,7 +7898,27 @@ window.PLTestrunLive = {
   ritId: _liveRitId,
   tik: _liveTik,
   einde: _liveEinde,
-  schema: LIVE_SCHEMA
+  schema: LIVE_SCHEMA,
+
+  /* ── WAT DE MEETKAMER MAG LEZEN (#246, 18-09-2026) ───────────────
+     Het scherm dat de lus tekent heeft drie dingen nodig die hier binnen de
+     IIFE staan: welke issues deze ronde gedekt worden, wat er tot nu toe
+     geboekt is, en of er nog iets loopt.
+
+     Dit zijn UITLENINGEN en geen kopieën, en dat is het hele punt. De
+     meetkamer mag geen eigen lijstje issues bijhouden en geen eigen telling
+     van wat er goed ging — dat is exact de vorm die §11 en PIDLANE-WERK.md
+     de kop kostte: twee lijsten van hetzelfde die uit de pas lopen. Komt er
+     een proef bij in PROEVEN_B5, dan staat hij vanzelf op het scherm.
+
+     `proeven()` geeft alleen de METADATA terug, niet de proeffuncties: het
+     scherm moet ze tonen, niet draaien. Draaien doet blok 5. */
+  proeven: function () {
+    return PROEVEN_B5.map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom }; });
+  },
+  log: function () { return _trLog.slice(); },
+  bezig: function () { return !!_trBezig; },
+  campagne: function () { return CAMPAGNE.titel; }
 };
 
 window.openTestrun = openTestrun;
