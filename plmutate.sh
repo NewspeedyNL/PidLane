@@ -854,6 +854,32 @@ MUTATIES=(
 "worker.js@@  const alle = new URL(request.url).searchParams.get(\"alle\") === \"1\";@@  const alle = false;@@test-opdrachtroute.js@@?alle=1 geeft nog steeds alleen de actieve rij: de keuzeknoppen tonen er altijd maar een"
 "worker.js@@        opdracht: ruw2.length > 8192 ? \"\" : ruw2,@@        opdracht: ruw2,@@test-opdrachtroute.js@@een opdracht van een megabyte gaat alsnog de telefoon in voordat iemand hem afkeurt"
 "public/pidlane-testrun.js@@      var baan = PLMeetkamer.ronde(s);@@      var baan = PLMeetkamer.issuebaan(s);@@test-meetkamer.js@@de blok-5-proef roept een functie aan die na de hernoeming niet meer bestaat — precies de regressie die op 18-09 19:53 op productie stond"
+
+# ── De markeringen overleven de volgende ronde (#255, 18-09-2026). De bedoelde
+# volgorde is meetrit → testrun → toestelronde → testrun, en juist die maakte de
+# tweede run blind. Acht aanroepplekken lezen die lijst; alle acht vielen terug
+# op hun "niet gedaan"-tak en zeiden dat als een feit over de rit.
+"public/pidlane-testrun.js@@  _BG.aan = true; _BG.i = 0; _BG.gepauzeerd = false; _BG.gestart = _nu(); _BG.gedaan = []; _BG.laatsteActie = '';@@  _BG.aan = true; _BG.i = 0; _BG.gepauzeerd = false; _BG.gestart = _nu(); _BG.gedaan = []; _BG.laatsteActie = '';\n  _markeringen = [];@@test-markeringen.js@@de toestelronde wist de markeringen van de meetrit: de tweede testrun meldt dat de achtergrondstap niet gedaan is terwijl hij dat wel was"
+"public/pidlane-testrun.js@@      try { return (_BG && _BG.aan && _BG.soort) ? _BG.soort : 'los'; }@@      try { return 'los'; }@@test-markeringen.js@@een markering zegt niet meer uit welke ronde hij komt, en dan is filteren per ronde weer giswerk"
+
+# ── Wat er in de logtabel terechtkomt (#256, 18-09-2026). Die tabel is sinds
+# #241 de bron waarop de volgende meetopdracht gebouwd wordt. Deze vijf bouwen
+# de fouten na die er op 18-09 werkelijk in stonden: proefwaarden als echte
+# metingen, elke uitschieter dubbel, en 61 rijen zonder sessienummer.
+"public/pidlane-auth.js@@        SessionId:  sessie,@@        SessionId:  '',@@test-logvelden.js@@de gewone logregels komen weer binnen zonder sessienummer: de conclusie van de testrun en het bewijs eronder zijn niet aan elkaar te knopen"
+"public/pidlane-auth.js@@  try{ if(window._plProefWaarden) return 'proefwaarde'; }@@  try{ if(false) return 'proefwaarde'; }@@test-logvelden.js@@de 300 °C die blok 5 met opzet inschiet staat weer als echte meting in de tabel, op een auto die 91–93 °C loopt"
+"public/pidlane-auth.js@@        Adapter:    adapter,@@        Adapter:    '',@@test-logvelden.js@@de adapter blijft weer leeg terwijl hij dé variabele is in #217 en #254: welke adapter erin zat moet weer uit een tekstregel gevist worden"
+"public/pidlane-auth.js@@  if(opties&&opties.geenAirtable) return;@@  if(false) return;@@test-logvelden.js@@elke harde-limietmelding staat weer twee keer in de tabel en elke telling telt dubbel"
+"public/pidlane-auth.js@@  if(type==='warn'&&(msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier'))) logToSheets('outlier',msg);@@  if(type==='warn'&&msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier')) logToSheets('outlier',msg);@@test-logvelden.js@@de haakjes zijn weg: && bindt sterker dan ||, dus elke regel met \"oorsprong\" erin gaat als uitschieter naar Airtable"
+
+# ── Voorwaarden en het driewaardige oordeel (#257, 18-09-2026). Negen van de
+# twintig LET OP-regels van 18-09 gingen niet over de auto maar over
+# omstandigheden die er niet waren. Deze vijf halen dat onderscheid weer weg.
+"public/pidlane-opdracht.js@@    var mist = vw.filter(function (v) { return v.vervuld !== true; });@@    var mist = [];@@test-opdrachtvoorwaarden.js@@de voorwaarden tellen niet meer mee: een rit met een koude motor heet weer gesloten"
+"public/pidlane-opdracht.js@@    var stil = uit.filter(function (u) { return u.staat === 'LET OP'; });@@    var stil = [];@@test-opdrachtvoorwaarden.js@@een PID die niet gemeten is heet weer een bevinding: niet-gemeten en buiten-de-band zijn weer één ding"
+"public/pidlane-opdracht.js@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = null; }@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = false; }@@test-opdrachtvoorwaarden.js@@een stapcontrole die stukgaat leest als \"de stap is niet gezet\" — niet-na-te-gaan wordt weer stil niet-gedaan (#227)"
+"public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)@@    if (o.schema !== SCHEMA)@@test-opdrachtvoorwaarden.js@@de hele voorraad van schema 1 wordt afgekeurd en elke rit kost eerst een nieuwe rij in de tabel"
+"public/pidlane-opdracht.js@@          if (isStap === isMeting) {@@          if (false) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
 )
 
 echo

@@ -635,6 +635,13 @@
         : g ? (g.goed + '/' + g.aantal + ' binnen bereik · ' + ouderdom(g.tijd, s.nu))
         : 'nog niet gemeten deze sessie';
       var staart = (r.reden && !r.fout) ? (r.reden + ' · ' + stand) : stand;
+      /* DE VOORWAARDEN VÓÓR DE RIT, NIET ERNA (#257). Dit is het hele punt
+         van de voorwaardenlijst: je leest hier dat deze vraag een warme motor
+         en één stilstand nodig heeft, en je kunt de rit daarop inrichten.
+         Stond het pas in het verslag, dan was de rit al voorbij. */
+      var eisen = (r.opdracht && Array.isArray(r.opdracht.voorwaarden)) ? r.opdracht.voorwaarden : [];
+      if (eisen.length && !r.fout)
+        staart += ' · nodig: ' + eisen.map(function (v) { return v.wat; }).join(', ');
       h += '<button class="mk-kies' + (r.id === nuId ? ' nu' : '') + '"' +
         (r.fout ? ' disabled' : ' onclick="PLMeetkamer.pak(\'' + jsTekst(r.id) + '\')"') + '>' +
         '<s style="background:' + kl + '"></s>' +

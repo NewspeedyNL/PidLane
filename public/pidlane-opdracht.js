@@ -43,7 +43,16 @@
   'use strict';
 
   var SLEUTEL = 'feat_opdracht';   // de Config-schakelaar
-  var SCHEMA = 1;                  // welke vorm deze app begrijpt
+  var SCHEMA = 2;                  // welke vorm deze app SCHRIJFT
+  /* WELKE VORMEN HIJ LEEST (#257). Schema 1 kent geen `voorwaarden`. Die
+     rijen blijven gewoon draaien, en dat is geen coulance maar noodzaak: er
+     staat een voorraad van in de tabel, en een opdracht afkeuren op zijn
+     versienummer kost een rit — de schaarste in dit project.
+
+     Een nieuwe sleutel is dus additief: bekend in 2, afwezig in 1, geldig in
+     allebei. Wordt een sleutel ooit VERPLICHT of verandert zijn betekenis,
+     dan is dat wél een nieuw schema dat oude rijen afwijst. */
+  var SCHEMAS = [1, 2];
 
   /* De grenzen op één plek, zodat de test ze kan opvragen in plaats van ze
      over te schrijven. Een test met zijn eigen kopie van de grenzen kan per
@@ -57,7 +66,8 @@
     tikMin: 1, tikMax: 60,
     vragenMax: 5, vraagTekstMax: 160, optiesMax: 5, optieMax: 40,
     drempelsMax: 8, meldingMax: 120,
-    proevenMax: 6, proefNaamMax: 80, issueMax: 12
+    proevenMax: 6, proefNaamMax: 80, issueMax: 12,
+    voorwaardenMax: 6, watMax: 60, stapMax: 40
   };
 
   // Wat `meet` mag zijn. Precies de velden die PLRit.per() werkelijk bijhoudt —
@@ -152,12 +162,13 @@
     // DE WITTE LIJST. Een onbekende sleutel is een afwijzing: hij betekent dat
     // de schrijver iets bedoelde wat deze app niet kent, en dan is doorgaan
     // met de rest een meting die iets anders doet dan er staat.
-    var TOEGESTAAN = ['schema', 'naam', 'reden', 'sensoren', 'duurS', 'tikS', 'vragen', 'drempels', 'proeven'];
+    var TOEGESTAAN = ['schema', 'naam', 'reden', 'sensoren', 'duurS', 'tikS', 'vragen', 'drempels', 'proeven', 'voorwaarden'];
     Object.keys(o).forEach(function (k) {
       if (TOEGESTAAN.indexOf(k) === -1) fouten.push('onbekende sleutel `' + k + '`');
     });
 
-    if (o.schema !== SCHEMA) fouten.push('schema is ' + JSON.stringify(o.schema) + ', deze app leest schema ' + SCHEMA);
+    if (SCHEMAS.indexOf(o.schema) === -1)
+      fouten.push('schema is ' + JSON.stringify(o.schema) + ', deze app leest schema ' + SCHEMAS.join(' en '));
     if (!_tekst(o.naam, GRENZEN.naamMax)) fouten.push('naam ontbreekt of is langer dan ' + GRENZEN.naamMax);
     if (o.reden !== undefined && !_tekst(o.reden, GRENZEN.redenMax)) fouten.push('reden is langer dan ' + GRENZEN.redenMax);
 
@@ -224,6 +235,44 @@
       }
     }
 
+    /* ── DE VOORWAARDEN (#257) ────────────────────────────────────
+       Een voorwaarde is meetbaar en geen proza, in dezelfde vorm als een
+       proef. Twee soorten, en meer worden het er niet zonder besluit:
+
+         { wat, pid, meet, tussen }   de AUTO moet iets gedaan hebben
+         { wat, stap }                de BESTUURDER moet iets gedaan hebben
+
+       `wat` is de naam die de bestuurder vóór de rit te zien krijgt, dus hij
+       is verplicht — een vinkje zonder naam is een vinkje waar niemand iets
+       aan heeft. */
+    if (o.voorwaarden !== undefined) {
+      if (!Array.isArray(o.voorwaarden) || o.voorwaarden.length > GRENZEN.voorwaardenMax) {
+        fouten.push('voorwaarden is geen lijst van hoogstens ' + GRENZEN.voorwaardenMax);
+      } else {
+        o.voorwaarden.forEach(function (v, i) {
+          if (!v || typeof v !== 'object') { fouten.push('voorwaarde ' + i + ' is geen object'); return; }
+          if (!_tekst(v.wat, GRENZEN.watMax)) fouten.push('voorwaarde ' + i + ': wat ontbreekt of is langer dan ' + GRENZEN.watMax);
+          var isStap = (v.stap !== undefined);
+          var isMeting = (v.pid !== undefined);
+          if (isStap === isMeting) {
+            fouten.push('voorwaarde ' + i + ': geef óf `stap` óf `pid`, niet allebei en niet geen van beide');
+            return;
+          }
+          if (isStap) {
+            if (!_tekst(v.stap, GRENZEN.stapMax)) fouten.push('voorwaarde ' + i + ': stap ontbreekt of is te lang');
+            return;
+          }
+          if (!PID_VORM.test(String(v.pid))) fouten.push('voorwaarde ' + i + ': `' + v.pid + '` is geen PID-code');
+          if (MATEN.indexOf(String(v.meet)) === -1)
+            fouten.push('voorwaarde ' + i + ': meet moet een van ' + MATEN.join(', ') + ' zijn');
+          if (!Array.isArray(v.tussen) || v.tussen.length !== 2 ||
+              typeof v.tussen[0] !== 'number' || typeof v.tussen[1] !== 'number' ||
+              !(v.tussen[0] <= v.tussen[1]))
+            fouten.push('voorwaarde ' + i + ': tussen moet [laag, hoog] zijn met laag <= hoog');
+        });
+      }
+    }
+
     if (fouten.length) return { ok: false, fouten: fouten };
 
     // Alleen wat hierboven is goedgekeurd gaat mee. Een kopie, en met opzet
@@ -231,7 +280,9 @@
     return {
       ok: true,
       opdracht: {
-        schema: SCHEMA,
+        // Het schema van de RIJ en niet van deze app: een rij van schema 1
+        // die hier als 2 terugkomt, liegt over wat er in de tabel staat.
+        schema: o.schema,
         naam: o.naam,
         reden: o.reden || '',
         sensoren: o.sensoren.map(function (p) { return String(p).toUpperCase(); }),
@@ -246,6 +297,12 @@
         proeven: (o.proeven || []).map(function (p) {
           return { issue: p.issue || '—', naam: p.naam, pid: String(p.pid).toUpperCase(),
                    meet: String(p.meet), tussen: [p.tussen[0], p.tussen[1]] };
+        }),
+        voorwaarden: (o.voorwaarden || []).map(function (v) {
+          return (v.stap !== undefined)
+            ? { wat: v.wat, stap: String(v.stap) }
+            : { wat: v.wat, pid: String(v.pid).toUpperCase(),
+                meet: String(v.meet), tussen: [v.tussen[0], v.tussen[1]] };
         })
       }
     };
@@ -466,8 +523,85 @@
     };
   }
 
+  /* ── ZIJN DE VOORWAARDEN VERVULD? (#257) ──────────────────────────
+     Op de rit van 18-09 gingen negen van de twintig LET OP-regels niet over
+     de auto maar over omstandigheden die er niet waren: geen stilstand, geen
+     warme motor, geen achtergrondstap. Ze stonden pas ná de rit in het
+     verslag, en toen was de rit voorbij.
+
+     De stap-voorwaarden kan deze module niet zelf beantwoorden — markeringen
+     staan in de testrun — dus komt die vraag als functie binnen. Ontbreekt hij
+     of gooit hij, dan is het antwoord `null` en niet `false`: niet-na-te-gaan
+     is iets anders dan niet-gedaan, en dat verschil is precies waar #227 over
+     gaat. Een scherm dat dat onderscheid moet raden, vult het zelf in. */
+  function voorwaarden(o, stapGezien) {
+    var lijst = (o && Array.isArray(o.voorwaarden)) ? o.voorwaarden : [];
+    return lijst.map(function (v) {
+      if (v.stap !== undefined) {
+        var gezien = null;
+        if (stapGezien) {
+          /* Met opzet géén typeof-guard. Wie hier iets meegeeft dat geen
+             functie is, hoort `null` te krijgen — niet na te gaan — en niet
+             stil `false`. De aanroep gooit dan, en dat is precies wat de
+             catch hieronder omzet. Een typeof-guard zou hetzelfde geval stil
+             als "niet gedaan" boeken, en dat is de fout uit #227. */
+          try { gezien = !!stapGezien(v.stap); }
+          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = null; }
+        }
+        return { wat: v.wat, soort: 'stap', stap: v.stap, vervuld: gezien, waarde: null,
+                 detail: gezien === null ? 'niet na te gaan — er is niets dat de stappen bijhoudt'
+                       : gezien ? 'de stap "' + v.stap + '" is gezet'
+                                : 'de stap "' + v.stap + '" is in deze sessie niet gezet' };
+      }
+      var u = meet({ pid: v.pid, meet: v.meet, tussen: v.tussen });
+      return { wat: v.wat, soort: 'meting', pid: v.pid, vervuld: (u.staat === 'ok'),
+               waarde: u.waarde, detail: u.detail };
+    });
+  }
+
+  /* ── HET DRIEWAARDIGE OORDEEL (#257) ──────────────────────────────
+     Tweewaardig was het probleem: "niet gemeten" en "gemeten en buiten de
+     band" kwamen allebei als één regel in het verslag en waren daar niet uit
+     elkaar te houden.
+
+       nog niet   — de omstandigheden waren er niet. Geen bevinding, wel een
+                    instructie voor de volgende rit.
+       bevinding  — gemeten, en buiten de band die de opdracht noemt.
+       gesloten   — gemeten, binnen de band, voorwaarden vervuld.
+
+     `bevinding` is óók een antwoord: een spanning onder 11,5 V sluit #217 net
+     zo goed als een spanning erboven. Het verschil met `gesloten` is dat er
+     iemand naar moet kijken. */
+  function oordeel(o, stapGezien) {
+    if (!o) return { staat: 'nog niet', reden: 'er is geen opdracht geladen', voorwaarden: [], uitslagen: [] };
+
+    var vw = voorwaarden(o, stapGezien);
+    var uit = (o.proeven || []).map(meet);
+    var uitkomst = function (staat, reden) { return { staat: staat, reden: reden, voorwaarden: vw, uitslagen: uit }; };
+
+    var mist = vw.filter(function (v) { return v.vervuld !== true; });
+    if (mist.length)
+      return uitkomst('nog niet', mist.length + ' van de ' + vw.length + ' voorwaarden niet vervuld: ' +
+        mist.map(function (v) { return v.wat + ' (' + v.detail + ')'; }).join(' | '));
+
+    var stil = uit.filter(function (u) { return u.staat === 'LET OP'; });
+    if (stil.length)
+      return uitkomst('nog niet', stil.length + ' van de ' + uit.length + ' proeven zijn niet gemeten: ' +
+        stil.map(function (u) { return u.detail; }).join(' | '));
+
+    var raak = uit.filter(function (u) { return u.staat === 'FOUT'; });
+    if (raak.length)
+      return uitkomst('bevinding', raak.length + ' van de ' + uit.length + ' metingen vielen buiten de band: ' +
+        raak.map(function (u) { return u.detail; }).join(' | '));
+
+    return uitkomst('gesloten', uit.length + ' meting(en) binnen de band' +
+      (vw.length ? ', alle ' + vw.length + ' voorwaarden vervuld' : ''));
+  }
+
   window.PLOpdracht = {
     keur: keur,
+    voorwaarden: voorwaarden,
+    oordeel: oordeel,
     haal: haal,
     lijst: lijst,
     kies: kies,
@@ -482,6 +616,7 @@
     reden: function () { return _laatsteFout; },
     _grenzen: function () { return JSON.parse(JSON.stringify(GRENZEN)); },
     _maten: function () { return MATEN.slice(); },
+    _schemas: function () { return SCHEMAS.slice(); },
     _sleutel: function () { return SLEUTEL; },
     _schema: function () { return SCHEMA; }
   };

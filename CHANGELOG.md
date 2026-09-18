@@ -10,6 +10,36 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ Testrun 7.9 (18-09-2026) — het verslag vertelde te vaak iets verkeerds
+ ═══════════════════════════════════════════════════════════
+
+ Na tien ritten kwam de klacht: te vaak verkeerde conclusies. Drie oorzaken,
+ alle drie gevonden door de twee runs van 18-09 naast elkaar te leggen.
+
+ - #255  De toestelronde wiste de markeringen van de meetrit. De bedoelde
+         volgorde (rit → testrun → toestel → testrun) maakte de tweede run
+         blind: acht proeven vielen terug op hun "niet gedaan"-tak en zeiden
+         dat als een feit over de rit. De lijst wordt niet meer geleegd en
+         elke markering draagt zelf uit welke ronde hij komt.
+ - #256  De logtabel kreeg de proefwaarden van blok 5 binnen als echte
+         metingen — 300 °C koelwater op een auto die 91–93 °C loopt, bij elke
+         run. logToSheets() vult nu zelf RecordType, SessionId en Adapter; een
+         proefwaarde heet proefwaarde; de dubbele uitschieterregel is weg en
+         de voorrangsregel in log() heeft haakjes gekregen.
+ - #257  Een meetopdracht draagt `voorwaarden` (meetbaar, zelfde vorm als een
+         proef) en het oordeel is driewaardig: GESLOTEN, BEVINDING of NOG
+         NIET. Negen van de twintig LET OP-regels van 18-09 gingen niet over
+         de auto maar over omstandigheden die er niet waren; die staan nu
+         vóór de rit in het keuzescherm in plaats van erna in het verslag.
+ - #252  De blok-5-proef riep PLMeetkamer.issuebaan() aan; die heet sinds de
+         herbouw ronde(). Gerepareerd, mét een toets die elke aanroep naast de
+         echt geladen module legt.
+
+ Drie toetsen erbij (test-markeringen.js, test-logvelden.js,
+ test-opdrachtvoorwaarden.js) en twaalf mutaties in plmutate.sh. Drie nieuwe
+ entries in PROEVEN_B5.
+
+ ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-18a (CET) — DE VRAAG VAN DE RIT
      IN BEELD

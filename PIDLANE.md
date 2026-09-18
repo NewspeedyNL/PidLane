@@ -913,6 +913,63 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Wat er op 18-09 gerepareerd is, en wat het over toetsen zei
+
+De drie oorzaken hieronder zijn dezelfde avond nog gerepareerd. Wat die
+reparatie opleverde is niet de code maar de vraag eronder: **waarom ving geen
+enkele poort ze?**
+
+**De markeringen (#255).** `begeleidStart()` leegde een lijst die bij de
+sessie hoort. Er was geen toets die twee rondes na elkaar startte, en dus was
+er geen toets die dit kón vinden. `test-markeringen.js` doet nu precies dat:
+markeer in ronde 1, start ronde 2, en vraag het terug. Wat per ronde wél hoort
+te resetten (`_BG.i`, `_BG.gedaan`) wordt in dezelfde toets bewaakt, want een
+reparatie die te ver gaat is net zo duur.
+
+**De logtabel (#256).** Alle drie de fouten zaten in wat er de deur uitging,
+en er was geen enkele toets die naar de opgebouwde Airtable-payload keek — de
+toetsen die er waren keken naar de app-log, en díé deed het goed.
+`test-logvelden.js` knipt `logToSheets()` en `log()` uit de bron en inspecteert
+wat er in de buffer belandt. Eén geval daarin is de moeite waard om te
+onthouden: de proefwaarde-vlag wordt gelezen **vóór** de `await` op het
+pseudonimiseren. Leest hij hem erna, dan is de proef al klaar, staat de vlag
+weer uit, en komt de 300 °C alsnog als echte meting binnen. Dat is een fout
+die je bij het lezen van de diff niet ziet en die een toets in één regel vangt.
+
+**De aanroep die niet bestond (#252).** `PLMeetkamer.issuebaan()` heette sinds
+de herbouw `ronde()`. `node --check` ziet dat niet — het is geldige syntax — en
+de browserproef draait blok 5 niet. De les staat al in CLAUDE.md en is hier
+duur herhaald: **hernoemen is mechanisch werk, en mechanisch werk hoort in een
+eigen commit waarin je álle aanroepers langsloopt.** De toets die er nu ligt
+generaliseert het: elke `PLMeetkamer.x`-aanroep in `pidlane-testrun.js` wordt
+naast de echt geladen module gelegd.
+
+**Wat er bij is gekomen (#257), en waarom het geen vierde reparatie is.**
+Negen van de twintig LET OP-regels van die avond gingen niet over de auto maar
+over omstandigheden die er niet waren. Dat is geen bug — het verslag zei de
+waarheid — maar het zei hem op het verkeerde moment, ná de rit. Een opdracht
+draagt daarom `voorwaarden` in dezelfde meetbare vorm als zijn proeven, en het
+oordeel is driewaardig geworden:
+
+| uitkomst | betekenis |
+|---|---|
+| **gesloten** | gemeten, binnen de band, voorwaarden vervuld |
+| **bevinding** | gemeten en buiten de band — óók een antwoord, maar er moet iemand naar kijken |
+| **nog niet** | de omstandigheden waren er niet; geen bevinding, wel een instructie voor de volgende rit |
+
+De onderscheidende vraag staat in de toets en niet in het commentaar: een
+tweewaardig oordeel dat "niet gemeten" en "buiten de band" allebei fout noemt,
+**klopt** — en zegt niets. Daar is `test-opdrachtvoorwaarden.js` het scherpst
+op: geval 8 is een PID die deze rit niet gemeten is, en die moet `nog niet`
+opleveren en niet `bevinding`.
+
+Twee dingen zijn met opzet niet meegegaan. Schema 1 wordt nog steeds
+geaccepteerd, want er staat een voorraad opdrachten in de tabel en een rij
+afkeuren op zijn versienummer kost een rit — de schaarste in dit project. En
+de stap-voorwaarden worden niet in `pidlane-opdracht.js` beantwoord maar door
+een functie die de testrun meegeeft: markeringen staan daar, en een tweede
+plek die hetzelfde moet weten is hier al drie keer een bug geweest.
+
 ### Waarom het verslag te vaak iets verkeerds concludeerde (18-09-2026)
 
 Na tien ritten kwam de klacht die dit hoofdstuk verdient: *te vaak verkeerde

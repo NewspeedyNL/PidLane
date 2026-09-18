@@ -757,6 +757,59 @@ const AT_KOLOMMEN = new Set(['RecordType','SchemaVersion','SessionId','UserId','
   'VinHash','Adapter','DTC','PIDs','AiQuery','AiDiagnose','Outcome','Feedback',
   'Demo','Repro','Device']);
 
+/* ── WAT DE APP ZELF BIJ ELKE LOGREGEL HOORT TE ZETTEN (#256) ──────
+   Sinds #241 is de logtabel geen archief meer maar de bron waarop de volgende
+   meetopdracht gebouwd wordt, en wie hem van buiten leest heeft de app er niet
+   omheen staan. Tot 18-09 vulde alleen `_liveSchrijf()` in de testrun
+   `RecordType` en `SessionId`; alles wat de app zelf logde kwam dus binnen
+   zonder sessienummer. Gemeten: 61 rijen in drie dagen, waaronder de
+   verbindingsregels en de uitschieters van de rit zelf. De conclusie van de
+   testrun en het bewijs eronder waren daarmee niet aan elkaar te knopen.
+
+   Dezelfde vorm die pidlane-aanlevering.js koos voor de meetkwaliteit: het
+   oordeel op ÉÉN plek, niet bij twintig aanroepers die eraan moeten denken.
+   Wie het anders wil, geeft het in `extra` mee — dat wint, want het staat in
+   de spreiding ná deze velden. */
+let _plAppSessie=null;
+function _plSessieId(){
+  // Loopt er een testrun, dan hoort alles van díé rit onder hetzelfde nummer
+  // te staan — dat is het hele punt: conclusie en bewijs onder één sessie.
+  // `huidigeRit()` maakt met opzet geen nieuw nummer aan; `ritId()` doet dat
+  // wel, en dan zou elke logregel buiten een run er een verzinnen.
+  try{
+    const r=(window.PLTestrunLive&&typeof PLTestrunLive.huidigeRit==='function')?PLTestrunLive.huidigeRit():null;
+    if(r) return r;
+  }catch(e){ console.warn('Sessienummer van de testrun niet leesbaar — deze regel krijgt het app-nummer (#256)', e); }
+  if(!_plAppSessie){
+    const d=new Date(), p2=n=>String(n).padStart(2,'0');
+    _plAppSessie='app-'+d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+'-'+p2(d.getHours())+p2(d.getMinutes());
+  }
+  return _plAppSessie;
+}
+/* Een proef van blok 5 schiet met opzet onmogelijke waarden in de meetketen.
+   Die regels mogen bestaan — de proef heeft echt gedraaid — maar ze mogen
+   nooit als meting aan een auto te lezen zijn. `_zonderSporen()` zet deze vlag
+   en de soort verandert mee. Zie #256: de markering eromheen stond tot nu toe
+   alleen in de app-log en reisde niet mee naar de tabel. */
+function _plLogSoort(){
+  try{ if(window._plProefWaarden) return 'proefwaarde'; }
+  catch(e){ console.warn('Proefwaarde-vlag niet leesbaar — deze regel gaat als gewone app-regel mee (#256)', e); }
+  return 'app';
+}
+/* De adapter stond in AT_KOLOMMEN en werd nergens gevuld, terwijl hij dé
+   variabele is in #217 en #254: welke adapter erin zat moest uit een tekstregel
+   van blok 12 gevist worden. */
+function _plLogAdapter(){
+  try{
+    if(window.PLAdapter&&typeof PLAdapter.adapterNaam==='function'){
+      const n=PLAdapter.adapterNaam(); if(n) return String(n).slice(0,80);
+    }
+  }catch(e){ console.warn('Adapternaam niet leesbaar voor de log (#256)', e); }
+  try{ if(window._sppConn&&_sppConn.name) return String(_sppConn.name).slice(0,80); }
+  catch(e){ console.warn('SPP-naam niet leesbaar voor de log (#256)', e); }
+  return '';
+}
+
 async function logToSheets(type, message, extra={}){
   // Controleer of Airtable geconfigureerd is. NB: verzending loopt via de
   // Worker (X-App-Token) — de Airtable-token hoort server-side en de client
@@ -769,6 +822,10 @@ async function logToSheets(type, message, extra={}){
     // anders schuift de Timestamp op ten opzichte van het moment dat de
     // regel werd gelogd.
     const ts=new Date().toISOString();
+    // Net als de tijdstempel: vóór de await pakken. `_plProefWaarden` staat
+    // maar een paar milliseconden aan, en het pseudonimiseren duurt een tick —
+    // daarna is de vlag alweer uit en zou de regel als gewone meting binnenkomen.
+    const soort=_plLogSoort(), sessie=_plSessieId(), adapter=_plLogAdapter();
     const vinId=await _plVinVoorLog(v.vin);
     // Het derde argument uitpakken: bekende kolommen als veld, de rest als
     // staart achter het bericht. Zie AT_KOLOMMEN hierboven.
@@ -798,6 +855,9 @@ async function logToSheets(type, message, extra={}){
         AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
         User:       String(currentUser?.name||''),
         Role:       String(currentUser?.role||''),
+        RecordType: soort,
+        SessionId:  sessie,
+        Adapter:    adapter,
         ...velden,
       }
     });
@@ -992,7 +1052,7 @@ window.plLokaalLog=function(){ return localLog.slice(); };
 // volume van deze log geschaald — de app-log is de rustigste van de twee, dus
 // een hogere cap kost weinig geheugen en dekt een lange rit compleet.
 const APPLOG_CAP=1200, APPLOG_KOP=300, APPLOG_STAART=700;
-function log(msg,type=''){
+function log(msg,type='',opties){
   const bar=document.getElementById('logbar');
   const ts=new Date().toTimeString().slice(0,8);
   const row=document.createElement('div'); row.className='le';
@@ -1012,6 +1072,16 @@ function log(msg,type=''){
     localLog.length=0;
     localLog.push(...kop,{ts,t:Date.now(),type:'info',msg:`… ${weg} regels weggelaten (geheugen-cap) …`},...staart);
   }
+  /* WIE ZIJN EIGEN REGEL AL STUURT, STUURT HEM NIET TWEE KEER (#256).
+     `validateAndSmooth()` doet zelf een logToSheets('outlier', …) mét pid,
+     waarde en reden erbij. De doorgifte hieronder stuurde diezelfde
+     gebeurtenis nog een keer, kaler, en dan telt elke telling over de tabel
+     dubbel. */
+  if(opties&&opties.geenAirtable) return;
   if(type==='err')  logToSheets('error',  msg);
-  if(type==='warn'&&msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier')) logToSheets('outlier',msg);
+  /* DE HAAKJES (#256). Hier stond `type==='warn'&&a||b||c`, en `&&` bindt
+     sterker dan `||` — dus élke regel met "sprong" of "outlier" erin ging als
+     uitschieter mee, ongeacht het niveau. Vandaag viel er niets in, maar het
+     is een substringtoets op Nederlandse woorden: "oorsprong" bevat "sprong". */
+  if(type==='warn'&&(msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier'))) logToSheets('outlier',msg);
 }
