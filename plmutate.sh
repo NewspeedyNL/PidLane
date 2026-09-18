@@ -353,6 +353,13 @@ MUTATIES=(
 # ingang weg, dan blijft élke PR stil liggen.
 ".github/workflows/tests.yml@@  pull_request:\n  workflow_dispatch:@@  workflow_dispatch:@@test-automerge.js@@de PR-run verdwijnt: de labelpoort vindt nooit meer een uitslag en elke PR blijft stil liggen"
 ".github/workflows/tests.yml@@  push:\n    branches: [main]@@  push:\n    branches: ['**']@@test-automerge.js@@de push-run draait weer op elke tak: de dubbele testtijd is terug"
+# ── de namen waar de ruleset op wacht (18-09-2026) ──
+# De ruleset op main eist vier checks op naam, en die lijst staat op GitHub.
+# Hernoem je hier een job, dan wacht hij op een naam die nooit meer komt: geen
+# rood kruis, alleen "Expected — waiting for status to be reported", en elke PR
+# blokkeert. Deze twee bouwen dat na.
+".github/workflows/tests.yml@@    name: browserproeven (de echte app in een echte browser)@@    name: browserproeven@@test-testgate.js@@een jobnaam is ingekort: de ruleset wacht op een naam die niet meer gerapporteerd wordt"
+".github/workflows/tests.yml@@    name: Geen sleutels in de repo@@    name: Sleutelscan@@test-testgate.js@@de sleutelscan heet anders: elke PR blokkeert stil op de oude naam"
 # ── het icoon en de buildtrigger (03-09-2026) ──
 # Twee lijsten over hetzelfde, en de koppeling moet van beide kanten kloppen:
 # een pad dat uit de trigger valt, én een kandidaat die erbij komt zonder dat
