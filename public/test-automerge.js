@@ -278,7 +278,7 @@ toets('en de rest zwijgt: draft, fork, niet-groen, ok, onbekend, verschoven, vet
       JSON.stringify(stil) === JSON.stringify(['draft', 'fork', 'niet-groen', 'ok', 'onbekend', 'verschoven', 'veto']),
       'gevonden: ' + JSON.stringify(stil));
 
-console.log('\n9. De workflow zelf: drie eigenschappen die het besluit niet kan bewaken');
+console.log('\n9. De workflows zelf: vier eigenschappen die het besluit niet kan bewaken');
 
 // Deze twee zitten in de YAML en niet in de functie, maar ze zijn te
 // belangrijk om onbewaakt te laten.
@@ -318,6 +318,20 @@ const scriptBlok = wf.slice(wf.indexOf('script: |'));
 toets('en de YAML velt zelf geen oordeel meer over de losse runs',
       !/\.conclusion/.test(scriptBlok),
       'twee plekken die hetzelfde beslissen lopen uit de pas, en de stille van de twee is deze');
+
+// (d) EN DE PR-RUN MOET BLIJVEN BESTAAN. Sinds #245 telt alleen die run mee,
+// en sinds #238 draait de push-run niet meer op takken. Haalt iemand de
+// pull_request-ingang uit tests.yml, dan vindt testsGroenUitRuns() nooit meer
+// een afgeronde run: de poort blijft dan terecht dicht, maar ELKE PR blijft
+// liggen zonder dat er ergens iets rood wordt. Dat is dezelfde dichte deur
+// zonder klink als een ontbrekend `klaar`-label, en daarom staat hij hier.
+const tests = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/tests.yml'), 'utf8');
+toets('tests.yml draait nog op pull_request',
+      /^\s*pull_request:\s*$/m.test(tests),
+      'zonder PR-run vindt de labelpoort niets en blijft elke PR stil liggen');
+toets('en nog op een push naar main',
+      /push:\s*\n\s*branches:\s*\[\s*main\s*\]/.test(tests),
+      'anders krijgt een handmatige merge naar main helemaal geen run meer');
 
 console.log('');
 if (fouten) { console.log('test-automerge: ' + fouten + ' fout(en)'); process.exit(1); }
