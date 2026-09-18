@@ -126,7 +126,11 @@ function testsGroenUitRuns(runs) {
  *                                 niet vast te stellen, en dat telt als nee
  *   achterstand   {number|null}   commits die base voorloopt op head
  *   baseRef       {string}
- * @returns {{samenvoegen:boolean, reden:string, melden:boolean, sleutel:string}}
+ * @returns {{samenvoegen:boolean, bijwerken:boolean, reden:string,
+ *            melden:boolean, sleutel:string}}
+ *   bijwerken = moet de basis in deze branch gehaald worden voordat er
+ *             opnieuw geoordeeld kan worden? Staat los van `samenvoegen`:
+ *             allebei nee is gewoon "niets doen".
  *   melden  = hoort dit op de PR te staan in plaats van alleen in het
  *             joblogboek? Alleen waar een mens iets moet DOEN.
  *   sleutel = korte code van dit geval; de workflow gebruikt hem om niet
@@ -141,28 +145,28 @@ function besluit(f) {
   // Geen melding: wie een fork-PR opent hoort een mens te treffen, niet een
   // bot die uitlegt waarom hij niets doet.
   if (f.headRepo !== f.eigenRepo) {
-    return { samenvoegen: false, reden: 'komt uit een fork (' + f.headRepo + ')',
+    return { samenvoegen: false, bijwerken: false, reden: 'komt uit een fork (' + f.headRepo + ')',
              melden: false, sleutel: 'fork' };
   }
 
   // 2. HARD VETO — wint van `klaar`. Twee labels die elkaar tegenspreken is
   // geen patstelling: nee gaat voor ja.
   if (heeftLabel(labels, LABEL_VETO)) {
-    return { samenvoegen: false, reden: 'label `' + LABEL_VETO + '` staat erop',
+    return { samenvoegen: false, bijwerken: false, reden: 'label `' + LABEL_VETO + '` staat erop',
              melden: false, sleutel: 'veto' };
   }
 
   // 3. DRAFT — de auteur zegt zelf dat het niet af is. Geen melding: dat zou
   // hem vertellen wat hij net zelf heeft aangegeven.
   if (f.draft) {
-    return { samenvoegen: false, reden: 'is een draft', melden: false, sleutel: 'draft' };
+    return { samenvoegen: false, bijwerken: false, reden: 'is een draft', melden: false, sleutel: 'draft' };
   }
 
   // 4. GEEN `klaar` — de nieuwe standaard, en het enige geval waarin een PR
   // blijft liggen zonder dat er iets mis is. Daarom MOET dit op de PR staan:
   // stil laten liggen is precies de toestand die automerge moest opheffen.
   if (!heeftLabel(labels, LABEL_KLAAR)) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: 'wacht op het label `' + LABEL_KLAAR + '`',
              melden: true, sleutel: 'geen-klaar' };
   }
@@ -171,7 +175,7 @@ function besluit(f) {
   // dan wat er nu ligt. Geen melding: de push die dit veroorzaakte start zelf
   // een nieuwe run, en die komt hier straks weer langs.
   if (f.headSha !== f.getesteSha) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: 'doorgepusht na de geteste commit (' +
                     String(f.getesteSha).slice(0, 7) + ' → ' + String(f.headSha).slice(0, 7) + ')',
              melden: false, sleutel: 'verschoven' };
@@ -194,7 +198,7 @@ function besluit(f) {
   // Geen melding: draait de gate nog, dan komt de workflow_run-route hier
   // vanzelf weer langs zodra hij klaar is.
   if (f.testsGroen !== true) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: f.testsGroen === false
                ? 'de testgate staat niet groen op ' + String(f.headSha).slice(0, 7)
                : 'geen afgeronde testrun gevonden op ' + String(f.headSha).slice(0, 7),
@@ -204,13 +208,13 @@ function besluit(f) {
   // 6. GITHUB REKENT NOG — mergeable is dan null. Geen bevinding en geen
   // melding: bij de volgende run staat er een echt antwoord.
   if (f.mergeable === null || typeof f.mergeable === 'undefined') {
-    return { samenvoegen: false, reden: 'GitHub heeft mergeable nog niet bepaald',
+    return { samenvoegen: false, bijwerken: false, reden: 'GitHub heeft mergeable nog niet bepaald',
              melden: false, sleutel: 'onbekend' };
   }
 
   // 7. CONFLICT — hier moet een mens aan te pas komen, dus melden.
   if (f.mergeable === false) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: 'mergeconflict met ' + f.baseRef,
              melden: true, sleutel: 'conflict' };
   }
@@ -231,12 +235,12 @@ function besluit(f) {
   // zou dan bijgewerkt zijn met een head die nooit getoetst is — erger dan
   // het probleem. Een mens die op "Update branch" drukt, start de tests wél.
   if (typeof f.achterstand === 'number' && f.achterstand > 0) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: f.baseRef + ' loopt ' + f.achterstand + ' commit(s) voor op deze branch',
              melden: true, sleutel: 'achterstand' };
   }
 
-  return { samenvoegen: true, reden: 'groen, `' + LABEL_KLAAR + '` staat erop, ' +
+  return { samenvoegen: true, bijwerken: false, reden: 'groen, `' + LABEL_KLAAR + '` staat erop, ' +
            f.baseRef + ' is niet opgeschoven', melden: false, sleutel: 'ok' };
 }
 

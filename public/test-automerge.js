@@ -260,6 +260,9 @@ toets('elk besluit draagt een reden', allen.every(b => typeof b.reden === 'strin
 toets('elk besluit draagt een sleutel', allen.every(b => typeof b.sleutel === 'string' && b.sleutel.length > 1));
 toets('elk besluit zegt expliciet ja of nee', allen.every(b => typeof b.samenvoegen === 'boolean'));
 toets('elk besluit zegt expliciet of het gemeld wordt', allen.every(b => typeof b.melden === 'boolean'));
+toets('elk besluit zegt expliciet of de basis eerst binnengehaald moet worden',
+      allen.every(b => typeof b.bijwerken === 'boolean'),
+      'undefined leest hier als nee, en dat is precies het soort stilte dat we niet willen');
 
 // En: alleen waar een mens iets moet DOEN wordt er gemeld. Dit is de controle
 // die voorkomt dat de bot een babbelbox wordt.
