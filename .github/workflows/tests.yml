@@ -13,15 +13,44 @@
 #  in pidlane-testrun.js zonder in KRITIEK te staan — de controle die stille
 #  bedradingsfouten moet vangen was zelf stil kapot, en dat was live gegaan.
 #
-#  Deze workflow draait dezelfde controles als plcheck.sh, op elke push en
-#  elke pull request. Eén bron van waarheid: verandert plcheck.sh, dan
-#  verandert de gate mee.
+#  Deze workflow draait dezelfde controles als plcheck.sh, op elke pull
+#  request en op elke push naar `main`. Eén bron van waarheid: verandert
+#  plcheck.sh, dan verandert de gate mee. Waarom niet meer op elke tak-push
+#  staat bij `on:` hieronder.
 # ════════════════════════════════════════════════════════════
 name: Tests
 
+#  WAAROM DE PUSH-RUN ALLEEN NOG OP `main` DRAAIT — 18-09-2026 (#238)
+#  Tot vandaag draaide deze gate twee keer per push: een push-run op de tak
+#  zoals hij is, en een PR-run op de tak SAMENGEVOEGD MET main. Dat is 3,5 tot
+#  4 minuten dubbel, en tot #245 was het erger dan verspilling: de labelpoort
+#  van automerge telde beide runs mee, en op 17-09 om 17:26:49 overstemde een
+#  groene push-run een rode PR-run. Die PR is rood samengevoegd en dus
+#  gedeployd.
+#
+#  Sinds #245 telt alleen de PR-run, want alleen die toetst wat er live komt.
+#  Daarmee is de push-run op een tak nergens meer het antwoord op: geen poort
+#  leest hem, en hij zegt iets anders dan wat er gedeployd wordt.
+#
+#  Wat ervoor terugkomt is tijd, en dat is het punt. #238 meet de bron van de
+#  mergeconflicten als gelijktijdigheid maal testtijd: elke PR die niet als
+#  eerste landt is verlopen en moet bijgewerkt en opnieuw getoetst — waarna de
+#  volgende weer verlopen is. Halveer de belasting en de rij waarin dat gebeurt
+#  wordt korter.
+#
+#  DE PRIJS, EXPLICIET. Een push naar een tak zonder PR krijgt nu geen CI meer.
+#  Dat is een keuze en geen gat: plcheck.sh is de commit-poort en draait lokaal,
+#  en zodra er een PR is toetst de PR-run het samenvoegresultaat — de uitslag
+#  die er werkelijk toe doet. Wil je een tak zonder PR tóch door de gate halen,
+#  start *Tests* met de hand via workflow_dispatch.
+#
+#  `main` blijft er met opzet staan: een mens die met de hand samenvoegt of
+#  rechtstreeks op main commit start daarmee wél een run. Een automerge niet —
+#  die pusht met GITHUB_TOKEN, en daar start GitHub geen workflows voor. Dat
+#  gat is bekend en staat in CLAUDE.md; het wordt hier niet groter.
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

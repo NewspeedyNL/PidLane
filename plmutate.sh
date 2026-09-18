@@ -347,6 +347,12 @@ MUTATIES=(
 "automerge-besluit.js@@  return vanDePR.every(r => r.conclusion === 'success');@@  return vanDePR.some(r => r.conclusion === 'success');@@test-automerge.js@@één groene run naast een rode telt weer als groen"
 "automerge-besluit.js@@  if (!vanDePR.length) return null;@@  if (!vanDePR.length) return true;@@test-automerge.js@@geen PR-run gevonden geldt weer als toestemming in plaats van als twijfel"
 ".github/workflows/automerge.yml@@                return testsGroenUitRuns(data.workflow_runs || []);@@                const a = (data.workflow_runs || []).filter(r => r.status === 'completed');\n                return a.length ? a.some(r => r.conclusion === 'success') : null;@@test-automerge.js@@de workflow beslist weer zelf welke run telt, buiten het bereik van de toets"
+# ── de ingangen van de testgate (18-09-2026) ──
+# Sinds #245 telt alleen de PR-run en sinds #238 draait de push-run niet meer
+# op takken. Die twee maken tests.yml zelf een poort: valt de pull_request-
+# ingang weg, dan blijft élke PR stil liggen.
+".github/workflows/tests.yml@@  pull_request:\n  workflow_dispatch:@@  workflow_dispatch:@@test-automerge.js@@de PR-run verdwijnt: de labelpoort vindt nooit meer een uitslag en elke PR blijft stil liggen"
+".github/workflows/tests.yml@@  push:\n    branches: [main]@@  push:\n    branches: ['**']@@test-automerge.js@@de push-run draait weer op elke tak: de dubbele testtijd is terug"
 # ── het icoon en de buildtrigger (03-09-2026) ──
 # Twee lijsten over hetzelfde, en de koppeling moet van beide kanten kloppen:
 # een pad dat uit de trigger valt, én een kandidaat die erbij komt zonder dat
