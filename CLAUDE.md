@@ -217,25 +217,33 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
   ging te vaak mis. Nu is het een mechanisme: geen label, geen merge.
 - **De basis mag niet zijn opgeschoven.** Een testrun op een PR toetst je
   branch samengevoegd met `main` *zoals `main` toen was*. Landt er daarna iets
-  anders, dan is die groene vlag verlopen. De workflow blokkeert daarop en
-  vraagt om **Update branch**; hij werkt de branch met opzet niet zelf bij,
-  want een push met `GITHUB_TOKEN` start geen nieuwe testrun (zie hieronder).
+  anders, dan is die groene vlag verlopen. De workflow blokkeert daarop —
+  **en haalt de basis sinds 18-09-2026 zelf binnen** (#238). Die push start wél
+  een testrun, want hij gaat met een token van een GitHub App en niet met
+  `GITHUB_TOKEN`. Alleen als dat binnenhalen mislukt (meestal een conflict, of
+  er is intussen gepusht) vraagt hij je om **Update branch**.
+
+  Tot die datum stond hier dat hij dat met opzet niet deed, en die reden was
+  goed: met `GITHUB_TOKEN` krijg je een bijgewerkte branch die nooit getoetst
+  wordt. De reden is weg, niet de zorg — vandaar het App-token.
 - **Het besluit staat in `automerge-besluit.js`, niet in de YAML.** Als inline
   script was het niet te toetsen, en een fout daar merk je pas als er iets
   verkeerds live staat. `public/test-automerge.js` voert de echte functie uit;
   vier mutaties in `plmutate.sh` houden hem scherp. Verandert de strategie, dan
   verandert die test mee — en de tabel hierboven.
-- **Een automerge levert géén Tests-run op `main`.** Nagemeten op 03-09-2026:
-  GitHub start geen workflows voor pushes die met de standaard `GITHUB_TOKEN`
-  gedaan zijn (de rem tegen oneindige lussen). PR #120 werd door een mens
-  gemerged en gaf run 173; #121 ging via automerge en gaf niets. Cloudflare
-  Workers Builds is een aparte integratie en deployt wél.
+- **Een automerge leverde géén Tests-run op `main`, en dat is sinds 18-09-2026
+  opgelost.** Nagemeten op 03-09-2026: GitHub start geen workflows voor pushes
+  die met de standaard `GITHUB_TOKEN` gedaan zijn (de rem tegen oneindige
+  lussen). PR #120 werd door een mens gemerged en gaf run 173; #121 ging via
+  automerge en gaf niets.
 
-  Gevolg voor het lezen van de Actions-pagina: **de laatste Tests-run op `main`
-  gaat niet per se over wat er nu op `main` staat.** Dat is geen gat in de
-  dekking — de PR-run toetst het samenvoegresultaat, en daarom is de
-  achterstand-poort hierboven de poort die dát waar houdt. Wil je `main` zelf
-  getoetst zien, start *Tests* met de hand via `workflow_dispatch`.
+  De workflow draait nu op een App-token, en zo'n push heeft die rem niet — dus
+  een automerge start wél *Tests* op `main`. Cloudflare Workers Builds is een
+  aparte integratie en deployt sowieso.
+
+  De dekking leunde daarvóór volledig op de PR-run plus de achterstand-poort,
+  en dat was geen gat: de PR-run toetst het samenvoegresultaat. Het verschil is
+  dat de Actions-pagina nu ook zegt wat er op `main` staat.
 - **Elke push naar `main` die code raakt is deployen.** Cloudflare Workers
   Builds bouwt en draait `wrangler deploy`; die deployment krijgt meteen 100%
   van het verkeer. Er zit geen mens tussen die merge en de klant — dat is de

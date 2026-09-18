@@ -126,7 +126,11 @@ function testsGroenUitRuns(runs) {
  *                                 niet vast te stellen, en dat telt als nee
  *   achterstand   {number|null}   commits die base voorloopt op head
  *   baseRef       {string}
- * @returns {{samenvoegen:boolean, reden:string, melden:boolean, sleutel:string}}
+ * @returns {{samenvoegen:boolean, bijwerken:boolean, reden:string,
+ *            melden:boolean, sleutel:string}}
+ *   bijwerken = moet de basis in deze branch gehaald worden voordat er
+ *             opnieuw geoordeeld kan worden? Staat los van `samenvoegen`:
+ *             allebei nee is gewoon "niets doen".
  *   melden  = hoort dit op de PR te staan in plaats van alleen in het
  *             joblogboek? Alleen waar een mens iets moet DOEN.
  *   sleutel = korte code van dit geval; de workflow gebruikt hem om niet
@@ -141,28 +145,28 @@ function besluit(f) {
   // Geen melding: wie een fork-PR opent hoort een mens te treffen, niet een
   // bot die uitlegt waarom hij niets doet.
   if (f.headRepo !== f.eigenRepo) {
-    return { samenvoegen: false, reden: 'komt uit een fork (' + f.headRepo + ')',
+    return { samenvoegen: false, bijwerken: false, reden: 'komt uit een fork (' + f.headRepo + ')',
              melden: false, sleutel: 'fork' };
   }
 
   // 2. HARD VETO — wint van `klaar`. Twee labels die elkaar tegenspreken is
   // geen patstelling: nee gaat voor ja.
   if (heeftLabel(labels, LABEL_VETO)) {
-    return { samenvoegen: false, reden: 'label `' + LABEL_VETO + '` staat erop',
+    return { samenvoegen: false, bijwerken: false, reden: 'label `' + LABEL_VETO + '` staat erop',
              melden: false, sleutel: 'veto' };
   }
 
   // 3. DRAFT — de auteur zegt zelf dat het niet af is. Geen melding: dat zou
   // hem vertellen wat hij net zelf heeft aangegeven.
   if (f.draft) {
-    return { samenvoegen: false, reden: 'is een draft', melden: false, sleutel: 'draft' };
+    return { samenvoegen: false, bijwerken: false, reden: 'is een draft', melden: false, sleutel: 'draft' };
   }
 
   // 4. GEEN `klaar` — de nieuwe standaard, en het enige geval waarin een PR
   // blijft liggen zonder dat er iets mis is. Daarom MOET dit op de PR staan:
   // stil laten liggen is precies de toestand die automerge moest opheffen.
   if (!heeftLabel(labels, LABEL_KLAAR)) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: 'wacht op het label `' + LABEL_KLAAR + '`',
              melden: true, sleutel: 'geen-klaar' };
   }
@@ -171,7 +175,7 @@ function besluit(f) {
   // dan wat er nu ligt. Geen melding: de push die dit veroorzaakte start zelf
   // een nieuwe run, en die komt hier straks weer langs.
   if (f.headSha !== f.getesteSha) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: 'doorgepusht na de geteste commit (' +
                     String(f.getesteSha).slice(0, 7) + ' → ' + String(f.headSha).slice(0, 7) + ')',
              melden: false, sleutel: 'verschoven' };
@@ -194,7 +198,7 @@ function besluit(f) {
   // Geen melding: draait de gate nog, dan komt de workflow_run-route hier
   // vanzelf weer langs zodra hij klaar is.
   if (f.testsGroen !== true) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: f.testsGroen === false
                ? 'de testgate staat niet groen op ' + String(f.headSha).slice(0, 7)
                : 'geen afgeronde testrun gevonden op ' + String(f.headSha).slice(0, 7),
@@ -204,13 +208,13 @@ function besluit(f) {
   // 6. GITHUB REKENT NOG — mergeable is dan null. Geen bevinding en geen
   // melding: bij de volgende run staat er een echt antwoord.
   if (f.mergeable === null || typeof f.mergeable === 'undefined') {
-    return { samenvoegen: false, reden: 'GitHub heeft mergeable nog niet bepaald',
+    return { samenvoegen: false, bijwerken: false, reden: 'GitHub heeft mergeable nog niet bepaald',
              melden: false, sleutel: 'onbekend' };
   }
 
   // 7. CONFLICT — hier moet een mens aan te pas komen, dus melden.
   if (f.mergeable === false) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: false,
              reden: 'mergeconflict met ' + f.baseRef,
              melden: true, sleutel: 'conflict' };
   }
@@ -224,19 +228,32 @@ function besluit(f) {
   // ontstaan. En PR's landen hier kort na elkaar — #120 en #121 21 minuten,
   // de rico-test-PR's 17 minuten.
   //
-  // Dus: achterstand > 0 betekent bijwerken en opnieuw laten toetsen. Dat
-  // bijwerken doet deze workflow NIET zelf, en dat is een bewuste keuze:
-  // een push met GITHUB_TOKEN start geen nieuwe workflowrun (dat is de rem
-  // van GitHub tegen oneindige lussen, op 03-09 hier gemeten). De branch
-  // zou dan bijgewerkt zijn met een head die nooit getoetst is — erger dan
-  // het probleem. Een mens die op "Update branch" drukt, start de tests wél.
+  // Dus: achterstand > 0 betekent bijwerken en opnieuw laten toetsen.
+  //
+  // HERZIEN OP 18-09-2026 (#238). Hier stond dat de workflow dat met opzet
+  // niet zelf deed, en die reden was goed: een push met GITHUB_TOKEN start
+  // geen nieuwe workflowrun (de rem van GitHub tegen lussen, op 03-09
+  // gemeten), dus je zou een bijgewerkte branch krijgen die nooit getoetst
+  // is. Erger dan het probleem.
+  //
+  // Die reden is weg. De workflow draait nu op een token van een GitHub App,
+  // en zo'n push start wél een testrun. Daarmee mag het bijwerken hier
+  // vandaan komen in plaats van van een mens die op "Update branch" drukt en
+  // vier minuten wacht terwijl de volgende PR binnenkomt. Dat wachten wás de
+  // tredmolen waar de mergeconflicten uit kwamen.
+  //
+  // De lus is begrensd, en dat is geen toeval: deze poort staat ACHTER de
+  // klaar-poort, dus alleen een PR die af verklaard is wordt bijgewerkt. Eén
+  // keer bijwerken geeft één testrun, en daarna is de achterstand nul en
+  // wordt er samengevoegd. Schuift de basis ondertussen weer op, dan is dat
+  // een echte gebeurtenis en geen lus.
   if (typeof f.achterstand === 'number' && f.achterstand > 0) {
-    return { samenvoegen: false,
+    return { samenvoegen: false, bijwerken: true,
              reden: f.baseRef + ' loopt ' + f.achterstand + ' commit(s) voor op deze branch',
-             melden: true, sleutel: 'achterstand' };
+             melden: false, sleutel: 'achterstand' };
   }
 
-  return { samenvoegen: true, reden: 'groen, `' + LABEL_KLAAR + '` staat erop, ' +
+  return { samenvoegen: true, bijwerken: false, reden: 'groen, `' + LABEL_KLAAR + '` staat erop, ' +
            f.baseRef + ' is niet opgeschoven', melden: false, sleutel: 'ok' };
 }
 
@@ -258,14 +275,17 @@ function meldtekst(b) {
     return kop + '\n\nVoeg de basisbranch in deze branch en los het conflict op. ' +
       'Daarna draait de testgate opnieuw en gaat het vanzelf.';
   }
-  if (b.sleutel === 'achterstand') {
+  // Achterstand meldt niets meer: sinds 18-09-2026 haalt de workflow de basis
+  // zelf binnen. Alleen als dat MISLUKT moet er een mens bij.
+  if (b.sleutel === 'bijwerken-mislukt') {
     return kop + '\n\nDe groene testrun ging over deze branch samengevoegd met de basis ' +
       '*zoals die toen was*. Er is daarna iets anders geland, dus die vlag zegt niets ' +
       'meer over de combinatie die nu zou ontstaan.\n\n' +
-      'Druk op **Update branch** (of voeg de basis met de hand in). Dat start de tests ' +
-      'opnieuw, en dán is groen weer groen. De workflow doet dit met opzet niet zelf: ' +
-      'een push met `GITHUB_TOKEN` start géén nieuwe testrun, dus je zou een bijgewerkte ' +
-      'branch krijgen die nooit getoetst is.';
+      'De workflow probeert die basis zelf binnen te halen, en dat lukte hier niet. ' +
+      'Meestal betekent dat een conflict dat een mens moet oplossen, of dat er intussen ' +
+      'op deze branch gepusht is.\n\n' +
+      'Haal de basis met de hand binnen (of druk op **Update branch**). Dat start ' +
+      'de tests opnieuw, en dán is groen weer groen.';
   }
   return kop;
 }
