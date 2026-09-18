@@ -1133,6 +1133,33 @@ pleister: het veld heet `issue` en draagt twee soorten verwijzingen. Rechtzetten
 is een mechanische wijziging over 54 regels en hoort in een eigen commit — een
 issue waard, geen sluipwerk in deze PR.
 
+**Een hernoeming brak de proef, en dat kostte een run (18-09-2026).** Bij de
+herbouw is `PLMeetkamer.issuebaan()` hernoemd naar `ronde()`. De aanroep in de
+blok-5-proef van `pidlane-testrun.js` ging niet mee. Geen enkele poort ving
+het: node kent `PLMeetkamer` niet, `plcheck.sh` doet `node --check` en een
+aanroep van een niet-bestaande functie is geldige syntax, en de browserproef
+draait blok 5 niet.
+
+De eerste die het merkte was de proef zelf, op productie, in run
+`2026-09-18-1953`: *"PLMeetkamer.issuebaan is not a function"*. Het systeem
+werkte dus — maar een ronde te laat, en ten koste van een rit.
+
+Twee dingen zijn daarop veranderd. `test-meetkamer.js` leest nu de aanroepen
+`PLMeetkamer.x` uit de bron van de testrun en legt ze naast de echt geladen
+module; ontbreekt er één, dan is dat rood vóór de commit. En de les erboven:
+**een hernoeming is mechanisch werk en hoort in een eigen commit waarin je alle
+aanroepers langsloopt** — precies wat CLAUDE.md al zegt over mechanisch versus
+inhoudelijk, en wat hier in één beweging door elkaar liep.
+
+**Een meetgat buiten de achtergrondperiode is niet automatisch de adapter.**
+Blok 14 meldde op 18-09 dat twee van de drie meetgaten buiten elke
+achtergrondperiode vielen, en de tekst eronder wijst dan naar de adapter of de
+bus. Dat klopt alleen als de achtergrondperiodes compleet zijn, en dat zijn ze
+niet: de markering is handwerk. In de rit van 18-09 18:32 was er wél
+weggeschakeld maar de markering vergeten, en dan ziet blok 14 een gat zonder
+te weten waaróm. De conclusie "dat is de adapter" is daarmee geen bevinding
+maar een aanname — de meting kan het verschil niet maken zonder die markering.
+
 **Wat dit niet oplost.** Het scherm toont wat de app meet, niet wat de auto
 doet. Dat `010D` op nul staat kan ook een adapter zijn die de snelheid niet
 levert; de meetkamer zegt alleen dát de meting buiten de band valt, en dat is

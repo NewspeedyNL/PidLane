@@ -643,6 +643,55 @@ console.log('\n13. het ophalen gebeurt één keer tegelijk');
 }
 
 // ══════════════════════════════════════════════════════════════════
+console.log('\n13b. elke PLMeetkamer-aanroep in de testrun bestaat ook echt');
+// ══════════════════════════════════════════════════════════════════
+{
+  /* DE POORT DIE ONTBRAK, EN WAT HET KOSTTE.
+     Bij de herbouw van het scherm is `issuebaan()` hernoemd naar `ronde()`.
+     De aanroep in de blok-5-proef van pidlane-testrun.js ging niet mee. Geen
+     enkele controle merkte het: node kent PLMeetkamer niet, plcheck doet
+     alleen `node --check` (en een aanroep van een niet-bestaande functie is
+     geldige syntax), en de browserproef draait blok 5 niet.
+
+     De eerste die het merkte was de proef zelf — op PRODUCTIE, in de run van
+     18-09 19:53, met "PLMeetkamer.issuebaan is not a function". Het systeem
+     werkte dus, maar een ronde te laat en ten koste van een rit.
+
+     Deze controle leest de aanroepen uit de bron van de testrun en legt ze
+     naast de ECHT geladen module. Broncode lezen mag hier omdat de andere
+     kant geen gedrag is dat in node te draaien valt: pidlane-testrun.js is
+     één IIFE met een app eromheen. Wat er getoetst wordt is wél gedrag — de
+     module wordt echt geladen en er wordt echt gekeken wat hij uitdeelt. */
+  const bron = fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8');
+  const namen = [];
+  const re = /PLMeetkamer\.([A-Za-z_$][\w$]*)/;
+
+  // Regel voor regel, en commentaarregels tellen niet mee. Dat is geen
+  // nettigheid: de uitleg bij de reparatie noemt de oude naam met opzet, en
+  // een controle die dáárop aanslaat dwingt je om de uitleg te verminken.
+  // Een aanroep staat nooit op een regel die met // of * begint.
+  bron.split('\n').forEach(function (regel) {
+    const kaal = regel.trim();
+    if (kaal.indexOf('//') === 0 || kaal.indexOf('*') === 0) return;
+    const t = re.exec(regel);
+    if (t && namen.indexOf(t[1]) === -1) namen.push(t[1]);
+  });
+
+  toets('de testrun roept PLMeetkamer werkelijk aan', namen.length > 0, JSON.stringify(namen));
+
+  const uit = laad();
+  const weg = namen.filter(function (naam) { return typeof uit[naam] === 'undefined'; });
+  toets('en elke aangeroepen naam bestaat op de module', weg.length === 0,
+    'ontbreekt: ' + weg.join(', ') + ' — dit is exact de fout die op 18-09 19:53 op productie stond');
+
+  // Andersom óók: een hernoeming die de module wél haalt maar de testrun niet,
+  // levert dezelfde stille breuk op. Daarom staat `ronde` hier met naam.
+  toets('ronde() bestaat, want daar rust de blok-5-proef op', typeof uit.ronde === 'function');
+  toets('en de oude naam is werkelijk weg', typeof uit.issuebaan === 'undefined',
+    'staat hij er nog, dan zegt deze controle niets over de hernoeming');
+}
+
+// ══════════════════════════════════════════════════════════════════
 console.log('\n14. de ECHTE kies() weigert in plaats van stil door te gaan');
 // ══════════════════════════════════════════════════════════════════
 {

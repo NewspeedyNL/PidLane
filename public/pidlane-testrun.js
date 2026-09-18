@@ -2777,18 +2777,35 @@ const PROEVEN_B5 = [
         return { staat: 'FOUT', detail: scheef.length + ' proef/proeven worden op het scherm anders getoond dan hier geboekt: ' +
           scheef.join(' | ') + ' — er is een tweede oordeel ontstaan' };
 
-      // De issuebaan mag niets tonen dat blok 5 niet dekt.
-      var baan = PLMeetkamer.issuebaan(s);
+      // De chips mogen niets tonen dat blok 5 niet dekt.
+      //
+      // DEZE AANROEP HEET SINDS DE HERBOUW `ronde()` EN NIET MEER `issuebaan()`,
+      // en dat verschil kostte een run. Bij het herbouwen van het scherm is de
+      // functie hernoemd; deze regel niet. Geen enkele poort ving dat: node
+      // kent PLMeetkamer niet, en de browserproef draait blok 5 niet. De
+      // eerste die het merkte was de proef zelf, op productie, met
+      // "PLMeetkamer.issuebaan is not a function".
+      //
+      // Dat is precies waar deze proef voor bedoeld is, dus het systeem werkte
+      // — maar een ronde te laat. De les staat in §11: een hernoeming is
+      // mechanisch werk, en mechanisch werk hoort in een eigen commit waarin
+      // je álle aanroepers langsloopt.
+      if (typeof PLMeetkamer.ronde !== 'function')
+        return { staat: 'FOUT', detail: 'PLMeetkamer.ronde() bestaat niet — het scherm en deze proef zijn uit de pas gelopen (#246)' };
+
+      var baan = PLMeetkamer.ronde(s);
+      var chips = baan.deze || [];
       var bekend = {};
       s.proeven.forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
       (s.opdracht.proeven || []).forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
-      var verzonnen = baan.filter(function (b) { return !bekend[b.issue]; }).map(function (b) { return b.issue; });
+      var verzonnen = chips.filter(function (b) { return !bekend[b.issue]; }).map(function (b) { return b.issue; });
       if (verzonnen.length)
-        return { staat: 'FOUT', detail: 'de issuebaan toont ' + verzonnen.length + ' issue(s) die in geen enkele lijst staan: ' +
+        return { staat: 'FOUT', detail: 'het scherm toont ' + verzonnen.length + ' issue(s) die in geen enkele lijst staan: ' +
           verzonnen.join(', ') + ' — dat is een tweede lijst aan het ontstaan' };
 
-      return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + baan.length +
-        ' issue(s) staan op het scherm precies zoals ze hier geboekt worden' };
+      return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + chips.length +
+        ' issue(s) staan op het scherm precies zoals ze hier geboekt worden (' +
+        baan.bewaking + ' meelopend als bewaking)' };
     }
   },
 
