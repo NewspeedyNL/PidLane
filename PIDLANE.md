@@ -913,6 +913,79 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De lus liep rond, en toen was de bewaker zelf de rode regel (18-09-2026)
+
+Twee runs op één rit — `2026-09-18-1947` en `2026-09-18-1953`, versie 7.8 op
+productie, MX+ aan boord. De opdracht uit Airtable kwam binnen, werd gemeten,
+en de uitslagen stonden binnen de minuut in de logtabel. De lus van #241 werkt
+dus niet alleen in principe maar in de praktijk, en dit is de eerste rit die
+er een besluit uit oplevert: de boordspanning zakte in tien minuten niet onder
+12,24 V en bewoog dertien keer, dus die meting is echt.
+
+Daaronder zaten drie dingen die het naar buiten brengen waard zijn.
+
+**1. De proef die het scherm tegen het verslag legt, heeft nog nooit gedraaid.**
+Blok 5 meldde in beide runs dezelfde en enige FOUT: `PLMeetkamer.issuebaan is
+not a function`. De functie die de issuebaan aflevert heet `ronde()` en geeft
+bovendien geen array terug maar `{ deze, bewaking, delen }`. De helft van de
+proef die wél draaide — de meterbalken naast de geboekte uitslagen — was groen;
+alles daarachter is nooit uitgevoerd.
+
+Dat is pijnlijker dan een tikfout, want dit ís de bewaker van de ontwerpregel
+die drie alinea's hieronder staat: *het scherm meet zelf niets, en loopt het
+uit de pas met het verslag, dan is dat een FOUT met de naam erbij.* De reden
+dat die regel er staat, is dat een scherm dat groen wijst waar het verslag
+rood zegt je laat stoppen met het verslag lezen. Precies dat is nu niet
+bewaakt.
+
+**En de tweede helft is waaróm niets het ving.** `node --check` ziet een
+methode die niet bestaat niet: het is geldige syntax. `test-meetkamer.js`
+toetst de afleiding, `bproef-meetkamer.js` toetst dat het paneel in
+`index.html` hangt — geen van beide roept de blok-5-proef zelf aan. `PROEVEN_B5`
+is sinds 6.6 een lijst met functies, en er is niets dat die functies droog laat
+lopen tegen een geladen app. Een browserproef die elke `proef` aanroept en
+alleen op `is not a function` let, zou deze hele klasse in vijftien seconden
+vangen in plaats van in een rit. Dat is dezelfde vorm als
+`test-healthgate.js`: groen op iets dat de app niet heeft.
+
+**2. De waakronde stond aan en boekte tien minuten lang niets.** `PLWaak.actief()`
+gaf true, en de historie was in beide runs leeg — ook zes minuten na de eerste.
+`boekHistorie()` wordt op precies één plek aangeroepen: ná een gelukte lezing,
+binnen `werk()`. Daarvóór staan twee uitgangen die zonder één lezing
+terugkeren, `busDrukt()` en `bezet`. Bij een gemiddelde busbezetting van 93%
+is de eerste plausibel de hele rit waar geweest.
+
+Het gedrag klopt dan met het ontwerp — nooit voordringen is de goede regel
+(#115) — maar **nergens blijkt dat het gebeurt.** `_rust` staat op `'druk'` en
+komt niet uit de module naar buiten; het waakvenster toont hem niet. Voor de
+lezer is "de waakronde meet niets omdat de bus vol staat" niet te onderscheiden
+van "de waakronde is stuk", en dat is dezelfde soort stilte als een lege
+`catch`. Een teller per reden maakt er een meting van.
+
+**3. Drie aanvragers vullen ook de goede adapter.** 93% gemiddelde bezetting,
+een mediane responstijd van 224 ms met een uitschieter naar 25,4 seconden, een
+foutgraad die op 100% piekt, één meetgat van 95 s en twee herverbindingen — op
+de MX+, niet op de kloon. Het meetgat viel buiten elke achtergrondperiode, dus
+het onderscheid dat #133 heeft ingebouwd doet hier precies zijn werk: de lus
+liep (104 tikken, nul loopgaten) en er kwam tóch niets binnen.
+
+De aanwijzing die daaronder ligt: 3,3 verzoeken/s bij 98% bezetting en
+stilstand is veel bezetting voor weinig verkeer. Bestaat die bezetting vooral
+uit wachten op eigen antwoorden, dan zit de knop die dit oplost in het tempo of
+de groepsgrootte en niet in de adapter. Wat dat zou uitwijzen bestaat nog niet:
+dezelfde rit met één aanvrager ernaast. De vierde aanvrager (caravan-tracker)
+stond niet aan, dus het cijfer waar #15 over ging is nog steeds niet gemeten.
+
+**Wat de opdracht zelf verkeerd vroeg, en dat telt als bevinding over de lus.**
+Er stond alleen `0142 min` in. Daarmee is niet te zien of de dynamo überhaupt
+laadt: een laadspanning van 13,5–14,5 V zou als `max` zichtbaar zijn en stond
+nergens. Een auto met i-stop laat de spanning bewust naar ~12,3 V zakken en
+laadt in stoten, dus uit `min` alleen volgt geen van beide conclusies. De rit
+liep bovendien op de MX+ terwijl #217 over de kloon gaat — het is een
+nulmeting en geen antwoord. Dat een opdracht op deze manier naast zijn eigen
+vraag kan grijpen, is de kant van de lus die nog niets bewaakt: `keur()`
+controleert de vorm, niet of het gevraagde de vraag beantwoordt.
+
 ### De lus werkte maar was onzichtbaar, en dat kostte een rit (#246, 18-09-2026)
 
 Sinds #241 en #235 loopt er een lus: een meetopdracht komt als DATA uit
