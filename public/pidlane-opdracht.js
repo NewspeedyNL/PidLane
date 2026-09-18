@@ -305,28 +305,58 @@
   }
 
   /* Eén proef uit de opdracht uitvoeren tegen wat de ritwaarnemer heeft
-     gezien. Geen eigen boekhouding: PLRit.per() is de bron die er al is. */
+     gezien. Geen eigen boekhouding: PLRit.per() is de bron die er al is.
+
+     DE UITSLAG DRAAGT SINDS 18-09 OOK DE GETALLEN (#246). `staat` en `detail`
+     zijn voor het verslag; `waarde`, `lo`, `hi` en `n` zijn voor het scherm,
+     dat tijdens de rit een balk tekent van waar de meting in de band staat.
+
+     Waarom niet uit `detail` terugparsen: dat is een tweede plek die dezelfde
+     betekenis draagt, en die lopen hier uit de pas — precies waar §11 vol mee
+     staat. Eén oordeel, één bron, twee uitgangen. Een tekening die iets
+     anders zegt dan het verslag is dan onmogelijk in plaats van onwaarschijnlijk.
+
+     `waarde` is null als er niets te meten viel; dat is iets anders dan 0 en
+     het scherm hoort dat verschil te tonen. */
   function meet(proef) {
     var per = null;
     try { per = (window.PLRit && typeof PLRit.per === 'function') ? PLRit.per() : null; }
     catch (e) { console.warn('Opdracht: ritbeeld onleesbaar (#241)', e); }
-    if (!per) return { staat: 'LET OP', detail: 'geen ritbeeld — PLRit draait niet, dus deze opdracht is niet te meten' };
+    if (!per) return _uit('LET OP', 'geen ritbeeld — PLRit draait niet, dus deze opdracht is niet te meten', proef, null, 0);
 
     var r = per[proef.pid];
-    if (!r || !r.n) return { staat: 'LET OP', detail: proef.pid + ' is deze rit niet gemeten — niet-gemeten is geen waarde' };
+    if (!r || !r.n) return _uit('LET OP', proef.pid + ' is deze rit niet gemeten — niet-gemeten is geen waarde', proef, null, 0);
 
     var w = (proef.meet === 'aantal') ? r.n
           : (proef.meet === 'veranderingen') ? r.veranderingen
           : (proef.meet === 'laatst') ? r.laatst
           : (proef.meet === 'min') ? r.min : r.max;
     if (w === undefined || w === null)
-      return { staat: 'LET OP', detail: proef.pid + ': "' + proef.meet + '" staat niet in het ritbeeld' };
+      return _uit('LET OP', proef.pid + ': "' + proef.meet + '" staat niet in het ritbeeld', proef, null, r.n);
 
     var lo = proef.tussen[0], hi = proef.tussen[1];
     var binnen = (w >= lo && w <= hi);
     var staart = proef.pid + ' ' + proef.meet + ' = ' + w + ' (verwacht ' + lo + '–' + hi + ', ' + r.n + ' monster(s))';
-    return binnen ? { staat: 'ok', detail: staart }
-                  : { staat: 'FOUT', detail: staart + ' — buiten de band die de opdracht noemt' };
+    return binnen ? _uit('ok', staart, proef, w, r.n)
+                  : _uit('FOUT', staart + ' — buiten de band die de opdracht noemt', proef, w, r.n);
+  }
+
+  /* De uitslagvorm op één plek. Elke uitgang van meet() loopt hierlangs, zodat
+     `waarde`, `lo`, `hi` en `n` er altijd op zitten — ook op de "niet gemeten"
+     paden. Een scherm dat moet controleren óf de velden er zijn, gaat ze op
+     den duur zelf invullen. */
+  function _uit(staat, detail, proef, waarde, n) {
+    var band = (proef && Array.isArray(proef.tussen)) ? proef.tussen : [null, null];
+    return {
+      staat: staat,
+      detail: detail,
+      pid: (proef && proef.pid) || '',
+      maat: (proef && proef.meet) || '',
+      waarde: (waarde === undefined ? null : waarde),
+      lo: band[0],
+      hi: band[1],
+      n: Number(n) || 0
+    };
   }
 
   window.PLOpdracht = {
