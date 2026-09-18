@@ -770,7 +770,7 @@ MUTATIES=(
 # geeft een foutmelding: de rit draait, het verslag komt binnen, en alleen de
 # waarden kloppen niet met wat er gevraagd was.
 "public/pidlane-opdracht.js@@      if (TOEGESTAAN.indexOf(k) === -1) fouten.push('onbekende sleutel \`' + k + '\`');@@      void k;@@test-opdracht.js@@de witte lijst laat alles door: een sleutel die deze app niet kent glipt mee naar de uitvoering"
-"public/pidlane-opdracht.js@@    if (o.schema !== SCHEMA)@@    if (false)@@test-opdracht.js@@een opdracht uit een ander schema wordt alsnog uitgevoerd"
+"public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)\n      fouten.push(@@    if (false)\n      fouten.push(@@test-opdracht.js@@een opdracht uit een schema dat deze app niet kent wordt alsnog uitgevoerd"
 "public/pidlane-opdracht.js@@        if (!PID_VORM.test(String(p))) { fouten.push('\`' + p + '\` is geen PID-code'); return; }@@        if (false) { return; }@@test-opdracht.js@@een sensor die geen PID-code is komt door"
 "public/pidlane-opdracht.js@@    var binnen = (w >= lo && w <= hi);@@    var binnen = true;@@test-opdracht.js@@elke gemeten waarde valt binnen de band: de opdracht kan niet meer rood worden"
 "public/pidlane-opdracht.js@@          // NIET stil terugvallen op de vorige opdracht: dan meet de rit iets\n          // anders dan er in Airtable staat en is het verschil onzichtbaar.\n          _actief = null; _herkomst = null;@@          void 0;@@test-opdracht.js@@een afgekeurde opdracht laat de vorige staan: de rit meet iets anders dan er in de tabel staat"
