@@ -228,16 +228,29 @@ function besluit(f) {
   // ontstaan. En PR's landen hier kort na elkaar — #120 en #121 21 minuten,
   // de rico-test-PR's 17 minuten.
   //
-  // Dus: achterstand > 0 betekent bijwerken en opnieuw laten toetsen. Dat
-  // bijwerken doet deze workflow NIET zelf, en dat is een bewuste keuze:
-  // een push met GITHUB_TOKEN start geen nieuwe workflowrun (dat is de rem
-  // van GitHub tegen oneindige lussen, op 03-09 hier gemeten). De branch
-  // zou dan bijgewerkt zijn met een head die nooit getoetst is — erger dan
-  // het probleem. Een mens die op "Update branch" drukt, start de tests wél.
+  // Dus: achterstand > 0 betekent bijwerken en opnieuw laten toetsen.
+  //
+  // HERZIEN OP 18-09-2026 (#238). Hier stond dat de workflow dat met opzet
+  // niet zelf deed, en die reden was goed: een push met GITHUB_TOKEN start
+  // geen nieuwe workflowrun (de rem van GitHub tegen lussen, op 03-09
+  // gemeten), dus je zou een bijgewerkte branch krijgen die nooit getoetst
+  // is. Erger dan het probleem.
+  //
+  // Die reden is weg. De workflow draait nu op een token van een GitHub App,
+  // en zo'n push start wél een testrun. Daarmee mag het bijwerken hier
+  // vandaan komen in plaats van van een mens die op "Update branch" drukt en
+  // vier minuten wacht terwijl de volgende PR binnenkomt. Dat wachten wás de
+  // tredmolen waar de mergeconflicten uit kwamen.
+  //
+  // De lus is begrensd, en dat is geen toeval: deze poort staat ACHTER de
+  // klaar-poort, dus alleen een PR die af verklaard is wordt bijgewerkt. Eén
+  // keer bijwerken geeft één testrun, en daarna is de achterstand nul en
+  // wordt er samengevoegd. Schuift de basis ondertussen weer op, dan is dat
+  // een echte gebeurtenis en geen lus.
   if (typeof f.achterstand === 'number' && f.achterstand > 0) {
-    return { samenvoegen: false, bijwerken: false,
+    return { samenvoegen: false, bijwerken: true,
              reden: f.baseRef + ' loopt ' + f.achterstand + ' commit(s) voor op deze branch',
-             melden: true, sleutel: 'achterstand' };
+             melden: false, sleutel: 'achterstand' };
   }
 
   return { samenvoegen: true, bijwerken: false, reden: 'groen, `' + LABEL_KLAAR + '` staat erop, ' +
@@ -262,14 +275,17 @@ function meldtekst(b) {
     return kop + '\n\nVoeg de basisbranch in deze branch en los het conflict op. ' +
       'Daarna draait de testgate opnieuw en gaat het vanzelf.';
   }
-  if (b.sleutel === 'achterstand') {
+  // Achterstand meldt niets meer: sinds 18-09-2026 haalt de workflow de basis
+  // zelf binnen. Alleen als dat MISLUKT moet er een mens bij.
+  if (b.sleutel === 'bijwerken-mislukt') {
     return kop + '\n\nDe groene testrun ging over deze branch samengevoegd met de basis ' +
       '*zoals die toen was*. Er is daarna iets anders geland, dus die vlag zegt niets ' +
       'meer over de combinatie die nu zou ontstaan.\n\n' +
-      'Druk op **Update branch** (of voeg de basis met de hand in). Dat start de tests ' +
-      'opnieuw, en dán is groen weer groen. De workflow doet dit met opzet niet zelf: ' +
-      'een push met `GITHUB_TOKEN` start géén nieuwe testrun, dus je zou een bijgewerkte ' +
-      'branch krijgen die nooit getoetst is.';
+      'De workflow probeert die basis zelf binnen te halen, en dat lukte hier niet. ' +
+      'Meestal betekent dat een conflict dat een mens moet oplossen, of dat er intussen ' +
+      'op deze branch gepusht is.\n\n' +
+      'Haal de basis met de hand binnen (of druk op **Update branch**). Dat start ' +
+      'de tests opnieuw, en dán is groen weer groen.';
   }
   return kop;
 }
