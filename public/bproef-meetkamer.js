@@ -170,6 +170,41 @@ function toets(naam, waar, uitleg) {
     // (de kaartmaker, de snelheidsproef) moet je nog steeds kunnen vinden.
     toets('alle oude knoppen zitten er nog in', la.knoppen >= 12, la.knoppen + ' knoppen');
 
+    console.log('\n4c. De opdrachtkiezer hangt in het echte paneel (#248)');
+    const kz = JSON.parse(await app.ev(`(function(){
+      var h = PLMeetkamer.html(PLMeetkamer.momentopname());
+      return JSON.stringify({
+        erIs: /Meetopdrachten/.test(h),
+        ophaalknop: /PLMeetkamer\\.laad\\(\\)/.test(h),
+        // Zonder opgehaalde lijst horen er geen keuzeknoppen te staan: die
+        // zouden dan naar niets verwijzen.
+        geenKnoppenVooraf: !/PLMeetkamer\\.pak\\(/.test(h),
+        heeftLijst: typeof PLOpdracht.lijst === 'function',
+        heeftKies: typeof PLOpdracht.kies === 'function',
+        heeftNoteer: typeof PLOpdracht.noteer === 'function',
+        heeftSessie: typeof PLTestrunLive.nieuweSessie === 'function'
+      });
+    })()`));
+    toets('de kiezer staat in het paneel', kz.erIs, JSON.stringify(kz));
+    toets('met een ophaalknop', kz.ophaalknop, JSON.stringify(kz));
+    toets('en zonder keuzeknoppen voordat de lijst er is', kz.geenKnoppenVooraf, JSON.stringify(kz));
+    toets('PLOpdracht.lijst() bestaat in de echte app', kz.heeftLijst, JSON.stringify(kz));
+    toets('PLOpdracht.kies() ook', kz.heeftKies, JSON.stringify(kz));
+    toets('PLOpdracht.noteer() ook', kz.heeftNoteer, JSON.stringify(kz));
+    toets('en PLTestrunLive.nieuweSessie()', kz.heeftSessie, JSON.stringify(kz));
+
+    console.log('\n4d. Een nieuwe sessie levert een ANDER ritnummer op');
+    // DIT IS WAAROM DE KEUZE EEN KNOP IS. Twee opdrachten onder één ritnummer
+    // betekent dat buiten de app niet te zien is welke regel bij welke vraag
+    // hoorde — en de hele lus rust op die koppeling.
+    const ses = JSON.parse(await app.ev(`(function(){
+      var voor = PLTestrunLive.ritId();
+      var na = PLTestrunLive.nieuweSessie('proef uit bproef-meetkamer');
+      return JSON.stringify({ voor: voor, na: na, nu: PLTestrunLive.ritId(), anders: voor !== na });
+    })()`));
+    toets('het ritnummer verandert', ses.anders, JSON.stringify(ses));
+    toets('en blijft daarna staan', ses.na === ses.nu, JSON.stringify(ses));
+
     console.log('\n5. Het paneel verschuift de opmaak van de app niet');
     // Dezelfde les als bij de previewbanner (#242): een paneel dat de app
     // opzij duwt, laat je de opmaak van het paneel meten in plaats van die

@@ -89,11 +89,46 @@ function _wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 const LIVE_SCHEMA = 1;
 let _liveRit = null, _liveBlok = null, _liveTel = null;
 
+/* EEN NIEUWE SESSIE BEGINNEN (#248). Het ritnummer is wat de logtabel
+   groepeert: alles met hetzelfde SessionId hoort bij één meting. Wie tijdens
+   één rit een tweede vraag gaat beantwoorden, wil die uitslagen apart kunnen
+   lezen — anders staan twee opdrachten door elkaar onder één nummer en is
+   achteraf niet te zien welke regel bij welke vraag hoorde.
+
+   Het lopende blok wordt eerst netjes afgesloten, anders mist de oude sessie
+   zijn slotregel en lijkt hij afgebroken. */
+function nieuweSessie(reden) {
+  try { _liveEinde(reden || 'sessie afgesloten voor een nieuwe opdracht'); }
+  catch (e) { console.warn('Testrun: de vorige sessie is niet netjes afgesloten (#248)', e); }
+  _liveRit = null;
+  const nieuw = _liveRitId();
+  _boek(0, 'Nieuwe sessie', 'ok', 'ritnummer ' + nieuw, null);
+  return nieuw;
+}
+
+/* HET RITNUMMER HEEFT MINUUTRESOLUTIE, EN DAT WAS EEN GAT (#248).
+   `2026-09-18-1645` is leesbaar en sorteert goed, maar wie binnen dezelfde
+   minuut een tweede opdracht kiest, krijgt hetzelfde nummer — en dan staan
+   twee vragen door elkaar onder één sessie. Dat is precies de scheiding
+   waarvoor de knop bestaat.
+
+   Gevonden door bproef-meetkamer.js, niet bedacht: de proef vroeg twee keer
+   een sessie aan en kreeg twee keer hetzelfde terug.
+
+   De oplossing houdt het formaat heel en hangt er een volgnummer achter zodra
+   het botst. Seconden erbij zetten zou hetzelfde oplossen maar élk ritnummer
+   langer maken, terwijl dit een uitzondering is die je hooguit een paar keer
+   per rit tegenkomt. */
+let _liveVorigId = null, _liveVolg = 1;
+
 function _liveRitId() {
   if (_liveRit) return _liveRit;
   const d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
-  _liveRit = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-             '-' + p(d.getHours()) + p(d.getMinutes());
+  const basis = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+                '-' + p(d.getHours()) + p(d.getMinutes());
+  if (basis === _liveVorigId) { _liveVolg++; _liveRit = basis + '-' + _liveVolg; }
+  else { _liveVolg = 1; _liveRit = basis; }
+  _liveVorigId = basis;
   return _liveRit;
 }
 
@@ -2666,6 +2701,12 @@ const PROEVEN_B5 = [
           'opdracht ' + o.naam + ' — ' + u.naam + ': ' + u.staat + ' — ' + u.detail,
           { Outcome: u.staat, Repro: u.issue || '' });
       });
+
+      // De uitslag terugmelden aan de opdrachtmodule, zodat de keuzeknoppen
+      // laten zien welke vraag beantwoord is en welke nog wacht (#248). Eén
+      // plek die het opschrijft; het scherm telt niet zelf.
+      try { if (typeof PLOpdracht.noteer === 'function') PLOpdracht.noteer(h.id, uitslagen); }
+      catch (e) { console.warn('Testrun: de uitslag is niet bij de opdracht genoteerd (#248)', e); }
 
       var fout = uitslagen.filter(function (u) { return u.staat === 'FOUT'; });
       var letop = uitslagen.filter(function (u) { return u.staat === 'LET OP'; });
@@ -8006,12 +8047,14 @@ window.PLTestrunLive = {
     return PROEVEN_B5.map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom }; });
   },
   log: function () { return _trLog.slice(); },
+  nieuweSessie: nieuweSessie,
   bezig: function () { return !!_trBezig; },
   campagne: function () { return CAMPAGNE.titel; }
 };
 
 window.openTestrun = openTestrun;
 window.testrunGereedschap = testrunGereedschap;
+window.nieuweSessie = nieuweSessie;
 window.closeTestrun = closeTestrun;
 window.startTestrun = startTestrun;
 window.ritNulstellen = ritNulstellen;

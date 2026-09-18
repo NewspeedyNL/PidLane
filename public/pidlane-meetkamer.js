@@ -57,6 +57,8 @@
   var _tikker = null;
   var _open = false;
   var _uit = {};            // welke secties de gebruiker heeft opengeklapt
+  var _kiezen = false;      // staat de opdrachtkiezer open?
+  var _bezigLaden = false;  // haalt hij de lijst nu op?
 
   /* WAT ALS ISSUE TELT. `#123` wel, `§11` niet: dat laatste is een hoofdstuk
      uit PIDLANE.md dat als herkomst in het `issue`-veld van PROEVEN_B5 staat.
@@ -87,6 +89,16 @@
   var RANG = { 'fout': 3, 'let op': 2, 'ja': 1, 'wacht': 0 };
 
   function _kleur(st) { return KLEUR[st] || KLEUR.wacht; }
+
+  /* Een waarde die in een JavaScript-tekenreeks BINNEN een HTML-attribuut
+     terechtkomt. `veilig()` alleen is hier niet genoeg: die maakt van < en "
+     iets onschuldigs, maar laat de apostrof staan — en precies die sluit de
+     aanroep vroegtijdig af. Airtable-ids zijn alfanumeriek, dus "dat kan niet
+     voorkomen"; dat is hier nooit een argument geweest, en test-meetkamer.js
+     wees het meteen aan. */
+  function jsTekst(v) {
+    return veilig(String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+  }
 
   function veilig(s) {
     return String(s == null ? '' : s)
@@ -469,6 +481,17 @@
       'text-transform:uppercase;color:var(--rd);margin-bottom:5px}' +
     '#meetkamerBox .mk-alarm span{font:600 12.5px/1.45 var(--f);color:var(--tx2)}' +
     '#meetkamerBox .mk-alarm u{text-decoration:none;display:block;font-weight:500;color:var(--tx3);margin-top:4px}' +
+    '#meetkamerBox .mk-kies{width:100%;text-align:left;background:var(--sur2);border:1px solid var(--bd2);' +
+      'border-radius:10px;padding:9px 11px;margin-top:6px;font:inherit;cursor:pointer;display:flex;align-items:center;gap:9px}' +
+    '#meetkamerBox .mk-kies[disabled]{opacity:.5;cursor:default}' +
+    '#meetkamerBox .mk-kies.nu{border-color:var(--bl);background:var(--bls)}' +
+    '#meetkamerBox .mk-kies s{width:8px;height:8px;border-radius:50%;flex-shrink:0;text-decoration:none;background:var(--tx3)}' +
+    '#meetkamerBox .mk-kies div{flex:1;min-width:0}' +
+    '#meetkamerBox .mk-kies b{display:block;font:700 12.5px/1.3 var(--f);color:var(--tx)}' +
+    '#meetkamerBox .mk-kies u{display:block;text-decoration:none;font:500 10.5px/1.35 var(--f);color:var(--tx3);margin-top:2px}' +
+    '#meetkamerBox .mk-kies i{font-style:normal;font:700 10px var(--f);flex-shrink:0}' +
+    '#meetkamerBox .mk-knop{background:var(--sur2);border:1px solid var(--bd);border-radius:9px;' +
+      'padding:8px 12px;font:700 11.5px var(--f);color:var(--tx2);cursor:pointer}' +
     '</style>';
 
   /* Eén keer inhangen, en nooit meer. Ontbreekt de <head> (kan niet in een
@@ -555,6 +578,73 @@
       '<em>' + veilig(kort.length > 26 ? kort.slice(0, 24) + '…' : kort) + '</em></span>';
   }
 
+  // ── DE OPDRACHTKIEZER (#248) ──────────────────────────────────────
+  /* Een rit is de schaarste. Tot nu toe beantwoordde één rit één vraag — de
+     actieve rij uit Airtable — en wie #217 én #19 wilde weten reed twee keer.
+
+     Deze knoppen maken dat één rit meerdere vragen afwerkt: kies een opdracht,
+     de app begint een NIEUWE sessie (eigen ritnummer in de logtabel), meet,
+     en je kiest de volgende. Buiten de app zijn de uitslagen daardoor per
+     vraag te lezen in plaats van door elkaar onder één nummer.
+
+     Wat elke knop toont is wat er deze app-sessie mee gebeurd is: nog niet
+     gemeten, of de uitslag. Dat komt uit PLOpdracht.gedaan() — de testrun
+     schrijft het daar weg zodra blok 5 klaar is. Het scherm telt niet zelf.
+
+     Een afgekeurde rij blijft in de lijst staan MET zijn reden en is niet
+     aanklikbaar. Verdwijnen zou betekenen dat je in Airtable naar een
+     opdracht zit te kijken die op je telefoon nergens te bekennen is, zonder
+     dat iets zegt waarom. */
+  function _kiezer(s) {
+    var rijen = null, gedaan = {};
+    try {
+      if (window.PLOpdracht) {
+        rijen = (typeof PLOpdracht.gelijst === 'function') ? PLOpdracht.gelijst() : null;
+        gedaan = (typeof PLOpdracht.gedaan === 'function') ? (PLOpdracht.gedaan() || {}) : {};
+      }
+    } catch (e) { console.warn('Meetkamer: de opdrachtlijst is niet te lezen (#248)', e); }
+
+    var h = '<div class="mk-kaart" style="padding:11px 13px">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="mk-k" style="padding:0;flex:1">Meetopdrachten</span>' +
+        '<button class="mk-knop" onclick="PLMeetkamer.laad()">' +
+          (_bezigLaden ? 'bezig…' : (rijen ? '↻ Verversen' : '📥 Ophalen')) + '</button>' +
+      '</div>';
+
+    if (!rijen) {
+      h += '<div style="font:500 11px/1.6 var(--f);color:var(--tx3);margin-top:7px">' +
+        'Haal de lijst op om tijdens deze rit meerdere vragen te beantwoorden. ' +
+        'Elke keuze begint een eigen sessie in de logtabel.</div>';
+      return h + '</div>';
+    }
+    if (!rijen.length) {
+      h += '<div style="font:500 11px var(--f);color:var(--tx3);margin-top:7px">' +
+        'Er staat geen enkele opdracht in de tabel.</div>';
+      return h + '</div>';
+    }
+
+    var nuId = (s.herkomst && s.herkomst.id) || '';
+    rijen.forEach(function (r) {
+      var g = gedaan[r.id];
+      var kl = r.fout ? 'var(--rd)' : g ? _kleur(g.staat) : 'var(--tx3)';
+      // De reden (meestal een issuenummer) EN de stand, niet het een óf het
+      // ander. De reden zegt waaróm deze meting bestaat, de stand of hij deze
+      // sessie al gedaan is — en dat is precies wat je tijdens een rit wilt
+      // weten: welke vraag is nog open.
+      var stand = r.fout ? r.fout
+        : g ? (g.goed + '/' + g.aantal + ' binnen bereik · ' + ouderdom(g.tijd, s.nu))
+        : 'nog niet gemeten deze sessie';
+      var staart = (r.reden && !r.fout) ? (r.reden + ' · ' + stand) : stand;
+      h += '<button class="mk-kies' + (r.id === nuId ? ' nu' : '') + '"' +
+        (r.fout ? ' disabled' : ' onclick="PLMeetkamer.pak(\'' + jsTekst(r.id) + '\')"') + '>' +
+        '<s style="background:' + kl + '"></s>' +
+        '<div><b>' + veilig(r.naam || '(zonder naam)') + '</b><u>' + veilig(staart) + '</u></div>' +
+        '<i style="color:' + kl + '">' + (r.fout ? 'x' : r.id === nuId ? 'nu' : g ? '\u21bb' : '\u203a') + '</i>' +
+        '</button>';
+    });
+    return h + '</div>';
+  }
+
   /* Het hele paneel. Geeft HTML terug in plaats van zelf te schrijven, zodat
      de browserproef hem kan opvragen zonder de testrun te openen. */
   function html(s) {
@@ -602,6 +692,9 @@
       }
       h += '</div>';
     }
+
+    // 4b — de opdrachtkiezer: meerdere vragen per rit (#248)
+    h += _kiezer(s);
 
     // 5 — het logboek als één regel met een telling
     var t = logtelling(s.log);
@@ -658,6 +751,51 @@
     return !!_uit[wat];
   }
 
+  /* De lijst ophalen. Eén keer tegelijk: twee verzoeken tegelijk leveren twee
+     lijsten op waarvan de laatste wint, en welke dat is hangt af van het
+     netwerk. */
+  function laad() {
+    if (_bezigLaden) return Promise.resolve(null);
+    if (!window.PLOpdracht || typeof PLOpdracht.lijst !== 'function') {
+      console.warn('Meetkamer: PLOpdracht.lijst ontbreekt — de kiezer kan niets ophalen (#248)');
+      return Promise.resolve(null);
+    }
+    _bezigLaden = true;
+    teken();
+    return Promise.resolve(PLOpdracht.lijst())
+      .then(function (r) { return r; })
+      .catch(function (e) { console.warn('Meetkamer: de lijst ophalen mislukt (#248)', e); return null; })
+      .then(function (r) { _bezigLaden = false; teken(); return r; });
+  }
+
+  /* Een opdracht kiezen. Twee dingen gebeuren er, en de tweede is de reden dat
+     dit een knop is en geen instelling: er begint een NIEUWE sessie. Alles wat
+     daarna de logtabel in gaat hoort bij déze vraag, en niet bij de vorige. */
+  function pak(id) {
+    if (!window.PLOpdracht || typeof PLOpdracht.kies !== 'function') return null;
+    var o = null;
+    try { o = PLOpdracht.kies(id); }
+    catch (e) { console.warn('Meetkamer: de opdracht kon niet gekozen worden (#248)', e); }
+    if (!o) {
+      // Niet stil falen: de reden staat in PLOpdracht.reden() en hoort gezien
+      // te worden, anders druk je drie keer op dezelfde knop.
+      try {
+        var r = (typeof PLOpdracht.reden === 'function') ? PLOpdracht.reden() : '';
+        if (typeof showToast === 'function') showToast('Die opdracht gaat niet: ' + (r || 'onbekende reden'));
+      } catch (e) { console.warn('Meetkamer: de afwijzing kon niet gemeld worden (#248)', e); }
+      teken();
+      return null;
+    }
+    try {
+      if (window.PLTestrunLive && typeof PLTestrunLive.nieuweSessie === 'function')
+        PLTestrunLive.nieuweSessie('opdracht gewisseld naar "' + o.naam + '"');
+    } catch (e) { console.warn('Meetkamer: er kon geen nieuwe sessie beginnen (#248)', e); }
+    try { if (typeof showToast === 'function') showToast('Nu: ' + o.naam); }
+    catch (e) { console.warn('Meetkamer: melding niet getoond (#248)', e); }
+    teken();
+    return o;
+  }
+
   /* De lus loopt alleen terwijl het scherm open staat. Een tikker die
      doordraait op een gesloten overlay meet niets en kost wél accutijd — en
      dit is een app die tijdens het rijden aan de lader hangt. */
@@ -690,6 +828,9 @@
     stijlErin: stijlErin,
     teken: teken,
     klap: klap,
+    laad: laad,
+    pak: pak,
+    _kiezer: _kiezer,
     start: start,
     stop: stop,
     open: function () { return _open; },

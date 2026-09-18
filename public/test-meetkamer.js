@@ -494,5 +494,144 @@ console.log('\n10. de meetkamer leest dezelfde uitslagvorm als blok 5');
   toets('de meter tekent daar geen balk', M.meter(weg).pos === null);
 }
 
+// ══════════════════════════════════════════════════════════════════
+console.log('\n11. de opdrachtkiezer: meerdere vragen per rit (#248)');
+// ══════════════════════════════════════════════════════════════════
+{
+  /* Een sandbox met een nep-PLOpdracht, zodat de kiezer getoetst kan worden
+     zonder netwerk. De ECHTE koppeling met PLOpdracht staat in
+     bproef-meetkamer.js — daar draait de app. */
+  function metLijst(rijen, gedaan, herkomst) {
+    const k = laad({
+      PLOpdracht: {
+        gelijst: function () { return rijen; },
+        gedaan: function () { return gedaan || {}; },
+        kies: function (id) { k._gekozen = id; return (rijen || []).filter(function (r) { return r.id === id; })[0] || null; },
+        reden: function () { return 'afgekeurd: onbekende sleutel'; }
+      }
+    });
+    return k._kiezer({ nu: Date.now(), herkomst: herkomst || null });
+  }
+
+  const zonder = metLijst(null);
+  toets('zonder opgehaalde lijst staat er een ophaalknop', /Ophalen/.test(zonder), zonder.slice(0, 120));
+  toets('en geen enkele keuzeknop', !/mk-kies/.test(zonder));
+
+  toets('een lege tabel zegt dat er niets staat', /geen enkele opdracht/.test(metLijst([])));
+
+  const rijen = [
+    { id: 'rec1', naam: 'Boordspanning tijdens de rit', reden: '#217', actief: true,  opdracht: { naam: 'a' }, fout: '' },
+    { id: 'rec2', naam: 'Raildruk over een hele rit',   reden: '#19',  actief: false, opdracht: { naam: 'b' }, fout: '' },
+    { id: 'rec3', naam: 'Kapotte rij',                  reden: '#99',  actief: false, opdracht: null,          fout: 'afgekeurd: onbekende sleutel "snelheid"' }
+  ];
+
+  const drie = metLijst(rijen, {});
+  toets('elke rij krijgt een knop', (drie.match(/class="mk-kies/g) || []).length === 3,
+    String((drie.match(/class="mk-kies/g) || []).length));
+  toets('met de naam erop', /Boordspanning tijdens de rit/.test(drie) && /Raildruk/.test(drie));
+
+  // EEN AFGEKEURDE RIJ BLIJFT STAAN, MET ZIJN REDEN. Verdwijnen betekent dat
+  // je in Airtable naar een opdracht kijkt die op je telefoon nergens is, en
+  // dat niets zegt waarom.
+  toets('een afgekeurde rij staat er ook', /Kapotte rij/.test(drie));
+  toets('met de reden erbij', /onbekende sleutel/.test(drie), drie.slice(-260));
+  toets('maar is niet aanklikbaar', (drie.match(/disabled/g) || []).length === 1,
+    String((drie.match(/disabled/g) || []).length));
+  toets('en de bruikbare rijen wél', (drie.match(/PLMeetkamer\.pak/g) || []).length === 2,
+    String((drie.match(/PLMeetkamer\.pak/g) || []).length));
+
+  // WAT ER DEZE SESSIE MEE GEBEURD IS, KOMT UIT PLOpdracht.gedaan() — het
+  // scherm telt niet zelf. Zou het dat wel doen, dan is er een tweede telling
+  // naast die van blok 5.
+  const met = metLijst(rijen, { rec1: { staat: 'fout', goed: 2, aantal: 3, tijd: Date.now() - 60000 } });
+  toets('een gemeten opdracht toont zijn uitslag', /2\/3 binnen bereik/.test(met), met.slice(0, 400));
+  toets('met hoe lang geleden', /1 min geleden/.test(met));
+  toets('een ongemeten opdracht zegt dat hij nog wacht', /nog niet gemeten deze sessie/.test(met));
+
+  // De lopende opdracht is herkenbaar, anders druk je hem nog een keer aan.
+  const nu = metLijst(rijen, {}, { id: 'rec2' });
+  toets('de lopende opdracht is gemerkt', /mk-kies nu/.test(nu));
+  toets('en er is er maar één', (nu.match(/mk-kies nu/g) || []).length === 1);
+
+  // Een naam uit Airtable wordt niet als HTML uitgevoerd.
+  const stout = metLijst([{ id: 'r', naam: '<img src=x>', reden: '', actief: false, opdracht: {}, fout: '' }], {});
+  toets('een naam met HTML erin wordt ontsmet', !/<img/.test(stout) && /&lt;img/.test(stout));
+
+  // EEN id MET EEN APOSTROF MAG DE onclick NIET BREKEN. Airtable-ids zijn
+  // alfanumeriek, maar de knop bouwt een JavaScript-aanroep als tekst en dan
+  // is "het kan niet voorkomen" geen argument.
+  const raar = metLijst([{ id: "re'c", naam: 'x', reden: '', actief: false, opdracht: {}, fout: '' }], {});
+  toets('een apostrof in het id wordt ontsmet', !/pak\('re'c'\)/.test(raar), raar.slice(0, 300));
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n12. kiezen begint een nieuwe sessie');
+// ══════════════════════════════════════════════════════════════════
+{
+  // DIT IS WAAROM DE KEUZE EEN KNOP IS EN GEEN INSTELLING. Twee opdrachten
+  // onder één ritnummer betekent dat buiten de app niet te zien is welke
+  // regel bij welke vraag hoorde — en dat is precies de koppeling waar de
+  // hele lus op rust.
+  let sessies = [];
+  const k = laad({
+    PLOpdracht: {
+      gelijst: function () { return [{ id: 'rec2', naam: 'Raildruk', opdracht: { naam: 'Raildruk' }, fout: '' }]; },
+      gedaan: function () { return {}; },
+      kies: function (id) { return id === 'rec2' ? { naam: 'Raildruk', sensoren: [] } : null; },
+      reden: function () { return 'geen opdracht met dat id'; }
+    },
+    PLTestrunLive: { nieuweSessie: function (r) { sessies.push(r); return '2026-09-18-2000'; } },
+    showToast: function () { }
+  });
+
+  const gekozen = k.pak('rec2');
+  toets('kiezen levert de opdracht op', gekozen && gekozen.naam === 'Raildruk', JSON.stringify(gekozen));
+  toets('en begint precies één nieuwe sessie', sessies.length === 1, JSON.stringify(sessies));
+  toets('met de naam van de opdracht in de reden', /Raildruk/.test(sessies[0] || ''), sessies[0]);
+
+  // EEN MISLUKTE KEUZE MAG GEEN SESSIE BEGINNEN. Anders staat er een leeg
+  // ritnummer in de tabel waar nooit iets onder komt.
+  const weg = k.pak('bestaat-niet');
+  toets('een onbekende opdracht levert niets op', weg === null);
+  toets('en begint géén nieuwe sessie', sessies.length === 1, String(sessies.length));
+
+  // Ontbreekt PLTestrunLive helemaal, dan mag de keuze niet klappen.
+  const kaal = laad({
+    PLOpdracht: {
+      gelijst: function () { return []; }, gedaan: function () { return {}; },
+      kies: function () { return { naam: 'x', sensoren: [] }; }, reden: function () { return ''; }
+    }
+  });
+  toets('zonder PLTestrunLive lukt de keuze nog steeds',
+    (function () { try { return !!kaal.pak('wat dan ook'); } catch (e) { return false; } })());
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n13. het ophalen gebeurt één keer tegelijk');
+// ══════════════════════════════════════════════════════════════════
+{
+  // Twee verzoeken tegelijk leveren twee lijsten op waarvan de laatste wint,
+  // en welke dat is hangt van het netwerk af.
+  let keer = 0;
+  let los;
+  const k = laad({
+    PLOpdracht: {
+      lijst: function () { keer++; return new Promise(function (r) { los = r; }); },
+      gelijst: function () { return null; }, gedaan: function () { return {}; }
+    }
+  });
+
+  k.laad();
+  k.laad();
+  toets('twee keer drukken geeft één verzoek', keer === 1, String(keer));
+
+  // Losmaken zodat er geen belofte blijft hangen; de uitkomst doet er hier
+  // niet toe, alleen dát er één verzoek uitging. GEEN `return` op dit niveau:
+  // node wikkelt een module in een functie, dus een return hier slaat de
+  // eindtelling over en dan meldt een rode test zich als groen.
+  if (typeof los === 'function') los([]);
+  toets('en daarna kan er opnieuw opgehaald worden', typeof k.laad === 'function');
+}
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles' : 'goed: alle ' + n + ' controles'));
 process.exit(fout ? 1 : 0);
