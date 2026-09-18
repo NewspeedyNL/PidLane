@@ -66,7 +66,9 @@ function validateAndSmooth(pid,rawVal){
   // LAAG 1 — Harde fysieke limieten (geldt voor álle PIDs)
   if(lim&&(rawVal<lim.min||rawVal>lim.max)){
     const msg=`${def?.name||pid}: ${rawVal}${def?.unit||''} buiten fysiek bereik (${lim.min}–${lim.max})`;
-    log(`⚠ ${msg}`,'warn');
+    // De rijke regel gaat hieronder zelf naar Airtable; de app-log houdt de
+    // korte. Zonder `geenAirtable` staat dezelfde gebeurtenis er twee keer (#256).
+    log(`⚠ ${msg}`,'warn',{geenAirtable:true});
     logToSheets('outlier',msg,{pid,value:rawVal,reason:'hard_limit'});
     markOutlier(pid,rawVal,'limiet'); return null;
   }

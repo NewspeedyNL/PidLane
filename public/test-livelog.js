@@ -57,8 +57,13 @@ console.log('\n1. logToSheets() laat het derde argument niet meer vallen');
   const bron = fs.readFileSync(__dirname + '/pidlane-auth.js', 'utf8');
   const kolommen = bron.match(/const AT_KOLOMMEN = new Set\(\[[\s\S]*?\]\);/);
   const fn = bron.match(/async function logToSheets\(type, message, extra=\{\}\)\{[\s\S]*?\n\}/);
+  // De drie helpers die logToSheets sinds #256 gebruikt staan erboven en horen
+  // er dus bij: zonder hen draait de functie niet, en met een stub zou deze
+  // test groen staan op iets anders dan de app werkelijk doet.
+  const hulp = bron.match(/let _plAppSessie=null;[\s\S]*?\nfunction _plLogAdapter\(\)\{[\s\S]*?\n\}/);
   if (!kolommen) { console.error('FOUT: AT_KOLOMMEN niet gevonden in pidlane-auth.js'); process.exit(1); }
   if (!fn) { console.error('FOUT: logToSheets() niet gevonden in pidlane-auth.js'); process.exit(1); }
+  if (!hulp) { console.error('FOUT: de logveld-helpers (#256) niet gevonden in pidlane-auth.js'); process.exit(1); }
 
   const s = { console: { warn() { } } };
   s.window = s;
@@ -74,7 +79,7 @@ console.log('\n1. logToSheets() laat het derde argument niet meer vallen');
   s.clearTimeout = function () { };
   s._plVinVoorLog = async function () { return 'JM3-pseudoniem'; };
   vm.createContext(s);
-  vm.runInContext(kolommen[0] + '\n' + fn[0], s, { filename: 'logToSheets' });
+  vm.runInContext(kolommen[0] + '\n' + hulp[0] + '\n' + fn[0], s, { filename: 'logToSheets' });
 
   const velden = async function (type, msg, extra) {
     s._atBuffer.length = 0;

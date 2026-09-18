@@ -913,6 +913,195 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Wat er op 18-09 gerepareerd is, en wat het over toetsen zei
+
+De drie oorzaken hieronder zijn dezelfde avond nog gerepareerd. Wat die
+reparatie opleverde is niet de code maar de vraag eronder: **waarom ving geen
+enkele poort ze?**
+
+**De markeringen (#255).** `begeleidStart()` leegde een lijst die bij de
+sessie hoort. Er was geen toets die twee rondes na elkaar startte, en dus was
+er geen toets die dit kón vinden. `test-markeringen.js` doet nu precies dat:
+markeer in ronde 1, start ronde 2, en vraag het terug. Wat per ronde wél hoort
+te resetten (`_BG.i`, `_BG.gedaan`) wordt in dezelfde toets bewaakt, want een
+reparatie die te ver gaat is net zo duur.
+
+**De logtabel (#256).** Alle drie de fouten zaten in wat er de deur uitging,
+en er was geen enkele toets die naar de opgebouwde Airtable-payload keek — de
+toetsen die er waren keken naar de app-log, en díé deed het goed.
+`test-logvelden.js` knipt `logToSheets()` en `log()` uit de bron en inspecteert
+wat er in de buffer belandt. Eén geval daarin is de moeite waard om te
+onthouden: de proefwaarde-vlag wordt gelezen **vóór** de `await` op het
+pseudonimiseren. Leest hij hem erna, dan is de proef al klaar, staat de vlag
+weer uit, en komt de 300 °C alsnog als echte meting binnen. Dat is een fout
+die je bij het lezen van de diff niet ziet en die een toets in één regel vangt.
+
+**De aanroep die niet bestond (#252).** `PLMeetkamer.issuebaan()` heette sinds
+de herbouw `ronde()`. `node --check` ziet dat niet — het is geldige syntax — en
+de browserproef draait blok 5 niet. De les staat al in CLAUDE.md en is hier
+duur herhaald: **hernoemen is mechanisch werk, en mechanisch werk hoort in een
+eigen commit waarin je álle aanroepers langsloopt.** De toets die er nu ligt
+generaliseert het: elke `PLMeetkamer.x`-aanroep in `pidlane-testrun.js` wordt
+naast de echt geladen module gelegd.
+
+**Wat er bij is gekomen (#257), en waarom het geen vierde reparatie is.**
+Negen van de twintig LET OP-regels van die avond gingen niet over de auto maar
+over omstandigheden die er niet waren. Dat is geen bug — het verslag zei de
+waarheid — maar het zei hem op het verkeerde moment, ná de rit. Een opdracht
+draagt daarom `voorwaarden` in dezelfde meetbare vorm als zijn proeven, en het
+oordeel is driewaardig geworden:
+
+| uitkomst | betekenis |
+|---|---|
+| **gesloten** | gemeten, binnen de band, voorwaarden vervuld |
+| **bevinding** | gemeten en buiten de band — óók een antwoord, maar er moet iemand naar kijken |
+| **nog niet** | de omstandigheden waren er niet; geen bevinding, wel een instructie voor de volgende rit |
+
+De onderscheidende vraag staat in de toets en niet in het commentaar: een
+tweewaardig oordeel dat "niet gemeten" en "buiten de band" allebei fout noemt,
+**klopt** — en zegt niets. Daar is `test-opdrachtvoorwaarden.js` het scherpst
+op: geval 8 is een PID die deze rit niet gemeten is, en die moet `nog niet`
+opleveren en niet `bevinding`.
+
+Twee dingen zijn met opzet niet meegegaan. Schema 1 wordt nog steeds
+geaccepteerd, want er staat een voorraad opdrachten in de tabel en een rij
+afkeuren op zijn versienummer kost een rit — de schaarste in dit project. En
+de stap-voorwaarden worden niet in `pidlane-opdracht.js` beantwoord maar door
+een functie die de testrun meegeeft: markeringen staan daar, en een tweede
+plek die hetzelfde moet weten is hier al drie keer een bug geweest.
+
+### Waarom het verslag te vaak iets verkeerds concludeerde (18-09-2026)
+
+Na tien ritten kwam de klacht die dit hoofdstuk verdient: *te vaak verkeerde
+conclusies.* Dat bleek geen indruk maar twee aanwijsbare oorzaken, allebei
+gevonden door de twee runs van die avond naast elkaar te leggen.
+
+**1. De tweede begeleide ronde wist de markeringen van de eerste.** De
+bedoelde volgorde is meetrit (🧭), testrun, toestelronde (📱), testrun — zo
+staat hij in `CAMPAGNE`. Maar `begeleidStart()` doet `_markeringen = []`, en
+dat is één lijst voor de hele sessie. De run van 19:47 zag netjes `markering
+om 19:44:27`; de run van 19:53, na de toestelronde, meldde *"geen
+achtergrondmarkering — de achtergrondstap van de meetrit is niet gedaan"*.
+
+Die laatste zin is een uitspraak over de rit, en hij was onwaar. Acht
+aanroepplekken lezen `_markeringen` — twee voor #18, twee in de oogst van de
+begeleide ronde, twee voor split-screen (#228) en twee voor de losse adapter
+(#133) — en alle acht vallen na een tweede ronde terug op hun "niet
+gedaan"-tak. Uitgerekend de tweede run is de betere meting: tien minuten tegen
+vier, 93 monsters tegen 35. Wie het boekje volgt, gooit dus het bewijs weg dat
+hij net verzameld heeft.
+
+Dat de tekst zo stellig is, maakt het erger dan een leeg veld. *"Deze ronde
+heeft er geen"* had geklopt. Het verschil tussen niet-waargenomen en
+niet-aangeboden is precies waar #227 over gaat, en hier kost het een rit.
+
+**2. De logtabel vertelt een ander verhaal dan de app.** Sinds #241 is die
+tabel niet meer een archief maar de bron waarop de volgende meetopdracht
+gebouwd wordt — en wie hem van buiten leest, leest hem zonder de app eromheen.
+Drie dingen die binnen de app niet opvallen en erbuiten misleiden:
+
+- Blok 5 voedt met opzet 300 °C en 200 °C in om te zien of laag 1 ze
+  tegenhoudt. `validateAndSmooth()` schrijft ze ook wég, en die regels staan bij
+  élke run in de tabel — `Koelwater temp: 300°C buiten fysiek bereik` op een
+  auto die 91–93 °C loopt. `_zonderSporen()` is hier al voor gebouwd en zet de
+  tellers netjes terug, maar zijn markering gaat via `log(..., 'info')` en
+  `log()` stuurt alleen `err` en outlier-achtige regels door. **De markering
+  blijft dus op het toestel en de vervalsing reist.** De aanname in het
+  commentaar boven `_zonderSporen` — *de logregels mogen blijven staan, er staat
+  een markering omheen* — geldt voor de app-log en niet voor de logtabel.
+- Elke gebeurtenis bij een harde limiet levert twee rijen op: één uit de
+  expliciete `logToSheets('outlier', …)` en één doordat `log()` de `⚠`-regel
+  óók doorstuurt. Elke telling over de tabel telt dubbel.
+- `AT_KOLOMMEN` kent `RecordType`, `SessionId`, `Adapter` en `Model`, maar
+  alleen `_liveSchrijf()` in de testrun geeft ze mee. Alles wat de app zelf
+  logt komt dus binnen zonder sessienummer: **61 rijen in drie dagen**,
+  waaronder de verbindingsregels en de uitschieters van de rit zelf. De
+  conclusies van de testrun en het bewijs eronder zijn daardoor niet aan elkaar
+  te knopen. Dat `Adapter` leegstaat terwijl de adapter dé variabele is in #217
+  en #254, is daarvan het duurste voorbeeld: welke adapter erin zat moest uit
+  een tekstregel van blok 12 gevist worden.
+
+**De vorm die deze twee delen, en die hier vaker terugkomt.** Geen van beide
+geeft een fout. Er verdwijnt bewijs, of er komt bewijs bij dat er niet hoort, en
+in allebei de gevallen blijft het verslag er even stellig uitzien. Dat is
+dezelfde vorm als #29, als de app-log die tot #72 stil afkapte, en als de twee
+lijsten die `PIDLANE-WERK.md` de kop kostten. **Een bron die stil iets anders
+oplevert dan hij belooft, is hier de duurste fout die er is** — want elke
+conclusie erboven blijft kloppen op papier.
+
+### De lus liep rond, en toen was de bewaker zelf de rode regel (18-09-2026)
+
+Twee runs op één rit — `2026-09-18-1947` en `2026-09-18-1953`, versie 7.8 op
+productie, MX+ aan boord. De opdracht uit Airtable kwam binnen, werd gemeten,
+en de uitslagen stonden binnen de minuut in de logtabel. De lus van #241 werkt
+dus niet alleen in principe maar in de praktijk, en dit is de eerste rit die
+er een besluit uit oplevert: de boordspanning zakte in tien minuten niet onder
+12,24 V en bewoog dertien keer, dus die meting is echt.
+
+Daaronder zaten drie dingen die het naar buiten brengen waard zijn.
+
+**1. De proef die het scherm tegen het verslag legt, heeft nog nooit gedraaid.**
+Blok 5 meldde in beide runs dezelfde en enige FOUT: `PLMeetkamer.issuebaan is
+not a function`. De functie die de issuebaan aflevert heet `ronde()` en geeft
+bovendien geen array terug maar `{ deze, bewaking, delen }`. De helft van de
+proef die wél draaide — de meterbalken naast de geboekte uitslagen — was groen;
+alles daarachter is nooit uitgevoerd.
+
+Dat is pijnlijker dan een tikfout, want dit ís de bewaker van de ontwerpregel
+die drie alinea's hieronder staat: *het scherm meet zelf niets, en loopt het
+uit de pas met het verslag, dan is dat een FOUT met de naam erbij.* De reden
+dat die regel er staat, is dat een scherm dat groen wijst waar het verslag
+rood zegt je laat stoppen met het verslag lezen. Precies dat is nu niet
+bewaakt.
+
+**En de tweede helft is waaróm niets het ving.** `node --check` ziet een
+methode die niet bestaat niet: het is geldige syntax. `test-meetkamer.js`
+toetst de afleiding, `bproef-meetkamer.js` toetst dat het paneel in
+`index.html` hangt — geen van beide roept de blok-5-proef zelf aan. `PROEVEN_B5`
+is sinds 6.6 een lijst met functies, en er is niets dat die functies droog laat
+lopen tegen een geladen app. Een browserproef die elke `proef` aanroept en
+alleen op `is not a function` let, zou deze hele klasse in vijftien seconden
+vangen in plaats van in een rit. Dat is dezelfde vorm als
+`test-healthgate.js`: groen op iets dat de app niet heeft.
+
+**2. De waakronde stond aan en boekte tien minuten lang niets.** `PLWaak.actief()`
+gaf true, en de historie was in beide runs leeg — ook zes minuten na de eerste.
+`boekHistorie()` wordt op precies één plek aangeroepen: ná een gelukte lezing,
+binnen `werk()`. Daarvóór staan twee uitgangen die zonder één lezing
+terugkeren, `busDrukt()` en `bezet`. Bij een gemiddelde busbezetting van 93%
+is de eerste plausibel de hele rit waar geweest.
+
+Het gedrag klopt dan met het ontwerp — nooit voordringen is de goede regel
+(#115) — maar **nergens blijkt dat het gebeurt.** `_rust` staat op `'druk'` en
+komt niet uit de module naar buiten; het waakvenster toont hem niet. Voor de
+lezer is "de waakronde meet niets omdat de bus vol staat" niet te onderscheiden
+van "de waakronde is stuk", en dat is dezelfde soort stilte als een lege
+`catch`. Een teller per reden maakt er een meting van.
+
+**3. Drie aanvragers vullen ook de goede adapter.** 93% gemiddelde bezetting,
+een mediane responstijd van 224 ms met een uitschieter naar 25,4 seconden, een
+foutgraad die op 100% piekt, één meetgat van 95 s en twee herverbindingen — op
+de MX+, niet op de kloon. Het meetgat viel buiten elke achtergrondperiode, dus
+het onderscheid dat #133 heeft ingebouwd doet hier precies zijn werk: de lus
+liep (104 tikken, nul loopgaten) en er kwam tóch niets binnen.
+
+De aanwijzing die daaronder ligt: 3,3 verzoeken/s bij 98% bezetting en
+stilstand is veel bezetting voor weinig verkeer. Bestaat die bezetting vooral
+uit wachten op eigen antwoorden, dan zit de knop die dit oplost in het tempo of
+de groepsgrootte en niet in de adapter. Wat dat zou uitwijzen bestaat nog niet:
+dezelfde rit met één aanvrager ernaast. De vierde aanvrager (caravan-tracker)
+stond niet aan, dus het cijfer waar #15 over ging is nog steeds niet gemeten.
+
+**Wat de opdracht zelf verkeerd vroeg, en dat telt als bevinding over de lus.**
+Er stond alleen `0142 min` in. Daarmee is niet te zien of de dynamo überhaupt
+laadt: een laadspanning van 13,5–14,5 V zou als `max` zichtbaar zijn en stond
+nergens. Een auto met i-stop laat de spanning bewust naar ~12,3 V zakken en
+laadt in stoten, dus uit `min` alleen volgt geen van beide conclusies. De rit
+liep bovendien op de MX+ terwijl #217 over de kloon gaat — het is een
+nulmeting en geen antwoord. Dat een opdracht op deze manier naast zijn eigen
+vraag kan grijpen, is de kant van de lus die nog niets bewaakt: `keur()`
+controleert de vorm, niet of het gevraagde de vraag beantwoordt.
+
 ### De lus werkte maar was onzichtbaar, en dat kostte een rit (#246, 18-09-2026)
 
 Sinds #241 en #235 loopt er een lus: een meetopdracht komt als DATA uit
@@ -1000,6 +1189,33 @@ filtert daarop (`/^#\d+$/`) en telt ze apart als hoofdstukcontroles. Dat is een
 pleister: het veld heet `issue` en draagt twee soorten verwijzingen. Rechtzetten
 is een mechanische wijziging over 54 regels en hoort in een eigen commit — een
 issue waard, geen sluipwerk in deze PR.
+
+**Een hernoeming brak de proef, en dat kostte een run (18-09-2026).** Bij de
+herbouw is `PLMeetkamer.issuebaan()` hernoemd naar `ronde()`. De aanroep in de
+blok-5-proef van `pidlane-testrun.js` ging niet mee. Geen enkele poort ving
+het: node kent `PLMeetkamer` niet, `plcheck.sh` doet `node --check` en een
+aanroep van een niet-bestaande functie is geldige syntax, en de browserproef
+draait blok 5 niet.
+
+De eerste die het merkte was de proef zelf, op productie, in run
+`2026-09-18-1953`: *"PLMeetkamer.issuebaan is not a function"*. Het systeem
+werkte dus — maar een ronde te laat, en ten koste van een rit.
+
+Twee dingen zijn daarop veranderd. `test-meetkamer.js` leest nu de aanroepen
+`PLMeetkamer.x` uit de bron van de testrun en legt ze naast de echt geladen
+module; ontbreekt er één, dan is dat rood vóór de commit. En de les erboven:
+**een hernoeming is mechanisch werk en hoort in een eigen commit waarin je alle
+aanroepers langsloopt** — precies wat CLAUDE.md al zegt over mechanisch versus
+inhoudelijk, en wat hier in één beweging door elkaar liep.
+
+**Een meetgat buiten de achtergrondperiode is niet automatisch de adapter.**
+Blok 14 meldde op 18-09 dat twee van de drie meetgaten buiten elke
+achtergrondperiode vielen, en de tekst eronder wijst dan naar de adapter of de
+bus. Dat klopt alleen als de achtergrondperiodes compleet zijn, en dat zijn ze
+niet: de markering is handwerk. In de rit van 18-09 18:32 was er wél
+weggeschakeld maar de markering vergeten, en dan ziet blok 14 een gat zonder
+te weten waaróm. De conclusie "dat is de adapter" is daarmee geen bevinding
+maar een aanname — de meting kan het verschil niet maken zonder die markering.
 
 **Wat dit niet oplost.** Het scherm toont wat de app meet, niet wat de auto
 doet. Dat `010D` op nul staat kan ook een adapter zijn die de snelheid niet

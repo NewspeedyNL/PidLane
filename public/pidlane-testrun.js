@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.8 (16-09-2026)';
+const TESTRUN_VERSIE = '7.9 (18-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2577,6 +2577,36 @@ async function _blok10() {
 
 // Hoeveel aanvragers stonden er tijdens de rit aan? Twee proeven hieronder
 // hangen ervan af, dus één keer bepalen en niet twee keer half.
+/* IS EEN STAP UIT DE BEGELEIDE RONDE GEZET? (#257)
+   Een meetopdracht mag als voorwaarde naar een stap verwijzen ("achtergrond
+   in"). PLOpdracht kan dat niet zelf nagaan — markeringen staan in dít bestand
+   — dus gaat de vraag als functie mee naar die module. Eén plek die het weet,
+   en die geeft het door; geen tweede lijst.
+
+   Er staat met opzet geen try/catch omheen: gaat dit mis, dan hoort het
+   antwoord `null` te zijn (niet na te gaan) en niet `false` (niet gedaan), en
+   dat onderscheid maakt PLOpdracht.voorwaarden() door de fout te vangen.
+   Zie #227: niet-waargenomen is iets anders dan niet-aangeboden.
+
+   Dit is pas sinds #255 een betrouwbaar antwoord. Daarvóór was elke stap uit
+   de meetrit weg zodra de toestelronde begon. */
+function _stapGezet(naam) {
+  const n = String(naam || '').toLowerCase();
+  if (!n) return false;
+  return _markeringen.some(function (m) { return String(m.tekst || '').toLowerCase().indexOf(n) !== -1; });
+}
+
+/* De issues waar deze opdracht aan werkt, als één veld voor de logtabel (#257).
+   Nu stond het issuenummer alleen in de tekst van de regel, en dan moet wie de
+   tabel van buiten leest die tekst gaan parsen om te weten welke issues een
+   antwoord kregen. Dat is dezelfde vorm als #246 verbood. */
+function _issuesVan(o) {
+  const s = {};
+  ((o && o.proeven) || []).forEach(function (p) { if (p.issue && p.issue !== '\u2014') s[p.issue] = 1; });
+  ((o && o.voorwaarden) || []).forEach(function (v) { if (v.issue) s[v.issue] = 1; });
+  return Object.keys(s).join(' ');
+}
+
 function _aanvragersNu() {
   const aan = [];
   try { if (window.PLWaak && PLWaak.actief()) aan.push('waakronde'); } catch (e) { console.warn('waakrondestand onleesbaar in de rit-oogst', e); }
@@ -2621,9 +2651,23 @@ function _zonderSporen(naam, fn) {
   try { if (typeof log === 'function') log('🔬 Testrun: proef "' + naam + '" voedt met opzet onmogelijke waarden in — de meldingen hierna tot "proef klaar" komen niet uit de auto', 'info'); }
   catch (e) { console.warn('Testrun: markering vóór de proef niet gelogd', e); }
 
+  /* DE MARKERING BLEEF OP HET TOESTEL EN DE VERVALSING REISDE (#256).
+     De regel hierboven gaat via log(..., 'info'), en log() stuurt alleen
+     `err` en outlier-achtige regels door naar Airtable. In de logtabel stond
+     dus wél `Koelwater temp: 300°C buiten fysiek bereik` — op een auto die
+     91–93 °C loopt — en niet de zin die zegt dat het een proef was.
+
+     Deze vlag reist wél: logToSheets() leest hem vóór zijn eerste await en
+     zet `RecordType: 'proefwaarde'`. Daarmee is van buiten te zien dat er geen
+     auto achter zat, zonder dat er iets uit de tabel verdwijnt. */
+  try { window._plProefWaarden = true; }
+  catch (e) { console.warn('Testrun: de proefwaarde-vlag kon niet gezet worden — deze regels komen als echte meting in de logtabel (#256)', e); }
+
   try {
     return fn();
   } finally {
+    try { window._plProefWaarden = false; }
+    catch (e) { console.warn('Testrun: de proefwaarde-vlag kon niet teruggezet worden (#256)', e); }
     const zet = function (sleutel, schrijf) {
       if (bewaard[sleutel] === undefined) return;
       try { schrijf(JSON.parse(bewaard[sleutel])); }
@@ -2708,20 +2752,39 @@ const PROEVEN_B5 = [
       try { if (typeof PLOpdracht.noteer === 'function') PLOpdracht.noteer(h.id, uitslagen); }
       catch (e) { console.warn('Testrun: de uitslag is niet bij de opdracht genoteerd (#248)', e); }
 
-      var fout = uitslagen.filter(function (u) { return u.staat === 'FOUT'; });
-      var letop = uitslagen.filter(function (u) { return u.staat === 'LET OP'; });
+      /* HET DRIEWAARDIGE OORDEEL (#257). Tot vandaag kwamen "niet gemeten" en
+         "gemeten en buiten de band" allebei als een regel in dit verslag, en
+         waren ze daar niet uit elkaar te houden. Juist dat verschil is wat je
+         voor de volgende rit nodig hebt: het eerste zegt "doe het nog eens,
+         maar dan met déze omstandigheid erbij", het tweede zegt "er is iets".
+
+         Van de twintig LET OP-regels op de rit van 18-09 gingen er negen niet
+         over de auto maar over omstandigheden die er niet waren. Die stonden
+         pas in het verslag ná de rit, tussen de rest — als het te laat is. */
+      var vonnis = PLOpdracht.oordeel(o, _stapGezet);
       var staart = uitslagen.map(function (u) { return u.naam + ': ' + u.detail; }).join(' | ');
       var laatst = laat.length ? ' [' + laat.join(', ') + ' stond(en) niet aan en zijn nu pas aangezet — over deze rit zeggen ze niets]' : '';
+      var vw = vonnis.voorwaarden.length
+        ? '  ·  voorwaarden: ' + vonnis.voorwaarden.map(function (v) {
+            return v.wat + ' ' + (v.vervuld === true ? '\u2713' : v.vervuld === null ? '?' : '\u2717'); }).join(', ')
+        : '';
+
+      // De uitkomst per opdracht naar de live-log, met de issues in een eigen
+      // veld. Zo is van buiten te lezen WELKE issues deze sessie een antwoord
+      // kregen, zonder een detailtekst te moeten parsen.
+      _liveSchrijf(vonnis.staat === 'bevinding' ? 'opvallend' : 'info',
+        'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden,
+        { Outcome: vonnis.staat, Repro: _issuesVan(o) });
 
       if (!o.proeven.length)
         return { staat: 'LET OP', detail: kop + ' — de opdracht draagt geen proeven, dus er valt hier niets te toetsen. ' +
-          'De sensoren en de vragen zijn wel gezet.' + laatst };
+          'De sensoren en de vragen zijn wel gezet.' + vw + laatst };
 
-      if (fout.length)
-        return { staat: 'FOUT', detail: kop + ' — ' + fout.length + ' van de ' + uitslagen.length + ' buiten de band: ' + staart + laatst };
-      if (letop.length)
-        return { staat: 'LET OP', detail: kop + ' — ' + letop.length + ' van de ' + uitslagen.length + ' niet te meten: ' + staart + laatst };
-      return { staat: 'ok', detail: kop + ' — alle ' + uitslagen.length + ' binnen de band: ' + staart + laatst };
+      if (vonnis.staat === 'bevinding')
+        return { staat: 'FOUT', detail: kop + ' — BEVINDING: ' + vonnis.reden + vw + laatst };
+      if (vonnis.staat === 'nog niet')
+        return { staat: 'LET OP', detail: kop + ' — NOG NIET: ' + vonnis.reden + vw + laatst };
+      return { staat: 'ok', detail: kop + ' — GESLOTEN: alle ' + uitslagen.length + ' binnen de band: ' + staart + vw + laatst };
     }
   },
 
@@ -2777,18 +2840,35 @@ const PROEVEN_B5 = [
         return { staat: 'FOUT', detail: scheef.length + ' proef/proeven worden op het scherm anders getoond dan hier geboekt: ' +
           scheef.join(' | ') + ' — er is een tweede oordeel ontstaan' };
 
-      // De issuebaan mag niets tonen dat blok 5 niet dekt.
-      var baan = PLMeetkamer.issuebaan(s);
+      // De chips mogen niets tonen dat blok 5 niet dekt.
+      //
+      // DEZE AANROEP HEET SINDS DE HERBOUW `ronde()` EN NIET MEER `issuebaan()`,
+      // en dat verschil kostte een run. Bij het herbouwen van het scherm is de
+      // functie hernoemd; deze regel niet. Geen enkele poort ving dat: node
+      // kent PLMeetkamer niet, en de browserproef draait blok 5 niet. De
+      // eerste die het merkte was de proef zelf, op productie, met
+      // "PLMeetkamer.issuebaan is not a function".
+      //
+      // Dat is precies waar deze proef voor bedoeld is, dus het systeem werkte
+      // — maar een ronde te laat. De les staat in §11: een hernoeming is
+      // mechanisch werk, en mechanisch werk hoort in een eigen commit waarin
+      // je álle aanroepers langsloopt.
+      if (typeof PLMeetkamer.ronde !== 'function')
+        return { staat: 'FOUT', detail: 'PLMeetkamer.ronde() bestaat niet — het scherm en deze proef zijn uit de pas gelopen (#246)' };
+
+      var baan = PLMeetkamer.ronde(s);
+      var chips = baan.deze || [];
       var bekend = {};
       s.proeven.forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
       (s.opdracht.proeven || []).forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
-      var verzonnen = baan.filter(function (b) { return !bekend[b.issue]; }).map(function (b) { return b.issue; });
+      var verzonnen = chips.filter(function (b) { return !bekend[b.issue]; }).map(function (b) { return b.issue; });
       if (verzonnen.length)
-        return { staat: 'FOUT', detail: 'de issuebaan toont ' + verzonnen.length + ' issue(s) die in geen enkele lijst staan: ' +
+        return { staat: 'FOUT', detail: 'het scherm toont ' + verzonnen.length + ' issue(s) die in geen enkele lijst staan: ' +
           verzonnen.join(', ') + ' — dat is een tweede lijst aan het ontstaan' };
 
-      return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + baan.length +
-        ' issue(s) staan op het scherm precies zoals ze hier geboekt worden' };
+      return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + chips.length +
+        ' issue(s) staan op het scherm precies zoals ze hier geboekt worden (' +
+        baan.bewaking + ' meelopend als bewaking)' };
     }
   },
 
@@ -3952,8 +4032,9 @@ const PROEVEN_B5 = [
       // Geen hard stapnummer meer (#170): sinds #166 is de achtergrondstap van
       // 7 naar 6 geschoven en bleef deze tekst naar de oude plek wijzen. De
       // stap heet altijd zo; het nummer verschuift met de lijst mee.
-      if (!m) return { staat: 'LET OP', detail: 'geen achtergrondmarkering — de achtergrondstap van de meetrit is niet gedaan, ' +
-        'dus over #18 zegt deze rit niets' };
+      if (!m) return { staat: 'LET OP', detail: 'in deze sessie is geen achtergrondmarkering gezet — ' +
+        'de achtergrondstap van de meetrit is nog niet gedaan, dus over #18 zegt deze sessie niets. ' +
+        'Niet-aangeboden is iets anders dan niets-gezien (#227).' };
       if (!window.PLAchtergrond || typeof PLAchtergrond.sinds !== 'function')
         return { staat: 'FOUT', detail: 'PLAchtergrond ontbreekt — dan weet de app nog steeds niets van zijn eigen pauze, ' +
           'en blijft het gat iets dat PLRit achteraf moet raden (#18)' };
@@ -5687,6 +5768,110 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── overleeft een markering de volgende ronde? (#255, 18-09-2026) ──
+  // De bedoelde volgorde is meetrit → testrun → toestelronde → testrun, en
+  // juist die maakte de tweede run blind: `begeleidStart()` leegde de lijst.
+  // test-markeringen.js toetst dat zonder browser. Wat die test NIET kan is
+  // dit: draait er nu, op dit toestel, in deze sessie, werkelijk een lijst die
+  // meer dan één ronde draagt?
+  {
+    issue: '#255',
+    naam: 'Een markering zegt uit welke ronde hij komt',
+    waarom: 'Acht proeven lezen deze lijst. Verdwijnt het ronde-veld, dan is filteren per ronde weer giswerk en kan een proef niet zeggen of de stap in de meetrit of in de toestelronde gezet is.',
+    proef: function () {
+      if (!window.PLBegeleid || typeof PLBegeleid.markeringen !== 'function')
+        return { staat: 'FOUT', detail: 'PLBegeleid.markeringen() ontbreekt — dan is er niets om de stappen aan af te meten' };
+
+      var lijst = PLBegeleid.markeringen();
+      if (!lijst.length)
+        return { staat: 'LET OP', detail: 'er staat deze sessie geen enkele markering — er is nog geen begeleide ronde gedraaid. ' +
+          'Niet-aangeboden is iets anders dan niets-gezien (#227).' };
+
+      var zonder = lijst.filter(function (m) { return !m.ronde; });
+      if (zonder.length)
+        return { staat: 'FOUT', detail: zonder.length + ' van de ' + lijst.length + ' markeringen dragen geen ronde: ' +
+          zonder.slice(0, 3).map(function (m) { return m.tekst; }).join(', ') + ' — filteren per ronde is dan giswerk (#255)' };
+
+      var rondes = {};
+      lijst.forEach(function (m) { rondes[m.ronde] = (rondes[m.ronde] || 0) + 1; });
+      var namen = Object.keys(rondes);
+      var staart = namen.map(function (n) { return n + ': ' + rondes[n]; }).join(', ');
+
+      if (namen.length > 1)
+        return { staat: 'ok', detail: lijst.length + ' markeringen uit ' + namen.length + ' rondes (' + staart +
+          ') — de lijst heeft een tweede ronde overleefd, en dat is precies wat op 18-09 misging' };
+
+      return { staat: 'ok', detail: lijst.length + ' markering(en), alle uit ' + namen[0] + ' (' + staart +
+        '). Dat er maar één ronde in staat is geen fout: er is er ook maar één gedraaid. ' +
+        'Draai de toestelronde na de meetrit en deze regel toont er twee.' };
+    }
+  },
+
+  // ── blijft de proefwaarde-vlag niet hangen? (#256, 18-09-2026) ──
+  // Twee proeven hierboven schieten met opzet onmogelijke waarden in de
+  // meetketen. Sinds vandaag zet `_zonderSporen()` daarbij een vlag, zodat die
+  // regels in de logtabel als `proefwaarde` binnenkomen en niet als meting aan
+  // een auto. Dat werkt precies zolang de vlag ook weer uitgaat: blijft hij
+  // hangen, dan heet vanaf dat moment ELKE echte meting een proefwaarde — en
+  // dan is de tabel stil onbruikbaar, wat erger is dan de fout die hij oploste.
+  {
+    issue: '#256',
+    naam: 'De proefwaarde-vlag hangt niet, en de sessie klopt',
+    waarom: 'Een vlag die aan blijft staan maakt elke echte meting onzichtbaar in de logtabel. Dat is hetzelfde soort stilte als een lege catch: niets gaat stuk, er verdwijnt alleen bewijs.',
+    proef: function () {
+      // De twee proeven die de vlag gebruiken zijn op dit punt al gedraaid.
+      if (window._plProefWaarden)
+        return { staat: 'FOUT', detail: 'de proefwaarde-vlag staat nog aan terwijl er geen proef loopt — ' +
+          'vanaf hier komt elke echte meting als `proefwaarde` in de logtabel (#256)' };
+
+      if (!window.PLTestrunLive || typeof PLTestrunLive.huidigeRit !== 'function')
+        return { staat: 'FOUT', detail: 'PLTestrunLive.huidigeRit() ontbreekt — dan verzint elke logregel buiten een run zijn eigen sessie (#256)' };
+
+      var rit = PLTestrunLive.huidigeRit();
+      if (!rit)
+        return { staat: 'FOUT', detail: 'er loopt een testrun maar huidigeRit() geeft niets terug — ' +
+          'de gewone logregels van deze rit komen dan onder een ander nummer te staan dan dit verslag' };
+
+      return { staat: 'ok', detail: 'de vlag staat uit en de app-log schrijft onder hetzelfde ritnummer als dit verslag (' + rit + ')' };
+    }
+  },
+
+  // ── spreekt het oordeel zichzelf niet tegen? (#257, 18-09-2026) ──
+  // De opdracht krijgt sinds vandaag een driewaardig oordeel. Dat is winst
+  // zolang het oordeel en de losse uitslagen hetzelfde zeggen — en gevaarlijk
+  // zodra dat niet meer zo is, want dan is er een tweede oordeel ontstaan.
+  // Precies de vorm die #246 bij de meetkamer verbood.
+  {
+    issue: '#257',
+    naam: 'Het oordeel over de opdracht en zijn uitslagen zeggen hetzelfde',
+    waarom: 'Een kop die "gesloten" zegt boven een uitslag die buiten de band viel, laat je stoppen met de uitslagen lezen — en dan meet je daarna maanden naast.',
+    proef: function () {
+      if (!window.PLOpdracht || typeof PLOpdracht.oordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLOpdracht.oordeel() ontbreekt — het driewaardige oordeel is weg (#257)' };
+
+      var o = PLOpdracht.actief();
+      if (!o)
+        return { staat: 'LET OP', detail: 'er is geen opdracht geladen, dus er valt hier niets naast elkaar te leggen — ' +
+          (PLOpdracht.reden() || 'reden onbekend') };
+
+      var v = PLOpdracht.oordeel(o, _stapGezet);
+      var fout = v.uitslagen.filter(function (u) { return u.staat === 'FOUT'; });
+      var stil = v.uitslagen.filter(function (u) { return u.staat === 'LET OP'; });
+      var mist = v.voorwaarden.filter(function (x) { return x.vervuld !== true; });
+
+      if (v.staat === 'gesloten' && (fout.length || stil.length || mist.length))
+        return { staat: 'FOUT', detail: 'het oordeel zegt "gesloten" terwijl er ' + fout.length + ' buiten de band, ' +
+          stil.length + ' niet-gemeten en ' + mist.length + ' onvervulde voorwaarde(n) staan — er is een tweede oordeel ontstaan' };
+      if (v.staat === 'bevinding' && !fout.length)
+        return { staat: 'FOUT', detail: 'het oordeel zegt "bevinding" terwijl geen enkele uitslag buiten de band viel' };
+      if (v.staat === 'nog niet' && !stil.length && !mist.length)
+        return { staat: 'FOUT', detail: 'het oordeel zegt "nog niet" terwijl alles gemeten is en alle voorwaarden vervuld zijn' };
+
+      return { staat: 'ok', detail: '"' + o.naam + '" → ' + v.staat + ' — ' + v.uitslagen.length + ' uitslag(en) en ' +
+        v.voorwaarden.length + ' voorwaarde(n) zeggen hetzelfde als de kop' };
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -6706,6 +6891,14 @@ function plMarkeer(tekst, opmerking) {
     ms: t.getTime(),
     tekst: String(tekst || 'markering').slice(0, 80),
     opm: String(opmerking || '').slice(0, 300),
+    // UIT WELKE RONDE HIJ KOMT (#255). De lijst overleeft sinds vandaag een
+    // tweede begeleide ronde, en dan is "wanneer" niet meer genoeg: een proef
+    // wil kunnen zeggen "de achtergrondstap is in de MEETRIT gezet" in plaats
+    // van te moeten kiezen tussen alles of niets.
+    ronde: (function () {
+      try { return (_BG && _BG.aan && _BG.soort) ? _BG.soort : 'los'; }
+      catch (e) { console.warn('Markering zonder ronde — _BG niet leesbaar (#255)', e); return 'los'; }
+    })(),
     kmh: null, rpm: null
   };
   // De omstandigheden erbij, want een markering zonder toestand is achteraf
@@ -7399,7 +7592,18 @@ function begeleidStart(soort) {
   const s = _RONDES[soort] ? soort : 'rit';
   _BG.soort = s; _BG.lijst = _bgLijst(s);
   _BG.aan = true; _BG.i = 0; _BG.gepauzeerd = false; _BG.gestart = _nu(); _BG.gedaan = []; _BG.laatsteActie = '';
-  _markeringen = [];
+  /* HIER STOND `_markeringen = [];` EN DAT KOSTTE EEN RIT (#255).
+     `_markeringen` is één lijst voor de hele sessie, maar hij werd bij élke
+     start van een begeleide ronde geleegd. De bedoelde volgorde is meetrit →
+     testrun → toestelronde → testrun, en juist die maakte de tweede run blind:
+     op 18-09 zag de run van 19:47 nog `markering om 19:44:27` en meldde die van
+     19:53 "geen achtergrondmarkering — de achtergrondstap is niet gedaan".
+     Onwaar, en stellig geformuleerd — dat is de dure combinatie.
+
+     Acht aanroepplekken lezen deze lijst (#18 tweemaal, de oogst tweemaal,
+     split-screen tweemaal, adapter-los tweemaal). Wat per ronde hoort te
+     resetten staat hierboven en blijft; de markeringen dragen sinds vandaag
+     zelf hun ronde, dus wie wil filteren kan dat. */
   plMarkeer('BEGELEIDE RUN GESTART', 'testrun ' + TESTRUN_VERSIE + ' — ' + _RONDES[s].naam.toLowerCase() +
     ', ' + _BG.lijst.length + ' stappen (' + _RONDES[s].uitleg + ')');
   _bgBinnen();
@@ -7946,46 +8150,32 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 16-09 (elfde) — de goedkope adapter, een scherm voor de verbinding, en twee gereedschappen die eindelijk iets terugzeggen (#210, #211, #212)',
+  titel: 'OPLEVERING 18-09 (twaalfde) — het verslag vertelde te vaak iets verkeerds, en dat is gerepareerd (#252, #255, #256, #257)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'ER IS VOOR HET EERST MET EEN ANDERE ADAPTER GEMETEN. Op 16-09 hing er geen MX+ aan maar een goedkope ELM327-kloon van AliExpress. Blok 10 meldde "zonder één misser tot 3.2 verzoeken/s" terwijl de app op datzelfde moment op 19% pollbudget stond. Die twee kunnen niet allebei waar zijn, en het antwoord stond niet in de meetblokken maar in de TX/RX-staart eronder: tien van de zestig antwoorden misten een PID, en negen van de negen keer was dat de LAATSTE PID van de batch.',
-    'DE OORZAAK IS EEN TWEEDE LENGTE-INDICATOR MIDDEN IN HET ANTWOORD. De kloon herhaalt frames: "008 0:410C08670D00 008 1:410C 2:111C…". De parser gooide die tweede 008 weg en plakte het frame erachter aan dezelfde hexstroom, en kapte daarna af op de eerste opgegeven lengte. Meestal koste dat één PID. Eén keer was het duurder: bij 010B0E10 vulden de echobytes de lengte precies af en kwam 0110 eruit op 166,51 g/s, terwijl een losse 0110 in dezelfde seconde 1,45 g/s gaf. Geen MIST, geen melding, en binnen de harde limiet — dus dat getal komt overal doorheen.',
-    'DAT IS GEREPAREERD (#210). De parser stopt nu bij het tweede bericht, en op een afgekapt antwoord mag hij een PID niet meer korter maken om hem passend te krijgen. Beide gevallen van 16-09 leveren daardoor een eerlijk gat op in plaats van een verzonnen getal. Blok 5 voert de opgenomen regels erdoorheen.',
-    'EN ER IS EEN SCHERM BIJ GEKOMEN. Tik op de OBD-chip en je ziet wat de verbinding doet: verzoeken per seconde, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken, en wat de automaat deed mét de reden. Je kunt het tempo overnemen, de groepsgrootte vastzetten, en een snelheidstest van veertig seconden draaien die solo én batch meet.',
-    'EN ER ZIJN TWEE MOTORKAPPEN OPENGEGAAN. De waakronde meet al lang de sensoren die je niet aanvinkt, en de bulk-recorder legt tien uur rijden weg op 1 Hz — maar van geen van beide was een scherm. De waakronde paste in één strook stipjes en gooide bij elke ronde alles weg; de recorder kon alleen een NDJSON-bestand maken voor iemand met een script. Allebei hebben nu een eigen pagina in het ☰-menu: de waakronde met sessiehistorie, bereikmeters en export, de recorder met een analyse die in gewone zinnen vertelt wat er in de rit staat.',
-    'DEZE RONDE HEEFT DUS DRIE VRAGEN, EN ALLE DRIE VRAGEN ZE EEN ADAPTER. Eén: verdwijnen de rare waarden op de goedkope adapter. Twee: klopt wat het paneel toont met wat de auto doet. Drie: geeft de snelheidstest een advies dat ergens op slaat.',
+    'ER ZIJN TIEN RITTEN GEREDEN EN DE KLACHT WAS: TE VAAK VERKEERDE CONCLUSIES. Dat bleek geen indruk maar drie aanwijsbare oorzaken, alle drie gevonden door de twee runs van 18-09 (19:47 en 19:53) naast elkaar te leggen. Deze ronde repareert ze en voegt er het gereedschap aan toe dat de volgende rit goedkoper maakt.',
+    'EEN: DE TOESTELRONDE WISTE DE MARKERINGEN VAN DE MEETRIT (#255). De bedoelde volgorde is meetrit → testrun → toestelronde → testrun, en juist die maakte de tweede run blind. Om 19:47 stond er "markering om 19:44:27", om 19:53 "geen achtergrondmarkering — de achtergrondstap is niet gedaan". Onwaar, en stellig geformuleerd. Acht aanroepplekken lazen die lijst. Hij wordt niet meer geleegd en elke markering draagt nu zelf uit welke ronde hij komt.',
+    'TWEE: DE LOGTABEL KREEG DE PROEFWAARDEN VAN DE TESTRUN BINNEN ALS ECHTE METINGEN (#256). Blok 5 schiet met opzet 300 °C door laag 1. Die waarde stond bij élke run in de tabel — op een auto die 91–93 °C loopt — en de markering eromheen ging via de app-log en reisde niet mee. Daar bovenop: elke uitschieter stond er dubbel, en 61 rijen in drie dagen kwamen binnen zonder sessienummer. Nu vult logToSheets() zelf RecordType, SessionId en Adapter, en een proefwaarde heet proefwaarde.',
+    'DRIE: DE BLOK-5-PROEF DIE HET SCHERM TEGEN HET VERSLAG LEGT, DRAAIDE NIET (#252). Hij riep de oude naam van de meetkamerfunctie aan; die heet sinds de herbouw ronde(). Gerepareerd, met een toets die de hele klasse vangt: elke PLMeetkamer-aanroep in dit bestand wordt naast de echt geladen module gelegd.',
+    'EN ER IS GEREEDSCHAP BIJ (#257). Van de twintig LET OP-regels van 18-09 gingen er negen niet over de auto maar over omstandigheden die er niet waren: geen stilstand, geen warme motor, geen achtergrondstap. Een meetopdracht draagt nu `voorwaarden` — meetbaar, in dezelfde vorm als zijn proeven — en het oordeel is driewaardig: GESLOTEN, BEVINDING of NOG NIET. "Nog niet" is daarmee geen ruis meer maar een instructie voor de volgende rit.',
     '── WAT ÉÉN RUN DEZE RONDE MOET SLUITEN ────────',
-    'DEZE RONDE IS ZO INGERICHT DAT ÉÉN RIT MEERDERE ISSUES AFMAAKT. Niet omdat er meer gemeten wordt, maar omdat blok 5 nu de gegevens oplevert waarop een besluit rust. Rijd één keer goed, lees het verslag, en er kunnen er drie dicht.',
-    '#217 (boordspanning) — SLUIT OP DE METING. Blok 5 leest 0142 uit het ritbeeld, of uit de waakronde als je hem niet aangevinkt hebt. Blijft de spanning binnen 11,5–15,2 V, dan is onderspanning geén verklaring voor de vier storingen en is de adapter de verdachte. Zakt hij eronder, dan is het de accu. Beide uitkomsten sluiten het issue — alleen “niet gemeten” doet dat niet.',
-    '#212 (blok 10 in batchvorm) — SLUIT OP EEN OORDEEL. De reparatie is al gedaan; wat overblijft is de vraag of blok 10 zélf ook in batchvorm hoort te meten. Kijk in het adapterpaneel of de solo- en batchkolom noemenswaardig uit elkaar lopen. Doen ze dat niet op deze adapter, dan is het antwoord nee en kan hij dicht.',
-    '#64 (meetcontext) — SLUIT ALS JE DE A/B-PROEF DOET. Vraag één analyse met start/stop op “ja” en één met “nee”, en lees of het rapport werkelijk anders leest. Leest het hetzelfde, dan is de vraag versiering en gaat hij eruit. Dat is een antwoord en geen mislukking.',
-    'WAT NIET MEER OPEN STAAT. #161 (de drempel voor “beweegt”) en #202 (de renderer na 59–60 s) zijn op 16-09 met een besluit gesloten en niet met een reparatie; de reden staat in §11. Ze hoeven deze rit dus niets te bewijzen — de proeven eromheen blijven wel meelopen, zodat een verandering opvalt.',
+    'ER STAAT EEN VOORRAAD KLAAR, EN DAT IS DE ECHTE WINST. Zes opdrachten in de Meetopdracht-tabel, elk gekoppeld aan één open issue. Druk in het testrunscherm op Ophalen, kies er een, rijd, en kies daarna de volgende met Nieuwe sessie — zonder weg te schakelen en zonder de adapter eruit.',
+    '#255 SLUIT OP DEZE RIT ZELF. Draai de meetrit, dan de toestelronde, en kijk of blok 5 daarna nog steeds weet dat de achtergrondstap gezet is. Staat er twee keer een ronde in de markeringenregel, dan is het gerepareerd.',
+    '#256 SLUIT OP DE TABEL, NIET OP HET SCHERM. Kijk na afloop in Airtable: staan de 300 °C-regels er als `proefwaarde`, staat er bij elke regel een SessionId, en staat de adapternaam erin? Dat is niet in de app te zien en juist daarom hoort het hier.',
+    '#257 SLUIT OP DE EERSTE OPDRACHT MET VOORWAARDEN. Zolang de voorraad op schema 1 staat, draaien ze zoals ze deden; de eerste rij met voorwaarden laat zien of de checklist vóór de rit klopt.',
     '── STAP VOOR STAP ────────',
-    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Een nieuwe APK is deze ronde NIET nodig: alles zit in de webpagina. Draai je nog op de oude schil van vóór 12-09, kijk dan wel of de pakketnaam in blok 5 nl.pidlane.app is.',
-    'STAP 1 — DOE HET MET DE GOEDKOPE ADAPTER, MAAR HAAL HEM ER DAARNA UIT (#217). Dit is de ronde waarin die adapter het meetinstrument is. Gaat het niet, doe hem dan met de MX+ en zeg dat erbij — dan is dit een controle dat er niets kapot is gegaan, en geen antwoord op de vraag. Nieuw sinds 16-09: laat hem NIET zitten als je niet rijdt. Na ritten met deze kloon stonden er vier storingen tegelijk in de auto (DSC, keyless entry, SCBS, parkeerrem), en dat is het beeld van onderspanning — een adapter die de bus wakker houdt, trekt de accu leeg.',
-    'STAP 1B — VINK DE BOORDSPANNING AAN (0142). Dat is de één meting die #217 beslist: is het de accu, de adapter, of allebei. Rustend onder ~12,2 V of een diepe dip bij het starten, en je hebt je antwoord. De waakronde pakt hem ook vanzelf op — het is precies zo\'n sensor die niemand aanvinkt.',
-    'STAP 2 — OPEN HET PANEEL VÓÓR DE RIT. Tik op de chip linksboven (Systeem → OBD). Lees de bovenste regel: staat er "Deze adapter herhaalt frames"? Onthoud het getal. Kijk of de naam en het ATI-antwoord kloppen met wat er in de auto zit.',
-    'STAP 3 — DRUK OP DE SNELHEIDSTEST, STILSTAAND MET DRAAIENDE MOTOR. Veertig seconden. Lees de tabel: de kolom "solo" en de kolom "batch" horen op deze adapter uit elkaar te lopen. Onthoud het advies bovenaan.',
-    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op. Daarna minstens drie minuten naar de achtergrond met het scherm uit (#202), en schakel nog een andere app open. Als laatste de adapter er even uit (#133).',
-    'STAP 3B — ZET DE WAAKRONDE AAN EN DE BULK-RECORDER OOK, VÓÓR DE RIT. Waakronde: ☰ → Waakronde → aanzetten. Bulk: ☰ → Admin → Bulk-recorder → start. Allebei lopen ze passief mee; ze horen de rest van de meting niet te raken. Merk je onderweg dat de app trager ververst, dan is dát de bevinding.',
-    'STAP 4 — KIJK NA DE RIT NOG EENS IN HET PANEEL. Hoeveel herhaalde antwoorden staan er nu? Wat deed de automaat, en staat er bij elke stap een reden die klopt? Is de groep vanzelf naar 2 gegaan?',
-    'DE TOESTELRONDE (📱). Vlak na de rit, stilstaand met een warme motor. Vier oordelen die alleen een mens kan geven plus de drie meetcontextvragen (#64).',
-    'STAP 4B — OPEN \u201cWELK ONDERDEEL?\u201d, TWEE KEER. E\u00e9n keer met het contact aan en de motor UIT, en daarna met een draaiende warme motor. V\u00f3\u00f3r vandaag noemde dat scherm op een gezonde auto het brandstofpeil kapot; staat er nu nog iets dat je niet herkent, schrijf het over met de meetwaarde die eronder staat. Lees ook de foutcodes uit v\u00f3\u00f3r je kijkt \u2014 zonder scan doet de halve module niets, en dat zegt het scherm nu zelf.',
-    'STAP 5 — LEES DE TWEE NIEUWE SCHERMEN NA DE RIT. Waakronde: klopt wat er bij “wat er gemeten is” staat met wat de auto doet, en staat er een bevinding tussen die je herkent? Bulk-analyse (☰ → Admin → Bulk-analyse): klopt de afstand ongeveer met je kilometerteller, klopt de tijdbalk met hoe de rit ging, en zeggen de conclusies iets dat je zelf ook gezien had? Een conclusie die niet klopt is waardevoller dan een die klopt — schrijf hem over.',
-    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, en zet er drie dingen bij die er niet in staan: WELKE ADAPTER erin zat, wat het paneel als advies gaf, en of de getallen in het paneel klopten met wat je zag.',
+    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Deze ronde zit volledig in de webpagina; een nieuwe APK is niet nodig. Heb je de nieuwe schil met het kleine venster al, dan staat daar een eigen opdracht voor klaar (#228).',
+    'STAP 1 — HAAL DE OPDRACHTEN OP EN KIES ER EEN. Testrunscherm → Meetopdrachten → 📥 Ophalen. Je ziet per rij waar hij over gaat en, als hij voorwaarden draagt, wat hij nodig heeft. Kies de vraag die bij de omstandigheden van vandaag past.',
+    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op. Doe de achtergrondstap. Draai daarna de testrun.',
+    'STAP 2 — DOE DE TOESTELRONDE (📱) EN DRAAI DE TESTRUN NOG EEN KEER. Dit is de stap die #255 bewijst: de tweede run hoort nu nog steeds te weten wat er in de meetrit gebeurd is.',
+    'STAP 3 — WIL JE EEN TWEEDE VRAAG BEANTWOORDEN, KIES DAN DE VOLGENDE OPDRACHT. Elke keuze begint een eigen sessie in de logtabel, dus de twee vragen lopen niet door elkaar. Adapter kan erin blijven.',
+    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop. Zet erbij: welke adapter erin zat, welke opdracht(en) je gekozen hebt, en wat de uitkomst per opdracht was (GESLOTEN / BEVINDING / NOG NIET).',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'DAT DE ECHO WEG IS UIT DE METING BETEKENT NIET DAT DE METING COMPLEET IS. De reparatie van #210 verandert een verzonnen getal in een gat. Dat is beter, maar het gat blijft: op 16-09 miste 0111 zeven van de twintig keer. De kleinere groep (#211) moet dat terugbrengen, en of dat werkelijk gebeurt is deze ronde de meting.',
-    'DE ECHO-KRIMP GAAT NIET TOT GROEP 1. Groep 1 verdrievoudigt het aantal verzoeken en de meting die dat zou rechtvaardigen bestaat niet — bij groep 2 is niet gemeten hoeveel er overblijft. Wie tot 1 wil, zet het paneel op handmatig. Blijft het gat bij groep 2 groot, dan is dát de bevinding.',
-    'DE SNELHEIDSTEST IS GEEN BLOK 10. Veertig seconden tegenover negen en een halve minuut, vier trappen tegenover vijf, en geen rustmeting ertussen. Voor "kan ik nu harder" is dat genoeg; voor "loopt er een buffer vol die niet meer leegloopt" niet. Juist dat laatste sloeg op 16-09 aan: vier van de vijf rustmetingen bleven LET OP en de latentie zakte na trap 2 niet meer terug.',
-    'HET ADVIES IS REKENWERK EN GEEN BELOFTE. "Bij 6/s hoort 100%" volgt uit de verhouding met wat de app nu doet. Of de bus dat een half uur volhoudt staat er niet in — dat is precies wat de rustmeting van blok 10 wél toetst.',
-    'DAT DE MX+ DEZE ECHO NOOIT GEEFT IS NIET NAGEMETEN. Aannemelijk, want in geen van de eerdere runs stond er één, maar er is van die adapter geen TX/RX-staart met dezelfde batches naast gelegd. Rijd je deze ronde met de MX+, kijk dan of de echoteller op nul blijft — dan is dat alsnog gemeten.',
-    '#202 EN #161 KRIJGEN DEZE RONDE GEEN ANTWOORD. De renderer die na 59-60 s stilvalt vraagt picture-in-picture, en dat is een eigen bouwronde. De drempel voor "beweegt" is een ontwerpbesluit en geen meetvraag.',
-    'OF DE APP ZELF AAN DE STORINGEN IN #217 BIJDRAAGT, IS NIET GEMETEN. Mode 01-verzoeken zijn leesacties en horen in andere modules geen DTC te zetten. Maar van deze kloon is alleen gemeten wat er aan de SERIËLE kant uitkwam — dat hij frames herhaalt (#210) — en niet wat hij daarbij op de CAN-kant doet. Zolang dat er niet naast ligt, is “de app kan dit niet veroorzaken” een aanname en geen bevinding.',
-    'DE AFSTAND IN DE BULK-ANALYSE IS EEN SCHATTING, EN BIJ GATEN TE LAAG. Hij telt de snelheid per seconde op; valt de adapter weg, dan loopt de tijd door en de afstand niet. Het venster noemt het aantal gatregels erbij, maar hoeveel kilometer dat scheelt is niet nagemeten — daarvoor moet er een kilometerstand naast.',
-    'DE KLIMVERGELIJKING IS NOG NOOIT OP EEN ECHTE KLIM GEDRAAID. Hij zwijgt onder vijftig regels per kant, en in Nederland haal je die zelden. De drempel van 8 °C verschil komt uit redeneren, niet uit een meting: tot er een zware rit met caravan door de bergen onder ligt, is dat een aanname in de code en geen grens die iets bewezen heeft.',
-    'DE WAAKRONDE-HISTORIE OVERLEEFT HET HERLADEN VAN DE PAGINA NIET. Hij staat in het geheugen, niet in localStorage. Dat is met opzet — een oordeel van twee ritten geleden zegt niets over nu — maar het betekent ook dat “Nieuwste versie laden” je sessieoverzicht wist. Wil je het bewaren, exporteer dan vóór het herladen.',
-    'DE DREMPELS IN \u201cWELK ONDERDEEL?\u201d ZIJN NIET NAGEMETEN. 46 kPa stationair, 13,2 V laadspanning, 0,5 V sprei op de achterste lambdasonde: dat is redeneerwerk en gangbare praktijk, geen meting aan d\u00e9ze auto. Wat deze ronde wel vaststaat is wann\u00e9\u00e9r ze \u00fcberhaupt iets mogen betekenen \u2014 motor draaiend, warm, lang genoeg. Een kandidaat die opduikt terwijl je niets merkt is dus een bevinding over de drempel, niet over de auto.',
+    'DE VOORRAAD STAAT NOG OP SCHEMA 1 EN HEEFT DUS GEEN VOORWAARDEN. Dat is met opzet: de rijen stonden er al en een opdracht afkeuren op zijn versienummer kost een rit. De checklist vóór de rit is daarmee deze ronde nog leeg — het mechanisme staat er, de eerste rij die hem gebruikt moet nog geschreven worden.',
+    'HET OORDEEL BLIJFT ÉÉN OPDRACHT PER SESSIE. Een rit die drie issues tegelijk sluit kan alleen door drie keer te kiezen. Dat is een keuze en geen beperking: twee vragen onder één sessienummer zijn achteraf niet uit elkaar te houden, en dat was precies de reden voor #248.',
+    'EEN OPDRACHT KAN NOG STEEDS ALLEEN MIN, MAX, LAATST, AANTAL EN VERANDERINGEN OVER ÉÉN PID. Vragen als "0,5 V sprei op de achterste lambdasonde" (#231) of "loopt de latentie na trap 2 niet meer terug" (blok 10) vragen een reeks over tijd. Dat past niet in deze vorm, en de lijst maten uitbreiden is een besluit per maat.',
+    'DAT HET MEETGAT VAN 18-09 DE BUS WAS, IS NOG STEEDS EEN VERMOEDEN. 95 seconden buiten elke achtergrondperiode wijst naar de adapter of de bus — maar die periodes zijn alleen compleet als de markering met de hand gezet is, en tot vandaag werden ze bovendien gewist. Wat het uitwijst bestaat nog niet: dezelfde rit met één aanvrager ernaast (#254).',
+    'DE WAAKRONDE-HISTORIE IS NOG NIET GEREPAREERD (#253). Dat hij leeg blijft bij busdruk is verklaarbaar gedrag, maar nergens blijkt dát het gebeurt. De teller per reden staat er nog niet in; deze ronde meet alleen of het vermoeden klopt.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };
@@ -8026,6 +8216,11 @@ window.TESTRUN_VERSIE = TESTRUN_VERSIE;
    bestand is één IIFE, dus wat hier niet staat bestaat buiten niet. */
 window.PLTestrunLive = {
   ritId: _liveRitId,
+  /* LEZEN ZONDER TE MAKEN (#256). `ritId()` maakt een nummer aan zodra er nog
+     geen is — prima voor de testrun zelf, fout voor logToSheets: dan verzint
+     elke logregel buiten een run een sessie. Dit luik zegt alleen wat er nú
+     loopt, en `null` als er niets loopt. */
+  huidigeRit: function () { return _liveRit; },
   tik: _liveTik,
   einde: _liveEinde,
   schema: LIVE_SCHEMA,

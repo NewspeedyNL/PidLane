@@ -100,7 +100,15 @@ console.log('\n2. wat er moet stranden — met telkens het bijna-gelijke geval d
   strandt('een onbekende sleutel wordt afgewezen', { script: 'alert(1)' }, 'onbekende sleutel');
   strandt('ook als hij onschuldig lijkt', { opmerking: 'even testen' }, 'onbekende sleutel');
 
-  strandt('een ander schema wordt afgewezen', { schema: 2 }, 'schema');
+  // Schema 2 kwam er op 18-09 bij (#257, `voorwaarden`). Schema 1 blijft
+  // geldig: er staat een voorraad opdrachten in de tabel, en een rij afkeuren
+  // op zijn versienummer kost een rit. Wat nog steeds moet stranden is een
+  // schema dat deze app niet kent.
+  strandt('een schema dat deze app niet kent wordt afgewezen', { schema: 3 }, 'schema');
+  {
+    const r = K(goed({ schema: 2 }));
+    toets('schema 2 wordt geaccepteerd', r.ok === true, 'gaf: ' + JSON.stringify(r.ok ? 'GOEDGEKEURD' : r.fouten));
+  }
   strandt('geen naam', { naam: '' }, 'naam');
   strandt('een naam over de grens', { naam: 'x'.repeat(G.naamMax + 1) }, 'naam');
   strandt('geen sensoren', { sensoren: [] }, 'sensoren');
