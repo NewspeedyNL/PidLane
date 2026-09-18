@@ -774,9 +774,9 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@        if (!PID_VORM.test(String(p))) { fouten.push('\`' + p + '\` is geen PID-code'); return; }@@        if (false) { return; }@@test-opdracht.js@@een sensor die geen PID-code is komt door"
 "public/pidlane-opdracht.js@@    var binnen = (w >= lo && w <= hi);@@    var binnen = true;@@test-opdracht.js@@elke gemeten waarde valt binnen de band: de opdracht kan niet meer rood worden"
 "public/pidlane-opdracht.js@@          // NIET stil terugvallen op de vorige opdracht: dan meet de rit iets\n          // anders dan er in Airtable staat en is het verschil onzichtbaar.\n          _actief = null; _herkomst = null;@@          void 0;@@test-opdracht.js@@een afgekeurde opdracht laat de vorige staan: de rit meet iets anders dan er in de tabel staat"
-"public/pidlane-opdracht.js@@    if (!toggleAan()) {@@    if (false) {@@test-opdracht.js@@de uitzetknop houdt het verkeer niet meer tegen"
+"public/pidlane-opdracht.js@@  function haal() {\n    _laatsteFout = null;\n    if (!toggleAan()) {@@  function haal() {\n    _laatsteFout = null;\n    if (false) {@@test-opdracht.js@@de uitzetknop houdt het verkeer niet meer tegen"
 "worker.js@@  if (ruw.length > 8192)@@  if (false)@@test-opdrachtroute.js@@de groottegrens valt weg: een tekst van een megabyte gaat eerst de telefoon in"
-"worker.js@@&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=5\`;@@&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=asc&pageSize=5\`;@@test-opdrachtroute.js@@bij twee actieve rijen wint de OUDSTE: je zet een opdracht aan en er draait een andere"
+"worker.js@@sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=@@sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=asc&pageSize=@@test-opdrachtroute.js@@bij twee actieve rijen wint de OUDSTE: je zet een opdracht aan en er draait een andere"
 "worker.js@@    meer: rijen.length > 1 ? rijen.length : 0,@@    meer: 0,@@test-opdrachtroute.js@@twee actieve rijen worden niet meer gemeld: stil draait er een andere opdracht dan je bedoelde"
 # ── OP WELKE BRON DRAAIT DE APP (#242, 17-09-2026). Een preview draait dezelfde
 # app met andere code; van buiten is het verslag van de twee niet te
@@ -839,6 +839,20 @@ MUTATIES=(
 "public/pidlane-meetkamer.js@@    if (fout.length) regel = fout[0].detail || fout[0].naam;@@    if (false) regel = fout[0].detail || fout[0].naam;@@test-meetkamer.js@@het oordeel bovenaan noemt de fout niet meer: er staat een rood cijfer zonder te zeggen wat er mis is"
 "public/pidlane-meetkamer.js@@    if (_tikker) return;@@    if (false) return;@@test-meetkamer.js@@elke keer openen zet er een tikker bij, en die ververst daarna onzichtbaar door tijdens het rijden"
 "public/pidlane-opdracht.js@@    return binnen ? _uit('ok', staart, proef, w, r.n)@@    return binnen ? _uit('ok', staart, proef, null, r.n)@@test-meetkamer.js@@de uitslag draagt de gemeten waarde niet meer: het scherm tekent geen enkele balk en niemand merkt het"
+
+# ── Meerdere vragen per rit (#248, 18-09-2026). Een rit is hier de schaarste:
+# wie #217 en #19 wil weten reed tot nu toe twee keer. Deze zeven bouwen de
+# stille fouten na die dat weer zouden weggooien — een sessie die niet splitst,
+# een afgekeurde rij die stil verdwijnt, en een keuze die de vorige opdracht
+# laat staan terwijl je denkt dat je gewisseld bent.
+"public/pidlane-opdracht.js@@    if (!rij) { _laatsteFout = 'geen opdracht met id ' + id; return null; }@@    if (!rij) { return _actief; }@@test-meetkamer.js@@een onbekend id laat stil de vorige opdracht staan terwijl de gebruiker denkt dat hij gewisseld is"
+"public/pidlane-opdracht.js@@    if (!rij.opdracht) { _laatsteFout = rij.fout || 'die opdracht is niet bruikbaar'; return null; }@@    if (!rij.opdracht) { return _actief; }@@test-meetkamer.js@@een afgekeurde rij levert de vorige opdracht op in plaats van een weigering"
+"public/pidlane-meetkamer.js@@    if (_bezigLaden) return Promise.resolve(null);@@    if (false) return Promise.resolve(null);@@test-meetkamer.js@@twee keer op ophalen drukken stuurt twee verzoeken en de laatste wint, afhankelijk van het netwerk"
+"public/pidlane-meetkamer.js@@    if (!o) {\n      // Niet stil falen@@    if (false) {\n      // Niet stil falen@@test-meetkamer.js@@een mislukte keuze begint tóch een nieuwe sessie: een leeg ritnummer waar nooit iets onder komt"
+"public/pidlane-testrun.js@@  if (basis === _liveVorigId) { _liveVolg++; _liveRit = basis + '-' + _liveVolg; }@@  if (false) { _liveRit = basis; }@@bproef-meetkamer.js@@twee opdrachten binnen dezelfde minuut delen één ritnummer: buiten de app is niet te zien welke regel bij welke vraag hoorde"
+"public/pidlane-meetkamer.js@@    return veilig(String(v == null ? '' : v).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"\\\\'\"));@@    return veilig(String(v == null ? '' : v));@@test-meetkamer.js@@een apostrof in een Airtable-id breekt de onclick van de keuzeknop"
+"worker.js@@  const alle = new URL(request.url).searchParams.get(\"alle\") === \"1\";@@  const alle = false;@@test-opdrachtroute.js@@?alle=1 geeft nog steeds alleen de actieve rij: de keuzeknoppen tonen er altijd maar een"
+"worker.js@@        opdracht: ruw2.length > 8192 ? \"\" : ruw2,@@        opdracht: ruw2,@@test-opdrachtroute.js@@een opdracht van een megabyte gaat alsnog de telefoon in voordat iemand hem afkeurt"
 )
 
 echo

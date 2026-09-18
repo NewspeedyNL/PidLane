@@ -494,5 +494,227 @@ console.log('\n10. de meetkamer leest dezelfde uitslagvorm als blok 5');
   toets('de meter tekent daar geen balk', M.meter(weg).pos === null);
 }
 
-console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles' : 'goed: alle ' + n + ' controles'));
-process.exit(fout ? 1 : 0);
+// ══════════════════════════════════════════════════════════════════
+console.log('\n11. de opdrachtkiezer: meerdere vragen per rit (#248)');
+// ══════════════════════════════════════════════════════════════════
+{
+  /* Een sandbox met een nep-PLOpdracht, zodat de kiezer getoetst kan worden
+     zonder netwerk. De ECHTE koppeling met PLOpdracht staat in
+     bproef-meetkamer.js — daar draait de app. */
+  function metLijst(rijen, gedaan, herkomst) {
+    const k = laad({
+      PLOpdracht: {
+        gelijst: function () { return rijen; },
+        gedaan: function () { return gedaan || {}; },
+        kies: function (id) { k._gekozen = id; return (rijen || []).filter(function (r) { return r.id === id; })[0] || null; },
+        reden: function () { return 'afgekeurd: onbekende sleutel'; }
+      }
+    });
+    return k._kiezer({ nu: Date.now(), herkomst: herkomst || null });
+  }
+
+  const zonder = metLijst(null);
+  toets('zonder opgehaalde lijst staat er een ophaalknop', /Ophalen/.test(zonder), zonder.slice(0, 120));
+  toets('en geen enkele keuzeknop', !/mk-kies/.test(zonder));
+
+  toets('een lege tabel zegt dat er niets staat', /geen enkele opdracht/.test(metLijst([])));
+
+  const rijen = [
+    { id: 'rec1', naam: 'Boordspanning tijdens de rit', reden: '#217', actief: true,  opdracht: { naam: 'a' }, fout: '' },
+    { id: 'rec2', naam: 'Raildruk over een hele rit',   reden: '#19',  actief: false, opdracht: { naam: 'b' }, fout: '' },
+    { id: 'rec3', naam: 'Kapotte rij',                  reden: '#99',  actief: false, opdracht: null,          fout: 'afgekeurd: onbekende sleutel "snelheid"' }
+  ];
+
+  const drie = metLijst(rijen, {});
+  toets('elke rij krijgt een knop', (drie.match(/class="mk-kies/g) || []).length === 3,
+    String((drie.match(/class="mk-kies/g) || []).length));
+  toets('met de naam erop', /Boordspanning tijdens de rit/.test(drie) && /Raildruk/.test(drie));
+
+  // EEN AFGEKEURDE RIJ BLIJFT STAAN, MET ZIJN REDEN. Verdwijnen betekent dat
+  // je in Airtable naar een opdracht kijkt die op je telefoon nergens is, en
+  // dat niets zegt waarom.
+  toets('een afgekeurde rij staat er ook', /Kapotte rij/.test(drie));
+  toets('met de reden erbij', /onbekende sleutel/.test(drie), drie.slice(-260));
+  toets('maar is niet aanklikbaar', (drie.match(/disabled/g) || []).length === 1,
+    String((drie.match(/disabled/g) || []).length));
+  toets('en de bruikbare rijen wél', (drie.match(/PLMeetkamer\.pak/g) || []).length === 2,
+    String((drie.match(/PLMeetkamer\.pak/g) || []).length));
+
+  // WAT ER DEZE SESSIE MEE GEBEURD IS, KOMT UIT PLOpdracht.gedaan() — het
+  // scherm telt niet zelf. Zou het dat wel doen, dan is er een tweede telling
+  // naast die van blok 5.
+  const met = metLijst(rijen, { rec1: { staat: 'fout', goed: 2, aantal: 3, tijd: Date.now() - 60000 } });
+  toets('een gemeten opdracht toont zijn uitslag', /2\/3 binnen bereik/.test(met), met.slice(0, 400));
+  toets('met hoe lang geleden', /1 min geleden/.test(met));
+  toets('een ongemeten opdracht zegt dat hij nog wacht', /nog niet gemeten deze sessie/.test(met));
+
+  // De lopende opdracht is herkenbaar, anders druk je hem nog een keer aan.
+  const nu = metLijst(rijen, {}, { id: 'rec2' });
+  toets('de lopende opdracht is gemerkt', /mk-kies nu/.test(nu));
+  toets('en er is er maar één', (nu.match(/mk-kies nu/g) || []).length === 1);
+
+  // Een naam uit Airtable wordt niet als HTML uitgevoerd.
+  const stout = metLijst([{ id: 'r', naam: '<img src=x>', reden: '', actief: false, opdracht: {}, fout: '' }], {});
+  toets('een naam met HTML erin wordt ontsmet', !/<img/.test(stout) && /&lt;img/.test(stout));
+
+  // EEN id MET EEN APOSTROF MAG DE onclick NIET BREKEN. Airtable-ids zijn
+  // alfanumeriek, maar de knop bouwt een JavaScript-aanroep als tekst en dan
+  // is "het kan niet voorkomen" geen argument.
+  const raar = metLijst([{ id: "re'c", naam: 'x', reden: '', actief: false, opdracht: {}, fout: '' }], {});
+  toets('een apostrof in het id wordt ontsmet', !/pak\('re'c'\)/.test(raar), raar.slice(0, 300));
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n12. kiezen begint een nieuwe sessie');
+// ══════════════════════════════════════════════════════════════════
+{
+  // DIT IS WAAROM DE KEUZE EEN KNOP IS EN GEEN INSTELLING. Twee opdrachten
+  // onder één ritnummer betekent dat buiten de app niet te zien is welke
+  // regel bij welke vraag hoorde — en dat is precies de koppeling waar de
+  // hele lus op rust.
+  let sessies = [], meldingen = [];
+  const k = laad({
+    PLOpdracht: {
+      gelijst: function () { return [{ id: 'rec2', naam: 'Raildruk', opdracht: { naam: 'Raildruk' }, fout: '' }]; },
+      gedaan: function () { return {}; },
+      kies: function (id) { return id === 'rec2' ? { naam: 'Raildruk', sensoren: [] } : null; },
+      reden: function () { return 'geen opdracht met dat id'; }
+    },
+    PLTestrunLive: { nieuweSessie: function (r) { sessies.push(r); return '2026-09-18-2000'; } },
+    showToast: function (m) { meldingen.push(String(m)); }
+  });
+
+  const gekozen = k.pak('rec2');
+  toets('kiezen levert de opdracht op', gekozen && gekozen.naam === 'Raildruk', JSON.stringify(gekozen));
+  toets('en begint precies één nieuwe sessie', sessies.length === 1, JSON.stringify(sessies));
+  toets('met de naam van de opdracht in de reden', /Raildruk/.test(sessies[0] || ''), sessies[0]);
+
+  // EEN MISLUKTE KEUZE MAG GEEN SESSIE BEGINNEN. Anders staat er een leeg
+  // ritnummer in de tabel waar nooit iets onder komt.
+  const weg = k.pak('bestaat-niet');
+  toets('een onbekende opdracht levert niets op', weg === null);
+  toets('en begint géén nieuwe sessie', sessies.length === 1, String(sessies.length));
+
+  // EN HIJ MELDT WAAROM. Dit is de controle die de vorige versie miste: de
+  // aanroepen in pak() zitten allemaal in een try/catch, dus zonder de
+  // weigeringspoort klapt er niets — er gebeurt gewoon níéts, en dan druk je
+  // drie keer op dezelfde knop zonder te weten waarom hij niet werkt.
+  toets('en meldt waarom het niet ging', meldingen.some(function (m) { return /gaat niet/.test(m); }),
+    JSON.stringify(meldingen));
+  toets('met de reden van PLOpdracht erin', meldingen.some(function (m) { return /geen opdracht met dat id/.test(m); }),
+    JSON.stringify(meldingen));
+
+  // Ontbreekt PLTestrunLive helemaal, dan mag de keuze niet klappen.
+  const kaal = laad({
+    PLOpdracht: {
+      gelijst: function () { return []; }, gedaan: function () { return {}; },
+      kies: function () { return { naam: 'x', sensoren: [] }; }, reden: function () { return ''; }
+    }
+  });
+  toets('zonder PLTestrunLive lukt de keuze nog steeds',
+    (function () { try { return !!kaal.pak('wat dan ook'); } catch (e) { return false; } })());
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n13. het ophalen gebeurt één keer tegelijk');
+// ══════════════════════════════════════════════════════════════════
+{
+  // Twee verzoeken tegelijk leveren twee lijsten op waarvan de laatste wint,
+  // en welke dat is hangt van het netwerk af.
+  let keer = 0;
+  let los;
+  const k = laad({
+    PLOpdracht: {
+      lijst: function () { keer++; return new Promise(function (r) { los = r; }); },
+      gelijst: function () { return null; }, gedaan: function () { return {}; }
+    }
+  });
+
+  k.laad();
+  k.laad();
+  toets('twee keer drukken geeft één verzoek', keer === 1, String(keer));
+
+  // Losmaken zodat er geen belofte blijft hangen; de uitkomst doet er hier
+  // niet toe, alleen dát er één verzoek uitging. GEEN `return` op dit niveau:
+  // node wikkelt een module in een functie, dus een return hier slaat de
+  // eindtelling over en dan meldt een rode test zich als groen.
+  if (typeof los === 'function') los([]);
+  toets('en daarna kan er opnieuw opgehaald worden', typeof k.laad === 'function');
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n14. de ECHTE kies() weigert in plaats van stil door te gaan');
+// ══════════════════════════════════════════════════════════════════
+{
+  /* Sectie 12 hierboven gebruikt een nep-PLOpdracht, en dat is precies wat
+     een tegenproef moet aanwijzen: een nep-kies() kan niet rood worden van een
+     fout in de echte kies(). Hier draait de ECHTE module.
+
+     Wat er op het spel staat: als kies() bij een onbekend of afgekeurd id
+     stilletjes de vorige opdracht laat staan, dan denk je dat je gewisseld
+     bent en meet de rit de vorige vraag. Dat is dezelfde stille terugval die
+     #241 met "NIET stil terugvallen" al uitsloot bij het ophalen. */
+  function echteOpdracht(rijen) {
+    const s = { window: null, console: { warn() { }, error() { }, log() { } }, PID_CONFIG: {} };
+    s.window = s;
+    s.PROXY_URL = 'https://p.example';
+    s.plFetch = function () {
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ ok: true, alle: true, opdrachten: rijen }); } });
+    };
+    vm.createContext(s);
+    vm.runInContext(fs.readFileSync(__dirname + '/pidlane-opdracht.js', 'utf8'), s, { filename: 'pidlane-opdracht.js' });
+    return s.PLOpdracht;
+  }
+
+  const goed = JSON.stringify({
+    schema: 1, naam: 'Raildruk', reden: '#19', sensoren: ['0123'], duurS: 600, tikS: 5,
+    proeven: [{ issue: '#19', naam: 'raildruk beweegt', pid: '0123', meet: 'veranderingen', tussen: [3, 100000] }]
+  });
+
+  const O = echteOpdracht([
+    { id: 'rec1', naam: 'Raildruk', reden: '#19', actief: true, opdracht: goed },
+    { id: 'rec2', naam: 'Kapot', reden: '#99', actief: false, opdracht: '{"schema":1,"snelheid":9}' },
+    { id: 'rec3', naam: 'Te groot', reden: '', actief: false, opdracht: '', weg: '9000 tekens; meer dan 8192 gaat niet mee' }
+  ]);
+
+  return O.lijst().then(function (lijst) {
+    toets('de lijst komt binnen', lijst.length === 3, String(lijst.length));
+    toets('de goede rij is gekeurd', !!lijst[0].opdracht && !lijst[0].fout, JSON.stringify(lijst[0].fout));
+    toets('de rij met een onbekende sleutel is afgekeurd', !lijst[1].opdracht && /afgekeurd/.test(lijst[1].fout),
+      lijst[1].fout);
+    toets('en de te grote rij draagt zijn reden', /9000 tekens/.test(lijst[2].fout), lijst[2].fout);
+
+    // Eerst een geldige keuze, zodat er iets IS om stil op terug te vallen.
+    const a = O.kies('rec1');
+    toets('een geldige keuze levert de opdracht op', !!a && a.naam === 'Raildruk', JSON.stringify(a));
+
+    // DE KERN. Beide gevallen moeten null geven én de actieve opdracht met
+    // rust laten — niet stil de vorige teruggeven.
+    const onbekend = O.kies('bestaat-niet');
+    toets('een onbekend id geeft null', onbekend === null, JSON.stringify(onbekend));
+    toets('en niet stil de vorige opdracht', onbekend !== a);
+    toets('met een reden die dat zegt', /geen opdracht met id/.test(O.reden() || ''), O.reden());
+
+    const kapot = O.kies('rec2');
+    toets('een afgekeurde rij geeft null', kapot === null, JSON.stringify(kapot));
+    toets('en niet stil de vorige opdracht', kapot !== a);
+    toets('met de afkeurreden erbij', /afgekeurd/.test(O.reden() || ''), O.reden());
+
+    // De actieve opdracht is ook werkelijk niet verschoven.
+    toets('de actieve opdracht staat er nog steeds', O.actief().naam === 'Raildruk', JSON.stringify(O.actief()));
+    toets('en de herkomst wijst nog naar rec1', O.herkomst().id === 'rec1', JSON.stringify(O.herkomst()));
+
+    // noteer(): één plek die de uitslag opschrijft.
+    O.noteer('rec1', [{ staat: 'ok' }, { staat: 'ok' }, { staat: 'FOUT' }]);
+    const g = O.gedaan('rec1');
+    toets('de uitslag wordt onthouden', !!g, JSON.stringify(g));
+    toets('één FOUT maakt de stand rood', g.staat === 'fout', g.staat);
+    toets('met de telling erbij', g.goed === 2 && g.aantal === 3, JSON.stringify(g));
+    toets('een opdracht zonder uitslag is onbekend', O.gedaan('rec2') === null);
+
+    console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles' : 'goed: alle ' + n + ' controles'));
+    process.exit(fout ? 1 : 0);
+  });
+}
+
+/* de eindtelling staat in sectie 14, die asynchroon afloopt */

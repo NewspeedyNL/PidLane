@@ -1005,13 +1005,19 @@ async function handleOpdracht(request, env) {
   if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
   const base = resolveBase(env, "AIRTABLE_LOG_BASE", "AIRTABLE_BASE");
   const table = cfg(env, "AIRTABLE_OPDRACHT_TABLE");
+  // ?alle=1 geeft de HELE tabel terug in plaats van alleen de actieve rij.
+  // Dat is voor de keuzeknoppen in de meetkamer (#248): tijdens één rit
+  // meerdere vragen beantwoorden scheelt ritten, en een rit is hier de
+  // schaarste. De filter blijft de standaard, zodat een app die dit niet
+  // kent precies krijgt wat hij altijd kreeg.
+  const alle = new URL(request.url).searchParams.get("alle") === "1";
   // Alleen de actieve, nieuwste. Meer dan één actieve rij is een fout van de
   // schrijver; dan wint de laatst gewijzigde en zegt het antwoord hoeveel er
   // stonden -- stil de eerste pakken zou betekenen dat je een opdracht aanzet
   // en er een andere gaat draaien.
   const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
-    `?filterByFormula=${encodeURIComponent("{Actief}=1")}` +
-    `&sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=5`;
+    (alle ? "?" : `?filterByFormula=${encodeURIComponent("{Actief}=1")}&`) +
+    `sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=${alle ? 12 : 5}`;
   let r;
   try {
     r = await fetch(url, { headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` } });
@@ -1024,6 +1030,32 @@ async function handleOpdracht(request, env) {
   }
   const d = await r.json();
   const rijen = Array.isArray(d.records) ? d.records : [];
+
+  // DE LIJST. Elke rij met zijn naam, reden en de ruwe tekst; keuren gebeurt
+  // in de app, want daar staat de witte lijst en die hoort op één plek te
+  // staan. Een rij die niet meegaat krijgt een reden mee in plaats van
+  // stilletjes te verdwijnen -- anders zoek je in Airtable naar een opdracht
+  // die er wel staat maar nooit op je scherm komt.
+  if (alle) {
+    return json({
+      ok: true,
+      alle: true,
+      opdrachten: rijen.map((rij2) => {
+        const f2 = rij2.fields || {};
+        const ruw2 = typeof f2.Opdracht === "string" ? f2.Opdracht : "";
+        return {
+          id: rij2.id,
+          naam: typeof f2.Naam === "string" ? f2.Naam.slice(0, 200) : "",
+          reden: typeof f2.Reden === "string" ? f2.Reden.slice(0, 200) : "",
+          actief: !!f2.Actief,
+          gewijzigd: f2.Gewijzigd || rij2.createdTime || "",
+          opdracht: ruw2.length > 8192 ? "" : ruw2,
+          weg: ruw2.length > 8192 ? `${ruw2.length} tekens; meer dan 8192 gaat niet mee` : (ruw2 ? "" : "geen opdrachttekst")
+        };
+      })
+    });
+  }
+
   if (!rijen.length) return json({ ok: true, opdracht: null, reden: "geen actieve opdracht" });
   const rij = rijen[0];
   const f = rij.fields || {};

@@ -89,11 +89,46 @@ function _wacht(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 const LIVE_SCHEMA = 1;
 let _liveRit = null, _liveBlok = null, _liveTel = null;
 
+/* EEN NIEUWE SESSIE BEGINNEN (#248). Het ritnummer is wat de logtabel
+   groepeert: alles met hetzelfde SessionId hoort bij één meting. Wie tijdens
+   één rit een tweede vraag gaat beantwoorden, wil die uitslagen apart kunnen
+   lezen — anders staan twee opdrachten door elkaar onder één nummer en is
+   achteraf niet te zien welke regel bij welke vraag hoorde.
+
+   Het lopende blok wordt eerst netjes afgesloten, anders mist de oude sessie
+   zijn slotregel en lijkt hij afgebroken. */
+function nieuweSessie(reden) {
+  try { _liveEinde(reden || 'sessie afgesloten voor een nieuwe opdracht'); }
+  catch (e) { console.warn('Testrun: de vorige sessie is niet netjes afgesloten (#248)', e); }
+  _liveRit = null;
+  const nieuw = _liveRitId();
+  _boek(0, 'Nieuwe sessie', 'ok', 'ritnummer ' + nieuw, null);
+  return nieuw;
+}
+
+/* HET RITNUMMER HEEFT MINUUTRESOLUTIE, EN DAT WAS EEN GAT (#248).
+   `2026-09-18-1645` is leesbaar en sorteert goed, maar wie binnen dezelfde
+   minuut een tweede opdracht kiest, krijgt hetzelfde nummer — en dan staan
+   twee vragen door elkaar onder één sessie. Dat is precies de scheiding
+   waarvoor de knop bestaat.
+
+   Gevonden door bproef-meetkamer.js, niet bedacht: de proef vroeg twee keer
+   een sessie aan en kreeg twee keer hetzelfde terug.
+
+   De oplossing houdt het formaat heel en hangt er een volgnummer achter zodra
+   het botst. Seconden erbij zetten zou hetzelfde oplossen maar élk ritnummer
+   langer maken, terwijl dit een uitzondering is die je hooguit een paar keer
+   per rit tegenkomt. */
+let _liveVorigId = null, _liveVolg = 1;
+
 function _liveRitId() {
   if (_liveRit) return _liveRit;
   const d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
-  _liveRit = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-             '-' + p(d.getHours()) + p(d.getMinutes());
+  const basis = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+                '-' + p(d.getHours()) + p(d.getMinutes());
+  if (basis === _liveVorigId) { _liveVolg++; _liveRit = basis + '-' + _liveVolg; }
+  else { _liveVolg = 1; _liveRit = basis; }
+  _liveVorigId = basis;
   return _liveRit;
 }
 
@@ -2604,66 +2639,6 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
-  // ── zegt het scherm hetzelfde als het verslag? (#246, 18-09-2026) ──
-  // De meetkamer tekent de lus terwijl hij loopt. Dat is nuttig zolang hij
-  // hetzelfde zegt als dit verslag, en gevaarlijk zodra dat niet meer zo is:
-  // een scherm dat groen wijst waar blok 5 rood zegt, laat je stoppen met
-  // lezen. Precies de vorm van test-healthgate.js, maar dan waar je naar kijkt.
-  //
-  // test-meetkamer.js toetst de afleiding zonder browser en bproef-meetkamer.js
-  // toetst dat het paneel er werkelijk in hangt. Wat allebei NIET kunnen is dit:
-  // tijdens een échte rit, op de échte meetwaarden, geven de twee dan nog
-  // steeds hetzelfde oordeel? Dat is wat hier gemeten wordt, en het is
-  // goedkoop — beide kanten zijn al berekend.
-  {
-    issue: '#246',
-    naam: 'Het scherm en het verslag geven hetzelfde oordeel',
-    waarom: 'Een tegel die groen wijst waar het verslag rood zegt, is erger dan geen tegel: je stopt met het verslag lezen en meet daarna maanden naast.',
-    proef: async function () {
-      if (!window.PLMeetkamer)
-        return { staat: 'FOUT', detail: 'PLMeetkamer ontbreekt — pidlane-meetkamer.js hangt niet in index.html, dus de lus is tijdens de rit onzichtbaar (#246)' };
-
-      var s = null;
-      try { s = PLMeetkamer.momentopname(); }
-      catch (e) { return { staat: 'FOUT', detail: 'het scherm kon zijn bronnen niet lezen: ' + ((e && e.message) || e) }; }
-
-      if (!s.opdracht)
-        return { staat: 'LET OP', detail: 'geen opdracht geladen, dus er valt hier niets naast elkaar te leggen — ' +
-          'het scherm meldt: ' + (s.reden || 'onbekend') };
-
-      // DE VERGELIJKING. Beide kanten komen uit PLOpdracht.meet(), dus ze
-      // HOREN gelijk te zijn — en juist daarom is een verschil hier een harde
-      // bevinding en geen ruis: het betekent dat er ergens een tweede oordeel
-      // is ontstaan.
-      var scheef = [];
-      s.uitslagen.forEach(function (u) {
-        var m = PLMeetkamer.meter(u);
-        if (m.staat !== u.staat) { scheef.push(u.naam + ': verslag ' + u.staat + ', scherm ' + m.staat); return; }
-        // Een balk zonder waarde en een oordeel mét waarde horen niet samen.
-        var heeftWaarde = (u.waarde !== null && u.waarde !== undefined);
-        if (heeftWaarde && m.pos === null) scheef.push(u.naam + ': er is ' + u.waarde + ' gemeten maar het scherm tekent geen balk');
-        if (!heeftWaarde && m.pos !== null) scheef.push(u.naam + ': niets gemeten maar het scherm tekent wél een balk op ' + m.pos);
-      });
-
-      if (scheef.length)
-        return { staat: 'FOUT', detail: scheef.length + ' proef/proeven worden op het scherm anders getoond dan hier geboekt: ' +
-          scheef.join(' | ') + ' — er is een tweede oordeel ontstaan' };
-
-      // De issuebaan mag niets tonen dat blok 5 niet dekt.
-      var baan = PLMeetkamer.issuebaan(s);
-      var bekend = {};
-      s.proeven.forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
-      (s.opdracht.proeven || []).forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
-      var verzonnen = baan.filter(function (b) { return !bekend[b.issue]; }).map(function (b) { return b.issue; });
-      if (verzonnen.length)
-        return { staat: 'FOUT', detail: 'de issuebaan toont ' + verzonnen.length + ' issue(s) die in geen enkele lijst staan: ' +
-          verzonnen.join(', ') + ' — dat is een tweede lijst aan het ontstaan' };
-
-      return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + baan.length +
-        ' issue(s) staan op het scherm precies zoals ze hier geboekt worden' };
-    }
-  },
-
   // ── de meetopdracht van buiten (#241, 17-09-2026) ──
   // De lus: de testrun schrijft tijdens de rit naar de logtabel, die tabel
   // wordt buiten de app gelezen, en daaruit volgt een volgende meting. Zonder
@@ -2727,6 +2702,12 @@ const PROEVEN_B5 = [
           { Outcome: u.staat, Repro: u.issue || '' });
       });
 
+      // De uitslag terugmelden aan de opdrachtmodule, zodat de keuzeknoppen
+      // laten zien welke vraag beantwoord is en welke nog wacht (#248). Eén
+      // plek die het opschrijft; het scherm telt niet zelf.
+      try { if (typeof PLOpdracht.noteer === 'function') PLOpdracht.noteer(h.id, uitslagen); }
+      catch (e) { console.warn('Testrun: de uitslag is niet bij de opdracht genoteerd (#248)', e); }
+
       var fout = uitslagen.filter(function (u) { return u.staat === 'FOUT'; });
       var letop = uitslagen.filter(function (u) { return u.staat === 'LET OP'; });
       var staart = uitslagen.map(function (u) { return u.naam + ': ' + u.detail; }).join(' | ');
@@ -2741,6 +2722,73 @@ const PROEVEN_B5 = [
       if (letop.length)
         return { staat: 'LET OP', detail: kop + ' — ' + letop.length + ' van de ' + uitslagen.length + ' niet te meten: ' + staart + laatst };
       return { staat: 'ok', detail: kop + ' — alle ' + uitslagen.length + ' binnen de band: ' + staart + laatst };
+    }
+  },
+
+  // ── zegt het scherm hetzelfde als het verslag? (#246, 18-09-2026) ──
+  // De meetkamer tekent de lus terwijl hij loopt. Dat is nuttig zolang hij
+  // hetzelfde zegt als dit verslag, en gevaarlijk zodra dat niet meer zo is:
+  // een scherm dat groen wijst waar blok 5 rood zegt, laat je stoppen met
+  // lezen. Precies de vorm van test-healthgate.js, maar dan waar je naar kijkt.
+  //
+  // DEZE PROEF STAAT NA #241, EN DAT IS GEEN SMAAK. De opdracht wordt pas
+  // opgehaald door de proef van #241 hierboven; stond deze ervóór, dan is er
+  // nog niets geladen en meldt hij elke run "geen opdracht geladen" — precies
+  // wat er in de run van 18-09 18:32 gebeurde, waar hij LET OP gaf terwijl de
+  // opdracht drie regels later gewoon drie uitslagen boekte. Een proef die
+  // altijd hetzelfde zegt, toetst niets.
+  //
+  // test-meetkamer.js toetst de afleiding zonder browser en bproef-meetkamer.js
+  // toetst dat het paneel er werkelijk in hangt. Wat allebei NIET kunnen is dit:
+  // tijdens een échte rit, op de échte meetwaarden, geven de twee dan nog
+  // steeds hetzelfde oordeel? Dat is wat hier gemeten wordt, en het is
+  // goedkoop — beide kanten zijn al berekend.
+  {
+    issue: '#246',
+    naam: 'Het scherm en het verslag geven hetzelfde oordeel',
+    waarom: 'Een tegel die groen wijst waar het verslag rood zegt, is erger dan geen tegel: je stopt met het verslag lezen en meet daarna maanden naast.',
+    proef: async function () {
+      if (!window.PLMeetkamer)
+        return { staat: 'FOUT', detail: 'PLMeetkamer ontbreekt — pidlane-meetkamer.js hangt niet in index.html, dus de lus is tijdens de rit onzichtbaar (#246)' };
+
+      var s = null;
+      try { s = PLMeetkamer.momentopname(); }
+      catch (e) { return { staat: 'FOUT', detail: 'het scherm kon zijn bronnen niet lezen: ' + ((e && e.message) || e) }; }
+
+      if (!s.opdracht)
+        return { staat: 'LET OP', detail: 'geen opdracht geladen, dus er valt hier niets naast elkaar te leggen — ' +
+          'het scherm meldt: ' + (s.reden || 'onbekend') };
+
+      // DE VERGELIJKING. Beide kanten komen uit PLOpdracht.meet(), dus ze
+      // HOREN gelijk te zijn — en juist daarom is een verschil hier een harde
+      // bevinding en geen ruis: het betekent dat er ergens een tweede oordeel
+      // is ontstaan.
+      var scheef = [];
+      s.uitslagen.forEach(function (u) {
+        var m = PLMeetkamer.meter(u);
+        if (m.staat !== u.staat) { scheef.push(u.naam + ': verslag ' + u.staat + ', scherm ' + m.staat); return; }
+        // Een balk zonder waarde en een oordeel mét waarde horen niet samen.
+        var heeftWaarde = (u.waarde !== null && u.waarde !== undefined);
+        if (heeftWaarde && m.pos === null) scheef.push(u.naam + ': er is ' + u.waarde + ' gemeten maar het scherm tekent geen balk');
+        if (!heeftWaarde && m.pos !== null) scheef.push(u.naam + ': niets gemeten maar het scherm tekent wél een balk op ' + m.pos);
+      });
+
+      if (scheef.length)
+        return { staat: 'FOUT', detail: scheef.length + ' proef/proeven worden op het scherm anders getoond dan hier geboekt: ' +
+          scheef.join(' | ') + ' — er is een tweede oordeel ontstaan' };
+
+      // De issuebaan mag niets tonen dat blok 5 niet dekt.
+      var baan = PLMeetkamer.issuebaan(s);
+      var bekend = {};
+      s.proeven.forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
+      (s.opdracht.proeven || []).forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
+      var verzonnen = baan.filter(function (b) { return !bekend[b.issue]; }).map(function (b) { return b.issue; });
+      if (verzonnen.length)
+        return { staat: 'FOUT', detail: 'de issuebaan toont ' + verzonnen.length + ' issue(s) die in geen enkele lijst staan: ' +
+          verzonnen.join(', ') + ' — dat is een tweede lijst aan het ontstaan' };
+
+      return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + baan.length +
+        ' issue(s) staan op het scherm precies zoals ze hier geboekt worden' };
     }
   },
 
@@ -7999,12 +8047,14 @@ window.PLTestrunLive = {
     return PROEVEN_B5.map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom }; });
   },
   log: function () { return _trLog.slice(); },
+  nieuweSessie: nieuweSessie,
   bezig: function () { return !!_trBezig; },
   campagne: function () { return CAMPAGNE.titel; }
 };
 
 window.openTestrun = openTestrun;
 window.testrunGereedschap = testrunGereedschap;
+window.nieuweSessie = nieuweSessie;
 window.closeTestrun = closeTestrun;
 window.startTestrun = startTestrun;
 window.ritNulstellen = ritNulstellen;

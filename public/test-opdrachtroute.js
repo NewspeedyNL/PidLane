@@ -65,7 +65,11 @@ function bouw(o) {
   const maak = new Function(...Object.keys(omg), src + '\nreturn handleOpdracht;');
   const fn = maak(...Object.values(omg));
   const env = o.env === undefined ? { AIRTABLE_TOKEN: 'x' } : o.env;
-  return { staat, roep: () => fn({ headers: { get: () => '' } }, env) };
+  // `request.url` hoort erbij sinds ?alle=1 (#248): de handler leest zijn
+  // eigen querystring, dus een nagemaakt verzoek zonder url is geen nagemaakt
+  // verzoek meer.
+  const url = o.url || 'https://pidlane-proxy.example/airtable/opdracht';
+  return { staat, roep: () => fn({ url, headers: { get: () => '' } }, env) };
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -179,7 +183,65 @@ console.log('\n1. de poorten vóór Airtable');
       JSON.stringify(r.body));
   }
 
-  console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
+    // ══════════════════════════════════════════════════════════════════
+  console.log('\n6. ?alle=1 geeft de hele tabel (#248)');
+  // ══════════════════════════════════════════════════════════════════
+  {
+    const rijen = [
+      { id: 'rec1', createdTime: '2026-09-17T22:19:52.000Z',
+        fields: { Naam: 'Boordspanning', Reden: '#217', Actief: true,
+                  Gewijzigd: '2026-09-18T10:00:00.000Z', Opdracht: '{"schema":1}' } },
+      { id: 'rec2', createdTime: '2026-09-16T09:00:00.000Z',
+        fields: { Naam: 'Raildruk', Reden: '#19', Opdracht: '{"schema":1,"naam":"x"}' } }
+    ];
+
+    const b = bouw({ url: 'https://p.example/airtable/opdracht?alle=1', records: rijen });
+    const r = await b.roep();
+    const q = b.staat.verzoeken[0].url;
+
+    // DE FILTER MOET WEG, ANDERS IS "alles" NOG STEEDS ALLEEN DE ACTIEVE RIJ.
+    toets('zonder ?alle=1 filtert hij nog steeds op Actief',
+      /filterByFormula/.test((await (async () => { const c = bouw({ records: [] }); await c.roep(); return c.staat.verzoeken[0]; })()).url));
+    toets('met ?alle=1 staat er geen filter meer in', !/filterByFormula/.test(q), q);
+    toets('maar wel dezelfde sortering op Gewijzigd', /Gewijzigd/.test(q) && /desc/.test(q), q);
+    toets('en een ruimere pageSize', /pageSize=12/.test(q), q);
+
+    toets('het antwoord is gemerkt als lijst', r.body.alle === true, JSON.stringify(r.body).slice(0, 120));
+    toets('met beide rijen erin', r.body.opdrachten.length === 2, String(r.body.opdrachten.length));
+    toets('de naam gaat mee', r.body.opdrachten[0].naam === 'Boordspanning', r.body.opdrachten[0].naam);
+    toets('de reden ook', r.body.opdrachten[0].reden === '#217', r.body.opdrachten[0].reden);
+    toets('en of hij actief is', r.body.opdrachten[0].actief === true && r.body.opdrachten[1].actief === false,
+      JSON.stringify(r.body.opdrachten.map(function (x) { return x.actief; })));
+    toets('de ruwe tekst gaat mee', /schema/.test(r.body.opdrachten[0].opdracht));
+
+    // EEN LEGE TABEL IS GEEN FOUT bij ?alle=1: dan zijn er gewoon geen vragen.
+    const leeg = await bouw({ url: 'https://p.example/airtable/opdracht?alle=1', records: [] }).roep();
+    toets('een lege tabel geeft een lege lijst en geen foutmelding',
+      leeg.body.alle === true && leeg.body.opdrachten.length === 0, JSON.stringify(leeg.body));
+
+    // EEN TE GROTE RIJ VERDWIJNT NIET STIL. Hij blijft in de lijst staan met
+    // de reden erbij, anders zoek je in Airtable naar een opdracht die op je
+    // telefoon nergens te bekennen is.
+    const groot = await bouw({ url: 'https://p.example/airtable/opdracht?alle=1',
+      records: [{ id: 'recX', fields: { Naam: 'Te groot', Opdracht: 'x'.repeat(9000) } }] }).roep();
+    toets('een te grote opdracht blijft in de lijst', groot.body.opdrachten.length === 1);
+    toets('zonder zijn tekst', groot.body.opdrachten[0].opdracht === '');
+    toets('maar mét de reden', /9000 tekens/.test(groot.body.opdrachten[0].weg), groot.body.opdrachten[0].weg);
+
+    const zonder = await bouw({ url: 'https://p.example/airtable/opdracht?alle=1',
+      records: [{ id: 'recY', fields: { Naam: 'Leeg' } }] }).roep();
+    toets('een rij zonder opdrachttekst zegt dat ook', /geen opdrachttekst/.test(zonder.body.opdrachten[0].weg),
+      zonder.body.opdrachten[0].weg);
+
+    // ?alle=0 of iets anders telt NIET als alles: een halve waarde mag geen
+    // hele tabel opleveren.
+    const half = bouw({ url: 'https://p.example/airtable/opdracht?alle=ja', records: rijen });
+    const hr = await half.roep();
+    toets('?alle=ja is geen ?alle=1', !hr.body.alle && /filterByFormula/.test(half.staat.verzoeken[0].url),
+      half.staat.verzoeken[0].url);
+  }
+
+console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
                             : 'goed: alle ' + n + ' controles') + '\n');
   process.exit(fout ? 1 : 0);
 })();

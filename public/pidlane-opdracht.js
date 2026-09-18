@@ -72,6 +72,25 @@
   var _herkomst = null;    // waar hij vandaan kwam: id, naam, hash
   var _laatsteFout = null; // waarom er geen opdracht is
 
+  /* ── MEER DAN ÉÉN VRAAG PER RIT (#248, 18-09-2026) ───────────────
+     Een rit is hier de schaarste, niet de rekentijd. Tot nu toe beantwoordde
+     één rit één vraag: de actieve rij uit Airtable. Wie #217 én #19 wilde
+     weten reed twee keer, en dat is vier keer zo duur als het klinkt — je
+     moet ook twee keer de goede omstandigheden treffen.
+
+     Deze lijst maakt dat één rit meerdere vragen kan beantwoorden. Hij wordt
+     NIET automatisch geladen: de gewone haal() blijft de actieve rij pakken,
+     precies zoals hij deed. Pas als iemand op de keuzeknop drukt komt de
+     lijst binnen, en dan kiest een mens welke vraag er nu gemeten wordt.
+
+     `_gedaan` onthoudt per opdracht wat de uitslag was in DEZE app-sessie.
+     Dat is wat de knoppen laten zien: welke vragen zijn beantwoord en welke
+     wachten nog. Het staat in het geheugen en niet in localStorage — een
+     uitslag van twee ritten geleden zegt niets over nu, en dat is precies de
+     vergissing die de waakronde-historie bewust ook niet maakt. */
+  var _opdrachten = null;  // alle opdrachten uit de tabel, of null als ze niet opgehaald zijn
+  var _gedaan = {};        // id -> { staat, tijd, aantal, goed }
+
   function _log(m, niveau) {
     try { if (typeof log === 'function') log(m, niveau || 'info'); }
     catch (e) { console.warn('Opdrachtmelding niet in de app-log gezet', e); }
@@ -287,6 +306,94 @@
       });
   }
 
+  /* ── DE LIJST OPHALEN ─────────────────────────────────────────────
+     Zelfde route, zelfde token, zelfde keuring — alleen `?alle=1` erbij. Elke
+     rij loopt door keur(), en een afgekeurde rij blijft in de lijst staan MET
+     de reden. Dat is met opzet: een opdracht die je in Airtable ziet staan en
+     die op je telefoon ontbreekt is een half uur zoeken, en de reden staat
+     dan nergens. Nu staat hij op de knop. */
+  function lijst() {
+    _laatsteFout = null;
+    if (!toggleAan()) {
+      _laatsteFout = 'uitgezet in de Config (`' + SLEUTEL + '`)';
+      return Promise.resolve([]);
+    }
+    if (typeof PROXY_URL === 'undefined' || !PROXY_URL) {
+      _laatsteFout = 'geen PROXY_URL — de app weet niet waar hij moet vragen';
+      return Promise.resolve([]);
+    }
+    if (typeof plFetch !== 'function') {
+      _laatsteFout = 'plFetch ontbreekt — de lijst kan niet opgehaald worden';
+      return Promise.resolve([]);
+    }
+    return Promise.resolve(plFetch(PROXY_URL + '/airtable/opdracht?alle=1', { method: 'GET' }))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        var rijen = (d && Array.isArray(d.opdrachten)) ? d.opdrachten : [];
+        _opdrachten = rijen.map(function (rij) {
+          var uit = { id: rij.id || '', naam: rij.naam || '', reden: rij.reden || '',
+                      actief: !!rij.actief, gewijzigd: rij.gewijzigd || '', opdracht: null, fout: '' };
+          if (rij.weg) { uit.fout = String(rij.weg); return uit; }
+          var k = keur(rij.opdracht);
+          if (!k.ok) { uit.fout = 'afgekeurd: ' + k.fouten.join('; '); return uit; }
+          uit.opdracht = k.opdracht;
+          if (!uit.naam) uit.naam = k.opdracht.naam;
+          if (!uit.reden) uit.reden = k.opdracht.reden || '';
+          return uit;
+        });
+        _log(_opdrachten.length + ' meetopdracht(en) opgehaald', 'ok');
+        return _opdrachten.slice();
+      })
+      .catch(function (e) {
+        _laatsteFout = 'lijst niet opgehaald: ' + ((e && e.message) || e);
+        console.warn('Opdracht: de lijst ophalen mislukt (#248)', e);
+        return [];
+      });
+  }
+
+  /* Eén opdracht uit de lijst als de actieve zetten. Geen netwerkverkeer: hij
+     is al opgehaald én gekeurd. Een id dat niet bestaat of een rij die
+     afgekeurd is, verandert NIETS — stil de vorige laten staan terwijl de
+     gebruiker denkt dat hij gewisseld heeft, is precies de verwarring die
+     #241 met zijn "niet stil terugvallen" al uitsloot. */
+  function kies(id) {
+    if (!_opdrachten) { _laatsteFout = 'de lijst is nog niet opgehaald'; return null; }
+    var rij = null;
+    for (var i = 0; i < _opdrachten.length; i++) if (_opdrachten[i].id === id) { rij = _opdrachten[i]; break; }
+    if (!rij) { _laatsteFout = 'geen opdracht met id ' + id; return null; }
+    if (!rij.opdracht) { _laatsteFout = rij.fout || 'die opdracht is niet bruikbaar'; return null; }
+    _actief = rij.opdracht;
+    _herkomst = { id: rij.id, naam: rij.naam, gewijzigd: rij.gewijzigd };
+    _laatsteFout = null;
+    _log('Meetopdracht gekozen: ' + _actief.naam + ' (' + _actief.sensoren.length + ' sensoren, ' +
+         Math.round(_actief.duurS / 60) + ' min)', 'ok');
+    return _actief;
+  }
+
+  /* Wat er van een opdracht terechtkwam, voor de knoppen. Wordt door de
+     testrun aangeroepen zodra blok 5 zijn uitslagen heeft — één plek die het
+     opschrijft, zodat het scherm niet zelf gaat tellen. */
+  function noteer(id, uitslagen) {
+    if (!id) return null;
+    var u = Array.isArray(uitslagen) ? uitslagen : [];
+    var fout = u.filter(function (x) { return x && x.staat === 'FOUT'; }).length;
+    var letop = u.filter(function (x) { return x && x.staat === 'LET OP'; }).length;
+    var goed = u.filter(function (x) { return x && x.staat === 'ok'; }).length;
+    _gedaan[id] = {
+      staat: fout ? 'fout' : (letop ? 'let op' : (u.length ? 'ja' : 'wacht')),
+      tijd: Date.now(), aantal: u.length, goed: goed
+    };
+    return _gedaan[id];
+  }
+
+  function gedaan(id) {
+    if (id) return _gedaan[id] ? Object.assign({}, _gedaan[id]) : null;
+    return JSON.parse(JSON.stringify(_gedaan));
+  }
+
   /* De sensoren van de opdracht aanzetten. Apart van haal(), want ophalen is
      iets anders dan ingrijpen in wat er gemeten wordt — en de testrun bepaalt
      zelf wanneer dat mag. Geeft terug wat er werkelijk bijkwam. */
@@ -362,6 +469,11 @@
   window.PLOpdracht = {
     keur: keur,
     haal: haal,
+    lijst: lijst,
+    kies: kies,
+    noteer: noteer,
+    gedaan: gedaan,
+    gelijst: function () { return _opdrachten ? JSON.parse(JSON.stringify(_opdrachten)) : null; },
     zetSensoren: zetSensoren,
     meet: meet,
     toggleAan: toggleAan,
