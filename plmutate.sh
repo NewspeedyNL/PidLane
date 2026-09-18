@@ -837,6 +837,7 @@ MUTATIES=(
 "public/pidlane-meetkamer.js@@    return veilig(String(v == null ? '' : v).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"\\\\'\"));@@    return veilig(String(v == null ? '' : v));@@test-meetkamer.js@@een apostrof in een Airtable-id breekt de onclick van de keuzeknop"
 "worker.js@@  const alle = new URL(request.url).searchParams.get(\"alle\") === \"1\";@@  const alle = false;@@test-opdrachtroute.js@@?alle=1 geeft nog steeds alleen de actieve rij: de keuzeknoppen tonen er altijd maar een"
 "worker.js@@        opdracht: ruw2.length > 8192 ? \"\" : ruw2,@@        opdracht: ruw2,@@test-opdrachtroute.js@@een opdracht van een megabyte gaat alsnog de telefoon in voordat iemand hem afkeurt"
+"public/pidlane-testrun.js@@      var baan = PLMeetkamer.ronde(s);@@      var baan = PLMeetkamer.issuebaan(s);@@test-meetkamer.js@@de blok-5-proef roept een functie aan die na de hernoeming niet meer bestaat — precies de regressie die op 18-09 19:53 op productie stond"
 )
 
 echo
