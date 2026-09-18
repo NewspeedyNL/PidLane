@@ -86,8 +86,10 @@ function toets(naam, waar, uitleg) {
     toets('en hangt in de testrunoverlay', p.inOverlay, JSON.stringify(p));
     toets('vóór het logboek', p.voorHetLog, JSON.stringify(p));
     toets('in een EIGEN element, los van #testrunBody', p.eigenElement, JSON.stringify(p));
-    toets('met de vier stations erin',
-      /Opdracht binnen/.test(p.tekst) && /De rit meet/.test(p.tekst), p.tekst);
+    toets('met de lus erin', /Opdracht/.test(p.tekst) && /Airtable/.test(p.tekst), p.tekst.slice(0, 160));
+    // De stijl hoort in de <head> en niet in het paneel: anders parseert de
+    // browser elke seconde hetzelfde stijlblok opnieuw.
+    toets('en zonder het stijlblok in de inhoud', !/@keyframes/.test(p.tekst), p.tekst.slice(0, 80));
 
     console.log('\n3. De testrun gooit het paneel niet weg als hij boekt');
     // DIT IS DE DUURSTE FOUT DIE DEZE PROEF KAN VANGEN. _teken() zet
@@ -111,24 +113,62 @@ function toets(naam, waar, uitleg) {
     toets('en staat er na een hertekening van het logboek nog steeds', na.na, JSON.stringify(na));
     toets('met zijn inhoud intact', na.nogSteedsGevuld, JSON.stringify(na));
 
-    console.log('\n4. De issuebaan komt uit de echte lijst van blok 5');
-    const baan = JSON.parse(await app.ev(`(function(){
+    console.log('\n4. "Deze ronde" blijft klein en wordt afgeleid');
+    // DE BEVINDING VAN 18-09: het scherm toonde 43 chips, waarvan vijf naar
+    // hoofdstukken uit PIDLANE.md verwezen. Hier wordt met de ECHTE lijst van
+    // blok 5 gemeten dat die muur weg is — en dat is iets wat node niet kan
+    // zeggen, want daar bestaat PROEVEN_B5 niet.
+    const r = JSON.parse(await app.ev(`(function(){
       var s = PLMeetkamer.momentopname();
-      var b = PLMeetkamer.issuebaan(s);
+      var r = PLMeetkamer.ronde(s);
+      var alle = PLTestrunLive.proeven();
       return JSON.stringify({
-        aantal: b.length,
-        issues: b.map(function(x){ return x.issue; }).slice(0, 12),
-        // elk issue in de baan moet ook in de echte lijst staan: de baan mag
-        // niets verzinnen dat blok 5 niet dekt
-        allemaalEcht: b.every(function(x){
-          return PLTestrunLive.proeven().some(function(p){ return p.issue === x.issue; })
+        gedekt: alle.length,
+        chips: r.deze.length,
+        bewaking: r.bewaking,
+        delen: r.delen,
+        issues: r.deze.map(function(x){ return x.issue; }),
+        alleenIssues: r.deze.every(function(x){ return /^#[0-9]+$/.test(x.issue); }),
+        allemaalEcht: r.deze.every(function(x){
+          return alle.some(function(p){ return p.issue === x.issue; })
               || (s.opdracht && s.opdracht.proeven.some(function(p){ return p.issue === x.issue; }));
-        })
+        }),
+        htmlChips: (PLMeetkamer.html(s).match(/class="mk-chip"/g) || []).length
       });
     })()`));
-    toets('de baan is niet leeg', baan.aantal > 0, JSON.stringify(baan));
-    toets('en bevat alleen issues die echt in de lijst staan', baan.allemaalEcht, JSON.stringify(baan));
-    toets('zonder de plaatshouder "—"', baan.issues.indexOf('—') === -1, JSON.stringify(baan.issues));
+    toets('de echte lijst dekt veel issues', r.gedekt > 40, JSON.stringify(r));
+    toets('maar het scherm toont er hoogstens een handvol', r.chips <= 6,
+      r.chips + ' chips bij ' + r.gedekt + ' gedekte proeven — de muur van 18-09 is terug');
+    toets('de rest wordt geteld als bewaking', r.bewaking > 0, JSON.stringify(r));
+    toets('hoofdstukken (§) worden apart geteld', r.delen > 0, JSON.stringify(r));
+    toets('en staan niet als chip op het scherm', r.alleenIssues, JSON.stringify(r.issues));
+    toets('er staat niets op dat in geen enkele lijst staat', r.allemaalEcht, JSON.stringify(r.issues));
+    toets('de getekende HTML bevat evenveel chips als berekend', r.htmlChips === r.chips,
+      r.htmlChips + ' getekend, ' + r.chips + ' berekend');
+
+    console.log('\n4b. De gereedschapslade zit achter een knop');
+    const la = JSON.parse(await app.ev(`(function(){
+      var la = document.getElementById('trGereedschap');
+      if (!la) return JSON.stringify({ erIs: false });
+      var dicht = getComputedStyle(la).display;
+      testrunGereedschap();
+      var na = getComputedStyle(la).display;
+      var knop = (document.getElementById('trMeerBtn') || {}).textContent;
+      testrunGereedschap();
+      return JSON.stringify({
+        erIs: true, dicht: dicht, na: na, knop: knop,
+        weerDicht: getComputedStyle(la).display,
+        knoppen: la.querySelectorAll('button').length
+      });
+    })()`));
+    toets('de lade bestaat', la.erIs, JSON.stringify(la));
+    toets('en staat dicht als het scherm opengaat', la.dicht === 'none', JSON.stringify(la));
+    toets('de knop klapt hem open', la.na === 'flex', JSON.stringify(la));
+    toets('en zegt dan zijn eigen stand', la.knop === '✕', JSON.stringify(la));
+    toets('nog een keer drukken sluit hem', la.weerDicht === 'none', JSON.stringify(la));
+    // NIETS IS WEG, ALLEEN VERPLAATST. Wat je een keer per maand gebruikt
+    // (de kaartmaker, de snelheidsproef) moet je nog steeds kunnen vinden.
+    toets('alle oude knoppen zitten er nog in', la.knoppen >= 12, la.knoppen + ' knoppen');
 
     console.log('\n5. Het paneel verschuift de opmaak van de app niet');
     // Dezelfde les als bij de previewbanner (#242): een paneel dat de app
@@ -189,7 +229,11 @@ function toets(naam, waar, uitleg) {
       d.innerHTML = h;
       return JSON.stringify({
         geenImg: d.querySelectorAll('img').length === 0,
-        geenB: d.querySelectorAll('b').length === 0,
+        // Niet "staat er ergens een <b>" — het paneel gebruikt er zelf. De
+        // vraag is of de <b> UIT DE TABEL een element werd: staat er een
+        // element met precies die tekst erin, dan is de opmaak uitgevoerd.
+        geenB: Array.prototype.slice.call(d.querySelectorAll('b,i,em,strong'))
+                 .every(function(el){ return el.textContent.trim() !== 'vet'; }),
         nietUitgevoerd: !window.__stout,
         leesbaar: /vet/.test(d.textContent)
       });
