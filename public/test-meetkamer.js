@@ -249,10 +249,20 @@ console.log('\n6. de issuebaan wordt afgeleid, niet bijgehouden');
   toets('een ok-regel kleurt zijn issue groen', bij('#228').staat === 'ja', bij('#228').staat);
   toets('rood staat vooraan in de baan', baan[0].issue === '#241', baan[0].issue);
 
-  // REGELS VAN EEN ANDER BLOK TELLEN NIET MEE. Blok 14 boekt ook namen; als
-  // die zouden meetellen, kleurt een issue op het werk van een ander blok.
-  toets('een regel uit blok 14 raakt de baan niet',
-    baan.every(function (b) { return b.proeven.every(function (p) { return p.naam !== 'Is er gereden?'; }); }));
+  // REGELS VAN EEN ANDER BLOK TELLEN NIET MEE, EN DAT MOET BLIJKEN UIT EEN
+  // BOTSING. Een blok-14-regel met een naam die níét in de lijst staat, wordt
+  // sowieso genegeerd — die bewijst dus niets over de blokfilter. Alleen een
+  // regel met DEZELFDE naam als een blok-5-proef laat zien of de filter iets
+  // doet: zonder filter overschrijft blok 14 hier het oordeel van blok 5.
+  const botsing = M.issuebaan({
+    proeven: [{ issue: '#241', naam: 'De meetopdracht van buiten is uitgevoerd' }],
+    log: [
+      { blok: 5, naam: 'De meetopdracht van buiten is uitgevoerd', staat: 'FOUT' },
+      { blok: 14, naam: 'De meetopdracht van buiten is uitgevoerd', staat: 'ok' }
+    ]
+  });
+  toets('een blok-14-regel overschrijft het oordeel van blok 5 niet',
+    botsing[0].staat === 'fout', botsing[0].staat);
 
   // DE AFLEIDING MOET BREKEN ALS DE KOPPELING BREEKT. Dit is de toets die
   // "geen tweede lijst" waar houdt: verandert de naam waarmee blok 5 boekt,
@@ -262,13 +272,25 @@ console.log('\n6. de issuebaan wordt afgeleid, niet bijgehouden');
     scheef.every(function (b) { return b.staat === 'wacht'; }),
     JSON.stringify(scheef.map(function (b) { return b.issue + '=' + b.staat; })));
 
-  // Eén issue met twee proeven: de zwaarste uitkomst wint.
+  // EÉN ISSUE MET MEER PROEVEN: DE ZWAARSTE WINT, NIET DE LAATSTE.
+  // De volgorde is hier het bewijs. Staat de FOUT vooraan en de ok erachter,
+  // dan geeft "de laatste wint" groen en "de zwaarste wint" rood — alleen zó
+  // laat deze toets zien welke van de twee er in de code staat. Andersom
+  // geven ze allebei rood en bewijst hij niets.
   const twee = M.issuebaan({
     proeven: [{ issue: '#217', naam: 'a' }, { issue: '#217', naam: 'b' }],
-    log: [{ blok: 5, naam: 'a', staat: 'ok' }, { blok: 5, naam: 'b', staat: 'FOUT' }]
+    log: [{ blok: 5, naam: 'a', staat: 'FOUT' }, { blok: 5, naam: 'b', staat: 'ok' }]
   });
-  toets('half goed is niet goed', twee[0].staat === 'fout', twee[0].staat);
+  toets('half goed is niet goed, ook als de goede proef als laatste komt',
+    twee[0].staat === 'fout', twee[0].staat);
   toets('en beide proeven hangen eronder', twee[0].proeven.length === 2);
+
+  // Dezelfde vraag met LET OP erachter: die mag een FOUT ook niet verzachten.
+  const zacht = M.issuebaan({
+    proeven: [{ issue: '#217', naam: 'a' }, { issue: '#217', naam: 'b' }],
+    log: [{ blok: 5, naam: 'a', staat: 'FOUT' }, { blok: 5, naam: 'b', staat: 'LET OP' }]
+  });
+  toets('een LET OP erna verzacht een FOUT niet', zacht[0].staat === 'fout', zacht[0].staat);
 
   // De opdracht van buiten levert eigen issues aan, en die zijn herkenbaar.
   const vanBuiten = M.issuebaan({
