@@ -11,6 +11,39 @@
 
  ═══════════════════════════════════════════════════════════
      PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-18a (CET) — DE LUS IN BEELD
+
+       • 🔬 HET TESTRUNSCHERM IS HERBOUWD. Bovenaan staat nu
+         de lus zelf: welke meetopdracht uit Airtable
+         binnenkwam, of de rit hem meet, of het antwoord de
+         logtabel weer haalde, en of er buiten de app iets
+         te lezen valt. Vier tegels, elk met een echte bron
+         eronder.
+
+       • 📊 ELKE PROEF HEEFT EEN BALK. Per proef uit de
+         opdracht zie je tijdens de rit waar de meting in
+         zijn band staat — de band beslaat altijd het
+         middelste stuk, dus twee proeven zijn naast elkaar
+         te lezen zonder de assen erbij. Niet gemeten tekent
+         géén balk: dat is iets anders dan nul.
+
+       • 🎯 DE ISSUES STAAN EROP. Waar deze rit aan werkt,
+         als chips die meekleuren zodra blok 5 zijn oordeel
+         boekt. Die lijst wordt afgeleid uit de proeven en
+         de opdracht — niet met de hand bijgehouden.
+
+       • WAAROM. De rit van 18-09 stond stil, en dat bleek
+         pas achteraf uit een FOUT-regel tussen 130 andere,
+         terwijl de opdracht daar een proef voor droeg. Nu
+         is dat tijdens de rit te zien.
+
+       • HET SCHERM MEET ZELF NIETS. De balk en de FOUT-regel
+         in het verslag komen uit dezelfde aanroep. Blok 5
+         legt die twee elke run naast elkaar en meldt het
+         als ze uit elkaar lopen (#246).
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
      Build: 2026-09-17j (CET) — EEN TAK RIJDEN ZONDER
      HEM LIVE TE ZETTEN
 

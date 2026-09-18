@@ -913,6 +913,67 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### De lus werkte maar was onzichtbaar, en dat kostte een rit (#246, 18-09-2026)
+
+Sinds #241 en #235 loopt er een lus: een meetopdracht komt als DATA uit
+Airtable binnen, de rit meet hem, de uitslagen gaan met naam en al terug de
+logtabel in, en daarbuiten wordt dat gelezen. Op 18-09 kwam die lus voor het
+eerst helemaal rond — run `2026-09-18-0807`, opdracht "Boordspanning tijdens
+de rit" (#217), drie proeven gemeten, drie uitslagen terug in de tabel.
+
+**En toch leverde die rit geen antwoord op.** De auto stond stil: `010D max =
+0`, terwijl de opdracht 20–200 km/u verwachtte. Blok 5 meldde dat keurig als
+FOUT — ná afloop, tussen 130 andere regels, in een verslag dat op een telefoon
+gelezen wordt.
+
+De opdracht *wist* dat al tijdens de rit. `PLRit.per()` had na de eerste tik al
+`010D max = 0` staan en `PLOpdracht.meet()` kon daar op elk moment een oordeel
+over geven. Er was alleen niets dat het lét zien. Wie de testrun opende kreeg
+een muur van knoppen en daaronder een platte regenlijst.
+
+**Wat daarop gebouwd is.** `pidlane-meetkamer.js` tekent bovenin het
+testrunscherm vier stations — opdracht binnen, de rit meet, naar Airtable,
+Claude leest — plus een balk per proef en een baan met de issues waar de rit
+aan werkt.
+
+**De ontwerpregel die dit stuurt, en waarom hij hier hard is.** Het scherm
+meet zelf niets. Geen eigen bandlogica, geen eigen telling, geen eigen lijst
+issues. De balk en de FOUT-regel in het verslag komen uit dezelfde aanroep van
+`PLOpdracht.meet()`; de issuebaan wordt afgeleid uit `PROEVEN_B5` en de
+opdracht, gekoppeld op de naam waarmee blok 5 boekt.
+
+Dat is geen netheid. Een scherm met een eigen kopie van het oordeel loopt uit
+de pas met het oordeel zelf, en wijst dan groen aan waar het verslag rood
+zegt — en dan stop je met het verslag lezen. Dat is dezelfde vorm als
+`test-healthgate.js` (maanden groen op een functie die de app niet had) en als
+de twee lijsten van `PIDLANE-WERK.md`, maar dan op de plek waar je kijkt.
+Blok 5 legt de twee daarom elke run naast elkaar: lopen ze uit elkaar, dan is
+dat een FOUT met de naam van de proef erbij.
+
+**Twee dingen die het bouwen zelf opleverde.**
+
+1. `PLOpdracht.meet()` gaf alleen `staat` en `detail` terug. Het scherm had de
+   getallen nodig en die stonden alleen in de detailtekst — terugparsen zou een
+   tweede plek met dezelfde betekenis zijn. De uitslag draagt nu ook `waarde`,
+   `lo`, `hi` en `n`, op élk pad, ook het niet-gemeten pad. Daar is `waarde`
+   null en niet 0, want een scherm dat dat verschil moet raden vult het zelf in.
+2. `Number(null)` is nul. Daardoor werd een opdracht zonder band stil een band
+   van 0 tot 0, en stond de meting keurig in het midden van iets dat niet
+   bestond. Gevonden door `test-meetkamer.js` voordat het een rit kostte — dit
+   is precies de stille fout waar zo'n toets voor bedoeld is.
+
+**Twee toetsen kwamen door `plmutate.sh` heen**, en beide klopten wel maar
+bewezen niets. De blok-14-regel in de issuebaan-toets droeg een naam die toch
+al niet in de lijst stond, dus de blokfilter kon niet blijken; en de FOUT stond
+als laatste in de volgordetoets, waardoor "de laatste wint" en "de zwaarste
+wint" hetzelfde antwoord gaven. Dat is de vraag uit CLAUDE.md die elke toets
+moet doorstaan: *welke fout zou hier rood worden, en welke glipt erdoor?*
+
+**Wat dit niet oplost.** Het scherm toont wat de app meet, niet wat de auto
+doet. Dat `010D` op nul staat kan ook een adapter zijn die de snelheid niet
+levert; de meetkamer zegt alleen dát de meting buiten de band valt, en dat is
+precies zover als de gegevens reiken.
+
 ### De labelpoort keek naar de verkeerde testrun (#238, 17-09-2026)
 
 Een PR die rood stond is die middag automatisch samengevoegd, en dus

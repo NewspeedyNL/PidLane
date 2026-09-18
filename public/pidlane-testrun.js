@@ -2604,6 +2604,66 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── zegt het scherm hetzelfde als het verslag? (#246, 18-09-2026) ──
+  // De meetkamer tekent de lus terwijl hij loopt. Dat is nuttig zolang hij
+  // hetzelfde zegt als dit verslag, en gevaarlijk zodra dat niet meer zo is:
+  // een scherm dat groen wijst waar blok 5 rood zegt, laat je stoppen met
+  // lezen. Precies de vorm van test-healthgate.js, maar dan waar je naar kijkt.
+  //
+  // test-meetkamer.js toetst de afleiding zonder browser en bproef-meetkamer.js
+  // toetst dat het paneel er werkelijk in hangt. Wat allebei NIET kunnen is dit:
+  // tijdens een échte rit, op de échte meetwaarden, geven de twee dan nog
+  // steeds hetzelfde oordeel? Dat is wat hier gemeten wordt, en het is
+  // goedkoop — beide kanten zijn al berekend.
+  {
+    issue: '#246',
+    naam: 'Het scherm en het verslag geven hetzelfde oordeel',
+    waarom: 'Een tegel die groen wijst waar het verslag rood zegt, is erger dan geen tegel: je stopt met het verslag lezen en meet daarna maanden naast.',
+    proef: async function () {
+      if (!window.PLMeetkamer)
+        return { staat: 'FOUT', detail: 'PLMeetkamer ontbreekt — pidlane-meetkamer.js hangt niet in index.html, dus de lus is tijdens de rit onzichtbaar (#246)' };
+
+      var s = null;
+      try { s = PLMeetkamer.momentopname(); }
+      catch (e) { return { staat: 'FOUT', detail: 'het scherm kon zijn bronnen niet lezen: ' + ((e && e.message) || e) }; }
+
+      if (!s.opdracht)
+        return { staat: 'LET OP', detail: 'geen opdracht geladen, dus er valt hier niets naast elkaar te leggen — ' +
+          'het scherm meldt: ' + (s.reden || 'onbekend') };
+
+      // DE VERGELIJKING. Beide kanten komen uit PLOpdracht.meet(), dus ze
+      // HOREN gelijk te zijn — en juist daarom is een verschil hier een harde
+      // bevinding en geen ruis: het betekent dat er ergens een tweede oordeel
+      // is ontstaan.
+      var scheef = [];
+      s.uitslagen.forEach(function (u) {
+        var m = PLMeetkamer.meter(u);
+        if (m.staat !== u.staat) { scheef.push(u.naam + ': verslag ' + u.staat + ', scherm ' + m.staat); return; }
+        // Een balk zonder waarde en een oordeel mét waarde horen niet samen.
+        var heeftWaarde = (u.waarde !== null && u.waarde !== undefined);
+        if (heeftWaarde && m.pos === null) scheef.push(u.naam + ': er is ' + u.waarde + ' gemeten maar het scherm tekent geen balk');
+        if (!heeftWaarde && m.pos !== null) scheef.push(u.naam + ': niets gemeten maar het scherm tekent wél een balk op ' + m.pos);
+      });
+
+      if (scheef.length)
+        return { staat: 'FOUT', detail: scheef.length + ' proef/proeven worden op het scherm anders getoond dan hier geboekt: ' +
+          scheef.join(' | ') + ' — er is een tweede oordeel ontstaan' };
+
+      // De issuebaan mag niets tonen dat blok 5 niet dekt.
+      var baan = PLMeetkamer.issuebaan(s);
+      var bekend = {};
+      s.proeven.forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
+      (s.opdracht.proeven || []).forEach(function (p) { if (p.issue) bekend[p.issue] = 1; });
+      var verzonnen = baan.filter(function (b) { return !bekend[b.issue]; }).map(function (b) { return b.issue; });
+      if (verzonnen.length)
+        return { staat: 'FOUT', detail: 'de issuebaan toont ' + verzonnen.length + ' issue(s) die in geen enkele lijst staan: ' +
+          verzonnen.join(', ') + ' — dat is een tweede lijst aan het ontstaan' };
+
+      return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + baan.length +
+        ' issue(s) staan op het scherm precies zoals ze hier geboekt worden' };
+    }
+  },
+
   // ── de meetopdracht van buiten (#241, 17-09-2026) ──
   // De lus: de testrun schrijft tijdens de rit naar de logtabel, die tabel
   // wordt buiten de app gelezen, en daaruit volgt een volgende meting. Zonder
@@ -7552,6 +7612,9 @@ function openTestrun() {
         '<span style="font-size:11px;color:var(--tx3)">' + TESTRUN_VERSIE + '</span>' +
         '<button onclick="closeTestrun()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:7px 14px;font:600 12px var(--f);cursor:pointer">Sluiten</button>' +
       '</div>' +
+      // HET PANEEL VAN DE MEETKAMER KOMT HIER TUSSEN (#246). Het wordt door
+      // pidlane-meetkamer.js zelf ingehangen vóór #testrunBody, zodat de twee
+      // niet in hetzelfde element schrijven.
       '<div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
         // De begeleide run staat vooraan: hij is sinds 6.0 de manier waarop een
         // meetrit hoort te lopen. "Start" ernaast blijft voor wie alleen even
@@ -7595,6 +7658,11 @@ function openTestrun() {
   }
   ov.style.display = 'flex';
   _teken();
+  // De meetkamer ververst zichzelf elke seconde zolang dit scherm open staat
+  // (#246). Ontbreekt de module, dan draait de testrun gewoon door zoals
+  // hiervoor — het paneel is een venster op de lus, geen onderdeel ervan.
+  try { if (window.PLMeetkamer) PLMeetkamer.start(); }
+  catch (e) { console.warn('De meetkamer is niet gestart — de testrun werkt verder normaal (#246)', e); }
 }
 // ══════════════════════════════════════════════════════════════════
 // BLOK 15 — DE DATAPUNTENKAART
@@ -7754,7 +7822,14 @@ function _voortgangKaart(st) {
 
 window.kaartStart = kaartStart;
 
-function closeTestrun() { const ov = document.getElementById('testrunOv'); if (ov) ov.style.display = 'none'; }
+function closeTestrun() {
+  const ov = document.getElementById('testrunOv');
+  if (ov) ov.style.display = 'none';
+  // De tikker van de meetkamer moet mee uit: een verversing die doorloopt op
+  // een verborgen scherm kost accu en meet niets (#246).
+  try { if (window.PLMeetkamer) PLMeetkamer.stop(); }
+  catch (e) { console.warn('De meetkamer is niet gestopt — hij blijft dan ververen op een gesloten scherm (#246)', e); }
+}
 
 function _teken() {
   const box = document.getElementById('testrunBody');
@@ -7883,7 +7958,27 @@ window.PLTestrunLive = {
   ritId: _liveRitId,
   tik: _liveTik,
   einde: _liveEinde,
-  schema: LIVE_SCHEMA
+  schema: LIVE_SCHEMA,
+
+  /* ── WAT DE MEETKAMER MAG LEZEN (#246, 18-09-2026) ───────────────
+     Het scherm dat de lus tekent heeft drie dingen nodig die hier binnen de
+     IIFE staan: welke issues deze ronde gedekt worden, wat er tot nu toe
+     geboekt is, en of er nog iets loopt.
+
+     Dit zijn UITLENINGEN en geen kopieën, en dat is het hele punt. De
+     meetkamer mag geen eigen lijstje issues bijhouden en geen eigen telling
+     van wat er goed ging — dat is exact de vorm die §11 en PIDLANE-WERK.md
+     de kop kostte: twee lijsten van hetzelfde die uit de pas lopen. Komt er
+     een proef bij in PROEVEN_B5, dan staat hij vanzelf op het scherm.
+
+     `proeven()` geeft alleen de METADATA terug, niet de proeffuncties: het
+     scherm moet ze tonen, niet draaien. Draaien doet blok 5. */
+  proeven: function () {
+    return PROEVEN_B5.map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom }; });
+  },
+  log: function () { return _trLog.slice(); },
+  bezig: function () { return !!_trBezig; },
+  campagne: function () { return CAMPAGNE.titel; }
 };
 
 window.openTestrun = openTestrun;
