@@ -367,8 +367,12 @@ toets('en github-script praat met dát token, niet met GITHUB_TOKEN',
 toets('de workflow haalt de basis zelf binnen bij achterstand',
       /if \(b\.bijwerken\)/.test(wf) && /pulls\.updateBranch/.test(wf),
       'zonder dit rekent het besluit iets uit waar niets mee gebeurt');
-toets('en doet dat met expected_head_sha',
-      /expected_head_sha/.test(wf),
+// LET OP DE VORM. Hier stond `/expected_head_sha/.test(wf)`, en dat was groen
+// terwijl de mutatie het veld uit de aanroep haalde: het woord staat óók in de
+// uitleg erboven. Dezelfde fout als de wake-lock-toets uit #18, die zijn eigen
+// commentaar las. De aanroep zelf is wat telt.
+toets('en doet dat met expected_head_sha in de aanroep zelf',
+      /pulls\.updateBranch\(\{[\s\S]{0,200}?expected_head_sha/.test(wf),
       'anders werkt hij een commit bij die deze run niet beoordeeld heeft');
 
 const tests = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/tests.yml'), 'utf8');
