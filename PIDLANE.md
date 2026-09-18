@@ -913,6 +913,65 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### Waarom het verslag te vaak iets verkeerds concludeerde (18-09-2026)
+
+Na tien ritten kwam de klacht die dit hoofdstuk verdient: *te vaak verkeerde
+conclusies.* Dat bleek geen indruk maar twee aanwijsbare oorzaken, allebei
+gevonden door de twee runs van die avond naast elkaar te leggen.
+
+**1. De tweede begeleide ronde wist de markeringen van de eerste.** De
+bedoelde volgorde is meetrit (🧭), testrun, toestelronde (📱), testrun — zo
+staat hij in `CAMPAGNE`. Maar `begeleidStart()` doet `_markeringen = []`, en
+dat is één lijst voor de hele sessie. De run van 19:47 zag netjes `markering
+om 19:44:27`; de run van 19:53, na de toestelronde, meldde *"geen
+achtergrondmarkering — de achtergrondstap van de meetrit is niet gedaan"*.
+
+Die laatste zin is een uitspraak over de rit, en hij was onwaar. Acht
+aanroepplekken lezen `_markeringen` — twee voor #18, twee in de oogst van de
+begeleide ronde, twee voor split-screen (#228) en twee voor de losse adapter
+(#133) — en alle acht vallen na een tweede ronde terug op hun "niet
+gedaan"-tak. Uitgerekend de tweede run is de betere meting: tien minuten tegen
+vier, 93 monsters tegen 35. Wie het boekje volgt, gooit dus het bewijs weg dat
+hij net verzameld heeft.
+
+Dat de tekst zo stellig is, maakt het erger dan een leeg veld. *"Deze ronde
+heeft er geen"* had geklopt. Het verschil tussen niet-waargenomen en
+niet-aangeboden is precies waar #227 over gaat, en hier kost het een rit.
+
+**2. De logtabel vertelt een ander verhaal dan de app.** Sinds #241 is die
+tabel niet meer een archief maar de bron waarop de volgende meetopdracht
+gebouwd wordt — en wie hem van buiten leest, leest hem zonder de app eromheen.
+Drie dingen die binnen de app niet opvallen en erbuiten misleiden:
+
+- Blok 5 voedt met opzet 300 °C en 200 °C in om te zien of laag 1 ze
+  tegenhoudt. `validateAndSmooth()` schrijft ze ook wég, en die regels staan bij
+  élke run in de tabel — `Koelwater temp: 300°C buiten fysiek bereik` op een
+  auto die 91–93 °C loopt. `_zonderSporen()` is hier al voor gebouwd en zet de
+  tellers netjes terug, maar zijn markering gaat via `log(..., 'info')` en
+  `log()` stuurt alleen `err` en outlier-achtige regels door. **De markering
+  blijft dus op het toestel en de vervalsing reist.** De aanname in het
+  commentaar boven `_zonderSporen` — *de logregels mogen blijven staan, er staat
+  een markering omheen* — geldt voor de app-log en niet voor de logtabel.
+- Elke gebeurtenis bij een harde limiet levert twee rijen op: één uit de
+  expliciete `logToSheets('outlier', …)` en één doordat `log()` de `⚠`-regel
+  óók doorstuurt. Elke telling over de tabel telt dubbel.
+- `AT_KOLOMMEN` kent `RecordType`, `SessionId`, `Adapter` en `Model`, maar
+  alleen `_liveSchrijf()` in de testrun geeft ze mee. Alles wat de app zelf
+  logt komt dus binnen zonder sessienummer: **61 rijen in drie dagen**,
+  waaronder de verbindingsregels en de uitschieters van de rit zelf. De
+  conclusies van de testrun en het bewijs eronder zijn daardoor niet aan elkaar
+  te knopen. Dat `Adapter` leegstaat terwijl de adapter dé variabele is in #217
+  en #254, is daarvan het duurste voorbeeld: welke adapter erin zat moest uit
+  een tekstregel van blok 12 gevist worden.
+
+**De vorm die deze twee delen, en die hier vaker terugkomt.** Geen van beide
+geeft een fout. Er verdwijnt bewijs, of er komt bewijs bij dat er niet hoort, en
+in allebei de gevallen blijft het verslag er even stellig uitzien. Dat is
+dezelfde vorm als #29, als de app-log die tot #72 stil afkapte, en als de twee
+lijsten die `PIDLANE-WERK.md` de kop kostten. **Een bron die stil iets anders
+oplevert dan hij belooft, is hier de duurste fout die er is** — want elke
+conclusie erboven blijft kloppen op papier.
+
 ### De lus liep rond, en toen was de bewaker zelf de rode regel (18-09-2026)
 
 Twee runs op één rit — `2026-09-18-1947` en `2026-09-18-1953`, versie 7.8 op
