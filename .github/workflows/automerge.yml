@@ -99,6 +99,31 @@ jobs:
       # Vandaar de vaste ref. De regels komen van de standaardbranch, de PR
       # levert alleen feiten. Wie deze regel ooit weghaalt of op iets anders
       # zet, haalt die eigenschap weg.
+      # HET TOKEN, EN WAAROM NIET GITHUB_TOKEN — 18-09-2026 (#238)
+      # GitHub start geen workflows voor pushes die met de standaard
+      # GITHUB_TOKEN gedaan zijn; dat is zijn rem tegen oneindige lussen. Dat
+      # kostte twee dingen tegelijk:
+      #
+      #   - deze workflow kon de basis niet zelf binnenhalen, want de
+      #     bijgewerkte branch zou nooit getoetst worden. Dus drukte een mens
+      #     op "Update branch" en wachtte vier minuten, en in die vier minuten
+      #     landde de volgende PR en was hij weer verlopen. Dát is de tredmolen
+      #     waar de mergeconflicten uit kwamen;
+      #   - en een automerge leverde geen Tests-run op `main`.
+      #
+      # Een token van een GitHub App heeft die rem niet. Beide gaten sluiten
+      # daarmee in één wissel.
+      #
+      # Ontbreken de secrets, dan faalt deze stap en voegt de workflow NIETS
+      # samen. Dat is met opzet de goede kant om om te vallen: er gaat niets
+      # verkeerds live, en je ziet het meteen.
+      - name: Token van de PidLane-app
+        id: app
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          app-id: ${{ secrets.PL_APP_ID }}
+          private-key: ${{ secrets.PL_APP_PRIVATE_KEY }}
+
       - name: Checkout (de regels van de standaardbranch, niet die van de PR)
         uses: actions/checkout@v4.2.2
         with:
@@ -107,6 +132,7 @@ jobs:
       - name: Beslis en voer uit
         uses: actions/github-script@v7.0.1
         with:
+          github-token: ${{ steps.app.outputs.token }}
           script: |
             const { besluit, meldtekst, testsGroenUitRuns, LABEL_KLAAR } =
               require(`${process.env.GITHUB_WORKSPACE}/automerge-besluit.js`);
@@ -235,6 +261,30 @@ jobs:
                 achterstand: achterstand,
                 baseRef:     pr.base.ref
               });
+
+              // DE BASIS BINNENHALEN. Tot 18-09-2026 stond hier alleen een melding
+              // met "druk op Update branch". Met het App-token kan het hier, en
+              // start die push wél een testrun — die run komt langs de
+              // workflow_run-ingang weer hier terug, dan met achterstand nul.
+              //
+              // expected_head_sha is geen formaliteit: is er intussen op de
+              // branch gepusht, dan faalt dit liever dan dat het een commit
+              // bijwerkt die we niet beoordeeld hebben.
+              if (b.bijwerken) {
+                try {
+                  await github.rest.pulls.updateBranch({
+                    owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha
+                  });
+                  core.notice(`${naam}: ${b.reden} — basis binnengehaald, de nieuwe testrun beslist.`);
+                } catch (e) {
+                  // Meestal een conflict, of de head is verschoven. Allebei
+                  // iets waar een mens bij moet, dus dit is het ene geval waar
+                  // achterstand nog wél meldt.
+                  core.warning(`${naam}: de basis binnenhalen mislukte (${e.message}).`);
+                  await meld(pr, Object.assign({}, b, { sleutel: 'bijwerken-mislukt' }));
+                }
+                continue;
+              }
 
               if (!b.samenvoegen) {
                 core.info(`${naam}: ${b.reden} — niet samengevoegd.`);

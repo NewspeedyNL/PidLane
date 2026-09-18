@@ -213,13 +213,37 @@ console.log('\n5. De basis mag niet zijn opgeschoven (de nieuwe poort)');
 // elkaar; de rico-test-PR's 17.
 const achter = besluit(pr({ achterstand: 3 }));
 toets('base loopt voor → niet samenvoegen', achter.samenvoegen === false, achter.reden);
-toets('en dat moet op de PR, want er is werk te doen', achter.melden === true);
 toets('de reden noemt hoeveel commits', /3 commit/.test(achter.reden), achter.reden);
-toets('de melding legt uit waarom de workflow niet zelf bijwerkt',
-      /GITHUB_TOKEN/.test(meldtekst(achter)),
-      'anders lijkt het luiheid in plaats van de rem van GitHub tegen lussen');
+
+// HERZIEN OP 18-09-2026 (#238). Hier stond dat dit geval op de PR gemeld moet
+// worden, met een tekst die uitlegde waarom de workflow niet zelf bijwerkte.
+// Sinds het App-token doet hij dat wél, en dan is een melding vals alarm: er
+// valt niets te doen.
+toets('de basis wordt binnengehaald', achter.bijwerken === true,
+      'zonder dit blijft de PR wachten op een mens die op Update branch drukt');
+toets('en er komt geen melding bij, want er valt niets te doen',
+      achter.melden === false,
+      'een bot die meldt wat hij zelf al oplost, is een bot die niemand meer leest');
+
+// De andere kant: alleen wie af verklaard is wordt bijgewerkt. Deze poort staat
+// achter de klaar-poort, en dat is wat de lus begrenst.
+toets('een PR zonder `' + LABEL_KLAAR + '` wordt niet bijgewerkt',
+      besluit(pr({ labels: [], achterstand: 3 })).bijwerken === false,
+      'anders werkt de bot takken bij die niemand af heeft verklaard');
+toets('een PR met een conflict wordt niet bijgewerkt',
+      besluit(pr({ mergeable: false, achterstand: 3 })).bijwerken === false,
+      'daar moet een mens bij; bijwerken zou hier toch falen');
+
+// En de tekst die overblijft: alleen voor het geval het bijwerken MISLUKT.
+const mislukt = meldtekst(Object.assign({}, achter, { sleutel: 'bijwerken-mislukt' }));
+toets('de melding bij een mislukt bijwerken noemt Update branch',
+      /Update branch/.test(mislukt), mislukt.slice(0, 80));
+toets('en zet er geen undefined in',
+      mislukt.indexOf('undefined') < 0,
+      'het besluit draagt geen baseRef, dus die mag de tekst niet noemen');
 
 toets('achterstand 0 blokkeert niet', besluit(pr({ achterstand: 0 })).samenvoegen === true);
+toets('en wordt niet bijgewerkt', besluit(pr({ achterstand: 0 })).bijwerken === false);
 toets('onbekende achterstand (null) blokkeert niet',
       besluit(pr({ achterstand: null })).samenvoegen === true,
       'de compare-API kan falen; dan is dit niet de poort die moet dichtvallen');
@@ -260,6 +284,9 @@ toets('elk besluit draagt een reden', allen.every(b => typeof b.reden === 'strin
 toets('elk besluit draagt een sleutel', allen.every(b => typeof b.sleutel === 'string' && b.sleutel.length > 1));
 toets('elk besluit zegt expliciet ja of nee', allen.every(b => typeof b.samenvoegen === 'boolean'));
 toets('elk besluit zegt expliciet of het gemeld wordt', allen.every(b => typeof b.melden === 'boolean'));
+toets('elk besluit zegt expliciet of de basis eerst binnengehaald moet worden',
+      allen.every(b => typeof b.bijwerken === 'boolean'),
+      'undefined leest hier als nee, en dat is precies het soort stilte dat we niet willen');
 
 // En: alleen waar een mens iets moet DOEN wordt er gemeld. Dit is de controle
 // die voorkomt dat de bot een babbelbox wordt.
@@ -267,18 +294,18 @@ toets('elk besluit zegt expliciet of het gemeld wordt', allen.every(b => typeof 
 // besproken gevallen er in de lijst hierboven staan. Zonder dat telt #80 als
 // tweede 'geen-klaar' mee en meet deze regel iets anders dan hij zegt.
 const meldend = [...new Set(allen.filter(b => b.melden).map(b => b.sleutel))].sort();
-toets('precies drie soorten gevallen melden: achterstand, conflict, geen-klaar',
-      JSON.stringify(meldend) === JSON.stringify(['achterstand', 'conflict', 'geen-klaar']),
+toets('precies twee soorten gevallen melden: conflict en geen-klaar',
+      JSON.stringify(meldend) === JSON.stringify(['conflict', 'geen-klaar']),
       'gevonden: ' + JSON.stringify(meldend));
 
 // En de tegenhanger: de stille gevallen blijven stil. Zonder deze regel zou
 // een extra melden:true ergens anders onopgemerkt doorglippen.
 const stil = [...new Set(allen.filter(b => !b.melden).map(b => b.sleutel))].sort();
-toets('en de rest zwijgt: draft, fork, niet-groen, ok, onbekend, verschoven, veto',
-      JSON.stringify(stil) === JSON.stringify(['draft', 'fork', 'niet-groen', 'ok', 'onbekend', 'verschoven', 'veto']),
+toets('en de rest zwijgt: achterstand, draft, fork, niet-groen, ok, onbekend, verschoven, veto',
+      JSON.stringify(stil) === JSON.stringify(['achterstand', 'draft', 'fork', 'niet-groen', 'ok', 'onbekend', 'verschoven', 'veto']),
       'gevonden: ' + JSON.stringify(stil));
 
-console.log('\n9. De workflows zelf: vier eigenschappen die het besluit niet kan bewaken');
+console.log('\n9. De workflows zelf: acht eigenschappen die het besluit niet kan bewaken');
 
 // Deze twee zitten in de YAML en niet in de functie, maar ze zijn te
 // belangrijk om onbewaakt te laten.
@@ -325,6 +352,29 @@ toets('en de YAML velt zelf geen oordeel meer over de losse runs',
 // een afgeronde run: de poort blijft dan terecht dicht, maar ELKE PR blijft
 // liggen zonder dat er ergens iets rood wordt. Dat is dezelfde dichte deur
 // zonder klink als een ontbrekend `klaar`-label, en daarom staat hij hier.
+// (e) HET APP-TOKEN, EN DAT DE WORKFLOW ER IETS MEE DOET — 18-09-2026 (#238).
+// Het besluit kan `bijwerken: true` zeggen en de workflow kan dat straal
+// negeren; dan is die poort dode code die groen getoetst staat. En zonder het
+// App-token zou het bijwerken wél gebeuren maar géén testrun starten — dan
+// werk je een branch bij die daarna nooit meer beoordeeld wordt, en dat is
+// erger dan niets doen.
+toets('de workflow maakt een token van de GitHub App',
+      /actions\/create-github-app-token@/.test(wf),
+      'met GITHUB_TOKEN start de bijwerk-push geen testrun');
+toets('en github-script praat met dát token, niet met GITHUB_TOKEN',
+      /github-token:\s*\$\{\{\s*steps\.app\.outputs\.token\s*\}\}/.test(wf),
+      'anders is het token gemaakt en vervolgens niet gebruikt');
+toets('de workflow haalt de basis zelf binnen bij achterstand',
+      /if \(b\.bijwerken\)/.test(wf) && /pulls\.updateBranch/.test(wf),
+      'zonder dit rekent het besluit iets uit waar niets mee gebeurt');
+// LET OP DE VORM. Hier stond `/expected_head_sha/.test(wf)`, en dat was groen
+// terwijl de mutatie het veld uit de aanroep haalde: het woord staat óók in de
+// uitleg erboven. Dezelfde fout als de wake-lock-toets uit #18, die zijn eigen
+// commentaar las. De aanroep zelf is wat telt.
+toets('en doet dat met expected_head_sha in de aanroep zelf',
+      /pulls\.updateBranch\(\{[\s\S]{0,200}?expected_head_sha/.test(wf),
+      'anders werkt hij een commit bij die deze run niet beoordeeld heeft');
+
 const tests = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/tests.yml'), 'utf8');
 toets('tests.yml draait nog op pull_request',
       /^\s*pull_request:\s*$/m.test(tests),
