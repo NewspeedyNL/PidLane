@@ -2619,6 +2619,20 @@ function _issuesVan(o) {
 
    Geeft terug wat de aanroeper nodig heeft om er een zin over te schrijven;
    het schrijven naar de tabel is hier al gebeurd. */
+
+/* WAT ER AL VERZONDEN IS (19-09-2026). De knop in de meetkamer mag niet tien
+   identieke rijen opleveren als iemand hem tien keer indrukt, en moet wél weer
+   aangaan zodra het oordeel verandert — dan is er iets nieuws te melden.
+
+   De stempel is de uitkomst zelf en geen teller: verandert er niets aan wat er
+   te zeggen valt, dan is het dezelfde regel. Dat is ook meteen het antwoord op
+   "mag ik na een testrun nog een keer": nee, tenzij er iets veranderd is. */
+let _verzondenStempel = null;
+
+function _opdrachtStempel(o, vonnis) {
+  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;
+}
+
 function _verzendOpdracht(o, h) {
   const uitslagen = (o.proeven || []).map(function (p) {
     const u = PLOpdracht.meet(p);
@@ -2648,6 +2662,7 @@ function _verzendOpdracht(o, h) {
     'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden,
     { Outcome: vonnis.staat, Repro: _issuesVan(o) });
 
+  _verzondenStempel = _opdrachtStempel(o, vonnis);
   return { uitslagen: uitslagen, vonnis: vonnis };
 }
 
@@ -8272,6 +8287,48 @@ window.PLTestrunLive = {
     return PROEVEN_B5.map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom }; });
   },
   log: function () { return _trLog.slice(); },
+
+  /* ── HET LIVE OORDEEL VASTLEGGEN (19-09-2026) ────────────────────
+     De meetkamer meet de proeven al tijdens de rit, met dezelfde functie
+     waarmee blok 5 ze straks beoordeelt. Alleen bleef dat oordeel op het
+     scherm: alleen een volledige testrun schreef het weg.
+
+     Gemeten op 19-09: dertien opdrachten achter elkaar gekozen, van elk het
+     oordeel op het scherm gelezen, en in de logtabel stond er nul van terug —
+     alleen vijftien regels "Nieuwe sessie". Een rit waarvan de uitkomst
+     nergens staat, is een rit die je opnieuw moet doen, en de rit is hier de
+     schaarste (#257).
+
+     `oordeelNu()` is wat de knop moet tekenen, `verzend()` is wat hij doet.
+     Allebei lopen ze langs _verzendOpdracht(), dus het scherm bouwt geen
+     eigen payload en kan niet iets anders wegschrijven dan het verslag. */
+  oordeelNu: function () {
+    if (!window.PLOpdracht || typeof PLOpdracht.actief !== 'function')
+      return { o: null, vonnis: null, alVerzonden: false, reden: 'PLOpdracht ontbreekt' };
+    let o = null;
+    try { o = PLOpdracht.actief(); }
+    catch (e) { return { o: null, vonnis: null, alVerzonden: false, reden: 'de opdracht is niet te lezen: ' + ((e && e.message) || e) }; }
+    if (!o) return { o: null, vonnis: null, alVerzonden: false, reden: 'er is geen opdracht gekozen' };
+    let vonnis = null;
+    try { vonnis = PLOpdracht.oordeel(o, _stapGezet); }
+    catch (e) { return { o: o, vonnis: null, alVerzonden: false, reden: 'het oordeel is niet te vellen: ' + ((e && e.message) || e) }; }
+    return { o: o, vonnis: vonnis, alVerzonden: _opdrachtStempel(o, vonnis) === _verzondenStempel, reden: '' };
+  },
+
+  verzend: function () {
+    const nu = window.PLTestrunLive.oordeelNu();
+    if (!nu.vonnis) return { ok: false, reden: nu.reden || 'er valt niets te verzenden' };
+    if (nu.alVerzonden) return { ok: false, reden: 'deze uitkomst staat er al — er is niets veranderd sinds de vorige keer' };
+    try {
+      const t = _verzendOpdracht(nu.o, (PLOpdracht.herkomst() || {}));
+      return { ok: true, staat: t.vonnis.staat, reden: t.vonnis.reden, regels: t.uitslagen.length + 1 };
+    } catch (e) {
+      // Niet stil: een verzending die niet aankomt terwijl je denkt van wel,
+      // is precies de fout die deze knop moet wegnemen.
+      return { ok: false, reden: 'verzenden mislukt: ' + ((e && e.message) || e) };
+    }
+  },
+
   nieuweSessie: nieuweSessie,
   bezig: function () { return !!_trBezig; },
   campagne: function () { return CAMPAGNE.titel; }

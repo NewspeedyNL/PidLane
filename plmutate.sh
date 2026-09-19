@@ -848,6 +848,16 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@    if (!rij) { _laatsteFout = 'geen opdracht met id ' + id; return null; }@@    if (!rij) { return _actief; }@@test-meetkamer.js@@een onbekend id laat stil de vorige opdracht staan terwijl de gebruiker denkt dat hij gewisseld is"
 "public/pidlane-opdracht.js@@    if (!rij.opdracht) { _laatsteFout = rij.fout || 'die opdracht is niet bruikbaar'; return null; }@@    if (!rij.opdracht) { return _actief; }@@test-meetkamer.js@@een afgekeurde rij levert de vorige opdracht op in plaats van een weigering"
 "public/pidlane-meetkamer.js@@    if (_bezigLaden) return Promise.resolve(null);@@    if (false) return Promise.resolve(null);@@test-meetkamer.js@@twee keer op ophalen drukken stuurt twee verzoeken en de laatste wint, afhankelijk van het netwerk"
+
+# ── De knop die het live oordeel vastlegt (19-09-2026). Op 19-09 zijn dertien
+# opdrachten achter elkaar gekozen en van elk het oordeel op het scherm
+# gelezen; in de logtabel stond er nul van terug. Deze vier bouwen na wat die
+# knop weer waardeloos zou maken: niets versturen, dubbel versturen, nooit
+# meer mogen, of het verkeerde woord op de knop zetten.
+"public/pidlane-testrun.js@@  _verzondenStempel = _opdrachtStempel(o, vonnis);@@  _verzondenStempel = null;@@test-verzendoordeel.js@@de knop vergeet wat hij verstuurd heeft: tien keer drukken is tien keer dezelfde rij in de tabel"
+"public/pidlane-testrun.js@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;@@  return 'altijd-hetzelfde';@@test-verzendoordeel.js@@de stempel kent het oordeel niet meer: een veranderde uitkomst is niet meer te versturen en de rit is weggegooid"
+"public/pidlane-testrun.js@@    if (nu.alVerzonden) return { ok: false, reden: 'deze uitkomst staat er al@@    if (false) return { ok: false, reden: 'deze uitkomst staat er al@@test-verzendoordeel.js@@de dubbelcheck staat uit: elke druk op de knop levert een nieuwe reeks rijen op"
+"public/pidlane-meetkamer.js@@    var woord = st === 'gesloten' ? 'GESLOTEN' : st === 'bevinding' ? 'BEVINDING' : 'NOG NIET';@@    var woord = 'GESLOTEN';@@test-verzendoordeel.js@@de knop zegt GESLOTEN bij elke uitkomst: je verstuurt een lege meting in de veronderstelling dat de vraag beantwoord is"
 "public/pidlane-meetkamer.js@@    if (!o) {\n      // Niet stil falen@@    if (false) {\n      // Niet stil falen@@test-meetkamer.js@@een mislukte keuze begint tóch een nieuwe sessie: een leeg ritnummer waar nooit iets onder komt"
 "public/pidlane-testrun.js@@  if (basis === _liveVorigId) { _liveVolg++; _liveRit = basis + '-' + _liveVolg; }@@  if (false) { _liveRit = basis; }@@bproef-meetkamer.js@@twee opdrachten binnen dezelfde minuut delen één ritnummer: buiten de app is niet te zien welke regel bij welke vraag hoorde"
 "public/pidlane-meetkamer.js@@    return veilig(String(v == null ? '' : v).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"\\\\'\"));@@    return veilig(String(v == null ? '' : v));@@test-meetkamer.js@@een apostrof in een Airtable-id breekt de onclick van de keuzeknop"
