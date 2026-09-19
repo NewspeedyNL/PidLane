@@ -2607,6 +2607,50 @@ function _issuesVan(o) {
   return Object.keys(s).join(' ');
 }
 
+/* ── DE TERUGWEG VAN ÉÉN OPDRACHT (#241, #257) ────────────────────
+   Meten, wegschrijven, noteren en het driewaardige oordeel vellen. Dit stond
+   binnen de proef van blok 0 en is er ongewijzigd uit gelicht, zodat er nog
+   maar één plek is die een opdrachtuitslag de logtabel in schrijft.
+
+   Waarom dat telt: de meetkamer laat het oordeel al tijdens de rit zien, en
+   wie dat wil vastleggen zonder een hele testrun te draaien, hoort dezelfde
+   regels weg te schrijven — niet zijn eigen versie ervan. Een tweede plek die
+   een payload bouwt is dezelfde vorm die #246 verbood.
+
+   Geeft terug wat de aanroeper nodig heeft om er een zin over te schrijven;
+   het schrijven naar de tabel is hier al gebeurd. */
+function _verzendOpdracht(o, h) {
+  const uitslagen = (o.proeven || []).map(function (p) {
+    const u = PLOpdracht.meet(p);
+    return { naam: p.naam, issue: p.issue, staat: u.staat, detail: u.detail };
+  });
+
+  // Elke uitslag apart naar de live-log, met de naam van de opdracht erbij,
+  // zodat de tabel buiten de app leesbaar blijft zonder het verslag ernaast.
+  uitslagen.forEach(function (u) {
+    _liveSchrijf(u.staat === 'FOUT' ? 'error' : (u.staat === 'ok' ? 'info' : 'opvallend'),
+      'opdracht ' + o.naam + ' — ' + u.naam + ': ' + u.staat + ' — ' + u.detail,
+      { Outcome: u.staat, Repro: u.issue || '' });
+  });
+
+  // De uitslag terugmelden aan de opdrachtmodule, zodat de keuzeknoppen laten
+  // zien welke vraag beantwoord is en welke nog wacht (#248). Eén plek die het
+  // opschrijft; het scherm telt niet zelf.
+  try { if (typeof PLOpdracht.noteer === 'function') PLOpdracht.noteer((h || {}).id, uitslagen); }
+  catch (e) { console.warn('Testrun: de uitslag is niet bij de opdracht genoteerd (#248)', e); }
+
+  const vonnis = PLOpdracht.oordeel(o, _stapGezet);
+
+  // De uitkomst per opdracht naar de live-log, met de issues in een eigen
+  // veld. Zo is van buiten te lezen WELKE issues deze sessie een antwoord
+  // kregen, zonder een detailtekst te moeten parsen.
+  _liveSchrijf(vonnis.staat === 'bevinding' ? 'opvallend' : 'info',
+    'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden,
+    { Outcome: vonnis.staat, Repro: _issuesVan(o) });
+
+  return { uitslagen: uitslagen, vonnis: vonnis };
+}
+
 function _aanvragersNu() {
   const aan = [];
   try { if (window.PLWaak && PLWaak.actief()) aan.push('waakronde'); } catch (e) { console.warn('waakrondestand onleesbaar in de rit-oogst', e); }
@@ -2732,36 +2776,22 @@ const PROEVEN_B5 = [
       // proef dat in plaats van een leeg getal te melden.
       var laat = PLOpdracht.zetSensoren();
 
-      var uitslagen = o.proeven.map(function (p) {
-        var u = PLOpdracht.meet(p);
-        return { naam: p.naam, issue: p.issue, staat: u.staat, detail: u.detail };
-      });
-
-      // DE TERUGWEG. Elke uitslag apart naar de live-log, met de naam van de
-      // opdracht erbij, zodat de tabel buiten de app leesbaar blijft zonder
-      // dit verslag ernaast.
-      uitslagen.forEach(function (u) {
-        _liveSchrijf(u.staat === 'FOUT' ? 'error' : (u.staat === 'ok' ? 'info' : 'opvallend'),
-          'opdracht ' + o.naam + ' — ' + u.naam + ': ' + u.staat + ' — ' + u.detail,
-          { Outcome: u.staat, Repro: u.issue || '' });
-      });
-
-      // De uitslag terugmelden aan de opdrachtmodule, zodat de keuzeknoppen
-      // laten zien welke vraag beantwoord is en welke nog wacht (#248). Eén
-      // plek die het opschrijft; het scherm telt niet zelf.
-      try { if (typeof PLOpdracht.noteer === 'function') PLOpdracht.noteer(h.id, uitslagen); }
-      catch (e) { console.warn('Testrun: de uitslag is niet bij de opdracht genoteerd (#248)', e); }
-
-      /* HET DRIEWAARDIGE OORDEEL (#257). Tot vandaag kwamen "niet gemeten" en
-         "gemeten en buiten de band" allebei als een regel in dit verslag, en
-         waren ze daar niet uit elkaar te houden. Juist dat verschil is wat je
-         voor de volgende rit nodig hebt: het eerste zegt "doe het nog eens,
-         maar dan met déze omstandigheid erbij", het tweede zegt "er is iets".
+      /* DE TERUGWEG, PLUS HET DRIEWAARDIGE OORDEEL (#257). Tot 18-09 kwamen
+         "niet gemeten" en "gemeten en buiten de band" allebei als een regel in
+         dit verslag, en waren ze daar niet uit elkaar te houden. Juist dat
+         verschil is wat je voor de volgende rit nodig hebt: het eerste zegt
+         "doe het nog eens, maar dan met déze omstandigheid erbij", het tweede
+         zegt "er is iets".
 
          Van de twintig LET OP-regels op de rit van 18-09 gingen er negen niet
          over de auto maar over omstandigheden die er niet waren. Die stonden
-         pas in het verslag ná de rit, tussen de rest — als het te laat is. */
-      var vonnis = PLOpdracht.oordeel(o, _stapGezet);
+         pas in het verslag ná de rit, tussen de rest — als het te laat is.
+
+         Het meten en wegschrijven zelf staat in _verzendOpdracht(): de
+         meetkamer kan dezelfde weg lopen zonder een hele testrun te draaien. */
+      var terug = _verzendOpdracht(o, h);
+      var uitslagen = terug.uitslagen;
+      var vonnis = terug.vonnis;
       var staart = uitslagen.map(function (u) { return u.naam + ': ' + u.detail; }).join(' | ');
       var laatst = laat.length ? ' [' + laat.join(', ') + ' stond(en) niet aan en zijn nu pas aangezet — over deze rit zeggen ze niets]' : '';
       var vw = vonnis.voorwaarden.length
