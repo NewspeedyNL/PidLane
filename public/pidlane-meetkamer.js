@@ -357,7 +357,8 @@
      optionele module mist, is een scherm dat je niet meer opent. */
   function momentopname() {
     var s = { nu: Date.now(), opdracht: null, herkomst: null, reden: '', toggleAan: true,
-              uitslagen: [], live: null, log: [], proeven: [], bezig: false, bron: '', ritId: '' };
+              uitslagen: [], live: null, log: [], proeven: [], bezig: false, bron: '', ritId: '',
+              verzend: null };
 
     try {
       if (window.PLOpdracht) {
@@ -392,6 +393,10 @@
         s.proeven = PLTestrunLive.proeven();
         s.bezig = PLTestrunLive.bezig();
         s.ritId = PLTestrunLive.ritId();
+        // Het driewaardige oordeel plus of het al verzonden is. Niet hier
+        // vellen: dat doet PLOpdracht, en de markeringen die het nodig heeft
+        // staan in de testrun. Het scherm tekent alleen wat eruit komt.
+        if (typeof PLTestrunLive.oordeelNu === 'function') s.verzend = PLTestrunLive.oordeelNu();
       }
     } catch (e) { console.warn('Meetkamer: de testrunstand is niet te lezen (#246)', e); }
 
@@ -492,6 +497,14 @@
     '#meetkamerBox .mk-kies i{font-style:normal;font:700 10px var(--f);flex-shrink:0}' +
     '#meetkamerBox .mk-knop{background:var(--sur2);border:1px solid var(--bd);border-radius:9px;' +
       'padding:8px 12px;font:700 11.5px var(--f);color:var(--tx2);cursor:pointer}' +
+    /* De verzendknop staat vol in beeld en niet in een hoekje: hem missen is
+       de hele reden dat hij er is. */
+    '#meetkamerBox .mk-verz{display:block;width:100%;text-align:left;background:var(--sur2);' +
+      'border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-top:9px;' +
+      'font:700 12px/1.3 var(--f);color:var(--tx);cursor:pointer}' +
+    '#meetkamerBox .mk-verz.gedaan{cursor:default;color:var(--tx3);border-style:dashed}' +
+    '#meetkamerBox .mk-verz u{display:block;text-decoration:none;font:500 10.5px/1.4 var(--f);' +
+      'color:var(--tx3);margin-top:3px}' +
     '</style>';
 
   /* Eén keer inhangen, en nooit meer. Ontbreekt de <head> (kan niet in een
@@ -542,7 +555,42 @@
           : '<span class="mk-cijfer" style="color:var(--tx3);font-size:20px">—</span>') +
         '<span class="mk-wat">' + veilig(oor.kop) + '<u>' + veilig(oor.regel) + '</u></span>' +
       '</div>' +
+      _verzendKnop(s) +
       _lus(st) + '</div>';
+  }
+
+  /* ── DE UITKOMST VASTLEGGEN ZONDER EEN HELE TESTRUN (19-09-2026) ──
+     Dit scherm meet de proeven live, met dezelfde functie waarmee blok 5 ze
+     straks beoordeelt. Op 19-09 bleek wat daaraan ontbrak: dertien opdrachten
+     achter elkaar gekozen, van elk het oordeel gelezen, en in de logtabel
+     stond er nul van terug. Alleen een volledige testrun schreef iets weg, en
+     die was die rit niet afgemaakt.
+
+     De knop schrijft precies dezelfde regels als blok 0 — één per proef plus
+     de uitkomst — want hij loopt langs dezelfde functie. Een tweede weg naar
+     de tabel die zijn eigen payload bouwt, zou op den duur iets anders zeggen
+     dan het verslag, en dat is de fout die #246 en #256 al twee keer kostten.
+
+     WAAROM HIJ OOK BIJ ROOD AAN STAAT. Een bevinding sluit een issue net zo
+     goed als een groen vinkje: een spanning ONDER 11,5 V beantwoordt #217
+     precies zo. Alleen "nog niet" is geen antwoord — en dan zegt de knop dat
+     erbij, in plaats van hem weg te halen. */
+  function _verzendKnop(s) {
+    if (!s.verzend || !s.verzend.vonnis) return '';
+    var v = s.verzend;
+    var st = v.vonnis.staat;
+    var woord = st === 'gesloten' ? 'GESLOTEN' : st === 'bevinding' ? 'BEVINDING' : 'NOG NIET';
+    var kl = st === 'gesloten' ? 'var(--gn)' : st === 'bevinding' ? 'var(--rd)' : 'var(--or)';
+
+    if (v.alVerzonden)
+      return '<div class="mk-verz gedaan">✓ <b>' + woord + '</b> staat in de logtabel' +
+        '<u>Verandert het oordeel, dan kan het opnieuw.</u></div>';
+
+    return '<button class="mk-verz" style="border-color:' + kl + '" onclick="PLMeetkamer.verzend()">' +
+      '↑ Verzenden — <b style="color:' + kl + '">' + woord + '</b>' +
+      '<u>' + (st === 'nog niet'
+        ? 'Nog geen antwoord; wat er staat gaat wel mee als tussenstand.'
+        : 'Zet deze uitkomst nu in de logtabel, zonder de testrun te draaien.') + '</u></button>';
   }
 
   function _meterRij(m, naam) {
@@ -803,6 +851,28 @@
     return o;
   }
 
+  /* DE KNOP INDRUKKEN (19-09-2026). Het verzenden zelf staat in de testrun —
+     zie PLTestrunLive.verzend(). Hier blijft alleen over: aanroepen, de mens
+     vertellen wat er gebeurd is, en opnieuw tekenen zodat de knop meteen de
+     nieuwe stand toont.
+
+     Een mislukking hoort op het scherm en niet alleen in de console: wie op
+     verzenden drukt en niets ziet gebeuren, drukt nog vier keer. */
+  function verzend() {
+    if (!window.PLTestrunLive || typeof PLTestrunLive.verzend !== 'function') {
+      try { if (typeof showToast === 'function') showToast('Verzenden kan niet: de testrunmodule is er niet'); }
+      catch (e) { console.warn('Meetkamer: de melding kon niet getoond worden', e); }
+      return null;
+    }
+    var r = PLTestrunLive.verzend();
+    try {
+      if (typeof showToast === 'function')
+        showToast(r.ok ? ('Verzonden — ' + r.staat + ' (' + r.regels + ' regels)') : ('Niet verzonden: ' + r.reden));
+    } catch (e) { console.warn('Meetkamer: de melding kon niet getoond worden', e); }
+    teken();
+    return r;
+  }
+
   /* De lus loopt alleen terwijl het scherm open staat. Een tikker die
      doordraait op een gesloten overlay meet niets en kost wél accutijd — en
      dit is een app die tijdens het rijden aan de lader hangt. */
@@ -837,6 +907,8 @@
     klap: klap,
     laad: laad,
     pak: pak,
+    verzend: verzend,
+    _verzendKnop: _verzendKnop,
     _kiezer: _kiezer,
     start: start,
     stop: stop,

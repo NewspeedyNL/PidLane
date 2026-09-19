@@ -919,6 +919,56 @@ De drie oorzaken hieronder zijn dezelfde avond nog gerepareerd. Wat die
 reparatie opleverde is niet de code maar de vraag eronder: **waarom ving geen
 enkele poort ze?**
 
+### 19-09-2026 — een rit met dertien oordelen en nul rijen in de tabel
+
+**Wat er gebeurde.** Dertien opdrachten achter elkaar gekozen tijdens één rit,
+van elk het oordeel op het scherm gelezen, MAF-metingen binnen. In Airtable
+stonden daarna 39 rijen, waarvan vijftien `blok 0 klaar — 1 ok`: dat is de
+boekregel *Nieuwe sessie* van `nieuweSessie()`, niet een uitslag. Van de
+dertien oordelen was er nul terug te vinden. De begeleide run brak af na stap
+1 van 9, de ELM-poort viel om 15:02:31 dicht (*socket dood — herverbinden*) en
+daarna kreeg elke PID `RX ""`.
+
+**Waarom dat meer is dan een afgebroken run.** De meetkamer meet de proeven
+live, met dezelfde functie waarmee blok 5 ze straks beoordeelt — dat is sinds
+#246 met opzet zo. Maar de enige uitgang naar de tabel liep via een volledige
+testrun. Een scherm dat het antwoord toont en het niet kan bewaren, maakt van
+elke onderbroken rit een verloren rit, en de rit is hier de schaarste (#257).
+De verzendknop is daarom geen gemak maar de ontbrekende helft van #246.
+
+**Wat er níét gebouwd is, en waarom niet.** De knop bouwt geen eigen payload.
+De terugweg is uit blok 0 gelicht naar `_verzendOpdracht()` en beide wegen
+lopen erlangs. Twee plekken die allebei een uitslag naar Airtable schrijven,
+zouden op den duur iets anders zeggen — dat is letterlijk de vorm die #246 bij
+de meetkamer verbood en die #256 twee keer betaald heeft.
+
+**De dubbelcheck is een stempel en geen vlag.** Een booleaan "al verzonden"
+zou na de eerste druk dood blijven, en dan is de meting waarvoor je nog een
+rondje reed onverzendbaar. De stempel is de uitkomst zelf
+(`naam|staat|reden`): verandert er niets aan wat er te zeggen valt, dan is het
+dezelfde regel; kantelt het oordeel, dan mag het weer.
+
+**De MAF-proef die rood viel om de verkeerde reden (#232).** Uit de ruwe logs
+van diezelfde rit: 118 monsters op 0110, min 0,86 — mediaan 1,91 — max 13,40
+g/s. De proef heette "MAF stationair" en stond op `meet: min` met band
+1,0–6,0. `min` loopt over de hele sessie en pakte 0,86 van vlak na het
+verbinden, toen de motor nog nauwelijks lucht trok. Op een auto met i-stop is
+het erger dan een randgeval: zodra de motor bij een stoplicht afslaat is
+`0110 min` per definitie 0 en kán die proef nooit groen worden.
+
+De les is algemener dan deze proef. **Een maat over een hele sessie kan geen
+bedrijfstoestand uitdrukken.** Geen van de vijf maten (`min`, `max`, `laatst`,
+`aantal`, `veranderingen`) zegt "de waarde terwijl hij stationair draait", en
+een zesde maat toevoegen zou dat ook niet oplossen — de volgende vraag is dan
+"terwijl hij warm is en optrekt". De oplossing zat in de sessie: een sessie
+die niets anders bevat dan stationair draaien, want dán *ís* min de
+stationaire waarde. Dat is wat de knop *Nieuwe sessie* uit #248 mogelijk
+maakt, en het is de eerste keer dat die twee mechanismen elkaar nodig hadden.
+
+Het getal zelf is óók een antwoord: de mediaan van 1,91 g/s ligt op de ~2 g/s
+die de vuistregel voor een 2,0 verwacht, op een 2,5. Stationair scheidt die
+twee dus niet — alleen vollast doet dat, en die is deze rit niet gehaald.
+
 **De markeringen (#255).** `begeleidStart()` leegde een lijst die bij de
 sessie hoort. Er was geen toets die twee rondes na elkaar startte, en dus was
 er geen toets die dit kón vinden. `test-markeringen.js` doet nu precies dat:
