@@ -10,6 +10,45 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ Testrun 8.0 (19-09-2026) — een groen oordeel hoeft niet meer op een hele
+ testrun te wachten
+ ═══════════════════════════════════════════════════════════
+
+ De rit van 19-09 leverde niets op, en dat was geen pech. Dertien opdrachten
+ achter elkaar gekozen, van elk het oordeel op het scherm gelezen, en in de
+ logtabel stond er nul van terug — alleen vijftien regels "Nieuwe sessie".
+ De begeleide run brak af na stap 1, de verbinding viel om 15:02:31 weg, en
+ daarmee was de hele rit weg. De rit is hier de schaarste (#257).
+
+ - #257  De meetkamer krijgt een verzendknop. Zodra er een oordeel is staat
+         onder de vraag "↑ Verzenden" met het woord erbij: GESLOTEN,
+         BEVINDING of NOG NIET. Hij schrijft dezelfde regels als blok 0 —
+         één per proef plus de uitkomst, met Outcome en de issues in hun
+         eigen veld — want hij loopt langs dezelfde functie. De terugweg is
+         daarvoor uit blok 0 gelicht naar `_verzendOpdracht()`; een tweede
+         plek die zijn eigen payload bouwt, is de vorm die #246 en #256 al
+         twee keer kostten.
+
+         Hij staat ook bij rood aan: een bevinding sluit een issue net zo
+         goed als een groen vinkje. Twee keer drukken levert géén twee rijen
+         op — de knop onthoudt de uitkomst zelf en niet een teller, dus hij
+         gaat vanzelf weer aan zodra het oordeel kantelt.
+
+ - #232  De MAF-vuistregel is voor het eerst aan deze motor gemeten, uit de
+         ruwe logs: min 0,86, mediaan 1,91, max 13,40 g/s over 118 monsters.
+         De mediaan ligt op de ~2 g/s die de vuistregel voor een 2,0
+         verwacht, dus stationair scheidt 2,0 niet van 2,5.
+
+         De stationair-proef viel rood om de verkeerde reden: hij stond op
+         `0110 min`, en `min` loopt over de hele sessie. Hij pakte 0,86 van
+         vlak na het verbinden. Op een auto met i-stop is die proef zelfs
+         onmogelijk groen te krijgen. Geen van de vijf maten kan "de waarde
+         terwijl hij stationair draait" uitdrukken — de oplossing zit in de
+         sessie en niet in een zesde maat. In de voorraad staan nu twee
+         rijen: stationair in een eigen stilstaande sessie, en de
+         vollasthelft apart.
+
+ ═══════════════════════════════════════════════════════════
  Testrun 7.9 (18-09-2026) — het verslag vertelde te vaak iets verkeerds
  ═══════════════════════════════════════════════════════════
 

@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '7.9 (18-09-2026)';
+const TESTRUN_VERSIE = '8.0 (19-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -5917,6 +5917,45 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── kan het live oordeel de tabel in? (19-09-2026) ────────────────
+  // Op 19-09 zijn er dertien opdrachten achter elkaar gekozen en is van elk
+  // het oordeel op het scherm gelezen. In de logtabel stond er nul van terug:
+  // alleen een volledige testrun schreef iets weg, en die is die rit niet
+  // afgemaakt. De rit is hier de schaarste (#257), dus dat is een rit weg.
+  //
+  // Deze proef staat NA de #241-proef hierboven, en dat is geen smaak: die
+  // proef IS de terugweg. Is hij gelopen, dan hoort deze uitkomst nu in de
+  // tabel te staan en hoort de knop dat te weten. Zegt hij van niet, dan
+  // levert dezelfde uitkomst straks een tweede reeks rijen op.
+  {
+    issue: '#257',
+    naam: 'Het live oordeel kan de tabel in, en maar één keer',
+    waarom: 'Een oordeel dat alleen op het scherm staat, is na de rit weg — en een knop die niet weet wat hij al verstuurd heeft, vult de tabel met dezelfde rij.',
+    proef: function () {
+      var L = window.PLTestrunLive || {};
+      if (typeof L.oordeelNu !== 'function' || typeof L.verzend !== 'function')
+        return { staat: 'FOUT', detail: 'PLTestrunLive.oordeelNu()/verzend() ontbreekt — het live oordeel kan de tabel niet meer in' };
+
+      var nu = L.oordeelNu();
+      if (!nu.vonnis)
+        return { staat: 'LET OP', detail: 'er valt niets te verzenden: ' + (nu.reden || 'geen opdracht geladen') };
+
+      // De #241-proef heeft deze uitkomst net weggeschreven. Staat de knop
+      // daarna nog steeds op "nog te verzenden", dan telt hij zijn eigen
+      // verzending niet mee en levert één druk een dubbele reeks op.
+      if (!nu.alVerzonden)
+        return { staat: 'FOUT', detail: 'de terugweg is deze run gelopen maar de knop weet dat niet — ' +
+          'op "' + nu.vonnis.staat + '" volgt dan een tweede reeks rijen met dezelfde uitkomst' };
+
+      // En de weigering moet echt weigeren, niet alleen zo heten.
+      var r = L.verzend();
+      if (r.ok)
+        return { staat: 'FOUT', detail: 'verzenden lukte een tweede keer met een ongewijzigd oordeel — elke druk op de knop vult de tabel opnieuw' };
+
+      return { staat: 'ok', detail: 'uitkomst "' + nu.vonnis.staat + '" staat in de tabel; een tweede verzending wordt geweigerd (' + r.reden + ')' };
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -8195,32 +8234,32 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 18-09 (twaalfde) — het verslag vertelde te vaak iets verkeerds, en dat is gerepareerd (#252, #255, #256, #257)',
+  titel: 'OPLEVERING 19-09 (dertiende) — een groen oordeel hoeft niet meer op een hele testrun te wachten (#257, #232)',
   vragen: [
-    '── WAAROM DEZE RONDE ────────',
-    'ER ZIJN TIEN RITTEN GEREDEN EN DE KLACHT WAS: TE VAAK VERKEERDE CONCLUSIES. Dat bleek geen indruk maar drie aanwijsbare oorzaken, alle drie gevonden door de twee runs van 18-09 (19:47 en 19:53) naast elkaar te leggen. Deze ronde repareert ze en voegt er het gereedschap aan toe dat de volgende rit goedkoper maakt.',
-    'EEN: DE TOESTELRONDE WISTE DE MARKERINGEN VAN DE MEETRIT (#255). De bedoelde volgorde is meetrit → testrun → toestelronde → testrun, en juist die maakte de tweede run blind. Om 19:47 stond er "markering om 19:44:27", om 19:53 "geen achtergrondmarkering — de achtergrondstap is niet gedaan". Onwaar, en stellig geformuleerd. Acht aanroepplekken lazen die lijst. Hij wordt niet meer geleegd en elke markering draagt nu zelf uit welke ronde hij komt.',
-    'TWEE: DE LOGTABEL KREEG DE PROEFWAARDEN VAN DE TESTRUN BINNEN ALS ECHTE METINGEN (#256). Blok 5 schiet met opzet 300 °C door laag 1. Die waarde stond bij élke run in de tabel — op een auto die 91–93 °C loopt — en de markering eromheen ging via de app-log en reisde niet mee. Daar bovenop: elke uitschieter stond er dubbel, en 61 rijen in drie dagen kwamen binnen zonder sessienummer. Nu vult logToSheets() zelf RecordType, SessionId en Adapter, en een proefwaarde heet proefwaarde.',
-    'DRIE: DE BLOK-5-PROEF DIE HET SCHERM TEGEN HET VERSLAG LEGT, DRAAIDE NIET (#252). Hij riep de oude naam van de meetkamerfunctie aan; die heet sinds de herbouw ronde(). Gerepareerd, met een toets die de hele klasse vangt: elke PLMeetkamer-aanroep in dit bestand wordt naast de echt geladen module gelegd.',
-    'EN ER IS GEREEDSCHAP BIJ (#257). Van de twintig LET OP-regels van 18-09 gingen er negen niet over de auto maar over omstandigheden die er niet waren: geen stilstand, geen warme motor, geen achtergrondstap. Een meetopdracht draagt nu `voorwaarden` — meetbaar, in dezelfde vorm als zijn proeven — en het oordeel is driewaardig: GESLOTEN, BEVINDING of NOG NIET. "Nog niet" is daarmee geen ruis meer maar een instructie voor de volgende rit.',
-    '── WAT ÉÉN RUN DEZE RONDE MOET SLUITEN ────────',
-    'ER STAAT EEN VOORRAAD KLAAR, EN DAT IS DE ECHTE WINST. Zes opdrachten in de Meetopdracht-tabel, elk gekoppeld aan één open issue. Druk in het testrunscherm op Ophalen, kies er een, rijd, en kies daarna de volgende met Nieuwe sessie — zonder weg te schakelen en zonder de adapter eruit.',
-    '#255 SLUIT OP DEZE RIT ZELF. Draai de meetrit, dan de toestelronde, en kijk of blok 5 daarna nog steeds weet dat de achtergrondstap gezet is. Staat er twee keer een ronde in de markeringenregel, dan is het gerepareerd.',
-    '#256 SLUIT OP DE TABEL, NIET OP HET SCHERM. Kijk na afloop in Airtable: staan de 300 °C-regels er als `proefwaarde`, staat er bij elke regel een SessionId, en staat de adapternaam erin? Dat is niet in de app te zien en juist daarom hoort het hier.',
-    '#257 SLUIT OP DE EERSTE OPDRACHT MET VOORWAARDEN. Zolang de voorraad op schema 1 staat, draaien ze zoals ze deden; de eerste rij met voorwaarden laat zien of de checklist vóór de rit klopt.',
-    '── STAP VOOR STAP ────────',
-    'STAP 0 — VOORAF. Zet de app op de nieuwste versie (☰ → Nieuwste versie laden). Deze ronde zit volledig in de webpagina; een nieuwe APK is niet nodig. Heb je de nieuwe schil met het kleine venster al, dan staat daar een eigen opdracht voor klaar (#228).',
-    'STAP 1 — HAAL DE OPDRACHTEN OP EN KIES ER EEN. Testrunscherm → Meetopdrachten → 📥 Ophalen. Je ziet per rij waar hij over gaat en, als hij voorwaarden draagt, wat hij nodig heeft. Kies de vraag die bij de omstandigheden van vandaag past.',
-    'DE MEETRIT (🧭). Rijd met wisselend gas en trek onderweg één keer stevig op. Doe de achtergrondstap. Draai daarna de testrun.',
-    'STAP 2 — DOE DE TOESTELRONDE (📱) EN DRAAI DE TESTRUN NOG EEN KEER. Dit is de stap die #255 bewijst: de tweede run hoort nu nog steeds te weten wat er in de meetrit gebeurd is.',
-    'STAP 3 — WIL JE EEN TWEEDE VRAAG BEANTWOORDEN, KIES DAN DE VOLGENDE OPDRACHT. Elke keuze begint een eigen sessie in de logtabel, dus de twee vragen lopen niet door elkaar. Adapter kan erin blijven.',
+    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'DE RIT VAN 19-09 LEVERDE NIETS OP, EN DAT IS PRECIES HET PROBLEEM. Dertien opdrachten achter elkaar gekozen, van elk het oordeel op het scherm gelezen, MAF-metingen binnen \u2014 en in de logtabel stond er nul van terug. Alleen vijftien regels "Nieuwe sessie". De begeleide run is na stap 1 afgebroken, de verbinding viel om 15:02:31 weg, en daarmee was de hele rit weg. De rit is hier de schaarste (#257), dus dat weegt zwaarder dan het klinkt.',
+    'DE OORZAAK WAS NIET DE AFGEBROKEN RUN MAAR DE ENIGE UITGANG. De meetkamer meet de proeven al tijdens de rit, met dezelfde functie waarmee blok 5 ze straks beoordeelt \u2014 maar dat oordeel bleef op het scherm. Wegschrijven deed alleen een volledige testrun. Eén knop ontbrak.',
+    'DIE KNOP STAAT ER NU. Zodra er een oordeel is, staat onder de vraag "\u2191 Verzenden" met het woord erbij: GESLOTEN, BEVINDING of NOG NIET. Hij schrijft precies dezelfde regels als blok 0 \u2014 één per proef plus de uitkomst, met Outcome en de issues in hun eigen veld \u2014 want hij loopt langs dezelfde functie. Een tweede weg naar de tabel die zijn eigen payload bouwt, zou op den duur iets anders zeggen dan het verslag; dat is de vorm die #246 en #256 al twee keer kostten.',
+    'HIJ STAAT OOK BIJ ROOD AAN, EN DAT IS MET OPZET. Een bevinding sluit een issue net zo goed als een groen vinkje: een spanning ONDER 11,5 V beantwoordt #217 precies zo. Alleen "nog niet" is geen antwoord, en dan zegt de knop dat erbij in plaats van te verdwijnen.',
+    'TWEE KEER DRUKKEN LEVERT GÉÉN TWEE RIJEN OP. De knop onthoudt de uitkomst zelf, niet een teller: verandert er niets aan wat er te zeggen valt, dan is het dezelfde regel en weigert hij. Rijd je door en kantelt het oordeel, dan gaat hij vanzelf weer aan.',
+    'EN DE MAF-OPDRACHT KLOPTE NIET (#232). De stationair-proef stond op `0110 min`, en `min` loopt over de hele sessie: hij pakte 0,86 g/s van vlak na het verbinden en viel daarop rood. De mediaan was 1,91 g/s \u2014 precies de ~2 g/s die de vuistregel verwacht. De proef heette "stationair" maar mat het laagste punt van de rit. In de voorraad staan nu twee rijen: stationair in een eigen sessie (dan ís min de stationaire waarde), en de vollasthelft apart.',
+    '\u2500\u2500 WAT ÉÉN RUN DEZE RONDE MOET SLUITEN \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'DE KNOP SLUIT OP DE TABEL, NIET OP HET SCHERM. Kies een opdracht, rijd tot er een oordeel staat, druk op Verzenden, en kijk daarna in Airtable of de uitkomstregel er staat mét Outcome en issuenummer. Dat is het hele bewijs.',
+    'DRUK DAARNA NOG EEN KEER. Er hoort niets bij te komen en er hoort te staan waarom. Blok 5 toetst datzelfde vanuit de andere kant: na de terugweg van blok 0 moet de knop weten dat hij al geweest is.',
+    '#255, #256 EN #257 STAAN NOG STEEDS OPEN OP DE RIT VAN 18-09. Die zijn vorige ronde gerepareerd maar nooit op de weg bewezen \u2014 de run van 19-09 kwam niet tot blok 5. Ze sluiten alsnog zodra er één volledige testrun draait.',
+    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'STAP 0 \u2014 VOORAF. Zet de app op de nieuwste versie (\u2630 \u2192 Nieuwste versie laden). Deze ronde zit volledig in de webpagina; een nieuwe APK is niet nodig.',
+    'STAP 1 \u2014 HAAL DE OPDRACHTEN OP EN KIES ER EEN. Testrunscherm \u2192 Meetopdrachten \u2192 📥 Ophalen. Je ziet per rij waar hij over gaat en, als hij voorwaarden draagt, wat hij nodig heeft.',
+    'STAP 2 \u2014 RIJD TOT ER EEN OORDEEL STAAT EN DRUK OP VERZENDEN. Dat is nieuw: je hoeft de testrun niet af te maken om de uitkomst vast te leggen. Lees het woord op de knop \u2014 dat is wat er in de tabel komt.',
+    'STAP 3 \u2014 VOLGENDE VRAAG. Kies de volgende opdracht; elke keuze begint een eigen sessie, dus de vragen lopen niet door elkaar. Adapter kan erin blijven. Zo werk je in één rit de voorraad af.',
+    'STAP 4 \u2014 DRAAI AAN HET EIND ALSNOG DE TESTRUN. De knop vervangt hem niet: blok 5 toetst 54 dingen die geen opdracht kan toetsen, en #255 en #256 hangen daaraan.',
+    'MAF STATIONAIR IS EEN STILSTAANDE MEETING (#232). Motor al warm, auto stil, laat hem lopen, kies dán pas die opdracht, wacht drie minuten, niet gasgeven. Geen rit nodig.',
     'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop. Zet erbij: welke adapter erin zat, welke opdracht(en) je gekozen hebt, en wat de uitkomst per opdracht was (GESLOTEN / BEVINDING / NOG NIET).',
-    '── WAT DEZE RONDE NIET OPLOST ────────',
-    'DE VOORRAAD STAAT NOG OP SCHEMA 1 EN HEEFT DUS GEEN VOORWAARDEN. Dat is met opzet: de rijen stonden er al en een opdracht afkeuren op zijn versienummer kost een rit. De checklist vóór de rit is daarmee deze ronde nog leeg — het mechanisme staat er, de eerste rij die hem gebruikt moet nog geschreven worden.',
-    'HET OORDEEL BLIJFT ÉÉN OPDRACHT PER SESSIE. Een rit die drie issues tegelijk sluit kan alleen door drie keer te kiezen. Dat is een keuze en geen beperking: twee vragen onder één sessienummer zijn achteraf niet uit elkaar te houden, en dat was precies de reden voor #248.',
-    'EEN OPDRACHT KAN NOG STEEDS ALLEEN MIN, MAX, LAATST, AANTAL EN VERANDERINGEN OVER ÉÉN PID. Vragen als "0,5 V sprei op de achterste lambdasonde" (#231) of "loopt de latentie na trap 2 niet meer terug" (blok 10) vragen een reeks over tijd. Dat past niet in deze vorm, en de lijst maten uitbreiden is een besluit per maat.',
-    'DAT HET MEETGAT VAN 18-09 DE BUS WAS, IS NOG STEEDS EEN VERMOEDEN. 95 seconden buiten elke achtergrondperiode wijst naar de adapter of de bus — maar die periodes zijn alleen compleet als de markering met de hand gezet is, en tot vandaag werden ze bovendien gewist. Wat het uitwijst bestaat nog niet: dezelfde rit met één aanvrager ernaast (#254).',
-    'DE WAAKRONDE-HISTORIE IS NOG NIET GEREPAREERD (#253). Dat hij leeg blijft bij busdruk is verklaarbaar gedrag, maar nergens blijkt dát het gebeurt. De teller per reden staat er nog niet in; deze ronde meet alleen of het vermoeden klopt.',
+    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'DE KNOP KAN NIET ZEGGEN DAT HIJ NIET AANGEKOMEN IS. Hij geeft het aan logToSheets() en die stuurt achter je rug door; mislukt dat, dan zie je het pas in de tabel. De live-logproef in blok 5 bewaakt datzelfde kanaal, maar niet deze ene regel.',
+    'EEN OPDRACHT KAN NOG STEEDS ALLEEN MIN, MAX, LAATST, AANTAL EN VERANDERINGEN OVER ÉÉN PID. Dat is nu voor het eerst een gemeten grens en geen theoretische: "MAF stationair" bestaat niet als maat, en de oplossing was de sessie in tweeën knippen, niet een zesde maat. Vragen als "0,5 V sprei op de achterste lambdasonde" (#231) vragen nog steeds een reeks over tijd.',
+    'DE VOLLASTHELFT VAN #232 IS NOG NIET GEMETEN. Op 19-09 kwam de MAF niet boven 13,4 g/s \u2014 te zacht gereden. De voorwaarde 010D max 30\u2013200 zegt dat nu vóór de rit in plaats van erna.',
+    'DAT HET MEETGAT VAN 18-09 DE BUS WAS, IS NOG STEEDS EEN VERMOEDEN (#254). En de ELM-poort die op 19-09 om 15:02:31 dichtviel op de MX+ is één waarneming, geen patroon.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };
