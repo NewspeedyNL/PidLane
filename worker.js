@@ -903,6 +903,10 @@ async function handlePing(request, env) {
 __name(handlePing, "handlePing");
 async function handleAirtableLog(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
+
+  // TIJDELIJKE STOP: Direct 200 OK om Airtable API-limiet te beschermen
+  return json({ ok: true, status: "logging_paused" }, 200);
+
   if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
   let payload;
   try {
@@ -980,7 +984,7 @@ async function handleAirtableVeldlab(request, env) {
   });
 }
 __name(handleAirtableVeldlab, "handleAirtableVeldlab");
-// ══════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════
 //  DE MEETOPDRACHT VOOR DE VOLGENDE TESTRUN (#241)
 // ──────────────────────────────────────────────────────────────────
 //  WAAROM DIT LEZEN IS EN VERDER NIETS. De lus die dit sluit: de testrun
