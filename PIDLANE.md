@@ -913,6 +913,70 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 22-09-2026 — de logbase liep vol, en de bewaker stond groen (#262, #260)
+
+**Wat er gebeurde.** De Airtable-base met de logtabel stond op **1.159 van de
+1.000 rijen**. Een volle base neemt geen nieuwe rijen meer aan. In diezelfde
+base staat de tabel `Meetopdracht`, dus beide helften van de lus van #241 lagen
+tegelijk stil: de rit kon niets wegschrijven, en de volgende rit kon geen
+opdracht krijgen.
+
+**Wat er vóór die vondst gebeurd was.** Op 20-09 om 17:12:26 is er met de
+webeditor een commit op `main` gezet (`5f10147`, "Add files via upload") die in
+`handleAirtableLog()` één regel toevoegde:
+
+```js
+// TIJDELIJKE STOP: Direct 200 OK om Airtable API-limiet te beschermen
+return json({ ok: true, status: "logging_paused" }, 200);
+```
+
+Alles eronder werd daarmee onbereikbaar. Dat is verdedigbaar als noodrem, maar
+de vorm ervan niet: de app kreeg `ok: true` met HTTP 200 terug en kon niet zien
+dat er niets gebeurde.
+
+**En de bewaker keurde het goed.** De proef in blok 5 die juist dit moet vangen
+(#235, *"Een kanaal dat stil faalt is erger dan geen kanaal"*) draaide die avond
+om 21:57:11 en meldde: *"ok — de Worker nam 7 regel(s) aan (HTTP 200)"*. Hij
+las `na.ok` en `na.status`, en de Worker gaf keurig allebei. Het woord
+`logging_paused` stond in de body, waar niemand naar keek. De proef kón daar
+dus niet rood worden — hij faalde op precies dezelfde manier als het kanaal dat
+hij bewaakte. Dat is de kern van deze bevinding en niet de volle base.
+
+**Een conclusie die onderweg fout bleek, en waarom hij hier blijft staan.** Uit
+het Airtable-scherm bleken twee limieten vol: records per base (1.159/1.000) én
+Public API calls per maand (1.601/1.000). Ik heb daaruit geconcludeerd dat het
+API-plafond het bindende probleem was, dat het pas bij de maandwissel zou
+opengaan, en dus dat klantlogin negen dagen plat zou liggen — `klantZoek()`
+doet immers `throw` op elke niet-ok status. Dat klopte niet. De API-teller stond
+wél rood maar blokkeerde niets; de recordlimiet deed dat wel, en die geldt **per
+base**. De Klanten- en Config-tabellen staan in een andere base en werkten
+gewoon door. De les is de vorm: *een rode balk is een waarneming, geen
+conclusie* — dezelfde fout als bij de Cloudflare-bot in #35, en toen ook twee
+keer achter elkaar.
+
+**Wat er veranderd is.** De logregels gaan naar Cloudflare D1
+(`pidlane_log_db`, binding `LOGDB`), schema in `schema.sql`. Drie dingen zijn
+daarbij met opzet anders dan bij Airtable:
+
+1. **De Worker draagt geen kolommenlijst.** Die namen staan al in
+   `AT_KOLOMMEN` (`pidlane-auth.js`) en in `schema.sql`; een derde kopie zou de
+   vorm zijn die `PIDLANE-WERK.md` en dit hoofdstuk eerder de kop kostte. De
+   Worker vraagt de kolommen aan de tabel zelf, één keer per isolate.
+2. **Een onbekend veld verdwijnt niet.** Airtable maakte er vanzelf een kolom
+   bij, SQLite niet — zonder maatregel zou een nieuw veld stil weg zijn. Het
+   gaat nu als JSON naar de kolom `onbekend`, en `test-logschema.js` maakt er
+   een bevinding van dat die kolom mist.
+3. **Aangenomen is niet meer hetzelfde als weggeschreven.** De Worker meldt
+   hoeveel rijen hij werkelijk wegschreef; `flushAirtable()` zet de batch terug
+   in de buffer als dat getal er niet is of te laag is, en de proef van blok 5
+   wordt FOUT bij een `ok` zonder dat getal. Daarmee kan de toestand van 20-09
+   niet meer groen staan. Drie mutaties in `plmutate.sh` bouwen die toestand na.
+
+**Wat dit niet oplost.** De tabel `Meetopdracht` staat nog in dezelfde volle
+base, en de route heet nog `/airtable/log` terwijl er geen Airtable meer aan te
+pas komt. Allebei apart opgepakt.
+
+
 ### Wat er op 18-09 gerepareerd is, en wat het over toetsen zei
 
 De drie oorzaken hieronder zijn dezelfde avond nog gerepareerd. Wat die
