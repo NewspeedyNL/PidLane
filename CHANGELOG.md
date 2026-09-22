@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-09-2026 — een rendercrash neemt de app niet meer mee (#229)
+ ═══════════════════════════════════════════════════════════
+
+ Sessie 5 van het v1.0-plan.
+
+ - #229  Sterft de WebView-renderer, dan gaf Capacitor "false" door en
+         schoot Android het hele proces af, met de meetdienst, de wake lock
+         en de adapterverbinding erin. native/PLRender.java vangt het af:
+         legt het moment en de oorzaak vast, geeft true terug en bouwt de
+         activiteit opnieuw op. Na de herstart zet pidlane-render.js het in
+         het logboek (en in D1), zodat het gat zijn oorzaak draagt.
+ - Nog niet: de ritmarkering in PLRit/PLAchtergrond. Het gat staat nu in
+         het logboek, maar nog niet als eigen oorzaak in het verslag.
+
+ ═══════════════════════════════════════════════════════════
  22-09-2026 — afmelden blijft afgemeld, en de DTC-vlag wacht op het antwoord
  ═══════════════════════════════════════════════════════════
 

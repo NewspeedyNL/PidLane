@@ -764,6 +764,11 @@ MUTATIES=(
 "public/pidlane-pip.js@@      p.addListener('pipModus', function (ev) { modus(!!(ev && ev.in)); });@@      p.addListener('pipMode', function (ev) { modus(!!(ev && ev.in)); });@@test-pip.js@@de gebeurtenis heet anders dan wat java stuurt: het kleine venster verschijnt nooit en de volle weergave staat in 240x135"
 "native/PLPip.java@@        if (!gewenst) return;@@        if (false) return;@@test-nativeschil.js@@het venster komt op ongeacht wat de app besloot — ook met de functie uitgezet in de Config"
 ".github/workflows/build-apk.yml@@                  \"        PLPip.leaveHint(this);\",@@                  \"        // haak eruit\",@@test-nativeschil.js@@de enige haak waarop Android PiP toestaat valt weg: alles lijkt in orde en het venster gaat nooit aan"
+# ── #229: een rendercrash neemt het proces niet mee (22-09-2026) ──
+"native/PLRender.java@@                return true;\n            }\n        });@@                return false;\n            }\n        });@@test-nativeschil.js@@de luisteraar geeft false: Capacitor geeft dat door en Android schiet het proces af, meetdienst en al"
+".github/workflows/build-apk.yml@@                  \"        PLRender.koppel(this, getBridge());\",\n@@@@test-nativeschil.js@@de luisteraar hangt niet meer aan de Java-MainActivity: de plugin bestaat, maar niemand vangt de rendercrash af"
+"native/PLRender.java@@                noteer(act, crash);\n@@@@test-nativeschil.js@@de crash wordt niet meer vastgelegd: na de herstart vermomt hij zich als een bevroren proces"
+"public/pidlane-render.js@@log(m, 'err')@@log(m, 'warn')@@test-nativeschil.js@@de melding na een rendercrash is een waarschuwing en komt niet meer in D1"
 
 # ── DE MEETOPDRACHT VAN BUITEN (#241, 17-09-2026). De keurder is het enige wat
 # tussen een rij in Airtable en een meting op een rijdende auto staat. Elke
