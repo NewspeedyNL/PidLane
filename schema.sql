@@ -30,6 +30,17 @@
 --  meetgat is juist de volgorde de vraag. `ontvangen` wordt door de
 --  Worker gezet en is daarmee de enige tijd waarop je kunt sorteren
 --  zonder aan te nemen dat het toestel gelijk liep.
+--
+--  PLAKKEN IN DE D1-CONSOLE? HAAL EERST HET COMMENTAAR ERUIT.
+--  De console van het Cloudflare-dashboard struikelt over `--`-regels en
+--  over meerdere statements met lege regels ertussen. Nagemeten op
+--  22-09-2026: kaal plakken werkt, dit bestand ongewijzigd plakken niet.
+--  De kale versie maken (levert exact hetzelfde schema op):
+--
+--    grep -v '^\s*--' schema.sql | tr -s ' \n' ' ' | tr ';' '\n'
+--
+--  Werkt ook dát niet, dan neemt die console maar één statement per keer:
+--  regel voor regel plakken, in volgorde.
 -- ══════════════════════════════════════════════════════════════════
 
 DROP TABLE IF EXISTS telemetry_logs;
