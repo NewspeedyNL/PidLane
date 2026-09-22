@@ -6,6 +6,9 @@
 > in het instructieveld van het Claude-project). Bij verschil wint dit bestand,
 > want dit is de kant die de code raakt.
 
+> **Bevriezing tot v1.0: geen nieuwe proeven of testrun-blokken; issues met
+> label `na-1.0` niet oppakken.**
+
 ## Oriëntatie — in deze volgorde
 
 | bestand | waarvoor |
