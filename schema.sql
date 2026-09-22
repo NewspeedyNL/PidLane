@@ -163,28 +163,66 @@ CREATE INDEX IF NOT EXISTS idx_opdracht_actief ON meetopdrachten (Actief, Gewijz
 -- ══════════════════════════════════════════════════════════════════
 
 -- Eén regel per rit: wanneer, hoe lang, hoeveel, en wat eruit kwam.
+--
+--  DE ISSUES-KOLOM VRAAGT EEN SPLITSER, EN DAT IS GEEN NETHEID.
+--  `Repro` draagt twee betekenissen, en dat is de fout eronder: bij een
+--  losse proef staat er één issue ("#226"), bij de uitkomstregel van een
+--  opdracht de hele lijst als één tekst ("#226 #64"). GROUP_CONCAT(DISTINCT)
+--  ziet die twee als verschillende waarden, en dan staat er op het scherm
+--  "#226,#64,#226 #64" — gemeten op 22-09-2026 op de rit van 14:55.
+--
+--  De recursieve CTE hieronder hakt elke Repro op spaties uiteen, ontdubbelt
+--  en plakt hem weer aan elkaar. Daarmee leest de kolom goed voor oude én
+--  nieuwe regels, zonder dat de app iets hoeft te veranderen.
+--
+--  DIT IS EEN PLEISTER EN GEEN GENEZING. De echte oplossing is dat `Repro`
+--  één ding betekent; dat vraagt een wijziging in pidlane-testrun.js en
+--  raakt de app. Zolang die er niet is, doet deze view het werk — maar het
+--  blijft één kolom met twee betekenissen, en dat is in dit project al drie
+--  keer een bug geweest.
 DROP VIEW IF EXISTS sessies;
 CREATE VIEW sessies AS
+WITH RECURSIVE
+  -- "#226 #64" wordt twee rijen. De spatie erachter is de stopvoorwaarde.
+  splitsing(SessionId, rest, stuk) AS (
+    SELECT SessionId, Repro || ' ', NULL
+      FROM logregels
+     WHERE SessionId IS NOT NULL AND SessionId <> ''
+       AND Outcome   IS NOT NULL AND Outcome   <> ''
+       AND Repro     IS NOT NULL AND Repro     <> ''
+    UNION ALL
+    SELECT SessionId,
+           substr(rest, instr(rest, ' ') + 1),
+           trim(substr(rest, 1, instr(rest, ' ') - 1))
+      FROM splitsing
+     WHERE rest <> ''
+  ),
+  perIssue AS (
+    SELECT SessionId, GROUP_CONCAT(stuk, ' ') AS issues
+      FROM (SELECT DISTINCT SessionId, stuk
+              FROM splitsing
+             WHERE stuk IS NOT NULL AND stuk <> ''
+             ORDER BY SessionId, stuk)
+     GROUP BY SessionId
+  )
 SELECT
-  SessionId                                                    AS SessionId,
-  MIN(ontvangen)                                               AS begonnen,
-  MAX(ontvangen)                                               AS geeindigd,
+  l.SessionId                                                  AS SessionId,
+  MIN(l.ontvangen)                                             AS begonnen,
+  MAX(l.ontvangen)                                             AS geeindigd,
   COUNT(*)                                                     AS regels,
-  SUM(CASE WHEN Type = 'error'     THEN 1 ELSE 0 END)          AS fouten,
-  SUM(CASE WHEN Type = 'opvallend' THEN 1 ELSE 0 END)          AS opvallend,
-  SUM(CASE WHEN Outcome IS NOT NULL AND Outcome <> '' THEN 1 ELSE 0 END) AS uitkomsten,
-  -- Welke issues deze rit een antwoord kregen. Repro draagt bij een
-  -- opdracht de issuenummers; dit is de vraag van #257 in één kolom.
-  GROUP_CONCAT(DISTINCT CASE WHEN Outcome IS NOT NULL AND Outcome <> ''
-                             THEN Repro END)                   AS issues,
-  MAX(RecordType)                                              AS RecordType,
-  MAX(Merk)                                                    AS Merk,
-  MAX(AppVersion)                                              AS AppVersion,
-  MAX(Adapter)                                                 AS Adapter,
-  MAX(Demo)                                                    AS Demo
-FROM logregels
-WHERE SessionId IS NOT NULL AND SessionId <> ''
-GROUP BY SessionId;
+  SUM(CASE WHEN l.Type = 'error'     THEN 1 ELSE 0 END)        AS fouten,
+  SUM(CASE WHEN l.Type = 'opvallend' THEN 1 ELSE 0 END)        AS opvallend,
+  SUM(CASE WHEN l.Outcome IS NOT NULL AND l.Outcome <> '' THEN 1 ELSE 0 END) AS uitkomsten,
+  i.issues                                                     AS issues,
+  MAX(l.RecordType)                                            AS RecordType,
+  MAX(l.Merk)                                                  AS Merk,
+  MAX(l.AppVersion)                                            AS AppVersion,
+  MAX(l.Adapter)                                               AS Adapter,
+  MAX(l.Demo)                                                  AS Demo
+FROM logregels l
+LEFT JOIN perIssue i ON i.SessionId = l.SessionId
+WHERE l.SessionId IS NOT NULL AND l.SessionId <> ''
+GROUP BY l.SessionId;
 
 -- Wat er mis was, zonder de duizend regels eromheen. Dit is met de hand
 -- het werk dat CLAUDE.md beschrijft: "haal er FOUT en LET OP met hun
