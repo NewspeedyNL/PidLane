@@ -28,5 +28,11 @@
 # public/test-gitattributes.js bewaakt die grens.
 # ══════════════════════════════════════════════════════════════════
 
-CHANGELOG.md  merge=union
-PIDLANE.md    merge=union
+# De twee archieven erbij op 22-09-2026 (#265). Ze hebben exact dezelfde
+# botsvorm: elke tak schrijft er onderaan een blok bij, en dan botsen twee
+# gelijktijdige takken per definitie op dezelfde plek. Zonder union is dat
+# handwerk op een bestand van 403 KB.
+CHANGELOG.md          merge=union
+CHANGELOG-ARCHIEF.md  merge=union
+PIDLANE.md            merge=union
+PIDLANE-ARCHIEF.md    merge=union
