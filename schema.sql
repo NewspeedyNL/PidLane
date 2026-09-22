@@ -87,3 +87,77 @@ CREATE INDEX IF NOT EXISTS idx_log_sessie     ON logregels (SessionId);
 CREATE INDEX IF NOT EXISTS idx_log_ontvangen  ON logregels (ontvangen DESC);
 CREATE INDEX IF NOT EXISTS idx_log_soort      ON logregels (RecordType);
 CREATE INDEX IF NOT EXISTS idx_log_outcome    ON logregels (Outcome) WHERE Outcome IS NOT NULL;
+
+-- ══════════════════════════════════════════════════════════════════
+--  DE MEETOPDRACHTEN (#241)
+-- ──────────────────────────────────────────────────────────────────
+--  Stond in dezelfde Airtable-base als de log, en lag daardoor op 22-09
+--  óók stil: een volle base neemt geen nieuwe rijen meer aan, dus de rit
+--  kon niets wegschrijven én de volgende rit kon geen opdracht krijgen.
+--  Twee helften van één lus achter dezelfde limiet is één storing te veel.
+--
+--  De Worker kent de VORM van een opdracht niet en wil hem niet kennen —
+--  `Opdracht` is tekst, en het keuren gebeurt in pidlane-opdracht.js met
+--  de witte lijst. Dat blijft precies zo; alleen de bewaarplaats verandert.
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS meetopdrachten (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  Naam      TEXT NOT NULL,
+  Reden     TEXT,
+  -- 0/1. Meer dan één actieve rij is een fout van de schrijver; de route
+  -- pakt dan de laatst gewijzigde en zegt hoeveel er stonden.
+  Actief    INTEGER NOT NULL DEFAULT 0,
+  Gewijzigd TEXT NOT NULL,
+  Opdracht  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_opdracht_actief ON meetopdrachten (Actief, Gewijzigd DESC);
+
+-- ══════════════════════════════════════════════════════════════════
+--  WAT SQL HIER MOGELIJK MAAKT EN AIRTABLE NIET
+-- ──────────────────────────────────────────────────────────────────
+--  De wens was "één logregel voor een hele sessie". Bij Airtable zou dat
+--  betekenen: die samenvatting ERBIJ schrijven, als extra rij. Dan staan
+--  het totaal en de regels waaruit het volgt los van elkaar, en lopen ze
+--  uit de pas zodra er een regel bijkomt of weggaat — dezelfde vorm die
+--  §11 en PIDLANE-WERK.md de kop kostte.
+--
+--  In SQL hoeft dat niet: een samenvatting is een VRAAG, geen rij. De
+--  views hieronder bewaren niets en kunnen dus per definitie niet uit de
+--  pas lopen met de regels eronder. Ze zijn ook alleen-leesbaar, en dat
+--  klopt: afgeleide cijfers hoor je niet met de hand te kunnen bijstellen.
+-- ══════════════════════════════════════════════════════════════════
+
+-- Eén regel per rit: wanneer, hoe lang, hoeveel, en wat eruit kwam.
+DROP VIEW IF EXISTS sessies;
+CREATE VIEW sessies AS
+SELECT
+  SessionId                                                    AS SessionId,
+  MIN(ontvangen)                                               AS begonnen,
+  MAX(ontvangen)                                               AS geeindigd,
+  COUNT(*)                                                     AS regels,
+  SUM(CASE WHEN Type = 'error'     THEN 1 ELSE 0 END)          AS fouten,
+  SUM(CASE WHEN Type = 'opvallend' THEN 1 ELSE 0 END)          AS opvallend,
+  SUM(CASE WHEN Outcome IS NOT NULL AND Outcome <> '' THEN 1 ELSE 0 END) AS uitkomsten,
+  -- Welke issues deze rit een antwoord kregen. Repro draagt bij een
+  -- opdracht de issuenummers; dit is de vraag van #257 in één kolom.
+  GROUP_CONCAT(DISTINCT CASE WHEN Outcome IS NOT NULL AND Outcome <> ''
+                             THEN Repro END)                   AS issues,
+  MAX(RecordType)                                              AS RecordType,
+  MAX(Merk)                                                    AS Merk,
+  MAX(AppVersion)                                              AS AppVersion,
+  MAX(Adapter)                                                 AS Adapter,
+  MAX(Demo)                                                    AS Demo
+FROM logregels
+WHERE SessionId IS NOT NULL AND SessionId <> ''
+GROUP BY SessionId;
+
+-- Wat er mis was, zonder de duizend regels eromheen. Dit is met de hand
+-- het werk dat CLAUDE.md beschrijft: "haal er FOUT en LET OP met hun
+-- blokkop uit, en plak dat". Nu is het een vraag in plaats van knipwerk.
+DROP VIEW IF EXISTS bevindingen;
+CREATE VIEW bevindingen AS
+SELECT id, ontvangen, Timestamp, SessionId, RecordType, Type,
+       Outcome, Repro, Message, Adapter, AppVersion
+FROM logregels
+WHERE Type IN ('error', 'opvallend', 'bug')
+   OR (Outcome IS NOT NULL AND Outcome <> '');

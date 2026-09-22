@@ -527,6 +527,9 @@
           <div><label for="tbBron">Tabel</label>
             <select id="tbBron" onchange="tbBronGewisseld()">
               <option value="log">Logboek (app)</option>
+              <option value="sessies">Ritten (afgeleid, alleen-lezen)</option>
+              <option value="bevindingen">Bevindingen (afgeleid, alleen-lezen)</option>
+              <option value="opdracht">Meetopdrachten</option>
               <option value="klanten">Klanten</option>
               <option value="codes">Activatiecodes</option>
               <option value="kasboek">Kasboek (tokenmutaties, alleen-lezen)</option>
@@ -543,6 +546,35 @@
             <select id="tbLimiet"><option>25</option><option selected>50</option><option>100</option></select></div>
         </div>
         <div id="tbMsg" class="msg"></div>
+
+        <!-- ── Opruimen (#260) ──────────────────────────────────────────
+             Alleen voor de D1-bronnen: bij Airtable was bulkwissen een
+             API-call per tien rijen uit een maandquotum, hier is het één
+             statement. Twee knoppen en niet één, met opzet: tellen is
+             ongevaarlijk, wissen niet, en de tweede doet niets tot de
+             eerste geteld heeft. -->
+        <details id="tbOpruimKaart" class="hidden" style="margin-top:12px">
+          <summary style="cursor:pointer"><b>🧹 Opruimen</b> — meerdere rijen ineens</summary>
+          <div class="grid4" style="margin-top:10px">
+            <div><label for="opDagen">Ouder dan (dagen)</label>
+              <input type="number" id="opDagen" min="0" placeholder="bv. 30"></div>
+            <div><label for="opSessie">Alleen deze rit</label>
+              <input type="text" id="opSessie" placeholder="SessionId, leeg = alle"></div>
+            <div><label for="opType">Alleen dit soort</label>
+              <select id="opType"><option value="">alle soorten</option><option>info</option>
+                <option>opvallend</option><option>error</option><option>usage</option></select></div>
+            <div><label for="opUitkomsten">Uitkomsten</label>
+              <select id="opUitkomsten">
+                <option value="nee">laat regels mét een Outcome staan</option>
+                <option value="ja">wis die ook</option>
+              </select></div>
+          </div>
+          <div class="bar" style="margin-top:10px">
+            <button class="btn-sec btn-sm" onclick="tbOpruimTellen()">Tel eerst</button>
+            <button class="btn-del btn-sm" id="opWis" onclick="tbOpruimWissen()" disabled>Wis werkelijk</button>
+          </div>
+          <div id="opMsg" class="msg"></div>
+        </details>
       </div>
 
       <div class="card strak">
@@ -951,6 +983,8 @@ function oefenReset(){
   OEFEN_DATA = JSON.parse(JSON.stringify(OEFEN_START));
   OEFEN_DATA.log = oefenLogregels();
   OEFEN_DATA.veldlab = [{ id:'recV000000000001', fields:{ Merk:'Volkswagen', PID:'010C', Waarde:842, Eenheid:'rpm' } }];
+  OEFEN_DATA.opdracht = [{ id:'1', fields:{ Naam:'MAF stationair', Reden:'#232', Actief:1,
+    Gewijzigd:'2026-09-19T20:00:00Z', Opdracht:'{"schema":1,"pids":["0110"]}' } }];
   OEFEN_DATA.referentie = [{ id:'recR000000000001', fields:{ Merk:'Volkswagen', PID:'0105', Min:78, Max:98 } }];
   OEFEN_DATA.appconfig = Object.keys(OEFEN_DATA.config).map((k,i) =>
     ({ id:'recF' + String(i).padStart(12,'0'), fields:{ Key:k, Value:String(OEFEN_DATA.config[k]) } }));
@@ -1084,13 +1118,17 @@ function oefenAntwoord(path, opts){
   if(path.indexOf('/admin/tabel') === 0){
     const naar = { log:'log', klanten:'klanten', codes:'codes', users:'users',
                    veldlab:'veldlab', referentie:'referentie', config:'appconfig',
-                   kasboek:'kasboek' };
+                   kasboek:'kasboek', sessies:'sessies', bevindingen:'bevindingen',
+                   opdracht:'opdracht' };
     /* Twee bronnen zijn alleen-lezen, elk om zijn eigen reden: AppConfig omdat
        schrijven daar de randcache moet wissen, het kasboek omdat een
        corrigeerbaar kasboek niets meer bewijst. In de Worker staat dat in
        ADMIN_BRONNEN; hier moet het meebewegen, anders belooft de oefenstand
        een knop die live geweigerd wordt. */
-    const alleenLezen = ['config','kasboek'];
+    /* Sessies en bevindingen zijn views in D1: ze bewaren niets maar worden
+       berekend uit logregels. Met de hand bijstellen zou betekenen dat je een
+       uitkomst verzint, en live weigert de Worker het ook. */
+    const alleenLezen = ['config','kasboek','sessies','bevindingen'];
     const bron = sp.get('bron') || (b && b.bron) || '';
     if(!naar[bron]) return { ok:false, error:'Onbekende bron.' };
     const rijen = () => {
@@ -1101,6 +1139,28 @@ function oefenAntwoord(path, opts){
         Gebruikt:c.gebruikt, Waarde:c.waarde, Batch:c.batch, GebruiktDoor:c.gebruiktDoor, GebruiktOp:c.gebruiktOp } }));
       if(bron === 'users') return D.users.map((u,i) => ({ id:'recU' + String(i).padStart(12,'0'),
         fields:{ User:u.user, Label:u.label, Role:u.role, Active:u.active, PassHash:u.hasPass ? '••• verborgen' : '' } }));
+      /* Net als in D1: afgeleid uit de logregels en niet apart bewaard. Zou de
+         oefenstand hier eigen rijen verzinnen, dan oefen je op een tabel die
+         live anders is. */
+      if(bron === 'bevindingen')
+        return (D.log || []).filter(r => ['error','opvallend','bug'].indexOf(r.fields.Type) >= 0
+                                      || (r.fields.Outcome || '') !== '');
+      if(bron === 'sessies'){
+        const per = {};
+        (D.log || []).forEach(r => {
+          const sid = r.fields.SessionId || ''; if(!sid) return;
+          const v = per[sid] || (per[sid] = { id:sid, fields:{ SessionId:sid, regels:0, fouten:0,
+            opvallend:0, uitkomsten:0, issues:'' } });
+          v.fields.regels++;
+          if(r.fields.Type === 'error') v.fields.fouten++;
+          if(r.fields.Type === 'opvallend') v.fields.opvallend++;
+          if((r.fields.Outcome || '') !== ''){
+            v.fields.uitkomsten++;
+            if(r.fields.Repro) v.fields.issues = (v.fields.issues ? v.fields.issues + ',' : '') + r.fields.Repro;
+          }
+        });
+        return Object.values(per);
+      }
       return D[naar[bron]] || [];
     };
     const beschermd = { klanten:['Saldo','PassHash','ResetToken','ResetVerloopt','Email'], users:['PassHash','User'] };
@@ -1116,8 +1176,31 @@ function oefenAntwoord(path, opts){
                gesorteerd:true, sorteer:'', schrijven:alleenLezen.indexOf(bron) < 0,
                beschermd:beschermd[bron] || [], geheim:bron === 'klanten' || bron === 'users' ? ['PassHash'] : [] };
     }
-    if(alleenLezen.indexOf(bron) >= 0)
-      return { ok:false, error:'De bron "' + (bron === 'config' ? 'AppConfig' : 'Kasboek (tokenmutaties)') + '" is alleen-lezen.' };
+    if(alleenLezen.indexOf(bron) >= 0){
+      const naamVan = { config:'AppConfig', kasboek:'Kasboek (tokenmutaties)',
+                        sessies:'Ritten (afgeleid)', bevindingen:'Bevindingen (afgeleid)' };
+      return { ok:false, error:'De bron "' + (naamVan[bron] || bron) + '" is alleen-lezen.' };
+    }
+    if(b.actie === 'opruimen'){
+      /* Dezelfde regels als de Worker, anders oefen je op iets anders dan er
+         live gebeurt: proef tenzij proef:false, en uitkomsten blijven staan. */
+      const regel = b.regel || {};
+      if(!Object.keys(regel).length)
+        return { ok:false, error:'Geef minstens één regel op: sessie, type of ouderDanDagen.' };
+      const grens = regel.ouderDanDagen !== undefined
+        ? new Date(Date.now() - Number(regel.ouderDanDagen) * 864e5).toISOString() : null;
+      const raakt = r => {
+        if(regel.sessie && r.fields.SessionId !== regel.sessie) return false;
+        if(regel.type && r.fields.Type !== regel.type) return false;
+        if(grens && !((r.fields.ontvangen || r.fields.Timestamp || '') < grens)) return false;
+        if(b.ookUitkomsten !== true && (r.fields.Outcome || '') !== '') return false;
+        return true;
+      };
+      const treffers = (D[naar[bron]] || []).filter(raakt);
+      if(b.proef !== false) return { ok:true, proef:true, aantal:treffers.length, regel };
+      D[naar[bron]] = (D[naar[bron]] || []).filter(r => !raakt(r));
+      return { ok:true, proef:false, aantal:treffers.length, regel };
+    }
     if(b.actie === 'wis'){
       const ids = b.ids || [b.id];
       D[naar[bron]] = (D[naar[bron]] || []).filter(r => ids.indexOf(r.id) < 0);
@@ -1870,13 +1953,78 @@ async function wisRecords(bron, ids, msgEl, wat){
    ════════════════════════════════════════════════════════════════ */
 let TB = { bron:'log', records:[], velden:[], offset:'', schrijven:true, beschermd:[], geheim:[], keuze:new Set(), huidig:null };
 
+/* Opruimen bestaat alleen voor de D1-bronnen die je mag wijzigen. Bij de
+   afgeleide views valt er niets op te ruimen (ze bewaren niets) en bij de
+   Airtable-bronnen kent de Worker de actie niet — een knop tonen die live
+   geweigerd wordt is erger dan geen knop. */
+const OPRUIMBAAR = ['log','opdracht'];
+
 function tbBronGewisseld(){
   TB = { bron:$('tbBron').value, records:[], velden:[], offset:'', schrijven:true,
-         beschermd:[], geheim:[], keuze:new Set(), huidig:null };
+         beschermd:[], geheim:[], keuze:new Set(), huidig:null, opruimGeteld:null };
   $('tbTabel').innerHTML = '<div class="leeg">Klik op Ophalen.</div>';
   $('tbTitel').textContent = 'Nog niets opgehaald';
   $('tbMeer').disabled = true;
+  $('tbOpruimKaart').classList.toggle('hidden', OPRUIMBAAR.indexOf(TB.bron) < 0);
+  $('opWis').disabled = true;
+  $('opMsg').textContent = '';
   tbDetailSluiten();
+}
+
+/* De regel die de Worker krijgt. Leeg blijft leeg: een veld dat je niet
+   invult hoort geen voorwaarde te worden. */
+function tbOpruimRegel(){
+  const regel = {};
+  const d = $('opDagen').value.trim();
+  if(d !== '' && Number(d) >= 0) regel.ouderDanDagen = Number(d);
+  if($('opSessie').value.trim()) regel.sessie = $('opSessie').value.trim();
+  if($('opType').value) regel.type = $('opType').value;
+  return { regel, ookUitkomsten: $('opUitkomsten').value === 'ja' };
+}
+
+async function tbOpruimTellen(){
+  const m = $('opMsg');
+  const v = tbOpruimRegel();
+  if(!Object.keys(v.regel).length){
+    toon_msg(m, 'err', 'Vul minstens één voorwaarde in — anders zou dit de hele tabel zijn.');
+    $('opWis').disabled = true; return;
+  }
+  /* Zonder proef:false telt de Worker alleen. Dat is daar de standaard, en
+     hier wordt hij niet overschreven: tellen hoort het makkelijke pad te zijn. */
+  const r = await veilig(m, () => callWorker('tabel','/admin/tabel',{
+    method:'POST', headers:HJ(),
+    body:JSON.stringify(Object.assign({ bron:TB.bron, actie:'opruimen' }, v))
+  }), 'Bezig met tellen…');
+  if(!r.ok) return;
+  TB.opruimGeteld = { sleutel:JSON.stringify(v), aantal:r.aantal };
+  $('opWis').disabled = !r.aantal;
+  toon_msg(m, r.aantal ? 'ok' : 'info',
+    r.aantal ? '✓ ' + r.aantal + ' rij(en) voldoen hieraan. Klik op "Wis werkelijk" om ze weg te halen.'
+             : 'Er is niets dat hieraan voldoet.');
+}
+
+async function tbOpruimWissen(){
+  const m = $('opMsg');
+  const v = tbOpruimRegel();
+  /* Niet op de knop vertrouwen maar op wat er geteld is. Verander je de
+     voorwaarde nadat je geteld hebt, dan staat er een aantal op het scherm
+     dat bij een andere regel hoort — en dan wis je iets anders dan je las. */
+  if(!TB.opruimGeteld || TB.opruimGeteld.sleutel !== JSON.stringify(v)){
+    toon_msg(m, 'err', 'De voorwaarde is veranderd sinds de telling. Tel eerst opnieuw.');
+    $('opWis').disabled = true; return;
+  }
+  if(!confirm(TB.opruimGeteld.aantal + ' rij(en) definitief wissen?\n\n' +
+              'Dit kan niet ongedaan gemaakt worden vanuit deze pagina.')) return;
+  const r = await veilig(m, () => callWorker('tabel','/admin/tabel',{
+    method:'POST', headers:HJ(),
+    body:JSON.stringify(Object.assign({ bron:TB.bron, actie:'opruimen', proef:false }, v))
+  }), 'Bezig met opruimen…');
+  if(!r.ok) return;
+  TB.opruimGeteld = null;
+  $('opWis').disabled = true;
+  toon_msg(m, 'ok', '✓ ' + r.aantal + ' rij(en) opgeruimd.');
+  toast(r.aantal + ' opgeruimd');
+  tbLaden(true);
 }
 async function tbLaden(opnieuw){
   const m = $('tbMsg');

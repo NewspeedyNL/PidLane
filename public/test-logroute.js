@@ -64,16 +64,15 @@ function maakD1(o) {
   return {
     db, gezien,
     prepare(sql) {
-      return {
-        sql,
+      const maakUit = (args) => ({
+        sql, args,
         all() {
           if (o.pragmaStuk) throw new Error('pragma weg');
-          return { results: db.prepare(sql).all() };
+          return { results: db.prepare(sql).all(...args) };
         },
-        bind(...args) {
-          return { sql, args, _run() { db.prepare(sql).run(...args); } };
-        }
-      };
+        _run() { db.prepare(sql).run(...args); }
+      });
+      return Object.assign(maakUit([]), { bind: (...args) => maakUit(args) });
     },
     async batch(stmts) {
       if (o.batchStuk) throw new Error('D1_ERROR: database is vol');

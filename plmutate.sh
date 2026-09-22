@@ -910,6 +910,14 @@ MUTATIES=(
 "worker.js@@  if (!env.LOGDB) return json({ error: \"no_logdb\" }, 500);@@  return json({ ok: true, status: \"logging_paused\" }, 200);\n  if (!env.LOGDB) return json({ error: \"no_logdb\" }, 500);@@test-logroute.js@@de logstop van 20-09 is terug: de route meldt 200 ok en schrijft niets — precies wat blok 5 niet zag"
 "worker.js@@    return json({ error: \"schrijven_mislukt\", detail: String(e && e.message || e) }, 502);@@    return json({ ok: true }, 200);@@test-logroute.js@@een mislukte schrijfactie heet weer geslaagd: de app gooit de batch weg en niemand mist de regels"
 "worker.js@@    if (Object.keys(rest).length && kolommen.has(\"onbekend\")) {@@    if (false) {@@test-logroute.js@@het vangnet is weg: een veld zonder kolom verdwijnt stil in plaats van in \`onbekend\` te landen"
+
+# ── De opruimkant van D1 (#260). Bij Airtable kon bulkwissen niet, dus deze
+# fouten konden daar ook niet bestaan; nu wel, en ze zijn alle drie
+# onomkeerbaar. De eerste is de ergste: een regel met een Outcome is het
+# antwoord op een issue, en daar is een rit voor gereden.
+"worker.js@@    if (body.ookUitkomsten !== true && kol.has(\"Outcome\"))@@    if (false)@@test-adminbron-d1.js@@opruimen neemt de uitkomsten mee: het antwoord op een issue verdwijnt samen met de ruis"
+"worker.js@@    const proef = body.proef !== false;@@    const proef = body.proef === true;@@test-adminbron-d1.js@@opruimen wist meteen in plaats van eerst te tellen — een vergissing kost dan rijen en geen getal"
+"worker.js@@    if (!waar.length)@@    if (false)@@test-adminbron-d1.js@@een opruimregel zonder enkele voorwaarde komt erdoor, en dat is de hele tabel"
 )
 
 echo

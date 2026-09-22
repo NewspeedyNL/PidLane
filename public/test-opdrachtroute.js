@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// test-opdrachtroute.js — de Worker-kant van de meetopdracht (#241)
+// test-opdrachtroute.js — de Worker-kant van de meetopdracht (#241, #262)
 // ──────────────────────────────────────────────────────────────────
 // WAT HIER GETOETST WORDT.
 //
@@ -14,6 +14,12 @@
 // is de vraag welke van de twee klopt — en dat is precies de vorm die in dit
 // project al drie keer een bug is geweest.
 //
+// SINDS #262 LEEST HIJ UIT D1. De tabel stond in dezelfde Airtable-base als
+// de log en lag op 22-09 mee plat toen die base vol raakte. Het gedrag is
+// ongewijzigd; alleen de bewaarplaats is anders, en de toetsen hieronder
+// gaan nog steeds over datzelfde gedrag. De nep-D1 is echte SQLite uit
+// schema.sql, dus een query die niet tegen de echte tabel past valt hier om.
+//
 // De echte functie wordt uit worker.js geknipt met een anker; verdwijnt of
 // hernoemt hij, dan stopt deze test in plaats van groen te blijven op code
 // die niet meer draait.
@@ -24,6 +30,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { DatabaseSync } = require('node:sqlite');
 
 let fout = 0, n = 0;
 function toets(naam, waar, uitleg) {
@@ -33,7 +40,10 @@ function toets(naam, waar, uitleg) {
   console.log('  FOUT  ' + naam + (uitleg ? '\n        ' + uitleg : ''));
 }
 
-const bron = fs.readFileSync(path.join(__dirname, '..', 'worker.js'), 'utf8');
+const wortel = path.join(__dirname, '..');
+const bron = fs.readFileSync(path.join(wortel, 'worker.js'), 'utf8');
+const schemaTekst = fs.readFileSync(path.join(wortel, 'schema.sql'), 'utf8');
+
 const van = bron.indexOf('async function handleOpdracht(request, env) {');
 const tot = bron.indexOf('__name(handleOpdracht, "handleOpdracht");');
 if (van < 0 || tot < 0 || tot < van) {
@@ -42,206 +52,176 @@ if (van < 0 || tot < 0 || tot < van) {
 }
 const src = bron.slice(van, tot);
 
-/* De nagemaakte omgeving. `verzoeken` legt vast wat er werkelijk naar Airtable
-   ging: daar kijkt deze test naar, niet alleen naar wat de handler teruggeeft. */
+/* De nagemaakte omgeving. `sqls` legt vast wat er werkelijk aan de database
+   gevraagd is: daar kijkt deze test naar, niet alleen naar wat de handler
+   teruggeeft. Eronder zit echte SQLite met het echte schema. */
 function bouw(o) {
   o = o || {};
-  const staat = { verzoeken: [] };
+  const db = new DatabaseSync(':memory:');
+  db.exec(schemaTekst);
+  for (const rij of (o.rijen || [])) {
+    db.prepare('INSERT INTO meetopdrachten (Naam,Reden,Actief,Gewijzigd,Opdracht) VALUES (?,?,?,?,?)')
+      .run(rij.Naam || '', rij.Reden || '', rij.Actief ? 1 : 0, rij.Gewijzigd || '', rij.Opdracht === undefined ? '' : rij.Opdracht);
+  }
+  const staat = { sqls: [] };
   const omg = {
     appTokenOk: async () => o.token !== false,
     json: (body, status) => ({ body, status: status || 200 }),
-    resolveBase: () => 'appLOGBASE12345',
-    cfg: () => 'Meetopdracht',
-    fetch: async (url, init) => {
-      staat.verzoeken.push({ url: String(url), init: init || {} });
-      if (o.gooi) throw new Error('netwerk weg');
-      if (o.status && o.status >= 400) {
-        return { ok: false, status: o.status, text: async () => o.tekst || 'stuk' };
-      }
-      return { ok: true, status: 200, json: async () => ({ records: o.records || [] }) };
-    },
     __name: () => { }
   };
   const maak = new Function(...Object.keys(omg), src + '\nreturn handleOpdracht;');
   const fn = maak(...Object.values(omg));
-  const env = o.env === undefined ? { AIRTABLE_TOKEN: 'x' } : o.env;
-  // `request.url` hoort erbij sinds ?alle=1 (#248): de handler leest zijn
-  // eigen querystring, dus een nagemaakt verzoek zonder url is geen nagemaakt
-  // verzoek meer.
-  const url = o.url || 'https://pidlane-proxy.example/airtable/opdracht';
-  return { staat, roep: () => fn({ url, headers: { get: () => '' } }, env) };
+  const LOGDB = o.geenDb ? null : {
+    prepare(sql) {
+      staat.sqls.push(sql);
+      return {
+        all() {
+          if (o.stuk) throw new Error('D1_ERROR: tabel weg');
+          return { results: db.prepare(sql).all() };
+        }
+      };
+    }
+  };
+  const request = { url: o.url || 'https://pidlane-proxy.example/airtable/opdracht' };
+  return { staat, db, roep: () => fn(request, { LOGDB }) };
 }
 
-// ══════════════════════════════════════════════════════════════════
-console.log('\n1. de poorten vóór Airtable');
-// ══════════════════════════════════════════════════════════════════
+const GROOT = 'x'.repeat(9000);
+
 (async function () {
+  // ── de poort ────────────────────────────────────────────────────
   {
-    const b = bouw({ token: false });
+    const b = bouw({ token: false, rijen: [{ Naam: 'a', Actief: 1, Gewijzigd: 'T1', Opdracht: 'x' }] });
     const r = await b.roep();
     toets('zonder geldig app-token: 401', r.status === 401 && r.body.error === 'unauthorized', JSON.stringify(r));
-    toets('en er is niets naar Airtable gegaan', b.staat.verzoeken.length === 0,
-      'anders is de token-poort een formaliteit en kost elke aanroep een Airtable-call');
+    toets('en er is niets aan de database gevraagd', b.staat.sqls.length === 0,
+      'gevraagd: ' + b.staat.sqls.join(' | '));
   }
   {
-    const b = bouw({ env: {} });
+    const b = bouw({ geenDb: true });
     const r = await b.roep();
-    toets('zonder AIRTABLE_TOKEN: 500 met een eigen code',
-      r.status === 500 && r.body.error === 'no_airtable_token', JSON.stringify(r));
-    toets('en ook dan gaat er niets de deur uit', b.staat.verzoeken.length === 0);
+    toets('zonder D1-binding: 500 met een eigen code',
+      r.status === 500 && r.body.error === 'no_logdb', JSON.stringify(r));
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  console.log('\n2. hij vraagt om de actieve rij, en om de nieuwste eerst');
-  // ══════════════════════════════════════════════════════════════════
+  // ── welke rij hij pakt ──────────────────────────────────────────
   {
-    const b = bouw({ records: [] });
+    const b = bouw({ rijen: [{ Naam: 'proef', Actief: 1, Gewijzigd: 'T1', Opdracht: 'schema 1' }] });
     await b.roep();
-    const u = b.staat.verzoeken[0].url;
-    toets('er wordt op Actief gefilterd', /filterByFormula=/.test(u) && /Actief/.test(decodeURIComponent(u)), u);
-    toets('en op Gewijzigd aflopend gesorteerd',
-      /sort/.test(u) && /Gewijzigd/.test(decodeURIComponent(u)) && /desc/.test(decodeURIComponent(u)), u);
-    toets('de tokenkop gaat mee', /Bearer/.test(String(b.staat.verzoeken[0].init.headers.Authorization)));
+    const q = b.staat.sqls[0] || '';
+    toets('er wordt op Actief gefilterd', /Actief\s*=\s*1/.test(q), q);
+    toets('en op Gewijzigd aflopend gesorteerd', /ORDER BY Gewijzigd DESC/.test(q), q);
   }
   {
-    const b = bouw({ records: [] });
-    const r = await b.roep();
+    const r = await bouw({ rijen: [] }).roep();
     toets('geen actieve rij → opdracht null, met een reden',
-      r.body.ok === true && r.body.opdracht === null && /geen actieve/.test(r.body.reden), JSON.stringify(r.body));
+      r.body.ok === true && r.body.opdracht === null && /geen actieve opdracht/.test(r.body.reden),
+      JSON.stringify(r.body));
   }
-
-  // ══════════════════════════════════════════════════════════════════
-  console.log('\n3. de rij komt door zoals hij is — keuren doet de app');
-  // ══════════════════════════════════════════════════════════════════
   {
-    const tekst = '{"schema":1,"naam":"proef"}';
-    const b = bouw({ records: [{ id: 'rec1', createdTime: 'T0', fields: { Naam: 'proef', Opdracht: tekst, Gewijzigd: 'T1' } }] });
+    const r = await bouw({ rijen: [{ Naam: 'staat uit', Actief: 0, Gewijzigd: 'T9', Opdracht: 'x' }] }).roep();
+    toets('TEGENPROEF: een niet-actieve rij telt niet mee',
+      r.body.opdracht === null, JSON.stringify(r.body));
+  }
+  {
+    const tekst = '{"schema":1,"pids":["0105"]}';
+    const b = bouw({ rijen: [{ Naam: 'proef', Reden: '#217', Actief: 1, Gewijzigd: 'T1', Opdracht: tekst }] });
     const r = await b.roep();
     toets('de tekst gaat ongewijzigd mee', r.body.opdracht === tekst, JSON.stringify(r.body));
-    toets('met id en naam erbij', r.body.id === 'rec1' && r.body.naam === 'proef', JSON.stringify(r.body));
+    toets('met id en naam erbij', r.body.id === '1' && r.body.naam === 'proef', JSON.stringify(r.body));
     toets('en het tijdstip van wijzigen', r.body.gewijzigd === 'T1', JSON.stringify(r.body));
-  }
-  {
-    // Twee actieve rijen is een fout van de schrijver. De route pakt de
-    // nieuwste en MELDT dat er meer stonden — stil de eerste pakken zou
-    // betekenen dat je een opdracht aanzet en er een andere gaat draaien.
-    const b = bouw({ records: [
-      { id: 'recNieuw', fields: { Naam: 'nieuw', Opdracht: '{"a":1}' } },
-      { id: 'recOud', fields: { Naam: 'oud', Opdracht: '{"a":2}' } }
-    ] });
-    const r = await b.roep();
-    toets('bij twee actieve rijen wint de eerste uit de sortering',
-      r.body.id === 'recNieuw', JSON.stringify(r.body));
-    toets('en het antwoord zegt dat er meer stonden', r.body.meer === 2, JSON.stringify(r.body));
-  }
-  {
-    // TEGENPROEF op die melding: bij één rij hoort er geen alarm te staan,
-    // anders betekent `meer` niets meer.
-    const b = bouw({ records: [{ id: 'r', fields: { Opdracht: '{}' } }] });
-    const r = await b.roep();
     toets('TEGENPROEF: bij één rij staat er geen "meer"', !r.body.meer, JSON.stringify(r.body));
   }
-
-  // ══════════════════════════════════════════════════════════════════
-  console.log('\n4. de groottegrens valt hier, niet pas op de telefoon');
-  // ══════════════════════════════════════════════════════════════════
   {
-    const b = bouw({ records: [{ id: 'r', fields: { Opdracht: 'x'.repeat(8193) } }] });
+    const b = bouw({ rijen: [
+      { Naam: 'oud', Actief: 1, Gewijzigd: 'T1', Opdracht: 'oud' },
+      { Naam: 'nieuw', Actief: 1, Gewijzigd: 'T9', Opdracht: 'nieuw' }
+    ] });
     const r = await b.roep();
+    toets('bij twee actieve rijen wint de nieuwste',
+      r.body.naam === 'nieuw' && r.body.opdracht === 'nieuw', JSON.stringify(r.body));
+    toets('en het antwoord zegt dat er meer stonden', r.body.meer === 2, JSON.stringify(r.body));
+  }
+
+  // ── de groottegrens ─────────────────────────────────────────────
+  {
+    const r = await bouw({ rijen: [{ Naam: 'groot', Actief: 1, Gewijzigd: 'T1', Opdracht: GROOT }] }).roep();
     toets('een opdracht over 8192 tekens gaat niet mee',
-      r.body.opdracht === null && /8193/.test(r.body.reden), JSON.stringify(r.body).slice(0, 200));
+      r.body.opdracht === null && /9000 tekens/.test(r.body.reden), JSON.stringify(r.body));
   }
   {
-    const b = bouw({ records: [{ id: 'r', fields: { Opdracht: 'x'.repeat(8192) } }] });
-    const r = await b.roep();
+    const opDeGrens = 'y'.repeat(8192);
+    const r = await bouw({ rijen: [{ Naam: 'grens', Actief: 1, Gewijzigd: 'T1', Opdracht: opDeGrens }] }).roep();
     toets('TEGENPROEF: precies op de grens gaat hij wél mee',
-      typeof r.body.opdracht === 'string' && r.body.opdracht.length === 8192,
-      'een grens die er één te vroeg dichtvalt is net zo goed een fout');
+      r.body.opdracht === opDeGrens, 'lengte ' + String(r.body.opdracht || '').length);
   }
   {
-    const b = bouw({ records: [{ id: 'r', fields: { Naam: 'zonder tekst' } }] });
-    const r = await b.roep();
-    toets('een rij zonder Opdracht-veld levert een lege tekst en geen crash',
-      r.body.opdracht === '', JSON.stringify(r.body));
+    const r = await bouw({ rijen: [{ Naam: 'leeg', Actief: 1, Gewijzigd: 'T1', Opdracht: '' }] }).roep();
+    toets('een rij zonder opdrachttekst levert een lege tekst en geen crash',
+      r.body.ok === true && r.body.opdracht === '', JSON.stringify(r.body));
   }
 
-  // ══════════════════════════════════════════════════════════════════
-  console.log('\n5. als Airtable niet meewerkt');
-  // ══════════════════════════════════════════════════════════════════
+  // ── als de database het laat afweten ────────────────────────────
   {
-    const b = bouw({ status: 422, tekst: 'Unknown field Actief' });
-    const r = await b.roep();
-    toets('een fout van Airtable wordt een 502 met de reden erbij',
-      r.status === 502 && r.body.error === 'opdracht_lezen_mislukt' && /Unknown field/.test(r.body.detail),
-      JSON.stringify(r.body));
-  }
-  {
-    const b = bouw({ gooi: true });
-    const r = await b.roep();
-    toets('een netwerkfout wordt gemeld en niet stil geslikt',
-      r.status === 502 && r.body.error === 'opdracht_onbereikbaar' && /netwerk weg/.test(r.body.detail),
-      JSON.stringify(r.body));
+    const r = await bouw({ stuk: true, rijen: [{ Naam: 'a', Actief: 1, Gewijzigd: 'T1', Opdracht: 'x' }] }).roep();
+    toets('een fout uit D1 wordt een 502 met de reden erbij',
+      r.status === 502 && r.body.error === 'opdracht_lezen_mislukt' && /tabel weg/.test(String(r.body.detail)),
+      JSON.stringify(r));
   }
 
-    // ══════════════════════════════════════════════════════════════════
-  console.log('\n6. ?alle=1 geeft de hele tabel (#248)');
-  // ══════════════════════════════════════════════════════════════════
+  // ── ?alle=1 ─────────────────────────────────────────────────────
   {
     const rijen = [
-      { id: 'rec1', createdTime: '2026-09-17T22:19:52.000Z',
-        fields: { Naam: 'Boordspanning', Reden: '#217', Actief: true,
-                  Gewijzigd: '2026-09-18T10:00:00.000Z', Opdracht: '{"schema":1}' } },
-      { id: 'rec2', createdTime: '2026-09-16T09:00:00.000Z',
-        fields: { Naam: 'Raildruk', Reden: '#19', Opdracht: '{"schema":1,"naam":"x"}' } }
+      { Naam: 'Boordspanning', Reden: '#217', Actief: 1, Gewijzigd: 'T2', Opdracht: '{"schema":1}' },
+      { Naam: 'MAF', Reden: '#232', Actief: 0, Gewijzigd: 'T1', Opdracht: '{"schema":1}' }
     ];
-
-    const b = bouw({ url: 'https://p.example/airtable/opdracht?alle=1', records: rijen });
-    const r = await b.roep();
-    const q = b.staat.verzoeken[0].url;
-
-    // DE FILTER MOET WEG, ANDERS IS "alles" NOG STEEDS ALLEEN DE ACTIEVE RIJ.
+    const zonder = bouw({ rijen });
+    await zonder.roep();
     toets('zonder ?alle=1 filtert hij nog steeds op Actief',
-      /filterByFormula/.test((await (async () => { const c = bouw({ records: [] }); await c.roep(); return c.staat.verzoeken[0]; })()).url));
-    toets('met ?alle=1 staat er geen filter meer in', !/filterByFormula/.test(q), q);
-    toets('maar wel dezelfde sortering op Gewijzigd', /Gewijzigd/.test(q) && /desc/.test(q), q);
-    toets('en een ruimere pageSize', /pageSize=12/.test(q), q);
+      /Actief\s*=\s*1/.test(zonder.staat.sqls[0]), zonder.staat.sqls[0]);
 
+    const b = bouw({ rijen, url: 'https://p.example/airtable/opdracht?alle=1' });
+    const r = await b.roep();
+    const q = b.staat.sqls[0] || '';
+    toets('met ?alle=1 staat er geen Actief-filter meer in', !/Actief/.test(q), q);
+    toets('maar wel dezelfde sortering op Gewijzigd', /ORDER BY Gewijzigd DESC/.test(q), q);
+    toets('en een ruimere grens', /LIMIT 12/.test(q), q);
     toets('het antwoord is gemerkt als lijst', r.body.alle === true, JSON.stringify(r.body).slice(0, 120));
     toets('met beide rijen erin', r.body.opdrachten.length === 2, String(r.body.opdrachten.length));
     toets('de naam gaat mee', r.body.opdrachten[0].naam === 'Boordspanning', r.body.opdrachten[0].naam);
     toets('de reden ook', r.body.opdrachten[0].reden === '#217', r.body.opdrachten[0].reden);
-    toets('en of hij actief is', r.body.opdrachten[0].actief === true && r.body.opdrachten[1].actief === false,
-      JSON.stringify(r.body.opdrachten.map(function (x) { return x.actief; })));
+    toets('en of hij actief is',
+      r.body.opdrachten[0].actief === true && r.body.opdrachten[1].actief === false,
+      JSON.stringify(r.body.opdrachten.map((x) => x.actief)));
     toets('de ruwe tekst gaat mee', /schema/.test(r.body.opdrachten[0].opdracht));
-
-    // EEN LEGE TABEL IS GEEN FOUT bij ?alle=1: dan zijn er gewoon geen vragen.
-    const leeg = await bouw({ url: 'https://p.example/airtable/opdracht?alle=1', records: [] }).roep();
+  }
+  {
+    const r = await bouw({ rijen: [], url: 'https://p.example/airtable/opdracht?alle=1' }).roep();
     toets('een lege tabel geeft een lege lijst en geen foutmelding',
-      leeg.body.alle === true && leeg.body.opdrachten.length === 0, JSON.stringify(leeg.body));
-
-    // EEN TE GROTE RIJ VERDWIJNT NIET STIL. Hij blijft in de lijst staan met
-    // de reden erbij, anders zoek je in Airtable naar een opdracht die op je
-    // telefoon nergens te bekennen is.
-    const groot = await bouw({ url: 'https://p.example/airtable/opdracht?alle=1',
-      records: [{ id: 'recX', fields: { Naam: 'Te groot', Opdracht: 'x'.repeat(9000) } }] }).roep();
+      r.body.ok === true && Array.isArray(r.body.opdrachten) && r.body.opdrachten.length === 0,
+      JSON.stringify(r.body));
+  }
+  {
+    const groot = await bouw({ rijen: [{ Naam: 'groot', Actief: 1, Gewijzigd: 'T1', Opdracht: GROOT }],
+      url: 'https://p.example/airtable/opdracht?alle=1' }).roep();
     toets('een te grote opdracht blijft in de lijst', groot.body.opdrachten.length === 1);
     toets('zonder zijn tekst', groot.body.opdrachten[0].opdracht === '');
     toets('maar mét de reden', /9000 tekens/.test(groot.body.opdrachten[0].weg), groot.body.opdrachten[0].weg);
-
-    const zonder = await bouw({ url: 'https://p.example/airtable/opdracht?alle=1',
-      records: [{ id: 'recY', fields: { Naam: 'Leeg' } }] }).roep();
-    toets('een rij zonder opdrachttekst zegt dat ook', /geen opdrachttekst/.test(zonder.body.opdrachten[0].weg),
-      zonder.body.opdrachten[0].weg);
-
-    // ?alle=0 of iets anders telt NIET als alles: een halve waarde mag geen
-    // hele tabel opleveren.
-    const half = bouw({ url: 'https://p.example/airtable/opdracht?alle=ja', records: rijen });
+  }
+  {
+    const zonder = await bouw({ rijen: [{ Naam: 'leeg', Actief: 1, Gewijzigd: 'T1', Opdracht: '' }],
+      url: 'https://p.example/airtable/opdracht?alle=1' }).roep();
+    toets('een rij zonder opdrachttekst zegt dat ook',
+      /geen opdrachttekst/.test(zonder.body.opdrachten[0].weg), zonder.body.opdrachten[0].weg);
+  }
+  {
+    const half = bouw({ rijen: [{ Naam: 'a', Actief: 1, Gewijzigd: 'T1', Opdracht: 'x' }],
+      url: 'https://p.example/airtable/opdracht?alle=ja' });
     const hr = await half.roep();
-    toets('?alle=ja is geen ?alle=1', !hr.body.alle && /filterByFormula/.test(half.staat.verzoeken[0].url),
-      half.staat.verzoeken[0].url);
+    toets('?alle=ja is geen ?alle=1',
+      !hr.body.alle && /Actief\s*=\s*1/.test(half.staat.sqls[0]), half.staat.sqls[0]);
   }
 
-console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
-                            : 'goed: alle ' + n + ' controles') + '\n');
+  console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));
   process.exit(fout ? 1 : 0);
 })();

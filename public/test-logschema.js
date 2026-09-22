@@ -123,5 +123,41 @@ const idx = db.prepare(
     'zonder deze index wordt de vraag die hij draagt een volledige tabelscan');
 });
 
+// ── 6. de meetopdrachten en de afgeleide views ─────────────────────
+// De opdrachttabel stond tot #262 in dezelfde volle Airtable-base als de log,
+// en lag daardoor tegelijk plat. Staat hij er niet, dan kan de app geen
+// opdracht meer ophalen en is de lus van #241 alsnog doorgeknipt.
+const opdrachtKol = db.prepare("SELECT name FROM pragma_table_info('meetopdrachten')").all().map((r) => r.name);
+['Naam', 'Reden', 'Actief', 'Gewijzigd', 'Opdracht'].forEach(function (k) {
+  toets('meetopdrachten heeft de kolom ' + k, opdrachtKol.indexOf(k) >= 0,
+    'handleOpdracht() leest dit veld; zonder kolom komt er niets terug');
+});
+
+// De views bewaren niets en kunnen dus niet uit de pas lopen met de regels
+// eronder. Dat is precies waarom ze views zijn en geen tweede tabel — maar
+// dan moeten ze er wel zijn, en moeten ze rekenen wat ze beloven.
+db.prepare('INSERT INTO logregels (ontvangen,Type,Message,SessionId,Outcome,Repro) VALUES (?,?,?,?,?,?)')
+  .run('2026-09-20T10:00:00Z', 'error', 'stuk', 'rit-X', null, null);
+db.prepare('INSERT INTO logregels (ontvangen,Type,Message,SessionId,Outcome,Repro) VALUES (?,?,?,?,?,?)')
+  .run('2026-09-20T10:01:00Z', 'info', 'gewoon', 'rit-X', 'gesloten', '#217');
+
+const sess = db.prepare("SELECT * FROM sessies WHERE SessionId='rit-X'").get();
+toets('de view sessies vat een rit samen',
+  sess && sess.regels === 2 && sess.fouten === 1 && sess.uitkomsten === 1,
+  JSON.stringify(sess));
+toets('en noemt de issues die een antwoord kregen', sess && sess.issues === '#217',
+  JSON.stringify(sess && sess.issues));
+
+// Onderscheidend maken in plaats van tellen: een getal hangt af van wat er
+// eerder in deze test is ingevoegd, en dan meet je je eigen opstelling.
+db.prepare('INSERT INTO logregels (ontvangen,Type,Message,SessionId) VALUES (?,?,?,?)')
+  .run('2026-09-20T10:02:00Z', 'info', 'niets aan de hand', 'rit-X');
+const bevMsg = db.prepare('SELECT Message FROM bevindingen').all().map((r) => r.Message);
+toets('een gewone info-regel zonder uitkomst valt buiten bevindingen',
+  bevMsg.indexOf('niets aan de hand') < 0, JSON.stringify(bevMsg));
+toets('maar een fout staat er wél in', bevMsg.indexOf('stuk') >= 0, JSON.stringify(bevMsg));
+toets('en een info-regel mét een uitkomst ook — die is het antwoord op een issue',
+  bevMsg.indexOf('gewoon') >= 0, JSON.stringify(bevMsg));
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));
 process.exit(fout ? 1 : 0);
