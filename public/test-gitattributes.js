@@ -99,6 +99,10 @@ function unionVoor(naam) {
 eis(regels.length > 0, 'er staat minstens één regel in');
 eis(unionVoor('CHANGELOG.md'), 'CHANGELOG.md heeft merge=union');
 eis(unionVoor('PIDLANE.md'), 'PIDLANE.md heeft merge=union');
+// De twee archieven sinds 22-09-2026 (#265): zelfde botsvorm, zelfde
+// oplossing. Vergeten zou betekenen dat je met de hand door 403 KB gaat.
+eis(unionVoor('PIDLANE-ARCHIEF.md'), 'PIDLANE-ARCHIEF.md heeft merge=union');
+eis(unionVoor('CHANGELOG-ARCHIEF.md'), 'CHANGELOG-ARCHIEF.md heeft merge=union');
 
 // ── 2. de grens: union nooit op code ───────────────────────────────
 console.log('');

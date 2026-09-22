@@ -11,9 +11,10 @@
 | bestand | waarvoor |
 |---|---|
 | GitHub-issues | **wat er nú openstaat** — gelabeld op soort, kant en ernst; dit is de enige stand van zaken |
-| `PIDLANE.md` | architectuurkaart — §4 zegt in welk bestand iets zit zonder code te lezen; §11 legt uit waaróm iets stukging |
+| `PIDLANE.md` | architectuurkaart — §4 zegt in welk bestand iets zit zonder code te lezen |
 | `PIDLANE-CONTRACT.md` | het ontwerp voor meetkwaliteit en sessiedekking (nog niet gebouwd) |
-| `PIDLANE-ARCHIEF.md` | afgehandelde bevindingen ouder dan twee weken — niet standaard lezen, gericht in zoeken |
+| `PIDLANE-ARCHIEF.md` | **waaróm iets stukging** — het hele oude §11 plus de afgehandelde bevindingen; niet standaard lezen, gericht in zoeken |
+| `CHANGELOG-ARCHIEF.md` | bouw-changelog ouder dan vier weken; idem, gericht in zoeken |
 
 Kortlopend werk hoort in een issue, niet in een document. `PIDLANE-WERK.md`
 bestond daarvoor en is op 27-08-2026 opgeheven: het groeide tot 40 KB, en de
@@ -24,30 +25,64 @@ open issues erin. Die tabel noemde #65 als open terwijl hij die ochtend om
 09:48 als duplicaat was gesloten, en miste #90 van 11:18: één dag, twee
 fouten, in een lijst met de waarschuwing "twee lijsten van hetzelfde lopen uit
 de pas" er drie regels boven. De regel is dus niet "beter bijhouden" maar
-**geen tweede lijst**: de stand van zaken staat in de issues, §11 bewaart de
-uitleg, en wat afgehandeld én ouder dan twee weken is gaat naar
-`PIDLANE-ARCHIEF.md`.
+**geen tweede lijst**: de stand van zaken staat in de issues.
 
-Zoek gericht (`grep`, `sed -n`) in plaats van hele bestanden te laden:
-`index.html` is 176 KB, `worker.js` 155 KB, `pidlane.css` 182 KB,
-`PIDLANE.md` 164 KB en `pidlane-testrun.js` 237 KB. Weet je niet welke module?
+**En op 22-09-2026 was §11 alsnog 394 KB** — driekwart van `PIDLANE.md`. De
+regel "twee weken oud gaat naar het archief" stond er, en werd niet gehaald;
+tussen 02-09 en 22-09 groeide het hoofdstuk van 77 naar 394 KB. Daarom staat
+het er nu niet meer: §11 is in zijn geheel naar `PIDLANE-ARCHIEF.md` gegaan en
+de uitleg bij nieuwe bevindingen schrijf je daar meteen in, met een datumkop.
+Een hoofdstuk dat je moet blijven opschonen wordt niet opgeschoond (#265).
+
+Zoek gericht (`grep`, `sed -n`) in plaats van hele bestanden te laden.
+Gemeten op 22-09-2026 — de getallen die hier stonden waren maanden oud en
+allemaal te laag, wat precies het verkeerde gevoel geeft over wat een `cat`
+kost:
+
+| bestand | KB |
+|---|---|
+| `public/pidlane-testrun.js` | 495 |
+| `PIDLANE-ARCHIEF.md` | 403 |
+| `worker.js` | 218 |
+| `public/pidlane.css` | 193 |
+| `public/index.html` | 181 |
+| `CHANGELOG.md` | 173 |
+| `PIDLANE.md` | 121 |
+
+Weet je niet welke module?
 Kijk eerst in §4 van `PIDLANE.md`. Een ruw testrun-verslag hoort ook niet heel
 de sessie in: haal er `FOUT` en `LET OP` met hun blokkop uit, en plak dat.
 
-## Vóór elke commit
+## Vóór elke commit — lokaal smal, in CI breed (#265)
+
+```
+node --check <het bestand dat je aanraakte>
+node public/test-<het onderwerp>.js
+```
+
+**Dat is genoeg om te committen.** De volledige reeks is het werk van CI, niet
+van jou: `.github/workflows/tests.yml` draait `plcheck.sh`, de tegenproef
+(`plmutate.sh`) en de sleutelscan als drie eigen jobs op elke PR. Die draaien
+op een schone checkout en slaan nooit een stap over — een mens of een
+taalmodel wel.
+
+**Waarom dit sinds 22-09-2026 zo staat.** `plcheck.sh` duurt 37 seconden en
+draait 128 tests, de browserproeven en 415 mutaties over werk dat vaak één
+bestand raakt. Dat is niet fout, het is alleen op de verkeerde plek: het kost
+elke sessie tijd en tokens aan een uitkomst die CI toch nog eens berekent. De
+poort is niet weg, hij staat alleen waar hij hoort.
 
 ```
 bash plcheck.sh .
 ```
 
-Exit 0 is de voorwaarde om te committen — niets daarboven. De controle doet
-`node --check` op alle JS plus `worker.js`, draait de complete `test-*.js`-reeks,
-telt de div-balans van `index.html` en `admin.html`, en controleert dat elke
-module in `index.html` hangt met `pidlane-bedrading.js` als laatste.
+**Draai hem lokaal wél** als je aan de bedrading, de modulevolgorde of de
+`index.html` zelf zit, en vóórdat je een PR opent. Exit 0 blijft de norm; het
+is alleen niet meer de prijs van elke commit.
 
-Dezelfde controle draait in CI (`.github/workflows/tests.yml`), met de
-tegenproef (`plmutate.sh`) en de sleutelscan als eigen jobs ernaast — drie in
-totaal. Lokaal groen krijgen is dus niet optioneel maar goedkoper.
+**Een meetopdracht is data en geen code.** Die keur je met `node
+plopdracht.js <bestand>` — 65 ms, buiten alle drie de poorten om. Zie de kop
+van dat bestand.
 
 **Bij elke oplevering toetst blok 5 wat er in díé update veranderd is.** Sinds
 testrun 6.6 is dat een lijst en geen functie: voeg een entry toe aan
@@ -57,7 +92,7 @@ verandert niet mee. Zie §20 van `PIDLANE.md`.
 
 - **Schrijf geen opsomming van wat erbij kwam of eruit ging.** Die stond tot
   6.5 twee keer met de hand — in de banner boven `_blok5()` en in `CAMPAGNE` —
-  en dat is dezelfde vorm die §11 en `PIDLANE-WERK.md` de kop kostte. De regel
+  en dat is dezelfde vorm die het oude §11 en `PIDLANE-WERK.md` de kop kostte. De regel
   "BLOK 5 DEKT DEZE RONDE" in `CAMPAGNE` wordt uit de lijst afgeleid. Wat er
   vorige ronde uitging is een vraag voor `git log`.
 - **`CAMPAGNE` blijft met de hand**, maar alleen voor wat een mens moet dóen:
@@ -94,8 +129,8 @@ plausibele fouten in de meetketen — een off-by-one in de header-echo van
 `parsePID`, de harde fysieke limiet uitgezet, de `NO DATA`-poort van de
 waakronde open, en het oordeel over onbekende sensoren omgedraaid — en
 `plcheck.sh` meldde `65 stuks, allemaal exit 0` met *"Alles goed — veilig om te
-committen"* eronder. Elke push naar `main` is deployen. Zie §11 van
-`PIDLANE.md`.
+committen"* eronder. Elke push naar `main` is deployen. De uitleg staat in
+`PIDLANE-ARCHIEF.md`.
 
 ## Als iets een draaiende app nodig heeft
 
@@ -296,6 +331,11 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
 - **Nederlands**: commentaar, commitberichten, PR-titels, UI-teksten, changelog.
 - Commitbericht = één regel die zegt wat er inhoudelijk veranderde, niet welk
   bestand. Stijl: `Testrun 4.9: blok 14 meet de rit, blok 13 meldt de omstandigheden`.
+- **Hoogstens drie regels, de attributie niet meegeteld** (#265). Eén
+  onderwerpregel, en alleen als het echt nodig is twee regels waarom. Een
+  commitbericht dat een alinea nodig heeft, beschrijft werk dat in twee
+  commits hoorde — of uitleg die in `PIDLANE-ARCHIEF.md` thuishoort, waar hij
+  ook terug te vinden is. `git log --oneline` moet leesbaar blijven.
 - Bouw-changelog bovenaan `CHANGELOG.md` bijwerken (niet meer in `index.html`
   zelf sinds 28-08-2026: die tekst veranderde bij elke oplevering mee terwijl
   `build-apk.yml` op elke wijziging aan `index.html` een Android-build start).
@@ -367,14 +407,15 @@ dan is een eerder gegeven akkoord niet meer geldig.
 
 In dezelfde PR:
 
-- **`PIDLANE.md` §11** — de uitleg bij bevindingen die blijven staan, ook die
-  je níét gerepareerd hebt: waarom het stukging, wat er al geprobeerd is, welke
-  conclusie achteraf fout bleek. **Geen stand van zaken en geen lijst van open
-  punten** — die staat in de issues. De rest van `PIDLANE.md` alleen bij een
-  structuur-, contract- of architectuurwijziging.
-- **`PIDLANE-ARCHIEF.md`** — is een §11-kopje afgehandeld én ouder dan twee
-  weken, verplaats het daarheen. Verplaatsen is een eigen commit: dat is
-  mechanisch werk, en dat gaat hier nooit samen met een gedragswijziging.
+- **`PIDLANE-ARCHIEF.md`** — de uitleg bij bevindingen die blijven staan, ook
+  die je níét gerepareerd hebt: waarom het stukging, wat er al geprobeerd is,
+  welke conclusie achteraf fout bleek. Bovenaan, met een datumkop. **Geen
+  stand van zaken en geen lijst van open punten** — die staat in de issues.
+- **`PIDLANE.md`** alleen bij een structuur-, contract- of
+  architectuurwijziging. Hij is de kaart en niet het logboek; sinds 22-09-2026
+  staat er geen bevindingenhoofdstuk meer in (#265).
+- Verplaatsen tussen die twee is een eigen commit: dat is mechanisch werk, en
+  dat gaat hier nooit samen met een gedragswijziging.
 - **Een GitHub-issue** voor wat af te ronden valt: een fix die nog getoetst moet
   worden, een vraag die alleen tijdens een rit te beantwoorden is.
 - Een eerdere conclusie die fout blijkt, wordt **herzien vastgelegd, niet
@@ -383,7 +424,7 @@ In dezelfde PR:
 
 ## Wat je niet doet
 
-- Bugs die je onderweg vindt: **vastleggen in `PIDLANE.md` §11 of als issue,
+- Bugs die je onderweg vindt: **vastleggen in `PIDLANE-ARCHIEF.md` of als issue,
   niet in dezelfde sessie repareren** — tenzij er expliciet om gevraagd wordt.
   Eén onderwerp per PR.
 - Geen bestanden verwijderen, hernoemen of verplaatsen zonder te vragen.
