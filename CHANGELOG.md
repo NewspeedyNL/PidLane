@@ -10,6 +10,36 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-09-2026 — de logketen is helemaal over: lezen, opruimen, opdrachten
+ ═══════════════════════════════════════════════════════════
+
+ Het vervolg op de verhuizing hieronder. Logs, testrunregels en
+ meetopdrachten staan nu volledig in D1, beide richtingen. Config en
+ Veldlab blijven waar ze zijn.
+
+ - #262  De meetopdrachten verhuizen mee. Ze stonden in dezelfde volle base
+         als de log, dus de lus van #241 lag aan twee kanten tegelijk stil.
+         Gedrag ongewijzigd: nog steeds de actieve, nieuwste rij, nog
+         steeds geen keuring in de Worker.
+ - #262  /admin/tabel krijgt een tweede motor in plaats van een tweede
+         route. Een D1-bron geeft dezelfde antwoordvorm als een
+         Airtable-bron, dus beheer.html toont ze met dezelfde tabel,
+         dezelfde zoekbalk en dezelfde knoppen.
+ - #260  Twee afgeleide bronnen erbij, allebei alleen-lezen omdat ze niets
+         bewaren maar berekend worden: "Ritten" vat elke rit samen in één
+         regel (aantallen, uitkomsten, welke issues een antwoord kregen) en
+         "Bevindingen" laat alleen zien wat opviel.
+ - #260  Opruimknop in beheer.html: wissen op ouderdom, op rit of op soort.
+         Hij telt eerst en wist pas na een tweede klik, en regels met een
+         Outcome blijven staan tenzij je er expliciet om vraagt.
+ - #260  Een nachtelijke opruimronde kan aan met de var LOG_BEWAARDAGEN.
+         Staat standaard uit; zonder dat getal ruimt hij niets op en zegt
+         dat ook.
+ - #262  Nieuw: public/test-adminbron-d1.js (43 controles op de SQL-motor).
+         test-opdrachtroute.js en test-adminbron.js zijn meeverhuisd; drie
+         mutaties erbij in plmutate.sh voor de opruimkant.
+
+ ═══════════════════════════════════════════════════════════
  22-09-2026 — de logregels gaan naar Cloudflare D1
  ═══════════════════════════════════════════════════════════
 

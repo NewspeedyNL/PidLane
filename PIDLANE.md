@@ -913,6 +913,62 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 22-09-2026 — wat SQL mogelijk maakt en Airtable niet (#262, #260, #241)
+
+Dit is de tweede helft van de verhuizing hierboven: niet alleen de schrijfkant
+maar ook de leeskant, en de vraag wat er met een echte database anders kan.
+
+**De wens was "één logregel voor een hele sessie".** Bij Airtable zou dat
+betekenen: die samenvatting erbíj schrijven, als extra rij. Dan staan het
+totaal en de regels waaruit het volgt los van elkaar, en lopen ze uit de pas
+zodra er een regel bijkomt of weggaat — precies de vorm die dit hoofdstuk en
+`PIDLANE-WERK.md` eerder de kop kostte.
+
+In SQL hoeft dat niet. Een samenvatting is daar een **vraag**, geen rij. Er
+staan nu twee views in `schema.sql`:
+
+- `sessies` — één regel per rit, met begin, eind, aantallen, hoeveel
+  uitkomsten er waren en welke issues een antwoord kregen.
+- `bevindingen` — alleen wat opviel: `error`, `opvallend`, `bug`, of alles met
+  een `Outcome`. Dat is met de hand het knipwerk dat `CLAUDE.md` beschrijft
+  ("haal er FOUT en LET OP met hun blokkop uit"), nu als query.
+
+Een view bewaart niets en kan dus per definitie niet uit de pas lopen met de
+regels eronder. Ze zijn ook alleen-lezen, en dat klopt: een afgeleid cijfer
+hoor je niet met de hand te kunnen bijstellen.
+
+**De adminroute kreeg een tweede motor in plaats van een tweede route.**
+`/admin/tabel?bron=…` levert voor een D1-bron exact dezelfde antwoordvorm als
+voor een Airtable-bron. Een aparte `/d1/`-route zou dezelfde pagina twee keer
+laten bestaan, en dan is de vraag welke van de twee de waarheid toont.
+
+**Opruimen kon bij Airtable niet en hier wel** — daar was het een API-call per
+tien rijen uit een maandquotum, hier is het één statement. Twee dingen zitten
+er met opzet omheen: de actie draait **proef tenzij je `proef:false` stuurt**,
+en een regel met een `Outcome` blijft staan tenzij je er met zoveel woorden om
+vraagt. Dat laatste is de scherpste grens in dit hele blok: zo'n regel is het
+antwoord op een issue, en daar is een rit voor gereden (#257). Drie mutaties in
+`plmutate.sh` bouwen alle drie die fouten na.
+
+De nachtronde die hetzelfde automatisch doet **staat standaard uit**. Zonder de
+var `LOG_BEWAARDAGEN` meldt de cron dat hij niets opruimt. Een ronde die elke
+nacht rijen weggooit hoort een besluit te zijn en geen bijwerking van een
+deploy — en een lege logtabel zou anders net zo goed kunnen betekenen dat er
+niets gemeten is.
+
+**Wat er onderweg bijna stil misging.** De `scheduled()`-ronde begon met een
+`return` als `AIRTABLE_TOKEN` ontbrak. De logronde eronder heeft met die
+sleutel niets te maken, en zou dus stilgevallen zijn op een voorwaarde die er
+niet toe doet. Nu draaien de twee rondes los van elkaar.
+
+**En één toets bleek minder te meten dan hij leek.** De proef "een meegestuurde
+`ontvangen` wint niet van de Worker" stond groen, óók zonder de poort die dat
+bewaakt: SQLite accepteert `INSERT INTO t (a, …, a)` zonder morren en houdt de
+eerste waarde. De servertijd won dus door de volgorde waarin de kolommen
+toevallig opgebouwd werden. De toets telt nu hoe vaak `ontvangen` in de INSERT
+staat.
+
+
 ### 22-09-2026 — de logbase liep vol, en de bewaker stond groen (#262, #260)
 
 **Wat er gebeurde.** De Airtable-base met de logtabel stond op **1.159 van de
