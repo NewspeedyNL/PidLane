@@ -678,12 +678,18 @@ let _atTimer=null;
    Wat hier NIET in staat is wat er verstuurd is: dat staat in Airtable, en
    twee plekken met dezelfde inhoud lopen uit de pas. */
 let _atLaatste=null;
-function _atNoteer(ok,status,aantal,fout){
+function _atNoteer(ok,status,aantal,fout,geschreven){
   _atLaatste={
     tijd:   Date.now(),
     ok:     !!ok,
     status: (status==null?null:Number(status)),
     aantal: Number(aantal)||0,
+    /* Hoeveel regels er WERKELIJK zijn weggeschreven, volgens de Worker zelf.
+       Tot 22-09-2026 stond hier niets en werd alleen de HTTP-status bewaard —
+       en juist daardoor las {ok:true,status:"logging_paused"} met HTTP 200 als
+       succes terwijl er niets in de tabel kwam. `null` betekent: de Worker zei
+       het niet, en dan weten we het dus niet. Zie #262. */
+    geschreven: (geschreven==null?null:Number(geschreven)),
     fout:   fout?String(fout).slice(0,200):''
   };
 }
@@ -885,7 +891,22 @@ async function flushAirtable(){
       // Zet terug in buffer bij fout
       _atBuffer.unshift(...batch);
     }else{
-      _atNoteer(true,resp.status,batch.length,'');
+      /* HTTP 200 is niet hetzelfde als "weggeschreven" — dat is precies de
+         vergissing die van 20-09 tot 22-09 live stond. Sinds #262 zegt de
+         Worker hoeveel regels hij in D1 zette; staat dat getal er niet, of is
+         het lager dan wat we stuurden, dan is dit geen geslaagde verzending en
+         gaat de batch terug in de buffer. */
+      const uit=await resp.json().catch(()=>({}));
+      const g=Number(uit&&uit.geschreven);
+      if(Number.isFinite(g)&&g>=batch.length){
+        _atNoteer(true,resp.status,batch.length,'',g);
+      }else{
+        const gezien=Number.isFinite(g)?g:0;
+        console.warn('Live-log: de Worker antwoordde ok maar schreef '+gezien+' van '+batch.length+' regels weg');
+        _atNoteer(false,resp.status,batch.length,
+          'aangenomen maar niet weggeschreven: '+gezien+' van '+batch.length,gezien);
+        _atBuffer.unshift(...batch);
+      }
     }
   }catch(e){
     console.warn('Airtable netwerk fout:',e.message);

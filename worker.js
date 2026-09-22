@@ -901,53 +901,144 @@ async function handlePing(request, env) {
   return json({ ok: true, sleutel: clientKey ? "app" : "worker", rol: session.r, kosten: 0 });
 }
 __name(handlePing, "handlePing");
+// ═════════════════════════════════════════════════════════════════
+//  DE LOGREGELS GAAN NAAR D1 (#262, #260)
+// ──────────────────────────────────────────────────────────────────
+//  WAAROM WEG BIJ AIRTABLE. Op 22-09-2026 stond de logbase op 1.159 van de
+//  1.000 rijen. Een volle base neemt niets meer aan, en de Meetopdracht-tabel
+//  staat in diezelfde base — dus de rit kon niets wegschrijven én de volgende
+//  rit kon geen opdracht krijgen. Een tabel die per rit honderden regels
+//  krijgt hoort niet achter een rijenlimiet van duizend.
+//
+//  WAT HIER NIET STAAT, EN DAT IS HET ONTWERP: een lijst met kolomnamen.
+//  Die lijst staat al op twee plekken — AT_KOLOMMEN in pidlane-auth.js en
+//  schema.sql — en een derde kopie hier zou precies de vorm zijn die in dit
+//  project al twee documenten de kop kostte. De Worker vraagt de kolommen dus
+//  aan de tabel zelf. Voeg je een kolom toe, dan gaat hij vanzelf mee zodra
+//  het isolate ververst; er is niets hier dat je kunt vergeten bij te werken.
+//
+//  WAT ER MET EEN ONBEKEND VELD GEBEURT. Airtable maakte er vanzelf een kolom
+//  bij; SQLite niet. Een veld zonder kolom zou dus stil verdwijnen, en dat is
+//  precies de fout die deze route al eerder maakte. Het gaat daarom als JSON
+//  naar de kolom `onbekend`: zichtbaar, terug te vinden, en het zegt je dat er
+//  een kolom mist. test-logschema.js maakt daar een bevinding van.
+//
+//  GEEN STIL SUCCES MEER. Tussen 20-09 17:12 en vandaag gaf deze route
+//  `{ok:true, status:"logging_paused"}` met HTTP 200 terug terwijl er niets
+//  werd weggeschreven — en de proef in blok 5 die juist dát moet bewaken
+//  keurde het goed, want hij leest de status en niet de inhoud. Mislukt het
+//  schrijven hier, dan is het antwoord een echte foutstatus.
+// ══════════════════════════════════════════════════════════════════
+
+// Hoeveel regels er in één verzoek mee mogen. Airtable kapte op 10 af omdat
+// dat zijn eigen grens was, en deed dat stil. D1 heeft die grens niet; de cap
+// staat er nog als rem tegen een payload die uit de hand loopt, maar wat
+// erboven valt wordt gemeld in plaats van weggegooid.
+var LOG_MAX_REGELS = 50;
+
+// Tekstcap per veld. Hetzelfde getal als de Airtable-route gebruikte, zodat
+// één te lange AiDiagnose de rij niet onleesbaar maakt.
+var LOG_MAX_TEKST = 95e3;
+
+// De kolommen van de logtabel, één keer per isolate opgehaald. De tabel
+// verandert niet tijdens de looptijd van een deploy, dus vaker vragen is een
+// query per logregel zonder dat er iets mee gewonnen wordt.
+var _logKolommen = null;
+async function logKolommen(db) {
+  if (_logKolommen) return _logKolommen;
+  const r = await db.prepare("SELECT name FROM pragma_table_info('logregels')").all();
+  const namen = ((r && r.results) || []).map((x) => x.name);
+  // Geen kolommen betekent: de tabel bestaat niet. Dan is er geen zinnige
+  // INSERT te bouwen, en doorgaan zou de regels weggooien.
+  if (!namen.length) throw new Error("tabel_logregels_ontbreekt");
+  _logKolommen = new Set(namen);
+  return _logKolommen;
+}
+__name(logKolommen, "logKolommen");
+
+// Wat SQLite van een waarde moet maken. Een boolean wordt 0/1 (de kolom Demo
+// is INTEGER), een object wordt JSON, en tekst wordt afgekapt. `null` en
+// `undefined` komen hier niet: die worden eerder overgeslagen, zodat een leeg
+// veld een lege kolom blijft en niet de tekst "null".
+function logWaarde(v) {
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : String(v);
+  if (typeof v === "object") {
+    try { return JSON.stringify(v).slice(0, LOG_MAX_TEKST); }
+    catch (e) { return "[niet te serialiseren: " + String(e && e.message || e) + "]"; }
+  }
+  const s = String(v);
+  return s.length > LOG_MAX_TEKST ? s.slice(0, LOG_MAX_TEKST) : s;
+}
+__name(logWaarde, "logWaarde");
+
 async function handleAirtableLog(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
-
-  // TIJDELIJKE STOP: Direct 200 OK om Airtable API-limiet te beschermen
-  return json({ ok: true, status: "logging_paused" }, 200);
-
-  if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
   let payload;
   try {
     payload = await request.json();
   } catch {
     return json({ error: "bad_json" }, 400);
   }
-  const records = Array.isArray(payload.records) ? payload.records.slice(0, 10) : [];
+  const records = Array.isArray(payload.records) ? payload.records : [];
   if (!records.length) return json({ error: "no_records" }, 400);
-  const clean = records.map((rec) => {
+
+  let kolommen;
+  try {
+    kolommen = await logKolommen(env.LOGDB);
+  } catch (e) {
+    return json({ error: "schema_onleesbaar", detail: String(e && e.message || e) }, 500);
+  }
+
+  // `id` telt zichzelf op en `ontvangen` wordt hier gezet: die mag de app niet
+  // meesturen, anders schrijft een client zijn eigen ontvangsttijd en is de
+  // enige betrouwbare volgorde weg.
+  const VERBODEN = /* @__PURE__ */ new Set(["id", "ontvangen", "onbekend"]);
+  const ontvangen = new Date().toISOString();
+  const mee = records.slice(0, LOG_MAX_REGELS);
+  const afgekapt = records.length - mee.length;
+  const stmts = [];
+
+  for (const rec of mee) {
     const f = rec && typeof rec.fields === "object" && rec.fields ? rec.fields : {};
-    const out = {};
-    let n = 0;
+    const namen = ["ontvangen"];
+    const waarden = [ontvangen];
+    const rest = {};
     for (const k of Object.keys(f)) {
-      if (++n > 40) break;
-      if (String(k).length > 100) continue;
       const v = f[k];
-      out[k] = typeof v === "string" && v.length > 95e3 ? v.slice(0, 95e3) : v;
+      if (v === undefined || v === null) continue;
+      // De kolomnaam komt uit de TABEL, niet uit het verzoek: wat de client
+      // stuurt wordt alleen opgezocht in die verzameling en nooit in de SQL
+      // geplakt. Een verzonnen veldnaam kan hier dus niets forceren.
+      if (kolommen.has(k) && !VERBODEN.has(k)) {
+        namen.push(k);
+        waarden.push(logWaarde(v));
+      } else {
+        rest[k] = v;
+      }
     }
-    return { fields: out };
-  });
-  const base = resolveBase(env, "AIRTABLE_LOG_BASE", "AIRTABLE_BASE");
-  const table = cfg(env, "AIRTABLE_LOG_TABLE");
-  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`;
-  const r = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.AIRTABLE_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      records: clean,
-      typecast: payload.typecast !== false
-      // default true
-    })
-  });
-  const text = await r.text();
-  return new Response(text, {
-    status: r.status,
-    headers: { "Content-Type": "application/json", ...CORS }
-  });
+    if (Object.keys(rest).length && kolommen.has("onbekend")) {
+      namen.push("onbekend");
+      waarden.push(logWaarde(rest));
+    }
+    stmts.push(
+      env.LOGDB.prepare(
+        `INSERT INTO logregels (${namen.join(", ")}) VALUES (${namen.map(() => "?").join(", ")})`
+      ).bind(...waarden)
+    );
+  }
+
+  try {
+    await env.LOGDB.batch(stmts);
+  } catch (e) {
+    // Niet stil, en geen 200. De app zet de batch terug in zijn buffer en
+    // probeert het opnieuw; dat werkt alleen als hij het te horen krijgt.
+    return json({ error: "schrijven_mislukt", detail: String(e && e.message || e) }, 502);
+  }
+
+  // `afgekapt` staat er zodat wegvallen zichtbaar is in plaats van stil.
+  return json({ ok: true, geschreven: stmts.length, afgekapt });
 }
 __name(handleAirtableLog, "handleAirtableLog");
 async function handleAirtableVeldlab(request, env) {

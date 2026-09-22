@@ -73,6 +73,26 @@ crons = ["0 3 * * *"]
 binding = "FILES"
 bucket_name = "pidlane-files"
 
+# ── D1 voor de logregels ───────────────────────────────────────────────
+# Aangesproken als env.LOGDB (handleAirtableLog). Het schema staat in
+# schema.sql en wordt bewaakt door public/test-logschema.js.
+#
+# WAAROM DIT ER IS (#262, #260). De logtabel stond in Airtable, en die base
+# liep op 22-09-2026 vol: 1.159 van de 1.000 rijen. Een volle base neemt geen
+# nieuwe rijen meer aan, en in diezelfde base staat de Meetopdracht-tabel —
+# dus zowel het wegschrijven van een rit als de opdracht voor de volgende rit
+# lag stil. Een logtabel die aan een rijenlimiet hangt is de verkeerde
+# bewaarplaats voor iets dat per rit honderden regels schrijft.
+#
+# LET OP BIJ EEN NIEUWE OMGEVING: deze database moet bestaan vóór de eerste
+# deploy, anders faalt de build. Aanmaken kan in het dashboard of met
+# `wrangler d1 create pidlane_log_db`; daarna het schema uit schema.sql
+# draaien.
+[[d1_databases]]
+binding = "LOGDB"
+database_name = "pidlane_log_db"
+database_id = "aadad51d-893b-40b6-bfb7-dcee9ca6f80c"
+
 # ── Durable Object voor remote-sessies ─────────────────────────────────
 # Aangesproken als env.REMOTE_SESSION; de class zit in worker.js.
 # Wordt ook gebruikt door rateLimit() — zonder deze binding valt die terug
