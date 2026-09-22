@@ -890,6 +890,16 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = null; }@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = false; }@@test-opdrachtvoorwaarden.js@@een stapcontrole die stukgaat leest als \"de stap is niet gezet\" — niet-na-te-gaan wordt weer stil niet-gedaan (#227)"
 "public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)@@    if (o.schema !== SCHEMA)@@test-opdrachtvoorwaarden.js@@de hele voorraad van schema 1 wordt afgekeurd en elke rit kost eerst een nieuwe rij in de tabel"
 "public/pidlane-opdracht.js@@          if (isStap === isMeting) {@@          if (false) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
+
+# ── De logtabel staat sinds #262 in D1 en niet meer in Airtable, en dat
+# verandert één ding wezenlijk: Airtable maakte een onbekend veld vanzelf aan,
+# SQLite niet. De veldnamen staan daardoor op twee plekken — AT_KOLOMMEN in de
+# app en schema.sql — en dat is in dit project de vorm die al twee documenten
+# de kop kostte. Deze twee bouwen precies de twee kanten van die vergissing na:
+# iemand zet een veld in de app en vergeet het schema, of hernoemt een kolom in
+# het schema en vergeet de app. Beide keren raakt er data stil weg.
+"public/pidlane-auth.js@@  'Demo','Repro','Device']);@@  'Demo','Repro','Device','Koelwater']);@@test-logschema.js@@een nieuw logveld in de app zonder kolom in D1: die waarde belandt stil in `onbekend`"
+"schema.sql@@  Message       TEXT,@@  Bericht       TEXT,@@test-logschema.js@@een kolom in D1 hernoemd zonder de app mee te nemen: het berichtveld komt nergens meer aan"
 )
 
 echo
