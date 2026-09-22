@@ -280,6 +280,21 @@ async function deel3() {
   toets('... en de buffer is dan leeg', s._atBuffer.length === 0,
     'gaf: ' + s._atBuffer.length + ' regel(s) — dan wordt dezelfde batch straks opnieuw gestuurd');
 
+  // 1b. DE WORKER NEEMT AAN MAAR SCHRIJFT NIETS WEG. Dit is de toestand van
+  //     20-09-2026 17:12 tot 22-09: HTTP 200 met {ok:true} en een lege tabel.
+  //     Zonder deze toets is "aangenomen" weer hetzelfde als "weggeschreven".
+  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({ ok: true }) }; };
+  vul(2);
+  await s.flushAirtable();
+  u = s.plLiveLogStatus();
+  toets('ok zonder `geschreven` telt niet als geslaagd',
+    u && u.ok === false && /niet weggeschreven/.test(u.fout),
+    'gaf: ' + JSON.stringify(u));
+  toets('... en de batch blijft in de buffer staan voor een nieuwe poging',
+    s._atBuffer.length === 2,
+    'gaf: ' + s._atBuffer.length + ' regel(s) — die twee zijn dan weg zonder dat iemand het ziet');
+  s._atBuffer.length = 0;
+
   // 2. AIRTABLE WEIGERT. Dit is het geval dat de hele log plat kan leggen:
   //    één onbekende veldnaam geeft een 422 en de batch komt terug.
   s.plFetch = async function () {
