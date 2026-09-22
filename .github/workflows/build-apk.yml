@@ -433,7 +433,10 @@ jobs:
                   "    public void onCreate(android.os.Bundle savedInstanceState) {",
                   "        registerPlugin(PLMeetdienstPlugin.class);",
                   "        registerPlugin(PLPipPlugin.class);",
+                  "        registerPlugin(PLRenderPlugin.class);",
                   "        super.onCreate(savedInstanceState);",
+                  # Ná super.onCreate(): pas dan bestaat de bridge (#229).
+                  "        PLRender.koppel(this, getBridge());",
                   "    }",
                   "",
                   # onUserLeaveHint is het ENIGE moment waarop Android PiP
@@ -468,7 +471,9 @@ jobs:
                   "    override fun onCreate(savedInstanceState: android.os.Bundle?) {",
                   "        registerPlugin(PLMeetdienstPlugin::class.java)",
                   "        registerPlugin(PLPipPlugin::class.java)",
+                  "        registerPlugin(PLRenderPlugin::class.java)",
                   "        super.onCreate(savedInstanceState)",
+                  "        PLRender.koppel(this, bridge)",
                   "    }",
                   "",
                   "    override fun onUserLeaveHint() {",
@@ -501,6 +506,10 @@ jobs:
               ("registerPlugin(PLPipPlugin", "de PiP-plugin registreren (#228)"),
               ("onUserLeaveHint", "het enige moment waarop PiP aangevraagd mag worden (#228)"),
               ("onPictureInPictureModeChanged", "de weg terug: het kleine venster aan en uit (#228)"),
+              # Zonder luisteraar geeft Capacitor bij een rendercrash false door
+              # en schiet Android het proces af, meetdienst en al (#229).
+              ("registerPlugin(PLRenderPlugin", "de rendercrash-plugin registreren (#229)"),
+              ("PLRender.koppel(this", "de luisteraar op onRenderProcessGone (#229)"),
           ]:
               if stuk not in src:
                   print("FOUT: %s ontbreekt in MainActivity (%s)" % (stuk, waarvoor)); sys.exit(1)

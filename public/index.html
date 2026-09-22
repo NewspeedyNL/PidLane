@@ -1994,6 +1994,7 @@ function closeConnOv(){
 <script src="pidlane-aandrijving.js"></script><!-- aandrijfstatus: de toestandsmachine (PLAandrijving) — zuiver, kent het scherm niet -->
 <script src="pidlane-aandrijfbalk.js"></script><!-- het scherm bij de aandrijfstatus (PLAandrijfbalk) — vereist ná pidlane-aandrijving.js -->
 <script src="pidlane-pip.js"></script><!-- PLPip (#228): de meting in beeld houden; moet ná pidlane-uihelpers.js (wikkelt setConn) en ná pidlane-pids.js (wikkelt updPID) -->
+<script src="pidlane-render.js"></script><!-- PLRender (#229): meldt na een herstart of er een rendercrash aan voorafging; na pidlane-auth.js (log) -->
 <script src="pidlane-opdracht.js"></script><!-- PLOpdracht (#241): de meetopdracht voor de volgende testrun, als DATA uit Airtable; keurt zelf wat er binnenkomt en wordt alleen door de testrun gebruikt -->
 <script src="pidlane-bron.js"></script><!-- PLBron (#242): op welke bron draait deze app — banner bij een preview, wisselknop in het Admin-menu -->
 <script src="pidlane-meetkamer.js"></script><!-- PLMeetkamer (#246): de lus in beeld in het testrunscherm; moet ná pidlane-testrun.js, pidlane-opdracht.js en pidlane-bron.js — hij leest die drie en meet zelf niets -->

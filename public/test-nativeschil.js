@@ -64,6 +64,9 @@ const js     = lees('public/pidlane-meetdienst.js');
 const pip       = lees('native/PLPip.java');
 const pipPlugin = lees('native/PLPipPlugin.java');
 const pipJs     = lees('public/pidlane-pip.js');
+const render       = lees('native/PLRender.java');
+const renderPlugin = lees('native/PLRenderPlugin.java');
+const renderJs     = lees('public/pidlane-render.js');
 const cfg    = JSON.parse(lees('capacitor.config.json'));
 
 console.log('\n── het pakket is één pakket ──');
@@ -248,7 +251,8 @@ console.log('\n── geen stille catch in de native code ──');
      scherm om hem op te zetten. Zonder Log.* in het blok is de enige uitkomst
      dat de meting niet loopt en dat niemand weet waarom. */
   [['PLMeetdienst.java', dienst], ['PLMeetdienstPlugin.java', plugin],
-   ['PLPip.java', pip], ['PLPipPlugin.java', pipPlugin]].forEach(function (paar) {
+   ['PLPip.java', pip], ['PLPipPlugin.java', pipPlugin],
+   ['PLRender.java', render], ['PLRenderPlugin.java', renderPlugin]].forEach(function (paar) {
     const src = paar[1];
     const stil = [];
     const re = /catch\s*\(([^)]*)\)\s*\{([\s\S]*?)\n(\s*)\}/g;
@@ -346,5 +350,101 @@ console.log('\n── de tweede plugin: de meting in beeld houden (#228) ──'
   bevat('en beheer.html toont diezelfde sleutel', lees('admin/beheer.html'), "['" + sleutel + "'");
 }
 
-console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
-process.exit(fout ? 1 : 0);
+console.log('\n── de derde: een rendercrash neemt het proces niet mee (#229) ──');
+{
+  /* Zonder luisteraar geeft Capacitor bij onRenderProcessGone false door en
+     schiet Android het proces af — meetdienst, wake lock en adapter erin. Elk
+     van de koppelingen hieronder faalt stil: de app doet het gewoon, tot de
+     renderer een keer sterft. */
+  toets('PLRender zit in het pakket van de appId',
+    (render.match(/^\s*package\s+([\w.]+)\s*;/m) || [])[1], cfg.appId);
+  toets('en de plugin ook',
+    (renderPlugin.match(/^\s*package\s+([\w.]+)\s*;/m) || [])[1], cfg.appId);
+  const naam = (renderPlugin.match(/@CapacitorPlugin\s*\(\s*name\s*=\s*"([^"]+)"/) || [])[1];
+  toets('@CapacitorPlugin draagt een naam', typeof naam, 'string');
+  bevat('en de app zoekt exact die naam op', renderJs, 'Plugins.' + naam);
+  toets('de klassenaam volgt de pluginnaam', renderPlugin.indexOf('class ' + naam + 'Plugin ') !== -1, true);
+
+  const inJava = [];
+  const reJava = /@PluginMethod\s+public\s+void\s+(\w+)\s*\(/g;
+  let mj;
+  while ((mj = reJava.exec(renderPlugin))) inJava.push(mj[1]);
+  const inJs = Array.from(new Set((renderJs.match(/\bp\.(\w+)\(/g) || [])
+    .map(function (m) { return m.slice(2, -1); })));
+  toets('er staan @PluginMethod-methoden in PLRenderPlugin', inJava.length > 0, true);
+  toets('de app roept niets aan wat niet bestaat',
+    inJs.filter(function (m) { return inJava.indexOf(m) === -1; }), []);
+  toets('en java biedt niets aan wat niemand gebruikt',
+    inJava.filter(function (m) { return inJs.indexOf(m) === -1; }), []);
+
+  /* De luisteraar zelf. true = het proces blijft leven; vastleggen moet vóór
+     het herstel, en met commit(): apply() schrijft pas later weg, en de
+     herstart kan eerder zijn. */
+  const haak = (render.match(/onRenderProcessGone\([\s\S]*?\n            \}/) || [''])[0];
+  toets('onRenderProcessGone is overschreven', haak.length > 0, true);
+  toets('en geeft true terug, zodat Android het proces niet afschiet',
+    /return\s+true\s*;/.test(haak) && !/return\s+false\s*;/.test(haak), true);
+  toets('het moment wordt vastgelegd vóór het herstel',
+    haak.indexOf('noteer(') > -1 && haak.indexOf('noteer(') < haak.indexOf('recreate('), true);
+  toets('de dode WebView wordt opgeruimd, niet hergebruikt', /view\.destroy\(\)/.test(haak), true);
+  bevat('noteer() schrijft synchroon weg', render, '.commit();');
+
+  /* De workflow: registreren vóór super.onCreate(), koppelen erná — pas dan
+     bestaat de bridge. Java en Kotlin apart, om dezelfde reden als bij PiP. */
+  [['Java', '"        registerPlugin(PLRenderPlugin.class);",', '"        super.onCreate(savedInstanceState);",', '"        PLRender.koppel(this, getBridge());",'],
+   ['Kotlin', '"        registerPlugin(PLRenderPlugin::class.java)",', '"        super.onCreate(savedInstanceState)",', '"        PLRender.koppel(this, bridge)",']
+  ].forEach(function (t) {
+    const reg = wf.indexOf(t[1]), sup = wf.indexOf(t[2], reg), kop = wf.indexOf(t[3], sup);
+    toets(t[0] + ': registreert de plugin vóór super.onCreate()', reg > -1 && sup > reg, true);
+    toets(t[0] + ': koppelt de luisteraar erna', sup > -1 && kop > sup && kop - sup < 200, true);
+  });
+  bevat('de registratie faalt hard als de luisteraar ontbreekt', wf, '("PLRender.koppel(this", "de luisteraar op onRenderProcessGone (#229)")');
+
+  const html = lees('public/index.html');
+  bevat('pidlane-render.js hangt in index.html', html, 'src="pidlane-render.js"');
+  toets('ná pidlane-auth.js (log) en vóór de bedradingscontrole',
+    html.indexOf('src="pidlane-render.js"') > html.indexOf('src="pidlane-auth.js"') &&
+    html.indexOf('src="pidlane-render.js"') < html.indexOf('src="pidlane-bedrading.js"'), true);
+}
+
+console.log('\n── de melding na de herstart (#229) ──');
+(async function () {
+  /* Gedrag, niet broncode: de echte module draaien met een nagemaakte bridge.
+     De melding moet één keer als fout in het logboek komen — 'err' gaat door
+     naar D1 — en zonder crash moet er niets staan. */
+  const vm = require('vm');
+  function draai(antwoord, metPlugin) {
+    const logs = [], vragen = [];
+    const w = { addEventListener: function () {} };
+    if (metPlugin) w.Capacitor = { Plugins: { PLRender: { laatste: function () { vragen.push(1); return Promise.resolve(antwoord); } } } };
+    const ctx = { window: w, console: { warn: function () {}, error: function () {} }, Promise: Promise, Date: Date, setTimeout: function () {},
+      log: function (m, t) { logs.push([m, t]); } };
+    vm.createContext(ctx);
+    vm.runInContext(renderJs, ctx);
+    return { logs: logs, vragen: vragen, api: w.PLRender };
+  }
+  const tik = function () { return new Promise(function (r) { setImmediate(r); }); };
+
+  let r = draai({ moment: Date.UTC(2026, 8, 22, 18, 0, 0), crash: true }, true);
+  await tik();
+  toets('na een crash staat er één regel in het logboek', r.logs.length, 1);
+  toets('als fout, zodat hij in D1 landt', r.logs[0] && r.logs[0][1], 'err');
+  toets('met de oorzaak erbij', /interne fout/.test(r.logs[0] && r.logs[0][0]), true);
+  r.api.vraag(); await tik();
+  toets('en nog eens vragen stuurt niets dubbel', [r.vragen.length, r.logs.length], [1, 1]);
+
+  r = draai({ moment: 1758560000000, crash: false }, true);
+  await tik();
+  toets('geheugen teruggepakt heet ook zo', /geheugen terug/.test(r.logs[0] && r.logs[0][0]), true);
+
+  r = draai({ moment: 0, crash: false }, true);
+  await tik();
+  toets('zonder crash staat er niets', r.logs.length, 0);
+
+  r = draai(null, false);
+  await tik();
+  toets('in de browser gebeurt er niets', [r.vragen.length, r.logs.length], [0, 0]);
+
+  console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
+  process.exit(fout ? 1 : 0);
+})();
