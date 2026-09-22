@@ -117,10 +117,34 @@ CREATE TABLE IF NOT EXISTS meetopdrachten (
   Reden     TEXT,
   -- 0/1. Meer dan één actieve rij is een fout van de schrijver; de route
   -- pakt dan de laatst gewijzigde en zegt hoeveel er stonden.
+  --
+  -- LET OP BIJ HET VULLEN — gemeten op 22-09-2026 bij de overzet uit
+  -- Airtable: daar stonden alle negen rijen op actief én droegen er acht
+  -- exact dezelfde `Gewijzigd`. Dan is "de laatst gewijzigde" een
+  -- achtvoudig gelijkspel en bepaalt SQLite wie er wint. Hij gaf de
+  -- oudste rij terug — precies degene die in zijn eigen notitie zei dat
+  -- hij al beantwoord was. Geef elke rij dus een eigen tijdstempel.
   Actief    INTEGER NOT NULL DEFAULT 0,
   Gewijzigd TEXT NOT NULL,
-  Opdracht  TEXT NOT NULL
+  Opdracht  TEXT NOT NULL,
+  -- De uitleg voor de mens die de rit rijdt: waarom deze opdracht bestaat,
+  -- wat er al gemeten is, in welke volgorde je moet meten. De Worker leest
+  -- dit veld niet en de app dus ook niet — het komt alleen in beheer.html
+  -- langs, omdat de adminroute de hele rij teruggeeft.
+  --
+  -- Hij staat hier omdat de Airtable-tabel hem had en de teksten tot 2.126
+  -- tekens droegen. Zonder deze kolom was dat bij de verhuizing stilletjes
+  -- weggevallen, en dat is precies wat een migratie niet hoort te doen.
+  Notitie   TEXT
 );
+
+-- BESTAAT DE TABEL AL? Dan doet CREATE TABLE IF NOT EXISTS hierboven niets
+-- en komt de kolom er niet bij. Op zo'n database één keer met de hand:
+--
+--   ALTER TABLE meetopdrachten ADD COLUMN Notitie TEXT;
+--
+-- Dat is op 22-09-2026 al gedaan op pidlane_log_db; deze regel staat er
+-- voor de volgende omgeving, niet voor die ene.
 CREATE INDEX IF NOT EXISTS idx_opdracht_actief ON meetopdrachten (Actief, Gewijzigd DESC);
 
 -- ══════════════════════════════════════════════════════════════════
