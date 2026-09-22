@@ -794,6 +794,10 @@ MUTATIES=(
 # De vlag ging aan op de eerste regel van scanDTC(); het onderdeelpaneel zei dan
 # tijdens de scan en na een fout "geen foutcodes" in plaats van "niet uitgelezen".
 "public/pidlane-graph.js@@async function scanDTC(){\n  document.getElementById('bscan').disabled=true;@@async function scanDTC(){\n  window._didDTCScan=true;\n  document.getElementById('bscan').disabled=true;@@test-dtcvlag.js@@de DTC-vlag gaat weer aan vóór het antwoord: tijdens de scan en na een fout heet het geen foutcodes"
+# ── #261: afmelden opent geen verbindingsscherm, sluiten verbreekt eerst (22-09-2026) ──
+"public/pidlane-auth.js@@  if(typeof connected!=='undefined' && connected) handleConnect();\n}@@  handleConnect();\n}@@test-afmelden.js@@afmelden roept de verbindingsschakelaar weer blind aan en opent zonder verbinding het verbindingsscherm"
+"public/pidlane-auth.js@@  try{ if(typeof connected!=='undefined' && connected) await handleConnect(); }@@  try{ }@@test-afmelden.js@@Sluit de app sluit met een open verbinding: de sessie wordt niet bewaard en de adapter blijft bezet"
+"public/pidlane-archief.js@@  if(window._plBackMelding) return;@@  window.plSluitApp?.();\n  if(window._plBackMelding) return;@@test-terugknop.js@@de terugknop gaat via Sluit de app alsnog naar de uitgang"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de
 # Live-weergave stil verkeerd laten staan — en "stil" is hier het punt: een
