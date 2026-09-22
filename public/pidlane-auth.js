@@ -484,8 +484,38 @@ async function logout(){
   closeConnOv();
   document.getElementById('loginOv').classList.remove('hidden');
   try{ document.getElementById('lgWaveBg').classList.remove('off'); }catch(e){ /* stil: element kan al weg zijn */ } // golfachtergrond terug bij uitloggen
-  handleConnect(); // verbreek verbinding
+  // Alleen verbreken als er iets te verbreken is (#261). handleConnect() is een
+  // schakelaar: zonder verbinding opent hij het verbindingsscherm. Na het
+  // afmelden stond dat dan open, en de app leek gewoon door te gaan.
+  if(typeof connected!=='undefined' && connected) handleConnect();
 }
+
+// ── Sluit de app (#261) ─────────────────────────────────────────────
+// Een bewuste handeling uit het menu, en daarom wél toegestaan waar de
+// terugknop het niet mag (zie _plBackHandler in pidlane-archief.js). Eerst de
+// verbinding netjes verbreken, zodat de sessie bewaard wordt en de adapter
+// vrijkomt; dan App.exitApp(). In de browser bestaat afsluiten niet — daar
+// blijft de knop verborgen.
+async function plSluitApp(){
+  const App=window.Capacitor?.Plugins?.App;
+  if(!App || typeof App.exitApp!=='function'){
+    console.warn('Sluit de app: geen Capacitor-schil, afsluiten kan hier niet');
+    return false;
+  }
+  try{ if(typeof connected!=='undefined' && connected) await handleConnect(); }
+  catch(e){ console.warn('verbinding verbreken vóór afsluiten mislukt:', e); }
+  try{ await App.exitApp(); return true; }
+  catch(e){ console.warn('App.exitApp mislukt:', e); return false; }
+}
+window.plSluitApp=plSluitApp;
+// De knop alleen in de APK tonen. Dit script staat onderaan de body, dus het
+// menu bestaat al; de Capacitor-bridge wordt vóór de pagina geladen.
+try{
+  if(window.Capacitor?.isNativePlatform?.()){
+    const b=document.getElementById('kebabSluitApp');
+    if(b) b.style.display='';
+  }
+}catch(e){ console.warn('knop "Sluit de app" niet getoond:', e); }
 
 // ══════════════════════════════════════════════════════
 // ⚙️ CONFIGURATIE — zie config.js

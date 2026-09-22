@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-09-2026 — afmelden blijft afgemeld, en de DTC-vlag wacht op het antwoord
+ ═══════════════════════════════════════════════════════════
+
+ Sessie 4 van het v1.0-plan.
+
+ - #261  Afmelden riep aan het eind handleConnect() aan om de verbinding
+         te verbreken. Dat is een schakelaar: zonder verbinding opent hij
+         het verbindingsscherm, en na het afmelden leek de app gewoon door
+         te gaan. Nu alleen verbreken als er een verbinding is.
+ - #261  "Sluit de app" in het menu (alleen in de APK): verbreekt eerst de
+         verbinding, dan App.exitApp(). De terugknop sluit nog steeds niet.
+ - #218  _didDTCScan gaat pas aan ná het antwoord van de scan. Het
+         onderdeelpaneel zei tijdens de scan en na een fout "geen
+         foutcodes" in plaats van "nog niet uitgelezen".
+
+ ═══════════════════════════════════════════════════════════
  22-09-2026 — de logketen is helemaal over: lezen, opruimen, opdrachten
  ═══════════════════════════════════════════════════════════
 

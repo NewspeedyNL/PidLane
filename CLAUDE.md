@@ -6,6 +6,18 @@
 > in het instructieveld van het Claude-project). Bij verschil wint dit bestand,
 > want dit is de kant die de code raakt.
 
+## Bevriezing tot v1.0 (22-09-2026)
+
+**Geen nieuwe proeven, geen nieuwe testrun-blokken en geen nieuwe
+meetkamer-functies — tenzij een productbug erom vraagt.** Issues met het
+label `na-1.0` pak je niet op, ook niet "even erbij". v1.0 is: de gesloten
+test op Play loopt door naar productie; de acceptatiecriteria staan in de
+milestone. Deze regel vervalt met de tag `v1.0.0`.
+
+Waarom: het instrument was zichzelf aan het meten. Van de 25 open issues
+op 22-09 gingen er 13 over de testmachinerie en niet over wat een klant
+ziet.
+
 ## Oriëntatie — in deze volgorde
 
 | bestand | waarvoor |

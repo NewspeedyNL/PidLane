@@ -198,7 +198,6 @@ function drawGraph(){
 // DTC
 // ════════════════════════════════════════
 async function scanDTC(){
-  window._didDTCScan=true;
   document.getElementById('bscan').disabled=true;
   document.getElementById('dtcList').innerHTML='<div class="ai-ld"><div class="spin"></div> Foutcodes ophalen...</div>';
   await delay(demoMode?1500:2000);
@@ -208,6 +207,9 @@ async function scanDTC(){
     else dtcCodes=Math.random()>.5?['P0171','P0420']:[];
   }
   else dtcCodes=await realScanDTC();
+  // "Er is gekeken" (#218): pas ná het antwoord. Stond eerst bovenaan, dan zei
+  // het onderdeelpaneel tijdens de scan en na een fout "geen foutcodes".
+  window._didDTCScan=true;
   renderDTC();
   document.getElementById('bscan').disabled=false;
   document.getElementById('bclr').disabled=!dtcCodes.length;

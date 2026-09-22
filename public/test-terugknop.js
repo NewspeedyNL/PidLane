@@ -285,16 +285,30 @@ console.log('\n  — één luisteraar, niet twee —');
     'gevonden: ' + (met.join(', ') || 'geen enkele'));
 
   // Geen enkele module mag de app wegschakelen vanaf de terugknop.
-  const wegschakelaars = [];
+  // Eén uitzondering sinds 22-09-2026 (#261): plSluitApp() in pidlane-auth.js,
+  // de menuknop "Sluit de app". Dat is een bewuste handeling en geen tik die
+  // ernaast zat. Alleen díé functie valt buiten de scan — knipt iemand hem
+  // anders, dan staat exitApp() weer in de rest van het bestand en wordt dit
+  // rood. En niemand anders mag hem aanroepen: anders zit de terugknop via een
+  // omweg alsnog aan de uitgang.
+  const SLUIT_BEGIN = 'async function plSluitApp(){';
+  const SLUIT_EIND = 'window.plSluitApp=plSluitApp;';
+  const wegschakelaars = [], sluitRoepers = [];
   modules.forEach(function (f) {
-    const src = zonderCommentaar(fs.readFileSync(__dirname + '/' + f, 'utf8'));
+    let src = zonderCommentaar(fs.readFileSync(__dirname + '/' + f, 'utf8'));
+    if (f === 'pidlane-auth.js') {
+      const i = src.indexOf(SLUIT_BEGIN), j = src.indexOf(SLUIT_EIND);
+      if (i > -1 && j > i) src = src.slice(0, i) + src.slice(j + SLUIT_EIND.length);
+    } else if (/plSluitApp/.test(src)) sluitRoepers.push(f);
     // Aanroep op de App-plugin (App.exitApp(), AppPlugin.minimizeApp?.()), dus met
     // punt ervoor. Zonder die eis slaat de toets ook aan op de naam in een
     // campagnetekst of op een verklikker die de functie juist ONDERSCHEPT.
     if (/\.\s*(minimizeApp|exitApp)\s*(\?\.)?\(/.test(src)) wegschakelaars.push(f);
   });
-  toets('geen module roept exitApp() of minimizeApp() aan',
+  toets('geen module roept exitApp() of minimizeApp() aan (buiten "Sluit de app")',
     wegschakelaars.length === 0, 'gevonden in: ' + wegschakelaars.join(', '));
+  toets('"Sluit de app" hangt alleen aan het menu, niet aan een module',
+    sluitRoepers.length === 0, 'aangeroepen in: ' + sluitRoepers.join(', '));
 })();
 
 // ── 4. tegenproef ─────────────────────────────────────────────────
