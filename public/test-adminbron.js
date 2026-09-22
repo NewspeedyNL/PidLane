@@ -39,6 +39,12 @@ function toets(naam, waar, uitleg) {
 // Ankers en geen kopie: verdwijnt of hernoemt er iets, dan stopt deze test
 // meteen in plaats van groen te blijven staan op code die niet meer draait.
 const bron = fs.readFileSync(path.join(__dirname, '..', 'worker.js'), 'utf8');
+/* DEZE TEST GAAT OVER DE AIRTABLE-MOTOR, en gebruikt `codes` als
+   vertegenwoordiger daarvan. Dat was tot #262 `log`, maar die bron staat
+   sinds de verhuizing op D1 en heeft een eigen test (test-adminbron-d1.js).
+   `codes` is gekozen omdat hij als enige overgebleven Airtable-bron zowel
+   zoekvelden als een sorteerveld heeft én schrijfbaar is — zonder die drie
+   zouden de formule-, sorteer- en wistoetsen hieronder niets meer meten. */
 const van = bron.indexOf('var ADMIN_BRONNEN = {');
 const tot = bron.indexOf('__name(handleAdminTabelPost');
 if (van < 0 || tot < 0 || tot < van) {
@@ -106,7 +112,7 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   console.log('\n1. Alleen bronnen uit de lijst, en niets daarbuiten');
   {
     const t = bouw();
-    const r = await t.get('bron=log');
+    const r = await t.get('bron=codes');
     toets('een bekende bron mag', r.body.ok === true, JSON.stringify(r.body).slice(0, 120));
 
     for (const kwaad of ['', 'appXyZ1234567', 'log/../users', 'Log', 'tblJiG83blVfRgPwi']) {
@@ -212,27 +218,27 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   {
     const goed = ['rec0123456789abcd', 'recABCDEFGHIJKLMN', 'rec1111111111aaaa'];
     const t = bouw();
-    const r = await t.post({ bron: 'log', actie: 'wis', ids: goed });
+    const r = await t.post({ bron: 'codes', actie: 'wis', ids: goed });
     const del = t.staat.verzoeken.filter((x) => x.method === 'DELETE');
     toets('drie records in één DELETE', r.body.ok === true && del.length === 1, JSON.stringify(r.body).slice(0, 120));
     toets('en alle drie de id’s staan erin', goed.every((i) => del[0].url.indexOf(i) >= 0), del[0] && del[0].url);
 
     const slecht = bouw();
-    const rs = await slecht.post({ bron: 'log', actie: 'wis', ids: ['rec0123456789abcd', 'recKORT'] });
+    const rs = await slecht.post({ bron: 'codes', actie: 'wis', ids: ['rec0123456789abcd', 'recKORT'] });
     toets('één ongeldig id blokkeert de hele wisactie',
       rs.body.ok === false && schrijf(slecht.staat.verzoeken).length === 0, JSON.stringify(rs.body).slice(0, 120));
 
     const veel = bouw();
-    const rv = await veel.post({ bron: 'log', actie: 'wis', ids: new Array(11).fill('rec0123456789abcd') });
+    const rv = await veel.post({ bron: 'codes', actie: 'wis', ids: new Array(11).fill('rec0123456789abcd') });
     toets('elf tegelijk wordt geweigerd in plaats van afgekapt',
       rv.body.ok === false && schrijf(veel.staat.verzoeken).length === 0, JSON.stringify(rv.body).slice(0, 120));
 
     const leeg = bouw();
-    const rz = await leeg.post({ bron: 'log', actie: 'wis' });
+    const rz = await leeg.post({ bron: 'codes', actie: 'wis' });
     toets('zonder id gebeurt er niets', rz.body.ok === false && schrijf(leeg.staat.verzoeken).length === 0);
 
     const raar = bouw();
-    const rr = await raar.post({ bron: 'log', actie: 'sloop', id: 'rec0123456789abcd' });
+    const rr = await raar.post({ bron: 'codes', actie: 'sloop', id: 'rec0123456789abcd' });
     toets('een onbekende actie doet niets', rr.body.ok === false && schrijf(raar.staat.verzoeken).length === 0);
   }
 
@@ -243,21 +249,21 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   console.log('\n6. Zoeken bouwt een formule over de zoekvelden van die bron');
   {
     const t = bouw();
-    await t.get('bron=log&q=' + encodeURIComponent("d'r naast"));
+    await t.get('bron=codes&q=' + encodeURIComponent("d'r naast"));
     const u = decodeURIComponent(t.staat.verzoeken[0].url);
     toets('er wordt gefilterd', u.indexOf('filterByFormula=') >= 0, u);
-    toets('over Message én User', u.indexOf('{Message}') >= 0 && u.indexOf('{User}') >= 0, u);
+    toets('over Code én Batch', u.indexOf('{Code}') >= 0 && u.indexOf('{Batch}') >= 0, u);
     toets('de apostrof is ontsnapt', u.indexOf("d\\'r") >= 0, u);
     toets('en een getalveld wordt eerst tekst', u.indexOf("&''") >= 0, u);
 
     const v = bouw();
-    await v.get('bron=log&q=abc&veld=Merk');
+    await v.get('bron=codes&q=abc&veld=Merk');
     const uv = decodeURIComponent(v.staat.verzoeken[0].url);
     toets('een gekozen veld beperkt de zoektocht daartoe',
-      uv.indexOf('{Merk}') >= 0 && uv.indexOf('{Message}') < 0, uv);
+      uv.indexOf('{Merk}') >= 0 && uv.indexOf('{Code}') < 0, uv);
 
     const w = bouw();
-    const rw = await w.get('bron=log&q=abc&veld=' + encodeURIComponent("Merk}),{"));
+    const rw = await w.get('bron=codes&q=abc&veld=' + encodeURIComponent("Merk}),{"));
     toets('een veldnaam met formuletekens wordt geweigerd',
       rw.status === 400 && w.staat.verzoeken.length === 0, 'status ' + rw.status);
   }
@@ -267,14 +273,14 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   // is het antwoord dan leeg terwijl de gegevens er wél zijn.
   console.log('\n7. Sorteren, en wat er gebeurt als dat veld niet bestaat');
   {
-    const t = bouw({ antwoorden: [okAntwoord([{ id: 'rec1', fields: { Timestamp: '2026-09-01T10:00:00Z' } }])] });
-    const r = await t.get('bron=log');
-    toets('standaard op Timestamp aflopend',
-      decodeURIComponent(t.staat.verzoeken[0].url).indexOf('sort[0][field]=Timestamp') >= 0, t.staat.verzoeken[0].url);
-    toets('en dat wordt gemeld', r.body.gesorteerd === true && r.body.sorteer === 'Timestamp');
+    const t = bouw({ antwoorden: [okAntwoord([{ id: 'rec1', fields: { Aangemaakt: '2026-09-01T10:00:00Z' } }])] });
+    const r = await t.get('bron=codes');
+    toets('standaard op Aangemaakt aflopend',
+      decodeURIComponent(t.staat.verzoeken[0].url).indexOf('sort[0][field]=Aangemaakt') >= 0, t.staat.verzoeken[0].url);
+    toets('en dat wordt gemeld', r.body.gesorteerd === true && r.body.sorteer === 'Aangemaakt');
 
     const f = bouw({ antwoorden: [foutAntwoord(422, 'UNKNOWN_FIELD_NAME'), okAntwoord([{ id: 'rec1', fields: { A: 1 } }])] });
-    const rf = await f.get('bron=log');
+    const rf = await f.get('bron=codes');
     toets('bij 422 wordt het nog eens zonder sortering geprobeerd', f.staat.verzoeken.length === 2);
     toets('de tweede poging heeft geen sort meer',
       decodeURIComponent(f.staat.verzoeken[1].url).indexOf('sort[0]') < 0, f.staat.verzoeken[1].url);
@@ -282,7 +288,7 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
     toets('met de eerlijke mededeling dat er niet gesorteerd is', rf.body.gesorteerd === false);
 
     const s = bouw({ antwoorden: [foutAntwoord(500, 'SERVER_ERROR'), foutAntwoord(500, 'SERVER_ERROR')] });
-    const rs = await s.get('bron=log');
+    const rs = await s.get('bron=codes');
     toets('blijft het misgaan, dan is het een fout en geen lege lijst',
       rs.status === 502 && rs.body.ok === false, 'status ' + rs.status);
   }
@@ -291,23 +297,23 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   console.log('\n8. Paginagrootte en offset');
   {
     const t = bouw({ antwoorden: [okAntwoord([], 'itrABC')] });
-    const r = await t.get('bron=log&limiet=5000');
+    const r = await t.get('bron=codes&limiet=5000');
     toets('een absurde limiet wordt teruggebracht naar 100',
       t.staat.verzoeken[0].url.indexOf('pageSize=100') >= 0, t.staat.verzoeken[0].url);
     toets('de offset van Airtable gaat door naar de pagina', r.body.offset === 'itrABC');
 
     const n = bouw();
-    await n.get('bron=log&limiet=0');
+    await n.get('bron=codes&limiet=0');
     toets('0 telt als niet opgegeven en valt terug op 50',
       n.staat.verzoeken[0].url.indexOf('pageSize=50') >= 0, n.staat.verzoeken[0].url);
 
     const m = bouw();
-    await m.get('bron=log&limiet=-5');
+    await m.get('bron=codes&limiet=-5');
     toets('een negatieve limiet wordt 1 en geen kapotte URL',
       m.staat.verzoeken[0].url.indexOf('pageSize=1&') >= 0, m.staat.verzoeken[0].url);
 
     const o = bouw();
-    await o.get('bron=log&offset=itrXYZ');
+    await o.get('bron=codes&offset=itrXYZ');
     toets('een meegegeven offset gaat mee', o.staat.verzoeken[0].url.indexOf('offset=itrXYZ') >= 0, o.staat.verzoeken[0].url);
   }
 
@@ -315,10 +321,10 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   console.log('\n9. Zonder geldige admin-token');
   {
     const g = bouw({ admin: false });
-    const rg = await g.get('bron=log');
+    const rg = await g.get('bron=codes');
     toets('lezen wordt geweigerd', rg.status === 403 && g.staat.verzoeken.length === 0, 'status ' + rg.status);
     const p = bouw({ admin: false });
-    const rp = await p.post({ bron: 'log', actie: 'wis', id: 'rec0123456789abcd' });
+    const rp = await p.post({ bron: 'codes', actie: 'wis', id: 'rec0123456789abcd' });
     toets('schrijven ook', rp.status === 403 && p.staat.verzoeken.length === 0, 'status ' + rp.status);
   }
 
@@ -332,10 +338,23 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
     toets('klanten schermt PassHash én ResetToken af',
       B.klanten.geheim.indexOf('PassHash') >= 0 && B.klanten.geheim.indexOf('ResetToken') >= 0);
     toets('users schermt PassHash af', B.users.geheim.indexOf('PassHash') >= 0);
-    toets('elke bron heeft een base- en tabelsleutel',
-      Object.keys(B).every((k) => /^AIRTABLE_/.test(B[k].baseKey) && /^AIRTABLE_/.test(B[k].tableKey)));
+    // Sinds #262 zijn er twee motoren, en elk heeft zijn eigen eis. Die eis
+    // laten vallen "omdat er nu ook D1 is" zou de fout die deze toets vangt
+    // — een bron erbij zetten zonder bewaarplaats — weer mogelijk maken.
+    const air = Object.keys(B).filter((k) => B[k].motor !== 'd1');
+    const d1 = Object.keys(B).filter((k) => B[k].motor === 'd1');
+    toets('er zijn bronnen van allebei de motoren', air.length > 0 && d1.length > 0,
+      'airtable=' + air.length + ' d1=' + d1.length);
+    toets('elke Airtable-bron heeft een base- en tabelsleutel',
+      air.every((k) => /^AIRTABLE_/.test(B[k].baseKey) && /^AIRTABLE_/.test(B[k].tableKey)));
+    toets('elke D1-bron noemt een tabel en een sleutelveld',
+      d1.every((k) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(String(B[k].d1)) && !!B[k].idveld),
+      d1.filter((k) => !B[k].d1 || !B[k].idveld).join(', '));
+    toets('een D1-bron heeft geen Airtable-sleutels, en andersom',
+      d1.every((k) => !B[k].baseKey && !B[k].tableKey) && air.every((k) => !B[k].d1),
+      'een bron met allebei laat in het midden waar hij vandaan komt');
     toets('geen enkele bron noemt een base rechtstreeks',
-      Object.keys(B).every((k) => !/^app[A-Za-z0-9]{10,}$/.test(String(B[k].baseKey))));
+      air.every((k) => !/^app[A-Za-z0-9]{10,}$/.test(String(B[k].baseKey))));
     toets('elk geheim veld is ook beschermd tegen schrijven',
       Object.keys(B).every((k) => (B[k].geheim || []).every((v) => !B[k].schrijven || B[k].beschermd.indexOf(v) >= 0)));
   }

@@ -73,6 +73,26 @@ crons = ["0 3 * * *"]
 binding = "FILES"
 bucket_name = "pidlane-files"
 
+# ── D1 voor de logregels ───────────────────────────────────────────────
+# Aangesproken als env.LOGDB (handleAirtableLog). Het schema staat in
+# schema.sql en wordt bewaakt door public/test-logschema.js.
+#
+# WAAROM DIT ER IS (#262, #260). De logtabel stond in Airtable, en die base
+# liep op 22-09-2026 vol: 1.159 van de 1.000 rijen. Een volle base neemt geen
+# nieuwe rijen meer aan, en in diezelfde base staat de Meetopdracht-tabel —
+# dus zowel het wegschrijven van een rit als de opdracht voor de volgende rit
+# lag stil. Een logtabel die aan een rijenlimiet hangt is de verkeerde
+# bewaarplaats voor iets dat per rit honderden regels schrijft.
+#
+# LET OP BIJ EEN NIEUWE OMGEVING: deze database moet bestaan vóór de eerste
+# deploy, anders faalt de build. Aanmaken kan in het dashboard of met
+# `wrangler d1 create pidlane_log_db`; daarna het schema uit schema.sql
+# draaien.
+[[d1_databases]]
+binding = "LOGDB"
+database_name = "pidlane_log_db"
+database_id = "aadad51d-893b-40b6-bfb7-dcee9ca6f80c"
+
 # ── Durable Object voor remote-sessies ─────────────────────────────────
 # Aangesproken als env.REMOTE_SESSION; de class zit in worker.js.
 # Wordt ook gebruikt door rateLimit() — zonder deze binding valt die terug
@@ -97,12 +117,20 @@ head_sampling_rate = 1
 # als je de standaard wilt overschrijven.
 #
 # [vars]
+# LOG_BEWAARDAGEN       = "60"      # zie hieronder — standaard uit
 # ALLOW_LEGACY_APP_TOKEN = "false"   # oude APP_TOKEN accepteren — laat uit
 # TOKEN_TTL_HOURS        = "12"      # geldigheid sessietoken
 # PBKDF2_ITERS           = "100000"  # LET OP: Workers staat niet meer dan 100000 toe
 # KLANT_START_SALDO      = "20"      # proeftegoed bij registratie; standaard al 20 in de code
 # APP_BASE_URL           = "https://app.pidlane.nl"   # basis voor de herstellink
 # MAIL_API_URL           = "https://api.resend.com/emails"  # andere mailprovider
+#
+# LOG_BEWAARDAGEN — de nachtelijke opruimronde van de logtabel (#260).
+# STAAT STANDAARD UIT, en dat is een besluit en geen vergetelheid: een ronde
+# die elke nacht rijen weggooit hoort aangezet te worden door een mens. Zonder
+# deze var meldt de cron dat hij niets doet; mét een getal wist hij logregels
+# die ouder zijn dan zoveel dagen. Regels met een Outcome blijven áltijd
+# staan — dat is het antwoord op een issue, en daar is een rit voor gereden.
 
 # ── Secrets — NOOIT in dit bestand ─────────────────────────────────────
 # Zet ze met `wrangler secret put NAAM` of via het dashboard onder

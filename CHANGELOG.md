@@ -10,6 +10,63 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-09-2026 — de logketen is helemaal over: lezen, opruimen, opdrachten
+ ═══════════════════════════════════════════════════════════
+
+ Het vervolg op de verhuizing hieronder. Logs, testrunregels en
+ meetopdrachten staan nu volledig in D1, beide richtingen. Config en
+ Veldlab blijven waar ze zijn.
+
+ - #262  De meetopdrachten verhuizen mee. Ze stonden in dezelfde volle base
+         als de log, dus de lus van #241 lag aan twee kanten tegelijk stil.
+         Gedrag ongewijzigd: nog steeds de actieve, nieuwste rij, nog
+         steeds geen keuring in de Worker.
+ - #262  /admin/tabel krijgt een tweede motor in plaats van een tweede
+         route. Een D1-bron geeft dezelfde antwoordvorm als een
+         Airtable-bron, dus beheer.html toont ze met dezelfde tabel,
+         dezelfde zoekbalk en dezelfde knoppen.
+ - #260  Twee afgeleide bronnen erbij, allebei alleen-lezen omdat ze niets
+         bewaren maar berekend worden: "Ritten" vat elke rit samen in één
+         regel (aantallen, uitkomsten, welke issues een antwoord kregen) en
+         "Bevindingen" laat alleen zien wat opviel.
+ - #260  Opruimknop in beheer.html: wissen op ouderdom, op rit of op soort.
+         Hij telt eerst en wist pas na een tweede klik, en regels met een
+         Outcome blijven staan tenzij je er expliciet om vraagt.
+ - #260  Een nachtelijke opruimronde kan aan met de var LOG_BEWAARDAGEN.
+         Staat standaard uit; zonder dat getal ruimt hij niets op en zegt
+         dat ook.
+ - #262  Nieuw: public/test-adminbron-d1.js (43 controles op de SQL-motor).
+         test-opdrachtroute.js en test-adminbron.js zijn meeverhuisd; drie
+         mutaties erbij in plmutate.sh voor de opruimkant.
+
+ ═══════════════════════════════════════════════════════════
+ 22-09-2026 — de logregels gaan naar Cloudflare D1
+ ═══════════════════════════════════════════════════════════
+
+ De Airtable-base met de logtabel stond op 1.159 van de 1.000 rijen en nam
+ niets meer aan. In diezelfde base staat Meetopdracht, dus zowel het
+ wegschrijven van een rit als de opdracht voor de volgende rit lag stil.
+
+ - #262  De logregels gaan naar Cloudflare D1 (pidlane_log_db, binding
+         LOGDB). Het schema staat in schema.sql en de kolomnamen blijven
+         gelijk aan wat de app stuurt, zodat er geen vertaaltabel in de
+         Worker komt die uit de pas kan lopen. De app hoefde voor het
+         schrijven zelf niet te veranderen.
+ - #262  Een veld zonder kolom verdwijnt niet meer. Airtable maakte er
+         vanzelf een kolom bij, SQLite niet; zo'n veld gaat nu als JSON naar
+         de kolom `onbekend` in plaats van stil weg te raken.
+ - #262  "Aangenomen" is niet langer hetzelfde als "weggeschreven". Van
+         20-09 17:12 tot vandaag gaf de route HTTP 200 met {ok:true} terug
+         zonder iets op te slaan, en de proef in blok 5 die juist dat kanaal
+         bewaakt keurde dat goed. De Worker meldt nu hoeveel rijen hij
+         wegschreef; komt dat getal niet of is het te laag, dan gaat de
+         batch terug in de buffer en wordt blok 5 rood.
+ - #260  Nieuw: schema.sql, public/test-logschema.js (schema tegen de
+         velden die de app werkelijk stuurt) en public/test-logroute.js (de
+         Worker-kant, met echte SQLite als nep-D1). Vijf mutaties erbij in
+         plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  Testrun 8.0 (19-09-2026) — een groen oordeel hoeft niet meer op een hele
  testrun te wachten
  ═══════════════════════════════════════════════════════════

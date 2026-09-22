@@ -913,6 +913,126 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 22-09-2026 — wat SQL mogelijk maakt en Airtable niet (#262, #260, #241)
+
+Dit is de tweede helft van de verhuizing hierboven: niet alleen de schrijfkant
+maar ook de leeskant, en de vraag wat er met een echte database anders kan.
+
+**De wens was "één logregel voor een hele sessie".** Bij Airtable zou dat
+betekenen: die samenvatting erbíj schrijven, als extra rij. Dan staan het
+totaal en de regels waaruit het volgt los van elkaar, en lopen ze uit de pas
+zodra er een regel bijkomt of weggaat — precies de vorm die dit hoofdstuk en
+`PIDLANE-WERK.md` eerder de kop kostte.
+
+In SQL hoeft dat niet. Een samenvatting is daar een **vraag**, geen rij. Er
+staan nu twee views in `schema.sql`:
+
+- `sessies` — één regel per rit, met begin, eind, aantallen, hoeveel
+  uitkomsten er waren en welke issues een antwoord kregen.
+- `bevindingen` — alleen wat opviel: `error`, `opvallend`, `bug`, of alles met
+  een `Outcome`. Dat is met de hand het knipwerk dat `CLAUDE.md` beschrijft
+  ("haal er FOUT en LET OP met hun blokkop uit"), nu als query.
+
+Een view bewaart niets en kan dus per definitie niet uit de pas lopen met de
+regels eronder. Ze zijn ook alleen-lezen, en dat klopt: een afgeleid cijfer
+hoor je niet met de hand te kunnen bijstellen.
+
+**De adminroute kreeg een tweede motor in plaats van een tweede route.**
+`/admin/tabel?bron=…` levert voor een D1-bron exact dezelfde antwoordvorm als
+voor een Airtable-bron. Een aparte `/d1/`-route zou dezelfde pagina twee keer
+laten bestaan, en dan is de vraag welke van de twee de waarheid toont.
+
+**Opruimen kon bij Airtable niet en hier wel** — daar was het een API-call per
+tien rijen uit een maandquotum, hier is het één statement. Twee dingen zitten
+er met opzet omheen: de actie draait **proef tenzij je `proef:false` stuurt**,
+en een regel met een `Outcome` blijft staan tenzij je er met zoveel woorden om
+vraagt. Dat laatste is de scherpste grens in dit hele blok: zo'n regel is het
+antwoord op een issue, en daar is een rit voor gereden (#257). Drie mutaties in
+`plmutate.sh` bouwen alle drie die fouten na.
+
+De nachtronde die hetzelfde automatisch doet **staat standaard uit**. Zonder de
+var `LOG_BEWAARDAGEN` meldt de cron dat hij niets opruimt. Een ronde die elke
+nacht rijen weggooit hoort een besluit te zijn en geen bijwerking van een
+deploy — en een lege logtabel zou anders net zo goed kunnen betekenen dat er
+niets gemeten is.
+
+**Wat er onderweg bijna stil misging.** De `scheduled()`-ronde begon met een
+`return` als `AIRTABLE_TOKEN` ontbrak. De logronde eronder heeft met die
+sleutel niets te maken, en zou dus stilgevallen zijn op een voorwaarde die er
+niet toe doet. Nu draaien de twee rondes los van elkaar.
+
+**En één toets bleek minder te meten dan hij leek.** De proef "een meegestuurde
+`ontvangen` wint niet van de Worker" stond groen, óók zonder de poort die dat
+bewaakt: SQLite accepteert `INSERT INTO t (a, …, a)` zonder morren en houdt de
+eerste waarde. De servertijd won dus door de volgorde waarin de kolommen
+toevallig opgebouwd werden. De toets telt nu hoe vaak `ontvangen` in de INSERT
+staat.
+
+
+### 22-09-2026 — de logbase liep vol, en de bewaker stond groen (#262, #260)
+
+**Wat er gebeurde.** De Airtable-base met de logtabel stond op **1.159 van de
+1.000 rijen**. Een volle base neemt geen nieuwe rijen meer aan. In diezelfde
+base staat de tabel `Meetopdracht`, dus beide helften van de lus van #241 lagen
+tegelijk stil: de rit kon niets wegschrijven, en de volgende rit kon geen
+opdracht krijgen.
+
+**Wat er vóór die vondst gebeurd was.** Op 20-09 om 17:12:26 is er met de
+webeditor een commit op `main` gezet (`5f10147`, "Add files via upload") die in
+`handleAirtableLog()` één regel toevoegde:
+
+```js
+// TIJDELIJKE STOP: Direct 200 OK om Airtable API-limiet te beschermen
+return json({ ok: true, status: "logging_paused" }, 200);
+```
+
+Alles eronder werd daarmee onbereikbaar. Dat is verdedigbaar als noodrem, maar
+de vorm ervan niet: de app kreeg `ok: true` met HTTP 200 terug en kon niet zien
+dat er niets gebeurde.
+
+**En de bewaker keurde het goed.** De proef in blok 5 die juist dit moet vangen
+(#235, *"Een kanaal dat stil faalt is erger dan geen kanaal"*) draaide die avond
+om 21:57:11 en meldde: *"ok — de Worker nam 7 regel(s) aan (HTTP 200)"*. Hij
+las `na.ok` en `na.status`, en de Worker gaf keurig allebei. Het woord
+`logging_paused` stond in de body, waar niemand naar keek. De proef kón daar
+dus niet rood worden — hij faalde op precies dezelfde manier als het kanaal dat
+hij bewaakte. Dat is de kern van deze bevinding en niet de volle base.
+
+**Een conclusie die onderweg fout bleek, en waarom hij hier blijft staan.** Uit
+het Airtable-scherm bleken twee limieten vol: records per base (1.159/1.000) én
+Public API calls per maand (1.601/1.000). Ik heb daaruit geconcludeerd dat het
+API-plafond het bindende probleem was, dat het pas bij de maandwissel zou
+opengaan, en dus dat klantlogin negen dagen plat zou liggen — `klantZoek()`
+doet immers `throw` op elke niet-ok status. Dat klopte niet. De API-teller stond
+wél rood maar blokkeerde niets; de recordlimiet deed dat wel, en die geldt **per
+base**. De Klanten- en Config-tabellen staan in een andere base en werkten
+gewoon door. De les is de vorm: *een rode balk is een waarneming, geen
+conclusie* — dezelfde fout als bij de Cloudflare-bot in #35, en toen ook twee
+keer achter elkaar.
+
+**Wat er veranderd is.** De logregels gaan naar Cloudflare D1
+(`pidlane_log_db`, binding `LOGDB`), schema in `schema.sql`. Drie dingen zijn
+daarbij met opzet anders dan bij Airtable:
+
+1. **De Worker draagt geen kolommenlijst.** Die namen staan al in
+   `AT_KOLOMMEN` (`pidlane-auth.js`) en in `schema.sql`; een derde kopie zou de
+   vorm zijn die `PIDLANE-WERK.md` en dit hoofdstuk eerder de kop kostte. De
+   Worker vraagt de kolommen aan de tabel zelf, één keer per isolate.
+2. **Een onbekend veld verdwijnt niet.** Airtable maakte er vanzelf een kolom
+   bij, SQLite niet — zonder maatregel zou een nieuw veld stil weg zijn. Het
+   gaat nu als JSON naar de kolom `onbekend`, en `test-logschema.js` maakt er
+   een bevinding van dat die kolom mist.
+3. **Aangenomen is niet meer hetzelfde als weggeschreven.** De Worker meldt
+   hoeveel rijen hij werkelijk wegschreef; `flushAirtable()` zet de batch terug
+   in de buffer als dat getal er niet is of te laag is, en de proef van blok 5
+   wordt FOUT bij een `ok` zonder dat getal. Daarmee kan de toestand van 20-09
+   niet meer groen staan. Drie mutaties in `plmutate.sh` bouwen die toestand na.
+
+**Wat dit niet oplost.** De tabel `Meetopdracht` staat nog in dezelfde volle
+base, en de route heet nog `/airtable/log` terwijl er geen Airtable meer aan te
+pas komt. Allebei apart opgepakt.
+
+
 ### Wat er op 18-09 gerepareerd is, en wat het over toetsen zei
 
 De drie oorzaken hieronder zijn dezelfde avond nog gerepareerd. Wat die

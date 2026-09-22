@@ -2993,8 +2993,8 @@ const PROEVEN_B5 = [
   // tekst bij 'ok'.
   {
     issue: '#235',
-    naam: 'De live-log komt werkelijk aan bij Airtable',
-    waarom: 'Een kanaal dat stil faalt is erger dan geen kanaal: je leest een lege tabel als "niets bijzonders" terwijl er niets is aangekomen. Op 17-09 was dat precies de toestand.',
+    naam: 'De live-log komt werkelijk aan in D1',
+    waarom: 'Een kanaal dat stil faalt is erger dan geen kanaal: je leest een lege tabel als "niets bijzonders" terwijl er niets is aangekomen. Op 17-09 was dat de toestand, en van 20-09 17:12 tot 22-09 opnieuw — toen gaf de Worker HTTP 200 met {ok:true} terug zonder iets weg te schrijven, en keurde deze proef dat goed omdat hij de status las en niet de inhoud. Sinds #262 telt alleen het aantal regels dat de Worker zegt te hebben weggeschreven.',
     proef: async function () {
       if (typeof logToSheets !== 'function')
         return { staat: 'FOUT', detail: 'logToSheets ontbreekt — de testrun schrijft dan niets meer weg en niemand kan tijdens de rit meekijken (#235)' };
@@ -3031,9 +3031,20 @@ const PROEVEN_B5 = [
         return { staat: 'FOUT', detail: 'de proefregel staat in de buffer maar er kwam binnen ' +
           Math.round((gewacht + 300) / 100) / 10 + ' s geen enkele uitslag terug — er wordt dus niets verstuurd' };
 
+      // `geschreven` komt uit het antwoord van de Worker en is het aantal
+      // rijen dat werkelijk in logregels stond. Bij Airtable kon dat niet
+      // nagegaan worden — een onbekende veldnaam werd dáár pas geweigerd —
+      // maar een INSERT in D1 slaagt of klapt, dus dit getal is nu echt bewijs.
+      if (na.ok && Number(na.geschreven) >= na.aantal)
+        return { staat: 'ok', detail: 'de Worker schreef ' + na.geschreven + ' van ' + na.aantal +
+          ' regel(s) weg in D1 (HTTP ' + na.status + '). Een INSERT slaagt of klapt, dus deze regel staat er ook werkelijk.' };
+
+      // Wél aangenomen, niet weggeschreven. Dat is de toestand van 20-09 en
+      // de reden dat deze proef bestaat; hij mag dus nooit groen zijn.
       if (na.ok)
-        return { staat: 'ok', detail: 'de Worker nam ' + na.aantal + ' regel(s) aan (HTTP ' + na.status + '). ' +
-          'Dat is bewijs dat de lijn er is, niet dat de regel in de tabel staat: wat Airtable met een onbekende veldnaam doet zie je pas dáár.' };
+        return { staat: 'FOUT', detail: 'de Worker antwoordde ok (HTTP ' + na.status + ') maar schreef ' +
+          (na.geschreven == null ? 'niet hoeveel regels hij wegschreef — dan is er geen bewijs dat er iets in de tabel staat' :
+           na.geschreven + ' van de ' + na.aantal + ' regels weg') + '. Tijdens een rit ziet niemand daar iets van.' };
 
       if (na.status === 401 || na.status === 403)
         return { staat: 'LET OP', detail: 'de Worker weigerde de regel (HTTP ' + na.status + ') — geen geldig app-token in deze sessie. ' +

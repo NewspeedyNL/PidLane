@@ -738,8 +738,9 @@ MUTATIES=(
 # ging alleen naar console.warn, op een telefoon, tijdens een rit.
 # Blok 5 vraagt het nu aan plLiveLogStatus(). Deze vijf fouten laten die vraag
 # allemaal een geruststellend antwoord geven dat nergens op slaat.
-"public/pidlane-auth.js@@      _atNoteer(true,resp.status,batch.length,'');@@      void 0;@@test-livelog.js@@een geslaagde verzending laat geen spoor na: blok 5 ziet nooit een uitslag en kan niets onderscheiden"
-"public/pidlane-auth.js@@_atNoteer(false,resp.status,batch.length,@@_atNoteer(true,resp.status,batch.length,@@test-livelog.js@@een 422 van Airtable wordt als geslaagd vastgelegd — precies de fout die de hele log platlegt, nu met groen ervoor"
+"public/pidlane-auth.js@@        _atNoteer(true,resp.status,batch.length,'',g);@@        void 0;@@test-livelog.js@@een geslaagde verzending laat geen spoor na: blok 5 ziet nooit een uitslag en kan niets onderscheiden"
+"public/pidlane-auth.js@@_atNoteer(false,resp.status,batch.length,err?.error?.message||('HTTP '+resp.status));@@_atNoteer(true,resp.status,batch.length,err?.error?.message||('HTTP '+resp.status));@@test-livelog.js@@een geweigerde batch wordt als geslaagd vastgelegd — precies de fout die de hele log platlegt, nu met groen ervoor"
+"public/pidlane-auth.js@@      if(Number.isFinite(g)&&g>=batch.length){@@      if(true){@@test-livelog.js@@de Worker mag weer ok zeggen zonder te melden dat hij iets wegschreef: logging_paused leest weer als succes"
 "public/pidlane-auth.js@@    _atNoteer(false,null,batch.length,e.message||'netwerkfout');@@    void 0;@@test-livelog.js@@een netwerkfout laat de vorige uitslag staan: de log is weg en blok 5 meldt de verzending van tien minuten geleden"
 "public/pidlane-auth.js@@function plLiveLogStatus(){ return _atLaatste?Object.assign({},_atLaatste):null; }@@function plLiveLogStatus(){ return _atLaatste; }@@test-livelog.js@@de beller krijgt de toestand zelf in handen en kan zijn eigen uitslag groen maken"
 "public/pidlane-auth.js@@  if(!_atBuffer.length) return;@@  if(false) return;@@test-livelog.js@@een lege buffer telt als geslaagde verzending: 'er stond niets klaar' leest als 'het is aangekomen'"
@@ -776,7 +777,7 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@          // NIET stil terugvallen op de vorige opdracht: dan meet de rit iets\n          // anders dan er in Airtable staat en is het verschil onzichtbaar.\n          _actief = null; _herkomst = null;@@          void 0;@@test-opdracht.js@@een afgekeurde opdracht laat de vorige staan: de rit meet iets anders dan er in de tabel staat"
 "public/pidlane-opdracht.js@@  function haal() {\n    _laatsteFout = null;\n    if (!toggleAan()) {@@  function haal() {\n    _laatsteFout = null;\n    if (false) {@@test-opdracht.js@@de uitzetknop houdt het verkeer niet meer tegen"
 "worker.js@@  if (ruw.length > 8192)@@  if (false)@@test-opdrachtroute.js@@de groottegrens valt weg: een tekst van een megabyte gaat eerst de telefoon in"
-"worker.js@@sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=desc&pageSize=@@sort%5B0%5D%5Bfield%5D=Gewijzigd&sort%5B0%5D%5Bdirection%5D=asc&pageSize=@@test-opdrachtroute.js@@bij twee actieve rijen wint de OUDSTE: je zet een opdracht aan en er draait een andere"
+"worker.js@@WHERE Actief = 1 ORDER BY Gewijzigd DESC LIMIT 5@@WHERE Actief = 1 ORDER BY Gewijzigd ASC LIMIT 5@@test-opdrachtroute.js@@bij twee actieve rijen wint de OUDSTE: je zet een opdracht aan en er draait een andere"
 "worker.js@@    meer: rijen.length > 1 ? rijen.length : 0,@@    meer: 0,@@test-opdrachtroute.js@@twee actieve rijen worden niet meer gemeld: stil draait er een andere opdracht dan je bedoelde"
 # ── OP WELKE BRON DRAAIT DE APP (#242, 17-09-2026). Een preview draait dezelfde
 # app met andere code; van buiten is het verslag van de twee niet te
@@ -890,6 +891,33 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = null; }@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = false; }@@test-opdrachtvoorwaarden.js@@een stapcontrole die stukgaat leest als \"de stap is niet gezet\" — niet-na-te-gaan wordt weer stil niet-gedaan (#227)"
 "public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)@@    if (o.schema !== SCHEMA)@@test-opdrachtvoorwaarden.js@@de hele voorraad van schema 1 wordt afgekeurd en elke rit kost eerst een nieuwe rij in de tabel"
 "public/pidlane-opdracht.js@@          if (isStap === isMeting) {@@          if (false) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
+
+# ── De logtabel staat sinds #262 in D1 en niet meer in Airtable, en dat
+# verandert één ding wezenlijk: Airtable maakte een onbekend veld vanzelf aan,
+# SQLite niet. De veldnamen staan daardoor op twee plekken — AT_KOLOMMEN in de
+# app en schema.sql — en dat is in dit project de vorm die al twee documenten
+# de kop kostte. Deze twee bouwen precies de twee kanten van die vergissing na:
+# iemand zet een veld in de app en vergeet het schema, of hernoemt een kolom in
+# het schema en vergeet de app. Beide keren raakt er data stil weg.
+"public/pidlane-auth.js@@  'Demo','Repro','Device']);@@  'Demo','Repro','Device','Koelwater']);@@test-logschema.js@@een nieuw logveld in de app zonder kolom in D1: die waarde belandt stil in \`onbekend\`"
+"schema.sql@@  Message       TEXT,@@  Bericht       TEXT,@@test-logschema.js@@een kolom in D1 hernoemd zonder de app mee te nemen: het berichtveld komt nergens meer aan"
+# ── De logroute schrijft sinds #262 naar D1. Deze drie bouwen de fouten na
+# die deze route al eens gemaakt heeft of makkelijk weer maakt, en ze gaan
+# alle drie over hetzelfde: een mislukking die zich als succes voordoet. Die
+# stond hier van 20-09 17:12 tot 22-09 live — `{ok:true}` met HTTP 200 terwijl
+# er niets werd weggeschreven — en de proef in blok 5 die juist dat kanaal
+# bewaakt keurde het goed. Een kanaal dat stil faalt is erger dan geen kanaal.
+"worker.js@@  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);\n  if (!env.LOGDB) return json({ error: \"no_logdb\" }, 500);\n  let payload;@@  return json({ ok: true, status: \"logging_paused\" }, 200);\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);\n  if (!env.LOGDB) return json({ error: \"no_logdb\" }, 500);\n  let payload;@@test-logroute.js@@de logstop van 20-09 is terug: de route meldt 200 ok en schrijft niets — precies wat blok 5 niet zag"
+"worker.js@@    return json({ error: \"schrijven_mislukt\", detail: String(e && e.message || e) }, 502);@@    return json({ ok: true }, 200);@@test-logroute.js@@een mislukte schrijfactie heet weer geslaagd: de app gooit de batch weg en niemand mist de regels"
+"worker.js@@    if (Object.keys(rest).length && kolommen.has(\"onbekend\")) {@@    if (false) {@@test-logroute.js@@het vangnet is weg: een veld zonder kolom verdwijnt stil in plaats van in \`onbekend\` te landen"
+
+# ── De opruimkant van D1 (#260). Bij Airtable kon bulkwissen niet, dus deze
+# fouten konden daar ook niet bestaan; nu wel, en ze zijn alle drie
+# onomkeerbaar. De eerste is de ergste: een regel met een Outcome is het
+# antwoord op een issue, en daar is een rit voor gereden.
+"worker.js@@    if (body.ookUitkomsten !== true && kol.has(\"Outcome\"))@@    if (false)@@test-adminbron-d1.js@@opruimen neemt de uitkomsten mee: het antwoord op een issue verdwijnt samen met de ruis"
+"worker.js@@    const proef = body.proef !== false;@@    const proef = body.proef === true;@@test-adminbron-d1.js@@opruimen wist meteen in plaats van eerst te tellen — een vergissing kost dan rijen en geen getal"
+"worker.js@@    if (!waar.length)@@    if (false)@@test-adminbron-d1.js@@een opruimregel zonder enkele voorwaarde komt erdoor, en dat is de hele tabel"
 )
 
 echo

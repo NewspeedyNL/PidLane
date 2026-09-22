@@ -268,15 +268,32 @@ async function deel3() {
     'een proef die op null groen wordt, staat groen vóór er iets verstuurd is');
 
   // 1. HET GAAT GOED.
-  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({}) }; };
+  // Het antwoord draagt sinds #262 het aantal weggeschreven regels. Een lege
+  // body is geen geslaagde verzending meer — zie de tegenproef verderop.
+  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({ ok: true, geschreven: 2 }) }; };
   vul(2);
   await s.flushAirtable();
   let u = s.plLiveLogStatus();
   toets('een geslaagde verzending wordt vastgelegd met status en aantal',
-    u && u.ok === true && u.status === 200 && u.aantal === 2 && u.fout === '',
+    u && u.ok === true && u.status === 200 && u.aantal === 2 && u.geschreven === 2 && u.fout === '',
     'gaf: ' + JSON.stringify(u));
   toets('... en de buffer is dan leeg', s._atBuffer.length === 0,
     'gaf: ' + s._atBuffer.length + ' regel(s) — dan wordt dezelfde batch straks opnieuw gestuurd');
+
+  // 1b. DE WORKER NEEMT AAN MAAR SCHRIJFT NIETS WEG. Dit is de toestand van
+  //     20-09-2026 17:12 tot 22-09: HTTP 200 met {ok:true} en een lege tabel.
+  //     Zonder deze toets is "aangenomen" weer hetzelfde als "weggeschreven".
+  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({ ok: true }) }; };
+  vul(2);
+  await s.flushAirtable();
+  u = s.plLiveLogStatus();
+  toets('ok zonder `geschreven` telt niet als geslaagd',
+    u && u.ok === false && /niet weggeschreven/.test(u.fout),
+    'gaf: ' + JSON.stringify(u));
+  toets('... en de batch blijft in de buffer staan voor een nieuwe poging',
+    s._atBuffer.length === 2,
+    'gaf: ' + s._atBuffer.length + ' regel(s) — die twee zijn dan weg zonder dat iemand het ziet');
+  s._atBuffer.length = 0;
 
   // 2. AIRTABLE WEIGERT. Dit is het geval dat de hele log plat kan leggen:
   //    één onbekende veldnaam geeft een 422 en de batch komt terug.
@@ -313,7 +330,7 @@ async function deel3() {
   // 5. ELKE POGING IS EEN NIEUW MOMENT. Blok 5 vergelijkt `tijd` om een oude
   //    geslaagde verzending niet voor de zijne aan te zien.
   const voor = s.plLiveLogStatus().tijd;
-  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({}) }; };
+  s.plFetch = async function () { return { ok: true, status: 200, json: async () => ({ ok: true, geschreven: 1 }) }; };
   vul(1);
   await new Promise(r => setTimeout(r, 2));
   await s.flushAirtable();
@@ -393,14 +410,26 @@ async function deel4() {
     s.plLiveLogStatus = function () { return uitslag ? Object.assign({}, uitslag) : null; };
   }
 
-  opstelling({ tijd: klok, ok: true, status: 200, aantal: 3, fout: '' });
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 3, geschreven: 3, fout: '' });
   let r = await entry.proef();
   toets('aangekomen → ok, met het aantal regels erbij',
     r.staat === 'ok' && /3 regel/.test(r.detail) && /200/.test(r.detail),
     'gaf: ' + JSON.stringify(r));
-  toets('... en de uitslag belooft niet meer dan hij weet',
-    /niet dat de regel in de tabel staat/.test(r.detail),
-    'HTTP 200 van de Worker is geen bewijs dat Airtable het veld accepteerde');
+  // Bij Airtable kon deze proef niet verder komen dan "de lijn is er": een
+  // onbekende veldnaam werd dáár pas geweigerd. Een INSERT in D1 slaagt of
+  // klapt, dus het aantal weggeschreven regels is nu wél bewijs.
+  toets('... en hij noemt het aantal weggeschreven regels als bewijs',
+    /schreef 3 van 3/.test(r.detail),
+    'zonder dat getal is HTTP 200 alleen "aangenomen" en niet "weggeschreven"');
+
+  // DE ONDERSCHEIDENDE VOOR #262. Dit is letterlijk de vorm die van 20-09
+  // 17:12 tot 22-09 live stond: HTTP 200, ok, en niets in de tabel. Een proef
+  // die hier groen blijft is de proef die dat drie dagen niet zag.
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 3, fout: '' });
+  r = await entry.proef();
+  toets('ok zonder aantal weggeschreven regels → FOUT, niet groen',
+    r.staat === 'FOUT' && /geen bewijs/.test(r.detail),
+    'gaf: ' + JSON.stringify(r));
 
   opstelling({ tijd: klok, ok: false, status: 422, aantal: 3, fout: 'Unknown field name: "Zeur"' });
   r = await entry.proef();
@@ -423,7 +452,7 @@ async function deel4() {
     r.staat === 'LET OP' && /401/.test(r.detail),
     'gaf: ' + JSON.stringify(r));
 
-  opstelling({ tijd: klok, ok: true, status: 200, aantal: 1, fout: '' });
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 1, geschreven: 1, fout: '' });
   s.AIRTABLE_URL = '';
   r = await entry.proef();
   toets('geen logadres ingesteld → LET OP, want de voorwaarde ontbreekt',
@@ -433,7 +462,7 @@ async function deel4() {
   // DE ONDERSCHEIDENDE: er wordt niets verstuurd. Een proef die alleen naar
   // de laatste uitslag kijkt zou hier groen blijven op de geslaagde
   // verzending van daarvóór — precies de fout die deze proef moet vangen.
-  opstelling({ tijd: klok, ok: true, status: 200, aantal: 5, fout: '' });
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 5, geschreven: 5, fout: '' });
   s.flushAirtable = async function () { /* stuurt niets: de uitslag blijft staan */ };
   r = await entry.proef();
   toets('er wordt niets verstuurd → FOUT, ondanks een geslaagde poging van daarvóór',
@@ -443,20 +472,20 @@ async function deel4() {
   // EN DE ANDERE KANT VAN DAT WACHTEN: de uitslag komt wél, maar pas na een
   // paar tikken. Wie hier niet wacht keurt een werkende verbinding af, en een
   // proef die om de zoveel rit onterecht rood staat wordt genegeerd.
-  opstelling({ tijd: klok, ok: true, status: 200, aantal: 2, fout: '' });
-  const oud = { tijd: klok, ok: true, status: 200, aantal: 2, fout: '' };
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 2, geschreven: 2, fout: '' });
+  const oud = { tijd: klok, ok: true, status: 200, aantal: 2, geschreven: 2, fout: '' };
   let beurten = 0;
   s.flushAirtable = async function () { /* verstuurt wel, maar traag */ };
   s.plLiveLogStatus = function () {
     beurten++;
-    return beurten > 3 ? { tijd: klok + 5, ok: true, status: 200, aantal: 2, fout: '' }
+    return beurten > 3 ? { tijd: klok + 5, ok: true, status: 200, aantal: 2, geschreven: 2, fout: '' }
                        : Object.assign({}, oud);
   };
   r = await entry.proef();
   toets('een trage verzending wordt afgewacht in plaats van te vroeg afgekeurd',
     r.staat === 'ok', 'gaf: ' + JSON.stringify(r) + ' — na ' + beurten + ' keer kijken');
 
-  opstelling({ tijd: klok, ok: true, status: 200, aantal: 1, fout: '' });
+  opstelling({ tijd: klok, ok: true, status: 200, aantal: 1, geschreven: 1, fout: '' });
   s.plLiveLogStatus = undefined;
   r = await entry.proef();
   toets('zonder plLiveLogStatus → FOUT en niet stilletjes groen',
