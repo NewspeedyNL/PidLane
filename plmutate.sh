@@ -790,6 +790,10 @@ MUTATIES=(
 "public/pidlane-bron.js@@    var doel = isProductie() ? preview() : PRODUCTIE;@@    var doel = preview();@@test-bron.js@@vanaf een preview kom je niet meer terug naar de live-app"
 "public/pidlane-bron.js@@      b.textContent = '⚠ PREVIEW — ' + huidige() + ' · dit is niet de live app';@@      b.textContent = 'PREVIEW';@@test-bron.js@@de banner noemt het adres niet meer: je ziet dat het een preview is maar niet welke"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
+# ── #218: de DTC-vlag zegt "er is gekeken" (22-09-2026) ──
+# De vlag ging aan op de eerste regel van scanDTC(); het onderdeelpaneel zei dan
+# tijdens de scan en na een fout "geen foutcodes" in plaats van "niet uitgelezen".
+"public/pidlane-graph.js@@async function scanDTC(){\n  document.getElementById('bscan').disabled=true;@@async function scanDTC(){\n  window._didDTCScan=true;\n  document.getElementById('bscan').disabled=true;@@test-dtcvlag.js@@de DTC-vlag gaat weer aan vóór het antwoord: tijdens de scan en na een fout heet het geen foutcodes"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de
 # Live-weergave stil verkeerd laten staan — en "stil" is hier het punt: een
