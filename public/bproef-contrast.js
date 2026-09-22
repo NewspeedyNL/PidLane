@@ -155,6 +155,27 @@ function zeg(m) {
        over contrast leek te gaan en in werkelijkheid over een onzichtbare
        knop ging; dat kostte een uur uitzoeken. De regel uit CLAUDE.md —
        geen stille catch-blokken — geldt ook voor het gereedschap. */
+    /* GEEN OVERGANGEN TIJDENS HET METEN — 22-09-2026, #236.
+       `.tab` en `.pidview-btn` hebben `transition: all .15s`. Na een
+       themawissel of een ingespoten kleur schuift de kleur dus in 150 ms naar
+       zijn eindwaarde, en getComputedStyle geeft onderweg de tussenwaarde.
+       Hier stond daarna een vaste rust(200). Op een drukke CI-runner lopen de
+       frames niet altijd door, en dan meet de proef de kleur van vóór de
+       wissel: in de rode runs de donkere tabbladtekst op de lichte grond
+       (basislijn 3) en een ingespoten kleur die nog niet begonnen was (3 → 3).
+       Nagebouwd door de overgang op 5 s te zetten: precies die uitslag.
+       Deze proef meet de eindtoestand, dus de overgangen gaan uit. `:root *`
+       en als laatste in de head, zodat hij wint van `.tab{transition:…}`. */
+    const stil = await app.ev(`(function(){
+      const st = document.createElement('style'); st.id = 'plProefGeenOvergang';
+      st.textContent = ':root *, :root *::before, :root *::after{ transition:none !important; animation:none !important; }';
+      document.head.appendChild(st);
+      const t = document.querySelector('.tabs .tab');
+      if (!t) return 'de tabbalk staat er niet: .tabs .tab vond niets';
+      const d = getComputedStyle(t).transitionDuration;
+      return d === '0s' ? true : 'de overgang op .tab staat nog op ' + d; })()`);
+    toets('de overgangen staan uit, dus er wordt een eindtoestand gemeten', stil === true, String(stil));
+
     const opzet = await app.ev(`(function(){
       const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
       const tab = document.querySelector('.tabs .tab');
