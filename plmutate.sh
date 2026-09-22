@@ -530,8 +530,8 @@ MUTATIES=(
 # brengt die reparaties terug zonder dat er iets rood wordt, de tweede laat git
 # bij een botsing twee keer dezelfde regel JS wegschrijven — en dat is precies
 # de klasse fout die hier maanden blijft staan.
-".gitattributes@@PIDLANE.md    merge=union@@PIDLANE.md    -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
-".gitattributes@@CHANGELOG.md  merge=union@@CHANGELOG.md  merge=union\n*.js          merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
+".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
 # ── §14 belooft iets wat §3 niet kent (10-09-2026) ──
 # De release notes zijn een ingedikte §3, met de hand. Een functie erbij zetten
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
