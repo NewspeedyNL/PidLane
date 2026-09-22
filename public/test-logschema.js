@@ -152,6 +152,26 @@ toets('en noemt de issues die een antwoord kregen', sess && sess.issues === '#21
 // eerder in deze test is ingevoegd, en dan meet je je eigen opstelling.
 db.prepare('INSERT INTO logregels (ontvangen,Type,Message,SessionId) VALUES (?,?,?,?)')
   .run('2026-09-20T10:02:00Z', 'info', 'niets aan de hand', 'rit-X');
+// ── de issues-kolom moet ontdubbelen (#262, gemeten 22-09-2026) ────
+// `Repro` draagt twee betekenissen: bij een losse proef één issue, bij de
+// uitkomstregel de hele lijst als tekst. Zonder splitser levert dat
+// "#226,#64,#226 #64" op. Deze opstelling is met opzet precies die vorm —
+// met één issue zou de toets het verschil niet kunnen zien.
+db.prepare('INSERT INTO logregels (ontvangen,Type,Message,SessionId,Outcome,Repro) VALUES (?,?,?,?,?,?)')
+  .run('2026-09-22T14:55:52Z', 'info', 'proef 1', 'rit-dubbel', 'ok', '#226');
+db.prepare('INSERT INTO logregels (ontvangen,Type,Message,SessionId,Outcome,Repro) VALUES (?,?,?,?,?,?)')
+  .run('2026-09-22T14:55:53Z', 'info', 'proef 2', 'rit-dubbel', 'ok', '#64');
+db.prepare('INSERT INTO logregels (ontvangen,Type,Message,SessionId,Outcome,Repro) VALUES (?,?,?,?,?,?)')
+  .run('2026-09-22T14:55:58Z', 'opvallend', 'uitkomst', 'rit-dubbel', 'gesloten', '#226 #64');
+
+const dub = db.prepare("SELECT issues FROM sessies WHERE SessionId='rit-dubbel'").get();
+toets('een issue dat los én in de uitkomstregel staat, telt één keer',
+  dub && dub.issues === '#226 #64',
+  'kreeg: ' + JSON.stringify(dub && dub.issues) + ' — verwacht "#226 #64"');
+toets('en er staat geen samengestelde tekst meer tussen',
+  dub && dub.issues.indexOf(',') < 0,
+  'een komma betekent dat "#226 #64" als één waarde is meegeteld');
+
 const bevMsg = db.prepare('SELECT Message FROM bevindingen').all().map((r) => r.Message);
 toets('een gewone info-regel zonder uitkomst valt buiten bevindingen',
   bevMsg.indexOf('niets aan de hand') < 0, JSON.stringify(bevMsg));
