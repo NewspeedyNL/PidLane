@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-09-2026 — "Welk onderdeel?" keurt een gezonde motor niet meer af
+ ═══════════════════════════════════════════════════════════
+
+ - #232  De luchtmassaregel oordeelt alleen warm stationair, per liter
+         motorinhoud (0,2–2,5 g/s/l). Onbekende motor: geen oordeel. Op 23-09
+         noemde hij 0,8 g/s stationair én 91 g/s vol gas "past niet".
+ - #231  De ontstekingsregel (ketting) kijkt alleen naar een warme motor en
+         pas onder −25° (was −5°). Gemeten tot −20° op een gezonde rit.
+ - #233  "Nog niet uitgelezen" heeft een knop eronder die meteen uitleest en
+         het paneel opnieuw tekent. Zonder verbinding staat er waarom niet.
+ - Blok 5: drie proeven die de regels op de live motor en de rit leggen.
+
+ ═══════════════════════════════════════════════════════════
  23-09-2026 — meetopdracht: één rit voor alle opdrachten, groen is gesloten
  ═══════════════════════════════════════════════════════════
 

@@ -175,6 +175,27 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 23-09-2026 — "Welk onderdeel?" keurde een gezonde motor af (#232, #231, #233)
+
+Gemeten in twee opdrachten op een CX-5 2.0 SkyActiv-G zonder klachten. De
+luchtmassa gaf stationair 0,8–1,7 g/s en vol gas 91–99 g/s bij ~4500 tpm. De
+oude regel had één band van 2–7 g/s voor elke motor en elk toerental. Hij
+noemde dus beide kanten "past niet": stationair te laag, vol gas te hoog.
+Die band was een stationaire vuistregel voor een motor van rond de 2,5 liter,
+en werd toegepast op alles wat draaide. Nu kijkt de regel alleen naar warm
+stationair, rekent per liter (band 0,2–2,5 g/s/l) en oordeelt niet als de
+motorinhoud onbekend is. Dat laatste kost dekking, geen juistheid.
+
+De ontsteking ging tijdens het rijden naar −10,5, −12 en −20°. Dat is
+klopregeling en koude-start-verlating, geen overgesprongen ketting. De grens
+stond op −5° en keek ook naar een koude motor. Nu: alleen warm, en pas onder
+−25°. `PID_LET_OP['010E']` volgt mee. Of −25 ruim genoeg is, meet blok 5 met
+de laagste waarde van de rit. Het is een grens uit één auto, en dat staat er
+met opzet bij.
+
+#233 is de kleine: het paneel zei "nog niet uitgelezen" en liet je zoeken
+waar dat kon. De knop staat er nu onder, alleen als er een verbinding is.
+
 ### 23-09-2026 — groen zien, verzenden, en dan toch niet (#277)
 
 **Wat er gebeurde.** Na een geslaagde rit met het kleine venster (#228) werd er

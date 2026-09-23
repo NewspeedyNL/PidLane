@@ -101,7 +101,8 @@ window.PID_HARD_LIMITS = {
 // hij gewoon door naar de meter en de historie. Geen markOutlier, geen null.
 // Zo blijft het onderscheid intact: laag 1 = meetfout, laag 1b = bijzonderheid.
 window.PID_LET_OP = {
-  '010E':{min:-10, max:55,  waarom:'sterke terugregeling van de ontsteking — katalysator-opwarming of klopregeling'},
+  // −10 was te streng: een gezonde SkyActiv-G ging op 23-09 naar −20° (#231).
+  '010E':{min:-25, max:55,  waarom:'sterke terugregeling van de ontsteking — katalysator-opwarming of klopregeling'},
   '0105':{min:-15, max:110, waarom:'koelwater boven bedrijfstemperatuur'},
   '015C':{min:-15, max:140, waarom:'olietemperatuur boven normaal'},
   '010F':{min:-25, max:70,  waarom:'inlaatlucht warm — heat-soak of hoge buitentemperatuur'},

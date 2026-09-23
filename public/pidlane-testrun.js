@@ -2925,6 +2925,98 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── "Welk onderdeel?" keurt een gezonde motor niet meer af (#232, 23-09-2026) ──
+  // De MAF-regel stond op 2–7 g/s voor elke motor en elk toerental. Gemeten op
+  // een gezonde 2,0 liter: 0,8–1,7 g/s stationair (dus "te laag") en 91 g/s
+  // vol gas (dus "te hoog"). Nu: alleen warm stationair, per liter
+  // motorinhoud, en zonder bekende motorinhoud geen oordeel.
+  //
+  // Deze proef legt de regel op wat de auto NU doet. Hij kan niet weten of de
+  // auto gezond is — dat weet jij. Staat er "past niet" op een auto zonder
+  // klachten, dan is #232 niet opgelost; staat er een getal per liter binnen
+  // de band, dan is dat de meting die hem sluit.
+  {
+    issue: '#232',
+    naam: 'Welk onderdeel? — de luchtmassaregel past bij deze motor',
+    waarom: 'Een regel die elke gezonde motor afkeurt wijst de gebruiker een onderdeel aan dat niets mankeert. Dat is erger dan geen oordeel: het kost geld.',
+    proef: async function () {
+      if (!window.PLOnderdeel || typeof PLOnderdeel.motorLiters !== 'function' || typeof PLOnderdeel.context !== 'function')
+        return { staat: 'FOUT', detail: 'PLOnderdeel.motorLiters ontbreekt — de MAF-regel oordeelt weer zonder motorinhoud (#232)' };
+      var l = PLOnderdeel.motorLiters();
+      if (l === null)
+        return { staat: 'LET OP', detail: 'de motorinhoud van dit voertuig is niet bekend (geen cilinderinhoud, geen "2.0" in de motornaam) — ' +
+          'de luchtmassaregel geeft dan bewust geen oordeel. Vul het voertuig aan om hem te laten meedoen.' };
+      var regel = null;
+      (PLOnderdeel._regels || []).forEach(function (r) {
+        (r.vc || []).forEach(function (v) { if (/^Luchtmassa stationair/.test(v.tekst)) regel = v; });
+      });
+      if (!regel) return { staat: 'FOUT', detail: 'de luchtmassaregel staat niet meer in de lijst van "Welk onderdeel?" (#232)' };
+      var c = PLOnderdeel.context();
+      var maf = (typeof pidVals !== 'undefined' && pidVals) ? pidVals['0110'] : undefined;
+      var oordeel = regel.test(c);
+      if (oordeel === null)
+        return { staat: 'LET OP', detail: 'geen oordeel op dit moment — de regel kijkt alleen naar een warme motor (≥70 °C) stationair (≤1000 tpm, stilstand). ' +
+          'Nu: ' + (c.rpm === null ? '?' : Math.round(c.rpm)) + ' tpm, ' + (c.ect === null ? '?' : Math.round(c.ect)) + ' °C, ' +
+          (maf === undefined ? 'geen MAF' : maf + ' g/s') + '. Draai de proef warm en stationair om #232 te toetsen.' };
+      var perL = (Number(maf) / l).toFixed(2);
+      if (oordeel === true)
+        return { staat: 'LET OP', detail: 'de regel zegt "past niet": ' + maf + ' g/s op ' + l + ' liter = ' + perL + ' g/s per liter (band 0,2–2,5). ' +
+          'Heeft deze auto geen klachten, dan is #232 NIET opgelost — noteer dit getal bij het issue.' };
+      return { staat: 'ok', detail: maf + ' g/s op ' + l + ' liter = ' + perL + ' g/s per liter, warm stationair — binnen de band 0,2–2,5, geen verdenking. ' +
+        'Op een gezonde motor is dit de meting die #232 sluit.' };
+    }
+  },
+
+  // ── de ontstekingsgrens volgt een gezonde motor (#231, 23-09-2026) ──
+  // Gemeten op 23-09: tijdens het rijden −10,5, −12 en −20°, op een motor
+  // zonder klachten. De regel noemde onder −5° de distributieketting. Nu pas
+  // bij een warme motor en pas onder −25°; het gebruikelijke bereik in de
+  // datatabel volgt mee.
+  {
+    issue: '#231',
+    naam: 'Welk onderdeel? — de ontstekingsgrens laat een gezonde rit door',
+    waarom: 'Terugnemen van de ontsteking onder belasting is normaal klopregeling. Een grens die dat "ketting" noemt, stuurt iemand naar de duurste reparatie aan de motor.',
+    proef: async function () {
+      if (typeof PID_LET_OP === 'undefined' || !PID_LET_OP['010E'])
+        return { staat: 'FOUT', detail: 'PID_LET_OP[010E] ontbreekt — het gebruikelijke bereik van de ontsteking is weg' };
+      var grens = PID_LET_OP['010E'].min;
+      if (grens > -20)
+        return { staat: 'FOUT', detail: 'het gebruikelijke bereik begint weer bij ' + grens + '° — de −20° van 23-09 heet dan weer ongebruikelijk (#231)' };
+      var rit = (window.PLRit && typeof PLRit.per === 'function') ? PLRit.per()['010E'] : null;
+      if (!rit || !rit.n)
+        return { staat: 'LET OP', detail: 'de ontsteking (010E) is deze rit niet gemeten — zet hem aan en rijd met wat belasting om #231 te toetsen' };
+      var laagst = Math.round(rit.min * 10) / 10;
+      if (laagst < -25)
+        return { staat: 'LET OP', detail: 'de laagste ontsteking deze rit was ' + laagst + '° (' + rit.n + ' metingen) — onder de nieuwe grens van −25°. ' +
+          'Was de motor toen warm en heeft hij geen klachten, dan is ook −25 te krap: noteer dit getal bij #231. ' +
+          '(Koud, vlak na de start, is dit normaal: de regel kijkt dan niet.)' };
+      return { staat: 'ok', detail: 'laagste ontsteking deze rit ' + laagst + '°, hoogste ' + (Math.round(rit.max * 10) / 10) + '° over ' + rit.n +
+        ' metingen — binnen de grens van −25°, dus geen ketting-verdenking. Zat daar rijden met belasting bij, dan sluit dit #231.' };
+    }
+  },
+
+  // ── foutcodes uitlezen vanuit "Welk onderdeel?" (#233, 23-09-2026) ──
+  // Het paneel zei "de foutcodes zijn nog niet uitgelezen" en liet je dan
+  // zoeken waar dat kon. Nu staat de knop eronder. Wat deze proef toetst is de
+  // voorwaarde voor die knop: hij staat er precies als er uitgelezen KAN worden.
+  {
+    issue: '#233',
+    naam: 'Welk onderdeel? — de uitleesknop staat er als het kan',
+    waarom: 'Een knop die er staat zonder verbinding doet niets; een knop die ontbreekt terwijl het kan, laat het oordeel rusten op alleen live waarden.',
+    proef: async function () {
+      if (!window.PLOnderdeel || typeof PLOnderdeel.scanMogelijk !== 'function' || typeof PLOnderdeel.scan !== 'function')
+        return { staat: 'FOUT', detail: 'PLOnderdeel.scan ontbreekt — het paneel verwijst weer naar een knop elders (#233)' };
+      var kan = PLOnderdeel.scanMogelijk();
+      var verbonden = (typeof connected !== 'undefined' && !!connected) || (typeof demoMode !== 'undefined' && !!demoMode);
+      if (kan !== verbonden)
+        return { staat: 'FOUT', detail: 'de knop zegt "' + (kan ? 'kan' : 'kan niet') + '" terwijl de adapter ' + (verbonden ? 'verbonden' : 'niet verbonden') + ' is (#233)' };
+      if (!verbonden)
+        return { staat: 'LET OP', detail: 'niet verbonden — dan hoort de knop er niet te staan, en dat klopt. Verbind en open "Welk onderdeel?" om hem te zien.' };
+      return { staat: 'ok', detail: 'verbonden, dus de knop staat onder "nog niet uitgelezen". Druk er één keer op in het paneel: ' +
+        'de zin moet verdwijnen en het aantal foutcodes moet erin staan. Dan is #233 dicht.' };
+    }
+  },
+
   // ── blijft de meting in beeld als je wegschakelt? (#228, 17-09-2026) ──
   // De split-screenproef van vanavond wees zichtbaarheid aan als de trekker:
   // zichtbaar en niet vooraan liep de lus 99 s door zonder één gat, verborgen

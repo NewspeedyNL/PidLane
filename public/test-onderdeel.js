@@ -540,6 +540,101 @@ console.log('\n13. Het scherm spreekt zichzelf niet tegen');
     /Geen enkel onderdeel/.test(leeg.odBody.innerHTML));
 }
 
-console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
-                        : 'goed: alle ' + n + ' controles') + '\n');
-process.exit(fout ? 1 : 0);
+// ══════════════════════════════════════════════════════════════════
+// GEMETEN OP 23-09-2026 — een gezonde CX-5 2.0 SkyActiv-G (#232, #231, #233)
+// De getallen hieronder zijn de metingen uit D1, niet bedacht.
+function regel(s, id, tekstBegin) {
+  const r = s.PLOnderdeel._regels.filter(function (x) { return x.id === id; })[0];
+  const v = r && r.vc.filter(function (x) { return x.tekst.indexOf(tekstBegin) === 0; })[0];
+  if (!v) { toets('regel ' + id + ' / ' + tekstBegin + ' bestaat', false); return function () { return 'ontbreekt'; }; }
+  return function () { return v.test(s.PLOnderdeel.context()); };
+}
+function motor(s, rpm, ect, snelheid) {
+  s.pidVals['010C'] = rpm; s.pidVals['0105'] = ect;
+  if (snelheid !== undefined) s.pidVals['010D'] = snelheid;
+}
+
+console.log('\n14. De MAF-regel keurt een gezonde motor niet af (#232)');
+{
+  const s = laad();
+  s.getVehicle = function () { return s.voertuig; };
+  s.voertuig = { merk: 'Mazda', model: 'CX-5', motor: '2.0 SkyActiv-G 165pk' };
+  const maf = regel(s, 'maf', 'Luchtmassa stationair');
+  toets('de motorinhoud komt uit de motornaam', s.PLOnderdeel.motorLiters() === 2);
+  s.voertuig = { cilinderinhoud: '1998' };
+  toets('of uit de cilinderinhoud in cc', s.PLOnderdeel.motorLiters() === 1.998);
+  s.voertuig = { motor: 'SkyActiv-G' };
+  toets('en is onbekend als er geen getal staat', s.PLOnderdeel.motorLiters() === null);
+
+  s.voertuig = { motor: '2.0 SkyActiv-G 165pk' };
+  motor(s, 650, 90, 0);
+  s.pidVals['0110'] = 0.81;
+  toets('stationair 0,81 g/s op 2,0 liter: geen kandidaat (de oude regel zei wél)', maf() === false, String(maf()));
+  s.pidVals['0110'] = 1.67;
+  toets('stationair 1,67 g/s: ook niet', maf() === false);
+  s.pidVals['0110'] = 0.3;
+  toets('stationair 0,3 g/s: wél — dat is een MAF die te weinig meet', maf() === true, String(maf()));
+  motor(s, 4540, 92, 80);
+  s.pidVals['0110'] = 91.3;
+  toets('vol gas 91 g/s bij 4540 tpm: geen oordeel (de oude regel zei "past niet")', maf() === null, String(maf()));
+  motor(s, 3000, 90, 0);
+  s.pidVals['0110'] = 12;
+  toets('in stilstand gas geven, 3000 tpm en 12 g/s: geen oordeel (dat is geen stationair)', maf() === null, String(maf()));
+  motor(s, 650, 90, 0);
+  s.pidVals['0110'] = 0.3;
+  s.voertuig = { motor: 'onbekend' };
+  toets('onbekende motor: geen oordeel, ook bij een lage waarde', maf() === null, String(maf()));
+  s.voertuig = { motor: '2.0' };
+  motor(s, 650, 40, 0);
+  toets('koude motor: geen oordeel', maf() === null, String(maf()));
+}
+
+console.log('\n15. De ontstekingsgrens volgt een gezonde motor (#231)');
+{
+  const s = laad();
+  const ketting = regel(s, 'distributie', 'Ontstekingsvervroeging springt');
+  motor(s, 1800, 90, 60);
+  s.pidVals['010E'] = -20;
+  toets('warm, −20° (gemeten op 23-09): geen kandidaat', ketting() === false, String(ketting()));
+  s.pidVals['010E'] = -30;
+  toets('warm, −30°: wél', ketting() === true, String(ketting()));
+  motor(s, 1800, 40, 60);
+  toets('koud, −30° (katalysator-opwarming): geen oordeel', ketting() === null, String(ketting()));
+  toets('het gebruikelijke bereik in de datatabel volgt mee',
+    (function () { const t = {}; vm.createContext(t); t.window = t;
+      vm.runInContext(fs.readFileSync(__dirname + '/pidlane-data.js', 'utf8'), t);
+      return t.PID_LET_OP && t.PID_LET_OP['010E'] && t.PID_LET_OP['010E'].min <= -20; })());
+}
+
+(async function () {
+  console.log('\n16. Foutcodes uitlezen vanuit het paneel (#233)');
+  {
+    const s = laad();
+    s.connected = false; s.demoMode = false;
+    s.scanDTC = function () { s.dtcCodes = ['P0420']; s._didDTCScan = true; return Promise.resolve(); };
+    // eerst zonder verbinding
+    s.openOnderdeelCheck();
+    toets('zonder verbinding: geen knop, wel de reden', !/id="odScan"/.test(s.odBody.innerHTML) && /Verbind eerst de adapter/.test(s.odBody.innerHTML));
+    s.connected = true;
+    s.openOnderdeelCheck();
+    toets('verbonden en niet gescand: de knop staat onder de zin', /id="odScan"/.test(s.odBody.innerHTML));
+    const knop = { disabled: false, textContent: '' };
+    const p = s.PLOnderdeel.scan(knop);
+    toets('tijdens de scan staat de knop uit, met een leesbare stand', knop.disabled === true && /uitlezen/.test(knop.textContent));
+    await p;
+    toets('daarna tekent het paneel opnieuw: de oude zin is weg', !/nog niet uitgelezen/.test(s.odBody.innerHTML), s.odBody.innerHTML.slice(0, 160));
+    toets('en de gelezen code staat erin', /1 foutcode/.test(s.odBody.innerHTML));
+  }
+  {
+    const s = laad();
+    s.connected = true;
+    s.scanDTC = function () { return Promise.reject(new Error('adapter weg')); };
+    s.openOnderdeelCheck();
+    const ok = await s.PLOnderdeel.scan({ disabled: false, textContent: '' });
+    toets('een mislukte scan zegt dat, en de knop komt terug', ok === false && /Uitlezen mislukt/.test(s.odBody.innerHTML), s.odBody.innerHTML.slice(0, 200));
+  }
+
+  console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
+                          : 'goed: alle ' + n + ' controles') + '\n');
+  process.exit(fout ? 1 : 0);
+})();

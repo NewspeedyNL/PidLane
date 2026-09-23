@@ -86,6 +86,8 @@ var KRITIEK = [
   'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
+  // De uitleesknop in Welk onderdeel? (#233) roept scanDTC achter een guard.
+  'scanDTC',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',
   // De meetketen zelf, sinds blok 5 van testrun 6.3 (02-09-2026). Blok 5 vraagt
   // parsePID, splitBatchResponse en validateAndSmooth of ze een bekend antwoord
