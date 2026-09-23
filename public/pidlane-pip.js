@@ -47,6 +47,7 @@
 
   var _inPip = false;          // wat de native kant het laatst meldde
   var _laatsteVlag = null;     // wat we het laatst naar native stuurden
+  var _laatsteLusSync = 0;     // wanneer de meetlus het besluit het laatst vroeg
   var _laatsteBesluit = null;  // en waarom — voor blok 5 en het verslag
   var _mini = null;            // het kleine venster, pas gemaakt als het moet
 
@@ -282,6 +283,19 @@
       updPID = function () {
         var r = _u.apply(this, arguments);
         if (_inPip) { try { ververs(); } catch (e) { console.warn('PiP: venster niet ververst (#228)', e); } }
+        /* HET BESLUIT VOLGT OOK DE MEETLUS — 23-09-2026. setConn(true) valt
+           in de app vóór de sensorkeuze (rijsituatie, meetopdracht), dus daar
+           was het besluit altijd "geen selectie" en vroeg niets het opnieuw:
+           op het toestel ging het venster nooit aan. Een binnenkomende waarde
+           is het bewijs dat er nu wél gemeten wordt. Hooguit eens per 2 s,
+           en alleen zolang de vlag nog niet aan staat. */
+        else if (_laatsteVlag !== true) {
+          var nu = Date.now();
+          if (nu - _laatsteLusSync > 2000) {
+            _laatsteLusSync = nu;
+            try { sync(); } catch (e) { console.warn('PiP: sync vanuit de meetlus mislukt (#228)', e); }
+          }
+        }
         return r;
       };
       window.updPID = updPID;

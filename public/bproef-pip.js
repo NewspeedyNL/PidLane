@@ -119,6 +119,35 @@ const NEP_BRIDGE = `(function(){
     toets('verbreken zet hem weer uit', JSON.parse(na2).slice(-1)[0] === false,
       'vlaggen: ' + na2 + ' — dan springt de app in een venster terwijl er niets gemeten wordt');
 
+    /* DE VOLGORDE VAN DE ECHTE APP — 23-09-2026. Hierboven gaan de sensoren
+       erin vóór setConn(true). In de app is het andersom: pidlane-bt.js roept
+       setConn(true) aan zodra de verbinding staat, en de selectie komt pas
+       daarna, uit de rijsituatie of een meetopdracht. Op het toestel ging het
+       kleine venster daardoor nooit aan: het besluit viel op "geen selectie"
+       en niets vroeg het opnieuw. Blok 3 zag dat niet, want hij toetste de
+       gunstige volgorde. */
+    console.log('\n3b. Eerst verbinden, dán sensoren kiezen — zoals de app het doet');
+    const volg = await app.ev(`(async function(){
+      activePIDs.clear();
+      connected = true; demoMode = false;
+      setConn(true);
+      await new Promise(function(r){ setTimeout(r, 80); });
+      const voor = window.__pip.vlaggen.slice(-1)[0];
+      activePIDs.add('010C');
+      updPID('010C', 812);
+      await new Promise(function(r){ setTimeout(r, 80); });
+      const na = window.__pip.vlaggen.slice(-1)[0];
+      // Opruimen zoals blok 3 achterliet: verbroken, maar mét selectie —
+      // blok 4 rekent daarop.
+      activePIDs.add('010D'); connected = false; setConn(false);
+      await new Promise(function(r){ setTimeout(r, 80); });
+      return JSON.stringify({ voor: voor, na: na, alle: window.__pip.vlaggen });
+    })()`);
+    const v = JSON.parse(volg);
+    toets('bij verbinden zonder selectie staat de vlag uit', v.voor === false, volg);
+    toets('zodra de eerste meetwaarde binnenkomt, gaat hij aan', v.na === true,
+      volg + ' — dan vraagt de app het venster nooit aan, en dat is wat er op 23-09 op het toestel gebeurde');
+
     console.log('\n4. De uitzetknop uit de Config werkt in de echte app');
     /* Niet PLPip.toggleAan() nabouwen maar de echte weg: PID_CONFIG zetten
        zoals /api/config dat doet, en dan kijken wat het besluit zegt. Dit is

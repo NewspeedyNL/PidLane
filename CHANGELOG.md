@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-09-2026 — het kleine venster gaat ook aan als de sensoren later komen
+ ═══════════════════════════════════════════════════════════
+
+ - #228  Op het toestel verscheen picture-in-picture nooit. Het besluit
+         "venster gewenst" viel bij setConn(true), en dat komt in de app
+         vóór de sensorkeuze: altijd "geen selectie", en niets vroeg het
+         opnieuw. Nu vraagt de meetlus het ook (hooguit eens per 2 s,
+         alleen zolang de vlag uit staat). bproef-pip toetst nu ook die
+         volgorde; hij toetste alleen de gunstige.
+
+ ═══════════════════════════════════════════════════════════
  23-09-2026 — de proefcrash zet zijn startregel eerst in D1
  ═══════════════════════════════════════════════════════════
 
