@@ -397,6 +397,8 @@
         // vellen: dat doet PLOpdracht, en de markeringen die het nodig heeft
         // staan in de testrun. Het scherm tekent alleen wat eruit komt.
         if (typeof PLTestrunLive.oordeelNu === 'function') s.verzend = PLTestrunLive.oordeelNu();
+        // En alle andere opdrachten, op dezelfde rit (#277).
+        if (typeof PLTestrunLive.oordeelAlle === 'function') s.alle = PLTestrunLive.oordeelAlle();
       }
     } catch (e) { console.warn('Meetkamer: de testrunstand is niet te lezen (#246)', e); }
 
@@ -528,6 +530,35 @@
     }).join('') + '</div>';
   }
 
+  /* ── WAT HET GROTE CIJFER ZEGT (23-09-2026, #277) ──────────────────
+     Het cijfer kleurde groen zodra de PROEVEN in de band vielen, en keek niet
+     naar de voorwaarden. De verzendknop eronder zei dan "NOG NIET" terwijl het
+     scherm groen oogde — groen zien, verzenden, en dan toch niet. Nu volgt het
+     cijfer het driewaardige eindoordeel zodra dat er is; de proefstand (goed/
+     totaal) blijft staan, want die is waar.
+
+     Plus het venster: een oordeel zonder "waarover" is geen oordeel. */
+  function eindoordeel(oor, verzend) {
+    var v = verzend && verzend.vonnis;
+    if (!v) return oor;
+    var staat = v.staat === 'gesloten' ? 'ja' : v.staat === 'bevinding' ? 'fout' : 'let op';
+    var kop = v.staat === 'gesloten' ? 'GESLOTEN' : v.staat === 'bevinding' ? 'BEVINDING' : 'NOG NIET';
+    var regel = String(v.reden || '');
+    // Bij "nog niet" is de eerste ontbrekende voorwaarde de instructie.
+    var mist = (v.voorwaarden || []).filter(function (x) { return x.vervuld !== true; })[0];
+    if (v.staat === 'nog niet' && mist) regel = mist.wat + ' — ' + mist.detail;
+    return { staat: staat, goed: oor.goed, totaal: oor.totaal, kop: kop, regel: regel, venster: v.venster || null };
+  }
+
+  function vensterRegel(venster, duurS, nu) {
+    if (!venster || typeof venster.start !== 'number') return '';
+    var s = Math.max(0, Math.round(((nu || Date.now()) - venster.start) / 1000));
+    var t = new Date(venster.start);
+    var hhmm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+    var mmss = Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+    return 'deze rit ' + mmss + ' gemeten (sinds ' + hhmm + ')' + (duurS ? ' · deze opdracht vraagt ' + Math.round(duurS / 60) + ' min' : '');
+  }
+
   /* DE VRAAG. Het enige grote element op dit scherm, en dat is de hele
      ordening: je kijkt tijdens het rijden naar één ding — gaat deze rit iets
      opleveren. */
@@ -542,7 +573,9 @@
         _lus(st) + '</div>';
     }
 
+    oor = eindoordeel(oor, s.verzend);
     var kl = _kleur(oor.staat);
+    var vr = vensterRegel(oor.venster, s.opdracht.duurS, s.nu);
     return '<div class="mk-v"' + (oor.staat === 'fout' ? ' style="border-color:var(--rd)"' : '') + '>' +
       '<div class="mk-bron">Deze rit beantwoordt' +
         (s.opdracht.reden ? '<em>' + veilig(String(s.opdracht.reden).split(' ')[0]) + '</em>' : '') +
@@ -555,7 +588,9 @@
           : '<span class="mk-cijfer" style="color:var(--tx3);font-size:20px">—</span>') +
         '<span class="mk-wat">' + veilig(oor.kop) + '<u>' + veilig(oor.regel) + '</u></span>' +
       '</div>' +
+      (vr ? '<div class="mk-sub" id="mkVenster">⏱ ' + veilig(vr) + '</div>' : '') +
       _verzendKnop(s) +
+      _ritLijst(s) +
       _lus(st) + '</div>';
   }
 
@@ -851,6 +886,44 @@
     return o;
   }
 
+  /* ALLES WAT AF IS IN ÉÉN KEER (#277). Eén rit beantwoordt vaak meer dan
+     de gekozen vraag. Deze knop stuurt elke opdracht die gesloten is of een
+     bevinding heeft, en elk maar één keer. */
+  function verzendAlle() {
+    if (!window.PLTestrunLive || typeof PLTestrunLive.verzendAlle !== 'function') {
+      try { if (typeof showToast === 'function') showToast('Verzenden kan niet: de testrunmodule is er niet'); }
+      catch (e) { console.warn('Meetkamer: de melding kon niet getoond worden', e); }
+      return null;
+    }
+    var r = PLTestrunLive.verzendAlle();
+    try {
+      if (typeof showToast === 'function')
+        showToast(r.aantal ? ('Verzonden — ' + r.aantal + ' opdracht' + (r.aantal === 1 ? '' : 'en') + (r.ok ? '' : ' (' + r.reden + ')'))
+                           : ('Niets verzonden: ' + r.reden));
+    } catch (e) { console.warn('Meetkamer: de melding kon niet getoond worden', e); }
+    teken();
+    return r;
+  }
+
+  /* De lijst onder de vraag: wat deze rit verder al beantwoordt. */
+  function _ritLijst(s) {
+    var alle = Array.isArray(s.alle) ? s.alle : [];
+    if (alle.length < 2) return '';
+    var focus = s.opdracht ? s.opdracht.naam : '';
+    var open = alle.filter(function (r) { return r.afgerond && !r.alVerzonden; }).length;
+    var rij = alle.map(function (r) {
+      var st = r.vonnis ? r.vonnis.staat : 'nog niet';
+      var teken = r.alVerzonden ? '✓' : st === 'gesloten' ? '●' : st === 'bevinding' ? '!' : '○';
+      var kl = st === 'gesloten' ? 'var(--gn)' : st === 'bevinding' ? 'var(--rd)' : 'var(--tx3)';
+      return '<div class="mk-sub" style="display:flex;gap:6px' + (r.naam === focus ? ';font-weight:700' : '') + '">' +
+        '<span style="color:' + kl + '">' + teken + '</span><span>' + veilig(r.naam) + '</span>' +
+        '<span style="margin-left:auto;color:' + kl + '">' + veilig(r.alVerzonden ? 'verzonden' : st) + '</span></div>';
+    }).join('');
+    return '<div class="mk-ritlijst" id="mkRitLijst"><div class="mk-bron">Deze rit beantwoordt</div>' + rij +
+      (open ? '<button class="mk-verz" id="mkVerzendAlle" onclick="PLMeetkamer.verzendAlle()">↑ Verzend alle afgeronde (' + open + ')' +
+              '<u>Gesloten en bevindingen, elk één keer.</u></button>' : '') + '</div>';
+  }
+
   /* DE KNOP INDRUKKEN (19-09-2026). Het verzenden zelf staat in de testrun —
      zie PLTestrunLive.verzend(). Hier blijft alleen over: aanroepen, de mens
      vertellen wat er gebeurd is, en opnieuw tekenen zodat de knop meteen de
@@ -895,6 +968,10 @@
   window.PLMeetkamer = {
     stations: stations,
     oordeel: oordeel,
+    eindoordeel: eindoordeel,
+    verzendAlle: verzendAlle,
+    ritLijst: _ritLijst,
+    vensterRegel: vensterRegel,
     meter: meter,
     ronde: ronde,
     logtelling: logtelling,

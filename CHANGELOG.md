@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-09-2026 — meetopdracht: één rit voor alle opdrachten, groen is gesloten
+ ═══════════════════════════════════════════════════════════
+
+ - #277  Eén rit telt voor elke opdracht die hem vraagt: tien minuten rijden
+         of drie keer vol gas hoeft niet per opdracht opnieuw. De meetkamer
+         toont onder de vraag wat deze rit verder al beantwoordt, met één
+         knop "Verzend alle afgeronde" (gesloten en bevindingen, elk één keer).
+ - #277  Twee voorwaardensoorten voor wat NIET geleend mag worden:
+         `gebeurtenis` (meetgat, herverbinding, onderbreking) en `adapter`
+         (naam bevat, of met `niet` juist niet). Op 23-09 sloot "de adapter
+         er even uit" zonder onderbreking en "de goedkope adapter" op de MX+.
+ - #277  Het grote cijfer volgt het eindoordeel mét voorwaarden: groen is
+         gesloten. Eronder de ritduur; die reist ook mee naar D1.
+
+ ═══════════════════════════════════════════════════════════
  23-09-2026 — het kleine venster gaat ook aan als de sensoren later komen
  ═══════════════════════════════════════════════════════════
 

@@ -2627,7 +2627,10 @@ function _issuesVan(o) {
    De stempel is de uitkomst zelf en geen teller: verandert er niets aan wat er
    te zeggen valt, dan is het dezelfde regel. Dat is ook meteen het antwoord op
    "mag ik na een testrun nog een keer": nee, tenzij er iets veranderd is. */
-let _verzondenStempel = null;
+/* PER OPDRACHT (#277). Tot 23-09 was dit één stempel: er werd één opdracht
+   tegelijk verzonden. Nu beoordeelt de rit ze allemaal tegelijk, en dan moet
+   per opdracht onthouden worden wat er al in de tabel staat. */
+let _verzonden = {};
 
 function _opdrachtStempel(o, vonnis) {
   return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;
@@ -2658,11 +2661,16 @@ function _verzendOpdracht(o, h) {
   // De uitkomst per opdracht naar de live-log, met de issues in een eigen
   // veld. Zo is van buiten te lezen WELKE issues deze sessie een antwoord
   // kregen, zonder een detailtekst te moeten parsen.
+  /* De ritduur reist mee (#277): een uitkomst zonder "gemeten over hoe
+     lang" is bij het sluiten niet na te gaan. */
+  const vs = vonnis.venster;
+  const vensterTekst = (vs && typeof vs.s === 'number')
+    ? ' · rit ' + Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : ' · ritduur onbekend';
   _liveSchrijf(vonnis.staat === 'bevinding' ? 'opvallend' : 'info',
-    'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden,
+    'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden + vensterTekst,
     { Outcome: vonnis.staat, Repro: _issuesVan(o) });
 
-  _verzondenStempel = _opdrachtStempel(o, vonnis);
+  _verzonden[o.naam] = _opdrachtStempel(o, vonnis);
   return { uitslagen: uitslagen, vonnis: vonnis };
 }
 
@@ -8362,7 +8370,7 @@ window.PLTestrunLive = {
     let vonnis = null;
     try { vonnis = PLOpdracht.oordeel(o, _stapGezet); }
     catch (e) { return { o: o, vonnis: null, alVerzonden: false, reden: 'het oordeel is niet te vellen: ' + ((e && e.message) || e) }; }
-    return { o: o, vonnis: vonnis, alVerzonden: _opdrachtStempel(o, vonnis) === _verzondenStempel, reden: '' };
+    return { o: o, vonnis: vonnis, alVerzonden: _opdrachtStempel(o, vonnis) === _verzonden[o.naam], reden: '' };
   },
 
   verzend: function () {
@@ -8377,6 +8385,42 @@ window.PLTestrunLive = {
       // is precies de fout die deze knop moet wegnemen.
       return { ok: false, reden: 'verzenden mislukt: ' + ((e && e.message) || e) };
     }
+  },
+
+  /* ── ALLES WAT DEZE RIT AL BEANTWOORDT (#277) ─────────────────────
+     Per opdracht het oordeel, en of dat al in de tabel staat. Afgerond is
+     gesloten of bevinding; "nog niet" is geen antwoord en gaat niet mee. */
+  oordeelAlle: function () {
+    if (!window.PLOpdracht || typeof PLOpdracht.oordeelAlle !== 'function') return [];
+    let alle = [];
+    try { alle = PLOpdracht.oordeelAlle(_stapGezet); }
+    catch (e) { console.warn('Testrun: de opdrachten konden niet samen beoordeeld worden (#277)', e); return []; }
+    return alle.map(function (r) {
+      const v = r.vonnis;
+      const af = !!v && (v.staat === 'gesloten' || v.staat === 'bevinding');
+      return { id: r.id, naam: r.naam, o: r.opdracht, vonnis: v, afgerond: af,
+               alVerzonden: !!v && _opdrachtStempel(r.opdracht, v) === _verzonden[r.opdracht.naam] };
+    });
+  },
+
+  verzendAlle: function () {
+    const klaar = window.PLTestrunLive.oordeelAlle().filter(function (r) { return r.afgerond && !r.alVerzonden; });
+    if (!klaar.length) return { ok: false, aantal: 0, reden: 'er is niets afgerond dat nog niet verzonden is' };
+    const uit = [];
+    klaar.forEach(function (r) {
+      try {
+        const t = _verzendOpdracht(r.o, { id: r.id, naam: r.naam });
+        uit.push({ naam: r.naam, staat: t.vonnis.staat });
+      } catch (e) {
+        // Niet stil: één opdracht die niet weggaat mag de rest niet tegenhouden,
+        // maar moet wel gezien worden.
+        console.warn('Testrun: "' + r.naam + '" is niet verzonden (#277)', e);
+        uit.push({ naam: r.naam, staat: 'mislukt', reden: (e && e.message) || String(e) });
+      }
+    });
+    const mis = uit.filter(function (u) { return u.staat === 'mislukt'; });
+    return { ok: mis.length === 0, aantal: uit.length - mis.length, opdrachten: uit,
+             reden: mis.length ? mis.length + ' niet verzonden: ' + mis.map(function (u) { return u.naam; }).join(', ') : '' };
   },
 
   nieuweSessie: nieuweSessie,

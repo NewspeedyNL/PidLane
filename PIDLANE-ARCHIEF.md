@@ -175,6 +175,51 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 23-09-2026 — groen zien, verzenden, en dan toch niet (#277)
+
+**Wat er gebeurde.** Na een geslaagde rit met het kleine venster (#228) werd er
+snel door de opdrachtenlijst geklikt. Elke opdracht kreeg binnen drie seconden
+een oordeel, en drie ervan "gesloten": *De adapter er even uit* zonder dat de
+adapter eruit was geweest, *De goedkope adapter* op de MX+, en de MAF-vuistregel
+op een doortrek van tien minuten eerder. Start/stop had 3 s na het kiezen 144
+monsters.
+
+**Twee oorzaken, allebei in de vorm en niet in de data.**
+
+1. `PLOpdracht.meet()` las `PLRit.per()`, en dat is de accumulator van de hele
+   rit. Kiezen startte een nieuwe *sessie* (een nieuw nummer in D1), maar niet
+   een nieuw *meetvenster*. Het nummer suggereerde een scheiding die de meting
+   niet had.
+2. Het grote cijfer in de meetkamer kleurde op de proeven alleen; de
+   voorwaarden telden pas in de verzendknop eronder. Groen bovenaan, "NOG NIET"
+   op de knop — en wie rijdt, leest het grote getal.
+
+Daaronder zat een derde: een opdracht die over een gebeurtenis gaat (een
+onderbreking, een andere adapter) had geen manier om die gebeurtenis te eisen.
+De voorwaardensoorten waren `pid` en `stap`, en geen van beide kan zeggen "de
+adapter is eruit geweest".
+
+**Een eerste reparatie die de verkeerde kant op ging.** Dezelfde middag kreeg
+elke opdracht een eigen meetvenster vanaf het kiezen. Dat maakte het oordeel
+schoon, en de rit duur: wie tien minuten reed voor opdracht 1, moest ze voor
+opdracht 2 opnieuw rijden, en drie keer vol gas gold maar voor één opdracht.
+Dat venster is teruggedraaid vóór het live ging. Hergebruik was niet de fout;
+*lenen wat je niet mag lenen* was de fout.
+
+**Wat er veranderde.** Eén rit, alle opdrachten tegelijk: `oordeelAlle()`
+beoordeelt elke opdracht op dezelfde ritgegevens, de meetkamer toont wat de rit
+al beantwoordt, en "Verzend alle afgeronde" stuurt gesloten en bevindingen, elk
+één keer (een stempel per opdracht in plaats van één voor alles). Twee
+voorwaardensoorten voor wat niet geleend mag worden: `gebeurtenis` (meetgat,
+herverbinding of onderbreking in deze rit) en `adapter` (tekst in de
+adapternaam, met `niet` voor het omgekeerde). Het grote cijfer volgt het
+driewaardige eindoordeel; de ritduur staat eronder en reist mee naar D1.
+
+**De les.** Een kleur is een oordeel: wat op het scherm als uitkomst leest,
+moet uit dezelfde functie komen als wat er verzonden wordt — dezelfde regel als
+#246. En een opdracht die over een gebeurtenis gaat, moet die gebeurtenis
+kunnen eisen; anders is "binnen de band" een antwoord op een andere vraag.
+
 ### 22-09-2026 — wat SQL mogelijk maakt en Airtable niet (#262, #260, #241)
 
 Dit is de tweede helft van de verhuizing hierboven: niet alleen de schrijfkant

@@ -80,6 +80,8 @@ var KRITIEK = [
   // de proef dat en zwijgt hij niet -- maar zonder deze regels zou die guard
   // zelf de stille fout zijn, en dat is precies wat deze lijst moet vangen.
   'flushAirtable','plLiveLogStatus',
+  // De adapternaam voor de adapter-voorwaarde van een meetopdracht (#277).
+  '_plLogAdapter',
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
