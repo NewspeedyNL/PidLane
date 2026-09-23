@@ -397,6 +397,8 @@
         // vellen: dat doet PLOpdracht, en de markeringen die het nodig heeft
         // staan in de testrun. Het scherm tekent alleen wat eruit komt.
         if (typeof PLTestrunLive.oordeelNu === 'function') s.verzend = PLTestrunLive.oordeelNu();
+        // En alle andere opdrachten, op dezelfde rit (#277).
+        if (typeof PLTestrunLive.oordeelAlle === 'function') s.alle = PLTestrunLive.oordeelAlle();
       }
     } catch (e) { console.warn('Meetkamer: de testrunstand is niet te lezen (#246)', e); }
 
@@ -554,7 +556,7 @@
     var t = new Date(venster.start);
     var hhmm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
     var mmss = Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
-    return 'gemeten sinds ' + hhmm + ' · ' + mmss + (duurS ? ' van de ' + Math.round(duurS / 60) + ' min die deze opdracht vraagt' : '');
+    return 'deze rit ' + mmss + ' gemeten (sinds ' + hhmm + ')' + (duurS ? ' · deze opdracht vraagt ' + Math.round(duurS / 60) + ' min' : '');
   }
 
   /* DE VRAAG. Het enige grote element op dit scherm, en dat is de hele
@@ -588,6 +590,7 @@
       '</div>' +
       (vr ? '<div class="mk-sub" id="mkVenster">⏱ ' + veilig(vr) + '</div>' : '') +
       _verzendKnop(s) +
+      _ritLijst(s) +
       _lus(st) + '</div>';
   }
 
@@ -860,12 +863,6 @@
      daarna de logtabel in gaat hoort bij déze vraag, en niet bij de vorige. */
   function pak(id) {
     if (!window.PLOpdracht || typeof PLOpdracht.kies !== 'function') return null;
-    /* Wat liep er vóór deze keuze (#277)? Werd dat niet verzonden, dan zegt
-       de sessieregel in D1 dat het afgebroken is — anders leest een halve rit
-       achteraf als een rit zonder uitkomst, of erger, als die van de volgende. */
-    var vorig = null;
-    try { if (window.PLTestrunLive && typeof PLTestrunLive.oordeelNu === 'function') vorig = PLTestrunLive.oordeelNu(); }
-    catch (e) { console.warn('Meetkamer: de lopende opdracht kon niet gelezen worden vóór het wisselen (#277)', e); }
     var o = null;
     try { o = PLOpdracht.kies(id); }
     catch (e) { console.warn('Meetkamer: de opdracht kon niet gekozen worden (#248)', e); }
@@ -881,7 +878,7 @@
     }
     try {
       if (window.PLTestrunLive && typeof PLTestrunLive.nieuweSessie === 'function')
-        PLTestrunLive.nieuweSessie('opdracht gewisseld naar "' + o.naam + '"' + afgebroken(vorig));
+        PLTestrunLive.nieuweSessie('opdracht gewisseld naar "' + o.naam + '"');
     } catch (e) { console.warn('Meetkamer: er kon geen nieuwe sessie beginnen (#248)', e); }
     try { if (typeof showToast === 'function') showToast('Nu: ' + o.naam); }
     catch (e) { console.warn('Meetkamer: melding niet getoond (#248)', e); }
@@ -889,11 +886,42 @@
     return o;
   }
 
-  function afgebroken(vorig) {
-    if (!vorig || !vorig.o || !vorig.vonnis || vorig.alVerzonden) return '';
-    var vs = vorig.vonnis.venster;
-    var duur = (vs && typeof vs.s === 'number') ? Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : 'onbekende tijd';
-    return ' — "' + vorig.o.naam + '" afgebroken na ' + duur + ', niet verzonden';
+  /* ALLES WAT AF IS IN ÉÉN KEER (#277). Eén rit beantwoordt vaak meer dan
+     de gekozen vraag. Deze knop stuurt elke opdracht die gesloten is of een
+     bevinding heeft, en elk maar één keer. */
+  function verzendAlle() {
+    if (!window.PLTestrunLive || typeof PLTestrunLive.verzendAlle !== 'function') {
+      try { if (typeof showToast === 'function') showToast('Verzenden kan niet: de testrunmodule is er niet'); }
+      catch (e) { console.warn('Meetkamer: de melding kon niet getoond worden', e); }
+      return null;
+    }
+    var r = PLTestrunLive.verzendAlle();
+    try {
+      if (typeof showToast === 'function')
+        showToast(r.aantal ? ('Verzonden — ' + r.aantal + ' opdracht' + (r.aantal === 1 ? '' : 'en') + (r.ok ? '' : ' (' + r.reden + ')'))
+                           : ('Niets verzonden: ' + r.reden));
+    } catch (e) { console.warn('Meetkamer: de melding kon niet getoond worden', e); }
+    teken();
+    return r;
+  }
+
+  /* De lijst onder de vraag: wat deze rit verder al beantwoordt. */
+  function _ritLijst(s) {
+    var alle = Array.isArray(s.alle) ? s.alle : [];
+    if (alle.length < 2) return '';
+    var focus = s.opdracht ? s.opdracht.naam : '';
+    var open = alle.filter(function (r) { return r.afgerond && !r.alVerzonden; }).length;
+    var rij = alle.map(function (r) {
+      var st = r.vonnis ? r.vonnis.staat : 'nog niet';
+      var teken = r.alVerzonden ? '✓' : st === 'gesloten' ? '●' : st === 'bevinding' ? '!' : '○';
+      var kl = st === 'gesloten' ? 'var(--gn)' : st === 'bevinding' ? 'var(--rd)' : 'var(--tx3)';
+      return '<div class="mk-sub" style="display:flex;gap:6px' + (r.naam === focus ? ';font-weight:700' : '') + '">' +
+        '<span style="color:' + kl + '">' + teken + '</span><span>' + veilig(r.naam) + '</span>' +
+        '<span style="margin-left:auto;color:' + kl + '">' + veilig(r.alVerzonden ? 'verzonden' : st) + '</span></div>';
+    }).join('');
+    return '<div class="mk-ritlijst" id="mkRitLijst"><div class="mk-bron">Deze rit beantwoordt</div>' + rij +
+      (open ? '<button class="mk-verz" id="mkVerzendAlle" onclick="PLMeetkamer.verzendAlle()">↑ Verzend alle afgeronde (' + open + ')' +
+              '<u>Gesloten en bevindingen, elk één keer.</u></button>' : '') + '</div>';
   }
 
   /* DE KNOP INDRUKKEN (19-09-2026). Het verzenden zelf staat in de testrun —
@@ -941,7 +969,8 @@
     stations: stations,
     oordeel: oordeel,
     eindoordeel: eindoordeel,
-    afgebroken: afgebroken,
+    verzendAlle: verzendAlle,
+    ritLijst: _ritLijst,
     vensterRegel: vensterRegel,
     meter: meter,
     ronde: ronde,

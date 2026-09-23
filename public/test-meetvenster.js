@@ -1,12 +1,16 @@
-// test-meetvenster.js — een opdracht rekent alleen op wat er ná het kiezen gemeten is (#277)
+// test-meetvenster.js — één rit, alle opdrachten tegelijk, en groen is gesloten (#277)
 //
-// Op 23-09-2026 kreeg "De adapter er even uit" binnen 3 s na het kiezen
-// "gesloten", op 162 monsters van de opdracht ervoor, zonder dat de adapter
-// eruit was geweest. "De goedkope adapter" werd op de MX+ beoordeeld. Oorzaak:
-// PLOpdracht.meet() las PLRit.per(), en dat is de hele rit.
+// Op 23-09-2026 kreeg "De adapter er even uit" "gesloten" zonder dat de adapter
+// eruit was geweest, en "De goedkope adapter" werd op de MX+ beoordeeld. Het
+// scherm was groen terwijl de verzendknop "NOG NIET" zei.
 //
-// Deze test laadt de échte PLRit (pidlane-testrun.js) en de échte opdracht-
-// module (pidlane-opdracht.js) in één omgeving en speelt die rit na.
+// De reparatie is NIET dat elke opdracht opnieuw moet beginnen: tien minuten
+// rijden of drie keer vol gas telt voor elke opdracht die dat vraagt. Wat een
+// opdracht niet van een ander moment mag lenen — een onderbreking, een
+// adapter — staat in zijn voorwaarden, en het scherm kleurt op het eindoordeel.
+//
+// Laadt de échte PLRit en PLTestrunLive (pidlane-testrun.js), de échte
+// opdrachtmodule en de échte meetkamer, in één omgeving.
 //
 // Draaien vanuit public/:  node test-meetvenster.js   (exit 0 = goed)
 'use strict';
@@ -56,10 +60,13 @@ function laad() {
   };
   vm.createContext(s);
   vm.runInContext(fs.readFileSync('pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
-  if (!s.PLRit || typeof s.PLRit.markeer !== 'function') {
-    console.log('  FOUT  PLRit.markeer() bestaat niet — er is geen meetvenster (#277)');
+  if (!s.PLRit || !s.PLTestrunLive) {
+    console.log('  FOUT  PLRit of PLTestrunLive niet gevonden in pidlane-testrun.js');
     process.exit(1);
   }
+  // Wat er werkelijk de tabel in gaat.
+  s.verstuurd = [];
+  s.logToSheets = function (type, bericht, extra) { s.verstuurd.push({ type: type, bericht: bericht, extra: extra || {} }); };
   // De opdrachtmodule, met de lijst uit een nagemaakte Worker.
   s.featOn = function () { return true; };
   s.PROXY_URL = 'https://proxy';
@@ -74,7 +81,12 @@ function laad() {
 
 // Drie opdrachten zoals ze in D1 staan, ingekort tot wat hier getoetst wordt.
 const TOERENTAL = { naam: 'het toerental is echt gevolgd', pid: '010C', meet: 'veranderingen', tussen: [10, 1000000] };
+const VOLGAS = { wat: 'er is vol gas gegeven', pid: '010C', meet: 'max', tussen: [3000, 8000] };
 const RIJEN = [
+  { id: 'maf', naam: 'MAF bij vollast', opdracht: JSON.stringify({ schema: 2, naam: 'MAF bij vollast',
+      sensoren: ['010C'], duurS: 600, proeven: [TOERENTAL], voorwaarden: [VOLGAS] }) },
+  { id: 'x', naam: 'Opdracht X, ook vol gas', opdracht: JSON.stringify({ schema: 2, naam: 'Opdracht X, ook vol gas',
+      sensoren: ['010C'], duurS: 600, proeven: [TOERENTAL], voorwaarden: [VOLGAS] }) },
   { id: 'd', naam: 'Toerental gevolgd', opdracht: JSON.stringify({ schema: 2, naam: 'Toerental gevolgd',
       sensoren: ['010C'], duurS: 60, proeven: [TOERENTAL] }) },
   { id: 'b', naam: 'De adapter er even uit', opdracht: JSON.stringify({ schema: 2, naam: 'De adapter er even uit',
@@ -86,33 +98,29 @@ const RIJEN = [
 ];
 
 // Een rit: elke tik is 5 s, en een draaiende motor schrijft een wisselend toerental.
-function rij(s, tikken, meten) {
+function rij(s, tikken, meten, gas) {
   for (let i = 0; i < tikken; i++) {
     s._klokNu += 5000;
-    if (meten !== false) s.pidVals['010C'] = 800 + ((s._klokNu / 5000) % 7) * 50;
+    if (meten !== false) s.pidVals['010C'] = (gas && i % 10 === 5) ? 3400 : 800 + ((s._klokNu / 5000) % 7) * 50;
     s.PLRit.tik(s._klokNu);
   }
 }
 
 (async function () {
-  console.log('1. Kiezen is beginnen');
+  console.log('1. Eén rit telt voor elke opdracht die hem vraagt');
   {
     const s = laad();
     await s.PLOpdracht.lijst();
-    rij(s, 40);                                  // twintig minuten data vóór de keuze… nou ja, 200 s
-    s.PLOpdracht.kies('d');
-    const o = s.PLOpdracht.actief();
-    const direct = s.PLOpdracht.oordeel(o);
-    toets('direct na het kiezen is er nog geen antwoord',
-      direct.staat === 'nog niet',
-      'kreeg "' + direct.staat + '": ' + direct.reden + ' — dat is de fout van 23-09: het oordeel over een andere rit');
-    toets('het oordeel draagt zijn venster', !!(direct.venster && typeof direct.venster.start === 'number'));
-    rij(s, 20);
-    const later = s.PLOpdracht.oordeel(o);
-    toets('na een eigen stuk rit wel', later.staat === 'gesloten', later.staat + ': ' + later.reden);
-    const aantal = s.PLRit.venster(s._klokNu).per['010C'].n;
-    toets('en dan telt alleen wat er ná de keuze gemeten is', aantal < 20,
-      aantal + ' monsters in het venster, terwijl de rit er ' + s.PLRit.per()['010C'].n + ' heeft');
+    s.PLOpdracht.kies('maf');
+    rij(s, 30, true, true);                       // 150 s, drie keer vol gas
+    const alle = s.PLOpdracht.oordeelAlle();
+    const staat = function (id) { const r = alle.filter(function (x) { return x.id === id; })[0]; return r && r.vonnis && r.vonnis.staat; };
+    toets('de gekozen opdracht is gesloten', staat('maf') === 'gesloten', staat('maf'));
+    toets('en opdracht X, die hetzelfde vraagt, ook — zonder opnieuw vol gas', staat('x') === 'gesloten', staat('x'));
+    s.PLOpdracht.kies('x');
+    toets('kiezen na de rit hoeft niet opnieuw te beginnen',
+      s.PLOpdracht.oordeel(s.PLOpdracht.actief()).staat === 'gesloten');
+    toets('het oordeel draagt de ritduur', (s.PLOpdracht.oordeel(s.PLOpdracht.actief()).venster || {}).s > 0);
   }
 
   console.log('\n2. Een opdracht over een onderbreking vraagt een onderbreking');
@@ -130,10 +138,6 @@ function rij(s, tikken, meten) {
     const met = s.PLOpdracht.oordeel(s.PLOpdracht.actief());
     toets('met een meetgat van 20 s: gesloten', met.staat === 'gesloten', met.staat + ': ' + met.reden);
 
-    s.PLOpdracht.kies('b');                       // opnieuw kiezen = nieuw venster, oude gat telt niet
-    rij(s, 10);
-    const opnieuw = s.PLOpdracht.oordeel(s.PLOpdracht.actief());
-    toets('opnieuw kiezen neemt het oude gat niet mee', opnieuw.staat === 'nog niet', opnieuw.staat + ': ' + opnieuw.reden);
   }
 
   console.log('\n3. Een opdracht over een adapter vraagt die adapter');
@@ -176,7 +180,7 @@ function rij(s, tikken, meten) {
       /* De toestand van 23-09: alle proeven groen, een voorwaarde niet. */
       const proefstand = { staat: 'ja', goed: 3, totaal: 3, kop: 'binnen bereik', regel: 'deze rit beantwoordt de vraag' };
       const vonnis = { staat: 'nog niet', reden: '1 van de 1 voorwaarden niet vervuld',
-        voorwaarden: [{ wat: 'de adapter is er even uit geweest', vervuld: false, detail: 'geen onderbreking in dit venster van 3:12' }],
+        voorwaarden: [{ wat: 'de adapter is er even uit geweest', vervuld: false, detail: 'geen onderbreking in deze rit van 3:12' }],
         venster: { start: T0, s: 192 } };
       const e = M.eindoordeel(proefstand, { vonnis: vonnis });
       toets('proeven groen, voorwaarde niet: het grote cijfer is niet groen', e.staat !== 'ja', JSON.stringify(e));
@@ -201,10 +205,27 @@ function rij(s, tikken, meten) {
       toets('op het scherm: het cijfer is niet groen', !!cijfer && cijfer !== 'var(--gn)', 'kleur: ' + cijfer);
       toets('op het scherm: NOG NIET en het venster', /NOG NIET/.test(h) && /3:12/.test(h), h.slice(0, 300));
 
-      const af = M.afgebroken({ o: { naam: 'De adapter er even uit' }, vonnis: vonnis, alVerzonden: false });
-      toets('wisselen zonder verzenden heet afgebroken', /afgebroken na 3:12 min, niet verzonden/.test(af), af);
-      toets('wisselen ná verzenden niet', M.afgebroken({ o: { naam: 'x' }, vonnis: vonnis, alVerzonden: true }) === '');
     }
+  }
+
+  console.log('\n6. Verzend alle afgeronde: elk één keer, en nooit "nog niet"');
+  {
+    const s = laad();
+    await s.PLOpdracht.lijst();
+    s.PLOpdracht.kies('maf');
+    rij(s, 30, true, true);                       // maf, x en d gesloten; b (onderbreking) en c (kloon) nog niet
+    const r1 = s.PLTestrunLive.verzendAlle();
+    const uitkomsten = s.verstuurd.filter(function (v) { return /— uitkomst:/.test(v.bericht); });
+    const namen = (r1.opdrachten || []).map(function (o) { return o.naam; }).sort().join(' | ');
+    toets('de drie afgeronde opdrachten gaan mee', r1.aantal === 3 && uitkomsten.length === 3, JSON.stringify(r1));
+    toets('en de twee die nog niet af zijn niet', !/adapter/.test(namen), namen);
+    toets('"nog niet" gaat niet mee',
+      uitkomsten.every(function (v) { return v.extra.Outcome === 'gesloten' || v.extra.Outcome === 'bevinding'; }),
+      uitkomsten.map(function (v) { return v.extra.Outcome; }).join(','));
+    toets('de uitkomst draagt de ritduur', uitkomsten.every(function (v) { return /· rit \d+:\d\d min/.test(v.bericht); }),
+      (uitkomsten[0] || {}).bericht);
+    const r2 = s.PLTestrunLive.verzendAlle();
+    toets('nog eens drukken stuurt niets dubbel', r2.aantal === 0, JSON.stringify(r2));
   }
 
   console.log('\n' + (n - fout) + '/' + n + ' goed');

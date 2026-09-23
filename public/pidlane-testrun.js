@@ -684,13 +684,6 @@ const PLRit = (function () {
   let vorigVerbonden = null, _aan = false;
   let zonderBron = 0;        // tikken waarin er geen versheidsbron was (#74)
   let meetgaten = [], meetgatSinds = 0;   // #133, zie de uitleg bij tik() hieronder
-  /* HET MEETVENSTER VAN ÉÉN OPDRACHT (23-09-2026, #277). `per` hierboven is
-     de hele rit, en daar rekende elke opdracht op — ook één die drie seconden
-     eerder gekozen was. Op 23-09 kreeg "de adapter er even uit" zo binnen 3 s
-     "gesloten" op 162 monsters van een andere opdracht, zonder dat de adapter
-     eruit was geweest. Het venster begint bij het kiezen (markeer()) en wordt
-     naast `per` gevuld, met dezelfde neem(): zelfde regels, eigen tellers. */
-  let venster = null;        // { start, per: {pid -> zelfde vorm als per}, herv0 }
 
   /* ── ÉÉN PID, ÉÉN TIK — de kern van #74 ──────────────────────────
      Tot 01-09 verhoogde deze lus `n` voor élke sleutel in `pidVals`. Dat is de
@@ -837,12 +830,6 @@ const PLRit = (function () {
         if (!e) e = per[p] = { n: 0, tikken: 0, gemist: 0, min: v, max: v, laatst: v,
                                veranderingen: 0, tLaatsteVer: nu, stempel: null };
         const uitkomst = neem(e, v, stempels[p], nu);
-        if (venster) {
-          let w = venster.per[p];
-          if (!w) w = venster.per[p] = { n: 0, tikken: 0, gemist: 0, min: v, max: v, laatst: v,
-                                         veranderingen: 0, tLaatsteVer: nu, stempel: null };
-          neem(w, v, stempels[p], nu);
-        }
         // Alleen PIDs die deze accumulator al eerder zag tellen mee als
         // bewijs. Bij hun EERSTE waarneming kan neem() per definitie nooit
         // 'gemeten' teruggeven (zie de uitleg boven neem()), en dan zou de
@@ -909,29 +896,6 @@ const PLRit = (function () {
     // Idem voor de kern van #74: los toetsbaar, inclusief de tegenproef.
     _neem: neem,
     per: function () { return JSON.parse(JSON.stringify(per)); },
-    /* Een nieuw venster beginnen. De opdrachtmodule roept dit aan bij het
-       kiezen; de eerste waarneming per PID telt ook hier niet mee (zie neem()),
-       dus een venster levert nooit een monster van vóór de keuze. */
-    markeer: function (nuOverride) {
-      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
-      venster = { start: nu, per: {}, herv0: herverbindingen };
-      return nu;
-    },
-    /* Wat er sinds markeer() gezien is, of null als er nog nooit gemarkeerd is.
-       Meetgaten tellen mee als ze het venster raken; een lopend gat ook. */
-    venster: function (nuOverride) {
-      if (!venster) return null;
-      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
-      const gaten = meetgaten.slice();
-      if (meetgatSinds) gaten.push({ van: meetgatSinds, tot: laatstT, s: Math.round((laatstT - meetgatSinds) / 1000) });
-      return {
-        start: venster.start,
-        s: Math.max(0, Math.round((nu - venster.start) / 1000)),
-        per: JSON.parse(JSON.stringify(venster.per)),
-        meetgaten: gaten.filter(function (g) { return g.tot >= venster.start; }),
-        herverbindingen: herverbindingen - venster.herv0
-      };
-    },
     gaten: function () { return gaten.slice(); },
     // Een lopend meetgat (de adapter is NU weg) hoort er ook in te staan,
     // anders zegt blok 14 pas iets zodra de adapter terugkomt.
@@ -2663,7 +2627,10 @@ function _issuesVan(o) {
    De stempel is de uitkomst zelf en geen teller: verandert er niets aan wat er
    te zeggen valt, dan is het dezelfde regel. Dat is ook meteen het antwoord op
    "mag ik na een testrun nog een keer": nee, tenzij er iets veranderd is. */
-let _verzondenStempel = null;
+/* PER OPDRACHT (#277). Tot 23-09 was dit één stempel: er werd één opdracht
+   tegelijk verzonden. Nu beoordeelt de rit ze allemaal tegelijk, en dan moet
+   per opdracht onthouden worden wat er al in de tabel staat. */
+let _verzonden = {};
 
 function _opdrachtStempel(o, vonnis) {
   return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;
@@ -2694,17 +2661,16 @@ function _verzendOpdracht(o, h) {
   // De uitkomst per opdracht naar de live-log, met de issues in een eigen
   // veld. Zo is van buiten te lezen WELKE issues deze sessie een antwoord
   // kregen, zonder een detailtekst te moeten parsen.
-  /* Het venster reist mee (#277): een uitkomst zonder "gemeten over hoe lang,
-     sinds wanneer" is bij het sluiten niet na te gaan. Op 23-09 stonden er
-     drie "gesloten" in de tabel die op drie seconden eigen rit rustten. */
+  /* De ritduur reist mee (#277): een uitkomst zonder "gemeten over hoe
+     lang" is bij het sluiten niet na te gaan. */
   const vs = vonnis.venster;
   const vensterTekst = (vs && typeof vs.s === 'number')
-    ? ' · venster ' + Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : ' · venster onbekend';
+    ? ' · rit ' + Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : ' · ritduur onbekend';
   _liveSchrijf(vonnis.staat === 'bevinding' ? 'opvallend' : 'info',
     'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden + vensterTekst,
     { Outcome: vonnis.staat, Repro: _issuesVan(o) });
 
-  _verzondenStempel = _opdrachtStempel(o, vonnis);
+  _verzonden[o.naam] = _opdrachtStempel(o, vonnis);
   return { uitslagen: uitslagen, vonnis: vonnis };
 }
 
@@ -8404,7 +8370,7 @@ window.PLTestrunLive = {
     let vonnis = null;
     try { vonnis = PLOpdracht.oordeel(o, _stapGezet); }
     catch (e) { return { o: o, vonnis: null, alVerzonden: false, reden: 'het oordeel is niet te vellen: ' + ((e && e.message) || e) }; }
-    return { o: o, vonnis: vonnis, alVerzonden: _opdrachtStempel(o, vonnis) === _verzondenStempel, reden: '' };
+    return { o: o, vonnis: vonnis, alVerzonden: _opdrachtStempel(o, vonnis) === _verzonden[o.naam], reden: '' };
   },
 
   verzend: function () {
@@ -8419,6 +8385,42 @@ window.PLTestrunLive = {
       // is precies de fout die deze knop moet wegnemen.
       return { ok: false, reden: 'verzenden mislukt: ' + ((e && e.message) || e) };
     }
+  },
+
+  /* ── ALLES WAT DEZE RIT AL BEANTWOORDT (#277) ─────────────────────
+     Per opdracht het oordeel, en of dat al in de tabel staat. Afgerond is
+     gesloten of bevinding; "nog niet" is geen antwoord en gaat niet mee. */
+  oordeelAlle: function () {
+    if (!window.PLOpdracht || typeof PLOpdracht.oordeelAlle !== 'function') return [];
+    let alle = [];
+    try { alle = PLOpdracht.oordeelAlle(_stapGezet); }
+    catch (e) { console.warn('Testrun: de opdrachten konden niet samen beoordeeld worden (#277)', e); return []; }
+    return alle.map(function (r) {
+      const v = r.vonnis;
+      const af = !!v && (v.staat === 'gesloten' || v.staat === 'bevinding');
+      return { id: r.id, naam: r.naam, o: r.opdracht, vonnis: v, afgerond: af,
+               alVerzonden: !!v && _opdrachtStempel(r.opdracht, v) === _verzonden[r.opdracht.naam] };
+    });
+  },
+
+  verzendAlle: function () {
+    const klaar = window.PLTestrunLive.oordeelAlle().filter(function (r) { return r.afgerond && !r.alVerzonden; });
+    if (!klaar.length) return { ok: false, aantal: 0, reden: 'er is niets afgerond dat nog niet verzonden is' };
+    const uit = [];
+    klaar.forEach(function (r) {
+      try {
+        const t = _verzendOpdracht(r.o, { id: r.id, naam: r.naam });
+        uit.push({ naam: r.naam, staat: t.vonnis.staat });
+      } catch (e) {
+        // Niet stil: één opdracht die niet weggaat mag de rest niet tegenhouden,
+        // maar moet wel gezien worden.
+        console.warn('Testrun: "' + r.naam + '" is niet verzonden (#277)', e);
+        uit.push({ naam: r.naam, staat: 'mislukt', reden: (e && e.message) || String(e) });
+      }
+    });
+    const mis = uit.filter(function (u) { return u.staat === 'mislukt'; });
+    return { ok: mis.length === 0, aantal: uit.length - mis.length, opdrachten: uit,
+             reden: mis.length ? mis.length + ' niet verzonden: ' + mis.map(function (u) { return u.naam; }).join(', ') : '' };
   },
 
   nieuweSessie: nieuweSessie,

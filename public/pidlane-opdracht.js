@@ -376,7 +376,6 @@
         }
         _actief = k.opdracht;
         _herkomst = { id: d.id || '', naam: d.naam || k.opdracht.naam, gewijzigd: d.gewijzigd || '' };
-        _markeer();
         _log('Meetopdracht geladen: ' + _actief.naam + ' (' + _actief.sensoren.length + ' sensoren, ' +
              Math.round(_actief.duurS / 60) + ' min)', 'ok');
         return _actief;
@@ -451,7 +450,6 @@
     _actief = rij.opdracht;
     _herkomst = { id: rij.id, naam: rij.naam, gewijzigd: rij.gewijzigd };
     _laatsteFout = null;
-    _markeer();
     _log('Meetopdracht gekozen: ' + _actief.naam + ' (' + _actief.sensoren.length + ' sensoren, ' +
          Math.round(_actief.duurS / 60) + ' min)', 'ok');
     return _actief;
@@ -510,16 +508,14 @@
      `waarde` is null als er niets te meten viel; dat is iets anders dan 0 en
      het scherm hoort dat verschil te tonen. */
   function meet(proef) {
+    /* De hele rit, en dat is met opzet (#277). Wat er gemeten is, is
+       gemeten: tien minuten rijden of drie keer vol gas tellen voor elke
+       opdracht die dat vraagt, niet alleen voor de gekozen. Wat een opdracht
+       juist NIET op een ander moment mag leunen — een onderbreking, een
+       adapter — staat in zijn voorwaarden. */
     var per = null;
-    /* Het venster van deze opdracht, en alleen als dat er niet is de hele
-       rit (#277). Dat laatste is een oude schil zonder markeer(); daar is het
-       gedrag van vóór 23-09 het enige dat er is. */
-    var vs = _venster();
-    if (vs) per = vs.per;
-    else {
-      try { per = (window.PLRit && typeof PLRit.per === 'function') ? PLRit.per() : null; }
-      catch (e) { console.warn('Opdracht: ritbeeld onleesbaar (#241)', e); }
-    }
+    try { per = (window.PLRit && typeof PLRit.per === 'function') ? PLRit.per() : null; }
+    catch (e) { console.warn('Opdracht: ritbeeld onleesbaar (#241)', e); }
     if (!per) return _uit('LET OP', 'geen ritbeeld — PLRit draait niet, dus deze opdracht is niet te meten', proef, null, 0);
 
     var r = per[proef.pid];
@@ -613,7 +609,7 @@
 
     var vw = voorwaarden(o, stapGezien);
     var uit = (o.proeven || []).map(meet);
-    var vs = _venster();
+    var vs = _rit();
     var venster = vs ? { start: vs.start, s: vs.s } : null;
     var uitkomst = function (staat, reden) { return { staat: staat, reden: reden, voorwaarden: vw, uitslagen: uit, venster: venster }; };
 
@@ -636,32 +632,35 @@
       (vw.length ? ', alle ' + vw.length + ' voorwaarden vervuld' : ''));
   }
 
-  /* ── HET MEETVENSTER (#277) ──────────────────────────────────────
-     Kiezen is beginnen. Alles wat deze module meet, komt uit het venster dat
-     bij het kiezen geopend is — niet uit de hele rit. */
-  function _markeer() {
-    try { if (window.PLRit && typeof PLRit.markeer === 'function') return PLRit.markeer(); }
-    catch (e) { console.warn('Opdracht: het meetvenster is niet geopend — het oordeel rekent dan op de hele rit (#277)', e); }
-    return null;
-  }
-  function _venster() {
-    try { return (window.PLRit && typeof PLRit.venster === 'function') ? PLRit.venster() : null; }
-    catch (e) { console.warn('Opdracht: het meetvenster is onleesbaar (#277)', e); return null; }
+  /* ── DE RIT ALS GEHEEL (#277) ──────────────────────────────────────
+     Hoe lang er deze rit gemeten is, en welke onderbrekingen erin zaten. Uit
+     PLRit, dat dit al bijhoudt; hier alleen samengevoegd tot één antwoord. */
+  function _rit() {
+    try {
+      if (!window.PLRit || typeof PLRit.per !== 'function') return null;
+      var s = (typeof PLRit.duurS === 'function') ? (PLRit.duurS() || 0) : 0;
+      return {
+        start: Date.now() - s * 1000,
+        s: s,
+        meetgaten: (typeof PLRit.meetgaten === 'function') ? PLRit.meetgaten() : [],
+        herverbindingen: (typeof PLRit.herverbindingen === 'function') ? (PLRit.herverbindingen() || 0) : 0
+      };
+    } catch (e) { console.warn('Opdracht: het ritbeeld is onleesbaar (#277)', e); return null; }
   }
   function _mmss(s) { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
 
   function _gebeurtenis(v) {
-    var vs = _venster();
+    var vs = _rit();
     var basis = { wat: v.wat, soort: 'gebeurtenis', gebeurtenis: v.gebeurtenis, waarde: null };
-    if (!vs) return Object.assign(basis, { vervuld: null, detail: 'niet na te gaan — er is geen meetvenster' });
+    if (!vs) return Object.assign(basis, { vervuld: null, detail: 'niet na te gaan — er is geen ritbeeld' });
     var minS = v.minS || 5;
     var gaten = vs.meetgaten.filter(function (g) { return (g.s || 0) >= minS; }).length;
     var herv = vs.herverbindingen || 0;
     var n = v.gebeurtenis === 'meetgat' ? gaten : v.gebeurtenis === 'herverbinding' ? herv : gaten + herv;
     var noem = v.gebeurtenis === 'meetgat' ? 'meetgat' : v.gebeurtenis === 'herverbinding' ? 'herverbinding' : 'onderbreking';
     return Object.assign(basis, { vervuld: n > 0, waarde: n,
-      detail: n > 0 ? n + '× ' + noem + ' in dit venster (' + gaten + ' meetgat, ' + herv + ' herverbinding)'
-                    : 'geen ' + noem + ' in dit venster van ' + _mmss(vs.s) });
+      detail: n > 0 ? n + '× ' + noem + ' deze rit (' + gaten + ' meetgat, ' + herv + ' herverbinding)'
+                    : 'geen ' + noem + ' in deze rit van ' + _mmss(vs.s) });
   }
 
   function _adapterVoorwaarde(v) {
@@ -676,10 +675,25 @@
       detail: 'verbonden: ' + naam + (ok ? '' : ' — de opdracht vraagt ' + (v.niet ? 'een andere adapter dan' : 'een adapter met') + ' "' + v.adapter + '"') });
   }
 
+  /* ── ALLE OPDRACHTEN TEGELIJK (#277) ───────────────────────────────
+     Eén rit, elke opdracht beoordeeld op dezelfde metingen. Wie tien minuten
+     rijdt voor de ene, heeft ze ook gereden voor de andere; wie drie keer vol
+     gas geeft, hoeft dat niet per opdracht te herhalen. De gekozen opdracht is
+     alleen nog de focus op het scherm. */
+  function oordeelAlle(stapGezien) {
+    return (_opdrachten || []).filter(function (r) { return !!r.opdracht; }).map(function (r) {
+      var v = null;
+      try { v = oordeel(r.opdracht, stapGezien); }
+      catch (e) { console.warn('Opdracht: het oordeel over "' + r.naam + '" kon niet geveld worden (#277)', e); }
+      return { id: r.id, naam: r.naam, opdracht: r.opdracht, vonnis: v };
+    });
+  }
+
   window.PLOpdracht = {
     keur: keur,
-    venster: _venster,
+    rit: _rit,
     mmss: _mmss,
+    oordeelAlle: oordeelAlle,
     voorwaarden: voorwaarden,
     oordeel: oordeel,
     haal: haal,
