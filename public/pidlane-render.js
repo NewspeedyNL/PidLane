@@ -45,6 +45,9 @@
     var p = _plug();
     if (!p || typeof p.laatste !== 'function') return;
     _gevraagd = true;
+    // De proefknop (admin, alleen in de APK) pas tonen als de plugin er is.
+    try { var k = document.getElementById('kbRenderProef'); if (k) k.style.display = ''; }
+    catch (e) { console.warn('Rendercrash: proefknop niet getoond (#229)', e); }
     Promise.resolve(p.laatste()).then(function (r) {
       var m = melding(r);
       if (!m) return;
@@ -55,7 +58,23 @@
     });
   }
 
-  window.PLRender = { melding: melding, vraag: vraag };
+  /* De proefcrash. Eerst een regel in het logboek, zodat in D1 staat dat
+     deze crash besteld was; daarna laat de native kant de renderer vallen. */
+  function proef() {
+    var p = _plug();
+    if (!p || typeof p.proef !== 'function') {
+      console.warn('Rendercrash: geen PLRender-plugin in deze schil (#229)');
+      return false;
+    }
+    try { if (typeof log === 'function') log('Proefcrash van de renderer gestart (#229)', 'warn'); }
+    catch (e) { console.warn('Rendercrash: startregel niet in de app-log gezet (#229)', e); }
+    Promise.resolve(p.proef()).catch(function (e) {
+      console.warn('Rendercrash: PLRender.proef() gaf een fout (#229)', e);
+    });
+    return true;
+  }
+
+  window.PLRender = { melding: melding, vraag: vraag, proef: proef };
   vraag();
   try {
     window.addEventListener('load', function () { vraag(); setTimeout(vraag, 3000); });

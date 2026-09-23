@@ -414,14 +414,18 @@ console.log('\n── de melding na de herstart (#229) ──');
      naar D1 — en zonder crash moet er niets staan. */
   const vm = require('vm');
   function draai(antwoord, metPlugin) {
-    const logs = [], vragen = [];
+    const logs = [], vragen = [], proeven = [];
+    const knop = { style: { display: 'none' } };
     const w = { addEventListener: function () {} };
-    if (metPlugin) w.Capacitor = { Plugins: { PLRender: { laatste: function () { vragen.push(1); return Promise.resolve(antwoord); } } } };
+    if (metPlugin) w.Capacitor = { Plugins: { PLRender: {
+      laatste: function () { vragen.push(1); return Promise.resolve(antwoord); },
+      proef: function () { proeven.push(logs.length); return Promise.resolve(); } } } };
     const ctx = { window: w, console: { warn: function () {}, error: function () {} }, Promise: Promise, Date: Date, setTimeout: function () {},
+      document: { getElementById: function (id) { return id === 'kbRenderProef' ? knop : null; } },
       log: function (m, t) { logs.push([m, t]); } };
     vm.createContext(ctx);
     vm.runInContext(renderJs, ctx);
-    return { logs: logs, vragen: vragen, api: w.PLRender };
+    return { logs: logs, vragen: vragen, proeven: proeven, knop: knop, api: w.PLRender };
   }
   const tik = function () { return new Promise(function (r) { setImmediate(r); }); };
 
@@ -444,6 +448,18 @@ console.log('\n── de melding na de herstart (#229) ──');
   r = draai(null, false);
   await tik();
   toets('in de browser gebeurt er niets', [r.vragen.length, r.logs.length], [0, 0]);
+  toets('en blijft de proefknop verborgen', r.knop.style.display, 'none');
+  toets('en doet de proefcrash niets', r.api.proef(), false);
+
+  /* De proefknop. Eerst de regel in het logboek, dán de crash: na de crash
+     is er geen pagina meer om iets te schrijven, en zonder die regel staat
+     er in D1 een crash zonder dat te zien is dat hij besteld was. */
+  r = draai({ moment: 0, crash: false }, true);
+  await tik();
+  toets('in de APK staat de proefknop zichtbaar', r.knop.style.display, '');
+  toets('de proefcrash wordt gevraagd', r.api.proef() === true && r.proeven.length === 1, true);
+  toets('pas nadat de startregel in het logboek staat', r.proeven[0], 1);
+  toets('en die regel zegt dat hij besteld was', /Proefcrash/.test(r.logs[0] && r.logs[0][0]), true);
 
   console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
   process.exit(fout ? 1 : 0);

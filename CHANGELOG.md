@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-09-2026 — een rendercrash op bestelling, om de afvang te kunnen zien
+ ═══════════════════════════════════════════════════════════
+
+ - #229  Admin → "💥 Test: rendercrash" (alleen in de APK). Schrijft eerst
+         een startregel in het logboek en laat dan de native kant
+         chrome://crash laden. Vanuit JavaScript kan dat niet: Capacitor
+         stuurt elk adres buiten allowNavigation naar buiten.
+
+ ═══════════════════════════════════════════════════════════
  22-09-2026 — een rendercrash neemt de app niet meer mee (#229)
  ═══════════════════════════════════════════════════════════
 
