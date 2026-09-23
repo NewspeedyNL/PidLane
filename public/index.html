@@ -866,6 +866,7 @@ function closeConnOv(){
         <button class="kebab-item kebab-group" id="admGroupBtn" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
+          <button class="kebab-item" id="kbRenderProef" style="display:none" onclick="closeKebab();PLRender.proef()">💥 Test: rendercrash</button>
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
           <button class="kebab-item" id="bulkRecBtn" onclick="closeKebab();openBulkRecorder()">⏺ Bulk-recorder</button>

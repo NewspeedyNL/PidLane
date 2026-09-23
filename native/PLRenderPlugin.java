@@ -1,5 +1,7 @@
 package nl.pidlane.app;
 
+import android.util.Log;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -19,5 +21,23 @@ public class PLRenderPlugin extends Plugin {
         r.put("moment", l[0]);
         r.put("crash", l[1] == 1L);
         call.resolve(r);
+    }
+
+    /* De proefcrash (#229): een rendercrash op bestelling, om de afvang op een
+       echt toestel te kunnen zien. chrome://crash is de manier die de
+       Android-documentatie zelf noemt. Vanuit JavaScript lukt het niet: de
+       navigatie gaat langs Capacitor, en die stuurt elk adres buiten
+       allowNavigation naar buiten. Eerst antwoorden, dan crashen — na de
+       crash is er geen bridge meer om het antwoord over te sturen. */
+    @PluginMethod
+    public void proef(PluginCall call) {
+        call.resolve();
+        getActivity().runOnUiThread(() -> {
+            try {
+                getBridge().getWebView().loadUrl("chrome://crash");
+            } catch (Exception e) {
+                Log.e("PLRender", "proefcrash niet gestart", e);
+            }
+        });
     }
 }
