@@ -769,7 +769,8 @@ MUTATIES=(
 ".github/workflows/build-apk.yml@@                  \"        PLRender.koppel(this, getBridge());\",\n@@@@test-nativeschil.js@@de luisteraar hangt niet meer aan de Java-MainActivity: de plugin bestaat, maar niemand vangt de rendercrash af"
 "native/PLRender.java@@                noteer(act, crash);\n@@@@test-nativeschil.js@@de crash wordt niet meer vastgelegd: na de herstart vermomt hij zich als een bevroren proces"
 "public/pidlane-render.js@@log(m, 'err')@@log(m, 'warn')@@test-nativeschil.js@@de melding na een rendercrash is een waarschuwing en komt niet meer in D1"
-"public/pidlane-render.js@@    try { if (typeof log === 'function') log('Proefcrash van de renderer gestart (#229)', 'warn'); }@@    try { }@@test-nativeschil.js@@de proefcrash schrijft geen startregel meer: in D1 staat dan een crash zonder dat te zien is dat hij besteld was"
+"public/pidlane-render.js@@    _stuurStartregel().then(function () { return p.proef(); }).catch(@@    Promise.resolve(p.proef()).catch(@@test-nativeschil.js@@de proefcrash wacht niet meer op D1: de startregel sterft met de pagina en de crash lijkt onbesteld (23-09-2026 gemeten)"
+"public/pidlane-render.js@@    }), plafond]);@@    })]);@@test-nativeschil.js@@geen plafond meer: bij een hangende verbinding gaat de proefcrash nooit af"
 
 # ── DE MEETOPDRACHT VAN BUITEN (#241, 17-09-2026). De keurder is het enige wat
 # tussen een rij in Airtable en een meting op een rijdende auto staat. Elke

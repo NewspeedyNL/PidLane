@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-09-2026 — de proefcrash zet zijn startregel eerst in D1
+ ═══════════════════════════════════════════════════════════
+
+ - #229  Gemeten op het toestel: de afvang werkt (twee keer, 12:01 en
+         12:03), maar "Proefcrash gestart" stond niet in D1. log() stuurt
+         warn niet door, en de buffer sterft met de pagina. Nu eerst
+         rechtstreeks naar D1 en de buffer leeg, dan crashen (plafond 3 s).
+
+ ═══════════════════════════════════════════════════════════
  23-09-2026 — een rendercrash op bestelling, om de afvang te kunnen zien
  ═══════════════════════════════════════════════════════════
 
