@@ -149,6 +149,22 @@ function dtcProef(re){
   };
 }
 
+/* ── DE MOTORINHOUD (#232) ──────────────────────────────────────────────
+   In liters, of null als hij niet bekend is. Uit het voertuigprofiel: eerst
+   een cilinderinhoud in cc (RDW), anders het getal in de motornaam
+   ("2.0 SkyActiv-G 165pk"). Een voorwaarde die hierop leunt zwijgt bij null. */
+function motorLiters(){
+  try{
+    var v=(typeof getVehicle==='function')?getVehicle():null;
+    if(!v) return null;
+    var cc=parseInt(v.cilinderinhoud,10);
+    if(!isNaN(cc)&&cc>=600&&cc<=8000) return cc/1000;
+    var m=String(v.motor||'').match(/(^|[^\d.])(\d\.\d)(?![\d.])/);
+    if(m){ var l=parseFloat(m[2]); if(l>=0.6&&l<=8) return l; }
+  }catch(e){ console.warn('Onderdeelcheck: motorinhoud niet leesbaar (#232)', e); }
+  return null;
+}
+
 /* ── DE MOTORSTAND ─────────────────────────────────────────────────────
    Bijna elke meting hieronder betekent iets anders bij een stilstaande
    motor. Eén keer bepalen, en elke voorwaarde krijgt hem mee. Een veld dat
@@ -397,12 +413,25 @@ var REGELS = [
     hint:'Slecht optrekken, vermogensverlies, trim die alle kanten op loopt.',
     vc:[
       C('MAF-code aanwezig (P010x)', 4, dtcProef(/^P010[0-4]$/)),
-      C('Luchtmassa past niet bij het toerental', 3, function(c){
-        if(c.draait!==true) return null;
-        var maf=V('0110');
-        if(maf===null||c.rpm===null||c.rpm<600) return null;
-        var verwacht = c.rpm/1000*3.5;         // ruwe vuistregel voor een viercilinder
-        return (maf < verwacht*0.45) || (maf > verwacht*2.4);
+      /* GEMETEN OP 23-09-2026 (#232). Hier stond "3,5 g/s per 1000 tpm, fout
+         onder 45% of boven 240%", op elk toerental en zonder de motor te
+         kennen. Op een gezonde CX-5 2.0 keurde dat af aan BEIDE kanten:
+         stationair 0,81–1,67 g/s (regel: fout onder 1,0) en vol gas 91 g/s
+         bij 4540 tpm (regel: fout boven 38). Luchtmassa volgt belasting ×
+         toerental × motorinhoud; de regel kende er één van de drie.
+
+         Nu alleen waar hij iets betekent — warm, stationair, stilstaand — en
+         alleen als de motorinhoud bekend is. Per liter gemeten: 0,4–0,85 g/s;
+         alarm onder de helft daarvan (0,2) of ruim boven het dubbele (2,5).
+         Onbekende motor: geen oordeel. Dat kost dekking, geen juistheid. */
+      C('Luchtmassa stationair past niet bij de motorinhoud', 3, function(c){
+        if(c.draait!==true || c.warm!==true) return null;
+        if(c.rpm===null || c.rpm>1000) return null;
+        if(c.snelheid!==null && c.snelheid>2) return null;
+        var maf=V('0110'); if(maf===null) return null;
+        var l=motorLiters(); if(l===null) return null;
+        var perL=maf/l;
+        return (perL<0.2) || (perL>2.5);
       }),
       C('Trim ver negatief — de ECU haalt brandstof weg', 2, function(c){
         if(c.draait!==true) return null;
@@ -703,10 +732,15 @@ var REGELS = [
       // de nokkenassensor zelf. Die staan al onder 'krukas_nok', dus één
       // foutcode wees twee onderdelen aan.
       C('Correlatiecode krukas/nokkenas (P0016-P0019)', 5, dtcProef(/^P001[6-9]$/)),
+      /* GEMETEN OP 23-09-2026 (#231). De grens stond op −5°. Een gezonde
+         SkyActiv-G ging tijdens het rijden naar −10,5, −12 en −20° —
+         katalysator-opwarming en klopregeling, allebei normaal. Dan wees dit
+         paneel de nokkenas/ketting aan (gewicht 3) op een motor die niets
+         mankeerde. Nu pas bij een warme motor, en pas voorbij −25°. */
       C('Ontstekingsvervroeging springt heen en weer', 3, function(c){
-        if(c.draait!==true) return null;
+        if(c.draait!==true || c.warm!==true) return null;
         var a=V('010E');
-        return a===null?null:(a<-5||a>45);
+        return a===null?null:(a<-25||a>45);
       }, {steun:true})
     ]
   },
@@ -877,9 +911,17 @@ function render(){
   // Zonder DTC-scan mist de helft van het bewijs, en dat hoort bovenaan te
   // staan in plaats van dat het paneel stilletjes minder vindt.
   if(!bron.gescand){
+    /* DE KNOP HOORT HIER (#233). De zin stuurde je naar een knop op een ander
+       scherm: sluiten, zoeken, scannen, opnieuw openen. Nu staat hij onder de
+       zin zelf. Zonder verbinding is er niets uit te lezen, en dan zegt het
+       blok dat in plaats van een knop te tonen die niets doet. */
+    var kan=scanMogelijk();
     h+='<div class="od-grens"><b>De foutcodes zijn nog niet uitgelezen</b><br>'+
-       'Dit oordeel rust nu alleen op de live meetwaarden. Lees eerst de foutcodes uit '+
-       '(knop "Foutcodes scannen") en kijk daarna opnieuw — de helft van wat hier staat, staat daarin.</div>';
+       'Dit oordeel rust nu alleen op de live meetwaarden. Lees eerst de foutcodes uit — '+
+       'de helft van wat hier staat, staat daarin.'+
+       (kan ? '<br><button class="od-btn" id="odScan" onclick="PLOnderdeel.scan(this)">'+(_scanMislukt?'Uitlezen mislukt — probeer opnieuw':'🔍 Foutcodes uitlezen')+'</button>'
+            : '<br><i>Verbind eerst de adapter — zonder verbinding valt er niets uit te lezen.</i>')+
+       '</div>';
   }
 
   if(!R.length && !rails.length && !uitvalKaart){
@@ -968,6 +1010,35 @@ function render(){
   host.innerHTML=h;
 }
 
+/* ── FOUTCODES UITLEZEN VANUIT HET PANEEL (#233) ─────────────────────────
+   scanDTC() duurt twee seconden en claimt de bus. Zolang staat de knop uit
+   met een leesbare stand; daarna tekent het paneel zichzelf opnieuw, zodat
+   de oude tekst ("nog niet uitgelezen") niet blijft staan. Een scan die
+   mislukt, zegt dat op de knop in plaats van stil te niets te doen. */
+function scanMogelijk(){
+  try{
+    if(typeof scanDTC!=='function') return false;
+    return (typeof connected!=='undefined' && !!connected) || (typeof demoMode!=='undefined' && !!demoMode);
+  }catch(e){ console.warn('Onderdeelcheck: verbindingsstand onleesbaar (#233)', e); return false; }
+}
+// Na een mislukte scan tekent render() de knop met die mededeling erop.
+var _scanMislukt=false;
+function scan(knop){
+  if(!scanMogelijk()) return Promise.resolve(false);
+  try{ if(knop){ knop.disabled=true; knop.textContent='⏳ Foutcodes uitlezen…'; } }
+  catch(e){ console.warn('Onderdeelcheck: knopstand niet gezet (#233)', e); }
+  return Promise.resolve().then(function(){ return scanDTC(); }).then(function(){
+    _scanMislukt=false;
+    render();
+    return true;
+  }).catch(function(e){
+    console.warn('Onderdeelcheck: foutcodes uitlezen mislukt (#233)', e);
+    _scanMislukt=true;
+    render();
+    return false;
+  });
+}
+
 /* ── Publiek ───────────────────────────────────────────────────────────── */
 window.openOnderdeelCheck = function(){
   var ov=document.getElementById('onderdeelOv');
@@ -990,7 +1061,7 @@ window.openOnderdeelCheck = function(){
 };
 // Ook los aanroepbaar: handig voor de diagnosebundel en om de
 // uitleesfout-poort te kunnen natoetsen zonder de UI te openen.
-window.PLOnderdeel = { beoordeel:beoordeel, _regels:REGELS,
+window.PLOnderdeel = { beoordeel:beoordeel, _regels:REGELS, motorLiters:motorLiters, scan:scan, scanMogelijk:scanMogelijk,
   busBetrouwbaar:busBetrouwbaar, stilteBeeld:stilteBeeld, railTreffers:railTreffers,
   dtcBron:dtcBron, context:context, cadansRegels:cadansRegels, tellers:TELLER_PIDS };
 

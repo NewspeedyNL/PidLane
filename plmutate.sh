@@ -805,6 +805,10 @@ MUTATIES=(
 "public/pidlane-bron.js@@    var doel = isProductie() ? preview() : PRODUCTIE;@@    var doel = preview();@@test-bron.js@@vanaf een preview kom je niet meer terug naar de live-app"
 "public/pidlane-bron.js@@      b.textContent = '⚠ PREVIEW — ' + huidige() + ' · dit is niet de live app';@@      b.textContent = 'PREVIEW';@@test-bron.js@@de banner noemt het adres niet meer: je ziet dat het een preview is maar niet welke"
 "public/pidlane-onderdeel.js@@    r.vc.forEach(function(vc){ if(voor.indexOf(vc.tekst)>=0 && vc.w>zwaarste) zwaarste=vc.w; });@@    r.vc.forEach(function(vc){ if(vc.w>zwaarste) zwaarste=vc.w; });@@test-onderdeel.js@@het zwaarste gewicht wordt uit alle voorwaarden gehaald in plaats van uit de voorwaarden die aansloegen"
+"public/pidlane-onderdeel.js@@        var perL=maf/l;\n        return (perL<0.2) || (perL>2.5);@@        var perL=maf;\n        return (perL<2) || (perL>7);@@test-onderdeel.js@@de oude MAF-grens 2–7 g/s zonder motorinhoud is terug: een gezonde 2,0 liter stationair heet weer defect (#232)"
+"public/pidlane-onderdeel.js@@        if(c.rpm===null || c.rpm>1000) return null;\n        if(c.snelheid!==null@@        if(c.rpm===null) return null;\n        if(c.snelheid!==null@@test-onderdeel.js@@de MAF-regel oordeelt weer buiten stationair: vol gas op 91 g/s past dan niet (#232)"
+"public/pidlane-onderdeel.js@@        return a===null?null:(a<-25||a>45);@@        return a===null?null:(a<-5||a>45);@@test-onderdeel.js@@de ontstekingsgrens staat weer op −5°: een warme motor die tot −20° terugneemt heet weer een versleten ketting (#231)"
+"public/pidlane-onderdeel.js@@    _scanMislukt=false;\n    render();@@    _scanMislukt=false;@@test-onderdeel.js@@na het uitlezen vanuit het paneel wordt er niet opnieuw getekend: er staat nog steeds dat de foutcodes niet uitgelezen zijn (#233)"
 # ── #218: de DTC-vlag zegt "er is gekeken" (22-09-2026) ──
 # De vlag ging aan op de eerste regel van scanDTC(); het onderdeelpaneel zei dan
 # tijdens de scan en na een fout "geen foutcodes" in plaats van "niet uitgelezen".
