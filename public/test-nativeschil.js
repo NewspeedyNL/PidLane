@@ -413,19 +413,25 @@ console.log('\n── de melding na de herstart (#229) ──');
      De melding moet één keer als fout in het logboek komen — 'err' gaat door
      naar D1 — en zonder crash moet er niets staan. */
   const vm = require('vm');
-  function draai(antwoord, metPlugin) {
-    const logs = [], vragen = [], proeven = [];
+  function draai(antwoord, metPlugin, d1) {
+    d1 = d1 || {};
+    const logs = [], vragen = [], proeven = [], volgorde = [];
     const knop = { style: { display: 'none' } };
     const w = { addEventListener: function () {} };
     if (metPlugin) w.Capacitor = { Plugins: { PLRender: {
       laatste: function () { vragen.push(1); return Promise.resolve(antwoord); },
-      proef: function () { proeven.push(logs.length); return Promise.resolve(); } } } };
-    const ctx = { window: w, console: { warn: function () {}, error: function () {} }, Promise: Promise, Date: Date, setTimeout: function () {},
+      proef: function () { proeven.push(logs.length); volgorde.push('crash'); return Promise.resolve(); } } } };
+    const ctx = { window: w, console: { warn: function () {}, error: function () {} }, Promise: Promise, Date: Date,
+      setTimeout: d1.klok ? function (f) { f(); } : function () {},
       document: { getElementById: function (id) { return id === 'kbRenderProef' ? knop : null; } },
-      log: function (m, t) { logs.push([m, t]); } };
+      log: function (m, t, o) { logs.push([m, t, o]); } };
+    if (d1.aan) {
+      ctx.logToSheets = function (t, m) { volgorde.push('d1:' + t + ':' + m); return Promise.resolve(); };
+      ctx.flushAirtable = function () { volgorde.push('flush'); return d1.hangt ? new Promise(function () {}) : Promise.resolve(); };
+    }
     vm.createContext(ctx);
     vm.runInContext(renderJs, ctx);
-    return { logs: logs, vragen: vragen, proeven: proeven, knop: knop, api: w.PLRender };
+    return { logs: logs, vragen: vragen, proeven: proeven, volgorde: volgorde, knop: knop, api: w.PLRender };
   }
   const tik = function () { return new Promise(function (r) { setImmediate(r); }); };
 
@@ -457,9 +463,31 @@ console.log('\n── de melding na de herstart (#229) ──');
   r = draai({ moment: 0, crash: false }, true);
   await tik();
   toets('in de APK staat de proefknop zichtbaar', r.knop.style.display, '');
-  toets('de proefcrash wordt gevraagd', r.api.proef() === true && r.proeven.length === 1, true);
+  toets('de proefcrash wordt gevraagd', r.api.proef() === true, true);
+  await tik(); await tik();
+  toets('en gaat door, ook zonder D1-verbinding in de app', r.proeven.length, 1);
   toets('pas nadat de startregel in het logboek staat', r.proeven[0], 1);
   toets('en die regel zegt dat hij besteld was', /Proefcrash/.test(r.logs[0] && r.logs[0][0]), true);
+
+  /* 23-09-2026: de startregel stond niet in D1. log() stuurt 'warn' niet
+     door, en wat wel doorgaat wacht in een buffer die met de pagina sterft.
+     Dus: eerst rechtstreeks naar D1, de buffer leeg, dán crashen. */
+  r = draai({ moment: 0, crash: false }, true, { aan: true });
+  await tik();
+  r.api.proef();
+  for (let i = 0; i < 8; i++) await tik();
+  const iD1 = r.volgorde.findIndex(function (x) { return /^d1:opvallend:Proefcrash/.test(x); });
+  toets('de startregel gaat als opvallend naar D1', iD1 > -1, true);
+  toets('de buffer wordt geleegd vóór de crash',
+    r.volgorde.indexOf('flush') > iD1 && r.volgorde.indexOf('crash') > r.volgorde.lastIndexOf('flush'), true);
+  toets('en de schermregel gaat niet nóg een keer naar D1',
+    !!(r.logs[0] && r.logs[0][2] && r.logs[0][2].geenAirtable), true);
+
+  r = draai({ moment: 0, crash: false }, true, { aan: true, hangt: true, klok: true });
+  await tik();
+  r.api.proef();
+  for (let i = 0; i < 8; i++) await tik();
+  toets('hangt de verbinding, dan crasht hij na het plafond toch', r.proeven.length, 1);
 
   console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
   process.exit(fout ? 1 : 0);

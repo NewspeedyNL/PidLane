@@ -58,17 +58,40 @@
     });
   }
 
-  /* De proefcrash. Eerst een regel in het logboek, zodat in D1 staat dat
-     deze crash besteld was; daarna laat de native kant de renderer vallen. */
+  /* De proefcrash. Eerst een regel die zegt dat deze crash besteld was, en die
+     moet in D1 staan vóór de renderer valt. Op 23-09 stond hij er niet: log()
+     stuurt 'warn' niet door, en wat wél doorgaat wacht 3 s in een buffer die
+     met de pagina meesterft. Dus: rechtstreeks naar logToSheets, de buffer
+     leegmaken, en pas dán crashen — met een plafond van 3 s, zodat een
+     trage verbinding de proef niet tegenhoudt. */
+  var PROEF_MSG = 'Proefcrash van de renderer gestart (#229)';
+  function _stuurStartregel() {
+    var klaar = Promise.resolve();
+    try {
+      if (typeof logToSheets === 'function') {
+        klaar = Promise.resolve(logToSheets('opvallend', PROEF_MSG)).then(function () {
+          if (typeof flushAirtable !== 'function') return null;
+          // Hooguit drie rondes: een batch is tien regels, en de startregel
+          // staat achteraan.
+          return flushAirtable().then(flushAirtable).then(flushAirtable);
+        });
+      }
+    } catch (e) { console.warn('Rendercrash: startregel niet naar D1 gestuurd (#229)', e); }
+    var plafond = new Promise(function (r) { setTimeout(r, 3000); });
+    return Promise.race([klaar.catch(function (e) {
+      console.warn('Rendercrash: startregel naar D1 mislukt (#229)', e);
+    }), plafond]);
+  }
+
   function proef() {
     var p = _plug();
     if (!p || typeof p.proef !== 'function') {
       console.warn('Rendercrash: geen PLRender-plugin in deze schil (#229)');
       return false;
     }
-    try { if (typeof log === 'function') log('Proefcrash van de renderer gestart (#229)', 'warn'); }
+    try { if (typeof log === 'function') log(PROEF_MSG, 'warn', { geenAirtable: true }); }
     catch (e) { console.warn('Rendercrash: startregel niet in de app-log gezet (#229)', e); }
-    Promise.resolve(p.proef()).catch(function (e) {
+    _stuurStartregel().then(function () { return p.proef(); }).catch(function (e) {
       console.warn('Rendercrash: PLRender.proef() gaf een fout (#229)', e);
     });
     return true;
