@@ -528,6 +528,35 @@
     }).join('') + '</div>';
   }
 
+  /* ── WAT HET GROTE CIJFER ZEGT (23-09-2026, #277) ──────────────────
+     Het cijfer kleurde groen zodra de PROEVEN in de band vielen, en keek niet
+     naar de voorwaarden. De verzendknop eronder zei dan "NOG NIET" terwijl het
+     scherm groen oogde — groen zien, verzenden, en dan toch niet. Nu volgt het
+     cijfer het driewaardige eindoordeel zodra dat er is; de proefstand (goed/
+     totaal) blijft staan, want die is waar.
+
+     Plus het venster: een oordeel zonder "waarover" is geen oordeel. */
+  function eindoordeel(oor, verzend) {
+    var v = verzend && verzend.vonnis;
+    if (!v) return oor;
+    var staat = v.staat === 'gesloten' ? 'ja' : v.staat === 'bevinding' ? 'fout' : 'let op';
+    var kop = v.staat === 'gesloten' ? 'GESLOTEN' : v.staat === 'bevinding' ? 'BEVINDING' : 'NOG NIET';
+    var regel = String(v.reden || '');
+    // Bij "nog niet" is de eerste ontbrekende voorwaarde de instructie.
+    var mist = (v.voorwaarden || []).filter(function (x) { return x.vervuld !== true; })[0];
+    if (v.staat === 'nog niet' && mist) regel = mist.wat + ' — ' + mist.detail;
+    return { staat: staat, goed: oor.goed, totaal: oor.totaal, kop: kop, regel: regel, venster: v.venster || null };
+  }
+
+  function vensterRegel(venster, duurS, nu) {
+    if (!venster || typeof venster.start !== 'number') return '';
+    var s = Math.max(0, Math.round(((nu || Date.now()) - venster.start) / 1000));
+    var t = new Date(venster.start);
+    var hhmm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+    var mmss = Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+    return 'gemeten sinds ' + hhmm + ' · ' + mmss + (duurS ? ' van de ' + Math.round(duurS / 60) + ' min die deze opdracht vraagt' : '');
+  }
+
   /* DE VRAAG. Het enige grote element op dit scherm, en dat is de hele
      ordening: je kijkt tijdens het rijden naar één ding — gaat deze rit iets
      opleveren. */
@@ -542,7 +571,9 @@
         _lus(st) + '</div>';
     }
 
+    oor = eindoordeel(oor, s.verzend);
     var kl = _kleur(oor.staat);
+    var vr = vensterRegel(oor.venster, s.opdracht.duurS, s.nu);
     return '<div class="mk-v"' + (oor.staat === 'fout' ? ' style="border-color:var(--rd)"' : '') + '>' +
       '<div class="mk-bron">Deze rit beantwoordt' +
         (s.opdracht.reden ? '<em>' + veilig(String(s.opdracht.reden).split(' ')[0]) + '</em>' : '') +
@@ -555,6 +586,7 @@
           : '<span class="mk-cijfer" style="color:var(--tx3);font-size:20px">—</span>') +
         '<span class="mk-wat">' + veilig(oor.kop) + '<u>' + veilig(oor.regel) + '</u></span>' +
       '</div>' +
+      (vr ? '<div class="mk-sub" id="mkVenster">⏱ ' + veilig(vr) + '</div>' : '') +
       _verzendKnop(s) +
       _lus(st) + '</div>';
   }
@@ -828,6 +860,12 @@
      daarna de logtabel in gaat hoort bij déze vraag, en niet bij de vorige. */
   function pak(id) {
     if (!window.PLOpdracht || typeof PLOpdracht.kies !== 'function') return null;
+    /* Wat liep er vóór deze keuze (#277)? Werd dat niet verzonden, dan zegt
+       de sessieregel in D1 dat het afgebroken is — anders leest een halve rit
+       achteraf als een rit zonder uitkomst, of erger, als die van de volgende. */
+    var vorig = null;
+    try { if (window.PLTestrunLive && typeof PLTestrunLive.oordeelNu === 'function') vorig = PLTestrunLive.oordeelNu(); }
+    catch (e) { console.warn('Meetkamer: de lopende opdracht kon niet gelezen worden vóór het wisselen (#277)', e); }
     var o = null;
     try { o = PLOpdracht.kies(id); }
     catch (e) { console.warn('Meetkamer: de opdracht kon niet gekozen worden (#248)', e); }
@@ -843,12 +881,19 @@
     }
     try {
       if (window.PLTestrunLive && typeof PLTestrunLive.nieuweSessie === 'function')
-        PLTestrunLive.nieuweSessie('opdracht gewisseld naar "' + o.naam + '"');
+        PLTestrunLive.nieuweSessie('opdracht gewisseld naar "' + o.naam + '"' + afgebroken(vorig));
     } catch (e) { console.warn('Meetkamer: er kon geen nieuwe sessie beginnen (#248)', e); }
     try { if (typeof showToast === 'function') showToast('Nu: ' + o.naam); }
     catch (e) { console.warn('Meetkamer: melding niet getoond (#248)', e); }
     teken();
     return o;
+  }
+
+  function afgebroken(vorig) {
+    if (!vorig || !vorig.o || !vorig.vonnis || vorig.alVerzonden) return '';
+    var vs = vorig.vonnis.venster;
+    var duur = (vs && typeof vs.s === 'number') ? Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : 'onbekende tijd';
+    return ' — "' + vorig.o.naam + '" afgebroken na ' + duur + ', niet verzonden';
   }
 
   /* DE KNOP INDRUKKEN (19-09-2026). Het verzenden zelf staat in de testrun —
@@ -895,6 +940,9 @@
   window.PLMeetkamer = {
     stations: stations,
     oordeel: oordeel,
+    eindoordeel: eindoordeel,
+    afgebroken: afgebroken,
+    vensterRegel: vensterRegel,
     meter: meter,
     ronde: ronde,
     logtelling: logtelling,

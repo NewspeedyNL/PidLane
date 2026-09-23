@@ -764,6 +764,14 @@ MUTATIES=(
 "public/pidlane-pip.js@@      p.addListener('pipModus', function (ev) { modus(!!(ev && ev.in)); });@@      p.addListener('pipMode', function (ev) { modus(!!(ev && ev.in)); });@@test-pip.js@@de gebeurtenis heet anders dan wat java stuurt: het kleine venster verschijnt nooit en de volle weergave staat in 240x135"
 "native/PLPip.java@@        if (!gewenst) return;@@        if (false) return;@@test-nativeschil.js@@het venster komt op ongeacht wat de app besloot — ook met de functie uitgezet in de Config"
 ".github/workflows/build-apk.yml@@                  \"        PLPip.leaveHint(this);\",@@                  \"        // haak eruit\",@@test-nativeschil.js@@de enige haak waarop Android PiP toestaat valt weg: alles lijkt in orde en het venster gaat nooit aan"
+# ── #277: kiezen is beginnen (23-09-2026) ──
+# Op 23-09 kreeg een opdracht binnen 3 s "gesloten" op de rit van de vorige.
+"public/pidlane-opdracht.js@@    var vs = _venster();\n    if (vs) per = vs.per;@@    var vs = null;\n    if (vs) per = vs.per;@@test-meetvenster.js@@de opdracht rekent weer op de hele rit: gesloten binnen 3 s op de monsters van een andere opdracht"
+"public/pidlane-testrun.js@@          neem(w, v, stempels[p], nu);\n        }@@        }@@test-meetvenster.js@@het venster wordt niet gevuld: een opdracht komt nooit verder dan nog niet"
+"public/pidlane-testrun.js@@        meetgaten: gaten.filter(function (g) { return g.tot >= venster.start; }),@@        meetgaten: gaten,@@test-meetvenster.js@@een oud meetgat telt in een nieuw venster: de adapter-eruit-opdracht sluit zonder dat de adapter eruit was"
+"public/pidlane-opdracht.js@@    var ok = v.niet ? !bevat : bevat;@@    var ok = bevat;@@test-meetvenster.js@@niet wordt genegeerd: de goedkope-adapteropdracht sluit op de MX+"
+"public/pidlane-meetkamer.js@@    oor = eindoordeel(oor, s.verzend);\n@@@@test-meetvenster.js@@het grote cijfer kleurt weer op de proeven alleen: groen boven, NOG NIET op de knop"
+"public/pidlane-meetkamer.js@@    if (!vorig || !vorig.o || !vorig.vonnis || vorig.alVerzonden) return '';@@    return '';@@test-meetvenster.js@@wisselen zonder verzenden laat geen spoor: een halve rit leest als een rit zonder uitkomst"
 # ── #229: een rendercrash neemt het proces niet mee (22-09-2026) ──
 "native/PLRender.java@@                return true;\n            }\n        });@@                return false;\n            }\n        });@@test-nativeschil.js@@de luisteraar geeft false: Capacitor geeft dat door en Android schiet het proces af, meetdienst en al"
 ".github/workflows/build-apk.yml@@                  \"        PLRender.koppel(this, getBridge());\",\n@@@@test-nativeschil.js@@de luisteraar hangt niet meer aan de Java-MainActivity: de plugin bestaat, maar niemand vangt de rendercrash af"

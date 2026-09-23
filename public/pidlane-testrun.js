@@ -684,6 +684,13 @@ const PLRit = (function () {
   let vorigVerbonden = null, _aan = false;
   let zonderBron = 0;        // tikken waarin er geen versheidsbron was (#74)
   let meetgaten = [], meetgatSinds = 0;   // #133, zie de uitleg bij tik() hieronder
+  /* HET MEETVENSTER VAN ÉÉN OPDRACHT (23-09-2026, #277). `per` hierboven is
+     de hele rit, en daar rekende elke opdracht op — ook één die drie seconden
+     eerder gekozen was. Op 23-09 kreeg "de adapter er even uit" zo binnen 3 s
+     "gesloten" op 162 monsters van een andere opdracht, zonder dat de adapter
+     eruit was geweest. Het venster begint bij het kiezen (markeer()) en wordt
+     naast `per` gevuld, met dezelfde neem(): zelfde regels, eigen tellers. */
+  let venster = null;        // { start, per: {pid -> zelfde vorm als per}, herv0 }
 
   /* ── ÉÉN PID, ÉÉN TIK — de kern van #74 ──────────────────────────
      Tot 01-09 verhoogde deze lus `n` voor élke sleutel in `pidVals`. Dat is de
@@ -830,6 +837,12 @@ const PLRit = (function () {
         if (!e) e = per[p] = { n: 0, tikken: 0, gemist: 0, min: v, max: v, laatst: v,
                                veranderingen: 0, tLaatsteVer: nu, stempel: null };
         const uitkomst = neem(e, v, stempels[p], nu);
+        if (venster) {
+          let w = venster.per[p];
+          if (!w) w = venster.per[p] = { n: 0, tikken: 0, gemist: 0, min: v, max: v, laatst: v,
+                                         veranderingen: 0, tLaatsteVer: nu, stempel: null };
+          neem(w, v, stempels[p], nu);
+        }
         // Alleen PIDs die deze accumulator al eerder zag tellen mee als
         // bewijs. Bij hun EERSTE waarneming kan neem() per definitie nooit
         // 'gemeten' teruggeven (zie de uitleg boven neem()), en dan zou de
@@ -896,6 +909,29 @@ const PLRit = (function () {
     // Idem voor de kern van #74: los toetsbaar, inclusief de tegenproef.
     _neem: neem,
     per: function () { return JSON.parse(JSON.stringify(per)); },
+    /* Een nieuw venster beginnen. De opdrachtmodule roept dit aan bij het
+       kiezen; de eerste waarneming per PID telt ook hier niet mee (zie neem()),
+       dus een venster levert nooit een monster van vóór de keuze. */
+    markeer: function (nuOverride) {
+      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
+      venster = { start: nu, per: {}, herv0: herverbindingen };
+      return nu;
+    },
+    /* Wat er sinds markeer() gezien is, of null als er nog nooit gemarkeerd is.
+       Meetgaten tellen mee als ze het venster raken; een lopend gat ook. */
+    venster: function (nuOverride) {
+      if (!venster) return null;
+      const nu = (typeof nuOverride === 'number') ? nuOverride : Date.now();
+      const gaten = meetgaten.slice();
+      if (meetgatSinds) gaten.push({ van: meetgatSinds, tot: laatstT, s: Math.round((laatstT - meetgatSinds) / 1000) });
+      return {
+        start: venster.start,
+        s: Math.max(0, Math.round((nu - venster.start) / 1000)),
+        per: JSON.parse(JSON.stringify(venster.per)),
+        meetgaten: gaten.filter(function (g) { return g.tot >= venster.start; }),
+        herverbindingen: herverbindingen - venster.herv0
+      };
+    },
     gaten: function () { return gaten.slice(); },
     // Een lopend meetgat (de adapter is NU weg) hoort er ook in te staan,
     // anders zegt blok 14 pas iets zodra de adapter terugkomt.
@@ -2658,8 +2694,14 @@ function _verzendOpdracht(o, h) {
   // De uitkomst per opdracht naar de live-log, met de issues in een eigen
   // veld. Zo is van buiten te lezen WELKE issues deze sessie een antwoord
   // kregen, zonder een detailtekst te moeten parsen.
+  /* Het venster reist mee (#277): een uitkomst zonder "gemeten over hoe lang,
+     sinds wanneer" is bij het sluiten niet na te gaan. Op 23-09 stonden er
+     drie "gesloten" in de tabel die op drie seconden eigen rit rustten. */
+  const vs = vonnis.venster;
+  const vensterTekst = (vs && typeof vs.s === 'number')
+    ? ' · venster ' + Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : ' · venster onbekend';
   _liveSchrijf(vonnis.staat === 'bevinding' ? 'opvallend' : 'info',
-    'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden,
+    'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden + vensterTekst,
     { Outcome: vonnis.staat, Repro: _issuesVan(o) });
 
   _verzondenStempel = _opdrachtStempel(o, vonnis);

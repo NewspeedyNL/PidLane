@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-09-2026 — meetopdracht: kiezen is beginnen, en groen betekent gesloten
+ ═══════════════════════════════════════════════════════════
+
+ - #277  Een opdracht rekent alleen op wat er ná het kiezen gemeten is
+         (PLRit.markeer/venster). Op 23-09 kreeg "de adapter er even uit"
+         binnen 3 s "gesloten" op de rit ervoor.
+ - #277  Twee voorwaardensoorten: `gebeurtenis` (meetgat, herverbinding,
+         onderbreking) en `adapter` (naam bevat, of met `niet` juist niet).
+ - #277  Het grote cijfer in de meetkamer volgt het eindoordeel mét
+         voorwaarden, en toont "gemeten sinds hh:mm · m:ss". Groen = gesloten.
+ - #277  De uitkomst in D1 draagt het venster; wisselen zonder verzenden
+         zet "afgebroken na m:ss, niet verzonden" in de sessieregel.
+
+ ═══════════════════════════════════════════════════════════
  23-09-2026 — het kleine venster gaat ook aan als de sensoren later komen
  ═══════════════════════════════════════════════════════════
 

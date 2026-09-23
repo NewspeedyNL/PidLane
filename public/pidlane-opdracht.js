@@ -67,8 +67,13 @@
     vragenMax: 5, vraagTekstMax: 160, optiesMax: 5, optieMax: 40,
     drempelsMax: 8, meldingMax: 120,
     proevenMax: 6, proefNaamMax: 80, issueMax: 12,
-    voorwaardenMax: 6, watMax: 60, stapMax: 40
+    voorwaardenMax: 6, watMax: 60, stapMax: 40, adapterMax: 40, gebeurtenisSMax: 600
   };
+
+  /* Wat een `gebeurtenis`-voorwaarde mag noemen (23-09-2026, #277). Een
+     onderbreking is een meetgat óf een herverbinding: een getrokken adapter
+     levert het ene of het andere, afhankelijk van hoe de socket sterft. */
+  var GEBEURTENISSEN = ['meetgat', 'herverbinding', 'onderbreking'];
 
   // Wat `meet` mag zijn. Precies de velden die PLRit.per() werkelijk bijhoudt —
   // geen 'gemiddelde', want dat houdt de ritwaarnemer niet bij en dan zou deze
@@ -254,8 +259,26 @@
           if (!_tekst(v.wat, GRENZEN.watMax)) fouten.push('voorwaarde ' + i + ': wat ontbreekt of is langer dan ' + GRENZEN.watMax);
           var isStap = (v.stap !== undefined);
           var isMeting = (v.pid !== undefined);
-          if (isStap === isMeting) {
-            fouten.push('voorwaarde ' + i + ': geef óf `stap` óf `pid`, niet allebei en niet geen van beide');
+          var isGebeurtenis = (v.gebeurtenis !== undefined);
+          var isAdapter = (v.adapter !== undefined);
+          if ((isStap ? 1 : 0) + (isMeting ? 1 : 0) + (isGebeurtenis ? 1 : 0) + (isAdapter ? 1 : 0) !== 1) {
+            fouten.push('voorwaarde ' + i + ': geef precies één van `stap`, `pid`, `gebeurtenis` of `adapter`');
+            return;
+          }
+          /* De twee soorten van 23-09-2026 (#277). "De adapter er even uit"
+             kreeg "gesloten" zonder dat de adapter eruit was geweest, en "de
+             goedkope adapter" werd op de MX+ beoordeeld: waar een opdracht
+             óver gaat, moet ook een voorwaarde zijn. */
+          if (isGebeurtenis) {
+            if (GEBEURTENISSEN.indexOf(String(v.gebeurtenis)) === -1)
+              fouten.push('voorwaarde ' + i + ': gebeurtenis moet een van ' + GEBEURTENISSEN.join(', ') + ' zijn');
+            if (v.minS !== undefined && !_getal(v.minS, 1, GRENZEN.gebeurtenisSMax))
+              fouten.push('voorwaarde ' + i + ': minS moet tussen 1 en ' + GRENZEN.gebeurtenisSMax + ' liggen');
+            return;
+          }
+          if (isAdapter) {
+            if (!_tekst(v.adapter, GRENZEN.adapterMax)) fouten.push('voorwaarde ' + i + ': adapter ontbreekt of is te lang');
+            if (v.niet !== undefined && typeof v.niet !== 'boolean') fouten.push('voorwaarde ' + i + ': niet moet true of false zijn');
             return;
           }
           if (isStap) {
@@ -299,10 +322,12 @@
                    meet: String(p.meet), tussen: [p.tussen[0], p.tussen[1]] };
         }),
         voorwaarden: (o.voorwaarden || []).map(function (v) {
-          return (v.stap !== undefined)
-            ? { wat: v.wat, stap: String(v.stap) }
-            : { wat: v.wat, pid: String(v.pid).toUpperCase(),
-                meet: String(v.meet), tussen: [v.tussen[0], v.tussen[1]] };
+          if (v.stap !== undefined) return { wat: v.wat, stap: String(v.stap) };
+          if (v.gebeurtenis !== undefined)
+            return { wat: v.wat, gebeurtenis: String(v.gebeurtenis), minS: v.minS === undefined ? 5 : v.minS };
+          if (v.adapter !== undefined) return { wat: v.wat, adapter: String(v.adapter), niet: v.niet === true };
+          return { wat: v.wat, pid: String(v.pid).toUpperCase(),
+                   meet: String(v.meet), tussen: [v.tussen[0], v.tussen[1]] };
         })
       }
     };
@@ -351,6 +376,7 @@
         }
         _actief = k.opdracht;
         _herkomst = { id: d.id || '', naam: d.naam || k.opdracht.naam, gewijzigd: d.gewijzigd || '' };
+        _markeer();
         _log('Meetopdracht geladen: ' + _actief.naam + ' (' + _actief.sensoren.length + ' sensoren, ' +
              Math.round(_actief.duurS / 60) + ' min)', 'ok');
         return _actief;
@@ -425,6 +451,7 @@
     _actief = rij.opdracht;
     _herkomst = { id: rij.id, naam: rij.naam, gewijzigd: rij.gewijzigd };
     _laatsteFout = null;
+    _markeer();
     _log('Meetopdracht gekozen: ' + _actief.naam + ' (' + _actief.sensoren.length + ' sensoren, ' +
          Math.round(_actief.duurS / 60) + ' min)', 'ok');
     return _actief;
@@ -484,8 +511,15 @@
      het scherm hoort dat verschil te tonen. */
   function meet(proef) {
     var per = null;
-    try { per = (window.PLRit && typeof PLRit.per === 'function') ? PLRit.per() : null; }
-    catch (e) { console.warn('Opdracht: ritbeeld onleesbaar (#241)', e); }
+    /* Het venster van deze opdracht, en alleen als dat er niet is de hele
+       rit (#277). Dat laatste is een oude schil zonder markeer(); daar is het
+       gedrag van vóór 23-09 het enige dat er is. */
+    var vs = _venster();
+    if (vs) per = vs.per;
+    else {
+      try { per = (window.PLRit && typeof PLRit.per === 'function') ? PLRit.per() : null; }
+      catch (e) { console.warn('Opdracht: ritbeeld onleesbaar (#241)', e); }
+    }
     if (!per) return _uit('LET OP', 'geen ritbeeld — PLRit draait niet, dus deze opdracht is niet te meten', proef, null, 0);
 
     var r = per[proef.pid];
@@ -537,6 +571,8 @@
   function voorwaarden(o, stapGezien) {
     var lijst = (o && Array.isArray(o.voorwaarden)) ? o.voorwaarden : [];
     return lijst.map(function (v) {
+      if (v.gebeurtenis !== undefined) return _gebeurtenis(v);
+      if (v.adapter !== undefined) return _adapterVoorwaarde(v);
       if (v.stap !== undefined) {
         var gezien = null;
         if (stapGezien) {
@@ -573,11 +609,13 @@
      zo goed als een spanning erboven. Het verschil met `gesloten` is dat er
      iemand naar moet kijken. */
   function oordeel(o, stapGezien) {
-    if (!o) return { staat: 'nog niet', reden: 'er is geen opdracht geladen', voorwaarden: [], uitslagen: [] };
+    if (!o) return { staat: 'nog niet', reden: 'er is geen opdracht geladen', voorwaarden: [], uitslagen: [], venster: null };
 
     var vw = voorwaarden(o, stapGezien);
     var uit = (o.proeven || []).map(meet);
-    var uitkomst = function (staat, reden) { return { staat: staat, reden: reden, voorwaarden: vw, uitslagen: uit }; };
+    var vs = _venster();
+    var venster = vs ? { start: vs.start, s: vs.s } : null;
+    var uitkomst = function (staat, reden) { return { staat: staat, reden: reden, voorwaarden: vw, uitslagen: uit, venster: venster }; };
 
     var mist = vw.filter(function (v) { return v.vervuld !== true; });
     if (mist.length)
@@ -598,8 +636,50 @@
       (vw.length ? ', alle ' + vw.length + ' voorwaarden vervuld' : ''));
   }
 
+  /* ── HET MEETVENSTER (#277) ──────────────────────────────────────
+     Kiezen is beginnen. Alles wat deze module meet, komt uit het venster dat
+     bij het kiezen geopend is — niet uit de hele rit. */
+  function _markeer() {
+    try { if (window.PLRit && typeof PLRit.markeer === 'function') return PLRit.markeer(); }
+    catch (e) { console.warn('Opdracht: het meetvenster is niet geopend — het oordeel rekent dan op de hele rit (#277)', e); }
+    return null;
+  }
+  function _venster() {
+    try { return (window.PLRit && typeof PLRit.venster === 'function') ? PLRit.venster() : null; }
+    catch (e) { console.warn('Opdracht: het meetvenster is onleesbaar (#277)', e); return null; }
+  }
+  function _mmss(s) { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+  function _gebeurtenis(v) {
+    var vs = _venster();
+    var basis = { wat: v.wat, soort: 'gebeurtenis', gebeurtenis: v.gebeurtenis, waarde: null };
+    if (!vs) return Object.assign(basis, { vervuld: null, detail: 'niet na te gaan — er is geen meetvenster' });
+    var minS = v.minS || 5;
+    var gaten = vs.meetgaten.filter(function (g) { return (g.s || 0) >= minS; }).length;
+    var herv = vs.herverbindingen || 0;
+    var n = v.gebeurtenis === 'meetgat' ? gaten : v.gebeurtenis === 'herverbinding' ? herv : gaten + herv;
+    var noem = v.gebeurtenis === 'meetgat' ? 'meetgat' : v.gebeurtenis === 'herverbinding' ? 'herverbinding' : 'onderbreking';
+    return Object.assign(basis, { vervuld: n > 0, waarde: n,
+      detail: n > 0 ? n + '× ' + noem + ' in dit venster (' + gaten + ' meetgat, ' + herv + ' herverbinding)'
+                    : 'geen ' + noem + ' in dit venster van ' + _mmss(vs.s) });
+  }
+
+  function _adapterVoorwaarde(v) {
+    var naam = '';
+    try { naam = (typeof _plLogAdapter === 'function') ? String(_plLogAdapter() || '') : ''; }
+    catch (e) { console.warn('Opdracht: de adapternaam is onleesbaar (#277)', e); }
+    var basis = { wat: v.wat, soort: 'adapter', adapter: v.adapter, waarde: naam || null };
+    if (!naam || naam === 'onbekend') return Object.assign(basis, { vervuld: null, detail: 'niet na te gaan — geen adapternaam bekend' });
+    var bevat = naam.toLowerCase().indexOf(String(v.adapter).toLowerCase()) !== -1;
+    var ok = v.niet ? !bevat : bevat;
+    return Object.assign(basis, { vervuld: ok,
+      detail: 'verbonden: ' + naam + (ok ? '' : ' — de opdracht vraagt ' + (v.niet ? 'een andere adapter dan' : 'een adapter met') + ' "' + v.adapter + '"') });
+  }
+
   window.PLOpdracht = {
     keur: keur,
+    venster: _venster,
+    mmss: _mmss,
     voorwaarden: voorwaarden,
     oordeel: oordeel,
     haal: haal,
