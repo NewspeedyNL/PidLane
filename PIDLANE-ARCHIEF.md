@@ -199,17 +199,26 @@ onderbreking, een andere adapter) had geen manier om die gebeurtenis te eisen.
 De voorwaardensoorten waren `pid` en `stap`, en geen van beide kan zeggen "de
 adapter is eruit geweest".
 
-**Wat er veranderde.** `PLRit.markeer()` opent een venster bij het kiezen, en
-alles wat de opdracht meet komt daaruit (zelfde `neem()`, eigen tellers). Twee
-voorwaardensoorten erbij: `gebeurtenis` (meetgat, herverbinding of
-onderbreking, in het venster) en `adapter` (tekst in de adapternaam, met `niet`
-voor het omgekeerde). Het grote cijfer volgt het driewaardige eindoordeel en
-toont het venster; de uitkomstregel in D1 draagt "venster m:ss min"; wisselen
-zonder verzenden zet "afgebroken na m:ss, niet verzonden" in de sessieregel.
+**Een eerste reparatie die de verkeerde kant op ging.** Dezelfde middag kreeg
+elke opdracht een eigen meetvenster vanaf het kiezen. Dat maakte het oordeel
+schoon, en de rit duur: wie tien minuten reed voor opdracht 1, moest ze voor
+opdracht 2 opnieuw rijden, en drie keer vol gas gold maar voor één opdracht.
+Dat venster is teruggedraaid vóór het live ging. Hergebruik was niet de fout;
+*lenen wat je niet mag lenen* was de fout.
 
-**De les.** Een sessienummer is geen meetvenster, en een kleur is een oordeel.
-Wat op het scherm als uitkomst leest, moet uit dezelfde functie komen als wat
-er verzonden wordt — dezelfde regel als #246, nu voor de kleur.
+**Wat er veranderde.** Eén rit, alle opdrachten tegelijk: `oordeelAlle()`
+beoordeelt elke opdracht op dezelfde ritgegevens, de meetkamer toont wat de rit
+al beantwoordt, en "Verzend alle afgeronde" stuurt gesloten en bevindingen, elk
+één keer (een stempel per opdracht in plaats van één voor alles). Twee
+voorwaardensoorten voor wat niet geleend mag worden: `gebeurtenis` (meetgat,
+herverbinding of onderbreking in deze rit) en `adapter` (tekst in de
+adapternaam, met `niet` voor het omgekeerde). Het grote cijfer volgt het
+driewaardige eindoordeel; de ritduur staat eronder en reist mee naar D1.
+
+**De les.** Een kleur is een oordeel: wat op het scherm als uitkomst leest,
+moet uit dezelfde functie komen als wat er verzonden wordt — dezelfde regel als
+#246. En een opdracht die over een gebeurtenis gaat, moet die gebeurtenis
+kunnen eisen; anders is "binnen de band" een antwoord op een andere vraag.
 
 ### 22-09-2026 — wat SQL mogelijk maakt en Airtable niet (#262, #260, #241)
 
