@@ -175,6 +175,42 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 23-09-2026 — groen zien, verzenden, en dan toch niet (#277)
+
+**Wat er gebeurde.** Na een geslaagde rit met het kleine venster (#228) werd er
+snel door de opdrachtenlijst geklikt. Elke opdracht kreeg binnen drie seconden
+een oordeel, en drie ervan "gesloten": *De adapter er even uit* zonder dat de
+adapter eruit was geweest, *De goedkope adapter* op de MX+, en de MAF-vuistregel
+op een doortrek van tien minuten eerder. Start/stop had 3 s na het kiezen 144
+monsters.
+
+**Twee oorzaken, allebei in de vorm en niet in de data.**
+
+1. `PLOpdracht.meet()` las `PLRit.per()`, en dat is de accumulator van de hele
+   rit. Kiezen startte een nieuwe *sessie* (een nieuw nummer in D1), maar niet
+   een nieuw *meetvenster*. Het nummer suggereerde een scheiding die de meting
+   niet had.
+2. Het grote cijfer in de meetkamer kleurde op de proeven alleen; de
+   voorwaarden telden pas in de verzendknop eronder. Groen bovenaan, "NOG NIET"
+   op de knop — en wie rijdt, leest het grote getal.
+
+Daaronder zat een derde: een opdracht die over een gebeurtenis gaat (een
+onderbreking, een andere adapter) had geen manier om die gebeurtenis te eisen.
+De voorwaardensoorten waren `pid` en `stap`, en geen van beide kan zeggen "de
+adapter is eruit geweest".
+
+**Wat er veranderde.** `PLRit.markeer()` opent een venster bij het kiezen, en
+alles wat de opdracht meet komt daaruit (zelfde `neem()`, eigen tellers). Twee
+voorwaardensoorten erbij: `gebeurtenis` (meetgat, herverbinding of
+onderbreking, in het venster) en `adapter` (tekst in de adapternaam, met `niet`
+voor het omgekeerde). Het grote cijfer volgt het driewaardige eindoordeel en
+toont het venster; de uitkomstregel in D1 draagt "venster m:ss min"; wisselen
+zonder verzenden zet "afgebroken na m:ss, niet verzonden" in de sessieregel.
+
+**De les.** Een sessienummer is geen meetvenster, en een kleur is een oordeel.
+Wat op het scherm als uitkomst leest, moet uit dezelfde functie komen als wat
+er verzonden wordt — dezelfde regel als #246, nu voor de kleur.
+
 ### 22-09-2026 — wat SQL mogelijk maakt en Airtable niet (#262, #260, #241)
 
 Dit is de tweede helft van de verhuizing hierboven: niet alleen de schrijfkant
