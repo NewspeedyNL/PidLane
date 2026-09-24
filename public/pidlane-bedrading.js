@@ -86,6 +86,8 @@ var KRITIEK = [
   'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
+  // Blok 5 vraagt het begin van een analyse achter een guard (#290).
+  '_plVoorvragenAan','plMeetPoortVraag',
   // De uitleesknop in Welk onderdeel? (#233) roept scanDTC achter een guard.
   'scanDTC',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',
