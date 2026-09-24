@@ -86,6 +86,27 @@ function toets(naam, waar, uitleg) {
     toets('laag 1 weigert 300 °C koelwater', h.teHoog === null, 'kreeg ' + h.teHoog);
     toets('laag 1 laat 90 °C door', h.normaal === 90, 'kreeg ' + h.normaal);
 
+    // ── 3b. ÉÉN GEBEURTENIS, ÉÉN REGEL IN DE LOGTABEL (#256) ─────
+    // Alleen hier te zien: pidlane-veldlab.js hangt een omhulling om log(),
+    // en die bestaat pas als alle modules geladen zijn. Tot 24-09 gaf die
+    // omhulling maar twee argumenten door, viel `{geenAirtable:true}` eraf, en
+    // stond elke harde-limietmelding twee keer in D1 — terwijl
+    // test-logvelden.js, die log() los aanroept, groen stond.
+    const tabel = await app.ev(`(function(){
+      const echt = logToSheets, gestuurd = [];
+      logToSheets = function(soort, msg){ gestuurd.push(soort + ': ' + msg); return Promise.resolve(); };
+      const bV = pidVals['0105'];
+      try { delete pidVals['0105']; validateAndSmooth('0105', 300); }
+      finally {
+        logToSheets = echt;
+        if (bV === undefined) delete pidVals['0105']; else pidVals['0105'] = bV;
+      }
+      return JSON.stringify(gestuurd);
+    })()`);
+    const regels = JSON.parse(tabel).filter(r => /300/.test(r));
+    toets('één harde-limietmelding geeft één regel in de logtabel', regels.length === 1,
+          regels.length + ' regels: ' + regels.join(' | '));
+
     // ── 4. DE NEP-ADAPTER VOEDT DE ECHTE KETEN ───────────────────
     // Niet parsePID los aanroepen maar sendCmd, zodat PLBus.note() en
     // trackBtQuality() meedraaien — dat is waar de meetketen echt langsgaat.
