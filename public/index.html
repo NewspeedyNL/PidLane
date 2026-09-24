@@ -63,6 +63,27 @@
 <link rel="stylesheet" href="pidlane.css"><!-- hoofd-CSS → pidlane.css -->
 </head>
 <body>
+<!-- ══ OPSTART-INTRO (24-09-2026) — zie pidlane-intro.js voor het waarom ══
+     Staat bewust als eerste in de body: het donkere vlak moet er zijn vóór
+     de rest van de app getekend wordt. Het script direct hieronder beslist
+     meteen of het mag blijven; zo niet, dan is het weg vóór de eerste frame.
+     De tijdlijn staat in pidlane.css bij #plIntro. -->
+<div id="plIntro" aria-hidden="true">
+  <div class="pli-bg"></div>
+  <div class="pli-gloed"></div>
+  <div class="pli-baan">
+    <i class="pli-h" style="animation-delay:.15s"></i><i class="pli-h" style="animation-delay:.37s"></i><i class="pli-h" style="animation-delay:.59s"></i><i class="pli-h" style="animation-delay:.81s"></i><i class="pli-h" style="animation-delay:1.03s"></i>
+    <i class="pli-d" style="animation-delay:0s"></i><i class="pli-d" style="animation-delay:.125s"></i><i class="pli-d" style="animation-delay:.25s"></i><i class="pli-d" style="animation-delay:.375s"></i><i class="pli-d" style="animation-delay:.5s"></i><i class="pli-d" style="animation-delay:.625s"></i>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false"><defs><linearGradient id="pliBaanGr" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><path d="M 4 100 L 47.6 0" stroke="url(#pliBaanGr)" stroke-width="2.4" fill="none" stroke-linecap="round" vector-effect="non-scaling-stroke"/><path d="M 96 100 L 52.4 0" stroke="url(#pliBaanGr)" stroke-width="2.4" fill="none" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
+  </div>
+  <div class="pli-logo"><div class="pli-zoom"><svg viewBox="0 0 512 512" focusable="false"><defs><linearGradient id="pliBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="pliGr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="pliSp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><filter id="pliGl" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="pliSg" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect class="pli-tegel" width="512" height="512" rx="112" fill="url(#pliBg)"/><g class="pli-wegdek" stroke="#2C3A4E" stroke-linecap="round" fill="none"><path pathLength="1" d="M 198 314 L 84 480" stroke-width="13"/><path pathLength="1" d="M 314 314 L 428 480" stroke-width="13"/><path pathLength="1" d="M 256 310 L 256 321" stroke-width="7"/><path pathLength="1" d="M 256 332 L 256 347" stroke-width="8.5"/><path pathLength="1" d="M 256 360 L 256 380" stroke-width="10"/><path pathLength="1" d="M 256 396 L 256 422" stroke-width="11.5"/><path pathLength="1" d="M 256 442 L 256 474" stroke-width="13"/></g><path class="pli-ballon" pathLength="1" d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#pliGr)" stroke-width="17" stroke-linejoin="round" filter="url(#pliGl)"/><path class="pli-puls" pathLength="1" d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><g class="pli-vonk"><circle cx="404" cy="96" r="52" fill="#0E1320"/><g filter="url(#pliSg)"><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#pliSp)"/><path d="M 452 132 C 454 143 458 148 470 151 C 458 154 454 159 452 170 C 450 159 446 154 434 151 C 446 148 450 143 452 132 Z" fill="#00D4FF"/></g></g></svg></div></div>
+  <div class="pli-naam">Pid<span>Lane</span></div>
+</div>
+<script src="pidlane-intro.js"></script>
+<script>/* Laadt pidlane-intro.js niet, dan meteen weg — niet 8 s zwart tot de noodrem. */
+if(window.PLIntro) PLIntro.start();
+else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; console.warn('PLIntro ontbreekt — intro overgeslagen'); }</script>
+
 <div id="busyPill"><span class="sp"></span><span id="busyPillTxt">Hoge busactiviteit — voertuig in kaart brengen…</span><span class="bars"><i></i><i></i><i></i><i></i></span></div>
 
 <!-- ══ LOGIN-ACHTERGROND — schaalbaar lint (vervangt login-ribbon.webp) ══
