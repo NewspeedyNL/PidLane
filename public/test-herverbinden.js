@@ -26,7 +26,7 @@ function toets(naam, waar, uitleg) {
 }
 
 const bron = fs.readFileSync('pidlane-bt.js', 'utf8');
-const KOP = 'async function connectSerial(){';
+const KOP = 'async function connectSerial(opt){';
 const STAART = '\nfunction resetConnectBtn(){';
 const van = bron.indexOf(KOP), tot = bron.indexOf(STAART);
 if (van < 0 || tot < van) {
@@ -104,6 +104,26 @@ function laad(o) {
     await s.connectSerial();
     toets('verbonden, en de melding over de vlag staat in de BT-log',
       s.diag.some((m) => /Herverbindvlag niet bewaard/.test(m)), s.diag.slice(-3).join(' | '));
+  }
+
+  console.log('\n5. De stand "hervatten" (#229): alleen een automatische poging zet hem');
+  {
+    const { s } = laad({ lukt: true });
+    await s.connectSerial({ hervat: 'herlaad' });
+    toets('een automatische herverbinding zet de stand, met de reden', s._plHervat && s._plHervat.reden === 'herlaad',
+      JSON.stringify(s._plHervat));
+  }
+  {
+    const { s } = laad({ lukt: true });
+    s._plHervat = { t: Date.now(), reden: 'oud' };
+    await s.connectSerial({ type: 'click' });
+    toets('TEGENPROEF: de knop (of een klik-event) wist hem — die vraagt zoals altijd', s._plHervat === null,
+      JSON.stringify(s._plHervat));
+  }
+  {
+    const { s } = laad({ lukt: false });
+    await s.connectSerial({ hervat: 'dode socket' });
+    toets('een mislukte hervatting vervalt: de volgende poging vraagt weer', s._plHervat === null, JSON.stringify(s._plHervat));
   }
 
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));

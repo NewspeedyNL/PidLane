@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function(){
             if(connected) return;
             if(getSPP()){
               log('Automatisch herverbinden...','info');
-              setTimeout(()=>{ if(!connected) connectSerial(); },800);
+              setTimeout(()=>{ if(!connected) connectSerial({ hervat: 'herlaad' }); },800);
               return;
             }
             if(n<3) setTimeout(()=>probeer(n+1),1000);

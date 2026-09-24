@@ -935,6 +935,11 @@ MUTATIES=(
 "public/pidlane-auth.js@@  'Demo','Repro','Device']);@@  'Demo','Repro','Device','Koelwater']);@@test-logschema.js@@een nieuw logveld in de app zonder kolom in D1: die waarde belandt stil in \`onbekend\`"
 "public/pidlane-bt.js@@          try{ localStorage.setItem('pl_autoconn','1'); }@@          try{ }@@test-herverbinden.js@@niets zet de herverbindvlag: na elke rendercrash weer met de hand op Verbinden, zoals tot 24-09 (#229)"
 "public/pidlane-uihelpers.js@@    try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // bewust verbroken@@    // bewust verbroken@@test-herverbinden.js@@bewust verbreken wist de wens niet: de app verbindt opnieuw terwijl je hem net losmaakte (#229)"
+"public/pidlane-bt.js@@    if(vorig && _hervatActief()){@@    if(false){@@test-hervatten.js@@na een crash vraagt de app weer het kenteken: een tik tijdens het rijden (#229)"
+"public/pidlane-bt.js@@  if(heeftAuto && selectedNetwork && selectedNetwork.auto && _hervatActief() && !window._plHervat.protocol){@@  if(false){@@test-hervatten.js@@na een crash moet het protocol weer met de hand bevestigd worden (#229)"
+"public/pidlane-bt.js@@    window._plHervat.protocol = true;@@    void 0;@@test-hervatten.js@@elke hertekening start de protocolscan opnieuw: twee scans door elkaar op de bus (#229)"
+"public/pidlane-bt.js@@          kentekenOverslaan();\n        }\n      }).catch(@@        }\n      }).catch(@@test-hervatten.js@@zonder bereik blijft een hervatting op het kentekenscherm hangen (#229)"
+"public/pidlane-bt.js@@  window._plHervat = (opt && typeof opt.hervat === 'string') ? { t: Date.now(), reden: opt.hervat } : null;@@  window._plHervat = { t: Date.now(), reden: 'altijd' };@@test-herverbinden.js@@ook de knop slaat de vragen over: een andere auto krijgt het kenteken van gisteren (#229)"
 "schema.sql@@  Message       TEXT,@@  Bericht       TEXT,@@test-logschema.js@@een kolom in D1 hernoemd zonder de app mee te nemen: het berichtveld komt nergens meer aan"
 # ── De logroute schrijft sinds #262 naar D1. Deze drie bouwen de fouten na
 # die deze route al eens gemaakt heeft of makkelijk weer maakt, en ze gaan

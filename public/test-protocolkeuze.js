@@ -296,7 +296,9 @@ function laadScherm(vervangRender) {
     selectedNetwork: null,
     _protoHandmatigOpen: false,
     _gedetecteerdProtocol: null,
-    laatsteKnopNet: null
+    laatsteKnopNet: null,
+    // Verbonden met de knop: geen hervatting (#229). Die tak toetst test-hervatten.js.
+    _hervatActief: function () { return false; }
   };
   ctx.window = ctx;
   vm.createContext(ctx);
