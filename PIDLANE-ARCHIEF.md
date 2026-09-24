@@ -195,6 +195,29 @@ Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
 De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
 *staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
 
+### 24-09-2026 — het venster dat vóór elke analyse stond (#290)
+
+"Voor de analyse" (#62, #64) hing in `apiFetch()`, dus vóór élke AI-aanroep,
+ook vóór de oorzakenlijst van de AI-monteur die alleen de klachttekst leest.
+Bij het eerste gebruik als klant kwam het dus meteen, vóór er iets gemeten
+was, en de vragen heetten "overbodig en storend". Twee van de drie wist de
+app al zelf (#64 punt 3 had ze al als voorstel voorgevuld); de stap die
+ontbrak was ze niet meer te vrágen.
+
+Erger was het wegklikken. `_srCtxDismiss` loste op als "ga door zonder
+context", en de analyse, en het tegoed, liep alsnog. En een annulering in de
+tegoedcontrole kwam in `callAI()` in de noodroute terecht, die een
+regelgebaseerd "rapport" liet zien. Een bewuste nee werd behandeld als een
+storing.
+
+Wat wel gevraagd werd, bestond al: de meetpoort van 27-07 en de
+driefasenpoort van 02-08 (`plVraagMeting`). Alleen verscheen die alleen bij te
+weinig data, had hij geen annuleren, en de AI-monteur ging er niet
+doorheen.
+
+Bij het meten liep ook de schermrandproef vast: `wachtAnimatiesKlaar` wachtte
+op de spinner in de bezigbalk, en een oneindige animatie wordt nooit klaar.
+
 ### 24-09-2026 — de keuzeschermen: ingedeeld naar onderwerp, gebruikt naar moment (#286)
 
 De deuren waren gegroeid per onderwerp: live data, diagnose, geld, verbruik,

@@ -265,11 +265,36 @@ function plMeetStartStopVoorstel(){
   }catch(e){ return {waarde:'', reden:'niet vast te stellen'}; }
 }
 
+/* DE VRAGEN STAAN STANDAARD UIT (24-09-2026). Op de rit van die avond, bij
+   het eerste gebruik van de AI-monteur als klant: het venster kwam direct in
+   beeld — vóór de oorzakenlijst, die alleen de klachttekst gebruikt — en de
+   vragen heetten "overbodig en storend". Twee van de drie weet de app al zelf
+   (plMeetStartStopVoorstel, plMeetStabielVoorstel); de derde (deed de klacht
+   zich voor) is hooguit bij een rit zinvol. Aan met `feat_voorvragen` in de
+   Config, of één keer met {vragen:true} zoals de #64-stap van de testrun doet.
+   Wat de app zelf vaststelt gaat nu zonder vraag mee: zie hieronder. */
+function _plVoorvragenAan(opties){
+  if(opties && opties.vragen===true) return true;
+  try{ return _cfgBool((window.PID_CONFIG||{}).feat_voorvragen, false); }
+  catch(e){ console.warn('feat_voorvragen niet leesbaar — de vragen blijven uit', e); return false; }
+}
+
+// Wat de meting zelf zegt, als niemand iets heeft ingevuld. Alleen een
+// voorstel mét waarde telt; "niet vast te stellen" levert geen regel op.
+function _plMeetcontextUitMeting(){
+  const uit={};
+  try{ const s=plMeetStartStopVoorstel(); if(s && s.waarde) uit.startstop=s.waarde; }
+  catch(e){ console.warn('Start/stop niet uit de meting te halen voor de AI-prompt', e); }
+  try{ const s=plMeetStabielVoorstel(); if(s && s.waarde) uit.stabiel=s.waarde; }
+  catch(e){ console.warn('Stabiliteit niet uit de meting te halen voor de AI-prompt', e); }
+  return uit;
+}
+
 // De regel die aan élke AI-prompt geplakt wordt.
 function plMeetcontextPromptLine(){
   try{
-    const m=window._plMeetcontext;
-    if(!m) return '';
+    let m=window._plMeetcontext, bron='door de gebruiker opgegeven vlak vóór deze analyse';
+    if(!m){ m=_plMeetcontextUitMeting(); bron='door de app vastgesteld uit de meting zelf, niet gevraagd'; }
     const r=[];
     PL_VOORVRAGEN.forEach(v=>{
       const a=m[v.key];
@@ -278,7 +303,7 @@ function plMeetcontextPromptLine(){
     const extra=String(m.extra||'').trim();
     if(extra) r.push('- Opgegeven door de gebruiker: '+extra);
     if(!r.length) return '';
-    return '\n\nMEETCONTEXT (door de gebruiker opgegeven vlak vóór deze analyse — weeg dit mee vóór je een conclusie trekt):\n'+r.join('\n');
+    return '\n\nMEETCONTEXT ('+bron+' — weeg dit mee vóór je een conclusie trekt):\n'+r.join('\n');
   }catch(e){ return ''; }
 }
 
@@ -296,9 +321,9 @@ function plMeetcontextKort(){
 let _srAskPending = null;
 // Vraagt wat er nog te vragen valt en lost op met {rapporten:bool}.
 // Valt er niets meer te vragen, dan verschijnt er ook geen venster.
-function plVoorAnalyse(heeftRapporten){
+function plVoorAnalyse(heeftRapporten, opties){
   const vraagRapporten = !!heeftRapporten && window._srUseContext===null;
-  const vraagContext   = (window._plMeetcontext===null);
+  const vraagContext   = (window._plMeetcontext===null) && _plVoorvragenAan(opties);
   if(!vraagRapporten && !vraagContext)
     return Promise.resolve({rapporten: window._srUseContext===true});
   if(_srAskPending) return _srAskPending;
@@ -382,7 +407,7 @@ function plVoorAnalyse(heeftRapporten){
       };
     });
 
-    const done=(bewaarContext)=>{
+    const done=(bewaarContext, geannuleerd)=>{
       let rapporten=true;
       if(vraagRapporten){
         rapporten = gekozen._rap!=='nee';
@@ -408,7 +433,7 @@ function plVoorAnalyse(heeftRapporten){
         try{ logUsage?.('meetcontext', plMeetcontextKort()); }catch(e){ console.warn('logUsage mislukt:', e); }
       }
       ov.style.display='none'; _srAskPending=null; window._srCtxDismiss=null;
-      res({rapporten:rapporten});
+      res({rapporten:rapporten, geannuleerd:!!geannuleerd});
     };
 
     ov.querySelector('#srCtxGo').onclick=()=>done(true);
@@ -419,8 +444,10 @@ function plVoorAnalyse(heeftRapporten){
       if(vraagContext) window._plMeetcontext={startstop:'',klacht:'',stabiel:'',extra:'',bron:{}};
       done(false);
     };
-    // Wegklikken / hardware-back = deze keer niets meenemen, niets onthouden.
-    window._srCtxDismiss=()=>{ gekozen._rap='nee'; done(false); };
+    // Wegklikken / hardware-back = ANNULEREN (24-09-2026). Tot dan betekende
+    // het "ga door zonder context", en liep de analyse — en het tegoed — door
+    // terwijl de gebruiker net had aangegeven hem niet te willen.
+    window._srCtxDismiss=()=>{ gekozen._rap='nee'; done(false, true); };
     ov.onclick=e=>{ if(e.target===ov) window._srCtxDismiss?.(); };
     ov.style.display='flex';
   });

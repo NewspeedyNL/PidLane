@@ -100,7 +100,12 @@ function maakOmgeving(opties) {
     activePIDs: new Set(opties.pids || []),
     pidHist: opties.hist || {},
     dataStable: opties.stabiel !== false,
-    _sessionReports: []
+    _sessionReports: [],
+    // De vragen staan sinds 24-09-2026 standaard uit (feat_voorvragen). De
+    // toetsen hieronder gaan over het venster zelf, dus hier staat hij aan;
+    // `vragenUit` toetst de standaard. _cfgBool is niet het onderwerp.
+    PID_CONFIG: { feat_voorvragen: opties.vragenUit ? undefined : true },
+    _cfgBool: function (v, def) { return v === undefined || v === null || v === '' ? def : (v === true || v === 'true' || v === '1' || v === 1); }
   };
   // De aandrijfstatus, zoals pidlane-aandrijving.js hem aanlevert. Niet de
   // hele module: het voorstel leest één uitkomst van laatste(), en dát is wat
@@ -415,6 +420,62 @@ function keurOverslaan() {
   return uit;
 }
 
+/* De standaard sinds 24-09-2026: geen venster, en wat de meting zelf zegt
+   gaat zonder vraag mee. Een gat in de reeks en een geziene start/stop-stop
+   moeten dus in de prompt staan, als door de app vastgesteld. */
+function keurStandaardZonderVragen() {
+  const ctx = maakOmgeving({ vragenUit: true, pids: ['010C'],
+    hist: { '010C': reeks(40, 1000, 20) },
+    stand: { toestand: 'RIJDT', startStopGezien: true, heeftGedraaid: true } });
+  const uit = [];
+  let opgelost = null;
+  ctx.plVoorAnalyse(false).then(function (r) { opgelost = r; });
+  if (ctx.gemaakt.length) uit.push('er verschijnt tóch een venster terwijl de vragen uit staan');
+  const regel = ctx.plMeetcontextPromptLine();
+  if (!/vastgesteld uit de meting/.test(regel)) uit.push('de promptregel zegt niet dat de app het zelf vaststelde: ' + JSON.stringify(regel.slice(0, 120)));
+  if (!/start\/stop/i.test(regel)) uit.push('de geziene start/stop-stop gaat niet mee naar de AI');
+  if (!/onderbrekingen|gaten/i.test(regel)) uit.push('het gat in de reeks gaat niet mee naar de AI');
+  return { uit: uit, opgelost: function () { return opgelost; } };
+}
+
+/* Wegklikken of terug is annuleren, en Overslaan is dat niet (24-09-2026:
+   na "terug" liep de analyse toch). */
+function keurAnnulerenIsAnnuleren() {
+  const uit = [];
+  const ctx = maakOmgeving();
+  const echt = ctx.document.createElement;
+  ctx.document.createElement = function (t) {
+    const e = echt(t);
+    e._sel['#srCtxGo'] = [new Element('button')]; e._sel['#srCtxSkip'] = [new Element('button')]; e._sel['.pl-vk'] = [];
+    ctx.reg['srCtxAsk'] = e; return e;
+  };
+  let r = null;
+  ctx.plVoorAnalyse(false).then(function (x) { r = x; });
+  if (typeof ctx.window._srCtxDismiss !== 'function') return Promise.resolve(['het venster kent geen wegklik-route']);
+  ctx.window._srCtxDismiss();
+  return new Promise(function (klaar) {
+    setImmediate(function () {
+      if (!r || r.geannuleerd !== true) uit.push('wegklikken lost niet op als geannuleerd: ' + JSON.stringify(r));
+      // Tegenproef: Overslaan gaat door, zonder context.
+      const ctx2 = maakOmgeving();
+      const go = new Element('button'), skip = new Element('button');
+      const echteCreate = ctx2.document.createElement;
+      ctx2.document.createElement = function (t) {
+        const e = echteCreate(t);
+        e._sel['#srCtxGo'] = [go]; e._sel['#srCtxSkip'] = [skip]; e._sel['.pl-vk'] = [];
+        ctx2.reg['srCtxAsk'] = e; return e;
+      };
+      let r2 = null;
+      ctx2.plVoorAnalyse(false).then(function (x) { r2 = x; });
+      skip.onclick();
+      setImmediate(function () {
+        if (!r2 || r2.geannuleerd) uit.push('TEGENPROEF: Overslaan annuleert de analyse, terwijl dat "ga door zonder context" is');
+        klaar(uit);
+      });
+    });
+  });
+}
+
 // ── draaien ──────────────────────────────────────────────────────
 console.log('Voor de analyse — de vragen komen bij de AI aan (issue #62)\n');
 
@@ -425,6 +486,7 @@ toetsSchoon('is alles al beantwoord, dan komt er geen venster', keurGeenVensterZ
 toetsSchoon('klikken → opslaan → promptregel', keurAntwoordenKomenAan());
 toetsSchoon('een voorgevulde start/stop telt ook zonder klik', keurVoorvullenStartStop());
 toetsSchoon('overslaan mag, en blijft dan ook weg', keurOverslaan());
+toetsSchoon('standaard: geen vragen, de meting zelf gaat mee naar de AI (24-09-2026)', keurStandaardZonderVragen().uit);
 
 // ── tegenproef ───────────────────────────────────────────────────
 console.log('');
@@ -442,5 +504,8 @@ toetsMeldt('zonder de start/stop-uitleg valt de promptregel door de mand (tegenp
   return /start\/stop/i.test(t) ? [] : ['"start/stop is actief" komt niet in de prompt terecht'];
 })(), 'komt niet in de prompt terecht');
 
-console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
-process.exit(fout ? 1 : 0);
+keurAnnulerenIsAnnuleren().then(function (uit) {
+  toetsSchoon('wegklikken annuleert de analyse, Overslaan niet', uit);
+  console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
+  process.exit(fout ? 1 : 0);
+});

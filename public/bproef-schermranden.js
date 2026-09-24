@@ -176,6 +176,12 @@ async function wachtAnimatiesKlaar(app, id) {
     let an = [];
     try { an = el.getAnimations ? el.getAnimations({ subtree: true }) : []; }
     catch (e) { return { n: 0, fout: 'getAnimations() gaf ' + e.message }; }
+    // Een oneindige animatie (de spinner in "AI analyseert…") wordt nooit
+    // klaar; daarop wachten liet deze proef op 24-09 eindeloos hangen.
+    an = an.filter(function (a) {
+      try { return !(a.effect && a.effect.getTiming && a.effect.getTiming().iterations === Infinity); }
+      catch (e) { return true; }
+    });
     await Promise.all(an.map(function (a) { return a.finished.catch(function () { }); }));
     return { n: an.length };
   })()`);
@@ -235,7 +241,13 @@ const VELLEN = [
   // Dit vel gaat dicht met de klasse `hidden`, niet met display:none — een
   // inline display bleef anders staan en de volgende wizShow() toonde niets.
   { naam: 'Klaar voor gebruik (#286)', open: 'wizShow',        id: 'wizardOv',
-    sluit: `e.classList.add('hidden');` }
+    sluit: `e.classList.add('hidden');` },
+  // Erbij op 24-09-2026: "AI analyseert…" viel achter de knoppenbalk op een
+  // schermfoto van de AI-monteur, en het meetscherm vóór een analyse is nieuw
+  // in zijn huidige vorm.
+  { naam: 'Balk "AI analyseert"',  open: 'aiBusyBegin',         id: 'aiBusyBar',
+    geenKnop: true, sluit: `aiBusyEnd();` },
+  { naam: 'Meetscherm vóór een analyse', open: 'plMeetPoortVraag', id: 'meetGateOv' }
 ];
 
 /* De twee vellen van de deel-module staan in index.html en gaan open met een
@@ -340,11 +352,14 @@ async function keurVel(app, v, waar, sluit) {
   await app.ev(`${v.open}(); true`);
   await wachtTotVelStaat(app, v.id);
 
-  const k = await app.ev(`${METER}('${v.id}')`);
-  if (k.fout) toets(v.naam + bij + ': meetbaar', false, k.fout);
-  else toets(v.naam + bij + ': ' + k.ruimteOnder + 'px onder knop "' + k.knop + '"',
-             k.ruimteOnder >= NAVBALK,
-             'minder dan de navigatiebalk (' + NAVBALK + 'px) — die knop zit er deels achter');
+  // Een balk zonder knop (de AI-bezigbalk) meet alleen zijn tekst.
+  if (!v.geenKnop) {
+    const k = await app.ev(`${METER}('${v.id}')`);
+    if (k.fout) toets(v.naam + bij + ': meetbaar', false, k.fout);
+    else toets(v.naam + bij + ': ' + k.ruimteOnder + 'px onder knop "' + k.knop + '"',
+               k.ruimteOnder >= NAVBALK,
+               'minder dan de navigatiebalk (' + NAVBALK + 'px) — die knop zit er deels achter');
+  }
 
   const t = await app.ev(`${TEKSTMETER}('${v.id}')`);
   if (t.fout) toets(v.naam + bij + ': tekst meetbaar', false, t.fout);

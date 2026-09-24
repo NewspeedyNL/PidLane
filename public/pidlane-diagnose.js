@@ -323,6 +323,13 @@ function renderNextCause(idx){
   nb.appendChild(btn);
 }
 async function runDiagAI(causeName){
+  // Eerst de meting (24-09-2026): de uitwerking leest de sensordata, dus hier
+  // hoort het meetscherm — met "gebruik de meting van zojuist", "nog even
+  // meten" en "annuleren". De oorzakenlijst ervóór gebruikt alleen de
+  // klachttekst en krijgt dit scherm dus niet. Geen profiel: de verificatie
+  // heeft de sensoren van deze oorzaak al aangezet, en een profiel zou die
+  // selectie hier overschrijven.
+  if(!(await plVraagMeting('normaal', 'de uitwerking van "'+causeName+'"', false))) return;
   const v=getVehicle();
   const desc=document.getElementById('diagDesc').value;
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent).join(', ');

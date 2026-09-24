@@ -256,6 +256,38 @@ function toets(naam, waar, uitleg) {
     toets('een gat buiten die periode wijst naar de verbinding, niet naar de telefoon',
           /terwijl de app gewoon in beeld stond/.test(naam), String(naam).slice(0, 600));
 
+    /* 24-09-2026: "bij terug klikken gaat de AI-analyse toch lopen terwijl ik
+       annuleer". Het venster vóór de analyse wordt weggeklikt (de route van de
+       Android-terugknop), en dan hoort er niets verstuurd te worden. */
+    console.log('\n4. Wegklikken vóór de analyse annuleert hem echt');
+    const annuleer = JSON.parse(await app.ev(`(async function(){
+      const echtFetch = window.plFetch, echtCred = window.PLCredits;
+      const echtCtx = window._plMeetcontext, echtSr = window._srUseContext, echtRap = window._sessionReports;
+      // Een eerder rapport in deze sessie: dan stelt het venster de
+      // rapportenvraag, ook nu de meetcontextvragen uit staan.
+      window._plMeetcontext = {}; window._srUseContext = null; window.PLCredits = null;
+      window._sessionReports = [{ text: 'Eerder rapport: accu 12,1 V.', type: 'ai', ts: new Date() }];
+      let verstuurd = false;
+      window.plFetch = async function(){ verstuurd = true;
+        return { ok: true, headers: { get: function(){ return null; } },
+                 json: async function(){ return { content: [{type:'text', text:'x'}], stop_reason: 'end_turn', usage: {} }; } }; };
+      const loopt = apiFetch('Toets het annuleren.', 50, null, null, {set:'monteur'});
+      await new Promise(function(r){ setTimeout(r, 50); });
+      const venster = !!document.getElementById('srCtxAsk') && document.getElementById('srCtxAsk').style.display !== 'none';
+      if (typeof window._srCtxDismiss === 'function') window._srCtxDismiss();
+      let fout = null, afgebroken = false;
+      try { await loopt; } catch(e){ fout = String(e && e.message || e); afgebroken = !!(e && e.plAfgebroken); }
+      const balk = document.getElementById('aiBusyBar');
+      const balkZichtbaar = !!balk && balk.style.display !== 'none';
+      window.plFetch = echtFetch; window.PLCredits = echtCred;
+      window._plMeetcontext = echtCtx; window._srUseContext = echtSr; window._sessionReports = echtRap;
+      return JSON.stringify({ venster: venster, verstuurd: verstuurd, fout: fout, afgebroken: afgebroken, balk: balkZichtbaar });
+    })()`));
+    toets('het venster stond er (de rapportenvraag)', annuleer.venster, JSON.stringify(annuleer));
+    toets('na wegklikken is er niets verstuurd', annuleer.verstuurd === false, JSON.stringify(annuleer));
+    toets('en apiFetch meldt het als bewust afgebroken', annuleer.afgebroken === true, JSON.stringify(annuleer));
+    toets('en de balk "AI analyseert" komt niet in beeld', annuleer.balk === false, JSON.stringify(annuleer));
+
   } finally {
     await app.stop();
   }
