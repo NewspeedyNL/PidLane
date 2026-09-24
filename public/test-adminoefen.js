@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// test-adminoefen.js — de oefenmodus van de adminpagina lekt niet
+// test-adminoefen.js — de oefenmodus van de beheerpagina lekt niet
 // ──────────────────────────────────────────────────────────────────
 // WAAROM DEZE TEST BESTAAT
 // De adminpagina beheert echte klanten, echt saldo en echte gebruikers. De
@@ -18,6 +18,10 @@
 // plcheck.sh draait `test-*.js` vanuit public/. Een test die daarbuiten staat
 // draait dus nooit, en een controle die niet draait is geen controle.
 //
+// SINDS 24-09-2026 OP beheer.html. Tot dan gold dit admin.html; die pagina is
+// opgegaan in beheer.html en weg. De belofte is dezelfde gebleven, alleen de
+// plek waar hij gehouden moet worden is verhuisd.
+//
 // Draaien vanuit public/:  node test-adminoefen.js   (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
 'use strict';
@@ -30,9 +34,9 @@ function toets(naam, waar, uitleg) {
   else { console.log('  FOUT ' + naam + (uitleg ? ' — ' + uitleg : '')); fouten++; }
 }
 
-const bestand = path.join(__dirname, '..', 'admin', 'admin.html');
+const bestand = path.join(__dirname, '..', 'admin', 'beheer.html');
 if (!fs.existsSync(bestand)) {
-  console.error('FOUT: admin/admin.html niet gevonden.');
+  console.error('FOUT: admin/beheer.html niet gevonden.');
   process.exit(1);
 }
 const bron = fs.readFileSync(bestand, 'utf8');
@@ -44,7 +48,7 @@ const bron = fs.readFileSync(bestand, 'utf8');
 // onderschepping vóór de fetch".
 console.log('\n1. Oefenmodus onderschept vóór de fetch');
 const iFn    = bron.indexOf('async function callWorker');
-const iOefen = bron.indexOf('if (OEFEN)', iFn);
+const iOefen = bron.indexOf('if(OEFEN)', iFn);
 const iFetch = bron.indexOf('await fetch(', iFn);
 toets('callWorker() bestaat', iFn >= 0);
 toets('er staat een OEFEN-tak in', iOefen > iFn, 'zonder die tak gaat oefenen naar de Worker');
@@ -54,9 +58,10 @@ toets('die tak staat vóór de fetch', iOefen > iFn && iOefen < iFetch,
 // ── 2. geen tweede route naar buiten ──────────────────────────────
 console.log('\n2. Alle verkeer loopt langs callWorker()');
 const fetches = (bron.match(/fetch\s*\(/g) || []).length;
-// Verwacht: 1 in callWorker + 3 in poortTest (die staat bewust buiten de
-// oefenmodus: hij test de verbinding vóór het inloggen).
-toets('niet meer fetch-aanroepen dan de bekende vier', fetches <= 4,
+// Verwacht: 1 in callWorker + 4 in poortTestKern (die staat bewust buiten de
+// oefenmodus: hij test de verbinding vóór het inloggen). De nieuwe schermen
+// van 24-09 — Database en Meetopdrachten — gaan allemaal via callWorker.
+toets('niet meer fetch-aanroepen dan de bekende vijf', fetches <= 5,
       fetches + ' aanroepen gevonden — een nieuwe fetch() buiten callWorker ' +
       'omzeilt de oefenmodus en schrijft in productie');
 
@@ -65,8 +70,8 @@ toets('niet meer fetch-aanroepen dan de bekende vier', fetches <= 4,
 // de data mooi is, maar of hij de vorm heeft die de schermen verwachten —
 // anders staat de oefenmodus vol lege lijsten en leer je er niets van.
 console.log('\n3. De voorbeeldgegevens hebben de vorm die de schermen verwachten');
-const van = bron.indexOf('let OEFEN = false;');
-const tot = bron.indexOf('// ── fetch met nette diagnose ──');
+const van = bron.indexOf('function oefenLogregels(){');
+const tot = bron.lastIndexOf('/*', bron.indexOf('POORT, TABBLADEN EN OPSTART'));
 if (van < 0 || tot < 0 || tot < van) {
   toets('oefenblok gevonden', false, 'de markering is verplaatst of hernoemd');
 } else {
@@ -109,8 +114,26 @@ if (van < 0 || tot < 0 || tot < van) {
   const co = O.oefenAntwoord('/admin/codes', {});
   toets('codes gevuld', Array.isArray(co.codes) && co.codes.length >= 2);
   toets('open-tokens kloppen',
-        co.stats.openCredits === co.codes.filter(c => c.status === 'open')
+        co.stats.openCredits === co.codes.filter(c => !c.gebruikt)
                                         .reduce((a, c) => a + c.credits, 0));
+
+  // De database-schermen (24-09-2026). De console voert in oefenmodus
+  // niets uit, en dat hoort in het antwoord te staan — anders leest een
+  // voorbeeldtabel als de uitkomst van je vraag.
+  const d1 = O.oefenAntwoord('/admin/d1?actie=overzicht&dagen=30', {});
+  toets('het database-overzicht telt de voorbeeldregels',
+        d1.ok === true && d1.log.totaal === O.D.log.length, JSON.stringify(d1.log && d1.log.totaal));
+  toets('er zit een regel in het vangnet om op te oefenen', d1.log.metOnbekend >= 1);
+  const sql = O.oefenAntwoord('/admin/d1', { method:'POST', body: JSON.stringify({ actie:'sql', sql:'SELECT 1' }) });
+  toets('de SQL-console zegt dat hij in oefenmodus niets uitvoert', sql.oefen === true);
+  const opd = O.oefenAntwoord('/admin/tabel?bron=opdracht', {}).records;
+  toets('er staan meer dan één opdracht aan om op te oefenen',
+        opd.filter(o => Number(o.fields.Actief) === 1).length >= 2);
+  O.oefenAntwoord('/admin/d1', { method:'POST', body: JSON.stringify({ actie:'opdracht-activeer', id: 1 }) });
+  const naOpd = O.oefenAntwoord('/admin/tabel?bron=opdracht', {}).records;
+  toets('activeren laat er precies één aan, net als de Worker',
+        naOpd.filter(o => Number(o.fields.Actief) === 1).map(o => o.id).join() === '1');
+  O.oefenReset();
 
   // ── 4. wijzigen doet echt iets ──────────────────────────────────
   // Zonder dit is de oefenmodus een plaatje: je drukt op Saldo, er gebeurt

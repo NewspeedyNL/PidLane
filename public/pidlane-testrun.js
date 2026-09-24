@@ -3620,7 +3620,7 @@ const PROEVEN_B5 = [
           'de schilgrens in _betaallink() doet niets, en dan staat er een betaalroute buiten Play in een Play-app' };
       if (!schil && ruw)
         return { staat: 'FOUT', detail: 'er staat een koopknop in de browserversie (tikkie_kopen is gevuld) terwijl de eerste ' +
-          'fase handmatig is — zet de sleutel leeg in admin.html, of sluit #42 met de uitkomst erbij' };
+          'fase handmatig is — zet de sleutel leeg in beheer.html, of sluit #42 met de uitkomst erbij' };
 
       if (typeof PLKlant.aanvraagMail !== 'function')
         return { staat: 'FOUT', detail: 'PLKlant.aanvraagMail() ontbreekt — dan opent de knop een lege mail zonder account' };
@@ -3637,7 +3637,7 @@ const PROEVEN_B5 = [
         return 'de Config draagt een koopknop en de schil geeft hem niet door — de grens is hier echt gemeten; ' + staart;
       if (schil)
         return { staat: 'LET OP', detail: 'geen koopknop, maar tikkie_kopen is leeg in de Config, dus de schilgrens is ' +
-          'hier niet op de proef gesteld. Zet de sleutel tijdelijk in admin.html en draai deze blok opnieuw als je ' +
+          'hier niet op de proef gesteld. Zet de sleutel tijdelijk in beheer.html en draai deze blok opnieuw als je ' +
           'de grens wilt zien werken. ' + staart };
       return 'geen koopknop; ' + staart;
     }

@@ -114,11 +114,12 @@ PidLane/
 │  ├─ tests.yml                     testgate: plcheck.sh, plmutate.sh, sleutelscan
 │  └─ automerge.yml                 voegt een PR samen zodra de testgate groen is
 ├─ admin/
-│  ├─ admin.html          (85 KB)  admin-, gebruikers-, klant- en codebeheer
-│  ├─ beheer.html         (95 KB)  tweede generatie: idem + klanten aanmaken,
-│  │                               logboek uittekenen, tabellenbrowser, CSV
-│  ├─ serve.js                      lokale server voor allebei (npm run admin)
-│  └─ LEESMIJ.md                    hoe je ze lokaal draait
+│  ├─ beheer.html        (190 KB)  de enige beheerpagina: klanten, codes, gebruikers,
+│  │                               logboek, database (D1), meetopdrachten, tabellen,
+│  │                               instellingen — admin.html is er op 24-09 in opgegaan
+│  ├─ serve.js                      lokale server (npm run admin), plus precies twee
+│  │                               bestanden uit public/: de opdrachtkeurder en de PID-tabel
+│  └─ LEESMIJ.md                    hoe je hem lokaal draait, en wat elk tabblad doet
 └─ public/                          ← alles hier wordt PUBLIEK geserveerd
    ├─ index.html           (203 KB) HTML-structuur + bootstrap + script-tags
    ├─ config.js            (3 KB)   PROXY_URL, AIRTABLE_URL, APP_VERSION
@@ -127,7 +128,7 @@ PidLane/
    └─ test-*.js            (38 tests, draaien via plcheck.sh)
 ```
 
-> **admin.html staat bewust buiten `public/`.** Alles in `public/` wordt door de
+> **De beheerpagina staat bewust buiten `public/`.** Alles in `public/` wordt door de
 > Worker als statisch bestand geserveerd; tot 25-08-2026 was de beheerpagina
 > daarmee voor iedereen te openen op `https://app.pidlane.nl/admin.html`. Dat
 > lekte geen gegevens — elke admin-route controleert `ADMIN_TOKEN` server-side —
@@ -374,10 +375,11 @@ als een routingfout):
 | `/klant/reset-aanvraag`, `/klant/reset-uitvoeren` | wachtwoordherstel per mail (token-hash in Airtable) |
 | `/klant/admin-wachtwoord` | noodklep: admin zet handmatig een klantwachtwoord |
 | `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot; **vraagt een klantsessie** — zonder account wordt er niets afgestempeld (02-09-2026) |
-| `/admin/klanten` | klantbeheer voor admin.html (GET/POST) |
+| `/admin/klanten` | klantbeheer voor beheer.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
-| `/admin/tabel` | de bekende Airtable-tabellen lezen (GET), één record wijzigen of maximaal tien wissen (POST) — zie **De adminbrowser** hieronder |
+| `/admin/tabel` | de bekende bronnen lezen (GET) — Airtable én D1 — één record wijzigen, wissen, of (D1) opruimen na tellen (POST) — zie **De adminbrowser** hieronder |
+| `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen en één rit compleet (GET); SQL-console die alleen leest, en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
 | `/proxy` | generieke uitgaande proxy (RDW/NHTSA), whitelist op host |
 | `/download/*`, `/version.json` | APK uit R2 |
 | `/health` | statuscheck |
@@ -407,6 +409,24 @@ zoekformule-ontsnapping, de terugval bij een onbekend sorteerveld) en door vijf
 mutaties in `plmutate.sh`. `test-klant-aanmaken.js` dekt de nieuwe actie
 `aanmaken` op `/admin/klanten` — inclusief de tegenproef dat een ruw wachtwoord
 nergens in de verzendbody terechtkomt.
+
+**De databasekant — `/admin/d1` (24-09-2026).** `/admin/tabel` toont één bron
+als lijst. Wat daar niet past zijn vragen over de hele database (hoeveel, per
+dag, wat deed deze rit) en één handeling die bij geen enkele bron hoort: een
+meetopdracht aanzetten zet de andere uit. Vier regels:
+
+| wat | hoe | waarom |
+|---|---|---|
+| **cijfers** | SQLite telt over de hele tabel, elk deel in een eigen `try` met de fout in `fouten` | het Logboek telt wat er opgehaald is; een ontbrekende tabel hoort het logdeel niet mee te sleuren |
+| **leesconsole** | `SELECT * FROM (<vraag>) LIMIT 501`, en daarvóór een tekstkeuring zonder tekstwaarden en commentaar | in een subquery past geen schrijfstatement; de keuring is de tweede laag. Elke laag apart uitzetten is rood (`test-admind1.js`, deel 2 en 3) |
+| **één actieve opdracht** | activeren draait `Actief = 0` voor de rest en `Actief = 1` voor deze in één `batch()` | op 22-09 stonden er negen aan en won de verkeerde; een batch is in D1 één transactie |
+| **`Gewijzigd`** | zet de Worker zelf; `Actief`, `Gewijzigd` en `id` zijn niet met de hand te schrijven | de app kiest op die tijd — bijstellen is stil kiezen welke opdracht rijdt |
+
+De Worker keurt geen opdracht; dat blijft op één plek, in
+`public/pidlane-opdracht.js`. `beheer.html` laadt dat bestand zelf en keurt
+vóór het activeren. Gedekt door `test-admind1.js` (69 controles, op echte
+SQLite uit `schema.sql`, met de leesroute van de app erbij geknipt), zes
+mutaties in `plmutate.sh`, en deel 7 en 8 van `bproef-beheerpagina.js`.
 
 **Secrets** (nooit in de repo): `AIRTABLE_TOKEN`, `ADMIN_TOKEN`,
 `SESSION_SECRET`, `USERS_JSON`, `ANTHROPIC_API_KEY`, en voor wachtwoordherstel

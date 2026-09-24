@@ -421,9 +421,10 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
   // beheerder het verkeerde advies: er is niets stuk, hij moet het zo nog
   // eens proberen. Dat is precies het soort losse eind dat pas opvalt op het
   // moment dat het misgaat — bij een klant die belt dat zijn tegoed op is.
-  console.log('\n16. Elke foutcode uit deze route wordt door admin.html afgehandeld');
+  console.log('\n16. Elke foutcode uit deze route wordt door beheer.html afgehandeld');
   {
-    const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'admin.html'), 'utf8');
+    // Tot 24-09-2026 admin.html; die is opgegaan in beheer.html.
+    const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'beheer.html'), 'utf8');
     const codes = (src.match(/code: "([a-z0-9_]+)"/g) || [])
       .map((m) => m.replace(/.*"([a-z0-9_]+)".*/, '$1'));
     // Zonder dit anker zou de lus over nul codes lopen en vanzelf groen staan.
@@ -436,10 +437,25 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
     // kruiscontrole moest vangen.
     codes.forEach((c) => {
       const afhandeling = new RegExp("code\\s*===\\s*'" + c + "'");
-      toets("admin.html handelt '" + c + "' af",
+      toets("beheer.html handelt '" + c + "' af",
             afhandeling.test(admin),
             'de pagina valt terug op "Onverwachte fout" voor deze code');
     });
+    // En dan de gedragskant: diagnose() uit de pagina zelf, gevoerd met de
+    // vorm die de Worker werkelijk stuurt — `code` náást een leesbare
+    // `error`. Tot 24-09-2026 las beheer.html alleen `error`, en dan stond
+    // de afhandeling hierboven er wel, maar werd hij nooit bereikt. Precies
+    // wat een tekstcontrole niet kan zien.
+    const i = admin.indexOf('function diagnose(');
+    const j = admin.indexOf('\n}\n', i);
+    toets('diagnose() is uit de pagina te knippen', i >= 0 && j > i);
+    if (i >= 0 && j > i) {
+      const diagnose = new Function('TOKEN', admin.slice(i, j + 2) + '\nreturn diagnose;')('');
+      const d = diagnose('klanten', 409, JSON.stringify({ ok: false, code: 'saldo_bezet',
+        error: 'Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens.' }));
+      toets('een bezet slot wordt "even wachten" en geen rode fout', d.kind === 'warn' && /tegoedwijziging/.test(d.title),
+            JSON.stringify(d));
+    }
   }
 
   // ── 17. de knop stuurt de voorwaarde ook echt mee (#93) ──────────
@@ -449,13 +465,13 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
   // gedragstest, omdat admin.html geen module is die je los kunt laden — de
   // knop hangt aan een pagina met een prompt() erin. De aanhaakpunten zijn
   // daarom zo gekozen dat ze verdwijnen zodra iemand de knop verbouwt.
-  console.log('\n17. De knop in admin.html stuurt saldoWas mee');
+  console.log('\n17. De knop in beheer.html stuurt saldoWas mee');
   {
-    const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'admin.html'), 'utf8');
+    const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'beheer.html'), 'utf8');
     const i = admin.indexOf('function kSaldo(');
     toets('kSaldo bestaat nog', i >= 0);
     const lijf = i < 0 ? '' : admin.slice(i, i + 1200);
-    toets('kSaldo stuurt actie update', /actie:'update'/.test(lijf));
+    toets('kSaldo stuurt actie update', /actie\s*:\s*'update'/.test(lijf));
     toets('kSaldo stuurt saldoWas mee', /saldoWas\s*:\s*huidig/.test(lijf),
           'zonder dit veld vergelijkt de Worker niets en overschrijft de knop weer');
     // En de tegenhanger: bijboeken hoort dit veld JUIST niet te sturen. Daar
@@ -465,7 +481,7 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
     // Op de aanroep zelf kijken en niet op een venster tekst eromheen: het
     // commentaar tussen beide knoppen noemt saldoWas uiteraard ook, en een
     // ruimer venster staat dan rood zonder dat er iets mis is.
-    const roepB = (admin.match(/kPost\(\{actie:'bijboeken'[^}]*\}/) || [''])[0];
+    const roepB = (admin.match(/kPost\(\{\s*actie\s*:\s*'bijboeken'[^}]*\}/) || [''])[0];
     toets('de bijboek-aanroep is nog te vinden', roepB.length > 0);
     toets('kBijboeken stuurt geen saldoWas', roepB.length > 0 && !/saldoWas/.test(roepB),
           roepB);

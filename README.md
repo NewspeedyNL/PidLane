@@ -47,7 +47,7 @@ public/pidlane-*.js        de modules; pidlane-bedrading.js hangt ze aan elkaar 
 public/test-*.js           node-tests (losse functies)
 public/bproef-*.js         browserproeven (module-koppeling, DOM, opstartvolgorde)
 worker.js                  Cloudflare Worker: auth, AI-proxy, Airtable, remote-sessies
-admin/admin.html           gebruikersbeheer (lokaal draaien: npm run admin)
+admin/beheer.html          de beheerpagina: klanten, codes, database, meetopdrachten (npm run admin)
 plcheck.sh                 commit-poort: syntax, testreeks, div-balans, modulebedrading
 plmutate.sh                tegenproef: bouwt bekende fouten na en eist dat een test rood wordt
 plbrowser.sh               start de echte index.html in Chromium en draait de bproeven

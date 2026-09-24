@@ -208,7 +208,7 @@ function _cfgBool(v, def){
 // bij boot. Is die er niet, dan faalt hij netjes en haalt finishLogin() de
 // config alsnog op zodra er wel een token is.
 //
-// LET OP bij toekomstig sleutelwerk: faalt dit stil, dan lijkt admin.html
+// LET OP bij toekomstig sleutelwerk: faalt dit stil, dan lijkt beheer.html
 // kapot terwijl de config gewoon in Airtable staat. Daarom loggen we hier
 // altijd de uitkomst — zichtbaar in het logcentrum.
 async function loadRemoteConfig(){
@@ -240,7 +240,7 @@ async function loadRemoteConfig(){
   }
 }
 // ════════════════════════════════════════════════════════════════
-//  FEATURE-FLAGS — alle functies op afstand aan/uit via admin.html.
+//  FEATURE-FLAGS — alle functies op afstand aan/uit via admin/beheer.html.
 //  Config-keys (feat_*) komen uit Airtable via de Worker; ontbrekend of
 //  onbekend = AAN. Basisfuncties (login, verbinden, live-tegels, onderbalk-
 //  kern, topbar, deur 1 zelf, log-centrum) hebben bewust GEEN flag.

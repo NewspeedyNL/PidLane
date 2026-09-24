@@ -1,27 +1,32 @@
 <!DOCTYPE html>
 <!-- ════════════════════════════════════════════════════════════
-     PidLane — BEHEER (admin.html, tweede generatie)
+     PidLane — BEHEER. De enige beheerpagina.
 
      Draait lokaal en staat bewust NIET in public/. Zie admin/LEESMIJ.md
      voor het waarom en voor `npm run admin`.
 
-     WAAROM EEN TWEEDE BESTAND EN GEEN VERBOUWING
-     admin.html werkt en beheert echt geld. Hem openbreken voor een
-     tabellenbrowser en een logvisualisatie betekent dat één fout in de
-     verbouwing ook de saldoknoppen raakt die het al deden. Deze pagina staat
-     ernaast: valt er hier iets om, dan pak je de oude en gaat het beheer door.
-     Ze praten met dezelfde Worker en dezelfde routes.
+     GESCHIEDENIS IN ÉÉN ALINEA
+     Tot 24-09-2026 stonden hier twee pagina's: admin.html (de eerste, die
+     echt geld beheerde) en deze (de tweede generatie, sinds 04-09 ernaast
+     zodat een fout in de verbouwing de saldoknoppen niet kon raken). Alles
+     wat admin.html kon zit hier ook, en de tests die aan admin.html hingen
+     wijzen nu hierheen. admin.html is weg; de geschiedenis bewaart hem.
 
-     WAT HIER BIJ KOMT TEN OPZICHTE VAN admin.html
-       • klanten AANMAKEN vanuit het beheer (POST /admin/klanten actie=aanmaken)
-       • het logboek ophalen én uittekenen (GET /admin/tabel?bron=log)
-       • elke bekende Airtable-tabel doorbladeren, rijen wijzigen en wissen
-       • CSV-uitvoer van elke lijst die je op het scherm hebt
-       • één plek voor de statuscontrole, de poorttest en de opruimwachtrij
+     WAT HIER STAAT
+       • klanten: aanmaken, bijboeken, zetten, status, wachtwoord, wissen
+       • activatiecodes, app-gebruikers, instellingen en schakelaars
+       • het logboek ophalen en uittekenen (wat je ophaalt)
+       • de database (D1) als geheel: cijfers over álle rijen, ritten van
+         begin tot eind, en een SQL-console die alleen leest (/admin/d1)
+       • meetopdrachten: bewerken, keuren met de échte keurder uit
+         public/pidlane-opdracht.js, en één-klik activeren (de rest gaat uit)
+       • elke bekende tabel doorbladeren, rijen wijzigen, wissen en opruimen
+       • CSV van elke lijst, de poorttest en de opruimwachtrij
 
      WAT ER BEWUST NIET IS
      Geen framework, geen buildstap, geen npm — net als de rest van dit
-     project. Eén bestand dat je kunt openen en lezen.
+     project. Eén bestand dat je kunt openen en lezen. De twee scripts uit
+     public/ die hij laadt zijn dezelfde die de app draait, niet een kopie.
      ════════════════════════════════════════════════════════════ -->
 <html lang="nl">
 <head>
@@ -96,6 +101,7 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .grid2>*,.grid3>*,.grid4>*{min-width:0}
   @media(max-width:720px){.grid3,.grid4{grid-template-columns:1fr 1fr}}
   @media(max-width:460px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
 
@@ -164,9 +170,9 @@
   .switch input:checked+.slider:before{transform:translateX(19px)}
 
   /* ── grafiek (puur css, geen bibliotheek) ── */
-  .staaf-rij{display:flex;align-items:flex-end;gap:3px;height:120px;
-             padding:6px 0;overflow-x:auto}
-  .staaf{flex:1 0 14px;min-width:9px;background:linear-gradient(180deg,var(--bl2),var(--bl));
+  .staaf-rij{display:flex;align-items:flex-end;gap:3px;height:138px;
+             padding:6px 0 24px;overflow:hidden}
+  .staaf{flex:1 1 9px;min-width:6px;background:linear-gradient(180deg,var(--bl2),var(--bl));
          border-radius:3px 3px 0 0;position:relative;cursor:default}
   .staaf.rood{background:linear-gradient(180deg,#ff7b7b,var(--rd))}
   .staaf span{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);
@@ -205,7 +211,7 @@
 <!-- ══ TOEGANGSPOORT ══════════════════════════════════════════ -->
 <div id="gate" class="gate">
   <h1>🔒 PidLane Beheer</h1>
-  <div class="hint" style="margin-bottom:16px">Tweede generatie van de adminpagina. De oude staat er nog: <code>admin.html</code>.</div>
+  <div class="hint" style="margin-bottom:16px">Klanten, codes, gebruikers, instellingen, de database en de meetopdrachten — op één plek.</div>
 
   <label for="adminTok">ADMIN_TOKEN</label>
   <input type="password" id="adminTok" placeholder="ADMIN_TOKEN…" autocomplete="off">
@@ -268,12 +274,13 @@
           <span class="hint" id="cijfersVers" style="margin:0"></span></div>
         <div class="grid4" id="kpiGrid"></div>
         <div class="hint">Klanten en codes komen uit de eerste 100 records die Airtable teruggeeft —
-          bij meer dan 100 zijn dit dus de meest recente, niet het totaal.</div>
+          bij meer dan 100 zijn dit dus de meest recente, niet het totaal. De logcijfers telt de
+          database zelf, over alle regels.</div>
       </div>
 
       <div class="card">
         <div class="card-kop"><h2>📈 Logactiviteit — laatste 14 dagen</h2>
-          <button class="btn-sec btn-sm" onclick="toon('logboek')">Naar het logboek →</button></div>
+          <button class="btn-sec btn-sm" onclick="toon('database')">Naar de database →</button></div>
         <div id="miniGrafiek"><div class="leeg">Nog niet geladen.</div></div>
       </div>
 
@@ -283,6 +290,8 @@
           <button class="btn-pri btn-sm" onclick="toon('klanten');document.getElementById('nkEmail').focus()">➕ Klant aanmaken</button>
           <button class="btn-pri btn-sm" onclick="toon('codes')">🎟️ Codes genereren</button>
           <button class="btn-sec btn-sm" onclick="toon('logboek');logLaden()">📜 Logboek ophalen</button>
+          <button class="btn-sec btn-sm" onclick="toon('opdrachten')">🎯 Meetopdrachten</button>
+          <button class="btn-sec btn-sm" onclick="toon('database');$('sqlVraag').focus()">🧮 SQL-console</button>
           <button class="btn-sec btn-sm" onclick="toon('gereedschap');opruimBekijken()">🧹 Verwijderwachtrij</button>
         </div>
       </div>
@@ -497,10 +506,184 @@
       </div>
     </div>
 
+    <!-- ══ DATABASE (D1) ══════════════════════════════════════
+         Vragen over de hele database, niet over één opgehaalde pagina.
+         Alles via /admin/d1; zie de kop daarvan in worker.js. -->
+    <div class="paneel" id="p-database">
+      <div class="card">
+        <div class="card-kop"><h2>🗄️ Database — alles wat er staat</h2>
+          <div class="bar">
+            <select id="dbDagen" style="width:auto" onchange="d1Laden()">
+              <option value="7">7 dagen</option><option value="14">14 dagen</option>
+              <option value="30" selected>30 dagen</option><option value="90">90 dagen</option>
+            </select>
+            <button class="btn-pri btn-sm" onclick="d1Laden()">↻ Tellen</button>
+          </div></div>
+        <details class="uitleg"><summary>Wat dit anders doet dan het Logboek-tabblad</summary><div class="body">
+          Het Logboek haalt regels op en telt wat er binnen is — haal je er 300, dan gaat elke grafiek
+          over die 300. <b>Hier telt de database zelf, over alle rijen.</b> De getallen kloppen dus
+          ook bij honderdduizend regels, en er komt geen enkele regel naar deze pagina om ze te maken.<br><br>
+          <b>Vangnet <code>onbekend</code>.</b> Stuurt de app een veld waarvoor geen kolom is, dan landt
+          het in die kolom in plaats van stil te verdwijnen. Het normale getal is 0. Staat er iets,
+          dan mist <code>schema.sql</code> een kolom.<br><br>
+          <b>Regels zonder rit</b> zijn meldingen van buiten een testrun (opstarten, bugmelder). Dat is
+          normaal; bij een testrun hoort elke regel een <code>SessionId</code> te dragen.
+        </div></details>
+        <div id="dbMsg" class="msg"></div>
+        <div class="grid4" id="dbKpi" style="margin-top:8px"></div>
+        <div id="dbWaarschuwing" style="margin-top:10px"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card"><h2>Regels per dag <span class="hint" id="dbVenster" style="margin:0"></span></h2>
+          <div id="dbPerDag"><div class="leeg">Nog niet geteld.</div></div></div>
+        <div class="card"><h2>Fouten per dag</h2>
+          <div id="dbFoutPerDag"><div class="leeg">Nog niet geteld.</div></div></div>
+      </div>
+      <div class="grid3">
+        <div class="card"><h2>Type</h2><div id="dbPerType"></div></div>
+        <div class="card"><h2>Soort regel</h2><div id="dbPerSoort"></div></div>
+        <div class="card"><h2>App-versie</h2><div id="dbPerVersie"></div></div>
+        <div class="card"><h2>Merk</h2><div id="dbPerMerk"></div></div>
+        <div class="card"><h2>Adapter</h2><div id="dbPerAdapter"></div></div>
+        <div class="card"><h2>Meeste fouten en LET OP</h2><div id="dbTopFouten"></div></div>
+      </div>
+
+      <div class="card strak">
+        <div style="padding:14px 16px" class="card-kop"><h2 style="margin:0">Tabellen en views</h2>
+          <span class="hint" style="margin:0">uit <code>sqlite_master</code> — niet uit een lijst in deze pagina</span></div>
+        <div class="tabelbox" id="dbTabellen"><div class="leeg">Nog niet geteld.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>🚗 Ritten</h2>
+          <button class="btn-sec btn-sm" onclick="rittenLaden()">↻ Recente ritten</button></div>
+        <details class="uitleg"><summary>Wat je hier ziet</summary><div class="body">
+          Eén regel per <code>SessionId</code>, uit de view <code>sessies</code>: die rekent uit de logregels
+          en bewaart zelf niets, dus hij kan niet uit de pas lopen. Open een rit om hem van begin tot
+          eind te zien, in de volgorde waarin de Worker de regels ontving.<br><br>
+          <b>Bevindingen kopiëren</b> doet wat anders met de hand gebeurt: FOUT, LET OP en de uitkomsten
+          eruit halen, zonder de duizend regels eromheen.
+        </div></details>
+        <div class="bar" style="margin-top:10px">
+          <input type="text" id="ritId" placeholder="SessionId, bv. 20260923-1455-ab12" style="flex:1;min-width:200px"
+                 onkeydown="if(event.key==='Enter')ritOpen()">
+          <button class="btn-pri btn-sm" onclick="ritOpen()">Rit openen</button>
+        </div>
+        <div id="ritMsg" class="msg"></div>
+        <div class="tabelbox" id="rittenLijst" style="max-height:34vh;margin-top:8px"><div class="leeg">Klik op Recente ritten.</div></div>
+      </div>
+
+      <div class="card hidden" id="ritKaart">
+        <div class="card-kop"><h2 id="ritTitel">Rit</h2>
+          <div class="bar">
+            <button class="btn-sec btn-sm" onclick="ritKopieer()">📋 Bevindingen kopiëren</button>
+            <button class="btn-sec btn-sm" onclick="ritCsv()">⇩ CSV</button>
+            <button class="btn-sec btn-sm" onclick="ritJson()">⇩ JSON</button>
+            <button class="btn-del btn-sm" onclick="ritOpruimen()">🧹 Deze rit opruimen…</button>
+          </div></div>
+        <div class="grid4" id="ritKpi"></div>
+        <div class="bar" style="margin-top:10px">
+          <select id="ritFilter" style="width:auto" onchange="ritTeken()">
+            <option value="">alle regels</option>
+            <option value="bevinding">alleen FOUT, LET OP en uitkomsten</option>
+            <option value="uitkomst">alleen uitkomsten</option>
+          </select>
+          <input type="text" id="ritZoek" placeholder="zoeken in de rit" oninput="ritTeken()" style="flex:1;min-width:160px">
+        </div>
+        <div class="tabelbox" id="ritTabel" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>🧮 SQL-console <span class="pill p-info">alleen lezen</span></h2>
+          <div class="bar">
+            <select id="sqlVoorbeeld" style="width:auto" onchange="sqlVoorbeeld()"></select>
+          </div></div>
+        <details class="uitleg"><summary>Wat kan hier, en waarom kan hier niets stuk</summary><div class="body">
+          Een eigen vraag aan de logdatabase, in SQLite-SQL. <b>Alleen <code>SELECT</code> en
+          <code>WITH</code></b>, één vraag tegelijk, hoogstens 500 rijen terug. De Worker pakt je vraag
+          in als subquery (<code>SELECT * FROM (…) LIMIT 501</code>) — daarin past geen DELETE of
+          UPDATE — en keurt de tekst daarvóór nog eens op schrijfwoorden. Een woord in een tekstwaarde
+          (<code>LIKE '%DELETE%'</code>) mag gewoon.<br><br>
+          <b>Handig:</b> de views <code>sessies</code> en <code>bevindingen</code>, <code>pragma_table_info('logregels')</code>
+          voor de kolommen, en <code>sqlite_master</code> voor het schema. <b>Ctrl+Enter</b> voert uit.<br><br>
+          Wijzigen doe je niet hier maar in <b>Tabellen</b> (één rij) of met <b>Opruimen</b> daar (veel rijen,
+          eerst tellen). Zo staat elke schrijfactie achter een eigen knop met een eigen grens.
+        </div></details>
+        <textarea id="sqlVraag" style="min-height:120px;margin-top:10px" spellcheck="false"
+                  onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();sqlUitvoeren();}"
+                  placeholder="SELECT Type, COUNT(*) AS n FROM logregels GROUP BY Type ORDER BY n DESC"></textarea>
+        <div class="bar" style="margin-top:10px">
+          <button class="btn-pri btn-sm" onclick="sqlUitvoeren()">▶ Uitvoeren</button>
+          <button class="btn-sec btn-sm" onclick="sqlCsv()">⇩ CSV</button>
+          <select id="sqlGeschiedenis" style="width:auto;max-width:320px" onchange="sqlUitGeschiedenis()"></select>
+        </div>
+        <div id="sqlMsg" class="msg"></div>
+        <div class="tabelbox" id="sqlUit" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- ══ MEETOPDRACHTEN ═════════════════════════════════════
+         De tabel meetopdrachten in D1 (#241, #262). Keuren gebeurt met de
+         echte keurder uit public/pidlane-opdracht.js, die deze pagina laadt:
+         één witte lijst, op één plek. -->
+    <div class="paneel" id="p-opdrachten">
+      <div class="card">
+        <div class="card-kop"><h2>🎯 Meetopdrachten</h2>
+          <div class="bar">
+            <button class="btn-pri btn-sm" onclick="opdNieuw()">➕ Nieuwe opdracht</button>
+            <button class="btn-sec btn-sm" onclick="opdLaden()">↻ Herladen</button>
+          </div></div>
+        <details class="uitleg"><summary>Hoe een opdracht bij de rit komt, en wat hier bewaakt wordt</summary><div class="body">
+          De testrun haalt bij de start de <b>actieve</b> opdracht op (<code>/airtable/opdracht</code>, schakelaar
+          <code>feat_opdracht</code> onder Instellingen). Een opdracht is data, geen code: sensoren, een duur,
+          vragen, drempels en proeven. Wat de app ermee mag, staat in de witte lijst van
+          <code>pidlane-opdracht.js</code> — <b>en die lijst keurt hier ook</b>, want deze pagina laadt
+          hetzelfde bestand. Wat hier afgekeurd wordt, wijst de app ook af.<br><br>
+          <b>Er staat er altijd hoogstens één aan.</b> <i>Activeren</i> zet de andere in dezelfde transactie uit.
+          Staan er toch meer aan (met de hand in de database gezet), dan kiest de app de laatst gewijzigde —
+          op 22-09-2026 won zo de verkeerde. Daarom staat er dan een rode balk.<br><br>
+          <b>Gewijzigd</b> zet de Worker zelf bij elke opslag. De app kiest op die tijd; met de hand
+          bijstellen zou betekenen dat je stil kiest welke opdracht er rijdt.<br><br>
+          De keurder zegt of de <i>vorm</i> klopt, niet of de opdracht iets kán meten (een proef op een
+          sensor die niet in <code>sensoren</code> staat, bijvoorbeeld). Dat laatste toetst
+          <code>node plopdracht.js</code> in de repo.
+        </div></details>
+        <div id="opdKeurder" class="hint"></div>
+        <div id="opdWaarschuwing"></div>
+        <div id="opdMsg" class="msg"></div>
+        <div id="opdLijst" style="margin-top:8px"><div class="leeg">Nog niet geladen.</div></div>
+      </div>
+
+      <div class="card hidden" id="opdKaart">
+        <div class="card-kop"><h2 id="opdTitel">Opdracht</h2>
+          <button class="btn-sec btn-sm" onclick="opdSluiten()">Sluiten</button></div>
+        <div class="grid2">
+          <div><label for="opdNaam">Naam (in de tabel) *</label><input type="text" id="opdNaam" maxlength="200"></div>
+          <div><label for="opdReden">Reden — issues</label><input type="text" id="opdReden" placeholder="#232 #64"></div>
+        </div>
+        <label for="opdTekst" style="margin-top:10px">Opdracht (JSON) *
+          <span class="hint" id="opdTeller" style="margin:0 0 0 6px"></span></label>
+        <textarea id="opdTekst" style="min-height:260px" spellcheck="false" oninput="opdKeurLive()"></textarea>
+        <div class="bar" style="margin-top:8px">
+          <button class="btn-sec btn-sm" onclick="opdMooi()">{ } Netjes opmaken</button>
+          <button class="btn-sec btn-sm" onclick="opdSjabloon()">Sjabloon invoegen</button>
+        </div>
+        <div id="opdKeuring" style="margin-top:10px"></div>
+        <label for="opdNotitie" style="margin-top:10px">Notitie voor wie de rit rijdt</label>
+        <textarea id="opdNotitie" style="min-height:90px;font-family:var(--f)" placeholder="Waarom deze opdracht, wat is er al gemeten, in welke volgorde"></textarea>
+        <div class="bar" style="margin-top:12px">
+          <button class="btn-pri" onclick="opdOpslaan(false)">Opslaan</button>
+          <button class="btn-ok" onclick="opdOpslaan(true)">Opslaan en activeren</button>
+        </div>
+        <div id="opdBewaarMsg" class="msg"></div>
+      </div>
+    </div>
+
     <!-- ══ TABELLEN ═══════════════════════════════════════════ -->
     <div class="paneel" id="p-tabellen">
       <div class="card">
-        <div class="card-kop"><h2>🗂️ Airtable-tabellen</h2>
+        <div class="card-kop"><h2>🗂️ Tabellen — D1 en Airtable</h2>
           <div class="bar">
             <button class="btn-sec btn-sm" onclick="tbCsv()">⇩ CSV</button>
             <button class="btn-pri btn-sm" onclick="tbLaden(true)">Ophalen</button>
@@ -720,6 +903,7 @@
             <option value="/admin/codes">/admin/codes</option>
             <option value="/admin/users">/admin/users</option>
             <option value="/admin/tabel?bron=log&amp;limiet=5">/admin/tabel?bron=log&amp;limiet=5</option>
+            <option value="/admin/d1?actie=overzicht&amp;dagen=7">/admin/d1?actie=overzicht&amp;dagen=7</option>
             <option value="/admin/tabel?bron=veldlab&amp;limiet=5">/admin/tabel?bron=veldlab&amp;limiet=5</option>
             <option value="/admin/tabel?bron=config&amp;limiet=25">/admin/tabel?bron=config&amp;limiet=25</option>
             <option value="/health">/health</option>
@@ -740,6 +924,20 @@
 
 <div id="toast"></div>
 
+<!-- De keurder van de meetopdrachten, en de PID-tabel die hij raadpleegt.
+     Dezelfde bestanden die de app draait: een eigen kopie hier zou een tweede
+     witte lijst zijn die uit de pas gaat lopen. Ontbreken ze (een andere
+     server dan admin/serve.js), dan werkt de pagina door en zegt het tabblad
+     Meetopdrachten dat er niet gekeurd wordt. -->
+<script src="../public/pidlane-data.js"></script>
+<script src="../public/pidlane-opdracht.js"></script>
+<script>
+// Wat de keurder vraagt om te weten of een PID bestaat. In de app zit
+// daarachter ook de lijst ontdekte PIDs; hier is alleen de vaste tabel, en
+// dat is de vergelijking die plopdracht.js ook maakt.
+if(window.ALL_PID_DEFS && typeof window.getPidDef !== 'function')
+  window.getPidDef = function(pid){ return window.ALL_PID_DEFS[String(pid).toUpperCase()] || null; };
+</script>
 <script>
 'use strict';
 /* ════════════════════════════════════════════════════════════════
@@ -808,7 +1006,11 @@ function csvDownload(naam, kolommen, rijen){
 function diagnose(where, status, bodyText){
   let body = {}; try{ body = JSON.parse(bodyText); }catch(e){ /* geen JSON: raw hieronder */ }
   const raw = String(bodyText || '');
-  const code = (body && body.error) || '';
+  // De saldoroutes sturen een machineleesbare `code` naast een leesbare
+  // `error`; de andere routes alleen `error`. admin.html las `code`, deze
+  // pagina las tot 24-09 alleen `error` — en dan viel "saldo bezet" door naar
+  // een generieke rode fout in plaats van "even wachten".
+  const code = (body && (body.code || body.error)) || '';
   const detail = (body && typeof body.detail === 'string' ? body.detail : '') || raw;
 
   if(status === 429 || code === 'rate_limited')
@@ -846,6 +1048,9 @@ function diagnose(where, status, bodyText){
   if(code === 'invalid_user')   return { kind:'err', title:'❌ Ongeldige inlognaam.', detail:'2–40 tekens; letters, cijfers, spatie, punt, streepje of underscore.' };
   if(code === 'saldo_bezet')    return { kind:'warn', title:'⏳ Er loopt al een tegoedwijziging voor deze klant.', detail:'Even wachten en opnieuw proberen.' };
   if(code === 'saldo_verschoven') return { kind:'warn', title:'⚠ Het saldo is inmiddels veranderd.', detail:(body && body.error) || 'Herlaad de lijst en kijk opnieuw.' };
+  if(code === 'saldo_geen_email') return { kind:'err', title:'❌ Deze klant heeft geen e-mailadres.',
+    detail:'Het saldo-slot staat per e-mailadres. Zonder adres is er geen slot om het bijboeken in te zetten, ' +
+           'en dan zou het langs een gelijktijdige afboeking heen kunnen schrijven. Vul eerst het veld Email in Airtable.' };
   if(code === 'saldo_slot_stuk') return { kind:'err', title:'❌ Het tegoedslot was niet bereikbaar.', detail:'Er is niets gewijzigd. Probeer het zo nog eens.' };
   if(status === 404) return { kind:'err', title:'❌ Niet gevonden (404).', detail:'De route bestaat niet op deze Worker — draait er een oude versie?\n' + (body.path || '') };
   if(body && body.error) return { kind:'err', title:'❌ ' + String(body.error).slice(0,200), detail: detail === String(body.error) ? '' : detail.slice(0,240) };
@@ -918,16 +1123,19 @@ async function veilig(el, werk, bezigTekst){
    je op wilt kunnen oefenen en die je in een schone lijst nooit tegenkomt.
    ════════════════════════════════════════════════════════════════ */
 function oefenLogregels(){
-  const typen  = ['info','info','info','verbinding','fout','fout','bug'];
+  // De soorten die de app werkelijk schrijft (zie schema.sql), zodat de
+  // filters en kleuren hier dezelfde zijn als live.
+  const typen  = ['info','info','info','opvallend','error','error','bug'];
   const berichten = {
     info:['App gestart','Voertuig herkend','Rapport gegenereerd','Sessie gesloten'],
-    verbinding:['Adapter verbonden (ELM327 v1.5)','Herverbinden na wegvallen','Bluetooth geweigerd door toestel'],
-    fout:['NO DATA op 010C na 3 pogingen','Timeout op initialisatie ATZ','Onbekende PID 0x8A genegeerd','AI-antwoord afgekapt'],
+    opvallend:['Herverbinden na wegvallen','Meetgat van 4,2 s op 010C','Adapter antwoordt traag (>900 ms)'],
+    error:['NO DATA op 010C na 3 pogingen','Timeout op initialisatie ATZ','Onbekende PID 0x8A genegeerd','AI-antwoord afgekapt'],
     bug:['Grafiek blijft leeg na tabwissel','Knop Onderhoud reageert niet']
   };
   const users = ['nico','monteur@pidlane.nl','stagiair','klant-demo'];
   const merken = ['Volkswagen','Toyota','Renault','Ford','BMW',''];
   const versies = ['6.6','6.6','6.5','6.4'];
+  const adapters = ['vLinker MC+','OBDLink CX','ELM327 kloon'];
   const uit = [];
   for(let i = 0; i < 140; i++){
     const t = typen[Math.floor(Math.random()*typen.length)];
@@ -935,15 +1143,26 @@ function oefenLogregels(){
     // Zwaartepunt op de laatste dagen: een logboek loopt nooit gelijkmatig.
     const dagen = Math.floor(Math.pow(Math.random(), 1.7) * 14);
     const d = new Date(Date.now() - dagen*864e5 - Math.random()*82e6);
+    // Twee op de drie regels horen bij een rit — per dag hoogstens twee — en
+    // de rest is losse meldingen, zoals live.
+    const rit = i % 3 ? 'oefen-' + d.toISOString().slice(0,10).replace(/-/g,'') + '-' + (i % 2 ? 'a' : 'b') : '';
     uit.push({ id:'recL' + String(i).padStart(12,'0'), createdTime:d.toISOString(), fields:{
-      Timestamp:d.toISOString(), Type:t, Message:b,
+      ontvangen:d.toISOString(), Timestamp:d.toISOString(), Type:t, Message:b,
       User:users[Math.floor(Math.random()*users.length)],
       Role:'user', Merk:merken[Math.floor(Math.random()*merken.length)],
       Year:String(2012 + Math.floor(Math.random()*12)),
       Protocol:'ISO 15765-4 CAN', AppVersion:versies[Math.floor(Math.random()*versies.length)],
-      VIN:'wvw' + Math.random().toString(16).slice(2,15)
+      VIN:'wvw' + Math.random().toString(16).slice(2,15),
+      SessionId:rit, RecordType:rit ? 'testrun' : 'log',
+      Adapter:rit ? adapters[i % adapters.length] : ''
     }});
   }
+  // Eén uitkomst en één regel in het vangnet: allebei zeldzaam live, en
+  // juist daarom de moeite van het oefenen waard.
+  const r0 = uit.find(r => r.fields.SessionId);
+  if(r0){ r0.fields.Outcome = 'gesloten'; r0.fields.Repro = '#232'; r0.fields.Message = 'Proef MAF stationair: 3,1 g/s binnen de band'; }
+  const r1 = uit.find(r => !r.fields.SessionId);
+  if(r1) r1.fields.onbekend = '{"NieuwVeld":"1"}';
   return uit.sort((a,b) => a.fields.Timestamp < b.fields.Timestamp ? 1 : -1);
 }
 
@@ -983,8 +1202,20 @@ function oefenReset(){
   OEFEN_DATA = JSON.parse(JSON.stringify(OEFEN_START));
   OEFEN_DATA.log = oefenLogregels();
   OEFEN_DATA.veldlab = [{ id:'recV000000000001', fields:{ Merk:'Volkswagen', PID:'010C', Waarde:842, Eenheid:'rpm' } }];
-  OEFEN_DATA.opdracht = [{ id:'1', fields:{ Naam:'MAF stationair', Reden:'#232', Actief:1,
-    Gewijzigd:'2026-09-19T20:00:00Z', Opdracht:'{"schema":1,"pids":["0110"]}' } }];
+  /* Met opzet niet netjes: twee staan er aan (de toestand van 22-09), en één
+     keurt niet — een onbekende sleutel, precies wat de app afwijst. */
+  OEFEN_DATA.opdracht = [
+    { id:'3', fields:{ Naam:'Boordspanning en looptijd', Reden:'#217', Actief:1, Gewijzigd:'2026-09-21T09:30:00Z',
+      Opdracht:JSON.stringify({ schema:2, naam:'boordspanning en looptijd', reden:'#217 — accu of adapter',
+        sensoren:['0142','011F'], duurS:300, tikS:10,
+        drempels:[{ pid:'0142', onder:12.2, melding:'boordspanning onder 12,2 V' }],
+        proeven:[{ issue:'#217', naam:'boordspanning blijft binnen bereik', pid:'0142', meet:'min', tussen:[11.5, 15.2] }] }, null, 2),
+      Notitie:'Eerst koud starten, dan tien minuten stationair.' } },
+    { id:'2', fields:{ Naam:'MAF stationair', Reden:'#232', Actief:1, Gewijzigd:'2026-09-19T20:00:00Z',
+      Opdracht:'{"schema":1,"pids":["0110"]}', Notitie:'' } },
+    { id:'1', fields:{ Naam:'Koelwater warm', Reden:'#64', Actief:0, Gewijzigd:'2026-09-12T08:00:00Z',
+      Opdracht:JSON.stringify({ schema:2, naam:'koelwater warm', sensoren:['0105'], duurS:600 }, null, 2), Notitie:'' } }
+  ];
   OEFEN_DATA.referentie = [{ id:'recR000000000001', fields:{ Merk:'Volkswagen', PID:'0105', Min:78, Max:98 } }];
   OEFEN_DATA.appconfig = Object.keys(OEFEN_DATA.config).map((k,i) =>
     ({ id:'recF' + String(i).padStart(12,'0'), fields:{ Key:k, Value:String(OEFEN_DATA.config[k]) } }));
@@ -1115,6 +1346,97 @@ function oefenAntwoord(path, opts){
     return { ok:true, aantal:n, batch:b.batch, credits:Number(b.credits)||100, codes:gemaakt };
   }
 
+  /* /admin/d1 — dezelfde regels als de Worker, op de voorbeeldregels. De
+     SQL-console voert in oefenmodus níéts uit: SQL nabouwen zou een tweede
+     database in deze pagina zijn. Hij zegt dat erbij en toont voorbeeldrijen. */
+  if(path.indexOf('/admin/d1') === 0){
+    const log = (D.log || []).map(r => Object.assign({ id:r.id }, r.fields));
+    const nu = new Date().toISOString();
+    if(methode === 'GET'){
+      const actie = sp.get('actie') || 'overzicht';
+      if(actie === 'rit'){
+        const s = sp.get('sessie') || '';
+        if(!s) return { ok:false, error:'Geef een SessionId op (hoogstens 80 tekens).' };
+        const rijen = log.filter(r => r.SessionId === s).sort((a,b) => a.ontvangen < b.ontvangen ? -1 : 1);
+        return { ok:true, sessie:s, rijen, aantal:rijen.length, afgekapt:false, max:5000 };
+      }
+      if(actie !== 'overzicht') return { ok:false, error:'Onbekende actie.' };
+      const dagen = Math.min(90, Math.max(1, Number(sp.get('dagen')) || 30));
+      const grens = new Date(Date.now() - dagen*864e5).toISOString().slice(0,10);
+      const venster = log.filter(r => String(r.ontvangen) >= grens);
+      const paren = (sleutel, max) => {
+        const m = {};
+        venster.forEach(r => { const k = r[sleutel] ? String(r[sleutel]) : '—'; m[k] = (m[k] || 0) + 1; });
+        return Object.keys(m).map(k => [k, m[k]]).sort((a,b) => b[1] - a[1]).slice(0, max);
+      };
+      const perDag = {};
+      venster.forEach(r => { const d = String(r.ontvangen).slice(0,10);
+        const x = perDag[d] || (perDag[d] = [d, 0, 0]); x[1]++; if(r.Type === 'error') x[2]++; });
+      const fouten = {};
+      venster.filter(r => ['error','opvallend','bug'].indexOf(r.Type) >= 0)
+        .forEach(r => { const k = String(r.Message).slice(0,120); fouten[k] = (fouten[k] || 0) + 1; });
+      const opd = (D.opdracht || []).map(o => Object.assign({ id:o.id }, o.fields));
+      const sid = new Set(log.map(r => r.SessionId).filter(Boolean));
+      const kol = (rijen) => { const k = []; rijen.forEach(r => Object.keys(r).forEach(n => { if(k.indexOf(n) < 0) k.push(n); })); return k.map(n => ({ naam:n, type:'' })); };
+      return { ok:true, dagen, fouten:[],
+        tabellen:[
+          { naam:'logregels', soort:'table', rijen:log.length, kolommen:kol(log),
+            indexen:['idx_log_sessie','idx_log_ontvangen','idx_log_soort','idx_log_outcome'] },
+          { naam:'meetopdrachten', soort:'table', rijen:opd.length, kolommen:kol(opd), indexen:['idx_opdracht_actief'] },
+          { naam:'sessies', soort:'view', rijen:sid.size, kolommen:[], indexen:[] },
+          { naam:'bevindingen', soort:'view', rijen:log.filter(r => ['error','opvallend','bug'].indexOf(r.Type) >= 0 || r.Outcome).length, kolommen:[], indexen:[] }
+        ],
+        log:{ totaal:log.length,
+          oudste:log.reduce((a,r) => !a || r.ontvangen < a ? r.ontvangen : a, ''),
+          nieuwste:log.reduce((a,r) => r.ontvangen > a ? r.ontvangen : a, ''),
+          ritten:sid.size, zonderRit:log.filter(r => !r.SessionId).length,
+          metOnbekend:log.filter(r => r.onbekend).length,
+          fouten:log.filter(r => r.Type === 'error').length,
+          uitkomsten:log.filter(r => r.Outcome).length,
+          vandaag:log.filter(r => String(r.ontvangen) >= nu.slice(0,10)).length,
+          perDag:Object.values(perDag).sort((a,b) => a[0] < b[0] ? -1 : 1),
+          perType:paren('Type', 12), perSoort:paren('RecordType', 12), perVersie:paren('AppVersion', 10),
+          perMerk:paren('Merk', 10), perAdapter:paren('Adapter', 10),
+          topFouten:Object.keys(fouten).map(k => [k, fouten[k]]).sort((a,b) => b[1] - a[1]).slice(0, 12) },
+        opdrachten:{ totaal:opd.length, actief:opd.filter(o => Number(o.Actief) === 1)
+          .sort((a,b) => String(b.Gewijzigd).localeCompare(String(a.Gewijzigd)))
+          .map(o => ({ id:String(o.id), naam:o.Naam || '', gewijzigd:o.Gewijzigd || '' })) } };
+    }
+    if(b.actie === 'sql'){
+      const kolommen = ['id','ontvangen','Type','SessionId','Message'];
+      const rijen = log.slice(0, 20).map(r => { const u = {}; kolommen.forEach(k => { u[k] = r[k] === undefined ? null : r[k]; }); return u; });
+      return { ok:true, oefen:true, kolommen, rijen, aantal:rijen.length, afgekapt:false, max:500, ms:0 };
+    }
+    const lijst = D.opdracht || (D.opdracht = []);
+    if(b.actie === 'opdracht-nieuw'){
+      const v = b.velden || {};
+      if(!String(v.Naam || '').trim() || !String(v.Opdracht || '').trim()) return { ok:false, error:'Naam en Opdracht zijn verplicht.' };
+      if(String(v.Opdracht).length > 8192) return { ok:false, error:'De opdracht is ' + String(v.Opdracht).length + ' tekens; de app leest er hoogstens 8192.' };
+      const aan = v.Actief === true;
+      if(aan) lijst.forEach(o => { o.fields.Actief = 0; });
+      const id = String(lijst.reduce((a,o) => Math.max(a, Number(o.id) || 0), 0) + 1);
+      lijst.unshift({ id, fields:{ Naam:v.Naam, Reden:v.Reden || '', Actief:aan ? 1 : 0, Gewijzigd:nu, Opdracht:v.Opdracht, Notitie:v.Notitie || '' } });
+      return { ok:true, id, actief:aan, gewijzigd:nu };
+    }
+    const o = lijst.find(x => String(x.id) === String(b.id));
+    if(!o) return { ok:false, error:'Die opdracht bestaat niet (meer).' };
+    if(b.actie === 'opdracht-bewaar'){
+      const v = b.velden || {};
+      for(const k of Object.keys(v))
+        if(['Naam','Reden','Opdracht','Notitie'].indexOf(k) < 0) return { ok:false, error:'Het veld "' + k + '" zet je hier niet.' };
+      Object.assign(o.fields, v, { Gewijzigd:nu });
+      return { ok:true, id:o.id, gewijzigd:nu, velden:Object.keys(v) };
+    }
+    if(b.actie === 'opdracht-activeer'){
+      let uitgezet = 0;
+      lijst.forEach(x => { if(x !== o && Number(x.fields.Actief) === 1){ x.fields.Actief = 0; uitgezet++; } });
+      o.fields.Actief = 1; o.fields.Gewijzigd = nu;
+      return { ok:true, id:o.id, actief:true, uitgezet, gewijzigd:nu };
+    }
+    if(b.actie === 'opdracht-uit'){ o.fields.Actief = 0; o.fields.Gewijzigd = nu; return { ok:true, id:o.id, actief:false, gewijzigd:nu }; }
+    return { ok:false, error:'Onbekende actie.' };
+  }
+
   if(path.indexOf('/admin/tabel') === 0){
     const naar = { log:'log', klanten:'klanten', codes:'codes', users:'users',
                    veldlab:'veldlab', referentie:'referentie', config:'appconfig',
@@ -1150,8 +1472,11 @@ function oefenAntwoord(path, opts){
         (D.log || []).forEach(r => {
           const sid = r.fields.SessionId || ''; if(!sid) return;
           const v = per[sid] || (per[sid] = { id:sid, fields:{ SessionId:sid, regels:0, fouten:0,
-            opvallend:0, uitkomsten:0, issues:'' } });
+            opvallend:0, uitkomsten:0, issues:'', begonnen:r.fields.ontvangen, geeindigd:r.fields.ontvangen,
+            RecordType:r.fields.RecordType, AppVersion:r.fields.AppVersion, Adapter:r.fields.Adapter } });
           v.fields.regels++;
+          if(r.fields.ontvangen < v.fields.begonnen) v.fields.begonnen = r.fields.ontvangen;
+          if(r.fields.ontvangen > v.fields.geeindigd) v.fields.geeindigd = r.fields.ontvangen;
           if(r.fields.Type === 'error') v.fields.fouten++;
           if(r.fields.Type === 'opvallend') v.fields.opvallend++;
           if((r.fields.Outcome || '') !== ''){
@@ -1159,7 +1484,7 @@ function oefenAntwoord(path, opts){
             if(r.fields.Repro) v.fields.issues = (v.fields.issues ? v.fields.issues + ',' : '') + r.fields.Repro;
           }
         });
-        return Object.values(per);
+        return Object.values(per).sort((a,b) => a.fields.begonnen < b.fields.begonnen ? 1 : -1);
       }
       return D[naar[bron]] || [];
     };
@@ -1226,7 +1551,8 @@ function oefenAntwoord(path, opts){
    ════════════════════════════════════════════════════════════════ */
 const TABBLADEN = [
   ['overzicht','🩺 Overzicht'], ['klanten','👥 Klanten'], ['codes','🎟️ Codes'],
-  ['gebruikers','👤 Gebruikers'], ['logboek','📜 Logboek'], ['tabellen','🗂️ Tabellen'],
+  ['gebruikers','👤 Gebruikers'], ['logboek','📜 Logboek'], ['database','🗄️ Database'],
+  ['opdrachten','🎯 Meetopdrachten'], ['tabellen','🗂️ Tabellen'],
   ['instellingen','⚙️ Instellingen'], ['gereedschap','🧰 Gereedschap']
 ];
 let TAB = 'overzicht';
@@ -1243,6 +1569,10 @@ function toon(naam){
   });
   try{ location.hash = naam; }catch(e){ /* stil: hash zetten mag nooit de pagina breken */ }
   window.scrollTo(0, 0);
+  // Pas ophalen als je er komt: de opdrachtenlijst is klein, maar wie alleen
+  // een saldo komt bijboeken hoeft er niet op te wachten.
+  if(naam === 'opdrachten' && !OPD.rijen.length && TOKEN) opdLaden();
+  if(naam === 'database' && !RITTEN.length && TOKEN) rittenLaden();
 }
 
 function enter(){
@@ -1277,8 +1607,8 @@ function start(){
   tekenTabs();
   const uitHash = String(location.hash || '').replace('#','');
   toon(TABBLADEN.some(t => t[0] === uitHash) ? uitHash : 'overzicht');
-  renderFeatures(); tekenRoutes(); tekenSessie();
-  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers();
+  renderFeatures(); tekenRoutes(); tekenSessie(); sqlVoorbeeldenTekenen(); opdKeurderTekenen();
+  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers(); d1Laden();
 }
 function logout(){
   TOKEN = ''; $('adminTok').value = '';
@@ -1286,8 +1616,10 @@ function logout(){
   $('gate').classList.remove('hidden');
 }
 function allesHerladen(){
-  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers();
+  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers(); d1Laden();
   if(LOG_RIJEN.length) logLaden();
+  if(OPD.rijen.length) opdLaden();
+  if(RITTEN.length) rittenLaden();
   toast('Alles opnieuw opgehaald');
 }
 function beheerder(){ return WIE || 'onbekend'; }
@@ -1382,8 +1714,12 @@ async function checkStatus(){
       run:() => callWorker('read','/api/config',{ headers:H({ 'X-App-Token':TOKEN }) }) },
     { id:'st_users', naam:'Gebruikers (Airtable Config-base)', hint:'/admin/users',
       run:() => callWorker('users','/admin/users',{ headers:H() }) },
-    { id:'st_tabel', naam:'Tabelroute (nieuw)', hint:'/admin/tabel?bron=log',
-      run:() => callWorker('tabel','/admin/tabel?bron=log&limiet=1',{ headers:H() }) }
+    { id:'st_tabel', naam:'Logdatabase (D1) via de tabelroute', hint:'/admin/tabel?bron=log',
+      run:() => callWorker('tabel','/admin/tabel?bron=log&limiet=1',{ headers:H() }) },
+    // Een rit die niet bestaat: dat kost één geïndexeerde query en zegt of de
+    // Worker /admin/d1 kent. Het overzicht zelf zou tien queries kosten.
+    { id:'st_d1', naam:'Databaseroute', hint:'/admin/d1',
+      run:() => callWorker('d1','/admin/d1?actie=rit&sessie=__statuscontrole__',{ headers:H() }) }
   ];
   el.innerHTML = items.map(i =>
     `<div class="rij"><div><div class="lbl">${esc(i.naam)}</div><div class="desc"><code>${esc(i.hint)}</code></div></div>
@@ -1420,6 +1756,11 @@ function tekenKpi(){
   const nu = Date.now();
   const logDag = LOG_RIJEN.filter(r => nu - new Date(r.fields.Timestamp || r.createdTime).getTime() < 864e5);
   const fouten = logDag.filter(r => /fout|bug|error/i.test(String(r.fields.Type||'')));
+  // Heeft de database zelf geteld, dan gaan die getallen voor: die gaan over
+  // alle regels, en de opgehaalde lijst alleen over wat er binnen is.
+  const L = DB.overzicht && DB.overzicht.log;
+  const vandaag = new Date().toISOString().slice(0,10);
+  const dbDag = L ? (L.perDag || []).find(x => x[0] === vandaag) : null;
   const kpis = [
     ['Klanten', k.length, 'in beeld'],
     ['Tokens uitstaand', k.reduce((a,x) => a + (x.saldo||0), 0), 'som van alle saldi'],
@@ -1427,8 +1768,10 @@ function tekenKpi(){
     ['Omzet uit codes', eur(c.filter(x => x.gebruikt).reduce((a,x) => a + (x.waarde||0), 0)), 'verzilverd'],
     ['Geblokkeerd', k.filter(x => x.status === 'geblokkeerd').length, 'klantaccounts'],
     ['In verwijderwachtrij', k.filter(x => x.status === 'verwijderd' || x.verwijderdOp).length, 'wacht op de termijn'],
-    ['Logregels 24 u', logDag.length, LOG_RIJEN.length ? 'van ' + LOG_RIJEN.length + ' opgehaald' : 'nog niets opgehaald'],
-    ['Fouten 24 u', fouten.length, 'type fout of bug']
+    L ? ['Logregels vandaag', L.vandaag, 'van ' + L.totaal + ' in de database']
+      : ['Logregels 24 u', logDag.length, LOG_RIJEN.length ? 'van ' + LOG_RIJEN.length + ' opgehaald' : 'nog niets opgehaald'],
+    L ? ['Fouten vandaag', dbDag ? dbDag[2] : 0, 'Type error, sinds 00:00 UTC']
+      : ['Fouten 24 u', fouten.length, 'type fout of bug']
   ];
   $('kpiGrid').innerHTML = kpis.map(x =>
     `<div class="kpi"><div class="n">${esc(x[1])}</div><div class="l">${esc(x[0])}</div>
@@ -1497,6 +1840,24 @@ function tekenKlanten(){
    Wat hier NIET staat is verbruik over tijd — daar is geen bron voor. De
    Klanten-tabel houdt een stand bij, geen historie; een grafiek uit twee
    getallen zou een precisie suggereren die er niet is. */
+/* Waar het tegoed vandaan kwam. Uit admin.html overgenomen toen die pagina
+   opging in deze: de vraag bij een klant is bijna altijd "waar zijn mijn
+   tokens gebleven", en de codes die hij verzilverde staan in een heel andere
+   kaart. Het verschil tussen "ooit gekocht" en de som van zijn codes is wat
+   er met de hand is bijgeboekt. */
+function kCodesHtml(k){
+  const volledig = !$('cFilter') || $('cFilter').value === 'alle';
+  const mijn = CODES_CACHE.filter(c => String(c.gebruiktDoor || '').toLowerCase() === String(k.email || '').toLowerCase());
+  const viaCodes = mijn.reduce((a,c) => a + Number(c.credits || 0), 0);
+  const verschil = (k.totaal || 0) - viaCodes;
+  let h = '<h3 style="margin-top:12px">Verzilverde codes</h3>';
+  if(!volledig) return h + '<div class="hint">Het codefilter staat niet op "Alle" — zet het daarop om dit te zien.</div>';
+  if(!mijn.length) return h + '<div class="hint">Geen. Wat er ooit gekocht is (' + esc(k.totaal || 0) + '), is dus met de hand bijgeboekt.</div>';
+  h += mijn.map(c => `<div class="hint" style="margin:2px 0"><code>${esc(c.code)}</code> · ${esc(c.credits)} tokens${c.gebruiktOp ? ' · op ' + esc(dt(c.gebruiktOp)) : ''}</div>`).join('');
+  h += '<div class="hint">Samen ' + esc(viaCodes) + ' tokens' +
+       (verschil ? ' · <span style="color:var(--or)">verschil met "ooit gekocht": ' + esc(verschil) + ' — met de hand bijgeboekt of gecorrigeerd</span>' : '') + '</div>';
+  return h;
+}
 function kDetail(id){
   const k = KLANTEN_CACHE.find(x => x.id === id);
   const el = $('kd_' + id);
@@ -1510,6 +1871,7 @@ function kDetail(id){
       <div class="kpi"><div class="n">${esc(k.totaal || 0)}</div><div class="l">ooit gekocht</div></div>
       <div class="kpi"><div class="n">${esc(verbruikt)}</div><div class="l">verschil (verbruikt of weggegeven)</div></div>
     </div>
+    ${kCodesHtml(k)}
     <h3 style="margin-top:12px">Record-id</h3><code>${esc(k.id)}</code>
     <h3 style="margin-top:12px">Auditregels — nieuwste eerst</h3>
     ${audit ? '<pre style="white-space:pre-wrap;font-size:12px;color:var(--tx2);margin:0">' + esc(audit) + '</pre>'
@@ -1918,6 +2280,11 @@ function csvLog(){
   csvDownload('pidlane-log', kol, rijen.map(r => kol.map(k => k === 'id' ? r.id : r.fields[k])));
 }
 function miniGrafiek(){
+  const L = DB.overzicht && DB.overzicht.log;
+  if(L){
+    staafgrafiek($('miniGrafiek'), d1Dagen(L.perDag, 14).map(x => [x[0], x[1], x[0].slice(8,10)]));
+    return;
+  }
   const perDag = {};
   LOG_RIJEN.forEach(r => { const d = String(r.fields.Timestamp || r.createdTime || '').slice(0,10); if(d) perDag[d] = (perDag[d]||0) + 1; });
   const punten = [];
@@ -2149,6 +2516,521 @@ function tbCsv(){
 }
 
 /* ════════════════════════════════════════════════════════════════
+   🗄️ DATABASE (D1)
+   ────────────────────────────────────────────────────────────────
+   Drie dingen die het Logboek-tabblad niet kan: cijfers over de héle
+   tabel, één rit van begin tot eind, en een eigen vraag in SQL. Alles via
+   /admin/d1. Wat hier staat is door SQLite geteld en niet door deze pagina;
+   hier wordt alleen getekend.
+   ════════════════════════════════════════════════════════════════ */
+let DB = { overzicht:null, ritId:'', ritRijen:[], sql:null };
+
+// Tabellen en views die de tabellenbrowser kent. Een tabel die er niet in
+// staat kun je wel bevragen (knop SQL), maar niet bladeren of bewerken.
+const D1_NAAR_BRON = { logregels:'log', sessies:'sessies', bevindingen:'bevindingen', meetopdrachten:'opdracht' };
+
+async function d1Laden(){
+  const m = $('dbMsg');
+  const dagen = Number($('dbDagen').value) || 30;
+  const r = await veilig(m, () => callWorker('d1','/admin/d1?actie=overzicht&dagen=' + dagen, { headers:H() }), 'Bezig met tellen…');
+  if(!r.ok) return;
+  DB.overzicht = r.uit.data;
+  const f = DB.overzicht.fouten || [];
+  toon_msg(m, f.length ? 'warn' : 'ok', f.length
+    ? '⚠ Niet alles kon geteld worden:\n' + f.join('\n')
+    : '✓ Geteld om ' + new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}) + ', over ' + dagen + ' dagen.');
+  d1Teken(); tekenKpi(); miniGrafiek();
+}
+
+// De dagreeks met de lege dagen erbij. Een dag zonder regels weglaten zou
+// een rustige dag onzichtbaar maken, en juist een gat is vaak de vraag.
+function d1Dagen(perDag, dagen){
+  const per = {};
+  (perDag || []).forEach(x => { per[x[0]] = x; });
+  const uit = [];
+  for(let i = dagen - 1; i >= 0; i--){
+    const d = new Date(Date.now() - i*864e5).toISOString().slice(0,10);
+    const x = per[d] || [d, 0, 0];
+    uit.push([d, x[1], x[2]]);
+  }
+  return uit;
+}
+
+function d1Teken(){
+  const o = DB.overzicht; if(!o) return;
+  const L = o.log || {};
+  const vangnet = Number(L.metOnbekend) || 0;
+  const kpis = [
+    ['Logregels', L.totaal, 'de hele tabel'],
+    ['Vandaag', L.vandaag, 'sinds 00:00 UTC'],
+    ['Ritten', L.ritten, 'verschillende SessionId'],
+    ['Fouten', L.fouten, 'Type = error, alles'],
+    ['Uitkomsten', L.uitkomsten, 'regels met een Outcome'],
+    ['Zonder rit', L.zonderRit, 'geen SessionId'],
+    ['Vangnet onbekend', vangnet, vangnet ? '⚠ er mist een kolom' : 'hoort 0 te zijn'],
+    ['Loopt van', L.oudste ? dt(L.oudste) : '—', L.nieuwste ? 'tot ' + dtu(L.nieuwste) : '']
+  ];
+  $('dbKpi').innerHTML = kpis.map(x =>
+    `<div class="kpi"><div class="n">${esc(x[1] == null ? '—' : x[1])}</div><div class="l">${esc(x[0])}</div>
+     <div class="l" style="opacity:.7">${esc(x[2])}</div></div>`).join('');
+
+  const waarsch = [];
+  if(vangnet) waarsch.push(`<div class="waarschuwing">⚠ <b>${esc(vangnet)} regel(s)</b> hebben iets in <code>onbekend</code>:
+    de app stuurt een veld waarvoor in <code>schema.sql</code> geen kolom staat.
+    <button class="btn-sec btn-sm" onclick="sqlZet(SQL_VOORBEELDEN.vangnet[1]);sqlUitvoeren()">Bekijk ze</button></div>`);
+  const actief = (o.opdrachten && o.opdrachten.actief) || [];
+  if(actief.length > 1) waarsch.push(`<div class="gevaar">⛔ Er staan <b>${actief.length} meetopdrachten</b> aan. De app kiest de
+    laatst gewijzigde (${esc(actief[0].naam)}). <button class="btn-sec btn-sm" onclick="toon('opdrachten');opdLaden()">Naar Meetopdrachten</button></div>`);
+  $('dbWaarschuwing').innerHTML = waarsch.join('');
+
+  const dagen = Number(o.dagen) || 30;
+  const reeks = d1Dagen(L.perDag, dagen);
+  $('dbVenster').textContent = '— laatste ' + dagen + ' dagen, ' + reeks.reduce((a,x) => a + x[1], 0) + ' regels';
+  // Een datum onder elke staaf past tot twee weken; daarboven om de zoveel,
+  // anders lopen ze in elkaar. De hovertekst draagt altijd de hele datum.
+  const stap = dagen <= 14 ? 1 : Math.ceil(dagen / 10);
+  const lbl = (x, i) => (reeks.length - 1 - i) % stap === 0 ? x[0].slice(8,10) : '';
+  staafgrafiek($('dbPerDag'), reeks.map((x, i) => [x[0], x[1], lbl(x, i)]));
+  staafgrafiek($('dbFoutPerDag'), reeks.map((x, i) => [x[0], x[2], lbl(x, i)]), () => true);
+  const fout = (t) => /error|bug|fout/i.test(t);
+  $('dbPerType').innerHTML = (L.perType || []).map(p => {
+    const max = (L.perType[0] || [0,1])[1] || 1;
+    return `<div class="balk"><div class="naam">${esc(p[0])}</div>
+      <div class="spoor"><div class="vul ${fout(p[0]) ? 'rd' : p[0] === 'opvallend' ? 'or' : 'gn'}" style="width:${Math.round(p[1]/max*100)}%"></div></div>
+      <div class="n">${esc(p[1])}</div></div>`;
+  }).join('') || '<div class="leeg">Geen gegevens.</div>';
+  balken($('dbPerSoort'), L.perSoort || [], 'pp');
+  balken($('dbPerVersie'), L.perVersie || [], '');
+  balken($('dbPerMerk'), L.perMerk || [], 'or');
+  balken($('dbPerAdapter'), L.perAdapter || [], 'gn');
+  balken($('dbTopFouten'), L.topFouten || [], 'rd');
+
+  const t = o.tabellen || [];
+  $('dbTabellen').innerHTML = !t.length ? '<div class="leeg">Geen tabellen gevonden.</div>' :
+    '<table><thead><tr><th>naam</th><th>soort</th><th>rijen</th><th>kolommen</th><th>indexen</th><th></th></tr></thead><tbody>' +
+    t.map(x => `<tr><td class="mono">${esc(x.naam)}</td>
+      <td>${x.soort === 'view' ? '<span class="pill p-info">view — afgeleid</span>' : '<span class="pill p-ok">tabel</span>'}</td>
+      <td class="mono">${esc(x.rijen)}</td>
+      <td title="${esc((x.kolommen || []).map(k => k.naam + (k.type ? ' ' + k.type : '')).join('\n'))}">${esc((x.kolommen || []).length)}</td>
+      <td class="mono" title="${esc((x.indexen || []).join('\n'))}">${esc((x.indexen || []).length)}</td>
+      <td><div class="bar">
+        ${D1_NAAR_BRON[x.naam] ? `<button class="btn-sec btn-sm" onclick="d1Bladeren('${esc(x.naam)}')">Bladeren</button>` : ''}
+        <button class="btn-sec btn-sm" onclick="sqlZet('SELECT * FROM ${esc(x.naam)} LIMIT 50');$('sqlVraag').scrollIntoView({behavior:'smooth',block:'center'})">SQL</button>
+        <button class="btn-sec btn-sm" onclick="sqlZet(&quot;SELECT cid, name, type, pk FROM pragma_table_info('${esc(x.naam)}')&quot;);sqlUitvoeren()">Kolommen</button>
+      </div></td></tr>`).join('') + '</tbody></table>';
+}
+function d1Bladeren(naam){
+  const bron = D1_NAAR_BRON[naam]; if(!bron) return;
+  toon('tabellen'); $('tbBron').value = bron; tbBronGewisseld(); tbLaden(true);
+}
+
+/* ── Ritten ────────────────────────────────────────────────────── */
+let RITTEN = [];
+async function rittenLaden(){
+  const m = $('ritMsg');
+  const r = await veilig(m, () => callWorker('tabel','/admin/tabel?bron=sessies&limiet=50', { headers:H() }), 'Bezig…');
+  if(!r.ok) return;
+  RITTEN = (r.uit.data.records || []).map(x => x.fields || {});
+  toon_msg(m, 'info', '');
+  if(!RITTEN.length){ $('rittenLijst').innerHTML = '<div class="leeg">Nog geen ritten met een SessionId.</div>'; return; }
+  const duur = (a, b) => { const s = (new Date(b) - new Date(a)) / 1000; return isFinite(s) && s >= 0 ? (s >= 3600 ? Math.floor(s/3600) + 'u' : '') + Math.floor(s % 3600 / 60) + 'm' : '—'; };
+  $('rittenLijst').innerHTML = '<table><thead><tr><th>rit</th><th>begonnen</th><th>duur</th><th>regels</th><th>fouten</th><th>LET OP</th><th>uitkomsten</th><th>issues</th><th>versie</th><th></th></tr></thead><tbody>' +
+    RITTEN.map(s => `<tr><td class="mono">${esc(s.SessionId)}${Number(s.Demo) ? ' <span class="pill p-wacht">demo</span>' : ''}</td>
+      <td class="mono">${esc(dtu(s.begonnen))}</td><td>${esc(duur(s.begonnen, s.geeindigd))}</td>
+      <td class="mono">${esc(s.regels || 0)}</td>
+      <td>${Number(s.fouten) ? '<span class="pill p-uit">' + esc(s.fouten) + '</span>' : '0'}</td>
+      <td>${Number(s.opvallend) ? '<span class="pill p-wacht">' + esc(s.opvallend) + '</span>' : '0'}</td>
+      <td>${Number(s.uitkomsten) ? '<span class="pill p-ok">' + esc(s.uitkomsten) + '</span>' : '0'}</td>
+      <td>${esc(s.issues || '')}</td><td>${esc(s.AppVersion || '')}</td>
+      <td><button class="btn-sec btn-sm" onclick="ritOpen('${esc(s.SessionId)}')">Openen</button></td></tr>`).join('') +
+    '</tbody></table>';
+}
+
+async function ritOpen(id){
+  const sid = String(id || $('ritId').value || '').trim();
+  const m = $('ritMsg');
+  if(!sid){ toon_msg(m, 'err', 'Vul een SessionId in, of open er een uit de lijst.'); return; }
+  $('ritId').value = sid;
+  const r = await veilig(m, () => callWorker('d1','/admin/d1?actie=rit&sessie=' + encodeURIComponent(sid), { headers:H() }), 'Bezig met ophalen…');
+  if(!r.ok) return;
+  const d = r.uit.data;
+  DB.ritId = sid; DB.ritRijen = d.rijen || [];
+  toon_msg(m, d.afgekapt ? 'warn' : 'info', d.afgekapt ? '⚠ Afgekapt op ' + d.max + ' regels: de rit is langer. Gebruik de SQL-console voor de rest.' : '');
+  if(!DB.ritRijen.length){ $('ritKaart').classList.add('hidden'); toon_msg(m, 'warn', 'Geen regels met SessionId "' + sid + '".'); return; }
+  $('ritKaart').classList.remove('hidden');
+  ritTeken();
+  $('ritKaart').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// Wat een regel is, in de woorden van de testrun. Eén plek, zodat de pil in
+// de tabel en de regel in het klembord hetzelfde zeggen.
+function ritSoort(r){
+  if(r.Outcome) return ['UITKOMST', 'p-ok'];
+  if(r.Type === 'error') return ['FOUT', 'p-uit'];
+  if(r.Type === 'opvallend') return ['LET OP', 'p-wacht'];
+  if(r.Type === 'bug') return ['BUG', 'p-admin'];
+  return [r.Type || '—', 'p-info'];
+}
+function ritZichtbaar(){
+  const f = $('ritFilter').value, q = $('ritZoek').value.trim().toLowerCase();
+  return DB.ritRijen.filter(r => {
+    if(f === 'uitkomst' && !r.Outcome) return false;
+    if(f === 'bevinding' && !r.Outcome && ['error','opvallend','bug'].indexOf(r.Type) < 0) return false;
+    if(q && JSON.stringify(r).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+}
+function ritTeken(){
+  const alle = DB.ritRijen;
+  const eerste = alle[0] || {}, laatste = alle[alle.length-1] || {};
+  const s = (new Date(laatste.ontvangen) - new Date(eerste.ontvangen)) / 1000;
+  const tel = (fn) => alle.filter(fn).length;
+  $('ritTitel').textContent = '🚗 ' + DB.ritId;
+  const kpis = [
+    ['Regels', alle.length], ['Duur', isFinite(s) ? Math.floor(s/60) + ' min ' + Math.round(s % 60) + ' s' : '—'],
+    ['FOUT', tel(r => r.Type === 'error')], ['LET OP', tel(r => r.Type === 'opvallend')],
+    ['Uitkomsten', tel(r => !!r.Outcome)], ['App-versie', eerste.AppVersion || laatste.AppVersion || '—'],
+    ['Adapter', eerste.Adapter || laatste.Adapter || '—'], ['Merk', eerste.Merk || laatste.Merk || '—']
+  ];
+  $('ritKpi').innerHTML = kpis.map(x => `<div class="kpi"><div class="n" style="font-size:17px">${esc(x[1])}</div><div class="l">${esc(x[0])}</div></div>`).join('');
+  const rijen = ritZichtbaar();
+  const t0 = new Date(eerste.ontvangen).getTime();
+  $('ritTabel').innerHTML = !rijen.length ? '<div class="leeg">Niets dat hieraan voldoet.</div>' :
+    '<table><thead><tr><th>#</th><th>+tijd</th><th>soort</th><th>regel</th><th>bericht</th><th>uitkomst</th></tr></thead><tbody>' +
+    rijen.map(r => {
+      const k = ritSoort(r);
+      const dtS = (new Date(r.ontvangen).getTime() - t0) / 1000;
+      return `<tr><td class="mono">${esc(r.id)}</td>
+        <td class="mono">${isFinite(dtS) ? '+' + Math.floor(dtS/60) + ':' + ('0' + Math.floor(dtS % 60)).slice(-2) : '—'}</td>
+        <td><span class="pill ${k[1]}">${esc(k[0])}</span></td><td>${esc(r.RecordType || '')}</td>
+        <td class="rekbaar">${esc(r.Message || '')}</td>
+        <td>${r.Outcome ? esc(r.Outcome) + (r.Repro ? ' <code>' + esc(r.Repro) + '</code>' : '') : ''}</td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+function ritKopieer(){
+  const rijen = DB.ritRijen.filter(r => r.Outcome || ['error','opvallend','bug'].indexOf(r.Type) >= 0);
+  if(!rijen.length){ toast('Geen FOUT, LET OP of uitkomst in deze rit'); return; }
+  const kop = 'Rit ' + DB.ritId + ' — ' + DB.ritRijen.length + ' regels, ' + rijen.length + ' bevindingen\n';
+  kopieer(kop + rijen.map(r => {
+    const k = ritSoort(r);
+    return '[' + String(r.ontvangen || '').slice(11,19) + '] ' + k[0].padEnd(8) +
+      (r.Outcome ? r.Outcome + (r.Repro ? ' ' + r.Repro : '') + ' — ' : '') + String(r.Message || '');
+  }).join('\n'));
+}
+function ritCsv(){
+  if(!DB.ritRijen.length){ toast('Niets om te exporteren'); return; }
+  const kol = [];
+  DB.ritRijen.forEach(r => Object.keys(r).forEach(k => { if(kol.indexOf(k) < 0) kol.push(k); }));
+  csvDownload('pidlane-rit-' + DB.ritId.replace(/[^A-Za-z0-9_-]/g,''), kol, DB.ritRijen);
+}
+function ritJson(){
+  if(!DB.ritRijen.length){ toast('Niets om te exporteren'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(DB.ritRijen, null, 2)], { type:'application/json' }));
+  a.download = 'pidlane-rit-' + DB.ritId.replace(/[^A-Za-z0-9_-]/g,'') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('JSON gedownload');
+}
+/* Opruimen gebeurt niet hier maar op de plek die ervoor gebouwd is: tellen
+   vóór wissen, en uitkomsten blijven staan tenzij je anders kiest. Deze knop
+   vult alleen de voorwaarde in. */
+function ritOpruimen(){
+  if(!DB.ritId) return;
+  toon('tabellen'); $('tbBron').value = 'log'; tbBronGewisseld();
+  $('opSessie').value = DB.ritId; $('opDagen').value = ''; $('opType').value = '';
+  $('tbOpruimKaart').open = true;
+  toon_msg($('opMsg'), 'info', 'Voorwaarde ingevuld voor rit ' + DB.ritId + '. Klik eerst op "Tel eerst".');
+  $('tbOpruimKaart').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+/* ── SQL-console ─────────────────────────────────────────────────
+   De Worker keurt en begrenst; deze pagina keurt niet mee. Een tweede
+   keuring hier zou een tweede waarheid zijn die uit de pas gaat lopen —
+   dan weigert de pagina iets wat de Worker goed vindt, of andersom. */
+const SQL_VOORBEELDEN = {
+  laatste:   ['Laatste 50 regels', 'SELECT id, ontvangen, Type, RecordType, SessionId, Message\n  FROM logregels\n ORDER BY id DESC\n LIMIT 50'],
+  perdag:    ['Fouten per dag, 30 dagen', "SELECT substr(ontvangen, 1, 10) AS dag,\n       COUNT(*) AS regels,\n       SUM(Type = 'error') AS fouten,\n       SUM(Type = 'opvallend') AS let_op\n  FROM logregels\n WHERE ontvangen >= date('now', '-30 days')\n GROUP BY dag\n ORDER BY dag DESC"],
+  ritfout:   ['Ritten met de meeste fouten', 'SELECT SessionId, begonnen, regels, fouten, opvallend, uitkomsten, issues\n  FROM sessies\n ORDER BY fouten DESC, begonnen DESC\n LIMIT 25'],
+  uitkomst:  ['Uitkomsten per issue', "SELECT Repro AS issue, Outcome, COUNT(*) AS n, MAX(ontvangen) AS laatst\n  FROM logregels\n WHERE Outcome IS NOT NULL AND Outcome <> ''\n GROUP BY Repro, Outcome\n ORDER BY laatst DESC"],
+  berichten: ['Meest voorkomende fouten', "SELECT Message, COUNT(*) AS n, COUNT(DISTINCT SessionId) AS ritten, MAX(AppVersion) AS versie\n  FROM logregels\n WHERE Type IN ('error', 'opvallend')\n GROUP BY Message\n ORDER BY n DESC\n LIMIT 30"],
+  adapter:   ['Fouten per adapter', "SELECT Adapter, COUNT(*) AS regels, SUM(Type = 'error') AS fouten,\n       ROUND(100.0 * SUM(Type = 'error') / COUNT(*), 1) AS pct\n  FROM logregels\n WHERE Adapter IS NOT NULL AND Adapter <> ''\n GROUP BY Adapter\n ORDER BY fouten DESC"],
+  versies:   ['App-versies, laatste 7 dagen', "SELECT AppVersion, COUNT(*) AS regels, COUNT(DISTINCT User) AS gebruikers, MAX(ontvangen) AS laatst\n  FROM logregels\n WHERE ontvangen >= date('now', '-7 days')\n GROUP BY AppVersion\n ORDER BY laatst DESC"],
+  vangnet:   ['Vangnet: regels met iets in onbekend', "SELECT id, ontvangen, RecordType, onbekend\n  FROM logregels\n WHERE onbekend IS NOT NULL AND onbekend <> ''\n ORDER BY id DESC\n LIMIT 50"],
+  opdracht:  ['Meetopdrachten', 'SELECT id, Naam, Actief, Gewijzigd, Reden, length(Opdracht) AS tekens\n  FROM meetopdrachten\n ORDER BY Gewijzigd DESC'],
+  kolommen:  ['Kolommen van logregels', "SELECT cid, name, type, pk FROM pragma_table_info('logregels')"],
+  schema:    ['Schema: tabellen, views, indexen', "SELECT type, name, tbl_name, sql\n  FROM sqlite_master\n WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'\n ORDER BY type, name"]
+};
+function sqlVoorbeeldenTekenen(){
+  $('sqlVoorbeeld').innerHTML = '<option value="">Voorbeeldvraag…</option>' +
+    Object.keys(SQL_VOORBEELDEN).map(k => `<option value="${k}">${esc(SQL_VOORBEELDEN[k][0])}</option>`).join('');
+  sqlGeschiedenisTekenen();
+}
+function sqlZet(t){ $('sqlVraag').value = t; if(TAB !== 'database') toon('database'); }
+function sqlVoorbeeld(){
+  const k = $('sqlVoorbeeld').value; if(!k) return;
+  $('sqlVraag').value = SQL_VOORBEELDEN[k][1];
+  $('sqlVoorbeeld').value = '';
+}
+
+/* Geschiedenis per beheerder, in deze browser. Het is een gemak en geen
+   administratie: leeg of geblokkeerd mag, en dan werkt alles gewoon door. */
+function sqlGeschiedenisLees(){
+  try{ const g = JSON.parse(localStorage.getItem('pl_beheer_sql') || '[]'); return Array.isArray(g) ? g : []; }
+  catch(e){ console.warn('SQL-geschiedenis niet leesbaar — begint leeg', e); return []; }
+}
+function sqlGeschiedenisTekenen(){
+  const g = sqlGeschiedenisLees();
+  $('sqlGeschiedenis').innerHTML = '<option value="">Eerdere vragen (' + g.length + ')…</option>' +
+    g.map((q, i) => `<option value="${i}">${esc(q.replace(/\s+/g,' ').slice(0,70))}</option>`).join('');
+}
+function sqlUitGeschiedenis(){
+  const i = $('sqlGeschiedenis').value; if(i === '') return;
+  const g = sqlGeschiedenisLees(); if(g[i]) $('sqlVraag').value = g[i];
+  $('sqlGeschiedenis').value = '';
+}
+async function sqlUitvoeren(){
+  const m = $('sqlMsg');
+  const sql = $('sqlVraag').value.trim();
+  if(!sql){ toon_msg(m, 'err', 'Typ eerst een vraag, of kies een voorbeeld.'); return; }
+  const r = await veilig(m, () => callWorker('d1','/admin/d1',{
+    method:'POST', headers:HJ(), body:JSON.stringify({ actie:'sql', sql }) }), 'Bezig…');
+  if(!r.ok){ $('sqlUit').innerHTML = ''; return; }
+  const d = r.uit.data;
+  DB.sql = d;
+  try{
+    const g = sqlGeschiedenisLees().filter(q => q !== sql);
+    g.unshift(sql);
+    localStorage.setItem('pl_beheer_sql', JSON.stringify(g.slice(0,12)));
+  }catch(e){ console.warn('SQL-geschiedenis niet bewaard — opslag geblokkeerd?', e); }
+  sqlGeschiedenisTekenen();
+  toon_msg(m, d.afgekapt ? 'warn' : 'ok',
+    (d.oefen ? '🧪 Oefenmodus: je vraag is NIET uitgevoerd. Dit zijn voorbeeldrijen.\n' : '') +
+    '✓ ' + d.aantal + ' rij(en)' + (d.ms != null ? ' in ' + d.ms + ' ms' : '') +
+    (d.afgekapt ? '\n⚠ Afgekapt op ' + d.max + ' rijen. Tel met COUNT(*) of zet er zelf een LIMIT/WHERE bij.' : ''));
+  const kol = d.kolommen || [];
+  $('sqlUit').innerHTML = !(d.rijen || []).length ? '<div class="leeg">Geen rijen.</div>' :
+    '<table><thead><tr>' + kol.map(k => '<th class="mono">' + esc(k) + '</th>').join('') + '</tr></thead><tbody>' +
+    d.rijen.map(rij => '<tr>' + kol.map(k => {
+      const v = waarde(rij[k]);
+      return `<td title="${esc(v)}"${typeof rij[k] === 'number' ? ' class="mono"' : ''}>${rij[k] === null ? '<span class="hint">null</span>' : esc(v)}</td>`;
+    }).join('') + '</tr>').join('') + '</tbody></table>';
+}
+function sqlCsv(){
+  if(!DB.sql || !(DB.sql.rijen || []).length){ toast('Niets om te exporteren'); return; }
+  csvDownload('pidlane-sql', DB.sql.kolommen, DB.sql.rijen);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🎯 MEETOPDRACHTEN
+   ────────────────────────────────────────────────────────────────
+   Lezen gaat via /admin/tabel (bron opdracht), schrijven via /admin/d1:
+   daar zet activeren de andere uit in één transactie, en zet de Worker
+   Gewijzigd zelf. Keuren gebeurt met PLOpdracht.keur() uit
+   public/pidlane-opdracht.js — dezelfde functie die de app draait.
+   ════════════════════════════════════════════════════════════════ */
+let OPD = { rijen:[], huidig:null };
+
+function keurder(){ return (window.PLOpdracht && typeof window.PLOpdracht.keur === 'function') ? window.PLOpdracht : null; }
+function opdKeur(tekst){
+  const K = keurder();
+  if(!K) return null;
+  try{ return K.keur(String(tekst || '')); }
+  catch(e){ return { ok:false, fouten:['de keurder brak af — ' + (e && e.message || e)] }; }
+}
+function opdKeurderTekenen(){
+  const K = keurder();
+  $('opdKeurder').innerHTML = K
+    ? '✓ Keurder geladen uit <code>pidlane-opdracht.js</code> — schema ' + esc(K._schemas().join(' en ')) +
+      (window.ALL_PID_DEFS ? ', met de PID-tabel van de app (' + Object.keys(window.ALL_PID_DEFS).length + ' PIDs).' : ', zonder PID-tabel: alleen de vorm wordt gekeurd.')
+    : '<span style="color:var(--or)">⚠ De keurder is niet geladen (<code>../public/pidlane-opdracht.js</code>). Open de pagina via <code>npm run admin</code>; ' +
+      'zonder keurder vraagt activeren om een extra bevestiging.</span>';
+}
+
+async function opdLaden(){
+  const m = $('opdMsg');
+  opdKeurderTekenen();
+  const r = await veilig(m, () => callWorker('tabel','/admin/tabel?bron=opdracht&limiet=100', { headers:H() }), 'Bezig…');
+  if(!r.ok) return;
+  OPD.rijen = (r.uit.data.records || []).map(x => Object.assign({ id:String(x.id) }, x.fields || {}));
+  toon_msg(m, 'info', '');
+  opdTekenen();
+}
+function opdTekenen(){
+  const actief = OPD.rijen.filter(x => Number(x.Actief) === 1);
+  $('opdWaarschuwing').innerHTML = actief.length > 1
+    ? `<div class="gevaar">⛔ Er staan <b>${actief.length}</b> opdrachten aan. De app neemt de laatst gewijzigde:
+       <b>${esc(actief.slice().sort((a,b) => String(b.Gewijzigd).localeCompare(String(a.Gewijzigd)))[0].Naam)}</b>.
+       Activeer de goede opnieuw — dan gaan de andere uit.</div>`
+    : actief.length === 0 && OPD.rijen.length ? '<div class="waarschuwing">Er staat geen opdracht aan: de testrun draait zoals hij in de build staat.</div>' : '';
+  if(!OPD.rijen.length){ $('opdLijst').innerHTML = '<div class="leeg">Nog geen opdrachten. Maak er een met ➕.</div>'; return; }
+  $('opdLijst').innerHTML = OPD.rijen.map(o => {
+    const k = opdKeur(o.Opdracht);
+    const keur = !k ? '<span class="pill p-wacht">niet gekeurd</span>'
+      : k.ok ? '<span class="pill p-ok">✓ keurt</span>'
+      : `<span class="pill p-uit" title="${esc(k.fouten.join('\n'))}">✗ ${k.fouten.length} fout${k.fouten.length === 1 ? '' : 'en'}</span>`;
+    const aan = Number(o.Actief) === 1;
+    const inhoud = k && k.ok ? k.opdracht : null;
+    return `<div class="klantrij"${aan ? ' style="border-color:var(--gn)"' : ''}>
+      <div class="kop"><div><span class="adres">${esc(o.Naam || '(zonder naam)')}</span>
+        ${aan ? '<span class="pill p-ok">● actief</span>' : '<span class="pill p-info">uit</span>'} ${keur}</div>
+        <span class="hint" style="margin:0">#${esc(o.id)} · gewijzigd ${esc(dtu(o.Gewijzigd))}</span></div>
+      <div class="meta">${o.Reden ? esc(o.Reden) + ' · ' : ''}${inhoud
+        ? esc(inhoud.sensoren.length) + ' sensoren · ' + esc(Math.round(inhoud.duurS / 60 * 10) / 10) + ' min · ' +
+          esc(inhoud.vragen.length) + ' vragen · ' + esc(inhoud.drempels.length) + ' drempels · ' + esc(inhoud.proeven.length) + ' proeven' +
+          (inhoud.voorwaarden.length ? ' · ' + esc(inhoud.voorwaarden.length) + ' voorwaarden' : '')
+        : esc(String(o.Opdracht || '').length) + ' tekens'}</div>
+      ${o.Notitie ? `<div class="meta" style="white-space:pre-wrap">${esc(String(o.Notitie).slice(0,240))}${String(o.Notitie).length > 240 ? '…' : ''}</div>` : ''}
+      <div class="bar" style="margin-top:8px">
+        <button class="btn-sec btn-sm" onclick="opdOpen('${esc(o.id)}')">Bewerken</button>
+        ${aan ? `<button class="btn-waar btn-sm" onclick="opdUit('${esc(o.id)}')">Uitzetten</button>`
+              : `<button class="btn-ok btn-sm" onclick="opdActiveer('${esc(o.id)}')">Activeren</button>`}
+        <button class="btn-sec btn-sm" onclick="opdDupliceer('${esc(o.id)}')">Dupliceren</button>
+        <button class="btn-del btn-sm" onclick="opdWis('${esc(o.id)}')">Wissen</button>
+      </div></div>`;
+  }).join('');
+}
+
+function opdOpen(id){
+  const o = OPD.rijen.find(x => x.id === id); if(!o) return;
+  OPD.huidig = id;
+  $('opdTitel').textContent = 'Opdracht #' + id + (Number(o.Actief) === 1 ? ' — actief' : '');
+  $('opdNaam').value = o.Naam || ''; $('opdReden').value = o.Reden || '';
+  $('opdTekst').value = o.Opdracht || ''; $('opdNotitie').value = o.Notitie || '';
+  toon_msg($('opdBewaarMsg'), 'info', '');
+  $('opdKaart').classList.remove('hidden');
+  opdKeurLive();
+  $('opdKaart').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function opdNieuw(){
+  OPD.huidig = null;
+  $('opdTitel').textContent = '➕ Nieuwe opdracht';
+  ['opdNaam','opdReden','opdTekst','opdNotitie'].forEach(k => { $(k).value = ''; });
+  toon_msg($('opdBewaarMsg'), 'info', '');
+  $('opdKaart').classList.remove('hidden');
+  opdSjabloon();
+  $('opdNaam').focus();
+}
+function opdDupliceer(id){
+  const o = OPD.rijen.find(x => x.id === id); if(!o) return;
+  opdNieuw();
+  $('opdNaam').value = (o.Naam || '') + ' (kopie)'; $('opdReden').value = o.Reden || '';
+  $('opdTekst').value = o.Opdracht || ''; $('opdNotitie').value = o.Notitie || '';
+  opdKeurLive();
+}
+function opdSluiten(){ $('opdKaart').classList.add('hidden'); OPD.huidig = null; }
+
+/* Het sjabloon is een opdracht die keurt, met van elk onderdeel één. Leeg
+   beginnen betekent de witte lijst uit je hoofd kennen; dit is sneller en
+   laat meteen zien welke sleutels er zijn. */
+function opdSjabloon(){
+  if($('opdTekst').value.trim() && !confirm('De opdrachttekst vervangen door het sjabloon?')) return;
+  $('opdTekst').value = JSON.stringify({
+    schema: 2, naam: 'boordspanning en looptijd', reden: '#217 — accu of adapter',
+    sensoren: ['0142', '011F'], duurS: 300, tikS: 10,
+    vragen: [{ id: 'startstop', tekst: 'Ging de motor uit bij stilstand?', opties: ['ja', 'nee', 'weet ik niet'] }],
+    drempels: [{ pid: '0142', onder: 12.2, melding: 'boordspanning onder 12,2 V' }],
+    proeven: [{ issue: '#217', naam: 'boordspanning blijft binnen bereik', pid: '0142', meet: 'min', tussen: [11.5, 15.2] }]
+  }, null, 2);
+  opdKeurLive();
+}
+function opdMooi(){
+  try{ $('opdTekst').value = JSON.stringify(JSON.parse($('opdTekst').value), null, 2); opdKeurLive(); }
+  catch(e){ toon_msg($('opdBewaarMsg'), 'err', 'Geen geldige JSON — ' + e.message); }
+}
+function opdKeurLive(){
+  const t = $('opdTekst').value;
+  $('opdTeller').textContent = t.length + ' / 8192 tekens';
+  const k = opdKeur(t);
+  const el = $('opdKeuring');
+  if(!t.trim()){ el.innerHTML = ''; return; }
+  if(!k){ el.innerHTML = '<div class="waarschuwing">Niet gekeurd: de keurder is niet geladen.</div>'; return; }
+  if(!k.ok){
+    el.innerHTML = '<div class="gevaar"><b>✗ De app wijst deze opdracht af</b><br>' +
+      k.fouten.map(f => '• ' + esc(f)).join('<br>') + '</div>';
+    return;
+  }
+  const o = k.opdracht;
+  el.innerHTML = `<div class="msg ok" style="margin:0">✓ Keurt — schema ${esc(o.schema)} · "${esc(o.naam)}"</div>
+    <div class="hint">Sensoren: <code>${esc(o.sensoren.join(' '))}</code> · ${esc(o.duurS)} s, elke ${esc(o.tikS)} s ·
+      ${esc(o.vragen.length)} vragen · ${esc(o.drempels.length)} drempels · ${esc(o.proeven.length)} proeven ·
+      ${esc(o.voorwaarden.length)} voorwaarden</div>` +
+    (o.proeven.length ? '<div class="hint">' + o.proeven.map(p =>
+      `• ${esc(p.issue)} ${esc(p.naam)}: <code>${esc(p.pid)}</code> ${esc(p.meet)} tussen ${esc(p.tussen[0])} en ${esc(p.tussen[1])}` +
+      (o.sensoren.indexOf(p.pid) < 0 ? ' <span style="color:var(--or)">— staat niet in sensoren, wordt niet gemeten</span>' : '')).join('<br>') + '</div>' : '');
+}
+
+/* De keurdrempel voor activeren. Met keurder: een afgekeurde opdracht gaat
+   niet aan — de app zou hem toch weigeren, en dan rijd je zonder opdracht
+   terwijl je denkt dat hij er is. Zonder keurder: niet stil door, maar een
+   bevestiging met de reden erbij. */
+function opdMagAan(tekst){
+  const k = opdKeur(tekst);
+  if(!k) return confirm('De keurder is niet geladen, dus deze opdracht is niet gekeurd.\n\nToch activeren? De app keurt hem bij de start alsnog, en wijst hem af als hij niet deugt.');
+  if(!k.ok){ alert('Niet geactiveerd: de app wijst deze opdracht af.\n\n' + k.fouten.join('\n')); return false; }
+  return true;
+}
+
+async function opdOpslaan(activeer){
+  const m = $('opdBewaarMsg');
+  const velden = { Naam:$('opdNaam').value.trim(), Reden:$('opdReden').value.trim(),
+                   Opdracht:$('opdTekst').value, Notitie:$('opdNotitie').value };
+  if(!velden.Naam){ toon_msg(m, 'err', 'Een naam is verplicht.'); return; }
+  if(!velden.Opdracht.trim()){ toon_msg(m, 'err', 'De opdrachttekst is leeg.'); return; }
+  if(activeer && !opdMagAan(velden.Opdracht)) return;
+  if(!activeer){
+    const k = opdKeur(velden.Opdracht);
+    if(k && !k.ok && !confirm('Deze opdracht keurt niet (' + k.fouten.length + ' fout' + (k.fouten.length === 1 ? '' : 'en') +
+        ').\nOpslaan als klad kan; activeren niet.\n\nToch opslaan?')) return;
+  }
+  let r;
+  if(OPD.huidig){
+    r = await veilig(m, () => callWorker('d1','/admin/d1',{ method:'POST', headers:HJ(),
+      body:JSON.stringify({ actie:'opdracht-bewaar', id:Number(OPD.huidig), velden }) }), 'Bezig met opslaan…');
+    if(!r.ok) return;
+    if(activeer){
+      r = await veilig(m, () => callWorker('d1','/admin/d1',{ method:'POST', headers:HJ(),
+        body:JSON.stringify({ actie:'opdracht-activeer', id:Number(OPD.huidig) }) }), 'Bezig met activeren…');
+      if(!r.ok) return;
+    }
+  } else {
+    r = await veilig(m, () => callWorker('d1','/admin/d1',{ method:'POST', headers:HJ(),
+      body:JSON.stringify({ actie:'opdracht-nieuw', velden:Object.assign({ Actief:!!activeer }, velden) }) }), 'Bezig met aanmaken…');
+    if(!r.ok) return;
+    OPD.huidig = String(r.uit.data.id || '') || null;
+  }
+  toon_msg(m, 'ok', '✓ Opgeslagen' + (activeer ? ' en actief — de volgende testrun haalt hem op.' : '.'));
+  toast(activeer ? 'Opdracht actief' : 'Opdracht opgeslagen');
+  await opdLaden();
+  if(OPD.huidig) $('opdTitel').textContent = 'Opdracht #' + OPD.huidig + (activeer ? ' — actief' : '');
+}
+async function opdActiveer(id){
+  const o = OPD.rijen.find(x => x.id === id); if(!o) return;
+  if(!opdMagAan(o.Opdracht)) return;
+  const andere = OPD.rijen.filter(x => Number(x.Actief) === 1 && x.id !== id);
+  if(!confirm('"' + (o.Naam || id) + '" activeren?' + (andere.length ? '\n\nDit zet uit: ' + andere.map(x => x.Naam).join(', ') : ''))) return;
+  const r = await veilig($('opdMsg'), () => callWorker('d1','/admin/d1',{ method:'POST', headers:HJ(),
+    body:JSON.stringify({ actie:'opdracht-activeer', id:Number(id) }) }), 'Bezig…');
+  if(!r.ok) return;
+  toast('Actief' + (r.uit.data.uitgezet ? ' — ' + r.uit.data.uitgezet + ' uitgezet' : ''));
+  await opdLaden();
+}
+async function opdUit(id){
+  if(!confirm('Deze opdracht uitzetten?\n\nStaat er daarna geen enkele aan, dan draait de testrun zoals hij in de build staat.')) return;
+  const r = await veilig($('opdMsg'), () => callWorker('d1','/admin/d1',{ method:'POST', headers:HJ(),
+    body:JSON.stringify({ actie:'opdracht-uit', id:Number(id) }) }), 'Bezig…');
+  if(!r.ok) return;
+  toast('Uitgezet'); await opdLaden();
+}
+async function opdWis(id){
+  const o = OPD.rijen.find(x => x.id === id); if(!o) return;
+  const ok = await wisRecords('opdracht', [id], $('opdMsg'), 'opdracht "' + (o.Naam || id) + '"');
+  if(!ok) return;
+  if(OPD.huidig === id) opdSluiten();
+  await opdLaden();
+}
+
+/* ════════════════════════════════════════════════════════════════
    ⚙️ INSTELLINGEN
    ════════════════════════════════════════════════════════════════ */
 const FEATURES = [
@@ -2285,7 +3167,9 @@ function tekenRoutes(){
     ['GET /admin/users','app-gebruikers uit de Config-base'],
     ['POST /admin/users','opslaan en verwijderen'],
     ['GET /admin/tabel','ruwe records uit een van de bekende tabellen'],
-    ['POST /admin/tabel','één record wijzigen of maximaal tien wissen'],
+    ['POST /admin/tabel','één record wijzigen, wissen, of (D1) opruimen na eerst tellen'],
+    ['GET /admin/d1','het overzicht over de hele database, of één rit van begin tot eind'],
+    ['POST /admin/d1','de SQL-console (alleen lezen), en meetopdrachten aanmaken, bewaren, activeren, uitzetten'],
     ['POST /v1/messages','de AI-route — alleen voor de statuscheck en de testvraag']
   ];
   $('routeLijst').innerHTML = routes.map(r =>
@@ -2317,13 +3201,14 @@ function tekenSessie(){
   '<div class="hint">De token wordt bewust niet onthouden. De Worker-URL en je naam wel.</div>';
 }
 
-// Sneltoetsen: 1–8 springen tussen de tabbladen zolang je niet in een veld
-// staat. Handig bij het beheren; nooit storend tijdens het typen.
+// Sneltoetsen: 1–9 en 0 springen tussen de tabbladen zolang je niet in een
+// veld staat. Handig bij het beheren; nooit storend tijdens het typen.
 document.addEventListener('keydown', function(e){
   if(e.ctrlKey || e.metaKey || e.altKey) return;
   const a = document.activeElement;
   if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
-  const n = Number(e.key);
+  if(!/^[0-9]$/.test(e.key)) return;
+  const n = e.key === '0' ? 10 : Number(e.key);
   if(n >= 1 && n <= TABBLADEN.length && !$('app').classList.contains('hidden')) toon(TABBLADEN[n-1][0]);
 });
 </script>

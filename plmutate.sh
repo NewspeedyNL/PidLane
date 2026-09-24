@@ -253,13 +253,14 @@ MUTATIES=(
 "worker.js@@          const r1 = await fetch(recUrl, { headers: hdr });\n          if (!r1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const r1 = r0;\n          const huidig@@test-bijboeken.js@@bijboeken rekent met de lezing van vóór het slot in plaats van een verse"
 "worker.js@@      if (uitkomst.bezet)\n        return json({ ok: false, code: \"saldo_bezet\", error: \"Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens.\" }, 409);@@@@test-bijboeken.js@@een bezet saldo-slot laat het bijboeken toch doorlopen"
 "worker.js@@      if (!email)\n        return json({ ok: false, code: \"saldo_geen_email\", error: \"Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden.\" }, 409);@@@@test-bijboeken.js@@bijboeken zet het slot op een leeg e-mailadres in plaats van te weigeren"
-"admin/admin.html@@  if (body?.code==='saldo_bezet') {@@  if (body?.code==='saldo_bezet_oud') {@@test-bijboeken.js@@admin.html kent de code voor een bezet saldo-slot niet meer"
+"admin/beheer.html@@  if(code === 'saldo_bezet')@@  if(code === 'saldo_bezet_oud')@@test-bijboeken.js@@beheer.html kent de code voor een bezet saldo-slot niet meer"
 
 # ── saldo ZETTEN door hetzelfde slot (03-09-2026, #93) ──
 "worker.js@@          if (saldoWas !== null && huidig !== saldoWas)@@          if (saldoWas !== null && huidig === saldoWas)@@test-bijboeken.js@@de voorwaarde bij saldo zetten staat omgekeerd: een verschoven saldo wordt juist overschreven"
 "worker.js@@          const z1 = await fetch(zetUrl, { headers: hdr });\n          if (!z1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
-"admin/admin.html@@saldoWas:huidig,door:beheerderNaam()@@door:beheerderNaam()@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
-"admin/admin.html@@  if (body?.code==='saldo_verschoven') {@@  if (body?.code==='saldo_verschoven_oud') {@@test-bijboeken.js@@admin.html kent de code voor een verschoven saldo niet"
+"admin/beheer.html@@saldo:n, saldoWas:huidig }@@saldo:n }@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
+"admin/beheer.html@@  if(code === 'saldo_verschoven')@@  if(code === 'saldo_verschoven_oud')@@test-bijboeken.js@@beheer.html kent de code voor een verschoven saldo niet"
+"admin/beheer.html@@  const code = (body && (body.code || body.error)) || '';@@  const code = (body && body.error) || '';@@test-bijboeken.js@@beheer.html leest de foutcode uit de leesbare tekst: de afhandeling staat er, maar wordt nooit bereikt"
 
 # ── het kasboek TokenLog (08-09-2026, #83) ──
 # Acht fouten die je bij een kasboek écht maakt. De eerste drie gaan over
@@ -945,6 +946,26 @@ MUTATIES=(
 "worker.js@@    if (body.ookUitkomsten !== true && kol.has(\"Outcome\"))@@    if (false)@@test-adminbron-d1.js@@opruimen neemt de uitkomsten mee: het antwoord op een issue verdwijnt samen met de ruis"
 "worker.js@@    const proef = body.proef !== false;@@    const proef = body.proef === true;@@test-adminbron-d1.js@@opruimen wist meteen in plaats van eerst te tellen — een vergissing kost dan rijen en geen getal"
 "worker.js@@    if (!waar.length)@@    if (false)@@test-adminbron-d1.js@@een opruimregel zonder enkele voorwaarde komt erdoor, en dat is de hele tabel"
+
+# ── /admin/d1 (24-09-2026): de SQL-console en de meetopdrachten ──
+# De console belooft alleen te lezen, en die belofte rust op twee lagen: de
+# vraag als subquery, en de tekstkeuring ervóór. Elke laag apart uitzetten
+# moet rood worden — anders hangt "alleen lezen" aan één regel zonder dat
+# iemand het weet. De opdrachtmutaties bouwen 22-09 na: negen actieve rijen,
+# en de verkeerde won.
+"worker.js@@db.prepare(ingepakt).bind(D1_SQL_MAX_RIJEN + 1).all()@@db.prepare(kern).all()@@test-admind1.js@@de console draait de vraag kaal in plaats van als subquery: zonder de tekstkeuring schrijft hij"
+"worker.js@@  const m = kaal.match(D1_SQL_VERBODEN);@@  const m = null;@@test-admind1.js@@de tekstkeuring laat schrijfwoorden door: alleen de subquery houdt de console nog op lezen"
+"worker.js@@  const skelet = d1SqlSkelet(tekst);@@  const skelet = tekst;@@test-admind1.js@@de keuring leest tekstwaarden mee: een zoekvraag op '%DELETE%' wordt geweigerd"
+"worker.js@@      db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1 AND id <> ?\").bind(id),\n@@@@test-admind1.js@@een opdracht aanzetten laat de andere aan staan: de app kiest er dan zelf een, zoals op 22-09"
+"worker.js@@      ? await db.batch([db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1\"), invoeg])@@      ? [await invoeg.run()]@@test-admind1.js@@een nieuwe actieve opdracht zet de oude niet uit"
+"worker.js@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\"];@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\", \"Gewijzigd\"];@@test-admind1.js@@Gewijzigd is met de hand te zetten: dan kies je stil welke opdracht er rijdt"
+# De beheerpagina zelf (bproef-beheerpagina.js). Drie stille fouten die er
+# allemaal goed uitzien: een afgekeurde opdracht gaat tóch aan (de app wijst
+# hem bij de start af en de rit rijdt zonder dat iemand het weet), het vangnet
+# verdwijnt uit beeld, en een dag zonder regels valt weg uit de reeks.
+"admin/beheer.html@@  if(!k.ok){ alert(@@  if(false){ alert(@@bproef-beheerpagina.js@@een afgekeurde meetopdracht is toch te activeren: de app weigert hem bij de start en de rit rijdt zonder"
+"admin/beheer.html@@  if(vangnet) waarsch.push(@@  if(false) waarsch.push(@@bproef-beheerpagina.js@@regels in het vangnet \`onbekend\` staan niet meer in beeld: een ontbrekende kolom valt niemand op"
+"admin/beheer.html@@    uit.push([d, x[1], x[2]]);@@    if(x[1]) uit.push([d, x[1], x[2]]);@@bproef-beheerpagina.js@@een dag zonder regels valt weg uit de dagreeks: juist het gat is onzichtbaar"
 )
 
 echo

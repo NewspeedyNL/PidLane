@@ -120,7 +120,7 @@ var ALLOWED_ORIGINS = [
 ];
 // Lokale ontwikkelserver draait zelden op poort 80, en de Origin-header bevat
 // de poort — "http://localhost:8788" matcht dus NIET op "http://localhost".
-// admin.html wordt sinds 25-08-2026 lokaal geserveerd (zie admin/LEESMIJ.md),
+// De beheerpagina (admin/beheer.html) wordt sinds 25-08-2026 lokaal geserveerd (zie admin/LEESMIJ.md),
 // en heeft dit nodig. Alleen loopback, alleen http.
 var LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
 function originToegestaan(origin) {
@@ -318,7 +318,7 @@ var RL = {
   loginIp: { limit: 100, windowMs: 6e4 },
   // ruim: carrier-NAT / kantoor-IP
   adminWrite: { limit: 20, windowMs: 6e4 },
-  // admin.html schrijfacties
+  // beheer.html schrijfacties, ook de SQL-console van /admin/d1
   codeAccount: { limit: 30, windowMs: 6e4 },
   // meekijk-code per account
   codeIp: { limit: 200, windowMs: 6e4 }
@@ -3087,7 +3087,7 @@ __name(handleKlantAdminWachtwoord, "handleKlantAdminWachtwoord");
 // ═══════════════════════════════════════════════════════════════════
 // ADMINBEHEER — klantaccounts en activatiecodes
 // ═══════════════════════════════════════════════════════════════════
-// Voor admin.html. Alles achter X-Admin-Token.
+// Voor beheer.html. Alles achter X-Admin-Token.
 
 // ── Auditregel bij een klantrecord ──────────────────────────────────
 // WAAROM APART VAN DE WIJZIGING ZELF
@@ -4224,6 +4224,361 @@ async function handleAdminTabelPost(request, env) {
 }
 __name(handleAdminTabelPost, "handleAdminTabelPost");
 
+// ═════════════════════════════════════════════════════════════════
+//  /admin/d1 — DE DATABASE ALS GEHEEL (beheer.html, 24-09-2026)
+// ──────────────────────────────────────────────────────────────────
+//  WAAROM NAAST /admin/tabel EN NIET ERIN. /admin/tabel toont één bron als
+//  lijst: bladeren, zoeken, een rij wijzigen. Wat hier staat zijn vragen over
+//  de hele database — hoeveel, sinds wanneer, wat is er per dag binnengekomen,
+//  wat deed deze ene rit — en een handeling die bij geen enkele bron hoort:
+//  een meetopdracht actief zetten zet de andere uit. Dat in /admin/tabel
+//  proppen maakt van één route met één antwoordvorm er een met vijf.
+//
+//  DE CIJFERS TELLEN DE HELE TABEL. Het logboek in beheer.html telde tot nu
+//  toe wat er opgehaald was, en zei dat er eerlijk onder. Hier rekent SQLite
+//  over alle rijen; het verschil staat in de pagina bij de grafiek.
+//
+//  DE SQL-CONSOLE LEEST ALLEEN, en dat rust op twee dingen tegelijk:
+//   1. de vraag wordt als subquery ingepakt: SELECT * FROM (<vraag>) LIMIT n.
+//      Een DELETE, UPDATE of een tweede statement is daar een syntaxfout, want
+//      in een subquery past alleen een SELECT;
+//   2. daarvóór wordt de tekst zonder tekstwaarden en commentaar gelezen, en
+//      weigert elk schrijfwoord. Een woord in een tekstwaarde ('%DELETE%')
+//      telt dus niet mee, een woord in commentaar ook niet.
+//  Eén van de twee zou genoeg moeten zijn. Het tweede staat er omdat "zou
+//  genoeg moeten zijn" bij een database met ritgegevens niet genoeg is.
+//
+//  DE WORKER KEURT GEEN OPDRACHT. Net als bij /airtable/opdracht: de witte
+//  lijst staat in public/pidlane-opdracht.js en nergens anders. beheer.html
+//  laadt die keurder zelf en keurt vóór het opslaan. Hier staat alleen de
+//  harde grens van 8192 tekens, die ook de leesroute hanteert — een opdracht
+//  die je hier kunt opslaan maar die de app nooit krijgt, is een val.
+// ══════════════════════════════════════════════════════════════════
+var D1_SQL_MAX_TEKST = 4e3;
+var D1_SQL_MAX_RIJEN = 500;
+var D1_RIT_MAX = 5e3;
+var D1_OPDRACHT_MAX = 8192;
+var D1_SQL_VERBODEN = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|ATTACH|DETACH|PRAGMA|VACUUM|REINDEX|ANALYZE|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|TRANSACTION|LOAD_EXTENSION)\b|\bREPLACE\s+INTO\b/i;
+
+// De vraag zonder tekstwaarden, aangehaalde namen en commentaar. Eén keer van
+// links naar rechts, en niet met een paar replace()-regels achter elkaar: dan
+// kan een apostrof in commentaar ("-- it's") een tekstwaarde openen die tot
+// ver voorbij het commentaar doorloopt, en precies daar zou een schrijfwoord
+// zich kunnen verstoppen. Geeft null als een tekstwaarde of commentaarblok
+// niet gesloten wordt — dan is niet te zeggen wat SQLite ervan maakt.
+function d1SqlSkelet(sql) {
+  const s = String(sql);
+  let uit = "";
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    const d = s[i + 1];
+    if (c === "'" || c === '"' || c === "`" || c === "[") {
+      const eind = c === "[" ? "]" : c;
+      let j = i + 1;
+      for (;;) {
+        if (j >= s.length) return null;
+        if (s[j] === eind) {
+          // '' binnen '...' is een ontsnapte apostrof, geen einde.
+          if (eind !== "]" && s[j + 1] === eind) { j += 2; continue; }
+          break;
+        }
+        j++;
+      }
+      uit += c === "'" ? " '' " : " n ";
+      i = j + 1;
+      continue;
+    }
+    if (c === "-" && d === "-") {
+      const j = s.indexOf("\n", i);
+      uit += " ";
+      i = j < 0 ? s.length : j + 1;
+      continue;
+    }
+    if (c === "/" && d === "*") {
+      const j = s.indexOf("*/", i + 2);
+      if (j < 0) return null;
+      uit += " ";
+      i = j + 2;
+      continue;
+    }
+    uit += c;
+    i++;
+  }
+  return uit;
+}
+__name(d1SqlSkelet, "d1SqlSkelet");
+
+// Geeft een foutmelding (string) of null. De melding noemt wát er geweigerd
+// is: "niet toegestaan" zonder reden maakt van een grendel een raadsel.
+function d1SqlProbleem(sql) {
+  const tekst = String(sql || "").trim();
+  if (!tekst) return "Geen vraag opgegeven.";
+  if (tekst.length > D1_SQL_MAX_TEKST) return `De vraag is ${tekst.length} tekens; meer dan ${D1_SQL_MAX_TEKST} wordt niet uitgevoerd.`;
+  const skelet = d1SqlSkelet(tekst);
+  if (skelet === null) return "Een tekstwaarde of commentaarblok wordt niet gesloten.";
+  const kaal = skelet.trim().replace(/;\s*$/, "");
+  if (!/^(SELECT|WITH)\b/i.test(kaal)) return "Alleen een vraag die met SELECT of WITH begint.";
+  if (kaal.indexOf(";") >= 0) return "Eén vraag tegelijk — er staat een puntkomma middenin.";
+  const m = kaal.match(D1_SQL_VERBODEN);
+  if (m) return `"${m[0].toUpperCase()}" hoort niet in een leesvraag; deze console schrijft niets.`;
+  return null;
+}
+__name(d1SqlProbleem, "d1SqlProbleem");
+
+async function adminD1Sql(db, sql) {
+  const probleem = d1SqlProbleem(sql);
+  if (probleem) return json({ ok: false, error: probleem }, 400);
+  // De puntkomma aan het eind mag (wie uit een editor plakt heeft hem), maar
+  // hoort niet in de subquery. Het regeleinde vóór het sluithaakje staat er
+  // voor een vraag die op commentaar eindigt: zonder die regel valt het haakje
+  // in het commentaar.
+  const kern = String(sql).trim().replace(/;\s*$/, "");
+  const t0 = Date.now();
+  const ingepakt = `SELECT * FROM (\n${kern}\n) LIMIT ?`;
+  const r = await db.prepare(ingepakt).bind(D1_SQL_MAX_RIJEN + 1).all();
+  const alle = (r && r.results) || [];
+  const rijen = alle.slice(0, D1_SQL_MAX_RIJEN);
+  const kolommen = [];
+  for (const rij of rijen) for (const k of Object.keys(rij)) if (kolommen.indexOf(k) < 0) kolommen.push(k);
+  return json({
+    ok: true, kolommen, rijen, aantal: rijen.length,
+    afgekapt: alle.length > D1_SQL_MAX_RIJEN, max: D1_SQL_MAX_RIJEN, ms: Date.now() - t0
+  });
+}
+__name(adminD1Sql, "adminD1Sql");
+
+// Een [sleutel, aantal]-lijst uit een GROUP BY, zodat de pagina geen
+// objectvorm hoeft te kennen die per vraag verschilt.
+async function d1Paren(db, sql, ...waarden) {
+  const r = await db.prepare(sql).bind(...waarden).all();
+  return ((r && r.results) || []).map((x) => [x.k === null || x.k === undefined || x.k === "" ? "—" : String(x.k), Number(x.n) || 0]);
+}
+__name(d1Paren, "d1Paren");
+
+// Het overzicht. Elk deel in zijn eigen try: een database zonder
+// meetopdrachten-tabel (een nieuwe omgeving) hoort het logdeel niet mee te
+// sleuren. Wat mislukt komt in `fouten` te staan, met de reden — niet stil.
+async function adminD1Overzicht(db, dagen) {
+  const uit = { ok: true, dagen, tabellen: [], fouten: [] };
+  const deel = async (naam, werk) => {
+    try { await werk(); }
+    catch (e) { uit.fouten.push(`${naam}: ${String(e && e.message || e).slice(0, 200)}`); }
+  };
+
+  await deel("schema", async () => {
+    const r = await db.prepare(
+      "SELECT name, type, tbl_name FROM sqlite_master WHERE type IN ('table','view','index') AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY type, name"
+    ).all();
+    const rijen = (r && r.results) || [];
+    for (const t of rijen) {
+      if (t.type === "index" || !D1_NAAM_OK.test(t.name)) continue;
+      const kol = await db.prepare("SELECT name, type FROM pragma_table_info(?)").bind(t.name).all();
+      const tel = await db.prepare(`SELECT COUNT(*) AS n FROM ${t.name}`).first();
+      uit.tabellen.push({
+        naam: t.name, soort: t.type,
+        rijen: (tel && Number(tel.n)) || 0,
+        kolommen: ((kol && kol.results) || []).map((k) => ({ naam: k.name, type: k.type || "" })),
+        indexen: rijen.filter((x) => x.type === "index" && x.tbl_name === t.name).map((x) => x.name)
+      });
+    }
+  });
+
+  await deel("logregels", async () => {
+    const grens = new Date(Date.now() - dagen * 864e5).toISOString().slice(0, 10);
+    const kern = await db.prepare(
+      `SELECT COUNT(*) AS totaal, MIN(ontvangen) AS oudste, MAX(ontvangen) AS nieuwste,
+              COUNT(DISTINCT SessionId) AS ritten,
+              SUM(CASE WHEN SessionId IS NULL OR SessionId = '' THEN 1 ELSE 0 END) AS zonderRit,
+              SUM(CASE WHEN onbekend IS NOT NULL AND onbekend <> '' THEN 1 ELSE 0 END) AS metOnbekend,
+              SUM(CASE WHEN Type = 'error' THEN 1 ELSE 0 END) AS fouten,
+              SUM(CASE WHEN Outcome IS NOT NULL AND Outcome <> '' THEN 1 ELSE 0 END) AS uitkomsten,
+              SUM(CASE WHEN ontvangen >= ? THEN 1 ELSE 0 END) AS vandaag
+         FROM logregels`
+    ).bind(new Date().toISOString().slice(0, 10)).first();
+    const perDag = await db.prepare(
+      `SELECT substr(ontvangen, 1, 10) AS dag, COUNT(*) AS n,
+              SUM(CASE WHEN Type = 'error' THEN 1 ELSE 0 END) AS fouten
+         FROM logregels WHERE ontvangen >= ? GROUP BY dag ORDER BY dag`
+    ).bind(grens).all();
+    uit.log = {
+      totaal: Number(kern && kern.totaal) || 0,
+      oudste: (kern && kern.oudste) || "", nieuwste: (kern && kern.nieuwste) || "",
+      ritten: Number(kern && kern.ritten) || 0,
+      zonderRit: Number(kern && kern.zonderRit) || 0,
+      // Het vangnet uit schema.sql: staat hier iets, dan stuurt de app een
+      // veld waar geen kolom voor is. Het normale getal is 0.
+      metOnbekend: Number(kern && kern.metOnbekend) || 0,
+      fouten: Number(kern && kern.fouten) || 0,
+      uitkomsten: Number(kern && kern.uitkomsten) || 0,
+      vandaag: Number(kern && kern.vandaag) || 0,
+      perDag: ((perDag && perDag.results) || []).map((x) => [x.dag, Number(x.n) || 0, Number(x.fouten) || 0]),
+      perType: await d1Paren(db, "SELECT Type AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? GROUP BY k ORDER BY n DESC LIMIT 12", grens),
+      perSoort: await d1Paren(db, "SELECT RecordType AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? GROUP BY k ORDER BY n DESC LIMIT 12", grens),
+      perVersie: await d1Paren(db, "SELECT AppVersion AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? GROUP BY k ORDER BY n DESC LIMIT 10", grens),
+      perMerk: await d1Paren(db, "SELECT Merk AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? GROUP BY k ORDER BY n DESC LIMIT 10", grens),
+      perAdapter: await d1Paren(db, "SELECT Adapter AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? GROUP BY k ORDER BY n DESC LIMIT 10", grens),
+      topFouten: await d1Paren(db,
+        "SELECT substr(Message, 1, 120) AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? AND Type IN ('error','opvallend','bug') GROUP BY k ORDER BY n DESC LIMIT 12", grens)
+    };
+  });
+
+  await deel("meetopdrachten", async () => {
+    const r = await db.prepare(
+      "SELECT id, Naam, Actief, Gewijzigd FROM meetopdrachten ORDER BY Gewijzigd DESC"
+    ).all();
+    const rijen = (r && r.results) || [];
+    uit.opdrachten = {
+      totaal: rijen.length,
+      actief: rijen.filter((x) => Number(x.Actief) === 1)
+        .map((x) => ({ id: String(x.id), naam: x.Naam || "", gewijzigd: x.Gewijzigd || "" }))
+    };
+  });
+  return json(uit);
+}
+__name(adminD1Overzicht, "adminD1Overzicht");
+
+// Eén rit van begin tot eind, in de volgorde waarin de Worker hem ontving.
+// Dit is wat CLAUDE.md met de hand vraagt ("haal er FOUT en LET OP uit"), maar
+// dan met alle regels erbij, zodat de pagina kan filteren zonder opnieuw te
+// vragen.
+async function adminD1Rit(db, sessie) {
+  const s = String(sessie || "").trim();
+  if (!s || s.length > 80) return json({ ok: false, error: "Geef een SessionId op (hoogstens 80 tekens)." }, 400);
+  const r = await db.prepare("SELECT * FROM logregels WHERE SessionId = ? ORDER BY id ASC LIMIT ?")
+    .bind(s, D1_RIT_MAX + 1).all();
+  const alle = (r && r.results) || [];
+  const rijen = alle.slice(0, D1_RIT_MAX).map((rij) => {
+    const v = {};
+    for (const k of Object.keys(rij)) if (rij[k] !== null) v[k] = rij[k];
+    return v;
+  });
+  return json({ ok: true, sessie: s, rijen, aantal: rijen.length, afgekapt: alle.length > D1_RIT_MAX, max: D1_RIT_MAX });
+}
+__name(adminD1Rit, "adminD1Rit");
+
+// Wat er van een opdracht met de hand te zetten is. `id` telt zichzelf,
+// `Actief` gaat via activeer/uit (anders staan er twee aan), en `Gewijzigd`
+// zet deze route zelf: de app kiest op die tijd, dus met de hand bijstellen
+// is kiezen welke opdracht er rijdt zonder dat je het ziet.
+var D1_OPDRACHT_VELDEN = ["Naam", "Reden", "Opdracht", "Notitie"];
+
+function d1OpdrachtVelden(velden, nieuw) {
+  if (!velden || typeof velden !== "object" || Array.isArray(velden)) return { fout: "Geen velden om te schrijven." };
+  const uit = {};
+  for (const k of Object.keys(velden)) {
+    if (k === "Actief" && nieuw) continue;   // bij aanmaken apart behandeld
+    if (D1_OPDRACHT_VELDEN.indexOf(k) < 0) return { fout: `Het veld "${String(k).slice(0, 40)}" zet je hier niet.` };
+    const v = velden[k];
+    uit[k] = v === null || v === undefined ? "" : String(v);
+  }
+  if ("Naam" in uit && (!uit.Naam.trim() || uit.Naam.length > 200)) return { fout: "Een naam is verplicht (hoogstens 200 tekens)." };
+  if ("Opdracht" in uit) {
+    if (!uit.Opdracht.trim()) return { fout: "De opdrachttekst is leeg." };
+    if (uit.Opdracht.length > D1_OPDRACHT_MAX)
+      return { fout: `De opdracht is ${uit.Opdracht.length} tekens; de app leest er hoogstens ${D1_OPDRACHT_MAX}.` };
+  }
+  if (nieuw && (!("Naam" in uit) || !("Opdracht" in uit))) return { fout: "Naam en Opdracht zijn verplicht." };
+  if (!Object.keys(uit).length) return { fout: "Geen velden om te schrijven." };
+  return { velden: uit };
+}
+__name(d1OpdrachtVelden, "d1OpdrachtVelden");
+
+// ÉÉN ACTIEVE OPDRACHT, IN ÉÉN TRANSACTIE. De leesroute neemt bij meer dan één
+// actieve de laatst gewijzigde en zegt hoeveel er stonden. Dat vangt een fout
+// op; het hoort geen werkwijze te zijn. Op 22-09-2026 stonden er negen aan
+// met acht keer dezelfde tijd, en won de oudste (schema.sql). Daarom zet
+// aanzetten hier de rest uit, in dezelfde batch — D1 voert een batch als één
+// transactie uit, dus er is geen moment met nul of twee.
+async function adminD1Opdracht(db, actie, body) {
+  const nu = new Date().toISOString();
+  if (actie === "opdracht-nieuw") {
+    const v = d1OpdrachtVelden(body.velden, true);
+    if (v.fout) return json({ ok: false, error: v.fout }, 400);
+    const aan = body.velden.Actief === true || body.velden.Actief === 1;
+    const f = v.velden;
+    const invoeg = db.prepare(
+      "INSERT INTO meetopdrachten (Naam, Reden, Actief, Gewijzigd, Opdracht, Notitie) VALUES (?, ?, ?, ?, ?, ?)"
+    ).bind(f.Naam, f.Reden || null, aan ? 1 : 0, nu, f.Opdracht, f.Notitie || null);
+    const res = aan
+      ? await db.batch([db.prepare("UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1"), invoeg])
+      : [await invoeg.run()];
+    const laatste = res[res.length - 1];
+    const id = laatste && laatste.meta && laatste.meta.last_row_id;
+    return json({ ok: true, id: id === undefined || id === null ? "" : String(id), actief: aan, gewijzigd: nu });
+  }
+
+  const id = d1Id(body.id);
+  if (id === null) return json({ ok: false, error: "Ongeldig opdracht-id." }, 400);
+  const bestaat = await db.prepare("SELECT id FROM meetopdrachten WHERE id = ?").bind(id).first();
+  if (!bestaat) return json({ ok: false, error: "Die opdracht bestaat niet (meer)." }, 404);
+
+  if (actie === "opdracht-bewaar") {
+    const v = d1OpdrachtVelden(body.velden, false);
+    if (v.fout) return json({ ok: false, error: v.fout }, 400);
+    const namen = Object.keys(v.velden);
+    await db.prepare(`UPDATE meetopdrachten SET ${namen.map((n) => `${n} = ?`).join(", ")}, Gewijzigd = ? WHERE id = ?`)
+      .bind(...namen.map((n) => v.velden[n]), nu, id).run();
+    return json({ ok: true, id: String(id), gewijzigd: nu, velden: namen });
+  }
+  if (actie === "opdracht-activeer") {
+    const res = await db.batch([
+      db.prepare("UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1 AND id <> ?").bind(id),
+      db.prepare("UPDATE meetopdrachten SET Actief = 1, Gewijzigd = ? WHERE id = ?").bind(nu, id)
+    ]);
+    const uitgezet = (res && res[0] && res[0].meta && res[0].meta.changes) || 0;
+    return json({ ok: true, id: String(id), actief: true, uitgezet, gewijzigd: nu });
+  }
+  if (actie === "opdracht-uit") {
+    await db.prepare("UPDATE meetopdrachten SET Actief = 0, Gewijzigd = ? WHERE id = ?").bind(nu, id).run();
+    return json({ ok: true, id: String(id), actief: false, gewijzigd: nu });
+  }
+  return json({ ok: false, error: "Onbekende actie." }, 400);
+}
+__name(adminD1Opdracht, "adminD1Opdracht");
+
+// ── GET /admin/d1?actie=overzicht&dagen=30 | ?actie=rit&sessie=… ──────
+async function handleAdminD1Get(request, env) {
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
+  const sp = new URL(request.url).searchParams;
+  const actie = String(sp.get("actie") || "overzicht");
+  try {
+    if (actie === "overzicht") {
+      const dagen = Math.min(90, Math.max(1, Math.round(Number(sp.get("dagen")) || 30)));
+      return await adminD1Overzicht(env.LOGDB, dagen);
+    }
+    if (actie === "rit") return await adminD1Rit(env.LOGDB, sp.get("sessie"));
+    return json({ ok: false, error: "Onbekende actie." }, 400);
+  } catch (e) {
+    return json({ ok: false, error: "d1_lezen_mislukt", detail: String(e && e.message || e) }, 502);
+  }
+}
+__name(handleAdminD1Get, "handleAdminD1Get");
+
+// ── POST /admin/d1  { actie:'sql', sql } | { actie:'opdracht-…', … } ──
+//  De SQL-console staat achter de schrijfrem, al leest hij alleen: elke vraag
+//  is een volle tabelscan die de beheerder zelf kan uittypen, en de rem is
+//  wat voorkomt dat een lus in een pagina de database bezighoudt.
+async function handleAdminD1Post(request, env) {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const rl = await adminWriteLimited(env, ip);
+  if (rl.limited) return rateLimitResponse(rl);
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
+  let b0 = {};
+  try { b0 = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b0 blijft {}, hieronder gevalideerd */ }
+  const actie = String(b0.actie || "");
+  try {
+    if (actie === "sql") return await adminD1Sql(env.LOGDB, b0.sql);
+    if (actie.indexOf("opdracht-") === 0) return await adminD1Opdracht(env.LOGDB, actie, b0);
+    return json({ ok: false, error: "Onbekende actie." }, 400);
+  } catch (e) {
+    return json({ ok: false, error: "d1_mislukt", detail: String(e && e.message || e) }, 502);
+  }
+}
+__name(handleAdminD1Post, "handleAdminD1Post");
+
 
 // ── POST /klant/onboarding  { survey, anon, nieuwsbrief } ───────────
 // Legt de akkoorden vast en keert daarna eenmalig het proeftegoed uit.
@@ -4543,6 +4898,10 @@ var worker_default = {
         return lockOrigin(request, await handleAdminTabelGet(request, env));
       if (url.pathname === "/admin/tabel" && request.method === "POST")
         return lockOrigin(request, await handleAdminTabelPost(request, env));
+      if (url.pathname === "/admin/d1" && request.method === "GET")
+        return lockOrigin(request, await handleAdminD1Get(request, env));
+      if (url.pathname === "/admin/d1" && request.method === "POST")
+        return lockOrigin(request, await handleAdminD1Post(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
         return lockOrigin(request, await handleKlantRegistreer(request, env));
       if (url.pathname === "/klant/login" && request.method === "POST")
@@ -4590,7 +4949,7 @@ var worker_default = {
   // belofte in privacy.html waarmaakt: een account dat de klant heeft laten
   // verwijderen verdwijnt echt, ook als niemand eraan denkt.
   //
-  // WAAROM DIT OOK EEN KNOP IN admin.html HEEFT. Een cron is onzichtbaar: hij
+  // WAAROM DIT OOK EEN KNOP IN beheer.html HEEFT. Een cron is onzichtbaar: hij
   // draait of hij draait niet, en het verschil merk je pas als iemand vraagt
   // waarom zijn gegevens er nog staan. De adminpagina toont daarom dezelfde
   // wachtrij en roept dezelfde functie aan, zodat de automaat controleerbaar

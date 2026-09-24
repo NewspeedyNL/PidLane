@@ -1,7 +1,8 @@
-# Adminpagina — draaien
+# Beheerpagina — draaien
 
-`admin.html` stond tot 25-08-2026 in `public/` en werd daarmee door de Worker
-meegeserveerd: hij was voor iedereen te openen op `https://app.pidlane.nl/admin.html`.
+De beheerpagina (toen nog `admin.html`) stond tot 25-08-2026 in `public/` en werd
+daarmee door de Worker meegeserveerd: hij was voor iedereen te openen op
+`https://app.pidlane.nl/admin.html`.
 
 Dat lekte geen gegevens — elke admin-route controleert `ADMIN_TOKEN` server-side
 en zonder die token krijg je niets. Maar het zette wel de complete beheerkant
@@ -11,7 +12,7 @@ Worker gemunt heeft. Het bestand waarschuwde daar in regel 3 zelf al voor.
 
 Nu staat hij buiten `public/` en wordt hij dus nergens geserveerd.
 
-**Let op: dat is maar de helft.** Deze repo is openbaar, dus `admin/admin.html`
+**Let op: dat is maar de helft.** Deze repo is openbaar, dus `admin/beheer.html`
 is gewoon te lezen op GitHub. De verkenningswaarde die de verhuizing wilde
 wegnemen — welke endpoints er zijn en hoe ze heten — ligt daarmee nog steeds op
 straat. De echte bescherming is en blijft server-side: elke adminroute
@@ -29,7 +30,7 @@ Vanuit de repo:
 npm run admin
 ```
 
-en open dan **http://127.0.0.1:8788/admin.html**.
+en open dan **http://127.0.0.1:8788/** — dat is `beheer.html`.
 
 Dat draait `admin/serve.js` op node. Tot 28-08-2026 stond hier
 `python3 -m http.server`; dat werkte, maar node is er in dit project sowieso
@@ -49,7 +50,7 @@ Op de toegangspoort staat **🧪 Oefenen met voorbeelden**. Geen token nodig, en
 gaat geen enkel verzoek naar de Worker: alle antwoorden komen uit
 voorbeeldgegevens in de pagina zelf.
 
-Je krijgt vier klanten, drie gebruikers en drie activatiecodes — met opzet niet
+Je krijgt vijf klanten, drie gebruikers, drie activatiecodes, drie meetopdrachten en een logboek met ritten — met opzet niet
 allemaal netjes. Er zit een geblokkeerde klant tussen, iemand met saldo nul, een
 openstaand wachtwoordherstel en een gebruiker zonder wachtwoord. Dat zijn
 precies de gevallen waarop je wilt kunnen oefenen en die je in een schone lijst
@@ -123,58 +124,87 @@ matcht niet op `http://localhost`.
 Alleen loopback, alleen `http`. Een pagina op een ander adres kan die Origin
 niet vervalsen — de browser zet hem, niet de pagina.
 
-## Twee pagina's: `admin.html` en `beheer.html`
+## Eén pagina: `beheer.html`
 
-Sinds 04-09-2026 staat er een tweede beheerpagina naast de eerste:
+Van 04-09 tot 24-09-2026 stonden hier twee beheerpagina's naast elkaar:
+`admin.html` (de eerste, die echt geld beheerde) en `beheer.html` (de tweede
+generatie, ernaast gezet zodat een fout in de verbouwing de saldoknoppen niet
+kon raken). Op 24-09 is `admin.html` opgegaan in `beheer.html` en weggehaald.
 
-| bestand | openen op | wat het is |
+**Waarom hij niet eerder weg kon.** Er hingen vier dingen aan: twee delen van
+`test-bijboeken.js` (kent de pagina elke foutcode van de saldoroute, en stuurt
+de knop `saldoWas` mee), heel `test-adminoefen.js` (lekt de oefenmodus niet),
+drie mutaties in `plmutate.sh`, en de div-balans in `plcheck.sh`. Die wijzen nu
+allemaal naar `beheer.html`. Bij het omzetten bleek er één echt gat: beheer.html
+las de foutcode uit de leesbare tekst in plaats van uit `code`, en kende
+`saldo_geen_email` niet. Beide zijn gerepareerd en nu ook als gedrag getoetst.
+
+Wat `admin.html` had en hier ontbrak — bij een klant de verzilverde codes en
+het verschil met "ooit gekocht" — staat nu onder **Details** bij de klant.
+
+### De tabbladen
+
+| # | tabblad | wat |
 |---|---|---|
-| `admin.html` | `http://127.0.0.1:8788/admin.html` | de vertrouwde pagina, ongewijzigd |
-| `beheer.html` | `http://127.0.0.1:8788/beheer.html` | tweede generatie |
+| 1 | Overzicht | status van de keten, kerncijfers, logactiviteit, snelknoppen |
+| 2 | Klanten | aanmaken, bijboeken, saldo zetten, status, wachtwoord, wissen |
+| 3 | Codes | activatiecodes genereren, filteren, CSV |
+| 4 | Gebruikers | app-gebruikers (monteur, admin, demo) |
+| 5 | Logboek | regels ophalen en uittekenen — telt wat je ophaalt |
+| 6 | **Database** | de D1-database als geheel: cijfers over álle rijen, ritten, SQL-console |
+| 7 | **Meetopdrachten** | bewerken, keuren met de echte keurder, activeren |
+| 8 | Tabellen | elke bekende bron (D1 en Airtable) bladeren, wijzigen, wissen, opruimen |
+| 9 | Instellingen | deuren, functieschakelaars, banner, betaallinks, AI-instructie |
+| 0 | Gereedschap | verwijderwachtrij, poorttest, routes, ruwe leesroute |
 
-`npm run admin` serveert de hele map, dus allebei draaien ze zonder extra
-stappen. Ze praten met dezelfde Worker en dezelfde routes.
+De cijfertoetsen **1–9 en 0** springen ertussen zolang je niet in een veld staat.
 
-**Waarom een tweede bestand en geen verbouwing.** `admin.html` werkt en beheert
-echt geld. Hem openbreken voor een tabellenbrowser en een logvisualisatie
-betekent dat één fout in de verbouwing ook de saldoknoppen raakt die het al
-deden. Valt er in `beheer.html` iets om, dan pak je de oude en gaat het beheer
-door.
+### Database (D1) — `/admin/d1`
 
-### Wat `beheer.html` erbij kan
+- **Overzicht.** SQLite telt zelf, over de hele tabel: totaal, vandaag, ritten,
+  fouten, uitkomsten, regels zonder rit, en het vangnet `onbekend` (hoort 0 te
+  zijn; staat er iets, dan mist `schema.sql` een kolom). Daaronder per dag (met
+  de lege dagen erbij), per type, soort, versie, merk en adapter, de meest
+  voorkomende fouten, en elke tabel en view met rijen, kolommen en indexen.
+  Staan er twee meetopdrachten aan, dan staat dat hier als rode balk.
+- **Ritten.** De recente ritten uit de view `sessies`. Open er een en je ziet
+  hem van begin tot eind in ontvangstvolgorde, met een filter op FOUT/LET OP/
+  uitkomsten. **Bevindingen kopiëren** zet precies die regels op het klembord;
+  CSV en JSON van de hele rit kan ook. **Deze rit opruimen** wist niets zelf:
+  hij vult de voorwaarde in bij Tabellen → Opruimen, waar je eerst telt.
+- **SQL-console, alleen lezen.** `SELECT` en `WITH`, één vraag, hoogstens 500
+  rijen. De Worker pakt de vraag in als subquery (`SELECT * FROM (…) LIMIT 501`
+  — daarin past geen DELETE of UPDATE) én keurt de tekst daarvóór op
+  schrijfwoorden, met tekstwaarden en commentaar eruit. Elke laag apart
+  uitzetten wordt rood in `test-admind1.js`. Voorbeeldvragen staan in het
+  keuzemenu; je eigen laatste twaalf onthoudt de browser. Hij telt mee in de
+  schrijfrem van het beheer (20 per minuut).
 
-- **Klanten aanmaken.** Was er niet: een klant kon alleen zichzelf registreren.
-  Het wachtwoord is optioneel — laat je het leeg, dan bestaat het account wel
-  maar kan er nog niet op ingelogd worden en zet de klant er zelf een via
-  "wachtwoord vergeten". Dat is de veiligste variant, want dan heb jij er nooit
-  een gekend.
-- **Het logboek ophalen en uittekenen.** Per dag, per type, en de koplijstjes
-  van gebruiker, app-versie en merk. Let op wat er onder de grafiek staat: die
-  telt *wat je opgehaald hebt*. Haal je 300 regels op, dan gaat "laatste 14
-  dagen" over die 300 regels en niet over de hele tabel.
-- **Elke bekende Airtable-tabel doorbladeren**, rijen wijzigen en wissen.
-  Sommige velden zijn afgeschermd en staan grijs met een 🔒: `Saldo` hoort door
-  het saldoslot (via de klantenkaart), `PassHash` door de wachtwoordroute, en
-  `Email` is de sleutel waar dat slot op staat. Een wachtwoordhash en een
-  resettoken worden niet eens getoond — die verlaten de Worker niet.
-  `AppConfig` is alleen-lezen: schrijven gaat via de instellingenkaart, want
-  die gooit ook de randcache weg.
-- **CSV van elke lijst** die je op het scherm hebt (puntkomma en een BOM, dus
-  Excel opent hem zonder importvenster).
-- **Gereedschap**: de poorttest, de verwijderwachtrij, een lijst van de routes
-  waar de pagina mee praat, en een ruwe GET om te zien wat de Worker werkelijk
-  antwoordt.
-- Sneltoetsen **1 t/m 8** springen tussen de tabbladen zolang je niet in een
-  invoerveld staat.
+### Meetopdrachten
+
+De pagina laadt `public/pidlane-opdracht.js` en `public/pidlane-data.js` — de
+keurder en de PID-tabel die de app zelf draait. `serve.js` serveert precies die
+twee bestanden uit `public/`, bij naam, en verder niets daarbuiten. Een
+opdracht die hier afkeurt, wijst de app ook af; **activeren weigert** hem dan.
+Opslaan als klad mag wel, met een bevestiging.
+
+**Activeren zet de andere uit, in één transactie.** Op 22-09-2026 stonden er
+negen aan en won de verkeerde (zie `schema.sql`). `Gewijzigd` zet de Worker
+zelf bij elke opslag: de app kiest op die tijd, dus met de hand bijstellen zou
+stil kiezen zijn welke opdracht er rijdt.
+
+De keurder zegt of de *vorm* klopt. Of de opdracht iets kán meten (een proef
+op een sensor die niet in `sensoren` staat) laat het tabblad als oranje regel
+zien, en `node plopdracht.js` in de repo toetst het volledig.
 
 ### Wat er hetzelfde blijft
 
-Dezelfde oefenmodus (🧪 op de toegangspoort, geen token nodig, geen enkel
-verzoek naar de Worker), dezelfde ❔-uitleg per scherm, dezelfde uitleg bij een
-weigering, en dezelfde regel over de auditregel: de naam erbij is
-zelf-opgegeven en bewijst niets.
+De oefenmodus (🧪 op de toegangspoort, geen token nodig, geen enkel verzoek
+naar de Worker) dekt ook de nieuwe tabbladen. Eén ding kan hij niet: SQL
+uitvoeren. De console zegt dan in beeld dat je vraag **niet** is uitgevoerd en
+toont voorbeeldrijen. Er staan met opzet twee actieve meetopdrachten en een
+regel in het vangnet in de voorbeelden, zodat je die waarschuwingen een keer
+gezien hebt.
 
-**De nieuwe Worker is nodig.** De tabellenbrowser en het logboek draaien op
-`/admin/tabel`; klanten aanmaken op `actie=aanmaken` in `/admin/klanten`. Staat
-er nog een oudere Worker live, dan geeft de poorttest onder *Gereedschap* dat
-als enige rode stap terug met "deze Worker kent /admin/tabel nog niet".
+**De nieuwe Worker is nodig.** Staat er een oudere live, dan geeft de
+statuskaart op Overzicht bij *Databaseroute* een rode 404.
