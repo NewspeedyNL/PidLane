@@ -229,7 +229,13 @@ const VELLEN = [
   // Erbij op 16-09-2026. Dit paneel is het langste van allemaal — negen
   // tegels, twee grafieken, drie lijsten en onderaan twee knoppen — en gaat
   // op elk telefoonscherm scrollen. Precies de vorm waar #144 op stukliep.
-  { naam: 'Adapterpaneel',         open: 'openAdapterPaneel',   id: 'plAdapterOv' }
+  { naam: 'Adapterpaneel',         open: 'openAdapterPaneel',   id: 'plAdapterOv' },
+  // Erbij op 24-09-2026 (#286): "Start analyse" na het verbinden viel half
+  // achter de knoppenbalk op een schermfoto van de rit van 19:09.
+  // Dit vel gaat dicht met de klasse `hidden`, niet met display:none — een
+  // inline display bleef anders staan en de volgende wizShow() toonde niets.
+  { naam: 'Klaar voor gebruik (#286)', open: 'wizShow',        id: 'wizardOv',
+    sluit: `e.classList.add('hidden');` }
 ];
 
 /* De twee vellen van de deel-module staan in index.html en gaan open met een
@@ -347,7 +353,7 @@ async function keurVel(app, v, waar, sluit) {
              'de onderste regel ligt ' + (NAVBALK - t.ruimteOnder) + 'px achter de knoppenbalk — ' +
              'onleesbaar, ook al staat de laagste knop vrij (#144)');
 
-  await app.ev(`(function(){ const e = document.getElementById('${v.id}'); if (e) { ${sluit} } return true; })()`);
+  await app.ev(`(function(){ const e = document.getElementById('${v.id}'); if (e) { ${v.sluit || sluit} } return true; })()`);
 }
 
 (async () => {

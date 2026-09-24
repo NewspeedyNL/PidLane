@@ -195,6 +195,23 @@ Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
 De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
 *staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
 
+### 24-09-2026 — de keuzeschermen: ingedeeld naar onderwerp, gebruikt naar moment (#286)
+
+De deuren waren gegroeid per onderwerp: live data, diagnose, geld, verbruik,
+voorbereiden. Daartussen stonden kaarten die er om een bijzaak stonden. De
+rit-monitor stond bij de live data "omdat hij live meekijkt" (26-07), maar
+dat doet elke kaart daar. De caravan-rit stond bij verbruik omdat hij
+brandstoftips geeft. De PID-recorder stond bij de diagnose omdat je er een
+storing mee reproduceert. En de waakronde en de twee bulk-knoppen stonden
+helemaal niet in een deur, maar in het menu.
+
+De nieuwe regel is het moment waarop je iets gebruikt. Live data is
+gereedschap: kijken, opnemen, delen. Onderweg is wat de hele rit meeloopt.
+Voorbereiden komt vóór de rit, en de diagnose komt als er iets is. De deur
+"Onderweg" houdt de id's van "Verbruik & besparen" (dp-saving, dr-saving,
+door_saving_active), want de Config-tabel zet hem aan en uit; hernoemen zou
+betekenen dat de Config-rij mee moet, in dezelfde push.
+
 ### 24-09-2026 — het scherm dat ik oversloeg deed meer dan tonen (#229)
 
 De hervatting van #287 sloeg "Klaar voor gebruik" over en riep daarna

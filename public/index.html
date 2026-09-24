@@ -599,8 +599,8 @@ function closeConnOv(){
               <path d="M39 9a21 21 0 0 1 0 30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
             </svg>
           </div>
-          <div class="wm-door-t">Live data bekijken &amp; delen</div>
-          <div class="wm-door-d">Sensoren realtime volgen, je data delen met iemand op afstand, of meekijken met een ander.</div>
+          <div class="wm-door-t">Live data bekijken, opnemen &amp; delen</div>
+          <div class="wm-door-d">Sensoren realtime volgen of opnemen, je data delen met iemand op afstand, of meekijken met een ander.</div>
         </div>
         <div class="wm-door dr-diag" onclick="openDoor('diag')">
           <div class="wm-door-ic">🔧</div>
@@ -613,9 +613,9 @@ function closeConnOv(){
           <div class="wm-door-d">Koop, verkoop, inruil of inkoop — historie, staat en waarde.</div>
         </div>
         <div class="wm-door dr-saving" onclick="openDoor('saving')">
-          <div class="wm-door-ic">⛽</div>
-          <div class="wm-door-t">Verbruik &amp; besparen</div>
-          <div class="wm-door-d">Waar gaat brandstof of stroom verloren — en wat kost je dat per jaar?</div>
+          <div class="wm-door-ic">🛣️</div>
+          <div class="wm-door-t">Onderweg: veilig &amp; zuinig</div>
+          <div class="wm-door-d">Tijdens de rit: meekijken en waarschuwen, coaching met caravan of aanhanger, en wat je verbruik kost.</div>
         </div>
         <div class="wm-door dr-prep" onclick="openDoor('prep')">
           <div class="wm-door-ic">📅</div>
@@ -628,7 +628,7 @@ function closeConnOv(){
     <!-- ═══ DEUR: LIVE PID-DATA (bekijken · delen · ontvangen) ═══ -->
     <div class="wm-door-panel" id="dp-live" style="display:none">
       <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">📡 Live data bekijken &amp; delen</div>
+      <div class="wm-door-h">📡 Live data bekijken, opnemen &amp; delen</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card hl full" id="wc-live">
@@ -637,6 +637,38 @@ function closeConnOv(){
           <div class="choice-desc w">Open de live view: alle sensoren realtime, met grafiek en zelf te kiezen PID's.</div>
           <div class="choice-out w"><b>Je krijgt:</b> ruwe sensorwaarden live in beeld — voor de specialist.</div>
           <span class="choice-tag">⭐ Aanbevolen</span>
+        </div>
+
+        <!-- 24-09-2026 (#286) — de waakronde en de twee bulk-knoppen stonden in
+             het menu, los van de live data waar ze bij horen. De PID-recorder
+             stond bij de diagnose, maar is een opnamegereedschap zoals de rest
+             hier; de analyse die erna kan volgen blijft bij de AI-monteur. -->
+        <div class="choice-card full" id="wc-waak">
+          <div class="choice-head"><span class="choice-icon">◉</span><span class="choice-time">op de achtergrond</span></div>
+          <div class="choice-title">Waakronde</div>
+          <div class="choice-desc">Houdt de sensoren die je níét op het scherm hebt in de gaten, met een ronde op de achtergrond. Handig om te zien wat er gebeurt zonder alles tegelijk te volgen.</div>
+          <div class="choice-out"><b>Je krijgt:</b> per sensor het bereik en de laatste waarde, en een overzicht om te kopiëren.</div>
+        </div>
+
+        <div class="choice-card full" id="wc-pidrec">
+          <div class="choice-head"><span class="choice-icon">📼</span><span class="choice-time">handmatig</span></div>
+          <div class="choice-title">PID-recorder</div>
+          <div class="choice-desc">Kies zelf sensoren, neem op tijdens het rijden en reproduceer je probleem. Daarna bekijken, delen, downloaden of naar de AI-Monteur.</div>
+          <div class="choice-out"><b>Je krijgt:</b> opname-dataset + optionele AI-analyse die de oorzaak vindt of uitsluit.</div>
+        </div>
+
+        <div class="choice-card full" id="wc-bulkrec">
+          <div class="choice-head"><span class="choice-icon">⏺</span><span class="choice-time">beheer</span></div>
+          <div class="choice-title">Bulk-recorder</div>
+          <div class="choice-desc">Neemt alle sensoren op, in ruwe vorm, voor latere analyse. Alleen voor beheer.</div>
+          <div class="choice-out"><b>Je krijgt:</b> een opname op het toestel, terug te lezen in de bulk-analyse.</div>
+        </div>
+
+        <div class="choice-card full" id="wc-bulkana">
+          <div class="choice-head"><span class="choice-icon">📈</span><span class="choice-time">beheer</span></div>
+          <div class="choice-title">Bulk-analyse</div>
+          <div class="choice-desc">Leest een opname van de bulk-recorder terug: segmenten, bereik per sensor en export. Alleen voor beheer.</div>
+          <div class="choice-out"><b>Je krijgt:</b> de opname uitgesplitst, klaar om te delen.</div>
         </div>
 
         <div class="choice-card full" id="wc-liveshare">
@@ -653,15 +685,6 @@ function closeConnOv(){
           <div class="choice-out"><b>Je krijgt:</b> hun live data in jouw app, mét deuren, analyses en AI-rapport.</div>
         </div>
 
-        <!-- 2026-07-26 — Rit-monitor verhuisd vanuit de diagnose-deur naar
-             onderaan deze deur: het is geen eenmalige analyse maar een live
-             meekijk-functie, en hij hoort bij de rest van de live data. -->
-        <div class="choice-card full" id="wc-monitor">
-          <div class="choice-head"><span class="choice-icon">🛡️</span><span class="choice-time">⏱ hele rit</span></div>
-          <div class="choice-title">Rit-monitor</div>
-          <div class="choice-desc">Waakt live mee tijdens het rijden. Gebruikt bijna geen data en waarschuwt vóórdat een sluimerend probleem echt een storing wordt. Staat standaard uit — je zet hem zelf aan op het dashboard.</div>
-          <div class="choice-out"><b>Je krijgt:</b> een live dashboard (snelheid, toeren, temperatuur) + directe waarschuwingen mét onderbouwing en automatische verificatie.</div>
-        </div>
 
       </div>
     </div>
@@ -693,12 +716,6 @@ function closeConnOv(){
           <div class="choice-out"><b>Je krijgt:</b> mogelijke oorzaak, probleem-PID-overzicht, data-oordeel + advies.</div>
         </div>
 
-        <div class="choice-card full" id="wc-pidrec">
-          <div class="choice-head"><span class="choice-icon">📼</span><span class="choice-time">handmatig</span></div>
-          <div class="choice-title">PID-recorder</div>
-          <div class="choice-desc">Kies zelf sensoren, neem op tijdens het rijden en reproduceer je probleem. Daarna bekijken, delen, downloaden of naar de AI-Monteur.</div>
-          <div class="choice-out"><b>Je krijgt:</b> opname-dataset + optionele AI-analyse die de oorzaak vindt of uitsluit.</div>
-        </div>
 
         <div class="choice-card" id="wc-check">
           <div class="choice-head"><span class="choice-icon">🚦</span><span class="choice-time">⏱ ±1 min</span></div>
@@ -739,21 +756,35 @@ function closeConnOv(){
     <!-- ═══ DEUR: VERBRUIK & BESPAREN ═══ -->
     <div class="wm-door-panel" id="dp-saving" style="display:none">
       <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">⛽ Verbruik &amp; besparen</div>
+      <div class="wm-door-h">🛣️ Onderweg: veilig &amp; zuinig</div>
       <div class="welcome-choices" style="margin-top:4px">
-        <div class="choice-card full" id="wc-fuel">
-          <div class="choice-head"><span class="choice-icon">⛽</span><span class="choice-time">⏱ ±2 min</span></div>
-          <div class="choice-title">Verbruik analyseren</div>
-          <div class="choice-desc">Waar gaat brandstof verloren — en hoeveel kost dat?</div>
-          <div class="choice-out"><b>Je krijgt:</b> bespaartips in €/jaar.</div>
+        <!-- 24-09-2026 — deze deur heette "Verbruik & besparen" en had twee
+             kaarten, waarvan de caravan-rit er vooral stond omdat hij
+             brandstoftips geeft. Wat de drie kaarten hier gemeen hebben is het
+             moment: ze lopen mee terwijl je rijdt. De id's (dp-saving,
+             dr-saving, door_saving_active in de Config) blijven, anders moet
+             de Config-tabel mee. -->
+        <!-- 24-09-2026 — Rit-monitor verhuisd naar "Onderweg". Hij stond sinds
+             26-07 bij de live data omdat hij live meekijkt, maar dat doet elke
+             kaart daar. Wat hem onderscheidt is het moment: hij loopt de hele
+             rit mee en waarschuwt, net als de caravan-coach. -->
+        <div class="choice-card full" id="wc-monitor">
+          <div class="choice-head"><span class="choice-icon">🛡️</span><span class="choice-time">⏱ hele rit</span></div>
+          <div class="choice-title">Rit-monitor</div>
+          <div class="choice-desc">Waakt live mee tijdens het rijden. Gebruikt bijna geen data en waarschuwt vóórdat een sluimerend probleem echt een storing wordt. Staat standaard uit — je zet hem zelf aan op het dashboard.</div>
+          <div class="choice-out"><b>Je krijgt:</b> een live dashboard (snelheid, toeren, temperatuur) + directe waarschuwingen mét onderbouwing en automatische verificatie.</div>
         </div>
-
-
         <div class="choice-card full" id="wc-caravan">
           <div class="choice-head"><span class="choice-icon">🚐</span><span class="choice-time">⏱ live, tijdens de rit</span></div>
           <div class="choice-title">Rit met caravan of aanhanger</div>
           <div class="choice-desc">Lange, zware rit door de bergen — de coach kijkt live mee en geeft brandstoftips: terugschakelen, cruise op ~95, zuiniger rijden.</div>
           <div class="choice-out"><b>Je krijgt:</b> live verbruik &amp; vermogen, tips onderweg en een eindrapport (brandstof + techniek + rijgedrag).</div>
+        </div>
+        <div class="choice-card full" id="wc-fuel">
+          <div class="choice-head"><span class="choice-icon">⛽</span><span class="choice-time">⏱ ±2 min</span></div>
+          <div class="choice-title">Verbruik analyseren</div>
+          <div class="choice-desc">Waar gaat brandstof verloren — en hoeveel kost dat?</div>
+          <div class="choice-out"><b>Je krijgt:</b> bespaartips in €/jaar.</div>
         </div>
       </div>
     </div><!-- dp-saving -->
@@ -866,17 +897,13 @@ function closeConnOv(){
         <button class="kebab-item kebab-group" id="admGroupBtn" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
-          <button class="kebab-item" id="kbRenderProef" style="display:none" onclick="closeKebab();PLRender.proef()">💥 Test: rendercrash</button>
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
-          <button class="kebab-item" id="bulkRecBtn" onclick="closeKebab();openBulkRecorder()">⏺ Bulk-recorder</button>
-          <button class="kebab-item" id="bulkAnaBtn" onclick="closeKebab();openBulkAnalyse()">📈 Bulk-analyse</button>
         </div>
         <div class="kebab-sep"></div>
         <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
       <button class="kebab-item" onclick="closeKebab();reportNav()" style="position:relative">📄 Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:50%;transform:translateY(-50%);right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:16px;text-align:center"></span></button>
       <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
-      <button class="kebab-item" onclick="closeKebab();openWaakvenster()">◉ Waakronde</button>
       <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
       <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
       <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
@@ -994,7 +1021,7 @@ function closeConnOv(){
            ruimte op dat de PID-lijst eronder nauwelijks nog hoogte overhoudt
            om te scrollen. Zie toggleVehicleSection() in pidlane-uihelpers.js. -->
       <div class="slsec" id="vehicleSection">
-        <div class="slttl" onclick="toggleVehicleSection()" style="cursor:pointer">Voertuig<span id="vehSecChev">▾</span></div>
+        <div class="slttl" onclick="toggleVehicleSection()" style="cursor:pointer">Voertuig<span id="vehSecChev" class="sl-klap" role="button" aria-label="Voertuiggegevens in- of uitklappen">Inklappen ▴</span></div>
         <div id="vehicleBody">
         <div id="demoBar" style="display:none;margin-bottom:8px;padding:8px;background:var(--pus);border:1px solid var(--pu);border-radius:8px">
           <div onclick="toggleDemoBarBody()" style="font-size:11px;font-weight:700;color:var(--pu);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">

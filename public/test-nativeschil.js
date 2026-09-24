@@ -462,7 +462,9 @@ console.log('\n── de melding na de herstart (#229) ──');
      er in D1 een crash zonder dat te zien is dat hij besteld was. */
   r = draai({ moment: 0, crash: false }, true);
   await tik();
-  toets('in de APK staat de proefknop zichtbaar', r.knop.style.display, '');
+  // Sinds #286 (24-09-2026) staat de proefknop niet meer in het menu; ook in
+  // de APK blijft een oud element dus dicht. De proef zelf werkt nog.
+  toets('ook in de APK wordt er geen proefknop meer getoond (#286)', r.knop.style.display, 'none');
   toets('de proefcrash wordt gevraagd', r.api.proef() === true, true);
   await tik(); await tik();
   toets('en gaat door, ook zonder D1-verbinding in de app', r.proeven.length, 1);

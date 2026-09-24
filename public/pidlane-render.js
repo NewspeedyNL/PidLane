@@ -45,9 +45,9 @@
     var p = _plug();
     if (!p || typeof p.laatste !== 'function') return;
     _gevraagd = true;
-    // De proefknop (admin, alleen in de APK) pas tonen als de plugin er is.
-    try { var k = document.getElementById('kbRenderProef'); if (k) k.style.display = ''; }
-    catch (e) { console.warn('Rendercrash: proefknop niet getoond (#229)', e); }
+    // De proefknop in het Admin-menu is op 24-09-2026 weggehaald (#286): de
+    // afvang is bewezen (#229). proef() blijft, voor een proef vanuit de
+    // console of een volgende ronde.
     Promise.resolve(p.laatste()).then(function (r) {
       var m = melding(r);
       if (!m) return;

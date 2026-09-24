@@ -942,6 +942,8 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .app.sl-col .sl-col-label { display:flex; }
 .slsec { border-bottom:1px solid var(--bd); padding:5px 10px; }
 .slttl { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--tx3); margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; }
+/* De in-/uitklapknop naast een kopje (#286): een los ▾ van 11 px werd niet als knop gezien. */
+.sl-klap { font-size:12px; letter-spacing:0; text-transform:none; font-weight:700; color:var(--tx2); border:1px solid var(--bd); border-radius:8px; padding:5px 10px; background:var(--sur2); }
 .cnt { font-size:12px; font-weight:600; background:var(--bl); color:#fff; padding:1px 6px; border-radius:999px; }
 .vg { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
 .vs { font-family:var(--f); font-size:12px; background:var(--sur2); border:1px solid var(--bd); border-radius:5px; padding:4px 6px; color:var(--tx); outline:none; cursor:pointer; width:100%; }
@@ -1222,7 +1224,10 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .wiz-ov{position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
 .wiz-ov.hidden{display:none}
 @media(min-width:600px){.wiz-ov{align-items:center}}
-.wiz-panel{background:var(--sur);border:1px solid var(--bd);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:20px 18px 28px;max-height:92vh;display:flex;flex-direction:column;gap:14px}
+.wiz-panel{background:var(--sur);border:1px solid var(--bd);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:20px 18px calc(28px + var(--pl-sab));max-height:92vh;display:flex;flex-direction:column;gap:14px}
+/* #286: "Start analyse" viel half achter de Android-navigatiebalk. Het vel
+   ligt op flex-end tegen de onderrand, dus de veilige zone hoort in de
+   eigen onderpadding — zoals bij de vellen in bproef-schermranden.js. */
 @media(min-width:600px){.wiz-panel{border-radius:18px;max-height:85vh}}
 .wiz-steps{display:flex;align-items:center;gap:0;justify-content:center}
 .wiz-step{width:28px;height:28px;border-radius:50%;border:2px solid var(--bd);background:var(--sur2);color:var(--tx3);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all .3s;flex-shrink:0}

@@ -51,11 +51,72 @@ function toets(naam, waar, uitleg) {
   }
 
   try {
-    console.log('\n1. Beide modules zijn geladen en bereikbaar vanaf het menu');
+    /* #286 (24-09-2026): de waakronde en de twee bulk-knoppen stonden in het
+       menu, los van de live data. Nu zijn het kaarten in die deur, en het
+       menu is ze kwijt. Gemeten in de echte index.html, niet in de bron. */
+    console.log('\n0. De indeling van de keuzeschermen (#286)');
+    const indeling = await app.ev(`(function(){
+      const inDeur = (deur) => [...document.querySelectorAll('#dp-' + deur + ' .choice-card[id]')].map(e => e.id);
+      const menu = document.getElementById('kebabMenu');
+      const menuTekst = menu ? menu.innerText : '';
+      return { live: inDeur('live'), onderweg: inDeur('saving'), diag: inDeur('diag'),
+               menuWaak: /Waakronde/.test(menuTekst), menuBulk: /Bulk-/.test(menuTekst),
+               menuCrash: /rendercrash/i.test(menuTekst) || !!document.getElementById('kbRenderProef'),
+               titel: (document.querySelector('#dp-saving .wm-door-h') || {}).textContent || '' };
+    })()`);
+    ['wc-waak', 'wc-pidrec', 'wc-bulkrec', 'wc-bulkana'].forEach(function (id) {
+      toets(id + ' staat in de deur "Live data"', indeling.live.indexOf(id) >= 0, indeling.live.join(', '));
+    });
+    ['wc-monitor', 'wc-caravan', 'wc-fuel'].forEach(function (id) {
+      toets(id + ' staat in de deur "Onderweg"', indeling.onderweg.indexOf(id) >= 0, indeling.onderweg.join(', '));
+    });
+    toets('de rit-monitor staat niet meer bij de live data', indeling.live.indexOf('wc-monitor') < 0);
+    toets('de PID-recorder niet meer bij de diagnose', indeling.diag.indexOf('wc-pidrec') < 0);
+    toets('de deur heet nu "Onderweg"', /Onderweg/.test(indeling.titel), indeling.titel);
+    toets('het menu noemt de waakronde niet meer', !indeling.menuWaak);
+    toets('en de bulk-knoppen niet meer', !indeling.menuBulk);
+    toets('en de proefcrash niet meer', !indeling.menuCrash);
+
+    const waakKaart = await app.ev(`(function(){
+      document.getElementById('welcomeScreen').classList.remove('hidden');
+      openDoor('live');
+      document.getElementById('wc-waak').click();
+      const ov = document.getElementById('wkvOv');
+      const open = !!ov && getComputedStyle(ov).display !== 'none';
+      if (window.PLWaakUI) PLWaakUI.sluit();
+      return open;
+    })()`);
+    toets('de kaart "Waakronde" opent het waakvenster', waakKaart);
+
+    const rol = await app.ev(`(function(){
+      const zicht = (id) => { const e = document.getElementById(id); return !!e && e.style.display !== 'none'; };
+      window.currentUser = { user: 'klant', role: 'user', label: 'klant' };
+      PLKlant.pasMenuAan();
+      const klant = { bulkrec: zicht('wc-bulkrec'), bulkana: zicht('wc-bulkana'), waak: zicht('wc-waak') };
+      window.currentUser = { user: 'beheer', role: 'admin', label: 'beheer' };
+      PLKlant.pasMenuAan();
+      const beheer = { bulkrec: zicht('wc-bulkrec'), bulkana: zicht('wc-bulkana') };
+      return { klant, beheer };
+    })()`);
+    toets('een klant ziet de bulk-kaarten niet', !rol.klant.bulkrec && !rol.klant.bulkana, JSON.stringify(rol));
+    toets('maar wel de waakronde', rol.klant.waak, JSON.stringify(rol));
+    toets('TEGENPROEF: beheer ziet ze wel', rol.beheer.bulkrec && rol.beheer.bulkana, JSON.stringify(rol));
+
+    const klap = await app.ev(`(function(){
+      const k = document.getElementById('vehSecChev');
+      const voor = k ? k.textContent : '';
+      toggleVehicleSection(); const na = k ? k.textContent : '';
+      toggleVehicleSection();
+      return { voor, na };
+    })()`);
+    toets('de inklapknop bij "Voertuig" zegt wat hij doet', /Inklappen/.test(klap.voor) && /Uitklappen/.test(klap.na),
+          JSON.stringify(klap));
+
+    console.log('\n1. Beide modules zijn geladen en bereikbaar vanaf hun kaart');
     const bedrading = await app.ev(`({
       waakUI : typeof window.PLWaakUI === 'object' && typeof PLWaakUI.open === 'function',
       bulkUI : typeof window.PLBulkUI === 'object' && typeof PLBulkUI.open === 'function',
-      // De menuregels in index.html hangen aan deze twee losse globalen.
+      // De kaarten in de deur "Live data" hangen aan deze twee losse globalen (#286).
       knopW  : typeof window.openWaakvenster === 'function',
       knopB  : typeof window.openBulkAnalyse === 'function',
       // En de bronnen die ze lezen.
@@ -64,10 +125,10 @@ function toets(naam, waar, uitleg) {
     })`);
     toets('PLWaakUI.open() bestaat', bedrading.waakUI);
     toets('PLBulkUI.open() bestaat', bedrading.bulkUI);
-    toets('de menuknop openWaakvenster() bestaat', bedrading.knopW,
-          'de kebabregel in index.html roept hem aan');
-    toets('de menuknop openBulkAnalyse() bestaat', bedrading.knopB,
-          'de kebabregel in index.html roept hem aan');
+    toets('openWaakvenster() bestaat', bedrading.knopW,
+          'de kaart wc-waak roept hem aan');
+    toets('openBulkAnalyse() bestaat', bedrading.knopB,
+          'de kaart wc-bulkana roept hem aan');
     toets('PLWaak.historie() bestaat als bron', bedrading.waak);
     toets('PLBulk.lees() bestaat als bron', bedrading.lees);
 
