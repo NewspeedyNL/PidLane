@@ -915,6 +915,7 @@ MUTATIES=(
 "public/pidlane-auth.js@@        Adapter:    adapter,@@        Adapter:    '',@@test-logvelden.js@@de adapter blijft weer leeg terwijl hij dé variabele is in #217 en #254: welke adapter erin zat moet weer uit een tekstregel gevist worden"
 "public/pidlane-auth.js@@  if(opties&&opties.geenAirtable) return;@@  if(false) return;@@test-logvelden.js@@elke harde-limietmelding staat weer twee keer in de tabel en elke telling telt dubbel"
 "public/pidlane-auth.js@@  if(type==='warn'&&(msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier'))) logToSheets('outlier',msg);@@  if(type==='warn'&&msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier')) logToSheets('outlier',msg);@@test-logvelden.js@@de haakjes zijn weg: && bindt sterker dan ||, dus elke regel met \"oorsprong\" erin gaat als uitschieter naar Airtable"
+"public/pidlane-veldlab.js@@    log=function(msg,type){ _plOrigLog.apply(this,arguments); _plEvalCapture(msg,type); };@@    log=function(msg,type){ _plOrigLog(msg,type); _plEvalCapture(msg,type); };@@bproef-meetketen.js@@de omhulling van het veldlab laat het derde argument weer vallen: geenAirtable komt nooit aan en elke harde-limietmelding staat weer twee keer in D1 (#256)"
 
 # ── Voorwaarden en het driewaardige oordeel (#257, 18-09-2026). Negen van de
 # twintig LET OP-regels van 18-09 gingen niet over de auto maar over

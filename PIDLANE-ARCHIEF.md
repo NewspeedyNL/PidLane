@@ -175,6 +175,26 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 24-09-2026 — de reparatie die in de bron stond en in de app niet werkte (#256)
+
+Op 18-09 kreeg `validateAndSmooth()` een `{geenAirtable:true}` mee naar
+`log()`, zodat een harde-limietmelding één keer in de logtabel komt in plaats
+van twee. `test-logvelden.js` bewees het, `plmutate.sh` hield het scherp — en
+op 23-09 om 21:05 stond de 300 °C van blok 5 nog steeds twee keer in D1.
+
+`pidlane-veldlab.js` hangt een omhulling om `log()` om mee te lezen, en die gaf
+maar twee argumenten door. Het derde viel eraf. De toets riep `log()` los aan
+en zag die omhulling nooit, want die bestaat pas als alle modules geladen zijn.
+Gevonden bij de herevaluatie van de open issues, door de claim "gerepareerd"
+tegen de logtabel te leggen in plaats van tegen de bron. `bproef-meetketen.js`
+telt het nu in de echte app; zonder de reparatie geeft hij precies de twee
+regels uit D1.
+
+Dezelfde les als hieronder, één laag verder: *de reparatie staat er* is een
+andere vraag dan *de reparatie komt aan*. Een omhulling om een gedeelde functie
+geeft alle argumenten door (`apply(this, arguments)`), ook die er vandaag nog
+niet zijn.
+
 ### 24-09-2026 — de tekstcontrole die een dode afhandeling groen hield
 
 Bij het omzetten van `test-bijboeken.js` van `admin.html` naar `beheer.html`

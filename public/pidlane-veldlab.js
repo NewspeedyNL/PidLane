@@ -710,11 +710,19 @@ function _plEvalCapture(msg,type){
    broncode-inspectie in deze codebase onbetrouwbaar. Meet gedrag.
 
    Faalt het plaatsen, dan blijft de app werken maar legt het veldlab niets
-   meer vast — en dat merk je pas als het dashboard leeg blijft. */
+   meer vast — en dat merk je pas als het dashboard leeg blijft.
+
+   ALLE ARGUMENTEN GAAN DOOR (#256, 24-09-2026). Hier stond
+   `function(msg,type){ _plOrigLog(msg,type); … }`, en daarmee viel het derde
+   argument eraf — `{geenAirtable:true}` uit validateAndSmooth(). De reparatie
+   van 18-09 stond dus in de bron en werkte in de app niet: op 23-09 stond
+   elke harde-limietmelding nog steeds twee keer in D1. De toets riep log()
+   los aan en zag deze omhulling nooit; bproef-meetketen.js telt het nu in de
+   echte app. */
 try{
   if(typeof log==='function'){
     var _plOrigLog=log;
-    log=function(msg,type){ _plOrigLog(msg,type); _plEvalCapture(msg,type); };
+    log=function(msg,type){ _plOrigLog.apply(this,arguments); _plEvalCapture(msg,type); };
   }
 }catch(e){ console.warn('Veldlab kon log() niet meelezen — het dashboard blijft leeg:', e); }
 

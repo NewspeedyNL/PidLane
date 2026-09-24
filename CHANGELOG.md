@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — één harde-limietmelding, één regel in de logtabel (#256)
+ ═══════════════════════════════════════════════════════════
+
+ - #256  De omhulling van het veldlab om log() geeft alle argumenten door.
+         `{geenAirtable:true}` viel eraf, dus de reparatie van 18-09 werkte
+         in de app niet: elke harde-limietmelding stond nog twee keer in D1.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — een analyse begint met de meting, niet met vragen (#290)
  ═══════════════════════════════════════════════════════════
 
