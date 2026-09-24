@@ -101,6 +101,7 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .grid2>*,.grid3>*,.grid4>*{min-width:0}
   @media(max-width:720px){.grid3,.grid4{grid-template-columns:1fr 1fr}}
   @media(max-width:460px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
 
@@ -169,9 +170,9 @@
   .switch input:checked+.slider:before{transform:translateX(19px)}
 
   /* ── grafiek (puur css, geen bibliotheek) ── */
-  .staaf-rij{display:flex;align-items:flex-end;gap:3px;height:120px;
-             padding:6px 0;overflow-x:auto}
-  .staaf{flex:1 0 14px;min-width:9px;background:linear-gradient(180deg,var(--bl2),var(--bl));
+  .staaf-rij{display:flex;align-items:flex-end;gap:3px;height:138px;
+             padding:6px 0 24px;overflow:hidden}
+  .staaf{flex:1 1 9px;min-width:6px;background:linear-gradient(180deg,var(--bl2),var(--bl));
          border-radius:3px 3px 0 0;position:relative;cursor:default}
   .staaf.rood{background:linear-gradient(180deg,#ff7b7b,var(--rd))}
   .staaf span{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);
@@ -2585,8 +2586,12 @@ function d1Teken(){
   const dagen = Number(o.dagen) || 30;
   const reeks = d1Dagen(L.perDag, dagen);
   $('dbVenster').textContent = '— laatste ' + dagen + ' dagen, ' + reeks.reduce((a,x) => a + x[1], 0) + ' regels';
-  staafgrafiek($('dbPerDag'), reeks.map(x => [x[0], x[1], dagen <= 31 ? x[0].slice(8,10) : '']));
-  staafgrafiek($('dbFoutPerDag'), reeks.map(x => [x[0], x[2], dagen <= 31 ? x[0].slice(8,10) : '']), () => true);
+  // Een datum onder elke staaf past tot twee weken; daarboven om de zoveel,
+  // anders lopen ze in elkaar. De hovertekst draagt altijd de hele datum.
+  const stap = dagen <= 14 ? 1 : Math.ceil(dagen / 10);
+  const lbl = (x, i) => (reeks.length - 1 - i) % stap === 0 ? x[0].slice(8,10) : '';
+  staafgrafiek($('dbPerDag'), reeks.map((x, i) => [x[0], x[1], lbl(x, i)]));
+  staafgrafiek($('dbFoutPerDag'), reeks.map((x, i) => [x[0], x[2], lbl(x, i)]), () => true);
   const fout = (t) => /error|bug|fout/i.test(t);
   $('dbPerType').innerHTML = (L.perType || []).map(p => {
     const max = (L.perType[0] || [0,1])[1] || 1;
