@@ -195,6 +195,18 @@ Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
 De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
 *staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
 
+### 24-09-2026 — het scherm dat ik oversloeg deed meer dan tonen (#229)
+
+De hervatting van #287 sloeg "Klaar voor gebruik" over en riep daarna
+`wizFinish()` aan. Bij het verder lezen voor het sessiewerk bleek dat scherm
+niet alleen een samenvatting: `_wizStep6()` zet daar de standaardset aan.
+Na een crash is `activePIDs` leeg, dus de hervatting verbond, vroeg niets —
+en mat niets. Gevonden in de code vóór een rit het liet zien; de proef die
+het had moeten vangen bestond niet, want het slot van de hervatting zat in
+`startDiscovery()` en was niet los te toetsen. Nu is het een eigen functie
+(`_hervatAfronden`) met een test, en een hervatting met nul sensoren is in
+blok 5 FOUT.
+
 ### 24-09-2026 — de herverbinding werkte, en vroeg daarna vier dingen (#229)
 
 Na #285 de proefcrash om 19:08: om 19:08:39 "Automatisch herverbinden...",

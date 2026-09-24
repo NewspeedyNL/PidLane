@@ -123,6 +123,15 @@ let _liveVorigId = null, _liveVolg = 1;
 
 function _liveRitId() {
   if (_liveRit) return _liveRit;
+  // Na een herlaad binnen dezelfde rit (#229): het nummer van vóór de crash,
+  // één keer. Zie _plSessieNaHerlaad() in pidlane-auth.js.
+  if (window._plDoorlopendeSessie) {
+    _liveRit = String(window._plDoorlopendeSessie);
+    window._plDoorlopendeSessie = null;
+    const m = /^(\d{4}-\d\d-\d\d-\d{4})(?:-(\d+))?$/.exec(_liveRit);
+    if (m) { _liveVorigId = m[1]; _liveVolg = Number(m[2]) || 1; }
+    return _liveRit;
+  }
   const d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
   const basis = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
                 '-' + p(d.getHours()) + p(d.getMinutes());
@@ -2974,9 +2983,11 @@ const PROEVEN_B5 = [
       if (!h)
         return { staat: 'LET OP', detail: 'deze sessie is er niet hervat — doe de proefcrash (Admin → Test: rendercrash) of trek de adapter even, raak daarna niets aan, en draai deze proef opnieuw' };
       var hoeLang = Math.round((Date.now() - h.t) / 60000);
+      if (h.sensoren === 0)
+        return { staat: 'FOUT', detail: 'hervat na ' + h.reden + ' met NUL sensoren aan — de meting staat stil tot iemand er met de hand een paar aanzet (#229)' };
       if (h.s > 60)
         return { staat: 'LET OP', detail: 'hervat na ' + h.reden + ', maar dat duurde ' + h.s + ' s (' + hoeLang + ' min geleden) — zonder vragen, wel traag. Kijk in de BT-log welke stap de tijd kostte.' };
-      return { staat: 'ok', detail: 'hervat na ' + h.reden + ' in ' + h.s + ' s, zonder één tik (' + hoeLang + ' min geleden).' };
+      return { staat: 'ok', detail: 'hervat na ' + h.reden + ' in ' + h.s + ' s, zonder één tik, met ' + h.sensoren + ' sensoren uit ' + h.bron + ' (' + hoeLang + ' min geleden).' };
     }
   },
 

@@ -68,6 +68,29 @@ function _hervatActief(){
   return !!(h && (Date.now() - h.t) < HERVAT_MS);
 }
 
+/* Het slot van een hervatting. "Klaar voor gebruik" deed twee dingen: een
+   samenvatting tonen en de standaardset aanzetten (_wizStep6). Het eerste
+   hoort bij een hervatting niet, het tweede wel — anders staan er na een crash
+   géén sensoren aan. Dat gebeurde in de eerste versie van deze stand (#287):
+   het scherm werd overgeslagen en de selectie ermee. Eerst wat er vóór de
+   crash stond, anders de standaardset. */
+function _hervatAfronden(h){
+  let n=0, bron='de selectie van vóór de herlaad';
+  try{ n=plSelectieHerstel(); }
+  catch(e){ btDiag('Hervatten: bewaarde selectie niet teruggezet: '+(e.message||e),'warn'); }
+  if(!n){
+    bron='de standaardset';
+    try{ n=selectStandardSet(); }
+    catch(e){ btDiag('Hervatten: ook de standaardset lukte niet — kies sensoren met de hand: '+(e.message||e),'warn'); }
+  }
+  try{ wizFinish(); }
+  catch(e){ btDiag('Hervatten: PID-lijst niet bijgewerkt — open hem één keer met de hand: '+(e.message||e),'warn'); }
+  const duurS=Math.round((Date.now()-h.t)/1000);
+  window._plLaatsteHervat={ reden:h.reden, s:duurS, t:Date.now(), sensoren:n, bron:bron };   // voor blok 5
+  log(`Hervat na ${h.reden} — zonder vragen, in ${duurS} s, ${n} sensoren uit ${bron} (#229)`,'ok');
+  return n;
+}
+
 async function connectSerial(opt){
   // Alleen een expliciete hervatting zet de stand; elke andere aanroep (de
   // knop, een klik-event) wist hem.
@@ -2068,11 +2091,7 @@ async function startDiscovery(){
   const _hervat = _hervatActief() ? window._plHervat : null;
   window._plHervat = null;
   if(_hervat){
-    try{ wizFinish(); }
-    catch(e){ btDiag('Hervatten: PID-lijst niet bijgewerkt — open hem één keer met de hand: '+(e.message||e),'warn'); }
-    const _duurS=Math.round((Date.now()-_hervat.t)/1000);
-    window._plLaatsteHervat={ reden:_hervat.reden, s:_duurS, t:Date.now() };   // voor blok 5
-    log(`Hervat na ${_hervat.reden} — zonder vragen, in ${_duurS} s (#229)`,'ok');
+    _hervatAfronden(_hervat);
   } else {
     wizShow();
   }

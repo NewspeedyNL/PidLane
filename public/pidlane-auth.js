@@ -807,6 +807,22 @@ const AT_KOLOMMEN = new Set(['RecordType','SchemaVersion','SessionId','UserId','
    Wie het anders wil, geeft het in `extra` mee — dat wint, want het staat in
    de spreiding ná deze velden. */
 let _plAppSessie=null;
+/* DE SESSIE OVERLEEFT EEN HERLAAD (#229, 24-09-2026). Een rendercrash bouwt de
+   pagina opnieuw op, en tot nu toe begon daarmee een nieuwe sessie: vóór de
+   crash `2026-09-24-1906-2`, erna `app-2026-09-24-1908`. De rit liep door, de
+   verbinding kwam vanzelf terug — en in de logtabel stond hij in twee stukken.
+   Het laatst gebruikte nummer staat daarom in de opslag, met een tijd. Wie
+   binnen twee minuten weer logt, zit in dezelfde rit; na een gewone herstart
+   van de app de volgende ochtend is het ruim ouder en begint er een nieuwe. */
+const SESSIE_HERLAAD_MS=120000;
+let _plSessieBewaard=0;
+function _plSessieOnthoud(id){
+  const nu=Date.now();
+  if(nu-_plSessieBewaard<5000) return;          // niet bij elke regel schrijven
+  _plSessieBewaard=nu;
+  try{ localStorage.setItem('pl_sessie', JSON.stringify({ id:id, t:nu })); }
+  catch(e){ console.warn('Sessienummer niet bewaard — na een crash begint een nieuwe sessie (#229)', e); }
+}
 function _plSessieId(){
   // Loopt er een testrun, dan hoort alles van díé rit onder hetzelfde nummer
   // te staan — dat is het hele punt: conclusie en bewijs onder één sessie.
@@ -814,14 +830,42 @@ function _plSessieId(){
   // wel, en dan zou elke logregel buiten een run er een verzinnen.
   try{
     const r=(window.PLTestrunLive&&typeof PLTestrunLive.huidigeRit==='function')?PLTestrunLive.huidigeRit():null;
-    if(r) return r;
+    if(r){ _plSessieOnthoud(r); return r; }
   }catch(e){ console.warn('Sessienummer van de testrun niet leesbaar — deze regel krijgt het app-nummer (#256)', e); }
   if(!_plAppSessie){
     const d=new Date(), p2=n=>String(n).padStart(2,'0');
     _plAppSessie='app-'+d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+'-'+p2(d.getHours())+p2(d.getMinutes());
   }
+  _plSessieOnthoud(_plAppSessie);
   return _plAppSessie;
 }
+/* Bij het laden, één keer: was er binnen twee minuten nog een sessie, dan is
+   dit dezelfde rit. De testrun neemt het nummer over via
+   window._plDoorlopendeSessie (één keer; een nieuwe opdracht kiezen begint
+   daarna gewoon een nieuwe sessie). */
+function _plSessieNaHerlaad(){
+  let vorige=null;
+  try{ vorige=JSON.parse(localStorage.getItem('pl_sessie')||'null'); }
+  catch(e){ console.warn('Bewaard sessienummer niet leesbaar — er begint een nieuwe sessie (#229)', e); return null; }
+  if(!vorige || !vorige.id || (Date.now()-(vorige.t||0))>=SESSIE_HERLAAD_MS) return null;
+  _plAppSessie=String(vorige.id);
+  window._plDoorlopendeSessie=_plAppSessie;
+  return _plAppSessie;
+}
+try{
+  if(_plSessieNaHerlaad()) setTimeout(function(){
+    try{ if(typeof log==='function') log('Sessie '+_plAppSessie+' loopt door na de herlaad (#229)','info'); }
+    catch(e){ console.warn('Melding over de doorlopende sessie niet gelogd (#229)', e); }
+  }, 0);
+  // De hartslag: een stille rit logt soms minutenlang niets, en dan zou het
+  // bewaarde nummer bij een crash al te oud zijn om door te lopen.
+  setInterval(function(){
+    try{
+      const rit=(window.PLTestrunLive&&typeof PLTestrunLive.huidigeRit==='function')?PLTestrunLive.huidigeRit():null;
+      if(rit||_plAppSessie) _plSessieId();
+    }catch(e){ console.warn('Sessiehartslag mislukt (#229)', e); }
+  }, 30000);
+}catch(e){ console.warn('Doorlopende sessie na herlaad niet opgezet (#229)', e); }
 /* Een proef van blok 5 schiet met opzet onmogelijke waarden in de meetketen.
    Die regels mogen bestaan — de proef heeft echt gedraaid — maar ze mogen
    nooit als meting aan een auto te lezen zijn. `_zonderSporen()` zet deze vlag
