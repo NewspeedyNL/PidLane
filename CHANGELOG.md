@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — een crash breekt de rit niet meer in twee
+ ═══════════════════════════════════════════════════════════
+
+ - #229  Het sessienummer loopt door na een herlaad binnen twee minuten
+         (rendercrash): de logtabel houdt één rit, en de testrun neemt het
+         nummer één keer over. Een hartslag van 30 s houdt het vers.
+ - #229  De sensorselectie wordt bewaard en na een hervatting teruggezet;
+         zonder bewaarde selectie de standaardset. De eerste versie van de
+         hervatting (#287) sloeg de standaardset mee over en hervatte met
+         nul sensoren.
+ - Blok 5: een hervatting met nul sensoren is FOUT.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — na een crash hervatten zonder vragen
  ═══════════════════════════════════════════════════════════
 

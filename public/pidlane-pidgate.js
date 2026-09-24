@@ -444,7 +444,34 @@ function plSelectieMeld(voor, aanleiding){
               delen.join(', ')+' — nu '+nu.size+' actief';
   try{ if(typeof log==='function') log(tekst,'info'); }
   catch(e){ console.warn('Selectiewijziging niet in het log gezet:', e); }
+  // Bewaren voor een hervatting na een crash (#229). Hier en niet bij de vijf
+  // aanroepers: dit is de plek waar elke wijziging al langskomt.
+  try{ localStorage.setItem('pl_selectie', JSON.stringify({ pids:[...nu], t:Date.now() })); }
+  catch(e){ console.warn('Sensorselectie niet bewaard — na een crash komt de standaardset terug (#229):', e); }
   return {erbij, eraf, tekst};
+}
+
+/* DE SELECTIE VAN VÓÓR DE CRASH TERUG (#229, 24-09-2026). Na een herlaad is
+   activePIDs leeg. De eerste-keer-flow zette dan in "Klaar voor gebruik" de
+   standaardset aan; een hervatting slaat dat scherm over en moet dus zelf
+   iets kiezen — en dat hoort te zijn wat er stond, niet de standaardset (proef
+   van 19:08: "Sensorselectie via standaardset: 26", terwijl er een opdracht
+   liep). Alleen wat de auto meldt en wat de poort kiesbaar vindt, net als elke
+   andere manier van toevoegen. Geeft het aantal teruggezette sensoren. */
+function plSelectieHerstel(){
+  let bewaard=null;
+  try{ bewaard=JSON.parse(localStorage.getItem('pl_selectie')||'null'); }
+  catch(e){ console.warn('Bewaarde sensorselectie niet leesbaar (#229):', e); return 0; }
+  if(!bewaard || !Array.isArray(bewaard.pids) || !bewaard.pids.length) return 0;
+  const voor=plSelectieVoor();
+  let n=0;
+  bewaard.pids.forEach(function(pid){
+    if(!supportedPIDs.has(pid)) return;
+    if(!pidGate(pid,'kiesbaar')) return;
+    activePIDs.add(pid); manualPIDs.add(pid); n++;
+  });
+  plSelectieMeld(voor,'hervatten na herlaad');
+  return n;
 }
 
 // Meteen hier exporteren en niet in het blok onderaan: dat blok ligt binnen
@@ -454,6 +481,7 @@ function plSelectieMeld(voor, aanleiding){
 if(typeof window!=='undefined'){
   window.plSelectieVoor=plSelectieVoor;
   window.plSelectieMeld=plSelectieMeld;
+  window.plSelectieHerstel=plSelectieHerstel;
 }
 
 // ── Wanneer moet er herijkt worden? ────────────────────────────────────
