@@ -945,6 +945,19 @@ MUTATIES=(
 "worker.js@@    if (body.ookUitkomsten !== true && kol.has(\"Outcome\"))@@    if (false)@@test-adminbron-d1.js@@opruimen neemt de uitkomsten mee: het antwoord op een issue verdwijnt samen met de ruis"
 "worker.js@@    const proef = body.proef !== false;@@    const proef = body.proef === true;@@test-adminbron-d1.js@@opruimen wist meteen in plaats van eerst te tellen — een vergissing kost dan rijen en geen getal"
 "worker.js@@    if (!waar.length)@@    if (false)@@test-adminbron-d1.js@@een opruimregel zonder enkele voorwaarde komt erdoor, en dat is de hele tabel"
+
+# ── /admin/d1 (24-09-2026): de SQL-console en de meetopdrachten ──
+# De console belooft alleen te lezen, en die belofte rust op twee lagen: de
+# vraag als subquery, en de tekstkeuring ervóór. Elke laag apart uitzetten
+# moet rood worden — anders hangt "alleen lezen" aan één regel zonder dat
+# iemand het weet. De opdrachtmutaties bouwen 22-09 na: negen actieve rijen,
+# en de verkeerde won.
+"worker.js@@db.prepare(ingepakt).bind(D1_SQL_MAX_RIJEN + 1).all()@@db.prepare(kern).all()@@test-admind1.js@@de console draait de vraag kaal in plaats van als subquery: zonder de tekstkeuring schrijft hij"
+"worker.js@@  const m = kaal.match(D1_SQL_VERBODEN);@@  const m = null;@@test-admind1.js@@de tekstkeuring laat schrijfwoorden door: alleen de subquery houdt de console nog op lezen"
+"worker.js@@  const skelet = d1SqlSkelet(tekst);@@  const skelet = tekst;@@test-admind1.js@@de keuring leest tekstwaarden mee: een zoekvraag op '%DELETE%' wordt geweigerd"
+"worker.js@@      db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1 AND id <> ?\").bind(id),\n@@@@test-admind1.js@@een opdracht aanzetten laat de andere aan staan: de app kiest er dan zelf een, zoals op 22-09"
+"worker.js@@      ? await db.batch([db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1\"), invoeg])@@      ? [await invoeg.run()]@@test-admind1.js@@een nieuwe actieve opdracht zet de oude niet uit"
+"worker.js@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\"];@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\", \"Gewijzigd\"];@@test-admind1.js@@Gewijzigd is met de hand te zetten: dan kies je stil welke opdracht er rijdt"
 )
 
 echo
