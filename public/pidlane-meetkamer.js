@@ -499,6 +499,8 @@
     '#meetkamerBox .mk-kies i{font-style:normal;font:700 10px var(--f);flex-shrink:0}' +
     '#meetkamerBox .mk-knop{background:var(--sur2);border:1px solid var(--bd);border-radius:9px;' +
       'padding:8px 12px;font:700 11.5px var(--f);color:var(--tx2);cursor:pointer}' +
+    // Het gekozen antwoord op een vraag van de opdracht (#283).
+    '#meetkamerBox .mk-knop.gekozen{border-color:var(--bl);color:var(--bl);box-shadow:inset 0 0 0 1px var(--bl)}' +
     /* De verzendknop staat vol in beeld en niet in een hoekje: hem missen is
        de hele reden dat hij er is. */
     '#meetkamerBox .mk-verz{display:block;width:100%;text-align:left;background:var(--sur2);' +
@@ -589,6 +591,7 @@
         '<span class="mk-wat">' + veilig(oor.kop) + '<u>' + veilig(oor.regel) + '</u></span>' +
       '</div>' +
       (vr ? '<div class="mk-sub" id="mkVenster">⏱ ' + veilig(vr) + '</div>' : '') +
+      _vragen(s) +
       _verzendKnop(s) +
       _ritLijst(s) +
       _lus(st) + '</div>';
@@ -626,6 +629,40 @@
       '<u>' + (st === 'nog niet'
         ? 'Nog geen antwoord; wat er staat gaat wel mee als tussenstand.'
         : 'Zet deze uitkomst nu in de logtabel, zonder de testrun te draaien.') + '</u></button>';
+  }
+
+  /* DE VRAGEN VAN DE OPDRACHT (#283). Stonden in elke opdracht en kwamen
+     nooit in beeld. Eén knop per optie; de gekozen staat vol. Met indices in
+     de onclick en niet de tekst zelf: een optie met een aanhalingsteken zou
+     de knop anders breken. Wat er gekozen is gaat mee met verzenden. */
+  function _vragen(s) {
+    var vr = (s.opdracht && Array.isArray(s.opdracht.vragen)) ? s.opdracht.vragen : [];
+    if (!vr.length || !window.PLOpdracht || typeof PLOpdracht.antwoorden !== 'function') return '';
+    var m = PLOpdracht.antwoorden(s.opdracht);
+    var open = vr.filter(function (v) { return m[v.id] === undefined; }).length;
+    return '<div class="mk-vragen" id="mkVragen"><div class="mk-bron">Vragen' +
+      '<span style="margin-left:auto">' + (open ? open + ' open — gaan mee met verzenden' : 'alle beantwoord') + '</span></div>' +
+      vr.map(function (v, i) {
+        return '<div class="mk-sub" style="margin-top:6px"><b>' + veilig(v.tekst) + '</b></div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">' +
+          (v.opties || []).map(function (op, j) {
+            var gekozen = m[v.id] === op;
+            return '<button class="mk-knop' + (gekozen ? ' gekozen' : '') + '" data-vraag="' + veilig(v.id) + '"' +
+              ' aria-pressed="' + gekozen + '" onclick="PLMeetkamer.antwoord(' + i + ',' + j + ')">' + veilig(op) + '</button>';
+          }).join('') + '</div>';
+      }).join('') + '</div>';
+  }
+
+  function antwoord(i, j) {
+    var o = null;
+    try { o = PLOpdracht.actief(); }
+    catch (e) { console.warn('Meetkamer: de opdracht is niet te lezen voor een antwoord (#283)', e); return false; }
+    var v = o && o.vragen && o.vragen[i];
+    var op = v && v.opties && v.opties[j];
+    var ok = !!(v && op !== undefined && PLOpdracht.antwoord(o, v.id, op));
+    if (!ok) console.warn('Meetkamer: antwoord ' + i + '/' + j + ' past niet bij de opdracht (#283)');
+    teken();
+    return ok;
   }
 
   function _meterRij(m, naam) {
@@ -970,6 +1007,8 @@
     oordeel: oordeel,
     eindoordeel: eindoordeel,
     verzendAlle: verzendAlle,
+    antwoord: antwoord,
+    _vragen: _vragen,
     ritLijst: _ritLijst,
     vensterRegel: vensterRegel,
     meter: meter,

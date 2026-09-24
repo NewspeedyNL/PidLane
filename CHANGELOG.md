@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — de vragen van een meetopdracht komen in beeld
+ ═══════════════════════════════════════════════════════════
+
+ - #283  De meetkamer toont de vragen van de gekozen opdracht onder het
+         oordeel, met een knop per antwoord. Verzenden stuurt een regel
+         "antwoorden: ..." mee (ook als ze open staan), en een antwoord ná
+         het verzenden maakt opnieuw verzenden mogelijk. Het oordeel blijft
+         op de getallen.
+ - Blok 5: de proef legt het scherm tegen de gekozen opdracht.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — meetopdracht: afgeronde opdrachten gaan naar het archief
  ═══════════════════════════════════════════════════════════
 

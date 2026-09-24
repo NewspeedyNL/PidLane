@@ -773,6 +773,10 @@ MUTATIES=(
 "public/pidlane-testrun.js@@r.afgerond && !r.alVerzonden; });\n    if (!klaar.length)@@r.afgerond; });\n    if (!klaar.length)@@test-meetvenster.js@@verzend alle stuurt wat al verzonden is opnieuw: dubbele uitkomsten in de tabel"
 "public/pidlane-opdracht.js@@    var ok = v.niet ? !bevat : bevat;@@    var ok = bevat;@@test-meetvenster.js@@niet wordt genegeerd: de goedkope-adapteropdracht sluit op de MX+"
 "public/pidlane-meetkamer.js@@    oor = eindoordeel(oor, s.verzend);\n@@@@test-meetvenster.js@@het grote cijfer kleurt weer op de proeven alleen: groen boven, NOG NIET op de knop"
+"public/pidlane-meetkamer.js@@      _vragen(s) +\n      _verzendKnop(s) +@@      _verzendKnop(s) +@@test-meetvenster.js@@de vragen van de opdracht komen weer niet in beeld: de bestuurder ziet ze nooit (#283)"
+"public/pidlane-testrun.js@@  if (antw) _liveSchrijf(@@  if (false) _liveSchrijf(@@test-meetvenster.js@@de antwoorden gaan weer niet mee naar de tabel: beantwoord op het scherm, nergens terug te vinden (#283)"
+"public/pidlane-testrun.js@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden + '|' + antw;@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;@@test-meetvenster.js@@een antwoord na het verzenden telt niet als nieuw: de knop blijft op al verzonden staan en het antwoord komt nooit aan (#283)"
+"public/pidlane-opdracht.js@@    if (opties.indexOf(optie) < 0) return false;\n@@@@test-meetvenster.js@@elk vrij antwoord telt: de tabel krijgt tekst die buiten de opties valt (#283)"
 # ── #229: een rendercrash neemt het proces niet mee (22-09-2026) ──
 "native/PLRender.java@@                return true;\n            }\n        });@@                return false;\n            }\n        });@@test-nativeschil.js@@de luisteraar geeft false: Capacitor geeft dat door en Android schiet het proces af, meetdienst en al"
 ".github/workflows/build-apk.yml@@                  \"        PLRender.koppel(this, getBridge());\",\n@@@@test-nativeschil.js@@de luisteraar hangt niet meer aan de Java-MainActivity: de plugin bestaat, maar niemand vangt de rendercrash af"
@@ -885,7 +889,7 @@ MUTATIES=(
 # knop weer waardeloos zou maken: niets versturen, dubbel versturen, nooit
 # meer mogen, of het verkeerde woord op de knop zetten.
 "public/pidlane-testrun.js@@  _verzonden[o.naam] = _opdrachtStempel(o, vonnis);@@  _verzonden[o.naam] = null;@@test-verzendoordeel.js@@de knop vergeet wat hij verstuurd heeft: tien keer drukken is tien keer dezelfde rij in de tabel"
-"public/pidlane-testrun.js@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;@@  return 'altijd-hetzelfde';@@test-verzendoordeel.js@@de stempel kent het oordeel niet meer: een veranderde uitkomst is niet meer te versturen en de rit is weggegooid"
+"public/pidlane-testrun.js@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden + '|' + antw;@@  return 'altijd-hetzelfde';@@test-verzendoordeel.js@@de stempel kent het oordeel niet meer: een veranderde uitkomst is niet meer te versturen en de rit is weggegooid"
 "public/pidlane-testrun.js@@    if (nu.alVerzonden) return { ok: false, reden: 'deze uitkomst staat er al@@    if (false) return { ok: false, reden: 'deze uitkomst staat er al@@test-verzendoordeel.js@@de dubbelcheck staat uit: elke druk op de knop levert een nieuwe reeks rijen op"
 "public/pidlane-meetkamer.js@@    var woord = st === 'gesloten' ? 'GESLOTEN' : st === 'bevinding' ? 'BEVINDING' : 'NOG NIET';@@    var woord = 'GESLOTEN';@@test-verzendoordeel.js@@de knop zegt GESLOTEN bij elke uitkomst: je verstuurt een lege meting in de veronderstelling dat de vraag beantwoord is"
 "public/pidlane-meetkamer.js@@    if (!o) {\n      // Niet stil falen@@    if (false) {\n      // Niet stil falen@@test-meetkamer.js@@een mislukte keuze begint tóch een nieuwe sessie: een leeg ritnummer waar nooit iets onder komt"

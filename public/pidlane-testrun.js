@@ -2633,7 +2633,12 @@ function _issuesVan(o) {
 let _verzonden = {};
 
 function _opdrachtStempel(o, vonnis) {
-  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;
+  // De antwoorden horen erin (#283): een vraag die ná het verzenden beantwoord
+  // wordt, is iets nieuws om te melden.
+  let antw = '';
+  try { if (typeof PLOpdracht.antwoordTekst === 'function') antw = PLOpdracht.antwoordTekst(o); }
+  catch (e) { console.warn('Testrun: de antwoorden van "' + ((o && o.naam) || '?') + '" niet leesbaar (#283)', e); }
+  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden + '|' + antw;
 }
 
 function _verzendOpdracht(o, h) {
@@ -2669,6 +2674,13 @@ function _verzendOpdracht(o, h) {
   _liveSchrijf(vonnis.staat === 'bevinding' ? 'opvallend' : 'info',
     'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden + vensterTekst,
     { Outcome: vonnis.staat, Repro: _issuesVan(o) });
+
+  /* De antwoorden van de bestuurder, als eigen regel naast de uitkomst
+     (#283). Tot 24-09 kwamen ze nooit aan: de vraag "noemt het scherm de
+     ketting?" van opdracht 15 stond in de opdracht en nergens anders. */
+  const antw = PLOpdracht.antwoordTekst(o);
+  if (antw) _liveSchrijf('info', 'opdracht ' + o.naam + ' — antwoorden: ' + antw,
+    { Outcome: 'antwoorden', Repro: _issuesVan(o) });
 
   _verzonden[o.naam] = _opdrachtStempel(o, vonnis);
   return { uitslagen: uitslagen, vonnis: vonnis };
@@ -2922,6 +2934,35 @@ const PROEVEN_B5 = [
       return { staat: 'ok', detail: s.uitslagen.length + ' proef/proeven en ' + chips.length +
         ' issue(s) staan op het scherm precies zoals ze hier geboekt worden (' +
         baan.bewaking + ' meelopend als bewaking)' };
+    }
+  },
+
+  // ── de vragen van een opdracht komen in beeld (#283, 24-09-2026) ──
+  // Tot 24-09 werden ze gekeurd en daarna door niemand gelezen. Nu staan ze
+  // in de meetkamer onder het oordeel, en gaan de antwoorden mee met
+  // verzenden. Deze proef legt het scherm tegen de opdracht die nu gekozen is.
+  {
+    issue: '#283',
+    naam: 'De vragen van de gekozen opdracht staan in de meetkamer',
+    waarom: 'Een vraag die niemand ziet wordt niet beantwoord, en een opdracht die op dat antwoord leunt sluit dan op de getallen alleen — zonder dat iemand het merkt.',
+    proef: async function () {
+      if (!window.PLOpdracht || typeof PLOpdracht.antwoordTekst !== 'function')
+        return { staat: 'FOUT', detail: 'PLOpdracht.antwoordTekst ontbreekt — de antwoorden gaan niet mee naar de tabel (#283)' };
+      if (!window.PLMeetkamer || typeof PLMeetkamer._vragen !== 'function' || typeof PLMeetkamer.antwoord !== 'function')
+        return { staat: 'FOUT', detail: 'de meetkamer kan de vragen niet tonen — ze blijven onzichtbaar zoals vóór #283' };
+      var o = null;
+      try { o = PLOpdracht.actief(); }
+      catch (e) { return { staat: 'FOUT', detail: 'de gekozen opdracht is niet te lezen: ' + ((e && e.message) || e) }; }
+      if (!o) return { staat: 'LET OP', detail: 'er is geen opdracht gekozen — kies er een in de meetkamer om dit te toetsen' };
+      var vr = o.vragen || [];
+      if (!vr.length) return { staat: 'LET OP', detail: '"' + o.naam + '" heeft geen vragen — dan is er niets te tonen, en dat klopt' };
+      var h = PLMeetkamer._vragen({ opdracht: o });
+      var mist = vr.filter(function (v) { return h.indexOf(v.id) < 0; });
+      if (mist.length)
+        return { staat: 'FOUT', detail: mist.length + ' van de ' + vr.length + ' vragen staan niet op het scherm (' +
+          mist.map(function (v) { return v.id; }).join(', ') + ') (#283)' };
+      return { staat: 'ok', detail: 'alle ' + vr.length + ' vragen van "' + o.naam + '" staan in de meetkamer. Nu: ' +
+        PLOpdracht.antwoordTekst(o) + '. Wat er gekozen is gaat mee met verzenden.' };
     }
   },
 

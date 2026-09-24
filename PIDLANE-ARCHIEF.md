@@ -195,6 +195,20 @@ Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
 De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
 *staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
 
+### 24-09-2026 — de vragen van een opdracht bestonden alleen in D1 (#283)
+
+Sinds #241 kon een opdracht tot vijf vragen dragen, en bijna elke opdracht
+deed dat. `keur()` keurde ze, de goedgekeurde kopie nam ze mee, en daarna las
+geen enkele module ze: niet de meetkamer, niet de testrun, niet de
+verzendknop. Het enige vragenblok op het scherm was `CAMPAGNE.vragen`, en dat
+staat vast in de build. Het kwam uit bij opdracht 15, waar de vraag "noemt
+het scherm de ketting?" het enige was dat de app tegen de meting legde; in D1
+stond geen antwoord, en de bestuurder had de vraag nooit gezien.
+
+Het is dezelfde vorm als #277 en #279: een veld dat meegekeurd wordt en
+daardoor lijkt te werken. Het oordeel blijft op de getallen; een antwoord is
+context die meereist, geen stem in gesloten/bevinding.
+
 ### 24-09-2026 — afgeronde opdrachten bleven meeoordelen (#277)
 
 Sinds #277 oordeelt de app na een rit over élke opdracht in de lijst, en die
