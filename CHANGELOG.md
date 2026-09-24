@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — één beheerpagina, met de database en de meetopdrachten erin
+ ═══════════════════════════════════════════════════════════
+
+ - Beheer  admin.html is opgegaan in beheer.html en weg. De tests en
+           mutaties die eraan hingen toetsen nu beheer.html. De klantdetails
+           tonen weer de verzilverde codes en wat er met de hand bijgeboekt is.
+ - Beheer  Tabblad Database: cijfers over de hele D1-tabel (per dag, type,
+           versie, merk, adapter, meeste fouten, vangnet `onbekend`), elke
+           tabel en view, ritten van begin tot eind met "bevindingen
+           kopiëren", en een SQL-console die alleen leest.
+ - Beheer  Tabblad Meetopdrachten: bewerken, keuren met de keurder van de
+           app zelf, activeren zet de andere uit in één transactie. Een
+           afgekeurde opdracht gaat niet aan.
+ - Worker  Nieuwe route /admin/d1 (overzicht, rit, sql, opdracht-*).
+ - Beheer  De foutcode van de saldoroutes werd uit de tekst gelezen in plaats
+           van uit `code`: "saldo bezet" werd een rode fout i.p.v. "even
+           wachten". `saldo_geen_email` had geen uitleg.
+
+ ═══════════════════════════════════════════════════════════
  23-09-2026 — "Welk onderdeel?" keurt een gezonde motor niet meer af
  ═══════════════════════════════════════════════════════════
 

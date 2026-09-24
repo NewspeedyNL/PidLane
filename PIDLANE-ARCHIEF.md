@@ -175,6 +175,26 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 24-09-2026 — de tekstcontrole die een dode afhandeling groen hield
+
+Bij het omzetten van `test-bijboeken.js` van `admin.html` naar `beheer.html`
+(§16: "handelt de pagina elke foutcode van de saldoroute af") werd hij meteen
+rood op `saldo_geen_email`: die afhandeling had beheer.html nooit gekregen.
+Dat was het kleine gat. Het grotere zat eronder en was met de toets zoals hij
+was **niet te zien**: `diagnose()` in beheer.html las de code uit `body.error`
+(de leesbare zin), terwijl de Worker hem in `body.code` stuurt. De regels
+`if(code === 'saldo_bezet')` stonden er dus wel — en §16 keek alleen of die
+tekst er stond — maar werden nooit bereikt. Een bezet slot kwam in beeld als
+rode fout in plaats van "even wachten en opnieuw proberen".
+
+`admin.html` las `body.code` wel goed; het gat bestond sinds beheer.html er
+op 04-09 naast kwam, en bleef onopgemerkt omdat het beheer in de praktijk op
+admin.html liep. §16 draait nu ook `diagnose()` uit de pagina met een
+Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
+
+De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
+*staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
+
 ### 23-09-2026 — "Welk onderdeel?" keurde een gezonde motor af (#232, #231, #233)
 
 Gemeten in twee opdrachten op een CX-5 2.0 SkyActiv-G zonder klachten. De
