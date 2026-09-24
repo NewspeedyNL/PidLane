@@ -773,6 +773,10 @@ MUTATIES=(
 "public/pidlane-testrun.js@@r.afgerond && !r.alVerzonden; });\n    if (!klaar.length)@@r.afgerond; });\n    if (!klaar.length)@@test-meetvenster.js@@verzend alle stuurt wat al verzonden is opnieuw: dubbele uitkomsten in de tabel"
 "public/pidlane-opdracht.js@@    var ok = v.niet ? !bevat : bevat;@@    var ok = bevat;@@test-meetvenster.js@@niet wordt genegeerd: de goedkope-adapteropdracht sluit op de MX+"
 "public/pidlane-meetkamer.js@@    oor = eindoordeel(oor, s.verzend);\n@@@@test-meetvenster.js@@het grote cijfer kleurt weer op de proeven alleen: groen boven, NOG NIET op de knop"
+"public/pidlane-meetkamer.js@@      _vragen(s) +\n      _verzendKnop(s) +@@      _verzendKnop(s) +@@test-meetvenster.js@@de vragen van de opdracht komen weer niet in beeld: de bestuurder ziet ze nooit (#283)"
+"public/pidlane-testrun.js@@  if (antw) _liveSchrijf(@@  if (false) _liveSchrijf(@@test-meetvenster.js@@de antwoorden gaan weer niet mee naar de tabel: beantwoord op het scherm, nergens terug te vinden (#283)"
+"public/pidlane-testrun.js@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden + '|' + antw;@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;@@test-meetvenster.js@@een antwoord na het verzenden telt niet als nieuw: de knop blijft op al verzonden staan en het antwoord komt nooit aan (#283)"
+"public/pidlane-opdracht.js@@    if (opties.indexOf(optie) < 0) return false;\n@@@@test-meetvenster.js@@elk vrij antwoord telt: de tabel krijgt tekst die buiten de opties valt (#283)"
 # ── #229: een rendercrash neemt het proces niet mee (22-09-2026) ──
 "native/PLRender.java@@                return true;\n            }\n        });@@                return false;\n            }\n        });@@test-nativeschil.js@@de luisteraar geeft false: Capacitor geeft dat door en Android schiet het proces af, meetdienst en al"
 ".github/workflows/build-apk.yml@@                  \"        PLRender.koppel(this, getBridge());\",\n@@@@test-nativeschil.js@@de luisteraar hangt niet meer aan de Java-MainActivity: de plugin bestaat, maar niemand vangt de rendercrash af"

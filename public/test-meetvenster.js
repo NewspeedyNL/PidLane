@@ -73,7 +73,7 @@ function laad() {
   s.adapterNaam = 'OBDLink MX+ 90011';
   s._plLogAdapter = function () { return s.adapterNaam; };
   s.plFetch = function () {
-    return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ opdrachten: RIJEN }); } });
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ opdrachten: s.rijen || RIJEN }); } });
   };
   vm.runInContext(fs.readFileSync('pidlane-opdracht.js', 'utf8'), s, { filename: 'pidlane-opdracht.js' });
   return s;
@@ -226,6 +226,55 @@ function rij(s, tikken, meten, gas) {
       (uitkomsten[0] || {}).bericht);
     const r2 = s.PLTestrunLive.verzendAlle();
     toets('nog eens drukken stuurt niets dubbel', r2.aantal === 0, JSON.stringify(r2));
+  }
+
+  console.log('\n7. De vragen van een opdracht komen in beeld en gaan mee (#283)');
+  {
+    const s = laad();
+    s.rijen = [{ id: 'v', naam: 'Ontsteking warm', opdracht: JSON.stringify({ schema: 2, naam: 'Ontsteking warm',
+      sensoren: ['010C'], duurS: 60, proeven: [TOERENTAL],
+      vragen: [{ id: 'ketting', tekst: 'Noemt Welk onderdeel de ketting?', opties: ['nee', 'ja', 'niet gekeken'] },
+               { id: 'klacht', tekst: 'Merk je iets aan de motor?', opties: ['nee, rijdt prima', 'ja'] }] }) }];
+    await s.PLOpdracht.lijst();
+    s.PLOpdracht.kies('v');
+    vm.runInContext(fs.readFileSync('pidlane-meetkamer.js', 'utf8'), s, { filename: 'pidlane-meetkamer.js' });
+    const M = s.PLMeetkamer;
+    const o = s.PLOpdracht.actief();
+
+    const h = M._vragen({ opdracht: o });
+    toets('de vraag staat op het scherm', /Noemt Welk onderdeel de ketting\?/.test(h), h.slice(0, 200));
+    toets('met een knop per optie', (h.match(/PLMeetkamer\.antwoord\(0,/g) || []).length === 3, h);
+    toets('en zegt hoeveel er open staan', /2 open/.test(h));
+
+    toets('een optie die niet in de opdracht staat telt niet', s.PLOpdracht.antwoord(o, 'ketting', 'misschien') === false);
+    toets('een vraag die niet bestaat ook niet', s.PLOpdracht.antwoord(o, 'kleur', 'nee') === false);
+
+    rij(s, 20);
+    const r1 = s.PLTestrunLive.verzendAlle();
+    const a1 = s.verstuurd.filter(function (v) { return /— antwoorden:/.test(v.bericht); });
+    toets('zonder antwoord gaat dat óók mee, als onbeantwoord', r1.aantal === 1 && a1.length === 1 &&
+      /2 van 2 onbeantwoord/.test(a1[0].bericht), JSON.stringify(a1));
+
+    toets('antwoorden via de knop op het scherm', M.antwoord(0, 0) === true);
+    toets('het scherm toont de keuze', /class="mk-knop gekozen"[^>]*>nee</.test(M._vragen({ opdracht: o })), M._vragen({ opdracht: o }));
+    const r2 = s.PLTestrunLive.verzendAlle();
+    const a2 = s.verstuurd.filter(function (v) { return /— antwoorden:/.test(v.bericht); });
+    toets('een antwoord ná het verzenden maakt opnieuw verzenden mogelijk', r2.aantal === 1, JSON.stringify(r2));
+    toets('en het antwoord staat in de tabel', a2.length === 2 && /ketting: nee \(1 van 2 onbeantwoord\)/.test(a2[1].bericht),
+      (a2[1] || {}).bericht);
+    toets('gemerkt als antwoorden, naast de uitkomst', a2[1] && a2[1].extra.Outcome === 'antwoorden');
+
+    // Het échte scherm: zonder deze toets kon _vragen() kloppen terwijl _vraag() hem niet aanriep.
+    let hh = '';
+    try {
+      hh = M.html({ nu: s._klokNu, opdracht: o, herkomst: { id: 'v' }, reden: '', toggleAan: true, uitslagen: [],
+        verzend: { o: o, vonnis: { staat: 'gesloten', reden: '', voorwaarden: [] }, alVerzonden: false },
+        live: { ok: true, status: 200, aantal: 1, tijd: s._klokNu, fout: '' }, log: [], proeven: [], bezig: true, bron: '', ritId: 'r1' });
+    } catch (err) { hh = 'html() gooide: ' + err.message; }
+    toets('het meetkamerscherm toont de vragen onder het oordeel', /id="mkVragen"/.test(hh) && /Merk je iets aan de motor/.test(hh), hh.slice(0, 300));
+
+    const zonder = s.PLOpdracht.antwoordTekst({ naam: 'x', vragen: [] });
+    toets('TEGENPROEF: een opdracht zonder vragen schrijft geen antwoordregel', zonder === '');
   }
 
   console.log('\n' + (n - fout) + '/' + n + ' goed');

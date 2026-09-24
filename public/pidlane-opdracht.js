@@ -105,6 +105,7 @@
      vergissing die de waakronde-historie bewust ook niet maakt. */
   var _opdrachten = null;  // alle opdrachten uit de tabel, of null als ze niet opgehaald zijn
   var _gedaan = {};        // id -> { staat, tijd, aantal, goed }
+  var _antwoorden = {};    // opdrachtnaam -> { vraag-id: gekozen optie } (#283)
 
   function _log(m, niveau) {
     try { if (typeof log === 'function') log(m, niveau || 'info'); }
@@ -471,6 +472,51 @@
     return _gedaan[id];
   }
 
+  /* DE VRAGEN VAN EEN OPDRACHT (#283). Tot 24-09 werden ze gekeurd en daarna
+     door niemand gelezen: niet getoond, niet gesteld, niet verzonden. Hier
+     staat wat er geantwoord is, per opdracht op naam, want één rit beantwoordt
+     er meerdere. Alleen een optie die in de opdracht staat telt; een vrij
+     antwoord zou van buiten niet te lezen zijn zonder de tekst te parsen.
+
+     Het oordeel blijft op de getallen. Een antwoord reist mee naar de tabel,
+     naast de uitkomst — zodat wie sluit ziet wat de bestuurder zag. */
+  function _vraagVan(o, vraagId) {
+    var vr = (o && Array.isArray(o.vragen)) ? o.vragen : [];
+    for (var i = 0; i < vr.length; i++) if (vr[i] && vr[i].id === vraagId) return vr[i];
+    return null;
+  }
+
+  function antwoord(o, vraagId, optie) {
+    var v = _vraagVan(o, vraagId);
+    if (!v) return false;
+    var opties = Array.isArray(v.opties) ? v.opties : [];
+    if (opties.indexOf(optie) < 0) return false;
+    var m = _antwoorden[o.naam] || (_antwoorden[o.naam] = {});
+    m[vraagId] = optie;
+    return true;
+  }
+
+  function antwoorden(o) {
+    var m = (o && _antwoorden[o.naam]) || {};
+    var uit = {};
+    ((o && o.vragen) || []).forEach(function (v) { if (m[v.id] !== undefined) uit[v.id] = m[v.id]; });
+    return uit;
+  }
+
+  /* Eén regel voor de tabel en voor de stempel van de verzendknop: verandert
+     er een antwoord, dan is er iets nieuws te melden. Leeg als de opdracht
+     geen vragen heeft. */
+  function antwoordTekst(o) {
+    var vr = (o && Array.isArray(o.vragen)) ? o.vragen : [];
+    if (!vr.length) return '';
+    var m = antwoorden(o);
+    var open = vr.filter(function (v) { return m[v.id] === undefined; }).length;
+    var delen = vr.filter(function (v) { return m[v.id] !== undefined; })
+      .map(function (v) { return v.id + ': ' + m[v.id]; });
+    return (delen.length ? delen.join(' · ') : 'geen antwoord') +
+      (open ? ' (' + open + ' van ' + vr.length + ' onbeantwoord)' : '');
+  }
+
   function gedaan(id) {
     if (id) return _gedaan[id] ? Object.assign({}, _gedaan[id]) : null;
     return JSON.parse(JSON.stringify(_gedaan));
@@ -700,6 +746,9 @@
     lijst: lijst,
     kies: kies,
     noteer: noteer,
+    antwoord: antwoord,
+    antwoorden: antwoorden,
+    antwoordTekst: antwoordTekst,
     gedaan: gedaan,
     gelijst: function () { return _opdrachten ? JSON.parse(JSON.stringify(_opdrachten)) : null; },
     zetSensoren: zetSensoren,
