@@ -2969,6 +2969,31 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── het begin van een analyse (#290, 24-09-2026) ──
+  // Vóór elke AI-aanroep kwamen vier vragen, ook vóór de oorzakenlijst van de
+  // AI-monteur, en terug annuleerde niet. Nu: geen vragen (tenzij de Config
+  // `feat_voorvragen` aanzet), de app geeft zelf mee wat hij gemeten heeft, en
+  // het meetscherm biedt "gebruik de meting" of "nog even meten" met annuleren.
+  {
+    issue: '#290',
+    naam: 'Een analyse begint met de meting, niet met vragen',
+    waarom: 'Vier vragen vóór elke analyse werden als storend weggeklikt — en wegklikken liet de betaalde analyse toch lopen.',
+    proef: async function () {
+      if (typeof _plVoorvragenAan !== 'function' || typeof plMeetPoortVraag !== 'function')
+        return { staat: 'FOUT', detail: 'het nieuwe begin van een analyse ontbreekt (_plVoorvragenAan of plMeetPoortVraag) (#290)' };
+      var aan = false;
+      try { aan = _plVoorvragenAan(); } catch (e) { return { staat: 'FOUT', detail: 'de vragenschakelaar gaf een fout: ' + ((e && e.message) || e) }; }
+      var regel = '';
+      try { regel = (window._plMeetcontext === null && typeof plMeetcontextPromptLine === 'function') ? plMeetcontextPromptLine() : ''; }
+      catch (e) { console.warn('Testrun: meetcontextregel niet leesbaar (#290)', e); }
+      if (aan)
+        return { staat: 'LET OP', detail: 'de vragen staan AAN via de Config (feat_voorvragen) — dan komen ze vóór elke analyse, zoals vóór #290. Een keuze, geen fout.' };
+      return { staat: 'ok', detail: 'geen vragen vóór een analyse; de AI krijgt ' +
+        (regel ? 'wat de app zelf vaststelde (' + regel.trim().split('\n').length + ' regel(s))' : 'nog niets uit de meting — er is nog te weinig gemeten') +
+        '. Open de AI-monteur, kies een oorzaak en kijk of het meetscherm met "Annuleren" komt.' };
+    }
+  },
+
   // ── na een crash hervatten zonder vragen (#229, 24-09-2026) ──
   // Op 24-09 om 19:08 verbond de app na een rendercrash vanzelf, en liep hij
   // daarna de hele eerste-keer-flow door: vier tikken tijdens het rijden. Nu
@@ -7725,7 +7750,9 @@ const _STAPPEN = [
     wat: 'Druk op de knop, beantwoord de drie vragen écht (niet overslaan), en kom terug. Dit kost geen tokens: het venster gaat los open, er vertrekt geen analyse. Het testrunscherm zakt er even onder, zodat de vragen ook werkelijk in beeld komen (#166).',
     actie: { label: '📝 Meetcontextvragen openen', fn: function () {
       if (typeof plVoorAnalyse !== 'function') return 'plVoorAnalyse() ontbreekt — het venster is niet te openen (#64)';
-      try { plVoorAnalyse(false); } catch (e) { return 'het venster gaf een fout: ' + ((e && e.message) || e); }
+      // {vragen:true}: sinds 24-09-2026 staan de vragen standaard uit; deze
+      // stap vraagt ze bewust, want dát is wat #64 meet.
+      try { plVoorAnalyse(false, { vragen: true }); } catch (e) { return 'het venster gaf een fout: ' + ((e && e.message) || e); }
       return 'venster geopend — beantwoord de drie vragen en kom hier terug';
     } },
     knop: 'Beantwoord — verder',

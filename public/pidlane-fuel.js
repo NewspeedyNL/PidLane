@@ -108,7 +108,7 @@ function aiBusyBegin(){
   if(!bar){
     bar=document.createElement('div');
     bar.id='aiBusyBar';
-    bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9700;display:flex;align-items:center;gap:11px;padding:10px 14px;background:linear-gradient(135deg,#161b2b,#0c111c);border-top:1px solid rgba(167,139,250,.45);color:#cbd5e1;font-family:var(--f);font-size:13px;box-shadow:0 -4px 20px rgba(0,0,0,.4)';
+    bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9700;display:flex;align-items:center;gap:11px;padding:10px 14px calc(10px + var(--pl-sab));background:linear-gradient(135deg,#161b2b,#0c111c);border-top:1px solid rgba(167,139,250,.45);color:#cbd5e1;font-family:var(--f);font-size:13px;box-shadow:0 -4px 20px rgba(0,0,0,.4)';
     bar.innerHTML='<div class="spin" style="flex-shrink:0"></div>'
       +'<div style="flex:1;min-width:0"><b style="color:#a78bfa">AI analyseert…</b> <span id="aiBusyTime" style="color:var(--tx3)"></span>'
       +'<div style="font-size:12px;color:var(--tx3);line-height:1.4">Even geduld — dit proces loopt door, ook terwijl je live-data of logs bekijkt.</div></div>';
@@ -417,8 +417,14 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   try{
     const _srBlok=_sessionReportsPromptBlock(String(prompt||''));
     const _ant=await plVoorAnalyse(!!_srBlok);
+    if(_ant && _ant.geannuleerd){
+      const _af=new Error('Analyse geannuleerd'); _af.plAfgebroken=true; throw _af;
+    }
     if(_srBlok && _ant && _ant.rapporten) sys += _srBlok;
-  }catch(e){ console.warn('Eerdere rapporten niet meegestuurd als context', e); }
+  }catch(e){
+    if(e && e.plAfgebroken) throw e;                 // bewuste keuze van de gebruiker
+    console.warn('Eerdere rapporten niet meegestuurd als context', e);
+  }
   // De meetcontext geldt voor ELKE AI-rol, net als de rijsituatie hierboven —
   // ook bij een eigen systemPrompt of een admin-override. Zonder deze regel
   // leest de AI een start/stop-motor als een motor die afslaat.
@@ -1153,6 +1159,14 @@ async function callAI(prompt,contentEl,aanlevering){
     try{ plVerifyAugment(contentEl); }catch(e){ console.warn('Verifiëer-knoppen niet toegevoegd aan het AI-rapport', e); }   // 🔍 knoppen bij Direct aandacht
     log('AI analyse klaar','ok');
   }catch(e){
+    // Geannuleerd is geen storing (24-09-2026). Tot dan kwam een afgebroken
+    // analyse hieronder in de noodroute terecht en stond er alsnog een
+    // "rapport" — zonder dat iemand erom gevraagd had.
+    if(e && e.plAfgebroken){
+      contentEl.innerHTML='<div class="ai-sec"><div class="ai-sh">Analyse geannuleerd</div><div class="ai-sb">Er is niets verstuurd en niets afgeschreven.</div></div>';
+      log('AI-analyse geannuleerd door de gebruiker','info');
+      return;
+    }
     // Degraded mode: AI niet beschikbaar → regelgebaseerde fallback i.p.v. kale fout
     try{
       renderAIText(buildFallbackReport(e),contentEl);
@@ -1496,19 +1510,58 @@ async function plVraagMeting(niveau, watVoor, profiel){
   return plMeetPoortVraag(niveau, watVoor);
 }
 
-/* Toont het meetscherm en geeft een belofte terug: true = doorgaan. */
+/* Toont het meetscherm en geeft een belofte terug: true = doorgaan.
+
+   SINDS 24-09-2026 OOK ALS ER GENOEG IS. Tot dan ging een analyse met genoeg
+   data stil door, en een analyse met te weinig kon alleen "toch doorgaan" —
+   niet stoppen. Op de rit van die avond, als klant: "ik wil eigenlijk geen
+   AI-analyse, maar een startscherm van de benodigde meting — eerst aanbieden
+   om data te verzamelen of de reeds vastgestelde data te gebruiken". Dus:
+     genoeg     → "Gebruik de meting van zojuist" of "Nog even meten"
+     te weinig  → rijtest / stilstaand meten / toch doorgaan (zoals het was)
+     altijd     → "Annuleren", en dan gaat er niets naar de AI.
+   Een tweede analyse binnen twee minuten na een bevestiging vraagt niet
+   opnieuw: de wizard draait meerdere modules achter elkaar op één meting. */
+const MEET_BEVESTIGD_MS = 120000;
 function plMeetPoortVraag(niveau, watVoor){
   return new Promise(resolve=>{
     const r=plMeetTekort(plMeetNiveau(niveau));
+    const recent = window._plMeetBevestigd && (Date.now()-window._plMeetBevestigd) < MEET_BEVESTIGD_MS;
     // Poort schoon gehaald? Dan geldt een eerdere "toch doorgaan" niet meer.
     // Bleef die staan, dan bleef elk volgend rapport zijn eigen data
     // diskwalificeren met een beperking die al lang was ingelopen.
-    if(r.ok){ try{ delete window._meetBeperkt; }catch(e){ console.warn('Oude meetbeperking niet opgeruimd — een volgend rapport kan zichzelf onterecht blijven beperken', e); } resolve(true); return; }
+    if(r.ok){ try{ delete window._meetBeperkt; }catch(e){ console.warn('Oude meetbeperking niet opgeruimd — een volgend rapport kan zichzelf onterecht blijven beperken', e); } }
+    if(r.ok && recent){ resolve(true); return; }
     let ov=document.getElementById('meetGateOv');
     if(!ov){
       ov=document.createElement('div'); ov.id='meetGateOv'; ov.className='mg-ov';
       document.body.appendChild(ov);
     }
+    const sluit=()=>{ ov.style.display='none'; };
+    const door=()=>{ window._plMeetBevestigd=Date.now(); sluit(); resolve(true); };
+    const annuleer=()=>{ sluit(); log('Analyse geannuleerd op het meetscherm','info'); resolve(false); };
+    const st=r.st, min=Math.floor(st.sec/60), sec=st.sec%60;
+    const duur=(min? min+':'+String(sec).padStart(2,'0')+' min' : st.sec+' s');
+
+    if(r.ok){
+      ov.innerHTML =
+        '<div class="mg-kaart">'+
+          '<div class="mg-t">📡 De meting voor '+watFor(watVoor)+'</div>'+
+          '<div class="mg-s">Er is al gemeten: <b>'+st.genoeg+' van de '+st.sensoren+'</b> sensoren, over <b>'+duur+'</b>'+
+            (st.rijSec ? ', waarvan '+st.rijSec+' s gereden' : '')+'. Dat is genoeg voor een '+r.eis.naam+'.</div>'+
+          '<div class="mg-knoppen">'+
+            '<button class="mg-pri" id="mgGebruik">✓ Gebruik de meting van zojuist</button>'+
+            '<button class="mg-sec" id="mgMeer">⏳ Nog even meten ('+r.eis.sec+' s)</button>'+
+            '<button class="mg-ter" id="mgAnnuleer">Annuleren</button>'+
+          '</div>'+
+        '</div>';
+      ov.style.display='flex';
+      document.getElementById('mgGebruik').onclick=door;
+      document.getElementById('mgAnnuleer').onclick=annuleer;
+      document.getElementById('mgMeer').onclick=()=>plMeetWacht('mgMeer', r.eis.sec, door);
+      return;
+    }
+
     const kanRijden = (typeof openRitAnalyse==='function');
     // Welke rit hoort bij dit niveau? Bij 'kortrit' is tien minuten rijden
     // meer dan gevraagd; bij 'rit' is twee minuten te weinig.
@@ -1521,8 +1574,8 @@ function plMeetPoortVraag(niveau, watVoor){
     const kanWachten = !r.rijTekort;
     ov.innerHTML =
       '<div class="mg-kaart">'+
-        '<div class="mg-t">⏱️ Nog te weinig meetdata</div>'+
-        '<div class="mg-s">Voor '+(watFor(watVoor))+' heb ik '+r.eis.naam+' nodig. '+
+        '<div class="mg-t">📡 Eerst meten voor '+watFor(watVoor)+'</div>'+
+        '<div class="mg-s">Hiervoor heb ik een '+r.eis.naam+' nodig. '+
           (r.rijTekort ? 'Wat ik nu heb is stilstaand gemeten, en daarin is belasting per definitie onzichtbaar.'
                        : 'Nu heb ik alleen een momentopname, en daar kan ik geen betrouwbaar oordeel op bouwen.')+
         '</div>'+
@@ -1531,28 +1584,34 @@ function plMeetPoortVraag(niveau, watVoor){
           (kanRijden?'<button class="mg-pri" id="mgRit">'+ritLabel+'</button>':'')+
           (kanWachten?'<button class="mg-sec" id="mgWacht">⏳ Stilstaand meten ('+r.eis.sec+' s)</button>':'')+
           '<button class="mg-ter" id="mgToch">Toch doorgaan met wat er is</button>'+
+          '<button class="mg-ter" id="mgAnnuleer">Annuleren</button>'+
         '</div>'+
       '</div>';
     ov.style.display='flex';
-    const sluit=()=>{ ov.style.display='none'; };
     const rit=document.getElementById('mgRit');
     if(rit) rit.onclick=()=>{ sluit(); resolve(false); try{ openRitAnalyse(ritModus); }catch(e){ log('Rijtest niet gestart: '+(e.message||e),'err'); } };
     const wacht=document.getElementById('mgWacht');
-    if(wacht) wacht.onclick=()=>{
-      const eind=Date.now()+r.eis.sec*1000;
-      const knop=document.getElementById('mgWacht');
-      knop.disabled=true;
-      const tik=setInterval(()=>{
-        const over=Math.max(0,Math.round((eind-Date.now())/1000));
-        knop.textContent='⏳ Meten… nog '+over+' s';
-        if(over<=0){ clearInterval(tik); sluit(); resolve(true); }
-      },250);
-    };
+    if(wacht) wacht.onclick=()=>plMeetWacht('mgWacht', r.eis.sec, door);
     document.getElementById('mgToch').onclick=()=>{
       window._meetBeperkt = r.tekort.join('; ');   // gaat mee in de prompt
-      sluit(); resolve(true);
+      door();
     };
+    document.getElementById('mgAnnuleer').onclick=annuleer;
   });
+}
+/* Aftellen op de knop zelf; de andere knoppen blijven werken, dus annuleren
+   tijdens het meten kan ook. */
+function plMeetWacht(knopId, sec, klaar){
+  const knop=document.getElementById(knopId); if(!knop) return;
+  const eind=Date.now()+sec*1000;
+  knop.disabled=true;
+  const tik=setInterval(()=>{
+    const ov=document.getElementById('meetGateOv');
+    if(!ov || ov.style.display==='none'){ clearInterval(tik); return; }   // geannuleerd
+    const over=Math.max(0,Math.round((eind-Date.now())/1000));
+    knop.textContent='⏳ Meten… nog '+over+' s';
+    if(over<=0){ clearInterval(tik); klaar(); }
+  },250);
 }
 function watFor(w){ return w||'deze analyse'; }
 /* Regel voor in de AI-prompt, zodat het rapport zelf zijn beperking noemt. */

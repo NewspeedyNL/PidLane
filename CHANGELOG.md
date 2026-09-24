@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — een analyse begint met de meting, niet met vragen (#290)
+ ═══════════════════════════════════════════════════════════
+
+ - #290  De vier vragen vóór een analyse staan uit (Config
+         `feat_voorvragen` zet ze weer aan). Wat de app zelf weet —
+         start/stop gezien, gaten in de reeks — gaat zonder vraag mee.
+ - #290  Het meetscherm verschijnt ook bij genoeg data: "Gebruik de meting
+         van zojuist" of "Nog even meten", en altijd "Annuleren". De
+         AI-monteur zet het vóór de uitwerking van een oorzaak.
+ - #290  Terug/wegklikken vóór de analyse annuleert: niets verstuurd, niets
+         afgeschreven, geen noodrapport.
+ - #290  De balk "AI analyseert…" blijft boven de Android-knoppen.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — de keuzeschermen ingedeeld naar moment (#286)
  ═══════════════════════════════════════════════════════════
 
