@@ -933,6 +933,8 @@ MUTATIES=(
 # iemand zet een veld in de app en vergeet het schema, of hernoemt een kolom in
 # het schema en vergeet de app. Beide keren raakt er data stil weg.
 "public/pidlane-auth.js@@  'Demo','Repro','Device']);@@  'Demo','Repro','Device','Koelwater']);@@test-logschema.js@@een nieuw logveld in de app zonder kolom in D1: die waarde belandt stil in \`onbekend\`"
+"public/pidlane-bt.js@@          try{ localStorage.setItem('pl_autoconn','1'); }@@          try{ }@@test-herverbinden.js@@niets zet de herverbindvlag: na elke rendercrash weer met de hand op Verbinden, zoals tot 24-09 (#229)"
+"public/pidlane-uihelpers.js@@    try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // bewust verbroken@@    // bewust verbroken@@test-herverbinden.js@@bewust verbreken wist de wens niet: de app verbindt opnieuw terwijl je hem net losmaakte (#229)"
 "schema.sql@@  Message       TEXT,@@  Bericht       TEXT,@@test-logschema.js@@een kolom in D1 hernoemd zonder de app mee te nemen: het berichtveld komt nergens meer aan"
 # ── De logroute schrijft sinds #262 naar D1. Deze drie bouwen de fouten na
 # die deze route al eens gemaakt heeft of makkelijk weer maakt, en ze gaan
