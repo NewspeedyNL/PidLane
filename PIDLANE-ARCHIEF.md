@@ -195,6 +195,26 @@ Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
 De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
 *staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
 
+### 24-09-2026 — drie herverbindpaden lazen een vlag die niemand zette (#229)
+
+Na elke rendercrash moest er met de hand op Verbinden gedrukt worden (proef
+van 24-09, 14:11: "Klik Verbinden", 35 s later een koude verbinding). De
+oorzaak lag niet bij de crash. `pl_autoconn` wordt gelezen door drie paden:
+het herstel na een herlaad in `pidlane-theme.js`, de dode-socketdetectie
+(zes lege antwoorden) in `pidlane-bt.js`, en de controle bij terugkeer naar
+de app in `pidlane-neon.js`. Gewist werd hij in `handleConnect()` en
+`logout()`. Gezet werd hij nergens. Wanneer die regel verdween, is niet na
+te gaan uit de ondiepe kloon; de commentaarregel "login en autoconnect
+werden al hersteld" in `pidlane-btflow.js` stond er nog, en klopte niet meer.
+
+Op 23-09 leek de verbinding de crash te overleven ("SPP verbonden" zonder
+zoekronde). Achteraf is dat niet te onderscheiden van een hand op de knop.
+
+Pad 2 en 3 hebben lang niet gedraaid. Pad 2 grijpt ook in als je de adapter
+met opzet trekt (meetproef #133): na zes lege antwoorden probeert hij opnieuw
+te verbinden, en mislukt dat, dan toont hij het foutscherm. Dat is een vraag
+voor de volgende rit, niet een aanname.
+
 ### 24-09-2026 — de vragen van een opdracht bestonden alleen in D1 (#283)
 
 Sinds #241 kon een opdracht tot vijf vragen dragen, en bijna elke opdracht

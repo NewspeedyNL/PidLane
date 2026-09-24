@@ -2937,6 +2937,29 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── na een rendercrash vanzelf opnieuw verbinden (#229, 24-09-2026) ──
+  // Drie paden herverbinden vanzelf en alle drie lezen `pl_autoconn`. Tot
+  // 24-09 zette niets die vlag, en moest er na elke rendercrash met de hand op
+  // Verbinden gedrukt worden. Deze proef kijkt op het toestel zelf: ben je nu
+  // verbonden, dan hoort de vlag er te staan.
+  {
+    issue: '#229',
+    naam: 'Een verbinding onthoudt dat hij terug moet komen',
+    waarom: 'Zonder die vlag slapen alle drie de herverbindpaden: na een rendercrash, na een dode socket en na terugkeer uit de achtergrond staat de meting stil tot iemand op Verbinden drukt.',
+    proef: async function () {
+      var verbonden = (typeof connected !== 'undefined') && !!connected;
+      var demo = (typeof demoMode !== 'undefined') && !!demoMode;
+      if (!verbonden || demo)
+        return { staat: 'LET OP', detail: 'niet met een echte adapter verbonden' + (demo ? ' (demo)' : '') + ' — dan is er niets te onthouden. Verbind en draai opnieuw.' };
+      var vlag = null;
+      try { vlag = localStorage.getItem('pl_autoconn'); }
+      catch (e) { return { staat: 'FOUT', detail: 'de opslag is niet leesbaar, dus na een herlaad weet de app niet dat hij verbonden was: ' + ((e && e.message) || e) }; }
+      if (vlag !== '1')
+        return { staat: 'FOUT', detail: 'verbonden, maar pl_autoconn staat niet op 1 (' + vlag + ') — na een rendercrash of een dode socket komt de verbinding niet vanzelf terug (#229)' };
+      return { staat: 'ok', detail: 'verbonden en de vlag staat. Of hij na een crash ook werkelijk vanzelf terugkomt, toets je met de proefcrash: druk daarna nergens op en kijk of er "Automatisch herverbinden..." in het logboek komt.' };
+    }
+  },
+
   // ── de vragen van een opdracht komen in beeld (#283, 24-09-2026) ──
   // Tot 24-09 werden ze gekeurd en daarna door niemand gelezen. Nu staan ze
   // in de meetkamer onder het oordeel, en gaan de antwoorden mee met

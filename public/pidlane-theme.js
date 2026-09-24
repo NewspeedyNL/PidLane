@@ -316,12 +316,23 @@ document.addEventListener('DOMContentLoaded', function(){
       }catch(e){ /* stil: melding mag nooit de stroom breken */ }
       // Was er een actieve BT-verbinding vóór Android de app herlaadde?
       // Dan direct opnieuw verbinden via het opgeslagen MAC-adres.
+      // De Bluetooth-plugin staat er vlak na een herlaad niet altijd al
+      // (zie pidlane-pip.js): drie keer kijken, en zeggen als hij wegbleef.
       try{
-        if(localStorage.getItem('pl_autoconn')==='1' && getSPP()){
-          log('Automatisch herverbinden...','info');
-          setTimeout(()=>{ if(!connected) connectSerial(); },800);
+        if(localStorage.getItem('pl_autoconn')==='1' && window.Capacitor?.isNativePlatform?.()){
+          const probeer=(n)=>{
+            if(connected) return;
+            if(getSPP()){
+              log('Automatisch herverbinden...','info');
+              setTimeout(()=>{ if(!connected) connectSerial(); },800);
+              return;
+            }
+            if(n<3) setTimeout(()=>probeer(n+1),1000);
+            else log('Automatisch herverbinden overgeslagen: de Bluetooth-plugin was er na 3 s nog niet (#229)','warn');
+          };
+          probeer(1);
         }
-      }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+      }catch(e){ console.warn('Automatisch herverbinden na herlaad niet gestart (#229)', e); }
     } else {
       setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
     }

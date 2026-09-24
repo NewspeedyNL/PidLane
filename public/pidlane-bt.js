@@ -203,6 +203,15 @@ async function connectSerial(){
         await fn();
         if (connected){
           btDiag(`✓ Verbonden via ${label}`, 'ok');
+          /* DE WENS OM VERBONDEN TE BLIJVEN (#229). Drie paden herverbinden
+             vanzelf: na een herlaad (rendercrash, proceskill), na zes lege
+             antwoorden, en bij terugkeer naar de app. Alle drie lezen deze
+             vlag, en tot 24-09-2026 zette niets hem — alleen handleConnect()
+             en logout() wisten hem. Na elke rendercrash moest er dus met de
+             hand op Verbinden gedrukt worden. Bewust verbreken wist hem nog
+             steeds; dat is het verschil tussen "weg" en "weggevallen". */
+          try{ localStorage.setItem('pl_autoconn','1'); }
+          catch(e){ btDiag('Herverbindvlag niet bewaard — na een herlaad verbindt de app niet vanzelf (#229): '+(e.message||e),'warn'); }
           try{ if(window.PLStart) PLStart.gelukt(label); }
           catch(e){ btDiag('Startscherm (gelukt) mislukt: '+(e.message||e),'warn'); }
           return;

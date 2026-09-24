@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — de app verbindt weer vanzelf opnieuw
+ ═══════════════════════════════════════════════════════════
+
+ - #229  Een geslaagde verbinding zet `pl_autoconn`. Daarmee leven de drie
+         herverbindpaden weer: na een herlaad (rendercrash, proceskill), na
+         zes lege antwoorden (dode socket) en bij terugkeer naar de app. Tot
+         nu toe zette niets die vlag. Bewust verbreken wist hem nog steeds.
+ - #229  Na een herlaad wacht het herverbinden tot 3 s op de Bluetooth-
+         plugin, en zegt het als die wegblijft.
+ - Blok 5: verbonden zonder vlag is FOUT.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — de vragen van een meetopdracht komen in beeld
  ═══════════════════════════════════════════════════════════
 
