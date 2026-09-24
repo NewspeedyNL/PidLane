@@ -61,7 +61,7 @@ function bouw(o) {
   db.exec(schemaTekst);
   for (const rij of (o.rijen || [])) {
     db.prepare('INSERT INTO meetopdrachten (Naam,Reden,Actief,Gewijzigd,Opdracht) VALUES (?,?,?,?,?)')
-      .run(rij.Naam || '', rij.Reden || '', rij.Actief ? 1 : 0, rij.Gewijzigd || '', rij.Opdracht === undefined ? '' : rij.Opdracht);
+      .run(rij.Naam || '', rij.Reden || '', Number(rij.Actief) || 0, rij.Gewijzigd || '', rij.Opdracht === undefined ? '' : rij.Opdracht);
   }
   const staat = { sqls: [] };
   const omg = {
@@ -183,7 +183,8 @@ const GROOT = 'x'.repeat(9000);
     const b = bouw({ rijen, url: 'https://p.example/airtable/opdracht?alle=1' });
     const r = await b.roep();
     const q = b.staat.sqls[0] || '';
-    toets('met ?alle=1 staat er geen Actief-filter meer in', !/Actief/.test(q), q);
+    toets('met ?alle=1 filtert hij niet meer op actief, alleen het archief blijft weg',
+      !/Actief\s*=\s*1/.test(q) && /Actief\s*>=\s*0/.test(q), q);
     toets('maar wel dezelfde sortering op Gewijzigd', /ORDER BY Gewijzigd DESC/.test(q), q);
     toets('en een ruimere grens', /LIMIT 12/.test(q), q);
     toets('het antwoord is gemerkt als lijst', r.body.alle === true, JSON.stringify(r.body).slice(0, 120));
@@ -194,6 +195,21 @@ const GROOT = 'x'.repeat(9000);
       r.body.opdrachten[0].actief === true && r.body.opdrachten[1].actief === false,
       JSON.stringify(r.body.opdrachten.map((x) => x.actief)));
     toets('de ruwe tekst gaat mee', /schema/.test(r.body.opdrachten[0].opdracht));
+  }
+  {
+    // Het archief (#232 was op 24-09 dicht, en zijn MAF-opdracht kreeg na elke
+    // rit toch weer een oordeel).
+    const r = await bouw({ url: 'https://p.example/airtable/opdracht?alle=1', rijen: [
+      { Naam: 'Ontsteking warm', Actief: 1, Gewijzigd: 'T3', Opdracht: '{"schema":2}' },
+      { Naam: 'vLinker', Actief: 0, Gewijzigd: 'T2', Opdracht: '{"schema":2}' },
+      { Naam: 'MAF stationair (afgerond)', Actief: -1, Gewijzigd: 'T4', Opdracht: '{"schema":2}' }
+    ] }).roep();
+    const namen = r.body.opdrachten.map((x) => x.naam);
+    toets('een afgeronde opdracht (Actief -1) staat niet in de lijst, ook niet als hij de nieuwste is',
+      namen.length === 2 && namen.indexOf('MAF stationair (afgerond)') < 0, JSON.stringify(namen));
+    toets('TEGENPROEF: een uitgezette (0) blijft kiesbaar', namen.indexOf('vLinker') >= 0, JSON.stringify(namen));
+    const zonder = await bouw({ rijen: [{ Naam: 'archief', Actief: -1, Gewijzigd: 'T1', Opdracht: 'x' }] }).roep();
+    toets('en het archief draait nooit als de actieve', zonder.body.opdracht === null, JSON.stringify(zonder.body));
   }
   {
     const r = await bouw({ rijen: [], url: 'https://p.example/airtable/opdracht?alle=1' }).roep();

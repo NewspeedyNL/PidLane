@@ -115,8 +115,10 @@ CREATE TABLE IF NOT EXISTS meetopdrachten (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   Naam      TEXT NOT NULL,
   Reden     TEXT,
-  -- 0/1. Meer dan één actieve rij is een fout van de schrijver; de route
-  -- pakt dan de laatst gewijzigde en zegt hoeveel er stonden.
+  -- 1 = actief, 0 = uit maar kiesbaar in de meetkamer, -1 = afgerond
+  -- (archief: niet in de lijst, dus geen oordeel en niets verzonden; sinds
+  -- 24-09-2026). Meer dan één actieve rij is een fout van de schrijver; de
+  -- route pakt dan de laatst gewijzigde en zegt hoeveel er stonden.
   --
   -- LET OP BIJ HET VULLEN — gemeten op 22-09-2026 bij de overzet uit
   -- Airtable: daar stonden alle negen rijen op actief én droegen er acht

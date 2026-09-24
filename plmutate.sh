@@ -794,6 +794,7 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@  function haal() {\n    _laatsteFout = null;\n    if (!toggleAan()) {@@  function haal() {\n    _laatsteFout = null;\n    if (false) {@@test-opdracht.js@@de uitzetknop houdt het verkeer niet meer tegen"
 "worker.js@@  if (ruw.length > 8192)@@  if (false)@@test-opdrachtroute.js@@de groottegrens valt weg: een tekst van een megabyte gaat eerst de telefoon in"
 "worker.js@@WHERE Actief = 1 ORDER BY Gewijzigd DESC LIMIT 5@@WHERE Actief = 1 ORDER BY Gewijzigd ASC LIMIT 5@@test-opdrachtroute.js@@bij twee actieve rijen wint de OUDSTE: je zet een opdracht aan en er draait een andere"
+"worker.js@@FROM meetopdrachten WHERE Actief >= 0 ORDER BY Gewijzigd DESC LIMIT 12@@FROM meetopdrachten ORDER BY Gewijzigd DESC LIMIT 12@@test-opdrachtroute.js@@het archief staat weer in de lijst: een opdracht over een dicht issue krijgt elke rit een oordeel en gaat mee met verzenden"
 "worker.js@@    meer: rijen.length > 1 ? rijen.length : 0,@@    meer: 0,@@test-opdrachtroute.js@@twee actieve rijen worden niet meer gemeld: stil draait er een andere opdracht dan je bedoelde"
 # ── OP WELKE BRON DRAAIT DE APP (#242, 17-09-2026). Een preview draait dezelfde
 # app met andere code; van buiten is het verslag van de twee niet te

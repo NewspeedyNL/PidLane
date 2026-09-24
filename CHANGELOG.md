@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — meetopdracht: afgeronde opdrachten gaan naar het archief
+ ═══════════════════════════════════════════════════════════
+
+ - #277  `Actief = -1` is afgerond. De lijst in de meetkamer laat die weg,
+         dus ze krijgen na een rit geen oordeel meer en gaan niet mee met
+         "Verzend alle afgeronde". Terugzetten: Actief op 0.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — één beheerpagina, met de database en de meetopdrachten erin
  ═══════════════════════════════════════════════════════════
 

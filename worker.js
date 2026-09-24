@@ -1116,13 +1116,18 @@ async function handleOpdracht(request, env) {
 
   let rijen;
   try {
+    // De lijst (?alle=1) laat het archief weg: Actief = -1 is afgerond. De app
+    // oordeelt na elke rit over álles wat in de lijst staat, en op 24-09 stonden
+    // daar negen opdrachten in over issues die al dicht waren -- die kregen elke
+    // rit opnieuw een oordeel en gingen mee met "Verzend alle afgeronde".
+    //
     // Alleen de actieve, nieuwste. Meer dan één actieve rij is een fout van de
     // schrijver; dan wint de laatst gewijzigde en zegt het antwoord hoeveel er
     // stonden -- stil de eerste pakken zou betekenen dat je een opdracht aanzet
     // en er een andere gaat draaien.
     const r = alle
       ? await env.LOGDB.prepare(
-          "SELECT * FROM meetopdrachten ORDER BY Gewijzigd DESC LIMIT 12").all()
+          "SELECT * FROM meetopdrachten WHERE Actief >= 0 ORDER BY Gewijzigd DESC LIMIT 12").all()
       : await env.LOGDB.prepare(
           "SELECT * FROM meetopdrachten WHERE Actief = 1 ORDER BY Gewijzigd DESC LIMIT 5").all();
     rijen = (r && r.results) || [];
@@ -1145,7 +1150,7 @@ async function handleOpdracht(request, env) {
           id: String(rij2.id),
           naam: typeof rij2.Naam === "string" ? rij2.Naam.slice(0, 200) : "",
           reden: typeof rij2.Reden === "string" ? rij2.Reden.slice(0, 200) : "",
-          actief: !!rij2.Actief,
+          actief: Number(rij2.Actief) === 1,
           gewijzigd: rij2.Gewijzigd || "",
           opdracht: ruw2.length > 8192 ? "" : ruw2,
           weg: ruw2.length > 8192 ? `${ruw2.length} tekens; meer dan 8192 gaat niet mee` : (ruw2 ? "" : "geen opdrachttekst")

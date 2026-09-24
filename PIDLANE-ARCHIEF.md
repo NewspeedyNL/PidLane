@@ -195,6 +195,16 @@ Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
 De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
 *staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
 
+### 24-09-2026 — afgeronde opdrachten bleven meeoordelen (#277)
+
+Sinds #277 oordeelt de app na een rit over élke opdracht in de lijst, en die
+lijst bevatte de twaalf laatst gewijzigde, ook de uitgezette. Uitzetten
+(`Actief = 0`) was dus geen afronden: juist zo werden opdrachten op 23-09 uit
+de lijst gekozen. Op 24-09 stonden er negen in over issues die al dicht waren
+(#232, #217, #133, #254), met teksten over grenzen die niet meer golden. Ze
+kregen elke rit een oordeel en gingen mee met verzenden. Een derde stand,
+`-1`, houdt ze in D1 maar uit de lijst.
+
 ### 23-09-2026 — "Welk onderdeel?" keurde een gezonde motor af (#232, #231, #233)
 
 Gemeten in twee opdrachten op een CX-5 2.0 SkyActiv-G zonder klachten. De
