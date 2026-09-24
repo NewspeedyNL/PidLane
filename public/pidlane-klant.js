@@ -43,7 +43,7 @@
     // ── Betaallinks ────────────────────────────────────────────────
     // Stonden tot 28-08-2026 hardcoded in dit bestand, in een publieke repo
     // (#24). Ze komen nu uit de Config-tabel in Airtable, via /api/config, en
-    // zijn te beheren in admin.html onder "Betaallinks".
+    // zijn te beheren in beheer.html onder Instellingen → "Betaallinks".
     //
     // Waarom dat beter is: niet omdat een Tikkie-link geheim zou zijn — wie
     // hem heeft kan alleen betalen, niet incasseren. Maar een link in de code

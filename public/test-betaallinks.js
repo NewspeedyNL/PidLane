@@ -5,7 +5,7 @@
 // De Tikkie-links stonden tot 28-08-2026 hardcoded in pidlane-klant.js (#24).
 // Ze komen nu uit de Config-tabel in Airtable, via /api/config, en belanden in
 // een href. Dat verplaatst een risico: een waarde die eerst in de code stond en
-// door de gate kwam, komt nu uit een database die je vanuit admin.html vult.
+// door de gate kwam, komt nu uit een database die je vanuit beheer.html vult.
 //
 // Zet iemand met schrijfrechten daar `javascript:alert(1)` neer, dan voert een
 // klik op "tokens kopen" dat uit. _esc() dekt dat NIET af — die ontsnapt HTML,

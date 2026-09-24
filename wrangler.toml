@@ -23,7 +23,8 @@ main = "worker.js"
 compatibility_date = "2026-07-24"
 
 # ── Statische app-bestanden ────────────────────────────────────────────
-# index.html, pidlane-*.js, pidlane.css, admin.html staan in ./public/.
+# index.html, pidlane-*.js en pidlane.css staan in ./public/. De beheerpagina
+# niet: die staat in admin/ en wordt lokaal geserveerd (admin/LEESMIJ.md).
 [assets]
 directory = "./public/"
 binding = "ASSETS"
@@ -138,7 +139,7 @@ head_sampling_rate = 1
 #
 #   BESTAAND
 #     AIRTABLE_TOKEN      lees/schrijf op de Airtable-bases
-#     ADMIN_TOKEN         beheerderstoegang (admin.html, noodklep klantwachtwoord)
+#     ADMIN_TOKEN         beheerderstoegang (beheer.html, noodklep klantwachtwoord)
 #     SESSION_SECRET      ondertekent alle sessietokens
 #     USERS_JSON          nood-admin buiten Airtable om
 #     ANTHROPIC_API_KEY   AI-calls via de AI Gateway

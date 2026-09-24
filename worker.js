@@ -120,7 +120,7 @@ var ALLOWED_ORIGINS = [
 ];
 // Lokale ontwikkelserver draait zelden op poort 80, en de Origin-header bevat
 // de poort — "http://localhost:8788" matcht dus NIET op "http://localhost".
-// admin.html wordt sinds 25-08-2026 lokaal geserveerd (zie admin/LEESMIJ.md),
+// De beheerpagina (admin/beheer.html) wordt sinds 25-08-2026 lokaal geserveerd (zie admin/LEESMIJ.md),
 // en heeft dit nodig. Alleen loopback, alleen http.
 var LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
 function originToegestaan(origin) {
@@ -318,7 +318,7 @@ var RL = {
   loginIp: { limit: 100, windowMs: 6e4 },
   // ruim: carrier-NAT / kantoor-IP
   adminWrite: { limit: 20, windowMs: 6e4 },
-  // admin.html schrijfacties
+  // beheer.html schrijfacties, ook de SQL-console van /admin/d1
   codeAccount: { limit: 30, windowMs: 6e4 },
   // meekijk-code per account
   codeIp: { limit: 200, windowMs: 6e4 }
@@ -3087,7 +3087,7 @@ __name(handleKlantAdminWachtwoord, "handleKlantAdminWachtwoord");
 // ═══════════════════════════════════════════════════════════════════
 // ADMINBEHEER — klantaccounts en activatiecodes
 // ═══════════════════════════════════════════════════════════════════
-// Voor admin.html. Alles achter X-Admin-Token.
+// Voor beheer.html. Alles achter X-Admin-Token.
 
 // ── Auditregel bij een klantrecord ──────────────────────────────────
 // WAAROM APART VAN DE WIJZIGING ZELF
@@ -4949,7 +4949,7 @@ var worker_default = {
   // belofte in privacy.html waarmaakt: een account dat de klant heeft laten
   // verwijderen verdwijnt echt, ook als niemand eraan denkt.
   //
-  // WAAROM DIT OOK EEN KNOP IN admin.html HEEFT. Een cron is onzichtbaar: hij
+  // WAAROM DIT OOK EEN KNOP IN beheer.html HEEFT. Een cron is onzichtbaar: hij
   // draait of hij draait niet, en het verschil merk je pas als iemand vraagt
   // waarom zijn gegevens er nog staan. De adminpagina toont daarom dezelfde
   // wachtrij en roept dezelfde functie aan, zodat de automaat controleerbaar
