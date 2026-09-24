@@ -1005,7 +1005,11 @@ function csvDownload(naam, kolommen, rijen){
 function diagnose(where, status, bodyText){
   let body = {}; try{ body = JSON.parse(bodyText); }catch(e){ /* geen JSON: raw hieronder */ }
   const raw = String(bodyText || '');
-  const code = (body && body.error) || '';
+  // De saldoroutes sturen een machineleesbare `code` naast een leesbare
+  // `error`; de andere routes alleen `error`. admin.html las `code`, deze
+  // pagina las tot 24-09 alleen `error` — en dan viel "saldo bezet" door naar
+  // een generieke rode fout in plaats van "even wachten".
+  const code = (body && (body.code || body.error)) || '';
   const detail = (body && typeof body.detail === 'string' ? body.detail : '') || raw;
 
   if(status === 429 || code === 'rate_limited')
@@ -1043,6 +1047,9 @@ function diagnose(where, status, bodyText){
   if(code === 'invalid_user')   return { kind:'err', title:'❌ Ongeldige inlognaam.', detail:'2–40 tekens; letters, cijfers, spatie, punt, streepje of underscore.' };
   if(code === 'saldo_bezet')    return { kind:'warn', title:'⏳ Er loopt al een tegoedwijziging voor deze klant.', detail:'Even wachten en opnieuw proberen.' };
   if(code === 'saldo_verschoven') return { kind:'warn', title:'⚠ Het saldo is inmiddels veranderd.', detail:(body && body.error) || 'Herlaad de lijst en kijk opnieuw.' };
+  if(code === 'saldo_geen_email') return { kind:'err', title:'❌ Deze klant heeft geen e-mailadres.',
+    detail:'Het saldo-slot staat per e-mailadres. Zonder adres is er geen slot om het bijboeken in te zetten, ' +
+           'en dan zou het langs een gelijktijdige afboeking heen kunnen schrijven. Vul eerst het veld Email in Airtable.' };
   if(code === 'saldo_slot_stuk') return { kind:'err', title:'❌ Het tegoedslot was niet bereikbaar.', detail:'Er is niets gewijzigd. Probeer het zo nog eens.' };
   if(status === 404) return { kind:'err', title:'❌ Niet gevonden (404).', detail:'De route bestaat niet op deze Worker — draait er een oude versie?\n' + (body.path || '') };
   if(body && body.error) return { kind:'err', title:'❌ ' + String(body.error).slice(0,200), detail: detail === String(body.error) ? '' : detail.slice(0,240) };

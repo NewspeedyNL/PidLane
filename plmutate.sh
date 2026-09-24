@@ -253,13 +253,14 @@ MUTATIES=(
 "worker.js@@          const r1 = await fetch(recUrl, { headers: hdr });\n          if (!r1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const r1 = r0;\n          const huidig@@test-bijboeken.js@@bijboeken rekent met de lezing van vóór het slot in plaats van een verse"
 "worker.js@@      if (uitkomst.bezet)\n        return json({ ok: false, code: \"saldo_bezet\", error: \"Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens.\" }, 409);@@@@test-bijboeken.js@@een bezet saldo-slot laat het bijboeken toch doorlopen"
 "worker.js@@      if (!email)\n        return json({ ok: false, code: \"saldo_geen_email\", error: \"Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden.\" }, 409);@@@@test-bijboeken.js@@bijboeken zet het slot op een leeg e-mailadres in plaats van te weigeren"
-"admin/admin.html@@  if (body?.code==='saldo_bezet') {@@  if (body?.code==='saldo_bezet_oud') {@@test-bijboeken.js@@admin.html kent de code voor een bezet saldo-slot niet meer"
+"admin/beheer.html@@  if(code === 'saldo_bezet')@@  if(code === 'saldo_bezet_oud')@@test-bijboeken.js@@beheer.html kent de code voor een bezet saldo-slot niet meer"
 
 # ── saldo ZETTEN door hetzelfde slot (03-09-2026, #93) ──
 "worker.js@@          if (saldoWas !== null && huidig !== saldoWas)@@          if (saldoWas !== null && huidig === saldoWas)@@test-bijboeken.js@@de voorwaarde bij saldo zetten staat omgekeerd: een verschoven saldo wordt juist overschreven"
 "worker.js@@          const z1 = await fetch(zetUrl, { headers: hdr });\n          if (!z1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
-"admin/admin.html@@saldoWas:huidig,door:beheerderNaam()@@door:beheerderNaam()@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
-"admin/admin.html@@  if (body?.code==='saldo_verschoven') {@@  if (body?.code==='saldo_verschoven_oud') {@@test-bijboeken.js@@admin.html kent de code voor een verschoven saldo niet"
+"admin/beheer.html@@saldo:n, saldoWas:huidig }@@saldo:n }@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
+"admin/beheer.html@@  if(code === 'saldo_verschoven')@@  if(code === 'saldo_verschoven_oud')@@test-bijboeken.js@@beheer.html kent de code voor een verschoven saldo niet"
+"admin/beheer.html@@  const code = (body && (body.code || body.error)) || '';@@  const code = (body && body.error) || '';@@test-bijboeken.js@@beheer.html leest de foutcode uit de leesbare tekst: de afhandeling staat er, maar wordt nooit bereikt"
 
 # ── het kasboek TokenLog (08-09-2026, #83) ──
 # Acht fouten die je bij een kasboek écht maakt. De eerste drie gaan over
