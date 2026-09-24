@@ -958,6 +958,13 @@ MUTATIES=(
 "worker.js@@      db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1 AND id <> ?\").bind(id),\n@@@@test-admind1.js@@een opdracht aanzetten laat de andere aan staan: de app kiest er dan zelf een, zoals op 22-09"
 "worker.js@@      ? await db.batch([db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1\"), invoeg])@@      ? [await invoeg.run()]@@test-admind1.js@@een nieuwe actieve opdracht zet de oude niet uit"
 "worker.js@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\"];@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\", \"Gewijzigd\"];@@test-admind1.js@@Gewijzigd is met de hand te zetten: dan kies je stil welke opdracht er rijdt"
+# De beheerpagina zelf (bproef-beheerpagina.js). Drie stille fouten die er
+# allemaal goed uitzien: een afgekeurde opdracht gaat tóch aan (de app wijst
+# hem bij de start af en de rit rijdt zonder dat iemand het weet), het vangnet
+# verdwijnt uit beeld, en een dag zonder regels valt weg uit de reeks.
+"admin/beheer.html@@  if(!k.ok){ alert(@@  if(false){ alert(@@bproef-beheerpagina.js@@een afgekeurde meetopdracht is toch te activeren: de app weigert hem bij de start en de rit rijdt zonder"
+"admin/beheer.html@@  if(vangnet) waarsch.push(@@  if(false) waarsch.push(@@bproef-beheerpagina.js@@regels in het vangnet \`onbekend\` staan niet meer in beeld: een ontbrekende kolom valt niemand op"
+"admin/beheer.html@@    uit.push([d, x[1], x[2]]);@@    if(x[1]) uit.push([d, x[1], x[2]]);@@bproef-beheerpagina.js@@een dag zonder regels valt weg uit de dagreeks: juist het gat is onzichtbaar"
 )
 
 echo

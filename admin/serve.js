@@ -18,7 +18,7 @@
 // Alleen loopback: hij bindt bewust op 127.0.0.1 en niet op 0.0.0.0. De
 // adminpagina hoort niet op je wifi te staan, ook niet even.
 //
-// Draaien:  npm run admin      → http://127.0.0.1:8788/admin.html
+// Draaien:  npm run admin      → http://127.0.0.1:8788/beheer.html
 //           PORT=9000 npm run admin   voor een andere poort
 // ══════════════════════════════════════════════════════════════════
 'use strict';
@@ -28,6 +28,15 @@ const path = require('path');
 
 const MAP = __dirname;
 const POORT = Number(process.env.PORT || 8788);
+// Wat er buiten deze map mag. Precies twee bestanden, bij naam: de keurder van
+// de meetopdrachten en de PID-tabel die hij raadpleegt. beheer.html laadt ze
+// als ../public/…, zodat de pagina keurt met dezelfde witte lijst als de app.
+// Een kopie in admin/ zou een tweede lijst zijn die uit de pas gaat lopen; de
+// hele map public/ openzetten zou meer serveren dan de pagina nodig heeft.
+const BUITEN = {
+  '/public/pidlane-data.js': path.join(MAP, '..', 'public', 'pidlane-data.js'),
+  '/public/pidlane-opdracht.js': path.join(MAP, '..', 'public', 'pidlane-opdracht.js')
+};
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -41,13 +50,15 @@ const TYPES = {
 
 const srv = http.createServer(function (req, res) {
   let pad = decodeURIComponent(String(req.url || '/').split('?')[0]);
-  if (pad === '/' || pad === '') pad = '/admin.html';
+  if (pad === '/' || pad === '') pad = '/beheer.html';
 
   // Buiten de map komen we niet: resolve() lost ../ op, en daarna moet het
   // resultaat nog steeds binnen MAP liggen. Zonder deze regel is elke
-  // ../-reeks in de URL genoeg om de hele schijf uit te serveren.
-  const doel = path.resolve(MAP, '.' + pad);
-  if (doel !== MAP && !doel.startsWith(MAP + path.sep)) {
+  // ../-reeks in de URL genoeg om de hele schijf uit te serveren. De enige
+  // uitzondering staat in BUITEN, en daar is het een vaste naam, geen pad.
+  const buiten = Object.prototype.hasOwnProperty.call(BUITEN, pad) ? BUITEN[pad] : null;
+  const doel = buiten || path.resolve(MAP, '.' + pad);
+  if (!buiten && doel !== MAP && !doel.startsWith(MAP + path.sep)) {
     res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('403 — buiten de adminmap');
     return;
@@ -82,8 +93,8 @@ srv.on('error', function (e) {
 
 srv.listen(POORT, '127.0.0.1', function () {
   console.log('');
-  console.log('  PidLane Admin draait op:');
-  console.log('    http://127.0.0.1:' + POORT + '/admin.html');
+  console.log('  PidLane Beheer draait op:');
+  console.log('    http://127.0.0.1:' + POORT + '/beheer.html');
   console.log('');
   console.log('  Alleen op dit toestel bereikbaar. Stoppen met Ctrl-C.');
   console.log('');
