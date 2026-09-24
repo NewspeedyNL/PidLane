@@ -946,6 +946,9 @@ MUTATIES=(
 "public/pidlane-pidgate.js@@  try{ localStorage.setItem('pl_selectie', JSON.stringify({ pids:[...nu], t:Date.now() })); }@@  try{ }@@test-sessiedoorloop.js@@de selectie wordt niet bewaard: na een crash staat de standaardset aan in plaats van wat er liep (#229)"
 "public/pidlane-pidgate.js@@    if(!supportedPIDs.has(pid)) return;\n    if(!pidGate(pid,'kiesbaar')) return;\n    activePIDs.add(pid); manualPIDs.add(pid); n++;\n  });\n  plSelectieMeld(voor,'hervatten@@    if(!pidGate(pid,'kiesbaar')) return;\n    activePIDs.add(pid); manualPIDs.add(pid); n++;\n  });\n  plSelectieMeld(voor,'hervatten@@test-sessiedoorloop.js@@de teruggezette selectie neemt sensoren mee die deze auto niet heeft (#229)"
 "public/pidlane-bt.js@@  if(!n){\n    bron='de standaardset';@@  if(false){\n    bron='de standaardset';@@test-sessiedoorloop.js@@een hervatting zonder bewaarde selectie zet nul sensoren aan: de meting staat stil, de fout van de eerste versie (#229)"
+"public/pidlane.css@@padding:20px 18px calc(28px + var(--pl-sab));max-height:92vh@@padding:20px 18px 28px;max-height:92vh@@bproef-schermranden.js@@Start analyse valt weer half achter de Android-knoppenbalk (#286)"
+"public/pidlane-theme.js@@  wcBind('wc-waak',()=>openWaakvenster());@@  wcBind('wc-waak',()=>{});@@bproef-vensters.js@@de kaart Waakronde doet niets: hij staat nergens meer, ook niet in het menu (#286)"
+"public/pidlane-klant.js@@      ['admGroupBtn', 'admGroup', 'wc-bulkrec', 'wc-bulkana'].forEach(function (id) {@@      ['admGroupBtn', 'admGroup'].forEach(function (id) {@@bproef-vensters.js@@een klant ziet de bulk-recorder van beheer in de deur Live data (#286)"
 "schema.sql@@  Message       TEXT,@@  Bericht       TEXT,@@test-logschema.js@@een kolom in D1 hernoemd zonder de app mee te nemen: het berichtveld komt nergens meer aan"
 # ── De logroute schrijft sinds #262 naar D1. Deze drie bouwen de fouten na
 # die deze route al eens gemaakt heeft of makkelijk weer maakt, en ze gaan

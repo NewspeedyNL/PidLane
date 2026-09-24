@@ -223,6 +223,10 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-onderdeel', ()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openOnderdeelCheck(); });
   wcBind('wc-deepdiag',()=>openDeepDiag());
   wcBind('wc-pidrec',()=>openPidRecorder());
+  // #286: stonden in het menu, nu kaarten in de deur "Live data".
+  wcBind('wc-waak',()=>openWaakvenster());
+  wcBind('wc-bulkrec',()=>openBulkRecorder());
+  wcBind('wc-bulkana',()=>openBulkAnalyse());
   wcBind('wc-check',()=>startChoice('check'));
   wcBind('wc-basiccheck',()=>startChoice('basiccheck'));
   wcBind('wc-monitor',()=>openMonitorView());   // eigen opener: startChoice kent 'monitor' niet en viel terug op live view

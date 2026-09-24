@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — de keuzeschermen ingedeeld naar moment (#286)
+ ═══════════════════════════════════════════════════════════
+
+ - #286  Waakronde, Bulk-recorder en Bulk-analyse staan niet meer in het
+         menu maar als kaart in de deur "Live data bekijken, opnemen &
+         delen" (de bulk-kaarten alleen voor beheer). De PID-recorder
+         verhuist daar ook heen: het is een opnamegereedschap.
+ - #286  "Test: rendercrash" is uit het Admin-menu.
+ - Deur "Verbruik & besparen" heet nu "Onderweg: veilig & zuinig" en
+         bevat wat de hele rit meeloopt: Rit-monitor (was bij Live data),
+         Rit met caravan of aanhanger, Verbruik analyseren.
+ - #286  "Klaar voor gebruik" houdt de knop boven de Android-knoppenbalk.
+ - #286  De inklapknop bij "Voertuig" (Sensoren & PIDs) zegt nu
+         "Inklappen" / "Uitklappen" in plaats van een los ▾.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — een crash breekt de rit niet meer in twee
  ═══════════════════════════════════════════════════════════
 

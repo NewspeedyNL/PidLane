@@ -49,11 +49,14 @@ function plDatumLokaal(ms){
 // vaste ruimte op dat de scrollbare PID-lijst eronder nauwelijks hoogte
 // overhoudt. Beide onthouden hun stand (aan/uit) in localStorage, zodat een
 // keer inklappen blijft staan bij de volgende sessie.
+// De knop naast "Voertuig" was een los ▾ van 11 px en werd niet als knop
+// herkend (#286). Nu zegt hij wat hij doet.
+function _vehKlapTekst(ingeklapt){ return ingeklapt ? 'Uitklappen ▾' : 'Inklappen ▴'; }
 function toggleVehicleSection(){
   const body=document.getElementById('vehicleBody'); if(!body) return;
   const collapsing = body.style.display!=='none';
   body.style.display = collapsing?'none':'';
-  const chev=document.getElementById('vehSecChev'); if(chev) chev.textContent = collapsing?'▸':'▾';
+  const chev=document.getElementById('vehSecChev'); if(chev) chev.textContent = _vehKlapTekst(collapsing);
   try{ localStorage.setItem('pl_vehsec_collapsed', collapsing?'1':'0'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function toggleDemoBarBody(){
@@ -68,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(localStorage.getItem('pl_vehsec_collapsed')==='1'){
       const body=document.getElementById('vehicleBody'), chev=document.getElementById('vehSecChev');
       if(body) body.style.display='none';
-      if(chev) chev.textContent='▸';
+      if(chev) chev.textContent=_vehKlapTekst(true);
     }
     if(localStorage.getItem('pl_demobar_collapsed')==='1'){
       const body=document.getElementById('demoBarBody'), chev=document.getElementById('demoBarChev');
