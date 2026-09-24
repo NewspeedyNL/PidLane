@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — na een crash hervatten zonder vragen
+ ═══════════════════════════════════════════════════════════
+
+ - #229  Een automatische herverbinding (herlaad, dode socket, terugkeer
+         naar de app) loopt niet meer de eerste-keer-flow door. Het
+         kenteken, het herkende protocol en het profieloordeel van de vorige
+         verbinding gelden gewoon; "Klaar voor gebruik" blijft weg. Zonder
+         bereik slaat hij het kenteken over. Met de knop verbinden vraagt
+         zoals altijd. De stand vervalt na drie minuten.
+ - Blok 5: de laatste hervatting van de sessie, met hoe lang hij duurde.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — de app verbindt weer vanzelf opnieuw
  ═══════════════════════════════════════════════════════════
 

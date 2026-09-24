@@ -2960,6 +2960,26 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── na een crash hervatten zonder vragen (#229, 24-09-2026) ──
+  // Op 24-09 om 19:08 verbond de app na een rendercrash vanzelf, en liep hij
+  // daarna de hele eerste-keer-flow door: vier tikken tijdens het rijden. Nu
+  // kiest een automatische herverbinding zelf wat de vorige keer gold. Deze
+  // proef leest de laatste hervatting van deze sessie terug.
+  {
+    issue: '#229',
+    naam: 'Een automatische herverbinding hervat zonder vragen',
+    waarom: 'Kenteken, protocol en "voertuig bekend?" bevestigen tijdens het rijden is onmogelijk; dan staat de meting stil tot iemand stopt.',
+    proef: async function () {
+      var h = window._plLaatsteHervat;
+      if (!h)
+        return { staat: 'LET OP', detail: 'deze sessie is er niet hervat — doe de proefcrash (Admin → Test: rendercrash) of trek de adapter even, raak daarna niets aan, en draai deze proef opnieuw' };
+      var hoeLang = Math.round((Date.now() - h.t) / 60000);
+      if (h.s > 60)
+        return { staat: 'LET OP', detail: 'hervat na ' + h.reden + ', maar dat duurde ' + h.s + ' s (' + hoeLang + ' min geleden) — zonder vragen, wel traag. Kijk in de BT-log welke stap de tijd kostte.' };
+      return { staat: 'ok', detail: 'hervat na ' + h.reden + ' in ' + h.s + ' s, zonder één tik (' + hoeLang + ' min geleden).' };
+    }
+  },
+
   // ── de vragen van een opdracht komen in beeld (#283, 24-09-2026) ──
   // Tot 24-09 werden ze gekeurd en daarna door niemand gelezen. Nu staan ze
   // in de meetkamer onder het oordeel, en gaan de antwoorden mee met

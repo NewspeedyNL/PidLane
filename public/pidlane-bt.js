@@ -52,7 +52,26 @@ function btEnvDump(){
 // ════════════════════════════════════════════════════════════════════
 //  ENTRY — bouwt de cascade en probeert transports ná elkaar
 // ════════════════════════════════════════════════════════════════════
-async function connectSerial(){
+/* HERVATTEN (#229, 24-09-2026). Een automatische herverbinding — na een
+   rendercrash, een dode socket of terugkeer naar de app — liep de hele
+   eerste-keer-flow door: kenteken bevestigen, protocol bevestigen, "voertuig
+   bekend, overslaan?" en "Klaar voor gebruik". Vier tikken, tijdens het
+   rijden, voor antwoorden die de vorige verbinding al gaf (proef van 24-09,
+   19:08). In deze stand kiest elke stap zelf wat er de vorige keer gold, en
+   zegt dat in de BT-log. Een verbinding met de knop vraagt zoals altijd: een
+   volgende verbinding kan een andere auto zijn.
+   Drie minuten, dan vervalt hij: een hervatting die zo lang duurt, is geen
+   hervatting meer. */
+const HERVAT_MS = 180000;
+function _hervatActief(){
+  const h = window._plHervat;
+  return !!(h && (Date.now() - h.t) < HERVAT_MS);
+}
+
+async function connectSerial(opt){
+  // Alleen een expliciete hervatting zet de stand; elke andere aanroep (de
+  // knop, een klik-event) wist hem.
+  window._plHervat = (opt && typeof opt.hervat === 'string') ? { t: Date.now(), reden: opt.hervat } : null;
   // Prominente disclosure vóór álles. Google Play eist dat de gebruiker weet
   // waarom Bluetooth wordt gevraagd vóórdat het systeemdialoog verschijnt —
   // niet erna, en niet weggestopt in een menu. Eenmalig; PLPrivacy onthoudt
@@ -257,6 +276,7 @@ async function connectSerial(){
   try{ if(window.PLStart) PLStart.mislukt(); }
   catch(e){ btDiag('Startscherm (mislukt) mislukt: '+(e.message||e),'warn'); }
 
+  window._plHervat = null;   // mislukt is geen hervatting meer; de volgende poging vraagt weer
   resetConnectBtn();
   showConnError((lastErr?.message || 'Geen OBD2-adapter gevonden.') +
     '\n\n💡 Open 📡 Log en kopieer de inhoud voor diagnose.');
@@ -1154,7 +1174,7 @@ function trackBtQuality(cmd, r){
     // Automatisch herverbinden als de gebruiker niet bewust verbroken heeft
     if(localStorage.getItem('pl_autoconn')==='1' && getSPP() && !window._reconnBusy){
       window._reconnBusy=true;
-      setTimeout(async()=>{ try{ if(!connected) await connectSerial(); } finally{ window._reconnBusy=false; } },800);
+      setTimeout(async()=>{ try{ if(!connected) await connectSerial({ hervat: 'dode socket' }); } finally{ window._reconnBusy=false; } },800);
     }
     return;
   }
@@ -1544,6 +1564,19 @@ function toonKentekenStap(){
     inp.value=vorig;
     if(vorig && stat) stat.textContent='Laatst gebruikt — controleer of dit de auto is waar je nu in zit';
     try{ inp.focus(); inp.select(); }catch(e){ /* stil: focus mag falen op een verborgen veld */ }
+    // Hervatten: dezelfde auto als een paar minuten geleden, dus niet vragen.
+    if(vorig && _hervatActief()){
+      btDiag('Hervatten ('+window._plHervat.reden+'): kenteken '+vorig+' van de vorige verbinding, zonder te vragen','info');
+      // Geen bereik of de RDW ligt plat: dan niet op dit scherm blijven
+      // wachten maar overslaan — de VIN komt straks alsnog.
+      Promise.resolve(kentekenBevestig()).then(function(){
+        if(!_kentPoortKlaar && _hervatActief()){
+          btDiag('Hervatten: kenteken opzoeken lukte niet — overgeslagen, de VIN volgt','warn');
+          kentekenOverslaan();
+        }
+      }).catch(function(e){ btDiag('Hervatten: kentekenstap mislukt: '+((e&&e.message)||e),'warn'); });
+      return;
+    }
   }
   const acts=document.getElementById('connActions');
   if(acts) acts.innerHTML=
@@ -1766,6 +1799,15 @@ function renderNetworkCards(){
   }
 
   updateNetworkBtn(selectedNetwork);
+
+  // Hervatten: de adapter herkende het protocol, en dat is wat de vorige
+  // verbinding ook gebruikte. Alleen een herkenning gaat vanzelf door; een
+  // handmatige keuze blijft van de gebruiker.
+  if(heeftAuto && selectedNetwork && selectedNetwork.auto && _hervatActief() && !window._plHervat.protocol){
+    window._plHervat.protocol = true;   // één keer: opnieuw tekenen is geen tweede start
+    btDiag('Hervatten ('+window._plHervat.reden+'): herkend protocol '+String(selectedNetwork.name||'')+' zonder te vragen','info');
+    startDiscovery();
+  }
 }
 
 function updateNetworkBtn(net){
@@ -1936,7 +1978,12 @@ async function startDiscovery(){
   // gewoon scannen, geen vraag.
   let _slaScanOver=false;
   const _ph=(typeof profielHealth==='function')?profielHealth():null;
-  if(usedProfile && _ph && Object.keys(_ph).length && typeof plBevestig==='function' && !demoMode){
+  if(usedProfile && _ph && Object.keys(_ph).length && _hervatActief()){
+    // Hervatten: het oordeel van een paar minuten geleden staat nog. Een halve
+    // minuut zware bus is precies wat je na een crash niet wilt.
+    _slaScanOver=true;
+    btDiag('Hervatten ('+window._plHervat.reden+'): gezondheidscheck overgeslagen, oordeel uit het profiel','info');
+  } else if(usedProfile && _ph && Object.keys(_ph).length && typeof plBevestig==='function' && !demoMode){
     try{
       _slaScanOver = await plBevestig(
         `Dit voertuig is bekend en ${supportedPIDs.size} sensoren zijn al eerder beoordeeld.\n\nDe gezondheidscheck opnieuw draaien duurt ongeveer een halve minuut met zware busbelasting. Overslaan?`,
@@ -2016,8 +2063,19 @@ async function startDiscovery(){
   resetToStep1();
   setConn(true);
   startPoll();
-  // Open de verbinding-wizard (toont stap-voor-stap wat er gevonden is)
-  wizShow();
+  // Open de verbinding-wizard (toont stap-voor-stap wat er gevonden is).
+  // Hervatten: geen samenvatting om weg te tikken, wel wat wizFinish() doet.
+  const _hervat = _hervatActief() ? window._plHervat : null;
+  window._plHervat = null;
+  if(_hervat){
+    try{ wizFinish(); }
+    catch(e){ btDiag('Hervatten: PID-lijst niet bijgewerkt — open hem één keer met de hand: '+(e.message||e),'warn'); }
+    const _duurS=Math.round((Date.now()-_hervat.t)/1000);
+    window._plLaatsteHervat={ reden:_hervat.reden, s:_duurS, t:Date.now() };   // voor blok 5
+    log(`Hervat na ${_hervat.reden} — zonder vragen, in ${_duurS} s (#229)`,'ok');
+  } else {
+    wizShow();
+  }
   log(`Verbinding compleet — ${discoveredPIDDefs.length} PIDs beschikbaar`,'ok');
   showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);  // land op de hub, niet op live view
   // Fabrikant-PIDs (mode 21) staan niet in de mode-01 bitmap en kunnen dus

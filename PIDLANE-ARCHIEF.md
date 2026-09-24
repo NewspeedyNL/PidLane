@@ -195,6 +195,25 @@ Worker-antwoord in de echte vorm, en `plmutate.sh` bouwt de oude regel na.
 De les is dezelfde als in CLAUDE.md onder "de toets moet onderscheiden":
 *staat de afhandeling er* is een andere vraag dan *wordt hij bereikt*.
 
+### 24-09-2026 — de herverbinding werkte, en vroeg daarna vier dingen (#229)
+
+Na #285 de proefcrash om 19:08: om 19:08:39 "Automatisch herverbinden...",
+twee seconden later verbonden, zonder hand. Daarna volgde de eerste-keer-
+flow: kenteken bevestigen, protocol bevestigen, "voertuig bekend —
+overslaan?" en "Klaar voor gebruik". Data stabiel om 19:09:16, maar pas na
+vier tikken. Die vragen bestaan met een reden (het kenteken van gisteren op
+de auto van vandaag, #59 voor het protocol), en die reden geldt niet voor
+een verbinding die drie minuten eerder nog liep met dezelfde adapter.
+
+Het onderscheid zit in de aanroep: de drie automatische paden geven
+`connectSerial({hervat: reden})` mee, de knop niets. Niet in de toestand
+zelf, want "er was een verbinding" is ook waar als je in een andere auto
+stapt.
+
+Nog niet gedekt door een node-test: het overslaan van de gezondheidscheck
+en van "Klaar voor gebruik" zitten diep in startDiscovery(). Blok 5 leest
+de hervatting terug; de rit moet de rest zeggen.
+
 ### 24-09-2026 — drie herverbindpaden lazen een vlag die niemand zette (#229)
 
 Na elke rendercrash moest er met de hand op Verbinden gedrukt worden (proef

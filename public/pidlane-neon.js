@@ -268,7 +268,7 @@ document.addEventListener('visibilitychange',()=>{
             connected=false; setConn(false);
           }
         }
-        if(!connected) await connectSerial();
+        if(!connected) await connectSerial({ hervat: 'terugkeer naar de app' });
       }
       finally{ window._reconnBusy=false; }
     },800);
