@@ -1978,7 +1978,7 @@ async function startDiscovery(){
   // gewoon scannen, geen vraag.
   let _slaScanOver=false;
   const _ph=(typeof profielHealth==='function')?profielHealth():null;
-  if(usedProfile && _ph && Object.keys(_ph).length && _hervatActief()){
+  if(usedProfile && _ph && Object.keys(_ph).length && _hervatActief() && !demoMode){
     // Hervatten: het oordeel van een paar minuten geleden staat nog. Een halve
     // minuut zware bus is precies wat je na een crash niet wilt.
     _slaScanOver=true;
