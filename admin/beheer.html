@@ -1722,7 +1722,8 @@ async function checkStatus(){
       run:() => callWorker('d1','/admin/d1?actie=rit&sessie=__statuscontrole__',{ headers:H() }) }
   ];
   el.innerHTML = items.map(i =>
-    `<div class="rij"><div><div class="lbl">${esc(i.naam)}</div><div class="desc"><code>${esc(i.hint)}</code></div></div>
+    `<div class="rij"><div style="min-width:0;flex:1"><div class="lbl">${esc(i.naam)}</div><div class="desc"><code>${esc(i.hint)}</code></div>
+       <div class="msg err hidden" id="${i.id}_uit" style="margin-top:4px;font-size:12px"></div></div>
      <span class="pill p-wacht" id="${i.id}">…</span></div>`).join('') +
     `<div class="rij"><div><div class="lbl">AI-route (Anthropic)</div>
       <div class="desc">Kost een paar tokens — draait alleen op verzoek</div></div>
@@ -1735,11 +1736,14 @@ async function checkStatus(){
       p.title = 'Oefenmodus: er is geen verzoek naar de Worker gestuurd.'; });
     return;
   }
+  // De reden staat ONDER de regel en niet alleen in een hovertekst: op een
+  // telefoon bestaat hover niet, en dan is "✗ fout" vier keer een raadsel.
   for(const i of items){
-    const p = $(i.id);
-    try{ await i.run(); p.textContent = '✓ ok'; p.className = 'pill p-ok'; p.title = ''; }
+    const p = $(i.id), uit = $(i.id + '_uit');
+    try{ await i.run(); p.textContent = '✓ ok'; p.className = 'pill p-ok'; p.title = ''; uit.classList.add('hidden'); }
     catch(e){ p.textContent = '✗ fout'; p.className = 'pill p-uit';
-              p.title = (e.diag && (e.diag.title + '\n' + (e.diag.detail||''))) || e.message; }
+              p.title = (e.diag && (e.diag.title + '\n' + (e.diag.detail||''))) || e.message;
+              uit.textContent = p.title; uit.classList.remove('hidden'); }
   }
 }
 async function testAi(){
