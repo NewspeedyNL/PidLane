@@ -1548,7 +1548,7 @@ function plMeetPoortVraag(niveau, watVoor){
         '<div class="mg-kaart">'+
           '<div class="mg-t">📡 De meting voor '+watFor(watVoor)+'</div>'+
           '<div class="mg-s">Er is al gemeten: <b>'+st.genoeg+' van de '+st.sensoren+'</b> sensoren, over <b>'+duur+'</b>'+
-            (st.rijSec ? ', waarvan '+st.rijSec+' s gereden' : '')+'. Dat is genoeg voor '+r.eis.naam+'.</div>'+
+            (st.rijSec ? ', waarvan '+st.rijSec+' s gereden' : '')+'. Dat is genoeg voor een '+r.eis.naam+'.</div>'+
           '<div class="mg-knoppen">'+
             '<button class="mg-pri" id="mgGebruik">✓ Gebruik de meting van zojuist</button>'+
             '<button class="mg-sec" id="mgMeer">⏳ Nog even meten ('+r.eis.sec+' s)</button>'+
@@ -1575,7 +1575,7 @@ function plMeetPoortVraag(niveau, watVoor){
     ov.innerHTML =
       '<div class="mg-kaart">'+
         '<div class="mg-t">📡 Eerst meten voor '+watFor(watVoor)+'</div>'+
-        '<div class="mg-s">Hiervoor heb ik '+r.eis.naam+' nodig. '+
+        '<div class="mg-s">Hiervoor heb ik een '+r.eis.naam+' nodig. '+
           (r.rijTekort ? 'Wat ik nu heb is stilstaand gemeten, en daarin is belasting per definitie onzichtbaar.'
                        : 'Nu heb ik alleen een momentopname, en daar kan ik geen betrouwbaar oordeel op bouwen.')+
         '</div>'+
