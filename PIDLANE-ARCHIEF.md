@@ -14,6 +14,29 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — Rit-monitor: UITVAL-storm na bewust wegschakelen
+
+**Wat er te zien was.** Logboek 26-09, 01:17:55: lege multi-PID-antwoorden,
+de groep verkleind tot 1, een ELM-herinitialisatie (`ATWS`) — en om
+01:17:58 vijftien keer `UITVAL:…levert geen data meer terwijl de rest
+doorloopt`, vanaf 01:18:14 gevolgd door evenveel `hersteld na ~26–43s`. Er
+startte ook een verificatie op `UITVAL:0104`.
+
+**Waarom de bestaande rem het niet ving.** De watchers onderdrukten alleen
+bij een dichte bus-poort (`PLBusGate`, gaat over de ECU) of als ≥ 70% van
+de actieve PIDs stil was. De trage groep (koelwater, brandstof, druk)
+stond nog binnen zijn drempel van 30 s, dus de fractie bleef eronder. Een
+eerste versie van `test-watcherpauze.js` met alleen snelle PIDs was daardoor
+groen mét en zónder de fix — dat mengsel staat er nu in.
+
+**Wat er nu staat.** `_pauzeReden()`: `PLAchtergrond.weg()`,
+`PLElm.poortDicht()`, of een gat van meer dan drie tikken in de eigen tik
+(bevroren WebView: bij terugkomst staat `weg()` al op false). Tijdens een
+pauze doen de watchers niets; daarna telt stilte per PID vanaf het einde
+van de pauze plus `herstelMs` (20 s). De bulk-recorder pauzeert bewust níét
+mee: met de meetdienst loopt de meting op de achtergrond door, en wat hij
+dan opneemt is echt.
+
 ## 26-09-2026 — Bulk-recorder: NOx en AdBlue met 100% dekking op een auto zonder SCR
 
 **Wat er te zien was.** In de bulk-analyse stonden "NOx doseerpomp 52,9 %"

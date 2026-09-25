@@ -55,6 +55,10 @@ const PLWatch = {
     // max(stilMinMs, stilFactor x eigen pollinterval).
     stilNaMs: 8000, stilMinMs: 8000, stilFactor: 3, buitenBeeldFactor: 2.5,
     minSamples: 5, busStilFractie: 0.7,
+    // Na een pauze (app weg, ELM-herinitialisatie) telt stilte pas vanaf
+    // het einde van die pauze plús deze marge: de pollronde moet de hele
+    // lijst weer rond krijgen, en de trage groep kwam op 26-09 pas na ~40 s.
+    herstelMs: 20000,
     flatMinN: 8, flatMinMs: 6000, refVarMin: 40,
     cooldownMs: 60000, testCooldownMs: 120000,
     piekLimiet: { '0105':4, '010F':6, '0146':4, '015C':5, '0142':2 },
@@ -62,6 +66,7 @@ const PLWatch = {
   },
 
   _timer:null, _seen:{}, _cool:{}, _flatCand:{}, _trimSinds:null, _busStil:false,
+  _pauze:null, _pauzeEinde:0, _vorigeTik:0,
   _fase:'onbekend', _faseSinds:0,
   _dekking:{},            // testId → { runs:n, hits:n }
   _ritStart:0, _startECT:null, _thermoGemeld:false,
@@ -235,6 +240,27 @@ const PLWatch = {
     if(st.fase!==this._fase){ this._fase=st.fase; this._faseSinds=nu; }
     const faseDuur=nu-this._faseSinds;
 
+    // ── pauze: de app is bewust weggeschakeld, of de adapter herstart ──
+    // Logboek 26-09-2026: wegschakelen, een paar lege multi-PID-antwoorden,
+    // een ELM-herinitialisatie — en vijftien keer UITVAL, gevolgd door
+    // vijftien keer "hersteld na ~30s". De bus-poort zag het niet: die gaat
+    // over de ECU, niet over een app die niet vraagt of een adapter die
+    // herstart. Stilte in die tijd is geen sensor die uitvalt, dus ALLES
+    // wacht: geen uitval, geen bevroren waarde, geen tests. Daarna telt
+    // stilte pas vanaf het einde van de pauze plus cfg.herstelMs.
+    // Lag deze tik zelf stil (WebView bevroren terwijl de app weg was), dan
+    // ziet hij de pauze nooit als 'weg': bij terugkomst staat die al op
+    // false. Het gat in de eigen tik is dan het bewijs.
+    const vorige=this._vorigeTik; this._vorigeTik=nu;
+    const pauze=this._pauzeReden() || ((vorige && nu-vorige > 3*this.cfg.tickMs) ? 'meetlus lag stil' : null);
+    if(pauze){
+      if(this._pauze!==pauze) this._log('Watchers: gepauzeerd ('+pauze+') — geen meldingen tot de meting weer loopt','info');
+      this._pauze=pauze; this._pauzeEinde=nu;
+      return;
+    }
+    if(this._pauze){ this._log('Watchers: hervat na '+this._pauze,'info'); this._pauze=null; }
+    const stilVanaf=this._pauzeEinde ? this._pauzeEinde+this.cfg.herstelMs : 0;
+
     // ── bus-gezondheid (≥70% stil = adapter-hik: alles onderdrukken) ──
     const actieve=[]; let stil=0;
     for (const pid of Object.keys(h)){
@@ -286,7 +312,7 @@ const PLWatch = {
       if(s.samples<this.cfg.minSamples) continue;
       const drempel=this._stilDrempel(pid);
       if(!this._echtGevraagd(pid, drempel)) continue;
-      if(nu-s.lastT>drempel){
+      if(nu-Math.max(s.lastT, stilVanaf)>drempel){
         s.uitgevallen=true; s.vanaf=s.lastT;
         this._meld('UITVAL:'+pid, `${this._naam(pid)} levert geen data meer terwijl de rest doorloopt`, false);
       }
@@ -389,6 +415,17 @@ const PLWatch = {
     if(gedaan.length) L.push('  uitgevoerd: '+gedaan.join('; '));
     if(niet.length)  L.push('  niet aan bod (voorwaarde deed zich niet voor): '+niet.join('; '));
     return L.join('\n');
+  },
+
+  /* Waarom er nu niet gemeten wordt, of null. Twee bronnen, allebei van een
+     andere module: PLAchtergrond weet of de app weg is, PLElm of de adapter
+     herstart. Ontbreekt een module, dan is dat geen pauze. */
+  _pauzeReden(){
+    try{ if(window.PLAchtergrond && typeof PLAchtergrond.weg==='function' && PLAchtergrond.weg()) return 'app op de achtergrond'; }
+    catch(e){ console.warn('PLAchtergrond.weg mislukt:', e); }
+    try{ if(window.PLElm && typeof PLElm.poortDicht==='function' && PLElm.poortDicht()) return 'adapter herstart'; }
+    catch(e){ console.warn('PLElm.poortDicht mislukt:', e); }
+    return null;
   },
 
   _meld(sig, reden, negeerCooldown){

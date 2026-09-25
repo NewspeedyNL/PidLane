@@ -1009,6 +1009,11 @@ MUTATIES=(
 "public/pidlane-intro.js@@  var DUUR_MS = 2900;@@  var DUUR_MS = 2000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
+# ── Rit-monitor: geen UITVAL als de app zelf niet meet (26-09-2026) ──
+"public/pidlane-watchers.js@@PLAchtergrond.weg()) return 'app op de achtergrond';@@false) return 'app op de achtergrond';@@test-watcherpauze.js@@even wegschakelen levert weer een rij UITVAL-meldingen op, en twintig seconden later evenveel 'hersteld'"
+"public/pidlane-watchers.js@@PLElm.poortDicht()) return 'adapter herstart';@@false) return 'adapter herstart';@@test-watcherpauze.js@@een ELM-herinitialisatie telt als uitval van elke snelle sensor"
+"public/pidlane-watchers.js@@((vorige && nu-vorige > 3*this.cfg.tickMs) ? 'meetlus lag stil' : null)@@null@@test-watcherpauze.js@@na een bevroren WebView staat weg() alweer op false en rolt de uitval er bij terugkomst alsnog uit"
+"public/pidlane-watchers.js@@      if(nu-Math.max(s.lastT, stilVanaf)>drempel){@@      if(nu-s.lastT>drempel){@@test-watcherpauze.js@@na een pauze telt de stilte van vóór de pauze mee: de trage groep valt 'uit' voordat hij terug kan zijn"
 # ── Bulk-recorder: alleen verse metingen van PIDs die bij dit voertuig passen (26-09-2026) ──
 "public/pidlane-bulk.js@@    if (typeof pidGate === 'function' && !pidGate(k, 'kiesbaar')) return false;@@@@test-bulkrecorder.js@@de recorder schrijft NOx en AdBlue weg op een benzineauto, 600 keer hetzelfde getal"
 "public/pidlane-bulk.js@@    if (t && nu - t > VERS_MS) return false;@@@@test-bulkrecorder.js@@een PID die één keer antwoordde staat de hele rit als meting in de opname"

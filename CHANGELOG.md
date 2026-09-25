@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Rit-monitor: geen uitval-meldingen bij wegschakelen
+ ═══════════════════════════════════════════════════════════
+
+ - Even wegschakelen gaf vijftien keer UITVAL en daarna vijftien keer
+   "hersteld na ~30s". De watchers pauzeren nu zolang de app op de
+   achtergrond staat, de adapter herstart (ELM-poort dicht) of hun eigen
+   tik stil lag, en tellen stilte daarna pas vanaf het einde van de pauze
+   plus 20 s. Een echte uitval wordt daarna gewoon weer gemeld.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Bulk-recorder: alleen verse metingen van PIDs die bij de auto passen
  ═══════════════════════════════════════════════════════════
 
