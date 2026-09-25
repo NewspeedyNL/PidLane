@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Bulk-recorder: alleen verse metingen van PIDs die bij de auto passen
+ ═══════════════════════════════════════════════════════════
+
+ - De recorder schreef elke seconde álles uit pidVals weg, ook de laatste
+   waarde van een PID die maar één keer antwoordde. Gevolg in de analyse:
+   NOx-doseerpomp en AdBlue op een auto zonder SCR, 600 keer hetzelfde
+   getal, 100% dekking. Nu gaat een waarde alleen mee als de PID-gate hem
+   voor dit voertuig toelaat en hij in de laatste 30 s is bijgewerkt.
+ - Het analysevenster laat in oudere opnames weg wat niet bij het voertuig
+   past, en zegt hoeveel sensoren dat waren.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Slim visueel: lampjes boven de meter, dieselschaal, één rail
  ═══════════════════════════════════════════════════════════
 

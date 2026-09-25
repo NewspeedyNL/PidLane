@@ -99,6 +99,10 @@
   /* ═══════════════════ HULP ═══════════════════ */
 
   function el(id) { return document.getElementById(id); }
+  function plausibel(pid) {
+    try { return typeof vehiclePlausiblePid !== 'function' || vehiclePlausiblePid(pid); }
+    catch (e) { console.warn('vehiclePlausiblePid(' + pid + ') mislukt:', e); return true; }
+  }
   function def(pid) { try { return getPidDef(pid) || null; } catch (e) { return null; } }
   function naam(pid) { var d = def(pid); return (d && d.name) || pid; }
   function eenheid(pid) { var d = def(pid); return (d && d.unit) || ''; }
@@ -149,6 +153,7 @@
       segTel: {},            // seg -> aantal regels (1 regel = 1 seconde)
       segRij: [],            // [{seg, n}] op volgorde, voor de tijdbalk
       pids: {},              // pid -> {n, min, max, som}
+      nietPlausibel: {},     // pid -> true: niet bij dit voertuig, niet meegeteld
       reeks: {},             // pid -> [{t, v}] uitgedund
       markeringen: [],
       klim: { koelwater: [], n: 0 },
@@ -184,6 +189,11 @@
         if (!Object.prototype.hasOwnProperty.call(v, pid)) continue;
         var w = v[pid];
         if (typeof w !== 'number' || !isFinite(w)) continue;
+        // Opnames van vóór 26-09 bevatten PIDs die niet bij dit voertuig
+        // passen (NOx en AdBlue op een benzineauto): de recorder schreef
+        // toen alles uit pidVals weg. Die tellen hier niet mee — wel het
+        // aantal, zodat je ziet dát er iets is weggelaten.
+        if (!plausibel(pid)) { uit.nietPlausibel[pid] = true; continue; }
         var p = uit.pids[pid];
         if (!p) p = uit.pids[pid] = { n: 0, min: w, max: w, som: 0 };
         p.n++; p.som += w;
@@ -328,6 +338,13 @@
           (mager.length ? ' Daarvan zijn er ' + mager.length + ' in minder dan de helft van de regels ' +
             'aanwezig — die stonden niet de hele rit in je selectie, dus hun gemiddelden gaan over een deel van de rit.'
                         : ' Alle sensoren zijn in ruim de helft van de regels aanwezig.') });
+    }
+    var weg = Object.keys(a.nietPlausibel || {});
+    if (weg.length) {
+      uit.push({ soort: 'info', kop: 'Weggelaten',
+        tekst: weg.length + ' sensor' + (weg.length === 1 ? '' : 'en') + ' in deze opname pas' + (weg.length === 1 ? 't' : 'sen') +
+          ' niet bij dit voertuig (' + weg.slice(0, 4).map(naam).join(', ') + (weg.length > 4 ? ', …' : '') +
+          ') en tell' + (weg.length === 1 ? 't' : 'en') + ' niet mee.' });
     }
 
     if (a.markeringen.length) {

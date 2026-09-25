@@ -1009,6 +1009,10 @@ MUTATIES=(
 "public/pidlane-intro.js@@  var DUUR_MS = 2900;@@  var DUUR_MS = 2000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
+# ── Bulk-recorder: alleen verse metingen van PIDs die bij dit voertuig passen (26-09-2026) ──
+"public/pidlane-bulk.js@@    if (typeof pidGate === 'function' && !pidGate(k, 'kiesbaar')) return false;@@@@test-bulkrecorder.js@@de recorder schrijft NOx en AdBlue weg op een benzineauto, 600 keer hetzelfde getal"
+"public/pidlane-bulk.js@@    if (t && nu - t > VERS_MS) return false;@@@@test-bulkrecorder.js@@een PID die één keer antwoordde staat de hele rit als meting in de opname"
+"public/pidlane-bulkvenster.js@@        if (!plausibel(pid)) { uit.nietPlausibel[pid] = true; continue; }@@@@test-bulkrecorder.js@@een oude opname toont in de analyse nog NOx en AdBlue op een benzineauto"
 # ── Slim visueel (25-09-2026) ──
 # Een vaste meter die de getallen niet mogen laten ontsporen, een keuze die bij
 # een dode of trage PID moet doorvallen, een rem op de bus die precies zo lang
