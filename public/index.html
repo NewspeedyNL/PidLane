@@ -1125,6 +1125,11 @@ function closeConnOv(){
                plPidViewHerstel() zet hem meteen goed als er een andere
                voorkeur is opgeslagen. -->
           <button class="pidview-btn active" data-mode="slim" onclick="setPidView('slim')">🧠 Slim</button>
+          <!-- Slim visueel (25-09-2026): één vaste meter voor wat er vloeiend
+               ververst — toerental, snelheid, gaspedaal, laaddruk of verbruik —
+               met een rustige rand voor koelwater, olie, tank en accu. Zie
+               pidlane-visueel.js. -->
+          <button class="pidview-btn" data-mode="visueel" onclick="setPidView('visueel')">🎯 Slim visueel</button>
           <span class="pidview-scheid"></span>
           <button class="pidview-btn waak" id="waakBtn" onclick="toggleWaakronde()" title="Controleert op de achtergrond rustig de sensoren die je niet hebt aangevinkt">◉ Waakronde</button>
         </div>
@@ -1847,6 +1852,7 @@ function closeConnOv(){
 <script src="pidlane-datalog.js"></script>
 <script src="pidlane-archief.js"></script><!-- module → pidlane-archief.js -->
 <script src="pidlane-pids.js"></script>
+<script src="pidlane-visueel.js"></script>
 <script src="pidlane-correlatie.js"></script>
 <script src="pidlane-totalcheck.js"></script>
 <script src="pidlane-diagnose.js"></script>

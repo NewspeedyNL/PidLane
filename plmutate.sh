@@ -1009,6 +1009,20 @@ MUTATIES=(
 "public/pidlane-intro.js@@  var DUUR_MS = 2900;@@  var DUUR_MS = 2000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
+# ── Slim visueel (25-09-2026) ──
+# Een vaste meter die de getallen niet mogen laten ontsporen, een keuze die bij
+# een dode of trage PID moet doorvallen, en een rem op de bus die precies zo
+# lang duurt als de weergave open staat.
+"public/pidlane-visueel.js@@  return Math.max(0, Math.min(100, (n-lo)/(hi-lo)*100));@@  return (n-lo)/(hi-lo)*100;@@test-visueel.js@@de vulling is niet meer begrensd: 99999 rpm zet de naald voorbij het laatste streepje"
+"public/pidlane-visueel.js@@  R_CIJFER: 100, FS_CIJFER: 17,@@  R_CIJFER: 110, FS_CIJFER: 17,@@test-visueel.js@@de cijfers schuiven naar buiten en vallen over de streepjes"
+"public/pidlane-visueel.js@@Y_SNEL: 204, Y_KMH: 240,@@Y_SNEL: 204, Y_KMH: 230,@@test-visueel.js@@km/h valt over het snelheidsgetal"
+"public/pidlane-visueel.js@@    if(window.PLSched && window.PLSched.dood(pid)) return false;\n@@@@test-visueel.js@@een dode PID houdt zijn plek op de meter in plaats van door te vallen naar de volgende"
+"public/pidlane-visueel.js@@if(h[i] && typeof h[i].t==='number' && h[i].t>=vanaf) t.push@@if(h[i] && typeof h[i].t==='number') t.push@@test-visueel.js@@metingen van vóór het openen (ander tempo) sturen het pedaal ten onrechte naar de rand"
+"public/pidlane-visueel.js@@_staat.vierdeVast='laaddruk'; return@@return@@test-visueel.js@@de rechterboog wisselt terug van laaddruk naar verbruik zodra het turbobewijs even wegvalt"
+"public/pidlane-visueel.js@@if((mt==='benzine' || mt==='hybride') && bruikbaar('0110'))@@if(bruikbaar('0110'))@@test-visueel.js@@een diesel krijgt een verbruik uit de luchtmassa, en dat klopt bij een diesel nooit"
+"public/pidlane-visueel.js@@return ((nu||Date.now())-laatste-krediet) >@@return ((nu||Date.now())-laatste) >@@test-visueel.js@@de meter wordt dof zodra een andere lezer de bus even bezet"
+"public/pidlane-visueel.js@@  return !_staat.gebruik.has(pid);@@  return true;@@test-visueel.js@@de rem raakt ook het pedaal dat op de meter staat"
+"public/pidlane-plload.js@@  try{ if(window.PLVisueel && PLVisueel.remt(pid)) ms=Math.max(ms, PLVisueel.REM_MS); }@@  try{ }@@test-visueel.js@@de rem is losgekoppeld: de dubbele gasklep- en belasting-PIDs blijven de bus vullen"
 )
 
 echo
