@@ -601,11 +601,11 @@ function schakel(id){
 }
 // Een chip op de rail opent het scherm van die module — hetzelfde als een tik
 // op de zwevende pil die hij vervangt. Zonder eigen scherm: het run-paneel.
-const OPEN = { monitor:'openMonitorView', bulk:'openBulkRecorder', waak:'openWaakvenster' };
 function open(id){
   try{
-    const f=window[OPEN[id]];
-    if(typeof f==='function') f();
+    if(id==='monitor' && typeof openMonitorView==='function') openMonitorView();
+    else if(id==='bulk' && typeof openBulkRecorder==='function') openBulkRecorder();
+    else if(id==='waak' && typeof openWaakvenster==='function') openWaakvenster();
     else if(window.PLRun && typeof window.PLRun.open==='function') window.PLRun.open();
   }catch(e){ console.warn('PLVisueel: openen van '+id+' mislukt', e); }
 }

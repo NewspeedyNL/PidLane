@@ -155,6 +155,9 @@ var KRITIEK = [
   'openNeonDashboard','closeNeonDashboard','closeExtraDash',
   'openAIReportSheet','closeAIReportSheet',
   'openBulkRecorder',
+  // Slim visueel: een chip op de rail opent het scherm van zijn module, en
+  // het analysevenster laat weg wat niet bij het voertuig past (26-09-2026).
+  'openMonitorView','openWaakvenster','vehiclePlausiblePid',
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
   'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf',
   // De ene plek waar de app het net op gaat (#117, pidlane-plfetch.js). Elf
