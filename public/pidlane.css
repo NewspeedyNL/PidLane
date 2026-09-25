@@ -1293,11 +1293,11 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-plaat { fill:var(--sur); stroke:var(--bd2); stroke-width:2; }
 .vis-spoor { fill:none; stroke:var(--sur2); stroke-linecap:butt; }
 .vis-zone  { fill:none; stroke:var(--or); stroke-opacity:.35; stroke-linecap:butt; }
+.vis-zone.rood { stroke:var(--rd); }
 .vis-vul   { fill:none; stroke:var(--bl); stroke-linecap:butt; transition:stroke-dasharray .3s linear, stroke .3s; }
-.vis-vul.warn, #visg-pedaal .vis-vul.warn { stroke:var(--or); }
+.vis-vul.warn { stroke:var(--or); }
 .vis-vul.danger { stroke:var(--rd); }
 .vis-vul.vac { stroke:var(--tx3); }
-#vis-pedaalboog { stroke:var(--gn); }
 .vis-streep { stroke:var(--tx2); stroke-width:1.4; stroke-linecap:round; }
 .vis-streep.groot { stroke:var(--tx); stroke-width:2.6; }
 .vis-streep.rood { stroke:var(--or); }
@@ -1309,31 +1309,48 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-snel { font-weight:800; fill:var(--tx); letter-spacing:-1.5px; }
 .vis-eenheid { font-weight:600; fill:var(--tx3); }
 .vis-rpm { font-family:var(--m) !important; fill:var(--tx3); }
-.vis-klein { font-family:var(--m) !important; font-weight:500; fill:var(--tx); }
+.vis-klein { font-family:var(--m) !important; font-weight:600; fill:var(--tx); }
 .vis-icoon { color:var(--tx2); overflow:visible; }
 .vis-naald, .vis-piek { transform-box:view-box; transform-origin:160px 160px; transition:transform .3s linear; }
 .vis-naald line { stroke:var(--rd); stroke-width:3.4; stroke-linecap:round; }
 #visg-naald.warn .vis-naald line { stroke:var(--or); }
 .vis-piek path { fill:var(--tx); opacity:.7; }
 .vis-naaf { fill:var(--sur2); stroke:var(--bd2); stroke-width:2; }
-/* Laaddruk vult vanaf nul naar twee kanten; verbruik vult één boog. De
-   ongebruikte paden staan er wel (vaste tekening), maar tonen niets. */
-#visg-vierde:not(.laaddruk) #vis-vacboog, #visg-vierde:not(.laaddruk) #vis-boostboog,
-#visg-vierde:not(.laaddruk) .vis-nul, #visg-vierde.laaddruk #vis-vierdeboog { display:none; }
+/* De onderboog heeft drie soorten. Alle paden staan er (vaste tekening), en
+   hier wordt per soort getoond wat erbij hoort: olie en pedaal vullen één
+   boog, laaddruk vult vanaf nul naar twee kanten; alleen olie heeft zones. */
+#visg-onder:not(.laaddruk) #vis-vacboog, #visg-onder:not(.laaddruk) #vis-boostboog,
+#visg-onder:not(.laaddruk) .vis-nul, #visg-onder.laaddruk #vis-onderboog,
+#visg-onder:not(.olie) .vis-zone { display:none; }
+#visg-onder.pedaal #vis-onderboog { stroke:var(--gn); }
+/* De plekjes: grijs als het goed is, blauw bij een koude motor, oranje en
+   rood bij de grens, en een streepje zonder icoonkleur als er niets is. */
+.vis-plek .vis-icoon { color:var(--tx2); }
+.vis-plek.koud .vis-icoon { color:var(--bl); }
+.vis-plek.warn .vis-icoon, .vis-plek.warn .vis-klein { color:var(--or); fill:var(--or); }
+.vis-plek.danger .vis-icoon, .vis-plek.danger .vis-klein { color:var(--rd); fill:var(--rd); }
+.vis-plek.geen { opacity:.45; }
+.vis-plek.oud { opacity:.5; }
+#visg-onder.warn .vis-klein { fill:var(--or); }
+#visg-onder.danger .vis-klein { fill:var(--rd); }
 /* Leeg = nog niets binnen, oud = het laatste antwoord is te lang geleden,
    afwezig = deze auto of selectie heeft er niets voor. De naald blijft in
    alle drie staan waar hij stond; alleen de kleur zegt dat het niet vers is. */
 .vis-slot.leeg, .vis-slot.oud { opacity:.45; }
 .vis-slot.afwezig { opacity:.3; }
 .vis-slot.afwezig .vis-vul { display:none; }
-.vis-rand { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; width:100%; }
-.vis-chip { display:flex; align-items:center; gap:6px; padding:7px 11px; border-radius:999px; border:1px solid var(--bd); background:var(--sur); color:var(--tx2); }
-.vis-chip b { font-size:15px; font-weight:700; color:var(--tx); font-variant-numeric:tabular-nums; min-width:2ch; text-align:right; }
-.vis-chip small { font-size:11px; color:var(--tx3); }
-.vis-chipicoon { width:20px; height:20px; flex:none; }
-.vis-chip.warn { border-color:var(--or); color:var(--or); }
-.vis-chip.danger { border-color:var(--rd); color:var(--rd); }
-.vis-chip.oud { opacity:.5; }
+/* Het meldingenvak: wat er op de achtergrond loopt, of snelkoppelingen. */
+.vis-meldingen { display:flex; flex-direction:column; gap:6px; width:100%; max-width:420px; }
+.vis-meldingen:empty { display:none; }
+.vis-meld { display:flex; align-items:flex-start; gap:10px; width:100%; text-align:left; padding:9px 12px; border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); font-family:var(--f); cursor:pointer; }
+.vis-meld-ic { flex:none; font-size:16px; line-height:1.3; }
+.vis-meld-tx { display:flex; flex-direction:column; min-width:0; }
+.vis-meld-tx b { font-size:13px; font-weight:700; }
+.vis-meld-tx small { font-size:12px; color:var(--tx2); overflow-wrap:anywhere; }
+.vis-meld.bev { border-color:var(--or); background:var(--ors); }
+.vis-meld.bev.ernstig { border-color:var(--rd); background:var(--rds); }
+.vis-meld.meer { justify-content:flex-start; font-size:12px; font-weight:700; color:var(--bl); background:var(--sur2); }
+.vis-snelk { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
 .vis-voet { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--tx3); }
 .vis-leeg { display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:16px; border:1px solid var(--bd); border-radius:var(--r); background:var(--sur); color:var(--tx2); font-size:13px; }
 @media (prefers-reduced-motion:reduce){ .vis-vul, .vis-naald, .vis-piek { transition:none; } }

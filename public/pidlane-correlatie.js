@@ -97,7 +97,11 @@ function renderCorrelationBanner(hits){
   let box=document.getElementById('corrBanner');
   // Uit, of niets gevonden: geen balk. Twee verschillende redenen, dezelfde
   // uitkomst — maar de sheet blijft wél werken als hij openstaat.
-  if(!_bevAan || !hits.length){ if(box) box.style.display='none'; _bevSheetBij(); return; }
+  // Slim visueel (pidlane-visueel.js) toont de bevindingen in zijn eigen
+  // meldingenvak onder de meter. Daar verhuizen ze naartoe, ze verdubbelen
+  // niet: zolang die weergave open staat blijft de balk hier weg.
+  const inVak = (typeof pidViewMode!=='undefined' && pidViewMode==='visueel');
+  if(!_bevAan || !hits.length || inVak){ if(box) box.style.display='none'; _bevSheetBij(); return; }
   if(!box){
     box=document.createElement('div'); box.id='corrBanner';
     box.style.cssText='margin:0 0 12px;border-radius:var(--r);overflow:hidden;border:1px solid var(--or)';

@@ -12,6 +12,9 @@
 // En de koppeling, die node niet kan toetsen:
 //   • setPidView('visueel') bouwt de meter en zet de rem op de bus aan;
 //   • een waarde die via updPID() binnenkomt komt op de meter;
+//   • een snelkoppeling in het meldingenvak zet echt iets aan (via PLRun), en
+//     daarna staat die functie in het vak in plaats van de snelkoppelingen;
+//   • de bevindingenbalk verhuist naar het vak en komt terug in Slim;
 //   • terug naar Slim haalt de rem er weer af;
 //   • zonder toerental staat er een uitleg met een knop, geen lege meter.
 //
@@ -30,13 +33,14 @@ function toets(naam, waar, uitleg) {
   else { console.log('  FOUT ' + naam + (uitleg ? ' — ' + uitleg : '')); fouten++; }
 }
 const PIDS = ['010C', '010D', '0149', '0104', '0111', '010B', '0110', '0105', '015C', '012F', '0142'];
+const WACHT = ms => new Promise(r => setTimeout(r, ms));
 
 // Meet in de pagina: elk tekst- en icoonvak van de meter, in viewBox-eenheden.
 // De teksten eerst op hun breedste inhoud, zodat "past net" niet groen staat
 // omdat er toevallig een smal getal stond.
 const MEET = `(function(){
-  const zet = { 'vis-snel':'999', 'vis-rpm':'9990 rpm', 'vis-pedaaltekst':'100%',
-                'vis-vierdetekst':'≈99+', 'vis-vierdeeenheid':'L/100km' };
+  const zet = { 'vis-snel':'999', 'vis-rpm':'9990 rpm', 'visv-koel':'118°', 'visv-accu':'14,8 V',
+                'visv-tank':'100%', 'vis-ondertekst':'≈+1,5 bar' };
   Object.keys(zet).forEach(function(id){ const e=document.getElementById(id); if(e) e.textContent=zet[id]; });
   const svg = document.querySelector('.vis-meter');
   if (!svg) return { fout: 'geen .vis-meter in het rooster' };
@@ -88,13 +92,18 @@ function beoordeel(m) {
     await new Promise(r => setTimeout(r, 1500));
     await app.ev(`(function(){ ${JSON.stringify(PIDS)}.forEach(function(p){ activePIDs.add(p); }); setPidView('visueel'); return true; })()`);
     await new Promise(r => setTimeout(r, 2500));
-    const staat = await app.ev(`({ modus: pidViewMode, meter: !!document.querySelector('#gGrid .vis-meter'),
-      rand: document.querySelectorAll('#gGrid .vis-chip').length, aan: PLVisueel.staat().aan,
-      pedaal: PLVisueel.staat().ind && PLVisueel.staat().ind.pedaal })`);
+    const staat = await app.ev(`(function(){ const s=PLVisueel.staat(); return { modus: pidViewMode,
+      meter: !!document.querySelector('#gGrid .vis-meter'), aan: s.aan,
+      onder: s.ind && s.ind.onder, plekken: s.ind && s.ind.plekken,
+      koel: document.getElementById('visv-koel').textContent, tank: document.getElementById('visv-tank').textContent,
+      snel: document.querySelectorAll('#visMeld .vis-snelk button').length }; })()`);
     toets('setPidView("visueel") bouwt de meter', staat.modus === 'visueel' && staat.meter, JSON.stringify(staat));
     toets('de rem staat aan zolang de weergave open is', staat.aan === true);
-    toets('het gaspedaal 0149 staat op de meter', staat.pedaal === '0149', 'kreeg ' + staat.pedaal);
-    toets('de rand toont koelwater, olie, tank en accu', staat.rand === 4, 'chips: ' + staat.rand);
+    toets('olie staat op de onderboog', staat.onder && staat.onder.pid === '015C', JSON.stringify(staat.onder));
+    toets('koelwater, accu en brandstof hebben hun plek', staat.plekken && staat.plekken.koel === '0105' &&
+      staat.plekken.accu === '0142' && staat.plekken.tank === '012F', JSON.stringify(staat.plekken));
+    toets('de plekjes tonen een getal, geen streepje', /°$/.test(staat.koel) && /%$/.test(staat.tank), staat.koel + ' / ' + staat.tank);
+    toets('niets actief: snelkoppelingen in het meldingenvak', staat.snel >= 3, 'knoppen: ' + staat.snel);
 
     console.log('\n2. Gemeten in de browser: alles binnen de ring, niets over elkaar');
     const m = await app.ev(MEET);
@@ -127,7 +136,42 @@ function beoordeel(m) {
     const snel = await app.ev(`(function(){ updPID('010D', 123); return document.getElementById('vis-snel').textContent; })()`);
     toets('een snelheid via updPID() komt op de meter', snel === '123', 'kreeg "' + snel + '"');
 
-    console.log('\n5. De rem op de bus');
+    console.log('\n5. Het meldingenvak');
+    const meld = await app.ev(`(function(){
+      const voor=Array.from(document.querySelectorAll('#visMeld .vis-snelk button')).map(b=>b.textContent);
+      PLVisueel.schakel('monitor');
+      const aan=PLRun.staat().monitor.aan;
+      const tekst=document.getElementById('visMeld').textContent;
+      const knoppen=Array.from(document.querySelectorAll('#visMeld .vis-snelk button')).map(b=>b.textContent);
+      PLVisueel.schakel('monitor');
+      return { admin:isAdmin(), voor:voor, aan:aan, tekst:tekst, knoppen:knoppen, uit:!PLRun.staat().monitor.aan };
+    })()`);
+    toets('de bulk-recorder staat alleen als snelkoppeling bij een beheerder',
+      meld.voor.some(k => /Bulk-recorder/.test(k)) === !!meld.admin, 'admin ' + meld.admin + ': ' + meld.voor.join(', '));
+    toets('de snelkoppeling zet de rit-monitor echt aan (via PLRun)', meld.aan === true, JSON.stringify(meld));
+    toets('daarna staat de rit-monitor in het vak', /Rit-monitor/.test(meld.tekst), meld.tekst);
+    toets('en geen snelkoppeling meer naar caravanrit of bulk-recorder (één tegelijk)',
+      !meld.knoppen.some(k => /Caravanrit|Bulk-recorder|Rit-monitor/.test(k)), meld.knoppen.join(', '));
+    toets('de waakronde kan er nog bij', meld.knoppen.some(k => /Waakronde/.test(k)), meld.knoppen.join(', '));
+    toets('nog een keer tikken zet hem weer uit', meld.uit === true);
+    const bev = await app.ev(`(function(){
+      bevindingenZet(true);
+      _bevHits=[{id:'proef', naam:'Proefbevinding', uitleg:'alleen voor bproef-visueel', ernst:2, rang:0}];
+      renderCorrelationBanner(_bevHits); PLVisueel.tik();
+      const balk=document.getElementById('corrBanner');
+      const r={ balkWeg: !balk || balk.style.display==='none', inVak: /Proefbevinding/.test(document.getElementById('visMeld').textContent) };
+      setPidView('slim');
+      const b2=document.getElementById('corrBanner');
+      r.balkTerug = !!b2 && b2.style.display!=='none';
+      _bevHits=[]; renderCorrelationBanner(_bevHits); setPidView('visueel');
+      return r;
+    })()`);
+    toets('in Slim visueel staat de bevinding in het vak', bev.inVak, JSON.stringify(bev));
+    toets('…en niet óók nog in de balk bovenaan (verhuisd, niet verdubbeld)', bev.balkWeg, JSON.stringify(bev));
+    toets('terug in Slim staat de balk er weer', bev.balkTerug, JSON.stringify(bev));
+    await WACHT(300);
+
+    console.log('\n6. De rem op de bus');
     const rem = await app.ev(`(function(){
       const open={ belasting:pidPollInterval('0104'), klep:pidPollInterval('0111'), rpm:pidPollInterval('010C'), pedaal:pidPollInterval('0149') };
       setPidView('slim');
@@ -135,11 +179,12 @@ function beoordeel(m) {
       setPidView('visueel');
       return { open:open, dicht:dicht, rem:PLVisueel.REM_MS };
     })()`);
-    toets('open: motorbelasting en gasklep geremd', rem.open.belasting >= rem.rem && rem.open.klep >= rem.rem, JSON.stringify(rem));
-    toets('open: toerental en pedaal ongemoeid', rem.open.rpm < rem.rem && rem.open.pedaal < rem.rem, JSON.stringify(rem));
+    toets('open: motorbelasting, gasklep en (met olie op de onderboog) het pedaal geremd',
+      rem.open.belasting >= rem.rem && rem.open.klep >= rem.rem && rem.open.pedaal >= rem.rem, JSON.stringify(rem));
+    toets('open: toerental ongemoeid', rem.open.rpm < rem.rem, JSON.stringify(rem));
     toets('terug naar Slim: de rem is eraf', rem.dicht.aan === false && rem.dicht.belasting < rem.rem && rem.dicht.klep < rem.rem, JSON.stringify(rem));
 
-    console.log('\n6. Zonder toerental geen lege meter maar een uitleg');
+    console.log('\n7. Zonder toerental geen lege meter maar een uitleg');
     const zonder = await app.ev(`(function(){
       activePIDs.delete('010C'); renderGauges();
       const r={ uitleg: !!document.querySelector('#gGrid .vis-leeg'), meter: !!document.querySelector('#gGrid .vis-meter'),

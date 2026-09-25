@@ -1011,18 +1011,24 @@ MUTATIES=(
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
 # ── Slim visueel (25-09-2026) ──
 # Een vaste meter die de getallen niet mogen laten ontsporen, een keuze die bij
-# een dode of trage PID moet doorvallen, en een rem op de bus die precies zo
-# lang duurt als de weergave open staat.
+# een dode of trage PID moet doorvallen, een rem op de bus die precies zo lang
+# duurt als de weergave open staat, en een meldingenvak dat leest en niets bewaart.
 "public/pidlane-visueel.js@@  return Math.max(0, Math.min(100, (n-lo)/(hi-lo)*100));@@  return (n-lo)/(hi-lo)*100;@@test-visueel.js@@de vulling is niet meer begrensd: 99999 rpm zet de naald voorbij het laatste streepje"
 "public/pidlane-visueel.js@@  R_CIJFER: 100, FS_CIJFER: 17,@@  R_CIJFER: 110, FS_CIJFER: 17,@@test-visueel.js@@de cijfers schuiven naar buiten en vallen over de streepjes"
-"public/pidlane-visueel.js@@Y_SNEL: 204, Y_KMH: 240,@@Y_SNEL: 204, Y_KMH: 230,@@test-visueel.js@@km/h valt over het snelheidsgetal"
+"public/pidlane-visueel.js@@Y_SNEL: 198, Y_KMH: 230,@@Y_SNEL: 198, Y_KMH: 222,@@test-visueel.js@@km/h valt over het snelheidsgetal"
+"public/pidlane-visueel.js@@Y_RIJ1: 248, Y_RIJ2: 272@@Y_RIJ1: 248, Y_RIJ2: 284@@test-visueel.js@@het getal van de onderboog zakt op de boog zelf"
 "public/pidlane-visueel.js@@    if(window.PLSched && window.PLSched.dood(pid)) return false;\n@@@@test-visueel.js@@een dode PID houdt zijn plek op de meter in plaats van door te vallen naar de volgende"
-"public/pidlane-visueel.js@@if(h[i] && typeof h[i].t==='number' && h[i].t>=vanaf) t.push@@if(h[i] && typeof h[i].t==='number') t.push@@test-visueel.js@@metingen van vóór het openen (ander tempo) sturen het pedaal ten onrechte naar de rand"
-"public/pidlane-visueel.js@@_staat.vierdeVast='laaddruk'; return@@return@@test-visueel.js@@de rechterboog wisselt terug van laaddruk naar verbruik zodra het turbobewijs even wegvalt"
-"public/pidlane-visueel.js@@if((mt==='benzine' || mt==='hybride') && bruikbaar('0110'))@@if(bruikbaar('0110'))@@test-visueel.js@@een diesel krijgt een verbruik uit de luchtmassa, en dat klopt bij een diesel nooit"
+"public/pidlane-visueel.js@@if(h[i] && typeof h[i].t==='number' && h[i].t>=vanaf) t.push@@if(h[i] && typeof h[i].t==='number') t.push@@test-visueel.js@@metingen van vóór het openen (ander tempo) laten het pedaal ten onrechte van de onderboog vallen"
+"public/pidlane-visueel.js@@    if(bruikbaar(p) && !_staat.traag.has(p)) return@@    if(bruikbaar(p)) return@@test-visueel.js@@een pedaal dat op deze auto te traag binnenkomt blijft op de onderboog staan en schokt"
+"public/pidlane-visueel.js@@  if(t) _staat.turboVast=true;@@@@test-visueel.js@@de onderboog wisselt terug van laaddruk naar pedaal zodra het turbobewijs even wegvalt"
+"public/pidlane-visueel.js@@    return n<KOEL_KOUD ? 'koud' : 'ok';@@    return 'ok';@@test-visueel.js@@een koude motor kleurt niet meer blauw"
+"public/pidlane-visueel.js@@    if(isFinite(r) && r>MOTOR_DRAAIT && n<ACCU_LAADT) return 'warn';@@@@test-visueel.js@@een dynamo die niet laadt blijft grijs: 12,5 V bij draaiende motor leest als goed"
 "public/pidlane-visueel.js@@return ((nu||Date.now())-laatste-krediet) >@@return ((nu||Date.now())-laatste) >@@test-visueel.js@@de meter wordt dof zodra een andere lezer de bus even bezet"
-"public/pidlane-visueel.js@@  return !_staat.gebruik.has(pid);@@  return true;@@test-visueel.js@@de rem raakt ook het pedaal dat op de meter staat"
+"public/pidlane-visueel.js@@  if(!hoofd) HOOFD.forEach(@@  HOOFD.forEach(@@test-visueel.js@@terwijl de caravanrit loopt staan er snelkoppelingen naar rit-monitor en bulk-recorder, en die horen niet tegelijk"
+"public/pidlane-visueel.js@@(!h.admin || admin)@@(true)@@test-visueel.js@@een gewone gebruiker krijgt een bulk-recorderknop die alleen 'Alleen voor admin' zegt"
+"public/pidlane-visueel.js@@  return !_staat.gebruik.has(pid);@@  return true;@@test-visueel.js@@de rem raakt ook wat op de meter staat"
 "public/pidlane-plload.js@@  try{ if(window.PLVisueel && PLVisueel.remt(pid)) ms=Math.max(ms, PLVisueel.REM_MS); }@@  try{ }@@test-visueel.js@@de rem is losgekoppeld: de dubbele gasklep- en belasting-PIDs blijven de bus vullen"
+"public/pidlane-correlatie.js@@  if(!_bevAan || !hits.length || inVak){@@  if(!_bevAan || !hits.length){@@bproef-visueel.js@@de bevindingen staan in Slim visueel twee keer: in het vak én in de balk erboven"
 )
 
 echo

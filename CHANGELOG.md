@@ -10,23 +10,31 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
- 25-09-2026 — Slim visueel: één vaste meter voor wat vloeiend ververst
+ 25-09-2026 — Slim visueel: één vaste meter met een meldingenvak eronder
  ═══════════════════════════════════════════════════════════
 
  - Nieuwe weergave naast Slim (die blijft zoals hij was). Naald = toerental,
-   midden = snelheid, links het gaspedaal, rechts laaddruk (turbo bewezen)
-   of ≈ verbruik nu uit de luchtmassa (benzine). Daaronder een rand met
-   icoontjes voor koelwater, olie, brandstofpeil en accu.
- - Belasting, gasklepsensoren, pedaal D/E, ontsteking en raildruk staan er
-   bewust niet op, en worden zolang deze weergave open staat trager
+   midden = snelheid, onderin koelwater, accu en brandstof als icoon met
+   getal. De onderboog tussen vijf en zeven uur is motorolie; zonder olie
+   laaddruk (turbo bewezen), anders het gaspedaal.
+ - Kleuren: koelwater blauw onder 60 °C; accu oranje als een draaiende
+   motor onder 13,2 V blijft (dynamo laadt niet), rood onder 12,0 of boven
+   15,0 V; tank oranje onder 12 %.
+ - Belasting, gasklepsensoren, pedalen, ontsteking, raildruk en luchtmassa
+   staan er bewust niet op en worden zolang deze weergave open staat trager
    opgevraagd (2 s), zodat de bus zijn antwoorden aan de naald geeft.
- - Een PID die op deze auto trager binnenkomt dan 800 ms gaat naar de rand;
-   een oud antwoord maakt zijn plek dof; een ontbrekende PID laat een
-   streepje staan en schuift niets op.
+ - Een pedaal of laaddruk die op deze auto trager binnenkomt dan 800 ms
+   valt van de onderboog; een oud antwoord maakt zijn plek dof; een
+   ontbrekende PID laat een streepje staan en schuift niets op.
+ - Meldingenvak onder de meter: rit-monitor, caravanrit, bulk-recorder of
+   rit-analyse (één tegelijk), de waakronde, en de bevindingen — die
+   verhuizen daarheen in plaats van bovenaan te staan. Loopt er niets,
+   dan snelkoppelingen; de bulk-recorder alleen voor een beheerder. Het vak
+   leest PLRun.staat() en bewaart zelf niets.
  - De wijzerplaat is een vaste tekening; getallen sturen alleen hoek,
    vulling en tekst. `PLGate.stats()` zegt nu ook `turbo`.
- - Getoetst door `test-visueel.js` en `bproef-visueel.js`, met tien mutaties
-   in `plmutate.sh`.
+ - Getoetst door `test-visueel.js` en `bproef-visueel.js`, met zestien
+   mutaties in `plmutate.sh`.
 
  ═══════════════════════════════════════════════════════════
  24-09-2026 — opstart-intro: neon rijbaan, logo in 3D, doorzoom naar login
