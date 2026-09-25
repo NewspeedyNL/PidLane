@@ -147,8 +147,22 @@ function beoordeel(m) {
       const aan=PLRun.staat().monitor.aan;
       const tekst=document.getElementById('visMeld').textContent;
       const knoppen=Array.from(document.querySelectorAll('#visMeld .vis-snelk button')).map(b=>b.textContent);
+      // Dubbel in beeld (schermafdruk 25-09): de zwevende pil van de
+      // rit-monitor hoort weg zolang de rail hem draagt, en terug in Slim.
+      // In demo komt de monitor niet verder dan "wacht op verbinding", en dan
+      // toont _monChipTick() nooit een pil: zonder deze vlag bewijst de proef niets.
+      const wasActief=PLMon.active; PLMon.active=true;
+      try{ _monChipTick(); }catch(e){}
+      const pil=document.getElementById('monChipFab');
+      const chip=!!document.querySelector('#visMeld .vis-rail .vis-chip[data-id="monitor"]');
+      const pilWeg=!pil || getComputedStyle(pil).display==='none';
+      setPidView('slim'); try{ _monChipTick(); }catch(e){}
+      const pilTerug=!!pil && getComputedStyle(pil).display!=='none';
+      PLMon.active=wasActief; try{ _monChipTick(); }catch(e){}
+      setPidView('visueel');
       PLVisueel.schakel('monitor');
-      return { admin:isAdmin(), voor:voor, aan:aan, tekst:tekst, knoppen:knoppen, uit:!PLRun.staat().monitor.aan };
+      return { admin:isAdmin(), voor:voor, aan:aan, tekst:tekst, knoppen:knoppen, uit:!PLRun.staat().monitor.aan,
+               chip:chip, pilWeg:pilWeg, pilTerug:pilTerug };
     })()`);
     toets('de bulk-recorder staat alleen als snelkoppeling bij een beheerder',
       meld.voor.some(k => /Bulk-recorder/.test(k)) === !!meld.admin, 'admin ' + meld.admin + ': ' + meld.voor.join(', '));
@@ -158,6 +172,23 @@ function beoordeel(m) {
       !meld.knoppen.some(k => /Caravanrit|Bulk-recorder|Rit-monitor/.test(k)), meld.knoppen.join(', '));
     toets('de waakronde kan er nog bij', meld.knoppen.some(k => /Waakronde/.test(k)), meld.knoppen.join(', '));
     toets('nog een keer tikken zet hem weer uit', meld.uit === true);
+    toets('de rit-monitor staat als chip op de rail', meld.chip, JSON.stringify(meld));
+    toets('…en zijn zwevende pil is weg zolang Slim visueel open is', meld.pilWeg, JSON.stringify(meld));
+    toets('…en komt terug in Slim', meld.pilTerug, JSON.stringify(meld));
+    const dubbel = await app.ev(`(function(){
+      const w=document.getElementById('wkStrook'), a=document.getElementById('aandrijfBalk');
+      const weg=function(e){ return !e || getComputedStyle(e).display==='none'; };
+      if(window.PLAandrijfbalk && window.PLAandrijving) PLAandrijfbalk.ververs(PLAandrijving.laatste() || { toestand:'DRAAIT_STIL', label:'Stationair', zekerheid:'hoog' });
+      PLVisueel.tik();
+      const lamp=document.getElementById('vis-lamp-motor');
+      return { balkWeg: weg(a), strookWeg: weg(w), lamp: lamp ? lamp.className : null,
+               lampTekst: lamp ? lamp.textContent : '', toestand: (PLAandrijving.laatste()||{}).toestand };
+    })()`);
+    toets('de aandrijfbalk staat niet óók nog boven de meter', dubbel.balkWeg, JSON.stringify(dubbel));
+    toets('de waakstrook staat niet óók nog boven de meter', dubbel.strookWeg, JSON.stringify(dubbel));
+    toets('het motorlampje brandt met de toestand van PLAandrijving',
+      !dubbel.toestand || dubbel.toestand === 'ONBEKEND' || (dubbel.lamp && !/leeg/.test(dubbel.lamp) && /Motor|Start/.test(dubbel.lampTekst)),
+      JSON.stringify(dubbel));
     const bev = await app.ev(`(function(){
       bevindingenZet(true);
       _bevHits=[{id:'proef', naam:'Proefbevinding', uitleg:'alleen voor bproef-visueel', ernst:2, rang:0}];

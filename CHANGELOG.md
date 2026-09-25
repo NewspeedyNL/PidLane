@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Slim visueel: lampjes boven de meter, dieselschaal, één rail
+ ═══════════════════════════════════════════════════════════
+
+ - Boven de meter twee lampjes: links (elf uur) de verbrandingsmotor —
+   "Motor aan", "Start/stop actief", "Motor start", "Motor uit" — en rechts
+   (één uur), alleen op een hybride, "Hybride actief" of "Hybride
+   elektrisch". Beide lezen PLAandrijving; de aandrijfbalk erboven is in
+   deze weergave weg, want hij zei hetzelfde.
+ - Een diesel krijgt een eigen toerenschaal: 0–6000, oranje vanaf 4500.
+ - Rit-monitor, bulk-recorder en waakronde stonden dubbel in beeld: als
+   kaart in het vak, als zwevende pil (🛡 km/u, 🔴 Recorder) en als
+   waakstrook boven de meter. Nu één rail met een chip per lopende module,
+   met het getal dat de pil toonde (meldingen, opnametijd en regels,
+   ronde). Pillen en strook zijn weg zolang Slim visueel in beeld is;
+   elders blijven ze. Liepen er twee tegelijk, dan stond er maar één in
+   het vak — nu staan ze er allemaal.
+ - De voetregel is één tikbare regel en valt niet meer onder de tokenteller.
+
+ ═══════════════════════════════════════════════════════════
  25-09-2026 — Slim visueel: één vaste meter met een meldingenvak eronder
  ═══════════════════════════════════════════════════════════
 

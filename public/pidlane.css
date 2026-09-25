@@ -1288,8 +1288,31 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
    transform-box:view-box laat de naald om (160,160) van de viewBox draaien
    en niet om zijn eigen omtrek: anders draait elke vorm om een ander punt. */
 .gg.view-visueel { display:block; }
-.vis { display:flex; flex-direction:column; align-items:center; gap:12px; }
+.vis { display:flex; flex-direction:column; align-items:center; gap:12px;
+       /* Ruimte onder de laatste regel voor wat er nog zweeft (tokenteller,
+          remote-pil): anders valt die over "Naar Slim" heen. */
+       padding-bottom:calc(64px + var(--pl-sab, 0px)); }
+.vis-bak { position:relative; width:100%; max-width:380px; }
 .vis-meter { width:100%; max-width:380px; height:auto; display:block; }
+/* De lampjes boven de meter, in de hoeken op elf en één uur. Ze schuiven
+   een stukje over de bovenkant van de tekening: daar is de cirkel nog smal,
+   en de hoeken zijn leeg. Een leeg lampje houdt zijn plek (visibility), zodat
+   de meter niet verspringt als de aandrijving bekend wordt. */
+.vis-lampen { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:-18px; position:relative; z-index:1; pointer-events:none; }
+.vis-lamp { display:inline-flex; align-items:center; gap:6px; max-width:31%; min-height:34px; padding:4px 9px 4px 7px;
+            border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx3); pointer-events:auto; }
+.vis-lamp.leeg { visibility:hidden; }
+.vis-lamp-ic { flex:none; width:18px; height:18px; overflow:visible; }
+.vis-lamp-tx { display:flex; flex-direction:column; min-width:0; line-height:1.1; }
+.vis-lamp-tx small { font-size:9.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vis-lamp-tx b { font-size:12.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vis-lamp.aan   { color:var(--gn); border-color:var(--gn); background:var(--gns); }
+.vis-lamp.ss    { color:var(--bl); border-color:var(--bl); background:rgba(26,111,255,.12); }
+.vis-lamp.start { color:var(--or); border-color:var(--or); background:var(--ors); }
+.vis-lamp.uit, .vis-lamp.rust { color:var(--tx3); }
+.vis-lamp.ev    { color:var(--gn); border-color:var(--gn); background:var(--gns); }
+.vis-lamp.hyb   { color:var(--bl); border-color:var(--bl); background:rgba(26,111,255,.12); }
+.vis-lamp.twijfel { opacity:.6; border-style:dashed; }
 .vis-plaat { fill:var(--sur); stroke:var(--bd2); stroke-width:2; }
 .vis-spoor { fill:none; stroke:var(--sur2); stroke-linecap:butt; }
 .vis-zone  { fill:none; stroke:var(--or); stroke-opacity:.35; stroke-linecap:butt; }
@@ -1351,9 +1374,32 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-meld.bev.ernstig { border-color:var(--rd); background:var(--rds); }
 .vis-meld.meer { justify-content:flex-start; font-size:12px; font-weight:700; color:var(--bl); background:var(--sur2); }
 .vis-snelk { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
-.vis-voet { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--tx3); }
+/* De rail: één chip per lopende module. Een chip is een lampje, geen kaart —
+   een kaart is voor wat je moet lezen (de bevindingen eronder). */
+.vis-rail { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+.vis-chip { display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:6px 11px 6px 9px; border-radius:18px;
+            border:1px solid var(--bd); background:var(--sur); color:var(--tx); font-family:var(--f); font-size:12.5px; cursor:pointer; }
+.vis-chip-ic { font-size:14px; line-height:1; }
+.vis-chip b { font-weight:700; }
+.vis-chip small { font-family:var(--m); font-size:11.5px; color:var(--tx2); white-space:nowrap; }
+.vis-chip.let { border-color:var(--or); background:var(--ors); }
+.vis-chip.let small { color:var(--or); font-weight:700; }
+.vis-chip.ernstig { border-color:var(--rd); background:var(--rds); }
+.vis-chip.ernstig small { color:var(--rd); }
+/* Opname loopt: een rode stip die ademt, zoals de pil die hij vervangt. */
+.vis-chip.opname .vis-chip-ic { color:var(--rd); animation:visOpname 1.6s ease-in-out infinite; }
+@keyframes visOpname { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+.vis-voet { display:inline-flex; align-items:center; gap:4px; min-height:36px; padding:6px 12px; border:0; border-radius:18px;
+            background:transparent; font-family:var(--f); font-size:12px; color:var(--tx3); cursor:pointer; }
+.vis-voet b { color:var(--bl); font-weight:700; }
+/* Slim visueel in beeld: wat de rail en de lampjes al tonen, staat niet
+   nóg eens ergens anders. De pillen hangen buiten #pane-live (in #fabLane),
+   dus alleen verbergen zolang de live view echt openstaat. */
+body.pl-visueel #wkStrook, body.pl-visueel #aandrijfBalk { display:none !important; }
+body.pl-visueel:has(#pane-live.active) #monChipFab,
+body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 .vis-leeg { display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:16px; border:1px solid var(--bd); border-radius:var(--r); background:var(--sur); color:var(--tx2); font-size:13px; }
-@media (prefers-reduced-motion:reduce){ .vis-vul, .vis-naald, .vis-piek { transition:none; } }
+@media (prefers-reduced-motion:reduce){ .vis-vul, .vis-naald, .vis-piek { transition:none; } .vis-chip.opname .vis-chip-ic { animation:none; } }
 @keyframes cardStale { 0%,100%{background:rgba(247,127,0,.04);} 50%{background:rgba(247,127,0,.14);} }
 @keyframes dotFlash { 0%{transform:scale(1);box-shadow:0 0 4px var(--gn);} 50%{transform:scale(1.7);box-shadow:0 0 14px var(--gn);} 100%{transform:scale(1);box-shadow:0 0 4px var(--gn);} }
 .gdot.danger { background:var(--rd); box-shadow:0 0 7px var(--rd); }
