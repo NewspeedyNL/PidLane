@@ -50,6 +50,27 @@ van één corps hoog te krap: `bproef-visueel.js` mat met `getBBox()` dat
 schatting is nu 1,2 corps, de regelhoogte die de browser ook meet, en de
 maten zijn daarop aangepast.
 
+**De eerste rit gaf meteen antwoord.** Op de auto van de eigenaar gingen de
+gasklep (0111) en de laaddruk (010B) allebei naar de rand: trager dan
+800 ms, óók met de rem op de rest. Twee van de vier bewegende plekken stonden
+daardoor leeg. De meter is daarop omgebouwd: de zijbogen zijn weg, onderin
+staan koelwater, accu en brandstof als icoon met getal, en de onderboog
+(vijf tot zeven uur) toont olie, die van nature traag is en niet schokt.
+Pedaal en laaddruk zijn alleen nog de terugval als er geen olie is.
+Het midden onderin (accu en olie als twee rijen) was daarna nog te druk. Nu
+staan koelwater, accu en brandstof op één rij en staat het olie-getal onder
+de cirkel. Daarvoor moest de snelheid van 42 naar 38 px.
+
+**Het meldingenvak leest, het bewaart niet.** Rit-monitor, caravanrit en
+bulk-recorder meldden zich elk op hun eigen manier (paneel, dashboard,
+toasts), en een toast verdwijnt terwijl je rijdt. Het vak onder de meter leest
+`PLRun.staat()`, dezelfde lezers als de chip in de topbalk. Er komt geen
+tweede meldingenlijst bij. Eén hoofdfunctie tegelijk, want die vier draaien
+niet zinnig naast elkaar; de waakronde en de bevindingen wel. De bevindingen
+verhuizen naar het vak zolang de weergave open is, zodat ze niet dubbel staan.
+Onderweg bleek dat de rit-monitor het opvraagtempo níét verandert (dat was
+een aanname); de caravanrit wel, licht: toeren op 200 ms.
+
 ---
 
 ### De blijvende lijst
