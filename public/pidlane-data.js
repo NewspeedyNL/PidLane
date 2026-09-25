@@ -1332,6 +1332,26 @@ window.HUD_LABEL_DICT ={
     return 'rest';
   };
 
+  /* ── SENSORICOONTJES (Slim visueel, 25-09-2026) ───────────────────────
+     Lijntekeningen op een raster van 24×24, lijn 1,7, kleur currentColor —
+     dus ze kleuren mee met het oordeel en met het thema. Zelf getekend naar
+     de symbolen op een echt dashboard; geen afbeeldingen of lettertypes van
+     buiten, en dus geen licentie en geen netwerkverzoek.
+
+     Alleen de icoontjes die een weergave ook echt gebruikt staan hier. Een
+     icoon voor een sensor die nergens getoond wordt is een tweede lijst die
+     niemand bijhoudt. */
+  window.PL_ICOON = {
+    koelwater: '<path d="M10.5 3.5a1.5 1.5 0 0 1 3 0V11a3 3 0 1 1-3 0z"/><path d="M13.5 5.5h2M13.5 8h2"/><path d="M2.5 20.5c1.6-1.1 3.2-1.1 4.8 0s3.2 1.1 4.7 0 3.2-1.1 4.7 0 3.2 1.1 4.8 0"/>',
+    olie:      '<path d="M3 11h9.5l2.2 2 5.8-3.4-5.6 6.9H3z"/><path d="M6.5 11V8.6h4V11M5 8.6h7"/><path d="M20.6 15.8c0 .9-.6 1.5-1.3 1.5s-1.3-.6-1.3-1.5c0-.8 1.3-2.3 1.3-2.3s1.3 1.5 1.3 2.3z"/><path d="M4 20h8"/>',
+    brandstof: '<path d="M5 20V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v15"/><path d="M3.5 20h12"/><path d="M7 8h5"/><path d="M14 10h2a1.5 1.5 0 0 1 1.5 1.5v4a1 1 0 0 0 2 0V8.5L17 6"/>',
+    accu:      '<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M6.5 7V5h3v2M14.5 7V5h3v2"/><path d="M6.5 13h3M8 11.5v3M14.5 13h3"/>',
+    pedaal:    '<path d="M9.2 3.5h5.6a1.5 1.5 0 0 1 1.5 1.7l-1.6 11.6a1.5 1.5 0 0 1-1.5 1.3H8.9a1.5 1.5 0 0 1-1.5-1.7L8.9 4.8a1.5 1.5 0 0 1 .3-1.3z"/><path d="M10.2 7.5h4M9.8 10.5h4M9.4 13.5h4"/><path d="M4 21h16"/>',
+    gasklep:   '<circle cx="12" cy="12" r="8"/><path d="M7 17 17 7"/><circle cx="12" cy="12" r="1.3"/><path d="M12 2v2M12 20v2"/>',
+    turbo:     '<circle cx="11" cy="13" r="7"/><path d="M11 13a3 3 0 1 1 3-3"/><path d="M15.5 7.6 18 5h4v4.5"/>',
+    verbruik:  '<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/><path d="M9 15.5a3 3 0 0 1 5.6-1.5"/><path d="M12 15.5l2.2-2.2"/>'
+  };
+
   /* Staat deze PID in het tekstblok in plaats van in een tegel? */
   window.pidIsTekst = function(pid){
     return !!(window.PID_TEKST && window.PID_TEKST[pid]);

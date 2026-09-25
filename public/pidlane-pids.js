@@ -206,6 +206,14 @@ function renderGauges(){
     g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>`;return;
   }
   if(sw) sw.style.display='flex';
+  // Slim visueel heeft één vaste meter en geen tegels; de indeling en het
+  // tekenen staan in pidlane-visueel.js. Het tekstblok blijft leeg: wat daar
+  // staat hoort bij "Slim" en de andere weergaven.
+  if(pidViewMode==='visueel' && window.PLVisueel){
+    try{ PLVisueel.bouw(g); }catch(e){ console.warn('PLVisueel.bouw mislukt:', e); }
+    try{ renderVerborgenStrook(); }catch(e){ console.warn('verborgen-strook mislukt:', e); }
+    return;
+  }
   // Zelfde volgorde als de PID-keuzelijst: per motoronderdeel (Motor → Temp →
   // Brandstof → ... → Overig). discoveredPIDDefs is al zo gesorteerd; PIDs
   // die daar niet in staan komen achteraan. Voorheen: Set-invoegvolgorde.
@@ -561,7 +569,7 @@ function fv(v, pidOfDef){
   return Number(v).toFixed(fvDec(unit,v));
 }
 
-// ── PID weergavemodus: 'full' | 'numbers' | 'dots' | 'slim' ──
+// ── PID weergavemodus: 'full' | 'numbers' | 'dots' | 'slim' | 'visueel' ──
 //
 // DE STANDAARD IS 'slim' (01-09-2026, na #61 en #68). Daarvoor stond hier
 // 'dots' en werd de opgeslagen voorkeur bij het opstarten OVERSCHREVEN — de
@@ -574,7 +582,10 @@ function fv(v, pidOfDef){
 // anders zeiden: deze regel ('dots'), de active-klasse in index.html
 // ('full') en de aanroep in pidlane-theme.js ('dots'). Nu is er één bron:
 // PID_VIEW_STANDAARD, met plPidViewHerstel() als enige die hem toepast.
-const PID_VIEW_MODI = ['full','numbers','dots','slim'];
+const PID_VIEW_MODI = ['full','numbers','dots','slim','visueel'];
+// Weergaven met een EIGEN opbouw van het rooster: wisselen van of naar zo'n
+// modus vraagt een herbouw, klassen wisselen is dan niet genoeg.
+const PID_VIEW_EIGEN = ['slim','visueel'];
 const PID_VIEW_STANDAARD = 'slim';
 let pidViewMode=PID_VIEW_STANDAARD;
 let _pidLastUpd={};          // pid -> laatste update-tijd (ms)
@@ -587,10 +598,14 @@ function setPidView(mode){
   // plaats van één rooster). Klassen wisselen is daar niet genoeg: het
   // rooster moet opnieuw opgebouwd worden. Alleen bij een echte overgang,
   // want renderGauges() gooit alle tegels weg en bouwt ze terug.
-  const herbouw = (mode==='slim') !== (pidViewMode==='slim');
+  const herbouw = mode!==pidViewMode && (PID_VIEW_EIGEN.indexOf(mode)>-1 || PID_VIEW_EIGEN.indexOf(pidViewMode)>-1);
   pidViewMode=mode;
+  // Slim visueel remt de snelle PIDs die er niet op staan (PLVisueel.remt);
+  // die rem hoort precies zo lang te duren als de weergave open staat.
+  try{ if(window.PLVisueel){ if(mode==='visueel') PLVisueel.start(); else PLVisueel.stop(); } }
+  catch(e){ console.warn('PLVisueel starten/stoppen mislukt:', e); }
   const g=document.getElementById('gGrid');
-  if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots','view-slim'); if(mode!=='full') g.classList.add('view-'+mode); }
+  if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots','view-slim','view-visueel'); if(mode!=='full') g.classList.add('view-'+mode); }
   if(herbouw){ try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt bij het wisselen van weergave:', e); } }
   // Alleen de knoppen MET een data-mode zijn weergaveknoppen. #waakBtn draagt
   // dezelfde klasse (hij staat in dezelfde rij) maar heeft geen data-mode, dus
@@ -702,6 +717,10 @@ function pidOordeel(d,val,pid){
 
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
+  if(pidViewMode==='visueel' && window.PLVisueel){
+    try{ PLVisueel.bij(pid,val); }catch(e){ console.warn('PLVisueel.bij mislukt:', e); }
+    return;
+  }
   // Code-/vlag-PIDs staan in het tekstblok, niet in een tegel: daar alleen de
   // vertaalde tekst bijwerken. Zonder deze afslag zou de rest hieronder op een
   // niet-bestaande #gc-… kaart stuklopen en de waarde nooit updaten.

@@ -160,12 +160,12 @@ try{ window.PLGate = {
   stats: function(){
     // Drempels meepubliceren: de testrun kan zo TOETSEN dat ze meebewegen
     // met de omgevingsdruk, in plaats van de broncode te moeten lezen.
-    let baro=null, bewijs=MAP_BEWIJS_KPA, atmosf=MAP_ATMOSF_MAX;
-    try{ baro=_omgevingsdruk(); bewijs=_bewijsDrempel(); atmosf=_atmosfDrempel(); }
+    let baro=null, bewijs=MAP_BEWIJS_KPA, atmosf=MAP_ATMOSF_MAX, turbo=false;
+    try{ baro=_omgevingsdruk(); bewijs=_bewijsDrempel(); atmosf=_atmosfDrempel(); turbo=_isTurbo(); }
     catch(e){ console.warn('PLGate.stats: drempels niet bepaald — '+(e.message||e)); }
     return { mapMonsters:_mapSamples, maxMap:_maxMapSeen,
              herijkingen:_herijkTeller, ticks:_tickTeller,
-             omgevingsdruk:baro, bewijsDrempel:bewijs, atmosfDrempel:atmosf };
+             omgevingsdruk:baro, bewijsDrempel:bewijs, atmosfDrempel:atmosf, turbo:turbo };
   }
 }; }catch(e){ /* stil: de statemachine-tests draaien zonder window — dan bestaat window niet en slaat de export gewoon over */ }   // de statemachine-tests draaien zonder window
 
@@ -210,6 +210,15 @@ function _noteMap(){
 function _isNaturallyAspirated(){
   if(_mapSamples < MAP_BEWIJS_MIN) return false;
   return _maxMapSeen <= _atmosfDrempel();
+}
+// Het spiegelbeeld: genoeg metingen bij ver geopende gasklep én de piek kwam
+// bóven omgevingsdruk plus marge. Dat kan een atmosferische motor niet. Te
+// weinig bewijs → false: Slim visueel (pidlane-visueel.js) toont pas laaddruk
+// als hij er aantoonbaar is, want een laaddrukmeter die op een atmosferische
+// motor op nul blijft staan is een meter die niets zegt.
+function _isTurbo(){
+  if(_mapSamples < MAP_BEWIJS_MIN) return false;
+  return _maxMapSeen > _atmosfDrempel();
 }
 function _boostPhantom(pid){
   if(!BOOST_PIDS.has(pid)) return false;

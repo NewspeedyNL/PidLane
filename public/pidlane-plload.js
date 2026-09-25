@@ -422,7 +422,13 @@ function pidPollInterval(pid){
   // x profiel x verbindingsstrategie x automatische belastingsregeling.
   // Focus-PIDs blijven ongemoeid (die returnen hierboven al).
   const lm=(window.PLLoad&&typeof PLLoad.mult==='function')?PLLoad.mult():1;
-  return Math.max(80, Math.round(basis * (prof.mult||1) * (typeof _pollMult!=='undefined'?_pollMult:1) * lm));
+  let ms=Math.max(80, Math.round(basis * (prof.mult||1) * (typeof _pollMult!=='undefined'?_pollMult:1) * lm));
+  // Slim visueel: snelle PIDs die niet op de meter staan gaan terug naar
+  // PLVisueel.REM_MS, zodat de bus zijn antwoorden aan de naald geeft. Ze
+  // worden nog gemeten; terug naar een andere weergave en dit vervalt.
+  try{ if(window.PLVisueel && PLVisueel.remt(pid)) ms=Math.max(ms, PLVisueel.REM_MS); }
+  catch(e){ console.warn('PLVisueel.remt mislukt:', e); }
+  return ms;
 }
 // Welke PIDs zijn NU "due" om te pollen?
 // ── DODE-PID-SNOEI ──────────────────────────────────────────────────
