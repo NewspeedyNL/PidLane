@@ -148,7 +148,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 > 53 script-tags: `capacitor.js`, `config.js` en 51 `pidlane-*.js`-modules.
 > (21-08: `pidlane-gps.js` eruit, `pidlane-run.js` erbij — telling ongewijzigd.
 > 16-09: `pidlane-adapter.js` erbij, één tag meer.
-> 24-09: `pidlane-intro.js` erbij, als eerste script in de body.)
+> 24-09: `pidlane-intro.js` erbij, als eerste script in de body.
+> 25-09: `pidlane-visueel.js` erbij, direct na `pidlane-pids.js`.)
 > `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
 > `pidlane-bedrading.js` achteraan staat.
 
@@ -177,7 +178,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 8 | `pidlane-veldlab.js` | 49 | meetsessieregistratie → Referentie-store (`PidLaneEvalLog`) |
 | 9 | `pidlane-datalog.js` | 28 | datalog, `validateAndSmooth`, outlierdetectie, stabiliteit, protocolkeuze |
 | 10 | `pidlane-archief.js` | 30 | sessierapportarchief, AI-rapporthook, TXT/PDF-export, **de Android-terugknop** (`appBack`) — de enige luisteraar op `backButton`, zie §11 01-09 — en **het venster "Voor de analyse"** (`plVoorAnalyse`, `PL_VOORVRAGEN`, `plMeetcontextPromptLine`): hergebruik van eerdere rapporten én de meetcontext-vragen in één sheet, zie §11 01-09 |
-| 11 | `pidlane-pids.js` | 31 | PID-paneel, gauges, breedband-lambdacorrectie B1S1, de vier weergaven (Trends/Getallen/Puntjes/**Slim**, met Slim als standaard) incl. `slimTempSchaal()`, `slimBeweegt()`, `slimMeterSchaal()`/`slimPiek()` (de tellerplaat) en `plPidViewHerstel()` — de enige plek die bepaalt waarin de live view start |
+| 11 | `pidlane-pids.js` | 31 | PID-paneel, gauges, breedband-lambdacorrectie B1S1, de vijf weergaven (Trends/Getallen/Puntjes/**Slim**/Slim visueel, met Slim als standaard; Slim visueel zelf staat in `pidlane-visueel.js`) incl. `slimTempSchaal()`, `slimBeweegt()`, `slimMeterSchaal()`/`slimPiek()` (de tellerplaat) en `plPidViewHerstel()` — de enige plek die bepaalt waarin de live view start |
+| 11a | `pidlane-visueel.js` | 31 | **Slim visueel**, de vijfde weergave: één vaste meter (toerental, snelheid, gaspedaal, laaddruk of verbruik nu) en een rand voor koelwater/olie/tank/accu. De wijzerplaat is een vaste tekening uit `G`, de meetwaarden sturen via `stand()` alleen hoek, vulling en tekst. Kiest per plek de eerste bruikbare PID, stuurt een PID die op deze auto trager meet dan 800 ms naar de rand, en remt via `remt()` in `pidPollInterval()` de snelle PIDs die niet op de meter staan. Laadt direct na `pidlane-pids.js` |
 | 12 | `pidlane-correlatie.js` | 8 | deterministische PID-correlatie-engine + de bevindingenbalk: hoogstens `BEV_MAX` (2) in beeld, de rest in een venster, aan/uit via ☰ — de AI krijgt via `correlationLines()` altijd alles |
 | 13 | `pidlane-totalcheck.js` | 51 | Total Check — volledige voertuigdoorlichting |
 | 14 | `pidlane-diagnose.js` | 20 | Smart Diagnose + klacht-gestuurde PID-focus |

@@ -14,6 +14,44 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 25-09-2026 — Slim visueel: welke PID mag bewegen, en een meter die niet ontspoort
+
+**Waarom niet alle snelle PIDs op de meter.** `PID_POLL_CLASS` zet zeven PIDs
+op 120 ms, maar de bus haalt dat nooit. De ritten van augustus en september
+gaven 180–224 ms per verzoek (`venGemMs`), met hoogstens drie PIDs per
+verzoek: grofweg vijftien antwoorden per seconde voor álle actieve PIDs
+samen. In `pidlane-pidgate.js` staat de meting die dat hard maakt: op de CX-5
+kwamen 010B, 0111 en 0104 binnen op 1071, 428 en 3570 ms, niet op hun klasse.
+Wie op de meter vloeiende beweging wil, moet dus minder PIDs laten bewegen, en
+niet alleen minder tonen. Daarom remt Slim visueel de snelle PIDs die er niet
+op staan (motorbelasting, de gasklepsensoren, pedaal D/E, ontsteking,
+raildruk) naar 2 s zolang de weergave open staat.
+
+**Waarom gemeten en niet uit de tabel.** De klasse is een wens, het tempo op
+deze auto de uitkomst. Het pedaal en de vierde meter krijgen hun plek pas
+definitief na acht metingen van ná het openen; komt de mediaan boven 800 ms,
+dan gaan ze naar de rand. Eén kant op, anders springt een PID op de grens
+heen en weer.
+
+**Waarom geen raildruk als vierde meter zonder turbo.** 010A staat bij
+gewone inspuiting op een vaste regeldruk; 0122/0123/0159 bewegen alleen bij
+directe inspuiting en diesel, en zijn dan een getal voor de monteur. Het
+verbruik van dit moment uit de luchtmassa (0110, 300 ms) beweegt mee met het
+gaspedaal en zegt de bestuurder iets. Alleen bij benzine: bij een diesel is
+de lucht-brandstofverhouding niet vast, en dan is het getal fout.
+
+**De meter als vaste tekening.** Een eerdere poging tekende de meter opnieuw
+uit de meetwaarden, met streepjes buiten de ring en scheve cijfers als gevolg.
+Nu is de wijzerplaat één tekening uit de constanten in `G`, en sturen de
+getallen alleen een hoek, een vulling en een tekst aan, alle drie begrensd.
+`test-visueel.js` rekent de tekstvakken na op `G`. Daarbij bleek een schatting
+van één corps hoog te krap: `bproef-visueel.js` mat met `getBBox()` dat
+"L/100km" het getal erboven raakte, terwijl de node-test groen stond. De
+schatting is nu 1,2 corps, de regelhoogte die de browser ook meet, en de
+maten zijn daarop aangepast.
+
+---
+
 ### De blijvende lijst
 
 **Opgelost op 27-08:** wie vóór de tekstcorrectie akkoord gaf, gaf dat op een
