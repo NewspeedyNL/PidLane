@@ -136,6 +136,85 @@ html, body { overflow-x:clip; }
 @keyframes introSpin { to{transform:rotate(360deg)} }
 @keyframes introLoad { from{width:0} 60%{width:70%} to{width:100%} }
 @keyframes introLeave { to{transform:scale(1.12);opacity:0} }
+/* ══ OPSTART-INTRO #plIntro (24-09-2026) — het waarom staat in pidlane-intro.js ══
+   Het blok hierboven (#introOv) is van de splash die op 26-07 wegging en wordt
+   nergens meer gebruikt; dit is een nieuwe, met een eigen naam.
+
+   TIJDLIJN, in seconden vanaf .pli-speel (dat is DOMContentLoaded):
+     0,00–0,70  de rijbaan tekent zich van de onderrand naar de horizon
+     0,00–1,85  strepen en dwarslijnen komen op je af
+     0,45–1,40  het logo komt in 3D overeind uit het wegdek
+     0,55–1,60  ballon, pulslijn en weglijnen tekenen zich; 1,40 de vonk
+     1,35–2,00  "PidLane" komt in beeld
+     2,25–2,80  doorzoom: het logo schiet op je af, de achtergrond gaat open
+     2,85       onzichtbaar en onaanraakbaar — ook als de JS-timer nooit komt
+   PLIntro.DUUR_MS (2900) hoort net ná die laatste regel te liggen. */
+#plIntro{ position:fixed; inset:0; z-index:9700; overflow:hidden; font-family:var(--f);
+  --s:min(42vw, 30vh, 200px); transition:opacity .22s ease; }
+#plIntro[hidden]{ display:none !important; }
+/* Noodrem vóór het spelen: staat het vlak er na 8 s nog zonder dat het mocht
+   spelen, dan weg. Dat is precies het geval waarin het script niet liep. */
+/* Twee NAMEN, met opzet: blijft de naam gelijk bij het wisselen van regel, dan
+   loopt Chromium door op de oude starttijd en is 2,85 s gerekend vanaf het
+   laden van de pagina in plaats van vanaf het spelen. */
+#plIntro:not(.pli-speel){ animation:pliNood .01s linear 8s forwards; }
+#plIntro.pli-speel{ animation:pliKlaar .01s linear 2.85s forwards; }
+#plIntro.pli-weg{ opacity:0; }
+#plIntro .pli-bg{ position:absolute; inset:0; background:#05070c; }
+#plIntro .pli-gloed{ position:absolute; inset:0; opacity:0;
+  background:radial-gradient(60% 34% at 50% 40%, rgba(0,212,255,.16), rgba(0,255,136,.05) 50%, transparent 75%); }
+
+/* de rijbaan: van de onderkant van het logo tot de onderrand */
+#plIntro .pli-baan{ position:absolute; left:0; right:0; top:calc(40% + var(--s)*.5 - 2px); bottom:0; opacity:0; }
+#plIntro .pli-baan svg{ position:absolute; inset:0; width:100%; height:100%;
+  filter:drop-shadow(0 0 4px rgba(0,255,136,.8)) drop-shadow(0 0 12px rgba(0,212,255,.5)); }
+#plIntro .pli-d{ position:absolute; left:50%; transform:translateX(-50%); border-radius:2px; opacity:0;
+  background:linear-gradient(#fff,#9ff); box-shadow:0 0 8px #00d4ff; }
+#plIntro .pli-h{ position:absolute; left:50%; transform:translateX(-50%); height:1px; opacity:0;
+  background:linear-gradient(90deg, transparent, rgba(0,212,255,.55), transparent); }
+
+/* het logo — twee lagen: de buitenste komt overeind, de binnenste zoomt */
+#plIntro .pli-logo{ position:absolute; left:50%; top:40%; width:var(--s); height:var(--s);
+  margin:calc(var(--s)*-.5) 0 0 calc(var(--s)*-.5); opacity:0; transform-origin:50% 80%; }
+#plIntro .pli-zoom{ width:100%; height:100%; will-change:transform, opacity; }
+#plIntro .pli-zoom svg{ width:100%; height:100%; overflow:visible; display:block;
+  filter:drop-shadow(0 0 6px rgba(0,255,136,.45)) drop-shadow(0 0 18px rgba(0,212,255,.3)); }
+#plIntro .pli-wegdek path, #plIntro .pli-ballon, #plIntro .pli-puls{ stroke-dasharray:1; stroke-dashoffset:1; }
+#plIntro .pli-tegel, #plIntro .pli-vonk{ opacity:0; }
+#plIntro .pli-vonk{ transform-box:fill-box; transform-origin:center; }
+#plIntro .pli-naam{ position:absolute; left:0; right:0; top:calc(40% + var(--s)*.5 + 18px); text-align:center;
+  font-weight:800; font-size:calc(var(--s)*.23); color:#eef2fa; white-space:nowrap; opacity:0;
+  text-shadow:0 0 14px rgba(0,212,255,.35); }
+#plIntro .pli-naam span{ color:#4d82ff; text-shadow:0 0 10px rgba(77,130,255,.9), 0 0 26px rgba(77,130,255,.55); }
+
+#plIntro.pli-speel .pli-gloed{ animation:pliGloed 2.4s ease .4s both; }
+#plIntro.pli-speel .pli-baan{ animation:pliBaan .7s cubic-bezier(.3,.7,.3,1) both, pliUit .5s ease 1.85s forwards; }
+#plIntro.pli-speel .pli-d{ animation:pliStreep .75s cubic-bezier(.6,0,1,.5) 3 both; }
+#plIntro.pli-speel .pli-h{ animation:pliDwars 1.1s cubic-bezier(.6,0,1,.5) 2 both; }
+#plIntro.pli-speel .pli-logo{ animation:pliOverend .95s cubic-bezier(.2,.8,.2,1) .45s both; }
+#plIntro.pli-speel .pli-ballon{ animation:pliTeken .7s cubic-bezier(.4,0,.2,1) .55s both; }
+#plIntro.pli-speel .pli-puls{ animation:pliTeken .45s ease-out 1.05s both; }
+#plIntro.pli-speel .pli-wegdek path{ animation:pliTeken .5s ease-out 1.1s both; }
+#plIntro.pli-speel .pli-vonk{ animation:pliVonk .5s cubic-bezier(.3,1.4,.5,1) 1.4s both; }
+#plIntro.pli-speel .pli-tegel{ animation:pliIn .5s ease 1.5s both; }
+#plIntro.pli-speel .pli-naam{ animation:pliNaam .65s cubic-bezier(.2,.8,.2,1) 1.35s both, pliUit .25s ease 2.25s forwards; }
+#plIntro.pli-speel .pli-zoom{ animation:pliDoor .55s cubic-bezier(.7,0,.9,.45) 2.25s forwards; }
+#plIntro.pli-speel .pli-bg{ animation:pliUit .5s ease 2.3s forwards; }
+
+@keyframes pliNood{ to{ visibility:hidden; } }
+@keyframes pliKlaar{ to{ visibility:hidden; } }
+@keyframes pliIn{ from{opacity:0} to{opacity:1} }
+@keyframes pliUit{ from{opacity:1} to{opacity:0} }
+@keyframes pliTeken{ from{stroke-dashoffset:1} to{stroke-dashoffset:0} }
+@keyframes pliGloed{ 0%{opacity:0} 40%{opacity:1} 100%{opacity:0} }
+@keyframes pliBaan{ from{opacity:1; clip-path:inset(100% 0 0 0)} to{opacity:1; clip-path:inset(0 0 0 0)} }
+@keyframes pliStreep{ 0%{top:0; height:.4%; width:.5%; opacity:0} 25%{opacity:1} 100%{top:100%; height:16%; width:2.4%; opacity:.95} }
+@keyframes pliDwars{ 0%{top:0; width:10%; opacity:0} 30%{opacity:.7} 100%{top:100%; width:200%; opacity:.35} }
+@keyframes pliOverend{ from{opacity:0; transform:perspective(700px) rotateX(78deg) scale(.45)}
+                       to{opacity:1; transform:perspective(700px) rotateX(0deg) scale(1)} }
+@keyframes pliVonk{ 0%{opacity:0; transform:scale(0) rotate(-120deg)} 60%{opacity:1; transform:scale(1.35) rotate(10deg)} 100%{opacity:1; transform:none} }
+@keyframes pliNaam{ from{opacity:0; letter-spacing:.55em; filter:blur(6px)} to{opacity:1; letter-spacing:.01em; filter:none} }
+@keyframes pliDoor{ from{transform:scale(1); opacity:1} 70%{opacity:.8} to{transform:scale(8); opacity:0} }
 /* ── BUSY-PILL: hoge busactiviteit (eerste minuut na verbinden / survey) ── */
 #busyPill{position:fixed;top:calc(8px + var(--pl-top));left:50%;transform:translateX(-50%);z-index:9550;display:none;align-items:center;gap:9px;background:rgba(13,19,32,.94);border:1px solid #24406e;border-radius:999px;padding:7px 14px;font-family:var(--f);font-size:12px;font-weight:600;color:#bcd0f5;box-shadow:0 8px 24px rgba(0,0,0,.45);backdrop-filter:blur(4px);max-width:92vw}
 #busyPill.on{display:flex;animation:pidFadeUp .35s ease both}

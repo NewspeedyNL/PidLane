@@ -998,6 +998,17 @@ MUTATIES=(
 "admin/beheer.html@@  if(!k.ok){ alert(@@  if(false){ alert(@@bproef-beheerpagina.js@@een afgekeurde meetopdracht is toch te activeren: de app weigert hem bij de start en de rit rijdt zonder"
 "admin/beheer.html@@  if(vangnet) waarsch.push(@@  if(false) waarsch.push(@@bproef-beheerpagina.js@@regels in het vangnet \`onbekend\` staan niet meer in beeld: een ontbrekende kolom valt niemand op"
 "admin/beheer.html@@    uit.push([d, x[1], x[2]]);@@    if(x[1]) uit.push([d, x[1], x[2]]);@@bproef-beheerpagina.js@@een dag zonder regels valt weg uit de dagreeks: juist het gat is onzichtbaar"
+# ── de opstart-intro (24-09-2026) ──
+# De vorige splash ging op 26-07 weg omdat hij elke start ophield. Elke
+# voorwaarde die dat nu voorkomt is een stille fout als hij wegvalt, en een
+# vlak dat blijft staan maakt de hele app onbruikbaar.
+"public/pidlane-intro.js@@    if (o.verminderd) return 'minder beweging';\n@@@@test-intro.js@@de intro speelt ook bij minder beweging in het besturingssysteem"
+"public/pidlane-intro.js@@    bezig = true;\n    onthoud();@@    bezig = true;@@test-intro.js@@de intro wordt niet onthouden en speelt bij elke herlaadbeurt opnieuw in plaats van één keer per sessie"
+"public/pidlane-intro.js@@    if (o.wachtMs > MAX_WACHT_MS) return@@    if (false) return@@test-intro.js@@na een trage opstart komt er nog eens bijna drie seconden intro bovenop"
+"public/pidlane-intro.js@@    if (ev && ev.type === 'pointerdown') { ev.preventDefault(); ev.stopPropagation(); }@@@@test-intro.js@@de tik die de intro overslaat drukt ook de knop eronder in, bijvoorbeeld de demo"
+"public/pidlane-intro.js@@  var DUUR_MS = 2900;@@  var DUUR_MS = 2000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
+"public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
+"public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
 )
 
 echo

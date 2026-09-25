@@ -175,6 +175,27 @@ groeien die `PIDLANE-WERK.md` de kop kostte:
    van standaard laadt.
 
 
+### 24-09-2026 — de intro is terug, en waarom hij de vorige niet herhaalt
+
+Op 26-07-2026 ging de intro-splash weg: "een tussenscherm van 3,4 s vertraagt
+elke start". Op 24-09 kwam er op verzoek een nieuwe, gekozen uit drie
+voorbeelden (rijbaan + doorzoom). Het bezwaar van toen is niet weggewuifd maar
+gebouwd: hooguit één keer per sessie, weg met één tik, niet bij "minder
+beweging", en niet als de opstart zelf al trager was dan 6 s. Hij speelt pas
+vanaf DOMContentLoaded, dus hij ligt óver de boot en niet erachter.
+
+Het nieuwe risico is erger dan traagheid: het donkere vlak staat al in de HTML
+vóór elk script. Blijft het staan, dan is de app onbruikbaar. Daarom verdwijnt
+het ook zonder JavaScript: de CSS maakt het na 8 s onzichtbaar als het niet
+speelt, en de laatste animatie van het spelen eindigt zelf op
+`visibility:hidden`. Daarbij bleek één valkuil, die nu in `plmutate.sh` staat:
+die twee regels mogen niet dezelfde keyframe-naam hebben. Bij een gelijke naam
+herstart Chromium de animatie niet als de regel wisselt, en telt de 2,85 s
+vanaf het laden van de pagina. Dan valt de intro midden in het beeld weg.
+
+De `#introOv`-CSS van de oude splash staat nog in `pidlane.css`, ongebruikt.
+Weghalen is een opruimactie en hoort niet in dezelfde PR.
+
 ### 24-09-2026 — de reparatie die in de bron stond en in de app niet werkte (#256)
 
 Op 18-09 kreeg `validateAndSmooth()` een `{geenAirtable:true}` mee naar

@@ -147,7 +147,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 > **De volgorde is functioneel, niet cosmetisch.** Zie §5.
 > 53 script-tags: `capacitor.js`, `config.js` en 51 `pidlane-*.js`-modules.
 > (21-08: `pidlane-gps.js` eruit, `pidlane-run.js` erbij — telling ongewijzigd.
-> 16-09: `pidlane-adapter.js` erbij, één tag meer.)
+> 16-09: `pidlane-adapter.js` erbij, één tag meer.
+> 24-09: `pidlane-intro.js` erbij, als eerste script in de body.)
 > `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
 > `pidlane-bedrading.js` achteraan staat.
 
@@ -159,6 +160,12 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
 | 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de VORM van de slimme weergave; de MAAT — en daarmee het vijfde vak "Rustig" — zit in `slimMaat()` in `pidlane-pids.js`) |
 | 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
+
+### Fase 1b — opstart-intro (eerste in `<body>`)
+
+| # | Module | KB | Doet |
+|---|---|---|---|
+| 4b | `pidlane-intro.js` | 5 | `PLIntro` — de opstart-intro op `#plIntro`: neon rijbaan, logo in 3D, doorzoom naar wat eronder klaarstaat. Staat **direct na het vlak en vóór elk ander script**, zodat hij beslist vóór de eerste frame. Eén keer per sessie, weg met een tik, niet bij minder beweging, een trage opstart of automatisering. De tijdlijn staat in `pidlane.css` bij `#plIntro`, met een noodrem die ook werkt als het script niet loopt |
 
 ### Fase 2 — kern (in `<body>`, rond regel 2128)
 

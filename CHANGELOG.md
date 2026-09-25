@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-09-2026 — opstart-intro: neon rijbaan, logo in 3D, doorzoom naar login
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw `pidlane-intro.js` + `#plIntro` bovenaan de body. Donker, een neon
+   rijbaan naar de horizon, het logo tekent zich en komt overeind uit het
+   wegdek, daarna zoom je erdoor naar het inlogscherm. ≈ 2,9 s.
+ - Hooguit één keer per sessie, weg met één tik, niet bij "minder
+   beweging", niet na een opstart trager dan 6 s en niet onder
+   automatisering. Speelt pas vanaf DOMContentLoaded, over de boot heen.
+ - Noodrem in de CSS: het vlak verdwijnt ook als het script niet loopt.
+ - Getoetst door `test-intro.js` en `bproef-intro.js`, met zeven mutaties
+   in `plmutate.sh`. De oude `#introOv`-CSS van 26-07 staat er nog, ongebruikt.
+
+ ═══════════════════════════════════════════════════════════
  24-09-2026 — één harde-limietmelding, één regel in de logtabel (#256)
  ═══════════════════════════════════════════════════════════
 
