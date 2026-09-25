@@ -57,6 +57,9 @@ daardoor leeg. De meter is daarop omgebouwd: de zijbogen zijn weg, onderin
 staan koelwater, accu en brandstof als icoon met getal, en de onderboog
 (vijf tot zeven uur) toont olie, die van nature traag is en niet schokt.
 Pedaal en laaddruk zijn alleen nog de terugval als er geen olie is.
+Het midden onderin (accu en olie als twee rijen) was daarna nog te druk. Nu
+staan koelwater, accu en brandstof op één rij en staat het olie-getal onder
+de cirkel. Daarvoor moest de snelheid van 42 naar 38 px.
 
 **Het meldingenvak leest, het bewaart niet.** Rit-monitor, caravanrit en
 bulk-recorder meldden zich elk op hun eigen manier (paneel, dashboard,

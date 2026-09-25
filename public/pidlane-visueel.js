@@ -29,8 +29,11 @@
 //   onderboog  tussen vijf en zeven uur, op de straal van de toerenboog:
 //              motorolie (015C); zonder olie de laaddruk als de turbo BEWEZEN
 //              is (PLGate), anders het gaspedaal (0149 → 015A → 014A → 0111)
-//   plekjes    onderin koelwater (links), accu (midden), brandstof (rechts):
-//              icoon met getal, van nature traag, dus geen bewegend element
+//   plekjes    onderin op één rij koelwater (links), accu (midden), brandstof
+//              (rechts): icoon met het getal eronder, van nature traag, dus
+//              geen bewegend element
+//   onder de   het getal van de onderboog, gecentreerd onder de cirkel
+//   cirkel     (buiten de ring, dus de viewBox is hoger dan breed)
 //   meldingen  onder de meter; zie meldingen() hieronder
 //
 // Bewust NIET: motorbelasting, de gasklepsensoren A/B/C, de tweede en derde
@@ -115,15 +118,17 @@ const G = {
   // Het midden. De snelheid staat ONDER de naaf: boven de naaf veegt de
   // naald bij elk toerental tussen 1000 en 7000 over de tekst heen, eronder
   // alleen bij stationair en boven 7000.
-  Y_SCHAAL: 116, Y_RPM: 134, Y_SNEL: 198, Y_KMH: 230,
+  Y_SCHAAL: 116, Y_RPM: 134, Y_SNEL: 192, Y_KMH: 222,
   // Lettermaten staan HIER en niet in de CSS: test-visueel.js rekent er de
   // tekstvakken mee uit, en een maat die op twee plekken staat loopt uit de pas.
-  FS_SNEL: 42, FS_KLEIN: 14, FS_EENHEID: 11, FS_SCHAAL: 10,
-  // Plekjes links en rechts: icoon boven, getal eronder.
-  ICOON: 20, X_LINKS: 92, X_RECHTS: 228, Y_ICOON: 232, Y_WAARDE: 254,
-  // Het midden onderin: twee rijen van icoon + getal, links uitgelijnd.
-  // Rij 1 is de accu, rij 2 het getal van de onderboog.
-  ICOON_RIJ: 18, X_RIJ_ICOON: 126, X_RIJ_TEKST: 139, Y_RIJ1: 248, Y_RIJ2: 272
+  FS_SNEL: 38, FS_KLEIN: 14, FS_EENHEID: 11, FS_SCHAAL: 10,
+  // De drie plekjes op één rij: icoon boven, getal eronder, alle drie
+  // gecentreerd. Eén rij in plaats van een blok in het midden: dat was te druk.
+  ICOON: 20, X_LINKS: 96, X_MIDDEN: 160, X_RECHTS: 224, Y_ICOON: 244, Y_WAARDE: 266,
+  // Het getal van de onderboog staat ONDER de cirkel, gecentreerd onder zijn
+  // balk: icoon en getal naast elkaar, het getal links uitgelijnd zodat een
+  // langere laaddruk ("≈+1,5 bar") naar rechts groeit en het icoon niet raakt.
+  VB_H: 346, ICOON_ONDER: 20, X_ONDER_ICOON: 136, X_ONDER_TEKST: 150, Y_ONDER: 330
 };
 
 function P(r,a){ const t=(a-90)*Math.PI/180; return [G.C+r*Math.cos(t), G.C+r*Math.sin(t)]; }
@@ -268,8 +273,8 @@ function wijzerplaat(wH, olieWH, olieDH){
        '<path id="vis-vacboog" class="vis-vul vac" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,z,G.O0)+'" stroke-width="'+G.B_BOOG+'"/>'+
        '<path id="vis-boostboog" class="vis-vul" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,z,G.O1)+'" stroke-width="'+G.B_BOOG+'"/>'+
        lijn(G.R_BOOG-5, G.R_BOOG+5, z, 'vis-nul')+
-       icoonVak('vis-ondericoon', G.X_RIJ_ICOON, G.Y_RIJ2, G.ICOON_RIJ)+
-       tekstEl('vis-ondertekst', 'vis-klein', G.X_RIJ_TEKST, G.Y_RIJ2, G.FS_KLEIN, '—', true)+
+       icoonVak('vis-ondericoon', G.X_ONDER_ICOON, G.Y_ONDER, G.ICOON_ONDER)+
+       tekstEl('vis-ondertekst', 'vis-klein', G.X_ONDER_TEKST, G.Y_ONDER, G.FS_KLEIN, '—', true)+
      '</g>';
   // Midden: de snelheid.
   s+=tekstEl('vis-snel', 'vis-snel', C, G.Y_SNEL, G.FS_SNEL, '—');
@@ -277,8 +282,8 @@ function wijzerplaat(wH, olieWH, olieDH){
   // De drie plekjes.
   s+='<g id="visp-koel" class="vis-plek geen">'+icoonVak('visi-koel', G.X_LINKS, G.Y_ICOON, G.ICOON)+
        tekstEl('visv-koel', 'vis-klein', G.X_LINKS, G.Y_WAARDE, G.FS_KLEIN, '—')+'</g>';
-  s+='<g id="visp-accu" class="vis-plek geen">'+icoonVak('visi-accu', G.X_RIJ_ICOON, G.Y_RIJ1, G.ICOON_RIJ)+
-       tekstEl('visv-accu', 'vis-klein', G.X_RIJ_TEKST, G.Y_RIJ1, G.FS_KLEIN, '—', true)+'</g>';
+  s+='<g id="visp-accu" class="vis-plek geen">'+icoonVak('visi-accu', G.X_MIDDEN, G.Y_ICOON, G.ICOON)+
+       tekstEl('visv-accu', 'vis-klein', G.X_MIDDEN, G.Y_WAARDE, G.FS_KLEIN, '—')+'</g>';
   s+='<g id="visp-tank" class="vis-plek geen">'+icoonVak('visi-tank', G.X_RECHTS, G.Y_ICOON, G.ICOON)+
        tekstEl('visv-tank', 'vis-klein', G.X_RECHTS, G.Y_WAARDE, G.FS_KLEIN, '—')+'</g>';
   // Sleepwijzer en naald: één vorm op twaalf uur, gedraaid om het midden.
@@ -508,7 +513,7 @@ function bouw(g){
   const d10=defVan('010C'), dOlie=defVan('015C');
   const wH=(d10 && typeof d10.wH==='number')?d10.wH:null;
   g.innerHTML='<div class="vis">'+
-    '<svg class="vis-meter" viewBox="0 0 320 320" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
+    '<svg class="vis-meter" viewBox="0 0 320 '+G.VB_H+'" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
       wijzerplaat(wH, dOlie && dOlie.wH, dOlie && dOlie.dH)+'</svg>'+
     '<div class="vis-meldingen" id="visMeld"></div>'+
     '<div class="vis-voet"><span>Overige sensoren staan in Slim</span>'+

@@ -14,8 +14,9 @@
  ═══════════════════════════════════════════════════════════
 
  - Nieuwe weergave naast Slim (die blijft zoals hij was). Naald = toerental,
-   midden = snelheid, onderin koelwater, accu en brandstof als icoon met
-   getal. De onderboog tussen vijf en zeven uur is motorolie; zonder olie
+   midden = snelheid, onderin op één rij koelwater, accu en brandstof met
+   het getal onder het icoon. De onderboog tussen vijf en zeven uur is
+   motorolie, met het getal gecentreerd onder de cirkel; zonder olie
    laaddruk (turbo bewezen), anders het gaspedaal.
  - Kleuren: koelwater blauw onder 60 °C; accu oranje als een draaiende
    motor onder 13,2 V blijft (dynamo laadt niet), rood onder 12,0 of boven
@@ -33,7 +34,7 @@
    leest PLRun.staat() en bewaart zelf niets.
  - De wijzerplaat is een vaste tekening; getallen sturen alleen hoek,
    vulling en tekst. `PLGate.stats()` zegt nu ook `turbo`.
- - Getoetst door `test-visueel.js` en `bproef-visueel.js`, met zestien
+ - Getoetst door `test-visueel.js` en `bproef-visueel.js`, met zeventien
    mutaties in `plmutate.sh`.
 
  ═══════════════════════════════════════════════════════════

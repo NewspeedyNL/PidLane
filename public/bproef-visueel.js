@@ -62,7 +62,11 @@ function beoordeel(m) {
   const v = m.vakken;
   for (let i = 0; i < v.length; i++) {
     const a = v[i];
-    [[a.x0, a.y0], [a.x1, a.y0], [a.x0, a.y1], [a.x1, a.y1]].forEach(function (p) {
+    // Het getal van de onderboog staat met opzet ONDER de cirkel: voor dat
+    // icoon en die tekst is de eis dat ze helemaal onder de ring blijven.
+    if (/^vis-onder/.test(a.naam)) {
+      if (a.y0 <= m.C + m.R + 1) buiten.push(a.naam + ' (hoort onder de ring)');
+    } else [[a.x0, a.y0], [a.x1, a.y0], [a.x0, a.y1], [a.x1, a.y1]].forEach(function (p) {
       if (Math.hypot(p[0] - m.C, p[1] - m.C) > m.R - 2) buiten.push(a.naam);
     });
     for (let j = i + 1; j < v.length; j++) {
@@ -111,7 +115,7 @@ function beoordeel(m) {
     toets('17 streepjes', m.streepjes === 17, 'gevonden: ' + m.streepjes);
     toets('er is iets gemeten (' + m.vakken.length + ' vakken)', m.vakken.length >= 15, 'te weinig vakken — dan meet de rest niets');
     const b = beoordeel(m);
-    toets('geen tekst of icoon valt buiten de ring', b.buiten.length === 0, b.buiten.join(', '));
+    toets('alles binnen de ring, en het olie-getal eronder', b.buiten.length === 0, b.buiten.join(', '));
     toets('geen tekst of icoon raakt een ander', b.botsing.length === 0, b.botsing.join(', '));
 
     console.log('\n3. Tegenproef — ziet de controle een echte overlap?');

@@ -132,14 +132,19 @@ const vakken = cijfers.map(c => tekstVak('cijfer ' + c.t, c.x, c.y, G.FS_CIJFER,
     tekstVak('km/h', G.C, G.Y_KMH, G.FS_EENHEID, 'km/h'),
     icoonVak('koelwatericoon', G.X_LINKS, G.Y_ICOON, G.ICOON),
     tekstVak('koelwatergetal', G.X_LINKS, G.Y_WAARDE, G.FS_KLEIN, '118°'),
+    icoonVak('accu-icoon', G.X_MIDDEN, G.Y_ICOON, G.ICOON),
+    tekstVak('accugetal', G.X_MIDDEN, G.Y_WAARDE, G.FS_KLEIN, '14,8 V'),
     icoonVak('brandstoficoon', G.X_RECHTS, G.Y_ICOON, G.ICOON),
     tekstVak('brandstofgetal', G.X_RECHTS, G.Y_WAARDE, G.FS_KLEIN, '100%'),
-    icoonVak('accu-icoon', G.X_RIJ_ICOON, G.Y_RIJ1, G.ICOON_RIJ),
-    tekstVak('accugetal', G.X_RIJ_TEKST, G.Y_RIJ1, G.FS_KLEIN, '14,8 V', true),
-    icoonVak('onderboogicoon', G.X_RIJ_ICOON, G.Y_RIJ2, G.ICOON_RIJ),
-    tekstVak('onderbooggetal', G.X_RIJ_TEKST, G.Y_RIJ2, G.FS_KLEIN, '≈+1,5 bar', true),
     { naam: 'naaf', x0: G.C - G.R_NAAF, x1: G.C + G.R_NAAF, y0: G.C - G.R_NAAF, y1: G.C + G.R_NAAF }
   ]);
+// Het getal van de onderboog staat met opzet BUITEN de cirkel, eronder. Voor
+// die twee vakken geldt dus een andere regel: helemaal onder de ring (met zijn
+// lijndikte), en binnen de tekening zelf.
+const onderVakken = [
+  icoonVak('onderboogicoon', G.X_ONDER_ICOON, G.Y_ONDER, G.ICOON_ONDER),
+  tekstVak('onderbooggetal', G.X_ONDER_TEKST, G.Y_ONDER, G.FS_KLEIN, '≈+1,5 bar', true)
+];
 function raakt(a, b) { return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1; }
 const botsing = [];
 for (let i = 0; i < vakken.length; i++)
@@ -150,6 +155,14 @@ waar('geen tekstvak of icoon raakt een ander (' + vakken.length + ' vakken)', bo
 function hoeken(v) { return [[v.x0, v.y0], [v.x1, v.y0], [v.x0, v.y1], [v.x1, v.y1]]; }
 const naBuiten = vakken.filter(v => hoeken(v).some(p => afstand(p[0], p[1]) > G.R_RING - 4));
 waar('elk vak valt binnen de ring', naBuiten.length === 0, naBuiten.map(v => v.naam).join(', '));
+const onderMis = onderVakken.filter(v => v.y0 <= G.C + G.R_RING + 1 || v.y1 > G.VB_H || v.x0 < 0 || v.x1 > 320);
+waar('het getal van de onderboog staat onder de ring en binnen de tekening', onderMis.length === 0,
+  onderMis.map(v => v.naam + ' ' + JSON.stringify(v)).join(', '));
+const onderBotst = raakt(onderVakken[0], onderVakken[1]);
+waar('icoon en getal onder de cirkel raken elkaar niet', !onderBotst);
+waar('het getal onder de cirkel staat onder de oliebalk (tussen 17 en 19 uur)',
+  onderVakken[0].x0 > P0(G.O0)[0] && onderVakken[1].x1 < P0(G.O1)[0]);
+function P0(a) { const t = (a - 90) * Math.PI / 180; return [G.C + G.R_BOOG * Math.cos(t), G.C + G.R_BOOG * Math.sin(t)]; }
 
 // Ringen: een vak mag niet over een boog of de streepjes vallen. Getoetst op
 // punten langs elke boog, met de lijndikte erbij.
@@ -183,7 +196,7 @@ waar('de onderboog raakt de toerenboog niet (tussen 120° en 240° is het gat)',
 {
   const fout1 = tekstVak('cijfer', G.C, G.C - G.R_STREEP_UIT + 4, G.FS_CIJFER, '4');
   const fout2 = tekstVak('snelheid', G.C, G.C, G.FS_SNEL, '999');
-  const fout3 = tekstVak('onderbooggetal', G.X_RIJ_TEKST, G.Y_RIJ2 + 14, G.FS_KLEIN, '≈+1,5 bar', true);
+  const fout3 = tekstVak('onderbooggetal', G.X_ONDER_TEKST, G.C + G.R_BOOG, G.FS_KLEIN, '≈+1,5 bar', true);
   waar('tegenproef: een cijfer op de streepjes wordt gezien', bogen.some(b => vakRaaktBoog(fout1, b[1], b[2], b[3], b[4])));
   waar('tegenproef: de snelheid op de naaf wordt gezien', raakt(fout2, vakken.find(v => v.naam === 'naaf')));
   waar('tegenproef: een getal op de onderboog wordt gezien', vakRaaktBoog(fout3, G.R_BOOG, G.B_BOOG, G.O0, G.O1));

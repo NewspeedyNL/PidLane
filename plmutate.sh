@@ -1015,8 +1015,9 @@ MUTATIES=(
 # duurt als de weergave open staat, en een meldingenvak dat leest en niets bewaart.
 "public/pidlane-visueel.js@@  return Math.max(0, Math.min(100, (n-lo)/(hi-lo)*100));@@  return (n-lo)/(hi-lo)*100;@@test-visueel.js@@de vulling is niet meer begrensd: 99999 rpm zet de naald voorbij het laatste streepje"
 "public/pidlane-visueel.js@@  R_CIJFER: 100, FS_CIJFER: 17,@@  R_CIJFER: 110, FS_CIJFER: 17,@@test-visueel.js@@de cijfers schuiven naar buiten en vallen over de streepjes"
-"public/pidlane-visueel.js@@Y_SNEL: 198, Y_KMH: 230,@@Y_SNEL: 198, Y_KMH: 222,@@test-visueel.js@@km/h valt over het snelheidsgetal"
-"public/pidlane-visueel.js@@Y_RIJ1: 248, Y_RIJ2: 272@@Y_RIJ1: 248, Y_RIJ2: 284@@test-visueel.js@@het getal van de onderboog zakt op de boog zelf"
+"public/pidlane-visueel.js@@Y_SNEL: 192, Y_KMH: 222,@@Y_SNEL: 192, Y_KMH: 214,@@test-visueel.js@@km/h valt over het snelheidsgetal"
+"public/pidlane-visueel.js@@X_ONDER_TEKST: 150, Y_ONDER: 330@@X_ONDER_TEKST: 150, Y_ONDER: 310@@test-visueel.js@@het olie-getal schuift omhoog over de ring van de cirkel"
+"public/pidlane-visueel.js@@Y_ICOON: 244, Y_WAARDE: 266,@@Y_ICOON: 244, Y_WAARDE: 276,@@test-visueel.js@@de getallen van de rij van drie zakken op de oliebalk"
 "public/pidlane-visueel.js@@    if(window.PLSched && window.PLSched.dood(pid)) return false;\n@@@@test-visueel.js@@een dode PID houdt zijn plek op de meter in plaats van door te vallen naar de volgende"
 "public/pidlane-visueel.js@@if(h[i] && typeof h[i].t==='number' && h[i].t>=vanaf) t.push@@if(h[i] && typeof h[i].t==='number') t.push@@test-visueel.js@@metingen van vóór het openen (ander tempo) laten het pedaal ten onrechte van de onderboog vallen"
 "public/pidlane-visueel.js@@    if(bruikbaar(p) && !_staat.traag.has(p)) return@@    if(bruikbaar(p)) return@@test-visueel.js@@een pedaal dat op deze auto te traag binnenkomt blijft op de onderboog staan en schokt"
