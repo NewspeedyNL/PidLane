@@ -1100,10 +1100,18 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .gdot { position:absolute; top:13px; right:12px; width:8px; height:8px; border-radius:50%; background:var(--gn); box-shadow:0 0 7px var(--gn); transition:background .3s,box-shadow .3s; }
 .gdot.warn { background:var(--or); box-shadow:0 0 7px var(--or); }
 /* ── PID weergave-schakelaar + modi ── */
-.pidview-switch { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
-.pidview-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--tx3); margin-right:2px; }
+/* Eén regel, vijf gelijke vakken: icoon boven een kort woord (26-09-2026).
+   Met het woord naast het icoon paste de rij op een telefoon niet, en
+   brak hij over drie regels. De knoppen buiten deze rij (snelkoppelingen in
+   Slim visueel) houden de gewone pil-vorm: die hebben geen <i>. */
+.pidview-switch { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; margin-bottom:10px;
+                  padding:3px; border:1px solid var(--bd); border-radius:12px; background:var(--sur); }
 .pidview-btn { font-family:var(--f); font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; transition:all .15s; }
-.pidview-btn.active { background:var(--blv); border-color:var(--blv); color:#fff; }
+.pidview-switch .pidview-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-width:0;
+                  min-height:44px; padding:4px 2px; border:0; border-radius:9px; background:transparent;
+                  font-size:10.5px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pidview-switch .pidview-btn i { font-style:normal; font-size:16px; line-height:1; }
+.pidview-btn.active, .pidview-switch .pidview-btn.active { background:var(--blv); border-color:var(--blv); color:#fff; }
 /* GETALLEN — compacte kaart, geen sparkline */
 .gg.view-numbers { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:7px; }
 .gg.view-numbers .gc { padding:9px 10px; }
@@ -1298,8 +1306,8 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
    een stukje over de bovenkant van de tekening: daar is de cirkel nog smal,
    en de hoeken zijn leeg. Een leeg lampje houdt zijn plek (visibility), zodat
    de meter niet verspringt als de aandrijving bekend wordt. */
-.vis-lampen { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:-18px; position:relative; z-index:1; pointer-events:none; }
-.vis-lamp { display:inline-flex; align-items:center; gap:6px; max-width:31%; min-height:34px; padding:4px 9px 4px 7px;
+.vis-lampen { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:-12px; position:relative; z-index:1; pointer-events:none; }
+.vis-lamp { position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:6px; max-width:40%; min-height:34px; padding:4px 9px 6px 7px;
             border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx3); pointer-events:auto; }
 .vis-lamp.leeg { visibility:hidden; }
 .vis-lamp-ic { flex:none; width:18px; height:18px; overflow:visible; }
@@ -1313,6 +1321,8 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-lamp.ev    { color:var(--gn); border-color:var(--gn); background:var(--gns); }
 .vis-lamp.hyb   { color:var(--bl); border-color:var(--bl); background:rgba(26,111,255,.12); }
 .vis-lamp.twijfel { opacity:.6; border-style:dashed; }
+/* Het balkje onderin: motorbelasting links, accupercentage rechts. */
+.vis-lamp-balk { position:absolute; left:0; bottom:0; height:3px; background:currentColor; opacity:.75; transition:width .3s linear; }
 .vis-plaat { fill:var(--sur); stroke:var(--bd2); stroke-width:2; }
 .vis-spoor { fill:none; stroke:var(--sur2); stroke-linecap:butt; }
 .vis-zone  { fill:none; stroke:var(--or); stroke-opacity:.35; stroke-linecap:butt; }
@@ -1328,10 +1338,11 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-meter text { font-family:var(--f); text-anchor:middle; dominant-baseline:central; font-variant-numeric:tabular-nums; }
 .vis-cijfer { font-weight:700; fill:var(--tx); }
 .vis-cijfer.rood { fill:var(--or); }
-.vis-schaal { font-weight:600; fill:var(--tx3); letter-spacing:.5px; }
 .vis-snel { font-weight:800; fill:var(--tx); letter-spacing:-1.5px; }
 .vis-eenheid { font-weight:600; fill:var(--tx3); }
-.vis-rpm { font-family:var(--m) !important; fill:var(--tx3); }
+.vis-logo { opacity:.9; }
+.vis-logo-puls { fill:none; stroke:var(--tx); stroke-width:18; stroke-linecap:round; stroke-linejoin:round; }
+.vis-logo-weg  { fill:none; stroke:var(--tx3); stroke-width:14; stroke-linecap:round; }
 .vis-klein { font-family:var(--m) !important; font-weight:600; fill:var(--tx); }
 .vis-icoon { color:var(--tx2); overflow:visible; }
 .vis-naald, .vis-piek { transform-box:view-box; transform-origin:160px 160px; transition:transform .3s linear; }
@@ -2314,14 +2325,6 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
    geen animatie behalve de ene stip die nu gelezen wordt, en bevindingen
    pas in beeld als je erom tikt. */
 
-.pidview-scheid{display:inline-block;width:1px;height:20px;margin:0 3px;
-  background:linear-gradient(180deg,transparent,#2c4a7e,transparent);vertical-align:middle}
-/* Stond op #24406e/#7f93b8: kleuren uit het donkere palet, met de hand
-   opgeschreven. In het lichte thema gaf dat 2,87:1 — de enige tekst op het
-   hoofdscherm die daar onder de norm viel (#141). Tokens volgen het thema. */
-.pidview-btn.waak{border-color:var(--bd2);color:var(--tx3)}
-.pidview-btn.waak.active{border-color:var(--gn);color:var(--gn);
-  background:var(--gns)}
 
 #wkStrook{margin:0 0 11px;padding:9px 12px 10px;border-radius:13px;
   border:1px solid #1b2942;background:rgba(255,255,255,.022);font-family:var(--f)}

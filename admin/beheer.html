@@ -455,7 +455,7 @@
             <button class="btn-pri btn-sm" onclick="logLaden()">Ophalen</button>
           </div></div>
         <details class="uitleg"><summary>Wat staat hier, en wat juist niet</summary><div class="body">
-          Dit is de tabel waar de app zelf in schrijft via <code>/airtable/log</code>: opstarten,
+          Dit is de tabel waar de app zelf in schrijft via <code>/airtable/log</code> — hij staat in <b>D1 (Cloudflare)</b>; de route heet nog zo: opstarten,
           verbindingen, foutmeldingen en bugmeldingen. Elke regel draagt het toestel, de app-versie,
           de rol en — als er een auto aan hing — merk, bouwjaar en protocol.<br><br>
           <b>Er staat geen ruwe VIN in.</b> Het VIN-veld bevat een pseudoniem
@@ -635,7 +635,7 @@
             <button class="btn-sec btn-sm" onclick="opdLaden()">↻ Herladen</button>
           </div></div>
         <details class="uitleg"><summary>Hoe een opdracht bij de rit komt, en wat hier bewaakt wordt</summary><div class="body">
-          De testrun haalt bij de start de <b>actieve</b> opdracht op (<code>/airtable/opdracht</code>, schakelaar
+          De testrun haalt bij de start de <b>actieve</b> opdracht op (<code>/airtable/opdracht</code> — de tabel staat in <b>D1 (Cloudflare)</b>, de route heet nog zo — schakelaar
           <code>feat_opdracht</code> onder Instellingen). Een opdracht is data, geen code: sensoren, een duur,
           vragen, drempels en proeven. Wat de app ermee mag, staat in de witte lijst van
           <code>pidlane-opdracht.js</code> — <b>en die lijst keurt hier ook</b>, want deze pagina laadt

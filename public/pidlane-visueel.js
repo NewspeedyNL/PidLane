@@ -25,7 +25,7 @@
 //
 // ── WAT ER OP STAAT ───────────────────────────────────────────────
 //   naald      010C toerental, 0 tot 8000
-//   midden     010D snelheid
+//   midden     010D snelheid; erboven het PidLane-embleem (geen tekst)
 //   onderboog  tussen vijf en zeven uur, op de straal van de toerenboog:
 //              motorolie (015C); zonder olie de laaddruk als de turbo BEWEZEN
 //              is (PLGate), anders het gaspedaal (0149 → 015A → 014A → 0111)
@@ -38,12 +38,13 @@
 //   boven      twee lampjes in de hoeken, op elf en op één uur: links wat de
 //              verbrandingsmotor doet (aan, start/stop, uit), rechts — alleen
 //              op een hybride — of hij elektrisch rijdt. Beide lezen
-//              PLAandrijving; zie aandrijfLampjes()
+//              PLAandrijving; zie aandrijfLampjes(). Links met de
+//              motorbelasting (0104), rechts met het accupercentage (015B)
 //
 // Een diesel draait lager: daar loopt de schaal tot 6000 en begint het
 // oranje bij 4500. Zie SCHAAL hieronder en schaalVoor().
 //
-// Bewust NIET: motorbelasting, de gasklepsensoren A/B/C, de tweede en derde
+// Bewust NIET op de meter zelf: de gasklepsensoren A/B/C, de tweede en derde
 // pedaalsensor, ontstekingstiming, raildruk, luchtmassa. Die volgen uit het
 // pedaal en het toerental of zijn getallen voor de monteur. Ze blijven in
 // "Slim".
@@ -133,11 +134,13 @@ const G = {
   BAR_LO: -1, BAR_HI: 1.5,
   // Het midden. De snelheid staat ONDER de naaf: boven de naaf veegt de
   // naald bij elk toerental tussen 1000 en 7000 over de tekst heen, eronder
-  // alleen bij stationair en boven 7000.
-  Y_SCHAAL: 116, Y_RPM: 134, Y_SNEL: 192, Y_KMH: 222,
+  // alleen bij stationair en boven 7000. Boven de naaf staat sinds 26-09 het
+  // embleem en geen tekst meer: het toerental leest de naald al af, en een
+  // tekening onder de naald hindert niet waar een getal dat wel doet.
+  Y_LOGO: 112, LOGO_B: 56, Y_SNEL: 192, Y_KMH: 222,
   // Lettermaten staan HIER en niet in de CSS: test-visueel.js rekent er de
   // tekstvakken mee uit, en een maat die op twee plekken staat loopt uit de pas.
-  FS_SNEL: 38, FS_KLEIN: 14, FS_EENHEID: 11, FS_SCHAAL: 10,
+  FS_SNEL: 38, FS_KLEIN: 14, FS_EENHEID: 11,
   // De drie plekjes op één rij: icoon boven, getal eronder, alle drie
   // gecentreerd. Eén rij in plaats van een blok in het midden: dat was te druk.
   ICOON: 20, X_LINKS: 96, X_MIDDEN: 160, X_RECHTS: 224, Y_ICOON: 244, Y_WAARDE: 266,
@@ -268,6 +271,25 @@ function streepjes(wH, max){
   }
   return s;
 }
+/* Het PidLane-embleem voor het midden van de meter. Het echte logo
+   (index.html, #plIntro) is een tegel van 512 met twee gloedfilters en een
+   donkere achtergrond: op 56 px breed worden de filters vlekken en is de
+   tegel een zwart blok op de plaat. Hier alleen de lijnen — ballon, hartslag,
+   het begin van de weg en de vonk — uitgesneden op wat er getekend wordt
+   (x 88…474, y 44…336) en met lijnen die dik genoeg blijven. De hartslag en de
+   weg volgen het thema; de ballon en de vonk houden hun merkkleur. */
+const LOGO_VB = [88, 44, 386, 292];
+function embleem(){
+  const b=G.LOGO_B, h=b*LOGO_VB[3]/LOGO_VB[2];
+  return '<svg class="vis-logo" x="'+f2(G.C-b/2)+'" y="'+f2(G.Y_LOGO-h/2)+'" width="'+b+'" height="'+f2(h)+'" viewBox="'+LOGO_VB.join(' ')+'" aria-hidden="true">'+
+    '<defs><linearGradient id="visLogoGr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient>'+
+    '<linearGradient id="visLogoSp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs>'+
+    '<path class="vis-logo-weg" d="M198 314L183 336M314 314L329 336M256 312V322M256 331V336"/>'+
+    '<path d="M256 294H170C126 294 100 268 100 226V154C100 112 126 86 170 86H342C386 86 412 112 412 154V226C412 268 386 294 342 294H296Z" fill="none" stroke="url(#visLogoGr)" stroke-width="22" stroke-linejoin="round"/>'+
+    '<path class="vis-logo-puls" d="M138 190H192L212 148L244 236L272 164L290 190H372"/>'+
+    '<path d="M404 52C409 79 417 88 446 96C417 104 409 113 404 140C399 113 391 104 362 96C391 88 399 79 404 52Z" fill="url(#visLogoSp)"/>'+
+    '</svg>';
+}
 function wijzerplaat(wH, olieWH, olieDH, max){
   const C=G.C, M=(max>0?max:G.RPM_MAX);
   let s='';
@@ -278,8 +300,7 @@ function wijzerplaat(wH, olieWH, olieDH, max){
     s+='<path class="vis-zone" d="'+boogPad(G.R_BOOG,G.A0+(G.A1-G.A0)*wH/M,G.A1)+'" stroke-width="'+G.B_BOOG+'"/>';
   s+='<path id="vis-toerenboog" class="vis-vul" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,G.A0,G.A1)+'" stroke-width="'+G.B_BOOG+'"/>';
   s+=streepjes(wH, M);
-  s+=tekstEl('', 'vis-schaal', C, G.Y_SCHAAL, G.FS_SCHAAL, '×1000 /min');
-  s+=tekstEl('vis-rpm', 'vis-rpm', C, G.Y_RPM, G.FS_EENHEID, '— rpm');
+  s+=embleem();
   // De onderboog. Alle paden staan er altijd (vaste tekening); de CSS toont
   // per soort (olie, pedaal, laaddruk) alleen wat erbij hoort.
   const z=hoekLaaddrukNul();
@@ -390,6 +411,7 @@ function indeling(){
   const d10=defVan('010C'), motor=leesMotor();
   const ind={ naald:bruikbaar('010C')?'010C':null, midden:bruikbaar('010D')?'010D':null,
               onder:kiesOnder(), plekken:{}, motor:motor,
+              lamp:{ belasting:bruikbaar('0104')?'0104':null, accu:bruikbaar('015B')?'015B':null },
               schaal:schaalVoor(motor, d10 && d10.wH) };
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=eerste(r.keten); });
   return ind;
@@ -400,11 +422,13 @@ function gebruiktePids(ind){
   if(ind.naald) s.add(ind.naald);
   if(ind.midden) s.add(ind.midden);
   if(ind.onder){ s.add(ind.onder.pid); if(ind.onder.soort==='laaddruk') s.add('0133'); }
+  if(ind.lamp){ if(ind.lamp.belasting) s.add(ind.lamp.belasting); if(ind.lamp.accu) s.add(ind.lamp.accu); }
   Object.keys(ind.plekken).forEach(function(k){ if(ind.plekken[k]) s.add(ind.plekken[k]); });
   return s;
 }
 function handtekening(ind){
   return [ind.naald, ind.midden, ind.onder?ind.onder.soort+ind.onder.pid:'', ind.schaal?ind.schaal.max:'',
+          ind.lamp?(ind.lamp.belasting||'')+(ind.lamp.accu||''):'',
           PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(',')].join('|');
 }
 function naamVan(pid){
@@ -627,17 +651,34 @@ const LAMP_MOTOR = {
   UIT_VOOR_START: { soort:'uit',   kop:'Motor',      waarde:'uit',    icoon:'motor' },
   ACCU_RIJDT:     { soort:'uit',   kop:'Motor',      waarde:'uit',    icoon:'motor' }
 };
-function aandrijfLampjes(res, motor){
+// Wat een brandend lampje erbij zegt (26-09-2026): links de motorbelasting
+// (0104) zolang de motor draait, rechts het laadpercentage van de hybride
+// accu (015B). Het vermogen dat de accu levert was de vraag, maar daar is op
+// generieke OBD geen PID voor die deze app kent; het percentage wel. Zonder
+// getal blijft de toestand staan ("aan", "actief"), met getal schuift de
+// toestand naar de kop en krijgt het lampje een balkje.
+function pct(v){ const n=Number(v); return (v===null || v===undefined || v==='' || !isFinite(n)) ? null : Math.max(0, Math.min(100, Math.round(n))); }
+function aandrijfLampjes(res, motor, extra){
   const uit={ motor:null, hybride:null };
   if(!res || !res.toestand || res.toestand==='ONBEKEND') return uit;
-  const m=LAMP_MOTOR[res.toestand];
+  extra=extra||{};
+  const t=res.toestand, draait=(t==='DRAAIT_STIL' || t==='DRAAIT_RIJDT');
+  const m=LAMP_MOTOR[t];
   // Een volledig elektrische auto heeft geen verbrandingsmotor om te melden.
-  if(m && motor!=='ev') uit.motor={ soort:m.soort, kop:m.kop, waarde:m.waarde, icoon:m.icoon, twijfel:res.zekerheid==='laag' };
+  if(m && motor!=='ev'){
+    uit.motor={ soort:m.soort, kop:m.kop, waarde:m.waarde, icoon:m.icoon, twijfel:res.zekerheid==='laag', balk:null };
+    const b=draait ? pct(extra.belasting) : null;
+    if(b!==null){ uit.motor.kop='Motor aan'; uit.motor.waarde=b+'%'; uit.motor.balk=b; }
+  }
   if(motor==='hybride' || motor==='ev' || res.bewijstHybride){
-    const t=res.toestand;
-    uit.hybride = t==='ACCU_RIJDT' ? { soort:'ev', kop:'Hybride', waarde:'elektrisch', icoon:'hybride' }
-      : (t==='DRAAIT_STIL' || t==='DRAAIT_RIJDT') ? { soort:'hyb', kop:'Hybride', waarde:'actief', icoon:'hybride' }
-      : { soort:'rust', kop:'Hybride', waarde:'gereed', icoon:'hybride' };
+    uit.hybride = t==='ACCU_RIJDT' ? { soort:'ev', kop:'Hybride', waarde:'elektrisch', icoon:'hybride', balk:null }
+      : draait ? { soort:'hyb', kop:'Hybride', waarde:'actief', icoon:'hybride', balk:null }
+      : { soort:'rust', kop:'Hybride', waarde:'gereed', icoon:'hybride', balk:null };
+    const a=pct(extra.accu);
+    if(a!==null){
+      uit.hybride.kop = t==='ACCU_RIJDT' ? 'Elektrisch' : draait ? 'Hybride actief' : 'Hybride accu';
+      uit.hybride.waarde=a+'%'; uit.hybride.balk=a;
+    }
   }
   return uit;
 }
@@ -647,10 +688,19 @@ function leesAandrijving(){
 }
 function lampHtml(l){
   return '<svg class="vis-lamp-ic" viewBox="0 0 24 24" aria-hidden="true">'+icoonHtml(l.icoon)+'</svg>'+
-         '<span class="vis-lamp-tx"><small>'+esc(l.kop)+'</small><b>'+esc(l.waarde)+'</b></span>';
+         '<span class="vis-lamp-tx"><small>'+esc(l.kop)+'</small><b>'+esc(l.waarde)+'</b></span>'+
+         (l.balk!==null ? '<i class="vis-lamp-balk" style="width:'+l.balk+'%"></i>' : '');
+}
+/* Het getal bij een lampje: alleen een vers antwoord. Een oude belasting
+   naast "Motor aan" leest als een meting van nu, en dat is hij niet. */
+function lampGetal(pid){
+  if(!pid || typeof pidVals==='undefined' || pidVals[pid]===undefined) return null;
+  return isOud(pid) ? null : pidVals[pid];
 }
 function lampjesBij(){
-  const res=leesAandrijving(), L=aandrijfLampjes(res, _staat.ind ? _staat.ind.motor : leesMotor());
+  const I=_staat.ind;
+  const res=leesAandrijving(), L=aandrijfLampjes(res, I ? I.motor : leesMotor(),
+    { belasting: lampGetal(I && I.lamp.belasting), accu: lampGetal(I && I.lamp.accu) });
   const sleutel=JSON.stringify(L);
   if(sleutel===_staat.lampSleutel) return;
   _staat.lampSleutel=sleutel;
@@ -746,7 +796,6 @@ function bij(pid, val){
     const max=ind.schaal.max, s=stand('toeren', val, max), st=oordeel(pid, val);
     const n=el('vis-naald'); if(n) n.style.transform='rotate('+s.hoek.toFixed(2)+'deg)';
     zetDash('vis-toerenboog', s.deel);
-    zetTekst('vis-rpm', s.tekst+' rpm');
     klasse(el('visg-naald'), st); klasse(el('vis-toerenboog'), st);
     const pk=el('vis-piek');
     if(pk){
@@ -765,6 +814,7 @@ function bij(pid, val){
   if(pid===ind.midden) zetTekst('vis-snel', tekst('snel', val));
   if(ind.onder && (pid===ind.onder.pid || (ind.onder.soort==='laaddruk' && pid==='0133'))) onderBij();
   PLEKKEN.forEach(function(r){ if(ind.plekken[r.rol]===pid) plekBij(r.rol, val); });
+  if(pid===ind.lamp.belasting || pid===ind.lamp.accu) lampjesBij();
 }
 function plekBij(rol, val){
   const ind=_staat.ind; if(!ind) return;

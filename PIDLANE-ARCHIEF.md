@@ -14,6 +14,39 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — De PID-tabel stond vanaf 0169 op de verkeerde nummers
+
+**Hoe het boven kwam.** In de bulk-analyse van de CX-5 (benzine) stonden
+"NOx doseerpomp 52,9 %", "AdBlue injectiedruk 8,2 kPa" en "Turbo temp
+uitlaat A −38 °C". De eerste twee verdwenen met de PID-gate in de recorder,
+maar de vraag bleef: waarom antwoordt een benzineauto op die PIDs? Antwoord:
+dat doet hij niet. Hij antwoordt op 018E (motorwrijvingskoppel), 01A4
+(versnelling) en 019E (uitlaatgasdebiet). De namen in `ALL_PID_DEFS` waren
+verzonnen of een stuk verschoven, en de formules lazen byte 0 — de
+steunbitmap — als hoge databyte.
+
+**Dezelfde fout als in juli.** Op 26-07 is 0165–0168 om precies die reden
+rechtgezet; `PID_BYTE_LEN` volgde de norm al. Het blok erna is toen niet
+nagelopen. Wat deze keer de herhaling moet tegenhouden staat in
+`test-piddefs.js`: SAE-ankers (naam + voorbeeldantwoord per PID) en een
+controle die voor elke blok-PID eist dat een lege steunbitmap `null` geeft.
+
+**De bron.** Geen enkele referentie in de repo; Wikipedia was niet bereikbaar.
+Gebruikt: python-OBD (tot 5F), ELMduino (tot 65), react-native-obd2-reader
+(namen en bereiken boven 60) en AndrOBD `pids.csv` + `conversions.csv` (per
+veld de byte-offset en de omrekening). Waar die vier niet eensluidend waren —
+turbotoerental 74 (factor honderd verschil), hybride-accu 9A, versnelling A4
+— staat er nu géén definitie. De hybride-accu was de aanleiding om te
+zoeken (vermogen voor het lampje in Slim visueel); dat blijft dus open.
+
+**Wat meeverhuisde.** `DIESEL_SCR_PIDS` was "afgeleid uit de definities" en
+filterde zo EGR en inlaatdruk weg op benzine, terwijl het echte roetfilter
+(7A/7B) en AdBlue (85) erdoor kwamen. `BOOST_PIDS` bevatte 87 (MAP, elke
+motor). De DPF-controle rekende een "roetlast 0–45 %" uit de EGR-temperatuur.
+De uitlaattegendruk in `pidlane-onderdeel.js` las EGR-positie en
+EGR-temperatuur. Die drempels (DPF 0–30 kPa, tegendruk 120 kPa) zijn
+overgenomen, niet getoetst: dat is een vraag voor een rit met een diesel.
+
 ## 26-09-2026 — Rit-monitor: UITVAL-storm na bewust wegschakelen
 
 **Wat er te zien was.** Logboek 26-09, 01:17:55: lege multi-PID-antwoorden,

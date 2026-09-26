@@ -86,7 +86,7 @@ function toets(naam, waar, uitleg) {
     toets('en hangt in de testrunoverlay', p.inOverlay, JSON.stringify(p));
     toets('vóór het logboek', p.voorHetLog, JSON.stringify(p));
     toets('in een EIGEN element, los van #testrunBody', p.eigenElement, JSON.stringify(p));
-    toets('met de lus erin', /Opdracht/.test(p.tekst) && /Airtable/.test(p.tekst), p.tekst.slice(0, 160));
+    toets('met de lus erin', /Opdracht\s*Meten\s*D1\s*Claude/.test(p.tekst) && !/Airtable/.test(p.tekst), p.tekst.slice(0, 160));
     // De stijl hoort in de <head> en niet in het paneel: anders parseert de
     // browser elke seconde hetzelfde stijlblok opnieuw.
     toets('en zonder het stijlblok in de inhoud', !/@keyframes/.test(p.tekst), p.tekst.slice(0, 80));

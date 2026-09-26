@@ -39,19 +39,19 @@ const WACHT = ms => new Promise(r => setTimeout(r, ms));
 // De teksten eerst op hun breedste inhoud, zodat "past net" niet groen staat
 // omdat er toevallig een smal getal stond.
 const MEET = `(function(){
-  const zet = { 'vis-snel':'999', 'vis-rpm':'9990 rpm', 'visv-koel':'118°', 'visv-accu':'14,8 V',
+  const zet = { 'vis-snel':'999', 'visv-koel':'118°', 'visv-accu':'14,8 V',
                 'visv-tank':'100%', 'vis-ondertekst':'≈+1,5 bar' };
   Object.keys(zet).forEach(function(id){ const e=document.getElementById(id); if(e) e.textContent=zet[id]; });
   const svg = document.querySelector('.vis-meter');
   if (!svg) return { fout: 'geen .vis-meter in het rooster' };
   const G = PLVisueel.G, uit = [];
-  svg.querySelectorAll('text, svg.vis-icoon').forEach(function(e){
+  svg.querySelectorAll('text, svg.vis-icoon, svg.vis-logo').forEach(function(e){
     if (e.closest('.afwezig')) return;
     let b;
     if (e.tagName.toLowerCase() === 'svg') b = { x:+e.getAttribute('x'), y:+e.getAttribute('y'), width:+e.getAttribute('width'), height:+e.getAttribute('height') };
     else b = e.getBBox();
     if (!b.width) return;
-    uit.push({ naam: e.id || e.textContent, x0:b.x, y0:b.y, x1:b.x+b.width, y1:b.y+b.height });
+    uit.push({ naam: e.id || (e.classList.contains('vis-logo') ? 'embleem' : e.textContent), x0:b.x, y0:b.y, x1:b.x+b.width, y1:b.y+b.height });
   });
   return { vakken: uit, C: G.C, R: G.R_RING,
            streepjes: svg.querySelectorAll('.vis-streep').length };
@@ -214,10 +214,11 @@ function beoordeel(m) {
       setPidView('visueel');
       return { open:open, dicht:dicht, rem:PLVisueel.REM_MS };
     })()`);
-    toets('open: motorbelasting, gasklep en (met olie op de onderboog) het pedaal geremd',
-      rem.open.belasting >= rem.rem && rem.open.klep >= rem.rem && rem.open.pedaal >= rem.rem, JSON.stringify(rem));
+    toets('open: gasklep en (met olie op de onderboog) het pedaal geremd',
+      rem.open.klep >= rem.rem && rem.open.pedaal >= rem.rem, JSON.stringify(rem));
+    toets('open: de motorbelasting staat bij het motorlampje en wordt niet geremd', rem.open.belasting < rem.rem, JSON.stringify(rem));
     toets('open: toerental ongemoeid', rem.open.rpm < rem.rem, JSON.stringify(rem));
-    toets('terug naar Slim: de rem is eraf', rem.dicht.aan === false && rem.dicht.belasting < rem.rem && rem.dicht.klep < rem.rem, JSON.stringify(rem));
+    toets('terug naar Slim: de rem is eraf', rem.dicht.aan === false && rem.dicht.klep < rem.rem, JSON.stringify(rem));
 
     console.log('\n7. Zonder toerental geen lege meter maar een uitleg');
     const zonder = await app.ev(`(function(){

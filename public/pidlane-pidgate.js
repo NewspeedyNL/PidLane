@@ -23,9 +23,16 @@
    NOx-sensoren, AdBlue-injectiedruk en roetfilterwaarden. Nu afgeleid uit de
    definities zelf (alles wat NOx, AdBlue, SCR, DPF, roetfilter of partikel
    heet), zodat er niets meer doorheen glipt.
-   0186D is er bewust UIT: dat is brandstofraildruk-regeling en die zit óók op
-   benzine met directe inspuiting — jouw CX-5 levert hem gewoon. */
-const DIESEL_SCR_PIDS=new Set(['0169','016A','016B','016E','017C','017D','017E','0187','0188','0189','018A','018C','018E','018F','0190','0191','0195','0196','01A4']);
+   016D is er bewust UIT: dat is brandstofraildruk-regeling en die zit óók op
+   benzine met directe inspuiting — jouw CX-5 levert hem gewoon.
+   26-09-2026: de lijst was "afgeleid uit de definities", en die definities
+   stonden vanaf 0169 op de verkeerde nummers (zie pidlane-data.js). Hij filterde
+   zo EGR, inlaatdruk en motorwrijvingskoppel weg en liet het echte roetfilter
+   (017A/017B) en AdBlue (0185) door. Nu op de SAE-nummers: inlaatluchtklep
+   diesel (6A), injectiedruk (6E), DPF (7A-7C), NTE-status (7D/7E), NOx (83),
+   AdBlue (85), roet (86), DPF-regeneratie (8B). EGR (69/6B) hoort er niet in:
+   die zit ook op benzinemotoren. */
+const DIESEL_SCR_PIDS=new Set(['016A','016E','017A','017B','017C','017D','017E','0183','0185','0186','018B']);
 // Verbrandingsmotor-specifieke sensoren: bestaan NIET op een volledig
 // elektrisch voertuig (geen brandstoftrim, lambda/O2, MAF, brandstofdruk/-peil,
 // EGR, inlaatdruk, ontstekingstiming). Bij 'elektrisch' filteren we die weg.
@@ -87,7 +94,10 @@ function _powertrainPhantom(pid){
   return false;
 }
 // Boost/laaddruk-PID's die alleen zin hebben op een motor met turbo/compressor.
-const BOOST_PIDS = new Set(['0170','2102','0187']);
+// 0187 stond hier; dat is de inlaatdruk (MAP) en die heeft elke motor. Wat wél
+// alleen met een turbo bestaat: compressordruk (6F), laaddruk (70), VGT (71),
+// wastegate (72), turbotemperaturen (75/76) en de tussenkoeler (77).
+const BOOST_PIDS = new Set(['016F','0170','0171','0172','0175','0176','0177','2102']);
 // ── Turbo-detectie: drempels ──────────────────────────────────────────
 // Bijstellen na een rit; zie PIDLANE.md §15 voor de meetgegevens waarop deze
 // waarden zijn gekozen. Bewust hier bovenaan en niet verstopt in de functie.

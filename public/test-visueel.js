@@ -122,12 +122,18 @@ function tekstVak(naam, x, y, fs, tekst, links) {
   const x0 = links ? x : x - b / 2;
   return { naam, x0: x0, x1: x0 + b, y0: y - h / 2, y1: y + h / 2 };
 }
+// Het embleem: breedte LOGO_B, hoogte volgens zijn eigen viewBox — uit de
+// tekening gelezen, niet overgenomen, zodat een andere uitsnede hier meetelt.
+function logoVak() {
+  const m = /<svg class="vis-logo" x="([-\d.]+)" y="([-\d.]+)" width="([-\d.]+)" height="([-\d.]+)"/.exec(plaat);
+  if (!m) throw new Error('het embleem staat niet in de wijzerplaat');
+  return { naam: 'embleem', x0: +m[1], y0: +m[2], x1: +m[1] + +m[3], y1: +m[2] + +m[4] };
+}
 function icoonVak(naam, x, y, s) { return { naam, x0: x - s / 2, x1: x + s / 2, y0: y - s / 2, y1: y + s / 2 }; }
 // Elke tekst op zijn breedste inhoud: een "past net" met een smal getal zegt niets.
 const vakken = cijfers.map(c => tekstVak('cijfer ' + c.t, c.x, c.y, G.FS_CIJFER, c.t))
   .concat([
-    tekstVak('×1000 /min', G.C, G.Y_SCHAAL, G.FS_SCHAAL, '×1000 /min'),
-    tekstVak('toerengetal', G.C, G.Y_RPM, G.FS_EENHEID, '9990 rpm'),
+    logoVak(),
     tekstVak('snelheid', G.C, G.Y_SNEL, G.FS_SNEL, '999'),
     tekstVak('km/h', G.C, G.Y_KMH, G.FS_EENHEID, 'km/h'),
     icoonVak('koelwatericoon', G.X_LINKS, G.Y_ICOON, G.ICOON),
@@ -265,7 +271,9 @@ let r = ind({ actief: ['010C', '010D', '0149', '015A', '0111', '0104', '0105', '
 waar('de basis: toerental en snelheid', r.i.naald === '010C' && r.i.midden === '010D', JSON.stringify(r.i));
 waar('de plekjes: koelwater, accu, brandstof', r.i.plekken.koel === '0105' && r.i.plekken.accu === '0142' && r.i.plekken.tank === '012F', JSON.stringify(r.i.plekken));
 waar('met olie staat olie op de onderboog', r.i.onder && r.i.onder.soort === 'olie' && r.i.onder.pid === '015C', JSON.stringify(r.i.onder));
-waar('motorbelasting en luchtmassa staan nergens op de meter', JSON.stringify(r.i).indexOf('0104') < 0 && JSON.stringify(r.i).indexOf('0110') < 0);
+waar('luchtmassa staat nergens op de meter', JSON.stringify(r.i).indexOf('0110') < 0);
+waar('motorbelasting staat alleen bij het motorlampje (sinds 26-09)', r.i.lamp.belasting === '0104' &&
+  JSON.stringify(Object.assign({}, r.i, { lamp: null })).indexOf('0104') < 0, JSON.stringify(r.i));
 r = ind({ actief: ['010C', '0149', '010B'] });
 waar('zonder olie en zonder bewezen turbo: het gaspedaal', r.i.onder && r.i.onder.soort === 'pedaal' && r.i.onder.pid === '0149', JSON.stringify(r.i.onder));
 r = ind({ actief: ['010C', '0149', '010B'], turbo: true });
@@ -406,6 +414,7 @@ waar('diesel: 3000 rpm staat midden op de schaal', Math.abs(V.stand('toeren', 30
 waar('diesel: 9000 rpm blijft op het laatste streepje', V.stand('toeren', 9000, 6000).hoek === G.A1);
 
 const L = V.aandrijfLampjes;
+waar('het embleem staat in het midden, boven de naaf', /class="vis-logo"/.test(plaat) && !/×1000|vis-rpm/.test(plaat));
 waar('geen aandrijfoordeel: beide lampjes uit', !L(null, 'benzine').motor && !L(null, 'benzine').hybride);
 waar('onbekend: beide lampjes uit', !L({ toestand: 'ONBEKEND' }, 'benzine').motor);
 let l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine');
@@ -419,6 +428,25 @@ l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride');
 waar('hybride met draaiende motor: rechts "Hybride actief"', l.hybride && l.hybride.soort === 'hyb', JSON.stringify(l));
 l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog' }, 'ev');
 waar('een volledig elektrische auto krijgt geen motorlampje', !l.motor && l.hybride, JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { belasting: 34.4 });
+waar('motor draait met belasting: "Motor aan" als kop, 34% als waarde, balkje op 34',
+  l.motor.kop === 'Motor aan' && l.motor.waarde === '34%' && l.motor.balk === 34, JSON.stringify(l));
+l = L({ toestand: 'STARTSTOP', zekerheid: 'hoog' }, 'benzine', { belasting: 34 });
+waar('in een start/stop-stop geen belasting (de motor staat stil)', l.motor.waarde === 'actief' && l.motor.balk === null, JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { belasting: 'NO DATA' });
+waar('onleesbare belasting: gewoon "aan", geen balkje', l.motor.waarde === 'aan' && l.motor.balk === null, JSON.stringify(l));
+l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog' }, 'hybride', { belasting: 20, accu: 61.7 });
+waar('elektrisch rijden: rechts "Elektrisch" met 62% accu, links geen belasting',
+  l.hybride.kop === 'Elektrisch' && l.hybride.waarde === '62%' && l.hybride.balk === 62 && l.motor.balk === null, JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride', { belasting: 48, accu: 55 });
+waar('samen aan: links de belasting, rechts de accu',
+  l.motor.waarde === '48%' && l.hybride.kop === 'Hybride actief' && l.hybride.waarde === '55%', JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride', { accu: 180 });
+waar('een accupercentage buiten 0–100 blijft binnen zijn vak', l.hybride.waarde === '100%' && l.hybride.balk === 100, JSON.stringify(l));
+const Al = maak({ actief: ['010C', '0104', '015B'] });
+const indL = Al.PLVisueel.indeling();
+waar('belasting en accu horen bij de indeling', indL.lamp.belasting === '0104' && indL.lamp.accu === '015B', JSON.stringify(indL.lamp));
+waar('…en worden dus niet geremd', Al.PLVisueel.gebruiktePids(indL).has('0104') && Al.PLVisueel.gebruiktePids(indL).has('015B'));
 l = L({ toestand: 'UIT_VOOR_START', zekerheid: 'laag' }, 'benzine');
 waar('lage zekerheid staat op het lampje (twijfel), niet als feit', l.motor && l.motor.twijfel, JSON.stringify(l));
 
@@ -439,8 +467,9 @@ waar('dicht: niets geremd', ['0104', '0111', '015A', '010E', '0149', '0110'].eve
 R.PLVisueel.start();
 const na = {};
 ALLE.forEach(p => { na[p] = R.pidPollInterval(p); });
-waar('open met olie: belasting, gasklep, pedalen, ontsteking en luchtmassa geremd',
-  ['0104', '0111', '015A', '010E', '0149', '0110'].every(p => na[p] >= R.PLVisueel.REM_MS), JSON.stringify(na));
+waar('open met olie: gasklep, pedalen, ontsteking en luchtmassa geremd',
+  ['0111', '015A', '010E', '0149', '0110'].every(p => na[p] >= R.PLVisueel.REM_MS), JSON.stringify(na));
+waar('open: de motorbelasting staat bij het lampje en blijft op tempo', na['0104'] === voor['0104'], JSON.stringify(na));
 waar('open: toerental en snelheid ongemoeid', ['010C', '010D'].every(p => na[p] === voor[p]), JSON.stringify(na));
 waar('open: koelwater en olie waren al traag en blijven zoals ze waren', na['0105'] === voor['0105'] && na['015C'] === voor['015C']);
 R.PLVisueel.stop();

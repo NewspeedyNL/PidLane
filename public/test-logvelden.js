@@ -42,7 +42,7 @@ function knip(van, tot, waar) {
 }
 
 const stukLog = knip('async function _plVinVoorLog(vin){',
-  "}catch(e){ console.warn('Logregel niet in de Airtable-buffer gezet — deze regel gaat niet mee naar Airtable', e); }\n}",
+  "}catch(e){ console.warn('Logregel niet in de logbuffer gezet — deze regel gaat niet mee naar D1 (logregels)', e); }\n}",
   'logToSheets en zijn helpers');
 const stukRegel = knip("function log(msg,type='',opties){",
   "if(type==='warn'&&(msg.includes('buiten')||msg.includes('sprong')||msg.includes('outlier'))) logToSheets('outlier',msg);\n}",

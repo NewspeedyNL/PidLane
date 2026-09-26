@@ -258,7 +258,8 @@ function zeg(m) {
        maar dat DEZE proef een fout ziet komen en weer gaan. Dat is een verschil
        ten opzichte van de stand van vlak ervoor. */
     /* EERST: STAAT DE KNOP WAAR DE FOUT OP KOMT EIGENLIJK OP HET SCHERM?
-       (#236, 17-09-2026.) Dit blok zet zijn fout op `.pidview-btn.waak`. Die
+       (#236, 17-09-2026.) Dit blok zet zijn fout op de Trends-knop (tot 26-09
+       was dat de waakronde-knop, die uit deze rij is gehaald). Die
        knop zit in `#pidViewSwitch`, en die rij staat in index.html op
        `display:none`; alleen `renderGauges()` zet hem aan, en alleen zolang
        `activePIDs` gevuld is. De opzet hierboven vult die selectie zelf —
@@ -277,8 +278,8 @@ function zeg(m) {
        die hier gesteld moet worden. Zelfde regel als #227: niet gemeten is
        iets anders dan gemeten en niets gevonden. */
     const knopZichtbaar = await app.ev(`(function(){
-      const b = document.querySelector('.pidview-btn.waak');
-      if (!b) return 'de knop .pidview-btn.waak bestaat niet in de DOM';
+      const b = document.querySelector('.pidview-btn[data-mode="full"]');
+      if (!b) return 'de knop Trends (.pidview-btn[data-mode=full]) bestaat niet in de DOM';
       if (b.offsetParent === null) return 'de knop staat er wel maar is onzichtbaar' +
         ' (#pidViewSwitch display=' + (document.getElementById('pidViewSwitch')||{style:{}}).style.display +
         ', activePIDs=' + (typeof activePIDs !== 'undefined' ? activePIDs.size : '?') + ')';
@@ -290,7 +291,7 @@ function zeg(m) {
     const basis = await app.ev(`${METER}('appGrid', ${NORM})`);
     await app.ev(`(function(){
       const st = document.createElement('style'); st.id = 'plProefSlechtContrast';
-      st.textContent = '.pidview-btn.waak{ color:#7f93b8 !important; }';
+      st.textContent = '.pidview-btn[data-mode="full"]{ color:#7f93b8 !important; }';
       document.head.appendChild(st); return true; })()`);
     await rust(200);
     const kapot = await app.ev(`${METER}('appGrid', ${NORM})`);
@@ -324,7 +325,7 @@ function zeg(m) {
       const r = document.getElementById('pidViewSwitch');
       if (!r) return 'pidViewSwitch bestaat niet';
       r.dataset.plWas = r.style.display; r.style.display = 'none';
-      const b = document.querySelector('.pidview-btn.waak');
+      const b = document.querySelector('.pidview-btn[data-mode="full"]');
       return { erNog: !!b, zichtbaar: !!(b && b.offsetParent !== null) }; })()`);
     toets('de knop staat er dan nog wél in de DOM', verstopt.erNog === true,
           'anders toetst de tegenproef iets anders dan het geval uit CI');
@@ -339,7 +340,7 @@ function zeg(m) {
     const vBasis = await app.ev(`${METER}('appGrid', ${NORM})`);
     await app.ev(`(function(){
       const st = document.createElement('style'); st.id = 'plProefSlechtContrast2';
-      st.textContent = '.pidview-btn.waak{ color:#7f93b8 !important; }';
+      st.textContent = '.pidview-btn[data-mode="full"]{ color:#7f93b8 !important; }';
       document.head.appendChild(st); return true; })()`);
     await rust(200);
     const vKapot = await app.ev(`${METER}('appGrid', ${NORM})`);

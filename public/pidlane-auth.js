@@ -943,7 +943,7 @@ async function logToSheets(type, message, extra={}){
     });
     clearTimeout(_atTimer);
     _atTimer=setTimeout(flushAirtable, 3000);
-  }catch(e){ console.warn('Logregel niet in de Airtable-buffer gezet — deze regel gaat niet mee naar Airtable', e); }
+  }catch(e){ console.warn('Logregel niet in de logbuffer gezet — deze regel gaat niet mee naar D1 (logregels)', e); }
 }
 
 async function flushAirtable(){
@@ -960,7 +960,7 @@ async function flushAirtable(){
     });
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
-      console.warn('Airtable fout:',resp.status,err?.error?.message||'');
+      console.warn('D1-log fout:',resp.status,err?.error?.message||'');
       _atNoteer(false,resp.status,batch.length,err?.error?.message||('HTTP '+resp.status));
       // Zet terug in buffer bij fout
       _atBuffer.unshift(...batch);
@@ -983,7 +983,7 @@ async function flushAirtable(){
       }
     }
   }catch(e){
-    console.warn('Airtable netwerk fout:',e.message);
+    console.warn('D1-log netwerkfout:',e.message);
     _atNoteer(false,null,batch.length,e.message||'netwerkfout');
     // Netwerkfout: batch niet weggooien maar terugzetten (was: stil verlies)
     _atBuffer.unshift(...batch);

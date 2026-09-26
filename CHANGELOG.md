@@ -10,6 +10,50 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — "Airtable" → "D1" waar het log al in D1 staat (#297)
+ ═══════════════════════════════════════════════════════════
+
+ - Meetkamer: het derde station van de lus heet D1. CAMPAGNE verwijst voor
+   de uitkomstregel naar de tabel logregels in D1. De console-meldingen van
+   de logbuffer zeggen D1. In beheer staat bij het logboek en de
+   meetopdrachten dat die tabellen in D1 staan (de routes heten nog
+   /airtable/…). Veldlab, klanten, config en gebruikers blijven Airtable en
+   zijn niet aangeraakt.
+
+ ═══════════════════════════════════════════════════════════
+ 26-09-2026 — PID-tabel rechtgezet naar SAE J1979 (0169–01A6 en vier namen eronder)
+ ═══════════════════════════════════════════════════════════
+
+ - Vanaf 0169 hoorden de namen bij andere nummers en lazen de formules de
+   steunbitmap als meetwaarde. Zo stond er op een benzineauto "NOx
+   doseerpomp" (echt: motorwrijvingskoppel), "AdBlue injectiedruk" (echt:
+   versnelling) en "Turbo temp uitlaat A −38 °C" (echt: uitlaatgasdebiet).
+   Nu op de SAE-indeling, met het steunbit gelezen; PIDs waarvan de
+   indeling niet vaststaat hebben geen definitie meer en verschijnen niet.
+ - Ook rechtgezet: 0117 (O2 B1S4), 014A/014B (pedaal E/F), 014C (gestuurde
+   gasklep), de SAE-namenlijst, en de lijsten die op de foute betekenissen
+   leunden: de dieselfilter en turbofilter van de PID-gate, de DPF- en
+   NOx-controles, de sensorsets, de merklijsten, Total Check en de
+   uitlaattegendruk in de onderdelenanalyse.
+ - Een PID die alleen een SAE-naam heeft verschijnt niet meer als sensor
+   met zijn steunbitmap als getal.
+
+ ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Weergaveknoppen op één regel, embleem in de meter, getallen bij de lampjes
+ ═══════════════════════════════════════════════════════════
+
+ - De vijf weergaven staan op één regel als tabbalk (icoon boven een kort
+   woord); "Slim visueel" heet daar "Visueel". Het label "Weergave:" en de
+   waakronde-knop zijn uit die rij — de waakronde staat in het run-paneel
+   en in het meldingenvak.
+ - Slim visueel: "×1000 /min" en het toerengetal in het midden zijn weg (de
+   naald zegt het al); daar staat nu het PidLane-embleem, als lichte
+   lijntekening zonder tegel en gloedfilters.
+ - Het motorlampje toont de motorbelasting (0104) met een balkje, het
+   hybride-lampje het percentage van de hybride accu (015B). Het vermogen
+   van de accu kan niet: daar kent de app geen generieke PID voor.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Rit-monitor: geen uitval-meldingen bij wegschakelen
  ═══════════════════════════════════════════════════════════
 

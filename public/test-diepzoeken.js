@@ -130,6 +130,20 @@ async function main() {
     toets('0105 zat er niet bij', s.viaSlot.indexOf('0105'), -1);
   }
 
+  console.log('\n── een naam uit de SAE-lijst is geen meting (26-09-2026) ──');
+  {
+    // Vanaf 64 begint bijna elke PID met een steunbitmap. De noodnaam las
+    // b[0] als waarde en kreeg eenheid '' — dan kwam de bitmap als sensor met
+    // een getal in beeld. Met 'raw' houdt pidGate hem op 'duidbaar' tegen.
+    const s = bouw();
+    s.supportedPIDs.add('0174');
+    s.SAE_PID_NAMES = { '74': 'Turbotoerental' };
+    await s.deepRefreshPIDs();
+    const d = s.ALL_PID_DEFS['0174'] || {};
+    toets('0174 krijgt de naam uit de SAE-lijst', d.name, 'Turbotoerental');
+    toets('maar eenheid raw, zodat hij niet als sensor verschijnt', d.unit, 'raw');
+  }
+
   console.log('\n── een gevonden PID komt in de lijst ──');
   {
     // De reparatie mag de uitkomst niet veranderen: wie antwoordt, telt.

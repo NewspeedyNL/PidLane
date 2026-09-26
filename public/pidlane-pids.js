@@ -205,7 +205,7 @@ function renderGauges(){
     try{ renderVerborgenStrook(); }catch(e){ console.warn('verborgen-strook mislukt:', e); }
     g.innerHTML=`<div class="emp" style="grid-column:1/-1"><div class="ei">📡</div><h3>Geen sensoren geselecteerd</h3><p>Kies sensoren links voor live data</p></div>`;return;
   }
-  if(sw) sw.style.display='flex';
+  if(sw) sw.style.display='';   // leeg: de CSS zet hem op grid (één regel, vijf vakken)
   // Slim visueel heeft één vaste meter en geen tegels; de indeling en het
   // tekenen staan in pidlane-visueel.js. Het tekstblok blijft leeg: wat daar
   // staat hoort bij "Slim" en de andere weergaven.
@@ -607,8 +607,8 @@ function setPidView(mode){
   const g=document.getElementById('gGrid');
   if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots','view-slim','view-visueel'); if(mode!=='full') g.classList.add('view-'+mode); }
   if(herbouw){ try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt bij het wisselen van weergave:', e); } }
-  // Alleen de knoppen MET een data-mode zijn weergaveknoppen. #waakBtn draagt
-  // dezelfde klasse (hij staat in dezelfde rij) maar heeft geen data-mode, dus
+  // Alleen de knoppen MET een data-mode zijn weergaveknoppen. #waakBtn droeg
+  // tot 26-09-2026 dezelfde klasse (hij stond in dezelfde rij) zonder data-mode, dus
   // `b.dataset.mode===mode` was daar altijd false en elke wissel van weergave
   // haalde zijn `active` eraf. De waakronde liep gewoon door — _aan bleef true,
   // de strook bleef staan, de bus werd nog geclaimd — maar de knop zag eruit

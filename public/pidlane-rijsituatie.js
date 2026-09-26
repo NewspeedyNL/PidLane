@@ -579,7 +579,12 @@ async function deepRefreshPIDs(){
       if(ALL_PID_DEFS[pid]) return;             // heeft al een naam
       const suf=pid.slice(2).toUpperCase();
       if(SAE_PID_NAMES[suf]){
-        ALL_PID_DEFS[pid]={name:SAE_PID_NAMES[suf],unit:'',min:0,max:255,cat:'Overig',parse:b=>b[0]};
+        // unit 'raw', niet '': vanaf 64 zijn bijna alle PIDs blokken die met
+        // een steunbitmap beginnen, en b[0] is dan die bitmap — geen meting.
+        // Met '' kwam hij als sensor met een geloofwaardig getal in beeld;
+        // 'raw' houdt hem op trede 'duidbaar' tegen (pidGate) en laat de naam
+        // staan in de lijst van gevonden PIDs (26-09-2026).
+        ALL_PID_DEFS[pid]={name:SAE_PID_NAMES[suf],unit:'raw',min:0,max:255,cat:'Overig',parse:b=>b[0]};
         named++;
       }
     });
