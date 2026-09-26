@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — "🔄 Opnieuw verbinden" in het verbindingspaneel (#302)
+ ═══════════════════════════════════════════════════════════
+
+ - Op de rit van 26-09 liep de responstijd van de MX+ in een sessie op tot
+   269 ms (3,6 verzoeken/s); na opnieuw verbinden was het 77 ms (10,9/s),
+   met dezelfde 26 PIDs. De oorzaak is nog open (#302).
+ - Nieuwe knop in het verbindingspaneel: verbreekt en hervat via de
+   hervatstand (#229), dus zonder vragen en met de eigen sensorselectie.
+   Eerst wordt de selectie van dat moment bewaard.
+ - Het paneel toont een aanwijzing met dezelfde knop zodra de responstijd
+   1,6× boven het beste stuk van de sessie ligt en boven 150 ms.
+ - test-adapterpaneel.js toetst de aanwijzing, bproef-adapterpaneel.js de
+   knop (sectie 9). Drie mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Testrun 8.1: tien punten uit de proefrit (#300)
  ═══════════════════════════════════════════════════════════
 

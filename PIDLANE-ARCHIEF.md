@@ -14,6 +14,25 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — De adapter werd trager in een sessie, niet de app (#302)
+
+**De vraag:** "normaal 8 per seconde, nu 3,9". Mijn eerste verklaring
+(tijdens het onderzoek) was de PID-set. Sinds 25-09 23:04 vraagt de app 26
+PIDs in plaats van 17, en ik vermoedde dat antwoorden met 2–4 databytes niet
+meer in één CAN-frame passen. **Die verklaring was fout.** Na opnieuw
+verbinden haalde dezelfde set van 26 PIDs 10,9/s bij 77 ms. Het getal dat
+telt is de responstijd per verzoek, en die liep in de sessie op in stappen
+(±150 → 220 → 270 ms). Fout, onvolledig en herhaald stonden op nul en de
+automaat op 93%: de app remde niet af.
+
+**Nog niet bekend:** wat er in de adapter of de verbinding oploopt. Het
+paneel bewaart maar 12 minuten, en het BT-log staat alleen op het toestel.
+Zie #302 voor wat een volgende rit moet vastleggen.
+
+**Wat er wel verandert:** "Opnieuw verbinden" als knop, via de hervatstand.
+Een gewone herverbinding met Verbinden zette de standaardset terug en gooide
+een eigen keuze van 18 PIDs weg; dat staat als tweede bevinding in #302.
+
 ## 26-09-2026 — Tien punten uit de proefrit (#300): waarom ze stukgingen
 
 **"Sluit de app" verbrak de verbinding niet echt.** `plSluitApp()` riep

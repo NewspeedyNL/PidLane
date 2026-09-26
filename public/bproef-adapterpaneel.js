@@ -193,6 +193,42 @@ function toets(naam, waar, uitleg) {
           await app.ev(`document.documentElement.scrollWidth <= window.innerWidth`) === true);
     await app.ev(`PLAdapter.zetModus(false); 'ok'`);
 
+    console.log('\n── 9. opnieuw verbinden: verbreken, hervatten, selectie blijft ──');
+    /* De knop moet door de echte paneelcode heen: selectie bewaren, dan
+       handleConnect() (verbreken) en pas daarna connectSerial() in de
+       hervatstand. Die twee worden hier nagebootst — er zit geen adapter
+       achter — maar herverbind() zelf is echt. */
+    const her = await app.ev(`(async function(){
+      const echtH = handleConnect, echtC = connectSerial, log = [];
+      activePIDs.clear(); ['010C','010D','0105'].forEach(function(p){ activePIDs.add(p); });
+      try { localStorage.removeItem('pl_selectie'); } catch (e) { console.warn(e); }
+      connected = true; demoMode = false;
+      handleConnect = async function(){ log.push('verbreek'); connected = false; };
+      connectSerial = async function(opt){ log.push('hervat:' + (opt && opt.hervat)); setTimeout(function(){ connected = true; }, 300); };
+      try {
+        PLAdapter.open();
+        const knop = [...document.querySelectorAll('#plAdapterBody button')].find(function(b){ return /Opnieuw verbinden/.test(b.textContent); });
+        if (!knop) return { fout: 'geen knop "Opnieuw verbinden" in het paneel' };
+        knop.click();
+        for (let i = 0; i < 20 && log.length < 2; i++) await new Promise(function(r){ setTimeout(r, 200); });
+        await new Promise(function(r){ setTimeout(r, 900); });
+        let bewaard = null; try { bewaard = JSON.parse(localStorage.getItem('pl_selectie') || 'null'); } catch (e) { console.warn(e); }
+        // Tegenproef: in de demo gebeurt er niets.
+        const tel = log.length; demoMode = true;
+        const demoUit = await PLAdapter.herverbind();
+        demoMode = false;
+        return { log: log, verbonden: connected, bewaard: bewaard && bewaard.pids, demoUit: demoUit, demoRaaktNiets: log.length === tel };
+      } finally { handleConnect = echtH; connectSerial = echtC; }
+    })()`);
+    if (her.fout) toets('de knop staat in het paneel', false, her.fout);
+    else {
+      toets('eerst verbreken, dan hervatten', her.log.join(' → ') === 'verbreek → hervat:opnieuw verbinden (knop)', her.log.join(' → '));
+      toets('daarna staat de verbinding weer', her.verbonden === true);
+      toets('de selectie van vóór het verbreken is bewaard voor de hervatstand',
+            JSON.stringify(her.bewaard) === JSON.stringify(['010C','010D','0105']), JSON.stringify(her.bewaard));
+      toets('tegenproef: in de demo verbreekt de knop niets', her.demoUit === false && her.demoRaaktNiets, JSON.stringify(her));
+    }
+
     console.log('\n── 8. sluiten laat niets achter ──');
     await app.ev(`PLAdapter.sluit(); 'ok'`);
     toets('het paneel is dicht',

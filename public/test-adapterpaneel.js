@@ -371,6 +371,30 @@ console.log('\n── de geschiedenis van het paneel ──');
        s.PLAdapter.historie().length + ' monsters');
 }
 
+console.log('\n── de aanwijzing "opnieuw verbinden" (26-09-2026) ──');
+{
+  // Het verloop van de rit van 26-09: begint rond 150 ms, loopt op naar 270.
+  const s = bouw();
+  const m = (ms) => ({ perSec: 1000 / ms, venMs: ms });
+  const oplopend = [];
+  for (let i = 0; i < 20; i++) oplopend.push(m(150));
+  for (let i = 0; i < 20; i++) oplopend.push(m(220));
+  for (let i = 0; i < 10; i++) oplopend.push(m(272));
+  const d = s.PLAdapter.drift(oplopend);
+  waar('een verdubbelde responstijd geeft de aanwijzing', !!d && d.van === 150 && d.naar === 272, JSON.stringify(d));
+  // Tegenproef 1: een rustig verloop geeft niets.
+  const rustig = [];
+  for (let i = 0; i < 40; i++) rustig.push(m(80 + (i % 5)));
+  waar('een rustige verbinding geeft geen aanwijzing', s.PLAdapter.drift(rustig) === null);
+  // Tegenproef 2: verdubbeld maar nog snel (60 → 130 ms) is geen winst.
+  const snel = [];
+  for (let i = 0; i < 20; i++) snel.push(m(60));
+  for (let i = 0; i < 10; i++) snel.push(m(130));
+  waar('onder 150 ms geen aanwijzing, ook niet bij een verdubbeling', s.PLAdapter.drift(snel) === null);
+  // Tegenproef 3: te weinig monsters om iets te zeggen.
+  waar('met minder dan tien monsters geen oordeel', s.PLAdapter.drift(oplopend.slice(-5)) === null);
+}
+
 // ══════════════════════════════════════════════════════════════════
 console.log('\n─────────────────────────────────────────');
 console.log(n + ' controles, ' + fout + ' fout');

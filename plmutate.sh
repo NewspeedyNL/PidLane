@@ -533,6 +533,10 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── Opnieuw verbinden uit het verbindingspaneel (#302, 26-09-2026) ──
+"public/pidlane-adapter.js@@      await handleConnect();@@      await Promise.resolve();@@bproef-adapterpaneel.js@@Opnieuw verbinden hervat bovenop een open verbinding in plaats van eerst te verbreken"
+"public/pidlane-adapter.js@@        localStorage.setItem('pl_selectie', JSON.stringify({ pids: [...activePIDs], t: Date.now() }));@@        void 0;@@bproef-adapterpaneel.js@@Opnieuw verbinden bewaart de selectie niet: de hervatstand kan de standaardset van 26 PIDs terugzetten"
+"public/pidlane-adapter.js@@    if (nu >= 150 && nu >= min * 1.6) return@@    if (nu >= 150 && nu >= min * 2) return@@test-adapterpaneel.js@@de aanwijzing komt pas bij een verdubbeling en mist de 150 → 272 ms van de rit van 26-09"
 # ── Oplevering 26-09: tien punten uit de proefrit (#300) ──
 # Elke regel is een fout die bij dit werk echt gemaakt had kunnen worden, en
 # die niemand ziet tot hij in de auto zit.
