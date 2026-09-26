@@ -627,6 +627,7 @@
       _kopBlok() +
       '<div style="margin-top:10px">' + _nuBlok() + '</div>' +
       '<div style="margin-top:12px">' +
+        _driftBlok() +
         '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:6px">VERLOOP</div>' +
         _grafiek('perSec', 'Verzoeken per seconde', '/s', 'var(--bl)') +
         _grafiek('venMs', 'Responstijd', 'ms', 'var(--bl)') +
@@ -638,8 +639,10 @@
       '<div style="margin-top:14px;display:flex;gap:6px">' +
         '<button onclick="PLAdapter.reset()" style="flex:1;border:1px solid var(--bd);background:var(--sur);' +
           'color:var(--tx2);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">↺ Reset meting</button>' +
+        '<button onclick="PLAdapter.herverbind()" style="flex:1;border:1px solid var(--bl);background:var(--bls);' +
+          'color:var(--bl);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">🔄 Opnieuw verbinden</button>' +
         '<button onclick="PLAdapter.verbreek()" style="flex:1;border:1px solid var(--rd);background:var(--rds);' +
-          'color:var(--rd);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">Verbinding verbreken</button>' +
+          'color:var(--rd);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">Verbreken</button>' +
       '</div>';
   }
 
@@ -763,6 +766,89 @@
     _teken();
   }
 
+  /* ── OPNIEUW VERBINDEN (26-09-2026) ─────────────────────────────────
+     Gemeten op de rit van 26-09 met een OBDLink MX+ op een CX-5: in de loop
+     van een sessie liep de responstijd in stappen op van ~150 naar 270 ms,
+     en de verzoeken per seconde zakten mee naar 3,6. Fout, onvolledig en
+     herhaald stonden alle drie op nul, de automaat op 93%: de app remde niet,
+     de adapter werd per antwoord trager. Na verbreken en opnieuw verbinden:
+     77 ms en 10,9/s, met dezelfde 26 PIDs.
+
+     Waaróm de adapter vertraagt is nog niet bekend. Tot dat bekend is, is
+     dit de uitweg die werkt — zonder de app te sluiten, en zonder de
+     eerste-keer-flow: dit loopt via de hervatstand (#229), die de vorige
+     adapter, het voertuig en de sensorselectie overneemt. Een gewone
+     herverbinding met de knop Verbinden zette de standaardset van 26 PIDs
+     terug, ook als je er zelf 18 had gekozen. */
+  let _herverbindBezig = false;
+  async function herverbind() {
+    if (_herverbindBezig) return false;
+    const demo = (function () { try { return typeof demoMode !== 'undefined' && demoMode; } catch (e) { return false; } })();
+    if (demo) { _melding('In de demo is er geen adapter om opnieuw mee te verbinden'); return false; }
+    if (!_verbonden()) { _melding('Niet verbonden — tik op Verbinden'); return false; }
+    if (typeof handleConnect !== 'function' || typeof connectSerial !== 'function') {
+      _melding('Opnieuw verbinden kan hier niet: de verbindingsmodule ontbreekt'); return false;
+    }
+    _herverbindBezig = true;
+    const voor = _hist.length ? _hist[_hist.length - 1] : null;
+    // De selectie van NU bewaren, ook als hij na de laatste wijziging niet
+    // meer weggeschreven is. De hervatstand leest hem terug.
+    try {
+      if (typeof activePIDs !== 'undefined' && activePIDs && activePIDs.size)
+        localStorage.setItem('pl_selectie', JSON.stringify({ pids: [...activePIDs], t: Date.now() }));
+    } catch (e) { console.warn('Opnieuw verbinden: selectie niet bewaard — na het verbinden kan de standaardset terugkomen', e); }
+    sluit();
+    _melding('🔄 Verbinding opnieuw opzetten…');
+    try {
+      await handleConnect();
+      await new Promise(function (r) { setTimeout(r, 1200); });   // de adapter laat de socket los
+      await connectSerial({ hervat: 'opnieuw verbinden (knop)' });
+    } catch (e) {
+      _melding('Opnieuw verbinden mislukt: ' + ((e && e.message) || e) + ' — tik op Verbinden');
+      _herverbindBezig = false;
+      return false;
+    }
+    // De hervatstand loopt na connectSerial() nog even door (kenteken, VIN,
+    // selectie terugzetten). Wachten tot er weer een verbinding staat.
+    for (let i = 0; i < 90 && !_verbonden(); i++) await new Promise(function (r) { setTimeout(r, 500); });
+    _herverbindBezig = false;
+    const ok = _verbonden();
+    if (ok) {
+      reset();   // een schone grafiek: vergelijken met de oude verbinding helpt niet
+      let n = 0;
+      try { n = (typeof activePIDs !== 'undefined' && activePIDs) ? activePIDs.size : 0; } catch (e) { console.warn(e); }
+      _melding('✅ Opnieuw verbonden — ' + n + ' sensoren' + (voor ? ' (was ' + voor.perSec + '/s bij ' + Math.round(voor.venMs) + ' ms)' : ''));
+      try { if (typeof btDiag === 'function') btDiag('Opnieuw verbonden via de knop' + (voor ? ' — daarvoor ' + voor.perSec + '/s, ' + Math.round(voor.venMs) + ' ms' : ''), 'ok'); }
+      catch (e) { console.warn('Melding kwam niet in het BT-log:', e); }
+    } else {
+      _melding('Opnieuw verbinden lukte niet — tik op Verbinden');
+    }
+    return ok;
+  }
+
+  /* Loopt de responstijd op tegenover het beste stuk van deze sessie? Dan
+     staat er een aanwijzing boven de grafiek. 1,6 keer de laagste gemeten
+     waarde (op 26-09 was het 150 → 272 ms, 1,8×), en minstens 150 ms: onder
+     die grens is er niets te winnen. */
+  function drift(hist) {
+    const h = (hist || _hist).filter(function (m) { return m.perSec > 0 && m.venMs > 0; });
+    if (h.length < 10) return null;
+    let min = Infinity;
+    h.forEach(function (m) { if (m.venMs < min) min = m.venMs; });
+    const nu = h.slice(-3).reduce(function (a, m) { return a + m.venMs; }, 0) / 3;
+    if (nu >= 150 && nu >= min * 1.6) return { van: Math.round(min), naar: Math.round(nu) };
+    return null;
+  }
+  function _driftBlok() {
+    const d = drift();
+    if (!d) return '';
+    return '<div id="plAdDrift" style="margin:0 0 12px;padding:10px 12px;border:1px solid var(--or);background:var(--ors);' +
+      'border-radius:10px;font:600 12px/1.45 var(--f);color:var(--tx)">' +
+      'De responstijd is opgelopen van ' + d.van + ' naar ' + d.naar + ' ms. Opnieuw verbinden zet dat meestal terug.' +
+      '<button onclick="PLAdapter.herverbind()" style="display:block;width:100%;margin-top:8px;border:1px solid var(--bl);' +
+      'background:var(--bl);color:#fff;border-radius:8px;padding:10px;font:700 12px var(--f);cursor:pointer">🔄 Opnieuw verbinden</button></div>';
+  }
+
   function verbreek() {
     const demo = (function () { try { return typeof demoMode !== 'undefined' && demoMode; } catch (e) { return false; } })();
     if (!window.confirm(demo ? 'Demo modus stoppen?' : 'OBD-verbinding verbreken?')) return;
@@ -803,6 +889,8 @@
     neemAdviesOver: neemAdviesOver,
     reset: reset,
     verbreek: verbreek,
+    herverbind: herverbind,
+    drift: drift,
     adapterNaam: adapterNaam,
     protocol: protocol,
     ati: function () { return _ati; },
