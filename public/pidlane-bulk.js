@@ -602,6 +602,10 @@ function bouwDash() {
         '<button id="blkExp" class="btn" style="flex:1;min-width:110px;padding:10px;border-radius:10px;' +
           'border:1.5px solid var(--bd,#26303b);background:transparent;color:var(--tx,#e6e9ef);font-weight:700;font-size:12px;cursor:pointer">⬇️ Exporteer</button>' +
       '</div>' +
+      // De analyse opent sinds 26-09-2026 alleen nog hier: een opname bekijk
+      // je vanuit de recorder die hem maakte, niet via een losse kaart.
+      '<button id="blkAna" class="btn" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;' +
+        'border:1.5px solid #1a6fff;background:rgba(26,111,255,.12);color:var(--tx,#e6e9ef);font-weight:800;font-size:13px;cursor:pointer">📈 Analyse van de opname</button>' +
       '<button id="blkWis" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:0;' +
         'background:transparent;color:#e05555;font-weight:700;font-size:12px;cursor:pointer">Opslag wissen</button>' +
       '<div style="font-size:11px;opacity:.55;line-height:1.6;margin-top:12px">' +
@@ -617,6 +621,12 @@ function bouwDash() {
   _blkEl('blkPauze').onclick = function () { if (_blkS.gepauzeerd) hervat(); else pauzeer(); };
   _blkEl('blkMark').onclick  = function () { markeer('handmatig'); };
   _blkEl('blkExp').onclick   = function () { exporteer(); };
+  _blkEl('blkAna').onclick   = function () {
+    try {
+      if (typeof window.openBulkAnalyse !== 'function') { toast('Bulk-analyse niet geladen'); return; }
+      sluitDash(); window.openBulkAnalyse();
+    } catch (e) { console.warn('bulk-analyse openen mislukt:', e); toast('Bulk-analyse openen mislukt'); }
+  };
   _blkEl('blkWis').onclick   = function () { wisAlles(); };
   return o;
 }

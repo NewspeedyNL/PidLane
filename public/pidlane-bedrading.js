@@ -270,6 +270,11 @@ var KRITIEK = [
   // dat er iets rood wordt, en dat is wat deze regel tegenhoudt.
   'buildQualityReport',                           // pidlane-kwaliteit.js  — #188
   'correlationLines',                             // pidlane-correlatie.js — #188
+  // Erbij op 26-09-2026 (#300). Drie ervan heeft blok 5 nodig om de terugknop,
+  // de systeemtest en de scenariobalk op het toestel te meten; de andere twee
+  // roept auth.js na een rolwissel en bij het afsluiten aan. Ontbreekt er een,
+  // dan meldt de proef dat — zonder deze regel zou de guard de stille fout zijn.
+  '_plBackHandler','_plBovensteSluitKnop','bscSituaties','updateScenarioBadge','updateTokenPill'
 ];
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.
@@ -289,6 +294,9 @@ var GEEN_GLOBALE = {
   // stille terugval. Browserfuncties, geen eigen code, dus niet in KRITIEK.
   'setInterval': 'browserfunctie — pidlane-achtergrond.js meet met de guard of de hartslag kán lopen (#18)',
   'clearInterval': 'browserfunctie — idem, de hartslag wordt bij terugkomst gestopt (#18)',
+  // Erbij op 26-09-2026: de naklank van de bevindingen (pidlane-correlatie.js)
+  // draait ook in test-bevindingen.js, in een vm-sandbox zonder timers.
+  'setTimeout': 'browserfunctie — de naklanktimer van de bevindingen kan in de vm-sandbox van de test ontbreken',
   // Gemeld door de runtime-controle op de rit van 16-08: stond in KRITIEK maar
   // is een lokale const in pidlane-waakronde.js die window.setConn vasthoudt.
   // Les: een typeof-guard op een LOKALE naam is geen bedradingspunt. De lijst

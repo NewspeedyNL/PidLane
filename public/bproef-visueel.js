@@ -192,13 +192,14 @@ function beoordeel(m) {
     const bev = await app.ev(`(function(){
       bevindingenZet(true);
       _bevHits=[{id:'proef', naam:'Proefbevinding', uitleg:'alleen voor bproef-visueel', ernst:2, rang:0}];
-      renderCorrelationBanner(_bevHits); PLVisueel.tik();
+      _bevToonBij(); PLVisueel.tik();
       const balk=document.getElementById('corrBanner');
       const r={ balkWeg: !balk || balk.style.display==='none', inVak: /Proefbevinding/.test(document.getElementById('visMeld').textContent) };
       setPidView('slim');
       const b2=document.getElementById('corrBanner');
       r.balkTerug = !!b2 && b2.style.display!=='none';
-      _bevHits=[]; renderCorrelationBanner(_bevHits); setPidView('visueel');
+      // Opruimen zonder naklank: de proefbevinding hoort niet 5 s na te blijven staan.
+      _bevHits=[]; Object.keys(_bevSinds).forEach(function(k){ delete _bevSinds[k]; }); _bevToonBij(); setPidView('visueel');
       return r;
     })()`);
     toets('in Slim visueel staat de bevinding in het vak', bev.inVak, JSON.stringify(bev));

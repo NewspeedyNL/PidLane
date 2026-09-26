@@ -653,11 +653,62 @@ function _plZichtbaar(el){
   catch(e){ /* stil: element hangt (nog) niet in de DOM — dan is het niet zichtbaar */ return false; }
 }
 
+// ── Elk venster met een ✕ sluit ook met de terugknop (26-09-2026) ──
+// Hieronder stond alleen een vaste lijst van zestien id's, terwijl de app
+// ruim dertig sluitknoppen heeft: elk venster dat er later bij kwam, reageerde
+// niet op de terugknop tot iemand het aan die lijst toevoegde. Nu zoekt de
+// terugknop het ✕ van het venster dat BOVENOP ligt en drukt dat in. Zo draait
+// dezelfde opruimcode als bij een tik, in plaats van alleen display:none.
+//
+// "Bovenop" is geen z-index-rekensom maar een waarneming: elementFromPoint()
+// op het midden van de knop moet de knop zelf raken. Een ✕ onder een ander
+// venster is dus nooit de keuze. De vaste lijst blijft eronder staan als
+// terugval voor vensters zonder ✕.
+const _PL_SLUIT_TEKST=/^(✕|×|✖|x|X|╳)$/;
+const _PL_SLUIT_NAAM=/(^|[-_])(x|close|sluit|sluiten)$|Close$|X$/;
+// Deze vensters hebben een eigen terugregel verderop (minimaliseren tijdens
+// een rit, of alleen sluiten als er verbinding is).
+const _PL_EIGEN_TERUG=['ritDash','caravanDash','connOv','welcomeScreen','kebabMenu'];
+function _plIsSluitKnop(b){
+  const t=(b.textContent||'').trim();
+  if(_PL_SLUIT_TEKST.test(t)) return true;
+  const label=(b.getAttribute('aria-label')||b.getAttribute('title')||'').trim();
+  if(/^(sluit|sluiten|close)\b/i.test(label)) return true;
+  if(t.length<=2 && (_PL_SLUIT_NAAM.test(b.id||'') || String(b.className||'').split(/\s+/).some(c=>_PL_SLUIT_NAAM.test(c)))) return true;
+  return false;
+}
+function _plBovensteSluitKnop(){
+  let beste=null, besteZ=-Infinity;
+  for(const b of document.querySelectorAll('button, [role="button"]')){
+    if(!_plIsSluitKnop(b)) continue;
+    const r=b.getBoundingClientRect();
+    if(r.width<1 || r.height<1) continue;
+    const x=r.left+r.width/2, y=r.top+r.height/2;
+    if(x<0 || y<0 || x>innerWidth || y>innerHeight) continue;
+    const raak=document.elementFromPoint(x,y);
+    if(!raak || (raak!==b && !b.contains(raak))) continue;
+    // Het venster waar de knop bij hoort: de dichtstbijzijnde fixed voorouder.
+    let v=b.parentElement, z=0;
+    while(v && v!==document.body){
+      const cs=getComputedStyle(v);
+      if(cs.position==='fixed'){ z=parseInt(cs.zIndex,10)||0; break; }
+      v=v.parentElement;
+    }
+    if(!v || v===document.body) continue;              // geen venster, maar een knop op de pagina
+    if(_PL_EIGEN_TERUG.some(id=>v.id===id || !!v.closest('#'+id))) continue;
+    if(z>=besteZ){ beste=b; besteZ=z; }                  // gelijk: de laatste in de DOM ligt bovenop
+  }
+  return beste;
+}
+
 function appBack(){
   // 0. Open lade (sensoren/logs) eerst sluiten
   try{ if(ladeOpen()){ closeLades(); return true; } }catch(e){ console.warn('closeLades mislukt:', e); }
   // 0b. Context-keuzesheet open? Netjes afwijzen (promise resolven, niet hangen)
   try{ const c=document.getElementById('srCtxAsk'); if(_plZichtbaar(c)){ window._srCtxDismiss?.(); return true; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+  // 0c. Het bovenste venster met een ✕: dat ✕ indrukken.
+  try{ const x=_plBovensteSluitKnop(); if(x){ x.click(); return true; } }
+  catch(e){ console.warn('terugknop: sluitknop zoeken mislukt, val terug op de vaste lijst', e); }
   // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
   //    needsUpdateModal kwam uit de tweede handler; die id stond hier niet en
   //    was dus onbereikbaar voor back zodra die handler weg is.

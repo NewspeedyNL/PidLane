@@ -535,7 +535,7 @@ function leesRun(){
 function leesBevindingen(){
   try{
     if(!bevindingenAan()) return null;          // uitgezet in ☰: dan ook hier niet
-    return (typeof _bevHits!=='undefined' && _bevHits) ? _bevHits.slice() : [];
+    return (typeof _bevToon!=='undefined' && _bevToon) ? _bevToon.slice() : [];
   }catch(e){ console.warn('PLVisueel: bevindingen onleesbaar', e); return null; }
 }
 function leesAdmin(){
@@ -851,7 +851,7 @@ function tik(){
 // zelf naar pidViewMode. Na elke wissel één keer opnieuw tekenen, anders
 // blijft de balk staan (of weg) tot de volgende nieuwe bevinding.
 function balkBij(){
-  try{ renderCorrelationBanner(typeof _bevHits!=='undefined' ? _bevHits : []); }
+  try{ renderCorrelationBanner(typeof _bevToon!=='undefined' ? _bevToon : []); }
   catch(e){ console.warn('PLVisueel: bevindingenbalk bijwerken mislukt', e); }
 }
 // body.pl-visueel: zolang deze weergave in beeld is verbergt pidlane.css wat

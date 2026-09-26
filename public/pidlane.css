@@ -1554,20 +1554,23 @@ body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 /* ── Basic system check ── */
 .bsc-body{min-height:120px}
 .bsc-empty{font-size:13px;color:var(--tx3);padding:16px;text-align:center;background:var(--sur2);border:1px dashed var(--bd);border-radius:var(--r)}
-.bsc-head{margin-bottom:8px}
-.bsc-cnt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
-.bsc-grp{color:var(--cy,#2fd0d6)}
-.bsc-name{font-size:16px;font-weight:800;margin-top:2px}
-.bsc-uit{font-size:12.5px;color:var(--tx2);line-height:1.5;margin-top:2px}
-#bscCanvas{width:100%;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);display:block;margin:4px 0 8px}
-.bsc-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
-.bsc-status{font-size:13px;font-weight:700}
-.bsc-status.ok{color:var(--gn)} .bsc-status.go{color:var(--gn)} .bsc-status.no{color:var(--rd)}
-.bsc-live{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
-.bsc-unit{font-size:12px;color:var(--tx3);font-weight:600}
-.bsc-prog{height:8px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px;overflow:hidden;margin-bottom:10px}
-.bsc-prog>div{height:100%;background:linear-gradient(90deg,var(--gn),#7ef0ab);transition:width .15s;border-radius:6px}
-.bsc-skip{width:100%}
+/* Systeemtest als checklist (26-09-2026): elke test meet zodra zijn situatie er is. */
+.bsc-kop{position:sticky;top:0;z-index:2;background:var(--bg);padding:4px 0 8px;margin-bottom:6px;border-bottom:1px solid var(--bd)}
+.bsc-nu{font-size:14px;font-weight:800}
+.bsc-volgende{font-size:12.5px;color:var(--bl);margin-top:3px;line-height:1.45}
+.bsc-teller{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:12px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.bsc-sit{margin-bottom:10px}
+.bsc-sit-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:0 0 5px}
+.bsc-rij{display:flex;align-items:center;gap:8px;background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:5px;font-size:13px}
+.bsc-rij .bsc-ico{flex:none;width:20px;text-align:center}
+.bsc-rij .bsc-rnaam{flex:1;min-width:0}
+.bsc-rij .bsc-rst{flex:none;max-width:48%;text-align:right;font-size:12px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.bsc-rij.meet{border-color:var(--bl);background:var(--bls)}
+.bsc-rij.meet .bsc-rst{color:var(--bl);font-weight:700}
+.bsc-rij.ok{border-color:var(--gn);background:var(--gns)}
+.bsc-rij.ok .bsc-rst{color:var(--gn);font-weight:700}
+.bsc-rij.twijfel{border-color:var(--or);background:var(--ors)}
+.bsc-rij.nvt,.bsc-rij.geen{opacity:.6}
 .bsc-done .bsc-score{font-size:15px;font-weight:700;margin-bottom:10px}
 .bsc-done .bsc-score b{font-size:22px;color:var(--gn)}
 .bsc-rows{display:flex;flex-direction:column;gap:6px}
@@ -1639,14 +1642,21 @@ body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 .next-cause-btn:hover { border-color:var(--bl); color:var(--bl); }
 
 /* ══ GRAPH ══ */
-#graphCanvas { width:100%; background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); display:block; box-shadow:var(--ss); }
+/* Grafiek (herbouwd 26-09-2026): één baan per sensor, op één tijdas. */
+.gr-kop { display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+.gr-kop .fsel { flex:1; min-width:150px; }
+.gr-groep { font-family:var(--f); font-size:12px; font-weight:600; padding:6px 12px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; white-space:nowrap; }
+.gr-groep.active { background:var(--bl); border-color:var(--bl); color:#fff; }
+.gr-tel { font-family:var(--m); font-size:12px; color:var(--tx3); }
+.gr-baan { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:8px 10px 6px; margin-bottom:8px; }
+.gr-baan-kop { display:flex; align-items:baseline; gap:8px; }
+.gr-naam { flex:1; min-width:0; font-size:12px; font-weight:700; color:var(--tx2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gr-waarde { font-family:var(--m); font-size:18px; font-weight:700; color:var(--tx); }
+.gr-waarde.buiten, .gr-zin.buiten { color:var(--rd); }
+.gr-weg { flex:none; width:24px; height:24px; border:0; border-radius:6px; background:transparent; color:var(--tx3); font-size:14px; cursor:pointer; }
+.gr-doek { display:block; width:100%; height:96px; margin-top:4px; }
+.gr-zin { font-size:11px; color:var(--tx3); margin-top:2px; }
 .fsel { font-family:var(--f); font-size:13px; background:var(--sur); border:1px solid var(--bd); border-radius:7px; padding:6px 10px; color:var(--tx); outline:none; cursor:pointer; min-width:180px; }
-.trend-group-btn { font-family:var(--f); font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; transition:all .15s; white-space:nowrap; }
-.trend-group-btn:hover { border-color:var(--bl); color:var(--bl); background:var(--bls); }
-.trend-group-btn.active { background:var(--bl); border-color:var(--bl); color:#fff; }
-.trend-pid-chip { font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; display:flex; align-items:center; gap:4px; }
-.legend-item { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--tx2); }
-.legend-dot { width:10px; height:3px; border-radius:2px; flex-shrink:0; }
 
 /* ══ FUEL ══ */
 .fuel-gauge-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:12px; }

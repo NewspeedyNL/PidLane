@@ -14,6 +14,43 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — Tien punten uit de proefrit (#300): waarom ze stukgingen
+
+**"Sluit de app" verbrak de verbinding niet echt.** `plSluitApp()` riep
+`handleConnect()` aan, en die wachtte SPP netjes af, maar BLE niet
+(`_bleConn.ble.disconnect()` zonder `await`). Daarna kwam meteen
+`exitApp()`. Belangrijker: de meetdienst (#18) is een voorgronddienst. Die
+houdt het proces in leven nadat de activity weg is, en daarmee ook de
+BT-socket. `exitApp()` sluit alleen de activity. De dienst wordt nu eerst
+gestopt.
+
+**De terugknop kende maar zestien vensters.** `appBack()` had een vaste
+lijst met id's. Elk venster dat later bijkwam (waakronde, bulk-analyse,
+bulk-recorder, wizard, tegoedvensters, samen ruim dertig ✕-knoppen) deed
+niets op terug. Het probleem was de vorm, niet één vergeten id: een lijst
+die je moet bijhouden, wordt niet bijgehouden. Nu kijkt hij welk ✕ er
+bovenop ligt (`elementFromPoint`) en drukt dat in.
+
+**De grafiek werd bij een groep niet bijgewerkt.** Hertekenen hing in
+`updPID()` aan `graphPID===pid`, maar een groepskeuze zette `graphPID` op
+null. De groep tekende dus één keer en bleef dan stilstaan, tot je van
+tabblad wisselde. Daarbovenop normaliseerde elke lijn op zijn eigen min–max:
+twee lijnen op dezelfde hoogte konden 12 V en 90 °C zijn. Herbouwd in plaats
+van gerepareerd, omdat de vorm zelf onleesbaar was.
+
+**De systeemtest faalde op de volgorde van de lijst.** Tests liepen één voor
+één, met 12–15 s wachten op een voorwaarde en daarna "n.v.t.", of 30 s en
+daarna "twijfel" voor een test zonder voorwaarde. Veel stationair-tests
+(`idle_stab`, `map_idle`) hadden géén voorwaarde en werden tijdens het rijden
+dus gewoon afgekeurd. De uitkomst zei meer over waar je was toen de lijst
+bij die test kwam dan over de auto.
+
+**Bevindingen van één seconde.** De balk hertekende bij elke meetronde met de
+set van dat moment. Een waarde die even over een grens ging, stond dus
+precies één ronde in beeld. De naklank zit alleen in de weergave
+(`_bevToon`); `correlationLines()` rekent zelf en geeft de AI de stand van
+nu.
+
 ## 26-09-2026 — Vier iconen waar index.html naar wees, bestonden nooit
 
 `favicon-32.png`, `favicon.ico`, `apple-touch-icon.png` en

@@ -682,14 +682,7 @@ function closeConnOv(){
           <div class="choice-head"><span class="choice-icon">⏺</span><span class="choice-time">beheer</span></div>
           <div class="choice-title">Bulk-recorder</div>
           <div class="choice-desc">Neemt alle sensoren op, in ruwe vorm, voor latere analyse. Alleen voor beheer.</div>
-          <div class="choice-out"><b>Je krijgt:</b> een opname op het toestel, terug te lezen in de bulk-analyse.</div>
-        </div>
-
-        <div class="choice-card full" id="wc-bulkana">
-          <div class="choice-head"><span class="choice-icon">📈</span><span class="choice-time">beheer</span></div>
-          <div class="choice-title">Bulk-analyse</div>
-          <div class="choice-desc">Leest een opname van de bulk-recorder terug: segmenten, bereik per sensor en export. Alleen voor beheer.</div>
-          <div class="choice-out"><b>Je krijgt:</b> de opname uitgesplitst, klaar om te delen.</div>
+          <div class="choice-out"><b>Je krijgt:</b> een opname op het toestel; de analyse open je met <b>📈 Analyse</b> in het recordervenster.</div>
         </div>
 
         <div class="choice-card full" id="wc-liveshare">
@@ -746,9 +739,9 @@ function closeConnOv(){
         </div>
 
         <div class="choice-card" id="wc-basiccheck">
-          <div class="choice-head"><span class="choice-icon">📈</span><span class="choice-time">⏱ ±2-4 min</span></div>
+          <div class="choice-head"><span class="choice-icon">📈</span><span class="choice-time">⏱ zo lang je wilt</span></div>
           <div class="choice-title">Systeemtest</div>
-          <div class="choice-desc">Een reeks live tests: per sensor wordt de verwachte trend naast de echte meting gelegd. Bij een groen vinkje gaat de app vanzelf door naar de volgende.</div>
+          <div class="choice-desc">Een checklist van live tests die zichzelf afvinkt: elke test meet zodra de situatie zich voordoet — stilstaand, rijdend of met de motor uit.</div>
           <div class="choice-out"><b>Je krijgt:</b> per systeem een grafiek + geslaagd/twijfel-oordeel. Sensoren worden automatisch gekozen.</div>
         </div>
 
@@ -1181,12 +1174,12 @@ function closeConnOv(){
 
       <!-- BASIC SYSTEM CHECK -->
       <div class="pane" id="pane-basiccheck">
-        <div class="chk-intro"><h3>📈 Basiscontrole systeem</h3><p>Live technische tests: verwachte trend (grijze band) vs echte OBD-meting (cyaan lijn). Blijft de waarde binnen de band, dan slaagt de test automatisch en gaat de app door.</p></div>
+        <div class="chk-intro"><h3>📈 Systeemtest</h3><p>Alle tests staan tegelijk klaar. Elke test meet zodra zijn situatie zich voordoet — stilstaand, rijdend, motor uit — en vinkt zich af als de waarde binnen de verwachte band blijft. Stop wanneer je wilt: wat niet voorkwam telt als niet getest, niet als fout.</p></div>
         <div class="toolbar">
           <div id="rdyBasic" class="rdy-card off">📡 Verbind adapter om te starten</div>
-          <button class="btn pri" onclick="startBasicCheck()" id="btnBasic">▶ Basiscontrole starten</button>
+          <button class="btn pri" onclick="startBasicCheck()" id="btnBasic">▶ Systeemtest starten</button>
         </div>
-        <div id="bscBody" class="bsc-body"><div class="bsc-empty">Klik “Basiscontrole starten”. De juiste sensoren worden automatisch geselecteerd op basis van je motortype en wat de auto ondersteunt.</div></div>
+        <div id="bscBody" class="bsc-body"><div class="bsc-empty">Klik “Systeemtest starten”. De tests worden gekozen op basis van je motortype en wat de auto ondersteunt; daarna vinken ze zichzelf af zodra hun situatie zich voordoet.</div></div>
       </div>
 
       <!-- ════ 🛡️ RIT-MONITOR — live dashboard + waarschuwingsfeed ════ -->
@@ -1355,32 +1348,19 @@ function closeConnOv(){
 
       <!-- GRAPH -->
       <div class="pane" id="pane-graph">
-
-        <!-- Groep trend knoppen -->
-        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);width:100%;margin-bottom:2px;">Groepstrends</div>
-          <button class="trend-group-btn" onclick="selectTrendGroup('fuel')">⛽ Brandstof</button>
-          <button class="trend-group-btn" onclick="selectTrendGroup('power')">⚡ Vermogen</button>
-          <button class="trend-group-btn" onclick="selectTrendGroup('accu')">🔋 Accu</button>
-          <button class="trend-group-btn" onclick="selectTrendGroup('temp')">🌡️ Temperatuur</button>
-          <button class="trend-group-btn" onclick="selectTrendGroup('none')">✕ Wis</button>
-          <button class="trend-group-btn" id="dashBtn" onclick="openNeonDashboard()" style="display:none;margin-left:auto;background:linear-gradient(135deg,#0a1a1f,#0d2a30);color:#22d3ee;border-color:#22d3ee;font-weight:700">🖥 HUD</button>
-
+        <!-- Grafiek: hoogstens drie sensoren, elk een eigen baan (pidlane-graph.js) -->
+        <div class="gr-kop">
+          <button type="button" class="gr-groep" data-groep="fuel" onclick="grKiesGroep('fuel')">⛽ Brandstof</button>
+          <button type="button" class="gr-groep" data-groep="power" onclick="grKiesGroep('power')">⚡ Vermogen</button>
+          <button type="button" class="gr-groep" data-groep="accu" onclick="grKiesGroep('accu')">🔋 Accu</button>
+          <button type="button" class="gr-groep" data-groep="temp" onclick="grKiesGroep('temp')">🌡️ Temperatuur</button>
         </div>
-
-        <!-- Individuele sensor selector -->
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-          <select class="fsel" id="gsel" onchange="changeGraph(this.value)" style="flex:1;min-width:150px"><option value="">— Of kies individuele sensor —</option></select>
-          <div style="font-size:12px;color:var(--tx3)">Rood = buiten normaal bereik</div>
+        <div class="gr-kop">
+          <select class="fsel" id="gsel" onchange="grVoegToe(this.value)"><option value="">＋ Sensor toevoegen…</option></select>
+          <span class="gr-tel" id="grTel">0/3</span>
         </div>
-
-        <!-- Actieve trend PIDs tonen -->
-        <div id="activeTrendPIDs" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>
-
-        <canvas id="graphCanvas" height="280"></canvas>
-
-        <!-- Legenda -->
-        <div id="graphLegend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;padding:8px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);"></div>
+        <div id="grBanen"></div>
+        <div id="grLeeg" class="emp"><div class="ei">📈</div><h3>Kies wat je wilt volgen</h3><p>Een groep of hoogstens drie sensoren. Elke sensor krijgt een eigen baan met zijn eigen schaal; de groene band is het normale bereik.</p></div>
       </div>
 
       <!-- DTC -->

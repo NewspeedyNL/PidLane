@@ -22,6 +22,16 @@
 // DOM die onthoudt wat erin gezet is — precies wat de nagemaakte document
 // hieronder doet.
 //
+// 26-09-2026 — DE CHIP IS UIT. Op verzoek: de zwevende teller hoort niet
+// meer in beeld bij users en klanten, en een beheerder zag hem al nooit. Een
+// klant ziet zijn saldo in ☰ → Mijn account en in de kostenmelding vóór een
+// AI-call. De regel "alleen een klant betaalt" blijft staan (deel 7); wat
+// verandert is dat er voor niemand meer een chip hangt. Deel 2 tot en met 5
+// toetsen daarom met de chip weer AAN (chipTonen omgezet in de bron die de
+// test inleest): de rolregel onder de chip moet blijven kloppen voor het geval
+// hij terugkomt, en zonder die tegenproef zou "er is nooit een chip" ook
+// groen staan als de module helemaal niets meer deed.
+//
 // Draaien vanuit public/:  node test-tokenchip.js   (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
 'use strict';
@@ -38,7 +48,7 @@ function toets(naam, waar, uitleg) {
 // gaat het juist om wat er blijft staan. body.kinderen is dus een echte lijst
 // en getElementById zoekt daarin, zodat remove() en "bestaat hij al?" werken
 // zoals in een browser.
-function laad() {
+function laad(chipAan) {
   const opslag = {};
   global.localStorage = {
     getItem: (k) => (k in opslag ? opslag[k] : null),
@@ -67,7 +77,13 @@ function laad() {
   global.window = {};
   global.fetch = () => Promise.reject(new Error('geen net in de test'));
 
-  eval(fs.readFileSync(__dirname + '/pidlane-credits.js', 'utf8'));
+  let bron = fs.readFileSync(__dirname + '/pidlane-credits.js', 'utf8');
+  if (chipAan) {
+    const anker = /chipTonen: (true|false),/;
+    if (!anker.test(bron)) { console.log('  FOUT anker "chipTonen: …," niet gevonden in pidlane-credits.js'); process.exit(1); }
+    bron = bron.replace(anker, 'chipTonen: true,');
+  }
+  eval(bron);
   const PLC = global.window.PLCredits;
 
   return {
@@ -92,9 +108,9 @@ console.log('1. Zonder login hangt er geen chip');
         'er hangt een chip met: ' + a.tekst());
 }
 
-console.log('\n2. Een klant krijgt de chip, en het getal van de server');
+console.log('\n2. (chip aan) Een klant krijgt de chip, en het getal van de server');
 {
-  const a = laad();
+  const a = laad(true);
   a.login('klant');
   a.chip();
   toets('de chip verschijnt', a.zicht() !== null);
@@ -105,9 +121,9 @@ console.log('\n2. Een klant krijgt de chip, en het getal van de server');
         'chip: ' + a.tekst());
 }
 
-console.log('\n3. Een beheerder ziet geen chip — ook niet als hij ná het laden inlogt (#52)');
+console.log('\n3. (chip aan) Een beheerder ziet geen chip — ook niet als hij ná het laden inlogt (#52)');
 {
-  const a = laad();
+  const a = laad(true);
   // De volgorde uit de run van 29-08: eerst laadt de pagina, dan pas de login.
   a.login('klant');
   a.chip();
@@ -128,7 +144,7 @@ console.log('\n4. TEGENPROEF — zonder de herbeoordeling blijft de fout bestaan
   // finishLogin() het enige dat de chip weghaalt — en dat is precies wat er
   // getoetst moet worden. Wordt deze rood, dan verdwijnt de chip vanzelf en
   // meet deel 3 iets anders dan het denkt.
-  const a = laad();
+  const a = laad(true);
   a.login('klant');
   a.chip();
   a.login('user');
@@ -136,9 +152,9 @@ console.log('\n4. TEGENPROEF — zonder de herbeoordeling blijft de fout bestaan
         'de chip ruimt zichzelf op; deel 3 toetst dan niet de aanroep maar iets anders');
 }
 
-console.log('\n5. Uitloggen haalt de chip weg, niet alleen het getal');
+console.log('\n5. (chip aan) Uitloggen haalt de chip weg, niet alleen het getal');
 {
-  const a = laad();
+  const a = laad(true);
   a.login('klant');
   a.PLC.zetServerSaldo(120);
   toets('de klant heeft een chip met 120', /120/.test(a.tekst()), 'chip: ' + a.tekst());
@@ -156,23 +172,22 @@ console.log('\n5. Uitloggen haalt de chip weg, niet alleen het getal');
         'na uitloggen blijft er een chip op het loginscherm staan: ' + a.tekst());
 }
 
-console.log('\n6. Wie de chip ziet, betaalt ook — één regel, geen tweede plek');
+console.log('\n6. Zoals de app nu uitlevert: voor geen enkele rol een chip');
 {
-  // _vrijgesteld() is niet geëxporteerd, en dat hoort zo. De waarneembare kant
-  // is dat chip en afboeking hetzelfde antwoord geven: ziet iemand een chip,
-  // dan geeft preflight() een boeking terug; ziet hij er geen, dan niet.
-  // Zouden die twee uit elkaar lopen, dan betaalt iemand zonder het te zien.
-  const gevallen = [['klant', true], ['admin', false], ['user', false], [null, false]];
-  gevallen.forEach(function (g) {
+  ['klant', 'admin', 'user', null].forEach(function (rol) {
     const a = laad();
-    a.login(g[0]);
-    a.PLC.zetSaldo(500);
+    a.login(rol);
+    a.PLC.zetServerSaldo(500);
     a.chip();
-    a.PLC.stil(true);
-    const heeftChip = a.zicht() !== null;
-    toets('rol ' + (g[0] || 'niemand') + ': chip ' + (g[1] ? 'zichtbaar' : 'weg'),
-          heeftChip === g[1], 'chip aanwezig: ' + heeftChip);
+    toets('rol ' + (rol || 'niemand') + ': geen chip', a.zicht() === null,
+          'er hangt een chip met: ' + a.tekst());
   });
+  // Het saldo loopt wel gewoon mee: dat leest Mijn account en de kostenmelding.
+  const k = laad();
+  k.login('klant');
+  k.PLC.zetServerSaldo(77);
+  toets('het saldo van een klant is er nog, alleen niet als chip', k.PLC.saldo() === 77,
+        'saldo: ' + k.PLC.saldo());
 }
 
 const deel7 = (async function () {

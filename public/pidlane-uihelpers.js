@@ -329,7 +329,10 @@ async function handleConnect(){
         await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
       }
     }catch(e){ /* stil: opruimen: verbinding kan al weg zijn */ }
-    try{window._bleConn?.ble?.disconnect?.(window._bleConn.id);}catch(e){ /* stil: opruimen: verbinding kan al weg zijn */ }
+    // Afwachten, net als SPP hierboven: zonder await ging "Sluit de app" al
+    // naar exitApp() terwijl de BLE-verbinding nog openstond.
+    try{ if(window._bleConn) await window._bleConn.ble?.disconnect?.(window._bleConn.id); }
+    catch(e){ console.warn('BLE verbreken mislukt (verbinding kan al weg zijn):', e); }
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false);
     try{ const _vt=document.getElementById('vtag'); if(_vt){ _vt.style.display='none'; _vt.dataset.naam=''; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }

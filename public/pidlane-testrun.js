@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.0 (19-09-2026)';
+const TESTRUN_VERSIE = '8.1 (26-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -3656,6 +3656,14 @@ const PROEVEN_B5 = [
       const rol = (window.currentUser && window.currentUser.role) || 'niemand ingelogd';
       const er = function () { return !!document.getElementById('plCredChip'); };
 
+      // Sinds 26-09-2026 staat de chip uit (chipTonen:false): voor geen enkele
+      // rol een chip. De rolregel eronder blijft gelden als hij terugkomt.
+      if (PLCredits.CFG && PLCredits.CFG.chipTonen === false) {
+        PLCredits.chip();
+        return er()
+          ? { staat: 'FOUT', detail: 'de chip staat uit maar hangt er toch, bij rol "' + rol + '"' }
+          : 'rol "' + rol + '": geen chip — de chip staat uit; saldo staat in Mijn account';
+      }
       // Eerst de stand zoals hij nu is: dít is wat een gebruiker ziet.
       if (er() !== klant)
         return { staat: 'FOUT', detail: 'rol "' + rol + '"' + (klant ? '' : ' hoort geen tokenchip te zien') +
@@ -6187,6 +6195,97 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── de terugknop sluit elk venster met een ✕ (#300, 26-09-2026) ──
+  // bproef-terugknop.js toetst dit in Chromium. Hier staat hij op het toestel
+  // zelf: met de echte schermmaat, het echte lettertype en wat er op dit
+  // moment nog meer openstaat. elementFromPoint() is precies het soort vraag
+  // waarvan het antwoord per scherm kan verschillen.
+  {
+    issue: '#300',
+    naam: 'De terugknop sluit een venster dat niet in de vaste lijst staat',
+    waarom: 'Welk ✕ bovenop ligt, hangt af van dit scherm en wat er nu openstaat; dat meet alleen de draaiende app.',
+    proef: function () {
+      if (typeof _plBovensteSluitKnop !== 'function' || typeof _plBackHandler !== 'function')
+        return { staat: 'FOUT', detail: 'de ✕-zoeker of de terugknop-handler ontbreekt' };
+      if (!window.PLWaakUI || typeof PLWaakUI.open !== 'function')
+        return { staat: 'LET OP', detail: 'het waakvenster is niet geladen — dan is er geen venster buiten de lijst om te openen' };
+      PLWaakUI.open();
+      const ov = document.getElementById('wkvOv');
+      const open = !!ov && getComputedStyle(ov).display !== 'none';
+      if (!open) return { staat: 'LET OP', detail: 'het waakvenster ging niet open — er valt niets te sluiten' };
+      const knop = _plBovensteSluitKnop();
+      const zijn = !!knop && ov.contains(knop);
+      _plBackHandler();
+      const dicht = getComputedStyle(ov).display === 'none' || !ov.isConnected;
+      if (!dicht) { try { PLWaakUI.sluit(); } catch (e) { console.warn('Testrun: waakvenster niet gesloten na de proef', e); } }
+      if (!zijn) return { staat: 'FOUT', detail: 'de zoeker koos ' + (knop ? 'een ✕ buiten het waakvenster (' + (knop.id || knop.className) + ')' : 'geen enkele ✕') + ' terwijl dat venster bovenop lag' };
+      if (!dicht) return { staat: 'FOUT', detail: 'de terugknop liet het waakvenster openstaan' };
+      return 'waakvenster open, de zoeker vond zijn ✕ en de terugknop sloot het';
+    }
+  },
+
+  // ── zwevende pillen boven de Android-knoppen (#300) ──
+  // In de browser is --pl-sab 0px en ziet elke pil er goed uit. Alleen op het
+  // toestel zet Capacitor de echte hoogte van de knoppenbalk.
+  {
+    issue: '#300',
+    naam: 'De balk van de scenariotest staat boven de Android-knoppen',
+    waarom: 'De hoogte van de knoppenbalk bestaat alleen op het toestel; in de browser is hij 0px.',
+    proef: function () {
+      const sab = parseFloat(getComputedStyle(document.body).getPropertyValue('--pl-sab')) || 0;
+      if (typeof updateScenarioBadge !== 'function' || typeof _scenario === 'undefined')
+        return { staat: 'FOUT', detail: 'updateScenarioBadge() of _scenario ontbreekt' };
+      const was = _scenario.enabled;
+      let ruimte = null;
+      try {
+        _scenario.enabled = true; updateScenarioBadge();
+        const b = document.getElementById('scenarioBadge');
+        if (b) ruimte = Math.round(window.innerHeight - b.getBoundingClientRect().bottom);
+      } finally { _scenario.enabled = was; updateScenarioBadge(); }
+      if (ruimte === null) return { staat: 'FOUT', detail: 'de scenariobalk werd niet getekend' };
+      if (!sab) return { staat: 'LET OP', detail: 'geen knoppenbalk gemeld (--pl-sab is 0) — op dit toestel valt er niets onder te schuiven; ruimte ' + ruimte + 'px' };
+      if (ruimte < sab) return { staat: 'FOUT', detail: 'de balk staat ' + ruimte + 'px boven de onderrand, de knoppenbalk is ' + Math.round(sab) + 'px — hij valt er deels achter' };
+      return 'balk ' + ruimte + 'px boven de onderrand, knoppenbalk ' + Math.round(sab) + 'px';
+    }
+  },
+
+  // ── de systeemtest herkent de situatie van nu (#300) ──
+  // De checklist meet elke test alleen in zijn eigen situatie. Of "constant
+  // rijden" of "optrekken" op een echte rit herkend wordt, hangt aan de
+  // snelheidshistorie van déze auto; dat is een vraag voor de weg.
+  {
+    issue: '#300',
+    naam: 'De systeemtest herkent de rijsituatie van nu',
+    waarom: 'De rijfase komt uit de snelheidshistorie van deze auto op deze weg; een browserproef heeft alleen nagebootste waarden.',
+    proef: function () {
+      if (typeof bscSituaties !== 'function' || typeof BSC_SIT === 'undefined')
+        return { staat: 'FOUT', detail: 'bscSituaties() of BSC_SIT ontbreekt — de systeemtest is niet geladen' };
+      const onbekend = (window.BSC_TESTS || []).filter(function (t) { return !BSC_SIT[t.sit || 'draaiend']; }).map(function (t) { return t.id; });
+      if (onbekend.length) return { staat: 'FOUT', detail: 'tests met een situatie die de app niet kent: ' + onbekend.join(', ') + ' — die wachten eeuwig' };
+      const nu = [...bscSituaties()];
+      if (typeof pidVals['010C'] !== 'number')
+        return { staat: 'LET OP', detail: 'geen toerental binnen — niet verbonden of motor niet gestart; herkend: ' + (nu.join(', ') || 'niets') };
+      if (!nu.length) return { staat: 'FOUT', detail: 'er komt een toerental binnen (' + pidVals['010C'] + ') maar er wordt geen enkele situatie herkend' };
+      return 'herkend: ' + nu.join(', ') + ' (toerental ' + Math.round(pidVals['010C']) + ', snelheid ' + (pidVals['010D'] === undefined ? '—' : pidVals['010D']) + ')';
+    }
+  },
+
+  // ── een bevinding blijft minstens 5 s staan (#300) ──
+  {
+    issue: '#300',
+    naam: 'Een automatische bevinding blijft minstens 5 s in beeld',
+    waarom: 'Of een bevinding na één meetronde weer verdwijnt, hangt aan de echte meetronden van deze auto.',
+    proef: function () {
+      if (typeof BEV_MIN_MS === 'undefined' || typeof _bevToon === 'undefined' || typeof _bevHits === 'undefined')
+        return { staat: 'FOUT', detail: 'de naklank van de bevindingen ontbreekt (BEV_MIN_MS/_bevToon)' };
+      if (BEV_MIN_MS < 5000) return { staat: 'FOUT', detail: 'de minimale toontijd staat op ' + BEV_MIN_MS + ' ms' };
+      const toon = _bevToon.map(function (h) { return h.id; });
+      const mist = _bevHits.filter(function (h) { return toon.indexOf(h.id) < 0; }).map(function (h) { return h.id; });
+      if (mist.length) return { staat: 'FOUT', detail: 'bevindingen van nu die niet in beeld staan: ' + mist.join(', ') };
+      return _bevHits.length + ' bevinding(en) van nu, ' + (toon.length - _bevHits.length) + ' die nog naklinken; toontijd ' + (BEV_MIN_MS / 1000) + ' s';
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -8467,32 +8566,26 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 19-09 (dertiende) — een groen oordeel hoeft niet meer op een hele testrun te wachten (#257, #232)',
+  titel: 'OPLEVERING 26-09 (veertiende) — tien punten uit de proefrit: terugknop, systeemtest, grafiek (#300)',
   vragen: [
     '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    'DE RIT VAN 19-09 LEVERDE NIETS OP, EN DAT IS PRECIES HET PROBLEEM. Dertien opdrachten achter elkaar gekozen, van elk het oordeel op het scherm gelezen, MAF-metingen binnen \u2014 en in de logtabel stond er nul van terug. Alleen vijftien regels "Nieuwe sessie". De begeleide run is na stap 1 afgebroken, de verbinding viel om 15:02:31 weg, en daarmee was de hele rit weg. De rit is hier de schaarste (#257), dus dat weegt zwaarder dan het klinkt.',
-    'DE OORZAAK WAS NIET DE AFGEBROKEN RUN MAAR DE ENIGE UITGANG. De meetkamer meet de proeven al tijdens de rit, met dezelfde functie waarmee blok 5 ze straks beoordeelt \u2014 maar dat oordeel bleef op het scherm. Wegschrijven deed alleen een volledige testrun. Eén knop ontbrak.',
-    'DIE KNOP STAAT ER NU. Zodra er een oordeel is, staat onder de vraag "\u2191 Verzenden" met het woord erbij: GESLOTEN, BEVINDING of NOG NIET. Hij schrijft precies dezelfde regels als blok 0 \u2014 één per proef plus de uitkomst, met Outcome en de issues in hun eigen veld \u2014 want hij loopt langs dezelfde functie. Een tweede weg naar de tabel die zijn eigen payload bouwt, zou op den duur iets anders zeggen dan het verslag; dat is de vorm die #246 en #256 al twee keer kostten.',
-    'HIJ STAAT OOK BIJ ROOD AAN, EN DAT IS MET OPZET. Een bevinding sluit een issue net zo goed als een groen vinkje: een spanning ONDER 11,5 V beantwoordt #217 precies zo. Alleen "nog niet" is geen antwoord, en dan zegt de knop dat erbij in plaats van te verdwijnen.',
-    'TWEE KEER DRUKKEN LEVERT GÉÉN TWEE RIJEN OP. De knop onthoudt de uitkomst zelf, niet een teller: verandert er niets aan wat er te zeggen valt, dan is het dezelfde regel en weigert hij. Rijd je door en kantelt het oordeel, dan gaat hij vanzelf weer aan.',
-    'EN DE MAF-OPDRACHT KLOPTE NIET (#232). De stationair-proef stond op `0110 min`, en `min` loopt over de hele sessie: hij pakte 0,86 g/s van vlak na het verbinden en viel daarop rood. De mediaan was 1,91 g/s \u2014 precies de ~2 g/s die de vuistregel verwacht. De proef heette "stationair" maar mat het laagste punt van de rit. In de voorraad staan nu twee rijen: stationair in een eigen sessie (dan ís min de stationaire waarde), en de vollasthelft apart.',
-    '\u2500\u2500 WAT ÉÉN RUN DEZE RONDE MOET SLUITEN \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    'DE KNOP SLUIT OP DE TABEL, NIET OP HET SCHERM. Kies een opdracht, rijd tot er een oordeel staat, druk op Verzenden, en kijk daarna in D1 (de tabel logregels in beheer) of de uitkomstregel er staat mét Outcome en issuenummer. Dat is het hele bewijs.',
-    'DRUK DAARNA NOG EEN KEER. Er hoort niets bij te komen en er hoort te staan waarom. Blok 5 toetst datzelfde vanuit de andere kant: na de terugweg van blok 0 moet de knop weten dat hij al geweest is.',
-    '#255, #256 EN #257 STAAN NOG STEEDS OPEN OP DE RIT VAN 18-09. Die zijn vorige ronde gerepareerd maar nooit op de weg bewezen \u2014 de run van 19-09 kwam niet tot blok 5. Ze sluiten alsnog zodra er één volledige testrun draait.',
+    'TIEN DINGEN DIE IN DE AUTO IN DE WEG ZATEN. Het Veldlab-vel na een AI-rapport, de zwevende tokenteller, "Sluit de app" die de verbinding liet hangen, een terugknop die de helft van de vensters niet kende, de scenariobalk achter de Android-knoppen, een losse kaart voor de bulk-analyse, bevindingen die één seconde in beeld stonden, een onleesbare grafiek en een systeemtest die tijdens het rijden de stationair-tests liet mislukken.',
+    'DE SYSTEEMTEST IS NU EEN CHECKLIST. Alle tests staan tegelijk klaar en meten alleen in hun eigen situatie: stilstaand, constant rijden, optrekken, uitrollen, motor uit, koude start. Tijdens het rijden wachten de stationair-tests; ze falen niet meer. Bovenaan staat wat de volgende kans is.',
+    '\u2500\u2500 WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    'DE SYSTEEMTEST VINKT ZICH AF OP DE WEG. Start hem stilstaand met een warme motor, rij daarna een stuk constant boven 40 km/u, trek een keer op en laat uitrollen. Elke groep hoort zich af te vinken zonder dat je iets aanraakt. Blijft een rijgroep op "wacht" staan terwijl je die situatie rijdt, dan herkent de rijfase de weg niet.',
+    'DE TERUGKNOP. Open de waakronde, de bulk-recorder en een AI-rapport en druk telkens op de Android-terugknop: het bovenste venster gaat dicht, de app niet.',
+    'SLUIT DE APP. Verbonden met de adapter: ☰ → Sluit de app. Het lampje op de adapter hoort binnen een paar seconden te stoppen met knipperen, en er hoort geen PidLane-melding in de balk te blijven staan.',
     '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
     'STAP 0 \u2014 VOORAF. Zet de app op de nieuwste versie (\u2630 \u2192 Nieuwste versie laden). Deze ronde zit volledig in de webpagina; een nieuwe APK is niet nodig.',
-    'STAP 1 \u2014 HAAL DE OPDRACHTEN OP EN KIES ER EEN. Testrunscherm \u2192 Meetopdrachten \u2192 📥 Ophalen. Je ziet per rij waar hij over gaat en, als hij voorwaarden draagt, wat hij nodig heeft.',
-    'STAP 2 \u2014 RIJD TOT ER EEN OORDEEL STAAT EN DRUK OP VERZENDEN. Dat is nieuw: je hoeft de testrun niet af te maken om de uitkomst vast te leggen. Lees het woord op de knop \u2014 dat is wat er in de tabel komt.',
-    'STAP 3 \u2014 VOLGENDE VRAAG. Kies de volgende opdracht; elke keuze begint een eigen sessie, dus de vragen lopen niet door elkaar. Adapter kan erin blijven. Zo werk je in één rit de voorraad af.',
-    'STAP 4 \u2014 DRAAI AAN HET EIND ALSNOG DE TESTRUN. De knop vervangt hem niet: blok 5 toetst 54 dingen die geen opdracht kan toetsen, en #255 en #256 hangen daaraan.',
-    'MAF STATIONAIR IS EEN STILSTAANDE MEETING (#232). Motor al warm, auto stil, laat hem lopen, kies dán pas die opdracht, wacht drie minuten, niet gasgeven. Geen rit nodig.',
-    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop. Zet erbij: welke adapter erin zat, welke opdracht(en) je gekozen hebt, en wat de uitkomst per opdracht was (GESLOTEN / BEVINDING / NOG NIET).',
+    'STAP 1 \u2014 SYSTEEMTEST STILSTAAND. Motor warm, auto stil: start de systeemtest en wacht tot de stilstandgroep groen is. Noteer wat er onder "Volgende kans" staat.',
+    'STAP 2 \u2014 SYSTEEMTEST RIJDEND. Rij constant, trek op, laat uitrollen. Druk aan het eind op "Stop en maak rapport" en noteer hoeveel tests "niet getest" zijn en waarom.',
+    'STAP 3 \u2014 GRAFIEK. Tabblad Grafiek \u2192 Temperatuur. Drie banen, elk met een eigen schaal, en ze lopen mee zonder dat je iets aanraakt.',
+    'STAP 4 \u2014 DRAAI AAN HET EIND DE TESTRUN. Blok 5 meet op dit toestel of de scenariobalk boven de knoppenbalk staat, of de terugknop het bovenste venster vindt en welke rijsituatie de systeemtest herkent.',
+    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, plus de uitkomst van stap 2.',
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    'DE KNOP KAN NIET ZEGGEN DAT HIJ NIET AANGEKOMEN IS. Hij geeft het aan logToSheets() en die stuurt achter je rug door; mislukt dat, dan zie je het pas in de tabel. De live-logproef in blok 5 bewaakt datzelfde kanaal, maar niet deze ene regel.',
-    'EEN OPDRACHT KAN NOG STEEDS ALLEEN MIN, MAX, LAATST, AANTAL EN VERANDERINGEN OVER ÉÉN PID. Dat is nu voor het eerst een gemeten grens en geen theoretische: "MAF stationair" bestaat niet als maat, en de oplossing was de sessie in tweeën knippen, niet een zesde maat. Vragen als "0,5 V sprei op de achterste lambdasonde" (#231) vragen nog steeds een reeks over tijd.',
-    'DE VOLLASTHELFT VAN #232 IS NOG NIET GEMETEN. Op 19-09 kwam de MAF niet boven 13,4 g/s \u2014 te zacht gereden. De voorwaarde 010D max 30\u2013200 zegt dat nu vóór de rit in plaats van erna.',
-    'DAT HET MEETGAT VAN 18-09 DE BUS WAS, IS NOG STEEDS EEN VERMOEDEN (#254). En de ELM-poort die op 19-09 om 15:02:31 dichtviel op de MX+ is één waarneming, geen patroon.',
+    'DE RIJFASE IS NOG DE OUDE. "Constant", "optrekken" en "remmen" komen uit PLMon._state(): de snelheidsverandering over drie seconden. Of dat op een echte weg vaak genoeg "constant" zegt, is precies wat stap 2 moet laten zien.',
+    'DE KOUDE-STARTTEST HEEFT ÉÉN KANS. Is de motor warm als je de systeemtest start, dan is hij "niet getest". Dat is eerlijk, maar betekent dat hij alleen bij de eerste rit van de dag meedoet.',
+    '#255, #256 EN #257 STAAN NOG STEEDS OPEN. Die sluiten zodra er één volledige testrun draait.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };

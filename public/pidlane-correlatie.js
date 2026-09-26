@@ -39,7 +39,49 @@ try { _bevAan = localStorage.getItem(BEV_SLEUTEL) !== '0'; }
 catch(e){ console.warn('Voorkeur voor de bevindingenbalk niet te lezen, blijft aan:', e); }
 
 let _lastCorrelations=[];
-let _bevHits=[];          // de volledige set van de laatste ronde, voor het venster
+let _bevHits=[];          // de volledige set van de laatste ronde — wat de AI meekrijgt
+let _bevToon=[];          // wat in BEELD staat: _bevHits plus wat nog moet naklinken
+
+// ── Minimale toontijd (26-09-2026) ──────────────────────────────────
+// Een bevinding die bij één meetronde opkwam en bij de volgende weer weg was,
+// stond één seconde in beeld: net lang genoeg om te zien dát er iets was,
+// te kort om te lezen wát. Nu blijft elke bevinding minstens BEV_MIN_MS in
+// beeld, gerekend vanaf het moment dat hij verscheen — ook als de waarde
+// intussen weer goed is. Dit geldt alleen voor de weergave: _bevHits blijft
+// de eerlijke stand van nu, en dat is wat correlationLines() aan de AI geeft.
+const BEV_MIN_MS = 5000;
+const _bevSinds = {};     // id → moment waarop hij in beeld kwam
+const _bevLaatst = {};    // id → de laatste versie van die bevinding
+let _bevNaklankTimer = null;
+function _bevNu(){ return Date.now(); }
+function _bevSorteer(a,b){ return (b.ernst-a.ernst) || (b.rang-a.rang); }
+function _bevMetNaklank(actueel){
+  const nu=_bevNu(), nuIds=new Set(actueel.map(h=>h.id));
+  actueel.forEach(h=>{ if(!_bevSinds[h.id]) _bevSinds[h.id]=nu; _bevLaatst[h.id]=h; });
+  const uit=actueel.slice();
+  let eerstVolgende=Infinity;
+  Object.keys(_bevSinds).forEach(id=>{
+    if(nuIds.has(id)) return;
+    const rest=BEV_MIN_MS-(nu-_bevSinds[id]);
+    if(rest>0){ uit.push(_bevLaatst[id]); eerstVolgende=Math.min(eerstVolgende, rest); }
+    else { delete _bevSinds[id]; delete _bevLaatst[id]; }
+  });
+  // Loopt er een naklank af terwijl de engine even geen ronde draait (niet
+  // verbonden, pagina verborgen), dan haalt deze timer hem toch weg.
+  if(_bevNaklankTimer){ clearTimeout(_bevNaklankTimer); _bevNaklankTimer=null; }
+  if(eerstVolgende<Infinity && typeof setTimeout==='function')
+    _bevNaklankTimer=setTimeout(_bevToonBij, eerstVolgende+50);
+  return uit.sort(_bevSorteer);
+}
+// Herbereken wat er in beeld hoort en teken alleen als dat veranderd is.
+function _bevToonBij(){
+  _bevNaklankTimer=null;
+  _bevToon=_bevMetNaklank(_bevHits);
+  const sig=_bevToon.map(h=>h.id).join(',');
+  if(sig===_lastCorrelations.join(',')) return;
+  _lastCorrelations=_bevToon.map(h=>h.id);
+  renderCorrelationBanner(_bevToon);
+}
 
 function bevindingenAan(){ return _bevAan; }
 function bevindingenZet(aan){
@@ -47,7 +89,7 @@ function bevindingenZet(aan){
   try { localStorage.setItem(BEV_SLEUTEL, _bevAan ? '1' : '0'); }
   catch(e){ console.warn('Voorkeur voor de bevindingenbalk niet op te slaan:', e); }
   bevindingenMenuBij();
-  renderCorrelationBanner(_bevHits);
+  renderCorrelationBanner(_bevToon);
   try{ logUsage?.('bevindingen', _bevAan?'aan':'uit'); }catch(e){ console.warn('logUsage mislukt:', e); }
 }
 // Zet het aan/uit-knopje in het ☰-menu op de huidige stand.
@@ -79,13 +121,9 @@ function runCorrelationEngine(){
   }
   // Ernstigste eerst, en binnen de statistische afwijkingen de grootste sigma
   // bovenaan — want dát zijn de twee die straks als enige in beeld staan.
-  const all=[...hits,...baseHits].sort((a,b)=> (b.ernst-a.ernst) || (b.rang-a.rang));
-  _bevHits=all;
-  // Alleen herrenderen als de set veranderd is (voorkomt flikkering)
-  const sig=all.map(h=>h.id).join(',');
-  if(sig===_lastCorrelations.join(',')) return;
-  _lastCorrelations=all.map(h=>h.id);
-  renderCorrelationBanner(all);
+  _bevHits=[...hits,...baseHits].sort(_bevSorteer);
+  // Alleen herrenderen als wat er in beeld hoort veranderd is (voorkomt flikkering)
+  _bevToonBij();
 }
 
 function _bevRegelHtml(h){
@@ -145,7 +183,7 @@ function _bevSheetBij(forceer){
   const ov=document.getElementById('bevSheet');
   if(!ov) return;
   if(!forceer && ov.style.display!=='flex') return;
-  const hits=_bevHits||[];
+  const hits=_bevToon||[];
   const rijen = hits.length
     ? hits.map(_bevRegelHtml).join('')
     : '<div class="emp" style="padding:22px 0"><div class="ei">🔗</div><h3>Geen bevindingen</h3><p>De correlatie-engine ziet op dit moment geen verdacht patroon.</p></div>';

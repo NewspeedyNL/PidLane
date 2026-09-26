@@ -282,24 +282,68 @@ function bscBaseline(hist, sec){
   return vals[Math.floor(vals.length/2)];
 }
 
-let _bscState=null; // {list, idx, results:[], testT0, holdStart, raf}
+let _bscState=null; // {list, stand:{id→…}, t0, tik, startTemp, gestopt}
 
-// ── Voorwaarde per test (eis): klopt de context niet, dan stapt de check door
-// naar de volgende test met status "n.v.t." i.p.v. 30s wachten op "twijfel".
-// eis: {fase:['constant',...], warm:true, motorDraait:true, minSnelheid:40}
-function bscConditie(t){
-  if(!t.eis) return {ok:true, label:''};
-  const st=(window.PLMon&&window.PLMon._state)?window.PLMon._state():{fase:'onbekend',temp:'onbekend'};
-  const rpm=pidVals['010C'], spd=pidVals['010D'];
-  const mis=[];
-  if(t.eis.fase && !t.eis.fase.includes(st.fase)) mis.push(t.eis.fase.join('/'));
-  if(t.eis.warm && st.temp!=='warm') mis.push('motor bedrijfswarm');
-  if(t.eis.motorDraait && !(typeof rpm==='number'&&rpm>400)) mis.push('motor draaiend');
-  // Rustspanning meten kan alleen met de motor uit; contact moet wél aan staan,
-  // anders krijgen we sowieso geen data terug van de ECU.
-  if(t.eis.motorUit && !(typeof rpm==='number'&&rpm<200)) mis.push('motor uit (contact aan)');
-  if(t.eis.minSnelheid && !(typeof spd==='number'&&spd>=t.eis.minSnelheid)) mis.push('≥'+t.eis.minSnelheid+' km/u');
-  return mis.length? {ok:false, label:mis.join(' + ')} : {ok:true, label:''};
+/* ── SYSTEEMTEST ALS CHECKLIST (26-09-2026) ──────────────────────────────
+   WAT ER WAS. De tests liepen één voor één af. Elke test wachtte hoogstens
+   12–15 s op zijn voorwaarde en werd anders "n.v.t."; een test zonder
+   voorwaarde kreeg 30 s en werd dan "twijfel". Wie reed, zag de stationair-
+   tests dus één voor één mislukken of wegvallen, en wie stilstond hetzelfde
+   met de rijtests. De uitkomst zei meer over de volgorde van de lijst dan
+   over de auto.
+
+   WAT HET NU IS. Alle tests staan tegelijk klaar. Elke test heeft een
+   situatie (sit, in BSC_TESTS) en meet alleen zolang die situatie er is.
+   Tijdens het rijden wachten de stationair-tests dus gewoon: ze falen niet,
+   ze wachten. Doet de situatie zich voor, dan meet de test en vinkt hij zich
+   af. Je stopt wanneer je wilt; wat niet voorkwam telt als "niet getest" en
+   niet als fout. Bovenaan staat welke situatie nu speelt en welke volgende
+   kans de meeste tests afvinkt. */
+const BSC_SIT = {
+  stationair:{ico:'🅿️', naam:'Stilstaand, motor draait',   doe:'Laat de motor stationair draaien, voet van het gas.'},
+  constant:  {ico:'🛣️', naam:'Constant rijden',            doe:'Rij een stuk met gelijkmatige snelheid, 40 km/u of meer.'},
+  optrekken: {ico:'⤴️', naam:'Optrekken',                  doe:'Trek rustig maar duidelijk op.'},
+  remmen:    {ico:'⤵️', naam:'Uitrollen of remmen',        doe:'Gas los en laat de auto uitrollen, of rem rustig af.'},
+  rijden:    {ico:'🚗', naam:'Rijden',                     doe:'Rij een stukje.'},
+  draaiend:  {ico:'⚙️', naam:'Motor draait',               doe:'Start de motor.'},
+  motoruit:  {ico:'🔑', naam:'Contact aan, motor uit',     doe:'Zet de motor uit maar laat het contact aan.'},
+  contact:   {ico:'🔌', naam:'Contact aan',                doe:'Zet het contact aan.'},
+  koud:      {ico:'❄️', naam:'Koude start',                doe:'Alleen te meten bij een koude motor, vóór het opwarmen.'},
+};
+const BSC_WARM_C = 70;          // bedrijfswarm voor tests met warm:true
+const BSC_KOUD_C = 50;          // daaronder telt de motor als koud
+const BSC_MAX_MEET_MS = 20000;  // zo lang mag een test IN zijn situatie meten
+const BSC_GEEN_DATA_MS = 15000; // zo lang wachten op een eerste meetwaarde
+const BSC_TIK_MS = 250;
+
+// Welke situaties spelen er nu? Een set, want stationair is ook "draaiend".
+function bscSituaties(){
+  const rpm=pidVals['010C'], spd=pidVals['010D'], ect=pidVals['0105'];
+  const st=(window.PLMon&&window.PLMon._state)?window.PLMon._state():{fase:'onbekend'};
+  const nu=new Set();
+  const draait = typeof rpm==='number' && rpm>400;
+  const contact = typeof rpm==='number' || typeof spd==='number' || (typeof demoMode!=='undefined' && demoMode);
+  if(contact) nu.add('contact');
+  if(typeof rpm==='number' && rpm<200) nu.add('motoruit');
+  if(draait) nu.add('draaiend');
+  if(draait && (typeof spd!=='number' || spd<3)) nu.add('stationair');
+  if(typeof spd==='number' && spd>=5){
+    nu.add('rijden');
+    if(st.fase==='constant' && spd>=30) nu.add('constant');
+    if(st.fase==='accelereren') nu.add('optrekken');
+    if(st.fase==='remmen') nu.add('remmen');
+  }
+  if(typeof ect==='number' && ect<BSC_KOUD_C) nu.add('koud');
+  return nu;
+}
+// Mag deze test nu meten? Zo nee: waarop wacht hij, in gewone woorden.
+function bscConditie(t, situaties){
+  const nu=situaties||bscSituaties();
+  const sit=t.sit||'draaiend', mis=[];
+  if(!nu.has(sit)) mis.push((BSC_SIT[sit]||{naam:sit}).naam.toLowerCase());
+  if(t.warm && !(typeof pidVals['0105']==='number' && pidVals['0105']>=BSC_WARM_C)) mis.push('motor bedrijfswarm');
+  if(t.minSnelheid && !(typeof pidVals['010D']==='number' && pidVals['010D']>=t.minSnelheid)) mis.push('≥'+t.minSnelheid+' km/u');
+  return mis.length ? {ok:false, label:mis.join(' + ')} : {ok:true, label:''};
 }
 
 // ── Uitbreiding van de catalogus: rijdende + voorwaardelijke tests.
@@ -309,23 +353,23 @@ function bscConditie(t){
   if(typeof BSC_TESTS==='undefined'||!Array.isArray(BSC_TESTS)) return;
   const extra=[
     {id:'x_rpm_const', groep:'universeel', naam:'Toerental stabiel bij constante snelheid',
-     pids:['010C'], hold:5, eis:{fase:['constant'], minSnelheid:40}, eisWachtMs:15000,
+     pids:['010C'], hold:5, sit:'constant', minSnelheid:40,
      uitleg:'Bij constante snelheid hoort het toerental vlak te blijven. Schommelingen wijzen op overslaan of een slippende koppeling/omvormer.',
      band:(vals,hist)=>{ const m=bscBaseline(hist['010C'],5); return m==null?null:{lo:m-75,hi:m+75}; }},
     {id:'x_accel_load', groep:'universeel', naam:'Belasting reageert op gas geven',
-     pids:['0104'], hold:2, eis:{fase:['accelereren']}, eisWachtMs:15000,
+     pids:['0104'], hold:2, sit:'optrekken',
      uitleg:'Tijdens accelereren hoort de motorbelasting duidelijk op te lopen. Blijft die laag, dan leest MAF/MAP mogelijk te laag.',
      band:{lo:35,hi:100}},
     {id:'x_decel_load', groep:'universeel', naam:'Belasting valt weg bij uitrollen/remmen',
-     pids:['0104'], hold:2, eis:{fase:['remmen']}, eisWachtMs:15000,
+     pids:['0104'], hold:2, sit:'remmen',
      uitleg:'Bij gas los/remmen hoort de belasting laag te zijn (brandstof-cut). Hoge belasting hier is verdacht.',
      band:{lo:0,hi:25}},
     {id:'x_laadspanning', groep:'universeel', naam:'Laadspanning bij draaiende motor',
-     pids:['0142'], hold:4, eis:{motorDraait:true},
+     pids:['0142'], hold:4, sit:'draaiend',
      uitleg:'Met draaiende motor hoort de dynamo 13,2\u201315,2 V te leveren. Daaronder: dynamo/riem/massa. Daarboven: spanningsregelaar.',
      band:{lo:13.2,hi:15.2}},
     {id:'x_map_stat', groep:'benzine', naam:'Vacu\u00fcm stationair (inlaatdruk)',
-     pids:['010B'], hold:4, eis:{fase:['stationair'], warm:true},
+     pids:['010B'], hold:4, sit:'stationair', warm:true,
      uitleg:'Een warme benzinemotor trekt stationair 20\u201345 kPa. Hogere inlaatdruk wijst op valse lucht of lage compressie.',
      band:{lo:18,hi:46}}
   ];
@@ -627,25 +671,18 @@ function bscBuildList(){
 
 async function startBasicCheck(){
   if(!(await preAnalysisCheck())) return;
+  if(_bscState) bscStop(true);
   const list=bscBuildList();
   if(!list.length){ bscRender(`<div class="bsc-empty">Geen geschikte sensoren gevonden voor deze auto. Verbind en voer eerst een PID-scan uit.</div>`); return; }
-  // Automatische PID-selectie: alle hoofd- en hulp-PIDs van de reeks aanzetten.
-  const allPids=[...new Set(list.flatMap(t=>t.usePids))];
+  const allPids=[...new Set(list.flatMap(t=>t.usePids).concat(['010C','010D','0105']))];
   try{ await ensurePIDListActive(allPids); }catch(e){ console.warn('ensurePIDListActive mislukt:', e); }
-  _bscState={list, idx:0, results:[], testT0:0, holdStart:0, raf:null};
+  const stand={};
+  list.forEach(t=>{ stand[t.id]={st:'wacht', held:0, holdStart:0, meetMs:0, v:undefined, gezien:false, reden:''}; });
+  _bscState={list, stand, t0:Date.now(), vorig:Date.now(), startTemp:pidVals['0105'], gestopt:false, tik:null};
+  bscTekenLijst();
+  _bscState.tik=setInterval(()=>{ try{ bscTik(); }catch(e){ console.warn('systeemtest: tik mislukt', e); } }, BSC_TIK_MS);
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
-  bscToast(`${list.length} tests geselecteerd voor ${et} · ${allPids.length} sensoren aangezet`);
-  bscNextTest();
-}
-
-function bscNextTest(){
-  if(!_bscState) return;
-  if(_bscState.raf){ cancelAnimationFrame(_bscState.raf); _bscState.raf=null; }
-  if(_bscState.idx>=_bscState.list.length){ bscFinish(); return; }
-  _bscState.testT0=Date.now();
-  _bscState.holdStart=0;
-  _bscState._eisOk=false;
-  bscDrawFrame(); // start de live-loop
+  bscToast(`${list.length} tests klaar voor ${et} — elke test meet zodra zijn situatie zich voordoet`);
 }
 
 function bscCurrentBand(t){
@@ -655,17 +692,15 @@ function bscCurrentBand(t){
   }catch(e){ return null; }
 }
 
-// Slaag-logica per frame. Retourneert {inBand, extra} en beheert hold-timer.
+// Binnen de band? Plus de oscillatie- en dynamiek-eisen van sommige tests.
 function bscEvaluate(t, band){
   const v=pidVals[t.pid];
   if(v===undefined || band==null) return {v, inBand:false, wacht:true};
   let inBand = v>=band.lo && v<=band.hi;
-  // Oscillatie-eis (O2): binnen X sec zowel < 0,3 als > 0,6 gezien
   if(t.oscilleren){
     const h=(pidHist[t.pid]||[]).slice(-40).map(x=>x.v);
     inBand = inBand && h.some(x=>x<0.3) && h.some(x=>x>0.6);
   }
-  // Dynamiek-eis: er moet beweging zijn (spreiding > 5% van bereik)
   if(t.dynamiek){
     const h=(pidHist[t.pid]||[]).slice(-30).map(x=>x.v);
     if(h.length>4){ const sp=Math.max(...h)-Math.min(...h); inBand = inBand && sp>Math.max(2,(band.hi-band.lo)*0.05); }
@@ -673,69 +708,125 @@ function bscEvaluate(t, band){
   return {v, inBand, wacht:false};
 }
 
-function bscDrawFrame(){
+// Eén tik: elke open test kijkt of zijn situatie er is, en meet dan.
+function bscTik(){
+  if(!_bscState || _bscState.gestopt) return;
+  const nu=Date.now(), dt=nu-_bscState.vorig; _bscState.vorig=nu;
+  const sits=bscSituaties();
+  const koudBijStart = typeof _bscState.startTemp==='number' ? _bscState.startTemp<BSC_KOUD_C : null;
+  for(const t of _bscState.list){
+    const S=_bscState.stand[t.id];
+    if(S.st==='ok'||S.st==='twijfel'||S.st==='geen'||S.st==='nvt') continue;
+    const v=pidVals[t.pid];
+    if(v!==undefined) S.gezien=true;
+    // Een koude-starttest heeft maar één kans: bij het begin.
+    if(t.sit==='koud' && koudBijStart===false){ S.st='nvt'; S.reden='de motor was al warm bij de start'; continue; }
+    if(!S.gezien && nu-_bscState.t0>BSC_GEEN_DATA_MS){ S.st='geen'; S.reden='deze auto levert '+t.pid+' niet'; continue; }
+    const eis=bscConditie(t, sits);
+    if(!eis.ok){ S.st='wacht'; S.reden=eis.label; S.holdStart=0; S.held=0; continue; }
+    S.st='meet'; S.meetMs+=dt; S.reden='';
+    const band=bscCurrentBand(t);
+    const r=bscEvaluate(t, band);
+    S.v=r.v; S.band=band;
+    if(r.inBand){ if(!S.holdStart) S.holdStart=nu; } else S.holdStart=0;
+    S.held=S.holdStart?(nu-S.holdStart)/1000:0;
+    if(S.held>=(t.hold||4)){ S.st='ok'; continue; }
+    if(S.meetMs>(t.maxMeetMs||BSC_MAX_MEET_MS)){ S.st='twijfel'; S.reden=r.wacht?'geen band te bepalen':'bleef buiten '+bscBandTekst(band, t.pid); }
+  }
+  bscWerkLijstBij(sits);
+  const open=_bscState.list.filter(t=>{ const x=_bscState.stand[t.id].st; return x==='wacht'||x==='meet'; });
+  if(!open.length) bscStop(false);
+}
+
+function bscBandTekst(band, pid){
+  if(!band) return '';
+  const eh=(getPidDef(pid)||{}).unit||'', f=(x)=>(typeof fv==='function')?fv(x,pid):x;
+  return f(band.lo)+'–'+f(band.hi)+(eh?' '+eh:'');
+}
+
+// Stoppen: wat nog openstond wordt "niet getest", met de reden erbij.
+function bscStop(stil){
   if(!_bscState) return;
-  const t=_bscState.list[_bscState.idx];
-  const now=Date.now();
-  // ── voorwaarde-poort: eis niet vervuld → even wachten, dan doorstappen ──
-  const eis=bscConditie(t);
-  if(!eis.ok){
-    bscPaint(t, bscCurrentBand(t), undefined, 0, false, true);
-    if(_bscState._eisToast!==t.id){
-      _bscState._eisToast=t.id;
-      bscToast('Wacht op voorwaarde: '+eis.label+' \u2014 anders wordt de test overgeslagen');
+  _bscState.gestopt=true;
+  if(_bscState.tik){ clearInterval(_bscState.tik); _bscState.tik=null; }
+  for(const t of _bscState.list){
+    const S=_bscState.stand[t.id];
+    if(S.st==='wacht'||S.st==='meet'){
+      const sit=BSC_SIT[t.sit||'draaiend']||{naam:t.sit};
+      S.st='nvt'; S.reden=S.reden||('situatie "'+sit.naam.toLowerCase()+'" deed zich niet voor');
     }
-    if(now-_bscState.testT0>(t.eisWachtMs||12000)){
-      _bscState.results.push({id:t.id, naam:t.naam, status:'nvt', reden:eis.label});
-      _bscState.idx++;
-      setTimeout(bscNextTest, 300);
-      return;
-    }
-    _bscState.raf=requestAnimationFrame(bscDrawFrame);
-    return;
   }
-  // Eerste keer dat de voorwaarde vervuld raakt: meettimer opnieuw starten,
-  // zodat de test de volle meettijd krijgt en de wachttijd niet meetelt.
-  if(!_bscState._eisOk){ _bscState._eisOk=true; _bscState.testT0=now; }
-  const band=bscCurrentBand(t);
-  const {v, inBand, wacht}=bscEvaluate(t, band);
-  // hold-timer: aaneengesloten tijd binnen band
-  if(inBand){ if(!_bscState.holdStart) _bscState.holdStart=now; }
-  else { _bscState.holdStart=0; }
-  const held=_bscState.holdStart? (now-_bscState.holdStart)/1000 : 0;
-  const geslaagd = held>=(t.hold||4);
+  if(stil){ _bscState=null; return; }
+  bscFinish();
+}
 
-  bscPaint(t, band, v, held, geslaagd, wacht);
-
-  if(geslaagd){
-    _bscState.results.push({id:t.id, naam:t.naam, status:'ok', waarde:v, unit:(getPidDef(t.pid)?.unit||''), pid:t.pid});
-    _bscState.idx++;
-    setTimeout(bscNextTest, 650); // even groen tonen, dan door
-    return;
+/* ---- weergave: de checklist ---- */
+const BSC_ICO={wacht:'⏳', meet:'🔵', ok:'✅', twijfel:'⚠️', geen:'⚪', nvt:'⏭️'};
+// De rij staat al onder de kop van zijn situatie; die hoeft er niet nog eens
+// achter. Wat overblijft zijn de extra eisen (bedrijfswarm, ≥40 km/u).
+function bscWachtTekst(t, reden){
+  const eigen=(BSC_SIT[t.sit||'draaiend']||{naam:''}).naam.toLowerCase();
+  const rest=String(reden||'').split(' + ').filter(x=>x && x!==eigen);
+  return rest.length ? 'wacht: '+rest.join(' + ') : 'wacht';
+}
+function bscTekenLijst(){
+  const per={};
+  _bscState.list.forEach(t=>{ const k=t.sit||'draaiend'; (per[k]=per[k]||[]).push(t); });
+  const volgorde=Object.keys(BSC_SIT).filter(k=>per[k]);
+  bscRender(
+    `<div class="bsc-kop">
+       <div id="bscNu" class="bsc-nu"></div>
+       <div id="bscVolgende" class="bsc-volgende"></div>
+       <div class="bsc-teller"><span id="bscTel"></span>
+         <button class="btn" onclick="bscStop(false)">■ Stop en maak rapport</button></div>
+     </div>`+
+    volgorde.map(k=>`<div class="bsc-sit" data-sit="${k}">
+       <div class="bsc-sit-h">${BSC_SIT[k].ico} ${BSC_SIT[k].naam}</div>
+       ${per[k].map(t=>`<div class="bsc-rij" id="bscR-${t.id}" title="${(t.uitleg||'').replace(/"/g,'&quot;')}">
+          <span class="bsc-ico"></span><span class="bsc-rnaam">${t.naam}</span><span class="bsc-rst"></span></div>`).join('')}
+     </div>`).join(''));
+}
+function bscWerkLijstBij(sits){
+  if(!_bscState) return;
+  const f=(v,pid)=>(typeof fv==='function')?fv(v,pid):v;
+  let klaar=0, meet=0;
+  const wachtPer={};
+  for(const t of _bscState.list){
+    const S=_bscState.stand[t.id], rij=document.getElementById('bscR-'+t.id);
+    if(S.st!=='wacht'&&S.st!=='meet') klaar++;
+    if(S.st==='meet') meet++;
+    if(S.st==='wacht' && t.sit!=='koud') wachtPer[t.sit||'draaiend']=(wachtPer[t.sit||'draaiend']||0)+1;
+    if(!rij) continue;
+    const eh=(getPidDef(t.pid)||{}).unit||'';
+    rij.className='bsc-rij '+S.st;
+    rij.querySelector('.bsc-ico').textContent=BSC_ICO[S.st]||'';
+    rij.querySelector('.bsc-rst').textContent =
+      S.st==='ok'      ? f(S.v,t.pid)+(eh?' '+eh:'')
+    : S.st==='meet'    ? (S.v!==undefined ? f(S.v,t.pid)+(eh?' '+eh:'')+' · '+Math.min(t.hold||4, Math.floor(S.held))+'/'+(t.hold||4)+' s' : 'wacht op meetwaarde')
+    : S.st==='wacht'   ? bscWachtTekst(t, S.reden)
+    : S.reden || '';
   }
-  // Nooit ook maar één meetwaarde gezien? Dan wachten we op een PID die deze
-  // auto niet levert. Na 12 s stoppen met een eerlijke reden, i.p.v. 30 s lang
-  // "wachten op sensordata" tonen zonder uit te leggen waarom.
-  if(v===undefined && now-_bscState.testT0>12000){
-    _bscState.results.push({id:t.id, naam:t.naam, status:'geen', pid:t.pid,
-      reden:'deze auto levert '+t.pid+' niet'});
-    _bscState.idx++;
-    setTimeout(bscNextTest, 300);
-    return;
+  const tel=document.getElementById('bscTel');
+  if(tel) tel.textContent=klaar+'/'+_bscState.list.length+' afgerond';
+  const nuEl=document.getElementById('bscNu');
+  if(nuEl){
+    const actief=Object.keys(BSC_SIT).filter(k=>sits.has(k) && k!=='contact' && k!=='koud');
+    const hoofd=actief[0];
+    nuEl.textContent = hoofd ? 'Nu: '+BSC_SIT[hoofd].ico+' '+BSC_SIT[hoofd].naam+(meet?' — '+meet+' test'+(meet===1?'':'s')+' meet'+(meet===1?'':'en'):'')
+                             : 'Nu: geen situatie herkend — is de motor aan en de verbinding er?';
   }
-  // timeout per test: 30s → markeer als "niet bevestigd" en ga door
-  if(now-_bscState.testT0>30000){
-    _bscState.results.push({id:t.id, naam:t.naam, status:v===undefined?'geen':'twijfel', waarde:v, unit:(getPidDef(t.pid)?.unit||''), pid:t.pid});
-    _bscState.idx++;
-    setTimeout(bscNextTest, 300);
-    return;
+  // De volgende kans: de situatie waar de meeste tests op wachten.
+  const vol=document.getElementById('bscVolgende');
+  if(vol){
+    const kans=Object.keys(wachtPer).filter(k=>!sits.has(k)).sort((a,b)=>wachtPer[b]-wachtPer[a])[0];
+    vol.textContent = kans ? 'Volgende kans: '+BSC_SIT[kans].ico+' '+BSC_SIT[kans].doe+' ('+wachtPer[kans]+' test'+(wachtPer[kans]===1?'':'s')+' wacht'+(wachtPer[kans]===1?'':'en')+' hierop)' : '';
   }
-  _bscState.raf=requestAnimationFrame(bscDrawFrame);
 }
 
 function bscFinish(){
-  if(_bscState&&_bscState.raf) cancelAnimationFrame(_bscState.raf);
-  const R=_bscState?_bscState.results:[];
+  const R=_bscState ? _bscState.list.map(t=>{ const S=_bscState.stand[t.id];
+    return {id:t.id, naam:t.naam, status:S.st, waarde:S.v, unit:(getPidDef(t.pid)?.unit||''), pid:t.pid, reden:S.reden, sit:t.sit}; }) : [];
+  window._bscLast=R;
   const ok=R.filter(r=>r.status==='ok').length;
   const tw=R.filter(r=>r.status==='twijfel').length;
   const gn=R.filter(r=>r.status==='geen').length;
@@ -744,7 +835,7 @@ function bscFinish(){
     const ic=r.status==='ok'?'✅':r.status==='twijfel'?'⚠️':r.status==='nvt'?'⏭️':'⚪';
     const kl=r.status==='ok'?'ok':r.status==='twijfel'?'warn':'mut';
     const val=r.status==='nvt'
-      ? ('n.v.t. \u2014 voorwaarde niet voorgekomen'+(r.reden?': '+r.reden:''))
+      ? ('niet getest \u2014 '+(r.reden||'situatie deed zich niet voor'))
       : (r.waarde!==undefined?`${(typeof fv==='function')?fv(r.waarde, r.pid):r.waarde} ${r.unit}`
                              :('geen data'+(r.reden?' — '+r.reden:'')));
     const vb=(r.status==='twijfel'&&r.pid&&window.PLVerify&&connected&&!demoMode)
@@ -753,24 +844,24 @@ function bscFinish(){
   }).join('');
   bscRender(
     `<div class="bsc-done">
-       <div class="bsc-score"><b>${ok}</b>/${R.length-nv} tests groen${tw?` · ${tw} twijfel`:''}${gn?` · ${gn} geen data`:''}${nv?` · ${nv} n.v.t.`:''}</div>
+       <div class="bsc-score"><b>${ok}</b>/${R.length-nv-gn} geteste systemen groen${tw?` · ${tw} twijfel`:''}${gn?` · ${gn} geen data`:''}${nv?` · ${nv} niet getest`:''}</div>
        <div class="bsc-rows">${rows||'<div class="bsc-empty">Geen resultaten.</div>'}</div>
        <div class="toolbar" style="margin-top:12px">
          <button class="btn pri" onclick="startBasicCheck()">🔄 Opnieuw</button>
          <button class="btn" onclick="bscExport()">💾 Exporteer</button>
        </div>
      </div>`);
-  try{ scanLogAdd?.({type:'basischeck', msg:`${ok}/${R.length-nv} groen (${tw} twijfel, ${gn} geen data, ${nv} n.v.t.)`}); }catch(e){ console.warn('scanLogAdd mislukt:', e); }
+  try{ scanLogAdd?.({type:'basischeck', msg:`${ok}/${R.length-nv-gn} groen (${tw} twijfel, ${gn} geen data, ${nv} niet getest)`}); }catch(e){ console.warn('scanLogAdd mislukt:', e); }
   try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) PidLaneEvalLog.log('app','basischeck: '+ok+'/'+R.length+' groen'); }catch(e){ /* stil: eigen telemetrielog (PidLaneEvalLog) — mag de basischeck nooit blokkeren */ }
   _bscState=null;
 }
 
 function bscExport(){
-  const R=(_bscState&&_bscState.results)||window._bscLast||[];
+  const R=window._bscLast||[];
   const v=(typeof getVehicle==='function')?getVehicle():{};
   const lines=['PidLane — Basic System Check', 'Datum: '+new Date().toLocaleString('nl'),
     v.merk?`Voertuig: ${v.merk} ${v.model||''} ${v.year||''}`:'',''];
-  R.forEach(r=>lines.push(`[${(r.status||'').toUpperCase()}] ${r.naam}: ${r.waarde!==undefined?r.waarde+' '+r.unit:'geen data'}`));
+  R.forEach(r=>lines.push(`[${(r.status||'').toUpperCase()}] ${r.naam}: ${r.waarde!==undefined?r.waarde+' '+r.unit:'geen data'}${r.reden?' — '+r.reden:''}`));
   try{ download('basic-system-check.txt', lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
 }
 
@@ -778,97 +869,3 @@ function bscExport(){
 function bscRender(html){ const el=document.getElementById('bscBody'); if(el) el.innerHTML=html; }
 function bscToast(m){ try{ showToast?.(m,2600); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
 
-// Live-scherm van de lopende test (progress + canvas).
-function bscPaint(t, band, v, held, geslaagd, wacht){
-  const el=document.getElementById('bscBody'); if(!el) return;
-  const idx=_bscState.idx+1, tot=_bscState.list.length;
-  const d=getPidDef(t.pid)||{}; const unit=d.unit||'';
-  const pct=Math.min(100, Math.round(held/(t.hold||4)*100));
-  // Toon hoe lang we al wachten. Blijft data helemaal uit, dan stopt bscDrawFrame
-  // de test na 20 s met "geen data" i.p.v. eindeloos te blijven staan.
-  const wachtS = wacht ? Math.round((Date.now()-(_bscState.testT0||Date.now()))/1000) : 0;
-  const statusTxt = geslaagd?'✅ Geslaagd'
-    : wacht?`⏳ Wachten op sensordata… ${wachtS}s`
-    : (held>0?`🟢 Binnen band — ${pct}%`:'🔴 Buiten band');
-  if(!document.getElementById('bscCanvas') || el.dataset.test!==t.id){
-    el.dataset.test=t.id;
-    el.innerHTML=
-      `<div class="bsc-head">
-         <div class="bsc-cnt">Test ${idx}/${tot} · <span class="bsc-grp">${t.groep}</span></div>
-         <div class="bsc-name">${t.naam}</div>
-         <div class="bsc-uit">${t.uitleg}</div>
-       </div>
-       <canvas id="bscCanvas" height="200"></canvas>
-       <div class="bsc-meta">
-         <div id="bscStatus" class="bsc-status">${statusTxt}</div>
-         <div class="bsc-live"><span id="bscVal">${v!==undefined?((typeof fv==='function')?fv(v,t.pid):v):'—'}</span> <span class="bsc-unit">${unit}</span></div>
-       </div>
-       <div class="bsc-prog"><div id="bscBar" style="width:${pct}%"></div></div>
-       <button class="btn bsc-skip" onclick="bscSkip()">Overslaan →</button>`;
-  } else {
-    const st=document.getElementById('bscStatus'); if(st){ st.textContent=statusTxt; st.className='bsc-status '+(geslaagd?'ok':held>0?'go':'no'); }
-    const vv=document.getElementById('bscVal'); if(vv) vv.textContent=v!==undefined?((typeof fv==='function')?fv(v):v):'—';
-    const bar=document.getElementById('bscBar'); if(bar) bar.style.width=pct+'%';
-  }
-  bscDrawCanvas(t, band, unit);
-}
-
-function bscSkip(){
-  if(!_bscState) return;
-  const t=_bscState.list[_bscState.idx];
-  _bscState.results.push({id:t.id, naam:t.naam, status:'twijfel', waarde:pidVals[t.pid], unit:(getPidDef(t.pid)?.unit||'')});
-  _bscState.idx++;
-  bscNextTest();
-}
-
-// Canvas: tijd op X, PID op Y, referentieband als grijs vlak, live lijn cyaan.
-function bscDrawCanvas(t, band, unit){
-  const c=document.getElementById('bscCanvas'); if(!c) return;
-  const dpr=window.devicePixelRatio||1;
-  const w=c.clientWidth||c.parentElement.clientWidth||320, h=200;
-  if(c.width!==Math.round(w*dpr)){ c.width=Math.round(w*dpr); c.height=Math.round(h*dpr); }
-  const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
-  const css=getComputedStyle(document.documentElement);
-  const col={bg:(css.getPropertyValue('--sur')||'#141b23').trim(), line:(css.getPropertyValue('--bd')||'#2a3644').trim(),
-    ink:(css.getPropertyValue('--tx2')||'#9db0c4').trim(), cy:'#2fd0d6', gn:'#3fd07a'};
-  const padL=40, padR=10, padT=10, padB=18, plotW=w-padL-padR, plotH=h-padT-padB;
-
-  const hist=(pidHist[t.pid]||[]).slice(-60);
-  // Y-bereik: band + data, met marge
-  let ylo=band?band.lo:(d=>d.min)(getPidDef(t.pid)||{min:0}), yhi=band?band.hi:(getPidDef(t.pid)?.max||100);
-  const vals=hist.map(x=>x.v);
-  if(vals.length){ ylo=Math.min(ylo, Math.min(...vals)); yhi=Math.max(yhi, Math.max(...vals)); }
-  if(yhi<=ylo) yhi=ylo+1;
-  const mrg=(yhi-ylo)*0.12; ylo-=mrg; yhi+=mrg;
-  const Y=val=>padT+plotH-((val-ylo)/(yhi-ylo))*plotH;
-  const X=i=>padL+(i/Math.max(1,59))*plotW;
-
-  // referentieband
-  if(band){
-    g.fillStyle='rgba(63,208,122,.12)';
-    const y1=Y(band.hi), y2=Y(band.lo);
-    g.fillRect(padL, Math.min(y1,y2), plotW, Math.abs(y2-y1));
-    g.strokeStyle='rgba(63,208,122,.5)'; g.setLineDash([4,4]); g.lineWidth=1;
-    g.beginPath(); g.moveTo(padL,y1); g.lineTo(padL+plotW,y1); g.moveTo(padL,y2); g.lineTo(padL+plotW,y2); g.stroke();
-    g.setLineDash([]);
-    if(band.ref!=null){ g.strokeStyle='rgba(159,176,196,.55)'; g.beginPath(); g.moveTo(padL,Y(band.ref)); g.lineTo(padL+plotW,Y(band.ref)); g.stroke(); }
-  }
-  // assen
-  g.strokeStyle=col.line; g.lineWidth=1; g.beginPath();
-  g.moveTo(padL,padT); g.lineTo(padL,padT+plotH); g.lineTo(padL+plotW,padT+plotH); g.stroke();
-  g.fillStyle=col.ink; g.font='10px system-ui'; g.textAlign='right';
-  g.fillText(((typeof fv==='function')?fv(yhi):yhi.toFixed(0)), padL-4, padT+8);
-  g.fillText(((typeof fv==='function')?fv(ylo):ylo.toFixed(0)), padL-4, padT+plotH);
-  g.textAlign='left'; g.fillText('tijd →', padL+2, padT+plotH+14);
-
-  // live lijn
-  if(hist.length>1){
-    const n=hist.length; const off=60-n;
-    g.strokeStyle=col.cy; g.lineWidth=2; g.beginPath();
-    hist.forEach((p,i)=>{ const x=X(off+i), y=Y(p.v); i?g.lineTo(x,y):g.moveTo(x,y); });
-    g.stroke();
-    // laatste punt
-    const last=hist[hist.length-1]; const inB=band && last.v>=band.lo && last.v<=band.hi;
-    g.fillStyle=inB?col.gn:col.cy; g.beginPath(); g.arc(X(off+n-1),Y(last.v),3.5,0,7); g.fill();
-  }
-}

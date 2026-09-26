@@ -794,7 +794,7 @@
       try { admin = (typeof isAdmin === 'function') && isAdmin(); } catch(e){ console.warn('isAdmin mislukt:', e); }
       // De bulk-kaarten zijn beheergereedschap en stonden tot #286 in het
       // Admin-menu; in de deur "Live data" gelden dezelfde regels.
-      ['admGroupBtn', 'admGroup', 'wc-bulkrec', 'wc-bulkana'].forEach(function (id) {
+      ['admGroupBtn', 'admGroup', 'wc-bulkrec'].forEach(function (id) {
         const el = document.getElementById(id);
         if (el) el.style.display = admin ? '' : 'none';
       });

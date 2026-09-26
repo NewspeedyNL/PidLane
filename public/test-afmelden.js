@@ -47,14 +47,23 @@ function laad(opt) {
     currentUser: { name: 'a' },
     uitlogVlagAan() {}, uitlogVlagWeg() {}, tokClear() {},
     plLoginMeld() {}, closeConnOv() {},
+    setTimeout: (f, ms) => setTimeout(f, opt.snel ? 5 : ms), showToast() {},
+    _volgorde: [],
   };
   s.handleConnect = () => { s._handleConnect++; s.connected = !s.connected; return Promise.resolve(); };
   s.window = { PLCredits: { vergeetKlant() {}, chip() {} } };
   if (opt.schil) {
     s.window.Capacitor = {
       isNativePlatform: () => true,
-      Plugins: { App: { exitApp: () => { s._exit++; s._verbondenBijExit = s.connected; return Promise.resolve(); } } },
+      Plugins: { App: { exitApp: () => { s._exit++; s._verbondenBijExit = s.connected; s._volgorde.push('exit'); return Promise.resolve(); } } },
     };
+    s.window.PLMeetdienst = { stop: () => { s._volgorde.push('meetdienst'); return Promise.resolve(true); } };
+  }
+  if (opt.halfOpen) {
+    s.window._sppConn = { address: 'AA', spp: { disconnect: () => {
+      s._volgorde.push('spp');
+      return opt.hangt ? new Promise(() => {}) : Promise.resolve();
+    } } };
   }
   s.els = els;
   vm.createContext(s);
@@ -102,6 +111,31 @@ function laad(opt) {
       !knop || knop.style.display === 'none');
     const r = await s.plSluitApp();
     toets('en doet hij niets', r === false && s._exit === 0 && s._handleConnect === 0);
+  }
+
+  console.log('\n3. Sluit de app laat niets achter (26-09-2026)');
+  {
+    const s = laad({ verbonden: true, schil: true });
+    await s.plSluitApp();
+    toets('de meetdienst stopt vóór exitApp()',
+      s._volgorde.join(',') === 'meetdienst,exit',
+      'volgorde: ' + s._volgorde.join(',') + ' — de voorgronddienst houdt het proces en de BT-socket in leven');
+  }
+  {
+    // Nog aan het verbinden: connected is false, maar de socket bestaat al.
+    const s = laad({ verbonden: false, schil: true, halfOpen: true });
+    await s.plSluitApp();
+    toets('een half opgebouwde verbinding wordt ook verbroken, vóór exitApp()',
+      s._volgorde.indexOf('spp') > -1 && s._volgorde.indexOf('spp') < s._volgorde.indexOf('exit'),
+      'volgorde: ' + s._volgorde.join(','));
+    toets('en het verbindingsscherm gaat daarbij niet open', s._handleConnect === 0);
+  }
+  {
+    // Een adapter die niet antwoordt mag afsluiten niet tegenhouden.
+    const s = laad({ verbonden: false, schil: true, halfOpen: true, hangt: true, snel: true });
+    const r = await Promise.race([s.plSluitApp(), new Promise(res => setTimeout(() => res('hangt'), 2000))]);
+    toets('een adapter die niet antwoordt houdt het afsluiten niet tegen',
+      r === true && s._exit === 1, 'plSluitApp gaf: ' + r);
   }
 
   console.log(`\n${n - fout}/${n} goed`);

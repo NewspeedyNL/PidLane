@@ -1066,7 +1066,7 @@ function updPID(pid,val){
   pidHist[pid].push({t:Date.now(),v:val});
   if(pidHist[pid].length>120) pidHist[pid].shift();
   applyG(pid,val);
-  if(graphPID===pid) drawGraph();
+  // De grafiek tekent zichzelf op een eigen klok (pidlane-graph.js, _grTik).
 }
 
 // ══════════════════════════════════════════════════════

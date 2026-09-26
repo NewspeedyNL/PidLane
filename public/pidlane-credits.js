@@ -77,8 +77,10 @@
     // Onder dit aantal credits geen preview-sheet (achtergrond/hulpcalls).
     previewDrempel: 3,
 
-    // Saldochip linksonder. Zet op false als je 'm zelf wilt plaatsen.
-    chipTonen: true,
+    // Saldochip linksonder. Uit sinds 26-09-2026: een zwevende teller over
+    // het scherm was voor users en klanten meer ruis dan hulp. Een klant ziet
+    // zijn saldo in ☰ → Mijn account en in de kostenmelding vóór een AI-call.
+    chipTonen: false,
     chipPositie: 'left:8px;bottom:110px',
 
     // Worker-endpoint voor het inwisselen van een activatiecode.
@@ -536,7 +538,12 @@
 
   // ── Saldochip ────────────────────────────────────────────────────────
   function _chipVerversen() {
-    if (!CFG.chipTonen) return;
+    if (!CFG.chipTonen) {
+      // Ook een chip die er al hing weg: anders blijft hij na het uitzetten staan.
+      try { const o = document.getElementById('plCredChip'); if (o) o.remove(); }
+      catch (e) { console.warn('saldochip opruimen mislukt:', e); }
+      return;
+    }
     try {
       if (_vrijgesteld()) { const o = document.getElementById('plCredChip'); if (o) o.remove(); return; }
       if (!document.body) return;
