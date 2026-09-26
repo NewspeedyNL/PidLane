@@ -537,7 +537,10 @@ MUTATIES=(
 # Elke regel is een fout die bij dit werk echt gemaakt had kunnen worden, en
 # die niemand ziet tot hij in de auto zit.
 "public/pidlane-archief.js@@  try{ const x=_plBovensteSluitKnop(); if(x){ x.click(); return true; } }@@  try{ const x=null; if(x){ x.click(); return true; } }@@bproef-terugknop.js@@de terugknop kent weer alleen de vaste lijst: de waakronde en de bulkvensters gaan er niet mee dicht"
-"public/pidlane-archief.js@@if(z>=besteZ){ beste=b; besteZ=z; }@@if(z>besteZ){ beste=b; besteZ=z; }@@bproef-terugknop.js@@bij gelijke z-index sluit de terugknop het venster ONDER het bovenste"
+# (Geen mutatie op de z-index-vergelijking in _plBovensteSluitKnop: nagemeten
+# op 26-09-2026 dat die bij overlappende vensters nooit beslist — een ✕ onder
+# een ander venster valt al af op elementFromPoint(). bproef-terugknop.js 2b
+# toetst het gelijke-z-geval wel, als gedrag.)
 "public/pidlane-correlatie.js@@if(rest>0){ uit.push(_bevLaatst[id]);@@if(rest>BEV_MIN_MS){ uit.push(_bevLaatst[id]);@@test-bevindingen.js@@een bevinding die weer goed is verdwijnt meteen: één seconde in beeld, zoals vóór 26-09"
 "public/pidlane-credits.js@@    chipTonen: false,@@    chipTonen: true,@@test-tokenchip.js@@de zwevende tokenteller hangt weer in beeld bij klanten"
 "public/pidlane-auth.js@@  try{ const md=window.PLMeetdienst; if(md && typeof md.stop==='function') await binnen(md.stop()); }@@  try{ }@@test-afmelden.js@@Sluit de app laat de meetdienst draaien: het proces en de BT-socket blijven leven na exitApp()"
@@ -846,7 +849,7 @@ MUTATIES=(
 "public/pidlane-graph.js@@async function scanDTC(){\n  document.getElementById('bscan').disabled=true;@@async function scanDTC(){\n  window._didDTCScan=true;\n  document.getElementById('bscan').disabled=true;@@test-dtcvlag.js@@de DTC-vlag gaat weer aan vóór het antwoord: tijdens de scan en na een fout heet het geen foutcodes"
 # ── #261: afmelden opent geen verbindingsscherm, sluiten verbreekt eerst (22-09-2026) ──
 "public/pidlane-auth.js@@  if(typeof connected!=='undefined' && connected) handleConnect();\n}@@  handleConnect();\n}@@test-afmelden.js@@afmelden roept de verbindingsschakelaar weer blind aan en opent zonder verbinding het verbindingsscherm"
-"public/pidlane-auth.js@@  try{ if(typeof connected!=='undefined' && connected) await handleConnect(); }@@  try{ }@@test-afmelden.js@@Sluit de app sluit met een open verbinding: de sessie wordt niet bewaard en de adapter blijft bezet"
+"public/pidlane-auth.js@@  try{ if(typeof connected!=='undefined' && connected) await binnen(handleConnect()); }@@  try{ }@@test-afmelden.js@@Sluit de app sluit met een open verbinding: de sessie wordt niet bewaard en de adapter blijft bezet"
 "public/pidlane-archief.js@@  if(window._plBackMelding) return;@@  window.plSluitApp?.();\n  if(window._plBackMelding) return;@@test-terugknop.js@@de terugknop gaat via Sluit de app alsnog naar de uitgang"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de

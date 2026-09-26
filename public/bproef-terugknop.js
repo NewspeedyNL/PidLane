@@ -96,6 +96,24 @@ const HULP = `
       stapel.naTwee.bulk === false && stapel.naTwee.waak === false,
       'na twee tikken: ' + JSON.stringify(stapel.naTwee));
 
+    // Veel vensters delen hun z-index (alle .ai-sheet-ov bijvoorbeeld). Dan
+    // beslist de volgorde in de DOM: wat later komt, ligt bovenop.
+    console.log('\n2b. Twee vensters met dezelfde z-index: de laatst geopende eerst');
+    const gelijk = await app.ev(`(async function(){
+      PLWaakUI.open(); await __wacht(150);
+      PLBulkUI.open(); await __wacht(250);
+      const w = document.getElementById('wkvOv'), b = document.getElementById('blvOv');
+      const z = getComputedStyle(b).zIndex; w.style.zIndex = z;
+      const naEen = (function(){ _plBackHandler(); return null; })();
+      await __wacht(250);
+      const r = { waak: __zicht('wkvOv'), bulk: __zicht('blvOv'), z: z };
+      w.style.zIndex = '';
+      try { PLWaakUI.sluit(); PLBulkUI.sluit(); } catch (e) { console.warn(e); }
+      return r;
+    })()`);
+    toets('bij gelijke z-index sluit de terugknop het laatst geopende venster',
+      gelijk.bulk === false && gelijk.waak === true, JSON.stringify(gelijk));
+
     console.log('\n3. TEGENPROEF — zonder de ✕-zoeker blijft het venster staan');
     const tegen = await app.ev(`(async function(){
       const echt = window._plBovensteSluitKnop;
