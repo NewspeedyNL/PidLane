@@ -1113,10 +1113,13 @@ function closeConnOv(){
              toestandsregel zonder meting eronder hoort er niet te staan. -->
         <div id="aandrijfBalk" style="display:none"></div>
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
-          <span class="pidview-lbl">Weergave:</span>
-          <button class="pidview-btn" data-mode="full" onclick="setPidView('full')">📈 Trends</button>
-          <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')">🔢 Getallen</button>
-          <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')">🟢 Puntjes</button>
+          <!-- Eén regel (26-09-2026): vijf gelijke vakken met het icoon boven
+               een kort woord, als een tabbalk. Het label "Weergave:" en de
+               waakronde-knop zijn eruit — de waakronde staat al in het
+               run-paneel en in het meldingenvak van Slim visueel. -->
+          <button class="pidview-btn" data-mode="full" onclick="setPidView('full')" title="Trends"><i>📈</i>Trends</button>
+          <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')" title="Getallen"><i>🔢</i>Getallen</button>
+          <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')" title="Puntjes"><i>🟢</i>Puntjes</button>
           <!-- Slimme weergave (#61, #68) en sinds 01-09-2026 de STANDAARD:
                dashboardwaarden groot, een tellerplaat met verticale meters
                voor toerental/pedaal/klep/belasting, alle temperaturen als één
@@ -1124,14 +1127,12 @@ function closeConnOv(){
                De active-klasse staat hier omdat dit de startweergave is;
                plPidViewHerstel() zet hem meteen goed als er een andere
                voorkeur is opgeslagen. -->
-          <button class="pidview-btn active" data-mode="slim" onclick="setPidView('slim')">🧠 Slim</button>
+          <button class="pidview-btn active" data-mode="slim" onclick="setPidView('slim')" title="Slim"><i>🧠</i>Slim</button>
           <!-- Slim visueel (25-09-2026): één vaste meter voor wat er vloeiend
                ververst — toerental, snelheid, gaspedaal, laaddruk of verbruik —
                met een rustige rand voor koelwater, olie, tank en accu. Zie
                pidlane-visueel.js. -->
-          <button class="pidview-btn" data-mode="visueel" onclick="setPidView('visueel')">🎯 Slim visueel</button>
-          <span class="pidview-scheid"></span>
-          <button class="pidview-btn waak" id="waakBtn" onclick="toggleWaakronde()" title="Controleert op de achtergrond rustig de sensoren die je niet hebt aangevinkt">◉ Waakronde</button>
+          <button class="pidview-btn" data-mode="visueel" onclick="setPidView('visueel')" title="Slim visueel"><i>🎯</i>Visueel</button>
         </div>
         <!-- Vaste/code-PIDs (brandstoftype, OBD-norm, …) in gewone woorden.
              Een sparkline of 32px-cijfer is zonde van de ruimte bij een waarde

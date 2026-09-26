@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Weergaveknoppen op één regel, embleem in de meter, getallen bij de lampjes
+ ═══════════════════════════════════════════════════════════
+
+ - De vijf weergaven staan op één regel als tabbalk (icoon boven een kort
+   woord); "Slim visueel" heet daar "Visueel". Het label "Weergave:" en de
+   waakronde-knop zijn uit die rij — de waakronde staat in het run-paneel
+   en in het meldingenvak.
+ - Slim visueel: "×1000 /min" en het toerengetal in het midden zijn weg (de
+   naald zegt het al); daar staat nu het PidLane-embleem, als lichte
+   lijntekening zonder tegel en gloedfilters.
+ - Het motorlampje toont de motorbelasting (0104) met een balkje, het
+   hybride-lampje het percentage van de hybride accu (015B). Het vermogen
+   van de accu kan niet: daar kent de app geen generieke PID voor.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Rit-monitor: geen uitval-meldingen bij wegschakelen
  ═══════════════════════════════════════════════════════════
 
