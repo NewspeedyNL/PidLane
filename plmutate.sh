@@ -539,6 +539,11 @@ MUTATIES=(
 # geüpload. Allebei stil tot het live staat.
 "public/.assetsignore@@bproef-*.js@@bproef-*.txt@@test-assetsignore.js@@de browserproeven gaan weer mee online"
 "public/.assetsignore@@test-*.js@@test-*.js\npidlane-t*.js@@test-assetsignore.js@@een patroon te breed: pidlane-testrun.js en pidlane-theme.js worden niet geüpload"
+# ── Een pagina wijst naar een bestand dat er niet is (26-09-2026) ──
+# index.html wees maandenlang naar vier iconen die nooit bestaan hebben: vier
+# 404's per paginalading, onzichtbaar tot het pre-launch-rapport van Play.
+"public/index.html@@<link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png\">@@<link rel=\"apple-touch-icon\" href=\"apple-touch-icon-180.png\">@@test-verwijzingen.js@@index.html wijst naar een icoon dat niet bestaat"
+"public/manifest.webmanifest@@\"sizes\": \"192x192\"@@\"sizes\": \"144x144\"@@test-verwijzingen.js@@het manifest belooft een maat die het icoon niet heeft"
 # ── §14 belooft iets wat §3 niet kent (10-09-2026) ──
 # De release notes zijn een ingedikte §3, met de hand. Een functie erbij zetten
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop

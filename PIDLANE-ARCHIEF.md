@@ -14,6 +14,17 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — Vier iconen waar index.html naar wees, bestonden nooit
+
+`favicon-32.png`, `favicon.ico`, `apple-touch-icon.png` en
+`manifest.webmanifest` stonden in de `<head>` maar nooit in `public/`
+(`git log --all` kent ze niet). Een ontbrekend asset valt door naar de
+Worker, dus elke paginalading kostte vier Worker-aanroepen die `not_found`
+teruggaven. Niets brak zichtbaar, en daarom bleef het staan. Alles is gemaakt
+uit `icon-512.png`, en `test-verwijzingen.js` legt nu de regel vast in plaats
+van dit ene geval: elke lokale verwijzing in een pagina moet een bestand of
+een Worker-route zijn.
+
 ## 26-09-2026 — De tests stonden openbaar op app.pidlane.nl
 
 **Wat er aan de hand was.** `[assets] directory = "./public/"` levert álles in

@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Favicon, iOS-icoon en webmanifest bestaan nu echt
+ ═══════════════════════════════════════════════════════════
+
+ - index.html wees naar favicon-32.png, favicon.ico, apple-touch-icon.png
+   en manifest.webmanifest, maar die hebben nooit bestaan: vier 404's per
+   paginalading, en vier keer de Worker die "not_found" antwoordde. Alle
+   vier zijn nu gemaakt uit icon-512.png, plus icon-192.png voor het
+   manifest. test-verwijzingen.js toetst dat elke lokale verwijzing in de
+   drie pagina's bestaat. Twee mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — De tests staan niet meer openbaar op app.pidlane.nl
  ═══════════════════════════════════════════════════════════
 
