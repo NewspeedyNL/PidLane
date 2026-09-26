@@ -274,7 +274,10 @@ var KRITIEK = [
   // de systeemtest en de scenariobalk op het toestel te meten; de andere twee
   // roept auth.js na een rolwissel en bij het afsluiten aan. Ontbreekt er een,
   // dan meldt de proef dat — zonder deze regel zou de guard de stille fout zijn.
-  '_plBackHandler','_plBovensteSluitKnop','bscSituaties','updateScenarioBadge','updateTokenPill'
+  '_plBackHandler','_plBovensteSluitKnop','bscSituaties','updateScenarioBadge','updateTokenPill',
+  // Erbij op 26-09-2026 (#302): "Opnieuw verbinden" in het adapterpaneel
+  // hervat via connectSerial(); ontbreekt hij, dan meldt de knop dat.
+  'connectSerial'
 ];
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.
